@@ -1,0 +1,6 @@
+[
+  { "id": 1, "name": "허창", "q": 0,  "r": 0,  "owner": 1, "provisions": 5000 },
+  { "id": 2, "name": "업",   "q": 1,  "r": -1, "owner": 1, "provisions": 4200 },
+  { "id": 3, "name": "성도", "q": 5,  "r": 2,  "owner": 2, "provisions": 6000 },
+  { "id": 4, "name": "형주", "q": 3,  "r": 1,  "owner": 2, "provisions": 3800 }
+]

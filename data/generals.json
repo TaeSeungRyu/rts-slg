@@ -1,0 +1,6 @@
+[
+  { "id": 1, "name": "조조", "leadership": 96, "might": 72, "intellect": 91, "politics": 94, "charisma": 96 },
+  { "id": 2, "name": "유비", "leadership": 79, "might": 73, "intellect": 74, "politics": 80, "charisma": 99 },
+  { "id": 3, "name": "관우", "leadership": 95, "might": 97, "intellect": 75, "politics": 62, "charisma": 93 },
+  { "id": 4, "name": "하후돈", "leadership": 89, "might": 90, "intellect": 60, "politics": 68, "charisma": 82 }
+]
