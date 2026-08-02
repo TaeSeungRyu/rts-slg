@@ -72,6 +72,6 @@
 - [x] Step 1 — HexCoord
 - [x] Step 2 — ID + Domain
 - [x] Step 3 — Data + 더미 시나리오 🔍
-- [ ] Step 4 — 턴 엔진 + 결정론 기반
+- [x] Step 4 — 턴 엔진 + 결정론 기반
 - [ ] Step 5 — Sandbox 실행기 🔍🔍
 - [ ] Step 6 — 결정론 통합 테스트
