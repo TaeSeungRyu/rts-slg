@@ -37,3 +37,11 @@ internal sealed class BalanceDto
 {
     public int MonthlyTaxPerCity { get; init; }
 }
+
+internal sealed class MapDto
+{
+    public int MinQ { get; init; }
+    public int MaxQ { get; init; }
+    public int MinR { get; init; }
+    public int MaxR { get; init; }
+}

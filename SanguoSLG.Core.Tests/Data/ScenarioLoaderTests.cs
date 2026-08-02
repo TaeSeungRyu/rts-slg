@@ -24,6 +24,9 @@ public class ScenarioLoaderTests
         // 참조 무결성: 모든 세력의 군주가 실제 무장으로 존재한다.
         var generalIds = scenario.Generals.Select(g => g.Id).ToHashSet();
         Assert.All(scenario.Factions, f => Assert.Contains(f.Ruler, generalIds));
+
+        // 참조 무결성: 모든 도시가 맵 경계 안에 있다.
+        Assert.All(scenario.Cities, c => Assert.True(scenario.Map.Contains(c.Position), $"{c.Name}이 맵 밖에 있다."));
     }
 
     [Fact]
@@ -33,7 +36,8 @@ public class ScenarioLoaderTests
             factionsJson: """[ { "id": 1, "name": "위", "ruler": 5, "gold": 1000 } ]""",
             citiesJson: """[ { "id": 2, "name": "허창", "q": 3, "r": -1, "owner": 1, "provisions": 5000 } ]""",
             generalsJson: """[ { "id": 5, "name": "조조", "leadership": 96, "might": 72, "intellect": 91, "politics": 94, "charisma": 96 } ]""",
-            balanceJson: """{ "monthly_tax_per_city": 120 }""");
+            balanceJson: """{ "monthly_tax_per_city": 120 }""",
+            mapJson: """{ "min_q": 0, "max_q": 5, "min_r": -1, "max_r": 2 }""");
 
         var faction = Assert.Single(scenario.Factions);
         Assert.Equal(new FactionId(1), faction.Id);
@@ -53,5 +57,10 @@ public class ScenarioLoaderTests
         Assert.Equal(72, general.Might);
 
         Assert.Equal(120, scenario.Balance.MonthlyTaxPerCity);
+
+        Assert.Equal(0, scenario.Map.MinQ);
+        Assert.Equal(5, scenario.Map.MaxQ);
+        Assert.Equal(-1, scenario.Map.MinR);
+        Assert.Equal(2, scenario.Map.MaxR);
     }
 }

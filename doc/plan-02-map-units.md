@@ -69,7 +69,7 @@
 
 ## 진행 상태
 
-- [ ] Step 1 — Core: 헥사 맵
+- [x] Step 1 — Core: 헥사 맵
 - [ ] Step 2 — Core: A\* 길찾기
 - [ ] Step 3 — Core: 유닛 + 이동
 - [ ] Step 4 — Godot: 맵 렌더링 🔍

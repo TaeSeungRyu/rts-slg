@@ -25,11 +25,12 @@ public sealed class ScenarioLoader
             Read("factions.json"),
             Read("cities.json"),
             Read("generals.json"),
-            Read("balance.json"));
+            Read("balance.json"),
+            Read("map.json"));
     }
 
     /// <summary>JSON 문자열에서 직접 로드한다(테스트·임베딩용).</summary>
-    public Scenario LoadFromJson(string factionsJson, string citiesJson, string generalsJson, string balanceJson)
+    public Scenario LoadFromJson(string factionsJson, string citiesJson, string generalsJson, string balanceJson, string mapJson)
     {
         var factions = Deserialize<List<FactionDto>>(factionsJson, "factions")
             .Select(d => new Faction(new FactionId(d.Id), d.Name, new GeneralId(d.Ruler), d.Gold))
@@ -46,7 +47,10 @@ public sealed class ScenarioLoader
         var balanceDto = Deserialize<BalanceDto>(balanceJson, "balance");
         var balance = new BalanceConfig(balanceDto.MonthlyTaxPerCity);
 
-        return new Scenario(factions, cities, generals, balance);
+        var mapDto = Deserialize<MapDto>(mapJson, "map");
+        var map = new HexMap(mapDto.MinQ, mapDto.MaxQ, mapDto.MinR, mapDto.MaxR);
+
+        return new Scenario(factions, cities, generals, balance, map);
     }
 
     private static T Deserialize<T>(string json, string what)
