@@ -70,7 +70,7 @@
 ## 진행 상태
 
 - [x] Step 1 — HexCoord
-- [ ] Step 2 — ID + Domain
+- [x] Step 2 — ID + Domain
 - [ ] Step 3 — Data + 더미 시나리오 🔍
 - [ ] Step 4 — 턴 엔진 + 결정론 기반
 - [ ] Step 5 — Sandbox 실행기 🔍🔍
