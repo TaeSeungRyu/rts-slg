@@ -1,0 +1,23 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+.idea/
+*.suo
+
+# Rider / VS Code
+.vscode/
+
+# Godot 4 (.NET)
+.godot/
+*.translation
+
+# 빌드 산출물
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+
+# 로그
+*.log

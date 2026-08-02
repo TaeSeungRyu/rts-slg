@@ -1,0 +1,13 @@
+; Godot 4.7 프로젝트 설정 파일
+; 에디터로 처음 열면 나머지 메타데이터가 자동 생성된다.
+
+config_version=5
+
+[application]
+
+config/name="SanguoSLG"
+config/features=PackedStringArray("4.7", "C#", "Forward Plus")
+
+[dotnet]
+
+project/assembly_name="SanguoSLG.Game"
