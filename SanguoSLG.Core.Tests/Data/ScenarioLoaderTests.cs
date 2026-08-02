@@ -7,28 +7,10 @@ namespace SanguoSLG.Core.Tests.Data;
 
 public class ScenarioLoaderTests
 {
-    // 테스트 바이너리 위치에서 위로 올라가며 실제 data 디렉토리를 찾는다.
-    private static string FindDataDirectory()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null)
-        {
-            var candidate = Path.Combine(dir.FullName, "data");
-            if (File.Exists(Path.Combine(candidate, "factions.json")))
-            {
-                return candidate;
-            }
-
-            dir = dir.Parent;
-        }
-
-        throw new DirectoryNotFoundException("data 디렉토리를 찾지 못했습니다.");
-    }
-
     [Fact]
     public void LoadFromDirectory_실제_더미시나리오가_유효하다()
     {
-        var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
+        var scenario = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
 
         Assert.NotEmpty(scenario.Factions);
         Assert.NotEmpty(scenario.Cities);
