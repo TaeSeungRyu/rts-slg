@@ -6,8 +6,13 @@ config_version=5
 [application]
 
 config/name="SanguoSLG"
+run/main_scene="res://Main.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 
 [dotnet]
 
 project/assembly_name="SanguoSLG.Game"
+
+[rendering]
+
+environment/defaults/default_clear_color=Color(0.09, 0.1, 0.12, 1)
