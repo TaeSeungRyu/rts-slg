@@ -1,6 +1,7 @@
 using System.IO;
 using Godot;
 using SanguoSLG.Core.Data;
+using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Spatial;
 
 namespace SanguoSLG.Game;
@@ -17,6 +18,11 @@ public partial class GameRoot : Node2D
 
         var view = GetNode<HexMapView>("HexMapView");
         view.SetData(scenario.Map, scenario.Cities);
+
+        // 유닛 1기를 첫 도시에 스폰(슬라이스용). units.json은 이후.
+        var startCity = scenario.Cities[0];
+        var unit = new Unit(new UnitId(1), startCity.Owner, startCity.Position);
+        GetNode<UnitController>("UnitController").Init(scenario.Map, view, unit);
 
         var camera = GetNode<CameraController>("Camera2D");
         var bounds = MapPixelBounds(scenario.Map, view.HexSize);

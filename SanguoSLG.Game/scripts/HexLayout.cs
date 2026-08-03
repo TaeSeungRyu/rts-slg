@@ -26,4 +26,35 @@ public static class HexLayout
 
         return points;
     }
+
+    /// <summary>화면 픽셀 → 가장 가까운 헥사 좌표(flat-top). ToPixel의 역변환.</summary>
+    public static HexCoord FromPixel(Vector2 pixel, float size)
+    {
+        var qf = 2f / 3f * (pixel.X / size);
+        var rf = pixel.Y / (size * Sqrt3) - qf / 2f;
+        return RoundAxial(qf, rf);
+    }
+
+    // 분수 axial 좌표를 cube 반올림으로 가장 가까운 헥사에 스냅한다.
+    private static HexCoord RoundAxial(float qf, float rf)
+    {
+        float x = qf, z = rf, y = -x - z;
+        int rx = Mathf.RoundToInt(x), ry = Mathf.RoundToInt(y), rz = Mathf.RoundToInt(z);
+        float dx = Mathf.Abs(rx - x), dy = Mathf.Abs(ry - y), dz = Mathf.Abs(rz - z);
+
+        if (dx > dy && dx > dz)
+        {
+            rx = -ry - rz;
+        }
+        else if (dy > dz)
+        {
+            ry = -rx - rz;
+        }
+        else
+        {
+            rz = -rx - ry;
+        }
+
+        return new HexCoord(rx, rz);
+    }
 }
