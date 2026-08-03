@@ -17,7 +17,7 @@ public partial class UnitController : Node2D
 
     private HexMapView _view = null!;
     private MovementService _movement = null!;
-    private Unit _unit;
+    private Unit _unit = null!;
     private bool _moving;
 
     public void Init(HexMap map, HexMapView view, Unit unit)

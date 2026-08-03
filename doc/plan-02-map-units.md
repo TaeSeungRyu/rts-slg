@@ -74,4 +74,20 @@
 - [x] Step 3 — Core: 유닛 + 이동
 - [x] Step 4 — Godot: 맵 렌더링 🔍 (헤드리스 렌더 캡처로 검증)
 - [x] Step 5 — Godot: 유닛 클릭 이동 🔍🔍 (렌더/역변환 검증, 클릭 손맛은 사용자 확인)
-- [ ] Step 6 — 마무리 + 회고
+- [x] Step 6 — 마무리 + 회고
+
+---
+
+## 회고 (슬라이스 완료)
+
+**달성**: 데이터(`map.json`)로 정의한 헥사 맵을 Godot이 렌더하고, 유닛을 좌클릭으로 A* 최단경로 이동시키는 수직 슬라이스 완성. 사용자 "기본 틀 만족" 확인.
+
+- Core(순수): `HexMap` → `HexPathfinder`(A*) → `Unit`/`MovementService`. 41개 테스트 통과, 결정론 유지
+- Game(Godot .NET): `HexMapView`(그리기) + `HexLayout`(axial↔픽셀) + `CameraController`(줌/팬) + `UnitController`(클릭 이동). C# 컴파일·씬 로드·렌더 검증(헤드리스 캡처), 런타임 오류 없음
+- 교훈: Godot은 **표준 빌드가 아닌 .NET(mono) 빌드** 필요(→ [[godot-binary]]). `--shot`로 헤드리스 렌더 캡처해 UI를 에이전트가 직접 검증 가능
+
+**다음 방향 후보** (택1, 다음 계획 문서로 분해 예정)
+- 지형·이동불가 타일(강·산) 도입 → A* 회피가 실제로 의미
+- 다중 유닛 + 선택/이동, 이동력·턴제 이동
+- 내정 시스템 재개([plan-03-administration.md](./plan-03-administration.md))
+- 도시·유닛 시각 개선(라벨, 스프라이트, 하이라이트/경로 표시)
