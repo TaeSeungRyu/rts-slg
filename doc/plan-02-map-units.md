@@ -71,7 +71,7 @@
 
 - [x] Step 1 — Core: 헥사 맵
 - [x] Step 2 — Core: A\* 길찾기
-- [ ] Step 3 — Core: 유닛 + 이동
+- [x] Step 3 — Core: 유닛 + 이동
 - [ ] Step 4 — Godot: 맵 렌더링 🔍
 - [ ] Step 5 — Godot: 유닛 클릭 이동 🔍🔍
 - [ ] Step 6 — 마무리 + 회고
