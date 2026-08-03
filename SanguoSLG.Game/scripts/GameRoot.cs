@@ -19,15 +19,58 @@ public partial class GameRoot : Node2D
         view.SetData(scenario.Map, scenario.Cities);
 
         var camera = GetNode<CameraController>("Camera2D");
-        camera.Position = MapCenter(scenario.Map, view.HexSize);
+        var bounds = MapPixelBounds(scenario.Map, view.HexSize);
+        camera.Position = bounds.GetCenter();
+        camera.Zoom = FitZoom(bounds, GetViewport().GetVisibleRect().Size);
         camera.MakeCurrent();
+
+        _capture = OS.GetCmdlineArgs().Contains("--shot");
     }
 
-    private static Vector2 MapCenter(HexMap map, float hexSize)
+    private bool _capture;
+    private int _frames;
+
+    public override void _Process(double delta)
     {
-        var min = HexLayout.ToPixel(new HexCoord(map.MinQ, map.MinR), hexSize);
-        var max = HexLayout.ToPixel(new HexCoord(map.MaxQ, map.MaxR), hexSize);
-        return (min + max) / 2f;
+        if (!_capture)
+        {
+            return;
+        }
+
+        if (++_frames < 5)
+        {
+            return;
+        }
+
+        var image = GetViewport().GetTexture().GetImage();
+        image.SavePng(Path.Combine(ProjectSettings.GlobalizePath("res://"), "shot_step4.png"));
+        GetTree().Quit();
+    }
+
+    // 모든 타일의 픽셀 위치를 감싸는 경계(헥사 반경만큼 여백 포함).
+    private static Rect2 MapPixelBounds(HexMap map, float hexSize)
+    {
+        float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
+        foreach (var tile in map.Tiles())
+        {
+            var p = HexLayout.ToPixel(tile, hexSize);
+            minX = Mathf.Min(minX, p.X);
+            minY = Mathf.Min(minY, p.Y);
+            maxX = Mathf.Max(maxX, p.X);
+            maxY = Mathf.Max(maxY, p.Y);
+        }
+
+        var position = new Vector2(minX - hexSize, minY - hexSize);
+        var size = new Vector2(maxX - minX + hexSize * 2f, maxY - minY + hexSize * 2f);
+        return new Rect2(position, size);
+    }
+
+    // 맵 전체가 화면에 들어오도록 하는 줌.
+    private static Vector2 FitZoom(Rect2 bounds, Vector2 viewport)
+    {
+        var zoom = Mathf.Min(viewport.X / bounds.Size.X, viewport.Y / bounds.Size.Y);
+        zoom = Mathf.Clamp(zoom, 0.3f, 3f);
+        return new Vector2(zoom, zoom);
     }
 
     // 프로젝트 디렉토리에서 위로 올라가며 리포지토리의 data 디렉토리를 찾는다.
