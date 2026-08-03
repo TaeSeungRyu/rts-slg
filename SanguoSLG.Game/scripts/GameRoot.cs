@@ -48,8 +48,11 @@ public partial class GameRoot : Node2D
             return;
         }
 
+        // 스크린샷은 Godot이 리소스로 임포트하지 않도록 프로젝트 밖(리포 루트)에 저장한다.
+        var projectDir = new DirectoryInfo(ProjectSettings.GlobalizePath("res://"));
+        var outPath = Path.Combine(projectDir.Parent?.FullName ?? projectDir.FullName, "shot_step4.png");
         var image = GetViewport().GetTexture().GetImage();
-        image.SavePng(Path.Combine(ProjectSettings.GlobalizePath("res://"), "shot_step4.png"));
+        image.SavePng(outPath);
         GetTree().Quit();
     }
 
