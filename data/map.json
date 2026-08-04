@@ -2,5 +2,19 @@
   "min_q": -2,
   "max_q": 8,
   "min_r": -3,
-  "max_r": 5
+  "max_r": 5,
+  "terrain": {
+    "legend": { "G": "plains", "F": "forest", "M": "mountain", "D": "desert" },
+    "rows": [
+      "GGFFGGGGMMM",
+      "GGGFFGGGGMM",
+      "GGGGFFGGGMM",
+      "GGGGGFFGGGM",
+      "GGGGGGFFGGG",
+      "GGDDGGGGGGG",
+      "GGDDDGGGGGG",
+      "GGGDDGGGGGG",
+      "GGGGGGGGGGG"
+    ]
+  }
 }

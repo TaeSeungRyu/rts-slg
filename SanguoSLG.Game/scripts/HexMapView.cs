@@ -17,7 +17,15 @@ public partial class HexMapView : Node2D
     private const float NativeHexSize = 70f;
     private static readonly Vector2 TileSize = new(120f, 140f);
     private static readonly Vector2 TopFaceCenter = new(60f, 70f);
-    private static readonly Rect2 GrassRegion = new(610, 142, 120, 140); // grass_05 (순수 녹색)
+
+    // 지형별 지형 시트 영역(Kenney Hexagon Pack).
+    private static readonly System.Collections.Generic.Dictionary<TerrainType, Rect2> TerrainRegions = new()
+    {
+        [TerrainType.Plains] = new Rect2(610, 142, 120, 140),   // grass_05
+        [TerrainType.Forest] = new Rect2(488, 994, 120, 140),   // grass_13 (나무)
+        [TerrainType.Mountain] = new Rect2(0, 1278, 120, 140),  // stone_10
+        [TerrainType.Desert] = new Rect2(610, 1846, 120, 140),  // dirt_05
+    };
 
     [Export] public float HexSize = 48f;
     [Export] public Color CityColor = new(0.85f, 0.66f, 0.28f);
@@ -27,13 +35,12 @@ public partial class HexMapView : Node2D
     private HexMap? _map;
     private IReadOnlyList<City> _cities = Array.Empty<City>();
     private Font _font = null!;
-    private Texture2D _grassTile = null!;
+    private Texture2D _terrainSheet = null!;
 
     public override void _Ready()
     {
         _font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
-        var sheet = GD.Load<Texture2D>("res://assets/tiles/hexagonTerrain_sheet.png");
-        _grassTile = new AtlasTexture { Atlas = sheet, Region = GrassRegion };
+        _terrainSheet = GD.Load<Texture2D>("res://assets/tiles/hexagonTerrain_sheet.png");
     }
 
     public void SetData(HexMap map, IReadOnlyList<City> cities)
@@ -59,7 +66,8 @@ public partial class HexMapView : Node2D
         // 2.5D 깊이가 겹치도록 화면 위쪽(작은 y)부터 그린다.
         foreach (var tile in _map.Tiles().OrderBy(t => CenterOf(t).Y).ThenBy(t => CenterOf(t).X))
         {
-            DrawTextureRect(_grassTile, new Rect2(CenterOf(tile) - centerOffset, drawSize), false);
+            var region = TerrainRegions[_map.TerrainAt(tile)];
+            DrawTextureRectRegion(_terrainSheet, new Rect2(CenterOf(tile) - centerOffset, drawSize), region);
         }
 
         foreach (var city in _cities)

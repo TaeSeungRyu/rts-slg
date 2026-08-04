@@ -12,7 +12,9 @@ public sealed class HexMap
     public int MinR { get; }
     public int MaxR { get; }
 
-    public HexMap(int minQ, int maxQ, int minR, int maxR)
+    private readonly IReadOnlyDictionary<HexCoord, TerrainType> _terrain;
+
+    public HexMap(int minQ, int maxQ, int minR, int maxR, IReadOnlyDictionary<HexCoord, TerrainType>? terrain = null)
     {
         if (maxQ < minQ)
         {
@@ -28,7 +30,12 @@ public sealed class HexMap
         MaxQ = maxQ;
         MinR = minR;
         MaxR = maxR;
+        _terrain = terrain ?? new Dictionary<HexCoord, TerrainType>();
     }
+
+    /// <summary>좌표의 지형. 지정되지 않은 타일은 평야(Plains).</summary>
+    public TerrainType TerrainAt(HexCoord coord) =>
+        _terrain.TryGetValue(coord, out var terrain) ? terrain : TerrainType.Plains;
 
     /// <summary>맵 타일 개수.</summary>
     public int Count => (MaxQ - MinQ + 1) * (MaxR - MinR + 1);

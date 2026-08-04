@@ -60,6 +60,7 @@
 
 - [x] Step 1 — 한글 폰트 + 도시 라벨 🔍 (Pretendard, 렌더 확인)
 - [x] Step 2 — 지형 스프라이트 도입 🔍 (Kenney CC0 pointy-top 잔디 타일, 렌더 확인)
+- [x] 지형 다양화 🔍 — 평야·숲·산·사막을 데이터(map.json 지형 그리드)로 주도, 지형별 타일 렌더 (Core TerrainType/HexMap.TerrainAt)
 - [ ] Step 3 — 세력 색 구분 🔍 (도시/유닛 마커를 세력 색으로)
 - [ ] Step 3 — 호버 하이라이트 + 경로 미리보기 🔍
 - [ ] Step 4 — 선택 표시 + 이동 이징 🔍

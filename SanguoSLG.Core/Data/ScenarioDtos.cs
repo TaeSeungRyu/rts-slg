@@ -44,4 +44,14 @@ internal sealed class MapDto
     public int MaxQ { get; init; }
     public int MinR { get; init; }
     public int MaxR { get; init; }
+    public TerrainDto? Terrain { get; init; }
+}
+
+internal sealed class TerrainDto
+{
+    // 한 글자 코드 → 지형 이름(예: "G" → "plains")
+    public Dictionary<string, string> Legend { get; init; } = new();
+
+    // rows[i]는 r = min_r + i 행, 각 문자는 q = min_q + j 열의 지형 코드
+    public List<string> Rows { get; init; } = new();
 }

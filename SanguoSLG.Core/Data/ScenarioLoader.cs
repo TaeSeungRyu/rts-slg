@@ -48,10 +48,45 @@ public sealed class ScenarioLoader
         var balance = new BalanceConfig(balanceDto.MonthlyTaxPerCity);
 
         var mapDto = Deserialize<MapDto>(mapJson, "map");
-        var map = new HexMap(mapDto.MinQ, mapDto.MaxQ, mapDto.MinR, mapDto.MaxR);
+        var map = BuildMap(mapDto);
 
         return new Scenario(factions, cities, generals, balance, map);
     }
+
+    private static HexMap BuildMap(MapDto dto)
+    {
+        IReadOnlyDictionary<HexCoord, TerrainType>? terrain = null;
+        if (dto.Terrain is { Rows.Count: > 0 })
+        {
+            var legend = dto.Terrain.Legend.ToDictionary(kv => kv.Key[0], kv => ParseTerrain(kv.Value));
+            var grid = new Dictionary<HexCoord, TerrainType>();
+            for (var i = 0; i < dto.Terrain.Rows.Count; i++)
+            {
+                var row = dto.Terrain.Rows[i];
+                var r = dto.MinR + i;
+                for (var j = 0; j < row.Length; j++)
+                {
+                    if (legend.TryGetValue(row[j], out var type))
+                    {
+                        grid[new HexCoord(dto.MinQ + j, r)] = type;
+                    }
+                }
+            }
+
+            terrain = grid;
+        }
+
+        return new HexMap(dto.MinQ, dto.MaxQ, dto.MinR, dto.MaxR, terrain);
+    }
+
+    private static TerrainType ParseTerrain(string name) => name switch
+    {
+        "plains" => TerrainType.Plains,
+        "forest" => TerrainType.Forest,
+        "mountain" => TerrainType.Mountain,
+        "desert" => TerrainType.Desert,
+        _ => throw new InvalidDataException($"알 수 없는 지형: {name}"),
+    };
 
     private static T Deserialize<T>(string json, string what)
     {
