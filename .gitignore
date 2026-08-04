@@ -22,5 +22,6 @@ obj/
 # 로그
 *.log
 
-# 검증용 스크린샷 (--shot 캡처)
+# 검증용 스크린샷 (--shot 캡처, 톤 비교)
 shot_*.png
+tone_*.png

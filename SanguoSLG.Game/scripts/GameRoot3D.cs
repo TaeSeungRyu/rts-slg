@@ -31,8 +31,9 @@ public partial class GameRoot3D : Node3D
 
         var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
 
-        AddChild(new WorldEnvironment { Environment = BuildEnvironment() });
-        AddChild(BuildSunLight());
+        var tone = TonePreset.FromCmdline();
+        AddChild(new WorldEnvironment { Environment = BuildEnvironment(tone) });
+        AddChild(BuildSunLight(tone));
 
         var mapView = new MapView3D();
         AddChild(mapView);
@@ -51,7 +52,7 @@ public partial class GameRoot3D : Node3D
         unitNode.Init(scenario.Map, mapView, camera,
             new Unit(new UnitId(1), startCity.Owner, startCity.Position));
 
-        AddChild(BuildVignette());
+        AddChild(BuildVignette(tone));
 
         _engine = new TurnEngine(scenario.Balance);
         _state = GameState.FromScenario(scenario);
@@ -86,7 +87,7 @@ public partial class GameRoot3D : Node3D
     // 화면 기준 오른쪽 = +X(0°), 아래 = +Z(90°).
     private void BuildRiverDebugScene()
     {
-        AddChild(new WorldEnvironment { Environment = BuildEnvironment() });
+        AddChild(new WorldEnvironment { Environment = BuildEnvironment(TonePreset.FromCmdline()) });
         AddChild(new DirectionalLight3D { RotationDegrees = new Vector3(-80f, 0f, 0f), LightEnergy = 1.3f });
 
         string[] models = { "river-straight", "river-corner", "river-corner-sharp", "river-end", "bridge" };
@@ -115,11 +116,11 @@ public partial class GameRoot3D : Node3D
     }
 
     // 화면 가장자리를 어둡게 하는 비네트 오버레이(HUD 아래).
-    private static CanvasLayer BuildVignette()
+    private static CanvasLayer BuildVignette(TonePreset tone)
     {
         var layer = new CanvasLayer();
         var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/vignette.gdshader") };
-        material.SetShaderParameter("strength", 0.28f);
+        material.SetShaderParameter("strength", tone.Vignette);
         layer.AddChild(new ColorRect
         {
             Material = material,
@@ -131,15 +132,14 @@ public partial class GameRoot3D : Node3D
         return layer;
     }
 
-    private static Godot.Environment BuildEnvironment()
+    private static Godot.Environment BuildEnvironment(TonePreset tone)
     {
-        // 연한 파스텔 톤: 밝기는 유지하고 채도·대비만 낮춰 색을 씻어낸다.
         var sky = new ProceduralSkyMaterial
         {
-            SkyTopColor = new Color(0.62f, 0.70f, 0.80f),
-            SkyHorizonColor = new Color(0.86f, 0.85f, 0.81f),
-            GroundHorizonColor = new Color(0.86f, 0.85f, 0.81f),
-            GroundBottomColor = new Color(0.42f, 0.47f, 0.54f),
+            SkyTopColor = tone.SkyTop,
+            SkyHorizonColor = tone.SkyHorizon,
+            GroundHorizonColor = tone.SkyHorizon,
+            GroundBottomColor = tone.GroundBottom,
         };
 
         return new Godot.Environment
@@ -147,29 +147,29 @@ public partial class GameRoot3D : Node3D
             BackgroundMode = Godot.Environment.BGMode.Sky,
             Sky = new Sky { SkyMaterial = sky },
             AmbientLightSource = Godot.Environment.AmbientSource.Sky,
-            AmbientLightSkyContribution = 0.75f,
+            AmbientLightSkyContribution = tone.Ambient,
             TonemapMode = Godot.Environment.ToneMapper.Filmic,
-            TonemapExposure = 1.0f,
+            TonemapExposure = tone.Exposure,
             SsaoEnabled = true,
             SsaoIntensity = 1.2f,
             GlowEnabled = true,
             GlowIntensity = 0.25f,
             FogEnabled = true,
-            FogLightColor = new Color(0.82f, 0.81f, 0.77f),
-            FogDensity = 0.004f,
+            FogLightColor = tone.SkyHorizon,
+            FogDensity = tone.FogDensity,
             FogSkyAffect = 0f,
             AdjustmentEnabled = true,
-            AdjustmentBrightness = 1.06f,
-            AdjustmentContrast = 0.94f,
-            AdjustmentSaturation = 0.72f,
+            AdjustmentBrightness = tone.Brightness,
+            AdjustmentContrast = tone.Contrast,
+            AdjustmentSaturation = tone.Saturation,
         };
     }
 
-    private static DirectionalLight3D BuildSunLight() => new()
+    private static DirectionalLight3D BuildSunLight(TonePreset tone) => new()
     {
         RotationDegrees = new Vector3(-48f, -42f, 0f),
-        LightColor = new Color(1f, 0.96f, 0.88f),
-        LightEnergy = 1.15f,
+        LightColor = tone.SunColor,
+        LightEnergy = tone.SunEnergy,
         ShadowEnabled = true,
         DirectionalShadowMaxDistance = 60f,
     };
