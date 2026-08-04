@@ -27,9 +27,9 @@ public partial class MapView3D : Node3D
 
     // 강 모델의 기준(회전 0) 물길 방향(도). 스크린샷으로 실측해 보정한 값.
     private const float StraightAxisAngle = 0f;
-    private const float EndAngle = 0f;
-    private static readonly (float A1, float A2) CornerAngles = (0f, 120f);
-    private static readonly (float A1, float A2) CornerSharpAngles = (0f, 60f);
+    private const float EndAngle = 180f;
+    private static readonly (float A1, float A2) CornerAngles = (0f, -120f);
+    private static readonly (float A1, float A2) CornerSharpAngles = (0f, -60f);
 
     public override void _Ready()
     {
