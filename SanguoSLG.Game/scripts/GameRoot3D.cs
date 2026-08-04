@@ -118,9 +118,11 @@ public partial class GameRoot3D : Node3D
     private static CanvasLayer BuildVignette()
     {
         var layer = new CanvasLayer();
+        var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/vignette.gdshader") };
+        material.SetShaderParameter("strength", 0.28f);
         layer.AddChild(new ColorRect
         {
-            Material = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/vignette.gdshader") },
+            Material = material,
             AnchorRight = 1f,
             AnchorBottom = 1f,
             MouseFilter = Control.MouseFilterEnum.Ignore,
@@ -131,12 +133,13 @@ public partial class GameRoot3D : Node3D
 
     private static Godot.Environment BuildEnvironment()
     {
+        // 연한 파스텔 톤: 밝기는 유지하고 채도·대비만 낮춰 색을 씻어낸다.
         var sky = new ProceduralSkyMaterial
         {
-            SkyTopColor = new Color(0.20f, 0.27f, 0.38f),
-            SkyHorizonColor = new Color(0.52f, 0.50f, 0.46f),
-            GroundHorizonColor = new Color(0.52f, 0.50f, 0.46f),
-            GroundBottomColor = new Color(0.09f, 0.13f, 0.19f),
+            SkyTopColor = new Color(0.62f, 0.70f, 0.80f),
+            SkyHorizonColor = new Color(0.86f, 0.85f, 0.81f),
+            GroundHorizonColor = new Color(0.86f, 0.85f, 0.81f),
+            GroundBottomColor = new Color(0.42f, 0.47f, 0.54f),
         };
 
         return new Godot.Environment
@@ -144,29 +147,29 @@ public partial class GameRoot3D : Node3D
             BackgroundMode = Godot.Environment.BGMode.Sky,
             Sky = new Sky { SkyMaterial = sky },
             AmbientLightSource = Godot.Environment.AmbientSource.Sky,
-            AmbientLightSkyContribution = 0.55f,
+            AmbientLightSkyContribution = 0.75f,
             TonemapMode = Godot.Environment.ToneMapper.Filmic,
-            TonemapExposure = 0.85f,
+            TonemapExposure = 1.0f,
             SsaoEnabled = true,
-            SsaoIntensity = 1.6f,
+            SsaoIntensity = 1.2f,
             GlowEnabled = true,
             GlowIntensity = 0.25f,
             FogEnabled = true,
-            FogLightColor = new Color(0.55f, 0.54f, 0.50f),
+            FogLightColor = new Color(0.82f, 0.81f, 0.77f),
             FogDensity = 0.004f,
             FogSkyAffect = 0f,
             AdjustmentEnabled = true,
-            AdjustmentBrightness = 0.94f,
-            AdjustmentContrast = 1.06f,
-            AdjustmentSaturation = 0.82f,
+            AdjustmentBrightness = 1.06f,
+            AdjustmentContrast = 0.94f,
+            AdjustmentSaturation = 0.72f,
         };
     }
 
     private static DirectionalLight3D BuildSunLight() => new()
     {
         RotationDegrees = new Vector3(-48f, -42f, 0f),
-        LightColor = new Color(1f, 0.93f, 0.82f),
-        LightEnergy = 1.0f,
+        LightColor = new Color(1f, 0.96f, 0.88f),
+        LightEnergy = 1.15f,
         ShadowEnabled = true,
         DirectionalShadowMaxDistance = 60f,
     };
