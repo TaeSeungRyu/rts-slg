@@ -16,3 +16,4 @@ project/assembly_name="SanguoSLG.Game"
 [rendering]
 
 environment/defaults/default_clear_color=Color(0.09, 0.1, 0.12, 1)
+viewport/hdr_2d=true
