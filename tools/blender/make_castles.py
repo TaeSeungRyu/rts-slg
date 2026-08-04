@@ -2,18 +2,31 @@
 # 실행: blender --background --python make_castles.py
 #
 # 컨셉(사용자 정의, doc/design-terrain.md):
-# - 작은성: 성벽 + 가운데 2단 동양풍 건물 1개. 건물-성벽 여백이 잘 보여야 함
-# - 중간성: 성벽 + 가운데 3단 건물 1개 + 12시/4시/8시에 1단 건물. 여백 유지
-# - 큰성:   성벽 + 가운데 4단 건물 1개 + 나머지 영역에 3단 1개/2단 1개/1단 2개. 여백 유지
+# - 성은 육각 타일 모양에 정확히 들어간다: 발자국 각 타일에 육각 기단,
+#   성벽은 클러스터의 "바깥 경계 모서리"만 따라 두른다(내부 경계는 트임 → 한 덩어리 성)
+# - 작은성: 육각 1개, 중앙 2단 건물
+# - 중간성: 육각 3개(12시·4시·8시로 붙음), 중앙(공유 꼭짓점) 3단 + 각 타일에 1단
+# - 큰성:   육각 5개(위 2, 아래 3), 중앙 4단 + 3단 1·2단 1·1단 2
+# - 좌표: Blender XY 지면, +Y=북(12시). glTF 익스포트가 Godot 좌표로 변환.
 import bpy
 import math
 
 OUT_DIR = r"D:\dev\window\slg\SanguoSLG.Game\assets\models"
 
-# 발자국 스케일: 모델을 월드 실치수로 낸다(게임 런타임 스케일 없음).
-# 헥사 이웃 간격 = sqrt(3) ≈ 1.732 월드 단위. XY는 발자국 폭, Z는 완만하게.
-K_XY = 1.0
-K_Z = 1.0
+HEX_R = 1.0                      # 타일 반경(월드) — 이웃 간격 sqrt(3)
+APOTHEM = math.sqrt(3.0) / 2.0   # 변 중심까지 거리
+PLATFORM_H = 0.12
+WALL_H, WALL_T = 0.24, 0.09
+
+# 발자국 육각 중심(클러스터 중심 기준, Blender XY, +Y=북)
+FOOTPRINTS = {
+    "small": [(0.0, 0.0)],
+    # 12시, 4시, 8시 — 공유 꼭짓점이 원점
+    "medium": [(0.0, 1.0), (APOTHEM, -0.5), (-APOTHEM, -0.5)],
+    # 위 2, 아래 3 — 중심이 원점
+    "large": [(-APOTHEM, 0.9), (APOTHEM, 0.9),
+              (-2 * APOTHEM, -0.6), (0.0, -0.6), (2 * APOTHEM, -0.6)],
+}
 
 
 def make_mat(name, color, roughness=0.85, metallic=0.0):
@@ -26,20 +39,30 @@ def make_mat(name, color, roughness=0.85, metallic=0.0):
     return m
 
 
-def box(name, sx, sy, sz, x, y, z, mat):
-    bpy.ops.mesh.primitive_cube_add(size=1, location=(x * K_XY, y * K_XY, z * K_Z))
+def box(name, sx, sy, sz, x, y, z, mat, rot_z=0.0):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z), rotation=(0, 0, rot_z))
     o = bpy.context.object
     o.name = name
-    o.scale = (sx * K_XY, sy * K_XY, sz * K_Z)
+    o.scale = (sx, sy, sz)
     o.data.materials.append(mat)
     return o
 
 
-def pyramid(name, r_bottom, r_top, h, x, y, z, mat):
-    # 사각 지붕(45° 정렬로 벽과 면 맞춤). 모서리를 덮으려면 r ≥ 벽폭.
+def pyramid(name, r_bottom, r_top, h, x, y, z, mat, rot_z=math.radians(45)):
     bpy.ops.mesh.primitive_cone_add(
-        vertices=4, radius1=r_bottom * K_XY, radius2=r_top * K_XY, depth=h * K_Z,
-        location=(x * K_XY, y * K_XY, z * K_Z), rotation=(0, 0, math.radians(45)))
+        vertices=4, radius1=r_bottom, radius2=r_top, depth=h,
+        location=(x, y, z), rotation=(0, 0, rot_z))
+    o = bpy.context.object
+    o.name = name
+    o.data.materials.append(mat)
+    return o
+
+
+def hex_platform(name, x, y, mat):
+    # 꼭짓점이 남북(±Y)을 향하는 육각 기단(타일과 같은 방향)
+    bpy.ops.mesh.primitive_cylinder_add(
+        vertices=6, radius=HEX_R * 0.97, depth=PLATFORM_H,
+        location=(x, y, PLATFORM_H / 2), rotation=(0, 0, math.radians(90)))
     o = bpy.context.object
     o.name = name
     o.data.materials.append(mat)
@@ -70,16 +93,22 @@ def tower(mats, prefix, cx, cy, base_z, tiers, base_w):
             box(f"{prefix}_fin", 0.04, 0.04, 0.06, cx, cy, z + 0.055 + top_h + 0.03, m_wood)
 
 
-def clock_pos(hour, radius):
-    """시계 방향 위치(12시=+Y=북, 성문은 -Y=남)."""
-    theta = math.radians(hour * 30.0)
-    return math.sin(theta) * radius, math.cos(theta) * radius
+def boundary_edges(centers):
+    """클러스터 바깥 경계 모서리 목록: (변 중심 x, y, 바깥 법선 각도)."""
+    spacing = 2 * APOTHEM
+    edges = []
+    for (cx, cy) in centers:
+        for k in range(6):
+            theta = math.radians(60 * k)
+            nx, ny = cx + spacing * math.cos(theta), cy + spacing * math.sin(theta)
+            inside = any(abs(nx - ox) < 0.2 and abs(ny - oy) < 0.2 for (ox, oy) in centers)
+            if not inside:
+                edges.append((cx + APOTHEM * math.cos(theta), cy + APOTHEM * math.sin(theta), theta))
+    return edges
 
 
-def build_castle(filename, half, center_tiers, subs, gates=("S",), k_xy=1.0, k_z=1.0):
-    """subs: [(시계시각, 단수, 벽폭)], gates: 성문 방향, k_xy/k_z: 발자국 스케일."""
-    global K_XY, K_Z
-    K_XY, K_Z = k_xy, k_z
+def build_castle(filename, kind, buildings, gate_dirs):
+    """buildings: [(x, y, 단수, 벽폭)], gate_dirs: 성문 방향 벡터 목록."""
     bpy.ops.wm.read_factory_settings(use_empty=True)
     m_roof = make_mat("roof", (0.06, 0.09, 0.14))
     m_wall = make_mat("wall", (0.55, 0.40, 0.22))
@@ -87,57 +116,38 @@ def build_castle(filename, half, center_tiers, subs, gates=("S",), k_xy=1.0, k_z
     m_stone = make_mat("stone", (0.52, 0.52, 0.50))
     mats = (m_roof, m_wall, m_wood)
 
-    # 석축 기단 + 마당(여백이 보이는 바닥)
-    size = half * 2 + 0.10
-    box("base", size, size, 0.14, 0, 0, 0.07, m_stone)
+    centers = FOOTPRINTS[kind]
+    for i, (x, y) in enumerate(centers):
+        hex_platform(f"platform{i}", x, y, m_stone)
 
-    # 성벽(흙담) — gates에 지정된 방향은 성문 자리를 비우고 문루를 세운다
-    wall_h, wall_t = 0.24, 0.09
-    wz = 0.14 + wall_h / 2
-    mz = 0.14 + wall_h + 0.03
-    count = int((half * 2) / 0.26)
-    directions = {"N": (0, 1), "S": (0, -1), "E": (1, 0), "W": (-1, 0)}
+    # 성문이 놓일 경계 모서리 선택(방향 벡터와 가장 정렬된 변)
+    edges = boundary_edges(centers)
+    gate_edges = set()
+    for (gx, gy) in gate_dirs:
+        best = max(range(len(edges)), key=lambda i: edges[i][0] * gx + edges[i][1] * gy)
+        gate_edges.add(best)
 
-    for side, (dx, dy) in directions.items():
-        along_x = dy != 0  # 남/북 벽은 x축 방향으로 길다
-        cx, cy = dx * half, dy * half
-
-        if side in gates:
-            # 벽 두 조각(가운데 성문 개구부) + 문루(작은 기와)
-            seg = half - 0.22
-            off = 0.22 + seg / 2
-            if along_x:
-                box(f"wall_{side}1", seg, wall_t, wall_h, -off, cy, wz, m_wall)
-                box(f"wall_{side}2", seg, wall_t, wall_h, off, cy, wz, m_wall)
-                box(f"gate_{side}", 0.30, 0.14, 0.28, 0, cy, 0.14 + 0.14, m_wood)
-            else:
-                box(f"wall_{side}1", wall_t, seg, wall_h, cx, -off, wz, m_wall)
-                box(f"wall_{side}2", wall_t, seg, wall_h, cx, off, wz, m_wall)
-                box(f"gate_{side}", 0.14, 0.30, 0.28, cx, 0, 0.14 + 0.14, m_wood)
-            pyramid(f"gate_roof_{side}", 0.24, 0.03, 0.09, cx, cy, 0.14 + 0.28 + 0.045, m_roof)
+    wz = PLATFORM_H + WALL_H / 2
+    mz = PLATFORM_H + WALL_H + 0.03
+    for i, (ex, ey, theta) in enumerate(edges):
+        along = theta + math.pi / 2
+        ax, ay = math.cos(along), math.sin(along)
+        if i in gate_edges:
+            # 성문: 짧은 벽 2조각 + 문루(작은 기와, 변 방향 정렬)
+            for s in (-1, 1):
+                box(f"wall{i}_{s}", 0.34, WALL_T, WALL_H,
+                    ex + s * 0.36 * ax, ey + s * 0.36 * ay, wz, m_wall, rot_z=along)
+            box(f"gate{i}", 0.30, 0.14, 0.28, ex, ey, PLATFORM_H + 0.14, m_wood, rot_z=along)
+            pyramid(f"gate_roof{i}", 0.24, 0.03, 0.09, ex, ey,
+                    PLATFORM_H + 0.28 + 0.045, m_roof, rot_z=along + math.radians(45))
         else:
-            if along_x:
-                box(f"wall_{side}", half * 2, wall_t, wall_h, 0, cy, wz, m_wall)
-            else:
-                box(f"wall_{side}", wall_t, half * 2, wall_h, cx, 0, wz, m_wall)
+            box(f"wall{i}", 1.06, WALL_T, WALL_H, ex, ey, wz, m_wall, rot_z=along)
+            for t in (-0.33, 0.0, 0.33):
+                box(f"merlon{i}_{t}", 0.10, WALL_T * 0.8, 0.06,
+                    ex + t * ax, ey + t * ay, mz, m_wall, rot_z=along)
 
-        # 여장(성가퀴) — 성문 근처는 비움
-        for i in range(count):
-            t = -half + 0.13 + i * 0.26
-            if side in gates and abs(t) < 0.30:
-                continue
-            if along_x:
-                box(f"m_{side}{i}", 0.09, wall_t * 0.8, 0.06, t, cy, mz, m_wall)
-            else:
-                box(f"m_{side}{i}", wall_t * 0.8, 0.09, 0.06, cx, t, mz, m_wall)
-
-    # 중앙 건물(단수는 컨셉 정의)
-    tower(mats, "center", 0, 0.02, 0.14, center_tiers, 0.36)
-
-    # 부속 건물(시계 방향 배치)
-    for hour, tiers, w in subs:
-        x, y = clock_pos(hour, half * 0.52)
-        tower(mats, f"sub{hour}", x, y, 0.14, tiers, w)
+    for j, (bx, by, tiers, w) in enumerate(buildings):
+        tower(mats, f"b{j}", bx, by, PLATFORM_H, tiers, w)
 
     out = OUT_DIR + "\\" + filename
     bpy.ops.object.select_all(action="SELECT")
@@ -145,20 +155,21 @@ def build_castle(filename, half, center_tiers, subs, gates=("S",), k_xy=1.0, k_z
     print("EXPORTED:", out)
 
 
-# 발자국 실치수 (헥사 이웃 간격 1.732):
-# 작은성 1타일(폭 ~1.1), 중간성 3타일 삼각(~2.2), 큰성 5타일 꽃잎(~2.9)
+# 작은성: 중앙 2단. 성문은 남동쪽(육각엔 정남 변이 없음)
+build_castle("castle-small.glb", "small",
+             buildings=[(0.0, 0.0, 2, 0.50)],
+             gate_dirs=[(0.3, -1.0)])
 
-# 작은성: 중앙 2단, 부속 없음, 남문 — 마당 여백 강조
-build_castle("castle-small.glb", half=0.65, center_tiers=2, subs=[], gates=("S",),
-             k_xy=0.80, k_z=0.85)
+# 중간성: 공유 꼭짓점(원점)에 3단 + 각 타일 중심에 1단, 성문 앞뒤
+A = APOTHEM
+build_castle("castle-medium.glb", "medium",
+             buildings=[(0.0, 0.0, 3, 0.50),
+                        (0.0, 1.0, 1, 0.32), (A, -0.5, 1, 0.32), (-A, -0.5, 1, 0.32)],
+             gate_dirs=[(0.3, -1.0), (0.3, 1.0)])
 
-# 중간성: 중앙 3단 + 12/4/8시 1단, 성문 앞뒤(남·북)
-build_castle("castle-medium.glb", half=0.72, center_tiers=3,
-             subs=[(12, 1, 0.20), (4, 1, 0.20), (8, 1, 0.20)], gates=("S", "N"),
-             k_xy=1.25, k_z=1.05)
-
-# 큰성: 중앙 4단 + 12시 3단, 4시 2단, 8시 1단, 2시 1단, 성문 4방
-build_castle("castle-large.glb", half=0.80, center_tiers=4,
-             subs=[(12, 3, 0.24), (4, 2, 0.22), (8, 1, 0.20), (2, 1, 0.20)],
-             gates=("S", "N", "E", "W"),
-             k_xy=1.44, k_z=1.12)
+# 큰성: 중앙 4단 + 윗줄에 3단·2단, 아랫줄 양끝에 1단 2개, 성문 4방
+build_castle("castle-large.glb", "large",
+             buildings=[(0.0, 0.0, 4, 0.55),
+                        (-A, 0.9, 3, 0.42), (A, 0.9, 2, 0.40),
+                        (-2 * A, -0.6, 1, 0.32), (2 * A, -0.6, 1, 0.32)],
+             gate_dirs=[(0.0, -1.0), (0.0, 1.0), (1.0, 0.0), (-1.0, 0.0)])
