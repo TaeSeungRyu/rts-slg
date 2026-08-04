@@ -71,8 +71,8 @@ def clock_pos(hour, radius):
     return math.sin(theta) * radius, math.cos(theta) * radius
 
 
-def build_castle(filename, half, center_tiers, subs):
-    """subs: [(시계시각, 단수, 벽폭)]"""
+def build_castle(filename, half, center_tiers, subs, gates=("S",)):
+    """subs: [(시계시각, 단수, 벽폭)], gates: 성문 방향 집합('N','S','E','W')"""
     bpy.ops.wm.read_factory_settings(use_empty=True)
     m_roof = make_mat("roof", (0.06, 0.09, 0.14))
     m_wall = make_mat("wall", (0.55, 0.40, 0.22))
@@ -84,35 +84,52 @@ def build_castle(filename, half, center_tiers, subs):
     size = half * 2 + 0.10
     box("base", size, size, 0.14, 0, 0, 0.07, m_stone)
 
-    # 성벽(흙담) — 남벽은 성문 자리를 비움
+    # 성벽(흙담) — gates에 지정된 방향은 성문 자리를 비우고 문루를 세운다
     wall_h, wall_t = 0.24, 0.09
     wz = 0.14 + wall_h / 2
-    box("wall_n", half * 2, wall_t, wall_h, 0, half, wz, m_wall)
-    box("wall_e", wall_t, half * 2, wall_h, half, 0, wz, m_wall)
-    box("wall_w", wall_t, half * 2, wall_h, -half, 0, wz, m_wall)
-    seg = half - 0.22
-    box("wall_s1", seg, wall_t, wall_h, -(0.22 + seg / 2), -half, wz, m_wall)
-    box("wall_s2", seg, wall_t, wall_h, (0.22 + seg / 2), -half, wz, m_wall)
-
-    # 여장(성가퀴)
     mz = 0.14 + wall_h + 0.03
     count = int((half * 2) / 0.26)
-    for i in range(count):
-        t = -half + 0.13 + i * 0.26
-        box(f"m_n{i}", 0.09, wall_t * 0.8, 0.06, t, half, mz, m_wall)
-        box(f"m_e{i}", wall_t * 0.8, 0.09, 0.06, half, t, mz, m_wall)
-        box(f"m_w{i}", wall_t * 0.8, 0.09, 0.06, -half, t, mz, m_wall)
+    directions = {"N": (0, 1), "S": (0, -1), "E": (1, 0), "W": (-1, 0)}
 
-    # 남문 문루
-    box("gate", 0.30, 0.14, 0.28, 0, -half, 0.14 + 0.14, m_wood)
-    pyramid("gate_roof", 0.34, 0.03, 0.13, 0, -half, 0.14 + 0.28 + 0.065, m_roof)
+    for side, (dx, dy) in directions.items():
+        along_x = dy != 0  # 남/북 벽은 x축 방향으로 길다
+        cx, cy = dx * half, dy * half
+
+        if side in gates:
+            # 벽 두 조각(가운데 성문 개구부) + 문루(작은 기와)
+            seg = half - 0.22
+            off = 0.22 + seg / 2
+            if along_x:
+                box(f"wall_{side}1", seg, wall_t, wall_h, -off, cy, wz, m_wall)
+                box(f"wall_{side}2", seg, wall_t, wall_h, off, cy, wz, m_wall)
+                box(f"gate_{side}", 0.30, 0.14, 0.28, 0, cy, 0.14 + 0.14, m_wood)
+            else:
+                box(f"wall_{side}1", wall_t, seg, wall_h, cx, -off, wz, m_wall)
+                box(f"wall_{side}2", wall_t, seg, wall_h, cx, off, wz, m_wall)
+                box(f"gate_{side}", 0.14, 0.30, 0.28, cx, 0, 0.14 + 0.14, m_wood)
+            pyramid(f"gate_roof_{side}", 0.24, 0.03, 0.09, cx, cy, 0.14 + 0.28 + 0.045, m_roof)
+        else:
+            if along_x:
+                box(f"wall_{side}", half * 2, wall_t, wall_h, 0, cy, wz, m_wall)
+            else:
+                box(f"wall_{side}", wall_t, half * 2, wall_h, cx, 0, wz, m_wall)
+
+        # 여장(성가퀴) — 성문 근처는 비움
+        for i in range(count):
+            t = -half + 0.13 + i * 0.26
+            if side in gates and abs(t) < 0.30:
+                continue
+            if along_x:
+                box(f"m_{side}{i}", 0.09, wall_t * 0.8, 0.06, t, cy, mz, m_wall)
+            else:
+                box(f"m_{side}{i}", wall_t * 0.8, 0.09, 0.06, cx, t, mz, m_wall)
 
     # 중앙 건물(단수는 컨셉 정의)
     tower(mats, "center", 0, 0.02, 0.14, center_tiers, 0.36)
 
     # 부속 건물(시계 방향 배치)
     for hour, tiers, w in subs:
-        x, y = clock_pos(hour, half * 0.60)
+        x, y = clock_pos(hour, half * 0.52)
         tower(mats, f"sub{hour}", x, y, 0.14, tiers, w)
 
     out = OUT_DIR + "\\" + filename
@@ -121,13 +138,14 @@ def build_castle(filename, half, center_tiers, subs):
     print("EXPORTED:", out)
 
 
-# 작은성: 중앙 2단, 부속 없음 — 마당 여백 강조
-build_castle("castle-small.glb", half=0.65, center_tiers=2, subs=[])
+# 작은성: 중앙 2단, 부속 없음, 남문 — 마당 여백 강조
+build_castle("castle-small.glb", half=0.65, center_tiers=2, subs=[], gates=("S",))
 
-# 중간성: 중앙 3단 + 12/4/8시 1단
+# 중간성: 중앙 3단 + 12/4/8시 1단, 성문 앞뒤(남·북)
 build_castle("castle-medium.glb", half=0.72, center_tiers=3,
-             subs=[(12, 1, 0.20), (4, 1, 0.20), (8, 1, 0.20)])
+             subs=[(12, 1, 0.20), (4, 1, 0.20), (8, 1, 0.20)], gates=("S", "N"))
 
-# 큰성: 중앙 4단 + 12시 3단, 4시 2단, 8시 1단, 2시 1단
+# 큰성: 중앙 4단 + 12시 3단, 4시 2단, 8시 1단, 2시 1단, 성문 4방
 build_castle("castle-large.glb", half=0.80, center_tiers=4,
-             subs=[(12, 3, 0.24), (4, 2, 0.22), (8, 1, 0.20), (2, 1, 0.20)])
+             subs=[(12, 3, 0.24), (4, 2, 0.22), (8, 1, 0.20), (2, 1, 0.20)],
+             gates=("S", "N", "E", "W"))
