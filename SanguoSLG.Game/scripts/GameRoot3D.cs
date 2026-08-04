@@ -1,13 +1,15 @@
 using System.IO;
+using System.Linq;
 using Godot;
 using SanguoSLG.Core.Data;
+using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 
 namespace SanguoSLG.Game;
 
 /// <summary>
-/// 3D 진입점. Core로 시나리오를 로드해 3D 맵을 세우고 카메라·조명·환경·HUD를 구성한다.
+/// 3D 진입점. Core로 시나리오를 로드해 3D 맵·도시·유닛을 세우고 카메라·조명·환경·HUD를 구성한다.
 /// Core는 렌더링을 모른다 — axial↔월드 변환은 MapView3D에서만.
 /// </summary>
 public partial class GameRoot3D : Node3D
@@ -23,24 +25,24 @@ public partial class GameRoot3D : Node3D
         var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
 
         AddChild(new WorldEnvironment { Environment = BuildEnvironment() });
-
-        var light = new DirectionalLight3D
-        {
-            RotationDegrees = new Vector3(-52f, -55f, 0f),
-            ShadowEnabled = true,
-            LightEnergy = 1.15f,
-        };
-        AddChild(light);
+        AddChild(BuildSunLight());
 
         var mapView = new MapView3D();
         AddChild(mapView);
         mapView.Build(scenario.Map);
 
-        var (center, radius) = MapBounds(mapView, scenario.Map);
-        var camera = new Camera3D { Position = center + new Vector3(0f, radius * 1.5f, radius * 1.25f) };
+        var camera = BuildCamera(mapView, scenario.Map);
         AddChild(camera);
-        camera.LookAt(center, Vector3.Up);
         camera.Current = true;
+
+        BuildCities(mapView, scenario);
+
+        // 유닛 1기를 첫 도시에 스폰(슬라이스용).
+        var startCity = scenario.Cities[0];
+        var unitNode = new UnitController3D();
+        AddChild(unitNode);
+        unitNode.Init(scenario.Map, mapView, camera,
+            new Unit(new UnitId(1), startCity.Owner, startCity.Position));
 
         _engine = new TurnEngine(scenario.Balance);
         _state = GameState.FromScenario(scenario);
@@ -73,16 +75,89 @@ public partial class GameRoot3D : Node3D
 
     private static Godot.Environment BuildEnvironment()
     {
+        var sky = new ProceduralSkyMaterial
+        {
+            SkyTopColor = new Color(0.35f, 0.46f, 0.62f),
+            SkyHorizonColor = new Color(0.78f, 0.75f, 0.68f),
+            GroundHorizonColor = new Color(0.78f, 0.75f, 0.68f),
+            GroundBottomColor = new Color(0.13f, 0.19f, 0.27f),
+        };
+
         return new Godot.Environment
         {
             BackgroundMode = Godot.Environment.BGMode.Sky,
-            Sky = new Sky { SkyMaterial = new ProceduralSkyMaterial() },
+            Sky = new Sky { SkyMaterial = sky },
             AmbientLightSource = Godot.Environment.AmbientSource.Sky,
+            AmbientLightSkyContribution = 0.7f,
             TonemapMode = Godot.Environment.ToneMapper.Filmic,
+            TonemapExposure = 1.05f,
             SsaoEnabled = true,
+            SsaoIntensity = 1.6f,
             GlowEnabled = true,
-            GlowIntensity = 0.4f,
+            GlowIntensity = 0.35f,
+            FogEnabled = true,
+            FogLightColor = new Color(0.76f, 0.74f, 0.68f),
+            FogDensity = 0.004f,
+            FogSkyAffect = 0f,
         };
+    }
+
+    private static DirectionalLight3D BuildSunLight() => new()
+    {
+        RotationDegrees = new Vector3(-48f, -42f, 0f),
+        LightColor = new Color(1f, 0.95f, 0.86f),
+        LightEnergy = 1.25f,
+        ShadowEnabled = true,
+        DirectionalShadowMaxDistance = 60f,
+    };
+
+    private static CameraController3D BuildCamera(MapView3D view, HexMap map)
+    {
+        var (center, radius) = MapBounds(view, map);
+        var camera = new CameraController3D
+        {
+            Position = center + new Vector3(0f, radius * 1.05f, radius * 0.92f),
+            Fov = 55f,
+        };
+        camera.LookAtFromPosition(camera.Position, center, Vector3.Up);
+        return camera;
+    }
+
+    // 도시: 금색 대좌(3D) + 떠 있는 한글 이름표(Label3D).
+    private void BuildCities(MapView3D view, Scenario scenario)
+    {
+        var font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
+        foreach (var city in scenario.Cities)
+        {
+            var root = new Node3D { Position = view.HexToWorld(city.Position) + new Vector3(0f, view.TileTopY, 0f) };
+            AddChild(root);
+
+            root.AddChild(new MeshInstance3D
+            {
+                Mesh = new CylinderMesh { TopRadius = 0.34f, BottomRadius = 0.42f, Height = 0.16f },
+                Position = new Vector3(0f, 0.08f, 0f),
+                MaterialOverride = new StandardMaterial3D
+                {
+                    AlbedoColor = new Color(0.87f, 0.69f, 0.30f),
+                    Metallic = 0.7f,
+                    Roughness = 0.35f,
+                },
+            });
+
+            root.AddChild(new Label3D
+            {
+                Text = city.Name,
+                Font = font,
+                FontSize = 96,
+                PixelSize = 0.0042f,
+                OutlineSize = 26,
+                OutlineModulate = new Color(0f, 0f, 0f, 0.85f),
+                Modulate = new Color(0.97f, 0.96f, 0.92f),
+                Position = new Vector3(0f, 0.62f, 0f),
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                NoDepthTest = true,
+            });
+        }
     }
 
     private static (Vector3 Center, float Radius) MapBounds(MapView3D view, HexMap map)
