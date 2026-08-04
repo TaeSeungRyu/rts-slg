@@ -39,8 +39,10 @@ public partial class GameRoot3D : Node3D
         AddChild(mapView);
         mapView.Build(scenario.Map);
 
-        var camera = BuildCamera(mapView, scenario.Map);
+        var (center, radius) = MapBounds(mapView, scenario.Map);
+        var camera = new CameraController3D { Fov = 55f };
         AddChild(camera);
+        camera.Setup(center, radius * 1.4f);
         camera.Current = true;
 
         BuildCities(mapView, scenario);
@@ -173,18 +175,6 @@ public partial class GameRoot3D : Node3D
         ShadowEnabled = true,
         DirectionalShadowMaxDistance = 60f,
     };
-
-    private static CameraController3D BuildCamera(MapView3D view, HexMap map)
-    {
-        var (center, radius) = MapBounds(view, map);
-        var camera = new CameraController3D
-        {
-            Position = center + new Vector3(0f, radius * 1.05f, radius * 0.92f),
-            Fov = 55f,
-        };
-        camera.LookAtFromPosition(camera.Position, center, Vector3.Up);
-        return camera;
-    }
 
     // 도시: 금색 대좌(3D) + 떠 있는 한글 이름표(Label3D).
     private void BuildCities(MapView3D view, Scenario scenario)

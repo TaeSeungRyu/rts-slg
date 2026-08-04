@@ -93,6 +93,12 @@ public partial class Hud : CanvasLayer
         _infoLabel = MakeLabel("도시나 부대를 클릭해 선택하세요.", 15, TextColor);
         _infoLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(_infoLabel);
+
+        box.AddChild(new Control { SizeFlagsVertical = Control.SizeFlags.ExpandFill });
+
+        var hint = MakeLabel("좌클릭 이동 · 휠 줌 · 중클릭 팬 · Q/E 회전", 12, new Color(0.62f, 0.64f, 0.68f));
+        hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        box.AddChild(hint);
     }
 
     private Label MakeLabel(string text, int size, Color color)
