@@ -18,8 +18,8 @@ def make_mat(name, color, roughness=0.85, metallic=0.0):
     return m
 
 
-M_ROOF = make_mat("roof", (0.13, 0.19, 0.28))    # 짙은 청기와
-M_WALL = make_mat("wall", (0.88, 0.83, 0.72))    # 회벽(토담)
+M_ROOF = make_mat("roof", (0.06, 0.09, 0.14))    # 아주 짙은 청기와
+M_WALL = make_mat("wall", (0.55, 0.40, 0.22))    # 흙색 토담(저채도 톤 보정을 견디도록 진하게)
 M_WOOD = make_mat("wood", (0.42, 0.18, 0.12))    # 붉은 목재
 M_STONE = make_mat("stone", (0.52, 0.52, 0.50))  # 석축
 
@@ -68,7 +68,7 @@ for i in range(5):
 
 # ── 정문 문루(남쪽) ──
 box("gate_frame", 0.34, 0.16, 0.30, 0, -HALF, 0.14 + 0.15, M_WOOD)
-pyramid("gate_roof", 0.30, 0.05, 0.14, 0, -HALF, 0.14 + 0.30 + 0.07, M_ROOF)
+pyramid("gate_roof", 0.38, 0.04, 0.15, 0, -HALF, 0.14 + 0.30 + 0.075, M_ROOF)
 
 # ── 중앙 누각 1층 ──
 T1_H = 0.34
@@ -77,19 +77,21 @@ box("keep1", 0.60, 0.60, T1_H, 0, 0.05, 0.14 + T1_H / 2, M_WALL)
 for sx in (-1, 1):
     for sy in (-1, 1):
         box(f"post1_{sx}_{sy}", 0.06, 0.06, T1_H, sx * 0.30, 0.05 + sy * 0.30, 0.14 + T1_H / 2, M_WOOD)
-# 넓은 처마 지붕(1층)
-pyramid("roof1", 0.55, 0.30, 0.12, 0, 0.05, 0.14 + T1_H + 0.06, M_ROOF)
+# 넓은 처마 겹지붕(1층): 과장된 처마 스커트 + 본지붕
+pyramid("roof1_eave", 0.80, 0.56, 0.07, 0, 0.05, 0.14 + T1_H + 0.035, M_ROOF)
+pyramid("roof1", 0.58, 0.30, 0.13, 0, 0.05, 0.14 + T1_H + 0.07 + 0.065, M_ROOF)
 
 # ── 중앙 누각 2층 ──
 T2_H = 0.24
-z2 = 0.14 + T1_H + 0.12
+z2 = 0.14 + T1_H + 0.20
 box("keep2", 0.38, 0.38, T2_H, 0, 0.05, z2 + T2_H / 2, M_WALL)
 for sx in (-1, 1):
     for sy in (-1, 1):
         box(f"post2_{sx}_{sy}", 0.05, 0.05, T2_H, sx * 0.19, 0.05 + sy * 0.19, z2 + T2_H / 2, M_WOOD)
-# 꼭대기 지붕(2층) + 용마루 장식
-pyramid("roof2", 0.40, 0.03, 0.18, 0, 0.05, z2 + T2_H + 0.09, M_ROOF)
-box("finial", 0.05, 0.05, 0.07, 0, 0.05, z2 + T2_H + 0.18 + 0.035, M_WOOD)
+# 꼭대기 겹지붕(2층) + 용마루 장식
+pyramid("roof2_eave", 0.60, 0.42, 0.06, 0, 0.05, z2 + T2_H + 0.03, M_ROOF)
+pyramid("roof2", 0.44, 0.03, 0.22, 0, 0.05, z2 + T2_H + 0.06 + 0.11, M_ROOF)
+box("finial", 0.05, 0.05, 0.08, 0, 0.05, z2 + T2_H + 0.06 + 0.22 + 0.04, M_WOOD)
 
 # ── GLB 익스포트 ──
 bpy.ops.object.select_all(action="SELECT")

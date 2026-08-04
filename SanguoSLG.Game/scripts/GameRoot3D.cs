@@ -211,26 +211,19 @@ public partial class GameRoot3D : Node3D
         DirectionalShadowMaxDistance = 60f,
     };
 
-    // 도시: 금색 대좌(3D) + 떠 있는 한글 이름표(Label3D).
+    // 도시: 작은성 모델(동양풍 커스텀) + 떠 있는 한글 이름표(Label3D).
     private void BuildCities(MapView3D view, Scenario scenario)
     {
         var font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
+        var castle = GD.Load<PackedScene>("res://assets/models/castle-small.glb");
         foreach (var city in scenario.Cities)
         {
             var root = new Node3D { Position = view.HexToWorld(city.Position) + new Vector3(0f, view.TileTopY, 0f) };
             AddChild(root);
 
-            root.AddChild(new MeshInstance3D
-            {
-                Mesh = new CylinderMesh { TopRadius = 0.34f, BottomRadius = 0.42f, Height = 0.16f },
-                Position = new Vector3(0f, 0.08f, 0f),
-                MaterialOverride = new StandardMaterial3D
-                {
-                    AlbedoColor = new Color(0.87f, 0.69f, 0.30f),
-                    Metallic = 0.7f,
-                    Roughness = 0.35f,
-                },
-            });
+            var instance = castle.Instantiate<Node3D>();
+            instance.Scale = new Vector3(0.55f, 0.55f, 0.55f);
+            root.AddChild(instance);
 
             root.AddChild(new Label3D
             {
@@ -241,7 +234,7 @@ public partial class GameRoot3D : Node3D
                 OutlineSize = 26,
                 OutlineModulate = new Color(0f, 0f, 0f, 0.85f),
                 Modulate = new Color(0.97f, 0.96f, 0.92f),
-                Position = new Vector3(0f, 0.62f, 0f),
+                Position = new Vector3(0f, 0.95f, 0f),
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                 NoDepthTest = true,
             });

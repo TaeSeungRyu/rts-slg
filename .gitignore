@@ -25,3 +25,6 @@ obj/
 # 검증용 스크린샷 (--shot 캡처, 톤 비교)
 shot_*.png
 tone_*.png
+
+# Claude Code 개인 설정 (프로젝트 공용 settings.json은 커밋 가능)
+.claude/settings.local.json
