@@ -68,7 +68,7 @@ def hex_platform(name, x, y, mat):
     # 반경은 SHRINK된 중심 간격에서도 이웃 기단과 붙는 크기.
     bpy.ops.mesh.primitive_cylinder_add(
         vertices=6, radius=PLATFORM_R * SHRINK / 0.92, depth=PLATFORM_H,
-        location=(x * SHRINK, y * SHRINK, PLATFORM_H / 2), rotation=(0, 0, math.radians(90)))
+        location=(x * SHRINK, y * SHRINK, PLATFORM_H / 2), rotation=(0, 0, math.radians(0)))
     o = bpy.context.object
     o.name = name
     o.data.materials.append(mat)
