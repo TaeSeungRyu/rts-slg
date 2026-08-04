@@ -50,6 +50,18 @@ public partial class GameRoot3D : Node3D
         AddChild(mapView);
         mapView.Build(scenario.Map);
 
+        // 물 테두리 밖 배경이 비어 보이지 않도록 맵 아래에 넓은 바다 평면을 깐다.
+        AddChild(new MeshInstance3D
+        {
+            Mesh = new PlaneMesh { Size = new Vector2(600f, 600f) },
+            Position = new Vector3(0f, mapView.WaterTopY - 0.03f, 0f),
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(0.45f, 0.78f, 0.80f),
+                Roughness = 0.35f,
+            },
+        });
+
         var (center, radius) = MapBounds(mapView, scenario.Map);
         var camera = new CameraController3D { Fov = 55f };
         AddChild(camera);

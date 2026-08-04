@@ -22,6 +22,9 @@ public partial class MapView3D : Node3D
     /// <summary>헥사 중심~꼭짓점 거리(월드 단위). 하이라이트 등 오버레이 크기 기준.</summary>
     public float HexWorldSize => _size;
 
+    /// <summary>물 타일 윗면(수면)의 월드 y. 바다 평면은 이보다 낮아야 물 타일을 가리지 않는다.</summary>
+    public float WaterTopY { get; private set; }
+
     private PackedScene _riverStraight = null!;
     private PackedScene _riverCorner = null!;
     private PackedScene _riverCornerSharp = null!;
@@ -50,6 +53,15 @@ public partial class MapView3D : Node3D
         _riverEnd = GD.Load<PackedScene>("res://assets/models/river-end.glb");
         _bridge = GD.Load<PackedScene>("res://assets/models/bridge.glb");
         MeasureTile(_tiles[TerrainType.Plains]);
+        WaterTopY = MeasureTopY(_water);
+    }
+
+    private static float MeasureTopY(PackedScene scene)
+    {
+        var probe = scene.Instantiate<Node3D>();
+        var top = FindMesh(probe)?.Mesh?.GetAabb().End.Y ?? 0f;
+        probe.Free();
+        return top;
     }
 
     public void Build(HexMap map)
