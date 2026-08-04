@@ -19,6 +19,9 @@ public partial class MapView3D : Node3D
     /// <summary>타일 윗면의 월드 y. 도시 마커·유닛을 이 높이에 얹는다.</summary>
     public float TileTopY => _topY;
 
+    /// <summary>헥사 중심~꼭짓점 거리(월드 단위). 하이라이트 등 오버레이 크기 기준.</summary>
+    public float HexWorldSize => _size;
+
     private PackedScene _riverStraight = null!;
     private PackedScene _riverCorner = null!;
     private PackedScene _riverCornerSharp = null!;
