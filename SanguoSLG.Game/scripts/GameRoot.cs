@@ -2,6 +2,7 @@ using System.IO;
 using Godot;
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 
 namespace SanguoSLG.Game;
@@ -30,7 +31,23 @@ public partial class GameRoot : Node2D
         camera.Zoom = FitZoom(bounds, GetViewport().GetVisibleRect().Size);
         camera.MakeCurrent();
 
+        _engine = new TurnEngine(scenario.Balance);
+        _state = GameState.FromScenario(scenario);
+        _hud = GetNode<Hud>("Hud");
+        _hud.NextMonthPressed += OnNextMonth;
+        _hud.SetState(_state);
+
         _capture = OS.GetCmdlineArgs().Contains("--shot");
+    }
+
+    private TurnEngine _engine = null!;
+    private GameState _state = null!;
+    private Hud _hud = null!;
+
+    private void OnNextMonth()
+    {
+        _state = _engine.AdvanceMonth(_state);
+        _hud.SetState(_state);
     }
 
     private bool _capture;
