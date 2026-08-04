@@ -47,11 +47,12 @@ public sealed record TonePreset(
             Ambient: 0.7f, Exposure: 0.98f, Brightness: 1.02f, Contrast: 1.0f, Saturation: 0.9f,
             SunEnergy: 1.2f, SunColor: new Color(1f, 0.85f, 0.65f), Vignette: 0.35f, FogDensity: 0.005f),
 
-        // 수묵담채: 채도를 크게 빼 담백한 동양화 느낌
+        // 수묵담채: 채도를 크게 빼 담백한 동양화 느낌.
+        // 안개는 거의 끔 — 줌아웃 시 거리 안개가 화면을 덮어 가독성을 해쳤음(채도만으로 담백함을 냄).
         ["inkwash"] = new(
             new Color(0.72f, 0.75f, 0.78f), new Color(0.88f, 0.88f, 0.86f), new Color(0.50f, 0.52f, 0.55f),
             Ambient: 0.8f, Exposure: 1.0f, Brightness: 1.08f, Contrast: 0.92f, Saturation: 0.45f,
-            SunEnergy: 1.05f, SunColor: new Color(0.98f, 0.97f, 0.95f), Vignette: 0.3f, FogDensity: 0.006f),
+            SunEnergy: 1.05f, SunColor: new Color(0.98f, 0.97f, 0.95f), Vignette: 0.3f, FogDensity: 0.0008f),
     };
 
     /// <summary>커맨드라인(--tone=이름)에서 프리셋을 고른다. 없거나 모르면 inkwash(사용자 선택 기본값).</summary>
