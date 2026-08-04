@@ -20,6 +20,9 @@ internal sealed class CityDto
     public int R { get; init; }
     public int Owner { get; init; }
     public int Provisions { get; init; }
+
+    // 성곽 등급: "small"(기본) | "medium" | "large"
+    public string Castle { get; init; } = "small";
 }
 
 internal sealed class GeneralDto

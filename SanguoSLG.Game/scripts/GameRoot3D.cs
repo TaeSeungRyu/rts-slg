@@ -211,17 +211,22 @@ public partial class GameRoot3D : Node3D
         DirectionalShadowMaxDistance = 60f,
     };
 
-    // 도시: 작은성 모델(동양풍 커스텀) + 떠 있는 한글 이름표(Label3D).
+    // 도시: 성곽 등급별 성 모델(동양풍 커스텀) + 떠 있는 한글 이름표(Label3D).
     private void BuildCities(MapView3D view, Scenario scenario)
     {
         var font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
-        var castle = GD.Load<PackedScene>("res://assets/models/castle-small.glb");
+        var castles = new System.Collections.Generic.Dictionary<CastleSize, PackedScene>
+        {
+            [CastleSize.Small] = GD.Load<PackedScene>("res://assets/models/castle-small.glb"),
+            [CastleSize.Medium] = GD.Load<PackedScene>("res://assets/models/castle-medium.glb"),
+            [CastleSize.Large] = GD.Load<PackedScene>("res://assets/models/castle-large.glb"),
+        };
         foreach (var city in scenario.Cities)
         {
             var root = new Node3D { Position = view.HexToWorld(city.Position) + new Vector3(0f, view.TileTopY, 0f) };
             AddChild(root);
 
-            var instance = castle.Instantiate<Node3D>();
+            var instance = castles[city.Castle].Instantiate<Node3D>();
             instance.Scale = new Vector3(0.55f, 0.55f, 0.55f);
             root.AddChild(instance);
 

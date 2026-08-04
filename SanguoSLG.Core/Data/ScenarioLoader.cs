@@ -37,7 +37,9 @@ public sealed class ScenarioLoader
             .ToList();
 
         var cities = Deserialize<List<CityDto>>(citiesJson, "cities")
-            .Select(d => new City(new CityId(d.Id), d.Name, new HexCoord(d.Q, d.R), new FactionId(d.Owner), d.Provisions))
+            .Select(d => new City(
+                new CityId(d.Id), d.Name, new HexCoord(d.Q, d.R), new FactionId(d.Owner), d.Provisions,
+                ParseCastle(d.Castle)))
             .ToList();
 
         var generals = Deserialize<List<GeneralDto>>(generalsJson, "generals")
@@ -78,6 +80,14 @@ public sealed class ScenarioLoader
 
         return new HexMap(dto.MinQ, dto.MaxQ, dto.MinR, dto.MaxR, terrain);
     }
+
+    private static CastleSize ParseCastle(string name) => name switch
+    {
+        "small" => CastleSize.Small,
+        "medium" => CastleSize.Medium,
+        "large" => CastleSize.Large,
+        _ => throw new InvalidDataException($"알 수 없는 성곽 등급: {name}"),
+    };
 
     private static TerrainType ParseTerrain(string name) => name switch
     {
