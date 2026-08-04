@@ -6,17 +6,18 @@
   "terrain": {
     "legend": {
       "G": "plains", "F": "forest", "M": "mountain", "D": "desert",
-      "R": "river", "B": "bridge", "W": "water_shallow", "V": "water_deep"
+      "R": "river", "B": "bridge", "W": "water_shallow", "V": "water_deep",
+      "S": "rocks", "H": "rock_hill", "O": "water_rocks"
     },
     "rows": [
       "GGFFRGGGMMM",
-      "GGGFRGGGGMM",
-      "GGGGRFGGGMM",
+      "GGGFRGGGHMM",
+      "GGGGRFGGSMM",
       "GGGGRFFGGGM",
       "GGGGBGFFGGG",
       "GGDDRGGGWWW",
       "GDDRGGGWVVW",
-      "GGDRGGWVVWG",
+      "GGDRGGWVVOG",
       "GGGRGWVVWGG"
     ]
   }

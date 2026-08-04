@@ -16,13 +16,14 @@ public class TerrainLoadingTests
             balanceJson: """{ "monthly_tax_per_city": 100 }""",
             mapJson: """
             {
-              "min_q": 0, "max_q": 2, "min_r": 0, "max_r": 2,
+              "min_q": 0, "max_q": 2, "min_r": 0, "max_r": 3,
               "terrain": {
                 "legend": {
                   "G": "plains", "F": "forest", "M": "mountain", "D": "desert",
-                  "R": "river", "B": "bridge", "W": "water_shallow", "V": "water_deep"
+                  "R": "river", "B": "bridge", "W": "water_shallow", "V": "water_deep",
+                  "S": "rocks", "H": "rock_hill", "O": "water_rocks"
                 },
-                "rows": [ "GFM", "DRB", "WVG" ]
+                "rows": [ "GFM", "DRB", "WVG", "SHO" ]
               }
             }
             """);
@@ -36,6 +37,9 @@ public class TerrainLoadingTests
         Assert.Equal(TerrainType.Bridge, map.TerrainAt(new HexCoord(2, 1)));
         Assert.Equal(TerrainType.WaterShallow, map.TerrainAt(new HexCoord(0, 2)));
         Assert.Equal(TerrainType.WaterDeep, map.TerrainAt(new HexCoord(1, 2)));
+        Assert.Equal(TerrainType.Rocks, map.TerrainAt(new HexCoord(0, 3)));
+        Assert.Equal(TerrainType.RockHill, map.TerrainAt(new HexCoord(1, 3)));
+        Assert.Equal(TerrainType.WaterRocks, map.TerrainAt(new HexCoord(2, 3)));
     }
 
     [Fact]

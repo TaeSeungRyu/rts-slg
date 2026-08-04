@@ -46,9 +46,11 @@
 |---|---|---|---|---|
 | 풀 | 1 | 가능 | ✅ | `grass.glb` (평야) |
 | 나무 모음 (기존 에셋) | 1 | 가능 | ✅ | `grass-forest.glb` (숲) |
-| 돌 모음 | 1 | 가능 | 📦 | `stone-rocks.glb` |
-| 돌 모음2 | 1 | 가능 | 📦 | `sand-rocks.glb` |
-| 돌 모음3 | 1 | 가능 | 📦 | `water-rocks.glb` 또는 `stone-hill.glb` |
+| 돌 모음 | 1 | 가능 | ✅ | `stone-rocks.glb` — 지형 `rocks`(S) (2026-08-04 확정) |
+| 돌 모음2 | 1 | 가능 | ✅ | `stone-hill.glb` — 지형 `rock_hill`(H) (확정) |
+| 물에 있는 돌 | 1 | 가능 | ✅ | `water-rocks.glb` — 지형 `water_rocks`(O), 물 밑판이라 대하/물가에 배치 (확정, 구 "돌 모음3") |
+
+> `sand-rocks`는 돌이 거의 안 보여 제외(번들은 유지). 밑판은 킷 그대로 사용(돌바닥/물) — 초원 밑판 조합이 필요해지면 Blender 커스텀.
 
 ### 성 (거점)
 

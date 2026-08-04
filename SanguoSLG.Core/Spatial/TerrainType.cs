@@ -15,4 +15,13 @@ public enum TerrainType
 
     /// <summary>대하(큰 강)의 깊은 물. 깊이가 시각적으로 구분된다.</summary>
     WaterDeep,
+
+    /// <summary>돌 모음 — 바위 무더기.</summary>
+    Rocks,
+
+    /// <summary>돌 모음2 — 큰 바위 언덕.</summary>
+    RockHill,
+
+    /// <summary>물에 있는 돌 — 물가/대하의 암초.</summary>
+    WaterRocks,
 }

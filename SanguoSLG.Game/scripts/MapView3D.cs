@@ -40,6 +40,9 @@ public partial class MapView3D : Node3D
         _tiles[TerrainType.Forest] = GD.Load<PackedScene>("res://assets/models/grass-forest.glb");
         _tiles[TerrainType.Mountain] = GD.Load<PackedScene>("res://assets/models/stone-mountain.glb");
         _tiles[TerrainType.Desert] = GD.Load<PackedScene>("res://assets/models/sand.glb");
+        _tiles[TerrainType.Rocks] = GD.Load<PackedScene>("res://assets/models/stone-rocks.glb");
+        _tiles[TerrainType.RockHill] = GD.Load<PackedScene>("res://assets/models/stone-hill.glb");
+        _tiles[TerrainType.WaterRocks] = GD.Load<PackedScene>("res://assets/models/water-rocks.glb");
         _water = GD.Load<PackedScene>("res://assets/models/water.glb");
         _riverStraight = GD.Load<PackedScene>("res://assets/models/river-straight.glb");
         _riverCorner = GD.Load<PackedScene>("res://assets/models/river-corner.glb");
