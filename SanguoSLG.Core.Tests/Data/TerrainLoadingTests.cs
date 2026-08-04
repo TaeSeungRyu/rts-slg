@@ -18,8 +18,8 @@ public class TerrainLoadingTests
             {
               "min_q": 0, "max_q": 2, "min_r": 0, "max_r": 1,
               "terrain": {
-                "legend": { "G": "plains", "F": "forest", "M": "mountain", "D": "desert" },
-                "rows": [ "GFM", "DGG" ]
+                "legend": { "G": "plains", "F": "forest", "M": "mountain", "D": "desert", "R": "river", "B": "bridge" },
+                "rows": [ "GFM", "DRB" ]
               }
             }
             """);
@@ -29,6 +29,8 @@ public class TerrainLoadingTests
         Assert.Equal(TerrainType.Forest, map.TerrainAt(new HexCoord(1, 0)));
         Assert.Equal(TerrainType.Mountain, map.TerrainAt(new HexCoord(2, 0)));
         Assert.Equal(TerrainType.Desert, map.TerrainAt(new HexCoord(0, 1)));
+        Assert.Equal(TerrainType.River, map.TerrainAt(new HexCoord(1, 1)));
+        Assert.Equal(TerrainType.Bridge, map.TerrainAt(new HexCoord(2, 1)));
     }
 
     [Fact]

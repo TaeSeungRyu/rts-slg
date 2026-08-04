@@ -85,6 +85,8 @@ public sealed class ScenarioLoader
         "forest" => TerrainType.Forest,
         "mountain" => TerrainType.Mountain,
         "desert" => TerrainType.Desert,
+        "river" => TerrainType.River,
+        "bridge" => TerrainType.Bridge,
         _ => throw new InvalidDataException($"알 수 없는 지형: {name}"),
     };
 

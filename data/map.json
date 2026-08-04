@@ -4,17 +4,17 @@
   "min_r": -3,
   "max_r": 5,
   "terrain": {
-    "legend": { "G": "plains", "F": "forest", "M": "mountain", "D": "desert" },
+    "legend": { "G": "plains", "F": "forest", "M": "mountain", "D": "desert", "R": "river", "B": "bridge" },
     "rows": [
-      "GGFFGGGGMMM",
-      "GGGFFGGGGMM",
-      "GGGGFFGGGMM",
-      "GGGGGFFGGGM",
-      "GGGGGGFFGGG",
-      "GGDDGGGGGGG",
-      "GGDDDGGGGGG",
-      "GGGDDGGGGGG",
-      "GGGGGGGGGGG"
+      "GGFFRGGGMMM",
+      "GGGFRGGGGMM",
+      "GGGGRFGGGMM",
+      "GGGGRFFGGGM",
+      "GGGGBGFFGGG",
+      "GGDDRGGGGGG",
+      "GGDDRGGGGGG",
+      "GGGDRGGGGGG",
+      "GGGGRGGGGGG"
     ]
   }
 }

@@ -7,4 +7,6 @@ public enum TerrainType
     Forest,
     Mountain,
     Desert,
+    River,
+    Bridge,
 }

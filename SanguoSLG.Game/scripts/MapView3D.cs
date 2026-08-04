@@ -19,6 +19,18 @@ public partial class MapView3D : Node3D
     /// <summary>타일 윗면의 월드 y. 도시 마커·유닛을 이 높이에 얹는다.</summary>
     public float TileTopY => _topY;
 
+    private PackedScene _riverStraight = null!;
+    private PackedScene _riverCorner = null!;
+    private PackedScene _riverCornerSharp = null!;
+    private PackedScene _riverEnd = null!;
+    private PackedScene _bridge = null!;
+
+    // 강 모델의 기준(회전 0) 물길 방향(도). 스크린샷으로 실측해 보정한 값.
+    private const float StraightAxisAngle = 0f;
+    private const float EndAngle = 0f;
+    private static readonly (float A1, float A2) CornerAngles = (0f, 120f);
+    private static readonly (float A1, float A2) CornerSharpAngles = (0f, 60f);
+
     public override void _Ready()
     {
         _tiles[TerrainType.Plains] = GD.Load<PackedScene>("res://assets/models/grass.glb");
@@ -26,6 +38,11 @@ public partial class MapView3D : Node3D
         _tiles[TerrainType.Mountain] = GD.Load<PackedScene>("res://assets/models/stone-mountain.glb");
         _tiles[TerrainType.Desert] = GD.Load<PackedScene>("res://assets/models/sand.glb");
         _water = GD.Load<PackedScene>("res://assets/models/water.glb");
+        _riverStraight = GD.Load<PackedScene>("res://assets/models/river-straight.glb");
+        _riverCorner = GD.Load<PackedScene>("res://assets/models/river-corner.glb");
+        _riverCornerSharp = GD.Load<PackedScene>("res://assets/models/river-corner-sharp.glb");
+        _riverEnd = GD.Load<PackedScene>("res://assets/models/river-end.glb");
+        _bridge = GD.Load<PackedScene>("res://assets/models/bridge.glb");
         MeasureTile(_tiles[TerrainType.Plains]);
     }
 
@@ -33,7 +50,14 @@ public partial class MapView3D : Node3D
     {
         foreach (var tile in map.Tiles())
         {
-            var instance = _tiles[map.TerrainAt(tile)].Instantiate<Node3D>();
+            var terrain = map.TerrainAt(tile);
+            if (terrain is TerrainType.River or TerrainType.Bridge)
+            {
+                BuildRiverTile(map, tile, terrain);
+                continue;
+            }
+
+            var instance = _tiles[terrain].Instantiate<Node3D>();
             instance.Position = HexToWorld(tile);
             // 숲·산의 단조로움을 깨는 결정론적 회전(좌표 해시, 60° 단위).
             instance.RotationDegrees = new Vector3(0f, ((tile.Q * 31 + tile.R * 17) % 6 + 6) % 6 * 60f, 0f);
@@ -41,6 +65,66 @@ public partial class MapView3D : Node3D
         }
 
         BuildWaterBorder(map);
+    }
+
+    // 이웃한 강/다리 타일의 방향을 보고 직선·커브·끝 모델과 회전을 고른다.
+    private void BuildRiverTile(HexMap map, HexCoord tile, TerrainType terrain)
+    {
+        var connections = new System.Collections.Generic.List<float>();
+        foreach (var neighbor in tile.Neighbors())
+        {
+            if (!map.Contains(neighbor))
+            {
+                continue;
+            }
+
+            if (map.TerrainAt(neighbor) is TerrainType.River or TerrainType.Bridge)
+            {
+                var delta = HexToWorld(neighbor) - HexToWorld(tile);
+                connections.Add(Mathf.RadToDeg(Mathf.Atan2(delta.Z, delta.X)));
+            }
+        }
+
+        var (scene, yRotation) = SelectRiverModel(terrain, connections);
+        var instance = scene.Instantiate<Node3D>();
+        instance.Position = HexToWorld(tile);
+        instance.RotationDegrees = new Vector3(0f, yRotation, 0f);
+        AddChild(instance);
+    }
+
+    private (PackedScene Scene, float RotationY) SelectRiverModel(
+        TerrainType terrain, System.Collections.Generic.List<float> connections)
+    {
+        if (connections.Count == 0)
+        {
+            return (_riverEnd, 0f);
+        }
+
+        if (connections.Count == 1)
+        {
+            return (_riverEnd, EndAngle - connections[0]);
+        }
+
+        var t1 = connections[0];
+        var t2 = connections[1];
+        var span = Mathf.Abs(Mathf.Wrap(t2 - t1, -180f, 180f));
+
+        if (span > 150f)
+        {
+            // 반대편으로 관통 — 직선(또는 다리).
+            var scene = terrain == TerrainType.Bridge ? _bridge : _riverStraight;
+            return (scene, StraightAxisAngle - t1);
+        }
+
+        var (a1, a2) = span > 90f ? CornerAngles : CornerSharpAngles;
+        var scene2 = span > 90f ? _riverCorner : _riverCornerSharp;
+
+        // 모델 물길(A1→A2)의 벌어진 방향과 실제 연결(T1→T2)의 방향을 맞춘다.
+        var modelSpan = Mathf.Wrap(a2 - a1, -180f, 180f);
+        var connSpan = Mathf.Wrap(t2 - t1, -180f, 180f);
+        return Mathf.Sign(modelSpan) == Mathf.Sign(connSpan)
+            ? (scene2, a1 - t1)
+            : (scene2, a1 - t2);
     }
 
     // 맵 경계 밖 2겹을 물 타일로 둘러 디오라마 느낌을 준다.
