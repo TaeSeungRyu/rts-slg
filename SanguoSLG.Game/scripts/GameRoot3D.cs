@@ -22,6 +22,13 @@ public partial class GameRoot3D : Node3D
 
     public override void _Ready()
     {
+        if (OS.GetCmdlineArgs().Contains("--riverdebug"))
+        {
+            BuildRiverDebugScene();
+            _capture = true;
+            return;
+        }
+
         var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
 
         AddChild(new WorldEnvironment { Environment = BuildEnvironment() });
@@ -71,6 +78,38 @@ public partial class GameRoot3D : Node3D
         var outPath = Path.Combine(projectDir.Parent?.FullName ?? projectDir.FullName, "shot_step4.png");
         GetViewport().GetTexture().GetImage().SavePng(outPath);
         GetTree().Quit();
+    }
+
+    // 강 모델 방향 실측용 임시 디버그 씬: 회전 0으로 일렬 배치, 수직 탑다운 카메라.
+    // 화면 기준 오른쪽 = +X(0°), 아래 = +Z(90°).
+    private void BuildRiverDebugScene()
+    {
+        AddChild(new WorldEnvironment { Environment = BuildEnvironment() });
+        AddChild(new DirectionalLight3D { RotationDegrees = new Vector3(-80f, 0f, 0f), LightEnergy = 1.3f });
+
+        string[] models = { "river-straight", "river-corner", "river-corner-sharp", "river-end", "bridge" };
+        var font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
+        for (var i = 0; i < models.Length; i++)
+        {
+            var instance = GD.Load<PackedScene>($"res://assets/models/{models[i]}.glb").Instantiate<Node3D>();
+            instance.Position = new Vector3(i * 3f, 0f, 0f);
+            AddChild(instance);
+
+            AddChild(new Label3D
+            {
+                Text = models[i],
+                Font = font,
+                FontSize = 48,
+                PixelSize = 0.01f,
+                Position = new Vector3(i * 3f, 0.2f, 1.6f),
+                RotationDegrees = new Vector3(-90f, 0f, 0f),
+            });
+        }
+
+        var camera = new Camera3D { Position = new Vector3(6f, 16f, 0f) };
+        AddChild(camera);
+        camera.LookAtFromPosition(camera.Position, new Vector3(6f, 0f, 0f), new Vector3(0f, 0f, -1f));
+        camera.Current = true;
     }
 
     private static Godot.Environment BuildEnvironment()
