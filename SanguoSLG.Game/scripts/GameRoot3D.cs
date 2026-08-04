@@ -24,17 +24,17 @@ public partial class GameRoot3D : Node3D
     {
         if (OS.GetCmdlineArgs().Contains("--riverdebug"))
         {
-            BuildShowcaseScene(new[] { "river-straight", "river-corner", "river-corner-sharp", "river-end", "bridge" });
+            BuildShowcaseScene(new[] { "river-straight", "river-corner", "river-corner-sharp", "river-end", "bridge" }, topDown: true);
             _capture = true;
             return;
         }
 
-        // 임의 모델 나열 확인용: --showcase=모델1,모델2,...
+        // 임의 모델 나열 확인용: --showcase=모델1,모델2,... (건물용 비스듬한 앵글)
         foreach (var arg in OS.GetCmdlineArgs())
         {
             if (arg.StartsWith("--showcase="))
             {
-                BuildShowcaseScene(arg["--showcase=".Length..].Split(','));
+                BuildShowcaseScene(arg["--showcase=".Length..].Split(','), topDown: false);
                 _capture = true;
                 return;
             }
@@ -108,9 +108,9 @@ public partial class GameRoot3D : Node3D
         GetTree().Quit();
     }
 
-    // 모델 확인/방향 실측용 쇼케이스 씬: 회전 0으로 일렬 배치, 수직 탑다운 카메라.
-    // 화면 기준 오른쪽 = +X(0°), 아래 = +Z(90°).
-    private void BuildShowcaseScene(string[] models)
+    // 모델 확인/방향 실측용 쇼케이스 씬: 회전 0으로 일렬 배치.
+    // topDown=true(강 보정용): 수직 카메라 — 화면 오른쪽 = +X(0°), 아래 = +Z(90°).
+    private void BuildShowcaseScene(string[] models, bool topDown)
     {
         AddChild(new WorldEnvironment { Environment = BuildEnvironment(TonePreset.FromCmdline()) });
         AddChild(new DirectionalLight3D { RotationDegrees = new Vector3(-65f, -30f, 0f), LightEnergy = 1.3f });
@@ -134,10 +134,21 @@ public partial class GameRoot3D : Node3D
         }
 
         var centerX = (models.Length - 1) * 3f / 2f;
-        var height = Mathf.Max(8f, models.Length * 3.2f);
-        var camera = new Camera3D { Position = new Vector3(centerX, height, 2.5f) };
+        var camera = new Camera3D();
         AddChild(camera);
-        camera.LookAtFromPosition(camera.Position, new Vector3(centerX, 0f, 0f), new Vector3(0f, 0f, -1f));
+        if (topDown)
+        {
+            var height = Mathf.Max(8f, models.Length * 3.2f);
+            camera.Position = new Vector3(centerX, height, 2.5f);
+            camera.LookAtFromPosition(camera.Position, new Vector3(centerX, 0f, 0f), new Vector3(0f, 0f, -1f));
+        }
+        else
+        {
+            var dist = Mathf.Max(3.5f, models.Length * 1.8f);
+            camera.Position = new Vector3(centerX, dist * 0.9f, dist);
+            camera.LookAtFromPosition(camera.Position, new Vector3(centerX, 0.4f, 0f), Vector3.Up);
+        }
+
         camera.Current = true;
     }
 
