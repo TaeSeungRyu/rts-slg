@@ -190,7 +190,6 @@ public partial class UnitController3D : Node3D
                 Height = 0.04f,
                 RadialSegments = 6,
             },
-            RotationDegrees = new Vector3(0f, 30f, 0f),
             Visible = false,
             MaterialOverride = new StandardMaterial3D
             {
