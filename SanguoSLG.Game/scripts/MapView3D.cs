@@ -60,6 +60,12 @@ public partial class MapView3D : Node3D
                 continue;
             }
 
+            if (terrain is TerrainType.WaterShallow or TerrainType.WaterDeep)
+            {
+                BuildBigWaterTile(tile, terrain);
+                continue;
+            }
+
             var instance = _tiles[terrain].Instantiate<Node3D>();
             instance.Position = HexToWorld(tile);
             // 숲·산의 단조로움을 깨는 결정론적 회전(좌표 해시, 60° 단위).
@@ -68,6 +74,28 @@ public partial class MapView3D : Node3D
         }
 
         BuildWaterBorder(map);
+    }
+
+    // 대하(큰 강): 얕은 물은 바다와 같은 물 타일, 깊은 물은 어두운 물색으로 깊이를 표현한다.
+    private void BuildBigWaterTile(HexCoord tile, TerrainType terrain)
+    {
+        var instance = _water.Instantiate<Node3D>();
+        instance.Position = HexToWorld(tile);
+
+        if (terrain == TerrainType.WaterDeep)
+        {
+            var mesh = FindMesh(instance);
+            if (mesh is not null)
+            {
+                mesh.MaterialOverride = new StandardMaterial3D
+                {
+                    AlbedoColor = new Color(0.25f, 0.48f, 0.62f),
+                    Roughness = 0.25f,
+                };
+            }
+        }
+
+        AddChild(instance);
     }
 
     // 이웃한 강/다리 타일의 방향을 보고 직선·커브·끝 모델과 회전을 고른다.

@@ -9,4 +9,10 @@ public enum TerrainType
     Desert,
     River,
     Bridge,
+
+    /// <summary>대하(큰 강)의 얕은 물. 타일 전체가 물이다.</summary>
+    WaterShallow,
+
+    /// <summary>대하(큰 강)의 깊은 물. 깊이가 시각적으로 구분된다.</summary>
+    WaterDeep,
 }
