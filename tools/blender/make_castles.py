@@ -18,6 +18,11 @@ APOTHEM = math.sqrt(3.0) / 2.0   # 변 중심까지 거리
 PLATFORM_H = 0.12
 WALL_H, WALL_T = 0.24, 0.09
 
+# 타일 윗면은 베벨로 실제 육각보다 좁다 → 성 전체 XY를 축소해 타일 안에 들어오게.
+# 기단 반경은 축소된 중심 간격에서도 서로 붙도록 별도 값 사용.
+SHRINK = 0.92
+PLATFORM_R = HEX_R * 0.95
+
 # 발자국 육각 중심(클러스터 중심 기준, Blender XY, +Y=북)
 FOOTPRINTS = {
     "small": [(0.0, 0.0)],
@@ -40,18 +45,18 @@ def make_mat(name, color, roughness=0.85, metallic=0.0):
 
 
 def box(name, sx, sy, sz, x, y, z, mat, rot_z=0.0):
-    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z), rotation=(0, 0, rot_z))
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x * SHRINK, y * SHRINK, z), rotation=(0, 0, rot_z))
     o = bpy.context.object
     o.name = name
-    o.scale = (sx, sy, sz)
+    o.scale = (sx * SHRINK, sy * SHRINK, sz)
     o.data.materials.append(mat)
     return o
 
 
 def pyramid(name, r_bottom, r_top, h, x, y, z, mat, rot_z=math.radians(45)):
     bpy.ops.mesh.primitive_cone_add(
-        vertices=4, radius1=r_bottom, radius2=r_top, depth=h,
-        location=(x, y, z), rotation=(0, 0, rot_z))
+        vertices=4, radius1=r_bottom * SHRINK, radius2=r_top * SHRINK, depth=h,
+        location=(x * SHRINK, y * SHRINK, z), rotation=(0, 0, rot_z))
     o = bpy.context.object
     o.name = name
     o.data.materials.append(mat)
@@ -59,10 +64,11 @@ def pyramid(name, r_bottom, r_top, h, x, y, z, mat, rot_z=math.radians(45)):
 
 
 def hex_platform(name, x, y, mat):
-    # 꼭짓점이 남북(±Y)을 향하는 육각 기단(타일과 같은 방향)
+    # 꼭짓점이 남북(±Y)을 향하는 육각 기단(타일과 같은 방향).
+    # 반경은 SHRINK된 중심 간격에서도 이웃 기단과 붙는 크기.
     bpy.ops.mesh.primitive_cylinder_add(
-        vertices=6, radius=HEX_R * 0.97, depth=PLATFORM_H,
-        location=(x, y, PLATFORM_H / 2), rotation=(0, 0, math.radians(90)))
+        vertices=6, radius=PLATFORM_R * SHRINK / 0.92, depth=PLATFORM_H,
+        location=(x * SHRINK, y * SHRINK, PLATFORM_H / 2), rotation=(0, 0, math.radians(90)))
     o = bpy.context.object
     o.name = name
     o.data.materials.append(mat)
