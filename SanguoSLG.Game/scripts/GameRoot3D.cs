@@ -223,12 +223,20 @@ public partial class GameRoot3D : Node3D
         };
         foreach (var city in scenario.Cities)
         {
-            var root = new Node3D { Position = view.HexToWorld(city.Position) + new Vector3(0f, view.TileTopY, 0f) };
-            AddChild(root);
+            // 성은 발자국(1/3/5타일) 전체의 중심점에 놓는다. 모델은 발자국 실치수로 제작됨.
+            var centroid = Vector3.Zero;
+            var count = 0;
+            foreach (var tile in CastleFootprint.TilesFor(city))
+            {
+                centroid += view.HexToWorld(tile);
+                count++;
+            }
 
-            var instance = castles[city.Castle].Instantiate<Node3D>();
-            instance.Scale = new Vector3(0.55f, 0.55f, 0.55f);
-            root.AddChild(instance);
+            centroid /= count;
+
+            var root = new Node3D { Position = centroid + new Vector3(0f, view.TileTopY, 0f) };
+            AddChild(root);
+            root.AddChild(castles[city.Castle].Instantiate<Node3D>());
 
             root.AddChild(new Label3D
             {

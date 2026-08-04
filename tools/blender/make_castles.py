@@ -10,6 +10,11 @@ import math
 
 OUT_DIR = r"D:\dev\window\slg\SanguoSLG.Game\assets\models"
 
+# 발자국 스케일: 모델을 월드 실치수로 낸다(게임 런타임 스케일 없음).
+# 헥사 이웃 간격 = sqrt(3) ≈ 1.732 월드 단위. XY는 발자국 폭, Z는 완만하게.
+K_XY = 1.0
+K_Z = 1.0
+
 
 def make_mat(name, color, roughness=0.85, metallic=0.0):
     m = bpy.data.materials.new(name)
@@ -22,10 +27,10 @@ def make_mat(name, color, roughness=0.85, metallic=0.0):
 
 
 def box(name, sx, sy, sz, x, y, z, mat):
-    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z))
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x * K_XY, y * K_XY, z * K_Z))
     o = bpy.context.object
     o.name = name
-    o.scale = (sx, sy, sz)
+    o.scale = (sx * K_XY, sy * K_XY, sz * K_Z)
     o.data.materials.append(mat)
     return o
 
@@ -33,8 +38,8 @@ def box(name, sx, sy, sz, x, y, z, mat):
 def pyramid(name, r_bottom, r_top, h, x, y, z, mat):
     # 사각 지붕(45° 정렬로 벽과 면 맞춤). 모서리를 덮으려면 r ≥ 벽폭.
     bpy.ops.mesh.primitive_cone_add(
-        vertices=4, radius1=r_bottom, radius2=r_top, depth=h,
-        location=(x, y, z), rotation=(0, 0, math.radians(45)))
+        vertices=4, radius1=r_bottom * K_XY, radius2=r_top * K_XY, depth=h * K_Z,
+        location=(x * K_XY, y * K_XY, z * K_Z), rotation=(0, 0, math.radians(45)))
     o = bpy.context.object
     o.name = name
     o.data.materials.append(mat)
@@ -71,8 +76,10 @@ def clock_pos(hour, radius):
     return math.sin(theta) * radius, math.cos(theta) * radius
 
 
-def build_castle(filename, half, center_tiers, subs, gates=("S",)):
-    """subs: [(시계시각, 단수, 벽폭)], gates: 성문 방향 집합('N','S','E','W')"""
+def build_castle(filename, half, center_tiers, subs, gates=("S",), k_xy=1.0, k_z=1.0):
+    """subs: [(시계시각, 단수, 벽폭)], gates: 성문 방향, k_xy/k_z: 발자국 스케일."""
+    global K_XY, K_Z
+    K_XY, K_Z = k_xy, k_z
     bpy.ops.wm.read_factory_settings(use_empty=True)
     m_roof = make_mat("roof", (0.06, 0.09, 0.14))
     m_wall = make_mat("wall", (0.55, 0.40, 0.22))
@@ -138,14 +145,20 @@ def build_castle(filename, half, center_tiers, subs, gates=("S",)):
     print("EXPORTED:", out)
 
 
+# 발자국 실치수 (헥사 이웃 간격 1.732):
+# 작은성 1타일(폭 ~1.1), 중간성 3타일 삼각(~2.2), 큰성 5타일 꽃잎(~2.9)
+
 # 작은성: 중앙 2단, 부속 없음, 남문 — 마당 여백 강조
-build_castle("castle-small.glb", half=0.65, center_tiers=2, subs=[], gates=("S",))
+build_castle("castle-small.glb", half=0.65, center_tiers=2, subs=[], gates=("S",),
+             k_xy=0.80, k_z=0.85)
 
 # 중간성: 중앙 3단 + 12/4/8시 1단, 성문 앞뒤(남·북)
 build_castle("castle-medium.glb", half=0.72, center_tiers=3,
-             subs=[(12, 1, 0.20), (4, 1, 0.20), (8, 1, 0.20)], gates=("S", "N"))
+             subs=[(12, 1, 0.20), (4, 1, 0.20), (8, 1, 0.20)], gates=("S", "N"),
+             k_xy=1.25, k_z=1.05)
 
 # 큰성: 중앙 4단 + 12시 3단, 4시 2단, 8시 1단, 2시 1단, 성문 4방
 build_castle("castle-large.glb", half=0.80, center_tiers=4,
              subs=[(12, 3, 0.24), (4, 2, 0.22), (8, 1, 0.20), (2, 1, 0.20)],
-             gates=("S", "N", "E", "W"))
+             gates=("S", "N", "E", "W"),
+             k_xy=1.44, k_z=1.12)
