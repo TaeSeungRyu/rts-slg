@@ -15,9 +15,15 @@ public partial class HexMapView : Node2D
     [Export] public Color FillColor = new(0.16f, 0.18f, 0.22f);
     [Export] public Color OutlineColor = new(0.32f, 0.36f, 0.44f);
     [Export] public Color CityColor = new(0.85f, 0.66f, 0.28f);
+    [Export] public int LabelSize = 18;
+    [Export] public Color LabelColor = new(0.93f, 0.94f, 0.97f);
 
     private HexMap? _map;
     private IReadOnlyList<City> _cities = Array.Empty<City>();
+    private Font _font = null!;
+
+    public override void _Ready() =>
+        _font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
 
     public void SetData(HexMap map, IReadOnlyList<City> cities)
     {
@@ -49,7 +55,13 @@ public partial class HexMapView : Node2D
 
         foreach (var city in _cities)
         {
-            DrawCircle(CenterOf(city.Position), HexSize * 0.42f, CityColor);
+            var center = CenterOf(city.Position);
+            DrawCircle(center, HexSize * 0.42f, CityColor);
+
+            var textSize = _font.GetStringSize(city.Name, HorizontalAlignment.Left, -1, LabelSize);
+            var labelPos = new Vector2(center.X - textSize.X / 2f, center.Y + HexSize * 0.42f + LabelSize + 4f);
+            DrawStringOutline(_font, labelPos, city.Name, HorizontalAlignment.Left, -1, LabelSize, 4, new Color(0f, 0f, 0f, 0.75f));
+            DrawString(_font, labelPos, city.Name, HorizontalAlignment.Left, -1, LabelSize, LabelColor);
         }
     }
 }
