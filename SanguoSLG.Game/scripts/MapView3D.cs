@@ -136,6 +136,17 @@ public partial class MapView3D : Node3D
             {
                 AddChild(BuildSwampBubbles(HexToWorld(tile)));
             }
+
+            // 마을 타일: 작은 주민이 나타나 배회하다 사라지는 생활감 연출
+            if (terrain is TerrainType.Village1 or TerrainType.Village2 or TerrainType.Village3
+                or TerrainType.Village4 or TerrainType.Village5)
+            {
+                AddChild(new VillagerAmbience
+                {
+                    Position = HexToWorld(tile),
+                    Seed = unchecked((ulong)(tile.Q * 92821L + tile.R * 68917L + 7919L)),
+                });
+            }
         }
 
         BuildWaterBorder(map);
