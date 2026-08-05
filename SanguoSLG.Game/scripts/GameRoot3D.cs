@@ -48,7 +48,9 @@ public partial class GameRoot3D : Node3D
 
         var mapView = new MapView3D();
         AddChild(mapView);
-        mapView.Build(scenario.Map);
+        var occupied = new System.Collections.Generic.HashSet<HexCoord>(
+            scenario.Features.SelectMany(FeatureFootprint.TilesFor));
+        mapView.Build(scenario.Map, occupied);
         mapView.BuildFeatures(scenario.Features);
 
         // 물 테두리 밖 배경이 비어 보이지 않도록 맵 아래에 넓은 바다 평면을 깐다.

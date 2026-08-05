@@ -68,10 +68,17 @@ public partial class MapView3D : Node3D
         return top;
     }
 
-    public void Build(HexMap map)
+    /// <param name="occupied">지물(산 등)이 점유한 타일 — 지물 모델이 자체 기단을 포함하므로
+    /// 바닥 타일을 중복 렌더하지 않는다(옆면 Z-파이팅 깜빡임 방지).</param>
+    public void Build(HexMap map, System.Collections.Generic.ISet<HexCoord> occupied)
     {
         foreach (var tile in map.Tiles())
         {
+            if (occupied.Contains(tile))
+            {
+                continue;
+            }
+
             var terrain = map.TerrainAt(tile);
             if (terrain is TerrainType.River or TerrainType.Bridge)
             {
