@@ -86,9 +86,19 @@ public partial class MapView3D : Node3D
 
             var instance = _tiles[terrain].Instantiate<Node3D>();
             instance.Position = HexToWorld(tile);
-            // 숲·산의 단조로움을 깨는 결정론적 회전(좌표 해시, 60° 단위).
-            instance.RotationDegrees = new Vector3(0f, ((tile.Q * 31 + tile.R * 17) % 6 + 6) % 6 * 60f, 0f);
+            if (terrain != TerrainType.Workshop)
+            {
+                // 숲·산의 단조로움을 깨는 결정론적 회전(좌표 해시, 60° 단위).
+                // 공방은 굴뚝 연기 위치가 고정이어야 하므로 회전하지 않는다.
+                instance.RotationDegrees = new Vector3(0f, ((tile.Q * 31 + tile.R * 17) % 6 + 6) % 6 * 60f, 0f);
+            }
+
             AddChild(instance);
+
+            if (terrain == TerrainType.Workshop)
+            {
+                AddChild(BuildChimneySmoke(HexToWorld(tile)));
+            }
         }
 
         BuildWaterBorder(map);
@@ -114,6 +124,46 @@ public partial class MapView3D : Node3D
         }
 
         AddChild(instance);
+    }
+
+    // 공방 굴뚝 연기: 회색 반투명 입자가 피어올라 바람에 흘러가며 사라진다.
+    // 굴뚝 위치는 workshop.glb의 로컬 좌표(블렌더 (0.245,-0.06,0.375) → Godot (0.245,0.375,0.06)).
+    private static Node3D BuildChimneySmoke(Vector3 tileOrigin)
+    {
+        var gradient = new Gradient();
+        gradient.SetColor(0, new Color(0.72f, 0.71f, 0.69f, 0.55f));
+        gradient.SetColor(1, new Color(0.80f, 0.80f, 0.79f, 0f));
+
+        var mesh = new SphereMesh
+        {
+            Radius = 0.028f,
+            Height = 0.056f,
+            RadialSegments = 6,
+            Rings = 3,
+            Material = new StandardMaterial3D
+            {
+                VertexColorUseAsAlbedo = true,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            },
+        };
+
+        return new CpuParticles3D
+        {
+            Position = tileOrigin + new Vector3(0.245f, 0.375f, 0.06f),
+            Amount = 12,
+            Lifetime = 2.4f,
+            Preprocess = 3f,
+            Mesh = mesh,
+            Direction = new Vector3(0.2f, 1f, 0f),
+            Spread = 7f,
+            InitialVelocityMin = 0.09f,
+            InitialVelocityMax = 0.14f,
+            Gravity = new Vector3(0.05f, 0.03f, 0.02f),
+            ScaleAmountMin = 0.7f,
+            ScaleAmountMax = 1.6f,
+            ColorRamp = gradient,
+        };
     }
 
     // 이웃한 강/다리 타일의 방향을 보고 직선·커브·끝 모델과 회전을 고른다.
