@@ -1,9 +1,11 @@
-# 마을 모양 3(중국풍 사합원, 저폴리) 생성 → GLB 익스포트
+# 마을 모양 3(동양풍 길가 마을, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python make_village3.py
 #
-# 컨셉(사용자 정의, 2026-08-05): 네모난 모양에 가운데 구멍(중정)이 있는 중국식풍 2단 건물,
-# 중정 가운데 우물, 외곽 담은 마을 1·2와 동일(육각 경계 흙담+기와 갓, 남쪽 출입구).
-# ㅁ자 링: 남북 날개(전체 폭) + 동서 날개(사이), 중간 처마 띠로 2단 표현 + 날개별 기와지붕.
+# 컨셉(사용자 정의, 2026-08-05): 마을 모양 2 계열(작은 기와집)을 다른 배치·모양으로 —
+# 남쪽 출입구에서 북쪽으로 흙길이 이어지고, 길 서쪽에 길쭉한 창고채,
+# 동쪽에 작은집 2채가 길을 향해 늘어선 길가 마을. 장독 3개 + 나무 2그루.
+# (1차 ㅁ자 사합원 안은 "성 느낌"이라 폐기 — 2026-08-05)
+# 외곽 담은 마을 1·2와 동일(육각 경계 흙담+기와 갓, 남쪽 출입구).
 import bpy
 import math
 
@@ -29,11 +31,12 @@ M_GRASS = make_mat("grass", (0.28, 0.60, 0.20))
 M_SIDE = make_mat("side", (0.42, 0.30, 0.18))
 M_YARD = make_mat("yard", (0.52, 0.40, 0.24))
 M_ROOF = make_mat("roof", (0.06, 0.09, 0.14))
-M_WALL = make_mat("wall", (0.55, 0.36, 0.16))   # 벽은 지붕·풀과 대비되게 채도 강화
-M_WALL2 = make_mat("wall2", (0.68, 0.50, 0.26))
+M_WALL = make_mat("wall", (0.58, 0.42, 0.22))
+M_WALL2 = make_mat("wall2", (0.62, 0.48, 0.30))
 M_WOOD = make_mat("wood", (0.42, 0.18, 0.12))
-M_STONE = make_mat("stone", (0.45, 0.45, 0.43))
-M_WATER = make_mat("water", (0.20, 0.45, 0.70), roughness=0.15)
+M_JAR = make_mat("jar", (0.38, 0.22, 0.12))
+M_LEAF = make_mat("leaf", (0.16, 0.48, 0.14))
+M_TRUNK = make_mat("trunk", (0.34, 0.20, 0.10))
 
 
 def box(name, sx, sy, sz, x, y, z, mat, rot_z=0.0):
@@ -45,9 +48,18 @@ def box(name, sx, sy, sz, x, y, z, mat, rot_z=0.0):
     return o
 
 
-def hip_roof(name, sx, sy, h, x, y, z, mat):
-    """길쭉한 모임지붕: 4각 뿔대(회전을 메시에 적용해 축 정렬) → 직사각 비율로 스케일.
-    회전된 오브젝트에 비등방 스케일을 주면 마름모로 왜곡되므로 반드시 apply 후 스케일."""
+def pyramid(name, r_bottom, r_top, h, x, y, z, mat, rot_z=0.0):
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=4, radius1=r_bottom, radius2=r_top, depth=h,
+        location=(x, y, z), rotation=(0, 0, math.radians(45) + rot_z))
+    o = bpy.context.object
+    o.name = name
+    o.data.materials.append(mat)
+    return o
+
+
+def ridge_roof(name, sx, sy, h, x, y, z, mat, rot_z=0.0):
+    """길쭉한 지붕: 회전 적용 후 비율 스케일(회전된 오브젝트에 비등방 스케일 금지)."""
     bpy.ops.mesh.primitive_cone_add(
         vertices=4, radius1=0.5, radius2=0.055, depth=h,
         location=(x, y, z), rotation=(0, 0, math.radians(45)))
@@ -55,6 +67,7 @@ def hip_roof(name, sx, sy, h, x, y, z, mat):
     o.name = name
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     o.scale = (sx * 1.42, sy * 1.42, 1.0)
+    o.rotation_euler = (0, 0, rot_z)
     o.data.materials.append(mat)
     return o
 
@@ -81,51 +94,68 @@ for poly in base.data.polygons:
 
 Z = TILE_H
 
-# ── ㅁ자 2단 건물: 바깥 사각 0.54, 날개 두께 0.095 — 중정 구멍(0.35)이 잘 보이게 얇게 ──
-OW = 0.54      # 바깥 폭
-T = 0.095      # 날개 두께
-IW = OW - 2 * T  # 중정 폭 0.35
-H1 = 0.080     # 1층 높이
-H2 = 0.055     # 2층 높이
-YIN = (OW - T) / 2  # 날개 중심 오프셋
+# ── 흙길: 남쪽 출입구(담 트임)에서 북쪽으로 이어지는 길 + 가운데 갈림 마당 ──
+box("path_s", 0.10, 0.34, 0.014, 0.0, -0.26, Z + 0.004, M_YARD)
+box("path_n", 0.09, 0.26, 0.014, -0.03, 0.06, Z + 0.004, M_YARD, rot_z=math.radians(8))
+cylinder("path_plaza", 0.115, 0.014, 0.0, -0.06, Z + 0.004, M_YARD)
 
-# 접촉면 z-파이팅 방지: 겹치는 부재는 아래 부재 속으로 EMB만큼 파묻는다(같은 평면 금지)
-EMB = 0.004
 
-wings = {
-    "n": (0.0, +YIN, OW, T),
-    "s": (0.0, -YIN, OW, T),
-    "e": (+YIN, 0.0, T, IW),
-    "w": (-YIN, 0.0, T, IW),
-}
-for tag, (cx, cy, sx, sy) in wings.items():
-    # 1층 몸체 + 중간 처마 띠(2단 구분) + 2층 몸체(살짝 안쪽) + 기와지붕
-    box(f"wing_{tag}_b1", sx, sy, H1, cx, cy, Z + H1 / 2, M_WALL)
-    # 처마 띠: 동서 띠는 남북 띠와 모서리에서 겹치지 않게 짧게 —
-    # 겹치면 윗면(같은 높이·같은 법선)이 z-파이팅으로 깜빡인다
-    ex, ey = (sx + 0.026, sy + 0.026) if tag in ("n", "s") else (sx + 0.026, sy - 0.034)
-    box(f"wing_{tag}_eave", ex, ey, 0.016, cx, cy, Z + H1 + 0.008 - EMB, M_ROOF)
-    box(f"wing_{tag}_b2", sx * 0.94, sy * 0.94, H2, cx, cy, Z + H1 + 0.016 + H2 / 2 - 2 * EMB, M_WALL2)
-    hip_roof(f"wing_{tag}_roof", sx * 0.64, sy * 0.64, 0.052, cx, cy,
-             Z + H1 + 0.016 + H2 + 0.026 - 3 * EMB, M_ROOF)
+def build_house(tag, cx, cy, w, wall_mat, rot_z):
+    """동양풍 작은 집(마을 1·2와 동일 양식)."""
+    h = w * 0.43
+    d = w * 0.8
+    box(f"{tag}_body", w, d, h, cx, cy, Z + h / 2, wall_mat, rot_z=rot_z)
+    cs, sn = math.cos(rot_z), math.sin(rot_z)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            dx, dy = sx * (w / 2 - 0.013), sy * (d / 2 - 0.013)
+            box(f"{tag}_post_{sx}_{sy}", 0.028, 0.028, h,
+                cx + dx * cs - dy * sn, cy + dx * sn + dy * cs, Z + h / 2, M_WOOD, rot_z=rot_z)
+    pyramid(f"{tag}_eave", w * 0.80, w * 0.46, w * 0.12, cx, cy, Z + h + w * 0.06, M_ROOF, rot_z=rot_z)
+    pyramid(f"{tag}_roof", w * 0.52, 0.012, w * 0.26, cx, cy, Z + h + w * 0.12 + w * 0.13, M_ROOF, rot_z=rot_z)
 
-# 모서리 기둥 4개(바깥 모서리, 1층 높이)
-for sx_ in (-1, 1):
-    for sy_ in (-1, 1):
-        box(f"corner_{sx_}_{sy_}", 0.032, 0.032, H1,
-            sx_ * (OW / 2 - 0.016), sy_ * (OW / 2 - 0.016),
-            Z + H1 / 2, M_WOOD)
 
-# 남쪽 벽 문: 장식 없는 단순 구멍(어두운 개구부), 나머지 3벽에는 창문 1개씩
-box("door_hole", 0.085, 0.020, 0.062, 0.0, -(OW / 2) - 0.004, Z + 0.031, M_ROOF)
-box("window_n", 0.055, 0.020, 0.042, 0.0, +(OW / 2) + 0.004, Z + H1 * 0.55, M_ROOF)
-box("window_e", 0.020, 0.055, 0.042, +(OW / 2) + 0.004, 0.0, Z + H1 * 0.55, M_ROOF)
-box("window_w", 0.020, 0.055, 0.042, -(OW / 2) - 0.004, 0.0, Z + H1 * 0.55, M_ROOF)
+def build_longhouse(tag, cx, cy, rot_z):
+    """길쭉한 창고채: 낮고 긴 몸체 + 능선 있는 긴 기와지붕."""
+    L, D, H = 0.34, 0.15, 0.085
+    box(f"{tag}_body", L, D, H, cx, cy, Z + H / 2, M_WALL, rot_z=rot_z)
+    cs, sn = math.cos(rot_z), math.sin(rot_z)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            dx, dy = sx * (L / 2 - 0.014), sy * (D / 2 - 0.012)
+            box(f"{tag}_post_{sx}_{sy}", 0.026, 0.026, H,
+                cx + dx * cs - dy * sn, cy + dx * sn + dy * cs, Z + H / 2, M_WOOD, rot_z=rot_z)
+    # footprint 반너비 = 0.5*s이므로 몸체(L, D)보다 크게 줘야 처마가 밖으로 나온다
+    ridge_roof(f"{tag}_roof", L * 1.18, D * 1.35, 0.075, cx, cy, Z + H + 0.030, M_ROOF, rot_z=rot_z)
 
-# ── 중정 바닥 + 우물 (바닥·우물은 아래로 파묻어 접촉면 z-파이팅 방지) ──
-box("court_yard", IW * 0.96, IW * 0.96, 0.014, 0.0, 0.0, Z + 0.004, M_YARD)
-cylinder("well_ring", 0.055, 0.052, 0.0, 0.0, Z + 0.022, M_STONE, verts=8)
-cylinder("well_water", 0.038, 0.056, 0.0, 0.0, Z + 0.023, M_WATER, verts=8)
+
+# ── 배치: 길 서쪽 길쭉한 창고채, 길 동쪽 작은집 2채(길을 향해 살짝 돌림) ──
+build_longhouse("store", -0.24, 0.06, math.radians(78))
+build_house("house_a", 0.22, 0.16, 0.19, M_WALL2, math.radians(-58))
+build_house("house_b", 0.21, -0.18, 0.165, M_WALL, math.radians(-115))
+
+# ── 장독 3개(창고채 남쪽 끝) ──
+for i, (jx, jy, jr) in enumerate(((-0.16, -0.20, 0.034), (-0.22, -0.15, 0.028), (-0.10, -0.15, 0.024))):
+    bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=jr, radius2=jr * 0.55,
+                                    depth=jr * 2.1, location=(jx, jy, Z + jr * 1.05))
+    jar = bpy.context.object
+    jar.name = f"jar_{i}"
+    jar.data.materials.append(M_JAR)
+
+
+def tree(tag, tx, ty, s=1.0):
+    cylinder(f"{tag}_trunk", 0.018 * s, 0.07 * s, tx, ty, Z + 0.035 * s, M_TRUNK, verts=6)
+    for i, (r, h, dz) in enumerate(((0.075 * s, 0.09 * s, 0.07 * s), (0.055 * s, 0.08 * s, 0.135 * s))):
+        bpy.ops.mesh.primitive_cone_add(vertices=7, radius1=r, radius2=0.008, depth=h,
+                                        location=(tx, ty, Z + dz + h / 2))
+        leaf = bpy.context.object
+        leaf.name = f"{tag}_leaf_{i}"
+        leaf.data.materials.append(M_LEAF)
+
+
+# ── 나무 2그루(북쪽·남동쪽) ──
+tree("tree_n", -0.02, 0.30, 1.0)
+tree("tree_se", 0.34, -0.02, 0.8)
 
 # ── 외곽 담(마을 1·2와 동일): 타일 육각과 같은 방향, 남쪽 꼭짓점 출입구 ──
 FENCE_R = 0.50
