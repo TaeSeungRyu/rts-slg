@@ -51,6 +51,13 @@ public partial class UnitController3D : Node3D
     {
         if (@event is InputEventMouseMotion motion)
         {
+            // 팬(우클릭/중클릭 드래그) 중에는 호버·경로 미리보기를 끈다 — 깜빡임 방지.
+            if ((motion.ButtonMask & (MouseButtonMask.Right | MouseButtonMask.Middle)) != 0)
+            {
+                ClearOverlay();
+                return;
+            }
+
             if (!_moving && RayToGround(motion.Position) is { } hoverHex)
             {
                 UpdateHover(hoverHex);

@@ -156,7 +156,8 @@ public partial class MapView3D : Node3D
 
             if (feature.Type == FeatureType.WaterfallCliff)
             {
-                // 폭포는 구름 대신 낙수 지점의 물보라(미스트).
+                // 폭포: 떨어지는 물살 + 낙수 지점의 물보라(미스트).
+                AddChild(BuildWaterfallFlow(centroid + new Vector3(0f, 0.96f, -0.075f)));
                 AddChild(BuildWaterfallMist(centroid + new Vector3(0f, 0.24f, 0.12f)));
                 continue;
             }
@@ -214,6 +215,44 @@ public partial class MapView3D : Node3D
             Gravity = Vector3.Zero,
             ScaleAmountMin = 0.8f,
             ScaleAmountMax = 1.9f,
+            ColorRamp = gradient,
+        };
+    }
+
+    // 폭포 물살: 낙수 립에서 흰 물줄기 입자가 절벽면을 따라 떨어진다 — 흐르는 느낌의 핵심.
+    private static Node3D BuildWaterfallFlow(Vector3 lip)
+    {
+        var gradient = new Gradient();
+        gradient.SetColor(0, new Color(0.92f, 0.97f, 1f, 0.75f));
+        gradient.SetColor(1, new Color(0.85f, 0.94f, 1f, 0.15f));
+
+        var mesh = new BoxMesh
+        {
+            Size = new Vector3(0.022f, 0.07f, 0.02f),
+            Material = new StandardMaterial3D
+            {
+                VertexColorUseAsAlbedo = true,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            },
+        };
+
+        return new CpuParticles3D
+        {
+            Position = lip,
+            Amount = 18,
+            Lifetime = 1.1f,
+            Preprocess = 1.5f,
+            Mesh = mesh,
+            EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
+            EmissionBoxExtents = new Vector3(0.075f, 0.01f, 0.008f),
+            Direction = new Vector3(0f, -1f, 0f),
+            Spread = 2f,
+            InitialVelocityMin = 0.42f,
+            InitialVelocityMax = 0.55f,
+            Gravity = new Vector3(0f, -0.45f, 0f),
+            ScaleAmountMin = 0.7f,
+            ScaleAmountMax = 1.2f,
             ColorRamp = gradient,
         };
     }
