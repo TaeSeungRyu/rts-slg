@@ -36,4 +36,10 @@ public enum TerrainType
 
     /// <summary>돌산 — 돌 바위 산(1타일, 이동 불가 예정).</summary>
     RockMountain,
+
+    /// <summary>기암 소석림 — 매우 큰산(기암 기둥 숲)과 어울리는 1타일 기둥 바위(이동 불가 예정).</summary>
+    Karst,
+
+    /// <summary>작은 절벽 — 폭포 절벽산과 어울리는 1타일 단애(이동 불가 예정).</summary>
+    Cliff,
 }

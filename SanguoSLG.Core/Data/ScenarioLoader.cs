@@ -118,6 +118,8 @@ public sealed class ScenarioLoader
         "farm" => TerrainType.Farm,
         "workshop" => TerrainType.Workshop,
         "rock_mountain" => TerrainType.RockMountain,
+        "karst" => TerrainType.Karst,
+        "cliff" => TerrainType.Cliff,
         _ => throw new InvalidDataException($"알 수 없는 지형: {name}"),
     };
 

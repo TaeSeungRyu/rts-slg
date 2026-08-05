@@ -15,10 +15,11 @@
       "G": "plains", "F": "forest", "M": "mountain", "D": "desert",
       "R": "river", "B": "bridge", "W": "water_shallow", "V": "water_deep",
       "S": "rocks", "H": "rock_hill", "O": "water_rocks",
-      "P": "paddy", "A": "farm", "K": "workshop", "T": "rock_mountain"
+      "P": "paddy", "A": "farm", "K": "workshop", "T": "rock_mountain",
+      "X": "karst", "C": "cliff"
     },
     "rows": [
-      "GGGFFGRGGGMMMGG",
+      "GGCFFGRGGGMMMGG",
       "GGFFGGRGGTMMMMG",
       "GGGGFFRGGTMMMMG",
       "GGGGGFRGGAHMMMG",
@@ -30,7 +31,7 @@
       "GGGGDRGGGWVVOWW",
       "GGGGGRGGWVVWGGG",
       "GGGGGRGGWVVWGGG",
-      "GGGGGRGGGWWGGGG"
+      "GGGGGRGGGWWGGGX"
     ]
   }
 }
