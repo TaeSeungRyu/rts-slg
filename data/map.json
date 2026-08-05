@@ -17,7 +17,7 @@
       "S": "rocks", "H": "rock_hill", "O": "water_rocks",
       "P": "paddy", "A": "farm", "K": "workshop", "T": "rock_mountain",
       "X": "karst", "C": "cliff", "I": "ice_mountain",
-      "E": "ice_wall_large", "L": "ice_wall_small"
+      "E": "ice_wall_large", "L": "ice_wall_small", "J": "village_1"
     },
     "rows": [
       "GGCFFGRGEIMMMGG",
@@ -25,7 +25,7 @@
       "GGGGFFRGGTMMMMG",
       "GGGGGFRGGAHMMMG",
       "GGGGGKRFGASMMGG",
-      "GGGGGGRFGGGGMGG",
+      "GGJGGGRFGGGGMGG",
       "GGGGGGBGGGGGGGG",
       "GGPPDDRGGGWWWWW",
       "GGGDDRPGGGWVVVW",

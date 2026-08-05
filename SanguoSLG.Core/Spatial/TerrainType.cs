@@ -51,4 +51,7 @@ public enum TerrainType
 
     /// <summary>작은 얼음벽 모음 — 부서진 낮은 빙벽 조각들(1타일, 이동 불가 예정).</summary>
     IceWallSmall,
+
+    /// <summary>마을 모양 1 — 동양풍 작은 집 3채가 모인 마을(1타일).</summary>
+    Village1,
 }
