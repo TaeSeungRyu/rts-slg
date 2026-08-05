@@ -58,6 +58,7 @@ public partial class MapView3D : Node3D
         _tiles[TerrainType.Village1] = GD.Load<PackedScene>("res://assets/models/village-1.glb");
         _tiles[TerrainType.Swamp] = GD.Load<PackedScene>("res://assets/models/swamp.glb");
         _tiles[TerrainType.DesertCactus] = GD.Load<PackedScene>("res://assets/models/desert-cactus.glb");
+        _tiles[TerrainType.Village2] = GD.Load<PackedScene>("res://assets/models/village-2.glb");
         _water = GD.Load<PackedScene>("res://assets/models/water.glb");
         _riverStraight = GD.Load<PackedScene>("res://assets/models/river-straight.glb");
         _riverCorner = GD.Load<PackedScene>("res://assets/models/river-corner.glb");
@@ -102,10 +103,10 @@ public partial class MapView3D : Node3D
 
             var instance = _tiles[terrain].Instantiate<Node3D>();
             instance.Position = HexToWorld(tile);
-            if (terrain != TerrainType.Workshop)
+            if (terrain is not (TerrainType.Workshop or TerrainType.Village2))
             {
                 // 숲·산의 단조로움을 깨는 결정론적 회전(좌표 해시, 60° 단위).
-                // 공방은 굴뚝 연기 위치가 고정이어야 하므로 회전하지 않는다.
+                // 공방·마을 2는 굴뚝 연기 위치가 고정이어야 하므로 회전하지 않는다.
                 instance.RotationDegrees = new Vector3(0f, ((tile.Q * 31 + tile.R * 17) % 6 + 6) % 6 * 60f, 0f);
             }
 
@@ -113,7 +114,13 @@ public partial class MapView3D : Node3D
 
             if (terrain == TerrainType.Workshop)
             {
-                AddChild(BuildChimneySmoke(HexToWorld(tile)));
+                AddChild(BuildChimneySmoke(HexToWorld(tile), new Vector3(0.245f, 0.375f, 0.06f)));
+            }
+
+            if (terrain == TerrainType.Village2)
+            {
+                // 남서쪽 작은집의 돌 굴뚝 위치(모델 좌표 (-0.11, -0.08), 굴뚝 끝 0.36)
+                AddChild(BuildChimneySmoke(HexToWorld(tile), new Vector3(-0.11f, 0.38f, 0.08f)));
             }
 
             // 한랭 지형군(얼음산·얼음벽)에는 국지적으로 눈이 내린다
@@ -411,7 +418,7 @@ public partial class MapView3D : Node3D
 
     // 공방 굴뚝 연기: 회색 반투명 입자가 피어올라 바람에 흘러가며 사라진다.
     // 굴뚝 위치는 workshop.glb의 로컬 좌표(블렌더 (0.245,-0.06,0.375) → Godot (0.245,0.375,0.06)).
-    private static Node3D BuildChimneySmoke(Vector3 tileOrigin)
+    private static Node3D BuildChimneySmoke(Vector3 tileOrigin, Vector3 chimneyOffset)
     {
         var gradient = new Gradient();
         gradient.SetColor(0, new Color(0.72f, 0.71f, 0.69f, 0.55f));
@@ -433,7 +440,7 @@ public partial class MapView3D : Node3D
 
         return new CpuParticles3D
         {
-            Position = tileOrigin + new Vector3(0.245f, 0.375f, 0.06f),
+            Position = tileOrigin + chimneyOffset,
             Amount = 12,
             Lifetime = 2.4f,
             Preprocess = 3f,

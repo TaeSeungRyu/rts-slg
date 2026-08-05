@@ -60,4 +60,7 @@ public enum TerrainType
 
     /// <summary>선인장 사막 — 선인장과 동물 뼈가 있는 사막(1타일, 이동 가능).</summary>
     DesertCactus,
+
+    /// <summary>마을 모양 2 — 작은집 2채(한 채 굴뚝 연기)+2단집+작은나무 마을(1타일).</summary>
+    Village2,
 }
