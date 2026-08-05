@@ -8,10 +8,11 @@ namespace SanguoSLG.Game;
 /// </summary>
 public partial class CameraController3D : Camera3D
 {
-    [Export] public float MinDistance = 4f;
+    [Export] public float MinDistance = 2.2f;
     [Export] public float MaxDistance = 50f;
     [Export] public float RotateSpeedDeg = 100f;
     [Export] public float Smoothing = 10f;
+    [Export] public float KeyPanSpeed = 0.9f;
 
     private Vector3 _pivot;
     private Vector3 _targetPivot;
@@ -47,6 +48,35 @@ public partial class CameraController3D : Camera3D
 
         _targetYaw += rotate * Mathf.DegToRad(RotateSpeedDeg) * dt;
 
+        // WASD / 화살표 키 팬(카메라가 보는 방향 기준)
+        var pan = Vector2.Zero;
+        if (Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up))
+        {
+            pan.Y += 1f;
+        }
+
+        if (Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down))
+        {
+            pan.Y -= 1f;
+        }
+
+        if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left))
+        {
+            pan.X -= 1f;
+        }
+
+        if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right))
+        {
+            pan.X += 1f;
+        }
+
+        if (pan != Vector2.Zero)
+        {
+            var (flatForward, flatRight) = FlatBasis();
+            var speed = KeyPanSpeed * Mathf.Max(_distance * 0.35f, 1f) * dt;
+            _targetPivot += (flatRight * pan.X + flatForward * pan.Y) * speed;
+        }
+
         var weight = 1f - Mathf.Exp(-Smoothing * dt);
         _yaw = Mathf.LerpAngle(_yaw, _targetYaw, weight);
         _distance = Mathf.Lerp(_distance, _targetDistance, weight);
@@ -68,15 +98,22 @@ public partial class CameraController3D : Camera3D
             }
         }
         else if (@event is InputEventMouseMotion motion &&
-                 (motion.ButtonMask & MouseButtonMask.Middle) != 0)
+                 (motion.ButtonMask & (MouseButtonMask.Middle | MouseButtonMask.Right)) != 0)
         {
-            // 화면 드래그를 카메라 기준 지면(x-z) 팬으로 변환. 거리에 비례해 감도를 키운다.
+            // 중클릭 또는 우클릭 드래그를 지면(x-z) 팬으로 변환. 거리에 비례해 감도를 키운다.
             var sensitivity = _distance * 0.0016f;
-            var forward = -GlobalTransform.Basis.Z;
-            var flatForward = new Vector3(forward.X, 0f, forward.Z).Normalized();
-            var flatRight = new Vector3(GlobalTransform.Basis.X.X, 0f, GlobalTransform.Basis.X.Z).Normalized();
+            var (flatForward, flatRight) = FlatBasis();
             _targetPivot += (-flatRight * motion.Relative.X + flatForward * motion.Relative.Y) * sensitivity;
         }
+    }
+
+    // 카메라가 보는 방향의 수평(지면) 기저 벡터.
+    private (Vector3 Forward, Vector3 Right) FlatBasis()
+    {
+        var forward = -GlobalTransform.Basis.Z;
+        var flatForward = new Vector3(forward.X, 0f, forward.Z).Normalized();
+        var flatRight = new Vector3(GlobalTransform.Basis.X.X, 0f, GlobalTransform.Basis.X.Z).Normalized();
+        return (flatForward, flatRight);
     }
 
     private void ApplyTransform()

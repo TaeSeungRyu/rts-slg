@@ -96,7 +96,7 @@ public partial class Hud : CanvasLayer
 
         box.AddChild(new Control { SizeFlagsVertical = Control.SizeFlags.ExpandFill });
 
-        var hint = MakeLabel("좌클릭 이동 · 휠 줌 · 중클릭 팬 · Q/E 회전", 12, new Color(0.62f, 0.64f, 0.68f));
+        var hint = MakeLabel("좌클릭 이동 · 휠 줌 · 우클릭 드래그/WASD 팬 · Q/E 회전", 12, new Color(0.62f, 0.64f, 0.68f));
         hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(hint);
     }
