@@ -151,6 +151,34 @@ pyramid("office_eave2", ow2 * 0.82, ow2 * 0.40, ow2 * 0.12, OX, OY, oz2 + oh2 + 
 pyramid("office_roof", ow2 * 0.50, 0.010, ow2 * 0.30, OX, OY,
         oz2 + oh2 + ow2 * 0.12 + ow2 * 0.15, M_ROOF, rot_z=OROT)
 
+# ── 추가 건물 1: 숙소(작은 기와집) — 두 타일 사이 북쪽 ──
+AW, AD, AH = 0.17, 0.135, 0.073
+AX, AY, AROT = -0.13, 0.30, math.radians(-12)
+box("lodge_body", AW, AD, AH, AX, AY, Z + AH / 2, M_WALL2, rot_z=AROT)
+acs, asn = math.cos(AROT), math.sin(AROT)
+for sx in (-1, 1):
+    for sy in (-1, 1):
+        dx, dy = sx * (AW / 2 - 0.006), sy * (AD / 2 - 0.006)
+        box(f"lodge_post_{sx}_{sy}", 0.024, 0.024, AH,
+            AX + dx * acs - dy * asn, AY + dx * asn + dy * acs, Z + AH / 2, M_WOOD, rot_z=AROT)
+pyramid("lodge_eave", AW * 0.80, AW * 0.44, AW * 0.11, AX, AY, Z + AH + AW * 0.055, M_ROOF, rot_z=AROT)
+pyramid("lodge_roof", AW * 0.50, 0.010, AW * 0.24, AX, AY,
+        Z + AH + AW * 0.11 + AW * 0.12, M_ROOF, rot_z=AROT)
+
+# ── 추가 건물 2: 어구 오두막 — 사무소 동쪽 ──
+BW, BD, BH = 0.15, 0.12, 0.068
+BXX, BYY, BROT_S = 0.76, -0.08, math.radians(28)
+box("hut_body", BW, BD, BH, BXX, BYY, Z + BH / 2, M_WALL, rot_z=BROT_S)
+hcs, hsn = math.cos(BROT_S), math.sin(BROT_S)
+for sx in (-1, 1):
+    for sy in (-1, 1):
+        dx, dy = sx * (BW / 2 - 0.005), sy * (BD / 2 - 0.005)
+        box(f"hut_post_{sx}_{sy}", 0.022, 0.022, BH,
+            BXX + dx * hcs - dy * hsn, BYY + dx * hsn + dy * hcs, Z + BH / 2, M_WOOD, rot_z=BROT_S)
+pyramid("hut_eave", BW * 0.80, BW * 0.44, BW * 0.11, BXX, BYY, Z + BH + BW * 0.055, M_ROOF, rot_z=BROT_S)
+pyramid("hut_roof", BW * 0.50, 0.010, BW * 0.24, BXX, BYY,
+        Z + BH + BW * 0.11 + BW * 0.12, M_ROOF, rot_z=BROT_S)
+
 # ── 나무 기중기: 기둥 + 비스듬한 팔 + 밧줄 + 매달린 상자 ──
 CX, CY = 0.05, -0.40
 cylinder("crane_pole", 0.020, 0.30, CX, CY, Z + 0.15, M_WOOD, verts=6)
