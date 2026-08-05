@@ -108,6 +108,33 @@ WX, WY = 0.02, -0.03
 cylinder("well_ring", 0.055, 0.05, WX, WY, Z + 0.025, M_STONE, verts=8)
 cylinder("well_water", 0.038, 0.052, WX, WY, Z + 0.026, M_WATER, verts=8)
 
+# ── 낮은 테두리 담: 육각 경계를 따라 도는 흙담 + 기와 갓, 남쪽에 출입구 트임 ──
+FENCE_R = 0.50       # 담 반경(타일 경계 0.5774 안쪽)
+FENCE_H = 0.042      # 담 높이(집보다 훨씬 낮게)
+FENCE_T = 0.028      # 담 두께
+
+
+def fence_piece(name, x1, y1, x2, y2):
+    mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+    length = math.hypot(x2 - x1, y2 - y1)
+    ang = math.atan2(y2 - y1, x2 - x1)
+    box(f"{name}_wall", length, FENCE_T, FENCE_H, mx, my, Z + FENCE_H / 2, M_WALL, rot_z=ang)
+    # 담 위 기와 갓(살짝 넓게)
+    box(f"{name}_cap", length, FENCE_T * 1.5, 0.012, mx, my, Z + FENCE_H + 0.006, M_ROOF, rot_z=ang)
+
+
+for i in range(6):
+    a1, a2 = math.radians(60 * i), math.radians(60 * (i + 1))
+    x1, y1 = FENCE_R * math.cos(a1), FENCE_R * math.sin(a1)
+    x2, y2 = FENCE_R * math.cos(a2), FENCE_R * math.sin(a2)
+    if i == 4:  # 남쪽 변(-Y): 가운데를 터서 출입구로 남긴다
+        gx1, gy1 = x1 + (x2 - x1) * 0.36, y1 + (y2 - y1) * 0.36
+        gx2, gy2 = x1 + (x2 - x1) * 0.64, y1 + (y2 - y1) * 0.64
+        fence_piece(f"fence_{i}a", x1, y1, gx1, gy1)
+        fence_piece(f"fence_{i}b", gx2, gy2, x2, y2)
+    else:
+        fence_piece(f"fence_{i}", x1, y1, x2, y2)
+
 # ── 장독 2개(큰 집 옆) ──
 for i, (jx, jy, jr) in enumerate(((0.20, 0.20, 0.035), (0.26, 0.13, 0.028))):
     bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=jr, radius2=jr * 0.55,
