@@ -179,6 +179,43 @@ pyramid("hut_eave", BW * 0.80, BW * 0.44, BW * 0.11, BXX, BYY, Z + BH + BW * 0.0
 pyramid("hut_roof", BW * 0.50, 0.010, BW * 0.24, BXX, BYY,
         Z + BH + BW * 0.11 + BW * 0.12, M_ROOF, rot_z=BROT_S)
 
+# ── 가운데 이음새 구조물(건물 아님): 깃대·짐 깔판·손수레·그물 건조대 ──
+# 깃대 + 붉은 기(항구 표식)
+cylinder("flag_pole", 0.011, 0.34, 0.06, 0.16, Z + 0.17, M_WOOD, verts=5)
+box("flag", 0.012, 0.10, 0.062, 0.06, 0.115, Z + 0.30, M_LANTERN)
+
+# 짐 깔판: 판자 위 가마니(눕힌 원통) 2+1단 + 항아리
+box("pallet", 0.17, 0.13, 0.014, -0.08, 0.02, Z + 0.007, M_PLANK)
+for i, (dx, dy, dz, rz) in enumerate(((-0.035, 0.0, 0.03, 0.06), (0.035, 0.01, 0.03, -0.08),
+                                      (0.0, -0.005, 0.085, 0.02))):
+    cylinder(f"sack_{i}", 0.030, 0.115, -0.08 + dx, 0.02 + dy, Z + 0.014 + dz, M_SAIL,
+             verts=7, rot=(math.radians(90), 0, rz))
+bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=0.030, radius2=0.017, depth=0.062,
+                                location=(0.045, 0.05, Z + 0.031))
+jar2 = bpy.context.object
+jar2.name = "jar2"
+jar2.data.materials.append(M_JAR)
+
+# 손수레: 짐칸 + 바퀴 2 + 끌채 2
+CTX, CTY, CTR = 0.19, 0.00, math.radians(25)
+ccs2, csn2 = math.cos(CTR), math.sin(CTR)
+box("cart_bed", 0.075, 0.13, 0.014, CTX, CTY, Z + 0.052, M_PLANK, rot_z=CTR)
+box("cart_side_l", 0.010, 0.13, 0.030, CTX - 0.037 * ccs2, CTY - 0.037 * csn2, Z + 0.072, M_PLANK, rot_z=CTR)
+box("cart_side_r", 0.010, 0.13, 0.030, CTX + 0.037 * ccs2, CTY + 0.037 * csn2, Z + 0.072, M_PLANK, rot_z=CTR)
+for side in (-1, 1):
+    cylinder(f"cart_wheel_{side}", 0.036, 0.014, CTX + side * 0.048 * ccs2, CTY + side * 0.048 * csn2,
+             Z + 0.036, M_WOOD, verts=8, rot=(0, math.radians(90), CTR))
+for side in (-1, 1):
+    box(f"cart_handle_{side}", 0.010, 0.11, 0.010, CTX + side * 0.028 * ccs2 - 0.10 * -csn2,
+        CTY + side * 0.028 * csn2 - 0.10 * ccs2, Z + 0.062, M_WOOD, rot_z=CTR)
+
+# 그물 건조대: 기둥 2 + 가로대 + 늘어뜨린 그물
+NX, NY = -0.26, -0.13
+for side in (-1, 1):
+    cylinder(f"net_post_{side}", 0.010, 0.13, NX + side * 0.09, NY, Z + 0.065, M_WOOD, verts=5)
+cylinder("net_bar", 0.008, 0.19, NX, NY, Z + 0.125, M_WOOD, verts=5, rot=(0, math.radians(90), 0))
+box("net", 0.165, 0.006, 0.085, NX, NY + 0.003, Z + 0.078, M_SEAM)
+
 # ── 나무 기중기: 기둥 + 비스듬한 팔 + 밧줄 + 매달린 상자 ──
 CX, CY = 0.05, -0.40
 cylinder("crane_pole", 0.020, 0.30, CX, CY, Z + 0.15, M_WOOD, verts=6)
