@@ -99,12 +99,35 @@ def build_house(tag, cx, cy, w, wall_mat, rot_z):
     pyramid(f"{tag}_roof", w * 0.52, 0.012, w * 0.26, cx, cy, Z + h + w * 0.12 + w * 0.13, M_ROOF, rot_z=rot_z)
 
 
-# ── 집 3채: 호수를 중심으로 북·남서·남동, 각자 호수를 향해 돌아앉음 ──
+def build_house_2story(tag, cx, cy, w, rot_z):
+    """2단집(마을 2와 동일 양식): 1층+처마 기와 → 축소 위층+정지붕."""
+    h1 = w * 0.40
+    d = w * 0.85
+    box(f"{tag}_body1", w, d, h1, cx, cy, Z + h1 / 2, M_WALL, rot_z=rot_z)
+    cs, sn = math.cos(rot_z), math.sin(rot_z)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            dx, dy = sx * (w / 2 - 0.012), sy * (d / 2 - 0.012)
+            box(f"{tag}_post_{sx}_{sy}", 0.026, 0.026, h1,
+                cx + dx * cs - dy * sn, cy + dx * sn + dy * cs, Z + h1 / 2, M_WOOD, rot_z=rot_z)
+    z1 = Z + h1
+    pyramid(f"{tag}_eave1", w * 0.82, w * 0.42, w * 0.11, cx, cy, z1 + w * 0.055, M_ROOF, rot_z=rot_z)
+    w2, h2 = w * 0.60, w * 0.30
+    z2 = z1 + w * 0.11
+    box(f"{tag}_body2", w2, w2 * 0.85, h2, cx, cy, z2 + h2 / 2, M_WALL2, rot_z=rot_z)
+    pyramid(f"{tag}_eave2", w2 * 0.82, w2 * 0.40, w2 * 0.12, cx, cy, z2 + h2 + w2 * 0.06, M_ROOF, rot_z=rot_z)
+    pyramid(f"{tag}_roof", w2 * 0.50, 0.010, w2 * 0.30, cx, cy, z2 + h2 + w2 * 0.12 + w2 * 0.15, M_ROOF, rot_z=rot_z)
+
+
+# ── 집 4채(줄인 크기): 북쪽은 2단집, 나머지 3채는 작은집 — 각자 호수를 향해 돌아앉음 ──
 R_HOUSE = 0.335
+a_n = math.radians(90)
+build_house_2story("house_n2", R_HOUSE * math.cos(a_n), R_HOUSE * math.sin(a_n),
+                   0.17, a_n + math.radians(90))
 for tag, deg, w, mat in (
-    ("house_n", 90, 0.19, M_WALL),
-    ("house_sw", 205, 0.18, M_WALL2),
-    ("house_se", 335, 0.175, M_WALL),
+    ("house_w", 158, 0.15, M_WALL2),
+    ("house_sw", 214, 0.145, M_WALL),
+    ("house_se", 330, 0.15, M_WALL2),
 ):
     a = math.radians(deg)
     hx, hy = R_HOUSE * math.cos(a), R_HOUSE * math.sin(a)
