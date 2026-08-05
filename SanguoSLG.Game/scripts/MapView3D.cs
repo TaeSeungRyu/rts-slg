@@ -116,6 +116,7 @@ public partial class MapView3D : Node3D
                 var contents = _tiles[terrain].Instantiate<Node3D>();
                 contents.Position = HexToWorld(tile);
                 contents.RotationDegrees = new Vector3(0f, WaterFacingYawDegrees(map, tile), 0f);
+                DisableThinShadows(contents);
                 AddChild(contents);
                 continue;
             }
@@ -324,6 +325,28 @@ public partial class MapView3D : Node3D
             ScaleAmountMax = 1.3f,
             ColorRamp = gradient,
         };
+    }
+
+    // 잔교·난간·울타리 같은 얇은 부재의 그림자 캐스팅을 끈다.
+    // 카메라 이동 시 태양광 그림자 캐스케이드가 재배치되며 얇은 그림자가 바닥에서 어른거리는
+    // 현상(잔교 아래 반짝임)의 원인 — 이 부재들의 그림자는 시각 기여도도 낮다.
+    private static void DisableThinShadows(Node node)
+    {
+        if (node is GeometryInstance3D geometry)
+        {
+            var name = node.Name.ToString();
+            if (name.Contains("pier") || name.Contains("rail") || name.Contains("fence")
+                || name.Contains("lantern") || name.Contains("mooring") || name.Contains("boat")
+                || name.Contains("seam"))
+            {
+                geometry.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+            }
+        }
+
+        foreach (var child in node.GetChildren())
+        {
+            DisableThinShadows(child);
+        }
     }
 
     // 항구 잔교가 향할 물 방향: 인접 6방향에서 물 타일(대하·암초)을 찾아 그 방향의 yaw(도)를 돌려준다.
