@@ -117,6 +117,14 @@ public partial class MapView3D : Node3D
                 contents.Position = HexToWorld(tile);
                 contents.RotationDegrees = new Vector3(0f, WaterFacingYawDegrees(map, tile), 0f);
                 DisableThinShadows(contents);
+
+                // 주민 연출: 내용물의 자식으로 붙여 장애물 좌표가 물 방향 회전을 따라가게 한다
+                contents.AddChild(new VillagerAmbience
+                {
+                    Seed = unchecked((ulong)(tile.Q * 92821L + tile.R * 68917L + 4241L)),
+                    MaxVillagers = 4 + (((tile.Q * 7 + tile.R * 13) % 2 + 2) % 2),
+                    Obstacles = PortSmallObstacles,
+                });
                 AddChild(contents);
                 continue;
             }
@@ -225,6 +233,19 @@ public partial class MapView3D : Node3D
             {
                 // 항구 지물: 구름 없음, 잔교·울타리 등 얇은 부재는 그림자 제외(어른거림 방지)
                 DisableThinShadows(instance);
+
+                // 주민 연출: 타일(2개)마다 4~5명 — 마을·성과 동일 규칙, 크기 2라 총 2배
+                for (var i = 0; i < PortMediumTileOffsets.Length; i++)
+                {
+                    instance.AddChild(new VillagerAmbience
+                    {
+                        Position = new Vector3(PortMediumTileOffsets[i], 0f, 0f),
+                        Seed = unchecked((ulong)(feature.Position.Q * 92821L + feature.Position.R * 68917L + i * 5077L + 613L)),
+                        MaxVillagers = 4 + i % 2,
+                        Obstacles = PortMediumObstacles[i],
+                    });
+                }
+
                 continue;
             }
 
@@ -382,6 +403,33 @@ public partial class MapView3D : Node3D
 
         return 0f; // 물이 안 보이면 남향(모델 기본)
     }
+
+    // 소형 항구 주민 장애물 — 내용물 모델 좌표(내용물 자식이라 물 방향 회전을 함께 따른다).
+    private static readonly Vector3[] PortSmallObstacles =
+    {
+        new(-0.13f, -0.14f, 0.15f), // 창고
+        new(0.24f, -0.12f, 0.10f),  // 오두막
+        new(0.04f, 0.42f, 0.14f),   // 잔교·모래톱(올라가지 않게)
+        new(0.20f, 0.18f, 0.08f),   // 짐 더미
+    };
+
+    // 중형 항구: 발자국 타일 중심(모델 로컬 x)과 타일별 주민 장애물.
+    private static readonly float[] PortMediumTileOffsets = { -0.5f, 0.5f };
+
+    private static readonly Vector3[][] PortMediumObstacles =
+    {
+        new Vector3[] // 서 타일: 대형 창고 + 그물 건조대
+        {
+            new(-0.05f, -0.10f, 0.21f),
+            new(0.24f, 0.13f, 0.10f),
+        },
+        new Vector3[] // 동 타일: 사무소 + 오두막 + 손수레
+        {
+            new(0.02f, -0.14f, 0.13f),
+            new(0.26f, 0.08f, 0.09f),
+            new(-0.31f, 0.0f, 0.09f),
+        },
+    };
 
     // 마을별 주민 배회 장애물 — 건물·우물·호수·나무를 원으로 근사한 (x, z, 반경).
     // 모델(Blender) 좌표 (bx, by)는 Godot 로컬 (bx, -by)로 변환해 적는다.
