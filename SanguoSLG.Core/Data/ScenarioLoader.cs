@@ -127,6 +127,7 @@ public sealed class ScenarioLoader
         "swamp" => TerrainType.Swamp,
         "desert_cactus" => TerrainType.DesertCactus,
         "village_2" => TerrainType.Village2,
+        "village_3" => TerrainType.Village3,
         _ => throw new InvalidDataException($"알 수 없는 지형: {name}"),
     };
 

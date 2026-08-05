@@ -18,13 +18,13 @@
       "P": "paddy", "A": "farm", "K": "workshop", "T": "rock_mountain",
       "X": "karst", "C": "cliff", "I": "ice_mountain",
       "E": "ice_wall_large", "L": "ice_wall_small", "J": "village_1",
-      "N": "swamp", "Q": "desert_cactus", "U": "village_2"
+      "N": "swamp", "Q": "desert_cactus", "U": "village_2", "Y": "village_3"
     },
     "rows": [
       "GGCFFGRGEIMMMGG",
       "GGFFGGRGGTMMMIL",
       "GGGGFFRGGTMMMMG",
-      "GGGGGFRGGAHMMMG",
+      "GGGGGFRYGAHMMMG",
       "GGGGGKRFGASMMGG",
       "GGJGGGRFGGGGMGG",
       "GGGGGGBGGGGGGGG",
