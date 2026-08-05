@@ -56,6 +56,7 @@ public partial class MapView3D : Node3D
         _tiles[TerrainType.IceWallLarge] = GD.Load<PackedScene>("res://assets/models/ice-wall-large.glb");
         _tiles[TerrainType.IceWallSmall] = GD.Load<PackedScene>("res://assets/models/ice-wall-small.glb");
         _tiles[TerrainType.Village1] = GD.Load<PackedScene>("res://assets/models/village-1.glb");
+        _tiles[TerrainType.Swamp] = GD.Load<PackedScene>("res://assets/models/swamp.glb");
         _water = GD.Load<PackedScene>("res://assets/models/water.glb");
         _riverStraight = GD.Load<PackedScene>("res://assets/models/river-straight.glb");
         _riverCorner = GD.Load<PackedScene>("res://assets/models/river-corner.glb");
@@ -118,6 +119,11 @@ public partial class MapView3D : Node3D
             if (terrain is TerrainType.IceMountain or TerrainType.IceWallLarge or TerrainType.IceWallSmall)
             {
                 AddChild(BuildSnowfall(HexToWorld(tile)));
+            }
+
+            if (terrain == TerrainType.Swamp)
+            {
+                AddChild(BuildSwampBubbles(HexToWorld(tile)));
             }
         }
 
@@ -276,6 +282,49 @@ public partial class MapView3D : Node3D
             Gravity = new Vector3(0.015f, -0.02f, 0.01f),
             ScaleAmountMin = 0.7f,
             ScaleAmountMax = 1.3f,
+            ColorRamp = gradient,
+        };
+    }
+
+    // 늪 방울: 탁한 수면에서 방울이 피어올랐다가 터지듯 사라진다.
+    private static Node3D BuildSwampBubbles(Vector3 tileOrigin)
+    {
+        var gradient = new Gradient();
+        gradient.SetColor(0, new Color(0.80f, 0.70f, 0.45f, 0f));      // 수면 아래에서 피어남
+        gradient.AddPoint(0.25f, new Color(0.80f, 0.70f, 0.45f, 0.75f));
+        gradient.AddPoint(0.80f, new Color(0.85f, 0.76f, 0.52f, 0.65f));
+        gradient.SetColor(1, new Color(0.90f, 0.82f, 0.60f, 0f));      // 터져 사라짐
+
+        var mesh = new SphereMesh
+        {
+            Radius = 0.016f,
+            Height = 0.028f,
+            RadialSegments = 6,
+            Rings = 3,
+            Material = new StandardMaterial3D
+            {
+                VertexColorUseAsAlbedo = true,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            },
+        };
+
+        return new CpuParticles3D
+        {
+            Position = tileOrigin + new Vector3(0f, 0.23f, 0f),
+            Amount = 9,
+            Lifetime = 2.4f,
+            Preprocess = 3f,
+            Mesh = mesh,
+            EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
+            EmissionBoxExtents = new Vector3(0.34f, 0.005f, 0.34f),
+            Direction = new Vector3(0f, 1f, 0f),
+            Spread = 4f,
+            InitialVelocityMin = 0.015f,
+            InitialVelocityMax = 0.035f,
+            Gravity = new Vector3(0f, 0.008f, 0f),
+            ScaleAmountMin = 0.5f,
+            ScaleAmountMax = 1.4f,
             ColorRamp = gradient,
         };
     }

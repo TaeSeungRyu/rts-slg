@@ -54,4 +54,7 @@ public enum TerrainType
 
     /// <summary>마을 모양 1 — 동양풍 작은 집 3채가 모인 마을(1타일).</summary>
     Village1,
+
+    /// <summary>늪 — 탁한 갈색 수면의 습지(1타일, 이동 가능).</summary>
+    Swamp,
 }
