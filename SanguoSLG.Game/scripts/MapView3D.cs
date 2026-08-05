@@ -135,6 +135,7 @@ public partial class MapView3D : Node3D
             [FeatureType.MountainMedium] = GD.Load<PackedScene>("res://assets/models/mountain-medium.glb"),
             [FeatureType.MountainLarge] = GD.Load<PackedScene>("res://assets/models/mountain-large.glb"),
             [FeatureType.MountainHuge] = GD.Load<PackedScene>("res://assets/models/mountain-huge.glb"),
+            [FeatureType.WaterfallCliff] = GD.Load<PackedScene>("res://assets/models/waterfall-cliff.glb"),
         };
 
         foreach (var feature in features)
@@ -152,6 +153,13 @@ public partial class MapView3D : Node3D
             var instance = models[feature.Type].Instantiate<Node3D>();
             instance.Position = centroid;
             AddChild(instance);
+
+            if (feature.Type == FeatureType.WaterfallCliff)
+            {
+                // 폭포는 구름 대신 낙수 지점의 물보라(미스트).
+                AddChild(BuildWaterfallMist(centroid + new Vector3(0f, 0.24f, 0.12f)));
+                continue;
+            }
 
             var (peakY, halfWidth) = feature.Type switch
             {
@@ -206,6 +214,47 @@ public partial class MapView3D : Node3D
             Gravity = Vector3.Zero,
             ScaleAmountMin = 0.8f,
             ScaleAmountMax = 1.9f,
+            ColorRamp = gradient,
+        };
+    }
+
+    // 폭포 물보라: 낙수 지점에서 흰 안개 입자가 피어올라 퍼지며 사라진다.
+    private static Node3D BuildWaterfallMist(Vector3 basePoint)
+    {
+        var gradient = new Gradient();
+        gradient.SetColor(0, new Color(1f, 1f, 1f, 0.5f));
+        gradient.SetColor(1, new Color(1f, 1f, 1f, 0f));
+
+        var mesh = new SphereMesh
+        {
+            Radius = 0.03f,
+            Height = 0.05f,
+            RadialSegments = 6,
+            Rings = 3,
+            Material = new StandardMaterial3D
+            {
+                VertexColorUseAsAlbedo = true,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            },
+        };
+
+        return new CpuParticles3D
+        {
+            Position = basePoint,
+            Amount = 10,
+            Lifetime = 1.6f,
+            Preprocess = 2f,
+            Mesh = mesh,
+            EmissionShape = CpuParticles3D.EmissionShapeEnum.Sphere,
+            EmissionSphereRadius = 0.07f,
+            Direction = new Vector3(0f, 1f, 0.15f),
+            Spread = 30f,
+            InitialVelocityMin = 0.04f,
+            InitialVelocityMax = 0.08f,
+            Gravity = new Vector3(0f, 0.015f, 0f),
+            ScaleAmountMin = 0.6f,
+            ScaleAmountMax = 1.5f,
             ColorRamp = gradient,
         };
     }

@@ -12,11 +12,15 @@ public static class FeatureFootprint
     private static readonly HexCoord[] MountainHuge =
         { new(0, 0), new(1, 0), new(-1, 0), new(-1, 1), new(0, 1) };
 
+    // 절벽 2타일(앵커·동쪽) + 남쪽 소(웅덩이) 1타일.
+    private static readonly HexCoord[] WaterfallCliff = { new(0, 0), new(1, 0), new(0, 1) };
+
     /// <summary>앵커 기준 상대 오프셋.</summary>
     public static IReadOnlyList<HexCoord> OffsetsFor(FeatureType type) => type switch
     {
         FeatureType.MountainLarge => MountainLarge,
         FeatureType.MountainHuge => MountainHuge,
+        FeatureType.WaterfallCliff => WaterfallCliff,
         _ => MountainMedium,
     };
 

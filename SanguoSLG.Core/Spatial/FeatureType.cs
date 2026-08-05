@@ -11,4 +11,7 @@ public enum FeatureType
 
     /// <summary>매우 큰산 — 5타일(중심+4방), 랜드마크 기암괴석. 이동 불가 예정.</summary>
     MountainHuge,
+
+    /// <summary>폭포 절벽산 — 3타일(절벽 2 + 소 1), 이동 불가 예정.</summary>
+    WaterfallCliff,
 }
