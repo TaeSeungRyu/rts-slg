@@ -47,14 +47,30 @@ public partial class UnitController3D : Node3D
         }
     }
 
+    public override void _Process(double delta)
+    {
+        // 카메라 조작(팬/회전) 중에는 호버·경로 미리보기를 상태 기반으로 강제 종료 — 깜빡임 방지.
+        if (IsCameraManeuvering() && _hoverCoord is not null)
+        {
+            ClearOverlay();
+        }
+    }
+
+    private static bool IsCameraManeuvering() =>
+        Input.IsMouseButtonPressed(MouseButton.Right) ||
+        Input.IsMouseButtonPressed(MouseButton.Middle) ||
+        Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.A) ||
+        Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.D) ||
+        Input.IsKeyPressed(Key.Up) || Input.IsKeyPressed(Key.Down) ||
+        Input.IsKeyPressed(Key.Left) || Input.IsKeyPressed(Key.Right) ||
+        Input.IsKeyPressed(Key.Q) || Input.IsKeyPressed(Key.E);
+
     public override void _UnhandledInput(InputEvent @event)
     {
         if (@event is InputEventMouseMotion motion)
         {
-            // 팬(우클릭/중클릭 드래그) 중에는 호버·경로 미리보기를 끈다 — 깜빡임 방지.
-            if ((motion.ButtonMask & (MouseButtonMask.Right | MouseButtonMask.Middle)) != 0)
+            if (IsCameraManeuvering())
             {
-                ClearOverlay();
                 return;
             }
 

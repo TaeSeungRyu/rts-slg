@@ -99,13 +99,7 @@ for i, (tx, ty, tz) in enumerate(((-0.5, 0.42, CLIFF_H * 0.86), (-0.1, 0.5, CLIF
                                   (0.35, 0.4, CLIFF_H * 0.92), (0.1, 0.28, CLIFF_H))):
     cone(f"top_tree{i}", 0.05, 0.005, 0.10, tx, ty, Z + tz + 0.06 + 0.05, M_SLOPE, verts=6)
 
-# ── 폭포: 절벽 남면(y=0.11)을 타고 흐르는 물줄기 + 흰 포말 줄 ──
-FALL_Y = 0.105
-box("fall", 0.17, 0.025, CLIFF_H, 0.0, FALL_Y, Z + CLIFF_H / 2, M_WATER)
-box("fall_foam1", 0.045, 0.028, CLIFF_H * 0.96, -0.05, FALL_Y, Z + CLIFF_H / 2, M_FOAM)
-box("fall_foam2", 0.035, 0.028, CLIFF_H * 0.9, 0.05, FALL_Y, Z + CLIFF_H / 2, M_FOAM)
-# 낙수 립(절벽 위 물머리)
-box("fall_lip", 0.17, 0.10, 0.025, 0.0, 0.16, Z + CLIFF_H + 0.0125, M_WATER)
+# ── 폭포 물줄기는 정적 메시 없이 게임의 낙하 파티클로만 표현(사용자 결정) ──
 
 # ── 소(웅덩이, 남쪽 타일): 물 + 포말 링 + 흘러나가는 개울 ──
 cyl("pool", 0.34, 0.015, 0.0, -0.42, Z + 0.008, M_WATER)

@@ -240,7 +240,7 @@ public partial class MapView3D : Node3D
         return new CpuParticles3D
         {
             Position = lip,
-            Amount = 18,
+            Amount = 26,
             Lifetime = 1.1f,
             Preprocess = 1.5f,
             Mesh = mesh,
