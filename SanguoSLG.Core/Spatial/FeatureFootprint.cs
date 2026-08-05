@@ -5,9 +5,13 @@ public static class FeatureFootprint
 {
     private static readonly HexCoord[] MountainMedium = { new(0, 0), new(1, 0) };
 
+    // 12시(앵커)·4시·8시로 붙은 삼각(원형) — 중간성과 같은 배치 형태.
+    private static readonly HexCoord[] MountainLarge = { new(0, 0), new(0, 1), new(-1, 1) };
+
     /// <summary>앵커 기준 상대 오프셋.</summary>
     public static IReadOnlyList<HexCoord> OffsetsFor(FeatureType type) => type switch
     {
+        FeatureType.MountainLarge => MountainLarge,
         _ => MountainMedium,
     };
 

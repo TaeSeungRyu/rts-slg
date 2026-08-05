@@ -95,6 +95,7 @@ public sealed class ScenarioLoader
     private static FeatureType ParseFeature(string name) => name switch
     {
         "mountain_medium" => FeatureType.MountainMedium,
+        "mountain_large" => FeatureType.MountainLarge,
         _ => throw new InvalidDataException($"알 수 없는 지물: {name}"),
     };
 

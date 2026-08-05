@@ -103,7 +103,7 @@
 | 소형산 | 1 | **가능** | ✅ | `mountain-small.glb` 커스텀(수풀 산자락+바위 정상, 봉우리 3개) — 킷 stone-mountain은 돌바위 형태라 교체 (2026-08-04) |
 | 돌산 | 1 | **불가** | ✅ | `stone-mountain.glb` 킷 재활용 — 지형 `rock_mountain`(T) (2026-08-04 추가) |
 | 중간산 | 2 | **불가** | ✅ | `mountain-medium.glb` 커스텀 — 주봉+부봉+능선, **산꼭대기 구름 파티클**. 지물(feature) `mountain_medium`으로 map.json에 앵커 배치, 발자국은 Core `FeatureFootprint` |
-| 큰산 | 3 (원형) | **불가** | 📦 | stone-mountain 3타일 클러스터 |
+| 큰산 | 3 (원형/삼각 12·4·8시) | **불가** | ✅ | `mountain-large.glb` 커스텀 — 중앙 거봉(수풀→절벽→바위 3단)+3방향 곁봉, 중간산과 패턴 차별화. 구름 횡단 효과 포함. 지물 `mountain_large` |
 | 매우 큰산 | 5 (원형) | **불가** | 📦 | stone-mountain 5타일 클러스터(스케일 업 혼합) |
 
 ### 얼음 지형

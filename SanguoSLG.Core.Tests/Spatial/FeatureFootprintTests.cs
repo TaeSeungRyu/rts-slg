@@ -17,6 +17,16 @@ public class FeatureFootprintTests
     }
 
     [Fact]
+    public void 큰산_발자국은_서로_붙은_3타일_삼각이다()
+    {
+        var offsets = FeatureFootprint.OffsetsFor(FeatureType.MountainLarge);
+
+        Assert.Equal(3, offsets.Count);
+        Assert.All(offsets, tile =>
+            Assert.All(offsets, other => Assert.True(tile == other || tile.Distance(other) == 1)));
+    }
+
+    [Fact]
     public void 실제_시나리오에서_지물은_맵_안_평야이며_성곽과_겹치지_않는다()
     {
         var scenario = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());

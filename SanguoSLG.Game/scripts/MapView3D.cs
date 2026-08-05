@@ -127,10 +127,15 @@ public partial class MapView3D : Node3D
         AddChild(instance);
     }
 
-    /// <summary>다중 타일 지물(중간산 등)을 발자국 중심점에 배치하고, 산꼭대기에 구름을 띄운다.</summary>
+    /// <summary>다중 타일 지물(중간산·큰산)을 발자국 중심점에 배치하고, 산 위에 구름을 흘려보낸다.</summary>
     public void BuildFeatures(System.Collections.Generic.IReadOnlyList<MapFeature> features)
     {
-        var mountainMedium = GD.Load<PackedScene>("res://assets/models/mountain-medium.glb");
+        var models = new System.Collections.Generic.Dictionary<FeatureType, PackedScene>
+        {
+            [FeatureType.MountainMedium] = GD.Load<PackedScene>("res://assets/models/mountain-medium.glb"),
+            [FeatureType.MountainLarge] = GD.Load<PackedScene>("res://assets/models/mountain-large.glb"),
+        };
+
         foreach (var feature in features)
         {
             var centroid = Vector3.Zero;
@@ -143,22 +148,24 @@ public partial class MapView3D : Node3D
 
             centroid /= count;
 
-            var instance = mountainMedium.Instantiate<Node3D>();
+            var instance = models[feature.Type].Instantiate<Node3D>();
             instance.Position = centroid;
             AddChild(instance);
 
-            // 주봉(모델 로컬 (-0.52, 0.96, -0.03)) 꼭대기에 둥둥 떠다니는 구름.
-            AddChild(BuildPeakClouds(centroid + new Vector3(-0.52f, 1.05f, -0.03f)));
+            var (peakY, halfWidth) = feature.Type == FeatureType.MountainLarge
+                ? (1.30f, 1.15f)
+                : (1.02f, 1.10f);
+            AddChild(BuildMountainClouds(centroid, peakY, halfWidth));
         }
     }
 
-    // 산꼭대기 구름: 크고 느린 흰 입자가 봉우리 주위를 떠다니며 서서히 나타났다 사라진다.
-    private static Node3D BuildPeakClouds(Vector3 peak)
+    // 산 구름: 산괴 왼쪽 끝에서 생겨나 오른쪽 끝까지 가로질러 흘러가고, 끝에서 서서히 사라진다.
+    private static Node3D BuildMountainClouds(Vector3 center, float peakY, float halfWidth)
     {
         var gradient = new Gradient();
         gradient.SetColor(0, new Color(1f, 1f, 1f, 0f));
-        gradient.AddPoint(0.25f, new Color(0.97f, 0.97f, 0.98f, 0.55f));
-        gradient.AddPoint(0.75f, new Color(0.97f, 0.97f, 0.98f, 0.5f));
+        gradient.AddPoint(0.12f, new Color(0.97f, 0.97f, 0.98f, 0.55f));
+        gradient.AddPoint(0.85f, new Color(0.97f, 0.97f, 0.98f, 0.5f));
         gradient.SetColor(1, new Color(1f, 1f, 1f, 0f));
 
         var mesh = new SphereMesh
@@ -175,20 +182,24 @@ public partial class MapView3D : Node3D
             },
         };
 
+        const float speed = 0.16f;
+        var lifetime = halfWidth * 2f / speed;
+
         return new CpuParticles3D
         {
-            Position = peak,
-            Amount = 5,
-            Lifetime = 9f,
-            Preprocess = 9f,
+            // 왼쪽 끝에서 발생 → +X로 폭 전체를 횡단
+            Position = center + new Vector3(-halfWidth, peakY, 0f),
+            Amount = 6,
+            Lifetime = lifetime,
+            Preprocess = lifetime,
             Mesh = mesh,
             EmissionShape = CpuParticles3D.EmissionShapeEnum.Sphere,
-            EmissionSphereRadius = 0.16f,
+            EmissionSphereRadius = 0.12f,
             Direction = new Vector3(1f, 0f, 0f),
-            Spread = 180f,
-            InitialVelocityMin = 0.015f,
-            InitialVelocityMax = 0.035f,
-            Gravity = new Vector3(0.008f, 0f, 0.004f),
+            Spread = 3f,
+            InitialVelocityMin = speed * 0.95f,
+            InitialVelocityMax = speed * 1.05f,
+            Gravity = Vector3.Zero,
             ScaleAmountMin = 0.8f,
             ScaleAmountMax = 1.9f,
             ColorRamp = gradient,

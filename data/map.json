@@ -5,7 +5,8 @@
   "max_r": 7,
   "features": [
     { "type": "mountain_medium", "q": -4, "r": -2 },
-    { "type": "mountain_medium", "q": 8, "r": 5 }
+    { "type": "mountain_medium", "q": 8, "r": 5 },
+    { "type": "mountain_large", "q": -3, "r": 3 }
   ],
   "terrain": {
     "legend": {

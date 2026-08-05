@@ -5,4 +5,7 @@ public enum FeatureType
 {
     /// <summary>중간산 — 2타일, 이동 불가 예정.</summary>
     MountainMedium,
+
+    /// <summary>큰산 — 3타일(원형/삼각), 이동 불가 예정.</summary>
+    MountainLarge,
 }
