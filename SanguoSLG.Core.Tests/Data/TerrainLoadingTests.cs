@@ -25,9 +25,9 @@ public class TerrainLoadingTests
                   "P": "paddy", "A": "farm", "K": "workshop",
                   "T": "rock_mountain", "X": "karst", "C": "cliff", "I": "ice_mountain",
                   "E": "ice_wall_large", "L": "ice_wall_small", "J": "village_1",
-                  "N": "swamp"
+                  "N": "swamp", "Q": "desert_cactus"
                 },
-                "rows": [ "GFM", "DRB", "WVG", "SHO", "PAK", "TXC", "IEL", "JNG" ]
+                "rows": [ "GFM", "DRB", "WVG", "SHO", "PAK", "TXC", "IEL", "JNQ" ]
               }
             }
             """);
@@ -55,6 +55,7 @@ public class TerrainLoadingTests
         Assert.Equal(TerrainType.IceWallSmall, map.TerrainAt(new HexCoord(2, 6)));
         Assert.Equal(TerrainType.Village1, map.TerrainAt(new HexCoord(0, 7)));
         Assert.Equal(TerrainType.Swamp, map.TerrainAt(new HexCoord(1, 7)));
+        Assert.Equal(TerrainType.DesertCactus, map.TerrainAt(new HexCoord(2, 7)));
     }
 
     [Fact]

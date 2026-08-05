@@ -57,4 +57,7 @@ public enum TerrainType
 
     /// <summary>늪 — 탁한 갈색 수면의 습지(1타일, 이동 가능).</summary>
     Swamp,
+
+    /// <summary>선인장 사막 — 선인장과 동물 뼈가 있는 사막(1타일, 이동 가능).</summary>
+    DesertCactus,
 }
