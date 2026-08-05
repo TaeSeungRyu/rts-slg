@@ -29,7 +29,7 @@ def make_mat(name, color, roughness=0.9, metallic=0.0):
 M_GRASS = make_mat("grass", (0.14, 0.62, 0.35))
 M_SIDE = make_mat("side", (0.62, 0.45, 0.30))
 M_SLOPE = make_mat("slope", (0.10, 0.50, 0.24))
-M_ROCK = make_mat("rock", (0.50, 0.48, 0.45))
+M_ROCK = make_mat("rock", (0.40, 0.38, 0.34))  # 눈처럼 안 보이게 어둡게
 
 
 def cone(name, r1, r2, h, x, y, z, mat, verts=7, rot_z=0.0):
@@ -57,17 +57,17 @@ for i, (cx, cy) in enumerate(CENTERS):
 
 Z = TILE_H
 
-# ── 주봉(서쪽 타일): 소형산보다 높게 ──
-cone("main_slope", 0.46, 0.20, 0.42, -0.52, 0.03, Z + 0.21, M_SLOPE, verts=7, rot_z=0.3)
-cone("main_rock", 0.21, 0.015, 0.34, -0.52, 0.03, Z + 0.42 + 0.17, M_ROCK, verts=7, rot_z=0.8)
+# ── 주봉(서쪽 타일): 수풀 비중을 키우고 바위 정상은 작게(회색 비중 축소) ──
+cone("main_slope", 0.46, 0.16, 0.54, -0.52, 0.03, Z + 0.27, M_SLOPE, verts=7, rot_z=0.3)
+cone("main_rock", 0.15, 0.012, 0.20, -0.52, 0.03, Z + 0.54 + 0.10, M_ROCK, verts=7, rot_z=0.8)
 
 # ── 부봉(동쪽 타일) ──
-cone("sub_slope", 0.38, 0.16, 0.32, 0.55, -0.04, Z + 0.16, M_SLOPE, verts=7, rot_z=1.2)
-cone("sub_rock", 0.17, 0.013, 0.24, 0.55, -0.04, Z + 0.32 + 0.12, M_ROCK, verts=7, rot_z=0.2)
+cone("sub_slope", 0.38, 0.13, 0.40, 0.55, -0.04, Z + 0.20, M_SLOPE, verts=7, rot_z=1.2)
+cone("sub_rock", 0.12, 0.011, 0.15, 0.55, -0.04, Z + 0.40 + 0.075, M_ROCK, verts=7, rot_z=0.2)
 
 # ── 연결 능선(두 봉 사이 낮은 산등성이) ──
-cone("ridge", 0.30, 0.12, 0.22, 0.02, 0.02, Z + 0.11, M_SLOPE, verts=6, rot_z=0.6)
-cone("ridge_rock", 0.10, 0.012, 0.10, 0.02, 0.02, Z + 0.22 + 0.05, M_ROCK, verts=6)
+cone("ridge", 0.30, 0.12, 0.24, 0.02, 0.02, Z + 0.12, M_SLOPE, verts=6, rot_z=0.6)
+cone("ridge_rock", 0.07, 0.010, 0.07, 0.02, 0.02, Z + 0.24 + 0.035, M_ROCK, verts=6)
 
 # ── 기슭 나무 ──
 for i, (tx, ty) in enumerate(((-0.82, 0.28), (-0.20, -0.38), (0.30, 0.36), (0.86, 0.20))):

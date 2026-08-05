@@ -30,8 +30,9 @@ def make_mat(name, color, roughness=0.9, metallic=0.0):
 M_GRASS = make_mat("grass", (0.14, 0.62, 0.35))
 M_SIDE = make_mat("side", (0.62, 0.45, 0.30))
 M_SLOPE = make_mat("slope", (0.10, 0.50, 0.24))
-M_ROCK = make_mat("rock", (0.50, 0.48, 0.45))
+M_ROCK = make_mat("rock", (0.42, 0.40, 0.36))
 M_CLIFF = make_mat("cliff", (0.38, 0.35, 0.31))  # 거봉 절벽 밴드(중간산과 차별)
+M_SNOW = make_mat("snow", (0.96, 0.97, 0.99), roughness=0.6)  # 만년설(의도적 설산)
 
 
 def cone(name, r1, r2, h, x, y, z, mat, verts=7, rot_z=0.0):
@@ -59,16 +60,18 @@ for i, (cx, cy) in enumerate(CENTERS):
 
 Z = TILE_H
 
-# ── 중앙 거봉(공유 꼭짓점 위): 수풀 → 절벽 밴드 → 바위 정상의 3단 구성 ──
+# ── 중앙 거봉(공유 꼭짓점 위): 수풀 → 절벽 밴드 → 바위 → 만년설 정상의 4단 구성 ──
 cone("giant_slope", 0.52, 0.30, 0.34, 0.0, 0.0, Z + 0.17, M_SLOPE, verts=8, rot_z=0.4)
 cone("giant_cliff", 0.31, 0.20, 0.26, 0.0, 0.0, Z + 0.34 + 0.13, M_CLIFF, verts=8, rot_z=0.15)
-cone("giant_rock", 0.21, 0.012, 0.40, 0.0, 0.0, Z + 0.60 + 0.20, M_ROCK, verts=8, rot_z=0.7)
+cone("giant_rock", 0.21, 0.13, 0.20, 0.0, 0.0, Z + 0.60 + 0.10, M_ROCK, verts=8, rot_z=0.7)
+cone("giant_snow", 0.14, 0.012, 0.22, 0.0, 0.0, Z + 0.80 + 0.11, M_SNOW, verts=8, rot_z=0.3)
 
-# ── 세 방향 곁봉(각 타일 중심, 높이를 서로 다르게) ──
+# ── 세 방향 곁봉(각 타일 중심, 높이를 서로 다르게, 정상엔 작은 눈) ──
 FLANKS = ((CENTERS[0], 0.30, 0.22, 1.1), (CENTERS[1], 0.26, 0.18, 0.3), (CENTERS[2], 0.22, 0.14, 1.9))
 for i, ((fx, fy), sh, rh, rot) in enumerate(FLANKS):
     cone(f"flank{i}_slope", 0.30, 0.13, sh, fx, fy, Z + sh / 2, M_SLOPE, verts=6, rot_z=rot)
-    cone(f"flank{i}_rock", 0.12, 0.012, rh, fx, fy, Z + sh + rh / 2, M_ROCK, verts=6, rot_z=rot + 0.5)
+    cone(f"flank{i}_rock", 0.12, 0.05, rh * 0.6, fx, fy, Z + sh + rh * 0.3, M_ROCK, verts=6, rot_z=rot + 0.5)
+    cone(f"flank{i}_snow", 0.055, 0.008, rh * 0.5, fx, fy, Z + sh + rh * 0.6 + rh * 0.25, M_SNOW, verts=6, rot_z=rot)
 
 # ── 기슭 나무 ──
 for i, (tx, ty) in enumerate(((0.0, 1.02), (0.46, 0.55), (-0.50, 0.50),

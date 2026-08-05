@@ -27,7 +27,7 @@ def make_mat(name, color, roughness=0.9, metallic=0.0):
 M_GRASS = make_mat("grass", (0.14, 0.62, 0.35))   # 타일 윗면(주변 초원과 어울리게)
 M_SIDE = make_mat("side", (0.62, 0.45, 0.30))     # 타일 옆면(킷 타일 흙색)
 M_SLOPE = make_mat("slope", (0.10, 0.50, 0.24))   # 산자락(수풀 — 저채도 톤을 견디게 채도 강화)
-M_ROCK = make_mat("rock", (0.50, 0.48, 0.45))     # 바위 정상
+M_ROCK = make_mat("rock", (0.40, 0.38, 0.34))     # 바위 정상(눈처럼 안 보이게 어둡게)
 
 
 def cone(name, r1, r2, h, x, y, z, mat, verts=7, rot_z=0.0):
@@ -55,15 +55,15 @@ for poly in base.data.polygons:
 
 Z = TILE_H
 
-# ── 주봉: 수풀 산자락(하단 프러스텀) + 바위 정상(상단 콘) ──
-cone("main_slope", 0.40, 0.17, 0.30, -0.03, 0.02, Z + 0.15, M_SLOPE, verts=7, rot_z=0.2)
-cone("main_rock", 0.18, 0.015, 0.24, -0.03, 0.02, Z + 0.30 + 0.12, M_ROCK, verts=7, rot_z=0.5)
+# ── 주봉: 수풀 산자락을 키우고 바위 정상은 작게(회색 비중 축소) ──
+cone("main_slope", 0.40, 0.14, 0.38, -0.03, 0.02, Z + 0.19, M_SLOPE, verts=7, rot_z=0.2)
+cone("main_rock", 0.13, 0.012, 0.15, -0.03, 0.02, Z + 0.38 + 0.075, M_ROCK, verts=7, rot_z=0.5)
 
 # ── side봉 2개(주봉보다 낮게) ──
-cone("side1_slope", 0.24, 0.10, 0.20, 0.24, -0.16, Z + 0.10, M_SLOPE, verts=6, rot_z=0.9)
-cone("side1_rock", 0.11, 0.012, 0.14, 0.24, -0.16, Z + 0.20 + 0.07, M_ROCK, verts=6, rot_z=0.3)
-cone("side2_slope", 0.20, 0.08, 0.16, -0.20, -0.22, Z + 0.08, M_SLOPE, verts=6, rot_z=1.6)
-cone("side2_rock", 0.09, 0.012, 0.11, -0.20, -0.22, Z + 0.16 + 0.055, M_ROCK, verts=6, rot_z=0.1)
+cone("side1_slope", 0.24, 0.08, 0.25, 0.24, -0.16, Z + 0.125, M_SLOPE, verts=6, rot_z=0.9)
+cone("side1_rock", 0.08, 0.010, 0.09, 0.24, -0.16, Z + 0.25 + 0.045, M_ROCK, verts=6, rot_z=0.3)
+cone("side2_slope", 0.20, 0.07, 0.20, -0.20, -0.22, Z + 0.10, M_SLOPE, verts=6, rot_z=1.6)
+cone("side2_rock", 0.07, 0.010, 0.07, -0.20, -0.22, Z + 0.20 + 0.035, M_ROCK, verts=6, rot_z=0.1)
 
 # ── 기슭 나무 몇 그루(스케일감) ──
 for i, (tx, ty) in enumerate(((0.34, 0.22), (0.10, 0.38), (-0.34, 0.16))):
