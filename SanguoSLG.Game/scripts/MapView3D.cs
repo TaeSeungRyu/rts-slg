@@ -105,14 +105,24 @@ public partial class MapView3D : Node3D
                 continue;
             }
 
-            var instance = _tiles[terrain].Instantiate<Node3D>();
-            instance.Position = HexToWorld(tile);
             if (terrain == TerrainType.PortSmall)
             {
-                // 항구는 잔교(+Z 방향)가 인접한 물 타일을 향하도록 회전한다
-                instance.RotationDegrees = new Vector3(0f, WaterFacingYawDegrees(map, tile), 0f);
+                // 항구: 바닥은 일반 풀 타일(회전 없음 — 기단이 돌면 그리드와 어긋난다),
+                // 내용물(창고·잔교·배)만 인접 물 타일 방향으로 회전한다
+                var ground = _tiles[TerrainType.Plains].Instantiate<Node3D>();
+                ground.Position = HexToWorld(tile);
+                AddChild(ground);
+
+                var contents = _tiles[terrain].Instantiate<Node3D>();
+                contents.Position = HexToWorld(tile);
+                contents.RotationDegrees = new Vector3(0f, WaterFacingYawDegrees(map, tile), 0f);
+                AddChild(contents);
+                continue;
             }
-            else if (terrain is not (TerrainType.Workshop or TerrainType.Village2))
+
+            var instance = _tiles[terrain].Instantiate<Node3D>();
+            instance.Position = HexToWorld(tile);
+            if (terrain is not (TerrainType.Workshop or TerrainType.Village2))
             {
                 // 숲·산의 단조로움을 깨는 결정론적 회전(좌표 해시, 60° 단위).
                 // 공방·마을 2는 굴뚝 연기 위치가 고정이어야 하므로 회전하지 않는다.
