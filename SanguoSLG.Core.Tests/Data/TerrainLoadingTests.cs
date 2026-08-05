@@ -26,9 +26,9 @@ public class TerrainLoadingTests
                   "T": "rock_mountain", "X": "karst", "C": "cliff", "I": "ice_mountain",
                   "E": "ice_wall_large", "L": "ice_wall_small", "J": "village_1",
                   "N": "swamp", "Q": "desert_cactus", "U": "village_2", "Y": "village_3",
-                  "Z": "village_4", "5": "village_5"
+                  "Z": "village_4", "5": "village_5", "1": "port_small"
                 },
-                "rows": [ "GFM", "DRB", "WVG", "SHO", "PAK", "TXC", "IEL", "JNQ", "UYZ", "5GG" ]
+                "rows": [ "GFM", "DRB", "WVG", "SHO", "PAK", "TXC", "IEL", "JNQ", "UYZ", "51G" ]
               }
             }
             """);
@@ -61,6 +61,7 @@ public class TerrainLoadingTests
         Assert.Equal(TerrainType.Village3, map.TerrainAt(new HexCoord(1, 8)));
         Assert.Equal(TerrainType.Village4, map.TerrainAt(new HexCoord(2, 8)));
         Assert.Equal(TerrainType.Village5, map.TerrainAt(new HexCoord(0, 9)));
+        Assert.Equal(TerrainType.PortSmall, map.TerrainAt(new HexCoord(1, 9)));
     }
 
     [Fact]

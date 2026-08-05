@@ -62,6 +62,7 @@ public partial class MapView3D : Node3D
         _tiles[TerrainType.Village3] = GD.Load<PackedScene>("res://assets/models/village-3.glb");
         _tiles[TerrainType.Village4] = GD.Load<PackedScene>("res://assets/models/village-4.glb");
         _tiles[TerrainType.Village5] = GD.Load<PackedScene>("res://assets/models/village-5.glb");
+        _tiles[TerrainType.PortSmall] = GD.Load<PackedScene>("res://assets/models/port-small.glb");
         _water = GD.Load<PackedScene>("res://assets/models/water.glb");
         _riverStraight = GD.Load<PackedScene>("res://assets/models/river-straight.glb");
         _riverCorner = GD.Load<PackedScene>("res://assets/models/river-corner.glb");
@@ -106,7 +107,12 @@ public partial class MapView3D : Node3D
 
             var instance = _tiles[terrain].Instantiate<Node3D>();
             instance.Position = HexToWorld(tile);
-            if (terrain is not (TerrainType.Workshop or TerrainType.Village2))
+            if (terrain == TerrainType.PortSmall)
+            {
+                // 항구는 잔교(+Z 방향)가 인접한 물 타일을 향하도록 회전한다
+                instance.RotationDegrees = new Vector3(0f, WaterFacingYawDegrees(map, tile), 0f);
+            }
+            else if (terrain is not (TerrainType.Workshop or TerrainType.Village2))
             {
                 // 숲·산의 단조로움을 깨는 결정론적 회전(좌표 해시, 60° 단위).
                 // 공방·마을 2는 굴뚝 연기 위치가 고정이어야 하므로 회전하지 않는다.
@@ -308,6 +314,32 @@ public partial class MapView3D : Node3D
             ScaleAmountMax = 1.3f,
             ColorRamp = gradient,
         };
+    }
+
+    // 항구 잔교가 향할 물 방향: 인접 6방향에서 물 타일(대하·암초)을 찾아 그 방향의 yaw(도)를 돌려준다.
+    private float WaterFacingYawDegrees(HexMap map, HexCoord tile)
+    {
+        foreach (var d in new[]
+                 {
+                     new HexCoord(1, 0), new HexCoord(1, -1), new HexCoord(0, -1),
+                     new HexCoord(-1, 0), new HexCoord(-1, 1), new HexCoord(0, 1),
+                 })
+        {
+            var neighbor = new HexCoord(tile.Q + d.Q, tile.R + d.R);
+            if (!map.Contains(neighbor))
+            {
+                continue;
+            }
+
+            var t = map.TerrainAt(neighbor);
+            if (t is TerrainType.WaterShallow or TerrainType.WaterDeep or TerrainType.WaterRocks)
+            {
+                var dir = HexToWorld(neighbor) - HexToWorld(tile);
+                return Mathf.RadToDeg(Mathf.Atan2(dir.X, dir.Z));
+            }
+        }
+
+        return 0f; // 물이 안 보이면 남향(모델 기본)
     }
 
     // 마을별 주민 배회 장애물 — 건물·우물·호수·나무를 원으로 근사한 (x, z, 반경).

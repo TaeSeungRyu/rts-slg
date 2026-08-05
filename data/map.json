@@ -19,7 +19,7 @@
       "X": "karst", "C": "cliff", "I": "ice_mountain",
       "E": "ice_wall_large", "L": "ice_wall_small", "J": "village_1",
       "N": "swamp", "Q": "desert_cactus", "U": "village_2", "Y": "village_3",
-      "Z": "village_4", "5": "village_5"
+      "Z": "village_4", "5": "village_5", "1": "port_small"
     },
     "rows": [
       "GGCFFGRGEIMMMGG",
@@ -31,7 +31,7 @@
       "GGGGGGBGGGGGGGG",
       "GGPPDDRUGGWWWWW",
       "GGGDQRPGGGWVVVW",
-      "GGGGDRGGGWVVOWW",
+      "GGGGDRGG1WVVOWW",
       "GNNGGRGGWVVWGGG",
       "GGGGGRGGWVVWGGG",
       "GGGGGRGGGWWGGGX"

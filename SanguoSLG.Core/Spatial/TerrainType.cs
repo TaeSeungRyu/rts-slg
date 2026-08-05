@@ -72,4 +72,7 @@ public enum TerrainType
 
     /// <summary>마을 모양 5 — 작은집 6채가 오와 열을 맞춘 격자 마을(1타일).</summary>
     Village5,
+
+    /// <summary>소형 항구 — 창고+잔교+나룻배 물가 타일(1타일, 물 인접 배치).</summary>
+    PortSmall,
 }
