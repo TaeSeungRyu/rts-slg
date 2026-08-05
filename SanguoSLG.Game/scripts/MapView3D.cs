@@ -110,6 +110,11 @@ public partial class MapView3D : Node3D
             {
                 AddChild(BuildChimneySmoke(HexToWorld(tile)));
             }
+
+            if (terrain == TerrainType.IceMountain)
+            {
+                AddChild(BuildSnowfall(HexToWorld(tile)));
+            }
         }
 
         BuildWaterBorder(map);
@@ -225,6 +230,48 @@ public partial class MapView3D : Node3D
             Gravity = Vector3.Zero,
             ScaleAmountMin = 0.8f,
             ScaleAmountMax = 1.9f,
+            ColorRamp = gradient,
+        };
+    }
+
+    // 눈 내림: 얼음산 상공에서 눈송이가 천천히 흩날리며 내려와 지면 근처에서 사라진다.
+    private static Node3D BuildSnowfall(Vector3 tileOrigin)
+    {
+        var gradient = new Gradient();
+        gradient.SetColor(0, new Color(1f, 1f, 1f, 0.9f));
+        gradient.AddPoint(0.85f, new Color(1f, 1f, 1f, 0.85f));
+        gradient.SetColor(1, new Color(1f, 1f, 1f, 0f));
+
+        var mesh = new SphereMesh
+        {
+            Radius = 0.012f,
+            Height = 0.02f,
+            RadialSegments = 5,
+            Rings = 3,
+            Material = new StandardMaterial3D
+            {
+                VertexColorUseAsAlbedo = true,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            },
+        };
+
+        return new CpuParticles3D
+        {
+            Position = tileOrigin + new Vector3(0f, 1.35f, 0f),
+            Amount = 34,
+            Lifetime = 4.6f,
+            Preprocess = 5f,
+            Mesh = mesh,
+            EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
+            EmissionBoxExtents = new Vector3(0.55f, 0.05f, 0.55f),
+            Direction = new Vector3(0f, -1f, 0f),
+            Spread = 10f,
+            InitialVelocityMin = 0.20f,
+            InitialVelocityMax = 0.28f,
+            Gravity = new Vector3(0.015f, -0.02f, 0.01f),
+            ScaleAmountMin = 0.7f,
+            ScaleAmountMax = 1.3f,
             ColorRamp = gradient,
         };
     }
