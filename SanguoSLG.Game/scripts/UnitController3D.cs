@@ -242,6 +242,8 @@ public partial class UnitController3D : Node3D
             var marker = new MeshInstance3D
             {
                 Mesh = new CylinderMesh { TopRadius = 0.09f, BottomRadius = 0.09f, Height = 0.03f, RadialSegments = 16 },
+                // 반투명 오버레이도 기본값은 그림자를 드리운다 — 지면 소품 위 그림자 어른거림 방지
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
                 MaterialOverride = new StandardMaterial3D
                 {
                     AlbedoColor = new Color(0.95f, 0.90f, 0.70f, 0.9f),
@@ -311,6 +313,8 @@ public partial class UnitController3D : Node3D
                 Height = 0.04f,
                 RadialSegments = 6,
             },
+            // 호버 육각이 타일에 그림자를 드리우면 낮은 소품(모래톱 등) 위가 어두워지며 반짝인다
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
             Visible = false,
             MaterialOverride = new StandardMaterial3D
             {

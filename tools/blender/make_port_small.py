@@ -78,7 +78,8 @@ box("house_body", HW, HD, HH, HX, HY, Z + HH / 2, M_WALL, rot_z=HROT)
 cs, sn = math.cos(HROT), math.sin(HROT)
 for sx in (-1, 1):
     for sy in (-1, 1):
-        dx, dy = sx * (HW / 2 - 0.013), sy * (HD / 2 - 0.013)
+        # 기둥 바깥면이 벽면과 같은 평면이면 z-파이팅으로 반짝인다 — 0.006 확실히 돌출
+        dx, dy = sx * (HW / 2 - 0.008), sy * (HD / 2 - 0.008)
         box(f"house_post_{sx}_{sy}", 0.028, 0.028, HH,
             HX + dx * cs - dy * sn, HY + dx * sn + dy * cs, Z + HH / 2, M_WOOD, rot_z=HROT)
 box("house_door", 0.075, 0.02, 0.075, HX + 0.02 * cs + (HD / 2 + 0.004) * sn,
@@ -127,7 +128,8 @@ box("shed_body", SW, SD, SH, SX, SY, Z + SH / 2, M_WALL2, rot_z=SROT)
 scs, ssn = math.cos(SROT), math.sin(SROT)
 for sx in (-1, 1):
     for sy in (-1, 1):
-        dx, dy = sx * (SW / 2 - 0.011), sy * (SD / 2 - 0.011)
+        # 기둥 바깥면이 벽면과 정확히 같은 평면이었음(0.022 기둥, SW/2-0.011) — 0.006 돌출
+        dx, dy = sx * (SW / 2 - 0.005), sy * (SD / 2 - 0.005)
         box(f"shed_post_{sx}_{sy}", 0.022, 0.022, SH,
             SX + dx * scs - dy * ssn, SY + dx * ssn + dy * scs, Z + SH / 2, M_WOOD, rot_z=SROT)
 pyramid("shed_eave", SW * 0.80, SW * 0.44, SW * 0.11, SX, SY, Z + SH + SW * 0.055, M_ROOF, rot_z=SROT)
