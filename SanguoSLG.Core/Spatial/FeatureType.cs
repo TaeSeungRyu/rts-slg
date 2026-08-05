@@ -14,4 +14,7 @@ public enum FeatureType
 
     /// <summary>폭포 절벽산 — 3타일(절벽 2 + 소 1), 이동 불가 예정.</summary>
     WaterfallCliff,
+
+    /// <summary>중형 항구 — 2타일(동서 쌍), 남쪽이 물과 접해야 한다.</summary>
+    PortMedium,
 }

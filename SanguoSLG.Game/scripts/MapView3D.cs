@@ -202,6 +202,7 @@ public partial class MapView3D : Node3D
             [FeatureType.MountainLarge] = GD.Load<PackedScene>("res://assets/models/mountain-large.glb"),
             [FeatureType.MountainHuge] = GD.Load<PackedScene>("res://assets/models/mountain-huge.glb"),
             [FeatureType.WaterfallCliff] = GD.Load<PackedScene>("res://assets/models/waterfall-cliff.glb"),
+            [FeatureType.PortMedium] = GD.Load<PackedScene>("res://assets/models/port-medium.glb"),
         };
 
         foreach (var feature in features)
@@ -219,6 +220,13 @@ public partial class MapView3D : Node3D
             var instance = models[feature.Type].Instantiate<Node3D>();
             instance.Position = centroid;
             AddChild(instance);
+
+            if (feature.Type == FeatureType.PortMedium)
+            {
+                // 항구 지물: 구름 없음, 잔교·울타리 등 얇은 부재는 그림자 제외(어른거림 방지)
+                DisableThinShadows(instance);
+                continue;
+            }
 
             if (feature.Type == FeatureType.WaterfallCliff)
             {

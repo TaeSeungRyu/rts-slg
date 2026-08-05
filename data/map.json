@@ -8,7 +8,8 @@
     { "type": "mountain_medium", "q": 8, "r": 5 },
     { "type": "mountain_large", "q": -3, "r": 3 },
     { "type": "mountain_huge", "q": 9, "r": 6 },
-    { "type": "waterfall_cliff", "q": -4, "r": -5 }
+    { "type": "waterfall_cliff", "q": -4, "r": -5 },
+    { "type": "port_medium", "q": 8, "r": 1 }
   ],
   "terrain": {
     "legend": {

@@ -38,6 +38,15 @@ public class FeatureFootprintTests
     }
 
     [Fact]
+    public void 중형항구_발자국은_붙어있는_2타일이다()
+    {
+        var offsets = FeatureFootprint.OffsetsFor(FeatureType.PortMedium);
+
+        Assert.Equal(2, offsets.Count);
+        Assert.Equal(1, offsets[0].Distance(offsets[1]));
+    }
+
+    [Fact]
     public void 실제_시나리오에서_지물은_맵_안_평야이며_성곽과_겹치지_않는다()
     {
         var scenario = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());

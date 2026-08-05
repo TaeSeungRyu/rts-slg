@@ -15,12 +15,16 @@ public static class FeatureFootprint
     // 절벽 2타일(앵커·동쪽) + 남쪽 소(웅덩이) 1타일.
     private static readonly HexCoord[] WaterfallCliff = { new(0, 0), new(1, 0), new(0, 1) };
 
+    // 앵커·동쪽 2타일 쌍 — 남쪽이 물과 접하는 자리에 배치한다.
+    private static readonly HexCoord[] PortMedium = { new(0, 0), new(1, 0) };
+
     /// <summary>앵커 기준 상대 오프셋.</summary>
     public static IReadOnlyList<HexCoord> OffsetsFor(FeatureType type) => type switch
     {
         FeatureType.MountainLarge => MountainLarge,
         FeatureType.MountainHuge => MountainHuge,
         FeatureType.WaterfallCliff => WaterfallCliff,
+        FeatureType.PortMedium => PortMedium,
         _ => MountainMedium,
     };
 
