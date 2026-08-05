@@ -101,10 +101,13 @@ wings = {
 for tag, (cx, cy, sx, sy) in wings.items():
     # 1층 몸체 + 중간 처마 띠(2단 구분) + 2층 몸체(살짝 안쪽) + 기와지붕
     box(f"wing_{tag}_b1", sx, sy, H1, cx, cy, Z + H1 / 2, M_WALL)
-    box(f"wing_{tag}_eave", sx + 0.026, sy + 0.026, 0.016, cx, cy, Z + H1 + 0.008 - EMB, M_ROOF)
-    box(f"wing_{tag}_b2", sx * 0.94, sy * 0.94, H2, cx, cy, Z + H1 + 0.016 + H2 / 2 - EMB, M_WALL2)
+    # 처마 띠: 동서 띠는 남북 띠와 모서리에서 겹치지 않게 짧게 —
+    # 겹치면 윗면(같은 높이·같은 법선)이 z-파이팅으로 깜빡인다
+    ex, ey = (sx + 0.026, sy + 0.026) if tag in ("n", "s") else (sx + 0.026, sy - 0.034)
+    box(f"wing_{tag}_eave", ex, ey, 0.016, cx, cy, Z + H1 + 0.008 - EMB, M_ROOF)
+    box(f"wing_{tag}_b2", sx * 0.94, sy * 0.94, H2, cx, cy, Z + H1 + 0.016 + H2 / 2 - 2 * EMB, M_WALL2)
     hip_roof(f"wing_{tag}_roof", sx * 0.64, sy * 0.64, 0.052, cx, cy,
-             Z + H1 + 0.016 + H2 + 0.026 - 2 * EMB, M_ROOF)
+             Z + H1 + 0.016 + H2 + 0.026 - 3 * EMB, M_ROOF)
 
 # 모서리 기둥 4개(바깥 모서리, 1층 높이)
 for sx_ in (-1, 1):
@@ -113,9 +116,11 @@ for sx_ in (-1, 1):
             sx_ * (OW / 2 - 0.016), sy_ * (OW / 2 - 0.016),
             Z + H1 / 2, M_WOOD)
 
-# 남쪽 날개 정문(어두운 문 + 문 위 작은 기와)
-box("gate_door", 0.085, 0.02, 0.062, 0.0, -(OW / 2) - 0.002, Z + 0.031, M_ROOF)
-box("gate_eave", 0.12, 0.045, 0.014, 0.0, -(OW / 2) - 0.008, Z + 0.075, M_ROOF)
+# 남쪽 벽 문: 장식 없는 단순 구멍(어두운 개구부), 나머지 3벽에는 창문 1개씩
+box("door_hole", 0.085, 0.020, 0.062, 0.0, -(OW / 2) - 0.004, Z + 0.031, M_ROOF)
+box("window_n", 0.055, 0.020, 0.042, 0.0, +(OW / 2) + 0.004, Z + H1 * 0.55, M_ROOF)
+box("window_e", 0.020, 0.055, 0.042, +(OW / 2) + 0.004, 0.0, Z + H1 * 0.55, M_ROOF)
+box("window_w", 0.020, 0.055, 0.042, -(OW / 2) - 0.004, 0.0, Z + H1 * 0.55, M_ROOF)
 
 # ── 중정 바닥 + 우물 (바닥·우물은 아래로 파묻어 접촉면 z-파이팅 방지) ──
 box("court_yard", IW * 0.96, IW * 0.96, 0.014, 0.0, 0.0, Z + 0.004, M_YARD)
@@ -128,24 +133,26 @@ FENCE_H = 0.042
 FENCE_T = 0.028
 
 
-def fence_piece(name, x1, y1, x2, y2):
+def fence_piece(name, x1, y1, x2, y2, dz):
+    """dz: 조각별 미세 높이차 — 이웃 조각과 모서리에서 겹칠 때 윗면 z-파이팅 방지."""
     mx, my = (x1 + x2) / 2, (y1 + y2) / 2
     length = math.hypot(x2 - x1, y2 - y1)
     ang = math.atan2(y2 - y1, x2 - x1)
-    box(f"{name}_wall", length, FENCE_T, FENCE_H, mx, my, Z + FENCE_H / 2, M_WALL, rot_z=ang)
-    box(f"{name}_cap", length, FENCE_T * 1.5, 0.012, mx, my, Z + FENCE_H + 0.006, M_ROOF, rot_z=ang)
+    box(f"{name}_wall", length, FENCE_T, FENCE_H + dz, mx, my, Z + (FENCE_H + dz) / 2, M_WALL, rot_z=ang)
+    box(f"{name}_cap", length, FENCE_T * 1.5, 0.012, mx, my, Z + FENCE_H + dz + 0.006, M_ROOF, rot_z=ang)
 
 
 for i in range(6):
     a1, a2 = math.radians(60 * i + 30), math.radians(60 * (i + 1) + 30)
     x1, y1 = FENCE_R * math.cos(a1), FENCE_R * math.sin(a1)
     x2, y2 = FENCE_R * math.cos(a2), FENCE_R * math.sin(a2)
+    dz = (i % 3) * 0.0012
     if i == 3:
-        fence_piece(f"fence_{i}", x1, y1, x1 + (x2 - x1) * 0.72, y1 + (y2 - y1) * 0.72)
+        fence_piece(f"fence_{i}", x1, y1, x1 + (x2 - x1) * 0.72, y1 + (y2 - y1) * 0.72, dz)
     elif i == 4:
-        fence_piece(f"fence_{i}", x1 + (x2 - x1) * 0.28, y1 + (y2 - y1) * 0.28, x2, y2)
+        fence_piece(f"fence_{i}", x1 + (x2 - x1) * 0.28, y1 + (y2 - y1) * 0.28, x2, y2, dz)
     else:
-        fence_piece(f"fence_{i}", x1, y1, x2, y2)
+        fence_piece(f"fence_{i}", x1, y1, x2, y2, dz)
 
 bpy.ops.object.select_all(action="SELECT")
 bpy.ops.export_scene.gltf(filepath=OUT, export_format="GLB", use_selection=True)
