@@ -1,24 +1,29 @@
 {
-  "min_q": -2,
-  "max_q": 8,
-  "min_r": -3,
-  "max_r": 5,
+  "min_q": -4,
+  "max_q": 10,
+  "min_r": -5,
+  "max_r": 7,
   "terrain": {
     "legend": {
       "G": "plains", "F": "forest", "M": "mountain", "D": "desert",
       "R": "river", "B": "bridge", "W": "water_shallow", "V": "water_deep",
-      "S": "rocks", "H": "rock_hill", "O": "water_rocks"
+      "S": "rocks", "H": "rock_hill", "O": "water_rocks",
+      "P": "paddy", "A": "farm", "K": "workshop"
     },
     "rows": [
-      "GGFFRGGGMMM",
-      "GGGFRGGGHMM",
-      "GGGGRFGGSMM",
-      "GGGGRFGGGGM",
-      "GGGGBGGGGGG",
-      "GGDDRGGGWWW",
-      "GDDRGGGGWVV",
-      "GGDRGGGWVVO",
-      "GGGRGGWVVWG"
+      "GGGFFGRGGGMMMGG",
+      "GGFFGGRGGGMMMMG",
+      "GGGGFFRGGGMMMMG",
+      "GGGGGFRGGAHMMMG",
+      "GGGGGKRFGASMMGG",
+      "GGGGGGRFGGGGMGG",
+      "GGGGGGBGGGGGGGG",
+      "GGPPDDRGGGWWWWW",
+      "GGGDDRPGGGWVVVW",
+      "GGGGDRGGGWVVOWW",
+      "GGGGGRGGWVVWGGG",
+      "GGGGGRGGWVVWGGG",
+      "GGGGGRGGGWWGGGG"
     ]
   }
 }

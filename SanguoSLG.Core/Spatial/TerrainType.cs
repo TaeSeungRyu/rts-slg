@@ -24,4 +24,13 @@ public enum TerrainType
 
     /// <summary>물에 있는 돌 — 물가/대하의 암초.</summary>
     WaterRocks,
+
+    /// <summary>논 — 물 댄 벼농사 타일.</summary>
+    Paddy,
+
+    /// <summary>밭 — 밭농사 타일.</summary>
+    Farm,
+
+    /// <summary>공방 — 생산 시설 타일.</summary>
+    Workshop,
 }
