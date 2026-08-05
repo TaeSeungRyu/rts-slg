@@ -22,6 +22,16 @@ public partial class UnitController3D : Node3D
     private Unit _unit = null!;
     private Camera3D _camera = null!;
     private bool _moving;
+    private bool _attacking;
+
+    // 기병 프로시저럴 애니메이션 대상(부위 노드와 기준 자세)
+    private readonly List<Node3D> _bodies = new();
+    private readonly List<Node3D[]> _legs = new();
+    private readonly List<Node3D> _spears = new();
+    private readonly List<Vector3> _bodyBasePos = new();
+    private readonly List<Vector3> _spearBaseRot = new();
+    private float _gallopTime;
+    private Vector3 _lastPosition;
 
     // 하이라이트·경로 오버레이는 유닛과 함께 움직이면 안 되므로 형제 노드에 담는다.
     private Node3D _overlay = null!;
@@ -54,6 +64,87 @@ public partial class UnitController3D : Node3D
         {
             ClearOverlay();
         }
+
+        AnimateGallop((float)delta);
+    }
+
+    // 이동 중 갤럽 모션: 진행 방향으로 회전 + 몸통 바운스 + 다리 스윙(대각 트롯).
+    private void AnimateGallop(float dt)
+    {
+        var moved = Position - _lastPosition;
+        _lastPosition = Position;
+
+        if (_moving)
+        {
+            if (moved.LengthSquared() > 0.000001f)
+            {
+                var targetYaw = Mathf.Atan2(moved.X, moved.Z);
+                Rotation = new Vector3(0f, Mathf.LerpAngle(Rotation.Y, targetYaw, 1f - Mathf.Exp(-14f * dt)), 0f);
+            }
+
+            _gallopTime += dt * 15f;
+            for (var i = 0; i < _bodies.Count; i++)
+            {
+                var phase = i * 0.8f;
+                var bob = Mathf.Abs(Mathf.Sin(_gallopTime + phase)) * 0.030f;
+                _bodies[i].Position = _bodyBasePos[i] + new Vector3(0f, bob, 0f);
+                _bodies[i].Rotation = new Vector3(Mathf.Sin(_gallopTime + phase) * 0.07f,
+                    _bodies[i].Rotation.Y, 0f);
+
+                var swing = Mathf.Sin(_gallopTime + phase) * 0.55f;
+                var legs = _legs[i];
+                legs[0].Rotation = new Vector3(swing, 0f, 0f);   // 앞왼
+                legs[3].Rotation = new Vector3(swing, 0f, 0f);   // 뒤오
+                legs[1].Rotation = new Vector3(-swing, 0f, 0f);  // 앞오
+                legs[2].Rotation = new Vector3(-swing, 0f, 0f);  // 뒤왼
+            }
+        }
+        else if (_gallopTime != 0f && !_attacking)
+        {
+            // 정지: 기준 자세로 복귀
+            _gallopTime = 0f;
+            for (var i = 0; i < _bodies.Count; i++)
+            {
+                _bodies[i].Position = _bodyBasePos[i];
+                _bodies[i].Rotation = new Vector3(0f, _bodies[i].Rotation.Y, 0f);
+                foreach (var leg in _legs[i])
+                {
+                    leg.Rotation = Vector3.Zero;
+                }
+            }
+        }
+    }
+
+    /// <summary>공격 모션: 부대 전체가 짧게 돌진하며 창을 앞으로 내지르고 복귀한다.</summary>
+    public void PlayAttackMotion()
+    {
+        if (_moving || _attacking)
+        {
+            return;
+        }
+
+        _attacking = true;
+        var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
+        var origin = Position;
+
+        var tween = CreateTween();
+        // 1) 창을 수평으로 내림(겨눔)
+        foreach (var spear in _spears)
+        {
+            tween.Parallel().TweenProperty(spear, "rotation:x", _spearBaseRot[_spears.IndexOf(spear)].X + 0.75f, 0.10f);
+        }
+
+        // 2) 돌진 → 3) 복귀(창도 원위치)
+        tween.Chain().TweenProperty(this, "position", origin + forward * 0.16f, 0.12f)
+            .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+        tween.Chain().TweenProperty(this, "position", origin, 0.22f)
+            .SetTrans(Tween.TransitionType.Sine);
+        for (var i = 0; i < _spears.Count; i++)
+        {
+            tween.Parallel().TweenProperty(_spears[i], "rotation:x", _spearBaseRot[i].X, 0.18f);
+        }
+
+        tween.Finished += () => _attacking = false;
     }
 
     private static bool IsCameraManeuvering() =>
@@ -67,6 +158,13 @@ public partial class UnitController3D : Node3D
 
     public override void _UnhandledInput(InputEvent @event)
     {
+        // F: 공격 모션 데모(전투 시스템이 생기면 그쪽에서 호출)
+        if (@event is InputEventKey { Pressed: true, Keycode: Key.F })
+        {
+            PlayAttackMotion();
+            return;
+        }
+
         if (@event is InputEventMouseMotion motion)
         {
             if (IsCameraManeuvering())
@@ -225,32 +323,34 @@ public partial class UnitController3D : Node3D
         _overlay.AddChild(_hover);
     }
 
+    // 기병대 모델(3기)을 붙이고, 프로시저럴 애니메이션 대상 부위를 이름으로 수집한다.
     private void BuildToken()
     {
-        var body = new MeshInstance3D
-        {
-            Mesh = new CylinderMesh { TopRadius = 0.16f, BottomRadius = 0.22f, Height = 0.5f },
-            Position = new Vector3(0f, 0.25f, 0f),
-            MaterialOverride = new StandardMaterial3D
-            {
-                AlbedoColor = new Color(0.78f, 0.22f, 0.19f),
-                Roughness = 0.45f,
-                Metallic = 0.15f,
-            },
-        };
-        AddChild(body);
+        var instance = GD.Load<PackedScene>("res://assets/models/cavalry.glb").Instantiate<Node3D>();
+        AddChild(instance);
 
-        var cap = new MeshInstance3D
+        for (var i = 0; i < 3; i++)
         {
-            Mesh = new SphereMesh { Radius = 0.17f, Height = 0.34f },
-            Position = new Vector3(0f, 0.55f, 0f),
-            MaterialOverride = new StandardMaterial3D
+            if (instance.FindChild($"u{i}_body", true, false) is not Node3D body)
             {
-                AlbedoColor = new Color(0.92f, 0.86f, 0.72f),
-                Roughness = 0.35f,
-                Metallic = 0.4f,
-            },
-        };
-        AddChild(cap);
+                continue;
+            }
+
+            _bodies.Add(body);
+            _bodyBasePos.Add(body.Position);
+            _legs.Add(new[]
+            {
+                (Node3D)instance.FindChild($"u{i}_leg_fl", true, false),
+                (Node3D)instance.FindChild($"u{i}_leg_fr", true, false),
+                (Node3D)instance.FindChild($"u{i}_leg_bl", true, false),
+                (Node3D)instance.FindChild($"u{i}_leg_br", true, false),
+            });
+
+            var spear = (Node3D)instance.FindChild($"u{i}_spear", true, false);
+            _spears.Add(spear);
+            _spearBaseRot.Add(spear.Rotation);
+        }
+
+        _lastPosition = Position;
     }
 }

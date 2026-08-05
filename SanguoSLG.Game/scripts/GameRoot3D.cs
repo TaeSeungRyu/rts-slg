@@ -73,12 +73,12 @@ public partial class GameRoot3D : Node3D
 
         BuildCities(mapView, scenario);
 
-        // 유닛 1기를 첫 도시에 스폰(슬라이스용).
+        // 유닛 1기를 첫 도시 성 밖(서쪽 이웃)에 스폰(슬라이스용).
         var startCity = scenario.Cities[0];
         var unitNode = new UnitController3D();
         AddChild(unitNode);
         unitNode.Init(scenario.Map, mapView, camera,
-            new Unit(new UnitId(1), startCity.Owner, startCity.Position));
+            new Unit(new UnitId(1), startCity.Owner, startCity.Position + new HexCoord(-1, 0)));
 
         AddChild(BuildVignette(tone));
 
@@ -147,9 +147,9 @@ public partial class GameRoot3D : Node3D
         }
         else
         {
-            var dist = Mathf.Max(3.5f, models.Length * 1.8f);
-            camera.Position = new Vector3(centerX, dist * 0.9f, dist);
-            camera.LookAtFromPosition(camera.Position, new Vector3(centerX, 0.4f, 0f), Vector3.Up);
+            var dist = Mathf.Max(1.6f, models.Length * 1.8f);
+            camera.Position = new Vector3(centerX, dist * 0.8f, dist);
+            camera.LookAtFromPosition(camera.Position, new Vector3(centerX, 0.25f, 0f), Vector3.Up);
         }
 
         camera.Current = true;
