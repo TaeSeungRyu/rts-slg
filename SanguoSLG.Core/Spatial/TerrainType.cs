@@ -42,4 +42,7 @@ public enum TerrainType
 
     /// <summary>작은 절벽 — 폭포 절벽산과 어울리는 1타일 단애(이동 불가 예정).</summary>
     Cliff,
+
+    /// <summary>얼음산 — 빙설 첨탑 산(1타일, 이동 불가 예정).</summary>
+    IceMountain,
 }

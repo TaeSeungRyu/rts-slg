@@ -16,11 +16,11 @@
       "R": "river", "B": "bridge", "W": "water_shallow", "V": "water_deep",
       "S": "rocks", "H": "rock_hill", "O": "water_rocks",
       "P": "paddy", "A": "farm", "K": "workshop", "T": "rock_mountain",
-      "X": "karst", "C": "cliff"
+      "X": "karst", "C": "cliff", "I": "ice_mountain"
     },
     "rows": [
-      "GGCFFGRGGGMMMGG",
-      "GGFFGGRGGTMMMMG",
+      "GGCFFGRGGIMMMGG",
+      "GGFFGGRGGTMMMIG",
       "GGGGFFRGGTMMMMG",
       "GGGGGFRGGAHMMMG",
       "GGGGGKRFGASMMGG",
