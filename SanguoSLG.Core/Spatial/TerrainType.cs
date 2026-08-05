@@ -69,4 +69,7 @@ public enum TerrainType
 
     /// <summary>마을 모양 4 — 원형 호수를 작은집들이 둘러싼 호수 마을(1타일).</summary>
     Village4,
+
+    /// <summary>마을 모양 5 — 작은집 6채가 오와 열을 맞춘 격자 마을(1타일).</summary>
+    Village5,
 }

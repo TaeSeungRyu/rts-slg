@@ -16,7 +16,7 @@ public class TerrainLoadingTests
             balanceJson: """{ "monthly_tax_per_city": 100 }""",
             mapJson: """
             {
-              "min_q": 0, "max_q": 2, "min_r": 0, "max_r": 8,
+              "min_q": 0, "max_q": 2, "min_r": 0, "max_r": 9,
               "terrain": {
                 "legend": {
                   "G": "plains", "F": "forest", "M": "mountain", "D": "desert",
@@ -26,9 +26,9 @@ public class TerrainLoadingTests
                   "T": "rock_mountain", "X": "karst", "C": "cliff", "I": "ice_mountain",
                   "E": "ice_wall_large", "L": "ice_wall_small", "J": "village_1",
                   "N": "swamp", "Q": "desert_cactus", "U": "village_2", "Y": "village_3",
-                  "Z": "village_4"
+                  "Z": "village_4", "5": "village_5"
                 },
-                "rows": [ "GFM", "DRB", "WVG", "SHO", "PAK", "TXC", "IEL", "JNQ", "UYZ" ]
+                "rows": [ "GFM", "DRB", "WVG", "SHO", "PAK", "TXC", "IEL", "JNQ", "UYZ", "5GG" ]
               }
             }
             """);
@@ -60,6 +60,7 @@ public class TerrainLoadingTests
         Assert.Equal(TerrainType.Village2, map.TerrainAt(new HexCoord(0, 8)));
         Assert.Equal(TerrainType.Village3, map.TerrainAt(new HexCoord(1, 8)));
         Assert.Equal(TerrainType.Village4, map.TerrainAt(new HexCoord(2, 8)));
+        Assert.Equal(TerrainType.Village5, map.TerrainAt(new HexCoord(0, 9)));
     }
 
     [Fact]

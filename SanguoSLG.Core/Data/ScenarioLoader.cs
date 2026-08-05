@@ -129,6 +129,7 @@ public sealed class ScenarioLoader
         "village_2" => TerrainType.Village2,
         "village_3" => TerrainType.Village3,
         "village_4" => TerrainType.Village4,
+        "village_5" => TerrainType.Village5,
         _ => throw new InvalidDataException($"알 수 없는 지형: {name}"),
     };
 
