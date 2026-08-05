@@ -53,6 +53,8 @@ public partial class MapView3D : Node3D
         _tiles[TerrainType.Karst] = GD.Load<PackedScene>("res://assets/models/karst-small.glb");
         _tiles[TerrainType.Cliff] = GD.Load<PackedScene>("res://assets/models/cliff-small.glb");
         _tiles[TerrainType.IceMountain] = GD.Load<PackedScene>("res://assets/models/ice-mountain.glb");
+        _tiles[TerrainType.IceWallLarge] = GD.Load<PackedScene>("res://assets/models/ice-wall-large.glb");
+        _tiles[TerrainType.IceWallSmall] = GD.Load<PackedScene>("res://assets/models/ice-wall-small.glb");
         _water = GD.Load<PackedScene>("res://assets/models/water.glb");
         _riverStraight = GD.Load<PackedScene>("res://assets/models/river-straight.glb");
         _riverCorner = GD.Load<PackedScene>("res://assets/models/river-corner.glb");
@@ -111,7 +113,8 @@ public partial class MapView3D : Node3D
                 AddChild(BuildChimneySmoke(HexToWorld(tile)));
             }
 
-            if (terrain == TerrainType.IceMountain)
+            // 한랭 지형군(얼음산·얼음벽)에는 국지적으로 눈이 내린다
+            if (terrain is TerrainType.IceMountain or TerrainType.IceWallLarge or TerrainType.IceWallSmall)
             {
                 AddChild(BuildSnowfall(HexToWorld(tile)));
             }

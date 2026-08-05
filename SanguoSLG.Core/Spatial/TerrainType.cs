@@ -45,4 +45,10 @@ public enum TerrainType
 
     /// <summary>얼음산 — 빙설 첨탑 산(1타일, 이동 불가 예정).</summary>
     IceMountain,
+
+    /// <summary>거대한 얼음벽 — 타일을 가로지르는 높은 빙벽(1타일, 이동 불가 예정).</summary>
+    IceWallLarge,
+
+    /// <summary>작은 얼음벽 모음 — 부서진 낮은 빙벽 조각들(1타일, 이동 불가 예정).</summary>
+    IceWallSmall,
 }
