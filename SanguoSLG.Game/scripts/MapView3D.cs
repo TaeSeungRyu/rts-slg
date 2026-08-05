@@ -137,7 +137,7 @@ public partial class MapView3D : Node3D
                 AddChild(BuildSwampBubbles(HexToWorld(tile)));
             }
 
-            // 마을 타일: 작은 주민이 나타나 배회하다 사라지는 생활감 연출
+            // 마을 타일: 작은 주민들이 나타나 배회하다 사라지는 생활감 연출
             if (terrain is TerrainType.Village1 or TerrainType.Village2 or TerrainType.Village3
                 or TerrainType.Village4 or TerrainType.Village5)
             {
@@ -145,6 +145,8 @@ public partial class MapView3D : Node3D
                 {
                     Position = HexToWorld(tile),
                     Seed = unchecked((ulong)(tile.Q * 92821L + tile.R * 68917L + 7919L)),
+                    MaxVillagers = 2 + (((tile.Q * 7 + tile.R * 13) % 2 + 2) % 2), // 마을마다 2~3명
+                    Obstacles = VillageObstacles(terrain),
                 });
             }
         }
@@ -307,6 +309,51 @@ public partial class MapView3D : Node3D
             ColorRamp = gradient,
         };
     }
+
+    // 마을별 주민 배회 장애물 — 건물·우물·호수·나무를 원으로 근사한 (x, z, 반경).
+    // 모델(Blender) 좌표 (bx, by)는 Godot 로컬 (bx, -by)로 변환해 적는다.
+    private static Vector3[] VillageObstacles(TerrainType terrain) => terrain switch
+    {
+        TerrainType.Village1 => new[]
+        {
+            new Vector3(-0.02f, -0.26f, 0.14f),  // 북쪽 큰 집
+            new Vector3(-0.27f, 0.13f, 0.11f),   // 남서 집
+            new Vector3(0.25f, 0.16f, 0.10f),    // 남동 집
+            new Vector3(0.02f, 0.03f, 0.07f),    // 우물
+            new Vector3(0.23f, -0.17f, 0.05f),   // 장독
+        },
+        TerrainType.Village2 => new[]
+        {
+            new Vector3(0f, -0.24f, 0.16f),      // 2단집
+            new Vector3(-0.25f, 0.11f, 0.11f),   // 굴뚝 집
+            new Vector3(0.24f, 0.16f, 0.10f),    // 남동 집
+            new Vector3(0.30f, -0.06f, 0.07f),   // 작은나무
+        },
+        TerrainType.Village3 => new[]
+        {
+            new Vector3(-0.24f, -0.06f, 0.17f),  // 길쭉한 창고채
+            new Vector3(0.22f, -0.16f, 0.11f),   // 작은집 a
+            new Vector3(0.21f, 0.18f, 0.10f),    // 작은집 b
+            new Vector3(-0.02f, -0.30f, 0.07f),  // 북쪽 나무
+            new Vector3(0.34f, 0.02f, 0.06f),    // 남동 나무
+            new Vector3(-0.16f, 0.17f, 0.07f),   // 장독들
+        },
+        TerrainType.Village4 => new[]
+        {
+            new Vector3(0f, 0f, 0.23f),          // 원형 호수(물가 포함)
+            new Vector3(0f, -0.335f, 0.11f),     // 북쪽 2단집
+            new Vector3(-0.31f, -0.13f, 0.09f),  // 서쪽 집
+            new Vector3(-0.28f, 0.19f, 0.09f),   // 남서 집
+            new Vector3(0.29f, 0.17f, 0.09f),    // 남동 집
+            new Vector3(0.30f, -0.24f, 0.07f),   // 나무
+        },
+        TerrainType.Village5 => new[]
+        {
+            new Vector3(-0.24f, -0.175f, 0.09f), new Vector3(0f, -0.175f, 0.09f), new Vector3(0.24f, -0.175f, 0.09f),
+            new Vector3(-0.24f, 0.135f, 0.09f), new Vector3(0f, 0.135f, 0.09f), new Vector3(0.24f, 0.135f, 0.09f),
+        },
+        _ => System.Array.Empty<Vector3>(),
+    };
 
     // 늪 방울: 탁한 수면에서 방울이 피어올랐다가 터지듯 사라진다.
     private static Node3D BuildSwampBubbles(Vector3 tileOrigin)
