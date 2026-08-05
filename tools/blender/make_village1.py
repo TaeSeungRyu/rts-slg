@@ -123,15 +123,15 @@ def fence_piece(name, x1, y1, x2, y2):
     box(f"{name}_cap", length, FENCE_T * 1.5, 0.012, mx, my, Z + FENCE_H + 0.006, M_ROOF, rot_z=ang)
 
 
+# 타일 육각의 꼭짓점은 30°+60k 방향(포인티탑, Blender 기준) — 담도 같은 방향으로 맞춘다
 for i in range(6):
-    a1, a2 = math.radians(60 * i), math.radians(60 * (i + 1))
+    a1, a2 = math.radians(60 * i + 30), math.radians(60 * (i + 1) + 30)
     x1, y1 = FENCE_R * math.cos(a1), FENCE_R * math.sin(a1)
     x2, y2 = FENCE_R * math.cos(a2), FENCE_R * math.sin(a2)
-    if i == 4:  # 남쪽 변(-Y): 가운데를 터서 출입구로 남긴다
-        gx1, gy1 = x1 + (x2 - x1) * 0.36, y1 + (y2 - y1) * 0.36
-        gx2, gy2 = x1 + (x2 - x1) * 0.64, y1 + (y2 - y1) * 0.64
-        fence_piece(f"fence_{i}a", x1, y1, gx1, gy1)
-        fence_piece(f"fence_{i}b", gx2, gy2, x2, y2)
+    if i == 3:    # 남쪽 꼭짓점(270°)으로 끝나는 변: 끝을 잘라 출입구 반쪽
+        fence_piece(f"fence_{i}", x1, y1, x1 + (x2 - x1) * 0.72, y1 + (y2 - y1) * 0.72)
+    elif i == 4:  # 남쪽 꼭짓점에서 시작하는 변: 앞을 잘라 출입구 반쪽
+        fence_piece(f"fence_{i}", x1 + (x2 - x1) * 0.28, y1 + (y2 - y1) * 0.28, x2, y2)
     else:
         fence_piece(f"fence_{i}", x1, y1, x2, y2)
 
