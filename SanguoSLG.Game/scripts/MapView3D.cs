@@ -145,7 +145,7 @@ public partial class MapView3D : Node3D
                 {
                     Position = HexToWorld(tile),
                     Seed = unchecked((ulong)(tile.Q * 92821L + tile.R * 68917L + 7919L)),
-                    MaxVillagers = 2 + (((tile.Q * 7 + tile.R * 13) % 2 + 2) % 2), // 마을마다 2~3명
+                    MaxVillagers = 4 + (((tile.Q * 7 + tile.R * 13) % 2 + 2) % 2), // 마을마다 4~5명
                     Obstacles = VillageObstacles(terrain),
                 });
             }

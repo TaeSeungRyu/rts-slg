@@ -23,7 +23,9 @@ public partial class VillagerAmbience : Node3D
     /// <summary>피해 다닐 원형 장애물 목록 — (x, z, 반경), 타일 로컬 좌표.</summary>
     public Vector3[] Obstacles { get; set; } = System.Array.Empty<Vector3>();
 
-    private const float GroundY = 0.2f;       // 타일 윗면 높이
+    /// <summary>주민 발밑 높이 — 마을(타일 윗면) 0.2, 성(기단 윗면) 0.0864.</summary>
+    public float GroundY { get; set; } = 0.2f;
+
     private const float WanderRadius = 0.32f; // 담(0.50) 안쪽 배회 반경
     private const float WalkSpeed = 0.10f;    // 초당 이동 거리
     private const float FadeTime = 0.5f;      // 나타남/사라짐 시간
@@ -35,6 +37,8 @@ public partial class VillagerAmbience : Node3D
         new(0.48f, 0.30f, 0.16f), // 갈색
         new(0.30f, 0.46f, 0.24f), // 풀빛
         new(0.52f, 0.24f, 0.20f), // 팥죽색
+        new(0.82f, 0.78f, 0.70f), // 무명(흰옷)
+        new(0.22f, 0.22f, 0.28f), // 먹빛
     };
 
     private enum Phase { Waiting, Appearing, Walking, Disappearing }

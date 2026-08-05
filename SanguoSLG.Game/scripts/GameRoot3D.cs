@@ -240,6 +240,7 @@ public partial class GameRoot3D : Node3D
             var root = new Node3D { Position = centroid + new Vector3(0f, view.TileTopY, 0f) };
             AddChild(root);
             root.AddChild(castles[city.Castle].Instantiate<Node3D>());
+            AddCastleAmbience(root, city);
 
             root.AddChild(new Label3D
             {
@@ -256,6 +257,62 @@ public partial class GameRoot3D : Node3D
             });
         }
     }
+
+    // 성 마당 주민 연출: 발자국 타일마다 4~5명씩 — 작은성 1배·중간성 3배·큰성 5배가 된다.
+    // 좌표는 성 모델 로컬(클러스터 중심 기준, make_castles.py의 단위 육각 × K_XY=0.5774,
+    // Blender +Y=북 → Godot -Z). 기단 윗면 높이 = PLATFORM_H 0.12 × K_Z 0.72 = 0.0864.
+    private static void AddCastleAmbience(Node3D root, City city)
+    {
+        var tiles = CastleTileOffsets(city.Castle);
+        var buildings = CastleBuildingObstacles(city.Castle);
+        for (var i = 0; i < tiles.Length; i++)
+        {
+            var (tx, tz) = tiles[i];
+            var obstacles = new Vector3[buildings.Length];
+            for (var j = 0; j < buildings.Length; j++)
+            {
+                obstacles[j] = new Vector3(buildings[j].X - tx, buildings[j].Y - tz, buildings[j].Z);
+            }
+
+            root.AddChild(new VillagerAmbience
+            {
+                Position = new Vector3(tx, 0f, tz),
+                GroundY = 0.0864f,
+                Seed = unchecked((ulong)(city.Position.Q * 92821L + city.Position.R * 68917L + i * 5077L + 31L)),
+                MaxVillagers = 4 + i % 2,
+                Obstacles = obstacles,
+            });
+        }
+    }
+
+    // 발자국 육각 중심(성 모델 로컬 x, z) — make_castles.py FOOTPRINTS × K_XY, y→-z
+    private static (float, float)[] CastleTileOffsets(CastleSize size) => size switch
+    {
+        CastleSize.Small => new[] { (0f, 0f) },
+        CastleSize.Medium => new[] { (0f, -0.5774f), (0.5f, 0.2887f), (-0.5f, 0.2887f) },
+        _ => new[] { (-0.5f, -0.5197f), (0.5f, -0.5197f), (-1f, 0.3464f), (0f, 0.3464f), (1f, 0.3464f) },
+    };
+
+    // 성내 건물 장애물 (x, z, 반경) — make_castles.py buildings 위치 × K_XY, 반경 ≈ 폭 × 0.40
+    private static Vector3[] CastleBuildingObstacles(CastleSize size) => size switch
+    {
+        CastleSize.Small => new[] { new Vector3(0f, 0f, 0.20f) },
+        CastleSize.Medium => new[]
+        {
+            new Vector3(0f, 0f, 0.20f),          // 중앙 3단(공유 꼭짓점)
+            new Vector3(0f, -0.5774f, 0.13f),    // 12시 1단
+            new Vector3(0.5f, 0.2887f, 0.13f),   // 4시 1단
+            new Vector3(-0.5f, 0.2887f, 0.13f),  // 8시 1단
+        },
+        _ => new[]
+        {
+            new Vector3(0f, 0f, 0.22f),          // 중앙 4단
+            new Vector3(-0.5f, -0.5197f, 0.17f), // 북서 3단
+            new Vector3(0.5f, -0.5197f, 0.16f),  // 북동 2단
+            new Vector3(-1f, 0.3464f, 0.13f),    // 남서 1단
+            new Vector3(1f, 0.3464f, 0.13f),     // 남동 1단
+        },
+    };
 
     private static (Vector3 Center, float Radius) MapBounds(MapView3D view, HexMap map)
     {
