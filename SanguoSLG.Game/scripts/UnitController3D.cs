@@ -246,10 +246,12 @@ public partial class UnitController3D : Node3D
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
                 MaterialOverride = new StandardMaterial3D
                 {
-                    AlbedoColor = new Color(0.95f, 0.90f, 0.70f, 0.9f),
+                    AlbedoColor = new Color(0.95f, 0.90f, 0.70f, 0.75f),
                     EmissionEnabled = true,
                     Emission = new Color(0.55f, 0.48f, 0.28f),
                     Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                    // 지면 소품과 깊이를 다투지 않게 항상 위에 그린다(깜빡임 방지)
+                    NoDepthTest = true,
                 },
             };
             _overlay.AddChild(marker);
@@ -318,10 +320,13 @@ public partial class UnitController3D : Node3D
             Visible = false,
             MaterialOverride = new StandardMaterial3D
             {
-                AlbedoColor = new Color(1f, 0.92f, 0.55f, 0.35f),
+                AlbedoColor = new Color(1f, 0.92f, 0.55f, 0.28f),
                 EmissionEnabled = true,
                 Emission = new Color(0.6f, 0.52f, 0.25f),
                 Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                // 잔교·모래톱 같은 낮은 소품과 깊이를 다투면 카메라 이동+호버 시 깜빡인다
+                // — 깊이 테스트 없이 항상 위에 그린다
+                NoDepthTest = true,
             },
         };
         _overlay.AddChild(_hover);
