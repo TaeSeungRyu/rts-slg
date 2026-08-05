@@ -51,8 +51,11 @@ public sealed class ScenarioLoader
 
         var mapDto = Deserialize<MapDto>(mapJson, "map");
         var map = BuildMap(mapDto);
+        var features = mapDto.Features
+            .Select(d => new MapFeature(ParseFeature(d.Type), new HexCoord(d.Q, d.R)))
+            .ToList();
 
-        return new Scenario(factions, cities, generals, balance, map);
+        return new Scenario(factions, cities, generals, balance, map, features);
     }
 
     private static HexMap BuildMap(MapDto dto)
@@ -89,6 +92,12 @@ public sealed class ScenarioLoader
         _ => throw new InvalidDataException($"알 수 없는 성곽 등급: {name}"),
     };
 
+    private static FeatureType ParseFeature(string name) => name switch
+    {
+        "mountain_medium" => FeatureType.MountainMedium,
+        _ => throw new InvalidDataException($"알 수 없는 지물: {name}"),
+    };
+
     private static TerrainType ParseTerrain(string name) => name switch
     {
         "plains" => TerrainType.Plains,
@@ -105,6 +114,7 @@ public sealed class ScenarioLoader
         "paddy" => TerrainType.Paddy,
         "farm" => TerrainType.Farm,
         "workshop" => TerrainType.Workshop,
+        "rock_mountain" => TerrainType.RockMountain,
         _ => throw new InvalidDataException($"알 수 없는 지형: {name}"),
     };
 

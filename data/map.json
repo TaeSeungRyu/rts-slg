@@ -3,17 +3,21 @@
   "max_q": 10,
   "min_r": -5,
   "max_r": 7,
+  "features": [
+    { "type": "mountain_medium", "q": -4, "r": -2 },
+    { "type": "mountain_medium", "q": 8, "r": 5 }
+  ],
   "terrain": {
     "legend": {
       "G": "plains", "F": "forest", "M": "mountain", "D": "desert",
       "R": "river", "B": "bridge", "W": "water_shallow", "V": "water_deep",
       "S": "rocks", "H": "rock_hill", "O": "water_rocks",
-      "P": "paddy", "A": "farm", "K": "workshop"
+      "P": "paddy", "A": "farm", "K": "workshop", "T": "rock_mountain"
     },
     "rows": [
       "GGGFFGRGGGMMMGG",
-      "GGFFGGRGGGMMMMG",
-      "GGGGFFRGGGMMMMG",
+      "GGFFGGRGGTMMMMG",
+      "GGGGFFRGGTMMMMG",
       "GGGGGFRGGAHMMMG",
       "GGGGGKRFGASMMGG",
       "GGGGGGRFGGGGMGG",

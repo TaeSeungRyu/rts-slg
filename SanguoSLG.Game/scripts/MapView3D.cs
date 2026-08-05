@@ -49,6 +49,7 @@ public partial class MapView3D : Node3D
         _tiles[TerrainType.Paddy] = GD.Load<PackedScene>("res://assets/models/paddy.glb");
         _tiles[TerrainType.Farm] = GD.Load<PackedScene>("res://assets/models/building-farm.glb");
         _tiles[TerrainType.Workshop] = GD.Load<PackedScene>("res://assets/models/workshop.glb");
+        _tiles[TerrainType.RockMountain] = GD.Load<PackedScene>("res://assets/models/stone-mountain.glb");
         _water = GD.Load<PackedScene>("res://assets/models/water.glb");
         _riverStraight = GD.Load<PackedScene>("res://assets/models/river-straight.glb");
         _riverCorner = GD.Load<PackedScene>("res://assets/models/river-corner.glb");
@@ -124,6 +125,74 @@ public partial class MapView3D : Node3D
         }
 
         AddChild(instance);
+    }
+
+    /// <summary>다중 타일 지물(중간산 등)을 발자국 중심점에 배치하고, 산꼭대기에 구름을 띄운다.</summary>
+    public void BuildFeatures(System.Collections.Generic.IReadOnlyList<MapFeature> features)
+    {
+        var mountainMedium = GD.Load<PackedScene>("res://assets/models/mountain-medium.glb");
+        foreach (var feature in features)
+        {
+            var centroid = Vector3.Zero;
+            var count = 0;
+            foreach (var tile in FeatureFootprint.TilesFor(feature))
+            {
+                centroid += HexToWorld(tile);
+                count++;
+            }
+
+            centroid /= count;
+
+            var instance = mountainMedium.Instantiate<Node3D>();
+            instance.Position = centroid;
+            AddChild(instance);
+
+            // 주봉(모델 로컬 (-0.52, 0.96, -0.03)) 꼭대기에 둥둥 떠다니는 구름.
+            AddChild(BuildPeakClouds(centroid + new Vector3(-0.52f, 1.05f, -0.03f)));
+        }
+    }
+
+    // 산꼭대기 구름: 크고 느린 흰 입자가 봉우리 주위를 떠다니며 서서히 나타났다 사라진다.
+    private static Node3D BuildPeakClouds(Vector3 peak)
+    {
+        var gradient = new Gradient();
+        gradient.SetColor(0, new Color(1f, 1f, 1f, 0f));
+        gradient.AddPoint(0.25f, new Color(0.97f, 0.97f, 0.98f, 0.55f));
+        gradient.AddPoint(0.75f, new Color(0.97f, 0.97f, 0.98f, 0.5f));
+        gradient.SetColor(1, new Color(1f, 1f, 1f, 0f));
+
+        var mesh = new SphereMesh
+        {
+            Radius = 0.075f,
+            Height = 0.09f,
+            RadialSegments = 8,
+            Rings = 4,
+            Material = new StandardMaterial3D
+            {
+                VertexColorUseAsAlbedo = true,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            },
+        };
+
+        return new CpuParticles3D
+        {
+            Position = peak,
+            Amount = 5,
+            Lifetime = 9f,
+            Preprocess = 9f,
+            Mesh = mesh,
+            EmissionShape = CpuParticles3D.EmissionShapeEnum.Sphere,
+            EmissionSphereRadius = 0.16f,
+            Direction = new Vector3(1f, 0f, 0f),
+            Spread = 180f,
+            InitialVelocityMin = 0.015f,
+            InitialVelocityMax = 0.035f,
+            Gravity = new Vector3(0.008f, 0f, 0.004f),
+            ScaleAmountMin = 0.8f,
+            ScaleAmountMax = 1.9f,
+            ColorRamp = gradient,
+        };
     }
 
     // 공방 굴뚝 연기: 회색 반투명 입자가 피어올라 바람에 흘러가며 사라진다.

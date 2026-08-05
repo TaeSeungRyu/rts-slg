@@ -33,4 +33,7 @@ public enum TerrainType
 
     /// <summary>공방 — 생산 시설 타일.</summary>
     Workshop,
+
+    /// <summary>돌산 — 돌 바위 산(1타일, 이동 불가 예정).</summary>
+    RockMountain,
 }

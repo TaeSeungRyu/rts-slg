@@ -13,4 +13,5 @@ public sealed record Scenario(
     IReadOnlyList<City> Cities,
     IReadOnlyList<General> Generals,
     BalanceConfig Balance,
-    HexMap Map);
+    HexMap Map,
+    IReadOnlyList<MapFeature> Features);

@@ -48,6 +48,15 @@ internal sealed class MapDto
     public int MinR { get; init; }
     public int MaxR { get; init; }
     public TerrainDto? Terrain { get; init; }
+    public List<FeatureDto> Features { get; init; } = new();
+}
+
+internal sealed class FeatureDto
+{
+    // 지물 종류: "mountain_medium"
+    public string Type { get; init; } = "";
+    public int Q { get; init; }
+    public int R { get; init; }
 }
 
 internal sealed class TerrainDto
