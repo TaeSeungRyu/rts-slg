@@ -64,6 +64,9 @@ public enum TerrainType
     /// <summary>마을 모양 2 — 작은집 2채(한 채 굴뚝 연기)+2단집+작은나무 마을(1타일).</summary>
     Village2,
 
-    /// <summary>마을 모양 3 — 가운데 중정이 뚫린 ㅁ자 중국풍 2단 건물+우물 마을(1타일).</summary>
+    /// <summary>마을 모양 3 — 흙길 양쪽에 창고채·작은집이 늘어선 길가 마을(1타일).</summary>
     Village3,
+
+    /// <summary>마을 모양 4 — 원형 호수를 작은집들이 둘러싼 호수 마을(1타일).</summary>
+    Village4,
 }
