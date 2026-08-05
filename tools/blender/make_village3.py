@@ -29,8 +29,8 @@ M_GRASS = make_mat("grass", (0.28, 0.60, 0.20))
 M_SIDE = make_mat("side", (0.42, 0.30, 0.18))
 M_YARD = make_mat("yard", (0.52, 0.40, 0.24))
 M_ROOF = make_mat("roof", (0.06, 0.09, 0.14))
-M_WALL = make_mat("wall", (0.58, 0.42, 0.22))
-M_WALL2 = make_mat("wall2", (0.62, 0.48, 0.30))
+M_WALL = make_mat("wall", (0.55, 0.36, 0.16))   # 벽은 지붕·풀과 대비되게 채도 강화
+M_WALL2 = make_mat("wall2", (0.68, 0.50, 0.26))
 M_WOOD = make_mat("wood", (0.42, 0.18, 0.12))
 M_STONE = make_mat("stone", (0.45, 0.45, 0.43))
 M_WATER = make_mat("water", (0.20, 0.45, 0.70), roughness=0.15)
@@ -81,13 +81,16 @@ for poly in base.data.polygons:
 
 Z = TILE_H
 
-# ── ㅁ자 2단 건물: 바깥 사각 0.52, 날개 두께 0.13, 중정 0.26 ──
-OW = 0.52      # 바깥 폭
-T = 0.13       # 날개 두께
-IW = OW - 2 * T  # 중정 폭 0.26
-H1 = 0.085     # 1층 높이
-H2 = 0.065     # 2층 높이
-YIN = (OW - T) / 2  # 날개 중심 오프셋 0.195
+# ── ㅁ자 2단 건물: 바깥 사각 0.54, 날개 두께 0.095 — 중정 구멍(0.35)이 잘 보이게 얇게 ──
+OW = 0.54      # 바깥 폭
+T = 0.095      # 날개 두께
+IW = OW - 2 * T  # 중정 폭 0.35
+H1 = 0.080     # 1층 높이
+H2 = 0.055     # 2층 높이
+YIN = (OW - T) / 2  # 날개 중심 오프셋
+
+# 접촉면 z-파이팅 방지: 겹치는 부재는 아래 부재 속으로 EMB만큼 파묻는다(같은 평면 금지)
+EMB = 0.004
 
 wings = {
     "n": (0.0, +YIN, OW, T),
@@ -98,26 +101,26 @@ wings = {
 for tag, (cx, cy, sx, sy) in wings.items():
     # 1층 몸체 + 중간 처마 띠(2단 구분) + 2층 몸체(살짝 안쪽) + 기와지붕
     box(f"wing_{tag}_b1", sx, sy, H1, cx, cy, Z + H1 / 2, M_WALL)
-    box(f"wing_{tag}_eave", sx + 0.030, sy + 0.030, 0.016, cx, cy, Z + H1 + 0.008, M_ROOF)
-    box(f"wing_{tag}_b2", sx * 0.94, sy * 0.94, H2, cx, cy, Z + H1 + 0.016 + H2 / 2, M_WALL2)
-    hip_roof(f"wing_{tag}_roof", sx * 0.60, sy * 0.60, 0.055, cx, cy,
-             Z + H1 + 0.016 + H2 + 0.0275, M_ROOF)
+    box(f"wing_{tag}_eave", sx + 0.026, sy + 0.026, 0.016, cx, cy, Z + H1 + 0.008 - EMB, M_ROOF)
+    box(f"wing_{tag}_b2", sx * 0.94, sy * 0.94, H2, cx, cy, Z + H1 + 0.016 + H2 / 2 - EMB, M_WALL2)
+    hip_roof(f"wing_{tag}_roof", sx * 0.64, sy * 0.64, 0.052, cx, cy,
+             Z + H1 + 0.016 + H2 + 0.026 - 2 * EMB, M_ROOF)
 
-# 모서리 기둥 4개(바깥 모서리, 2단 전체 높이)
+# 모서리 기둥 4개(바깥 모서리, 1층 높이)
 for sx_ in (-1, 1):
     for sy_ in (-1, 1):
-        box(f"corner_{sx_}_{sy_}", 0.034, 0.034, H1 + 0.016 + H2,
-            sx_ * (OW / 2 - 0.017), sy_ * (OW / 2 - 0.017),
-            Z + (H1 + 0.016 + H2) / 2, M_WOOD)
+        box(f"corner_{sx_}_{sy_}", 0.032, 0.032, H1,
+            sx_ * (OW / 2 - 0.016), sy_ * (OW / 2 - 0.016),
+            Z + H1 / 2, M_WOOD)
 
 # 남쪽 날개 정문(어두운 문 + 문 위 작은 기와)
 box("gate_door", 0.085, 0.02, 0.062, 0.0, -(OW / 2) - 0.002, Z + 0.031, M_ROOF)
 box("gate_eave", 0.12, 0.045, 0.014, 0.0, -(OW / 2) - 0.008, Z + 0.075, M_ROOF)
 
-# ── 중정 바닥 + 우물 ──
-box("court_yard", IW * 0.96, IW * 0.96, 0.012, 0.0, 0.0, Z + 0.006, M_YARD)
-cylinder("well_ring", 0.050, 0.05, 0.0, 0.0, Z + 0.025, M_STONE, verts=8)
-cylinder("well_water", 0.035, 0.052, 0.0, 0.0, Z + 0.026, M_WATER, verts=8)
+# ── 중정 바닥 + 우물 (바닥·우물은 아래로 파묻어 접촉면 z-파이팅 방지) ──
+box("court_yard", IW * 0.96, IW * 0.96, 0.014, 0.0, 0.0, Z + 0.004, M_YARD)
+cylinder("well_ring", 0.055, 0.052, 0.0, 0.0, Z + 0.022, M_STONE, verts=8)
+cylinder("well_water", 0.038, 0.056, 0.0, 0.0, Z + 0.023, M_WATER, verts=8)
 
 # ── 외곽 담(마을 1·2와 동일): 타일 육각과 같은 방향, 남쪽 꼭짓점 출입구 ──
 FENCE_R = 0.50
