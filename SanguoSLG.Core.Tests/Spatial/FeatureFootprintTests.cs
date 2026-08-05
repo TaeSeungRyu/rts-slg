@@ -27,6 +27,17 @@ public class FeatureFootprintTests
     }
 
     [Fact]
+    public void 매우큰산_발자국은_중심이_사방과_붙은_5타일이다()
+    {
+        var offsets = FeatureFootprint.OffsetsFor(FeatureType.MountainHuge);
+
+        Assert.Equal(5, offsets.Count);
+        var center = offsets[0];
+        Assert.All(offsets, tile =>
+            Assert.True(tile == center || tile.Distance(center) == 1));
+    }
+
+    [Fact]
     public void 실제_시나리오에서_지물은_맵_안_평야이며_성곽과_겹치지_않는다()
     {
         var scenario = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());

@@ -96,6 +96,7 @@ public sealed class ScenarioLoader
     {
         "mountain_medium" => FeatureType.MountainMedium,
         "mountain_large" => FeatureType.MountainLarge,
+        "mountain_huge" => FeatureType.MountainHuge,
         _ => throw new InvalidDataException($"알 수 없는 지물: {name}"),
     };
 

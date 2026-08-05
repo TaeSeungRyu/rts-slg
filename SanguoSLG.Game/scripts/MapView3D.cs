@@ -134,6 +134,7 @@ public partial class MapView3D : Node3D
         {
             [FeatureType.MountainMedium] = GD.Load<PackedScene>("res://assets/models/mountain-medium.glb"),
             [FeatureType.MountainLarge] = GD.Load<PackedScene>("res://assets/models/mountain-large.glb"),
+            [FeatureType.MountainHuge] = GD.Load<PackedScene>("res://assets/models/mountain-huge.glb"),
         };
 
         foreach (var feature in features)
@@ -152,9 +153,12 @@ public partial class MapView3D : Node3D
             instance.Position = centroid;
             AddChild(instance);
 
-            var (peakY, halfWidth) = feature.Type == FeatureType.MountainLarge
-                ? (1.30f, 1.15f)
-                : (1.02f, 1.10f);
+            var (peakY, halfWidth) = feature.Type switch
+            {
+                FeatureType.MountainHuge => (1.45f, 1.75f),
+                FeatureType.MountainLarge => (1.30f, 1.15f),
+                _ => (1.02f, 1.10f),
+            };
             AddChild(BuildMountainClouds(centroid, peakY, halfWidth));
         }
     }

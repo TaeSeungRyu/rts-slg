@@ -8,4 +8,7 @@ public enum FeatureType
 
     /// <summary>큰산 — 3타일(원형/삼각), 이동 불가 예정.</summary>
     MountainLarge,
+
+    /// <summary>매우 큰산 — 5타일(중심+4방), 랜드마크 기암괴석. 이동 불가 예정.</summary>
+    MountainHuge,
 }
