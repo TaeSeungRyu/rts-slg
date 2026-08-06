@@ -33,6 +33,9 @@ public static class DamageView
 
     private const float CrookedDegrees = 22f;
 
+    /// <summary>중간성·큰성의 중앙 다층 건물(3단·4단)은 기와가 확실히 크게 기울어야 한다.</summary>
+    private const float HeavyCrookedDegrees = 38f;
+
     /// <summary>지붕을 옆으로 밀어내는 거리(월드). 회전만으로는 맵 줌에서 읽히지 않는다.</summary>
     private const float RoofSlide = 0.05f;
 
@@ -49,12 +52,25 @@ public static class DamageView
         var parts = new List<Node3D>();
         Collect(model, parts);
 
-        MakeRoofsCrooked(parts, seed);
+        var mainTower = kind == Kind.Castle ? MainTowerGroup(parts) : null;
+        MakeRoofsCrooked(parts, seed, mainTower);
 
         switch (kind)
         {
             case Kind.Castle:
-                StripBuildings(parts, CastleGroups(parts), 1, seed);
+                // 중앙 다층 건물은 남겨서 크게 기울인다 — 걷어낼 1개는 곁 건물에서 고른다.
+                // (작은성처럼 건물이 하나뿐이면 그것을 걷어낸다.)
+                var castleGroups = CastleGroups(parts);
+                var strippable = new List<string>();
+                foreach (var group in castleGroups)
+                {
+                    if (castleGroups.Count == 1 || group != mainTower)
+                    {
+                        strippable.Add(group);
+                    }
+                }
+
+                StripBuildings(parts, strippable, 1, seed);
                 break;
 
             case Kind.Village:
@@ -87,7 +103,7 @@ public static class DamageView
     }
 
     // ── 지붕 삐뚤어지게. 지붕과 그 처마는 한 덩어리이므로 같은 각도로 기울여야 서로 벌어지지 않는다.
-    private static void MakeRoofsCrooked(List<Node3D> parts, ulong seed)
+    private static void MakeRoofsCrooked(List<Node3D> parts, ulong seed, string? heavyKey)
     {
         foreach (var part in parts)
         {
@@ -97,16 +113,68 @@ public static class DamageView
                 continue;
             }
 
-            var tiltX = (Hash01(key + "#x", seed) * 2f - 1f) * CrookedDegrees;
-            var tiltZ = (Hash01(key + "#z", seed) * 2f - 1f) * CrookedDegrees;
+            var heavy = heavyKey is not null && key == heavyKey;
+            var degrees = heavy ? HeavyCrookedDegrees : CrookedDegrees;
+
+            var tiltX = SignedAmount(key + "#x", seed) * degrees;
+            var tiltZ = SignedAmount(key + "#z", seed) * degrees;
             part.RotationDegrees += new Vector3(tiltX, 0f, tiltZ);
 
             // 같은 건물의 지붕과 처마는 같은 키를 쓰므로 똑같이 밀린다(서로 벌어지지 않음).
             // Y는 살짝 띄워 아래 부재와 겹칠 때의 z-파이팅을 막는다.
             var angle = Hash01(key + "#slide", seed) * Mathf.Tau;
+            var slide = heavy ? RoofSlide * 1.6f : RoofSlide;
             part.Position += new Vector3(
-                Mathf.Cos(angle) * RoofSlide, 0.003f, Mathf.Sin(angle) * RoofSlide);
+                Mathf.Cos(angle) * slide, 0.003f, Mathf.Sin(angle) * slide);
         }
+    }
+
+    /// <summary>부호는 무작위, 크기는 최소 55%를 보장한다 — 0에 가까워 안 기운 지붕이 없도록.</summary>
+    private static float SignedAmount(string key, ulong seed)
+    {
+        var magnitude = 0.55f + Hash01(key + "#mag", seed) * 0.45f;
+        return Hash01(key + "#sign", seed) < 0.5f ? -magnitude : magnitude;
+    }
+
+    /// <summary>성에서 층이 가장 많은 건물(중간성 3단·큰성 4단)의 키. 없으면 null.</summary>
+    private static string? MainTowerGroup(List<Node3D> parts)
+    {
+        var tiers = new Dictionary<string, int>();
+        foreach (var part in parts)
+        {
+            var name = part.Name.ToString();
+            var index = name.IndexOf("_t", StringComparison.Ordinal);
+            if (index <= 0 || name[0] != 'b' || !char.IsDigit(name[1]))
+            {
+                continue;
+            }
+
+            // "_topeave"는 숫자가 아니라 걸러진다 — "_t0", "_t1" 같은 층만 센다.
+            if (!int.TryParse(name[(index + 2)..], out var tier))
+            {
+                continue;
+            }
+
+            var key = name[..index];
+            tiers[key] = Math.Max(tiers.GetValueOrDefault(key), tier);
+        }
+
+        // Dictionary 순회 순서에 의존하지 않도록 키를 정렬해 결정론적으로 고른다.
+        var keys = new List<string>(tiers.Keys);
+        keys.Sort(StringComparer.Ordinal);
+
+        string? best = null;
+        var bestTier = -1;
+        foreach (var key in keys)
+        {
+            if (tiers[key] > bestTier)
+            {
+                bestTier = tiers[key];
+                best = key;
+            }
+        }
+
+        return best;
     }
 
     /// <summary>지붕·처마 파츠면 소속 건물 키를, 아니면 null을 돌려준다.</summary>

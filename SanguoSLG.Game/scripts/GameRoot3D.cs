@@ -211,7 +211,15 @@ public partial class GameRoot3D : Node3D
         LightColor = tone.SunColor,
         LightEnergy = tone.SunEnergy,
         ShadowEnabled = true,
-        DirectionalShadowMaxDistance = 60f,
+
+        // 그림자 설정은 월드 크기에 맞춰야 한다. Godot 기본값(bias 0.1 / normal_bias 2.0,
+        // 최대 거리 60)은 사람 크기(미터) 월드 기준이라, 타일 반경이 0.577인 이 게임에서는
+        // 편향이 지형보다 커진다. 그 상태에서 카메라가 움직이면 그림자 캐스케이드가
+        // 매 프레임 다시 맞춰지며 샘플링이 흔들려 깜빡이고, 멈추면 가라앉는다.
+        DirectionalShadowMaxDistance = 28f,   // 맵이 약 20x14라 이걸로 충분 — 분할당 해상도가 올라간다
+        ShadowBias = 0.02f,
+        ShadowNormalBias = 0.4f,
+        DirectionalShadowBlendSplits = true,  // 분할 경계가 튀지 않게 섞는다
     };
 
     // 도시: 성곽 등급별 성 모델(동양풍 커스텀) + 떠 있는 한글 이름표(Label3D).
