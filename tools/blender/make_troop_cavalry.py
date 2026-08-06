@@ -28,6 +28,7 @@ m = ic.Mats()
 M_COAT = ic.make_mat("coat", (0.36, 0.22, 0.13))
 M_MANE = ic.make_mat("mane", (0.12, 0.09, 0.07))
 M_HOOF = ic.make_mat("hoof", (0.15, 0.13, 0.12))
+M_LEATHER = ic.make_mat("leather", (0.30, 0.19, 0.11))
 
 # 고관절은 몸통 타원체 "속"에 있어야 한다. 다리 위끝을 몸통 표면 높이에 맞추면
 # 타원체가 그 지점에서 위로 휘어 있어 사이가 벌어진다 — 다리를 몸통 안까지 밀어 넣는다.
@@ -71,9 +72,15 @@ for part in (neck, head, mane, tail):
     ic.parent_to(part, body)
 
 # ── 안장 + 안장천(세력색). 천은 몸통보다 넓게 잡아 옆으로 늘어뜨린다 ──
+# 안장은 판 하나로 두면 상자처럼 보인다 — 앞턱·뒤턱·다리받이로 층을 만든다.
 cloth = ic.box("saddle_cloth", 0.145, 0.135, 0.012, 0, 0.012, 0.247, m.red)
-saddle = ic.box("saddle", 0.072, 0.086, 0.018, 0, 0.012, 0.264, m.wood)
-for part in (cloth, saddle):
+saddle = ic.box("saddle", 0.074, 0.082, 0.014, 0, 0.012, 0.262, M_LEATHER)
+pommel = ic.box("saddle_pommel", 0.042, 0.014, 0.024, 0, -0.028, 0.274, M_LEATHER)
+cantle = ic.box("saddle_cantle", 0.050, 0.016, 0.028, 0, 0.050, 0.276, M_LEATHER)
+for i, fx in enumerate((-0.058, 0.058)):
+    flap = ic.box(f"saddle_flap_{i}", 0.012, 0.072, 0.050, fx, 0.000, 0.232, M_LEATHER)
+    ic.parent_to(flap, body)
+for part in (cloth, saddle, pommel, cantle):
     ic.parent_to(part, body)
 
 # ── 기수: 상체(스무스) + 머리 + 투구 + 투구술(세력색) ──
@@ -84,6 +91,22 @@ plume = ic.box("plume", 0.010, 0.010, 0.026, 0, 0.012, 0.406, m.red)
 
 for part in (rhead, helmet, plume):
     ic.parent_to(part, rider)
+
+# ── 기수 다리: 안장 옆으로 벌려 앉는다. 허벅지는 앞아래로, 정강이는 뒤로 꺾여 등자를 밟는다.
+# x는 몸통 최대 반경(0.065)보다 바깥이어야 말을 뚫지 않는다.
+LEG_X = 0.068
+for tag, sx in (("l", -LEG_X), ("r", LEG_X)):
+    thigh = ic.box(f"rider_thigh_{tag}", 0.026, 0.028, 0.060, sx, -0.010, 0.242, m.armor,
+                   rot_x=math.radians(-30))
+    shin = ic.box(f"rider_shin_{tag}", 0.024, 0.026, 0.058, sx, -0.014, 0.186, m.armor,
+                  rot_x=math.radians(10))
+    boot = ic.box(f"rider_boot_{tag}", 0.026, 0.042, 0.018, sx, -0.024, 0.157, M_LEATHER)
+    strap = ic.box(f"stirrup_strap_{tag}", 0.006, 0.008, 0.070, sx - 0.004 * (1 if sx > 0 else -1),
+                   0.006, 0.200, M_LEATHER)
+    stirrup = ic.box(f"stirrup_{tag}", 0.022, 0.028, 0.008, sx, -0.020, 0.145, m.steel)
+    for part in (thigh, shin, boot, strap, stirrup):
+        ic.parent_to(part, rider)
+
 ic.parent_to(rider, body)
 
 # ── 기수 팔 2개 — 피벗을 어깨로. 왼팔은 고삐를 쥐듯 앞으로, 오른팔은 칼을 세워 든다 ──
