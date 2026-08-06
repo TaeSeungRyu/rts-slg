@@ -13,7 +13,12 @@ namespace SanguoSLG.Game;
 /// </summary>
 public partial class UnitController3D : Node3D
 {
-    [Export] public float StepSeconds = 0.16f;
+    /// <summary>한 타일을 건너는 데 걸리는 시간. 병종 데이터가 생기면 이동력에 따라 달라진다.</summary>
+    [Export] public float StepSeconds = 0.36f;
+
+    // 보폭: 이동 거리 1당 다리 주기가 도는 각도. 시간이 아니라 거리에 물려야
+    // StepSeconds를 바꿔도 발이 지면에서 미끄러지지 않는다.
+    private const float MarchRadiansPerUnit = 27f;
 
     private MapView3D _view = null!;
     private HexMap _map = null!;
@@ -95,7 +100,7 @@ public partial class UnitController3D : Node3D
                 Rotation = new Vector3(0f, Mathf.LerpAngle(Rotation.Y, targetYaw, 1f - Mathf.Exp(-14f * dt)), 0f);
             }
 
-            _marchTime += dt * 11f;
+            _marchTime = Mathf.Wrap(_marchTime + moved.Length() * MarchRadiansPerUnit, 0f, Mathf.Tau);
             foreach (var member in _members)
             {
                 var clock = _marchTime + member.Phase;
