@@ -102,7 +102,7 @@ public sealed class ScenarioLoader
     {
         "normal" => TileCondition.Normal,
         "ruined" => TileCondition.Ruined,
-        "burning" => TileCondition.Burning,
+        "destroyed" => TileCondition.Destroyed,
         _ => throw new InvalidDataException($"알 수 없는 타일 상태: {name}"),
     };
 

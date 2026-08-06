@@ -4,12 +4,15 @@ using SanguoSLG.Core.Spatial;
 namespace SanguoSLG.Game;
 
 /// <summary>
-/// 파괴 상태(황폐·불타는)를 임의의 3D 모델에 입히는 공통 레이어.
-/// 지형·건물마다 파괴본 모델을 따로 만들지 않고 네 층으로 처리한다:
-/// (1) 재질 틴트 (2) 이름 기반 파츠 변형 (3) 잔해 프롭 (4) 화염·연기 파티클.
+/// 파괴된 <b>형태</b>를 임의의 3D 모델에 입히는 공통 레이어.
+/// 지형·건물마다 파괴본 모델을 따로 만들지 않고 세 층으로 처리한다:
+/// (1) 재질 틴트 (2) 이름 기반 파츠 변형 (3) 잔해 프롭.
 ///
 /// (2)는 Blender 스크립트가 공통 명명 규칙(_roof/_eave/_body/_post/fence_*/merlon*/chimney)을
 /// 쓰기 때문에 성립한다 — 새 건물도 같은 이름을 쓰면 코드 수정 없이 적용된다.
+///
+/// 화염·연기 같은 연출은 형태와 직교하는 별개의 "효과"이므로 여기에 두지 않는다.
+/// 효과 단계에서 별도 레이어로 정의한다(이전 화염 구현은 커밋 4fec587 참조).
 /// </summary>
 public static class DamageView
 {
@@ -35,13 +38,6 @@ public static class DamageView
         }
 
         ScatterRubble(model, condition, groundY, seed);
-
-        if (condition == TileCondition.Burning)
-        {
-            model.AddChild(BuildFlames(groundY));
-            model.AddChild(BuildSootSmoke(groundY));
-            model.AddChild(BuildFireGlow(groundY));
-        }
     }
 
     // ── (1) 재질 틴트: 표면마다 원본 재질을 복제해 albedo만 바꾼다.
@@ -72,12 +68,12 @@ public static class DamageView
     }
 
     // 채도를 뺀 뒤 목표색으로 수렴시킨다. 단순히 어둡게 곱하면 원래 어두운 기와가
-    // 새까매져 실루엣이 사라지므로, 황폐는 '먼지 재색', 불탄 곳은 '숯색'으로 끌어당긴다.
+    // 새까매져 실루엣이 사라지므로, 먼지·재를 뒤집어쓴 회색으로 끌어당긴다.
     private static Color Weather(Color color, TileCondition condition)
     {
         var gray = color.R * 0.299f + color.G * 0.587f + color.B * 0.114f;
-        var (target, amount) = condition == TileCondition.Burning
-            ? (new Color(0.10f, 0.08f, 0.07f), 0.66f)
+        var (target, amount) = condition == TileCondition.Destroyed
+            ? (new Color(0.26f, 0.24f, 0.22f), 0.58f)
             : (new Color(0.44f, 0.42f, 0.38f), 0.45f);
 
         return new Color(
@@ -103,19 +99,19 @@ public static class DamageView
 
     private static void ApplyPartRule(Node3D part, string name, TileCondition condition, ulong seed)
     {
-        var burning = condition == TileCondition.Burning;
+        var wrecked = condition == TileCondition.Destroyed;
         var roll = Hash01(name, seed);
 
         // 성 여장(merlon) — 이가 빠진 것처럼 일부를 없앤다
         if (name.Contains("merlon"))
         {
-            if (roll < (burning ? 0.55f : 0.35f))
+            if (roll < (wrecked ? 0.55f : 0.35f))
             {
                 part.Visible = false;
             }
             else
             {
-                Lean(part, name, seed, burning ? 12f : 7f);
+                Lean(part, name, seed, wrecked ? 12f : 7f);
             }
 
             return;
@@ -124,28 +120,28 @@ public static class DamageView
         // 마을·항구 외곽담 — 무너져 끊긴 담
         if (name.Contains("fence"))
         {
-            if (roll < (burning ? 0.50f : 0.30f))
+            if (roll < (wrecked ? 0.50f : 0.30f))
             {
                 part.Visible = false;
             }
             else
             {
-                Lean(part, name, seed, burning ? 16f : 9f);
+                Lean(part, name, seed, wrecked ? 16f : 9f);
             }
 
             return;
         }
 
-        // 지붕·처마 — 내려앉고 기운다. 불타면 일부는 아예 날아간다
+        // 지붕·처마 — 내려앉고 기운다. 심하게 부서지면 일부는 아예 사라진다
         if (name.Contains("roof") || name.Contains("eave"))
         {
-            if (burning && roll < 0.35f)
+            if (wrecked && roll < 0.35f)
             {
                 part.Visible = false;
                 return;
             }
 
-            Lean(part, name, seed, burning ? 18f : 10f);
+            Lean(part, name, seed, wrecked ? 18f : 10f);
             part.Position += new Vector3(0f, -0.010f - roll * 0.018f, 0f);
             return;
         }
@@ -153,7 +149,7 @@ public static class DamageView
         // 굴뚝·깃대·기둥처럼 가느다란 수직 부재 — 기울어진다
         if (name.Contains("chimney") || name.Contains("pole") || name.Contains("post"))
         {
-            Lean(part, name, seed, burning ? 20f : 11f);
+            Lean(part, name, seed, wrecked ? 20f : 11f);
         }
     }
 
@@ -173,7 +169,7 @@ public static class DamageView
     {
         _rubble ??= GD.Load<PackedScene>("res://assets/models/rubble.glb");
 
-        var count = condition == TileCondition.Burning ? 5 : 3;
+        var count = condition == TileCondition.Destroyed ? 5 : 3;
         for (var i = 0; i < count; i++)
         {
             var piece = _rubble.Instantiate<Node3D>();
@@ -190,103 +186,6 @@ public static class DamageView
             model.AddChild(piece);
         }
     }
-
-    // ── (4) 화염·연기·불빛
-    private static Node3D BuildFlames(float groundY)
-    {
-        // 가산합성이라 입자가 겹치면 흰색까지 포화된다 — 수를 줄이고 낮게 깔아
-        // 불길이 건물에 붙어 있게 하고, 위쪽은 연기가 읽히도록 비워 둔다.
-        var gradient = new Gradient();
-        gradient.SetColor(0, new Color(0.95f, 0.62f, 0.18f, 0.75f));
-        gradient.AddPoint(0.45f, new Color(0.90f, 0.34f, 0.07f, 0.60f));
-        gradient.SetColor(1, new Color(0.45f, 0.09f, 0.02f, 0f));
-
-        var mesh = new SphereMesh
-        {
-            Radius = 0.030f,
-            Height = 0.060f,
-            RadialSegments = 6,
-            Rings = 3,
-            Material = new StandardMaterial3D
-            {
-                VertexColorUseAsAlbedo = true,
-                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-                BlendMode = BaseMaterial3D.BlendModeEnum.Add,
-                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-            },
-        };
-
-        return new CpuParticles3D
-        {
-            Position = new Vector3(0f, groundY + 0.04f, 0f),
-            Amount = 18,
-            Lifetime = 0.7f,
-            Preprocess = 1.5f,
-            Mesh = mesh,
-            EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
-            EmissionBoxExtents = new Vector3(0.20f, 0.02f, 0.20f),
-            Direction = new Vector3(0f, 1f, 0f),
-            Spread = 12f,
-            InitialVelocityMin = 0.20f,
-            InitialVelocityMax = 0.40f,
-            Gravity = new Vector3(0f, 0.14f, 0f),
-            ScaleAmountMin = 0.5f,
-            ScaleAmountMax = 1.2f,
-            ColorRamp = gradient,
-        };
-    }
-
-    private static Node3D BuildSootSmoke(float groundY)
-    {
-        var gradient = new Gradient();
-        // 그을음은 하늘색보다 확실히 어두워야 연기로 읽힌다
-        gradient.SetColor(0, new Color(0.12f, 0.11f, 0.10f, 0.85f));
-        gradient.AddPoint(0.5f, new Color(0.22f, 0.21f, 0.20f, 0.55f));
-        gradient.SetColor(1, new Color(0.36f, 0.35f, 0.34f, 0f));
-
-        var mesh = new SphereMesh
-        {
-            Radius = 0.075f,
-            Height = 0.150f,
-            RadialSegments = 6,
-            Rings = 3,
-            Material = new StandardMaterial3D
-            {
-                VertexColorUseAsAlbedo = true,
-                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-            },
-        };
-
-        return new CpuParticles3D
-        {
-            Position = new Vector3(0f, groundY + 0.28f, 0f),
-            Amount = 22,
-            Lifetime = 3.4f,
-            Preprocess = 4f,
-            Mesh = mesh,
-            EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
-            EmissionBoxExtents = new Vector3(0.14f, 0.02f, 0.14f),
-            Direction = new Vector3(0.25f, 1f, 0f),
-            Spread = 14f,
-            InitialVelocityMin = 0.18f,
-            InitialVelocityMax = 0.32f,
-            Gravity = new Vector3(0.10f, 0.10f, 0.03f),
-            ScaleAmountMin = 0.7f,
-            ScaleAmountMax = 2.2f,
-            ColorRamp = gradient,
-        };
-    }
-
-    // 불은 빛이 있어야 3D에서 읽힌다. 그림자는 끈다(비용 + 얇은 부재 어른거림 방지).
-    private static Node3D BuildFireGlow(float groundY) => new OmniLight3D
-    {
-        Position = new Vector3(0f, groundY + 0.18f, 0f),
-        LightColor = new Color(1.0f, 0.55f, 0.22f),
-        LightEnergy = 1.6f,
-        OmniRange = 1.4f,
-        ShadowEnabled = false,
-    };
 
     // 이름+시드로 0~1을 만드는 결정론적 해시(FNV-1a). 같은 맵이면 같은 파괴 모습이 나온다.
     private static float Hash01(string text, ulong seed)

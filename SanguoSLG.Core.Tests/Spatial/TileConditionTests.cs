@@ -21,7 +21,7 @@ public class TileConditionTests
         var conditions = new TileConditionMap();
         var tile = new HexCoord(1, 1);
 
-        conditions.Set(tile, TileCondition.Burning);
+        conditions.Set(tile, TileCondition.Destroyed);
         Assert.Equal(1, conditions.DamagedCount);
 
         conditions.Set(tile, TileCondition.Normal);
@@ -35,7 +35,7 @@ public class TileConditionTests
         var conditions = new TileConditionMap();
         // 일부러 뒤섞어 넣는다 — Dictionary 순서에 의존하지 않아야 한다.
         conditions.Set(new HexCoord(2, 5), TileCondition.Ruined);
-        conditions.Set(new HexCoord(-1, 0), TileCondition.Burning);
+        conditions.Set(new HexCoord(-1, 0), TileCondition.Destroyed);
         conditions.Set(new HexCoord(2, -3), TileCondition.Ruined);
 
         var order = conditions.Damaged().Select(pair => pair.Key).ToList();
@@ -58,13 +58,13 @@ public class TileConditionTests
               "min_q": 0, "max_q": 2, "min_r": 0, "max_r": 2,
               "conditions": [
                 { "state": "ruined", "q": 1, "r": 0 },
-                { "state": "burning", "q": 2, "r": 1 }
+                { "state": "destroyed", "q": 2, "r": 1 }
               ]
             }
             """);
 
         Assert.Equal(TileCondition.Ruined, scenario.Conditions.At(new HexCoord(1, 0)));
-        Assert.Equal(TileCondition.Burning, scenario.Conditions.At(new HexCoord(2, 1)));
+        Assert.Equal(TileCondition.Destroyed, scenario.Conditions.At(new HexCoord(2, 1)));
         Assert.Equal(TileCondition.Normal, scenario.Conditions.At(new HexCoord(0, 0)));
     }
 
