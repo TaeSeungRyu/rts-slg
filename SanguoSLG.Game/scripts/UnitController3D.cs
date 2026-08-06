@@ -30,20 +30,39 @@ public partial class UnitController3D : Node3D
     private bool _attacking;
 
     // 편대 검수용 임시 지정 — 병종 데이터(data/troop-types.json)가 생기면 그쪽에서 받는다.
-    private const string TroopModel = "res://assets/models/troop-swordsman.glb";
-    private const int TroopCount = 7;
+    private static readonly string[] TroopModels =
+    {
+        "res://assets/models/troop-swordsman.glb",
+        "res://assets/models/troop-cavalry.glb",
+    };
 
-    // 보병 프로시저럴 애니메이션 대상. 편대원마다 부위 노드와 기준 자세를 들고 있다.
+    private const int TroopCount = 7;
+    private int _troopIndex;
+
+    /// <summary>모션 규약. 부위 노드 이름으로 판별한다 — 병종 데이터가 생기면 그쪽에서 받는다.</summary>
+    private enum MotionKind { Infantry, Cavalry }
+
+    // 프로시저럴 애니메이션 대상. 편대원마다 부위 노드와 기준 자세를 들고 있다.
+    // 보병과 기병은 부위 구성이 다르므로 "같은 위상 / 반대 위상"으로 묶어 공통으로 다룬다.
     private sealed class Member
     {
         public Node3D Body = null!;
-        public Node3D LegL = null!;
-        public Node3D LegR = null!;
-        public Node3D ArmL = null!;
-        public Node3D ArmR = null!;
+        public Node3D[] SwingA = System.Array.Empty<Node3D>();
+        public Node3D[] SwingB = System.Array.Empty<Node3D>();
+
+        /// <summary>다리와 반대로, 더 작게 흔들리는 부위(보병 왼팔).</summary>
+        public Node3D? CounterSwing;
+
+        /// <summary>몸통 위에서 한 박자 늦게 흔들리는 상체(기병 기수).</summary>
+        public Node3D? Rider;
+
+        public Node3D AttackArm = null!;
+        public Node3D? ShieldArm;
+
         public Vector3 BodyBasePosition;
         public Vector3 BodyBaseRotation;
-        public Vector3 ArmRBaseRotation;
+        public Vector3 RiderBaseRotation;
+        public Vector3 AttackArmBaseRotation;
         public float Phase;
 
         /// <summary>공격 시작 지연 — 앞줄부터 차례로 친다.</summary>
@@ -54,6 +73,9 @@ public partial class UnitController3D : Node3D
     }
 
     private readonly List<Member> _members = new();
+    private MotionKind _motion;
+    private Node3D _tokenRoot = null!;
+    private CpuParticles3D? _dust;
     private float _marchTime;
     private Vector3 _lastPosition;
 
@@ -92,12 +114,24 @@ public partial class UnitController3D : Node3D
         AnimateMarch((float)delta);
     }
 
-    // 이동 중 행군 모션: 진행 방향으로 회전 + 몸통 상하 흔들림 + 다리·팔 교차 스윙.
+    // 이동 모션: 진행 방향으로 회전 + 몸통 상하 흔들림 + 다리 교차 스윙.
+    // 보병은 행군, 기병은 갤럽(대각 트롯) — 진폭과 주기만 다르고 구조는 같다.
     // 편대원마다 위상을 어긋나게 줘 발이 한꺼번에 떨어지지 않게 한다.
     private void AnimateMarch(float dt)
     {
         var moved = Position - _lastPosition;
         _lastPosition = Position;
+
+        var cavalry = _motion == MotionKind.Cavalry;
+        var stride = cavalry ? 16f : MarchRadiansPerUnit;
+        var legSwing = cavalry ? 0.60f : 0.45f;
+        var bob = cavalry ? 0.022f : 0.012f;
+        var pitch = cavalry ? 0.09f : 0f;
+
+        if (_dust is not null)
+        {
+            _dust.Emitting = _moving;
+        }
 
         if (_moving)
         {
@@ -107,7 +141,7 @@ public partial class UnitController3D : Node3D
                 Rotation = new Vector3(0f, Mathf.LerpAngle(Rotation.Y, targetYaw, 1f - Mathf.Exp(-14f * dt)), 0f);
             }
 
-            _marchTime = Mathf.Wrap(_marchTime + moved.Length() * MarchRadiansPerUnit, 0f, Mathf.Tau);
+            _marchTime = Mathf.Wrap(_marchTime + moved.Length() * stride, 0f, Mathf.Tau);
             foreach (var member in _members)
             {
                 var clock = _marchTime + member.Phase;
@@ -115,14 +149,35 @@ public partial class UnitController3D : Node3D
 
                 // 걸음마다 한 번씩 몸이 뜬다 — 다리 주기의 두 배
                 member.Body.Position = member.BodyBasePosition
-                    + new Vector3(0f, Mathf.Abs(Mathf.Sin(clock)) * 0.012f, 0f);
+                    + new Vector3(0f, Mathf.Abs(Mathf.Sin(clock)) * bob, 0f);
+                // 기병은 도약할 때 몸통 앞뒤가 같이 들린다
+                member.Body.Rotation = member.BodyBaseRotation + new Vector3(swing * pitch, 0f, 0f);
 
-                member.LegL.Rotation = new Vector3(swing * 0.45f, 0f, 0f);
-                member.LegR.Rotation = new Vector3(-swing * 0.45f, 0f, 0f);
+                foreach (var part in member.SwingA)
+                {
+                    part.Rotation = new Vector3(swing * legSwing, 0f, 0f);
+                }
 
-                // 팔은 다리와 반대로. 오른팔은 칼을 들고 있으니 덜 흔든다
-                member.ArmL.Rotation = new Vector3(-swing * 0.34f, 0f, 0f);
-                member.ArmR.Rotation = member.ArmRBaseRotation + new Vector3(swing * 0.16f, 0f, 0f);
+                foreach (var part in member.SwingB)
+                {
+                    part.Rotation = new Vector3(-swing * legSwing, 0f, 0f);
+                }
+
+                // 보병 왼팔은 다리와 반대로. 오른팔은 무기를 들고 있으니 덜 흔든다
+                if (member.CounterSwing is not null)
+                {
+                    member.CounterSwing.Rotation = new Vector3(-swing * 0.34f, 0f, 0f);
+                }
+
+                member.AttackArm.Rotation =
+                    member.AttackArmBaseRotation + new Vector3(swing * 0.16f, 0f, 0f);
+
+                // 기수는 말 몸통 위에서 반 박자 늦게 흔들린다 — 같이 굳어 있으면 인형처럼 보인다
+                if (member.Rider is not null)
+                {
+                    member.Rider.Rotation = member.RiderBaseRotation
+                        + new Vector3(Mathf.Sin(clock - 0.9f) * 0.07f, 0f, 0f);
+                }
             }
         }
         else if (_marchTime != 0f && !_attacking)
@@ -133,10 +188,27 @@ public partial class UnitController3D : Node3D
             {
                 member.Body.Position = member.BodyBasePosition;
                 member.Body.Rotation = member.BodyBaseRotation;
-                member.LegL.Rotation = Vector3.Zero;
-                member.LegR.Rotation = Vector3.Zero;
-                member.ArmL.Rotation = Vector3.Zero;
-                member.ArmR.Rotation = member.ArmRBaseRotation;
+                foreach (var part in member.SwingA)
+                {
+                    part.Rotation = Vector3.Zero;
+                }
+
+                foreach (var part in member.SwingB)
+                {
+                    part.Rotation = Vector3.Zero;
+                }
+
+                if (member.CounterSwing is not null)
+                {
+                    member.CounterSwing.Rotation = Vector3.Zero;
+                }
+
+                if (member.Rider is not null)
+                {
+                    member.Rider.Rotation = member.RiderBaseRotation;
+                }
+
+                member.AttackArm.Rotation = member.AttackArmBaseRotation;
             }
         }
     }
@@ -167,15 +239,19 @@ public partial class UnitController3D : Node3D
         foreach (var member in _members)
         {
             lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
+            var shield = member.ShieldArm;
             var tween = CreateTween();
             tween.TweenInterval(member.AttackDelay);
 
             // 1) 젖힘 — 칼을 머리 위로 치켜들고 상체를 뒤로 젖힌다. 방패는 몸쪽으로 당겨 둔다
-            tween.Chain().TweenProperty(member.ArmR, "rotation:x",
-                    member.ArmRBaseRotation.X - 1.55f, WindUpSeconds)
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X - 1.55f, WindUpSeconds)
                 .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
-            tween.Parallel().TweenProperty(member.ArmL, "rotation:x", -0.45f, WindUpSeconds)
-                .SetTrans(Tween.TransitionType.Sine);
+            if (shield is not null)
+            {
+                tween.Parallel().TweenProperty(shield, "rotation:x", -0.45f, WindUpSeconds)
+                    .SetTrans(Tween.TransitionType.Sine);
+            }
             tween.Parallel().TweenProperty(member.Body, "rotation:x",
                     member.BodyBaseRotation.X + 0.26f, WindUpSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
@@ -185,8 +261,8 @@ public partial class UnitController3D : Node3D
 
             // 2) 내리침 — 젖힘의 절반도 안 되는 시간에 두 배 거리를 지난다.
             //    상체가 앞으로 꺾이며 칼을 위에서 아래로 끌고 내려온다
-            tween.Chain().TweenProperty(member.ArmR, "rotation:x",
-                    member.ArmRBaseRotation.X + 1.40f, SwingSeconds)
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X + 1.40f, SwingSeconds)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
             tween.Parallel().TweenProperty(member.Body, "rotation:x",
                     member.BodyBaseRotation.X - 0.36f, SwingSeconds)
@@ -197,10 +273,14 @@ public partial class UnitController3D : Node3D
 
             // 3) 방패 밀기 — 칼을 거둬들이면서 반대쪽 방패를 앞으로 내지른다.
             //    상체가 방패 쪽으로 다시 돌아가 체중을 싣는다
-            tween.Chain().TweenProperty(member.ArmL, "rotation:x", 0.85f, ShieldPushSeconds)
-                .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
-            tween.Parallel().TweenProperty(member.ArmR, "rotation:x",
-                    member.ArmRBaseRotation.X + 0.35f, ShieldPushSeconds)
+            if (shield is not null)
+            {
+                tween.Chain().TweenProperty(shield, "rotation:x", 0.85f, ShieldPushSeconds)
+                    .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            }
+
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X + 0.35f, ShieldPushSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
             tween.Parallel().TweenProperty(member.Body, "rotation:y",
                     member.BodyBaseRotation.Y + member.TwistSign * 0.14f, ShieldPushSeconds)
@@ -210,11 +290,14 @@ public partial class UnitController3D : Node3D
                 .SetTrans(Tween.TransitionType.Sine);
 
             // 4) 복귀 — 반동으로 되돌아온다
-            tween.Chain().TweenProperty(member.ArmR, "rotation:x",
-                    member.ArmRBaseRotation.X, RecoverSeconds)
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X, RecoverSeconds)
                 .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
-            tween.Parallel().TweenProperty(member.ArmL, "rotation:x", 0f, RecoverSeconds)
-                .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            if (shield is not null)
+            {
+                tween.Parallel().TweenProperty(shield, "rotation:x", 0f, RecoverSeconds)
+                    .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            }
             tween.Parallel().TweenProperty(member.Body, "rotation:x",
                     member.BodyBaseRotation.X, RecoverSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
@@ -244,6 +327,14 @@ public partial class UnitController3D : Node3D
         if (@event is InputEventKey { Pressed: true, Keycode: Key.F })
         {
             PlayAttackMotion();
+            return;
+        }
+
+        // T: 병종 전환 — 검수용. 병종 데이터가 생기면 편성 UI가 대신한다
+        if (@event is InputEventKey { Pressed: true, Keycode: Key.T } && !_moving && !_attacking)
+        {
+            _troopIndex = (_troopIndex + 1) % TroopModels.Length;
+            BuildToken();
             return;
         }
 
@@ -415,37 +506,67 @@ public partial class UnitController3D : Node3D
     }
 
     // 편대를 세우고 편대원마다 애니메이션 대상 부위를 이름으로 수집한다.
-    // 부위 이름은 보병 공용 규약(tools/blender/infantry_common.py)을 따른다.
+    // 부위 이름 규약: 보병은 tools/blender/infantry_common.py, 기병은 make_troop_cavalry.py.
+    // 다시 불러도 되도록 만들었다 — 병종 전환(T)이 이 함수를 재실행한다.
     private void BuildToken()
     {
-        TroopFormation.Build(this, GD.Load<PackedScene>(TroopModel), TroopCount);
+        _members.Clear();
+        _dust = null;
+        _tokenRoot?.QueueFree();
+
+        _tokenRoot = new Node3D();
+        AddChild(_tokenRoot);
+        TroopFormation.Build(_tokenRoot, GD.Load<PackedScene>(TroopModels[_troopIndex]), TroopCount);
 
         var index = 0;
-        foreach (var child in GetChildren())
+        foreach (var child in _tokenRoot.GetChildren())
         {
             if (child is not Node3D instance || instance.FindChild("body", true, false) is not Node3D body)
             {
                 continue;
             }
 
-            var armR = (Node3D)instance.FindChild("arm_r", true, false);
-            _members.Add(new Member
+            // leg_fl이 있으면 기병 규약이다
+            var cavalry = instance.FindChild("leg_fl", true, false) is Node3D;
+            _motion = cavalry ? MotionKind.Cavalry : MotionKind.Infantry;
+
+            Node3D Part(string name) => (Node3D)instance.FindChild(name, true, false);
+
+            var rider = cavalry ? Part("rider") : null;
+            var attackArm = Part(cavalry ? "rider_arm_r" : "arm_r");
+            var member = new Member
             {
                 Body = body,
-                LegL = (Node3D)instance.FindChild("leg_l", true, false),
-                LegR = (Node3D)instance.FindChild("leg_r", true, false),
-                ArmL = (Node3D)instance.FindChild("arm_l", true, false),
-                ArmR = armR,
+                Rider = rider,
+                AttackArm = attackArm,
+                ShieldArm = cavalry ? null : Part("arm_l"),
+                CounterSwing = cavalry ? null : Part("arm_l"),
+                // 기병은 대각 트롯 — 앞왼+뒤오 / 앞오+뒤왼이 짝을 이룬다
+                SwingA = cavalry
+                    ? new[] { Part("leg_fl"), Part("leg_br") }
+                    : new[] { Part("leg_l") },
+                SwingB = cavalry
+                    ? new[] { Part("leg_fr"), Part("leg_bl") }
+                    : new[] { Part("leg_r") },
                 BodyBasePosition = body.Position,
                 BodyBaseRotation = body.Rotation,
-                ArmRBaseRotation = armR.Rotation,
+                RiderBaseRotation = rider?.Rotation ?? Vector3.Zero,
+                AttackArmBaseRotation = attackArm.Rotation,
                 // 편대원끼리 발이 겹치지 않게 위상을 흩는다
                 Phase = index * 0.9f,
                 // 앞줄(+Z)일수록 먼저 친다. 뒤에서 계산해 채운다
                 AttackDelay = instance.Position.Z,
                 TwistSign = index % 2 == 0 ? 1f : -1f,
-            });
+            };
+
+            _members.Add(member);
             index++;
+        }
+
+        if (_motion == MotionKind.Cavalry)
+        {
+            _dust = BuildHoofDust();
+            _tokenRoot.AddChild(_dust);
         }
 
         // 자리의 Z를 지연 시간으로 환산한다 — 선두 0에서 시작해 뒤로 갈수록 늦다
@@ -461,5 +582,50 @@ public partial class UnitController3D : Node3D
         }
 
         _lastPosition = Position;
+        MapView3D.TuneImportedMeshes(_tokenRoot);
+    }
+
+    // 말발굽이 이는 먼지. 이동 중에만 뿜고 멈추면 끈다.
+    // LocalCoords를 끄면 먼지가 월드에 남아 지나온 자리에 꼬리가 생긴다.
+    private static CpuParticles3D BuildHoofDust()
+    {
+        var gradient = new Gradient();
+        gradient.SetColor(0, new Color(0.78f, 0.70f, 0.56f, 0f));
+        gradient.AddPoint(0.18f, new Color(0.76f, 0.68f, 0.54f, 0.42f));
+        gradient.SetColor(1, new Color(0.80f, 0.74f, 0.62f, 0f));
+
+        return new CpuParticles3D
+        {
+            Position = new Vector3(0f, 0.01f, 0f),
+            Amount = 16,
+            Lifetime = 0.8f,
+            Emitting = false,
+            LocalCoords = false,
+            Mesh = new SphereMesh
+            {
+                Radius = 0.032f,
+                Height = 0.048f,
+                RadialSegments = 6,
+                Rings = 3,
+                Material = new StandardMaterial3D
+                {
+                    VertexColorUseAsAlbedo = true,
+                    Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                    ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                },
+            },
+            EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
+            EmissionBoxExtents = new Vector3(0.15f, 0.005f, 0.13f),
+            Direction = new Vector3(0f, 1f, 0f),
+            Spread = 32f,
+            InitialVelocityMin = 0.09f,
+            InitialVelocityMax = 0.20f,
+            Gravity = new Vector3(0f, -0.06f, 0f),
+            DampingMin = 0.4f,
+            DampingMax = 0.7f,
+            ScaleAmountMin = 0.5f,
+            ScaleAmountMax = 1.5f,
+            ColorRamp = gradient,
+        };
     }
 }
