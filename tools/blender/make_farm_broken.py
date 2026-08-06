@@ -21,7 +21,10 @@ TWIST_DEG = 9.0   # 조각을 타일 중심 기준으로 비트는 각도
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=SRC)
 
-source = next(o for o in bpy.data.objects if o.type == "MESH")
+for m in bpy.data.materials:
+    m.use_backface_culling = True
+
+source =next(o for o in bpy.data.objects if o.type == "MESH")
 bpy.ops.object.select_all(action="DESELECT")
 source.select_set(True)
 bpy.context.view_layer.objects.active = source

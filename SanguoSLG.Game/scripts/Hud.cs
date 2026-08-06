@@ -96,8 +96,9 @@ public partial class Hud : CanvasLayer
 
         box.AddChild(new Control { SizeFlagsVertical = Control.SizeFlags.ExpandFill });
 
-        var hint = MakeLabel("좌클릭 이동 · F 공격 모션 · 휠 줌 · 우클릭/WASD 팬 · Q/E 회전
-깜빡임 원인 찾기 — F2 SSAO · F3 그림자 · F4 글로우 끄기/켜기", 12, new Color(0.62f, 0.64f, 0.68f));
+        var hint = MakeLabel(
+            "좌클릭 이동 · F 공격 모션 · 휠 줌 · 우클릭/WASD 팬 · Q/E 회전\n진단 토글 — F2 SSAO · F3 그림자 · F4 글로우",
+            12, new Color(0.62f, 0.64f, 0.68f));
         hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(hint);
     }

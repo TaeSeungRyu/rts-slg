@@ -76,7 +76,6 @@ public partial class GameRoot3D : Node3D
         camera.Current = true;
 
         BuildCities(mapView, scenario);
-        MapView3D.DisableTinyShadowCasters(this);
 
         // 유닛 1기를 첫 도시 성 밖(서쪽 이웃)에 스폰(슬라이스용).
         var startCity = scenario.Cities[0];
@@ -84,6 +83,8 @@ public partial class GameRoot3D : Node3D
         AddChild(unitNode);
         unitNode.Init(scenario.Map, mapView, camera,
             new Unit(new UnitId(1), startCity.Owner, startCity.Position + new HexCoord(-1, 0)));
+
+        MapView3D.TuneImportedMeshes(this);
 
         AddChild(BuildVignette(tone));
 

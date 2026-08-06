@@ -17,6 +17,7 @@ bpy.ops.wm.read_factory_settings(use_empty=True)
 def make_mat(name, color, roughness=0.85, metallic=0.0):
     m = bpy.data.materials.new(name)
     m.use_nodes = True
+    m.use_backface_culling = True
     bsdf = m.node_tree.nodes["Principled BSDF"]
     bsdf.inputs["Base Color"].default_value = (*color, 1.0)
     bsdf.inputs["Roughness"].default_value = roughness

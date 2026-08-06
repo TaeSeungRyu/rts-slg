@@ -153,7 +153,7 @@ public partial class VillagerAmbience : Node3D
         a.Node.Position = SamplePoint();
         a.Node.Scale = Vector3.One * 0.02f;
         TintRobe(a.Node, RobeColors[_rng.RandiRange(0, RobeColors.Length - 1)]);
-        MapView3D.DisableTinyShadowCasters(a.Node);
+        MapView3D.TuneImportedMeshes(a.Node);
         AddChild(a.Node);
 
         a.SegmentsLeft = _rng.RandiRange(1, 3);

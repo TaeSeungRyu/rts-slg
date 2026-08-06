@@ -15,12 +15,17 @@ HEX_R = 0.5774
 TILE_H = 0.2
 Z = TILE_H
 
+# 기둥 윗면이 몸체 윗면과 같은 평면이면 둘 다 위를 향해 z-파이팅한다(후면 컬링으로 안 없어짐).
+# 이만큼 높여 윗면을 위쪽 처마 속에 묻는다.
+POST_RISE = 0.006
+
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
 def make_mat(name, color, roughness=0.85, metallic=0.0):
     m = bpy.data.materials.new(name)
     m.use_nodes = True
+    m.use_backface_culling = True
     bsdf = m.node_tree.nodes["Principled BSDF"]
     bsdf.inputs["Base Color"].default_value = (*color, 1.0)
     bsdf.inputs["Roughness"].default_value = roughness
@@ -133,8 +138,8 @@ wcs, wsn = math.cos(WROT), math.sin(WROT)
 for sx in (-1, 1):
     for sy in (-1, 1):
         dx, dy = sx * (WL / 2 - 0.008), sy * (WD / 2 - 0.008)
-        box(f"warehouse_post_{sx}_{sy}", 0.030, 0.030, WH,
-            WX + dx * wcs - dy * wsn, WY + dx * wsn + dy * wcs, Z + WH / 2, M_WOOD, rot_z=WROT)
+        box(f"warehouse_post_{sx}_{sy}", 0.030, 0.030, WH + POST_RISE,
+            WX + dx * wcs - dy * wsn, WY + dx * wsn + dy * wcs, Z + (WH + POST_RISE) / 2, M_WOOD, rot_z=WROT)
 box("warehouse_door", 0.09, 0.02, 0.085, WX + 0.05 * wcs + (WD / 2 + 0.004) * wsn,
     WY + 0.05 * wsn - (WD / 2 + 0.004) * wcs, Z + 0.043, M_ROOF, rot_z=WROT)
 ridge_roof("warehouse_roof", WL * 1.14, WD * 1.35, 0.085, WX, WY, Z + WH + 0.035, M_ROOF, rot_z=WROT)
@@ -149,8 +154,8 @@ ocs, osn = math.cos(OROT), math.sin(OROT)
 for sx in (-1, 1):
     for sy in (-1, 1):
         dx, dy = sx * (OW2 / 2 - 0.008), sy * (od / 2 - 0.008)
-        box(f"office_post_{sx}_{sy}", 0.026, 0.026, oh1,
-            OX + dx * ocs - dy * osn, OY + dx * osn + dy * ocs, Z + oh1 / 2, M_WOOD, rot_z=OROT)
+        box(f"office_post_{sx}_{sy}", 0.026, 0.026, oh1 + POST_RISE,
+            OX + dx * ocs - dy * osn, OY + dx * osn + dy * ocs, Z + (oh1 + POST_RISE) / 2, M_WOOD, rot_z=OROT)
 oz1 = Z + oh1
 pyramid("office_eave1", OW2 * 0.82, OW2 * 0.42, OW2 * 0.11, OX, OY, oz1 + OW2 * 0.055, M_ROOF, rot_z=OROT)
 ow2, oh2 = OW2 * 0.60, OW2 * 0.30
@@ -168,8 +173,8 @@ acs, asn = math.cos(AROT), math.sin(AROT)
 for sx in (-1, 1):
     for sy in (-1, 1):
         dx, dy = sx * (AW / 2 - 0.006), sy * (AD / 2 - 0.006)
-        box(f"lodge_post_{sx}_{sy}", 0.024, 0.024, AH,
-            AX + dx * acs - dy * asn, AY + dx * asn + dy * acs, Z + AH / 2, M_WOOD, rot_z=AROT)
+        box(f"lodge_post_{sx}_{sy}", 0.024, 0.024, AH + POST_RISE,
+            AX + dx * acs - dy * asn, AY + dx * asn + dy * acs, Z + (AH + POST_RISE) / 2, M_WOOD, rot_z=AROT)
 pyramid("lodge_eave", AW * 0.80, AW * 0.44, AW * 0.11, AX, AY, Z + AH + AW * 0.055, M_ROOF, rot_z=AROT)
 pyramid("lodge_roof", AW * 0.50, 0.010, AW * 0.24, AX, AY,
         Z + AH + AW * 0.11 + AW * 0.12, M_ROOF, rot_z=AROT)
@@ -182,8 +187,8 @@ hcs, hsn = math.cos(BROT_S), math.sin(BROT_S)
 for sx in (-1, 1):
     for sy in (-1, 1):
         dx, dy = sx * (BW / 2 - 0.005), sy * (BD / 2 - 0.005)
-        box(f"hut_post_{sx}_{sy}", 0.022, 0.022, BH,
-            BXX + dx * hcs - dy * hsn, BYY + dx * hsn + dy * hcs, Z + BH / 2, M_WOOD, rot_z=BROT_S)
+        box(f"hut_post_{sx}_{sy}", 0.022, 0.022, BH + POST_RISE,
+            BXX + dx * hcs - dy * hsn, BYY + dx * hsn + dy * hcs, Z + (BH + POST_RISE) / 2, M_WOOD, rot_z=BROT_S)
 pyramid("hut_eave", BW * 0.80, BW * 0.44, BW * 0.11, BXX, BYY, Z + BH + BW * 0.055, M_ROOF, rot_z=BROT_S)
 pyramid("hut_roof", BW * 0.50, 0.010, BW * 0.24, BXX, BYY,
         Z + BH + BW * 0.11 + BW * 0.12, M_ROOF, rot_z=BROT_S)

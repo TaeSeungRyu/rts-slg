@@ -14,12 +14,17 @@ OUT = r"D:\dev\window\slg\SanguoSLG.Game\assets\models\village-3.glb"
 HEX_R = 0.5774
 TILE_H = 0.2
 
+# 기둥 윗면이 몸체 윗면과 같은 평면이면 둘 다 위를 향해 z-파이팅한다(후면 컬링으로 안 없어짐).
+# 이만큼 높여 윗면을 위쪽 처마 속에 묻는다.
+POST_RISE = 0.006
+
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
 def make_mat(name, color, roughness=0.85, metallic=0.0):
     m = bpy.data.materials.new(name)
     m.use_nodes = True
+    m.use_backface_culling = True
     bsdf = m.node_tree.nodes["Principled BSDF"]
     bsdf.inputs["Base Color"].default_value = (*color, 1.0)
     bsdf.inputs["Roughness"].default_value = roughness
@@ -109,8 +114,8 @@ def build_house(tag, cx, cy, w, wall_mat, rot_z):
     for sx in (-1, 1):
         for sy in (-1, 1):
             dx, dy = sx * (w / 2 - 0.013), sy * (d / 2 - 0.013)
-            box(f"{tag}_post_{sx}_{sy}", 0.028, 0.028, h,
-                cx + dx * cs - dy * sn, cy + dx * sn + dy * cs, Z + h / 2, M_WOOD, rot_z=rot_z)
+            box(f"{tag}_post_{sx}_{sy}", 0.028, 0.028, h + POST_RISE,
+                cx + dx * cs - dy * sn, cy + dx * sn + dy * cs, Z + (h + POST_RISE) / 2, M_WOOD, rot_z=rot_z)
     pyramid(f"{tag}_eave", w * 0.80, w * 0.46, w * 0.12, cx, cy, Z + h + w * 0.06, M_ROOF, rot_z=rot_z)
     pyramid(f"{tag}_roof", w * 0.52, 0.012, w * 0.26, cx, cy, Z + h + w * 0.12 + w * 0.13, M_ROOF, rot_z=rot_z)
 
@@ -123,8 +128,8 @@ def build_longhouse(tag, cx, cy, rot_z):
     for sx in (-1, 1):
         for sy in (-1, 1):
             dx, dy = sx * (L / 2 - 0.014), sy * (D / 2 - 0.012)
-            box(f"{tag}_post_{sx}_{sy}", 0.026, 0.026, H,
-                cx + dx * cs - dy * sn, cy + dx * sn + dy * cs, Z + H / 2, M_WOOD, rot_z=rot_z)
+            box(f"{tag}_post_{sx}_{sy}", 0.026, 0.026, H + POST_RISE,
+                cx + dx * cs - dy * sn, cy + dx * sn + dy * cs, Z + (H + POST_RISE) / 2, M_WOOD, rot_z=rot_z)
     # footprint 반너비 = 0.5*s이므로 몸체(L, D)보다 크게 줘야 처마가 밖으로 나온다
     ridge_roof(f"{tag}_roof", L * 1.18, D * 1.35, 0.075, cx, cy, Z + H + 0.030, M_ROOF, rot_z=rot_z)
 

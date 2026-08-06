@@ -39,6 +39,7 @@ FOOTPRINTS = {
 def make_mat(name, color, roughness=0.85, metallic=0.0):
     m = bpy.data.materials.new(name)
     m.use_nodes = True
+    m.use_backface_culling = True
     bsdf = m.node_tree.nodes["Principled BSDF"]
     bsdf.inputs["Base Color"].default_value = (*color, 1.0)
     bsdf.inputs["Roughness"].default_value = roughness
@@ -86,8 +87,8 @@ def tower(mats, prefix, cx, cy, base_z, tiers, base_w):
         box(f"{prefix}_t{t}", w, w, th, cx, cy, z + th / 2, m_wall)
         for sx in (-1, 1):
             for sy in (-1, 1):
-                box(f"{prefix}_p{t}_{sx}_{sy}", 0.045, 0.045, th,
-                    cx + sx * (w / 2 - 0.02), cy + sy * (w / 2 - 0.02), z + th / 2, m_wood)
+                box(f"{prefix}_p{t}_{sx}_{sy}", 0.045, 0.045, th + POST_RISE,
+                    cx + sx * (w / 2 - 0.02), cy + sy * (w / 2 - 0.02), z + (th + POST_RISE) / 2, m_wood)
         z += th
         if t < tiers - 1:
             pyramid(f"{prefix}_eave{t}", w * 1.22, w * 0.66, 0.055, cx, cy, z + 0.0275, m_roof)
@@ -116,7 +117,11 @@ def boundary_edges(centers):
 
 def build_castle(filename, kind, buildings, gate_dirs):
     """buildings: [(x, y, 단수, 벽폭)], gate_dirs: 성문 방향 벡터 목록."""
-    bpy.ops.wm.read_factory_settings(use_empty=True)
+    # 기둥 윗면이 몸체 윗면과 같은 평면이면 둘 다 위를 향해 z-파이팅한다(후면 컬링으로 안 없어짐).
+# 이만큼 높여 윗면을 위쪽 처마 속에 묻는다.
+POST_RISE = 0.006
+
+bpy.ops.wm.read_factory_settings(use_empty=True)
     m_roof = make_mat("roof", (0.06, 0.09, 0.14))
     m_wall = make_mat("wall", (0.55, 0.40, 0.22))
     m_wood = make_mat("wood", (0.42, 0.18, 0.12))

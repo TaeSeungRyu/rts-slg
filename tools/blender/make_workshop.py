@@ -11,12 +11,17 @@ OUT = r"D:\dev\window\slg\SanguoSLG.Game\assets\models\workshop.glb"
 HEX_R = 0.5774
 TILE_H = 0.2
 
+# 기둥 윗면이 몸체 윗면과 같은 평면이면 둘 다 위를 향해 z-파이팅한다(후면 컬링으로 안 없어짐).
+# 이만큼 높여 윗면을 위쪽 처마 속에 묻는다.
+POST_RISE = 0.006
+
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
 def make_mat(name, color, roughness=0.85, metallic=0.0):
     m = bpy.data.materials.new(name)
     m.use_nodes = True
+    m.use_backface_culling = True
     bsdf = m.node_tree.nodes["Principled BSDF"]
     bsdf.inputs["Base Color"].default_value = (*color, 1.0)
     bsdf.inputs["Roughness"].default_value = roughness
@@ -72,8 +77,9 @@ W, H = 0.30, 0.13
 box("house", W, W * 0.8, H, HX, HY, Z + H / 2, M_WALL)
 for sx in (-1, 1):
     for sy in (-1, 1):
-        box(f"post_{sx}_{sy}", 0.035, 0.035, H,
-            HX + sx * (W / 2 - 0.015), HY + sy * (W * 0.8 / 2 - 0.015), Z + H / 2, M_WOOD)
+        box(f"post_{sx}_{sy}", 0.035, 0.035, H + POST_RISE,
+            HX + sx * (W / 2 - 0.015), HY + sy * (W * 0.8 / 2 - 0.015),
+            Z + (H + POST_RISE) / 2, M_WOOD)
 pyramid("house_eave", W * 0.78, W * 0.45, 0.035, HX, HY, Z + H + 0.0175, M_ROOF)
 pyramid("house_roof", W * 0.52, 0.015, 0.075, HX, HY, Z + H + 0.035 + 0.0375, M_ROOF)
 

@@ -385,9 +385,14 @@ public partial class MapView3D : Node3D
 
     private const float TinyCasterThickness = 0.05f;
 
-    // 이 두께 미만은 그림자맵 텍셀(원거리 캐스케이드에서 약 0.012) 대비 2~4배에 불과해
+    // TinyCasterThickness 미만은 그림자맵 텍셀(원거리 캐스케이드에서 약 0.012) 대비 2~4배에 불과해
     // 캐스팅을 켜두면 여드름(acne)이 생기고 카메라가 움직일 때마다 깜빡인다.
-    public static void DisableTinyShadowCasters(Node node)
+    //
+    // 컬링: 킷(Kenney) GLB는 재질이 doubleSided라 후면 컬링이 꺼진 채 들어온다. 그러면 맞닿은
+    // 두 솔리드(타일 윗면 ↔ 그 위에 얹은 기단 아랫면)의 면이 법선 방향과 무관하게 둘 다 그려져
+    // 같은 깊이를 다투고, 카메라가 움직일 때마다 깜빡인다. 자체 제작 모델은 Blender 쪽에서
+    // use_backface_culling으로 막았고, 재생성할 수 없는 킷 모델은 여기서 강제한다.
+    public static void TuneImportedMeshes(Node node)
     {
         if (node is MeshInstance3D instance && instance.Mesh is not null)
         {
@@ -396,11 +401,19 @@ public partial class MapView3D : Node3D
             {
                 instance.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
             }
+
+            for (var surface = 0; surface < instance.Mesh.GetSurfaceCount(); surface++)
+            {
+                if (instance.GetActiveMaterial(surface) is BaseMaterial3D material)
+                {
+                    material.CullMode = BaseMaterial3D.CullModeEnum.Back;
+                }
+            }
         }
 
         foreach (var child in node.GetChildren())
         {
-            DisableTinyShadowCasters(child);
+            TuneImportedMeshes(child);
         }
     }
 

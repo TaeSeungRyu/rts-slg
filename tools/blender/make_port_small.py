@@ -14,12 +14,17 @@ OUT = r"D:\dev\window\slg\SanguoSLG.Game\assets\models\port-small.glb"
 
 Z = 0.2  # 타일 윗면(지면) 높이
 
+# 기둥 윗면이 몸체 윗면과 같은 평면이면 둘 다 위를 향해 z-파이팅한다(후면 컬링으로 안 없어짐).
+# 이만큼 높여 윗면을 위쪽 처마 속에 묻는다.
+POST_RISE = 0.006
+
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
 def make_mat(name, color, roughness=0.85, metallic=0.0):
     m = bpy.data.materials.new(name)
     m.use_nodes = True
+    m.use_backface_culling = True
     bsdf = m.node_tree.nodes["Principled BSDF"]
     bsdf.inputs["Base Color"].default_value = (*color, 1.0)
     bsdf.inputs["Roughness"].default_value = roughness
@@ -81,8 +86,8 @@ for sx in (-1, 1):
     for sy in (-1, 1):
         # 기둥 바깥면이 벽면과 같은 평면이면 z-파이팅으로 반짝인다 — 0.006 확실히 돌출
         dx, dy = sx * (HW / 2 - 0.008), sy * (HD / 2 - 0.008)
-        box(f"house_post_{sx}_{sy}", 0.028, 0.028, HH,
-            HX + dx * cs - dy * sn, HY + dx * sn + dy * cs, Z + HH / 2, M_WOOD, rot_z=HROT)
+        box(f"house_post_{sx}_{sy}", 0.028, 0.028, HH + POST_RISE,
+            HX + dx * cs - dy * sn, HY + dx * sn + dy * cs, Z + (HH + POST_RISE) / 2, M_WOOD, rot_z=HROT)
 box("house_door", 0.075, 0.02, 0.075, HX + 0.02 * cs + (HD / 2 + 0.004) * sn,
     HY + 0.02 * sn - (HD / 2 + 0.004) * cs, Z + 0.038, M_ROOF, rot_z=HROT)
 pyramid("house_eave", HW * 0.80, HW * 0.46, HW * 0.12, HX, HY, Z + HH + HW * 0.06, M_ROOF, rot_z=HROT)
@@ -135,8 +140,8 @@ for sx in (-1, 1):
     for sy in (-1, 1):
         # 기둥 바깥면이 벽면과 정확히 같은 평면이었음(0.022 기둥, SW/2-0.011) — 0.006 돌출
         dx, dy = sx * (SW / 2 - 0.005), sy * (SD / 2 - 0.005)
-        box(f"shed_post_{sx}_{sy}", 0.022, 0.022, SH,
-            SX + dx * scs - dy * ssn, SY + dx * ssn + dy * scs, Z + SH / 2, M_WOOD, rot_z=SROT)
+        box(f"shed_post_{sx}_{sy}", 0.022, 0.022, SH + POST_RISE,
+            SX + dx * scs - dy * ssn, SY + dx * ssn + dy * scs, Z + (SH + POST_RISE) / 2, M_WOOD, rot_z=SROT)
 pyramid("shed_eave", SW * 0.80, SW * 0.44, SW * 0.11, SX, SY, Z + SH + SW * 0.055, M_ROOF, rot_z=SROT)
 pyramid("shed_roof", SW * 0.50, 0.010, SW * 0.24, SX, SY,
         Z + SH + SW * 0.11 + SW * 0.12, M_ROOF, rot_z=SROT)
