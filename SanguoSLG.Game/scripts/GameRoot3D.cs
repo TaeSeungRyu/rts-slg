@@ -19,6 +19,8 @@ public partial class GameRoot3D : Node3D
     private Hud _hud = null!;
     private bool _capture;
     private int _frames;
+    private Godot.Environment _environment = null!;
+    private DirectionalLight3D _sun = null!;
 
     public override void _Ready()
     {
@@ -43,8 +45,10 @@ public partial class GameRoot3D : Node3D
         var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
 
         var tone = TonePreset.FromCmdline();
-        AddChild(new WorldEnvironment { Environment = BuildEnvironment(tone) });
-        AddChild(BuildSunLight(tone));
+        _environment = BuildEnvironment(tone);
+        AddChild(new WorldEnvironment { Environment = _environment });
+        _sun = BuildSunLight(tone);
+        AddChild(_sun);
 
         var mapView = new MapView3D();
         AddChild(mapView);
@@ -91,6 +95,27 @@ public partial class GameRoot3D : Node3D
         _hud.SetState(_state);
 
         _capture = OS.GetCmdlineArgs().Contains("--shot");
+    }
+
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event is not InputEventKey { Pressed: true, Echo: false } key)
+        {
+            return;
+        }
+
+        switch (key.Keycode)
+        {
+            case Key.F2:
+                _environment.SsaoEnabled = !_environment.SsaoEnabled;
+                break;
+            case Key.F3:
+                _sun.ShadowEnabled = !_sun.ShadowEnabled;
+                break;
+            case Key.F4:
+                _environment.GlowEnabled = !_environment.GlowEnabled;
+                break;
+        }
     }
 
     private void OnNextMonth()
@@ -192,7 +217,8 @@ public partial class GameRoot3D : Node3D
             TonemapMode = Godot.Environment.ToneMapper.Filmic,
             TonemapExposure = tone.Exposure,
             SsaoEnabled = true,
-            SsaoIntensity = 1.2f,
+            SsaoIntensity = 1.0f,
+            SsaoRadius = 0.18f,
             GlowEnabled = true,
             GlowIntensity = 0.15f,
             FogEnabled = tone.FogDensity > 0f,
