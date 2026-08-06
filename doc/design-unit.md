@@ -118,6 +118,85 @@
 | 대하 | 불가 | 가능 |
 | 산악 | 불가 (`Axeman`만 가능) | 불가 |
 
+## 유닛 데이터 (`data/troop-types.json`)
+
+병종 수치는 전부 여기에 둔다. C# 코드에 박지 않는다(CLAUDE.md 규칙 3).
+JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
+
+### 필드
+
+| 필드 | 형 | 뜻 |
+|---|---|---|
+| `id` | string | 병종 식별자(snake_case) |
+| `name_ko` | string | 화면 표기용 한국어 이름. **바뀔 수 있다** — 로직은 `id`만 본다 |
+| `category` | string | `basic` / `special` |
+| `terrain` | string | `land` / `deep_water` / `land_mountain` |
+| `movement` | int | 이동력 |
+| `mountain_movement` | int? | 산악 진입 시 이동 제한. `land_mountain`에만 있다 |
+| `range_unit` | int | 유닛 대상 사거리 |
+| `range_building` | int | 건물 대상 사거리 |
+| `range_castle` | int | 성 대상 사거리 |
+| `model` | string | 1기짜리 GLB 파일명 |
+
+### 전체 값 (19종)
+
+| # | `id` | 분류 | 지형 | 이동력 | 산악 | 유닛 | 건물 | 성 |
+|---|---|---|---|---|---|---|---|---|
+| 1 | `swordsman` | basic | land | 3 | — | 1 | 1 | 1 |
+| 2 | `cavalry` | basic | land | 5 | — | 1 | 1 | 1 |
+| 3 | `archer` | basic | land | 3 | — | **2** | 1 | 1 |
+| 4 | `thunder_cart` | basic | land | 2 | — | 1 | 1 | 1 |
+| 5 | `catapult` | basic | land | 2 | — | **3** | **2** | 1 |
+| 6 | `siege_tower` | basic | land | 2 | — | **3** | **2** | 1 |
+| 7 | `war_elephant` | basic | land | 3 | — | 1 | 1 | 1 |
+| 8 | `small_boat` | basic | deep_water | 4 | — | 1 | 1 | 1 |
+| 9 | `medium_ship` | basic | deep_water | 3 | — | 1 | 1 | 1 |
+| 10 | `large_ship` | basic | deep_water | 3 | — | 1 | 1 | 1 |
+| 11 | `pikeman` | special | land | 3 | — | 1 | 1 | 1 |
+| 12 | `scytheman` | special | land | 3 | — | 1 | 1 | 1 |
+| 13 | `shieldbearer` | special | land | 2 | — | 1 | 1 | 1 |
+| 14 | `axeman` | special | land_mountain | 3 | **1** | 1 | 1 | 1 |
+| 15 | `lancer` | special | land | 4 | — | 1 | 1 | 1 |
+| 16 | `horse_archer` | special | land | 5 | — | **2** | 1 | 1 |
+| 17 | `great_bow` | special | land | 2 | — | **3** | **2** | 1 |
+| 18 | `panokseon` | special | deep_water | 3 | — | 1 | 1 | 1 |
+| 19 | `turtleship` | special | deep_water | 3 | — | 1 | 1 | 1 |
+
+### 형태 예시
+
+```json
+{
+  "troop_types": [
+    {
+      "id": "archer",
+      "name_ko": "궁병",
+      "category": "basic",
+      "terrain": "land",
+      "movement": 3,
+      "range_unit": 2,
+      "range_building": 1,
+      "range_castle": 1,
+      "model": "troop-archer.glb"
+    },
+    {
+      "id": "axeman",
+      "name_ko": "산악병",
+      "category": "special",
+      "terrain": "land_mountain",
+      "movement": 3,
+      "mountain_movement": 1,
+      "range_unit": 1,
+      "range_building": 1,
+      "range_castle": 1,
+      "model": "troop-axeman.glb"
+    }
+  ]
+}
+```
+
+> 아직 파일을 만들지 않았다. 구현 시 `ScenarioLoader`와 같은 방식으로 Core에서 읽고,
+> 알 수 없는 `terrain`·`category` 값은 예외를 던진다(기존 `ParseCondition`과 같은 규약).
+
 ## 모델 제작 메모
 
 19종을 전부 새로 만들 필요는 없다. 몸통을 공유하고 장비만 바꾸면 되는 묶음이 있다.
