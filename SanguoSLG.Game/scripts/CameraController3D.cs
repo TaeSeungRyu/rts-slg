@@ -25,6 +25,14 @@ public partial class CameraController3D : Camera3D
     /// <summary>주시점과 거리로 카메라를 초기화한다(트리에 추가된 뒤 호출).</summary>
     public void Setup(Vector3 pivot, float distance)
     {
+        // 깊이 버퍼 정밀도의 근본 설정. Godot 기본값(near 0.05 / far 4000)은 범위가
+        // 80,000:1이라 정밀도가 흩어지고, 맞닿은 면들이 카메라가 움직일 때마다
+        // 앞뒤가 뒤바뀌며 깜빡인다(z-파이팅). 이 게임은 타일 반경 0.577,
+        // 카메라 거리 2.2~50의 작은 월드라 근평면을 크게 올릴 수 있다 —
+        // near를 10배 올리면 정밀도가 그만큼 좋아진다.
+        Near = 0.5f;   // 최소 줌 거리 2.2보다 훨씬 작아 잘릴 위험 없음
+        Far = 700f;    // 600x600 바다 평면의 먼 모서리까지 여유 있게 포함
+
         _pivot = _targetPivot = pivot;
         _distance = _targetDistance = Mathf.Clamp(distance, MinDistance, MaxDistance);
         _yaw = _targetYaw = 0f;

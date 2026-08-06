@@ -164,7 +164,8 @@ public static class DamageView
         var tiltX = (Hash01(name + "#x", seed) * 2f - 1f) * degrees;
         var tiltZ = (Hash01(name + "#z", seed) * 2f - 1f) * degrees;
         part.RotationDegrees += new Vector3(tiltX, 0f, tiltZ);
-        part.Position += new Vector3(0f, Hash01(name + "#y", seed) * 0.004f, 0f);
+        // 해시가 0에 가까우면 오프셋이 사라지므로 최소 간격을 보장한다
+        part.Position += new Vector3(0f, 0.002f + Hash01(name + "#y", seed) * 0.004f, 0f);
     }
 
     // ── (3) 잔해 프롭: 모델 1개를 회전·크기를 달리해 흩뿌린다
@@ -180,7 +181,9 @@ public static class DamageView
             var radius = 0.10f + Hash01($"rubble{i}#r", seed) * 0.30f;
             piece.Position = new Vector3(
                 Mathf.Cos(angle) * radius,
-                groundY + 0.004f, // 타일 윗면과 같은 평면이면 깜빡이므로 살짝 띄운다
+                // 잔해 바닥면은 타일 윗면과 평행하다 — 충분히 띄우지 않으면 깜빡인다.
+                // 지금까지 효과가 있었던 간격(0.006~0.016)에 맞춰 잡는다.
+                groundY + 0.012f,
                 Mathf.Sin(angle) * radius);
             piece.RotationDegrees = new Vector3(0f, Hash01($"rubble{i}#yaw", seed) * 360f, 0f);
             piece.Scale = Vector3.One * (0.7f + Hash01($"rubble{i}#s", seed) * 0.7f);
