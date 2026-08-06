@@ -140,6 +140,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 | `terrain` | string | `land` / `deep_water` / `land_mountain` |
 | `movement` | int | 이동력 |
 | `mountain_movement` | int? | 산악 진입 시 이동 제한. `land_mountain`에만 있다 |
+| `detection` | int | 탐지 범위. 이 안에 적이 들어오면 공격모드는 추격한다([design-movement.md](./design-movement.md)) |
 | `range_unit` | int | 유닛 대상 사거리 |
 | `range_building` | int | 건물 대상 사거리 |
 | `range_castle` | int | 성 대상 사거리 |
@@ -180,6 +181,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
       "category": "basic",
       "terrain": "land",
       "movement": 3,
+      "detection": 2,
       "range_unit": 2,
       "range_building": 1,
       "range_castle": 1,
@@ -192,6 +194,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
       "terrain": "land_mountain",
       "movement": 3,
       "mountain_movement": 1,
+      "detection": 2,
       "range_unit": 1,
       "range_building": 1,
       "range_castle": 1,
