@@ -9,7 +9,7 @@ namespace SanguoSLG.Game;
 public static class TroopFormation
 {
     /// <summary>검수·편성에 쓰는 규모 단계.</summary>
-    public static readonly int[] Sizes = { 1, 3, 5, 7 };
+    public static readonly int[] Sizes = { 1, 3, 5, 7, 9 };
 
     /// <summary>편대원 한 명의 자리 — 타일 로컬 오프셋과 미세 yaw(도).</summary>
     public readonly record struct Slot(Vector3 Offset, float YawDegrees);
@@ -49,9 +49,24 @@ public static class TroopFormation
         new(new Vector3(0f, 0f, -0.23f), 4f),
     };
 
+    // 마름모(1·2·3·2·1). 폭 ±0.32는 육각 변심거리 0.5 안, 앞뒤 ±0.27은 꼭짓점 0.5774 안이다.
+    private static readonly Slot[] Nine =
+    {
+        new(new Vector3(0f, 0f, 0.27f), 0f),
+        new(new Vector3(-0.17f, 0f, 0.13f), 5f),
+        new(new Vector3(0.17f, 0f, 0.13f), -6f),
+        new(new Vector3(-0.32f, 0f, -0.01f), 8f),
+        new(new Vector3(0f, 0f, -0.01f), -3f),
+        new(new Vector3(0.32f, 0f, -0.01f), -7f),
+        new(new Vector3(-0.17f, 0f, -0.15f), -5f),
+        new(new Vector3(0.17f, 0f, -0.15f), 6f),
+        new(new Vector3(0f, 0f, -0.28f), 3f),
+    };
+
     /// <summary>규모에 해당하는 자리 목록. 정의되지 않은 규모는 가장 가까운 아래 단계를 쓴다.</summary>
     public static Slot[] Slots(int count) => count switch
     {
+        >= 9 => Nine,
         >= 7 => Seven,
         >= 5 => Five,
         >= 3 => Three,

@@ -42,8 +42,15 @@ public partial class UnitController3D : Node3D
         public Node3D ArmL = null!;
         public Node3D ArmR = null!;
         public Vector3 BodyBasePosition;
+        public Vector3 BodyBaseRotation;
         public Vector3 ArmRBaseRotation;
         public float Phase;
+
+        /// <summary>공격 시작 지연 — 앞줄부터 차례로 친다.</summary>
+        public float AttackDelay;
+
+        /// <summary>상체를 트는 방향(±1) — 편대원끼리 엇갈리게 한다.</summary>
+        public float TwistSign;
     }
 
     private readonly List<Member> _members = new();
@@ -125,6 +132,7 @@ public partial class UnitController3D : Node3D
             foreach (var member in _members)
             {
                 member.Body.Position = member.BodyBasePosition;
+                member.Body.Rotation = member.BodyBaseRotation;
                 member.LegL.Rotation = Vector3.Zero;
                 member.LegR.Rotation = Vector3.Zero;
                 member.ArmL.Rotation = Vector3.Zero;
@@ -133,7 +141,17 @@ public partial class UnitController3D : Node3D
         }
     }
 
-    /// <summary>공격 모션: 부대 전체가 짧게 돌진하며 칼을 내리치고 복귀한다.</summary>
+    // 공격 모션 타이밍. 젖힘은 길고 느리게, 내리침은 짧고 빠르게 — 대비가 힘을 만든다.
+    private const float AttackRippleSeconds = 0.34f;  // 앞뒤 자리 차이 1당 지연
+    private const float WindUpSeconds = 0.15f;
+    private const float StrikeSeconds = 0.07f;
+    private const float RecoverSeconds = 0.28f;
+
+    /// <summary>
+    /// 공격 모션: 앞줄부터 차례로 칼을 젖혔다 내리친다.
+    /// 편대원이 동시에 같은 동작을 하면 아무리 크게 흔들어도 밋밋해지므로,
+    /// 자리에 따라 시작을 늦추고 상체를 엇갈리게 튼다.
+    /// </summary>
     public void PlayAttackMotion()
     {
         if (_moving || _attacking)
@@ -144,34 +162,59 @@ public partial class UnitController3D : Node3D
         _attacking = true;
         var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
         var origin = Position;
+        var lastDelay = 0f;
 
-        var tween = CreateTween();
-        // 1) 칼을 뒤로 젖혀 치켜든다
         foreach (var member in _members)
         {
-            tween.Parallel().TweenProperty(member.ArmR, "rotation:x",
-                member.ArmRBaseRotation.X - 1.0f, 0.12f);
+            lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
+            var tween = CreateTween();
+            tween.TweenInterval(member.AttackDelay);
+
+            // 1) 젖힘 — 칼을 뒤로 치켜들고 상체를 뒤로 젖히며 비튼다. 방패는 올려 막는다
+            tween.Chain().TweenProperty(member.ArmR, "rotation:x",
+                    member.ArmRBaseRotation.X - 1.15f, WindUpSeconds)
+                .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+            tween.Parallel().TweenProperty(member.ArmL, "rotation:x", -0.55f, WindUpSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X + 0.16f, WindUpSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+            tween.Parallel().TweenProperty(member.Body, "rotation:y",
+                    member.BodyBaseRotation.Y + member.TwistSign * 0.26f, WindUpSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+
+            // 2) 내리침 — 젖힘의 절반도 안 되는 시간에 두 배 거리를 지난다
+            tween.Chain().TweenProperty(member.ArmR, "rotation:x",
+                    member.ArmRBaseRotation.X + 1.0f, StrikeSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X - 0.24f, StrikeSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+            tween.Parallel().TweenProperty(member.Body, "rotation:y",
+                    member.BodyBaseRotation.Y, StrikeSeconds)
+                .SetTrans(Tween.TransitionType.Quad);
+
+            // 3) 복귀 — 반동으로 되돌아온다
+            tween.Chain().TweenProperty(member.ArmR, "rotation:x",
+                    member.ArmRBaseRotation.X, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            tween.Parallel().TweenProperty(member.ArmL, "rotation:x", 0f, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
         }
 
-        // 2) 돌진하며 내리침
-        tween.Chain().TweenProperty(this, "position", origin + forward * 0.16f, 0.12f)
+        // 편대 전체는 선두가 칠 때 맞춰 한 번 쏠렸다 돌아온다
+        var surge = CreateTween();
+        surge.TweenInterval(WindUpSeconds * 0.85f);
+        surge.Chain().TweenProperty(this, "position", origin + forward * 0.22f, StrikeSeconds + 0.03f)
             .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
-        foreach (var member in _members)
-        {
-            tween.Parallel().TweenProperty(member.ArmR, "rotation:x",
-                member.ArmRBaseRotation.X + 0.85f, 0.12f);
-        }
-
-        // 3) 복귀(팔도 원위치)
-        tween.Chain().TweenProperty(this, "position", origin, 0.22f)
+        surge.Chain().TweenProperty(this, "position", origin, RecoverSeconds)
             .SetTrans(Tween.TransitionType.Sine);
-        foreach (var member in _members)
-        {
-            tween.Parallel().TweenProperty(member.ArmR, "rotation:x",
-                member.ArmRBaseRotation.X, 0.20f);
-        }
-
-        tween.Finished += () => _attacking = false;
+        // 마지막 편대원이 복귀를 끝낼 때까지 기다렸다 잠금을 푼다
+        surge.Chain().TweenInterval(lastDelay);
+        surge.Finished += () => _attacking = false;
     }
 
     private static bool IsCameraManeuvering() =>
@@ -382,11 +425,27 @@ public partial class UnitController3D : Node3D
                 ArmL = (Node3D)instance.FindChild("arm_l", true, false),
                 ArmR = armR,
                 BodyBasePosition = body.Position,
+                BodyBaseRotation = body.Rotation,
                 ArmRBaseRotation = armR.Rotation,
                 // 편대원끼리 발이 겹치지 않게 위상을 흩는다
                 Phase = index * 0.9f,
+                // 앞줄(+Z)일수록 먼저 친다. 뒤에서 계산해 채운다
+                AttackDelay = instance.Position.Z,
+                TwistSign = index % 2 == 0 ? 1f : -1f,
             });
             index++;
+        }
+
+        // 자리의 Z를 지연 시간으로 환산한다 — 선두 0에서 시작해 뒤로 갈수록 늦다
+        var front = float.MinValue;
+        foreach (var member in _members)
+        {
+            front = Mathf.Max(front, member.AttackDelay);
+        }
+
+        foreach (var member in _members)
+        {
+            member.AttackDelay = (front - member.AttackDelay) * AttackRippleSeconds;
         }
 
         _lastPosition = Position;
