@@ -25,6 +25,10 @@ K_XY = 0.5774
 K_Z = 0.72
 PLATFORM_R = HEX_R * 0.995
 
+# 기둥 윗면이 몸체 윗면과 같은 평면이면 둘 다 위를 향해 z-파이팅한다(후면 컬링으로 안 없어짐).
+# 이만큼 높여 윗면을 위쪽 처마 속에 묻는다.
+POST_RISE = 0.006
+
 # 발자국 육각 중심(클러스터 중심 기준, Blender XY, +Y=북)
 FOOTPRINTS = {
     "small": [(0.0, 0.0)],
@@ -117,11 +121,7 @@ def boundary_edges(centers):
 
 def build_castle(filename, kind, buildings, gate_dirs):
     """buildings: [(x, y, 단수, 벽폭)], gate_dirs: 성문 방향 벡터 목록."""
-    # 기둥 윗면이 몸체 윗면과 같은 평면이면 둘 다 위를 향해 z-파이팅한다(후면 컬링으로 안 없어짐).
-# 이만큼 높여 윗면을 위쪽 처마 속에 묻는다.
-POST_RISE = 0.006
-
-bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.wm.read_factory_settings(use_empty=True)
     m_roof = make_mat("roof", (0.06, 0.09, 0.14))
     m_wall = make_mat("wall", (0.55, 0.40, 0.22))
     m_wood = make_mat("wood", (0.42, 0.18, 0.12))
