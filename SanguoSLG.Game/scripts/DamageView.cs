@@ -31,10 +31,13 @@ public static class DamageView
         Paddy,
     }
 
-    private const float CrookedDegrees = 13f;
+    private const float CrookedDegrees = 22f;
+
+    /// <summary>지붕을 옆으로 밀어내는 거리(월드). 회전만으로는 맵 줌에서 읽히지 않는다.</summary>
+    private const float RoofSlide = 0.05f;
 
     /// <summary>건물을 걷어낸 자리에 남기는 네모(터)의 높이 비율.</summary>
-    private const float StubHeight = 0.4f;
+    private const float StubHeight = 0.25f;
 
     public static void Apply(Node3D model, TileCondition condition, Kind kind, ulong seed)
     {
@@ -97,8 +100,12 @@ public static class DamageView
             var tiltX = (Hash01(key + "#x", seed) * 2f - 1f) * CrookedDegrees;
             var tiltZ = (Hash01(key + "#z", seed) * 2f - 1f) * CrookedDegrees;
             part.RotationDegrees += new Vector3(tiltX, 0f, tiltZ);
-            // 기울이면 아래 부재와 새로 겹칠 수 있다 — 최소 간격을 둬 z-파이팅을 막는다.
-            part.Position += new Vector3(0f, 0.003f, 0f);
+
+            // 같은 건물의 지붕과 처마는 같은 키를 쓰므로 똑같이 밀린다(서로 벌어지지 않음).
+            // Y는 살짝 띄워 아래 부재와 겹칠 때의 z-파이팅을 막는다.
+            var angle = Hash01(key + "#slide", seed) * Mathf.Tau;
+            part.Position += new Vector3(
+                Mathf.Cos(angle) * RoofSlide, 0.003f, Mathf.Sin(angle) * RoofSlide);
         }
     }
 
