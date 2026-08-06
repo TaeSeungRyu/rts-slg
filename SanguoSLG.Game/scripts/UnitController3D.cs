@@ -24,13 +24,25 @@ public partial class UnitController3D : Node3D
     private bool _moving;
     private bool _attacking;
 
-    // 기병 프로시저럴 애니메이션 대상(부위 노드와 기준 자세)
-    private readonly List<Node3D> _bodies = new();
-    private readonly List<Node3D[]> _legs = new();
-    private readonly List<Node3D> _spears = new();
-    private readonly List<Vector3> _bodyBasePos = new();
-    private readonly List<Vector3> _spearBaseRot = new();
-    private float _gallopTime;
+    // 편대 검수용 임시 지정 — 병종 데이터(data/troop-types.json)가 생기면 그쪽에서 받는다.
+    private const string TroopModel = "res://assets/models/troop-swordsman.glb";
+    private const int TroopCount = 7;
+
+    // 보병 프로시저럴 애니메이션 대상. 편대원마다 부위 노드와 기준 자세를 들고 있다.
+    private sealed class Member
+    {
+        public Node3D Body = null!;
+        public Node3D LegL = null!;
+        public Node3D LegR = null!;
+        public Node3D ArmL = null!;
+        public Node3D ArmR = null!;
+        public Vector3 BodyBasePosition;
+        public Vector3 ArmRBaseRotation;
+        public float Phase;
+    }
+
+    private readonly List<Member> _members = new();
+    private float _marchTime;
     private Vector3 _lastPosition;
 
     // 하이라이트·경로 오버레이는 유닛과 함께 움직이면 안 되므로 형제 노드에 담는다.
@@ -65,11 +77,12 @@ public partial class UnitController3D : Node3D
             ClearOverlay();
         }
 
-        AnimateGallop((float)delta);
+        AnimateMarch((float)delta);
     }
 
-    // 이동 중 갤럽 모션: 진행 방향으로 회전 + 몸통 바운스 + 다리 스윙(대각 트롯).
-    private void AnimateGallop(float dt)
+    // 이동 중 행군 모션: 진행 방향으로 회전 + 몸통 상하 흔들림 + 다리·팔 교차 스윙.
+    // 편대원마다 위상을 어긋나게 줘 발이 한꺼번에 떨어지지 않게 한다.
+    private void AnimateMarch(float dt)
     {
         var moved = Position - _lastPosition;
         _lastPosition = Position;
@@ -82,40 +95,40 @@ public partial class UnitController3D : Node3D
                 Rotation = new Vector3(0f, Mathf.LerpAngle(Rotation.Y, targetYaw, 1f - Mathf.Exp(-14f * dt)), 0f);
             }
 
-            _gallopTime += dt * 15f;
-            for (var i = 0; i < _bodies.Count; i++)
+            _marchTime += dt * 11f;
+            foreach (var member in _members)
             {
-                var phase = i * 0.8f;
-                var bob = Mathf.Abs(Mathf.Sin(_gallopTime + phase)) * 0.030f;
-                _bodies[i].Position = _bodyBasePos[i] + new Vector3(0f, bob, 0f);
-                _bodies[i].Rotation = new Vector3(Mathf.Sin(_gallopTime + phase) * 0.07f,
-                    _bodies[i].Rotation.Y, 0f);
+                var clock = _marchTime + member.Phase;
+                var swing = Mathf.Sin(clock);
 
-                var swing = Mathf.Sin(_gallopTime + phase) * 0.55f;
-                var legs = _legs[i];
-                legs[0].Rotation = new Vector3(swing, 0f, 0f);   // 앞왼
-                legs[3].Rotation = new Vector3(swing, 0f, 0f);   // 뒤오
-                legs[1].Rotation = new Vector3(-swing, 0f, 0f);  // 앞오
-                legs[2].Rotation = new Vector3(-swing, 0f, 0f);  // 뒤왼
+                // 걸음마다 한 번씩 몸이 뜬다 — 다리 주기의 두 배
+                member.Body.Position = member.BodyBasePosition
+                    + new Vector3(0f, Mathf.Abs(Mathf.Sin(clock)) * 0.012f, 0f);
+
+                member.LegL.Rotation = new Vector3(swing * 0.45f, 0f, 0f);
+                member.LegR.Rotation = new Vector3(-swing * 0.45f, 0f, 0f);
+
+                // 팔은 다리와 반대로. 오른팔은 칼을 들고 있으니 덜 흔든다
+                member.ArmL.Rotation = new Vector3(-swing * 0.34f, 0f, 0f);
+                member.ArmR.Rotation = member.ArmRBaseRotation + new Vector3(swing * 0.16f, 0f, 0f);
             }
         }
-        else if (_gallopTime != 0f && !_attacking)
+        else if (_marchTime != 0f && !_attacking)
         {
             // 정지: 기준 자세로 복귀
-            _gallopTime = 0f;
-            for (var i = 0; i < _bodies.Count; i++)
+            _marchTime = 0f;
+            foreach (var member in _members)
             {
-                _bodies[i].Position = _bodyBasePos[i];
-                _bodies[i].Rotation = new Vector3(0f, _bodies[i].Rotation.Y, 0f);
-                foreach (var leg in _legs[i])
-                {
-                    leg.Rotation = Vector3.Zero;
-                }
+                member.Body.Position = member.BodyBasePosition;
+                member.LegL.Rotation = Vector3.Zero;
+                member.LegR.Rotation = Vector3.Zero;
+                member.ArmL.Rotation = Vector3.Zero;
+                member.ArmR.Rotation = member.ArmRBaseRotation;
             }
         }
     }
 
-    /// <summary>공격 모션: 부대 전체가 짧게 돌진하며 창을 앞으로 내지르고 복귀한다.</summary>
+    /// <summary>공격 모션: 부대 전체가 짧게 돌진하며 칼을 내리치고 복귀한다.</summary>
     public void PlayAttackMotion()
     {
         if (_moving || _attacking)
@@ -128,20 +141,29 @@ public partial class UnitController3D : Node3D
         var origin = Position;
 
         var tween = CreateTween();
-        // 1) 창을 수평으로 내림(겨눔)
-        foreach (var spear in _spears)
+        // 1) 칼을 뒤로 젖혀 치켜든다
+        foreach (var member in _members)
         {
-            tween.Parallel().TweenProperty(spear, "rotation:x", _spearBaseRot[_spears.IndexOf(spear)].X + 0.75f, 0.10f);
+            tween.Parallel().TweenProperty(member.ArmR, "rotation:x",
+                member.ArmRBaseRotation.X - 1.0f, 0.12f);
         }
 
-        // 2) 돌진 → 3) 복귀(창도 원위치)
+        // 2) 돌진하며 내리침
         tween.Chain().TweenProperty(this, "position", origin + forward * 0.16f, 0.12f)
             .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+        foreach (var member in _members)
+        {
+            tween.Parallel().TweenProperty(member.ArmR, "rotation:x",
+                member.ArmRBaseRotation.X + 0.85f, 0.12f);
+        }
+
+        // 3) 복귀(팔도 원위치)
         tween.Chain().TweenProperty(this, "position", origin, 0.22f)
             .SetTrans(Tween.TransitionType.Sine);
-        for (var i = 0; i < _spears.Count; i++)
+        foreach (var member in _members)
         {
-            tween.Parallel().TweenProperty(_spears[i], "rotation:x", _spearBaseRot[i].X, 0.18f);
+            tween.Parallel().TweenProperty(member.ArmR, "rotation:x",
+                member.ArmRBaseRotation.X, 0.20f);
         }
 
         tween.Finished += () => _attacking = false;
@@ -332,32 +354,34 @@ public partial class UnitController3D : Node3D
         _overlay.AddChild(_hover);
     }
 
-    // 기병대 모델(3기)을 붙이고, 프로시저럴 애니메이션 대상 부위를 이름으로 수집한다.
+    // 편대를 세우고 편대원마다 애니메이션 대상 부위를 이름으로 수집한다.
+    // 부위 이름은 보병 공용 규약(tools/blender/infantry_common.py)을 따른다.
     private void BuildToken()
     {
-        var instance = GD.Load<PackedScene>("res://assets/models/cavalry.glb").Instantiate<Node3D>();
-        AddChild(instance);
+        TroopFormation.Build(this, GD.Load<PackedScene>(TroopModel), TroopCount);
 
-        for (var i = 0; i < 3; i++)
+        var index = 0;
+        foreach (var child in GetChildren())
         {
-            if (instance.FindChild($"u{i}_body", true, false) is not Node3D body)
+            if (child is not Node3D instance || instance.FindChild("body", true, false) is not Node3D body)
             {
                 continue;
             }
 
-            _bodies.Add(body);
-            _bodyBasePos.Add(body.Position);
-            _legs.Add(new[]
+            var armR = (Node3D)instance.FindChild("arm_r", true, false);
+            _members.Add(new Member
             {
-                (Node3D)instance.FindChild($"u{i}_leg_fl", true, false),
-                (Node3D)instance.FindChild($"u{i}_leg_fr", true, false),
-                (Node3D)instance.FindChild($"u{i}_leg_bl", true, false),
-                (Node3D)instance.FindChild($"u{i}_leg_br", true, false),
+                Body = body,
+                LegL = (Node3D)instance.FindChild("leg_l", true, false),
+                LegR = (Node3D)instance.FindChild("leg_r", true, false),
+                ArmL = (Node3D)instance.FindChild("arm_l", true, false),
+                ArmR = armR,
+                BodyBasePosition = body.Position,
+                ArmRBaseRotation = armR.Rotation,
+                // 편대원끼리 발이 겹치지 않게 위상을 흩는다
+                Phase = index * 0.9f,
             });
-
-            var spear = (Node3D)instance.FindChild($"u{i}_spear", true, false);
-            _spears.Add(spear);
-            _spearBaseRot.Add(spear.Rotation);
+            index++;
         }
 
         _lastPosition = Position;
