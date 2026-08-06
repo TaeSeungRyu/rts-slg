@@ -131,7 +131,6 @@ public partial class MapView3D : Node3D
                 var contents = _tiles[terrain].Instantiate<Node3D>();
                 contents.Position = HexToWorld(tile);
                 contents.RotationDegrees = new Vector3(0f, WaterFacingYawDegrees(map, tile), 0f);
-                DisableThinShadows(contents);
 
                 // 주민 연출: 내용물의 자식으로 붙여 장애물 좌표가 물 방향 회전을 따라가게 한다.
                 // 파괴된 항구에는 주민이 새로 나오지 않는다.
@@ -257,7 +256,6 @@ public partial class MapView3D : Node3D
             if (feature.Type == FeatureType.PortMedium)
             {
                 // 항구 지물: 구름 없음, 잔교·울타리 등 얇은 부재는 그림자 제외(어른거림 방지)
-                DisableThinShadows(instance);
 
                 var portCondition = conditions.At(feature.Position);
                 DamageView.Apply(instance, portCondition, DamageView.Kind.Port,
@@ -385,25 +383,24 @@ public partial class MapView3D : Node3D
         };
     }
 
-    // 잔교·난간·울타리 같은 얇은 부재의 그림자 캐스팅을 끈다.
-    // 카메라 이동 시 태양광 그림자 캐스케이드가 재배치되며 얇은 그림자가 바닥에서 어른거리는
-    // 현상(잔교 아래 반짝임)의 원인 — 이 부재들의 그림자는 시각 기여도도 낮다.
-    private static void DisableThinShadows(Node node)
+    private const float TinyCasterThickness = 0.05f;
+
+    // 이 두께 미만은 그림자맵 텍셀(원거리 캐스케이드에서 약 0.012) 대비 2~4배에 불과해
+    // 캐스팅을 켜두면 여드름(acne)이 생기고 카메라가 움직일 때마다 깜빡인다.
+    public static void DisableTinyShadowCasters(Node node)
     {
-        if (node is GeometryInstance3D geometry)
+        if (node is MeshInstance3D instance && instance.Mesh is not null)
         {
-            var name = node.Name.ToString();
-            if (name.Contains("pier") || name.Contains("rail") || name.Contains("fence")
-                || name.Contains("lantern") || name.Contains("mooring") || name.Contains("boat")
-                || name.Contains("seam"))
+            var size = instance.Mesh.GetAabb().Size * instance.Scale;
+            if (Mathf.Min(size.X, Mathf.Min(size.Y, size.Z)) < TinyCasterThickness)
             {
-                geometry.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+                instance.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
             }
         }
 
         foreach (var child in node.GetChildren())
         {
-            DisableThinShadows(child);
+            DisableTinyShadowCasters(child);
         }
     }
 

@@ -72,6 +72,7 @@ public partial class GameRoot3D : Node3D
         camera.Current = true;
 
         BuildCities(mapView, scenario);
+        MapView3D.DisableTinyShadowCasters(this);
 
         // 유닛 1기를 첫 도시 성 밖(서쪽 이웃)에 스폰(슬라이스용).
         var startCity = scenario.Cities[0];
@@ -217,8 +218,8 @@ public partial class GameRoot3D : Node3D
         // 편향이 지형보다 커진다. 그 상태에서 카메라가 움직이면 그림자 캐스케이드가
         // 매 프레임 다시 맞춰지며 샘플링이 흔들려 깜빡이고, 멈추면 가라앉는다.
         DirectionalShadowMaxDistance = 28f,   // 맵이 약 20x14라 이걸로 충분 — 분할당 해상도가 올라간다
-        ShadowBias = 0.02f,
-        ShadowNormalBias = 0.4f,
+        ShadowBias = 0.03f,
+        ShadowNormalBias = 0.05f,
         DirectionalShadowBlendSplits = true,  // 분할 경계가 튀지 않게 섞는다
     };
 
