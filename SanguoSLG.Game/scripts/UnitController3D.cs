@@ -141,16 +141,18 @@ public partial class UnitController3D : Node3D
         }
     }
 
-    // 공격 모션 타이밍. 젖힘은 길고 느리게, 내리침은 짧고 빠르게 — 대비가 힘을 만든다.
+    // 공격 모션 타이밍. 젖힘은 길고 느리게, 휘두름은 짧고 빠르게 — 대비가 힘을 만든다.
     private const float AttackRippleSeconds = 0.34f;  // 앞뒤 자리 차이 1당 지연
     private const float WindUpSeconds = 0.15f;
-    private const float StrikeSeconds = 0.07f;
+    private const float SwingSeconds = 0.07f;
+    private const float ShieldPushSeconds = 0.13f;
     private const float RecoverSeconds = 0.28f;
 
     /// <summary>
-    /// 공격 모션: 앞줄부터 차례로 칼을 젖혔다 내리친다.
+    /// 공격 모션: 앞줄부터 차례로 칼을 휘두르고 이어서 방패로 밀어낸다.
     /// 편대원이 동시에 같은 동작을 하면 아무리 크게 흔들어도 밋밋해지므로,
     /// 자리에 따라 시작을 늦추고 상체를 엇갈리게 튼다.
+    /// 부대 자체는 제자리에 선 채로 상체·팔만 움직인다.
     /// </summary>
     public void PlayAttackMotion()
     {
@@ -160,8 +162,6 @@ public partial class UnitController3D : Node3D
         }
 
         _attacking = true;
-        var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
-        var origin = Position;
         var lastDelay = 0f;
 
         foreach (var member in _members)
@@ -170,51 +170,63 @@ public partial class UnitController3D : Node3D
             var tween = CreateTween();
             tween.TweenInterval(member.AttackDelay);
 
-            // 1) 젖힘 — 칼을 뒤로 치켜들고 상체를 뒤로 젖히며 비튼다. 방패는 올려 막는다
+            // 1) 젖힘 — 칼을 뒤로 치켜들고 상체를 젖히며 비튼다. 방패는 몸쪽으로 당겨 둔다
             tween.Chain().TweenProperty(member.ArmR, "rotation:x",
                     member.ArmRBaseRotation.X - 1.15f, WindUpSeconds)
                 .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
-            tween.Parallel().TweenProperty(member.ArmL, "rotation:x", -0.55f, WindUpSeconds)
+            tween.Parallel().TweenProperty(member.ArmL, "rotation:x", -0.45f, WindUpSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
             tween.Parallel().TweenProperty(member.Body, "rotation:x",
                     member.BodyBaseRotation.X + 0.16f, WindUpSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
             tween.Parallel().TweenProperty(member.Body, "rotation:y",
-                    member.BodyBaseRotation.Y + member.TwistSign * 0.26f, WindUpSeconds)
+                    member.BodyBaseRotation.Y + member.TwistSign * 0.28f, WindUpSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
 
-            // 2) 내리침 — 젖힘의 절반도 안 되는 시간에 두 배 거리를 지난다
+            // 2) 휘두름 — 젖힘의 절반도 안 되는 시간에 두 배 거리를 지난다.
+            //    상체가 반대로 돌아가며 칼을 끌고 나온다
             tween.Chain().TweenProperty(member.ArmR, "rotation:x",
-                    member.ArmRBaseRotation.X + 1.0f, StrikeSeconds)
-                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
-            tween.Parallel().TweenProperty(member.Body, "rotation:x",
-                    member.BodyBaseRotation.X - 0.24f, StrikeSeconds)
+                    member.ArmRBaseRotation.X + 1.05f, SwingSeconds)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
             tween.Parallel().TweenProperty(member.Body, "rotation:y",
-                    member.BodyBaseRotation.Y, StrikeSeconds)
-                .SetTrans(Tween.TransitionType.Quad);
+                    member.BodyBaseRotation.Y - member.TwistSign * 0.20f, SwingSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X - 0.22f, SwingSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
 
-            // 3) 복귀 — 반동으로 되돌아온다
+            // 3) 방패 밀기 — 칼을 거둬들이면서 반대쪽 방패를 앞으로 내지른다.
+            //    상체가 방패 쪽으로 다시 돌아가 체중을 싣는다
+            tween.Chain().TweenProperty(member.ArmL, "rotation:x", 0.85f, ShieldPushSeconds)
+                .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            tween.Parallel().TweenProperty(member.ArmR, "rotation:x",
+                    member.ArmRBaseRotation.X + 0.35f, ShieldPushSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+            tween.Parallel().TweenProperty(member.Body, "rotation:y",
+                    member.BodyBaseRotation.Y + member.TwistSign * 0.14f, ShieldPushSeconds)
+                .SetTrans(Tween.TransitionType.Quad);
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X - 0.10f, ShieldPushSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+
+            // 4) 복귀 — 반동으로 되돌아온다
             tween.Chain().TweenProperty(member.ArmR, "rotation:x",
                     member.ArmRBaseRotation.X, RecoverSeconds)
                 .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
             tween.Parallel().TweenProperty(member.ArmL, "rotation:x", 0f, RecoverSeconds)
-                .SetTrans(Tween.TransitionType.Sine);
+                .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
             tween.Parallel().TweenProperty(member.Body, "rotation:x",
                     member.BodyBaseRotation.X, RecoverSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
+            tween.Parallel().TweenProperty(member.Body, "rotation:y",
+                    member.BodyBaseRotation.Y, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
         }
 
-        // 편대 전체는 선두가 칠 때 맞춰 한 번 쏠렸다 돌아온다
-        var surge = CreateTween();
-        surge.TweenInterval(WindUpSeconds * 0.85f);
-        surge.Chain().TweenProperty(this, "position", origin + forward * 0.22f, StrikeSeconds + 0.03f)
-            .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
-        surge.Chain().TweenProperty(this, "position", origin, RecoverSeconds)
-            .SetTrans(Tween.TransitionType.Sine);
         // 마지막 편대원이 복귀를 끝낼 때까지 기다렸다 잠금을 푼다
-        surge.Chain().TweenInterval(lastDelay);
-        surge.Finished += () => _attacking = false;
+        var clock = CreateTween();
+        clock.TweenInterval(lastDelay + WindUpSeconds + SwingSeconds + ShieldPushSeconds + RecoverSeconds);
+        clock.Finished += () => _attacking = false;
     }
 
     private static bool IsCameraManeuvering() =>
