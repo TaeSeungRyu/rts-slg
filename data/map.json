@@ -1,47 +1,55 @@
 {
-  "min_q": -4,
-  "max_q": 10,
-  "min_r": -5,
-  "max_r": 7,
+  "min_q": 0,
+  "max_q": 19,
+  "min_r": 0,
+  "max_r": 13,
+
+  "note": "부서진 형태 검수용 배치(2026-08-06). 부서진 형태가 있는 항목만 놓고 각 항목을 정상(위)·부서짐(아래) 한 쌍으로 나란히 둔다. 나머지는 평야·물.",
+  "note_rows": "r=1 소품 정상 / r=3 소품 부서짐 / r=6~7 성 정상 / r=8~9 성 부서짐 / r=10 항구 정상 / r=12 항구 부서짐 (r=11·13은 물)",
+
   "features": [
-    { "type": "mountain_medium", "q": -4, "r": -2 },
-    { "type": "mountain_medium", "q": 8, "r": 5 },
-    { "type": "mountain_large", "q": -3, "r": 3 },
-    { "type": "mountain_huge", "q": 9, "r": 6 },
-    { "type": "waterfall_cliff", "q": -4, "r": -5 },
-    { "type": "port_medium", "q": 8, "r": 1 }
+    { "type": "port_medium", "q": 4, "r": 10 },
+    { "type": "port_medium", "q": 4, "r": 12 }
   ],
   "conditions": [
-    { "state": "damaged", "q": 3, "r": -2 },
-    { "state": "damaged", "q": 5, "r": 0 },
-    { "state": "damaged", "q": 4, "r": -2 },
-    { "state": "damaged", "q": 4, "r": 0 }
+    { "state": "damaged", "q": 1,  "r": 3 },
+    { "state": "damaged", "q": 3,  "r": 3 },
+    { "state": "damaged", "q": 5,  "r": 3 },
+    { "state": "damaged", "q": 7,  "r": 3 },
+    { "state": "damaged", "q": 9,  "r": 3 },
+    { "state": "damaged", "q": 11, "r": 3 },
+    { "state": "damaged", "q": 13, "r": 3 },
+    { "state": "damaged", "q": 15, "r": 3 },
+
+    { "state": "damaged", "q": 1,  "r": 8 },
+    { "state": "damaged", "q": 5,  "r": 8 },
+    { "state": "damaged", "q": 10, "r": 8 },
+
+    { "state": "damaged", "q": 1,  "r": 12 },
+    { "state": "damaged", "q": 4,  "r": 12 }
   ],
   "terrain": {
     "legend": {
-      "G": "plains", "F": "forest", "M": "mountain", "D": "desert",
-      "R": "river", "B": "bridge", "W": "water_shallow", "V": "water_deep",
-      "S": "rocks", "H": "rock_hill", "O": "water_rocks",
-      "P": "paddy", "A": "farm", "K": "workshop", "T": "rock_mountain",
-      "X": "karst", "C": "cliff", "I": "ice_mountain",
-      "E": "ice_wall_large", "L": "ice_wall_small", "J": "village_1",
-      "N": "swamp", "Q": "desert_cactus", "U": "village_2", "Y": "village_3",
+      "G": "plains", "W": "water_shallow",
+      "P": "paddy", "A": "farm", "K": "workshop",
+      "J": "village_1", "U": "village_2", "Y": "village_3",
       "Z": "village_4", "5": "village_5", "1": "port_small"
     },
     "rows": [
-      "GGCFFGRGEIMMMGG",
-      "GGFFGGRGGTMMMIL",
-      "GGGGFFRGGTMMMMG",
-      "GGGGGFRYGAHMMMG",
-      "GGGG5KRFGASMMGG",
-      "GGJGGGRFGZGGMGG",
-      "GGGGGGBGGGG1GGG",
-      "GGPPDDRUGGWWWWW",
-      "GGGDQRPGGGWVVVW",
-      "GGGGDRGG1WVVOWW",
-      "GNNGGRGGWVVWGGG",
-      "GGGGGRGGWVVWGGG",
-      "GGGGGRGGGWW1GGX"
+      "GGGGGGGGGGGGGGGGGGGG",
+      "GPGAGKGJGUGYGZG5GGGG",
+      "GGGGGGGGGGGGGGGGGGGG",
+      "GPGAGKGJGUGYGZG5GGGG",
+      "GGGGGGGGGGGGGGGGGGGG",
+      "GGGGGGGGGGGGGGGGGGGG",
+      "GGGGGGGGGGGGGGGGGGGG",
+      "GGGGGGGGGGGGGGGGGGGG",
+      "GGGGGGGGGGGGGGGGGGGG",
+      "GGGGGGGGGGGGGGGGGGGG",
+      "G1GGGGGGGGGGGGGGGGGG",
+      "WWWWWWWWWWWWWWWWWWWW",
+      "G1GGGGGGGGGGGGGGGGGG",
+      "WWWWWWWWWWWWWWWWWWWW"
     ]
   }
 }
