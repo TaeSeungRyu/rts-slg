@@ -49,12 +49,21 @@ internal sealed class MapDto
     public int MaxR { get; init; }
     public TerrainDto? Terrain { get; init; }
     public List<FeatureDto> Features { get; init; } = new();
+    public List<ConditionDto> Conditions { get; init; } = new();
 }
 
 internal sealed class FeatureDto
 {
     // 지물 종류: "mountain_medium"
     public string Type { get; init; } = "";
+    public int Q { get; init; }
+    public int R { get; init; }
+}
+
+internal sealed class ConditionDto
+{
+    // 파괴 상태: "ruined" | "burning" (정상은 기록하지 않는다)
+    public string State { get; init; } = "";
     public int Q { get; init; }
     public int R { get; init; }
 }

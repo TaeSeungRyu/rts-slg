@@ -50,7 +50,7 @@ public partial class GameRoot3D : Node3D
         AddChild(mapView);
         var occupied = new System.Collections.Generic.HashSet<HexCoord>(
             scenario.Features.SelectMany(FeatureFootprint.TilesFor));
-        mapView.Build(scenario.Map, occupied);
+        mapView.Build(scenario.Map, occupied, scenario.Conditions);
         mapView.BuildFeatures(scenario.Features);
 
         // 물 테두리 밖 배경이 비어 보이지 않도록 맵 아래에 넓은 바다 평면을 깐다.
@@ -239,8 +239,14 @@ public partial class GameRoot3D : Node3D
 
             var root = new Node3D { Position = centroid + new Vector3(0f, view.TileTopY, 0f) };
             AddChild(root);
-            root.AddChild(castles[city.Castle].Instantiate<Node3D>());
-            AddCastleAmbience(root, city);
+            var castleModel = castles[city.Castle].Instantiate<Node3D>();
+            root.AddChild(castleModel);
+
+            // 마을·항구와 똑같은 공통 파괴 레이어를 성에도 그대로 적용한다
+            // (성 전용 코드 없음 — 명명 규칙이 같아서 성벽 여장·지붕·기둥이 함께 반응한다).
+            var condition = scenario.Conditions.At(city.Position);
+            AddCastleAmbience(root, city, condition);
+            DamageView.Apply(castleModel, condition, CastleGroundY, unchecked((ulong)(city.Position.Q * 40503L + city.Position.R * 26041L + 8171L)));
 
             root.AddChild(new Label3D
             {
@@ -261,7 +267,9 @@ public partial class GameRoot3D : Node3D
     // 성 마당 주민 연출: 발자국 타일마다 4~5명씩 — 작은성 1배·중간성 3배·큰성 5배가 된다.
     // 좌표는 성 모델 로컬(클러스터 중심 기준, make_castles.py의 단위 육각 × K_XY=0.5774,
     // Blender +Y=북 → Godot -Z). 기단 윗면 높이 = PLATFORM_H 0.12 × K_Z 0.72 = 0.0864.
-    private static void AddCastleAmbience(Node3D root, City city)
+    private const float CastleGroundY = 0.0864f;
+
+    private static void AddCastleAmbience(Node3D root, City city, TileCondition condition)
     {
         var tiles = CastleTileOffsets(city.Castle);
         var buildings = CastleBuildingObstacles(city.Castle);
@@ -277,10 +285,11 @@ public partial class GameRoot3D : Node3D
             root.AddChild(new VillagerAmbience
             {
                 Position = new Vector3(tx, 0f, tz),
-                GroundY = 0.0864f,
+                GroundY = CastleGroundY,
                 Seed = unchecked((ulong)(city.Position.Q * 92821L + city.Position.R * 68917L + i * 5077L + 31L)),
                 MaxVillagers = 4 + i % 2,
                 Obstacles = obstacles,
+                SpawnEnabled = condition == TileCondition.Normal,
             });
         }
     }

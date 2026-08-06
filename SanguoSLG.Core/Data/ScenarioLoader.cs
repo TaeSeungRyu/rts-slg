@@ -55,7 +55,13 @@ public sealed class ScenarioLoader
             .Select(d => new MapFeature(ParseFeature(d.Type), new HexCoord(d.Q, d.R)))
             .ToList();
 
-        return new Scenario(factions, cities, generals, balance, map, features);
+        var conditions = new TileConditionMap();
+        foreach (var dto in mapDto.Conditions)
+        {
+            conditions.Set(new HexCoord(dto.Q, dto.R), ParseCondition(dto.State));
+        }
+
+        return new Scenario(factions, cities, generals, balance, map, features, conditions);
     }
 
     private static HexMap BuildMap(MapDto dto)
@@ -90,6 +96,14 @@ public sealed class ScenarioLoader
         "medium" => CastleSize.Medium,
         "large" => CastleSize.Large,
         _ => throw new InvalidDataException($"알 수 없는 성곽 등급: {name}"),
+    };
+
+    private static TileCondition ParseCondition(string name) => name switch
+    {
+        "normal" => TileCondition.Normal,
+        "ruined" => TileCondition.Ruined,
+        "burning" => TileCondition.Burning,
+        _ => throw new InvalidDataException($"알 수 없는 타일 상태: {name}"),
     };
 
     private static FeatureType ParseFeature(string name) => name switch

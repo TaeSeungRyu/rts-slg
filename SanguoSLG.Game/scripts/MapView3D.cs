@@ -81,9 +81,13 @@ public partial class MapView3D : Node3D
         return top;
     }
 
+    /// <summary>타일 일체형 모델의 지면 높이(로컬). 파괴 잔해·화염을 얹는 기준.</summary>
+    public const float TileGroundY = 0.2f;
+
     /// <param name="occupied">지물(산 등)이 점유한 타일 — 지물 모델이 자체 기단을 포함하므로
     /// 바닥 타일을 중복 렌더하지 않는다(옆면 Z-파이팅 깜빡임 방지).</param>
-    public void Build(HexMap map, System.Collections.Generic.ISet<HexCoord> occupied)
+    /// <param name="conditions">타일별 파괴 상태. 정상이 아닌 타일에는 공통 파괴 레이어를 입힌다.</param>
+    public void Build(HexMap map, System.Collections.Generic.ISet<HexCoord> occupied, TileConditionMap conditions)
     {
         foreach (var tile in map.Tiles())
         {
@@ -93,6 +97,8 @@ public partial class MapView3D : Node3D
             }
 
             var terrain = map.TerrainAt(tile);
+            var condition = conditions.At(tile);
+            var damageSeed = unchecked((ulong)(tile.Q * 40503L + tile.R * 26041L + 8171L));
             if (terrain is TerrainType.River or TerrainType.Bridge)
             {
                 BuildRiverTile(map, tile, terrain);
@@ -118,14 +124,17 @@ public partial class MapView3D : Node3D
                 contents.RotationDegrees = new Vector3(0f, WaterFacingYawDegrees(map, tile), 0f);
                 DisableThinShadows(contents);
 
-                // 주민 연출: 내용물의 자식으로 붙여 장애물 좌표가 물 방향 회전을 따라가게 한다
+                // 주민 연출: 내용물의 자식으로 붙여 장애물 좌표가 물 방향 회전을 따라가게 한다.
+                // 파괴된 항구에는 주민이 새로 나오지 않는다.
                 contents.AddChild(new VillagerAmbience
                 {
                     Seed = unchecked((ulong)(tile.Q * 92821L + tile.R * 68917L + 4241L)),
                     MaxVillagers = 4 + (((tile.Q * 7 + tile.R * 13) % 2 + 2) % 2),
                     Obstacles = PortSmallObstacles,
+                    SpawnEnabled = condition == TileCondition.Normal,
                 });
                 AddChild(contents);
+                DamageView.Apply(contents, condition, TileGroundY, damageSeed);
                 continue;
             }
 
@@ -139,13 +148,15 @@ public partial class MapView3D : Node3D
             }
 
             AddChild(instance);
+            DamageView.Apply(instance, condition, TileGroundY, damageSeed);
 
-            if (terrain == TerrainType.Workshop)
+            // 굴뚝 연기는 사람이 살고 있다는 신호 — 파괴된 타일에서는 피우지 않는다
+            if (terrain == TerrainType.Workshop && condition == TileCondition.Normal)
             {
                 AddChild(BuildChimneySmoke(HexToWorld(tile), new Vector3(0.245f, 0.375f, 0.06f)));
             }
 
-            if (terrain == TerrainType.Village2)
+            if (terrain == TerrainType.Village2 && condition == TileCondition.Normal)
             {
                 // 남서쪽 작은집의 돌 굴뚝 위치(모델 좌표 (-0.11, -0.08), 굴뚝 끝 0.36)
                 AddChild(BuildChimneySmoke(HexToWorld(tile), new Vector3(-0.11f, 0.38f, 0.08f)));
@@ -172,6 +183,7 @@ public partial class MapView3D : Node3D
                     Seed = unchecked((ulong)(tile.Q * 92821L + tile.R * 68917L + 7919L)),
                     MaxVillagers = 4 + (((tile.Q * 7 + tile.R * 13) % 2 + 2) % 2), // 마을마다 4~5명
                     Obstacles = VillageObstacles(terrain),
+                    SpawnEnabled = condition == TileCondition.Normal, // 파괴된 마을엔 사람이 없다
                 });
             }
         }

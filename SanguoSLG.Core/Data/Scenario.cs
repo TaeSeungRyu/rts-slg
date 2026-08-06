@@ -14,4 +14,5 @@ public sealed record Scenario(
     IReadOnlyList<General> Generals,
     BalanceConfig Balance,
     HexMap Map,
-    IReadOnlyList<MapFeature> Features);
+    IReadOnlyList<MapFeature> Features,
+    TileConditionMap Conditions);

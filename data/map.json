@@ -11,6 +11,12 @@
     { "type": "waterfall_cliff", "q": -4, "r": -5 },
     { "type": "port_medium", "q": 8, "r": 1 }
   ],
+  "conditions": [
+    { "state": "ruined", "q": 3, "r": -2 },
+    { "state": "burning", "q": 5, "r": 0 },
+    { "state": "ruined", "q": 4, "r": -2 },
+    { "state": "burning", "q": 4, "r": 0 }
+  ],
   "terrain": {
     "legend": {
       "G": "plains", "F": "forest", "M": "mountain", "D": "desert",
