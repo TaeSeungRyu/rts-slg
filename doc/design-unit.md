@@ -67,7 +67,7 @@
 | 4 | 벽력거 | `ThunderCart` | `thunder_cart` | 육지 | 1 | 1 | 1 / 1 / 1 | X | X | X | 벽력거를 끌고 있다. 사거리가 `Catapult`와 갈린다 |
 | 5 | 투석기 | `Catapult` | `catapult` | 육지 | 1 | 1 | **3** / **2** / 1 | X | X | X | 투석기를 끌고 있다. 사거리가 `ThunderCart`와 갈린다 |
 | 6 | 공성탑 | `SiegeTower` | `siege_tower` | 육지 | 1 | 1 | **3** / **2** / 1 | X | X | X | 바퀴 달린 탑을 끌고 있다 |
-| 7 | 상병 | `WarElephant` | `war_elephant` | 육지 | 1 | 2 | 1 / 1 / 1 | X | X | X | 코끼리를 끌고 있다 |
+| 7 | 상병 | `WarElephant` | `war_elephant` | 육지 | 2 | 2 | 1 / 1 / 1 | X | X | X | 코끼리를 끌고 있다 |
 | 8 | 소선 | `SmallBoat` | `small_boat` | 대하 | 3 | 3 | 1 / 1 / 1 | X | X | X | 중국식 작은 배 |
 | 9 | 중선 | `MediumShip` | `medium_ship` | 대하 | 2 | 2 | 1 / 1 / 1 | X | X | X | 중국식 중간 배 |
 | 10 | 대선 | `LargeShip` | `large_ship` | 대하 | 1 | 2 | 1 / 1 / 1 | X | X | X | 중국식 큰 배 |
@@ -160,7 +160,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 | 4 | `thunder_cart` | basic | land | 1 | — | 1 | 1 | 1 | 1 |
 | 5 | `catapult` | basic | land | 1 | — | 1 | **3** | **2** | 1 |
 | 6 | `siege_tower` | basic | land | 1 | — | 1 | **3** | **2** | 1 |
-| 7 | `war_elephant` | basic | land | 1 | — | 2 | 1 | 1 | 1 |
+| 7 | `war_elephant` | basic | land | 2 | — | 2 | 1 | 1 | 1 |
 | 8 | `small_boat` | basic | deep_water | 3 | — | 3 | 1 | 1 | 1 |
 | 9 | `medium_ship` | basic | deep_water | 2 | — | 2 | 1 | 1 | 1 |
 | 10 | `large_ship` | basic | deep_water | 1 | — | 2 | 1 | 1 | 1 |
