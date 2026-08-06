@@ -170,29 +170,29 @@ public partial class UnitController3D : Node3D
             var tween = CreateTween();
             tween.TweenInterval(member.AttackDelay);
 
-            // 1) 젖힘 — 칼을 뒤로 치켜들고 상체를 젖히며 비튼다. 방패는 몸쪽으로 당겨 둔다
+            // 1) 젖힘 — 칼을 머리 위로 치켜들고 상체를 뒤로 젖힌다. 방패는 몸쪽으로 당겨 둔다
             tween.Chain().TweenProperty(member.ArmR, "rotation:x",
-                    member.ArmRBaseRotation.X - 1.15f, WindUpSeconds)
+                    member.ArmRBaseRotation.X - 1.55f, WindUpSeconds)
                 .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
             tween.Parallel().TweenProperty(member.ArmL, "rotation:x", -0.45f, WindUpSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
             tween.Parallel().TweenProperty(member.Body, "rotation:x",
-                    member.BodyBaseRotation.X + 0.16f, WindUpSeconds)
+                    member.BodyBaseRotation.X + 0.26f, WindUpSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
             tween.Parallel().TweenProperty(member.Body, "rotation:y",
-                    member.BodyBaseRotation.Y + member.TwistSign * 0.28f, WindUpSeconds)
+                    member.BodyBaseRotation.Y + member.TwistSign * 0.14f, WindUpSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
 
-            // 2) 휘두름 — 젖힘의 절반도 안 되는 시간에 두 배 거리를 지난다.
-            //    상체가 반대로 돌아가며 칼을 끌고 나온다
+            // 2) 내리침 — 젖힘의 절반도 안 되는 시간에 두 배 거리를 지난다.
+            //    상체가 앞으로 꺾이며 칼을 위에서 아래로 끌고 내려온다
             tween.Chain().TweenProperty(member.ArmR, "rotation:x",
-                    member.ArmRBaseRotation.X + 1.05f, SwingSeconds)
-                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
-            tween.Parallel().TweenProperty(member.Body, "rotation:y",
-                    member.BodyBaseRotation.Y - member.TwistSign * 0.20f, SwingSeconds)
+                    member.ArmRBaseRotation.X + 1.40f, SwingSeconds)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
             tween.Parallel().TweenProperty(member.Body, "rotation:x",
-                    member.BodyBaseRotation.X - 0.22f, SwingSeconds)
+                    member.BodyBaseRotation.X - 0.36f, SwingSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+            tween.Parallel().TweenProperty(member.Body, "rotation:y",
+                    member.BodyBaseRotation.Y - member.TwistSign * 0.06f, SwingSeconds)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
 
             // 3) 방패 밀기 — 칼을 거둬들이면서 반대쪽 방패를 앞으로 내지른다.
