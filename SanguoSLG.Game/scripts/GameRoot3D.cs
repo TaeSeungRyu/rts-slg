@@ -76,6 +76,7 @@ public partial class GameRoot3D : Node3D
         camera.Current = true;
 
         BuildCities(mapView, scenario);
+        BuildTroopReview(mapView, scenario.Map);
 
         // 유닛 1기를 첫 도시 성 밖(서쪽 이웃)에 스폰(슬라이스용).
         var startCity = scenario.Cities[0];
@@ -295,6 +296,47 @@ public partial class GameRoot3D : Node3D
                 OutlineModulate = new Color(0f, 0f, 0f, 0.85f),
                 Modulate = new Color(0.97f, 0.96f, 0.92f),
                 Position = new Vector3(0f, 0.95f, 0f),
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                NoDepthTest = true,
+            });
+        }
+    }
+
+    // 병종 외형 검수용 배치 — doc/design-unit.md 병종 카탈로그 순서대로 빈 행(r=4)에 세운다.
+    // 모델을 만들 때마다 이 표에 한 줄씩 늘린다. 발동 규칙·편대와 무관한 임시 진열이다.
+    private static readonly (string File, string Label)[] TroopReview =
+    {
+        ("troop-swordsman.glb", "1 도검병"),
+    };
+
+    private void BuildTroopReview(MapView3D view, HexMap map)
+    {
+        var font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
+        for (var i = 0; i < TroopReview.Length; i++)
+        {
+            var coord = new HexCoord(2 + i * 2, 4);
+            if (!map.Contains(coord))
+            {
+                continue;
+            }
+
+            var root = new Node3D
+            {
+                Position = view.HexToWorld(coord) + new Vector3(0f, view.TileTopY, 0f),
+            };
+            AddChild(root);
+            root.AddChild(GD.Load<PackedScene>($"res://assets/models/{TroopReview[i].File}")
+                .Instantiate<Node3D>());
+            root.AddChild(new Label3D
+            {
+                Text = TroopReview[i].Label,
+                Font = font,
+                FontSize = 96,
+                PixelSize = 0.0022f,
+                OutlineSize = 26,
+                OutlineModulate = new Color(0f, 0f, 0f, 0.85f),
+                Modulate = new Color(0.97f, 0.96f, 0.92f),
+                Position = new Vector3(0f, 0.42f, 0f),
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                 NoDepthTest = true,
             });
