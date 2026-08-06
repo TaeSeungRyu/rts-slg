@@ -29,8 +29,10 @@ M_COAT = ic.make_mat("coat", (0.36, 0.22, 0.13))
 M_MANE = ic.make_mat("mane", (0.12, 0.09, 0.07))
 M_HOOF = ic.make_mat("hoof", (0.15, 0.13, 0.12))
 
-HIP_Z = 0.155          # 말 고관절 높이 = 다리 길이
-BARREL_Z = 0.205       # 몸통 중심
+# 고관절은 몸통 타원체 "속"에 있어야 한다. 다리 위끝을 몸통 표면 높이에 맞추면
+# 타원체가 그 지점에서 위로 휘어 있어 사이가 벌어진다 — 다리를 몸통 안까지 밀어 넣는다.
+HIP_Z = 0.195          # 말 고관절 높이 = 다리 길이(위끝이 몸통 속에 묻힌다)
+BARREL_Z = 0.207       # 몸통 중심
 SHOULDER_Z = 0.320     # 기수 어깨
 HAND_Z = 0.262         # 기수 손
 
@@ -39,16 +41,16 @@ bpy.ops.mesh.primitive_uv_sphere_add(segments=10, ring_count=6, radius=1.0,
                                      location=(0, 0.01, BARREL_Z))
 body = bpy.context.object
 body.name = "body"
-body.scale = (0.055, 0.120, 0.050)
+body.scale = (0.065, 0.128, 0.055)
 body.data.materials.append(M_COAT)
 ic.shade_smooth(body)
 
 # ── 다리 4개 — 피벗을 고관절로 옮겨 스윙 가능. 발굽은 다리 자식 ──
-for tag, lx, ly in (("fl", -0.038, -0.075), ("fr", 0.038, -0.075),
-                    ("bl", -0.038, 0.085), ("br", 0.038, 0.085)):
-    leg = ic.box(f"leg_{tag}", 0.024, 0.026, HIP_Z, lx, ly, HIP_Z, M_COAT,
+for tag, lx, ly in (("fl", -0.030, -0.055), ("fr", 0.030, -0.055),
+                    ("bl", -0.030, 0.070), ("br", 0.030, 0.070)):
+    leg = ic.box(f"leg_{tag}", 0.022, 0.024, HIP_Z, lx, ly, HIP_Z, M_COAT,
                  origin_shift=(0, 0, -HIP_Z / 2))
-    hoof = ic.box(f"hoof_{tag}", 0.030, 0.032, 0.018, lx, ly, 0.009, M_HOOF)
+    hoof = ic.box(f"hoof_{tag}", 0.028, 0.030, 0.018, lx, ly, 0.009, M_HOOF)
     ic.parent_to(hoof, leg)
     ic.parent_to(leg, body)
 
@@ -68,8 +70,8 @@ tail = ic.box("tail", 0.024, 0.028, 0.105, 0, 0.128, 0.198, M_MANE,
 for part in (neck, head, mane, tail):
     ic.parent_to(part, body)
 
-# ── 안장 + 안장천(세력색) ──
-cloth = ic.box("saddle_cloth", 0.108, 0.130, 0.014, 0, 0.012, 0.252, m.red)
+# ── 안장 + 안장천(세력색). 천은 몸통보다 넓게 잡아 옆으로 늘어뜨린다 ──
+cloth = ic.box("saddle_cloth", 0.145, 0.135, 0.012, 0, 0.012, 0.247, m.red)
 saddle = ic.box("saddle", 0.072, 0.086, 0.018, 0, 0.012, 0.264, m.wood)
 for part in (cloth, saddle):
     ic.parent_to(part, body)
