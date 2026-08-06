@@ -307,6 +307,7 @@ public partial class GameRoot3D : Node3D
     private static readonly (string File, string Label)[] TroopReview =
     {
         ("troop-swordsman.glb", "1 도검병"),
+        ("troop-cavalry.glb", "2 기병"),
     };
 
     private void BuildTroopReview(MapView3D view, HexMap map)
