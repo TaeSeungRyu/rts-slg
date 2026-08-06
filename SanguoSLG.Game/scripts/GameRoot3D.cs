@@ -311,36 +311,48 @@ public partial class GameRoot3D : Node3D
 
     private void BuildTroopReview(MapView3D view, HexMap map)
     {
-        var font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
+        // r=4: 병종별로 1기씩. r=5: 첫 병종으로 편대 규모 1·3·5·7기.
         for (var i = 0; i < TroopReview.Length; i++)
         {
-            var coord = new HexCoord(2 + i * 2, 4);
-            if (!map.Contains(coord))
-            {
-                continue;
-            }
-
-            var root = new Node3D
-            {
-                Position = view.HexToWorld(coord) + new Vector3(0f, view.TileTopY, 0f),
-            };
-            AddChild(root);
-            root.AddChild(GD.Load<PackedScene>($"res://assets/models/{TroopReview[i].File}")
-                .Instantiate<Node3D>());
-            root.AddChild(new Label3D
-            {
-                Text = TroopReview[i].Label,
-                Font = font,
-                FontSize = 96,
-                PixelSize = 0.0022f,
-                OutlineSize = 26,
-                OutlineModulate = new Color(0f, 0f, 0f, 0.85f),
-                Modulate = new Color(0.97f, 0.96f, 0.92f),
-                Position = new Vector3(0f, 0.42f, 0f),
-                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-                NoDepthTest = true,
-            });
+            PlaceTroopGroup(view, map, new HexCoord(2 + i * 2, 4),
+                TroopReview[i].File, 1, TroopReview[i].Label);
         }
+
+        for (var i = 0; i < TroopFormation.Sizes.Length; i++)
+        {
+            var size = TroopFormation.Sizes[i];
+            PlaceTroopGroup(view, map, new HexCoord(2 + i * 3, 5),
+                TroopReview[0].File, size, $"{size}기");
+        }
+    }
+
+    private void PlaceTroopGroup(MapView3D view, HexMap map, HexCoord coord,
+        string modelFile, int count, string label)
+    {
+        if (!map.Contains(coord))
+        {
+            return;
+        }
+
+        var root = new Node3D
+        {
+            Position = view.HexToWorld(coord) + new Vector3(0f, view.TileTopY, 0f),
+        };
+        AddChild(root);
+        TroopFormation.Build(root, GD.Load<PackedScene>($"res://assets/models/{modelFile}"), count);
+        root.AddChild(new Label3D
+        {
+            Text = label,
+            Font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf"),
+            FontSize = 96,
+            PixelSize = 0.0022f,
+            OutlineSize = 26,
+            OutlineModulate = new Color(0f, 0f, 0f, 0.85f),
+            Modulate = new Color(0.97f, 0.96f, 0.92f),
+            Position = new Vector3(0f, 0.42f, 0f),
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            NoDepthTest = true,
+        });
     }
 
     // 성 마당 주민 연출: 발자국 타일마다 4~5명씩 — 작은성 1배·중간성 3배·큰성 5배가 된다.
