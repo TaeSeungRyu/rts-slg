@@ -46,7 +46,7 @@
 ## 표기 규약
 
 - **지형**: `육지` = 육지 타일만 / `대하` = 대하(깊은 물) 타일만 / `육지+산악` = 육지 + 원래 이동 불가인 산악
-- **속도**: **하루에** 갈 수 있는 칸수(0.5 단위). "진행" 1회 = 7일이다.
+- **속도**: **하루에** 갈 수 있는 칸수(1·2·3). "진행" 1회 = 7일이다.
   자세한 것은 [design-movement.md](./design-movement.md)
 - **탐지**: 이 범위 안에 적이 들어오면 공격모드는 원래 목표를 버리고 추격한다
 - **사거리**: `유닛 / 건물 / 성` 순서. 단위는 헥사 칸 수(1 = 인접). 기본값과 다른 값은 굵게 표시.
@@ -61,29 +61,29 @@
 
 | # | 병종(잠정) | 식별자 | JSON 키 | 지형 | 속도(칸/일) | 탐지 | 사거리 유닛/건물/성 | 기본작업 | 이동모션 | 공격모션 | 모습 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | 도검병 | `Swordsman` | `swordsman` | 육지 | 1 | 2 | 1 / 1 / 1 | O | O | O | 칼과 방패를 들고 있다 |
-| 2 | 기병 | `Cavalry` | `cavalry` | 육지 | 1.5 | 3 | 1 / 1 / 1 | X | X | X | 말을 타고 칼을 들고 있다 |
-| 3 | 궁병 | `Archer` | `archer` | 육지 | 1 | 2 | **2** / 1 / 1 | X | X | X | 활을 들고 있다 |
-| 4 | 벽력거 | `ThunderCart` | `thunder_cart` | 육지 | 0.5 | 1 | 1 / 1 / 1 | X | X | X | 벽력거를 끌고 있다. 사거리가 `Catapult`와 갈린다 |
-| 5 | 투석기 | `Catapult` | `catapult` | 육지 | 0.5 | 1 | **3** / **2** / 1 | X | X | X | 투석기를 끌고 있다. 사거리가 `ThunderCart`와 갈린다 |
-| 6 | 공성탑 | `SiegeTower` | `siege_tower` | 육지 | 0.5 | 1 | **3** / **2** / 1 | X | X | X | 바퀴 달린 탑을 끌고 있다 |
+| 1 | 도검병 | `Swordsman` | `swordsman` | 육지 | 2 | 2 | 1 / 1 / 1 | O | O | O | 칼과 방패를 들고 있다 |
+| 2 | 기병 | `Cavalry` | `cavalry` | 육지 | 3 | 3 | 1 / 1 / 1 | X | X | X | 말을 타고 칼을 들고 있다 |
+| 3 | 궁병 | `Archer` | `archer` | 육지 | 2 | 2 | **2** / 1 / 1 | X | X | X | 활을 들고 있다 |
+| 4 | 벽력거 | `ThunderCart` | `thunder_cart` | 육지 | 1 | 1 | 1 / 1 / 1 | X | X | X | 벽력거를 끌고 있다. 사거리가 `Catapult`와 갈린다 |
+| 5 | 투석기 | `Catapult` | `catapult` | 육지 | 1 | 1 | **3** / **2** / 1 | X | X | X | 투석기를 끌고 있다. 사거리가 `ThunderCart`와 갈린다 |
+| 6 | 공성탑 | `SiegeTower` | `siege_tower` | 육지 | 1 | 1 | **3** / **2** / 1 | X | X | X | 바퀴 달린 탑을 끌고 있다 |
 | 7 | 상병 | `WarElephant` | `war_elephant` | 육지 | 1 | 2 | 1 / 1 / 1 | X | X | X | 코끼리를 끌고 있다 |
-| 8 | 소선 | `SmallBoat` | `small_boat` | 대하 | 1.5 | 3 | 1 / 1 / 1 | X | X | X | 중국식 작은 배 |
-| 9 | 중선 | `MediumShip` | `medium_ship` | 대하 | 1 | 2 | 1 / 1 / 1 | X | X | X | 중국식 중간 배 |
+| 8 | 소선 | `SmallBoat` | `small_boat` | 대하 | 3 | 3 | 1 / 1 / 1 | X | X | X | 중국식 작은 배 |
+| 9 | 중선 | `MediumShip` | `medium_ship` | 대하 | 2 | 2 | 1 / 1 / 1 | X | X | X | 중국식 중간 배 |
 | 10 | 대선 | `LargeShip` | `large_ship` | 대하 | 1 | 2 | 1 / 1 / 1 | X | X | X | 중국식 큰 배 |
 
 ## 특수 유닛
 
 | # | 병종(잠정) | 식별자 | JSON 키 | 지형 | 속도(칸/일) | 탐지 | 사거리 유닛/건물/성 | 기본작업 | 이동모션 | 공격모션 | 모습 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 11 | 장창병 | `Pikeman` | `pikeman` | 육지 | 1 | 2 | 1 / 1 / 1 | X | X | X | 긴 창을 들고 있다 |
-| 12 | 낫병 | `Scytheman` | `scytheman` | 육지 | 1 | 2 | 1 / 1 / 1 | X | X | X | 낫을 들고 있다 |
+| 11 | 장창병 | `Pikeman` | `pikeman` | 육지 | 2 | 2 | 1 / 1 / 1 | X | X | X | 긴 창을 들고 있다 |
+| 12 | 낫병 | `Scytheman` | `scytheman` | 육지 | 2 | 2 | 1 / 1 / 1 | X | X | X | 낫을 들고 있다 |
 | 13 | 대방패병 | `Shieldbearer` | `shieldbearer` | 육지 | 1 | 2 | 1 / 1 / 1 | X | X | X | 큰 방패를 들고 있다 |
-| 14 | 산악병 | `Axeman` | `axeman` | 육지+산악 | 1 / 산악 0.5 | 2 | 1 / 1 / 1 | X | X | X | 도끼와 방패를 들고 있다 |
-| 15 | 창기병 | `Lancer` | `lancer` | 육지 | 1.5 | 3 | 1 / 1 / 1 | X | X | X | 말을 타고 큰 창을 들고 있다 |
-| 16 | 궁기병 | `HorseArcher` | `horse_archer` | 육지 | 1.5 | 3 | **2** / 1 / 1 | X | X | X | 작은 말을 타고 활을 들고 있다 |
+| 14 | 산악병 | `Axeman` | `axeman` | 육지+산악 | 2 / 산악 1 | 2 | 1 / 1 / 1 | X | X | X | 도끼와 방패를 들고 있다 |
+| 15 | 창기병 | `Lancer` | `lancer` | 육지 | 3 | 3 | 1 / 1 / 1 | X | X | X | 말을 타고 큰 창을 들고 있다 |
+| 16 | 궁기병 | `HorseArcher` | `horse_archer` | 육지 | 3 | 3 | **2** / 1 / 1 | X | X | X | 작은 말을 타고 활을 들고 있다 |
 | 17 | 대궁병 | `GreatBow` | `great_bow` | 육지 | 1 | 2 | **3** / **2** / 1 | X | X | X | 정말 큰 활을 들고 있다 |
-| 18 | 판옥선 | `Panokseon` | `panokseon` | 대하 | 1 | 2 | 1 / 1 / 1 | X | X | X | 판옥선 모양의 배 |
+| 18 | 판옥선 | `Panokseon` | `panokseon` | 대하 | 2 | 2 | 1 / 1 / 1 | X | X | X | 판옥선 모양의 배 |
 | 19 | 거북선 | `Turtleship` | `turtleship` | 대하 | 1 | 2 | 1 / 1 / 1 | X | X | X | 거북선 모양의 배 |
 
 ## 공격 사거리 (2026-08-06 사용자 정의)
@@ -140,8 +140,8 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 | `name_ko` | string | 화면 표기용 한국어 이름. **바뀔 수 있다** — 로직은 `id`만 본다 |
 | `category` | string | `basic` / `special` |
 | `terrain` | string | `land` / `deep_water` / `land_mountain` |
-| `movement_per_day` | number | 하루에 갈 수 있는 칸수. **0.5의 배수만 허용**한다. 로더가 반칸 단위 정수로 바꿔 Core는 정수만 다룬다(결정론) |
-| `mountain_movement_per_day` | number? | 산악에서의 속도. `land_mountain`에만 있다 |
+| `movement_per_day` | int | 하루에 갈 수 있는 칸수(1·2·3). 정수라 누적 계산이 없다 |
+| `mountain_movement_per_day` | int? | 산악에서의 속도. `land_mountain`에만 있다 |
 | `detection` | int | 탐지 범위. 이 안에 적이 들어오면 공격모드는 추격한다([design-movement.md](./design-movement.md)) |
 | `range_unit` | int | 유닛 대상 사거리 |
 | `range_building` | int | 건물 대상 사거리 |
@@ -154,24 +154,24 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 
 | # | `id` | 분류 | 지형 | 속도 | 산악 | 탐지 | 유닛 | 건물 | 성 |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | `swordsman` | basic | land | 1 | — | 2 | 1 | 1 | 1 |
-| 2 | `cavalry` | basic | land | 1.5 | — | 3 | 1 | 1 | 1 |
-| 3 | `archer` | basic | land | 1 | — | 2 | **2** | 1 | 1 |
-| 4 | `thunder_cart` | basic | land | 0.5 | — | 1 | 1 | 1 | 1 |
-| 5 | `catapult` | basic | land | 0.5 | — | 1 | **3** | **2** | 1 |
-| 6 | `siege_tower` | basic | land | 0.5 | — | 1 | **3** | **2** | 1 |
+| 1 | `swordsman` | basic | land | 2 | — | 2 | 1 | 1 | 1 |
+| 2 | `cavalry` | basic | land | 3 | — | 3 | 1 | 1 | 1 |
+| 3 | `archer` | basic | land | 2 | — | 2 | **2** | 1 | 1 |
+| 4 | `thunder_cart` | basic | land | 1 | — | 1 | 1 | 1 | 1 |
+| 5 | `catapult` | basic | land | 1 | — | 1 | **3** | **2** | 1 |
+| 6 | `siege_tower` | basic | land | 1 | — | 1 | **3** | **2** | 1 |
 | 7 | `war_elephant` | basic | land | 1 | — | 2 | 1 | 1 | 1 |
-| 8 | `small_boat` | basic | deep_water | 1.5 | — | 3 | 1 | 1 | 1 |
-| 9 | `medium_ship` | basic | deep_water | 1 | — | 2 | 1 | 1 | 1 |
+| 8 | `small_boat` | basic | deep_water | 3 | — | 3 | 1 | 1 | 1 |
+| 9 | `medium_ship` | basic | deep_water | 2 | — | 2 | 1 | 1 | 1 |
 | 10 | `large_ship` | basic | deep_water | 1 | — | 2 | 1 | 1 | 1 |
-| 11 | `pikeman` | special | land | 1 | — | 2 | 1 | 1 | 1 |
-| 12 | `scytheman` | special | land | 1 | — | 2 | 1 | 1 | 1 |
+| 11 | `pikeman` | special | land | 2 | — | 2 | 1 | 1 | 1 |
+| 12 | `scytheman` | special | land | 2 | — | 2 | 1 | 1 | 1 |
 | 13 | `shieldbearer` | special | land | 1 | — | 2 | 1 | 1 | 1 |
-| 14 | `axeman` | special | land_mountain | 1 | **0.5** | 2 | 1 | 1 | 1 |
-| 15 | `lancer` | special | land | 1.5 | — | 3 | 1 | 1 | 1 |
-| 16 | `horse_archer` | special | land | 1.5 | — | 3 | **2** | 1 | 1 |
+| 14 | `axeman` | special | land_mountain | 2 | **1** | 2 | 1 | 1 | 1 |
+| 15 | `lancer` | special | land | 3 | — | 3 | 1 | 1 | 1 |
+| 16 | `horse_archer` | special | land | 3 | — | 3 | **2** | 1 | 1 |
 | 17 | `great_bow` | special | land | 1 | — | 2 | **3** | **2** | 1 |
-| 18 | `panokseon` | special | deep_water | 1 | — | 2 | 1 | 1 | 1 |
+| 18 | `panokseon` | special | deep_water | 2 | — | 2 | 1 | 1 | 1 |
 | 19 | `turtleship` | special | deep_water | 1 | — | 2 | 1 | 1 | 1 |
 
 ### 형태 예시
@@ -184,7 +184,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
       "name_ko": "궁병",
       "category": "basic",
       "terrain": "land",
-      "movement_per_day": 1,
+      "movement_per_day": 2,
       "detection": 2,
       "range_unit": 2,
       "range_building": 1,
@@ -196,8 +196,8 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
       "name_ko": "산악병",
       "category": "special",
       "terrain": "land_mountain",
-      "movement_per_day": 1,
-      "mountain_movement_per_day": 0.5,
+      "movement_per_day": 2,
+      "mountain_movement_per_day": 1,
       "detection": 2,
       "range_unit": 1,
       "range_building": 1,
