@@ -12,10 +12,10 @@
     { "type": "port_medium", "q": 8, "r": 1 }
   ],
   "conditions": [
-    { "state": "ruined", "q": 3, "r": -2 },
-    { "state": "destroyed", "q": 5, "r": 0 },
-    { "state": "ruined", "q": 4, "r": -2 },
-    { "state": "destroyed", "q": 4, "r": 0 }
+    { "state": "damaged", "q": 3, "r": -2 },
+    { "state": "damaged", "q": 5, "r": 0 },
+    { "state": "damaged", "q": 4, "r": -2 },
+    { "state": "damaged", "q": 4, "r": 0 }
   ],
   "terrain": {
     "legend": {

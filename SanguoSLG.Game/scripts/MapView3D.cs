@@ -12,6 +12,7 @@ public partial class MapView3D : Node3D
 {
     private readonly Dictionary<TerrainType, PackedScene> _tiles = new();
     private PackedScene _water = null!;
+    private PackedScene _farmBroken = null!;
     private float _size = 1f;      // 헥사 중심~꼭짓점(월드 단위)
     private float _topY;           // 타일 윗면 높이(마커·유닛 배치 기준)
     private bool _flatTop = true;
@@ -63,6 +64,7 @@ public partial class MapView3D : Node3D
         _tiles[TerrainType.Village4] = GD.Load<PackedScene>("res://assets/models/village-4.glb");
         _tiles[TerrainType.Village5] = GD.Load<PackedScene>("res://assets/models/village-5.glb");
         _tiles[TerrainType.PortSmall] = GD.Load<PackedScene>("res://assets/models/port-small.glb");
+        _farmBroken = GD.Load<PackedScene>("res://assets/models/farm-broken.glb");
         _water = GD.Load<PackedScene>("res://assets/models/water.glb");
         _riverStraight = GD.Load<PackedScene>("res://assets/models/river-straight.glb");
         _riverCorner = GD.Load<PackedScene>("res://assets/models/river-corner.glb");
@@ -81,8 +83,15 @@ public partial class MapView3D : Node3D
         return top;
     }
 
-    /// <summary>타일 일체형 모델의 지면 높이(로컬). 파괴 잔해·화염을 얹는 기준.</summary>
-    public const float TileGroundY = 0.2f;
+    /// <summary>지형별 부서짐 규칙 종류. 밭은 모델을 통째로 바꾸므로 여기 없다.</summary>
+    private static DamageView.Kind DamageKindFor(TerrainType terrain) => terrain switch
+    {
+        TerrainType.Village1 or TerrainType.Village2 or TerrainType.Village3
+            or TerrainType.Village4 or TerrainType.Village5 => DamageView.Kind.Village,
+        TerrainType.PortSmall => DamageView.Kind.Port,
+        TerrainType.Paddy => DamageView.Kind.Paddy,
+        _ => DamageView.Kind.Plain,
+    };
 
     /// <param name="occupied">지물(산 등)이 점유한 타일 — 지물 모델이 자체 기단을 포함하므로
     /// 바닥 타일을 중복 렌더하지 않는다(옆면 Z-파이팅 깜빡임 방지).</param>
@@ -134,11 +143,15 @@ public partial class MapView3D : Node3D
                     SpawnEnabled = condition == TileCondition.Normal,
                 });
                 AddChild(contents);
-                DamageView.Apply(contents, condition, TileGroundY, damageSeed);
+                DamageView.Apply(contents, condition, DamageView.Kind.Port, damageSeed);
                 continue;
             }
 
-            var instance = _tiles[terrain].Instantiate<Node3D>();
+            // 밭은 킷 단일 메시라 런타임에 쪼갤 수 없다 — 부서지면 4조각 모델로 바꿔 끼운다.
+            var scene = terrain == TerrainType.Farm && condition != TileCondition.Normal
+                ? _farmBroken
+                : _tiles[terrain];
+            var instance = scene.Instantiate<Node3D>();
             instance.Position = HexToWorld(tile);
             if (terrain is not (TerrainType.Workshop or TerrainType.Village2))
             {
@@ -148,7 +161,7 @@ public partial class MapView3D : Node3D
             }
 
             AddChild(instance);
-            DamageView.Apply(instance, condition, TileGroundY, damageSeed);
+            DamageView.Apply(instance, condition, DamageKindFor(terrain), damageSeed);
 
             // 굴뚝 연기는 사람이 살고 있다는 신호 — 파괴된 타일에서는 피우지 않는다
             if (terrain == TerrainType.Workshop && condition == TileCondition.Normal)
@@ -214,7 +227,7 @@ public partial class MapView3D : Node3D
     }
 
     /// <summary>다중 타일 지물(중간산·큰산)을 발자국 중심점에 배치하고, 산 위에 구름을 흘려보낸다.</summary>
-    public void BuildFeatures(System.Collections.Generic.IReadOnlyList<MapFeature> features)
+    public void BuildFeatures(System.Collections.Generic.IReadOnlyList<MapFeature> features, TileConditionMap conditions)
     {
         var models = new System.Collections.Generic.Dictionary<FeatureType, PackedScene>
         {
@@ -245,6 +258,10 @@ public partial class MapView3D : Node3D
             {
                 // 항구 지물: 구름 없음, 잔교·울타리 등 얇은 부재는 그림자 제외(어른거림 방지)
                 DisableThinShadows(instance);
+
+                var portCondition = conditions.At(feature.Position);
+                DamageView.Apply(instance, portCondition, DamageView.Kind.Port,
+                    unchecked((ulong)(feature.Position.Q * 40503L + feature.Position.R * 26041L + 8171L)));
 
                 // 주민 연출: 타일(2개)마다 4~5명 — 마을·성과 동일 규칙, 크기 2라 총 2배
                 for (var i = 0; i < PortMediumTileOffsets.Length; i++)

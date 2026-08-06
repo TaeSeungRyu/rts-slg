@@ -51,7 +51,7 @@ public partial class GameRoot3D : Node3D
         var occupied = new System.Collections.Generic.HashSet<HexCoord>(
             scenario.Features.SelectMany(FeatureFootprint.TilesFor));
         mapView.Build(scenario.Map, occupied, scenario.Conditions);
-        mapView.BuildFeatures(scenario.Features);
+        mapView.BuildFeatures(scenario.Features, scenario.Conditions);
 
         // 물 테두리 밖 배경이 비어 보이지 않도록 맵 아래에 넓은 바다 평면을 깐다.
         AddChild(new MeshInstance3D
@@ -246,7 +246,8 @@ public partial class GameRoot3D : Node3D
             // (성 전용 코드 없음 — 명명 규칙이 같아서 성벽 여장·지붕·기둥이 함께 반응한다).
             var condition = scenario.Conditions.At(city.Position);
             AddCastleAmbience(root, city, condition);
-            DamageView.Apply(castleModel, condition, CastleGroundY, unchecked((ulong)(city.Position.Q * 40503L + city.Position.R * 26041L + 8171L)));
+            DamageView.Apply(castleModel, condition, DamageView.Kind.Castle,
+                unchecked((ulong)(city.Position.Q * 40503L + city.Position.R * 26041L + 8171L)));
 
             root.AddChild(new Label3D
             {

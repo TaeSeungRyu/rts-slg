@@ -101,8 +101,7 @@ public sealed class ScenarioLoader
     private static TileCondition ParseCondition(string name) => name switch
     {
         "normal" => TileCondition.Normal,
-        "ruined" => TileCondition.Ruined,
-        "destroyed" => TileCondition.Destroyed,
+        "damaged" => TileCondition.Damaged,
         _ => throw new InvalidDataException($"알 수 없는 타일 상태: {name}"),
     };
 

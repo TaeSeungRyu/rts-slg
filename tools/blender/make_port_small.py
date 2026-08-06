@@ -33,6 +33,7 @@ M_WALL = make_mat("wall", (0.58, 0.40, 0.18))
 M_WALL2 = make_mat("wall2", (0.64, 0.48, 0.26))
 M_WOOD = make_mat("wood", (0.42, 0.18, 0.12))
 M_PLANK = make_mat("plank", (0.52, 0.30, 0.11))
+M_PLANK2 = make_mat("plank2", (0.46, 0.26, 0.10))  # 판자 교대 톤(이음매처럼 읽힘)
 M_SEAM = make_mat("seam", (0.38, 0.21, 0.08))    # 판자 이음매(어두운 줄)
 M_BOAT = make_mat("boat", (0.38, 0.20, 0.08))
 M_JAR = make_mat("jar", (0.36, 0.20, 0.10))
@@ -91,12 +92,16 @@ pyramid("house_roof", HW * 0.52, 0.012, HW * 0.26, HX, HY,
 # ── 잔교: 물 위로 뻗는 갑판 + 판자 이음매 + 한쪽 난간 + 말뚝 + 계선주 + 붉은 초롱 ──
 DECK_Z = Z + 0.030
 PIER_ROT = math.radians(-4)
-box("pier_deck", 0.15, 0.50, 0.020, 0.04, -0.44, DECK_Z, M_PLANK, rot_z=PIER_ROT)
 pcs, psn = math.cos(PIER_ROT), math.sin(PIER_ROT)
-for i, off in enumerate((-0.17, -0.05, 0.07, 0.19)):  # 가로 이음매 줄
-    # 갑판 윗면(+0.010)과 거의 같은 평면이면 원거리에서 반짝인다 — 확실히 띄워 얹는다
-    box(f"pier_seam_{i}", 0.15, 0.012, 0.006, 0.04 - off * psn, -0.44 + off * pcs,
-        DECK_Z + 0.016, M_SEAM, rot_z=PIER_ROT)
+# 갑판을 판자 단위로 쪼갠다. 맞붙여 놓으므로 정상 상태의 실루엣은 통짜와 같고,
+# 부서진 상태에서 판자를 몇 장 숨기면 그대로 구멍이 된다(DamageView).
+PLANKS = 8
+PLANK_LEN = 0.50 / PLANKS
+for i in range(PLANKS):
+    off = -0.25 + PLANK_LEN * (i + 0.5)
+    box(f"pier_plank_{i}", 0.15, PLANK_LEN, 0.020,
+        0.04 - off * psn, -0.44 + off * pcs, DECK_Z,
+        M_PLANK if i % 2 == 0 else M_PLANK2, rot_z=PIER_ROT)
 for i, (px, py) in enumerate(((-0.02, -0.32), (0.10, -0.34), (-0.03, -0.52), (0.11, -0.54), (0.00, -0.66), (0.12, -0.67))):
     cylinder(f"pier_post_{i}", 0.013, DECK_Z - 0.04, px, py, (DECK_Z + 0.04) / 2, M_WOOD, verts=5)
 # 동쪽 한줄 난간

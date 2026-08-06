@@ -1,193 +1,236 @@
+using System;
+using System.Collections.Generic;
 using Godot;
 using SanguoSLG.Core.Spatial;
 
 namespace SanguoSLG.Game;
 
 /// <summary>
-/// 파괴된 <b>형태</b>를 임의의 3D 모델에 입히는 공통 레이어.
-/// 지형·건물마다 파괴본 모델을 따로 만들지 않고 세 층으로 처리한다:
-/// (1) 재질 틴트 (2) 이름 기반 파츠 변형 (3) 잔해 프롭.
+/// 부서진 <b>형태</b>를 임의의 3D 모델에 입히는 공통 레이어.
+/// 지형·건물마다 파괴본 모델을 따로 만들지 않고, 모델의 파츠 이름으로 찾아 변형한다.
 ///
-/// (2)는 Blender 스크립트가 공통 명명 규칙(_roof/_eave/_body/_post/fence_*/merlon*/chimney)을
-/// 쓰기 때문에 성립한다 — 새 건물도 같은 이름을 쓰면 코드 수정 없이 적용된다.
+/// <b>색은 입히지 않는다</b> — 색 변화는 나중에 조건에 따라 별도로 정의한다.
+/// 화염·연기·잔해 같은 연출도 여기에 없다(효과 단계에서 정의, 1차 구현은 커밋 4fec587).
 ///
-/// 화염·연기 같은 연출은 형태와 직교하는 별개의 "효과"이므로 여기에 두지 않는다.
-/// 효과 단계에서 별도 레이어로 정의한다(이전 화염 구현은 커밋 4fec587 참조).
+/// 사용자 정의 기준(2026-08-06):
+/// - 성: 건물 1개 제거 후 그 자리에 네모 형태만 남김, 지붕 삐뚤어짐
+/// - 마을: 건물 절반을 네모 형태만 남김, 모든 지붕 삐뚤어짐
+/// - 항구: 모든 지붕 삐뚤어짐, 잔교에 구멍
+/// - 논: 모가 띄엄띄엄 빠짐 / 공방: 지붕 삐뚤어짐 + 연기 멈춤 / 밭: 4조각 모델로 교체
 /// </summary>
 public static class DamageView
 {
-    private static PackedScene? _rubble;
+    /// <summary>부서짐 규칙이 다른 대상 종류.</summary>
+    public enum Kind
+    {
+        /// <summary>지붕만 삐뚤어지는 일반 건물(공방 등).</summary>
+        Plain,
+        Castle,
+        Village,
+        Port,
+        Paddy,
+    }
 
-    /// <summary>
-    /// 모델에 파괴 표현을 입힌다. <paramref name="groundY"/>는 모델 로컬 기준 지면 높이
-    /// (타일 일체형 모델 0.2, 성 기단 0.0864). <paramref name="seed"/>로 배치가 결정론적이다.
-    /// </summary>
-    public static void Apply(Node3D model, TileCondition condition, float groundY, ulong seed)
+    private const float CrookedDegrees = 13f;
+
+    /// <summary>건물을 걷어낸 자리에 남기는 네모(터)의 높이 비율.</summary>
+    private const float StubHeight = 0.4f;
+
+    public static void Apply(Node3D model, TileCondition condition, Kind kind, ulong seed)
     {
         if (condition == TileCondition.Normal)
         {
             return;
         }
 
-        TintTree(model, condition);
+        var parts = new List<Node3D>();
+        Collect(model, parts);
 
-        // 루트 자신은 건드리지 않는다 — 루트를 기울이면 건물 전체가 기운다.
-        foreach (var child in model.GetChildren())
+        MakeRoofsCrooked(parts, seed);
+
+        switch (kind)
         {
-            TransformParts(child, condition, seed);
-        }
+            case Kind.Castle:
+                StripBuildings(parts, CastleGroups(parts), 1, seed);
+                break;
 
-        ScatterRubble(model, condition, groundY, seed);
+            case Kind.Village:
+                var groups = BodyGroups(parts);
+                StripBuildings(parts, groups, (groups.Count + 1) / 2, seed);
+                break;
+
+            case Kind.Port:
+                HideSome(parts, "plank", 0.34f, seed);
+                break;
+
+            case Kind.Paddy:
+                HideSome(parts, "rice", 0.45f, seed);
+                break;
+        }
     }
 
-    // ── (1) 재질 틴트: 표면마다 원본 재질을 복제해 albedo만 바꾼다.
-    // MaterialOverride를 쓰면 모델 전체가 한 색이 되므로 표면별 override를 쓴다.
-    private static void TintTree(Node node, TileCondition condition)
+    // 루트 자신은 제외한다 — 루트를 기울이면 건물이 아니라 타일 전체가 기운다.
+    private static void Collect(Node node, List<Node3D> into)
     {
-        if (node is MeshInstance3D instance && instance.Mesh is not null)
+        foreach (var child in node.GetChildren())
         {
-            for (var surface = 0; surface < instance.Mesh.GetSurfaceCount(); surface++)
+            if (child is Node3D part)
             {
-                if (instance.GetActiveMaterial(surface) is not StandardMaterial3D source)
+                into.Add(part);
+            }
+
+            Collect(child, into);
+        }
+    }
+
+    // ── 지붕 삐뚤어지게. 지붕과 그 처마는 한 덩어리이므로 같은 각도로 기울여야 서로 벌어지지 않는다.
+    private static void MakeRoofsCrooked(List<Node3D> parts, ulong seed)
+    {
+        foreach (var part in parts)
+        {
+            var key = RoofGroupKey(part.Name.ToString());
+            if (key is null)
+            {
+                continue;
+            }
+
+            var tiltX = (Hash01(key + "#x", seed) * 2f - 1f) * CrookedDegrees;
+            var tiltZ = (Hash01(key + "#z", seed) * 2f - 1f) * CrookedDegrees;
+            part.RotationDegrees += new Vector3(tiltX, 0f, tiltZ);
+            // 기울이면 아래 부재와 새로 겹칠 수 있다 — 최소 간격을 둬 z-파이팅을 막는다.
+            part.Position += new Vector3(0f, 0.003f, 0f);
+        }
+    }
+
+    /// <summary>지붕·처마 파츠면 소속 건물 키를, 아니면 null을 돌려준다.</summary>
+    private static string? RoofGroupKey(string name)
+    {
+        foreach (var suffix in new[] { "_topeave", "_roof", "_eave" })
+        {
+            var index = name.IndexOf(suffix, StringComparison.Ordinal);
+            if (index > 0)
+            {
+                return name[..index];
+            }
+        }
+
+        return null;
+    }
+
+    // ── 건물을 네모(터)만 남기고 걷어낸다.
+    // 성 건물은 b0_t0 / b0_eave0 / b0_roof …, 마을·항구 건물은 tag_body / tag_roof … 로
+    // 접두사가 같으므로 접두사 단위로 묶어 처리한다.
+    private static void StripBuildings(List<Node3D> parts, List<string> groups, int count, ulong seed)
+    {
+        if (groups.Count == 0 || count <= 0)
+        {
+            return;
+        }
+
+        // 해시 순으로 정렬해 결정론적으로 고른다 — 같은 맵이면 같은 건물이 무너진다.
+        groups.Sort((a, b) => Hash01(a + "#pick", seed).CompareTo(Hash01(b + "#pick", seed)));
+
+        for (var i = 0; i < count && i < groups.Count; i++)
+        {
+            var group = groups[i];
+            foreach (var part in parts)
+            {
+                var name = part.Name.ToString();
+                if (!name.StartsWith(group + "_", StringComparison.Ordinal))
                 {
                     continue;
                 }
 
-                var material = (StandardMaterial3D)source.Duplicate();
-                material.AlbedoColor = Weather(material.AlbedoColor, condition);
-                material.Roughness = Mathf.Min(1f, material.Roughness + 0.3f);
-                material.Metallic = 0f;
-                instance.SetSurfaceOverrideMaterial(surface, material);
+                if (IsStubBody(name, group))
+                {
+                    Flatten(part, StubHeight);
+                }
+                else
+                {
+                    part.Visible = false;
+                }
             }
-        }
-
-        foreach (var child in node.GetChildren())
-        {
-            TintTree(child, condition);
         }
     }
 
-    // 채도를 뺀 뒤 목표색으로 수렴시킨다. 단순히 어둡게 곱하면 원래 어두운 기와가
-    // 새까매져 실루엣이 사라지므로, 먼지·재를 뒤집어쓴 회색으로 끌어당긴다.
-    private static Color Weather(Color color, TileCondition condition)
+    // 남길 네모: 마을·항구는 몸체(_body / _body1), 성은 1층(_t0).
+    private static bool IsStubBody(string name, string group) =>
+        name == group + "_body" || name == group + "_body1" || name == group + "_t0";
+
+    /// <summary>파츠를 납작하게 눌러 터만 남긴다. 바닥면 높이는 그대로 유지한다.</summary>
+    private static void Flatten(Node3D part, float factor)
     {
-        var gray = color.R * 0.299f + color.G * 0.587f + color.B * 0.114f;
-        var (target, amount) = condition == TileCondition.Destroyed
-            ? (new Color(0.26f, 0.24f, 0.22f), 0.58f)
-            : (new Color(0.44f, 0.42f, 0.38f), 0.45f);
-
-        return new Color(
-            Mathf.Lerp(Mathf.Lerp(color.R, gray, 0.55f), target.R, amount),
-            Mathf.Lerp(Mathf.Lerp(color.G, gray, 0.55f), target.G, amount),
-            Mathf.Lerp(Mathf.Lerp(color.B, gray, 0.55f), target.B, amount),
-            color.A);
-    }
-
-    // ── (2) 이름 기반 파츠 변형
-    private static void TransformParts(Node node, TileCondition condition, ulong seed)
-    {
-        if (node is Node3D part)
+        if (part is not MeshInstance3D mesh || mesh.Mesh is null)
         {
-            ApplyPartRule(part, part.Name.ToString(), condition, seed);
-        }
-
-        foreach (var child in node.GetChildren())
-        {
-            TransformParts(child, condition, seed);
-        }
-    }
-
-    private static void ApplyPartRule(Node3D part, string name, TileCondition condition, ulong seed)
-    {
-        var wrecked = condition == TileCondition.Destroyed;
-        var roll = Hash01(name, seed);
-
-        // 성 여장(merlon) — 이가 빠진 것처럼 일부를 없앤다
-        if (name.Contains("merlon"))
-        {
-            if (roll < (wrecked ? 0.55f : 0.35f))
-            {
-                part.Visible = false;
-            }
-            else
-            {
-                Lean(part, name, seed, wrecked ? 12f : 7f);
-            }
-
             return;
         }
 
-        // 마을·항구 외곽담 — 무너져 끊긴 담
-        if (name.Contains("fence"))
+        // 로컬 AABB로 계산하면 Blender가 스케일을 노드에 뒀든 메시에 구웠든 똑같이 동작한다.
+        var bottomLocal = mesh.Mesh.GetAabb().Position.Y;
+        var bottom = part.Position.Y + part.Scale.Y * bottomLocal;
+        var scaledY = part.Scale.Y * factor;
+
+        part.Scale = part.Scale with { Y = scaledY };
+        part.Position = part.Position with { Y = bottom - scaledY * bottomLocal };
+    }
+
+    // ── 이름에 keyword가 든 파츠를 비율만큼 숨긴다(잔교 구멍, 논에서 빠진 모).
+    private static void HideSome(List<Node3D> parts, string keyword, float ratio, ulong seed)
+    {
+        foreach (var part in parts)
         {
-            if (roll < (wrecked ? 0.50f : 0.30f))
+            var name = part.Name.ToString();
+            if (name.Contains(keyword) && Hash01(name + "#hide", seed) < ratio)
             {
                 part.Visible = false;
             }
-            else
+        }
+    }
+
+    // 성 건물 묶기: b0_t0, b0_p0_1_1, b0_roof … → "b0"
+    private static List<string> CastleGroups(List<Node3D> parts)
+    {
+        var groups = new List<string>();
+        foreach (var part in parts)
+        {
+            var name = part.Name.ToString();
+            var underscore = name.IndexOf('_');
+            if (underscore <= 1 || name[0] != 'b' || !char.IsDigit(name[1]))
             {
-                Lean(part, name, seed, wrecked ? 16f : 9f);
+                continue;
             }
 
-            return;
-        }
-
-        // 지붕·처마 — 내려앉고 기운다. 심하게 부서지면 일부는 아예 사라진다
-        if (name.Contains("roof") || name.Contains("eave"))
-        {
-            if (wrecked && roll < 0.35f)
+            var key = name[..underscore];
+            if (!groups.Contains(key))
             {
-                part.Visible = false;
-                return;
+                groups.Add(key);
             }
-
-            Lean(part, name, seed, wrecked ? 18f : 10f);
-            part.Position += new Vector3(0f, -0.010f - roll * 0.018f, 0f);
-            return;
         }
 
-        // 굴뚝·깃대·기둥처럼 가느다란 수직 부재 — 기울어진다
-        if (name.Contains("chimney") || name.Contains("pole") || name.Contains("post"))
-        {
-            Lean(part, name, seed, wrecked ? 20f : 11f);
-        }
+        return groups;
     }
 
-    // 기울이면 이웃 면과 새로 겹칠 수 있으므로 미세 오프셋으로 동일 평면을 깬다
-    // (이번 작업에서 반복해서 겪은 z-파이팅 대비).
-    private static void Lean(Node3D part, string name, ulong seed, float degrees)
+    // 마을·항구 건물 묶기: tag_body(또는 2단집의 tag_body1)를 가진 것이 건물 한 채
+    private static List<string> BodyGroups(List<Node3D> parts)
     {
-        var tiltX = (Hash01(name + "#x", seed) * 2f - 1f) * degrees;
-        var tiltZ = (Hash01(name + "#z", seed) * 2f - 1f) * degrees;
-        part.RotationDegrees += new Vector3(tiltX, 0f, tiltZ);
-        // 해시가 0에 가까우면 오프셋이 사라지므로 최소 간격을 보장한다
-        part.Position += new Vector3(0f, 0.002f + Hash01(name + "#y", seed) * 0.004f, 0f);
-    }
-
-    // ── (3) 잔해 프롭: 모델 1개를 회전·크기를 달리해 흩뿌린다
-    private static void ScatterRubble(Node3D model, TileCondition condition, float groundY, ulong seed)
-    {
-        _rubble ??= GD.Load<PackedScene>("res://assets/models/rubble.glb");
-
-        var count = condition == TileCondition.Destroyed ? 5 : 3;
-        for (var i = 0; i < count; i++)
+        var groups = new List<string>();
+        foreach (var part in parts)
         {
-            var piece = _rubble.Instantiate<Node3D>();
-            var angle = Hash01($"rubble{i}#a", seed) * Mathf.Tau;
-            var radius = 0.10f + Hash01($"rubble{i}#r", seed) * 0.30f;
-            piece.Position = new Vector3(
-                Mathf.Cos(angle) * radius,
-                // 잔해 바닥면은 타일 윗면과 평행하다 — 충분히 띄우지 않으면 깜빡인다.
-                // 지금까지 효과가 있었던 간격(0.006~0.016)에 맞춰 잡는다.
-                groundY + 0.012f,
-                Mathf.Sin(angle) * radius);
-            piece.RotationDegrees = new Vector3(0f, Hash01($"rubble{i}#yaw", seed) * 360f, 0f);
-            piece.Scale = Vector3.One * (0.7f + Hash01($"rubble{i}#s", seed) * 0.7f);
-            model.AddChild(piece);
+            var name = part.Name.ToString();
+            var key = name.EndsWith("_body1", StringComparison.Ordinal) ? name[..^6]
+                : name.EndsWith("_body", StringComparison.Ordinal) ? name[..^5]
+                : null;
+
+            if (key is not null && !groups.Contains(key))
+            {
+                groups.Add(key);
+            }
         }
+
+        return groups;
     }
 
-    // 이름+시드로 0~1을 만드는 결정론적 해시(FNV-1a). 같은 맵이면 같은 파괴 모습이 나온다.
+    // 이름+시드로 0~1을 만드는 결정론적 해시(FNV-1a). 같은 맵이면 같은 모습이 나온다.
     private static float Hash01(string text, ulong seed)
     {
         var hash = 1469598103934665603UL ^ seed;

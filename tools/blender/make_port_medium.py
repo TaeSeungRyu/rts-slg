@@ -36,6 +36,7 @@ M_WALL = make_mat("wall", (0.58, 0.40, 0.18))
 M_WALL2 = make_mat("wall2", (0.64, 0.48, 0.26))
 M_WOOD = make_mat("wood", (0.42, 0.18, 0.12))
 M_PLANK = make_mat("plank", (0.52, 0.30, 0.11))
+M_PLANK2 = make_mat("plank2", (0.46, 0.26, 0.10))  # 판자 교대 톤(이음매처럼 읽힘)
 M_SEAM = make_mat("seam", (0.38, 0.21, 0.08))
 M_BOAT = make_mat("boat", (0.38, 0.20, 0.08))
 M_SAIL = make_mat("sail", (0.80, 0.68, 0.42), roughness=0.9)  # 정크 돛
@@ -100,16 +101,24 @@ for i, cx in enumerate((-0.5, 0.5)):
 
 # ── 선창(워프): 남쪽 물가를 따라 두 타일에 걸친 넓은 판자 단 + 모래톱 ──
 box("shore_sand", 1.30, 0.16, 0.014, 0.0, -0.34, Z + 0.004, M_SAND)
-box("wharf", 1.34, 0.20, 0.026, 0.0, -0.44, Z + 0.020, M_PLANK)
-for i, wx in enumerate((-0.55, -0.22, 0.11, 0.44)):  # 판자 이음매
-    box(f"wharf_seam_{i}", 0.012, 0.20, 0.006, wx, -0.44, Z + 0.037, M_SEAM)
+# 선창·잔교 모두 판자 단위로 쪼갠다. 맞붙여 놓아 정상 상태 실루엣은 통짜와 같고,
+# 부서진 상태에서 판자를 몇 장 숨기면 그대로 구멍이 된다(DamageView).
+WHARF_PLANKS = 10
+WHARF_LEN = 1.34 / WHARF_PLANKS
+for i in range(WHARF_PLANKS):
+    wx = -0.67 + WHARF_LEN * (i + 0.5)
+    box(f"wharf_plank_{i}", WHARF_LEN, 0.20, 0.026, wx, -0.44, Z + 0.020,
+        M_PLANK if i % 2 == 0 else M_PLANK2)
 
 # ── 잔교 2줄: 워프에서 남쪽 물 위로 ──
 DECK_Z = Z + 0.030
 for pi, px in enumerate((-0.52, 0.42)):
-    box(f"pier{pi}_deck", 0.14, 0.42, 0.020, px, -0.72, DECK_Z, M_PLANK)
-    for j, off in enumerate((-0.13, 0.01, 0.15)):
-        box(f"pier{pi}_seam_{j}", 0.14, 0.012, 0.006, px, -0.72 + off, DECK_Z + 0.016, M_SEAM)
+    PIER_PLANKS = 7
+    PIER_LEN = 0.42 / PIER_PLANKS
+    for j in range(PIER_PLANKS):
+        off = -0.21 + PIER_LEN * (j + 0.5)
+        box(f"pier{pi}_plank_{j}", 0.14, PIER_LEN, 0.020, px, -0.72 + off, DECK_Z,
+            M_PLANK if j % 2 == 0 else M_PLANK2)
     for j, (dx, dy) in enumerate(((-0.05, -0.60), (0.06, -0.63), (-0.05, -0.80), (0.06, -0.83))):
         cylinder(f"pier{pi}_post_{j}", 0.013, DECK_Z - 0.04, px + dx, dy, (DECK_Z + 0.04) / 2, M_WOOD, verts=5)
     cylinder(f"pier{pi}_lpole", 0.010, 0.14, px + 0.055, -0.90, DECK_Z + 0.07, M_WOOD, verts=5)
