@@ -24,34 +24,34 @@ M_SAIL = ic.make_mat("sail", (0.90, 0.87, 0.78), roughness=0.9)
 M_SEAM = ic.make_mat("seam", (0.40, 0.30, 0.18))
 
 # ── 선체(부모): 중선(0.091×0.270)보다 좁고 길다 ──
-body = ic.box("body", 0.060, 0.330, 0.040, 0, 0, 0.030, M_HULL)
+body = ic.box("body", 0.060, 0.295, 0.040, 0, 0, 0.030, M_HULL)
 ic.bake_scale(body)
 
 # 이물: 낮게 앞으로 뻗는 뾰족한 뱃머리 — 치켜든 판이 아니라 물을 가르는 쐐기
-prow = ic.box("prow", 0.034, 0.085, 0.028, 0, -0.190, 0.044, M_HULL,
+prow = ic.box("prow", 0.034, 0.080, 0.028, 0, -0.170, 0.044, M_HULL,
               rot_x=math.radians(-10))
-prow_tip = ic.cone("prow_tip", 0.017, 0.001, 0.040, 0, -0.240, 0.052, M_HULL,
+prow_tip = ic.cone("prow_tip", 0.017, 0.001, 0.040, 0, -0.216, 0.052, M_HULL,
                    verts=4, rot_x=math.radians(-96))
 for part in (prow, prow_tip):
     ic.parent_to(part, body)
 
 # 갑판 + 낮은 뱃전 + 방향타
-deck = ic.box("deck", 0.046, 0.280, 0.008, 0, 0.008, 0.052, M_DECK)
+deck = ic.box("deck", 0.046, 0.250, 0.008, 0, 0.008, 0.052, M_DECK)
 ic.parent_to(deck, body)
 for s in (-1, 1):
-    rail = ic.box(f"gunwale_{'l' if s < 0 else 'r'}", 0.008, 0.300, 0.020,
+    rail = ic.box(f"gunwale_{'l' if s < 0 else 'r'}", 0.008, 0.268, 0.020,
                   s * 0.030, 0.000, 0.058, M_DECK)
     ic.parent_to(rail, body)
-rudder = ic.box("rudder", 0.008, 0.030, 0.048, 0, 0.180, 0.016, M_DECK,
+rudder = ic.box("rudder", 0.008, 0.030, 0.048, 0, 0.162, 0.016, M_DECK,
                 rot_x=math.radians(-14))
 ic.parent_to(rudder, body)
 
 # 고물: 망루 선실(야구라) — 기둥 위에 얹힌 작은 상자 + 지붕
-for i, (px, py) in enumerate(((-0.020, 0.104), (0.020, 0.104), (-0.020, 0.148), (0.020, 0.148))):
+for i, (px, py) in enumerate(((-0.020, 0.092), (0.020, 0.092), (-0.020, 0.132), (0.020, 0.132))):
     post = ic.box(f"yagura_post_{i}", 0.008, 0.008, 0.036, px, py, 0.076, M_DECK)
     ic.parent_to(post, body)
-yagura = ic.box("yagura", 0.054, 0.058, 0.030, 0, 0.126, 0.108, M_HULL)
-yagura_roof = ic.box("yagura_roof", 0.064, 0.068, 0.008, 0, 0.126, 0.128, M_SEAM)
+yagura = ic.box("yagura", 0.054, 0.058, 0.030, 0, 0.112, 0.108, M_HULL)
+yagura_roof = ic.box("yagura_roof", 0.064, 0.068, 0.008, 0, 0.112, 0.128, M_SEAM)
 for part in (yagura, yagura_roof):
     ic.parent_to(part, body)
 
@@ -68,9 +68,9 @@ for i in range(3):
 ic.parent_to(sail, mast)
 
 # ── 세력색 노보리(세로 깃발): 고물 망루 옆에 꽂힌다 ──
-pole = ic.cylinder("nobori_pole", 0.004, 0.130, 0.024, 0.164, 0.190, M_SEAM, verts=6)
+pole = ic.cylinder("nobori_pole", 0.004, 0.130, 0.024, 0.148, 0.190, M_SEAM, verts=6)
 ic.parent_to(pole, body)
-nobori = ic.box("nobori", 0.024, 0.004, 0.082, 0.038, 0.164, 0.208, m.red)
+nobori = ic.box("nobori", 0.024, 0.004, 0.082, 0.038, 0.148, 0.208, m.red)
 ic.parent_to(nobori, pole)
 
 ic.export("troop-waeseon.glb")
