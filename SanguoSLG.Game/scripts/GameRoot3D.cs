@@ -311,6 +311,7 @@ public partial class GameRoot3D : Node3D
         ("troop-archer.glb", "3 궁병"),
         ("troop-thunder-cart.glb", "4 벽력거"),
         ("troop-catapult.glb", "5 투석기"),
+        ("troop-siege-tower.glb", "6 공성탑"),
     };
 
     private void BuildTroopReview(MapView3D view, HexMap map)

@@ -40,6 +40,7 @@ public partial class UnitController3D : Node3D
         "res://assets/models/troop-archer.glb",
         "res://assets/models/troop-thunder-cart.glb",
         "res://assets/models/troop-catapult.glb",
+        "res://assets/models/troop-siege-tower.glb",
     };
 
     private const int TroopCount = 7;
@@ -113,6 +114,9 @@ public partial class UnitController3D : Node3D
 
     /// <summary>공성 중에서도 던지는 쪽(투석기) — 말뚝 대신 팔을 젖혀 돌을 날린다.</summary>
     private bool _siegeThrower;
+
+    /// <summary>공성 중에서도 쏘는 쪽(공성탑) — 탑 위 궁병이 활을 쏜다.</summary>
+    private bool _siegeArcher;
 
     // 하이라이트·경로 오버레이는 유닛과 함께 움직이면 안 되므로 형제 노드에 담는다.
     private Node3D _overlay = null!;
@@ -302,7 +306,11 @@ public partial class UnitController3D : Node3D
 
         if (_motion == MotionKind.Siege)
         {
-            if (_siegeThrower)
+            if (_siegeArcher)
+            {
+                PlayTowerVolley();
+            }
+            else if (_siegeThrower)
             {
                 PlayCatapultVolley();
             }
@@ -520,7 +528,7 @@ public partial class UnitController3D : Node3D
             tween.Chain().TweenInterval(AimHoldSeconds);
 
             // 3) 발사 — 손의 화살을 숨기고 같은 자리에서 발사체를 쏜다
-            tween.Chain().TweenCallback(Callable.From(() => LooseArrow(member, scatter)));
+            tween.Chain().TweenCallback(Callable.From(() => LooseArrow(member, scatter, ArrowRangeTiles)));
             tween.Parallel().TweenProperty(member.AttackArm, "rotation:x",
                     member.AttackArmBaseRotation.X - 0.55f, ReleaseSeconds)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
@@ -563,8 +571,10 @@ public partial class UnitController3D : Node3D
     }
 
     // 발사 순간: 손의 화살을 숨기고, 그 자리에서 사거리만큼 앞의 지면으로 발사체를 날린다.
-    private void LooseArrow(Member member, float scatter)
+    private void LooseArrow(Member member, float scatter, float rangeTiles)
     {
+        var from = member.Arrow?.GlobalPosition
+            ?? member.Body.GlobalPosition + Vector3.Up * 0.10f;
         if (member.Arrow is not null)
         {
             member.Arrow.Visible = false;
@@ -572,10 +582,82 @@ public partial class UnitController3D : Node3D
 
         var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
         var lateral = new Vector3(forward.Z, 0f, -forward.X);
-        var from = member.Body.GlobalPosition + Vector3.Up * 0.10f + forward * 0.06f;
         var to = new Vector3(from.X, Position.Y, from.Z)
-            + forward * ArrowRangeTiles + lateral * scatter;
+            + forward * rangeTiles + lateral * scatter;
         ProjectileView.SpawnArrow(_overlay, from, to, ArrowFlightSeconds);
+    }
+
+    // 공성탑 사거리(design-unit.md range_unit). 병종 데이터가 생기면 그쪽에서 받는다.
+    private const float TowerRangeTiles = 3f;
+
+    // 탑 위 사격: 탑(Body)은 미동도 없고, 위의 궁병(Rider)만 당기고 조준하고 놓는다.
+    private void PlayTowerVolley()
+    {
+        var lastDelay = 0f;
+
+        for (var i = 0; i < _members.Count; i++)
+        {
+            var member = _members[i];
+            lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
+            var bowArm = member.ShieldArm;
+            var scatter = (i * 0.618034f % 1f - 0.5f) * 0.6f;
+
+            var tween = CreateTween();
+            tween.TweenInterval(member.AttackDelay);
+
+            // 1) 당김
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X - 1.05f, DrawSeconds)
+                .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+            if (bowArm is not null)
+            {
+                tween.Parallel().TweenProperty(bowArm, "rotation:x", -1.30f, DrawSeconds)
+                    .SetTrans(Tween.TransitionType.Sine);
+            }
+            if (member.Rider is not null)
+            {
+                tween.Parallel().TweenProperty(member.Rider, "rotation:x",
+                        member.RiderBaseRotation.X + 0.16f, DrawSeconds)
+                    .SetTrans(Tween.TransitionType.Sine);
+            }
+
+            // 2) 조준
+            tween.Chain().TweenInterval(AimHoldSeconds);
+
+            // 3) 발사
+            tween.Chain().TweenCallback(Callable.From(() => LooseArrow(member, scatter, TowerRangeTiles)));
+            tween.Parallel().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X - 0.40f, ReleaseSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+
+            // 4) 복귀 — 내려오는 길에 화살을 다시 메긴다
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+            if (bowArm is not null)
+            {
+                // 탑 궁병 활팔의 대기 자세(-42도). 모델 노드 회전과 같아야 제자리로 돌아온다
+                tween.Parallel().TweenProperty(bowArm, "rotation:x", -0.733f, RecoverSeconds)
+                    .SetTrans(Tween.TransitionType.Sine);
+            }
+            if (member.Rider is not null)
+            {
+                tween.Parallel().TweenProperty(member.Rider, "rotation:x",
+                        member.RiderBaseRotation.X, RecoverSeconds)
+                    .SetTrans(Tween.TransitionType.Sine);
+            }
+            tween.Chain().TweenCallback(Callable.From(() =>
+            {
+                if (member.Arrow is not null)
+                {
+                    member.Arrow.Visible = true;
+                }
+            }));
+        }
+
+        var clock = CreateTween();
+        clock.TweenInterval(lastDelay + DrawSeconds + AimHoldSeconds + ReleaseSeconds + RecoverSeconds);
+        clock.Finished += () => _attacking = false;
     }
 
     // 공성 말뚝 타이밍. 뒤로 무겁게 당겼다가 한순간에 박는다.
@@ -935,11 +1017,12 @@ public partial class UnitController3D : Node3D
                 continue;
             }
 
-            // leg_fl이 있으면 기병, ram·arm_basket_base가 있으면 공성, bow_grip이 있으면 궁병 규약이다
+            // leg_fl=기병 / ram·arm_basket_base·tower_archer=공성 / bow_grip=궁병 규약
             var cavalry = instance.FindChild("leg_fl", true, false) is Node3D;
             var ram = !cavalry && instance.FindChild("ram", true, false) is Node3D;
             _siegeThrower = !cavalry && instance.FindChild("arm_basket_base", true, false) is Node3D;
-            var siege = ram || _siegeThrower;
+            _siegeArcher = !cavalry && instance.FindChild("tower_archer", true, false) is Node3D;
+            var siege = ram || _siegeThrower || _siegeArcher;
             var archer = !cavalry && !siege && instance.FindChild("bow_grip", true, false) is Node3D;
             _motion = cavalry ? MotionKind.Cavalry
                 : siege ? MotionKind.Siege
@@ -951,19 +1034,37 @@ public partial class UnitController3D : Node3D
                 ?? throw new System.InvalidOperationException(
                     $"부위 노드 없음: {name} — {TroopModels[_troopIndex]}의 규약 판별을 확인할 것");
 
-            var rider = cavalry ? Part("rider") : null;
-            var attackArm = Part(cavalry ? "rider_arm_r" : ram ? "ram" : _siegeThrower ? "arm" : "arm_r");
+            Node3D[] FoundParts(params string[] names) => names
+                .Select(n => instance.FindChild(n, true, false) as Node3D)
+                .Where(n => n is not null)
+                .Cast<Node3D>()
+                .ToArray();
+
+            var rider = cavalry ? Part("rider") : _siegeArcher ? Part("tower_archer") : null;
+            var attackArm = Part(cavalry ? "rider_arm_r"
+                : ram ? "ram"
+                : _siegeThrower ? "arm"
+                : _siegeArcher ? "ta_arm_r"
+                : "arm_r");
             var member = new Member
             {
                 Body = body,
                 Rider = rider,
                 AttackArm = attackArm,
                 AttackArmBasePosition = attackArm.Position,
-                ShieldArm = cavalry || siege ? null : Part("arm_l"),
+                ShieldArm = _siegeArcher ? Part("ta_arm_l") : cavalry || siege ? null : Part("arm_l"),
                 CounterSwing = cavalry || siege ? null : Part("arm_l"),
-                Arrow = archer ? Part("arrow") : _siegeThrower ? Part("stone") : null,
-                Wheels = siege ? new[] { Part("wheel_l"), Part("wheel_r") } : System.Array.Empty<Node3D>(),
-                Swings = cavalry ? CavalryLegs(Part) : siege ? SiegeLegs(Part) : InfantryLegs(Part),
+                Arrow = archer ? Part("arrow")
+                    : _siegeThrower ? Part("stone")
+                    : _siegeArcher ? Part("ta_arrow")
+                    : null,
+                Wheels = siege
+                    ? FoundParts("wheel_l", "wheel_r", "wheel_fl", "wheel_fr", "wheel_bl", "wheel_br")
+                    : System.Array.Empty<Node3D>(),
+                Swings = cavalry ? CavalryLegs(Part)
+                    : _siegeArcher ? System.Array.Empty<SwingPart>()
+                    : siege ? SiegeLegs(Part)
+                    : InfantryLegs(Part),
                 BodyBasePosition = body.Position,
                 BodyBaseRotation = body.Rotation,
                 RiderBaseRotation = rider?.Rotation ?? Vector3.Zero,
