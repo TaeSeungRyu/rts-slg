@@ -82,8 +82,11 @@ public partial class GameRoot3D : Node3D
         var startCity = scenario.Cities[0];
         var unitNode = new UnitController3D();
         AddChild(unitNode);
+        var ownerColor = new Color(
+            scenario.Factions.First(f => f.Id == startCity.Owner).Color);
         unitNode.Init(scenario.Map, mapView, camera,
-            new Unit(new UnitId(1), startCity.Owner, startCity.Position + new HexCoord(-1, 0)));
+            new Unit(new UnitId(1), startCity.Owner, startCity.Position + new HexCoord(-1, 0)),
+            ownerColor);
 
         MapView3D.TuneImportedMeshes(this);
 

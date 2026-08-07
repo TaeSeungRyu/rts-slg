@@ -110,6 +110,13 @@ arm_child_box("arm_weight", 0.052, 0.046, 0.040, (0, 0, -0.048), m.steel)
 arm.rotation_euler = (math.radians(-55), 0, 0)
 ic.parent_to(arm, body)
 
+
+# ── 세력기: 수레 뒤 모서리 깃대 + 깃발(세력색 규약 표면) ──
+pole = ic.cylinder("flag_pole", 0.005, 0.115, -0.042, 0.058, 0.128, m.wood, verts=5)
+ic.parent_to(pole, body)
+flag = ic.box("flag", 0.040, 0.004, 0.024, -0.020, 0.058, 0.172, m.red)
+ic.parent_to(flag, pole)
+
 # ── 끄는 병사 2 — 병기가 커 보이도록 20% 줄여 세운다 ──
 for i, sx in enumerate((-1, 1)):
     ic.build_siege_crew(m, body, i, sx)

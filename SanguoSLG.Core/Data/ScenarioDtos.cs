@@ -10,6 +10,7 @@ internal sealed class FactionDto
     public string Name { get; init; } = "";
     public int Ruler { get; init; }
     public int Gold { get; init; }
+    public string Color { get; init; } = "#c02626";
 }
 
 internal sealed class CityDto

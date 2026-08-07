@@ -1,4 +1,16 @@
 [
-  { "id": 1, "name": "위", "ruler": 1, "gold": 1000 },
-  { "id": 2, "name": "촉", "ruler": 2, "gold": 800 }
+  {
+    "id": 1,
+    "name": "위",
+    "ruler": 1,
+    "gold": 1000,
+    "color": "#2d5fd0"
+  },
+  {
+    "id": 2,
+    "name": "촉",
+    "ruler": 2,
+    "gold": 800,
+    "color": "#2c8c46"
+  }
 ]

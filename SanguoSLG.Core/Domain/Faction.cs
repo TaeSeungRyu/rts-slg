@@ -8,7 +8,8 @@ public sealed record Faction(
     FactionId Id,
     string Name,
     GeneralId Ruler,
-    int Gold)
+    int Gold,
+    string Color)
 {
     /// <summary>자금을 더한(또는 뺀) 새 세력을 반환한다.</summary>
     public Faction AddGold(int amount) => this with { Gold = Gold + amount };

@@ -145,8 +145,11 @@ public partial class UnitController3D : Node3D
     private readonly List<MeshInstance3D> _pathMarkers = new();
     private HexCoord? _hoverCoord;
 
-    public void Init(HexMap map, MapView3D view, Camera3D camera, Unit unit)
+    private Color _factionColor = new(0.75f, 0.15f, 0.15f);
+
+    public void Init(HexMap map, MapView3D view, Camera3D camera, Unit unit, Color factionColor)
     {
+        _factionColor = factionColor;
         _map = map;
         _view = view;
         _camera = camera;
@@ -1403,6 +1406,7 @@ public partial class UnitController3D : Node3D
         }
 
         _lastPosition = Position;
+        FactionColorView.Apply(_tokenRoot, _factionColor);
         MapView3D.TuneImportedMeshes(_tokenRoot);
     }
 

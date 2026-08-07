@@ -14,8 +14,8 @@ public class TurnEngineTests
     {
         var factions = new List<Faction>
         {
-            new(new FactionId(1), "위", new GeneralId(1), Gold: 1000),
-            new(new FactionId(2), "촉", new GeneralId(2), Gold: 800),
+            new(new FactionId(1), "위", new GeneralId(1), Gold: 1000, Color: "#2d5fd0"),
+            new(new FactionId(2), "촉", new GeneralId(2), Gold: 800, Color: "#2c8c46"),
         };
         var cities = new List<City>
         {

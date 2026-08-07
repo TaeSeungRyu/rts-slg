@@ -33,7 +33,7 @@ public sealed class ScenarioLoader
     public Scenario LoadFromJson(string factionsJson, string citiesJson, string generalsJson, string balanceJson, string mapJson)
     {
         var factions = Deserialize<List<FactionDto>>(factionsJson, "factions")
-            .Select(d => new Faction(new FactionId(d.Id), d.Name, new GeneralId(d.Ruler), d.Gold))
+            .Select(d => new Faction(new FactionId(d.Id), d.Name, new GeneralId(d.Ruler), d.Gold, d.Color))
             .ToList();
 
         var cities = Deserialize<List<CityDto>>(citiesJson, "cities")
