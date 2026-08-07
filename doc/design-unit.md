@@ -71,7 +71,7 @@
 
 # 병종 카탈로그 (2026-08-06 사용자 정의)
 
-> 추가할 병종 **후보군**(20종). 한국어 이름은 **바뀔 수 있다** — 코드 식별자를 기준으로 삼는다.
+> 추가할 병종 **후보군**(19종 — 궁기병은 2026-08-07 계획에서 제거). 한국어 이름은 **바뀔 수 있다** — 코드 식별자를 기준으로 삼는다.
 > 수치(속도·탐지·사거리)와 통행 규칙은 게임 데이터이므로 `data/troop-types.json`에 두고
 > C# 코드에 박지 않는다(CLAUDE.md 규칙 3).
 
@@ -112,8 +112,7 @@
 | 12 | 남만병 | `Nanman` | `nanman` | 육지 | 2 | 2 | 1 / 1 / 1 | O | O | O | 도(외날칼)를 든 남만 전사 — 맨팔·가죽 갑옷·맨다리·깃털 장식(세력색)·등에 둥근 방패. 모션은 도검병과 동일(2026-08-07 확정, 낫병에서 개명) |
 | 13 | 등갑병 | `Shieldbearer` | `shieldbearer` | 육지 | 1 | 2 | 1 / 1 / 1 | O | O | O | 등갑(등나무 갑옷) 차림의 두꺼운 몸집 + 몸을 거의 가리는 큰 방패. 모션은 도검병과 동일(2026-08-07 확정, 대방패병에서 개명) |
 | 14 | 무당비군 | `Wudang` | `wudang` | 육지+산악 | 2 / 산악 1 | 2 | 1 / 1 / 1 | O | O | O | 활과 등의 둥근 방패, 가벼운 갑옷, 망토. 공격 모션은 궁병(2026-08-07 확정, 산악병에서 개명) |
-| 15 | 창기병 | `Lancer` | `lancer` | 육지 | 3 | 3 | 1 / 1 / 1 | X | X | X | 말을 타고 큰 창을 들고 있다 |
-| 16 | 궁기병 | `HorseArcher` | `horse_archer` | 육지 | 3 | 3 | **2** / 1 / 1 | X | X | X | 작은 말을 타고 활을 들고 있다 |
+| 15 | 철기병 | `Cataphract` | `cataphract` | 육지 | 3 | 3 | 1 / 1 / 1 | O | O | O | 전신 철갑 기사 + 마갑 두른 군마, 랜스(세력색 페논). 모션은 기병과 동일(2026-08-07 확정, 창기병에서 개명) |
 | 17 | 대궁병 | `GreatBow` | `great_bow` | 육지 | 1 | 2 | **3** / **2** / 1 | X | X | X | 정말 큰 활을 들고 있다 |
 | 18 | 판옥선 | `Panokseon` | `panokseon` | 대하 | 2 | 2 | 1 / 1 / 1 | X | X | X | 판옥선 모양의 배 |
 | 19 | 거북선 | `Turtleship` | `turtleship` | 대하 | 1 | 2 | 1 / 1 / 1 | X | X | X | 거북선 모양의 배 |
@@ -126,18 +125,17 @@
 
 | 대상 | 기본 | 예외 |
 |---|---|---|
-| 유닛 | 1 | `Archer` 2 · `Catapult` 2 · `SiegeTower` 2 · `HorseArcher` 2 · `GreatBow` 3 |
+| 유닛 | 1 | `Archer` 2 · `Catapult` 2 · `SiegeTower` 2 · `GreatBow` 3 |
 | 건물 | 1 | `Catapult` 2 · `SiegeTower` 2 · `GreatBow` 2 |
 | 성 | 1 | `Catapult` 2 · `SiegeTower` 2 |
 
-기본값과 다른 병종만 모으면 아래와 같다. 표에 없는 15종은 세 대상 모두 1이다.
+기본값과 다른 병종만 모으면 아래와 같다. 표에 없는 15종은 세 대상 모두 1이다(궁기병 제거 반영).
 
 | # | 병종 | 유닛 | 건물 | 성 |
 |---|---|---|---|---|
 | 3 | `Archer` | 2 | 1 | 1 |
 | 5 | `Catapult` | 2 | 2 | 2 |
 | 6 | `SiegeTower` | 2 | 2 | 2 |
-| 16 | `HorseArcher` | 2 | 1 | 1 |
 | 17 | `GreatBow` | 3 | 2 | 1 |
 
 - **건물**: 마을·논·밭·공방·항구 등 지물 타일([design-terrain.md](./design-terrain.md)의 건물 계열)
@@ -181,7 +179,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 | `range_castle` | int | 성 대상 사거리 |
 | `model` | string | 1기짜리 GLB 파일명 |
 
-### 전체 값 (20종)
+### 전체 값 (19종)
 
 속도·탐지는 [design-movement.md](./design-movement.md)에서 확정된 값이다.
 
@@ -201,8 +199,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 | 12 | `nanman` | special | land | 2 | — | 2 | 1 | 1 | 1 |
 | 13 | `shieldbearer` | special | land | 1 | — | 2 | 1 | 1 | 1 |
 | 14 | `wudang` | special | land_mountain | 2 | **1** | 2 | 1 | 1 | 1 |
-| 15 | `lancer` | special | land | 3 | — | 3 | 1 | 1 | 1 |
-| 16 | `horse_archer` | special | land | 3 | — | 3 | **2** | 1 | 1 |
+| 15 | `cataphract` | special | land | 3 | — | 3 | 1 | 1 | 1 |
 | 17 | `great_bow` | special | land | 1 | — | 2 | **3** | **2** | 1 |
 | 18 | `panokseon` | special | deep_water | 2 | — | 2 | 1 | 1 | 1 |
 | 19 | `turtleship` | special | deep_water | 1 | — | 2 | 1 | 1 | 1 |
@@ -252,7 +249,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 | 묶음 | 병종 | 공유 |
 |---|---|---|
 | 보병 | `Swordsman` `Pikeman` `Nanman` `Shieldbearer` `Wudang` `Archer` `GreatBow` | 몸통·다리, 무기만 교체(남만병은 맨살 전용 몸통) |
-| 기병 | `Cavalry` `Lancer` `HorseArcher` | 기존 `make_cavalry.py`의 말+기수 재사용, 무기·말 크기만 조정 |
+| 기병 | `Cavalry` `Cataphract` | 기병 기반 재사용, 갑주·무기만 교체 |
 | 공성 | `ThunderCart` `Catapult` `SiegeTower` | 끄는 병사 + 바퀴 대차 공유, 상부 구조만 교체 |
 | 배 | `SmallBoat` `MediumShip` `LargeShip` `Panokseon` `Turtleship` `Waeseon` | 선체 기본형 공유, 갑판 구조·크기 차등 |
 | 단독 | `WarElephant` | 공유 없음 |
