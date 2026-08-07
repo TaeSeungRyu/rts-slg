@@ -935,10 +935,10 @@ public partial class UnitController3D : Node3D
                 continue;
             }
 
-            // leg_fl이 있으면 기병, ram·arm_spoon이 있으면 공성, bow_grip이 있으면 궁병 규약이다
+            // leg_fl이 있으면 기병, ram·arm_basket_base가 있으면 공성, bow_grip이 있으면 궁병 규약이다
             var cavalry = instance.FindChild("leg_fl", true, false) is Node3D;
             var ram = !cavalry && instance.FindChild("ram", true, false) is Node3D;
-            _siegeThrower = !cavalry && instance.FindChild("arm_spoon", true, false) is Node3D;
+            _siegeThrower = !cavalry && instance.FindChild("arm_basket_base", true, false) is Node3D;
             var siege = ram || _siegeThrower;
             var archer = !cavalry && !siege && instance.FindChild("bow_grip", true, false) is Node3D;
             _motion = cavalry ? MotionKind.Cavalry
@@ -946,7 +946,10 @@ public partial class UnitController3D : Node3D
                 : archer ? MotionKind.Archer
                 : MotionKind.Infantry;
 
-            Node3D Part(string name) => (Node3D)instance.FindChild(name, true, false);
+            // 규약 판별이 어긋나면 없는 부위를 찾게 된다 — 조용한 NRE 대신 어떤 이름이 없는지 말해준다
+            Node3D Part(string name) => instance.FindChild(name, true, false) as Node3D
+                ?? throw new System.InvalidOperationException(
+                    $"부위 노드 없음: {name} — {TroopModels[_troopIndex]}의 규약 판별을 확인할 것");
 
             var rider = cavalry ? Part("rider") : null;
             var attackArm = Part(cavalry ? "rider_arm_r" : ram ? "ram" : _siegeThrower ? "arm" : "arm_r");
