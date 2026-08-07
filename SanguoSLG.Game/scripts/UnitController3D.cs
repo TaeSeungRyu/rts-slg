@@ -880,22 +880,38 @@ public partial class UnitController3D : Node3D
     private const float ShipBackSeconds = 0.50f;
     private const float ShipDistance = 0.16f;
 
-    // 선박 공격: 물보라를 일으키며 전진 → 뱃머리를 찍고(피치) → 물러 돌아온다.
+    // 소선 사거리(design-unit.md range_unit). 병종 데이터가 생기면 그쪽에서 받는다.
+    private const float ShipRangeTiles = 1f;
+
+    // 선박 공격: 물보라를 일으키며 전진 → 뱃머리를 찍는 순간 갑판에서 화살이 날아간다
+    // → 물러 돌아온다.
     private void PlayShipRam()
     {
         var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
         var origin = Position;
         var lastDelay = 0f;
 
-        foreach (var member in _members)
+        for (var i = 0; i < _members.Count; i++)
         {
+            var member = _members[i];
             lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
+            var scatter = (i * 0.618034f % 1f - 0.5f) * 0.4f;
+
             var tween = CreateTween();
             tween.TweenInterval(ShipOutSeconds + member.AttackDelay);
 
             tween.Chain().TweenProperty(member.Body, "rotation:x",
                     member.BodyBaseRotation.X + 0.14f, 0.10f)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+            tween.Chain().TweenCallback(Callable.From(() =>
+            {
+                var from = member.Body.GlobalPosition + Vector3.Up * 0.16f
+                    + forward * 0.08f;
+                var to = new Vector3(from.X, Position.Y, from.Z)
+                    + forward * ShipRangeTiles
+                    + new Vector3(forward.Z, 0f, -forward.X) * scatter;
+                ProjectileView.SpawnArrow(_overlay, from, to, 0.45f);
+            }));
             tween.Chain().TweenProperty(member.Body, "rotation:x",
                     member.BodyBaseRotation.X, RecoverSeconds + 0.10f)
                 .SetTrans(Tween.TransitionType.Sine);

@@ -26,23 +26,23 @@ M_SAIL = ic.make_mat("sail", (0.80, 0.68, 0.42), roughness=0.9)
 M_BATTEN = ic.make_mat("batten", (0.35, 0.24, 0.14))
 
 # ── 선체(부모): 몸통 상자. 돛이 밑에서 회전하므로 스케일을 굽는다 ──
-body = ic.box("body", 0.095, 0.230, 0.042, 0, 0, 0.030, M_HULL)
+body = ic.box("body", 0.076, 0.230, 0.042, 0, 0, 0.030, M_HULL)
 ic.bake_scale(body)
 
 # 이물·고물(뾰족한 앞뒤): 회전한 상자 — 항구 나룻배와 같은 수법
 for endsign, tag in ((-1, "bow"), (1, "stern")):
     for s in (-1, 1):
-        wedge = ic.box(f"{tag}_{'l' if s < 0 else 'r'}", 0.062, 0.050, 0.040,
-                       s * 0.020, endsign * 0.128, 0.032, M_HULL,
+        wedge = ic.box(f"{tag}_{'l' if s < 0 else 'r'}", 0.050, 0.050, 0.040,
+                       s * 0.016, endsign * 0.128, 0.032, M_HULL,
                        rot_z=endsign * s * math.radians(30))
         ic.parent_to(wedge, body)
 
 # 갑판(안쪽 밝은 판) + 옆 난간
-deck = ic.box("deck", 0.070, 0.190, 0.010, 0, 0, 0.052, M_DECK)
+deck = ic.box("deck", 0.056, 0.190, 0.010, 0, 0, 0.052, M_DECK)
 ic.parent_to(deck, body)
 for s in (-1, 1):
     rail = ic.box(f"gunwale_{'l' if s < 0 else 'r'}", 0.010, 0.215, 0.016,
-                  s * 0.046, 0, 0.058, M_DECK)
+                  s * 0.037, 0, 0.058, M_DECK)
     ic.parent_to(rail, body)
 
 # 고물 키(방향타)
@@ -55,9 +55,9 @@ mast = ic.cylinder("mast", 0.007, 0.250, 0, 0.020, 0.175, M_BATTEN, verts=6)
 ic.parent_to(mast, body)
 
 # 돛: 원점이 돛대 축에 오도록 돛대 위치에 만든다 — 런타임 rotation.y가 돛대 축 회전이 된다
-sail = ic.box("sail", 0.120, 0.005, 0.150, 0, 0.020, 0.195, M_SAIL)
+sail = ic.box("sail", 0.096, 0.005, 0.150, 0, 0.020, 0.195, M_SAIL)
 for i in range(4):
-    batten = ic.box(f"sail_batten_{i}", 0.126, 0.007, 0.007, 0, 0.020, 0.135 + i * 0.040,
+    batten = ic.box(f"sail_batten_{i}", 0.101, 0.007, 0.007, 0, 0.020, 0.135 + i * 0.040,
                     M_BATTEN)
     ic.parent_to(batten, sail)
 flag = ic.box("sail_flag", 0.036, 0.004, 0.020, 0.024, 0.020, 0.310, m.red)
