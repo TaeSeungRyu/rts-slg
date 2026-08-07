@@ -51,6 +51,7 @@ public partial class UnitController3D : Node3D
         ("res://assets/models/troop-shieldbearer.glb", false),
         ("res://assets/models/troop-wudang.glb", false),
         ("res://assets/models/troop-cataphract.glb", false),
+        ("res://assets/models/troop-great-bow.glb", false),
     };
 
     private const int TroopCount = 7;
