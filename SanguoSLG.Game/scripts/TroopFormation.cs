@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Godot;
 
 namespace SanguoSLG.Game;
@@ -76,12 +77,30 @@ public static class TroopFormation
     /// <summary>1기짜리 모델을 규모만큼 복제해 root 아래에 세운다.</summary>
     public static void Build(Node3D root, PackedScene model, int count)
     {
+        var index = 0;
         foreach (var slot in Slots(count))
         {
             var member = model.Instantiate<Node3D>();
             member.Position = slot.Offset;
             member.RotationDegrees = new Vector3(0f, slot.YawDegrees, 0f);
+            ApplyVariant(member, index++);
             root.AddChild(member);
+        }
+    }
+
+    // 개체 변이: 모델에 variant_0..N 그룹이 있으면 편대원 순번마다 한 벌만 남긴다.
+    // 호랑이 줄무늬처럼 같은 병종이라도 개체마다 무늬가 달라야 하는 모델이 쓰는 규약이다.
+    private static void ApplyVariant(Node3D member, int index)
+    {
+        var variants = new List<Node3D>();
+        for (var v = 0; member.FindChild($"variant_{v}", true, false) is Node3D group; v++)
+        {
+            variants.Add(group);
+        }
+
+        for (var v = 0; v < variants.Count; v++)
+        {
+            variants[v].Visible = v == index % variants.Count;
         }
     }
 }
