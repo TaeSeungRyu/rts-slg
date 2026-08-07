@@ -1188,12 +1188,17 @@ public partial class UnitController3D : Node3D
     };
 
     // 코끼리 걸음: 같은 쪽 다리가 거의 붙어 움직이는 측대보(lateral walk). 무겁고 느리다.
+    // 옆에서 걷는 꼬마 병사 다리도 같은 시계를 탄다 — 몸이 작으니 성큼성큼 따라온다.
     private static SwingPart[] ElephantLegs(System.Func<string, Node3D> part) => new[]
     {
         new SwingPart { Node = part("leg_fl"), Phase = 0.00f * Mathf.Tau, Amplitude = 0.26f },
         new SwingPart { Node = part("leg_bl"), Phase = 0.14f * Mathf.Tau, Amplitude = 0.28f },
         new SwingPart { Node = part("leg_fr"), Phase = 0.50f * Mathf.Tau, Amplitude = 0.26f },
         new SwingPart { Node = part("leg_br"), Phase = 0.64f * Mathf.Tau, Amplitude = 0.28f },
+        new SwingPart { Node = part("walker0_leg_l"), Tip = part("walker0_foot_l"), Phase = 0f, Amplitude = 0.52f },
+        new SwingPart { Node = part("walker0_leg_r"), Tip = part("walker0_foot_r"), Phase = Mathf.Pi, Amplitude = 0.52f },
+        new SwingPart { Node = part("walker1_leg_l"), Tip = part("walker1_foot_l"), Phase = 0.8f, Amplitude = 0.52f },
+        new SwingPart { Node = part("walker1_leg_r"), Tip = part("walker1_foot_r"), Phase = 0.8f + Mathf.Pi, Amplitude = 0.52f },
     };
 
     // 갤럽은 네 다리가 두 짝으로 딱 맞는 게 아니라 뒷다리부터 차례로 구른다.
