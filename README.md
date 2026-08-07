@@ -3,8 +3,25 @@
 삼국지 11 스타일의 **턴제 전략 시뮬레이션(SLG)** 게임. 오프라인 싱글플레이 전용.
 
 - 플랫폼: Windows 데스크톱 (우선), 이후 Linux/macOS 고려
-- 시점: 헥사 그리드 기반 쿼터뷰
-- 표현: 2D 스프라이트 + 노멀맵 조명으로 3D 느낌 구현
+- 시점: 헥사 그리드 기반 쿼터뷰(기울어진 3D 카메라)
+- 표현: 실시간 3D 렌더링 (Godot 3D) — 저폴리 프로시저럴 에셋(Blender 스크립트 생성) + 실시간 조명·그림자
+
+## 현재 상태 (2026-08-07)
+
+- 헥사 맵·지형·성곽·항구 3D 표현, 병종 24종(세력 19 + 이벤트 5)의 모델·이동/공격 모션 완료
+- 병종별 통행 규칙(성·항구 진입 금지, 산·물·얼음 판정) 구현 — Core + xUnit
+- 전투 설계 확정: 피해 공식·장수 적성·성벽 3단계 공성
+- 다음 작업: 이동 시뮬레이션 GUI 검증 — [doc/test/movement-cases.md](./doc/test/movement-cases.md)
+
+## 설계 문서
+
+| 문서 | 내용 |
+|---|---|
+| [doc/spec-unit.md](./doc/spec-unit.md) | 병종 카탈로그(24종)·분류·통행 규칙·구현 현황 |
+| [doc/spec-general.md](./doc/spec-general.md) | 장수 능력치(병종별 통솔 F~SSS)·스킬 슬롯 |
+| [doc/design-combat.md](./doc/design-combat.md) | 전투 공식·병종 수치·성/항구 공성·검증 시뮬레이션 |
+| [doc/design-movement.md](./doc/design-movement.md) | 일(日) 단위 이동·탐지·추격·행군/공격 모드 |
+| [doc/design-terrain.md](./doc/design-terrain.md) · [design-water.md](./doc/design-water.md) · [design-effect.md](./doc/design-effect.md) | 지형·물/강·효과 |
 
 ## 기술 스택
 
