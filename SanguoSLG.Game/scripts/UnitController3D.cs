@@ -459,9 +459,10 @@ public partial class UnitController3D : Node3D
 
             if (_lanceCavalry)
             {
-                // 겨눔 — 랜스를 수평으로 눕혀 앞을 향한다(카우칭). 기수는 앞으로 숙인다
-                tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
-                        member.AttackArmBaseRotation.X - 1.50f, WindUpSeconds)
+                // 랜스는 대기 자세부터 수평(모델 자세) — 눕히는 회전이 없다.
+                // 접근 중에는 뒤로 살짝 당기고 기수가 앞으로 숙일 뿐이다
+                tween.Chain().TweenProperty(member.AttackArm, "position:z",
+                        member.AttackArmBasePosition.Z - 0.040f, WindUpSeconds)
                     .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
                 if (member.Rider is not null)
                 {
@@ -472,7 +473,7 @@ public partial class UnitController3D : Node3D
 
                 // 찌름 — 회전 없이 랜스가 제 축을 따라 직선으로 뻗는다(극병과 같은 원칙)
                 tween.Chain().TweenProperty(member.AttackArm, "position:z",
-                        member.AttackArmBasePosition.Z + 0.075f, SwingSeconds)
+                        member.AttackArmBasePosition.Z + 0.095f, SwingSeconds)
                     .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
 
                 // 잠깐 꽂았다가 복귀

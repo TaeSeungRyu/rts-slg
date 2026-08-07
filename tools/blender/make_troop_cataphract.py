@@ -89,9 +89,9 @@ for tag, sx in (("l", -LEG_X), ("r", LEG_X)):
     for part in (thigh, shin, boot, stirrup):
         ic.parent_to(part, rider)
 
-# ── 기수 팔(판금, 피벗=어깨) ──
+# ── 기수 팔(판금, 피벗=어깨). 오른팔은 수평 랜스를 받쳐 쥔 카우칭 자세 ──
 arms = {}
-for tag, ax, pitch in (("l", -0.044, math.radians(-26)), ("r", 0.044, math.radians(12))):
+for tag, ax, pitch in (("l", -0.044, math.radians(-26)), ("r", 0.044, math.radians(-42))):
     arm = ic.box(f"rider_arm_{tag}", 0.024, 0.026, 0.058, ax, 0.012, 0.291, M_PLATE,
                  rot_x=pitch, origin_shift=(0, 0, -0.029))
     ic.parent_to(arm, rider)
@@ -99,16 +99,18 @@ for tag, ax, pitch in (("l", -0.044, math.radians(-26)), ("r", 0.044, math.radia
 
 ic.parent_to(rider, body)
 
-# ── 랜스(큰 창): 세워 든다. 창날 + 세력색 기수기(페논) ──
-HX, HY = 0.050, 0.000
-HAND = 0.233
+# ── 랜스(큰 창): 처음부터 수평으로 앞을 겨눈다(카우칭). 손이 창대 뒤쪽 1/4을 쥔다 ──
+HX = 0.050
+HZ = 0.254
 LANCE = 0.300
-shaft = ic.cylinder("lance", 0.007, LANCE, HX, HY, HAND - 0.040 + LANCE / 2, m.wood,
-                    verts=6, rot_x=math.radians(-6))
-tip = ic.cone("lance_tip", 0.012, 0.001, 0.042, HX, HY - 0.028, HAND - 0.040 + LANCE + 0.018,
-              m.steel, verts=4, rot_x=math.radians(-6))
-pennon = ic.box("lance_pennon", 0.004, 0.036, 0.020, HX, HY - 0.038, HAND - 0.040 + LANCE - 0.030,
-                m.red, rot_x=math.radians(-6))
+REAR = 0.075
+CY = REAR - LANCE / 2 - 0.042
+shaft = ic.cylinder("lance", 0.007, LANCE, HX, CY, HZ, m.wood, verts=6,
+                    rot_x=math.radians(90))
+tip = ic.cone("lance_tip", 0.012, 0.001, 0.042, HX, CY - LANCE / 2 - 0.018, HZ,
+              m.steel, verts=4, rot_x=math.radians(-90))
+pennon = ic.box("lance_pennon", 0.004, 0.022, 0.034, HX, CY - LANCE / 2 + 0.030, HZ + 0.022,
+                m.red)
 for part in (tip, pennon):
     ic.parent_to(part, shaft)
 ic.parent_to(shaft, arms["r"])
