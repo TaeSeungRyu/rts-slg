@@ -58,9 +58,9 @@ ic.parent_to(shaft, arm_r)
 BYS = 0.056
 shield = ic.cylinder("shield_round", 0.044, 0.010, 0.004, BYS, 0.152, m.wood,
                      verts=12, rot_x=math.radians(90))
-rim = ic.cylinder("shield_rim", 0.047, 0.006, 0.004, BYS + 0.002, 0.152, m.steel,
+rim = ic.cylinder("shield_rim", 0.047, 0.016, 0.004, BYS, 0.152, m.steel,
                   verts=12, rot_x=math.radians(90))
-boss = ic.cylinder("shield_boss", 0.013, 0.010, 0.004, BYS - 0.006, 0.152, m.red,
+boss = ic.cylinder("shield_boss", 0.013, 0.018, 0.004, BYS - 0.004, 0.152, m.red,
                    verts=8, rot_x=math.radians(90))
 for part in (rim, boss):
     ic.parent_to(part, shield)

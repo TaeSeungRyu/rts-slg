@@ -47,9 +47,9 @@ ic.parent_to(pike, arm_r)
 SX = -(ic.ARM_X + 0.014)
 shield = ic.cylinder("shield_round", 0.046, 0.010, SX, -0.030, 0.128, m.wood,
                      verts=12, rot_x=math.radians(90))
-rim = ic.cylinder("shield_rim", 0.049, 0.006, SX, -0.028, 0.128, m.steel,
+rim = ic.cylinder("shield_rim", 0.049, 0.016, SX, -0.030, 0.128, m.steel,
                   verts=12, rot_x=math.radians(90))
-boss = ic.cylinder("shield_boss", 0.014, 0.010, SX, -0.036, 0.128, m.red,
+boss = ic.cylinder("shield_boss", 0.014, 0.018, SX, -0.034, 0.128, m.red,
                    verts=8, rot_x=math.radians(90))
 for part in (rim, boss):
     ic.parent_to(part, shield)
