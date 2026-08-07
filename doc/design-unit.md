@@ -93,8 +93,8 @@
 | 2 | 기병 | `Cavalry` | `cavalry` | 육지 | 3 | 3 | 1 / 1 / 1 | O | O | O | 말을 타고 칼을 들고 있다 |
 | 3 | 궁병 | `Archer` | `archer` | 육지 | 2 | 2 | **2** / 1 / 1 | O | O | O | 활을 들고 있다 |
 | 4 | 벽력거 | `ThunderCart` | `thunder_cart` | 육지 | 1 | 1 | 1 / 1 / 1 | O | O | O | **거대한 연필 모양 말뚝**을 실은 수레를 병사들이 끈다(2026-08-06 확정). 사거리가 `Catapult`와 갈린다 |
-| 5 | 투석기 | `Catapult` | `catapult` | 육지 | 1 | 1 | **3** / **2** / 1 | O | O | O | 투석기를 끌고 있다. 사거리가 `ThunderCart`와 갈린다 |
-| 6 | 공성탑 | `SiegeTower` | `siege_tower` | 육지 | 1 | 1 | **3** / **2** / 1 | O | O | O | 바퀴 달린 네모 상자 위에 작은 궁병이 서 있다(2026-08-06 확정) |
+| 5 | 투석기 | `Catapult` | `catapult` | 육지 | 1 | 1 | **2** / **2** / **2** | O | O | O | 투석기를 끌고 있다. 사거리가 `ThunderCart`와 갈린다 |
+| 6 | 공성탑 | `SiegeTower` | `siege_tower` | 육지 | 1 | 1 | **2** / **2** / **2** | O | O | O | 바퀴 달린 네모 상자 위에 작은 궁병이 서 있다(2026-08-06 확정) |
 | 7 | 상병 | `WarElephant` | `war_elephant` | 육지 | 2 | 2 | 1 / 1 / 1 | O | O | O | 코끼리 좌우에 아주 작은 병사. 공격은 코를 치켜들었다 내리찍는 들이받기(2026-08-06 확정) |
 | 8 | 소선 | `SmallBoat` | `small_boat` | 대하 | 2 | 3 | 1 / 1 / 1 | O | O | O | 중국식 작은 배. 내부에 사람 없음, 이동 시 물보라·돛 천 흔들림(2026-08-06 확정) |
 | 9 | 중선 | `MediumShip` | `medium_ship` | 대하 | 2 | 2 | 1 / 1 / 1 | O | O | O | 중국식 중간 배. 돛 2개, 뭉툭한 정크선 이물(소선과 구분, 2026-08-06 확정) |
@@ -122,26 +122,26 @@
 
 | 대상 | 기본 | 예외 |
 |---|---|---|
-| 유닛 | 1 | `Archer` 2 · `Catapult` 3 · `SiegeTower` 3 · `HorseArcher` 2 · `GreatBow` 3 |
+| 유닛 | 1 | `Archer` 2 · `Catapult` 2 · `SiegeTower` 2 · `HorseArcher` 2 · `GreatBow` 3 |
 | 건물 | 1 | `Catapult` 2 · `SiegeTower` 2 · `GreatBow` 2 |
-| 성 | 1 | 없음 — 모든 병종이 인접해야 한다 |
+| 성 | 1 | `Catapult` 2 · `SiegeTower` 2 |
 
 기본값과 다른 병종만 모으면 아래와 같다. 표에 없는 15종은 세 대상 모두 1이다.
 
 | # | 병종 | 유닛 | 건물 | 성 |
 |---|---|---|---|---|
 | 3 | `Archer` | 2 | 1 | 1 |
-| 5 | `Catapult` | 3 | 2 | 1 |
-| 6 | `SiegeTower` | 3 | 2 | 1 |
+| 5 | `Catapult` | 2 | 2 | 2 |
+| 6 | `SiegeTower` | 2 | 2 | 2 |
 | 16 | `HorseArcher` | 2 | 1 | 1 |
 | 17 | `GreatBow` | 3 | 2 | 1 |
 
 - **건물**: 마을·논·밭·공방·항구 등 지물 타일([design-terrain.md](./design-terrain.md)의 건물 계열)
-- **성**: 도시의 성곽. 성만 별도 대상으로 두는 이유는 사거리가 병종과 무관하게 1로 고정되기 때문
+- **성**: 도시의 성곽. 기본 1이고 예외는 `Catapult`·`SiegeTower`(2)뿐 — 성벽 너머를 때릴 수 있는 것은 공성 병기다(2026-08-06 재정의)
 - 사거리도 게임 데이터다 — `data/troop-types.json`에 대상별 필드로 둔다
 
 **`ThunderCart`의 사거리는 세 대상 모두 1이다(의도된 값, 2026-08-06 확인).** 공성 병기이면서도
-인접해야 공격한다 — 이것이 `Catapult`(유닛 3 / 건물 2)와 갈리는 지점이다. 둘은 지형·속도가
+인접해야 공격한다 — 이것이 `Catapult`(2/2/2)와 갈리는 지점이다. 둘은 지형·속도가
 같으므로, 사거리가 실질적인 차이가 된다.
 
 ## 통행 규칙 연결
@@ -187,8 +187,8 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 | 2 | `cavalry` | basic | land | 3 | — | 3 | 1 | 1 | 1 |
 | 3 | `archer` | basic | land | 2 | — | 2 | **2** | 1 | 1 |
 | 4 | `thunder_cart` | basic | land | 1 | — | 1 | 1 | 1 | 1 |
-| 5 | `catapult` | basic | land | 1 | — | 1 | **3** | **2** | 1 |
-| 6 | `siege_tower` | basic | land | 1 | — | 1 | **3** | **2** | 1 |
+| 5 | `catapult` | basic | land | 1 | — | 1 | **2** | **2** | **2** |
+| 6 | `siege_tower` | basic | land | 1 | — | 1 | **2** | **2** | **2** |
 | 7 | `war_elephant` | basic | land | 2 | — | 2 | 1 | 1 | 1 |
 | 8 | `small_boat` | basic | deep_water | 2 | — | 3 | 1 | 1 | 1 |
 | 9 | `medium_ship` | basic | deep_water | 2 | — | 2 | 1 | 1 | 1 |

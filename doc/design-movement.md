@@ -260,11 +260,11 @@ ZOC이 하던 일은 전부 대체된다.
 
 | 탐지 | 병종 | 사거리(유닛) |
 |---|---|---|
-| 1 | `ThunderCart` `Catapult` `SiegeTower` | 1 / **3** / **3** |
+| 1 | `ThunderCart` `Catapult` `SiegeTower` | 1 / **2** / **2** |
 | 2 | `Swordsman` `Archer` `WarElephant` `Pikeman` `Scytheman` `Shieldbearer` `Axeman` `GreatBow` `MediumShip` `LargeShip` `Panokseon` `Turtleship` `Waeseon` | 1~3 |
 | 3 | `Cavalry` `Lancer` `HorseArcher` `SmallBoat` | 1~2 |
 
-> **공성 병기는 탐지(1)가 사거리(3)보다 짧다.** 자기가 볼 수 있는 것보다 멀리 쏜다는
+> **공성 병기는 탐지(1)가 사거리(2)보다 짧다.** 자기가 볼 수 있는 것보다 멀리 쏜다는
 > 뜻이고, 실제 공성 병기가 그렇다 — 관측이 따로 필요하다. 규칙에서 자연스럽게
 > **"공성 병기는 호위 없이 다니면 눈먼 상태"**가 나온다.
 >

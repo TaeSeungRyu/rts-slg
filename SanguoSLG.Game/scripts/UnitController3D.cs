@@ -630,7 +630,7 @@ public partial class UnitController3D : Node3D
     }
 
     // 공성탑 사거리(design-unit.md range_unit). 병종 데이터가 생기면 그쪽에서 받는다.
-    private const float TowerRangeTiles = 3f;
+    private const float TowerRangeTiles = 2f;
 
     // 탑 위 사격: 탑(Body)은 미동도 없고, 위의 궁병(Rider)만 당기고 조준하고 놓는다.
     private void PlayTowerVolley()
@@ -753,7 +753,7 @@ public partial class UnitController3D : Node3D
     private const float CatapultWindSeconds = 0.38f;
     private const float CatapultLooseSeconds = 0.11f;
     private const float StoneFlightSeconds = 0.95f;
-    private const float CatapultRangeTiles = 3f;
+    private const float CatapultRangeTiles = 2f;
 
     // 투석: 팔을 뒤로 감아 젖혔다가 튕겨 올리고, 정점에서 돌이 떨어져 나가 포물선으로 날아간다.
     private void PlayCatapultVolley()
