@@ -350,6 +350,12 @@ public partial class UnitController3D : Node3D
             return;
         }
 
+        if (_pikeInfantry)
+        {
+            PlayPikeThrust();
+            return;
+        }
+
         if (_motion == MotionKind.Siege)
         {
             if (_siegeArcher)
