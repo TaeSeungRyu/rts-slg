@@ -37,6 +37,26 @@ public static class ProjectileView
         tween.TweenCallback(Callable.From(arrow.QueueFree));
     }
 
+    /// <summary>돌덩이를 높은 포물선으로 날린다(투석기).</summary>
+    public static void SpawnStone(Node3D worldParent, Vector3 from, Vector3 to, float seconds)
+    {
+        var stone = new MeshInstance3D
+        {
+            Mesh = new SphereMesh { Radius = 0.022f, Height = 0.04f, RadialSegments = 7, Rings = 4 },
+            MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.52f, 0.52f, 0.50f) },
+        };
+        worldParent.AddChild(stone);
+        stone.GlobalPosition = from;
+
+        var arc = (to - from).Length() * 0.24f;
+        var tween = stone.CreateTween();
+        tween.TweenMethod(Callable.From((float t) =>
+        {
+            stone.GlobalPosition = Sample(from, to, arc, t);
+        }), 0f, 1f, seconds);
+        tween.TweenCallback(Callable.From(stone.QueueFree));
+    }
+
     private static Vector3 Sample(Vector3 from, Vector3 to, float arc, float t) =>
         from.Lerp(to, t) + Vector3.Up * (arc * 4f * t * (1f - t));
 
