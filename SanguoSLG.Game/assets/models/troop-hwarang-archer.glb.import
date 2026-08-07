@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://cala86mptmltc"
-path="res://.godot/imported/troop-great-bow.glb-b5c105cd6eaf07955a74d982285942b3.scn"
+uid="uid://nrhbqh8q02qt"
+path="res://.godot/imported/troop-hwarang-archer.glb-f1cc70b87132ffeed56e5f2d0e97d3ff.scn"
 
 [deps]
 
-source_file="res://assets/models/troop-great-bow.glb"
-dest_files=["res://.godot/imported/troop-great-bow.glb-b5c105cd6eaf07955a74d982285942b3.scn"]
+source_file="res://assets/models/troop-hwarang-archer.glb"
+dest_files=["res://.godot/imported/troop-hwarang-archer.glb-f1cc70b87132ffeed56e5f2d0e97d3ff.scn"]
 
 [params]
 

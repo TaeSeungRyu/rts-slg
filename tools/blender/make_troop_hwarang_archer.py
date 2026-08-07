@@ -1,9 +1,10 @@
-# 병종 17 — 대궁병(GreatBow, 저폴리) 생성 → GLB 익스포트
-# 실행: blender --background --python-exit-code 1 --python make_troop_great_bow.py
+# 병종 17 — 화랑궁병(HwarangArcher, 저폴리) 생성 → GLB 익스포트
+# 실행: blender --background --python-exit-code 1 --python make_troop_hwarang_archer.py
 #
-# doc/design-unit.md: [육지, 속도 1, 탐지 2, 사거리 2/2/2] 정말 큰 활을 들고 있다.
+# doc/design-unit.md: [육지, 속도 1, 탐지 2, 사거리 2/2/2] 정말 큰 활 + 신라 화랑풍 투구.
 # 활은 병사 키를 훌쩍 넘는 장궁 — 손 높이에 그대로 붙이면 아래 림이 땅을 뚫으므로
 # 손잡이를 활 중심이 아니라 아래쪽 1/3에 두는 비대칭 활로 만든다(아래 림 끝이 지면).
+# 투구는 공용 투구 대신 조우관(鳥羽冠): 검은 관모 + 금테 + 좌우로 솟는 세력색 깃 2.
 # bow_grip·arrow 등 궁병 규약 이름을 그대로 써서 사격 모션이 자동 재사용된다.
 import bpy
 import math
@@ -19,8 +20,24 @@ bpy.ops.wm.read_factory_settings(use_empty=True)
 m = ic.Mats()
 M_STRING = ic.make_mat("string", (0.85, 0.82, 0.72), roughness=0.6)
 M_FLETCH = ic.make_mat("fletch", (0.88, 0.88, 0.86))
+M_SILK = ic.make_mat("silk_cap", (0.13, 0.11, 0.10))
+M_GOLD = ic.make_mat("gold", (0.85, 0.68, 0.28), metallic=0.7, roughness=0.35)
 
 body, arm_l, arm_r = ic.build_body(m, arm_l_pitch=math.radians(-38), arm_r_pitch=math.radians(-6))
+
+# ── 조우관: 공용 투구·투구술을 걷어내고 검은 관모 + 금테 + 좌우 깃으로 교체 ──
+for name in ("helmet", "plume"):
+    bpy.data.objects.remove(bpy.data.objects[name], do_unlink=True)
+
+cap = ic.cone("cap", 0.030, 0.013, 0.036, 0, 0, 0.242, M_SILK, smooth=True)
+band = ic.cylinder("cap_band", 0.032, 0.010, 0, 0, 0.227, M_GOLD, verts=12)
+emblem = ic.box("cap_emblem", 0.011, 0.004, 0.016, 0, -0.030, 0.232, M_GOLD)
+for tag, sx in (("l", -1), ("r", 1)):
+    feather = ic.box(f"cap_feather_{tag}", 0.005, 0.015, 0.058, sx * 0.027, 0.004, 0.272,
+                     m.red, rot_x=math.radians(-6), rot_y=sx * math.radians(14))
+    ic.parent_to(feather, cap)
+for part in (cap, band, emblem):
+    ic.parent_to(part, body)
 
 # ── 대궁: 왼손 위치에서 세로로. 위 림이 길고 아래 림이 짧은 비대칭 ──
 BX = -(ic.ARM_X + 0.010)
@@ -61,4 +78,4 @@ for i, (dx, dz) in enumerate(((-0.009, 0.0), (0.009, 0.010), (0.000, 0.018))):
     ic.parent_to(qf, quiver)
 ic.parent_to(quiver, body)
 
-ic.export("troop-great-bow.glb")
+ic.export("troop-hwarang-archer.glb")

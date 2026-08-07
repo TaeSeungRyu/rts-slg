@@ -248,9 +248,9 @@ ZOC이 하던 일은 전부 대체된다.
 
 | 칸/일 | 병종 | 7일 |
 |---|---|---|
-| 1 | `ThunderCart` `Catapult` `SiegeTower` `Shieldbearer` `GreatBow` `LargeShip` `Turtleship` | 7칸 |
+| 1 | `ThunderCart` `Catapult` `SiegeTower` `Shieldbearer` `HwarangArcher` `LargeShip` `Turtleship` | 7칸 |
 | 2 | `Swordsman` `Archer` `WarElephant` `Pikeman` `Nanman` `Wudang` `SmallBoat` `MediumShip` `Panokseon` `Waeseon` | 14칸 |
-| 3 | `Cavalry` `Cataphract` | 21칸 |
+| 3 | `Cavalry` `Cataphract` `HorseArcher` | 21칸 |
 
 `Wudang`의 산악 속도는 **1**이다(평지 2의 절반).
 
@@ -261,8 +261,8 @@ ZOC이 하던 일은 전부 대체된다.
 | 탐지 | 병종 | 사거리(유닛) |
 |---|---|---|
 | 1 | `ThunderCart` `Catapult` `SiegeTower` | 1 / **2** / **2** |
-| 2 | `Swordsman` `Archer` `WarElephant` `Pikeman` `Nanman` `Shieldbearer` `Wudang` `GreatBow` `MediumShip` `LargeShip` `Panokseon` `Turtleship` `Waeseon` | 1~3 |
-| 3 | `Cavalry` `Cataphract` `SmallBoat` | 1~2 |
+| 2 | `Swordsman` `Archer` `WarElephant` `Pikeman` `Nanman` `Shieldbearer` `Wudang` `HwarangArcher` `MediumShip` `LargeShip` `Panokseon` `Turtleship` `Waeseon` | 1~3 |
+| 3 | `Cavalry` `Cataphract` `HorseArcher` `SmallBoat` | 1~2 |
 
 > **공성 병기는 탐지(1)가 사거리(2)보다 짧다.** 자기가 볼 수 있는 것보다 멀리 쏜다는
 > 뜻이고, 실제 공성 병기가 그렇다 — 관측이 따로 필요하다. 규칙에서 자연스럽게
@@ -271,7 +271,7 @@ ZOC이 하던 일은 전부 대체된다.
 > 반대로 기병은 탐지(3)가 사거리(1)보다 길다. 먼저 보고 달려든다.
 
 > 속도가 1·2·3 세 단계가 되면서 **탐지가 속도와 독립적인 축이 됐다.**
-> 속도 1인 병종 중 탐지 1은 공성 3종뿐이고, 나머지(`Shieldbearer` `GreatBow`
+> 속도 1인 병종 중 탐지 1은 공성 3종뿐이고, 나머지(`Shieldbearer` `HwarangArcher`
 > `LargeShip` `Turtleship`)는 느리지만 눈은 밝다.
 > **느린 것과 눈먼 것이 따로 논다.** 정찰 특화가 필요해지면 탐지만 올린
 > 병종을 만들면 된다.
