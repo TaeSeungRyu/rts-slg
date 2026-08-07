@@ -66,7 +66,7 @@
 
 # 병종 카탈로그 (2026-08-06 사용자 정의)
 
-> 추가할 병종 **후보군**. 한국어 이름은 **바뀔 수 있다** — 코드 식별자를 기준으로 삼는다.
+> 추가할 병종 **후보군**(20종). 한국어 이름은 **바뀔 수 있다** — 코드 식별자를 기준으로 삼는다.
 > 수치(속도·탐지·사거리)와 통행 규칙은 게임 데이터이므로 `data/troop-types.json`에 두고
 > C# 코드에 박지 않는다(CLAUDE.md 규칙 3).
 
@@ -112,6 +112,7 @@
 | 17 | 대궁병 | `GreatBow` | `great_bow` | 육지 | 1 | 2 | **3** / **2** / 1 | X | X | X | 정말 큰 활을 들고 있다 |
 | 18 | 판옥선 | `Panokseon` | `panokseon` | 대하 | 2 | 2 | 1 / 1 / 1 | X | X | X | 판옥선 모양의 배 |
 | 19 | 거북선 | `Turtleship` | `turtleship` | 대하 | 1 | 2 | 1 / 1 / 1 | X | X | X | 거북선 모양의 배 |
+| 20 | 왜선 | `Waeseon` | `waeseon` | 대하 | 2 | 2 | 1 / 1 / 1 | X | X | X | 왜선 모양의 배 |
 
 ## 공격 사거리 (2026-08-06 사용자 정의)
 
@@ -124,7 +125,7 @@
 | 건물 | 1 | `Catapult` 2 · `SiegeTower` 2 · `GreatBow` 2 |
 | 성 | 1 | 없음 — 모든 병종이 인접해야 한다 |
 
-기본값과 다른 병종만 모으면 아래와 같다. 표에 없는 14종은 세 대상 모두 1이다.
+기본값과 다른 병종만 모으면 아래와 같다. 표에 없는 15종은 세 대상 모두 1이다.
 
 | # | 병종 | 유닛 | 건물 | 성 |
 |---|---|---|---|---|
@@ -175,7 +176,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 | `range_castle` | int | 성 대상 사거리 |
 | `model` | string | 1기짜리 GLB 파일명 |
 
-### 전체 값 (19종)
+### 전체 값 (20종)
 
 속도·탐지는 [design-movement.md](./design-movement.md)에서 확정된 값이다.
 
@@ -200,6 +201,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 | 17 | `great_bow` | special | land | 1 | — | 2 | **3** | **2** | 1 |
 | 18 | `panokseon` | special | deep_water | 2 | — | 2 | 1 | 1 | 1 |
 | 19 | `turtleship` | special | deep_water | 1 | — | 2 | 1 | 1 | 1 |
+| 20 | `waeseon` | special | deep_water | 2 | — | 2 | 1 | 1 | 1 |
 
 ### 형태 예시
 
@@ -247,7 +249,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 | 보병 | `Swordsman` `Pikeman` `Scytheman` `Shieldbearer` `Axeman` `Archer` `GreatBow` | 몸통·다리, 무기만 교체 |
 | 기병 | `Cavalry` `Lancer` `HorseArcher` | 기존 `make_cavalry.py`의 말+기수 재사용, 무기·말 크기만 조정 |
 | 공성 | `ThunderCart` `Catapult` `SiegeTower` | 끄는 병사 + 바퀴 대차 공유, 상부 구조만 교체 |
-| 배 | `SmallBoat` `MediumShip` `LargeShip` `Panokseon` `Turtleship` | 선체 기본형 공유, 갑판 구조·크기 차등 |
+| 배 | `SmallBoat` `MediumShip` `LargeShip` `Panokseon` `Turtleship` `Waeseon` | 선체 기본형 공유, 갑판 구조·크기 차등 |
 | 단독 | `WarElephant` | 공유 없음 |
 
 ---
