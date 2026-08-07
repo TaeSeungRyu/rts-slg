@@ -43,4 +43,16 @@ for part in (tip, side, tassel):
     ic.parent_to(part, pike)
 ic.parent_to(pike, arm_r)
 
+# ── 원형 방패: 창 반대쪽 팔에. 원판 + 가운데 세력색 돌기 ──
+SX = -(ic.ARM_X + 0.014)
+shield = ic.cylinder("shield_round", 0.046, 0.010, SX, -0.030, 0.128, m.wood,
+                     verts=12, rot_x=math.radians(90))
+rim = ic.cylinder("shield_rim", 0.049, 0.006, SX, -0.028, 0.128, m.steel,
+                  verts=12, rot_x=math.radians(90))
+boss = ic.cylinder("shield_boss", 0.014, 0.010, SX, -0.036, 0.128, m.red,
+                   verts=8, rot_x=math.radians(90))
+for part in (rim, boss):
+    ic.parent_to(part, shield)
+ic.parent_to(shield, arm_l)
+
 ic.export("troop-pikeman.glb")
