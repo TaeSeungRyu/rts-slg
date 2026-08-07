@@ -375,8 +375,9 @@ public partial class UnitController3D : Node3D
             return;
         }
 
-        // 보병 근접(도검병·남만병 등): 한 발 들어가며 칼을 들었다가 내리치고 물러난다.
-        // 상체를 뒤로 젖히지 않는다 — 배를 내미는 것처럼 보인다(2026-08-07 사용자 확인).
+        // 보병 근접(도검병·남만병 등): 한 발 들어가서 팔만 휘두르고 물러난다.
+        // 상체 회전은 쓰지 않는다 — 뒤로 젖히면 배가 나오고, 앞으로 꺾어도 어색하다
+        // (2026-08-07 사용자 확인).
         var lastDelay = 0f;
 
         foreach (var member in _members)
@@ -386,32 +387,22 @@ public partial class UnitController3D : Node3D
             var tween = CreateTween();
             tween.TweenInterval(member.AttackDelay);
 
-            // 1) 전진 + 젖힘 — 한 발 들어가면서 칼을 치켜들고 상체를 옆으로 튼다.
-            //    방패는 앞을 가린다
+            // 1) 전진 + 젖힘 — 한 발 들어가면서 칼을 치켜든다. 방패는 앞을 가린다
             tween.Chain().TweenProperty(member.Body, "position:z",
                     member.BodyBasePosition.Z + 0.06f, MeleeStepSeconds)
                 .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
             tween.Parallel().TweenProperty(member.AttackArm, "rotation:x",
                     member.AttackArmBaseRotation.X - 1.55f, MeleeStepSeconds)
                 .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
-            tween.Parallel().TweenProperty(member.Body, "rotation:y",
-                    member.BodyBaseRotation.Y + member.TwistSign * 0.20f, MeleeStepSeconds)
-                .SetTrans(Tween.TransitionType.Sine);
             if (shield is not null)
             {
                 tween.Parallel().TweenProperty(shield, "rotation:x", -0.35f, MeleeStepSeconds)
                     .SetTrans(Tween.TransitionType.Sine);
             }
 
-            // 2) 내리침 — 상체가 앞으로만 꺾이며 칼을 끌고 내려온다
+            // 2) 내리침 — 팔만 움직인다
             tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
                     member.AttackArmBaseRotation.X + 1.40f, SwingSeconds)
-                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
-            tween.Parallel().TweenProperty(member.Body, "rotation:x",
-                    member.BodyBaseRotation.X - 0.30f, SwingSeconds)
-                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
-            tween.Parallel().TweenProperty(member.Body, "rotation:y",
-                    member.BodyBaseRotation.Y - member.TwistSign * 0.08f, SwingSeconds)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
 
             // 3) 잠깐 멈춘 뒤 물러나며 복귀
@@ -427,12 +418,6 @@ public partial class UnitController3D : Node3D
                 tween.Parallel().TweenProperty(shield, "rotation:x", 0f, RecoverSeconds)
                     .SetTrans(Tween.TransitionType.Sine);
             }
-            tween.Parallel().TweenProperty(member.Body, "rotation:x",
-                    member.BodyBaseRotation.X, RecoverSeconds)
-                .SetTrans(Tween.TransitionType.Sine);
-            tween.Parallel().TweenProperty(member.Body, "rotation:y",
-                    member.BodyBaseRotation.Y, RecoverSeconds)
-                .SetTrans(Tween.TransitionType.Sine);
         }
 
         // 마지막 편대원이 복귀를 끝낼 때까지 기다렸다 잠금을 푼다
