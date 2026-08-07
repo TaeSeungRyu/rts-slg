@@ -140,6 +140,9 @@ public partial class UnitController3D : Node3D
     /// <summary>보병 중 창을 든 쪽(극병 등) — 휘두르기 대신 찌른다.</summary>
     private bool _pikeInfantry;
 
+    /// <summary>기병 중 랜스를 든 쪽(철기병) — 내리치기 대신 겨눠 찌른다.</summary>
+    private bool _lanceCavalry;
+
     // 하이라이트·경로 오버레이는 유닛과 함께 움직이면 안 되므로 형제 노드에 담는다.
     private Node3D _overlay = null!;
     private MeshInstance3D _hover = null!;
@@ -453,6 +456,42 @@ public partial class UnitController3D : Node3D
             lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
             var tween = CreateTween();
             tween.TweenInterval(ChargeOutSeconds + member.AttackDelay);
+
+            if (_lanceCavalry)
+            {
+                // 겨눔 — 랜스를 수평으로 눕혀 앞을 향한다(카우칭). 기수는 앞으로 숙인다
+                tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                        member.AttackArmBaseRotation.X - 1.50f, WindUpSeconds)
+                    .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+                if (member.Rider is not null)
+                {
+                    tween.Parallel().TweenProperty(member.Rider, "rotation:x",
+                            member.RiderBaseRotation.X - 0.26f, WindUpSeconds)
+                        .SetTrans(Tween.TransitionType.Sine);
+                }
+
+                // 찌름 — 회전 없이 랜스가 제 축을 따라 직선으로 뻗는다(극병과 같은 원칙)
+                tween.Chain().TweenProperty(member.AttackArm, "position:z",
+                        member.AttackArmBasePosition.Z + 0.075f, SwingSeconds)
+                    .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+
+                // 잠깐 꽂았다가 복귀
+                tween.Chain().TweenInterval(0.08f);
+                tween.Chain().TweenProperty(member.AttackArm, "position:z",
+                        member.AttackArmBasePosition.Z, RecoverSeconds)
+                    .SetTrans(Tween.TransitionType.Sine);
+                tween.Parallel().TweenProperty(member.AttackArm, "rotation:x",
+                        member.AttackArmBaseRotation.X, RecoverSeconds)
+                    .SetTrans(Tween.TransitionType.Sine);
+                if (member.Rider is not null)
+                {
+                    tween.Parallel().TweenProperty(member.Rider, "rotation:x",
+                            member.RiderBaseRotation.X, RecoverSeconds)
+                        .SetTrans(Tween.TransitionType.Sine);
+                }
+
+                continue;
+            }
 
             // 젖힘 — 칼을 치켜들고 기수가 뒤로 젖힌다
             tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
@@ -1316,6 +1355,7 @@ public partial class UnitController3D : Node3D
             var elephant = instance.FindChild("trunk", true, false) is Node3D;
             var ship = !elephant && instance.FindChild("sail", true, false) is Node3D;
             var cavalry = !elephant && instance.FindChild("leg_fl", true, false) is Node3D;
+            _lanceCavalry = cavalry && instance.FindChild("lance", true, false) is Node3D;
             var ram = !cavalry && instance.FindChild("ram", true, false) is Node3D;
             _siegeThrower = !cavalry && instance.FindChild("arm_basket_base", true, false) is Node3D;
             _siegeArcher = !cavalry && instance.FindChild("tower_archer", true, false) is Node3D;
