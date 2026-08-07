@@ -43,6 +43,7 @@ public partial class UnitController3D : Node3D
         "res://assets/models/troop-siege-tower.glb",
         "res://assets/models/troop-war-elephant.glb",
         "res://assets/models/troop-small-boat.glb",
+        "res://assets/models/troop-medium-ship.glb",
     };
 
     private const int TroopCount = 7;
@@ -87,6 +88,10 @@ public partial class UnitController3D : Node3D
 
         /// <summary>바퀴 — 이동 거리에 비례해 굴린다(공성).</summary>
         public Node3D[] Wheels = System.Array.Empty<Node3D>();
+
+        /// <summary>돛 — 이동 중 돛대 축으로 흔들리고 펄럭인다(선박). 돛대가 여럿이면 여럿.</summary>
+        public Node3D[] Sails = System.Array.Empty<Node3D>();
+        public Vector3[] SailBaseRotations = System.Array.Empty<Vector3>();
 
         /// <summary>말뚝 내지르기용 기준 위치(공성 AttackArm은 회전이 아니라 위치를 움직인다).</summary>
         public Vector3 AttackArmBasePosition;
@@ -219,13 +224,19 @@ public partial class UnitController3D : Node3D
                         wheel.Rotation.X + moved.Length() / SiegeWheelRadius, 0f, 0f);
                 }
 
-                // 선박: 선체가 옆으로도 흔들리고(롤), 돛이 돛대 축으로 흔들리며 펄럭인다
+                // 선박: 선체가 옆으로도 흔들리고(롤), 돛들이 돛대 축으로 흔들리며 펄럭인다.
+                // 돛마다 위상을 어긋내 두 돛이 한 몸처럼 움직이지 않게 한다
                 if (ship)
                 {
                     member.Body.Rotation = member.BodyBaseRotation
                         + new Vector3(swing * pitch, 0f, Mathf.Sin(clock * 0.6f) * 0.05f);
-                    member.AttackArm.Rotation = member.AttackArmBaseRotation + new Vector3(
-                        Mathf.Sin(clock * 1.4f) * 0.05f, Mathf.Sin(clock * 0.7f) * 0.16f, 0f);
+                    for (var k = 0; k < member.Sails.Length; k++)
+                    {
+                        var sc = clock + k * 0.9f;
+                        member.Sails[k].Rotation = member.SailBaseRotations[k] + new Vector3(
+                            Mathf.Sin(sc * 1.4f) * 0.05f, Mathf.Sin(sc * 0.7f) * 0.16f, 0f);
+                    }
+
                     continue;
                 }
 
@@ -997,6 +1008,11 @@ public partial class UnitController3D : Node3D
                     leg.Tip.Rotation = Vector3.Zero;
                 }
             }
+
+            for (var k = 0; k < member.Sails.Length; k++)
+            {
+                member.Sails[k].Rotation = member.SailBaseRotations[k];
+            }
         }
     }
 
@@ -1268,6 +1284,7 @@ public partial class UnitController3D : Node3D
                 Wheels = siege
                     ? FoundParts("wheel_l", "wheel_r", "wheel_fl", "wheel_fr", "wheel_bl", "wheel_br")
                     : System.Array.Empty<Node3D>(),
+                Sails = ship ? FoundParts("sail", "sail2", "sail3") : System.Array.Empty<Node3D>(),
                 Swings = elephant ? ElephantLegs(Part)
                     : ship ? System.Array.Empty<SwingPart>()
                     : cavalry ? CavalryLegs(Part)
@@ -1286,6 +1303,7 @@ public partial class UnitController3D : Node3D
                 TwistSign = index % 2 == 0 ? 1f : -1f,
             };
 
+            member.SailBaseRotations = member.Sails.Select(n => n.Rotation).ToArray();
             _members.Add(member);
             index++;
         }
