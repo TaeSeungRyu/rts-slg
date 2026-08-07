@@ -24,11 +24,14 @@ M_PATCH = ic.make_mat("patch", (0.44, 0.38, 0.26))
 M_SCARF = ic.make_mat("scarf", (0.32, 0.16, 0.12))
 M_HAIR = ic.make_mat("hair", (0.10, 0.08, 0.06))
 
-# ── 몸통: 누더기 천 옷 + 가슴 헝겊 조각 + 해진 치마 ──
-body = ic.cone("body", 0.036, 0.045, 0.068, 0, 0, 0.138, M_RAG, smooth=True)
-patch = ic.box("chest_patch", 0.026, 0.006, 0.024, 0.010, -0.041, 0.148, M_PATCH,
+# ── 몸통: 각진 누더기 저고리(원뿔이 아니라 상자 — 천 옷이 공처럼 보이지 않게)
+# body는 런타임에 회전하는 팔·다리의 부모라 스케일을 반드시 굽는다 ──
+body = ic.box("body", 0.064, 0.050, 0.070, 0, 0, 0.138, M_RAG)
+ic.bake_scale(body)
+patch = ic.box("chest_patch", 0.026, 0.006, 0.024, 0.010, -0.027, 0.148, M_PATCH,
                rot_x=math.radians(6))
-skirt = ic.cone("skirt", 0.050, 0.040, 0.036, 0, 0, 0.090, M_RAG2, smooth=True)
+belt = ic.box("rope_belt", 0.068, 0.054, 0.009, 0, 0, 0.108, M_SCARF)
+skirt = ic.box("skirt", 0.074, 0.058, 0.036, 0, 0, 0.088, M_RAG2)
 
 # 머리: 투구 없이 두건 — 이마띠 + 정수리 덮개 + 뒤통수 매듭, 뒤로 삐져나온 머리칼
 neck = ic.cylinder("neck", 0.016, 0.020, 0, 0, 0.178, m.skin, smooth=True)
@@ -42,7 +45,7 @@ knot = ic.box("scarf_knot", 0.014, 0.018, 0.016, 0, 0.030, 0.222, M_SCARF,
               rot_x=math.radians(-24))
 hair = ic.box("hair_tail", 0.016, 0.012, 0.026, 0, 0.028, 0.202, M_HAIR,
               rot_x=math.radians(-14))
-for part in (patch, skirt, neck, head, band, mask, mask_knot, cap, knot, hair):
+for part in (patch, belt, skirt, neck, head, band, mask, mask_knot, cap, knot, hair):
     ic.parent_to(part, body)
 
 # ── 맨다리 + 해진 발싸개 ──
