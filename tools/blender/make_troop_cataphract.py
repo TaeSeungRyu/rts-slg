@@ -63,8 +63,8 @@ for part in (neck, head, neck_plate):
     ic.parent_to(part, body)
 
 # ── 안장천(세력색) + 안장 ──
-cloth = ic.box("saddle_cloth", 0.145, 0.135, 0.012, 0, 0.012, 0.218, m.red)
-saddle = ic.box("saddle", 0.072, 0.086, 0.018, 0, 0.012, 0.233, M_HIDE)
+cloth = ic.box("saddle_cloth", 0.096, 0.100, 0.010, 0, 0.012, 0.246, m.red)
+saddle = ic.box("saddle", 0.062, 0.076, 0.014, 0, 0.012, 0.256, M_HIDE)
 for part in (cloth, saddle):
     ic.parent_to(part, body)
 
