@@ -3,7 +3,7 @@
 #
 # doc/design-unit.md: [대하, 속도 1, 탐지 2, 사거리 1/1/1] 중국식 큰 배.
 # 규칙(사용자 확정, 2026-08-06): 편대 없이 항상 1척. 돛 4개. 갑판 둘레 난간.
-# 갑판에는 배에 맞춰 작게(0.5배) 만든 궁병 2·도검병 2가 타고 있다 — 주민 배회 대신.
+# 갑판에는 배에 맞춰 작게(0.42배) 만든 궁병 8이 타고 있다(2열x4행) — 전원 앞을 향한다.
 # 공격 때 화살은 갑판 궁병(da{i}_arrow)에게서 날아간다.
 #
 # 선박 규약: body(선체) / sail(주돛, 판별 마커)·sail2·sail3·sail4 / da{i}_arrow(갑판 화살)
@@ -90,76 +90,52 @@ flag = ic.box("sail_flag", 0.079, 0.008, 0.045, 0.056, 0.085, 0.781, m.red)
 main_sail = bpy.data.objects["sail"]
 ic.parent_to(flag, main_sail)
 
-# ── 갑판 병사(0.5배): 앞쪽 궁병 2 + 가운데 도검병 2. 전부 body 자식 ──
-S = 0.5
+# ── 갑판 궁병 8(0.42배, 배 크기에 맞춰 축소): 2열 × 4행, 전원 앞을 향한다 ──
+S = 0.42
 DZ = 0.143
 
 
-def deck_soldier(tag, wx, wy, yaw):
-    torso = ic.cone(f"{tag}_torso", 0.030 * S, 0.038 * S, 0.058 * S, wx, wy, DZ + 0.133 * S,
+def deck_archer(i, wx, wy):
+    torso = ic.cone(f"da{i}_torso", 0.030 * S, 0.038 * S, 0.058 * S, wx, wy, DZ + 0.133 * S,
                     m.armor, smooth=True)
-    head = ic.box(f"{tag}_head", 0.040 * S, 0.038 * S, 0.036 * S, wx, wy, DZ + 0.184 * S, m.skin)
-    helm = ic.cone(f"{tag}_helmet", 0.027 * S, 0.010 * S, 0.022 * S, wx, wy, DZ + 0.210 * S,
+    head = ic.box(f"da{i}_head", 0.040 * S, 0.038 * S, 0.036 * S, wx, wy, DZ + 0.184 * S, m.skin)
+    helm = ic.cone(f"da{i}_helmet", 0.027 * S, 0.010 * S, 0.022 * S, wx, wy, DZ + 0.210 * S,
                    m.armor, verts=6)
     hip = ic.HIP_Z * S
     for ltag, lx in (("l", -0.020 * S), ("r", 0.020 * S)):
-        leg = ic.box(f"{tag}_leg_{ltag}", 0.024 * S, 0.026 * S, hip, wx + lx, wy, DZ + hip,
+        leg = ic.box(f"da{i}_leg_{ltag}", 0.024 * S, 0.026 * S, hip, wx + lx, wy, DZ + hip,
                      m.cloth)
         ic.parent_to(leg, torso)
-    for part in (head, helm):
-        ic.parent_to(part, torso)
-    torso.rotation_euler = (0, 0, yaw)
-    ic.parent_to(torso, body)
-    return torso
-
-
-# 궁병 2(이물 쪽): 활 + 손의 화살(da{i}_arrow — 발사 순간 발사체로 잇는다)
-for i, sx in enumerate((-1, 1)):
-    wx, wy = sx * 0.058, -0.185
-    torso = deck_soldier(f"da{i}", wx, wy, 0)
-    arm_l = ic.box(f"da{i}_arm_l", 0.018 * S, 0.020 * S, 0.056 * S, wx - sx * 0.034 * S,
-                   wy - 0.012, DZ + 0.130 * S, m.armor, rot_x=math.radians(-46))
-    arm_r = ic.box(f"da{i}_arm_r", 0.018 * S, 0.020 * S, 0.054 * S, wx + sx * 0.034 * S,
+    arm_l = ic.box(f"da{i}_arm_l", 0.018 * S, 0.020 * S, 0.056 * S, wx - 0.034 * S,
+                   wy - 0.010, DZ + 0.130 * S, m.armor, rot_x=math.radians(-46))
+    arm_r = ic.box(f"da{i}_arm_r", 0.018 * S, 0.020 * S, 0.054 * S, wx + 0.034 * S,
                    wy - 0.002, DZ + 0.128 * S, m.armor, rot_x=math.radians(-12))
-    HAND = DZ + 0.104 * S + 0.014
-    grip = ic.box(f"da{i}_bow_grip", 0.007, 0.008, 0.018, wx - sx * 0.024, wy - 0.026, HAND, m.wood)
-    limb_u = ic.box(f"da{i}_bow_limb_u", 0.006, 0.007, 0.040, wx - sx * 0.024, wy - 0.032,
-                    HAND + 0.028, m.wood, rot_x=math.radians(-16))
-    limb_d = ic.box(f"da{i}_bow_limb_d", 0.006, 0.007, 0.040, wx - sx * 0.024, wy - 0.032,
-                    HAND - 0.028, m.wood, rot_x=math.radians(16))
-    string = ic.box(f"da{i}_bow_string", 0.003, 0.003, 0.094, wx - sx * 0.024, wy - 0.016,
+    HAND = DZ + 0.104 * S + 0.012
+    grip = ic.box(f"da{i}_bow_grip", 0.006, 0.007, 0.016, wx - 0.020, wy - 0.024, HAND, m.wood)
+    limb_u = ic.box(f"da{i}_bow_limb_u", 0.005, 0.006, 0.034, wx - 0.020, wy - 0.029,
+                    HAND + 0.024, m.wood, rot_x=math.radians(-16))
+    limb_d = ic.box(f"da{i}_bow_limb_d", 0.005, 0.006, 0.034, wx - 0.020, wy - 0.029,
+                    HAND - 0.024, m.wood, rot_x=math.radians(16))
+    string = ic.box(f"da{i}_bow_string", 0.003, 0.003, 0.080, wx - 0.020, wy - 0.014,
                     HAND, M_STRING)
     for part in (limb_u, limb_d, string):
         ic.parent_to(part, grip)
     ic.parent_to(grip, arm_l)
-    arrow = ic.box(f"da{i}_arrow", 0.004, 0.058, 0.004, wx + sx * 0.018, wy - 0.030,
+    arrow = ic.box(f"da{i}_arrow", 0.004, 0.050, 0.004, wx + 0.015, wy - 0.026,
                    HAND - 0.002, m.wood)
-    tip = ic.cone(f"da{i}_arrow_head", 0.005, 0.001, 0.010, wx + sx * 0.018, wy - 0.062,
+    tip = ic.cone(f"da{i}_arrow_head", 0.004, 0.001, 0.009, wx + 0.015, wy - 0.054,
                   HAND - 0.002, m.steel, verts=4, rot_x=math.radians(-90))
     ic.parent_to(tip, arrow)
     ic.parent_to(arrow, arm_r)
-    for part in (arm_l, arm_r):
+    for part in (head, helm, arm_l, arm_r):
         ic.parent_to(part, torso)
+    ic.parent_to(torso, body)
 
-# 도검병 2(가운데): 칼 + 방패
-for i, sx in enumerate((-1, 1)):
-    wx, wy = sx * 0.058, -0.010
-    torso = deck_soldier(f"ds{i}", wx, wy, math.radians(sx * 18))
-    arm_r = ic.box(f"ds{i}_arm_r", 0.018 * S, 0.020 * S, 0.054 * S, wx + sx * 0.034 * S,
-                   wy, DZ + 0.128 * S, m.armor, rot_x=math.radians(8))
-    HAND = DZ + 0.104 * S + 0.010
-    grip = ic.box(f"ds{i}_sword_grip", 0.006, 0.007, 0.016, wx + sx * 0.022, wy - 0.006,
-                  HAND, m.wood)
-    blade = ic.box(f"ds{i}_sword_blade", 0.008, 0.005, 0.052, wx + sx * 0.022, wy - 0.012,
-                   HAND + 0.036, m.steel, rot_x=math.radians(-10))
-    ic.parent_to(blade, grip)
-    ic.parent_to(grip, arm_r)
-    shield = ic.box(f"ds{i}_shield", 0.036, 0.008, 0.048, wx - sx * 0.030, wy - 0.014,
-                    DZ + 0.062, m.wood)
-    boss = ic.box(f"ds{i}_shield_boss", 0.016, 0.006, 0.016, wx - sx * 0.030,
-                  wy - 0.019, DZ + 0.062, m.red, rot_y=math.radians(45))
-    ic.parent_to(boss, shield)
-    for part in (arm_r, shield):
-        ic.parent_to(part, torso)
+
+for i, (wx, wy) in enumerate(((-0.056, -0.245), (0.056, -0.245),
+                              (-0.056, -0.155), (0.056, -0.155),
+                              (-0.056, -0.020), (0.056, -0.020),
+                              (-0.056, 0.130), (0.056, 0.130))):
+    deck_archer(i, wx, wy)
 
 ic.export("troop-large-ship.glb")

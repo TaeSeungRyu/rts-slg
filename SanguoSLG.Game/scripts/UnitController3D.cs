@@ -1318,7 +1318,10 @@ public partial class UnitController3D : Node3D
                     ? FoundParts("wheel_l", "wheel_r", "wheel_fl", "wheel_fr", "wheel_bl", "wheel_br")
                     : System.Array.Empty<Node3D>(),
                 Sails = ship ? FoundParts("sail", "sail2", "sail3", "sail4") : System.Array.Empty<Node3D>(),
-                DeckArrows = ship ? FoundParts("da0_arrow", "da1_arrow") : System.Array.Empty<Node3D>(),
+                DeckArrows = ship
+                    ? FoundParts("da0_arrow", "da1_arrow", "da2_arrow", "da3_arrow",
+                        "da4_arrow", "da5_arrow", "da6_arrow", "da7_arrow")
+                    : System.Array.Empty<Node3D>(),
                 Swings = elephant ? ElephantLegs(Part)
                     : ship ? System.Array.Empty<SwingPart>()
                     : cavalry ? CavalryLegs(Part)
