@@ -52,6 +52,7 @@ public partial class UnitController3D : Node3D
         ("res://assets/models/troop-wudang.glb", false),
         ("res://assets/models/troop-cataphract.glb", false),
         ("res://assets/models/troop-hwarang-archer.glb", false),
+        ("res://assets/models/troop-horse-archer.glb", false),
     };
 
     private const int TroopCount = 7;
@@ -143,6 +144,9 @@ public partial class UnitController3D : Node3D
 
     /// <summary>기병 중 랜스를 든 쪽(철기병) — 내리치기 대신 겨눠 찌른다.</summary>
     private bool _lanceCavalry;
+
+    /// <summary>기병 중 활을 든 쪽(궁기병) — 돌진 후 말 위에서 활을 쏜다.</summary>
+    private bool _horseArcher;
 
     // 하이라이트·경로 오버레이는 유닛과 함께 움직이면 안 되므로 형제 노드에 담는다.
     private Node3D _overlay = null!;
@@ -452,11 +456,68 @@ public partial class UnitController3D : Node3D
         var lastDelay = 0f;
 
         // 기수 공격 — 전진이 끝난 뒤 제각각 시작한다. 말(Body)은 건드리지 않는다
-        foreach (var member in _members)
+        for (var i = 0; i < _members.Count; i++)
         {
+            var member = _members[i];
             lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
             var tween = CreateTween();
             tween.TweenInterval(ChargeOutSeconds + member.AttackDelay);
+
+            if (_horseArcher)
+            {
+                var bowArm = member.ShieldArm;
+                var scatter = (i * 0.618034f % 1f - 0.5f) * 0.5f;
+
+                // 당김 — 활을 뻗어 올리고 시위 손을 귀 뒤까지. 기수가 살짝 뒤로 젖힌다
+                tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                        member.AttackArmBaseRotation.X - 1.05f, DrawSeconds)
+                    .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+                if (bowArm is not null)
+                {
+                    tween.Parallel().TweenProperty(bowArm, "rotation:x", -1.30f, DrawSeconds)
+                        .SetTrans(Tween.TransitionType.Sine);
+                }
+                if (member.Rider is not null)
+                {
+                    tween.Parallel().TweenProperty(member.Rider, "rotation:x",
+                            member.RiderBaseRotation.X + 0.14f, DrawSeconds)
+                        .SetTrans(Tween.TransitionType.Sine);
+                }
+
+                tween.Chain().TweenInterval(AimHoldSeconds);
+
+                // 발사 — 손의 화살을 숨기고 같은 자리에서 발사체를 쏜다
+                tween.Chain().TweenCallback(Callable.From(() => LooseArrow(member, scatter, ArrowRangeTiles)));
+                tween.Parallel().TweenProperty(member.AttackArm, "rotation:x",
+                        member.AttackArmBaseRotation.X - 0.40f, ReleaseSeconds)
+                    .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+
+                // 복귀 — 내려오는 길에 화살을 다시 메긴다
+                tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                        member.AttackArmBaseRotation.X, RecoverSeconds)
+                    .SetTrans(Tween.TransitionType.Sine);
+                if (bowArm is not null)
+                {
+                    // 궁기병 활팔의 대기 자세(-38도). 모델 노드 회전과 같아야 제자리로 돌아온다
+                    tween.Parallel().TweenProperty(bowArm, "rotation:x", -0.663f, RecoverSeconds)
+                        .SetTrans(Tween.TransitionType.Sine);
+                }
+                if (member.Rider is not null)
+                {
+                    tween.Parallel().TweenProperty(member.Rider, "rotation:x",
+                            member.RiderBaseRotation.X, RecoverSeconds)
+                        .SetTrans(Tween.TransitionType.Sine);
+                }
+                tween.Chain().TweenCallback(Callable.From(() =>
+                {
+                    if (member.Arrow is not null)
+                    {
+                        member.Arrow.Visible = true;
+                    }
+                }));
+
+                continue;
+            }
 
             if (_lanceCavalry)
             {
@@ -530,7 +591,10 @@ public partial class UnitController3D : Node3D
         }
 
         // 기수 전원이 복귀를 끝낼 때까지가 공격 구간이다
-        var attackWindow = lastDelay + WindUpSeconds + SwingSeconds + RecoverSeconds;
+        var riderSeconds = _horseArcher
+            ? DrawSeconds + AimHoldSeconds + ReleaseSeconds + RecoverSeconds
+            : WindUpSeconds + SwingSeconds + RecoverSeconds;
+        var attackWindow = lastDelay + riderSeconds;
 
         // 부대 전체: 다리를 구르며 전진 → 말은 서고 기수만 공격 → 다리를 구르며 복귀.
         // _chargeMoving이 켜진 동안 AnimateMarch가 이동 거리에 맞춰 다리를 굴린다.
@@ -1358,6 +1422,7 @@ public partial class UnitController3D : Node3D
             var ship = !elephant && instance.FindChild("sail", true, false) is Node3D;
             var cavalry = !elephant && instance.FindChild("leg_fl", true, false) is Node3D;
             _lanceCavalry = cavalry && instance.FindChild("lance", true, false) is Node3D;
+            _horseArcher = cavalry && instance.FindChild("bow_grip", true, false) is Node3D;
             var ram = !cavalry && instance.FindChild("ram", true, false) is Node3D;
             _siegeThrower = !cavalry && instance.FindChild("arm_basket_base", true, false) is Node3D;
             _siegeArcher = !cavalry && instance.FindChild("tower_archer", true, false) is Node3D;
@@ -1399,10 +1464,11 @@ public partial class UnitController3D : Node3D
                 AttackArm = attackArm,
                 AttackArmBasePosition = attackArm.Position,
                 ShieldArm = _siegeArcher ? Part("ta_arm_l")
+                    : _horseArcher ? Part("rider_arm_l")
                     : cavalry || siege || elephant || ship ? null
                     : Part("arm_l"),
                 CounterSwing = cavalry || siege || elephant || ship ? null : Part("arm_l"),
-                Arrow = archer ? Part("arrow")
+                Arrow = archer || _horseArcher ? Part("arrow")
                     : _siegeThrower ? Part("stone")
                     : _siegeArcher ? Part("ta_arrow")
                     : null,

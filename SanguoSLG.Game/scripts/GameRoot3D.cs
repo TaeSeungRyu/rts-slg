@@ -324,6 +324,7 @@ public partial class GameRoot3D : Node3D
         ("troop-shieldbearer.glb", "13 등갑병"),
         ("troop-wudang.glb", "14 무당비군"),
         ("troop-cataphract.glb", "15 철기병"),
+        ("troop-horse-archer.glb", "16 궁기병"),
         ("troop-hwarang-archer.glb", "17 화랑궁병"),
     };
 
