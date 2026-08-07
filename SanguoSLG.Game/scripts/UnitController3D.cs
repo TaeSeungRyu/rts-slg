@@ -954,7 +954,7 @@ public partial class UnitController3D : Node3D
     }
 
     // 뱃머리가 가르는 물보라. 이동 중에만 뿜는다 — 말발굽 먼지와 같은 자리(_dust)를 쓴다.
-    private static CpuParticles3D BuildBowSpray()
+    private static CpuParticles3D BuildBowSpray(float bowOffset)
     {
         var gradient = new Gradient();
         gradient.SetColor(0, new Color(0.85f, 0.93f, 0.97f, 0f));
@@ -963,7 +963,7 @@ public partial class UnitController3D : Node3D
 
         return new CpuParticles3D
         {
-            Position = new Vector3(0f, 0.015f, 0.13f),
+            Position = new Vector3(0f, 0.015f, bowOffset),
             Amount = 18,
             Lifetime = 0.55f,
             Emitting = false,
@@ -1318,7 +1318,7 @@ public partial class UnitController3D : Node3D
         }
         else if (_motion == MotionKind.Ship)
         {
-            _dust = BuildBowSpray();
+            _dust = BuildBowSpray(solo ? 0.29f : 0.13f);
             _tokenRoot.AddChild(_dust);
 
             if (solo)
@@ -1326,16 +1326,16 @@ public partial class UnitController3D : Node3D
                 _tokenRoot.AddChild(new VillagerAmbience
                 {
                     Seed = 20260806UL,
-                    MaxVillagers = 3,
-                    WanderRadius = 0.085f,
-                    GroundY = 0.076f,
+                    MaxVillagers = 4,
+                    WanderRadius = 0.13f,
+                    GroundY = 0.114f,
                     // 돛대 4개를 피해 다닌다 — (x, z, 반경), 배 로컬 좌표(정면 +Z = 블렌더 -Y)
                     Obstacles = new[]
                     {
-                        new Vector3(0f, -0.045f, 0.018f),
-                        new Vector3(0f, 0.060f, 0.018f),
-                        new Vector3(0f, 0.145f, 0.018f),
-                        new Vector3(0f, -0.135f, 0.018f),
+                        new Vector3(0f, -0.068f, 0.026f),
+                        new Vector3(0f, 0.090f, 0.026f),
+                        new Vector3(0f, 0.218f, 0.026f),
+                        new Vector3(0f, -0.203f, 0.026f),
                     },
                 });
             }
