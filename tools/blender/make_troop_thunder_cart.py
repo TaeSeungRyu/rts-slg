@@ -34,6 +34,7 @@ def bake_rotation(o):
 
 # ── 수레 바닥(부모) + 옆 난간 ──
 body = ic.box("body", 0.100, 0.130, 0.016, 0, 0.010, 0.062, m.wood)
+ic.bake_scale(body)
 for sx in (-1, 1):
     rail = ic.box(f"rail_{'l' if sx < 0 else 'r'}", 0.012, 0.165, 0.012,
                   sx * 0.062, -0.005, 0.104, m.wood)

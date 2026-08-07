@@ -45,6 +45,7 @@ body.name = "body"
 body.scale = (0.065, 0.128, 0.055)
 body.data.materials.append(M_COAT)
 ic.shade_smooth(body)
+ic.bake_scale(body)
 
 # ── 다리 4개 — 피벗을 고관절로 옮겨 스윙 가능. 발굽은 다리 자식 ──
 for tag, lx, ly in (("fl", -0.030, -0.055), ("fr", 0.030, -0.055),

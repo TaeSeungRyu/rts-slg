@@ -587,12 +587,12 @@ public partial class UnitController3D : Node3D
 
             // 1) 당김 — 말뚝을 뒤로 무겁게 뺀다
             tween.Chain().TweenProperty(member.AttackArm, "position",
-                    member.AttackArmBasePosition - thrust * 0.045f, RamPullSeconds)
+                    member.AttackArmBasePosition - thrust * 0.06f, RamPullSeconds)
                 .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
 
             // 2) 박음 — 한순간에 앞으로
             tween.Chain().TweenProperty(member.AttackArm, "position",
-                    member.AttackArmBasePosition + thrust * 0.085f, RamStrikeSeconds)
+                    member.AttackArmBasePosition + thrust * 0.16f, RamStrikeSeconds)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
             // 반동 — 수레가 살짝 밀린다
             tween.Parallel().TweenProperty(member.Body, "position:z",

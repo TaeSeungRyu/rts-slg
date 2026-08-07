@@ -89,6 +89,15 @@ def shade_smooth(o):
         poly.use_smooth = True
 
 
+def bake_scale(o):
+    """스케일을 메시에 굽는다. 런타임에 회전하는 자식을 거느릴 부모는 반드시 거쳐야 한다.
+    비등방 스케일이 노드에 남은 채 자식이 돌면 전단 변형으로 일그러진다."""
+    bpy.ops.object.select_all(action="DESELECT")
+    o.select_set(True)
+    bpy.context.view_layer.objects.active = o
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+
 def parent_to(child, parent):
     child.parent = parent
     child.matrix_parent_inverse = parent.matrix_world.inverted()
