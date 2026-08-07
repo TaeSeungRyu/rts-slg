@@ -53,6 +53,7 @@ public partial class UnitController3D : Node3D
         ("res://assets/models/troop-cataphract.glb", false),
         ("res://assets/models/troop-hwarang-archer.glb", false),
         ("res://assets/models/troop-horse-archer.glb", false),
+        ("res://assets/models/troop-turtleship.glb", true),
     };
 
     private const int TroopCount = 7;
@@ -96,6 +97,9 @@ public partial class UnitController3D : Node3D
 
         /// <summary>손에 쥔 화살 — 발사 순간 숨기고 발사체로 잇는다(궁병).</summary>
         public Node3D? Arrow;
+
+        /// <summary>화염 분사구(거북선 용머리) — 들이받는 순간 여기서 불을 뿜는다.</summary>
+        public Node3D? FireMuzzle;
 
         /// <summary>바퀴 — 이동 거리에 비례해 굴린다(공성).</summary>
         public Node3D[] Wheels = System.Array.Empty<Node3D>();
@@ -147,6 +151,9 @@ public partial class UnitController3D : Node3D
 
     /// <summary>기병 중 활을 든 쪽(궁기병) — 돌진 후 말 위에서 활을 쏜다.</summary>
     private bool _horseArcher;
+
+    /// <summary>선박 중 용머리가 있는 쪽(거북선) — 들이받는 순간 용머리에서 화염이 나간다.</summary>
+    private bool _turtleShip;
 
     // 하이라이트·경로 오버레이는 유닛과 함께 움직이면 안 되므로 형제 노드에 담는다.
     private Node3D _overlay = null!;
@@ -1016,7 +1023,17 @@ public partial class UnitController3D : Node3D
             tween.Chain().TweenProperty(member.Body, "rotation:x",
                     member.BodyBaseRotation.X + 0.14f, 0.10f)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
-            tween.Chain().TweenCallback(Callable.From(() => LooseDeckArrows(member, scatter)));
+            tween.Chain().TweenCallback(Callable.From(() =>
+            {
+                if (_turtleShip)
+                {
+                    BreatheFire(member);
+                }
+                else
+                {
+                    LooseDeckArrows(member, scatter);
+                }
+            }));
             tween.Chain().TweenProperty(member.Body, "rotation:x",
                     member.BodyBaseRotation.X, RecoverSeconds + 0.10f)
                 .SetTrans(Tween.TransitionType.Sine);
@@ -1078,6 +1095,63 @@ public partial class UnitController3D : Node3D
                 + forward * ShipRangeTiles + lateral * spread;
             ProjectileView.SpawnArrow(_overlay, from, to, 0.45f);
         }
+    }
+
+    // 화염 분사: 용머리 위치에서 진행 방향으로 불줄기를 한 번 뿜는다(거북선).
+    // 발사체가 아니라 일회성 파티클이다 — 다 타면 노드째 정리한다.
+    private void BreatheFire(Member member)
+    {
+        if (member.FireMuzzle is null)
+        {
+            return;
+        }
+
+        var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
+
+        var gradient = new Gradient();
+        gradient.SetColor(0, new Color(1f, 0.92f, 0.45f, 0.9f));
+        gradient.AddPoint(0.35f, new Color(0.95f, 0.45f, 0.10f, 0.8f));
+        gradient.AddPoint(0.7f, new Color(0.55f, 0.14f, 0.05f, 0.5f));
+        gradient.SetColor(1, new Color(0.20f, 0.06f, 0.03f, 0f));
+
+        var flame = new CpuParticles3D
+        {
+            Position = member.FireMuzzle.GlobalPosition + forward * 0.06f,
+            Amount = 70,
+            Lifetime = 0.45f,
+            OneShot = true,
+            Explosiveness = 0.1f,
+            Emitting = true,
+            LocalCoords = false,
+            Mesh = new SphereMesh
+            {
+                Radius = 0.024f,
+                Height = 0.036f,
+                RadialSegments = 6,
+                Rings = 3,
+                Material = new StandardMaterial3D
+                {
+                    VertexColorUseAsAlbedo = true,
+                    Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                    ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                },
+            },
+            EmissionShape = CpuParticles3D.EmissionShapeEnum.Sphere,
+            EmissionSphereRadius = 0.015f,
+            Direction = forward,
+            Spread = 9f,
+            InitialVelocityMin = 1.2f,
+            InitialVelocityMax = 1.9f,
+            Gravity = new Vector3(0f, -0.5f, 0f),
+            ScaleAmountMin = 0.6f,
+            ScaleAmountMax = 1.5f,
+            ColorRamp = gradient,
+        };
+        _overlay.AddChild(flame);
+
+        var cleanup = CreateTween();
+        cleanup.TweenInterval(1.4f);
+        cleanup.Finished += flame.QueueFree;
     }
 
     // 뱃머리가 가르는 물보라. 이동 중에만 뿜는다 — 말발굽 먼지와 같은 자리(_dust)를 쓴다.
@@ -1423,6 +1497,7 @@ public partial class UnitController3D : Node3D
             var cavalry = !elephant && instance.FindChild("leg_fl", true, false) is Node3D;
             _lanceCavalry = cavalry && instance.FindChild("lance", true, false) is Node3D;
             _horseArcher = cavalry && instance.FindChild("bow_grip", true, false) is Node3D;
+            _turtleShip = ship && instance.FindChild("dragon_head", true, false) is Node3D;
             var ram = !cavalry && instance.FindChild("ram", true, false) is Node3D;
             _siegeThrower = !cavalry && instance.FindChild("arm_basket_base", true, false) is Node3D;
             _siegeArcher = !cavalry && instance.FindChild("tower_archer", true, false) is Node3D;
@@ -1472,6 +1547,7 @@ public partial class UnitController3D : Node3D
                     : _siegeThrower ? Part("stone")
                     : _siegeArcher ? Part("ta_arrow")
                     : null,
+                FireMuzzle = _turtleShip ? Part("dragon_head") : null,
                 Wheels = siege
                     ? FoundParts("wheel_l", "wheel_r", "wheel_fl", "wheel_fr", "wheel_bl", "wheel_br")
                     : System.Array.Empty<Node3D>(),
@@ -1510,7 +1586,7 @@ public partial class UnitController3D : Node3D
         }
         else if (_motion == MotionKind.Ship)
         {
-            _dust = BuildBowSpray(solo ? 0.36f : 0.13f);
+            _dust = BuildBowSpray(_turtleShip ? 0.20f : solo ? 0.36f : 0.13f);
             _tokenRoot.AddChild(_dust);
         }
 
