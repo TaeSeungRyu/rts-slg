@@ -37,13 +37,14 @@ public partial class UnitController3D : Node3D
     {
         "res://assets/models/troop-swordsman.glb",
         "res://assets/models/troop-cavalry.glb",
+        "res://assets/models/troop-archer.glb",
     };
 
     private const int TroopCount = 7;
     private int _troopIndex;
 
     /// <summary>모션 규약. 부위 노드 이름으로 판별한다 — 병종 데이터가 생기면 그쪽에서 받는다.</summary>
-    private enum MotionKind { Infantry, Cavalry }
+    private enum MotionKind { Infantry, Cavalry, Archer }
 
     // 프로시저럴 애니메이션 대상. 편대원마다 부위 노드와 기준 자세를 들고 있다.
     // 보병과 기병은 부위 구성이 다르므로 "같은 위상 / 반대 위상"으로 묶어 공통으로 다룬다.
@@ -270,6 +271,12 @@ public partial class UnitController3D : Node3D
             return;
         }
 
+        if (_motion == MotionKind.Archer)
+        {
+            PlayArcherVolley();
+            return;
+        }
+
         var lastDelay = 0f;
 
         foreach (var member in _members)
@@ -426,6 +433,75 @@ public partial class UnitController3D : Node3D
             ResetStancePose();
             _attacking = false;
         };
+    }
+
+    // 궁병 사격 타이밍. 당김은 길게, 조준에서 멈칫, 놓는 것은 한순간.
+    private const float DrawSeconds = 0.24f;
+    private const float AimHoldSeconds = 0.14f;
+    private const float ReleaseSeconds = 0.05f;
+
+    // 사격: 제자리에서 활을 들어 올려 시위를 당기고, 잠깐 조준했다가 놓는다.
+    // 시작이 제각각이라 일제사보다는 연달아 쏘는 그림이 된다.
+    private void PlayArcherVolley()
+    {
+        var lastDelay = 0f;
+
+        foreach (var member in _members)
+        {
+            lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
+            var bowArm = member.ShieldArm;
+            var tween = CreateTween();
+            tween.TweenInterval(member.AttackDelay);
+
+            // 1) 당김 — 활을 수평으로 들어 올리고, 시위 손이 귀 뒤까지 온다. 상체가 살짝 뒤로
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X - 1.05f, DrawSeconds)
+                .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+            if (bowArm is not null)
+            {
+                tween.Parallel().TweenProperty(bowArm, "rotation:x", -1.25f, DrawSeconds)
+                    .SetTrans(Tween.TransitionType.Sine);
+            }
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X + 0.10f, DrawSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+            tween.Parallel().TweenProperty(member.Body, "rotation:y",
+                    member.BodyBaseRotation.Y + member.TwistSign * 0.08f, DrawSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+
+            // 2) 조준 — 당긴 채 멈칫. 이 정지가 긴장을 만든다
+            tween.Chain().TweenInterval(AimHoldSeconds);
+
+            // 3) 발사 — 시위 손이 한순간에 튕겨 나가고 활이 반동으로 살짝 튄다
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X - 0.45f, ReleaseSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+            if (bowArm is not null)
+            {
+                tween.Parallel().TweenProperty(bowArm, "rotation:x", -1.12f, ReleaseSeconds)
+                    .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+            }
+
+            // 4) 복귀
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+            if (bowArm is not null)
+            {
+                tween.Parallel().TweenProperty(bowArm, "rotation:x", 0f, RecoverSeconds)
+                    .SetTrans(Tween.TransitionType.Sine);
+            }
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+            tween.Parallel().TweenProperty(member.Body, "rotation:y",
+                    member.BodyBaseRotation.Y, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+        }
+
+        var clock = CreateTween();
+        clock.TweenInterval(lastDelay + DrawSeconds + AimHoldSeconds + ReleaseSeconds + RecoverSeconds);
+        clock.Finished += () => _attacking = false;
     }
 
     // 다리·몸통만 기준 자세로 되돌린다. 팔·기수는 공격 트윈이 쥐고 있으므로 건드리지 않는다.
@@ -661,9 +737,10 @@ public partial class UnitController3D : Node3D
                 continue;
             }
 
-            // leg_fl이 있으면 기병 규약이다
+            // leg_fl이 있으면 기병, bow_grip이 있으면 궁병 규약이다
             var cavalry = instance.FindChild("leg_fl", true, false) is Node3D;
-            _motion = cavalry ? MotionKind.Cavalry : MotionKind.Infantry;
+            var archer = !cavalry && instance.FindChild("bow_grip", true, false) is Node3D;
+            _motion = cavalry ? MotionKind.Cavalry : archer ? MotionKind.Archer : MotionKind.Infantry;
 
             Node3D Part(string name) => (Node3D)instance.FindChild(name, true, false);
 
