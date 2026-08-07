@@ -240,10 +240,10 @@ public partial class UnitController3D : Node3D
     private const float RecoverSeconds = 0.28f;
 
     /// <summary>
-    /// 공격 모션: 앞줄부터 차례로 칼을 휘두르고 이어서 방패로 밀어낸다.
-    /// 편대원이 동시에 같은 동작을 하면 아무리 크게 흔들어도 밋밋해지므로,
+    /// 공격 모션. 편대원이 동시에 같은 동작을 하면 아무리 크게 흔들어도 밋밋해지므로,
     /// 자리에 따라 시작을 늦추고 상체를 엇갈리게 튼다.
-    /// 부대 자체는 제자리에 선 채로 상체·팔만 움직인다.
+    /// 보병: 제자리에 선 채 칼을 휘두르고 방패로 민다.
+    /// 기병: 앞으로 살짝 몰아 나가며 내리치고 물러 돌아온다(돌격).
     /// </summary>
     public void PlayAttackMotion()
     {
@@ -253,6 +253,12 @@ public partial class UnitController3D : Node3D
         }
 
         _attacking = true;
+        if (_motion == MotionKind.Cavalry)
+        {
+            PlayCavalryCharge();
+            return;
+        }
+
         var lastDelay = 0f;
 
         foreach (var member in _members)
@@ -329,6 +335,90 @@ public partial class UnitController3D : Node3D
         var clock = CreateTween();
         clock.TweenInterval(lastDelay + WindUpSeconds + SwingSeconds + ShieldPushSeconds + RecoverSeconds);
         clock.Finished += () => _attacking = false;
+    }
+
+    // 기병 돌격 타이밍. 몰아 나가는 동안 젖혔다가 최전방에서 내리친다.
+    private const float ChargeOutSeconds = 0.22f;
+    private const float ChargeBackSeconds = 0.34f;
+    private const float ChargeDistance = 0.13f;
+
+    // 돌격: 부대 전체가 앞으로 몰아 나가며 편대원마다 칼을 젖혔다 내리치고,
+    // 말이 앞다리를 들며 멈춘 뒤 물러 돌아온다. 먼지는 몰아 나가는 동안 뿜는다.
+    private void PlayCavalryCharge()
+    {
+        var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
+        var origin = Position;
+        var lastDelay = 0f;
+
+        if (_dust is not null)
+        {
+            _dust.Emitting = true;
+        }
+
+        foreach (var member in _members)
+        {
+            lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
+            var tween = CreateTween();
+            tween.TweenInterval(member.AttackDelay);
+
+            // 1) 젖힘 — 몰아 나가는 동안 칼을 치켜들고 기수가 앞으로 숙인다
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X - 1.45f, ChargeOutSeconds * 0.8f)
+                .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+            if (member.Rider is not null)
+            {
+                tween.Parallel().TweenProperty(member.Rider, "rotation:x",
+                        member.RiderBaseRotation.X - 0.30f, ChargeOutSeconds * 0.8f)
+                    .SetTrans(Tween.TransitionType.Sine);
+            }
+
+            // 2) 내리침 — 최전방 도달에 맞춰 짧고 빠르게
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X + 1.25f, SwingSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+            if (member.Rider is not null)
+            {
+                tween.Parallel().TweenProperty(member.Rider, "rotation:x",
+                        member.RiderBaseRotation.X + 0.22f, SwingSeconds)
+                    .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+            }
+
+            // 3) 말이 앞다리를 들며 급정지 — 몸통이 뒤로 들린다
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X + 0.30f, SwingSeconds + 0.05f)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+
+            // 4) 복귀
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X, ChargeBackSeconds)
+                .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X, ChargeBackSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+            if (member.Rider is not null)
+            {
+                tween.Parallel().TweenProperty(member.Rider, "rotation:x",
+                        member.RiderBaseRotation.X, ChargeBackSeconds)
+                    .SetTrans(Tween.TransitionType.Sine);
+            }
+        }
+
+        // 부대 전체: 몰아 나감 → 잠깐 버팀 → 물러 돌아옴
+        var surge = CreateTween();
+        surge.TweenProperty(this, "position", origin + forward * ChargeDistance, ChargeOutSeconds)
+            .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+        surge.TweenCallback(Callable.From(() =>
+        {
+            if (_dust is not null)
+            {
+                _dust.Emitting = false;
+            }
+        }));
+        surge.TweenInterval(0.10f);
+        surge.Chain().TweenProperty(this, "position", origin, ChargeBackSeconds)
+            .SetTrans(Tween.TransitionType.Sine);
+        surge.Chain().TweenInterval(lastDelay);
+        surge.Finished += () => _attacking = false;
     }
 
     private static bool IsCameraManeuvering() =>
