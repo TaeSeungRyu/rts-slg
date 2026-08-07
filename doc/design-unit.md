@@ -30,7 +30,7 @@
 
 ## 계획 5 — 발사체 (2026-08-06 사용자 요구)
 
-- 사거리가 있는 병종(궁병 2, 투석기·공성탑·대궁병 3)은 공격 모션에서 **발사체가 날아간다**
+- 사거리가 있는 병종(궁병·투석기·공성탑·대궁병 2)은 공격 모션에서 **발사체가 날아간다**
 - `ProjectileView`(표현 전용): 포물선 비행, 발사 순간 손의 화살이 사라지고
   같은 자리에서 발사체로 이어진다. 낙점은 편대원마다 좌우로 흩는다
 - 비행 거리는 사거리(`range_unit`)와 일치시킨다 — 지금은 상수, 병종 데이터가 생기면 그쪽에서
@@ -113,7 +113,7 @@
 | 13 | 등갑병 | `Shieldbearer` | `shieldbearer` | 육지 | 1 | 2 | 1 / 1 / 1 | O | O | O | 등갑(등나무 갑옷) 차림의 두꺼운 몸집 + 몸을 거의 가리는 큰 방패. 모션은 도검병과 동일(2026-08-07 확정, 대방패병에서 개명) |
 | 14 | 무당비군 | `Wudang` | `wudang` | 육지+산악 | 2 / 산악 1 | 2 | 1 / 1 / 1 | O | O | O | 활과 등의 둥근 방패, 가벼운 갑옷, 망토. 공격 모션은 궁병(2026-08-07 확정, 산악병에서 개명) |
 | 15 | 철기병 | `Cataphract` | `cataphract` | 육지 | 3 | 3 | 1 / 1 / 1 | O | O | O | 전신 철갑 기사 + 마갑 두른 군마, 랜스(세력색 페논). 돌격은 기병과 동일하되 타격은 카우칭 후 랜스 찌르기(2026-08-07 확정, 창기병에서 개명) |
-| 17 | 대궁병 | `GreatBow` | `great_bow` | 육지 | 1 | 2 | **3** / **2** / 1 | X | X | X | 정말 큰 활을 들고 있다 |
+| 17 | 대궁병 | `GreatBow` | `great_bow` | 육지 | 1 | 2 | **2** / **2** / **2** | X | X | X | 정말 큰 활을 들고 있다 |
 | 18 | 판옥선 | `Panokseon` | `panokseon` | 대하 | 2 | 2 | 1 / 1 / 1 | X | X | X | 판옥선 모양의 배 |
 | 19 | 거북선 | `Turtleship` | `turtleship` | 대하 | 1 | 2 | 1 / 1 / 1 | X | X | X | 거북선 모양의 배 |
 | 20 | 왜선 | `Waeseon` | `waeseon` | 대하 | 2 | 2 | 1 / 1 / 1 | X | X | X | 왜선 모양의 배 |
@@ -125,9 +125,9 @@
 
 | 대상 | 기본 | 예외 |
 |---|---|---|
-| 유닛 | 1 | `Archer` 2 · `Catapult` 2 · `SiegeTower` 2 · `GreatBow` 3 |
+| 유닛 | 1 | `Archer` 2 · `Catapult` 2 · `SiegeTower` 2 · `GreatBow` 2 |
 | 건물 | 1 | `Catapult` 2 · `SiegeTower` 2 · `GreatBow` 2 |
-| 성 | 1 | `Catapult` 2 · `SiegeTower` 2 |
+| 성 | 1 | `Catapult` 2 · `SiegeTower` 2 · `GreatBow` 2 |
 
 기본값과 다른 병종만 모으면 아래와 같다. 표에 없는 15종은 세 대상 모두 1이다(궁기병 제거 반영).
 
@@ -136,10 +136,10 @@
 | 3 | `Archer` | 2 | 1 | 1 |
 | 5 | `Catapult` | 2 | 2 | 2 |
 | 6 | `SiegeTower` | 2 | 2 | 2 |
-| 17 | `GreatBow` | 3 | 2 | 1 |
+| 17 | `GreatBow` | 2 | 2 | 2 |
 
 - **건물**: 마을·논·밭·공방·항구 등 지물 타일([design-terrain.md](./design-terrain.md)의 건물 계열)
-- **성**: 도시의 성곽. 기본 1이고 예외는 `Catapult`·`SiegeTower`(2)뿐 — 성벽 너머를 때릴 수 있는 것은 공성 병기다(2026-08-06 재정의)
+- **성**: 도시의 성곽. 기본 1이고 예외는 `Catapult`·`SiegeTower`·`GreatBow`(2) — 성벽 너머를 때릴 수 있는 것은 공성 병기와 대궁이다(2026-08-07 `GreatBow` 2/2/2 재정의)
 - 사거리도 게임 데이터다 — `data/troop-types.json`에 대상별 필드로 둔다
 
 **`ThunderCart`의 사거리는 세 대상 모두 1이다(의도된 값, 2026-08-06 확인).** 공성 병기이면서도
@@ -200,7 +200,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 | 13 | `shieldbearer` | special | land | 1 | — | 2 | 1 | 1 | 1 |
 | 14 | `wudang` | special | land_mountain | 2 | **1** | 2 | 1 | 1 | 1 |
 | 15 | `cataphract` | special | land | 3 | — | 3 | 1 | 1 | 1 |
-| 17 | `great_bow` | special | land | 1 | — | 2 | **3** | **2** | 1 |
+| 17 | `great_bow` | special | land | 1 | — | 2 | **2** | **2** | **2** |
 | 18 | `panokseon` | special | deep_water | 2 | — | 2 | 1 | 1 | 1 |
 | 19 | `turtleship` | special | deep_water | 1 | — | 2 | 1 | 1 | 1 |
 | 20 | `waeseon` | special | deep_water | 2 | — | 2 | 1 | 1 | 1 |
