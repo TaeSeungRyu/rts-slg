@@ -319,6 +319,7 @@ public partial class GameRoot3D : Node3D
         ("troop-pikeman.glb", "11 극병"),
         ("troop-nanman.glb", "12 남만병"),
         ("troop-shieldbearer.glb", "13 등갑병"),
+        ("troop-wudang.glb", "14 무당비군"),
     };
 
     private void BuildTroopReview(MapView3D view, HexMap map)

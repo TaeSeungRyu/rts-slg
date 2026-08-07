@@ -107,7 +107,7 @@
 | 11 | 극병 | `Pikeman` | `pikeman` | 육지 | 2 | 2 | 1 / 1 / 1 | O | O | O | 기다란 극창(곁날 달림)을 들고 있다. 공격은 찌르기(2026-08-06 확정, 장창병에서 개명) |
 | 12 | 남만병 | `Nanman` | `nanman` | 육지 | 2 | 2 | 1 / 1 / 1 | O | O | O | 도(외날칼)를 든 남만 전사 — 맨팔·가죽 갑옷·맨다리·깃털 장식(세력색)·등에 둥근 방패. 모션은 도검병과 동일(2026-08-07 확정, 낫병에서 개명) |
 | 13 | 등갑병 | `Shieldbearer` | `shieldbearer` | 육지 | 1 | 2 | 1 / 1 / 1 | O | O | O | 등갑(등나무 갑옷) 차림의 두꺼운 몸집 + 몸을 거의 가리는 큰 방패. 모션은 도검병과 동일(2026-08-07 확정, 대방패병에서 개명) |
-| 14 | 산악병 | `Axeman` | `axeman` | 육지+산악 | 2 / 산악 1 | 2 | 1 / 1 / 1 | X | X | X | 도끼와 방패를 들고 있다 |
+| 14 | 무당비군 | `Wudang` | `wudang` | 육지+산악 | 2 / 산악 1 | 2 | 1 / 1 / 1 | O | O | O | 활과 등의 둥근 방패, 가벼운 갑옷, 망토. 공격 모션은 궁병(2026-08-07 확정, 산악병에서 개명) |
 | 15 | 창기병 | `Lancer` | `lancer` | 육지 | 3 | 3 | 1 / 1 / 1 | X | X | X | 말을 타고 큰 창을 들고 있다 |
 | 16 | 궁기병 | `HorseArcher` | `horse_archer` | 육지 | 3 | 3 | **2** / 1 / 1 | X | X | X | 작은 말을 타고 활을 들고 있다 |
 | 17 | 대궁병 | `GreatBow` | `great_bow` | 육지 | 1 | 2 | **3** / **2** / 1 | X | X | X | 정말 큰 활을 들고 있다 |
@@ -154,7 +154,7 @@
 | 소하천 | 가능 | 불가 |
 | 늪 | 가능 | 불가 |
 | 대하 | 불가 | 가능 |
-| 산악 | 불가 (`Axeman`만 가능) | 불가 |
+| 산악 | 불가 (`Wudang`만 가능) | 불가 |
 
 ## 유닛 데이터 (`data/troop-types.json`)
 
@@ -196,7 +196,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 | 11 | `pikeman` | special | land | 2 | — | 2 | 1 | 1 | 1 |
 | 12 | `nanman` | special | land | 2 | — | 2 | 1 | 1 | 1 |
 | 13 | `shieldbearer` | special | land | 1 | — | 2 | 1 | 1 | 1 |
-| 14 | `axeman` | special | land_mountain | 2 | **1** | 2 | 1 | 1 | 1 |
+| 14 | `wudang` | special | land_mountain | 2 | **1** | 2 | 1 | 1 | 1 |
 | 15 | `lancer` | special | land | 3 | — | 3 | 1 | 1 | 1 |
 | 16 | `horse_archer` | special | land | 3 | — | 3 | **2** | 1 | 1 |
 | 17 | `great_bow` | special | land | 1 | — | 2 | **3** | **2** | 1 |
@@ -222,8 +222,8 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
       "model": "troop-archer.glb"
     },
     {
-      "id": "axeman",
-      "name_ko": "산악병",
+      "id": "wudang",
+      "name_ko": "무당비군",
       "category": "special",
       "terrain": "land_mountain",
       "movement_per_day": 2,
@@ -232,7 +232,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
       "range_unit": 1,
       "range_building": 1,
       "range_castle": 1,
-      "model": "troop-axeman.glb"
+      "model": "troop-wudang.glb"
     }
   ]
 }
@@ -247,7 +247,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 
 | 묶음 | 병종 | 공유 |
 |---|---|---|
-| 보병 | `Swordsman` `Pikeman` `Nanman` `Shieldbearer` `Axeman` `Archer` `GreatBow` | 몸통·다리, 무기만 교체(남만병은 맨살 전용 몸통) |
+| 보병 | `Swordsman` `Pikeman` `Nanman` `Shieldbearer` `Wudang` `Archer` `GreatBow` | 몸통·다리, 무기만 교체(남만병은 맨살 전용 몸통) |
 | 기병 | `Cavalry` `Lancer` `HorseArcher` | 기존 `make_cavalry.py`의 말+기수 재사용, 무기·말 크기만 조정 |
 | 공성 | `ThunderCart` `Catapult` `SiegeTower` | 끄는 병사 + 바퀴 대차 공유, 상부 구조만 교체 |
 | 배 | `SmallBoat` `MediumShip` `LargeShip` `Panokseon` `Turtleship` `Waeseon` | 선체 기본형 공유, 갑판 구조·크기 차등 |
@@ -258,7 +258,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 ## 확정된 해석 (2026-08-06 사용자 확인)
 
 - **`SmallBoat`의 지형** — 원문의 `[육지만]`은 오타. 다른 배 2종과 같이 **대하**다.
-- **`Axeman`의 산악 이동** — 산악에 들어가면 **그 턴의 이동이 1칸으로 제한**된다.
+- **`Wudang`의 산악 이동** — 산악에 들어가면 **그 턴의 이동이 1칸으로 제한**된다.
   산악 타일의 진입 비용이 1이라는 뜻이 아니다.
 - **`ThunderCart` / `Catapult`** — 외형이 다르고, 사거리가 갈린다(`ThunderCart` 전부 1 /
   `Catapult` 유닛 3·건물 2). 지형·속도만 같다. 이후 전투 수치에서도 더 갈라질 수 있다.

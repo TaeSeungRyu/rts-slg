@@ -49,10 +49,13 @@ public partial class UnitController3D : Node3D
         ("res://assets/models/troop-pikeman.glb", false),
         ("res://assets/models/troop-nanman.glb", false),
         ("res://assets/models/troop-shieldbearer.glb", false),
+        ("res://assets/models/troop-wudang.glb", false),
     };
 
     private const int TroopCount = 7;
-    private int _troopIndex;
+
+    // 시작 병종 = 목록의 마지막(가장 최근 작업물). 새 병종 검수 때 T 연타가 필요 없다
+    private int _troopIndex = TroopModels.Length - 1;
 
     /// <summary>모션 규약. 부위 노드 이름으로 판별한다 — 병종 데이터가 생기면 그쪽에서 받는다.</summary>
     private enum MotionKind { Infantry, Cavalry, Archer, Siege, Elephant, Ship }
