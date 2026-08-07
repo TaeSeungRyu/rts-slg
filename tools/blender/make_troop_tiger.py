@@ -33,12 +33,28 @@ body.data.materials.append(M_FUR)
 ic.shade_smooth(body)
 ic.bake_scale(body)
 
-# 줄무늬: 등을 타고 옆구리로 내려오는 검은 띠 — 몸통보다 살짝 넓게 걸친다
-for i, sy in enumerate((-0.062, -0.021, 0.021, 0.062)):
-    stripe = ic.box(f"stripe_{i}", 0.106, 0.013, 0.040, 0, sy, 0.118, M_STRIPE)
-    ic.parent_to(stripe, body)
-back_stripe = ic.box("stripe_back", 0.016, 0.150, 0.010, 0, 0, 0.150, M_STRIPE)
-ic.parent_to(back_stripe, body)
+# 줄무늬: 타원체 표면을 따라 짧은 마디를 이어 붙여 몸에 감긴 곡선을 만든다.
+# 마디 위치·기울기는 단면 타원 식으로 구하고(붕 뜨지 않게 표면에 앉힌다),
+# 줄마다 시작 각도·마디 수·굵기·사선(slant)을 다르게 줘 서로 닮지 않게 한다
+BODY_A, BODY_B, BODY_C = 0.052, 0.118, 0.046
+BODY_CY, BODY_CZ = 0.006, 0.108
+STRIPES = (
+    (-0.070, 0.012, (-95, -65, -35, -8, 20, 50, 80), 0.011),
+    (-0.030, -0.010, (-80, -50, -20, 10, 40, 70, 100), 0.013),
+    (0.012, 0.008, (-100, -70, -40, -10, 18, 48), 0.012),
+    (0.052, -0.014, (-70, -40, -10, 20, 50, 85), 0.011),
+    (0.085, 0.006, (-45, -15, 15, 45), 0.010),
+)
+for i, (y0, slant, thetas, w) in enumerate(STRIPES):
+    for j, deg in enumerate(thetas):
+        th = math.radians(deg)
+        sy = y0 + slant * (deg / 90.0)
+        s = math.sqrt(max(1.0 - (sy / BODY_B) ** 2, 0.0))
+        sx = BODY_A * s * 0.99 * math.sin(th)
+        sz = BODY_CZ + BODY_C * s * 0.99 * math.cos(th)
+        seg = ic.box(f"stripe_{i}_{j}", 0.022, w, 0.007, sx, BODY_CY + sy, sz,
+                     M_STRIPE, rot_y=th)
+        ic.parent_to(seg, body)
 
 # 가슴 흰 털
 chest = ic.box("chest_fur", 0.034, 0.014, 0.034, 0, -0.100, 0.096, M_BELLY)
