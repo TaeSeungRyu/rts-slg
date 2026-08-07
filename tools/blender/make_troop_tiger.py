@@ -33,26 +33,28 @@ body.data.materials.append(M_FUR)
 ic.shade_smooth(body)
 ic.bake_scale(body)
 
-# 줄무늬: 타원체 표면을 따라 짧은 마디를 이어 붙여 몸에 감긴 곡선을 만든다.
-# 마디 위치·기울기는 단면 타원 식으로 구하고(붕 뜨지 않게 표면에 앉힌다),
-# 줄마다 시작 각도·마디 수·굵기·사선(slant)을 다르게 줘 서로 닮지 않게 한다
+# 줄무늬: 타원체 표면을 따라 마디를 13도 간격으로 촘촘히 겹쳐(마디 0.018 > 호 간격)
+# 끊기지 않는 곡선 띠를 만든다. 위치·기울기는 단면 타원 식 — 표면에 붙는다.
+# 줄마다 시작·끝 각도, 사선(slant), 활처럼 휘는 방향(bow), 굵기를 전부 다르게 줘
+# 다섯 줄이 서로 다른 생김새다(짧은 어깨 줄, 배까지 감기는 줄, 앞뒤로 휘는 줄).
 BODY_A, BODY_B, BODY_C = 0.052, 0.118, 0.046
 BODY_CY, BODY_CZ = 0.006, 0.108
 STRIPES = (
-    (-0.070, 0.012, (-95, -65, -35, -8, 20, 50, 80), 0.011),
-    (-0.030, -0.010, (-80, -50, -20, 10, 40, 70, 100), 0.013),
-    (0.012, 0.008, (-100, -70, -40, -10, 18, 48), 0.012),
-    (0.052, -0.014, (-70, -40, -10, 20, 50, 85), 0.011),
-    (0.085, 0.006, (-45, -15, 15, 45), 0.010),
+    (-0.072, 0.010, 0.014, -100, 78, 0.011),
+    (-0.034, -0.008, 0.020, -70, 102, 0.013),
+    (0.008, 0.014, -0.010, -105, 60, 0.012),
+    (0.048, -0.012, 0.016, -60, 95, 0.011),
+    (0.084, 0.004, 0.010, -48, 48, 0.010),
 )
-for i, (y0, slant, thetas, w) in enumerate(STRIPES):
-    for j, deg in enumerate(thetas):
+for i, (y0, slant, bow, deg0, deg1, w) in enumerate(STRIPES):
+    for j, deg in enumerate(range(deg0, deg1 + 1, 13)):
         th = math.radians(deg)
-        sy = y0 + slant * (deg / 90.0)
+        t = deg / 90.0
+        sy = y0 + slant * t + bow * t * t
         s = math.sqrt(max(1.0 - (sy / BODY_B) ** 2, 0.0))
         sx = BODY_A * s * 0.99 * math.sin(th)
         sz = BODY_CZ + BODY_C * s * 0.99 * math.cos(th)
-        seg = ic.box(f"stripe_{i}_{j}", 0.022, w, 0.007, sx, BODY_CY + sy, sz,
+        seg = ic.box(f"stripe_{i}_{j}", 0.018, w, 0.007, sx, BODY_CY + sy, sz,
                      M_STRIPE, rot_y=th)
         ic.parent_to(seg, body)
 
