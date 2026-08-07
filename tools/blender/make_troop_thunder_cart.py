@@ -80,10 +80,12 @@ for i, sx in enumerate((-1, 1)):
         foot = ic.box(f"crew{i}_foot_{tag}", 0.026, 0.044, 0.014, cx + lx, cy - 0.008, 0.007, m.armor)
         ic.parent_to(foot, leg)
         ic.parent_to(leg, torso)
-    # 안쪽 팔이 난간을 쥔다(고정 자세)
-    arm = ic.box(f"crew{i}_arm", 0.020, 0.022, 0.055, cx - sx * 0.022, cy + 0.018, 0.135,
-                 m.armor, rot_x=math.radians(-55))
-    for part in (head, helmet, arm):
+    # 어깨는 몸통 원뿔 반경(0.038) 바깥에 둬야 팔이 몸에 묻히지 않는다
+    arm_in = ic.box(f"crew{i}_arm_in", 0.018, 0.020, 0.058, cx - sx * 0.042, cy + 0.014, 0.132,
+                    m.armor, rot_x=math.radians(-48))
+    arm_out = ic.box(f"crew{i}_arm_out", 0.018, 0.020, 0.056, cx + sx * 0.042, cy + 0.004, 0.130,
+                     m.armor, rot_x=math.radians(-12))
+    for part in (head, helmet, arm_in, arm_out):
         ic.parent_to(part, torso)
     ic.parent_to(torso, body)
 

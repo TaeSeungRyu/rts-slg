@@ -647,7 +647,7 @@ public partial class UnitController3D : Node3D
 
             // 1) 감아 젖힘 — 팔이 뒤로 더 눕고 수레가 살짝 뒤로 눌린다
             tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
-                    member.AttackArmBaseRotation.X + 0.30f, CatapultWindSeconds)
+                    member.AttackArmBaseRotation.X - 0.30f, CatapultWindSeconds)
                 .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
             tween.Parallel().TweenProperty(member.Body, "rotation:x",
                     member.BodyBaseRotation.X - 0.03f, CatapultWindSeconds)
@@ -655,7 +655,7 @@ public partial class UnitController3D : Node3D
 
             // 2) 발사 — 팔이 앞으로 튕겨 오르고, 끝나는 순간 돌이 떨어져 나간다
             tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
-                    member.AttackArmBaseRotation.X - 1.55f, CatapultLooseSeconds)
+                    member.AttackArmBaseRotation.X + 1.55f, CatapultLooseSeconds)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
             tween.Parallel().TweenProperty(member.Body, "rotation:x",
                     member.BodyBaseRotation.X + 0.05f, CatapultLooseSeconds)
