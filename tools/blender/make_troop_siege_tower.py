@@ -40,6 +40,12 @@ BOX_TOP = 0.195
 body = ic.box("body", BOX_W, BOX_W, BOX_TOP - BOX_BOTTOM, 0, 0, (BOX_TOP + BOX_BOTTOM) / 2, m.wood)
 ic.bake_scale(body)
 
+# 층 테두리: 통짜 상자가 아니라 나무를 쌓아 올린 탑으로 읽히도록
+# 몸체보다 살짝 큰 띠를 층 경계마다 두른다
+for i, bz in enumerate((0.084, 0.122, 0.160)):
+    belt = ic.box(f"belt_{i}", BOX_W + 0.009, BOX_W + 0.009, 0.013, 0, 0, bz, M_PLANK)
+    ic.parent_to(belt, body)
+
 # 모서리 기둥 4 + 꼭대기 난간(패러핏)
 for sx in (-1, 1):
     for sy in (-1, 1):
