@@ -34,12 +34,15 @@ skirt = ic.cone("skirt", 0.050, 0.040, 0.036, 0, 0, 0.090, M_RAG2, smooth=True)
 neck = ic.cylinder("neck", 0.016, 0.020, 0, 0, 0.178, m.skin, smooth=True)
 head = ic.box("head", 0.048, 0.046, 0.042, 0, 0, 0.207, m.skin)
 band = ic.box("scarf_band", 0.052, 0.050, 0.014, 0, 0, 0.226, M_SCARF)
+# 복면: 얼굴 아래 절반을 감아 눈만 보인다(두건 띠와 사이가 눈 자리)
+mask = ic.box("face_mask", 0.052, 0.050, 0.020, 0, 0, 0.195, M_SCARF)
+mask_knot = ic.box("mask_knot", 0.012, 0.014, 0.012, 0, 0.030, 0.192, M_SCARF)
 cap = ic.box("scarf_cap", 0.044, 0.042, 0.014, 0, 0.002, 0.238, M_SCARF)
 knot = ic.box("scarf_knot", 0.014, 0.018, 0.016, 0, 0.030, 0.222, M_SCARF,
               rot_x=math.radians(-24))
 hair = ic.box("hair_tail", 0.016, 0.012, 0.026, 0, 0.028, 0.202, M_HAIR,
               rot_x=math.radians(-14))
-for part in (patch, skirt, neck, head, band, cap, knot, hair):
+for part in (patch, skirt, neck, head, band, mask, mask_knot, cap, knot, hair):
     ic.parent_to(part, body)
 
 # ── 맨다리 + 해진 발싸개 ──
