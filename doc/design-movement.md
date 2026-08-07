@@ -249,7 +249,7 @@ ZOC이 하던 일은 전부 대체된다.
 | 칸/일 | 병종 | 7일 |
 |---|---|---|
 | 1 | `ThunderCart` `Catapult` `SiegeTower` `Shieldbearer` `GreatBow` `LargeShip` `Turtleship` | 7칸 |
-| 2 | `Swordsman` `Archer` `WarElephant` `Pikeman` `Scytheman` `Axeman` `SmallBoat` `MediumShip` `Panokseon` `Waeseon` | 14칸 |
+| 2 | `Swordsman` `Archer` `WarElephant` `Pikeman` `Nanman` `Axeman` `SmallBoat` `MediumShip` `Panokseon` `Waeseon` | 14칸 |
 | 3 | `Cavalry` `Lancer` `HorseArcher` | 21칸 |
 
 `Axeman`의 산악 속도는 **1**이다(평지 2의 절반).
@@ -261,7 +261,7 @@ ZOC이 하던 일은 전부 대체된다.
 | 탐지 | 병종 | 사거리(유닛) |
 |---|---|---|
 | 1 | `ThunderCart` `Catapult` `SiegeTower` | 1 / **2** / **2** |
-| 2 | `Swordsman` `Archer` `WarElephant` `Pikeman` `Scytheman` `Shieldbearer` `Axeman` `GreatBow` `MediumShip` `LargeShip` `Panokseon` `Turtleship` `Waeseon` | 1~3 |
+| 2 | `Swordsman` `Archer` `WarElephant` `Pikeman` `Nanman` `Shieldbearer` `Axeman` `GreatBow` `MediumShip` `LargeShip` `Panokseon` `Turtleship` `Waeseon` | 1~3 |
 | 3 | `Cavalry` `Lancer` `HorseArcher` `SmallBoat` | 1~2 |
 
 > **공성 병기는 탐지(1)가 사거리(2)보다 짧다.** 자기가 볼 수 있는 것보다 멀리 쏜다는

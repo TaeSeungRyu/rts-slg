@@ -105,7 +105,7 @@
 | # | 병종(잠정) | 식별자 | JSON 키 | 지형 | 속도(칸/일) | 탐지 | 사거리 유닛/건물/성 | 기본작업 | 이동모션 | 공격모션 | 모습 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | 11 | 극병 | `Pikeman` | `pikeman` | 육지 | 2 | 2 | 1 / 1 / 1 | O | O | O | 기다란 극창(곁날 달림)을 들고 있다. 공격은 찌르기(2026-08-06 확정, 장창병에서 개명) |
-| 12 | 낫병 | `Scytheman` | `scytheman` | 육지 | 2 | 2 | 1 / 1 / 1 | X | X | X | 낫을 들고 있다 |
+| 12 | 남만병 | `Nanman` | `nanman` | 육지 | 2 | 2 | 1 / 1 / 1 | O | O | O | 도(외날칼)를 든 남만 전사 — 맨팔·가죽 갑옷·맨다리·깃털 장식(세력색)·등에 둥근 방패. 모션은 도검병과 동일(2026-08-07 확정, 낫병에서 개명) |
 | 13 | 대방패병 | `Shieldbearer` | `shieldbearer` | 육지 | 1 | 2 | 1 / 1 / 1 | X | X | X | 큰 방패를 들고 있다 |
 | 14 | 산악병 | `Axeman` | `axeman` | 육지+산악 | 2 / 산악 1 | 2 | 1 / 1 / 1 | X | X | X | 도끼와 방패를 들고 있다 |
 | 15 | 창기병 | `Lancer` | `lancer` | 육지 | 3 | 3 | 1 / 1 / 1 | X | X | X | 말을 타고 큰 창을 들고 있다 |
@@ -194,7 +194,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 | 9 | `medium_ship` | basic | deep_water | 2 | — | 2 | 1 | 1 | 1 |
 | 10 | `large_ship` | basic | deep_water | 1 | — | 2 | 1 | 1 | 1 |
 | 11 | `pikeman` | special | land | 2 | — | 2 | 1 | 1 | 1 |
-| 12 | `scytheman` | special | land | 2 | — | 2 | 1 | 1 | 1 |
+| 12 | `nanman` | special | land | 2 | — | 2 | 1 | 1 | 1 |
 | 13 | `shieldbearer` | special | land | 1 | — | 2 | 1 | 1 | 1 |
 | 14 | `axeman` | special | land_mountain | 2 | **1** | 2 | 1 | 1 | 1 |
 | 15 | `lancer` | special | land | 3 | — | 3 | 1 | 1 | 1 |
@@ -247,7 +247,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 
 | 묶음 | 병종 | 공유 |
 |---|---|---|
-| 보병 | `Swordsman` `Pikeman` `Scytheman` `Shieldbearer` `Axeman` `Archer` `GreatBow` | 몸통·다리, 무기만 교체 |
+| 보병 | `Swordsman` `Pikeman` `Nanman` `Shieldbearer` `Axeman` `Archer` `GreatBow` | 몸통·다리, 무기만 교체(남만병은 맨살 전용 몸통) |
 | 기병 | `Cavalry` `Lancer` `HorseArcher` | 기존 `make_cavalry.py`의 말+기수 재사용, 무기·말 크기만 조정 |
 | 공성 | `ThunderCart` `Catapult` `SiegeTower` | 끄는 병사 + 바퀴 대차 공유, 상부 구조만 교체 |
 | 배 | `SmallBoat` `MediumShip` `LargeShip` `Panokseon` `Turtleship` `Waeseon` | 선체 기본형 공유, 갑판 구조·크기 차등 |
