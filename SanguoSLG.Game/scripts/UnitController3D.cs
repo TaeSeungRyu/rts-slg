@@ -77,6 +77,9 @@ public partial class UnitController3D : Node3D
         public Node3D AttackArm = null!;
         public Node3D? ShieldArm;
 
+        /// <summary>손에 쥔 화살 — 발사 순간 숨기고 발사체로 잇는다(궁병).</summary>
+        public Node3D? Arrow;
+
         public Vector3 BodyBasePosition;
         public Vector3 BodyBaseRotation;
         public Vector3 RiderBaseRotation;
@@ -436,53 +439,67 @@ public partial class UnitController3D : Node3D
     }
 
     // 궁병 사격 타이밍. 당김은 길게, 조준에서 멈칫, 놓는 것은 한순간.
-    private const float DrawSeconds = 0.24f;
-    private const float AimHoldSeconds = 0.14f;
+    private const float DrawSeconds = 0.30f;
+    private const float AimHoldSeconds = 0.18f;
     private const float ReleaseSeconds = 0.05f;
+    private const float ArrowFlightSeconds = 0.6f;
 
-    // 사격: 제자리에서 활을 들어 올려 시위를 당기고, 잠깐 조준했다가 놓는다.
+    // 사거리 2(design-unit.md range_unit). 병종 데이터가 생기면 그쪽에서 받는다.
+    private const float ArrowRangeTiles = 2f;
+
+    // 사격: 활을 앞으로 뻗어 올리고 시위 손을 귀 뒤까지 당겨 조준했다가 놓는다.
+    // 놓는 순간 손의 화살이 사라지고 발사체가 같은 자리에서 날아간다 — 이 연결이 활맛의 핵심.
     // 시작이 제각각이라 일제사보다는 연달아 쏘는 그림이 된다.
     private void PlayArcherVolley()
     {
         var lastDelay = 0f;
 
-        foreach (var member in _members)
+        for (var i = 0; i < _members.Count; i++)
         {
+            var member = _members[i];
             lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
             var bowArm = member.ShieldArm;
+            // 낙점을 좌우로 흩는다 — 전원이 한 점에 꽂히면 가짜처럼 보인다
+            var scatter = (i * 0.618034f % 1f - 0.5f) * 0.5f;
+
             var tween = CreateTween();
             tween.TweenInterval(member.AttackDelay);
 
-            // 1) 당김 — 활을 수평으로 들어 올리고, 시위 손이 귀 뒤까지 온다. 상체가 살짝 뒤로
+            // 1) 당김 — 활을 수평 너머까지 뻗어 올리고, 시위 손이 귀 뒤까지 온다.
+            //    상체가 크게 뒤로 젖혀지며 옆으로 튼다(사수 자세)
             tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
-                    member.AttackArmBaseRotation.X - 1.05f, DrawSeconds)
+                    member.AttackArmBaseRotation.X - 1.35f, DrawSeconds)
                 .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
             if (bowArm is not null)
             {
-                tween.Parallel().TweenProperty(bowArm, "rotation:x", -1.25f, DrawSeconds)
+                tween.Parallel().TweenProperty(bowArm, "rotation:x", -1.45f, DrawSeconds)
                     .SetTrans(Tween.TransitionType.Sine);
             }
             tween.Parallel().TweenProperty(member.Body, "rotation:x",
-                    member.BodyBaseRotation.X + 0.10f, DrawSeconds)
+                    member.BodyBaseRotation.X + 0.22f, DrawSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
             tween.Parallel().TweenProperty(member.Body, "rotation:y",
-                    member.BodyBaseRotation.Y + member.TwistSign * 0.08f, DrawSeconds)
+                    member.BodyBaseRotation.Y + member.TwistSign * 0.20f, DrawSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
 
             // 2) 조준 — 당긴 채 멈칫. 이 정지가 긴장을 만든다
             tween.Chain().TweenInterval(AimHoldSeconds);
 
-            // 3) 발사 — 시위 손이 한순간에 튕겨 나가고 활이 반동으로 살짝 튄다
-            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
-                    member.AttackArmBaseRotation.X - 0.45f, ReleaseSeconds)
+            // 3) 발사 — 손의 화살을 숨기고 같은 자리에서 발사체를 쏜다
+            tween.Chain().TweenCallback(Callable.From(() => LooseArrow(member, scatter)));
+            tween.Parallel().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X - 0.55f, ReleaseSeconds)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
             if (bowArm is not null)
             {
-                tween.Parallel().TweenProperty(bowArm, "rotation:x", -1.12f, ReleaseSeconds)
+                tween.Parallel().TweenProperty(bowArm, "rotation:x", -1.30f, ReleaseSeconds)
                     .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
             }
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X + 0.08f, ReleaseSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
 
-            // 4) 복귀
+            // 4) 복귀 — 내려오는 길에 화살을 다시 메긴다(다시 보이게)
             tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
                     member.AttackArmBaseRotation.X, RecoverSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
@@ -497,11 +514,34 @@ public partial class UnitController3D : Node3D
             tween.Parallel().TweenProperty(member.Body, "rotation:y",
                     member.BodyBaseRotation.Y, RecoverSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
+            tween.Chain().TweenCallback(Callable.From(() =>
+            {
+                if (member.Arrow is not null)
+                {
+                    member.Arrow.Visible = true;
+                }
+            }));
         }
 
         var clock = CreateTween();
         clock.TweenInterval(lastDelay + DrawSeconds + AimHoldSeconds + ReleaseSeconds + RecoverSeconds);
         clock.Finished += () => _attacking = false;
+    }
+
+    // 발사 순간: 손의 화살을 숨기고, 그 자리에서 사거리만큼 앞의 지면으로 발사체를 날린다.
+    private void LooseArrow(Member member, float scatter)
+    {
+        if (member.Arrow is not null)
+        {
+            member.Arrow.Visible = false;
+        }
+
+        var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
+        var lateral = new Vector3(forward.Z, 0f, -forward.X);
+        var from = member.Body.GlobalPosition + Vector3.Up * 0.10f + forward * 0.06f;
+        var to = new Vector3(from.X, Position.Y, from.Z)
+            + forward * ArrowRangeTiles + lateral * scatter;
+        ProjectileView.SpawnArrow(_overlay, from, to, ArrowFlightSeconds);
     }
 
     // 다리·몸통만 기준 자세로 되돌린다. 팔·기수는 공격 트윈이 쥐고 있으므로 건드리지 않는다.
@@ -753,6 +793,7 @@ public partial class UnitController3D : Node3D
                 AttackArm = attackArm,
                 ShieldArm = cavalry ? null : Part("arm_l"),
                 CounterSwing = cavalry ? null : Part("arm_l"),
+                Arrow = archer ? Part("arrow") : null,
                 Swings = cavalry ? CavalryLegs(Part) : InfantryLegs(Part),
                 BodyBasePosition = body.Position,
                 BodyBaseRotation = body.Rotation,
