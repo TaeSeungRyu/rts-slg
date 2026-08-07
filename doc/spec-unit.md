@@ -139,6 +139,56 @@
   삼각형 클러스터**(직선 3칸이 아님, 2026-08-07 확인). 기존 유닛은 전부 1칸이라
   점유·경로·충돌 판정이 1칸 전제다 — 다중 타일 점유는 이동/전투 구현 때 별도 설계가 필요하다
 
+## 병종 분류 (2026-08-07 사용자 정의)
+
+전 유닛을 6개 분류로 나눈다. **분류마다 고유 코드가 있고, 공격·방어 능력은 분류 단위로
+정의한다**(수치는 추후 — `data/troop-classes.json`에 두고 코드에 박지 않는다).
+
+| 분류 | 코드(JSON) | C# 식별자 | 공격 | 방어 |
+|---|---|---|---|---|
+| 보병(도검병 계열) | `infantry` | `TroopClass.Infantry` | 추후 | 추후 |
+| 궁병 | `archer` | `TroopClass.Archer` | 추후 | 추후 |
+| 기병 | `cavalry` | `TroopClass.Cavalry` | 추후 | 추후 |
+| 상병 | `elephant` | `TroopClass.Elephant` | 추후 | 추후 |
+| 공성 | `siege` | `TroopClass.Siege` | 추후 | 추후 |
+| 해상(대하 유닛) | `naval` | `TroopClass.Naval` | 추후 | 추후 |
+
+### 유닛별 분류 배정 (2026-08-07 전체 확정)
+
+| # | 유닛 | 분류 |
+|---|---|---|
+| 1 | 도검병 | `infantry` |
+| 2 | 기병 | `cavalry` |
+| 3 | 궁병 | `archer` |
+| 4 | 벽력거 | `siege` |
+| 5 | 투석기 | `siege` |
+| 6 | 공성탑 | `siege` |
+| 7 | 상병 | `elephant` |
+| 8 | 소선 | `naval` |
+| 9 | 중선 | `naval` |
+| 10 | 대선 | `naval` |
+| 11 | 극병 | `infantry` |
+| 12 | 남만병 | `infantry` |
+| 13 | 등갑병 | `infantry` |
+| 14 | 무당비군 | `archer` |
+| 15 | 철기병 | `cavalry` |
+| 16 | 궁기병 | `cavalry` |
+| 17 | 화랑궁병 | `archer` |
+| 19 | 거북선 | `naval` |
+| 20 | 왜선 | `naval` (소선과 같음) |
+| 21 | 도적 | `infantry` (도검병과 같음) |
+| 22 | 대호 | `cavalry` (기병과 같음) |
+| 23 | 코끼리 | `elephant` (상병과 같음) |
+| 24 | 동양풍 용 | `naval` (거북선과 같음) |
+| 27 | 대왕오징어 | `naval` (거북선과 같음) |
+
+- 분류는 **공격·방어 계산의 단위**이지 지형이 아니다 — 육지 유닛인 용·대왕오징어가
+  `naval`(거북선과 같음)인 것이 그 예다. 통행 지형은 `terrain` 필드가 따로 정한다
+
+- `data/troop-types.json`의 유닛마다 `class` 필드로 분류 코드를 넣는다
+- 분류별 공격·방어는 `data/troop-classes.json`(신설 예정)에 둔다 — 병종 상성(분류 대
+  분류 보정)도 이 파일이 자연스러운 자리다
+
 ## 공격 사거리 (2026-08-06 사용자 정의)
 
 사거리는 **대상 종류마다 따로** 정한다. 같은 병종이라도 유닛을 칠 때와 성을 칠 때가 다르다.
@@ -193,6 +243,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 | `name_ko` | string | 화면 표기용 한국어 이름. **바뀔 수 있다** — 로직은 `id`만 본다 |
 | `category` | string | `basic` / `special` |
 | `terrain` | string | `land` / `deep_water` / `land_mountain` |
+| `class` | string | 병종 분류 코드(위 "병종 분류") — 공격·방어는 분류 단위로 정의한다 |
 | `movement_per_day` | int | 하루에 갈 수 있는 칸수(1·2·3). 정수라 누적 계산이 없다 |
 | `mountain_movement_per_day` | int? | 산악에서의 속도. `land_mountain`에만 있다 |
 | `detection` | int | 탐지 범위. 이 안에 적이 들어오면 공격모드는 추격한다([design-movement.md](./design-movement.md)) |
@@ -244,6 +295,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
       "id": "archer",
       "name_ko": "궁병",
       "category": "basic",
+      "class": "archer",
       "terrain": "land",
       "movement_per_day": 2,
       "detection": 2,
@@ -256,6 +308,7 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
       "id": "wudang",
       "name_ko": "무당비군",
       "category": "special",
+      "class": "archer",
       "terrain": "land_mountain",
       "movement_per_day": 2,
       "mountain_movement_per_day": 1,
