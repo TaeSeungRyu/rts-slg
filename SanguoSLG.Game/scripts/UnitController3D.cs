@@ -34,32 +34,33 @@ public partial class UnitController3D : Node3D
 
     // 편대 검수용 임시 지정 — 병종 데이터(data/troop-types.json)가 생기면 그쪽에서 받는다.
     // Solo: 편대 없이 항상 1개로 표현(대선 규칙).
-    private static readonly (string File, bool Solo)[] TroopModels =
+    // 통행 영역(Domain)은 spec-unit.md 지형 열 — 병종 데이터가 생기면 그쪽에서 받는다.
+    private static readonly (string File, bool Solo, MovementDomain Domain)[] TroopModels =
     {
-        ("res://assets/models/troop-swordsman.glb", false),
-        ("res://assets/models/troop-cavalry.glb", false),
-        ("res://assets/models/troop-archer.glb", false),
-        ("res://assets/models/troop-thunder-cart.glb", false),
-        ("res://assets/models/troop-catapult.glb", false),
-        ("res://assets/models/troop-siege-tower.glb", false),
-        ("res://assets/models/troop-war-elephant.glb", false),
-        ("res://assets/models/troop-small-boat.glb", false),
-        ("res://assets/models/troop-medium-ship.glb", false),
-        ("res://assets/models/troop-large-ship.glb", true),
-        ("res://assets/models/troop-pikeman.glb", false),
-        ("res://assets/models/troop-nanman.glb", false),
-        ("res://assets/models/troop-shieldbearer.glb", false),
-        ("res://assets/models/troop-wudang.glb", false),
-        ("res://assets/models/troop-cataphract.glb", false),
-        ("res://assets/models/troop-hwarang-archer.glb", false),
-        ("res://assets/models/troop-horse-archer.glb", false),
-        ("res://assets/models/troop-turtleship.glb", true),
-        ("res://assets/models/troop-waeseon.glb", false),
-        ("res://assets/models/troop-bandit.glb", false),
-        ("res://assets/models/troop-great-tiger.glb", true),
-        ("res://assets/models/troop-wild-elephant.glb", true),
-        ("res://assets/models/troop-eastern-dragon.glb", true),
-        ("res://assets/models/troop-giant-squid.glb", true),
+        ("res://assets/models/troop-swordsman.glb", false, MovementDomain.Land),
+        ("res://assets/models/troop-cavalry.glb", false, MovementDomain.Land),
+        ("res://assets/models/troop-archer.glb", false, MovementDomain.Land),
+        ("res://assets/models/troop-thunder-cart.glb", false, MovementDomain.Land),
+        ("res://assets/models/troop-catapult.glb", false, MovementDomain.Land),
+        ("res://assets/models/troop-siege-tower.glb", false, MovementDomain.Land),
+        ("res://assets/models/troop-war-elephant.glb", false, MovementDomain.Land),
+        ("res://assets/models/troop-small-boat.glb", false, MovementDomain.DeepWater),
+        ("res://assets/models/troop-medium-ship.glb", false, MovementDomain.DeepWater),
+        ("res://assets/models/troop-large-ship.glb", true, MovementDomain.DeepWater),
+        ("res://assets/models/troop-pikeman.glb", false, MovementDomain.Land),
+        ("res://assets/models/troop-nanman.glb", false, MovementDomain.Land),
+        ("res://assets/models/troop-shieldbearer.glb", false, MovementDomain.Land),
+        ("res://assets/models/troop-wudang.glb", false, MovementDomain.LandMountain),
+        ("res://assets/models/troop-cataphract.glb", false, MovementDomain.Land),
+        ("res://assets/models/troop-hwarang-archer.glb", false, MovementDomain.Land),
+        ("res://assets/models/troop-horse-archer.glb", false, MovementDomain.Land),
+        ("res://assets/models/troop-turtleship.glb", true, MovementDomain.DeepWater),
+        ("res://assets/models/troop-waeseon.glb", false, MovementDomain.DeepWater),
+        ("res://assets/models/troop-bandit.glb", false, MovementDomain.Land),
+        ("res://assets/models/troop-great-tiger.glb", true, MovementDomain.Land),
+        ("res://assets/models/troop-wild-elephant.glb", true, MovementDomain.Land),
+        ("res://assets/models/troop-eastern-dragon.glb", true, MovementDomain.Land),
+        ("res://assets/models/troop-giant-squid.glb", true, MovementDomain.DeepWater),
     };
 
     private const int TroopCount = 7;
@@ -186,14 +187,22 @@ public partial class UnitController3D : Node3D
 
     private Color _factionColor = new(0.75f, 0.15f, 0.15f);
 
-    public void Init(HexMap map, MapView3D view, Camera3D camera, Unit unit, Color factionColor)
+    private PassabilityMap _passability = null!;
+
+    public void Init(HexMap map, MapView3D view, Camera3D camera, Unit unit, Color factionColor,
+        PassabilityMap passability)
     {
         _factionColor = factionColor;
         _map = map;
         _view = view;
         _camera = camera;
-        _movement = new MovementService(map);
-        _pathfinder = new HexPathfinder(map);
+        _passability = passability;
+        // 지금 서 있는 칸은 항상 통행 취급 — 병종 전환(T)으로 발밑이 통행 불가가 돼도
+        // 빠져나올 수는 있어야 한다(FindPath는 출발지가 막히면 빈 경로를 준다)
+        _pathfinder = new HexPathfinder(coord =>
+            coord == _unit.Position
+            || _passability.CanEnter(TroopModels[_troopIndex].Domain, coord));
+        _movement = new MovementService(_pathfinder);
         _unit = unit;
         Position = TokenPosition(unit.Position);
         BuildToken();
@@ -1654,7 +1663,7 @@ public partial class UnitController3D : Node3D
 
         _tokenRoot = new Node3D();
         AddChild(_tokenRoot);
-        var (modelFile, solo) = TroopModels[_troopIndex];
+        var (modelFile, solo, _) = TroopModels[_troopIndex];
         TroopFormation.Build(_tokenRoot, GD.Load<PackedScene>(modelFile), solo ? 1 : TroopCount);
 
         var index = 0;
