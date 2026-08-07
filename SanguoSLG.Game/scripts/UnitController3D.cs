@@ -46,6 +46,7 @@ public partial class UnitController3D : Node3D
         ("res://assets/models/troop-small-boat.glb", false),
         ("res://assets/models/troop-medium-ship.glb", false),
         ("res://assets/models/troop-large-ship.glb", true),
+        ("res://assets/models/troop-pikeman.glb", false),
     };
 
     private const int TroopCount = 7;
@@ -129,6 +130,9 @@ public partial class UnitController3D : Node3D
 
     /// <summary>공성 중에서도 쏘는 쪽(공성탑) — 탑 위 궁병이 활을 쏜다.</summary>
     private bool _siegeArcher;
+
+    /// <summary>보병 중 창을 든 쪽(극병 등) — 휘두르기 대신 찌른다.</summary>
+    private bool _pikeInfantry;
 
     // 하이라이트·경로 오버레이는 유닛과 함께 움직이면 안 되므로 형제 노드에 담는다.
     private Node3D _overlay = null!;
@@ -1024,6 +1028,70 @@ public partial class UnitController3D : Node3D
         };
     }
 
+    // 찌르기 타이밍. 겨눔은 천천히, 내지르는 것은 한순간.
+    private const float PikeAimSeconds = 0.22f;
+    private const float PikeThrustSeconds = 0.07f;
+
+    // 찌르기: 세워 든 창을 수평으로 겨눴다가 몸을 실어 앞으로 내지른다(극병).
+    private void PlayPikeThrust()
+    {
+        var lastDelay = 0f;
+
+        foreach (var member in _members)
+        {
+            lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
+            var tween = CreateTween();
+            tween.TweenInterval(member.AttackDelay);
+
+            // 1) 겨눔 — 창이 수평으로 내려오고 상체가 옆으로 틀며 뒤로 당겨진다
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X - 1.42f, PikeAimSeconds)
+                .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+            tween.Parallel().TweenProperty(member.Body, "rotation:y",
+                    member.BodyBaseRotation.Y + member.TwistSign * 0.22f, PikeAimSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X + 0.10f, PikeAimSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+
+            // 2) 내지름 — 팔이 더 뻗고 몸이 앞으로 쏟아지며 반 발짝 나간다
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X - 1.62f, PikeThrustSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X - 0.18f, PikeThrustSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+            tween.Parallel().TweenProperty(member.Body, "position:z",
+                    member.BodyBasePosition.Z + 0.035f, PikeThrustSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+            tween.Parallel().TweenProperty(member.Body, "rotation:y",
+                    member.BodyBaseRotation.Y - member.TwistSign * 0.06f, PikeThrustSeconds)
+                .SetTrans(Tween.TransitionType.Quad);
+
+            // 3) 잠깐 꽂아 둔다 — 찌른 창이 바로 튀어나오면 가볍게 보인다
+            tween.Chain().TweenInterval(0.10f);
+
+            // 4) 복귀
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X, RecoverSeconds + 0.08f)
+                .SetTrans(Tween.TransitionType.Sine);
+            tween.Parallel().TweenProperty(member.Body, "position:z",
+                    member.BodyBasePosition.Z, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+            tween.Parallel().TweenProperty(member.Body, "rotation:y",
+                    member.BodyBaseRotation.Y, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+        }
+
+        var clock = CreateTween();
+        clock.TweenInterval(lastDelay + PikeAimSeconds + PikeThrustSeconds + 0.10f
+            + RecoverSeconds + 0.08f);
+        clock.Finished += () => _attacking = false;
+    }
+
     // 다리·몸통만 기준 자세로 되돌린다. 팔·기수는 공격 트윈이 쥐고 있으므로 건드리지 않는다.
     private void ResetStancePose()
     {
@@ -1274,6 +1342,8 @@ public partial class UnitController3D : Node3D
             var siege = ram || _siegeThrower || _siegeArcher;
             var archer = !cavalry && !siege && !elephant && !ship
                 && instance.FindChild("bow_grip", true, false) is Node3D;
+            _pikeInfantry = !cavalry && !siege && !elephant && !ship && !archer
+                && instance.FindChild("pike", true, false) is Node3D;
             _motion = elephant ? MotionKind.Elephant
                 : ship ? MotionKind.Ship
                 : cavalry ? MotionKind.Cavalry

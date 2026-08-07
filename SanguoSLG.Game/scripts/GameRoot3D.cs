@@ -316,6 +316,7 @@ public partial class GameRoot3D : Node3D
         ("troop-small-boat.glb", "8 소선"),
         ("troop-medium-ship.glb", "9 중선"),
         ("troop-large-ship.glb", "10 대선"),
+        ("troop-pikeman.glb", "11 극병"),
     };
 
     private void BuildTroopReview(MapView3D view, HexMap map)
