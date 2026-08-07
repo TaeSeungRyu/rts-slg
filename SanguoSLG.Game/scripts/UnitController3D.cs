@@ -38,13 +38,14 @@ public partial class UnitController3D : Node3D
         "res://assets/models/troop-swordsman.glb",
         "res://assets/models/troop-cavalry.glb",
         "res://assets/models/troop-archer.glb",
+        "res://assets/models/troop-thunder-cart.glb",
     };
 
     private const int TroopCount = 7;
     private int _troopIndex;
 
     /// <summary>모션 규약. 부위 노드 이름으로 판별한다 — 병종 데이터가 생기면 그쪽에서 받는다.</summary>
-    private enum MotionKind { Infantry, Cavalry, Archer }
+    private enum MotionKind { Infantry, Cavalry, Archer, Siege }
 
     // 프로시저럴 애니메이션 대상. 편대원마다 부위 노드와 기준 자세를 들고 있다.
     // 보병과 기병은 부위 구성이 다르므로 "같은 위상 / 반대 위상"으로 묶어 공통으로 다룬다.
@@ -79,6 +80,12 @@ public partial class UnitController3D : Node3D
 
         /// <summary>손에 쥔 화살 — 발사 순간 숨기고 발사체로 잇는다(궁병).</summary>
         public Node3D? Arrow;
+
+        /// <summary>바퀴 — 이동 거리에 비례해 굴린다(공성).</summary>
+        public Node3D[] Wheels = System.Array.Empty<Node3D>();
+
+        /// <summary>말뚝 내지르기용 기준 위치(공성 AttackArm은 회전이 아니라 위치를 움직인다).</summary>
+        public Vector3 AttackArmBasePosition;
 
         public Vector3 BodyBasePosition;
         public Vector3 BodyBaseRotation;
@@ -147,8 +154,9 @@ public partial class UnitController3D : Node3D
         _lastPosition = Position;
 
         var cavalry = _motion == MotionKind.Cavalry;
+        var siege = _motion == MotionKind.Siege;
         var stride = cavalry ? 16f : MarchRadiansPerUnit;
-        var bob = cavalry ? 0.022f : 0.012f;
+        var bob = cavalry ? 0.022f : siege ? 0.003f : 0.012f;
         var pitch = cavalry ? 0.09f : 0f;
 
         var animMove = _moving || _chargeMoving;
@@ -192,8 +200,16 @@ public partial class UnitController3D : Node3D
                     }
                 }
 
-                // 돌격 중에는 팔·기수를 공격 트윈이 쥐고 있다 — 매 프레임 덮어쓰면 안 된다
-                if (_attacking)
+                // 바퀴는 이동 거리에 비례해 구른다. 리셋 없음 — 회전 대칭이라 어디서 멈춰도 된다
+                foreach (var wheel in member.Wheels)
+                {
+                    wheel.Rotation = new Vector3(
+                        wheel.Rotation.X + moved.Length() / SiegeWheelRadius, 0f, 0f);
+                }
+
+                // 돌격 중에는 팔·기수를 공격 트윈이 쥐고 있다 — 매 프레임 덮어쓰면 안 된다.
+                // 공성의 AttackArm은 말뚝이라 행군 흔들기 대상이 아니다
+                if (_attacking || siege)
                 {
                     continue;
                 }
@@ -277,6 +293,12 @@ public partial class UnitController3D : Node3D
         if (_motion == MotionKind.Archer)
         {
             PlayArcherVolley();
+            return;
+        }
+
+        if (_motion == MotionKind.Siege)
+        {
+            PlaySiegeRam();
             return;
         }
 
@@ -544,6 +566,53 @@ public partial class UnitController3D : Node3D
         ProjectileView.SpawnArrow(_overlay, from, to, ArrowFlightSeconds);
     }
 
+    // 공성 말뚝 타이밍. 뒤로 무겁게 당겼다가 한순간에 박는다.
+    private const float SiegeWheelRadius = 0.055f;
+    private const float RamPullSeconds = 0.30f;
+    private const float RamStrikeSeconds = 0.06f;
+    private const float RamPitchRadians = 0.28f;
+
+    // 말뚝 박기: 수레는 서고 말뚝이 축 방향(앞·위 16도)으로 당겨졌다 박힌다.
+    // 박히는 순간 수레가 반동으로 살짝 밀렸다 돌아온다.
+    private void PlaySiegeRam()
+    {
+        var lastDelay = 0f;
+        var thrust = new Vector3(0f, Mathf.Sin(RamPitchRadians), Mathf.Cos(RamPitchRadians));
+
+        foreach (var member in _members)
+        {
+            lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
+            var tween = CreateTween();
+            tween.TweenInterval(member.AttackDelay);
+
+            // 1) 당김 — 말뚝을 뒤로 무겁게 뺀다
+            tween.Chain().TweenProperty(member.AttackArm, "position",
+                    member.AttackArmBasePosition - thrust * 0.045f, RamPullSeconds)
+                .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+
+            // 2) 박음 — 한순간에 앞으로
+            tween.Chain().TweenProperty(member.AttackArm, "position",
+                    member.AttackArmBasePosition + thrust * 0.085f, RamStrikeSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+            // 반동 — 수레가 살짝 밀린다
+            tween.Parallel().TweenProperty(member.Body, "position:z",
+                    member.BodyBasePosition.Z - 0.014f, RamStrikeSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+
+            // 3) 복귀
+            tween.Chain().TweenProperty(member.AttackArm, "position",
+                    member.AttackArmBasePosition, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+            tween.Parallel().TweenProperty(member.Body, "position:z",
+                    member.BodyBasePosition.Z, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+        }
+
+        var clock = CreateTween();
+        clock.TweenInterval(lastDelay + RamPullSeconds + RamStrikeSeconds + RecoverSeconds);
+        clock.Finished += () => _attacking = false;
+    }
+
     // 다리·몸통만 기준 자세로 되돌린다. 팔·기수는 공격 트윈이 쥐고 있으므로 건드리지 않는다.
     private void ResetStancePose()
     {
@@ -777,24 +846,30 @@ public partial class UnitController3D : Node3D
                 continue;
             }
 
-            // leg_fl이 있으면 기병, bow_grip이 있으면 궁병 규약이다
+            // leg_fl이 있으면 기병, ram이 있으면 공성, bow_grip이 있으면 궁병 규약이다
             var cavalry = instance.FindChild("leg_fl", true, false) is Node3D;
-            var archer = !cavalry && instance.FindChild("bow_grip", true, false) is Node3D;
-            _motion = cavalry ? MotionKind.Cavalry : archer ? MotionKind.Archer : MotionKind.Infantry;
+            var siege = !cavalry && instance.FindChild("ram", true, false) is Node3D;
+            var archer = !cavalry && !siege && instance.FindChild("bow_grip", true, false) is Node3D;
+            _motion = cavalry ? MotionKind.Cavalry
+                : siege ? MotionKind.Siege
+                : archer ? MotionKind.Archer
+                : MotionKind.Infantry;
 
             Node3D Part(string name) => (Node3D)instance.FindChild(name, true, false);
 
             var rider = cavalry ? Part("rider") : null;
-            var attackArm = Part(cavalry ? "rider_arm_r" : "arm_r");
+            var attackArm = Part(cavalry ? "rider_arm_r" : siege ? "ram" : "arm_r");
             var member = new Member
             {
                 Body = body,
                 Rider = rider,
                 AttackArm = attackArm,
-                ShieldArm = cavalry ? null : Part("arm_l"),
-                CounterSwing = cavalry ? null : Part("arm_l"),
+                AttackArmBasePosition = attackArm.Position,
+                ShieldArm = cavalry || siege ? null : Part("arm_l"),
+                CounterSwing = cavalry || siege ? null : Part("arm_l"),
                 Arrow = archer ? Part("arrow") : null,
-                Swings = cavalry ? CavalryLegs(Part) : InfantryLegs(Part),
+                Wheels = siege ? new[] { Part("wheel_l"), Part("wheel_r") } : System.Array.Empty<Node3D>(),
+                Swings = cavalry ? CavalryLegs(Part) : siege ? SiegeLegs(Part) : InfantryLegs(Part),
                 BodyBasePosition = body.Position,
                 BodyBaseRotation = body.Rotation,
                 RiderBaseRotation = rider?.Rotation ?? Vector3.Zero,
@@ -825,6 +900,15 @@ public partial class UnitController3D : Node3D
     {
         new SwingPart { Node = part("leg_l"), Tip = part("foot_l"), Phase = 0f, Amplitude = 0.45f },
         new SwingPart { Node = part("leg_r"), Tip = part("foot_r"), Phase = Mathf.Pi, Amplitude = 0.45f },
+    };
+
+    // 끄는 병사 둘 — 사람 걸음이므로 진폭은 보병과 같고, 둘의 위상만 어긋낸다.
+    private static SwingPart[] SiegeLegs(System.Func<string, Node3D> part) => new[]
+    {
+        new SwingPart { Node = part("crew0_leg_l"), Tip = part("crew0_foot_l"), Phase = 0f, Amplitude = 0.45f },
+        new SwingPart { Node = part("crew0_leg_r"), Tip = part("crew0_foot_r"), Phase = Mathf.Pi, Amplitude = 0.45f },
+        new SwingPart { Node = part("crew1_leg_l"), Tip = part("crew1_foot_l"), Phase = 0.7f, Amplitude = 0.45f },
+        new SwingPart { Node = part("crew1_leg_r"), Tip = part("crew1_foot_r"), Phase = 0.7f + Mathf.Pi, Amplitude = 0.45f },
     };
 
     // 갤럽은 네 다리가 두 짝으로 딱 맞는 게 아니라 뒷다리부터 차례로 구른다.
