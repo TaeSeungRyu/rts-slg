@@ -56,6 +56,7 @@ public partial class UnitController3D : Node3D
         ("res://assets/models/troop-turtleship.glb", true),
         ("res://assets/models/troop-waeseon.glb", false),
         ("res://assets/models/troop-bandit.glb", false),
+        ("res://assets/models/troop-tiger.glb", false),
     };
 
     private const int TroopCount = 7;
@@ -156,6 +157,9 @@ public partial class UnitController3D : Node3D
 
     /// <summary>선박 중 용머리가 있는 쪽(거북선) — 들이받는 순간 용머리에서 화염이 나간다.</summary>
     private bool _turtleShip;
+
+    /// <summary>사족보행이지만 기수가 없는 짐승(호랑이 등) — 돌진 후 몸을 날려 덮친다.</summary>
+    private bool _beast;
 
     // 하이라이트·경로 오버레이는 유닛과 함께 움직이면 안 되므로 형제 노드에 담는다.
     private Node3D _overlay = null!;
@@ -471,6 +475,41 @@ public partial class UnitController3D : Node3D
             lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
             var tween = CreateTween();
             tween.TweenInterval(ChargeOutSeconds + member.AttackDelay);
+
+            if (_beast)
+            {
+                // 웅크림 — 몸을 낮추고 머리를 치켜든다
+                tween.Chain().TweenProperty(member.Body, "position:y",
+                        member.BodyBasePosition.Y - 0.018f, WindUpSeconds)
+                    .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+                tween.Parallel().TweenProperty(member.AttackArm, "rotation:x",
+                        member.AttackArmBaseRotation.X - 0.40f, WindUpSeconds)
+                    .SetTrans(Tween.TransitionType.Sine);
+
+                // 도약 — 몸을 앞·위로 날리며 머리를 내리꽂는다(물기)
+                tween.Chain().TweenProperty(member.Body, "position:y",
+                        member.BodyBasePosition.Y + 0.055f, SwingSeconds)
+                    .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+                tween.Parallel().TweenProperty(member.Body, "position:z",
+                        member.BodyBasePosition.Z + 0.070f, SwingSeconds)
+                    .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+                tween.Parallel().TweenProperty(member.AttackArm, "rotation:x",
+                        member.AttackArmBaseRotation.X + 0.65f, SwingSeconds)
+                    .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+
+                // 착지 복귀
+                tween.Chain().TweenProperty(member.Body, "position:y",
+                        member.BodyBasePosition.Y, RecoverSeconds)
+                    .SetTrans(Tween.TransitionType.Sine);
+                tween.Parallel().TweenProperty(member.Body, "position:z",
+                        member.BodyBasePosition.Z, RecoverSeconds)
+                    .SetTrans(Tween.TransitionType.Sine);
+                tween.Parallel().TweenProperty(member.AttackArm, "rotation:x",
+                        member.AttackArmBaseRotation.X, RecoverSeconds)
+                    .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+
+                continue;
+            }
 
             if (_horseArcher)
             {
@@ -1497,6 +1536,7 @@ public partial class UnitController3D : Node3D
             var elephant = instance.FindChild("trunk", true, false) is Node3D;
             var ship = !elephant && instance.FindChild("sail", true, false) is Node3D;
             var cavalry = !elephant && instance.FindChild("leg_fl", true, false) is Node3D;
+            _beast = cavalry && instance.FindChild("rider", true, false) is not Node3D;
             _lanceCavalry = cavalry && instance.FindChild("lance", true, false) is Node3D;
             _horseArcher = cavalry && instance.FindChild("bow_grip", true, false) is Node3D;
             _turtleShip = ship && instance.FindChild("dragon_head", true, false) is Node3D;
@@ -1526,9 +1566,10 @@ public partial class UnitController3D : Node3D
                 .Cast<Node3D>()
                 .ToArray();
 
-            var rider = cavalry ? Part("rider") : _siegeArcher ? Part("tower_archer") : null;
+            var rider = cavalry && !_beast ? Part("rider") : _siegeArcher ? Part("tower_archer") : null;
             var attackArm = Part(elephant ? "trunk"
                 : ship ? "sail"
+                : _beast ? "head"
                 : cavalry ? "rider_arm_r"
                 : ram ? "ram"
                 : _siegeThrower ? "arm"
