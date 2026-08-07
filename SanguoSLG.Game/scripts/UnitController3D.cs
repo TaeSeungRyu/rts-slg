@@ -95,6 +95,9 @@ public partial class UnitController3D : Node3D
         public Node3D[] Sails = System.Array.Empty<Node3D>();
         public Vector3[] SailBaseRotations = System.Array.Empty<Vector3>();
 
+        /// <summary>갑판 궁병들의 손 화살 — 발사 순간 각자 발사체로 잇는다(대선).</summary>
+        public Node3D[] DeckArrows = System.Array.Empty<Node3D>();
+
         /// <summary>말뚝 내지르기용 기준 위치(공성 AttackArm은 회전이 아니라 위치를 움직인다).</summary>
         public Vector3 AttackArmBasePosition;
 
@@ -916,18 +919,17 @@ public partial class UnitController3D : Node3D
             tween.Chain().TweenProperty(member.Body, "rotation:x",
                     member.BodyBaseRotation.X + 0.14f, 0.10f)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
-            tween.Chain().TweenCallback(Callable.From(() =>
-            {
-                var from = member.Body.GlobalPosition + Vector3.Up * 0.16f
-                    + forward * 0.08f;
-                var to = new Vector3(from.X, Position.Y, from.Z)
-                    + forward * ShipRangeTiles
-                    + new Vector3(forward.Z, 0f, -forward.X) * scatter;
-                ProjectileView.SpawnArrow(_overlay, from, to, 0.45f);
-            }));
+            tween.Chain().TweenCallback(Callable.From(() => LooseDeckArrows(member, scatter)));
             tween.Chain().TweenProperty(member.Body, "rotation:x",
                     member.BodyBaseRotation.X, RecoverSeconds + 0.10f)
                 .SetTrans(Tween.TransitionType.Sine);
+            tween.Chain().TweenCallback(Callable.From(() =>
+            {
+                foreach (var arrow in member.DeckArrows)
+                {
+                    arrow.Visible = true;
+                }
+            }));
         }
 
         var slamWindow = lastDelay + 0.10f + RecoverSeconds + 0.10f;
@@ -951,6 +953,34 @@ public partial class UnitController3D : Node3D
             ResetStancePose();
             _attacking = false;
         };
+    }
+
+    // 발사 순간: 갑판 궁병이 있으면 각자의 손 화살을 숨기고 그 자리에서 쏜다.
+    // 없으면(소선·중선) 갑판 한가운데서 한 발.
+    private void LooseDeckArrows(Member member, float scatter)
+    {
+        var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
+        var lateral = new Vector3(forward.Z, 0f, -forward.X);
+
+        if (member.DeckArrows.Length == 0)
+        {
+            var from = member.Body.GlobalPosition + Vector3.Up * 0.16f + forward * 0.08f;
+            var to = new Vector3(from.X, Position.Y, from.Z)
+                + forward * ShipRangeTiles + lateral * scatter;
+            ProjectileView.SpawnArrow(_overlay, from, to, 0.45f);
+            return;
+        }
+
+        for (var k = 0; k < member.DeckArrows.Length; k++)
+        {
+            var arrow = member.DeckArrows[k];
+            var from = arrow.GlobalPosition;
+            arrow.Visible = false;
+            var spread = scatter + (k - (member.DeckArrows.Length - 1) * 0.5f) * 0.22f;
+            var to = new Vector3(from.X, Position.Y, from.Z)
+                + forward * ShipRangeTiles + lateral * spread;
+            ProjectileView.SpawnArrow(_overlay, from, to, 0.45f);
+        }
     }
 
     // 뱃머리가 가르는 물보라. 이동 중에만 뿜는다 — 말발굽 먼지와 같은 자리(_dust)를 쓴다.
@@ -1288,6 +1318,7 @@ public partial class UnitController3D : Node3D
                     ? FoundParts("wheel_l", "wheel_r", "wheel_fl", "wheel_fr", "wheel_bl", "wheel_br")
                     : System.Array.Empty<Node3D>(),
                 Sails = ship ? FoundParts("sail", "sail2", "sail3", "sail4") : System.Array.Empty<Node3D>(),
+                DeckArrows = ship ? FoundParts("da0_arrow", "da1_arrow") : System.Array.Empty<Node3D>(),
                 Swings = elephant ? ElephantLegs(Part)
                     : ship ? System.Array.Empty<SwingPart>()
                     : cavalry ? CavalryLegs(Part)
@@ -1318,27 +1349,8 @@ public partial class UnitController3D : Node3D
         }
         else if (_motion == MotionKind.Ship)
         {
-            _dust = BuildBowSpray(solo ? 0.29f : 0.13f);
+            _dust = BuildBowSpray(solo ? 0.36f : 0.13f);
             _tokenRoot.AddChild(_dust);
-
-            if (solo)
-            {
-                _tokenRoot.AddChild(new VillagerAmbience
-                {
-                    Seed = 20260806UL,
-                    MaxVillagers = 4,
-                    WanderRadius = 0.13f,
-                    GroundY = 0.114f,
-                    // 돛대 4개를 피해 다닌다 — (x, z, 반경), 배 로컬 좌표(정면 +Z = 블렌더 -Y)
-                    Obstacles = new[]
-                    {
-                        new Vector3(0f, -0.068f, 0.026f),
-                        new Vector3(0f, 0.090f, 0.026f),
-                        new Vector3(0f, 0.218f, 0.026f),
-                        new Vector3(0f, -0.203f, 0.026f),
-                    },
-                });
-            }
         }
 
         _lastPosition = Position;
