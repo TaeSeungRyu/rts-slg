@@ -82,7 +82,7 @@ public partial class UnitController3D : Node3D
         public Vector3 AttackArmBaseRotation;
         public float Phase;
 
-        /// <summary>공격 시작 지연 — 앞줄부터 차례로 친다.</summary>
+        /// <summary>공격 시작 지연 — 편대원마다 제각각 흩어져 있다.</summary>
         public float AttackDelay;
 
         /// <summary>상체를 트는 방향(±1) — 편대원끼리 엇갈리게 한다.</summary>
@@ -233,7 +233,7 @@ public partial class UnitController3D : Node3D
     }
 
     // 공격 모션 타이밍. 젖힘은 길고 느리게, 휘두름은 짧고 빠르게 — 대비가 힘을 만든다.
-    private const float AttackRippleSeconds = 0.34f;  // 앞뒤 자리 차이 1당 지연
+    private const float AttackScatterSeconds = 0.55f;  // 편대원 시작 지연이 흩어지는 폭
     private const float WindUpSeconds = 0.15f;
     private const float SwingSeconds = 0.07f;
     private const float ShieldPushSeconds = 0.13f;
@@ -241,7 +241,7 @@ public partial class UnitController3D : Node3D
 
     /// <summary>
     /// 공격 모션. 편대원이 동시에 같은 동작을 하면 아무리 크게 흔들어도 밋밋해지므로,
-    /// 자리에 따라 시작을 늦추고 상체를 엇갈리게 튼다.
+    /// 시작 시점을 제각각 흩고 상체를 엇갈리게 튼다.
     /// 보병: 제자리에 선 채 칼을 휘두르고 방패로 민다.
     /// 기병: 앞으로 살짝 몰아 나가며 내리치고 물러 돌아온다(돌격).
     /// </summary>
@@ -338,9 +338,9 @@ public partial class UnitController3D : Node3D
     }
 
     // 기병 돌격 타이밍. 몰아 나가는 동안 젖혔다가 최전방에서 내리친다.
-    private const float ChargeOutSeconds = 0.22f;
-    private const float ChargeBackSeconds = 0.34f;
-    private const float ChargeDistance = 0.13f;
+    private const float ChargeOutSeconds = 0.30f;
+    private const float ChargeBackSeconds = 0.40f;
+    private const float ChargeDistance = 0.26f;
 
     // 돌격: 부대 전체가 앞으로 몰아 나가며 편대원마다 칼을 젖혔다 내리치고,
     // 말이 앞다리를 들며 멈춘 뒤 물러 돌아온다. 먼지는 몰아 나가는 동안 뿜는다.
@@ -657,8 +657,9 @@ public partial class UnitController3D : Node3D
                 AttackArmBaseRotation = attackArm.Rotation,
                 // 편대원끼리 발이 겹치지 않게 위상을 흩는다
                 Phase = index * 0.9f,
-                // 앞줄(+Z)일수록 먼저 친다. 뒤에서 계산해 채운다
-                AttackDelay = instance.Position.Z,
+                // 공격 시작을 제각각 흩는다. 황금비 간격이라 순번이 이어져도
+                // 자리 순서(파도)로도, 규칙적인 박자로도 읽히지 않는다
+                AttackDelay = index * 0.618034f % 1f * AttackScatterSeconds,
                 TwistSign = index % 2 == 0 ? 1f : -1f,
             };
 
@@ -670,18 +671,6 @@ public partial class UnitController3D : Node3D
         {
             _dust = BuildHoofDust();
             _tokenRoot.AddChild(_dust);
-        }
-
-        // 자리의 Z를 지연 시간으로 환산한다 — 선두 0에서 시작해 뒤로 갈수록 늦다
-        var front = float.MinValue;
-        foreach (var member in _members)
-        {
-            front = Mathf.Max(front, member.AttackDelay);
-        }
-
-        foreach (var member in _members)
-        {
-            member.AttackDelay = (front - member.AttackDelay) * AttackRippleSeconds;
         }
 
         _lastPosition = Position;
