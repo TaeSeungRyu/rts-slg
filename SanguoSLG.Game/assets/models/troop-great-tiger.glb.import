@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://5d4uw4h8xo6"
-path="res://.godot/imported/troop-tiger.glb-01f4286152ad4742158b9d2af7f21a1c.scn"
+uid="uid://bclasrwr8t3fr"
+path="res://.godot/imported/troop-great-tiger.glb-0e7025849f2d46a8cdca5260b41807ac.scn"
 
 [deps]
 
-source_file="res://assets/models/troop-tiger.glb"
-dest_files=["res://.godot/imported/troop-tiger.glb-01f4286152ad4742158b9d2af7f21a1c.scn"]
+source_file="res://assets/models/troop-great-tiger.glb"
+dest_files=["res://.godot/imported/troop-great-tiger.glb-0e7025849f2d46a8cdca5260b41807ac.scn"]
 
 [params]
 

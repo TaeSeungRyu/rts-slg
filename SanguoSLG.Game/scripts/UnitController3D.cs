@@ -56,7 +56,7 @@ public partial class UnitController3D : Node3D
         ("res://assets/models/troop-turtleship.glb", true),
         ("res://assets/models/troop-waeseon.glb", false),
         ("res://assets/models/troop-bandit.glb", false),
-        ("res://assets/models/troop-tiger.glb", false),
+        ("res://assets/models/troop-great-tiger.glb", true),
     };
 
     private const int TroopCount = 7;
@@ -158,7 +158,7 @@ public partial class UnitController3D : Node3D
     /// <summary>선박 중 용머리가 있는 쪽(거북선) — 들이받는 순간 용머리에서 화염이 나간다.</summary>
     private bool _turtleShip;
 
-    /// <summary>사족보행이지만 기수가 없는 짐승(호랑이 등) — 돌진 후 몸을 날려 덮친다.</summary>
+    /// <summary>사족보행이지만 기수가 없는 짐승(대호 등) — 돌진 후 몸을 날려 덮친다.</summary>
     private bool _beast;
 
     // 하이라이트·경로 오버레이는 유닛과 함께 움직이면 안 되므로 형제 노드에 담는다.

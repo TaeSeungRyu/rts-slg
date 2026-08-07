@@ -329,7 +329,7 @@ public partial class GameRoot3D : Node3D
         ("troop-turtleship.glb", "19 거북선"),
         ("troop-waeseon.glb", "20 왜선"),
         ("troop-bandit.glb", "21 도적"),
-        ("troop-tiger.glb", "22 호랑이"),
+        ("troop-great-tiger.glb", "22 대호"),
     };
 
     private void BuildTroopReview(MapView3D view, HexMap map)

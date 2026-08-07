@@ -89,7 +89,7 @@ public static class TroopFormation
     }
 
     // 개체 변이: 모델에 variant_0..N 그룹이 있으면 편대원 순번마다 한 벌만 남긴다.
-    // 호랑이 줄무늬처럼 같은 병종이라도 개체마다 무늬가 달라야 하는 모델이 쓰는 규약이다.
+    // 짐승 무늬처럼 같은 병종이라도 개체마다 생김새가 달라야 하는 모델이 쓰는 규약이다.
     private static void ApplyVariant(Node3D member, int index)
     {
         var variants = new List<Node3D>();
