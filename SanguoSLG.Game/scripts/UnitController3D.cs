@@ -59,6 +59,7 @@ public partial class UnitController3D : Node3D
         ("res://assets/models/troop-great-tiger.glb", true),
         ("res://assets/models/troop-wild-elephant.glb", true),
         ("res://assets/models/troop-eastern-dragon.glb", true),
+        ("res://assets/models/troop-giant-squid.glb", true),
     };
 
     private const int TroopCount = 7;
@@ -112,6 +113,10 @@ public partial class UnitController3D : Node3D
 
         /// <summary>용 주위를 도는 구름 고리 — 매 프레임 천천히 회전한다.</summary>
         public Node3D? CloudRing;
+
+        /// <summary>촉수(대왕오징어) — 평소엔 흔들리고 공격 때 내리친다. 원점=물밑 뿌리.</summary>
+        public Node3D[] Tentacles = System.Array.Empty<Node3D>();
+        public Vector3[] TentacleBaseRotations = System.Array.Empty<Vector3>();
 
         /// <summary>바퀴 — 이동 거리에 비례해 굴린다(공성).</summary>
         public Node3D[] Wheels = System.Array.Empty<Node3D>();
@@ -169,6 +174,9 @@ public partial class UnitController3D : Node3D
 
     /// <summary>사족보행이지만 기수가 없는 짐승(대호 등) — 돌진 후 몸을 날려 덮친다.</summary>
     private bool _beast;
+
+    /// <summary>뱀 몸 중 촉수가 있는 쪽(대왕오징어) — 화염 대신 촉수로 내리친다.</summary>
+    private bool _kraken;
 
     // 하이라이트·경로 오버레이는 유닛과 함께 움직이면 안 되므로 형제 노드에 담는다.
     private Node3D _overlay = null!;
@@ -230,6 +238,16 @@ public partial class UnitController3D : Node3D
             }
 
             member.CloudRing?.RotateY(dt * 0.12f);
+
+            // 촉수는 회전으로 흔든다 — 공격 중에는 트윈이 회전을 갖고 있으므로 건드리지 않는다
+            if (!_attacking)
+            {
+                for (var k = 0; k < member.Tentacles.Length; k++)
+                {
+                    var sway = Mathf.Sin(_serpentTime * 1.2f + k * 0.9f) * 0.05f;
+                    member.Tentacles[k].Rotation = member.TentacleBaseRotations[k] + new Vector3(sway, 0f, 0f);
+                }
+            }
         }
     }
 
@@ -392,7 +410,15 @@ public partial class UnitController3D : Node3D
         _attacking = true;
         if (_motion == MotionKind.Serpent)
         {
-            PlayDragonBreath();
+            if (_kraken)
+            {
+                PlayTentacleSlam();
+            }
+            else
+            {
+                PlayDragonBreath();
+            }
+
             return;
         }
 
@@ -1011,6 +1037,38 @@ public partial class UnitController3D : Node3D
         ProjectileView.SpawnStone(_overlay, from, to, StoneFlightSeconds);
     }
 
+    // 촉수 내리치기: 촉수마다 시차를 두고 뒤로 젖혔다가 제 바깥 방향으로 후려친다.
+    // 촉수 원점이 물밑 뿌리라 rotation:x가 그대로 채찍질이 된다. 몸통은 물결만 탄다.
+    private void PlayTentacleSlam()
+    {
+        var window = 0f;
+
+        foreach (var member in _members)
+        {
+            for (var k = 0; k < member.Tentacles.Length; k++)
+            {
+                var tentacle = member.Tentacles[k];
+                var baseX = member.TentacleBaseRotations[k].X;
+                var delay = member.AttackDelay + k * 0.618034f % 1f * 0.30f;
+                window = Mathf.Max(window, delay + WindUpSeconds + 0.07f + 0.10f + RecoverSeconds);
+
+                var tween = CreateTween();
+                tween.TweenInterval(delay);
+                tween.Chain().TweenProperty(tentacle, "rotation:x", baseX - 0.50f, WindUpSeconds)
+                    .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+                tween.Chain().TweenProperty(tentacle, "rotation:x", baseX + 0.85f, 0.07f)
+                    .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+                tween.Chain().TweenInterval(0.10f);
+                tween.Chain().TweenProperty(tentacle, "rotation:x", baseX, RecoverSeconds)
+                    .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            }
+        }
+
+        var clock = CreateTween();
+        clock.TweenInterval(window);
+        clock.Finished += () => _attacking = false;
+    }
+
     // 용 브레스: 몸은 뿌리내린 채(속도 0) 머리만 뒤로 치켜들었다가
     // 앞으로 내미는 순간 용머리에서 화염이 나간다(거북선 BreatheFire 공유).
     private void PlayDragonBreath()
@@ -1610,6 +1668,7 @@ public partial class UnitController3D : Node3D
             // trunk=상병 / sail=선박 / leg_fl=기병 / ram·arm_basket_base·tower_archer=공성 /
             // bow_grip=궁병 / spine_0=뱀 몸(용) 규약. 상병도 leg_fl을 쓰므로 trunk를 먼저 본다
             var serpent = instance.FindChild("spine_0", true, false) is Node3D;
+            _kraken = serpent && instance.FindChild("tentacle_0", true, false) is Node3D;
             var elephant = instance.FindChild("trunk", true, false) is Node3D;
             var ship = !elephant && instance.FindChild("sail", true, false) is Node3D;
             var cavalry = !elephant && instance.FindChild("leg_fl", true, false) is Node3D;
@@ -1645,7 +1704,8 @@ public partial class UnitController3D : Node3D
                 .ToArray();
 
             var rider = cavalry && !_beast ? Part("rider") : _siegeArcher ? Part("tower_archer") : null;
-            var attackArm = Part(serpent ? "dragon_head"
+            var attackArm = Part(_kraken ? "tentacle_0"
+                : serpent ? "dragon_head"
                 : elephant ? "trunk"
                 : ship ? "sail"
                 : _beast ? "head"
@@ -1669,7 +1729,7 @@ public partial class UnitController3D : Node3D
                     : _siegeThrower ? Part("stone")
                     : _siegeArcher ? Part("ta_arrow")
                     : null,
-                FireMuzzle = _turtleShip || serpent ? Part("dragon_head") : null,
+                FireMuzzle = _turtleShip || (serpent && !_kraken) ? Part("dragon_head") : null,
                 Wheels = siege
                     ? FoundParts("wheel_l", "wheel_r", "wheel_fl", "wheel_fr", "wheel_bl", "wheel_br")
                     : System.Array.Empty<Node3D>(),
@@ -1709,6 +1769,15 @@ public partial class UnitController3D : Node3D
                 member.Spine = spine.ToArray();
                 member.SpineBasePositions = spine.Select(n => n.Position).ToArray();
                 member.CloudRing = instance.FindChild("cloud_ring", true, false) as Node3D;
+
+                var tentacles = new List<Node3D>();
+                for (var t = 0; instance.FindChild($"tentacle_{t}", true, false) is Node3D tentacle; t++)
+                {
+                    tentacles.Add(tentacle);
+                }
+
+                member.Tentacles = tentacles.ToArray();
+                member.TentacleBaseRotations = tentacles.Select(n => n.Rotation).ToArray();
             }
 
             _members.Add(member);
