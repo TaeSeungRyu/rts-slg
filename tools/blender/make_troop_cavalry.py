@@ -32,10 +32,10 @@ M_LEATHER = ic.make_mat("leather", (0.30, 0.19, 0.11))
 
 # 고관절은 몸통 타원체 "속"에 있어야 한다. 다리 위끝을 몸통 표면 높이에 맞추면
 # 타원체가 그 지점에서 위로 휘어 있어 사이가 벌어진다 — 다리를 몸통 안까지 밀어 넣는다.
-HIP_Z = 0.195          # 말 고관절 높이 = 다리 길이(위끝이 몸통 속에 묻힌다)
-BARREL_Z = 0.207       # 몸통 중심
-SHOULDER_Z = 0.320     # 기수 어깨
-HAND_Z = 0.262         # 기수 손
+HIP_Z = 0.166          # 말 고관절 높이 = 다리 길이(위끝이 몸통 속에 묻힌다)
+BARREL_Z = 0.178       # 몸통 중심
+SHOULDER_Z = 0.291     # 기수 어깨
+HAND_Z = 0.233         # 기수 손
 
 # ── 말 몸통: 눌린 타원체. 계획 2(반곡선)대로 여기만 스무스 ──
 bpy.ops.mesh.primitive_uv_sphere_add(segments=10, ring_count=6, radius=1.0,
@@ -56,16 +56,16 @@ for tag, lx, ly in (("fl", -0.030, -0.055), ("fr", 0.030, -0.055),
     ic.parent_to(leg, body)
 
 # ── 목·머리·귀·갈기·꼬리 ──
-neck = ic.cone("neck", 0.040, 0.028, 0.115, 0, -0.098, 0.245, M_COAT,
+neck = ic.cone("neck", 0.040, 0.028, 0.115, 0, -0.098, 0.216, M_COAT,
                rot_x=math.radians(38), smooth=True)
-head = ic.box("head", 0.042, 0.088, 0.042, 0, -0.163, 0.292, M_COAT,
+head = ic.box("head", 0.042, 0.088, 0.042, 0, -0.163, 0.263, M_COAT,
               rot_x=math.radians(20))
 for i, ex in enumerate((-0.014, 0.014)):
-    ear = ic.box(f"ear_{i}", 0.010, 0.012, 0.022, ex, -0.132, 0.318, M_COAT)
+    ear = ic.box(f"ear_{i}", 0.010, 0.012, 0.022, ex, -0.132, 0.289, M_COAT)
     ic.parent_to(ear, head)
-mane = ic.box("mane", 0.018, 0.052, 0.100, 0, -0.088, 0.262, M_MANE,
+mane = ic.box("mane", 0.018, 0.052, 0.100, 0, -0.088, 0.233, M_MANE,
               rot_x=math.radians(38))
-tail = ic.box("tail", 0.024, 0.028, 0.105, 0, 0.128, 0.198, M_MANE,
+tail = ic.box("tail", 0.024, 0.028, 0.105, 0, 0.128, 0.169, M_MANE,
               rot_x=math.radians(-32))
 
 for part in (neck, head, mane, tail):
@@ -73,21 +73,21 @@ for part in (neck, head, mane, tail):
 
 # ── 안장 + 안장천(세력색). 천은 몸통보다 넓게 잡아 옆으로 늘어뜨린다 ──
 # 안장은 판 하나로 두면 상자처럼 보인다 — 앞턱·뒤턱·다리받이로 층을 만든다.
-cloth = ic.box("saddle_cloth", 0.145, 0.135, 0.012, 0, 0.012, 0.247, m.red)
-saddle = ic.box("saddle", 0.074, 0.082, 0.014, 0, 0.012, 0.262, M_LEATHER)
-pommel = ic.box("saddle_pommel", 0.042, 0.014, 0.024, 0, -0.028, 0.274, M_LEATHER)
-cantle = ic.box("saddle_cantle", 0.050, 0.016, 0.028, 0, 0.050, 0.276, M_LEATHER)
+cloth = ic.box("saddle_cloth", 0.145, 0.135, 0.012, 0, 0.012, 0.218, m.red)
+saddle = ic.box("saddle", 0.074, 0.082, 0.014, 0, 0.012, 0.233, M_LEATHER)
+pommel = ic.box("saddle_pommel", 0.042, 0.014, 0.024, 0, -0.028, 0.245, M_LEATHER)
+cantle = ic.box("saddle_cantle", 0.050, 0.016, 0.028, 0, 0.050, 0.247, M_LEATHER)
 for i, fx in enumerate((-0.058, 0.058)):
-    flap = ic.box(f"saddle_flap_{i}", 0.012, 0.072, 0.050, fx, 0.000, 0.232, M_LEATHER)
+    flap = ic.box(f"saddle_flap_{i}", 0.012, 0.072, 0.050, fx, 0.000, 0.203, M_LEATHER)
     ic.parent_to(flap, body)
 for part in (cloth, saddle, pommel, cantle):
     ic.parent_to(part, body)
 
 # ── 기수: 상체(스무스) + 머리 + 투구 + 투구술(세력색) ──
-rider = ic.cone("rider", 0.034, 0.042, 0.070, 0, 0.012, 0.298, m.armor, smooth=True)
-rhead = ic.box("rider_head", 0.044, 0.042, 0.040, 0, 0.012, 0.352, m.skin)
-helmet = ic.cone("helmet", 0.031, 0.012, 0.026, 0, 0.012, 0.382, m.armor, verts=6)
-plume = ic.box("plume", 0.010, 0.010, 0.026, 0, 0.012, 0.406, m.red)
+rider = ic.cone("rider", 0.034, 0.042, 0.070, 0, 0.012, 0.269, m.armor, smooth=True)
+rhead = ic.box("rider_head", 0.044, 0.042, 0.040, 0, 0.012, 0.323, m.skin)
+helmet = ic.cone("helmet", 0.031, 0.012, 0.026, 0, 0.012, 0.353, m.armor, verts=6)
+plume = ic.box("plume", 0.010, 0.010, 0.026, 0, 0.012, 0.377, m.red)
 
 for part in (rhead, helmet, plume):
     ic.parent_to(part, rider)
@@ -96,14 +96,14 @@ for part in (rhead, helmet, plume):
 # x는 몸통 최대 반경(0.065)보다 바깥이어야 말을 뚫지 않는다.
 LEG_X = 0.068
 for tag, sx in (("l", -LEG_X), ("r", LEG_X)):
-    thigh = ic.box(f"rider_thigh_{tag}", 0.026, 0.028, 0.060, sx, -0.010, 0.242, m.armor,
+    thigh = ic.box(f"rider_thigh_{tag}", 0.026, 0.028, 0.060, sx, -0.010, 0.213, m.armor,
                    rot_x=math.radians(-30))
-    shin = ic.box(f"rider_shin_{tag}", 0.024, 0.026, 0.058, sx, -0.014, 0.186, m.armor,
+    shin = ic.box(f"rider_shin_{tag}", 0.024, 0.026, 0.058, sx, -0.014, 0.157, m.armor,
                   rot_x=math.radians(10))
-    boot = ic.box(f"rider_boot_{tag}", 0.026, 0.042, 0.018, sx, -0.024, 0.157, M_LEATHER)
+    boot = ic.box(f"rider_boot_{tag}", 0.026, 0.042, 0.018, sx, -0.024, 0.128, M_LEATHER)
     strap = ic.box(f"stirrup_strap_{tag}", 0.006, 0.008, 0.070, sx - 0.004 * (1 if sx > 0 else -1),
-                   0.006, 0.200, M_LEATHER)
-    stirrup = ic.box(f"stirrup_{tag}", 0.022, 0.028, 0.008, sx, -0.020, 0.145, m.steel)
+                   0.006, 0.171, M_LEATHER)
+    stirrup = ic.box(f"stirrup_{tag}", 0.022, 0.028, 0.008, sx, -0.020, 0.116, m.steel)
     for part in (thigh, shin, boot, strap, stirrup):
         ic.parent_to(part, rider)
 
