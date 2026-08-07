@@ -110,6 +110,9 @@ public partial class UnitController3D : Node3D
         public Node3D[] Spine = System.Array.Empty<Node3D>();
         public Vector3[] SpineBasePositions = System.Array.Empty<Vector3>();
 
+        /// <summary>용 주위를 도는 구름 고리 — 매 프레임 천천히 회전한다.</summary>
+        public Node3D? CloudRing;
+
         /// <summary>바퀴 — 이동 거리에 비례해 굴린다(공성).</summary>
         public Node3D[] Wheels = System.Array.Empty<Node3D>();
 
@@ -222,9 +225,11 @@ public partial class UnitController3D : Node3D
         {
             for (var i = 0; i < member.Spine.Length; i++)
             {
-                var lift = Mathf.Sin(_serpentTime * 1.6f + i * 0.55f) * 0.018f;
+                var lift = Mathf.Sin(_serpentTime * 1.6f + i * 0.35f) * 0.016f;
                 member.Spine[i].Position = member.SpineBasePositions[i] + new Vector3(0f, lift, 0f);
             }
+
+            member.CloudRing?.RotateY(dt * 0.12f);
         }
     }
 
@@ -1703,6 +1708,7 @@ public partial class UnitController3D : Node3D
 
                 member.Spine = spine.ToArray();
                 member.SpineBasePositions = spine.Select(n => n.Position).ToArray();
+                member.CloudRing = instance.FindChild("cloud_ring", true, false) as Node3D;
             }
 
             _members.Add(member);
