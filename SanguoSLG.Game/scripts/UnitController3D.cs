@@ -58,6 +58,7 @@ public partial class UnitController3D : Node3D
         ("res://assets/models/troop-bandit.glb", false),
         ("res://assets/models/troop-great-tiger.glb", true),
         ("res://assets/models/troop-wild-elephant.glb", true),
+        ("res://assets/models/troop-eastern-dragon.glb", true),
     };
 
     private const int TroopCount = 7;
@@ -66,7 +67,7 @@ public partial class UnitController3D : Node3D
     private int _troopIndex = TroopModels.Length - 1;
 
     /// <summary>모션 규약. 부위 노드 이름으로 판별한다 — 병종 데이터가 생기면 그쪽에서 받는다.</summary>
-    private enum MotionKind { Infantry, Cavalry, Archer, Siege, Elephant, Ship }
+    private enum MotionKind { Infantry, Cavalry, Archer, Siege, Elephant, Ship, Serpent }
 
     // 프로시저럴 애니메이션 대상. 편대원마다 부위 노드와 기준 자세를 들고 있다.
     // 보병과 기병은 부위 구성이 다르므로 "같은 위상 / 반대 위상"으로 묶어 공통으로 다룬다.
@@ -102,8 +103,12 @@ public partial class UnitController3D : Node3D
         /// <summary>손에 쥔 화살 — 발사 순간 숨기고 발사체로 잇는다(궁병).</summary>
         public Node3D? Arrow;
 
-        /// <summary>화염 분사구(거북선 용머리) — 들이받는 순간 여기서 불을 뿜는다.</summary>
+        /// <summary>화염 분사구(거북선·용의 용머리) — 여기서 불을 뿜는다.</summary>
         public Node3D? FireMuzzle;
+
+        /// <summary>뱀 몸 마디(용) — 정지 중에도 마디마다 위상을 어긋내 상하로 물결친다.</summary>
+        public Node3D[] Spine = System.Array.Empty<Node3D>();
+        public Vector3[] SpineBasePositions = System.Array.Empty<Vector3>();
 
         /// <summary>바퀴 — 이동 거리에 비례해 굴린다(공성).</summary>
         public Node3D[] Wheels = System.Array.Empty<Node3D>();
@@ -198,6 +203,29 @@ public partial class UnitController3D : Node3D
         }
 
         AnimateMarch((float)delta);
+        AnimateSerpentWave((float)delta);
+    }
+
+    // 뱀 몸 물결: 마디마다 위상을 어긋낸 상하 사인 — 정지 유닛(속도 0)이라
+    // 이동과 무관하게 항상 천천히 흔들린다.
+    private float _serpentTime;
+
+    private void AnimateSerpentWave(float dt)
+    {
+        if (_motion != MotionKind.Serpent)
+        {
+            return;
+        }
+
+        _serpentTime = Mathf.Wrap(_serpentTime + dt, 0f, Mathf.Tau * 100f);
+        foreach (var member in _members)
+        {
+            for (var i = 0; i < member.Spine.Length; i++)
+            {
+                var lift = Mathf.Sin(_serpentTime * 1.6f + i * 0.55f) * 0.018f;
+                member.Spine[i].Position = member.SpineBasePositions[i] + new Vector3(0f, lift, 0f);
+            }
+        }
     }
 
     // 이동 모션: 진행 방향으로 회전 + 몸통 상하 흔들림 + 다리 교차 스윙.
@@ -357,6 +385,12 @@ public partial class UnitController3D : Node3D
         }
 
         _attacking = true;
+        if (_motion == MotionKind.Serpent)
+        {
+            PlayDragonBreath();
+            return;
+        }
+
         if (_motion == MotionKind.Cavalry)
         {
             PlayCavalryCharge();
@@ -972,6 +1006,42 @@ public partial class UnitController3D : Node3D
         ProjectileView.SpawnStone(_overlay, from, to, StoneFlightSeconds);
     }
 
+    // 용 브레스: 몸은 뿌리내린 채(속도 0) 머리만 뒤로 치켜들었다가
+    // 앞으로 내미는 순간 용머리에서 화염이 나간다(거북선 BreatheFire 공유).
+    private void PlayDragonBreath()
+    {
+        var lastDelay = 0f;
+
+        foreach (var member in _members)
+        {
+            lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
+            var tween = CreateTween();
+            tween.TweenInterval(member.AttackDelay);
+
+            // 1) 머리 젖힘
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X - 0.55f, WindUpSeconds)
+                .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+            tween.Chain().TweenInterval(0.10f);
+
+            // 2) 내밀며 화염
+            tween.Chain().TweenCallback(Callable.From(() => BreatheFire(member)));
+            tween.Parallel().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X + 0.30f, 0.10f)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+
+            // 3) 뿜는 동안 자세 유지 후 복귀
+            tween.Chain().TweenInterval(0.30f);
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+        }
+
+        var clock = CreateTween();
+        clock.TweenInterval(lastDelay + WindUpSeconds + 0.10f + 0.10f + 0.30f + RecoverSeconds);
+        clock.Finished += () => _attacking = false;
+    }
+
     // 들이받기 타이밍. 무겁게 다가가서 코를 치켜들었다 내리찍는다.
     private const float ElephantOutSeconds = 0.50f;
     private const float ElephantBackSeconds = 0.55f;
@@ -1533,7 +1603,8 @@ public partial class UnitController3D : Node3D
             }
 
             // trunk=상병 / sail=선박 / leg_fl=기병 / ram·arm_basket_base·tower_archer=공성 /
-            // bow_grip=궁병 규약. 상병도 leg_fl을 쓰므로 trunk를 먼저 본다
+            // bow_grip=궁병 / spine_0=뱀 몸(용) 규약. 상병도 leg_fl을 쓰므로 trunk를 먼저 본다
+            var serpent = instance.FindChild("spine_0", true, false) is Node3D;
             var elephant = instance.FindChild("trunk", true, false) is Node3D;
             var ship = !elephant && instance.FindChild("sail", true, false) is Node3D;
             var cavalry = !elephant && instance.FindChild("leg_fl", true, false) is Node3D;
@@ -1549,7 +1620,8 @@ public partial class UnitController3D : Node3D
                 && instance.FindChild("bow_grip", true, false) is Node3D;
             _pikeInfantry = !cavalry && !siege && !elephant && !ship && !archer
                 && instance.FindChild("pike", true, false) is Node3D;
-            _motion = elephant ? MotionKind.Elephant
+            _motion = serpent ? MotionKind.Serpent
+                : elephant ? MotionKind.Elephant
                 : ship ? MotionKind.Ship
                 : cavalry ? MotionKind.Cavalry
                 : siege ? MotionKind.Siege
@@ -1568,7 +1640,8 @@ public partial class UnitController3D : Node3D
                 .ToArray();
 
             var rider = cavalry && !_beast ? Part("rider") : _siegeArcher ? Part("tower_archer") : null;
-            var attackArm = Part(elephant ? "trunk"
+            var attackArm = Part(serpent ? "dragon_head"
+                : elephant ? "trunk"
                 : ship ? "sail"
                 : _beast ? "head"
                 : cavalry ? "rider_arm_r"
@@ -1584,14 +1657,14 @@ public partial class UnitController3D : Node3D
                 AttackArmBasePosition = attackArm.Position,
                 ShieldArm = _siegeArcher ? Part("ta_arm_l")
                     : _horseArcher ? Part("rider_arm_l")
-                    : cavalry || siege || elephant || ship ? null
+                    : cavalry || siege || elephant || ship || serpent ? null
                     : Part("arm_l"),
-                CounterSwing = cavalry || siege || elephant || ship ? null : Part("arm_l"),
+                CounterSwing = cavalry || siege || elephant || ship || serpent ? null : Part("arm_l"),
                 Arrow = archer || _horseArcher ? Part("arrow")
                     : _siegeThrower ? Part("stone")
                     : _siegeArcher ? Part("ta_arrow")
                     : null,
-                FireMuzzle = _turtleShip ? Part("dragon_head") : null,
+                FireMuzzle = _turtleShip || serpent ? Part("dragon_head") : null,
                 Wheels = siege
                     ? FoundParts("wheel_l", "wheel_r", "wheel_fl", "wheel_fr", "wheel_bl", "wheel_br")
                     : System.Array.Empty<Node3D>(),
@@ -1602,7 +1675,7 @@ public partial class UnitController3D : Node3D
                     : System.Array.Empty<Node3D>(),
                 Swings = elephant
                     ? ElephantLegs(Part, instance.FindChild("walker0_leg_l", true, false) is Node3D)
-                    : ship ? System.Array.Empty<SwingPart>()
+                    : ship || serpent ? System.Array.Empty<SwingPart>()
                     : cavalry ? CavalryLegs(Part)
                     : _siegeArcher ? System.Array.Empty<SwingPart>()
                     : siege ? SiegeLegs(Part)
@@ -1620,6 +1693,18 @@ public partial class UnitController3D : Node3D
             };
 
             member.SailBaseRotations = member.Sails.Select(n => n.Rotation).ToArray();
+            if (serpent)
+            {
+                var spine = new List<Node3D>();
+                for (var s = 0; instance.FindChild($"spine_{s}", true, false) is Node3D seg; s++)
+                {
+                    spine.Add(seg);
+                }
+
+                member.Spine = spine.ToArray();
+                member.SpineBasePositions = spine.Select(n => n.Position).ToArray();
+            }
+
             _members.Add(member);
             index++;
         }
