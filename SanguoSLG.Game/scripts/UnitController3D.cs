@@ -33,17 +33,19 @@ public partial class UnitController3D : Node3D
     private bool _attacking;
 
     // 편대 검수용 임시 지정 — 병종 데이터(data/troop-types.json)가 생기면 그쪽에서 받는다.
-    private static readonly string[] TroopModels =
+    // Solo: 편대 없이 항상 1개로 표현(대선 규칙).
+    private static readonly (string File, bool Solo)[] TroopModels =
     {
-        "res://assets/models/troop-swordsman.glb",
-        "res://assets/models/troop-cavalry.glb",
-        "res://assets/models/troop-archer.glb",
-        "res://assets/models/troop-thunder-cart.glb",
-        "res://assets/models/troop-catapult.glb",
-        "res://assets/models/troop-siege-tower.glb",
-        "res://assets/models/troop-war-elephant.glb",
-        "res://assets/models/troop-small-boat.glb",
-        "res://assets/models/troop-medium-ship.glb",
+        ("res://assets/models/troop-swordsman.glb", false),
+        ("res://assets/models/troop-cavalry.glb", false),
+        ("res://assets/models/troop-archer.glb", false),
+        ("res://assets/models/troop-thunder-cart.glb", false),
+        ("res://assets/models/troop-catapult.glb", false),
+        ("res://assets/models/troop-siege-tower.glb", false),
+        ("res://assets/models/troop-war-elephant.glb", false),
+        ("res://assets/models/troop-small-boat.glb", false),
+        ("res://assets/models/troop-medium-ship.glb", false),
+        ("res://assets/models/troop-large-ship.glb", true),
     };
 
     private const int TroopCount = 7;
@@ -1220,7 +1222,8 @@ public partial class UnitController3D : Node3D
 
         _tokenRoot = new Node3D();
         AddChild(_tokenRoot);
-        TroopFormation.Build(_tokenRoot, GD.Load<PackedScene>(TroopModels[_troopIndex]), TroopCount);
+        var (modelFile, solo) = TroopModels[_troopIndex];
+        TroopFormation.Build(_tokenRoot, GD.Load<PackedScene>(modelFile), solo ? 1 : TroopCount);
 
         var index = 0;
         foreach (var child in _tokenRoot.GetChildren())
@@ -1251,7 +1254,7 @@ public partial class UnitController3D : Node3D
             // 규약 판별이 어긋나면 없는 부위를 찾게 된다 — 조용한 NRE 대신 어떤 이름이 없는지 말해준다
             Node3D Part(string name) => instance.FindChild(name, true, false) as Node3D
                 ?? throw new System.InvalidOperationException(
-                    $"부위 노드 없음: {name} — {TroopModels[_troopIndex]}의 규약 판별을 확인할 것");
+                    $"부위 노드 없음: {name} — {TroopModels[_troopIndex].File}의 규약 판별을 확인할 것");
 
             Node3D[] FoundParts(params string[] names) => names
                 .Select(n => instance.FindChild(n, true, false) as Node3D)
@@ -1284,7 +1287,7 @@ public partial class UnitController3D : Node3D
                 Wheels = siege
                     ? FoundParts("wheel_l", "wheel_r", "wheel_fl", "wheel_fr", "wheel_bl", "wheel_br")
                     : System.Array.Empty<Node3D>(),
-                Sails = ship ? FoundParts("sail", "sail2", "sail3") : System.Array.Empty<Node3D>(),
+                Sails = ship ? FoundParts("sail", "sail2", "sail3", "sail4") : System.Array.Empty<Node3D>(),
                 Swings = elephant ? ElephantLegs(Part)
                     : ship ? System.Array.Empty<SwingPart>()
                     : cavalry ? CavalryLegs(Part)
@@ -1317,6 +1320,25 @@ public partial class UnitController3D : Node3D
         {
             _dust = BuildBowSpray();
             _tokenRoot.AddChild(_dust);
+
+            if (solo)
+            {
+                _tokenRoot.AddChild(new VillagerAmbience
+                {
+                    Seed = 20260806UL,
+                    MaxVillagers = 3,
+                    WanderRadius = 0.085f,
+                    GroundY = 0.076f,
+                    // 돛대 4개를 피해 다닌다 — (x, z, 반경), 배 로컬 좌표(정면 +Z = 블렌더 -Y)
+                    Obstacles = new[]
+                    {
+                        new Vector3(0f, -0.045f, 0.018f),
+                        new Vector3(0f, 0.060f, 0.018f),
+                        new Vector3(0f, 0.145f, 0.018f),
+                        new Vector3(0f, -0.135f, 0.018f),
+                    },
+                });
+            }
         }
 
         _lastPosition = Position;

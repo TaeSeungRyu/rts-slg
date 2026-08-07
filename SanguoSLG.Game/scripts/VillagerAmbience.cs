@@ -26,7 +26,8 @@ public partial class VillagerAmbience : Node3D
     /// <summary>주민 발밑 높이 — 마을(타일 윗면) 0.2, 성(기단 윗면) 0.0864.</summary>
     public float GroundY { get; set; } = 0.2f;
 
-    private const float WanderRadius = 0.32f; // 담(0.50) 안쪽 배회 반경
+    /// <summary>배회 반경 — 마을 담(0.50) 안쪽 기본값. 배 갑판처럼 좁은 곳은 줄여서 쓴다.</summary>
+    public float WanderRadius { get; set; } = 0.32f;
     private const float WalkSpeed = 0.10f;    // 초당 이동 거리
     private const float FadeTime = 0.5f;      // 나타남/사라짐 시간
     private const float BodyRadius = 0.022f;  // 장애물 판정에 더할 주민 반경
