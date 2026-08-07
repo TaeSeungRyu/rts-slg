@@ -1045,7 +1045,7 @@ public partial class UnitController3D : Node3D
 
             // 1) 겨눔 — 창이 수평으로 내려오고 상체가 옆으로 틀며 뒤로 당겨진다
             tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
-                    member.AttackArmBaseRotation.X - 1.42f, PikeAimSeconds)
+                    member.AttackArmBaseRotation.X - 1.55f, PikeAimSeconds)
                 .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
             tween.Parallel().TweenProperty(member.Body, "rotation:y",
                     member.BodyBaseRotation.Y + member.TwistSign * 0.22f, PikeAimSeconds)
@@ -1054,12 +1054,10 @@ public partial class UnitController3D : Node3D
                     member.BodyBaseRotation.X + 0.10f, PikeAimSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
 
-            // 2) 내지름 — 팔이 더 뻗고 몸이 앞으로 쏟아지며 반 발짝 나간다
-            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
-                    member.AttackArmBaseRotation.X - 1.62f, PikeThrustSeconds)
-                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
-            tween.Parallel().TweenProperty(member.Body, "rotation:x",
-                    member.BodyBaseRotation.X - 0.18f, PikeThrustSeconds)
+            // 2) 내지름 — 회전은 여기서 멈춘다. 창이 제 축을 따라 직선으로 뻗어야
+            //    찌르기로 읽힌다. 회전을 더 얹으면 창끝이 호를 그려 베기가 된다
+            tween.Chain().TweenProperty(member.AttackArm, "position:z",
+                    member.AttackArmBasePosition.Z + 0.075f, PikeThrustSeconds)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
             tween.Parallel().TweenProperty(member.Body, "position:z",
                     member.BodyBasePosition.Z + 0.035f, PikeThrustSeconds)
@@ -1074,6 +1072,9 @@ public partial class UnitController3D : Node3D
             // 4) 복귀
             tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
                     member.AttackArmBaseRotation.X, RecoverSeconds + 0.08f)
+                .SetTrans(Tween.TransitionType.Sine);
+            tween.Parallel().TweenProperty(member.AttackArm, "position:z",
+                    member.AttackArmBasePosition.Z, RecoverSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
             tween.Parallel().TweenProperty(member.Body, "position:z",
                     member.BodyBasePosition.Z, RecoverSeconds)
