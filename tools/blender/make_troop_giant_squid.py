@@ -42,23 +42,23 @@ mantle_root = bpy.context.object
 mantle_root.name = "spine_0"
 mantle_root.data.materials.append(M_SQUID)
 
-mantle = ic.cone("mantle", 0.135, 0.020, 0.34, 0, 0.02, 0.10, M_SQUID, smooth=True)
+mantle = ic.cone("mantle", 0.135, 0.020, 0.34, 0, 0.02, 0.175, M_SQUID, smooth=True)
 for s in (-1, 1):
     fin = ic.box(f"fin_{'l' if s < 0 else 'r'}", 0.075, 0.055, 0.012,
-                 s * 0.085, 0.03, 0.225, M_SQUID2, rot_y=math.radians(s * -30))
+                 s * 0.085, 0.03, 0.300, M_SQUID2, rot_y=math.radians(s * -30))
     ic.parent_to(fin, mantle)
 bpy.ops.mesh.primitive_uv_sphere_add(segments=10, ring_count=6, radius=0.125,
-                                     location=(0, -0.02, -0.045))
+                                     location=(0, -0.02, 0.020))
 head = bpy.context.object
 head.name = "head"
 head.data.materials.append(M_SQUID)
 ic.shade_smooth(head)
 for s in (-1, 1):
     white = ic.cylinder(f"eye_{'l' if s < 0 else 'r'}", 0.036, 0.014,
-                        s * 0.112, -0.045, 0.028, M_EYE_W, verts=10,
+                        s * 0.112, -0.045, 0.078, M_EYE_W, verts=10,
                         rot_y=math.radians(90), smooth=True)
     pupil = ic.cylinder(f"pupil_{'l' if s < 0 else 'r'}", 0.017, 0.008,
-                        s * 0.120, -0.048, 0.028, M_EYE_B, verts=8,
+                        s * 0.120, -0.048, 0.078, M_EYE_B, verts=8,
                         rot_y=math.radians(90))
     ic.parent_to(pupil, white)
     ic.parent_to(white, head)
@@ -71,10 +71,10 @@ ic.parent_to(mantle_root, body)
 TILES = ((0.0, 0.5774), (0.5, -0.2887), (-0.5, -0.2887))
 SPOTS = []
 for tx, ty in TILES:
-    SPOTS.append((tx + 0.16, ty + 0.05, 0.20, 1.00))
-    SPOTS.append((tx - 0.13, ty - 0.12, 0.165, 0.85))
-SPOTS.append((0.22, -0.02, 0.145, 0.75))
-SPOTS.append((-0.20, 0.10, 0.13, 0.70))
+    SPOTS.append((tx + 0.16, ty + 0.05, 0.28, 1.00))
+    SPOTS.append((tx - 0.13, ty - 0.12, 0.23, 0.85))
+SPOTS.append((0.22, -0.02, 0.20, 0.75))
+SPOTS.append((-0.20, 0.10, 0.18, 0.70))
 
 for i, (px, py, h, s) in enumerate(SPOTS):
     d = math.hypot(px, py)
@@ -86,10 +86,12 @@ for i, (px, py, h, s) in enumerate(SPOTS):
     arm.data.transform(Matrix.Translation((0, 0, h / 2)))
     arm.data.materials.append(M_SQUID)
     ic.shade_smooth(arm)
-    # 끝마디는 안쪽(+Y, 회전 전)으로 굽는다 — 회전 전에 parent해야 yaw를 같이 탄다
-    tip = ic.cone(f"tentacle_{i}_tip", 0.014 * s, 0.002, 0.075 * s,
-                  px, py + 0.026 * s, -0.03 + h + 0.012, M_SQUID2,
-                  verts=7, rot_x=math.radians(-52), smooth=True)
+    # 끝마디는 안쪽(+Y, 회전 전)으로 굽는 납작한 삼각 날 — 3면 뿔을 옆으로 눌렀다.
+    # 회전 전에 parent해야 yaw를 같이 탄다
+    tip = ic.cone(f"tentacle_{i}_tip", 0.036 * s, 0.002, 0.095 * s,
+                  px, py + 0.030 * s, -0.03 + h + 0.020, M_SQUID2,
+                  verts=3, rot_x=math.radians(-48))
+    tip.scale = (0.30, 1.0, 1.0)
     ic.parent_to(tip, arm)
     arm.rotation_euler = (math.radians(14), 0, yaw)
     ic.parent_to(arm, body)
