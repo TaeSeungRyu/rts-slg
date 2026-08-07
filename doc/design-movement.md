@@ -205,8 +205,8 @@ ZOC이 하던 일은 전부 대체된다.
 
 | 병종 | 평상시 | 적 앞 | 결과 |
 |---|---|---|---|
-| 기병·소선 | 3 | **2** | 여전히 빠르다. 가장 잘 뚫는다 |
-| 보병·상병·중선 | 2 | **1** | 기어서 지나간다. 두 배 오래 맞는다 |
+| 기병 | 3 | **2** | 여전히 빠르다. 가장 잘 뚫는다 |
+| 보병·상병·소선·중선 | 2 | **1** | 기어서 지나간다. 두 배 오래 맞는다 |
 | 공성·중장 | 1 | **1** | 원래 느려서 더 깎이지 않는다. 대신 통과에 가장 오래 걸린다 |
 
 > **최초 규칙 5(기병 관통)가 특수 규칙 없이 되살아난다.** "기병만 통과 가능"이라고
@@ -249,8 +249,8 @@ ZOC이 하던 일은 전부 대체된다.
 | 칸/일 | 병종 | 7일 |
 |---|---|---|
 | 1 | `ThunderCart` `Catapult` `SiegeTower` `Shieldbearer` `GreatBow` `LargeShip` `Turtleship` | 7칸 |
-| 2 | `Swordsman` `Archer` `WarElephant` `Pikeman` `Scytheman` `Axeman` `MediumShip` `Panokseon` `Waeseon` | 14칸 |
-| 3 | `Cavalry` `Lancer` `HorseArcher` `SmallBoat` | 21칸 |
+| 2 | `Swordsman` `Archer` `WarElephant` `Pikeman` `Scytheman` `Axeman` `SmallBoat` `MediumShip` `Panokseon` `Waeseon` | 14칸 |
+| 3 | `Cavalry` `Lancer` `HorseArcher` | 21칸 |
 
 `Axeman`의 산악 속도는 **1**이다(평지 2의 절반).
 

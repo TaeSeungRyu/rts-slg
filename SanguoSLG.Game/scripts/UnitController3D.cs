@@ -42,13 +42,14 @@ public partial class UnitController3D : Node3D
         "res://assets/models/troop-catapult.glb",
         "res://assets/models/troop-siege-tower.glb",
         "res://assets/models/troop-war-elephant.glb",
+        "res://assets/models/troop-small-boat.glb",
     };
 
     private const int TroopCount = 7;
     private int _troopIndex;
 
     /// <summary>모션 규약. 부위 노드 이름으로 판별한다 — 병종 데이터가 생기면 그쪽에서 받는다.</summary>
-    private enum MotionKind { Infantry, Cavalry, Archer, Siege, Elephant }
+    private enum MotionKind { Infantry, Cavalry, Archer, Siege, Elephant, Ship }
 
     // 프로시저럴 애니메이션 대상. 편대원마다 부위 노드와 기준 자세를 들고 있다.
     // 보병과 기병은 부위 구성이 다르므로 "같은 위상 / 반대 위상"으로 묶어 공통으로 다룬다.
@@ -165,9 +166,10 @@ public partial class UnitController3D : Node3D
         var cavalry = _motion == MotionKind.Cavalry;
         var siege = _motion == MotionKind.Siege;
         var elephant = _motion == MotionKind.Elephant;
-        var stride = cavalry ? 16f : elephant ? 9f : MarchRadiansPerUnit;
-        var bob = cavalry ? 0.022f : elephant ? 0.010f : siege ? 0.003f : 0.012f;
-        var pitch = cavalry ? 0.09f : elephant ? 0.045f : 0f;
+        var ship = _motion == MotionKind.Ship;
+        var stride = cavalry ? 16f : elephant ? 9f : ship ? 6f : MarchRadiansPerUnit;
+        var bob = cavalry ? 0.022f : elephant ? 0.010f : siege ? 0.003f : ship ? 0.004f : 0.012f;
+        var pitch = cavalry ? 0.09f : elephant ? 0.045f : ship ? 0.030f : 0f;
 
         var animMove = _moving || _chargeMoving;
         if (_dust is not null)
@@ -215,6 +217,16 @@ public partial class UnitController3D : Node3D
                 {
                     wheel.Rotation = new Vector3(
                         wheel.Rotation.X + moved.Length() / SiegeWheelRadius, 0f, 0f);
+                }
+
+                // 선박: 선체가 옆으로도 흔들리고(롤), 돛이 돛대 축으로 흔들리며 펄럭인다
+                if (ship)
+                {
+                    member.Body.Rotation = member.BodyBaseRotation
+                        + new Vector3(swing * pitch, 0f, Mathf.Sin(clock * 0.6f) * 0.05f);
+                    member.AttackArm.Rotation = member.AttackArmBaseRotation + new Vector3(
+                        Mathf.Sin(clock * 1.4f) * 0.05f, Mathf.Sin(clock * 0.7f) * 0.16f, 0f);
+                    continue;
                 }
 
                 // 돌격 중에는 팔·기수를 공격 트윈이 쥐고 있다 — 매 프레임 덮어쓰면 안 된다.
@@ -309,6 +321,12 @@ public partial class UnitController3D : Node3D
         if (_motion == MotionKind.Elephant)
         {
             PlayElephantRam();
+            return;
+        }
+
+        if (_motion == MotionKind.Ship)
+        {
+            PlayShipRam();
             return;
         }
 
@@ -857,6 +875,96 @@ public partial class UnitController3D : Node3D
         };
     }
 
+    // 선박 들이받기 타이밍. 물살을 가르며 다가가 뱃머리로 찍는다.
+    private const float ShipOutSeconds = 0.45f;
+    private const float ShipBackSeconds = 0.50f;
+    private const float ShipDistance = 0.16f;
+
+    // 선박 공격: 물보라를 일으키며 전진 → 뱃머리를 찍고(피치) → 물러 돌아온다.
+    private void PlayShipRam()
+    {
+        var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
+        var origin = Position;
+        var lastDelay = 0f;
+
+        foreach (var member in _members)
+        {
+            lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
+            var tween = CreateTween();
+            tween.TweenInterval(ShipOutSeconds + member.AttackDelay);
+
+            tween.Chain().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X + 0.14f, 0.10f)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+            tween.Chain().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X, RecoverSeconds + 0.10f)
+                .SetTrans(Tween.TransitionType.Sine);
+        }
+
+        var slamWindow = lastDelay + 0.10f + RecoverSeconds + 0.10f;
+
+        _chargeMoving = true;
+        var surge = CreateTween();
+        surge.TweenProperty(this, "position", origin + forward * ShipDistance, ShipOutSeconds)
+            .SetTrans(Tween.TransitionType.Sine);
+        surge.TweenCallback(Callable.From(() =>
+        {
+            _chargeMoving = false;
+            ResetStancePose();
+        }));
+        surge.TweenInterval(slamWindow);
+        surge.Chain().TweenCallback(Callable.From(() => _chargeMoving = true));
+        surge.Chain().TweenProperty(this, "position", origin, ShipBackSeconds)
+            .SetTrans(Tween.TransitionType.Sine);
+        surge.Finished += () =>
+        {
+            _chargeMoving = false;
+            ResetStancePose();
+            _attacking = false;
+        };
+    }
+
+    // 뱃머리가 가르는 물보라. 이동 중에만 뿜는다 — 말발굽 먼지와 같은 자리(_dust)를 쓴다.
+    private static CpuParticles3D BuildBowSpray()
+    {
+        var gradient = new Gradient();
+        gradient.SetColor(0, new Color(0.85f, 0.93f, 0.97f, 0f));
+        gradient.AddPoint(0.15f, new Color(0.82f, 0.92f, 0.96f, 0.55f));
+        gradient.SetColor(1, new Color(0.88f, 0.95f, 0.98f, 0f));
+
+        return new CpuParticles3D
+        {
+            Position = new Vector3(0f, 0.015f, 0.13f),
+            Amount = 18,
+            Lifetime = 0.55f,
+            Emitting = false,
+            LocalCoords = false,
+            Mesh = new SphereMesh
+            {
+                Radius = 0.02f,
+                Height = 0.03f,
+                RadialSegments = 6,
+                Rings = 3,
+                Material = new StandardMaterial3D
+                {
+                    VertexColorUseAsAlbedo = true,
+                    Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                    ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                },
+            },
+            EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
+            EmissionBoxExtents = new Vector3(0.06f, 0.004f, 0.03f),
+            Direction = new Vector3(0f, 0.6f, 0.8f),
+            Spread = 40f,
+            InitialVelocityMin = 0.10f,
+            InitialVelocityMax = 0.22f,
+            Gravity = new Vector3(0f, -0.35f, 0f),
+            ScaleAmountMin = 0.4f,
+            ScaleAmountMax = 1.1f,
+            ColorRamp = gradient,
+        };
+    }
+
     // 다리·몸통만 기준 자세로 되돌린다. 팔·기수는 공격 트윈이 쥐고 있으므로 건드리지 않는다.
     private void ResetStancePose()
     {
@@ -1090,17 +1198,19 @@ public partial class UnitController3D : Node3D
                 continue;
             }
 
-            // trunk=상병 / leg_fl=기병 / ram·arm_basket_base·tower_archer=공성 / bow_grip=궁병 규약.
-            // 상병도 leg_fl을 쓰므로 trunk를 먼저 본다
+            // trunk=상병 / sail=선박 / leg_fl=기병 / ram·arm_basket_base·tower_archer=공성 /
+            // bow_grip=궁병 규약. 상병도 leg_fl을 쓰므로 trunk를 먼저 본다
             var elephant = instance.FindChild("trunk", true, false) is Node3D;
+            var ship = !elephant && instance.FindChild("sail", true, false) is Node3D;
             var cavalry = !elephant && instance.FindChild("leg_fl", true, false) is Node3D;
             var ram = !cavalry && instance.FindChild("ram", true, false) is Node3D;
             _siegeThrower = !cavalry && instance.FindChild("arm_basket_base", true, false) is Node3D;
             _siegeArcher = !cavalry && instance.FindChild("tower_archer", true, false) is Node3D;
             var siege = ram || _siegeThrower || _siegeArcher;
-            var archer = !cavalry && !siege && !elephant
+            var archer = !cavalry && !siege && !elephant && !ship
                 && instance.FindChild("bow_grip", true, false) is Node3D;
             _motion = elephant ? MotionKind.Elephant
+                : ship ? MotionKind.Ship
                 : cavalry ? MotionKind.Cavalry
                 : siege ? MotionKind.Siege
                 : archer ? MotionKind.Archer
@@ -1119,6 +1229,7 @@ public partial class UnitController3D : Node3D
 
             var rider = cavalry ? Part("rider") : _siegeArcher ? Part("tower_archer") : null;
             var attackArm = Part(elephant ? "trunk"
+                : ship ? "sail"
                 : cavalry ? "rider_arm_r"
                 : ram ? "ram"
                 : _siegeThrower ? "arm"
@@ -1131,9 +1242,9 @@ public partial class UnitController3D : Node3D
                 AttackArm = attackArm,
                 AttackArmBasePosition = attackArm.Position,
                 ShieldArm = _siegeArcher ? Part("ta_arm_l")
-                    : cavalry || siege || elephant ? null
+                    : cavalry || siege || elephant || ship ? null
                     : Part("arm_l"),
-                CounterSwing = cavalry || siege || elephant ? null : Part("arm_l"),
+                CounterSwing = cavalry || siege || elephant || ship ? null : Part("arm_l"),
                 Arrow = archer ? Part("arrow")
                     : _siegeThrower ? Part("stone")
                     : _siegeArcher ? Part("ta_arrow")
@@ -1142,6 +1253,7 @@ public partial class UnitController3D : Node3D
                     ? FoundParts("wheel_l", "wheel_r", "wheel_fl", "wheel_fr", "wheel_bl", "wheel_br")
                     : System.Array.Empty<Node3D>(),
                 Swings = elephant ? ElephantLegs(Part)
+                    : ship ? System.Array.Empty<SwingPart>()
                     : cavalry ? CavalryLegs(Part)
                     : _siegeArcher ? System.Array.Empty<SwingPart>()
                     : siege ? SiegeLegs(Part)
@@ -1165,6 +1277,11 @@ public partial class UnitController3D : Node3D
         if (_motion is MotionKind.Cavalry or MotionKind.Elephant)
         {
             _dust = BuildHoofDust();
+            _tokenRoot.AddChild(_dust);
+        }
+        else if (_motion == MotionKind.Ship)
+        {
+            _dust = BuildBowSpray();
             _tokenRoot.AddChild(_dust);
         }
 
