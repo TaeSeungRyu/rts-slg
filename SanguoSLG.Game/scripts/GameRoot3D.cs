@@ -330,6 +330,7 @@ public partial class GameRoot3D : Node3D
         ("troop-waeseon.glb", "20 왜선"),
         ("troop-bandit.glb", "21 도적"),
         ("troop-great-tiger.glb", "22 대호"),
+        ("troop-wild-elephant.glb", "23 코끼리"),
     };
 
     private void BuildTroopReview(MapView3D view, HexMap map)
