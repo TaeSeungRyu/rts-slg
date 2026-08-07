@@ -41,13 +41,14 @@ public partial class UnitController3D : Node3D
         "res://assets/models/troop-thunder-cart.glb",
         "res://assets/models/troop-catapult.glb",
         "res://assets/models/troop-siege-tower.glb",
+        "res://assets/models/troop-war-elephant.glb",
     };
 
     private const int TroopCount = 7;
     private int _troopIndex;
 
     /// <summary>모션 규약. 부위 노드 이름으로 판별한다 — 병종 데이터가 생기면 그쪽에서 받는다.</summary>
-    private enum MotionKind { Infantry, Cavalry, Archer, Siege }
+    private enum MotionKind { Infantry, Cavalry, Archer, Siege, Elephant }
 
     // 프로시저럴 애니메이션 대상. 편대원마다 부위 노드와 기준 자세를 들고 있다.
     // 보병과 기병은 부위 구성이 다르므로 "같은 위상 / 반대 위상"으로 묶어 공통으로 다룬다.
@@ -163,9 +164,10 @@ public partial class UnitController3D : Node3D
 
         var cavalry = _motion == MotionKind.Cavalry;
         var siege = _motion == MotionKind.Siege;
-        var stride = cavalry ? 16f : MarchRadiansPerUnit;
-        var bob = cavalry ? 0.022f : siege ? 0.003f : 0.012f;
-        var pitch = cavalry ? 0.09f : 0f;
+        var elephant = _motion == MotionKind.Elephant;
+        var stride = cavalry ? 16f : elephant ? 9f : MarchRadiansPerUnit;
+        var bob = cavalry ? 0.022f : elephant ? 0.010f : siege ? 0.003f : 0.012f;
+        var pitch = cavalry ? 0.09f : elephant ? 0.045f : 0f;
 
         var animMove = _moving || _chargeMoving;
         if (_dust is not null)
@@ -301,6 +303,12 @@ public partial class UnitController3D : Node3D
         if (_motion == MotionKind.Archer)
         {
             PlayArcherVolley();
+            return;
+        }
+
+        if (_motion == MotionKind.Elephant)
+        {
+            PlayElephantRam();
             return;
         }
 
@@ -784,6 +792,71 @@ public partial class UnitController3D : Node3D
         ProjectileView.SpawnStone(_overlay, from, to, StoneFlightSeconds);
     }
 
+    // 들이받기 타이밍. 무겁게 다가가서 코를 치켜들었다 내리찍는다.
+    private const float ElephantOutSeconds = 0.50f;
+    private const float ElephantBackSeconds = 0.55f;
+    private const float ElephantDistance = 0.20f;
+    private const float TrunkSlamSeconds = 0.09f;
+
+    // 들이받기 3단계: 다리를 구르며 육중하게 전진 → 멈춰 서서 코를 치켜들었다 내리찍음
+    // (몸이 앞으로 쏠린다) → 물러 돌아옴. 좌우 병사는 아무것도 하지 않는다.
+    private void PlayElephantRam()
+    {
+        var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
+        var origin = Position;
+        var lastDelay = 0f;
+
+        foreach (var member in _members)
+        {
+            lastDelay = Mathf.Max(lastDelay, member.AttackDelay);
+            var tween = CreateTween();
+            tween.TweenInterval(ElephantOutSeconds + member.AttackDelay);
+
+            // 1) 코 치켜듦
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X - 1.15f, WindUpSeconds + 0.06f)
+                .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+
+            // 2) 내리찍음 — 코가 한순간에 떨어지고 몸이 앞으로 쏠린다
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X + 0.40f, TrunkSlamSeconds)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X + 0.15f, TrunkSlamSeconds + 0.04f)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+
+            // 3) 복귀
+            tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
+                    member.AttackArmBaseRotation.X, RecoverSeconds + 0.10f)
+                .SetTrans(Tween.TransitionType.Sine);
+            tween.Parallel().TweenProperty(member.Body, "rotation:x",
+                    member.BodyBaseRotation.X, RecoverSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
+        }
+
+        var slamWindow = lastDelay + WindUpSeconds + 0.06f + TrunkSlamSeconds + RecoverSeconds + 0.10f;
+
+        _chargeMoving = true;
+        var surge = CreateTween();
+        surge.TweenProperty(this, "position", origin + forward * ElephantDistance, ElephantOutSeconds)
+            .SetTrans(Tween.TransitionType.Sine);
+        surge.TweenCallback(Callable.From(() =>
+        {
+            _chargeMoving = false;
+            ResetStancePose();
+        }));
+        surge.TweenInterval(slamWindow);
+        surge.Chain().TweenCallback(Callable.From(() => _chargeMoving = true));
+        surge.Chain().TweenProperty(this, "position", origin, ElephantBackSeconds)
+            .SetTrans(Tween.TransitionType.Sine);
+        surge.Finished += () =>
+        {
+            _chargeMoving = false;
+            ResetStancePose();
+            _attacking = false;
+        };
+    }
+
     // 다리·몸통만 기준 자세로 되돌린다. 팔·기수는 공격 트윈이 쥐고 있으므로 건드리지 않는다.
     private void ResetStancePose()
     {
@@ -1017,14 +1090,18 @@ public partial class UnitController3D : Node3D
                 continue;
             }
 
-            // leg_fl=기병 / ram·arm_basket_base·tower_archer=공성 / bow_grip=궁병 규약
-            var cavalry = instance.FindChild("leg_fl", true, false) is Node3D;
+            // trunk=상병 / leg_fl=기병 / ram·arm_basket_base·tower_archer=공성 / bow_grip=궁병 규약.
+            // 상병도 leg_fl을 쓰므로 trunk를 먼저 본다
+            var elephant = instance.FindChild("trunk", true, false) is Node3D;
+            var cavalry = !elephant && instance.FindChild("leg_fl", true, false) is Node3D;
             var ram = !cavalry && instance.FindChild("ram", true, false) is Node3D;
             _siegeThrower = !cavalry && instance.FindChild("arm_basket_base", true, false) is Node3D;
             _siegeArcher = !cavalry && instance.FindChild("tower_archer", true, false) is Node3D;
             var siege = ram || _siegeThrower || _siegeArcher;
-            var archer = !cavalry && !siege && instance.FindChild("bow_grip", true, false) is Node3D;
-            _motion = cavalry ? MotionKind.Cavalry
+            var archer = !cavalry && !siege && !elephant
+                && instance.FindChild("bow_grip", true, false) is Node3D;
+            _motion = elephant ? MotionKind.Elephant
+                : cavalry ? MotionKind.Cavalry
                 : siege ? MotionKind.Siege
                 : archer ? MotionKind.Archer
                 : MotionKind.Infantry;
@@ -1041,7 +1118,8 @@ public partial class UnitController3D : Node3D
                 .ToArray();
 
             var rider = cavalry ? Part("rider") : _siegeArcher ? Part("tower_archer") : null;
-            var attackArm = Part(cavalry ? "rider_arm_r"
+            var attackArm = Part(elephant ? "trunk"
+                : cavalry ? "rider_arm_r"
                 : ram ? "ram"
                 : _siegeThrower ? "arm"
                 : _siegeArcher ? "ta_arm_r"
@@ -1052,8 +1130,10 @@ public partial class UnitController3D : Node3D
                 Rider = rider,
                 AttackArm = attackArm,
                 AttackArmBasePosition = attackArm.Position,
-                ShieldArm = _siegeArcher ? Part("ta_arm_l") : cavalry || siege ? null : Part("arm_l"),
-                CounterSwing = cavalry || siege ? null : Part("arm_l"),
+                ShieldArm = _siegeArcher ? Part("ta_arm_l")
+                    : cavalry || siege || elephant ? null
+                    : Part("arm_l"),
+                CounterSwing = cavalry || siege || elephant ? null : Part("arm_l"),
                 Arrow = archer ? Part("arrow")
                     : _siegeThrower ? Part("stone")
                     : _siegeArcher ? Part("ta_arrow")
@@ -1061,7 +1141,8 @@ public partial class UnitController3D : Node3D
                 Wheels = siege
                     ? FoundParts("wheel_l", "wheel_r", "wheel_fl", "wheel_fr", "wheel_bl", "wheel_br")
                     : System.Array.Empty<Node3D>(),
-                Swings = cavalry ? CavalryLegs(Part)
+                Swings = elephant ? ElephantLegs(Part)
+                    : cavalry ? CavalryLegs(Part)
                     : _siegeArcher ? System.Array.Empty<SwingPart>()
                     : siege ? SiegeLegs(Part)
                     : InfantryLegs(Part),
@@ -1081,7 +1162,7 @@ public partial class UnitController3D : Node3D
             index++;
         }
 
-        if (_motion == MotionKind.Cavalry)
+        if (_motion is MotionKind.Cavalry or MotionKind.Elephant)
         {
             _dust = BuildHoofDust();
             _tokenRoot.AddChild(_dust);
@@ -1104,6 +1185,15 @@ public partial class UnitController3D : Node3D
         new SwingPart { Node = part("crew0_leg_r"), Tip = part("crew0_foot_r"), Phase = Mathf.Pi, Amplitude = 0.45f },
         new SwingPart { Node = part("crew1_leg_l"), Tip = part("crew1_foot_l"), Phase = 0.7f, Amplitude = 0.45f },
         new SwingPart { Node = part("crew1_leg_r"), Tip = part("crew1_foot_r"), Phase = 0.7f + Mathf.Pi, Amplitude = 0.45f },
+    };
+
+    // 코끼리 걸음: 같은 쪽 다리가 거의 붙어 움직이는 측대보(lateral walk). 무겁고 느리다.
+    private static SwingPart[] ElephantLegs(System.Func<string, Node3D> part) => new[]
+    {
+        new SwingPart { Node = part("leg_fl"), Phase = 0.00f * Mathf.Tau, Amplitude = 0.26f },
+        new SwingPart { Node = part("leg_bl"), Phase = 0.14f * Mathf.Tau, Amplitude = 0.28f },
+        new SwingPart { Node = part("leg_fr"), Phase = 0.50f * Mathf.Tau, Amplitude = 0.26f },
+        new SwingPart { Node = part("leg_br"), Phase = 0.64f * Mathf.Tau, Amplitude = 0.28f },
     };
 
     // 갤럽은 네 다리가 두 짝으로 딱 맞는 게 아니라 뒷다리부터 차례로 구른다.

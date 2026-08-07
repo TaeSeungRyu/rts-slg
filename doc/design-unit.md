@@ -94,7 +94,7 @@
 | 4 | 벽력거 | `ThunderCart` | `thunder_cart` | 육지 | 1 | 1 | 1 / 1 / 1 | O | O | O | **거대한 연필 모양 말뚝**을 실은 수레를 병사들이 끈다(2026-08-06 확정). 사거리가 `Catapult`와 갈린다 |
 | 5 | 투석기 | `Catapult` | `catapult` | 육지 | 1 | 1 | **3** / **2** / 1 | O | O | O | 투석기를 끌고 있다. 사거리가 `ThunderCart`와 갈린다 |
 | 6 | 공성탑 | `SiegeTower` | `siege_tower` | 육지 | 1 | 1 | **3** / **2** / 1 | O | O | O | 바퀴 달린 네모 상자 위에 작은 궁병이 서 있다(2026-08-06 확정) |
-| 7 | 상병 | `WarElephant` | `war_elephant` | 육지 | 2 | 2 | 1 / 1 / 1 | X | X | X | 코끼리를 끌고 있다 |
+| 7 | 상병 | `WarElephant` | `war_elephant` | 육지 | 2 | 2 | 1 / 1 / 1 | O | O | O | 코끼리 좌우에 아주 작은 병사. 공격은 코를 치켜들었다 내리찍는 들이받기(2026-08-06 확정) |
 | 8 | 소선 | `SmallBoat` | `small_boat` | 대하 | 3 | 3 | 1 / 1 / 1 | X | X | X | 중국식 작은 배 |
 | 9 | 중선 | `MediumShip` | `medium_ship` | 대하 | 2 | 2 | 1 / 1 / 1 | X | X | X | 중국식 중간 배 |
 | 10 | 대선 | `LargeShip` | `large_ship` | 대하 | 1 | 2 | 1 / 1 / 1 | X | X | X | 중국식 큰 배 |
