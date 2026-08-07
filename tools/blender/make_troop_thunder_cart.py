@@ -67,26 +67,8 @@ bake_rotation(tip)
 ic.parent_to(tip, ram)
 ic.parent_to(ram, body)
 
-# ── 끄는 병사 2 — 수레 양옆에서 난간을 쥔다. 팔은 난간 높이로 뻗어 고정 ──
+# ── 끄는 병사 2 — 병기가 커 보이도록 20% 줄여 세운다 ──
 for i, sx in enumerate((-1, 1)):
-    cx = sx * 0.085
-    cy = -0.040
-    torso = ic.cone(f"crew{i}_torso", 0.030, 0.038, 0.058, cx, cy, 0.133, m.armor, smooth=True)
-    head = ic.box(f"crew{i}_head", 0.040, 0.038, 0.036, cx, cy, 0.184, m.skin)
-    helmet = ic.cone(f"crew{i}_helmet", 0.027, 0.010, 0.022, cx, cy, 0.210, m.armor, verts=6)
-    for tag, lx in (("l", -0.020), ("r", 0.020)):
-        leg = ic.box(f"crew{i}_leg_{tag}", 0.024, 0.026, ic.HIP_Z, cx + lx, cy, ic.HIP_Z,
-                     m.cloth, origin_shift=(0, 0, -ic.HIP_Z / 2))
-        foot = ic.box(f"crew{i}_foot_{tag}", 0.026, 0.044, 0.014, cx + lx, cy - 0.008, 0.007, m.armor)
-        ic.parent_to(foot, leg)
-        ic.parent_to(leg, torso)
-    # 어깨는 몸통 원뿔 반경(0.038) 바깥에 둬야 팔이 몸에 묻히지 않는다
-    arm_in = ic.box(f"crew{i}_arm_in", 0.018, 0.020, 0.058, cx - sx * 0.042, cy + 0.014, 0.132,
-                    m.armor, rot_x=math.radians(-48))
-    arm_out = ic.box(f"crew{i}_arm_out", 0.018, 0.020, 0.056, cx + sx * 0.042, cy + 0.004, 0.130,
-                     m.armor, rot_x=math.radians(-12))
-    for part in (head, helmet, arm_in, arm_out):
-        ic.parent_to(part, torso)
-    ic.parent_to(torso, body)
+    ic.build_siege_crew(m, body, i, sx)
 
 ic.export("troop-thunder-cart.glb")

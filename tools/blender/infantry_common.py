@@ -143,6 +143,36 @@ def build_body(m, arm_l_pitch=0.0, arm_r_pitch=0.0):
     return body, arms["l"], arms["r"]
 
 
+def build_siege_crew(m, parent, i, sx, s=0.8):
+    """공성 병기를 끄는 병사 1명(수레 옆, 난간을 쥔다). s: 병사 축소 비율 —
+    병기가 커 보이도록 사람을 20% 줄인 0.8이 기본이다."""
+    cx = sx * 0.082
+    cy = -0.040
+    torso = cone(f"crew{i}_torso", 0.030 * s, 0.038 * s, 0.058 * s, cx, cy, 0.133 * s,
+                 m.armor, smooth=True)
+    head = box(f"crew{i}_head", 0.040 * s, 0.038 * s, 0.036 * s, cx, cy, 0.184 * s, m.skin)
+    helmet = cone(f"crew{i}_helmet", 0.027 * s, 0.010 * s, 0.022 * s, cx, cy, 0.210 * s,
+                  m.armor, verts=6)
+    hip = HIP_Z * s
+    for tag, lx in (("l", -0.020 * s), ("r", 0.020 * s)):
+        leg = box(f"crew{i}_leg_{tag}", 0.024 * s, 0.026 * s, hip, cx + lx, cy, hip,
+                  m.cloth, origin_shift=(0, 0, -hip / 2))
+        foot = box(f"crew{i}_foot_{tag}", 0.026 * s, 0.044 * s, 0.014 * s,
+                   cx + lx, cy - 0.008 * s, 0.007 * s, m.armor)
+        parent_to(foot, leg)
+        parent_to(leg, torso)
+    # 어깨는 몸통 원뿔 반경 바깥에 둬야 팔이 몸에 묻히지 않는다
+    arm_in = box(f"crew{i}_arm_in", 0.018 * s, 0.020 * s, 0.058 * s,
+                 cx - sx * 0.042 * s, cy + 0.014 * s, 0.132 * s, m.armor,
+                 rot_x=math.radians(-48))
+    arm_out = box(f"crew{i}_arm_out", 0.018 * s, 0.020 * s, 0.056 * s,
+                  cx + sx * 0.042 * s, cy + 0.004 * s, 0.130 * s, m.armor,
+                  rot_x=math.radians(-12))
+    for part in (head, helmet, arm_in, arm_out):
+        parent_to(part, torso)
+    parent_to(torso, parent)
+
+
 def export(filename):
     out = MODEL_DIR + "\\" + filename
     bpy.ops.object.select_all(action="SELECT")
