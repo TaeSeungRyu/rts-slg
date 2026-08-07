@@ -20,6 +20,9 @@ public partial class UnitController3D : Node3D
     // StepSeconds를 바꿔도 발이 지면에서 미끄러지지 않는다.
     private const float MarchRadiansPerUnit = 27f;
 
+    // 다리 궤적의 앞뒤 비대칭. 0이면 순수 사인이고 그때 가장 기계처럼 보인다.
+    private const float SwingSkew = 0.45f;
+
     private MapView3D _view = null!;
     private HexMap _map = null!;
     private MovementService _movement = null!;
@@ -44,11 +47,25 @@ public partial class UnitController3D : Node3D
 
     // 프로시저럴 애니메이션 대상. 편대원마다 부위 노드와 기준 자세를 들고 있다.
     // 보병과 기병은 부위 구성이 다르므로 "같은 위상 / 반대 위상"으로 묶어 공통으로 다룬다.
+    /// <summary>
+    /// 흔들리는 다리 하나. 위상과 진폭을 부위마다 따로 준다 — 넷이 두 짝으로 딱 맞아
+    /// 움직이면 태엽 장난감처럼 보인다.
+    /// </summary>
+    private sealed class SwingPart
+    {
+        public Node3D Node = null!;
+
+        /// <summary>발굽·발. 다리와 반대로 꺾어 관절이 있는 것처럼 보이게 한다.</summary>
+        public Node3D? Tip;
+
+        public float Phase;
+        public float Amplitude;
+    }
+
     private sealed class Member
     {
         public Node3D Body = null!;
-        public Node3D[] SwingA = System.Array.Empty<Node3D>();
-        public Node3D[] SwingB = System.Array.Empty<Node3D>();
+        public SwingPart[] Swings = System.Array.Empty<SwingPart>();
 
         /// <summary>다리와 반대로, 더 작게 흔들리는 부위(보병 왼팔).</summary>
         public Node3D? CounterSwing;
@@ -124,7 +141,6 @@ public partial class UnitController3D : Node3D
 
         var cavalry = _motion == MotionKind.Cavalry;
         var stride = cavalry ? 16f : MarchRadiansPerUnit;
-        var legSwing = cavalry ? 0.60f : 0.45f;
         var bob = cavalry ? 0.022f : 0.012f;
         var pitch = cavalry ? 0.09f : 0f;
 
@@ -153,14 +169,18 @@ public partial class UnitController3D : Node3D
                 // 기병은 도약할 때 몸통 앞뒤가 같이 들린다
                 member.Body.Rotation = member.BodyBaseRotation + new Vector3(swing * pitch, 0f, 0f);
 
-                foreach (var part in member.SwingA)
+                foreach (var leg in member.Swings)
                 {
-                    part.Rotation = new Vector3(swing * legSwing, 0f, 0f);
-                }
-
-                foreach (var part in member.SwingB)
-                {
-                    part.Rotation = new Vector3(-swing * legSwing, 0f, 0f);
+                    // 순수 사인은 앞뒤로 오가는 시간이 같아 기계처럼 보인다.
+                    // 위상을 자기 자신으로 흔들어 내딛는 쪽은 빠르게, 딛고 미는 쪽은 느리게 만든다.
+                    var t = clock + leg.Phase;
+                    var step = Mathf.Sin(t + SwingSkew * Mathf.Sin(t));
+                    leg.Node.Rotation = new Vector3(step * leg.Amplitude, 0f, 0f);
+                    if (leg.Tip is not null)
+                    {
+                        // 발굽은 반대로 꺾어 지면과 나란히 유지 — 무릎이 없어도 관절처럼 읽힌다
+                        leg.Tip.Rotation = new Vector3(-step * leg.Amplitude * 0.7f, 0f, 0f);
+                    }
                 }
 
                 // 보병 왼팔은 다리와 반대로. 오른팔은 무기를 들고 있으니 덜 흔든다
@@ -188,14 +208,13 @@ public partial class UnitController3D : Node3D
             {
                 member.Body.Position = member.BodyBasePosition;
                 member.Body.Rotation = member.BodyBaseRotation;
-                foreach (var part in member.SwingA)
+                foreach (var leg in member.Swings)
                 {
-                    part.Rotation = Vector3.Zero;
-                }
-
-                foreach (var part in member.SwingB)
-                {
-                    part.Rotation = Vector3.Zero;
+                    leg.Node.Rotation = Vector3.Zero;
+                    if (leg.Tip is not null)
+                    {
+                        leg.Tip.Rotation = Vector3.Zero;
+                    }
                 }
 
                 if (member.CounterSwing is not null)
@@ -541,13 +560,7 @@ public partial class UnitController3D : Node3D
                 AttackArm = attackArm,
                 ShieldArm = cavalry ? null : Part("arm_l"),
                 CounterSwing = cavalry ? null : Part("arm_l"),
-                // 기병은 대각 트롯 — 앞왼+뒤오 / 앞오+뒤왼이 짝을 이룬다
-                SwingA = cavalry
-                    ? new[] { Part("leg_fl"), Part("leg_br") }
-                    : new[] { Part("leg_l") },
-                SwingB = cavalry
-                    ? new[] { Part("leg_fr"), Part("leg_bl") }
-                    : new[] { Part("leg_r") },
+                Swings = cavalry ? CavalryLegs(Part) : InfantryLegs(Part),
                 BodyBasePosition = body.Position,
                 BodyBaseRotation = body.Rotation,
                 RiderBaseRotation = rider?.Rotation ?? Vector3.Zero,
@@ -584,6 +597,22 @@ public partial class UnitController3D : Node3D
         _lastPosition = Position;
         MapView3D.TuneImportedMeshes(_tokenRoot);
     }
+
+    private static SwingPart[] InfantryLegs(System.Func<string, Node3D> part) => new[]
+    {
+        new SwingPart { Node = part("leg_l"), Tip = part("foot_l"), Phase = 0f, Amplitude = 0.45f },
+        new SwingPart { Node = part("leg_r"), Tip = part("foot_r"), Phase = Mathf.Pi, Amplitude = 0.45f },
+    };
+
+    // 갤럽은 네 다리가 두 짝으로 딱 맞는 게 아니라 뒷다리부터 차례로 구른다.
+    // 위상을 조금씩 어긋나게 주고, 미는 뒷다리를 앞다리보다 크게 흔든다.
+    private static SwingPart[] CavalryLegs(System.Func<string, Node3D> part) => new[]
+    {
+        new SwingPart { Node = part("leg_bl"), Tip = part("hoof_bl"), Phase = 0.00f * Mathf.Tau, Amplitude = 0.50f },
+        new SwingPart { Node = part("leg_br"), Tip = part("hoof_br"), Phase = 0.16f * Mathf.Tau, Amplitude = 0.50f },
+        new SwingPart { Node = part("leg_fl"), Tip = part("hoof_fl"), Phase = 0.53f * Mathf.Tau, Amplitude = 0.36f },
+        new SwingPart { Node = part("leg_fr"), Tip = part("hoof_fr"), Phase = 0.69f * Mathf.Tau, Amplitude = 0.36f },
+    };
 
     // 말발굽이 이는 먼지. 이동 중에만 뿜고 멈추면 끈다.
     // LocalCoords를 끄면 먼지가 월드에 남아 지나온 자리에 꼬리가 생긴다.
