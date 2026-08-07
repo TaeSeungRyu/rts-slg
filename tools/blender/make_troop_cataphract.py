@@ -1,7 +1,7 @@
 # 병종 15 — 철기병(Cataphract, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_cataphract.py
 #
-# doc/design-unit.md: [육지, 속도 3, 탐지 3, 사거리 1/1/1]
+# doc/spec-unit.md: [육지, 속도 3, 탐지 3, 사거리 1/1/1]
 # 모습(사용자 확정, 2026-08-07): 기사처럼 전신 철갑 + 철갑 군마. 큰 창(랜스).
 # 이동·공격은 기존 Cavalry 그대로 — 부위 이름을 기병 규약(leg_fl/rider_arm_r)으로
 # 맞춰 갤럽·돌격이 자동 재사용된다.

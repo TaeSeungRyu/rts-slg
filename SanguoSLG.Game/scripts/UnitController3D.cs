@@ -633,7 +633,7 @@ public partial class UnitController3D : Node3D
     private const float ReleaseSeconds = 0.05f;
     private const float ArrowFlightSeconds = 0.6f;
 
-    // 사거리 2(design-unit.md range_unit). 병종 데이터가 생기면 그쪽에서 받는다.
+    // 사거리 2(spec-unit.md range_unit). 병종 데이터가 생기면 그쪽에서 받는다.
     private const float ArrowRangeTiles = 2f;
 
     // 사격: 활을 앞으로 뻗어 올리고 시위 손을 귀 뒤까지 당겨 조준했다가 놓는다.
@@ -734,7 +734,7 @@ public partial class UnitController3D : Node3D
         ProjectileView.SpawnArrow(_overlay, from, to, ArrowFlightSeconds);
     }
 
-    // 공성탑 사거리(design-unit.md range_unit). 병종 데이터가 생기면 그쪽에서 받는다.
+    // 공성탑 사거리(spec-unit.md range_unit). 병종 데이터가 생기면 그쪽에서 받는다.
     private const float TowerRangeTiles = 2f;
 
     // 탑 위 사격: 탑(Body)은 미동도 없고, 위의 궁병(Rider)만 당기고 조준하고 놓는다.
@@ -1001,7 +1001,7 @@ public partial class UnitController3D : Node3D
     private const float ShipBackSeconds = 0.50f;
     private const float ShipDistance = 0.16f;
 
-    // 소선 사거리(design-unit.md range_unit). 병종 데이터가 생기면 그쪽에서 받는다.
+    // 소선 사거리(spec-unit.md range_unit). 병종 데이터가 생기면 그쪽에서 받는다.
     private const float ShipRangeTiles = 1f;
 
     // 선박 공격: 물보라를 일으키며 전진 → 뱃머리를 찍는 순간 갑판에서 화살이 날아간다

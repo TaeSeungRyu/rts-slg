@@ -1,7 +1,7 @@
 # 병종 2 — 기병(Cavalry, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_cavalry.py
 #
-# doc/design-unit.md: [육지, 속도 3, 탐지 3, 사거리 1/1/1] 말을 타고 칼을 들고 있다.
+# doc/spec-unit.md: [육지, 속도 3, 탐지 3, 사거리 1/1/1] 말을 타고 칼을 들고 있다.
 # 폐기한 cavalry.glb(3기 고정·전부 사각형·피벗 버그)를 대체하는 1기짜리 모델이다.
 #
 # 부위 노드 규약 — 보병과 다른 이름을 써서 코드가 어느 쪽인지 구분할 수 있게 한다:

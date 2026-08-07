@@ -1,7 +1,7 @@
 # 병종 9 — 중선(MediumShip, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_medium_ship.py
 #
-# doc/design-unit.md: [대하, 속도 2, 탐지 2, 사거리 1/1/1] 중국식 중간 배.
+# doc/spec-unit.md: [대하, 속도 2, 탐지 2, 사거리 1/1/1] 중국식 중간 배.
 # 소선과의 구분(사용자 확정, 2026-08-06): 돛 2개, 폭 20% 증가(0.091),
 # 이물은 뾰족한 쐐기가 아니라 정크선 특유의 뭉툭하게 치켜든 사각 판.
 #

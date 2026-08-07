@@ -1,7 +1,7 @@
 # 병종 19 — 거북선(Turtleship, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_turtleship.py
 #
-# doc/design-unit.md: [대하, 속도 1, 탐지 2, 사거리 1/1/1] 편대 없이 항상 1척.
+# doc/spec-unit.md: [대하, 속도 1, 탐지 2, 사거리 1/1/1] 편대 없이 항상 1척.
 # 송곳 박힌 등딱지가 갑판 전체를 덮고 뱃머리에 용머리 — 공격 때 용머리에서
 # 화염이 나간다(dragon_head 노드가 화염 분사구, _turtleShip 분기의 판별 마커).
 # 선박 규약: body(선체) / sail·sail2(돛, Ship 모션 마커) / dragon_head(용머리)

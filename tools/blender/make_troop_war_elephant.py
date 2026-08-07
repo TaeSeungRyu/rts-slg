@@ -1,7 +1,7 @@
 # 병종 7 — 상병(WarElephant, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_war_elephant.py
 #
-# doc/design-unit.md: [육지, 속도 2, 탐지 2, 사거리 1/1/1]
+# doc/spec-unit.md: [육지, 속도 2, 탐지 2, 사거리 1/1/1]
 # 모습(사용자 확정, 2026-08-06): 코끼리 좌우에 아주 작은 사람.
 # 이동은 걷기(다리 4개), 공격은 들이받기 — 이때 코(trunk)가 움직여야 한다.
 #

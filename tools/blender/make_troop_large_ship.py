@@ -1,7 +1,7 @@
 # 병종 10 — 대선(LargeShip, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_large_ship.py
 #
-# doc/design-unit.md: [대하, 속도 1, 탐지 2, 사거리 1/1/1] 중국식 큰 배.
+# doc/spec-unit.md: [대하, 속도 1, 탐지 2, 사거리 1/1/1] 중국식 큰 배.
 # 규칙(사용자 확정, 2026-08-06): 편대 없이 항상 1척. 돛 4개. 갑판 둘레 난간.
 # 갑판에는 배에 맞춰 작게(0.42배) 만든 궁병 8이 타고 있다(2열x4행) — 전원 앞을 향한다.
 # 공격 때 화살은 갑판 궁병(da{i}_arrow)에게서 날아간다.

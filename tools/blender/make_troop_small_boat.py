@@ -1,7 +1,7 @@
 # 병종 8 — 소선(SmallBoat, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_small_boat.py
 #
-# doc/design-unit.md: [대하, 속도 2, 탐지 3, 사거리 1/1/1] 중국식 작은 배.
+# doc/spec-unit.md: [대하, 속도 2, 탐지 3, 사거리 1/1/1] 중국식 작은 배.
 # 내부에 사람 없음(사용자 확정). 이동 시 물보라(런타임 파티클)와 돛 천이 움직인다.
 #
 # 부위 노드 규약(선박 공통 — 배 6종이 재사용할 기반):

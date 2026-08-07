@@ -1,7 +1,7 @@
 # 병종 1 — 도검병(Swordsman, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_swordsman.py
 #
-# doc/design-unit.md: [육지, 이동력 3, 사거리 1/1/1] 칼과 방패를 들고 있다.
+# doc/spec-unit.md: [육지, 이동력 3, 사거리 1/1/1] 칼과 방패를 들고 있다.
 # 몸통은 infantry_common.build_body가 세우고 여기서는 무기만 얹는다(보병 7종 공용).
 #   sword  : 오른팔 자식 — 칼자루·코등이·칼날
 #   shield : 왼팔 자식 — 방패판·테두리·문양(세력색)

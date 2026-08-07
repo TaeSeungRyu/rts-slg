@@ -1,7 +1,7 @@
 # 병종 13 — 등갑병(Shieldbearer, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_shieldbearer.py
 #
-# doc/design-unit.md: [육지, 속도 1, 탐지 2, 사거리 1/1/1]
+# doc/spec-unit.md: [육지, 속도 1, 탐지 2, 사거리 1/1/1]
 # 모습(사용자 확정, 2026-08-07): 도검병 참고 — 방패는 크게, 몸집은 두껍게.
 # 등갑(등나무 갑옷) 톤. 이동·공격 모션은 도검병과 동일(보병 규약 이름 재사용).
 import bpy

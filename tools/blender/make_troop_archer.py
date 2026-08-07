@@ -1,7 +1,7 @@
 # 병종 3 — 궁병(Archer, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_archer.py
 #
-# doc/design-unit.md: [육지, 속도 2, 탐지 2, 사거리 2/1/1] 활을 들고 있다.
+# doc/spec-unit.md: [육지, 속도 2, 탐지 2, 사거리 2/1/1] 활을 들고 있다.
 # 몸통은 infantry_common.build_body가 세우고 여기서는 활·화살통만 얹는다.
 #   bow    : 왼팔 자식 — 활대 위·아래 림 + 시위. 세로로 든다
 #   arrow  : 오른팔 자식 — 공격 모션에서 시위에 메긴다

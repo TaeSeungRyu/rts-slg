@@ -1,7 +1,7 @@
 # 병종 4 — 벽력거(ThunderCart, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_thunder_cart.py
 #
-# doc/design-unit.md: [육지, 속도 1, 탐지 1, 사거리 1/1/1]
+# doc/spec-unit.md: [육지, 속도 1, 탐지 1, 사거리 1/1/1]
 # 모습(사용자 확정, 2026-08-06): 거대한 연필 모양 말뚝이 수레에 실려 있고, 병사들이 끈다.
 #
 # 부위 노드 규약(공성 공통 — Catapult·SiegeTower가 재사용할 기반):

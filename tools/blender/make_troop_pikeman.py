@@ -1,7 +1,7 @@
 # 병종 11 — 극병(Pikeman, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_pikeman.py
 #
-# doc/design-unit.md: [육지, 속도 2, 탐지 2, 사거리 1/1/1]
+# doc/spec-unit.md: [육지, 속도 2, 탐지 2, 사거리 1/1/1]
 # 이름(사용자 확정, 2026-08-06): 극병. 일반 보병에 기다란 창(극) — 모션은 찌르기.
 # 몸통은 infantry_common.build_body, 여기서는 극창만 얹는다.
 #   pike : 오른팔 자식 — 긴 창대 + 창날 + 곁날(극의 특징). 찌르기 판별 마커

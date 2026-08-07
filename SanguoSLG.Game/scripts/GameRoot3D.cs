@@ -305,7 +305,7 @@ public partial class GameRoot3D : Node3D
         }
     }
 
-    // 병종 외형 검수용 배치 — doc/design-unit.md 병종 카탈로그 순서대로 빈 행(r=4)에 세운다.
+    // 병종 외형 검수용 배치 — doc/spec-unit.md 병종 카탈로그 순서대로 빈 행(r=4)에 세운다.
     // 모델을 만들 때마다 이 표에 한 줄씩 늘린다. 발동 규칙·편대와 무관한 임시 진열이다.
     private static readonly (string File, string Label)[] TroopReview =
     {

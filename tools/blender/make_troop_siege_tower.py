@@ -1,7 +1,7 @@
 # 병종 6 — 공성탑(SiegeTower, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_siege_tower.py
 #
-# doc/design-unit.md: [육지, 속도 1, 탐지 1, 사거리 3/2/1]
+# doc/spec-unit.md: [육지, 속도 1, 탐지 1, 사거리 3/2/1]
 # 모습(사용자 확정, 2026-08-06): 네모난 박스에 바퀴가 있고, 그 위에 궁병이 서 있다.
 # 궁병은 박스 안에 들어가도록 작게(0.6배) 만든다.
 #

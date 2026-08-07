@@ -1,7 +1,7 @@
 # 병종 12 — 남만병(Nanman, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_nanman.py
 #
-# doc/design-unit.md: [육지, 속도 2, 탐지 2, 사거리 1/1/1]
+# doc/spec-unit.md: [육지, 속도 2, 탐지 2, 사거리 1/1/1]
 # 모습(사용자 확정, 2026-08-07): 도(칼)를 든 남만 전사 — 맨팔, 가죽 갑옷, 맨다리,
 # 머리에 깃털 장식(세력색), 등에 둥근 방패. 이동·공격 모션은 도검병과 동일.
 #

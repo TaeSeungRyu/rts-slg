@@ -1,7 +1,7 @@
 # 병종 5 — 투석기(Catapult, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_catapult.py
 #
-# doc/design-unit.md: [육지, 속도 1, 탐지 1, 사거리 3/2/1] 투석기를 끌고 있다.
+# doc/spec-unit.md: [육지, 속도 1, 탐지 1, 사거리 3/2/1] 투석기를 끌고 있다.
 # 벽력거와 같은 수레·바퀴·crew 규약을 재사용하고, 말뚝 대신 던지는 팔을 얹는다.
 #   arm       : 던지는 팔(원점=굴대). rotation.x가 음수로 갈수록 뒤로 눕는다
 #               — Blender Rx(+θ)는 팔을 앞(-Y)으로 기울인다. 대기 자세는 -55도(뒤)

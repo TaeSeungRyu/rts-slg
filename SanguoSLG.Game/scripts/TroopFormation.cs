@@ -3,7 +3,7 @@ using Godot;
 namespace SanguoSLG.Game;
 
 /// <summary>
-/// 병력 규모에 따른 편대 배치(doc/design-unit.md 계획 1). 1기짜리 모델을 N개 복제해 세운다.
+/// 병력 규모에 따른 편대 배치(doc/spec-unit.md 계획 1). 1기짜리 모델을 N개 복제해 세운다.
 /// 좌표는 타일 중심 기준 로컬, 정면은 +Z. 타일 변심거리 0.5 안에 들어가도록 잡았다.
 /// </summary>
 public static class TroopFormation

@@ -1,7 +1,7 @@
 # 병종 16 — 궁기병(HorseArcher, 저폴리) 생성 → GLB 익스포트
 # 실행: blender --background --python-exit-code 1 --python make_troop_horse_archer.py
 #
-# doc/design-unit.md: [육지, 속도 3, 탐지 3, 사거리 2/1/1] 말 위에서 활을 쏘는 경기병.
+# doc/spec-unit.md: [육지, 속도 3, 탐지 3, 사거리 2/1/1] 말 위에서 활을 쏘는 경기병.
 # 말·안장·기수 몸은 기병(make_troop_cavalry.py)과 같고 무기만 칼 → 활로 바뀐다.
 # leg_fl 규약으로 갤럽이, bow_grip·arrow 규약으로 기마 사격 분기(_horseArcher)가 걸린다.
 import bpy
