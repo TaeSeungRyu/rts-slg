@@ -1028,9 +1028,11 @@ public partial class UnitController3D : Node3D
         };
     }
 
-    // 찌르기 타이밍. 겨눔은 천천히, 내지르는 것은 한순간.
-    private const float PikeAimSeconds = 0.22f;
-    private const float PikeThrustSeconds = 0.07f;
+    // 찌르기 타이밍. 팔을 내리는 것은 공격이 아니라 준비다 — 천천히 내리고 멈칫한 뒤,
+    // 찌름은 크고 빠른 직선 피스톤 한 번. 내리는 게 빠르면 그 호가 내리찍기로 읽힌다.
+    private const float PikeAimSeconds = 0.36f;
+    private const float PikeSetSeconds = 0.10f;
+    private const float PikeThrustSeconds = 0.08f;
 
     // 찌르기: 세워 든 창을 수평으로 겨눴다가 몸을 실어 앞으로 내지른다(극병).
     private void PlayPikeThrust()
@@ -1043,24 +1045,26 @@ public partial class UnitController3D : Node3D
             var tween = CreateTween();
             tween.TweenInterval(member.AttackDelay);
 
-            // 1) 겨눔 — 창이 수평으로 내려오고 상체가 옆으로 틀며 뒤로 당겨진다
+            // 1) 팔 내림 — 공격이 아니라 준비. 천천히 수평까지 내리고 살짝 당겨 둔다
             tween.Chain().TweenProperty(member.AttackArm, "rotation:x",
                     member.AttackArmBaseRotation.X - 1.55f, PikeAimSeconds)
-                .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+                .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+            tween.Parallel().TweenProperty(member.AttackArm, "position:z",
+                    member.AttackArmBasePosition.Z - 0.030f, PikeAimSeconds)
+                .SetTrans(Tween.TransitionType.Sine);
             tween.Parallel().TweenProperty(member.Body, "rotation:y",
                     member.BodyBaseRotation.Y + member.TwistSign * 0.22f, PikeAimSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
-            tween.Parallel().TweenProperty(member.Body, "rotation:x",
-                    member.BodyBaseRotation.X + 0.10f, PikeAimSeconds)
-                .SetTrans(Tween.TransitionType.Sine);
 
-            // 2) 내지름 — 회전은 여기서 멈춘다. 창이 제 축을 따라 직선으로 뻗어야
-            //    찌르기로 읽힌다. 회전을 더 얹으면 창끝이 호를 그려 베기가 된다
+            // 겨눈 채 멈칫 — 여기서 끊어져야 내림과 찌름이 다른 동작으로 읽힌다
+            tween.Chain().TweenInterval(PikeSetSeconds);
+
+            // 2) 피스톤 — 회전 없이 창이 제 축을 따라 크게 직선으로 뻗는다
             tween.Chain().TweenProperty(member.AttackArm, "position:z",
-                    member.AttackArmBasePosition.Z + 0.075f, PikeThrustSeconds)
+                    member.AttackArmBasePosition.Z + 0.145f, PikeThrustSeconds)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
             tween.Parallel().TweenProperty(member.Body, "position:z",
-                    member.BodyBasePosition.Z + 0.035f, PikeThrustSeconds)
+                    member.BodyBasePosition.Z + 0.055f, PikeThrustSeconds)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
             tween.Parallel().TweenProperty(member.Body, "rotation:y",
                     member.BodyBaseRotation.Y - member.TwistSign * 0.06f, PikeThrustSeconds)
@@ -1079,17 +1083,14 @@ public partial class UnitController3D : Node3D
             tween.Parallel().TweenProperty(member.Body, "position:z",
                     member.BodyBasePosition.Z, RecoverSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
-            tween.Parallel().TweenProperty(member.Body, "rotation:x",
-                    member.BodyBaseRotation.X, RecoverSeconds)
-                .SetTrans(Tween.TransitionType.Sine);
             tween.Parallel().TweenProperty(member.Body, "rotation:y",
                     member.BodyBaseRotation.Y, RecoverSeconds)
                 .SetTrans(Tween.TransitionType.Sine);
         }
 
         var clock = CreateTween();
-        clock.TweenInterval(lastDelay + PikeAimSeconds + PikeThrustSeconds + 0.10f
-            + RecoverSeconds + 0.08f);
+        clock.TweenInterval(lastDelay + PikeAimSeconds + PikeSetSeconds + PikeThrustSeconds
+            + 0.10f + RecoverSeconds + 0.08f);
         clock.Finished += () => _attacking = false;
     }
 
