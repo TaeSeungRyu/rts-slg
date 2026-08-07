@@ -1586,7 +1586,7 @@ public partial class UnitController3D : Node3D
         }
         else if (_motion == MotionKind.Ship)
         {
-            _dust = BuildBowSpray(_turtleShip ? 0.20f : solo ? 0.36f : 0.13f);
+            _dust = BuildBowSpray(_turtleShip ? 0.27f : solo ? 0.36f : 0.13f);
             _tokenRoot.AddChild(_dust);
         }
 

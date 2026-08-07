@@ -110,4 +110,7 @@ for i in range(3):
     ic.parent_to(batten, fore_sail)
 ic.parent_to(fore_sail, fore_mast)
 
+# 전체 확대는 균등 스케일로만 — 축마다 다르게 주면 자식 회전 부위가 전단으로 일그러진다
+body.scale = (1.35, 1.35, 1.35)
+
 ic.export("troop-turtleship.glb")
