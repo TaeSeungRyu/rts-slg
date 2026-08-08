@@ -29,24 +29,24 @@ public partial class MovementTestScene3D : Node3D
 
     private static readonly CaseDef[] Cases =
     {
-        new("케이스 1 — 공격모드 조우: 탐지 → 추격 → 사거리 정지",
-            "A1(공격)이 먼 목표로 가다 정지한 E1을 탐지 범위(2)에서 발견하면 추격으로 전환, 사거리(1)에 닿으면 멈춘다.",
+        new("케이스 1 — 탐지 → 추격 → 사거리 정지",
+            "A1(공격)이 목표로 가다 E1을 탐지(2)하면 추격, 사거리(1)에 닿으면 멈춘다.",
             12, 4,
             new[]
             {
                 U(1, 1, new HexCoord(0, 2), UnitMode.Attack, new HexCoord(12, 2), 2, 2, 1),
                 U(2, 2, new HexCoord(9, 2), UnitMode.March, null, 2, 2, 1),
             }),
-        new("케이스 2 — 행군모드 통과: 무시 + 감속",
-            "A1(행군, 속도3)은 E1을 무시하고 지나간다. E1이 탐지 범위(3) 안에 든 날은 속도가 2로 준다. E1 사거리(2)를 지나는 동안은 전투 시 70% 일방 피해(반격 없음) — 피해는 전투 페이즈 소관이라 여기선 통과만 표시.",
+        new("케이스 2 — 행군 통과: 무시 + 감속",
+            "A1(행군)은 E1을 무시하고 지나간다. 탐지(3) 안에선 속도 3→2 감속. 사거리(2) 통과 시 70% 일방 피해(전투 페이즈 소관 — 표시만).",
             16, 4,
             new[]
             {
                 U(1, 1, new HexCoord(0, 2), UnitMode.March, new HexCoord(16, 2), 3, 3, 1),
                 U(2, 2, new HexCoord(8, 3), UnitMode.March, null, 2, 2, 2),
             }),
-        new("케이스 3 — 정면 조우: 같은 칸 경합 → 우선순위 전진 → 전투",
-            "A1·E1(둘 다 공격)이 짝수 거리로 마주 온다. 가운데 칸을 동시에 노리면 명령 순번이 앞선 A1이 그 칸을 차지하고 E1은 막힌다 → 둘이 인접(사거리 1) → 전투 페이즈. (둘 다 멈춰 벌어진 채 헛교전하지 않는다)",
+        new("케이스 3 — 정면 조우: 같은 칸 경합",
+            "A1·E1이 마주 온다. 가운데 칸 경합은 명령 순번 앞선 A1이 차지 → 인접 → 전투(둘 다 멈춰 헛교전하지 않는다).",
             8, 4,
             new[]
             {
@@ -230,10 +230,12 @@ public partial class MovementTestScene3D : Node3D
         AddChild(layer);
         var font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
 
+        // 화면 왼쪽 위에 고정 — 유닛은 맵 가운데를 지나므로 겹치지 않고, 바닥 앵커처럼
+        // 내용이 길어질 때 버튼이 화면 밖으로 밀려 사라지지 않는다(위→아래로 자란다).
         var panel = new PanelContainer
         {
-            AnchorTop = 1f, AnchorBottom = 1f,
-            OffsetTop = -232f, OffsetLeft = 16f, OffsetBottom = -16f, OffsetRight = 470f,
+            AnchorTop = 0f, AnchorBottom = 0f,
+            OffsetTop = 16f, OffsetLeft = 16f, OffsetBottom = 300f, OffsetRight = 486f,
         };
         panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
         {
@@ -247,19 +249,10 @@ public partial class MovementTestScene3D : Node3D
         panel.AddChild(box);
 
         _titleLabel = MakeLabel(font, 16, new Color(0.82f, 0.68f, 0.38f));
+        _titleLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(_titleLabel);
 
-        _noteLabel = MakeLabel(font, 12, new Color(0.72f, 0.76f, 0.82f));
-        _noteLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _noteLabel.CustomMinimumSize = new Vector2(438f, 46f);
-        box.AddChild(_noteLabel);
-
-        _logLabel = MakeLabel(font, 13, new Color(0.90f, 0.92f, 0.95f));
-        _logLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _logLabel.CustomMinimumSize = new Vector2(438f, 84f);
-        _logLabel.VerticalAlignment = VerticalAlignment.Top;
-        box.AddChild(_logLabel);
-
+        // 버튼을 제목 바로 아래(위쪽)에 둬 로그·설명이 길어져도 항상 보인다
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 8);
         box.AddChild(row);
@@ -276,6 +269,17 @@ public partial class MovementTestScene3D : Node3D
         _caseButton.AddThemeFontSizeOverride("font_size", 15);
         _caseButton.Pressed += () => LoadCase((_caseIndex + 1) % Cases.Length);
         row.AddChild(_caseButton);
+
+        _noteLabel = MakeLabel(font, 12, new Color(0.72f, 0.76f, 0.82f));
+        _noteLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _noteLabel.CustomMinimumSize = new Vector2(438f, 40f);
+        box.AddChild(_noteLabel);
+
+        _logLabel = MakeLabel(font, 13, new Color(0.90f, 0.92f, 0.95f));
+        _logLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _logLabel.CustomMinimumSize = new Vector2(438f, 120f);
+        _logLabel.VerticalAlignment = VerticalAlignment.Top;
+        box.AddChild(_logLabel);
     }
 
     private static Label MakeLabel(Font font, int size, Color color)
