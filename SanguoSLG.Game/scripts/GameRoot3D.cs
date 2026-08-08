@@ -42,6 +42,13 @@ public partial class GameRoot3D : Node3D
             }
         }
 
+        // 이동 시뮬레이션 GUI 검증(doc/test/movement-cases.md): --movetest
+        if (OS.GetCmdlineArgs().Contains("--movetest"))
+        {
+            BuildMovementTest();
+            return;
+        }
+
         var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
 
         var tone = TonePreset.FromCmdline();
@@ -185,6 +192,32 @@ public partial class GameRoot3D : Node3D
         }
 
         camera.Current = true;
+    }
+
+    // 이동 시뮬레이션 GUI 검증 씬(doc/test/movement-cases.md). 평지 맵 위에서
+    // MovementTestScene3D가 부대를 세우고 "진행" 버튼으로 스텝을 재생한다.
+    private void BuildMovementTest()
+    {
+        var tone = TonePreset.FromCmdline();
+        _environment = BuildEnvironment(tone);
+        AddChild(new WorldEnvironment { Environment = _environment });
+        _sun = BuildSunLight(tone);
+        AddChild(_sun);
+
+        var mapView = new MapView3D();
+        AddChild(mapView);
+        var testMap = new HexMap(0, 12, 0, 4);
+        mapView.Build(testMap, new System.Collections.Generic.HashSet<HexCoord>(), new TileConditionMap());
+
+        var camera = new CameraController3D { Fov = 55f };
+        AddChild(camera);
+        camera.Current = true;
+
+        MapView3D.TuneImportedMeshes(this);
+
+        var test = new MovementTestScene3D();
+        AddChild(test);
+        test.Build(mapView, camera);
     }
 
     // 화면 가장자리를 어둡게 하는 비네트 오버레이(HUD 아래).
