@@ -101,7 +101,10 @@ public partial class MovementTestScene3D : Node3D
             {
                 if (_index >= _ticks.Count)
                 {
-                    GD.Print($"[movetestauto] case {_caseIndex} done, reason={_reason}, ticks={_ticks.Count}");
+                    var pos = string.Join(" ", _ticks.Count > 0
+                        ? _ticks[^1].Units.Select(u => $"U{u.Id.Value}=({u.Position.Q},{u.Position.R})")
+                        : System.Array.Empty<string>());
+                    GD.Print($"[movetestauto] case {_caseIndex} done, reason={_reason}, ticks={_ticks.Count}, {pos}");
                     if (_caseIndex + 1 < Cases.Length)
                     {
                         LoadCase(_caseIndex + 1);
