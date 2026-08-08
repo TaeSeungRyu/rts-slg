@@ -80,7 +80,44 @@ public partial class MovementTestScene3D : Node3D
         _view = view;
         _camera = camera;
         BuildHud();
-        LoadCase(0);
+
+        var start = 0;
+        foreach (var arg in OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()))
+        {
+            if (arg.StartsWith("--movecase="))
+            {
+                int.TryParse(arg["--movecase=".Length..], out start);
+            }
+        }
+
+        LoadCase(Mathf.Clamp(start, 0, Cases.Length - 1));
+
+        // 헤드리스 자동 재생(예외 검증용): --movetestauto
+        if (OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).Contains("--movetestauto"))
+        {
+            var timer = new Godot.Timer { WaitTime = 0.5, Autostart = true };
+            AddChild(timer);
+            timer.Timeout += () =>
+            {
+                if (_index >= _ticks.Count)
+                {
+                    GD.Print($"[movetestauto] case {_caseIndex} done, reason={_reason}, ticks={_ticks.Count}");
+                    if (_caseIndex + 1 < Cases.Length)
+                    {
+                        LoadCase(_caseIndex + 1);
+                    }
+                    else
+                    {
+                        GD.Print("[movetestauto] all cases done");
+                        timer.Stop();
+                    }
+
+                    return;
+                }
+
+                OnStep();
+            };
+        }
     }
 
     private void LoadCase(int index)
