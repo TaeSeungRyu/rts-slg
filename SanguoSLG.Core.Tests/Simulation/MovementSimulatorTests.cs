@@ -135,6 +135,50 @@ public class MovementSimulatorTests
         Assert.True(perDay.Values.Max() <= 3); // 속도를 넘겨 가지 않는다
     }
 
+    // ── 케이스 3 — 정면 자동 교전 ──
+
+    [Fact]
+    public void 케이스3a_적끼리같은칸을노리면_아무도못들어가고_자동교전한다()
+    {
+        // 짝수 거리(4칸)로 마주 보게 두면 가운데 (2,0)을 동시에 노리는 스텝이 생긴다.
+        // 그 스텝에서 둘의 간격은 2 — 사거리(1) 밖이라 정지가 안 걸리고 경합→교전이 된다
+        var a1 = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack, target: new HexCoord(4, 0),
+            speed: 1, detection: 2, attackRange: 1);
+        var e1 = Unit(2, owner: 2, new HexCoord(4, 0), UnitMode.Attack, target: new HexCoord(0, 0),
+            speed: 1, detection: 2, attackRange: 1);
+
+        var result = PlainField().Advance(new[] { a1, e1 });
+
+        Assert.Equal(StopReason.Engaged, result.Reason);
+
+        // 교전 사건이 있고, 둘 다 가운데 칸에 못 들어갔다(겹치지 않는다)
+        Assert.Contains(result.Ticks.SelectMany(t => t.Events), e => e.Kind == TickEventKind.Engaged);
+        var a1Final = result.Units.Single(u => u.Id.Value == 1).Position;
+        var e1Final = result.Units.Single(u => u.Id.Value == 2).Position;
+        Assert.NotEqual(a1Final, e1Final);
+        Assert.NotEqual(new HexCoord(2, 0), a1Final);
+        Assert.NotEqual(new HexCoord(2, 0), e1Final);
+    }
+
+    [Fact]
+    public void 케이스3b_인접한적끼리_자리를맞바꾸려하면_자동교전한다()
+    {
+        // 인접(1칸)에서 서로의 칸으로 이동 명령 = 정면 맞부딪힘
+        var a1 = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack, target: new HexCoord(1, 0),
+            speed: 1, detection: 1, attackRange: 0);
+        var e1 = Unit(2, owner: 2, new HexCoord(1, 0), UnitMode.Attack, target: new HexCoord(0, 0),
+            speed: 1, detection: 1, attackRange: 0);
+
+        var result = PlainField().Advance(new[] { a1, e1 });
+
+        Assert.Equal(StopReason.Engaged, result.Reason);
+        Assert.Contains(result.Ticks.SelectMany(t => t.Events), e => e.Kind == TickEventKind.Engaged);
+
+        // 자리를 맞바꾸지 못하고 제자리를 지킨다
+        Assert.Equal(new HexCoord(0, 0), result.Units.Single(u => u.Id.Value == 1).Position);
+        Assert.Equal(new HexCoord(1, 0), result.Units.Single(u => u.Id.Value == 2).Position);
+    }
+
     [Fact]
     public void 목표없는유닛끼리는_아무일도없이_전원도착으로끝난다()
     {

@@ -45,6 +45,14 @@ public partial class MovementTestScene3D : Node3D
                 U(1, 1, new HexCoord(0, 2), UnitMode.March, new HexCoord(16, 2), 3, 3, 1),
                 U(2, 2, new HexCoord(8, 3), UnitMode.March, null, 2, 2, 2),
             }),
+        new("케이스 3 — 정면 자동 교전: 같은 칸 경합",
+            "A1·E1(둘 다 공격)이 짝수 거리로 마주 보고 다가온다. 가운데 칸을 동시에 노리는 순간 아무도 못 들어가고 그 자리에서 자동 교전한다(사거리 진입보다 몸이 부딪힌 게 먼저).",
+            8, 4,
+            new[]
+            {
+                U(1, 1, new HexCoord(0, 2), UnitMode.Attack, new HexCoord(8, 2), 1, 2, 1),
+                U(2, 2, new HexCoord(8, 2), UnitMode.Attack, new HexCoord(0, 2), 1, 2, 1),
+            }),
     };
 
     private MapView3D _view = null!;
