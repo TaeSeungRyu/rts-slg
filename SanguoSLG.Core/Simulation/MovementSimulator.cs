@@ -47,18 +47,7 @@ public sealed class MovementSimulator
 
             while (true)
             {
-                // 진행 중단 1 — 공격모드 유닛의 사거리 안에 적이 들어왔다
-                var halter = work.FirstOrDefault(w =>
-                    w.Unit.Mode == UnitMode.Attack && NearestEnemyWithin(w, work, w.Unit.AttackRange) is not null);
-                if (halter is not null)
-                {
-                    var enemy = NearestEnemyWithin(halter, work, halter.Unit.AttackRange);
-                    ticks.Add(Snapshot(day, work,
-                        new[] { new TickEvent(TickEventKind.Halted, halter.Unit.Id, enemy?.Unit.Id) }));
-                    return Finish(ticks, work, StopReason.EnemyInRange, daysElapsed);
-                }
-
-                // 진행 중단 2 — 아무도 더 갈 곳이 없다(전원 목표 도착)
+                // 진행 중단 1 — 아무도 더 갈 곳이 없다(전원 목표 도착)
                 if (work.All(NoIntent))
                 {
                     reason = StopReason.AllArrived;
@@ -106,20 +95,14 @@ public sealed class MovementSimulator
                     }
                 }
 
-                if (desired.Count == 0)
+                // 동시 이동 해석(같은 칸 경합·자리 맞바꾸기·연쇄·점유 막힘)
+                var applied = new Dictionary<int, HexCoord>();
+                var engaged = false;
+                if (desired.Count > 0)
                 {
-                    // 못 움직여도 이번 스텝에 사건(추격 시작·시야 상실)이 있으면 남긴다 —
-                    // 그러지 않으면 속도를 다 쓴 날 끝에 걸린 탐지가 조용히 사라진다
-                    if (events.Count > 0)
-                    {
-                        ticks.Add(Snapshot(day, work, events));
-                    }
-
-                    break; // 이 날은 더 못 간다 — 다음 날로
+                    (applied, var moveEvents, engaged) = Resolve(work, desired);
+                    events.AddRange(moveEvents);
                 }
-
-                var (applied, moveEvents, engaged) = Resolve(work, desired);
-                events.AddRange(moveEvents);
 
                 foreach (var w in work)
                 {
@@ -131,16 +114,36 @@ public sealed class MovementSimulator
                     }
                 }
 
-                ticks.Add(Snapshot(day, work, events));
+                // 진행 중단 — 공격모드 유닛의 사거리 안에 적이 들어왔다.
+                // 이동을 해석한 "뒤"에 본다 — 그래야 정지한 적 칸은 점유 막힘으로 못
+                // 들어가고(케이스1), 적이 비우는 칸은 연쇄로 들어간 뒤(케이스4) 판정된다.
+                var halter = work.FirstOrDefault(w =>
+                    w.Unit.Mode == UnitMode.Attack && NearestEnemyWithin(w, work, w.Unit.AttackRange) is not null);
+                if (halter is not null)
+                {
+                    var enemy = NearestEnemyWithin(halter, work, halter.Unit.AttackRange);
+                    events.Add(new TickEvent(TickEventKind.Halted, halter.Unit.Id, enemy?.Unit.Id));
+                }
+
+                // 사건이 있거나 실제로 움직였으면 스냅샷을 남긴다
+                if (events.Count > 0 || applied.Count > 0)
+                {
+                    ticks.Add(Snapshot(day, work, events));
+                }
+
+                if (halter is not null)
+                {
+                    return Finish(ticks, work, StopReason.EnemyInRange, daysElapsed);
+                }
 
                 if (engaged)
                 {
                     return Finish(ticks, work, StopReason.Engaged, daysElapsed);
                 }
 
-                if (applied.Count == 0)
+                if (desired.Count == 0 || applied.Count == 0)
                 {
-                    break; // 전원이 막혔다 — 다음 날로
+                    break; // 이 날은 더 못 간다(전원 막힘/이동력 소진) — 다음 날로
                 }
             }
 

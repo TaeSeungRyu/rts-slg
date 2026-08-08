@@ -180,6 +180,34 @@ public class MovementSimulatorTests
         Assert.Equal(new HexCoord(1, 0), result.Units.Single(u => u.Id.Value == 2).Position);
     }
 
+    // ── 케이스 4 — 연쇄 이동: a→b, b→c는 충돌이 아니다 ──
+
+    [Fact]
+    public void 케이스4_적이비우는칸으로_추격유닛이연쇄이동한다()
+    {
+        // A1(0,0) 공격이 앞선 E1(1,0)을 쫓고, E1(행군)은 (2,0)으로 비켜 간다.
+        // A1이 E1의 옛 칸(1,0)으로 들어가는 것은 충돌이 아니라 연쇄 이동 — 성립한다.
+        var a1 = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack, target: new HexCoord(9, 0),
+            speed: 1, detection: 2, attackRange: 1);
+        var e1 = Unit(2, owner: 2, new HexCoord(1, 0), UnitMode.March, target: new HexCoord(9, 0),
+            speed: 1, detection: 2, attackRange: 1);
+
+        var result = PlainField().Advance(new[] { a1, e1 });
+
+        // 충돌(교전)이 아니라 이동이 성립했다
+        Assert.DoesNotContain(result.Ticks.SelectMany(t => t.Events), e => e.Kind == TickEventKind.Engaged);
+
+        var a1Final = result.Units.Single(u => u.Id.Value == 1).Position;
+        var e1Final = result.Units.Single(u => u.Id.Value == 2).Position;
+
+        // A1이 E1이 비운 (1,0)으로 실제 진입했고(연쇄), E1은 앞으로 나아갔다
+        Assert.Equal(new HexCoord(1, 0), a1Final);
+        Assert.Equal(new HexCoord(2, 0), e1Final);
+
+        // 이동 후 사거리 안에 들어와 진행이 멈춘다(그 뒤 전투 페이즈: A1 공격·E1 반격 없음)
+        Assert.Equal(StopReason.EnemyInRange, result.Reason);
+    }
+
     [Fact]
     public void 목표없는유닛끼리는_아무일도없이_전원도착으로끝난다()
     {

@@ -53,6 +53,14 @@ public partial class MovementTestScene3D : Node3D
                 U(1, 1, new HexCoord(0, 2), UnitMode.Attack, new HexCoord(8, 2), 1, 2, 1),
                 U(2, 2, new HexCoord(8, 2), UnitMode.Attack, new HexCoord(0, 2), 1, 2, 1),
             }),
+        new("케이스 4 — 연쇄 이동: a→b, b→c",
+            "A1(공격)이 앞선 E1(행군)을 쫓고 E1은 앞으로 비켜 간다. A1이 E1이 비운 칸으로 들어가는 건 충돌이 아니라 연쇄 이동 → 성립. 이동 후 사거리 안이면 정지·전투.",
+            10, 4,
+            new[]
+            {
+                U(1, 1, new HexCoord(0, 2), UnitMode.Attack, new HexCoord(9, 2), 1, 2, 1),
+                U(2, 2, new HexCoord(1, 2), UnitMode.March, new HexCoord(9, 2), 1, 2, 1),
+            }),
     };
 
     private MapView3D _view = null!;
