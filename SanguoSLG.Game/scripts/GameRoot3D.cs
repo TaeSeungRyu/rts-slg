@@ -42,8 +42,9 @@ public partial class GameRoot3D : Node3D
             }
         }
 
-        // 이동 시뮬레이션 GUI 검증(doc/test/movement-cases.md): --movetest
-        if (OS.GetCmdlineArgs().Contains("--movetest"))
+        // 이동 시뮬레이션 GUI 검증(doc/test/movement-cases.md): --movetest.
+        // `--` 뒤로 넘어온 유저 인자(GetCmdlineUserArgs)도 함께 본다
+        if (OS.GetCmdlineArgs().Contains("--movetest") || OS.GetCmdlineUserArgs().Contains("--movetest"))
         {
             BuildMovementTest();
             return;
