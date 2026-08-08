@@ -239,21 +239,20 @@ public sealed class MovementSimulator
                 }
             }
 
-            // 같은 칸 경합(둘 이상이 한 칸을 노림)
+            // 같은 칸 경합(둘 이상이 한 칸을 노림): 명령 순번이 앞선 유닛이 그 칸을
+            // 차지하고 나머지는 막힌다(2026-08-08 사용자 정의). 아무도 못 들어가면 둘이
+            // 한 칸 벌어진 채 멈춰 사거리 밖에서 헛교전이 되므로, 우선순위로 밀어 넣어
+            // 인접하게 만든 뒤 사거리 규칙에 맡긴다.
             foreach (var group in work
                 .Where(w => applied.ContainsKey(w.Unit.Id.Value))
                 .GroupBy(w => applied[w.Unit.Id.Value])
                 .Where(g => g.Count() > 1))
             {
-                var claimants = group.OrderBy(w => w.Unit.Id.Value).ToList();
-                var enemyPair = FirstEnemyPair(claimants);
-                if (enemyPair is not null)
-                {
-                    engaged = true;
-                    events.Add(new TickEvent(TickEventKind.Engaged, enemyPair.Value.Item1, enemyPair.Value.Item2));
-                }
-
-                foreach (var w in claimants)
+                var losers = group
+                    .OrderBy(w => w.Unit.CommandOrder)
+                    .ThenBy(w => w.Unit.Id.Value)
+                    .Skip(1);
+                foreach (var w in losers)
                 {
                     applied.Remove(w.Unit.Id.Value);
                 }
@@ -290,22 +289,6 @@ public sealed class MovementSimulator
         while (changed);
 
         return (applied, events, engaged);
-    }
-
-    private static (UnitId, UnitId)? FirstEnemyPair(List<Working> claimants)
-    {
-        for (var i = 0; i < claimants.Count; i++)
-        {
-            for (var j = i + 1; j < claimants.Count; j++)
-            {
-                if (claimants[i].Unit.Owner != claimants[j].Unit.Owner)
-                {
-                    return (claimants[i].Unit.Id, claimants[j].Unit.Id);
-                }
-            }
-        }
-
-        return null;
     }
 
     private static MovementTick Snapshot(int day, List<Working> work, IReadOnlyList<TickEvent> events) =>

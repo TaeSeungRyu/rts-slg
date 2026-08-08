@@ -138,10 +138,11 @@ public class MovementSimulatorTests
     // ── 케이스 3 — 정면 자동 교전 ──
 
     [Fact]
-    public void 케이스3a_적끼리같은칸을노리면_아무도못들어가고_자동교전한다()
+    public void 케이스3a_같은칸경합은_명령순번앞선유닛이차지하고_인접해서전투로들어간다()
     {
         // 짝수 거리(4칸)로 마주 보게 두면 가운데 (2,0)을 동시에 노리는 스텝이 생긴다.
-        // 그 스텝에서 둘의 간격은 2 — 사거리(1) 밖이라 정지가 안 걸리고 경합→교전이 된다
+        // 예전엔 둘 다 멈춰 한 칸 벌어진 채 헛교전이었으나, 이제 명령 순번(A1=1<E1=2)이
+        // 앞선 A1이 그 칸을 차지하고 E1은 막힌다 → 인접(사거리 1) → 전투 페이즈
         var a1 = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack, target: new HexCoord(4, 0),
             speed: 1, detection: 2, attackRange: 1);
         var e1 = Unit(2, owner: 2, new HexCoord(4, 0), UnitMode.Attack, target: new HexCoord(0, 0),
@@ -149,15 +150,15 @@ public class MovementSimulatorTests
 
         var result = PlainField().Advance(new[] { a1, e1 });
 
-        Assert.Equal(StopReason.Engaged, result.Reason);
+        Assert.Equal(StopReason.EnemyInRange, result.Reason);
 
-        // 교전 사건이 있고, 둘 다 가운데 칸에 못 들어갔다(겹치지 않는다)
-        Assert.Contains(result.Ticks.SelectMany(t => t.Events), e => e.Kind == TickEventKind.Engaged);
         var a1Final = result.Units.Single(u => u.Id.Value == 1).Position;
         var e1Final = result.Units.Single(u => u.Id.Value == 2).Position;
+
+        // 우선순위 A1이 경합 칸(2,0)을 차지하고, 둘은 인접(사거리 1 안)에서 멈춘다
+        Assert.Equal(new HexCoord(2, 0), a1Final);
+        Assert.Equal(1, a1Final.Distance(e1Final));
         Assert.NotEqual(a1Final, e1Final);
-        Assert.NotEqual(new HexCoord(2, 0), a1Final);
-        Assert.NotEqual(new HexCoord(2, 0), e1Final);
     }
 
     [Fact]
