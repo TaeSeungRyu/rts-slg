@@ -208,6 +208,27 @@ public class MovementSimulatorTests
         Assert.Equal(StopReason.EnemyInRange, result.Reason);
     }
 
+    // ── 케이스 8 — 아군에 막힘: 교전 없음 + 3일 정지 ──
+
+    [Fact]
+    public void 케이스8_아군이외길을막으면_우회없이_3일뒤정지한다()
+    {
+        // 한 줄짜리 외길. 아군 blocker가 (2,0)에 버티고, mover는 그 너머 (4,0)이 목표.
+        // 경로는 1회 계산이라 우회하지 않고 blocker 앞에서 기다린다 → 3일 뒤 정지 알림.
+        var map = new HexMap(0, 4, 0, 0);
+        var sim = new MovementSimulator(new PassabilityMap(map, [], []));
+        var blocker = Unit(1, owner: 1, new HexCoord(2, 0), UnitMode.March, target: null, speed: 1);
+        var mover = Unit(3, owner: 1, new HexCoord(0, 0), UnitMode.March, target: new HexCoord(4, 0), speed: 1);
+
+        var result = sim.Advance(new[] { blocker, mover });
+
+        Assert.Equal(StopReason.Blocked, result.Reason);
+        // 아군끼리는 교전하지 않는다
+        Assert.DoesNotContain(result.Ticks.SelectMany(t => t.Events), e => e.Kind == TickEventKind.Engaged);
+        // 한 칸 전진해 blocker 바로 뒤(1,0)에서 멈춘다 — 우회하지 않는다
+        Assert.Equal(new HexCoord(1, 0), result.Units.Single(u => u.Id.Value == 3).Position);
+    }
+
     [Fact]
     public void 목표없는유닛끼리는_아무일도없이_전원도착으로끝난다()
     {

@@ -24,6 +24,11 @@ public sealed class MovementSimulator
         public bool Pursuing;
         public int BlockedDays;
 
+        // 남은 경로(현재 칸 제외). 비추격은 목표 지정 시 1회, 추격은 매일 재계산한다
+        // (design-movement.md 규칙 4). null이면 미계산. 유닛에 막히면 재계산 없이 기다린다.
+        public Queue<HexCoord>? Path;
+        public int PathDay;
+
         public Working(FieldUnit unit) => Unit = unit;
     }
 
@@ -63,16 +68,19 @@ public sealed class MovementSimulator
                     if (seen is not null && !w.Pursuing)
                     {
                         w.Pursuing = true;
+                        w.Path = null; // 추격 시작 — 적으로 경로를 다시 잡는다
                         events.Add(new TickEvent(TickEventKind.PursuitStarted, w.Unit.Id, seen.Unit.Id));
                     }
                     else if (seen is null && w.Pursuing)
                     {
                         w.Pursuing = false;
+                        w.Path = null; // 시야 상실 — 원래 목표로 경로를 다시 잡는다
                         events.Add(new TickEvent(TickEventKind.PursuitEnded, w.Unit.Id, null));
                     }
                 }
 
-                // 이번 스텝에 움직이려는 유닛의 희망 칸을 모은다
+                // 이번 스텝에 움직이려는 유닛의 희망 칸을 모은다.
+                // 경로는 캐시를 따른다 — 비추격은 목표까지 1회, 추격은 매일 재계산.
                 var desired = new Dictionary<int, HexCoord>();
                 foreach (var w in work)
                 {
@@ -81,17 +89,24 @@ public sealed class MovementSimulator
                         continue;
                     }
 
-                    var goal = w.Pursuing
-                        ? NearestEnemyWithin(w, work, w.Unit.Detection)?.Unit.Position
-                        : w.Unit.Target;
-                    if (goal is null || goal == w.Unit.Position)
+                    if (w.Pursuing)
                     {
-                        continue;
+                        var goal = NearestEnemyWithin(w, work, w.Unit.Detection)?.Unit.Position;
+                        if (goal is { } g && (w.Path is null || w.PathDay != day))
+                        {
+                            w.Path = BuildPath(w, g);
+                            w.PathDay = day;
+                        }
+                    }
+                    else if (w.Unit.Target is { } t && t != w.Unit.Position && w.Path is null)
+                    {
+                        w.Path = BuildPath(w, t);
+                        w.PathDay = day;
                     }
 
-                    if (NextStep(w, goal.Value) is { } next)
+                    if (w.Path is { Count: > 0 })
                     {
-                        desired[w.Unit.Id.Value] = next;
+                        desired[w.Unit.Id.Value] = w.Path.Peek();
                     }
                 }
 
@@ -111,6 +126,11 @@ public sealed class MovementSimulator
                         w.Unit = w.Unit.MoveTo(tile);
                         w.MovedToday++;
                         movedThisDay.Add(w.Unit.Id.Value);
+                        // 이번에 밟은 칸은 경로에서 소비한다. 막혀서 못 가면 그대로 둬 다음 스텝에 다시 노린다
+                        if (w.Path is { Count: > 0 } && w.Path.Peek() == tile)
+                        {
+                            w.Path.Dequeue();
+                        }
                     }
                 }
 
@@ -187,14 +207,22 @@ public sealed class MovementSimulator
         .ThenBy(o => o.Unit.Id.Value)
         .FirstOrDefault();
 
-    private HexCoord? NextStep(Working w, HexCoord goal)
+    // 현재 위치에서 goal까지의 남은 경로(시작 칸 제외)를 큐로 만든다.
+    // 지형 통행만 본다 — 유닛 점유는 스텝 해석에서 다룬다. 재계산해도 결정적(A*).
+    private Queue<HexCoord> BuildPath(Working w, HexCoord goal)
     {
         var domain = w.Unit.Domain;
         var start = w.Unit.Position;
         var pathfinder = new HexPathfinder(c =>
             c == start || c == goal || _passability.CanEnter(domain, c));
         var path = pathfinder.FindPath(start, goal);
-        return path.Count >= 2 ? path[1] : null;
+        var queue = new Queue<HexCoord>();
+        for (var i = 1; i < path.Count; i++)
+        {
+            queue.Enqueue(path[i]);
+        }
+
+        return queue;
     }
 
     // 동시 이동 해석: 같은 칸 경합·자리 맞바꾸기·점유 칸 막힘을 풀고, 적끼리면 교전.
