@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
@@ -9,62 +10,123 @@ namespace SanguoSLG.Game;
 /// <summary>
 /// 이동 시뮬레이션 GUI 검증 하베스트(doc/test/movement-cases.md). Core
 /// <see cref="MovementSimulator"/>가 계산한 스텝(틱)을 "진행" 버튼으로 하나씩
-/// 재생해, 탐지→추격→사거리 정지 같은 규칙을 눈으로 확인한다.
+/// 재생해 이동 규칙을 눈으로 확인한다. "케이스 ▶▶"로 시나리오를 전환한다.
 /// 표현 전용 — 규칙 판정은 전부 Core가 소유한다.
 /// </summary>
 public partial class MovementTestScene3D : Node3D
 {
     private static readonly Color Blue = new(0.24f, 0.44f, 0.86f);
     private static readonly Color Red = new(0.82f, 0.22f, 0.18f);
-
     private const float StepSeconds = 0.4f;
 
+    // 케이스 정의: 제목·설명·맵 크기·부대 목록(색·라벨은 소속/모드에서 파생)
+    private sealed record CaseDef(string Title, string Note, int MaxQ, int MaxR, FieldUnit[] Units);
+
+    private static FieldUnit U(int id, int owner, HexCoord pos, UnitMode mode, HexCoord? target,
+        int speed, int detection, int attackRange) =>
+        new(new UnitId(id), new FactionId(owner), pos, speed, detection, attackRange,
+            MovementDomain.Land, mode, target, CommandOrder: id);
+
+    private static readonly CaseDef[] Cases =
+    {
+        new("케이스 1 — 공격모드 조우: 탐지 → 추격 → 사거리 정지",
+            "A1(공격)이 먼 목표로 가다 정지한 E1을 탐지 범위(2)에서 발견하면 추격으로 전환, 사거리(1)에 닿으면 멈춘다.",
+            12, 4,
+            new[]
+            {
+                U(1, 1, new HexCoord(0, 2), UnitMode.Attack, new HexCoord(12, 2), 2, 2, 1),
+                U(2, 2, new HexCoord(9, 2), UnitMode.March, null, 2, 2, 1),
+            }),
+        new("케이스 2 — 행군모드 통과: 무시 + 감속",
+            "A1(행군, 속도3)은 E1을 무시하고 지나간다. E1이 탐지 범위(3) 안에 든 날은 속도가 2로 준다. E1 사거리(2)를 지나는 동안은 전투 시 70% 일방 피해(반격 없음) — 피해는 전투 페이즈 소관이라 여기선 통과만 표시.",
+            16, 4,
+            new[]
+            {
+                U(1, 1, new HexCoord(0, 2), UnitMode.March, new HexCoord(16, 2), 3, 3, 1),
+                U(2, 2, new HexCoord(8, 3), UnitMode.March, null, 2, 2, 2),
+            }),
+    };
+
     private MapView3D _view = null!;
+    private CameraController3D _camera = null!;
+
+    private int _caseIndex;
     private readonly Dictionary<int, Node3D> _tokens = new();
+    private readonly List<Node3D> _spawned = new();
     private IReadOnlyList<MovementTick> _ticks = new List<MovementTick>();
     private StopReason _reason;
     private int _index;
     private bool _animating;
+    private int _lastDayLogged;
+    private readonly HashSet<int> _underFire = new();
 
     private Button _stepButton = null!;
+    private Button _caseButton = null!;
+    private Label _titleLabel = null!;
+    private Label _noteLabel = null!;
     private Label _logLabel = null!;
     private readonly List<string> _logLines = new();
 
     public void Build(MapView3D view, CameraController3D camera)
     {
         _view = view;
+        _camera = camera;
+        BuildHud();
+        LoadCase(0);
+    }
 
-        // 케이스 1 — 공격모드 A1이 먼 목표로 가다 정지한 적 E1을 탐지·추격·사거리 정지
-        var a1 = new FieldUnit(new UnitId(1), new FactionId(1), new HexCoord(0, 2),
-            Speed: 2, Detection: 2, AttackRange: 1, MovementDomain.Land,
-            UnitMode.Attack, new HexCoord(12, 2), CommandOrder: 0);
-        var e1 = new FieldUnit(new UnitId(2), new FactionId(2), new HexCoord(9, 2),
-            Speed: 2, Detection: 2, AttackRange: 1, MovementDomain.Land,
-            UnitMode.March, Target: null, CommandOrder: 0);
+    private void LoadCase(int index)
+    {
+        _caseIndex = index;
+        var def = Cases[index];
 
-        var map = new HexMap(0, 12, 0, 4);
-        var result = new MovementSimulator(new PassabilityMap(map, [], [])).Advance(new[] { a1, e1 });
+        foreach (var node in _spawned)
+        {
+            node.QueueFree();
+        }
+
+        _spawned.Clear();
+        _tokens.Clear();
+        _logLines.Clear();
+        _index = 0;
+        _animating = false;
+        _lastDayLogged = 0;
+        _underFire.Clear();
+
+        var map = new HexMap(0, def.MaxQ, 0, def.MaxR);
+        var result = new MovementSimulator(new PassabilityMap(map, [], [])).Advance(def.Units);
         _ticks = result.Ticks;
         _reason = result.Reason;
 
-        SpawnToken(a1, Blue, "A1 [공격]", faceEast: true);
-        SpawnToken(e1, Red, "E1 [정지]", faceEast: false);
-        AddDetectionRing(a1);
+        foreach (var unit in def.Units)
+        {
+            SpawnToken(unit);
+        }
 
-        BuildHud();
+        _titleLabel.Text = def.Title;
+        _noteLabel.Text = def.Note;
+        AppendLog("진행을 눌러 스텝을 재생하세요.");
 
-        camera.Setup(_view.HexToWorld(new HexCoord(6, 2)), 9f);
+        _camera.Setup(_view.HexToWorld(new HexCoord(def.MaxQ / 2, def.MaxR / 2)), def.MaxQ * 0.85f + 3f);
+        UpdateButtons();
     }
 
-    private void SpawnToken(FieldUnit unit, Color color, string label, bool faceEast)
+    private void SpawnToken(FieldUnit unit)
     {
+        var attacker = unit.Owner.Value == 1;
+        var moving = unit.Target is not null;
+        var modeKo = unit.Mode == UnitMode.Attack ? "공격" : moving ? "행군" : "정지";
+        var label = $"{(attacker ? "A" : "E")}{unit.Id.Value} [{modeKo}]";
+        var color = attacker ? Blue : Red;
+        var faceEast = unit.Target is { } t ? t.Q > unit.Position.Q : !attacker;
+
         var root = new Node3D
         {
             Position = _view.HexToWorld(unit.Position) + new Vector3(0f, _view.TileTopY, 0f),
-            // 모델 정면은 +Z(북). 동서로 세우려면 ±90도 돌린다
             RotationDegrees = new Vector3(0f, faceEast ? -90f : 90f, 0f),
         };
         AddChild(root);
+        _spawned.Add(root);
 
         var model = GD.Load<PackedScene>("res://assets/models/troop-swordsman.glb").Instantiate<Node3D>();
         root.AddChild(model);
@@ -86,69 +148,95 @@ public partial class MovementTestScene3D : Node3D
         });
 
         _tokens[unit.Id.Value] = root;
+
+        // 이동 유닛엔 탐지 범위 고리(파랑), 정지 방어자엔 사거리 고리(빨강)를 그린다
+        if (moving)
+        {
+            AddRing(root, unit.Detection, new Color(0.30f, 0.55f, 1f, 0.6f));
+        }
+        else if (unit.AttackRange >= 1)
+        {
+            AddRing(root, unit.AttackRange, new Color(1f, 0.35f, 0.30f, 0.6f));
+        }
     }
 
-    // A1의 탐지 범위(2칸)를 바닥 고리로 그린다 — E1이 이 안에 들면 추격이 시작된다.
-    private void AddDetectionRing(FieldUnit unit)
+    private void AddRing(Node3D token, int tiles, Color color)
     {
-        if (!_tokens.TryGetValue(unit.Id.Value, out var token))
-        {
-            return;
-        }
-
-        var spacing = _view.HexWorldSize * Mathf.Sqrt(3f);
-        var radius = unit.Detection * spacing;
-        var ring = new MeshInstance3D
+        var radius = tiles * _view.HexWorldSize * Mathf.Sqrt(3f);
+        token.AddChild(new MeshInstance3D
         {
             Mesh = new TorusMesh { InnerRadius = radius - 0.02f, OuterRadius = radius + 0.02f, Rings = 48, RingSegments = 8 },
             Position = new Vector3(0f, -_view.TileTopY + 0.02f, 0f),
-            // 토큰이 yaw로 회전해 있으므로 고리는 카메라 기준 수평이 되도록 상쇄 없이 눕힌다
             MaterialOverride = new StandardMaterial3D
             {
-                AlbedoColor = new Color(0.30f, 0.55f, 1f, 0.6f),
+                AlbedoColor = color,
                 ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
                 Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
             },
-        };
-        token.AddChild(ring);
+        });
     }
 
     private void BuildHud()
     {
         var layer = new CanvasLayer();
         AddChild(layer);
-
         var font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
 
-        var panel = new PanelContainer { AnchorTop = 1f, AnchorBottom = 1f, OffsetTop = -196f, OffsetLeft = 16f, OffsetBottom = -16f, OffsetRight = 440f };
-        var style = new StyleBoxFlat { BgColor = new Color(0.10f, 0.11f, 0.13f, 0.94f), ContentMarginLeft = 16, ContentMarginRight = 16, ContentMarginTop = 12, ContentMarginBottom = 12 };
-        panel.AddThemeStyleboxOverride("panel", style);
+        var panel = new PanelContainer
+        {
+            AnchorTop = 1f, AnchorBottom = 1f,
+            OffsetTop = -232f, OffsetLeft = 16f, OffsetBottom = -16f, OffsetRight = 470f,
+        };
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color(0.10f, 0.11f, 0.13f, 0.94f),
+            ContentMarginLeft = 16, ContentMarginRight = 16, ContentMarginTop = 12, ContentMarginBottom = 12,
+        });
         layer.AddChild(panel);
 
         var box = new VBoxContainer();
         box.AddThemeConstantOverride("separation", 8);
         panel.AddChild(box);
 
-        var title = new Label { Text = "케이스 1 — 공격모드 조우: 탐지 → 추격 → 사거리 정지" };
-        title.AddThemeFontOverride("font", font);
-        title.AddThemeFontSizeOverride("font_size", 16);
-        title.AddThemeColorOverride("font_color", new Color(0.82f, 0.68f, 0.38f));
-        box.AddChild(title);
+        _titleLabel = MakeLabel(font, 16, new Color(0.82f, 0.68f, 0.38f));
+        box.AddChild(_titleLabel);
 
-        _logLabel = new Label { Text = "진행을 눌러 하루씩(스텝) 재생하세요.", AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        _logLabel.AddThemeFontOverride("font", font);
-        _logLabel.AddThemeFontSizeOverride("font_size", 13);
-        _logLabel.AddThemeColorOverride("font_color", new Color(0.90f, 0.92f, 0.95f));
-        _logLabel.CustomMinimumSize = new Vector2(408f, 96f);
+        _noteLabel = MakeLabel(font, 12, new Color(0.72f, 0.76f, 0.82f));
+        _noteLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _noteLabel.CustomMinimumSize = new Vector2(438f, 46f);
+        box.AddChild(_noteLabel);
+
+        _logLabel = MakeLabel(font, 13, new Color(0.90f, 0.92f, 0.95f));
+        _logLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _logLabel.CustomMinimumSize = new Vector2(438f, 84f);
+        _logLabel.VerticalAlignment = VerticalAlignment.Top;
         box.AddChild(_logLabel);
 
-        _stepButton = new Button { Text = "진행 ▶  (스텝)" };
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 8);
+        box.AddChild(row);
+
+        _stepButton = new Button();
         _stepButton.AddThemeFontOverride("font", font);
         _stepButton.AddThemeFontSizeOverride("font_size", 15);
         _stepButton.Pressed += OnStep;
-        box.AddChild(_stepButton);
+        _stepButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        row.AddChild(_stepButton);
 
-        UpdateButton();
+        _caseButton = new Button { Text = "케이스 ▶▶" };
+        _caseButton.AddThemeFontOverride("font", font);
+        _caseButton.AddThemeFontSizeOverride("font_size", 15);
+        _caseButton.Pressed += () => LoadCase((_caseIndex + 1) % Cases.Length);
+        row.AddChild(_caseButton);
+    }
+
+    private static Label MakeLabel(Font font, int size, Color color)
+    {
+        var label = new Label();
+        label.AddThemeFontOverride("font", font);
+        label.AddThemeFontSizeOverride("font_size", size);
+        label.AddThemeColorOverride("font_color", color);
+        return label;
     }
 
     private void OnStep()
@@ -160,6 +248,12 @@ public partial class MovementTestScene3D : Node3D
 
         var tick = _ticks[_index++];
         _animating = true;
+
+        if (tick.Day != _lastDayLogged)
+        {
+            _lastDayLogged = tick.Day;
+            AppendLog($"── {tick.Day}일차 ──");
+        }
 
         foreach (var unit in tick.Units)
         {
@@ -176,6 +270,8 @@ public partial class MovementTestScene3D : Node3D
             AppendLog(Describe(e));
         }
 
+        AnnotateFire(tick);
+
         if (_index >= _ticks.Count)
         {
             AppendLog($"■ 진행 종료 — {ReasonText(_reason)}");
@@ -186,19 +282,37 @@ public partial class MovementTestScene3D : Node3D
         clock.Finished += () =>
         {
             _animating = false;
-            UpdateButton();
+            UpdateButtons();
         };
 
-        UpdateButton();
+        UpdateButtons();
     }
 
-    private void UpdateButton()
+    // 행군 유닛이 적 사거리 안에 들면 "일방 피해" 안내(전투 페이즈 소관 — 여기선 표시만).
+    private void AnnotateFire(MovementTick tick)
+    {
+        foreach (var u in tick.Units.Where(u => u.Mode == UnitMode.March && u.Target is not null))
+        {
+            var shooter = tick.Units.FirstOrDefault(v =>
+                v.Owner != u.Owner && u.Position.Distance(v.Position) <= v.AttackRange);
+            var underFire = shooter is not null;
+            if (underFire && _underFire.Add(u.Id.Value))
+            {
+                AppendLog($"▲ A{u.Id.Value} 적 사거리 통과 — 전투 시 70% 일방 피해(반격 없음)");
+            }
+            else if (!underFire)
+            {
+                _underFire.Remove(u.Id.Value);
+            }
+        }
+    }
+
+    private void UpdateButtons()
     {
         var done = _index >= _ticks.Count;
         _stepButton.Disabled = _animating || done;
-        _stepButton.Text = done
-            ? $"완료 ({_ticks.Count}스텝)"
-            : $"진행 ▶  (스텝 {_index + 1}/{_ticks.Count})";
+        _stepButton.Text = done ? $"완료 ({_ticks.Count}스텝)" : $"진행 ▶ ({_index + 1}/{_ticks.Count})";
+        _caseButton.Disabled = _animating;
     }
 
     private void AppendLog(string line)

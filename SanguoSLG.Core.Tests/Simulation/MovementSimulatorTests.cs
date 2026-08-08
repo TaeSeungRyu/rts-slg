@@ -88,6 +88,53 @@ public class MovementSimulatorTests
         Assert.Contains(last.Events, e => e.Kind == TickEventKind.Halted && e.Unit.Value == 1);
     }
 
+    // ── 케이스 2 — 행군모드 통과: 무시 + 감속 ──
+
+    [Fact]
+    public void 케이스2_행군모드는_적을무시하고_목표까지지나간다()
+    {
+        var a1 = Unit(1, owner: 1, new HexCoord(0, 2), UnitMode.March, target: new HexCoord(16, 2),
+            speed: 3, detection: 3);
+        var e1 = Unit(2, owner: 2, new HexCoord(8, 3), UnitMode.March, target: null,
+            speed: 2, detection: 2, attackRange: 2);
+
+        var result = PlainField().Advance(new[] { a1, e1 });
+
+        // 무시하고 계속 가 목표에 도착한다 — 추격도 정지도 없다
+        Assert.Equal(StopReason.AllArrived, result.Reason);
+        Assert.DoesNotContain(result.Ticks.SelectMany(t => t.Events),
+            e => e.Kind == TickEventKind.PursuitStarted);
+        Assert.Equal(new HexCoord(16, 2), result.Units.Single(u => u.Id.Value == 1).Position);
+    }
+
+    [Fact]
+    public void 케이스2_적탐지범위안에서는_그날속도가_3에서2로준다()
+    {
+        var a1 = Unit(1, owner: 1, new HexCoord(0, 2), UnitMode.March, target: new HexCoord(16, 2),
+            speed: 3, detection: 3);
+        var e1 = Unit(2, owner: 2, new HexCoord(8, 3), UnitMode.March, target: null,
+            speed: 2, detection: 2, attackRange: 2);
+
+        var result = PlainField().Advance(new[] { a1, e1 });
+
+        // 하루에 A1이 움직인 칸수를 센다
+        var perDay = new Dictionary<int, int>();
+        var last = new HexCoord(0, 2);
+        foreach (var tick in result.Ticks)
+        {
+            var pos = tick.Units.Single(u => u.Id.Value == 1).Position;
+            if (pos != last)
+            {
+                perDay[tick.Day] = perDay.GetValueOrDefault(tick.Day) + 1;
+                last = pos;
+            }
+        }
+
+        Assert.Contains(3, perDay.Values); // 평상시엔 속도 3
+        Assert.Contains(2, perDay.Values); // 탐지 범위 안에서는 2로 감속
+        Assert.True(perDay.Values.Max() <= 3); // 속도를 넘겨 가지 않는다
+    }
+
     [Fact]
     public void 목표없는유닛끼리는_아무일도없이_전원도착으로끝난다()
     {
