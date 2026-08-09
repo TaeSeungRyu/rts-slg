@@ -261,6 +261,44 @@ public class MovementSimulatorTests
         Assert.Equal(new HexCoord(0, 6), result.Units.Single(u => u.Id.Value == 1).Position);
     }
 
+    // ── 케이스 7 — 탐지 동률: 가장 가깝고, 같으면 명령 순번 ──
+
+    [Fact]
+    public void 케이스7_같은거리의두적은_명령순번앞선쪽을_추격한다()
+    {
+        // E1(id2)·E2(id3) 모두 A1에서 거리 2 — 동률이면 명령 순번(=id) 앞선 E1을 쫓는다
+        var a1 = Unit(1, owner: 1, new HexCoord(3, 3), UnitMode.Attack, target: null,
+            speed: 1, detection: 2, attackRange: 1);
+        var e1 = Unit(2, owner: 2, new HexCoord(5, 3), UnitMode.March, target: null, speed: 1);
+        var e2 = Unit(3, owner: 2, new HexCoord(3, 1), UnitMode.March, target: null, speed: 1);
+
+        var result = new MovementSimulator(new PassabilityMap(new HexMap(0, 8, 0, 6), [], []))
+            .Advance(new[] { a1, e1, e2 });
+
+        var firstPursuit = result.Ticks
+            .SelectMany(t => t.Events)
+            .First(e => e.Kind == TickEventKind.PursuitStarted && e.Unit.Value == 1);
+        Assert.Equal(2, firstPursuit.Other!.Value.Value); // E1(id2)
+    }
+
+    [Fact]
+    public void 케이스7_더가까운적이있으면_명령순번과무관하게_가까운쪽을추격한다()
+    {
+        // E1(id2)은 거리 2, E2(id3)은 거리 1 — 명령 순번은 E1이 앞서도 더 가까운 E2를 쫓는다
+        var a1 = Unit(1, owner: 1, new HexCoord(3, 3), UnitMode.Attack, target: null,
+            speed: 1, detection: 2, attackRange: 1);
+        var e1 = Unit(2, owner: 2, new HexCoord(5, 3), UnitMode.March, target: null, speed: 1);
+        var e2 = Unit(3, owner: 2, new HexCoord(4, 3), UnitMode.March, target: null, speed: 1);
+
+        var result = new MovementSimulator(new PassabilityMap(new HexMap(0, 8, 0, 6), [], []))
+            .Advance(new[] { a1, e1, e2 });
+
+        var firstPursuit = result.Ticks
+            .SelectMany(t => t.Events)
+            .First(e => e.Kind == TickEventKind.PursuitStarted && e.Unit.Value == 1);
+        Assert.Equal(3, firstPursuit.Other!.Value.Value); // E2(id3), 더 가까움
+    }
+
     // ── 케이스 8 — 아군에 막힘: 교전 없음 + 3일 정지 ──
 
     [Fact]

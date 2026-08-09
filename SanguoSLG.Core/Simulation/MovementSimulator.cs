@@ -52,16 +52,10 @@ public sealed class MovementSimulator
 
             while (true)
             {
-                // 진행 중단 1 — 아무도 더 갈 곳이 없다(전원 목표 도착)
-                if (work.All(NoIntent))
-                {
-                    reason = StopReason.AllArrived;
-                    return Finish(ticks, work, reason, daysElapsed);
-                }
-
                 var events = new List<TickEvent>();
 
-                // 공격모드 유닛의 추격 상태를 갱신한다(탐지 시작/시야 상실)
+                // 공격모드 유닛의 추격 상태를 갱신한다(탐지 시작/시야 상실).
+                // 도착 판정보다 먼저 — 목표 없이 서 있어도 적이 탐지에 들면 추격해야 한다.
                 foreach (var w in work.Where(w => w.Unit.Mode == UnitMode.Attack))
                 {
                     var seen = NearestEnemyWithin(w, work, w.Unit.Detection);
@@ -77,6 +71,12 @@ public sealed class MovementSimulator
                         w.Path = null; // 시야 상실 — 원래 목표로 경로를 다시 잡는다
                         events.Add(new TickEvent(TickEventKind.PursuitEnded, w.Unit.Id, null));
                     }
+                }
+
+                // 진행 중단 1 — 아무도 더 갈 곳이 없다(전원 목표 도착, 추격 중이면 도착 아님)
+                if (work.All(NoIntent))
+                {
+                    return Finish(ticks, work, StopReason.AllArrived, daysElapsed);
                 }
 
                 // 이번 스텝에 움직이려는 유닛의 희망 칸을 모은다.
