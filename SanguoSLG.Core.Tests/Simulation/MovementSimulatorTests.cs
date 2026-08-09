@@ -236,6 +236,31 @@ public class MovementSimulatorTests
         Assert.Equal(1, a2Final.Distance(e1Final));
     }
 
+    // ── 케이스 6 — 추격 중단: 시야를 잃으면 원래 목표로 복귀 ──
+
+    [Fact]
+    public void 케이스6_추격하던적이_탐지범위를벗어나면_추격을버리고_원래목표로복귀한다()
+    {
+        // A1(공격, 북쪽 목표)이 빠른 척후 E1을 잠깐 탐지·추격하다, E1이 더 빨라
+        // 탐지 밖으로 벗어나면 추격을 버리고 원래 목표(0,6)로 돌아가 도착한다.
+        // E1 탐지 1 — A1 근처에서도 감속하지 않아 속도 3을 온전히 써 벗어난다.
+        var a1 = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack, target: new HexCoord(0, 6),
+            speed: 2, detection: 2, attackRange: 1);
+        var e1 = Unit(2, owner: 2, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(12, 0),
+            speed: 3, detection: 1, attackRange: 1);
+
+        var result = new MovementSimulator(new PassabilityMap(new HexMap(0, 12, 0, 6), [], []))
+            .Advance(new[] { a1, e1 });
+
+        var events = result.Ticks.SelectMany(t => t.Events).ToList();
+        Assert.Contains(events, e => e.Kind == TickEventKind.PursuitStarted && e.Unit.Value == 1);
+        Assert.Contains(events, e => e.Kind == TickEventKind.PursuitEnded && e.Unit.Value == 1);
+
+        // 추격을 버리고 원래 목표(0,6)로 복귀해 도착한다 — 목표가 보존됐다
+        Assert.Equal(StopReason.AllArrived, result.Reason);
+        Assert.Equal(new HexCoord(0, 6), result.Units.Single(u => u.Id.Value == 1).Position);
+    }
+
     // ── 케이스 8 — 아군에 막힘: 교전 없음 + 3일 정지 ──
 
     [Fact]

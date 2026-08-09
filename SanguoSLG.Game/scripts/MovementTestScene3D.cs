@@ -70,6 +70,14 @@ public partial class MovementTestScene3D : Node3D
                 U(2, 1, new HexCoord(8, 2), UnitMode.Attack, new HexCoord(4, 2), 1, 2, 1),
                 U(3, 2, new HexCoord(4, 2), UnitMode.March, null, 1, 2, 1),
             }),
+        new("케이스 6 — 추격 중단·복귀",
+            "A1(공격, 북쪽 목표)이 빠른 척후 E2를 잠깐 탐지·추격하다, E2가 더 빨라 탐지를 벗어나면 추격을 버리고 원래 목표(북)로 복귀해 도착한다. 원래 목표는 기억된다.",
+            12, 6,
+            new[]
+            {
+                U(1, 1, new HexCoord(0, 0), UnitMode.Attack, new HexCoord(0, 6), 2, 2, 1),
+                U(2, 2, new HexCoord(2, 0), UnitMode.March, new HexCoord(12, 0), 3, 1, 1),
+            }),
         new("케이스 8 — 아군에 막힘: 3일 정지",
             "A2(정지한 아군)가 외길을 막고, A1의 목표는 그 너머. A1은 우회하지 않고(경로 1회 계산) A2 앞에서 기다리다 3일 뒤 진행이 멈춘다. 아군끼리는 교전하지 않는다.",
             6, 0,
