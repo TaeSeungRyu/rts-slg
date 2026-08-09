@@ -123,16 +123,20 @@ public static class EffectView
             Amount = 9,
             Lifetime = 3.6f,
             Preprocess = 3f,
+            // 랜덤은 공짜다 — 개수·에미터가 아니라 입자당 편차만 키운다. 방출 타이밍·수명·
+            // 속도를 흩어 규칙적으로 뭉치지 않게 하고, 크기 편차를 넓혀 뭉게뭉게 불규칙하게.
+            Randomness = 0.9f,
+            LifetimeRandomness = 0.6f,
             Mesh = PuffMesh(0.10f * s, BaseMaterial3D.BlendModeEnum.Mix),
             EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
-            EmissionBoxExtents = new Vector3(0.24f * s, 0.06f * s, 0.24f * s),
+            EmissionBoxExtents = new Vector3(0.26f * s, 0.10f * s, 0.26f * s),
             Direction = new Vector3(0f, 1f, 0f),
-            Spread = 30f,
-            InitialVelocityMin = 0.02f * s,
-            InitialVelocityMax = 0.07f * s,
+            Spread = 45f,
+            InitialVelocityMin = 0.01f * s,
+            InitialVelocityMax = 0.08f * s,
             Gravity = Vector3.Zero,
-            ScaleAmountMin = 1.0f,
-            ScaleAmountMax = 2.6f,
+            ScaleAmountMin = 0.7f,
+            ScaleAmountMax = 3.2f,
             ColorRamp = gradient,
         });
     }
