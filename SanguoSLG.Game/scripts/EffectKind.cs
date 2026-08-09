@@ -8,7 +8,9 @@ public enum EffectKind
 {
     /// <summary>빨강색 불이 피어오르는 효과.</summary>
     Fire,
-    Desaturate,
+
+    /// <summary>회색 안개(연무)가 대상 주위에 끼는 효과.</summary>
+    Haze,
     Flies,
     Flood,
     Skulls,

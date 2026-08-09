@@ -22,6 +22,9 @@ public static class EffectView
             case EffectKind.Fire:
                 BuildFire(root, scale);
                 break;
+            case EffectKind.Haze:
+                BuildHaze(root, scale);
+                break;
             default:
                 throw new InvalidOperationException($"미구현 효과: {kind}");
         }
@@ -53,7 +56,7 @@ public static class EffectView
             Amount = 18,
             Lifetime = 0.7f,
             Preprocess = 1.5f,
-            Mesh = FlameMesh(0.030f * s, BaseMaterial3D.BlendModeEnum.Add),
+            Mesh = PuffMesh(0.030f * s, BaseMaterial3D.BlendModeEnum.Add),
             EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
             EmissionBoxExtents = new Vector3(0.20f * s, 0.02f, 0.20f * s),
             Direction = new Vector3(0f, 1f, 0f),
@@ -81,7 +84,7 @@ public static class EffectView
             Amount = 22,
             Lifetime = 3.4f,
             Preprocess = 4f,
-            Mesh = FlameMesh(0.075f * s, BaseMaterial3D.BlendModeEnum.Mix),
+            Mesh = PuffMesh(0.075f * s, BaseMaterial3D.BlendModeEnum.Mix),
             EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
             EmissionBoxExtents = new Vector3(0.14f * s, 0.02f, 0.14f * s),
             Direction = new Vector3(0.25f, 1f, 0f),
@@ -105,7 +108,36 @@ public static class EffectView
         ShadowEnabled = false,
     };
 
-    private static SphereMesh FlameMesh(float radius, BaseMaterial3D.BlendModeEnum blend) => new()
+    // 회색 안개(연무): 대상 주위에 낮고 넓게 깔리는 반투명 회색 뭉치. 연기(Smoke)와 달리
+    // 위로 솟지 않고 제자리에서 끼었다 걷힌다 — 속도를 거의 0으로, 알파를 낮게 유지한다.
+    private static void BuildHaze(Node3D root, float s)
+    {
+        var gradient = new Gradient();
+        gradient.SetColor(0, new Color(0.62f, 0.62f, 0.66f, 0f));
+        gradient.AddPoint(0.3f, new Color(0.60f, 0.60f, 0.64f, 0.34f));
+        gradient.SetColor(1, new Color(0.58f, 0.58f, 0.62f, 0f));
+
+        root.AddChild(new CpuParticles3D
+        {
+            Position = new Vector3(0f, 0.12f * s, 0f),
+            Amount = 16,
+            Lifetime = 3.6f,
+            Preprocess = 3f,
+            Mesh = PuffMesh(0.10f * s, BaseMaterial3D.BlendModeEnum.Mix),
+            EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
+            EmissionBoxExtents = new Vector3(0.24f * s, 0.06f * s, 0.24f * s),
+            Direction = new Vector3(0f, 1f, 0f),
+            Spread = 30f,
+            InitialVelocityMin = 0.02f * s,
+            InitialVelocityMax = 0.07f * s,
+            Gravity = Vector3.Zero,
+            ScaleAmountMin = 1.0f,
+            ScaleAmountMax = 2.6f,
+            ColorRamp = gradient,
+        });
+    }
+
+    private static SphereMesh PuffMesh(float radius, BaseMaterial3D.BlendModeEnum blend) => new()
     {
         Radius = radius,
         Height = radius * 2f,

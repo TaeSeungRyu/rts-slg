@@ -251,6 +251,19 @@ public partial class GameRoot3D : Node3D
         var swords = GD.Load<PackedScene>("res://assets/models/troop-swordsman.glb");
         var color = new Color(0.30f, 0.45f, 0.70f);
 
+        // ── 효과 카탈로그: 구현된 효과마다 테스트 유닛 하나에 지속표시(효과 늘면 추가) ──
+        var catalog = new[] { (EffectKind.Fire, "1 Fire"), (EffectKind.Haze, "2 Haze") };
+        for (var i = 0; i < catalog.Length; i++)
+        {
+            var (kind, label) = catalog[i];
+            var holder = new Node3D { Position = mapView.HexToWorld(new HexCoord(2 + i * 3, 0)) + new Vector3(0f, mapView.TileTopY, 0f) };
+            AddChild(holder);
+            holder.AddChild(swords.Instantiate<Node3D>());
+            FactionColorView.Apply(holder, color);
+            EffectView.Attach(holder, kind, 0.7f);
+            holder.AddChild(EffectLabel(font, label, 0.5f));
+        }
+
         // ── 편대 규모별(1·3·5·7·9): 부대 하나에 Fire 하나(규모에 비례해 크게) ──
         var sizes = new[] { 1, 3, 5, 7, 9 };
         for (var i = 0; i < sizes.Length; i++)
