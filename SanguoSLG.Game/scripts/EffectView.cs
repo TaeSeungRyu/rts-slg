@@ -113,9 +113,9 @@ public static class EffectView
     private static void BuildHaze(Node3D root, float s)
     {
         var gradient = new Gradient();
-        gradient.SetColor(0, new Color(0.62f, 0.62f, 0.66f, 0f));
-        gradient.AddPoint(0.3f, new Color(0.60f, 0.60f, 0.64f, 0.34f));
-        gradient.SetColor(1, new Color(0.58f, 0.58f, 0.62f, 0f));
+        gradient.SetColor(0, new Color(0.40f, 0.40f, 0.44f, 0f));
+        gradient.AddPoint(0.3f, new Color(0.36f, 0.36f, 0.40f, 0.46f));
+        gradient.SetColor(1, new Color(0.33f, 0.33f, 0.37f, 0f));
 
         root.AddChild(new CpuParticles3D
         {

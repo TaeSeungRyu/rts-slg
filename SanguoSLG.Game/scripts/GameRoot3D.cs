@@ -249,68 +249,67 @@ public partial class GameRoot3D : Node3D
 
         var font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
         var swords = GD.Load<PackedScene>("res://assets/models/troop-swordsman.glb");
-        var color = new Color(0.30f, 0.45f, 0.70f);
 
-        // ── 효과 카탈로그: 구현된 효과마다 테스트 유닛 하나에 지속표시(효과 늘면 추가) ──
-        var catalog = new[] { (EffectKind.Fire, "1 Fire"), (EffectKind.Haze, "2 Haze") };
-        for (var i = 0; i < catalog.Length; i++)
+        // 구현된 효과마다 밴드 하나: 편대 규모별(1·3·5·7·9) + 성 3종에 지속표시.
+        // 효과가 늘면 (효과, 이름) 한 줄씩 추가한다.
+        var bands = new[] { (EffectKind.Fire, "Fire"), (EffectKind.Haze, "Haze") };
+        for (var b = 0; b < bands.Length; b++)
         {
-            var (kind, label) = catalog[i];
-            var holder = new Node3D { Position = mapView.HexToWorld(new HexCoord(2 + i * 3, 0)) + new Vector3(0f, mapView.TileTopY, 0f) };
-            AddChild(holder);
-            holder.AddChild(swords.Instantiate<Node3D>());
-            FactionColorView.Apply(holder, color);
-            EffectView.Attach(holder, kind, 0.7f);
-            holder.AddChild(EffectLabel(font, label, 0.5f));
+            var (kind, tag) = bands[b];
+            BuildEffectBand(mapView, font, swords, kind, tag, unitRow: b * 6 + 1, castleRow: b * 6 + 4);
         }
 
-        // ── 편대 규모별(1·3·5·7·9): 부대 하나에 Fire 하나(규모에 비례해 크게) ──
+        MapView3D.TuneImportedMeshes(this);
+        camera.Setup(mapView.HexToWorld(new HexCoord(10, bands.Length * 3)), bands.Length * 9f + 4f);
+    }
+
+    // 한 효과를 편대 규모별(1·3·5·7·9)과 성 3종에 지속표시하는 밴드 하나.
+    private void BuildEffectBand(MapView3D view, Font font, PackedScene swords,
+        EffectKind kind, string tag, int unitRow, int castleRow)
+    {
+        var color = new Color(0.30f, 0.45f, 0.70f);
         var sizes = new[] { 1, 3, 5, 7, 9 };
         for (var i = 0; i < sizes.Length; i++)
         {
-            var root = new Node3D { Position = mapView.HexToWorld(new HexCoord(2 + i * 4, 2)) + new Vector3(0f, mapView.TileTopY, 0f) };
+            var root = new Node3D { Position = view.HexToWorld(new HexCoord(2 + i * 4, unitRow)) + new Vector3(0f, view.TileTopY, 0f) };
             AddChild(root);
             TroopFormation.Build(root, swords, sizes[i]);
             FactionColorView.Apply(root, color);
-            EffectView.Attach(root, EffectKind.Fire, 0.5f + sizes[i] * 0.08f);
-            root.AddChild(EffectLabel(font, $"{sizes[i]}기 Fire", 0.5f));
+            EffectView.Attach(root, kind, 0.5f + sizes[i] * 0.08f);
+            root.AddChild(EffectLabel(font, $"{sizes[i]}기 {tag}", 0.5f));
         }
 
-        // ── 성 3종: 발자국 타일마다 Fire ──
-        var castles = new (CastleSize Size, string Label, PackedScene Model, int Q)[]
+        var castles = new (CastleSize Size, string Name, string File, int Q)[]
         {
-            (CastleSize.Small, "소성 Fire", GD.Load<PackedScene>("res://assets/models/castle-small.glb"), 4),
-            (CastleSize.Medium, "중성 Fire", GD.Load<PackedScene>("res://assets/models/castle-medium.glb"), 10),
-            (CastleSize.Large, "대성 Fire", GD.Load<PackedScene>("res://assets/models/castle-large.glb"), 17),
+            (CastleSize.Small, "소성", "castle-small", 4),
+            (CastleSize.Medium, "중성", "castle-medium", 10),
+            (CastleSize.Large, "대성", "castle-large", 17),
         };
-        foreach (var (size, label, model, q) in castles)
+        foreach (var (size, name, file, q) in castles)
         {
-            var anchor = new HexCoord(q, 8);
+            var anchor = new HexCoord(q, castleRow);
             var offsets = CastleFootprint.OffsetsFor(size);
             var centroid = Vector3.Zero;
             foreach (var off in offsets)
             {
-                centroid += mapView.HexToWorld(anchor + off);
+                centroid += view.HexToWorld(anchor + off);
             }
 
             centroid /= offsets.Count;
 
-            var root = new Node3D { Position = centroid + new Vector3(0f, mapView.TileTopY, 0f) };
+            var root = new Node3D { Position = centroid + new Vector3(0f, view.TileTopY, 0f) };
             AddChild(root);
-            root.AddChild(model.Instantiate<Node3D>());
+            root.AddChild(GD.Load<PackedScene>($"res://assets/models/{file}.glb").Instantiate<Node3D>());
 
             foreach (var off in offsets)
             {
-                var spot = new Node3D { Position = mapView.HexToWorld(anchor + off) - centroid };
+                var spot = new Node3D { Position = view.HexToWorld(anchor + off) - centroid };
                 root.AddChild(spot);
-                EffectView.Attach(spot, EffectKind.Fire, 1.0f);
+                EffectView.Attach(spot, kind, 1.0f);
             }
 
-            root.AddChild(EffectLabel(font, label, 1.0f));
+            root.AddChild(EffectLabel(font, $"{name} {tag}", 1.0f));
         }
-
-        MapView3D.TuneImportedMeshes(this);
-        camera.Setup(mapView.HexToWorld(new HexCoord(10, 5)), 20f);
     }
 
     private static Label3D EffectLabel(Font font, string text, float y) => new()
