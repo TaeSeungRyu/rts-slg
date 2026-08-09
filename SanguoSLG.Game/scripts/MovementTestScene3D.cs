@@ -83,9 +83,15 @@ public partial class MovementTestScene3D : Node3D
     private MapView3D _view = null!;
     private CameraController3D _camera = null!;
 
+    // 토큰은 실제 유닛 컨트롤러(표시 모드) — 진짜 행군·공격 모션을 그대로 재생한다
+    private const int SwordsmanTroopIndex = 0;
+
     private int _caseIndex;
-    private readonly Dictionary<int, Node3D> _tokens = new();
+    private readonly Dictionary<int, UnitController3D> _tokens = new();
+    private readonly Dictionary<int, HexCoord> _lastHex = new();
     private readonly List<Node3D> _spawned = new();
+    private readonly List<(int Id, Vector3 FoeWorld)> _combatants = new();
+    private Godot.Timer? _combatTimer;
     private IReadOnlyList<MovementTick> _ticks = new List<MovementTick>();
     private StopReason _reason;
     private int _index;
@@ -159,8 +165,12 @@ public partial class MovementTestScene3D : Node3D
             node.QueueFree();
         }
 
+        _combatTimer?.QueueFree();
+        _combatTimer = null;
+        _combatants.Clear();
         _spawned.Clear();
         _tokens.Clear();
+        _lastHex.Clear();
         _logLines.Clear();
         _index = 0;
         _animating = false;
@@ -193,22 +203,18 @@ public partial class MovementTestScene3D : Node3D
         var modeKo = unit.Mode == UnitMode.Attack ? "공격" : moving ? "행군" : "정지";
         var label = $"{(attacker ? "A" : "E")}{unit.Id.Value} [{modeKo}]";
         var color = attacker ? Blue : Red;
-        var faceEast = unit.Target is { } t ? t.Q > unit.Position.Q : !attacker;
 
-        var root = new Node3D
+        // 실제 유닛 컨트롤러를 표시 모드로 세운다 — 진짜 도검병 행군·공격 모션이 재생된다
+        var ctrl = new UnitController3D();
+        AddChild(ctrl);
+        _spawned.Add(ctrl);
+        ctrl.InitDisplay(_view, color, SwordsmanTroopIndex, unit.Position);
+        if (unit.Target is { } t)
         {
-            Position = _view.HexToWorld(unit.Position) + new Vector3(0f, _view.TileTopY, 0f),
-            RotationDegrees = new Vector3(0f, faceEast ? -90f : 90f, 0f),
-        };
-        AddChild(root);
-        _spawned.Add(root);
+            ctrl.FaceToward(_view.HexToWorld(t));
+        }
 
-        var model = GD.Load<PackedScene>("res://assets/models/troop-swordsman.glb").Instantiate<Node3D>();
-        root.AddChild(model);
-        FactionColorView.Apply(root, color);
-        MapView3D.TuneImportedMeshes(root);
-
-        root.AddChild(new Label3D
+        ctrl.AddChild(new Label3D
         {
             Text = label,
             Font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf"),
@@ -222,16 +228,17 @@ public partial class MovementTestScene3D : Node3D
             NoDepthTest = true,
         });
 
-        _tokens[unit.Id.Value] = root;
+        _tokens[unit.Id.Value] = ctrl;
+        _lastHex[unit.Id.Value] = unit.Position;
 
         // 이동 유닛엔 탐지 범위 고리(파랑), 정지 방어자엔 사거리 고리(빨강)를 그린다
         if (moving)
         {
-            AddRing(root, unit.Detection, new Color(0.30f, 0.55f, 1f, 0.6f));
+            AddRing(ctrl, unit.Detection, new Color(0.30f, 0.55f, 1f, 0.6f));
         }
         else if (unit.AttackRange >= 1)
         {
-            AddRing(root, unit.AttackRange, new Color(1f, 0.35f, 0.30f, 0.6f));
+            AddRing(ctrl, unit.AttackRange, new Color(1f, 0.35f, 0.30f, 0.6f));
         }
     }
 
@@ -334,13 +341,14 @@ public partial class MovementTestScene3D : Node3D
             AppendLog($"── {tick.Day}일차 ──");
         }
 
+        // 이번 틱에 위치가 바뀐 유닛만 실제 행군 모션과 함께 한 칸 이동시킨다
         foreach (var unit in tick.Units)
         {
-            if (_tokens.TryGetValue(unit.Id.Value, out var token))
+            if (_tokens.TryGetValue(unit.Id.Value, out var ctrl)
+                && (!_lastHex.TryGetValue(unit.Id.Value, out var prev) || prev != unit.Position))
             {
-                var to = _view.HexToWorld(unit.Position) + new Vector3(0f, _view.TileTopY, 0f);
-                CreateTween().TweenProperty(token, "position", to, StepSeconds)
-                    .SetTrans(Tween.TransitionType.Sine);
+                ctrl.DisplayStepTo(unit.Position, StepSeconds);
+                _lastHex[unit.Id.Value] = unit.Position;
             }
         }
 
@@ -371,8 +379,9 @@ public partial class MovementTestScene3D : Node3D
         UpdateButtons();
     }
 
-    // 진행이 전투로 끝나면(사거리 안 정지·정면 교전) 사거리 안 적을 향해 서로 찌르기
-    // 런지를 반복한다. 표현 전용 — 피해 계산은 전투 페이즈 소관(미구현).
+    // 진행이 전투로 끝나면(사거리 안 정지·정면 교전) 사거리 안 적을 향해 실제 공격 모션을
+    // 반복 재생한다 — 표시 모드 컨트롤러의 PlayAttackMotion(진짜 도검병 휘두르기)을 쓴다.
+    // 피해 계산은 전투 페이즈 소관(미구현).
     private void StartCombat()
     {
         if (_combatStarted || (_reason != StopReason.EnemyInRange && _reason != StopReason.Engaged))
@@ -392,26 +401,32 @@ public partial class MovementTestScene3D : Node3D
                 .ThenBy(v => v.CommandOrder)
                 .ThenBy(v => v.Id.Value)
                 .FirstOrDefault();
-            if (foe is null || !_tokens.TryGetValue(u.Id.Value, out var token))
+            if (foe is not null && _tokens.ContainsKey(u.Id.Value))
             {
-                continue;
+                _combatants.Add((u.Id.Value, _view.HexToWorld(foe.Position) + new Vector3(0f, _view.TileTopY, 0f)));
             }
+        }
 
-            var home = _view.HexToWorld(u.Position) + new Vector3(0f, _view.TileTopY, 0f);
-            var toward = (_view.HexToWorld(foe.Position) - _view.HexToWorld(u.Position)).Normalized();
-            var lunge = home + toward * (_view.HexWorldSize * 0.7f);
+        if (_combatants.Count == 0)
+        {
+            return;
+        }
 
-            // 적을 바라보게 돌린다(모델 정면 +Z)
-            token.Rotation = new Vector3(0f, Mathf.Atan2(toward.X, toward.Z), 0f);
+        Attack();
+        _combatTimer = new Godot.Timer { WaitTime = 1.5, Autostart = true };
+        AddChild(_combatTimer);
+        _combatTimer.Timeout += Attack;
+    }
 
-            // 명령 순번으로 살짝 엇박 — 동시에 콕 찌르지 않게
-            var tween = token.CreateTween().SetLoops();
-            tween.TweenInterval(u.CommandOrder * 0.06f);
-            tween.TweenProperty(token, "position", lunge, 0.16f)
-                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
-            tween.TweenProperty(token, "position", home, 0.22f)
-                .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
-            tween.TweenInterval(0.2f);
+    private void Attack()
+    {
+        foreach (var (id, foeWorld) in _combatants)
+        {
+            if (_tokens.TryGetValue(id, out var ctrl))
+            {
+                ctrl.FaceToward(foeWorld);
+                ctrl.PlayAttackMotion();
+            }
         }
     }
 

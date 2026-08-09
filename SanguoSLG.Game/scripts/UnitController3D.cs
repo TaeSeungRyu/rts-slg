@@ -32,6 +32,10 @@ public partial class UnitController3D : Node3D
     private bool _moving;
     private bool _attacking;
 
+    // 표시 모드: 입력·길찾기 없이 외부(이동 시뮬 하베스트)가 위치·공격만 구동한다.
+    // 정규 조작 유닛은 false — 이 플래그가 켜진 쪽만 입력/호버를 끈다.
+    private bool _display;
+
     // 편대 검수용 임시 지정 — 병종 데이터(data/troop-types.json)가 생기면 그쪽에서 받는다.
     // Solo: 편대 없이 항상 1개로 표현(대선 규칙).
     // 통행 영역(Domain)은 spec-unit.md 지형 열 — 병종 데이터가 생기면 그쪽에서 받는다.
@@ -214,10 +218,46 @@ public partial class UnitController3D : Node3D
         }
     }
 
+    /// <summary>
+    /// 표시 모드 초기화. 입력·길찾기·카메라 없이 지정 병종 모델을 세우고 세력색을 입힌다.
+    /// 위치·공격은 외부에서 <see cref="DisplayStepTo"/>·<see cref="PlayAttackMotion"/>로 구동한다.
+    /// </summary>
+    public void InitDisplay(MapView3D view, Color factionColor, int troopIndex, HexCoord at)
+    {
+        _display = true;
+        _view = view;
+        _factionColor = factionColor;
+        _troopIndex = troopIndex;
+        _unit = new Unit(new UnitId(0), new FactionId(0), at);
+        Position = TokenPosition(at);
+        BuildToken();
+        BuildOverlay();
+    }
+
+    /// <summary>표시 모드: 한 칸을 실제 행군 모션과 함께 이동한다.</summary>
+    public void DisplayStepTo(HexCoord to, float seconds)
+    {
+        _moving = true;
+        var tween = CreateTween();
+        tween.TweenProperty(this, "position", TokenPosition(to), seconds)
+            .SetTrans(Tween.TransitionType.Sine);
+        tween.Finished += () => _moving = false;
+    }
+
+    /// <summary>표시 모드: 지정 방향(월드)을 바라보게 돌린다 — 공격 전에 대상을 향하게.</summary>
+    public void FaceToward(Vector3 worldTarget)
+    {
+        var d = worldTarget - Position;
+        if (d.LengthSquared() > 0.000001f)
+        {
+            Rotation = new Vector3(0f, Mathf.Atan2(d.X, d.Z), 0f);
+        }
+    }
+
     public override void _Process(double delta)
     {
         // 카메라 조작(팬/회전) 중에는 호버·경로 미리보기를 상태 기반으로 강제 종료 — 깜빡임 방지.
-        if (IsCameraManeuvering() && _hoverCoord is not null)
+        if (!_display && IsCameraManeuvering() && _hoverCoord is not null)
         {
             ClearOverlay();
         }
@@ -1470,6 +1510,12 @@ public partial class UnitController3D : Node3D
 
     public override void _UnhandledInput(InputEvent @event)
     {
+        // 표시 모드 유닛은 입력을 받지 않는다 — 외부가 위치·공격을 구동한다
+        if (_display)
+        {
+            return;
+        }
+
         // F: 공격 모션 데모(전투 시스템이 생기면 그쪽에서 호출)
         if (@event is InputEventKey { Pressed: true, Keycode: Key.F })
         {
