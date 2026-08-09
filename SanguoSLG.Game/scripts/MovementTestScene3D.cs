@@ -61,6 +61,15 @@ public partial class MovementTestScene3D : Node3D
                 U(1, 1, new HexCoord(0, 2), UnitMode.Attack, new HexCoord(9, 2), 1, 2, 1),
                 U(2, 2, new HexCoord(1, 2), UnitMode.March, new HexCoord(9, 2), 1, 2, 1),
             }),
+        new("케이스 5 — 다대일 협격",
+            "A1·A2(공격)가 양쪽에서 정지한 E1을 협격한다. 둘 다 사거리에 닿으면 정지 → 전투. E1의 반격은 주대상(명령 순번 앞선 A1) 100%, A2 60%(수치는 전투 페이즈).",
+            8, 4,
+            new[]
+            {
+                U(1, 1, new HexCoord(0, 2), UnitMode.Attack, new HexCoord(4, 2), 1, 2, 1),
+                U(2, 1, new HexCoord(8, 2), UnitMode.Attack, new HexCoord(4, 2), 1, 2, 1),
+                U(3, 2, new HexCoord(4, 2), UnitMode.March, null, 1, 2, 1),
+            }),
         new("케이스 8 — 아군에 막힘: 3일 정지",
             "A2(정지한 아군)가 외길을 막고, A1의 목표는 그 너머. A1은 우회하지 않고(경로 1회 계산) A2 앞에서 기다리다 3일 뒤 진행이 멈춘다. 아군끼리는 교전하지 않는다.",
             6, 0,
@@ -81,6 +90,7 @@ public partial class MovementTestScene3D : Node3D
     private StopReason _reason;
     private int _index;
     private bool _animating;
+    private bool _combatStarted;
     private int _lastDayLogged;
     private readonly HashSet<int> _underFire = new();
 
@@ -154,6 +164,7 @@ public partial class MovementTestScene3D : Node3D
         _logLines.Clear();
         _index = 0;
         _animating = false;
+        _combatStarted = false;
         _lastDayLogged = 0;
         _underFire.Clear();
 
@@ -351,9 +362,57 @@ public partial class MovementTestScene3D : Node3D
         {
             _animating = false;
             UpdateButtons();
+            if (_index >= _ticks.Count)
+            {
+                StartCombat();
+            }
         };
 
         UpdateButtons();
+    }
+
+    // 진행이 전투로 끝나면(사거리 안 정지·정면 교전) 사거리 안 적을 향해 서로 찌르기
+    // 런지를 반복한다. 표현 전용 — 피해 계산은 전투 페이즈 소관(미구현).
+    private void StartCombat()
+    {
+        if (_combatStarted || (_reason != StopReason.EnemyInRange && _reason != StopReason.Engaged))
+        {
+            return;
+        }
+
+        _combatStarted = true;
+        AppendLog("⚔ 전투 — 사거리 안의 적을 서로 공격");
+
+        var units = _ticks[^1].Units;
+        foreach (var u in units)
+        {
+            var foe = units
+                .Where(v => v.Owner != u.Owner && u.Position.Distance(v.Position) <= u.AttackRange)
+                .OrderBy(v => u.Position.Distance(v.Position))
+                .ThenBy(v => v.CommandOrder)
+                .ThenBy(v => v.Id.Value)
+                .FirstOrDefault();
+            if (foe is null || !_tokens.TryGetValue(u.Id.Value, out var token))
+            {
+                continue;
+            }
+
+            var home = _view.HexToWorld(u.Position) + new Vector3(0f, _view.TileTopY, 0f);
+            var toward = (_view.HexToWorld(foe.Position) - _view.HexToWorld(u.Position)).Normalized();
+            var lunge = home + toward * (_view.HexWorldSize * 0.7f);
+
+            // 적을 바라보게 돌린다(모델 정면 +Z)
+            token.Rotation = new Vector3(0f, Mathf.Atan2(toward.X, toward.Z), 0f);
+
+            // 명령 순번으로 살짝 엇박 — 동시에 콕 찌르지 않게
+            var tween = token.CreateTween().SetLoops();
+            tween.TweenInterval(u.CommandOrder * 0.06f);
+            tween.TweenProperty(token, "position", lunge, 0.16f)
+                .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+            tween.TweenProperty(token, "position", home, 0.22f)
+                .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+            tween.TweenInterval(0.2f);
+        }
     }
 
     // 행군 유닛이 적 사거리 안에 들면 "일방 피해" 안내(전투 페이즈 소관 — 여기선 표시만).

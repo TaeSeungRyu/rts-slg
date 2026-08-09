@@ -208,6 +208,34 @@ public class MovementSimulatorTests
         Assert.Equal(StopReason.EnemyInRange, result.Reason);
     }
 
+    // ── 케이스 5 — 다대일 조우: 두 부대가 하나를 협격 ──
+
+    [Fact]
+    public void 케이스5_두공격부대가_양쪽에서다가오면_둘다사거리안에서정지한다()
+    {
+        // A1(서), A2(동)이 가운데 정지한 E1을 향해 대칭으로 다가온다 → 같은 스텝에 양쪽 인접
+        var a1 = Unit(1, owner: 1, new HexCoord(0, 2), UnitMode.Attack, target: new HexCoord(4, 2),
+            speed: 1, detection: 2, attackRange: 1);
+        var a2 = Unit(2, owner: 1, new HexCoord(8, 2), UnitMode.Attack, target: new HexCoord(4, 2),
+            speed: 1, detection: 2, attackRange: 1);
+        var e1 = Unit(3, owner: 2, new HexCoord(4, 2), UnitMode.March, target: null,
+            speed: 1, detection: 2, attackRange: 1);
+
+        var result = new MovementSimulator(new PassabilityMap(new HexMap(0, 8, 0, 4), [], []))
+            .Advance(new[] { a1, a2, e1 });
+
+        Assert.Equal(StopReason.EnemyInRange, result.Reason);
+
+        var e1Final = result.Units.Single(u => u.Id.Value == 3).Position;
+        var a1Final = result.Units.Single(u => u.Id.Value == 1).Position;
+        var a2Final = result.Units.Single(u => u.Id.Value == 2).Position;
+
+        // E1은 제자리, 두 공격 부대 모두 사거리(1) 안에서 멈춰 협격 대형이 된다
+        Assert.Equal(new HexCoord(4, 2), e1Final);
+        Assert.Equal(1, a1Final.Distance(e1Final));
+        Assert.Equal(1, a2Final.Distance(e1Final));
+    }
+
     // ── 케이스 8 — 아군에 막힘: 교전 없음 + 3일 정지 ──
 
     [Fact]
