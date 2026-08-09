@@ -25,6 +25,9 @@ public static class EffectView
             case EffectKind.Haze:
                 BuildHaze(root, scale);
                 break;
+            case EffectKind.Flies:
+                root.AddChild(new FliesEffect { S = scale });
+                break;
             default:
                 throw new InvalidOperationException($"미구현 효과: {kind}");
         }
