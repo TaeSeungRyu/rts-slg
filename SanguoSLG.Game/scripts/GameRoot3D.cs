@@ -240,45 +240,79 @@ public partial class GameRoot3D : Node3D
 
         var mapView = new MapView3D();
         AddChild(mapView);
-        var map = new HexMap(0, 6, 0, 2);
+        var map = new HexMap(0, 24, 0, 11);
         mapView.Build(map, new System.Collections.Generic.HashSet<HexCoord>(), new TileConditionMap());
 
         var camera = new CameraController3D { Fov = 55f };
         AddChild(camera);
         camera.Current = true;
 
-        // (효과 종류, 이름표) — 구현되는 대로 한 줄씩 늘린다
-        var effects = new[] { (EffectKind.Fire, "1 Fire") };
-        for (var i = 0; i < effects.Length; i++)
+        var font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
+        var swords = GD.Load<PackedScene>("res://assets/models/troop-swordsman.glb");
+        var color = new Color(0.30f, 0.45f, 0.70f);
+
+        // ── 편대 규모별(1·3·5·7·9): 부대 하나에 Fire 하나(규모에 비례해 크게) ──
+        var sizes = new[] { 1, 3, 5, 7, 9 };
+        for (var i = 0; i < sizes.Length; i++)
         {
-            var (kind, label) = effects[i];
-            var holder = new Node3D { Position = mapView.HexToWorld(new HexCoord(1 + i * 2, 1)) + new Vector3(0f, mapView.TileTopY, 0f) };
-            AddChild(holder);
+            var root = new Node3D { Position = mapView.HexToWorld(new HexCoord(2 + i * 4, 2)) + new Vector3(0f, mapView.TileTopY, 0f) };
+            AddChild(root);
+            TroopFormation.Build(root, swords, sizes[i]);
+            FactionColorView.Apply(root, color);
+            EffectView.Attach(root, EffectKind.Fire, 0.5f + sizes[i] * 0.08f);
+            root.AddChild(EffectLabel(font, $"{sizes[i]}기 Fire", 0.5f));
+        }
 
-            var model = GD.Load<PackedScene>("res://assets/models/troop-swordsman.glb").Instantiate<Node3D>();
-            holder.AddChild(model);
-            FactionColorView.Apply(holder, new Color(0.30f, 0.45f, 0.70f));
-
-            EffectView.Attach(holder, kind, 0.7f);
-
-            holder.AddChild(new Label3D
+        // ── 성 3종: 발자국 타일마다 Fire ──
+        var castles = new (CastleSize Size, string Label, PackedScene Model, int Q)[]
+        {
+            (CastleSize.Small, "소성 Fire", GD.Load<PackedScene>("res://assets/models/castle-small.glb"), 4),
+            (CastleSize.Medium, "중성 Fire", GD.Load<PackedScene>("res://assets/models/castle-medium.glb"), 10),
+            (CastleSize.Large, "대성 Fire", GD.Load<PackedScene>("res://assets/models/castle-large.glb"), 17),
+        };
+        foreach (var (size, label, model, q) in castles)
+        {
+            var anchor = new HexCoord(q, 8);
+            var offsets = CastleFootprint.OffsetsFor(size);
+            var centroid = Vector3.Zero;
+            foreach (var off in offsets)
             {
-                Text = label,
-                Font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf"),
-                FontSize = 96,
-                PixelSize = 0.0022f,
-                OutlineSize = 26,
-                OutlineModulate = new Color(0f, 0f, 0f, 0.85f),
-                Modulate = new Color(0.97f, 0.96f, 0.92f),
-                Position = new Vector3(0f, 0.5f, 0f),
-                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-                NoDepthTest = true,
-            });
+                centroid += mapView.HexToWorld(anchor + off);
+            }
+
+            centroid /= offsets.Count;
+
+            var root = new Node3D { Position = centroid + new Vector3(0f, mapView.TileTopY, 0f) };
+            AddChild(root);
+            root.AddChild(model.Instantiate<Node3D>());
+
+            foreach (var off in offsets)
+            {
+                var spot = new Node3D { Position = mapView.HexToWorld(anchor + off) - centroid };
+                root.AddChild(spot);
+                EffectView.Attach(spot, EffectKind.Fire, 1.0f);
+            }
+
+            root.AddChild(EffectLabel(font, label, 1.0f));
         }
 
         MapView3D.TuneImportedMeshes(this);
-        camera.Setup(mapView.HexToWorld(new HexCoord(effects.Length, 1)), effects.Length * 1.6f + 2.5f);
+        camera.Setup(mapView.HexToWorld(new HexCoord(10, 5)), 20f);
     }
+
+    private static Label3D EffectLabel(Font font, string text, float y) => new()
+    {
+        Text = text,
+        Font = font,
+        FontSize = 96,
+        PixelSize = 0.0026f,
+        OutlineSize = 26,
+        OutlineModulate = new Color(0f, 0f, 0f, 0.85f),
+        Modulate = new Color(0.97f, 0.96f, 0.92f),
+        Position = new Vector3(0f, y, 0f),
+        Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+        NoDepthTest = true,
+    };
 
     // 화면 가장자리를 어둡게 하는 비네트 오버레이(HUD 아래).
     private static CanvasLayer BuildVignette(TonePreset tone)
