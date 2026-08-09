@@ -50,6 +50,13 @@ public partial class GameRoot3D : Node3D
             return;
         }
 
+        // 효과 검수(doc/design-effect.md 1단계): --effecttest. 테스트 유닛에 효과를 지속표시
+        if (OS.GetCmdlineArgs().Contains("--effecttest") || OS.GetCmdlineUserArgs().Contains("--effecttest"))
+        {
+            BuildEffectTest();
+            return;
+        }
+
         var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
 
         var tone = TonePreset.FromCmdline();
@@ -219,6 +226,58 @@ public partial class GameRoot3D : Node3D
         var test = new MovementTestScene3D();
         AddChild(test);
         test.Build(mapView, camera);
+    }
+
+    // 효과 검수 씬(doc/design-effect.md 1단계). 평지 위 테스트 유닛마다 효과 하나를
+    // 지속표시하고 이름표를 띄운다. 구현된 효과만 늘려 나간다.
+    private void BuildEffectTest()
+    {
+        var tone = TonePreset.FromCmdline();
+        _environment = BuildEnvironment(tone);
+        AddChild(new WorldEnvironment { Environment = _environment });
+        _sun = BuildSunLight(tone);
+        AddChild(_sun);
+
+        var mapView = new MapView3D();
+        AddChild(mapView);
+        var map = new HexMap(0, 6, 0, 2);
+        mapView.Build(map, new System.Collections.Generic.HashSet<HexCoord>(), new TileConditionMap());
+
+        var camera = new CameraController3D { Fov = 55f };
+        AddChild(camera);
+        camera.Current = true;
+
+        // (효과 종류, 이름표) — 구현되는 대로 한 줄씩 늘린다
+        var effects = new[] { (EffectKind.Fire, "1 Fire") };
+        for (var i = 0; i < effects.Length; i++)
+        {
+            var (kind, label) = effects[i];
+            var holder = new Node3D { Position = mapView.HexToWorld(new HexCoord(1 + i * 2, 1)) + new Vector3(0f, mapView.TileTopY, 0f) };
+            AddChild(holder);
+
+            var model = GD.Load<PackedScene>("res://assets/models/troop-swordsman.glb").Instantiate<Node3D>();
+            holder.AddChild(model);
+            FactionColorView.Apply(holder, new Color(0.30f, 0.45f, 0.70f));
+
+            EffectView.Attach(holder, kind, 0.7f);
+
+            holder.AddChild(new Label3D
+            {
+                Text = label,
+                Font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf"),
+                FontSize = 96,
+                PixelSize = 0.0022f,
+                OutlineSize = 26,
+                OutlineModulate = new Color(0f, 0f, 0f, 0.85f),
+                Modulate = new Color(0.97f, 0.96f, 0.92f),
+                Position = new Vector3(0f, 0.5f, 0f),
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                NoDepthTest = true,
+            });
+        }
+
+        MapView3D.TuneImportedMeshes(this);
+        camera.Setup(mapView.HexToWorld(new HexCoord(effects.Length, 1)), effects.Length * 1.6f + 2.5f);
     }
 
     // 화면 가장자리를 어둡게 하는 비네트 오버레이(HUD 아래).
