@@ -20,7 +20,11 @@ public enum EffectKind
     Bubbles,
     Burst,
     Villagers,
-    Clouds,
-    Waterfall,
+
+    /// <summary>찢어지는 듯한 효과.</summary>
+    Tear,
+
+    /// <summary>깨지는 듯한 효과.</summary>
+    Shatter,
     Confusion,
 }
