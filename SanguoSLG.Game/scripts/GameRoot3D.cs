@@ -240,7 +240,7 @@ public partial class GameRoot3D : Node3D
 
         var mapView = new MapView3D();
         AddChild(mapView);
-        var map = new HexMap(0, 24, 0, 60);
+        var map = new HexMap(0, 24, 0, 66);
         mapView.Build(map, new System.Collections.Generic.HashSet<HexCoord>(), new TileConditionMap());
 
         var camera = new CameraController3D { Fov = 55f };
@@ -260,6 +260,7 @@ public partial class GameRoot3D : Node3D
             (EffectKind.Skulls, "Skulls"), (EffectKind.Daze, "Daze"),
             (EffectKind.Bubbles, "Bubbles"), (EffectKind.Burst, "Burst"),
             (EffectKind.Tear, "Tear"), (EffectKind.Shatter, "Shatter"),
+            (EffectKind.Confusion, "Confusion"),
         };
         for (var b = 0; b < bands.Length; b++)
         {

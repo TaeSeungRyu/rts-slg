@@ -58,6 +58,9 @@ public static class EffectView
             case EffectKind.Shatter:
                 root.AddChild(new ShatterEffect { S = scale, Target = target });
                 break;
+            case EffectKind.Confusion:
+                root.AddChild(new ConfusionEffect { S = scale });
+                break;
             default:
                 throw new InvalidOperationException($"미구현 효과: {kind}");
         }
