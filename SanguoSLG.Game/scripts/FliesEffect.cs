@@ -13,7 +13,7 @@ public partial class FliesEffect : Node3D
 {
     public float S = 1f;
 
-    private const int Count = 6;
+    private const int Count = 10;
     private readonly MeshInstance3D[] _flies = new MeshInstance3D[Count];
     private float _t;
 
@@ -21,8 +21,8 @@ public partial class FliesEffect : Node3D
     {
         var mesh = new SphereMesh
         {
-            Radius = 0.006f * S,
-            Height = 0.012f * S,
+            Radius = 0.0072f * S,
+            Height = 0.0144f * S,
             RadialSegments = 5,
             Rings = 3,
             Material = new StandardMaterial3D
