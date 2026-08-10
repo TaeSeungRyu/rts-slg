@@ -12,14 +12,14 @@ public partial class DazeEffect : Node3D
 {
     public float S = 1f;
 
-    private const int Count = 8; // 점 4 + 별 4 번갈아
+    private const int Count = 6; // 점 3 + 별 3 번갈아
 
     private Node3D _ring = null!;
     private float _spin;
 
     public override void _Ready()
     {
-        _ring = new Node3D { Position = new Vector3(0f, 0.42f * S, 0f) };
+        _ring = new Node3D { Position = new Vector3(0f, 0.62f * S, 0f) };
         AddChild(_ring);
 
         var dotMat = new StandardMaterial3D
@@ -27,19 +27,19 @@ public partial class DazeEffect : Node3D
             AlbedoColor = new Color(0.97f, 0.95f, 0.80f),
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
         };
-        var starMesh = StarMesh(0.038f * S, 0.016f * S, new Color(1.0f, 0.82f, 0.15f));
+        var starMesh = StarMesh(0.058f * S, 0.025f * S, new Color(1.0f, 0.82f, 0.15f));
 
         for (var k = 0; k < Count; k++)
         {
             var angle = k * Mathf.Tau / Count;
-            var pos = new Vector3(Mathf.Cos(angle) * 0.15f * S, Mathf.Sin(angle) * 0.15f * S, 0f);
+            var pos = new Vector3(Mathf.Cos(angle) * 0.17f * S, Mathf.Sin(angle) * 0.17f * S, 0f);
 
             Node3D item;
             if (k % 2 == 0)
             {
                 item = new MeshInstance3D
                 {
-                    Mesh = new SphereMesh { Radius = 0.018f * S, Height = 0.036f * S, RadialSegments = 6, Rings = 4, Material = dotMat },
+                    Mesh = new SphereMesh { Radius = 0.027f * S, Height = 0.054f * S, RadialSegments = 6, Rings = 4, Material = dotMat },
                 };
             }
             else
