@@ -45,7 +45,7 @@ public partial class SkullsEffect : Node3D
             // 주기 안 위상(0..1) — 해골마다 어긋내 어떤 건 떠오르고 어떤 건 사라진다
             var cycle = Mathf.PosMod(_t / Period + i / (float)Count, 1f);
             var envelope = Mathf.Sin(Mathf.Pi * cycle); // 0 → 1 → 0
-            var size = envelope * (1.6f + (i % 3) * 0.5f) * S;
+            var size = envelope * (1.4f + (i % 3) * 0.4f) * S;
 
             var skull = _skulls[i];
             if (size < 0.02f)
@@ -54,8 +54,10 @@ public partial class SkullsEffect : Node3D
                 continue;
             }
 
-            var laneX = (i - (Count - 1) * 0.5f) * 0.06f * S;
-            var laneZ = ((i * 7) % 5 - 2) * 0.04f * S;
+            // 작은 원 둘레에 균등 배치 — 서로 겹치지 않게 벌린다(규칙적)
+            var angle = i / (float)Count * Mathf.Tau;
+            var laneX = Mathf.Cos(angle) * 0.26f * S;
+            var laneZ = Mathf.Sin(angle) * 0.26f * S;
             skull.Visible = true;
             skull.Position = new Vector3(laneX, 0.03f * S + cycle * 0.5f * S, laneZ);
 
