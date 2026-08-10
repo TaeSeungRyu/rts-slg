@@ -17,15 +17,14 @@ public partial class BubblesEffect : Node3D
 
     private readonly MeshInstance3D[] _bubbles = new MeshInstance3D[Count];
     private readonly Vector2[] _pos = new Vector2[Count];   // 타일 평면상 자리(XZ)
-    private readonly float[] _big = new float[Count];       // 방울별 최대 크기 배수
     private float _t;
 
     public override void _Ready()
     {
         var mesh = new SphereMesh
         {
-            Radius = 0.06f * S,
-            Height = 0.12f * S,
+            Radius = 0.055f * S,  // 기존 0.05에서 10%만 키움
+            Height = 0.11f * S,
             RadialSegments = 10,
             Rings = 6,
             Material = new StandardMaterial3D
@@ -49,8 +48,6 @@ public partial class BubblesEffect : Node3D
             var angle = i * 2.399963f;
             var r = Mathf.Sqrt((i + 0.5f) / Count) * TileR * 0.82f * S;
             _pos[i] = new Vector2(Mathf.Cos(angle) * r, Mathf.Sin(angle) * r);
-            // 크기 편차 — 몇 개는 무척 크게 터진다
-            _big[i] = (i % 3 == 0) ? 3.4f : (i % 3 == 1) ? 2.0f : 1.3f;
         }
     }
 
@@ -70,21 +67,20 @@ public partial class BubblesEffect : Node3D
                 continue;
             }
 
-            float grow;
+            float size;
             if (cycle < 0.18f)
             {
-                grow = cycle / 0.18f;                          // 부풀며 나타남
+                size = cycle / 0.18f;                          // 부풀며 나타남
             }
-            else if (cycle < 0.80f)
+            else if (cycle < 0.82f)
             {
-                grow = 1f;                                     // 떠오르며 유지
+                size = 1f;                                     // 떠오르며 유지
             }
             else
             {
-                grow = 1f + (cycle - 0.80f) / 0.16f * 1.4f;    // 끝에 급히 커져 터진다
+                size = 1f + (cycle - 0.82f) / 0.14f * 0.7f;    // 끝에 급히 부풀어 터진다
             }
 
-            var size = grow * _big[i];
             bubble.Visible = size > 0.02f;
             bubble.Position = new Vector3(_pos[i].X, 0.03f * S + cycle * 0.15f * S, _pos[i].Y);
             bubble.Scale = new Vector3(size, size, size);
