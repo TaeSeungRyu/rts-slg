@@ -31,20 +31,21 @@ ic.bake_scale(cranium)
 jaw = ic.box("jaw", 0.058, 0.042, 0.030, 0, -0.012, 0.020, M_BONE)
 ic.parent_to(jaw, cranium)
 
-# ── 눈 2(흰색, 앞면 -Y) ──
-for i, ex in enumerate((-0.019, 0.019)):
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=6, radius=0.015,
-                                         location=(ex, -0.040, 0.068))
+# ── 눈 2(흰색): 두개골 앞면(y=-0.055)에 걸쳐 튀어나오게 — 안쪽에 두면 묻혀 안 보인다 ──
+for i, ex in enumerate((-0.022, 0.022)):
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=6, radius=0.020,
+                                         location=(ex, -0.052, 0.070))
     eye = bpy.context.object
     eye.name = f"eye_{i}"
-    eye.scale = (1.0, 0.7, 1.05)
+    eye.scale = (1.0, 0.75, 1.1)
     eye.data.materials.append(M_FEATURE)
+    ic.shade_smooth(eye)
     ic.bake_scale(eye)
     ic.parent_to(eye, cranium)
 
-# ── 입(흰색, 이빨 칸을 낸 가로 박스 3토막) ──
-for i, mx in enumerate((-0.016, 0.0, 0.016)):
-    tooth = ic.box(f"mouth_{i}", 0.012, 0.010, 0.016, mx, -0.030, 0.024, M_FEATURE)
+# ── 입(흰색 이빨 4토막): 턱 앞면(y=-0.033) 밖으로 튀어나오게 ──
+for i, mx in enumerate((-0.021, -0.007, 0.007, 0.021)):
+    tooth = ic.box(f"mouth_{i}", 0.011, 0.012, 0.016, mx, -0.037, 0.016, M_FEATURE)
     ic.parent_to(tooth, cranium)
 
 ic.export("prop-skull.glb")

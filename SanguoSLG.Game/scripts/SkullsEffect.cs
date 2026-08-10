@@ -55,13 +55,16 @@ public partial class SkullsEffect : Node3D
             var laneZ = ((i * 7) % 5 - 2) * 0.04f * S;
             skull.Visible = true;
             skull.Position = new Vector3(laneX, 0.03f * S + cycle * 0.5f * S, laneZ);
-            skull.Scale = new Vector3(size, size, size);
 
-            // 카메라를 바라보게 — 모델 정면(+Z)이 카메라를 향하도록 -Z를 반대편에 두고 180도
+            // 카메라를 향해 yaw만 돌린다(똑바로 선 채). LookAt은 스케일을 1로 리셋하므로 쓰지 않는다.
+            // 회전을 먼저, 스케일을 나중에 — 둘은 독립 성분이라 서로 지우지 않는다.
             if (cam is not null)
             {
-                skull.LookAt(2f * skull.GlobalPosition - cam.GlobalPosition, Vector3.Up);
+                var dir = cam.GlobalPosition - skull.GlobalPosition;
+                skull.Rotation = new Vector3(0f, Mathf.Atan2(dir.X, dir.Z), 0f);
             }
+
+            skull.Scale = new Vector3(size, size, size);
         }
     }
 
