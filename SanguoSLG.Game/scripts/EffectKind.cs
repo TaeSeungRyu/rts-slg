@@ -15,7 +15,9 @@ public enum EffectKind
     Flood,
     Skulls,
     Daze,
-    Smoke,
+
+    /// <summary>초록색 방울이 바닥에서 하나씩 나타났다 부풀어 터지는 효과.</summary>
+    Bubbles,
     Burst,
     Villagers,
     Clouds,

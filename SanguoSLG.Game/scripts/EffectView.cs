@@ -37,6 +37,9 @@ public static class EffectView
             case EffectKind.Daze:
                 root.AddChild(new DazeEffect { S = scale });
                 break;
+            case EffectKind.Bubbles:
+                root.AddChild(new BubblesEffect { S = scale });
+                break;
             default:
                 throw new InvalidOperationException($"미구현 효과: {kind}");
         }
