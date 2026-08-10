@@ -16,11 +16,18 @@ public partial class FloodEffect : Node3D
 
     public override void _Ready()
     {
-        // 평면이 아니라 부피가 있는 물덩이 — 바닥(y=0)에 붙은 채 높이만 자라야
-        // 옆(쿼터뷰)에서 얇은 선이 아니라 물이 차오르는 입체로 읽힌다.
+        // 부피가 있는 물덩이(바닥 고정, 높이만 자람) — 옆에서 얇은 선이 아니라 입체로 읽힌다.
+        // 타일이 육각이라 사각 박스는 모서리가 삐져나온다 → 6분할 원기둥 = 육각 기둥으로.
+        // 회전 없이 타일 방향과 맞는다(호버 하이라이트와 같은 규약: 꼭짓점 ±Z).
         _water = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = Vector3.One },
+            Mesh = new CylinderMesh
+            {
+                TopRadius = 0.55f * S,
+                BottomRadius = 0.55f * S,
+                Height = 1f,
+                RadialSegments = 6,
+            },
             MaterialOverride = new StandardMaterial3D
             {
                 AlbedoColor = new Color(0.18f, 0.42f, 0.66f, 0.5f),
@@ -40,8 +47,8 @@ public partial class FloodEffect : Node3D
             + Mathf.Sin(_t * 3.1f) * 0.008f * S;
         level = Mathf.Max(level, 0.001f);
 
-        // 단위 박스를 폭은 그대로, 높이만 level로 — 바닥은 y=0에 고정하고 윗면(수면)만 오른다
-        _water.Scale = new Vector3(1.0f * S, level, 1.0f * S);
+        // 반경은 메시에 이미 있으니 높이(y)만 level로 — 바닥은 y=0 고정, 윗면(수면)만 오른다
+        _water.Scale = new Vector3(1f, level, 1f);
         _water.Position = new Vector3(0f, level * 0.5f, 0f);
     }
 }
