@@ -252,19 +252,19 @@ public partial class GameRoot3D : Node3D
 
         // 구현된 효과마다 밴드 하나: 편대 규모별(1·3·5·7·9) + 성 3종에 지속표시.
         // 효과가 늘면 (효과, 이름) 한 줄씩 추가한다.
-        // scope: 'A'=유닛·건물 모두, 'U'=유닛 전용, 'B'=건물 전용
-        var bands = new (EffectKind Kind, string Tag, char Scope)[]
+        // 적용 대상 범위는 EffectView.ScopeOf가 단일 출처(doc "적용 대상 제약").
+        var bands = new (EffectKind Kind, string Tag)[]
         {
-            (EffectKind.Fire, "Fire", 'A'), (EffectKind.Haze, "Haze", 'A'),
-            (EffectKind.Flies, "Flies", 'A'), (EffectKind.Flood, "Flood", 'A'),
-            (EffectKind.Skulls, "Skulls", 'A'), (EffectKind.Daze, "Daze", 'A'),
-            (EffectKind.Bubbles, "Bubbles", 'A'), (EffectKind.Burst, "Burst", 'A'),
-            (EffectKind.Tear, "Tear", 'U'), (EffectKind.Shatter, "Shatter", 'U'),
+            (EffectKind.Fire, "Fire"), (EffectKind.Haze, "Haze"),
+            (EffectKind.Flies, "Flies"), (EffectKind.Flood, "Flood"),
+            (EffectKind.Skulls, "Skulls"), (EffectKind.Daze, "Daze"),
+            (EffectKind.Bubbles, "Bubbles"), (EffectKind.Burst, "Burst"),
+            (EffectKind.Tear, "Tear"), (EffectKind.Shatter, "Shatter"),
         };
         for (var b = 0; b < bands.Length; b++)
         {
-            var (kind, tag, scope) = bands[b];
-            BuildEffectBand(mapView, font, swords, kind, tag, scope, unitRow: b * 6 + 1, castleRow: b * 6 + 4);
+            var (kind, tag) = bands[b];
+            BuildEffectBand(mapView, font, swords, kind, tag, EffectView.ScopeOf(kind), unitRow: b * 6 + 1, castleRow: b * 6 + 4);
         }
 
         MapView3D.TuneImportedMeshes(this);
@@ -273,11 +273,11 @@ public partial class GameRoot3D : Node3D
 
     // 한 효과를 편대 규모별(1·3·5·7·9)과 성 3종에 지속표시하는 밴드 하나.
     private void BuildEffectBand(MapView3D view, Font font, PackedScene swords,
-        EffectKind kind, string tag, char scope, int unitRow, int castleRow)
+        EffectKind kind, string tag, EffectTargetScope scope, int unitRow, int castleRow)
     {
         var color = new Color(0.30f, 0.45f, 0.70f);
         var sizes = new[] { 1, 3, 5, 7, 9 };
-        if (scope != 'B') // 건물 전용이면 유닛에는 표시하지 않는다
+        if (scope != EffectTargetScope.Building) // 건물 전용이면 유닛에는 표시하지 않는다
         {
             for (var i = 0; i < sizes.Length; i++)
             {
@@ -290,7 +290,7 @@ public partial class GameRoot3D : Node3D
             }
         }
 
-        if (scope == 'U') // 유닛 전용이면 성에는 표시하지 않는다
+        if (scope == EffectTargetScope.Unit) // 유닛 전용이면 성에는 표시하지 않는다
         {
             return;
         }

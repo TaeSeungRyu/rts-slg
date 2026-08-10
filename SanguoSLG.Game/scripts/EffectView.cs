@@ -12,6 +12,15 @@ namespace SanguoSLG.Game;
 /// </summary>
 public static class EffectView
 {
+    // 효과별 적용 대상 범위(doc/design-effect.md "적용 대상 제약")의 코드 단일 출처.
+    // 발동 규칙 계층과 검수 하네스 모두 여기를 참조한다.
+    public static EffectTargetScope ScopeOf(EffectKind kind) => kind switch
+    {
+        EffectKind.Tear or EffectKind.Shatter => EffectTargetScope.Unit,
+        EffectKind.Villagers => EffectTargetScope.Building,
+        _ => EffectTargetScope.Both,
+    };
+
     public static Node3D Attach(Node3D target, EffectKind kind, float scale = 1f)
     {
         var root = new Node3D { Name = $"Effect_{kind}" };
