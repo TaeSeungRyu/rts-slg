@@ -34,7 +34,7 @@ public partial class ConfusionEffect : Node3D
         for (var k = 0; k < Count; k++)
         {
             var mark = scene.Instantiate<Node3D>();
-            mark.Scale = new Vector3(0.8f * S, 0.8f * S, 0.8f * S);
+            mark.Scale = new Vector3(0.88f * S, 0.88f * S, 0.88f * S);
             OverrideMaterial(mark, mat);
             holder.AddChild(mark);
             _marks[k] = mark;
