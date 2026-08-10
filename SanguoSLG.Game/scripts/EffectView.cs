@@ -46,6 +46,9 @@ public static class EffectView
             case EffectKind.Tear:
                 root.AddChild(new TearEffect { S = scale });
                 break;
+            case EffectKind.Shatter:
+                root.AddChild(new ShatterEffect { S = scale, Target = target });
+                break;
             default:
                 throw new InvalidOperationException($"미구현 효과: {kind}");
         }
