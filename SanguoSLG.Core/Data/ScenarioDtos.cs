@@ -40,6 +40,7 @@ internal sealed class GeneralDto
 internal sealed class BalanceDto
 {
     public int MonthlyTaxPerCity { get; init; }
+    public int MultiTargetSecondaryPercent { get; init; } = 60;
 }
 
 internal sealed class MapDto
