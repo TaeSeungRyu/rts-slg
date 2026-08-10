@@ -1,143 +1,69 @@
+using System.Collections.Generic;
 using Godot;
 
 namespace SanguoSLG.Game;
 
 /// <summary>
-/// 찢어지는 듯한 효과(design-effect.md #10). 지그재그 이빨을 맞문 두 조각이 좌우로
-/// 벌어지며 틈이 열렸다 닫히길 반복한다. 이음새 3개가 위상을 어긋내 순차로 찢어진다.
-/// 조각은 카메라를 향해 서고(빌보드 대신 매 프레임 정면 회전), 위상·자리는 인덱스에서
-/// 뽑아 난수를 쓰지 않는다(결정적).
+/// 찢어지는 듯한 효과(design-effect.md #10). <b>유닛 전용</b>. 대상의 실제 메시를 모델 전체
+/// 기준 4조각으로 쪼갠 뒤(<see cref="MeshFracture"/>), 원본을 숨기고 조각이 바깥으로 천천히
+/// 갈라져 벌어졌다 떨어진다 — 잘게 터지는 <see cref="ShatterEffect"/>와 달리 큰 덩어리가
+/// 뜯겨나가는 느낌. 실사용 1회성, 검수용은 주기마다 원본 복원.
 /// </summary>
 public partial class TearEffect : Node3D
 {
     public float S = 1f;
+    public Node3D Target = null!;
 
-    private const int Seams = 3;
-    private const float Period = 1.7f;
-    private const float MaxGap = 0.07f;   // 조각이 벌어지는 최대 폭(*S)
+    private const int Pieces = 4;
+    private const float Period = 2.8f;
+    private const float TearStart = 0.12f;
+    private const float TearEnd = 0.76f;   // 이후 원본 복원 + 조각 숨김(쉼)
 
-    private Node3D _facer = null!;
-    private readonly MeshInstance3D[] _left = new MeshInstance3D[Seams];
-    private readonly MeshInstance3D[] _right = new MeshInstance3D[Seams];
+    private List<MeshInstance3D> _originals = new();
+    private List<MeshFracture.Fragment> _fragments = new();
     private float _t;
 
     public override void _Ready()
     {
-        _facer = new Node3D();
-        AddChild(_facer);
-
-        var leftMesh = BuildRipHalf(-1f);
-        var rightMesh = BuildRipHalf(+1f);
-
-        for (var k = 0; k < Seams; k++)
+        if (Target != null)
         {
-            var seam = new Node3D
-            {
-                // 이음새마다 높이·좌우를 달리해 여러 군데가 찢기게 한다
-                Position = new Vector3((k - 1) * 0.14f * S, (0.16f + k * 0.13f) * S, 0f),
-            };
-            _facer.AddChild(seam);
-
-            var left = new MeshInstance3D { Mesh = leftMesh, MaterialOverride = RipMaterial() };
-            var right = new MeshInstance3D { Mesh = rightMesh, MaterialOverride = RipMaterial() };
-            seam.AddChild(left);
-            seam.AddChild(right);
-            _left[k] = left;
-            _right[k] = right;
+            (_originals, _fragments) = MeshFracture.Build(this, Target, Pieces);
         }
     }
 
     public override void _Process(double delta)
     {
+        if (_fragments.Count == 0)
+        {
+            return;
+        }
+
         _t += (float)delta;
+        var cycle = Mathf.PosMod(_t / Period, 1f);
 
-        var cam = GetViewport()?.GetCamera3D();
-        if (cam != null)
+        var rest = cycle >= TearEnd;
+        foreach (var o in _originals)
         {
-            // -Z가 카메라를 향하게 세운다. 조각의 좌우 벌어짐이 화면 가로축과 맞도록.
-            _facer.LookAt(cam.GlobalPosition, Vector3.Up);
+            o.Visible = rest;
+        }
+        foreach (var f in _fragments)
+        {
+            f.Node.Visible = !rest;
+        }
+        if (rest)
+        {
+            return;
         }
 
-        for (var k = 0; k < Seams; k++)
+        // TearStart 전엔 조각이 조립된 채(통짜). 이후 큰 덩어리가 천천히 갈라진다.
+        var tt = Mathf.Clamp((cycle - TearStart) / (TearEnd - TearStart), 0f, 1f);
+        foreach (var f in _fragments)
         {
-            var cycle = Mathf.PosMod(_t / Period + k * 0.33f, 1f);
-
-            float gap, alpha;
-            if (cycle < 0.15f)          // 맞물린 채 나타남
-            {
-                gap = 0f;
-                alpha = cycle / 0.15f;
-            }
-            else if (cycle < 0.50f)     // 지그재그가 벌어지며 찢어진다
-            {
-                var f = (cycle - 0.15f) / 0.35f;
-                gap = f * MaxGap;
-                alpha = 1f;
-            }
-            else if (cycle < 0.80f)     // 벌어진 채 유지
-            {
-                gap = MaxGap;
-                alpha = 1f;
-            }
-            else                        // 옅어지며 사라짐(다음 주기 전 쉼)
-            {
-                gap = MaxGap;
-                alpha = 1f - (cycle - 0.80f) / 0.20f;
-            }
-
-            _left[k].Position = new Vector3(-gap * S, 0f, 0f);
-            _right[k].Position = new Vector3(gap * S, 0f, 0f);
-            SetAlpha(_left[k], alpha);
-            SetAlpha(_right[k], alpha);
+            var dist = (0.10f + (f.Seed % 4) * 0.04f) * tt * S; // 잘게 안 터지고 천천히 벌어짐
+            var drop = tt * tt * 0.35f * S;
+            f.Node.Position = f.Rest + f.Dir * dist - Vector3.Up * drop;
+            var axis = new Vector3((f.Seed % 3) - 1, 1f, (f.Seed % 2) == 0 ? 1 : -1).Normalized();
+            f.Node.Rotation = axis * (1.4f * tt);
         }
-    }
-
-    // 지그재그 이빨을 가진 찢김 조각 한쪽. sign<0=왼쪽, >0=오른쪽. 바깥은 직선,
-    // 안쪽(맞물리는 변)은 이빨이 중앙(x=0)을 향해 뾰족한 톱니.
-    private static ArrayMesh BuildRipHalf(float sign)
-    {
-        const int steps = 8;
-        var w = 0.11f;       // 조각 폭
-        var amp = 0.045f;    // 톱니 깊이
-        var h = 0.46f;       // 세로 길이
-
-        var st = new SurfaceTool();
-        st.Begin(Mesh.PrimitiveType.Triangles);
-
-        Vector3 Outer(int i) => new(sign * w, -h / 2f + i * (h / steps), 0f);
-        Vector3 Inner(int i) => new(sign * (i % 2 == 0 ? 0f : amp), -h / 2f + i * (h / steps), 0f);
-
-        void Tri(Vector3 a, Vector3 b, Vector3 c)
-        {
-            st.SetNormal(Vector3.Back);
-            st.AddVertex(a);
-            st.AddVertex(b);
-            st.AddVertex(c);
-        }
-
-        for (var i = 0; i < steps; i++)
-        {
-            Tri(Outer(i), Inner(i), Inner(i + 1));
-            Tri(Outer(i), Inner(i + 1), Outer(i + 1));
-        }
-
-        return st.Commit();
-    }
-
-    private static StandardMaterial3D RipMaterial() => new()
-    {
-        AlbedoColor = new Color(0.92f, 0.94f, 1f, 1f),
-        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-        Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-        CullMode = BaseMaterial3D.CullModeEnum.Disabled, // 양면 — 뒤에서 봐도 보이게
-        EmissionEnabled = true,
-        Emission = new Color(0.5f, 0.55f, 0.7f),
-    };
-
-    private static void SetAlpha(MeshInstance3D node, float a)
-    {
-        var mat = (StandardMaterial3D)node.MaterialOverride;
-        var c = mat.AlbedoColor;
-        mat.AlbedoColor = new Color(c.R, c.G, c.B, Mathf.Clamp(a, 0f, 1f));
     }
 }

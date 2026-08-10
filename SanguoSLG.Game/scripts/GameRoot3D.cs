@@ -252,11 +252,19 @@ public partial class GameRoot3D : Node3D
 
         // 구현된 효과마다 밴드 하나: 편대 규모별(1·3·5·7·9) + 성 3종에 지속표시.
         // 효과가 늘면 (효과, 이름) 한 줄씩 추가한다.
-        var bands = new[] { (EffectKind.Fire, "Fire"), (EffectKind.Haze, "Haze"), (EffectKind.Flies, "Flies"), (EffectKind.Flood, "Flood"), (EffectKind.Skulls, "Skulls"), (EffectKind.Daze, "Daze"), (EffectKind.Bubbles, "Bubbles"), (EffectKind.Burst, "Burst"), (EffectKind.Tear, "Tear"), (EffectKind.Shatter, "Shatter") };
+        // scope: 'A'=유닛·건물 모두, 'U'=유닛 전용, 'B'=건물 전용
+        var bands = new (EffectKind Kind, string Tag, char Scope)[]
+        {
+            (EffectKind.Fire, "Fire", 'A'), (EffectKind.Haze, "Haze", 'A'),
+            (EffectKind.Flies, "Flies", 'A'), (EffectKind.Flood, "Flood", 'A'),
+            (EffectKind.Skulls, "Skulls", 'A'), (EffectKind.Daze, "Daze", 'A'),
+            (EffectKind.Bubbles, "Bubbles", 'A'), (EffectKind.Burst, "Burst", 'A'),
+            (EffectKind.Tear, "Tear", 'U'), (EffectKind.Shatter, "Shatter", 'U'),
+        };
         for (var b = 0; b < bands.Length; b++)
         {
-            var (kind, tag) = bands[b];
-            BuildEffectBand(mapView, font, swords, kind, tag, unitRow: b * 6 + 1, castleRow: b * 6 + 4);
+            var (kind, tag, scope) = bands[b];
+            BuildEffectBand(mapView, font, swords, kind, tag, scope, unitRow: b * 6 + 1, castleRow: b * 6 + 4);
         }
 
         MapView3D.TuneImportedMeshes(this);
@@ -265,18 +273,26 @@ public partial class GameRoot3D : Node3D
 
     // 한 효과를 편대 규모별(1·3·5·7·9)과 성 3종에 지속표시하는 밴드 하나.
     private void BuildEffectBand(MapView3D view, Font font, PackedScene swords,
-        EffectKind kind, string tag, int unitRow, int castleRow)
+        EffectKind kind, string tag, char scope, int unitRow, int castleRow)
     {
         var color = new Color(0.30f, 0.45f, 0.70f);
         var sizes = new[] { 1, 3, 5, 7, 9 };
-        for (var i = 0; i < sizes.Length; i++)
+        if (scope != 'B') // 건물 전용이면 유닛에는 표시하지 않는다
         {
-            var root = new Node3D { Position = view.HexToWorld(new HexCoord(2 + i * 4, unitRow)) + new Vector3(0f, view.TileTopY, 0f) };
-            AddChild(root);
-            TroopFormation.Build(root, swords, sizes[i]);
-            FactionColorView.Apply(root, color);
-            EffectView.Attach(root, kind, 0.5f + sizes[i] * 0.08f);
-            root.AddChild(EffectLabel(font, $"{sizes[i]}기 {tag}", 0.5f));
+            for (var i = 0; i < sizes.Length; i++)
+            {
+                var root = new Node3D { Position = view.HexToWorld(new HexCoord(2 + i * 4, unitRow)) + new Vector3(0f, view.TileTopY, 0f) };
+                AddChild(root);
+                TroopFormation.Build(root, swords, sizes[i]);
+                FactionColorView.Apply(root, color);
+                EffectView.Attach(root, kind, 0.5f + sizes[i] * 0.08f);
+                root.AddChild(EffectLabel(font, $"{sizes[i]}기 {tag}", 0.5f));
+            }
+        }
+
+        if (scope == 'U') // 유닛 전용이면 성에는 표시하지 않는다
+        {
+            return;
         }
 
         var castles = new (CastleSize Size, string Name, string File, int Q)[]
