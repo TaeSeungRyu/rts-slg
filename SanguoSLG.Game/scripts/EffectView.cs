@@ -31,6 +31,9 @@ public static class EffectView
             case EffectKind.Flood:
                 root.AddChild(new FloodEffect { S = scale });
                 break;
+            case EffectKind.Skulls:
+                BuildSkulls(root, scale);
+                break;
             default:
                 throw new InvalidOperationException($"미구현 효과: {kind}");
         }
@@ -145,6 +148,89 @@ public static class EffectView
             ScaleAmountMax = 3.2f,
             ColorRamp = gradient,
         });
+    }
+
+    // 여러 랜덤 크기의 회색 해골이 아래에서 위로 나타났다(페이드 인) 사라진다(페이드 아웃).
+    // 해골 메시(prop-skull.glb)를 파티클 메시로 쓰고, 표면 재질에 정점색·투명을 켜
+    // 파티클 색 램프(알파 0→1→0)가 각 표면 색을 유지하며 나타났다 사라지게 한다.
+    private static void BuildSkulls(Node3D root, float s)
+    {
+        var fade = new Gradient();
+        fade.SetColor(0, new Color(1f, 1f, 1f, 0f));
+        fade.AddPoint(0.25f, new Color(1f, 1f, 1f, 1f));
+        fade.AddPoint(0.75f, new Color(1f, 1f, 1f, 1f));
+        fade.SetColor(1, new Color(1f, 1f, 1f, 0f));
+
+        root.AddChild(new CpuParticles3D
+        {
+            Mesh = SkullMesh(),
+            Scale = new Vector3(s, s, s),
+            Amount = 6,
+            Lifetime = 2.0f,
+            Preprocess = 1f,
+            Randomness = 0.7f,
+            EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
+            EmissionBoxExtents = new Vector3(0.18f, 0.02f, 0.18f),
+            Position = new Vector3(0f, 0.02f, 0f),
+            Direction = new Vector3(0f, 1f, 0f),
+            Spread = 8f,
+            InitialVelocityMin = 0.10f,
+            InitialVelocityMax = 0.18f,
+            Gravity = Vector3.Zero,
+            AngleMin = -25f,
+            AngleMax = 25f,
+            ScaleAmountMin = 0.7f,
+            ScaleAmountMax = 1.9f,
+            ColorRamp = fade,
+        });
+    }
+
+    // 해골 메시를 한 번만 준비해 캐시한다. GLB 표면 재질을 복제해 정점색·알파를 켜야
+    // 파티클 페이드가 먹는다(원본 리소스를 건드리지 않도록 메시·재질 모두 복제).
+    private static Mesh? _skullMesh;
+
+    private static Mesh SkullMesh()
+    {
+        if (_skullMesh is not null)
+        {
+            return _skullMesh;
+        }
+
+        var instance = GD.Load<PackedScene>("res://assets/models/prop-skull.glb").Instantiate<Node3D>();
+        var source = FindMesh(instance) ?? throw new InvalidOperationException("prop-skull.glb에 메시가 없다");
+        var mesh = (Mesh)source.Duplicate(true);
+        for (var i = 0; i < mesh.GetSurfaceCount(); i++)
+        {
+            if (mesh.SurfaceGetMaterial(i) is BaseMaterial3D mat)
+            {
+                var m = (BaseMaterial3D)mat.Duplicate();
+                m.VertexColorUseAsAlbedo = true;
+                m.Transparency = BaseMaterial3D.TransparencyEnum.Alpha;
+                mesh.SurfaceSetMaterial(i, m);
+            }
+        }
+
+        instance.QueueFree();
+        _skullMesh = mesh;
+        return mesh;
+    }
+
+    private static Mesh? FindMesh(Node node)
+    {
+        if (node is MeshInstance3D { Mesh: { } mesh })
+        {
+            return mesh;
+        }
+
+        foreach (var child in node.GetChildren())
+        {
+            if (FindMesh(child) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private static SphereMesh PuffMesh(float radius, BaseMaterial3D.BlendModeEnum blend) => new()
