@@ -60,7 +60,6 @@ public partial class BurstEffect : Node3D
                     BlendMode = BaseMaterial3D.BlendModeEnum.Add,
                 },
             },
-            Rotation = new Vector3(Mathf.Pi / 2f, 0f, 0f),
             Position = new Vector3(0f, 0.02f * S, 0f),
             Visible = false,
         };
@@ -128,7 +127,7 @@ public partial class BurstEffect : Node3D
             var f = cycle / 0.45f;
             var scale = 0.3f + f * 1.6f;
             _ring.Visible = true;
-            _ring.Scale = new Vector3(scale, scale, 1f);
+            _ring.Scale = new Vector3(scale, 1f, scale);
             SetAlpha(_ring, 1f - f);
         }
         else
