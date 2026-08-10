@@ -1,0 +1,10 @@
+[
+  { "code": "geukbyeong",   "name": "극병",     "base": "swordsman",  "atk_bonus_vs_class": { "cavalry": 10 }, "attacker_bonus_from_class": { "archer": 10 } },
+  { "code": "namman",       "name": "남만병",   "base": "swordsman",  "atk_bonus_building": 10 },
+  { "code": "deunggap",     "name": "등갑병",   "base": "swordsman",  "df_override": 14 },
+  { "code": "mudang",       "name": "무당비군", "base": "archer",     "atk_bonus_impassable": 10 },
+  { "code": "cataphract",   "name": "철기병",   "base": "cavalry",    "atk_bonus_all": 10 },
+  { "code": "horse_archer", "name": "궁기병",   "base": "cavalry",    "building_atk_override": 6 },
+  { "code": "hwarang",      "name": "화랑궁병", "base": "archer",     "building_atk_override": 8 },
+  { "code": "waeseon",      "name": "왜선",     "base": "small_boat", "df_override": 4 }
+]
