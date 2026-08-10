@@ -1,4 +1,3 @@
-using System;
 using Godot;
 
 namespace SanguoSLG.Game;
@@ -17,16 +16,20 @@ public partial class SkullsEffect : Node3D
     private const int Count = 5;
     private const float Period = 2.6f;
 
-    private static Mesh? _mesh;
+    private static PackedScene? _scene;
 
-    private readonly MeshInstance3D[] _skulls = new MeshInstance3D[Count];
+    private readonly Node3D[] _skulls = new Node3D[Count];
     private float _t;
 
     public override void _Ready()
     {
+        // 해골 부위(두개골·턱·눈·이빨)가 각각 별도 메시라, 단일 메시를 뽑으면 하나만 나온다.
+        // GLB 씬 전체를 인스턴스해 모든 부위가 함께 렌더되게 한다.
+        _scene ??= GD.Load<PackedScene>("res://assets/models/prop-skull.glb");
         for (var i = 0; i < Count; i++)
         {
-            var skull = new MeshInstance3D { Mesh = SkullMesh(), Visible = false };
+            var skull = _scene.Instantiate<Node3D>();
+            skull.Visible = false;
             AddChild(skull);
             _skulls[i] = skull;
         }
@@ -66,36 +69,5 @@ public partial class SkullsEffect : Node3D
 
             skull.Scale = new Vector3(size, size, size);
         }
-    }
-
-    private static Mesh SkullMesh()
-    {
-        if (_mesh is not null)
-        {
-            return _mesh;
-        }
-
-        var instance = GD.Load<PackedScene>("res://assets/models/prop-skull.glb").Instantiate<Node3D>();
-        _mesh = FindMesh(instance) ?? throw new InvalidOperationException("prop-skull.glb에 메시가 없다");
-        instance.QueueFree();
-        return _mesh;
-    }
-
-    private static Mesh? FindMesh(Node node)
-    {
-        if (node is MeshInstance3D { Mesh: { } mesh })
-        {
-            return mesh;
-        }
-
-        foreach (var child in node.GetChildren())
-        {
-            if (FindMesh(child) is { } found)
-            {
-                return found;
-            }
-        }
-
-        return null;
     }
 }
