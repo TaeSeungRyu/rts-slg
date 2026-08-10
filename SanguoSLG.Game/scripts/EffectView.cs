@@ -28,6 +28,9 @@ public static class EffectView
             case EffectKind.Flies:
                 root.AddChild(new FliesEffect { S = scale });
                 break;
+            case EffectKind.Flood:
+                root.AddChild(new FloodEffect { S = scale });
+                break;
             default:
                 throw new InvalidOperationException($"미구현 효과: {kind}");
         }
