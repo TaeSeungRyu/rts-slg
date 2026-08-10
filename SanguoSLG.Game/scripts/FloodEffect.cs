@@ -16,17 +16,17 @@ public partial class FloodEffect : Node3D
 
     public override void _Ready()
     {
+        // 평면이 아니라 부피가 있는 물덩이 — 바닥(y=0)에 붙은 채 높이만 자라야
+        // 옆(쿼터뷰)에서 얇은 선이 아니라 물이 차오르는 입체로 읽힌다.
         _water = new MeshInstance3D
         {
-            Mesh = new PlaneMesh { Size = new Vector2(1.0f * S, 1.0f * S) },
+            Mesh = new BoxMesh { Size = Vector3.One },
             MaterialOverride = new StandardMaterial3D
             {
-                AlbedoColor = new Color(0.18f, 0.42f, 0.66f, 0.55f),
+                AlbedoColor = new Color(0.18f, 0.42f, 0.66f, 0.5f),
                 Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
                 Roughness = 0.12f,
                 Metallic = 0.2f,
-                // 쿼터뷰에서 밑에서도 보이도록 양면. 수면이라 그림자는 끈다
-                CullMode = BaseMaterial3D.CullModeEnum.Disabled,
             },
         };
         AddChild(_water);
@@ -35,9 +35,13 @@ public partial class FloodEffect : Node3D
     public override void _Process(double delta)
     {
         _t += (float)delta;
-        // 0 → 최고(0.35) → 0 을 매끈하게. 잔물결로 표면이 살짝 떨린다
+        // 0 → 최고(0.35) → 0 을 매끈하게. 잔물결로 수면이 살짝 떨린다
         var level = (0.5f - 0.5f * Mathf.Cos(_t * 0.9f)) * 0.35f * S
             + Mathf.Sin(_t * 3.1f) * 0.008f * S;
-        _water.Position = new Vector3(0f, level, 0f);
+        level = Mathf.Max(level, 0.001f);
+
+        // 단위 박스를 폭은 그대로, 높이만 level로 — 바닥은 y=0에 고정하고 윗면(수면)만 오른다
+        _water.Scale = new Vector3(1.0f * S, level, 1.0f * S);
+        _water.Position = new Vector3(0f, level * 0.5f, 0f);
     }
 }
