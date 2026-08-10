@@ -40,6 +40,9 @@ public static class EffectView
             case EffectKind.Bubbles:
                 root.AddChild(new BubblesEffect { S = scale });
                 break;
+            case EffectKind.Burst:
+                root.AddChild(new BurstEffect { S = scale });
+                break;
             default:
                 throw new InvalidOperationException($"미구현 효과: {kind}");
         }

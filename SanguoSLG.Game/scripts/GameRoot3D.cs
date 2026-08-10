@@ -240,7 +240,7 @@ public partial class GameRoot3D : Node3D
 
         var mapView = new MapView3D();
         AddChild(mapView);
-        var map = new HexMap(0, 24, 0, 42);
+        var map = new HexMap(0, 24, 0, 48);
         mapView.Build(map, new System.Collections.Generic.HashSet<HexCoord>(), new TileConditionMap());
 
         var camera = new CameraController3D { Fov = 55f };
@@ -252,7 +252,7 @@ public partial class GameRoot3D : Node3D
 
         // 구현된 효과마다 밴드 하나: 편대 규모별(1·3·5·7·9) + 성 3종에 지속표시.
         // 효과가 늘면 (효과, 이름) 한 줄씩 추가한다.
-        var bands = new[] { (EffectKind.Fire, "Fire"), (EffectKind.Haze, "Haze"), (EffectKind.Flies, "Flies"), (EffectKind.Flood, "Flood"), (EffectKind.Skulls, "Skulls"), (EffectKind.Daze, "Daze"), (EffectKind.Bubbles, "Bubbles") };
+        var bands = new[] { (EffectKind.Fire, "Fire"), (EffectKind.Haze, "Haze"), (EffectKind.Flies, "Flies"), (EffectKind.Flood, "Flood"), (EffectKind.Skulls, "Skulls"), (EffectKind.Daze, "Daze"), (EffectKind.Bubbles, "Bubbles"), (EffectKind.Burst, "Burst") };
         for (var b = 0; b < bands.Length; b++)
         {
             var (kind, tag) = bands[b];
