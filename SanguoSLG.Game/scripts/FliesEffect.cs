@@ -21,8 +21,8 @@ public partial class FliesEffect : Node3D
     {
         var mesh = new SphereMesh
         {
-            Radius = 0.0072f * S,
-            Height = 0.0144f * S,
+            Radius = 0.0086f * S,
+            Height = 0.0173f * S,
             RadialSegments = 5,
             Rings = 3,
             Material = new StandardMaterial3D
