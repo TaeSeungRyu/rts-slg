@@ -11,27 +11,30 @@ public partial class BubblesEffect : Node3D
 {
     public float S = 1f;
 
-    private const int Count = 3;
-    private const float Period = 2.2f; // 느리게 — 방울 하나의 생성~터짐 주기
+    private const int Count = 7;
+    private const float Period = 2.4f;    // 느리게 — 방울 하나의 생성~터짐 주기
+    private const float TileR = 0.5774f;  // flat-top 타일 반경 — 방울을 타일 전체에 흩는다
 
     private readonly MeshInstance3D[] _bubbles = new MeshInstance3D[Count];
+    private readonly Vector2[] _pos = new Vector2[Count];   // 타일 평면상 자리(XZ)
+    private readonly float[] _big = new float[Count];       // 방울별 최대 크기 배수
     private float _t;
 
     public override void _Ready()
     {
         var mesh = new SphereMesh
         {
-            Radius = 0.05f * S,
-            Height = 0.10f * S,
+            Radius = 0.06f * S,
+            Height = 0.12f * S,
             RadialSegments = 10,
             Rings = 6,
             Material = new StandardMaterial3D
             {
-                AlbedoColor = new Color(0.26f, 0.76f, 0.32f, 0.5f),
+                AlbedoColor = new Color(0.06f, 0.42f, 0.10f, 0.62f), // 진한 초록
                 Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
                 Roughness = 0.1f,
                 EmissionEnabled = true,
-                Emission = new Color(0.12f, 0.40f, 0.16f),
+                Emission = new Color(0.05f, 0.24f, 0.08f),
             },
         };
 
@@ -40,6 +43,14 @@ public partial class BubblesEffect : Node3D
             var bubble = new MeshInstance3D { Mesh = mesh, Visible = false };
             AddChild(bubble);
             _bubbles[i] = bubble;
+
+            // 한 점 집중이 아니라 타일 전체에 흩는다. 황금각으로 인덱스에서 자리를 뽑아
+            // 난수 없이도 겹치지 않게 퍼뜨린다(반지름은 안쪽으로 조금 당김).
+            var angle = i * 2.399963f;
+            var r = Mathf.Sqrt((i + 0.5f) / Count) * TileR * 0.82f * S;
+            _pos[i] = new Vector2(Mathf.Cos(angle) * r, Mathf.Sin(angle) * r);
+            // 크기 편차 — 몇 개는 무척 크게 터진다
+            _big[i] = (i % 3 == 0) ? 3.4f : (i % 3 == 1) ? 2.0f : 1.3f;
         }
     }
 
@@ -48,7 +59,8 @@ public partial class BubblesEffect : Node3D
         _t += (float)delta;
         for (var i = 0; i < Count; i++)
         {
-            var cycle = Mathf.PosMod(_t / Period + i / (float)Count, 1f);
+            // 위상을 인덱스로 흩어 한꺼번에 터지지 않게 한다
+            var cycle = Mathf.PosMod(_t / Period + i * 0.61803f, 1f);
             var bubble = _bubbles[i];
 
             // 터진 뒤 잠깐 사라져 있는다(다음 주기 시작 전)
@@ -58,24 +70,23 @@ public partial class BubblesEffect : Node3D
                 continue;
             }
 
-            float size;
+            float grow;
             if (cycle < 0.18f)
             {
-                size = cycle / 0.18f; // 방울이 부풀며 나타남
+                grow = cycle / 0.18f;                          // 부풀며 나타남
             }
-            else if (cycle < 0.82f)
+            else if (cycle < 0.80f)
             {
-                size = 1f;            // 떠오르며 유지
+                grow = 1f;                                     // 떠오르며 유지
             }
             else
             {
-                size = 1f + (cycle - 0.82f) / 0.14f * 0.7f; // 끝에 급히 부풀어 터진다
+                grow = 1f + (cycle - 0.80f) / 0.16f * 1.4f;    // 끝에 급히 커져 터진다
             }
 
-            var laneX = (i - (Count - 1) * 0.5f) * 0.08f * S;
-            var laneZ = ((i % 2) * 2 - 1) * 0.05f * S;
+            var size = grow * _big[i];
             bubble.Visible = size > 0.02f;
-            bubble.Position = new Vector3(laneX, 0.03f * S + cycle * 0.15f * S, laneZ);
+            bubble.Position = new Vector3(_pos[i].X, 0.03f * S + cycle * 0.15f * S, _pos[i].Y);
             bubble.Scale = new Vector3(size, size, size);
         }
     }
