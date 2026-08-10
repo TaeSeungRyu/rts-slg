@@ -32,7 +32,8 @@ public partial class DazeEffect : Node3D
         for (var k = 0; k < Count; k++)
         {
             var angle = k * Mathf.Tau / Count;
-            var pos = new Vector3(Mathf.Cos(angle) * 0.17f * S, Mathf.Sin(angle) * 0.17f * S, 0f);
+            // 수평면(XZ)에 눕힌 원 — 화면 평면이 아니라 캐릭터의 3D 원근을 따르는 궤도
+            var pos = new Vector3(Mathf.Cos(angle) * 0.17f * S, 0f, Mathf.Sin(angle) * 0.17f * S);
 
             Node3D item;
             if (k % 2 == 0)
@@ -55,15 +56,24 @@ public partial class DazeEffect : Node3D
     public override void _Process(double delta)
     {
         _spin += (float)delta * 2.0f;
+
+        // 수평 링을 Y축으로 돌린다 — 캐릭터 위를 도는 3D 궤도
+        _ring.Rotation = new Vector3(0f, _spin, 0f);
+
+        // 납작한 별·점은 각자 카메라를 바라보게 해 궤도 어디서든 별로 보인다
         var cam = GetViewport().GetCamera3D();
         if (cam is null)
         {
             return;
         }
 
-        // 링 평면을 카메라로 향하게 한 뒤(-Z가 카메라), 그 축(로컬 Z)으로 돌려 화면 안에서 빙글빙글
-        _ring.LookAt(cam.GlobalPosition, Vector3.Up);
-        _ring.RotateObjectLocal(Vector3.Back, _spin);
+        foreach (var child in _ring.GetChildren())
+        {
+            if (child is Node3D item)
+            {
+                item.LookAt(cam.GlobalPosition, Vector3.Up);
+            }
+        }
     }
 
     // 평면 5각 별(XY 평면). 앞뒤 모두 보이도록 양면·비조명.
