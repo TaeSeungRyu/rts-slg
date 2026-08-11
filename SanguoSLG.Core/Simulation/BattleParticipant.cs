@@ -15,6 +15,7 @@ namespace SanguoSLG.Core.Simulation;
 /// <param name="DefenseActive">발동한 방어 액티브(받는 피해 감소).</param>
 /// <param name="HealActive">발동한 회복 액티브(부상 풀에서 병력 회복).</param>
 /// <param name="TargetIsBuilding">대상이 건물인가(분쇄 등).</param>
+/// <param name="OutgoingDamagePercent">준 피해 배수(100 = 감소 없음). 수공·연막 디버프가 낮춘다.</param>
 public sealed record BattleParticipant(
     CombatStats Stats,
     UnitMode Mode,
@@ -25,4 +26,5 @@ public sealed record BattleParticipant(
     ActiveSkill? StrikeActive = null,
     ActiveSkill? DefenseActive = null,
     ActiveSkill? HealActive = null,
-    bool TargetIsBuilding = false);
+    bool TargetIsBuilding = false,
+    int OutgoingDamagePercent = 100);

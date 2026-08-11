@@ -115,4 +115,58 @@ public class StatusEffectTests
             .ReturnToCastle();
         Assert.Empty(state.Statuses);
     }
+
+    [Fact]
+    public void 수공_MakeStatus_공격감소_강도반영()
+    {
+        // 수공 base 20%, 지력차 +40(강도 140) → 공격 감소 28%, 2진행
+        var status = St["flood_plot"].MakeStatus(casterIntellect: 100, targetIntellect: 60);
+        Assert.NotNull(status);
+        Assert.Equal(StatusKind.AttackDown, status!.Kind);
+        Assert.Equal(28, status.AtkDownPercent);
+        Assert.Equal(2, status.Remaining);
+        Assert.False(status.RangedOnly);
+        Assert.False(status.IsFire);
+    }
+
+    [Fact]
+    public void 연막_MakeStatus_원거리한정_공격감소()
+    {
+        // 연막 base 30%, 강도 100 → 30%, 원거리 한정
+        var status = St["smokescreen"].MakeStatus(80, 80);
+        Assert.NotNull(status);
+        Assert.Equal(StatusKind.RangedDown, status!.Kind);
+        Assert.Equal(30, status.AtkDownPercent);
+        Assert.True(status.RangedOnly);
+    }
+
+    [Fact]
+    public void 이간_MakeStatus_무효는_지속에_강도반영()
+    {
+        // 이간: 지속 2진행 × 강도 150(지력차 +50) → 3진행, 적성·패시브 무효
+        var status = St["discord"].MakeStatus(casterIntellect: 100, targetIntellect: 50);
+        Assert.NotNull(status);
+        Assert.Equal(StatusKind.Nullify, status!.Kind);
+        Assert.True(status.NullifyAptPassive);
+        Assert.Equal(3, status.Remaining);
+        Assert.Equal(0, status.AtkDownPercent);
+    }
+
+    [Fact]
+    public void 혼란_교란은_아직_상태를_만들지않는다()
+    {
+        // 행동불가·강제 후퇴는 후속 증분 — status_kind 미지정이라 null
+        Assert.Null(St["confound"].MakeStatus(80, 80));
+        Assert.Null(St["rout"].MakeStatus(80, 80));
+    }
+
+    [Fact]
+    public void 진정은_능력치디버프도_제거하고_소화는_못한다()
+    {
+        var state = UnitCombatState.Create(60)
+            .AddStatus(new StatusEffect(StatusKind.AttackDown, 0, 2, false, AtkDownPercent: 28));
+
+        Assert.Empty(state.Purge(PurgeScope.NonFire).Statuses); // 진정: 화계 외 제거
+        Assert.Single(state.Purge(PurgeScope.Fire).Statuses);   // 소화: 화계만 → 남음
+    }
 }

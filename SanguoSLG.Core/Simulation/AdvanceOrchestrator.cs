@@ -102,8 +102,9 @@ public sealed class AdvanceOrchestrator
             }
 
             state[id] = u with { State = newState };
+            var (effStats, outgoing) = ApplyDebuffs(u);
             participants[id] = new BattleParticipant(
-                u.Stats with { Troops = u.Pool.Active },
+                effStats with { Troops = u.Pool.Active },
                 u.Field.Mode,
                 u.Pool,
                 u.Might,
@@ -111,7 +112,8 @@ public sealed class AdvanceOrchestrator
                 u.MaxTroops,
                 StrikeActive: skill?.Type == ActiveType.Strike ? skill : null,
                 DefenseActive: skill?.Type == ActiveType.Defense ? skill : null,
-                HealActive: skill?.Type == ActiveType.Heal ? skill : null);
+                HealActive: skill?.Type == ActiveType.Heal ? skill : null,
+                OutgoingDamagePercent: outgoing);
         }
 
         // 5) 동시 정산 → 병력 반영.
@@ -125,6 +127,28 @@ public sealed class AdvanceOrchestrator
     }
 
     private static readonly IReadOnlyDictionary<UnitId, ActiveSkill> NoActives = new Dictionary<UnitId, ActiveSkill>();
+
+    // 걸린 능력치 디버프를 유효 능력치 + 준 피해 배수로 접는다. 이간(무효)은 적성·가산 버킷을 100으로
+    // 되돌리고(공격·방어 모두 약화), 수공·연막은 준 피해를 곱으로 줄인다(연막은 사거리 2 이상만).
+    private static (CombatStats Stats, int OutgoingPercent) ApplyDebuffs(CombatUnit u)
+    {
+        var stats = u.Stats;
+        var outgoing = 100;
+        foreach (var s in u.State.Statuses)
+        {
+            if (s.NullifyAptPassive)
+            {
+                stats = stats with { AptitudePercent = 100, AtkBonusPercent = 100, DfBonusPercent = 100 };
+            }
+
+            if (s.AtkDownPercent > 0 && (!s.RangedOnly || u.Field.AttackRange >= 2))
+            {
+                outgoing = outgoing * System.Math.Max(0, 100 - s.AtkDownPercent) / 100;
+            }
+        }
+
+        return (stats, outgoing);
+    }
 
     // 예약된 계략을 발동/캔슬한다. 발동한 시전 부대 → 그 계략의 사전을 돌려준다(그 교전 공격 불가).
     private Dictionary<UnitId, Stratagem> FireStratagems(Dictionary<UnitId, CombatUnit> state)
@@ -165,6 +189,7 @@ public sealed class AdvanceOrchestrator
                             break;
 
                         case StratagemEffectKind.DamageOverTime:
+                        case StratagemEffectKind.Debuff:
                             var status = stratagem.MakeStatus(caster.Intellect, t.Intellect);
                             if (status is not null)
                             {
@@ -177,7 +202,7 @@ public sealed class AdvanceOrchestrator
                             state[reservation.TargetId] = t with { State = t.State.Purge(stratagem.Purge) };
                             break;
 
-                        // Debuff(공격−%·적성무효·원거리−% 등)의 상태 적용은 후속 증분.
+                        // 혼란(행동불가)·교란(강제 후퇴)의 상태 적용은 후속 증분(전투 능력치 밖).
                     }
 
                     break;

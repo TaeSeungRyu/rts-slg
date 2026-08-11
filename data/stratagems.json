@@ -1,12 +1,12 @@
 [
   { "code": "fire_plot",   "name": "화계", "effect_kind": "damage_over_time", "required_level": 3,  "cost": 15, "base_value": 3,  "duration": 6, "range": 2, "terrain_rule": "river_forbidden", "status_kind": "burn" },
   { "code": "lightning",   "name": "낙뢰", "effect_kind": "instant_damage",   "required_level": 10, "cost": 45, "base_value": 25, "duration": 0, "range": 2, "terrain_rule": "none" },
-  { "code": "flood_plot",  "name": "수공", "effect_kind": "debuff",            "required_level": 6,  "cost": 18, "base_value": 20, "duration": 2, "range": 2, "terrain_rule": "river_only" },
+  { "code": "flood_plot",  "name": "수공", "effect_kind": "debuff",            "required_level": 6,  "cost": 18, "base_value": 20, "duration": 2, "range": 2, "terrain_rule": "river_only", "status_kind": "attack_down" },
   { "code": "confound",    "name": "혼란", "effect_kind": "debuff",            "required_level": 5,  "cost": 15, "base_value": 5,  "duration": 5, "range": 2, "terrain_rule": "none" },
   { "code": "rout",        "name": "교란", "effect_kind": "debuff",            "required_level": 7,  "cost": 23, "base_value": 2,  "duration": 0, "range": 2, "terrain_rule": "none" },
-  { "code": "discord",     "name": "이간", "effect_kind": "debuff",            "required_level": 4,  "cost": 23, "base_value": 0,  "duration": 2, "range": 2, "terrain_rule": "none" },
+  { "code": "discord",     "name": "이간", "effect_kind": "debuff",            "required_level": 4,  "cost": 23, "base_value": 0,  "duration": 2, "range": 2, "terrain_rule": "none", "status_kind": "nullify" },
   { "code": "poison_mist", "name": "독무", "effect_kind": "damage_over_time",  "required_level": 6,  "cost": 18, "base_value": 2,  "duration": 4, "range": 2, "terrain_rule": "none", "status_kind": "poison" },
-  { "code": "smokescreen", "name": "연막", "effect_kind": "debuff",            "required_level": 3,  "cost": 12, "base_value": 30, "duration": 2, "range": 2, "terrain_rule": "none" },
+  { "code": "smokescreen", "name": "연막", "effect_kind": "debuff",            "required_level": 3,  "cost": 12, "base_value": 30, "duration": 2, "range": 2, "terrain_rule": "none", "status_kind": "ranged_down" },
   { "code": "detonate",    "name": "폭파", "effect_kind": "instant_damage",   "required_level": 8,  "cost": 30, "base_value": 6,  "duration": 0, "range": 2, "terrain_rule": "none" },
 
   { "code": "douse",       "name": "소화", "effect_kind": "purge",             "required_level": 1,  "cost": 8,  "base_value": 0,  "duration": 0, "range": 2, "terrain_rule": "none", "purge_scope": "fire" },

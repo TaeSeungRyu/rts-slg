@@ -64,6 +64,7 @@ public sealed class CombatPhaseResolver
                     raw = raw * _marchDamageTakenPercent / 100; // 행군 통과 피해
                 }
 
+                raw = raw * attacker.OutgoingDamagePercent / 100; // 수공·연막 디버프(공격자 준 피해 감소)
                 raw = raw * takenPercent[targetId] / 100; // 방어 액티브 감소
                 damage[targetId] = damage.GetValueOrDefault(targetId) + raw;
                 dealt[engagement.Attacker] = dealt.GetValueOrDefault(engagement.Attacker) + raw;

@@ -49,6 +49,9 @@ public sealed class StratagemLoader
         null or "" => null,
         "burn" => StatusKind.Burn,
         "poison" => StatusKind.Poison,
+        "attack_down" => StatusKind.AttackDown,
+        "ranged_down" => StatusKind.RangedDown,
+        "nullify" => StatusKind.Nullify,
         _ => throw new InvalidDataException($"알 수 없는 상태 종류: {name}"),
     };
 

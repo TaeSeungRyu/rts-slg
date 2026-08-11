@@ -55,17 +55,37 @@ public sealed record Stratagem(
     }
 
     /// <summary>
-    /// 지속 피해(DoT) 계략이 대상에 남기는 상태(강도 배율을 만분율에 반영). 그 외는 null.
-    /// 화계는 <see cref="StatusKind.Burn"/>이라 정화 판정에서 화계 계열로 취급된다.
+    /// 이 계략이 대상에 남기는 지속 상태(강도 배율 반영). 상태를 남기지 않는 계략(즉발·정화)은 null.
+    /// %(수공·연막)·tick(화계·독무)은 강도를 크기에 곱하고, 무효(이간)는 강도를 지속에 반영한다
+    /// (design-stratagem.md "강도 배율은 %·지속·후퇴칸에 곱해진다").
     /// </summary>
     public StatusEffect? MakeStatus(int casterIntellect, int targetIntellect)
     {
-        if (EffectKind != StratagemEffectKind.DamageOverTime || Status is null)
+        if (Status is null)
         {
             return null;
         }
 
         var strength = StratagemStrength.Percent(casterIntellect, targetIntellect);
-        return new StatusEffect(Status.Value, BaseValue * strength, Duration, IsFire: Status.Value == StatusKind.Burn);
+        return Status.Value switch
+        {
+            StatusKind.Burn or StatusKind.Poison => new StatusEffect(
+                Status.Value, TickBasisPoints: BaseValue * strength, Remaining: Duration,
+                IsFire: Status.Value == StatusKind.Burn),
+
+            StatusKind.AttackDown => new StatusEffect(
+                Status.Value, TickBasisPoints: 0, Remaining: Duration, IsFire: false,
+                AtkDownPercent: BaseValue * strength / 100),
+
+            StatusKind.RangedDown => new StatusEffect(
+                Status.Value, TickBasisPoints: 0, Remaining: Duration, IsFire: false,
+                AtkDownPercent: BaseValue * strength / 100, RangedOnly: true),
+
+            StatusKind.Nullify => new StatusEffect(
+                Status.Value, TickBasisPoints: 0, Remaining: Duration * strength / 100, IsFire: false,
+                NullifyAptPassive: true),
+
+            _ => null,
+        };
     }
 }

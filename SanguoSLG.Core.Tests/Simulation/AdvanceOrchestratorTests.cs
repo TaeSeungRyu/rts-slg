@@ -141,6 +141,80 @@ public class AdvanceOrchestratorTests
         Assert.Empty(tg.State.Statuses);
     }
 
+    private static CombatUnit Archer(int id, int owner, HexCoord pos, UnitCombatState? cs = null)
+    {
+        var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos, 2, 2, 2,
+            MovementDomain.Land, UnitMode.Attack, null, 0);
+        var stats = CombatStatsBuilder.BuildField(T["archer"], AptitudeGrade.A, 0, TerrainType.River, 10000);
+        return new CombatUnit(field, stats, new TroopPool(10000, 0),
+            cs ?? UnitCombatState.Create(60), 60, Intellect: 60, MaxTroops: 10000);
+    }
+
+    [Fact]
+    public void 수공_공격감소_디버프가_준피해를_줄인다()
+    {
+        // 공격 −20% 디버프를 가진 부대는 준 피해가 760 → 608(×0.8)로 준다.
+        var atkDown = new StatusEffect(StatusKind.AttackDown, 0, 2, false, AtkDownPercent: 20);
+        var a = Sword(1, 1, new HexCoord(0, 0), cs: UnitCombatState.Create(60).AddStatus(atkDown));
+        var b = Sword(2, 2, new HexCoord(1, 0));
+        var turn = MakeOrchestrator().Run(new[] { a, b });
+
+        var ub = turn.Units.Single(u => u.Id.Value == 2);
+        var ua = turn.Units.Single(u => u.Id.Value == 1);
+        Assert.Equal(10000 - 608, ub.Pool.Active); // a의 준 피해 20% 감소
+        Assert.Equal(10000 - 760, ua.Pool.Active);  // b는 정상 반격
+    }
+
+    [Fact]
+    public void 연막_원거리디버프는_근접부대에는_영향없다()
+    {
+        // 연막(원거리 한정)을 근접(사거리1) 부대가 지녀도 준 피해는 그대로.
+        var rangedDown = new StatusEffect(StatusKind.RangedDown, 0, 2, false, AtkDownPercent: 30, RangedOnly: true);
+        var a = Sword(1, 1, new HexCoord(0, 0), cs: UnitCombatState.Create(60).AddStatus(rangedDown));
+        var b = Sword(2, 2, new HexCoord(1, 0));
+        var turn = MakeOrchestrator().Run(new[] { a, b });
+
+        var ub = turn.Units.Single(u => u.Id.Value == 2);
+        Assert.Equal(10000 - 760, ub.Pool.Active); // 감소 없음
+    }
+
+    [Fact]
+    public void 연막_원거리디버프는_궁병_준피해를_30퍼센트_줄인다()
+    {
+        var rangedDown = new StatusEffect(StatusKind.RangedDown, 0, 2, false, AtkDownPercent: 30, RangedOnly: true);
+        var orch = MakeOrchestrator();
+
+        var baseTurn = orch.Run(new[] { Archer(1, 1, new HexCoord(0, 0)), Sword(2, 2, new HexCoord(1, 0)) });
+        var baseLoss = 10000 - baseTurn.Units.Single(u => u.Id.Value == 2).Pool.Active;
+
+        var smokeArcher = Archer(1, 1, new HexCoord(0, 0), UnitCombatState.Create(60).AddStatus(rangedDown));
+        var smokeTurn = orch.Run(new[] { smokeArcher, Sword(2, 2, new HexCoord(1, 0)) });
+        var smokeLoss = 10000 - smokeTurn.Units.Single(u => u.Id.Value == 2).Pool.Active;
+
+        Assert.Equal(baseLoss * 70 / 100, smokeLoss);
+    }
+
+    [Fact]
+    public void 이간_무효디버프는_적성패시브를_없애_준피해를_줄인다()
+    {
+        // 가산 버킷 +100%를 가진 부대: 무효(이간)가 걸리면 적성·버킷이 100으로 돌아가 준 피해가 준다.
+        var boosted = CombatStatsBuilder.BuildField(T["swordsman"], AptitudeGrade.A, 0, TerrainType.River, 10000)
+            with { AtkBonusPercent = 200 };
+        var orch = MakeOrchestrator();
+
+        var control = Sword(1, 1, new HexCoord(0, 0)) with { Stats = boosted };
+        var baseLoss = 10000 - orch.Run(new[] { control, Sword(2, 2, new HexCoord(1, 0)) })
+            .Units.Single(u => u.Id.Value == 2).Pool.Active;
+
+        var nullify = new StatusEffect(StatusKind.Nullify, 0, 2, false, NullifyAptPassive: true);
+        var disrupted = (Sword(1, 1, new HexCoord(0, 0), cs: UnitCombatState.Create(60).AddStatus(nullify)))
+            with { Stats = boosted };
+        var nullLoss = 10000 - orch.Run(new[] { disrupted, Sword(2, 2, new HexCoord(1, 0)) })
+            .Units.Single(u => u.Id.Value == 2).Pool.Active;
+
+        Assert.True(nullLoss < baseLoss, $"무효 후 준 피해({nullLoss})가 원래({baseLoss})보다 작아야 함");
+    }
+
     [Fact]
     public void 준비된_타격액티브가_교전에서_발동한다()
     {
