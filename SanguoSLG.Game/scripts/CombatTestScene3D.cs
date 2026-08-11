@@ -48,6 +48,7 @@ public partial class CombatTestScene3D : Node3D
     private readonly Dictionary<int, UnitController3D> _tokens = new();
     private readonly Dictionary<int, Label3D> _troopLabels = new();
     private readonly Dictionary<int, int> _tokenModel = new();
+    private readonly Dictionary<int, HexCoord> _tokenHex = new();
     private readonly List<Node3D> _spawned = new();
 
     // 재생 규칙(2026-08-11 사용자 정의 — 실제 게임에도 적용): 한 칸 이동 1초, 공격 모션 1초.
@@ -129,11 +130,11 @@ public partial class CombatTestScene3D : Node3D
     private CaseDef[] BuildCases() => new[]
     {
         new CaseDef("진격 조우 → 소모전",
-            "A1(공격)이 동진해 정지 방어자 E2를 추격·정지 → 교전. A1=맹공+무쌍, E2=견수+철벽.",
+            "A1(공격)이 동진해 정지 방어자 E2를 추격·정지 → 교전. A1=맹공+무쌍(발동 라운드 큰 데미지), E2=견수+정비(부상 회복).",
             () => new[]
             {
                 Unit(1, 1, new HexCoord(0, 1), "swordsman", new HexCoord(10, 1), UnitMode.Attack, "fierce_assault", "peerless", might: 80),
-                Unit(2, 2, new HexCoord(7, 1), "swordsman", null, UnitMode.Advance, "steadfast_guard", "iron_wall", might: 80),
+                Unit(2, 2, new HexCoord(7, 1), "swordsman", null, UnitMode.Advance, "steadfast_guard", "regroup", intellect: 80),
             }),
         new CaseDef("전진 직행(무전투)",
             "A1(전진)은 길목의 E2(행군)를 무시하고 목표로 직행 → 조우 없이 도달. 표에 '없음'이 이어진다.",
@@ -150,12 +151,12 @@ public partial class CombatTestScene3D : Node3D
                 Unit(2, 2, new HexCoord(10, 1), "swordsman", new HexCoord(0, 1), UnitMode.Attack, "fierce_assault", "peerless", might: 80),
             }),
         new CaseDef("다대일 협격(이동 포위)",
-            "A1·A2가 양쪽에서 중앙의 E4(상병)로 진격·포위. E4 반격은 주100/부60로 갈려 둘을 못 막는다.",
+            "A1·A2가 양쪽에서 중앙의 E4(상병+정비)로 진격·포위. 상병 반격은 주대상 A1 100%/A2 60%로 갈려 A1이 먼저 무너진다. 상병은 정비로 버틴다.",
             () => new[]
             {
                 Unit(1, 1, new HexCoord(0, 1), "swordsman", new HexCoord(4, 1), UnitMode.Attack, "fierce_assault", "peerless"),
                 Unit(2, 1, new HexCoord(10, 1), "swordsman", new HexCoord(6, 1), UnitMode.Attack, "fierce_assault", "peerless"),
-                Unit(4, 2, new HexCoord(5, 1), "war_elephant", null, UnitMode.Advance, "steadfast_guard", "iron_wall"),
+                Unit(4, 2, new HexCoord(5, 1), "war_elephant", null, UnitMode.Advance, "steadfast_guard", "regroup", intellect: 80),
             }),
     };
 
@@ -190,10 +191,22 @@ public partial class CombatTestScene3D : Node3D
         _pending = _orchestrator.Run(_units);
 
         _beats = new Queue<System.Action>();
+        // 실제로 위치가 바뀌는 틱만 이동 비트로 넣는다(정지/교전 스냅샷은 건너뛴다).
+        var running = new Dictionary<int, HexCoord>(_tokenHex);
         foreach (var tick in _pending.Movement.Ticks)
         {
+            var moves = tick.Units.Any(fu => running.GetValueOrDefault(fu.Id.Value, fu.Position) != fu.Position);
+            if (!moves)
+            {
+                continue;
+            }
+
             var snapshot = tick;
             _beats.Enqueue(() => MoveTokens(snapshot));
+            foreach (var fu in tick.Units)
+            {
+                running[fu.Id.Value] = fu.Position;
+            }
         }
         if (_pending.Combat is not null)
         {
@@ -218,12 +231,14 @@ public partial class CombatTestScene3D : Node3D
     {
         foreach (var fu in tick.Units)
         {
-            if (!_tokens.TryGetValue(fu.Id.Value, out var ctrl))
+            if (!_tokens.TryGetValue(fu.Id.Value, out var ctrl)
+                || _tokenHex.GetValueOrDefault(fu.Id.Value, fu.Position) == fu.Position)
             {
-                continue;
+                continue; // 제자리면 이동 애니메이션을 걸지 않는다(공격 모션 리셋 방지)
             }
 
             ctrl.DisplayStepTo(fu.Position, 0.5f);
+            _tokenHex[fu.Id.Value] = fu.Position;
             var foe = tick.Units.FirstOrDefault(o => o.Owner != fu.Owner);
             if (foe is not null)
             {
@@ -314,6 +329,7 @@ public partial class CombatTestScene3D : Node3D
         _tokens.Clear();
         _troopLabels.Clear();
         _tokenModel.Clear();
+        _tokenHex.Clear();
         _units = def.Build().ToList();
 
         _orderedIds.Clear();
@@ -358,6 +374,7 @@ public partial class CombatTestScene3D : Node3D
 
         _tokens[u.Id.Value] = ctrl;
         _troopLabels[u.Id.Value] = troops;
+        _tokenHex[u.Id.Value] = u.Field.Position;
     }
 
     private static Label3D MakeLabel(string text, int size, float y) => new()
