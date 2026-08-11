@@ -1,22 +1,32 @@
 namespace SanguoSLG.Core.Simulation;
 
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Spatial;
 
 /// <summary>
-/// 한 "진행"을 이동 → 전투 페이즈 → 정산으로 묶는다(design-combat.md "전투 페이즈 발동" 순환).
-/// 이동 시뮬을 돌려 정지시킨 뒤, 경과일만큼 발동 상태를 진행하고, 사거리 전수검사로 교전을 만들어
-/// 액티브 발동(선봉 우선)을 얹어 동시 정산한다. 결과로 위치·병력·발동 상태가 갱신된 부대를 돌려준다.
-/// 계략 발동/효과 적용과 성 복귀 감지는 후속(4c-4b)에서 얹는다.
+/// 한 "진행"을 이동 → 계략 발동 → 전투 페이즈 → 정산으로 묶는다(design-combat.md "전투 페이즈 발동"
+/// 순환). 이동 시뮬을 돌려 정지시킨 뒤, 경과일만큼 발동 상태를 진행하고, 예약된 계략을 발동하며
+/// (발동일엔 시전 부대 공격 불가), 사거리 전수검사로 교전을 만들어 액티브 발동(선봉 우선)을 얹어
+/// 동시 정산한다. 결과로 위치·병력·발동 상태가 갱신된 부대를 돌려준다.
+/// 지속 디버프/DoT 상태·정화·성 복귀 감지·Game 배선은 후속.
 /// </summary>
 public sealed class AdvanceOrchestrator
 {
     private readonly MovementSimulator _movement;
     private readonly CombatPhaseResolver _combat;
+    private readonly int _woundedPercent;
+    private readonly Func<HexCoord, TerrainType> _terrainAt;
 
-    public AdvanceOrchestrator(MovementSimulator movement, CombatPhaseResolver combat)
+    public AdvanceOrchestrator(
+        MovementSimulator movement,
+        CombatPhaseResolver combat,
+        int woundedPercent = 70,
+        Func<HexCoord, TerrainType>? terrainAt = null)
     {
         _movement = movement;
         _combat = combat;
+        _woundedPercent = woundedPercent;
+        _terrainAt = terrainAt ?? (_ => TerrainType.Plains);
     }
 
     public AdvanceTurn Run(IReadOnlyList<CombatUnit> units, int maxDays = 7)
@@ -34,6 +44,12 @@ public sealed class AdvanceOrchestrator
 
         // 3) 전투 페이즈 발동 — 정지 시점 사거리 전수검사.
         var engagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList());
+
+        // 4) 계략 발동 — 예약이 발동일에 도달하면 대상 유효성으로 발동/캔슬. 발동 부대는 이번 교전
+        //    공격을 하지 않고(발동일 공격 불가), 즉발·지속 피해 계략은 대상 병력을 즉시 깎는다.
+        var stratagemCasters = FireStratagems(state);
+        engagements = engagements.Where(e => !stratagemCasters.Contains(e.Attacker)).ToList();
+
         if (engagements.Count == 0)
         {
             return new AdvanceTurn(Ordered(state), move, null);
@@ -79,6 +95,50 @@ public sealed class AdvanceOrchestrator
         }
 
         return new AdvanceTurn(Ordered(state), move, combat);
+    }
+
+    // 예약된 계략을 발동/캔슬한다. 발동한 시전 부대의 UnitId 집합을 돌려준다(그 교전 공격 불가).
+    private HashSet<UnitId> FireStratagems(Dictionary<UnitId, CombatUnit> state)
+    {
+        var casters = new HashSet<UnitId>();
+        foreach (var id in state.Keys.ToList())
+        {
+            var caster = state[id];
+            var reservation = caster.State.Reservation;
+            if (reservation is null)
+            {
+                continue;
+            }
+
+            var hasTarget = state.TryGetValue(reservation.TargetId, out var target);
+            var valid = hasTarget && target!.Pool.Active > 0
+                && caster.Field.Position.Distance(target.Field.Position) <= reservation.Stratagem.Range
+                && reservation.Stratagem.CanCastOn(_terrainAt(target.Field.Position));
+
+            switch (caster.State.StratagemDue(valid))
+            {
+                case StratagemFireOutcome.Fired:
+                    var (stratagem, newState) = caster.State.FireStratagem();
+                    state[id] = caster with { State = newState };
+                    casters.Add(id);
+
+                    // 즉발·지속 피해 계략만 즉시 피해(디버프/정화 상태 적용은 후속).
+                    var t = state[reservation.TargetId];
+                    var damage = stratagem.Damage(t.Pool.Active, caster.Intellect, t.Intellect);
+                    if (damage > 0)
+                    {
+                        state[reservation.TargetId] = t with { Pool = t.Pool.TakeDamage(damage, _woundedPercent) };
+                    }
+
+                    break;
+
+                case StratagemFireOutcome.Cancelled:
+                    state[id] = caster with { State = caster.State.CancelStratagem() };
+                    break;
+            }
+        }
+
+        return casters;
     }
 
     private static IReadOnlyList<CombatUnit> Ordered(Dictionary<UnitId, CombatUnit> state)

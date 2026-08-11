@@ -63,6 +63,35 @@ public class AdvanceOrchestratorTests
         Assert.Equal(9240, ub.Pool.Active);
     }
 
+    private static readonly System.Collections.Generic.IReadOnlyDictionary<string, Stratagem> St =
+        new StratagemLoader().LoadFromDirectory(TestData.DataDirectory()).ToDictionary(x => x.Code);
+
+    [Fact]
+    public void 예약된_계략이_발동일에_터지고_시전부대는_공격을_건너뛴다()
+    {
+        // 시전 부대(1): 낙뢰(필요Lv10) 예약 후 2일 경과 → 발동일. 모략력 60·숙달 285(Lv10).
+        var casterState = UnitCombatState.Create(60, masteryPoints: 285)
+            .ReserveStratagem(St["lightning"], new UnitId(2))
+            .AdvanceField(2);
+        var caster = Sword(1, 1, new HexCoord(0, 0), cs: casterState);
+        var target = Sword(2, 2, new HexCoord(1, 0));
+
+        var turn = MakeOrchestrator().Run(new[] { caster, target });
+
+        var uCaster = turn.Units.Single(u => u.Id.Value == 1);
+        var uTarget = turn.Units.Single(u => u.Id.Value == 2);
+
+        // 낙뢰 즉발 25%(지력 동수, 강도 100) = 2500 → 대상 병력 감소
+        Assert.Equal(7500, uTarget.Pool.Active);
+        Assert.Equal(1750, uTarget.Pool.Wounded);
+        // 시전 부대는 공격 안 함 → 대상만 반격(줄어든 7500으로 570)
+        Assert.Equal(9430, uCaster.Pool.Active);
+        // 모략력 45 소비, 숙달 +1, 예약 해제
+        Assert.Equal(15, uCaster.State.Resource.Current);
+        Assert.Equal(286, uCaster.State.MasteryPoints);
+        Assert.Null(uCaster.State.Reservation);
+    }
+
     [Fact]
     public void 준비된_타격액티브가_교전에서_발동한다()
     {
