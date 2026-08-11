@@ -9,17 +9,27 @@ using SanguoSLG.Core.Spatial;
 namespace SanguoSLG.Game;
 
 /// <summary>
-/// 전투 검증 하베스트. Core <see cref="AdvanceOrchestrator"/>가 한 "진행"(이동 → 계략 → 전투 페이즈 →
-/// 정산)을 계산하면, 그 결과(병력 감소·부상·발동한 액티브/계략)를 3D로 보여준다. "진행"을 누를 때마다
-/// 한 라운드가 진행돼 부대가 실제로 깎여나간다. 규칙·수치는 전부 Core가 소유한다(표현 전용).
+/// 이동→전투 통합 검증 하베스트(doc/test/combat-movement-cases.md). 부대가 목적지로 이동하다 조우해
+/// Core <see cref="AdvanceOrchestrator"/>가 한 "진행"(이동 → 계략 → 전투 페이즈 → 정산)을 계산하면,
+/// 토큰을 옮기고 병종별 공격 모션을 재생하며 전투 결과를 표에 한 행씩 쌓는다. 전투가 없는 진행은
+/// "없음"으로 표기한다. 각 유닛에 패시브 1·액티브 1을 붙인다(계략은 대기). 규칙·수치는 Core 소유.
 /// </summary>
 public partial class CombatTestScene3D : Node3D
 {
     private static readonly Color Blue = new(0.24f, 0.44f, 0.86f);
     private static readonly Color Red = new(0.82f, 0.22f, 0.18f);
-    private const int SwordsmanTroopIndex = 0;
-    private const int MaxQ = 6;
+    private const int MaxQ = 10;
     private const int MaxR = 2;
+
+    // 패시브는 상시형만 써서 조건 없이 가산 버킷에 들어가게 한다(무조건 3단계).
+    private static readonly CombatContext MeleeCtx = new(MeleeEngagement: true, IncomingMelee: true, InField: true);
+
+    private static readonly Dictionary<string, int> ModelIndex = new()
+    {
+        ["swordsman"] = 0, ["cavalry"] = 1, ["archer"] = 2, ["thunder_cart"] = 3,
+        ["catapult"] = 4, ["siege_tower"] = 5, ["war_elephant"] = 6, ["small_boat"] = 7,
+        ["medium_ship"] = 8, ["large_ship"] = 9, ["turtleship"] = 17,
+    };
 
     private sealed record CaseDef(string Title, string Note, System.Func<CombatUnit[]> Build);
 
@@ -29,32 +39,22 @@ public partial class CombatTestScene3D : Node3D
 
     private IReadOnlyDictionary<string, TroopTemplate> _templates = null!;
     private IReadOnlyDictionary<string, ActiveSkill> _actives = null!;
-    private IReadOnlyDictionary<string, Stratagem> _stratagems = null!;
-    private IReadOnlyDictionary<string, SpecialUnit> _specials = null!;
-
-    // 병종 코드 → UnitController3D의 troop 모델 인덱스(토큰을 병종에 맞춘다).
-    private static readonly Dictionary<string, int> ModelIndex = new()
-    {
-        ["swordsman"] = 0, ["cavalry"] = 1, ["archer"] = 2, ["thunder_cart"] = 3,
-        ["catapult"] = 4, ["siege_tower"] = 5, ["war_elephant"] = 6, ["small_boat"] = 7,
-        ["medium_ship"] = 8, ["large_ship"] = 9, ["turtleship"] = 17,
-    };
-
-    private readonly Dictionary<int, int> _tokenModel = new();
+    private IReadOnlyDictionary<string, PassiveSkill> _passives = null!;
 
     private CaseDef[] _cases = System.Array.Empty<CaseDef>();
     private int _caseIndex;
+    private int _round;
     private List<CombatUnit> _units = new();
     private readonly Dictionary<int, UnitController3D> _tokens = new();
     private readonly Dictionary<int, Label3D> _troopLabels = new();
+    private readonly Dictionary<int, int> _tokenModel = new();
     private readonly List<Node3D> _spawned = new();
 
     private Button _stepButton = null!;
     private Button _caseButton = null!;
     private Label _titleLabel = null!;
     private Label _noteLabel = null!;
-    private Label _logLabel = null!;
-    private readonly List<string> _logLines = new();
+    private GridContainer _table = null!;
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
@@ -63,8 +63,7 @@ public partial class CombatTestScene3D : Node3D
 
         _templates = new TroopTypeLoader().LoadFromDirectory(dataDirectory).ToDictionary(t => t.Code);
         _actives = new ActiveSkillLoader().LoadFromDirectory(dataDirectory).ToDictionary(a => a.Code);
-        _stratagems = new StratagemLoader().LoadFromDirectory(dataDirectory).ToDictionary(s => s.Code);
-        _specials = new SpecialUnitLoader().LoadFromDirectory(dataDirectory).ToDictionary(s => s.Code);
+        _passives = new PassiveSkillLoader().LoadFromDirectory(dataDirectory).ToDictionary(p => p.Code);
 
         var map = new HexMap(0, MaxQ, 0, MaxR);
         _orchestrator = new AdvanceOrchestrator(
@@ -77,7 +76,7 @@ public partial class CombatTestScene3D : Node3D
         BuildHud();
         LoadCase(0);
 
-        // 헤드리스 자동 진행(예외 검증용): --combattestauto — 각 케이스를 몇 라운드 돌린다.
+        // 헤드리스 자동 진행(예외 검증용): --combattestauto.
         if (OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).Contains("--combattestauto"))
         {
             var rounds = 0;
@@ -85,10 +84,10 @@ public partial class CombatTestScene3D : Node3D
             AddChild(timer);
             timer.Timeout += () =>
             {
-                if (Ended() || rounds >= 8)
+                if (Ended() || rounds >= 12)
                 {
-                    var state = string.Join(" ", _units.Select(u => $"{Tag(u)}={u.Pool.Active}/{u.Pool.Wounded}"));
-                    GD.Print($"[combattestauto] case {_caseIndex} after {rounds} rounds: {state}");
+                    var state = string.Join(" ", _units.Select(u => $"{Tag(u)}={u.Pool.Active}"));
+                    GD.Print($"[combattestauto] case {_caseIndex} after {rounds}: {state}");
                     if (_caseIndex + 1 < _cases.Length)
                     {
                         LoadCase(_caseIndex + 1);
@@ -109,98 +108,52 @@ public partial class CombatTestScene3D : Node3D
         }
     }
 
-    // ── 케이스 정의 ──
+    // ── 케이스 ──
 
-    private CombatUnit Unit(int id, int owner, HexCoord pos, string templateCode, int troops,
-        int might = 60, int intellect = 60, int atkBonus = 100, UnitCombatState? state = null)
+    // 유닛 하나: 병종 + 목표/모드 + 패시브 1 + 액티브 1. 계략은 대기(예약 안 함).
+    private CombatUnit Unit(int id, int owner, HexCoord pos, string templateCode, HexCoord? target, UnitMode mode,
+        string passiveCode, string activeCode, int might = 60, int intellect = 60, int troops = 10000)
     {
-        var template = _templates[templateCode];
+        var (atk, df) = PassiveBucketEvaluator.Evaluate(new[] { (_passives[passiveCode], 3) }, MeleeCtx);
+        var stats = CombatStatsBuilder.BuildField(_templates[templateCode], AptitudeGrade.A, 0, TerrainType.River,
+            troops, atkBonusPercent: atk, dfBonusPercent: df);
         var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos, 2, 2, 1,
-            MovementDomain.Land, UnitMode.Attack, null, id);
-        var stats = CombatStatsBuilder.BuildField(template, AptitudeGrade.A, 0, TerrainType.River, troops,
-            atkBonusPercent: atkBonus);
+            MovementDomain.Land, mode, target, id);
         _tokenModel[id] = ModelIndex.GetValueOrDefault(templateCode, 0);
-        return new CombatUnit(field, stats, new TroopPool(troops, 0),
-            state ?? UnitCombatState.Create(intellect), might, intellect, MaxTroops: troops);
-    }
-
-    // 특수 유닛(판정 전환 반영): 등갑병 df→14 등. 토큰은 기반 병종 모델.
-    private CombatUnit UnitSpecial(int id, int owner, HexCoord pos, string specialCode, int troops)
-    {
-        var special = _specials[specialCode];
-        var baseTemplate = _templates[special.BaseCode];
-        var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos, 2, 2, 1,
-            MovementDomain.Land, UnitMode.Attack, null, id);
-        var stats = CombatStatsBuilder.BuildFieldSpecial(special, baseTemplate, AptitudeGrade.A, 0,
-            TerrainType.River, troops);
-        _tokenModel[id] = ModelIndex.GetValueOrDefault(special.BaseCode, 0);
-        return new CombatUnit(field, stats, new TroopPool(troops, 0),
-            UnitCombatState.Create(60), 60, 60, MaxTroops: troops);
+        var state = UnitCombatState.Create(intellect, vanguardActive: _actives[activeCode]);
+        return new CombatUnit(field, stats, new TroopPool(troops, 0), state, might, intellect, MaxTroops: troops);
     }
 
     private CaseDef[] BuildCases() => new[]
     {
-        new CaseDef("평타 1:1 (도검)", "도검병 A급 1만끼리 인접 교전. 진행마다 서로 760씩, 그중 70%는 부상.",
+        new CaseDef("진격 조우 → 소모전",
+            "A1(공격)이 동진해 정지한 E1을 탐지·추격·정지 → 교전. 이후 진행마다 소모. A1=맹공+무쌍, E1=견수+철벽.",
             () => new[]
             {
-                Unit(1, 1, new HexCoord(2, 1), "swordsman", 10000),
-                Unit(2, 2, new HexCoord(3, 1), "swordsman", 10000),
+                Unit(1, 1, new HexCoord(0, 1), "swordsman", new HexCoord(10, 1), UnitMode.Attack, "fierce_assault", "peerless", might: 80),
+                Unit(2, 2, new HexCoord(7, 1), "swordsman", null, UnitMode.Advance, "steadfast_guard", "iron_wall", might: 80),
             }),
-        new CaseDef("병종 상성: 기병 vs 궁병", "기병(df12)은 튼튼하고 궁병(df8)은 약하다. 기병이 덜 맞고 더 때려 우위. 비용=성능.",
+        new CaseDef("전진 직행(무전투)",
+            "A1(전진)은 길목의 E1(행군)을 무시하고 목표로 직행 → 조우 없이 도달. 표에 '없음'이 이어진다.",
             () => new[]
             {
-                Unit(1, 1, new HexCoord(2, 1), "cavalry", 10000),
-                Unit(2, 2, new HexCoord(3, 1), "archer", 10000),
+                Unit(1, 1, new HexCoord(0, 1), "swordsman", new HexCoord(10, 1), UnitMode.Advance, "fierce_assault", "peerless"),
+                Unit(2, 2, new HexCoord(6, 0), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
             }),
-        new CaseDef("최종병기: 상병 vs 도검", "상병(지수 196)이 도검(80)을 압도. 더 때리고 훨씬 덜 맞는다.",
+        new CaseDef("정면 조우 교전",
+            "A1·E1이 서로 목표로 마주 진격 → 가운데서 정지 → 대칭 소모. 둘 다 맹공+무쌍.",
             () => new[]
             {
-                Unit(1, 1, new HexCoord(2, 1), "war_elephant", 10000),
-                Unit(2, 2, new HexCoord(3, 1), "swordsman", 10000),
+                Unit(1, 1, new HexCoord(0, 1), "swordsman", new HexCoord(10, 1), UnitMode.Attack, "fierce_assault", "peerless", might: 80),
+                Unit(2, 2, new HexCoord(10, 1), "swordsman", new HexCoord(0, 1), UnitMode.Attack, "fierce_assault", "peerless", might: 80),
             }),
-        new CaseDef("해상: 거북선 vs 대선", "거북선(16/16)이 대선(12/10)을 압도하는 해상 최종병기.",
+        new CaseDef("다대일 협격(이동 포위)",
+            "A1·A2가 양쪽에서 중앙의 E1(상병)로 진격·포위. E1 반격은 주100/부60로 갈려 둘을 못 막는다.",
             () => new[]
             {
-                Unit(1, 1, new HexCoord(2, 1), "turtleship", 10000),
-                Unit(2, 2, new HexCoord(3, 1), "large_ship", 10000),
-            }),
-        new CaseDef("다대일 포위: 도검 3 vs 상병 1", "도검 셋이 상병 하나를 포위. 상병 반격은 주대상 100%/나머지 60%로 갈려 셋을 다 못 막는다.",
-            () => new[]
-            {
-                Unit(1, 1, new HexCoord(2, 1), "swordsman", 10000),
-                Unit(2, 1, new HexCoord(4, 1), "swordsman", 10000),
-                Unit(3, 1, new HexCoord(3, 0), "swordsman", 10000),
-                Unit(4, 2, new HexCoord(3, 1), "war_elephant", 10000),
-            }),
-        new CaseDef("무쌍 발동(무력 80)", "선봉 무쌍 게이지가 준비된 A1이 대체 공격으로 E1에 1459. 발동 후 초기화 → 5진행 뒤 재발동.",
-            () => new[]
-            {
-                Unit(1, 1, new HexCoord(2, 1), "swordsman", 10000, might: 80,
-                    state: UnitCombatState.Create(60, vanguardActive: _actives["peerless"]).AdvanceField(5)),
-                Unit(2, 2, new HexCoord(3, 1), "swordsman", 10000),
-            }),
-        new CaseDef("철벽 방어(무력 80)", "E1이 무쌍으로 치지만 A1 철벽이 받는 피해를 64%로 줄인다. 방어 액티브의 값어치.",
-            () => new[]
-            {
-                Unit(1, 1, new HexCoord(2, 1), "swordsman", 10000, might: 80,
-                    state: UnitCombatState.Create(60, vanguardActive: _actives["iron_wall"]).AdvanceField(5)),
-                Unit(2, 2, new HexCoord(3, 1), "swordsman", 10000, might: 80,
-                    state: UnitCombatState.Create(60, vanguardActive: _actives["peerless"]).AdvanceField(5)),
-            }),
-        new CaseDef("특수유닛: 등갑병(df 14) vs 궁병", "등갑병은 df가 상병 판정(14)으로 격상돼 궁병 상대로 매우 튼튼하다.",
-            () => new[]
-            {
-                UnitSpecial(1, 1, new HexCoord(2, 1), "deunggap", 10000),
-                Unit(2, 2, new HexCoord(3, 1), "archer", 10000),
-            }),
-        new CaseDef("낙뢰 계략(예약 발동)", "A1이 예약한 낙뢰가 발동일 도달 → E1 병력 25%(2500) 즉발. 발동일 A1은 공격 안 함, 모략력 45 소비.",
-            () => new[]
-            {
-                Unit(1, 1, new HexCoord(2, 1), "swordsman", 10000,
-                    state: UnitCombatState.Create(60, masteryPoints: 285)
-                        .ReserveStratagem(_stratagems["lightning"], new UnitId(2))
-                        .AdvanceField(2)),
-                Unit(2, 2, new HexCoord(3, 1), "swordsman", 10000),
+                Unit(1, 1, new HexCoord(0, 1), "swordsman", new HexCoord(4, 1), UnitMode.Attack, "fierce_assault", "peerless"),
+                Unit(2, 1, new HexCoord(10, 1), "swordsman", new HexCoord(6, 1), UnitMode.Attack, "fierce_assault", "peerless"),
+                Unit(4, 2, new HexCoord(5, 1), "war_elephant", null, UnitMode.Advance, "steadfast_guard", "iron_wall"),
             }),
     };
 
@@ -210,59 +163,59 @@ public partial class CombatTestScene3D : Node3D
     {
         if (Ended())
         {
-            AppendLog("전투 종료.");
+            AddRow("종료", "");
             UpdateButtons();
             return;
         }
 
+        _round++;
         var before = _units.ToDictionary(u => u.Id.Value);
         var turn = _orchestrator.Run(_units);
         _units = turn.Units.ToList();
 
+        var parts = new List<string>();
         foreach (var u in _units)
         {
             var pre = before[u.Id.Value];
+
+            var fired = pre.State.VanguardGauge.IsReady && !u.State.VanguardGauge.IsReady ? "★" : "";
             var lost = pre.Pool.Active - u.Pool.Active;
-
-            // 발동 감지: 게이지 준비 해제 = 액티브 발동, 예약 사라짐 = 계략 처리
-            if (pre.State.VanguardGauge.IsReady && !u.State.VanguardGauge.IsReady)
-            {
-                AppendLog($"{Tag(u)} 액티브 발동!");
-            }
-            if (pre.State.Reservation is not null && u.State.Reservation is null)
-            {
-                AppendLog($"{Tag(u)} 계략 발동!");
-            }
-
             if (lost > 0)
             {
-                AppendLog($"{Tag(u)} 병력 −{lost} (부상 {u.Pool.Wounded})");
+                parts.Add($"{Tag(u)}{fired} −{lost}");
+            }
+            else if (fired != "")
+            {
+                parts.Add($"{Tag(u)}★발동");
             }
 
-            RefreshToken(u);
-            if (turn.Combat is not null && u.Pool.Active > 0)
+            // 토큰 이동 + 마주 보기 + 병종 공격 모션
+            _tokens[u.Id.Value].DisplayStepTo(u.Field.Position, 0.25f);
+            var foe = _units.FirstOrDefault(o => o.Field.Owner != u.Field.Owner && o.Pool.Active > 0);
+            if (foe is not null)
+            {
+                _tokens[u.Id.Value].FaceToward(_view.HexToWorld(foe.Field.Position));
+            }
+
+            RefreshLabel(u);
+            if (turn.Combat is not null && lost >= 0 && u.Pool.Active > 0 && parts.Any(p => p.StartsWith(Tag(u))))
             {
                 _tokens[u.Id.Value].PlayAttackMotion();
             }
         }
 
+        AddRow($"{_round}", parts.Count > 0 ? string.Join("  ·  ", parts) : "없음");
         UpdateButtons();
     }
 
     private bool Ended()
-    {
-        var owners = _units.Where(u => u.Pool.Active > 0).Select(u => u.Field.Owner.Value).Distinct().Count();
-        return owners < 2;
-    }
+        => _units.Where(u => u.Pool.Active > 0).Select(u => u.Field.Owner.Value).Distinct().Count() < 2;
 
-    private void RefreshToken(CombatUnit u)
+    private void RefreshLabel(CombatUnit u)
     {
         var alive = u.Pool.Active > 0;
-        _troopLabels[u.Id.Value].Text = alive
-            ? $"{u.Pool.Active}\n(부상 {u.Pool.Wounded})"
-            : "전멸";
+        _troopLabels[u.Id.Value].Text = alive ? $"{u.Pool.Active}\n(부상 {u.Pool.Wounded})" : "전멸";
         _troopLabels[u.Id.Value].Modulate = alive ? new Color(0.97f, 0.96f, 0.92f) : new Color(0.9f, 0.4f, 0.35f);
-        _tokens[u.Id.Value].DisplayStepTo(u.Field.Position, 0.2f);
     }
 
     private static string Tag(CombatUnit u) => (u.Field.Owner.Value == 1 ? "A" : "E") + u.Id.Value;
@@ -272,6 +225,7 @@ public partial class CombatTestScene3D : Node3D
     private void LoadCase(int index)
     {
         _caseIndex = index;
+        _round = 0;
         var def = _cases[index];
 
         foreach (var node in _spawned)
@@ -283,15 +237,14 @@ public partial class CombatTestScene3D : Node3D
         _tokens.Clear();
         _troopLabels.Clear();
         _tokenModel.Clear();
-        _logLines.Clear();
         _units = def.Build().ToList();
 
+        ClearTable();
         foreach (var u in _units)
         {
             SpawnToken(u);
         }
 
-        // 서로 마주 보게
         foreach (var u in _units)
         {
             var foe = _units.FirstOrDefault(o => o.Field.Owner != u.Field.Owner);
@@ -303,9 +256,8 @@ public partial class CombatTestScene3D : Node3D
 
         _titleLabel.Text = $"[{index + 1}/{_cases.Length}] {def.Title}";
         _noteLabel.Text = def.Note;
-        AppendLog("진행을 눌러 한 라운드씩 교전을 재생하세요.");
 
-        _camera.Setup(_view.HexToWorld(new HexCoord(MaxQ / 2, MaxR / 2)), MaxQ * 0.9f + 3f);
+        _camera.Setup(_view.HexToWorld(new HexCoord(MaxQ / 2, MaxR / 2)), MaxQ * 0.72f + 4f);
         UpdateButtons();
     }
 
@@ -315,51 +267,39 @@ public partial class CombatTestScene3D : Node3D
         var ctrl = new UnitController3D();
         AddChild(ctrl);
         _spawned.Add(ctrl);
-        ctrl.InitDisplay(_view, color, _tokenModel.GetValueOrDefault(u.Id.Value, SwordsmanTroopIndex), u.Field.Position);
+        ctrl.InitDisplay(_view, color, _tokenModel.GetValueOrDefault(u.Id.Value, 0), u.Field.Position);
 
-        var name = new Label3D
-        {
-            Text = Tag(u),
-            Font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf"),
-            FontSize = 84,
-            PixelSize = 0.0022f,
-            OutlineSize = 24,
-            OutlineModulate = new Color(0f, 0f, 0f, 0.85f),
-            Modulate = new Color(0.97f, 0.96f, 0.92f),
-            Position = new Vector3(0f, 0.56f, 0f),
-            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-            NoDepthTest = true,
-        };
-        ctrl.AddChild(name);
-
-        var troops = new Label3D
-        {
-            Text = $"{u.Pool.Active}\n(부상 0)",
-            Font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf"),
-            FontSize = 72,
-            PixelSize = 0.0020f,
-            OutlineSize = 22,
-            OutlineModulate = new Color(0f, 0f, 0f, 0.85f),
-            Modulate = new Color(0.97f, 0.96f, 0.92f),
-            Position = new Vector3(0f, 0.42f, 0f),
-            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-            NoDepthTest = true,
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
+        ctrl.AddChild(MakeLabel(Tag(u), 84, 0.56f));
+        var troops = MakeLabel($"{u.Pool.Active}\n(부상 0)", 72, 0.42f);
+        troops.HorizontalAlignment = HorizontalAlignment.Center;
         ctrl.AddChild(troops);
 
         _tokens[u.Id.Value] = ctrl;
         _troopLabels[u.Id.Value] = troops;
     }
 
-    // ── HUD ──
+    private static Label3D MakeLabel(string text, int size, float y) => new()
+    {
+        Text = text,
+        Font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf"),
+        FontSize = size,
+        PixelSize = 0.0021f,
+        OutlineSize = 24,
+        OutlineModulate = new Color(0f, 0f, 0f, 0.85f),
+        Modulate = new Color(0.97f, 0.96f, 0.92f),
+        Position = new Vector3(0f, y, 0f),
+        Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+        NoDepthTest = true,
+    };
+
+    // ── HUD (결과 표) ──
 
     private void BuildHud()
     {
         var layer = new CanvasLayer();
         AddChild(layer);
 
-        var panel = new PanelContainer { Position = new Vector2(16, 16), CustomMinimumSize = new Vector2(560, 0) };
+        var panel = new PanelContainer { Position = new Vector2(16, 16), CustomMinimumSize = new Vector2(600, 0) };
         layer.AddChild(panel);
         var box = new VBoxContainer();
         panel.AddChild(box);
@@ -369,7 +309,7 @@ public partial class CombatTestScene3D : Node3D
         box.AddChild(_titleLabel);
 
         _noteLabel = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        _noteLabel.CustomMinimumSize = new Vector2(540, 0);
+        _noteLabel.CustomMinimumSize = new Vector2(580, 0);
         box.AddChild(_noteLabel);
 
         var buttons = new HBoxContainer();
@@ -381,20 +321,42 @@ public partial class CombatTestScene3D : Node3D
         _caseButton.Pressed += () => LoadCase((_caseIndex + 1) % _cases.Length);
         buttons.AddChild(_caseButton);
 
-        _logLabel = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        _logLabel.CustomMinimumSize = new Vector2(540, 0);
-        box.AddChild(_logLabel);
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(580, 340) };
+        box.AddChild(scroll);
+        _table = new GridContainer { Columns = 2 };
+        scroll.AddChild(_table);
     }
 
-    private void AppendLog(string line)
+    private void ClearTable()
     {
-        _logLines.Add(line);
-        while (_logLines.Count > 10)
+        foreach (var child in _table.GetChildren())
         {
-            _logLines.RemoveAt(0);
+            child.QueueFree();
         }
 
-        _logLabel.Text = string.Join("\n", _logLines);
+        AddRow("진행", "전투 결과", header: true);
+    }
+
+    private void AddRow(string a, string b, bool header = false)
+    {
+        _table.AddChild(Cell(a, header, 90));
+        _table.AddChild(Cell(b, header, 470));
+    }
+
+    private static Label Cell(string text, bool header, int width)
+    {
+        var label = new Label
+        {
+            Text = text,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            CustomMinimumSize = new Vector2(width, 0),
+        };
+        if (header)
+        {
+            label.AddThemeColorOverride("font_color", new Color(0.7f, 0.85f, 1f));
+        }
+
+        return label;
     }
 
     private void UpdateButtons()
