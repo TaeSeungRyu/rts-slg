@@ -57,6 +57,13 @@ public partial class GameRoot3D : Node3D
             return;
         }
 
+        // 전투 검증(Core AdvanceOrchestrator): --combattest. 진행마다 한 라운드 교전을 재생한다
+        if (OS.GetCmdlineArgs().Contains("--combattest") || OS.GetCmdlineUserArgs().Contains("--combattest"))
+        {
+            BuildCombatTest();
+            return;
+        }
+
         var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
 
         var tone = TonePreset.FromCmdline();
@@ -226,6 +233,32 @@ public partial class GameRoot3D : Node3D
         var test = new MovementTestScene3D();
         AddChild(test);
         test.Build(mapView, camera);
+    }
+
+    // 전투 검증 씬(Core AdvanceOrchestrator). 인접 부대가 진행마다 한 라운드씩 교전하며 병력이
+    // 깎여나가는 것을 병력 수치·공격 모션으로 보여준다.
+    private void BuildCombatTest()
+    {
+        var tone = TonePreset.FromCmdline();
+        _environment = BuildEnvironment(tone);
+        AddChild(new WorldEnvironment { Environment = _environment });
+        _sun = BuildSunLight(tone);
+        AddChild(_sun);
+
+        var mapView = new MapView3D();
+        AddChild(mapView);
+        var testMap = new HexMap(0, 6, 0, 2);
+        mapView.Build(testMap, new System.Collections.Generic.HashSet<HexCoord>(), new TileConditionMap());
+
+        var camera = new CameraController3D { Fov = 55f };
+        AddChild(camera);
+        camera.Current = true;
+
+        MapView3D.TuneImportedMeshes(this);
+
+        var scene = new CombatTestScene3D();
+        AddChild(scene);
+        scene.Build(mapView, camera, FindDataDirectory());
     }
 
     // 효과 검수 씬(doc/design-effect.md 1단계). 평지 위 테스트 유닛마다 효과 하나를
