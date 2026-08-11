@@ -6,4 +6,5 @@ namespace SanguoSLG.Core.Simulation;
 /// </summary>
 /// <param name="MonthlyTaxPerCity">도시당 월 세수(스켈레톤 임시값).</param>
 /// <param name="MultiTargetSecondaryPercent">야전 다대일에서 주대상 외 대상 배수(design-combat.md 60%).</param>
-public sealed record BalanceConfig(int MonthlyTaxPerCity, int MultiTargetSecondaryPercent = 60);
+/// <param name="WoundedPercent">피해 중 부상(회복 가능)으로 전환되는 비율(design-combat.md 70%, 나머지 30% 소실).</param>
+public sealed record BalanceConfig(int MonthlyTaxPerCity, int MultiTargetSecondaryPercent = 60, int WoundedPercent = 70);

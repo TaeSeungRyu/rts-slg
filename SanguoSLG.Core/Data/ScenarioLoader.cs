@@ -47,7 +47,7 @@ public sealed class ScenarioLoader
             .ToList();
 
         var balanceDto = Deserialize<BalanceDto>(balanceJson, "balance");
-        var balance = new BalanceConfig(balanceDto.MonthlyTaxPerCity, balanceDto.MultiTargetSecondaryPercent);
+        var balance = new BalanceConfig(balanceDto.MonthlyTaxPerCity, balanceDto.MultiTargetSecondaryPercent, balanceDto.WoundedPercent);
 
         var mapDto = Deserialize<MapDto>(mapJson, "map");
         var map = BuildMap(mapDto);
