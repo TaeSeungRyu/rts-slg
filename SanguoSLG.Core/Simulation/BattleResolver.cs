@@ -57,6 +57,44 @@ public sealed class BattleResolver
     }
 
     /// <summary>
+    /// 타격형 액티브가 대체 공격으로 주는 피해(design-skill-actives.md). 정상 공격 피해에 배수와
+    /// 무력 스케일을 곱한다. 대상 df 감소(일섬·파갑)와 병력 비례 처형(참)을 반영한다.
+    /// </summary>
+    public int StrikeDamage(CombatStats attacker, CombatStats defender, ActiveSkill skill, int might, bool targetIsBuilding = false)
+    {
+        var m = StatScale.Percent(might);
+
+        if (skill.ExecutePercent > 0)
+        {
+            // 병력 비례 처형(atk 무관): min(처형% × M, 상한%)만큼 대상 병력을 깎는다.
+            var pct = System.Math.Min(skill.ExecutePercent * m / 100, skill.ExecuteCapPercent);
+            return (int)((long)defender.Troops * pct / 100);
+        }
+
+        var mult = skill.BuildingOnly && !targetIsBuilding ? 100 : skill.DamageMultPercent;
+        var effectiveDf = System.Math.Max(1, defender.DfStat * (100 - skill.DefenderDfReductionPercent) / 100);
+        var normal = Damage(attacker, defender with { DfStat = effectiveDf });
+        return (int)((long)normal * mult * m / 10000); // ÷100(배수) ÷100(M)
+    }
+
+    /// <summary>
+    /// 방어형 액티브가 받는 피해에 곱하는 배수 퍼센트(design-skill-actives.md). 철벽 -30%(무력 60) → 70.
+    /// 감소율에 무력 스케일을 곱하되 최대 -75%(하한 25)까지.
+    /// </summary>
+    public static int DamageTakenPercent(ActiveSkill skill, int might)
+    {
+        var reduction = System.Math.Min(skill.DamageReductionPercent * StatScale.Percent(might) / 100, 75);
+        return 100 - reduction;
+    }
+
+    /// <summary>회복형 액티브의 병력 회복량(design-skill-actives.md). 최대 병력 대비 회복% × 지력 스케일, 상한 적용.</summary>
+    public static int HealAmount(ActiveSkill skill, int intellect, int maxTroops)
+    {
+        var pct = System.Math.Min(skill.HealPercent * StatScale.Percent(intellect) / 100, skill.HealCapPercent);
+        return (int)((long)maxTroops * pct / 100);
+    }
+
+    /// <summary>
     /// 성·항구 공격 1회 교환(design-combat.md "성 전투"). 성벽이 서 있으면 건물dmg가 성벽에 흡수되고
     /// (초과분만 병력에 넘어감) 성은 정상 반격(유닛 공식, 전원 주100/부60)하며, 성벽이 0이면 유닛dmg가
     /// 수비 병력을 직접 치고 성 df가 <see cref="CastleState.CollapsedDf"/>로 격하되며 반격은 병력 비례

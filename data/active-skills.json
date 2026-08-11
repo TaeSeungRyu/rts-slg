@@ -1,0 +1,29 @@
+[
+  { "code": "peerless",     "name": "무쌍",     "type": "strike",  "grade": "high", "damage_mult_percent": 160 },
+  { "code": "flash",        "name": "일섬",     "type": "strike",  "grade": "high", "damage_mult_percent": 100, "defender_df_reduction_percent": 30 },
+  { "code": "armor_break",  "name": "파갑",     "type": "strike",  "grade": "high", "damage_mult_percent": 110, "defender_df_reduction_percent": 20 },
+  { "code": "crush",        "name": "분쇄",     "type": "strike",  "grade": "high", "damage_mult_percent": 200, "building_only": true },
+  { "code": "tiger_strike", "name": "맹호격",   "type": "strike",  "grade": "high", "damage_mult_percent": 140 },
+  { "code": "chain_strike", "name": "연환격",   "type": "strike",  "grade": "high", "damage_mult_percent": 160 },
+  { "code": "breakthrough", "name": "돌파",     "type": "strike",  "grade": "high", "damage_mult_percent": 130 },
+  { "code": "reap",         "name": "참",       "type": "strike",  "grade": "high", "execute_percent": 5, "execute_cap_percent": 10 },
+  { "code": "barrage",      "name": "포화",     "type": "strike",  "grade": "high", "damage_mult_percent": 140 },
+  { "code": "one_man_army", "name": "일기당천", "type": "strike",  "grade": "high", "damage_mult_percent": 140 },
+
+  { "code": "iron_wall",       "name": "철벽",     "type": "defense", "grade": "high", "damage_reduction_percent": 30 },
+  { "code": "riposte",         "name": "반격진",   "type": "defense", "grade": "high", "damage_reduction_percent": 15 },
+  { "code": "turtle_formation","name": "귀갑진",   "type": "defense", "grade": "high", "damage_reduction_percent": 20 },
+  { "code": "evasion",         "name": "회피술",   "type": "defense", "grade": "high", "damage_reduction_percent": 30 },
+  { "code": "hold_the_line",   "name": "사수",     "type": "defense", "grade": "high", "damage_reduction_percent": 50 },
+
+  { "code": "field_medic", "name": "응급치료", "type": "heal", "grade": "high", "heal_percent": 5 },
+  { "code": "regroup",     "name": "정비",     "type": "heal", "grade": "high", "heal_percent": 15 },
+  { "code": "rally",       "name": "고무",     "type": "heal", "grade": "high", "heal_percent": 0 },
+  { "code": "resupply",    "name": "보급",     "type": "heal", "grade": "high", "heal_percent": 5 },
+  { "code": "second_wind", "name": "불사",     "type": "heal", "grade": "high", "heal_percent": 20 },
+
+  { "code": "heavy_blow", "name": "강타", "type": "strike",  "grade": "low", "damage_mult_percent": 130 },
+  { "code": "double_hit", "name": "연타", "type": "strike",  "grade": "low", "damage_mult_percent": 120 },
+  { "code": "brace",      "name": "방비", "type": "defense", "grade": "low", "damage_reduction_percent": 20 },
+  { "code": "patch",      "name": "수습", "type": "heal",    "grade": "low", "heal_percent": 8 }
+]
