@@ -30,6 +30,17 @@ public partial class CombatTestScene3D : Node3D
     private IReadOnlyDictionary<string, TroopTemplate> _templates = null!;
     private IReadOnlyDictionary<string, ActiveSkill> _actives = null!;
     private IReadOnlyDictionary<string, Stratagem> _stratagems = null!;
+    private IReadOnlyDictionary<string, SpecialUnit> _specials = null!;
+
+    // 병종 코드 → UnitController3D의 troop 모델 인덱스(토큰을 병종에 맞춘다).
+    private static readonly Dictionary<string, int> ModelIndex = new()
+    {
+        ["swordsman"] = 0, ["cavalry"] = 1, ["archer"] = 2, ["thunder_cart"] = 3,
+        ["catapult"] = 4, ["siege_tower"] = 5, ["war_elephant"] = 6, ["small_boat"] = 7,
+        ["medium_ship"] = 8, ["large_ship"] = 9, ["turtleship"] = 17,
+    };
+
+    private readonly Dictionary<int, int> _tokenModel = new();
 
     private CaseDef[] _cases = System.Array.Empty<CaseDef>();
     private int _caseIndex;
@@ -53,6 +64,7 @@ public partial class CombatTestScene3D : Node3D
         _templates = new TroopTypeLoader().LoadFromDirectory(dataDirectory).ToDictionary(t => t.Code);
         _actives = new ActiveSkillLoader().LoadFromDirectory(dataDirectory).ToDictionary(a => a.Code);
         _stratagems = new StratagemLoader().LoadFromDirectory(dataDirectory).ToDictionary(s => s.Code);
+        _specials = new SpecialUnitLoader().LoadFromDirectory(dataDirectory).ToDictionary(s => s.Code);
 
         var map = new HexMap(0, MaxQ, 0, MaxR);
         _orchestrator = new AdvanceOrchestrator(
@@ -99,39 +111,96 @@ public partial class CombatTestScene3D : Node3D
 
     // ── 케이스 정의 ──
 
-    private CombatUnit Unit(int id, int owner, HexCoord pos, TroopTemplate template, int troops,
-        int might = 60, int intellect = 60, UnitCombatState? state = null)
+    private CombatUnit Unit(int id, int owner, HexCoord pos, string templateCode, int troops,
+        int might = 60, int intellect = 60, int atkBonus = 100, UnitCombatState? state = null)
     {
+        var template = _templates[templateCode];
         var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos, 2, 2, 1,
             MovementDomain.Land, UnitMode.Attack, null, id);
-        var stats = CombatStatsBuilder.BuildField(template, AptitudeGrade.A, 0, TerrainType.River, troops);
+        var stats = CombatStatsBuilder.BuildField(template, AptitudeGrade.A, 0, TerrainType.River, troops,
+            atkBonusPercent: atkBonus);
+        _tokenModel[id] = ModelIndex.GetValueOrDefault(templateCode, 0);
         return new CombatUnit(field, stats, new TroopPool(troops, 0),
             state ?? UnitCombatState.Create(intellect), might, intellect, MaxTroops: troops);
     }
 
+    // 특수 유닛(판정 전환 반영): 등갑병 df→14 등. 토큰은 기반 병종 모델.
+    private CombatUnit UnitSpecial(int id, int owner, HexCoord pos, string specialCode, int troops)
+    {
+        var special = _specials[specialCode];
+        var baseTemplate = _templates[special.BaseCode];
+        var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos, 2, 2, 1,
+            MovementDomain.Land, UnitMode.Attack, null, id);
+        var stats = CombatStatsBuilder.BuildFieldSpecial(special, baseTemplate, AptitudeGrade.A, 0,
+            TerrainType.River, troops);
+        _tokenModel[id] = ModelIndex.GetValueOrDefault(special.BaseCode, 0);
+        return new CombatUnit(field, stats, new TroopPool(troops, 0),
+            UnitCombatState.Create(60), 60, 60, MaxTroops: troops);
+    }
+
     private CaseDef[] BuildCases() => new[]
     {
-        new CaseDef("평타 1:1", "도검병 A급 1만끼리 인접 교전. 진행마다 서로 760씩(=활성 감소), 그중 70%는 부상.",
+        new CaseDef("평타 1:1 (도검)", "도검병 A급 1만끼리 인접 교전. 진행마다 서로 760씩, 그중 70%는 부상.",
             () => new[]
             {
-                Unit(1, 1, new HexCoord(2, 1), _templates["swordsman"], 10000),
-                Unit(2, 2, new HexCoord(3, 1), _templates["swordsman"], 10000),
+                Unit(1, 1, new HexCoord(2, 1), "swordsman", 10000),
+                Unit(2, 2, new HexCoord(3, 1), "swordsman", 10000),
             }),
-        new CaseDef("무쌍 발동(무력 80)", "선봉 무쌍 게이지가 준비된 A1이 대체 공격으로 E1에 1459. 발동 후 게이지 초기화 → 5진행 뒤 재발동.",
+        new CaseDef("병종 상성: 기병 vs 궁병", "기병(df12)은 튼튼하고 궁병(df8)은 약하다. 기병이 덜 맞고 더 때려 우위. 비용=성능.",
             () => new[]
             {
-                Unit(1, 1, new HexCoord(2, 1), _templates["swordsman"], 10000, might: 80,
+                Unit(1, 1, new HexCoord(2, 1), "cavalry", 10000),
+                Unit(2, 2, new HexCoord(3, 1), "archer", 10000),
+            }),
+        new CaseDef("최종병기: 상병 vs 도검", "상병(지수 196)이 도검(80)을 압도. 더 때리고 훨씬 덜 맞는다.",
+            () => new[]
+            {
+                Unit(1, 1, new HexCoord(2, 1), "war_elephant", 10000),
+                Unit(2, 2, new HexCoord(3, 1), "swordsman", 10000),
+            }),
+        new CaseDef("해상: 거북선 vs 대선", "거북선(16/16)이 대선(12/10)을 압도하는 해상 최종병기.",
+            () => new[]
+            {
+                Unit(1, 1, new HexCoord(2, 1), "turtleship", 10000),
+                Unit(2, 2, new HexCoord(3, 1), "large_ship", 10000),
+            }),
+        new CaseDef("다대일 포위: 도검 3 vs 상병 1", "도검 셋이 상병 하나를 포위. 상병 반격은 주대상 100%/나머지 60%로 갈려 셋을 다 못 막는다.",
+            () => new[]
+            {
+                Unit(1, 1, new HexCoord(2, 1), "swordsman", 10000),
+                Unit(2, 1, new HexCoord(4, 1), "swordsman", 10000),
+                Unit(3, 1, new HexCoord(3, 0), "swordsman", 10000),
+                Unit(4, 2, new HexCoord(3, 1), "war_elephant", 10000),
+            }),
+        new CaseDef("무쌍 발동(무력 80)", "선봉 무쌍 게이지가 준비된 A1이 대체 공격으로 E1에 1459. 발동 후 초기화 → 5진행 뒤 재발동.",
+            () => new[]
+            {
+                Unit(1, 1, new HexCoord(2, 1), "swordsman", 10000, might: 80,
                     state: UnitCombatState.Create(60, vanguardActive: _actives["peerless"]).AdvanceField(5)),
-                Unit(2, 2, new HexCoord(3, 1), _templates["swordsman"], 10000),
+                Unit(2, 2, new HexCoord(3, 1), "swordsman", 10000),
+            }),
+        new CaseDef("철벽 방어(무력 80)", "E1이 무쌍으로 치지만 A1 철벽이 받는 피해를 64%로 줄인다. 방어 액티브의 값어치.",
+            () => new[]
+            {
+                Unit(1, 1, new HexCoord(2, 1), "swordsman", 10000, might: 80,
+                    state: UnitCombatState.Create(60, vanguardActive: _actives["iron_wall"]).AdvanceField(5)),
+                Unit(2, 2, new HexCoord(3, 1), "swordsman", 10000, might: 80,
+                    state: UnitCombatState.Create(60, vanguardActive: _actives["peerless"]).AdvanceField(5)),
+            }),
+        new CaseDef("특수유닛: 등갑병(df 14) vs 궁병", "등갑병은 df가 상병 판정(14)으로 격상돼 궁병 상대로 매우 튼튼하다.",
+            () => new[]
+            {
+                UnitSpecial(1, 1, new HexCoord(2, 1), "deunggap", 10000),
+                Unit(2, 2, new HexCoord(3, 1), "archer", 10000),
             }),
         new CaseDef("낙뢰 계략(예약 발동)", "A1이 예약한 낙뢰가 발동일 도달 → E1 병력 25%(2500) 즉발. 발동일 A1은 공격 안 함, 모략력 45 소비.",
             () => new[]
             {
-                Unit(1, 1, new HexCoord(2, 1), _templates["swordsman"], 10000,
+                Unit(1, 1, new HexCoord(2, 1), "swordsman", 10000,
                     state: UnitCombatState.Create(60, masteryPoints: 285)
                         .ReserveStratagem(_stratagems["lightning"], new UnitId(2))
                         .AdvanceField(2)),
-                Unit(2, 2, new HexCoord(3, 1), _templates["swordsman"], 10000),
+                Unit(2, 2, new HexCoord(3, 1), "swordsman", 10000),
             }),
     };
 
@@ -213,6 +282,7 @@ public partial class CombatTestScene3D : Node3D
         _spawned.Clear();
         _tokens.Clear();
         _troopLabels.Clear();
+        _tokenModel.Clear();
         _logLines.Clear();
         _units = def.Build().ToList();
 
@@ -245,7 +315,7 @@ public partial class CombatTestScene3D : Node3D
         var ctrl = new UnitController3D();
         AddChild(ctrl);
         _spawned.Add(ctrl);
-        ctrl.InitDisplay(_view, color, SwordsmanTroopIndex, u.Field.Position);
+        ctrl.InitDisplay(_view, color, _tokenModel.GetValueOrDefault(u.Id.Value, SwordsmanTroopIndex), u.Field.Position);
 
         var name = new Label3D
         {
