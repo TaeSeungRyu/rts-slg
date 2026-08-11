@@ -173,6 +173,16 @@ public class StatusEffectTests
     }
 
     [Fact]
+    public void 수공_즉발버스트_15퍼센트_강도반영()
+    {
+        // 수공 즉발 15%, 지력차 +40(강도 140) → 1만의 21% = 2100
+        Assert.Equal(15, St["flood_plot"].InstantPercent);
+        Assert.Equal(2100, St["flood_plot"].InstantBurst(10000, casterIntellect: 100, targetIntellect: 60));
+        // 즉발이 없는 계략은 0
+        Assert.Equal(0, St["confound"].InstantBurst(10000, 80, 80));
+    }
+
+    [Fact]
     public void 교란_즉발피해_5퍼센트_후퇴3칸()
     {
         // 교란: 즉발 5%(강도 반영) + 후퇴 3칸

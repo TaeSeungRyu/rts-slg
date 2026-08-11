@@ -25,7 +25,7 @@ public sealed class StratagemLoader
             d.Code, d.Name, ParseKind(d.EffectKind), d.RequiredLevel, d.Cost,
             d.BaseValue, d.Duration, d.Range, ParseTerrain(d.TerrainRule),
             ParseStatus(d.StatusKind), ParsePurge(d.PurgeScope),
-            d.RetreatTiles, d.MoveDownTiles)).ToList();
+            d.RetreatTiles, d.MoveDownTiles, d.InstantPercent)).ToList();
     }
 
     private static StratagemEffectKind ParseKind(string name) => name switch
@@ -80,5 +80,6 @@ public sealed class StratagemLoader
         public string? PurgeScope { get; init; }
         public int RetreatTiles { get; init; }
         public int MoveDownTiles { get; init; }
+        public int InstantPercent { get; init; }
     }
 }

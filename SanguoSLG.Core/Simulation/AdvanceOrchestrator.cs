@@ -257,6 +257,15 @@ public sealed class AdvanceOrchestrator
                     casters[id] = stratagem;
 
                     var t = state[reservation.TargetId];
+
+                    // 지속 효과와 별개로 발동 시 터지는 추가 즉발 피해(수공 15%).
+                    var burst = stratagem.InstantBurst(t.Pool.Active, caster.Intellect, t.Intellect);
+                    if (burst > 0)
+                    {
+                        t = t with { Pool = t.Pool.TakeDamage(burst, _woundedPercent) };
+                        state[reservation.TargetId] = t;
+                    }
+
                     switch (stratagem.EffectKind)
                     {
                         // 즉발: 지금 피해. 지속(DoT): 상태를 걸고 다음 진행부터 tick. 정화: 걸린 상태 제거.

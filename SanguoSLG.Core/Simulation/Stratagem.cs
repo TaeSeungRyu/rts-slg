@@ -19,6 +19,7 @@ using SanguoSLG.Core.Spatial;
 /// <param name="Purge">정화 계략이 제거하는 상태 범위(비정화는 None).</param>
 /// <param name="RetreatTiles">강제 후퇴 칸(교란). 0이면 없음.</param>
 /// <param name="MoveDownTiles">이동 속도 감소 칸(수공). 0이면 없음.</param>
+/// <param name="InstantPercent">지속 효과와 별개로 발동 시 터지는 추가 즉발 피해 %(수공 15%). 0이면 없음.</param>
 public sealed record Stratagem(
     string Code,
     string Name,
@@ -32,7 +33,8 @@ public sealed record Stratagem(
     StatusKind? Status = null,
     PurgeScope Purge = PurgeScope.None,
     int RetreatTiles = 0,
-    int MoveDownTiles = 0)
+    int MoveDownTiles = 0,
+    int InstantPercent = 0)
 {
     /// <summary>대상 타일 지형에서 발동 가능한가.</summary>
     public bool CanCastOn(TerrainType targetTerrain) => TerrainRule switch
@@ -56,6 +58,21 @@ public sealed record Stratagem(
 
         var strength = StratagemStrength.Percent(casterIntellect, targetIntellect);
         return (int)((long)targetTroops * BaseValue * strength / 10000);
+    }
+
+    /// <summary>
+    /// 지속 효과(디버프 등)와 별개로 발동 시 터지는 추가 즉발 피해(수공 15%, 강도 반영).
+    /// <see cref="InstantPercent"/>이 0이면 0.
+    /// </summary>
+    public int InstantBurst(int targetTroops, int casterIntellect, int targetIntellect)
+    {
+        if (InstantPercent <= 0)
+        {
+            return 0;
+        }
+
+        var strength = StratagemStrength.Percent(casterIntellect, targetIntellect);
+        return (int)((long)targetTroops * InstantPercent * strength / 10000);
     }
 
     /// <summary>

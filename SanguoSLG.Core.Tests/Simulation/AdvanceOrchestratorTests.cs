@@ -257,6 +257,30 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 수공_발동은_즉발15퍼센트와_공격이동디버프를_함께건다()
+    {
+        var map = new HexMap(0, 20, -5, 5);
+        var movement = new MovementSimulator(new PassabilityMap(map, [], []));
+        var orch = new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70),
+            terrainAt: _ => TerrainType.River); // 수공은 소하천에서만 발동
+
+        var casterState = UnitCombatState.Create(60)
+            .ReserveStratagem(St["flood_plot"], new UnitId(2))
+            .AdvanceField(2);
+        var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.March, casterState);
+        var target = Sword(2, 2, new HexCoord(2, 0), UnitMode.March); // 거리2: 교전없음, 계략 사거리2
+
+        var turn = orch.Run(new[] { caster, target });
+        var ut = turn.Units.Single(u => u.Id.Value == 2);
+
+        Assert.Equal(10000 - 1500, ut.Pool.Active); // 즉발 15%(강도 100)
+        var s = Assert.Single(ut.State.Statuses);
+        Assert.Equal(StatusKind.AttackDown, s.Kind);
+        Assert.Equal(20, s.AtkDownPercent);
+        Assert.Equal(1, s.MoveDownTiles);
+    }
+
+    [Fact]
     public void 교란_강제후퇴_대상을_시전자에게서_밀어낸다()
     {
         // 시전자(1) 서쪽, 대상(2) 동쪽 인접. 교란 발동 → 즉발 5% + 후퇴 3칸(동쪽으로).
