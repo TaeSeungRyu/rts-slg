@@ -160,6 +160,34 @@ public sealed class AdvanceOrchestrator
             : u.Field;
     }
 
+    // 폭파: 대상 타일 반경 안의 다른 적 부대 전원에게 같은 즉발 피해(각 부대 지력이 저항). 대상 자신은
+    // 이미 맞았으므로 제외. 서로 독립 피해라 순서가 결과를 바꾸지 않지만 결정론을 위해 id 순으로 돈다.
+    private void ApplyAoe(Dictionary<UnitId, CombatUnit> state, Stratagem stratagem, CombatUnit caster, UnitId primaryTargetId)
+    {
+        var center = state[primaryTargetId].Field.Position;
+        foreach (var id in state.Keys.OrderBy(k => k.Value).ToList())
+        {
+            if (id == primaryTargetId)
+            {
+                continue;
+            }
+
+            var u = state[id];
+            if (u.Field.Owner == caster.Field.Owner
+                || u.Pool.Active <= 0
+                || u.Field.Position.Distance(center) > stratagem.AoeRadius)
+            {
+                continue;
+            }
+
+            var dmg = stratagem.Damage(u.Pool.Active, caster.Intellect, u.Intellect);
+            if (dmg > 0)
+            {
+                state[id] = u with { Pool = u.Pool.TakeDamage(dmg, _woundedPercent) };
+            }
+        }
+    }
+
     // 교란: 대상을 시전자에게서 강도 배율만큼의 칸수만큼 밀어낸다. 매 스텝 시전자와의 거리를
     // 늘리는 이웃(고정 방향 순서 — 결정론) 중 통행 가능·비점유 칸으로 옮기고, 없으면 멈춘다(부분 후퇴).
     private void RepositionRetreat(Dictionary<UnitId, CombatUnit> state, UnitId targetId, CombatUnit caster, Stratagem stratagem)
@@ -274,6 +302,12 @@ public sealed class AdvanceOrchestrator
                             if (damage > 0)
                             {
                                 state[reservation.TargetId] = t with { Pool = t.Pool.TakeDamage(damage, _woundedPercent) };
+                            }
+
+                            // 폭파: 대상 반경 안의 다른 적 전원에게도 같은 즉발 피해(광역).
+                            if (stratagem.AoeRadius > 0)
+                            {
+                                ApplyAoe(state, stratagem, caster, reservation.TargetId);
                             }
 
                             // 교란: 즉발 피해에 더해 강제 후퇴(부분).

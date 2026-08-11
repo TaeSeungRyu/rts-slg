@@ -191,6 +191,13 @@ public class StatusEffectTests
     }
 
     [Fact]
+    public void 폭파_광역반경_1_단일대상은_0()
+    {
+        Assert.Equal(1, St["detonate"].AoeRadius);
+        Assert.Equal(0, St["lightning"].AoeRadius); // 낙뢰는 단일 대상
+    }
+
+    [Fact]
     public void 진정은_능력치디버프도_제거하고_소화는_못한다()
     {
         var state = UnitCombatState.Create(60)

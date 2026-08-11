@@ -281,6 +281,29 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 폭파_광역_대상과_인접한_적전원을_때리되_먼적과_아군은_뺀다()
+    {
+        // 시전자(1). 대상(2) 사거리 안. 대상 인접 적(3)·먼 적(4)·대상 인접 아군(5).
+        var casterState = UnitCombatState.Create(60)
+            .ReserveStratagem(St["detonate"], new UnitId(2))
+            .AdvanceField(2);
+        var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.March, casterState);
+        var target = Sword(2, 2, new HexCoord(2, 0), UnitMode.March);
+        var nearEnemy = Sword(3, 2, new HexCoord(3, 0), UnitMode.March);   // 대상서 거리 1
+        var farEnemy = Sword(4, 2, new HexCoord(5, 0), UnitMode.March);    // 대상서 거리 3
+        var nearAlly = Sword(5, 1, new HexCoord(2, 1), UnitMode.March);    // 대상서 거리 1(아군)
+
+        var turn = MakeOrchestrator().Run(new[] { caster, target, nearEnemy, farEnemy, nearAlly });
+        CombatUnit U(int id) => turn.Units.Single(u => u.Id.Value == id);
+
+        Assert.Equal(10000 - 600, U(2).Pool.Active); // 대상 6%
+        Assert.Equal(10000 - 600, U(3).Pool.Active); // 인접 적 6%
+        Assert.Equal(10000, U(4).Pool.Active);        // 먼 적 무피해
+        Assert.Equal(10000, U(5).Pool.Active);        // 아군 무피해
+        Assert.Equal(10000, U(1).Pool.Active);        // 시전자 무피해
+    }
+
+    [Fact]
     public void 교란_강제후퇴_대상을_시전자에게서_밀어낸다()
     {
         // 시전자(1) 서쪽, 대상(2) 동쪽 인접. 교란 발동 → 즉발 5% + 후퇴 3칸(동쪽으로).

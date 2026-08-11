@@ -20,6 +20,7 @@ using SanguoSLG.Core.Spatial;
 /// <param name="RetreatTiles">강제 후퇴 칸(교란). 0이면 없음.</param>
 /// <param name="MoveDownTiles">이동 속도 감소 칸(수공). 0이면 없음.</param>
 /// <param name="InstantPercent">지속 효과와 별개로 발동 시 터지는 추가 즉발 피해 %(수공 15%). 0이면 없음.</param>
+/// <param name="AoeRadius">즉발 피해가 미치는 대상 주변 반경(폭파 1 = 대상+인접). 0이면 단일 대상.</param>
 public sealed record Stratagem(
     string Code,
     string Name,
@@ -34,7 +35,8 @@ public sealed record Stratagem(
     PurgeScope Purge = PurgeScope.None,
     int RetreatTiles = 0,
     int MoveDownTiles = 0,
-    int InstantPercent = 0)
+    int InstantPercent = 0,
+    int AoeRadius = 0)
 {
     /// <summary>대상 타일 지형에서 발동 가능한가.</summary>
     public bool CanCastOn(TerrainType targetTerrain) => TerrainRule switch
