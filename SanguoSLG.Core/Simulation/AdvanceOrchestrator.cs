@@ -47,12 +47,12 @@ public sealed class AdvanceOrchestrator
 
         // 4) 계략 발동 — 예약이 발동일에 도달하면 대상 유효성으로 발동/캔슬. 발동 부대는 이번 교전
         //    공격을 하지 않고(발동일 공격 불가), 즉발·지속 피해 계략은 대상 병력을 즉시 깎는다.
-        var stratagemCasters = FireStratagems(state);
-        engagements = engagements.Where(e => !stratagemCasters.Contains(e.Attacker)).ToList();
+        var firedStratagems = FireStratagems(state);
+        engagements = engagements.Where(e => !firedStratagems.ContainsKey(e.Attacker)).ToList();
 
         if (engagements.Count == 0)
         {
-            return new AdvanceTurn(Ordered(state), move, null);
+            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems);
         }
 
         var attackers = engagements.Select(e => e.Attacker).ToHashSet();
@@ -62,6 +62,7 @@ public sealed class AdvanceOrchestrator
 
         // 4) 교전 참가 부대마다 액티브 발동(선봉 우선)을 정하고 BattleParticipant를 만든다.
         var participants = new Dictionary<UnitId, BattleParticipant>();
+        var firedActives = new Dictionary<UnitId, ActiveSkill>();
         foreach (var id in participating)
         {
             var u = state[id];
@@ -72,6 +73,11 @@ public sealed class AdvanceOrchestrator
             {
                 skill = null;
                 newState = u.State;
+            }
+
+            if (skill is not null)
+            {
+                firedActives[id] = skill;
             }
 
             state[id] = u with { State = newState };
@@ -94,13 +100,15 @@ public sealed class AdvanceOrchestrator
             state[id] = state[id] with { Pool = pool };
         }
 
-        return new AdvanceTurn(Ordered(state), move, combat);
+        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems);
     }
 
-    // 예약된 계략을 발동/캔슬한다. 발동한 시전 부대의 UnitId 집합을 돌려준다(그 교전 공격 불가).
-    private HashSet<UnitId> FireStratagems(Dictionary<UnitId, CombatUnit> state)
+    private static readonly IReadOnlyDictionary<UnitId, ActiveSkill> NoActives = new Dictionary<UnitId, ActiveSkill>();
+
+    // 예약된 계략을 발동/캔슬한다. 발동한 시전 부대 → 그 계략의 사전을 돌려준다(그 교전 공격 불가).
+    private Dictionary<UnitId, Stratagem> FireStratagems(Dictionary<UnitId, CombatUnit> state)
     {
-        var casters = new HashSet<UnitId>();
+        var casters = new Dictionary<UnitId, Stratagem>();
         foreach (var id in state.Keys.ToList())
         {
             var caster = state[id];
@@ -120,7 +128,7 @@ public sealed class AdvanceOrchestrator
                 case StratagemFireOutcome.Fired:
                     var (stratagem, newState) = caster.State.FireStratagem();
                     state[id] = caster with { State = newState };
-                    casters.Add(id);
+                    casters[id] = stratagem;
 
                     // 즉발·지속 피해 계략만 즉시 피해(디버프/정화 상태 적용은 후속).
                     var t = state[reservation.TargetId];

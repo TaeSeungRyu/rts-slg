@@ -55,7 +55,6 @@ public partial class CombatTestScene3D : Node3D
     private bool _animating;
     private Queue<System.Action> _beats = new();
     private AdvanceTurn? _pending;
-    private Dictionary<int, CombatUnit> _before = new();
 
     private Button _stepButton = null!;
     private Button _caseButton = null!;
@@ -82,7 +81,7 @@ public partial class CombatTestScene3D : Node3D
         _cases = BuildCases();
         BuildHud();
 
-        _beatTimer = new Godot.Timer { WaitTime = 1.0, OneShot = false };
+        _beatTimer = new Godot.Timer { WaitTime = 0.5, OneShot = false };
         AddChild(_beatTimer);
         _beatTimer.Timeout += OnBeat;
 
@@ -188,7 +187,6 @@ public partial class CombatTestScene3D : Node3D
     private void BeginTurn()
     {
         _round++;
-        _before = _units.ToDictionary(u => u.Id.Value);
         _pending = _orchestrator.Run(_units);
 
         _beats = new Queue<System.Action>();
@@ -225,7 +223,7 @@ public partial class CombatTestScene3D : Node3D
                 continue;
             }
 
-            ctrl.DisplayStepTo(fu.Position, 1.0f);
+            ctrl.DisplayStepTo(fu.Position, 0.5f);
             var foe = tick.Units.FirstOrDefault(o => o.Owner != fu.Owner);
             if (foe is not null)
             {
@@ -237,13 +235,27 @@ public partial class CombatTestScene3D : Node3D
     private void PlayAttacks()
     {
         var combat = _pending!.Combat!;
-        foreach (var u in _pending.Units)
+        var units = _pending.Units;
+        foreach (var u in units)
         {
-            if (u.Pool.Active > 0 && _tokens.TryGetValue(u.Id.Value, out var ctrl)
-                && (combat.DamageDealt.ContainsKey(u.Id) || combat.DamageTaken.ContainsKey(u.Id)))
+            if (u.Pool.Active <= 0 || !_tokens.TryGetValue(u.Id.Value, out var ctrl))
             {
-                ctrl.PlayAttackMotion();
+                continue;
             }
+
+            // 이 교전에서 실제로 공격/피격에 관여한 부대만 공격 모션.
+            if (!combat.DamageDealt.ContainsKey(u.Id) && !combat.DamageTaken.ContainsKey(u.Id))
+            {
+                continue;
+            }
+
+            var foe = units.FirstOrDefault(o => o.Field.Owner != u.Field.Owner && o.Pool.Active > 0);
+            if (foe is not null)
+            {
+                ctrl.FaceToward(_view.HexToWorld(foe.Field.Position));
+            }
+
+            ctrl.PlayAttackMotion();
         }
     }
 
@@ -421,20 +433,24 @@ public partial class CombatTestScene3D : Node3D
         foreach (var id in _orderedIds)
         {
             var u = _units.First(x => x.Id.Value == id);
-            var pre = _before[id];
+            var uid = new UnitId(id);
             var combat = turn.Combat is not null;
-            var dealt = turn.Combat?.DamageDealt.GetValueOrDefault(new UnitId(id)) ?? 0;
-            var fired = pre.State.VanguardGauge.IsReady && !u.State.VanguardGauge.IsReady;
-            var active = u.State.VanguardActive;
+            var dealt = turn.Combat?.DamageDealt.GetValueOrDefault(uid) ?? 0;
 
             var lines = new List<string>
             {
                 combat ? $"준 −{dealt}" : "없음",
                 $"잔여 {u.Pool.Active}/{u.MaxTroops}",
             };
-            if (fired && active is not null)
+
+            // 오케스트레이터가 보고한 발동 스킬(게이지가 한 진행에 차서 발동해도 확실히 잡힌다).
+            if (turn.FiredActives.TryGetValue(uid, out var active))
             {
                 lines.Add(active.Type == ActiveType.Strike ? $"{active.Name} −{dealt}" : active.Name);
+            }
+            if (turn.FiredStratagems.TryGetValue(uid, out var strat))
+            {
+                lines.Add($"계략 {strat.Name}");
             }
 
             _table.AddChild(Cell(string.Join("\n", lines), header: false, width: 150));
