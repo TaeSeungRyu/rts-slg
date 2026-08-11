@@ -24,7 +24,8 @@ public sealed class StratagemLoader
         return dtos.Select(d => new Stratagem(
             d.Code, d.Name, ParseKind(d.EffectKind), d.RequiredLevel, d.Cost,
             d.BaseValue, d.Duration, d.Range, ParseTerrain(d.TerrainRule),
-            ParseStatus(d.StatusKind), ParsePurge(d.PurgeScope))).ToList();
+            ParseStatus(d.StatusKind), ParsePurge(d.PurgeScope),
+            d.RetreatTiles, d.MoveDownTiles)).ToList();
     }
 
     private static StratagemEffectKind ParseKind(string name) => name switch
@@ -52,6 +53,7 @@ public sealed class StratagemLoader
         "attack_down" => StatusKind.AttackDown,
         "ranged_down" => StatusKind.RangedDown,
         "nullify" => StatusKind.Nullify,
+        "daze" => StatusKind.Daze,
         _ => throw new InvalidDataException($"알 수 없는 상태 종류: {name}"),
     };
 
@@ -76,5 +78,7 @@ public sealed class StratagemLoader
         public string TerrainRule { get; init; } = "none";
         public string? StatusKind { get; init; }
         public string? PurgeScope { get; init; }
+        public int RetreatTiles { get; init; }
+        public int MoveDownTiles { get; init; }
     }
 }

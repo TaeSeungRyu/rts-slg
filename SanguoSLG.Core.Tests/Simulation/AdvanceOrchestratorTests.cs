@@ -25,10 +25,10 @@ public class AdvanceOrchestratorTests
     }
 
     private static CombatUnit Sword(int id, int owner, HexCoord pos, UnitMode mode = UnitMode.Attack,
-        UnitCombatState? cs = null, int might = 60)
+        UnitCombatState? cs = null, int might = 60, HexCoord? target = null)
     {
         var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos, 2, 2, 1,
-            MovementDomain.Land, mode, null, 0);
+            MovementDomain.Land, mode, target, 0);
         var stats = CombatStatsBuilder.BuildField(T["swordsman"], AptitudeGrade.A, 0, TerrainType.River, 10000);
         return new CombatUnit(field, stats, new TroopPool(10000, 0),
             cs ?? UnitCombatState.Create(60), might, Intellect: 60, MaxTroops: 10000);
@@ -213,6 +213,64 @@ public class AdvanceOrchestratorTests
             .Units.Single(u => u.Id.Value == 2).Pool.Active;
 
         Assert.True(nullLoss < baseLoss, $"무효 후 준 피해({nullLoss})가 원래({baseLoss})보다 작아야 함");
+    }
+
+    [Fact]
+    public void 혼란_행동불가_부대는_공격하지_못한다()
+    {
+        var daze = new StatusEffect(StatusKind.Daze, 0, 3, false);
+        var a = Sword(1, 1, new HexCoord(0, 0), cs: UnitCombatState.Create(60).AddStatus(daze));
+        var b = Sword(2, 2, new HexCoord(1, 0));
+        var turn = MakeOrchestrator().Run(new[] { a, b });
+
+        var ua = turn.Units.Single(u => u.Id.Value == 1);
+        var ub = turn.Units.Single(u => u.Id.Value == 2);
+        Assert.Equal(10000, ub.Pool.Active);       // a는 행동불가 → 공격 못 함
+        Assert.Equal(10000 - 760, ua.Pool.Active);  // b는 정상 공격(a는 피격·무반격)
+    }
+
+    [Fact]
+    public void 혼란_행동불가_부대는_이동하지_못한다()
+    {
+        var daze = new StatusEffect(StatusKind.Daze, 0, 3, false);
+        var a = Sword(1, 1, new HexCoord(0, 0), UnitMode.Attack,
+            cs: UnitCombatState.Create(60).AddStatus(daze), target: new HexCoord(5, 0));
+        var turn = MakeOrchestrator().Run(new[] { a });
+
+        Assert.Equal(new HexCoord(0, 0), turn.Units[0].Field.Position); // 제자리
+        Assert.Null(turn.Combat);
+    }
+
+    [Fact]
+    public void 수공_이동감소_부대는_한칸씩_덜_간다()
+    {
+        var flood = new StatusEffect(StatusKind.AttackDown, 0, 2, false, AtkDownPercent: 20, MoveDownTiles: 1);
+        var orch = MakeOrchestrator();
+
+        var control = Sword(1, 1, new HexCoord(0, 0), UnitMode.Advance, target: new HexCoord(14, 0));
+        var slowed = Sword(2, 2, new HexCoord(0, 0), UnitMode.Advance,
+            cs: UnitCombatState.Create(60).AddStatus(flood), target: new HexCoord(14, 0));
+
+        // 속도 2 × 7일 = 14칸(목표 도달) vs 이동 −1 → 속도 1 × 7일 = 7칸
+        Assert.Equal(new HexCoord(14, 0), orch.Run(new[] { control }).Units[0].Field.Position);
+        Assert.Equal(new HexCoord(7, 0), orch.Run(new[] { slowed }).Units[0].Field.Position);
+    }
+
+    [Fact]
+    public void 교란_강제후퇴_대상을_시전자에게서_밀어낸다()
+    {
+        // 시전자(1) 서쪽, 대상(2) 동쪽 인접. 교란 발동 → 즉발 5% + 후퇴 3칸(동쪽으로).
+        var casterState = UnitCombatState.Create(60)
+            .ReserveStratagem(St["rout"], new UnitId(2))
+            .AdvanceField(2);
+        var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.March, casterState);
+        var target = Sword(2, 2, new HexCoord(1, 0), UnitMode.March);
+
+        var turn = MakeOrchestrator().Run(new[] { caster, target });
+        var ut = turn.Units.Single(u => u.Id.Value == 2);
+
+        Assert.Equal(new HexCoord(4, 0), ut.Field.Position); // (1,0)에서 3칸 밀림
+        Assert.Equal(10000 - 500, ut.Pool.Active);            // 즉발 5%(강도 100)
     }
 
     [Fact]

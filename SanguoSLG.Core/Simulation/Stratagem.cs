@@ -15,8 +15,10 @@ using SanguoSLG.Core.Spatial;
 /// <param name="Duration">지속 진행 수(즉발·정화는 0).</param>
 /// <param name="Range">사거리.</param>
 /// <param name="TerrainRule">발동 지형 조건.</param>
-/// <param name="Status">지속 피해(DoT)가 남기는 상태 종류(그 외는 null).</param>
+/// <param name="Status">지속 상태(DoT·디버프)의 종류(즉발·정화는 null).</param>
 /// <param name="Purge">정화 계략이 제거하는 상태 범위(비정화는 None).</param>
+/// <param name="RetreatTiles">강제 후퇴 칸(교란). 0이면 없음.</param>
+/// <param name="MoveDownTiles">이동 속도 감소 칸(수공). 0이면 없음.</param>
 public sealed record Stratagem(
     string Code,
     string Name,
@@ -28,7 +30,9 @@ public sealed record Stratagem(
     int Range,
     StratagemTerrainRule TerrainRule,
     StatusKind? Status = null,
-    PurgeScope Purge = PurgeScope.None)
+    PurgeScope Purge = PurgeScope.None,
+    int RetreatTiles = 0,
+    int MoveDownTiles = 0)
 {
     /// <summary>대상 타일 지형에서 발동 가능한가.</summary>
     public bool CanCastOn(TerrainType targetTerrain) => TerrainRule switch
@@ -75,7 +79,7 @@ public sealed record Stratagem(
 
             StatusKind.AttackDown => new StatusEffect(
                 Status.Value, TickBasisPoints: 0, Remaining: Duration, IsFire: false,
-                AtkDownPercent: BaseValue * strength / 100),
+                AtkDownPercent: BaseValue * strength / 100, MoveDownTiles: MoveDownTiles),
 
             StatusKind.RangedDown => new StatusEffect(
                 Status.Value, TickBasisPoints: 0, Remaining: Duration, IsFire: false,
@@ -84,6 +88,9 @@ public sealed record Stratagem(
             StatusKind.Nullify => new StatusEffect(
                 Status.Value, TickBasisPoints: 0, Remaining: Duration * strength / 100, IsFire: false,
                 NullifyAptPassive: true),
+
+            StatusKind.Daze => new StatusEffect(
+                Status.Value, TickBasisPoints: 0, Remaining: Duration * strength / 100, IsFire: false),
 
             _ => null,
         };

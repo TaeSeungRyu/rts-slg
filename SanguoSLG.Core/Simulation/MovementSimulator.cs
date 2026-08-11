@@ -17,6 +17,9 @@ public sealed class MovementSimulator
 
     public MovementSimulator(PassabilityMap passability) => _passability = passability;
 
+    /// <summary>해당 통행 영역의 유닛이 이 칸에 들어갈 수 있는가(교란 후퇴 등 상위 계층용).</summary>
+    public bool CanEnter(MovementDomain domain, HexCoord coord) => _passability.CanEnter(domain, coord);
+
     private sealed class Working
     {
         public FieldUnit Unit;

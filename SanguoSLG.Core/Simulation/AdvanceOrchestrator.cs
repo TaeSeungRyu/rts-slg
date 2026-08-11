@@ -7,8 +7,8 @@ using SanguoSLG.Core.Spatial;
 /// 한 "진행"을 이동 → 계략 발동 → 전투 페이즈 → 정산으로 묶는다(design-combat.md "전투 페이즈 발동"
 /// 순환). 이동 시뮬을 돌려 정지시킨 뒤, 경과일만큼 발동 상태를 진행하고, 예약된 계략을 발동하며
 /// (발동일엔 시전 부대 공격 불가), 사거리 전수검사로 교전을 만들어 액티브 발동(선봉 우선)을 얹어
-/// 동시 정산한다. 결과로 위치·병력·발동 상태가 갱신된 부대를 돌려준다.
-/// 지속 디버프/DoT 상태·정화·성 복귀 감지·Game 배선은 후속.
+/// 동시 정산한다. 결과로 위치·병력·발동 상태가 갱신된 부대를 돌려준다. 지속 상태(DoT·능력치
+/// 디버프·행동불가), 정화, 강제 후퇴(교란)까지 반영한다. 성 복귀 감지·Game 배선은 후속.
 /// </summary>
 public sealed class AdvanceOrchestrator
 {
@@ -31,15 +31,23 @@ public sealed class AdvanceOrchestrator
 
     public AdvanceTurn Run(IReadOnlyList<CombatUnit> units, int maxDays = 7)
     {
-        // 1) 이동 — 진행 정지까지.
-        var move = _movement.Advance(units.Select(u => u.Field).ToList(), maxDays);
+        // 진행 시작 시점에 행동불가(혼란)인 부대 — 이동·전투 모두 이 스냅샷으로 판정한다
+        // (상태 tick이 진행 중간에 남은 진행을 줄여도, 그 진행의 효과는 온전히 적용).
+        var dazedAtStart = units.Where(IsDazed).Select(u => u.Id).ToHashSet();
+
+        // 1) 이동 — 진행 정지까지. 걸린 상태(혼란=행동불가, 수공=이동−1)를 이동 입력에 반영한다.
+        var move = _movement.Advance(units.Select(MovementField).ToList(), maxDays);
         var moved = move.Units.ToDictionary(f => f.Id);
 
-        // 2) 위치 갱신 + 경과일만큼 발동 상태 진행(야전 가정).
+        // 2) 위치만 갱신(임시 이동 스탯은 버림) + 경과일만큼 발동 상태 진행(야전 가정).
         var state = new Dictionary<UnitId, CombatUnit>();
         foreach (var u in units)
         {
-            state[u.Id] = u with { Field = moved[u.Id], State = u.State.AdvanceField(move.Days) };
+            state[u.Id] = u with
+            {
+                Field = u.Field with { Position = moved[u.Id].Position },
+                State = u.State.AdvanceField(move.Days),
+            };
         }
 
         // 2.5) 지속 상태(DoT) 틱 — 진행당 1회. 서 있는 화상·독이 병력을 깎고 남은 진행이 준다.
@@ -63,13 +71,17 @@ public sealed class AdvanceOrchestrator
             }
         }
 
-        // 3) 전투 페이즈 발동 — 정지 시점 사거리 전수검사.
-        var engagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList());
-
-        // 4) 계략 발동 — 예약이 발동일에 도달하면 대상 유효성으로 발동/캔슬. 발동 부대는 이번 교전
-        //    공격을 하지 않고(발동일 공격 불가), 즉발·지속 피해 계략은 대상 병력을 즉시 깎는다.
+        // 3) 계략 발동 — 예약이 발동일에 도달하면 대상 유효성으로 발동/캔슬. 즉발·지속 피해, 디버프,
+        //    정화, 강제 후퇴(교란)를 여기서 적용한다. 발동 부대는 이번 교전 공격을 하지 않는다.
+        //    후퇴가 위치를 바꾸므로 교전 탐지보다 먼저 발동한다.
         var firedStratagems = FireStratagems(state);
-        engagements = engagements.Where(e => !firedStratagems.ContainsKey(e.Attacker)).ToList();
+
+        // 4) 전투 페이즈 발동 — 정지·후퇴가 반영된 위치로 사거리 전수검사. 발동 부대와 행동불가(혼란)
+        //    부대는 공격자에서 뺀다(피격·방어는 정상).
+        var engagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList())
+            .Where(e => !firedStratagems.ContainsKey(e.Attacker)
+                && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker])))
+            .ToList();
 
         if (engagements.Count == 0)
         {
@@ -87,7 +99,10 @@ public sealed class AdvanceOrchestrator
         foreach (var id in participating)
         {
             var u = state[id];
-            var (skill, newState) = u.State.FiringActive();
+            // 행동불가(혼란)면 액티브도 못 쓴다(피격·방어는 정상).
+            var (skill, newState) = dazedAtStart.Contains(id) || IsDazed(u)
+                ? ((ActiveSkill?)null, u.State)
+                : u.State.FiringActive();
 
             // 타격 액티브는 공격자만 쓴다(방어자만이면 보류·게이지 유지).
             if (skill?.Type == ActiveType.Strike && !attackers.Contains(id))
@@ -127,6 +142,72 @@ public sealed class AdvanceOrchestrator
     }
 
     private static readonly IReadOnlyDictionary<UnitId, ActiveSkill> NoActives = new Dictionary<UnitId, ActiveSkill>();
+
+    private static bool IsDazed(CombatUnit u) => u.State.Statuses.Any(s => s.IsDaze);
+
+    // 이동 시뮬에 넣을 임시 FieldUnit. 혼란(행동불가)은 제자리에 묶고(속도 0·목표·모드 중립),
+    // 수공(이동−1)은 속도를 깎는다(최소 1). 실제 Field는 위치만 되받아 보존한다.
+    private static FieldUnit MovementField(CombatUnit u)
+    {
+        if (IsDazed(u))
+        {
+            return u.Field with { Mode = UnitMode.Advance, Target = null, Speed = 0 };
+        }
+
+        var moveDown = u.State.Statuses.Sum(s => s.MoveDownTiles);
+        return moveDown > 0
+            ? u.Field with { Speed = System.Math.Max(1, u.Field.Speed - moveDown) }
+            : u.Field;
+    }
+
+    // 교란: 대상을 시전자에게서 강도 배율만큼의 칸수만큼 밀어낸다. 매 스텝 시전자와의 거리를
+    // 늘리는 이웃(고정 방향 순서 — 결정론) 중 통행 가능·비점유 칸으로 옮기고, 없으면 멈춘다(부분 후퇴).
+    private void RepositionRetreat(Dictionary<UnitId, CombatUnit> state, UnitId targetId, CombatUnit caster, Stratagem stratagem)
+    {
+        var target = state[targetId];
+        var strength = StratagemStrength.Percent(caster.Intellect, target.Intellect);
+        var tiles = stratagem.RetreatTiles * strength / 100;
+        if (tiles <= 0)
+        {
+            return;
+        }
+
+        var occupied = state.Values
+            .Where(u => u.Id != targetId)
+            .Select(u => u.Field.Position)
+            .ToHashSet();
+
+        var from = caster.Field.Position;
+        var pos = target.Field.Position;
+        for (var step = 0; step < tiles; step++)
+        {
+            var current = pos;
+            var moved = false;
+            foreach (var n in current.Neighbors())
+            {
+                if (n.Distance(from) <= current.Distance(from)
+                    || occupied.Contains(n)
+                    || !_movement.CanEnter(target.Field.Domain, n))
+                {
+                    continue;
+                }
+
+                pos = n;
+                moved = true;
+                break;
+            }
+
+            if (!moved)
+            {
+                break; // 막힘 — 밀려난 만큼만(부분 후퇴)
+            }
+        }
+
+        if (pos != target.Field.Position)
+        {
+            state[targetId] = target with { Field = target.Field with { Position = pos } };
+        }
+    }
 
     // 걸린 능력치 디버프를 유효 능력치 + 준 피해 배수로 접는다. 이간(무효)은 적성·가산 버킷을 100으로
     // 되돌리고(공격·방어 모두 약화), 수공·연막은 준 피해를 곱으로 줄인다(연막은 사거리 2 이상만).
@@ -186,6 +267,12 @@ public sealed class AdvanceOrchestrator
                                 state[reservation.TargetId] = t with { Pool = t.Pool.TakeDamage(damage, _woundedPercent) };
                             }
 
+                            // 교란: 즉발 피해에 더해 강제 후퇴(부분).
+                            if (stratagem.RetreatTiles > 0)
+                            {
+                                RepositionRetreat(state, reservation.TargetId, caster, stratagem);
+                            }
+
                             break;
 
                         case StratagemEffectKind.DamageOverTime:
@@ -201,8 +288,6 @@ public sealed class AdvanceOrchestrator
                         case StratagemEffectKind.Purge:
                             state[reservation.TargetId] = t with { State = t.State.Purge(stratagem.Purge) };
                             break;
-
-                        // 혼란(행동불가)·교란(강제 후퇴)의 상태 적용은 후속 증분(전투 능력치 밖).
                     }
 
                     break;

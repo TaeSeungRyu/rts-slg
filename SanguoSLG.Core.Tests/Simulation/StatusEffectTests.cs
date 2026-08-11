@@ -54,10 +54,10 @@ public class StatusEffectTests
     }
 
     [Fact]
-    public void 즉발_디버프_정화계략은_상태를_만들지않는다()
+    public void 즉발_정화계략은_상태를_만들지않는다()
     {
         Assert.Null(St["lightning"].MakeStatus(80, 80));  // 즉발
-        Assert.Null(St["confound"].MakeStatus(80, 80));   // 디버프
+        Assert.Null(St["rout"].MakeStatus(80, 80));       // 교란: 즉발+후퇴, 지속 상태 없음
         Assert.Null(St["douse"].MakeStatus(80, 80));      // 정화
     }
 
@@ -153,11 +153,31 @@ public class StatusEffectTests
     }
 
     [Fact]
-    public void 혼란_교란은_아직_상태를_만들지않는다()
+    public void 혼란_MakeStatus_행동불가는_지속에_강도반영()
     {
-        // 행동불가·강제 후퇴는 후속 증분 — status_kind 미지정이라 null
-        Assert.Null(St["confound"].MakeStatus(80, 80));
-        Assert.Null(St["rout"].MakeStatus(80, 80));
+        // 혼란: 행동불가 3진행 × 강도 100 → 3진행, Daze
+        var status = St["confound"].MakeStatus(80, 80);
+        Assert.NotNull(status);
+        Assert.Equal(StatusKind.Daze, status!.Kind);
+        Assert.True(status.IsDaze);
+        Assert.Equal(3, status.Remaining);
+    }
+
+    [Fact]
+    public void 수공_MakeStatus_이동감소도_함께건다()
+    {
+        // 수공: 공격 감소 + 이동 −1(강도 무관, 고정)
+        var status = St["flood_plot"].MakeStatus(80, 80);
+        Assert.NotNull(status);
+        Assert.Equal(1, status!.MoveDownTiles);
+    }
+
+    [Fact]
+    public void 교란_즉발피해_5퍼센트_후퇴3칸()
+    {
+        // 교란: 즉발 5%(강도 반영) + 후퇴 3칸
+        Assert.Equal(500, St["rout"].Damage(10000, casterIntellect: 80, targetIntellect: 80));
+        Assert.Equal(3, St["rout"].RetreatTiles);
     }
 
     [Fact]

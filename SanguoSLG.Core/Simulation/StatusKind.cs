@@ -20,4 +20,7 @@ public enum StatusKind
 
     /// <summary>적성·패시브 무효(이간). 적성·가산 버킷을 중립(100)으로 되돌린다.</summary>
     Nullify,
+
+    /// <summary>행동불가(혼란). 지속 동안 이동·공격·액티브를 못 한다(피격·방어는 정상).</summary>
+    Daze,
 }
