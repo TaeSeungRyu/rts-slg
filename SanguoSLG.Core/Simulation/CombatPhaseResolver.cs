@@ -45,6 +45,7 @@ public sealed class CombatPhaseResolver
 
         // 3) 계략 디버프는 이미 Stats에 반영. 4) 공격 — 스냅샷 기준 동시 누적.
         var damage = new Dictionary<UnitId, int>();
+        var dealt = new Dictionary<UnitId, int>();
         foreach (var engagement in engagements)
         {
             var attacker = participants[engagement.Attacker];
@@ -65,6 +66,7 @@ public sealed class CombatPhaseResolver
 
                 raw = raw * takenPercent[targetId] / 100; // 방어 액티브 감소
                 damage[targetId] = damage.GetValueOrDefault(targetId) + raw;
+                dealt[engagement.Attacker] = dealt.GetValueOrDefault(engagement.Attacker) + raw;
             }
         }
 
@@ -77,6 +79,6 @@ public sealed class CombatPhaseResolver
             pools[id] = taken > 0 ? pool.TakeDamage(taken, _woundedPercent) : pool;
         }
 
-        return new CombatPhaseResult(damage, pools);
+        return new CombatPhaseResult(damage, dealt, pools);
     }
 }

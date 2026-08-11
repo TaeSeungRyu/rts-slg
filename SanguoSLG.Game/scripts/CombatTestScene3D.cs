@@ -10,9 +10,9 @@ namespace SanguoSLG.Game;
 
 /// <summary>
 /// 이동→전투 통합 검증 하베스트(doc/test/combat-movement-cases.md). 부대가 목적지로 이동하다 조우해
-/// Core <see cref="AdvanceOrchestrator"/>가 한 "진행"(이동 → 계략 → 전투 페이즈 → 정산)을 계산하면,
-/// 토큰을 옮기고 병종별 공격 모션을 재생하며 전투 결과를 표에 한 행씩 쌓는다. 전투가 없는 진행은
-/// "없음"으로 표기한다. 각 유닛에 패시브 1·액티브 1을 붙인다(계략은 대기). 규칙·수치는 Core 소유.
+/// Core <see cref="AdvanceOrchestrator"/>가 한 "진행"을 계산하면, 재생 규칙(한 칸 이동 1초 → 공격 모션
+/// 1초)대로 토큰을 옮기고 병종별 공격 모션을 재생한 뒤, 전투 결과를 표에 한 행씩 쌓는다. 각 유닛에
+/// 패시브 1·액티브 1을 붙인다(계략은 대기). 규칙·수치는 Core 소유.
 /// </summary>
 public partial class CombatTestScene3D : Node3D
 {
@@ -21,7 +21,6 @@ public partial class CombatTestScene3D : Node3D
     private const int MaxQ = 10;
     private const int MaxR = 2;
 
-    // 패시브는 상시형만 써서 조건 없이 가산 버킷에 들어가게 한다(무조건 3단계).
     private static readonly CombatContext MeleeCtx = new(MeleeEngagement: true, IncomingMelee: true, InField: true);
 
     private static readonly Dictionary<string, int> ModelIndex = new()
@@ -45,10 +44,18 @@ public partial class CombatTestScene3D : Node3D
     private int _caseIndex;
     private int _round;
     private List<CombatUnit> _units = new();
+    private readonly List<int> _orderedIds = new();
     private readonly Dictionary<int, UnitController3D> _tokens = new();
     private readonly Dictionary<int, Label3D> _troopLabels = new();
     private readonly Dictionary<int, int> _tokenModel = new();
     private readonly List<Node3D> _spawned = new();
+
+    // 재생 규칙(2026-08-11 사용자 정의 — 실제 게임에도 적용): 한 칸 이동 1초, 공격 모션 1초.
+    private Godot.Timer _beatTimer = null!;
+    private bool _animating;
+    private Queue<System.Action> _beats = new();
+    private AdvanceTurn? _pending;
+    private Dictionary<int, CombatUnit> _before = new();
 
     private Button _stepButton = null!;
     private Button _caseButton = null!;
@@ -74,43 +81,39 @@ public partial class CombatTestScene3D : Node3D
 
         _cases = BuildCases();
         BuildHud();
+
+        _beatTimer = new Godot.Timer { WaitTime = 1.0, OneShot = false };
+        AddChild(_beatTimer);
+        _beatTimer.Timeout += OnBeat;
+
         LoadCase(0);
 
-        // 헤드리스 자동 진행(예외 검증용): --combattestauto.
+        // 헤드리스 자동 검증(예외용): 애니메이션 없이 즉시 진행.
         if (OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).Contains("--combattestauto"))
         {
             var rounds = 0;
-            var timer = new Godot.Timer { WaitTime = 0.3, Autostart = true };
+            var timer = new Godot.Timer { WaitTime = 0.2, Autostart = true };
             AddChild(timer);
             timer.Timeout += () =>
             {
                 if (Ended() || rounds >= 12)
                 {
-                    var state = string.Join(" ", _units.Select(u => $"{Tag(u)}={u.Pool.Active}"));
-                    GD.Print($"[combattestauto] case {_caseIndex} after {rounds}: {state}");
-                    if (_caseIndex + 1 < _cases.Length)
-                    {
-                        LoadCase(_caseIndex + 1);
-                        rounds = 0;
-                    }
-                    else
-                    {
-                        GD.Print("[combattestauto] all cases done");
-                        timer.Stop();
-                    }
-
+                    GD.Print($"[combattestauto] case {_caseIndex} after {rounds}: " +
+                        string.Join(" ", _units.Select(u => $"{Tag(u)}={u.Pool.Active}")));
+                    if (_caseIndex + 1 < _cases.Length) { LoadCase(_caseIndex + 1); rounds = 0; }
+                    else { GD.Print("[combattestauto] all cases done"); timer.Stop(); }
                     return;
                 }
 
                 rounds++;
-                OnStep();
+                BeginTurn();
+                FinalizeTurn();
             };
         }
     }
 
     // ── 케이스 ──
 
-    // 유닛 하나: 병종 + 목표/모드 + 패시브 1 + 액티브 1. 계략은 대기(예약 안 함).
     private CombatUnit Unit(int id, int owner, HexCoord pos, string templateCode, HexCoord? target, UnitMode mode,
         string passiveCode, string activeCode, int might = 60, int intellect = 60, int troops = 10000)
     {
@@ -127,28 +130,28 @@ public partial class CombatTestScene3D : Node3D
     private CaseDef[] BuildCases() => new[]
     {
         new CaseDef("진격 조우 → 소모전",
-            "A1(공격)이 동진해 정지한 E1을 탐지·추격·정지 → 교전. 이후 진행마다 소모. A1=맹공+무쌍, E1=견수+철벽.",
+            "A1(공격)이 동진해 정지 방어자 E2를 추격·정지 → 교전. A1=맹공+무쌍, E2=견수+철벽.",
             () => new[]
             {
                 Unit(1, 1, new HexCoord(0, 1), "swordsman", new HexCoord(10, 1), UnitMode.Attack, "fierce_assault", "peerless", might: 80),
                 Unit(2, 2, new HexCoord(7, 1), "swordsman", null, UnitMode.Advance, "steadfast_guard", "iron_wall", might: 80),
             }),
         new CaseDef("전진 직행(무전투)",
-            "A1(전진)은 길목의 E1(행군)을 무시하고 목표로 직행 → 조우 없이 도달. 표에 '없음'이 이어진다.",
+            "A1(전진)은 길목의 E2(행군)를 무시하고 목표로 직행 → 조우 없이 도달. 표에 '없음'이 이어진다.",
             () => new[]
             {
                 Unit(1, 1, new HexCoord(0, 1), "swordsman", new HexCoord(10, 1), UnitMode.Advance, "fierce_assault", "peerless"),
                 Unit(2, 2, new HexCoord(6, 0), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
             }),
         new CaseDef("정면 조우 교전",
-            "A1·E1이 서로 목표로 마주 진격 → 가운데서 정지 → 대칭 소모. 둘 다 맹공+무쌍.",
+            "A1·E2가 서로 목표로 마주 진격 → 가운데서 정지 → 대칭 소모. 둘 다 맹공+무쌍.",
             () => new[]
             {
                 Unit(1, 1, new HexCoord(0, 1), "swordsman", new HexCoord(10, 1), UnitMode.Attack, "fierce_assault", "peerless", might: 80),
                 Unit(2, 2, new HexCoord(10, 1), "swordsman", new HexCoord(0, 1), UnitMode.Attack, "fierce_assault", "peerless", might: 80),
             }),
         new CaseDef("다대일 협격(이동 포위)",
-            "A1·A2가 양쪽에서 중앙의 E1(상병)로 진격·포위. E1 반격은 주100/부60로 갈려 둘을 못 막는다.",
+            "A1·A2가 양쪽에서 중앙의 E4(상병)로 진격·포위. E4 반격은 주100/부60로 갈려 둘을 못 막는다.",
             () => new[]
             {
                 Unit(1, 1, new HexCoord(0, 1), "swordsman", new HexCoord(4, 1), UnitMode.Attack, "fierce_assault", "peerless"),
@@ -157,55 +160,114 @@ public partial class CombatTestScene3D : Node3D
             }),
     };
 
-    // ── 진행 ──
+    // ── 진행 (애니메이션: 이동 1초/칸 → 공격 1초) ──
 
     private void OnStep()
     {
-        if (Ended())
+        if (_animating || Ended())
         {
-            AddRow("종료", "");
-            UpdateButtons();
             return;
         }
 
-        _round++;
-        var before = _units.ToDictionary(u => u.Id.Value);
-        var turn = _orchestrator.Run(_units);
-        _units = turn.Units.ToList();
+        BeginTurn();
+        _animating = true;
+        _stepButton.Disabled = true;
+        _caseButton.Disabled = true;
 
-        var parts = new List<string>();
-        foreach (var u in _units)
+        if (_beats.Count == 0)
         {
-            var pre = before[u.Id.Value];
+            FinishAnimation();
+        }
+        else
+        {
+            _beatTimer.Start();
+        }
+    }
 
-            var fired = pre.State.VanguardGauge.IsReady && !u.State.VanguardGauge.IsReady ? "★" : "";
-            var lost = pre.Pool.Active - u.Pool.Active;
-            if (lost > 0)
+    // 한 진행을 계산하고 재생 비트(이동 틱마다 1개 + 전투가 있으면 공격 1개)를 큐에 쌓는다.
+    private void BeginTurn()
+    {
+        _round++;
+        _before = _units.ToDictionary(u => u.Id.Value);
+        _pending = _orchestrator.Run(_units);
+
+        _beats = new Queue<System.Action>();
+        foreach (var tick in _pending.Movement.Ticks)
+        {
+            var snapshot = tick;
+            _beats.Enqueue(() => MoveTokens(snapshot));
+        }
+        if (_pending.Combat is not null)
+        {
+            _beats.Enqueue(PlayAttacks);
+        }
+    }
+
+    private void OnBeat()
+    {
+        if (_beats.Count > 0)
+        {
+            _beats.Dequeue().Invoke();
+        }
+        else
+        {
+            _beatTimer.Stop();
+            FinishAnimation();
+        }
+    }
+
+    private void MoveTokens(MovementTick tick)
+    {
+        foreach (var fu in tick.Units)
+        {
+            if (!_tokens.TryGetValue(fu.Id.Value, out var ctrl))
             {
-                parts.Add($"{Tag(u)}{fired} −{lost}");
-            }
-            else if (fired != "")
-            {
-                parts.Add($"{Tag(u)}★발동");
+                continue;
             }
 
-            // 토큰 이동 + 마주 보기 + 병종 공격 모션
-            _tokens[u.Id.Value].DisplayStepTo(u.Field.Position, 0.25f);
-            var foe = _units.FirstOrDefault(o => o.Field.Owner != u.Field.Owner && o.Pool.Active > 0);
+            ctrl.DisplayStepTo(fu.Position, 1.0f);
+            var foe = tick.Units.FirstOrDefault(o => o.Owner != fu.Owner);
             if (foe is not null)
             {
-                _tokens[u.Id.Value].FaceToward(_view.HexToWorld(foe.Field.Position));
-            }
-
-            RefreshLabel(u);
-            if (turn.Combat is not null && lost >= 0 && u.Pool.Active > 0 && parts.Any(p => p.StartsWith(Tag(u))))
-            {
-                _tokens[u.Id.Value].PlayAttackMotion();
+                ctrl.FaceToward(_view.HexToWorld(foe.Position));
             }
         }
+    }
 
-        AddRow($"{_round}", parts.Count > 0 ? string.Join("  ·  ", parts) : "없음");
-        UpdateButtons();
+    private void PlayAttacks()
+    {
+        var combat = _pending!.Combat!;
+        foreach (var u in _pending.Units)
+        {
+            if (u.Pool.Active > 0 && _tokens.TryGetValue(u.Id.Value, out var ctrl)
+                && (combat.DamageDealt.ContainsKey(u.Id) || combat.DamageTaken.ContainsKey(u.Id)))
+            {
+                ctrl.PlayAttackMotion();
+            }
+        }
+    }
+
+    private void FinishAnimation()
+    {
+        FinalizeTurn();
+        _animating = false;
+        _stepButton.Disabled = Ended();
+        _caseButton.Disabled = false;
+    }
+
+    // 결과 확정: 병력 반영, 라벨 갱신, 표에 한 행 추가.
+    private void FinalizeTurn()
+    {
+        var turn = _pending!;
+        _units = turn.Units.ToList();
+
+        foreach (var u in _units)
+        {
+            RefreshLabel(u);
+        }
+
+        AddResultRow(turn);
+        _pending = null;
     }
 
     private bool Ended()
@@ -214,7 +276,7 @@ public partial class CombatTestScene3D : Node3D
     private void RefreshLabel(CombatUnit u)
     {
         var alive = u.Pool.Active > 0;
-        _troopLabels[u.Id.Value].Text = alive ? $"{u.Pool.Active}\n(부상 {u.Pool.Wounded})" : "전멸";
+        _troopLabels[u.Id.Value].Text = alive ? $"{u.Pool.Active}/{u.MaxTroops}" : "전멸";
         _troopLabels[u.Id.Value].Modulate = alive ? new Color(0.97f, 0.96f, 0.92f) : new Color(0.9f, 0.4f, 0.35f);
     }
 
@@ -226,6 +288,9 @@ public partial class CombatTestScene3D : Node3D
     {
         _caseIndex = index;
         _round = 0;
+        _animating = false;
+        _beatTimer.Stop();
+        _pending = null;
         var def = _cases[index];
 
         foreach (var node in _spawned)
@@ -239,7 +304,12 @@ public partial class CombatTestScene3D : Node3D
         _tokenModel.Clear();
         _units = def.Build().ToList();
 
-        ClearTable();
+        _orderedIds.Clear();
+        _orderedIds.AddRange(_units
+            .OrderBy(u => u.Field.Owner.Value).ThenBy(u => u.Id.Value)
+            .Select(u => u.Id.Value));
+
+        BuildTableHeader();
         foreach (var u in _units)
         {
             SpawnToken(u);
@@ -256,9 +326,9 @@ public partial class CombatTestScene3D : Node3D
 
         _titleLabel.Text = $"[{index + 1}/{_cases.Length}] {def.Title}";
         _noteLabel.Text = def.Note;
-
         _camera.Setup(_view.HexToWorld(new HexCoord(MaxQ / 2, MaxR / 2)), MaxQ * 0.72f + 4f);
-        UpdateButtons();
+        _stepButton.Disabled = false;
+        _caseButton.Disabled = false;
     }
 
     private void SpawnToken(CombatUnit u)
@@ -270,7 +340,7 @@ public partial class CombatTestScene3D : Node3D
         ctrl.InitDisplay(_view, color, _tokenModel.GetValueOrDefault(u.Id.Value, 0), u.Field.Position);
 
         ctrl.AddChild(MakeLabel(Tag(u), 84, 0.56f));
-        var troops = MakeLabel($"{u.Pool.Active}\n(부상 0)", 72, 0.42f);
+        var troops = MakeLabel($"{u.Pool.Active}/{u.MaxTroops}", 66, 0.42f);
         troops.HorizontalAlignment = HorizontalAlignment.Center;
         ctrl.AddChild(troops);
 
@@ -292,14 +362,14 @@ public partial class CombatTestScene3D : Node3D
         NoDepthTest = true,
     };
 
-    // ── HUD (결과 표) ──
+    // ── HUD (결과 표: 헤더 = 진행·유닛들, 행 = 준데미지/잔여/사용스킬) ──
 
     private void BuildHud()
     {
         var layer = new CanvasLayer();
         AddChild(layer);
 
-        var panel = new PanelContainer { Position = new Vector2(16, 16), CustomMinimumSize = new Vector2(600, 0) };
+        var panel = new PanelContainer { Position = new Vector2(16, 16), CustomMinimumSize = new Vector2(620, 0) };
         layer.AddChild(panel);
         var box = new VBoxContainer();
         panel.AddChild(box);
@@ -309,7 +379,7 @@ public partial class CombatTestScene3D : Node3D
         box.AddChild(_titleLabel);
 
         _noteLabel = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        _noteLabel.CustomMinimumSize = new Vector2(580, 0);
+        _noteLabel.CustomMinimumSize = new Vector2(600, 0);
         box.AddChild(_noteLabel);
 
         var buttons = new HBoxContainer();
@@ -318,29 +388,57 @@ public partial class CombatTestScene3D : Node3D
         _stepButton.Pressed += OnStep;
         buttons.AddChild(_stepButton);
         _caseButton = new Button { Text = "케이스 ▶▶" };
-        _caseButton.Pressed += () => LoadCase((_caseIndex + 1) % _cases.Length);
+        _caseButton.Pressed += () => { if (!_animating) { LoadCase((_caseIndex + 1) % _cases.Length); } };
         buttons.AddChild(_caseButton);
 
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(580, 340) };
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(600, 320) };
         box.AddChild(scroll);
-        _table = new GridContainer { Columns = 2 };
+        _table = new GridContainer();
         scroll.AddChild(_table);
     }
 
-    private void ClearTable()
+    private void BuildTableHeader()
     {
         foreach (var child in _table.GetChildren())
         {
             child.QueueFree();
         }
 
-        AddRow("진행", "전투 결과", header: true);
+        _table.Columns = 1 + _orderedIds.Count;
+        _table.AddChild(Cell("진행", header: true, width: 52));
+        foreach (var id in _orderedIds)
+        {
+            var u = _units.First(x => x.Id.Value == id);
+            _table.AddChild(Cell(Tag(u), header: true, width: 150));
+        }
     }
 
-    private void AddRow(string a, string b, bool header = false)
+    // 한 진행 결과 행: 유닛마다 [준 데미지 / 잔여 / 사용 스킬(-스킬데미지)].
+    private void AddResultRow(AdvanceTurn turn)
     {
-        _table.AddChild(Cell(a, header, 90));
-        _table.AddChild(Cell(b, header, 470));
+        _table.AddChild(Cell($"{_round}", header: false, width: 52));
+
+        foreach (var id in _orderedIds)
+        {
+            var u = _units.First(x => x.Id.Value == id);
+            var pre = _before[id];
+            var combat = turn.Combat is not null;
+            var dealt = turn.Combat?.DamageDealt.GetValueOrDefault(new UnitId(id)) ?? 0;
+            var fired = pre.State.VanguardGauge.IsReady && !u.State.VanguardGauge.IsReady;
+            var active = u.State.VanguardActive;
+
+            var lines = new List<string>
+            {
+                combat ? $"준 −{dealt}" : "없음",
+                $"잔여 {u.Pool.Active}/{u.MaxTroops}",
+            };
+            if (fired && active is not null)
+            {
+                lines.Add(active.Type == ActiveType.Strike ? $"{active.Name} −{dealt}" : active.Name);
+            }
+
+            _table.AddChild(Cell(string.Join("\n", lines), header: false, width: 150));
+        }
     }
 
     private static Label Cell(string text, bool header, int width)
@@ -348,7 +446,7 @@ public partial class CombatTestScene3D : Node3D
         var label = new Label
         {
             Text = text,
-            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            AutowrapMode = TextServer.AutowrapMode.Off,
             CustomMinimumSize = new Vector2(width, 0),
         };
         if (header)
@@ -357,10 +455,5 @@ public partial class CombatTestScene3D : Node3D
         }
 
         return label;
-    }
-
-    private void UpdateButtons()
-    {
-        _stepButton.Disabled = Ended();
     }
 }
