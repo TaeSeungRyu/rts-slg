@@ -42,6 +42,27 @@ public sealed class AdvanceOrchestrator
             state[u.Id] = u with { Field = moved[u.Id], State = u.State.AdvanceField(move.Days) };
         }
 
+        // 2.5) 지속 상태(DoT) 틱 — 진행당 1회. 서 있는 화상·독이 병력을 깎고 남은 진행이 준다.
+        //      새로 걸리는 상태(4단계)는 이번 진행엔 tick하지 않는다(다음 진행부터).
+        var statusDamage = new Dictionary<UnitId, int>();
+        foreach (var id in state.Keys.ToList())
+        {
+            var u = state[id];
+            if (u.State.Statuses.Count == 0)
+            {
+                continue;
+            }
+
+            var tick = u.State.TotalTickDamage(u.Pool.Active);
+            var ticked = u.State.TickStatuses();
+            var pool = tick > 0 ? u.Pool.TakeDamage(tick, _woundedPercent) : u.Pool;
+            state[id] = u with { Pool = pool, State = ticked };
+            if (tick > 0)
+            {
+                statusDamage[id] = tick;
+            }
+        }
+
         // 3) 전투 페이즈 발동 — 정지 시점 사거리 전수검사.
         var engagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList());
 
@@ -52,7 +73,7 @@ public sealed class AdvanceOrchestrator
 
         if (engagements.Count == 0)
         {
-            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems);
+            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage);
         }
 
         var attackers = engagements.Select(e => e.Attacker).ToHashSet();
@@ -100,7 +121,7 @@ public sealed class AdvanceOrchestrator
             state[id] = state[id] with { Pool = pool };
         }
 
-        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems);
+        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage);
     }
 
     private static readonly IReadOnlyDictionary<UnitId, ActiveSkill> NoActives = new Dictionary<UnitId, ActiveSkill>();
@@ -130,12 +151,33 @@ public sealed class AdvanceOrchestrator
                     state[id] = caster with { State = newState };
                     casters[id] = stratagem;
 
-                    // 즉발·지속 피해 계략만 즉시 피해(디버프/정화 상태 적용은 후속).
                     var t = state[reservation.TargetId];
-                    var damage = stratagem.Damage(t.Pool.Active, caster.Intellect, t.Intellect);
-                    if (damage > 0)
+                    switch (stratagem.EffectKind)
                     {
-                        state[reservation.TargetId] = t with { Pool = t.Pool.TakeDamage(damage, _woundedPercent) };
+                        // 즉발: 지금 피해. 지속(DoT): 상태를 걸고 다음 진행부터 tick. 정화: 걸린 상태 제거.
+                        case StratagemEffectKind.InstantDamage:
+                            var damage = stratagem.Damage(t.Pool.Active, caster.Intellect, t.Intellect);
+                            if (damage > 0)
+                            {
+                                state[reservation.TargetId] = t with { Pool = t.Pool.TakeDamage(damage, _woundedPercent) };
+                            }
+
+                            break;
+
+                        case StratagemEffectKind.DamageOverTime:
+                            var status = stratagem.MakeStatus(caster.Intellect, t.Intellect);
+                            if (status is not null)
+                            {
+                                state[reservation.TargetId] = t with { State = t.State.AddStatus(status) };
+                            }
+
+                            break;
+
+                        case StratagemEffectKind.Purge:
+                            state[reservation.TargetId] = t with { State = t.State.Purge(stratagem.Purge) };
+                            break;
+
+                        // Debuff(공격−%·적성무효·원거리−% 등)의 상태 적용은 후속 증분.
                     }
 
                     break;

@@ -6,9 +6,11 @@ namespace SanguoSLG.Core.Simulation;
 /// <param name="Combat">전투 페이즈 정산 결과(교전이 없었으면 null).</param>
 /// <param name="FiredActives">이 진행에 액티브를 발동한 부대 → 그 액티브(선봉 우선 1개).</param>
 /// <param name="FiredStratagems">이 진행에 계략을 발동한 부대 → 그 계략.</param>
+/// <param name="StatusDamage">이 진행에 지속 상태(화계·독무 tick)로 병력이 깎인 부대 → 그 피해량.</param>
 public sealed record AdvanceTurn(
     IReadOnlyList<CombatUnit> Units,
     AdvanceResult Movement,
     CombatPhaseResult? Combat,
     IReadOnlyDictionary<Domain.UnitId, ActiveSkill> FiredActives,
-    IReadOnlyDictionary<Domain.UnitId, Stratagem> FiredStratagems);
+    IReadOnlyDictionary<Domain.UnitId, Stratagem> FiredStratagems,
+    IReadOnlyDictionary<Domain.UnitId, int> StatusDamage);

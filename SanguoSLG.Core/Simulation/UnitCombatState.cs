@@ -15,13 +15,14 @@ public sealed record UnitCombatState(
     ActiveGauge AdjutantGauge,
     StratagemResource Resource,
     int MasteryPoints,
-    StratagemReservation? Reservation)
+    StratagemReservation? Reservation,
+    IReadOnlyList<StatusEffect> Statuses)
 {
-    /// <summary>출전 상태로 생성한다(게이지 0, 모략력 가득, 예약 없음).</summary>
+    /// <summary>출전 상태로 생성한다(게이지 0, 모략력 가득, 예약 없음, 상태 없음).</summary>
     public static UnitCombatState Create(int intellect, ActiveSkill? vanguardActive = null,
         ActiveSkill? adjutantActive = null, int masteryPoints = 0)
         => new(vanguardActive, new ActiveGauge(), adjutantActive, new ActiveGauge(),
-            StratagemResource.FromIntellect(intellect), masteryPoints, null);
+            StratagemResource.FromIntellect(intellect), masteryPoints, null, []);
 
     /// <summary>계략 숙달 레벨(1~10).</summary>
     public int MasteryLevel => StratagemMastery.LevelFromPoints(MasteryPoints);
@@ -34,13 +35,37 @@ public sealed record UnitCombatState(
         Reservation = Reservation?.Tick(days),
     };
 
-    /// <summary>성 복귀: 게이지 0, 모략력 충전, 진행 중이던 계략 예약 취소.</summary>
+    /// <summary>성 복귀: 게이지 0, 모략력 충전, 계략 예약 취소, 걸린 지속 상태 해제.</summary>
     public UnitCombatState ReturnToCastle() => this with
     {
         VanguardGauge = new ActiveGauge(),
         AdjutantGauge = new ActiveGauge(),
         Resource = Resource.Refill(),
         Reservation = null,
+        Statuses = [],
+    };
+
+    /// <summary>지속 상태를 건다. 같은 종류는 새 것으로 대체(갱신) — 중첩하지 않는다.</summary>
+    public UnitCombatState AddStatus(StatusEffect status)
+    {
+        var kept = Statuses.Where(s => s.Kind != status.Kind).ToList();
+        kept.Add(status);
+        return this with { Statuses = kept };
+    }
+
+    /// <summary>현재 병력 기준 이번 진행의 지속 피해 합(모든 상태 tick).</summary>
+    public int TotalTickDamage(int troops) => Statuses.Sum(s => s.TickDamage(troops));
+
+    /// <summary>한 진행 경과: 모든 상태의 남은 진행을 줄이고 만료된 것을 뗀다.</summary>
+    public UnitCombatState TickStatuses()
+        => this with { Statuses = Statuses.Select(s => s.Tick()).Where(s => !s.IsExpired).ToList() };
+
+    /// <summary>정화: 범위에 해당하는 지속 상태를 제거한다(소화=화계, 진정=화계 외).</summary>
+    public UnitCombatState Purge(PurgeScope scope) => scope switch
+    {
+        PurgeScope.Fire => this with { Statuses = Statuses.Where(s => !s.IsFire).ToList() },
+        PurgeScope.NonFire => this with { Statuses = Statuses.Where(s => s.IsFire).ToList() },
+        _ => this,
     };
 
     /// <summary>명령 페이즈에서 계략을 예약한다(모략력·숙달 조건은 호출자가 확인).</summary>

@@ -15,6 +15,8 @@ using SanguoSLG.Core.Spatial;
 /// <param name="Duration">지속 진행 수(즉발·정화는 0).</param>
 /// <param name="Range">사거리.</param>
 /// <param name="TerrainRule">발동 지형 조건.</param>
+/// <param name="Status">지속 피해(DoT)가 남기는 상태 종류(그 외는 null).</param>
+/// <param name="Purge">정화 계략이 제거하는 상태 범위(비정화는 None).</param>
 public sealed record Stratagem(
     string Code,
     string Name,
@@ -24,7 +26,9 @@ public sealed record Stratagem(
     int BaseValue,
     int Duration,
     int Range,
-    StratagemTerrainRule TerrainRule)
+    StratagemTerrainRule TerrainRule,
+    StatusKind? Status = null,
+    PurgeScope Purge = PurgeScope.None)
 {
     /// <summary>대상 타일 지형에서 발동 가능한가.</summary>
     public bool CanCastOn(TerrainType targetTerrain) => TerrainRule switch
@@ -48,5 +52,20 @@ public sealed record Stratagem(
 
         var strength = StratagemStrength.Percent(casterIntellect, targetIntellect);
         return (int)((long)targetTroops * BaseValue * strength / 10000);
+    }
+
+    /// <summary>
+    /// 지속 피해(DoT) 계략이 대상에 남기는 상태(강도 배율을 만분율에 반영). 그 외는 null.
+    /// 화계는 <see cref="StatusKind.Burn"/>이라 정화 판정에서 화계 계열로 취급된다.
+    /// </summary>
+    public StatusEffect? MakeStatus(int casterIntellect, int targetIntellect)
+    {
+        if (EffectKind != StratagemEffectKind.DamageOverTime || Status is null)
+        {
+            return null;
+        }
+
+        var strength = StratagemStrength.Percent(casterIntellect, targetIntellect);
+        return new StatusEffect(Status.Value, BaseValue * strength, Duration, IsFire: Status.Value == StatusKind.Burn);
     }
 }

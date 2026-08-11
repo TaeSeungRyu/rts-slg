@@ -23,7 +23,8 @@ public sealed class StratagemLoader
 
         return dtos.Select(d => new Stratagem(
             d.Code, d.Name, ParseKind(d.EffectKind), d.RequiredLevel, d.Cost,
-            d.BaseValue, d.Duration, d.Range, ParseTerrain(d.TerrainRule))).ToList();
+            d.BaseValue, d.Duration, d.Range, ParseTerrain(d.TerrainRule),
+            ParseStatus(d.StatusKind), ParsePurge(d.PurgeScope))).ToList();
     }
 
     private static StratagemEffectKind ParseKind(string name) => name switch
@@ -43,6 +44,22 @@ public sealed class StratagemLoader
         _ => throw new InvalidDataException($"알 수 없는 지형 조건: {name}"),
     };
 
+    private static StatusKind? ParseStatus(string? name) => name switch
+    {
+        null or "" => null,
+        "burn" => StatusKind.Burn,
+        "poison" => StatusKind.Poison,
+        _ => throw new InvalidDataException($"알 수 없는 상태 종류: {name}"),
+    };
+
+    private static PurgeScope ParsePurge(string? name) => name switch
+    {
+        null or "" or "none" => PurgeScope.None,
+        "fire" => PurgeScope.Fire,
+        "non_fire" => PurgeScope.NonFire,
+        _ => throw new InvalidDataException($"알 수 없는 정화 범위: {name}"),
+    };
+
     private sealed class StratagemDto
     {
         public string Code { get; init; } = "";
@@ -54,5 +71,7 @@ public sealed class StratagemLoader
         public int Duration { get; init; }
         public int Range { get; init; }
         public string TerrainRule { get; init; } = "none";
+        public string? StatusKind { get; init; }
+        public string? PurgeScope { get; init; }
     }
 }
