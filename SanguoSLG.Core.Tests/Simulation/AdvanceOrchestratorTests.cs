@@ -274,6 +274,7 @@ public class AdvanceOrchestratorTests
         var ut = turn.Units.Single(u => u.Id.Value == 2);
 
         Assert.Equal(10000 - 1500, ut.Pool.Active); // 즉발 15%(강도 100)
+        Assert.Equal(1500, turn.StratagemDamage[new UnitId(2)]);
         var s = Assert.Single(ut.State.Statuses);
         Assert.Equal(StatusKind.AttackDown, s.Kind);
         Assert.Equal(20, s.AtkDownPercent);
@@ -301,6 +302,9 @@ public class AdvanceOrchestratorTests
         Assert.Equal(10000, U(4).Pool.Active);        // 먼 적 무피해
         Assert.Equal(10000, U(5).Pool.Active);        // 아군 무피해
         Assert.Equal(10000, U(1).Pool.Active);        // 시전자 무피해
+        Assert.Equal(600, turn.StratagemDamage[new UnitId(2)]);
+        Assert.Equal(600, turn.StratagemDamage[new UnitId(3)]);
+        Assert.False(turn.StratagemDamage.ContainsKey(new UnitId(4)));
     }
 
     [Fact]
@@ -318,6 +322,7 @@ public class AdvanceOrchestratorTests
 
         Assert.Equal(new HexCoord(4, 0), ut.Field.Position); // (1,0)에서 3칸 밀림
         Assert.Equal(10000 - 500, ut.Pool.Active);            // 즉발 5%(강도 100)
+        Assert.Equal(500, turn.StratagemDamage[new UnitId(2)]);
     }
 
     [Fact]

@@ -74,7 +74,8 @@ public sealed class AdvanceOrchestrator
         // 3) 계략 발동 — 예약이 발동일에 도달하면 대상 유효성으로 발동/캔슬. 즉발·지속 피해, 디버프,
         //    정화, 강제 후퇴(교란)를 여기서 적용한다. 발동 부대는 이번 교전 공격을 하지 않는다.
         //    후퇴가 위치를 바꾸므로 교전 탐지보다 먼저 발동한다.
-        var firedStratagems = FireStratagems(state);
+        var stratagemDamage = new Dictionary<UnitId, int>();
+        var firedStratagems = FireStratagems(state, stratagemDamage);
 
         // 4) 전투 페이즈 발동 — 정지·후퇴가 반영된 위치로 사거리 전수검사. 발동 부대와 행동불가(혼란)
         //    부대는 공격자에서 뺀다(피격·방어는 정상).
@@ -85,7 +86,7 @@ public sealed class AdvanceOrchestrator
 
         if (engagements.Count == 0)
         {
-            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage);
+            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage, stratagemDamage);
         }
 
         var attackers = engagements.Select(e => e.Attacker).ToHashSet();
@@ -138,7 +139,7 @@ public sealed class AdvanceOrchestrator
             state[id] = state[id] with { Pool = pool };
         }
 
-        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage);
+        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage, stratagemDamage);
     }
 
     private static readonly IReadOnlyDictionary<UnitId, ActiveSkill> NoActives = new Dictionary<UnitId, ActiveSkill>();
@@ -162,7 +163,8 @@ public sealed class AdvanceOrchestrator
 
     // 폭파: 대상 타일 반경 안의 다른 적 부대 전원에게 같은 즉발 피해(각 부대 지력이 저항). 대상 자신은
     // 이미 맞았으므로 제외. 서로 독립 피해라 순서가 결과를 바꾸지 않지만 결정론을 위해 id 순으로 돈다.
-    private void ApplyAoe(Dictionary<UnitId, CombatUnit> state, Stratagem stratagem, CombatUnit caster, UnitId primaryTargetId)
+    private void ApplyAoe(Dictionary<UnitId, CombatUnit> state, Stratagem stratagem, CombatUnit caster, UnitId primaryTargetId,
+        Dictionary<UnitId, int> stratagemDamage)
     {
         var center = state[primaryTargetId].Field.Position;
         foreach (var id in state.Keys.OrderBy(k => k.Value).ToList())
@@ -184,6 +186,7 @@ public sealed class AdvanceOrchestrator
             if (dmg > 0)
             {
                 state[id] = u with { Pool = u.Pool.TakeDamage(dmg, _woundedPercent) };
+                stratagemDamage[id] = stratagemDamage.GetValueOrDefault(id) + dmg;
             }
         }
     }
@@ -259,8 +262,9 @@ public sealed class AdvanceOrchestrator
         return (stats, outgoing);
     }
 
-    // 예약된 계략을 발동/캔슬한다. 발동한 시전 부대 → 그 계략의 사전을 돌려준다(그 교전 공격 불가).
-    private Dictionary<UnitId, Stratagem> FireStratagems(Dictionary<UnitId, CombatUnit> state)
+    // 예약된 계략을 발동/캔슬한다. 발동한 시전 부대 → 그 계략의 사전을 돌려주고(그 교전 공격 불가),
+    // 계략 즉발 피해를 <paramref name="stratagemDamage"/>에 대상별로 누적한다.
+    private Dictionary<UnitId, Stratagem> FireStratagems(Dictionary<UnitId, CombatUnit> state, Dictionary<UnitId, int> stratagemDamage)
     {
         var casters = new Dictionary<UnitId, Stratagem>();
         foreach (var id in state.Keys.ToList())
@@ -292,6 +296,7 @@ public sealed class AdvanceOrchestrator
                     {
                         t = t with { Pool = t.Pool.TakeDamage(burst, _woundedPercent) };
                         state[reservation.TargetId] = t;
+                        stratagemDamage[reservation.TargetId] = stratagemDamage.GetValueOrDefault(reservation.TargetId) + burst;
                     }
 
                     switch (stratagem.EffectKind)
@@ -302,12 +307,13 @@ public sealed class AdvanceOrchestrator
                             if (damage > 0)
                             {
                                 state[reservation.TargetId] = t with { Pool = t.Pool.TakeDamage(damage, _woundedPercent) };
+                                stratagemDamage[reservation.TargetId] = stratagemDamage.GetValueOrDefault(reservation.TargetId) + damage;
                             }
 
                             // 폭파: 대상 반경 안의 다른 적 전원에게도 같은 즉발 피해(광역).
                             if (stratagem.AoeRadius > 0)
                             {
-                                ApplyAoe(state, stratagem, caster, reservation.TargetId);
+                                ApplyAoe(state, stratagem, caster, reservation.TargetId, stratagemDamage);
                             }
 
                             // 교란: 즉발 피해에 더해 강제 후퇴(부분).

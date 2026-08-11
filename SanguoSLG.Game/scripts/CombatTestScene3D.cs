@@ -12,7 +12,8 @@ namespace SanguoSLG.Game;
 /// 이동→전투 통합 검증 하베스트(doc/test/combat-movement-cases.md). 부대가 목적지로 이동하다 조우해
 /// Core <see cref="AdvanceOrchestrator"/>가 한 "진행"을 계산하면, 재생 규칙(한 칸 이동 1초 → 공격 모션
 /// 1초)대로 토큰을 옮기고 병종별 공격 모션을 재생한 뒤, 전투 결과를 표에 한 행씩 쌓는다. 각 유닛에
-/// 패시브 1·액티브 1을 붙인다(계략은 대기). 규칙·수치는 Core 소유.
+/// 패시브 1·액티브 1을 붙이고, 일부 케이스는 계략을 예약해 발동·지속 상태·강제 후퇴를 보여준다.
+/// 규칙·수치는 Core 소유.
 /// </summary>
 public partial class CombatTestScene3D : Node3D
 {
@@ -39,6 +40,7 @@ public partial class CombatTestScene3D : Node3D
     private IReadOnlyDictionary<string, TroopTemplate> _templates = null!;
     private IReadOnlyDictionary<string, ActiveSkill> _actives = null!;
     private IReadOnlyDictionary<string, PassiveSkill> _passives = null!;
+    private IReadOnlyDictionary<string, Stratagem> _strats = null!;
 
     private CaseDef[] _cases = System.Array.Empty<CaseDef>();
     private int _caseIndex;
@@ -47,6 +49,7 @@ public partial class CombatTestScene3D : Node3D
     private readonly List<int> _orderedIds = new();
     private readonly Dictionary<int, UnitController3D> _tokens = new();
     private readonly Dictionary<int, Label3D> _troopLabels = new();
+    private readonly Dictionary<int, Label3D> _statusLabels = new();
     private readonly Dictionary<int, int> _tokenModel = new();
     private readonly Dictionary<int, HexCoord> _tokenHex = new();
     private readonly List<Node3D> _spawned = new();
@@ -71,6 +74,7 @@ public partial class CombatTestScene3D : Node3D
         _templates = new TroopTypeLoader().LoadFromDirectory(dataDirectory).ToDictionary(t => t.Code);
         _actives = new ActiveSkillLoader().LoadFromDirectory(dataDirectory).ToDictionary(a => a.Code);
         _passives = new PassiveSkillLoader().LoadFromDirectory(dataDirectory).ToDictionary(p => p.Code);
+        _strats = new StratagemLoader().LoadFromDirectory(dataDirectory).ToDictionary(s => s.Code);
 
         var map = new HexMap(0, MaxQ, 0, MaxR);
         _orchestrator = new AdvanceOrchestrator(
@@ -115,7 +119,8 @@ public partial class CombatTestScene3D : Node3D
     // ── 케이스 ──
 
     private CombatUnit Unit(int id, int owner, HexCoord pos, string templateCode, HexCoord? target, UnitMode mode,
-        string passiveCode, string activeCode, int might = 60, int intellect = 60, int troops = 10000)
+        string passiveCode, string activeCode, int might = 60, int intellect = 60, int troops = 10000,
+        string? stratagemCode = null, int stratagemTarget = 0)
     {
         var (atk, df) = PassiveBucketEvaluator.Evaluate(new[] { (_passives[passiveCode], 3) }, MeleeCtx);
         var stats = CombatStatsBuilder.BuildField(_templates[templateCode], AptitudeGrade.A, 0, TerrainType.River,
@@ -124,6 +129,11 @@ public partial class CombatTestScene3D : Node3D
             MovementDomain.Land, mode, target, id);
         _tokenModel[id] = ModelIndex.GetValueOrDefault(templateCode, 0);
         var state = UnitCombatState.Create(intellect, vanguardActive: _actives[activeCode]);
+        if (stratagemCode is not null)
+        {
+            state = state.ReserveStratagem(_strats[stratagemCode], new UnitId(stratagemTarget));
+        }
+
         return new CombatUnit(field, stats, new TroopPool(troops, 0), state, might, intellect, MaxTroops: troops);
     }
 
@@ -157,6 +167,35 @@ public partial class CombatTestScene3D : Node3D
                 Unit(1, 1, new HexCoord(0, 1), "swordsman", new HexCoord(4, 1), UnitMode.Attack, "fierce_assault", "peerless"),
                 Unit(2, 1, new HexCoord(10, 1), "swordsman", new HexCoord(6, 1), UnitMode.Attack, "fierce_assault", "peerless"),
                 Unit(4, 2, new HexCoord(5, 1), "war_elephant", null, UnitMode.Advance, "steadfast_guard", "regroup", intellect: 80),
+            }),
+        new CaseDef("화계 — 지속 피해",
+            "A1이 사거리 2 밖 거리에서 E2에 화계 예약 → 2진행 뒤 발동, 이후 진행마다 화상으로 병력이 깎인다(표 '지속 −n', 상태 '화상n').",
+            () => new[]
+            {
+                Unit(1, 1, new HexCoord(0, 1), "archer", null, UnitMode.Advance, "steadfast_guard", "regroup", intellect: 90, stratagemCode: "fire_plot", stratagemTarget: 2),
+                Unit(2, 2, new HexCoord(2, 1), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
+            }),
+        new CaseDef("혼란 — 행동불가",
+            "A1(공격)이 인접 E2에 혼란 예약 → 발동하면 E2가 3진행 동안 공격·이동 불가(E2 '준 0'·상태 '행동불가'). A1은 계속 친다.",
+            () => new[]
+            {
+                Unit(1, 1, new HexCoord(0, 1), "swordsman", new HexCoord(9, 1), UnitMode.Attack, "fierce_assault", "peerless", might: 80, intellect: 90, stratagemCode: "confound", stratagemTarget: 2),
+                Unit(2, 2, new HexCoord(3, 1), "swordsman", new HexCoord(0, 1), UnitMode.Attack, "steadfast_guard", "iron_wall"),
+            }),
+        new CaseDef("교란 — 강제 후퇴",
+            "A1이 E2에 교란 예약 → 발동 시 즉발 5% + E2가 시전자 반대쪽으로 밀려난다(토큰이 뒤로 물러남).",
+            () => new[]
+            {
+                Unit(1, 1, new HexCoord(0, 1), "cavalry", null, UnitMode.Advance, "fierce_assault", "peerless", intellect: 90, stratagemCode: "rout", stratagemTarget: 2),
+                Unit(2, 2, new HexCoord(2, 1), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
+            }),
+        new CaseDef("폭파 — 광역",
+            "A1이 E2에 폭파 예약 → 발동 시 대상 E2와 인접 적 E3이 함께 6% 피해(둘 다 '잔여' 감소).",
+            () => new[]
+            {
+                Unit(1, 1, new HexCoord(0, 1), "catapult", null, UnitMode.Advance, "steadfast_guard", "regroup", intellect: 90, stratagemCode: "detonate", stratagemTarget: 2),
+                Unit(2, 2, new HexCoord(2, 1), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
+                Unit(3, 2, new HexCoord(2, 2), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
             }),
     };
 
@@ -208,9 +247,30 @@ public partial class CombatTestScene3D : Node3D
                 running[fu.Id.Value] = fu.Position;
             }
         }
+
+        // 이동 시뮬 밖에서 위치가 바뀐 부대(교란 강제 후퇴 등)를 마지막에 정렬한다.
+        if (_pending.Units.Any(u => running.GetValueOrDefault(u.Id.Value, u.Field.Position) != u.Field.Position))
+        {
+            _beats.Enqueue(SettleTokens);
+        }
+
         if (_pending.Combat is not null)
         {
             _beats.Enqueue(PlayAttacks);
+        }
+    }
+
+    // 이동 시뮬이 잡지 못한 위치 변화(교란 후퇴)를 토큰에 반영한다.
+    private void SettleTokens()
+    {
+        foreach (var u in _pending!.Units)
+        {
+            if (_tokens.TryGetValue(u.Id.Value, out var ctrl)
+                && _tokenHex.GetValueOrDefault(u.Id.Value, u.Field.Position) != u.Field.Position)
+            {
+                ctrl.DisplayStepTo(u.Field.Position, 0.5f);
+                _tokenHex[u.Id.Value] = u.Field.Position;
+            }
         }
     }
 
@@ -305,7 +365,20 @@ public partial class CombatTestScene3D : Node3D
         var alive = u.Pool.Active > 0;
         _troopLabels[u.Id.Value].Text = alive ? $"{u.Pool.Active}/{u.MaxTroops}" : "전멸";
         _troopLabels[u.Id.Value].Modulate = alive ? new Color(0.97f, 0.96f, 0.92f) : new Color(0.9f, 0.4f, 0.35f);
+        _statusLabels[u.Id.Value].Text = alive ? StatusTags(u) : "";
     }
+
+    // 부대에 걸린 지속 상태를 짧은 태그로(토큰 아래 표시).
+    private static string StatusTags(CombatUnit u) => string.Join(" ", u.State.Statuses.Select(s => s.Kind switch
+    {
+        StatusKind.Burn => $"화상{s.Remaining}",
+        StatusKind.Poison => $"독{s.Remaining}",
+        StatusKind.AttackDown => "공↓",
+        StatusKind.RangedDown => "원↓",
+        StatusKind.Nullify => "무효",
+        StatusKind.Daze => $"행동불가{s.Remaining}",
+        _ => "",
+    }));
 
     private static string Tag(CombatUnit u) => (u.Field.Owner.Value == 1 ? "A" : "E") + u.Id.Value;
 
@@ -328,6 +401,7 @@ public partial class CombatTestScene3D : Node3D
         _spawned.Clear();
         _tokens.Clear();
         _troopLabels.Clear();
+        _statusLabels.Clear();
         _tokenModel.Clear();
         _tokenHex.Clear();
         _units = def.Build().ToList();
@@ -372,8 +446,14 @@ public partial class CombatTestScene3D : Node3D
         troops.HorizontalAlignment = HorizontalAlignment.Center;
         ctrl.AddChild(troops);
 
+        var status = MakeLabel("", 60, 0.28f);
+        status.HorizontalAlignment = HorizontalAlignment.Center;
+        status.Modulate = new Color(1f, 0.72f, 0.35f);
+        ctrl.AddChild(status);
+
         _tokens[u.Id.Value] = ctrl;
         _troopLabels[u.Id.Value] = troops;
+        _statusLabels[u.Id.Value] = status;
         _tokenHex[u.Id.Value] = u.Field.Position;
     }
 
@@ -468,6 +548,14 @@ public partial class CombatTestScene3D : Node3D
             if (turn.FiredStratagems.TryGetValue(uid, out var strat))
             {
                 lines.Add($"계략 {strat.Name}");
+            }
+            if (turn.StratagemDamage.TryGetValue(uid, out var kd))
+            {
+                lines.Add($"계략피해 −{kd}");
+            }
+            if (turn.StatusDamage.TryGetValue(uid, out var sd))
+            {
+                lines.Add($"지속 −{sd}");
             }
 
             _table.AddChild(Cell(string.Join("\n", lines), header: false, width: 150));
