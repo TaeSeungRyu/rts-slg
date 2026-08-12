@@ -31,7 +31,8 @@ public partial class CombatTestScene3D : Node3D
         ["medium_ship"] = 8, ["large_ship"] = 9, ["turtleship"] = 17,
     };
 
-    private sealed record CaseDef(string Title, string Note, System.Func<CombatUnit[]> Build);
+    private sealed record CaseDef(string Title, string Note, System.Func<CombatUnit[]> Build,
+        Dictionary<HexCoord, TerrainType>? Terrain = null);
 
     private MapView3D _view = null!;
     private CameraController3D _camera = null!;
@@ -48,6 +49,9 @@ public partial class CombatTestScene3D : Node3D
     private bool _aggregate; // 부대가 많으면(대량 전투) 표를 유닛별 대신 진영 집계로
     private int _initialA;
     private int _initialE;
+    private bool _showTerrain; // 지형 케이스면 표에 지형·공방을 함께 보인다
+    private HexMap _terrainMap = null!;
+    private readonly Dictionary<int, (TroopTemplate Template, int AtkBucket, int DfBucket)> _recipe = new();
     private List<CombatUnit> _units = new();
     private readonly List<int> _orderedIds = new();
     private readonly Dictionary<int, UnitController3D> _tokens = new();
@@ -79,13 +83,7 @@ public partial class CombatTestScene3D : Node3D
         _passives = new PassiveSkillLoader().LoadFromDirectory(dataDirectory).ToDictionary(p => p.Code);
         _strats = new StratagemLoader().LoadFromDirectory(dataDirectory).ToDictionary(s => s.Code);
 
-        var map = new HexMap(0, MaxQ, 0, MaxR);
-        _orchestrator = new AdvanceOrchestrator(
-            new MovementSimulator(new PassabilityMap(map, [], [])),
-            new CombatPhaseResolver(new BattleResolver(60), woundedPercent: 70),
-            woundedPercent: 70,
-            terrainAt: _ => TerrainType.Plains);
-
+        // 오케스트레이터는 케이스별 지형으로 LoadCase에서 만든다.
         _cases = BuildCases();
         BuildHud();
 
@@ -106,7 +104,9 @@ public partial class CombatTestScene3D : Node3D
                 if (Ended() || rounds >= 12)
                 {
                     GD.Print($"[combattestauto] case {_caseIndex} after {rounds}: " +
-                        string.Join(" ", _units.Select(u => $"{Tag(u)}={u.Pool.Active}")));
+                        string.Join(" ", _units.Select(u => _showTerrain
+                            ? $"{Tag(u)}[{TerrainKo(_terrainMap.TerrainAt(u.Field.Position))}]공{u.Stats.AtkStat}방{u.Stats.DfStat}@{u.Field.Position.Q},{u.Field.Position.R}={u.Pool.Active}"
+                            : $"{Tag(u)}={u.Pool.Active}")));
                     if (_caseIndex + 1 < _cases.Length) { LoadCase(_caseIndex + 1); rounds = 0; }
                     else { GD.Print("[combattestauto] all cases done"); timer.Stop(); }
                     return;
@@ -127,7 +127,9 @@ public partial class CombatTestScene3D : Node3D
     {
         var template = _templates[templateCode];
         var (atk, df) = PassiveBucketEvaluator.Evaluate(new[] { (_passives[passiveCode], 3) }, MeleeCtx);
-        var stats = CombatStatsBuilder.BuildField(template, AptitudeGrade.A, 0, TerrainType.River,
+        _recipe[id] = (template, atk, df);
+        // 공/방 스탯은 지금 서 있는 칸의 지형 보정을 반영한다(연구 0).
+        var stats = CombatStatsBuilder.BuildField(template, AptitudeGrade.A, 0, _terrainMap.TerrainAt(pos),
             troops, atkBonusPercent: atk, dfBonusPercent: df);
         // 속도·탐지·사거리(유닛)를 병종 데이터에서 실제로 반영한다.
         var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos,
@@ -206,6 +208,39 @@ public partial class CombatTestScene3D : Node3D
         new CaseDef("대량 전투 — 혼성군 충돌",
             "아군 A·적군 E가 혼성군(각 11기: 기병2·도검4·상병2·궁병2·투석1)으로 마주 진격. 병종별 실제 속도로 기병(3)이 먼저 달려들고 투석기(1)가 뒤늦게 따라오며, 궁병·투석은 사거리 2로 한 칸 뒤에서 친다. 전멸분은 토큰이 사라진다. 표는 진영 집계.",
             BigBattle),
+        new CaseDef("지형 + 5병종 — 공방·이동 보정",
+            "공격군 A·방어군 E 각 5병종(궁병·도검·기병·상병·투석). 방어군 E는 지형 위 포진 — 궁병=숲(+2공/+2방)·도검=소형산(+2공)·기병=평야(+2공)·상병=늪. 공격군 A는 소하천 띠(6열)를 건너며 감속(진입 시 그 날 예산 소진). 표는 부대별로 [지형] 공/방·잔여를 보인다.",
+            () =>
+            {
+                CombatUnit Def(int id, HexCoord pos, string code) =>
+                    Unit(id, 2, pos, code, null, UnitMode.Advance, "steadfast_guard", "iron_wall", might: 70, intellect: 70, troops: 20000);
+                CombatUnit Atk(int id, HexCoord pos, HexCoord tgt, string code) =>
+                    Unit(id, 1, pos, code, tgt, UnitMode.Attack, "fierce_assault", "peerless", might: 78);
+                return new[]
+                {
+                    Atk(1, new HexCoord(2, 2), new HexCoord(11, 2), "archer"),
+                    Atk(2, new HexCoord(2, 3), new HexCoord(11, 3), "swordsman"),
+                    Atk(3, new HexCoord(2, 4), new HexCoord(11, 4), "cavalry"),
+                    Atk(4, new HexCoord(2, 5), new HexCoord(11, 5), "war_elephant"),
+                    Atk(5, new HexCoord(2, 6), new HexCoord(11, 6), "catapult"),
+                    Def(11, new HexCoord(11, 2), "archer"),
+                    Def(12, new HexCoord(11, 3), "swordsman"),
+                    Def(13, new HexCoord(11, 4), "cavalry"),
+                    Def(14, new HexCoord(11, 5), "war_elephant"),
+                    Def(15, new HexCoord(11, 6), "catapult"),
+                };
+            },
+            Terrain: new Dictionary<HexCoord, TerrainType>
+            {
+                [new HexCoord(11, 2)] = TerrainType.Forest,
+                [new HexCoord(11, 3)] = TerrainType.Mountain,
+                [new HexCoord(11, 5)] = TerrainType.Swamp,
+                [new HexCoord(6, 2)] = TerrainType.River,
+                [new HexCoord(6, 3)] = TerrainType.River,
+                [new HexCoord(6, 4)] = TerrainType.River,
+                [new HexCoord(6, 5)] = TerrainType.River,
+                [new HexCoord(6, 6)] = TerrainType.River,
+            }),
     };
 
     // 양 진영 혼성군(각 11기). 기병(속도3)은 양 날개 최전열, 도검(2)·상병(2)은 주력 전열,
@@ -271,6 +306,8 @@ public partial class CombatTestScene3D : Node3D
     private void BeginTurn()
     {
         _round++;
+        // 진행 직전, 각 부대의 공/방을 지금 서 있는 칸의 지형으로 다시 산출한다(이동하며 지형이 바뀜).
+        _units = _units.Select(RebuildStats).ToList();
         _pending = _orchestrator.Run(_units);
 
         _beats = new Queue<System.Action>();
@@ -302,6 +339,15 @@ public partial class CombatTestScene3D : Node3D
         {
             _beats.Enqueue(PlayAttacks);
         }
+    }
+
+    // 부대의 공/방 스탯을 지금 서 있는 칸의 지형 보정으로 다시 만든다(병력은 활성 유지).
+    private CombatUnit RebuildStats(CombatUnit u)
+    {
+        var (template, atk, df) = _recipe[u.Id.Value];
+        var stats = CombatStatsBuilder.BuildField(template, AptitudeGrade.A, 0, _terrainMap.TerrainAt(u.Field.Position),
+            u.Pool.Active, atkBonusPercent: atk, dfBonusPercent: df);
+        return u with { Stats = stats };
     }
 
     // 이동 시뮬이 잡지 못한 위치 변화(교란 후퇴)를 토큰에 반영한다.
@@ -484,14 +530,26 @@ public partial class CombatTestScene3D : Node3D
         _statusLabels.Clear();
         _tokenModel.Clear();
         _tokenHex.Clear();
-        _units = def.Build().ToList();
+        _recipe.Clear();
+
+        // 케이스별 지형으로 오케스트레이터를 만든다(이동 패널티·전투 보정 모두 이 맵을 본다).
+        _showTerrain = def.Terrain is not null;
+        _terrainMap = new HexMap(0, MaxQ, 0, MaxR, def.Terrain);
+        _orchestrator = new AdvanceOrchestrator(
+            new MovementSimulator(new PassabilityMap(_terrainMap, [], [])),
+            new CombatPhaseResolver(new BattleResolver(60), woundedPercent: 70),
+            woundedPercent: 70,
+            terrainAt: _terrainMap.TerrainAt);
+
+        _units = def.Build().ToList(); // Unit() 안에서 _terrainMap·_recipe를 쓴다 — 위에서 먼저 세팅
+        SpawnTerrainMarkers();
 
         _orderedIds.Clear();
         _orderedIds.AddRange(_units
             .OrderBy(u => u.Field.Owner.Value).ThenBy(u => u.Id.Value)
             .Select(u => u.Id.Value));
 
-        _aggregate = _units.Count > 8;
+        _aggregate = _units.Count > 8 && !_showTerrain; // 지형 케이스는 부대별로 본다
         _initialA = _units.Count(u => u.Field.Owner.Value == 1);
         _initialE = _units.Count(u => u.Field.Owner.Value == 2);
 
@@ -516,6 +574,58 @@ public partial class CombatTestScene3D : Node3D
         _stepButton.Disabled = false;
         _caseButton.Disabled = false;
     }
+
+    // 지형 케이스: 평야가 아닌 타일에 색 마커를 깔아 지형 위치를 눈으로 보인다.
+    private void SpawnTerrainMarkers()
+    {
+        if (!_showTerrain)
+        {
+            return;
+        }
+
+        foreach (var tile in _terrainMap.Tiles())
+        {
+            var terrain = _terrainMap.TerrainAt(tile);
+            if (terrain == TerrainType.Plains)
+            {
+                continue;
+            }
+
+            var marker = new MeshInstance3D
+            {
+                Mesh = new CylinderMesh { TopRadius = 0.52f, BottomRadius = 0.52f, Height = 0.05f, RadialSegments = 6 },
+                Position = _view.HexToWorld(tile) + new Vector3(0f, 0.04f, 0f),
+                MaterialOverride = new StandardMaterial3D
+                {
+                    AlbedoColor = TerrainColor(terrain),
+                    Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                },
+            };
+            AddChild(marker);
+            _spawned.Add(marker);
+        }
+    }
+
+    private static Color TerrainColor(TerrainType t) => t switch
+    {
+        TerrainType.Forest => new Color(0.20f, 0.60f, 0.26f, 0.55f),
+        TerrainType.Mountain => new Color(0.55f, 0.48f, 0.42f, 0.62f),
+        TerrainType.Swamp => new Color(0.34f, 0.30f, 0.14f, 0.62f),
+        TerrainType.River => new Color(0.25f, 0.52f, 0.86f, 0.55f),
+        TerrainType.Desert => new Color(0.85f, 0.78f, 0.45f, 0.55f),
+        _ => new Color(0.6f, 0.6f, 0.6f, 0.5f),
+    };
+
+    private static string TerrainKo(TerrainType t) => t switch
+    {
+        TerrainType.Plains => "평야",
+        TerrainType.Forest => "숲",
+        TerrainType.Mountain => "소형산",
+        TerrainType.Swamp => "늪",
+        TerrainType.River => "소하천",
+        TerrainType.Desert => "사막",
+        _ => t.ToString(),
+    };
 
     private void SpawnToken(CombatUnit u)
     {
@@ -624,7 +734,8 @@ public partial class CombatTestScene3D : Node3D
         foreach (var id in _orderedIds)
         {
             var u = _units.First(x => x.Id.Value == id);
-            _table.AddChild(Cell(Tag(u), header: true, width: 150));
+            var label = _showTerrain ? $"{Tag(u)} {_recipe[id].Template.Name}" : Tag(u);
+            _table.AddChild(Cell(label, header: true, width: 150));
         }
     }
 
@@ -653,11 +764,15 @@ public partial class CombatTestScene3D : Node3D
             var combat = turn.Combat is not null;
             var dealt = turn.Combat?.DamageDealt.GetValueOrDefault(uid) ?? 0;
 
-            var lines = new List<string>
+            var lines = new List<string>();
+            if (_showTerrain)
             {
-                combat ? $"준 −{dealt}" : "없음",
-                $"잔여 {u.Pool.Active}/{u.MaxTroops}",
-            };
+                // 지금 서 있는 칸의 지형과, 그 지형 보정이 반영된 공/방(연구 0 기준).
+                lines.Add($"[{TerrainKo(_terrainMap.TerrainAt(u.Field.Position))}] 공{u.Stats.AtkStat} 방{u.Stats.DfStat}");
+            }
+
+            lines.Add(combat ? $"준 −{dealt}" : "없음");
+            lines.Add($"잔여 {u.Pool.Active}/{u.MaxTroops}");
 
             // 오케스트레이터가 보고한 발동 스킬(게이지가 한 진행에 차서 발동해도 확실히 잡힌다).
             if (turn.FiredActives.TryGetValue(uid, out var active))

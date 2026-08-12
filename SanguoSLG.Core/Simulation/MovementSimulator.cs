@@ -139,7 +139,7 @@ public sealed class MovementSimulator
                     if (applied.TryGetValue(w.Unit.Id.Value, out var tile))
                     {
                         w.Unit = w.Unit.MoveTo(tile);
-                        w.MovedToday++;
+                        w.MovedToday += TerrainCost(tile); // 진입 지형만큼 이동 예산 차감
                         movedThisDay.Add(w.Unit.Id.Value);
                         // 이번에 밟은 칸은 경로에서 소비한다. 막혀서 못 가면 그대로 둬 다음 스텝에 다시 노린다
                         if (w.Path is { Count: > 0 } && w.Path.Peek() == tile)
@@ -212,6 +212,15 @@ public sealed class MovementSimulator
 
         return w.Unit.Speed;
     }
+
+    // 지형 이동 패널티(design-movement "지형 이동 보정"): 소형산·늪·소하천 칸에 들어가는 이동은
+    // 그날 이동 예산을 1 더 쓴다(전 병종). 진입 칸 기준이라, 이미 그 칸에 서 있다 나가는 건 정상이다.
+    // 최소 1칸은 늘 들어갈 수 있어(예산은 이동 후 차감) 속도 1 병종이 묶이지 않는다.
+    private int TerrainCost(HexCoord entered) => _passability.TerrainAt(entered) switch
+    {
+        TerrainType.Mountain or TerrainType.Swamp or TerrainType.River => 2,
+        _ => 1,
+    };
 
     // 사거리·탐지 안의 적 중 가장 가까운 하나(동률이면 명령 순번, 그다음 UnitId — 결정론)
     private static Working? NearestEnemyWithin(Working self, List<Working> work, int range) => work

@@ -342,6 +342,23 @@ public class MovementSimulatorTests
     }
 
     [Fact]
+    public void 지형이동패널티_소하천에들어가면_그날_이동이_준다()
+    {
+        // (2,0)이 소하천. 속도2 부대가 (1,0)→소하천 진입 시 그 날 예산을 다 써 거기서 멈춘다(1칸).
+        var terrain = new System.Collections.Generic.Dictionary<HexCoord, TerrainType>
+        {
+            [new HexCoord(2, 0)] = TerrainType.River,
+        };
+        var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, 0, 0, terrain), [], []));
+        var u = Unit(1, owner: 1, new HexCoord(1, 0), UnitMode.March, target: new HexCoord(8, 0), speed: 2, detection: 2);
+
+        var result = sim.Advance(new[] { u }, maxDays: 1);
+
+        // 평지였다면 (3,0)까지 갔겠지만 소하천 진입으로 (2,0)에서 멈춘다.
+        Assert.Equal(new HexCoord(2, 0), result.Units.Single(x => x.Id.Value == 1).Position);
+    }
+
+    [Fact]
     public void 목표없는유닛끼리는_아무일도없이_전원도착으로끝난다()
     {
         var a1 = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack, target: null);

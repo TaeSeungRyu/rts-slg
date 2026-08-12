@@ -40,6 +40,9 @@ public sealed class PassabilityMap
         }
     }
 
+    /// <summary>좌표의 지형(이동 패널티 판정 등에 쓴다).</summary>
+    public TerrainType TerrainAt(HexCoord coord) => _map.TerrainAt(coord);
+
     /// <summary>해당 통행 영역의 유닛이 이 좌표에 들어갈 수 있는가.</summary>
     public bool CanEnter(MovementDomain domain, HexCoord coord)
     {
