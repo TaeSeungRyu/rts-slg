@@ -32,7 +32,8 @@ public partial class CombatTestScene3D : Node3D
     };
 
     private sealed record CaseDef(string Title, string Note, System.Func<CombatUnit[]> Build,
-        Dictionary<HexCoord, TerrainType>? Terrain = null);
+        Dictionary<HexCoord, TerrainType>? Terrain = null,
+        HexCoord? CastleAt = null, int CastleWall = 0, int CastleTroops = 0);
 
     private MapView3D _view = null!;
     private CameraController3D _camera = null!;
@@ -52,6 +53,16 @@ public partial class CombatTestScene3D : Node3D
     private bool _showTerrain; // 지형 케이스면 표에 지형·공방을 함께 보인다
     private HexMap _terrainMap = null!;
     private readonly Dictionary<int, (TroopTemplate Template, int AtkBucket, int DfBucket)> _recipe = new();
+
+    // 공성 케이스: 성(성벽 HP·수비 병력)과 그 시각·상태.
+    private readonly BattleResolver _siegeResolver = new(60);
+    private CastleState? _castle;
+    private int _castleMaxWall;
+    private int _castleMaxTroops;
+    private HexCoord _castlePos;
+    private int _castleOwner;
+    private Label3D _castleLabel = null!;
+    private (SiegeOutcome Outcome, List<int> BesiegerIds)? _pendingSiege;
     private List<CombatUnit> _units = new();
     private readonly List<int> _orderedIds = new();
     private readonly Dictionary<int, UnitController3D> _tokens = new();
@@ -106,7 +117,8 @@ public partial class CombatTestScene3D : Node3D
             {
                 if (Ended() || rounds >= 12)
                 {
-                    GD.Print($"[combattestauto] case {_caseIndex} after {rounds}: " +
+                    var castleInfo = _castle is { } cs ? $" | 성벽{cs.WallCurrent} 수비{cs.Troops}" : "";
+                    GD.Print($"[combattestauto] case {_caseIndex} after {rounds}{castleInfo}: " +
                         string.Join(" ", _units.Select(u =>
                         {
                             if (!_showTerrain)
@@ -252,6 +264,16 @@ public partial class CombatTestScene3D : Node3D
                 [new HexCoord(6, 5)] = TerrainType.River,
                 [new HexCoord(6, 6)] = TerrainType.River,
             }),
+        new CaseDef("공성 — 성벽 격파 → 함락",
+            "공격군(투석기2·공성탑·도검)이 성으로 진격해 성벽(6000)을 두들긴다. 성벽이 무너지면(붕괴) 수비 병력(10000) 직격으로 넘어가고, 성은 반격한다. 성벽/수비는 성 위 라벨에 표시.",
+            () => new[]
+            {
+                Unit(1, 1, new HexCoord(2, 3), "catapult", new HexCoord(12, 4), UnitMode.Attack, "steadfast_guard", "regroup", intellect: 70),
+                Unit(2, 1, new HexCoord(2, 5), "catapult", new HexCoord(13, 3), UnitMode.Attack, "steadfast_guard", "regroup", intellect: 70),
+                Unit(3, 1, new HexCoord(2, 4), "siege_tower", new HexCoord(13, 5), UnitMode.Attack, "steadfast_guard", "regroup"),
+                Unit(4, 1, new HexCoord(1, 4), "swordsman", new HexCoord(12, 5), UnitMode.Attack, "fierce_assault", "peerless", might: 78),
+            },
+            CastleAt: new HexCoord(13, 4), CastleWall: 6000, CastleTroops: 10000),
     };
 
     // 양 진영 혼성군(각 11기). 기병(속도3)은 양 날개 최전열, 도검(2)·상병(2)은 주력 전열,
@@ -347,6 +369,15 @@ public partial class CombatTestScene3D : Node3D
         if (_pending.Combat is not null)
         {
             _beats.Enqueue(PlayAttacks);
+        }
+
+        if (_castle is not null)
+        {
+            ComputeSiege();
+            if (_pendingSiege is not null)
+            {
+                _beats.Enqueue(PlaySiege);
+            }
         }
     }
 
@@ -472,6 +503,7 @@ public partial class CombatTestScene3D : Node3D
         }
 
         AddResultRow(turn);
+        ApplySiege();
         _pending = null;
     }
 
@@ -492,7 +524,16 @@ public partial class CombatTestScene3D : Node3D
     }
 
     private bool Ended()
-        => _units.Where(u => u.Pool.Active > 0).Select(u => u.Field.Owner.Value).Distinct().Count() < 2;
+    {
+        // 공성: 성이 버티는 동안(성벽·수비 > 0)은 공격군이 전멸해야 끝(수성 성공). 함락되면 남은
+        // 세력이 하나뿐이라 아래 일반 규칙으로 종료.
+        if (_castle is { } c && (c.WallCurrent > 0 || c.Troops > 0))
+        {
+            return !_units.Any(u => u.Pool.Active > 0);
+        }
+
+        return _units.Where(u => u.Pool.Active > 0).Select(u => u.Field.Owner.Value).Distinct().Count() < 2;
+    }
 
     private void RefreshLabel(CombatUnit u)
     {
@@ -543,14 +584,33 @@ public partial class CombatTestScene3D : Node3D
         // 케이스별 지형으로 오케스트레이터를 만든다(이동 패널티·전투 보정 모두 이 맵을 본다).
         _showTerrain = def.Terrain is not null;
         _terrainMap = new HexMap(0, MaxQ, 0, MaxR, def.Terrain);
+
+        // 공성 케이스: 성을 세운다(발자국은 통행 불가라 공격군이 밖에서 멈춘다).
+        _pendingSiege = null;
+        var cities = new List<City>();
+        if (def.CastleAt is { } anchor)
+        {
+            _castlePos = anchor;
+            _castleOwner = 2;
+            _castleMaxWall = def.CastleWall;
+            _castleMaxTroops = def.CastleTroops;
+            _castle = new CastleState(def.CastleWall, def.CastleTroops);
+            cities.Add(new City(new CityId(99), "성", anchor, new FactionId(2), 0, CastleSize.Small));
+        }
+        else
+        {
+            _castle = null;
+        }
+
         _orchestrator = new AdvanceOrchestrator(
-            new MovementSimulator(new PassabilityMap(_terrainMap, [], [])),
+            new MovementSimulator(new PassabilityMap(_terrainMap, [], cities)),
             new CombatPhaseResolver(new BattleResolver(60), woundedPercent: 70),
             woundedPercent: 70,
             terrainAt: _terrainMap.TerrainAt);
 
         _units = def.Build().ToList(); // Unit() 안에서 _terrainMap·_recipe를 쓴다 — 위에서 먼저 세팅
         SpawnTerrainMarkers();
+        SpawnCastle();
 
         _orderedIds.Clear();
         _orderedIds.AddRange(_units
@@ -634,6 +694,117 @@ public partial class CombatTestScene3D : Node3D
         TerrainType.Desert => "사막",
         _ => t.ToString(),
     };
+
+    // 공성 케이스: 성 모델 + 성벽/수비 라벨을 세운다.
+    private void SpawnCastle()
+    {
+        if (_castle is null)
+        {
+            return;
+        }
+
+        var node = GD.Load<PackedScene>("res://assets/models/castle-small.glb").Instantiate<Node3D>();
+        node.Position = _view.HexToWorld(_castlePos) + new Vector3(0f, _view.TileTopY, 0f);
+        AddChild(node);
+        _spawned.Add(node);
+        MapView3D.TuneImportedMeshes(node);
+
+        _castleLabel = MakeLabel("", 70, 1.15f);
+        _castleLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _castleLabel.Modulate = new Color(1f, 0.85f, 0.4f);
+        node.AddChild(_castleLabel);
+        RefreshCastleLabel();
+    }
+
+    private void RefreshCastleLabel()
+    {
+        if (_castle is not { } c)
+        {
+            return;
+        }
+
+        _castleLabel.Text = c.WallCurrent > 0
+            ? $"성벽 {c.WallCurrent}/{_castleMaxWall}\n수비 {c.Troops}"
+            : c.Troops > 0 ? $"성벽 붕괴\n수비 {c.Troops}" : "함락";
+        _castleLabel.Modulate = c.WallCurrent > 0 ? new Color(1f, 0.85f, 0.4f)
+            : c.Troops > 0 ? new Color(1f, 0.55f, 0.3f) : new Color(0.9f, 0.4f, 0.35f);
+    }
+
+    private int FootprintDist(HexCoord p) => p.Distance(_castlePos); // 소형성 = 1타일
+
+    // 진행 결과 위치에서 성 사거리 안 공격 부대를 모아 공성 1교환을 계산해 둔다(적용은 FinalizeTurn).
+    private void ComputeSiege()
+    {
+        _pendingSiege = null;
+        if (_castle is not { } castle || (castle.WallCurrent <= 0 && castle.Troops <= 0))
+        {
+            return;
+        }
+
+        var besiegers = _pending!.Units
+            .Where(u => u.Field.Owner.Value != _castleOwner && u.Pool.Active > 0
+                && FootprintDist(u.Field.Position) <= _recipe[u.Id.Value].Template.RangeCastle)
+            .OrderBy(u => u.Id.Value)
+            .ToList();
+        if (besiegers.Count == 0)
+        {
+            return;
+        }
+
+        var attackers = besiegers.Select(u =>
+        {
+            var (t, atk, df) = _recipe[u.Id.Value];
+            return CombatStatsBuilder.BuildSiegeAttacker(t, AptitudeGrade.A, 0, _terrainMap.TerrainAt(u.Field.Position),
+                u.Pool.Active, inCounterRange: FootprintDist(u.Field.Position) <= 1, atkBonusPercent: atk, dfBonusPercent: df);
+        }).ToList();
+
+        _pendingSiege = (_siegeResolver.ResolveSiege(attackers, castle), besiegers.Select(u => u.Id.Value).ToList());
+    }
+
+    // 공성 애니메이션: 성을 향해 돌아 공격 모션.
+    private void PlaySiege()
+    {
+        if (_pendingSiege is not { } s)
+        {
+            return;
+        }
+
+        foreach (var idv in s.BesiegerIds)
+        {
+            if (_tokens.TryGetValue(idv, out var ctrl))
+            {
+                ctrl.FaceToward(_view.HexToWorld(_castlePos));
+                ctrl.PlayAttackMotion();
+            }
+        }
+    }
+
+    // 공성 결과 반영: 성벽·수비 병력 갱신, 공격 부대 반격 피해.
+    private void ApplySiege()
+    {
+        if (_pendingSiege is not { } s || _castle is not { } castle)
+        {
+            return;
+        }
+
+        var o = s.Outcome;
+        _castle = castle with { WallCurrent = o.NewWall, Troops = System.Math.Max(0, castle.Troops - o.TroopDamage) };
+        for (var i = 0; i < s.BesiegerIds.Count; i++)
+        {
+            var idx = _units.FindIndex(u => u.Id.Value == s.BesiegerIds[i]);
+            if (idx >= 0 && o.CounterDamage[i] > 0)
+            {
+                _units[idx] = _units[idx] with { Pool = _units[idx].Pool.TakeDamage(o.CounterDamage[i], 70) };
+                RefreshLabel(_units[idx]);
+            }
+        }
+
+        _noteLabel.Text = o.WallStanding
+            ? $"공성: 성벽 −{o.WallDamage} (남은 {o.NewWall})"
+            : $"공성(붕괴): 수비 −{o.TroopDamage}";
+        RefreshCastleLabel();
+        _pendingSiege = null;
+    }
 
     private void SpawnToken(CombatUnit u)
     {
