@@ -326,6 +326,55 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 대량_교전진행은_결정론적이고_병력은_줄기만하며_부대는_보존된다()
+    {
+        List<CombatUnit> Build()
+        {
+            var list = new List<CombatUnit>();
+            for (var i = 0; i < 6; i++)
+            {
+                list.Add(Sword(100 + i, 1, new HexCoord(0, i), UnitMode.Attack, target: new HexCoord(12, i)));
+                list.Add(Sword(200 + i, 2, new HexCoord(12, i), UnitMode.Attack, target: new HexCoord(0, i)));
+            }
+
+            return list;
+        }
+
+        List<CombatUnit> RunMany()
+        {
+            var orch = MakeOrchestrator();
+            IReadOnlyList<CombatUnit> units = Build();
+            for (var t = 0; t < 6; t++)
+            {
+                units = orch.Run(units).Units;
+            }
+
+            return units.ToList();
+        }
+
+        var a = RunMany();
+        var b = RunMany();
+
+        // 결정론: 두 실행이 위치·병력까지 완전히 같다.
+        var bm = b.ToDictionary(u => u.Id.Value);
+        Assert.Equal(a.Count, bm.Count);
+        foreach (var u in a)
+        {
+            Assert.Equal(u.Field.Position, bm[u.Id.Value].Field.Position);
+            Assert.Equal(u.Pool.Active, bm[u.Id.Value].Pool.Active);
+            Assert.Equal(u.Pool.Wounded, bm[u.Id.Value].Pool.Wounded);
+        }
+
+        // 부대 보존, 병력은 0~초기 범위(회복 액티브 없음 → 늘지 않음).
+        Assert.Equal(12, a.Count);
+        Assert.All(a, u => Assert.InRange(u.Pool.Active, 0, 10000));
+
+        // 어느 부대도 같은 칸에 겹치지 않는다(전멸 부대 포함).
+        var positions = a.Select(u => u.Field.Position).ToList();
+        Assert.Equal(positions.Count, positions.Distinct().Count());
+    }
+
+    [Fact]
     public void 준비된_타격액티브가_교전에서_발동한다()
     {
         // 선봉 무쌍 게이지 준비(야전 5일 사전 누적), 무력 80
