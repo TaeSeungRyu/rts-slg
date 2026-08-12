@@ -491,6 +491,7 @@ public partial class CombatTestScene3D : Node3D
         AddChild(ctrl);
         _spawned.Add(ctrl);
         ctrl.InitDisplay(_view, color, _tokenModel.GetValueOrDefault(u.Id.Value, 0), u.Field.Position);
+        ctrl.TintFormation(color); // 진형을 붉은/푸른 계열로 확실히 구분
 
         ctrl.AddChild(MakeLabel(Tag(u), 84, 0.56f));
         var troops = MakeLabel($"{u.Pool.Active}/{u.MaxTroops}", 66, 0.42f);

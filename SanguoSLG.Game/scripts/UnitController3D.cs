@@ -234,6 +234,10 @@ public partial class UnitController3D : Node3D
         BuildOverlay();
     }
 
+    /// <summary>검수용: 토큰 전체를 세력색 계열로 틴트해 진형을 붉은/푸른으로 확실히 가른다.</summary>
+    public void TintFormation(Color color, float strength = 0.62f)
+        => FactionColorView.ApplyTint(_tokenRoot, color, strength);
+
     /// <summary>표시 모드: 한 칸을 실제 행군 모션과 함께 이동한다.</summary>
     public void DisplayStepTo(HexCoord to, float seconds)
     {

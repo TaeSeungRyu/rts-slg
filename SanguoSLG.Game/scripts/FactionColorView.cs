@@ -33,6 +33,28 @@ public static class FactionColorView
         }
     }
 
+    /// <summary>
+    /// 모델 전체를 세력색 쪽으로 <paramref name="strength"/>(0~1)만큼 당겨 틴트한다 — 액센트뿐 아니라
+    /// 온몸이 붉은/푸른 계열로 물들어 진형을 멀리서도 구분한다. 검수 하베스트용(실제 게임은 <see cref="Apply"/>).
+    /// 표면 원래 색에서 lerp하므로 음영·형태는 유지된다. 결과색별로 재질을 캐시한다.
+    /// </summary>
+    public static void ApplyTint(Node node, Color color, float strength)
+    {
+        if (node is MeshInstance3D instance && instance.Mesh is not null)
+        {
+            for (var surface = 0; surface < instance.Mesh.GetSurfaceCount(); surface++)
+            {
+                var baseColor = (instance.GetActiveMaterial(surface) as BaseMaterial3D)?.AlbedoColor ?? Colors.White;
+                instance.SetSurfaceOverrideMaterial(surface, Shared(baseColor.Lerp(color, strength)));
+            }
+        }
+
+        foreach (var child in node.GetChildren())
+        {
+            ApplyTint(child, color, strength);
+        }
+    }
+
     private static StandardMaterial3D Shared(Color color)
     {
         if (!Cache.TryGetValue(color, out var material))
