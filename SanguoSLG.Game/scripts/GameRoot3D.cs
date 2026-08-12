@@ -247,7 +247,7 @@ public partial class GameRoot3D : Node3D
 
         var mapView = new MapView3D();
         AddChild(mapView);
-        var testMap = new HexMap(0, 6, 0, 2);
+        var testMap = new HexMap(0, 16, 0, 8); // 대량 전투 케이스까지 담는 판
         mapView.Build(testMap, new System.Collections.Generic.HashSet<HexCoord>(), new TileConditionMap());
 
         var camera = new CameraController3D { Fov = 55f };

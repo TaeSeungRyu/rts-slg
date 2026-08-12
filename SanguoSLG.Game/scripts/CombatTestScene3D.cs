@@ -19,8 +19,8 @@ public partial class CombatTestScene3D : Node3D
 {
     private static readonly Color Blue = new(0.24f, 0.44f, 0.86f);
     private static readonly Color Red = new(0.82f, 0.22f, 0.18f);
-    private const int MaxQ = 10;
-    private const int MaxR = 2;
+    private const int MaxQ = 16;
+    private const int MaxR = 8;
 
     private static readonly CombatContext MeleeCtx = new(MeleeEngagement: true, IncomingMelee: true, InField: true);
 
@@ -45,6 +45,9 @@ public partial class CombatTestScene3D : Node3D
     private CaseDef[] _cases = System.Array.Empty<CaseDef>();
     private int _caseIndex;
     private int _round;
+    private bool _aggregate; // 부대가 많으면(대량 전투) 표를 유닛별 대신 진영 집계로
+    private int _initialA;
+    private int _initialE;
     private List<CombatUnit> _units = new();
     private readonly List<int> _orderedIds = new();
     private readonly Dictionary<int, UnitController3D> _tokens = new();
@@ -197,7 +200,27 @@ public partial class CombatTestScene3D : Node3D
                 Unit(2, 2, new HexCoord(1, 1), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
                 Unit(3, 2, new HexCoord(2, 1), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
             }),
+        new CaseDef("대량 전투 — 양군 충돌",
+            "아군 A·적군 E가 2랭크 5행(각 20기)으로 마주 진격해 전선에서 맞붙는다. 전열이 갈려나가면(전멸) 토큰이 사라지고, 뒤 랭크가 빈자리로 밀려든다. 표는 진영 집계(병력 합·생존).",
+            BigBattle),
     };
+
+    // 양 진영 2랭크 × 5행 대군. 각 유닛은 반대편 같은 행으로 진격(공격모드). 앞 랭크는 맹공·무쌍,
+    // 뒤 랭크는 견수·정비로 오래 버틴다 — 전선 교대가 보이도록.
+    private CombatUnit[] BigBattle()
+    {
+        var list = new List<CombatUnit>();
+        var id = 1;
+        for (var r = 2; r <= 6; r++)
+        {
+            list.Add(Unit(id++, 1, new HexCoord(1, r), "swordsman", new HexCoord(15, r), UnitMode.Attack, "fierce_assault", "peerless", might: 78));
+            list.Add(Unit(id++, 1, new HexCoord(0, r), "swordsman", new HexCoord(15, r), UnitMode.Attack, "steadfast_guard", "regroup", intellect: 78));
+            list.Add(Unit(id++, 2, new HexCoord(14, r), "swordsman", new HexCoord(0, r), UnitMode.Attack, "fierce_assault", "peerless", might: 78));
+            list.Add(Unit(id++, 2, new HexCoord(15, r), "swordsman", new HexCoord(0, r), UnitMode.Attack, "steadfast_guard", "regroup", intellect: 78));
+        }
+
+        return list.ToArray();
+    }
 
     // ── 진행 (애니메이션: 이동 1초/칸 → 공격 1초) ──
 
@@ -435,6 +458,10 @@ public partial class CombatTestScene3D : Node3D
             .OrderBy(u => u.Field.Owner.Value).ThenBy(u => u.Id.Value)
             .Select(u => u.Id.Value));
 
+        _aggregate = _units.Count > 8;
+        _initialA = _units.Count(u => u.Field.Owner.Value == 1);
+        _initialE = _units.Count(u => u.Field.Owner.Value == 2);
+
         BuildTableHeader();
         foreach (var u in _units)
         {
@@ -452,7 +479,7 @@ public partial class CombatTestScene3D : Node3D
 
         _titleLabel.Text = $"[{index + 1}/{_cases.Length}] {def.Title}";
         _noteLabel.Text = def.Note;
-        _camera.Setup(_view.HexToWorld(new HexCoord(MaxQ / 2, MaxR / 2)), MaxQ * 0.72f + 4f);
+        FrameCamera();
         _stepButton.Disabled = false;
         _caseButton.Disabled = false;
     }
@@ -530,11 +557,32 @@ public partial class CombatTestScene3D : Node3D
         scroll.AddChild(_table);
     }
 
+    // 케이스의 부대 배치를 담도록 카메라를 맞춘다(작은 케이스는 좁게, 대군은 넓게).
+    private void FrameCamera()
+    {
+        var minQ = _units.Min(u => u.Field.Position.Q);
+        var maxQ = _units.Max(u => u.Field.Position.Q);
+        var minR = _units.Min(u => u.Field.Position.R);
+        var maxR = _units.Max(u => u.Field.Position.R);
+        var center = (_view.HexToWorld(new HexCoord(minQ, minR)) + _view.HexToWorld(new HexCoord(maxQ, maxR))) * 0.5f;
+        var span = Mathf.Max(maxQ - minQ, maxR - minR);
+        _camera.Setup(center, span * 0.7f + 6f);
+    }
+
     private void BuildTableHeader()
     {
         foreach (var child in _table.GetChildren())
         {
             child.QueueFree();
+        }
+
+        if (_aggregate)
+        {
+            _table.Columns = 3;
+            _table.AddChild(Cell("진행", header: true, width: 52));
+            _table.AddChild(Cell("아군 A", header: true, width: 220));
+            _table.AddChild(Cell("적군 E", header: true, width: 220));
+            return;
         }
 
         _table.Columns = 1 + _orderedIds.Count;
@@ -550,6 +598,13 @@ public partial class CombatTestScene3D : Node3D
     private void AddResultRow(AdvanceTurn turn)
     {
         _table.AddChild(Cell($"{_round}", header: false, width: 52));
+
+        if (_aggregate)
+        {
+            _table.AddChild(FactionCell(1, _initialA));
+            _table.AddChild(FactionCell(2, _initialE));
+            return;
+        }
 
         foreach (var id in _orderedIds)
         {
@@ -590,6 +645,14 @@ public partial class CombatTestScene3D : Node3D
 
             _table.AddChild(Cell(string.Join("\n", lines), header: false, width: 150));
         }
+    }
+
+    // 대량 전투용 진영 집계 셀: 남은 병력 합과 생존 부대 수.
+    private Label FactionCell(int owner, int initial)
+    {
+        var units = _units.Where(u => u.Field.Owner.Value == owner).ToList();
+        var troops = units.Sum(u => u.Pool.Active);
+        return Cell($"병력 {troops}\n생존 {units.Count}/{initial}", header: false, width: 220);
     }
 
     private static Label Cell(string text, bool header, int width)
