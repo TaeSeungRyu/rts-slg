@@ -346,6 +346,14 @@ public partial class CombatTestScene3D : Node3D
     private void FinalizeTurn()
     {
         var turn = _pending!;
+
+        // 결과에서 사라진 부대 = 이번 진행에 전멸 → 토큰을 없앤다(영혼 상승 연출은 후속, design-effect SoulRise).
+        var survivors = turn.Units.Select(u => u.Id.Value).ToHashSet();
+        foreach (var id in _units.Select(u => u.Id.Value).Where(id => !survivors.Contains(id)).ToList())
+        {
+            DespawnToken(id);
+        }
+
         _units = turn.Units.ToList();
 
         foreach (var u in _units)
@@ -355,6 +363,22 @@ public partial class CombatTestScene3D : Node3D
 
         AddResultRow(turn);
         _pending = null;
+    }
+
+    // 전멸 부대 소멸: 토큰과 라벨을 제거한다. TODO(design-effect SoulRise): 제거 전 소멸 지점에
+    // 영혼이 땅에서 솟아오르는 연출을 1회 재생.
+    private void DespawnToken(int id)
+    {
+        if (_tokens.TryGetValue(id, out var ctrl))
+        {
+            _spawned.Remove(ctrl); // 케이스 전환 시 이중 해제 방지
+            ctrl.QueueFree();
+            _tokens.Remove(id);
+        }
+
+        _troopLabels.Remove(id);
+        _statusLabels.Remove(id);
+        _tokenHex.Remove(id);
     }
 
     private bool Ended()
@@ -529,7 +553,13 @@ public partial class CombatTestScene3D : Node3D
 
         foreach (var id in _orderedIds)
         {
-            var u = _units.First(x => x.Id.Value == id);
+            var u = _units.FirstOrDefault(x => x.Id.Value == id);
+            if (u is null)
+            {
+                _table.AddChild(Cell("—", header: false, width: 150)); // 전멸해 사라진 부대
+                continue;
+            }
+
             var uid = new UnitId(id);
             var combat = turn.Combat is not null;
             var dealt = turn.Combat?.DamageDealt.GetValueOrDefault(uid) ?? 0;

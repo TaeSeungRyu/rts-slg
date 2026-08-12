@@ -8,7 +8,8 @@ using SanguoSLG.Core.Spatial;
 /// 순환). 이동 시뮬을 돌려 정지시킨 뒤, 경과일만큼 발동 상태를 진행하고, 예약된 계략을 발동하며
 /// (발동일엔 시전 부대 공격 불가), 사거리 전수검사로 교전을 만들어 액티브 발동(선봉 우선)을 얹어
 /// 동시 정산한다. 결과로 위치·병력·발동 상태가 갱신된 부대를 돌려준다. 지속 상태(DoT·능력치
-/// 디버프·행동불가), 정화, 강제 후퇴(교란)까지 반영한다. 성 복귀 감지·Game 배선은 후속.
+/// 디버프·행동불가), 정화, 강제 후퇴(교란)까지 반영하고, 병력 0(전멸) 부대는 결과에서 뺀다(소멸 —
+/// Game이 영혼 상승 연출로 처리). 성 복귀 감지는 후속.
 /// </summary>
 public sealed class AdvanceOrchestrator
 {
@@ -31,6 +32,9 @@ public sealed class AdvanceOrchestrator
 
     public AdvanceTurn Run(IReadOnlyList<CombatUnit> units, int maxDays = 7)
     {
+        // 병력 0(전멸) 부대는 진행에서 빠진다 — 이동·전투·점유·표적에서 모두 제외한다.
+        units = units.Where(u => u.Pool.Active > 0).ToList();
+
         // 진행 시작 시점에 행동불가(혼란)인 부대 — 이동·전투 모두 이 스냅샷으로 판정한다
         // (상태 tick이 진행 중간에 남은 진행을 줄여도, 그 진행의 효과는 온전히 적용).
         var dazedAtStart = units.Where(IsDazed).Select(u => u.Id).ToHashSet();
@@ -350,6 +354,8 @@ public sealed class AdvanceOrchestrator
         return casters;
     }
 
+    // 이 진행에 전멸(병력 0)한 부대는 결과에서 뺀다 — 상위(Game)는 목록에서 사라진 부대를
+    // 소멸(영혼 상승 연출·토큰 제거)로 처리한다.
     private static IReadOnlyList<CombatUnit> Ordered(Dictionary<UnitId, CombatUnit> state)
-        => state.Values.OrderBy(u => u.Id.Value).ToList();
+        => state.Values.Where(u => u.Pool.Active > 0).OrderBy(u => u.Id.Value).ToList();
 }

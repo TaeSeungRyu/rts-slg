@@ -326,6 +326,31 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 전멸한_부대는_결과에서_사라진다()
+    {
+        var atk = Sword(1, 1, new HexCoord(0, 0));
+        var weak = Sword(2, 2, new HexCoord(1, 0)) with { Pool = new TroopPool(100, 0), MaxTroops = 100 };
+        var turn = MakeOrchestrator().Run(new[] { atk, weak });
+
+        Assert.DoesNotContain(turn.Units, u => u.Id.Value == 2); // 병력 0 → 제거
+        Assert.Single(turn.Units);
+        Assert.Equal(1, turn.Units[0].Id.Value);
+    }
+
+    [Fact]
+    public void 이미_전멸한_부대는_진행에_참여하지_않는다()
+    {
+        // 죽은 부대를 다시 넣어도 이동·전투에서 빠지고 결과에도 없다.
+        var atk = Sword(1, 1, new HexCoord(0, 0));
+        var dead = Sword(2, 2, new HexCoord(1, 0)) with { Pool = new TroopPool(0, 0), MaxTroops = 10000 };
+        var turn = MakeOrchestrator().Run(new[] { atk, dead });
+
+        Assert.Single(turn.Units);
+        Assert.Null(turn.Combat); // 상대가 없어 교전 없음
+        Assert.Equal(10000, turn.Units[0].Pool.Active);
+    }
+
+    [Fact]
     public void 대량_교전진행은_결정론적이고_병력은_줄기만하며_부대는_보존된다()
     {
         List<CombatUnit> Build()
@@ -365,11 +390,15 @@ public class AdvanceOrchestratorTests
             Assert.Equal(u.Pool.Wounded, bm[u.Id.Value].Pool.Wounded);
         }
 
-        // 부대 보존, 병력은 0~초기 범위(회복 액티브 없음 → 늘지 않음).
-        Assert.Equal(12, a.Count);
-        Assert.All(a, u => Assert.InRange(u.Pool.Active, 0, 10000));
+        // 부대 보존: 원래 12기의 부분집합·중복 없음(전멸분만 빠진다). 병력은 1~초기(살아남은 것만).
+        var original = Build().Select(u => u.Id.Value).ToHashSet();
+        var ids = a.Select(u => u.Id.Value).ToList();
+        Assert.True(a.Count <= 12);
+        Assert.Equal(ids.Count, ids.Distinct().Count());
+        Assert.All(ids, id => Assert.Contains(id, original));
+        Assert.All(a, u => Assert.InRange(u.Pool.Active, 1, 10000));
 
-        // 어느 부대도 같은 칸에 겹치지 않는다(전멸 부대 포함).
+        // 어느 부대도 같은 칸에 겹치지 않는다(전멸 부대는 제거되어 목록에 없다).
         var positions = a.Select(u => u.Field.Position).ToList();
         Assert.Equal(positions.Count, positions.Distinct().Count());
     }
