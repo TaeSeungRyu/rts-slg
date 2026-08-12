@@ -62,6 +62,9 @@ public partial class CombatTestScene3D : Node3D
     private readonly List<Node3D> _spawned = new();
 
     // 재생 규칙(2026-08-11 사용자 정의 — 실제 게임에도 적용): 한 칸 이동 1초, 공격 모션 1초.
+    // 이동 트윈은 비트 간격(0.5초)보다 짧게 둔다 — 그래야 다음(공격) 비트가 뜰 때 _moving이 이미
+    // 풀려, 이동한 진행의 공격 모션이 스킵되지 않는다(이동 후 공격이 안 보이던 문제).
+    private const float MoveSeconds = 0.4f;
     private Godot.Timer _beatTimer = null!;
     private bool _animating;
     private Queue<System.Action> _beats = new();
@@ -363,7 +366,7 @@ public partial class CombatTestScene3D : Node3D
             if (_tokens.TryGetValue(u.Id.Value, out var ctrl)
                 && _tokenHex.GetValueOrDefault(u.Id.Value, u.Field.Position) != u.Field.Position)
             {
-                ctrl.DisplayStepTo(u.Field.Position, 0.5f);
+                ctrl.DisplayStepTo(u.Field.Position, MoveSeconds);
                 _tokenHex[u.Id.Value] = u.Field.Position;
             }
         }
@@ -392,7 +395,7 @@ public partial class CombatTestScene3D : Node3D
                 continue; // 제자리면 이동 애니메이션을 걸지 않는다(공격 모션 리셋 방지)
             }
 
-            ctrl.DisplayStepTo(fu.Position, 0.5f);
+            ctrl.DisplayStepTo(fu.Position, MoveSeconds);
             _tokenHex[fu.Id.Value] = fu.Position;
             // 가장 가까운 적을 향한다(대군에서 엉뚱한 방향으로 서지 않도록). 이동 중 회전은
             // AnimateMarch가 진행 방향으로 덮어쓴다.
