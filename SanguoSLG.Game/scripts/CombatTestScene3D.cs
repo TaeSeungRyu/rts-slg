@@ -343,7 +343,13 @@ public partial class CombatTestScene3D : Node3D
 
             ctrl.DisplayStepTo(fu.Position, 0.5f);
             _tokenHex[fu.Id.Value] = fu.Position;
-            var foe = tick.Units.FirstOrDefault(o => o.Owner != fu.Owner);
+            // 가장 가까운 적을 향한다(대군에서 엉뚱한 방향으로 서지 않도록). 이동 중 회전은
+            // AnimateMarch가 진행 방향으로 덮어쓴다.
+            var foe = tick.Units
+                .Where(o => o.Owner.Value != fu.Owner.Value)
+                .OrderBy(o => o.Position.Distance(fu.Position))
+                .ThenBy(o => o.Id.Value)
+                .FirstOrDefault();
             if (foe is not null)
             {
                 ctrl.FaceToward(_view.HexToWorld(foe.Position));
@@ -368,7 +374,13 @@ public partial class CombatTestScene3D : Node3D
                 continue;
             }
 
-            var foe = units.FirstOrDefault(o => o.Field.Owner != u.Field.Owner && o.Pool.Active > 0);
+            // 실제 교전 상대(가장 가까운 살아있는 적)를 향해 돌아선 뒤 공격한다 — 기병 돌격·궁병 사격
+            // 방향이 엉뚱한 적을 향하지 않도록. 돌격 중엔 회전이 잠기므로 이 방향이 곧 돌격 방향이다.
+            var foe = units
+                .Where(o => o.Field.Owner.Value != u.Field.Owner.Value && o.Pool.Active > 0)
+                .OrderBy(o => o.Field.Position.Distance(u.Field.Position))
+                .ThenBy(o => o.Id.Value)
+                .FirstOrDefault();
             if (foe is not null)
             {
                 ctrl.FaceToward(_view.HexToWorld(foe.Field.Position));
