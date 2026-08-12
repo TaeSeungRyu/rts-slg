@@ -320,6 +320,27 @@ public class MovementSimulatorTests
         Assert.Equal(new HexCoord(1, 0), result.Units.Single(u => u.Id.Value == 3).Position);
     }
 
+    // ── 케이스 9 — 아군에 막힌 추격 부대의 국소 우회 (2026-08-12) ──
+
+    [Fact]
+    public void 케이스9_추격경로가_아군에막히면_옆으로우회해_적에게붙는다()
+    {
+        // 추격 경로 첫 칸을 아군이 점유해도, 목표에 더 가까운 빈 이웃으로 국소 우회해 적에 인접한다.
+        // 대군 전투에서 아군 뒤에 갇혀 영원히 대기하던 문제를 막는다. (지형만 보는 A*는 그대로)
+        var map = new HexMap(0, 5, -1, 2);
+        var sim = new MovementSimulator(new PassabilityMap(map, [], []));
+        var chaser = Unit(1, owner: 1, new HexCoord(1, 1), UnitMode.Attack, target: new HexCoord(5, 1), detection: 2);
+        var ally = Unit(2, owner: 1, new HexCoord(1, 0), UnitMode.March, target: null);   // 직행 경로를 막는다
+        var enemy = Unit(3, owner: 2, new HexCoord(0, 0), UnitMode.March, target: null);
+
+        var result = sim.Advance(new[] { chaser, ally, enemy });
+
+        Assert.Equal(StopReason.EnemyInRange, result.Reason);
+        var chaserFinal = result.Units.Single(u => u.Id.Value == 1).Position;
+        Assert.Equal(1, chaserFinal.Distance(new HexCoord(0, 0))); // 우회해 적에 인접했다
+        Assert.NotEqual(new HexCoord(1, 1), chaserFinal);          // 제자리에 갇히지 않았다
+    }
+
     [Fact]
     public void 목표없는유닛끼리는_아무일도없이_전원도착으로끝난다()
     {

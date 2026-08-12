@@ -84,6 +84,7 @@ public sealed class MovementSimulator
 
                 // 이번 스텝에 움직이려는 유닛의 희망 칸을 모은다.
                 // 경로는 캐시를 따른다 — 비추격은 목표까지 1회, 추격은 매일 재계산.
+                var occupied = new HashSet<HexCoord>(work.Select(o => o.Unit.Position));
                 var desired = new Dictionary<int, HexCoord>();
                 foreach (var w in work)
                 {
@@ -92,24 +93,35 @@ public sealed class MovementSimulator
                         continue;
                     }
 
+                    HexCoord? goalTile = null;
                     if (w.Pursuing)
                     {
-                        var goal = NearestEnemyWithin(w, work, w.Unit.Detection)?.Unit.Position;
-                        if (goal is { } g && (w.Path is null || w.PathDay != day))
+                        goalTile = NearestEnemyWithin(w, work, w.Unit.Detection)?.Unit.Position;
+                        if (goalTile is { } g && (w.Path is null || w.PathDay != day))
                         {
                             w.Path = BuildPath(w, g);
                             w.PathDay = day;
                         }
                     }
-                    else if (w.Unit.Target is { } t && t != w.Unit.Position && w.Path is null)
+                    else if (w.Unit.Target is { } t && t != w.Unit.Position)
                     {
-                        w.Path = BuildPath(w, t);
-                        w.PathDay = day;
+                        goalTile = t;
+                        if (w.Path is null)
+                        {
+                            w.Path = BuildPath(w, t);
+                            w.PathDay = day;
+                        }
                     }
 
                     if (w.Path is { Count: > 0 })
                     {
-                        desired[w.Unit.Id.Value] = w.Path.Peek();
+                        var step = StepOrDetour(w, w.Path.Peek(), goalTile, occupied);
+                        if (step != w.Path.Peek())
+                        {
+                            w.Path = null; // 우회했으니 새 위치에서 경로를 다시 잡는다(스텝은 항상 인접)
+                        }
+
+                        desired[w.Unit.Id.Value] = step;
                     }
                 }
 
@@ -209,6 +221,30 @@ public sealed class MovementSimulator
         .ThenBy(o => o.Unit.CommandOrder)
         .ThenBy(o => o.Unit.Id.Value)
         .FirstOrDefault();
+
+    // 경로의 다음 칸이 다른 유닛에 막혀 있으면, 목표에 더 가까운 빈·통행 이웃으로 한 스텝 국소
+    // 우회한다(전체 A*를 다시 돌리지 않아 결정론·성능 유지 — design-movement "재계산 없이"의 절충).
+    // 아군 뒤에 갇힌 부대가 옆으로 돌아 교전할 수 있게 한다. 우회 칸이 없으면 원래 칸을 그대로
+    // 반환해 점유 막힘 규칙(제자리 대기)에 맡긴다. 이웃은 고정 방향 순서로 봐 결정론을 지킨다.
+    private HexCoord StepOrDetour(Working w, HexCoord next, HexCoord? goal, HashSet<HexCoord> occupied)
+    {
+        if (!occupied.Contains(next) || goal is not { } g)
+        {
+            return next;
+        }
+
+        var here = w.Unit.Position;
+        var hereDist = here.Distance(g);
+        foreach (var n in here.Neighbors())
+        {
+            if (!occupied.Contains(n) && n.Distance(g) < hereDist && _passability.CanEnter(w.Unit.Domain, n))
+            {
+                return n;
+            }
+        }
+
+        return next;
+    }
 
     // 현재 위치에서 goal까지의 남은 경로(시작 칸 제외)를 큐로 만든다.
     // 지형 통행만 본다 — 유닛 점유는 스텝 해석에서 다룬다. 재계산해도 결정적(A*).
