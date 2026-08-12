@@ -38,9 +38,9 @@ public class SiegeResolverTests
     }
 
     [Fact]
-    public void 성벽단계_벽력거1만_성벽1187흡수_병력무손실()
+    public void 성벽단계_충차1만_성벽1187흡수_병력무손실()
     {
-        // 벽력거 건물dmg 15, 성 df 12 → 1,187 성벽 흡수. 반격은 벽력거 df 12로 791(문서 -950은 df 격상 전 값).
+        // 충차 건물dmg 15, 성 df 12 → 1,187 성벽 흡수. 반격은 충차 df 12로 791(문서 -950은 df 격상 전 값).
         var castle = new CastleState(WallCurrent: 6000, Troops: 10000, AptitudePercent: 95);
         var r = Resolver.ResolveSiege(new[] { AttackerA("thunder_cart") }, castle);
 
@@ -52,7 +52,7 @@ public class SiegeResolverTests
     [Fact]
     public void 성벽단계_초과피해는_병력으로넘어간다()
     {
-        // 성벽 1000 남았는데 벽력거 1187 → 1000 흡수, 187 병력으로, 성벽 0
+        // 성벽 1000 남았는데 충차 1187 → 1000 흡수, 187 병력으로, 성벽 0
         var castle = new CastleState(WallCurrent: 1000, Troops: 10000, AptitudePercent: 95);
         var r = Resolver.ResolveSiege(new[] { AttackerA("thunder_cart") }, castle);
 

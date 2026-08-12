@@ -15,9 +15,9 @@ public class DamageFormulaTests
     }
 
     [Fact]
-    public void Resolve_벽력거건물대성_1187()
+    public void Resolve_충차건물대성_1187()
     {
-        // A급 벽력거(건물dmg 15) 1만 vs 성(df 12) → 1,187 (문서 성 전투 검산)
+        // A급 충차(건물dmg 15) 1만 vs 성(df 12) → 1,187 (문서 성 전투 검산)
         var dmg = DamageFormula.Resolve(10000, 15, 12, new[] { 95 }, System.Array.Empty<int>());
         Assert.Equal(1187, dmg);
     }

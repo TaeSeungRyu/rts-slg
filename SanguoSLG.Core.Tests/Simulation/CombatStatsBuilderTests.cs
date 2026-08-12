@@ -72,7 +72,7 @@ public class CombatStatsBuilderTests
     public void 빌드_건물대상이면_건물dmg를쓴다()
     {
         var s = CombatStatsBuilder.BuildField(T["thunder_cart"], AptitudeGrade.A, 0, TerrainType.Plains, 10000, targetIsBuilding: true);
-        Assert.Equal(15, s.AtkStat); // 벽력거 건물dmg 15
+        Assert.Equal(15, s.AtkStat); // 충차 건물dmg 15
     }
 
     [Fact]

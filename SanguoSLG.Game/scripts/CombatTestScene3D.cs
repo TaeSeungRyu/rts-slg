@@ -265,13 +265,13 @@ public partial class CombatTestScene3D : Node3D
                 [new HexCoord(6, 6)] = TerrainType.River,
             }),
         new CaseDef("공성 — 성벽 격파 → 함락",
-            "공격군(투석기2·공성탑·도검)이 성으로 진격해 성벽(6000)을 두들긴다. 성벽이 무너지면(붕괴) 수비 병력(10000) 직격으로 넘어가고, 성은 반격한다. 성벽/수비는 성 위 라벨에 표시.",
+            "공격군이 성으로 진격해 성벽(6000)을 두들긴다. 투석기·공성탑은 사거리 2에서 반격 없이 깎고(성 반격 사거리=1), 도검병은 인접해 반격을 받는다. 성벽이 무너지면(붕괴) 수비 병력(10000) 직격으로 넘어간다. 성벽/수비는 성 위 라벨.",
             () => new[]
             {
-                Unit(1, 1, new HexCoord(2, 3), "catapult", new HexCoord(12, 4), UnitMode.Attack, "steadfast_guard", "regroup", intellect: 70),
-                Unit(2, 1, new HexCoord(2, 5), "catapult", new HexCoord(13, 3), UnitMode.Attack, "steadfast_guard", "regroup", intellect: 70),
-                Unit(3, 1, new HexCoord(2, 4), "siege_tower", new HexCoord(13, 5), UnitMode.Attack, "steadfast_guard", "regroup"),
-                Unit(4, 1, new HexCoord(1, 4), "swordsman", new HexCoord(12, 5), UnitMode.Attack, "fierce_assault", "peerless", might: 78),
+                Unit(1, 1, new HexCoord(2, 3), "catapult", new HexCoord(11, 4), UnitMode.Attack, "steadfast_guard", "regroup", intellect: 70),
+                Unit(2, 1, new HexCoord(2, 5), "catapult", new HexCoord(11, 5), UnitMode.Attack, "steadfast_guard", "regroup", intellect: 70),
+                Unit(3, 1, new HexCoord(2, 4), "siege_tower", new HexCoord(11, 6), UnitMode.Attack, "steadfast_guard", "regroup"),
+                Unit(4, 1, new HexCoord(1, 4), "swordsman", new HexCoord(12, 4), UnitMode.Attack, "fierce_assault", "peerless", might: 78),
             },
             CastleAt: new HexCoord(13, 4), CastleWall: 6000, CastleTroops: 10000),
     };
