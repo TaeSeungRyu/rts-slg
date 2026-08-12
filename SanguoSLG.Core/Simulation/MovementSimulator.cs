@@ -95,6 +95,13 @@ public sealed class MovementSimulator
                         continue;
                     }
 
+                    // 사거리 안에 적이 있으면 더 다가가지 않고 멈춰 싸운다(궁병 등은 사거리를 유지).
+                    // 정지는 이 날 이동을 다 끝낸 뒤 판정한다 — 다른 부대는 계속 이동/재시도한다.
+                    if (w.Unit.Mode == UnitMode.Attack && NearestEnemyWithin(w, work, w.Unit.AttackRange) is not null)
+                    {
+                        continue;
+                    }
+
                     HexCoord? goalTile = null;
                     if (w.Pursuing)
                     {
@@ -152,28 +159,13 @@ public sealed class MovementSimulator
                     }
                 }
 
-                // 진행 중단 — 공격모드 유닛의 사거리 안에 적이 들어왔다.
-                // 이동을 해석한 "뒤"에 본다 — 그래야 정지한 적 칸은 점유 막힘으로 못
-                // 들어가고(케이스1), 적이 비우는 칸은 연쇄로 들어간 뒤(케이스4) 판정된다.
-                var halter = work.FirstOrDefault(w =>
-                    w.Unit.Mode == UnitMode.Attack && NearestEnemyWithin(w, work, w.Unit.AttackRange) is not null);
-                if (halter is not null)
-                {
-                    var enemy = NearestEnemyWithin(halter, work, halter.Unit.AttackRange);
-                    events.Add(new TickEvent(TickEventKind.Halted, halter.Unit.Id, enemy?.Unit.Id));
-                }
-
                 // 사건이 있거나 실제로 움직였으면 스냅샷을 남긴다
                 if (events.Count > 0 || applied.Count > 0)
                 {
                     ticks.Add(Snapshot(day, work, events));
                 }
 
-                if (halter is not null)
-                {
-                    return Finish(ticks, work, StopReason.EnemyInRange, daysElapsed);
-                }
-
+                // 정면 충돌(자리 맞바꾸기·같은 칸)은 즉시 교전한다.
                 if (engaged)
                 {
                     return Finish(ticks, work, StopReason.Engaged, daysElapsed);
@@ -181,8 +173,20 @@ public sealed class MovementSimulator
 
                 if (desired.Count == 0 || applied.Count == 0)
                 {
-                    break; // 이 날은 더 못 간다(전원 막힘/이동력 소진) — 다음 날로
+                    break; // 이 날은 더 못 간다(전원 사거리 안·막힘·이동력 소진) — 정지 판정으로
                 }
+            }
+
+            // 진행 중단 — 이 날 이동을 모두 끝낸 뒤, 공격모드 부대의 사거리 안에 적이 있으면 멈춘다
+            // (2026-08-12: 접전 순간 즉시 정지 → 그 날 이동 완료 후 정지로 완화. 아군에 잠깐 막혔던
+            // 부대도 같은 날 안에 재시도할 수 있어, 접적 순간 얼어붙던 대기가 줄어든다).
+            var halter = work.FirstOrDefault(w =>
+                w.Unit.Mode == UnitMode.Attack && NearestEnemyWithin(w, work, w.Unit.AttackRange) is not null);
+            if (halter is not null)
+            {
+                var enemy = NearestEnemyWithin(halter, work, halter.Unit.AttackRange);
+                ticks.Add(Snapshot(day, work, new[] { new TickEvent(TickEventKind.Halted, halter.Unit.Id, enemy?.Unit.Id) }));
+                return Finish(ticks, work, StopReason.EnemyInRange, daysElapsed);
             }
 
             // 3일 연속 못 움직인 유닛 추적(목표가 있는데 못 간 경우만)
