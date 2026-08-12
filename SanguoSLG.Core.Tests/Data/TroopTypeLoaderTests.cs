@@ -34,6 +34,19 @@ public class TroopTypeLoaderTests
     }
 
     [Fact]
+    public void Load_이동스탯_속도_탐지_사거리를_읽는다()
+    {
+        // spec-unit.md 확정값: 기병 속도3·탐지3·사거리1, 궁병 사거리2, 투석기 속도1·사거리2
+        var cav = Templates.Single(t => t.Code == "cavalry");
+        Assert.Equal((3, 3, 1), (cav.MovementPerDay, cav.Detection, cav.RangeUnit));
+        Assert.Equal(2, Templates.Single(t => t.Code == "archer").RangeUnit);
+        var cat = Templates.Single(t => t.Code == "catapult");
+        Assert.Equal((1, 1, 2, 2, 2), (cat.MovementPerDay, cat.Detection, cat.RangeUnit, cat.RangeBuilding, cat.RangeCastle));
+        var sword = Templates.Single(t => t.Code == "swordsman");
+        Assert.Equal((2, 2, 1), (sword.MovementPerDay, sword.Detection, sword.RangeUnit));
+    }
+
+    [Fact]
     public void Load_알수없는분류면_예외()
     {
         Assert.Throws<System.IO.InvalidDataException>(

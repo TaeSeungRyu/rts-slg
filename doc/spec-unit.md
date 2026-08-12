@@ -329,8 +329,11 @@ JSON 키는 snake_case, 코드에서는 `TroopType`으로 로딩한다.
 }
 ```
 
-> 아직 파일을 만들지 않았다. 구현 시 `ScenarioLoader`와 같은 방식으로 Core에서 읽고,
-> 알 수 없는 `terrain`·`category` 값은 예외를 던진다(기존 `ParseCondition`과 같은 규약).
+> **현황(2026-08-12):** `data/troop-types.json`은 존재하며 **부분 스키마**로 로딩된다 —
+> `code`·`name`·`class`·`atk_unit`·`atk_building`·`df`에 더해 이동 스탯
+> `movement_per_day`·`detection`·`range_unit`·`range_building`·`range_castle`(위 확정값)를 담는다.
+> `TroopTemplate`(`TroopTypeLoader`)이 읽고, 하베스트가 속도·탐지·사거리를 실제로 반영한다.
+> 아직 안 들어온 필드(`terrain`·`category`·`model`·`mountain_movement_per_day`·`tiles`)와 이벤트 유닛은 후속.
 
 ## 모델 제작 메모
 

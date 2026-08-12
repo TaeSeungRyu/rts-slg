@@ -125,10 +125,13 @@ public partial class CombatTestScene3D : Node3D
         string passiveCode, string activeCode, int might = 60, int intellect = 60, int troops = 10000,
         string? stratagemCode = null, int stratagemTarget = 0)
     {
+        var template = _templates[templateCode];
         var (atk, df) = PassiveBucketEvaluator.Evaluate(new[] { (_passives[passiveCode], 3) }, MeleeCtx);
-        var stats = CombatStatsBuilder.BuildField(_templates[templateCode], AptitudeGrade.A, 0, TerrainType.River,
+        var stats = CombatStatsBuilder.BuildField(template, AptitudeGrade.A, 0, TerrainType.River,
             troops, atkBonusPercent: atk, dfBonusPercent: df);
-        var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos, 2, 2, 1,
+        // 속도·탐지·사거리(유닛)를 병종 데이터에서 실제로 반영한다.
+        var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos,
+            template.MovementPerDay, template.Detection, template.RangeUnit,
             MovementDomain.Land, mode, target, id);
         _tokenModel[id] = ModelIndex.GetValueOrDefault(templateCode, 0);
         var state = UnitCombatState.Create(intellect, vanguardActive: _actives[activeCode]);
@@ -200,25 +203,43 @@ public partial class CombatTestScene3D : Node3D
                 Unit(2, 2, new HexCoord(1, 1), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
                 Unit(3, 2, new HexCoord(2, 1), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
             }),
-        new CaseDef("대량 전투 — 양군 충돌",
-            "아군 A·적군 E가 2랭크 5행(각 20기)으로 마주 진격해 전선에서 맞붙는다. 전열이 갈려나가면(전멸) 토큰이 사라지고, 뒤 랭크가 빈자리로 밀려든다. 표는 진영 집계(병력 합·생존).",
+        new CaseDef("대량 전투 — 혼성군 충돌",
+            "아군 A·적군 E가 혼성군(각 11기: 기병2·도검4·상병2·궁병2·투석1)으로 마주 진격. 병종별 실제 속도로 기병(3)이 먼저 달려들고 투석기(1)가 뒤늦게 따라오며, 궁병·투석은 사거리 2로 한 칸 뒤에서 친다. 전멸분은 토큰이 사라진다. 표는 진영 집계.",
             BigBattle),
     };
 
-    // 양 진영 2랭크 × 5행 대군. 각 유닛은 반대편 같은 행으로 진격(공격모드). 앞 랭크는 맹공·무쌍,
-    // 뒤 랭크는 견수·정비로 오래 버틴다 — 전선 교대가 보이도록.
+    // 양 진영 혼성군(각 11기). 기병(속도3)은 양 날개 최전열, 도검(2)·상병(2)은 주력 전열,
+    // 궁병(2·사거리2)·투석기(1·사거리2)는 후열. 각자 반대편으로 진격(공격모드) — 속도·사거리
+    // 차이가 눈에 보이도록 배치.
     private CombatUnit[] BigBattle()
     {
         var list = new List<CombatUnit>();
         var id = 1;
-        for (var r = 2; r <= 6; r++)
+
+        void Side(int owner, int backQ, int lineQ, int flankQ, int goalQ)
         {
-            list.Add(Unit(id++, 1, new HexCoord(1, r), "swordsman", new HexCoord(15, r), UnitMode.Attack, "fierce_assault", "peerless", might: 78));
-            list.Add(Unit(id++, 1, new HexCoord(0, r), "swordsman", new HexCoord(15, r), UnitMode.Attack, "steadfast_guard", "regroup", intellect: 78));
-            list.Add(Unit(id++, 2, new HexCoord(14, r), "swordsman", new HexCoord(0, r), UnitMode.Attack, "fierce_assault", "peerless", might: 78));
-            list.Add(Unit(id++, 2, new HexCoord(15, r), "swordsman", new HexCoord(0, r), UnitMode.Attack, "steadfast_guard", "regroup", intellect: 78));
+            list.Add(Unit(id++, owner, new HexCoord(flankQ, 1), "cavalry", new HexCoord(goalQ, 1), UnitMode.Attack, "fierce_assault", "peerless", might: 82));
+            list.Add(Unit(id++, owner, new HexCoord(flankQ, 8), "cavalry", new HexCoord(goalQ, 8), UnitMode.Attack, "fierce_assault", "peerless", might: 82));
+            foreach (var r in new[] { 2, 3, 6, 7 })
+            {
+                list.Add(Unit(id++, owner, new HexCoord(lineQ, r), "swordsman", new HexCoord(goalQ, r), UnitMode.Attack, "fierce_assault", "peerless", might: 76));
+            }
+
+            foreach (var r in new[] { 4, 5 })
+            {
+                list.Add(Unit(id++, owner, new HexCoord(lineQ, r), "war_elephant", new HexCoord(goalQ, r), UnitMode.Attack, "steadfast_guard", "regroup", might: 80, intellect: 70));
+            }
+
+            foreach (var r in new[] { 3, 6 })
+            {
+                list.Add(Unit(id++, owner, new HexCoord(backQ, r), "archer", new HexCoord(goalQ, r), UnitMode.Attack, "fierce_assault", "regroup", might: 72));
+            }
+
+            list.Add(Unit(id++, owner, new HexCoord(backQ, 5), "catapult", new HexCoord(goalQ, 5), UnitMode.Attack, "steadfast_guard", "regroup", might: 74));
         }
 
+        Side(1, backQ: 0, lineQ: 1, flankQ: 2, goalQ: 15);
+        Side(2, backQ: 16, lineQ: 15, flankQ: 14, goalQ: 1);
         return list.ToArray();
     }
 

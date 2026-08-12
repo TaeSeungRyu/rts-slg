@@ -24,7 +24,8 @@ public sealed class TroopTypeLoader
             ?? throw new InvalidDataException("병종 데이터를 역직렬화할 수 없습니다.");
 
         return dtos
-            .Select(d => new TroopTemplate(d.Code, d.Name, ParseClass(d.Class), d.AtkUnit, d.AtkBuilding, d.Df))
+            .Select(d => new TroopTemplate(d.Code, d.Name, ParseClass(d.Class), d.AtkUnit, d.AtkBuilding, d.Df,
+                d.MovementPerDay, d.Detection, d.RangeUnit, d.RangeBuilding, d.RangeCastle))
             .ToList();
     }
 
@@ -47,5 +48,10 @@ public sealed class TroopTypeLoader
         public int AtkUnit { get; init; }
         public int AtkBuilding { get; init; }
         public int Df { get; init; }
+        public int MovementPerDay { get; init; } = 2;
+        public int Detection { get; init; } = 2;
+        public int RangeUnit { get; init; } = 1;
+        public int RangeBuilding { get; init; } = 1;
+        public int RangeCastle { get; init; } = 1;
     }
 }
