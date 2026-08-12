@@ -61,10 +61,10 @@ public partial class CombatTestScene3D : Node3D
     private readonly Dictionary<int, HexCoord> _tokenHex = new();
     private readonly List<Node3D> _spawned = new();
 
-    // 재생 규칙(2026-08-11 사용자 정의 — 실제 게임에도 적용): 한 칸 이동 1초, 공격 모션 1초.
-    // 이동 트윈은 비트 간격(0.5초)보다 짧게 둔다 — 그래야 다음(공격) 비트가 뜰 때 _moving이 이미
-    // 풀려, 이동한 진행의 공격 모션이 스킵되지 않는다(이동 후 공격이 안 보이던 문제).
-    private const float MoveSeconds = 0.4f;
+    // 재생 규칙: 비트(이동 1칸·공격 모션)당 1초. 이동 트윈은 비트보다 짧게 둬야(0.9<1.0) 다음
+    // 공격 비트가 뜰 때 _moving이 이미 풀려, 이동한 진행의 공격 모션이 스킵되지 않는다.
+    private const float BeatSeconds = 1.0f;
+    private const float MoveSeconds = 0.9f;
     private Godot.Timer _beatTimer = null!;
     private bool _animating;
     private Queue<System.Action> _beats = new();
@@ -90,7 +90,7 @@ public partial class CombatTestScene3D : Node3D
         _cases = BuildCases();
         BuildHud();
 
-        _beatTimer = new Godot.Timer { WaitTime = 0.5, OneShot = false };
+        _beatTimer = new Godot.Timer { WaitTime = BeatSeconds, OneShot = false };
         AddChild(_beatTimer);
         _beatTimer.Timeout += OnBeat;
 
