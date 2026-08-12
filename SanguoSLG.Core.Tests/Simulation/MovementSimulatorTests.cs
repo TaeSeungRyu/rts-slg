@@ -359,6 +359,23 @@ public class MovementSimulatorTests
     }
 
     [Fact]
+    public void 케이스9b_직진이_아군에막히면_같은거리_옆칸으로_측면우회한다()
+    {
+        // (3,2) 아군이 직진 칸을 막고, 더 가까운 빈 칸이 없어도, 같은 거리의 옆칸(3,1)로 돌아간다.
+        // 예전엔 제자리 대기했다(뒷열·정체 부대가 안 움직임).
+        var map = new HexMap(0, 6, 0, 4);
+        var sim = new MovementSimulator(new PassabilityMap(map, [], []));
+        var mover = Unit(1, owner: 1, new HexCoord(2, 2), UnitMode.Attack, target: new HexCoord(5, 2), speed: 1, detection: 1);
+        var ally = Unit(2, owner: 1, new HexCoord(3, 2), UnitMode.March, target: null, speed: 1); // 직진 칸을 막음
+
+        var result = sim.Advance(new[] { mover, ally }, maxDays: 1);
+
+        var moverFinal = result.Units.Single(u => u.Id.Value == 1).Position;
+        Assert.NotEqual(new HexCoord(2, 2), moverFinal);      // 제자리에 갇히지 않았다
+        Assert.Equal(new HexCoord(3, 1), moverFinal);          // 같은 거리 옆칸으로 측면 우회
+    }
+
+    [Fact]
     public void 목표없는유닛끼리는_아무일도없이_전원도착으로끝난다()
     {
         var a1 = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack, target: null);

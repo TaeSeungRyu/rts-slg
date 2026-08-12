@@ -26,6 +26,7 @@ public sealed class MovementSimulator
         public int MovedToday;
         public bool Pursuing;
         public int BlockedDays;
+        public HexCoord? LastPos; // 직전에 있던 칸 — 측면 우회가 되돌아가 진동하는 것을 막는다
 
         // 남은 경로(현재 칸 제외). 비추격은 목표 지정 시 1회, 추격은 매일 재계산한다
         // (design-movement.md 규칙 4). null이면 미계산. 유닛에 막히면 재계산 없이 기다린다.
@@ -85,6 +86,7 @@ public sealed class MovementSimulator
                 // 이번 스텝에 움직이려는 유닛의 희망 칸을 모은다.
                 // 경로는 캐시를 따른다 — 비추격은 목표까지 1회, 추격은 매일 재계산.
                 var occupied = new HashSet<HexCoord>(work.Select(o => o.Unit.Position));
+                var occupantOwner = work.ToDictionary(o => o.Unit.Position, o => o.Unit.Owner.Value);
                 var desired = new Dictionary<int, HexCoord>();
                 foreach (var w in work)
                 {
@@ -115,7 +117,7 @@ public sealed class MovementSimulator
 
                     if (w.Path is { Count: > 0 })
                     {
-                        var step = StepOrDetour(w, w.Path.Peek(), goalTile, occupied);
+                        var step = StepOrDetour(w, w.Path.Peek(), goalTile, occupied, occupantOwner);
                         if (step != w.Path.Peek())
                         {
                             w.Path = null; // 우회했으니 새 위치에서 경로를 다시 잡는다(스텝은 항상 인접)
@@ -138,6 +140,7 @@ public sealed class MovementSimulator
                 {
                     if (applied.TryGetValue(w.Unit.Id.Value, out var tile))
                     {
+                        w.LastPos = w.Unit.Position; // 되돌아가기 방지용
                         w.Unit = w.Unit.MoveTo(tile);
                         w.MovedToday += TerrainCost(tile); // 진입 지형만큼 이동 예산 차감
                         movedThisDay.Add(w.Unit.Id.Value);
@@ -231,22 +234,42 @@ public sealed class MovementSimulator
         .ThenBy(o => o.Unit.Id.Value)
         .FirstOrDefault();
 
-    // 경로의 다음 칸이 다른 유닛에 막혀 있으면, 목표에 더 가까운 빈·통행 이웃으로 한 스텝 국소
-    // 우회한다(전체 A*를 다시 돌리지 않아 결정론·성능 유지 — design-movement "재계산 없이"의 절충).
-    // 아군 뒤에 갇힌 부대가 옆으로 돌아 교전할 수 있게 한다. 우회 칸이 없으면 원래 칸을 그대로
-    // 반환해 점유 막힘 규칙(제자리 대기)에 맡긴다. 이웃은 고정 방향 순서로 봐 결정론을 지킨다.
-    private HexCoord StepOrDetour(Working w, HexCoord next, HexCoord? goal, HashSet<HexCoord> occupied)
+    // 경로의 다음 칸이 다른 유닛에 막혀 있으면 한 스텝 국소 우회한다(전체 A*를 다시 돌리지 않아
+    // 결정론·성능 유지 — design-movement "재계산 없이"의 절충). 아군 뒤에 갇힌 부대가 돌아 교전할 수
+    // 있게 한다. ① 목표에 더 가까운 빈·통행 이웃(직진 우회) → ② 없으면 목표와 같은 거리의 빈·통행
+    // 이웃(측면 우회, 직전 칸 제외로 진동 방지). 둘 다 없으면(완전 포위) 원래 칸을 반환해 대기시킨다.
+    // 이웃은 고정 방향 순서로 봐 결정론을 지킨다.
+    private HexCoord StepOrDetour(Working w, HexCoord next, HexCoord? goal, HashSet<HexCoord> occupied,
+        Dictionary<HexCoord, int> occupantOwner)
     {
         if (!occupied.Contains(next) || goal is not { } g)
         {
             return next;
         }
 
+        // 적이 막고 있으면 우회하지 않는다 — 자리 맞바꾸기 교전·연쇄 이동·점유 정지 규칙에 맡긴다.
+        // 아군이 막을 때만 돌아간다.
+        if (occupantOwner.TryGetValue(next, out var owner) && owner != w.Unit.Owner.Value)
+        {
+            return next;
+        }
+
         var here = w.Unit.Position;
         var hereDist = here.Distance(g);
+
+        // ① 직진 우회 — 목표에 더 가까운 빈 칸
         foreach (var n in here.Neighbors())
         {
             if (!occupied.Contains(n) && n.Distance(g) < hereDist && _passability.CanEnter(w.Unit.Domain, n))
+            {
+                return n;
+            }
+        }
+
+        // ② 측면 우회 — 같은 거리의 빈 칸(직전 칸으로 되돌아가지 않는다)
+        foreach (var n in here.Neighbors())
+        {
+            if (!occupied.Contains(n) && n.Distance(g) == hereDist && n != w.LastPos && _passability.CanEnter(w.Unit.Domain, n))
             {
                 return n;
             }
