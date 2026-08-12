@@ -99,9 +99,9 @@ public class AdvanceOrchestratorTests
         var casterState = UnitCombatState.Create(100, masteryPoints: 10)
             .ReserveStratagem(St["fire_plot"], new UnitId(2))
             .AdvanceField(2);
-        // 둘 다 행군(정지·비교전) — 교전 없이 계략만 걸려 DoT를 격리한다. 거리 2(계략 사거리 2 도달).
+        // 둘 다 행군(정지·비교전) — 교전 없이 계략만 걸려 DoT를 격리한다. 거리 1(화계 사거리 1).
         var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.March, casterState) with { Intellect = 100 };
-        var target = Sword(2, 2, new HexCoord(2, 0), UnitMode.March);
+        var target = Sword(2, 2, new HexCoord(1, 0), UnitMode.March);
 
         var orch = MakeOrchestrator();
 
@@ -268,7 +268,7 @@ public class AdvanceOrchestratorTests
             .ReserveStratagem(St["flood_plot"], new UnitId(2))
             .AdvanceField(2);
         var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.March, casterState);
-        var target = Sword(2, 2, new HexCoord(2, 0), UnitMode.March); // 거리2: 교전없음, 계략 사거리2
+        var target = Sword(2, 2, new HexCoord(1, 0), UnitMode.March); // 거리1(수공 사거리1), 행군이라 교전 없음
 
         var turn = orch.Run(new[] { caster, target });
         var ut = turn.Units.Single(u => u.Id.Value == 2);
@@ -289,10 +289,10 @@ public class AdvanceOrchestratorTests
             .ReserveStratagem(St["detonate"], new UnitId(2))
             .AdvanceField(2);
         var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.March, casterState);
-        var target = Sword(2, 2, new HexCoord(2, 0), UnitMode.March);
-        var nearEnemy = Sword(3, 2, new HexCoord(3, 0), UnitMode.March);   // 대상서 거리 1
-        var farEnemy = Sword(4, 2, new HexCoord(5, 0), UnitMode.March);    // 대상서 거리 3
-        var nearAlly = Sword(5, 1, new HexCoord(2, 1), UnitMode.March);    // 대상서 거리 1(아군)
+        var target = Sword(2, 2, new HexCoord(1, 0), UnitMode.March);      // 폭파 사거리 1
+        var nearEnemy = Sword(3, 2, new HexCoord(2, 0), UnitMode.March);   // 대상서 거리 1
+        var farEnemy = Sword(4, 2, new HexCoord(4, 0), UnitMode.March);    // 대상서 거리 3
+        var nearAlly = Sword(5, 1, new HexCoord(1, 1), UnitMode.March);    // 대상서 거리 1(아군)
 
         var turn = MakeOrchestrator().Run(new[] { caster, target, nearEnemy, farEnemy, nearAlly });
         CombatUnit U(int id) => turn.Units.Single(u => u.Id.Value == id);

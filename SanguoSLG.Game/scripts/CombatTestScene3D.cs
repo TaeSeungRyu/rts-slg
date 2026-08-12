@@ -169,11 +169,11 @@ public partial class CombatTestScene3D : Node3D
                 Unit(4, 2, new HexCoord(5, 1), "war_elephant", null, UnitMode.Advance, "steadfast_guard", "regroup", intellect: 80),
             }),
         new CaseDef("화계 — 지속 피해",
-            "A1이 사거리 2 밖 거리에서 E2에 화계 예약 → 2진행 뒤 발동, 이후 진행마다 화상으로 병력이 깎인다(표 '지속 −n', 상태 '화상n').",
+            "A1이 인접(사거리 1)한 E2에 화계 예약 → 2진행 뒤 발동, 이후 진행마다 화상으로 병력이 깎인다(표 '지속 −n', 상태 '화상n'). 둘 다 행군이라 교전은 없다.",
             () => new[]
             {
-                Unit(1, 1, new HexCoord(0, 1), "archer", null, UnitMode.Advance, "steadfast_guard", "regroup", intellect: 90, stratagemCode: "fire_plot", stratagemTarget: 2),
-                Unit(2, 2, new HexCoord(2, 1), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
+                Unit(1, 1, new HexCoord(0, 1), "archer", null, UnitMode.March, "steadfast_guard", "regroup", intellect: 90, stratagemCode: "fire_plot", stratagemTarget: 2),
+                Unit(2, 2, new HexCoord(1, 1), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
             }),
         new CaseDef("혼란 — 행동불가",
             "A1(공격)이 인접 E2에 혼란 예약 → 발동하면 E2가 3진행 동안 공격·이동 불가(E2 '준 0'·상태 '행동불가'). A1은 계속 친다.",
@@ -190,12 +190,12 @@ public partial class CombatTestScene3D : Node3D
                 Unit(2, 2, new HexCoord(2, 1), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
             }),
         new CaseDef("폭파 — 광역",
-            "A1이 E2에 폭파 예약 → 발동 시 대상 E2와 인접 적 E3이 함께 6% 피해(둘 다 '잔여' 감소).",
+            "A1이 인접(사거리 1)한 E2에 폭파 예약 → 발동 시 대상 E2와 인접 적 E3이 함께 6% 피해(둘 다 '잔여' 감소). 모두 행군이라 교전은 없다.",
             () => new[]
             {
-                Unit(1, 1, new HexCoord(0, 1), "catapult", null, UnitMode.Advance, "steadfast_guard", "regroup", intellect: 90, stratagemCode: "detonate", stratagemTarget: 2),
-                Unit(2, 2, new HexCoord(2, 1), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
-                Unit(3, 2, new HexCoord(2, 2), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
+                Unit(1, 1, new HexCoord(0, 1), "catapult", null, UnitMode.March, "steadfast_guard", "regroup", intellect: 90, stratagemCode: "detonate", stratagemTarget: 2),
+                Unit(2, 2, new HexCoord(1, 1), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
+                Unit(3, 2, new HexCoord(2, 1), "swordsman", null, UnitMode.March, "steadfast_guard", "iron_wall"),
             }),
     };
 
