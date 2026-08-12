@@ -244,11 +244,17 @@ public sealed class AdvanceOrchestrator
         }
     }
 
-    // 걸린 능력치 디버프를 유효 능력치 + 준 피해 배수로 접는다. 이간(무효)은 적성·가산 버킷을 100으로
-    // 되돌리고(공격·방어 모두 약화), 수공·연막은 준 피해를 곱으로 줄인다(연막은 사거리 2 이상만).
-    private static (CombatStats Stats, int OutgoingPercent) ApplyDebuffs(CombatUnit u)
+    // 지형 공방 보정(이동 후 위치·병종 분류)을 얹은 뒤, 걸린 능력치 디버프를 유효 능력치 + 준 피해
+    // 배수로 접는다. 이간(무효)은 적성·가산 버킷을 100으로 되돌리고, 수공·연막은 준 피해를 곱으로 줄인다.
+    private (CombatStats Stats, int OutgoingPercent) ApplyDebuffs(CombatUnit u)
     {
-        var stats = u.Stats;
+        // 전투는 이동 후 위치에서 벌어지므로 그 칸의 지형 보정을 여기서 반영한다(부대 스탯엔 지형 미포함).
+        var (terrainAtk, terrainDf) = TerrainCombatBonus.For(u.Class, _terrainAt(u.Field.Position));
+        var stats = u.Stats with
+        {
+            AtkStat = u.Stats.AtkStat + terrainAtk,
+            DfStat = u.Stats.DfStat + terrainDf,
+        };
         var outgoing = 100;
         foreach (var s in u.State.Statuses)
         {

@@ -104,9 +104,16 @@ public partial class CombatTestScene3D : Node3D
                 if (Ended() || rounds >= 12)
                 {
                     GD.Print($"[combattestauto] case {_caseIndex} after {rounds}: " +
-                        string.Join(" ", _units.Select(u => _showTerrain
-                            ? $"{Tag(u)}[{TerrainKo(_terrainMap.TerrainAt(u.Field.Position))}]공{u.Stats.AtkStat}방{u.Stats.DfStat}@{u.Field.Position.Q},{u.Field.Position.R}={u.Pool.Active}"
-                            : $"{Tag(u)}={u.Pool.Active}")));
+                        string.Join(" ", _units.Select(u =>
+                        {
+                            if (!_showTerrain)
+                            {
+                                return $"{Tag(u)}={u.Pool.Active}";
+                            }
+
+                            var (dAtk, dDf) = DisplayStats(u);
+                            return $"{Tag(u)}[{TerrainKo(_terrainMap.TerrainAt(u.Field.Position))}]공{dAtk}방{dDf}@{u.Field.Position.Q},{u.Field.Position.R}={u.Pool.Active}";
+                        })));
                     if (_caseIndex + 1 < _cases.Length) { LoadCase(_caseIndex + 1); rounds = 0; }
                     else { GD.Print("[combattestauto] all cases done"); timer.Stop(); }
                     return;
@@ -128,8 +135,9 @@ public partial class CombatTestScene3D : Node3D
         var template = _templates[templateCode];
         var (atk, df) = PassiveBucketEvaluator.Evaluate(new[] { (_passives[passiveCode], 3) }, MeleeCtx);
         _recipe[id] = (template, atk, df);
-        // 공/방 스탯은 지금 서 있는 칸의 지형 보정을 반영한다(연구 0).
-        var stats = CombatStatsBuilder.BuildField(template, AptitudeGrade.A, 0, _terrainMap.TerrainAt(pos),
+        // 스탯엔 지형 보정을 넣지 않는다(중립 River=0). 지형 공방 보정은 전투 시점에 오케스트레이터가
+        // 이동 후 위치·병종 분류로 얹는다 — 이동 중인 부대도 실제 전투 칸의 보정을 받는다.
+        var stats = CombatStatsBuilder.BuildField(template, AptitudeGrade.A, 0, TerrainType.River,
             troops, atkBonusPercent: atk, dfBonusPercent: df);
         // 속도·탐지·사거리(유닛)를 병종 데이터에서 실제로 반영한다.
         var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos,
@@ -142,7 +150,7 @@ public partial class CombatTestScene3D : Node3D
             state = state.ReserveStratagem(_strats[stratagemCode], new UnitId(stratagemTarget));
         }
 
-        return new CombatUnit(field, stats, new TroopPool(troops, 0), state, might, intellect, MaxTroops: troops);
+        return new CombatUnit(field, stats, new TroopPool(troops, 0), state, might, intellect, MaxTroops: troops, Class: template.Class);
     }
 
     private CaseDef[] BuildCases() => new[]
@@ -306,8 +314,6 @@ public partial class CombatTestScene3D : Node3D
     private void BeginTurn()
     {
         _round++;
-        // 진행 직전, 각 부대의 공/방을 지금 서 있는 칸의 지형으로 다시 산출한다(이동하며 지형이 바뀜).
-        _units = _units.Select(RebuildStats).ToList();
         _pending = _orchestrator.Run(_units);
 
         _beats = new Queue<System.Action>();
@@ -341,13 +347,12 @@ public partial class CombatTestScene3D : Node3D
         }
     }
 
-    // 부대의 공/방 스탯을 지금 서 있는 칸의 지형 보정으로 다시 만든다(병력은 활성 유지).
-    private CombatUnit RebuildStats(CombatUnit u)
+    // 표시용: 부대의 현재 칸 지형 공방 보정을 반영한 공/방(전투에서 오케스트레이터가 쓰는 값과 같다).
+    private (int Atk, int Df) DisplayStats(CombatUnit u)
     {
-        var (template, atk, df) = _recipe[u.Id.Value];
-        var stats = CombatStatsBuilder.BuildField(template, AptitudeGrade.A, 0, _terrainMap.TerrainAt(u.Field.Position),
-            u.Pool.Active, atkBonusPercent: atk, dfBonusPercent: df);
-        return u with { Stats = stats };
+        var (t, _, _) = _recipe[u.Id.Value];
+        var (tAtk, tDf) = TerrainCombatBonus.For(t.Class, _terrainMap.TerrainAt(u.Field.Position));
+        return (u.Stats.AtkStat + tAtk, u.Stats.DfStat + tDf);
     }
 
     // 이동 시뮬이 잡지 못한 위치 변화(교란 후퇴)를 토큰에 반영한다.
@@ -767,8 +772,9 @@ public partial class CombatTestScene3D : Node3D
             var lines = new List<string>();
             if (_showTerrain)
             {
-                // 지금 서 있는 칸의 지형과, 그 지형 보정이 반영된 공/방(연구 0 기준).
-                lines.Add($"[{TerrainKo(_terrainMap.TerrainAt(u.Field.Position))}] 공{u.Stats.AtkStat} 방{u.Stats.DfStat}");
+                // 지금 서 있는 칸의 지형과, 그 지형 보정이 반영된 공/방(전투 사용값과 동일).
+                var (dAtk, dDf) = DisplayStats(u);
+                lines.Add($"[{TerrainKo(_terrainMap.TerrainAt(u.Field.Position))}] 공{dAtk} 방{dDf}");
             }
 
             lines.Add(combat ? $"준 −{dealt}" : "없음");

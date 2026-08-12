@@ -326,6 +326,32 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 지형_전투보정은_전투_시점_위치에서_적용된다()
+    {
+        // 같은 기병이라도 평야에서 싸우면 지형 +2공으로 준 피해가 더 크다(River=중립과 비교).
+        // 스탯엔 지형이 없고(River로 빌드), 오케스트레이터가 위치·분류로 지형 보정을 얹는다.
+        CombatUnit Cav(int id, int owner, HexCoord pos)
+        {
+            var stats = CombatStatsBuilder.BuildField(T["cavalry"], AptitudeGrade.A, 0, TerrainType.River, 10000);
+            var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos, 3, 3, 1,
+                MovementDomain.Land, UnitMode.Attack, null, id);
+            return new CombatUnit(field, stats, new TroopPool(10000, 0), UnitCombatState.Create(60),
+                60, 60, 10000, Class: TroopClass.Cavalry);
+        }
+
+        AdvanceOrchestrator Orch(TerrainType t) => new(
+            new MovementSimulator(new PassabilityMap(new HexMap(0, 20, -5, 5), [], [])),
+            new CombatPhaseResolver(new BattleResolver(60), woundedPercent: 70), woundedPercent: 70, terrainAt: _ => t);
+
+        var plains = Orch(TerrainType.Plains).Run(new[] { Cav(1, 1, new HexCoord(0, 0)), Cav(2, 2, new HexCoord(1, 0)) });
+        var neutral = Orch(TerrainType.River).Run(new[] { Cav(1, 1, new HexCoord(0, 0)), Cav(2, 2, new HexCoord(1, 0)) });
+
+        var plainsDmg = plains.Combat!.DamageDealt[new UnitId(1)];
+        var neutralDmg = neutral.Combat!.DamageDealt[new UnitId(1)];
+        Assert.True(plainsDmg > neutralDmg, $"평야 {plainsDmg} > 중립 {neutralDmg} — 기병 평야 +2공 반영");
+    }
+
+    [Fact]
     public void 전멸한_부대는_결과에서_사라진다()
     {
         var atk = Sword(1, 1, new HexCoord(0, 0));
