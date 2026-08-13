@@ -103,15 +103,19 @@ public sealed class MovementSimulator
                         continue;
                     }
 
+                    // 성 타일 위(출격 대기)는 예외 — 성은 이동 불가 지형이라 머무를 수 없으니,
+                    // 사거리 정지를 무시하고 반드시 내려서는 게이트 스텝을 먼저 밟는다(아래).
+                    var onCastle = OnCastle(w, castles);
+
                     // 사거리 안에 적이 있으면 더 다가가지 않고 멈춰 싸운다(궁병 등은 사거리를 유지).
                     // 정지는 이 날 이동을 다 끝낸 뒤 판정한다 — 다른 부대는 계속 이동/재시도한다.
-                    if (w.Unit.Mode == UnitMode.Attack && NearestEnemyWithin(w, work, w.Unit.AttackRange) is not null)
+                    if (!onCastle && w.Unit.Mode == UnitMode.Attack && NearestEnemyWithin(w, work, w.Unit.AttackRange) is not null)
                     {
                         continue;
                     }
 
                     // 적 성이 공성 사거리 안이면 더 다가가지 않는다(투석기 등은 사거리를 유지).
-                    if (w.Unit.Mode == UnitMode.Attack && CastleWithin(w, castles) is not null)
+                    if (!onCastle && w.Unit.Mode == UnitMode.Attack && CastleWithin(w, castles) is not null)
                     {
                         continue;
                     }
@@ -134,6 +138,20 @@ public sealed class MovementSimulator
                             w.Path = BuildPath(w, t);
                             w.PathDay = day;
                         }
+                    }
+
+                    // 출격 게이트 스텝: 성 타일 위 유닛은 빈·통행 이웃 중 목표에 가장 가까운 칸으로
+                    // 반드시 내려선다. 적 점유 칸으로는 가지 않아 성문 위에서 교전을 열지 않고,
+                    // 빈 이웃이 없으면(완전 포위) 이날은 성 안에서 대기한다.
+                    if (onCastle)
+                    {
+                        if (goalTile is { } sg && GateStep(w, sg, occupied) is { } exit)
+                        {
+                            w.Path = null; // 내려선 위치에서 경로를 다시 잡는다
+                            desired[w.Unit.Id.Value] = exit;
+                        }
+
+                        continue;
                     }
 
                     if (w.Path is { Count: > 0 })
@@ -211,7 +229,8 @@ public sealed class MovementSimulator
             // (2026-08-12: 접전 순간 즉시 정지 → 그 날 이동 완료 후 정지로 완화. 아군에 잠깐 막혔던
             // 부대도 같은 날 안에 재시도할 수 있어, 접적 순간 얼어붙던 대기가 줄어든다).
             var halter = work.FirstOrDefault(w =>
-                w.Unit.Mode == UnitMode.Attack && NearestEnemyWithin(w, work, w.Unit.AttackRange) is not null);
+                w.Unit.Mode == UnitMode.Attack && !OnCastle(w, castles)
+                && NearestEnemyWithin(w, work, w.Unit.AttackRange) is not null);
             if (halter is not null)
             {
                 var enemy = NearestEnemyWithin(halter, work, halter.Unit.AttackRange);
@@ -273,6 +292,28 @@ public sealed class MovementSimulator
     private static SiegeSite? CastleWithin(Working w, IReadOnlyList<SiegeSite>? castles) => castles?
         .FirstOrDefault(c => c.Owner != w.Unit.Owner
             && c.Position.Distance(w.Unit.Position) <= w.Unit.RangeCastle);
+
+    // 성 타일 위에 서 있는가(출격 대기) — 성은 이동 불가 지형이라 머무를 수 없다.
+    private static bool OnCastle(Working w, IReadOnlyList<SiegeSite>? castles)
+        => castles is not null && castles.Any(c => c.Position == w.Unit.Position);
+
+    // 출격 게이트 스텝: 빈·통행 이웃 중 목표에 가장 가까운 칸(동률이면 고정 방향 순서 — 결정론).
+    // 적 점유 칸은 후보에서 뺀다 — 성문 위에서 교전을 열지 않는다.
+    private HexCoord? GateStep(Working w, HexCoord goal, HashSet<HexCoord> occupied)
+    {
+        HexCoord? best = null;
+        var bestDist = int.MaxValue;
+        foreach (var n in w.Unit.Position.Neighbors())
+        {
+            if (!occupied.Contains(n) && _passability.CanEnter(w.Unit.Domain, n) && n.Distance(goal) < bestDist)
+            {
+                best = n;
+                bestDist = n.Distance(goal);
+            }
+        }
+
+        return best;
+    }
 
     // 다음 스텝 칸이 자기 성인가 — 입성 조건. 성 타일은 통행 불가지만 경로는 목표 칸을 허용하므로,
     // 목표가 자기 성인 유닛의 마지막 스텝만 여기 걸린다(추격·통과 경로는 성 타일을 지나지 않는다).

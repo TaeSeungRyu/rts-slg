@@ -494,12 +494,14 @@ public class MovementSimulatorTests
     [Fact]
     public void 성출격_성타일에서_출발한_유닛은_첫스텝부터_정상이동한다()
     {
-        // 성 타일(2,0)은 통행 불가지만 그 위에서 출발하는 출격 부대는 정상적으로 걸어 나온다.
+        // 성 타일(2,0)은 통행 불가지만 그 위에서 출발하는 출격 부대는 게이트 스텝으로 내려선 뒤
+        // 정상적으로 걸어 나온다.
         var city = new City(new CityId(9), "성", new HexCoord(2, 0), new FactionId(1), 0);
         var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, -2, 2), [], [city]));
+        var site = new SiegeSite(new HexCoord(2, 0), new FactionId(1));
         var u = Unit(1, owner: 1, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(5, 0), speed: 2);
 
-        var result = sim.Advance(new[] { u }, maxDays: 1);
+        var result = sim.Advance(new[] { u }, maxDays: 1, castles: new[] { site });
 
         Assert.Equal(new HexCoord(4, 0), result.Units.Single().Position); // 이동력 2 = 2칸
     }
@@ -510,16 +512,53 @@ public class MovementSimulatorTests
         // 출격 대기 수비대는 성 타일에 겹쳐 설 수 있다. 같은 날 둘 다 나오되 겹치지 않는다.
         var city = new City(new CityId(9), "성", new HexCoord(2, 0), new FactionId(1), 0);
         var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, -2, 2), [], [city]));
+        var site = new SiegeSite(new HexCoord(2, 0), new FactionId(1));
         var a = Unit(1, owner: 1, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(5, 0), speed: 2);
         var b = Unit(2, owner: 1, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(5, 0), speed: 2);
 
-        var result = sim.Advance(new[] { a, b }, maxDays: 1);
+        var result = sim.Advance(new[] { a, b }, maxDays: 1, castles: new[] { site });
 
         var pa = result.Units.Single(x => x.Id.Value == 1).Position;
         var pb = result.Units.Single(x => x.Id.Value == 2).Position;
         Assert.NotEqual(pa, pb);
         Assert.NotEqual(new HexCoord(2, 0), pa);
         Assert.NotEqual(new HexCoord(2, 0), pb);
+    }
+
+    [Fact]
+    public void 성출격_정면이_적에막혀도_다른이웃으로_내려서고_성문위에서_교전하지않는다()
+    {
+        // 직진 출구(3,0)를 적이 막아도 다른 빈 이웃으로 내려선다 — 성 타일 위에서 교전을 열지 않는다.
+        var city = new City(new CityId(9), "성", new HexCoord(2, 0), new FactionId(1), 0);
+        var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, -2, 2), [], [city]));
+        var site = new SiegeSite(new HexCoord(2, 0), new FactionId(1));
+        var d = Unit(1, owner: 1, new HexCoord(2, 0), UnitMode.Attack, target: new HexCoord(5, 0), speed: 2);
+        var e = Unit(2, owner: 2, new HexCoord(3, 0), UnitMode.March, target: null, speed: 2);
+
+        var result = sim.Advance(new[] { d, e }, maxDays: 1, castles: new[] { site });
+
+        var pd = result.Units.Single(x => x.Id.Value == 1).Position;
+        Assert.NotEqual(new HexCoord(2, 0), pd);
+        Assert.DoesNotContain(result.Ticks.SelectMany(t => t.Events), ev => ev.Kind == TickEventKind.Engaged);
+    }
+
+    [Fact]
+    public void 성출격_전부포위되면_빈이웃이없어_성안에서_대기한다()
+    {
+        // 이웃 6칸을 전부 적이 점유 — 게이트 스텝이 불가능해 그날은 성 안에서 대기한다.
+        // 성문 위에서 교전을 억지로 열지도 않는다.
+        var city = new City(new CityId(9), "성", new HexCoord(2, 0), new FactionId(1), 0);
+        var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, -2, 2), [], [city]));
+        var site = new SiegeSite(new HexCoord(2, 0), new FactionId(1));
+        var d = Unit(1, owner: 1, new HexCoord(2, 0), UnitMode.Attack, target: new HexCoord(5, 0), speed: 2);
+        var enemies = new HexCoord(2, 0).Neighbors()
+            .Select((n, i) => Unit(10 + i, owner: 2, n, UnitMode.March, target: null))
+            .ToArray();
+
+        var result = sim.Advance(new[] { d }.Concat(enemies).ToList(), maxDays: 1, castles: new[] { site });
+
+        Assert.Equal(new HexCoord(2, 0), result.Units.Single(x => x.Id.Value == 1).Position);
+        Assert.DoesNotContain(result.Ticks.SelectMany(t => t.Events), ev => ev.Kind == TickEventKind.Engaged);
     }
 
     [Fact]

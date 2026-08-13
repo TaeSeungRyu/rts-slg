@@ -393,6 +393,8 @@ public partial class CombatTestScene3D : Node3D
                 var troops = System.Math.Min(g.Pool.Active, gc.Troops);
                 if (troops <= 0)
                 {
+                    // 출격 불가 ② — 빼줄 수비 병력이 없다(공성으로 수비가 바닥). 성 안에 남는다.
+                    _noteLabel.Text = $"{Tag(g)} 출격 불가 — 수비 병력 없음";
                     continue;
                 }
 
