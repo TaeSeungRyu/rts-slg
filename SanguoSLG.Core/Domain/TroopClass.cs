@@ -17,7 +17,7 @@ public enum TroopClass
     /// <summary>상병(象兵, 코끼리 계열).</summary>
     Elephant,
 
-    /// <summary>공성(투석기·공성탑·벽력거).</summary>
+    /// <summary>공성(투석기·공성탑·충차).</summary>
     Siege,
 
     /// <summary>해상(대하 유닛).</summary>

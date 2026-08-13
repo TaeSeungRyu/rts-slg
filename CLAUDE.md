@@ -149,6 +149,31 @@ dotnet test
 
 ---
 
+## 설계 문서 맵 (doc/)
+
+게임 규칙·수치는 코드가 아니라 `doc/`가 원본이다. **관련 영역을 건드리기 전에 반드시 해당
+문서를 먼저 읽고, 규칙이 바뀌면 같은 커밋에서 문서를 갱신한다.**
+
+명명 규칙: `design-*` = 설계 논의·확정 규칙, `spec-*` = 확정 사양 + 구현 현황,
+`plan-*` = 단계별 계획(이력), `test/*` = GUI·통합 검증 케이스 정의.
+
+| 문서 | 이럴 때 참고 |
+|---|---|
+| [design-movement.md](doc/design-movement.md) | 이동·탐지·추격·정지·우회·성 입성/출격·지형 이동 패널티 |
+| [design-combat.md](doc/design-combat.md) | 피해 공식·병종 공/방·지형 전투 보정·성 전투(성벽/붕괴/반격/함락) |
+| [design-stratagem.md](doc/design-stratagem.md) | 계략 11종 수치·시전 사거리·지속 상태·정화 |
+| [design-skill.md](doc/design-skill.md) + skill-actives/passives | 특기 체계, 액티브 게이지·발동, 패시브 버킷 |
+| [design-terrain.md](doc/design-terrain.md) | 지형 종류·타일 배치 |
+| [design-effect.md](doc/design-effect.md) | 시각 효과 계획(구현 O/X 표 포함) |
+| [design-ui.md](doc/design-ui.md) | UI 개선 4건 계획(미구현) |
+| [design-water.md](doc/design-water.md) | 소하천/대하 표현 |
+| [spec-unit.md](doc/spec-unit.md) | 병종 11종 확정 스탯·모델·이동/사거리 데이터 |
+| [spec-general.md](doc/spec-general.md) | 무장 스탯·특기 슬롯 사양 |
+| [test/movement-cases.md](doc/test/movement-cases.md) | 이동 검증 케이스 1~8 정의·구현 현황 |
+| [test/combat-movement-cases.md](doc/test/combat-movement-cases.md) | 이동→전투 통합 케이스·공성 하베스트 케이스 |
+
+---
+
 ## 작업 절차
 
 ### 진행 순서

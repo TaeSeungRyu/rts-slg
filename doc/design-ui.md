@@ -2,7 +2,7 @@
 
 > 본 게임 씬의 클릭·명령·정보 표시 상호작용 명세. 전투/계략/이동 규칙은
 > [design-combat.md](./design-combat.md)·[design-stratagem.md](./design-stratagem.md)·[design-movement.md](./design-movement.md),
-> 전투 정산 진입점은 Core `AdvanceOrchestrator`. **아직 미구현 — 향후 작업 기준.**
+> 전투 정산 진입점은 Core `AdvanceOrchestrator`(구현됨). **이 문서의 UI 4건은 아직 미구현 — 향후 작업 기준.**
 
 ## 1. 부대 클릭 → 명령 팔레트
 
