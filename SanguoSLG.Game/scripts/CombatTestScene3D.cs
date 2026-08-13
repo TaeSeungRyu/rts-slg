@@ -384,20 +384,45 @@ public partial class CombatTestScene3D : Node3D
 
         _beats = new Queue<System.Action>();
         // 실제로 위치가 바뀌는 틱만 이동 비트로 넣는다(정지/교전 스냅샷은 건너뛴다).
+        // 입성(EnteredCastle) 틱은 그 시점 비트로 토큰을 거둔다 — 진행 끝까지 남겨두면
+        // 코어에선 비어 있는 칸에 다른 부대가 들어와 화면만 겹쳐 보인다.
         var running = new Dictionary<int, HexCoord>(_tokenHex);
+        var enteredNotes = _pending.EnteredCastle.ToDictionary(
+            u => u.Id.Value, u => $"{Tag(u)} 입성 — 수비 +{u.Pool.Active}");
         foreach (var tick in _pending.Movement.Ticks)
         {
+            var enteredNow = tick.Events
+                .Where(e => e.Kind == TickEventKind.EnteredCastle)
+                .Select(e => e.Unit.Value)
+                .ToList();
             var moves = tick.Units.Any(fu => running.GetValueOrDefault(fu.Id.Value, fu.Position) != fu.Position);
-            if (!moves)
+            if (!moves && enteredNow.Count == 0)
             {
                 continue;
             }
 
             var snapshot = tick;
-            _beats.Enqueue(() => MoveTokens(snapshot));
-            foreach (var fu in tick.Units)
+            if (moves)
             {
-                running[fu.Id.Value] = fu.Position;
+                _beats.Enqueue(() => MoveTokens(snapshot));
+                foreach (var fu in tick.Units)
+                {
+                    running[fu.Id.Value] = fu.Position;
+                }
+            }
+
+            if (enteredNow.Count > 0)
+            {
+                _beats.Enqueue(() =>
+                {
+                    foreach (var idv in enteredNow)
+                    {
+                        _noteLabel.Text = enteredNotes.GetValueOrDefault(idv, "입성");
+                        DespawnToken(idv);
+                    }
+
+                    RefreshCastleLabel();
+                });
             }
         }
 

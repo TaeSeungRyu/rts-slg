@@ -60,21 +60,6 @@ public sealed class MovementSimulator
             {
                 var events = new List<TickEvent>();
 
-                // 아군 성 입성(이동 단계 처리): 목표가 자기 성인 유닛이 성에 닿으면(인접 1칸)
-                // 그 자리에서 입성해 야전에서 빠진다 — 이후 탐지·전투·점유 대상이 아니다.
-                foreach (var w in work.Where(w => IsEnteringCastle(w, castles)).ToList())
-                {
-                    entered.Add(w.Unit.Id);
-                    events.Add(new TickEvent(TickEventKind.EnteredCastle, w.Unit.Id, null));
-                    work.Remove(w);
-                }
-
-                if (events.Count > 0)
-                {
-                    ticks.Add(Snapshot(day, work, events));
-                    events = new List<TickEvent>();
-                }
-
                 // 공격모드 유닛의 추격 상태를 갱신한다(탐지 시작/시야 상실).
                 // 도착 판정보다 먼저 — 목표 없이 서 있어도 적이 탐지에 들면 추격해야 한다.
                 foreach (var w in work.Where(w => w.Unit.Mode == UnitMode.Attack))
@@ -105,6 +90,7 @@ public sealed class MovementSimulator
                 var occupied = new HashSet<HexCoord>(work.Select(o => o.Unit.Position));
                 var occupantOwner = work.ToDictionary(o => o.Unit.Position, o => o.Unit.Owner.Value);
                 var desired = new Dictionary<int, HexCoord>();
+                var enteringNow = new List<Working>();
                 foreach (var w in work)
                 {
                     if (w.MovedToday >= EffectiveSpeed(w, work))
@@ -147,6 +133,14 @@ public sealed class MovementSimulator
 
                     if (w.Path is { Count: > 0 })
                     {
+                        // 입성 = 이동의 마지막 한 스텝. 다음 칸이 자기 성이면 이동 예산을 쓰고
+                        // 바로 성으로 들어간다(위 예산 체크를 통과한 유닛만 — 이동력 0이면 그날 불가).
+                        if (IsOwnCastle(w, w.Path.Peek(), castles))
+                        {
+                            enteringNow.Add(w);
+                            continue;
+                        }
+
                         var step = StepOrDetour(w, w.Path.Peek(), goalTile, occupied, occupantOwner);
                         if (step != w.Path.Peek())
                         {
@@ -155,6 +149,14 @@ public sealed class MovementSimulator
 
                         desired[w.Unit.Id.Value] = step;
                     }
+                }
+
+                // 입성 확정 — 야전에서 빠진다(이후 탐지·전투·점유 대상이 아니다).
+                foreach (var w in enteringNow)
+                {
+                    entered.Add(w.Unit.Id);
+                    events.Add(new TickEvent(TickEventKind.EnteredCastle, w.Unit.Id, null));
+                    work.Remove(w);
                 }
 
                 // 동시 이동 해석(같은 칸 경합·자리 맞바꾸기·연쇄·점유 막힘)
@@ -267,12 +269,12 @@ public sealed class MovementSimulator
         .FirstOrDefault(c => c.Owner != w.Unit.Owner
             && c.Position.Distance(w.Unit.Position) <= w.Unit.RangeCastle);
 
-    // 자기 성으로 복귀 명령을 받은 유닛이 성에 닿았는가(인접 1칸) — 입성 조건.
-    // 성 타일 자체는 통행 불가라 목표가 성이어도 인접에서 입성한다.
-    private static bool IsEnteringCastle(Working w, IReadOnlyList<SiegeSite>? castles) => castles is not null
-        && castles.Any(c => c.Owner == w.Unit.Owner
-            && w.Unit.Target == c.Position
-            && c.Position.Distance(w.Unit.Position) <= 1);
+    // 다음 스텝 칸이 자기 성인가 — 입성 조건. 성 타일은 통행 불가지만 경로는 목표 칸을 허용하므로,
+    // 목표가 자기 성인 유닛의 마지막 스텝만 여기 걸린다(추격·통과 경로는 성 타일을 지나지 않는다).
+    private static bool IsOwnCastle(Working w, HexCoord next, IReadOnlyList<SiegeSite>? castles)
+        => castles is not null
+            && w.Unit.Target == next
+            && castles.Any(c => c.Owner == w.Unit.Owner && c.Position == next);
 
     // 사거리·탐지 안의 적 중 가장 가까운 하나(동률이면 명령 순번, 그다음 UnitId — 결정론)
     private static Working? NearestEnemyWithin(Working self, List<Working> work, int range) => work

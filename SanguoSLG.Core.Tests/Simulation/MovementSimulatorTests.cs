@@ -433,9 +433,10 @@ public class MovementSimulatorTests
     }
 
     [Fact]
-    public void 성입성_목표가자기성이면_인접에닿는순간_야전에서빠진다()
+    public void 성입성_목표가자기성이면_마지막스텝으로_입성해_야전에서빠진다()
     {
-        // 소속 성(8,0)으로 복귀 명령. 인접(7,0)에 닿는 순간 입성해 Units에서 빠지고 Entered에 보고된다.
+        // 소속 성(8,0)으로 복귀 명령. 성 타일로 들어가는 마지막 스텝이 곧 입성 —
+        // Units에서 빠지고 Entered에 보고된다.
         var castle = new SiegeSite(new HexCoord(8, 0), new FactionId(1));
         var u = Unit(1, owner: 1, new HexCoord(3, 0), UnitMode.March, target: new HexCoord(8, 0), speed: 2);
 
@@ -445,6 +446,33 @@ public class MovementSimulatorTests
         Assert.DoesNotContain(result.Units, x => x.Id.Value == 1);
         Assert.Contains(result.Ticks.SelectMany(t => t.Events),
             e => e.Kind == TickEventKind.EnteredCastle && e.Unit.Value == 1);
+    }
+
+    [Fact]
+    public void 성입성_이동력이남으면_같은날_이동에이어_바로입성한다()
+    {
+        // 이동력 2: 1칸 이동(7,0) + 입성 스텝 = 2칸 소비, 그날 입성.
+        var castle = new SiegeSite(new HexCoord(8, 0), new FactionId(1));
+        var u = Unit(1, owner: 1, new HexCoord(6, 0), UnitMode.March, target: new HexCoord(8, 0), speed: 2);
+
+        var result = PlainField().Advance(new[] { u }, maxDays: 1, castles: new[] { castle });
+
+        Assert.Equal(new[] { new UnitId(1) }, result.EnteredCastle);
+    }
+
+    [Fact]
+    public void 성입성_이동력을다써서_인접에도착하면_그날은_입성못하고_다음날_들어간다()
+    {
+        // 이동력 2를 (6,0)→(7,0) 이동에 다 쓰면 인접해도 그날은 입성 불가(입성도 이동이다).
+        var castle = new SiegeSite(new HexCoord(8, 0), new FactionId(1));
+        var u = Unit(1, owner: 1, new HexCoord(5, 0), UnitMode.March, target: new HexCoord(8, 0), speed: 2);
+
+        var day1 = PlainField().Advance(new[] { u }, maxDays: 1, castles: new[] { castle });
+        Assert.Empty(day1.EnteredCastle);
+        Assert.Equal(new HexCoord(7, 0), day1.Units.Single().Position);
+
+        var day2 = PlainField().Advance(new[] { u }, maxDays: 2, castles: new[] { castle });
+        Assert.Equal(new[] { new UnitId(1) }, day2.EnteredCastle);
     }
 
     [Fact]
