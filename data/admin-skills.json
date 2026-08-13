@@ -1,0 +1,16 @@
+[
+  { "code": "merchant",         "name": "상재",   "kind": "passive", "bucket": "tax",            "tiers": [6, 12, 20] },
+  { "code": "tuntian",          "name": "둔전",   "kind": "passive", "bucket": "harvest",        "tiers": [6, 12, 20] },
+  { "code": "popularity",       "name": "인망",   "kind": "passive", "bucket": "recruit_cost",   "tiers": [8, 15, 25] },
+  { "code": "recruiter",        "name": "모병관", "kind": "passive", "bucket": "recruit_amount", "tiers": [10, 20, 30] },
+  { "code": "drillmaster",      "name": "교관",   "kind": "passive", "bucket": "training",       "tiers": [2, 4, 6] },
+  { "code": "pacifier",         "name": "진무",   "kind": "passive", "bucket": "security",       "tiers": [10, 20, 30] },
+  { "code": "quartermaster",    "name": "병참",   "kind": "passive", "bucket": "provisions",     "tiers": [5, 10, 15] },
+  { "code": "builder",          "name": "축성",   "kind": "passive", "bucket": "wall",           "tiers": [10, 20, 30] },
+
+  { "code": "grand_levy",       "name": "대모병", "kind": "active", "bucket": "recruit_amount", "amount": 100 },
+  { "code": "tax_relief",       "name": "감세",   "kind": "active", "bucket": "security",       "amount": 20 },
+  { "code": "market_day",       "name": "개시",   "kind": "active", "bucket": "tax",            "amount": 300 },
+  { "code": "harvest_order",    "name": "둔전령", "kind": "active", "bucket": "harvest",        "amount": 2000 },
+  { "code": "emergency_repair", "name": "보수",   "kind": "active", "bucket": "wall",           "amount": 20 }
+]

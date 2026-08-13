@@ -83,6 +83,33 @@ public class GeneralDataTests
     }
 
     [Fact]
+    public void 내정스킬코드는_실제데이터에_존재하고_슬롯규칙을_지킨다()
+    {
+        var admin = new AdminSkillLoader().LoadFromDirectory(TestData.DataDirectory());
+        var actives = admin.Where(a => a.IsActive).Select(a => a.Code).ToHashSet();
+        var passives = admin.Where(a => !a.IsActive).Select(a => a.Code).ToHashSet();
+
+        Assert.True(admin.Count >= 13);
+        foreach (var g in All)
+        {
+            if (g.AdminActive is not null)
+            {
+                Assert.Contains(g.AdminActive, actives);
+            }
+
+            var held = g.AdminPassives ?? [];
+            foreach (var s in held)
+            {
+                Assert.Contains(s.Code, passives);
+                Assert.InRange(s.Tier, 1, 3);
+            }
+
+            var total = (g.AdminActive is null ? 0 : 1) + held.Count;
+            Assert.InRange(total, 0, 4);
+        }
+    }
+
+    [Fact]
     public void 지역코드는_중복이없고_권역은_세갈래다()
     {
         var regions = new RegionLoader().LoadFromDirectory(TestData.DataDirectory());

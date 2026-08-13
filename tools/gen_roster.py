@@ -8,8 +8,10 @@ generals = json.load(io.open(os.path.join(DATA_DIR, "generals.json"), encoding="
 regions = json.load(io.open(os.path.join(DATA_DIR, "regions.json"), encoding="utf-8"))
 actives = json.load(io.open(os.path.join(DATA_DIR, "active-skills.json"), encoding="utf-8"))
 passives = json.load(io.open(os.path.join(DATA_DIR, "passive-skills.json"), encoding="utf-8"))
+admin = json.load(io.open(os.path.join(DATA_DIR, "admin-skills.json"), encoding="utf-8"))
 
 active_names = {a["code"]: a["name"] for a in actives}
+admin_names = {a["code"]: a["name"] for a in admin}
 passive_names = {p["code"]: p["name"] for p in passives}
 region_map = {r["code"]: r for r in regions}
 
@@ -23,6 +25,8 @@ for g in generals:
         "m": g["might"], "i": g["intellect"], "p": g["politics"],
         "act": active_names.get(g.get("battle_active"), ""),
         "pas": [f'{passive_names[s["code"]]} {s["tier"]}' for s in g.get("battle_passives", [])],
+        "aact": admin_names.get(g.get("admin_active"), ""),
+        "apas": [f'{admin_names[s["code"]]} {s["tier"]}' for s in g.get("admin_passives", [])],
     })
 
 HTML = """<!doctype html>
@@ -144,6 +148,7 @@ tbody tr:hover td { background: var(--seal-soft); }
     <th data-k="i" class="num">지력</th>
     <th data-k="p" class="num">정치</th>
     <th data-k="skill">전투 스킬</th>
+    <th data-k="askill">내정 스킬</th>
   </tr></thead>
   <tbody id="body"></tbody>
 </table>
@@ -175,11 +180,12 @@ function aptScore(g) { return g.apt.reduce((s, x) => s + GRADE_ORDER[x], 0); }
 function render() {
   const q = query.toLowerCase();
   let rows = DATA.filter(g => (!realm || g.realm === realm) &&
-    (!q || (g.name + g.region + g.desc + g.act + g.pas.join(" ")).toLowerCase().includes(q)));
+    (!q || (g.name + g.region + g.desc + g.act + g.pas.join(" ") + g.aact + g.apas.join(" ")).toLowerCase().includes(q)));
   rows.sort((a, b) => {
     let va, vb;
     if (sortKey === "apt") { va = aptScore(a); vb = aptScore(b); }
     else if (sortKey === "skill") { va = a.act ? 1 : 0; vb = b.act ? 1 : 0; }
+    else if (sortKey === "askill") { va = (a.aact ? 2 : 0) + a.apas.length; vb = (b.aact ? 2 : 0) + b.apas.length; }
     else { va = a[sortKey]; vb = b[sortKey]; }
     if (typeof va === "string") return sortDir * va.localeCompare(vb, "ko");
     return sortDir * (va - vb);
@@ -196,6 +202,7 @@ function render() {
       <td class="stat">${g.i}<span class="statbar"><i style="width:${g.i}%"></i></span></td>
       <td class="stat">${g.p}<span class="statbar"><i style="width:${g.p}%"></i></span></td>
       <td class="skills">${g.act ? `<span class="a">${g.act}</span>` : ""}${g.act && g.pas.length ? " · " : ""}<span class="p">${g.pas.join(" · ")}</span></td>
+      <td class="skills">${g.aact ? `<span class="a">${g.aact}</span>` : ""}${g.aact && g.apas.length ? " · " : ""}<span class="p">${g.apas.join(" · ")}</span></td>
     </tr>`).join("");
   document.querySelectorAll("#head th").forEach(th => {
     const base = th.textContent.replace(/ [▲▼]$/, "");
