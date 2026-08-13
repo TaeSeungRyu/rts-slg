@@ -655,14 +655,15 @@ public partial class CombatTestScene3D : Node3D
 
     private bool Ended()
     {
-        // 공성: 성이 버티는 동안(성벽·수비 > 0)은 공격군이 전멸해야 끝(수성 성공). 함락되면 남은
-        // 세력이 하나뿐이라 아래 일반 규칙으로 종료.
+        // 살아 있는 성(수비 > 0)은 그 소유 세력의 참전으로 센다 — 수성 중엔 공격군이 전멸해야
+        // 끝나고, 함락·점거 후엔 성과 야전 부대가 같은 세력이면 종료된다.
+        var owners = _units.Where(u => u.Pool.Active > 0).Select(u => u.Field.Owner.Value).ToHashSet();
         if (_castle is { } c && (c.WallCurrent > 0 || c.Troops > 0))
         {
-            return !_units.Any(u => u.Pool.Active > 0);
+            owners.Add(_castleOwner);
         }
 
-        return _units.Where(u => u.Pool.Active > 0).Select(u => u.Field.Owner.Value).Distinct().Count() < 2;
+        return owners.Count < 2;
     }
 
     private void RefreshLabel(CombatUnit u)
@@ -941,6 +942,51 @@ public partial class CombatTestScene3D : Node3D
             : $"공성(붕괴): 수비 −{o.TroopDamage}";
         RefreshCastleLabel();
         _pendingSiege = null;
+
+        if (_castle is { WallCurrent: <= 0, Troops: <= 0 })
+        {
+            CaptureCastle();
+        }
+    }
+
+    // 함락(수비 0) 처리: ① 근접(거리 1) 공격 부대는 자동 입성해 성을 점거한다 — 병력·병종·부상
+    // 데이터는 수비대로 그대로 보관(성 복귀 초기화 적용). 성 소유가 점거 세력으로 바뀌고 수비는
+    // 입성 병력 합, 성벽은 깨진 채(0) 남는다. ② 근접하지 않은 그 세력의 공격모드 부대는 전부
+    // 멈춤(전진 대형 + 목표 해제)으로 전환한다 — 서서 방어만 하고 추격·선공하지 않는다.
+    private void CaptureCastle()
+    {
+        var adjacent = _units
+            .Where(u => u.Field.Owner.Value != _castleOwner && u.Pool.Active > 0
+                && FootprintDist(u.Field.Position) <= 1)
+            .OrderBy(u => u.Id.Value)
+            .ToList();
+        if (adjacent.Count == 0)
+        {
+            return; // 근접 부대가 없으면 점거 없이 빈 성(수비 0)으로 남는다
+        }
+
+        var newOwner = adjacent[0].Field.Owner.Value;
+        foreach (var u in adjacent)
+        {
+            _units.Remove(u);
+            _garrison.Add(u with { State = u.State.ReturnToCastle() });
+            DespawnToken(u.Id.Value);
+        }
+
+        _castleOwner = newOwner;
+        _castle = new CastleState(0, adjacent.Sum(u => u.Pool.Active));
+
+        for (var i = 0; i < _units.Count; i++)
+        {
+            var u = _units[i];
+            if (u.Field.Owner.Value == newOwner && u.Field.Mode == UnitMode.Attack)
+            {
+                _units[i] = u with { Field = u.Field with { Mode = UnitMode.Advance, Target = null } };
+            }
+        }
+
+        _noteLabel.Text = $"함락! {string.Join("·", adjacent.Select(Tag))} 입성 점거 — 수비 {_castle!.Troops}";
+        RefreshCastleLabel();
     }
 
     private void SpawnToken(CombatUnit u)
