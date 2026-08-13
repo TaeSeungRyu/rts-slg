@@ -163,6 +163,7 @@ dotnet test
 | [design-combat.md](doc/design-combat.md) | 피해 공식·병종 공/방·지형 전투 보정·성 전투(성벽/붕괴/반격/함락) |
 | [design-stratagem.md](doc/design-stratagem.md) | 계략 11종 수치·시전 사거리·지속 상태·정화 |
 | [design-skill.md](doc/design-skill.md) + skill-actives/passives | 특기 체계, 액티브 게이지·발동, 패시브 버킷 |
+| [design-unit-state.md](doc/design-unit-state.md) | 사기·훈련도·군량 시스템 계획(초안, ❓=미확정) |
 | [design-terrain.md](doc/design-terrain.md) | 지형 종류·타일 배치 |
 | [design-effect.md](doc/design-effect.md) | 시각 효과 계획(구현 O/X 표 포함) |
 | [design-ui.md](doc/design-ui.md) | UI 개선 4건 계획(미구현) |
