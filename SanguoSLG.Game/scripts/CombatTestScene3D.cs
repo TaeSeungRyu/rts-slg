@@ -130,7 +130,7 @@ public partial class CombatTestScene3D : Node3D
                             return $"{Tag(u)}[{TerrainKo(_terrainMap.TerrainAt(u.Field.Position))}]공{dAtk}방{dDf}@{u.Field.Position.Q},{u.Field.Position.R}={u.Pool.Active}";
                         })));
                     if (_caseIndex + 1 < _cases.Length) { LoadCase(_caseIndex + 1); rounds = 0; }
-                    else { GD.Print("[combattestauto] all cases done"); timer.Stop(); }
+                    else { GD.Print("[combattestauto] all cases done"); timer.Stop(); GetTree().Quit(); }
                     return;
                 }
 
@@ -274,6 +274,16 @@ public partial class CombatTestScene3D : Node3D
                 Unit(4, 1, new HexCoord(1, 4), "swordsman", new HexCoord(12, 4), UnitMode.Attack, "fierce_assault", "peerless", might: 78),
             },
             CastleAt: new HexCoord(13, 4), CastleWall: 6000, CastleTroops: 10000),
+        new CaseDef("공성 — 일반 병력 공략",
+            "공성 병기 없이 일반 병종(도검2·기병·상병)이 얇은 성벽(3000)을 친다. 전부 사거리 1이라 인접해서 성벽을 깎고 성의 반격을 받는다(공성 병기와 달리 피해를 감수). 성벽이 무너지면 수비 병력(10000) 직격 → 함락.",
+            () => new[]
+            {
+                Unit(1, 1, new HexCoord(2, 3), "swordsman", new HexCoord(12, 4), UnitMode.Attack, "steadfast_guard", "iron_wall", might: 78),
+                Unit(2, 1, new HexCoord(2, 5), "swordsman", new HexCoord(13, 3), UnitMode.Attack, "steadfast_guard", "iron_wall", might: 78),
+                Unit(3, 1, new HexCoord(2, 4), "cavalry", new HexCoord(13, 5), UnitMode.Attack, "steadfast_guard", "iron_wall", might: 80),
+                Unit(4, 1, new HexCoord(1, 4), "war_elephant", new HexCoord(12, 5), UnitMode.Attack, "steadfast_guard", "regroup", might: 80, intellect: 70),
+            },
+            CastleAt: new HexCoord(13, 4), CastleWall: 3000, CastleTroops: 10000),
     };
 
     // 양 진영 혼성군(각 11기). 기병(속도3)은 양 날개 최전열, 도검(2)·상병(2)은 주력 전열,
