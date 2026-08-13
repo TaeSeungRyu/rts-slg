@@ -88,7 +88,12 @@ public sealed class MovementSimulator
                 // 이번 스텝에 움직이려는 유닛의 희망 칸을 모은다.
                 // 경로는 캐시를 따른다 — 비추격은 목표까지 1회, 추격은 매일 재계산.
                 var occupied = new HashSet<HexCoord>(work.Select(o => o.Unit.Position));
-                var occupantOwner = work.ToDictionary(o => o.Unit.Position, o => o.Unit.Owner.Value);
+                // 성 타일에는 출격 대기 수비대가 겹쳐 서 있을 수 있다 — id 순서 첫 유닛 기준(결정론).
+                var occupantOwner = new Dictionary<HexCoord, int>();
+                foreach (var o in work)
+                {
+                    occupantOwner.TryAdd(o.Unit.Position, o.Unit.Owner.Value);
+                }
                 var desired = new Dictionary<int, HexCoord>();
                 var enteringNow = new List<Working>();
                 foreach (var w in work)

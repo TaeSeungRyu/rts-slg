@@ -489,6 +489,39 @@ public class MovementSimulatorTests
         Assert.Contains(result.Units, x => x.Id.Value == 1);
     }
 
+    // ── 수비대 출격 — 성 타일에서 나오는 첫 스텝부터가 이동(입성의 거울) ──
+
+    [Fact]
+    public void 성출격_성타일에서_출발한_유닛은_첫스텝부터_정상이동한다()
+    {
+        // 성 타일(2,0)은 통행 불가지만 그 위에서 출발하는 출격 부대는 정상적으로 걸어 나온다.
+        var city = new City(new CityId(9), "성", new HexCoord(2, 0), new FactionId(1), 0);
+        var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, -2, 2), [], [city]));
+        var u = Unit(1, owner: 1, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(5, 0), speed: 2);
+
+        var result = sim.Advance(new[] { u }, maxDays: 1);
+
+        Assert.Equal(new HexCoord(4, 0), result.Units.Single().Position); // 이동력 2 = 2칸
+    }
+
+    [Fact]
+    public void 성출격_수비대_둘이_성타일에_겹쳐있어도_같은날_성밖으로_빠져나온다()
+    {
+        // 출격 대기 수비대는 성 타일에 겹쳐 설 수 있다. 같은 날 둘 다 나오되 겹치지 않는다.
+        var city = new City(new CityId(9), "성", new HexCoord(2, 0), new FactionId(1), 0);
+        var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, -2, 2), [], [city]));
+        var a = Unit(1, owner: 1, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(5, 0), speed: 2);
+        var b = Unit(2, owner: 1, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(5, 0), speed: 2);
+
+        var result = sim.Advance(new[] { a, b }, maxDays: 1);
+
+        var pa = result.Units.Single(x => x.Id.Value == 1).Position;
+        var pb = result.Units.Single(x => x.Id.Value == 2).Position;
+        Assert.NotEqual(pa, pb);
+        Assert.NotEqual(new HexCoord(2, 0), pa);
+        Assert.NotEqual(new HexCoord(2, 0), pb);
+    }
+
     [Fact]
     public void 목표없는유닛끼리는_아무일도없이_전원도착으로끝난다()
     {

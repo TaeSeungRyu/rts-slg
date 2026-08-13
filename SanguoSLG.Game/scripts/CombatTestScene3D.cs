@@ -33,7 +33,8 @@ public partial class CombatTestScene3D : Node3D
 
     private sealed record CaseDef(string Title, string Note, System.Func<CombatUnit[]> Build,
         Dictionary<HexCoord, TerrainType>? Terrain = null,
-        HexCoord? CastleAt = null, int CastleWall = 0, int CastleTroops = 0);
+        HexCoord? CastleAt = null, int CastleWall = 0, int CastleTroops = 0,
+        int SallyAtRound = 0, HexCoord? SallyTarget = null);
 
     private MapView3D _view = null!;
     private CameraController3D _camera = null!;
@@ -64,6 +65,7 @@ public partial class CombatTestScene3D : Node3D
     private Label3D _castleLabel = null!;
     private (SiegeOutcome Outcome, List<int> BesiegerIds)? _pendingSiege;
     private readonly Dictionary<int, int> _lastSiegeCounter = new();
+    private readonly List<CombatUnit> _garrison = new();
     private List<CombatUnit> _units = new();
     private readonly List<int> _orderedIds = new();
     private readonly Dictionary<int, UnitController3D> _tokens = new();
@@ -302,6 +304,20 @@ public partial class CombatTestScene3D : Node3D
                 Unit(9, 2, new HexCoord(11, 6), "archer", new HexCoord(13, 4), UnitMode.March, "steadfast_guard", "regroup", troops: 6000),
             },
             CastleAt: new HexCoord(13, 4), CastleWall: 3000, CastleTroops: 4000),
+        new CaseDef("공성 — 수비대 출격",
+            "궁병(E9)이 1진행에 입성해 수비에 합류(4000→10000)했다가, 3진행에 출격 — 입성 병력 6000을 "
+            + "수비에서 도로 빼(수비 4000) 성 타일에서 걸어 나와 공격군과 야전을 벌인다. 출격도 이동: "
+            + "성에서 나오는 첫 스텝부터 그 진행의 이동력을 쓴다.",
+            () => new[]
+            {
+                Unit(1, 1, new HexCoord(2, 3), "swordsman", new HexCoord(12, 4), UnitMode.Attack, "steadfast_guard", "iron_wall", might: 78),
+                Unit(2, 1, new HexCoord(2, 5), "swordsman", new HexCoord(13, 3), UnitMode.Attack, "steadfast_guard", "iron_wall", might: 78),
+                Unit(3, 1, new HexCoord(2, 4), "cavalry", new HexCoord(13, 5), UnitMode.Attack, "steadfast_guard", "iron_wall", might: 80),
+                Unit(4, 1, new HexCoord(1, 4), "war_elephant", new HexCoord(12, 5), UnitMode.Attack, "steadfast_guard", "regroup", might: 80, intellect: 70),
+                Unit(9, 2, new HexCoord(11, 6), "archer", new HexCoord(13, 4), UnitMode.March, "steadfast_guard", "regroup", troops: 6000),
+            },
+            CastleAt: new HexCoord(13, 4), CastleWall: 3000, CastleTroops: 4000,
+            SallyAtRound: 3, SallyTarget: new HexCoord(10, 4)),
     };
 
     // 양 진영 혼성군(각 11기). 기병(속도3)은 양 날개 최전열, 도검(2)·상병(2)은 주력 전열,
@@ -367,19 +383,55 @@ public partial class CombatTestScene3D : Node3D
     private void BeginTurn()
     {
         _round++;
+
+        // 수비대 출격 — 이동과 같은 단계: 진행 계산 전에 성 타일에 올라서고, 이번 진행의
+        // 이동력으로 걸어 나온다. 병력은 입성 때 그대로(성 수비가 그보다 줄었으면 남은 만큼만).
+        if (_cases[_caseIndex].SallyAtRound == _round && _garrison.Count > 0 && _castle is { } gc)
+        {
+            foreach (var g in _garrison.ToList())
+            {
+                var troops = System.Math.Min(g.Pool.Active, gc.Troops);
+                if (troops <= 0)
+                {
+                    continue;
+                }
+
+                gc = gc with { Troops = gc.Troops - troops };
+                var unit = g with
+                {
+                    Pool = new TroopPool(troops, g.Pool.Wounded),
+                    Field = g.Field with
+                    {
+                        Position = _castlePos,
+                        Mode = UnitMode.Attack,
+                        Target = _cases[_caseIndex].SallyTarget,
+                    },
+                };
+                _units.Add(unit);
+                _garrison.Remove(g);
+                SpawnToken(unit);
+                _noteLabel.Text = $"{Tag(unit)} 출격 — 수비 −{troops}";
+            }
+
+            _castle = gc;
+            RefreshCastleLabel();
+        }
+
         var sites = _castle is { } c && (c.WallCurrent > 0 || c.Troops > 0)
             ? new[] { new SiegeSite(_castlePos, new FactionId(_castleOwner)) }
             : null;
         _pending = _orchestrator.Run(_units, castles: sites);
 
         // 수비 합류는 이동 단계(입성)의 일부 — 같은 진행의 공성 반격 계산(ComputeSiege)에 반영되도록
-        // 여기서 성에 합산한다. 토큰 정리·표기는 FinalizeTurn이 한다.
+        // 여기서 성에 합산한다. 토큰 정리·표기는 FinalizeTurn이 한다. 부대는 수비대로 보관한다(출격용).
         foreach (var u in _pending.EnteredCastle)
         {
             if (_castle is { } cs)
             {
                 _castle = cs with { Troops = cs.Troops + u.Pool.Active };
             }
+
+            _garrison.Add(u);
         }
 
         _beats = new Queue<System.Action>();
@@ -656,6 +708,7 @@ public partial class CombatTestScene3D : Node3D
         _tokenModel.Clear();
         _tokenHex.Clear();
         _recipe.Clear();
+        _garrison.Clear();
 
         // 케이스별 지형으로 오케스트레이터를 만든다(이동 패널티·전투 보정 모두 이 맵을 본다).
         _showTerrain = def.Terrain is not null;
