@@ -1,73 +1,3232 @@
 [
-  { "id": 1, "name": "조조",
-    "aptitudes": { "infantry": "S", "archer": "A", "cavalry": "S", "elephant": "C", "siege": "B", "naval": "C" },
-    "might": 72, "intellect": 91, "politics": 94,
+  {
+    "id": 1,
+    "name": "조조",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "A",
+      "cavalry": "S",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 72,
+    "intellect": 91,
+    "politics": 94,
     "battle_active": "peerless",
-    "battle_passives": [ { "code": "fierce_assault", "tier": 3 }, { "code": "momentum", "tier": 2 } ] },
-
-  { "id": 2, "name": "유비",
-    "aptitudes": { "infantry": "A", "archer": "B", "cavalry": "A", "elephant": "C", "siege": "C", "naval": "C" },
-    "might": 73, "intellect": 74, "politics": 80,
+    "battle_passives": [
+      {
+        "code": "fierce_assault",
+        "tier": 3
+      },
+      {
+        "code": "momentum",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "유비",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 73,
+    "intellect": 74,
+    "politics": 80,
     "battle_active": "rally",
-    "battle_passives": [ { "code": "steadfast_guard", "tier": 3 } ] },
-
-  { "id": 3, "name": "관우",
-    "aptitudes": { "infantry": "SS", "archer": "B", "cavalry": "S", "elephant": "C", "siege": "C", "naval": "B" },
-    "might": 97, "intellect": 75, "politics": 62,
+    "battle_passives": [
+      {
+        "code": "steadfast_guard",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "관우",
+    "aptitudes": {
+      "infantry": "SS",
+      "archer": "B",
+      "cavalry": "S",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "B"
+    },
+    "might": 97,
+    "intellect": 75,
+    "politics": 62,
     "battle_active": "flash",
-    "battle_passives": [ { "code": "fierce_assault", "tier": 3 } ] },
-
-  { "id": 4, "name": "장비",
-    "aptitudes": { "infantry": "S", "archer": "C", "cavalry": "S", "elephant": "C", "siege": "C", "naval": "D" },
-    "might": 98, "intellect": 30, "politics": 22,
+    "battle_passives": [
+      {
+        "code": "fierce_assault",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "name": "장비",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "C",
+      "cavalry": "S",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "D"
+    },
+    "might": 98,
+    "intellect": 30,
+    "politics": 22,
     "battle_active": "tiger_strike",
-    "battle_passives": [ { "code": "fierce_assault", "tier": 2 } ] },
-
-  { "id": 5, "name": "여포",
-    "aptitudes": { "infantry": "S", "archer": "A", "cavalry": "SS", "elephant": "C", "siege": "D", "naval": "D" },
-    "might": 100, "intellect": 26, "politics": 13,
+    "battle_passives": [
+      {
+        "code": "fierce_assault",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "여포",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "A",
+      "cavalry": "SS",
+      "elephant": "C",
+      "siege": "D",
+      "naval": "D"
+    },
+    "might": 100,
+    "intellect": 26,
+    "politics": 13,
     "battle_active": "one_man_army",
-    "battle_passives": [ { "code": "fierce_assault", "tier": 3 } ] },
-
-  { "id": 6, "name": "제갈량",
-    "aptitudes": { "infantry": "A", "archer": "A", "cavalry": "B", "elephant": "B", "siege": "S", "naval": "B" },
-    "might": 38, "intellect": 100, "politics": 95,
+    "battle_passives": [
+      {
+        "code": "fierce_assault",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "name": "제갈량",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "B",
+      "siege": "S",
+      "naval": "B"
+    },
+    "might": 38,
+    "intellect": 100,
+    "politics": 95,
     "battle_active": "iron_wall",
-    "battle_passives": [ { "code": "steadfast_guard", "tier": 3 } ] },
-
-  { "id": 7, "name": "주유",
-    "aptitudes": { "infantry": "B", "archer": "A", "cavalry": "C", "elephant": "C", "siege": "B", "naval": "SS" },
-    "might": 71, "intellect": 96, "politics": 77,
+    "battle_passives": [
+      {
+        "code": "steadfast_guard",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "name": "주유",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "A",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "SS"
+    },
+    "might": 71,
+    "intellect": 96,
+    "politics": 77,
     "battle_active": "barrage",
-    "battle_passives": [ { "code": "momentum", "tier": 2 } ] },
-
-  { "id": 8, "name": "하후돈",
-    "aptitudes": { "infantry": "A", "archer": "B", "cavalry": "A", "elephant": "C", "siege": "B", "naval": "D" },
-    "might": 90, "intellect": 60, "politics": 68,
+    "battle_passives": [
+      {
+        "code": "momentum",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "name": "하후돈",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "D"
+    },
+    "might": 90,
+    "intellect": 60,
+    "politics": 68,
     "battle_active": "breakthrough",
-    "battle_passives": [ { "code": "steadfast_guard", "tier": 2 } ] },
-
-  { "id": 9, "name": "조운",
-    "aptitudes": { "infantry": "A", "archer": "A", "cavalry": "SS", "elephant": "C", "siege": "C", "naval": "C" },
-    "might": 96, "intellect": 76, "politics": 65,
+    "battle_passives": [
+      {
+        "code": "steadfast_guard",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "name": "조운",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "SS",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 96,
+    "intellect": 76,
+    "politics": 65,
     "battle_active": "chain_strike",
-    "battle_passives": [ { "code": "pursuit", "tier": 3 } ] },
-
-  { "id": 10, "name": "감녕",
-    "aptitudes": { "infantry": "A", "archer": "A", "cavalry": "B", "elephant": "C", "siege": "B", "naval": "S" },
-    "might": 94, "intellect": 62, "politics": 32,
+    "battle_passives": [
+      {
+        "code": "pursuit",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "name": "감녕",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "S"
+    },
+    "might": 94,
+    "intellect": 62,
+    "politics": 32,
     "battle_active": "reap",
-    "battle_passives": [ { "code": "ambush", "tier": 3 } ] },
-
-  { "id": 11, "name": "황충",
-    "aptitudes": { "infantry": "A", "archer": "SS", "cavalry": "B", "elephant": "C", "siege": "B", "naval": "C" },
-    "might": 93, "intellect": 62, "politics": 48,
+    "battle_passives": [
+      {
+        "code": "ambush",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "name": "황충",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "SS",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 93,
+    "intellect": 62,
+    "politics": 48,
     "battle_active": "armor_break",
-    "battle_passives": [ { "code": "rough_ambush", "tier": 2 } ] },
-
-  { "id": 12, "name": "사마의",
-    "aptitudes": { "infantry": "A", "archer": "B", "cavalry": "A", "elephant": "C", "siege": "S", "naval": "C" },
-    "might": 63, "intellect": 98, "politics": 93,
+    "battle_passives": [
+      {
+        "code": "rough_ambush",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "name": "사마의",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "S",
+      "naval": "C"
+    },
+    "might": 63,
+    "intellect": 98,
+    "politics": 93,
     "battle_active": "hold_the_line",
-    "battle_passives": [ { "code": "siege_expert", "tier": 3 } ] }
+    "battle_passives": [
+      {
+        "code": "siege_expert",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "name": "장료",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "A",
+      "cavalry": "S",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 92,
+    "intellect": 78,
+    "politics": 58,
+    "battle_active": "breakthrough",
+    "battle_passives": [
+      {
+        "code": "momentum",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "name": "장합",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 89,
+    "intellect": 69,
+    "politics": 52,
+    "battle_active": "chain_strike",
+    "battle_passives": [
+      {
+        "code": "rough_ambush",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "name": "서황",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "C"
+    },
+    "might": 90,
+    "intellect": 68,
+    "politics": 55,
+    "battle_active": "armor_break",
+    "battle_passives": [
+      {
+        "code": "siege_helper",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "name": "악진",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 83,
+    "intellect": 55,
+    "politics": 40,
+    "battle_active": "heavy_blow",
+    "battle_passives": [
+      {
+        "code": "fierce_assault",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "name": "우금",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 79,
+    "intellect": 60,
+    "politics": 58,
+    "battle_active": "hold_the_line",
+    "battle_passives": [
+      {
+        "code": "drilled",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "name": "이전",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 78,
+    "intellect": 74,
+    "politics": 65,
+    "battle_active": "brace",
+    "battle_passives": [
+      {
+        "code": "teamwork",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "name": "전위",
+    "aptitudes": {
+      "infantry": "SS",
+      "archer": "C",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "D"
+    },
+    "might": 95,
+    "intellect": 35,
+    "politics": 20,
+    "battle_active": "tiger_strike",
+    "battle_passives": [
+      {
+        "code": "berserker",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "name": "허저",
+    "aptitudes": {
+      "infantry": "SS",
+      "archer": "C",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "D"
+    },
+    "might": 96,
+    "intellect": 36,
+    "politics": 18,
+    "battle_active": "heavy_blow",
+    "battle_passives": [
+      {
+        "code": "berserker",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "name": "방덕",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "B",
+      "cavalry": "S",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 94,
+    "intellect": 58,
+    "politics": 42,
+    "battle_active": "breakthrough",
+    "battle_passives": [
+      {
+        "code": "grit",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 22,
+    "name": "하후연",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "S",
+      "cavalry": "S",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 91,
+    "intellect": 60,
+    "politics": 48,
+    "battle_active": "flash",
+    "battle_passives": [
+      {
+        "code": "charge_drill",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "name": "조인",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "C"
+    },
+    "might": 86,
+    "intellect": 62,
+    "politics": 60,
+    "battle_active": "iron_wall",
+    "battle_passives": [
+      {
+        "code": "castle_defender",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 24,
+    "name": "조홍",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "C",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 80,
+    "intellect": 48,
+    "politics": 42,
+    "battle_active": "heavy_blow",
+    "battle_passives": [
+      {
+        "code": "charge_drill",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 25,
+    "name": "조비",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 68,
+    "intellect": 80,
+    "politics": 85,
+    "battle_passives": [
+      {
+        "code": "high_spirits",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 26,
+    "name": "조진",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 78,
+    "intellect": 64,
+    "politics": 60,
+    "battle_active": "brace",
+    "battle_passives": [
+      {
+        "code": "guard_drill",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 27,
+    "name": "조휴",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 77,
+    "intellect": 62,
+    "politics": 58,
+    "battle_active": "double_hit",
+    "battle_passives": [
+      {
+        "code": "chase_drill",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 28,
+    "name": "곽가",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 30,
+    "intellect": 98,
+    "politics": 80,
+    "battle_passives": [
+      {
+        "code": "momentum",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 29,
+    "name": "순욱",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 32,
+    "intellect": 95,
+    "politics": 98,
+    "battle_passives": [
+      {
+        "code": "steadfast_guard",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 30,
+    "name": "순유",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 33,
+    "intellect": 93,
+    "politics": 88,
+    "battle_passives": [
+      {
+        "code": "teamwork",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 31,
+    "name": "가후",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 40,
+    "intellect": 97,
+    "politics": 85,
+    "battle_passives": [
+      {
+        "code": "ambush",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 32,
+    "name": "정욱",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 55,
+    "intellect": 92,
+    "politics": 80,
+    "battle_passives": [
+      {
+        "code": "entrench",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 33,
+    "name": "유엽",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "S",
+      "naval": "C"
+    },
+    "might": 42,
+    "intellect": 90,
+    "politics": 82,
+    "battle_passives": [
+      {
+        "code": "siege_expert",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 34,
+    "name": "만총",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 62,
+    "intellect": 84,
+    "politics": 78,
+    "battle_passives": [
+      {
+        "code": "castle_defender",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 35,
+    "name": "학소",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "S",
+      "naval": "C"
+    },
+    "might": 72,
+    "intellect": 75,
+    "politics": 68,
+    "battle_active": "hold_the_line",
+    "battle_passives": [
+      {
+        "code": "castle_defender",
+        "tier": 3
+      },
+      {
+        "code": "entrench",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 36,
+    "name": "왕쌍",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "D"
+    },
+    "might": 84,
+    "intellect": 40,
+    "politics": 30,
+    "battle_active": "heavy_blow",
+    "battle_passives": [
+      {
+        "code": "grit",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 37,
+    "name": "등애",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "A",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "S",
+      "naval": "C"
+    },
+    "might": 87,
+    "intellect": 89,
+    "politics": 70,
+    "battle_active": "breakthrough",
+    "battle_passives": [
+      {
+        "code": "rough_ambush",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 38,
+    "name": "종회",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "C"
+    },
+    "might": 65,
+    "intellect": 90,
+    "politics": 72,
+    "battle_passives": [
+      {
+        "code": "siege_helper",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 39,
+    "name": "사마사",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 72,
+    "intellect": 88,
+    "politics": 80,
+    "battle_passives": [
+      {
+        "code": "resolve",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 40,
+    "name": "사마소",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 65,
+    "intellect": 86,
+    "politics": 82,
+    "battle_passives": [
+      {
+        "code": "teamwork",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 41,
+    "name": "마초",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "SS",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "D"
+    },
+    "might": 97,
+    "intellect": 44,
+    "politics": 26,
+    "battle_active": "chain_strike",
+    "battle_passives": [
+      {
+        "code": "charge_drill",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 42,
+    "name": "위연",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 92,
+    "intellect": 69,
+    "politics": 40,
+    "battle_active": "breakthrough",
+    "battle_passives": [
+      {
+        "code": "war_cry",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 43,
+    "name": "강유",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "A",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "C"
+    },
+    "might": 89,
+    "intellect": 90,
+    "politics": 62,
+    "battle_active": "flash",
+    "battle_passives": [
+      {
+        "code": "momentum",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 44,
+    "name": "마대",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 82,
+    "intellect": 54,
+    "politics": 44,
+    "battle_active": "double_hit",
+    "battle_passives": [
+      {
+        "code": "chase_drill",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 45,
+    "name": "왕평",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 76,
+    "intellect": 72,
+    "politics": 60,
+    "battle_active": "brace",
+    "battle_passives": [
+      {
+        "code": "mountain_guard",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 46,
+    "name": "요화",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 74,
+    "intellect": 58,
+    "politics": 50,
+    "battle_passives": [
+      {
+        "code": "endurance",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 47,
+    "name": "방통",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "C"
+    },
+    "might": 34,
+    "intellect": 97,
+    "politics": 85,
+    "battle_passives": [
+      {
+        "code": "ambush",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 48,
+    "name": "법정",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 38,
+    "intellect": 94,
+    "politics": 80,
+    "battle_passives": [
+      {
+        "code": "momentum",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 49,
+    "name": "마량",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 30,
+    "intellect": 87,
+    "politics": 88,
+    "battle_passives": [
+      {
+        "code": "teamwork",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 50,
+    "name": "마속",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 52,
+    "intellect": 85,
+    "politics": 60,
+    "battle_passives": [
+      {
+        "code": "rough_ambush",
+        "tier": 1
+      }
+    ]
+  },
+  {
+    "id": 51,
+    "name": "서서",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 60,
+    "intellect": 92,
+    "politics": 78,
+    "battle_passives": [
+      {
+        "code": "steadfast_guard",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 52,
+    "name": "관평",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 82,
+    "intellect": 62,
+    "politics": 58,
+    "battle_active": "heavy_blow",
+    "battle_passives": [
+      {
+        "code": "drilled",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 53,
+    "name": "관흥",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 84,
+    "intellect": 60,
+    "politics": 50,
+    "battle_active": "double_hit",
+    "battle_passives": [
+      {
+        "code": "charge_drill",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 54,
+    "name": "장포",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "C",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 85,
+    "intellect": 52,
+    "politics": 40,
+    "battle_active": "heavy_blow",
+    "battle_passives": [
+      {
+        "code": "war_cry",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 55,
+    "name": "엄안",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "S",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 81,
+    "intellect": 66,
+    "politics": 58,
+    "battle_active": "armor_break",
+    "battle_passives": [
+      {
+        "code": "take_cover",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 56,
+    "name": "이엄",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 75,
+    "intellect": 74,
+    "politics": 70,
+    "battle_passives": [
+      {
+        "code": "castle_defender",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 57,
+    "name": "맹획",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "C",
+      "cavalry": "B",
+      "elephant": "S",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 87,
+    "intellect": 42,
+    "politics": 36,
+    "battle_active": "tiger_strike",
+    "battle_passives": [
+      {
+        "code": "berserker",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 58,
+    "name": "축융",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "A",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 80,
+    "intellect": 45,
+    "politics": 38,
+    "battle_active": "reap",
+    "battle_passives": [
+      {
+        "code": "dodge",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 59,
+    "name": "진도",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 80,
+    "intellect": 58,
+    "politics": 50,
+    "battle_active": "brace",
+    "battle_passives": [
+      {
+        "code": "guard_drill",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 60,
+    "name": "오의",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 72,
+    "intellect": 62,
+    "politics": 60,
+    "battle_passives": [
+      {
+        "code": "drilled",
+        "tier": 1
+      }
+    ]
+  },
+  {
+    "id": 61,
+    "name": "손견",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "A",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 91,
+    "intellect": 75,
+    "politics": 70,
+    "battle_active": "tiger_strike",
+    "battle_passives": [
+      {
+        "code": "war_cry",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 62,
+    "name": "손책",
+    "aptitudes": {
+      "infantry": "SS",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 94,
+    "intellect": 70,
+    "politics": 62,
+    "battle_active": "one_man_army",
+    "battle_passives": [
+      {
+        "code": "momentum",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 63,
+    "name": "손권",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 67,
+    "intellect": 80,
+    "politics": 89,
+    "battle_passives": [
+      {
+        "code": "high_spirits",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 64,
+    "name": "태사자",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "S",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "B"
+    },
+    "might": 93,
+    "intellect": 66,
+    "politics": 58,
+    "battle_active": "barrage",
+    "battle_passives": [
+      {
+        "code": "fierce_assault",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 65,
+    "name": "정보",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 78,
+    "intellect": 70,
+    "politics": 68,
+    "battle_active": "brace",
+    "battle_passives": [
+      {
+        "code": "seasoned",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 66,
+    "name": "황개",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "S"
+    },
+    "might": 83,
+    "intellect": 64,
+    "politics": 58,
+    "battle_active": "heavy_blow",
+    "battle_passives": [
+      {
+        "code": "plunder",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 67,
+    "name": "한당",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "A"
+    },
+    "might": 80,
+    "intellect": 58,
+    "politics": 50,
+    "battle_active": "double_hit",
+    "battle_passives": [
+      {
+        "code": "endurance",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 68,
+    "name": "주태",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "A"
+    },
+    "might": 90,
+    "intellect": 48,
+    "politics": 40,
+    "battle_active": "second_wind",
+    "battle_passives": [
+      {
+        "code": "grit",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 69,
+    "name": "능통",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "A"
+    },
+    "might": 84,
+    "intellect": 56,
+    "politics": 48,
+    "battle_active": "double_hit",
+    "battle_passives": [
+      {
+        "code": "war_cry",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 70,
+    "name": "여몽",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "S"
+    },
+    "might": 86,
+    "intellect": 90,
+    "politics": 78,
+    "battle_active": "armor_break",
+    "battle_passives": [
+      {
+        "code": "steadfast_guard",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 71,
+    "name": "육손",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "S"
+    },
+    "might": 70,
+    "intellect": 97,
+    "politics": 88,
+    "battle_active": "iron_wall",
+    "battle_passives": [
+      {
+        "code": "momentum",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 72,
+    "name": "육항",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "A"
+    },
+    "might": 68,
+    "intellect": 88,
+    "politics": 80,
+    "battle_active": "hold_the_line",
+    "battle_passives": [
+      {
+        "code": "castle_defender",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 73,
+    "name": "노숙",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 56,
+    "intellect": 92,
+    "politics": 90,
+    "battle_passives": [
+      {
+        "code": "teamwork",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 74,
+    "name": "장소",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "B"
+    },
+    "might": 20,
+    "intellect": 84,
+    "politics": 95
+  },
+  {
+    "id": 75,
+    "name": "제갈근",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "B"
+    },
+    "might": 32,
+    "intellect": 86,
+    "politics": 88,
+    "battle_passives": [
+      {
+        "code": "teamwork",
+        "tier": 1
+      }
+    ]
+  },
+  {
+    "id": 76,
+    "name": "정봉",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "A"
+    },
+    "might": 82,
+    "intellect": 68,
+    "politics": 55,
+    "battle_active": "reap",
+    "battle_passives": [
+      {
+        "code": "dodge",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 77,
+    "name": "서성",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 80,
+    "intellect": 72,
+    "politics": 62,
+    "battle_active": "brace",
+    "battle_passives": [
+      {
+        "code": "castle_defender",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 78,
+    "name": "주환",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 78,
+    "intellect": 74,
+    "politics": 60,
+    "battle_active": "heavy_blow",
+    "battle_passives": [
+      {
+        "code": "resolve",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 79,
+    "name": "반장",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "A"
+    },
+    "might": 78,
+    "intellect": 50,
+    "politics": 42,
+    "battle_active": "reap",
+    "battle_passives": [
+      {
+        "code": "plunder",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 80,
+    "name": "하제",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 74,
+    "intellect": 70,
+    "politics": 64,
+    "battle_passives": [
+      {
+        "code": "endurance",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 81,
+    "name": "동탁",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "S",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "D"
+    },
+    "might": 87,
+    "intellect": 52,
+    "politics": 28,
+    "battle_active": "heavy_blow",
+    "battle_passives": [
+      {
+        "code": "plunder",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 82,
+    "name": "화웅",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "D"
+    },
+    "might": 88,
+    "intellect": 40,
+    "politics": 30,
+    "battle_active": "heavy_blow",
+    "battle_passives": [
+      {
+        "code": "war_cry",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 83,
+    "name": "이각",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "D"
+    },
+    "might": 74,
+    "intellect": 42,
+    "politics": 26,
+    "battle_passives": [
+      {
+        "code": "plunder",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 84,
+    "name": "곽사",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "D"
+    },
+    "might": 73,
+    "intellect": 40,
+    "politics": 24,
+    "battle_passives": [
+      {
+        "code": "plunder",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 85,
+    "name": "마등",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "S",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "D"
+    },
+    "might": 88,
+    "intellect": 52,
+    "politics": 50,
+    "battle_active": "breakthrough",
+    "battle_passives": [
+      {
+        "code": "charge_drill",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 86,
+    "name": "한수",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "D"
+    },
+    "might": 70,
+    "intellect": 72,
+    "politics": 60,
+    "battle_passives": [
+      {
+        "code": "teamwork",
+        "tier": 1
+      }
+    ]
+  },
+  {
+    "id": 87,
+    "name": "원소",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 70,
+    "intellect": 72,
+    "politics": 78,
+    "battle_passives": [
+      {
+        "code": "high_spirits",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 88,
+    "name": "안량",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 93,
+    "intellect": 42,
+    "politics": 30,
+    "battle_active": "heavy_blow",
+    "battle_passives": [
+      {
+        "code": "fierce_assault",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 89,
+    "name": "문추",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 92,
+    "intellect": 40,
+    "politics": 28,
+    "battle_active": "double_hit",
+    "battle_passives": [
+      {
+        "code": "fierce_assault",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 90,
+    "name": "전풍",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 30,
+    "intellect": 91,
+    "politics": 80,
+    "battle_passives": [
+      {
+        "code": "entrench",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 91,
+    "name": "저수",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 32,
+    "intellect": 89,
+    "politics": 78,
+    "battle_passives": [
+      {
+        "code": "steadfast_guard",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 92,
+    "name": "원술",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 52,
+    "intellect": 50,
+    "politics": 60,
+    "battle_passives": [
+      {
+        "code": "plunder",
+        "tier": 1
+      }
+    ]
+  },
+  {
+    "id": 93,
+    "name": "기령",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 82,
+    "intellect": 50,
+    "politics": 42,
+    "battle_active": "heavy_blow",
+    "battle_passives": [
+      {
+        "code": "drilled",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 94,
+    "name": "공손찬",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "S",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 84,
+    "intellect": 58,
+    "politics": 50,
+    "battle_active": "chain_strike",
+    "battle_passives": [
+      {
+        "code": "charge_drill",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 95,
+    "name": "유표",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 55,
+    "intellect": 70,
+    "politics": 82,
+    "battle_passives": [
+      {
+        "code": "castle_defender",
+        "tier": 1
+      }
+    ]
+  },
+  {
+    "id": 96,
+    "name": "황조",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 68,
+    "intellect": 50,
+    "politics": 44,
+    "battle_passives": [
+      {
+        "code": "take_cover",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 97,
+    "name": "문빙",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 80,
+    "intellect": 68,
+    "politics": 60,
+    "battle_active": "brace",
+    "battle_passives": [
+      {
+        "code": "castle_defender",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 98,
+    "name": "유장",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 30,
+    "intellect": 40,
+    "politics": 55
+  },
+  {
+    "id": 99,
+    "name": "장임",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 84,
+    "intellect": 76,
+    "politics": 58,
+    "battle_active": "flash",
+    "battle_passives": [
+      {
+        "code": "ambush",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 100,
+    "name": "장각",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 40,
+    "intellect": 90,
+    "politics": 72,
+    "battle_active": "rally",
+    "battle_passives": [
+      {
+        "code": "war_cry",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 101,
+    "name": "장보",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 45,
+    "intellect": 78,
+    "politics": 58,
+    "battle_passives": [
+      {
+        "code": "war_cry",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 102,
+    "name": "장량",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 50,
+    "intellect": 72,
+    "politics": 50,
+    "battle_passives": [
+      {
+        "code": "berserker",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 103,
+    "name": "진궁",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "C"
+    },
+    "might": 48,
+    "intellect": 92,
+    "politics": 76,
+    "battle_passives": [
+      {
+        "code": "entrench",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 104,
+    "name": "고순",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 88,
+    "intellect": 60,
+    "politics": 44,
+    "battle_active": "breakthrough",
+    "battle_passives": [
+      {
+        "code": "drilled",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 105,
+    "name": "도겸",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "B"
+    },
+    "might": 48,
+    "intellect": 62,
+    "politics": 72
+  },
+  {
+    "id": 106,
+    "name": "공융",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 28,
+    "intellect": 70,
+    "politics": 80
+  },
+  {
+    "id": 107,
+    "name": "왕윤",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 22,
+    "intellect": 80,
+    "politics": 86
+  },
+  {
+    "id": 108,
+    "name": "유요",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "B"
+    },
+    "might": 55,
+    "intellect": 58,
+    "politics": 60
+  },
+  {
+    "id": 109,
+    "name": "장로",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 50,
+    "intellect": 70,
+    "politics": 74,
+    "battle_passives": [
+      {
+        "code": "resolve",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 110,
+    "name": "맹달",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 74,
+    "intellect": 72,
+    "politics": 58,
+    "battle_passives": [
+      {
+        "code": "dodge",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 111,
+    "name": "심배",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "C"
+    },
+    "might": 52,
+    "intellect": 86,
+    "politics": 70,
+    "battle_passives": [
+      {
+        "code": "castle_defender",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 112,
+    "name": "곽도",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 35,
+    "intellect": 78,
+    "politics": 62
+  },
+  {
+    "id": 201,
+    "name": "주몽",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "SS",
+      "cavalry": "S",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 90,
+    "intellect": 80,
+    "politics": 85,
+    "battle_active": "flash",
+    "battle_passives": [
+      {
+        "code": "charge_drill",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 202,
+    "name": "광개토대왕",
+    "aptitudes": {
+      "infantry": "SS",
+      "archer": "A",
+      "cavalry": "SS",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "B"
+    },
+    "might": 95,
+    "intellect": 85,
+    "politics": 90,
+    "battle_active": "one_man_army",
+    "battle_passives": [
+      {
+        "code": "momentum",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 203,
+    "name": "장수왕",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "B"
+    },
+    "might": 75,
+    "intellect": 88,
+    "politics": 95,
+    "battle_passives": [
+      {
+        "code": "steadfast_guard",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 204,
+    "name": "을지문덕",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "B"
+    },
+    "might": 82,
+    "intellect": 96,
+    "politics": 85,
+    "battle_active": "iron_wall",
+    "battle_passives": [
+      {
+        "code": "ambush",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 205,
+    "name": "연개소문",
+    "aptitudes": {
+      "infantry": "SS",
+      "archer": "B",
+      "cavalry": "S",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "B"
+    },
+    "might": 94,
+    "intellect": 82,
+    "politics": 70,
+    "battle_active": "tiger_strike",
+    "battle_passives": [
+      {
+        "code": "war_cry",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 206,
+    "name": "양만춘",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "S",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "S",
+      "naval": "C"
+    },
+    "might": 85,
+    "intellect": 80,
+    "politics": 68,
+    "battle_active": "hold_the_line",
+    "battle_passives": [
+      {
+        "code": "castle_defender",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 207,
+    "name": "온달",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 90,
+    "intellect": 55,
+    "politics": 45,
+    "battle_active": "heavy_blow",
+    "battle_passives": [
+      {
+        "code": "grit",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 208,
+    "name": "명림답부",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 78,
+    "intellect": 84,
+    "politics": 76,
+    "battle_passives": [
+      {
+        "code": "ambush",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 209,
+    "name": "을파소",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 35,
+    "intellect": 88,
+    "politics": 96
+  },
+  {
+    "id": 210,
+    "name": "대무신왕",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 88,
+    "intellect": 72,
+    "politics": 74,
+    "battle_active": "breakthrough",
+    "battle_passives": [
+      {
+        "code": "war_cry",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 211,
+    "name": "온조왕",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "B"
+    },
+    "might": 78,
+    "intellect": 75,
+    "politics": 85,
+    "battle_passives": [
+      {
+        "code": "high_spirits",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 212,
+    "name": "근초고왕",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "A",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 88,
+    "intellect": 82,
+    "politics": 90,
+    "battle_active": "chain_strike",
+    "battle_passives": [
+      {
+        "code": "momentum",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 213,
+    "name": "계백",
+    "aptitudes": {
+      "infantry": "SS",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 93,
+    "intellect": 75,
+    "politics": 60,
+    "battle_active": "one_man_army",
+    "battle_passives": [
+      {
+        "code": "last_stand",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 214,
+    "name": "흑치상지",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "A",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "B"
+    },
+    "might": 90,
+    "intellect": 70,
+    "politics": 58,
+    "battle_active": "breakthrough",
+    "battle_passives": [
+      {
+        "code": "grit",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 215,
+    "name": "성왕",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "B"
+    },
+    "might": 70,
+    "intellect": 80,
+    "politics": 88,
+    "battle_passives": [
+      {
+        "code": "teamwork",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 216,
+    "name": "무령왕",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 74,
+    "intellect": 78,
+    "politics": 86,
+    "battle_passives": [
+      {
+        "code": "castle_defender",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 217,
+    "name": "의자왕",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "B"
+    },
+    "might": 60,
+    "intellect": 65,
+    "politics": 55
+  },
+  {
+    "id": 218,
+    "name": "복신",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "B"
+    },
+    "might": 76,
+    "intellect": 68,
+    "politics": 50,
+    "battle_passives": [
+      {
+        "code": "endurance",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 219,
+    "name": "도침",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 58,
+    "intellect": 60,
+    "politics": 48,
+    "battle_passives": [
+      {
+        "code": "war_cry",
+        "tier": 1
+      }
+    ]
+  },
+  {
+    "id": 220,
+    "name": "부여풍",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "B"
+    },
+    "might": 55,
+    "intellect": 62,
+    "politics": 58
+  },
+  {
+    "id": 221,
+    "name": "김유신",
+    "aptitudes": {
+      "infantry": "SS",
+      "archer": "A",
+      "cavalry": "S",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "B"
+    },
+    "might": 92,
+    "intellect": 90,
+    "politics": 80,
+    "battle_active": "flash",
+    "battle_passives": [
+      {
+        "code": "momentum",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 222,
+    "name": "김춘추",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "B"
+    },
+    "might": 55,
+    "intellect": 85,
+    "politics": 97,
+    "battle_passives": [
+      {
+        "code": "teamwork",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 223,
+    "name": "문무왕",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 78,
+    "intellect": 82,
+    "politics": 90,
+    "battle_passives": [
+      {
+        "code": "resolve",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 224,
+    "name": "관창",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 80,
+    "intellect": 40,
+    "politics": 30,
+    "battle_active": "double_hit",
+    "battle_passives": [
+      {
+        "code": "berserker",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 225,
+    "name": "사다함",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 82,
+    "intellect": 55,
+    "politics": 42,
+    "battle_active": "double_hit",
+    "battle_passives": [
+      {
+        "code": "war_cry",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 226,
+    "name": "이사부",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "S"
+    },
+    "might": 86,
+    "intellect": 78,
+    "politics": 72,
+    "battle_active": "breakthrough",
+    "battle_passives": [
+      {
+        "code": "plunder",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 227,
+    "name": "거칠부",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "B"
+    },
+    "might": 76,
+    "intellect": 74,
+    "politics": 70,
+    "battle_passives": [
+      {
+        "code": "drilled",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 228,
+    "name": "알천",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 84,
+    "intellect": 66,
+    "politics": 62,
+    "battle_active": "brace",
+    "battle_passives": [
+      {
+        "code": "guard_drill",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 229,
+    "name": "김품일",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 74,
+    "intellect": 60,
+    "politics": 58,
+    "battle_passives": [
+      {
+        "code": "drilled",
+        "tier": 1
+      }
+    ]
+  },
+  {
+    "id": 230,
+    "name": "선덕여왕",
+    "aptitudes": {
+      "infantry": "C",
+      "archer": "C",
+      "cavalry": "C",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 30,
+    "intellect": 86,
+    "politics": 92,
+    "battle_passives": [
+      {
+        "code": "high_spirits",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 301,
+    "name": "오다 노부나가",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "SS",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "A",
+      "naval": "B"
+    },
+    "might": 88,
+    "intellect": 92,
+    "politics": 90,
+    "battle_active": "barrage",
+    "battle_passives": [
+      {
+        "code": "fierce_assault",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 302,
+    "name": "도요토미 히데요시",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "SS",
+      "naval": "B"
+    },
+    "might": 70,
+    "intellect": 94,
+    "politics": 92,
+    "battle_passives": [
+      {
+        "code": "siege_expert",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 303,
+    "name": "도쿠가와 이에야스",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "B"
+    },
+    "might": 75,
+    "intellect": 88,
+    "politics": 96,
+    "battle_active": "second_wind",
+    "battle_passives": [
+      {
+        "code": "endurance",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 304,
+    "name": "다케다 신겐",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "B",
+      "cavalry": "SS",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 85,
+    "intellect": 92,
+    "politics": 86,
+    "battle_active": "chain_strike",
+    "battle_passives": [
+      {
+        "code": "charge_drill",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 305,
+    "name": "우에스기 겐신",
+    "aptitudes": {
+      "infantry": "SS",
+      "archer": "B",
+      "cavalry": "S",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 96,
+    "intellect": 84,
+    "politics": 68,
+    "battle_active": "one_man_army",
+    "battle_passives": [
+      {
+        "code": "war_cry",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 306,
+    "name": "다테 마사무네",
+    "aptitudes": {
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "B"
+    },
+    "might": 84,
+    "intellect": 80,
+    "politics": 78,
+    "battle_active": "flash",
+    "battle_passives": [
+      {
+        "code": "momentum",
+        "tier": 2
+      }
+    ]
+  },
+  {
+    "id": 307,
+    "name": "사나다 유키무라",
+    "aptitudes": {
+      "infantry": "SS",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "C"
+    },
+    "might": 94,
+    "intellect": 78,
+    "politics": 52,
+    "battle_active": "breakthrough",
+    "battle_passives": [
+      {
+        "code": "last_stand",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 308,
+    "name": "혼다 다다카쓰",
+    "aptitudes": {
+      "infantry": "SS",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "C",
+      "naval": "C"
+    },
+    "might": 97,
+    "intellect": 60,
+    "politics": 48,
+    "battle_active": "tiger_strike",
+    "battle_passives": [
+      {
+        "code": "grit",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 309,
+    "name": "모리 모토나리",
+    "aptitudes": {
+      "infantry": "B",
+      "archer": "A",
+      "cavalry": "B",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "S"
+    },
+    "might": 68,
+    "intellect": 95,
+    "politics": 88,
+    "battle_passives": [
+      {
+        "code": "ambush",
+        "tier": 3
+      }
+    ]
+  },
+  {
+    "id": 310,
+    "name": "시마즈 요시히로",
+    "aptitudes": {
+      "infantry": "S",
+      "archer": "A",
+      "cavalry": "A",
+      "elephant": "C",
+      "siege": "B",
+      "naval": "A"
+    },
+    "might": 93,
+    "intellect": 80,
+    "politics": 60,
+    "battle_active": "reap",
+    "battle_passives": [
+      {
+        "code": "ambush",
+        "tier": 2
+      }
+    ]
+  }
 ]
