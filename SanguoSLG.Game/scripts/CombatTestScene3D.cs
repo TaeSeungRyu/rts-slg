@@ -137,6 +137,11 @@ public partial class CombatTestScene3D : Node3D
                 rounds++;
                 BeginTurn();
                 FinalizeTurn();
+                if (_castle is { } rc)
+                {
+                    GD.Print($"[round] case {_caseIndex} r{rounds} 성벽{rc.WallCurrent} 수비{rc.Troops} | " +
+                        string.Join(" ", _units.Select(u => $"{Tag(u)}@{u.Field.Position.Q},{u.Field.Position.R}={u.Pool.Active}")));
+                }
             };
         }
     }
