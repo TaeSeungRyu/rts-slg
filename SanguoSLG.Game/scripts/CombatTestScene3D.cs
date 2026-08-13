@@ -63,6 +63,7 @@ public partial class CombatTestScene3D : Node3D
     private int _castleOwner;
     private Label3D _castleLabel = null!;
     private (SiegeOutcome Outcome, List<int> BesiegerIds)? _pendingSiege;
+    private readonly Dictionary<int, int> _lastSiegeCounter = new();
     private List<CombatUnit> _units = new();
     private readonly List<int> _orderedIds = new();
     private readonly Dictionary<int, UnitController3D> _tokens = new();
@@ -520,8 +521,10 @@ public partial class CombatTestScene3D : Node3D
             RefreshLabel(u);
         }
 
-        AddResultRow(turn);
+        // 공성 반영을 표보다 먼저 — 반격 피해가 그 진행의 행(잔여)에 바로 실린다.
+        _lastSiegeCounter.Clear();
         ApplySiege();
+        AddResultRow(turn);
         _pending = null;
     }
 
@@ -810,7 +813,13 @@ public partial class CombatTestScene3D : Node3D
         for (var i = 0; i < s.BesiegerIds.Count; i++)
         {
             var idx = _units.FindIndex(u => u.Id.Value == s.BesiegerIds[i]);
-            if (idx >= 0 && o.CounterDamage[i] > 0)
+            if (idx < 0)
+            {
+                continue;
+            }
+
+            _lastSiegeCounter[s.BesiegerIds[i]] = o.CounterDamage[i];
+            if (o.CounterDamage[i] > 0)
             {
                 _units[idx] = _units[idx] with { Pool = _units[idx].Pool.TakeDamage(o.CounterDamage[i], 70) };
                 RefreshLabel(_units[idx]);
@@ -969,7 +978,15 @@ public partial class CombatTestScene3D : Node3D
                 lines.Add($"[{TerrainKo(_terrainMap.TerrainAt(u.Field.Position))}] 공{dAtk} 방{dDf}");
             }
 
-            lines.Add(combat ? $"준 −{dealt}" : "없음");
+            if (_lastSiegeCounter.TryGetValue(id, out var counter))
+            {
+                lines.Add(counter > 0 ? $"공성 (반격 −{counter})" : "공성");
+            }
+            else
+            {
+                lines.Add(combat ? $"준 −{dealt}" : "없음");
+            }
+
             lines.Add($"잔여 {u.Pool.Active}/{u.MaxTroops}");
 
             // 오케스트레이터가 보고한 발동 스킬(게이지가 한 진행에 차서 발동해도 확실히 잡힌다).
