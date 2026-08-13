@@ -164,6 +164,13 @@ public sealed class MovementSimulator
                             continue;
                         }
 
+                        // 남의 성 타일로는 못 들어간다 — 경로는 목표 칸을 허용하지만(입성용),
+                        // 목표 성이 적 소유(함락 등)면 그 앞에서 대기한다.
+                        if (castles is not null && castles.Any(cs => cs.Position == w.Path.Peek()))
+                        {
+                            continue;
+                        }
+
                         var step = StepOrDetour(w, w.Path.Peek(), goalTile, occupied, occupantOwner);
                         if (step != w.Path.Peek())
                         {

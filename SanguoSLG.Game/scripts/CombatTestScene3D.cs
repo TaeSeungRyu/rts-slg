@@ -318,6 +318,16 @@ public partial class CombatTestScene3D : Node3D
             },
             CastleAt: new HexCoord(13, 4), CastleWall: 3000, CastleTroops: 4000,
             SallyAtRound: 3, SallyTarget: new HexCoord(10, 4)),
+        new CaseDef("함락 — 복귀 중단",
+            "얇은 성(성벽 500·수비 1500)이 도검(A1)에게 빠르게 함락·점거된다. 멀리서 행군으로 복귀하던 "
+            + "궁병(E8)은 성이 함락되면 다음 진행에 멈춤(전진 대형·목표 해제)으로 전환되어 그 자리에 선다 — "
+            + "적 소유가 된 성 타일로는 들어가지 않는다.",
+            () => new[]
+            {
+                Unit(1, 1, new HexCoord(10, 3), "swordsman", new HexCoord(12, 4), UnitMode.Attack, "steadfast_guard", "iron_wall", might: 78),
+                Unit(8, 2, new HexCoord(2, 6), "archer", new HexCoord(13, 4), UnitMode.March, "steadfast_guard", "regroup", troops: 5000),
+            },
+            CastleAt: new HexCoord(13, 4), CastleWall: 500, CastleTroops: 1500),
     };
 
     // 양 진영 혼성군(각 11기). 기병(속도3)은 양 날개 최전열, 도검(2)·상병(2)은 주력 전열,
@@ -383,6 +393,22 @@ public partial class CombatTestScene3D : Node3D
     private void BeginTurn()
     {
         _round++;
+
+        // 아군 성으로 행군 복귀 중 성이 함락됐으면(소유가 바뀜) 다음 진행에 멈춘다
+        // (전진 대형 + 목표 해제). 공격모드 부대는 그대로 둔다 — 그쪽은 점거된 성을 친다.
+        if (_castle is not null)
+        {
+            for (var i = 0; i < _units.Count; i++)
+            {
+                var u = _units[i];
+                if (u.Field.Mode == UnitMode.March && u.Field.Target == _castlePos
+                    && u.Field.Owner.Value != _castleOwner)
+                {
+                    _units[i] = u with { Field = u.Field with { Mode = UnitMode.Advance, Target = null } };
+                    _noteLabel.Text = $"{Tag(u)} 복귀 중단 — 성 함락, 멈춤";
+                }
+            }
+        }
 
         // 수비대 출격 — 이동과 같은 단계: 진행 계산 전에 성 타일에 올라서고, 이번 진행의
         // 이동력으로 걸어 나온다. 병력은 입성 때 그대로(성 수비가 그보다 줄었으면 남은 만큼만).

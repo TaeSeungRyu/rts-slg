@@ -562,6 +562,22 @@ public class MovementSimulatorTests
     }
 
     [Fact]
+    public void 성타일_남의성이_목표여도_성타일위로는_들어가지못한다()
+    {
+        // 함락 등으로 목표 성이 적 소유가 되면 입성이 아니다 — 성 타일 앞에서 대기한다
+        // (경로는 목표 칸을 허용하므로 이 가드가 없으면 이동 불가 지형 위로 올라간다).
+        var city = new City(new CityId(9), "성", new HexCoord(5, 0), new FactionId(2), 0);
+        var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, -2, 2), [], [city]));
+        var site = new SiegeSite(new HexCoord(5, 0), new FactionId(2));
+        var u = Unit(1, owner: 1, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(5, 0), speed: 2);
+
+        var result = sim.Advance(new[] { u }, castles: new[] { site });
+
+        Assert.Empty(result.EnteredCastle);
+        Assert.Equal(new HexCoord(4, 0), result.Units.Single().Position); // 성 앞 인접에서 대기
+    }
+
+    [Fact]
     public void 목표없는유닛끼리는_아무일도없이_전원도착으로끝난다()
     {
         var a1 = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack, target: null);
