@@ -30,7 +30,8 @@ public sealed class AdvanceOrchestrator
         _terrainAt = terrainAt ?? (_ => TerrainType.Plains);
     }
 
-    public AdvanceTurn Run(IReadOnlyList<CombatUnit> units, int maxDays = 7)
+    public AdvanceTurn Run(IReadOnlyList<CombatUnit> units, int maxDays = 7,
+        IReadOnlyList<SiegeSite>? castles = null)
     {
         // 병력 0(전멸) 부대는 진행에서 빠진다 — 이동·전투·점유·표적에서 모두 제외한다.
         units = units.Where(u => u.Pool.Active > 0).ToList();
@@ -40,7 +41,7 @@ public sealed class AdvanceOrchestrator
         var dazedAtStart = units.Where(IsDazed).Select(u => u.Id).ToHashSet();
 
         // 1) 이동 — 진행 정지까지. 걸린 상태(혼란=행동불가, 수공=이동−1)를 이동 입력에 반영한다.
-        var move = _movement.Advance(units.Select(MovementField).ToList(), maxDays);
+        var move = _movement.Advance(units.Select(MovementField).ToList(), maxDays, castles);
         var moved = move.Units.ToDictionary(f => f.Id);
 
         // 2) 위치만 갱신(임시 이동 스탯은 버림) + 경과일만큼 발동 상태 진행(야전 가정).

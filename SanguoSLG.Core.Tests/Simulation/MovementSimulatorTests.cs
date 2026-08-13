@@ -18,9 +18,10 @@ public class MovementSimulatorTests
 
     private static FieldUnit Unit(
         int id, int owner, HexCoord pos, UnitMode mode, HexCoord? target,
-        int speed = 2, int detection = 2, int attackRange = 1, int commandOrder = 0) =>
+        int speed = 2, int detection = 2, int attackRange = 1, int commandOrder = 0,
+        int rangeCastle = 1) =>
         new(new UnitId(id), new FactionId(owner), pos, speed, detection, attackRange,
-            MovementDomain.Land, mode, target, commandOrder);
+            MovementDomain.Land, mode, target, commandOrder, rangeCastle);
 
     // ── 케이스 1 — 공격모드 조우: 탐지 → 추격 → 사거리 정지 ──
 
@@ -373,6 +374,62 @@ public class MovementSimulatorTests
         var moverFinal = result.Units.Single(u => u.Id.Value == 1).Position;
         Assert.NotEqual(new HexCoord(2, 2), moverFinal);      // 제자리에 갇히지 않았다
         Assert.Equal(new HexCoord(3, 1), moverFinal);          // 같은 거리 옆칸으로 측면 우회
+    }
+
+    // ── 성 접적 정지(design-movement) — 야전 접적과 같은 규칙이 성에도 적용된다 ──
+
+    [Fact]
+    public void 성접적_먼저도착한부대가_공성사거리에들면_그날로진행이끊기고_뒤처진부대는남는다()
+    {
+        // 기병(속도3)이 3일차에 성 인접(7,0) 도착 → 그 날로 진행 중단. 도검(속도2)은 아직 못 도착.
+        var castle = new SiegeSite(new HexCoord(8, 0), new FactionId(2));
+        var cav = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack, target: new HexCoord(7, 0), speed: 3);
+        var foot = Unit(2, owner: 1, new HexCoord(0, -1), UnitMode.Attack, target: new HexCoord(7, -1), speed: 2);
+
+        var result = PlainField().Advance(new[] { cav, foot }, castles: new[] { castle });
+
+        Assert.Equal(StopReason.CastleInRange, result.Reason);
+        Assert.Equal(3, result.Days);
+        Assert.Equal(new HexCoord(7, 0), result.Units.Single(u => u.Id.Value == 1).Position);
+        Assert.NotEqual(new HexCoord(7, -1), result.Units.Single(u => u.Id.Value == 2).Position);
+    }
+
+    [Fact]
+    public void 성접적_공성사거리2부대는_거리2에서_더다가가지않는다()
+    {
+        // 투석기(공성 사거리 2)는 성에서 거리 2 칸에 든 순간 홀드 — 반격 사거리 1 밖을 유지한다.
+        var castle = new SiegeSite(new HexCoord(8, 0), new FactionId(2));
+        var cat = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack, target: new HexCoord(7, 0),
+            speed: 2, rangeCastle: 2);
+
+        var result = PlainField().Advance(new[] { cat }, castles: new[] { castle });
+
+        Assert.Equal(StopReason.CastleInRange, result.Reason);
+        Assert.Equal(2, result.Units.Single().Position.Distance(castle.Position));
+    }
+
+    [Fact]
+    public void 성접적_행군모드는_성옆을지나가도_멈추지않는다()
+    {
+        var castle = new SiegeSite(new HexCoord(4, 1), new FactionId(2));
+        var u = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.March, target: new HexCoord(8, 0), speed: 2);
+
+        var result = PlainField().Advance(new[] { u }, castles: new[] { castle });
+
+        Assert.Equal(StopReason.AllArrived, result.Reason);
+        Assert.Equal(new HexCoord(8, 0), result.Units.Single().Position);
+    }
+
+    [Fact]
+    public void 성접적_아군성은_정지시키지않는다()
+    {
+        var castle = new SiegeSite(new HexCoord(4, 1), new FactionId(1));
+        var u = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack, target: new HexCoord(8, 0), speed: 2);
+
+        var result = PlainField().Advance(new[] { u }, castles: new[] { castle });
+
+        Assert.Equal(StopReason.AllArrived, result.Reason);
+        Assert.Equal(new HexCoord(8, 0), result.Units.Single().Position);
     }
 
     [Fact]

@@ -18,7 +18,8 @@ public sealed record FieldUnit(
     MovementDomain Domain,
     UnitMode Mode,
     HexCoord? Target,
-    int CommandOrder)
+    int CommandOrder,
+    int RangeCastle = 1)
 {
     public FieldUnit MoveTo(HexCoord position) => this with { Position = position };
 }

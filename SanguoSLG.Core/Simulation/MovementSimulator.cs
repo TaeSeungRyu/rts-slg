@@ -37,7 +37,8 @@ public sealed class MovementSimulator
     }
 
     /// <summary>한 번의 "진행"을 끝까지 계산한다(최대 <paramref name="maxDays"/>일).</summary>
-    public AdvanceResult Advance(IReadOnlyList<FieldUnit> units, int maxDays = 7)
+    public AdvanceResult Advance(IReadOnlyList<FieldUnit> units, int maxDays = 7,
+        IReadOnlyList<SiegeSite>? castles = null)
     {
         var work = units.OrderBy(u => u.Id.Value).Select(u => new Working(u)).ToList();
         var ticks = new List<MovementTick>();
@@ -98,6 +99,12 @@ public sealed class MovementSimulator
                     // 사거리 안에 적이 있으면 더 다가가지 않고 멈춰 싸운다(궁병 등은 사거리를 유지).
                     // 정지는 이 날 이동을 다 끝낸 뒤 판정한다 — 다른 부대는 계속 이동/재시도한다.
                     if (w.Unit.Mode == UnitMode.Attack && NearestEnemyWithin(w, work, w.Unit.AttackRange) is not null)
+                    {
+                        continue;
+                    }
+
+                    // 적 성이 공성 사거리 안이면 더 다가가지 않는다(투석기 등은 사거리를 유지).
+                    if (w.Unit.Mode == UnitMode.Attack && CastleWithin(w, castles) is not null)
                     {
                         continue;
                     }
@@ -189,6 +196,16 @@ public sealed class MovementSimulator
                 return Finish(ticks, work, StopReason.EnemyInRange, daysElapsed);
             }
 
+            // 적 성이 공성 사거리 안이어도 같은 규칙으로 그 날 이동 완료 후 진행을 끊는다
+            // — 먼저 도착한 부대만 이번 공성 교환에 포함되고, 뒤처진 부대는 다음 진행에 합류한다.
+            var besieger = work.FirstOrDefault(w =>
+                w.Unit.Mode == UnitMode.Attack && CastleWithin(w, castles) is not null);
+            if (besieger is not null)
+            {
+                ticks.Add(Snapshot(day, work, new[] { new TickEvent(TickEventKind.Halted, besieger.Unit.Id, null) }));
+                return Finish(ticks, work, StopReason.CastleInRange, daysElapsed);
+            }
+
             // 3일 연속 못 움직인 유닛 추적(목표가 있는데 못 간 경우만)
             foreach (var w in work)
             {
@@ -228,6 +245,11 @@ public sealed class MovementSimulator
         TerrainType.Mountain or TerrainType.Swamp or TerrainType.River => 2,
         _ => 1,
     };
+
+    // 자신의 공성 사거리 안에 있는 적 성(고정 목록 순서 — 결정론)
+    private static SiegeSite? CastleWithin(Working w, IReadOnlyList<SiegeSite>? castles) => castles?
+        .FirstOrDefault(c => c.Owner != w.Unit.Owner
+            && c.Position.Distance(w.Unit.Position) <= w.Unit.RangeCastle);
 
     // 사거리·탐지 안의 적 중 가장 가까운 하나(동률이면 명령 순번, 그다음 UnitId — 결정론)
     private static Working? NearestEnemyWithin(Working self, List<Working> work, int range) => work

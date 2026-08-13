@@ -157,7 +157,7 @@ public partial class CombatTestScene3D : Node3D
         // 속도·탐지·사거리(유닛)를 병종 데이터에서 실제로 반영한다.
         var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos,
             template.MovementPerDay, template.Detection, template.RangeUnit,
-            MovementDomain.Land, mode, target, id);
+            MovementDomain.Land, mode, target, id, template.RangeCastle);
         _tokenModel[id] = ModelIndex.GetValueOrDefault(templateCode, 0);
         var state = UnitCombatState.Create(intellect, vanguardActive: _actives[activeCode]);
         if (stratagemCode is not null)
@@ -349,7 +349,10 @@ public partial class CombatTestScene3D : Node3D
     private void BeginTurn()
     {
         _round++;
-        _pending = _orchestrator.Run(_units);
+        var sites = _castle is { } c && (c.WallCurrent > 0 || c.Troops > 0)
+            ? new[] { new SiegeSite(_castlePos, new FactionId(_castleOwner)) }
+            : null;
+        _pending = _orchestrator.Run(_units, castles: sites);
 
         _beats = new Queue<System.Action>();
         // 실제로 위치가 바뀌는 틱만 이동 비트로 넣는다(정지/교전 스냅샷은 건너뛴다).

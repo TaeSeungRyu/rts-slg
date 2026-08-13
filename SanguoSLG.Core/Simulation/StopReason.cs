@@ -6,6 +6,9 @@ public enum StopReason
     /// <summary>공격모드 유닛의 사거리 안에 적이 들어왔다 — 전투 페이즈로.</summary>
     EnemyInRange,
 
+    /// <summary>공격모드 유닛의 공성 사거리 안에 적 성이 들어왔다 — 공성 페이즈로.</summary>
+    CastleInRange,
+
     /// <summary>적끼리 정면으로 부딪혔다(같은 칸 경합·자리 맞바꾸기) — 자동 교전.</summary>
     Engaged,
 
