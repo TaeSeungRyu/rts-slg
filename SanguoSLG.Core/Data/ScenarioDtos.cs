@@ -30,11 +30,22 @@ internal sealed class GeneralDto
 {
     public int Id { get; init; }
     public string Name { get; init; } = "";
-    public int Leadership { get; init; }
+
+    // 병종 분류 6종 → 등급 문자열("F"~"SSS", "A+"). spec-general "병종별 통솔".
+    public Dictionary<string, string> Aptitudes { get; init; } = new();
     public int Might { get; init; }
     public int Intellect { get; init; }
     public int Politics { get; init; }
-    public int Charisma { get; init; }
+    public string? BattleActive { get; init; }
+    public List<GeneralSkillDto> BattlePassives { get; init; } = new();
+    public string? AdminActive { get; init; }
+    public List<GeneralSkillDto> AdminPassives { get; init; } = new();
+}
+
+internal sealed class GeneralSkillDto
+{
+    public string Code { get; init; } = "";
+    public int Tier { get; init; } = 1;
 }
 
 internal sealed class BalanceDto

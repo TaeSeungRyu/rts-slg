@@ -130,7 +130,8 @@ dotnet test
 | 병종 | `TroopType` |
 | 특기 | `Skill` |
 | 내정 | `Administration` |
-| 통솔 / 무력 / 지력 / 정치 / 매력 | `Leadership` / `Might` / `Intellect` / `Politics` / `Charisma` |
+| 병종별 통솔(적성) / 무력 / 지력 / 정치 | `Aptitudes`(`AptitudeGrade`) / `Might` / `Intellect` / `Politics` |
+| 선봉 / 부관 | `Vanguard` / `Adjutant` |
 | 병력 | `Troops` |
 | 사기 | `Morale` |
 | 군량 | `Provisions` |

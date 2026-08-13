@@ -1,6 +1,73 @@
 [
-  { "id": 1, "name": "조조", "leadership": 96, "might": 72, "intellect": 91, "politics": 94, "charisma": 96 },
-  { "id": 2, "name": "유비", "leadership": 79, "might": 73, "intellect": 74, "politics": 80, "charisma": 99 },
-  { "id": 3, "name": "관우", "leadership": 95, "might": 97, "intellect": 75, "politics": 62, "charisma": 93 },
-  { "id": 4, "name": "하후돈", "leadership": 89, "might": 90, "intellect": 60, "politics": 68, "charisma": 82 }
+  { "id": 1, "name": "조조",
+    "aptitudes": { "infantry": "S", "archer": "A", "cavalry": "S", "elephant": "C", "siege": "B", "naval": "C" },
+    "might": 72, "intellect": 91, "politics": 94,
+    "battle_active": "peerless",
+    "battle_passives": [ { "code": "fierce_assault", "tier": 3 }, { "code": "momentum", "tier": 2 } ] },
+
+  { "id": 2, "name": "유비",
+    "aptitudes": { "infantry": "A", "archer": "B", "cavalry": "A", "elephant": "C", "siege": "C", "naval": "C" },
+    "might": 73, "intellect": 74, "politics": 80,
+    "battle_active": "rally",
+    "battle_passives": [ { "code": "steadfast_guard", "tier": 3 } ] },
+
+  { "id": 3, "name": "관우",
+    "aptitudes": { "infantry": "SS", "archer": "B", "cavalry": "S", "elephant": "C", "siege": "C", "naval": "B" },
+    "might": 97, "intellect": 75, "politics": 62,
+    "battle_active": "flash",
+    "battle_passives": [ { "code": "fierce_assault", "tier": 3 } ] },
+
+  { "id": 4, "name": "장비",
+    "aptitudes": { "infantry": "S", "archer": "C", "cavalry": "S", "elephant": "C", "siege": "C", "naval": "D" },
+    "might": 98, "intellect": 30, "politics": 22,
+    "battle_active": "tiger_strike",
+    "battle_passives": [ { "code": "fierce_assault", "tier": 2 } ] },
+
+  { "id": 5, "name": "여포",
+    "aptitudes": { "infantry": "S", "archer": "A", "cavalry": "SS", "elephant": "C", "siege": "D", "naval": "D" },
+    "might": 100, "intellect": 26, "politics": 13,
+    "battle_active": "one_man_army",
+    "battle_passives": [ { "code": "fierce_assault", "tier": 3 } ] },
+
+  { "id": 6, "name": "제갈량",
+    "aptitudes": { "infantry": "A", "archer": "A", "cavalry": "B", "elephant": "B", "siege": "S", "naval": "B" },
+    "might": 38, "intellect": 100, "politics": 95,
+    "battle_active": "iron_wall",
+    "battle_passives": [ { "code": "steadfast_guard", "tier": 3 } ] },
+
+  { "id": 7, "name": "주유",
+    "aptitudes": { "infantry": "B", "archer": "A", "cavalry": "C", "elephant": "C", "siege": "B", "naval": "SS" },
+    "might": 71, "intellect": 96, "politics": 77,
+    "battle_active": "barrage",
+    "battle_passives": [ { "code": "momentum", "tier": 2 } ] },
+
+  { "id": 8, "name": "하후돈",
+    "aptitudes": { "infantry": "A", "archer": "B", "cavalry": "A", "elephant": "C", "siege": "B", "naval": "D" },
+    "might": 90, "intellect": 60, "politics": 68,
+    "battle_active": "breakthrough",
+    "battle_passives": [ { "code": "steadfast_guard", "tier": 2 } ] },
+
+  { "id": 9, "name": "조운",
+    "aptitudes": { "infantry": "A", "archer": "A", "cavalry": "SS", "elephant": "C", "siege": "C", "naval": "C" },
+    "might": 96, "intellect": 76, "politics": 65,
+    "battle_active": "chain_strike",
+    "battle_passives": [ { "code": "pursuit", "tier": 3 } ] },
+
+  { "id": 10, "name": "감녕",
+    "aptitudes": { "infantry": "A", "archer": "A", "cavalry": "B", "elephant": "C", "siege": "B", "naval": "S" },
+    "might": 94, "intellect": 62, "politics": 32,
+    "battle_active": "reap",
+    "battle_passives": [ { "code": "ambush", "tier": 3 } ] },
+
+  { "id": 11, "name": "황충",
+    "aptitudes": { "infantry": "A", "archer": "SS", "cavalry": "B", "elephant": "C", "siege": "B", "naval": "C" },
+    "might": 93, "intellect": 62, "politics": 48,
+    "battle_active": "armor_break",
+    "battle_passives": [ { "code": "rough_ambush", "tier": 2 } ] },
+
+  { "id": 12, "name": "사마의",
+    "aptitudes": { "infantry": "A", "archer": "B", "cavalry": "A", "elephant": "C", "siege": "S", "naval": "C" },
+    "might": 63, "intellect": 98, "politics": 93,
+    "battle_active": "hold_the_line",
+    "battle_passives": [ { "code": "siege_expert", "tier": 3 } ] }
 ]

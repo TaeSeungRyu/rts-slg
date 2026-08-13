@@ -35,7 +35,7 @@ public class ScenarioLoaderTests
         var scenario = new ScenarioLoader().LoadFromJson(
             factionsJson: """[ { "id": 1, "name": "위", "ruler": 5, "gold": 1000 } ]""",
             citiesJson: """[ { "id": 2, "name": "허창", "q": 3, "r": -1, "owner": 1, "provisions": 5000 } ]""",
-            generalsJson: """[ { "id": 5, "name": "조조", "leadership": 96, "might": 72, "intellect": 91, "politics": 94, "charisma": 96 } ]""",
+            generalsJson: """[ { "id": 5, "name": "조조", "aptitudes": { "infantry": "S", "cavalry": "A+" }, "might": 72, "intellect": 91, "politics": 94, "battle_active": "peerless", "battle_passives": [ { "code": "fierce_assault", "tier": 3 } ] } ]""",
             balanceJson: """{ "monthly_tax_per_city": 120 }""",
             mapJson: """{ "min_q": 0, "max_q": 5, "min_r": -1, "max_r": 2 }""");
 
@@ -53,8 +53,12 @@ public class ScenarioLoaderTests
 
         var general = Assert.Single(scenario.Generals);
         Assert.Equal("조조", general.Name);
-        Assert.Equal(96, general.Leadership);
+        Assert.Equal(AptitudeGrade.S, general.AptitudeFor(TroopClass.Infantry));
+        Assert.Equal(AptitudeGrade.APlus, general.AptitudeFor(TroopClass.Cavalry));
+        Assert.Equal(AptitudeGrade.F, general.AptitudeFor(TroopClass.Naval)); // 미정의 = F
         Assert.Equal(72, general.Might);
+        Assert.Equal("peerless", general.BattleActive);
+        Assert.Equal(new GeneralSkill("fierce_assault", 3), Assert.Single(general.Passives));
 
         Assert.Equal(120, scenario.Balance.MonthlyTaxPerCity);
 

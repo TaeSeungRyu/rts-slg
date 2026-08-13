@@ -27,7 +27,11 @@ public class DeterminismTests
         Assert.Equal(expected.Month, actual.Month);
         Assert.Equal(expected.Factions, actual.Factions);
         Assert.Equal(expected.Cities, actual.Cities);
-        Assert.Equal(expected.Generals, actual.Generals);
+        // General은 컬렉션(병종별 통솔·스킬)을 품어 record 값 비교가 참조 비교로 샌다 —
+        // 가변 상태가 될 수 있는 스칼라 필드를 골라 비교한다.
+        Assert.Equal(
+            expected.Generals.Select(g => (g.Id, g.Name, g.Might, g.Intellect, g.Politics)),
+            actual.Generals.Select(g => (g.Id, g.Name, g.Might, g.Intellect, g.Politics)));
     }
 
     [Fact]

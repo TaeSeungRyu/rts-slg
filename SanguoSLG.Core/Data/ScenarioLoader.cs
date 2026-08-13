@@ -42,9 +42,7 @@ public sealed class ScenarioLoader
                 ParseCastle(d.Castle)))
             .ToList();
 
-        var generals = Deserialize<List<GeneralDto>>(generalsJson, "generals")
-            .Select(d => new General(new GeneralId(d.Id), d.Name, d.Leadership, d.Might, d.Intellect, d.Politics, d.Charisma))
-            .ToList();
+        var generals = new GeneralLoader().LoadFromJson(generalsJson);
 
         var balanceDto = Deserialize<BalanceDto>(balanceJson, "balance");
         var balance = new BalanceConfig(balanceDto.MonthlyTaxPerCity, balanceDto.MultiTargetSecondaryPercent, balanceDto.WoundedPercent);

@@ -44,6 +44,8 @@ public partial class CombatTestScene3D : Node3D
     private IReadOnlyDictionary<string, ActiveSkill> _actives = null!;
     private IReadOnlyDictionary<string, PassiveSkill> _passives = null!;
     private IReadOnlyDictionary<string, Stratagem> _strats = null!;
+    private IReadOnlyDictionary<string, General> _generals = null!;
+    private readonly Dictionary<int, string> _unitGeneral = new();
 
     private CaseDef[] _cases = System.Array.Empty<CaseDef>();
     private int _caseIndex;
@@ -99,6 +101,7 @@ public partial class CombatTestScene3D : Node3D
         _actives = new ActiveSkillLoader().LoadFromDirectory(dataDirectory).ToDictionary(a => a.Code);
         _passives = new PassiveSkillLoader().LoadFromDirectory(dataDirectory).ToDictionary(p => p.Code);
         _strats = new StratagemLoader().LoadFromDirectory(dataDirectory).ToDictionary(s => s.Code);
+        _generals = new GeneralLoader().LoadFromDirectory(dataDirectory).ToDictionary(g => g.Name);
 
         // 오케스트레이터는 케이스별 지형으로 LoadCase에서 만든다.
         _cases = BuildCases();
@@ -150,6 +153,25 @@ public partial class CombatTestScene3D : Node3D
     }
 
     // ── 케이스 ──
+
+    // 장수 기반 부대: 적성은 선봉의 병종별 통솔, 스킬은 선봉·부관 모두(UnitAssembler).
+    private CombatUnit UnitG(int id, int owner, HexCoord pos, string templateCode, HexCoord? target, UnitMode mode,
+        string vanguard, string? adjutant = null, int troops = 10000)
+    {
+        var template = _templates[templateCode];
+        var van = _generals[vanguard];
+        var adj = adjutant is null ? null : _generals[adjutant];
+
+        var held = van.Passives.Concat(adj?.Passives ?? System.Array.Empty<GeneralSkill>())
+            .Select(s => (_passives[s.Code], s.Tier));
+        var (atk, df) = PassiveBucketEvaluator.Evaluate(held, MeleeCtx);
+        _recipe[id] = (template, atk, df);
+        _tokenModel[id] = ModelIndex.GetValueOrDefault(templateCode, 0);
+        _unitGeneral[id] = adjutant is null ? vanguard : $"{vanguard}·{adjutant}";
+
+        return UnitAssembler.Assemble(new UnitId(id), new FactionId(owner), pos, mode, target, id,
+            van, adj, template, troops, _actives, _passives, MeleeCtx);
+    }
 
     private CombatUnit Unit(int id, int owner, HexCoord pos, string templateCode, HexCoord? target, UnitMode mode,
         string passiveCode, string activeCode, int might = 60, int intellect = 60, int troops = 10000,
@@ -328,6 +350,18 @@ public partial class CombatTestScene3D : Node3D
                 Unit(8, 2, new HexCoord(2, 6), "archer", new HexCoord(13, 4), UnitMode.March, "steadfast_guard", "regroup", troops: 5000),
             },
             CastleAt: new HexCoord(13, 4), CastleWall: 500, CastleTroops: 1500),
+        new CaseDef("장수 편성 대전",
+            "부대 = 선봉(+부관) 장수 + 병종. 적성은 선봉의 병종별 통솔(여포 기병 SS=130% vs 유비 기병 A=95%), "
+            + "액티브·패시브는 두 장수 모두, 무력·지력은 선봉 기준. 관우+제갈량은 부관 철벽까지 두 액티브를 쓴다.",
+            () => new[]
+            {
+                UnitG(1, 1, new HexCoord(3, 2), "swordsman", new HexCoord(11, 2), UnitMode.Attack, "관우", "제갈량"),
+                UnitG(2, 1, new HexCoord(3, 4), "cavalry", new HexCoord(11, 4), UnitMode.Attack, "조운"),
+                UnitG(3, 1, new HexCoord(3, 6), "archer", new HexCoord(11, 6), UnitMode.Attack, "황충"),
+                UnitG(11, 2, new HexCoord(12, 2), "swordsman", new HexCoord(4, 2), UnitMode.Attack, "조조", "사마의"),
+                UnitG(12, 2, new HexCoord(12, 4), "cavalry", new HexCoord(4, 4), UnitMode.Attack, "여포"),
+                UnitG(13, 2, new HexCoord(12, 6), "swordsman", new HexCoord(4, 6), UnitMode.Attack, "장비"),
+            }),
     };
 
     // 양 진영 혼성군(각 11기). 기병(속도3)은 양 날개 최전열, 도검(2)·상병(2)은 주력 전열,
@@ -738,6 +772,7 @@ public partial class CombatTestScene3D : Node3D
         _tokenHex.Clear();
         _recipe.Clear();
         _garrison.Clear();
+        _unitGeneral.Clear();
 
         // 케이스별 지형으로 오케스트레이터를 만든다(이동 패널티·전투 보정 모두 이 맵을 본다).
         _showTerrain = def.Terrain is not null;
@@ -1024,7 +1059,10 @@ public partial class CombatTestScene3D : Node3D
         ctrl.InitDisplay(_view, color, _tokenModel.GetValueOrDefault(u.Id.Value, 0), u.Field.Position);
         ctrl.TintFormation(color); // 진형을 붉은/푸른 계열로 확실히 구분
 
-        ctrl.AddChild(MakeLabel(Tag(u), 84, 0.56f));
+        var tagText = _unitGeneral.TryGetValue(u.Id.Value, out var generalName)
+            ? $"{Tag(u)} {generalName}"
+            : Tag(u);
+        ctrl.AddChild(MakeLabel(tagText, 84, 0.56f));
         var troops = MakeLabel($"{u.Pool.Active}/{u.MaxTroops}", 66, 0.42f);
         troops.HorizontalAlignment = HorizontalAlignment.Center;
         ctrl.AddChild(troops);
