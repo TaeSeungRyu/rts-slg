@@ -164,6 +164,7 @@ dotnet test
 | [design-combat.md](doc/design-combat.md) | 피해 공식·병종 공/방·지형 전투 보정·성 전투(성벽/붕괴/반격/함락) |
 | [design-stratagem.md](doc/design-stratagem.md) | 계략 11종 수치·시전 사거리·지속 상태·정화 |
 | [design-skill.md](doc/design-skill.md) + skill-actives/passives | 특기 체계, 액티브 게이지·발동, 패시브 버킷 |
+| [design-skill-admin.md](doc/design-skill-admin.md) | 내정 스킬 13종(상재·둔전·진무 등) — 효과 배선은 내정 구현과 함께 |
 | [design-unit-state.md](doc/design-unit-state.md) | 사기·훈련도·군량 시스템 계획(초안, ❓=미확정) |
 | [design-administration.md](doc/design-administration.md) | 내정 — 도시 속성·시간 축·수입·모집 명령(초안, ❓=미확정) |
 | [design-terrain.md](doc/design-terrain.md) | 지형 종류·타일 배치 |
