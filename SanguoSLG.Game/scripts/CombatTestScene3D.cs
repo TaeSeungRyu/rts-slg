@@ -290,6 +290,18 @@ public partial class CombatTestScene3D : Node3D
                 Unit(4, 1, new HexCoord(1, 4), "war_elephant", new HexCoord(12, 5), UnitMode.Attack, "steadfast_guard", "regroup", might: 80, intellect: 70),
             },
             CastleAt: new HexCoord(13, 4), CastleWall: 3000, CastleTroops: 10000),
+        new CaseDef("공성 — 수비대 입성",
+            "성 밖 궁병(E9)이 자기 성으로 복귀해 입성(이동 단계 처리) — 병력 6000이 수비에 합류해 수비 4000→10000, "
+            + "같은 진행의 성 반격부터 두꺼워진 수비로 계산된다. 입성 시 성 복귀 초기화(게이지·모략력·지속 상태 해제).",
+            () => new[]
+            {
+                Unit(1, 1, new HexCoord(2, 3), "swordsman", new HexCoord(12, 4), UnitMode.Attack, "steadfast_guard", "iron_wall", might: 78),
+                Unit(2, 1, new HexCoord(2, 5), "swordsman", new HexCoord(13, 3), UnitMode.Attack, "steadfast_guard", "iron_wall", might: 78),
+                Unit(3, 1, new HexCoord(2, 4), "cavalry", new HexCoord(13, 5), UnitMode.Attack, "steadfast_guard", "iron_wall", might: 80),
+                Unit(4, 1, new HexCoord(1, 4), "war_elephant", new HexCoord(12, 5), UnitMode.Attack, "steadfast_guard", "regroup", might: 80, intellect: 70),
+                Unit(9, 2, new HexCoord(11, 6), "archer", new HexCoord(13, 4), UnitMode.March, "steadfast_guard", "regroup", troops: 6000),
+            },
+            CastleAt: new HexCoord(13, 4), CastleWall: 3000, CastleTroops: 4000),
     };
 
     // 양 진영 혼성군(각 11기). 기병(속도3)은 양 날개 최전열, 도검(2)·상병(2)은 주력 전열,
@@ -359,6 +371,16 @@ public partial class CombatTestScene3D : Node3D
             ? new[] { new SiegeSite(_castlePos, new FactionId(_castleOwner)) }
             : null;
         _pending = _orchestrator.Run(_units, castles: sites);
+
+        // 수비 합류는 이동 단계(입성)의 일부 — 같은 진행의 공성 반격 계산(ComputeSiege)에 반영되도록
+        // 여기서 성에 합산한다. 토큰 정리·표기는 FinalizeTurn이 한다.
+        foreach (var u in _pending.EnteredCastle)
+        {
+            if (_castle is { } cs)
+            {
+                _castle = cs with { Troops = cs.Troops + u.Pool.Active };
+            }
+        }
 
         _beats = new Queue<System.Action>();
         // 실제로 위치가 바뀌는 틱만 이동 비트로 넣는다(정지/교전 스냅샷은 건너뛴다).
@@ -506,6 +528,14 @@ public partial class CombatTestScene3D : Node3D
     private void FinalizeTurn()
     {
         var turn = _pending!;
+
+        // 아군 성 입성 정리: 토큰을 거두고 라벨·안내를 갱신한다(수비 합산은 BeginTurn에서 완료).
+        foreach (var u in turn.EnteredCastle)
+        {
+            _noteLabel.Text = $"{Tag(u)} 입성 — 수비 +{u.Pool.Active}";
+            DespawnToken(u.Id.Value);
+            RefreshCastleLabel();
+        }
 
         // 결과에서 사라진 부대 = 이번 진행에 전멸 → 토큰을 없앤다(영혼 상승 연출은 후속, design-effect SoulRise).
         var survivors = turn.Units.Select(u => u.Id.Value).ToHashSet();
@@ -959,10 +989,16 @@ public partial class CombatTestScene3D : Node3D
 
         foreach (var id in _orderedIds)
         {
+            if (turn.EnteredCastle.FirstOrDefault(e => e.Id.Value == id) is { } entered)
+            {
+                _table.AddChild(Cell($"입성\n수비 +{entered.Pool.Active}", header: false, width: 150));
+                continue;
+            }
+
             var u = _units.FirstOrDefault(x => x.Id.Value == id);
             if (u is null)
             {
-                _table.AddChild(Cell("—", header: false, width: 150)); // 전멸해 사라진 부대
+                _table.AddChild(Cell("—", header: false, width: 150)); // 전멸·입성으로 야전에 없는 부대
                 continue;
             }
 

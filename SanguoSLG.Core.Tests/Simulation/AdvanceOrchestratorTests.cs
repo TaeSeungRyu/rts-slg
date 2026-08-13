@@ -444,4 +444,24 @@ public class AdvanceOrchestratorTests
         var ua = turn.Units.Single(u => u.Id.Value == 1);
         Assert.False(ua.State.VanguardGauge.IsReady);
     }
+
+    [Fact]
+    public void 성입성_부대는_상태가초기화되고_그진행의_틱과전투에서빠진다()
+    {
+        // 화상이 걸린 부대가 자기 성(4,0)으로 복귀. 인접에 닿아 입성하면 성 복귀 초기화
+        // (상태 해제)되고, 이번 진행의 DoT 틱도·전투도 받지 않는다.
+        var burning = UnitCombatState.Create(60).AddStatus(St["fire_plot"].MakeStatus(100, 60)!);
+        var returning = Sword(1, 1, new HexCoord(2, 0), UnitMode.March, cs: burning, target: new HexCoord(4, 0));
+        var enemy = Sword(2, 2, new HexCoord(3, 1), UnitMode.March);
+        var castle = new SiegeSite(new HexCoord(4, 0), new FactionId(1));
+
+        var turn = MakeOrchestrator().Run(new[] { returning, enemy }, castles: new[] { castle });
+
+        var entered = Assert.Single(turn.EnteredCastle);
+        Assert.Equal(1, entered.Id.Value);
+        Assert.Empty(entered.State.Statuses);            // 성 복귀 초기화
+        Assert.Equal(10000, entered.Pool.Active);        // 입성 진행엔 DoT 틱 없음
+        Assert.DoesNotContain(turn.Units, u => u.Id.Value == 1);
+        Assert.False(turn.StatusDamage.ContainsKey(new UnitId(1)));
+    }
 }

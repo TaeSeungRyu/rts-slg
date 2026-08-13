@@ -42,6 +42,7 @@ public sealed class MovementSimulator
     {
         var work = units.OrderBy(u => u.Id.Value).Select(u => new Working(u)).ToList();
         var ticks = new List<MovementTick>();
+        var entered = new List<UnitId>();
         var reason = StopReason.MaxDays;
         var daysElapsed = 0;
 
@@ -58,6 +59,21 @@ public sealed class MovementSimulator
             while (true)
             {
                 var events = new List<TickEvent>();
+
+                // 아군 성 입성(이동 단계 처리): 목표가 자기 성인 유닛이 성에 닿으면(인접 1칸)
+                // 그 자리에서 입성해 야전에서 빠진다 — 이후 탐지·전투·점유 대상이 아니다.
+                foreach (var w in work.Where(w => IsEnteringCastle(w, castles)).ToList())
+                {
+                    entered.Add(w.Unit.Id);
+                    events.Add(new TickEvent(TickEventKind.EnteredCastle, w.Unit.Id, null));
+                    work.Remove(w);
+                }
+
+                if (events.Count > 0)
+                {
+                    ticks.Add(Snapshot(day, work, events));
+                    events = new List<TickEvent>();
+                }
 
                 // 공격모드 유닛의 추격 상태를 갱신한다(탐지 시작/시야 상실).
                 // 도착 판정보다 먼저 — 목표 없이 서 있어도 적이 탐지에 들면 추격해야 한다.
@@ -81,7 +97,7 @@ public sealed class MovementSimulator
                 // 진행 중단 1 — 아무도 더 갈 곳이 없다(전원 목표 도착, 추격 중이면 도착 아님)
                 if (work.All(NoIntent))
                 {
-                    return Finish(ticks, work, StopReason.AllArrived, daysElapsed);
+                    return Finish(ticks, work, StopReason.AllArrived, daysElapsed, entered);
                 }
 
                 // 이번 스텝에 움직이려는 유닛의 희망 칸을 모은다.
@@ -175,7 +191,7 @@ public sealed class MovementSimulator
                 // 정면 충돌(자리 맞바꾸기·같은 칸)은 즉시 교전한다.
                 if (engaged)
                 {
-                    return Finish(ticks, work, StopReason.Engaged, daysElapsed);
+                    return Finish(ticks, work, StopReason.Engaged, daysElapsed, entered);
                 }
 
                 if (desired.Count == 0 || applied.Count == 0)
@@ -193,7 +209,7 @@ public sealed class MovementSimulator
             {
                 var enemy = NearestEnemyWithin(halter, work, halter.Unit.AttackRange);
                 ticks.Add(Snapshot(day, work, new[] { new TickEvent(TickEventKind.Halted, halter.Unit.Id, enemy?.Unit.Id) }));
-                return Finish(ticks, work, StopReason.EnemyInRange, daysElapsed);
+                return Finish(ticks, work, StopReason.EnemyInRange, daysElapsed, entered);
             }
 
             // 적 성이 공성 사거리 안이어도 같은 규칙으로 그 날 이동 완료 후 진행을 끊는다
@@ -203,7 +219,7 @@ public sealed class MovementSimulator
             if (besieger is not null)
             {
                 ticks.Add(Snapshot(day, work, new[] { new TickEvent(TickEventKind.Halted, besieger.Unit.Id, null) }));
-                return Finish(ticks, work, StopReason.CastleInRange, daysElapsed);
+                return Finish(ticks, work, StopReason.CastleInRange, daysElapsed, entered);
             }
 
             // 3일 연속 못 움직인 유닛 추적(목표가 있는데 못 간 경우만)
@@ -216,11 +232,11 @@ public sealed class MovementSimulator
             if (work.Any(w => w.BlockedDays >= 3))
             {
                 reason = StopReason.Blocked;
-                return Finish(ticks, work, reason, daysElapsed);
+                return Finish(ticks, work, reason, daysElapsed, entered);
             }
         }
 
-        return Finish(ticks, work, reason, daysElapsed);
+        return Finish(ticks, work, reason, daysElapsed, entered);
     }
 
     // 목표도 없고 추격도 안 하는(움직일 뜻이 없는) 유닛인가
@@ -250,6 +266,13 @@ public sealed class MovementSimulator
     private static SiegeSite? CastleWithin(Working w, IReadOnlyList<SiegeSite>? castles) => castles?
         .FirstOrDefault(c => c.Owner != w.Unit.Owner
             && c.Position.Distance(w.Unit.Position) <= w.Unit.RangeCastle);
+
+    // 자기 성으로 복귀 명령을 받은 유닛이 성에 닿았는가(인접 1칸) — 입성 조건.
+    // 성 타일 자체는 통행 불가라 목표가 성이어도 인접에서 입성한다.
+    private static bool IsEnteringCastle(Working w, IReadOnlyList<SiegeSite>? castles) => castles is not null
+        && castles.Any(c => c.Owner == w.Unit.Owner
+            && w.Unit.Target == c.Position
+            && c.Position.Distance(w.Unit.Position) <= 1);
 
     // 사거리·탐지 안의 적 중 가장 가까운 하나(동률이면 명령 순번, 그다음 UnitId — 결정론)
     private static Working? NearestEnemyWithin(Working self, List<Working> work, int range) => work
@@ -423,6 +446,7 @@ public sealed class MovementSimulator
         new(day, work.OrderBy(w => w.Unit.Id.Value).Select(w => w.Unit).ToList(), events);
 
     private static AdvanceResult Finish(
-        List<MovementTick> ticks, List<Working> work, StopReason reason, int days) =>
-        new(ticks, work.OrderBy(w => w.Unit.Id.Value).Select(w => w.Unit).ToList(), reason, days);
+        List<MovementTick> ticks, List<Working> work, StopReason reason, int days, List<UnitId> entered) =>
+        new(ticks, work.OrderBy(w => w.Unit.Id.Value).Select(w => w.Unit).ToList(), reason, days,
+            entered.OrderBy(id => id.Value).ToList());
 }

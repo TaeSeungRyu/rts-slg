@@ -14,4 +14,7 @@ public enum TickEventKind
 
     /// <summary>공격모드 유닛이 사거리 안의 적을 만나 이동을 종료했다.</summary>
     Halted,
+
+    /// <summary>아군 성을 목표로 한 유닛이 성에 닿아 입성했다(야전에서 사라진다).</summary>
+    EnteredCastle,
 }

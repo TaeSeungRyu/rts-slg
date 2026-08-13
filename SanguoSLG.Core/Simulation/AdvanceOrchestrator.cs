@@ -9,7 +9,8 @@ using SanguoSLG.Core.Spatial;
 /// (발동일엔 시전 부대 공격 불가), 사거리 전수검사로 교전을 만들어 액티브 발동(선봉 우선)을 얹어
 /// 동시 정산한다. 결과로 위치·병력·발동 상태가 갱신된 부대를 돌려준다. 지속 상태(DoT·능력치
 /// 디버프·행동불가), 정화, 강제 후퇴(교란)까지 반영하고, 병력 0(전멸) 부대는 결과에서 뺀다(소멸 —
-/// Game이 영혼 상승 연출로 처리). 성 복귀 감지는 후속.
+/// Game이 영혼 상승 연출로 처리). 아군 성 입성은 이동 단계에서 확정되어 성 복귀 초기화 후
+/// EnteredCastle로 보고된다(수비 합류는 성 상태를 가진 상위 계층이 처리).
 /// </summary>
 public sealed class AdvanceOrchestrator
 {
@@ -44,9 +45,17 @@ public sealed class AdvanceOrchestrator
         var move = _movement.Advance(units.Select(MovementField).ToList(), maxDays, castles);
         var moved = move.Units.ToDictionary(f => f.Id);
 
+        // 1.5) 아군 성 입성(이동 단계에서 확정) — 야전에서 빠지고 성 복귀 초기화(게이지 0·모략력
+        //      충전·예약 취소·지속 상태 해제)를 적용한다. 이후 상태 틱·계략·전투에 끼지 않는다.
+        var enteredIds = move.EnteredCastle.ToHashSet();
+        var enteredCastle = units
+            .Where(u => enteredIds.Contains(u.Id))
+            .Select(u => u with { State = u.State.ReturnToCastle() })
+            .ToList();
+
         // 2) 위치만 갱신(임시 이동 스탯은 버림) + 경과일만큼 발동 상태 진행(야전 가정).
         var state = new Dictionary<UnitId, CombatUnit>();
-        foreach (var u in units)
+        foreach (var u in units.Where(u => !enteredIds.Contains(u.Id)))
         {
             state[u.Id] = u with
             {
@@ -91,7 +100,7 @@ public sealed class AdvanceOrchestrator
 
         if (engagements.Count == 0)
         {
-            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage, stratagemDamage);
+            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle);
         }
 
         var attackers = engagements.Select(e => e.Attacker).ToHashSet();
@@ -144,7 +153,7 @@ public sealed class AdvanceOrchestrator
             state[id] = state[id] with { Pool = pool };
         }
 
-        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage, stratagemDamage);
+        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle);
     }
 
     private static readonly IReadOnlyDictionary<UnitId, ActiveSkill> NoActives = new Dictionary<UnitId, ActiveSkill>();

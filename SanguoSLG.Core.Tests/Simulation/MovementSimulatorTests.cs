@@ -433,6 +433,35 @@ public class MovementSimulatorTests
     }
 
     [Fact]
+    public void 성입성_목표가자기성이면_인접에닿는순간_야전에서빠진다()
+    {
+        // 소속 성(8,0)으로 복귀 명령. 인접(7,0)에 닿는 순간 입성해 Units에서 빠지고 Entered에 보고된다.
+        var castle = new SiegeSite(new HexCoord(8, 0), new FactionId(1));
+        var u = Unit(1, owner: 1, new HexCoord(3, 0), UnitMode.March, target: new HexCoord(8, 0), speed: 2);
+
+        var result = PlainField().Advance(new[] { u }, castles: new[] { castle });
+
+        Assert.Equal(new[] { new UnitId(1) }, result.EnteredCastle);
+        Assert.DoesNotContain(result.Units, x => x.Id.Value == 1);
+        Assert.Contains(result.Ticks.SelectMany(t => t.Events),
+            e => e.Kind == TickEventKind.EnteredCastle && e.Unit.Value == 1);
+    }
+
+    [Fact]
+    public void 성입성_적성이_목표라도_입성하지않는다()
+    {
+        // 적 성이 목표면 입성이 아니라 공성 접적 정지로 흘러간다.
+        var castle = new SiegeSite(new HexCoord(8, 0), new FactionId(2));
+        var u = Unit(1, owner: 1, new HexCoord(3, 0), UnitMode.Attack, target: new HexCoord(8, 0), speed: 2);
+
+        var result = PlainField().Advance(new[] { u }, castles: new[] { castle });
+
+        Assert.Empty(result.EnteredCastle);
+        Assert.Equal(StopReason.CastleInRange, result.Reason);
+        Assert.Contains(result.Units, x => x.Id.Value == 1);
+    }
+
+    [Fact]
     public void 목표없는유닛끼리는_아무일도없이_전원도착으로끝난다()
     {
         var a1 = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack, target: null);
