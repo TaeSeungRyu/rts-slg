@@ -36,7 +36,10 @@ public sealed class GeneralLoader
         d.BattleActive,
         d.BattlePassives.Select(s => new GeneralSkill(s.Code, s.Tier)).ToList(),
         d.AdminActive,
-        d.AdminPassives.Select(s => new GeneralSkill(s.Code, s.Tier)).ToList());
+        d.AdminPassives.Select(s => new GeneralSkill(s.Code, s.Tier)).ToList(),
+        d.Birth,
+        d.Region,
+        d.Desc);
 
     private static TroopClass ParseClass(string value) => value switch
     {

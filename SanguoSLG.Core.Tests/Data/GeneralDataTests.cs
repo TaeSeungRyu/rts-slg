@@ -67,4 +67,27 @@ public class GeneralDataTests
             Assert.Equal(6, g.Aptitudes.Count);
         }
     }
+
+    [Fact]
+    public void 모든_장수의_지역코드는_regions에_존재하고_출생년과_소개가_있다()
+    {
+        var regions = new RegionLoader().LoadFromDirectory(TestData.DataDirectory())
+            .Select(r => r.Code).ToHashSet();
+
+        foreach (var g in All)
+        {
+            Assert.Contains(g.Region, regions);
+            Assert.NotEqual(0, g.Birth); // 음수 = 기원전
+            Assert.False(string.IsNullOrWhiteSpace(g.Desc));
+        }
+    }
+
+    [Fact]
+    public void 지역코드는_중복이없고_권역은_세갈래다()
+    {
+        var regions = new RegionLoader().LoadFromDirectory(TestData.DataDirectory());
+        Assert.Equal(regions.Count, regions.Select(r => r.Code).Distinct().Count());
+        Assert.Equal(new[] { "china", "japan", "korea" },
+            regions.Select(r => r.Realm).Distinct().OrderBy(x => x).ToArray());
+    }
 }

@@ -1,0 +1,29 @@
+[
+  { "code": "sili",      "name": "사례", "realm": "china", "note": "낙양·장안 일대 수도권(하동·하내·경조)" },
+  { "code": "yuzhou",    "name": "예주", "realm": "china", "note": "영천·여남·패국 — 중원의 인재향" },
+  { "code": "jizhou",    "name": "기주", "realm": "china", "note": "업·거록·상산 — 하북 곡창" },
+  { "code": "yanzhou",   "name": "연주", "realm": "china", "note": "진류·동군·산양" },
+  { "code": "xuzhou",    "name": "서주", "realm": "china", "note": "팽성·낭야·하비" },
+  { "code": "qingzhou",  "name": "청주", "realm": "china", "note": "북해·동래 — 산둥 반도" },
+  { "code": "jingzhou",  "name": "형주", "realm": "china", "note": "양양·강릉·남양 — 남북의 요충" },
+  { "code": "yangzhou",  "name": "양주", "realm": "china", "note": "건업·오군·회계 — 강동" },
+  { "code": "yizhou",    "name": "익주", "realm": "china", "note": "성도·파군·한중 — 촉 땅" },
+  { "code": "liangzhou", "name": "량주", "realm": "china", "note": "무위·농서 — 서량 기마의 땅" },
+  { "code": "bingzhou",  "name": "병주", "realm": "china", "note": "태원·안문 — 북방 변경" },
+  { "code": "youzhou",   "name": "유주", "realm": "china", "note": "탁군·요서 — 동북 변경" },
+  { "code": "jiaozhou",  "name": "교주", "realm": "china", "note": "남해 교지 — 최남단" },
+  { "code": "nanzhong",  "name": "남중", "realm": "china", "note": "익주 남부 이민족 땅(남만)" },
+
+  { "code": "goguryeo", "name": "고구려", "realm": "korea", "note": "졸본·국내성·평양 — 북방의 강국" },
+  { "code": "baekje",   "name": "백제",   "realm": "korea", "note": "위례성·웅진·사비 — 한강·금강 유역" },
+  { "code": "silla",    "name": "신라",   "realm": "korea", "note": "서라벌 — 경주 분지에서 일어난 나라" },
+
+  { "code": "owari",   "name": "오와리", "realm": "japan", "note": "노부나가의 본거지 — 나고야 일대" },
+  { "code": "mikawa",  "name": "미카와", "realm": "japan", "note": "도쿠가와 가신단의 땅" },
+  { "code": "kai",     "name": "가이",   "realm": "japan", "note": "다케다 기마군단의 산국" },
+  { "code": "echigo",  "name": "에치고", "realm": "japan", "note": "우에스기의 설국 — 니가타" },
+  { "code": "mutsu",   "name": "무쓰",   "realm": "japan", "note": "다테의 오슈 — 도호쿠" },
+  { "code": "shinano", "name": "시나노", "realm": "japan", "note": "사나다의 산악 요충 — 나가노" },
+  { "code": "aki",     "name": "아키",   "realm": "japan", "note": "모리의 세토내해 — 히로시마" },
+  { "code": "satsuma", "name": "사쓰마", "realm": "japan", "note": "시마즈의 남단 — 가고시마" }
+]

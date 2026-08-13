@@ -2,6 +2,9 @@
   {
     "id": 1,
     "name": "조조",
+    "birth": 155,
+    "region": "yuzhou",
+    "desc": "난세의 간웅 — 위나라의 기틀을 세운 패자",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -28,6 +31,9 @@
   {
     "id": 2,
     "name": "유비",
+    "birth": 161,
+    "region": "youzhou",
+    "desc": "인덕으로 촉한을 일으킨 황숙",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -50,6 +56,9 @@
   {
     "id": 3,
     "name": "관우",
+    "birth": 162,
+    "region": "sili",
+    "desc": "의절의 무성(武聖) — 청룡언월도의 주인",
     "aptitudes": {
       "infantry": "SS",
       "archer": "B",
@@ -72,6 +81,9 @@
   {
     "id": 4,
     "name": "장비",
+    "birth": 167,
+    "region": "youzhou",
+    "desc": "장판교에서 홀로 대군을 막은 맹장",
     "aptitudes": {
       "infantry": "S",
       "archer": "C",
@@ -94,6 +106,9 @@
   {
     "id": 5,
     "name": "여포",
+    "birth": 161,
+    "region": "bingzhou",
+    "desc": "천하무쌍의 비장 — 적토마의 주인",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -116,6 +131,9 @@
   {
     "id": 6,
     "name": "제갈량",
+    "birth": 181,
+    "region": "xuzhou",
+    "desc": "와룡 — 촉한의 승상이자 천하삼분의 설계자",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -138,6 +156,9 @@
   {
     "id": 7,
     "name": "주유",
+    "birth": 175,
+    "region": "yangzhou",
+    "desc": "적벽에서 조조를 불태운 미주랑",
     "aptitudes": {
       "infantry": "B",
       "archer": "A",
@@ -160,6 +181,9 @@
   {
     "id": 8,
     "name": "하후돈",
+    "birth": 157,
+    "region": "yuzhou",
+    "desc": "제 눈을 삼킨 위의 맹장 — 조조의 오른팔",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -182,6 +206,9 @@
   {
     "id": 9,
     "name": "조운",
+    "birth": 168,
+    "region": "jizhou",
+    "desc": "장판에서 아두를 구한 상산의 호장",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -204,6 +231,9 @@
   {
     "id": 10,
     "name": "감녕",
+    "birth": 175,
+    "region": "yizhou",
+    "desc": "백 기로 위영을 습격한 금범적 출신 맹장",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -226,6 +256,9 @@
   {
     "id": 11,
     "name": "황충",
+    "birth": 148,
+    "region": "jingzhou",
+    "desc": "정군산에서 하후연을 벤 노장 — 백발백중",
     "aptitudes": {
       "infantry": "A",
       "archer": "SS",
@@ -248,6 +281,9 @@
   {
     "id": 12,
     "name": "사마의",
+    "birth": 179,
+    "region": "sili",
+    "desc": "제갈량을 막아낸 위의 대도독 — 진 왕조의 시조",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -270,6 +306,9 @@
   {
     "id": 13,
     "name": "장료",
+    "birth": 169,
+    "region": "bingzhou",
+    "desc": "합비에서 800으로 10만을 깬 오자양장 필두",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -292,6 +331,9 @@
   {
     "id": 14,
     "name": "장합",
+    "birth": 167,
+    "region": "jizhou",
+    "desc": "가정에서 마속을 꺾은 지장형 맹장",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -314,6 +356,9 @@
   {
     "id": 15,
     "name": "서황",
+    "birth": 169,
+    "region": "sili",
+    "desc": "번성에서 관우를 물리친 주아부의 풍모",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -336,6 +381,9 @@
   {
     "id": 16,
     "name": "악진",
+    "birth": 170,
+    "region": "yanzhou",
+    "desc": "선봉에서 물러서지 않은 오자양장",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -358,6 +406,9 @@
   {
     "id": 17,
     "name": "우금",
+    "birth": 165,
+    "region": "yanzhou",
+    "desc": "군율에 엄정했던 오자양장 — 만년에 오점",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -380,6 +431,9 @@
   {
     "id": 18,
     "name": "이전",
+    "birth": 174,
+    "region": "yanzhou",
+    "desc": "사사로움 없이 합비를 지킨 학구파 무장",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -402,6 +456,9 @@
   {
     "id": 19,
     "name": "전위",
+    "birth": 160,
+    "region": "yanzhou",
+    "desc": "완성에서 조조를 살리고 산화한 악래",
     "aptitudes": {
       "infantry": "SS",
       "archer": "C",
@@ -424,6 +481,9 @@
   {
     "id": 20,
     "name": "허저",
+    "birth": 170,
+    "region": "yuzhou",
+    "desc": "호치 — 마초와 맞선 조조의 호위장",
     "aptitudes": {
       "infantry": "SS",
       "archer": "C",
@@ -446,6 +506,9 @@
   {
     "id": 21,
     "name": "방덕",
+    "birth": 175,
+    "region": "liangzhou",
+    "desc": "관을 지고 관우와 싸운 백마장군",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -468,6 +531,9 @@
   {
     "id": 22,
     "name": "하후연",
+    "birth": 160,
+    "region": "yuzhou",
+    "desc": "사흘에 오백 리 — 전격전의 명수",
     "aptitudes": {
       "infantry": "A",
       "archer": "S",
@@ -490,6 +556,9 @@
   {
     "id": 23,
     "name": "조인",
+    "birth": 168,
+    "region": "yuzhou",
+    "desc": "번성을 사수한 위의 방패",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -512,6 +581,9 @@
   {
     "id": 24,
     "name": "조홍",
+    "birth": 165,
+    "region": "yuzhou",
+    "desc": "형양에서 조조에게 말을 바친 종제",
     "aptitudes": {
       "infantry": "A",
       "archer": "C",
@@ -534,6 +606,9 @@
   {
     "id": 25,
     "name": "조비",
+    "birth": 187,
+    "region": "yuzhou",
+    "desc": "한을 대신한 위 문제 — 문재의 군주",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -555,6 +630,9 @@
   {
     "id": 26,
     "name": "조진",
+    "birth": 188,
+    "region": "yuzhou",
+    "desc": "제갈량의 북벌을 막은 대사마",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -577,6 +655,9 @@
   {
     "id": 27,
     "name": "조휴",
+    "birth": 184,
+    "region": "yuzhou",
+    "desc": "천리마 — 조씨 일족의 준재",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -599,6 +680,9 @@
   {
     "id": 28,
     "name": "곽가",
+    "birth": 170,
+    "region": "yuzhou",
+    "desc": "요절한 귀재 — 조조의 승부처를 읽던 눈",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -620,6 +704,9 @@
   {
     "id": 29,
     "name": "순욱",
+    "birth": 163,
+    "region": "yuzhou",
+    "desc": "왕좌지재 — 조조의 장자방",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -641,6 +728,9 @@
   {
     "id": 30,
     "name": "순유",
+    "birth": 157,
+    "region": "yuzhou",
+    "desc": "열두 기책의 모주 — 순욱의 조카",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -662,6 +752,9 @@
   {
     "id": 31,
     "name": "가후",
+    "birth": 147,
+    "region": "liangzhou",
+    "desc": "독사의 지혜 — 난세를 끝까지 살아남은 책사",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -683,6 +776,9 @@
   {
     "id": 32,
     "name": "정욱",
+    "birth": 141,
+    "region": "yanzhou",
+    "desc": "연주를 지킨 강골 모사",
     "aptitudes": {
       "infantry": "B",
       "archer": "C",
@@ -704,6 +800,9 @@
   {
     "id": 33,
     "name": "유엽",
+    "birth": 170,
+    "region": "yangzhou",
+    "desc": "발석거를 고안한 한실 종친 책사",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -725,6 +824,9 @@
   {
     "id": 34,
     "name": "만총",
+    "birth": 172,
+    "region": "yanzhou",
+    "desc": "합비신성을 쌓은 법가형 명관",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -746,6 +848,9 @@
   {
     "id": 35,
     "name": "학소",
+    "birth": 190,
+    "region": "bingzhou",
+    "desc": "진창에서 제갈량의 대군을 막은 수성의 달인",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -772,6 +877,9 @@
   {
     "id": 36,
     "name": "왕쌍",
+    "birth": 190,
+    "region": "liangzhou",
+    "desc": "유성추를 쓰는 위의 용장",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -794,6 +902,9 @@
   {
     "id": 37,
     "name": "등애",
+    "birth": 197,
+    "region": "jingzhou",
+    "desc": "음평 샛길로 촉을 멸한 명장",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -816,6 +927,9 @@
   {
     "id": 38,
     "name": "종회",
+    "birth": 225,
+    "region": "yuzhou",
+    "desc": "촉 정벌의 야심가 — 재승덕박",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -837,6 +951,9 @@
   {
     "id": 39,
     "name": "사마사",
+    "birth": 208,
+    "region": "sili",
+    "desc": "사마씨의 패권을 굳힌 장자",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -858,6 +975,9 @@
   {
     "id": 40,
     "name": "사마소",
+    "birth": 211,
+    "region": "sili",
+    "desc": "촉을 멸하고 진의 길을 연 야심가",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -879,6 +999,9 @@
   {
     "id": 41,
     "name": "마초",
+    "birth": 176,
+    "region": "liangzhou",
+    "desc": "서량의 금마초 — 조조를 떨게 한 기마의 신",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -901,6 +1024,9 @@
   {
     "id": 42,
     "name": "위연",
+    "birth": 174,
+    "region": "jingzhou",
+    "desc": "한중을 지킨 반골의 맹장",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -923,6 +1049,9 @@
   {
     "id": 43,
     "name": "강유",
+    "birth": 202,
+    "region": "liangzhou",
+    "desc": "제갈량의 유지를 이은 북벌의 기린아",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -945,6 +1074,9 @@
   {
     "id": 44,
     "name": "마대",
+    "birth": 180,
+    "region": "liangzhou",
+    "desc": "위연을 벤 마초의 사촌",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -967,6 +1099,9 @@
   {
     "id": 45,
     "name": "왕평",
+    "birth": 183,
+    "region": "yizhou",
+    "desc": "가정의 패전 속에서 홀로 진을 지킨 산악전 명수",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -989,6 +1124,9 @@
   {
     "id": 46,
     "name": "요화",
+    "birth": 185,
+    "region": "jingzhou",
+    "desc": "촉의 처음과 끝을 함께한 선봉",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1010,6 +1148,9 @@
   {
     "id": 47,
     "name": "방통",
+    "birth": 179,
+    "region": "jingzhou",
+    "desc": "봉추 — 낙봉파에 진 연환계의 재사",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -1031,6 +1172,9 @@
   {
     "id": 48,
     "name": "법정",
+    "birth": 176,
+    "region": "sili",
+    "desc": "한중 공략을 설계한 촉의 모주",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -1052,6 +1196,9 @@
   {
     "id": 49,
     "name": "마량",
+    "birth": 187,
+    "region": "jingzhou",
+    "desc": "백미 — 마씨 오상의 으뜸",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -1073,6 +1220,9 @@
   {
     "id": 50,
     "name": "마속",
+    "birth": 190,
+    "region": "jingzhou",
+    "desc": "가정을 잃은 수재 — 읍참마속의 주인공",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -1094,6 +1244,9 @@
   {
     "id": 51,
     "name": "서서",
+    "birth": 168,
+    "region": "yuzhou",
+    "desc": "유비의 첫 군사 — 효심으로 위에 간 은사",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -1115,6 +1268,9 @@
   {
     "id": 52,
     "name": "관평",
+    "birth": 183,
+    "region": "sili",
+    "desc": "관우와 최후를 함께한 양자",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1137,6 +1293,9 @@
   {
     "id": 53,
     "name": "관흥",
+    "birth": 205,
+    "region": "yizhou",
+    "desc": "아버지의 청룡도를 이은 관우의 아들",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1159,6 +1318,9 @@
   {
     "id": 54,
     "name": "장포",
+    "birth": 206,
+    "region": "yizhou",
+    "desc": "장비의 기백을 이은 아들",
     "aptitudes": {
       "infantry": "A",
       "archer": "C",
@@ -1181,6 +1343,9 @@
   {
     "id": 55,
     "name": "엄안",
+    "birth": 150,
+    "region": "yizhou",
+    "desc": "머리를 벨지언정 항복은 없다던 파군 노장",
     "aptitudes": {
       "infantry": "A",
       "archer": "S",
@@ -1203,6 +1368,9 @@
   {
     "id": 56,
     "name": "이엄",
+    "birth": 180,
+    "region": "jingzhou",
+    "desc": "유비의 탁고를 받은 촉의 중신",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1224,6 +1392,9 @@
   {
     "id": 57,
     "name": "맹획",
+    "birth": 190,
+    "region": "nanzhong",
+    "desc": "칠종칠금 — 남중의 왕",
     "aptitudes": {
       "infantry": "A",
       "archer": "C",
@@ -1246,6 +1417,9 @@
   {
     "id": 58,
     "name": "축융",
+    "birth": 195,
+    "region": "nanzhong",
+    "desc": "비도를 던지는 남만의 여걸",
     "aptitudes": {
       "infantry": "B",
       "archer": "A",
@@ -1268,6 +1442,9 @@
   {
     "id": 59,
     "name": "진도",
+    "birth": 180,
+    "region": "yuzhou",
+    "desc": "백모병을 이끈 촉의 숨은 호위장",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1290,6 +1467,9 @@
   {
     "id": 60,
     "name": "오의",
+    "birth": 185,
+    "region": "yanzhou",
+    "desc": "촉 황실의 외척 무장",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1311,6 +1491,9 @@
   {
     "id": 61,
     "name": "손견",
+    "birth": 155,
+    "region": "yangzhou",
+    "desc": "강동의 호랑이 — 손씨 패업의 시조",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -1333,6 +1516,9 @@
   {
     "id": 62,
     "name": "손책",
+    "birth": 175,
+    "region": "yangzhou",
+    "desc": "소패왕 — 강동을 평정한 질풍",
     "aptitudes": {
       "infantry": "SS",
       "archer": "B",
@@ -1355,6 +1541,9 @@
   {
     "id": 63,
     "name": "손권",
+    "birth": 182,
+    "region": "yangzhou",
+    "desc": "벽안의 오 대제 — 신하를 부리는 재주",
     "aptitudes": {
       "infantry": "B",
       "archer": "A",
@@ -1376,6 +1565,9 @@
   {
     "id": 64,
     "name": "태사자",
+    "birth": 166,
+    "region": "qingzhou",
+    "desc": "신의를 지킨 동래의 신궁",
     "aptitudes": {
       "infantry": "S",
       "archer": "S",
@@ -1398,6 +1590,9 @@
   {
     "id": 65,
     "name": "정보",
+    "birth": 152,
+    "region": "youzhou",
+    "desc": "삼대를 섬긴 오의 덕장",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1420,6 +1615,9 @@
   {
     "id": 66,
     "name": "황개",
+    "birth": 154,
+    "region": "jingzhou",
+    "desc": "고육계로 적벽의 불씨를 당긴 노장",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1442,6 +1640,9 @@
   {
     "id": 67,
     "name": "한당",
+    "birth": 160,
+    "region": "youzhou",
+    "desc": "손견 이래의 백전노장",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -1464,6 +1665,9 @@
   {
     "id": 68,
     "name": "주태",
+    "birth": 168,
+    "region": "yangzhou",
+    "desc": "온몸의 상처로 손권을 지킨 충장",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -1486,6 +1690,9 @@
   {
     "id": 69,
     "name": "능통",
+    "birth": 189,
+    "region": "yangzhou",
+    "desc": "아버지의 원수와도 국사를 함께한 무장",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1508,6 +1715,9 @@
   {
     "id": 70,
     "name": "여몽",
+    "birth": 178,
+    "region": "yuzhou",
+    "desc": "괄목상대 — 형주를 취한 백의도강의 주역",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -1530,6 +1740,9 @@
   {
     "id": 71,
     "name": "육손",
+    "birth": 183,
+    "region": "yangzhou",
+    "desc": "이릉에서 유비를 불태운 서생 대도독",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -1552,6 +1765,9 @@
   {
     "id": 72,
     "name": "육항",
+    "birth": 226,
+    "region": "yangzhou",
+    "desc": "오의 마지막 명장 — 육손의 아들",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1574,6 +1790,9 @@
   {
     "id": 73,
     "name": "노숙",
+    "birth": 172,
+    "region": "xuzhou",
+    "desc": "천하이분지계 — 오촉 동맹의 설계자",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -1595,6 +1814,9 @@
   {
     "id": 74,
     "name": "장소",
+    "birth": 156,
+    "region": "xuzhou",
+    "desc": "내사는 장소에게 — 오의 첫째 문신",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -1610,6 +1832,9 @@
   {
     "id": 75,
     "name": "제갈근",
+    "birth": 174,
+    "region": "xuzhou",
+    "desc": "공명의 형 — 온화한 외교의 달인",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -1631,6 +1856,9 @@
   {
     "id": 76,
     "name": "정봉",
+    "birth": 195,
+    "region": "yangzhou",
+    "desc": "눈보라 속 단병접전 — 오의 마지막 숙장",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1653,6 +1881,9 @@
   {
     "id": 77,
     "name": "서성",
+    "birth": 180,
+    "region": "xuzhou",
+    "desc": "가짜 성벽으로 조비를 물린 지장",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -1675,6 +1906,9 @@
   {
     "id": 78,
     "name": "주환",
+    "birth": 177,
+    "region": "yangzhou",
+    "desc": "유수에서 조인을 꺾은 강동의 담략",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1697,6 +1931,9 @@
   {
     "id": 79,
     "name": "반장",
+    "birth": 175,
+    "region": "yanzhou",
+    "desc": "관우를 사로잡은 거친 야전꾼",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1719,6 +1956,9 @@
   {
     "id": 80,
     "name": "하제",
+    "birth": 170,
+    "region": "yangzhou",
+    "desc": "산월을 평정한 화려한 군장",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1740,6 +1980,9 @@
   {
     "id": 81,
     "name": "동탁",
+    "birth": 139,
+    "region": "liangzhou",
+    "desc": "낙양을 불태운 폭군 — 한을 무너뜨린 승냥이",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1762,6 +2005,9 @@
   {
     "id": 82,
     "name": "화웅",
+    "birth": 155,
+    "region": "liangzhou",
+    "desc": "사수관의 선봉 — 관우의 술이 식기 전에",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1784,6 +2030,9 @@
   {
     "id": 83,
     "name": "이각",
+    "birth": 160,
+    "region": "liangzhou",
+    "desc": "동탁 사후 장안을 어지럽힌 잔당",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -1805,6 +2054,9 @@
   {
     "id": 84,
     "name": "곽사",
+    "birth": 160,
+    "region": "liangzhou",
+    "desc": "이각과 함께 조정을 농단한 서량 잔당",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -1826,6 +2078,9 @@
   {
     "id": 85,
     "name": "마등",
+    "birth": 156,
+    "region": "liangzhou",
+    "desc": "서량의 군벌 — 마초의 아버지",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1848,6 +2103,9 @@
   {
     "id": 86,
     "name": "한수",
+    "birth": 145,
+    "region": "liangzhou",
+    "desc": "서량 반란 삼십 년의 노회한 군벌",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -1869,6 +2127,9 @@
   {
     "id": 87,
     "name": "원소",
+    "birth": 154,
+    "region": "yuzhou",
+    "desc": "사세삼공의 명문 — 관도에서 진 하북의 맹주",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -1890,6 +2151,9 @@
   {
     "id": 88,
     "name": "안량",
+    "birth": 160,
+    "region": "jizhou",
+    "desc": "백마에서 관우의 일격에 진 하북의 용장",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -1912,6 +2176,9 @@
   {
     "id": 89,
     "name": "문추",
+    "birth": 160,
+    "region": "jizhou",
+    "desc": "안량의 복수를 기도하다 스러진 맹장",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -1934,6 +2201,9 @@
   {
     "id": 90,
     "name": "전풍",
+    "birth": 150,
+    "region": "jizhou",
+    "desc": "옥중에서 관도 패전을 예언한 강직한 모사",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -1955,6 +2225,9 @@
   {
     "id": 91,
     "name": "저수",
+    "birth": 155,
+    "region": "jizhou",
+    "desc": "원소가 버린 충간 — 감군의 재략",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -1976,6 +2249,9 @@
   {
     "id": 92,
     "name": "원술",
+    "birth": 155,
+    "region": "yuzhou",
+    "desc": "옥새를 믿고 참칭한 몰락 귀공자",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -1997,6 +2273,9 @@
   {
     "id": 93,
     "name": "기령",
+    "birth": 160,
+    "region": "yuzhou",
+    "desc": "삼첨도를 쓰는 원술군 제일장",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2019,6 +2298,9 @@
   {
     "id": 94,
     "name": "공손찬",
+    "birth": 155,
+    "region": "youzhou",
+    "desc": "백마의종 — 북방 이민족이 두려워한 백마장군",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -2041,6 +2323,9 @@
   {
     "id": 95,
     "name": "유표",
+    "birth": 142,
+    "region": "yanzhou",
+    "desc": "형주를 지킨 팔준 — 수성의 명사",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2062,6 +2347,9 @@
   {
     "id": 96,
     "name": "황조",
+    "birth": 150,
+    "region": "jingzhou",
+    "desc": "손견을 쏘아 죽인 강하 태수",
     "aptitudes": {
       "infantry": "B",
       "archer": "A",
@@ -2083,6 +2371,9 @@
   {
     "id": 97,
     "name": "문빙",
+    "birth": 175,
+    "region": "jingzhou",
+    "desc": "강하를 수십 년 지킨 형주의 방패",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -2105,6 +2396,9 @@
   {
     "id": 98,
     "name": "유장",
+    "birth": 162,
+    "region": "jingzhou",
+    "desc": "익주를 유비에게 내준 유약한 종친",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -2120,6 +2414,9 @@
   {
     "id": 99,
     "name": "장임",
+    "birth": 165,
+    "region": "yizhou",
+    "desc": "낙봉파에서 방통을 쏜 익주 제일장",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -2142,6 +2439,9 @@
   {
     "id": 100,
     "name": "장각",
+    "birth": 140,
+    "region": "jizhou",
+    "desc": "창천이사 황천당립 — 황건의 대현량사",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2164,6 +2464,9 @@
   {
     "id": 101,
     "name": "장보",
+    "birth": 145,
+    "region": "jizhou",
+    "desc": "지공장군 — 요술을 부리는 장각의 아우",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2185,6 +2488,9 @@
   {
     "id": 102,
     "name": "장량",
+    "birth": 147,
+    "region": "jizhou",
+    "desc": "인공장군 — 황건 삼형제의 막내",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2206,6 +2512,9 @@
   {
     "id": 103,
     "name": "진궁",
+    "birth": 161,
+    "region": "yanzhou",
+    "desc": "조조를 버리고 여포를 택한 강골 책사",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2227,6 +2536,9 @@
   {
     "id": 104,
     "name": "고순",
+    "birth": 160,
+    "region": "bingzhou",
+    "desc": "함진영 — 진을 부수는 여포군 최정예의 장",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -2249,6 +2561,9 @@
   {
     "id": 105,
     "name": "도겸",
+    "birth": 132,
+    "region": "yangzhou",
+    "desc": "서주를 유비에게 넘긴 온후한 주목",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2264,6 +2579,9 @@
   {
     "id": 106,
     "name": "공융",
+    "birth": 153,
+    "region": "yanzhou",
+    "desc": "공자의 후예 — 청류 명사의 기개",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -2279,6 +2597,9 @@
   {
     "id": 107,
     "name": "왕윤",
+    "birth": 137,
+    "region": "bingzhou",
+    "desc": "연환계로 동탁을 벤 사도",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -2294,6 +2615,9 @@
   {
     "id": 108,
     "name": "유요",
+    "birth": 156,
+    "region": "qingzhou",
+    "desc": "강동에서 손책에게 밀려난 양주자사",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2309,6 +2633,9 @@
   {
     "id": 109,
     "name": "장로",
+    "birth": 160,
+    "region": "yuzhou",
+    "desc": "한중에 오두미도의 나라를 세운 교주",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2330,6 +2657,9 @@
   {
     "id": 110,
     "name": "맹달",
+    "birth": 175,
+    "region": "sili",
+    "desc": "촉과 위 사이를 오간 처세의 무장",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2351,6 +2681,9 @@
   {
     "id": 111,
     "name": "심배",
+    "birth": 155,
+    "region": "jizhou",
+    "desc": "업성과 함께 죽은 원가의 충골",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2372,6 +2705,9 @@
   {
     "id": 112,
     "name": "곽도",
+    "birth": 155,
+    "region": "yuzhou",
+    "desc": "관도의 패착을 남에게 미룬 원소군 모사",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -2387,6 +2723,9 @@
   {
     "id": 201,
     "name": "주몽",
+    "birth": -58,
+    "region": "goguryeo",
+    "desc": "활의 신 — 고구려를 세운 동명성왕",
     "aptitudes": {
       "infantry": "A",
       "archer": "SS",
@@ -2409,6 +2748,9 @@
   {
     "id": 202,
     "name": "광개토대왕",
+    "birth": 374,
+    "region": "goguryeo",
+    "desc": "영락대왕 — 사방을 정복한 정복군주",
     "aptitudes": {
       "infantry": "SS",
       "archer": "A",
@@ -2431,6 +2773,9 @@
   {
     "id": 203,
     "name": "장수왕",
+    "birth": 394,
+    "region": "goguryeo",
+    "desc": "평양 천도와 남진 — 백 년을 다스린 대왕",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2452,6 +2797,9 @@
   {
     "id": 204,
     "name": "을지문덕",
+    "birth": 550,
+    "region": "goguryeo",
+    "desc": "살수대첩 — 수 백만 대군을 물에 장사지낸 명장",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -2474,6 +2822,9 @@
   {
     "id": 205,
     "name": "연개소문",
+    "birth": 603,
+    "region": "goguryeo",
+    "desc": "다섯 자루 칼의 대막리지 — 당 태종을 막다",
     "aptitudes": {
       "infantry": "SS",
       "archer": "B",
@@ -2496,6 +2847,9 @@
   {
     "id": 206,
     "name": "양만춘",
+    "birth": 600,
+    "region": "goguryeo",
+    "desc": "안시성주 — 88일의 공성을 버텨낸 수성전의 화신",
     "aptitudes": {
       "infantry": "A",
       "archer": "S",
@@ -2518,6 +2872,9 @@
   {
     "id": 207,
     "name": "온달",
+    "birth": 550,
+    "region": "goguryeo",
+    "desc": "바보 온달 — 평강공주와 함께 일어선 맹장",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -2540,6 +2897,9 @@
   {
     "id": 208,
     "name": "명림답부",
+    "birth": 66,
+    "region": "goguryeo",
+    "desc": "좌원대첩 — 한의 대군을 꺾은 국상",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2561,6 +2921,9 @@
   {
     "id": 209,
     "name": "을파소",
+    "birth": 140,
+    "region": "goguryeo",
+    "desc": "진대법을 편 고구려의 명재상",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -2576,6 +2939,9 @@
   {
     "id": 210,
     "name": "대무신왕",
+    "birth": 4,
+    "region": "goguryeo",
+    "desc": "부여를 꺾은 정복왕 — 무휼",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -2598,6 +2964,9 @@
   {
     "id": 211,
     "name": "온조왕",
+    "birth": -40,
+    "region": "baekje",
+    "desc": "위례성에 백제를 세운 시조",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2619,6 +2988,9 @@
   {
     "id": 212,
     "name": "근초고왕",
+    "birth": 310,
+    "region": "baekje",
+    "desc": "백제의 전성기 — 평양성까지 북진한 정복군주",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -2641,6 +3013,9 @@
   {
     "id": 213,
     "name": "계백",
+    "birth": 615,
+    "region": "baekje",
+    "desc": "황산벌 오천 결사대 — 최후까지 싸운 충절",
     "aptitudes": {
       "infantry": "SS",
       "archer": "B",
@@ -2663,6 +3038,9 @@
   {
     "id": 214,
     "name": "흑치상지",
+    "birth": 630,
+    "region": "baekje",
+    "desc": "백제 부흥군의 맹장 — 당에서도 명장",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -2685,6 +3063,9 @@
   {
     "id": 215,
     "name": "성왕",
+    "birth": 504,
+    "region": "baekje",
+    "desc": "사비 천도로 중흥을 연 백제 중흥군주",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2706,6 +3087,9 @@
   {
     "id": 216,
     "name": "무령왕",
+    "birth": 462,
+    "region": "baekje",
+    "desc": "갱위강국 — 백제를 다시 강하게 한 왕",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2727,6 +3111,9 @@
   {
     "id": 217,
     "name": "의자왕",
+    "birth": 599,
+    "region": "baekje",
+    "desc": "해동증자에서 망국까지 — 백제의 마지막 왕",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2742,6 +3129,9 @@
   {
     "id": 218,
     "name": "복신",
+    "birth": 615,
+    "region": "baekje",
+    "desc": "주류성의 백제 부흥군 수장",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2763,6 +3153,9 @@
   {
     "id": 219,
     "name": "도침",
+    "birth": 615,
+    "region": "baekje",
+    "desc": "승병을 일으킨 부흥군의 승장",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2784,6 +3177,9 @@
   {
     "id": 220,
     "name": "부여풍",
+    "birth": 623,
+    "region": "baekje",
+    "desc": "왜에서 돌아온 부흥 백제의 마지막 왕자",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2799,6 +3195,9 @@
   {
     "id": 221,
     "name": "김유신",
+    "birth": 595,
+    "region": "silla",
+    "desc": "삼국 통일의 원훈 — 신라의 흥무대왕",
     "aptitudes": {
       "infantry": "SS",
       "archer": "A",
@@ -2821,6 +3220,9 @@
   {
     "id": 222,
     "name": "김춘추",
+    "birth": 603,
+    "region": "silla",
+    "desc": "외교로 통일의 판을 짠 태종무열왕",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2842,6 +3244,9 @@
   {
     "id": 223,
     "name": "문무왕",
+    "birth": 626,
+    "region": "silla",
+    "desc": "통일을 완성하고 동해의 용이 된 왕",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2863,6 +3268,9 @@
   {
     "id": 224,
     "name": "관창",
+    "birth": 645,
+    "region": "silla",
+    "desc": "황산벌에 몸을 던진 열여섯 화랑",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2885,6 +3293,9 @@
   {
     "id": 225,
     "name": "사다함",
+    "birth": 546,
+    "region": "silla",
+    "desc": "가야 정벌의 선봉에 선 소년 화랑",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2907,6 +3318,9 @@
   {
     "id": 226,
     "name": "이사부",
+    "birth": 485,
+    "region": "silla",
+    "desc": "나무 사자로 우산국을 복속시킨 장군",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -2929,6 +3343,9 @@
   {
     "id": 227,
     "name": "거칠부",
+    "birth": 502,
+    "region": "silla",
+    "desc": "국사를 편찬하고 한강을 취한 재상 장군",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2950,6 +3367,9 @@
   {
     "id": 228,
     "name": "알천",
+    "birth": 590,
+    "region": "silla",
+    "desc": "호랑이 꼬리를 잡았다는 화백의 수석",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2972,6 +3392,9 @@
   {
     "id": 229,
     "name": "김품일",
+    "birth": 620,
+    "region": "silla",
+    "desc": "관창의 아버지 — 황산벌의 좌장군",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2993,6 +3416,9 @@
   {
     "id": 230,
     "name": "선덕여왕",
+    "birth": 590,
+    "region": "silla",
+    "desc": "첨성대와 황룡사 — 신라 최초의 여왕",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -3014,6 +3440,9 @@
   {
     "id": 301,
     "name": "오다 노부나가",
+    "birth": 1534,
+    "region": "owari",
+    "desc": "제육천마왕 — 철포 삼단으로 시대를 바꾼 풍운아",
     "aptitudes": {
       "infantry": "S",
       "archer": "SS",
@@ -3036,6 +3465,9 @@
   {
     "id": 302,
     "name": "도요토미 히데요시",
+    "birth": 1537,
+    "region": "owari",
+    "desc": "물공격과 병량공격 — 성 공략의 천재 태합",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -3057,6 +3489,9 @@
   {
     "id": 303,
     "name": "도쿠가와 이에야스",
+    "birth": 1543,
+    "region": "mikawa",
+    "desc": "인내의 너구리 — 최후에 천하를 거둔 쇼군",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -3079,6 +3514,9 @@
   {
     "id": 304,
     "name": "다케다 신겐",
+    "birth": 1521,
+    "region": "kai",
+    "desc": "풍림화산 — 가이의 호랑이",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -3101,6 +3539,9 @@
   {
     "id": 305,
     "name": "우에스기 겐신",
+    "birth": 1530,
+    "region": "echigo",
+    "desc": "군신 비사문천 — 에치고의 용",
     "aptitudes": {
       "infantry": "SS",
       "archer": "B",
@@ -3123,6 +3564,9 @@
   {
     "id": 306,
     "name": "다테 마사무네",
+    "birth": 1567,
+    "region": "mutsu",
+    "desc": "독안룡 — 오슈의 야심가",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -3145,6 +3589,9 @@
   {
     "id": 307,
     "name": "사나다 유키무라",
+    "birth": 1567,
+    "region": "shinano",
+    "desc": "일본제일의 병(兵) — 오사카 여름의 진홍 갑주",
     "aptitudes": {
       "infantry": "SS",
       "archer": "B",
@@ -3167,6 +3614,9 @@
   {
     "id": 308,
     "name": "혼다 다다카쓰",
+    "birth": 1548,
+    "region": "mikawa",
+    "desc": "생애 57전 무상처 — 도쿠가와 사천왕",
     "aptitudes": {
       "infantry": "SS",
       "archer": "B",
@@ -3189,6 +3639,9 @@
   {
     "id": 309,
     "name": "모리 모토나리",
+    "birth": 1497,
+    "region": "aki",
+    "desc": "세 화살의 교훈 — 모략으로 주고쿠를 제패",
     "aptitudes": {
       "infantry": "B",
       "archer": "A",
@@ -3210,6 +3663,9 @@
   {
     "id": 310,
     "name": "시마즈 요시히로",
+    "birth": 1535,
+    "region": "satsuma",
+    "desc": "귀석만자 — 적진 한가운데를 뚫은 퇴각전의 귀신",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
