@@ -63,6 +63,10 @@ internal sealed class BalanceDto
     public int MonthlyTaxPerCity { get; init; }
     public int MultiTargetSecondaryPercent { get; init; } = 60;
     public int WoundedPercent { get; init; } = 70;
+    public int PopulationMaxSmall { get; init; } = 100_000;
+    public int PopulationMaxMedium { get; init; } = 250_000;
+    public int PopulationMaxLarge { get; init; } = 500_000;
+    public int PopulationGrowthPercent { get; init; } = 1;
 }
 
 internal sealed class MapDto

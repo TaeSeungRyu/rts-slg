@@ -65,6 +65,40 @@ public class WorldEngineTests
     }
 
     [Fact]
+    public void 월말에_인구가_치안_비례로_성장한다()
+    {
+        // 인구 100,000·치안 100 → +1% = +1,000. 치안 50 → +0.5% = +500.
+        var cities = new List<City>
+        {
+            new(new CityId(1), "허창", new HexCoord(0, 0), new FactionId(1), 5000, CastleSize.Medium, Population: 100_000),
+            new(new CityId(2), "업", new HexCoord(1, -1), new FactionId(1), 4200, CastleSize.Medium, Population: 100_000, Security: 50),
+        };
+        var s = new GameState(1, 1, new List<Faction>(), cities, new List<General>());
+
+        var after = new WorldEngine(Balance).AdvanceDays(s, 30);
+
+        Assert.Equal(101_000, after.Cities.Single(c => c.Id.Value == 1).Population);
+        Assert.Equal(100_500, after.Cities.Single(c => c.Id.Value == 2).Population);
+    }
+
+    [Fact]
+    public void 인구는_성곽_등급별_최대치를_넘지_않는다()
+    {
+        // 소성 최대 100,000 직전에서 성장해도 최대치에서 멈춘다. 대성은 500,000까지 여유.
+        var cities = new List<City>
+        {
+            new(new CityId(1), "소성", new HexCoord(0, 0), new FactionId(1), 0, CastleSize.Small, Population: 99_900),
+            new(new CityId(2), "대성", new HexCoord(1, 0), new FactionId(1), 0, CastleSize.Large, Population: 99_900),
+        };
+        var s = new GameState(1, 1, new List<Faction>(), cities, new List<General>());
+
+        var after = new WorldEngine(Balance).AdvanceDays(s, 30);
+
+        Assert.Equal(100_000, after.Cities.Single(c => c.Id.Value == 1).Population);
+        Assert.Equal(100_899, after.Cities.Single(c => c.Id.Value == 2).Population);
+    }
+
+    [Fact]
     public void 나눠_진행해도_한번에_진행한_것과_같다()
     {
         var engine = new WorldEngine(Balance);

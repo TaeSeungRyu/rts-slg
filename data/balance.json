@@ -1,5 +1,9 @@
 {
   "monthly_tax_per_city": 100,
   "multi_target_secondary_percent": 60,
-  "wounded_percent": 70
+  "wounded_percent": 70,
+  "population_max_small": 100000,
+  "population_max_medium": 250000,
+  "population_max_large": 500000,
+  "population_growth_percent": 1
 }

@@ -36,15 +36,33 @@ public sealed class WorldEngine
             Cities = state.Cities.OrderBy(c => c.Id.Value).ToList(),
         };
 
-        // 월말 틱: 이 날이 그 달의 30일이면 세금 징수(도시당 계수, 도시 금고로).
+        // 월말 틱: 이 날이 그 달의 30일이면 세금 징수(도시 금고로) + 인구 성장.
         if (next.DayOfMonth == GameState.DaysPerMonth)
         {
             next = next with
             {
-                Cities = next.Cities.Select(c => c.AddGold(_balance.MonthlyTaxPerCity)).ToList(),
+                Cities = next.Cities
+                    .Select(c => Grow(c.AddGold(_balance.MonthlyTaxPerCity)))
+                    .ToList(),
             };
         }
 
         return next;
     }
+
+    // 인구 성장(2026-08-13 확정): 매월 말 +성장률% × 치안/100 (내림), 성곽 등급별 최대치까지.
+    // 치안 100 = +1%, 치안 50 = +0.5% — 징병 남발이 장기 성장을 갉는다.
+    private City Grow(City city)
+    {
+        var delta = (long)city.Population * _balance.PopulationGrowthPercent * city.Security / 10_000;
+        var grown = city.Population + (int)delta;
+        return city with { Population = System.Math.Min(grown, PopulationMax(city.Castle)) };
+    }
+
+    private int PopulationMax(CastleSize castle) => castle switch
+    {
+        CastleSize.Large => _balance.PopulationMaxLarge,
+        CastleSize.Medium => _balance.PopulationMaxMedium,
+        _ => _balance.PopulationMaxSmall,
+    };
 }
