@@ -139,6 +139,28 @@ public class WorldEngineTests
     }
 
     [Fact]
+    public void 세율이_수입_배율과_치안_변동을_정한다()
+    {
+        // 기준 20% = 1배·변동 없음 / 50%(최대) = 2.5배·치안 −10 / 10% = 0.5배·치안 +2 / 0% = 수입 없음·치안 +4
+        var cities = new List<City>
+        {
+            new(new CityId(1), "기준", new HexCoord(0, 0), new FactionId(1), 0, Gold: 0, Security: 80),
+            new(new CityId(2), "가혹", new HexCoord(1, 0), new FactionId(1), 0, Gold: 0, Security: 80, TaxRate: 50),
+            new(new CityId(3), "선정", new HexCoord(2, 0), new FactionId(1), 0, Gold: 0, Security: 80, TaxRate: 10),
+            new(new CityId(4), "면세", new HexCoord(3, 0), new FactionId(1), 0, Gold: 0, Security: 80, TaxRate: 0),
+        };
+        var s = new GameState(1, 1, new List<Faction>(), cities, new List<General>());
+
+        var after = new WorldEngine(Balance).AdvanceDays(s, 30);
+        City C(int id) => after.Cities.Single(c => c.Id.Value == id);
+
+        Assert.Equal((100, 80), (C(1).Gold, C(1).Security));   // 소성 기본 100 × 1.0
+        Assert.Equal((250, 70), (C(2).Gold, C(2).Security));   // × 2.5, −10
+        Assert.Equal((50, 82), (C(3).Gold, C(3).Security));    // × 0.5, +2
+        Assert.Equal((0, 84), (C(4).Gold, C(4).Security));     // × 0, +4
+    }
+
+    [Fact]
     public void 나눠_진행해도_한번에_진행한_것과_같다()
     {
         var engine = new WorldEngine(Balance);

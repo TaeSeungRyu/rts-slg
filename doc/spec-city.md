@@ -25,6 +25,7 @@
 | `Paddies`/`Farms`/`Villages` | `paddies`/`farms`/`villages` | 시설 수(개수만 — 타일 위치는 Game 몫). 논 +300량·밭 +150량·마을 +50금/월 ✅ | 0 |
 | `Workshop` | `workshop` | 공방 보유(성별 1개) — 공성 병기·연구 게이트(③ 예정) | false |
 | `ProducesOre` 등 | `produces_ore`/`produces_horses`/`produces_elephants` | 자원 산출 도시 — 매월 광석 +500·말 +100·코끼리 +2 ✅ | false |
+| `TaxRate` | `tax_rate` | 세율 0~50% — 수입 배율(세율/20%) + 월 치안 변동(0%=+4 ~ 50%=−10) ✅ | 20 |
 
 ## 성곽 등급 (design-combat 확정)
 

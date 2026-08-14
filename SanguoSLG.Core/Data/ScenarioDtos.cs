@@ -38,6 +38,7 @@ internal sealed class CityDto
     public bool ProducesOre { get; init; }
     public bool ProducesHorses { get; init; }
     public bool ProducesElephants { get; init; }
+    public int TaxRate { get; init; } = 20;
 }
 
 internal sealed class GeneralDto
@@ -86,6 +87,9 @@ internal sealed class BalanceDto
     public int OreOutputPerMonth { get; init; } = 500;
     public int HorsesOutputPerMonth { get; init; } = 100;
     public int ElephantsOutputPerMonth { get; init; } = 2;
+    public int TaxRateBase { get; init; } = 20;
+    public int TaxRateMax { get; init; } = 50;
+    public int TaxMaxSecurityPenalty { get; init; } = 10;
 }
 
 internal sealed class MapDto

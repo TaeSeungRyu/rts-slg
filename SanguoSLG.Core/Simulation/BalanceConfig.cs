@@ -26,4 +26,7 @@ public sealed record BalanceConfig(
     int VillageGold = 50,
     int OreOutputPerMonth = 500,
     int HorsesOutputPerMonth = 100,
-    int ElephantsOutputPerMonth = 2);
+    int ElephantsOutputPerMonth = 2,
+    int TaxRateBase = 20,
+    int TaxRateMax = 50,
+    int TaxMaxSecurityPenalty = 10);

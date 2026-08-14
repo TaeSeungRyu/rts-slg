@@ -41,22 +41,37 @@ public sealed class WorldEngine
         {
             next = next with
             {
-                Cities = next.Cities.Select(c => Grow(Produce(Income(c)))).ToList(),
+                Cities = next.Cities.Select(c => TaxSecurity(Grow(Produce(Income(c))))).ToList(),
             };
         }
 
         return next;
     }
 
-    // 수입(design-administration "시설 건설"): 금 = 성 규모 기본치 + 마을 가산,
-    // 군량 = 성 규모 기본치 + 논·밭 가산. 공방은 수입이 아니라 생산·연구 게이트(③).
+    // 수입(design-administration "시설 건설"·"세율"): 금 = 성 규모 기본치 + 마을 가산,
+    // 군량 = 성 규모 기본치 + 논·밭 가산 — 여기에 **세율 배율(세율/기준 20%)**이 곱해진다.
+    // 공방은 수입이 아니라 생산·연구 게이트(③).
     private City Income(City city)
     {
-        var gold = GoldBase(city.Castle) + city.Villages * _balance.VillageGold;
-        var provisions = ProvisionsBase(city.Castle)
+        var rate = System.Math.Clamp(city.TaxRate, 0, _balance.TaxRateMax);
+        var gold = (GoldBase(city.Castle) + city.Villages * _balance.VillageGold)
+            * rate / _balance.TaxRateBase;
+        var provisions = (ProvisionsBase(city.Castle)
             + city.Paddies * _balance.PaddyProvisions
-            + city.Farms * _balance.FarmProvisions;
+            + city.Farms * _balance.FarmProvisions)
+            * rate / _balance.TaxRateBase;
         return city with { Gold = city.Gold + gold, Provisions = city.Provisions + provisions };
+    }
+
+    // 세율의 민심(치안 통합 — 2026-08-13 확정) 반영: 기준(20%)보다 낮으면 회복, 높으면 하락,
+    // 최대치(50%)면 크게 하락. 성장(Grow)은 이번 달 치안 기준으로 먼저 계산된다.
+    private City TaxSecurity(City city)
+    {
+        var rate = System.Math.Clamp(city.TaxRate, 0, _balance.TaxRateMax);
+        var delta = rate >= _balance.TaxRateMax
+            ? -_balance.TaxMaxSecurityPenalty
+            : (_balance.TaxRateBase - rate) / 5;
+        return city with { Security = System.Math.Clamp(city.Security + delta, 0, 100) };
     }
 
     // 자원 산출: 산출 도시(지역 특산 플래그)만 매월 비축이 는다.

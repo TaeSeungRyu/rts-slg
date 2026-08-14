@@ -40,7 +40,8 @@ public sealed class ScenarioLoader
             .Select(d => new City(
                 new CityId(d.Id), d.Name, new HexCoord(d.Q, d.R), new FactionId(d.Owner), d.Provisions,
                 ParseCastle(d.Castle), d.Gold, d.Security, d.Population, d.Ore, d.Horses, d.Elephants, d.Region,
-                d.Paddies, d.Farms, d.Villages, d.Workshop, d.ProducesOre, d.ProducesHorses, d.ProducesElephants))
+                d.Paddies, d.Farms, d.Villages, d.Workshop, d.ProducesOre, d.ProducesHorses, d.ProducesElephants,
+                d.TaxRate))
             .ToList();
 
         var generals = new GeneralLoader().LoadFromJson(generalsJson);
@@ -52,7 +53,8 @@ public sealed class ScenarioLoader
             balanceDto.GoldBaseSmall, balanceDto.GoldBaseMedium, balanceDto.GoldBaseLarge,
             balanceDto.ProvisionsBaseSmall, balanceDto.ProvisionsBaseMedium, balanceDto.ProvisionsBaseLarge,
             balanceDto.PaddyProvisions, balanceDto.FarmProvisions, balanceDto.VillageGold,
-            balanceDto.OreOutputPerMonth, balanceDto.HorsesOutputPerMonth, balanceDto.ElephantsOutputPerMonth);
+            balanceDto.OreOutputPerMonth, balanceDto.HorsesOutputPerMonth, balanceDto.ElephantsOutputPerMonth,
+            balanceDto.TaxRateBase, balanceDto.TaxRateMax, balanceDto.TaxMaxSecurityPenalty);
 
         var mapDto = Deserialize<MapDto>(mapJson, "map");
         var map = BuildMap(mapDto);
