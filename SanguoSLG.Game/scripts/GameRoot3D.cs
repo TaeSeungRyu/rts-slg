@@ -14,7 +14,7 @@ namespace SanguoSLG.Game;
 /// </summary>
 public partial class GameRoot3D : Node3D
 {
-    private TurnEngine _engine = null!;
+    private WorldEngine _engine = null!;
     private GameState _state = null!;
     private Hud _hud = null!;
     private bool _capture;
@@ -115,7 +115,7 @@ public partial class GameRoot3D : Node3D
 
         AddChild(BuildVignette(tone));
 
-        _engine = new TurnEngine(scenario.Balance);
+        _engine = new WorldEngine(scenario.Balance);
         _state = GameState.FromScenario(scenario);
         _hud = new Hud();
         AddChild(_hud);

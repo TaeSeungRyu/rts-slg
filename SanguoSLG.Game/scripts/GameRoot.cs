@@ -31,7 +31,7 @@ public partial class GameRoot : Node2D
         camera.Zoom = FitZoom(bounds, GetViewport().GetVisibleRect().Size);
         camera.MakeCurrent();
 
-        _engine = new TurnEngine(scenario.Balance);
+        _engine = new WorldEngine(scenario.Balance);
         _state = GameState.FromScenario(scenario);
         _hud = GetNode<Hud>("Hud");
         _hud.NextMonthPressed += OnNextMonth;
@@ -40,7 +40,7 @@ public partial class GameRoot : Node2D
         _capture = OS.GetCmdlineArgs().Contains("--shot");
     }
 
-    private TurnEngine _engine = null!;
+    private WorldEngine _engine = null!;
     private GameState _state = null!;
     private Hud _hud = null!;
 
