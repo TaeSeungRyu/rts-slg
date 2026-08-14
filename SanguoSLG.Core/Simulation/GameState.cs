@@ -4,17 +4,28 @@ using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 
 /// <summary>
-/// 한 시점의 게임 전체 상태(불변). 시간은 연/월로 표현하며 월이 곧 턴이다.
-/// 상태 전이는 TurnEngine이 새 GameState를 만들어 반환한다.
+/// 한 시점의 게임 전체 상태(불변). 시간은 **일(日) 단위 세계 시계** 하나로 흐른다
+/// (2026-08-13 확정 — design-administration "시간 축"). 1개월 = 30일, 1년 = 360일로
+/// 고정해 연·월·일은 절대 일수에서 유도한다. 상태 전이는 WorldEngine이 새 GameState를 만든다.
 /// </summary>
 public sealed record GameState(
-    int Year,
-    int Month,
+    int Day,
+    int StartYear,
     IReadOnlyList<Faction> Factions,
     IReadOnlyList<City> Cities,
     IReadOnlyList<General> Generals)
 {
-    /// <summary>시나리오로부터 시작 상태(시작 연도 1월)를 만든다.</summary>
+    public const int DaysPerMonth = 30;
+    public const int MonthsPerYear = 12;
+    public const int DaysPerYear = DaysPerMonth * MonthsPerYear;
+
+    public int Year => StartYear + (Day - 1) / DaysPerYear;
+
+    public int Month => (Day - 1) % DaysPerYear / DaysPerMonth + 1;
+
+    public int DayOfMonth => (Day - 1) % DaysPerMonth + 1;
+
+    /// <summary>시나리오로부터 시작 상태(시작 연도 1월 1일)를 만든다.</summary>
     public static GameState FromScenario(Scenario scenario, int startYear = 1) =>
-        new(startYear, 1, scenario.Factions, scenario.Cities, scenario.Generals);
+        new(1, startYear, scenario.Factions, scenario.Cities, scenario.Generals);
 }

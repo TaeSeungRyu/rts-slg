@@ -156,10 +156,10 @@
     "region": "xuzhou",
     "desc": "와룡 — 촉한의 승상이자 천하삼분의 설계자",
     "aptitudes": {
-      "infantry": "A",
-      "archer": "A",
+      "infantry": "S",
+      "archer": "S",
       "cavalry": "B",
-      "elephant": "B",
+      "elephant": "A",
       "siege": "S",
       "naval": "B"
     },

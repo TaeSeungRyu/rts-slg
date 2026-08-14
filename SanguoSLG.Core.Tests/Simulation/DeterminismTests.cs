@@ -11,7 +11,7 @@ public class DeterminismTests
     private static GameState Run(int turns)
     {
         var scenario = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
-        var engine = new TurnEngine(scenario.Balance);
+        var engine = new WorldEngine(scenario.Balance);
         var state = GameState.FromScenario(scenario);
         for (var i = 0; i < turns; i++)
         {
@@ -23,6 +23,7 @@ public class DeterminismTests
 
     private static void AssertSameState(GameState expected, GameState actual)
     {
+        Assert.Equal(expected.Day, actual.Day);
         Assert.Equal(expected.Year, actual.Year);
         Assert.Equal(expected.Month, actual.Month);
         Assert.Equal(expected.Factions, actual.Factions);
@@ -48,7 +49,7 @@ public class DeterminismTests
         var whole = Run(30);
 
         var scenario = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
-        var engine = new TurnEngine(scenario.Balance);
+        var engine = new WorldEngine(scenario.Balance);
         var split = GameState.FromScenario(scenario);
         for (var i = 0; i < 10; i++)
         {

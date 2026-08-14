@@ -39,7 +39,7 @@ public sealed class ScenarioLoader
         var cities = Deserialize<List<CityDto>>(citiesJson, "cities")
             .Select(d => new City(
                 new CityId(d.Id), d.Name, new HexCoord(d.Q, d.R), new FactionId(d.Owner), d.Provisions,
-                ParseCastle(d.Castle)))
+                ParseCastle(d.Castle), d.Gold, d.Security, d.Population, d.Ore, d.Horses, d.Elephants, d.Region))
             .ToList();
 
         var generals = new GeneralLoader().LoadFromJson(generalsJson);

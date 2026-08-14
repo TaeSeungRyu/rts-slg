@@ -24,6 +24,13 @@ internal sealed class CityDto
 
     // 성곽 등급: "small"(기본) | "medium" | "large"
     public string Castle { get; init; } = "small";
+    public int Gold { get; init; }
+    public int Security { get; init; } = 100;
+    public int Population { get; init; }
+    public int Ore { get; init; }
+    public int Horses { get; init; }
+    public int Elephants { get; init; }
+    public string Region { get; init; } = "";
 }
 
 internal sealed class GeneralDto

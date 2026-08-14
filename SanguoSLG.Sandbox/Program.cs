@@ -17,7 +17,7 @@ for (var i = 0; i + 1 < args.Length; i++)
 }
 
 var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
-var engine = new TurnEngine(scenario.Balance);
+var engine = new WorldEngine(scenario.Balance);
 var random = new SeededRandomSource(seed);
 var state = GameState.FromScenario(scenario);
 
@@ -44,11 +44,11 @@ PrintState("종료", state);
 
 static void PrintState(string label, GameState state)
 {
-    Console.WriteLine($"[{label}] {state.Year}년 {state.Month}월");
+    Console.WriteLine($"[{label}] {state.Year}년 {state.Month}월 {state.DayOfMonth}일 (누적 {state.Day}일)");
     foreach (var faction in state.Factions.OrderBy(f => f.Id.Value))
     {
-        var cityCount = state.Cities.Count(c => c.Owner == faction.Id);
-        Console.WriteLine($"  {faction.Name}({faction.Id}): 자금 {faction.Gold}  도시 {cityCount}");
+        var owned = state.Cities.Where(c => c.Owner == faction.Id).ToList();
+        Console.WriteLine($"  {faction.Name}({faction.Id}): 도시 금고 합 {owned.Sum(c => c.Gold)}  도시 {owned.Count}");
     }
 
     Console.WriteLine();
