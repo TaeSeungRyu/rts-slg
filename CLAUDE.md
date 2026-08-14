@@ -173,6 +173,7 @@ dotnet test
 | [design-water.md](doc/design-water.md) | 소하천/대하 표현 |
 | [spec-unit.md](doc/spec-unit.md) | 병종 11종 확정 스탯·모델·이동/사거리 데이터 |
 | [spec-general.md](doc/spec-general.md) | 무장 스탯·특기 슬롯 사양 |
+| [spec-city.md](doc/spec-city.md) | 도시 속성 스키마·성곽 등급·도시 흐름 구현 현황 |
 | [test/movement-cases.md](doc/test/movement-cases.md) | 이동 검증 케이스 1~8 정의·구현 현황 |
 | [test/combat-movement-cases.md](doc/test/combat-movement-cases.md) | 이동→전투 통합 케이스·공성 하베스트 케이스 |
 
