@@ -99,6 +99,46 @@ public class WorldEngineTests
     }
 
     [Fact]
+    public void 수입은_성규모_기본치에_시설_가산이_붙는다()
+    {
+        // 대성(금 300·군량 2000) + 마을 2(금 +100) + 논 2(군량 +600) + 밭 1(군량 +150)
+        var cities = new List<City>
+        {
+            new(new CityId(1), "허창", new HexCoord(0, 0), new FactionId(1), 1000, CastleSize.Large,
+                Gold: 0, Paddies: 2, Farms: 1, Villages: 2),
+        };
+        var s = new GameState(1, 1, new List<Faction>(), cities, new List<General>());
+
+        var after = new WorldEngine(Balance).AdvanceDays(s, 30);
+        var city = after.Cities.Single();
+
+        Assert.Equal(300 + 100, city.Gold);
+        Assert.Equal(1000 + 2000 + 600 + 150, city.Provisions);
+    }
+
+    [Fact]
+    public void 자원은_산출_도시에서만_매월_는다()
+    {
+        var cities = new List<City>
+        {
+            new(new CityId(1), "산출", new HexCoord(0, 0), new FactionId(1), 0,
+                Ore: 100, Horses: 10, Elephants: 1,
+                ProducesOre: true, ProducesHorses: true, ProducesElephants: true),
+            new(new CityId(2), "무산출", new HexCoord(1, 0), new FactionId(1), 0,
+                Ore: 100, Horses: 10, Elephants: 1),
+        };
+        var s = new GameState(1, 1, new List<Faction>(), cities, new List<General>());
+
+        var after = new WorldEngine(Balance).AdvanceDays(s, 30);
+
+        var yes = after.Cities.Single(c => c.Id.Value == 1);
+        Assert.Equal((600, 110, 3), (yes.Ore, yes.Horses, yes.Elephants));
+
+        var no = after.Cities.Single(c => c.Id.Value == 2);
+        Assert.Equal((100, 10, 1), (no.Ore, no.Horses, no.Elephants));
+    }
+
+    [Fact]
     public void 나눠_진행해도_한번에_진행한_것과_같다()
     {
         var engine = new WorldEngine(Balance);

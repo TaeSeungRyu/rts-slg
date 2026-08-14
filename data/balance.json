@@ -5,5 +5,17 @@
   "population_max_small": 100000,
   "population_max_medium": 250000,
   "population_max_large": 500000,
-  "population_growth_percent": 1
+  "population_growth_percent": 1,
+  "gold_base_small": 100,
+  "gold_base_medium": 200,
+  "gold_base_large": 300,
+  "provisions_base_small": 500,
+  "provisions_base_medium": 1000,
+  "provisions_base_large": 2000,
+  "paddy_provisions": 300,
+  "farm_provisions": 150,
+  "village_gold": 50,
+  "ore_output_per_month": 500,
+  "horses_output_per_month": 100,
+  "elephants_output_per_month": 2
 }

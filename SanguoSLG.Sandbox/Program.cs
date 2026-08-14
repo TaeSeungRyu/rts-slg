@@ -22,7 +22,7 @@ var random = new SeededRandomSource(seed);
 var state = GameState.FromScenario(scenario);
 
 Console.WriteLine("=== SanguoSLG Sandbox ===");
-Console.WriteLine($"seed={seed}  turns={turns}  (월 세수 계수={scenario.Balance.MonthlyTaxPerCity})");
+Console.WriteLine($"seed={seed}  turns={turns}  (월 기본 수입: 금 {scenario.Balance.GoldBaseSmall}/{scenario.Balance.GoldBaseMedium}/{scenario.Balance.GoldBaseLarge})");
 Console.WriteLine();
 
 // 시드가 결과에 미치는 영향을 눈으로 확인하기 위한 임시 probe.

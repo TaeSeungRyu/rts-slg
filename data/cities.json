@@ -11,7 +11,11 @@
     "population": 90000,
     "region": "jizhou",
     "ore": 8000,
-    "horses": 2000
+    "horses": 2000,
+    "paddies": 1,
+    "farms": 1,
+    "produces_ore": true,
+    "produces_horses": true
   },
   {
     "id": 2,
@@ -24,7 +28,10 @@
     "gold": 700,
     "population": 150000,
     "region": "jingzhou",
-    "ore": 5000
+    "ore": 5000,
+    "paddies": 2,
+    "farms": 1,
+    "villages": 1
   },
   {
     "id": 3,
@@ -37,7 +44,12 @@
     "gold": 1000,
     "population": 300000,
     "region": "yuzhou",
-    "ore": 6000
+    "ore": 6000,
+    "paddies": 2,
+    "farms": 2,
+    "villages": 2,
+    "workshop": true,
+    "produces_ore": true
   },
   {
     "id": 4,
@@ -51,7 +63,11 @@
     "population": 95000,
     "region": "sili",
     "ore": 7000,
-    "horses": 3000
+    "horses": 3000,
+    "farms": 1,
+    "villages": 1,
+    "produces_ore": true,
+    "produces_horses": true
   },
   {
     "id": 5,
@@ -64,7 +80,9 @@
     "gold": 800,
     "population": 160000,
     "region": "yangzhou",
-    "ore": 5000
+    "ore": 5000,
+    "paddies": 2,
+    "villages": 1
   },
   {
     "id": 6,
@@ -78,6 +96,12 @@
     "population": 280000,
     "region": "yizhou",
     "ore": 6000,
-    "elephants": 3
+    "elephants": 3,
+    "paddies": 3,
+    "farms": 1,
+    "villages": 1,
+    "workshop": true,
+    "produces_ore": true,
+    "produces_elephants": true
   }
 ]

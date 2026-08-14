@@ -31,6 +31,13 @@ internal sealed class CityDto
     public int Horses { get; init; }
     public int Elephants { get; init; }
     public string Region { get; init; } = "";
+    public int Paddies { get; init; }
+    public int Farms { get; init; }
+    public int Villages { get; init; }
+    public bool Workshop { get; init; }
+    public bool ProducesOre { get; init; }
+    public bool ProducesHorses { get; init; }
+    public bool ProducesElephants { get; init; }
 }
 
 internal sealed class GeneralDto
@@ -67,6 +74,18 @@ internal sealed class BalanceDto
     public int PopulationMaxMedium { get; init; } = 250_000;
     public int PopulationMaxLarge { get; init; } = 500_000;
     public int PopulationGrowthPercent { get; init; } = 1;
+    public int GoldBaseSmall { get; init; } = 100;
+    public int GoldBaseMedium { get; init; } = 200;
+    public int GoldBaseLarge { get; init; } = 300;
+    public int ProvisionsBaseSmall { get; init; } = 500;
+    public int ProvisionsBaseMedium { get; init; } = 1000;
+    public int ProvisionsBaseLarge { get; init; } = 2000;
+    public int PaddyProvisions { get; init; } = 300;
+    public int FarmProvisions { get; init; } = 150;
+    public int VillageGold { get; init; } = 50;
+    public int OreOutputPerMonth { get; init; } = 500;
+    public int HorsesOutputPerMonth { get; init; } = 100;
+    public int ElephantsOutputPerMonth { get; init; } = 2;
 }
 
 internal sealed class MapDto

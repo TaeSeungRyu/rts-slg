@@ -14,4 +14,16 @@ public sealed record BalanceConfig(
     int PopulationMaxSmall = 100_000,
     int PopulationMaxMedium = 250_000,
     int PopulationMaxLarge = 500_000,
-    int PopulationGrowthPercent = 1);
+    int PopulationGrowthPercent = 1,
+    int GoldBaseSmall = 100,
+    int GoldBaseMedium = 200,
+    int GoldBaseLarge = 300,
+    int ProvisionsBaseSmall = 500,
+    int ProvisionsBaseMedium = 1000,
+    int ProvisionsBaseLarge = 2000,
+    int PaddyProvisions = 300,
+    int FarmProvisions = 150,
+    int VillageGold = 50,
+    int OreOutputPerMonth = 500,
+    int HorsesOutputPerMonth = 100,
+    int ElephantsOutputPerMonth = 2);
