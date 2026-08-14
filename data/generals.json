@@ -1616,6 +1616,12 @@
         "code": "berserker",
         "tier": 2
       }
+    ],
+    "admin_passives": [
+      {
+        "code": "mahout",
+        "tier": 2
+      }
     ]
   },
   {
@@ -1640,6 +1646,12 @@
       {
         "code": "dodge",
         "tier": 2
+      }
+    ],
+    "admin_passives": [
+      {
+        "code": "mahout",
+        "tier": 1
       }
     ]
   },
@@ -2066,6 +2078,10 @@
       {
         "code": "merchant",
         "tier": 2
+      },
+      {
+        "code": "trader",
+        "tier": 2
       }
     ]
   },
@@ -2377,6 +2393,12 @@
         "code": "charge_drill",
         "tier": 2
       }
+    ],
+    "admin_passives": [
+      {
+        "code": "rancher",
+        "tier": 2
+      }
     ]
   },
   {
@@ -2618,6 +2640,12 @@
       {
         "code": "charge_drill",
         "tier": 3
+      }
+    ],
+    "admin_passives": [
+      {
+        "code": "rancher",
+        "tier": 1
       }
     ]
   },
@@ -3002,6 +3030,10 @@
       {
         "code": "quartermaster",
         "tier": 1
+      },
+      {
+        "code": "miner",
+        "tier": 2
       }
     ]
   },
@@ -3991,6 +4023,10 @@
       },
       {
         "code": "recruiter",
+        "tier": 2
+      },
+      {
+        "code": "trader",
         "tier": 2
       }
     ]

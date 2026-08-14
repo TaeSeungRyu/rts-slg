@@ -7,6 +7,10 @@
   { "code": "pacifier",         "name": "진무",   "kind": "passive", "bucket": "security",       "tiers": [10, 20, 30] },
   { "code": "quartermaster",    "name": "병참",   "kind": "passive", "bucket": "provisions",     "tiers": [5, 10, 15] },
   { "code": "builder",          "name": "축성",   "kind": "passive", "bucket": "wall",           "tiers": [10, 20, 30] },
+  { "code": "trader",           "name": "교역",   "kind": "passive", "bucket": "market_discount", "tiers": [5, 10, 20] },
+  { "code": "miner",            "name": "채광",   "kind": "passive", "bucket": "ore_output",      "tiers": [10, 20, 30] },
+  { "code": "rancher",          "name": "목마",   "kind": "passive", "bucket": "horse_output",    "tiers": [10, 20, 30] },
+  { "code": "mahout",           "name": "상사",   "kind": "passive", "bucket": "elephant_output", "tiers": [10, 20, 30] },
 
   { "code": "grand_levy",       "name": "대모병", "kind": "active", "bucket": "recruit_amount", "amount": 100 },
   { "code": "tax_relief",       "name": "감세",   "kind": "active", "bucket": "security",       "amount": 20 },
