@@ -90,6 +90,10 @@ internal sealed class BalanceDto
     public int TaxRateBase { get; init; } = 20;
     public int TaxRateMax { get; init; } = 50;
     public int TaxMaxSecurityPenalty { get; init; } = 10;
+    public int PopulationIncomeFloorPercent { get; init; } = 50;
+    public int SecurityNaturalRecovery { get; init; } = 2;
+    public int SecurityLowThreshold { get; init; } = 20;
+    public int SecurityLowIncomePercent { get; init; } = 70;
 }
 
 internal sealed class MapDto

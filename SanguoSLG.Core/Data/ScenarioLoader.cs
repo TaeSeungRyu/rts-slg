@@ -62,7 +62,9 @@ public sealed class ScenarioLoader
             balanceDto.ProvisionsBaseSmall, balanceDto.ProvisionsBaseMedium, balanceDto.ProvisionsBaseLarge,
             balanceDto.PaddyProvisions, balanceDto.FarmProvisions, balanceDto.VillageGold,
             balanceDto.OreOutputPerMonth, balanceDto.HorsesOutputPerMonth, balanceDto.ElephantsOutputPerMonth,
-            balanceDto.TaxRateBase, balanceDto.TaxRateMax, balanceDto.TaxMaxSecurityPenalty);
+            balanceDto.TaxRateBase, balanceDto.TaxRateMax, balanceDto.TaxMaxSecurityPenalty,
+            balanceDto.PopulationIncomeFloorPercent, balanceDto.SecurityNaturalRecovery,
+            balanceDto.SecurityLowThreshold, balanceDto.SecurityLowIncomePercent);
 
         var mapDto = Deserialize<MapDto>(mapJson, "map");
         var map = BuildMap(mapDto);

@@ -29,4 +29,8 @@ public sealed record BalanceConfig(
     int ElephantsOutputPerMonth = 2,
     int TaxRateBase = 20,
     int TaxRateMax = 50,
-    int TaxMaxSecurityPenalty = 10);
+    int TaxMaxSecurityPenalty = 10,
+    int PopulationIncomeFloorPercent = 50,
+    int SecurityNaturalRecovery = 2,
+    int SecurityLowThreshold = 20,
+    int SecurityLowIncomePercent = 70);

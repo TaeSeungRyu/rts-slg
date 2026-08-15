@@ -9,6 +9,7 @@ namespace SanguoSLG.Core.Simulation;
 /// <param name="StatusDamage">이 진행에 지속 상태(화계·독무 tick)로 병력이 깎인 부대 → 그 피해량.</param>
 /// <param name="StratagemDamage">이 진행에 계략 즉발(낙뢰·폭파·교란·수공 버스트)로 병력이 깎인 부대 → 그 피해량.</param>
 /// <param name="Entered">이 진행에 아군 성에 입성한 부대(성 복귀 초기화 적용, Units에는 없음).</param>
+/// <param name="StarvationLoss">이 진행에 군량 고갈로 이탈(병력 소실)한 부대 → 그 손실량.</param>
 public sealed record AdvanceTurn(
     IReadOnlyList<CombatUnit> Units,
     AdvanceResult Movement,
@@ -17,7 +18,12 @@ public sealed record AdvanceTurn(
     IReadOnlyDictionary<Domain.UnitId, Stratagem> FiredStratagems,
     IReadOnlyDictionary<Domain.UnitId, int> StatusDamage,
     IReadOnlyDictionary<Domain.UnitId, int> StratagemDamage,
-    IReadOnlyList<CombatUnit>? Entered = null)
+    IReadOnlyList<CombatUnit>? Entered = null,
+    IReadOnlyDictionary<Domain.UnitId, int>? StarvationLoss = null)
 {
     public IReadOnlyList<CombatUnit> EnteredCastle => Entered ?? [];
+
+    public IReadOnlyDictionary<Domain.UnitId, int> Starvation => StarvationLoss ?? EmptyLoss;
+
+    private static readonly IReadOnlyDictionary<Domain.UnitId, int> EmptyLoss = new Dictionary<Domain.UnitId, int>();
 }

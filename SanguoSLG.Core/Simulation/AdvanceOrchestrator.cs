@@ -18,17 +18,23 @@ public sealed class AdvanceOrchestrator
     private readonly CombatPhaseResolver _combat;
     private readonly int _woundedPercent;
     private readonly Func<HexCoord, TerrainType> _terrainAt;
+    private readonly int _provisionsPer10kPerDay;
+    private readonly int _starvationLossPercentPerDay;
 
     public AdvanceOrchestrator(
         MovementSimulator movement,
         CombatPhaseResolver combat,
         int woundedPercent = 70,
-        Func<HexCoord, TerrainType>? terrainAt = null)
+        Func<HexCoord, TerrainType>? terrainAt = null,
+        int provisionsPer10kPerDay = 10,
+        int starvationLossPercentPerDay = 5)
     {
         _movement = movement;
         _combat = combat;
         _woundedPercent = woundedPercent;
         _terrainAt = terrainAt ?? (_ => TerrainType.Plains);
+        _provisionsPer10kPerDay = provisionsPer10kPerDay;
+        _starvationLossPercentPerDay = starvationLossPercentPerDay;
     }
 
     public AdvanceTurn Run(IReadOnlyList<CombatUnit> units, int maxDays = 7,
@@ -85,6 +91,35 @@ public sealed class AdvanceOrchestrator
             }
         }
 
+        // 2.6) 군량 소모(design-unit-state 1단계) — 추적 부대만. 경과일×병력 비례로 휴대 군량을 깎고,
+        //      바닥나면 그 진행 동안 굶주려 이탈(병력 손실, 부상 없이 소실). 미추적(−1)은 무한 보급 가정.
+        var starvation = new Dictionary<UnitId, int>();
+        foreach (var id in state.Keys.ToList())
+        {
+            var u = state[id];
+            if (!u.TracksProvisions || move.Days <= 0)
+            {
+                continue;
+            }
+
+            var eaten = u.Pool.Active * _provisionsPer10kPerDay * move.Days / 10000;
+            var remaining = u.Provisions - eaten;
+            if (remaining >= 0)
+            {
+                state[id] = u with { Provisions = remaining };
+                continue;
+            }
+
+            // 고갈 — 그 진행 굶주림: 병력의 (이탈률 × 경과일)%를 잃는다(이탈은 부상 없이 소실).
+            var lossPercent = System.Math.Min(100, _starvationLossPercentPerDay * move.Days);
+            var lost = u.Pool.Active * lossPercent / 100;
+            state[id] = u with { Provisions = 0, Pool = u.Pool.TakeDamage(lost, woundedPercent: 0) };
+            if (lost > 0)
+            {
+                starvation[id] = lost;
+            }
+        }
+
         // 3) 계략 발동 — 예약이 발동일에 도달하면 대상 유효성으로 발동/캔슬. 즉발·지속 피해, 디버프,
         //    정화, 강제 후퇴(교란)를 여기서 적용한다. 발동 부대는 이번 교전 공격을 하지 않는다.
         //    후퇴가 위치를 바꾸므로 교전 탐지보다 먼저 발동한다.
@@ -100,7 +135,7 @@ public sealed class AdvanceOrchestrator
 
         if (engagements.Count == 0)
         {
-            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle);
+            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation);
         }
 
         var attackers = engagements.Select(e => e.Attacker).ToHashSet();
@@ -153,7 +188,7 @@ public sealed class AdvanceOrchestrator
             state[id] = state[id] with { Pool = pool };
         }
 
-        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle);
+        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation);
     }
 
     private static readonly IReadOnlyDictionary<UnitId, ActiveSkill> NoActives = new Dictionary<UnitId, ActiveSkill>();

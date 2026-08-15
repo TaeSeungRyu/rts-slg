@@ -113,29 +113,59 @@ public sealed class WorldEngine
         _ => city,
     };
 
-    // 수입(design-administration "시설 건설"·"세율"): 금 = 성 규모 기본치 + 마을 가산,
-    // 군량 = 성 규모 기본치 + 논·밭 가산 — 여기에 **세율 배율(세율/기준 20%)**이 곱해진다.
+    // 수입(design-administration "시설 건설"·"세율"·"내정 심화"): 금 = 성 규모 기본치 + 마을 가산,
+    // 군량 = 성 규모 기본치 + 논·밭 가산. 여기에 세 배율이 곱해진다(모두 정수 %):
+    //   ① 세율 배율(세율/기준 20%)  ② 인구 충원율 배율(바닥% ~ 100%)  ③ 저치안 페널티(<임계면 감액).
     // 공방은 수입이 아니라 생산·연구 게이트(③).
     private City Income(City city)
     {
-        var rate = System.Math.Clamp(city.TaxRate, 0, _balance.TaxRateMax);
-        var gold = (GoldBase(city.Castle) + city.Villages * _balance.VillageGold)
-            * rate / _balance.TaxRateBase;
-        var provisions = (ProvisionsBase(city.Castle)
+        var goldBase = GoldBase(city.Castle) + city.Villages * _balance.VillageGold;
+        var provBase = ProvisionsBase(city.Castle)
             + city.Paddies * _balance.PaddyProvisions
-            + city.Farms * _balance.FarmProvisions)
-            * rate / _balance.TaxRateBase;
+            + city.Farms * _balance.FarmProvisions;
+
+        var gold = Scale(goldBase, city);
+        var provisions = Scale(provBase, city);
         return city with { Gold = city.Gold + gold, Provisions = city.Provisions + provisions };
     }
 
-    // 세율의 민심(치안 통합 — 2026-08-13 확정) 반영: 기준(20%)보다 낮으면 회복, 높으면 하락,
+    // 세율·인구 충원율·저치안 페널티를 순서대로 곱한다(정수). base가 충분히 커 절삭 영향은 작다.
+    private int Scale(int baseAmount, City city)
+    {
+        var rate = System.Math.Clamp(city.TaxRate, 0, _balance.TaxRateMax);
+        var amount = baseAmount * rate / _balance.TaxRateBase;      // ① 세율
+        amount = amount * PopulationFillPercent(city) / 100;        // ② 인구 충원율
+        if (city.Security < _balance.SecurityLowThreshold)          // ③ 저치안 페널티
+        {
+            amount = amount * _balance.SecurityLowIncomePercent / 100;
+        }
+
+        return amount;
+    }
+
+    // 인구 충원율 배율(%): 바닥% + (100 − 바닥%) × 인구/최대치. 가득 찬 도시=100%, 텅 빈 도시=바닥%.
+    private int PopulationFillPercent(City city)
+    {
+        var max = PopulationMax(city.Castle);
+        if (max <= 0)
+        {
+            return 100;
+        }
+
+        var floor = _balance.PopulationIncomeFloorPercent;
+        var fill = System.Math.Min(city.Population, max);
+        return floor + (100 - floor) * fill / max;
+    }
+
+    // 치안(민심): 자연 회복 + 세율 효과. 기준(20%)보다 세율이 낮으면 추가 회복, 높으면 하락,
     // 최대치(50%)면 크게 하락. 성장(Grow)은 이번 달 치안 기준으로 먼저 계산된다.
     private City TaxSecurity(City city)
     {
         var rate = System.Math.Clamp(city.TaxRate, 0, _balance.TaxRateMax);
-        var delta = rate >= _balance.TaxRateMax
+        var taxDelta = rate >= _balance.TaxRateMax
             ? -_balance.TaxMaxSecurityPenalty
             : (_balance.TaxRateBase - rate) / 5;
+        var delta = _balance.SecurityNaturalRecovery + taxDelta;
         return city with { Security = System.Math.Clamp(city.Security + delta, 0, 100) };
     }
 

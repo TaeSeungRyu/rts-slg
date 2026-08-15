@@ -17,11 +17,12 @@ public class WorldEngineTests
             new(new FactionId(1), "위", new GeneralId(1), Gold: 1000, Color: "#2d5fd0"),
             new(new FactionId(2), "촉", new GeneralId(2), Gold: 800, Color: "#2c8c46"),
         };
+        // 인구를 소성 최대치(10만)로 채워 인구 충원율 배율 = 100%(수입 검산을 단순화).
         var cities = new List<City>
         {
-            new(new CityId(1), "허창", new HexCoord(0, 0), new FactionId(1), 5000, Gold: 500),
-            new(new CityId(2), "업", new HexCoord(1, -1), new FactionId(1), 4200, Gold: 300),
-            new(new CityId(3), "성도", new HexCoord(5, 2), new FactionId(2), 6000, Gold: 400),
+            new(new CityId(1), "허창", new HexCoord(0, 0), new FactionId(1), 5000, Gold: 500, Population: 100_000),
+            new(new CityId(2), "업", new HexCoord(1, -1), new FactionId(1), 4200, Gold: 300, Population: 100_000),
+            new(new CityId(3), "성도", new HexCoord(5, 2), new FactionId(2), 6000, Gold: 400, Population: 100_000),
         };
         return new GameState(1, 1, factions, cities, new List<General>());
     }
@@ -101,11 +102,11 @@ public class WorldEngineTests
     [Fact]
     public void 수입은_성규모_기본치에_시설_가산이_붙는다()
     {
-        // 대성(금 300·군량 2000) + 마을 2(금 +100) + 논 2(군량 +600) + 밭 1(군량 +150)
+        // 대성(금 300·군량 2000) + 마을 2(금 +100) + 논 2(군량 +600) + 밭 1(군량 +150). 인구 만충(배율 100%)
         var cities = new List<City>
         {
             new(new CityId(1), "허창", new HexCoord(0, 0), new FactionId(1), 1000, CastleSize.Large,
-                Gold: 0, Paddies: 2, Farms: 1, Villages: 2),
+                Gold: 0, Population: 500_000, Paddies: 2, Farms: 1, Villages: 2),
         };
         var s = new GameState(1, 1, new List<Faction>(), cities, new List<General>());
 
@@ -141,23 +142,56 @@ public class WorldEngineTests
     [Fact]
     public void 세율이_수입_배율과_치안_변동을_정한다()
     {
-        // 기준 20% = 1배·변동 없음 / 50%(최대) = 2.5배·치안 −10 / 10% = 0.5배·치안 +2 / 0% = 수입 없음·치안 +4
+        // 인구 만충(소성 10만 → 배율 100%). 세율 배율 + 치안(자연 회복 +2 + 세율 효과):
+        // 기준 20% = 1.0배·치안 +2 / 50% = 2.5배·−8(=+2−10) / 10% = 0.5배·+4(=+2+2) / 0% = 0배·+6(=+2+4)
         var cities = new List<City>
         {
-            new(new CityId(1), "기준", new HexCoord(0, 0), new FactionId(1), 0, Gold: 0, Security: 80),
-            new(new CityId(2), "가혹", new HexCoord(1, 0), new FactionId(1), 0, Gold: 0, Security: 80, TaxRate: 50),
-            new(new CityId(3), "선정", new HexCoord(2, 0), new FactionId(1), 0, Gold: 0, Security: 80, TaxRate: 10),
-            new(new CityId(4), "면세", new HexCoord(3, 0), new FactionId(1), 0, Gold: 0, Security: 80, TaxRate: 0),
+            new(new CityId(1), "기준", new HexCoord(0, 0), new FactionId(1), 0, Gold: 0, Population: 100_000, Security: 80),
+            new(new CityId(2), "가혹", new HexCoord(1, 0), new FactionId(1), 0, Gold: 0, Population: 100_000, Security: 80, TaxRate: 50),
+            new(new CityId(3), "선정", new HexCoord(2, 0), new FactionId(1), 0, Gold: 0, Population: 100_000, Security: 80, TaxRate: 10),
+            new(new CityId(4), "면세", new HexCoord(3, 0), new FactionId(1), 0, Gold: 0, Population: 100_000, Security: 80, TaxRate: 0),
         };
         var s = new GameState(1, 1, new List<Faction>(), cities, new List<General>());
 
         var after = new WorldEngine(Balance).AdvanceDays(s, 30);
         City C(int id) => after.Cities.Single(c => c.Id.Value == id);
 
-        Assert.Equal((100, 80), (C(1).Gold, C(1).Security));   // 소성 기본 100 × 1.0
-        Assert.Equal((250, 70), (C(2).Gold, C(2).Security));   // × 2.5, −10
-        Assert.Equal((50, 82), (C(3).Gold, C(3).Security));    // × 0.5, +2
-        Assert.Equal((0, 84), (C(4).Gold, C(4).Security));     // × 0, +4
+        Assert.Equal((100, 82), (C(1).Gold, C(1).Security));   // 소성 기본 100 × 1.0, +2
+        Assert.Equal((250, 72), (C(2).Gold, C(2).Security));   // × 2.5, +2−10
+        Assert.Equal((50, 84), (C(3).Gold, C(3).Security));    // × 0.5, +2+2
+        Assert.Equal((0, 86), (C(4).Gold, C(4).Security));     // × 0, +2+4
+    }
+
+    [Fact]
+    public void 수입은_인구_충원율에_비례한다()
+    {
+        // 소성 기본 금 100. 인구 만충(10만)=100%, 반충(5만)=75%, 텅빔(0)=바닥 50%.
+        var cities = new List<City>
+        {
+            new(new CityId(1), "만충", new HexCoord(0, 0), new FactionId(1), 0, Gold: 0, Population: 100_000),
+            new(new CityId(2), "반충", new HexCoord(1, 0), new FactionId(1), 0, Gold: 0, Population: 50_000),
+            new(new CityId(3), "텅빔", new HexCoord(2, 0), new FactionId(1), 0, Gold: 0, Population: 0),
+        };
+        var s = new GameState(1, 1, new List<Faction>(), cities, new List<General>());
+
+        var after = new WorldEngine(Balance).AdvanceDays(s, 30);
+        Assert.Equal(100, after.Cities.Single(c => c.Id.Value == 1).Gold); // 100%
+        Assert.Equal(75, after.Cities.Single(c => c.Id.Value == 2).Gold);  // 75%
+        Assert.Equal(50, after.Cities.Single(c => c.Id.Value == 3).Gold);  // 바닥 50%
+    }
+
+    [Fact]
+    public void 저치안이면_수입이_감액된다()
+    {
+        // 치안 19(<20 임계) → 수입 ×0.7. 인구 만충·세율 20%. 소성 금 100 × 0.7 = 70.
+        var cities = new List<City>
+        {
+            new(new CityId(1), "혼란", new HexCoord(0, 0), new FactionId(1), 0, Gold: 0, Population: 100_000, Security: 19),
+        };
+        var s = new GameState(1, 1, new List<Faction>(), cities, new List<General>());
+
+        var after = new WorldEngine(Balance).AdvanceDays(s, 30);
+        Assert.Equal(70, after.Cities.Single().Gold);
     }
 
     [Fact]
