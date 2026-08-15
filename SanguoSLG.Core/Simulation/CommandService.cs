@@ -65,6 +65,21 @@ public sealed class CommandService
             return CommandResult.Fail("수행 장수가 다른 명령에 매여 있다.", state);
         }
 
+        // 배속 검증(소유·배속 기반) — 배속이 하나라도 있을 때만 강제한다. 배속을 안 넣은
+        // 포커스 테스트/샌드박스는 통과시키되, 실제 시나리오에서는 소속·주둔을 지킨다.
+        if (state.Assignments.Count > 0)
+        {
+            if (PostingError(state, req.Main, city) is { } e1)
+            {
+                return CommandResult.Fail($"주관 {e1}", state);
+            }
+
+            if (assist is not null && PostingError(state, assist.Id, city) is { } e2)
+            {
+                return CommandResult.Fail($"보좌 {e2}", state);
+            }
+        }
+
         var eff = CommandEfficiency.Effective(main, assist, city, req.Kind, _b);
 
         return req.Kind switch
@@ -157,6 +172,28 @@ public sealed class CommandService
             state.Day, state.Day + days, amount, facility);
         var pending = state.Commands.Append(command).ToList();
         return CommandResult.Success(state with { Cities = cities, PendingCommands = pending });
+    }
+
+    // 배속 규칙: 그 도시 소유 세력 소속 + 그 도시에 주둔 중이어야 명령을 수행할 수 있다.
+    private static string? PostingError(GameState state, Domain.GeneralId general, City city)
+    {
+        var posting = state.PostingOf(general);
+        if (posting is null)
+        {
+            return "장수가 어느 세력에도 소속돼 있지 않다(재야).";
+        }
+
+        if (posting.Faction != city.Owner)
+        {
+            return "장수가 이 도시 소유 세력 소속이 아니다.";
+        }
+
+        if (posting.Location != city.Id)
+        {
+            return "장수가 이 도시에 주둔하고 있지 않다.";
+        }
+
+        return null;
     }
 
     private int BuildCost(string facility) => facility switch

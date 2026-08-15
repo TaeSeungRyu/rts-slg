@@ -21,16 +21,24 @@ public sealed class ScenarioLoader
     public Scenario LoadFromDirectory(string dataDirectory)
     {
         string Read(string fileName) => File.ReadAllText(Path.Combine(dataDirectory, fileName));
+        string ReadOptional(string fileName)
+        {
+            var path = Path.Combine(dataDirectory, fileName);
+            return File.Exists(path) ? File.ReadAllText(path) : "[]";
+        }
+
         return LoadFromJson(
             Read("factions.json"),
             Read("cities.json"),
             Read("generals.json"),
             Read("balance.json"),
-            Read("map.json"));
+            Read("map.json"),
+            ReadOptional("postings.json"));
     }
 
     /// <summary>JSON 문자열에서 직접 로드한다(테스트·임베딩용).</summary>
-    public Scenario LoadFromJson(string factionsJson, string citiesJson, string generalsJson, string balanceJson, string mapJson)
+    public Scenario LoadFromJson(string factionsJson, string citiesJson, string generalsJson, string balanceJson,
+        string mapJson, string postingsJson = "[]")
     {
         var factions = Deserialize<List<FactionDto>>(factionsJson, "factions")
             .Select(d => new Faction(new FactionId(d.Id), d.Name, new GeneralId(d.Ruler), d.Gold, d.Color))
@@ -68,7 +76,9 @@ public sealed class ScenarioLoader
             conditions.Set(new HexCoord(dto.Q, dto.R), ParseCondition(dto.State));
         }
 
-        return new Scenario(factions, cities, generals, balance, map, features, conditions);
+        var postings = new PostingLoader().LoadFromJson(postingsJson);
+
+        return new Scenario(factions, cities, generals, balance, map, features, conditions, postings);
     }
 
     private static HexMap BuildMap(MapDto dto)

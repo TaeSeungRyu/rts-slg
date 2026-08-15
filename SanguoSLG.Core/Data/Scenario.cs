@@ -15,4 +15,8 @@ public sealed record Scenario(
     BalanceConfig Balance,
     HexMap Map,
     IReadOnlyList<MapFeature> Features,
-    TileConditionMap Conditions);
+    TileConditionMap Conditions,
+    IReadOnlyList<GeneralPosting>? Postings = null)
+{
+    public IReadOnlyList<GeneralPosting> PostingList => Postings ?? [];
+}

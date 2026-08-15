@@ -14,13 +14,29 @@ public sealed record GameState(
     IReadOnlyList<Faction> Factions,
     IReadOnlyList<City> Cities,
     IReadOnlyList<General> Generals,
-    IReadOnlyList<CityCommand>? PendingCommands = null)
+    IReadOnlyList<CityCommand>? PendingCommands = null,
+    IReadOnlyList<GeneralPosting>? Postings = null)
 {
     /// <summary>진행 중인 도시 명령(발행됨·미완료). 수행 장수는 완료까지 잠긴다.</summary>
     public IReadOnlyList<CityCommand> Commands => PendingCommands ?? [];
 
+    /// <summary>장수 배속(소속 세력·주둔 도시).</summary>
+    public IReadOnlyList<GeneralPosting> Assignments => Postings ?? [];
+
     /// <summary>이 장수가 진행 중 명령에 매여 잠겨 있는가.</summary>
     public bool IsGeneralBusy(GeneralId general) => Commands.Any(c => c.Locks(general));
+
+    /// <summary>이 장수의 배속(없으면 null — 재야).</summary>
+    public GeneralPosting? PostingOf(GeneralId general)
+        => Assignments.FirstOrDefault(p => p.General == general);
+
+    /// <summary>이 도시에 주둔 중인 장수 목록(id).</summary>
+    public IEnumerable<GeneralId> GeneralsAt(CityId city)
+        => Assignments.Where(p => p.Location == city).Select(p => p.General);
+
+    /// <summary>이 세력 소속 장수 목록(id).</summary>
+    public IEnumerable<GeneralId> GeneralsOf(FactionId faction)
+        => Assignments.Where(p => p.Faction == faction).Select(p => p.General);
 
     public const int DaysPerMonth = 30;
     public const int MonthsPerYear = 12;
@@ -34,5 +50,5 @@ public sealed record GameState(
 
     /// <summary>시나리오로부터 시작 상태(시작 연도 1월 1일)를 만든다.</summary>
     public static GameState FromScenario(Scenario scenario, int startYear = 1) =>
-        new(1, startYear, scenario.Factions, scenario.Cities, scenario.Generals);
+        new(1, startYear, scenario.Factions, scenario.Cities, scenario.Generals, Postings: scenario.Postings);
 }

@@ -48,11 +48,23 @@ var cmdBalance = new CommandBalanceLoader().LoadFromDirectory(FindDataDirectory(
 var commander = new CommandService(cmdBalance);
 var worldC = new WorldEngine(scenario.Balance, cmdBalance);
 var demo = GameState.FromScenario(scenario);
-var city0 = demo.Cities[0];
-var gov = demo.Generals[0]; // 조조(정치 94)
 
+Console.WriteLine("=== 세력 배속 ===");
+foreach (var faction in demo.Factions.OrderBy(f => f.Id.Value))
+{
+    var names = demo.GeneralsOf(faction.Id)
+        .Select(id => demo.Generals.First(g => g.Id == id).Name);
+    Console.WriteLine($"  {faction.Name}: {string.Join(", ", names)}");
+}
+
+Console.WriteLine();
 Console.WriteLine("=== 명령 데모 ===");
-Console.WriteLine($"{city0.Name}: 인구 {city0.Population} 광석 {city0.Ore} 병력 {city0.Troops}");
+// 배속을 준수: 어느 도시에 실제 주둔 중인 장수로 명령한다.
+var city0 = demo.Cities.First(c => demo.GeneralsAt(c.Id).Any());
+var govId = demo.GeneralsAt(city0.Id).First();
+var gov = demo.Generals.First(g => g.Id == govId);
+
+Console.WriteLine($"{city0.Name}: 인구 {city0.Population} 광석 {city0.Ore} 병력 {city0.Troops}, 주둔 {gov.Name}");
 var issued = commander.Issue(demo, new CommandRequest(city0.Id, CommandKind.Recruit, gov.Id));
 Console.WriteLine(issued.Ok
     ? $"모병 발행 — 수행 {gov.Name}(정치 {gov.Politics}), {gov.Name} 잠김={issued.State.IsGeneralBusy(gov.Id)}"
