@@ -1,0 +1,51 @@
+namespace SanguoSLG.Core.Simulation;
+
+using SanguoSLG.Core.Domain;
+
+/// <summary>
+/// 명령 효율 계산(design-administration.md "명령 실행 공통 규칙"·"내정 심화"). 순수 함수 —
+/// 주관·보좌 능력 합산(A), 출신지 보너스(B)를 정수 연산으로 결정론적으로 계산한다.
+/// 능력치는 명령별로 다르다(모병·징병·건설·세율=정치, 훈련=무력).
+/// </summary>
+public static class CommandEfficiency
+{
+    /// <summary>이 명령의 효율을 정하는 능력치가 정치인가(아니면 무력).</summary>
+    public static bool UsesPolitics(CommandKind kind) => kind != CommandKind.Train;
+
+    /// <summary>
+    /// 유효 능력 = 주관 능력 × 고향배율 + 보좌 능력 × 보좌계수 × 고향배율. (백분율 정수 연산)
+    /// 고향배율: 장수 출신 지역 = 도시 지역이면 (100 + 보너스%), 아니면 100.
+    /// </summary>
+    public static int Effective(General main, General? assist, City city, CommandKind kind, CommandBalance b)
+    {
+        var politics = UsesPolitics(kind);
+
+        var mainPart = Stat(main, politics) * HomePercent(main, city, b);
+        var assistPart = assist is null
+            ? 0
+            : Stat(assist, politics) * HomePercent(assist, city, b) * b.AssistCoefficientPercent / 100;
+
+        return (mainPart + assistPart) / 100;
+    }
+
+    /// <summary>모병·징병 산출 병력(캡 적용 전) = 유효 정치 × 계수.</summary>
+    public static int RecruitTroops(int effectivePolitics, CommandBalance b)
+        => effectivePolitics * b.RecruitTroopsPerPolitics;
+
+    /// <summary>훈련 상승량 = 유효 무력 ÷ 나눔값(최소 1).</summary>
+    public static int TrainGain(int effectiveMight, CommandBalance b)
+        => System.Math.Max(1, effectiveMight / b.TrainMightDivisor);
+
+    /// <summary>성곽 등급별 시설 슬롯 총량.</summary>
+    public static int BuildSlots(CastleSize castle, CommandBalance b) => castle switch
+    {
+        CastleSize.Large => b.BuildSlotsLarge,
+        CastleSize.Medium => b.BuildSlotsMedium,
+        _ => b.BuildSlotsSmall,
+    };
+
+    private static int Stat(General g, bool politics) => politics ? g.Politics : g.Might;
+
+    private static int HomePercent(General g, City city, CommandBalance b)
+        => g.Region.Length > 0 && g.Region == city.Region ? 100 + b.HomeRegionBonusPercent : 100;
+}

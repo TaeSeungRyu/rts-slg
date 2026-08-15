@@ -1,0 +1,21 @@
+{
+  "assist_coefficient_percent": 50,
+  "home_region_bonus_percent": 20,
+  "command_days": 7,
+  "recruit_troops_per_politics": 15,
+  "recruit_pop_cap_percent": 1,
+  "conscript_pop_cap_percent": 3,
+  "conscript_security_drop_per_1000": 5,
+  "recruit_train_level": 50,
+  "train_might_divisor": 10,
+  "train_cap": 100,
+  "build_days": 30,
+  "build_politics_required": 70,
+  "build_slots_small": 3,
+  "build_slots_medium": 6,
+  "build_slots_large": 9,
+  "build_cost_paddy": 300,
+  "build_cost_farm": 200,
+  "build_cost_village": 400,
+  "build_cost_workshop": 800
+}

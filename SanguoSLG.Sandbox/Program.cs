@@ -1,4 +1,5 @@
 using SanguoSLG.Core.Data;
+using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
 
 // 밸런스 시뮬레이션 실행기. 사용법: --turns N --seed S
@@ -41,6 +42,25 @@ for (var i = 0; i < turns; i++)
 Console.WriteLine($"... {turns}턴 진행 ...");
 Console.WriteLine();
 PrintState("종료", state);
+
+// ── 내정 ③ 명령 데모: 모병(주관 장수) → 7일 진행 → 병력 지급·장수 잠금 해제 ──
+var cmdBalance = new CommandBalanceLoader().LoadFromDirectory(FindDataDirectory());
+var commander = new CommandService(cmdBalance);
+var worldC = new WorldEngine(scenario.Balance, cmdBalance);
+var demo = GameState.FromScenario(scenario);
+var city0 = demo.Cities[0];
+var gov = demo.Generals[0]; // 조조(정치 94)
+
+Console.WriteLine("=== 명령 데모 ===");
+Console.WriteLine($"{city0.Name}: 인구 {city0.Population} 광석 {city0.Ore} 병력 {city0.Troops}");
+var issued = commander.Issue(demo, new CommandRequest(city0.Id, CommandKind.Recruit, gov.Id));
+Console.WriteLine(issued.Ok
+    ? $"모병 발행 — 수행 {gov.Name}(정치 {gov.Politics}), {gov.Name} 잠김={issued.State.IsGeneralBusy(gov.Id)}"
+    : $"발행 실패: {issued.Error}");
+var after = worldC.AdvanceDays(issued.State, cmdBalance.CommandDays);
+var c0 = after.Cities.First(c => c.Id == city0.Id);
+Console.WriteLine($"{cmdBalance.CommandDays}일 뒤 — 병력 {c0.Troops}(훈련도 {c0.TrainingLevel}) 광석 {c0.Ore}, {gov.Name} 잠김={after.IsGeneralBusy(gov.Id)}");
+Console.WriteLine();
 
 static void PrintState(string label, GameState state)
 {

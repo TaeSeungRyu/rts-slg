@@ -10,8 +10,13 @@ using SanguoSLG.Core.Domain;
 public sealed class WorldEngine
 {
     private readonly BalanceConfig _balance;
+    private readonly CommandBalance _commands;
 
-    public WorldEngine(BalanceConfig balance) => _balance = balance;
+    public WorldEngine(BalanceConfig balance, CommandBalance? commands = null)
+    {
+        _balance = balance;
+        _commands = commands ?? new CommandBalance();
+    }
 
     /// <summary><paramref name="days"/>일을 진행한 새 상태를 반환한다.</summary>
     public GameState AdvanceDays(GameState state, int days)
@@ -36,6 +41,12 @@ public sealed class WorldEngine
             Cities = state.Cities.OrderBy(c => c.Id.Value).ToList(),
         };
 
+        // 명령 정산: 완료일에 도달한 명령의 효과를 적용하고 목록에서 뺀다(수행 장수 잠금 해제).
+        if (next.Commands.Any(c => c.CompletionDay == next.Day))
+        {
+            next = ResolveCommands(next);
+        }
+
         // 월말 틱(그 달 30일): 수입(금·군량 = 성 규모 기본치 + 시설 가산) + 자원 산출 + 인구 성장.
         if (next.DayOfMonth == GameState.DaysPerMonth)
         {
@@ -47,6 +58,60 @@ public sealed class WorldEngine
 
         return next;
     }
+
+    // 명령 정산(design-administration "명령 실행 공통 규칙"): 완료일 명령의 효과를 도시에 적용하고
+    // 목록에서 뺀다. 도시 id 순으로 결정론. 발행 시 자원·금은 이미 예약(차감)됐으므로 여기선 산출만 반영.
+    private GameState ResolveCommands(GameState state)
+    {
+        var due = state.Commands.Where(c => c.CompletionDay == state.Day)
+            .OrderBy(c => c.City.Value).ToList();
+        var cities = state.Cities.ToDictionary(c => c.Id);
+
+        foreach (var cmd in due)
+        {
+            if (!cities.TryGetValue(cmd.City, out var city))
+            {
+                continue; // 도시가 사라졌으면(함락 등) 산출은 증발한다.
+            }
+
+            cities[cmd.City] = cmd.Kind switch
+            {
+                CommandKind.Recruit => city.AddTroops(cmd.Amount, _commands.RecruitTrainLevel),
+                CommandKind.Conscript => Conscript(city, cmd.Amount),
+                CommandKind.Train => city with
+                {
+                    TrainingLevel = System.Math.Min(_commands.TrainCap, city.TrainingLevel + cmd.Amount),
+                },
+                CommandKind.Build => Build(city, cmd.Facility),
+                CommandKind.SetTaxRate => city with { TaxRate = cmd.Amount },
+                _ => city,
+            };
+        }
+
+        return state with
+        {
+            Cities = cities.Values.OrderBy(c => c.Id.Value).ToList(),
+            PendingCommands = state.Commands.Where(c => c.CompletionDay != state.Day).ToList(),
+        };
+    }
+
+    private City Conscript(City city, int troops)
+    {
+        var drop = troops / 1000 * _commands.ConscriptSecurityDropPer1000;
+        return city.AddTroops(troops, 0) with
+        {
+            Security = System.Math.Clamp(city.Security - drop, 0, 100),
+        };
+    }
+
+    private static City Build(City city, string facility) => facility switch
+    {
+        "paddy" => city with { Paddies = city.Paddies + 1 },
+        "farm" => city with { Farms = city.Farms + 1 },
+        "village" => city with { Villages = city.Villages + 1 },
+        "workshop" => city with { Workshop = true },
+        _ => city,
+    };
 
     // 수입(design-administration "시설 건설"·"세율"): 금 = 성 규모 기본치 + 마을 가산,
     // 군량 = 성 규모 기본치 + 논·밭 가산 — 여기에 **세율 배율(세율/기준 20%)**이 곱해진다.

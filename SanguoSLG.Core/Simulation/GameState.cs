@@ -13,8 +13,15 @@ public sealed record GameState(
     int StartYear,
     IReadOnlyList<Faction> Factions,
     IReadOnlyList<City> Cities,
-    IReadOnlyList<General> Generals)
+    IReadOnlyList<General> Generals,
+    IReadOnlyList<CityCommand>? PendingCommands = null)
 {
+    /// <summary>진행 중인 도시 명령(발행됨·미완료). 수행 장수는 완료까지 잠긴다.</summary>
+    public IReadOnlyList<CityCommand> Commands => PendingCommands ?? [];
+
+    /// <summary>이 장수가 진행 중 명령에 매여 잠겨 있는가.</summary>
+    public bool IsGeneralBusy(GeneralId general) => Commands.Any(c => c.Locks(general));
+
     public const int DaysPerMonth = 30;
     public const int MonthsPerYear = 12;
     public const int DaysPerYear = DaysPerMonth * MonthsPerYear;
