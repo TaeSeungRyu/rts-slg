@@ -160,6 +160,7 @@ dotnet test
 
 | 문서 | 이럴 때 참고 |
 |---|---|
+| [plan-roadmap.md](doc/plan-roadmap.md) | **전체 현황·단계 계획(살아있는 문서)** — 다음 작업은 항상 여기서 확인, 단계 완료 시 갱신 |
 | [design-movement.md](doc/design-movement.md) | 이동·탐지·추격·정지·우회·성 입성/출격·지형 이동 패널티 |
 | [design-combat.md](doc/design-combat.md) | 피해 공식·병종 공/방·지형 전투 보정·성 전투(성벽/붕괴/반격/함락) |
 | [design-stratagem.md](doc/design-stratagem.md) | 계략 11종 수치·시전 사거리·지속 상태·정화 |
