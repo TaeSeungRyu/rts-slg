@@ -39,6 +39,7 @@ internal sealed class CityDto
     public bool ProducesHorses { get; init; }
     public bool ProducesElephants { get; init; }
     public int TaxRate { get; init; } = 20;
+    public int? Governor { get; init; }
 }
 
 internal sealed class GeneralDto
@@ -94,6 +95,9 @@ internal sealed class BalanceDto
     public int SecurityNaturalRecovery { get; init; } = 2;
     public int SecurityLowThreshold { get; init; } = 20;
     public int SecurityLowIncomePercent { get; init; } = 70;
+    public int GovernorMinPolitics { get; init; } = 60;
+    public int NoGovernorIncomePercent { get; init; } = 30;
+    public int GovernorTaxAmplifyAt100 { get; init; } = 100;
 }
 
 internal sealed class MapDto

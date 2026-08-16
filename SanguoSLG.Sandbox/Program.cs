@@ -18,7 +18,8 @@ for (var i = 0; i + 1 < args.Length; i++)
 }
 
 var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
-var engine = new WorldEngine(scenario.Balance);
+var adminSkills = new AdminSkillLoader().LoadFromDirectory(FindDataDirectory());
+var engine = new WorldEngine(scenario.Balance, adminSkills: adminSkills);
 var random = new SeededRandomSource(seed);
 var state = GameState.FromScenario(scenario);
 
@@ -46,7 +47,7 @@ PrintState("종료", state);
 // ── 내정 ③ 명령 데모: 모병(주관 장수) → 7일 진행 → 병력 지급·장수 잠금 해제 ──
 var cmdBalance = new CommandBalanceLoader().LoadFromDirectory(FindDataDirectory());
 var commander = new CommandService(cmdBalance);
-var worldC = new WorldEngine(scenario.Balance, cmdBalance);
+var worldC = new WorldEngine(scenario.Balance, cmdBalance, adminSkills);
 var demo = GameState.FromScenario(scenario);
 
 Console.WriteLine("=== 세력 배속 ===");

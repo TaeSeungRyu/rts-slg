@@ -33,7 +33,8 @@ public sealed record City(
     bool ProducesElephants = false,
     int TaxRate = 20,
     int Troops = 0,
-    int TrainingLevel = 0)
+    int TrainingLevel = 0,
+    GeneralId? Governor = null)
 {
     /// <summary>소유 세력을 바꾼 새 도시를 반환한다.</summary>
     public City WithOwner(FactionId owner) => this with { Owner = owner };

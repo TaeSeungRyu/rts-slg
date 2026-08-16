@@ -11,11 +11,14 @@ public sealed class WorldEngine
 {
     private readonly BalanceConfig _balance;
     private readonly CommandBalance _commands;
+    private readonly IReadOnlyDictionary<string, Domain.AdminSkill> _adminSkills;
 
-    public WorldEngine(BalanceConfig balance, CommandBalance? commands = null)
+    public WorldEngine(BalanceConfig balance, CommandBalance? commands = null,
+        IReadOnlyList<Domain.AdminSkill>? adminSkills = null)
     {
         _balance = balance;
         _commands = commands ?? new CommandBalance();
+        _adminSkills = (adminSkills ?? []).ToDictionary(a => a.Code);
     }
 
     /// <summary><paramref name="days"/>일을 진행한 새 상태를 반환한다.</summary>
@@ -50,9 +53,11 @@ public sealed class WorldEngine
         // 월말 틱(그 달 30일): 수입(금·군량 = 성 규모 기본치 + 시설 가산) + 자원 산출 + 인구 성장.
         if (next.DayOfMonth == GameState.DaysPerMonth)
         {
+            var byId = next.Generals.ToDictionary(g => g.Id);
+            Domain.General? Gov(City c) => c.Governor is { } gid && byId.TryGetValue(gid, out var g) ? g : null;
             next = next with
             {
-                Cities = next.Cities.Select(c => TaxSecurity(Grow(Produce(Income(c))))).ToList(),
+                Cities = next.Cities.Select(c => TaxSecurity(Grow(Produce(Income(c, Gov(c)))), Gov(c))).ToList(),
             };
         }
 
@@ -117,30 +122,85 @@ public sealed class WorldEngine
     // 군량 = 성 규모 기본치 + 논·밭 가산. 여기에 세 배율이 곱해진다(모두 정수 %):
     //   ① 세율 배율(세율/기준 20%)  ② 인구 충원율 배율(바닥% ~ 100%)  ③ 저치안 페널티(<임계면 감액).
     // 공방은 수입이 아니라 생산·연구 게이트(③).
-    private City Income(City city)
+    private City Income(City city, Domain.General? governor)
     {
         var goldBase = GoldBase(city.Castle) + city.Villages * _balance.VillageGold;
         var provBase = ProvisionsBase(city.Castle)
             + city.Paddies * _balance.PaddyProvisions
             + city.Farms * _balance.FarmProvisions;
 
-        var gold = Scale(goldBase, city);
-        var provisions = Scale(provBase, city);
+        // 담당관(태수) 없거나 정치 미달이면 도시 경제가 무척 낮게 돌아간다(사용자 확정 2026-08-16).
+        var effective = governor is not null && governor.Politics >= _balance.GovernorMinPolitics;
+
+        // 내정 스킬 버킷(상재→금, 둔전→군량)은 유효 담당관일 때만.
+        var goldBucket = effective ? GovernorBucket(governor, "tax") : 0;
+        var provBucket = effective ? GovernorBucket(governor, "harvest") : 0;
+
+        var gold = Scale(goldBase, city, effective, governor, goldBucket);
+        var provisions = Scale(provBase, city, effective, governor, provBucket);
         return city with { Gold = city.Gold + gold, Provisions = city.Provisions + provisions };
     }
 
-    // 세율·인구 충원율·저치안 페널티를 순서대로 곱한다(정수). base가 충분히 커 절삭 영향은 작다.
-    private int Scale(int baseAmount, City city)
+    // 수입 = base × (스킬 버킷) × 세율배율 × 인구 충원율 × 저치안. 세율배율은 담당관에 따라 갈린다:
+    //  · 유효 담당관: 정치가 세율을 증폭(정치 100 → 세율 효과 2배 — 10% 세율이 20%처럼, 치안은 실세율 기준).
+    //  · 없거나 정치 미달: 세율배율에 무거운 페널티(no_governor_income_percent) — 경제가 무척 낮아진다.
+    private int Scale(int baseAmount, City city, bool effectiveGovernor, Domain.General? governor, int bucketPercent)
     {
+        var amount = baseAmount * (100 + bucketPercent) / 100;                 // 내정 스킬
         var rate = System.Math.Clamp(city.TaxRate, 0, _balance.TaxRateMax);
-        var amount = baseAmount * rate / _balance.TaxRateBase;      // ① 세율
-        amount = amount * PopulationFillPercent(city) / 100;        // ② 인구 충원율
-        if (city.Security < _balance.SecurityLowThreshold)          // ③ 저치안 페널티
+
+        if (effectiveGovernor)
+        {
+            var amplify = TaxAmplifyPercent(governor!);                        // 정치 세율 증폭
+            var effectiveRate = rate * (100 + amplify) / 100;
+            amount = amount * effectiveRate / _balance.TaxRateBase;            // ① 증폭 세율
+        }
+        else
+        {
+            amount = amount * rate / _balance.TaxRateBase;                     // ① 세율(증폭 없음)
+            amount = amount * _balance.NoGovernorIncomePercent / 100;          // 담당관 없음 페널티
+        }
+
+        amount = amount * PopulationFillPercent(city) / 100;                   // ② 인구 충원율
+        if (city.Security < _balance.SecurityLowThreshold)                     // ③ 저치안 페널티
         {
             amount = amount * _balance.SecurityLowIncomePercent / 100;
         }
 
         return amount;
+    }
+
+    // 정치 세율 증폭%: (정치 − 최소치) × 100정치기준값 ÷ (100 − 최소치). 정치 100 → +100%(2배), 최소치 → 0%.
+    private int TaxAmplifyPercent(Domain.General governor)
+    {
+        var span = 100 - _balance.GovernorMinPolitics;
+        if (span <= 0)
+        {
+            return 0;
+        }
+
+        return System.Math.Max(0, governor.Politics - _balance.GovernorMinPolitics)
+            * _balance.GovernorTaxAmplifyAt100 / span;
+    }
+
+    // 담당관의 내정 패시브 스킬 중 해당 버킷의 티어값 합(상재=tax, 둔전=harvest, 진무=security).
+    private int GovernorBucket(Domain.General? governor, string bucket)
+    {
+        if (governor is null)
+        {
+            return 0;
+        }
+
+        var sum = 0;
+        foreach (var held in governor.AdminPassives ?? [])
+        {
+            if (_adminSkills.TryGetValue(held.Code, out var def) && !def.IsActive && def.Bucket == bucket)
+            {
+                sum += def.AmountAtTier(held.Tier);
+            }
+        }
+
+        return sum;
     }
 
     // 인구 충원율 배율(%): 바닥% + (100 − 바닥%) × 인구/최대치. 가득 찬 도시=100%, 텅 빈 도시=바닥%.
@@ -157,15 +217,17 @@ public sealed class WorldEngine
         return floor + (100 - floor) * fill / max;
     }
 
-    // 치안(민심): 자연 회복 + 세율 효과. 기준(20%)보다 세율이 낮으면 추가 회복, 높으면 하락,
-    // 최대치(50%)면 크게 하락. 성장(Grow)은 이번 달 치안 기준으로 먼저 계산된다.
-    private City TaxSecurity(City city)
+    // 치안(민심): 자연 회복 + 세율 효과 + 유효 담당관의 진무 스킬 회복. 기준(20%)보다 세율이 낮으면
+    // 추가 회복, 높으면 하락, 최대치(50%)면 크게 하락. 성장(Grow)은 이번 달 치안 기준으로 먼저 계산된다.
+    private City TaxSecurity(City city, Domain.General? governor)
     {
         var rate = System.Math.Clamp(city.TaxRate, 0, _balance.TaxRateMax);
         var taxDelta = rate >= _balance.TaxRateMax
             ? -_balance.TaxMaxSecurityPenalty
             : (_balance.TaxRateBase - rate) / 5;
-        var delta = _balance.SecurityNaturalRecovery + taxDelta;
+        var effective = governor is not null && governor.Politics >= _balance.GovernorMinPolitics;
+        var pacify = effective ? GovernorBucket(governor, "security") / 10 : 0; // 진무 티어(10/20/30)→+1/2/3
+        var delta = _balance.SecurityNaturalRecovery + taxDelta + pacify;
         return city with { Security = System.Math.Clamp(city.Security + delta, 0, 100) };
     }
 

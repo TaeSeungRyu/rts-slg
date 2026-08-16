@@ -15,7 +15,8 @@
     "paddies": 1,
     "farms": 1,
     "produces_ore": true,
-    "produces_horses": true
+    "produces_horses": true,
+    "governor": 12
   },
   {
     "id": 2,
@@ -31,7 +32,8 @@
     "ore": 5000,
     "paddies": 2,
     "farms": 1,
-    "villages": 1
+    "villages": 1,
+    "governor": 30
   },
   {
     "id": 3,
@@ -49,7 +51,8 @@
     "farms": 2,
     "villages": 2,
     "workshop": true,
-    "produces_ore": true
+    "produces_ore": true,
+    "governor": 29
   },
   {
     "id": 4,
@@ -67,7 +70,8 @@
     "farms": 1,
     "villages": 1,
     "produces_ore": true,
-    "produces_horses": true
+    "produces_horses": true,
+    "governor": 9
   },
   {
     "id": 5,
@@ -82,7 +86,8 @@
     "region": "yangzhou",
     "ore": 5000,
     "paddies": 2,
-    "villages": 1
+    "villages": 1,
+    "governor": 47
   },
   {
     "id": 6,
@@ -102,6 +107,7 @@
     "villages": 1,
     "workshop": true,
     "produces_ore": true,
-    "produces_elephants": true
+    "produces_elephants": true,
+    "governor": 6
   }
 ]

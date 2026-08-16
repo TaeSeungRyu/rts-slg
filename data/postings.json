@@ -1,15 +1,72 @@
 [
-  { "general": 1,  "faction": 1, "city": 3 },
-  { "general": 8,  "faction": 1, "city": 3 },
-  { "general": 29, "faction": 1, "city": 3 },
-  { "general": 13, "faction": 1, "city": 1 },
-  { "general": 12, "faction": 1, "city": 1 },
-  { "general": 15, "faction": 1, "city": 2 },
-
-  { "general": 2,  "faction": 2, "city": 6 },
-  { "general": 3,  "faction": 2, "city": 6 },
-  { "general": 4,  "faction": 2, "city": 6 },
-  { "general": 6,  "faction": 2, "city": 6 },
-  { "general": 9,  "faction": 2, "city": 4 },
-  { "general": 41, "faction": 2, "city": 4 }
+  {
+    "general": 1,
+    "faction": 1,
+    "city": 3
+  },
+  {
+    "general": 8,
+    "faction": 1,
+    "city": 3
+  },
+  {
+    "general": 29,
+    "faction": 1,
+    "city": 3
+  },
+  {
+    "general": 13,
+    "faction": 1,
+    "city": 1
+  },
+  {
+    "general": 12,
+    "faction": 1,
+    "city": 1
+  },
+  {
+    "general": 15,
+    "faction": 1,
+    "city": 2
+  },
+  {
+    "general": 2,
+    "faction": 2,
+    "city": 6
+  },
+  {
+    "general": 3,
+    "faction": 2,
+    "city": 6
+  },
+  {
+    "general": 4,
+    "faction": 2,
+    "city": 6
+  },
+  {
+    "general": 6,
+    "faction": 2,
+    "city": 6
+  },
+  {
+    "general": 9,
+    "faction": 2,
+    "city": 4
+  },
+  {
+    "general": 41,
+    "faction": 2,
+    "city": 4
+  },
+  {
+    "general": 30,
+    "faction": 1,
+    "city": 2
+  },
+  {
+    "general": 47,
+    "faction": 2,
+    "city": 5
+  }
 ]

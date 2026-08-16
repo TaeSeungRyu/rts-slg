@@ -49,7 +49,8 @@ public sealed class ScenarioLoader
                 new CityId(d.Id), d.Name, new HexCoord(d.Q, d.R), new FactionId(d.Owner), d.Provisions,
                 ParseCastle(d.Castle), d.Gold, d.Security, d.Population, d.Ore, d.Horses, d.Elephants, d.Region,
                 d.Paddies, d.Farms, d.Villages, d.Workshop, d.ProducesOre, d.ProducesHorses, d.ProducesElephants,
-                d.TaxRate))
+                d.TaxRate, Troops: 0, TrainingLevel: 0,
+                Governor: d.Governor is { } gid ? new GeneralId(gid) : null))
             .ToList();
 
         var generals = new GeneralLoader().LoadFromJson(generalsJson);
@@ -64,7 +65,8 @@ public sealed class ScenarioLoader
             balanceDto.OreOutputPerMonth, balanceDto.HorsesOutputPerMonth, balanceDto.ElephantsOutputPerMonth,
             balanceDto.TaxRateBase, balanceDto.TaxRateMax, balanceDto.TaxMaxSecurityPenalty,
             balanceDto.PopulationIncomeFloorPercent, balanceDto.SecurityNaturalRecovery,
-            balanceDto.SecurityLowThreshold, balanceDto.SecurityLowIncomePercent);
+            balanceDto.SecurityLowThreshold, balanceDto.SecurityLowIncomePercent,
+            balanceDto.GovernorMinPolitics, balanceDto.NoGovernorIncomePercent, balanceDto.GovernorTaxAmplifyAt100);
 
         var mapDto = Deserialize<MapDto>(mapJson, "map");
         var map = BuildMap(mapDto);

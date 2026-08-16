@@ -33,4 +33,7 @@ public sealed record BalanceConfig(
     int PopulationIncomeFloorPercent = 50,
     int SecurityNaturalRecovery = 2,
     int SecurityLowThreshold = 20,
-    int SecurityLowIncomePercent = 70);
+    int SecurityLowIncomePercent = 70,
+    int GovernorMinPolitics = 60,
+    int NoGovernorIncomePercent = 30,
+    int GovernorTaxAmplifyAt100 = 100);

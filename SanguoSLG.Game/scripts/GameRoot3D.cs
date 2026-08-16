@@ -115,7 +115,7 @@ public partial class GameRoot3D : Node3D
 
         AddChild(BuildVignette(tone));
 
-        _engine = new WorldEngine(scenario.Balance);
+        _engine = new WorldEngine(scenario.Balance, adminSkills: new AdminSkillLoader().LoadFromDirectory(FindDataDirectory()));
         _state = GameState.FromScenario(scenario);
         _hud = new Hud();
         AddChild(_hud);

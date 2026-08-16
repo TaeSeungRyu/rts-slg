@@ -10,6 +10,16 @@ public class WorldEngineTests
 {
     private static readonly BalanceConfig Balance = new(MonthlyTaxPerCity: 100);
 
+    // 정치 60 담당관(세율 증폭 0 = 유효 담당관의 기준선). 수입 검산은 이 담당관을 붙여 단순화한다.
+    private static readonly General Gov = new(new GeneralId(99), "태수",
+        new Dictionary<TroopClass, AptitudeGrade>(), Might: 50, Intellect: 50, Politics: 60);
+
+    // 모든 도시에 정치 60 담당관을 배속한 상태(수입 = 담당관 없음 페널티 없이 기준선).
+    private static GameState Governed(IEnumerable<City> cities, IEnumerable<Faction>? factions = null) =>
+        new(1, 1, (factions ?? new List<Faction>()).ToList(),
+            cities.Select(c => c with { Governor = new GeneralId(99) }).ToList(),
+            new List<General> { Gov });
+
     private static GameState InitialState()
     {
         var factions = new List<Faction>
@@ -24,7 +34,7 @@ public class WorldEngineTests
             new(new CityId(2), "업", new HexCoord(1, -1), new FactionId(1), 4200, Gold: 300, Population: 100_000),
             new(new CityId(3), "성도", new HexCoord(5, 2), new FactionId(2), 6000, Gold: 400, Population: 100_000),
         };
-        return new GameState(1, 1, factions, cities, new List<General>());
+        return Governed(cities, factions);
     }
 
     private static int CityGold(GameState s, int cityId) =>
@@ -108,7 +118,7 @@ public class WorldEngineTests
             new(new CityId(1), "허창", new HexCoord(0, 0), new FactionId(1), 1000, CastleSize.Large,
                 Gold: 0, Population: 500_000, Paddies: 2, Farms: 1, Villages: 2),
         };
-        var s = new GameState(1, 1, new List<Faction>(), cities, new List<General>());
+        var s = Governed(cities);
 
         var after = new WorldEngine(Balance).AdvanceDays(s, 30);
         var city = after.Cities.Single();
@@ -151,7 +161,7 @@ public class WorldEngineTests
             new(new CityId(3), "선정", new HexCoord(2, 0), new FactionId(1), 0, Gold: 0, Population: 100_000, Security: 80, TaxRate: 10),
             new(new CityId(4), "면세", new HexCoord(3, 0), new FactionId(1), 0, Gold: 0, Population: 100_000, Security: 80, TaxRate: 0),
         };
-        var s = new GameState(1, 1, new List<Faction>(), cities, new List<General>());
+        var s = Governed(cities);
 
         var after = new WorldEngine(Balance).AdvanceDays(s, 30);
         City C(int id) => after.Cities.Single(c => c.Id.Value == id);
@@ -172,7 +182,7 @@ public class WorldEngineTests
             new(new CityId(2), "반충", new HexCoord(1, 0), new FactionId(1), 0, Gold: 0, Population: 50_000),
             new(new CityId(3), "텅빔", new HexCoord(2, 0), new FactionId(1), 0, Gold: 0, Population: 0),
         };
-        var s = new GameState(1, 1, new List<Faction>(), cities, new List<General>());
+        var s = Governed(cities);
 
         var after = new WorldEngine(Balance).AdvanceDays(s, 30);
         Assert.Equal(100, after.Cities.Single(c => c.Id.Value == 1).Gold); // 100%
@@ -188,7 +198,7 @@ public class WorldEngineTests
         {
             new(new CityId(1), "혼란", new HexCoord(0, 0), new FactionId(1), 0, Gold: 0, Population: 100_000, Security: 19),
         };
-        var s = new GameState(1, 1, new List<Faction>(), cities, new List<General>());
+        var s = Governed(cities);
 
         var after = new WorldEngine(Balance).AdvanceDays(s, 30);
         Assert.Equal(70, after.Cities.Single().Gold);
@@ -226,5 +236,65 @@ public class WorldEngineTests
 
         Assert.Equal(a.Cities, b.Cities);
         Assert.Equal(new[] { 1, 2, 3 }, a.Cities.Select(c => c.Id.Value));
+    }
+
+    // ── 내정담당관(태수) — design-administration "내정 심화" A/담당관 ──
+
+    private static GameState WithGovernor(City city, General? governor, IEnumerable<AdminSkill>? admin = null)
+    {
+        var generals = governor is null ? new List<General>() : new List<General> { governor };
+        var placed = governor is null ? city : city with { Governor = governor.Id };
+        return new GameState(1, 1, new List<Faction>(), new List<City> { placed }, generals);
+    }
+
+    private static General Officer(int politics, IReadOnlyList<GeneralSkill>? admin = null) => new(
+        new GeneralId(50), "관리", new Dictionary<TroopClass, AptitudeGrade>(),
+        Might: 50, Intellect: 50, Politics: politics, AdminPassives: admin);
+
+    private static City Base() =>
+        new(new CityId(1), "성", new HexCoord(0, 0), new FactionId(1), 0, Gold: 0, Population: 100_000);
+
+    [Fact]
+    public void 담당관이_없으면_수입이_급감한다()
+    {
+        // 소성 기본 금 100, 세율 20%, 인구 만충 → 담당관 없으면 ×0.3 = 30.
+        var after = new WorldEngine(Balance).AdvanceDays(WithGovernor(Base(), governor: null), 30);
+        Assert.Equal(30, after.Cities.Single().Gold);
+    }
+
+    [Fact]
+    public void 담당관_정치가_최소치미만이면_급감한다()
+    {
+        // 정치 59(<60) → 유효 담당관 아님 → ×0.3 = 30. 정치 60이면 정상 100.
+        var below = new WorldEngine(Balance).AdvanceDays(WithGovernor(Base(), Officer(59)), 30);
+        Assert.Equal(30, below.Cities.Single().Gold);
+
+        var ok = new WorldEngine(Balance).AdvanceDays(WithGovernor(Base(), Officer(60)), 30);
+        Assert.Equal(100, ok.Cities.Single().Gold);
+    }
+
+    [Fact]
+    public void 담당관_정치100은_세율을_2배로_증폭한다()
+    {
+        // 세율 10%. 정치 60(증폭 0) → 100×10/20 = 50. 정치 100(증폭 +100%) → 실효 20% → 100.
+        var city = Base() with { TaxRate = 10 };
+
+        var plain = new WorldEngine(Balance).AdvanceDays(WithGovernor(city, Officer(60)), 30);
+        Assert.Equal(50, plain.Cities.Single().Gold);
+
+        var master = new WorldEngine(Balance).AdvanceDays(WithGovernor(city, Officer(100)), 30);
+        Assert.Equal(100, master.Cities.Single().Gold); // 10% 세율이 20%처럼
+    }
+
+    [Fact]
+    public void 담당관_상재스킬이_금수입을_올린다()
+    {
+        // 상재(tax 버킷) 티어2 = +12% 금. 정치 60·세율 20%·인구 만충 → 100 × 1.12 = 112.
+        var merchant = new AdminSkill("merchant", "상재", IsActive: false, Bucket: "tax", Tiers: new[] { 6, 12, 20 });
+        var officer = Officer(60, new List<GeneralSkill> { new("merchant", 2) });
+        var engine = new WorldEngine(Balance, adminSkills: new[] { merchant });
+
+        var after = engine.AdvanceDays(WithGovernor(Base(), officer), 30);
+        Assert.Equal(112, after.Cities.Single().Gold);
     }
 }

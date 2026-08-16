@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>내정 밸런스 시트</title>
+<style>
+:root {
+  --bg:#F4F3EE; --panel:#FFFFFF; --ink:#242A24; --muted:#6B726A; --line:#DEDCD2;
+  --accent:#4E6E4A; --accent-soft:#4E6E4A18; --gold:#B08828; --grain:#A0522D; --bar:#E7E5DC;
+}
+@media (prefers-color-scheme: dark){ :root{
+  --bg:#15181A; --panel:#1E2224; --ink:#E7E9E4; --muted:#9BA29A; --line:#31363A;
+  --accent:#7FB877; --accent-soft:#7FB87722; --gold:#D8B45A; --grain:#C98B62; --bar:#2B3033; } }
+:root[data-theme="dark"]{ --bg:#15181A; --panel:#1E2224; --ink:#E7E9E4; --muted:#9BA29A; --line:#31363A;
+  --accent:#7FB877; --accent-soft:#7FB87722; --gold:#D8B45A; --grain:#C98B62; --bar:#2B3033; }
+:root[data-theme="light"]{ --bg:#F4F3EE; --panel:#FFFFFF; --ink:#242A24; --muted:#6B726A; --line:#DEDCD2;
+  --accent:#4E6E4A; --accent-soft:#4E6E4A18; --gold:#B08828; --grain:#A0522D; --bar:#E7E5DC; }
+*{box-sizing:border-box;}
+body{background:var(--bg);color:var(--ink);margin:0;
+  font-family:"Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",sans-serif;line-height:1.45;}
+.wrap{max-width:1000px;margin:0 auto;padding:32px 22px 64px;}
+h1{font-family:"Source Han Serif K","Noto Serif CJK KR",Batang,serif;font-size:26px;margin:0 0 2px;letter-spacing:.02em;}
+h1::before{content:"政";color:var(--accent);border:1.5px solid var(--accent);border-radius:5px;
+  padding:1px 7px;margin-right:11px;font-size:19px;vertical-align:3px;}
+.sub{color:var(--muted);font-size:13px;margin-bottom:26px;}
+h2{font-size:14px;letter-spacing:.08em;color:var(--accent);margin:30px 0 10px;text-transform:none;
+  border-bottom:2px solid var(--accent-soft);padding-bottom:5px;}
+table{border-collapse:collapse;width:100%;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;overflow:hidden;font-size:14px;}
+th,td{padding:9px 13px;border-bottom:1px solid var(--line);text-align:left;}
+thead th{background:var(--accent-soft);color:var(--accent);font-size:12px;letter-spacing:.04em;white-space:nowrap;}
+tbody tr:last-child td{border-bottom:0;}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+td.name{font-weight:700;white-space:nowrap;}
+.tag{color:var(--muted);font-size:12px;}
+.formula{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+  font-size:13.5px;line-height:1.7;}
+.formula b{color:var(--accent);}
+.formula .k{color:var(--gold);font-weight:700;font-variant-numeric:tabular-nums;}
+.note{color:var(--muted);font-size:12px;margin-top:8px;}
+.gov{border-left:3px solid var(--accent);}
+</style></head><body>
+<div class="wrap">
+<h1>내정 밸런스 시트</h1>
+<div class="sub">data/balance.json · command-balance.json 기준 자동 생성 · 세율 20% · 인구 만충 100% · 유효 담당관(정치≥60) 기준</div>
+
+<h2>성곽 등급별 월 수입</h2>
+<table><thead><tr><th>항목</th><th class="num">소성</th><th class="num">중성</th><th class="num">대성</th></tr></thead>
+<tbody><tr><td class="name">인구 최대</td><td class="num">100,000</td><td class="num">250,000</td><td class="num">500,000</td></tr>
+<tr><td class="name">시설 슬롯(논·밭·마을)</td><td class="num">3</td><td class="num">6</td><td class="num">9</td></tr>
+<tr><td class="name">기본 금 / 월</td><td class="num">300</td><td class="num">700</td><td class="num">1,200</td></tr>
+<tr><td class="name">기본 군량 / 월</td><td class="num">1,500</td><td class="num">3,000</td><td class="num">6,000</td></tr>
+<tr><td class="name">슬롯 전부 논 → 군량 / 월</td><td class="num">2,400</td><td class="num">4,800</td><td class="num">8,700</td></tr>
+<tr><td class="name">슬롯 전부 마을 → 금 / 월</td><td class="num">450</td><td class="num">1,000</td><td class="num">1,650</td></tr></tbody></table>
+
+<h2>시설 (등급 무관 · 회수는 금 환산)</h2>
+<table><thead><tr><th>시설</th><th class="num">건설비</th><th>월 효과</th><th class="num">회수</th></tr></thead>
+<tbody><tr><td class="name">논 (Paddy)</td><td class="num">300금</td><td>군량 +300</td><td class="num tag">4개월</td></tr>
+<tr><td class="name">밭 (Farm)</td><td class="num">200금</td><td>군량 +150</td><td class="num tag">5.3개월</td></tr>
+<tr><td class="name">마을 (Village)</td><td class="num">400금</td><td>금 +50</td><td class="num tag">8개월</td></tr>
+<tr><td class="name">공방 (Workshop)</td><td class="num">800금</td><td>공성 병기·연구·성벽수리 게이트 (수입 X)</td><td class="num tag">—</td></tr></tbody></table>
+
+<h2>수입 배율 — 최종 수입 = 기본치 × 아래를 순서대로</h2>
+<div class="formula gov">
+<div>⓪ <b>담당관(태수)</b>: 없거나 정치&lt;<span class="k">60</span> → <b>수입 ×<span class="k">0.3</span></b> (급감).
+ 유효(정치≥<span class="k">60</span>) → 정치가 <b>세율을 증폭</b>: 정치 100 → 세율 효과 <span class="k">×2</span>
+ (10% 세율이 20%처럼, 치안은 실세율 기준이라 안 깎임). + 내정 스킬(상재→금·둔전→군량·진무→치안).</div>
+<div>① <b>세율</b>: 세율/20% → 10%=<span class="k">×0.5</span> · 20%=<span class="k">×1.0</span> · 50%=<span class="k">×2.5</span>(단 치안 −10/월)</div>
+<div>② <b>인구 충원율</b>: 바닥 <span class="k">50%</span> ~ 만충 <span class="k">100%</span> (인구/최대치 비례)</div>
+<div>③ <b>저치안</b>: 치안 &lt;<span class="k">20</span> → 수입 ×<span class="k">0.7</span></div>
+</div>
+<div class="note">치안: 매월 자연 회복 +2 + 세율 효과(20%기준 0, 낮으면 +, 50%면 −10) + 진무 스킬. 인구 성장 = 매월 +1% × 치안/100.</div>
+
+<h2>병사 모집 (rescale 후 · 대성 기준)</h2>
+<table><thead><tr><th>병종</th><th>1만당 자원</th><th>조달</th><th class="num">재건</th></tr></thead>
+<tbody><tr><td class="name">보병</td><td>광석 1만</td><td class="tag">광석 산출 2,500/월 + 시장(1금/개)</td><td class="num">~3개월</td></tr>
+<tr><td class="name">기병</td><td>+말 3,333</td><td class="tag">말 산출 500/월 · 시장 6금/필</td><td class="num">~5–6개월</td></tr>
+<tr><td class="name">상병</td><td>+코끼리 10</td><td class="tag">코끼리 산출 10/월 · 시장 3,000금/두</td><td class="num">~1–2개월</td></tr></tbody></table>
+<div class="note">모병: 정치 비례 산출(정치×15/명령), 인구 1% 캡, 훈련도 50 · 징병: 인구 3% 캡, 훈련도 0, 치안 하락 · 명령 7일(건설 30일)·수행 장수 잠김·주관+보좌×50%+고향 +20%.</div>
+</div></body></html>

@@ -31,7 +31,7 @@ public partial class GameRoot : Node2D
         camera.Zoom = FitZoom(bounds, GetViewport().GetVisibleRect().Size);
         camera.MakeCurrent();
 
-        _engine = new WorldEngine(scenario.Balance);
+        _engine = new WorldEngine(scenario.Balance, adminSkills: new AdminSkillLoader().LoadFromDirectory(FindDataDirectory()));
         _state = GameState.FromScenario(scenario);
         _hud = GetNode<Hud>("Hud");
         _hud.NextMonthPressed += OnNextMonth;
