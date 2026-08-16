@@ -17,7 +17,8 @@ public sealed record CityCommand(
     int StartDay,
     int CompletionDay,
     int Amount,
-    string Facility = "")
+    string Facility = "",
+    string TroopCode = "")
 {
     /// <summary>이 명령에 이 장수가 매여 있는가(주관 또는 보좌).</summary>
     public bool Locks(GeneralId general) => Main == general || Assist == general;

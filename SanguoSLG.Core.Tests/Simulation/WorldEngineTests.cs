@@ -315,4 +315,23 @@ public class WorldEngineTests
         var b = engine.AdvanceDays(WithGovernor(barren, officer), 30);
         Assert.Equal(0, b.Cities.Single().Ore);   // 안 나는 도시엔 무효
     }
+
+    [Fact]
+    public void 담당관이_출전중이면_유령태수가_되지않는다()
+    {
+        // 배속이 있는 세계에서 담당관의 주둔지가 그 도시가 아니면(출전 = Location null)
+        // 담당관 없음으로 취급 → 수입 급감(×0.3).
+        var officer = Officer(90);
+        var city = Base() with { Governor = officer.Id };
+
+        GameState With(CityId? location) => new(1, 1, new List<Faction>(),
+            new List<City> { city }, new List<General> { officer },
+            Postings: new List<GeneralPosting> { new(officer.Id, new FactionId(1), location) });
+
+        var home = new WorldEngine(Balance).AdvanceDays(With(city.Id), 30);
+        Assert.True(home.Cities.Single().Gold > 100); // 주둔 중 — 정치 90 증폭
+
+        var away = new WorldEngine(Balance).AdvanceDays(With(null), 30); // 출전 중
+        Assert.Equal(30, away.Cities.Single().Gold);  // ×0.3 급감
+    }
 }

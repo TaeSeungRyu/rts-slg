@@ -32,8 +32,6 @@ public sealed record City(
     bool ProducesHorses = false,
     bool ProducesElephants = false,
     int TaxRate = 20,
-    int Troops = 0,
-    int TrainingLevel = 0,
     GeneralId? Governor = null)
 {
     /// <summary>소유 세력을 바꾼 새 도시를 반환한다.</summary>
@@ -42,21 +40,4 @@ public sealed record City(
     /// <summary>금을 더한(음수면 뺀) 새 도시를 반환한다.</summary>
     public City AddGold(int amount) => this with { Gold = Gold + amount };
 
-    /// <summary>
-    /// 대기 병력을 합류시킨다(모병·징병). 훈련도는 <b>가중 평균·반올림</b>으로 희석된다
-    /// (design-unit-state "보충"). 예: 80×2000 + 50×1000 = 70.
-    /// </summary>
-    public City AddTroops(int amount, int trainingLevel)
-    {
-        if (amount <= 0)
-        {
-            return this;
-        }
-
-        var total = Troops + amount;
-        // 정수 반올림(내림 아님) — 부동소수를 피해 결정론 유지(CLAUDE.md 규칙 4).
-        var sum = Troops * (long)TrainingLevel + amount * (long)trainingLevel;
-        var blended = (int)((sum + total / 2) / total);
-        return this with { Troops = total, TrainingLevel = blended };
-    }
 }

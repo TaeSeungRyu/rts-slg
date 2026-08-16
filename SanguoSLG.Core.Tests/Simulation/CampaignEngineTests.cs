@@ -1,0 +1,106 @@
+namespace SanguoSLG.Core.Tests.Simulation;
+
+using System.Collections.Generic;
+using System.Linq;
+using SanguoSLG.Core.Data;
+using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Spatial;
+using Xunit;
+
+/// <summary>캠페인 진행 = 7일 고정, 이동+전투 자동 연속, 내정과 한 시계(2026-08-16 확정).</summary>
+public class CampaignEngineTests
+{
+    private static readonly IReadOnlyDictionary<string, TroopTemplate> T =
+        new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory()).ToDictionary(x => x.Code);
+
+    private static CampaignEngine Engine()
+    {
+        var movement = new MovementSimulator(new PassabilityMap(new HexMap(0, 30, -5, 8), [], []));
+        var field = new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70));
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100));
+        return new CampaignEngine(field, world);
+    }
+
+    private static CombatUnit Army(int id, int owner, HexCoord pos, UnitMode mode, HexCoord? target,
+        int troops = 10000, string code = "swordsman", int training = 50)
+    {
+        var t = T[code];
+        var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos,
+            t.MovementPerDay, t.Detection, t.RangeUnit, MovementDomain.Land, mode, target, id, t.RangeCastle);
+        var stats = CombatStatsBuilder.BuildField(t, AptitudeGrade.A, 0, TerrainType.River, troops);
+        return new CombatUnit(field, stats, new TroopPool(troops, 0), UnitCombatState.Create(60),
+            60, 60, troops, t.Class, TroopCode: code, Training: training);
+    }
+
+    private static GameState World(params CombatUnit[] armies) =>
+        new(1, 1, new List<Faction>(), new List<City>(), new List<General>(), FieldArmies: armies.ToList());
+
+    [Fact]
+    public void 진행_1번은_야전이_있든_없든_정확히_7일이다()
+    {
+        var e = Engine();
+
+        var idle = e.AdvanceWeek(World(), out _);
+        Assert.Equal(8, idle.Day);
+
+        // 접적해서 시뮬이 일찍 멈춰도 내정은 7일.
+        var a = Army(1, 1, new HexCoord(0, 0), UnitMode.Attack, new HexCoord(10, 0));
+        var b = Army(2, 2, new HexCoord(6, 0), UnitMode.Attack, new HexCoord(0, 0));
+        var fight = e.AdvanceWeek(World(a, b), out _);
+        Assert.Equal(8, fight.Day);
+    }
+
+    [Fact]
+    public void 접적해도_7일이_찰때까지_전투가_자동으로_계속된다()
+    {
+        // 거리 6, 서로 공격 — 첫 시뮬이 접적으로 며칠 만에 멈추지만, 그 주 안에서 교전이
+        // 자동 반복돼 한 번의 진행으로 여러 교환이 정산된다(피해가 1교환분 760보다 크다).
+        var a = Army(1, 1, new HexCoord(0, 0), UnitMode.Attack, new HexCoord(10, 0));
+        var b = Army(2, 2, new HexCoord(6, 0), UnitMode.Attack, new HexCoord(0, 0));
+
+        var after = Engine().AdvanceWeek(World(a, b), out var turns);
+
+        Assert.True(turns.Count > 1, "한 주 안에서 시뮬이 여러 번 이어진다");
+        var u1 = after.Armies.Single(u => u.Id.Value == 1);
+        Assert.True(10000 - u1.Pool.Active > 760, $"여러 교환 누적 피해: {10000 - u1.Pool.Active}");
+    }
+
+    [Fact]
+    public void 진행을_4번_누르면_한달이_지나_월말_정산이_된다()
+    {
+        var cities = new List<City>
+        {
+            new(new CityId(1), "성", new HexCoord(20, 5), new FactionId(1), 0, Gold: 0, Population: 100_000),
+        };
+        var s = new GameState(1, 1, new List<Faction>(), cities, new List<General>());
+
+        var e = Engine();
+        for (var i = 0; i < 4; i++)
+        {
+            s = e.AdvanceWeek(s, out _);
+        }
+
+        Assert.Equal(29, s.Day);                      // 4주 = 28일 경과
+        // 30일차(월말)는 아직 안 왔지만 28일까지의 수입은 0회 — 5번째 진행에서 월말이 낀다.
+        var s5 = e.AdvanceWeek(s, out _);
+        Assert.Equal(36, s5.Day);
+        Assert.True(s5.Cities.Single().Gold > 0, "5번째 주에 월말(30일) 정산이 포함된다");
+    }
+
+    [Fact]
+    public void 입성한_부대는_병종별_대기병력으로_편입된다()
+    {
+        // 아군 성으로 복귀하는 부대 — 입성하면 GarrisonForce(도시·병종·병력·훈련도)로.
+        var home = new City(new CityId(1), "성", new HexCoord(5, 0), new FactionId(1), 0);
+        var returning = Army(1, 1, new HexCoord(2, 0), UnitMode.March, new HexCoord(5, 0), troops: 8000, training: 70);
+        var s = new GameState(1, 1, new List<Faction>(), new List<City> { home }, new List<General>(),
+            FieldArmies: new List<CombatUnit> { returning });
+
+        var after = Engine().AdvanceWeek(s, out _);
+
+        Assert.Empty(after.Armies);
+        var g = after.Garrisons.Single();
+        Assert.Equal(("swordsman", 8000, 70), (g.TroopCode, g.Troops, g.TrainingLevel));
+    }
+}

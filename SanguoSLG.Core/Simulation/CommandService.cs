@@ -5,13 +5,15 @@ using SanguoSLG.Core.Domain;
 /// <summary>명령 발행 요청(design-administration.md). 산출량은 능력에서 계산되므로 지정하지 않는다.</summary>
 /// <param name="Value">세율 명령의 목표 세율(그 외 무시).</param>
 /// <param name="Facility">건설 명령의 시설 종류("paddy"/"farm"/"village"/"workshop").</param>
+/// <param name="TroopCode">모집(모병·징병)·훈련의 병종 코드 — 2026-08-16 확정: 병종은 모집 시 지정.</param>
 public sealed record CommandRequest(
     CityId City,
     CommandKind Kind,
     GeneralId Main,
     GeneralId? Assist = null,
     int Value = 0,
-    string Facility = "");
+    string Facility = "",
+    string TroopCode = "");
 
 /// <summary>명령 발행 결과 — 실패면 <see cref="Error"/>에 사유, 상태는 그대로.</summary>
 public sealed record CommandResult(bool Ok, string? Error, GameState State)
@@ -28,8 +30,13 @@ public sealed record CommandResult(bool Ok, string? Error, GameState State)
 public sealed class CommandService
 {
     private readonly CommandBalance _b;
+    private readonly IReadOnlyDictionary<string, TroopTemplate> _troops;
 
-    public CommandService(CommandBalance balance) => _b = balance;
+    public CommandService(CommandBalance balance, IReadOnlyList<TroopTemplate>? troops = null)
+    {
+        _b = balance;
+        _troops = (troops ?? []).ToDictionary(t => t.Code);
+    }
 
     public CommandResult Issue(GameState state, CommandRequest req)
     {
@@ -86,8 +93,7 @@ public sealed class CommandService
         {
             CommandKind.Recruit => IssueRecruit(state, city, req, assist, eff, CommandKind.Recruit),
             CommandKind.Conscript => IssueRecruit(state, city, req, assist, eff, CommandKind.Conscript),
-            CommandKind.Train => IssueSimple(state, city, req, assist,
-                amount: CommandEfficiency.TrainGain(eff, _b), days: _b.CommandDays),
+            CommandKind.Train => IssueTrain(state, city, req, assist, eff),
             CommandKind.Build => IssueBuild(state, city, req, assist, main),
             CommandKind.SetTaxRate => IssueTax(state, city, req, assist),
             _ => CommandResult.Fail("알 수 없는 명령이다.", state),
@@ -97,24 +103,55 @@ public sealed class CommandService
     private CommandResult IssueRecruit(GameState state, City city, CommandRequest req, General? assist,
         int eff, CommandKind kind)
     {
+        // 병종은 모집 시 지정(2026-08-16 확정) — 그때 광석 + 말/코끼리를 소비한다.
+        if (!_troops.TryGetValue(req.TroopCode, out var template))
+        {
+            return CommandResult.Fail("모집할 병종을 지정해야 한다.", state);
+        }
+
         var capPercent = kind == CommandKind.Recruit ? _b.RecruitPopCapPercent : _b.ConscriptPopCapPercent;
         var byAbility = CommandEfficiency.RecruitTroops(eff, _b);
         var byPopulation = city.Population * capPercent / 100;
         var troops = System.Math.Min(System.Math.Min(byAbility, byPopulation), city.Ore); // 광석 1/명
+
+        // 병종별 추가 자원이 하드 캡을 더 조인다: 말 = 3명당 1, 코끼리 = 1000명당 1.
+        if (template.Class == TroopClass.Cavalry)
+        {
+            troops = System.Math.Min(troops, city.Horses * 3);
+        }
+        else if (template.Class == TroopClass.Elephant)
+        {
+            troops = System.Math.Min(troops, city.Elephants * 1000);
+        }
 
         if (troops <= 0)
         {
             return CommandResult.Fail("자원·인구가 부족해 모집할 수 없다.", state);
         }
 
-        // 예약: 광석·인구 즉시 차감(정산 때 병력 지급). 병종별 말·코끼리는 편성 시스템(후속)에서.
-        var reserved = city with { Ore = city.Ore - troops, Population = city.Population - troops };
-        return Register(state, reserved, req, assist, troops, _b.CommandDays, kind, "");
+        // 예약: 광석·인구 + 병종별 자원(말·코끼리, 올림) 즉시 차감. 정산 때 병력 지급.
+        var horses = template.Class == TroopClass.Cavalry ? (troops + 2) / 3 : 0;
+        var elephants = template.Class == TroopClass.Elephant ? (troops + 999) / 1000 : 0;
+        var reserved = city with
+        {
+            Ore = city.Ore - troops,
+            Population = city.Population - troops,
+            Horses = city.Horses - horses,
+            Elephants = city.Elephants - elephants,
+        };
+        return Register(state, reserved, req, assist, troops, _b.CommandDays, kind, "", req.TroopCode);
     }
 
-    private CommandResult IssueSimple(GameState state, City city, CommandRequest req, General? assist,
-        int amount, int days)
-        => Register(state, city, req, assist, amount, days, req.Kind, "");
+    private CommandResult IssueTrain(GameState state, City city, CommandRequest req, General? assist, int eff)
+    {
+        if (!state.Garrisons.Any(g => g.City == city.Id && g.TroopCode == req.TroopCode && g.Troops > 0))
+        {
+            return CommandResult.Fail("훈련할 대기 병력(병종)이 없다.", state);
+        }
+
+        return Register(state, city, req, assist,
+            CommandEfficiency.TrainGain(eff, _b), _b.CommandDays, CommandKind.Train, "", req.TroopCode);
+    }
 
     private CommandResult IssueBuild(GameState state, City city, CommandRequest req, General? assist, General main)
     {
@@ -165,11 +202,11 @@ public sealed class CommandService
     }
 
     private static CommandResult Register(GameState state, City reservedCity, CommandRequest req, General? assist,
-        int amount, int days, CommandKind kind, string facility)
+        int amount, int days, CommandKind kind, string facility, string troopCode = "")
     {
         var cities = state.Cities.Select(c => c.Id == reservedCity.Id ? reservedCity : c).ToList();
         var command = new CityCommand(req.City, kind, req.Main, assist?.Id,
-            state.Day, state.Day + days, amount, facility);
+            state.Day, state.Day + days, amount, facility, troopCode);
         var pending = state.Commands.Append(command).ToList();
         return CommandResult.Success(state with { Cities = cities, PendingCommands = pending });
     }

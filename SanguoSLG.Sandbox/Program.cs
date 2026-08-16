@@ -46,7 +46,8 @@ PrintState("종료", state);
 
 // ── 내정 ③ 명령 데모: 모병(주관 장수) → 7일 진행 → 병력 지급·장수 잠금 해제 ──
 var cmdBalance = new CommandBalanceLoader().LoadFromDirectory(FindDataDirectory());
-var commander = new CommandService(cmdBalance);
+var troopTemplates = new TroopTypeLoader().LoadFromDirectory(FindDataDirectory());
+var commander = new CommandService(cmdBalance, troopTemplates);
 var worldC = new WorldEngine(scenario.Balance, cmdBalance, adminSkills);
 var demo = GameState.FromScenario(scenario);
 
@@ -65,14 +66,15 @@ var city0 = demo.Cities.First(c => demo.GeneralsAt(c.Id).Any());
 var govId = demo.GeneralsAt(city0.Id).First();
 var gov = demo.Generals.First(g => g.Id == govId);
 
-Console.WriteLine($"{city0.Name}: 인구 {city0.Population} 광석 {city0.Ore} 병력 {city0.Troops}, 주둔 {gov.Name}");
-var issued = commander.Issue(demo, new CommandRequest(city0.Id, CommandKind.Recruit, gov.Id));
+Console.WriteLine($"{city0.Name}: 인구 {city0.Population} 광석 {city0.Ore}, 주둔 {gov.Name}");
+var issued = commander.Issue(demo, new CommandRequest(city0.Id, CommandKind.Recruit, gov.Id, TroopCode: "swordsman"));
 Console.WriteLine(issued.Ok
     ? $"모병 발행 — 수행 {gov.Name}(정치 {gov.Politics}), {gov.Name} 잠김={issued.State.IsGeneralBusy(gov.Id)}"
     : $"발행 실패: {issued.Error}");
 var after = worldC.AdvanceDays(issued.State, cmdBalance.CommandDays);
 var c0 = after.Cities.First(c => c.Id == city0.Id);
-Console.WriteLine($"{cmdBalance.CommandDays}일 뒤 — 병력 {c0.Troops}(훈련도 {c0.TrainingLevel}) 광석 {c0.Ore}, {gov.Name} 잠김={after.IsGeneralBusy(gov.Id)}");
+var g0 = after.Garrisons.FirstOrDefault(g => g.City == city0.Id);
+Console.WriteLine($"{cmdBalance.CommandDays}일 뒤 — 대기 {g0?.TroopCode} {g0?.Troops}명(훈련도 {g0?.TrainingLevel}) 광석 {c0.Ore}, {gov.Name} 잠김={after.IsGeneralBusy(gov.Id)}");
 Console.WriteLine();
 
 static void PrintState(string label, GameState state)

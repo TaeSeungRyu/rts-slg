@@ -15,8 +15,16 @@ public sealed record GameState(
     IReadOnlyList<City> Cities,
     IReadOnlyList<General> Generals,
     IReadOnlyList<CityCommand>? PendingCommands = null,
-    IReadOnlyList<GeneralPosting>? Postings = null)
+    IReadOnlyList<GeneralPosting>? Postings = null,
+    IReadOnlyList<GarrisonForce>? GarrisonForces = null,
+    IReadOnlyList<CombatUnit>? FieldArmies = null)
 {
+    /// <summary>도시 대기 병력(병종별) — 모집 정산이 쌓고, 출전 편성이 꺼내 쓴다.</summary>
+    public IReadOnlyList<GarrisonForce> Garrisons => GarrisonForces ?? [];
+
+    /// <summary>야전 부대 — 캠페인 진행(CampaignEngine)이 이동·전투를 굴린다.</summary>
+    public IReadOnlyList<CombatUnit> Armies => FieldArmies ?? [];
+
     /// <summary>진행 중인 도시 명령(발행됨·미완료). 수행 장수는 완료까지 잠긴다.</summary>
     public IReadOnlyList<CityCommand> Commands => PendingCommands ?? [];
 
