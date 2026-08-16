@@ -25,7 +25,7 @@ public sealed class TroopTypeLoader
 
         return dtos
             .Select(d => new TroopTemplate(d.Code, d.Name, ParseClass(d.Class), d.AtkUnit, d.AtkBuilding, d.Df,
-                d.MovementPerDay, d.Detection, d.RangeUnit, d.RangeBuilding, d.RangeCastle))
+                d.MovementPerDay, d.Detection, d.RangeUnit, d.RangeBuilding, d.RangeCastle, d.ProvisionsCapacity))
             .ToList();
     }
 
@@ -53,5 +53,6 @@ public sealed class TroopTypeLoader
         public int RangeUnit { get; init; } = 1;
         public int RangeBuilding { get; init; } = 1;
         public int RangeCastle { get; init; } = 1;
+        public int ProvisionsCapacity { get; init; } = 300;
     }
 }

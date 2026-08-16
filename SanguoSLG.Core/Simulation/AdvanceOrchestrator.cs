@@ -20,6 +20,7 @@ public sealed class AdvanceOrchestrator
     private readonly Func<HexCoord, TerrainType> _terrainAt;
     private readonly int _provisionsPer10kPerDay;
     private readonly int _starvationLossPercentPerDay;
+    private readonly int _resupplyRadius;
 
     public AdvanceOrchestrator(
         MovementSimulator movement,
@@ -27,7 +28,8 @@ public sealed class AdvanceOrchestrator
         int woundedPercent = 70,
         Func<HexCoord, TerrainType>? terrainAt = null,
         int provisionsPer10kPerDay = 10,
-        int starvationLossPercentPerDay = 5)
+        int starvationLossPercentPerDay = 5,
+        int resupplyRadius = 6)
     {
         _movement = movement;
         _combat = combat;
@@ -35,6 +37,7 @@ public sealed class AdvanceOrchestrator
         _terrainAt = terrainAt ?? (_ => TerrainType.Plains);
         _provisionsPer10kPerDay = provisionsPer10kPerDay;
         _starvationLossPercentPerDay = starvationLossPercentPerDay;
+        _resupplyRadius = resupplyRadius;
     }
 
     public AdvanceTurn Run(IReadOnlyList<CombatUnit> units, int maxDays = 7,
@@ -42,6 +45,10 @@ public sealed class AdvanceOrchestrator
     {
         // 병력 0(전멸) 부대는 진행에서 빠진다 — 이동·전투·점유·표적에서 모두 제외한다.
         units = units.Where(u => u.Pool.Active > 0).ToList();
+
+        // 0.9) 보급부대 자동 보충(이동 선행 — design-unit-state 1단계-보급): 보급부대가 반경 내 아군
+        //      저(低)군량 부대에 하루치씩 채워준다(보급부대 재고 한도). 이동·소모보다 먼저 일어난다.
+        units = Resupply(units);
 
         // 진행 시작 시점에 행동불가(혼란)인 부대 — 이동·전투 모두 이 스냅샷으로 판정한다
         // (상태 tick이 진행 중간에 남은 진행을 줄여도, 그 진행의 효과는 온전히 적용).
@@ -208,6 +215,53 @@ public sealed class AdvanceOrchestrator
         return moveDown > 0
             ? u.Field with { Speed = System.Math.Max(1, u.Field.Speed - moveDown) }
             : u.Field;
+    }
+
+    // 보급부대 자동 보충: 각 보급부대가 반경 내 아군(자신 제외·군량 추적) 중 최대치 미만인 부대에
+    // 하루치(병력 비례)씩 재고 한도 안에서 채워준다. 결정론: 보급부대·수혜 부대 모두 id 오름차순.
+    private IReadOnlyList<CombatUnit> Resupply(IReadOnlyList<CombatUnit> units)
+    {
+        if (!units.Any(u => u.IsSupply && u.Provisions > 0))
+        {
+            return units;
+        }
+
+        var byId = units.ToDictionary(u => u.Id);
+        foreach (var supply in units.Where(u => u.IsSupply && u.Provisions > 0).OrderBy(u => u.Id.Value))
+        {
+            var stock = byId[supply.Id].Provisions;
+            foreach (var ally in units
+                .Where(a => a.Field.Owner == supply.Field.Owner && a.Id != supply.Id && a.TracksProvisions
+                    && a.Field.Position.Distance(supply.Field.Position) <= _resupplyRadius)
+                .OrderBy(a => a.Id.Value))
+            {
+                if (stock <= 0)
+                {
+                    break;
+                }
+
+                var recipient = byId[ally.Id];
+                var deficit = recipient.MaxProvisions() - recipient.Provisions;
+                if (deficit <= 0)
+                {
+                    continue;
+                }
+
+                var oneDay = recipient.Pool.Active * _provisionsPer10kPerDay / 10000;
+                var give = System.Math.Min(System.Math.Min(oneDay, deficit), stock);
+                if (give <= 0)
+                {
+                    continue;
+                }
+
+                byId[ally.Id] = recipient with { Provisions = recipient.Provisions + give };
+                stock -= give;
+            }
+
+            byId[supply.Id] = byId[supply.Id] with { Provisions = stock };
+        }
+
+        return units.Select(u => byId[u.Id]).ToList();
     }
 
     // 폭파: 대상 타일 반경 안의 다른 적 부대 전원에게 같은 즉발 피해(각 부대 지력이 저항). 대상 자신은

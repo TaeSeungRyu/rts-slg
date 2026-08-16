@@ -15,6 +15,7 @@ namespace SanguoSLG.Core.Domain;
 /// <param name="RangeUnit">유닛 대상 사거리(1=인접, 궁병·투석 등 2).</param>
 /// <param name="RangeBuilding">건물 대상 사거리.</param>
 /// <param name="RangeCastle">성 대상 사거리.</param>
+/// <param name="ProvisionsCapacity">군량 적재능력(10k 병력 기준 ≈ 1개월치). 보급부대는 ×배수.</param>
 public sealed record TroopTemplate(
     string Code,
     string Name,
@@ -26,4 +27,5 @@ public sealed record TroopTemplate(
     int Detection = 2,
     int RangeUnit = 1,
     int RangeBuilding = 1,
-    int RangeCastle = 1);
+    int RangeCastle = 1,
+    int ProvisionsCapacity = 300);

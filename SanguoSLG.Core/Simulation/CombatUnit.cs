@@ -17,10 +17,16 @@ public sealed record CombatUnit(
     int Intellect = 60,
     int MaxTroops = 0,
     TroopClass Class = TroopClass.Infantry,
-    int Provisions = -1)
+    int Provisions = -1,
+    int ProvisionsCapacity = 300,
+    bool IsSupply = false)
 {
     public UnitId Id => Field.Id;
 
     /// <summary>군량을 추적하는 부대인가(−1 = 미추적 = 무한 보급 가정 — 전술 하베스트·단발 전투용).</summary>
     public bool TracksProvisions => Provisions >= 0;
+
+    /// <summary>이 부대의 최대 휴대 군량(적재능력 × 병력 비례, 보급부대는 ×배수). design-unit-state 1단계-보급.</summary>
+    public int MaxProvisions(int supplyMultiplier = 5)
+        => ProvisionsCapacity * Pool.Active / 10000 * (IsSupply ? supplyMultiplier : 1);
 }

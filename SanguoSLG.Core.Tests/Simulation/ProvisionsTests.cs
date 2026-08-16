@@ -76,4 +76,61 @@ public class ProvisionsTests
         var turn = Orchestrator().Run(new[] { u });
         Assert.Equal(265, turn.Units.Single().Provisions);
     }
+
+    private static CombatUnit Supply(int id, HexCoord pos, int provisions, int troops = 10000)
+    {
+        var field = new FieldUnit(new UnitId(id), new FactionId(1), pos, 1, 2, 1,
+            MovementDomain.Land, UnitMode.March, Target: null, id);
+        var stats = CombatStatsBuilder.BuildField(T["swordsman"], AptitudeGrade.A, 0, TerrainType.River, troops);
+        return new CombatUnit(field, stats, new TroopPool(troops, 0), UnitCombatState.Create(60),
+            60, 60, troops, TroopClass.Infantry, provisions, ProvisionsCapacity: 300, IsSupply: true);
+    }
+
+    private static int AllyProvisionsAfter(bool withSupply, HexCoord allyPos, int allyProvisions)
+    {
+        var ally = March(2, allyPos, allyPos, troops: 10000, provisions: allyProvisions); // 목표=제자리
+        var units = withSupply
+            ? new[] { Supply(1, new HexCoord(0, 0), provisions: 1000), ally }
+            : new[] { ally };
+        return Orchestrator().Run(units).Units.Single(u => u.Id.Value == 2).Provisions;
+    }
+
+    [Fact]
+    public void 보급부대는_반경내_저군량_아군을_이동보다먼저_하루치_보충한다()
+    {
+        // 보충은 소모(1일치)보다 선행 — 정지 부대는 보충(+10)과 소모(−10)가 상쇄돼 유지되고,
+        // 보급 없으면 소모만 일어나 −10. 차이 10 = 하루치 보충.
+        var with = AllyProvisionsAfter(withSupply: true, new HexCoord(1, 0), allyProvisions: 50);
+        var without = AllyProvisionsAfter(withSupply: false, new HexCoord(1, 0), allyProvisions: 50);
+        Assert.Equal(10, with - without);
+    }
+
+    [Fact]
+    public void 보급부대_반경밖_아군은_보충하지않는다()
+    {
+        // 거리 9 > 6 → 보충 없음 → 있으나 없으나 동일.
+        var with = AllyProvisionsAfter(withSupply: true, new HexCoord(9, 0), allyProvisions: 50);
+        var without = AllyProvisionsAfter(withSupply: false, new HexCoord(9, 0), allyProvisions: 50);
+        Assert.Equal(with, without);
+    }
+
+    [Fact]
+    public void 보급부대_최대치_아군은_보충하지않는다()
+    {
+        // 이미 최대(300)면 보충 없음 → 있으나 없으나 동일(소모만).
+        var with = AllyProvisionsAfter(withSupply: true, new HexCoord(1, 0), allyProvisions: 300);
+        var without = AllyProvisionsAfter(withSupply: false, new HexCoord(1, 0), allyProvisions: 300);
+        Assert.Equal(with, without);
+    }
+
+    [Fact]
+    public void 보급부대는_5배_적재한다()
+    {
+        // 적재능력 300 · 1만 병력 · 보급부대 → 최대 1500(×5).
+        var supply = Supply(1, new HexCoord(0, 0), provisions: 0);
+        Assert.Equal(1500, supply.MaxProvisions());
+        // 일반 부대(같은 병종)는 300.
+        var normal = March(2, new HexCoord(0, 0), new HexCoord(0, 0), provisions: 0) with { ProvisionsCapacity = 300 };
+        Assert.Equal(300, normal.MaxProvisions());
+    }
 }
