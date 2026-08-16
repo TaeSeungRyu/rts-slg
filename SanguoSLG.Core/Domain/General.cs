@@ -15,7 +15,6 @@ public sealed record General(
     int Politics,
     string? BattleActive = null,
     IReadOnlyList<GeneralSkill>? BattlePassives = null,
-    string? AdminActive = null,
     IReadOnlyList<GeneralSkill>? AdminPassives = null,
     int Birth = 0,
     string Region = "",

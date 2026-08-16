@@ -57,7 +57,7 @@ public sealed class WorldEngine
             Domain.General? Gov(City c) => c.Governor is { } gid && byId.TryGetValue(gid, out var g) ? g : null;
             next = next with
             {
-                Cities = next.Cities.Select(c => TaxSecurity(Grow(Produce(Income(c, Gov(c)))), Gov(c))).ToList(),
+                Cities = next.Cities.Select(c => TaxSecurity(Grow(Produce(Income(c, Gov(c)), Gov(c))), Gov(c))).ToList(),
             };
         }
 
@@ -194,7 +194,7 @@ public sealed class WorldEngine
         var sum = 0;
         foreach (var held in governor.AdminPassives ?? [])
         {
-            if (_adminSkills.TryGetValue(held.Code, out var def) && !def.IsActive && def.Bucket == bucket)
+            if (_adminSkills.TryGetValue(held.Code, out var def) && def.Bucket == bucket)
             {
                 sum += def.AmountAtTier(held.Tier);
             }
@@ -231,13 +231,29 @@ public sealed class WorldEngine
         return city with { Security = System.Math.Clamp(city.Security + delta, 0, 100) };
     }
 
-    // 자원 산출: 산출 도시(지역 특산 플래그)만 매월 비축이 는다.
-    private City Produce(City city) => city with
+    // 자원 산출: 산출 도시(지역 특산 플래그)만 매월 비축이 는다. 유효 담당관의 채광·목마·상사
+    // 스킬이 있으면 해당 자원 산출량이 티어%만큼 증가한다(그 자원을 내지 않는 도시엔 효과 없음).
+    private City Produce(City city, Domain.General? governor)
     {
-        Ore = city.Ore + (city.ProducesOre ? _balance.OreOutputPerMonth : 0),
-        Horses = city.Horses + (city.ProducesHorses ? _balance.HorsesOutputPerMonth : 0),
-        Elephants = city.Elephants + (city.ProducesElephants ? _balance.ElephantsOutputPerMonth : 0),
-    };
+        var effective = governor is not null && governor.Politics >= _balance.GovernorMinPolitics;
+        int Output(int baseOutput, bool produces, string bucket)
+        {
+            if (!produces)
+            {
+                return 0;
+            }
+
+            var bonus = effective ? GovernorBucket(governor, bucket) : 0;
+            return baseOutput * (100 + bonus) / 100;
+        }
+
+        return city with
+        {
+            Ore = city.Ore + Output(_balance.OreOutputPerMonth, city.ProducesOre, "ore_output"),
+            Horses = city.Horses + Output(_balance.HorsesOutputPerMonth, city.ProducesHorses, "horse_output"),
+            Elephants = city.Elephants + Output(_balance.ElephantsOutputPerMonth, city.ProducesElephants, "elephant_output"),
+        };
+    }
 
     private int GoldBase(CastleSize castle) => castle switch
     {

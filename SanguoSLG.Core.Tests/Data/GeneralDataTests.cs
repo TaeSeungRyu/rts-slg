@@ -85,18 +85,13 @@ public class GeneralDataTests
     [Fact]
     public void 내정스킬코드는_실제데이터에_존재하고_슬롯규칙을_지킨다()
     {
-        var admin = new AdminSkillLoader().LoadFromDirectory(TestData.DataDirectory());
-        var actives = admin.Where(a => a.IsActive).Select(a => a.Code).ToHashSet();
-        var passives = admin.Where(a => !a.IsActive).Select(a => a.Code).ToHashSet();
+        // 내정 스킬은 전부 패시브(액티브 폐지 2026-08-16).
+        var passives = new AdminSkillLoader().LoadFromDirectory(TestData.DataDirectory())
+            .Select(a => a.Code).ToHashSet();
 
-        Assert.True(admin.Count >= 13);
+        Assert.True(passives.Count >= 12);
         foreach (var g in All)
         {
-            if (g.AdminActive is not null)
-            {
-                Assert.Contains(g.AdminActive, actives);
-            }
-
             var held = g.AdminPassives ?? [];
             foreach (var s in held)
             {
@@ -104,8 +99,7 @@ public class GeneralDataTests
                 Assert.InRange(s.Tier, 1, 3);
             }
 
-            var total = (g.AdminActive is null ? 0 : 1) + held.Count;
-            Assert.InRange(total, 0, 4);
+            Assert.InRange(held.Count, 0, 4);
         }
     }
 

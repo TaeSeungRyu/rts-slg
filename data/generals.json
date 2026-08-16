@@ -27,7 +27,6 @@
         "tier": 2
       }
     ],
-    "admin_active": "harvest_order",
     "admin_passives": [
       {
         "code": "tuntian",
@@ -173,7 +172,6 @@
         "tier": 3
       }
     ],
-    "admin_active": "harvest_order",
     "admin_passives": [
       {
         "code": "tuntian",
@@ -352,7 +350,6 @@
         "tier": 3
       }
     ],
-    "admin_active": "grand_levy",
     "admin_passives": [
       {
         "code": "tuntian",
@@ -807,7 +804,6 @@
         "tier": 2
       }
     ],
-    "admin_active": "tax_relief",
     "admin_passives": [
       {
         "code": "merchant",
@@ -2102,7 +2098,6 @@
     "might": 20,
     "intellect": 84,
     "politics": 95,
-    "admin_active": "tax_relief",
     "admin_passives": [
       {
         "code": "merchant",
@@ -3202,7 +3197,6 @@
         "tier": 2
       }
     ],
-    "admin_active": "emergency_repair",
     "admin_passives": [
       {
         "code": "builder",
@@ -3383,7 +3377,6 @@
     "might": 35,
     "intellect": 88,
     "politics": 96,
-    "admin_active": "harvest_order",
     "admin_passives": [
       {
         "code": "tuntian",
@@ -3751,7 +3744,6 @@
         "tier": 2
       }
     ],
-    "admin_active": "tax_relief",
     "admin_passives": [
       {
         "code": "pacifier",
@@ -4015,7 +4007,6 @@
         "tier": 3
       }
     ],
-    "admin_active": "market_day",
     "admin_passives": [
       {
         "code": "merchant",
@@ -4054,7 +4045,6 @@
         "tier": 3
       }
     ],
-    "admin_active": "market_day",
     "admin_passives": [
       {
         "code": "builder",
@@ -4090,7 +4080,6 @@
         "tier": 3
       }
     ],
-    "admin_active": "tax_relief",
     "admin_passives": [
       {
         "code": "merchant",

@@ -290,11 +290,29 @@ public class WorldEngineTests
     public void 담당관_상재스킬이_금수입을_올린다()
     {
         // 상재(tax 버킷) 티어2 = +12% 금. 정치 60·세율 20%·인구 만충 → 100 × 1.12 = 112.
-        var merchant = new AdminSkill("merchant", "상재", IsActive: false, Bucket: "tax", Tiers: new[] { 6, 12, 20 });
+        var merchant = new AdminSkill("merchant", "상재", Bucket: "tax", Tiers: new[] { 6, 12, 20 });
         var officer = Officer(60, new List<GeneralSkill> { new("merchant", 2) });
         var engine = new WorldEngine(Balance, adminSkills: new[] { merchant });
 
         var after = engine.AdvanceDays(WithGovernor(Base(), officer), 30);
         Assert.Equal(112, after.Cities.Single().Gold);
+    }
+
+    [Fact]
+    public void 담당관_채광스킬이_광석산출을_올린다_비산출도시엔무효()
+    {
+        // 채광(ore_output) 티어2 = +20%. 기본 산출(BalanceConfig 기본 500) × 1.2 = 600. 비산출 도시는 0.
+        var miner = new AdminSkill("miner", "채광", Bucket: "ore_output", Tiers: new[] { 10, 20, 30 });
+        var officer = Officer(60, new List<GeneralSkill> { new("miner", 2) });
+        var engine = new WorldEngine(Balance, adminSkills: new[] { miner });
+
+        var producing = Base() with { ProducesOre = true, Ore = 0 };
+        var barren = Base() with { ProducesOre = false, Ore = 0 };
+
+        var a = engine.AdvanceDays(WithGovernor(producing, officer), 30);
+        Assert.Equal(600, a.Cities.Single().Ore); // 500 × 1.2
+
+        var b = engine.AdvanceDays(WithGovernor(barren, officer), 30);
+        Assert.Equal(0, b.Cities.Single().Ore);   // 안 나는 도시엔 무효
     }
 }

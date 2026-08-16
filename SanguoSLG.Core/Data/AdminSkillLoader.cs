@@ -21,16 +21,14 @@ public sealed class AdminSkillLoader
         var dtos = JsonSerializer.Deserialize<List<AdminSkillDto>>(json, Options)
             ?? throw new InvalidDataException("내정 스킬 데이터를 역직렬화할 수 없습니다.");
 
-        return dtos.Select(d => new AdminSkill(d.Code, d.Name, d.Kind == "active", d.Bucket, d.Tiers, d.Amount)).ToList();
+        return dtos.Select(d => new AdminSkill(d.Code, d.Name, d.Bucket, d.Tiers)).ToList();
     }
 
     private sealed class AdminSkillDto
     {
         public string Code { get; init; } = "";
         public string Name { get; init; } = "";
-        public string Kind { get; init; } = "passive";
         public string Bucket { get; init; } = "";
         public List<int>? Tiers { get; init; }
-        public int Amount { get; init; }
     }
 }

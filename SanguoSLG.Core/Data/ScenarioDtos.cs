@@ -54,7 +54,6 @@ internal sealed class GeneralDto
     public int Politics { get; init; }
     public string? BattleActive { get; init; }
     public List<GeneralSkillDto> BattlePassives { get; init; } = new();
-    public string? AdminActive { get; init; }
     public List<GeneralSkillDto> AdminPassives { get; init; } = new();
     public int Birth { get; init; }
     public string Region { get; init; } = "";

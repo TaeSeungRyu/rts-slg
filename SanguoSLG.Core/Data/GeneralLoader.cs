@@ -35,7 +35,6 @@ public sealed class GeneralLoader
         d.Politics,
         d.BattleActive,
         d.BattlePassives.Select(s => new GeneralSkill(s.Code, s.Tier)).ToList(),
-        d.AdminActive,
         d.AdminPassives.Select(s => new GeneralSkill(s.Code, s.Tier)).ToList(),
         d.Birth,
         d.Region,
