@@ -47,6 +47,9 @@ public sealed record CommandBalance
     public int BuildSlotsMedium { get; init; } = 6;
     public int BuildSlotsLarge { get; init; } = 9;
 
+    /// <summary>출전 가능 최소 훈련도(징병 부대는 이 밑이면 투입 불가 — design-unit-state 모집).</summary>
+    public int DeployMinTraining { get; init; } = 50;
+
     /// <summary>시설 건설 비용(금).</summary>
     public int BuildCostPaddy { get; init; } = 300;
     public int BuildCostFarm { get; init; } = 200;

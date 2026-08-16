@@ -29,6 +29,7 @@ public sealed class CampaignEngine
         var reports = new List<AdvanceTurn>();
         var armies = state.Armies.Where(u => u.Pool.Active > 0).ToList();
         var garrisons = state.Garrisons.ToList();
+        var postings = state.Assignments.ToList();
 
         var castles = state.Cities
             .OrderBy(c => c.Id.Value)
@@ -45,19 +46,31 @@ public sealed class CampaignEngine
             armies = turn.Units.ToList();
 
             // 입성 부대 → 그 도시의 대기 병력으로 편입(병종·훈련도 보존, 훈련도는 가중 평균).
+            // 실려 있던 장수(선봉·부관)는 그 도시 주둔으로 복귀한다.
             foreach (var entered in turn.EnteredCastle)
             {
-                if (entered.Field.Target is { } pos && cityAt.TryGetValue(pos, out var cityId)
-                    && entered.TroopCode.Length > 0)
+                if (entered.Field.Target is { } pos && cityAt.TryGetValue(pos, out var cityId))
                 {
-                    var idx = garrisons.FindIndex(g => g.City == cityId && g.TroopCode == entered.TroopCode);
-                    if (idx >= 0)
+                    if (entered.TroopCode.Length > 0)
                     {
-                        garrisons[idx] = garrisons[idx].Merge(entered.Pool.Active, entered.Training);
+                        var idx = garrisons.FindIndex(g => g.City == cityId && g.TroopCode == entered.TroopCode);
+                        if (idx >= 0)
+                        {
+                            garrisons[idx] = garrisons[idx].Merge(entered.Pool.Active, entered.Training);
+                        }
+                        else
+                        {
+                            garrisons.Add(new GarrisonForce(cityId, entered.TroopCode, entered.Pool.Active, entered.Training));
+                        }
                     }
-                    else
+
+                    foreach (var generalId in new[] { entered.VanguardId, entered.AdjutantId }.OfType<GeneralId>())
                     {
-                        garrisons.Add(new GarrisonForce(cityId, entered.TroopCode, entered.Pool.Active, entered.Training));
+                        var pIdx = postings.FindIndex(p => p.General == generalId);
+                        if (pIdx >= 0)
+                        {
+                            postings[pIdx] = postings[pIdx] with { Location = cityId };
+                        }
                     }
                 }
             }
@@ -70,6 +83,7 @@ public sealed class CampaignEngine
                 .Where(g => g.Troops > 0)
                 .OrderBy(g => g.City.Value).ThenBy(g => g.TroopCode, System.StringComparer.Ordinal)
                 .ToList(),
+            Postings = postings,
         };
 
         turns = reports;

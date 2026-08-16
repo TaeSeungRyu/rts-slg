@@ -1,6 +1,7 @@
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Spatial;
 
 // 밸런스 시뮬레이션 실행기. 사용법: --turns N --seed S
 var turns = 12;
@@ -75,6 +76,54 @@ var after = worldC.AdvanceDays(issued.State, cmdBalance.CommandDays);
 var c0 = after.Cities.First(c => c.Id == city0.Id);
 var g0 = after.Garrisons.FirstOrDefault(g => g.City == city0.Id);
 Console.WriteLine($"{cmdBalance.CommandDays}일 뒤 — 대기 {g0?.TroopCode} {g0?.Troops}명(훈련도 {g0?.TrainingLevel}) 광석 {c0.Ore}, {gov.Name} 잠김={after.IsGeneralBusy(gov.Id)}");
+Console.WriteLine();
+
+// ── 10b 출전 데모: 대기 병력 + 장수 → 야전 → 행군 → 아군 성 입성 → 장수 복귀 ──
+Console.WriteLine("=== 출전 데모 ===");
+var deployer = new DeployService(cmdBalance, troopTemplates,
+    new ActiveSkillLoader().LoadFromDirectory(FindDataDirectory()),
+    new PassiveSkillLoader().LoadFromDirectory(FindDataDirectory()));
+var dest = after.Cities.FirstOrDefault(c => c.Owner == city0.Owner && c.Id != city0.Id);
+if (dest is null)
+{
+    Console.WriteLine("같은 세력의 목적지 도시가 없어 출전 데모를 건너뜀");
+}
+else
+{
+    var deployed = deployer.Deploy(after, new DeployRequest(city0.Id, "swordsman", 0, gov.Id, Target: dest.Position));
+    if (!deployed.Ok)
+    {
+        Console.WriteLine($"출전 실패: {deployed.Error}");
+    }
+    else
+    {
+        var unit = deployed.State.Armies.Single();
+        Console.WriteLine($"{gov.Name} 출전 — {unit.TroopCode} {unit.Pool.Active}명, 군량 {unit.Provisions} 휴대, {city0.Name} → {dest.Name} 행군");
+
+        var qs = deployed.State.Cities.Select(c => c.Position.Q).ToList();
+        var rs = deployed.State.Cities.Select(c => c.Position.R).ToList();
+        var map = new HexMap(qs.Min() - 3, qs.Max() + 3, rs.Min() - 3, rs.Max() + 3);
+        var orchestrator = new AdvanceOrchestrator(
+            new MovementSimulator(new PassabilityMap(map, [], [])),
+            new CombatPhaseResolver(new BattleResolver(60), 70));
+        var campaign = new CampaignEngine(orchestrator, worldC);
+
+        var st = deployed.State;
+        var weeks = 0;
+        while (st.Armies.Count > 0 && weeks < 8)
+        {
+            st = campaign.AdvanceWeek(st, out _);
+            weeks++;
+        }
+
+        var arrived = st.Garrisons.FirstOrDefault(g => g.City == dest.Id);
+        var location = st.PostingOf(gov.Id)?.Location is { } loc
+            ? st.Cities.First(c => c.Id == loc).Name
+            : "야전";
+        Console.WriteLine($"{weeks}주 뒤 — {dest.Name} 대기 {arrived?.TroopCode} {arrived?.Troops}명(훈련도 {arrived?.TrainingLevel}), {gov.Name} 위치={location}");
+    }
+}
+
 Console.WriteLine();
 
 static void PrintState(string label, GameState state)

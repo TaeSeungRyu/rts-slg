@@ -39,7 +39,9 @@ public static class UnitAssembler
             adjutantActive: Resolve(adjutant?.BattleActive, actives));
 
         return new CombatUnit(field, stats, new TroopPool(troops, 0), state,
-            vanguard.Might, vanguard.Intellect, troops, template.Class);
+            vanguard.Might, vanguard.Intellect, troops, template.Class,
+            ProvisionsCapacity: template.ProvisionsCapacity, TroopCode: template.Code,
+            VanguardId: vanguard.Id, AdjutantId: adjutant?.Id);
     }
 
     private static ActiveSkill? Resolve(string? code, IReadOnlyDictionary<string, ActiveSkill> actives)

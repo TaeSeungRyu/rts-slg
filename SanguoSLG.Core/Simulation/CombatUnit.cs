@@ -23,7 +23,9 @@ public sealed record CombatUnit(
     int Morale = 50,
     int Training = 50,
     bool Routed = false,
-    string TroopCode = "")
+    string TroopCode = "",
+    GeneralId? VanguardId = null,
+    GeneralId? AdjutantId = null)
 {
     public UnitId Id => Field.Id;
 

@@ -17,5 +17,6 @@
   "build_cost_paddy": 300,
   "build_cost_farm": 200,
   "build_cost_village": 400,
-  "build_cost_workshop": 800
+  "build_cost_workshop": 800,
+  "deploy_min_training": 50
 }
