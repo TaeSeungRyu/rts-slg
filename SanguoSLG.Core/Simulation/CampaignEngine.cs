@@ -51,16 +51,27 @@ public sealed class CampaignEngine
             {
                 if (entered.Field.Target is { } pos && cityAt.TryGetValue(pos, out var cityId))
                 {
-                    if (entered.TroopCode.Length > 0)
+                    // 보급부대는 병종별 구성대로, 일반 부대는 단일 병종으로 편입.
+                    var incoming = entered.IsSupply && entered.Cargo.Count > 0
+                        ? entered.Cargo.Select(c => (c.TroopCode, c.Troops, Training: c.TrainingLevel))
+                        : entered.TroopCode.Length > 0
+                            ? [(entered.TroopCode, entered.Pool.Active, Training: entered.Training)]
+                            : [];
+                    foreach (var (code, troops, training) in incoming)
                     {
-                        var idx = garrisons.FindIndex(g => g.City == cityId && g.TroopCode == entered.TroopCode);
+                        if (troops <= 0)
+                        {
+                            continue;
+                        }
+
+                        var idx = garrisons.FindIndex(g => g.City == cityId && g.TroopCode == code);
                         if (idx >= 0)
                         {
-                            garrisons[idx] = garrisons[idx].Merge(entered.Pool.Active, entered.Training);
+                            garrisons[idx] = garrisons[idx].Merge(troops, training);
                         }
                         else
                         {
-                            garrisons.Add(new GarrisonForce(cityId, entered.TroopCode, entered.Pool.Active, entered.Training));
+                            garrisons.Add(new GarrisonForce(cityId, code, troops, training));
                         }
                     }
 

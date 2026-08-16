@@ -18,5 +18,6 @@
   "build_cost_farm": 200,
   "build_cost_village": 400,
   "build_cost_workshop": 800,
-  "deploy_min_training": 50
+  "deploy_min_training": 50,
+  "supply_max_troops": 20000
 }

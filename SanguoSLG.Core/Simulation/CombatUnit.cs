@@ -25,9 +25,14 @@ public sealed record CombatUnit(
     bool Routed = false,
     string TroopCode = "",
     GeneralId? VanguardId = null,
-    GeneralId? AdjutantId = null)
+    GeneralId? AdjutantId = null,
+    IReadOnlyList<SupplyComponent>? SupplyCargo = null,
+    UnitId? ReinforceTarget = null)
 {
     public UnitId Id => Field.Id;
+
+    /// <summary>보급부대의 병종별 구성(일반 부대는 빈 목록). design-unit-state 1단계-보급.</summary>
+    public IReadOnlyList<SupplyComponent> Cargo => SupplyCargo ?? [];
 
     /// <summary>군량을 추적하는 부대인가(−1 = 미추적 = 무한 보급 가정 — 전술 하베스트·단발 전투용).</summary>
     public bool TracksProvisions => Provisions >= 0;

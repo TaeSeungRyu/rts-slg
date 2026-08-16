@@ -31,7 +31,8 @@ public sealed class AdvanceOrchestrator
         int provisionsPer10kPerDay = 10,
         int starvationLossPercentPerDay = 5,
         int resupplyRadius = 6,
-        MoraleConfig? morale = null)
+        MoraleConfig? morale = null,
+        int reinforcePercent = 20)
     {
         _movement = movement;
         _combat = combat;
@@ -41,7 +42,10 @@ public sealed class AdvanceOrchestrator
         _starvationLossPercentPerDay = starvationLossPercentPerDay;
         _resupplyRadius = resupplyRadius;
         _morale = morale ?? new MoraleConfig();
+        _reinforcePercent = reinforcePercent;
     }
+
+    private readonly int _reinforcePercent;
 
     public AdvanceTurn Run(IReadOnlyList<CombatUnit> units, int maxDays = 7,
         IReadOnlyList<SiegeSite>? castles = null)
@@ -170,8 +174,10 @@ public sealed class AdvanceOrchestrator
 
         if (engagements.Count == 0)
         {
+            SyncCargo(state);
             var moraleOnly = ApplyMoraleAndRout(state, startTroops, NoEngagements, combat: null, starvation);
-            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, moraleOnly);
+            var reinforcedOnly = Reinforce(state);
+            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, moraleOnly, reinforcedOnly);
         }
 
         var attackers = engagements.Select(e => e.Attacker).ToHashSet();
@@ -224,10 +230,101 @@ public sealed class AdvanceOrchestrator
             state[id] = state[id] with { Pool = pool };
         }
 
+        // 5.5) 보급부대 균일 피해 분배 — 이 진행의 손실(전투·DoT·굶주림)을 병종 구성에 반영.
+        SyncCargo(state);
+
         // 6) 사기 증감·패주 전이(전투 이후) — design-unit-state 2단계.
         var moraleChange = ApplyMoraleAndRout(state, startTroops, engagements, combat, starvation);
 
-        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, moraleChange);
+        // 7) 병력보충(교전 정산이 끝난 뒤) — design-unit-state "병력보충 명령".
+        var reinforced = Reinforce(state);
+
+        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, moraleChange, reinforced);
+    }
+
+    // 보급부대 손실을 병종 구성에 균일(병력 비례)하게 분배한다 — 한 병종만 갈려나가지 않는다
+    // (design-unit-state 1단계-보급). 몫의 잔여는 구성 순서(병종 코드 정렬)대로 1씩 — 결정론.
+    private static void SyncCargo(Dictionary<UnitId, CombatUnit> state)
+    {
+        foreach (var id in state.Keys.OrderBy(k => k.Value).ToList())
+        {
+            var u = state[id];
+            if (!u.IsSupply || u.Cargo.Count == 0)
+            {
+                continue;
+            }
+
+            var total = u.Cargo.Sum(c => c.Troops);
+            var loss = total - u.Pool.Active;
+            if (loss <= 0)
+            {
+                continue;
+            }
+
+            var cargo = u.Cargo.Select(c => c with { Troops = c.Troops - (int)((long)loss * c.Troops / total) }).ToList();
+            var remainder = cargo.Sum(c => c.Troops) - u.Pool.Active;
+            for (var i = 0; remainder > 0 && i < cargo.Count; i++)
+            {
+                if (cargo[i].Troops > 0)
+                {
+                    cargo[i] = cargo[i] with { Troops = cargo[i].Troops - 1 };
+                    remainder--;
+                }
+            }
+
+            state[id] = u with { SupplyCargo = cargo.Where(c => c.Troops > 0).ToList() };
+        }
+    }
+
+    // 병력보충: 대상이 1칸 이내 아군이고 보급부대가 같은 병종을 보유하면, 그 병종의 일정 %를
+    // 대상에 충원한다(대상 총원 상한). 대상 훈련도는 가중 평균. 결정론: 보급부대 id 오름차순.
+    private Dictionary<UnitId, int> Reinforce(Dictionary<UnitId, CombatUnit> state)
+    {
+        var transferred = new Dictionary<UnitId, int>();
+        foreach (var id in state.Keys.OrderBy(k => k.Value).ToList())
+        {
+            var supply = state[id];
+            if (!supply.IsSupply || supply.ReinforceTarget is not { } targetId || supply.Pool.Active <= 0
+                || !state.TryGetValue(targetId, out var target) || target.Pool.Active <= 0
+                || target.Field.Owner != supply.Field.Owner
+                || target.Field.Position.Distance(supply.Field.Position) > 1)
+            {
+                continue;
+            }
+
+            var idx = supply.Cargo.ToList().FindIndex(c => c.TroopCode == target.TroopCode && c.Troops > 0);
+            if (idx < 0)
+            {
+                continue;
+            }
+
+            var comp = supply.Cargo[idx];
+            var room = target.MaxTroops - target.Pool.Active;
+            var give = System.Math.Min(comp.Troops * _reinforcePercent / 100, room);
+            if (give <= 0)
+            {
+                continue;
+            }
+
+            var newActive = target.Pool.Active + give;
+            var training = (int)(((long)target.Training * target.Pool.Active + (long)comp.TrainingLevel * give + newActive / 2) / newActive);
+            state[targetId] = target with
+            {
+                Pool = target.Pool with { Active = newActive },
+                Training = training,
+            };
+
+            var cargo = supply.Cargo.ToList();
+            cargo[idx] = comp with { Troops = comp.Troops - give };
+            state[id] = supply with
+            {
+                Pool = supply.Pool with { Active = supply.Pool.Active - give },
+                SupplyCargo = cargo.Where(c => c.Troops > 0).ToList(),
+            };
+            transferred[targetId] = transferred.GetValueOrDefault(targetId) + give;
+        }
+
+        return transferred;
     }
 
     private static readonly IReadOnlyList<UnitEngagement> NoEngagements = new List<UnitEngagement>();
