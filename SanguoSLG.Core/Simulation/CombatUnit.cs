@@ -19,7 +19,10 @@ public sealed record CombatUnit(
     TroopClass Class = TroopClass.Infantry,
     int Provisions = -1,
     int ProvisionsCapacity = 300,
-    bool IsSupply = false)
+    bool IsSupply = false,
+    int Morale = 50,
+    int Training = 50,
+    bool Routed = false)
 {
     public UnitId Id => Field.Id;
 

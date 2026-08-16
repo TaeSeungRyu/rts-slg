@@ -19,11 +19,15 @@ public sealed record AdvanceTurn(
     IReadOnlyDictionary<Domain.UnitId, int> StatusDamage,
     IReadOnlyDictionary<Domain.UnitId, int> StratagemDamage,
     IReadOnlyList<CombatUnit>? Entered = null,
-    IReadOnlyDictionary<Domain.UnitId, int>? StarvationLoss = null)
+    IReadOnlyDictionary<Domain.UnitId, int>? StarvationLoss = null,
+    IReadOnlyDictionary<Domain.UnitId, int>? MoraleDelta = null)
 {
     public IReadOnlyList<CombatUnit> EnteredCastle => Entered ?? [];
 
     public IReadOnlyDictionary<Domain.UnitId, int> Starvation => StarvationLoss ?? EmptyLoss;
+
+    /// <summary>이 진행에 사기가 변한 부대 → 증감량(design-unit-state 2단계).</summary>
+    public IReadOnlyDictionary<Domain.UnitId, int> MoraleChange => MoraleDelta ?? EmptyLoss;
 
     private static readonly IReadOnlyDictionary<Domain.UnitId, int> EmptyLoss = new Dictionary<Domain.UnitId, int>();
 }

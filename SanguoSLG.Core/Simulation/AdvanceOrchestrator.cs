@@ -21,6 +21,7 @@ public sealed class AdvanceOrchestrator
     private readonly int _provisionsPer10kPerDay;
     private readonly int _starvationLossPercentPerDay;
     private readonly int _resupplyRadius;
+    private readonly MoraleConfig _morale;
 
     public AdvanceOrchestrator(
         MovementSimulator movement,
@@ -29,7 +30,8 @@ public sealed class AdvanceOrchestrator
         Func<HexCoord, TerrainType>? terrainAt = null,
         int provisionsPer10kPerDay = 10,
         int starvationLossPercentPerDay = 5,
-        int resupplyRadius = 6)
+        int resupplyRadius = 6,
+        MoraleConfig? morale = null)
     {
         _movement = movement;
         _combat = combat;
@@ -38,6 +40,7 @@ public sealed class AdvanceOrchestrator
         _provisionsPer10kPerDay = provisionsPer10kPerDay;
         _starvationLossPercentPerDay = starvationLossPercentPerDay;
         _resupplyRadius = resupplyRadius;
+        _morale = morale ?? new MoraleConfig();
     }
 
     public AdvanceTurn Run(IReadOnlyList<CombatUnit> units, int maxDays = 7,
@@ -50,9 +53,15 @@ public sealed class AdvanceOrchestrator
         //      저(低)군량 부대에 하루치씩 채워준다(보급부대 재고 한도). 이동·소모보다 먼저 일어난다.
         units = Resupply(units);
 
+        // 사기 증감 검산용: 이 진행 시작 병력(피해율 계산).
+        var startTroops = units.ToDictionary(u => u.Id, u => u.Pool.Active);
+
         // 진행 시작 시점에 행동불가(혼란)인 부대 — 이동·전투 모두 이 스냅샷으로 판정한다
         // (상태 tick이 진행 중간에 남은 진행을 줄여도, 그 진행의 효과는 온전히 적용).
         var dazedAtStart = units.Where(IsDazed).Select(u => u.Id).ToHashSet();
+
+        // 패주(사기<임계) 부대 — 이번 진행 공격 불가·강제 후퇴(적 반대). 진행 시작 스냅샷으로 판정.
+        var routedAtStart = units.Where(u => u.Routed).Select(u => u.Id).ToHashSet();
 
         // 1) 이동 — 진행 정지까지. 걸린 상태(혼란=행동불가, 수공=이동−1)를 이동 입력에 반영한다.
         var move = _movement.Advance(units.Select(MovementField).ToList(), maxDays, castles);
@@ -63,7 +72,7 @@ public sealed class AdvanceOrchestrator
         var enteredIds = move.EnteredCastle.ToHashSet();
         var enteredCastle = units
             .Where(u => enteredIds.Contains(u.Id))
-            .Select(u => u with { State = u.State.ReturnToCastle() })
+            .Select(u => u with { State = u.State.ReturnToCastle(), Morale = 100, Routed = false })
             .ToList();
 
         // 2) 위치만 갱신(임시 이동 스탯은 버림) + 경과일만큼 발동 상태 진행(야전 가정).
@@ -127,6 +136,24 @@ public sealed class AdvanceOrchestrator
             }
         }
 
+        // 2.7) 패주 강제 후퇴(design-unit-state 2단계): 패주 부대를 가장 가까운 적 반대로 밀어낸다.
+        foreach (var id in routedAtStart.OrderBy(x => x.Value))
+        {
+            if (!state.TryGetValue(id, out var u) || u.Pool.Active <= 0)
+            {
+                continue;
+            }
+
+            var enemy = state.Values
+                .Where(o => o.Field.Owner != u.Field.Owner && o.Pool.Active > 0)
+                .OrderBy(o => o.Field.Position.Distance(u.Field.Position)).ThenBy(o => o.Id.Value)
+                .FirstOrDefault();
+            if (enemy is not null)
+            {
+                PushAway(state, id, enemy.Field.Position, 2);
+            }
+        }
+
         // 3) 계략 발동 — 예약이 발동일에 도달하면 대상 유효성으로 발동/캔슬. 즉발·지속 피해, 디버프,
         //    정화, 강제 후퇴(교란)를 여기서 적용한다. 발동 부대는 이번 교전 공격을 하지 않는다.
         //    후퇴가 위치를 바꾸므로 교전 탐지보다 먼저 발동한다.
@@ -137,12 +164,14 @@ public sealed class AdvanceOrchestrator
         //    부대는 공격자에서 뺀다(피격·방어는 정상).
         var engagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList())
             .Where(e => !firedStratagems.ContainsKey(e.Attacker)
-                && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker])))
+                && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker]))
+                && !routedAtStart.Contains(e.Attacker)) // 패주 부대는 공격 못 한다(피격·방어는 정상)
             .ToList();
 
         if (engagements.Count == 0)
         {
-            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation);
+            var moraleOnly = ApplyMoraleAndRout(state, startTroops, NoEngagements, combat: null, starvation);
+            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, moraleOnly);
         }
 
         var attackers = engagements.Select(e => e.Attacker).ToHashSet();
@@ -195,7 +224,71 @@ public sealed class AdvanceOrchestrator
             state[id] = state[id] with { Pool = pool };
         }
 
-        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation);
+        // 6) 사기 증감·패주 전이(전투 이후) — design-unit-state 2단계.
+        var moraleChange = ApplyMoraleAndRout(state, startTroops, engagements, combat, starvation);
+
+        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, moraleChange);
+    }
+
+    private static readonly IReadOnlyList<UnitEngagement> NoEngagements = new List<UnitEngagement>();
+
+    // 사기 증감·패주(design-unit-state 2단계): 피해율↓ / 교전 우세·격파↑ / 굶주림↓ / 무전투 휴식↑.
+    // 그 뒤 사기<임계면 패주 진입, ≥회복 임계면 해제(히스테리시스). 생존 부대만. 결정론: id 순.
+    private Dictionary<UnitId, int> ApplyMoraleAndRout(Dictionary<UnitId, CombatUnit> state,
+        Dictionary<UnitId, int> startTroops, IReadOnlyList<UnitEngagement> engagements,
+        CombatPhaseResult? combat, Dictionary<UnitId, int> starvation)
+    {
+        var attackerTargets = engagements.ToDictionary(e => e.Attacker, e => e.Targets);
+        var engaged = engagements.SelectMany(e => e.Targets.Append(e.Attacker)).ToHashSet();
+        var changes = new Dictionary<UnitId, int>();
+
+        foreach (var id in state.Keys.OrderBy(k => k.Value).ToList())
+        {
+            var u = state[id];
+            if (u.Pool.Active <= 0)
+            {
+                continue; // 전멸 부대는 소멸(사기 무의미)
+            }
+
+            var start = startTroops.GetValueOrDefault(id, u.Pool.Active);
+            var lostPct = start > 0 ? (start - u.Pool.Active) * 100 / start : 0;
+
+            var delta = 0;
+            if (lostPct > 0)
+            {
+                delta -= lostPct * _morale.DamageLossNum / _morale.DamageLossDen;
+            }
+
+            if (starvation.ContainsKey(id))
+            {
+                delta -= _morale.StarveLoss;
+            }
+
+            if (attackerTargets.TryGetValue(id, out var targets)
+                && targets.Any(t => !state.TryGetValue(t, out var tv) || tv.Pool.Active <= 0))
+            {
+                delta += _morale.KillGain; // 격파
+            }
+
+            if (engaged.Contains(id) && lostPct < 10)
+            {
+                delta += _morale.WinGain; // 우세(적게 잃고 교전)
+            }
+            else if (!engaged.Contains(id) && lostPct == 0 && !starvation.ContainsKey(id))
+            {
+                delta += _morale.RestGain; // 무전투 휴식
+            }
+
+            var morale = System.Math.Clamp(u.Morale + delta, 0, 100);
+            var routed = morale < _morale.RoutThreshold || (u.Routed && morale < _morale.RoutRecover);
+            state[id] = u with { Morale = morale, Routed = routed };
+            if (delta != 0)
+            {
+                changes[id] = delta;
+            }
+        }
+
+        return changes;
     }
 
     private static readonly IReadOnlyDictionary<UnitId, ActiveSkill> NoActives = new Dictionary<UnitId, ActiveSkill>();
@@ -206,7 +299,8 @@ public sealed class AdvanceOrchestrator
     // 수공(이동−1)은 속도를 깎는다(최소 1). 실제 Field는 위치만 되받아 보존한다.
     private static FieldUnit MovementField(CombatUnit u)
     {
-        if (IsDazed(u))
+        // 패주·행동불가(혼란)는 목표를 향한 전진을 멈춘다(패주는 이후 적 반대로 강제 후퇴).
+        if (IsDazed(u) || u.Routed)
         {
             return u.Field with { Mode = UnitMode.Advance, Target = null, Speed = 0 };
         }
@@ -298,20 +392,22 @@ public sealed class AdvanceOrchestrator
     // 늘리는 이웃(고정 방향 순서 — 결정론) 중 통행 가능·비점유 칸으로 옮기고, 없으면 멈춘다(부분 후퇴).
     private void RepositionRetreat(Dictionary<UnitId, CombatUnit> state, UnitId targetId, CombatUnit caster, Stratagem stratagem)
     {
-        var target = state[targetId];
-        var strength = StratagemStrength.Percent(caster.Intellect, target.Intellect);
+        var strength = StratagemStrength.Percent(caster.Intellect, state[targetId].Intellect);
         var tiles = stratagem.RetreatTiles * strength / 100;
+        PushAway(state, targetId, caster.Field.Position, tiles);
+    }
+
+    // 대상을 <paramref name="fromPos"/>에서 멀어지는 방향으로 <paramref name="tiles"/>칸 밀어낸다. 매 스텝
+    // 거리를 늘리는 이웃(고정 방향 순서 — 결정론) 중 통행 가능·비점유 칸으로. 막히면 그만큼만(부분 후퇴).
+    private void PushAway(Dictionary<UnitId, CombatUnit> state, UnitId targetId, HexCoord fromPos, int tiles)
+    {
         if (tiles <= 0)
         {
             return;
         }
 
-        var occupied = state.Values
-            .Where(u => u.Id != targetId)
-            .Select(u => u.Field.Position)
-            .ToHashSet();
-
-        var from = caster.Field.Position;
+        var target = state[targetId];
+        var occupied = state.Values.Where(u => u.Id != targetId).Select(u => u.Field.Position).ToHashSet();
         var pos = target.Field.Position;
         for (var step = 0; step < tiles; step++)
         {
@@ -319,7 +415,7 @@ public sealed class AdvanceOrchestrator
             var moved = false;
             foreach (var n in current.Neighbors())
             {
-                if (n.Distance(from) <= current.Distance(from)
+                if (n.Distance(fromPos) <= current.Distance(fromPos)
                     || occupied.Contains(n)
                     || !_movement.CanEnter(target.Field.Domain, n))
                 {
@@ -368,8 +464,20 @@ public sealed class AdvanceOrchestrator
             }
         }
 
+        // 사기·훈련 공/방 배수(design-unit-state 2·3단계): 공격은 준 피해에, 방어는 df에 +보너스%.
+        var quality = MoraleBonusPercent(u.Morale) + TrainingBonusPercent(u.Training);
+        if (quality != 0)
+        {
+            outgoing = System.Math.Max(0, outgoing * (100 + quality) / 100);
+            stats = stats with { DfStat = System.Math.Max(1, stats.DfStat * (100 + quality) / 100) };
+        }
+
         return (stats, outgoing);
     }
+
+    private int MoraleBonusPercent(int morale) => (morale - 50) * _morale.MoraleBonusNum / _morale.MoraleBonusDen;
+
+    private int TrainingBonusPercent(int training) => (training - 50) * _morale.TrainingBonusNum / _morale.TrainingBonusDen;
 
     // 예약된 계략을 발동/캔슬한다. 발동한 시전 부대 → 그 계략의 사전을 돌려주고(그 교전 공격 불가),
     // 계략 즉발 피해를 <paramref name="stratagemDamage"/>에 대상별로 누적한다.
