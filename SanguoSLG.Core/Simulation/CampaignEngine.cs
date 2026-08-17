@@ -16,20 +16,29 @@ public sealed class CampaignEngine
 
     private readonly AdvanceOrchestrator _field;
     private readonly WorldEngine _world;
+    private readonly CampaignSiege? _siege;
 
-    public CampaignEngine(AdvanceOrchestrator field, WorldEngine world)
+    public CampaignEngine(AdvanceOrchestrator field, WorldEngine world, CampaignSiege? siege = null)
     {
         _field = field;
         _world = world;
+        _siege = siege;
     }
 
     /// <summary>7일을 진행한 새 상태를 반환한다. 야전 진행 보고 목록은 <paramref name="turns"/>로.</summary>
     public GameState AdvanceWeek(GameState state, out IReadOnlyList<AdvanceTurn> turns)
+        => AdvanceWeek(state, out turns, out _);
+
+    /// <summary>7일 진행 + 공성 교환 보고(<paramref name="sieges"/>)까지 돌려주는 오버로드.</summary>
+    public GameState AdvanceWeek(GameState state, out IReadOnlyList<AdvanceTurn> turns,
+        out IReadOnlyList<SiegeExchange> sieges)
     {
         var reports = new List<AdvanceTurn>();
+        var siegeReports = new List<SiegeExchange>();
         var armies = state.Armies.Where(u => u.Pool.Active > 0).ToList();
         var garrisons = state.Garrisons.ToList();
         var postings = state.Assignments.ToList();
+        var cities = state.Cities.ToList();
 
         var castles = state.Cities
             .OrderBy(c => c.Id.Value)
@@ -85,6 +94,17 @@ public sealed class CampaignEngine
                     }
                 }
             }
+
+            // 공성 교환(design-combat "성 전투") — 접적으로 멈춘 공격 부대가 성벽·수비를 깎는다.
+            // 소유 전환·함락은 다음 단계. 반격으로 병력 0이 된 부대는 다음 진행에서 빠진다.
+            if (_siege is not null)
+            {
+                var result = _siege.Resolve(armies, cities, garrisons);
+                armies = result.Armies.Where(u => u.Pool.Active > 0).ToList();
+                cities = result.Cities.ToList();
+                garrisons = result.Garrisons.ToList();
+                siegeReports.AddRange(result.Exchanges);
+            }
         }
 
         var afterField = state with
@@ -95,9 +115,11 @@ public sealed class CampaignEngine
                 .OrderBy(g => g.City.Value).ThenBy(g => g.TroopCode, System.StringComparer.Ordinal)
                 .ToList(),
             Postings = postings,
+            Cities = cities,
         };
 
         turns = reports;
+        sieges = siegeReports;
         return _world.AdvanceDays(afterField, WeekDays);
     }
 }

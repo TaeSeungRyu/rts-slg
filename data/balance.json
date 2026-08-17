@@ -27,5 +27,8 @@
   "governor_tax_amplify_at_100": 100,
   "tax_rate_base": 20,
   "tax_rate_max": 50,
-  "tax_max_security_penalty": 10
+  "tax_max_security_penalty": 10,
+  "wall_max_small": 3000,
+  "wall_max_medium": 6000,
+  "wall_max_large": 10000
 }

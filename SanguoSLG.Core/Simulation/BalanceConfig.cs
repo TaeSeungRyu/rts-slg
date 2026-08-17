@@ -36,4 +36,7 @@ public sealed record BalanceConfig(
     int SecurityLowIncomePercent = 70,
     int GovernorMinPolitics = 60,
     int NoGovernorIncomePercent = 30,
-    int GovernorTaxAmplifyAt100 = 100);
+    int GovernorTaxAmplifyAt100 = 100,
+    int WallMaxSmall = 3000,
+    int WallMaxMedium = 6000,
+    int WallMaxLarge = 10000);

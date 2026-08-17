@@ -97,6 +97,9 @@ internal sealed class BalanceDto
     public int GovernorMinPolitics { get; init; } = 60;
     public int NoGovernorIncomePercent { get; init; } = 30;
     public int GovernorTaxAmplifyAt100 { get; init; } = 100;
+    public int WallMaxSmall { get; init; } = 3000;
+    public int WallMaxMedium { get; init; } = 6000;
+    public int WallMaxLarge { get; init; } = 10000;
 }
 
 internal sealed class MapDto

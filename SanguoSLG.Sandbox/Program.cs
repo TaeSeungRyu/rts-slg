@@ -126,6 +126,47 @@ else
 
 Console.WriteLine();
 
+// ── 10b 공성 데모: 적 부대가 적 성으로 진격 → 한 주 공성 → 성벽·수비 손실(함락은 다음 단계) ──
+Console.WriteLine("=== 공성 데모 ===");
+var siegeState = GameState.FromScenario(scenario);
+var targetCity = siegeState.Cities.First();
+var attackerFaction = siegeState.Factions.First(f => f.Id != targetCity.Owner).Id;
+var atkTemplate = troopTemplates.First(t => t.Code == "swordsman");
+var besiegerField = new FieldUnit(new UnitId(9001), attackerFaction,
+    new HexCoord(targetCity.Position.Q - 1, targetCity.Position.R), atkTemplate.MovementPerDay,
+    atkTemplate.Detection, atkTemplate.RangeUnit, MovementDomain.Land, UnitMode.Attack,
+    targetCity.Position, 9001, atkTemplate.RangeCastle);
+var besiegerStats = CombatStatsBuilder.BuildField(atkTemplate, AptitudeGrade.A, 0, TerrainType.River, 20000);
+var besieger = new CombatUnit(besiegerField, besiegerStats, new TroopPool(20000, 0),
+    UnitCombatState.Create(60), 70, 60, 20000, atkTemplate.Class, TroopCode: "swordsman", Training: 60);
+var siegeGarrison = new GarrisonForce(targetCity.Id, "swordsman", 10000, 60);
+siegeState = siegeState with
+{
+    FieldArmies = [besieger],
+    GarrisonForces = [siegeGarrison],
+};
+
+var siegeQs = siegeState.Cities.Select(c => c.Position.Q).ToList();
+var siegeRs = siegeState.Cities.Select(c => c.Position.R).ToList();
+var siegeMap = new HexMap(siegeQs.Min() - 3, siegeQs.Max() + 3, siegeRs.Min() - 3, siegeRs.Max() + 3);
+var siegeOrch = new AdvanceOrchestrator(
+    new MovementSimulator(new PassabilityMap(siegeMap, [], [])),
+    new CombatPhaseResolver(new BattleResolver(60), 70));
+var siegeCampaign = new CampaignEngine(siegeOrch, worldC, new CampaignSiege(new BattleResolver(60), troopTemplates));
+
+Console.WriteLine($"{targetCity.Name}(성벽 {targetCity.Wall}, 수비 {siegeGarrison.Troops}) ← {atkTemplate.Name} 20000 진격");
+var siegeStep = siegeState;
+for (var w = 1; w <= 3; w++)
+{
+    siegeStep = siegeCampaign.AdvanceWeek(siegeStep, out _, out var exchanges);
+    var c = siegeStep.Cities.First(x => x.Id == targetCity.Id);
+    var defend = siegeStep.Garrisons.Where(g => g.City == targetCity.Id).Sum(g => g.Troops);
+    var atkLeft = siegeStep.Armies.FirstOrDefault(u => u.Id.Value == 9001)?.Pool.Active ?? 0;
+    Console.WriteLine($"{w}주 뒤 — 성벽 {c.Wall}, 수비 {defend}, 공격군 {atkLeft} (교환 {exchanges.Count}회)");
+}
+
+Console.WriteLine();
+
 static void PrintState(string label, GameState state)
 {
     Console.WriteLine($"[{label}] {state.Year}년 {state.Month}월 {state.DayOfMonth}일 (누적 {state.Day}일)");
