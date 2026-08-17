@@ -96,7 +96,8 @@
         "code": "fierce_assault",
         "tier": 3
       }
-    ]
+    ],
+    "loyalty": 200
   },
   {
     "id": 4,
@@ -121,7 +122,8 @@
         "code": "fierce_assault",
         "tier": 2
       }
-    ]
+    ],
+    "loyalty": 190
   },
   {
     "id": 5,
@@ -181,7 +183,8 @@
         "code": "drillmaster",
         "tier": 2
       }
-    ]
+    ],
+    "loyalty": 180
   },
   {
     "id": 7,
@@ -274,7 +277,8 @@
         "code": "pacifier",
         "tier": 1
       }
-    ]
+    ],
+    "loyalty": 180
   },
   {
     "id": 10,

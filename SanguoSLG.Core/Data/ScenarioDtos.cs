@@ -58,6 +58,7 @@ internal sealed class GeneralDto
     public int Birth { get; init; }
     public string Region { get; init; } = "";
     public string Desc { get; init; } = "";
+    public int Loyalty { get; init; } = 100;
 }
 
 internal sealed class GeneralSkillDto

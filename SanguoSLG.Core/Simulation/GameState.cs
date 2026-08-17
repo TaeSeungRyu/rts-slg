@@ -17,7 +17,8 @@ public sealed record GameState(
     IReadOnlyList<CityCommand>? PendingCommands = null,
     IReadOnlyList<GeneralPosting>? Postings = null,
     IReadOnlyList<GarrisonForce>? GarrisonForces = null,
-    IReadOnlyList<CombatUnit>? FieldArmies = null)
+    IReadOnlyList<CombatUnit>? FieldArmies = null,
+    IReadOnlyList<Prisoner>? Captives = null)
 {
     /// <summary>도시 대기 병력(병종별) — 모집 정산이 쌓고, 출전 편성이 꺼내 쓴다.</summary>
     public IReadOnlyList<GarrisonForce> Garrisons => GarrisonForces ?? [];
@@ -30,6 +31,24 @@ public sealed record GameState(
 
     /// <summary>장수 배속(소속 세력·주둔 도시).</summary>
     public IReadOnlyList<GeneralPosting> Assignments => Postings ?? [];
+
+    /// <summary>포로 목록(억류 세력·원 세력). 함락·등용 실패로 생긴다(design-general-lifecycle §2).</summary>
+    public IReadOnlyList<Prisoner> Prisoners => Captives ?? [];
+
+    /// <summary>이 장수가 어느 세력의 포로인가(아니면 null).</summary>
+    public Prisoner? PrisonerOf(GeneralId general)
+        => Prisoners.FirstOrDefault(p => p.General == general);
+
+    /// <summary>이 세력이 억류 중인 포로 목록.</summary>
+    public IEnumerable<Prisoner> PrisonersHeldBy(FactionId holder)
+        => Prisoners.Where(p => p.Holder == holder);
+
+    /// <summary>이 세력이 소유한 도시 수(0이면 세력 소멸 대상 — design-general-lifecycle §3).</summary>
+    public int CityCount(FactionId faction) => Cities.Count(c => c.Owner == faction);
+
+    /// <summary>이 장수의 현재 충성도(재야·포로 포함 — roster 값을 그대로 읽는다).</summary>
+    public int LoyaltyOf(GeneralId general)
+        => Generals.FirstOrDefault(g => g.Id == general)?.Loyalty ?? 0;
 
     /// <summary>이 장수가 진행 중 명령에 매여 잠겨 있는가.</summary>
     public bool IsGeneralBusy(GeneralId general) => Commands.Any(c => c.Locks(general));

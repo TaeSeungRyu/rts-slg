@@ -55,7 +55,7 @@ SoulRise·Lightning 등 — "시뮬 통과 후" 약속) / 실지역 맵 + 시나
 | **9. 사기·훈련 효과** ✅ | 사기(공/방 ±20% 배수·피해/승리/격파/굶주림/휴식 증감·패주 적반대 후퇴) + 훈련도 공/방 ±10% 배수. 고무 연동·세부 트리거는 후속 | ✅ MoraleTests |
 | **10a. 캠페인 통합(선결)** ✅ | 결정 확정: 진행=7일 고정(이동+전투 자동 연속, 판단은 주 단위), 일반 부대=단일 병종(보급만 혼합), 병종은 모집 시 지정. GameState에 Garrisons(병종별 대기 병력)·Armies(야전 부대), CampaignEngine.AdvanceWeek(야전·내정 한 시계), 모집 병종 지정+말·코끼리 자원 게이트, 입성→대기 병력 편입, 유령 태수 수정 | ✅ CampaignEngineTests |
 | 10b. 전투-내정 연결 | ✅출전(DeployService). ✅보급부대 편성(DeploySupply: 혼합·2만·최하 스탯·균일 피해·병력보충). ✅캠페인 공성(CampaignSiege: City.Wall·성벽 타격·수비 손실·반격). **남음은 아래 10c~10e로 분리** | ✅DeployServiceTests·SupplyUnitTests·CampaignSiegeTests |
-| **10c. 충성도·포로 기반** | `General.Loyalty`(숨김·기본 100·장수별 시작값, generals.json) + 포로 상태(억류·원 세력) + 세력 소멸(도시 0→전원 재야, 플레이어면 게임오버). 함락이 쓰는 최소 토대 — 급여·배신 운영은 10f로 | design-general-lifecycle §1~3. Core+테스트 |
+| **10c. 충성도·포로 기반** ✅ | `General.Loyalty`(숨김·기본 100·충신 시작값↑: 관우 200·장비 190·제갈량/조운 180, generals.json) + `Prisoner`(억류·원 세력)·GameState.Captives + `FactionLifecycle`(충성 증감·포로 전환·세력 소멸=도시 0→전원 재야·억류 포로 방출) + 포로 주간 충성 −1(CampaignEngine). 급여·배신 운영은 후반 | ✅ FactionLifecycleTests 6건 |
 | **10d. 함락 처리** | 성벽0+수비0 → 근접 자동 입성·소유 전환. 자원 전부 승계 + **인구 −10%·치안 30**, 진행 중 명령 드롭. 주둔 장수 **50% 포로 / 50% 원 세력 최근접 도시 후퇴**(태수 포함, 원 도시 0이면 세력 소멸) | design-general-lifecycle §4. CampaignEngine+테스트 |
 | **10e. 약탈·도시 계략** | 시설 파괴 노획(N%❓·휴대 한도·입성 예치), 도시 계략 6종 배선(성벽파괴·선동·정찰·방화·절취·**이간**=충성 저하) — 지력 확률·**거리 비례 소요일+사전 컨펌**(판정 ❓) | — |
 | 11. 연구 | 병종/성벽 연구 명령(공방 게이트) | 연구 진행·중단 검산 |

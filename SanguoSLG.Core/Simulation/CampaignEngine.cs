@@ -118,6 +118,12 @@ public sealed class CampaignEngine
             Cities = cities,
         };
 
+        // 포로 충성 하락(일주일 −1 — design-general-lifecycle §2): 억류될수록 등용이 쉬워진다.
+        foreach (var prisoner in afterField.Prisoners)
+        {
+            afterField = FactionLifecycle.AdjustLoyalty(afterField, prisoner.General, -1);
+        }
+
         turns = reports;
         sieges = siegeReports;
         return _world.AdvanceDays(afterField, WeekDays);
