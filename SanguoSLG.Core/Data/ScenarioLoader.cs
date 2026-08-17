@@ -70,7 +70,7 @@ public sealed class ScenarioLoader
                     castle, d.Gold, d.Security, d.Population, d.Ore, d.Horses, d.Elephants, d.Region,
                     d.Paddies, d.Farms, d.Villages, d.Workshop, d.ProducesOre, d.ProducesHorses, d.ProducesElephants,
                     d.TaxRate, Governor: d.Governor is { } gid ? new GeneralId(gid) : null,
-                    Wall: CastleWall.Max(castle, balance));
+                    Wall: CastleWall.Max(castle, balance, wallLevel: 0)); // 미연구(20%)로 시작 — 성벽 연구로 강화
             })
             .ToList();
 

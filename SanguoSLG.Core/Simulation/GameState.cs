@@ -58,6 +58,9 @@ public sealed record GameState(
     public int ResearchOf(FactionId faction, string troopCode)
         => Research.FirstOrDefault(r => r.Faction == faction && r.TroopCode == troopCode)?.Level ?? 0;
 
+    /// <summary>이 세력의 성벽 연구 단계(0=미연구 20% … 4=완료 100%).</summary>
+    public int WallLevelOf(FactionId faction) => ResearchOf(faction, FactionResearch.WallCode);
+
     /// <summary>이 장수가 진행 중 명령에 매여 잠겨 있는가.</summary>
     public bool IsGeneralBusy(GeneralId general) => Commands.Any(c => c.Locks(general));
 

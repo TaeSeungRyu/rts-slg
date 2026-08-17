@@ -194,18 +194,13 @@ public sealed class CommandService
 
     private CommandResult IssueResearch(GameState state, City city, CommandRequest req, General? assist, General main)
     {
-        // 공방 게이트(design-combat "병종 연구는 공방에서") — 공방 없는 도시에선 연구 불가.
+        // 공방 게이트(design-combat "연구는 공방에서") — 공방 없는 도시에선 연구 불가.
         if (!city.Workshop)
         {
             return CommandResult.Fail("연구는 공방이 있는 도시에서만 가능하다.", state);
         }
 
-        if (!_troops.ContainsKey(req.TroopCode))
-        {
-            return CommandResult.Fail("연구할 병종을 지정해야 한다.", state);
-        }
-
-        // 세력당 동시 1개 연구만(2026-08-17 확정) — 이미 진행 중인 연구가 있으면 거부.
+        // 세력당 동시 1개 연구만(병종·성벽 공통 — 2026-08-17 확정).
         var faction = city.Owner;
         if (state.Commands.Any(c => c.Kind == CommandKind.Research
             && state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == faction))
@@ -213,13 +208,21 @@ public sealed class CommandService
             return CommandResult.Fail("세력은 한 번에 하나의 연구만 할 수 있다.", state);
         }
 
-        var level = state.ResearchOf(city.Owner, req.TroopCode);
-        if (level >= _b.ResearchMaxLevel)
+        // 병종 연구 vs 성벽 연구(TroopCode == WallCode) — 단계 캡·비용 곡선이 다르다.
+        var isWall = req.TroopCode == FactionResearch.WallCode;
+        if (!isWall && !_troops.ContainsKey(req.TroopCode))
+        {
+            return CommandResult.Fail("연구할 병종을 지정해야 한다.", state);
+        }
+
+        var level = isWall ? state.WallLevelOf(city.Owner) : state.ResearchOf(city.Owner, req.TroopCode);
+        var maxLevel = isWall ? _b.WallResearchMaxLevel : _b.ResearchMaxLevel;
+        if (level >= maxLevel)
         {
             return CommandResult.Fail("이미 최대 단계까지 연구했다.", state);
         }
 
-        var cost = CommandEfficiency.ResearchCost(level + 1, _b);
+        var cost = isWall ? _b.WallResearchCostPerLevel * (level + 1) : CommandEfficiency.ResearchCost(level + 1, _b);
         if (city.Gold < cost)
         {
             return CommandResult.Fail("금이 부족하다.", state);

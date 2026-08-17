@@ -62,6 +62,12 @@ public sealed record CommandBalance
     /// <summary>병종 연구 최대 단계(design-combat 10단계).</summary>
     public int ResearchMaxLevel { get; init; } = 10;
 
+    /// <summary>성벽 연구 비용(금) = 이 값 × 다음 단계(선형, 세력 전체 성벽을 올리므로 병종보다 비쌈).</summary>
+    public int WallResearchCostPerLevel { get; init; } = 1000;
+
+    /// <summary>성벽 연구 최대 단계(design-combat 5단계 = 0~4).</summary>
+    public int WallResearchMaxLevel { get; init; } = 4;
+
     /// <summary>시설 건설 비용(금).</summary>
     public int BuildCostPaddy { get; init; } = 300;
     public int BuildCostFarm { get; init; } = 200;

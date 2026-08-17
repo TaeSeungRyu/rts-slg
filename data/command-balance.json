@@ -22,5 +22,7 @@
   "research_base_days": 30,
   "research_cost_base": 200,
   "research_cost_steep_from": 7,
-  "research_max_level": 10
+  "research_max_level": 10,
+  "wall_research_cost_per_level": 1000,
+  "wall_research_max_level": 4
 }

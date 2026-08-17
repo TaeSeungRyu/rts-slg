@@ -132,7 +132,16 @@ public sealed class WorldEngine
 
                 case CommandKind.Research:
                     // 공방 게이트 재확인 — 완료 시점에 공방을 잃었으면 연구 성과는 증발한다.
-                    if (city.Workshop)
+                    if (city.Workshop && cmd.TroopCode == FactionResearch.WallCode)
+                    {
+                        var wallLevel = ResearchUp(research, city.Owner, FactionResearch.WallCode, _commands.WallResearchMaxLevel);
+                        // 성벽 연구 완료 → 그 세력 모든 도시 성벽을 새 최대치로(전면 증축).
+                        foreach (var owned in cities.Values.Where(c => c.Owner == city.Owner).ToList())
+                        {
+                            cities[owned.Id] = owned with { Wall = CastleWall.Max(owned.Castle, _balance, wallLevel) };
+                        }
+                    }
+                    else if (city.Workshop)
                     {
                         ResearchUp(research, city.Owner, cmd.TroopCode, _commands.ResearchMaxLevel);
                     }
@@ -155,18 +164,19 @@ public sealed class WorldEngine
         };
     }
 
-    // 세력 병종 연구 +1(최대 캡). 없으면 새 트랙(1단계).
-    private static void ResearchUp(List<FactionResearch> research, FactionId faction, string troopCode, int maxLevel)
+    // 세력 연구 트랙 +1(최대 캡). 없으면 새 트랙(1단계). 갱신된 단계를 돌려준다.
+    private static int ResearchUp(List<FactionResearch> research, FactionId faction, string troopCode, int maxLevel)
     {
         var idx = research.FindIndex(r => r.Faction == faction && r.TroopCode == troopCode);
         if (idx >= 0)
         {
-            research[idx] = research[idx] with { Level = System.Math.Min(maxLevel, research[idx].Level + 1) };
+            var level = System.Math.Min(maxLevel, research[idx].Level + 1);
+            research[idx] = research[idx] with { Level = level };
+            return level;
         }
-        else
-        {
-            research.Add(new FactionResearch(faction, troopCode, 1));
-        }
+
+        research.Add(new FactionResearch(faction, troopCode, 1));
+        return 1;
     }
 
     // 대기 병력 합류(같은 도시·병종이면 가중 평균 희석, 없으면 새 항목).
