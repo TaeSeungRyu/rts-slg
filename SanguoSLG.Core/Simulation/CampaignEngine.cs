@@ -17,105 +17,80 @@ public sealed class CampaignEngine
     private readonly AdvanceOrchestrator _field;
     private readonly WorldEngine _world;
     private readonly CampaignSiege? _siege;
+    private readonly CityCapture? _capture;
+    private readonly IRandomSource _random;
 
-    public CampaignEngine(AdvanceOrchestrator field, WorldEngine world, CampaignSiege? siege = null)
+    public CampaignEngine(AdvanceOrchestrator field, WorldEngine world,
+        CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null)
     {
         _field = field;
         _world = world;
         _siege = siege;
+        _capture = capture;
+        _random = random ?? new SeededRandomSource(0);
     }
 
     /// <summary>7일을 진행한 새 상태를 반환한다. 야전 진행 보고 목록은 <paramref name="turns"/>로.</summary>
     public GameState AdvanceWeek(GameState state, out IReadOnlyList<AdvanceTurn> turns)
-        => AdvanceWeek(state, out turns, out _);
+        => AdvanceWeek(state, out turns, out _, out _);
 
     /// <summary>7일 진행 + 공성 교환 보고(<paramref name="sieges"/>)까지 돌려주는 오버로드.</summary>
     public GameState AdvanceWeek(GameState state, out IReadOnlyList<AdvanceTurn> turns,
         out IReadOnlyList<SiegeExchange> sieges)
+        => AdvanceWeek(state, out turns, out sieges, out _);
+
+    /// <summary>7일 진행 + 공성 교환 + 함락 보고(<paramref name="captures"/>)까지 돌려주는 오버로드.</summary>
+    public GameState AdvanceWeek(GameState state, out IReadOnlyList<AdvanceTurn> turns,
+        out IReadOnlyList<SiegeExchange> sieges, out IReadOnlyList<CaptureReport> captures)
     {
         var reports = new List<AdvanceTurn>();
         var siegeReports = new List<SiegeExchange>();
+        var captureReports = new List<CaptureReport>();
+        var work = state;
         var armies = state.Armies.Where(u => u.Pool.Active > 0).ToList();
-        var garrisons = state.Garrisons.ToList();
-        var postings = state.Assignments.ToList();
-        var cities = state.Cities.ToList();
-
-        var castles = state.Cities
-            .OrderBy(c => c.Id.Value)
-            .Select(c => new SiegeSite(c.Position, c.Owner))
-            .ToList();
-        var cityAt = state.Cities.ToDictionary(c => c.Position, c => c.Id);
 
         var remaining = WeekDays;
         while (remaining > 0 && armies.Count > 0)
         {
+            // 성 접적 정지용 장애물 — 매 진행마다 현재 소유로 갱신(함락으로 주인이 바뀌므로).
+            var castles = work.Cities
+                .OrderBy(c => c.Id.Value)
+                .Select(c => new SiegeSite(c.Position, c.Owner))
+                .ToList();
+            var cityAt = work.Cities.ToDictionary(c => c.Position, c => c.Id);
+
             var turn = _field.Run(armies, maxDays: remaining, castles);
             reports.Add(turn);
             remaining -= System.Math.Max(1, turn.Movement.Days);
             armies = turn.Units.ToList();
 
-            // 입성 부대 → 그 도시의 대기 병력으로 편입(병종·훈련도 보존, 훈련도는 가중 평균).
-            // 실려 있던 장수(선봉·부관)는 그 도시 주둔으로 복귀한다.
-            foreach (var entered in turn.EnteredCastle)
-            {
-                if (entered.Field.Target is { } pos && cityAt.TryGetValue(pos, out var cityId))
-                {
-                    // 보급부대는 병종별 구성대로, 일반 부대는 단일 병종으로 편입.
-                    var incoming = entered.IsSupply && entered.Cargo.Count > 0
-                        ? entered.Cargo.Select(c => (c.TroopCode, c.Troops, Training: c.TrainingLevel))
-                        : entered.TroopCode.Length > 0
-                            ? [(entered.TroopCode, entered.Pool.Active, Training: entered.Training)]
-                            : [];
-                    foreach (var (code, troops, training) in incoming)
-                    {
-                        if (troops <= 0)
-                        {
-                            continue;
-                        }
-
-                        var idx = garrisons.FindIndex(g => g.City == cityId && g.TroopCode == code);
-                        if (idx >= 0)
-                        {
-                            garrisons[idx] = garrisons[idx].Merge(troops, training);
-                        }
-                        else
-                        {
-                            garrisons.Add(new GarrisonForce(cityId, code, troops, training));
-                        }
-                    }
-
-                    foreach (var generalId in new[] { entered.VanguardId, entered.AdjutantId }.OfType<GeneralId>())
-                    {
-                        var pIdx = postings.FindIndex(p => p.General == generalId);
-                        if (pIdx >= 0)
-                        {
-                            postings[pIdx] = postings[pIdx] with { Location = cityId };
-                        }
-                    }
-                }
-            }
+            work = ApplyEntered(work, turn.EnteredCastle, cityAt);
 
             // 공성 교환(design-combat "성 전투") — 접적으로 멈춘 공격 부대가 성벽·수비를 깎는다.
-            // 소유 전환·함락은 다음 단계. 반격으로 병력 0이 된 부대는 다음 진행에서 빠진다.
             if (_siege is not null)
             {
-                var result = _siege.Resolve(armies, cities, garrisons);
+                var result = _siege.Resolve(armies, work.Cities, work.Garrisons);
                 armies = result.Armies.Where(u => u.Pool.Active > 0).ToList();
-                cities = result.Cities.ToList();
-                garrisons = result.Garrisons.ToList();
+                work = work with { Cities = result.Cities, GarrisonForces = result.Garrisons };
                 siegeReports.AddRange(result.Exchanges);
+            }
+
+            // 함락 처리(design-general-lifecycle §4) — 성벽0+수비0에 근접 공격군이 있으면 점거.
+            if (_capture is not null)
+            {
+                work = _capture.ResolveAll(work with { FieldArmies = armies }, _random, out var caps);
+                armies = work.Armies.Where(u => u.Pool.Active > 0).ToList();
+                captureReports.AddRange(caps);
             }
         }
 
-        var afterField = state with
+        var afterField = work with
         {
             FieldArmies = armies,
-            GarrisonForces = garrisons
+            GarrisonForces = work.Garrisons
                 .Where(g => g.Troops > 0)
                 .OrderBy(g => g.City.Value).ThenBy(g => g.TroopCode, System.StringComparer.Ordinal)
                 .ToList(),
-            Postings = postings,
-            Cities = cities,
         };
 
         // 포로 충성 하락(일주일 −1 — design-general-lifecycle §2): 억류될수록 등용이 쉬워진다.
@@ -126,6 +101,61 @@ public sealed class CampaignEngine
 
         turns = reports;
         sieges = siegeReports;
+        captures = captureReports;
         return _world.AdvanceDays(afterField, WeekDays);
+    }
+
+    // 입성 부대 → 그 도시 대기 병력 편입(병종·훈련도 보존, 가중 평균) + 실린 장수 그 도시 주둔 복귀.
+    private static GameState ApplyEntered(GameState work, IReadOnlyList<CombatUnit> entered,
+        IReadOnlyDictionary<Spatial.HexCoord, CityId> cityAt)
+    {
+        if (entered.Count == 0)
+        {
+            return work;
+        }
+
+        var garrisons = work.Garrisons.ToList();
+        var postings = work.Assignments.ToList();
+        foreach (var unit in entered)
+        {
+            if (unit.Field.Target is not { } pos || !cityAt.TryGetValue(pos, out var cityId))
+            {
+                continue;
+            }
+
+            var incoming = unit.IsSupply && unit.Cargo.Count > 0
+                ? unit.Cargo.Select(c => (c.TroopCode, c.Troops, Training: c.TrainingLevel))
+                : unit.TroopCode.Length > 0
+                    ? [(unit.TroopCode, unit.Pool.Active, Training: unit.Training)]
+                    : [];
+            foreach (var (code, troops, training) in incoming)
+            {
+                if (troops <= 0)
+                {
+                    continue;
+                }
+
+                var idx = garrisons.FindIndex(g => g.City == cityId && g.TroopCode == code);
+                if (idx >= 0)
+                {
+                    garrisons[idx] = garrisons[idx].Merge(troops, training);
+                }
+                else
+                {
+                    garrisons.Add(new GarrisonForce(cityId, code, troops, training));
+                }
+            }
+
+            foreach (var generalId in new[] { unit.VanguardId, unit.AdjutantId }.OfType<GeneralId>())
+            {
+                var pIdx = postings.FindIndex(p => p.General == generalId);
+                if (pIdx >= 0)
+                {
+                    postings[pIdx] = postings[pIdx] with { Location = cityId };
+                }
+            }
+        }
+
+        return work with { GarrisonForces = garrisons, Postings = postings };
     }
 }

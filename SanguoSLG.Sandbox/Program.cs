@@ -126,8 +126,8 @@ else
 
 Console.WriteLine();
 
-// ── 10b 공성 데모: 적 부대가 적 성으로 진격 → 한 주 공성 → 성벽·수비 손실(함락은 다음 단계) ──
-Console.WriteLine("=== 공성 데모 ===");
+// ── 공성→함락 데모: 적 부대가 적 성으로 진격 → 성벽·수비 격파 → 자동 점거·소유 전환 ──
+Console.WriteLine("=== 공성→함락 데모 ===");
 var siegeState = GameState.FromScenario(scenario);
 var targetCity = siegeState.Cities.First();
 var attackerFaction = siegeState.Factions.First(f => f.Id != targetCity.Owner).Id;
@@ -152,17 +152,26 @@ var siegeMap = new HexMap(siegeQs.Min() - 3, siegeQs.Max() + 3, siegeRs.Min() - 
 var siegeOrch = new AdvanceOrchestrator(
     new MovementSimulator(new PassabilityMap(siegeMap, [], [])),
     new CombatPhaseResolver(new BattleResolver(60), 70));
-var siegeCampaign = new CampaignEngine(siegeOrch, worldC, new CampaignSiege(new BattleResolver(60), troopTemplates));
+var siegeCampaign = new CampaignEngine(siegeOrch, worldC,
+    new CampaignSiege(new BattleResolver(60), troopTemplates),
+    new CityCapture(), new SeededRandomSource(seed));
 
-Console.WriteLine($"{targetCity.Name}(성벽 {targetCity.Wall}, 수비 {siegeGarrison.Troops}) ← {atkTemplate.Name} 20000 진격");
+Console.WriteLine($"{targetCity.Name}(성벽 {targetCity.Wall}, 수비 {siegeGarrison.Troops}, 소유 세력{targetCity.Owner.Value}) ← {atkTemplate.Name} 20000(세력{attackerFaction.Value}) 진격");
 var siegeStep = siegeState;
-for (var w = 1; w <= 3; w++)
+for (var w = 1; w <= 5; w++)
 {
-    siegeStep = siegeCampaign.AdvanceWeek(siegeStep, out _, out var exchanges);
+    siegeStep = siegeCampaign.AdvanceWeek(siegeStep, out _, out var exchanges, out var captures);
     var c = siegeStep.Cities.First(x => x.Id == targetCity.Id);
     var defend = siegeStep.Garrisons.Where(g => g.City == targetCity.Id).Sum(g => g.Troops);
     var atkLeft = siegeStep.Armies.FirstOrDefault(u => u.Id.Value == 9001)?.Pool.Active ?? 0;
-    Console.WriteLine($"{w}주 뒤 — 성벽 {c.Wall}, 수비 {defend}, 공격군 {atkLeft} (교환 {exchanges.Count}회)");
+    var note = captures.Count > 0 ? $" ★함락! 소유 세력{c.Owner.Value}" : "";
+    Console.WriteLine($"{w}주 뒤 — 성벽 {c.Wall}, 수비 {defend}, 공격군 {atkLeft} (교환 {exchanges.Count}회){note}");
+    if (captures.Count > 0)
+    {
+        var newGarr = siegeStep.Garrisons.Where(g => g.City == targetCity.Id).Sum(g => g.Troops);
+        Console.WriteLine($"  점거 수비대 {newGarr}명, 인구 {c.Population}(−10%), 치안 {c.Security}");
+        break;
+    }
 }
 
 Console.WriteLine();
