@@ -100,6 +100,7 @@ internal sealed class BalanceDto
     public int WallMaxSmall { get; init; } = 3000;
     public int WallMaxMedium { get; init; } = 6000;
     public int WallMaxLarge { get; init; } = 10000;
+    public int GeneralSalaryPerMonth { get; init; } = 20;
 }
 
 internal sealed class MapDto

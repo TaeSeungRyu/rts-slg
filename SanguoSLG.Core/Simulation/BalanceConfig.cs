@@ -7,6 +7,7 @@ namespace SanguoSLG.Core.Simulation;
 /// <param name="MonthlyTaxPerCity">도시당 월 세수(스켈레톤 임시값).</param>
 /// <param name="MultiTargetSecondaryPercent">야전 다대일에서 주대상 외 대상 배수(design-combat.md 60%).</param>
 /// <param name="WoundedPercent">피해 중 부상(회복 가능)으로 전환되는 비율(design-combat.md 70%, 나머지 30% 소실).</param>
+/// <param name="GeneralSalaryPerMonth">장수 1인당 월 급여(금) — 미지급 시 충성 하락. 경제에 가벼운 상시 지출(design-general-lifecycle §1).</param>
 public sealed record BalanceConfig(
     int MonthlyTaxPerCity,
     int MultiTargetSecondaryPercent = 60,
@@ -39,4 +40,5 @@ public sealed record BalanceConfig(
     int GovernorTaxAmplifyAt100 = 100,
     int WallMaxSmall = 3000,
     int WallMaxMedium = 6000,
-    int WallMaxLarge = 10000);
+    int WallMaxLarge = 10000,
+    int GeneralSalaryPerMonth = 20);

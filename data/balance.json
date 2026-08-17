@@ -30,5 +30,6 @@
   "tax_max_security_penalty": 10,
   "wall_max_small": 3000,
   "wall_max_medium": 6000,
-  "wall_max_large": 10000
+  "wall_max_large": 10000,
+  "general_salary_per_month": 20
 }
