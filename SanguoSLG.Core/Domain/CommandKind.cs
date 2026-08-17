@@ -20,4 +20,7 @@ public enum CommandKind
 
     /// <summary>세율 — 세율 변경(효율 무관). 7일.</summary>
     SetTaxRate,
+
+    /// <summary>연구 — 세력 병종 연구 +1단계. 공방 도시 전제, 효율 능력 = 지력. 기본 30일(지력↑ 단축).</summary>
+    Research,
 }

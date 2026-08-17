@@ -50,6 +50,15 @@ public sealed record CommandBalance
     /// <summary>보급부대 최대 편성 병력(design-unit-state 1단계-보급).</summary>
     public int SupplyMaxTroops { get; init; } = 20000;
 
+    /// <summary>병종 연구 기본 기간(일) — 지력이 높으면 단축된다.</summary>
+    public int ResearchBaseDays { get; init; } = 30;
+
+    /// <summary>병종 연구 비용(금) = 이 값 × (다음 단계). 단계가 오를수록 비싸진다.</summary>
+    public int ResearchCostPerLevel { get; init; } = 200;
+
+    /// <summary>병종 연구 최대 단계(design-combat 10단계).</summary>
+    public int ResearchMaxLevel { get; init; } = 10;
+
     /// <summary>시설 건설 비용(금).</summary>
     public int BuildCostPaddy { get; init; } = 300;
     public int BuildCostFarm { get; init; } = 200;

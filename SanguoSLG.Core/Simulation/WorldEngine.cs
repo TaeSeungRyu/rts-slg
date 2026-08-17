@@ -88,6 +88,7 @@ public sealed class WorldEngine
             .OrderBy(c => c.City.Value).ThenBy(c => c.Main.Value).ToList();
         var cities = state.Cities.ToDictionary(c => c.Id);
         var garrisons = state.Garrisons.ToList();
+        var research = state.Research.ToList();
 
         foreach (var cmd in due)
         {
@@ -128,6 +129,15 @@ public sealed class WorldEngine
                 case CommandKind.SetTaxRate:
                     cities[cmd.City] = city with { TaxRate = cmd.Amount };
                     break;
+
+                case CommandKind.Research:
+                    // 공방 게이트 재확인 — 완료 시점에 공방을 잃었으면 연구 성과는 증발한다.
+                    if (city.Workshop)
+                    {
+                        ResearchUp(research, city.Owner, cmd.TroopCode, _commands.ResearchMaxLevel);
+                    }
+
+                    break;
             }
         }
 
@@ -138,8 +148,25 @@ public sealed class WorldEngine
                 .Where(g => g.Troops > 0)
                 .OrderBy(g => g.City.Value).ThenBy(g => g.TroopCode, System.StringComparer.Ordinal)
                 .ToList(),
+            ResearchTracks = research
+                .OrderBy(r => r.Faction.Value).ThenBy(r => r.TroopCode, System.StringComparer.Ordinal)
+                .ToList(),
             PendingCommands = state.Commands.Where(c => c.CompletionDay != state.Day).ToList(),
         };
+    }
+
+    // 세력 병종 연구 +1(최대 캡). 없으면 새 트랙(1단계).
+    private static void ResearchUp(List<FactionResearch> research, FactionId faction, string troopCode, int maxLevel)
+    {
+        var idx = research.FindIndex(r => r.Faction == faction && r.TroopCode == troopCode);
+        if (idx >= 0)
+        {
+            research[idx] = research[idx] with { Level = System.Math.Min(maxLevel, research[idx].Level + 1) };
+        }
+        else
+        {
+            research.Add(new FactionResearch(faction, troopCode, 1));
+        }
     }
 
     // 대기 병력 합류(같은 도시·병종이면 가중 평균 희석, 없으면 새 항목).

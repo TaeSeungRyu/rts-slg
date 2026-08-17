@@ -110,9 +110,11 @@ public sealed class DeployService
         var capacity = template.ProvisionsCapacity * troops / 10000;
         var carried = System.Math.Min(capacity, city.Provisions);
 
+        // 세력 병종 연구 단계를 스탯에 반영(design-combat "병종 연구").
+        var research = state.ResearchOf(city.Owner, template.Code);
         var unitId = new UnitId(state.Armies.Count == 0 ? 1 : state.Armies.Max(u => u.Id.Value) + 1);
         var unit = UnitAssembler.Assemble(unitId, city.Owner, city.Position, req.Mode, req.Target,
-            unitId.Value, vanguard, adjutant, template, troops, _actives, _passives, FieldContext);
+            unitId.Value, vanguard, adjutant, template, troops, _actives, _passives, FieldContext, research);
         unit = unit with { Provisions = carried, Training = garrison.TrainingLevel };
 
         var garrisons = state.Garrisons

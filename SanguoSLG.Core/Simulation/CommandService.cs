@@ -96,6 +96,7 @@ public sealed class CommandService
             CommandKind.Train => IssueTrain(state, city, req, assist, eff),
             CommandKind.Build => IssueBuild(state, city, req, assist, main),
             CommandKind.SetTaxRate => IssueTax(state, city, req, assist),
+            CommandKind.Research => IssueResearch(state, city, req, assist, main),
             _ => CommandResult.Fail("알 수 없는 명령이다.", state),
         };
     }
@@ -189,6 +190,37 @@ public sealed class CommandService
 
         var reserved = city.AddGold(-cost);
         return Register(state, reserved, req, assist, amount: 0, _b.BuildDays, CommandKind.Build, req.Facility);
+    }
+
+    private CommandResult IssueResearch(GameState state, City city, CommandRequest req, General? assist, General main)
+    {
+        // 공방 게이트(design-combat "병종 연구는 공방에서") — 공방 없는 도시에선 연구 불가.
+        if (!city.Workshop)
+        {
+            return CommandResult.Fail("연구는 공방이 있는 도시에서만 가능하다.", state);
+        }
+
+        if (!_troops.ContainsKey(req.TroopCode))
+        {
+            return CommandResult.Fail("연구할 병종을 지정해야 한다.", state);
+        }
+
+        var level = state.ResearchOf(city.Owner, req.TroopCode);
+        if (level >= _b.ResearchMaxLevel)
+        {
+            return CommandResult.Fail("이미 최대 단계까지 연구했다.", state);
+        }
+
+        var cost = _b.ResearchCostPerLevel * (level + 1);
+        if (city.Gold < cost)
+        {
+            return CommandResult.Fail("금이 부족하다.", state);
+        }
+
+        // 효율 능력 = 지력: 지력이 높을수록 기간 단축(기본 30일, 지력 100이면 −10일).
+        var days = System.Math.Max(_b.ResearchBaseDays - System.Math.Clamp((main.Intellect - 50) / 5, 0, 10), 1);
+        var reserved = city.AddGold(-cost);
+        return Register(state, reserved, req, assist, amount: 0, days, CommandKind.Research, "", req.TroopCode);
     }
 
     private CommandResult IssueTax(GameState state, City city, CommandRequest req, General? assist)

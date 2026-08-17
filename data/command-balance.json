@@ -18,5 +18,8 @@
   "build_cost_village": 400,
   "build_cost_workshop": 800,
   "deploy_min_training": 50,
-  "supply_max_troops": 20000
+  "supply_max_troops": 20000,
+  "research_base_days": 30,
+  "research_cost_per_level": 200,
+  "research_max_level": 10
 }

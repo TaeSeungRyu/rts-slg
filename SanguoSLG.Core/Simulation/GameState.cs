@@ -18,7 +18,8 @@ public sealed record GameState(
     IReadOnlyList<GeneralPosting>? Postings = null,
     IReadOnlyList<GarrisonForce>? GarrisonForces = null,
     IReadOnlyList<CombatUnit>? FieldArmies = null,
-    IReadOnlyList<Prisoner>? Captives = null)
+    IReadOnlyList<Prisoner>? Captives = null,
+    IReadOnlyList<FactionResearch>? ResearchTracks = null)
 {
     /// <summary>도시 대기 병력(병종별) — 모집 정산이 쌓고, 출전 편성이 꺼내 쓴다.</summary>
     public IReadOnlyList<GarrisonForce> Garrisons => GarrisonForces ?? [];
@@ -49,6 +50,13 @@ public sealed record GameState(
     /// <summary>이 장수의 현재 충성도(재야·포로 포함 — roster 값을 그대로 읽는다).</summary>
     public int LoyaltyOf(GeneralId general)
         => Generals.FirstOrDefault(g => g.Id == general)?.Loyalty ?? 0;
+
+    /// <summary>세력 병종 연구 트랙(design-combat "병종 연구").</summary>
+    public IReadOnlyList<FactionResearch> Research => ResearchTracks ?? [];
+
+    /// <summary>이 세력의 그 병종 연구 단계(없으면 0 = 미연구).</summary>
+    public int ResearchOf(FactionId faction, string troopCode)
+        => Research.FirstOrDefault(r => r.Faction == faction && r.TroopCode == troopCode)?.Level ?? 0;
 
     /// <summary>이 장수가 진행 중 명령에 매여 잠겨 있는가.</summary>
     public bool IsGeneralBusy(GeneralId general) => Commands.Any(c => c.Locks(general));
