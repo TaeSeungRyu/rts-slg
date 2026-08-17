@@ -2,7 +2,6 @@
   "assist_coefficient_percent": 50,
   "home_region_bonus_percent": 20,
   "command_days": 7,
-  "recruit_troops_per_politics": 15,
   "recruit_pop_cap_percent": 1,
   "conscript_pop_cap_percent": 3,
   "conscript_security_drop_per_1000": 5,

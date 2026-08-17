@@ -109,10 +109,10 @@ public sealed class CommandService
             return CommandResult.Fail("모집할 병종을 지정해야 한다.", state);
         }
 
+        // 병력 = 인구 × 상한% × 동원율(유효 정치/100). 광석 1/명이 하드 캡.
         var capPercent = kind == CommandKind.Recruit ? _b.RecruitPopCapPercent : _b.ConscriptPopCapPercent;
-        var byAbility = CommandEfficiency.RecruitTroops(eff, _b);
-        var byPopulation = city.Population * capPercent / 100;
-        var troops = System.Math.Min(System.Math.Min(byAbility, byPopulation), city.Ore); // 광석 1/명
+        var byPolitics = CommandEfficiency.RecruitTroops(city.Population, capPercent, eff);
+        var troops = System.Math.Min(byPolitics, city.Ore);
 
         // 병종별 추가 자원이 하드 캡을 더 조인다: 말 = 3명당 1, 코끼리 = 1000명당 1.
         if (template.Class == TroopClass.Cavalry)

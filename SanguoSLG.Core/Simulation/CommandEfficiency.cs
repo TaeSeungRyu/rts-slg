@@ -28,9 +28,16 @@ public static class CommandEfficiency
         return (mainPart + assistPart) / 100;
     }
 
-    /// <summary>모병·징병 산출 병력(캡 적용 전) = 유효 정치 × 계수.</summary>
-    public static int RecruitTroops(int effectivePolitics, CommandBalance b)
-        => effectivePolitics * b.RecruitTroopsPerPolitics;
+    /// <summary>
+    /// 모병·징병 산출 병력(자원 캡 적용 전) = 인구 × 상한% × **동원율**. 동원율 = 유효 정치/100
+    /// (100에서 완전 동원 — 보좌·고향은 100까지 끌어올릴 뿐 넘지 못한다). 정치가 전 구간에서
+    /// 선형으로 병력에 반영되고, 큰 도시일수록 절대 산출이 커진다(2026-08-17 개선).
+    /// </summary>
+    public static int RecruitTroops(int population, int capPercent, int effectivePolitics)
+    {
+        var mobilization = System.Math.Clamp(effectivePolitics, 0, 100);
+        return (int)((long)population * capPercent / 100 * mobilization / 100);
+    }
 
     /// <summary>훈련 상승량 = 유효 무력 ÷ 나눔값(최소 1).</summary>
     public static int TrainGain(int effectiveMight, CommandBalance b)

@@ -15,13 +15,10 @@ public sealed record CommandBalance
     /// <summary>공통 명령 기간(일). 모병·징병·훈련·세율.</summary>
     public int CommandDays { get; init; } = 7;
 
-    /// <summary>모병 산출 = 유효 정치 × 이 값(병력/명령).</summary>
-    public int RecruitTroopsPerPolitics { get; init; } = 15;
-
-    /// <summary>모병 1명령 상한 = 인구 × 이 %.</summary>
+    /// <summary>모병 1명령 상한 = 인구 × 이 %(정치 100 완전 동원 기준). 실제 = 이 % × 동원율.</summary>
     public int RecruitPopCapPercent { get; init; } = 1;
 
-    /// <summary>징병 1명령 상한 = 인구 × 이 %.</summary>
+    /// <summary>징병 1명령 상한 = 인구 × 이 %(정치 100 완전 동원 기준). 실제 = 이 % × 동원율.</summary>
     public int ConscriptPopCapPercent { get; init; } = 3;
 
     /// <summary>징병 치안 하락 = 병력 1000당 이 값.</summary>

@@ -97,22 +97,22 @@ public class CommandSystemTests
     [Fact]
     public void 발행_모병은_광석과_인구를_즉시_예약한다()
     {
-        // 정치 90 → 산출 1350, 인구캡 1%(=1000), 광석 5000 → min = 1000 (도검병: 광석만)
+        // 정치 90 → 동원 90% × 인구 1%(=1000) = 900, 광석 5000 → min = 900 (도검병: 광석만)
         var svc = Service();
         var s0 = State(new[] { Town(1, ore: 5000, population: 100_000) }, new[] { Pol(1, 90) });
 
         var r = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Recruit, new GeneralId(1), TroopCode: "swordsman"));
         Assert.True(r.Ok);
         var city = r.State.Cities.Single();
-        Assert.Equal(4000, city.Ore);
-        Assert.Equal(99_000, city.Population);
+        Assert.Equal(5000 - 900, city.Ore);
+        Assert.Equal(100_000 - 900, city.Population);
         Assert.Empty(r.State.Garrisons); // 아직 지급 전(정산은 완료일)
     }
 
     [Fact]
     public void 발행_기병은_말이_하드캡이고_말을_예약한다()
     {
-        // 말 100필 → 기병 최대 300명. 정치 90(산출 1350)·인구캡 1000이어도 300으로 잘린다.
+        // 말 100필 → 기병 최대 300명. 정치 90(동원 900)이어도 말 하드캡 300으로 잘린다.
         var svc = Service();
         var s0 = State(new[] { Town(1, ore: 5000, horses: 100) }, new[] { Pol(1, 90) });
 
@@ -146,7 +146,7 @@ public class CommandSystemTests
 
         var d7 = world.AdvanceDays(issued.State, 7);
         var g = GarrisonOf(d7, 1, "swordsman");
-        Assert.Equal(1000, g.Troops);
+        Assert.Equal(900, g.Troops); // 정치 90 → 동원 90% × 인구 1%
         Assert.Equal(B.RecruitTrainLevel, g.TrainingLevel);
         Assert.False(d7.IsGeneralBusy(new GeneralId(1)));
         Assert.Empty(d7.Commands);
@@ -164,9 +164,9 @@ public class CommandSystemTests
         var done = world.AdvanceDays(issued.State, 7);
 
         var g = GarrisonOf(done, 1, "swordsman");
-        Assert.Equal(1500, g.Troops);        // 정치 100 → 능력 산출 1500
+        Assert.Equal(3000, g.Troops);        // 정치 100 → 동원 100% × 인구 3%(징병)
         Assert.Equal(0, g.TrainingLevel);
-        Assert.Equal(80 - 1 * 5, done.Cities.Single().Security);
+        Assert.Equal(80 - 3 * 5, done.Cities.Single().Security); // 3000명 → 치안 −15
     }
 
     [Fact]
@@ -201,7 +201,7 @@ public class CommandSystemTests
         var done = world.AdvanceDays(issued.State, 7);
 
         var g = GarrisonOf(done, 1, "swordsman");
-        Assert.Equal(2000, g.Troops);
-        Assert.Equal(65, g.TrainingLevel); // (1000×80 + 1000×50)/2000 = 65
+        Assert.Equal(1900, g.Troops);      // 기존 1000 + 신병 900(정치 90 동원)
+        Assert.Equal(66, g.TrainingLevel); // (1000×80 + 900×50 + 950)/1900 = 66
     }
 }

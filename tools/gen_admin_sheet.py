@@ -104,7 +104,7 @@ td.name{font-weight:700;white-space:nowrap;}
 <h2>병사 모집 (rescale 후 · 대성 기준)</h2>
 <table><thead><tr><th>병종</th><th>1만당 자원</th><th>조달</th><th class="num">재건</th></tr></thead>
 <tbody>__RECRUIT__</tbody></table>
-<div class="note">모병: 정치 비례 산출(정치×__RTP__/명령), 인구 __RPOP__% 캡, 훈련도 50 · 징병: 인구 __CPOP__% 캡, 훈련도 0, 치안 하락 · 명령 7일(건설 30일)·수행 장수 잠김·주관+보좌×__ASSIST__%+고향 +__HOME__%.</div>
+<div class="note">모병: 병력 = 인구 __RPOP__% × 동원율(정치/100), 훈련도 50 · 징병: 인구 __CPOP__% × 동원율, 훈련도 0(50까지 훈련 명령 필요), 치안 하락 · 공통 광석 1/명(기병 말·상병 코끼리) · 명령 7일(건설 30일)·수행 장수 잠김·주관+보좌×__ASSIST__%+고향 +__HOME__%.</div>
 </div></body></html>
 """
 
@@ -137,7 +137,6 @@ html = (HTML
     .replace("__SECREC__", str(b["security_natural_recovery"]))
     .replace("__TAXPEN__", str(b["tax_max_security_penalty"]))
     .replace("__POPGROW__", str(b["population_growth_percent"]))
-    .replace("__RTP__", str(c["recruit_troops_per_politics"]))
     .replace("__RPOP__", str(c["recruit_pop_cap_percent"]))
     .replace("__CPOP__", str(c["conscript_pop_cap_percent"]))
     .replace("__ASSIST__", str(c["assist_coefficient_percent"]))
