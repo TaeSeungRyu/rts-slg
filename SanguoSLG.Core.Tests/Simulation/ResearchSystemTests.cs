@@ -95,6 +95,30 @@ public class ResearchSystemTests
     }
 
     [Fact]
+    public void 발행_세력은_동시에_하나의_연구만_할수있다()
+    {
+        // 공방 도시 2개(같은 세력). 하나 연구 걸면 다른 공방에서 두 번째 연구 불가.
+        var s = State(
+            new[] { Town(1, workshop: true), Town(2, workshop: true) },
+            new[] { Wit(1, 60), Wit(2, 60) })
+            with
+            {
+                Postings = new List<GeneralPosting>
+                {
+                    new(new GeneralId(1), new FactionId(1), new CityId(1)),
+                    new(new GeneralId(2), new FactionId(1), new CityId(2)),
+                },
+            };
+
+        var first = Service().Issue(s, new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1), TroopCode: "swordsman"));
+        Assert.True(first.Ok, first.Error);
+
+        var second = Service().Issue(first.State, new CommandRequest(new CityId(2), CommandKind.Research, new GeneralId(2), TroopCode: "archer"));
+        Assert.False(second.Ok);
+        Assert.Contains("하나의 연구", second.Error);
+    }
+
+    [Fact]
     public void 발행_최대단계면_더_연구할수없다()
     {
         var s = State(new[] { Town(1, workshop: true) }, new[] { Wit(1, 50) })

@@ -205,6 +205,14 @@ public sealed class CommandService
             return CommandResult.Fail("연구할 병종을 지정해야 한다.", state);
         }
 
+        // 세력당 동시 1개 연구만(2026-08-17 확정) — 이미 진행 중인 연구가 있으면 거부.
+        var faction = city.Owner;
+        if (state.Commands.Any(c => c.Kind == CommandKind.Research
+            && state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == faction))
+        {
+            return CommandResult.Fail("세력은 한 번에 하나의 연구만 할 수 있다.", state);
+        }
+
         var level = state.ResearchOf(city.Owner, req.TroopCode);
         if (level >= _b.ResearchMaxLevel)
         {
