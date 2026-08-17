@@ -69,6 +69,32 @@ public class ResearchSystemTests
     }
 
     [Fact]
+    public void 비용_8단계부터_지수적으로_급증한다()
+    {
+        // base 200·급증 7 기준: 7단계 1400(선형) → 8=3200 → 9=7200 → 10=16000.
+        Assert.Equal(1400, CommandEfficiency.ResearchCost(7, B));
+        Assert.Equal(3200, CommandEfficiency.ResearchCost(8, B));
+        Assert.Equal(7200, CommandEfficiency.ResearchCost(9, B));
+        Assert.Equal(16000, CommandEfficiency.ResearchCost(10, B));
+    }
+
+    [Fact]
+    public void 발행_최종단계는_한_성_금고로는_모자랄수있다()
+    {
+        // 9단계 도달 세력이 10단계(비용 16000)를 공방 도시 금고 8000으로 발행 → 실패(부담 증대).
+        var s = State(new[] { Town(1, workshop: true, gold: 8000) }, new[] { Wit(1, 90) })
+            with { ResearchTracks = new List<FactionResearch> { new(new FactionId(1), "swordsman", 9) } };
+
+        var r = Service().Issue(s, new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1), TroopCode: "swordsman"));
+        Assert.False(r.Ok);
+        Assert.Contains("금", r.Error);
+
+        // 금고 16000이면 발행 가능.
+        var rich = s with { Cities = new List<City> { Town(1, workshop: true, gold: 16000) } };
+        Assert.True(Service().Issue(rich, new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1), TroopCode: "swordsman")).Ok);
+    }
+
+    [Fact]
     public void 발행_최대단계면_더_연구할수없다()
     {
         var s = State(new[] { Town(1, workshop: true) }, new[] { Wit(1, 50) })

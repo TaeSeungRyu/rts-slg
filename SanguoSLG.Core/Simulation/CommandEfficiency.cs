@@ -43,6 +43,22 @@ public static class CommandEfficiency
     public static int TrainGain(int effectiveMight, CommandBalance b)
         => System.Math.Max(1, effectiveMight / b.TrainMightDivisor);
 
+    /// <summary>
+    /// 병종 연구 비용(금) — 목표 단계 <paramref name="nextLevel"/>로 올리는 값. 기본은 base×단계지만,
+    /// 급증 시작 단계를 넘으면 ×2^(초과 단계)로 지수 급증한다(8~10단계는 세력 전체 자금이 필요할 만큼
+    /// 무겁다 — 2026-08-17 사용자 확정). 예(base 200·급증 7): 7=1400, 8=3200, 9=7200, 10=16000.
+    /// </summary>
+    public static int ResearchCost(int nextLevel, CommandBalance b)
+    {
+        var cost = b.ResearchCostBase * nextLevel;
+        if (nextLevel > b.ResearchCostSteepFrom)
+        {
+            cost *= 1 << (nextLevel - b.ResearchCostSteepFrom);
+        }
+
+        return cost;
+    }
+
     /// <summary>성곽 등급별 시설 슬롯 총량.</summary>
     public static int BuildSlots(CastleSize castle, CommandBalance b) => castle switch
     {

@@ -53,8 +53,11 @@ public sealed record CommandBalance
     /// <summary>병종 연구 기본 기간(일) — 지력이 높으면 단축된다.</summary>
     public int ResearchBaseDays { get; init; } = 30;
 
-    /// <summary>병종 연구 비용(금) = 이 값 × (다음 단계). 단계가 오를수록 비싸진다.</summary>
-    public int ResearchCostPerLevel { get; init; } = 200;
+    /// <summary>병종 연구 비용 기본치(금) — 비용 = 이 값 × 다음단계, 급증 단계부터는 ×2^초과.</summary>
+    public int ResearchCostBase { get; init; } = 200;
+
+    /// <summary>이 단계를 넘는 연구부터 비용이 지수(×2)로 급증한다(고급 티어 부담 — 2026-08-17).</summary>
+    public int ResearchCostSteepFrom { get; init; } = 7;
 
     /// <summary>병종 연구 최대 단계(design-combat 10단계).</summary>
     public int ResearchMaxLevel { get; init; } = 10;

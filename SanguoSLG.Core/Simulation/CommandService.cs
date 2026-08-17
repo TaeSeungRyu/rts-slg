@@ -211,7 +211,7 @@ public sealed class CommandService
             return CommandResult.Fail("이미 최대 단계까지 연구했다.", state);
         }
 
-        var cost = _b.ResearchCostPerLevel * (level + 1);
+        var cost = CommandEfficiency.ResearchCost(level + 1, _b);
         if (city.Gold < cost)
         {
             return CommandResult.Fail("금이 부족하다.", state);
