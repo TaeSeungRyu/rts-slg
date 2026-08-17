@@ -2,10 +2,12 @@ using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
+using SanguoSLG.Sandbox;
 
-// 밸런스 시뮬레이션 실행기. 사용법: --turns N --seed S
+// 밸런스 시뮬레이션 실행기. 사용법: --turns N --seed S  |  관전 캠페인: --watch <주수>
 var turns = 12;
 var seed = 42;
+var watchWeeks = 0;
 for (var i = 0; i + 1 < args.Length; i++)
 {
     if (args[i] == "--turns" && int.TryParse(args[i + 1], out var t))
@@ -16,6 +18,17 @@ for (var i = 0; i + 1 < args.Length; i++)
     {
         seed = s;
     }
+    else if (args[i] == "--watch" && int.TryParse(args[i + 1], out var w))
+    {
+        watchWeeks = w;
+    }
+}
+
+// --watch <주수>: 관전 캠페인만 돌리고 종료(자율 전쟁 주간 로그).
+if (watchWeeks > 0)
+{
+    SpectatorCampaign.Run(FindDataDirectory(), watchWeeks, seed);
+    return;
 }
 
 var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
