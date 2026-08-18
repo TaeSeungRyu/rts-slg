@@ -637,14 +637,14 @@ public sealed partial class CampaignMapScene : Node3D
         menu.AddChild(_cmdList);
         foreach (var (group, indices) in CmdGroups)
         {
-            _cmdList.AddChild(MakeLabel($"· {group}", 8, GoldBright));
+            _cmdList.AddChild(MakeLabel($"· {group}", 9, GoldBright));
             foreach (var i in indices)
             {
                 var idx = i;
                 var btn = MakeButton(Cmds[i].Label);
-                btn.AddThemeFontSizeOverride("font_size", 9);
+                btn.AddThemeFontSizeOverride("font_size", 10);
                 btn.Alignment = HorizontalAlignment.Center;
-                btn.CustomMinimumSize = new Vector2(58, 16);
+                btn.CustomMinimumSize = new Vector2(64, 18);
                 btn.Pressed += () => OpenModal(idx);
                 _cmdList.AddChild(btn);
             }
@@ -669,6 +669,7 @@ public sealed partial class CampaignMapScene : Node3D
             Texture = Icon(icon),
             CustomMinimumSize = new Vector2(11, 11),
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
         });
         h.AddChild(MakeLabel(text, 10, Parchment));
         return h;
@@ -718,18 +719,32 @@ public sealed partial class CampaignMapScene : Node3D
             _infoRows.AddChild(InfoRow(Sym.Scroll, $"진행 {string.Join(",", pending)}"));
         }
 
-        // 명령 팔레트를 클릭한 성 화면좌표의 우측에 배치(화면 밖으로 안 나가게 clamp).
-        var world = _view.HexToWorld(c.Position) + new Vector3(0f, _view.TileTopY, 0f);
+        PlacePalette(c.Position);
+        _infoCard.Visible = true;
+        _cmdMenu.Visible = true;
+        MoveRing(c.Position);
+    }
+
+    // 명령 팔레트를 성 화면좌표의 우측에 배치(화면 밖으로 안 나가게 clamp). 줌/이동 시 매 프레임 추종.
+    private void PlacePalette(HexCoord at)
+    {
+        var world = _view.HexToWorld(at) + new Vector3(0f, _view.TileTopY, 0f);
         var screen = _camera.UnprojectPosition(world);
         var sz = _cmdMenu.GetCombinedMinimumSize();
         var vp = GetViewport().GetVisibleRect().Size;
         var px = Mathf.Clamp(screen.X + 100f, 8f, System.Math.Max(8f, vp.X - sz.X - 8f));
         var py = Mathf.Clamp(screen.Y - (sz.Y * 0.5f), 8f, System.Math.Max(8f, vp.Y - sz.Y - 8f));
         _cmdMenu.Position = new Vector2(px, py);
+    }
 
-        _infoCard.Visible = true;
-        _cmdMenu.Visible = true;
-        MoveRing(c.Position);
+    // 줌/이동 중에도 팔레트가 선택한 성을 따라가도록 갱신.
+    public override void _Process(double delta)
+    {
+        if (_cmdMenu.Visible && _selected is { } sel)
+        {
+            var c = _state.Cities.FirstOrDefault(x => x.Id == sel);
+            if (c is not null) { PlacePalette(c.Position); }
+        }
     }
 
     // 명령 클릭 → 큰 모달(반투명 배경 + 아이콘 카드 그리드). 카드로 대상/계략/세율을 고르고,
@@ -891,6 +906,7 @@ public sealed partial class CampaignMapScene : Node3D
             Texture = o.Icon,
             CustomMinimumSize = new Vector2(34, 34),
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
         });
         var name = MakeLabel(o.Name, 13, GoldBright);
@@ -973,6 +989,7 @@ public sealed partial class CampaignMapScene : Node3D
             Texture = Icon(Sym.Officer),
             CustomMinimumSize = new Vector2(30, 30),
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
         });
         var nm = MakeLabel(name, 13, Parchment);
