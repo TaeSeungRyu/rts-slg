@@ -64,6 +64,15 @@ public partial class GameRoot3D : Node3D
             return;
         }
 
+        // 내정 전용 게임 씬 1단계(12b): --admin. 도시 현황 + 진행 버튼(Core AdminSession).
+        if (OS.GetCmdlineArgs().Contains("--admin") || OS.GetCmdlineUserArgs().Contains("--admin"))
+        {
+            var admin = new AdminScene();
+            AddChild(admin);
+            admin.Build(FindDataDirectory());
+            return;
+        }
+
         var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
 
         var tone = TonePreset.FromCmdline();
