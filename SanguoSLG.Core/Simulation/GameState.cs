@@ -19,7 +19,8 @@ public sealed record GameState(
     IReadOnlyList<GarrisonForce>? GarrisonForces = null,
     IReadOnlyList<CombatUnit>? FieldArmies = null,
     IReadOnlyList<Prisoner>? Captives = null,
-    IReadOnlyList<FactionResearch>? ResearchTracks = null)
+    IReadOnlyList<FactionResearch>? ResearchTracks = null,
+    IReadOnlyList<CityIntel>? ScoutedCities = null)
 {
     /// <summary>도시 대기 병력(병종별) — 모집 정산이 쌓고, 출전 편성이 꺼내 쓴다.</summary>
     public IReadOnlyList<GarrisonForce> Garrisons => GarrisonForces ?? [];
@@ -60,6 +61,13 @@ public sealed record GameState(
 
     /// <summary>이 세력의 성벽 연구 단계(0=미연구 20% … 4=완료 100%).</summary>
     public int WallLevelOf(FactionId faction) => ResearchOf(faction, FactionResearch.WallCode);
+
+    /// <summary>정찰 성과 목록(design-stratagem 정찰 계략).</summary>
+    public IReadOnlyList<CityIntel> Intel => ScoutedCities ?? [];
+
+    /// <summary>이 세력이 이 도시를 정찰했는가 — 나머지 도시 계략·등용의 전제.</summary>
+    public bool IsScouted(FactionId faction, CityId city)
+        => Intel.Any(i => i.Faction == faction && i.City == city);
 
     /// <summary>이 장수가 진행 중 명령에 매여 잠겨 있는가.</summary>
     public bool IsGeneralBusy(GeneralId general) => Commands.Any(c => c.Locks(general));

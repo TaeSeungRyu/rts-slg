@@ -26,4 +26,7 @@ public enum CommandKind
 
     /// <summary>수리 — 손상된 성벽·파괴된 시설 복구. 효율 능력 = 정치. 15일. design-administration "건물 수리".</summary>
     Repair,
+
+    /// <summary>도시 계략 — 적 도시 대상(성벽파괴·선동·정찰·방화·절취·이간). 지력 확률, 거리 비례 소요일. design-stratagem "도시 계략".</summary>
+    CityStratagem,
 }

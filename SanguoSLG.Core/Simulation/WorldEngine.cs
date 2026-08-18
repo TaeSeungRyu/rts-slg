@@ -14,12 +14,15 @@ public sealed class WorldEngine
     private readonly IReadOnlyDictionary<string, Domain.AdminSkill> _adminSkills;
 
     public WorldEngine(BalanceConfig balance, CommandBalance? commands = null,
-        IReadOnlyList<Domain.AdminSkill>? adminSkills = null)
+        IReadOnlyList<Domain.AdminSkill>? adminSkills = null, IRandomSource? random = null)
     {
         _balance = balance;
         _commands = commands ?? new CommandBalance();
         _adminSkills = (adminSkills ?? []).ToDictionary(a => a.Code);
+        _random = random ?? new SeededRandomSource(0); // 도시 계략 성공 판정용(시드 — 결정론)
     }
+
+    private readonly IRandomSource _random;
 
     /// <summary><paramref name="days"/>일을 진행한 새 상태를 반환한다.</summary>
     public GameState AdvanceDays(GameState state, int days)
@@ -89,6 +92,8 @@ public sealed class WorldEngine
         var cities = state.Cities.ToDictionary(c => c.Id);
         var garrisons = state.Garrisons.ToList();
         var research = state.Research.ToList();
+        var generals = state.Generals.ToList();
+        var intel = state.Intel.ToList();
 
         foreach (var cmd in due)
         {
@@ -161,6 +166,10 @@ public sealed class WorldEngine
                     }
 
                     break;
+
+                case CommandKind.CityStratagem:
+                    ResolveCityStratagem(state, cmd, city, cities, generals, intel);
+                    break;
             }
         }
 
@@ -174,8 +183,80 @@ public sealed class WorldEngine
             ResearchTracks = research
                 .OrderBy(r => r.Faction.Value).ThenBy(r => r.TroopCode, System.StringComparer.Ordinal)
                 .ToList(),
+            Generals = generals,
+            ScoutedCities = intel
+                .OrderBy(i => i.Faction.Value).ThenBy(i => i.City.Value)
+                .ToList(),
             PendingCommands = state.Commands.Where(c => c.CompletionDay != state.Day).ToList(),
         };
+    }
+
+    // 도시 계략 정산(design-stratagem "수행 규칙"): 지력 확률 성공 판정(시드 난수) → 실패 = 무효.
+    // 대상이 그 사이 아군이 됐으면(함락 등) 캔슬. 효과는 종류별(성벽·치안·정찰·군량·금·충성).
+    private void ResolveCityStratagem(GameState state, CityCommand cmd, City casterCity,
+        Dictionary<CityId, City> cities, List<Domain.General> generals, List<Domain.CityIntel> intel)
+    {
+        if (cmd.TargetCity is not { } targetId || !cities.TryGetValue(targetId, out var target)
+            || target.Owner == casterCity.Owner)
+        {
+            return;
+        }
+
+        var casterIntellect = generals.FirstOrDefault(g => g.Id == cmd.Main)?.Intellect ?? 40;
+        var defenderIntellect = target.Governor is { } gov
+            ? generals.FirstOrDefault(g => g.Id == gov)?.Intellect
+            : null;
+        var success = _random.Next(0, 100) < CityStratagems.SuccessPercent(casterIntellect, defenderIntellect);
+        if (!success)
+        {
+            return; // 실패 = 무효(소요 기간·장수 잠금이 이미 비용)
+        }
+
+        switch (cmd.Facility)
+        {
+            case "wall_break":
+                var maxWall = CastleWall.Max(target.Castle, _balance, state.WallLevelOf(target.Owner));
+                cities[targetId] = target with { Wall = System.Math.Max(0, target.Wall - maxWall * _commands.StratagemWallBreakPercent / 100) };
+                break;
+
+            case "incite":
+                cities[targetId] = target with { Security = System.Math.Clamp(target.Security - _commands.StratagemInciteSecurity, 0, 100) };
+                break;
+
+            case "scout":
+                if (!intel.Any(i => i.Faction == casterCity.Owner && i.City == targetId))
+                {
+                    intel.Add(new Domain.CityIntel(casterCity.Owner, targetId));
+                }
+
+                break;
+
+            case "arson":
+                cities[targetId] = target with { Provisions = target.Provisions - target.Provisions * _commands.StratagemArsonPercent / 100 };
+                break;
+
+            case "steal":
+                var stolen = target.Gold * _commands.StratagemStealPercent / 100;
+                cities[targetId] = target with { Gold = target.Gold - stolen };
+                cities[cmd.City] = cities[cmd.City].AddGold(stolen); // 수행 도시에 예치
+                break;
+
+            case "sow_discord":
+                // 대상 도시 주둔 장수 중 충성 최저 1명(동률 id순) −N.
+                var victim = state.Assignments
+                    .Where(p => p.Location == targetId)
+                    .Select(p => generals.FirstOrDefault(g => g.Id == p.General))
+                    .OfType<Domain.General>()
+                    .OrderBy(g => g.Loyalty).ThenBy(g => g.Id.Value)
+                    .FirstOrDefault();
+                if (victim is not null)
+                {
+                    var idx = generals.FindIndex(g => g.Id == victim.Id);
+                    generals[idx] = victim with { Loyalty = System.Math.Max(0, victim.Loyalty - _commands.StratagemDiscordLoyalty) };
+                }
+
+                break;
+        }
     }
 
     // 시설 수리 완료 — 잔해를 시설로 되돌리거나(일반), 파괴 플래그를 해제한다(자원 시설).

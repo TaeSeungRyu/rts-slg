@@ -32,6 +32,9 @@ public sealed partial class AdminScene : Control
     private CityId? _city;
     private OptionButton? _troopSel;
     private OptionButton? _facilitySel;
+    private OptionButton? _stratagemSel;
+    private OptionButton? _targetSel;
+    private readonly List<CityId> _targetIds = new();
     private SpinBox? _taxSpin;
     private Action? _onConfirm;
 
@@ -46,6 +49,13 @@ public sealed partial class AdminScene : Control
         ("성벽 연구", CommandKind.Research, "wall"),
         ("성벽 수리", CommandKind.Repair, "wall"),
         ("시설 수리", CommandKind.Repair, "repairable"),
+        ("도시 계략", CommandKind.CityStratagem, "stratagem"),
+    };
+
+    private static readonly (string Label, string Code)[] Stratagems =
+    {
+        ("정찰", "scout"), ("성벽파괴", "wall_break"), ("선동", "incite"),
+        ("방화", "arson"), ("절취", "steal"), ("이간", "sow_discord"),
     };
 
     private static readonly (string Label, string Code)[] Facilities =
@@ -229,6 +239,9 @@ public sealed partial class AdminScene : Control
         Clear(_detailCol);
         _troopSel = null;
         _facilitySel = null;
+        _stratagemSel = null;
+        _targetSel = null;
+        _targetIds.Clear();
         _taxSpin = null;
 
         if (cmd.Param == "troop")
@@ -258,6 +271,28 @@ public sealed partial class AdminScene : Control
             _detailCol.AddChild(new Label { Text = "세율(%)" });
             _taxSpin = new SpinBox { MinValue = 0, MaxValue = 50, Step = 5, Value = cityData.TaxRate };
             _detailCol.AddChild(_taxSpin);
+        }
+        else if (cmd.Param == "stratagem")
+        {
+            _detailCol.AddChild(new Label { Text = "계략" });
+            _stratagemSel = new OptionButton();
+            foreach (var st in Stratagems)
+            {
+                _stratagemSel.AddItem(st.Label);
+            }
+
+            _detailCol.AddChild(_stratagemSel);
+
+            _detailCol.AddChild(new Label { Text = "대상(적 도시)" });
+            _targetSel = new OptionButton();
+            foreach (var enemy in _session.State.Cities.Where(c => c.Owner != _session.Player).OrderBy(c => c.Id.Value))
+            {
+                var scouted = _session.State.IsScouted(_session.Player, enemy.Id) ? " (정찰됨)" : "";
+                _targetSel.AddItem($"{enemy.Name}{scouted}");
+                _targetIds.Add(enemy.Id);
+            }
+
+            _detailCol.AddChild(_targetSel);
         }
 
         _detailCol.AddChild(new Label { Text = "수행 장수" });
@@ -300,10 +335,15 @@ public sealed partial class AdminScene : Control
         {
             "facility" => Facilities[Math.Max(0, _facilitySel?.Selected ?? 0)].Code,
             "repairable" => Repairables[Math.Max(0, _facilitySel?.Selected ?? 0)].Code,
+            "stratagem" => Stratagems[Math.Max(0, _stratagemSel?.Selected ?? 0)].Code,
             _ => "",
         };
         var value = cmd.Param == "tax" ? (int)(_taxSpin?.Value ?? 0) : 0;
-        var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility, TroopCode: troopCode);
+        CityId? targetCity = cmd.Param == "stratagem" && _targetIds.Count > 0
+            ? _targetIds[Math.Max(0, _targetSel?.Selected ?? 0)]
+            : null;
+        var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility,
+            TroopCode: troopCode, TargetCity: targetCity);
 
         var cityData = _session.State.Cities.First(x => x.Id == city);
         var g = _session.State.Generals.First(x => x.Id == general);
@@ -312,11 +352,26 @@ public sealed partial class AdminScene : Control
             "troop" => $" · {_troops[Math.Max(0, _troopSel?.Selected ?? 0)].Name}",
             "facility" => $" · {Facilities[Math.Max(0, _facilitySel?.Selected ?? 0)].Label}",
             "repairable" => $" · {Repairables[Math.Max(0, _facilitySel?.Selected ?? 0)].Label}",
+            "stratagem" => $" · {Stratagems[Math.Max(0, _stratagemSel?.Selected ?? 0)].Label}",
             "tax" => $" · {value}%",
             _ => "",
         };
         var label = $"{cmd.Label}{paramText}";
-        _confirm.DialogText = $"{cityData.Name} — {label}\n수행 장수: {g.Name}   ({EffText(cmd.Kind, g, cityData)})\n\n실행하시겠습니까?";
+
+        // 도시 계략은 소요일(거리 비례)·성공률을 발행 전에 확정 표시한다(모든 계략 사전 컨펌).
+        var extra = "";
+        if (cmd.Param == "stratagem" && targetCity is { } tid)
+        {
+            var target = _session.State.Cities.First(x => x.Id == tid);
+            var defenderInt = target.Governor is { } govId
+                ? _session.State.Generals.FirstOrDefault(x => x.Id == govId)?.Intellect
+                : null;
+            var days = CityStratagems.Days(cityData.Position, target.Position, _commandBalance);
+            var success = CityStratagems.SuccessPercent(g.Intellect, defenderInt);
+            extra = $"\n대상: {target.Name} · 소요 {days}일 · 성공률 {success}%";
+        }
+
+        _confirm.DialogText = $"{cityData.Name} — {label}{extra}\n수행 장수: {g.Name}   ({EffText(cmd.Kind, g, cityData)})\n\n실행하시겠습니까?";
         Ask(_confirm.DialogText, () =>
         {
             var result = _session.Issue(request);
@@ -345,7 +400,7 @@ public sealed partial class AdminScene : Control
             CommandKind.Recruit or CommandKind.Conscript or CommandKind.Build =>
                 $"유효 정치 {CommandEfficiency.Effective(g, null, city, kind, _commandBalance)}{home}",
             CommandKind.Train => $"유효 무력 {CommandEfficiency.Effective(g, null, city, kind, _commandBalance)}{home}",
-            CommandKind.Research => $"지력 {g.Intellect}",
+            CommandKind.Research or CommandKind.CityStratagem => $"지력 {g.Intellect}",
             _ => "효율 무관",
         };
     }

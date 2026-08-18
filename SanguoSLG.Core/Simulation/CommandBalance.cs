@@ -89,6 +89,24 @@ public sealed record CommandBalance
     /// <summary>지역 고정 자원 시설(광산·목장·상원) 수리 정액(금) — 건설비가 없어 별도.</summary>
     public int ResourceFacilityRepairCost { get; init; } = 400;
 
+    /// <summary>사절·첩자 이동 속도(칸/일, 기병 기준) — 원거리 명령 소요일 = 기본 + ⌈거리÷속도⌉×2(왕복).</summary>
+    public int CourierSpeed { get; init; } = 3;
+
+    /// <summary>도시 계략 성벽파괴 — 성벽 최대치의 이 %를 깎는다.</summary>
+    public int StratagemWallBreakPercent { get; init; } = 10;
+
+    /// <summary>도시 계략 선동 — 치안을 이 값만큼 깎는다.</summary>
+    public int StratagemInciteSecurity { get; init; } = 10;
+
+    /// <summary>도시 계략 방화 — 군량 비축의 이 %를 태운다.</summary>
+    public int StratagemArsonPercent { get; init; } = 20;
+
+    /// <summary>도시 계략 절취 — 금고의 이 %를 훔쳐 수행 도시에 예치한다.</summary>
+    public int StratagemStealPercent { get; init; } = 20;
+
+    /// <summary>도시 계략 이간 — 대상 도시 충성 최저 장수의 충성을 이 값만큼 깎는다.</summary>
+    public int StratagemDiscordLoyalty { get; init; } = 20;
+
     /// <summary>시설 건설 비용(금).</summary>
     public int BuildCostPaddy { get; init; } = 300;
     public int BuildCostFarm { get; init; } = 200;

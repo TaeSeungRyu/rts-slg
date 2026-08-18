@@ -4,8 +4,9 @@ using SanguoSLG.Core.Domain;
 
 /// <summary>명령 발행 요청(design-administration.md). 산출량은 능력에서 계산되므로 지정하지 않는다.</summary>
 /// <param name="Value">세율 명령의 목표 세율(그 외 무시).</param>
-/// <param name="Facility">건설 명령의 시설 종류("paddy"/"farm"/"village"/"workshop").</param>
+/// <param name="Facility">건설·수리 시설 종류 또는 도시 계략 종류(CityStratagems.Kinds).</param>
 /// <param name="TroopCode">모집(모병·징병)·훈련의 병종 코드 — 2026-08-16 확정: 병종은 모집 시 지정.</param>
+/// <param name="TargetCity">도시 계략의 대상(적) 도시.</param>
 public sealed record CommandRequest(
     CityId City,
     CommandKind Kind,
@@ -13,7 +14,8 @@ public sealed record CommandRequest(
     GeneralId? Assist = null,
     int Value = 0,
     string Facility = "",
-    string TroopCode = "");
+    string TroopCode = "",
+    CityId? TargetCity = null);
 
 /// <summary>명령 발행 결과 — 실패면 <see cref="Error"/>에 사유, 상태는 그대로.</summary>
 public sealed record CommandResult(bool Ok, string? Error, GameState State)
@@ -100,6 +102,7 @@ public sealed class CommandService
             CommandKind.SetTaxRate => IssueTax(state, city, req, assist),
             CommandKind.Research => IssueResearch(state, city, req, assist, main),
             CommandKind.Repair => IssueRepair(state, city, req, assist),
+            CommandKind.CityStratagem => IssueCityStratagem(state, city, req, assist),
             _ => CommandResult.Fail("알 수 없는 명령이다.", state),
         };
     }
@@ -304,6 +307,36 @@ public sealed class CommandService
 
     private int FacilityRepairCost(int buildCost) => buildCost * _b.RepairCostPercent / 100;
 
+    // 도시 계략 발행(design-stratagem "수행 규칙"): 대상 = 정찰된 적 도시(정찰 계략만 전제 없음),
+    // 소요일 = 거리 비례(CityStratagems.Days — 발행 전 컨펌 UI가 같은 값을 보여준다). 성공 판정은 정산에서.
+    private CommandResult IssueCityStratagem(GameState state, City city, CommandRequest req, General? assist)
+    {
+        if (!CityStratagems.IsKind(req.Facility))
+        {
+            return CommandResult.Fail("알 수 없는 도시 계략이다.", state);
+        }
+
+        if (req.TargetCity is not { } targetId)
+        {
+            return CommandResult.Fail("대상 도시를 지정해야 한다.", state);
+        }
+
+        var target = state.Cities.FirstOrDefault(c => c.Id == targetId);
+        if (target is null || target.Owner == city.Owner)
+        {
+            return CommandResult.Fail("적 도시만 대상이 될 수 있다.", state);
+        }
+
+        if (CityStratagems.RequiresScout(req.Facility) && !state.IsScouted(city.Owner, targetId))
+        {
+            return CommandResult.Fail("먼저 정찰해야 한다.", state);
+        }
+
+        var days = CityStratagems.Days(city.Position, target.Position, _b);
+        return Register(state, city, req, assist, amount: 0, days, CommandKind.CityStratagem, req.Facility,
+            targetCity: targetId);
+    }
+
     private CommandResult IssueTax(GameState state, City city, CommandRequest req, General? assist)
     {
         if (req.Value is < 0 or > 50)
@@ -315,11 +348,11 @@ public sealed class CommandService
     }
 
     private static CommandResult Register(GameState state, City reservedCity, CommandRequest req, General? assist,
-        int amount, int days, CommandKind kind, string facility, string troopCode = "")
+        int amount, int days, CommandKind kind, string facility, string troopCode = "", CityId? targetCity = null)
     {
         var cities = state.Cities.Select(c => c.Id == reservedCity.Id ? reservedCity : c).ToList();
         var command = new CityCommand(req.City, kind, req.Main, assist?.Id,
-            state.Day, state.Day + days, amount, facility, troopCode);
+            state.Day, state.Day + days, amount, facility, troopCode, targetCity);
         var pending = state.Commands.Append(command).ToList();
         return CommandResult.Success(state with { Cities = cities, PendingCommands = pending });
     }

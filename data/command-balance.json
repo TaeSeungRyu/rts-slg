@@ -31,5 +31,11 @@
   "wall_repair_gold_divisor": 5,
   "plunder_percent": 50,
   "repair_cost_percent": 50,
-  "resource_facility_repair_cost": 400
+  "resource_facility_repair_cost": 400,
+  "courier_speed": 3,
+  "stratagem_wall_break_percent": 10,
+  "stratagem_incite_security": 10,
+  "stratagem_arson_percent": 20,
+  "stratagem_steal_percent": 20,
+  "stratagem_discord_loyalty": 20
 }
