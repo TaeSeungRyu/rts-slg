@@ -184,105 +184,263 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (_icons.TryGetValue(s, out var c)) { return c; }
 
-        const int N = 22;
-        var img = Image.CreateEmpty(N, N, false, Image.Format.Rgba8);
-        img.Fill(new Color(0, 0, 0, 0));
-        void Rect(int x0, int y0, int x1, int y1, Color col)
-        {
-            for (var y = y0; y <= y1; y++)
-            {
-                for (var x = x0; x <= x1; x++)
-                {
-                    if (x >= 0 && x < N && y >= 0 && y < N) { img.SetPixel(x, y, col); }
-                }
-            }
-        }
-
-        void Disc(float cx, float cy, float r, Color col)
-        {
-            for (var y = 0; y < N; y++)
-            {
-                for (var x = 0; x < N; x++)
-                {
-                    if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r) { img.SetPixel(x, y, col); }
-                }
-            }
-        }
-
-        void Diamond(int cx, int cy, int r, Color col)
-        {
-            for (var y = 0; y < N; y++)
-            {
-                for (var x = 0; x < N; x++)
-                {
-                    if (System.Math.Abs(x - cx) + System.Math.Abs(y - cy) <= r) { img.SetPixel(x, y, col); }
-                }
-            }
-        }
-
+        var img = NewBig();
         var steel = new Color(0.80f, 0.84f, 0.90f);
         var stone = new Color(0.66f, 0.66f, 0.68f);
         var tan = new Color(0.82f, 0.72f, 0.48f);
+        var ink = new Color(0.55f, 0.45f, 0.26f);
         switch (s)
         {
             case Sym.Sword: // 칼: 강철 날 + 금색 코등이·자루
-                Rect(10, 2, 12, 13, steel);
-                Rect(6, 13, 16, 14, Gold);
-                Rect(10, 14, 12, 19, Gold);
+                RectU(img, 10, 2, 12, 13, steel);
+                RectU(img, 6, 13, 16, 14, Gold);
+                RectU(img, 10, 14, 12, 19, Gold);
                 break;
             case Sym.Coin: // 금화
-                Disc(11, 11, 8.5f, Gold);
-                Disc(11, 11, 5.5f, GoldBright);
+                DiscU(img, 11, 11, 8.5f, Gold);
+                DiscU(img, 11, 11, 5.5f, GoldBright);
+                GlossU(img, 8.5f, 8f, 4.5f, 0.5f);
                 break;
             case Sym.Book: // 서책
-                Rect(4, 4, 18, 18, tan);
-                Rect(10, 4, 12, 18, new Color(0.55f, 0.45f, 0.26f));
+                RectU(img, 4, 4, 18, 18, tan);
+                RectU(img, 10, 4, 12, 18, ink);
                 break;
             case Sym.Wall: // 성벽(총안)
-                Rect(3, 10, 19, 18, stone);
-                Rect(3, 5, 7, 10, stone);
-                Rect(10, 5, 12, 10, stone);
-                Rect(15, 5, 19, 10, stone);
+                RectU(img, 3, 10, 19, 18, stone);
+                RectU(img, 3, 5, 7, 10, stone);
+                RectU(img, 10, 5, 12, 10, stone);
+                RectU(img, 15, 5, 19, 10, stone);
                 break;
             case Sym.Scroll: // 계략(두루마리)
-                Rect(5, 3, 17, 19, tan);
-                Rect(5, 7, 17, 8, new Color(0.55f, 0.45f, 0.26f));
-                Rect(5, 12, 17, 13, new Color(0.55f, 0.45f, 0.26f));
+                RectU(img, 5, 3, 17, 19, tan);
+                RectU(img, 5, 7, 17, 8, ink);
+                RectU(img, 5, 12, 17, 13, ink);
                 break;
             case Sym.Grain: // 군량(낟알)
-                Diamond(11, 11, 8, new Color(0.90f, 0.78f, 0.42f));
+                DiamondU(img, 11, 11, 8, new Color(0.90f, 0.78f, 0.42f));
+                GlossU(img, 9f, 8f, 4f, 0.4f);
                 break;
             case Sym.Flag: // 성/세력(깃발)
-                Rect(6, 3, 7, 19, Gold);
-                Rect(7, 4, 17, 11, GoldBright);
+                RectU(img, 6, 3, 7, 19, Gold);
+                RectU(img, 7, 4, 17, 11, GoldBright);
                 break;
             case Sym.People: // 인구(사람 둘)
-                Disc(8, 8, 3.2f, tan);
-                Rect(5, 11, 11, 18, tan);
-                Disc(15, 9, 2.6f, new Color(0.66f, 0.58f, 0.40f));
-                Rect(12, 12, 18, 18, new Color(0.66f, 0.58f, 0.40f));
+                DiscU(img, 8, 8, 3.4f, tan);
+                RectU(img, 5, 11, 11, 18, tan);
+                DiscU(img, 15, 9, 2.8f, new Color(0.66f, 0.58f, 0.40f));
+                RectU(img, 12, 12, 18, 18, new Color(0.66f, 0.58f, 0.40f));
                 break;
             case Sym.Shield: // 치안(방패)
-                Rect(5, 3, 17, 5, new Color(0.42f, 0.62f, 0.46f));
-                Rect(5, 3, 7, 12, new Color(0.42f, 0.62f, 0.46f));
-                Rect(15, 3, 17, 12, new Color(0.42f, 0.62f, 0.46f));
-                Diamond(11, 13, 6, new Color(0.42f, 0.62f, 0.46f));
+                RectU(img, 5, 3, 17, 5, new Color(0.42f, 0.62f, 0.46f));
+                RectU(img, 5, 3, 7, 12, new Color(0.42f, 0.62f, 0.46f));
+                RectU(img, 15, 3, 17, 12, new Color(0.42f, 0.62f, 0.46f));
+                DiamondU(img, 11, 13, 6, new Color(0.42f, 0.62f, 0.46f));
                 break;
             case Sym.Ore: // 광석(광물 덩이)
-                Diamond(11, 12, 7, new Color(0.60f, 0.66f, 0.74f));
-                Rect(8, 9, 10, 11, new Color(0.80f, 0.84f, 0.90f));
+                DiamondU(img, 11, 12, 7, new Color(0.60f, 0.66f, 0.74f));
+                DiscU(img, 9, 10, 2.2f, new Color(0.86f, 0.90f, 0.96f));
+                GlossU(img, 9f, 10f, 3f, 0.5f);
                 break;
             case Sym.Officer: // 장수 인물 배지(금테 원 + 인물 실루엣)
-                Disc(11, 11, 10f, Gold);
-                Disc(11, 11, 8.5f, new Color(0.16f, 0.15f, 0.14f));
-                Disc(11, 8, 3.2f, Parchment);          // 머리
-                Rect(6, 12, 16, 19, Parchment);         // 어깨
+                DiscU(img, 11, 11, 10f, Gold);
+                DiscU(img, 11, 11, 8.4f, new Color(0.16f, 0.15f, 0.14f));
+                DiscU(img, 11, 8, 3.2f, Parchment);   // 머리
+                RectU(img, 6, 12, 16, 19, Parchment);  // 어깨
+                GlossU(img, 8f, 7.5f, 5f, 0.28f);
                 break;
         }
 
-        var tex = ImageTexture.CreateFromImage(img);
+        ShadeVertical(img);
+        var tex = Shadowed(img);
         _icons[s] = tex;
         return tex;
+    }
+
+    // ── 코드 생성 아이콘 렌더러: 6배 슈퍼샘플(안티에일리어싱) + 음영·광택·드롭섀도우 + 밉맵 ──
+    private const int IconUnits = 22;
+    private const int IconScale = 6;
+    private const int IconBig = IconUnits * IconScale;
+
+    private static Image NewBig()
+    {
+        var img = Image.CreateEmpty(IconBig, IconBig, false, Image.Format.Rgba8);
+        img.Fill(new Color(0, 0, 0, 0));
+        return img;
+    }
+
+    // 알파 오버 합성.
+    private static void BlendPix(Image img, int x, int y, Color src, float a)
+    {
+        if (a <= 0f || x < 0 || x >= IconBig || y < 0 || y >= IconBig) { return; }
+        if (a > 1f) { a = 1f; }
+        var d = img.GetPixel(x, y);
+        var na = a + (d.A * (1f - a));
+        if (na <= 0.0001f) { img.SetPixel(x, y, new Color(0, 0, 0, 0)); return; }
+        var inv = d.A * (1f - a);
+        img.SetPixel(x, y, new Color(
+            ((src.R * a) + (d.R * inv)) / na,
+            ((src.G * a) + (d.G * inv)) / na,
+            ((src.B * a) + (d.B * inv)) / na, na));
+    }
+
+    private static void RectU(Image img, float x0, float y0, float x1, float y1, Color col)
+    {
+        var bx0 = (int)(x0 * IconScale);
+        var bx1 = (int)(((x1 + 1) * IconScale) - 1);
+        var by0 = (int)(y0 * IconScale);
+        var by1 = (int)(((y1 + 1) * IconScale) - 1);
+        for (var y = by0; y <= by1; y++)
+        {
+            for (var x = bx0; x <= bx1; x++) { BlendPix(img, x, y, col, 1f); }
+        }
+    }
+
+    private static void DiscU(Image img, float cx, float cy, float r, Color col)
+        => Radial(img, cx, cy, r, (x, y, cxB, cyB, rB) =>
+        {
+            var dd = System.MathF.Sqrt(((x - cxB) * (x - cxB)) + ((y - cyB) * (y - cyB)));
+            return Mathf.Clamp(((rB - dd) / 1.7f) + 0.5f, 0f, 1f);
+        }, col);
+
+    private static void DiamondU(Image img, float cx, float cy, float r, Color col)
+        => Radial(img, cx, cy, r, (x, y, cxB, cyB, rB) =>
+        {
+            var dd = System.MathF.Abs(x - cxB) + System.MathF.Abs(y - cyB);
+            return Mathf.Clamp(((rB - dd) / 1.7f) + 0.5f, 0f, 1f);
+        }, col);
+
+    private static void Radial(Image img, float cx, float cy, float r,
+        System.Func<int, int, float, float, float, float> coverage, Color col)
+    {
+        var cxB = (cx * IconScale) + (IconScale / 2f);
+        var cyB = (cy * IconScale) + (IconScale / 2f);
+        var rB = r * IconScale;
+        var x0 = System.Math.Max(0, (int)(cxB - rB - 2));
+        var x1 = System.Math.Min(IconBig - 1, (int)(cxB + rB + 2));
+        var y0 = System.Math.Max(0, (int)(cyB - rB - 2));
+        var y1 = System.Math.Min(IconBig - 1, (int)(cyB + rB + 2));
+        for (var y = y0; y <= y1; y++)
+        {
+            for (var x = x0; x <= x1; x++) { BlendPix(img, x, y, col, coverage(x, y, cxB, cyB, rB)); }
+        }
+    }
+
+    // 둥근 표면 광택(이미 그려진 곳에만 부드러운 흰 하이라이트).
+    private static void GlossU(Image img, float cx, float cy, float r, float peak)
+    {
+        var cxB = (cx * IconScale) + (IconScale / 2f);
+        var cyB = (cy * IconScale) + (IconScale / 2f);
+        var rB = r * IconScale;
+        var x0 = System.Math.Max(0, (int)(cxB - rB));
+        var x1 = System.Math.Min(IconBig - 1, (int)(cxB + rB));
+        var y0 = System.Math.Max(0, (int)(cyB - rB));
+        var y1 = System.Math.Min(IconBig - 1, (int)(cyB + rB));
+        for (var y = y0; y <= y1; y++)
+        {
+            for (var x = x0; x <= x1; x++)
+            {
+                if (img.GetPixel(x, y).A <= 0.01f) { continue; }
+                var dd = System.MathF.Sqrt(((x - cxB) * (x - cxB)) + ((y - cyB) * (y - cyB)));
+                if (dd >= rB) { continue; }
+                var t = 1f - (dd / rB);
+                BlendPix(img, x, y, new Color(1f, 1f, 1f), t * t * peak);
+            }
+        }
+    }
+
+    // 위→아래 밝기 기울기(입체감).
+    private static void ShadeVertical(Image img)
+    {
+        for (var y = 0; y < IconBig; y++)
+        {
+            var f = Mathf.Lerp(1.14f, 0.80f, (float)y / (IconBig - 1));
+            for (var x = 0; x < IconBig; x++)
+            {
+                var p = img.GetPixel(x, y);
+                if (p.A <= 0f) { continue; }
+                img.SetPixel(x, y, new Color(Mathf.Clamp(p.R * f, 0, 1), Mathf.Clamp(p.G * f, 0, 1), Mathf.Clamp(p.B * f, 0, 1), p.A));
+            }
+        }
+    }
+
+    // 부드러운 드롭 섀도우 합성 + 밉맵 생성(축소 표시에서도 선명).
+    private ImageTexture Shadowed(Image img)
+    {
+        var sa = new float[IconBig * IconBig];
+        const int ox = 4;
+        const int oy = 7;
+        for (var y = 0; y < IconBig; y++)
+        {
+            for (var x = 0; x < IconBig; x++)
+            {
+                var sxx = x - ox;
+                var syy = y - oy;
+                if (sxx >= 0 && sxx < IconBig && syy >= 0 && syy < IconBig)
+                {
+                    sa[(y * IconBig) + x] = img.GetPixel(sxx, syy).A;
+                }
+            }
+        }
+
+        sa = Blur(Blur(sa));
+
+        var outImg = NewBig();
+        for (var y = 0; y < IconBig; y++)
+        {
+            for (var x = 0; x < IconBig; x++)
+            {
+                var content = img.GetPixel(x, y);
+                var shA = Mathf.Clamp(sa[(y * IconBig) + x] * 0.5f, 0f, 1f);
+                var outA = content.A + (shA * (1f - content.A));
+                if (outA <= 0.0001f) { continue; }
+                var k = content.A / outA; // 섀도우 rgb=0 이므로 본체 색만 남는다
+                outImg.SetPixel(x, y, new Color(content.R * k, content.G * k, content.B * k, outA));
+            }
+        }
+
+        outImg.GenerateMipmaps();
+        return ImageTexture.CreateFromImage(outImg);
+    }
+
+    // 분리형 박스 블러(수평→수직).
+    private static float[] Blur(float[] src)
+    {
+        const int rad = 5;
+        var tmp = new float[src.Length];
+        for (var y = 0; y < IconBig; y++)
+        {
+            for (var x = 0; x < IconBig; x++)
+            {
+                float sum = 0f;
+                var cnt = 0;
+                for (var k = -rad; k <= rad; k++)
+                {
+                    var xx = x + k;
+                    if (xx >= 0 && xx < IconBig) { sum += src[(y * IconBig) + xx]; cnt++; }
+                }
+
+                tmp[(y * IconBig) + x] = sum / cnt;
+            }
+        }
+
+        var dst = new float[src.Length];
+        for (var y = 0; y < IconBig; y++)
+        {
+            for (var x = 0; x < IconBig; x++)
+            {
+                float sum = 0f;
+                var cnt = 0;
+                for (var k = -rad; k <= rad; k++)
+                {
+                    var yy = y + k;
+                    if (yy >= 0 && yy < IconBig) { sum += tmp[(yy * IconBig) + x]; cnt++; }
+                }
+
+                dst[(y * IconBig) + x] = sum / cnt;
+            }
+        }
+
+        return dst;
     }
 
     // 좌클릭 → 지면 헥사 → 그 칸의 성. 내 성이면 명령 패널, 아니면 닫는다.
@@ -499,6 +657,7 @@ public sealed partial class CampaignMapScene : Node3D
         var card = new PanelContainer { Visible = false, CustomMinimumSize = new Vector2(width, 0) };
         card.SetAnchorsPreset(preset);
         card.Position = offset;
+        card.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps; // 고해상 아이콘 축소 시 선명
         card.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
         layer.AddChild(card);
         var box = new VBoxContainer();
@@ -606,6 +765,7 @@ public sealed partial class CampaignMapScene : Node3D
         var panel = new PanelContainer();
         panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 3, 14, 26));
         panel.MouseFilter = Control.MouseFilterEnum.Stop;
+        panel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps; // 고해상 아이콘 축소 시 선명
         center.AddChild(panel);
 
         var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(772, 604) };
@@ -852,28 +1012,50 @@ public sealed partial class CampaignMapScene : Node3D
         _ => Gold,
     };
 
-    // 병종 분류 표식(금테 원 안 분류색 원반) — 카드용 큰 아이콘.
+    // 병종 분류 표식 — 분류색 광택 구체 + 금테 링(방향광 램버트 음영 + 스페큘러 + 드롭섀도우).
     private ImageTexture ClassEmblem(TroopClass c)
     {
         if (_emblems.TryGetValue(c, out var cached)) { return cached; }
 
-        const int N = 44;
+        var img = NewBig();
         var col = ClassColor(c);
-        var img = Image.CreateEmpty(N, N, false, Image.Format.Rgba8);
-        img.Fill(new Color(0, 0, 0, 0));
-        var cc = (N - 1) / 2f;
-        var r = N * 0.40f;
-        for (var y = 0; y < N; y++)
+        var cx = IconBig / 2f;
+        var cy = IconBig / 2f;
+        var r = IconBig * 0.40f;
+        var goldW = IconBig * 0.055f;
+        const float lx = -0.5f;
+        const float ly = -0.62f;
+        const float lz = 0.60f;
+        for (var y = 0; y < IconBig; y++)
         {
-            for (var x = 0; x < N; x++)
+            var rimShade = Mathf.Lerp(1.18f, 0.72f, (float)y / (IconBig - 1));
+            for (var x = 0; x < IconBig; x++)
             {
-                var d = System.MathF.Sqrt(((x - cc) * (x - cc)) + ((y - cc) * (y - cc)));
-                if (d <= r) { img.SetPixel(x, y, y < cc ? col.Lightened(0.12f) : col.Darkened(0.10f)); }
-                else if (d <= r + 2.4f) { img.SetPixel(x, y, Gold); }
+                var dd = System.MathF.Sqrt(((x - cx) * (x - cx)) + ((y - cy) * (y - cy)));
+
+                var covB = Mathf.Clamp(((r - dd) / 1.7f) + 0.5f, 0f, 1f);
+                if (covB > 0f)
+                {
+                    var nx = (x - cx) / r;
+                    var ny = (y - cy) / r;
+                    var nz = System.MathF.Sqrt(System.MathF.Max(0f, 1f - (nx * nx) - (ny * ny)));
+                    var lambert = Mathf.Clamp((nx * lx) + (ny * ly) + (nz * lz), 0f, 1f);
+                    var sh = 0.55f + (0.75f * lambert);
+                    BlendPix(img, x, y, new Color(Mathf.Clamp(col.R * sh, 0, 1), Mathf.Clamp(col.G * sh, 0, 1), Mathf.Clamp(col.B * sh, 0, 1)), covB);
+                }
+
+                var rimIn = Mathf.Clamp(((dd - (r - 0.8f)) / 1.7f) + 0.5f, 0f, 1f);
+                var rimOut = Mathf.Clamp((((r + goldW) - dd) / 1.7f) + 0.5f, 0f, 1f);
+                var covG = rimIn * rimOut;
+                if (covG > 0f)
+                {
+                    BlendPix(img, x, y, new Color(Mathf.Clamp(Gold.R * rimShade, 0, 1), Mathf.Clamp(Gold.G * rimShade, 0, 1), Mathf.Clamp(Gold.B * rimShade, 0, 1)), covG);
+                }
             }
         }
 
-        var tex = ImageTexture.CreateFromImage(img);
+        GlossU(img, (IconUnits * 0.5f) - 3.0f, (IconUnits * 0.5f) - 3.6f, 6.5f, 0.55f);
+        var tex = Shadowed(img);
         _emblems[c] = tex;
         return tex;
     }
