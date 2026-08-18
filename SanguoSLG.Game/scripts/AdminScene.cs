@@ -118,7 +118,11 @@ public sealed partial class AdminScene : Control
     // 제목 라벨 + 스크롤 내용 VBox를 담은 패널 컬럼을 만든다. 패널을 반환하고 내용 VBox를 out으로.
     private static PanelContainer ColumnBody(Container parent, string title, int width, out VBoxContainer body)
     {
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(width, 0) };
+        var panel = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(width, 0),
+            SizeFlagsVertical = SizeFlags.ExpandFill, // HBox가 세로로 늘려줘야 스크롤·버튼이 펼쳐진다
+        };
         parent.AddChild(panel);
         var inner = new VBoxContainer();
         inner.AddThemeConstantOverride("separation", 6);
@@ -158,8 +162,8 @@ public sealed partial class AdminScene : Control
             var pendingText = pending > 0 ? $"  진행중 {pending}" : "";
             var btn = new Button
             {
-                Text = $"[{Size(city.Castle)}] {city.Name}\n금 {city.Gold}  성벽 {city.Wall}  병 {troops}{pendingText}",
-                CustomMinimumSize = new Vector2(0, 52),
+                Text = $"[{Size(city.Castle)}] {city.Name}  금{city.Gold} 성벽{city.Wall} 병{troops}{pendingText}",
+                CustomMinimumSize = new Vector2(0, 38),
                 Alignment = HorizontalAlignment.Left,
             };
             var id = city.Id;
