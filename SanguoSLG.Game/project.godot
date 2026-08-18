@@ -9,6 +9,14 @@ config/name="SanguoSLG"
 run/main_scene="res://Main3D.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/size/resizable=true
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
 [dotnet]
 
 project/assembly_name="SanguoSLG.Game"
