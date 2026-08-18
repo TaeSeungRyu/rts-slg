@@ -1,5 +1,6 @@
 namespace SanguoSLG.Sandbox;
 
+using SanguoSLG.Core.AI;
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
@@ -14,9 +15,80 @@ using SanguoSLG.Core.Spatial;
 internal static class SpectatorCampaign
 {
     private const string Troop = "swordsman";
-    private const int DeployTarget = 8000;   // 대기 병력이 이 이상이면 출전(결정적 규모)
-    private const int DeploySize = 10000;    // 한 번에 편성하는 병력(일반 부대 상한)
-    private const int MinOre = 300;          // 광석이 이 이상일 때만 모집
+    /// <summary>밸런스 검증: 여러 시드로 조용히 수렴까지 돌려 무예외·수렴(승자·소요 주)을 집계한다.</summary>
+    public static void Balance(string dataDir, int seeds, int capWeeks)
+    {
+        Console.WriteLine("=== 밸런스 검증(세력 AI 자율 전쟁) ===");
+        Console.WriteLine($"시드 {seeds}개 · 상한 {capWeeks}주");
+        var converged = 0;
+        var totalWeeks = 0;
+        var wins = new Dictionary<string, int>();
+
+        for (var seed = 1; seed <= seeds; seed++)
+        {
+            var (winner, w) = RunSilent(dataDir, capWeeks, seed);
+            if (winner is not null)
+            {
+                converged++;
+                totalWeeks += w;
+                wins[winner] = wins.GetValueOrDefault(winner) + 1;
+                Console.WriteLine($"  seed {seed,3}: {winner} 통일 (주 {w})");
+            }
+            else
+            {
+                Console.WriteLine($"  seed {seed,3}: 미결착({capWeeks}주)");
+            }
+        }
+
+        Console.WriteLine();
+        Console.WriteLine($"수렴 {converged}/{seeds}  평균 {(converged > 0 ? (totalWeeks / converged).ToString() : "-")}주  " +
+            $"승자 {string.Join(", ", wins.OrderByDescending(k => k.Value).Select(k => $"{k.Key} {k.Value}"))}");
+    }
+
+    // 로그 없이 한 캠페인을 수렴/상한까지 돌린다. (승자 이름, 소요 주) — 미결착이면 (null, cap).
+    private static (string? Winner, int Weeks) RunSilent(string dataDir, int capWeeks, int seed)
+    {
+        var (ai, engine, state) = Build(dataDir, seed);
+        for (var w = 1; w <= capWeeks; w++)
+        {
+            foreach (var f in state.Factions.OrderBy(f => f.Id.Value).ToList())
+            {
+                state = ai.PlanWeek(state, f.Id);
+            }
+
+            state = engine.AdvanceWeek(state, out _, out _, out _);
+            var alive = state.Factions.Where(f => state.CityCount(f.Id) > 0).ToList();
+            if (alive.Count <= 1)
+            {
+                return (alive.Count == 1 ? alive[0].Name : "무승부", w);
+            }
+        }
+
+        return (null, capWeeks);
+    }
+
+    private static (FactionAI Ai, CampaignEngine Engine, GameState State) Build(string dataDir, int seed)
+    {
+        var scenario = new ScenarioLoader().LoadFromDirectory(dataDir);
+        var cmdBalance = new CommandBalanceLoader().LoadFromDirectory(dataDir);
+        var troops = new TroopTypeLoader().LoadFromDirectory(dataDir);
+        var actives = new ActiveSkillLoader().LoadFromDirectory(dataDir);
+        var passives = new PassiveSkillLoader().LoadFromDirectory(dataDir);
+        var adminSkills = new AdminSkillLoader().LoadFromDirectory(dataDir);
+
+        var ai = new FactionAI(new CommandService(cmdBalance, troops),
+            new DeployService(cmdBalance, troops, actives, passives));
+        var world = new WorldEngine(scenario.Balance, cmdBalance, adminSkills);
+        var orchestrator = new AdvanceOrchestrator(
+            new MovementSimulator(new PassabilityMap(scenario.Map, scenario.Features, scenario.Cities)),
+            new CombatPhaseResolver(
+                new BattleResolver(scenario.Balance.MultiTargetSecondaryPercent),
+                scenario.Balance.WoundedPercent));
+        var engine = new CampaignEngine(orchestrator, world,
+            new CampaignSiege(new BattleResolver(scenario.Balance.MultiTargetSecondaryPercent), troops),
+            new CityCapture(), new SeededRandomSource(seed));
+        return (ai, engine, GameState.FromScenario(scenario));
+    }
 
     public static void Run(string dataDir, int weeks, int seed)
     {
@@ -29,6 +101,7 @@ internal static class SpectatorCampaign
 
         var commander = new CommandService(cmdBalance, troops);
         var deployer = new DeployService(cmdBalance, troops, actives, passives);
+        var ai = new FactionAI(commander, deployer);
         var world = new WorldEngine(scenario.Balance, cmdBalance, adminSkills);
         var orchestrator = new AdvanceOrchestrator(
             new MovementSimulator(new PassabilityMap(scenario.Map, scenario.Features, scenario.Cities)),
@@ -41,8 +114,8 @@ internal static class SpectatorCampaign
 
         var state = GameState.FromScenario(scenario);
 
-        Console.WriteLine("=== 관전 캠페인 (최소 휴리스틱 자율 전쟁) ===");
-        Console.WriteLine($"seed={seed}  weeks={weeks}  출전 문턱 {DeployTarget}");
+        Console.WriteLine("=== 관전 캠페인 (세력 AI 자율 전쟁) ===");
+        Console.WriteLine($"seed={seed}  weeks={weeks}");
         foreach (var f in state.Factions.OrderBy(f => f.Id.Value))
         {
             var names = state.GeneralsOf(f.Id).Select(id => state.Generals.First(g => g.Id == id).Name);
@@ -52,7 +125,11 @@ internal static class SpectatorCampaign
         Console.WriteLine();
         for (var w = 1; w <= weeks; w++)
         {
-            state = Decide(state, commander, deployer);
+            foreach (var f in state.Factions.OrderBy(f => f.Id.Value).ToList())
+            {
+                state = ai.PlanWeek(state, f.Id);
+            }
+
             state = engine.AdvanceWeek(state, out _, out var sieges, out var captures);
             PrintWeek(w, state, sieges, captures);
 
@@ -84,81 +161,6 @@ internal static class SpectatorCampaign
             Console.WriteLine($"  포로: {string.Join(", ", names)}");
         }
     }
-
-    // 최소 휴리스틱. 각 세력: ① 멈춘 야전 공격 부대는 가장 가까운 적 성으로 재조준(목표가 함락돼
-    // 무효화되면 다시 향한다), ② 각 도시(id순) 장수 1명으로 한 행동 — 대기 병력이 문턱 이상이고
-    // **도시에 장수가 2명 이상 남을 때만** 출전(1명은 모집용으로 남긴다), 아니면 여력만큼 모집.
-    private static GameState Decide(GameState state, CommandService commander, DeployService deployer)
-    {
-        foreach (var faction in state.Factions.OrderBy(f => f.Id.Value).ToList())
-        {
-            state = Retarget(state, faction.Id);
-
-            foreach (var city in state.Cities.Where(c => c.Owner == faction.Id).OrderBy(c => c.Id.Value).ToList())
-            {
-                var free = state.GeneralsAt(city.Id)
-                    .Where(g => !state.IsGeneralBusy(g))
-                    .OrderBy(g => g.Value)
-                    .ToList();
-                if (free.Count == 0)
-                {
-                    continue;
-                }
-
-                var gid = free[0];
-                var garrison = state.Garrisons
-                    .Where(g => g.City == city.Id && g.TroopCode == Troop)
-                    .Sum(g => g.Troops);
-
-                if (garrison >= DeployTarget && free.Count >= 2)
-                {
-                    var target = NearestEnemyCity(state, faction.Id, city.Position);
-                    if (target is { } dest)
-                    {
-                        var r = deployer.Deploy(state, new DeployRequest(
-                            city.Id, Troop, System.Math.Min(garrison, DeploySize), gid, Mode: UnitMode.Attack, Target: dest));
-                        if (r.Ok)
-                        {
-                            state = r.State;
-                        }
-                    }
-                }
-                else if (city.Ore >= MinOre)
-                {
-                    var r = commander.Issue(state, new CommandRequest(
-                        city.Id, CommandKind.Recruit, gid, TroopCode: Troop));
-                    if (r.Ok)
-                    {
-                        state = r.State;
-                    }
-                }
-            }
-        }
-
-        return state;
-    }
-
-    // 야전 공격 부대를 가장 가까운 적 성으로 재조준한다(멈춘 부대·무효 목표를 다시 진격시킨다).
-    private static GameState Retarget(GameState state, FactionId faction)
-    {
-        var armies = state.Armies.Select(u =>
-        {
-            if (u.Field.Owner != faction || u.Field.Mode != UnitMode.Attack)
-            {
-                return u;
-            }
-
-            var target = NearestEnemyCity(state, faction, u.Field.Position);
-            return target is { } dest ? u with { Field = u.Field with { Target = dest } } : u;
-        }).ToList();
-        return state with { FieldArmies = armies };
-    }
-
-    private static HexCoord? NearestEnemyCity(GameState state, FactionId self, HexCoord from)
-        => state.Cities.Where(c => c.Owner != self)
-            .OrderBy(c => c.Position.Distance(from)).ThenBy(c => c.Id.Value)
-            .Select(c => (HexCoord?)c.Position)
-            .FirstOrDefault();
 
     private static void PrintWeek(int week, GameState state,
         IReadOnlyList<SiegeExchange> sieges, IReadOnlyList<CaptureReport> captures)

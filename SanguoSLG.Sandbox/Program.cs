@@ -8,6 +8,7 @@ using SanguoSLG.Sandbox;
 var turns = 12;
 var seed = 42;
 var watchWeeks = 0;
+var balanceSeeds = 0;
 for (var i = 0; i + 1 < args.Length; i++)
 {
     if (args[i] == "--turns" && int.TryParse(args[i + 1], out var t))
@@ -22,6 +23,17 @@ for (var i = 0; i + 1 < args.Length; i++)
     {
         watchWeeks = w;
     }
+    else if (args[i] == "--balance" && int.TryParse(args[i + 1], out var b))
+    {
+        balanceSeeds = b;
+    }
+}
+
+// --balance <시드수>: 여러 시드로 수렴까지 조용히 돌려 무예외·수렴 집계.
+if (balanceSeeds > 0)
+{
+    SpectatorCampaign.Balance(FindDataDirectory(), balanceSeeds, capWeeks: 1000);
+    return;
 }
 
 // --watch <주수>: 관전 캠페인만 돌리고 종료(자율 전쟁 주간 로그).
