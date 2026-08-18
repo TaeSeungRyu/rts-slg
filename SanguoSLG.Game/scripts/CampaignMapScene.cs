@@ -49,18 +49,19 @@ public sealed partial class CampaignMapScene : Node3D
     private Label _status = null!;
     private Label _log = null!;
 
-    // 명령 패널(성 클릭 시).
+    // 명령 UX(성 클릭 → 정보 카드 + 명령 목록 → 파라미터·장수 목록 → 컨펌).
     private CityId? _selected;
-    private PanelContainer _panel = null!;
-    private Label _panelInfo = null!;
-    private OptionButton _cmdSel = null!;
-    private OptionButton _paramSel = null!;
-    private OptionButton _genSel = null!;
-    private Label _panelResult = null!;
+    private int _cmdIndex = -1;
+    private PanelContainer _infoCard = null!;
+    private Label _infoText = null!;
+    private PanelContainer _cmdMenu = null!;
+    private VBoxContainer _cmdList = null!;
+    private PanelContainer _detail = null!;
+    private VBoxContainer _detailBody = null!;
+    private OptionButton? _paramSel;
     private ConfirmationDialog _confirm = null!;
     private System.Action? _onConfirm;
-    private readonly List<GeneralId> _genIds = new();
-    private readonly List<CityId> _targetIds = new();
+    private MeshInstance3D? _ring;
 
     // 1단계 지원 명령(내정 — 출전은 2단계). (표시명, 종류, 파라미터: troop/tax/wall/stratagem/none)
     private static readonly (string Label, CommandKind Kind, string Param)[] Cmds =
@@ -126,7 +127,7 @@ public sealed partial class CampaignMapScene : Node3D
         else
         {
             _selected = null;
-            _panel.Visible = false;
+            HidePanels();
         }
     }
 
@@ -247,59 +248,253 @@ public sealed partial class CampaignMapScene : Node3D
         else
         {
             _selected = null;
-            _panel.Visible = false;
+            HidePanels();
         }
     }
 
-    // ── 명령 패널(성 클릭) — 삼국지풍 먹빛·금테 ──
+    // ── 명령 UX(성 클릭) — 삼국지풍: 정보 카드 + 명령 목록 → 파라미터·장수 목록 ──
     private void BuildPanel()
     {
         var layer = new CanvasLayer();
         AddChild(layer);
-        _panel = new PanelContainer { Visible = false };
-        _panel.SetAnchorsPreset(Control.LayoutPreset.BottomLeft);
-        _panel.Position = new Vector2(20, -250);
-        _panel.CustomMinimumSize = new Vector2(560, 0);
-        _panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 16));
-        layer.AddChild(_panel);
 
-        var box = new VBoxContainer();
-        box.AddThemeConstantOverride("separation", 10);
-        _panel.AddChild(box);
+        // 우상단: 선택 성 정보 카드.
+        _infoCard = Card(layer, Control.LayoutPreset.TopRight, new Vector2(-360, 16), 344);
+        var info = (VBoxContainer)_infoCard.GetChild(0);
+        info.AddChild(Header("◈ 성 정보"));
+        _infoText = MakeLabel("", 15, Parchment);
+        _infoText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        info.AddChild(_infoText);
 
-        box.AddChild(MakeLabel("◈ 명 령", 20, Gold));
-        var rule = new HSeparator();
-        rule.AddThemeStyleboxOverride("separator", new StyleBoxFlat { BgColor = new Color(Gold, 0.5f), ContentMarginTop = 1, ContentMarginBottom = 1 });
-        box.AddChild(rule);
+        // 좌하단: 명령 목록(버튼 계단식).
+        _cmdMenu = Card(layer, Control.LayoutPreset.BottomLeft, new Vector2(20, -360), 180);
+        var menu = (VBoxContainer)_cmdMenu.GetChild(0);
+        menu.AddChild(Header("◈ 명 령"));
+        _cmdList = new VBoxContainer();
+        _cmdList.AddThemeConstantOverride("separation", 5);
+        menu.AddChild(_cmdList);
+        for (var i = 0; i < Cmds.Length; i++)
+        {
+            var idx = i;
+            var btn = MakeButton(Cmds[i].Label);
+            btn.CustomMinimumSize = new Vector2(150, 34);
+            btn.Pressed += () => ShowDetail(idx);
+            _cmdList.AddChild(btn);
+        }
 
-        _panelInfo = MakeLabel("", 15, Parchment);
-        _panelInfo.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        box.AddChild(_panelInfo);
-
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 8);
-        box.AddChild(row);
-        _cmdSel = MakeOption(140);
-        foreach (var c in Cmds) { _cmdSel.AddItem(c.Label); }
-        _cmdSel.ItemSelected += _ => RefreshParam();
-        row.AddChild(_cmdSel);
-        _paramSel = MakeOption(140);
-        row.AddChild(_paramSel);
-        _genSel = MakeOption(120);
-        row.AddChild(_genSel);
-        var exec = MakeButton("▶ 실행", accent: true);
-        exec.CustomMinimumSize = new Vector2(96, 38);
-        exec.Pressed += OnExecute;
-        row.AddChild(exec);
-
-        _panelResult = MakeLabel("", 14, GoldBright);
-        box.AddChild(_panelResult);
+        // 명령 목록 오른쪽: 파라미터 + 장수 목록(클릭 = 실행).
+        _detail = Card(layer, Control.LayoutPreset.BottomLeft, new Vector2(214, -360), 260);
+        _detailBody = (VBoxContainer)_detail.GetChild(0);
 
         _confirm = new ConfirmationDialog { Title = "명령 확인" };
         _confirm.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 16));
         _confirm.Confirmed += () => _onConfirm?.Invoke();
         layer.AddChild(_confirm);
+
+        HidePanels();
     }
+
+    // 먹빛·금테 카드(내부 VBox 반환은 GetChild(0)). 앵커·오프셋·최소폭 지정.
+    private PanelContainer Card(CanvasLayer layer, Control.LayoutPreset preset, Vector2 offset, int width)
+    {
+        var card = new PanelContainer { Visible = false, CustomMinimumSize = new Vector2(width, 0) };
+        card.SetAnchorsPreset(preset);
+        card.Position = offset;
+        card.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
+        layer.AddChild(card);
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 8);
+        card.AddChild(box);
+        return card;
+    }
+
+    private Control Header(string text)
+    {
+        var v = new VBoxContainer();
+        v.AddThemeConstantOverride("separation", 4);
+        v.AddChild(MakeLabel(text, 18, Gold));
+        var rule = new HSeparator();
+        rule.AddThemeStyleboxOverride("separator", new StyleBoxFlat { BgColor = new Color(Gold, 0.5f), ContentMarginTop = 1, ContentMarginBottom = 1 });
+        v.AddChild(rule);
+        return v;
+    }
+
+    private void HidePanels()
+    {
+        _infoCard.Visible = false;
+        _cmdMenu.Visible = false;
+        _detail.Visible = false;
+        if (_ring is not null) { _ring.Visible = false; }
+    }
+
+    private void SelectCity(CityId id)
+    {
+        _selected = id;
+        _cmdIndex = -1;
+        var c = _state.Cities.First(x => x.Id == id);
+        var troops = _state.Garrisons.Where(g => g.City == id)
+            .Select(g => $"{g.TroopCode} {g.Troops}");
+        var officers = _state.GeneralsAt(id).Select(g => _state.Generals.First(x => x.Id == g).Name);
+        var pending = _state.PendingAt(id).Select(p =>
+            $"{KindName(p.Kind)} (남은 {p.CompletionDay - _state.Day}일)");
+        var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
+
+        _infoText.Text =
+            $"《 {c.Name} 》\n" +
+            $"금 {c.Gold}   군량 {c.Provisions}\n" +
+            $"인구 {c.Population}   치안 {c.Security}   세율 {c.TaxRate}%\n" +
+            $"성벽 {c.Wall}   광석 {c.Ore} 말 {c.Horses} 코끼리 {c.Elephants}\n" +
+            $"시설 {facilities}\n" +
+            $"대기 병력: {(troops.Any() ? string.Join(", ", troops) : "없음")}\n" +
+            $"주둔 장수: {(officers.Any() ? string.Join(", ", officers) : "없음")}" +
+            (pending.Any() ? $"\n진행중: {string.Join(", ", pending)}" : "");
+
+        _infoCard.Visible = true;
+        _cmdMenu.Visible = true;
+        _detail.Visible = false;
+        MoveRing(c.Position);
+    }
+
+    // 명령 클릭 → 파라미터 컨트롤 + 수행 장수 목록(클릭 = 실행). 계단식.
+    private void ShowDetail(int cmdIndex)
+    {
+        if (_selected is not { } city)
+        {
+            return;
+        }
+
+        _cmdIndex = cmdIndex;
+        var cmd = Cmds[cmdIndex];
+        Clear(_detailBody);
+        _paramSel = null;
+
+        _detailBody.AddChild(Header($"◈ {cmd.Label}"));
+
+        if (cmd.Param != "wall")
+        {
+            _paramSel = MakeOption(220);
+            switch (cmd.Param)
+            {
+                case "troop": foreach (var t in _troops) { _paramSel.AddItem(t.Name); } break;
+                case "tax":
+                    foreach (var v in new[] { 0, 10, 20, 30, 40, 50 }) { _paramSel.AddItem($"세율 {v}%"); }
+                    _paramSel.Select(2);
+                    break;
+                case "stratagem": foreach (var s in Strats) { _paramSel.AddItem(s.Label); } break;
+            }
+
+            _detailBody.AddChild(_paramSel);
+        }
+
+        _detailBody.AddChild(MakeLabel("수행 장수 (클릭 = 실행)", 13, GoldBright));
+        var free = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g)).OrderBy(g => g.Value).ToList();
+        if (free.Count == 0)
+        {
+            _detailBody.AddChild(MakeLabel("(가능한 장수 없음)", 14, Parchment));
+        }
+
+        var cityData = _state.Cities.First(x => x.Id == city);
+        foreach (var gid in free)
+        {
+            var g = _state.Generals.First(x => x.Id == gid);
+            var home = g.Region.Length > 0 && g.Region == cityData.Region ? " 🏠" : "";
+            var stat = cmd.Kind == CommandKind.Research || cmd.Kind == CommandKind.CityStratagem
+                ? $"지{g.Intellect}" : cmd.Kind == CommandKind.Train ? $"무{g.Might}" : $"정{g.Politics}";
+            var btn = MakeButton($"{g.Name}  {stat}{home}");
+            btn.CustomMinimumSize = new Vector2(230, 32);
+            var captured = gid;
+            btn.Pressed += () => AskExecute(city, cmdIndex, captured);
+            _detailBody.AddChild(btn);
+        }
+
+        _detail.Visible = true;
+    }
+
+    private void AskExecute(CityId city, int cmdIndex, GeneralId general)
+    {
+        var cmd = Cmds[cmdIndex];
+        var p = System.Math.Max(0, _paramSel?.Selected ?? 0);
+        var troopCode = cmd.Param == "troop" ? _troops[p].Code : cmd.Param == "wall" ? FactionResearch.WallCode : "";
+        var facility = cmd.Param == "stratagem" ? Strats[p].Code : "";
+        var value = cmd.Param == "tax" ? p * 10 : 0;
+
+        CityId? target = null;
+        var extra = "";
+        if (cmd.Param == "stratagem")
+        {
+            var enemy = _state.Cities.FirstOrDefault(c => c.Owner != Player);
+            if (enemy is null) { return; }
+            target = enemy.Id;
+            var caster = _state.Generals.First(g => g.Id == general);
+            var days = CityStratagems.Days(_state.Cities.First(c => c.Id == city).Position, enemy.Position, _cb);
+            var defInt = enemy.Governor is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid)?.Intellect : null;
+            extra = $"\n대상 {enemy.Name} · 소요 {days}일 · 성공률 {CityStratagems.SuccessPercent(caster.Intellect, defInt)}%";
+        }
+
+        var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility,
+            TroopCode: troopCode, TargetCity: target);
+        var gName = _state.Generals.First(g => g.Id == general).Name;
+        var pLabel = cmd.Param switch
+        {
+            "troop" => $" · {_troops[p].Name}",
+            "tax" => $" · {value}%",
+            "stratagem" => $" · {Strats[p].Label}",
+            _ => "",
+        };
+        _confirm.DialogText = $"{_state.Cities.First(c => c.Id == city).Name} — {cmd.Label}{pLabel}{extra}\n수행 장수: {gName}\n\n실행하시겠습니까?";
+        _onConfirm = () =>
+        {
+            var r = _commander.Issue(_state, request);
+            if (r.Ok) { _state = r.State; }
+            _log.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
+            SelectCity(city);
+            Redraw(_log.Text);
+        };
+        _confirm.PopupCentered();
+    }
+
+    private void MoveRing(HexCoord at)
+    {
+        if (_ring is null)
+        {
+            _ring = new MeshInstance3D
+            {
+                Mesh = new TorusMesh { InnerRadius = 0.42f, OuterRadius = 0.52f },
+                MaterialOverride = new StandardMaterial3D
+                {
+                    AlbedoColor = GoldBright,
+                    EmissionEnabled = true,
+                    Emission = Gold,
+                    EmissionEnergyMultiplier = 1.6f,
+                },
+            };
+            AddChild(_ring);
+        }
+
+        _ring.Visible = true;
+        _ring.Position = _view.HexToWorld(at) + new Vector3(0f, _view.TileTopY + 0.06f, 0f);
+    }
+
+    private static void Clear(Node parent)
+    {
+        foreach (var child in parent.GetChildren())
+        {
+            child.QueueFree();
+        }
+    }
+
+    private static string KindName(CommandKind k) => k switch
+    {
+        CommandKind.Recruit => "모병",
+        CommandKind.Conscript => "징병",
+        CommandKind.Train => "훈련",
+        CommandKind.Build => "건설",
+        CommandKind.SetTaxRate => "세율",
+        CommandKind.Research => "연구",
+        CommandKind.Repair => "수리",
+        CommandKind.CityStratagem => "계략",
+        _ => k.ToString(),
+    };
 
     // ── 게임풍 스타일 헬퍼 ──
     private static StyleBoxFlat Frame(Color bg, Color border, int borderW, int radius, int pad)
@@ -350,101 +545,6 @@ public sealed partial class CampaignMapScene : Node3D
         return o;
     }
 
-    private void SelectCity(CityId id)
-    {
-        _selected = id;
-        var c = _state.Cities.First(x => x.Id == id);
-        var troops = _state.Garrisons.Where(g => g.City == id).Sum(g => g.Troops);
-        _panelInfo.Text = $"{c.Name}  금 {c.Gold}  군량 {c.Provisions}  치안 {c.Security}  세율 {c.TaxRate}%  " +
-            $"성벽 {c.Wall}  대기 병력 {troops}";
-
-        _genIds.Clear();
-        _genSel.Clear();
-        foreach (var gid in _state.GeneralsAt(id).Where(g => !_state.IsGeneralBusy(g)).OrderBy(g => g.Value))
-        {
-            _genSel.AddItem(_state.Generals.First(g => g.Id == gid).Name);
-            _genIds.Add(gid);
-        }
-
-        if (_genIds.Count == 0) { _genSel.AddItem("(장수 없음)"); }
-
-        RefreshParam();
-        _panel.Visible = true;
-    }
-
-    private void RefreshParam()
-    {
-        _paramSel.Clear();
-        _targetIds.Clear();
-        var param = Cmds[System.Math.Max(0, _cmdSel.Selected)].Param;
-        switch (param)
-        {
-            case "troop":
-                foreach (var t in _troops) { _paramSel.AddItem(t.Name); }
-                break;
-            case "tax":
-                foreach (var v in new[] { 0, 10, 20, 30, 40, 50 }) { _paramSel.AddItem($"{v}%"); }
-                _paramSel.Select(2);
-                break;
-            case "stratagem":
-                foreach (var s in Strats) { _paramSel.AddItem(s.Label); }
-                break;
-            default:
-                _paramSel.AddItem("—");
-                break;
-        }
-    }
-
-    private void OnExecute()
-    {
-        if (_selected is not { } city || _genIds.Count == 0)
-        {
-            _panelResult.Text = "수행할 장수가 없습니다.";
-            return;
-        }
-
-        var cmd = Cmds[System.Math.Max(0, _cmdSel.Selected)];
-        var general = _genIds[System.Math.Max(0, _genSel.Selected)];
-        var p = System.Math.Max(0, _paramSel.Selected);
-
-        var troopCode = cmd.Param == "troop" ? _troops[p].Code : cmd.Param == "wall" ? FactionResearch.WallCode : "";
-        var facility = cmd.Param == "stratagem" ? Strats[p].Code : "";
-        var value = cmd.Param == "tax" ? p * 10 : 0;
-
-        CityId? target = null;
-        var extra = "";
-        if (cmd.Param == "stratagem")
-        {
-            var enemy = _state.Cities.FirstOrDefault(c => c.Owner != Player);
-            if (enemy is null) { _panelResult.Text = "대상 적 성이 없습니다."; return; }
-            target = enemy.Id;
-            var caster = _state.Generals.First(g => g.Id == general);
-            var days = CityStratagems.Days(_state.Cities.First(c => c.Id == city).Position, enemy.Position, _cb);
-            var defInt = enemy.Governor is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid)?.Intellect : null;
-            extra = $"\n대상 {enemy.Name} · 소요 {days}일 · 성공률 {CityStratagems.SuccessPercent(caster.Intellect, defInt)}%";
-        }
-
-        var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility,
-            TroopCode: troopCode, TargetCity: target);
-        var gName = _state.Generals.First(g => g.Id == general).Name;
-        var pLabel = cmd.Param switch
-        {
-            "troop" => $" · {_troops[p].Name}",
-            "tax" => $" · {value}%",
-            "stratagem" => $" · {Strats[p].Label}",
-            _ => "",
-        };
-        _confirm.DialogText = $"{_state.Cities.First(c => c.Id == city).Name} — {cmd.Label}{pLabel}{extra}\n수행 {gName}\n\n실행하시겠습니까?";
-        _onConfirm = () =>
-        {
-            var r = _commander.Issue(_state, request);
-            if (r.Ok) { _state = r.State; }
-            _panelResult.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
-            SelectCity(city);
-            Redraw(_log.Text);
-        };
-        _confirm.PopupCentered();
-    }
 
     private void Redraw(string note)
     {
