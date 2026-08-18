@@ -24,7 +24,7 @@
 | `drillmaster` | 교관(敎官) | training | 훈련 상승량 +2/4/6 | ⏳ 명령 배선 |
 | `popularity` | 인망(人望) | recruit_cost | 모병 비용 −8/15/25% | ⏳ 명령 배선 |
 | `quartermaster` | 병참(兵站) | provisions | 부대 군량 소모 −5/10/15% | ⏳ 보급 배선(10단계) |
-| `builder` | 축성(築城) | wall | 성벽 회복 +10/20/30% | ⏳ 성벽 수리 배선 |
+| `builder` | 축성(築城) | wall | 성벽 수리 회복량 +10/20/30%p(기본 25%·공방 +25%p와 합산) | ⏳ 수리 명령 배선(design-administration "건물 수리") |
 | `trader` | 교역(交易) | market_discount | 시장 구매가 −5/10/20% | ⏳ 시장 배선 |
 
 - ✅ = 담당관 income/치안/산출 틱에 배선 완료(2026-08-16). ⏳ = 스킬은 있으나 해당 시스템
