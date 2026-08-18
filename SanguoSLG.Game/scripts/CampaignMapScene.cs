@@ -605,31 +605,36 @@ public sealed partial class CampaignMapScene : Node3D
         var layer = new CanvasLayer();
         AddChild(layer);
 
-        // 우상단: 선택 성 정보 카드 — 내용 크기만큼만 차지(스크롤 없음).
+        // 우상단: 성 정보 카드(≈150x150, 컴팩트).
         _infoCard = CornerCard(layer, Control.LayoutPreset.TopRight, out var info);
-        info.AddChild(Header("◈ 성 정보"));
+        info.AddChild(MakeLabel("◈ 성 정보", 11, Gold));
         _infoRows = new VBoxContainer();
-        _infoRows.AddThemeConstantOverride("separation", 3);
+        _infoRows.AddThemeConstantOverride("separation", 2);
         info.AddChild(_infoRows);
 
-        // 좌하단: 명령 목록 — 내용 크기만큼만 차지(스크롤 없음).
-        _cmdMenu = CornerCard(layer, Control.LayoutPreset.BottomLeft, out var menu);
-        menu.AddChild(Header("◈ 명 령"));
+        // 명령 팔레트: 클릭한 성 옆(우측)에 뜨는 작은 떠있는 패널. 위치는 SelectCity에서 지정.
+        _cmdMenu = new PanelContainer { Visible = false, ZIndex = 50 };
+        _cmdMenu.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
+        _cmdMenu.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 7, 7));
+        layer.AddChild(_cmdMenu);
+        var menu = new VBoxContainer();
+        menu.AddThemeConstantOverride("separation", 2);
+        _cmdMenu.AddChild(menu);
         _cmdList = new VBoxContainer();
-        _cmdList.AddThemeConstantOverride("separation", 3);
+        _cmdList.AddThemeConstantOverride("separation", 2);
         menu.AddChild(_cmdList);
         foreach (var (group, indices) in CmdGroups)
         {
-            _cmdList.AddChild(MakeLabel($"— {group} —", 11, GoldBright));
+            _cmdList.AddChild(MakeLabel($"— {group} —", 10, GoldBright));
             foreach (var i in indices)
             {
                 var idx = i;
-                var btn = MakeButton("  " + Cmds[i].Label);
+                var btn = MakeButton(" " + Cmds[i].Label);
                 btn.Icon = Icon(CmdIcons[i]);
                 btn.ExpandIcon = false;
                 btn.Alignment = HorizontalAlignment.Left;
-                btn.AddThemeConstantOverride("h_separation", 8);
-                btn.CustomMinimumSize = new Vector2(128, 28);
+                btn.AddThemeConstantOverride("h_separation", 6);
+                btn.CustomMinimumSize = new Vector2(102, 24);
                 btn.Pressed += () => OpenModal(idx);
                 _cmdList.AddChild(btn);
             }
@@ -665,14 +670,14 @@ public sealed partial class CampaignMapScene : Node3D
     private Control InfoRow(Sym icon, string text)
     {
         var h = new HBoxContainer();
-        h.AddThemeConstantOverride("separation", 6);
+        h.AddThemeConstantOverride("separation", 5);
         h.AddChild(new TextureRect
         {
             Texture = Icon(icon),
-            CustomMinimumSize = new Vector2(15, 15),
+            CustomMinimumSize = new Vector2(13, 13),
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
         });
-        h.AddChild(MakeLabel(text, 12, Parchment));
+        h.AddChild(MakeLabel(text, 11, Parchment));
         return h;
     }
 
@@ -706,19 +711,28 @@ public sealed partial class CampaignMapScene : Node3D
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
 
         Clear(_infoRows);
-        _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 14, GoldBright));
-        _infoRows.AddChild(InfoRow(Sym.Coin, $"금 {c.Gold}      군량 {c.Provisions}"));
+        _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 12, GoldBright));
+        _infoRows.AddChild(InfoRow(Sym.Coin, $"금{c.Gold} 량{c.Provisions}"));
         _infoRows.AddChild(InfoRow(Sym.People, $"인구 {c.Population}"));
-        _infoRows.AddChild(InfoRow(Sym.Shield, $"치안 {c.Security}      세율 {c.TaxRate}%"));
+        _infoRows.AddChild(InfoRow(Sym.Shield, $"치안{c.Security} 세{c.TaxRate}%"));
         _infoRows.AddChild(InfoRow(Sym.Wall, $"성벽 {c.Wall}"));
-        _infoRows.AddChild(InfoRow(Sym.Ore, $"광석 {c.Ore}  말 {c.Horses}  코끼리 {c.Elephants}"));
-        _infoRows.AddChild(InfoRow(Sym.Book, $"시설 {facilities}"));
-        _infoRows.AddChild(InfoRow(Sym.Sword, $"대기 {(troops.Any() ? string.Join(", ", troops) : "없음")}"));
-        _infoRows.AddChild(InfoRow(Sym.Officer, $"주둔 {(officers.Any() ? string.Join(", ", officers) : "없음")}"));
+        _infoRows.AddChild(InfoRow(Sym.Ore, $"광{c.Ore} 말{c.Horses} 상{c.Elephants}"));
+        _infoRows.AddChild(InfoRow(Sym.Book, facilities));
+        _infoRows.AddChild(InfoRow(Sym.Sword, $"대기 {(troops.Any() ? string.Join(",", troops) : "없음")}"));
+        _infoRows.AddChild(InfoRow(Sym.Officer, $"주둔 {(officers.Any() ? string.Join(",", officers) : "없음")}"));
         if (pending.Any())
         {
-            _infoRows.AddChild(InfoRow(Sym.Scroll, $"진행중 {string.Join(", ", pending)}"));
+            _infoRows.AddChild(InfoRow(Sym.Scroll, $"진행 {string.Join(",", pending)}"));
         }
+
+        // 명령 팔레트를 클릭한 성 화면좌표의 우측에 배치(화면 밖으로 안 나가게 clamp).
+        var world = _view.HexToWorld(c.Position) + new Vector3(0f, _view.TileTopY, 0f);
+        var screen = _camera.UnprojectPosition(world);
+        var sz = _cmdMenu.GetCombinedMinimumSize();
+        var vp = GetViewport().GetVisibleRect().Size;
+        var px = Mathf.Clamp(screen.X + 40f, 8f, System.Math.Max(8f, vp.X - sz.X - 8f));
+        var py = Mathf.Clamp(screen.Y - (sz.Y * 0.5f), 8f, System.Math.Max(8f, vp.Y - sz.Y - 8f));
+        _cmdMenu.Position = new Vector2(px, py);
 
         _infoCard.Visible = true;
         _cmdMenu.Visible = true;
