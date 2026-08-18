@@ -155,6 +155,10 @@ public sealed class WorldEngine
                         var maxWall = CastleWall.Max(city.Castle, _balance, state.WallLevelOf(city.Owner));
                         cities[cmd.City] = city with { Wall = System.Math.Min(maxWall, city.Wall + cmd.Amount) };
                     }
+                    else
+                    {
+                        cities[cmd.City] = RepairFacility(city, cmd.Facility);
+                    }
 
                     break;
             }
@@ -173,6 +177,19 @@ public sealed class WorldEngine
             PendingCommands = state.Commands.Where(c => c.CompletionDay != state.Day).ToList(),
         };
     }
+
+    // 시설 수리 완료 — 잔해를 시설로 되돌리거나(일반), 파괴 플래그를 해제한다(자원 시설).
+    private static City RepairFacility(City city, string facility) => facility switch
+    {
+        "paddy" when city.RuinedPaddies > 0 => city with { Paddies = city.Paddies + 1, RuinedPaddies = city.RuinedPaddies - 1 },
+        "farm" when city.RuinedFarms > 0 => city with { Farms = city.Farms + 1, RuinedFarms = city.RuinedFarms - 1 },
+        "village" when city.RuinedVillages > 0 => city with { Villages = city.Villages + 1, RuinedVillages = city.RuinedVillages - 1 },
+        "workshop" when city.WorkshopRuined => city with { Workshop = true, WorkshopRuined = false },
+        "mine" => city with { MineDestroyed = false },
+        "ranch" => city with { RanchDestroyed = false },
+        "elephant_garden" => city with { ElephantGardenDestroyed = false },
+        _ => city,
+    };
 
     // 세력 연구 트랙 +1(최대 캡). 없으면 새 트랙(1단계). 갱신된 단계를 돌려준다.
     private static int ResearchUp(List<FactionResearch> research, FactionId faction, string troopCode, int maxLevel)
@@ -347,11 +364,12 @@ public sealed class WorldEngine
             return baseOutput * (100 + bonus) / 100;
         }
 
+        // 자원 시설(광산·목장·상원)이 파괴됐으면 생산 중단 — 수리로 재개(design-administration).
         return city with
         {
-            Ore = city.Ore + Output(_balance.OreOutputPerMonth, city.ProducesOre, "ore_output"),
-            Horses = city.Horses + Output(_balance.HorsesOutputPerMonth, city.ProducesHorses, "horse_output"),
-            Elephants = city.Elephants + Output(_balance.ElephantsOutputPerMonth, city.ProducesElephants, "elephant_output"),
+            Ore = city.Ore + Output(_balance.OreOutputPerMonth, city.ProducesOre && !city.MineDestroyed, "ore_output"),
+            Horses = city.Horses + Output(_balance.HorsesOutputPerMonth, city.ProducesHorses && !city.RanchDestroyed, "horse_output"),
+            Elephants = city.Elephants + Output(_balance.ElephantsOutputPerMonth, city.ProducesElephants && !city.ElephantGardenDestroyed, "elephant_output"),
         };
     }
 

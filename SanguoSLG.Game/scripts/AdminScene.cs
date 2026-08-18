@@ -45,11 +45,18 @@ public sealed partial class AdminScene : Control
         ("병종 연구", CommandKind.Research, "troop"),
         ("성벽 연구", CommandKind.Research, "wall"),
         ("성벽 수리", CommandKind.Repair, "wall"),
+        ("시설 수리", CommandKind.Repair, "repairable"),
     };
 
     private static readonly (string Label, string Code)[] Facilities =
     {
         ("논", "paddy"), ("밭", "farm"), ("마을", "village"), ("공방", "workshop"),
+    };
+
+    private static readonly (string Label, string Code)[] Repairables =
+    {
+        ("논", "paddy"), ("밭", "farm"), ("마을", "village"), ("공방", "workshop"),
+        ("광산", "mine"), ("목장", "ranch"), ("상원", "elephant_garden"),
     };
 
     public void Build(string dataDirectory)
@@ -235,11 +242,11 @@ public sealed partial class AdminScene : Control
 
             _detailCol.AddChild(_troopSel);
         }
-        else if (cmd.Param == "facility")
+        else if (cmd.Param is "facility" or "repairable")
         {
             _detailCol.AddChild(new Label { Text = "시설" });
             _facilitySel = new OptionButton();
-            foreach (var f in Facilities)
+            foreach (var f in cmd.Param == "facility" ? Facilities : Repairables)
             {
                 _facilitySel.AddItem(f.Label);
             }
@@ -289,7 +296,12 @@ public sealed partial class AdminScene : Control
             "wall" => FactionResearch.WallCode,
             _ => "",
         };
-        var facility = cmd.Param == "facility" ? Facilities[Math.Max(0, _facilitySel?.Selected ?? 0)].Code : "";
+        var facility = cmd.Param switch
+        {
+            "facility" => Facilities[Math.Max(0, _facilitySel?.Selected ?? 0)].Code,
+            "repairable" => Repairables[Math.Max(0, _facilitySel?.Selected ?? 0)].Code,
+            _ => "",
+        };
         var value = cmd.Param == "tax" ? (int)(_taxSpin?.Value ?? 0) : 0;
         var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility, TroopCode: troopCode);
 
@@ -299,6 +311,7 @@ public sealed partial class AdminScene : Control
         {
             "troop" => $" · {_troops[Math.Max(0, _troopSel?.Selected ?? 0)].Name}",
             "facility" => $" · {Facilities[Math.Max(0, _facilitySel?.Selected ?? 0)].Label}",
+            "repairable" => $" · {Repairables[Math.Max(0, _facilitySel?.Selected ?? 0)].Label}",
             "tax" => $" · {value}%",
             _ => "",
         };

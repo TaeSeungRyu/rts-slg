@@ -83,6 +83,12 @@ public sealed record CommandBalance
     /// <summary>약탈 노획률(%) — 파괴한 시설 건설 비용의 이 %를 노획한다(design-administration "시설 파괴·약탈").</summary>
     public int PlunderPercent { get; init; } = 50;
 
+    /// <summary>시설 수리 비용 = 건설 비용 × 이 %(재건보다 싸다 — design-administration "건물 수리").</summary>
+    public int RepairCostPercent { get; init; } = 50;
+
+    /// <summary>지역 고정 자원 시설(광산·목장·상원) 수리 정액(금) — 건설비가 없어 별도.</summary>
+    public int ResourceFacilityRepairCost { get; init; } = 400;
+
     /// <summary>시설 건설 비용(금).</summary>
     public int BuildCostPaddy { get; init; } = 300;
     public int BuildCostFarm { get; init; } = 200;

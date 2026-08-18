@@ -14,7 +14,8 @@ public sealed record PlunderReport(CityId City, string Facility, UnitId Looter, 
 /// 시설 파괴·약탈(design-administration "시설 파괴·약탈"·10e-B). 적 도시를 포위(인접 1칸·공격모드)한
 /// 부대가 있으면 매 진행 그 도시의 시설 1개를 파괴하고 건설 비용의 노획률(50%)만큼 노획한다 —
 /// 논·밭은 군량으로(부대 휴대 한도까지, 초과 소실=불태움), 마을·공방은 금으로(무제한 휴대).
-/// 파괴 우선순위: 마을 → 논 → 밭 → 공방(마지막 — 전략 시설). 노획은 최저 id 포위 부대가 받는다.
+/// 파괴 우선순위: 마을 → 논 → 밭 → 공방 → 자원 시설(광산·목장·상원 — 파괴 플래그, 금 200 노획).
+/// 일반 시설은 잔해(Ruined*)로 남아 수리로 복구할 수 있다. 노획은 최저 id 포위 부대가 받는다.
 /// 결정론: 도시·부대 id 순, 난수 없음.
 /// </summary>
 public sealed class CityPlunder
@@ -80,25 +81,43 @@ public sealed class CityPlunder
         {
             facility = "village";
             gold = Loot(_b.BuildCostVillage);
-            plundered = city with { Villages = city.Villages - 1 };
+            plundered = city with { Villages = city.Villages - 1, RuinedVillages = city.RuinedVillages + 1 };
         }
         else if (city.Paddies > 0)
         {
             facility = "paddy";
             provisions = Loot(_b.BuildCostPaddy);
-            plundered = city with { Paddies = city.Paddies - 1 };
+            plundered = city with { Paddies = city.Paddies - 1, RuinedPaddies = city.RuinedPaddies + 1 };
         }
         else if (city.Farms > 0)
         {
             facility = "farm";
             provisions = Loot(_b.BuildCostFarm);
-            plundered = city with { Farms = city.Farms - 1 };
+            plundered = city with { Farms = city.Farms - 1, RuinedFarms = city.RuinedFarms + 1 };
         }
         else if (city.Workshop)
         {
             facility = "workshop";
             gold = Loot(_b.BuildCostWorkshop);
-            plundered = city with { Workshop = false };
+            plundered = city with { Workshop = false, WorkshopRuined = true };
+        }
+        else if (city.ProducesOre && !city.MineDestroyed)
+        {
+            facility = "mine";
+            gold = ResourceFacilityLoot;
+            plundered = city with { MineDestroyed = true };
+        }
+        else if (city.ProducesHorses && !city.RanchDestroyed)
+        {
+            facility = "ranch";
+            gold = ResourceFacilityLoot;
+            plundered = city with { RanchDestroyed = true };
+        }
+        else if (city.ProducesElephants && !city.ElephantGardenDestroyed)
+        {
+            facility = "elephant_garden";
+            gold = ResourceFacilityLoot;
+            plundered = city with { ElephantGardenDestroyed = true };
         }
         else
         {
@@ -125,4 +144,7 @@ public sealed class CityPlunder
     }
 
     private int Loot(int buildCost) => buildCost * _b.PlunderPercent / 100;
+
+    /// <summary>지역 고정 자원 시설(광산·목장·상원) 파괴 노획(금) — 수리 정액 400의 50%(2026-08-18 확정).</summary>
+    private const int ResourceFacilityLoot = 200;
 }

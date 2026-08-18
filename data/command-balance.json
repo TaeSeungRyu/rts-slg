@@ -29,5 +29,7 @@
   "wall_repair_percent": 25,
   "wall_repair_workshop_bonus": 25,
   "wall_repair_gold_divisor": 5,
-  "plunder_percent": 50
+  "plunder_percent": 50,
+  "repair_cost_percent": 50,
+  "resource_facility_repair_cost": 400
 }

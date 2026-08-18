@@ -179,10 +179,12 @@ public sealed class CommandService
         }
         else
         {
-            var used = city.Paddies + city.Farms + city.Villages;
+            // 잔해(약탈로 부서진 시설)도 슬롯을 차지한다 — 새로 짓지 말고 수리(50%)로 복구하라는 압력.
+            var used = city.Paddies + city.Farms + city.Villages
+                + city.RuinedPaddies + city.RuinedFarms + city.RuinedVillages;
             if (used >= CommandEfficiency.BuildSlots(city.Castle, _b))
             {
-                return CommandResult.Fail("시설 슬롯이 가득 찼다.", state);
+                return CommandResult.Fail("시설 슬롯이 가득 찼다(잔해는 수리로 복구).", state);
             }
         }
 
@@ -239,12 +241,44 @@ public sealed class CommandService
 
     private CommandResult IssueRepair(GameState state, City city, CommandRequest req, General? assist)
     {
-        // A단계: 성벽 수리(TroopCode == WallCode). 시설 수리는 후속(C단계).
-        if (req.TroopCode != FactionResearch.WallCode)
+        // 성벽 수리(TroopCode == WallCode) 또는 시설 수리(Facility 지정) — design-administration "건물 수리".
+        if (req.TroopCode == FactionResearch.WallCode)
         {
-            return CommandResult.Fail("아직 성벽 수리만 가능하다.", state);
+            return IssueWallRepair(state, city, req, assist);
         }
 
+        var (ruined, cost) = req.Facility switch
+        {
+            "paddy" => (city.RuinedPaddies > 0, FacilityRepairCost(_b.BuildCostPaddy)),
+            "farm" => (city.RuinedFarms > 0, FacilityRepairCost(_b.BuildCostFarm)),
+            "village" => (city.RuinedVillages > 0, FacilityRepairCost(_b.BuildCostVillage)),
+            "workshop" => (city.WorkshopRuined, FacilityRepairCost(_b.BuildCostWorkshop)),
+            "mine" => (city.MineDestroyed, _b.ResourceFacilityRepairCost),
+            "ranch" => (city.RanchDestroyed, _b.ResourceFacilityRepairCost),
+            "elephant_garden" => (city.ElephantGardenDestroyed, _b.ResourceFacilityRepairCost),
+            _ => (false, -1),
+        };
+        if (cost < 0)
+        {
+            return CommandResult.Fail("알 수 없는 수리 대상이다.", state);
+        }
+
+        if (!ruined)
+        {
+            return CommandResult.Fail("수리할 파괴 시설이 없다.", state);
+        }
+
+        if (city.Gold < cost)
+        {
+            return CommandResult.Fail("금이 부족하다.", state);
+        }
+
+        var reserved = city.AddGold(-cost);
+        return Register(state, reserved, req, assist, amount: 0, _b.RepairDays, CommandKind.Repair, req.Facility);
+    }
+
+    private CommandResult IssueWallRepair(GameState state, City city, CommandRequest req, General? assist)
+    {
         if (_balance is null)
         {
             return CommandResult.Fail("성벽 수리에는 경제 설정이 필요하다.", state);
@@ -267,6 +301,8 @@ public sealed class CommandService
         var reserved = city.AddGold(-cost);
         return Register(state, reserved, req, assist, restore, _b.RepairDays, CommandKind.Repair, "", req.TroopCode);
     }
+
+    private int FacilityRepairCost(int buildCost) => buildCost * _b.RepairCostPercent / 100;
 
     private CommandResult IssueTax(GameState state, City city, CommandRequest req, General? assist)
     {

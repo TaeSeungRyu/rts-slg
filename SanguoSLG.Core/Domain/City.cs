@@ -10,6 +10,9 @@ using SanguoSLG.Core.Spatial;
 /// 시설(논·밭·마을·공방)은 개수로만 둔다 — 타일 위치는 표현(Game) 계층 몫이고,
 /// 컬렉션을 넣으면 record 값 동등성이 깨져 결정론 검증이 무너진다.
 /// Wall은 현재 성벽 값(공성으로 깎이고 0이면 붕괴) — 시나리오 로드 시 등급별 최대치로 초기화한다.
+/// Ruined*는 약탈로 부서진 시설 잔해(슬롯을 차지, 수리 = 건설비 50%로 복구 — 재건보다 싸다).
+/// *Destroyed는 지역 고정 자원 시설(광산·목장·상원)의 파괴 상태 — 생산 = Produces* &amp;&amp; !*Destroyed,
+/// 수리는 정액(design-administration "자원 생산 시설"·"건물 수리").
 /// </summary>
 public sealed record City(
     CityId Id,
@@ -34,7 +37,14 @@ public sealed record City(
     bool ProducesElephants = false,
     int TaxRate = 20,
     GeneralId? Governor = null,
-    int Wall = 0)
+    int Wall = 0,
+    int RuinedPaddies = 0,
+    int RuinedFarms = 0,
+    int RuinedVillages = 0,
+    bool WorkshopRuined = false,
+    bool MineDestroyed = false,
+    bool RanchDestroyed = false,
+    bool ElephantGardenDestroyed = false)
 {
     /// <summary>소유 세력을 바꾼 새 도시를 반환한다.</summary>
     public City WithOwner(FactionId owner) => this with { Owner = owner };
