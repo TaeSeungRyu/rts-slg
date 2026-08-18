@@ -27,7 +27,8 @@ public sealed partial class CampaignMapScene : Node3D
     private int _week;
 
     private readonly Dictionary<int, Label3D> _cityLabels = new();
-    private readonly List<Node3D> _armyMarkers = new();
+    private readonly Dictionary<int, UnitController3D> _armyTokens = new();
+    private readonly Dictionary<int, Label3D> _armyLabels = new();
     private Label _status = null!;
     private Label _log = null!;
 
@@ -161,36 +162,43 @@ public sealed partial class CampaignMapScene : Node3D
             label.Modulate = color;
         }
 
-        // 야전 부대 마커: 매 진행 새로 그린다(관전 — 스냅).
-        foreach (var m in _armyMarkers)
+        // 야전 부대 = 실제 유닛 모델(UnitController3D). 부대 id별로 토큰을 만들고 위치·병력 라벨을 갱신,
+        // 사라진 부대(입성·전멸·함락)의 토큰은 제거한다.
+        var alive = _state.Armies.Select(u => u.Id.Value).ToHashSet();
+        foreach (var id in _armyTokens.Keys.Where(id => !alive.Contains(id)).ToList())
         {
-            m.QueueFree();
+            _armyTokens[id].QueueFree();
+            _armyLabels[id].QueueFree();
+            _armyTokens.Remove(id);
+            _armyLabels.Remove(id);
         }
 
-        _armyMarkers.Clear();
         foreach (var army in _state.Armies)
         {
-            var marker = new MeshInstance3D
+            var color = army.Field.Owner.Value == 1 ? Blue : Red;
+            if (!_armyTokens.TryGetValue(army.Id.Value, out var token))
             {
-                Mesh = new BoxMesh { Size = new Vector3(0.4f, 0.5f, 0.4f) },
-                Position = _view.HexToWorld(army.Field.Position) + new Vector3(0f, _view.TileTopY + 0.3f, 0f),
-                MaterialOverride = new StandardMaterial3D { AlbedoColor = army.Field.Owner.Value == 1 ? Blue : Red },
-            };
-            AddChild(marker);
-            _armyMarkers.Add(marker);
+                token = new UnitController3D();
+                AddChild(token);
+                token.InitDisplay(_view, color, troopIndex: 0, army.Field.Position); // 0 = 도검병
 
-            var lbl = new Label3D
-            {
-                Position = marker.Position + new Vector3(0f, 0.9f, 0f),
-                Text = $"{army.Pool.Active}",
-                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-                FontSize = 36,
-                OutlineSize = 10,
-                NoDepthTest = true,
-                Modulate = army.Field.Owner.Value == 1 ? Blue : Red,
-            };
-            AddChild(lbl);
-            _armyMarkers.Add(lbl);
+                var lbl = new Label3D
+                {
+                    Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                    FontSize = 36,
+                    OutlineSize = 10,
+                    NoDepthTest = true,
+                    Modulate = color,
+                };
+                AddChild(lbl);
+                _armyTokens[army.Id.Value] = token;
+                _armyLabels[army.Id.Value] = lbl;
+            }
+
+            token.DisplayStepTo(army.Field.Position, 0.3f);
+            var lblNode = _armyLabels[army.Id.Value];
+            lblNode.Position = _view.HexToWorld(army.Field.Position) + new Vector3(0f, _view.TileTopY + 1.1f, 0f);
+            lblNode.Text = $"{army.Pool.Active}";
         }
 
         var counts = _state.Factions.OrderBy(f => f.Id.Value).Select(f =>
