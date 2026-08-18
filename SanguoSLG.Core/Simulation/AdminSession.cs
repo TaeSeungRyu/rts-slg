@@ -76,5 +76,5 @@ public sealed class AdminSession
 
     private static bool IsAdminKind(CommandKind kind)
         => kind is CommandKind.Recruit or CommandKind.Conscript or CommandKind.Train
-            or CommandKind.Build or CommandKind.SetTaxRate or CommandKind.Research;
+            or CommandKind.Build or CommandKind.SetTaxRate or CommandKind.Research or CommandKind.Repair;
 }

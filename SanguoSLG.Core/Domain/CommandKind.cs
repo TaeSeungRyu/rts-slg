@@ -23,4 +23,7 @@ public enum CommandKind
 
     /// <summary>연구 — 세력 병종 연구 +1단계. 공방 도시 전제, 효율 능력 = 지력. 기본 30일(지력↑ 단축).</summary>
     Research,
+
+    /// <summary>수리 — 손상된 성벽·파괴된 시설 복구. 효율 능력 = 정치. 15일. design-administration "건물 수리".</summary>
+    Repair,
 }

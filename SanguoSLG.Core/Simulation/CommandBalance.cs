@@ -68,6 +68,18 @@ public sealed record CommandBalance
     /// <summary>성벽 연구 최대 단계(design-combat 5단계 = 0~4).</summary>
     public int WallResearchMaxLevel { get; init; } = 4;
 
+    /// <summary>수리 명령 기간(일) — 시설·성벽 공통(design-administration "건물 수리").</summary>
+    public int RepairDays { get; init; } = 15;
+
+    /// <summary>성벽 수리 회복량(명령당 연구 최대치의 %).</summary>
+    public int WallRepairPercent { get; init; } = 25;
+
+    /// <summary>성벽 수리 공방 가산(%p) — 공방 있는 도시.</summary>
+    public int WallRepairWorkshopBonus { get; init; } = 25;
+
+    /// <summary>성벽 수리 비용(금) = 회복량 ÷ 이 값.</summary>
+    public int WallRepairGoldDivisor { get; init; } = 5;
+
     /// <summary>시설 건설 비용(금).</summary>
     public int BuildCostPaddy { get; init; } = 300;
     public int BuildCostFarm { get; init; } = 200;

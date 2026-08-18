@@ -24,5 +24,9 @@
   "research_cost_steep_from": 7,
   "research_max_level": 10,
   "wall_research_cost_per_level": 1000,
-  "wall_research_max_level": 4
+  "wall_research_max_level": 4,
+  "repair_days": 15,
+  "wall_repair_percent": 25,
+  "wall_repair_workshop_bonus": 25,
+  "wall_repair_gold_divisor": 5
 }

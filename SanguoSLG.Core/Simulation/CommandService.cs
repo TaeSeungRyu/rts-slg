@@ -31,11 +31,13 @@ public sealed class CommandService
 {
     private readonly CommandBalance _b;
     private readonly IReadOnlyDictionary<string, TroopTemplate> _troops;
+    private readonly BalanceConfig? _balance;
 
-    public CommandService(CommandBalance balance, IReadOnlyList<TroopTemplate>? troops = null)
+    public CommandService(CommandBalance balance, IReadOnlyList<TroopTemplate>? troops = null, BalanceConfig? economy = null)
     {
         _b = balance;
         _troops = (troops ?? []).ToDictionary(t => t.Code);
+        _balance = economy; // 성벽 수리(연구 최대치 산출)에 필요 — 없으면 성벽 수리 불가
     }
 
     public CommandResult Issue(GameState state, CommandRequest req)
@@ -97,6 +99,7 @@ public sealed class CommandService
             CommandKind.Build => IssueBuild(state, city, req, assist, main),
             CommandKind.SetTaxRate => IssueTax(state, city, req, assist),
             CommandKind.Research => IssueResearch(state, city, req, assist, main),
+            CommandKind.Repair => IssueRepair(state, city, req, assist),
             _ => CommandResult.Fail("알 수 없는 명령이다.", state),
         };
     }
@@ -232,6 +235,37 @@ public sealed class CommandService
         var days = System.Math.Max(_b.ResearchBaseDays - System.Math.Clamp((main.Intellect - 50) / 5, 0, 10), 1);
         var reserved = city.AddGold(-cost);
         return Register(state, reserved, req, assist, amount: 0, days, CommandKind.Research, "", req.TroopCode);
+    }
+
+    private CommandResult IssueRepair(GameState state, City city, CommandRequest req, General? assist)
+    {
+        // A단계: 성벽 수리(TroopCode == WallCode). 시설 수리는 후속(C단계).
+        if (req.TroopCode != FactionResearch.WallCode)
+        {
+            return CommandResult.Fail("아직 성벽 수리만 가능하다.", state);
+        }
+
+        if (_balance is null)
+        {
+            return CommandResult.Fail("성벽 수리에는 경제 설정이 필요하다.", state);
+        }
+
+        var maxWall = CastleWall.Max(city.Castle, _balance, state.WallLevelOf(city.Owner));
+        var recovery = _b.WallRepairPercent + (city.Workshop ? _b.WallRepairWorkshopBonus : 0);
+        var restore = System.Math.Min(maxWall - city.Wall, maxWall * recovery / 100);
+        if (restore <= 0)
+        {
+            return CommandResult.Fail("수리할 성벽 손상이 없다.", state);
+        }
+
+        var cost = restore / _b.WallRepairGoldDivisor;
+        if (city.Gold < cost)
+        {
+            return CommandResult.Fail("금이 부족하다.", state);
+        }
+
+        var reserved = city.AddGold(-cost);
+        return Register(state, reserved, req, assist, restore, _b.RepairDays, CommandKind.Repair, "", req.TroopCode);
     }
 
     private CommandResult IssueTax(GameState state, City city, CommandRequest req, General? assist)

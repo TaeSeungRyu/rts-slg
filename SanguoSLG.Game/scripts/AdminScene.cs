@@ -44,6 +44,7 @@ public sealed partial class AdminScene : Control
         ("세율", CommandKind.SetTaxRate, "tax"),
         ("병종 연구", CommandKind.Research, "troop"),
         ("성벽 연구", CommandKind.Research, "wall"),
+        ("성벽 수리", CommandKind.Repair, "wall"),
     };
 
     private static readonly (string Label, string Code)[] Facilities =
@@ -61,7 +62,7 @@ public sealed partial class AdminScene : Control
         var player = scenario.Factions.OrderBy(f => f.Id.Value).First().Id;
         _session = new AdminSession(
             GameState.FromScenario(scenario), player,
-            new CommandService(_commandBalance, _troops),
+            new CommandService(_commandBalance, _troops, scenario.Balance),
             new WorldEngine(scenario.Balance, _commandBalance, adminSkills));
 
         BuildUi();
