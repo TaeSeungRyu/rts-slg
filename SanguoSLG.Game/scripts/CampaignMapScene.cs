@@ -768,7 +768,14 @@ public sealed partial class CampaignMapScene : Node3D
         panel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps; // 고해상 아이콘 축소 시 선명
         center.AddChild(panel);
 
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(772, 604) };
+        // 창 크기에 맞춘 반응형 모달(작은 화면에서도 넘치지 않게 상·하한 캡).
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.60f, 420f, 720f);
+        var mh = Mathf.Clamp(vp.Y * 0.72f, 340f, 560f);
+        var colOpt = (int)Mathf.Clamp(Mathf.Floor((mw + 12f) / 162f), 2, 4);
+        var colOff = (int)Mathf.Clamp(Mathf.Floor((mw + 12f) / 186f), 2, 4);
+
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(mw, mh) };
         scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
         panel.AddChild(scroll);
 
@@ -795,7 +802,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (options.Count > 0)
         {
             box.AddChild(MakeLabel(cmd.Param == "stratagem" ? "계략을 선택하세요" : "대상을 선택하세요", 15, GoldBright));
-            var grid = new GridContainer { Columns = System.Math.Min(4, options.Count) };
+            var grid = new GridContainer { Columns = System.Math.Min(colOpt, options.Count) };
             grid.AddThemeConstantOverride("h_separation", 12);
             grid.AddThemeConstantOverride("v_separation", 12);
             box.AddChild(grid);
@@ -817,7 +824,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(GoldRule());
 
         box.AddChild(MakeLabel("수행 장수 (클릭 = 실행)", 15, GoldBright));
-        _modalOfficers = new GridContainer { Columns = 4 };
+        _modalOfficers = new GridContainer { Columns = colOff };
         _modalOfficers.AddThemeConstantOverride("h_separation", 12);
         _modalOfficers.AddThemeConstantOverride("v_separation", 12);
         box.AddChild(_modalOfficers);
