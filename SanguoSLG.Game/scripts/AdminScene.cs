@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
@@ -8,14 +9,15 @@ using SanguoSLG.Core.Simulation;
 namespace SanguoSLG.Game;
 
 /// <summary>
-/// 내정 전용 게임 씬(12b) — 삼국지11식 계단식 명령 팔레트. 성을 클릭해 선택하면 명령 목록이 옆에
-/// 붙고, 명령을 고르면 파라미터·장수 목록이 다시 옆에 붙는다(계단식). 장수를 고르면 컨펌창을 거쳐
-/// 실행한다(모든 명령 컨펌). Core <see cref="AdminSession"/>을 호출·반영만 한다(노드에 규칙 없음 —
-/// CLAUDE.md). 전투 없음.
+/// 내정 전용 게임 씬(12b) — 삼국지11식 계단식 명령 팔레트. 성 클릭 → 명령 목록 → 파라미터·장수 목록
+/// → 장수 클릭 → 컨펌창 → 실행(모든 명령·진행 컨펌, design-ui #4). 장수 목록에 고향 배지·전제 미충족
+/// 표시(design-ui #5), 컨펌창에 유효 능력. Core <see cref="AdminSession"/>을 호출·반영만 한다
+/// (노드에 규칙 없음 — CLAUDE.md). 전투 없음.
 /// </summary>
 public sealed partial class AdminScene : Control
 {
     private AdminSession _session = null!;
+    private CommandBalance _commandBalance = null!;
     private IReadOnlyList<TroopTemplate> _troops = null!;
 
     private Label _date = null!;
@@ -31,8 +33,7 @@ public sealed partial class AdminScene : Control
     private OptionButton? _troopSel;
     private OptionButton? _facilitySel;
     private SpinBox? _taxSpin;
-    private CommandRequest? _pending;
-    private string _pendingLabel = "";
+    private Action? _onConfirm;
 
     private static readonly (string Label, CommandKind Kind, string Param)[] Commands =
     {
@@ -53,17 +54,18 @@ public sealed partial class AdminScene : Control
     public void Build(string dataDirectory)
     {
         var scenario = new ScenarioLoader().LoadFromDirectory(dataDirectory);
-        var commandBalance = new CommandBalanceLoader().LoadFromDirectory(dataDirectory);
+        _commandBalance = new CommandBalanceLoader().LoadFromDirectory(dataDirectory);
         _troops = new TroopTypeLoader().LoadFromDirectory(dataDirectory);
         var adminSkills = new AdminSkillLoader().LoadFromDirectory(dataDirectory);
 
         var player = scenario.Factions.OrderBy(f => f.Id.Value).First().Id;
         _session = new AdminSession(
             GameState.FromScenario(scenario), player,
-            new CommandService(commandBalance, _troops),
-            new WorldEngine(scenario.Balance, commandBalance, adminSkills));
+            new CommandService(_commandBalance, _troops),
+            new WorldEngine(scenario.Balance, _commandBalance, adminSkills));
 
         BuildUi();
+        GetWindow().MinSize = new Vector2I(1040, 660); // 작은 창이면 컬럼이 눌리므로 최소 크기 보장
         RebuildCities();
     }
 
@@ -94,34 +96,37 @@ public sealed partial class AdminScene : Control
         advance.Pressed += OnAdvance;
         header.AddChild(advance);
 
-        _result = new Label { Text = "성을 클릭해 명령을 내리세요." };
+        _result = new Label
+        {
+            Text = "성을 클릭해 명령을 내리세요.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
         _result.AddThemeFontSizeOverride("font_size", 15);
         outer.AddChild(_result);
 
-        // 계단식 컬럼: [도시] [명령] [세부(파라미터·장수)]
         var columns = new HBoxContainer();
         columns.AddThemeConstantOverride("separation", 12);
         columns.SizeFlagsVertical = SizeFlags.ExpandFill;
         outer.AddChild(columns);
 
-        ColumnBody(columns, "도시", 240, out _cityCol);
+        ColumnBody(columns, "도시", 260, out _cityCol);
         _cmdPanel = ColumnBody(columns, "명령", 150, out _cmdCol);
-        _detailPanel = ColumnBody(columns, "수행", 230, out _detailCol);
+        _detailPanel = ColumnBody(columns, "수행", 260, out _detailCol);
         _cmdPanel.Visible = false;
         _detailPanel.Visible = false;
 
-        _confirm = new ConfirmationDialog { Title = "명령 확인" };
-        _confirm.Confirmed += OnConfirmed;
+        _confirm = new ConfirmationDialog { Title = "확인" };
+        _confirm.Confirmed += () => _onConfirm?.Invoke();
         AddChild(_confirm);
     }
 
-    // 제목 라벨 + 스크롤 내용 VBox를 담은 패널 컬럼을 만든다. 패널을 반환하고 내용 VBox를 out으로.
     private static PanelContainer ColumnBody(Container parent, string title, int width, out VBoxContainer body)
     {
         var panel = new PanelContainer
         {
             CustomMinimumSize = new Vector2(width, 0),
-            SizeFlagsVertical = SizeFlags.ExpandFill, // HBox가 세로로 늘려줘야 스크롤·버튼이 펼쳐진다
+            SizeFlagsVertical = SizeFlags.ExpandFill,
         };
         parent.AddChild(panel);
         var inner = new VBoxContainer();
@@ -138,17 +143,21 @@ public sealed partial class AdminScene : Control
         return panel;
     }
 
+    // 진행도 컨펌 후(design-ui #4).
     private void OnAdvance()
     {
-        _session.AdvanceWeek();
-        _cmdPanel.Visible = false;
-        _detailPanel.Visible = false;
-        _city = null;
-        _result.Text = "진행했습니다. 성을 클릭해 명령을 내리세요.";
-        RebuildCities();
+        Ask("7일 진행하시겠습니까?", () =>
+        {
+            _session.AdvanceWeek();
+            _cmdPanel.Visible = false;
+            _detailPanel.Visible = false;
+            _city = null;
+            _result.Text = "진행했습니다. 성을 클릭해 명령을 내리세요.";
+            RebuildCities();
+        });
     }
 
-    // ── 컬럼 1: 도시(성) 클릭 ──
+    // ── 컬럼 1: 도시(성) ──
     private void RebuildCities()
     {
         var s = _session.State;
@@ -159,10 +168,11 @@ public sealed partial class AdminScene : Control
         {
             var troops = s.Garrisons.Where(g => g.City == city.Id).Sum(g => g.Troops);
             var pending = _session.PendingAt(city.Id).Count;
-            var pendingText = pending > 0 ? $"  진행중 {pending}" : "";
+            var mark = _city == city.Id ? "▶ " : "";
+            var pendingText = pending > 0 ? $" 진행중{pending}" : "";
             var btn = new Button
             {
-                Text = $"[{Size(city.Castle)}] {city.Name}  금{city.Gold} 성벽{city.Wall} 병{troops}{pendingText}",
+                Text = $"{mark}[{Size(city.Castle)}] {city.Name}  금{city.Gold} 성벽{city.Wall} 병{troops}{pendingText}",
                 CustomMinimumSize = new Vector2(0, 38),
                 Alignment = HorizontalAlignment.Left,
             };
@@ -176,11 +186,14 @@ public sealed partial class AdminScene : Control
     {
         _city = city;
         var c = _session.State.Cities.First(x => x.Id == city);
+
+        var pendingLines = _session.PendingAt(city).Select(p =>
+            $"{Kind(p.Kind)}{(p.TroopCode.Length > 0 && p.TroopCode != FactionResearch.WallCode ? " " + p.TroopCode : "")} (남은 {p.CompletionDay - _session.State.Day}일)");
+        var pendingText = pendingLines.Any() ? "  |  진행중: " + string.Join(", ", pendingLines) : "";
         _result.Text = $"{c.Name} — 금 {c.Gold} 군량 {c.Provisions} 인구 {c.Population} 치안 {c.Security} " +
             $"세율 {c.TaxRate}% 성벽 {c.Wall} | 광석 {c.Ore} 말 {c.Horses} 코끼리 {c.Elephants} | " +
-            $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
+            $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}{pendingText}";
 
-        // 컬럼 2: 명령 목록을 옆에 붙인다.
         Clear(_cmdCol);
         for (var i = 0; i < Commands.Length; i++)
         {
@@ -192,9 +205,10 @@ public sealed partial class AdminScene : Control
 
         _cmdPanel.Visible = true;
         _detailPanel.Visible = false;
+        RebuildCities(); // 선택 성 ▶ 표식
     }
 
-    // ── 컬럼 2: 명령 클릭 → 컬럼 3(파라미터 + 장수 목록) ──
+    // ── 컬럼 2: 명령 → 컬럼 3(파라미터 + 장수 목록) ──
     private void OnCommandClicked(int cmdIndex)
     {
         if (_city is not { } city)
@@ -203,12 +217,12 @@ public sealed partial class AdminScene : Control
         }
 
         var cmd = Commands[cmdIndex];
+        var cityData = _session.State.Cities.First(x => x.Id == city);
         Clear(_detailCol);
         _troopSel = null;
         _facilitySel = null;
         _taxSpin = null;
 
-        // 파라미터 컨트롤(명령별).
         if (cmd.Param == "troop")
         {
             _detailCol.AddChild(new Label { Text = "병종" });
@@ -234,11 +248,10 @@ public sealed partial class AdminScene : Control
         else if (cmd.Param == "tax")
         {
             _detailCol.AddChild(new Label { Text = "세율(%)" });
-            _taxSpin = new SpinBox { MinValue = 0, MaxValue = 50, Step = 5, Value = _session.State.Cities.First(x => x.Id == city).TaxRate };
+            _taxSpin = new SpinBox { MinValue = 0, MaxValue = 50, Step = 5, Value = cityData.TaxRate };
             _detailCol.AddChild(_taxSpin);
         }
 
-        // 수행 장수 목록(클릭 = 실행 컨펌).
         _detailCol.AddChild(new Label { Text = "수행 장수" });
         var generals = _session.AvailableGenerals(city).ToList();
         if (generals.Count == 0)
@@ -248,10 +261,17 @@ public sealed partial class AdminScene : Control
 
         foreach (var gid in generals)
         {
-            var name = _session.State.Generals.First(g => g.Id == gid).Name;
-            var btn = new Button { Text = name, CustomMinimumSize = new Vector2(0, 32) };
-            var g = gid;
-            btn.Pressed += () => OnGeneralClicked(city, cmdIndex, g);
+            var g = _session.State.Generals.First(x => x.Id == gid);
+            var home = g.Region.Length > 0 && g.Region == cityData.Region ? $" 🏠+{_commandBalance.HomeRegionBonusPercent}%" : "";
+            var blocked = cmd.Kind == CommandKind.Build && g.Politics <= _commandBalance.BuildPoliticsRequired;
+            var btn = new Button
+            {
+                Text = blocked ? $"{g.Name} (정치 부족)" : $"{g.Name}{home}",
+                Disabled = blocked,
+                CustomMinimumSize = new Vector2(0, 32),
+            };
+            var captured = gid;
+            btn.Pressed += () => OnGeneralClicked(city, cmdIndex, captured);
             _detailCol.AddChild(btn);
         }
 
@@ -264,46 +284,56 @@ public sealed partial class AdminScene : Control
         var cmd = Commands[cmdIndex];
         var troopCode = cmd.Param switch
         {
-            "troop" => _troops[System.Math.Max(0, _troopSel?.Selected ?? 0)].Code,
+            "troop" => _troops[Math.Max(0, _troopSel?.Selected ?? 0)].Code,
             "wall" => FactionResearch.WallCode,
             _ => "",
         };
-        var facility = cmd.Param == "facility" ? Facilities[System.Math.Max(0, _facilitySel?.Selected ?? 0)].Code : "";
+        var facility = cmd.Param == "facility" ? Facilities[Math.Max(0, _facilitySel?.Selected ?? 0)].Code : "";
         var value = cmd.Param == "tax" ? (int)(_taxSpin?.Value ?? 0) : 0;
+        var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility, TroopCode: troopCode);
 
-        _pending = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility, TroopCode: troopCode);
-
-        var cityName = _session.State.Cities.First(x => x.Id == city).Name;
-        var generalName = _session.State.Generals.First(g => g.Id == general).Name;
+        var cityData = _session.State.Cities.First(x => x.Id == city);
+        var g = _session.State.Generals.First(x => x.Id == general);
         var paramText = cmd.Param switch
         {
-            "troop" => $" · {_troops[System.Math.Max(0, _troopSel?.Selected ?? 0)].Name}",
-            "facility" => $" · {Facilities[System.Math.Max(0, _facilitySel?.Selected ?? 0)].Label}",
+            "troop" => $" · {_troops[Math.Max(0, _troopSel?.Selected ?? 0)].Name}",
+            "facility" => $" · {Facilities[Math.Max(0, _facilitySel?.Selected ?? 0)].Label}",
             "tax" => $" · {value}%",
             _ => "",
         };
-        _pendingLabel = $"{cmd.Label}{paramText}";
-        _confirm.DialogText = $"{cityName} — {_pendingLabel}\n수행 장수: {generalName}\n\n실행하시겠습니까?";
+        var label = $"{cmd.Label}{paramText}";
+        _confirm.DialogText = $"{cityData.Name} — {label}\n수행 장수: {g.Name}   ({EffText(cmd.Kind, g, cityData)})\n\n실행하시겠습니까?";
+        Ask(_confirm.DialogText, () =>
+        {
+            var result = _session.Issue(request);
+            _result.Text = result.Ok ? $"발행: {label} — {g.Name}" : $"실패: {result.Error}";
+            _cmdPanel.Visible = false;
+            _detailPanel.Visible = false;
+            _city = null;
+            RebuildCities();
+        });
+    }
+
+    // 컨펌창을 띄우고 확인 시 action 실행.
+    private void Ask(string text, Action action)
+    {
+        _onConfirm = action;
+        _confirm.DialogText = text;
         _confirm.PopupCentered();
     }
 
-    private void OnConfirmed()
+    // 수행 장수의 유효 능력·고향 표시(Core CommandEfficiency).
+    private string EffText(CommandKind kind, General g, City city)
     {
-        if (_pending is not { } request)
+        var home = g.Region.Length > 0 && g.Region == city.Region ? $" 🏠+{_commandBalance.HomeRegionBonusPercent}%" : "";
+        return kind switch
         {
-            return;
-        }
-
-        var result = _session.Issue(request);
-        _result.Text = result.Ok
-            ? $"발행: {_pendingLabel} — {_session.State.Generals.First(g => g.Id == request.Main).Name}"
-            : $"실패: {result.Error}";
-        _pending = null;
-
-        _cmdPanel.Visible = false;
-        _detailPanel.Visible = false;
-        _city = null;
-        RebuildCities();
+            CommandKind.Recruit or CommandKind.Conscript or CommandKind.Build =>
+                $"유효 정치 {CommandEfficiency.Effective(g, null, city, kind, _commandBalance)}{home}",
+            CommandKind.Train => $"유효 무력 {CommandEfficiency.Effective(g, null, city, kind, _commandBalance)}{home}",
+            CommandKind.Research => $"지력 {g.Intellect}",
+            _ => "효율 무관",
+        };
     }
 
     private static void Clear(Node parent)
@@ -313,6 +343,17 @@ public sealed partial class AdminScene : Control
             child.QueueFree();
         }
     }
+
+    private static string Kind(CommandKind k) => k switch
+    {
+        CommandKind.Recruit => "모병",
+        CommandKind.Conscript => "징병",
+        CommandKind.Train => "훈련",
+        CommandKind.Build => "건설",
+        CommandKind.SetTaxRate => "세율",
+        CommandKind.Research => "연구",
+        _ => k.ToString(),
+    };
 
     private static string Size(CastleSize castle) => castle switch
     {
