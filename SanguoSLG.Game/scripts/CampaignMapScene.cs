@@ -62,6 +62,9 @@ public sealed partial class CampaignMapScene : Node3D
     private ConfirmationDialog _confirm = null!;
     private System.Action? _onConfirm;
     private MeshInstance3D? _ring;
+    private MeshInstance3D _hover = null!;
+    private ImageTexture _blankIcon = null!;
+    private ImageTexture _dotIcon = null!;
 
     // 1단계 지원 명령(내정 — 출전은 2단계). (표시명, 종류, 파라미터: troop/tax/wall/stratagem/none)
     private static readonly (string Label, CommandKind Kind, string Param)[] Cmds =
@@ -103,16 +106,77 @@ public sealed partial class CampaignMapScene : Node3D
             new CityPlunder(_cb));
         _state = _initial;
 
+        _blankIcon = SolidIcon(1, (_, _) => new Color(0, 0, 0, 0));
+        _dotIcon = SolidIcon(14, (x, y) => System.Math.Abs(x - 7) + System.Math.Abs(y - 7) <= 4 ? GoldBright : new Color(0, 0, 0, 0));
+
         SpawnCastles();
+        SpawnHover();
         BuildHud();
         BuildPanel();
         camera.Setup(_view.HexToWorld(new HexCoord(4, 2)), 12f);
         Redraw("자기 성(파란색)을 클릭해 명령을 내리세요. 적(촉)은 AI입니다.");
     }
 
+    // 마우스 밑 타일에 금색 반투명 육각(이동/전투 씬의 호버 육각과 같은 표현).
+    private void SpawnHover()
+    {
+        _hover = new MeshInstance3D
+        {
+            Mesh = new CylinderMesh
+            {
+                TopRadius = _view.HexWorldSize * 0.94f,
+                BottomRadius = _view.HexWorldSize * 0.94f,
+                Height = 0.04f,
+                RadialSegments = 6,
+            },
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            Visible = false,
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(1f, 0.92f, 0.55f, 0.28f),
+                EmissionEnabled = true,
+                Emission = new Color(0.6f, 0.52f, 0.25f),
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                NoDepthTest = true,
+            },
+        };
+        AddChild(_hover);
+    }
+
+    // 단색 아이콘 텍스처 생성(라디오 대체용) — (x,y)→색 함수로 채운다.
+    private static ImageTexture SolidIcon(int size, System.Func<int, int, Color> pixel)
+    {
+        var img = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
+        for (var y = 0; y < size; y++)
+        {
+            for (var x = 0; x < size; x++)
+            {
+                img.SetPixel(x, y, pixel(x, y));
+            }
+        }
+
+        return ImageTexture.CreateFromImage(img);
+    }
+
     // 좌클릭 → 지면 헥사 → 그 칸의 성. 내 성이면 명령 패널, 아니면 닫는다.
     public override void _UnhandledInput(InputEvent @event)
     {
+        // 마우스 오버: 밑 타일에 호버 육각.
+        if (@event is InputEventMouseMotion motion)
+        {
+            if (RayToGround(motion.Position) is { } hoverHex)
+            {
+                _hover.Visible = true;
+                _hover.Position = _view.HexToWorld(hoverHex) + new Vector3(0f, _view.TileTopY + 0.02f, 0f);
+            }
+            else
+            {
+                _hover.Visible = false;
+            }
+
+            return;
+        }
+
         if (@event is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click)
         {
             return;
@@ -542,6 +606,20 @@ public sealed partial class CampaignMapScene : Node3D
         o.AddThemeStyleboxOverride("hover", Frame(InkHover, GoldBright, 1, 5, 8));
         o.AddThemeStyleboxOverride("pressed", Frame(InkHover, Gold, 1, 5, 8));
         o.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+
+        // 펼친 목록(팝업)도 게임풍: 먹빛·금테, 라디오 표시 제거(선택 항목은 금색 마커).
+        var popup = o.GetPopup();
+        popup.AddThemeFontOverride("font", _font);
+        popup.AddThemeFontSizeOverride("font_size", 14);
+        popup.AddThemeColorOverride("font_color", Parchment);
+        popup.AddThemeColorOverride("font_hover_color", GoldBright);
+        popup.AddThemeColorOverride("font_accelerator_color", Gold);
+        popup.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 6, 8));
+        popup.AddThemeStyleboxOverride("hover", new StyleBoxFlat { BgColor = new Color(Gold, 0.22f) });
+        popup.AddThemeIconOverride("radio_checked", _dotIcon);   // 라디오 원 → 금색 마름모
+        popup.AddThemeIconOverride("radio_unchecked", _blankIcon);
+        popup.AddThemeIconOverride("checked", _dotIcon);
+        popup.AddThemeIconOverride("unchecked", _blankIcon);
         return o;
     }
 
