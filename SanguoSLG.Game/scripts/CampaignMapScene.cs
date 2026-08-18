@@ -335,7 +335,7 @@ public sealed partial class CampaignMapScene : Node3D
         var troops = _state.Garrisons.Where(g => g.City == id)
             .Select(g => $"{g.TroopCode} {g.Troops}");
         var officers = _state.GeneralsAt(id).Select(g => _state.Generals.First(x => x.Id == g).Name);
-        var pending = _state.PendingAt(id).Select(p =>
+        var pending = _state.Commands.Where(p => p.City == id).Select(p =>
             $"{KindName(p.Kind)} (남은 {p.CompletionDay - _state.Day}일)");
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
 
