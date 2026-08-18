@@ -82,6 +82,15 @@ public sealed partial class CampaignMapScene : Node3D
         ("방화", "arson"), ("절취", "steal"), ("이간", "sow_discord"),
     };
 
+    // 명령 카테고리 그룹(삼국지14식 분류)과 명령별 아이콘.
+    private static readonly (string Group, int[] Indices)[] CmdGroups =
+    {
+        ("내정", new[] { 0, 1, 2, 3 }),
+        ("계략", new[] { 4 }),
+    };
+
+    private static readonly Sym[] CmdIcons = { Sym.Sword, Sym.Coin, Sym.Book, Sym.Wall, Sym.Scroll };
+
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
         _view = view;
@@ -156,6 +165,94 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         return ImageTexture.CreateFromImage(img);
+    }
+
+    // ── 명령 아이콘(코드 생성) — 삼국지14/콜오브드래곤즈처럼 명령마다 표식 ──
+    private enum Sym { Sword, Coin, Book, Wall, Scroll, Grain, Flag }
+
+    private readonly Dictionary<Sym, ImageTexture> _icons = new();
+
+    private ImageTexture Icon(Sym s)
+    {
+        if (_icons.TryGetValue(s, out var c)) { return c; }
+
+        const int N = 22;
+        var img = Image.CreateEmpty(N, N, false, Image.Format.Rgba8);
+        img.Fill(new Color(0, 0, 0, 0));
+        void Rect(int x0, int y0, int x1, int y1, Color col)
+        {
+            for (var y = y0; y <= y1; y++)
+            {
+                for (var x = x0; x <= x1; x++)
+                {
+                    if (x >= 0 && x < N && y >= 0 && y < N) { img.SetPixel(x, y, col); }
+                }
+            }
+        }
+
+        void Disc(float cx, float cy, float r, Color col)
+        {
+            for (var y = 0; y < N; y++)
+            {
+                for (var x = 0; x < N; x++)
+                {
+                    if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r) { img.SetPixel(x, y, col); }
+                }
+            }
+        }
+
+        void Diamond(int cx, int cy, int r, Color col)
+        {
+            for (var y = 0; y < N; y++)
+            {
+                for (var x = 0; x < N; x++)
+                {
+                    if (System.Math.Abs(x - cx) + System.Math.Abs(y - cy) <= r) { img.SetPixel(x, y, col); }
+                }
+            }
+        }
+
+        var steel = new Color(0.80f, 0.84f, 0.90f);
+        var stone = new Color(0.66f, 0.66f, 0.68f);
+        var tan = new Color(0.82f, 0.72f, 0.48f);
+        switch (s)
+        {
+            case Sym.Sword: // 칼: 강철 날 + 금색 코등이·자루
+                Rect(10, 2, 12, 13, steel);
+                Rect(6, 13, 16, 14, Gold);
+                Rect(10, 14, 12, 19, Gold);
+                break;
+            case Sym.Coin: // 금화
+                Disc(11, 11, 8.5f, Gold);
+                Disc(11, 11, 5.5f, GoldBright);
+                break;
+            case Sym.Book: // 서책
+                Rect(4, 4, 18, 18, tan);
+                Rect(10, 4, 12, 18, new Color(0.55f, 0.45f, 0.26f));
+                break;
+            case Sym.Wall: // 성벽(총안)
+                Rect(3, 10, 19, 18, stone);
+                Rect(3, 5, 7, 10, stone);
+                Rect(10, 5, 12, 10, stone);
+                Rect(15, 5, 19, 10, stone);
+                break;
+            case Sym.Scroll: // 계략(두루마리)
+                Rect(5, 3, 17, 19, tan);
+                Rect(5, 7, 17, 8, new Color(0.55f, 0.45f, 0.26f));
+                Rect(5, 12, 17, 13, new Color(0.55f, 0.45f, 0.26f));
+                break;
+            case Sym.Grain: // 군량(낟알)
+                Diamond(11, 11, 8, new Color(0.90f, 0.78f, 0.42f));
+                break;
+            case Sym.Flag: // 성/세력(깃발)
+                Rect(6, 3, 7, 19, Gold);
+                Rect(7, 4, 17, 11, GoldBright);
+                break;
+        }
+
+        var tex = ImageTexture.CreateFromImage(img);
+        _icons[s] = tex;
+        return tex;
     }
 
     // 좌클릭 → 지면 헥사 → 그 칸의 성. 내 성이면 명령 패널, 아니면 닫는다.
@@ -330,20 +427,28 @@ public sealed partial class CampaignMapScene : Node3D
         _infoText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         info.AddChild(_infoText);
 
-        // 좌하단: 명령 목록(버튼 계단식).
-        _cmdMenu = Card(layer, Control.LayoutPreset.BottomLeft, new Vector2(20, -360), 180);
+        // 좌하단: 명령 목록(카테고리 그룹 + 아이콘 버튼 — 삼국지14/콜오브드래곤즈풍).
+        _cmdMenu = Card(layer, Control.LayoutPreset.BottomLeft, new Vector2(20, -390), 210);
         var menu = (VBoxContainer)_cmdMenu.GetChild(0);
         menu.AddChild(Header("◈ 명 령"));
         _cmdList = new VBoxContainer();
         _cmdList.AddThemeConstantOverride("separation", 5);
         menu.AddChild(_cmdList);
-        for (var i = 0; i < Cmds.Length; i++)
+        foreach (var (group, indices) in CmdGroups)
         {
-            var idx = i;
-            var btn = MakeButton(Cmds[i].Label);
-            btn.CustomMinimumSize = new Vector2(150, 34);
-            btn.Pressed += () => ShowDetail(idx);
-            _cmdList.AddChild(btn);
+            _cmdList.AddChild(MakeLabel($"— {group} —", 12, GoldBright));
+            foreach (var i in indices)
+            {
+                var idx = i;
+                var btn = MakeButton("  " + Cmds[i].Label);
+                btn.Icon = Icon(CmdIcons[i]);
+                btn.ExpandIcon = false;
+                btn.Alignment = HorizontalAlignment.Left;
+                btn.AddThemeConstantOverride("h_separation", 10);
+                btn.CustomMinimumSize = new Vector2(186, 40);
+                btn.Pressed += () => ShowDetail(idx);
+                _cmdList.AddChild(btn);
+            }
         }
 
         // 명령 목록 오른쪽: 파라미터 + 장수 목록(클릭 = 실행).
