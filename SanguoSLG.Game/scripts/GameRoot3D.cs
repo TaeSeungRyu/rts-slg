@@ -73,6 +73,13 @@ public partial class GameRoot3D : Node3D
             return;
         }
 
+        // 간단한 캠페인 맵 관전(13단계 1차): --maptest. 작은 평지 맵 위 AI 자율 전쟁을 진행 버튼으로.
+        if (OS.GetCmdlineArgs().Contains("--maptest") || OS.GetCmdlineUserArgs().Contains("--maptest"))
+        {
+            BuildCampaignMap();
+            return;
+        }
+
         var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
 
         var tone = TonePreset.FromCmdline();
@@ -216,6 +223,31 @@ public partial class GameRoot3D : Node3D
         }
 
         camera.Current = true;
+    }
+
+    // 간단한 캠페인 맵 관전 씬. 작은 평지 맵을 세우고 CampaignMapScene이 두 성·AI 자율 전쟁을
+    // "진행" 버튼으로 굴린다(콘솔 --watch의 3D판).
+    private void BuildCampaignMap()
+    {
+        var tone = TonePreset.FromCmdline();
+        _environment = BuildEnvironment(tone);
+        AddChild(new WorldEnvironment { Environment = _environment });
+        _sun = BuildSunLight(tone);
+        AddChild(_sun);
+
+        var mapView = new MapView3D();
+        AddChild(mapView);
+        mapView.Build(new HexMap(0, 9, 0, 5), new System.Collections.Generic.HashSet<HexCoord>(), new TileConditionMap());
+
+        var camera = new CameraController3D { Fov = 55f };
+        AddChild(camera);
+        camera.Current = true;
+
+        MapView3D.TuneImportedMeshes(this);
+
+        var scene = new CampaignMapScene();
+        AddChild(scene);
+        scene.Build(mapView, camera, FindDataDirectory());
     }
 
     // 이동 시뮬레이션 GUI 검증 씬(doc/test/movement-cases.md). 평지 맵 위에서
