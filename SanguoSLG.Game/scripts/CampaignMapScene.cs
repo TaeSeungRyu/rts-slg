@@ -605,24 +605,24 @@ public sealed partial class CampaignMapScene : Node3D
         var layer = new CanvasLayer();
         AddChild(layer);
 
-        // 우상단: 성 정보 카드 — 고정 150x150 정사각형(넘치면 클립).
-        var infoPanel = new Panel { Visible = false, CustomMinimumSize = new Vector2(150, 150), ClipContents = true };
+        // 우상단: 성 정보 카드 — 고정 200x200 정사각형(넘치면 클립).
+        var infoPanel = new Panel { Visible = false, CustomMinimumSize = new Vector2(200, 200), ClipContents = true };
         infoPanel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
         infoPanel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 0));
         layer.AddChild(infoPanel);
-        infoPanel.Size = new Vector2(150, 150);
+        infoPanel.Size = new Vector2(200, 200);
         infoPanel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.TopRight, Control.LayoutPresetMode.KeepSize, 12);
         _infoCard = infoPanel;
         var infoMargin = new MarginContainer();
         infoMargin.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         foreach (var side in new[] { "margin_left", "margin_top", "margin_right", "margin_bottom" })
         {
-            infoMargin.AddThemeConstantOverride(side, 8);
+            infoMargin.AddThemeConstantOverride(side, 10);
         }
 
         infoPanel.AddChild(infoMargin);
         _infoRows = new VBoxContainer();
-        _infoRows.AddThemeConstantOverride("separation", 1);
+        _infoRows.AddThemeConstantOverride("separation", 2);
         infoMargin.AddChild(_infoRows);
 
         // 명령 팔레트: 클릭한 성 우측에 뜨는 아주 작은 떠있는 패널(텍스트 전용, 위치는 SelectCity).
@@ -637,14 +637,14 @@ public sealed partial class CampaignMapScene : Node3D
         menu.AddChild(_cmdList);
         foreach (var (group, indices) in CmdGroups)
         {
-            _cmdList.AddChild(MakeLabel($"· {group}", 9, GoldBright));
+            _cmdList.AddChild(MakeLabel($"· {group}", 10, GoldBright));
             foreach (var i in indices)
             {
                 var idx = i;
                 var btn = MakeButton(Cmds[i].Label);
-                btn.AddThemeFontSizeOverride("font_size", 10);
+                btn.AddThemeFontSizeOverride("font_size", 11);
                 btn.Alignment = HorizontalAlignment.Center;
-                btn.CustomMinimumSize = new Vector2(64, 18);
+                btn.CustomMinimumSize = new Vector2(74, 21);
                 btn.Pressed += () => OpenModal(idx);
                 _cmdList.AddChild(btn);
             }
@@ -663,15 +663,15 @@ public sealed partial class CampaignMapScene : Node3D
     private Control InfoRow(Sym icon, string text)
     {
         var h = new HBoxContainer();
-        h.AddThemeConstantOverride("separation", 4);
+        h.AddThemeConstantOverride("separation", 5);
         h.AddChild(new TextureRect
         {
             Texture = Icon(icon),
-            CustomMinimumSize = new Vector2(11, 11),
+            CustomMinimumSize = new Vector2(14, 14),
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
         });
-        h.AddChild(MakeLabel(text, 10, Parchment));
+        h.AddChild(MakeLabel(text, 12, Parchment));
         return h;
     }
 
@@ -705,7 +705,7 @@ public sealed partial class CampaignMapScene : Node3D
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
 
         Clear(_infoRows);
-        _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 11, GoldBright));
+        _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 13, GoldBright));
         _infoRows.AddChild(InfoRow(Sym.Coin, $"금{c.Gold} 량{c.Provisions}"));
         _infoRows.AddChild(InfoRow(Sym.People, $"인구 {c.Population}"));
         _infoRows.AddChild(InfoRow(Sym.Shield, $"치안{c.Security} 세{c.TaxRate}%"));
