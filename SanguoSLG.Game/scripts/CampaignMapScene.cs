@@ -22,6 +22,17 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly Color Red = new(0.82f, 0.22f, 0.18f);
     private static readonly FactionId Player = new(1); // 위 = 플레이어, 나머지는 AI
 
+    // 삼국지풍 팔레트(먹빛 패널 + 금색 테두리·글자).
+    private static readonly Color Ink = new(0.07f, 0.075f, 0.09f, 0.96f);   // 패널 바탕
+    private static readonly Color InkSoft = new(0.13f, 0.13f, 0.15f);        // 버튼 바탕
+    private static readonly Color InkHover = new(0.22f, 0.19f, 0.14f);       // 버튼 hover
+    private static readonly Color Gold = new(0.80f, 0.66f, 0.36f);           // 테두리·제목
+    private static readonly Color GoldBright = new(0.96f, 0.82f, 0.48f);     // 강조
+    private static readonly Color Parchment = new(0.90f, 0.88f, 0.82f);      // 본문 글자
+    private static readonly Color AccentFill = new(0.46f, 0.35f, 0.15f);     // 실행 버튼 바탕
+
+    private Font _font = null!;
+
     private MapView3D _view = null!;
     private CameraController3D _camera = null!;
     private FactionAI _ai = null!;
@@ -71,6 +82,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         _view = view;
         _camera = camera;
+        _font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
 
         _troops = new TroopTypeLoader().LoadFromDirectory(dataDirectory);
         _cb = new CommandBalanceLoader().LoadFromDirectory(dataDirectory);
@@ -239,46 +251,103 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
-    // ── 명령 패널(성 클릭) ──
+    // ── 명령 패널(성 클릭) — 삼국지풍 먹빛·금테 ──
     private void BuildPanel()
     {
         var layer = new CanvasLayer();
         AddChild(layer);
         _panel = new PanelContainer { Visible = false };
         _panel.SetAnchorsPreset(Control.LayoutPreset.BottomLeft);
-        _panel.Position = new Vector2(16, -230);
+        _panel.Position = new Vector2(20, -250);
+        _panel.CustomMinimumSize = new Vector2(560, 0);
+        _panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 16));
         layer.AddChild(_panel);
 
         var box = new VBoxContainer();
-        box.AddThemeConstantOverride("separation", 6);
+        box.AddThemeConstantOverride("separation", 10);
         _panel.AddChild(box);
 
-        _panelInfo = new Label();
-        _panelInfo.AddThemeFontSizeOverride("font_size", 15);
+        box.AddChild(MakeLabel("◈ 명 령", 20, Gold));
+        var rule = new HSeparator();
+        rule.AddThemeStyleboxOverride("separator", new StyleBoxFlat { BgColor = new Color(Gold, 0.5f), ContentMarginTop = 1, ContentMarginBottom = 1 });
+        box.AddChild(rule);
+
+        _panelInfo = MakeLabel("", 15, Parchment);
+        _panelInfo.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(_panelInfo);
 
         var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 6);
+        row.AddThemeConstantOverride("separation", 8);
         box.AddChild(row);
-        _cmdSel = new OptionButton { CustomMinimumSize = new Vector2(120, 34) };
+        _cmdSel = MakeOption(140);
         foreach (var c in Cmds) { _cmdSel.AddItem(c.Label); }
         _cmdSel.ItemSelected += _ => RefreshParam();
         row.AddChild(_cmdSel);
-        _paramSel = new OptionButton { CustomMinimumSize = new Vector2(130, 34) };
+        _paramSel = MakeOption(140);
         row.AddChild(_paramSel);
-        _genSel = new OptionButton { CustomMinimumSize = new Vector2(120, 34) };
+        _genSel = MakeOption(120);
         row.AddChild(_genSel);
-        var exec = new Button { Text = "실행", CustomMinimumSize = new Vector2(80, 34) };
+        var exec = MakeButton("▶ 실행", accent: true);
+        exec.CustomMinimumSize = new Vector2(96, 38);
         exec.Pressed += OnExecute;
         row.AddChild(exec);
 
-        _panelResult = new Label();
-        _panelResult.AddThemeFontSizeOverride("font_size", 14);
+        _panelResult = MakeLabel("", 14, GoldBright);
         box.AddChild(_panelResult);
 
         _confirm = new ConfirmationDialog { Title = "명령 확인" };
+        _confirm.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 16));
         _confirm.Confirmed += () => _onConfirm?.Invoke();
         layer.AddChild(_confirm);
+    }
+
+    // ── 게임풍 스타일 헬퍼 ──
+    private static StyleBoxFlat Frame(Color bg, Color border, int borderW, int radius, int pad)
+    {
+        var s = new StyleBoxFlat { BgColor = bg, BorderColor = border };
+        s.SetBorderWidthAll(borderW);
+        s.SetCornerRadiusAll(radius);
+        s.ContentMarginLeft = s.ContentMarginRight = pad;
+        s.ContentMarginTop = s.ContentMarginBottom = (int)(pad * 0.75f);
+        return s;
+    }
+
+    private Label MakeLabel(string text, int size, Color color)
+    {
+        var l = new Label { Text = text };
+        l.AddThemeFontOverride("font", _font);
+        l.AddThemeFontSizeOverride("font_size", size);
+        l.AddThemeColorOverride("font_color", color);
+        return l;
+    }
+
+    private Button MakeButton(string text, bool accent = false)
+    {
+        var b = new Button { Text = text, CustomMinimumSize = new Vector2(0, 36) };
+        b.AddThemeFontOverride("font", _font);
+        b.AddThemeFontSizeOverride("font_size", 15);
+        b.AddThemeColorOverride("font_color", accent ? Ink : Parchment);
+        b.AddThemeColorOverride("font_hover_color", accent ? Ink : GoldBright);
+        b.AddThemeColorOverride("font_pressed_color", GoldBright);
+        b.AddThemeStyleboxOverride("normal", Frame(accent ? AccentFill : InkSoft, Gold, 1, 5, 10));
+        b.AddThemeStyleboxOverride("hover", Frame(accent ? GoldBright : InkHover, GoldBright, 1, 5, 10));
+        b.AddThemeStyleboxOverride("pressed", Frame(AccentFill, Gold, 1, 5, 10));
+        b.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        return b;
+    }
+
+    private OptionButton MakeOption(int width)
+    {
+        var o = new OptionButton { CustomMinimumSize = new Vector2(width, 36) };
+        o.AddThemeFontOverride("font", _font);
+        o.AddThemeFontSizeOverride("font_size", 14);
+        o.AddThemeColorOverride("font_color", Parchment);
+        o.AddThemeColorOverride("font_hover_color", GoldBright);
+        o.AddThemeStyleboxOverride("normal", Frame(InkSoft, Gold, 1, 5, 8));
+        o.AddThemeStyleboxOverride("hover", Frame(InkHover, GoldBright, 1, 5, 8));
+        o.AddThemeStyleboxOverride("pressed", Frame(InkHover, Gold, 1, 5, 8));
+        o.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        return o;
     }
 
     private void SelectCity(CityId id)
@@ -445,21 +514,29 @@ public sealed partial class CampaignMapScene : Node3D
         AddChild(layer);
 
         var panel = new PanelContainer();
-        panel.SetAnchorsPreset(Control.LayoutPreset.TopWide);
+        panel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+        panel.Position = new Vector2(20, 16);
+        panel.CustomMinimumSize = new Vector2(560, 0);
+        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 16));
         layer.AddChild(panel);
+
         var box = new VBoxContainer();
-        box.AddThemeConstantOverride("separation", 6);
+        box.AddThemeConstantOverride("separation", 8);
         panel.AddChild(box);
 
-        _status = new Label();
-        _status.AddThemeFontSizeOverride("font_size", 20);
-        box.AddChild(_status);
-        _log = new Label();
-        _log.AddThemeFontSizeOverride("font_size", 15);
-        box.AddChild(_log);
-
-        var advance = new Button { Text = "진행 (7일)", CustomMinimumSize = new Vector2(150, 40) };
+        var top = new HBoxContainer();
+        top.AddThemeConstantOverride("separation", 12);
+        box.AddChild(top);
+        _status = MakeLabel("", 20, Gold);
+        _status.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        top.AddChild(_status);
+        var advance = MakeButton("▶ 진행 (7일)", accent: true);
+        advance.CustomMinimumSize = new Vector2(150, 40);
         advance.Pressed += OnAdvance;
-        box.AddChild(advance);
+        top.AddChild(advance);
+
+        _log = MakeLabel("", 15, Parchment);
+        _log.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        box.AddChild(_log);
     }
 }
