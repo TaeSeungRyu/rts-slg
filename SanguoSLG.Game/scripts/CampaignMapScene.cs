@@ -56,8 +56,6 @@ public sealed partial class CampaignMapScene : Node3D
     private VBoxContainer _infoRows = null!;
     private PanelContainer _cmdMenu = null!;
     private VBoxContainer _cmdList = null!;
-    private PanelContainer _detail = null!;
-    private VBoxContainer _detailBody = null!;
     private OptionButton? _paramSel;
     private ConfirmationDialog _confirm = null!;
     private System.Action? _onConfirm;
@@ -607,19 +605,17 @@ public sealed partial class CampaignMapScene : Node3D
         var layer = new CanvasLayer();
         AddChild(layer);
 
-        // 우상단: 선택 성 정보 카드.
-        _infoCard = Card(layer, Control.LayoutPreset.TopRight, new Vector2(-372, 16), 356);
-        var info = (VBoxContainer)_infoCard.GetChild(0);
+        // 우상단: 선택 성 정보 카드(화면 비례 · 내용 길면 스크롤).
+        _infoCard = CornerCard(layer, 0.78f, 0.0f, 1.0f, 0.52f, out var info);
         info.AddChild(Header("◈ 성 정보"));
-        _infoRows = new VBoxContainer();
+        _infoRows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         _infoRows.AddThemeConstantOverride("separation", 5);
         info.AddChild(_infoRows);
 
-        // 좌하단: 명령 목록(카테고리 그룹 + 아이콘 버튼 — 삼국지14/콜오브드래곤즈풍).
-        _cmdMenu = Card(layer, Control.LayoutPreset.BottomLeft, new Vector2(20, -390), 210);
-        var menu = (VBoxContainer)_cmdMenu.GetChild(0);
+        // 좌하단: 명령 목록(카테고리 그룹 + 아이콘 버튼 — 화면 비례 · 내용 길면 스크롤).
+        _cmdMenu = CornerCard(layer, 0.0f, 0.44f, 0.17f, 1.0f, out var menu);
         menu.AddChild(Header("◈ 명 령"));
-        _cmdList = new VBoxContainer();
+        _cmdList = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         _cmdList.AddThemeConstantOverride("separation", 5);
         menu.AddChild(_cmdList);
         foreach (var (group, indices) in CmdGroups)
@@ -633,15 +629,12 @@ public sealed partial class CampaignMapScene : Node3D
                 btn.ExpandIcon = false;
                 btn.Alignment = HorizontalAlignment.Left;
                 btn.AddThemeConstantOverride("h_separation", 10);
-                btn.CustomMinimumSize = new Vector2(186, 40);
+                btn.CustomMinimumSize = new Vector2(0, 36);
+                btn.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
                 btn.Pressed += () => OpenModal(idx);
                 _cmdList.AddChild(btn);
             }
         }
-
-        // 명령 목록 오른쪽: 파라미터 + 장수 목록(클릭 = 실행).
-        _detail = Card(layer, Control.LayoutPreset.BottomLeft, new Vector2(214, -360), 260);
-        _detailBody = (VBoxContainer)_detail.GetChild(0);
 
         _confirm = new ConfirmationDialog { Title = "명령 확인" };
         _confirm.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 16));
@@ -651,18 +644,32 @@ public sealed partial class CampaignMapScene : Node3D
         HidePanels();
     }
 
-    // 먹빛·금테 카드(내부 VBox 반환은 GetChild(0)). 앵커·오프셋·최소폭 지정.
-    private PanelContainer Card(CanvasLayer layer, Control.LayoutPreset preset, Vector2 offset, int width)
+    // 화면 비율(앵커 aL~aB = 0~1)로 배치되는 코너 카드. 창 크기에 맞춰 reflow되고,
+    // 내부 스크롤로 내용이 길어도 잘리지 않는다. body는 스크롤 안 VBox.
+    private PanelContainer CornerCard(CanvasLayer layer, float aL, float aT, float aR, float aB, out VBoxContainer body)
     {
-        var card = new PanelContainer { Visible = false, CustomMinimumSize = new Vector2(width, 0) };
-        card.SetAnchorsPreset(preset);
-        card.Position = offset;
+        const float m = 14f;
+        var card = new PanelContainer
+        {
+            Visible = false,
+            AnchorLeft = aL,
+            AnchorTop = aT,
+            AnchorRight = aR,
+            AnchorBottom = aB,
+            OffsetLeft = m,
+            OffsetTop = m,
+            OffsetRight = -m,
+            OffsetBottom = -m,
+        };
         card.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps; // 고해상 아이콘 축소 시 선명
-        card.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
+        card.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 12));
         layer.AddChild(card);
-        var box = new VBoxContainer();
-        box.AddThemeConstantOverride("separation", 8);
-        card.AddChild(box);
+
+        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        card.AddChild(scroll);
+        body = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        body.AddThemeConstantOverride("separation", 8);
+        scroll.AddChild(body);
         return card;
     }
 
@@ -696,7 +703,6 @@ public sealed partial class CampaignMapScene : Node3D
     {
         _infoCard.Visible = false;
         _cmdMenu.Visible = false;
-        _detail.Visible = false;
         if (_ring is not null) { _ring.Visible = false; }
     }
 
@@ -728,7 +734,6 @@ public sealed partial class CampaignMapScene : Node3D
 
         _infoCard.Visible = true;
         _cmdMenu.Visible = true;
-        _detail.Visible = false;
         MoveRing(c.Position);
     }
 
