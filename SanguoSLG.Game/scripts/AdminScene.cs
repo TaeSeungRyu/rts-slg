@@ -190,7 +190,7 @@ public sealed partial class AdminScene : Control
             var pendingText = pending > 0 ? $" 진행중{pending}" : "";
             var btn = new Button
             {
-                Text = $"{mark}[{Size(city.Castle)}] {city.Name}  금{city.Gold} 성벽{city.Wall} 병{troops}{pendingText}",
+                Text = $"{mark}[{SizeTag(city.Castle)}] {city.Name}  금{city.Gold} 성벽{city.Wall} 병{troops}{pendingText}",
                 CustomMinimumSize = new Vector2(0, 38),
                 Alignment = HorizontalAlignment.Left,
             };
@@ -424,7 +424,7 @@ public sealed partial class AdminScene : Control
         _ => k.ToString(),
     };
 
-    private static string Size(CastleSize castle) => castle switch
+    private static string SizeTag(CastleSize castle) => castle switch
     {
         CastleSize.Large => "대",
         CastleSize.Medium => "중",

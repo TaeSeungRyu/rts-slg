@@ -53,7 +53,7 @@ public sealed partial class CampaignMapScene : Node3D
     private CityId? _selected;
     private int _cmdIndex = -1;
     private PanelContainer _infoCard = null!;
-    private Label _infoText = null!;
+    private VBoxContainer _infoRows = null!;
     private PanelContainer _cmdMenu = null!;
     private VBoxContainer _cmdList = null!;
     private PanelContainer _detail = null!;
@@ -167,8 +167,8 @@ public sealed partial class CampaignMapScene : Node3D
         return ImageTexture.CreateFromImage(img);
     }
 
-    // ── 명령 아이콘(코드 생성) — 삼국지14/콜오브드래곤즈처럼 명령마다 표식 ──
-    private enum Sym { Sword, Coin, Book, Wall, Scroll, Grain, Flag }
+    // ── 아이콘(코드 생성) — 삼국지14/콜오브드래곤즈처럼 정보·명령마다 표식 ──
+    private enum Sym { Sword, Coin, Book, Wall, Scroll, Grain, Flag, People, Shield, Ore, Officer }
 
     private readonly Dictionary<Sym, ImageTexture> _icons = new();
 
@@ -247,6 +247,28 @@ public sealed partial class CampaignMapScene : Node3D
             case Sym.Flag: // 성/세력(깃발)
                 Rect(6, 3, 7, 19, Gold);
                 Rect(7, 4, 17, 11, GoldBright);
+                break;
+            case Sym.People: // 인구(사람 둘)
+                Disc(8, 8, 3.2f, tan);
+                Rect(5, 11, 11, 18, tan);
+                Disc(15, 9, 2.6f, new Color(0.66f, 0.58f, 0.40f));
+                Rect(12, 12, 18, 18, new Color(0.66f, 0.58f, 0.40f));
+                break;
+            case Sym.Shield: // 치안(방패)
+                Rect(5, 3, 17, 5, new Color(0.42f, 0.62f, 0.46f));
+                Rect(5, 3, 7, 12, new Color(0.42f, 0.62f, 0.46f));
+                Rect(15, 3, 17, 12, new Color(0.42f, 0.62f, 0.46f));
+                Diamond(11, 13, 6, new Color(0.42f, 0.62f, 0.46f));
+                break;
+            case Sym.Ore: // 광석(광물 덩이)
+                Diamond(11, 12, 7, new Color(0.60f, 0.66f, 0.74f));
+                Rect(8, 9, 10, 11, new Color(0.80f, 0.84f, 0.90f));
+                break;
+            case Sym.Officer: // 장수 인물 배지(금테 원 + 인물 실루엣)
+                Disc(11, 11, 10f, Gold);
+                Disc(11, 11, 8.5f, new Color(0.16f, 0.15f, 0.14f));
+                Disc(11, 8, 3.2f, Parchment);          // 머리
+                Rect(6, 12, 16, 19, Parchment);         // 어깨
                 break;
         }
 
@@ -420,12 +442,12 @@ public sealed partial class CampaignMapScene : Node3D
         AddChild(layer);
 
         // 우상단: 선택 성 정보 카드.
-        _infoCard = Card(layer, Control.LayoutPreset.TopRight, new Vector2(-360, 16), 344);
+        _infoCard = Card(layer, Control.LayoutPreset.TopRight, new Vector2(-372, 16), 356);
         var info = (VBoxContainer)_infoCard.GetChild(0);
         info.AddChild(Header("◈ 성 정보"));
-        _infoText = MakeLabel("", 15, Parchment);
-        _infoText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        info.AddChild(_infoText);
+        _infoRows = new VBoxContainer();
+        _infoRows.AddThemeConstantOverride("separation", 5);
+        info.AddChild(_infoRows);
 
         // 좌하단: 명령 목록(카테고리 그룹 + 아이콘 버튼 — 삼국지14/콜오브드래곤즈풍).
         _cmdMenu = Card(layer, Control.LayoutPreset.BottomLeft, new Vector2(20, -390), 210);
@@ -477,6 +499,21 @@ public sealed partial class CampaignMapScene : Node3D
         return card;
     }
 
+    // 아이콘 + 텍스트 정보 행.
+    private Control InfoRow(Sym icon, string text)
+    {
+        var h = new HBoxContainer();
+        h.AddThemeConstantOverride("separation", 8);
+        h.AddChild(new TextureRect
+        {
+            Texture = Icon(icon),
+            CustomMinimumSize = new Vector2(20, 20),
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        });
+        h.AddChild(MakeLabel(text, 15, Parchment));
+        return h;
+    }
+
     private Control Header(string text)
     {
         var v = new VBoxContainer();
@@ -501,22 +538,26 @@ public sealed partial class CampaignMapScene : Node3D
         _selected = id;
         _cmdIndex = -1;
         var c = _state.Cities.First(x => x.Id == id);
-        var troops = _state.Garrisons.Where(g => g.City == id)
-            .Select(g => $"{g.TroopCode} {g.Troops}");
+        var troops = _state.Garrisons.Where(g => g.City == id).Select(g => $"{g.TroopCode} {g.Troops}");
         var officers = _state.GeneralsAt(id).Select(g => _state.Generals.First(x => x.Id == g).Name);
         var pending = _state.Commands.Where(p => p.City == id).Select(p =>
-            $"{KindName(p.Kind)} (남은 {p.CompletionDay - _state.Day}일)");
+            $"{KindName(p.Kind)} 남은 {p.CompletionDay - _state.Day}일");
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
 
-        _infoText.Text =
-            $"《 {c.Name} 》\n" +
-            $"금 {c.Gold}   군량 {c.Provisions}\n" +
-            $"인구 {c.Population}   치안 {c.Security}   세율 {c.TaxRate}%\n" +
-            $"성벽 {c.Wall}   광석 {c.Ore} 말 {c.Horses} 코끼리 {c.Elephants}\n" +
-            $"시설 {facilities}\n" +
-            $"대기 병력: {(troops.Any() ? string.Join(", ", troops) : "없음")}\n" +
-            $"주둔 장수: {(officers.Any() ? string.Join(", ", officers) : "없음")}" +
-            (pending.Any() ? $"\n진행중: {string.Join(", ", pending)}" : "");
+        Clear(_infoRows);
+        _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 17, GoldBright));
+        _infoRows.AddChild(InfoRow(Sym.Coin, $"금 {c.Gold}      군량 {c.Provisions}"));
+        _infoRows.AddChild(InfoRow(Sym.People, $"인구 {c.Population}"));
+        _infoRows.AddChild(InfoRow(Sym.Shield, $"치안 {c.Security}      세율 {c.TaxRate}%"));
+        _infoRows.AddChild(InfoRow(Sym.Wall, $"성벽 {c.Wall}"));
+        _infoRows.AddChild(InfoRow(Sym.Ore, $"광석 {c.Ore}  말 {c.Horses}  코끼리 {c.Elephants}"));
+        _infoRows.AddChild(InfoRow(Sym.Book, $"시설 {facilities}"));
+        _infoRows.AddChild(InfoRow(Sym.Sword, $"대기 {(troops.Any() ? string.Join(", ", troops) : "없음")}"));
+        _infoRows.AddChild(InfoRow(Sym.Officer, $"주둔 {(officers.Any() ? string.Join(", ", officers) : "없음")}"));
+        if (pending.Any())
+        {
+            _infoRows.AddChild(InfoRow(Sym.Scroll, $"진행중 {string.Join(", ", pending)}"));
+        }
 
         _infoCard.Visible = true;
         _cmdMenu.Visible = true;
@@ -569,8 +610,12 @@ public sealed partial class CampaignMapScene : Node3D
             var home = g.Region.Length > 0 && g.Region == cityData.Region ? " 🏠" : "";
             var stat = cmd.Kind == CommandKind.Research || cmd.Kind == CommandKind.CityStratagem
                 ? $"지{g.Intellect}" : cmd.Kind == CommandKind.Train ? $"무{g.Might}" : $"정{g.Politics}";
-            var btn = MakeButton($"{g.Name}  {stat}{home}");
-            btn.CustomMinimumSize = new Vector2(230, 32);
+            var btn = MakeButton($"  {g.Name}   {stat}{home}");
+            btn.Icon = Icon(Sym.Officer);
+            btn.ExpandIcon = false;
+            btn.Alignment = HorizontalAlignment.Left;
+            btn.AddThemeConstantOverride("h_separation", 8);
+            btn.CustomMinimumSize = new Vector2(236, 38);
             var captured = gid;
             btn.Pressed += () => AskExecute(city, cmdIndex, captured);
             _detailBody.AddChild(btn);
