@@ -66,6 +66,14 @@ public sealed partial class CampaignMapScene : Node3D
     private ImageTexture _blankIcon = null!;
     private ImageTexture _dotIcon = null!;
 
+    // 명령 모달(명령 클릭 → 큰 창 + 아이콘 카드 그리드 → 카드 선택 → 장수 클릭 = 실행).
+    private CanvasLayer? _modalLayer;
+    private int _modalParam;
+    private GridContainer _modalOfficers = null!;
+    private Label _modalDetail = null!;
+    private readonly List<PanelContainer> _optionCards = new();
+    private readonly Dictionary<TroopClass, ImageTexture> _emblems = new();
+
     // 1단계 지원 명령(내정 — 출전은 2단계). (표시명, 종류, 파라미터: troop/tax/wall/stratagem/none)
     private static readonly (string Label, CommandKind Kind, string Param)[] Cmds =
     {
@@ -468,7 +476,7 @@ public sealed partial class CampaignMapScene : Node3D
                 btn.Alignment = HorizontalAlignment.Left;
                 btn.AddThemeConstantOverride("h_separation", 10);
                 btn.CustomMinimumSize = new Vector2(186, 40);
-                btn.Pressed += () => ShowDetail(idx);
+                btn.Pressed += () => OpenModal(idx);
                 _cmdList.AddChild(btn);
             }
         }
@@ -565,8 +573,9 @@ public sealed partial class CampaignMapScene : Node3D
         MoveRing(c.Position);
     }
 
-    // 명령 클릭 → 파라미터 컨트롤 + 수행 장수 목록(클릭 = 실행). 계단식.
-    private void ShowDetail(int cmdIndex)
+    // 명령 클릭 → 큰 모달(반투명 배경 + 아이콘 카드 그리드). 카드로 대상/계략/세율을 고르고,
+    // 장수 카드를 클릭하면 컨펌 후 실행한다(삼국지14/콜오브드래곤즈풍 명령 창).
+    private void OpenModal(int cmdIndex)
     {
         if (_selected is not { } city)
         {
@@ -575,59 +584,324 @@ public sealed partial class CampaignMapScene : Node3D
 
         _cmdIndex = cmdIndex;
         var cmd = Cmds[cmdIndex];
-        Clear(_detailBody);
-        _paramSel = null;
+        CloseModal();
 
-        _detailBody.AddChild(Header($"◈ {cmd.Label}"));
+        var layer = new CanvasLayer { Layer = 20 };
+        AddChild(layer);
+        _modalLayer = layer;
 
-        if (cmd.Param != "wall")
+        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.62f) };
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        backdrop.MouseFilter = Control.MouseFilterEnum.Stop;
+        backdrop.GuiInput += e =>
         {
-            _paramSel = MakeOption(220);
-            switch (cmd.Param)
-            {
-                case "troop": foreach (var t in _troops) { _paramSel.AddItem(t.Name); } break;
-                case "tax":
-                    foreach (var v in new[] { 0, 10, 20, 30, 40, 50 }) { _paramSel.AddItem($"세율 {v}%"); }
-                    _paramSel.Select(2);
-                    break;
-                case "stratagem": foreach (var s in Strats) { _paramSel.AddItem(s.Label); } break;
-            }
+            if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { CloseModal(); }
+        };
+        layer.AddChild(backdrop);
 
-            _detailBody.AddChild(_paramSel);
+        var center = new CenterContainer();
+        center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        layer.AddChild(center);
+
+        var panel = new PanelContainer();
+        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 3, 14, 26));
+        panel.MouseFilter = Control.MouseFilterEnum.Stop;
+        center.AddChild(panel);
+
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(772, 604) };
+        scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
+        panel.AddChild(scroll);
+
+        var box = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        box.AddThemeConstantOverride("separation", 14);
+        scroll.AddChild(box);
+
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var cityName = _state.Cities.First(x => x.Id == city).Name;
+        var title = MakeLabel($"◈  {cmd.Label}   《 {cityName} 》", 27, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(46, 42);
+        close.Pressed += CloseModal;
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+
+        var cityData = _state.Cities.First(x => x.Id == city);
+        var options = OptionList(cmd, cityData);
+        _optionCards.Clear();
+        _modalParam = cmd.Param == "tax" ? 2 : 0;
+        if (options.Count > 0)
+        {
+            box.AddChild(MakeLabel(cmd.Param == "stratagem" ? "계략을 선택하세요" : "대상을 선택하세요", 15, GoldBright));
+            var grid = new GridContainer { Columns = System.Math.Min(4, options.Count) };
+            grid.AddThemeConstantOverride("h_separation", 12);
+            grid.AddThemeConstantOverride("v_separation", 12);
+            box.AddChild(grid);
+            for (var i = 0; i < options.Count; i++)
+            {
+                var idx = i;
+                var card = OptionCard(options[i]);
+                _optionCards.Add(card);
+                card.GuiInput += e =>
+                {
+                    if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { PickOption(idx, options[idx]); }
+                };
+                grid.AddChild(card);
+            }
         }
 
-        _detailBody.AddChild(MakeLabel("수행 장수 (클릭 = 실행)", 13, GoldBright));
+        _modalDetail = MakeLabel("", 14, Parchment);
+        box.AddChild(_modalDetail);
+        box.AddChild(GoldRule());
+
+        box.AddChild(MakeLabel("수행 장수 (클릭 = 실행)", 15, GoldBright));
+        _modalOfficers = new GridContainer { Columns = 4 };
+        _modalOfficers.AddThemeConstantOverride("h_separation", 12);
+        _modalOfficers.AddThemeConstantOverride("v_separation", 12);
+        box.AddChild(_modalOfficers);
+        BuildOfficerCards(city, cmdIndex);
+
+        if (options.Count > 0) { PickOption(_modalParam, options[_modalParam]); }
+    }
+
+    private void CloseModal()
+    {
+        if (_modalLayer is not null)
+        {
+            _modalLayer.QueueFree();
+            _modalLayer = null;
+        }
+
+        _optionCards.Clear();
+    }
+
+    // 명령별 옵션 카드 목록: (표시명, 아이콘, 부가설명).
+    private List<(string Name, ImageTexture Icon, string Detail)> OptionList(
+        (string Label, CommandKind Kind, string Param) cmd, City city)
+    {
+        var list = new List<(string, ImageTexture, string)>();
+        switch (cmd.Param)
+        {
+            case "troop":
+                foreach (var t in _troops)
+                {
+                    var detail = cmd.Kind == CommandKind.Research
+                        ? $"연구 Lv.{_state.ResearchOf(city.Owner, t.Code)}"
+                        : ClassName(t.Class);
+                    list.Add((t.Name, ClassEmblem(t.Class), detail));
+                }
+
+                break;
+            case "tax":
+                foreach (var v in new[] { 0, 10, 20, 30, 40, 50 }) { list.Add(($"{v}%", Icon(Sym.Coin), "세율")); }
+                break;
+            case "stratagem":
+                foreach (var s in Strats) { list.Add((s.Label, StratIcon(s.Code), StratDesc(s.Code))); }
+                break;
+        }
+
+        return list;
+    }
+
+    // 아이콘 카드(큰 아이콘 + 이름 + 설명). 클릭 판정은 호출부에서 GuiInput으로.
+    private PanelContainer OptionCard((string Name, ImageTexture Icon, string Detail) o)
+    {
+        var card = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(150, 130),
+            MouseFilter = Control.MouseFilterEnum.Stop,
+            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+        };
+        card.AddThemeStyleboxOverride("panel", CardBox(false));
+
+        var v = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        v.AddThemeConstantOverride("separation", 6);
+        card.AddChild(v);
+        v.AddChild(new TextureRect
+        {
+            Texture = o.Icon,
+            CustomMinimumSize = new Vector2(54, 54),
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+        });
+        var name = MakeLabel(o.Name, 16, GoldBright);
+        name.HorizontalAlignment = HorizontalAlignment.Center;
+        v.AddChild(name);
+        var det = MakeLabel(o.Detail, 12, Parchment);
+        det.HorizontalAlignment = HorizontalAlignment.Center;
+        v.AddChild(det);
+
+        card.MouseEntered += () =>
+        {
+            if (!_optionCards.Contains(card) || _optionCards.IndexOf(card) != _modalParam)
+            {
+                card.AddThemeStyleboxOverride("panel", CardBox(false, hover: true));
+            }
+        };
+        card.MouseExited += () =>
+        {
+            if (!_optionCards.Contains(card) || _optionCards.IndexOf(card) != _modalParam)
+            {
+                card.AddThemeStyleboxOverride("panel", CardBox(false));
+            }
+        };
+        return card;
+    }
+
+    private void PickOption(int idx, (string Name, ImageTexture Icon, string Detail) o)
+    {
+        _modalParam = idx;
+        for (var i = 0; i < _optionCards.Count; i++)
+        {
+            _optionCards[i].AddThemeStyleboxOverride("panel", CardBox(i == idx));
+        }
+
+        _modalDetail.Text = o.Detail.Length > 0 ? $"▶  {o.Name}  —  {o.Detail}" : $"▶  {o.Name}";
+    }
+
+    private void BuildOfficerCards(CityId city, int cmdIndex)
+    {
+        Clear(_modalOfficers);
+        var cmd = Cmds[cmdIndex];
+        var cityData = _state.Cities.First(x => x.Id == city);
         var free = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g)).OrderBy(g => g.Value).ToList();
         if (free.Count == 0)
         {
-            _detailBody.AddChild(MakeLabel("(가능한 장수 없음)", 14, Parchment));
+            _modalOfficers.AddChild(MakeLabel("(가능한 장수 없음)", 14, Parchment));
+            return;
         }
 
-        var cityData = _state.Cities.First(x => x.Id == city);
         foreach (var gid in free)
         {
             var g = _state.Generals.First(x => x.Id == gid);
-            var home = g.Region.Length > 0 && g.Region == cityData.Region ? " 🏠" : "";
-            var stat = cmd.Kind == CommandKind.Research || cmd.Kind == CommandKind.CityStratagem
-                ? $"지{g.Intellect}" : cmd.Kind == CommandKind.Train ? $"무{g.Might}" : $"정{g.Politics}";
-            var btn = MakeButton($"  {g.Name}   {stat}{home}");
-            btn.Icon = Icon(Sym.Officer);
-            btn.ExpandIcon = false;
-            btn.Alignment = HorizontalAlignment.Left;
-            btn.AddThemeConstantOverride("h_separation", 8);
-            btn.CustomMinimumSize = new Vector2(236, 38);
+            var home = g.Region.Length > 0 && g.Region == cityData.Region ? "  🏠" : "";
+            var stat = cmd.Kind is CommandKind.Research or CommandKind.CityStratagem ? $"지 {g.Intellect}"
+                : cmd.Kind == CommandKind.Train ? $"무 {g.Might}" : $"정 {g.Politics}";
+            var card = OfficerCard(g.Name + home, stat);
             var captured = gid;
-            btn.Pressed += () => AskExecute(city, cmdIndex, captured);
-            _detailBody.AddChild(btn);
+            card.GuiInput += e =>
+            {
+                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { AskExecute(city, cmdIndex, captured, _modalParam); }
+            };
+            _modalOfficers.AddChild(card);
         }
-
-        _detail.Visible = true;
     }
 
-    private void AskExecute(CityId city, int cmdIndex, GeneralId general)
+    private PanelContainer OfficerCard(string name, string stat)
+    {
+        var card = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(174, 112),
+            MouseFilter = Control.MouseFilterEnum.Stop,
+            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+        };
+        card.AddThemeStyleboxOverride("panel", CardBox(false));
+        var v = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        v.AddThemeConstantOverride("separation", 4);
+        card.AddChild(v);
+        v.AddChild(new TextureRect
+        {
+            Texture = Icon(Sym.Officer),
+            CustomMinimumSize = new Vector2(46, 46),
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+        });
+        var nm = MakeLabel(name, 16, Parchment);
+        nm.HorizontalAlignment = HorizontalAlignment.Center;
+        v.AddChild(nm);
+        var st = MakeLabel(stat, 13, GoldBright);
+        st.HorizontalAlignment = HorizontalAlignment.Center;
+        v.AddChild(st);
+        card.MouseEntered += () => card.AddThemeStyleboxOverride("panel", CardBox(false, hover: true));
+        card.MouseExited += () => card.AddThemeStyleboxOverride("panel", CardBox(false));
+        return card;
+    }
+
+    private StyleBoxFlat CardBox(bool selected, bool hover = false) => selected
+        ? Frame(AccentFill, GoldBright, 2, 10, 10)
+        : hover ? Frame(InkHover, GoldBright, 2, 10, 10) : Frame(InkSoft, Gold, 1, 10, 10);
+
+    private Control GoldRule()
+    {
+        var rule = new HSeparator();
+        rule.AddThemeStyleboxOverride("separator", new StyleBoxFlat { BgColor = new Color(Gold, 0.5f), ContentMarginTop = 1, ContentMarginBottom = 1 });
+        return rule;
+    }
+
+    private static string ClassName(TroopClass c) => c switch
+    {
+        TroopClass.Infantry => "보병",
+        TroopClass.Archer => "궁병",
+        TroopClass.Cavalry => "기병",
+        TroopClass.Elephant => "상병",
+        TroopClass.Siege => "공성",
+        TroopClass.Naval => "해상",
+        _ => "",
+    };
+
+    private static Color ClassColor(TroopClass c) => c switch
+    {
+        TroopClass.Infantry => new Color(0.62f, 0.66f, 0.72f),
+        TroopClass.Archer => new Color(0.45f, 0.72f, 0.42f),
+        TroopClass.Cavalry => new Color(0.80f, 0.62f, 0.36f),
+        TroopClass.Elephant => new Color(0.72f, 0.72f, 0.76f),
+        TroopClass.Siege => new Color(0.85f, 0.52f, 0.28f),
+        TroopClass.Naval => new Color(0.36f, 0.68f, 0.78f),
+        _ => Gold,
+    };
+
+    // 병종 분류 표식(금테 원 안 분류색 원반) — 카드용 큰 아이콘.
+    private ImageTexture ClassEmblem(TroopClass c)
+    {
+        if (_emblems.TryGetValue(c, out var cached)) { return cached; }
+
+        const int N = 44;
+        var col = ClassColor(c);
+        var img = Image.CreateEmpty(N, N, false, Image.Format.Rgba8);
+        img.Fill(new Color(0, 0, 0, 0));
+        var cc = (N - 1) / 2f;
+        var r = N * 0.40f;
+        for (var y = 0; y < N; y++)
+        {
+            for (var x = 0; x < N; x++)
+            {
+                var d = System.MathF.Sqrt(((x - cc) * (x - cc)) + ((y - cc) * (y - cc)));
+                if (d <= r) { img.SetPixel(x, y, y < cc ? col.Lightened(0.12f) : col.Darkened(0.10f)); }
+                else if (d <= r + 2.4f) { img.SetPixel(x, y, Gold); }
+            }
+        }
+
+        var tex = ImageTexture.CreateFromImage(img);
+        _emblems[c] = tex;
+        return tex;
+    }
+
+    private ImageTexture StratIcon(string code) => Icon(code switch
+    {
+        "scout" => Sym.People,
+        "wall_break" => Sym.Wall,
+        "incite" => Sym.Shield,
+        "steal" => Sym.Coin,
+        "sow_discord" => Sym.Officer,
+        _ => Sym.Scroll,
+    });
+
+    private static string StratDesc(string code) => code switch
+    {
+        "scout" => "적 도시 정보 획득 (전제)",
+        "wall_break" => "성벽 −10%",
+        "incite" => "치안 −10",
+        "arson" => "군량 −20%",
+        "steal" => "금 20% 절취",
+        "sow_discord" => "충성 −20",
+        _ => "",
+    };
+
+    private void AskExecute(CityId city, int cmdIndex, GeneralId general, int p)
     {
         var cmd = Cmds[cmdIndex];
-        var p = System.Math.Max(0, _paramSel?.Selected ?? 0);
         var troopCode = cmd.Param == "troop" ? _troops[p].Code : cmd.Param == "wall" ? FactionResearch.WallCode : "";
         var facility = cmd.Param == "stratagem" ? Strats[p].Code : "";
         var value = cmd.Param == "tax" ? p * 10 : 0;
@@ -661,6 +935,7 @@ public sealed partial class CampaignMapScene : Node3D
             var r = _commander.Issue(_state, request);
             if (r.Ok) { _state = r.State; }
             _log.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
+            CloseModal();
             SelectCity(city);
             Redraw(_log.Text);
         };
