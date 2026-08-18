@@ -24,7 +24,7 @@
 | `Region` | `region` | 지역 코드(regions.json) — 맵 배치가 적용받는다 | "" |
 | `Paddies`/`Farms`/`Villages` | `paddies`/`farms`/`villages` | 시설 수(개수만 — 타일 위치는 Game 몫). 논 +300량·밭 +150량·마을 +50금/월 ✅ | 0 |
 | `Workshop` | `workshop` | 공방 보유(성별 1개) — 공성 병기·연구 게이트(③ 예정) | false |
-| `ProducesOre` 등 | `produces_ore`/`produces_horses`/`produces_elephants` | 자원 산출 도시 — 매월 광석 +500·말 +100·코끼리 +2 ✅ | false |
+| `ProducesOre` 등 | `produces_ore`/`produces_horses`/`produces_elephants` | 자원 산출 도시 — 매월 광석 +2500·말 +500·코끼리 +10 ✅. **계획: 파괴·수리 가능한 지역 고정 시설(광산·목장·상원)로 승격** — design-administration "자원 생산 시설" | false |
 | `TaxRate` | `tax_rate` | 세율 0~50% — 수입 배율(세율/20%) + 월 치안 변동(0%=+4 ~ 50%=−10) ✅ | 20 |
 | `Governor` | `governor` | 내정담당관(태수) 장수 id — 없거나 정치<60이면 수입 ×0.3, 정치↑=세율 증폭·내정 스킬 ✅ | null |
 | `Wall` | (JSON 없음) | 현재 성벽 값 — 공성으로 깎이고 0이면 붕괴. **로드 시 미연구(20%)로 초기화**(소 600·중 1200·대 2000), 세력 성벽 연구로 단계당 +20%씩 강화(4단계 100% = 3000/6000/10000). 완료 시 세력 전 도시 증축 ✅(11b, 2026-08-17) | 등급×20% |
