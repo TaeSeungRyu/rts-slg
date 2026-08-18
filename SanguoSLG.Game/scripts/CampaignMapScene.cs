@@ -10,19 +10,25 @@ using SanguoSLG.Core.Spatial;
 namespace SanguoSLG.Game;
 
 /// <summary>
-/// 아주 간단한 캠페인 맵 — 관전 테스트(13단계 1차). 작은 평지 맵 위 두 세력이 세력 AI로 스스로
-/// 싸우는 것을 3D로 지켜본다(콘솔 <c>--watch</c>의 시각판). 성은 성 모델+라벨(세력색), 야전 부대는
-/// 색 마커로 표시하고, "진행(주)" 버튼마다 <see cref="CampaignEngine"/>+<see cref="FactionAI"/>를 돌려
-/// 다시 그린다. Core를 호출·반영만 한다(노드에 규칙 없음 — CLAUDE.md).
+/// 간단한 캠페인 맵(13단계). 작은 평지 맵 위 **플레이어 세력(위)은 직접 조작**, 적(촉)은 세력 AI.
+/// 자기 성을 클릭하면 내정 명령 패널(모병·세율·연구·성벽수리·도시계략 + 컨펌)이 뜨고, "진행(주)"
+/// 버튼이 플레이어 명령과 적 AI를 함께 정산한다. 성은 성 모델+세력색 라벨, 야전 부대는 유닛 모델.
+/// Core(<see cref="CampaignEngine"/>·<see cref="CommandService"/>·<see cref="FactionAI"/>)를 호출·반영만
+/// 한다(노드에 규칙 없음 — CLAUDE.md). 출전(부대 편성)·부대 조작은 2단계.
 /// </summary>
 public sealed partial class CampaignMapScene : Node3D
 {
     private static readonly Color Blue = new(0.24f, 0.44f, 0.86f);
     private static readonly Color Red = new(0.82f, 0.22f, 0.18f);
+    private static readonly FactionId Player = new(1); // 위 = 플레이어, 나머지는 AI
 
     private MapView3D _view = null!;
+    private CameraController3D _camera = null!;
     private FactionAI _ai = null!;
     private CampaignEngine _engine = null!;
+    private CommandService _commander = null!;
+    private IReadOnlyList<TroopTemplate> _troops = null!;
+    private CommandBalance _cb = null!;
     private GameState _state = null!;
     private int _week;
 
@@ -32,32 +38,103 @@ public sealed partial class CampaignMapScene : Node3D
     private Label _status = null!;
     private Label _log = null!;
 
+    // 명령 패널(성 클릭 시).
+    private CityId? _selected;
+    private PanelContainer _panel = null!;
+    private Label _panelInfo = null!;
+    private OptionButton _cmdSel = null!;
+    private OptionButton _paramSel = null!;
+    private OptionButton _genSel = null!;
+    private Label _panelResult = null!;
+    private ConfirmationDialog _confirm = null!;
+    private System.Action? _onConfirm;
+    private readonly List<GeneralId> _genIds = new();
+    private readonly List<CityId> _targetIds = new();
+
+    // 1단계 지원 명령(내정 — 출전은 2단계). (표시명, 종류, 파라미터: troop/tax/wall/stratagem/none)
+    private static readonly (string Label, CommandKind Kind, string Param)[] Cmds =
+    {
+        ("모병", CommandKind.Recruit, "troop"),
+        ("세율", CommandKind.SetTaxRate, "tax"),
+        ("병종 연구", CommandKind.Research, "troop"),
+        ("성벽 수리", CommandKind.Repair, "wall"),
+        ("도시 계략", CommandKind.CityStratagem, "stratagem"),
+    };
+
+    private static readonly (string Label, string Code)[] Strats =
+    {
+        ("정찰", "scout"), ("성벽파괴", "wall_break"), ("선동", "incite"),
+        ("방화", "arson"), ("절취", "steal"), ("이간", "sow_discord"),
+    };
+
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
         _view = view;
+        _camera = camera;
 
-        var troops = new TroopTypeLoader().LoadFromDirectory(dataDirectory);
-        var commandBalance = new CommandBalanceLoader().LoadFromDirectory(dataDirectory);
+        _troops = new TroopTypeLoader().LoadFromDirectory(dataDirectory);
+        _cb = new CommandBalanceLoader().LoadFromDirectory(dataDirectory);
         var actives = new ActiveSkillLoader().LoadFromDirectory(dataDirectory);
         var passives = new PassiveSkillLoader().LoadFromDirectory(dataDirectory);
         var balance = new BalanceConfig(MonthlyTaxPerCity: 100);
 
-        _ai = new FactionAI(new CommandService(commandBalance, troops, balance),
-            new DeployService(commandBalance, troops, actives, passives));
+        _commander = new CommandService(_cb, _troops, balance);
+        _ai = new FactionAI(_commander, new DeployService(_cb, _troops, actives, passives));
         var movement = new MovementSimulator(new PassabilityMap(_map, [], _cities));
-        var world = new WorldEngine(balance, commandBalance);
+        var world = new WorldEngine(balance, _cb);
         _engine = new CampaignEngine(
             new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70)),
             world,
-            new CampaignSiege(new BattleResolver(60), troops),
+            new CampaignSiege(new BattleResolver(60), _troops),
             new CityCapture(), new SeededRandomSource(42),
-            new CityPlunder(commandBalance));
+            new CityPlunder(_cb));
         _state = _initial;
 
         SpawnCastles();
         BuildHud();
+        BuildPanel();
         camera.Setup(_view.HexToWorld(new HexCoord(4, 2)), 12f);
-        Redraw("성을 세우고 진행을 눌러 관전하세요.");
+        Redraw("자기 성(파란색)을 클릭해 명령을 내리세요. 적(촉)은 AI입니다.");
+    }
+
+    // 좌클릭 → 지면 헥사 → 그 칸의 성. 내 성이면 명령 패널, 아니면 닫는다.
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click)
+        {
+            return;
+        }
+
+        var hex = RayToGround(click.Position);
+        var city = hex is { } h ? _state.Cities.FirstOrDefault(c => c.Position == h) : null;
+        if (city is not null && city.Owner == Player)
+        {
+            SelectCity(city.Id);
+        }
+        else
+        {
+            _selected = null;
+            _panel.Visible = false;
+        }
+    }
+
+    private HexCoord? RayToGround(Vector2 screen)
+    {
+        var origin = _camera.ProjectRayOrigin(screen);
+        var dir = _camera.ProjectRayNormal(screen);
+        if (Mathf.Abs(dir.Y) < 0.0001f)
+        {
+            return null;
+        }
+
+        var t = -origin.Y / dir.Y;
+        if (t <= 0f)
+        {
+            return null;
+        }
+
+        var coord = _view.WorldToHex(origin + dir * t);
+        return _map.Contains(coord) ? coord : null;
     }
 
     // ── 아주 간단한 시나리오(코드): 평지 10x6, 두 세력, 각 성 1개·장수 2명·대기 병력 1만 ──
@@ -123,7 +200,8 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void OnAdvance()
     {
-        foreach (var f in _state.Factions.OrderBy(f => f.Id.Value))
+        // 플레이어 세력은 직접 조작 — AI는 나머지 세력만 굴린다.
+        foreach (var f in _state.Factions.Where(f => f.Id != Player).OrderBy(f => f.Id.Value))
         {
             _state = _ai.PlanWeek(_state, f.Id);
         }
@@ -148,6 +226,155 @@ public sealed partial class CampaignMapScene : Node3D
         {
             _log.Text = $"[종료] {(alive.Count == 1 ? alive[0].Name + " 통일" : "무승부")} (주 {_week})";
         }
+
+        // 선택 성이 아직 내 것이면 패널 갱신, 아니면 닫는다.
+        if (_selected is { } sel && _state.Cities.Any(c => c.Id == sel && c.Owner == Player))
+        {
+            SelectCity(sel);
+        }
+        else
+        {
+            _selected = null;
+            _panel.Visible = false;
+        }
+    }
+
+    // ── 명령 패널(성 클릭) ──
+    private void BuildPanel()
+    {
+        var layer = new CanvasLayer();
+        AddChild(layer);
+        _panel = new PanelContainer { Visible = false };
+        _panel.SetAnchorsPreset(Control.LayoutPreset.BottomLeft);
+        _panel.Position = new Vector2(16, -230);
+        layer.AddChild(_panel);
+
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 6);
+        _panel.AddChild(box);
+
+        _panelInfo = new Label();
+        _panelInfo.AddThemeFontSizeOverride("font_size", 15);
+        box.AddChild(_panelInfo);
+
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 6);
+        box.AddChild(row);
+        _cmdSel = new OptionButton { CustomMinimumSize = new Vector2(120, 34) };
+        foreach (var c in Cmds) { _cmdSel.AddItem(c.Label); }
+        _cmdSel.ItemSelected += _ => RefreshParam();
+        row.AddChild(_cmdSel);
+        _paramSel = new OptionButton { CustomMinimumSize = new Vector2(130, 34) };
+        row.AddChild(_paramSel);
+        _genSel = new OptionButton { CustomMinimumSize = new Vector2(120, 34) };
+        row.AddChild(_genSel);
+        var exec = new Button { Text = "실행", CustomMinimumSize = new Vector2(80, 34) };
+        exec.Pressed += OnExecute;
+        row.AddChild(exec);
+
+        _panelResult = new Label();
+        _panelResult.AddThemeFontSizeOverride("font_size", 14);
+        box.AddChild(_panelResult);
+
+        _confirm = new ConfirmationDialog { Title = "명령 확인" };
+        _confirm.Confirmed += () => _onConfirm?.Invoke();
+        layer.AddChild(_confirm);
+    }
+
+    private void SelectCity(CityId id)
+    {
+        _selected = id;
+        var c = _state.Cities.First(x => x.Id == id);
+        var troops = _state.Garrisons.Where(g => g.City == id).Sum(g => g.Troops);
+        _panelInfo.Text = $"{c.Name}  금 {c.Gold}  군량 {c.Provisions}  치안 {c.Security}  세율 {c.TaxRate}%  " +
+            $"성벽 {c.Wall}  대기 병력 {troops}";
+
+        _genIds.Clear();
+        _genSel.Clear();
+        foreach (var gid in _state.GeneralsAt(id).Where(g => !_state.IsGeneralBusy(g)).OrderBy(g => g.Value))
+        {
+            _genSel.AddItem(_state.Generals.First(g => g.Id == gid).Name);
+            _genIds.Add(gid);
+        }
+
+        if (_genIds.Count == 0) { _genSel.AddItem("(장수 없음)"); }
+
+        RefreshParam();
+        _panel.Visible = true;
+    }
+
+    private void RefreshParam()
+    {
+        _paramSel.Clear();
+        _targetIds.Clear();
+        var param = Cmds[System.Math.Max(0, _cmdSel.Selected)].Param;
+        switch (param)
+        {
+            case "troop":
+                foreach (var t in _troops) { _paramSel.AddItem(t.Name); }
+                break;
+            case "tax":
+                foreach (var v in new[] { 0, 10, 20, 30, 40, 50 }) { _paramSel.AddItem($"{v}%"); }
+                _paramSel.Select(2);
+                break;
+            case "stratagem":
+                foreach (var s in Strats) { _paramSel.AddItem(s.Label); }
+                break;
+            default:
+                _paramSel.AddItem("—");
+                break;
+        }
+    }
+
+    private void OnExecute()
+    {
+        if (_selected is not { } city || _genIds.Count == 0)
+        {
+            _panelResult.Text = "수행할 장수가 없습니다.";
+            return;
+        }
+
+        var cmd = Cmds[System.Math.Max(0, _cmdSel.Selected)];
+        var general = _genIds[System.Math.Max(0, _genSel.Selected)];
+        var p = System.Math.Max(0, _paramSel.Selected);
+
+        var troopCode = cmd.Param == "troop" ? _troops[p].Code : cmd.Param == "wall" ? FactionResearch.WallCode : "";
+        var facility = cmd.Param == "stratagem" ? Strats[p].Code : "";
+        var value = cmd.Param == "tax" ? p * 10 : 0;
+
+        CityId? target = null;
+        var extra = "";
+        if (cmd.Param == "stratagem")
+        {
+            var enemy = _state.Cities.FirstOrDefault(c => c.Owner != Player);
+            if (enemy is null) { _panelResult.Text = "대상 적 성이 없습니다."; return; }
+            target = enemy.Id;
+            var caster = _state.Generals.First(g => g.Id == general);
+            var days = CityStratagems.Days(_state.Cities.First(c => c.Id == city).Position, enemy.Position, _cb);
+            var defInt = enemy.Governor is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid)?.Intellect : null;
+            extra = $"\n대상 {enemy.Name} · 소요 {days}일 · 성공률 {CityStratagems.SuccessPercent(caster.Intellect, defInt)}%";
+        }
+
+        var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility,
+            TroopCode: troopCode, TargetCity: target);
+        var gName = _state.Generals.First(g => g.Id == general).Name;
+        var pLabel = cmd.Param switch
+        {
+            "troop" => $" · {_troops[p].Name}",
+            "tax" => $" · {value}%",
+            "stratagem" => $" · {Strats[p].Label}",
+            _ => "",
+        };
+        _confirm.DialogText = $"{_state.Cities.First(c => c.Id == city).Name} — {cmd.Label}{pLabel}{extra}\n수행 {gName}\n\n실행하시겠습니까?";
+        _onConfirm = () =>
+        {
+            var r = _commander.Issue(_state, request);
+            if (r.Ok) { _state = r.State; }
+            _panelResult.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
+            SelectCity(city);
+            Redraw(_log.Text);
+        };
+        _confirm.PopupCentered();
     }
 
     private void Redraw(string note)
