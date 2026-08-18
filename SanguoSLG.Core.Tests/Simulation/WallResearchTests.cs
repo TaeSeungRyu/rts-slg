@@ -27,8 +27,6 @@ public class WallResearchTests
         new(new CityId(id), $"c{id}", new HexCoord(id, 0), new FactionId(1), 3000, size,
             Gold: gold, Wall: wall, Workshop: workshop);
 
-    private static readonly string Wall = FactionResearch.WallCode;
-
     [Fact]
     public void 성벽최대_단계별_비율이_적용된다()
     {

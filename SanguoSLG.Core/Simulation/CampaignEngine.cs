@@ -18,15 +18,18 @@ public sealed class CampaignEngine
     private readonly WorldEngine _world;
     private readonly CampaignSiege? _siege;
     private readonly CityCapture? _capture;
+    private readonly CityPlunder? _plunder;
     private readonly IRandomSource _random;
 
     public CampaignEngine(AdvanceOrchestrator field, WorldEngine world,
-        CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null)
+        CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null,
+        CityPlunder? plunder = null)
     {
         _field = field;
         _world = world;
         _siege = siege;
         _capture = capture;
+        _plunder = plunder;
         _random = random ?? new SeededRandomSource(0);
     }
 
@@ -42,10 +45,17 @@ public sealed class CampaignEngine
     /// <summary>7일 진행 + 공성 교환 + 함락 보고(<paramref name="captures"/>)까지 돌려주는 오버로드.</summary>
     public GameState AdvanceWeek(GameState state, out IReadOnlyList<AdvanceTurn> turns,
         out IReadOnlyList<SiegeExchange> sieges, out IReadOnlyList<CaptureReport> captures)
+        => AdvanceWeek(state, out turns, out sieges, out captures, out _);
+
+    /// <summary>7일 진행 + 공성·함락·약탈 보고(<paramref name="plunders"/>)까지 돌려주는 오버로드.</summary>
+    public GameState AdvanceWeek(GameState state, out IReadOnlyList<AdvanceTurn> turns,
+        out IReadOnlyList<SiegeExchange> sieges, out IReadOnlyList<CaptureReport> captures,
+        out IReadOnlyList<PlunderReport> plunders)
     {
         var reports = new List<AdvanceTurn>();
         var siegeReports = new List<SiegeExchange>();
         var captureReports = new List<CaptureReport>();
+        var plunderReports = new List<PlunderReport>();
         var work = state;
         var armies = state.Armies.Where(u => u.Pool.Active > 0).ToList();
 
@@ -75,6 +85,15 @@ public sealed class CampaignEngine
                 siegeReports.AddRange(result.Exchanges);
             }
 
+            // 약탈(design-administration "시설 파괴·약탈") — 포위군이 진행마다 시설 1개 파괴·노획.
+            if (_plunder is not null)
+            {
+                var looted = _plunder.Resolve(armies, work.Cities);
+                armies = looted.Armies.ToList();
+                work = work with { Cities = looted.Cities };
+                plunderReports.AddRange(looted.Reports);
+            }
+
             // 함락 처리(design-general-lifecycle §4) — 성벽0+수비0에 근접 공격군이 있으면 점거.
             if (_capture is not null)
             {
@@ -102,10 +121,12 @@ public sealed class CampaignEngine
         turns = reports;
         sieges = siegeReports;
         captures = captureReports;
+        plunders = plunderReports;
         return _world.AdvanceDays(afterField, WeekDays);
     }
 
-    // 입성 부대 → 그 도시 대기 병력 편입(병종·훈련도 보존, 가중 평균) + 실린 장수 그 도시 주둔 복귀.
+    // 입성 부대 → 그 도시 대기 병력 편입(병종·훈련도 보존, 가중 평균) + 실린 장수 그 도시 주둔 복귀
+    // + 예치: 노획 금·잔여 휴대 군량을 성 비축에 합산(design-administration "복귀 예치").
     private static GameState ApplyEntered(GameState work, IReadOnlyList<CombatUnit> entered,
         IReadOnlyDictionary<Spatial.HexCoord, CityId> cityAt)
     {
@@ -116,11 +137,27 @@ public sealed class CampaignEngine
 
         var garrisons = work.Garrisons.ToList();
         var postings = work.Assignments.ToList();
+        var cities = work.Cities.ToList();
         foreach (var unit in entered)
         {
             if (unit.Field.Target is not { } pos || !cityAt.TryGetValue(pos, out var cityId))
             {
                 continue;
+            }
+
+            var gold = unit.LootGold;
+            var provisions = unit.TracksProvisions ? unit.Provisions : 0;
+            if (gold > 0 || provisions > 0)
+            {
+                var cIdx = cities.FindIndex(c => c.Id == cityId);
+                if (cIdx >= 0)
+                {
+                    cities[cIdx] = cities[cIdx] with
+                    {
+                        Gold = cities[cIdx].Gold + gold,
+                        Provisions = cities[cIdx].Provisions + provisions,
+                    };
+                }
             }
 
             var incoming = unit.IsSupply && unit.Cargo.Count > 0
@@ -156,6 +193,6 @@ public sealed class CampaignEngine
             }
         }
 
-        return work with { GarrisonForces = garrisons, Postings = postings };
+        return work with { GarrisonForces = garrisons, Postings = postings, Cities = cities };
     }
 }

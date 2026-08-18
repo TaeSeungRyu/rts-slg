@@ -74,10 +74,20 @@ public sealed class CityCapture
         var oldOwner = city.Owner;
 
         // 1) 소유 전환 + 자원 전부 승계(인구 −10%·치안 30 리셋, 성벽은 0 유지).
+        //    입성 부대의 노획 금·잔여 휴대 군량도 점거한 도시에 예치된다.
         var newPopulation = city.Population - city.Population * _populationLossPercent / 100;
+        var depositGold = entrants.Sum(u => u.LootGold);
+        var depositProvisions = entrants.Where(u => u.TracksProvisions).Sum(u => u.Provisions);
         var cities = state.Cities
             .Select(c => c.Id == city.Id
-                ? c with { Owner = captor, Population = newPopulation, Security = _security }
+                ? c with
+                {
+                    Owner = captor,
+                    Population = newPopulation,
+                    Security = _security,
+                    Gold = c.Gold + depositGold,
+                    Provisions = c.Provisions + depositProvisions,
+                }
                 : c)
             .ToList();
 

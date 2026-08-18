@@ -80,6 +80,9 @@ public sealed record CommandBalance
     /// <summary>성벽 수리 비용(금) = 회복량 ÷ 이 값.</summary>
     public int WallRepairGoldDivisor { get; init; } = 5;
 
+    /// <summary>약탈 노획률(%) — 파괴한 시설 건설 비용의 이 %를 노획한다(design-administration "시설 파괴·약탈").</summary>
+    public int PlunderPercent { get; init; } = 50;
+
     /// <summary>시설 건설 비용(금).</summary>
     public int BuildCostPaddy { get; init; } = 300;
     public int BuildCostFarm { get; init; } = 200;

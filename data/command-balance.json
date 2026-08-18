@@ -28,5 +28,6 @@
   "repair_days": 15,
   "wall_repair_percent": 25,
   "wall_repair_workshop_bonus": 25,
-  "wall_repair_gold_divisor": 5
+  "wall_repair_gold_divisor": 5,
+  "plunder_percent": 50
 }
