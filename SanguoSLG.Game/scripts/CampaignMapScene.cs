@@ -605,22 +605,22 @@ public sealed partial class CampaignMapScene : Node3D
         var layer = new CanvasLayer();
         AddChild(layer);
 
-        // 우상단: 선택 성 정보 카드(화면 비례 · 내용 길면 스크롤).
-        _infoCard = CornerCard(layer, 0.78f, 0.0f, 1.0f, 0.52f, out var info);
+        // 우상단: 선택 성 정보 카드 — 내용 크기만큼만 차지(스크롤 없음).
+        _infoCard = CornerCard(layer, Control.LayoutPreset.TopRight, out var info);
         info.AddChild(Header("◈ 성 정보"));
-        _infoRows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        _infoRows.AddThemeConstantOverride("separation", 5);
+        _infoRows = new VBoxContainer();
+        _infoRows.AddThemeConstantOverride("separation", 3);
         info.AddChild(_infoRows);
 
-        // 좌하단: 명령 목록(카테고리 그룹 + 아이콘 버튼 — 화면 비례 · 내용 길면 스크롤).
-        _cmdMenu = CornerCard(layer, 0.0f, 0.44f, 0.17f, 1.0f, out var menu);
+        // 좌하단: 명령 목록 — 내용 크기만큼만 차지(스크롤 없음).
+        _cmdMenu = CornerCard(layer, Control.LayoutPreset.BottomLeft, out var menu);
         menu.AddChild(Header("◈ 명 령"));
-        _cmdList = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        _cmdList.AddThemeConstantOverride("separation", 5);
+        _cmdList = new VBoxContainer();
+        _cmdList.AddThemeConstantOverride("separation", 3);
         menu.AddChild(_cmdList);
         foreach (var (group, indices) in CmdGroups)
         {
-            _cmdList.AddChild(MakeLabel($"— {group} —", 12, GoldBright));
+            _cmdList.AddChild(MakeLabel($"— {group} —", 11, GoldBright));
             foreach (var i in indices)
             {
                 var idx = i;
@@ -628,9 +628,8 @@ public sealed partial class CampaignMapScene : Node3D
                 btn.Icon = Icon(CmdIcons[i]);
                 btn.ExpandIcon = false;
                 btn.Alignment = HorizontalAlignment.Left;
-                btn.AddThemeConstantOverride("h_separation", 10);
-                btn.CustomMinimumSize = new Vector2(0, 36);
-                btn.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+                btn.AddThemeConstantOverride("h_separation", 8);
+                btn.CustomMinimumSize = new Vector2(128, 28);
                 btn.Pressed += () => OpenModal(idx);
                 _cmdList.AddChild(btn);
             }
@@ -644,32 +643,21 @@ public sealed partial class CampaignMapScene : Node3D
         HidePanels();
     }
 
-    // 화면 비율(앵커 aL~aB = 0~1)로 배치되는 코너 카드. 창 크기에 맞춰 reflow되고,
-    // 내부 스크롤로 내용이 길어도 잘리지 않는다. body는 스크롤 안 VBox.
-    private PanelContainer CornerCard(CanvasLayer layer, float aL, float aT, float aR, float aB, out VBoxContainer body)
+    // 코너에 붙는 카드 — 내용 최소 크기만큼만 차지(셀프 사이즈, 스크롤 없음).
+    // 코너 반대 방향으로 자라며(grow), 창 크기가 바뀌어도 코너 여백 12px을 유지한다.
+    private PanelContainer CornerCard(CanvasLayer layer, Control.LayoutPreset preset, out VBoxContainer body)
     {
-        const float m = 14f;
-        var card = new PanelContainer
-        {
-            Visible = false,
-            AnchorLeft = aL,
-            AnchorTop = aT,
-            AnchorRight = aR,
-            AnchorBottom = aB,
-            OffsetLeft = m,
-            OffsetTop = m,
-            OffsetRight = -m,
-            OffsetBottom = -m,
-        };
+        var card = new PanelContainer { Visible = false };
         card.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps; // 고해상 아이콘 축소 시 선명
-        card.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 12));
+        card.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 10));
         layer.AddChild(card);
+        card.SetAnchorsAndOffsetsPreset(preset, Control.LayoutPresetMode.KeepSize, 12);
+        card.GrowHorizontal = preset == Control.LayoutPreset.TopRight ? Control.GrowDirection.Begin : Control.GrowDirection.End;
+        card.GrowVertical = preset == Control.LayoutPreset.BottomLeft ? Control.GrowDirection.Begin : Control.GrowDirection.End;
 
-        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        card.AddChild(scroll);
-        body = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        body.AddThemeConstantOverride("separation", 8);
-        scroll.AddChild(body);
+        body = new VBoxContainer();
+        body.AddThemeConstantOverride("separation", 6);
+        card.AddChild(body);
         return card;
     }
 
@@ -677,22 +665,22 @@ public sealed partial class CampaignMapScene : Node3D
     private Control InfoRow(Sym icon, string text)
     {
         var h = new HBoxContainer();
-        h.AddThemeConstantOverride("separation", 8);
+        h.AddThemeConstantOverride("separation", 6);
         h.AddChild(new TextureRect
         {
             Texture = Icon(icon),
-            CustomMinimumSize = new Vector2(20, 20),
+            CustomMinimumSize = new Vector2(15, 15),
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
         });
-        h.AddChild(MakeLabel(text, 15, Parchment));
+        h.AddChild(MakeLabel(text, 12, Parchment));
         return h;
     }
 
     private Control Header(string text)
     {
         var v = new VBoxContainer();
-        v.AddThemeConstantOverride("separation", 4);
-        v.AddChild(MakeLabel(text, 18, Gold));
+        v.AddThemeConstantOverride("separation", 3);
+        v.AddChild(MakeLabel(text, 14, Gold));
         var rule = new HSeparator();
         rule.AddThemeStyleboxOverride("separator", new StyleBoxFlat { BgColor = new Color(Gold, 0.5f), ContentMarginTop = 1, ContentMarginBottom = 1 });
         v.AddChild(rule);
@@ -718,7 +706,7 @@ public sealed partial class CampaignMapScene : Node3D
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
 
         Clear(_infoRows);
-        _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 17, GoldBright));
+        _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 14, GoldBright));
         _infoRows.AddChild(InfoRow(Sym.Coin, $"금 {c.Gold}      군량 {c.Provisions}"));
         _infoRows.AddChild(InfoRow(Sym.People, $"인구 {c.Population}"));
         _infoRows.AddChild(InfoRow(Sym.Shield, $"치안 {c.Security}      세율 {c.TaxRate}%"));
@@ -1201,15 +1189,15 @@ public sealed partial class CampaignMapScene : Node3D
 
     private Button MakeButton(string text, bool accent = false)
     {
-        var b = new Button { Text = text, CustomMinimumSize = new Vector2(0, 36) };
+        var b = new Button { Text = text, CustomMinimumSize = new Vector2(0, 28) };
         b.AddThemeFontOverride("font", _font);
-        b.AddThemeFontSizeOverride("font_size", 15);
+        b.AddThemeFontSizeOverride("font_size", 13);
         b.AddThemeColorOverride("font_color", accent ? Ink : Parchment);
         b.AddThemeColorOverride("font_hover_color", accent ? Ink : GoldBright);
         b.AddThemeColorOverride("font_pressed_color", GoldBright);
-        b.AddThemeStyleboxOverride("normal", Frame(accent ? AccentFill : InkSoft, Gold, 1, 5, 10));
-        b.AddThemeStyleboxOverride("hover", Frame(accent ? GoldBright : InkHover, GoldBright, 1, 5, 10));
-        b.AddThemeStyleboxOverride("pressed", Frame(AccentFill, Gold, 1, 5, 10));
+        b.AddThemeStyleboxOverride("normal", Frame(accent ? AccentFill : InkSoft, Gold, 1, 5, 6));
+        b.AddThemeStyleboxOverride("hover", Frame(accent ? GoldBright : InkHover, GoldBright, 1, 5, 6));
+        b.AddThemeStyleboxOverride("pressed", Frame(AccentFill, Gold, 1, 5, 6));
         b.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
         return b;
     }
@@ -1312,27 +1300,27 @@ public sealed partial class CampaignMapScene : Node3D
 
         var panel = new PanelContainer();
         panel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
-        panel.Position = new Vector2(20, 16);
-        panel.CustomMinimumSize = new Vector2(560, 0);
-        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 16));
+        panel.Position = new Vector2(12, 12);
+        panel.CustomMinimumSize = new Vector2(400, 0);
+        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 10));
         layer.AddChild(panel);
 
         var box = new VBoxContainer();
-        box.AddThemeConstantOverride("separation", 8);
+        box.AddThemeConstantOverride("separation", 4);
         panel.AddChild(box);
 
         var top = new HBoxContainer();
-        top.AddThemeConstantOverride("separation", 12);
+        top.AddThemeConstantOverride("separation", 10);
         box.AddChild(top);
-        _status = MakeLabel("", 20, Gold);
+        _status = MakeLabel("", 15, Gold);
         _status.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         top.AddChild(_status);
         var advance = MakeButton("▶ 진행 (7일)", accent: true);
-        advance.CustomMinimumSize = new Vector2(150, 40);
+        advance.CustomMinimumSize = new Vector2(110, 30);
         advance.Pressed += OnAdvance;
         top.AddChild(advance);
 
-        _log = MakeLabel("", 15, Parchment);
+        _log = MakeLabel("", 12, Parchment);
         _log.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(_log);
     }
