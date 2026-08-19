@@ -84,7 +84,7 @@ a round emblem badge game UI icon of a single bold {SUBJECT} centered inside a c
 |:---:|---|---|---|
 | ✅ | `icon_sword` | 모병/전투 | `a Chinese jian sword blade pointing up` |
 | ✅ | `icon_coin` | 자금 | `an ancient Chinese gold ingot yuanbao` |
-| ⬜ | `icon_book` | 연구 | `a bamboo strip scroll book` |
+| ⬜ | `icon_book` | 연구 | `an open ancient book with pages` (구 `bamboo strip scroll book`은 글자 휘장으로 나와 폐기) |
 | ⬜ | `icon_wall` | 성벽 수리 | `a stone castle battlement wall` |
 | ⬜ | `icon_scroll` | 계략 | `a rolled paper scroll with a red seal` |
 | ⬜ | `icon_grain` | 군량 | `a sack of rice grain` |
