@@ -106,11 +106,14 @@ python frame_icon.py <src> <dst> <scale>
 | 완료 | 파일명 | 계략 | `{SUBJECT}` |
 |:---:|---|---|---|
 | ✅ | `strat_scout` | 정찰 | seed 9747(매) · 합성 0.9 · `StratIcon("scout")` 파일 로드 배선 |
-| ⬜ | `strat_wallbreak` | 성벽파괴 | **§3 표준 아닌 서술형**(icon_wall과 동일 규칙: `game icon` 빼고 독립 구조물): `a lone section of an ancient Chinese fortified stone wall being smashed and breached, a large hole with crumbling rubble and fallen bricks, standing isolated as a single structure`. 네거티브에 `intact perfect wall, brick wall filling the whole image, seamless wall texture` 추가 |
+| ✅ | `strat_wall_break` | 성벽파괴 | seed 9011(뚫린 성벽+불길) · 서술형(icon_wall 규칙) · 합성 0.98 · `StratIcon("wall_break")` |
 | ⬜ | `strat_incite` | 선동 | `a raised fist with flames` |
 | ⬜ | `strat_arson` | 방화 | `a burning torch with fire` |
 | ⬜ | `strat_steal` | 절취 | `a bag of gold coins` |
-| ⬜ | `strat_discord` | 이간 | `two opposing masks split apart` |
+| ⬜ | `strat_sow_discord` | 이간 | `two opposing masks split apart` |
+
+> 계략 파일명은 **반드시 계략 code 기준** `strat_{code}.png` (scout / wall_break / incite /
+> arson / steal / sow_discord). 언더바 포함 정확히 일치해야 `StratIcon`이 로드한다.
 
 ---
 
@@ -175,6 +178,7 @@ a game UI icon of a single {SUBJECT} in the center, ancient Chinese Three Kingdo
 | icon_ore | 2563 | 오브젝트(광석) → 합성 0.9. `Icon(Sym.Ore)` |
 | icon_officer | 4364 | 오브젝트(장수 흉상) → 합성 0.9. `Icon(Sym.Officer)` |
 | strat_scout | 9747 | 오브젝트(매) → 합성 0.9. `StratIcon("scout")` (계략은 strat_{code}.png 파일 우선 로드) |
+| strat_wall_break | 9011 | 서술형(뚫린 성벽+불길) → 합성 0.98. `StratIcon("wall_break")` |
 | troop_archer | 6675 | 오브젝트(홍금 활) → 합성 0.92. `ClassEmblem(Archer)` |
 | troop_elephant | 4343 | 오브젝트(장식 코끼리) → 합성 0.84. `ClassEmblem(Elephant)` |
 | troop_siege | 1494 | 정의 문장(충차 장면) → 합성 0.92. `ClassEmblem(Siege)` |
