@@ -61,6 +61,10 @@ SoulRise·Lightning 등 — "시뮬 통과 후" 약속) / 실지역 맵 + 시나
 포로(함락/등용실패 산물·교환·등용)·정찰·등용(적 성 장수·포로 영입)·외교(포로교환)·세력 소멸.
 10c·10d가 그 토대(충성 데이터·포로·함락)를 깔고, 운영(급여·등용·외교)은 후반 단계.
 
+**에셋(Fooocus)**: UI 아이콘 세트(병종·명령·정보·계략)는 완료 → [asset-icon-generation.md](asset-icon-generation.md).
+**장수 초상 교체(콘텐츠 단계 계획)** → [asset-general-portraits.md](asset-general-portraits.md)
+— Image Prompt로 현 테마 화풍 고정, 속성 매핑, `general_{id}.png` per-general 배선(+폴백).
+
 ## 단계 계획 (앞으로 — 위에서 아래로)
 
 | 단계 | 내용 | 완료 기준 |
