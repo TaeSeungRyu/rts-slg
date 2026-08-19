@@ -85,7 +85,7 @@ python frame_icon.py <src> <dst> <scale>
 | ✅ | `icon_scroll` | 계략 | seed 1534(펼친 두루마리·홍인) · 합성 0.98 · `Icon(Sym.Scroll)` 배선 |
 | ✅ | `icon_grain` | 군량 | seed 8987(붉은 군량 자루) · 합성 0.9 · `Icon(Sym.Grain)` 배선 (정보 카드 금/군량 분리) |
 | ⬜ | `icon_flag` | 세력/성 | `a hanging war banner flag` — **현재 UI 미사용**(표시 위치 없음). 쓰려면 자리 먼저 정해야 함(예: 정보 카드 성 이름 앞, HUD 세력 표시) |
-| ⬜ | `icon_people` | 인구 | `two stylized peasant figures` |
+| ✅ | `icon_people` | 인구 | seed 4138(두 인물, 자체 금테 포함) · 원형 크롭만 · `Icon(Sym.People)` 배선 |
 | ⬜ | `icon_shield` | 치안 | `a round bronze war shield` |
 | ⬜ | `icon_ore` | 광물 | `a chunk of raw silver ore crystal` |
 | ⬜ | `icon_officer` | 장수 | `a helmeted general bust silhouette` |
@@ -170,6 +170,7 @@ a game UI icon of a single {SUBJECT} in the center, ancient Chinese Three Kingdo
 | icon_wall | 2927 | 서술형(성벽 장면) → 합성 0.98. `Icon(Sym.Wall)` |
 | icon_scroll | 1534 | 오브젝트(펼친 두루마리) → 합성 0.98. `Icon(Sym.Scroll)` |
 | icon_grain | 8987 | 오브젝트(군량 자루) → 합성 0.9. `Icon(Sym.Grain)` (정보 카드 금/군량 분리) |
+| icon_people | 4138 | 자체 금테 포함 → 원형 크롭만(프레임 합성 X). `Icon(Sym.People)` |
 | troop_archer | 6675 | 오브젝트(홍금 활) → 합성 0.92. `ClassEmblem(Archer)` |
 | troop_elephant | 4343 | 오브젝트(장식 코끼리) → 합성 0.84. `ClassEmblem(Elephant)` |
 | troop_siege | 1494 | 정의 문장(충차 장면) → 합성 0.92. `ClassEmblem(Siege)` |
