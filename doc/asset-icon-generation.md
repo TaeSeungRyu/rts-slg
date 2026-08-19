@@ -107,7 +107,7 @@ python frame_icon.py <src> <dst> <scale>
 |:---:|---|---|---|
 | ✅ | `strat_scout` | 정찰 | seed 9747(매) · 합성 0.9 · `StratIcon("scout")` 파일 로드 배선 |
 | ✅ | `strat_wall_break` | 성벽파괴 | seed 9011(뚫린 성벽+불길) · 서술형(icon_wall 규칙) · 합성 0.98 · `StratIcon("wall_break")` |
-| ⬜ | `strat_incite` | 선동 | `a large ceremonial war drum with two drumsticks` (북=선동, 불과 안 겹침. 대안: `an angry raised fist`) |
+| ✅ | `strat_incite` | 선동 | seed 1029(성난 군중+횃불) · 합성 0.98 · `StratIcon("incite")` |
 | ⬜ | `strat_arson` | 방화 | `a burning wooden torch with bright orange flames` (대안: `a burning granary on fire`) |
 | ⬜ | `strat_steal` | 절취 | `an open drawstring money pouch spilling gold coins with a small dagger` (훔침 강조·코인 아이콘과 차별 · 여러 동전 → `multiple objects` 제외) |
 | ⬜ | `strat_sow_discord` | 이간 | `a broken iron chain snapped into two pieces` (동맹 단절. 대안: `two opposing theater masks` / `a jade tally token split into two halves`) |
@@ -179,6 +179,7 @@ a game UI icon of a single {SUBJECT} in the center, ancient Chinese Three Kingdo
 | icon_officer | 4364 | 오브젝트(장수 흉상) → 합성 0.9. `Icon(Sym.Officer)` |
 | strat_scout | 9747 | 오브젝트(매) → 합성 0.9. `StratIcon("scout")` (계략은 strat_{code}.png 파일 우선 로드) |
 | strat_wall_break | 9011 | 서술형(뚫린 성벽+불길) → 합성 0.98. `StratIcon("wall_break")` |
+| strat_incite | 1029 | 장면(성난 군중+횃불) → 합성 0.98. `StratIcon("incite")` |
 | troop_archer | 6675 | 오브젝트(홍금 활) → 합성 0.92. `ClassEmblem(Archer)` |
 | troop_elephant | 4343 | 오브젝트(장식 코끼리) → 합성 0.84. `ClassEmblem(Elephant)` |
 | troop_siege | 1494 | 정의 문장(충차 장면) → 합성 0.92. `ClassEmblem(Siege)` |
