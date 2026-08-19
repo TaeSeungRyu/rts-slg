@@ -152,6 +152,7 @@ a game UI icon of a single bold ancient Chinese gold ingot yuanbao in the center
 |---|---|---|
 | troop_cavalry | **배선 완료** | seed 7318 채택 · 원형 크롭+투명 256px · `ClassEmblem(Cavalry)`에 로드 배선 |
 | icon_coin | **배선 완료** | seed 8428(금괴) 채택 · 원형 크롭+투명 256px · `Icon(Sym.Coin)`에 로드 배선 |
+| icon_sword | **배선 완료** | seed 1090(검) 채택 · 원형 크롭+투명 256px · `Icon(Sym.Sword)`에 로드 배선 (8399는 비원형이라 스킵) |
 | (나머지) | 대기 | |
 
 > 상태 값: 대기 / 시안 진행 중 / 후보 확보 / 배선 완료

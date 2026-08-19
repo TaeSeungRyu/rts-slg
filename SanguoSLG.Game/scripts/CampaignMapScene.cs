@@ -182,6 +182,7 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly Dictionary<Sym, string> SymFiles = new()
     {
         [Sym.Coin] = "res://assets/icons/icon_coin.png",
+        [Sym.Sword] = "res://assets/icons/icon_sword.png",
     };
 
     private ImageTexture Icon(Sym s)
