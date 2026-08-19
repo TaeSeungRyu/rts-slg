@@ -109,7 +109,7 @@ python frame_icon.py <src> <dst> <scale>
 | ✅ | `strat_wall_break` | 성벽파괴 | seed 9011(뚫린 성벽+불길) · 서술형(icon_wall 규칙) · 합성 0.98 · `StratIcon("wall_break")` |
 | ✅ | `strat_incite` | 선동 | seed 1029(성난 군중+횃불) · 합성 0.98 · `StratIcon("incite")` |
 | ✅ | `strat_arson` | 방화 | seed 6488(불붙은 횃불) · 합성 0.98 · `StratIcon("arson")` |
-| ⬜ | `strat_steal` | 절취 | `an open drawstring money pouch spilling gold coins with a small dagger` (훔침 강조·코인 아이콘과 차별 · 여러 동전 → `multiple objects` 제외) |
+| ✅ | `strat_steal` | 절취 | seed 1125(쏟아진 금화+주머니+단검) · 합성 0.98 · `StratIcon("steal")` |
 | ⬜ | `strat_sow_discord` | 이간 | `a broken iron chain snapped into two pieces` (동맹 단절. 대안: `two opposing theater masks` / `a jade tally token split into two halves`) |
 
 > 계략 파일명은 **반드시 계략 code 기준** `strat_{code}.png` (scout / wall_break / incite /
@@ -181,6 +181,7 @@ a game UI icon of a single {SUBJECT} in the center, ancient Chinese Three Kingdo
 | strat_wall_break | 9011 | 서술형(뚫린 성벽+불길) → 합성 0.98. `StratIcon("wall_break")` |
 | strat_incite | 1029 | 장면(성난 군중+횃불) → 합성 0.98. `StratIcon("incite")` |
 | strat_arson | 6488 | 오브젝트(불붙은 횃불) → 합성 0.98. `StratIcon("arson")` |
+| strat_steal | 1125 | 오브젝트(쏟아진 금화+단검) → 합성 0.98. `StratIcon("steal")` |
 | troop_archer | 6675 | 오브젝트(홍금 활) → 합성 0.92. `ClassEmblem(Archer)` |
 | troop_elephant | 4343 | 오브젝트(장식 코끼리) → 합성 0.84. `ClassEmblem(Elephant)` |
 | troop_siege | 1494 | 정의 문장(충차 장면) → 합성 0.92. `ClassEmblem(Siege)` |
