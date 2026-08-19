@@ -110,7 +110,7 @@ python frame_icon.py <src> <dst> <scale>
 | ✅ | `strat_incite` | 선동 | seed 1029(성난 군중+횃불) · 합성 0.98 · `StratIcon("incite")` |
 | ✅ | `strat_arson` | 방화 | seed 6488(불붙은 횃불) · 합성 0.98 · `StratIcon("arson")` |
 | ✅ | `strat_steal` | 절취 | seed 1125(쏟아진 금화+주머니+단검) · 합성 0.98 · `StratIcon("steal")` |
-| ⬜ | `strat_sow_discord` | 이간 | `a broken iron chain snapped into two pieces` (동맹 단절. 대안: `two opposing theater masks` / `a jade tally token split into two halves`) |
+| ⬜ | `strat_sow_discord` | 이간 | `a coiled venomous snake ready to strike` (모략·배신 상징, 강렬·SDXL 잘 그림. 끊어진 사슬은 밋밋해 폐기. 대안: `a dagger slicing through a knotted rope` / `a jade tally pendant cracked and split into two halves` / `an axe wedge splitting two war banners apart`) |
 
 > 계략 파일명은 **반드시 계략 code 기준** `strat_{code}.png` (scout / wall_break / incite /
 > arson / steal / sow_discord). 언더바 포함 정확히 일치해야 `StratIcon`이 로드한다.
