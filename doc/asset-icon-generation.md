@@ -58,6 +58,11 @@
 
 > 추상 소재(금괴·코인)에서 글자가 계속 새면 앞에 `korean text, japanese text, inscription,
 > engraved text,`를 추가.
+>
+> 기계류(공성 등)가 장식 구조물로 뭉개지면 `tripod stand, candelabra, chandelier,
+> bell frame, decorative structure, abstract ornament`를 추가하고, 소재를 더 또렷한
+> 실루엣 단어로(투석기→`stone catapult with a long throwing arm` / `ballista giant
+> crossbow` / `battering ram`) 바꾼다.
 
 ---
 
@@ -147,7 +152,7 @@ dark background`
 | ✅ | `troop_archer` | 궁병 | seed 6675(홍금 활) 오브젝트만 → §4-c 금테 합성 · `ClassEmblem(Archer)` 배선 |
 | ✅ | `troop_cavalry` | 기병 | `a rearing war horse` |
 | ✅ | `troop_elephant` | 상병 | seed 4343(장식 코끼리) 오브젝트만 → §4-c 금테 합성(0.84 축소+여백) · `ClassEmblem(Elephant)` 배선 |
-| ⬜ | `troop_siege` | 공성 | `a wooden trebuchet catapult` |
+| ⬜ | `troop_siege` | 공성 | `a stone catapult with a long wooden throwing arm and a boulder` (구 `trebuchet catapult`은 장식 구조물로 뭉개짐 · 대안: `a ballista giant crossbow` / `a battering ram on wheels`) |
 | ⬜ | `troop_naval` | 해상 | `an ancient Chinese war junk ship` |
 
 ### 계략 아이콘 (모달, 톤 확정 후)
