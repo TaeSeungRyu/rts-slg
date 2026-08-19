@@ -105,7 +105,7 @@ python frame_icon.py <src> <dst> <scale>
 
 | 완료 | 파일명 | 계략 | `{SUBJECT}` |
 |:---:|---|---|---|
-| ⬜ | `strat_scout` | 정찰 | `a bronze spyglass and eye` |
+| ⬜ | `strat_scout` | 정찰 | `a perched hunting hawk with sharp eyes` (구 `bronze spyglass and eye`는 너무 고급스러움. 대안: `a trail of footprints tracks` / `a single stylized watching eye` / `a simple wooden folding spyglass`) |
 | ⬜ | `strat_wallbreak` | 성벽파괴 | `a crumbling breached castle wall` |
 | ⬜ | `strat_incite` | 선동 | `a raised fist with flames` |
 | ⬜ | `strat_arson` | 방화 | `a burning torch with fire` |
