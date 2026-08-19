@@ -195,7 +195,7 @@ dark background`
 | ✅ | `troop_cavalry` | 기병 | `a rearing war horse` |
 | ✅ | `troop_elephant` | 상병 | seed 4343(장식 코끼리) 오브젝트만 → §4-c 금테 합성(0.84 축소+여백) · `ClassEmblem(Elephant)` 배선 |
 | ✅ | `troop_siege` | 공성 | seed 1494 채택 · **아주 자세한 설명 프롬프트**(충차 정의 문장 전체)로 겨우 인식됨 · §4-c 합성(0.92, 배경·병사 크롭) · `ClassEmblem(Siege)` 배선. 짧은 단어(catapult/ram/boulders)는 전부 실패 |
-| ⬜ | `troop_naval` | 해상 | `an ancient Chinese war junk ship` |
+| ✅ | `troop_naval` | 해상 | seed 7746(홍금 범선) 오브젝트만 → §4-c 금테 합성(0.94) · `ClassEmblem(Naval)` 배선 |
 
 ### 계략 아이콘 (모달, 톤 확정 후)
 
@@ -259,7 +259,8 @@ a game icon of a single ancient Chinese war junk ship, centered with clear margi
 | troop_archer | **배선 완료** | seed 6675(홍금 활) 오브젝트만 → §4-c 금테 합성 · `ClassEmblem(Archer)` 배선 |
 | troop_elephant | **배선 완료** | seed 4343(장식 코끼리) 오브젝트만 → §4-c 금테 합성(0.84 여백) · `ClassEmblem(Elephant)` 배선 |
 | troop_siege | **배선 완료** | seed 1494(충차 장면) · 상세 설명 프롬프트로 인식 · §4-c 합성(0.92) · `ClassEmblem(Siege)` 배선 |
-| (나머지) | 대기 | |
+| troop_naval | **배선 완료** | seed 7746(홍금 범선) 오브젝트만 → §4-c 금테 합성(0.94) · `ClassEmblem(Naval)` 배선 |
+| — | — | **병종 엠블럼 6종 전부 완료** |
 
 > 상태 값: 대기 / 시안 진행 중 / 후보 확보 / 배선 완료
 

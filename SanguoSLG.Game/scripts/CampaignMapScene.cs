@@ -1062,6 +1062,7 @@ public sealed partial class CampaignMapScene : Node3D
         [TroopClass.Archer] = "res://assets/icons/troop_archer.png",
         [TroopClass.Elephant] = "res://assets/icons/troop_elephant.png",
         [TroopClass.Siege] = "res://assets/icons/troop_siege.png",
+        [TroopClass.Naval] = "res://assets/icons/troop_naval.png",
     };
 
     private ImageTexture ClassEmblem(TroopClass c)
