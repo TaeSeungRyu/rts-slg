@@ -134,7 +134,7 @@ dark background`
 
 | 완료 | 파일명 | 병종 | `{SUBJECT}` |
 |:---:|---|---|---|
-| ⬜ | `troop_infantry` | 보병 | `a crossed sword and spear` |
+| ✅ | `troop_infantry` | 보병 | seed 1984(교차 검) 채택 · 원형 크롭 · `ClassEmblem(Infantry)` 배선 |
 | ⬜ | `troop_archer` | 궁병 | `a drawn recurve bow with arrow` |
 | ✅ | `troop_cavalry` | 기병 | `a rearing war horse` |
 | ⬜ | `troop_elephant` | 상병 | `an armored war elephant` |
@@ -197,6 +197,7 @@ a round emblem badge game UI icon of a single bold ancient Chinese gold ingot yu
 | icon_coin | **배선 완료** | seed 8428(금괴) 채택 · 원형 크롭+투명 256px · `Icon(Sym.Coin)`에 로드 배선 |
 | icon_sword | **배선 완료** | seed 1090(검) 채택 · 원형 크롭+투명 256px · `Icon(Sym.Sword)`에 로드 배선 (8399는 비원형이라 스킵) |
 | icon_book | **배선 완료** | seed 9016 오브젝트만 → §4-c 금테 프레임 합성 · `Icon(Sym.Book)`에 로드 배선 |
+| troop_infantry | **배선 완료** | seed 1984(교차 검) 채택 · 원형 크롭 · `ClassEmblem(Infantry)` 배선 |
 | (나머지) | 대기 | |
 
 > 상태 값: 대기 / 시안 진행 중 / 후보 확보 / 배선 완료

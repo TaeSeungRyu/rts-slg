@@ -1058,6 +1058,7 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly Dictionary<TroopClass, string> EmblemFiles = new()
     {
         [TroopClass.Cavalry] = "res://assets/icons/troop_cavalry.png",
+        [TroopClass.Infantry] = "res://assets/icons/troop_infantry.png",
     };
 
     private ImageTexture ClassEmblem(TroopClass c)
