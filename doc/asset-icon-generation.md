@@ -99,6 +99,17 @@ dark background`
 > 그래도 안 나오는 소재는 **절차적(코드) 아이콘을 유지**한다(현재도 파일 없으면 자동 폴백).
 > AI 아트는 잘 나오는 소재(검·말·코끼리·배 등)에 우선 적용.
 
+### 4-c. 오브젝트만 생성 → 금테 프레임 합성 (가장 안정적) ⭐
+
+책처럼 프레임이 계속 깨지는 소재는, **오브젝트만** 뽑고(§4-b 소재 가중치로 배경 어둡게)
+**금테 원형 프레임은 후처리로 합성**한다. 오브젝트 생성(쉬움)과 프레임(내가 완벽히 통일)
+을 분리하는 방식 — icon_book(seed 9016)이 이 방식으로 배선됨.
+
+- 후처리(Pillow): 투명 캔버스에 금테 원(gold) → 주홍 라인 → 흑칠 안쪽(dark lacquer)을
+  동심원으로 그리고, 그 안쪽 원에 오브젝트 이미지를 원형 마스크로 합성 → 256px.
+- 오브젝트 프롬프트는 배경을 `flat dark background`로 두면 흑칠 안쪽과 자연스럽게 섞인다.
+- 세트의 금테·주홍·흑칠 톤이 100% 일치하므로 통일감이 가장 좋다.
+
 ---
 
 ## 5. 아이콘별 SUBJECT
@@ -109,7 +120,7 @@ dark background`
 |:---:|---|---|---|
 | ✅ | `icon_sword` | 모병/전투 | `a Chinese jian sword blade pointing up` |
 | ✅ | `icon_coin` | 자금 | `an ancient Chinese gold ingot yuanbao` |
-| ⬜ | `icon_book` | 연구 | `an open ancient book with pages` (구 `bamboo strip scroll book`은 글자 휘장으로 나와 폐기) |
+| ✅ | `icon_book` | 연구 | seed 9016 오브젝트만 생성 → **금테 프레임 합성** 배선 (죽간·배지 프롬프트는 실패, §4-c 합성 방식) |
 | ⬜ | `icon_wall` | 성벽 수리 | `a stone castle battlement wall` |
 | ⬜ | `icon_scroll` | 계략 | `a rolled paper scroll with a red seal` |
 | ⬜ | `icon_grain` | 군량 | `a sack of rice grain` |
@@ -185,6 +196,7 @@ a round emblem badge game UI icon of a single bold ancient Chinese gold ingot yu
 | troop_cavalry | **배선 완료** | seed 7318 채택 · 원형 크롭+투명 256px · `ClassEmblem(Cavalry)`에 로드 배선 |
 | icon_coin | **배선 완료** | seed 8428(금괴) 채택 · 원형 크롭+투명 256px · `Icon(Sym.Coin)`에 로드 배선 |
 | icon_sword | **배선 완료** | seed 1090(검) 채택 · 원형 크롭+투명 256px · `Icon(Sym.Sword)`에 로드 배선 (8399는 비원형이라 스킵) |
+| icon_book | **배선 완료** | seed 9016 오브젝트만 → §4-c 금테 프레임 합성 · `Icon(Sym.Book)`에 로드 배선 |
 | (나머지) | 대기 | |
 
 > 상태 값: 대기 / 시안 진행 중 / 후보 확보 / 배선 완료
