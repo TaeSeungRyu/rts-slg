@@ -178,9 +178,24 @@ public sealed partial class CampaignMapScene : Node3D
 
     private readonly Dictionary<Sym, ImageTexture> _icons = new();
 
+    // 심볼별 실제 이미지가 있으면 우선 사용(없으면 절차적). 파일: assets/icons/icon_*.png
+    private static readonly Dictionary<Sym, string> SymFiles = new()
+    {
+        [Sym.Coin] = "res://assets/icons/icon_coin.png",
+    };
+
     private ImageTexture Icon(Sym s)
     {
         if (_icons.TryGetValue(s, out var c)) { return c; }
+
+        if (SymFiles.TryGetValue(s, out var file) && Godot.FileAccess.FileExists(file))
+        {
+            var loaded = Image.LoadFromFile(ProjectSettings.GlobalizePath(file));
+            loaded.GenerateMipmaps();
+            var lt = ImageTexture.CreateFromImage(loaded);
+            _icons[s] = lt;
+            return lt;
+        }
 
         var img = NewBig();
         var steel = new Color(0.80f, 0.84f, 0.90f);
