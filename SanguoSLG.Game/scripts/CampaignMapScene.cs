@@ -186,6 +186,7 @@ public sealed partial class CampaignMapScene : Node3D
         [Sym.Book] = "res://assets/icons/icon_book.png",
         [Sym.Wall] = "res://assets/icons/icon_wall.png",
         [Sym.Scroll] = "res://assets/icons/icon_scroll.png",
+        [Sym.Grain] = "res://assets/icons/icon_grain.png",
     };
 
     private ImageTexture Icon(Sym s)
@@ -725,7 +726,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         Clear(_infoRows);
         _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 13, GoldBright));
-        _infoRows.AddChild(InfoRow(Sym.Coin, $"금{c.Gold} 량{c.Provisions}"));
+        _infoRows.AddChild(InfoRow(Sym.Coin, $"금 {c.Gold}"));
+        _infoRows.AddChild(InfoRow(Sym.Grain, $"군량 {c.Provisions}"));
         _infoRows.AddChild(InfoRow(Sym.People, $"인구 {c.Population}"));
         _infoRows.AddChild(InfoRow(Sym.Shield, $"치안{c.Security} 세{c.TaxRate}%"));
         _infoRows.AddChild(InfoRow(Sym.Wall, $"성벽 {c.Wall}"));
