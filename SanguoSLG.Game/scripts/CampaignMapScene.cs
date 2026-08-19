@@ -800,27 +800,27 @@ public sealed partial class CampaignMapScene : Node3D
 
         // 창 크기에 맞춘 반응형 모달(작은 화면에서도 넘치지 않게 상·하한 캡).
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.55f, 384f, 648f);
-        var mh = Mathf.Clamp(vp.Y * 0.67f, 312f, 516f);
-        var colOpt = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 123f), 3, 5);
-        var colOff = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 142f), 2, 4);
+        var mw = Mathf.Clamp(vp.X * 0.66f, 460f, 778f);
+        var mh = Mathf.Clamp(vp.Y * 0.80f, 374f, 620f);
+        var colOpt = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 146f), 3, 5);
+        var colOff = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 169f), 2, 4);
 
         var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(mw, mh) };
         scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
         panel.AddChild(scroll);
 
         var box = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        box.AddThemeConstantOverride("separation", 10);
+        box.AddThemeConstantOverride("separation", 12);
         scroll.AddChild(box);
 
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
         var cityName = _state.Cities.First(x => x.Id == city).Name;
-        var title = MakeLabel($"◈  {cmd.Label}   《 {cityName} 》", 22, Gold);
+        var title = MakeLabel($"◈  {cmd.Label}   《 {cityName} 》", 26, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         titleRow.AddChild(title);
         var close = MakeButton("✕");
-        close.CustomMinimumSize = new Vector2(38, 36);
+        close.CustomMinimumSize = new Vector2(46, 43);
         close.Pressed += CloseModal;
         titleRow.AddChild(close);
         box.AddChild(GoldRule());
@@ -831,10 +831,10 @@ public sealed partial class CampaignMapScene : Node3D
         _modalParam = cmd.Param == "tax" ? 2 : 0;
         if (options.Count > 0)
         {
-            box.AddChild(MakeLabel(cmd.Param == "stratagem" ? "계략을 선택하세요" : "대상을 선택하세요", 16, GoldBright));
+            box.AddChild(MakeLabel(cmd.Param == "stratagem" ? "계략을 선택하세요" : "대상을 선택하세요", 19, GoldBright));
             var grid = new GridContainer { Columns = System.Math.Min(colOpt, options.Count) };
-            grid.AddThemeConstantOverride("h_separation", 8);
-            grid.AddThemeConstantOverride("v_separation", 8);
+            grid.AddThemeConstantOverride("h_separation", 10);
+            grid.AddThemeConstantOverride("v_separation", 10);
             box.AddChild(grid);
             for (var i = 0; i < options.Count; i++)
             {
@@ -849,14 +849,14 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
-        _modalDetail = MakeLabel("", 14, Parchment);
+        _modalDetail = MakeLabel("", 17, Parchment);
         box.AddChild(_modalDetail);
         box.AddChild(GoldRule());
 
-        box.AddChild(MakeLabel("수행 장수 (클릭 = 실행)", 16, GoldBright));
+        box.AddChild(MakeLabel("수행 장수 (클릭 = 실행)", 19, GoldBright));
         _modalOfficers = new GridContainer { Columns = colOff };
-        _modalOfficers.AddThemeConstantOverride("h_separation", 8);
-        _modalOfficers.AddThemeConstantOverride("v_separation", 8);
+        _modalOfficers.AddThemeConstantOverride("h_separation", 10);
+        _modalOfficers.AddThemeConstantOverride("v_separation", 10);
         box.AddChild(_modalOfficers);
         BuildOfficerCards(city, cmdIndex);
 
@@ -907,27 +907,27 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var card = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(115, 101),
+            CustomMinimumSize = new Vector2(138, 121),
             MouseFilter = Control.MouseFilterEnum.Stop,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand,
         };
         card.AddThemeStyleboxOverride("panel", CardBox(false));
 
         var v = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        v.AddThemeConstantOverride("separation", 3);
+        v.AddThemeConstantOverride("separation", 4);
         card.AddChild(v);
         v.AddChild(new TextureRect
         {
             Texture = o.Icon,
-            CustomMinimumSize = new Vector2(41, 41),
+            CustomMinimumSize = new Vector2(49, 49),
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
         });
-        var name = MakeLabel(o.Name, 16, GoldBright);
+        var name = MakeLabel(o.Name, 19, GoldBright);
         name.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(name);
-        var det = MakeLabel(o.Detail, 12, Parchment);
+        var det = MakeLabel(o.Detail, 14, Parchment);
         det.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(det);
 
@@ -991,26 +991,26 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var card = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(134, 89),
+            CustomMinimumSize = new Vector2(161, 107),
             MouseFilter = Control.MouseFilterEnum.Stop,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand,
         };
         card.AddThemeStyleboxOverride("panel", CardBox(false));
         var v = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        v.AddThemeConstantOverride("separation", 3);
+        v.AddThemeConstantOverride("separation", 4);
         card.AddChild(v);
         v.AddChild(new TextureRect
         {
             Texture = Icon(Sym.Officer),
-            CustomMinimumSize = new Vector2(36, 36),
+            CustomMinimumSize = new Vector2(43, 43),
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
         });
-        var nm = MakeLabel(name, 16, Parchment);
+        var nm = MakeLabel(name, 19, Parchment);
         nm.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(nm);
-        var st = MakeLabel(stat, 13, GoldBright);
+        var st = MakeLabel(stat, 16, GoldBright);
         st.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(st);
         card.MouseEntered += () => card.AddThemeStyleboxOverride("panel", CardBox(false, hover: true));
@@ -1019,8 +1019,8 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     private StyleBoxFlat CardBox(bool selected, bool hover = false) => selected
-        ? Frame(AccentFill, GoldBright, 2, 8, 8)
-        : hover ? Frame(InkHover, GoldBright, 2, 8, 8) : Frame(InkSoft, Gold, 1, 8, 8);
+        ? Frame(AccentFill, GoldBright, 2, 9, 9)
+        : hover ? Frame(InkHover, GoldBright, 2, 9, 9) : Frame(InkSoft, Gold, 1, 9, 9);
 
     private Control GoldRule()
     {
