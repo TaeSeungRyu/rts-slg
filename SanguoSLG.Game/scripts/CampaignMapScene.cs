@@ -189,6 +189,7 @@ public sealed partial class CampaignMapScene : Node3D
         [Sym.Grain] = "res://assets/icons/icon_grain.png",
         [Sym.People] = "res://assets/icons/icon_people.png",
         [Sym.Shield] = "res://assets/icons/icon_shield.png",
+        [Sym.Ore] = "res://assets/icons/icon_ore.png",
     };
 
     private ImageTexture Icon(Sym s)
