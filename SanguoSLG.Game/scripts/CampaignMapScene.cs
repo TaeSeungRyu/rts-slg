@@ -1150,15 +1150,33 @@ public sealed partial class CampaignMapScene : Node3D
         return tex;
     }
 
-    private ImageTexture StratIcon(string code) => Icon(code switch
+    private readonly Dictionary<string, ImageTexture> _stratIcons = new();
+
+    // 계략별 실제 이미지(assets/icons/strat_{code}.png)가 있으면 우선, 없으면 기존 심볼 폴백.
+    private ImageTexture StratIcon(string code)
     {
-        "scout" => Sym.People,
-        "wall_break" => Sym.Wall,
-        "incite" => Sym.Shield,
-        "steal" => Sym.Coin,
-        "sow_discord" => Sym.Officer,
-        _ => Sym.Scroll,
-    });
+        if (_stratIcons.TryGetValue(code, out var cached)) { return cached; }
+
+        var path = $"res://assets/icons/strat_{code}.png";
+        if (Godot.FileAccess.FileExists(path))
+        {
+            var loaded = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
+            loaded.GenerateMipmaps();
+            var lt = ImageTexture.CreateFromImage(loaded);
+            _stratIcons[code] = lt;
+            return lt;
+        }
+
+        return Icon(code switch
+        {
+            "scout" => Sym.People,
+            "wall_break" => Sym.Wall,
+            "incite" => Sym.Shield,
+            "steal" => Sym.Coin,
+            "sow_discord" => Sym.Officer,
+            _ => Sym.Scroll,
+        });
+    }
 
     private static string StratDesc(string code) => code switch
     {

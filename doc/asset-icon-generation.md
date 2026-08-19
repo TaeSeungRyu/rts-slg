@@ -105,7 +105,7 @@ python frame_icon.py <src> <dst> <scale>
 
 | 완료 | 파일명 | 계략 | `{SUBJECT}` |
 |:---:|---|---|---|
-| ⬜ | `strat_scout` | 정찰 | `a perched hunting hawk with sharp eyes` (구 `bronze spyglass and eye`는 너무 고급스러움. 대안: `a trail of footprints tracks` / `a single stylized watching eye` / `a simple wooden folding spyglass`) |
+| ✅ | `strat_scout` | 정찰 | seed 9747(매) · 합성 0.9 · `StratIcon("scout")` 파일 로드 배선 |
 | ⬜ | `strat_wallbreak` | 성벽파괴 | `a crumbling breached castle wall` |
 | ⬜ | `strat_incite` | 선동 | `a raised fist with flames` |
 | ⬜ | `strat_arson` | 방화 | `a burning torch with fire` |
@@ -174,6 +174,7 @@ a game UI icon of a single {SUBJECT} in the center, ancient Chinese Three Kingdo
 | icon_shield | 9701 | 원형 방패 → 합성 0.84. `Icon(Sym.Shield)` |
 | icon_ore | 2563 | 오브젝트(광석) → 합성 0.9. `Icon(Sym.Ore)` |
 | icon_officer | 4364 | 오브젝트(장수 흉상) → 합성 0.9. `Icon(Sym.Officer)` |
+| strat_scout | 9747 | 오브젝트(매) → 합성 0.9. `StratIcon("scout")` (계략은 strat_{code}.png 파일 우선 로드) |
 | troop_archer | 6675 | 오브젝트(홍금 활) → 합성 0.92. `ClassEmblem(Archer)` |
 | troop_elephant | 4343 | 오브젝트(장식 코끼리) → 합성 0.84. `ClassEmblem(Elephant)` |
 | troop_siege | 1494 | 정의 문장(충차 장면) → 합성 0.92. `ClassEmblem(Siege)` |
