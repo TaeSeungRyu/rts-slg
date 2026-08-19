@@ -81,7 +81,7 @@ python frame_icon.py <src> <dst> <scale>
 | ✅ | `icon_sword` | 모병/전투 | `a Chinese jian sword blade pointing up` |
 | ✅ | `icon_coin` | 자금 | `an ancient Chinese gold ingot yuanbao` |
 | ✅ | `icon_book` | 연구 | `an open ancient book with pages` |
-| ⬜ | `icon_wall` | 성벽 수리 | `icon` 빼고 서술형: `a lone section of an ancient Chinese fortified stone rampart with crenellated battlements and a small arched gate, standing isolated as a single structure` (짧은 `battlement wall`은 빈 액자/전면 텍스처로 실패) |
+| ✅ | `icon_wall` | 성벽 수리 | seed 2927(성벽·누각·아치문 장면) · `icon` 빼고 서술형으로 인식 · 합성 0.98 · `Icon(Sym.Wall)` 배선 |
 | ⬜ | `icon_scroll` | 계략 | `a rolled paper scroll with a red seal` |
 | ⬜ | `icon_grain` | 군량 | `a sack of rice grain` (여러 개 → `multiple objects` 제외) |
 | ⬜ | `icon_flag` | 세력/성 | `a hanging war banner flag` |
@@ -167,6 +167,7 @@ a game UI icon of a single {SUBJECT} in the center, ancient Chinese Three Kingdo
 | icon_coin | 8428 | v4(금괴) → 원형 크롭. `Icon(Sym.Coin)` |
 | icon_sword | 1090 | v4(검) → 원형 크롭. `Icon(Sym.Sword)` (8399 비원형 스킵) |
 | icon_book | 9016 | 오브젝트 → 프레임 합성. `Icon(Sym.Book)` |
+| icon_wall | 2927 | 서술형(성벽 장면) → 합성 0.98. `Icon(Sym.Wall)` |
 | troop_archer | 6675 | 오브젝트(홍금 활) → 합성 0.92. `ClassEmblem(Archer)` |
 | troop_elephant | 4343 | 오브젝트(장식 코끼리) → 합성 0.84. `ClassEmblem(Elephant)` |
 | troop_siege | 1494 | 정의 문장(충차 장면) → 합성 0.92. `ClassEmblem(Siege)` |
