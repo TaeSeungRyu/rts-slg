@@ -50,10 +50,10 @@
 
 ---
 
-## 3. 네거티브 프롬프트 (v2.1 — 모든 아이콘 공통)
+## 3. 네거티브 프롬프트 (v3 — 모든 아이콘 공통)
 
 ```
-full frame subject, diagonal composition, borderless, no ring, no border, parchment background, chinese characters, kanji, hanzi, calligraphy, seal script, text, letters, symbols, glyphs, ornate busy filigree, multiple objects, cluttered, blurry, low quality, photograph, realistic human face, watermark
+heraldic crest, coat of arms, rosette, mandala, concentric rings, laurel wreath, fleur-de-lis, seal, chinese characters, kanji, hanzi, calligraphy, text, letters, symbols, glyphs, object touching the border, object overflowing the ring, cropped subject, full frame subject, diagonal composition, parchment background, multiple objects, cluttered, blurry, low quality, photograph, realistic human face, watermark
 ```
 
 > 추상 소재(금괴·코인)에서 글자가 계속 새면 앞에 `korean text, japanese text, inscription,
@@ -61,18 +61,19 @@ full frame subject, diagonal composition, borderless, no ring, no border, parchm
 
 ---
 
-## 4. 포지티브 템플릿 (v2.1 — `{SUBJECT}`만 교체)
+## 4. 포지티브 템플릿 (v3 — 테두리 묘사 + 소재 가중치 + 여백, `{SUBJECT}`만 교체)
 
 ```
-a round emblem badge game UI icon of a single bold {SUBJECT} centered inside a circular gold rim, ancient Chinese Three Kingdoms style, dark lacquer background inside the ring, vermilion accents, clean iconic emblem, strong readable silhouette, minimal ornament, matte painted relief, soft top-left light, flat dark background outside the badge
+a Three Kingdoms strategy game icon: an ornate circular gold ring frame with small red gemstones and an engraved border, and inside the ring a single detailed ({SUBJECT}:1.3) shown small and fully centered with clear margin from the ring, dark lacquer background inside the ring, matte painted relief, soft top-left light, clean readable silhouette
 ```
 
+- **v3 개정 이유**: v2.1(프레임 강조)은 강한 소재는 좋지만 약한 소재의 중앙이 문장으로
+  바뀌었고, v2(소재 강조)는 테두리가 사라졌다. v3는 **테두리를 명시적으로 묘사**해
+  모델이 중앙을 문장으로 채우지 않고 오브젝트로 채우게 하고, **소재를 `:1.3` 가중치 +
+  "small, fully centered, clear margin"**으로 원 안 여백에 배치한다.
+- 화려한 금테가 이미지에 포함돼 나오면 **원형 크롭만** 하면 되고(§4-c 합성 불필요),
+  그래도 테두리가 약하거나 오브젝트만 나오면 §4-c로 프레임 합성한다.
 - 원형 금테 배지 형태라 배경 제거 없이 원형 크롭만으로 UI에 바로 쓸 수 있다.
-- **v2.1 개정 이유**: v2로 뽑을 때 가끔 금테 없이 오브젝트가 화면 전체를 채우는
-  비원형이 나옴(예: icon_sword seed 8399). `round emblem badge` / `circular gold rim`을
-  앞·중앙에 강조하고, 네거티브에 `full frame subject, diagonal composition, borderless,
-  parchment background`를 추가해 **원형 프레임을 강제**한다.
-- 구 v1(`a circular game icon medallion of ...`)은 중앙에 글자가 새서 폐기.
 
 ### 4-b. 어려운(추상) 소재용 — 소재 우선 + 가중치 + 문장 차단
 
@@ -159,20 +160,19 @@ dark background`
 
 ---
 
-## 6. 완성형 예시 (v2.1 — 바로 붙여넣기)
+## 6. 완성형 예시 (v3 — 바로 붙여넣기)
 
-검(모병/전투):
+공성(투석기):
 ```
-a round emblem badge game UI icon of a single bold Chinese jian sword blade pointing up centered inside a circular gold rim, ancient Chinese Three Kingdoms style, dark lacquer background inside the ring, vermilion accents, clean iconic emblem, strong readable silhouette, minimal ornament, matte painted relief, soft top-left light, flat dark background outside the badge
-```
-
-금화(자금):
-```
-a round emblem badge game UI icon of a single bold ancient Chinese gold ingot yuanbao centered inside a circular gold rim, ancient Chinese Three Kingdoms style, dark lacquer background inside the ring, vermilion accents, clean iconic emblem, strong readable silhouette, minimal ornament, matte painted relief, soft top-left light, flat dark background outside the badge
+a Three Kingdoms strategy game icon: an ornate circular gold ring frame with small red gemstones and an engraved border, and inside the ring a single detailed (a wooden trebuchet catapult:1.3) shown small and fully centered with clear margin from the ring, dark lacquer background inside the ring, matte painted relief, soft top-left light, clean readable silhouette
 ```
 
-> 이미 채택된 troop_cavalry(7318)·icon_coin(8428)·icon_sword(1090)은 v2로 뽑혔고,
-> 앞으로는 v2.1(원형 강제)로 뽑는다.
+해상(전선):
+```
+a Three Kingdoms strategy game icon: an ornate circular gold ring frame with small red gemstones and an engraved border, and inside the ring a single detailed (an ancient Chinese war junk ship:1.3) shown small and fully centered with clear margin from the ring, dark lacquer background inside the ring, matte painted relief, soft top-left light, clean readable silhouette
+```
+
+> 이미 채택된 것들은 v2/v2.1/§4-c로 뽑혔고, 앞으로는 v3(테두리+소재 한 번에)로 시도한다.
 
 ---
 
