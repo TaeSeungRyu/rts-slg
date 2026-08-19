@@ -3,8 +3,8 @@
 명령 팔레트·정보 카드·모달 카드 아이콘을 Fooocus(로컬 SDXL)로 만들어, 코드 생성
 아이콘(`CampaignMapScene`)을 실제 이미지로 교체하는 작업 문서.
 
-- **상태(2026-08-19)**: 스타일·워크플로우 확정. **병종 6종 + 명령/정보 3종(검·코인·책)
-  배선 완료.** 남은 것 = 정보 아이콘 8종·계략 6종(§4 표).
+- **상태(2026-08-19)**: 스타일·워크플로우 확정. **병종 6종 + 명령/정보 10종 + 계략 6종
+  배선 완료.** 남은 것 = `icon_flag`(현재 UI 미사용, 자리 정해지면).
 - **방식**: Fooocus 웹 UI 수동 생성(스톡 Gradio API 자동화는 불가 → 부록).
 - **핵심 워크플로우**: **오브젝트만 뽑고 → 금테 프레임은 `frame_icon.py`로 합성**(§3).
   프롬프트로 테두리까지 그리게 하는 방식은 실패가 잦아 폐기(강한 소재 한정 참고: §6).
@@ -110,7 +110,7 @@ python frame_icon.py <src> <dst> <scale>
 | ✅ | `strat_incite` | 선동 | seed 1029(성난 군중+횃불) · 합성 0.98 · `StratIcon("incite")` |
 | ✅ | `strat_arson` | 방화 | seed 6488(불붙은 횃불) · 합성 0.98 · `StratIcon("arson")` |
 | ✅ | `strat_steal` | 절취 | seed 1125(쏟아진 금화+주머니+단검) · 합성 0.98 · `StratIcon("steal")` |
-| ⬜ | `strat_sow_discord` | 이간 | `a coiled venomous snake ready to strike` (모략·배신 상징, 강렬·SDXL 잘 그림. 끊어진 사슬은 밋밋해 폐기. 대안: `a dagger slicing through a knotted rope` / `a jade tally pendant cracked and split into two halves` / `an axe wedge splitting two war banners apart`) |
+| ✅ | `strat_sow_discord` | 이간 | seed 4626(똬리 튼 뱀) · 합성 0.98 · `StratIcon("sow_discord")` |
 
 > 계략 파일명은 **반드시 계략 code 기준** `strat_{code}.png` (scout / wall_break / incite /
 > arson / steal / sow_discord). 언더바 포함 정확히 일치해야 `StratIcon`이 로드한다.
@@ -182,6 +182,7 @@ a game UI icon of a single {SUBJECT} in the center, ancient Chinese Three Kingdo
 | strat_incite | 1029 | 장면(성난 군중+횃불) → 합성 0.98. `StratIcon("incite")` |
 | strat_arson | 6488 | 오브젝트(불붙은 횃불) → 합성 0.98. `StratIcon("arson")` |
 | strat_steal | 1125 | 오브젝트(쏟아진 금화+단검) → 합성 0.98. `StratIcon("steal")` |
+| strat_sow_discord | 4626 | 오브젝트(뱀) → 합성 0.98. `StratIcon("sow_discord")` |
 | troop_archer | 6675 | 오브젝트(홍금 활) → 합성 0.92. `ClassEmblem(Archer)` |
 | troop_elephant | 4343 | 오브젝트(장식 코끼리) → 합성 0.84. `ClassEmblem(Elephant)` |
 | troop_siege | 1494 | 정의 문장(충차 장면) → 합성 0.92. `ClassEmblem(Siege)` |
