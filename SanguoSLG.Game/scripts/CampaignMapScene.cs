@@ -853,7 +853,7 @@ public sealed partial class CampaignMapScene : Node3D
         var colOpt = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 146f), 3, 5);
         var colOff = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 169f), 2, 4);
 
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(mw, mh) };
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(mw, 0) };
         scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
         panel.AddChild(scroll);
 
@@ -909,6 +909,10 @@ public sealed partial class CampaignMapScene : Node3D
         BuildOfficerCards(city, cmdIndex);
 
         if (options.Count > 0) { PickOption(_modalParam, options[_modalParam]); }
+
+        // 스크롤 높이를 내용에 맞추되 mh로 상한 → 짧은 명령은 아래 여백 없음, 긴 건 스크롤.
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
     }
 
     private void CloseModal()
