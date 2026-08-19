@@ -106,7 +106,7 @@ python frame_icon.py <src> <dst> <scale>
 | 완료 | 파일명 | 계략 | `{SUBJECT}` |
 |:---:|---|---|---|
 | ✅ | `strat_scout` | 정찰 | seed 9747(매) · 합성 0.9 · `StratIcon("scout")` 파일 로드 배선 |
-| ⬜ | `strat_wallbreak` | 성벽파괴 | `a crumbling breached castle wall` |
+| ⬜ | `strat_wallbreak` | 성벽파괴 | **§3 표준 아닌 서술형**(icon_wall과 동일 규칙: `game icon` 빼고 독립 구조물): `a lone section of an ancient Chinese fortified stone wall being smashed and breached, a large hole with crumbling rubble and fallen bricks, standing isolated as a single structure`. 네거티브에 `intact perfect wall, brick wall filling the whole image, seamless wall texture` 추가 |
 | ⬜ | `strat_incite` | 선동 | `a raised fist with flames` |
 | ⬜ | `strat_arson` | 방화 | `a burning torch with fire` |
 | ⬜ | `strat_steal` | 절취 | `a bag of gold coins` |
