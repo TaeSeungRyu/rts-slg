@@ -96,7 +96,12 @@ gold ring, circular frame, border, medallion, ornate frame, heraldic crest, coat
 
 ---
 
-## 4. 포지티브 템플릿 (v4 — 소재가 주어 + 화려한 금테 수식 + 여백, `{SUBJECT}`만 교체)
+## 4. (구) 포지티브 v4 — Fooocus가 프레임까지 그리게 (강한 소재 전용, 참고용)
+
+> 표준은 위 "오브젝트만 생성 → 합성"이다. 아래 v4는 검·말처럼 형태가 강한 소재에서
+> Fooocus가 테두리까지 예쁘게 뽑을 때만 참고로 쓴다(약한/기계 소재는 실패가 잦음).
+
+`{SUBJECT}`만 교체:
 
 ```
 a game UI icon of a single {SUBJECT} in the center, ancient Chinese Three Kingdoms style, framed by an ornate circular gold rim with small red gems and fine engraving, dark lacquer background inside, vermilion accents, clean flat emblem, centered with clear margin, strong readable silhouette, matte painted relief, soft top-left light
@@ -200,20 +205,22 @@ dark background`
 
 ---
 
-## 6. 완성형 예시 (v4 — 바로 붙여넣기)
+## 6. 완성형 예시 (오브젝트 전용 — 바로 붙여넣기, 프레임은 합성)
 
-공성(투석기):
+공성(= 투석용 돌무더기 상징 · **`multiple objects` 네거티브에서 제외**):
 ```
-a game UI icon of a single wooden trebuchet catapult in the center, ancient Chinese Three Kingdoms style, framed by an ornate circular gold rim with small red gems and fine engraving, dark lacquer background inside, vermilion accents, clean flat emblem, centered with clear margin, strong readable silhouette, matte painted relief, soft top-left light
+a game icon of a single pile of grey catapult boulders stacked in a pyramid, centered with clear margin, ancient Chinese Three Kingdoms style, gold and vermilion accents, matte painted relief, soft top-left light, clean readable silhouette, flat plain dark background
 ```
 
 해상(전선):
 ```
-a game UI icon of a single ancient Chinese war junk ship in the center, ancient Chinese Three Kingdoms style, framed by an ornate circular gold rim with small red gems and fine engraving, dark lacquer background inside, vermilion accents, clean flat emblem, centered with clear margin, strong readable silhouette, matte painted relief, soft top-left light
+a game icon of a single ancient Chinese war junk ship, centered with clear margin, ancient Chinese Three Kingdoms style, gold and vermilion accents, matte painted relief, soft top-left light, clean readable silhouette, flat plain dark background
 ```
 
-> 이미 채택된 것들은 v2/§4-c로 뽑혔고, 앞으로는 v4(소재 주어 + 화려한 금테)로 시도한다.
-> v3(테두리 별도 명사 강조)는 실물 링 액자로 그려져 폐기.
+> 오브젝트만 뽑으면 되고, 금테 프레임은 `frame_icon.py`로 합성한다(§4-c). 프롬프트에
+> 프레임을 넣지 않는다.
+> (기채택: 기병·보병·검·코인은 Fooocus가 프레임까지 그린 v2, 책·궁병·상병은 오브젝트+합성.
+> v3/v4처럼 프레임을 프롬프트로 강제하던 방식은 실패가 잦아 폐기.)
 
 ---
 
