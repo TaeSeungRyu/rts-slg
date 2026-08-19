@@ -50,10 +50,10 @@
 
 ---
 
-## 3. 네거티브 프롬프트 (v2 확정 — 모든 아이콘 공통)
+## 3. 네거티브 프롬프트 (v2.1 — 모든 아이콘 공통)
 
 ```
-chinese characters, kanji, hanzi, calligraphy, seal script, text, letters, symbols, glyphs, ornate busy filigree, multiple objects, cluttered, blurry, low quality, photograph, realistic human face, watermark
+full frame subject, diagonal composition, borderless, no ring, no border, parchment background, chinese characters, kanji, hanzi, calligraphy, seal script, text, letters, symbols, glyphs, ornate busy filigree, multiple objects, cluttered, blurry, low quality, photograph, realistic human face, watermark
 ```
 
 > 추상 소재(금괴·코인)에서 글자가 계속 새면 앞에 `korean text, japanese text, inscription,
@@ -61,14 +61,18 @@ chinese characters, kanji, hanzi, calligraphy, seal script, text, letters, symbo
 
 ---
 
-## 4. 포지티브 템플릿 (v2 확정 — `{SUBJECT}`만 교체)
+## 4. 포지티브 템플릿 (v2.1 — `{SUBJECT}`만 교체)
 
 ```
-a game UI icon of a single bold {SUBJECT} in the center, ancient Chinese Three Kingdoms style, simple circular gold rim, dark lacquer background, vermilion accents, clean iconic emblem, strong readable silhouette, minimal ornament, matte painted relief, soft top-left light, centered, flat dark background
+a round emblem badge game UI icon of a single bold {SUBJECT} centered inside a circular gold rim, ancient Chinese Three Kingdoms style, dark lacquer background inside the ring, vermilion accents, clean iconic emblem, strong readable silhouette, minimal ornament, matte painted relief, soft top-left light, flat dark background outside the badge
 ```
 
-원형 금테 배지 형태라 배경 제거 없이 원형 크롭만으로 UI에 바로 쓸 수 있다.
-(구 v1 템플릿은 `a circular game icon medallion of ...`였으나 중앙에 글자가 새서 폐기.)
+- 원형 금테 배지 형태라 배경 제거 없이 원형 크롭만으로 UI에 바로 쓸 수 있다.
+- **v2.1 개정 이유**: v2로 뽑을 때 가끔 금테 없이 오브젝트가 화면 전체를 채우는
+  비원형이 나옴(예: icon_sword seed 8399). `round emblem badge` / `circular gold rim`을
+  앞·중앙에 강조하고, 네거티브에 `full frame subject, diagonal composition, borderless,
+  parchment background`를 추가해 **원형 프레임을 강제**한다.
+- 구 v1(`a circular game icon medallion of ...`)은 중앙에 글자가 새서 폐기.
 
 ---
 
@@ -114,17 +118,20 @@ a game UI icon of a single bold {SUBJECT} in the center, ancient Chinese Three K
 
 ---
 
-## 6. 완성형 예시 (v2 확정 — 바로 붙여넣기)
+## 6. 완성형 예시 (v2.1 — 바로 붙여넣기)
 
-기병(채택 seed 7318)의 실제 프롬프트:
+검(모병/전투):
 ```
-a game UI icon of a single bold rearing war horse in the center, ancient Chinese Three Kingdoms style, simple circular gold rim, dark lacquer background, vermilion accents, clean iconic emblem, strong readable silhouette, minimal ornament, matte painted relief, soft top-left light, centered, flat dark background
+a round emblem badge game UI icon of a single bold Chinese jian sword blade pointing up centered inside a circular gold rim, ancient Chinese Three Kingdoms style, dark lacquer background inside the ring, vermilion accents, clean iconic emblem, strong readable silhouette, minimal ornament, matte painted relief, soft top-left light, flat dark background outside the badge
 ```
 
 금화(자금):
 ```
-a game UI icon of a single bold ancient Chinese gold ingot yuanbao in the center, ancient Chinese Three Kingdoms style, simple circular gold rim, dark lacquer background, vermilion accents, clean iconic emblem, strong readable silhouette, minimal ornament, matte painted relief, soft top-left light, centered, flat dark background
+a round emblem badge game UI icon of a single bold ancient Chinese gold ingot yuanbao centered inside a circular gold rim, ancient Chinese Three Kingdoms style, dark lacquer background inside the ring, vermilion accents, clean iconic emblem, strong readable silhouette, minimal ornament, matte painted relief, soft top-left light, flat dark background outside the badge
 ```
+
+> 이미 채택된 troop_cavalry(7318)·icon_coin(8428)·icon_sword(1090)은 v2로 뽑혔고,
+> 앞으로는 v2.1(원형 강제)로 뽑는다.
 
 ---
 
