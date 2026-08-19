@@ -50,10 +50,10 @@
 
 ---
 
-## 3. 네거티브 프롬프트 (v3 — 모든 아이콘 공통)
+## 3. 네거티브 프롬프트 (v4 — 모든 아이콘 공통)
 
 ```
-heraldic crest, coat of arms, rosette, mandala, concentric rings, laurel wreath, fleur-de-lis, seal, chinese characters, kanji, hanzi, calligraphy, text, letters, symbols, glyphs, object touching the border, object overflowing the ring, cropped subject, full frame subject, diagonal composition, parchment background, multiple objects, cluttered, blurry, low quality, photograph, realistic human face, watermark
+3d object on a table, physical ring, mirror stand, tripod stand, standing frame, diorama, heraldic crest, coat of arms, rosette, chinese characters, kanji, hanzi, calligraphy, text, letters, symbols, glyphs, object overflowing the rim, cropped subject, parchment background, multiple objects, cluttered, blurry, low quality, photograph, realistic human face, watermark
 ```
 
 > 추상 소재(금괴·코인)에서 글자가 계속 새면 앞에 `korean text, japanese text, inscription,
@@ -61,19 +61,22 @@ heraldic crest, coat of arms, rosette, mandala, concentric rings, laurel wreath,
 
 ---
 
-## 4. 포지티브 템플릿 (v3 — 테두리 묘사 + 소재 가중치 + 여백, `{SUBJECT}`만 교체)
+## 4. 포지티브 템플릿 (v4 — 소재가 주어 + 화려한 금테 수식 + 여백, `{SUBJECT}`만 교체)
 
 ```
-a Three Kingdoms strategy game icon: an ornate circular gold ring frame with small red gemstones and an engraved border, and inside the ring a single detailed ({SUBJECT}:1.3) shown small and fully centered with clear margin from the ring, dark lacquer background inside the ring, matte painted relief, soft top-left light, clean readable silhouette
+a game UI icon of a single {SUBJECT} in the center, ancient Chinese Three Kingdoms style, framed by an ornate circular gold rim with small red gems and fine engraving, dark lacquer background inside, vermilion accents, clean flat emblem, centered with clear margin, strong readable silhouette, matte painted relief, soft top-left light
 ```
 
-- **v3 개정 이유**: v2.1(프레임 강조)은 강한 소재는 좋지만 약한 소재의 중앙이 문장으로
-  바뀌었고, v2(소재 강조)는 테두리가 사라졌다. v3는 **테두리를 명시적으로 묘사**해
-  모델이 중앙을 문장으로 채우지 않고 오브젝트로 채우게 하고, **소재를 `:1.3` 가중치 +
-  "small, fully centered, clear margin"**으로 원 안 여백에 배치한다.
-- 화려한 금테가 이미지에 포함돼 나오면 **원형 크롭만** 하면 되고(§4-c 합성 불필요),
-  그래도 테두리가 약하거나 오브젝트만 나오면 §4-c로 프레임 합성한다.
-- 원형 금테 배지 형태라 배경 제거 없이 원형 크롭만으로 UI에 바로 쓸 수 있다.
+- **왜 v4인가**: 잘 나온 것들(기병 7318·코인 8428·검 1090)은 모두 **소재를 문장의 주어**로
+  두고 테두리를 수식으로 붙인 v2 구조였다. v3처럼 "ornate ring frame ... and inside the
+  ring ..."로 테두리를 별도 명사로 강조하면 SDXL이 **받침대 위 실물 링(액자)**으로
+  그려버린다(seed 6615). v4는 v2 구조를 유지하되 **테두리를 "ornate ... with red gems,
+  fine engraving"으로 더 화려하게** 수식하고, **`clean flat emblem`으로 평면**을 강조,
+  **`centered with clear margin`으로 여백**을 준다.
+- 네거티브에 `3d object on a table, physical ring, mirror stand, tripod, diorama`를 넣어
+  v3의 실물-링 사고를 차단한다.
+- 잘 나오면 **원형 크롭만** 하면 된다. 그래도 테두리가 안 잡히거나 오브젝트만 나오는
+  까다로운 소재는 §4-b(오브젝트만) + §4-c(내 프레임 합성)로 폴백.
 
 ### 4-b. 어려운(추상) 소재용 — 소재 우선 + 가중치 + 문장 차단
 
@@ -160,19 +163,20 @@ dark background`
 
 ---
 
-## 6. 완성형 예시 (v3 — 바로 붙여넣기)
+## 6. 완성형 예시 (v4 — 바로 붙여넣기)
 
 공성(투석기):
 ```
-a Three Kingdoms strategy game icon: an ornate circular gold ring frame with small red gemstones and an engraved border, and inside the ring a single detailed (a wooden trebuchet catapult:1.3) shown small and fully centered with clear margin from the ring, dark lacquer background inside the ring, matte painted relief, soft top-left light, clean readable silhouette
+a game UI icon of a single wooden trebuchet catapult in the center, ancient Chinese Three Kingdoms style, framed by an ornate circular gold rim with small red gems and fine engraving, dark lacquer background inside, vermilion accents, clean flat emblem, centered with clear margin, strong readable silhouette, matte painted relief, soft top-left light
 ```
 
 해상(전선):
 ```
-a Three Kingdoms strategy game icon: an ornate circular gold ring frame with small red gemstones and an engraved border, and inside the ring a single detailed (an ancient Chinese war junk ship:1.3) shown small and fully centered with clear margin from the ring, dark lacquer background inside the ring, matte painted relief, soft top-left light, clean readable silhouette
+a game UI icon of a single ancient Chinese war junk ship in the center, ancient Chinese Three Kingdoms style, framed by an ornate circular gold rim with small red gems and fine engraving, dark lacquer background inside, vermilion accents, clean flat emblem, centered with clear margin, strong readable silhouette, matte painted relief, soft top-left light
 ```
 
-> 이미 채택된 것들은 v2/v2.1/§4-c로 뽑혔고, 앞으로는 v3(테두리+소재 한 번에)로 시도한다.
+> 이미 채택된 것들은 v2/§4-c로 뽑혔고, 앞으로는 v4(소재 주어 + 화려한 금테)로 시도한다.
+> v3(테두리 별도 명사 강조)는 실물 링 액자로 그려져 폐기.
 
 ---
 
