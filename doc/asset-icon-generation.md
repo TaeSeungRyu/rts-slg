@@ -65,6 +65,9 @@
 > 아니라 "a long horizontal wooden log tipped with a bronze ram head"를 앞세운다.
 > "cart/wheeled cart"는 화려한 마차로, "ship"류는 배로 뭉개지므로 네거티브에
 > `carriage, wagon, chariot, cart, palanquin, sedan chair, boat, ship, pagoda roof` 추가.
+>
+> **원칙**: 사실적 기계(투석기·충차 등)가 계속 실패하면 억지로 밀지 말고, 그 병종을
+> **단순 상징**으로 대체한다(공성 = 투석용 돌무더기, 실루엣이 단순할수록 아이콘으로 잘 읽힘).
 
 ---
 
@@ -154,7 +157,7 @@ dark background`
 | ✅ | `troop_archer` | 궁병 | seed 6675(홍금 활) 오브젝트만 → §4-c 금테 합성 · `ClassEmblem(Archer)` 배선 |
 | ✅ | `troop_cavalry` | 기병 | `a rearing war horse` |
 | ✅ | `troop_elephant` | 상병 | seed 4343(장식 코끼리) 오브젝트만 → §4-c 금테 합성(0.84 축소+여백) · `ClassEmblem(Elephant)` 배선 |
-| ⬜ | `troop_siege` | 공성 | `a battering ram, a long thick horizontal wooden log tipped with a bronze ram head, hung by chains under a small slanted wooden roof on two spoked wheels, aimed to the right` (trebuchet·ballista·"siege cart"는 각각 구조물·마차로 뭉개짐 → 램 통나무를 주어로) |
+| ⬜ | `troop_siege` | 공성 | `a pile of grey catapult boulders stacked in a pyramid` (실물 기계 trebuchet·ballista·충차는 전부 구조물/마차로 뭉개져 → 공성=투석용 돌무더기 상징으로 단순화. 대안: `a stack of three grey stone boulders` / `a large cracked grey boulder`) |
 | ⬜ | `troop_naval` | 해상 | `an ancient Chinese war junk ship` |
 
 ### 계략 아이콘 (모달, 톤 확정 후)
