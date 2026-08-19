@@ -22,6 +22,7 @@
 | [doc/design-combat.md](./doc/design-combat.md) | 전투 공식·병종 수치·성/항구 공성·검증 시뮬레이션 |
 | [doc/design-movement.md](./doc/design-movement.md) | 일(日) 단위 이동·탐지·추격·행군/공격 모드 |
 | [doc/design-terrain.md](./doc/design-terrain.md) · [design-water.md](./doc/design-water.md) · [design-effect.md](./doc/design-effect.md) | 지형·물/강·효과 |
+| [doc/asset-icon-generation.md](./doc/asset-icon-generation.md) | Fooocus 아이콘 생성 — 프롬프트·설정·진행 현황 |
 
 ## 기술 스택
 
@@ -29,6 +30,18 @@
 - 엔진: Godot 4.7 (.NET 빌드)
 - 테스트: xUnit
 - 직렬화: `System.Text.Json`
+- 에셋: 3D 모델은 Blender 헤드리스 스크립트(저폴리), UI 아이콘은 로컬 Fooocus(SDXL) 생성 + 후처리
+
+## 에셋 파이프라인
+
+- **3D 모델**: 저폴리 프로시저럴 — Blender 헤드리스 스크립트로 생성.
+- **UI 아이콘**: 로컬 **Fooocus**(SDXL / juggernautXL)로 삼국지풍 **원형 금테 배지** 아이콘을
+  생성한 뒤 → **원형 크롭·투명(알파)·크기 정규화**(Pillow) → `SanguoSLG.Game/assets/icons/`에
+  배치 → `CampaignMapScene`의 엠블럼/아이콘 로더에 배선한다.
+  - 파일이 있으면 실제 이미지를, 없으면 코드 생성(절차적) 아이콘을 폴백으로 사용.
+  - 프롬프트 템플릿·확정 생성 설정(Styles·Performance·Seed 등)·진행 현황은
+    [doc/asset-icon-generation.md](./doc/asset-icon-generation.md) 참조.
+  - 오프라인 로컬 생성이라 비용·라이선스 부담이 없다.
 
 ## 솔루션 구조
 
