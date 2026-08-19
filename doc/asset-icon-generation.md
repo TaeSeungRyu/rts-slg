@@ -79,7 +79,7 @@ python frame_icon.py <src> <dst> <scale>
 | 완료 | 파일명 | 용도 | `{SUBJECT}` |
 |:---:|---|---|---|
 | ✅ | `icon_sword` | 모병/전투 | `a Chinese jian sword blade pointing up` |
-| ✅ | `icon_coin` | 자금 | `an ancient Chinese gold ingot yuanbao` |
+| ✅ | `icon_coin` | 자금 | seed 6451(네모 구멍 엽전, 소박) · 합성 0.86 · `Icon(Sym.Coin)` (기존 8428 화려한 금괴에서 교체) |
 | ✅ | `icon_book` | 연구 | `an open ancient book with pages` |
 | ✅ | `icon_wall` | 성벽 수리 | seed 2927(성벽·누각·아치문 장면) · `icon` 빼고 서술형으로 인식 · 합성 0.98 · `Icon(Sym.Wall)` 배선 |
 | ✅ | `icon_scroll` | 계략 | seed 1534(펼친 두루마리·홍인) · 합성 0.98 · `Icon(Sym.Scroll)` 배선 |
@@ -167,7 +167,7 @@ a game UI icon of a single {SUBJECT} in the center, ancient Chinese Three Kingdo
 |---|---|---|
 | troop_cavalry | 7318 | v4(프레임 포함) → 원형 크롭. `ClassEmblem(Cavalry)` |
 | troop_infantry | 1984 | v4(교차 검) → 원형 크롭. `ClassEmblem(Infantry)` |
-| icon_coin | 8428 | v4(금괴) → 원형 크롭. `Icon(Sym.Coin)` |
+| icon_coin | 6451 | 오브젝트(엽전) → 합성 0.86. `Icon(Sym.Coin)` (구 8428 화려한 금괴 교체) |
 | icon_sword | 1090 | v4(검) → 원형 크롭. `Icon(Sym.Sword)` (8399 비원형 스킵) |
 | icon_book | 9016 | 오브젝트 → 프레임 합성. `Icon(Sym.Book)` |
 | icon_wall | 2927 | 서술형(성벽 장면) → 합성 0.98. `Icon(Sym.Wall)` |
