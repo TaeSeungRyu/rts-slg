@@ -629,25 +629,25 @@ public sealed partial class CampaignMapScene : Node3D
         var layer = new CanvasLayer();
         AddChild(layer);
 
-        // 우상단: 성 정보 카드 — 고정 200x200 정사각형(넘치면 클립).
-        var infoPanel = new Panel { Visible = false, CustomMinimumSize = new Vector2(300, 250), ClipContents = true };
+        // 우상단: 성 정보 카드 — 폭 300 고정, 높이는 내용에 맞춰 자동(하단 여백 없음).
+        var infoPanel = new PanelContainer { Visible = false };
         infoPanel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
-        infoPanel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 0));
+        infoPanel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 10));
         layer.AddChild(infoPanel);
-        infoPanel.Size = new Vector2(300, 250);
-        infoPanel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.TopRight, Control.LayoutPresetMode.KeepSize, 12);
+        // 우상단 지점 앵커 → 왼쪽·아래로 자람(오른쪽 위 모서리 고정).
+        infoPanel.AnchorLeft = 1f;
+        infoPanel.AnchorRight = 1f;
+        infoPanel.AnchorTop = 0f;
+        infoPanel.AnchorBottom = 0f;
+        infoPanel.GrowHorizontal = Control.GrowDirection.Begin;
+        infoPanel.GrowVertical = Control.GrowDirection.End;
+        infoPanel.OffsetLeft = -312f; // 폭 300 + 여백 12
+        infoPanel.OffsetTop = 12f;
+        infoPanel.OffsetRight = -12f;
         _infoCard = infoPanel;
-        var infoMargin = new MarginContainer();
-        infoMargin.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        foreach (var side in new[] { "margin_left", "margin_top", "margin_right", "margin_bottom" })
-        {
-            infoMargin.AddThemeConstantOverride(side, 10);
-        }
-
-        infoPanel.AddChild(infoMargin);
-        _infoRows = new VBoxContainer();
+        _infoRows = new VBoxContainer { CustomMinimumSize = new Vector2(276, 0) };
         _infoRows.AddThemeConstantOverride("separation", 2);
-        infoMargin.AddChild(_infoRows);
+        infoPanel.AddChild(_infoRows);
 
         // 명령 팔레트: 클릭한 성 우측에 뜨는 아주 작은 떠있는 패널(텍스트 전용, 위치는 SelectCity).
         _cmdMenu = new PanelContainer { Visible = false, ZIndex = 50 };
@@ -721,6 +721,7 @@ public sealed partial class CampaignMapScene : Node3D
         g.AddChild(LabelCell(icon, name));
         var v = MakeLabel(value, 13, Parchment);
         v.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        v.AutowrapMode = TextServer.AutowrapMode.WordSmart; // 폭 초과 시 줄바꿈(카드 폭 300 유지)
         g.AddChild(v);
     }
 
