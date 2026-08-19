@@ -9,17 +9,32 @@
 
 ---
 
-## 1. 확정 설정 (톤 결정되면 채운다)
+## 1. 확정 설정 (기병 7318 채택 기준 — 2026-08-19)
+
+아래 값으로 세트 전체를 뽑는다. **이 값이 원본** — UI가 초기화되면 여기서 그대로 재입력한다.
 
 | 항목 | 값 |
 |---|---|
-| 채택 시안 | _(미정)_ |
-| Performance | _(미정: Speed / Quality)_ |
-| Styles | _(미정: Fooocus V2 + ?)_ |
-| Seed | _(미정 — 확정 시 고정)_ |
-| 비고 | |
+| 채택 시안 | 기병 seed **7318** (v2 프롬프트) |
+| Performance | **Speed** |
+| Styles | **Fooocus V2 + SAI Fantasy Art** |
+| Resolution | **1024×1024 (1:1)** |
+| Steps | 30 (Speed 기본) |
+| Guidance Scale | 4 |
+| Sharpness | 2 |
+| Base Model | juggernautXL_v8Rundiffusion.safetensors |
+| Sampler / Scheduler | dpmpp_2m_sde_gpu / karras |
+| CLIP Skip | 2 |
+| Seed | 소재별로 다름(랜덤 허용). 채택된 것만 기록 |
+| Output Format | png |
 
-> 좋은 이미지가 나오면 위를 채우고, 그 설정·시드로 나머지 아이콘을 일괄 생성해 톤을 통일한다.
+> ⚠ **설정 보존 주의**: Fooocus **웹 UI를 새로고침하거나 앱을 재시작하면 위 값들이
+> 전부 초기화**된다(프롬프트·Styles·seed 포함). 대응:
+> 1. **이 문서가 원본** — 초기화되면 위 표·아래 프롬프트를 그대로 다시 입력.
+> 2. **복구**: 생성 기록은 `outputs/<날짜>/log.html`에 **모든 생성의 전체 파라미터**가
+>    남는다(프롬프트·네거티브·Styles·seed·샘플러 등). 잃어버리면 여기서 확인.
+> 3. **권장**: Advanced → **`Save Metadata to Images` 체크** → 이후 PNG에 파라미터가
+>    박혀서, 그 PNG를 Fooocus에 다시 넣으면 설정 재적용 가능(현재는 꺼져 있어 PNG엔 없음).
 
 ---
 
@@ -29,27 +44,31 @@
 - **Aspect Ratios**: `1024×1024 ∣ 1:1` (정사각)
 - **Image Number**: `4` (한 번에 4장 → 골라 쓰기)
 - **Output Format**: `png`
-- **Advanced → Styles**: `Fooocus V2`만 켜고 시작 → 더 회화적이면 `SAI Fantasy Art`
-  또는 `Ornate And Intricate` 추가 실험
-- 마음에 드는 결과의 **Seed 고정** → 나머지도 같은 시드로 뽑아 톤 통일
+- **Advanced → Styles**: `Fooocus V2` + `SAI Fantasy Art` (확정)
+- **Advanced → `Save Metadata to Images` 체크 권장** (설정 복구용 — §1 주의 참고)
+- 새로고침/재시작 시 초기화되므로, 세션 시작 때마다 §1·§3·§4를 재입력
 
 ---
 
-## 3. 네거티브 프롬프트 (모든 아이콘 공통)
+## 3. 네거티브 프롬프트 (v2 확정 — 모든 아이콘 공통)
 
 ```
-text, letters, numbers, watermark, signature, multiple objects, cluttered background, blurry, low quality, jpeg artifacts, modern objects, photograph, realistic human face, cropped, extra frames, ui buttons
+chinese characters, kanji, hanzi, calligraphy, seal script, text, letters, symbols, glyphs, ornate busy filigree, multiple objects, cluttered, blurry, low quality, photograph, realistic human face, watermark
 ```
+
+> 추상 소재(금괴·코인)에서 글자가 계속 새면 앞에 `korean text, japanese text, inscription,
+> engraved text,`를 추가.
 
 ---
 
-## 4. 포지티브 템플릿 (`{SUBJECT}`만 교체)
+## 4. 포지티브 템플릿 (v2 확정 — `{SUBJECT}`만 교체)
 
 ```
-a circular game icon medallion of {SUBJECT}, ancient Chinese Three Kingdoms era theme, ornate engraved gold rim border, dark lacquer black-brown center, vermilion red and warm parchment accents, embossed bronze relief, painterly matte finish, soft top-left studio lighting, subtle inner shadow, single centered object, clean silhouette, highly detailed, crisp edges, flat solid dark charcoal background around the medallion, no text
+a game UI icon of a single bold {SUBJECT} in the center, ancient Chinese Three Kingdoms style, simple circular gold rim, dark lacquer background, vermilion accents, clean iconic emblem, strong readable silhouette, minimal ornament, matte painted relief, soft top-left light, centered, flat dark background
 ```
 
 원형 금테 배지 형태라 배경 제거 없이 원형 크롭만으로 UI에 바로 쓸 수 있다.
+(구 v1 템플릿은 `a circular game icon medallion of ...`였으나 중앙에 글자가 새서 폐기.)
 
 ---
 
@@ -95,14 +114,16 @@ a circular game icon medallion of {SUBJECT}, ancient Chinese Three Kingdoms era 
 
 ---
 
-## 6. 완성형 예시 (바로 붙여넣기)
+## 6. 완성형 예시 (v2 확정 — 바로 붙여넣기)
 
+기병(채택 seed 7318)의 실제 프롬프트:
 ```
-a circular game icon medallion of an ancient Chinese gold ingot yuanbao, ancient Chinese Three Kingdoms era theme, ornate engraved gold rim border, dark lacquer black-brown center, vermilion red and warm parchment accents, embossed bronze relief, painterly matte finish, soft top-left studio lighting, subtle inner shadow, single centered object, clean silhouette, highly detailed, crisp edges, flat solid dark charcoal background around the medallion, no text
+a game UI icon of a single bold rearing war horse in the center, ancient Chinese Three Kingdoms style, simple circular gold rim, dark lacquer background, vermilion accents, clean iconic emblem, strong readable silhouette, minimal ornament, matte painted relief, soft top-left light, centered, flat dark background
 ```
 
+금화(자금):
 ```
-a circular game icon medallion of a rearing war horse, ancient Chinese Three Kingdoms era theme, ornate engraved gold rim border, dark lacquer black-brown center, vermilion red and warm parchment accents, embossed bronze relief, painterly matte finish, soft top-left studio lighting, subtle inner shadow, single centered object, clean silhouette, highly detailed, crisp edges, flat solid dark charcoal background around the medallion, no text
+a game UI icon of a single bold ancient Chinese gold ingot yuanbao in the center, ancient Chinese Three Kingdoms style, simple circular gold rim, dark lacquer background, vermilion accents, clean iconic emblem, strong readable silhouette, minimal ornament, matte painted relief, soft top-left light, centered, flat dark background
 ```
 
 ---
