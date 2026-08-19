@@ -177,6 +177,7 @@ dotnet test
 | [spec-general.md](doc/spec-general.md) | 무장 스탯·특기 슬롯 사양 |
 | [spec-city.md](doc/spec-city.md) | 도시 속성 스키마·성곽 등급·도시 흐름 구현 현황 |
 | [asset-icon-generation.md](doc/asset-icon-generation.md) | Fooocus 아이콘 생성 — UI 설정·프롬프트 템플릿·SUBJECT 표·진행 현황 |
+| [asset-general-portraits.md](doc/asset-general-portraits.md) | 장수 초상 계획 — Image Prompt로 화풍 고정·속성 매핑·배선 계획 |
 | [test/movement-cases.md](doc/test/movement-cases.md) | 이동 검증 케이스 1~8 정의·구현 현황 |
 | [test/combat-movement-cases.md](doc/test/combat-movement-cases.md) | 이동→전투 통합 케이스·공성 하베스트 케이스 |
 
