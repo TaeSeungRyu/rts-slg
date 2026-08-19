@@ -80,41 +80,41 @@ a round emblem badge game UI icon of a single bold {SUBJECT} centered inside a c
 
 ### 명령·정보 아이콘 (팔레트 세트)
 
-| 파일명 | 용도 | `{SUBJECT}` |
-|---|---|---|
-| `icon_sword` | 모병/전투 | `a Chinese jian sword blade pointing up` |
-| `icon_coin` | 자금 | `an ancient Chinese gold ingot yuanbao` |
-| `icon_book` | 연구 | `a bamboo strip scroll book` |
-| `icon_wall` | 성벽 수리 | `a stone castle battlement wall` |
-| `icon_scroll` | 계략 | `a rolled paper scroll with a red seal` |
-| `icon_grain` | 군량 | `a sack of rice grain` |
-| `icon_flag` | 세력/성 | `a hanging war banner flag` |
-| `icon_people` | 인구 | `two stylized peasant figures` |
-| `icon_shield` | 치안 | `a round bronze war shield` |
-| `icon_ore` | 광물 | `a chunk of raw silver ore crystal` |
-| `icon_officer` | 장수 | `a helmeted general bust silhouette` |
+| 완료 | 파일명 | 용도 | `{SUBJECT}` |
+|:---:|---|---|---|
+| ✅ | `icon_sword` | 모병/전투 | `a Chinese jian sword blade pointing up` |
+| ✅ | `icon_coin` | 자금 | `an ancient Chinese gold ingot yuanbao` |
+| ⬜ | `icon_book` | 연구 | `a bamboo strip scroll book` |
+| ⬜ | `icon_wall` | 성벽 수리 | `a stone castle battlement wall` |
+| ⬜ | `icon_scroll` | 계략 | `a rolled paper scroll with a red seal` |
+| ⬜ | `icon_grain` | 군량 | `a sack of rice grain` |
+| ⬜ | `icon_flag` | 세력/성 | `a hanging war banner flag` |
+| ⬜ | `icon_people` | 인구 | `two stylized peasant figures` |
+| ⬜ | `icon_shield` | 치안 | `a round bronze war shield` |
+| ⬜ | `icon_ore` | 광물 | `a chunk of raw silver ore crystal` |
+| ⬜ | `icon_officer` | 장수 | `a helmeted general bust silhouette` |
 
 ### 병종 엠블럼 (모달 카드)
 
-| 파일명 | 병종 | `{SUBJECT}` |
-|---|---|---|
-| `troop_infantry` | 보병 | `a crossed sword and spear` |
-| `troop_archer` | 궁병 | `a drawn recurve bow with arrow` |
-| `troop_cavalry` | 기병 | `a rearing war horse` |
-| `troop_elephant` | 상병 | `an armored war elephant` |
-| `troop_siege` | 공성 | `a wooden trebuchet catapult` |
-| `troop_naval` | 해상 | `an ancient Chinese war junk ship` |
+| 완료 | 파일명 | 병종 | `{SUBJECT}` |
+|:---:|---|---|---|
+| ⬜ | `troop_infantry` | 보병 | `a crossed sword and spear` |
+| ⬜ | `troop_archer` | 궁병 | `a drawn recurve bow with arrow` |
+| ✅ | `troop_cavalry` | 기병 | `a rearing war horse` |
+| ⬜ | `troop_elephant` | 상병 | `an armored war elephant` |
+| ⬜ | `troop_siege` | 공성 | `a wooden trebuchet catapult` |
+| ⬜ | `troop_naval` | 해상 | `an ancient Chinese war junk ship` |
 
 ### 계략 아이콘 (모달, 톤 확정 후)
 
-| 파일명 | 계략 | `{SUBJECT}` |
-|---|---|---|
-| `strat_scout` | 정찰 | `a bronze spyglass and eye` |
-| `strat_wallbreak` | 성벽파괴 | `a crumbling breached castle wall` |
-| `strat_incite` | 선동 | `a raised fist with flames` |
-| `strat_arson` | 방화 | `a burning torch with fire` |
-| `strat_steal` | 절취 | `a bag of gold coins` |
-| `strat_discord` | 이간 | `two opposing masks split apart` |
+| 완료 | 파일명 | 계략 | `{SUBJECT}` |
+|:---:|---|---|---|
+| ⬜ | `strat_scout` | 정찰 | `a bronze spyglass and eye` |
+| ⬜ | `strat_wallbreak` | 성벽파괴 | `a crumbling breached castle wall` |
+| ⬜ | `strat_incite` | 선동 | `a raised fist with flames` |
+| ⬜ | `strat_arson` | 방화 | `a burning torch with fire` |
+| ⬜ | `strat_steal` | 절취 | `a bag of gold coins` |
+| ⬜ | `strat_discord` | 이간 | `two opposing masks split apart` |
 
 ---
 
@@ -174,8 +174,8 @@ a round emblem badge game UI icon of a single bold ancient Chinese gold ingot yu
   파일이 있으면 `Image.LoadFromFile(GlobalizePath)` 로 로드, 없으면 절차적 엠블럼 폴백.
 - 새 병종 이미지 추가 = PNG를 `assets/icons/`에 넣고 `EmblemFiles`에 한 줄 추가.
 
-> **규칙**: 이미지를 생성해 GUI에 적용(배선)할 때마다 위 §9 진행 현황 표에서 해당 항목을
-> **배선 완료**로 표기한다.
+> **규칙**: 이미지를 생성해 GUI에 적용(배선)할 때마다 §5 작업 대상 표의 **완료 열을 ✅**로,
+> §9 진행 현황 표에서 해당 항목을 **배선 완료**로 표기한다.
 
 ---
 
