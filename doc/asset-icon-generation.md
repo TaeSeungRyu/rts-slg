@@ -109,6 +109,11 @@ dark background`
   동심원으로 그리고, 그 안쪽 원에 오브젝트 이미지를 원형 마스크로 합성 → 256px.
 - 오브젝트 프롬프트는 배경을 `flat dark background`로 두면 흑칠 안쪽과 자연스럽게 섞인다.
 - 세트의 금테·주홍·흑칠 톤이 100% 일치하므로 통일감이 가장 좋다.
+- **여백/중앙정렬**: 오브젝트가 원을 침범하면 합성 시 안쪽 스케일을 줄인다(예: 코끼리는
+  `0.84`, 가로로 넓거나 큰 오브젝트일수록 더 축소). 가장자리는 가우시안 블러로 흑칠에
+  부드럽게 블렌드해 사각 이음선을 숨긴다.
+- 직접 원형으로 뽑을 때(§4/§4-b)는 프롬프트에 `small and fully inside the circle with
+  clear margin, centered`를 넣으면 오브젝트가 원 밖으로 삐져나오는 걸 줄일 수 있다.
 
 ---
 
@@ -137,7 +142,7 @@ dark background`
 | ✅ | `troop_infantry` | 보병 | seed 1984(교차 검) 채택 · 원형 크롭 · `ClassEmblem(Infantry)` 배선 |
 | ✅ | `troop_archer` | 궁병 | seed 6675(홍금 활) 오브젝트만 → §4-c 금테 합성 · `ClassEmblem(Archer)` 배선 |
 | ✅ | `troop_cavalry` | 기병 | `a rearing war horse` |
-| ⬜ | `troop_elephant` | 상병 | `an armored war elephant` |
+| ✅ | `troop_elephant` | 상병 | seed 4343(장식 코끼리) 오브젝트만 → §4-c 금테 합성(0.84 축소+여백) · `ClassEmblem(Elephant)` 배선 |
 | ⬜ | `troop_siege` | 공성 | `a wooden trebuchet catapult` |
 | ⬜ | `troop_naval` | 해상 | `an ancient Chinese war junk ship` |
 
@@ -199,6 +204,7 @@ a round emblem badge game UI icon of a single bold ancient Chinese gold ingot yu
 | icon_book | **배선 완료** | seed 9016 오브젝트만 → §4-c 금테 프레임 합성 · `Icon(Sym.Book)`에 로드 배선 |
 | troop_infantry | **배선 완료** | seed 1984(교차 검) 채택 · 원형 크롭 · `ClassEmblem(Infantry)` 배선 |
 | troop_archer | **배선 완료** | seed 6675(홍금 활) 오브젝트만 → §4-c 금테 합성 · `ClassEmblem(Archer)` 배선 |
+| troop_elephant | **배선 완료** | seed 4343(장식 코끼리) 오브젝트만 → §4-c 금테 합성(0.84 여백) · `ClassEmblem(Elephant)` 배선 |
 | (나머지) | 대기 | |
 
 > 상태 값: 대기 / 시안 진행 중 / 후보 확보 / 배선 완료
