@@ -630,11 +630,11 @@ public sealed partial class CampaignMapScene : Node3D
         AddChild(layer);
 
         // 우상단: 성 정보 카드 — 고정 200x200 정사각형(넘치면 클립).
-        var infoPanel = new Panel { Visible = false, CustomMinimumSize = new Vector2(250, 200), ClipContents = true };
+        var infoPanel = new Panel { Visible = false, CustomMinimumSize = new Vector2(300, 250), ClipContents = true };
         infoPanel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
         infoPanel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 0));
         layer.AddChild(infoPanel);
-        infoPanel.Size = new Vector2(250, 200);
+        infoPanel.Size = new Vector2(300, 250);
         infoPanel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.TopRight, Control.LayoutPresetMode.KeepSize, 12);
         _infoCard = infoPanel;
         var infoMargin = new MarginContainer();
@@ -699,18 +699,27 @@ public sealed partial class CampaignMapScene : Node3D
         return h;
     }
 
-    // 표(그리드) 행: 아이콘 | 항목 | 값 (3열 정렬).
-    private void GridRow(GridContainer g, Sym icon, string name, string value)
+    // 라벨 셀(아이콘 + 항목명).
+    private Control LabelCell(Sym icon, string name)
     {
-        g.AddChild(new TextureRect
+        var h = new HBoxContainer();
+        h.AddThemeConstantOverride("separation", 5);
+        h.AddChild(new TextureRect
         {
             Texture = Icon(icon),
-            CustomMinimumSize = new Vector2(14, 14),
+            CustomMinimumSize = new Vector2(16, 16),
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
         });
-        g.AddChild(MakeLabel(name, 11, Gold));
-        var v = MakeLabel(value, 11, Parchment);
+        h.AddChild(MakeLabel(name, 13, Gold));
+        return h;
+    }
+
+    // 표 셀 쌍: [라벨(아이콘+항목)] [값]. 4열이면 2쌍/행, 2열이면 1쌍/행.
+    private void AddCell(GridContainer g, Sym icon, string name, string value)
+    {
+        g.AddChild(LabelCell(icon, name));
+        var v = MakeLabel(value, 13, Parchment);
         v.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         g.AddChild(v);
     }
@@ -745,24 +754,32 @@ public sealed partial class CampaignMapScene : Node3D
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
 
         Clear(_infoRows);
-        _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 13, GoldBright));
-        var g = new GridContainer { Columns = 3, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        g.AddThemeConstantOverride("h_separation", 8);
-        g.AddThemeConstantOverride("v_separation", 3);
-        _infoRows.AddChild(g);
-        GridRow(g, Sym.Coin, "금", $"{c.Gold}");
-        GridRow(g, Sym.Grain, "군량", $"{c.Provisions}");
-        GridRow(g, Sym.People, "인구", $"{c.Population}");
-        GridRow(g, Sym.Shield, "치안", $"{c.Security}");
-        GridRow(g, Sym.Coin, "세율", $"{c.TaxRate}%");
-        GridRow(g, Sym.Wall, "성벽", $"{c.Wall}");
-        GridRow(g, Sym.Ore, "광물", $"{c.Ore}/{c.Horses}/{c.Elephants}");
-        GridRow(g, Sym.Book, "시설", facilities);
-        GridRow(g, Sym.Sword, "대기", troops.Any() ? string.Join(",", troops) : "없음");
-        GridRow(g, Sym.Officer, "주둔", officers.Any() ? string.Join(",", officers) : "없음");
+        _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 15, GoldBright));
+
+        // 짧은 수치: 4칸(라벨·값·라벨·값) 2쌍씩.
+        var g4 = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        g4.AddThemeConstantOverride("h_separation", 10);
+        g4.AddThemeConstantOverride("v_separation", 5);
+        _infoRows.AddChild(g4);
+        AddCell(g4, Sym.Coin, "금", $"{c.Gold}");
+        AddCell(g4, Sym.Grain, "군량", $"{c.Provisions}");
+        AddCell(g4, Sym.People, "인구", $"{c.Population}");
+        AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
+        AddCell(g4, Sym.Coin, "세율", $"{c.TaxRate}%");
+        AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
+
+        // 긴 값: 전체폭 2칸(라벨·값).
+        var g2 = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        g2.AddThemeConstantOverride("h_separation", 10);
+        g2.AddThemeConstantOverride("v_separation", 5);
+        _infoRows.AddChild(g2);
+        AddCell(g2, Sym.Ore, "광물", $"{c.Ore}/{c.Horses}/{c.Elephants}");
+        AddCell(g2, Sym.Book, "시설", facilities);
+        AddCell(g2, Sym.Sword, "대기", troops.Any() ? string.Join(",", troops) : "없음");
+        AddCell(g2, Sym.Officer, "주둔", officers.Any() ? string.Join(",", officers) : "없음");
         if (pending.Any())
         {
-            GridRow(g, Sym.Scroll, "진행", string.Join(",", pending));
+            AddCell(g2, Sym.Scroll, "진행", string.Join(",", pending));
         }
 
         PlacePalette(c.Position);
