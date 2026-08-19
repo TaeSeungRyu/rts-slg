@@ -129,11 +129,21 @@ a circular game icon medallion of a rearing war horse, ancient Chinese Three Kin
 
 | 파일명 | 상태 | 비고 |
 |---|---|---|
-| icon_coin | 시안 진행 중 | 완성형 예시 ①로 테스트 중 |
-| troop_cavalry | 대기 | 완성형 예시 ② |
+| troop_cavalry | **배선 완료** | seed 7318 채택 · 원형 크롭+투명 256px · `ClassEmblem(Cavalry)`에 로드 배선 |
+| icon_coin | 후보 확보 | seed 8428(금괴) 후보 · 미배선 |
 | (나머지) | 대기 | |
 
-> 상태 값: 대기 / 시안 진행 중 / 확정 / 배선 완료
+> 상태 값: 대기 / 시안 진행 중 / 후보 확보 / 배선 완료
+
+### 관찰 (v1 vs v2)
+- **구체적 오브젝트**(말·코끼리·배·검 등)는 v1 프롬프트로도 글자 없이 또렷하게 나옴.
+- **추상 소재**(금괴·코인)만 모델이 "글자 새긴 도장"으로 반복 → v2 네거티브(글자 차단) 필요.
+- 프레임/색감(금테·흑칠·주홍)은 두 버전 모두 일관되게 우수 → 스타일은 확정급.
+
+### 배선 방식
+- 로더: `EmblemFiles` 사전(`TroopClass → res://assets/icons/troop_*.png`).
+  파일이 있으면 `Image.LoadFromFile(GlobalizePath)` 로 로드, 없으면 절차적 엠블럼 폴백.
+- 새 병종 이미지 추가 = PNG를 `assets/icons/`에 넣고 `EmblemFiles`에 한 줄 추가.
 
 ---
 

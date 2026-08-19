@@ -1037,9 +1037,24 @@ public sealed partial class CampaignMapScene : Node3D
     };
 
     // 병종 분류 표식 — 분류색 광택 구체 + 금테 링(방향광 램버트 음영 + 스페큘러 + 드롭섀도우).
+    // 병종별 실제 이미지가 있으면 그것을 우선 사용(없으면 절차적 엠블럼). 파일: assets/icons/troop_{code}.png
+    private static readonly Dictionary<TroopClass, string> EmblemFiles = new()
+    {
+        [TroopClass.Cavalry] = "res://assets/icons/troop_cavalry.png",
+    };
+
     private ImageTexture ClassEmblem(TroopClass c)
     {
         if (_emblems.TryGetValue(c, out var cached)) { return cached; }
+
+        if (EmblemFiles.TryGetValue(c, out var path) && Godot.FileAccess.FileExists(path))
+        {
+            var loaded = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
+            loaded.GenerateMipmaps();
+            var lt = ImageTexture.CreateFromImage(loaded);
+            _emblems[c] = lt;
+            return lt;
+        }
 
         var img = NewBig();
         var col = ClassColor(c);
