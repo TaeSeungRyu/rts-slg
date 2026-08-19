@@ -74,6 +74,31 @@ a round emblem badge game UI icon of a single bold {SUBJECT} centered inside a c
   parchment background`를 추가해 **원형 프레임을 강제**한다.
 - 구 v1(`a circular game icon medallion of ...`)은 중앙에 글자가 새서 폐기.
 
+### 4-b. 어려운(추상) 소재용 — 소재 우선 + 가중치 + 문장 차단
+
+검·말처럼 형태가 강한 소재는 §4로 잘 나오지만, **책·군량·광석처럼 약한 소재는 §4의
+"emblem badge/gold rim/ornament" 문구에 밀려 문장(crest·동심원·로제트)으로 그려진다**
+(icon_book seed 1103·9199·7455·4416 전부 책이 안 나옴). 이때는 소재를 **앞에 가중치로**
+강조하고, 프레임 문구를 약화하고, 문장류를 네거티브로 막는다.
+
+**Positive (`{SUBJECT}` 가중치 강조):**
+```
+({SUBJECT}:1.5), big and clearly centered, a simple thin round gold ring frame around it, dark lacquer background, vermilion accents, Three Kingdoms strategy game icon, matte painted relief, soft top-left light, clean readable silhouette, flat dark background
+```
+
+**Negative (문장·장식 차단 추가):**
+```
+heraldic crest, coat of arms, medallion, rosette, mandala, concentric rings, laurel wreath, fleur-de-lis, ornament emblem, seal, chinese characters, kanji, hanzi, calligraphy, text, letters, symbols, glyphs, full frame subject, diagonal composition, parchment background, multiple objects, cluttered, blurry, low quality, photograph, watermark
+```
+
+예) 책: `(an open ancient book with visible pages:1.5), big and clearly centered, a simple thin
+round gold ring frame around it, dark lacquer background, vermilion accents, Three Kingdoms
+strategy game icon, matte painted relief, soft top-left light, clean readable silhouette, flat
+dark background`
+
+> 그래도 안 나오는 소재는 **절차적(코드) 아이콘을 유지**한다(현재도 파일 없으면 자동 폴백).
+> AI 아트는 잘 나오는 소재(검·말·코끼리·배 등)에 우선 적용.
+
 ---
 
 ## 5. 아이콘별 SUBJECT
