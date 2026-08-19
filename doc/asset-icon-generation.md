@@ -107,10 +107,10 @@ python frame_icon.py <src> <dst> <scale>
 |:---:|---|---|---|
 | ✅ | `strat_scout` | 정찰 | seed 9747(매) · 합성 0.9 · `StratIcon("scout")` 파일 로드 배선 |
 | ✅ | `strat_wall_break` | 성벽파괴 | seed 9011(뚫린 성벽+불길) · 서술형(icon_wall 규칙) · 합성 0.98 · `StratIcon("wall_break")` |
-| ⬜ | `strat_incite` | 선동 | `a raised fist with flames` |
-| ⬜ | `strat_arson` | 방화 | `a burning torch with fire` |
-| ⬜ | `strat_steal` | 절취 | `a bag of gold coins` |
-| ⬜ | `strat_sow_discord` | 이간 | `two opposing masks split apart` |
+| ⬜ | `strat_incite` | 선동 | `a large ceremonial war drum with two drumsticks` (북=선동, 불과 안 겹침. 대안: `an angry raised fist`) |
+| ⬜ | `strat_arson` | 방화 | `a burning wooden torch with bright orange flames` (대안: `a burning granary on fire`) |
+| ⬜ | `strat_steal` | 절취 | `an open drawstring money pouch spilling gold coins with a small dagger` (훔침 강조·코인 아이콘과 차별 · 여러 동전 → `multiple objects` 제외) |
+| ⬜ | `strat_sow_discord` | 이간 | `a broken iron chain snapped into two pieces` (동맹 단절. 대안: `two opposing theater masks` / `a jade tally token split into two halves`) |
 
 > 계략 파일명은 **반드시 계략 code 기준** `strat_{code}.png` (scout / wall_break / incite /
 > arson / steal / sow_discord). 언더바 포함 정확히 일치해야 `StratIcon`이 로드한다.
