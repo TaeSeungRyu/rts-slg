@@ -81,7 +81,7 @@ python frame_icon.py <src> <dst> <scale>
 | ✅ | `icon_sword` | 모병/전투 | `a Chinese jian sword blade pointing up` |
 | ✅ | `icon_coin` | 자금 | `an ancient Chinese gold ingot yuanbao` |
 | ✅ | `icon_book` | 연구 | `an open ancient book with pages` |
-| ⬜ | `icon_wall` | 성벽 수리 | `a stone castle battlement wall` |
+| ⬜ | `icon_wall` | 성벽 수리 | `icon` 빼고 서술형: `a lone section of an ancient Chinese fortified stone rampart with crenellated battlements and a small arched gate, standing isolated as a single structure` (짧은 `battlement wall`은 빈 액자/전면 텍스처로 실패) |
 | ⬜ | `icon_scroll` | 계략 | `a rolled paper scroll with a red seal` |
 | ⬜ | `icon_grain` | 군량 | `a sack of rice grain` (여러 개 → `multiple objects` 제외) |
 | ⬜ | `icon_flag` | 세력/성 | `a hanging war banner flag` |
@@ -131,6 +131,10 @@ python frame_icon.py <src> <dst> <scale>
   **Kenney CC0 3D 모델을 Blender 렌더**로 대체한다(`D:\dev\assets\kenney`에 배(`unit-ship`)·
   성·탑 등 있음).
 - 배경·인물이 섞여 나와도 §3 프레임 합성의 **원형 크롭**으로 중앙만 살린다.
+- **건축/텍스처 소재**(성벽 등)는 `game icon` 단어를 **빼야** 한다(넣으면 벽 위에 빈 장식
+  액자를 그림). "wall"은 배경 텍스처로 화면을 꽉 채우므로 `a lone section … standing
+  isolated as a single structure`처럼 **독립 구조물**로 서술하고, 네거티브에 `brick wall
+  filling the whole image, seamless wall texture, tiled bricks background` 추가.
 
 ---
 
