@@ -629,11 +629,11 @@ public sealed partial class CampaignMapScene : Node3D
         AddChild(layer);
 
         // 우상단: 성 정보 카드 — 고정 200x200 정사각형(넘치면 클립).
-        var infoPanel = new Panel { Visible = false, CustomMinimumSize = new Vector2(200, 200), ClipContents = true };
+        var infoPanel = new Panel { Visible = false, CustomMinimumSize = new Vector2(250, 200), ClipContents = true };
         infoPanel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
         infoPanel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 0));
         layer.AddChild(infoPanel);
-        infoPanel.Size = new Vector2(200, 200);
+        infoPanel.Size = new Vector2(250, 200);
         infoPanel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.TopRight, Control.LayoutPresetMode.KeepSize, 12);
         _infoCard = infoPanel;
         var infoMargin = new MarginContainer();
@@ -698,6 +698,22 @@ public sealed partial class CampaignMapScene : Node3D
         return h;
     }
 
+    // 표(그리드) 행: 아이콘 | 항목 | 값 (3열 정렬).
+    private void GridRow(GridContainer g, Sym icon, string name, string value)
+    {
+        g.AddChild(new TextureRect
+        {
+            Texture = Icon(icon),
+            CustomMinimumSize = new Vector2(14, 14),
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        });
+        g.AddChild(MakeLabel(name, 11, Gold));
+        var v = MakeLabel(value, 11, Parchment);
+        v.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        g.AddChild(v);
+    }
+
     private Control Header(string text)
     {
         var v = new VBoxContainer();
@@ -729,18 +745,23 @@ public sealed partial class CampaignMapScene : Node3D
 
         Clear(_infoRows);
         _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 13, GoldBright));
-        _infoRows.AddChild(InfoRow(Sym.Coin, $"금 {c.Gold}"));
-        _infoRows.AddChild(InfoRow(Sym.Grain, $"군량 {c.Provisions}"));
-        _infoRows.AddChild(InfoRow(Sym.People, $"인구 {c.Population}"));
-        _infoRows.AddChild(InfoRow(Sym.Shield, $"치안{c.Security} 세{c.TaxRate}%"));
-        _infoRows.AddChild(InfoRow(Sym.Wall, $"성벽 {c.Wall}"));
-        _infoRows.AddChild(InfoRow(Sym.Ore, $"광{c.Ore} 말{c.Horses} 상{c.Elephants}"));
-        _infoRows.AddChild(InfoRow(Sym.Book, facilities));
-        _infoRows.AddChild(InfoRow(Sym.Sword, $"대기 {(troops.Any() ? string.Join(",", troops) : "없음")}"));
-        _infoRows.AddChild(InfoRow(Sym.Officer, $"주둔 {(officers.Any() ? string.Join(",", officers) : "없음")}"));
+        var g = new GridContainer { Columns = 3, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        g.AddThemeConstantOverride("h_separation", 8);
+        g.AddThemeConstantOverride("v_separation", 3);
+        _infoRows.AddChild(g);
+        GridRow(g, Sym.Coin, "금", $"{c.Gold}");
+        GridRow(g, Sym.Grain, "군량", $"{c.Provisions}");
+        GridRow(g, Sym.People, "인구", $"{c.Population}");
+        GridRow(g, Sym.Shield, "치안", $"{c.Security}");
+        GridRow(g, Sym.Coin, "세율", $"{c.TaxRate}%");
+        GridRow(g, Sym.Wall, "성벽", $"{c.Wall}");
+        GridRow(g, Sym.Ore, "광물", $"{c.Ore}/{c.Horses}/{c.Elephants}");
+        GridRow(g, Sym.Book, "시설", facilities);
+        GridRow(g, Sym.Sword, "대기", troops.Any() ? string.Join(",", troops) : "없음");
+        GridRow(g, Sym.Officer, "주둔", officers.Any() ? string.Join(",", officers) : "없음");
         if (pending.Any())
         {
-            _infoRows.AddChild(InfoRow(Sym.Scroll, $"진행 {string.Join(",", pending)}"));
+            GridRow(g, Sym.Scroll, "진행", string.Join(",", pending));
         }
 
         PlacePalette(c.Position);
