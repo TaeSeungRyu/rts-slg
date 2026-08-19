@@ -166,6 +166,9 @@ a game UI icon of a single bold ancient Chinese gold ingot yuanbao in the center
   파일이 있으면 `Image.LoadFromFile(GlobalizePath)` 로 로드, 없으면 절차적 엠블럼 폴백.
 - 새 병종 이미지 추가 = PNG를 `assets/icons/`에 넣고 `EmblemFiles`에 한 줄 추가.
 
+> **규칙**: 이미지를 생성해 GUI에 적용(배선)할 때마다 위 §9 진행 현황 표에서 해당 항목을
+> **배선 완료**로 표기한다.
+
 ---
 
 ## 부록: 왜 수동(B안)인가 — 스톡 Fooocus API 검증 기록
