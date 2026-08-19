@@ -50,7 +50,29 @@
 
 ---
 
-## 3. 네거티브 프롬프트 (v4 — 모든 아이콘 공통)
+## 표준 방식 (2026-08-19 확정): 오브젝트만 생성 → 프레임 합성
+
+SDXL이 "테두리+오브젝트"를 한 문장으로 이해하는 능력이 약해(공성=마차, 링=실물 액자
+등 실패 반복), **오브젝트만 뽑고 금테 프레임은 후처리로 합성**하는 §4-c를 기본으로 한다.
+프레임은 단색이 아니라 **그라데이션 금테 + 홍옥 4개 + 라디얼 흑칠**로 Fooocus 느낌을 낸다
+(`scratchpad/frame_icon.py`, `<src> <dst> <scale>`; 큰 오브젝트일수록 scale↓로 여백 확보).
+
+### 오브젝트 전용 Positive (`{SUBJECT}`만 교체)
+```
+a game icon of a single {SUBJECT}, centered with clear margin, ancient Chinese Three Kingdoms style, gold and vermilion accents, matte painted relief, soft top-left light, clean readable silhouette, flat plain dark background
+```
+
+### 오브젝트 전용 Negative
+```
+gold ring, circular frame, border, medallion, ornate frame, heraldic crest, coat of arms, rosette, chinese characters, kanji, hanzi, calligraphy, text, letters, symbols, glyphs, cropped subject, parchment background, multiple objects, cluttered, blurry, low quality, photograph, realistic human face, watermark
+```
+
+> 프레임을 아예 안 그리게 `gold ring, circular frame, border, medallion, ornate frame`를
+> 네거티브에 둔다. **여러 개 소재(돌무더기·낟알)는 `multiple objects` 제외.**
+
+---
+
+## 3. (구) 네거티브 — Fooocus가 프레임까지 그리게 하던 v4 (강한 소재 전용)
 
 ```
 3d object on a table, physical ring, mirror stand, tripod stand, standing frame, diorama, heraldic crest, coat of arms, rosette, chinese characters, kanji, hanzi, calligraphy, text, letters, symbols, glyphs, object overflowing the rim, cropped subject, parchment background, multiple objects, cluttered, blurry, low quality, photograph, realistic human face, watermark
@@ -122,8 +144,10 @@ dark background`
 **금테 원형 프레임은 후처리로 합성**한다. 오브젝트 생성(쉬움)과 프레임(내가 완벽히 통일)
 을 분리하는 방식 — icon_book(seed 9016)이 이 방식으로 배선됨.
 
-- 후처리(Pillow): 투명 캔버스에 금테 원(gold) → 주홍 라인 → 흑칠 안쪽(dark lacquer)을
-  동심원으로 그리고, 그 안쪽 원에 오브젝트 이미지를 원형 마스크로 합성 → 256px.
+- 후처리(`scratchpad/frame_icon.py`): **그라데이션 금테(좌상 밝음→우하 어두움) + 홍옥 4개
+  (상하좌우, 금 베젤·하이라이트) + 라디얼 흑칠 안쪽 + 경계 음영선**을 그리고, 안쪽 원에
+  오브젝트를 페더 마스크로 합성 → 256px. 단색이 아니라 Fooocus 프레임 느낌을 낸다.
+  (구버전은 단색 금링이었음.)
 - 오브젝트 프롬프트는 배경을 `flat dark background`로 두면 흑칠 안쪽과 자연스럽게 섞인다.
 - 세트의 금테·주홍·흑칠 톤이 100% 일치하므로 통일감이 가장 좋다.
 - **여백/중앙정렬**: 오브젝트가 원을 침범하면 합성 시 안쪽 스케일을 줄인다(예: 코끼리는
