@@ -61,8 +61,10 @@
 >
 > 기계류(공성 등)가 장식 구조물로 뭉개지면 `tripod stand, candelabra, chandelier,
 > bell frame, decorative structure, abstract ornament`를 추가하고, 소재를 더 또렷한
-> 실루엣 단어로(투석기→`stone catapult with a long throwing arm` / `ballista giant
-> crossbow` / `battering ram`) 바꾼다.
+> 실루엣 단어로 바꾼다. **핵심 부위를 문장의 주어로** 서술할 것 — 예: 충차는 "cart"가
+> 아니라 "a long horizontal wooden log tipped with a bronze ram head"를 앞세운다.
+> "cart/wheeled cart"는 화려한 마차로, "ship"류는 배로 뭉개지므로 네거티브에
+> `carriage, wagon, chariot, cart, palanquin, sedan chair, boat, ship, pagoda roof` 추가.
 
 ---
 
@@ -152,7 +154,7 @@ dark background`
 | ✅ | `troop_archer` | 궁병 | seed 6675(홍금 활) 오브젝트만 → §4-c 금테 합성 · `ClassEmblem(Archer)` 배선 |
 | ✅ | `troop_cavalry` | 기병 | `a rearing war horse` |
 | ✅ | `troop_elephant` | 상병 | seed 4343(장식 코끼리) 오브젝트만 → §4-c 금테 합성(0.84 축소+여백) · `ClassEmblem(Elephant)` 배선 |
-| ⬜ | `troop_siege` | 공성 | `a stone catapult with a long wooden throwing arm and a boulder` (구 `trebuchet catapult`은 장식 구조물로 뭉개짐 · 대안: `a ballista giant crossbow` / `a battering ram on wheels`) |
+| ⬜ | `troop_siege` | 공성 | `a battering ram, a long thick horizontal wooden log tipped with a bronze ram head, hung by chains under a small slanted wooden roof on two spoked wheels, aimed to the right` (trebuchet·ballista·"siege cart"는 각각 구조물·마차로 뭉개짐 → 램 통나무를 주어로) |
 | ⬜ | `troop_naval` | 해상 | `an ancient Chinese war junk ship` |
 
 ### 계략 아이콘 (모달, 톤 확정 후)
