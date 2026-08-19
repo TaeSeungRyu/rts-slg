@@ -135,7 +135,7 @@ dark background`
 | 완료 | 파일명 | 병종 | `{SUBJECT}` |
 |:---:|---|---|---|
 | ✅ | `troop_infantry` | 보병 | seed 1984(교차 검) 채택 · 원형 크롭 · `ClassEmblem(Infantry)` 배선 |
-| ⬜ | `troop_archer` | 궁병 | `a drawn recurve bow with arrow` |
+| ✅ | `troop_archer` | 궁병 | seed 6675(홍금 활) 오브젝트만 → §4-c 금테 합성 · `ClassEmblem(Archer)` 배선 |
 | ✅ | `troop_cavalry` | 기병 | `a rearing war horse` |
 | ⬜ | `troop_elephant` | 상병 | `an armored war elephant` |
 | ⬜ | `troop_siege` | 공성 | `a wooden trebuchet catapult` |
@@ -198,6 +198,7 @@ a round emblem badge game UI icon of a single bold ancient Chinese gold ingot yu
 | icon_sword | **배선 완료** | seed 1090(검) 채택 · 원형 크롭+투명 256px · `Icon(Sym.Sword)`에 로드 배선 (8399는 비원형이라 스킵) |
 | icon_book | **배선 완료** | seed 9016 오브젝트만 → §4-c 금테 프레임 합성 · `Icon(Sym.Book)`에 로드 배선 |
 | troop_infantry | **배선 완료** | seed 1984(교차 검) 채택 · 원형 크롭 · `ClassEmblem(Infantry)` 배선 |
+| troop_archer | **배선 완료** | seed 6675(홍금 활) 오브젝트만 → §4-c 금테 합성 · `ClassEmblem(Archer)` 배선 |
 | (나머지) | 대기 | |
 
 > 상태 값: 대기 / 시안 진행 중 / 후보 확보 / 배선 완료
