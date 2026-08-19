@@ -88,7 +88,7 @@ python frame_icon.py <src> <dst> <scale>
 | ✅ | `icon_people` | 인구 | seed 4138(두 인물, 자체 금테 포함) · 원형 크롭만 · `Icon(Sym.People)` 배선 |
 | ✅ | `icon_shield` | 치안 | seed 9701(원형 방패) · 합성 0.84 · `Icon(Sym.Shield)` 배선 |
 | ✅ | `icon_ore` | 광물 | seed 2563(주황 결정+금맥 광석) · 합성 0.9 · `Icon(Sym.Ore)` 배선 |
-| ⬜ | `icon_officer` | 장수 | `a helmeted general bust silhouette` |
+| ✅ | `icon_officer` | 장수 | seed 4364(장수 흉상) · 합성 0.9 · `Icon(Sym.Officer)` 배선 (주둔 행·모든 장수 카드·이간 계략에 표시) |
 
 ### 병종 엠블럼 (모달 카드) — 6종 전부 완료
 
@@ -173,6 +173,7 @@ a game UI icon of a single {SUBJECT} in the center, ancient Chinese Three Kingdo
 | icon_people | 4138 | 자체 금테 포함 → 원형 크롭만(프레임 합성 X). `Icon(Sym.People)` |
 | icon_shield | 9701 | 원형 방패 → 합성 0.84. `Icon(Sym.Shield)` |
 | icon_ore | 2563 | 오브젝트(광석) → 합성 0.9. `Icon(Sym.Ore)` |
+| icon_officer | 4364 | 오브젝트(장수 흉상) → 합성 0.9. `Icon(Sym.Officer)` |
 | troop_archer | 6675 | 오브젝트(홍금 활) → 합성 0.92. `ClassEmblem(Archer)` |
 | troop_elephant | 4343 | 오브젝트(장식 코끼리) → 합성 0.84. `ClassEmblem(Elephant)` |
 | troop_siege | 1494 | 정의 문장(충차 장면) → 합성 0.92. `ClassEmblem(Siege)` |
