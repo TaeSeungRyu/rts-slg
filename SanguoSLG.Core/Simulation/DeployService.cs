@@ -115,7 +115,8 @@ public sealed class DeployService
         var unitId = new UnitId(state.Armies.Count == 0 ? 1 : state.Armies.Max(u => u.Id.Value) + 1);
         var unit = UnitAssembler.Assemble(unitId, city.Owner, city.Position, req.Mode, req.Target,
             unitId.Value, vanguard, adjutant, template, troops, _actives, _passives, FieldContext, research);
-        unit = unit with { Provisions = carried, Training = garrison.TrainingLevel };
+        // 성에서 갓 편성된 부대는 사기 만땅으로 나온다(design-unit-state §2단계 "입성 시 사기 100"의 거울).
+        unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, Morale = 100 };
 
         var garrisons = state.Garrisons
             .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)
@@ -223,7 +224,7 @@ public sealed class DeployService
             ProvisionsCapacity: capacity, IsSupply: true, Training: training,
             VanguardId: vanguard.Id, SupplyCargo: components);
         var carried = System.Math.Min(unit.MaxProvisions(), city.Provisions);
-        unit = unit with { Provisions = carried };
+        unit = unit with { Provisions = carried, Morale = 100 }; // 갓 편성 = 사기 만땅(§2단계)
 
         var taken = components.ToDictionary(c => c.TroopCode, c => c.Troops);
         var garrisons = state.Garrisons
