@@ -88,8 +88,22 @@ public sealed partial class CampaignMapScene : Node3D
     private CityId _depModalCity;
     private int _depAmount;
     private int _depEditIndex = -1; // -1=신규 추가, ≥0=_pendingDeploys 해당 예약 수정
+    private UnitMode _depMode = UnitMode.Advance;
+    private HexCoord? _depTarget;
     private SpinBox? _depAmountSpin;
     private Label? _depPreview;
+    private readonly List<(Button Btn, UnitMode Mode)> _depModeButtons = new();
+
+    // 목표 지정 모드(지도 클릭으로 예약 부대의 목적지 설정).
+    private bool _depTargeting;
+    private int _depTargetIndex = -1;
+    private CanvasLayer? _targetHintLayer;
+
+    // 경로 프리뷰.
+    private PassabilityMap _passability = null!;
+    private readonly List<MeshInstance3D> _pathMarkers = new();
+    private Mesh? _pathDotMesh;
+    private Material? _pathDotMat;
 
     // 1단계 지원 명령(내정 — 출전은 2단계). (표시명, 종류, 파라미터: troop/tax/wall/stratagem/none)
     private static readonly (string Label, CommandKind Kind, string Param)[] Cmds =
@@ -131,7 +145,8 @@ public sealed partial class CampaignMapScene : Node3D
         _commander = new CommandService(_cb, _troops, balance);
         _deployer = new DeployService(_cb, _troops, actives, passives);
         _ai = new FactionAI(_commander, _deployer);
-        var movement = new MovementSimulator(new PassabilityMap(_map, [], _cities));
+        _passability = new PassabilityMap(_map, [], _cities);
+        var movement = new MovementSimulator(_passability);
         var world = new WorldEngine(balance, _cb);
         _engine = new CampaignEngine(
             new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70)),
@@ -504,6 +519,19 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
+        // 목표 지정 모드: 좌클릭=목적지 설정, 우클릭=취소.
+        if (_depTargeting && @event is InputEventMouseButton { Pressed: true } mb)
+        {
+            if (mb.ButtonIndex == MouseButton.Right) { FinishTargeting(); OpenDeployHub(); return; }
+            if (mb.ButtonIndex == MouseButton.Left)
+            {
+                ApplyTarget(RayToGround(mb.Position));
+                return;
+            }
+
+            return;
+        }
+
         if (@event is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click)
         {
             return;
@@ -519,6 +547,88 @@ public sealed partial class CampaignMapScene : Node3D
         {
             _selected = null;
             HidePanels();
+        }
+    }
+
+    // ── 목표 지정 ──
+    private void BeginTargeting(int idx)
+    {
+        CloseModal();
+        _depTargetIndex = idx;
+        _depTargeting = true;
+        var layer = new CanvasLayer { Layer = 25 };
+        AddChild(layer);
+        _targetHintLayer = layer;
+        var pc = new PanelContainer();
+        pc.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.CenterTop, Control.LayoutPresetMode.KeepSize, 16);
+        pc.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 10));
+        layer.AddChild(pc);
+        pc.AddChild(MakeLabel("목적지를 클릭하세요  ·  적 성 = 공격  ·  우클릭 취소", 15, GoldBright));
+    }
+
+    private void FinishTargeting()
+    {
+        _depTargeting = false;
+        _depTargetIndex = -1;
+        if (_targetHintLayer is not null) { _targetHintLayer.QueueFree(); _targetHintLayer = null; }
+    }
+
+    private void ApplyTarget(HexCoord? hex)
+    {
+        if (hex is not { } h) { return; }
+        var idx = _depTargetIndex;
+        if (idx >= 0 && idx < _pendingDeploys.Count)
+        {
+            var (req, label) = _pendingDeploys[idx];
+            var enemyCity = _state.Cities.FirstOrDefault(c => c.Position == h && c.Owner != Player);
+            var mode = enemyCity is not null ? UnitMode.Attack : req.Mode;
+            _pendingDeploys[idx] = (req with { Target = h, Mode = mode }, label);
+            var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
+            _log.Text = $"목표 → {tName}{(enemyCity is not null ? " (공격모드)" : "")}";
+        }
+
+        FinishTargeting();
+        SelectCity(_depModalCity);
+        OpenDeployHub();
+        Redraw(_log.Text);
+    }
+
+    // ── 경로 프리뷰: 예약 부대의 성→목표 경로를 지도에 점으로 ──
+    private void DrawDeployPaths()
+    {
+        foreach (var m in _pathMarkers) { m.QueueFree(); }
+        _pathMarkers.Clear();
+
+        _pathDotMesh ??= new CylinderMesh { TopRadius = 0.12f, BottomRadius = 0.12f, Height = 0.05f, RadialSegments = 8 };
+        _pathDotMat ??= new StandardMaterial3D
+        {
+            AlbedoColor = GoldBright,
+            EmissionEnabled = true,
+            Emission = Gold,
+            EmissionEnergyMultiplier = 1.4f,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        };
+
+        foreach (var (req, _) in _pendingDeploys)
+        {
+            if (req.Target is not { } goal) { continue; }
+            var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
+            if (city is null) { continue; }
+            var start = city.Position;
+            var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanEnter(MovementDomain.Land, c));
+            var path = pf.FindPath(start, goal);
+            for (var i = 1; i < path.Count; i++)
+            {
+                var dot = new MeshInstance3D
+                {
+                    Mesh = _pathDotMesh,
+                    MaterialOverride = _pathDotMat,
+                    CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                    Position = _view.HexToWorld(path[i]) + new Vector3(0f, _view.TileTopY + 0.06f, 0f),
+                };
+                AddChild(dot);
+                _pathMarkers.Add(dot);
+            }
         }
     }
 
@@ -990,7 +1100,9 @@ public sealed partial class CampaignMapScene : Node3D
         _depAdjCards.Clear();
         _depAmountSpin = null;
         _depPreview = null;
+        _depModeButtons.Clear();
         _depEditIndex = -1;
+        _depTarget = null;
     }
 
     // ── 출전 모달: 병종 + 선봉(+부관) 선택 → 대기 병력을 야전 부대로 편성 ──
@@ -1048,7 +1160,8 @@ public sealed partial class CampaignMapScene : Node3D
             var emblem = tmpl is not null ? ClassEmblem(tmpl.Class) : Icon(Sym.Sword);
             var tname = tmpl?.Name ?? rq.TroopCode;
             var vname = _state.Generals.First(g => g.Id == rq.Vanguard).Name;
-            var aname = rq.Adjutant is { } aid ? " · 부관 " + _state.Generals.First(g => g.Id == aid).Name : "";
+            var aname = rq.Adjutant is { } aid ? "+" + _state.Generals.First(g => g.Id == aid).Name : "";
+            var targetText = rq.Target is { } tg ? "→ " + (_state.Cities.FirstOrDefault(c => c.Position == tg)?.Name ?? $"({tg.Q},{tg.R})") : "목표 미지정";
 
             var cardItem = new PanelContainer();
             cardItem.AddThemeStyleboxOverride("panel", CardBox(false));
@@ -1065,16 +1178,21 @@ public sealed partial class CampaignMapScene : Node3D
             });
             var info = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
             info.AddThemeConstantOverride("separation", 2);
-            info.AddChild(MakeLabel($"{tname}  {rq.Troops}명", 15, GoldBright));
-            info.AddChild(MakeLabel($"선봉 {vname}{aname}", 12, Parchment));
+            info.AddChild(MakeLabel($"{tname}  {rq.Troops}명  ·  선봉 {vname}{aname}", 15, GoldBright));
+            info.AddChild(MakeLabel($"{ModeName(rq.Mode)}모드  ·  {targetText}", 12, rq.Target is null ? new Color(0.85f, 0.5f, 0.4f) : Parchment));
             h.AddChild(info);
+            var tgt = MakeButton("목표");
+            tgt.CustomMinimumSize = new Vector2(52, 32);
+            tgt.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+            tgt.Pressed += () => BeginTargeting(idx);
+            h.AddChild(tgt);
             var edit = MakeButton("수정");
-            edit.CustomMinimumSize = new Vector2(56, 32);
+            edit.CustomMinimumSize = new Vector2(52, 32);
             edit.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             edit.Pressed += () => OpenDeployCompose(idx);
             h.AddChild(edit);
             var rm = MakeButton("삭제");
-            rm.CustomMinimumSize = new Vector2(56, 32);
+            rm.CustomMinimumSize = new Vector2(52, 32);
             rm.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             rm.Pressed += () => { _pendingDeploys.RemoveAt(idx); SelectCity(city); OpenDeployHub(); };
             h.AddChild(rm);
@@ -1105,8 +1223,11 @@ public sealed partial class CampaignMapScene : Node3D
         _depVan = null;
         _depAdj = null;
         _depAmount = 0;
+        _depMode = UnitMode.Advance;
+        _depTarget = null;
         _depAmountSpin = null;
         _depPreview = null;
+        _depModeButtons.Clear();
 
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.52f, 400f, 660f);
@@ -1192,6 +1313,22 @@ public sealed partial class CampaignMapScene : Node3D
 
         box.AddChild(amtRow);
 
+        // 2-b) 이동 모드(행군/전진/공격)
+        box.AddChild(MakeLabel("이동 모드", 13, GoldBright));
+        var modeRow = new HBoxContainer();
+        modeRow.AddThemeConstantOverride("separation", 6);
+        foreach (var (mlabel, mode) in new[] { ("행군", UnitMode.March), ("전진", UnitMode.Advance), ("공격", UnitMode.Attack) })
+        {
+            var mm = mode;
+            var mb = MakeButton(mlabel);
+            mb.CustomMinimumSize = new Vector2(72, 30);
+            mb.Pressed += () => { _depMode = mm; RestyleModes(); UpdateDepPreview(); };
+            _depModeButtons.Add((mb, mode));
+            modeRow.AddChild(mb);
+        }
+
+        box.AddChild(modeRow);
+
         // 3) 선봉 / 4) 부관
         var free = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value).ToList();
         box.AddChild(GoldRule());
@@ -1248,9 +1385,12 @@ public sealed partial class CampaignMapScene : Node3D
             _depAmountSpin.MaxValue = System.Math.Max(capEdit, rq.Troops);
             _depAmountSpin.Value = rq.Troops;
             _depAmount = rq.Troops;
+            _depMode = rq.Mode;
+            _depTarget = rq.Target;
         }
 
         RestyleDeploy();
+        RestyleModes();
         UpdateDepPreview();
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
@@ -1294,6 +1434,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depTroop is { } c) { parts.Add($"{_troops.FirstOrDefault(t => t.Code == c)?.Name ?? c} {_depAmount}"); }
         if (_depVan is { } v) { parts.Add("선봉 " + _state.Generals.First(g => g.Id == v).Name); }
         if (_depAdj is { } a) { parts.Add("부관 " + _state.Generals.First(g => g.Id == a).Name); }
+        parts.Add(ModeName(_depMode) + "모드");
+        parts.Add(_depTarget is { } tg2 ? "목표 " + (_state.Cities.FirstOrDefault(c => c.Position == tg2)?.Name ?? $"({tg2.Q},{tg2.R})") : "목표 미지정");
         _depPreview.Text = "현재 편성:  " + (parts.Count > 0 ? string.Join(" · ", parts) : "(병종·수량·장수 선택)");
     }
 
@@ -1306,7 +1448,8 @@ public sealed partial class CampaignMapScene : Node3D
         var tName = _troops.FirstOrDefault(t => t.Code == _depTroop)?.Name ?? _depTroop;
         var vName = _state.Generals.First(g => g.Id == van).Name;
         var aName = _depAdj is { } a ? "+" + _state.Generals.First(g => g.Id == a).Name : "";
-        var entry = (new DeployRequest(_depModalCity, _depTroop, _depAmount, van, _depAdj), $"{tName} {_depAmount}({vName}{aName})");
+        var req = new DeployRequest(_depModalCity, _depTroop, _depAmount, van, _depAdj, _depMode, _depTarget);
+        var entry = (req, $"{tName} {_depAmount}({vName}{aName}) · {ModeName(_depMode)}");
         if (_depEditIndex >= 0 && _depEditIndex < _pendingDeploys.Count) { _pendingDeploys[_depEditIndex] = entry; }
         else { _pendingDeploys.Add(entry); }
 
@@ -1369,6 +1512,24 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var (card, id) in _depVanCards) { card.AddThemeStyleboxOverride("panel", CardBox(_depVan == id)); }
         foreach (var (card, id) in _depAdjCards) { card.AddThemeStyleboxOverride("panel", CardBox(_depAdj == id)); }
     }
+
+    private void RestyleModes()
+    {
+        foreach (var (btn, mode) in _depModeButtons)
+        {
+            var sel = mode == _depMode;
+            btn.AddThemeStyleboxOverride("normal", Frame(sel ? AccentFill : InkSoft, sel ? GoldBright : Gold, sel ? 2 : 1, 5, 6));
+            btn.AddThemeColorOverride("font_color", sel ? GoldBright : Parchment);
+        }
+    }
+
+    private static string ModeName(UnitMode m) => m switch
+    {
+        UnitMode.March => "행군",
+        UnitMode.Advance => "전진",
+        UnitMode.Attack => "공격",
+        _ => m.ToString(),
+    };
 
     // 명령별 옵션 카드 목록: (표시명, 아이콘, 부가설명).
     private List<(string Name, ImageTexture Icon, string Detail)> OptionList(
@@ -1806,6 +1967,8 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void Redraw(string note)
     {
+        DrawDeployPaths();
+
         // 성 라벨·색 갱신.
         foreach (var city in _state.Cities)
         {
