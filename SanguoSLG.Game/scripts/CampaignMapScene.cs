@@ -97,6 +97,12 @@ public sealed partial class CampaignMapScene : Node3D
     private HSlider? _depProvSlider;
     private Label? _depProvLabel;
     private int _provPer10kPerDay = 10; // 병력 1만당 하루 군량 소모(balance) — 일수↔군량 환산
+    private string _dbgLog = ""; // 출전 디버그 로그 파일 경로(res://deploy-debug.log)
+
+    private void Dbg(string msg)
+    {
+        try { System.IO.File.AppendAllText(_dbgLog, msg + "\n"); } catch { }
+    }
 
     // 목표 지정 모드(지도 클릭으로 예약 부대의 목적지 설정).
     private bool _depTargeting;
@@ -166,6 +172,10 @@ public sealed partial class CampaignMapScene : Node3D
             new CityCapture(), new SeededRandomSource(42),
             new CityPlunder(_cb), _cb.CityResupplyRadius);
         _state = _initial;
+
+        _dbgLog = ProjectSettings.GlobalizePath("res://deploy-debug.log");
+        try { System.IO.File.WriteAllText(_dbgLog, "=== maptest deploy debug ===\n"); } catch { }
+        GD.Print("[deploy-log] " + _dbgLog);
 
         _blankIcon = SolidIcon(1, (_, _) => new Color(0, 0, 0, 0));
         _dotIcon = SolidIcon(14, (x, y) => System.Math.Abs(x - 7) + System.Math.Abs(y - 7) <= 4 ? GoldBright : new Color(0, 0, 0, 0));
@@ -595,6 +605,7 @@ public sealed partial class CampaignMapScene : Node3D
             var enemyCity = _state.Cities.FirstOrDefault(c => c.Position == h && c.Owner != Player);
             var mode = enemyCity is not null ? UnitMode.Attack : req.Mode;
             _pendingDeploys[idx] = (req with { Target = h, Mode = mode }, label);
+            Dbg($"TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode}");
             var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
             _log.Text = $"목표 → {tName}{(enemyCity is not null ? " (공격모드)" : "")} · 경로 표시됨(출전으로 이어서 편성)";
         }
@@ -742,10 +753,20 @@ public sealed partial class CampaignMapScene : Node3D
     private void OnAdvance()
     {
         // 예약된 출전을 진행 시작 시점에 일괄 편성(대기열 → 야전).
+        Dbg($"--- ADVANCE week={_week} pending={_pendingDeploys.Count} armiesBefore={_state.Armies.Count} ---");
+        for (var i = 0; i < _pendingDeploys.Count; i++)
+        {
+            var rq = _pendingDeploys[i].Req;
+            var g = _state.Garrisons.FirstOrDefault(x => x.City == rq.City && x.TroopCode == rq.TroopCode);
+            var post = _state.PostingOf(rq.Vanguard);
+            Dbg($"  pending[{i}] city={rq.City.Value} troop={rq.TroopCode} amt={rq.Troops} garrison={(g?.Troops.ToString() ?? "none")} van={rq.Vanguard.Value} vanLoc={(post is null ? "null-posting" : (post.Location?.Value.ToString() ?? "field"))} mode={rq.Mode} tgt={(rq.Target is { } t ? $"{t.Q},{t.R}" : "none")} prov={rq.Provisions}");
+        }
+
         var deployNote = new List<string>();
         foreach (var (req, label) in _pendingDeploys)
         {
             var dr = _deployer.Deploy(_state, req);
+            Dbg($"  deploy '{label}': ok={dr.Ok} err={dr.Error ?? "-"} armiesNow={dr.State.Armies.Count}");
             if (dr.Ok) { _state = dr.State; deployNote.Add(label); }
             else { deployNote.Add($"출전실패({dr.Error})"); }
         }
@@ -758,8 +779,14 @@ public sealed partial class CampaignMapScene : Node3D
             _state = _ai.PlanWeek(_state, f.Id);
         }
 
+        Dbg($"  afterDeploy armies={_state.Armies.Count}");
         _state = _engine.AdvanceWeek(_state, out _, out var sieges, out var captures, out var plunders);
         _week++;
+        Dbg($"  afterAdvance armies={_state.Armies.Count} sieges={sieges.Count} caps={captures.Count}");
+        foreach (var u in _state.Armies.OrderBy(u => u.Id.Value))
+        {
+            Dbg($"    army#{u.Id.Value} owner={u.Field.Owner.Value} pos=({u.Field.Position.Q},{u.Field.Position.R}) troops={u.Pool.Active} mode={u.Field.Mode} tgt={(u.Field.Target is { } t ? $"{t.Q},{t.R}" : "none")} prov={u.Provisions} morale={u.Morale}");
+        }
 
         var note = new List<string>();
         note.AddRange(deployNote);
@@ -1605,6 +1632,8 @@ public sealed partial class CampaignMapScene : Node3D
         var entry = (req, $"{tName} {_depAmount}({vName}{aName}) · {ModeName(_depMode)} · 군량{_depProvDays}일");
         if (_depEditIndex >= 0 && _depEditIndex < _pendingDeploys.Count) { _pendingDeploys[_depEditIndex] = entry; }
         else { _pendingDeploys.Add(entry); }
+
+        Dbg($"SAVE {(_depEditIndex >= 0 ? $"edit#{_depEditIndex}" : "add")} city={req.City.Value} troop={req.TroopCode} amt={req.Troops} van={req.Vanguard.Value} adj={(req.Adjutant?.Value.ToString() ?? "-")} mode={req.Mode} tgt={(req.Target is { } t ? $"{t.Q},{t.R}" : "none")} prov={req.Provisions} -> pending={_pendingDeploys.Count}");
 
         SelectCity(_depModalCity);
         OpenDeployHub();
