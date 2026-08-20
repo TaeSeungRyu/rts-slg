@@ -97,6 +97,11 @@ public sealed class MovementSimulator
                 }
                 var desired = new Dictionary<int, HexCoord>();
                 var enteringNow = new List<Working>();
+                // 이번 스텝에 출격 부대가 이미 찜한 성 앞 칸(부대들이 겹치지 않고 6방향으로 흩어져
+                // 나오도록). id 오름차순(먼저 편성 우선)으로 좋은 칸부터 가져간다.
+                var claimed = new HashSet<HexCoord>();
+                // 나가려 했으나 자리가 없어 못 나온 성 위 부대 — 대기 비용(#추가) 부과 대상.
+                var egressBlocked = new List<int>();
                 foreach (var w in work)
                 {
                     if (w.MovedToday >= EffectiveSpeed(w, work))
@@ -141,17 +146,25 @@ public sealed class MovementSimulator
                         }
                     }
 
-                    // 출격 게이트 스텝: 성 타일 위 유닛은 빈·통행 이웃 중 목표에 가장 가까운 칸으로
-                    // 반드시 내려선다. 목표가 없으면 성 바로 앞(고정 방향 순서 첫 빈·통행 이웃)에 나와
-                    // 대기한다. 적 점유 칸으로는 가지 않아 성문 위에서 교전을 열지 않고, 빈 이웃이
-                    // 없으면(완전 포위) 이날은 성 안에서 대기한다.
+                    // 출격 게이트 스텝: 성 타일 위 유닛은 빈·통행 이웃으로 내려선다. 목표가 있으면 그
+                    // 방향(목표에 더 가까운 이웃)으로, 여러 부대는 서로 다른 이웃(claimed)으로 흩어져 나와
+                    // 한 칸에 몰리지 않는다 — 6방향 중 목표 쪽 칸들을 먼저 편성 순서대로 나눠 갖는다.
+                    // 목표가 없으면 빈 이웃에 하나씩 흩어져 성 앞에 대기한다. 적 점유 칸으로는 가지 않아
+                    // 성문 위 교전을 열지 않고, 나갈 칸이 없으면(포위·혼잡) 이날은 성에서 대기한다.
                     if (onCastle)
                     {
-                        var exit = goalTile is { } sg ? GateStep(w, sg, occupied) : GateStepAny(w, occupied);
+                        var exit = goalTile is { } sg
+                            ? GateStep(w, sg, occupied, claimed)
+                            : GateStepAny(w, occupied, claimed);
                         if (exit is { } e)
                         {
                             w.Path = null; // 내려선 위치에서 경로를 다시 잡는다
                             desired[w.Unit.Id.Value] = e;
+                            claimed.Add(e);
+                        }
+                        else
+                        {
+                            egressBlocked.Add(w.Unit.Id.Value);
                         }
 
                         continue;
@@ -217,18 +230,19 @@ public sealed class MovementSimulator
                     }
                 }
 
-                // 출격 대기 비용(#추가 2026-08-20): 성 위에서 나가려 했지만(desired) 앞선 부대에 밀려
-                // 못 나간 부대는 그 대기에 이동 1스텝을 쓴다. 이동력이 남으면 같은 날 뒤따라 나올 수 있고,
-                // 다 쓰면 그날은 성에서 대기한다. movedThisDay에 넣어 전체 진행을 멈추는 3일 정체 판정에서
-                // 뺀다 — 앞 부대가 계속 나오면 이 부대만 여러 진행을 대기할 뿐 진행은 막지 않는다.
+                // 출격 대기 비용(#추가 2026-08-20): 성 위에서 나가려 했지만 앞선 부대에 밀려 못 나간
+                // 부대(나갈 칸을 못 잡았거나 desired가 밀린 경우)는 그 대기에 이동 1스텝을 쓴다.
+                // 이동력이 남으면 같은 날 뒤따라 나올 수 있고, 다 쓰면 그날은 성에서 대기한다.
+                // movedThisDay에 넣어 전체 진행을 멈추는 3일 정체 판정에서 뺀다 — 앞 부대가 계속
+                // 나오면 이 부대만 여러 진행을 대기할 뿐 다른 부대의 진행은 막지 않는다.
                 foreach (var w in work)
                 {
-                    if (desired.ContainsKey(w.Unit.Id.Value)
-                        && !applied.ContainsKey(w.Unit.Id.Value)
-                        && OnCastle(w, castles))
+                    var id = w.Unit.Id.Value;
+                    var pushedOut = desired.ContainsKey(id) && !applied.ContainsKey(id) && OnCastle(w, castles);
+                    if (pushedOut || egressBlocked.Contains(id))
                     {
                         w.MovedToday += 1;
-                        movedThisDay.Add(w.Unit.Id.Value);
+                        movedThisDay.Add(id);
                     }
                 }
 
@@ -322,13 +336,36 @@ public sealed class MovementSimulator
     private static bool OnCastle(Working w, IReadOnlyList<SiegeSite>? castles)
         => castles is not null && castles.Any(c => c.Position == w.Unit.Position);
 
-    // 출격 게이트 스텝: 빈·통행 이웃 중 목표에 가장 가까운 칸(동률이면 고정 방향 순서 — 결정론).
-    // 적 점유 칸은 후보에서 뺀다 — 성문 위에서 교전을 열지 않는다.
-    private HexCoord? GateStep(Working w, HexCoord goal, HashSet<HexCoord> occupied)
+    // 출격 게이트 스텝: 목표 방향으로 흩어져 나오도록 한다. 후보는 빈·통행이며 이번 스텝에 다른
+    // 출격 부대가 찜하지 않은(claimed) 이웃. 적 점유 칸은 후보에서 뺀다(성문 위 교전 금지).
+    // ① 목표에서 성 타일보다 멀어지지 않는(dist ≤ 성→목표) 후보 중 가장 가까운 칸 — 여러 부대가
+    //    6방향 중 목표 쪽 칸들을 나눠 갖고, 뒤로 돌아 나가지는 않는다. ② 그런 칸이 없고 아직 아무도
+    //    나가지 않았으면(이 스텝 첫 출격 부대·포위 등) 뒤 칸이라도 가장 가까운 빈 칸으로 내려선다
+    //    — 성 위에 갇히지 않도록. ③ 둘 다 없으면 null(대기).
+    private HexCoord? GateStep(Working w, HexCoord goal, HashSet<HexCoord> occupied, HashSet<HexCoord> claimed)
     {
+        var here = w.Unit.Position;
+        var hereDist = here.Distance(goal);
+
         HexCoord? best = null;
         var bestDist = int.MaxValue;
-        foreach (var n in w.Unit.Position.Neighbors())
+        foreach (var n in here.Neighbors())
+        {
+            if (!occupied.Contains(n) && !claimed.Contains(n) && _passability.CanEnter(w.Unit.Domain, n)
+                && n.Distance(goal) <= hereDist && n.Distance(goal) < bestDist)
+            {
+                best = n;
+                bestDist = n.Distance(goal);
+            }
+        }
+
+        if (best is not null || claimed.Count > 0)
+        {
+            return best; // 뒤 부대는 목표 쪽 빈 칸이 없으면 대기(뒤로 돌아 나가지 않는다)
+        }
+
+        // 이 스텝 첫 출격 부대: 목표 쪽 칸이 없어도(완전 포위 근처 등) 가장 가까운 빈 칸으로 내려선다.
+        foreach (var n in here.Neighbors())
         {
             if (!occupied.Contains(n) && _passability.CanEnter(w.Unit.Domain, n) && n.Distance(goal) < bestDist)
             {
@@ -340,12 +377,13 @@ public sealed class MovementSimulator
         return best;
     }
 
-    // 목표 없는 출격 게이트 스텝: 빈·통행 이웃 중 고정 방향 순서 첫 칸(결정론). 성 바로 앞 대기용.
-    private HexCoord? GateStepAny(Working w, HashSet<HexCoord> occupied)
+    // 목표 없는 출격 게이트 스텝: 빈·통행이며 아직 안 찜한(claimed) 이웃 중 고정 방향 순서 첫 칸.
+    // 여러 부대는 서로 다른 이웃으로 흩어져 성 앞에 대기한다.
+    private HexCoord? GateStepAny(Working w, HashSet<HexCoord> occupied, HashSet<HexCoord> claimed)
     {
         foreach (var n in w.Unit.Position.Neighbors())
         {
-            if (!occupied.Contains(n) && _passability.CanEnter(w.Unit.Domain, n))
+            if (!occupied.Contains(n) && !claimed.Contains(n) && _passability.CanEnter(w.Unit.Domain, n))
             {
                 return n;
             }

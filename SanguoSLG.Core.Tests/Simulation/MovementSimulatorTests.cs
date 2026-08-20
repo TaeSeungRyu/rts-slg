@@ -543,6 +543,25 @@ public class MovementSimulatorTests
     }
 
     [Fact]
+    public void 성출격_같은목표_세부대는_성앞_서로다른_이웃칸으로_흩어져_한진행에_모두_나온다()
+    {
+        // 목표가 같아도 여러 부대가 한 칸에 몰리지 않고 목표 방향의 서로 다른 이웃으로 흩어져 나온다
+        // (한 부대만 나오고 나머지가 성에 갇히던 문제). 평지에서 한 진행에 셋 다 성을 빠져나온다.
+        var city = new City(new CityId(9), "성", new HexCoord(2, 0), new FactionId(1), 0);
+        var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 12, -4, 4), [], [city]));
+        var site = new SiegeSite(new HexCoord(2, 0), new FactionId(1));
+        var a = Unit(1, owner: 1, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(9, 0), speed: 2);
+        var b = Unit(2, owner: 1, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(9, 0), speed: 2);
+        var c = Unit(3, owner: 1, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(9, 0), speed: 2);
+
+        var result = sim.Advance(new[] { a, b, c }, castles: new[] { site });
+
+        var positions = result.Units.Select(u => u.Position).ToList();
+        Assert.All(positions, p => Assert.NotEqual(new HexCoord(2, 0), p)); // 셋 다 성을 나왔다
+        Assert.Equal(3, positions.Distinct().Count());                     // 서로 다른 칸(겹치지 않음)
+    }
+
+    [Fact]
     public void 성출격_좁은통로_경로겹치면_먼저편성부대가_앞서고_뒤부대는_대기로_한스텝_뒤진다()
     {
         // #추가(2026-08-20): 외길에서 두 부대의 출격 경로가 겹치면 먼저 편성된(=id 낮은) 부대가
