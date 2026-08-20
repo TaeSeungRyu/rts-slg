@@ -97,6 +97,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 목표 지정 모드(지도 클릭으로 예약 부대의 목적지 설정).
     private bool _depTargeting;
     private int _depTargetIndex = -1;
+    private int _depSelectedUnit = -1; // 허브에서 선택된 예약 부대(컨트롤 바 대상)
     private CanvasLayer? _targetHintLayer;
 
     // 모달 드래그.
@@ -559,6 +560,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void BeginTargeting(int idx)
     {
         CloseModal();
+        HidePanels(); // 목표 지정 중에는 성 명령 팔레트·정보 카드가 가려선 안 된다.
         _depTargetIndex = idx;
         _depTargeting = true;
         var layer = new CanvasLayer { Layer = 25 };
@@ -1120,6 +1122,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenDeployModal(CityId city)
     {
         _depModalCity = city;
+        _depSelectedUnit = -1;
         OpenDeployHub();
     }
 
@@ -1158,9 +1161,15 @@ public sealed partial class CampaignMapScene : Node3D
             if (_pendingDeploys[i].Req.City == city) { mine.Add(i); }
         }
 
-        box.AddChild(MakeLabel($"예약된 부대 ({mine.Count})", 15, GoldBright));
+        box.AddChild(MakeLabel($"예약된 부대 ({mine.Count})   — 타일을 눌러 선택", 14, GoldBright));
 
-        var emblemW = mw * 0.4f;
+        if (!mine.Contains(_depSelectedUnit)) { _depSelectedUnit = -1; }
+
+        // 6열 타일 그리드 — 부대가 늘면 한 칸씩 채워지고, ＋ 타일이 그 다음 칸에.
+        var grid = new GridContainer { Columns = 6 };
+        grid.AddThemeConstantOverride("h_separation", 8);
+        grid.AddThemeConstantOverride("v_separation", 8);
+        box.AddChild(grid);
         foreach (var gi in mine)
         {
             var idx = gi;
@@ -1169,72 +1178,103 @@ public sealed partial class CampaignMapScene : Node3D
             var emblem = tmpl is not null ? ClassEmblem(tmpl.Class) : Icon(Sym.Sword);
             var tname = tmpl?.Name ?? rq.TroopCode;
             var vname = _state.Generals.First(g => g.Id == rq.Vanguard).Name;
-            var adjName = rq.Adjutant is { } aid ? _state.Generals.First(g => g.Id == aid).Name : "—";
-            var train = _state.Garrisons.FirstOrDefault(g => g.City == city && g.TroopCode == rq.TroopCode)?.TrainingLevel ?? 0;
-            var targetText = rq.Target is { } tg ? "→ " + (_state.Cities.FirstOrDefault(c => c.Position == tg)?.Name ?? $"({tg.Q},{tg.R})") : "목표 미지정";
 
-            var cardItem = new PanelContainer { CustomMinimumSize = new Vector2(0, 120) };
-            cardItem.AddThemeStyleboxOverride("panel", CardBox(false));
-            var h = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
-            h.AddThemeConstantOverride("separation", 12);
-            cardItem.AddChild(h);
-
-            // 왼쪽 절반: 병종 사진
-            h.AddChild(new TextureRect
+            var tile = new PanelContainer
+            {
+                CustomMinimumSize = new Vector2(104, 118),
+                MouseFilter = Control.MouseFilterEnum.Stop,
+                MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+            };
+            tile.AddThemeStyleboxOverride("panel", CardBox(gi == _depSelectedUnit));
+            var tv = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+            tv.AddThemeConstantOverride("separation", 2);
+            tile.AddChild(tv);
+            tv.AddChild(new TextureRect
             {
                 Texture = emblem,
-                CustomMinimumSize = new Vector2(emblemW, 0),
+                CustomMinimumSize = new Vector2(46, 46),
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
             });
-
-            // 가운데: 정보
-            var info = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
-            info.AddThemeConstantOverride("separation", 3);
-            info.AddChild(MakeLabel($"{tname}  {rq.Troops}명", 17, GoldBright));
-            info.AddChild(MakeLabel($"주장 {vname}", 13, Parchment));
-            info.AddChild(MakeLabel($"부장 {adjName}", 13, Parchment));
-            info.AddChild(MakeLabel($"훈련 {train} · 사기 100(초기)", 12, Parchment));
-            info.AddChild(MakeLabel($"{ModeName(rq.Mode)}모드 · {targetText}", 12, rq.Target is null ? new Color(0.85f, 0.5f, 0.4f) : GoldBright));
-            h.AddChild(info);
-
-            // 오른쪽: 버튼 세로열
-            var btns = new VBoxContainer { SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
-            btns.AddThemeConstantOverride("separation", 4);
-            var tgt = MakeButton("목표");
-            tgt.CustomMinimumSize = new Vector2(56, 28);
-            tgt.Pressed += () => BeginTargeting(idx);
-            btns.AddChild(tgt);
-            var edit = MakeButton("수정");
-            edit.CustomMinimumSize = new Vector2(56, 28);
-            edit.Pressed += () => OpenDeployCompose(idx);
-            btns.AddChild(edit);
-            var rm = MakeButton("삭제");
-            rm.CustomMinimumSize = new Vector2(56, 28);
-            rm.Pressed += () => { _pendingDeploys.RemoveAt(idx); SelectCity(city); OpenDeployHub(); };
-            btns.AddChild(rm);
-            h.AddChild(btns);
-
-            box.AddChild(cardItem);
+            var n1 = MakeLabel($"{tname} {rq.Troops}", 12, GoldBright);
+            n1.HorizontalAlignment = HorizontalAlignment.Center;
+            tv.AddChild(n1);
+            var n2 = MakeLabel(vname, 11, Parchment);
+            n2.HorizontalAlignment = HorizontalAlignment.Center;
+            tv.AddChild(n2);
+            var n3 = MakeLabel(rq.Target is null ? $"{ModeName(rq.Mode)}·미지정" : ModeName(rq.Mode), 10, rq.Target is null ? new Color(0.85f, 0.5f, 0.4f) : GoldBright);
+            n3.HorizontalAlignment = HorizontalAlignment.Center;
+            tv.AddChild(n3);
+            tile.GuiInput += e =>
+            {
+                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { _depSelectedUnit = idx; OpenDeployHub(); }
+            };
+            grid.AddChild(tile);
         }
 
-        // ＋ 카드(리스트 안에서 부대 추가)
-        var addCard = new PanelContainer
+        // ＋ 타일 — 그리드의 다음 칸에 자연스럽게 이어짐(6칸 채우면 다음 줄).
+        var addTile = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(0, 60),
+            CustomMinimumSize = new Vector2(104, 118),
             MouseFilter = Control.MouseFilterEnum.Stop,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand,
         };
-        addCard.AddThemeStyleboxOverride("panel", CardBox(false));
-        var al = MakeLabel("＋  부대 추가", 18, GoldBright);
+        addTile.AddThemeStyleboxOverride("panel", CardBox(false));
+        var al = MakeLabel("＋", 32, GoldBright);
         al.HorizontalAlignment = HorizontalAlignment.Center;
-        addCard.AddChild(al);
-        addCard.GuiInput += e =>
+        al.VerticalAlignment = VerticalAlignment.Center;
+        addTile.AddChild(al);
+        addTile.GuiInput += e =>
         {
             if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { OpenDeployCompose(-1); }
         };
-        box.AddChild(addCard);
+        grid.AddChild(addTile);
+
+        // 선택 부대 컨트롤 바(모드 3종 / 목표 / 편성 수정 / 삭제)
+        if (_depSelectedUnit >= 0 && _depSelectedUnit < _pendingDeploys.Count)
+        {
+            var sidx = _depSelectedUnit;
+            var srq = _pendingDeploys[sidx].Req;
+            var stmpl = _troops.FirstOrDefault(t => t.Code == srq.TroopCode);
+            var svan = _state.Generals.First(g => g.Id == srq.Vanguard).Name;
+            var strain = _state.Garrisons.FirstOrDefault(g => g.City == city && g.TroopCode == srq.TroopCode)?.TrainingLevel ?? 0;
+            var stgt = srq.Target is { } tg ? "→ " + (_state.Cities.FirstOrDefault(c => c.Position == tg)?.Name ?? $"({tg.Q},{tg.R})") : "목표 미지정(성 앞 대기)";
+            box.AddChild(GoldRule());
+            box.AddChild(MakeLabel($"◈ {stmpl?.Name ?? srq.TroopCode} {srq.Troops}명 · 주장 {svan} · 훈련 {strain} · {stgt}", 13, GoldBright));
+
+            var modeRow = new HBoxContainer();
+            modeRow.AddThemeConstantOverride("separation", 6);
+            modeRow.AddChild(MakeLabel("이동 모드", 12, Parchment));
+            foreach (var (mlabel, mode) in new[] { ("행군", UnitMode.March), ("전진", UnitMode.Advance), ("공격", UnitMode.Attack) })
+            {
+                var mm = mode;
+                var sel = srq.Mode == mode;
+                var mb = MakeButton(mlabel);
+                mb.CustomMinimumSize = new Vector2(64, 30);
+                mb.AddThemeStyleboxOverride("normal", Frame(sel ? AccentFill : InkSoft, sel ? GoldBright : Gold, sel ? 2 : 1, 5, 6));
+                mb.Pressed += () => { _pendingDeploys[sidx] = (_pendingDeploys[sidx].Req with { Mode = mm }, _pendingDeploys[sidx].Label); OpenDeployHub(); };
+                modeRow.AddChild(mb);
+            }
+
+            box.AddChild(modeRow);
+
+            var actRow = new HBoxContainer();
+            actRow.AddThemeConstantOverride("separation", 6);
+            var tgt = MakeButton("목표 지정", accent: true);
+            tgt.CustomMinimumSize = new Vector2(96, 32);
+            tgt.Pressed += () => BeginTargeting(sidx);
+            actRow.AddChild(tgt);
+            var edit = MakeButton("편성 수정");
+            edit.CustomMinimumSize = new Vector2(96, 32);
+            edit.Pressed += () => OpenDeployCompose(sidx);
+            actRow.AddChild(edit);
+            var rm = MakeButton("삭제");
+            rm.CustomMinimumSize = new Vector2(72, 32);
+            rm.Pressed += () => { _pendingDeploys.RemoveAt(sidx); _depSelectedUnit = -1; SelectCity(city); OpenDeployHub(); };
+            actRow.AddChild(rm);
+            box.AddChild(actRow);
+        }
         box.AddChild(MakeLabel("예약은 \"진행\" 시 일괄 출전합니다.  (제목줄 ⠿ 을 잡아 이동)", 11, Parchment));
 
         var contentH = box.GetCombinedMinimumSize().Y;
