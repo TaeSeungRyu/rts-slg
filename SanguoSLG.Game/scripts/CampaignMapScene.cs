@@ -99,6 +99,11 @@ public sealed partial class CampaignMapScene : Node3D
     private int _depTargetIndex = -1;
     private CanvasLayer? _targetHintLayer;
 
+    // 모달 드래그.
+    private bool _dragging;
+    private Control? _dragPanel;
+    private Vector2 _dragOffset;
+
     // 경로 프리뷰.
     private PassabilityMap _passability = null!;
     private readonly List<MeshInstance3D> _pathMarkers = new();
@@ -979,6 +984,12 @@ public sealed partial class CampaignMapScene : Node3D
             var c = _state.Cities.FirstOrDefault(x => x.Id == sel);
             if (c is not null) { PlacePalette(c.Position); }
         }
+
+        if (_dragging && _dragPanel is not null)
+        {
+            if (!Input.IsMouseButtonPressed(MouseButton.Left)) { _dragging = false; }
+            else { _dragPanel.Position = GetViewport().GetMousePosition() - _dragOffset; }
+        }
     }
 
     // 명령 클릭 → 큰 모달(반투명 배경 + 아이콘 카드 그리드). 카드로 대상/계략/세율을 고르고,
@@ -1126,13 +1137,14 @@ public sealed partial class CampaignMapScene : Node3D
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.57f, 470f, 730f);
         var mh = Mathf.Clamp(vp.Y * 0.8f, 360f, 640f);
-        var box = DeployScaffold(mw, out var scroll);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
 
         var cityName = _state.Cities.First(x => x.Id == city).Name;
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  출전 예약   《 {cityName} 》", 19, Gold);
+        var title = MakeLabel($"◈  출전 예약   《 {cityName} 》  ⠿", 19, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
         var close = MakeButton("✕");
         close.CustomMinimumSize = new Vector2(34, 32);
@@ -1147,11 +1159,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         box.AddChild(MakeLabel($"예약된 부대 ({mine.Count})", 15, GoldBright));
-        if (mine.Count == 0)
-        {
-            box.AddChild(MakeLabel("(없음) — 아래 ＋ 로 부대를 편성하세요.", 12, Parchment));
-        }
 
+        var emblemW = mw * 0.4f;
         foreach (var gi in mine)
         {
             var idx = gi;
@@ -1160,54 +1169,77 @@ public sealed partial class CampaignMapScene : Node3D
             var emblem = tmpl is not null ? ClassEmblem(tmpl.Class) : Icon(Sym.Sword);
             var tname = tmpl?.Name ?? rq.TroopCode;
             var vname = _state.Generals.First(g => g.Id == rq.Vanguard).Name;
-            var aname = rq.Adjutant is { } aid ? "+" + _state.Generals.First(g => g.Id == aid).Name : "";
+            var adjName = rq.Adjutant is { } aid ? _state.Generals.First(g => g.Id == aid).Name : "—";
+            var train = _state.Garrisons.FirstOrDefault(g => g.City == city && g.TroopCode == rq.TroopCode)?.TrainingLevel ?? 0;
             var targetText = rq.Target is { } tg ? "→ " + (_state.Cities.FirstOrDefault(c => c.Position == tg)?.Name ?? $"({tg.Q},{tg.R})") : "목표 미지정";
 
-            var cardItem = new PanelContainer();
+            var cardItem = new PanelContainer { CustomMinimumSize = new Vector2(0, 120) };
             cardItem.AddThemeStyleboxOverride("panel", CardBox(false));
-            var h = new HBoxContainer();
-            h.AddThemeConstantOverride("separation", 10);
+            var h = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+            h.AddThemeConstantOverride("separation", 12);
             cardItem.AddChild(h);
+
+            // 왼쪽 절반: 병종 사진
             h.AddChild(new TextureRect
             {
                 Texture = emblem,
-                CustomMinimumSize = new Vector2(50, 50),
+                CustomMinimumSize = new Vector2(emblemW, 0),
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+                SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             });
+
+            // 가운데: 정보
             var info = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
-            info.AddThemeConstantOverride("separation", 2);
-            info.AddChild(MakeLabel($"{tname}  {rq.Troops}명  ·  선봉 {vname}{aname}", 15, GoldBright));
-            info.AddChild(MakeLabel($"{ModeName(rq.Mode)}모드  ·  {targetText}", 12, rq.Target is null ? new Color(0.85f, 0.5f, 0.4f) : Parchment));
+            info.AddThemeConstantOverride("separation", 3);
+            info.AddChild(MakeLabel($"{tname}  {rq.Troops}명", 17, GoldBright));
+            info.AddChild(MakeLabel($"주장 {vname}", 13, Parchment));
+            info.AddChild(MakeLabel($"부장 {adjName}", 13, Parchment));
+            info.AddChild(MakeLabel($"훈련 {train} · 사기 100(초기)", 12, Parchment));
+            info.AddChild(MakeLabel($"{ModeName(rq.Mode)}모드 · {targetText}", 12, rq.Target is null ? new Color(0.85f, 0.5f, 0.4f) : GoldBright));
             h.AddChild(info);
+
+            // 오른쪽: 버튼 세로열
+            var btns = new VBoxContainer { SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
+            btns.AddThemeConstantOverride("separation", 4);
             var tgt = MakeButton("목표");
-            tgt.CustomMinimumSize = new Vector2(52, 32);
-            tgt.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+            tgt.CustomMinimumSize = new Vector2(56, 28);
             tgt.Pressed += () => BeginTargeting(idx);
-            h.AddChild(tgt);
+            btns.AddChild(tgt);
             var edit = MakeButton("수정");
-            edit.CustomMinimumSize = new Vector2(52, 32);
-            edit.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+            edit.CustomMinimumSize = new Vector2(56, 28);
             edit.Pressed += () => OpenDeployCompose(idx);
-            h.AddChild(edit);
+            btns.AddChild(edit);
             var rm = MakeButton("삭제");
-            rm.CustomMinimumSize = new Vector2(52, 32);
-            rm.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+            rm.CustomMinimumSize = new Vector2(56, 28);
             rm.Pressed += () => { _pendingDeploys.RemoveAt(idx); SelectCity(city); OpenDeployHub(); };
-            h.AddChild(rm);
+            btns.AddChild(rm);
+            h.AddChild(btns);
+
             box.AddChild(cardItem);
         }
 
-        box.AddChild(GoldRule());
-        var add = MakeButton("＋ 부대 추가", accent: true);
-        add.CustomMinimumSize = new Vector2(0, 40);
-        add.Pressed += () => OpenDeployCompose(-1);
-        box.AddChild(add);
-        box.AddChild(MakeLabel("예약은 \"진행\" 시 일괄 출전합니다.", 11, Parchment));
+        // ＋ 카드(리스트 안에서 부대 추가)
+        var addCard = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(0, 60),
+            MouseFilter = Control.MouseFilterEnum.Stop,
+            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+        };
+        addCard.AddThemeStyleboxOverride("panel", CardBox(false));
+        var al = MakeLabel("＋  부대 추가", 18, GoldBright);
+        al.HorizontalAlignment = HorizontalAlignment.Center;
+        addCard.AddChild(al);
+        addCard.GuiInput += e =>
+        {
+            if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { OpenDeployCompose(-1); }
+        };
+        box.AddChild(addCard);
+        box.AddChild(MakeLabel("예약은 \"진행\" 시 일괄 출전합니다.  (제목줄 ⠿ 을 잡아 이동)", 11, Parchment));
 
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
     // ── 편성 화면: 병종·수량·선봉/부관 → 저장(신규 추가 / 기존 수정) ──
@@ -1232,13 +1264,14 @@ public sealed partial class CampaignMapScene : Node3D
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.52f, 400f, 660f);
         var mh = Mathf.Clamp(vp.Y * 0.78f, 360f, 620f);
-        var box = DeployScaffold(mw, out var scroll);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
 
         var cityName = _state.Cities.First(x => x.Id == city).Name;
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  {(editIndex >= 0 ? "부대 수정" : "부대 편성")}   《 {cityName} 》", 18, Gold);
+        var title = MakeLabel($"◈  {(editIndex >= 0 ? "부대 수정" : "부대 편성")}   《 {cityName} 》  ⠿", 18, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
         var back = MakeButton("◀ 목록");
         back.CustomMinimumSize = new Vector2(60, 32);
@@ -1394,10 +1427,11 @@ public sealed partial class CampaignMapScene : Node3D
         UpdateDepPreview();
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
-    // 모달 뼈대(레이어·배경·중앙·패널·스크롤) — 내용 box 반환.
-    private VBoxContainer DeployScaffold(float mw, out ScrollContainer scroll)
+    // 자유 배치 패널(드래그 가능). panel은 레이어에 직접 얹혀 Position으로 움직인다.
+    private VBoxContainer DeployScaffold(float mw, out ScrollContainer scroll, out PanelContainer panel)
     {
         var layer = new CanvasLayer { Layer = 20 };
         AddChild(layer);
@@ -1410,14 +1444,11 @@ public sealed partial class CampaignMapScene : Node3D
             if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { CloseModal(); }
         };
         layer.AddChild(backdrop);
-        var center = new CenterContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        layer.AddChild(center);
-        var panel = new PanelContainer();
+        panel = new PanelContainer();
         panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
         panel.MouseFilter = Control.MouseFilterEnum.Stop;
         panel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
-        center.AddChild(panel);
+        layer.AddChild(panel);
         scroll = new ScrollContainer { CustomMinimumSize = new Vector2(mw, 0) };
         scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
         panel.AddChild(scroll);
@@ -1425,6 +1456,26 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddThemeConstantOverride("separation", 8);
         scroll.AddChild(box);
         return box;
+    }
+
+    // 패널을 화면 중앙에 두고, 핸들(제목줄)을 잡아 드래그할 수 있게 한다.
+    private void CenterAndDrag(PanelContainer panel, Control handle, float mw, float mh, VBoxContainer box)
+    {
+        var vp = GetViewport().GetVisibleRect().Size;
+        var sz = new Vector2(mw + 28f, Mathf.Min(box.GetCombinedMinimumSize().Y + 28f, mh + 28f));
+        panel.Position = new Vector2(Mathf.Max(8f, (vp.X - sz.X) / 2f), Mathf.Max(8f, (vp.Y - sz.Y) / 2f));
+
+        handle.MouseFilter = Control.MouseFilterEnum.Stop;
+        handle.MouseDefaultCursorShape = Control.CursorShape.Move;
+        handle.GuiInput += e =>
+        {
+            if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left } mbtn && mbtn.Pressed)
+            {
+                _dragging = true;
+                _dragPanel = panel;
+                _dragOffset = GetViewport().GetMousePosition() - panel.Position;
+            }
+        };
     }
 
     private void UpdateDepPreview()
