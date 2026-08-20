@@ -84,12 +84,12 @@ public sealed partial class CampaignMapScene : Node3D
     // 출전 대기열 — "진행" 시 일괄 시작(즉시 실행 아님).
     private readonly List<(DeployRequest Req, string Label)> _pendingDeploys = new();
 
-    // 출전 모달 편성 배치(N개 부대) + 수량/미리보기.
+    // 출전 모달(허브=예약 목록 / 편성 화면) + 수량/미리보기.
     private CityId _depModalCity;
     private int _depAmount;
+    private int _depEditIndex = -1; // -1=신규 추가, ≥0=_pendingDeploys 해당 예약 수정
     private SpinBox? _depAmountSpin;
     private Label? _depPreview;
-    private readonly List<(string Code, int Amount, GeneralId Van, GeneralId? Adj, string Label)> _depBatch = new();
 
     // 1단계 지원 명령(내정 — 출전은 2단계). (표시명, 종류, 파라미터: troop/tax/wall/stratagem/none)
     private static readonly (string Label, CommandKind Kind, string Param)[] Cmds =
@@ -974,23 +974,93 @@ public sealed partial class CampaignMapScene : Node3D
         _depTroopCards.Clear();
         _depVanCards.Clear();
         _depAdjCards.Clear();
-        _depBatch.Clear();
         _depAmountSpin = null;
         _depPreview = null;
+        _depEditIndex = -1;
     }
 
     // ── 출전 모달: 병종 + 선봉(+부관) 선택 → 대기 병력을 야전 부대로 편성 ──
     private void OpenDeployModal(CityId city)
     {
         _depModalCity = city;
-        _depBatch.Clear();
-        RebuildDeployModal();
+        OpenDeployHub();
     }
 
-    // 배치(N개 부대)를 보존한 채 모달 UI만 다시 그린다.
-    private void RebuildDeployModal()
+    // ── 허브: 이 성의 출전 예약 목록(수정/삭제) + 부대 추가 ──
+    private void OpenDeployHub()
     {
         var city = _depModalCity;
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        _depTroopCards.Clear();
+        _depVanCards.Clear();
+        _depAdjCards.Clear();
+        _depAmountSpin = null;
+        _depPreview = null;
+
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.44f, 360f, 560f);
+        var mh = Mathf.Clamp(vp.Y * 0.7f, 300f, 560f);
+        var box = DeployScaffold(mw, out var scroll);
+
+        var cityName = _state.Cities.First(x => x.Id == city).Name;
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel($"◈  출전 예약   《 {cityName} 》", 18, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(34, 32);
+        close.Pressed += () => { CloseModal(); SelectCity(city); };
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+
+        var mine = new List<int>();
+        for (var i = 0; i < _pendingDeploys.Count; i++)
+        {
+            if (_pendingDeploys[i].Req.City == city) { mine.Add(i); }
+        }
+
+        box.AddChild(MakeLabel($"예약된 부대 ({mine.Count})", 14, GoldBright));
+        if (mine.Count == 0)
+        {
+            box.AddChild(MakeLabel("(없음) — ＋ 로 부대를 편성하세요.", 12, Parchment));
+        }
+
+        foreach (var gi in mine)
+        {
+            var idx = gi;
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            var lbl = MakeLabel("· " + _pendingDeploys[gi].Label, 13, Parchment);
+            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(lbl);
+            var edit = MakeButton("수정");
+            edit.CustomMinimumSize = new Vector2(52, 26);
+            edit.Pressed += () => OpenDeployCompose(idx);
+            row.AddChild(edit);
+            var rm = MakeButton("삭제");
+            rm.CustomMinimumSize = new Vector2(52, 26);
+            rm.Pressed += () => { _pendingDeploys.RemoveAt(idx); SelectCity(city); OpenDeployHub(); };
+            row.AddChild(rm);
+            box.AddChild(row);
+        }
+
+        box.AddChild(GoldRule());
+        var add = MakeButton("＋ 부대 추가", accent: true);
+        add.CustomMinimumSize = new Vector2(0, 36);
+        add.Pressed += () => OpenDeployCompose(-1);
+        box.AddChild(add);
+        box.AddChild(MakeLabel("예약은 \"진행\" 시 일괄 출전합니다.", 11, Parchment));
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+    }
+
+    // ── 편성 화면: 병종·수량·선봉/부관 → 저장(신규 추가 / 기존 수정) ──
+    private void OpenDeployCompose(int editIndex)
+    {
+        var city = _depModalCity;
+        _depEditIndex = editIndex;
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         _depTroopCards.Clear();
         _depVanCards.Clear();
@@ -1005,79 +1075,36 @@ public sealed partial class CampaignMapScene : Node3D
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.52f, 400f, 660f);
         var mh = Mathf.Clamp(vp.Y * 0.78f, 360f, 620f);
+        var box = DeployScaffold(mw, out var scroll);
 
-        var layer = new CanvasLayer { Layer = 20 };
-        AddChild(layer);
-        _modalLayer = layer;
-        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.62f) };
-        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        backdrop.MouseFilter = Control.MouseFilterEnum.Stop;
-        backdrop.GuiInput += e =>
-        {
-            if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { CloseModal(); }
-        };
-        layer.AddChild(backdrop);
-        var center = new CenterContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        layer.AddChild(center);
-        var panel = new PanelContainer();
-        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
-        panel.MouseFilter = Control.MouseFilterEnum.Stop;
-        panel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
-        center.AddChild(panel);
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(mw, 0) };
-        scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
-        panel.AddChild(scroll);
-        var box = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        box.AddThemeConstantOverride("separation", 8);
-        scroll.AddChild(box);
-
+        var cityName = _state.Cities.First(x => x.Id == city).Name;
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var cityData = _state.Cities.First(x => x.Id == city);
-        var title = MakeLabel($"◈  출전   《 {cityData.Name} 》", 18, Gold);
+        var title = MakeLabel($"◈  {(editIndex >= 0 ? "부대 수정" : "부대 편성")}   《 {cityName} 》", 18, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         titleRow.AddChild(title);
-        var close = MakeButton("✕");
-        close.CustomMinimumSize = new Vector2(34, 32);
-        close.Pressed += CloseModal;
-        titleRow.AddChild(close);
+        var back = MakeButton("◀ 목록");
+        back.CustomMinimumSize = new Vector2(60, 32);
+        back.Pressed += OpenDeployHub;
+        titleRow.AddChild(back);
         box.AddChild(GoldRule());
 
         var cols = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 128f), 2, 4);
 
-        // 이미 편성된 부대(배치)에서 소모된 병력·장수 계산.
-        var usedTroops = _depBatch.GroupBy(b => b.Code).ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
+        // 다른 예약(수정 중인 것 제외)이 이미 소모한 병력·장수.
+        var usedTroops = new Dictionary<string, int>();
         var usedGens = new HashSet<GeneralId>();
-        foreach (var b in _depBatch)
+        for (var i = 0; i < _pendingDeploys.Count; i++)
         {
-            usedGens.Add(b.Van);
-            if (b.Adj is { } a) { usedGens.Add(a); }
+            if (i == editIndex) { continue; }
+            var rq = _pendingDeploys[i].Req;
+            if (rq.City != city) { continue; }
+            usedTroops[rq.TroopCode] = usedTroops.GetValueOrDefault(rq.TroopCode, 0) + rq.Troops;
+            usedGens.Add(rq.Vanguard);
+            if (rq.Adjutant is { } a) { usedGens.Add(a); }
         }
 
-        // 0) 편성된 부대 목록
-        if (_depBatch.Count > 0)
-        {
-            box.AddChild(MakeLabel($"편성된 부대 ({_depBatch.Count})", 13, GoldBright));
-            for (var i = 0; i < _depBatch.Count; i++)
-            {
-                var idx = i;
-                var row = new HBoxContainer();
-                row.AddThemeConstantOverride("separation", 8);
-                var lbl = MakeLabel("· " + _depBatch[i].Label, 12, Parchment);
-                lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-                row.AddChild(lbl);
-                var rm = MakeButton("✕");
-                rm.CustomMinimumSize = new Vector2(28, 24);
-                rm.Pressed += () => { _depBatch.RemoveAt(idx); RebuildDeployModal(); };
-                row.AddChild(rm);
-                box.AddChild(row);
-            }
-
-            box.AddChild(GoldRule());
-        }
-
-        // 1) 병종(남은 대기 병력)
+        // 1) 병종
         box.AddChild(MakeLabel("병종 (대기 병력)", 13, GoldBright));
         var tg = new GridContainer { Columns = cols };
         tg.AddThemeConstantOverride("h_separation", 8);
@@ -1109,7 +1136,7 @@ public sealed partial class CampaignMapScene : Node3D
             tg.AddChild(card);
         }
 
-        // 2) 병력 수량(SpinBox + 프리셋)
+        // 2) 병력 수량
         box.AddChild(MakeLabel("병력 수량", 13, GoldBright));
         var amtRow = new HBoxContainer();
         amtRow.AddThemeConstantOverride("separation", 6);
@@ -1129,7 +1156,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         box.AddChild(amtRow);
 
-        // 3) 선봉 / 4) 부관 (이미 배치에 쓴 장수 제외)
+        // 3) 선봉 / 4) 부관
         var free = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value).ToList();
         box.AddChild(GoldRule());
         box.AddChild(MakeLabel("선봉 장수 (필수)", 13, GoldBright));
@@ -1164,28 +1191,64 @@ public sealed partial class CampaignMapScene : Node3D
             adGrid.AddChild(ad);
         }
 
-        // 5) 미리보기 + 버튼
+        // 5) 미리보기 + 저장/뒤로
         box.AddChild(GoldRule());
         _depPreview = MakeLabel("", 12, Parchment);
         box.AddChild(_depPreview);
-        var btnRow = new HBoxContainer();
-        btnRow.AddThemeConstantOverride("separation", 8);
-        var add = MakeButton("＋ 부대 추가");
-        add.CustomMinimumSize = new Vector2(0, 34);
-        add.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        add.Pressed += () => { if (AddCurrentToBatch()) { RebuildDeployModal(); } };
-        btnRow.AddChild(add);
-        var go = MakeButton("▶ 출전 예약", accent: true);
-        go.CustomMinimumSize = new Vector2(0, 34);
-        go.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        go.Pressed += () => QueueBatch(city);
-        btnRow.AddChild(go);
-        box.AddChild(btnRow);
+        var save = MakeButton(editIndex >= 0 ? "▶ 저장" : "▶ 부대 추가", accent: true);
+        save.CustomMinimumSize = new Vector2(0, 34);
+        save.Pressed += SaveCompose;
+        box.AddChild(save);
+
+        // 수정이면 기존 값 프리필.
+        if (editIndex >= 0 && editIndex < _pendingDeploys.Count)
+        {
+            var rq = _pendingDeploys[editIndex].Req;
+            _depTroop = rq.TroopCode;
+            _depVan = rq.Vanguard;
+            _depAdj = rq.Adjutant;
+            var gar = _state.Garrisons.FirstOrDefault(g => g.City == city && g.TroopCode == rq.TroopCode);
+            var capEdit = (gar?.Troops ?? rq.Troops) - usedTroops.GetValueOrDefault(rq.TroopCode, 0);
+            _depAmountSpin.MaxValue = System.Math.Max(capEdit, rq.Troops);
+            _depAmountSpin.Value = rq.Troops;
+            _depAmount = rq.Troops;
+        }
 
         RestyleDeploy();
         UpdateDepPreview();
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+    }
+
+    // 모달 뼈대(레이어·배경·중앙·패널·스크롤) — 내용 box 반환.
+    private VBoxContainer DeployScaffold(float mw, out ScrollContainer scroll)
+    {
+        var layer = new CanvasLayer { Layer = 20 };
+        AddChild(layer);
+        _modalLayer = layer;
+        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.62f) };
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        backdrop.MouseFilter = Control.MouseFilterEnum.Stop;
+        backdrop.GuiInput += e =>
+        {
+            if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { CloseModal(); }
+        };
+        layer.AddChild(backdrop);
+        var center = new CenterContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        layer.AddChild(center);
+        var panel = new PanelContainer();
+        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
+        panel.MouseFilter = Control.MouseFilterEnum.Stop;
+        panel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
+        center.AddChild(panel);
+        scroll = new ScrollContainer { CustomMinimumSize = new Vector2(mw, 0) };
+        scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
+        panel.AddChild(scroll);
+        var box = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        box.AddThemeConstantOverride("separation", 8);
+        scroll.AddChild(box);
+        return box;
     }
 
     private void UpdateDepPreview()
@@ -1195,44 +1258,24 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depTroop is { } c) { parts.Add($"{_troops.FirstOrDefault(t => t.Code == c)?.Name ?? c} {_depAmount}"); }
         if (_depVan is { } v) { parts.Add("선봉 " + _state.Generals.First(g => g.Id == v).Name); }
         if (_depAdj is { } a) { parts.Add("부관 " + _state.Generals.First(g => g.Id == a).Name); }
-        var cur = parts.Count > 0 ? string.Join(" · ", parts) : "(병종·장수·수량 선택)";
-        _depPreview.Text = $"현재 편성:  {cur}     |     편성됨 {_depBatch.Count}개 부대";
+        _depPreview.Text = "현재 편성:  " + (parts.Count > 0 ? string.Join(" · ", parts) : "(병종·수량·장수 선택)");
     }
 
-    private bool AddCurrentToBatch()
+    private void SaveCompose()
     {
-        if (_depTroop is null) { _log.Text = "병종을 선택하세요."; Redraw(_log.Text); return false; }
-        if (_depVan is not { } van) { _log.Text = "선봉 장수를 선택하세요."; Redraw(_log.Text); return false; }
-        if (_depAmount <= 0) { _log.Text = "병력 수량을 정하세요."; Redraw(_log.Text); return false; }
+        if (_depTroop is null) { _log.Text = "병종을 선택하세요."; Redraw(_log.Text); return; }
+        if (_depVan is not { } van) { _log.Text = "선봉 장수를 선택하세요."; Redraw(_log.Text); return; }
+        if (_depAmount <= 0) { _log.Text = "병력 수량을 정하세요."; Redraw(_log.Text); return; }
 
         var tName = _troops.FirstOrDefault(t => t.Code == _depTroop)?.Name ?? _depTroop;
         var vName = _state.Generals.First(g => g.Id == van).Name;
         var aName = _depAdj is { } a ? "+" + _state.Generals.First(g => g.Id == a).Name : "";
-        _depBatch.Add((_depTroop, _depAmount, van, _depAdj, $"{tName} {_depAmount}({vName}{aName})"));
-        return true;
-    }
+        var entry = (new DeployRequest(_depModalCity, _depTroop, _depAmount, van, _depAdj), $"{tName} {_depAmount}({vName}{aName})");
+        if (_depEditIndex >= 0 && _depEditIndex < _pendingDeploys.Count) { _pendingDeploys[_depEditIndex] = entry; }
+        else { _pendingDeploys.Add(entry); }
 
-    private void QueueBatch(CityId city)
-    {
-        if (_depTroop is not null && _depVan is not null && _depAmount > 0) { AddCurrentToBatch(); }
-        if (_depBatch.Count == 0) { _log.Text = "편성된 부대가 없습니다."; Redraw(_log.Text); return; }
-
-        var lines = string.Join("\n", _depBatch.Select(b => "· " + b.Label));
-        _confirm.DialogText = $"{_state.Cities.First(c => c.Id == city).Name} 출전 예약 — {_depBatch.Count}개 부대\n{lines}\n\n\"진행\" 시 시작됩니다.";
-        var batch = _depBatch.ToList();
-        _onConfirm = () =>
-        {
-            foreach (var b in batch)
-            {
-                _pendingDeploys.Add((new DeployRequest(city, b.Code, b.Amount, b.Van, b.Adj), b.Label));
-            }
-
-            _log.Text = $"예약: 출전 {batch.Count}개 부대 — 진행 시 시작";
-            CloseModal();
-            SelectCity(city);
-            Redraw(_log.Text);
-        };
-        _confirm.PopupCentered();
+        SelectCity(_depModalCity);
+        OpenDeployHub();
     }
 
     private readonly Dictionary<int, ImageTexture> _portraits = new();
