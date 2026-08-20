@@ -81,6 +81,9 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(PanelContainer Card, GeneralId Id)> _depVanCards = new();
     private readonly List<(PanelContainer Card, GeneralId Id)> _depAdjCards = new();
 
+    // 출전 대기열 — "진행" 시 일괄 시작(즉시 실행 아님).
+    private readonly List<(DeployRequest Req, string Label)> _pendingDeploys = new();
+
     // 1단계 지원 명령(내정 — 출전은 2단계). (표시명, 종류, 파라미터: troop/tax/wall/stratagem/none)
     private static readonly (string Label, CommandKind Kind, string Param)[] Cmds =
     {
@@ -594,6 +597,17 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void OnAdvance()
     {
+        // 예약된 출전을 진행 시작 시점에 일괄 편성(대기열 → 야전).
+        var deployNote = new List<string>();
+        foreach (var (req, label) in _pendingDeploys)
+        {
+            var dr = _deployer.Deploy(_state, req);
+            if (dr.Ok) { _state = dr.State; deployNote.Add(label); }
+            else { deployNote.Add($"출전실패({dr.Error})"); }
+        }
+
+        _pendingDeploys.Clear();
+
         // 플레이어 세력은 직접 조작 — AI는 나머지 세력만 굴린다.
         foreach (var f in _state.Factions.Where(f => f.Id != Player).OrderBy(f => f.Id.Value))
         {
@@ -604,6 +618,7 @@ public sealed partial class CampaignMapScene : Node3D
         _week++;
 
         var note = new List<string>();
+        note.AddRange(deployNote);
         if (sieges.Count > 0) { note.Add($"공성 {sieges.Count}"); }
         if (plunders.Count > 0) { note.Add($"약탈 {plunders.Count}"); }
         foreach (var c in captures)
@@ -799,6 +814,12 @@ public sealed partial class CampaignMapScene : Node3D
         if (pending.Any())
         {
             AddCell(g2, Sym.Scroll, "진행", string.Join(",", pending));
+        }
+
+        var depQueue = _pendingDeploys.Where(p => p.Req.City == id).Select(p => p.Label).ToList();
+        if (depQueue.Count > 0)
+        {
+            AddCell(g2, Sym.Flag, "출전대기", string.Join(",", depQueue));
         }
 
         PlacePalette(c.Position);
@@ -1105,14 +1126,15 @@ public sealed partial class CampaignMapScene : Node3D
         var tName = _troops.FirstOrDefault(t => t.Code == _depTroop)?.Name ?? _depTroop;
         var vName = _state.Generals.First(g => g.Id == van).Name;
         var aName = _depAdj is { } a ? " · 부관 " + _state.Generals.First(g => g.Id == a).Name : "";
-        _confirm.DialogText = $"{_state.Cities.First(c => c.Id == city).Name} 출전\n{tName} 전량 · 선봉 {vName}{aName}\n\n출전하시겠습니까?";
+        _confirm.DialogText = $"{_state.Cities.First(c => c.Id == city).Name} 출전 예약\n{tName} 전량 · 선봉 {vName}{aName}\n\n대기열에 넣습니다. \"진행\" 시 시작됩니다.";
         var troop = _depTroop;
         var adj = _depAdj;
+        var label = $"출전 {tName}({vName})";
         _onConfirm = () =>
         {
-            var r = _deployer.Deploy(_state, new DeployRequest(city, troop, 0, van, adj));
-            if (r.Ok) { _state = r.State; }
-            _log.Text = r.Ok ? $"출전: {tName} — {vName}" : $"실패: {r.Error}";
+            // 즉시 실행하지 않고 대기열에 예약 — 진행 시 시작.
+            _pendingDeploys.Add((new DeployRequest(city, troop, 0, van, adj), label));
+            _log.Text = $"예약: {label} — 진행 시 시작";
             CloseModal();
             SelectCity(city);
             Redraw(_log.Text);
