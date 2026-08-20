@@ -50,6 +50,19 @@ public sealed partial class CampaignMapScene : Node3D
     private Label _status = null!;
     private Label _log = null!;
 
+    // 진행 애니메이션(4초=하루, 1초=한 칸, 7일=28초). StepSeconds를 키우면 이동이 느려진다.
+    private const double DaySeconds = 4.0;
+    private const double StepSeconds = 1.0;
+    private const int AnimDays = 7;
+    private bool _advancing;
+    private double _animT;
+    private int _animStepIdx;
+    private readonly List<(double Time, int UnitId, HexCoord To)> _animSteps = new();
+    private GameState _pendingState = null!;
+    private string _pendingNote = "";
+    private TextureButton _advanceBtn = null!;
+    private Label _dayLabel = null!;
+
     // 명령 UX(성 클릭 → 정보 카드 + 명령 목록 → 파라미터·장수 목록 → 컨펌).
     private CityId? _selected;
     private int _cmdIndex = -1;
@@ -801,6 +814,8 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void OnAdvance()
     {
+        if (_advancing) { return; } // 진행 중 재클릭 무시(버튼도 disabled)
+
         // 예약된 출전을 진행 시작 시점에 일괄 편성(대기열 → 야전).
         Dbg($"--- ADVANCE week={_week} pending={_pendingDeploys.Count} armiesBefore={_state.Armies.Count} ---");
         for (var i = 0; i < _pendingDeploys.Count; i++)
@@ -829,10 +844,12 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         Dbg($"  afterDeploy armies={_state.Armies.Count}");
-        _state = _engine.AdvanceWeek(_state, out _, out var sieges, out var captures, out var plunders);
+        var preMove = _state; // 이동 전(편성·AI 반영) — 애니메이션 시작 위치
+        var startHex = preMove.Armies.ToDictionary(u => u.Id.Value, u => u.Field.Position);
+        var after = _engine.AdvanceWeek(preMove, out var turns, out var sieges, out var captures, out var plunders);
         _week++;
-        Dbg($"  afterAdvance armies={_state.Armies.Count} sieges={sieges.Count} caps={captures.Count}");
-        foreach (var u in _state.Armies.OrderBy(u => u.Id.Value))
+        Dbg($"  afterAdvance armies={after.Armies.Count} sieges={sieges.Count} caps={captures.Count} turns={turns.Count}");
+        foreach (var u in after.Armies.OrderBy(u => u.Id.Value))
         {
             Dbg($"    army#{u.Id.Value} owner={u.Field.Owner.Value} pos=({u.Field.Position.Q},{u.Field.Position.R}) troops={u.Pool.Active} mode={u.Field.Mode} tgt={(u.Field.Target is { } t ? $"{t.Q},{t.R}" : "none")} prov={u.Provisions} morale={u.Morale}");
         }
@@ -844,11 +861,65 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var c in captures)
         {
             var name = _cities.First(x => x.Id == c.City).Name;
-            var owner = _state.Factions.First(f => f.Id == c.NewOwner).Name;
+            var owner = after.Factions.First(f => f.Id == c.NewOwner).Name;
             note.Add($"★{name}→{owner}{(c.FactionEliminated ? "(멸망)" : "")}");
         }
 
-        Redraw(note.Count > 0 ? string.Join(" · ", note) : "—");
+        _pendingState = after;
+        _pendingNote = note.Count > 0 ? string.Join(" · ", note) : "—";
+        BuildAnimation(startHex, turns);
+
+        // 애니메이션 시작: 이동 전 상태(토큰=시작 위치)를 그린 뒤, _Process가 칸 단위로 이동시킨다.
+        Redraw(_pendingNote);
+        _advancing = true;
+        _animT = 0;
+        _animStepIdx = 0;
+        _advanceBtn.Disabled = true;
+        _advanceBtn.Modulate = new Color(0.5f, 0.5f, 0.5f, 0.7f);
+        _dayLabel.Visible = true;
+        _dayLabel.Text = "1일차";
+    }
+
+    // 진행 결과의 이동 틱을 "언제 어느 칸으로" 스텝 목록으로 편다. 한 칸 = 1초, 하루 = 4초 슬롯.
+    private void BuildAnimation(Dictionary<int, HexCoord> startHex, IReadOnlyList<AdvanceTurn> turns)
+    {
+        _animSteps.Clear();
+        var prev = new Dictionary<int, HexCoord>(startHex);
+        var movesInDay = new Dictionary<(int, int), int>();
+        var dayOffset = 0;
+        foreach (var turn in turns)
+        {
+            foreach (var tick in turn.Movement.Ticks)
+            {
+                var absDay = dayOffset + tick.Day;
+                foreach (var fu in tick.Units)
+                {
+                    var id = fu.Id.Value;
+                    if (!prev.TryGetValue(id, out var pv)) { prev[id] = fu.Position; continue; }
+                    if (fu.Position == pv) { continue; }
+                    var k = movesInDay.GetValueOrDefault((id, absDay), 0);
+                    _animSteps.Add(((absDay - 1) * DaySeconds + k * StepSeconds, id, fu.Position));
+                    movesInDay[(id, absDay)] = k + 1;
+                    prev[id] = fu.Position;
+                }
+            }
+
+            dayOffset += System.Math.Max(1, turn.Movement.Days);
+        }
+
+        _animSteps.Sort((a, b) => a.Time.CompareTo(b.Time));
+    }
+
+    // 애니메이션 종료 — 최종 상태를 반영하고 버튼·텍스트를 원복한다.
+    private void FinishAdvance()
+    {
+        _advancing = false;
+        _advanceBtn.Disabled = false;
+        _advanceBtn.Modulate = Colors.White;
+        _dayLabel.Visible = false;
+
+        _state = _pendingState;
+        Redraw(_pendingNote);
 
         var alive = _state.Factions.Where(f => _state.CityCount(f.Id) > 0).ToList();
         if (alive.Count <= 1)
@@ -856,7 +927,6 @@ public sealed partial class CampaignMapScene : Node3D
             _log.Text = $"[종료] {(alive.Count == 1 ? alive[0].Name + " 통일" : "무승부")} (주 {_week})";
         }
 
-        // 선택 성이 아직 내 것이면 패널 갱신, 아니면 닫는다.
         if (_selected is { } sel && _state.Cities.Any(c => c.Id == sel && c.Owner == Player))
         {
             SelectCity(sel);
@@ -1044,7 +1114,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         PlacePalette(c.Position);
         _infoCard.Visible = true;
-        _cmdMenu.Visible = true;
+        _cmdMenu.Visible = !_advancing; // 진행 중에는 명령 팔레트를 숨긴다(상태 카드는 보임)
         MoveRing(c.Position);
     }
 
@@ -1073,6 +1143,22 @@ public sealed partial class CampaignMapScene : Node3D
         {
             if (!Input.IsMouseButtonPressed(MouseButton.Left)) { _dragging = false; }
             else { _dragPanel.Position = GetViewport().GetMousePosition() - _dragOffset; }
+        }
+
+        if (_advancing)
+        {
+            _animT += delta;
+            while (_animStepIdx < _animSteps.Count && _animSteps[_animStepIdx].Time <= _animT)
+            {
+                var s = _animSteps[_animStepIdx];
+                if (_armyTokens.TryGetValue(s.UnitId, out var tok)) { tok.DisplayStepTo(s.To, (float)StepSeconds); }
+                _animStepIdx++;
+            }
+
+            var day = System.Math.Min(AnimDays, (int)(_animT / DaySeconds) + 1);
+            _dayLabel.Text = $"{day}일차";
+
+            if (_animT >= AnimDays * DaySeconds) { FinishAdvance(); }
         }
     }
 
@@ -2281,7 +2367,7 @@ public sealed partial class CampaignMapScene : Node3D
                 + _state.Armies.Where(u => u.Field.Owner == f.Id).Sum(u => u.Pool.Active);
             return $"{f.Name} 성{cities} 병{troops}";
         });
-        _status.Text = $"주 {_week}   {string.Join("   |   ", counts)}";
+        _status.Text = $"{_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일 (주 {_week})   {string.Join("   |   ", counts)}";
         _log.Text = note;
     }
 
@@ -2307,13 +2393,46 @@ public sealed partial class CampaignMapScene : Node3D
         _status = MakeLabel("", 15, Gold);
         _status.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         top.AddChild(_status);
-        var advance = MakeButton("▶ 진행 (7일)", accent: true);
-        advance.CustomMinimumSize = new Vector2(110, 30);
-        advance.Pressed += OnAdvance;
-        top.AddChild(advance);
 
         _log = MakeLabel("", 12, Parchment);
         _log.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(_log);
+
+        BuildAdvanceControl();
+    }
+
+    // 진행 버튼(화면 우측 하단, 100×100 원형 아이콘) + 진행 중 "N일차" 텍스트(버튼 20px 위).
+    private void BuildAdvanceControl()
+    {
+        var layer = new CanvasLayer();
+        AddChild(layer);
+
+        var vb = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
+        vb.AddThemeConstantOverride("separation", 20); // 일차 텍스트가 버튼 20px 위
+        vb.AnchorLeft = 1f; vb.AnchorTop = 1f; vb.AnchorRight = 1f; vb.AnchorBottom = 1f;
+        vb.GrowHorizontal = Control.GrowDirection.Begin;
+        vb.GrowVertical = Control.GrowDirection.Begin;
+        vb.OffsetLeft = -16f; vb.OffsetTop = -16f; vb.OffsetRight = -16f; vb.OffsetBottom = -16f;
+        layer.AddChild(vb);
+
+        _dayLabel = MakeLabel("", 20, GoldBright);
+        _dayLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _dayLabel.CustomMinimumSize = new Vector2(100, 0);
+        _dayLabel.Visible = false;
+        vb.AddChild(_dayLabel);
+
+        var icon = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/icons/icon_advance.png"));
+        icon.GenerateMipmaps();
+        _advanceBtn = new TextureButton
+        {
+            TextureNormal = ImageTexture.CreateFromImage(icon),
+            StretchMode = TextureButton.StretchModeEnum.KeepAspectCentered,
+            IgnoreTextureSize = true,
+            CustomMinimumSize = new Vector2(100, 100),
+            TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
+            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+        };
+        _advanceBtn.Pressed += OnAdvance;
+        vb.AddChild(_advanceBtn);
     }
 }
