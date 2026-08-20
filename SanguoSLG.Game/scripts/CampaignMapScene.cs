@@ -649,11 +649,11 @@ public sealed partial class CampaignMapScene : Node3D
         _supplyTileMesh ??= new CylinderMesh { TopRadius = 0.52f, BottomRadius = 0.52f, Height = 0.02f, RadialSegments = 6 };
         _supplyTileMat ??= new StandardMaterial3D
         {
-            AlbedoColor = new Color(0.30f, 0.78f, 0.42f, 0.16f),
+            AlbedoColor = new Color(0.22f, 0.72f, 0.34f, 0.40f),
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
             EmissionEnabled = true,
-            Emission = new Color(0.30f, 0.78f, 0.42f),
-            EmissionEnergyMultiplier = 0.5f,
+            Emission = new Color(0.24f, 0.80f, 0.38f),
+            EmissionEnergyMultiplier = 1.0f,
         };
 
         var seen = new HashSet<HexCoord>();
