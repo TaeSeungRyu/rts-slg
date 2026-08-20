@@ -1704,8 +1704,19 @@ public sealed partial class CampaignMapScene : Node3D
     private void RestyleDeploy()
     {
         foreach (var (card, code) in _depTroopCards) { card.AddThemeStyleboxOverride("panel", CardBox(code == _depTroop)); }
-        foreach (var (card, id) in _depVanCards) { card.AddThemeStyleboxOverride("panel", CardBox(_depVan == id)); }
-        foreach (var (card, id) in _depAdjCards) { card.AddThemeStyleboxOverride("panel", CardBox(_depAdj == id)); }
+
+        // 선봉으로 뽑힌 장수는 부관 목록에서, 부관으로 뽑힌 장수는 선봉 목록에서 감춘다(중복 지정 방지).
+        foreach (var (card, id) in _depVanCards)
+        {
+            card.Visible = id != _depAdj;
+            card.AddThemeStyleboxOverride("panel", CardBox(_depVan == id));
+        }
+
+        foreach (var (card, id) in _depAdjCards)
+        {
+            card.Visible = id != _depVan;
+            card.AddThemeStyleboxOverride("panel", CardBox(_depAdj == id));
+        }
     }
 
     private void RestyleModes()
