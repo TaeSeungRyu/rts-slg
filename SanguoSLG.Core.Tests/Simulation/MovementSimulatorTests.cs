@@ -23,6 +23,18 @@ public class MovementSimulatorTests
         new(new UnitId(id), new FactionId(owner), pos, speed, detection, attackRange,
             MovementDomain.Land, mode, target, commandOrder, rangeCastle);
 
+    [Fact]
+    public void 전원_목표도착으로_시작하면_남은_일수를_한번에_소진한다()
+    {
+        // 진행 한 번이 하루짜리 여러 번으로 쪼개지지 않도록 — 전원 도착 상태로 시작하면 maxDays 소진.
+        var a = Unit(1, owner: 1, new HexCoord(3, 0), UnitMode.March, target: new HexCoord(3, 0));
+
+        var result = PlainField().Advance(new[] { a }, maxDays: 7);
+
+        Assert.Equal(StopReason.AllArrived, result.Reason);
+        Assert.Equal(7, result.Days);
+    }
+
     // ── 케이스 1 — 공격모드 조우: 탐지 → 추격 → 사거리 정지 ──
 
     [Fact]

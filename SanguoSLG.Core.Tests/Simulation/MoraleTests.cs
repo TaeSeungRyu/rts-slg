@@ -99,6 +99,19 @@ public class MoraleTests
     }
 
     [Fact]
+    public void 패주한_부대는_명령_목표가_취소된다()
+    {
+        // 패주하면 목표를 지운다 — 도망친 뒤 사기를 회복해도 스스로 다시 진군하지 않는다.
+        var routed = Sword(1, 1, new HexCoord(5, 0), mode: UnitMode.March, target: new HexCoord(10, 0),
+            morale: 5, routed: true);
+        var turn = Orchestrator().Run(new[] { routed });
+
+        var u = turn.Units.Single();
+        Assert.True(u.Routed);
+        Assert.Null(u.Field.Target);
+    }
+
+    [Fact]
     public void 패주는_사기가_회복임계_이상이면_해제된다()
     {
         // 사기 38 패주 부대가 무전투 휴식(+2) → 40 도달 → 패주 해제.

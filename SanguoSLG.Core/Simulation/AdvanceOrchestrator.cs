@@ -378,7 +378,10 @@ public sealed class AdvanceOrchestrator
 
             var morale = System.Math.Clamp(u.Morale + delta, 0, 100);
             var routed = morale < _morale.RoutThreshold || (u.Routed && morale < _morale.RoutRecover);
-            state[id] = u with { Morale = morale, Routed = routed };
+            // 패주하면 명령(목표)을 취소한다 — 도망친 부대가 사기를 회복해도 스스로 다시
+            // 진군하지 않는다(2026-08-20 사용자 결정). 재출동은 플레이어가 다시 명령한다.
+            var field = routed ? u.Field with { Target = null } : u.Field;
+            state[id] = u with { Morale = morale, Routed = routed, Field = field };
             if (delta != 0)
             {
                 changes[id] = delta;

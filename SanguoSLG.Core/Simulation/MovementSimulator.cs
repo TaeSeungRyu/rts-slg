@@ -81,9 +81,11 @@ public sealed class MovementSimulator
 
                 // 진행 중단 1 — 아무도 더 갈 곳이 없다(전원 목표 도착, 추격 중이면 도착 아님).
                 // 성 타일 위 유닛은 목표가 없어도 "도착"이 아니다 — 성은 머무를 수 없어 반드시 내려선다.
+                // 아직 아무 일도 없었으면(전원 도착 상태로 시작) 남은 일수를 한 번에 소진해, 진행 한 번이
+                // 하루짜리 진행 여러 번으로 쪼개지지 않게 한다(사기·상태 tick의 주당 중복 적용 방지).
                 if (work.All(w => NoIntent(w) && !OnCastle(w, castles)))
                 {
-                    return Finish(ticks, work, StopReason.AllArrived, daysElapsed, entered);
+                    return Finish(ticks, work, StopReason.AllArrived, ticks.Count == 0 ? maxDays : daysElapsed, entered);
                 }
 
                 // 이번 스텝에 움직이려는 유닛의 희망 칸을 모은다.

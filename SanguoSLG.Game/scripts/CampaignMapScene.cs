@@ -617,6 +617,55 @@ public sealed partial class CampaignMapScene : Node3D
         Redraw(_log.Text);
     }
 
+    private readonly List<MeshInstance3D> _supplyMarkers = new();
+    private Mesh? _supplyTileMesh;
+    private Material? _supplyTileMat;
+
+    // ── 보급 영역: 아군 성 반경(city_resupply_radius) 안을 초록 타일로 표시 ──
+    // 부대가 나가 있을 때(또는 출전 예약이 있을 때)만 보여, 이 영역을 벗어나면 휴대 군량으로
+    // 버텨야 함을 알린다.
+    private void DrawSupplyZones()
+    {
+        foreach (var m in _supplyMarkers) { m.QueueFree(); }
+        _supplyMarkers.Clear();
+
+        var radius = _cb.CityResupplyRadius;
+        var show = radius > 0 && (_pendingDeploys.Count > 0 || _state.Armies.Any(u => u.Field.Owner == Player));
+        if (!show) { return; }
+
+        _supplyTileMesh ??= new CylinderMesh { TopRadius = 0.52f, BottomRadius = 0.52f, Height = 0.02f, RadialSegments = 6 };
+        _supplyTileMat ??= new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.30f, 0.78f, 0.42f, 0.16f),
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            EmissionEnabled = true,
+            Emission = new Color(0.30f, 0.78f, 0.42f),
+            EmissionEnergyMultiplier = 0.5f,
+        };
+
+        var seen = new HashSet<HexCoord>();
+        foreach (var city in _state.Cities.Where(c => c.Owner == Player).OrderBy(c => c.Id.Value))
+        {
+            for (var dq = -radius; dq <= radius; dq++)
+            {
+                for (var dr = System.Math.Max(-radius, -dq - radius); dr <= System.Math.Min(radius, -dq + radius); dr++)
+                {
+                    var hex = new HexCoord(city.Position.Q + dq, city.Position.R + dr);
+                    if (!seen.Add(hex) || !_map.Contains(hex) || !_passability.CanEnter(MovementDomain.Land, hex)) { continue; }
+                    var marker = new MeshInstance3D
+                    {
+                        Mesh = _supplyTileMesh,
+                        MaterialOverride = _supplyTileMat,
+                        CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                        Position = _view.HexToWorld(hex) + new Vector3(0f, _view.TileTopY + 0.03f, 0f),
+                    };
+                    AddChild(marker);
+                    _supplyMarkers.Add(marker);
+                }
+            }
+        }
+    }
+
     // ── 경로 프리뷰: 예약 부대의 성→목표 경로를 지도에 점으로 ──
     private void DrawDeployPaths()
     {
@@ -2173,6 +2222,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void Redraw(string note)
     {
+        DrawSupplyZones();
         DrawDeployPaths();
 
         // 성 라벨·색 갱신.

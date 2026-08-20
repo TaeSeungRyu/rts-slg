@@ -98,10 +98,10 @@ public class ProvisionsTests
     [Fact]
     public void 보급부대는_반경내_저군량_아군을_이동보다먼저_하루치_보충한다()
     {
-        // 보충은 소모(1일치)보다 선행 — 정지 부대는 보충(+10)과 소모(−10)가 상쇄돼 유지되고,
-        // 보급 없으면 소모만 일어나 −10. 차이 10 = 하루치 보충.
-        var with = AllyProvisionsAfter(withSupply: true, new HexCoord(1, 0), allyProvisions: 50);
-        var without = AllyProvisionsAfter(withSupply: false, new HexCoord(1, 0), allyProvisions: 50);
+        // 보충은 소모(7일치=70)보다 선행 — 보급부대가 있으면 하루치(+10) 더 남는다.
+        // 차이 10 = 하루치 보충(진행당 1일치, design-unit-state).
+        var with = AllyProvisionsAfter(withSupply: true, new HexCoord(1, 0), allyProvisions: 200);
+        var without = AllyProvisionsAfter(withSupply: false, new HexCoord(1, 0), allyProvisions: 200);
         Assert.Equal(10, with - without);
     }
 
