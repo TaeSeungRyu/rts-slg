@@ -883,6 +883,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animStepIdx = 0;
         _advanceBtn.Disabled = true;
         _advanceBtn.Modulate = new Color(0.5f, 0.5f, 0.5f, 0.7f);
+        _advanceBtn.Scale = Vector2.One;
         _dayLabel.Visible = true;
         _dayLabel.Text = "1일차";
     }
@@ -923,6 +924,7 @@ public sealed partial class CampaignMapScene : Node3D
         _advancing = false;
         _advanceBtn.Disabled = false;
         _advanceBtn.Modulate = Colors.White;
+        _advanceBtn.Scale = Vector2.One;
         _dayLabel.Visible = false;
 
         _state = _pendingState;
@@ -2439,8 +2441,14 @@ public sealed partial class CampaignMapScene : Node3D
             TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand,
             FocusMode = Control.FocusModeEnum.None, // 클릭 후 사각 포커스 테두리 방지
+            PivotOffset = new Vector2(50, 50),      // 중심 기준 스케일(눌림 효과)
         };
         _advanceBtn.Pressed += OnAdvance;
+        // 인터랙션: 호버 시 살짝 확대, 누르면 축소+어둡게, 떼면 복귀.
+        _advanceBtn.MouseEntered += () => { if (!_advanceBtn.Disabled) { _advanceBtn.Scale = new Vector2(1.06f, 1.06f); } };
+        _advanceBtn.MouseExited += () => { if (!_advanceBtn.Disabled) { _advanceBtn.Scale = Vector2.One; } };
+        _advanceBtn.ButtonDown += () => { if (!_advanceBtn.Disabled) { _advanceBtn.Scale = new Vector2(0.9f, 0.9f); _advanceBtn.Modulate = new Color(0.82f, 0.82f, 0.82f); } };
+        _advanceBtn.ButtonUp += () => { if (!_advanceBtn.Disabled) { _advanceBtn.Scale = new Vector2(1.06f, 1.06f); _advanceBtn.Modulate = Colors.White; } };
         vb.AddChild(_advanceBtn);
     }
 }
