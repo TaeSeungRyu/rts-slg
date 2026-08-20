@@ -1493,7 +1493,16 @@ public sealed partial class CampaignMapScene : Node3D
             _depAdjCards.Add((ad, gid));
             ad.GuiInput += e =>
             {
-                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { _depAdj = _depAdj == captured ? null : captured; RestyleDeploy(); UpdateDepPreview(); }
+                if (e is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { return; }
+                if (captured == _depVan)
+                {
+                    if (_depPreview is not null) { _depPreview.Text = "부관은 선봉과 다른 장수여야 합니다."; }
+                    return; // 선봉과 같은 장수는 부관이 될 수 없다
+                }
+
+                _depAdj = _depAdj == captured ? null : captured;
+                RestyleDeploy();
+                UpdateDepPreview();
             };
             adGrid.AddChild(ad);
         }
@@ -1620,9 +1629,13 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void SaveCompose()
     {
-        if (_depTroop is null) { _log.Text = "병종을 선택하세요."; Redraw(_log.Text); return; }
-        if (_depVan is not { } van) { _log.Text = "선봉 장수를 선택하세요."; Redraw(_log.Text); return; }
-        if (_depAmount <= 0) { _log.Text = "병력 수량을 정하세요."; Redraw(_log.Text); return; }
+        // 검증 실패 메시지는 모달 안(_depPreview)에 띄운다 — 하단바(_log)는 모달에 가려 안 보인다.
+        void Err(string m) { if (_depPreview is not null) { _depPreview.Text = "⚠ " + m; } }
+
+        if (_depTroop is null) { Err("병종을 선택하세요."); return; }
+        if (_depVan is not { } van) { Err("선봉 장수를 선택하세요."); return; }
+        if (_depAmount <= 0) { Err("병력 수량을 정하세요."); return; }
+        if (_depAdj == van) { Err("부관은 선봉과 다른 장수여야 합니다."); return; }
 
         var tName = _troops.FirstOrDefault(t => t.Code == _depTroop)?.Name ?? _depTroop;
         var vName = _state.Generals.First(g => g.Id == van).Name;
