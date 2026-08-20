@@ -79,8 +79,9 @@ public sealed class MovementSimulator
                     }
                 }
 
-                // 진행 중단 1 — 아무도 더 갈 곳이 없다(전원 목표 도착, 추격 중이면 도착 아님)
-                if (work.All(NoIntent))
+                // 진행 중단 1 — 아무도 더 갈 곳이 없다(전원 목표 도착, 추격 중이면 도착 아님).
+                // 성 타일 위 유닛은 목표가 없어도 "도착"이 아니다 — 성은 머무를 수 없어 반드시 내려선다.
+                if (work.All(w => NoIntent(w) && !OnCastle(w, castles)))
                 {
                     return Finish(ticks, work, StopReason.AllArrived, daysElapsed, entered);
                 }
@@ -141,14 +142,16 @@ public sealed class MovementSimulator
                     }
 
                     // 출격 게이트 스텝: 성 타일 위 유닛은 빈·통행 이웃 중 목표에 가장 가까운 칸으로
-                    // 반드시 내려선다. 적 점유 칸으로는 가지 않아 성문 위에서 교전을 열지 않고,
-                    // 빈 이웃이 없으면(완전 포위) 이날은 성 안에서 대기한다.
+                    // 반드시 내려선다. 목표가 없으면 성 바로 앞(고정 방향 순서 첫 빈·통행 이웃)에 나와
+                    // 대기한다. 적 점유 칸으로는 가지 않아 성문 위에서 교전을 열지 않고, 빈 이웃이
+                    // 없으면(완전 포위) 이날은 성 안에서 대기한다.
                     if (onCastle)
                     {
-                        if (goalTile is { } sg && GateStep(w, sg, occupied) is { } exit)
+                        var exit = goalTile is { } sg ? GateStep(w, sg, occupied) : GateStepAny(w, occupied);
+                        if (exit is { } e)
                         {
                             w.Path = null; // 내려선 위치에서 경로를 다시 잡는다
-                            desired[w.Unit.Id.Value] = exit;
+                            desired[w.Unit.Id.Value] = e;
                         }
 
                         continue;
@@ -320,6 +323,20 @@ public sealed class MovementSimulator
         }
 
         return best;
+    }
+
+    // 목표 없는 출격 게이트 스텝: 빈·통행 이웃 중 고정 방향 순서 첫 칸(결정론). 성 바로 앞 대기용.
+    private HexCoord? GateStepAny(Working w, HashSet<HexCoord> occupied)
+    {
+        foreach (var n in w.Unit.Position.Neighbors())
+        {
+            if (!occupied.Contains(n) && _passability.CanEnter(w.Unit.Domain, n))
+            {
+                return n;
+            }
+        }
+
+        return null;
     }
 
     // 다음 스텝 칸이 자기 성인가 — 입성 조건. 성 타일은 통행 불가지만 경로는 목표 칸을 허용하므로,

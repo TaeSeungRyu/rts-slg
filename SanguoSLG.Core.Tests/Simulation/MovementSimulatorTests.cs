@@ -507,6 +507,23 @@ public class MovementSimulatorTests
     }
 
     [Fact]
+    public void 성출격_목표없는_부대는_성바로앞_이웃칸에_나와_대기한다()
+    {
+        // 목표를 지정하지 않은 출전 부대는 성 타일 위에 머무를 수 없으므로 게이트 스텝으로
+        // 성 바로 앞 한 칸에 내려서 대기한다(더는 전진하지 않는다).
+        var city = new City(new CityId(9), "성", new HexCoord(2, 0), new FactionId(1), 0);
+        var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, -2, 2), [], [city]));
+        var site = new SiegeSite(new HexCoord(2, 0), new FactionId(1));
+        var u = Unit(1, owner: 1, new HexCoord(2, 0), UnitMode.Advance, target: null, speed: 2);
+
+        var result = sim.Advance(new[] { u }, maxDays: 3, castles: new[] { site });
+
+        var pos = result.Units.Single().Position;
+        Assert.NotEqual(new HexCoord(2, 0), pos);          // 성 타일을 떠났다
+        Assert.Equal(1, pos.Distance(new HexCoord(2, 0))); // 성 바로 앞(이웃)에서 대기
+    }
+
+    [Fact]
     public void 성출격_수비대_둘이_성타일에_겹쳐있어도_같은날_성밖으로_빠져나온다()
     {
         // 출격 대기 수비대는 성 타일에 겹쳐 설 수 있다. 같은 날 둘 다 나오되 겹치지 않는다.
