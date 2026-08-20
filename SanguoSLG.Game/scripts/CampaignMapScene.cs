@@ -856,7 +856,14 @@ public sealed partial class CampaignMapScene : Node3D
 
         var note = new List<string>();
         note.AddRange(deployNote);
-        if (sieges.Count > 0) { note.Add($"공성 {sieges.Count}"); }
+        foreach (var ex in sieges)
+        {
+            var cn = _cities.First(c => c.Id == ex.City).Name;
+            note.Add(ex.WallDamage > 0
+                ? $"공성 {cn} 성벽 -{ex.WallDamage}→{ex.NewWall}"
+                : $"공성 {cn} 성벽 무피해");
+        }
+
         if (plunders.Count > 0) { note.Add($"약탈 {plunders.Count}"); }
         foreach (var c in captures)
         {
@@ -2431,6 +2438,7 @@ public sealed partial class CampaignMapScene : Node3D
             CustomMinimumSize = new Vector2(100, 100),
             TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+            FocusMode = Control.FocusModeEnum.None, // 클릭 후 사각 포커스 테두리 방지
         };
         _advanceBtn.Pressed += OnAdvance;
         vb.AddChild(_advanceBtn);
