@@ -68,21 +68,22 @@ public partial class AdvanceButton : Control
         var c = Size / 2f;
         var r = Mathf.Min(Size.X, Size.Y) / 2f - 3f;
         var pulse = 0.5f + 0.5f * Mathf.Sin(_t * 3f);
-
-        // 드롭 섀도 + 잉크 바탕(아이콘 투명부 뒤).
-        DrawCircle(c + new Vector2(0f, 3f), r, new Color(0f, 0f, 0f, 0.4f));
-        DrawCircle(c, r, new Color(Ink.R, Ink.G, Ink.B, 0.92f));
-
-        // 아이콘(원형 마스크 텍스처) 또는 폴백 ▶. Busy면 살짝 딤.
-        var inner = r - r * 0.13f;
         var tint = Busy ? new Color(0.55f, 0.55f, 0.55f) : Colors.White;
+
+        // 드롭 섀도.
+        DrawCircle(c + new Vector2(0f, 3f), r, new Color(0f, 0f, 0f, 0.4f));
+
         if (Icon is not null)
         {
-            var rect = new Rect2(c - new Vector2(inner, inner), new Vector2(inner * 2f, inner * 2f));
+            // 자체 금테를 가진 메달리온 이미지 — 버튼을 꽉 채워 그리고, 별도 프레임은 덧그리지 않는다.
+            var rect = new Rect2(c - new Vector2(r, r), new Vector2(r * 2f, r * 2f));
             DrawTextureRect(Icon, rect, false, tint);
         }
         else
         {
+            // 폴백: 잉크 원 + 금테 프레임 + 금색 ▶.
+            var inner = r - r * 0.13f;
+            DrawCircle(c, r, new Color(Ink.R, Ink.G, Ink.B, 0.92f));
             var tri = new[]
             {
                 c + new Vector2(-inner * 0.34f, -inner * 0.5f),
@@ -90,11 +91,9 @@ public partial class AdvanceButton : Control
                 c + new Vector2(inner * 0.56f, 0f),
             };
             DrawColoredPolygon(tri, GoldBright * tint);
+            var ring = _hover && !Busy ? GoldBright : Gold;
+            DrawArc(c, r - 1f, 0f, Mathf.Tau, 72, ring, Mathf.Max(3f, r * 0.06f), true);
         }
-
-        // 금테 프레임(호버 시 밝게).
-        var ring = _hover && !Busy ? GoldBright : Gold;
-        DrawArc(c, r - 1f, 0f, Mathf.Tau, 72, ring, Mathf.Max(3f, r * 0.06f), true);
 
         if (Busy)
         {
