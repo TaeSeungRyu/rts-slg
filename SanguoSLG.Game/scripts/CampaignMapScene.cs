@@ -84,6 +84,13 @@ public sealed partial class CampaignMapScene : Node3D
     // 출전 대기열 — "진행" 시 일괄 시작(즉시 실행 아님).
     private readonly List<(DeployRequest Req, string Label)> _pendingDeploys = new();
 
+    // 출전 모달 편성 배치(N개 부대) + 수량/미리보기.
+    private CityId _depModalCity;
+    private int _depAmount;
+    private SpinBox? _depAmountSpin;
+    private Label? _depPreview;
+    private readonly List<(string Code, int Amount, GeneralId Van, GeneralId? Adj, string Label)> _depBatch = new();
+
     // 1단계 지원 명령(내정 — 출전은 2단계). (표시명, 종류, 파라미터: troop/tax/wall/stratagem/none)
     private static readonly (string Label, CommandKind Kind, string Param)[] Cmds =
     {
@@ -967,19 +974,37 @@ public sealed partial class CampaignMapScene : Node3D
         _depTroopCards.Clear();
         _depVanCards.Clear();
         _depAdjCards.Clear();
+        _depBatch.Clear();
+        _depAmountSpin = null;
+        _depPreview = null;
     }
 
     // ── 출전 모달: 병종 + 선봉(+부관) 선택 → 대기 병력을 야전 부대로 편성 ──
     private void OpenDeployModal(CityId city)
     {
-        CloseModal();
+        _depModalCity = city;
+        _depBatch.Clear();
+        RebuildDeployModal();
+    }
+
+    // 배치(N개 부대)를 보존한 채 모달 UI만 다시 그린다.
+    private void RebuildDeployModal()
+    {
+        var city = _depModalCity;
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        _depTroopCards.Clear();
+        _depVanCards.Clear();
+        _depAdjCards.Clear();
         _depTroop = null;
         _depVan = null;
         _depAdj = null;
+        _depAmount = 0;
+        _depAmountSpin = null;
+        _depPreview = null;
 
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.5f, 380f, 620f);
-        var mh = Mathf.Clamp(vp.Y * 0.7f, 320f, 560f);
+        var mw = Mathf.Clamp(vp.X * 0.52f, 400f, 660f);
+        var mh = Mathf.Clamp(vp.Y * 0.78f, 360f, 620f);
 
         var layer = new CanvasLayer { Layer = 20 };
         AddChild(layer);
@@ -1004,7 +1029,7 @@ public sealed partial class CampaignMapScene : Node3D
         scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
         panel.AddChild(scroll);
         var box = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        box.AddThemeConstantOverride("separation", 10);
+        box.AddThemeConstantOverride("separation", 8);
         scroll.AddChild(box);
 
         var titleRow = new HBoxContainer();
@@ -1021,7 +1046,38 @@ public sealed partial class CampaignMapScene : Node3D
 
         var cols = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 128f), 2, 4);
 
-        // 1) 병종(대기 병력)
+        // 이미 편성된 부대(배치)에서 소모된 병력·장수 계산.
+        var usedTroops = _depBatch.GroupBy(b => b.Code).ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
+        var usedGens = new HashSet<GeneralId>();
+        foreach (var b in _depBatch)
+        {
+            usedGens.Add(b.Van);
+            if (b.Adj is { } a) { usedGens.Add(a); }
+        }
+
+        // 0) 편성된 부대 목록
+        if (_depBatch.Count > 0)
+        {
+            box.AddChild(MakeLabel($"편성된 부대 ({_depBatch.Count})", 13, GoldBright));
+            for (var i = 0; i < _depBatch.Count; i++)
+            {
+                var idx = i;
+                var row = new HBoxContainer();
+                row.AddThemeConstantOverride("separation", 8);
+                var lbl = MakeLabel("· " + _depBatch[i].Label, 12, Parchment);
+                lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+                row.AddChild(lbl);
+                var rm = MakeButton("✕");
+                rm.CustomMinimumSize = new Vector2(28, 24);
+                rm.Pressed += () => { _depBatch.RemoveAt(idx); RebuildDeployModal(); };
+                row.AddChild(rm);
+                box.AddChild(row);
+            }
+
+            box.AddChild(GoldRule());
+        }
+
+        // 1) 병종(남은 대기 병력)
         box.AddChild(MakeLabel("병종 (대기 병력)", 13, GoldBright));
         var tg = new GridContainer { Columns = cols };
         tg.AddThemeConstantOverride("h_separation", 8);
@@ -1030,21 +1086,51 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var gar in _state.Garrisons.Where(g => g.City == city && g.Troops > 0))
         {
             var code = gar.TroopCode;
+            var remaining = gar.Troops - usedTroops.GetValueOrDefault(code, 0);
+            if (remaining <= 0) { continue; }
             var template = _troops.FirstOrDefault(t => t.Code == code);
             var name = template?.Name ?? code;
             var warn = gar.TrainingLevel < 50 ? "  ⚠훈련부족" : "";
             var emblem = template is not null ? ClassEmblem(template.Class) : Icon(Sym.Sword);
-            var card = DeployCard(emblem, name, $"{gar.Troops}명 · 훈{gar.TrainingLevel}{warn}");
+            var card = DeployCard(emblem, name, $"{remaining}명 · 훈{gar.TrainingLevel}{warn}");
+            var cap = remaining;
             _depTroopCards.Add((card, code));
             card.GuiInput += e =>
             {
-                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { _depTroop = code; RestyleDeploy(); }
+                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+                {
+                    _depTroop = code;
+                    if (_depAmountSpin is { } sp) { sp.MaxValue = cap; sp.Value = cap; }
+                    _depAmount = cap;
+                    RestyleDeploy();
+                    UpdateDepPreview();
+                }
             };
             tg.AddChild(card);
         }
 
-        // 2) 선봉 / 3) 부관
-        var free = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g)).OrderBy(g => g.Value).ToList();
+        // 2) 병력 수량(SpinBox + 프리셋)
+        box.AddChild(MakeLabel("병력 수량", 13, GoldBright));
+        var amtRow = new HBoxContainer();
+        amtRow.AddThemeConstantOverride("separation", 6);
+        _depAmountSpin = new SpinBox { MinValue = 0, MaxValue = 0, Step = 100, Value = 0, CustomMinimumSize = new Vector2(130, 30) };
+        _depAmountSpin.AddThemeFontOverride("font", _font);
+        _depAmountSpin.AddThemeFontSizeOverride("font_size", 14);
+        _depAmountSpin.ValueChanged += v => { _depAmount = (int)v; UpdateDepPreview(); };
+        amtRow.AddChild(_depAmountSpin);
+        foreach (var (plabel, frac) in new[] { ("전량", 1.0), ("½", 0.5), ("¼", 0.25) })
+        {
+            var pf = frac;
+            var pb = MakeButton(plabel);
+            pb.CustomMinimumSize = new Vector2(48, 28);
+            pb.Pressed += () => { if (_depAmountSpin is { } sp) { sp.Value = System.Math.Floor(sp.MaxValue * pf); } };
+            amtRow.AddChild(pb);
+        }
+
+        box.AddChild(amtRow);
+
+        // 3) 선봉 / 4) 부관 (이미 배치에 쓴 장수 제외)
+        var free = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value).ToList();
         box.AddChild(GoldRule());
         box.AddChild(MakeLabel("선봉 장수 (필수)", 13, GoldBright));
         var vgGrid = new GridContainer { Columns = cols };
@@ -1060,12 +1146,12 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var g = _state.Generals.First(x => x.Id == gid);
             var portrait = OfficerPortrait(gid);
-            var vg = DeployCard(portrait, g.Name, $"무{g.Might} 지{g.Intellect}");
             var captured = gid;
+            var vg = DeployCard(portrait, g.Name, $"무{g.Might} 지{g.Intellect}");
             _depVanCards.Add((vg, gid));
             vg.GuiInput += e =>
             {
-                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { _depVan = captured; if (_depAdj == captured) { _depAdj = null; } RestyleDeploy(); }
+                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { _depVan = captured; if (_depAdj == captured) { _depAdj = null; } RestyleDeploy(); UpdateDepPreview(); }
             };
             vgGrid.AddChild(vg);
 
@@ -1073,20 +1159,80 @@ public sealed partial class CampaignMapScene : Node3D
             _depAdjCards.Add((ad, gid));
             ad.GuiInput += e =>
             {
-                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { _depAdj = _depAdj == captured ? null : captured; RestyleDeploy(); }
+                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { _depAdj = _depAdj == captured ? null : captured; RestyleDeploy(); UpdateDepPreview(); }
             };
             adGrid.AddChild(ad);
         }
 
+        // 5) 미리보기 + 버튼
         box.AddChild(GoldRule());
-        var go = MakeButton("▶ 출전 (선택 병종 전량)", accent: true);
+        _depPreview = MakeLabel("", 12, Parchment);
+        box.AddChild(_depPreview);
+        var btnRow = new HBoxContainer();
+        btnRow.AddThemeConstantOverride("separation", 8);
+        var add = MakeButton("＋ 부대 추가");
+        add.CustomMinimumSize = new Vector2(0, 34);
+        add.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        add.Pressed += () => { if (AddCurrentToBatch()) { RebuildDeployModal(); } };
+        btnRow.AddChild(add);
+        var go = MakeButton("▶ 출전 예약", accent: true);
         go.CustomMinimumSize = new Vector2(0, 34);
-        go.Pressed += () => TryDeploy(city);
-        box.AddChild(go);
+        go.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        go.Pressed += () => QueueBatch(city);
+        btnRow.AddChild(go);
+        box.AddChild(btnRow);
 
         RestyleDeploy();
+        UpdateDepPreview();
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+    }
+
+    private void UpdateDepPreview()
+    {
+        if (_depPreview is null) { return; }
+        var parts = new List<string>();
+        if (_depTroop is { } c) { parts.Add($"{_troops.FirstOrDefault(t => t.Code == c)?.Name ?? c} {_depAmount}"); }
+        if (_depVan is { } v) { parts.Add("선봉 " + _state.Generals.First(g => g.Id == v).Name); }
+        if (_depAdj is { } a) { parts.Add("부관 " + _state.Generals.First(g => g.Id == a).Name); }
+        var cur = parts.Count > 0 ? string.Join(" · ", parts) : "(병종·장수·수량 선택)";
+        _depPreview.Text = $"현재 편성:  {cur}     |     편성됨 {_depBatch.Count}개 부대";
+    }
+
+    private bool AddCurrentToBatch()
+    {
+        if (_depTroop is null) { _log.Text = "병종을 선택하세요."; Redraw(_log.Text); return false; }
+        if (_depVan is not { } van) { _log.Text = "선봉 장수를 선택하세요."; Redraw(_log.Text); return false; }
+        if (_depAmount <= 0) { _log.Text = "병력 수량을 정하세요."; Redraw(_log.Text); return false; }
+
+        var tName = _troops.FirstOrDefault(t => t.Code == _depTroop)?.Name ?? _depTroop;
+        var vName = _state.Generals.First(g => g.Id == van).Name;
+        var aName = _depAdj is { } a ? "+" + _state.Generals.First(g => g.Id == a).Name : "";
+        _depBatch.Add((_depTroop, _depAmount, van, _depAdj, $"{tName} {_depAmount}({vName}{aName})"));
+        return true;
+    }
+
+    private void QueueBatch(CityId city)
+    {
+        if (_depTroop is not null && _depVan is not null && _depAmount > 0) { AddCurrentToBatch(); }
+        if (_depBatch.Count == 0) { _log.Text = "편성된 부대가 없습니다."; Redraw(_log.Text); return; }
+
+        var lines = string.Join("\n", _depBatch.Select(b => "· " + b.Label));
+        _confirm.DialogText = $"{_state.Cities.First(c => c.Id == city).Name} 출전 예약 — {_depBatch.Count}개 부대\n{lines}\n\n\"진행\" 시 시작됩니다.";
+        var batch = _depBatch.ToList();
+        _onConfirm = () =>
+        {
+            foreach (var b in batch)
+            {
+                _pendingDeploys.Add((new DeployRequest(city, b.Code, b.Amount, b.Van, b.Adj), b.Label));
+            }
+
+            _log.Text = $"예약: 출전 {batch.Count}개 부대 — 진행 시 시작";
+            CloseModal();
+            SelectCity(city);
+            Redraw(_log.Text);
+        };
+        _confirm.PopupCentered();
     }
 
     private readonly Dictionary<int, ImageTexture> _portraits = new();
@@ -1143,34 +1289,6 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var (card, code) in _depTroopCards) { card.AddThemeStyleboxOverride("panel", CardBox(code == _depTroop)); }
         foreach (var (card, id) in _depVanCards) { card.AddThemeStyleboxOverride("panel", CardBox(_depVan == id)); }
         foreach (var (card, id) in _depAdjCards) { card.AddThemeStyleboxOverride("panel", CardBox(_depAdj == id)); }
-    }
-
-    private void TryDeploy(CityId city)
-    {
-        if (_depTroop is null || _depVan is not { } van)
-        {
-            _log.Text = "병종과 선봉 장수를 선택하세요.";
-            Redraw(_log.Text);
-            return;
-        }
-
-        var tName = _troops.FirstOrDefault(t => t.Code == _depTroop)?.Name ?? _depTroop;
-        var vName = _state.Generals.First(g => g.Id == van).Name;
-        var aName = _depAdj is { } a ? " · 부관 " + _state.Generals.First(g => g.Id == a).Name : "";
-        _confirm.DialogText = $"{_state.Cities.First(c => c.Id == city).Name} 출전 예약\n{tName} 전량 · 선봉 {vName}{aName}\n\n대기열에 넣습니다. \"진행\" 시 시작됩니다.";
-        var troop = _depTroop;
-        var adj = _depAdj;
-        var label = $"출전 {tName}({vName})";
-        _onConfirm = () =>
-        {
-            // 즉시 실행하지 않고 대기열에 예약 — 진행 시 시작.
-            _pendingDeploys.Add((new DeployRequest(city, troop, 0, van, adj), label));
-            _log.Text = $"예약: {label} — 진행 시 시작";
-            CloseModal();
-            SelectCity(city);
-            Redraw(_log.Text);
-        };
-        _confirm.PopupCentered();
     }
 
     // 명령별 옵션 카드 목록: (표시명, 아이콘, 부가설명).
