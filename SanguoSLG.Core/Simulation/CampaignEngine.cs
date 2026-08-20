@@ -20,10 +20,11 @@ public sealed class CampaignEngine
     private readonly CityCapture? _capture;
     private readonly CityPlunder? _plunder;
     private readonly IRandomSource _random;
+    private readonly int _cityResupplyRadius;
 
     public CampaignEngine(AdvanceOrchestrator field, WorldEngine world,
         CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null,
-        CityPlunder? plunder = null)
+        CityPlunder? plunder = null, int cityResupplyRadius = 0)
     {
         _field = field;
         _world = world;
@@ -31,6 +32,7 @@ public sealed class CampaignEngine
         _capture = capture;
         _plunder = plunder;
         _random = random ?? new SeededRandomSource(0);
+        _cityResupplyRadius = cityResupplyRadius;
     }
 
     /// <summary>7일을 진행한 새 상태를 반환한다. 야전 진행 보고 목록은 <paramref name="turns"/>로.</summary>
@@ -68,6 +70,13 @@ public sealed class CampaignEngine
                 .Select(c => new SiegeSite(c.Position, c.Owner))
                 .ToList();
             var cityAt = work.Cities.ToDictionary(c => c.Position, c => c.Id);
+
+            // 성 보급(2026-08-20): 이동 전, 아군 성 반경 안의 아군 야전 부대 군량을 성 비축에서 채운다
+            //  — 성문 앞 대기·수비 부대가 굶지 않도록(보급부대와 같은 원리, 성이 고정 보급원).
+            if (_cityResupplyRadius > 0)
+            {
+                (work, armies) = ResupplyFromCities(work, armies);
+            }
 
             var turn = _field.Run(armies, maxDays: remaining, castles);
             reports.Add(turn);
@@ -123,6 +132,44 @@ public sealed class CampaignEngine
         captures = captureReports;
         plunders = plunderReports;
         return _world.AdvanceDays(afterField, WeekDays);
+    }
+
+    // 성 보급: 아군 성 반경(_cityResupplyRadius) 안의 아군 야전 부대(군량 추적) 군량을 성 비축에서
+    // 최대치까지 채운다. 성 비축 한도 안에서만. 결정론: 성 id 오름차순, 부대 id 오름차순.
+    private (GameState, List<CombatUnit>) ResupplyFromCities(GameState work, List<CombatUnit> armies)
+    {
+        var byId = armies.ToDictionary(u => u.Id);
+        var stock = work.Cities.ToDictionary(c => c.Id, c => c.Provisions);
+        foreach (var city in work.Cities.OrderBy(c => c.Id.Value))
+        {
+            var have = stock[city.Id];
+            if (have <= 0)
+            {
+                continue;
+            }
+
+            foreach (var unit in armies
+                .Where(u => u.Field.Owner == city.Owner && u.TracksProvisions
+                    && u.Field.Position.Distance(city.Position) <= _cityResupplyRadius)
+                .OrderBy(u => u.Id.Value))
+            {
+                var cur = byId[unit.Id];
+                var deficit = cur.MaxProvisions() - cur.Provisions;
+                var give = System.Math.Min(deficit, have);
+                if (give <= 0)
+                {
+                    continue;
+                }
+
+                byId[unit.Id] = cur with { Provisions = cur.Provisions + give };
+                have -= give;
+            }
+
+            stock[city.Id] = have;
+        }
+
+        var cities = work.Cities.Select(c => c with { Provisions = stock[c.Id] }).ToList();
+        return (work with { Cities = cities }, armies.Select(u => byId[u.Id]).ToList());
     }
 
     // 입성 부대 → 그 도시 대기 병력 편입(병종·훈련도 보존, 가중 평균) + 실린 장수 그 도시 주둔 복귀

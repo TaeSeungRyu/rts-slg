@@ -19,6 +19,7 @@
   "build_cost_workshop": 800,
   "deploy_min_training": 50,
   "supply_max_troops": 20000,
+  "city_resupply_radius": 3,
   "research_base_days": 30,
   "research_cost_base": 200,
   "research_cost_steep_from": 7,

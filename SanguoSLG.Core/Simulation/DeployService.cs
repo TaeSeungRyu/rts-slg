@@ -12,7 +12,8 @@ public sealed record DeployRequest(
     GeneralId Vanguard,
     GeneralId? Adjutant = null,
     UnitMode Mode = UnitMode.March,
-    HexCoord? Target = null);
+    HexCoord? Target = null,
+    int Provisions = -1);
 
 /// <summary>보급부대 편성 한 줄 — 병종과 데려갈 병력(0 이하면 그 병종 전량).</summary>
 public sealed record SupplyLine(string TroopCode, int Troops);
@@ -106,9 +107,11 @@ public sealed class DeployService
             return CommandResult.Fail(error, state);
         }
 
-        // 군량 휴대: 적재 상한(한 달치 × 병력 비례)과 성 비축 중 작은 쪽.
+        // 군량 휴대: 요청량(일수 슬라이더 → 병력 비례 환산; 음수면 상한까지 자동)과 적재 상한(한 달치
+        // × 병력 비례), 성 비축 중 가장 작은 쪽.
         var capacity = template.ProvisionsCapacity * troops / 10000;
-        var carried = System.Math.Min(capacity, city.Provisions);
+        var wanted = req.Provisions < 0 ? capacity : System.Math.Min(req.Provisions, capacity);
+        var carried = System.Math.Min(wanted, city.Provisions);
 
         // 세력 병종 연구 단계를 스탯에 반영(design-combat "병종 연구").
         var research = state.ResearchOf(city.Owner, template.Code);

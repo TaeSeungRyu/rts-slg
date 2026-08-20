@@ -41,4 +41,5 @@ public sealed record BalanceConfig(
     int WallMaxSmall = 3000,
     int WallMaxMedium = 6000,
     int WallMaxLarge = 10000,
-    int GeneralSalaryPerMonth = 20);
+    int GeneralSalaryPerMonth = 20,
+    int ProvisionsPer10kPerDay = 10);

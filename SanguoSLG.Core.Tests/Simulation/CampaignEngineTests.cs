@@ -37,6 +37,28 @@ public class CampaignEngineTests
         new(1, 1, new List<Faction>(), new List<City>(), new List<General>(), FieldArmies: armies.ToList());
 
     [Fact]
+    public void 성보급_반경내_아군_야전부대는_성비축에서_군량을_채워_굶지않는다()
+    {
+        // 성문 앞 대기 부대가 자기 성 옆에서 아사하던 문제. 성 반경 안 아군 부대는 매 진행
+        // 성 비축에서 군량을 채운다(성 비축은 그만큼 줄어든다).
+        var movement = new MovementSimulator(new PassabilityMap(new HexMap(0, 30, -5, 8), [], []));
+        var field = new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70));
+        var engine = new CampaignEngine(field, new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)),
+            cityResupplyRadius: 3);
+
+        var city = new City(new CityId(1), "성", new HexCoord(5, 5), new FactionId(1), Provisions: 5000);
+        var unit = Army(1, 1, new HexCoord(6, 5), UnitMode.March, target: null) with { Provisions = 10 };
+        var state = new GameState(1, 1, new List<Faction>(), new List<City> { city },
+            new List<General>(), FieldArmies: new List<CombatUnit> { unit });
+
+        var after = engine.AdvanceWeek(state, out _);
+
+        Assert.True(after.Armies.Single().Provisions > 10, "성 옆 부대 군량이 채워진다");
+        Assert.Equal(10000, after.Armies.Single().Pool.Active); // 굶어 이탈 없음
+        Assert.True(after.Cities.Single().Provisions < 5000, "성 비축이 보급분만큼 줄어든다");
+    }
+
+    [Fact]
     public void 진행_1번은_야전이_있든_없든_정확히_7일이다()
     {
         var e = Engine();

@@ -69,6 +69,33 @@ public class DeployServiceTests
     }
 
     [Fact]
+    public void 출전_군량_요청량을_지정하면_그만큼만_휴대한다()
+    {
+        var city = Town(1, new HexCoord(2, 0), provisions: 5000);
+        var s0 = State([city], [Gen(1)],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 10000, 60)], postings: [At(1, 1)]);
+
+        var r = Service().Deploy(s0, new DeployRequest(new CityId(1), "swordsman", 10000, new GeneralId(1), Provisions: 120));
+
+        Assert.True(r.Ok, r.Error);
+        Assert.Equal(120, r.State.Armies.Single().Provisions);   // 요청량만큼만
+        Assert.Equal(4880, r.State.Cities.Single().Provisions);  // 성 비축에서 그만큼만 뺀다
+    }
+
+    [Fact]
+    public void 출전_군량_적재상한을_넘겨_요청해도_상한까지만_휴대한다()
+    {
+        var city = Town(1, new HexCoord(2, 0), provisions: 5000);
+        var s0 = State([city], [Gen(1)],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 10000, 60)], postings: [At(1, 1)]);
+
+        var r = Service().Deploy(s0, new DeployRequest(new CityId(1), "swordsman", 10000, new GeneralId(1), Provisions: 99999));
+
+        Assert.True(r.Ok, r.Error);
+        Assert.Equal(300, r.State.Armies.Single().Provisions); // 적재 상한(300)까지만
+    }
+
+    [Fact]
     public void 출전_병력_일부만_데려가면_나머지는_대기한다()
     {
         var s0 = State([Town(1, new HexCoord(0, 0))], [Gen(1)],
