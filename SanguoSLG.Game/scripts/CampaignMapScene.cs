@@ -1030,9 +1030,11 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var gar in _state.Garrisons.Where(g => g.City == city && g.Troops > 0))
         {
             var code = gar.TroopCode;
-            var name = _troops.FirstOrDefault(t => t.Code == code)?.Name ?? code;
+            var template = _troops.FirstOrDefault(t => t.Code == code);
+            var name = template?.Name ?? code;
             var warn = gar.TrainingLevel < 50 ? "  ⚠훈련부족" : "";
-            var card = DeployCard(name, $"{gar.Troops}명 · 훈{gar.TrainingLevel}{warn}");
+            var emblem = template is not null ? ClassEmblem(template.Class) : Icon(Sym.Sword);
+            var card = DeployCard(emblem, name, $"{gar.Troops}명 · 훈{gar.TrainingLevel}{warn}");
             _depTroopCards.Add((card, code));
             card.GuiInput += e =>
             {
@@ -1057,7 +1059,8 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var gid in free)
         {
             var g = _state.Generals.First(x => x.Id == gid);
-            var vg = DeployCard(g.Name, $"무{g.Might} 지{g.Intellect}");
+            var portrait = OfficerPortrait(gid);
+            var vg = DeployCard(portrait, g.Name, $"무{g.Might} 지{g.Intellect}");
             var captured = gid;
             _depVanCards.Add((vg, gid));
             vg.GuiInput += e =>
@@ -1066,7 +1069,7 @@ public sealed partial class CampaignMapScene : Node3D
             };
             vgGrid.AddChild(vg);
 
-            var ad = DeployCard(g.Name, $"무{g.Might} 지{g.Intellect}");
+            var ad = DeployCard(portrait, g.Name, $"무{g.Might} 지{g.Intellect}");
             _depAdjCards.Add((ad, gid));
             ad.GuiInput += e =>
             {
@@ -1086,18 +1089,46 @@ public sealed partial class CampaignMapScene : Node3D
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
     }
 
-    private PanelContainer DeployCard(string title, string sub)
+    private readonly Dictionary<int, ImageTexture> _portraits = new();
+
+    // 장수 초상: assets/portraits/general_{id}.png 있으면 그것, 없으면 공용 장수 흉상(icon_officer) 폴백.
+    private ImageTexture OfficerPortrait(GeneralId id)
+    {
+        if (_portraits.TryGetValue(id.Value, out var cached)) { return cached; }
+
+        var path = $"res://assets/portraits/general_{id.Value}.png";
+        if (Godot.FileAccess.FileExists(path))
+        {
+            var img = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
+            img.GenerateMipmaps();
+            var t = ImageTexture.CreateFromImage(img);
+            _portraits[id.Value] = t;
+            return t;
+        }
+
+        return Icon(Sym.Officer);
+    }
+
+    private PanelContainer DeployCard(ImageTexture icon, string title, string sub)
     {
         var card = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(118, 52),
+            CustomMinimumSize = new Vector2(128, 112),
             MouseFilter = Control.MouseFilterEnum.Stop,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand,
         };
         card.AddThemeStyleboxOverride("panel", CardBox(false));
         var v = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        v.AddThemeConstantOverride("separation", 2);
+        v.AddThemeConstantOverride("separation", 3);
         card.AddChild(v);
+        v.AddChild(new TextureRect
+        {
+            Texture = icon,
+            CustomMinimumSize = new Vector2(46, 46),
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+        });
         var t = MakeLabel(title, 15, GoldBright);
         t.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(t);
