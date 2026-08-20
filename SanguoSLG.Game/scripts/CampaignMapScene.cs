@@ -556,30 +556,44 @@ public sealed partial class CampaignMapScene : Node3D
         new List<Faction>
         {
             new(new FactionId(1), "위", new GeneralId(1), 0, "#3d70dc"),
-            new(new FactionId(2), "촉", new GeneralId(3), 0, "#d23830"),
+            new(new FactionId(2), "촉", new GeneralId(11), 0, "#d23830"),
         },
         _cities.ToList(),
+        // 테스트: 플레이어 성(장안) 장수 10명, 적 성(성도) 2명.
         new List<General>
         {
-            Officer(1), Officer(2), Officer(3), Officer(4),
+            Officer(1), Officer(2), Officer(3), Officer(4), Officer(5),
+            Officer(6), Officer(7), Officer(8), Officer(9), Officer(10),
+            Officer(11), Officer(12),
         },
         Postings: new List<GeneralPosting>
         {
             new(new GeneralId(1), new FactionId(1), new CityId(1)),
             new(new GeneralId(2), new FactionId(1), new CityId(1)),
-            new(new GeneralId(3), new FactionId(2), new CityId(2)),
-            new(new GeneralId(4), new FactionId(2), new CityId(2)),
+            new(new GeneralId(3), new FactionId(1), new CityId(1)),
+            new(new GeneralId(4), new FactionId(1), new CityId(1)),
+            new(new GeneralId(5), new FactionId(1), new CityId(1)),
+            new(new GeneralId(6), new FactionId(1), new CityId(1)),
+            new(new GeneralId(7), new FactionId(1), new CityId(1)),
+            new(new GeneralId(8), new FactionId(1), new CityId(1)),
+            new(new GeneralId(9), new FactionId(1), new CityId(1)),
+            new(new GeneralId(10), new FactionId(1), new CityId(1)),
+            new(new GeneralId(11), new FactionId(2), new CityId(2)),
+            new(new GeneralId(12), new FactionId(2), new CityId(2)),
         },
+        // 테스트: 플레이어 성 대기 병력 10만(3병종), 적 성 10만.
         GarrisonForces: new List<GarrisonForce>
         {
-            new(new CityId(1), "swordsman", 10000, 60),
-            new(new CityId(2), "swordsman", 10000, 60),
+            new(new CityId(1), "swordsman", 50000, 60),
+            new(new CityId(1), "archer", 30000, 60),
+            new(new CityId(1), "cavalry", 20000, 60),
+            new(new CityId(2), "swordsman", 100000, 60),
         });
 
     private static General Officer(int id) => new(
         new GeneralId(id), $"장수{id}",
         new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Infantry] = AptitudeGrade.A },
-        Might: 70, Intellect: 60, Politics: 70);
+        Might: 55 + (id * 5 % 45), Intellect: 50 + (id * 9 % 48), Politics: 60 + (id * 3 % 35));
 
     private void SpawnCastles()
     {
@@ -998,14 +1012,14 @@ public sealed partial class CampaignMapScene : Node3D
         _depPreview = null;
 
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.44f, 360f, 560f);
-        var mh = Mathf.Clamp(vp.Y * 0.7f, 300f, 560f);
+        var mw = Mathf.Clamp(vp.X * 0.57f, 470f, 730f);
+        var mh = Mathf.Clamp(vp.Y * 0.8f, 360f, 640f);
         var box = DeployScaffold(mw, out var scroll);
 
         var cityName = _state.Cities.First(x => x.Id == city).Name;
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  출전 예약   《 {cityName} 》", 18, Gold);
+        var title = MakeLabel($"◈  출전 예약   《 {cityName} 》", 19, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         titleRow.AddChild(title);
         var close = MakeButton("✕");
@@ -1020,34 +1034,56 @@ public sealed partial class CampaignMapScene : Node3D
             if (_pendingDeploys[i].Req.City == city) { mine.Add(i); }
         }
 
-        box.AddChild(MakeLabel($"예약된 부대 ({mine.Count})", 14, GoldBright));
+        box.AddChild(MakeLabel($"예약된 부대 ({mine.Count})", 15, GoldBright));
         if (mine.Count == 0)
         {
-            box.AddChild(MakeLabel("(없음) — ＋ 로 부대를 편성하세요.", 12, Parchment));
+            box.AddChild(MakeLabel("(없음) — 아래 ＋ 로 부대를 편성하세요.", 12, Parchment));
         }
 
         foreach (var gi in mine)
         {
             var idx = gi;
-            var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 8);
-            var lbl = MakeLabel("· " + _pendingDeploys[gi].Label, 13, Parchment);
-            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            row.AddChild(lbl);
+            var rq = _pendingDeploys[gi].Req;
+            var tmpl = _troops.FirstOrDefault(t => t.Code == rq.TroopCode);
+            var emblem = tmpl is not null ? ClassEmblem(tmpl.Class) : Icon(Sym.Sword);
+            var tname = tmpl?.Name ?? rq.TroopCode;
+            var vname = _state.Generals.First(g => g.Id == rq.Vanguard).Name;
+            var aname = rq.Adjutant is { } aid ? " · 부관 " + _state.Generals.First(g => g.Id == aid).Name : "";
+
+            var cardItem = new PanelContainer();
+            cardItem.AddThemeStyleboxOverride("panel", CardBox(false));
+            var h = new HBoxContainer();
+            h.AddThemeConstantOverride("separation", 10);
+            cardItem.AddChild(h);
+            h.AddChild(new TextureRect
+            {
+                Texture = emblem,
+                CustomMinimumSize = new Vector2(50, 50),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            });
+            var info = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
+            info.AddThemeConstantOverride("separation", 2);
+            info.AddChild(MakeLabel($"{tname}  {rq.Troops}명", 15, GoldBright));
+            info.AddChild(MakeLabel($"선봉 {vname}{aname}", 12, Parchment));
+            h.AddChild(info);
             var edit = MakeButton("수정");
-            edit.CustomMinimumSize = new Vector2(52, 26);
+            edit.CustomMinimumSize = new Vector2(56, 32);
+            edit.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             edit.Pressed += () => OpenDeployCompose(idx);
-            row.AddChild(edit);
+            h.AddChild(edit);
             var rm = MakeButton("삭제");
-            rm.CustomMinimumSize = new Vector2(52, 26);
+            rm.CustomMinimumSize = new Vector2(56, 32);
+            rm.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             rm.Pressed += () => { _pendingDeploys.RemoveAt(idx); SelectCity(city); OpenDeployHub(); };
-            row.AddChild(rm);
-            box.AddChild(row);
+            h.AddChild(rm);
+            box.AddChild(cardItem);
         }
 
         box.AddChild(GoldRule());
         var add = MakeButton("＋ 부대 추가", accent: true);
-        add.CustomMinimumSize = new Vector2(0, 36);
+        add.CustomMinimumSize = new Vector2(0, 40);
         add.Pressed += () => OpenDeployCompose(-1);
         box.AddChild(add);
         box.AddChild(MakeLabel("예약은 \"진행\" 시 일괄 출전합니다.", 11, Parchment));
