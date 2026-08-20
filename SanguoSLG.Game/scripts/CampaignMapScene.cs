@@ -60,7 +60,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId, HexCoord To)> _animSteps = new();
     private GameState _pendingState = null!;
     private string _pendingNote = "";
-    private TextureButton _advanceBtn = null!;
+    private AdvanceButton _advanceBtn = null!;
     private Label _dayLabel = null!;
 
     // 명령 UX(성 클릭 → 정보 카드 + 명령 목록 → 파라미터·장수 목록 → 컨펌).
@@ -881,9 +881,8 @@ public sealed partial class CampaignMapScene : Node3D
         _advancing = true;
         _animT = 0;
         _animStepIdx = 0;
-        _advanceBtn.Disabled = true;
-        _advanceBtn.Modulate = new Color(0.5f, 0.5f, 0.5f, 0.7f);
-        _advanceBtn.Scale = Vector2.One;
+        _advanceBtn.Busy = true;
+        _advanceBtn.Progress = 0f;
         _dayLabel.Visible = true;
         _dayLabel.Text = "1일차";
     }
@@ -922,9 +921,8 @@ public sealed partial class CampaignMapScene : Node3D
     private void FinishAdvance()
     {
         _advancing = false;
-        _advanceBtn.Disabled = false;
-        _advanceBtn.Modulate = Colors.White;
-        _advanceBtn.Scale = Vector2.One;
+        _advanceBtn.Busy = false;
+        _advanceBtn.Progress = 0f;
         _dayLabel.Visible = false;
 
         _state = _pendingState;
@@ -1166,6 +1164,7 @@ public sealed partial class CampaignMapScene : Node3D
 
             var day = System.Math.Min(AnimDays, (int)(_animT / DaySeconds) + 1);
             _dayLabel.Text = $"{day}일차";
+            _advanceBtn.Progress = (float)(_animT / (AnimDays * DaySeconds));
 
             if (_animT >= AnimDays * DaySeconds) { FinishAdvance(); }
         }
@@ -2430,25 +2429,24 @@ public sealed partial class CampaignMapScene : Node3D
         _dayLabel.Visible = false;
         vb.AddChild(_dayLabel);
 
-        var icon = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/icons/icon_advance.png"));
-        icon.GenerateMipmaps();
-        _advanceBtn = new TextureButton
+        // 이미지는 교체 가능 — res://assets/icons/icon_advance.png 파일만 바꾸면 됨(없으면 ▶ 폴백).
+        _advanceBtn = new AdvanceButton
         {
-            TextureNormal = ImageTexture.CreateFromImage(icon),
-            StretchMode = TextureButton.StretchModeEnum.KeepAspectCentered,
-            IgnoreTextureSize = true,
             CustomMinimumSize = new Vector2(100, 100),
             TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
-            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
-            FocusMode = Control.FocusModeEnum.None, // 클릭 후 사각 포커스 테두리 방지
-            PivotOffset = new Vector2(50, 50),      // 중심 기준 스케일(눌림 효과)
+            Icon = LoadAdvanceIcon(),
         };
-        _advanceBtn.Pressed += OnAdvance;
-        // 인터랙션: 호버 시 살짝 확대, 누르면 축소+어둡게, 떼면 복귀.
-        _advanceBtn.MouseEntered += () => { if (!_advanceBtn.Disabled) { _advanceBtn.Scale = new Vector2(1.06f, 1.06f); } };
-        _advanceBtn.MouseExited += () => { if (!_advanceBtn.Disabled) { _advanceBtn.Scale = Vector2.One; } };
-        _advanceBtn.ButtonDown += () => { if (!_advanceBtn.Disabled) { _advanceBtn.Scale = new Vector2(0.9f, 0.9f); _advanceBtn.Modulate = new Color(0.82f, 0.82f, 0.82f); } };
-        _advanceBtn.ButtonUp += () => { if (!_advanceBtn.Disabled) { _advanceBtn.Scale = new Vector2(1.06f, 1.06f); _advanceBtn.Modulate = Colors.White; } };
+        _advanceBtn.Pressed = OnAdvance;
         vb.AddChild(_advanceBtn);
+    }
+
+    // 진행 버튼 아이콘 로드(교체용). 파일 없으면 null → 버튼이 금색 ▶ 폴백을 그린다.
+    private static Texture2D? LoadAdvanceIcon()
+    {
+        const string path = "res://assets/icons/icon_advance.png";
+        if (!Godot.FileAccess.FileExists(path)) { return null; }
+        var img = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
+        img.GenerateMipmaps();
+        return ImageTexture.CreateFromImage(img);
     }
 }
