@@ -591,12 +591,13 @@ public sealed partial class CampaignMapScene : Node3D
             var mode = enemyCity is not null ? UnitMode.Attack : req.Mode;
             _pendingDeploys[idx] = (req with { Target = h, Mode = mode }, label);
             var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
-            _log.Text = $"목표 → {tName}{(enemyCity is not null ? " (공격모드)" : "")}";
+            _log.Text = $"목표 → {tName}{(enemyCity is not null ? " (공격모드)" : "")} · 경로 표시됨(출전으로 이어서 편성)";
         }
 
+        // 목표를 정하면 지도 뷰로 돌아가 경로를 바로 보여준다(허브 모달로 가리지 않는다).
+        // 이어서 편성하려면 성 팔레트의 '출전'을 다시 누른다.
         FinishTargeting();
         SelectCity(_depModalCity);
-        OpenDeployHub();
         Redraw(_log.Text);
     }
 
