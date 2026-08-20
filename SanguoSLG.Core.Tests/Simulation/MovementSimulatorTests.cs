@@ -543,6 +543,27 @@ public class MovementSimulatorTests
     }
 
     [Fact]
+    public void 성출격_좁은통로_경로겹치면_먼저편성부대가_앞서고_뒤부대는_대기로_한스텝_뒤진다()
+    {
+        // #추가(2026-08-20): 외길에서 두 부대의 출격 경로가 겹치면 먼저 편성된(=id 낮은) 부대가
+        // 먼저 나가고, 밀린 부대는 대기에 이동 1스텝을 써 한 칸 뒤처진다(스텝 1개 소비). 대기가
+        // 전체 진행을 멈추지 않는다(3일 정체 판정에서 제외).
+        var city = new City(new CityId(9), "성", new HexCoord(2, 0), new FactionId(1), 0);
+        var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, 0, 0), [], [city])); // r=0 외길
+        var site = new SiegeSite(new HexCoord(2, 0), new FactionId(1));
+        var a = Unit(1, owner: 1, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(8, 0), speed: 2);
+        var b = Unit(2, owner: 1, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(8, 0), speed: 2);
+
+        var result = sim.Advance(new[] { a, b }, maxDays: 3, castles: new[] { site });
+
+        var pa = result.Units.Single(x => x.Id.Value == 1).Position;
+        var pb = result.Units.Single(x => x.Id.Value == 2).Position;
+        Assert.NotEqual(new HexCoord(2, 0), pb);                    // 뒤 부대도 성을 빠져나온다
+        Assert.True(pa.Distance(city.Position) > pb.Distance(city.Position)); // 먼저 편성 부대가 앞선다
+        Assert.NotEqual(StopReason.Blocked, result.Reason);         // 대기가 전체 진행을 막지 않는다
+    }
+
+    [Fact]
     public void 성출격_정면이_적에막혀도_다른이웃으로_내려서고_성문위에서_교전하지않는다()
     {
         // 직진 출구(3,0)를 적이 막아도 다른 빈 이웃으로 내려선다 — 성 타일 위에서 교전을 열지 않는다.

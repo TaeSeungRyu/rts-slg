@@ -217,6 +217,21 @@ public sealed class MovementSimulator
                     }
                 }
 
+                // 출격 대기 비용(#추가 2026-08-20): 성 위에서 나가려 했지만(desired) 앞선 부대에 밀려
+                // 못 나간 부대는 그 대기에 이동 1스텝을 쓴다. 이동력이 남으면 같은 날 뒤따라 나올 수 있고,
+                // 다 쓰면 그날은 성에서 대기한다. movedThisDay에 넣어 전체 진행을 멈추는 3일 정체 판정에서
+                // 뺀다 — 앞 부대가 계속 나오면 이 부대만 여러 진행을 대기할 뿐 진행은 막지 않는다.
+                foreach (var w in work)
+                {
+                    if (desired.ContainsKey(w.Unit.Id.Value)
+                        && !applied.ContainsKey(w.Unit.Id.Value)
+                        && OnCastle(w, castles))
+                    {
+                        w.MovedToday += 1;
+                        movedThisDay.Add(w.Unit.Id.Value);
+                    }
+                }
+
                 // 사건이 있거나 실제로 움직였으면 스냅샷을 남긴다
                 if (events.Count > 0 || applied.Count > 0)
                 {
