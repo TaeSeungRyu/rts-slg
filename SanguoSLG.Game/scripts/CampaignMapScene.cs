@@ -849,6 +849,16 @@ public sealed partial class CampaignMapScene : Node3D
         TerrainType.Farm => "밭",
         TerrainType.Workshop => "공방",
         TerrainType.RockMountain => "바위산",
+        TerrainType.Karst => "카르스트",
+        TerrainType.Cliff => "절벽",
+        TerrainType.IceMountain => "설산",
+        TerrainType.IceWallLarge => "빙벽(대)",
+        TerrainType.IceWallSmall => "빙벽(소)",
+        TerrainType.Swamp => "늪",
+        TerrainType.DesertCactus => "선인장 사막",
+        TerrainType.PortSmall => "포구",
+        TerrainType.Village1 or TerrainType.Village2 or TerrainType.Village3
+            or TerrainType.Village4 or TerrainType.Village5 => "마을",
         _ => t.ToString(),
     };
 
