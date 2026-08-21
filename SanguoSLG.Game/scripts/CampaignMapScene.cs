@@ -120,6 +120,11 @@ public sealed partial class CampaignMapScene : Node3D
     private Label? _depPreview;
     private readonly List<(Button Btn, UnitMode Mode)> _depModeButtons = new();
     private Label? _depModeDesc;
+    private Tree? _vanTree;              // 선봉 선택 표(정렬·내부 스크롤)
+    private OptionButton? _adjOption;    // 부관 선택(선택)
+    private List<GeneralId> _composeFree = new();
+    private int _vanSortCol;             // 0 이름 / 1 무 / 2 지 / 3 정 / 4 특성
+    private bool _vanSortAsc = true;
     private int _depProvDays; // 출전 시 휴대할 군량 일수(슬라이더). 0이면 군량 없이 나감
     private HSlider? _depProvSlider;
     private Label? _depProvLabel;
@@ -1704,6 +1709,8 @@ public sealed partial class CampaignMapScene : Node3D
         _depAmountSpin = null;
         _depPreview = null;
         _depModeButtons.Clear();
+        _vanTree = null;
+        _adjOption = null;
         _depEditIndex = -1;
         _depTarget = null;
     }
@@ -1894,13 +1901,17 @@ public sealed partial class CampaignMapScene : Node3D
         _depPreview = null;
         _depModeButtons.Clear();
         _depModeDesc = null;
+        _vanTree = null;
+        _adjOption = null;
+        _vanSortCol = 0;
+        _vanSortAsc = true;
         _depProvDays = 0;
         _depProvSlider = null;
         _depProvLabel = null;
 
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.52f, 400f, 660f);
-        var mh = Mathf.Clamp(vp.Y * 0.78f, 360f, 620f);
+        var mh = Mathf.Clamp(vp.Y * 0.9f, 360f, 820f); // 표가 고정 높이라, 모달은 내용에 맞춰 스크롤 없이 담기게
         var box = DeployScaffold(mw, out var scroll, out var panel);
 
         var cityName = _state.Cities.First(x => x.Id == city).Name;
@@ -2027,55 +2038,82 @@ public sealed partial class CampaignMapScene : Node3D
         _depModeDesc.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(_depModeDesc);
 
-        // 3) 선봉 / 4) 부관
-        var free = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value).ToList();
+        // 3) 선봉 장수 — 정렬 가능한 표(고정 높이·내부 스크롤). 행 클릭 = 선봉 대상.
+        _composeFree = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value).ToList();
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("선봉 장수 (필수)", 13, GoldBright));
-        var vgGrid = new GridContainer { Columns = cols };
-        vgGrid.AddThemeConstantOverride("h_separation", 8);
-        vgGrid.AddThemeConstantOverride("v_separation", 8);
-        box.AddChild(vgGrid);
-        box.AddChild(MakeLabel("부관 장수 (선택 · 다시 누르면 해제)", 13, GoldBright));
-        var adGrid = new GridContainer { Columns = cols };
-        adGrid.AddThemeConstantOverride("h_separation", 8);
-        adGrid.AddThemeConstantOverride("v_separation", 8);
-        box.AddChild(adGrid);
-        foreach (var gid in free)
+        box.AddChild(MakeLabel("선봉 장수 (표에서 클릭 · 상단 눌러 정렬)", 13, GoldBright));
+        _vanTree = new Tree
         {
-            var g = _state.Generals.First(x => x.Id == gid);
-            var portrait = OfficerPortrait(gid);
-            var captured = gid;
-            var vg = DeployCard(portrait, g.Name, $"무{g.Might} 지{g.Intellect}");
-            _depVanCards.Add((vg, gid));
-            vg.GuiInput += e =>
-            {
-                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { _depVan = captured; if (_depAdj == captured) { _depAdj = null; } RestyleDeploy(); UpdateDepPreview(); }
-            };
-            vgGrid.AddChild(vg);
-
-            var ad = DeployCard(portrait, g.Name, $"무{g.Might} 지{g.Intellect}");
-            _depAdjCards.Add((ad, gid));
-            ad.GuiInput += e =>
-            {
-                if (e is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { return; }
-                if (captured == _depVan)
-                {
-                    if (_depPreview is not null) { _depPreview.Text = "부관은 선봉과 다른 장수여야 합니다."; }
-                    return; // 선봉과 같은 장수는 부관이 될 수 없다
-                }
-
-                _depAdj = _depAdj == captured ? null : captured;
-                RestyleDeploy();
-                UpdateDepPreview();
-            };
-            adGrid.AddChild(ad);
+            Columns = 5,
+            ColumnTitlesVisible = true,
+            HideRoot = true,
+            SelectMode = Tree.SelectModeEnum.Row,
+            CustomMinimumSize = new Vector2(0, 190),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        _vanTree.AddThemeFontOverride("font", _font);
+        _vanTree.AddThemeFontSizeOverride("font_size", 13);
+        _vanTree.AddThemeFontOverride("title_button_font", _font);
+        _vanTree.AddThemeFontSizeOverride("title_button_font_size", 12);
+        _vanTree.SetColumnTitle(0, "이름");
+        _vanTree.SetColumnExpand(0, true);
+        _vanTree.SetColumnExpandRatio(0, 3);
+        foreach (var (col, t) in new[] { (1, "무"), (2, "지"), (3, "정") })
+        {
+            _vanTree.SetColumnTitle(col, t);
+            _vanTree.SetColumnExpand(col, false);
+            _vanTree.SetColumnCustomMinimumWidth(col, 36);
         }
 
-        // 5) 미리보기 + 저장/뒤로
+        _vanTree.SetColumnTitle(4, "특성");
+        _vanTree.SetColumnExpand(4, true);
+        _vanTree.SetColumnExpandRatio(4, 2);
+        _vanTree.ItemSelected += OnVanSelected;
+        _vanTree.ColumnTitleClicked += (col, _) =>
+        {
+            var c = (int)col;
+            if (_vanSortCol == c) { _vanSortAsc = !_vanSortAsc; }
+            else { _vanSortCol = c; _vanSortAsc = true; }
+            PopulateVanTree();
+        };
+        box.AddChild(_vanTree);
+        PopulateVanTree();
+
+        // 4) 부관(선택)
+        var adjRow = new HBoxContainer();
+        adjRow.AddThemeConstantOverride("separation", 8);
+        adjRow.AddChild(MakeLabel("부관 (선택)", 13, GoldBright));
+        _adjOption = new OptionButton();
+        _adjOption.AddThemeFontOverride("font", _font);
+        _adjOption.AddThemeFontSizeOverride("font_size", 13);
+        _adjOption.AddItem("없음", 0);
+        foreach (var gid in _composeFree)
+        {
+            _adjOption.AddItem(_state.Generals.First(g => g.Id == gid).Name, gid.Value);
+        }
+
+        _adjOption.ItemSelected += idx =>
+        {
+            var id = _adjOption.GetItemId((int)idx);
+            if (id == 0) { _depAdj = null; }
+            else if (_depVan is { } v && v.Value == id)
+            {
+                _adjOption.Selected = 0;
+                _depAdj = null;
+                if (_depPreview is not null) { _depPreview.Text = "부관은 선봉과 다른 장수여야 합니다."; }
+            }
+            else { _depAdj = new GeneralId(id); }
+
+            UpdateDepPreview();
+        };
+        adjRow.AddChild(_adjOption);
+        box.AddChild(adjRow);
+
+        // 5) 미리보기 + 확인
         box.AddChild(GoldRule());
         _depPreview = MakeLabel("", 12, Parchment);
         box.AddChild(_depPreview);
-        var save = MakeButton(editIndex >= 0 ? "▶ 저장" : "▶ 부대 추가", accent: true);
+        var save = MakeButton("▶ 확인", accent: true);
         save.CustomMinimumSize = new Vector2(0, 34);
         save.Pressed += SaveCompose;
         box.AddChild(save);
@@ -2101,6 +2139,13 @@ public sealed partial class CampaignMapScene : Node3D
                 ? capDays
                 : System.Math.Clamp(rq.Provisions * 10000 / System.Math.Max(1, rq.Troops * _provPer10kPerDay), 0, capDays);
             if (_depProvSlider is { } ps) { ps.MaxValue = capDays; ps.Value = _depProvDays; }
+
+            PopulateVanTree(); // 선봉 행 선택 반영
+            if (_depAdj is { } adjId && _adjOption is not null)
+            {
+                var oi = _adjOption.GetItemIndex(adjId.Value);
+                if (oi >= 0) { _adjOption.Selected = oi; }
+            }
         }
 
         RestyleDeploy();
@@ -2268,19 +2313,61 @@ public sealed partial class CampaignMapScene : Node3D
     private void RestyleDeploy()
     {
         foreach (var (card, code) in _depTroopCards) { card.AddThemeStyleboxOverride("panel", CardBox(code == _depTroop)); }
+    }
 
-        // 선봉으로 뽑힌 장수는 부관 목록에서, 부관으로 뽑힌 장수는 선봉 목록에서 감춘다(중복 지정 방지).
-        foreach (var (card, id) in _depVanCards)
+    // 선봉 표 채우기(정렬 상태 반영). 행 메타데이터에 GeneralId를 담고, 현재 선봉 행은 선택 표시.
+    private void PopulateVanTree()
+    {
+        if (_vanTree is null) { return; }
+        _vanTree.Clear();
+        var root = _vanTree.CreateItem();
+        var gens = _composeFree.Select(id => _state.Generals.First(g => g.Id == id)).ToList();
+        System.Comparison<General> cmp = _vanSortCol switch
         {
-            card.Visible = id != _depAdj;
-            card.AddThemeStyleboxOverride("panel", CardBox(_depVan == id));
+            1 => (a, b) => a.Might.CompareTo(b.Might),
+            2 => (a, b) => a.Intellect.CompareTo(b.Intellect),
+            3 => (a, b) => a.Politics.CompareTo(b.Politics),
+            4 => (a, b) => string.Compare(TraitText(a), TraitText(b), System.StringComparison.Ordinal),
+            _ => (a, b) => string.Compare(a.Name, b.Name, System.StringComparison.Ordinal),
+        };
+        gens.Sort(cmp);
+        if (!_vanSortAsc) { gens.Reverse(); }
+
+        foreach (var g in gens)
+        {
+            var item = _vanTree.CreateItem(root);
+            item.SetText(0, g.Name);
+            item.SetText(1, g.Might.ToString());
+            item.SetText(2, g.Intellect.ToString());
+            item.SetText(3, g.Politics.ToString());
+            item.SetText(4, TraitText(g));
+            item.SetMetadata(0, g.Id.Value);
+            for (var col = 1; col <= 3; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
+            if (_depVan is { } v && v == g.Id) { item.Select(0); }
+        }
+    }
+
+    private void OnVanSelected()
+    {
+        var it = _vanTree?.GetSelected();
+        if (it is null) { return; }
+        _depVan = new GeneralId(it.GetMetadata(0).AsInt32());
+        if (_depAdj == _depVan)
+        {
+            _depAdj = null;
+            if (_adjOption is not null) { _adjOption.Selected = 0; }
         }
 
-        foreach (var (card, id) in _depAdjCards)
-        {
-            card.Visible = id != _depVan;
-            card.AddThemeStyleboxOverride("panel", CardBox(_depAdj == id));
-        }
+        UpdateDepPreview();
+    }
+
+    // 특성 표기: 배틀 액티브 + 패시브 개수(없으면 —). 세부 스킬명 배선은 후속.
+    private static string TraitText(General g)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrEmpty(g.BattleActive)) { parts.Add(g.BattleActive!); }
+        if (g.Passives.Count > 0) { parts.Add($"+{g.Passives.Count}"); }
+        return parts.Count > 0 ? string.Join(" ", parts) : "—";
     }
 
     private void RestyleModes()
