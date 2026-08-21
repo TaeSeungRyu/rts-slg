@@ -1257,7 +1257,7 @@ public sealed partial class CampaignMapScene : Node3D
         Dbg($"  afterAdvance armies={after.Armies.Count} sieges={sieges.Count} caps={captures.Count} turns={turns.Count}");
         foreach (var u in after.Armies.OrderBy(u => u.Id.Value))
         {
-            Dbg($"    army#{u.Id.Value} owner={u.Field.Owner.Value} pos=({u.Field.Position.Q},{u.Field.Position.R}) troops={u.Pool.Active} mode={u.Field.Mode} tgt={(u.Field.Target is { } t ? $"{t.Q},{t.R}" : "none")} prov={u.Provisions} morale={u.Morale}");
+            Dbg($"    army#{u.Id.Value} owner={u.Field.Owner.Value} pos=({u.Field.Position.Q},{u.Field.Position.R}) troops={u.Pool.Active} mode={u.Field.Mode} tgt={(u.Field.Target is { } t ? $"{t.Q},{t.R}" : "none")} prov={u.Provisions} morale={u.Morale} routed={u.Routed}");
         }
 
         var note = new List<string>();
