@@ -79,6 +79,7 @@ public sealed partial class CampaignMapScene : Node3D
     private PanelContainer _terrainCard = null!;
     private SubViewport _terrainViewport = null!;
     private Node3D _terrainHolder = null!;
+    private Camera3D _terrainCam = null!;
     private Label _terrainName = null!;
     private VBoxContainer _terrainInfo = null!;
     private HexCoord? _terrainHex;
@@ -708,6 +709,7 @@ public sealed partial class CampaignMapScene : Node3D
             var inst = scene.Instantiate<Node3D>();
             inst.Position = Vector3.Zero;
             _terrainHolder.AddChild(inst);
+            FrameTerrainCamera(inst); // 모델 실제 크기(AABB)에 맞춰 카메라 배치
         }
 
         _terrainName.Text = inMap ? TerrainName(terrain) : "맵 밖";
@@ -737,6 +739,54 @@ public sealed partial class CampaignMapScene : Node3D
         PlaceTerrainCard(h);
         _terrainCard.Visible = true;
         MoveRing(h);
+    }
+
+    // 미리보기 카메라를 모델 AABB(월드)에 맞춰 배치 — 지형마다 native 크기가 달라도 꽉 차게.
+    private void FrameTerrainCamera(Node3D model)
+    {
+        var bounds = ModelAabb(model);
+        var center = bounds.GetCenter();
+        var radius = Mathf.Max(0.35f, bounds.Size.Length() * 0.5f);
+        var dist = radius / Mathf.Tan(Mathf.DegToRad(_terrainCam.Fov * 0.5f)) * 1.25f;
+        var dir = new Vector3(0f, 0.8f, 1.0f).Normalized(); // 앞쪽 위에서 내려다봄
+        _terrainCam.Position = center + (dir * dist);
+        _terrainCam.LookAt(center, Vector3.Up);
+    }
+
+    private static Aabb ModelAabb(Node3D model)
+    {
+        Aabb? acc = null;
+        var stack = new System.Collections.Generic.Stack<Node>();
+        stack.Push(model);
+        while (stack.Count > 0)
+        {
+            var n = stack.Pop();
+            if (n is VisualInstance3D vi)
+            {
+                var box = TransformAabb(vi.GlobalTransform, vi.GetAabb());
+                acc = acc is null ? box : acc.Value.Merge(box);
+            }
+
+            foreach (var c in n.GetChildren()) { stack.Push(c); }
+        }
+
+        return acc ?? new Aabb(Vector3.Zero, Vector3.One);
+    }
+
+    private static Aabb TransformAabb(Transform3D xf, Aabb a)
+    {
+        var min = xf * a.Position;
+        var max = min;
+        for (var i = 1; i < 8; i++)
+        {
+            var corner = a.Position + new Vector3(
+                (i & 1) * a.Size.X, ((i >> 1) & 1) * a.Size.Y, ((i >> 2) & 1) * a.Size.Z);
+            var w = xf * corner;
+            min = min.Min(w);
+            max = max.Max(w);
+        }
+
+        return new Aabb(min, max - min);
     }
 
     // 지형 카드를 클릭한 헥사 화면좌표 '위'에 배치(가운데 정렬, 화면 밖 clamp).
@@ -1265,10 +1315,10 @@ public sealed partial class CampaignMapScene : Node3D
                 AmbientLightEnergy = 0.9f,
             },
         });
-        var cam = new Camera3D { Fov = 40f, Current = true };
-        cam.Position = new Vector3(0f, 1.7f, 2.1f);
-        cam.LookAt(new Vector3(0f, 0.15f, 0f), Vector3.Up);
-        _terrainViewport.AddChild(cam);
+        _terrainCam = new Camera3D { Fov = 40f, Current = true };
+        _terrainCam.Position = new Vector3(0f, 1.7f, 2.1f);
+        _terrainCam.LookAt(new Vector3(0f, 0.15f, 0f), Vector3.Up);
+        _terrainViewport.AddChild(_terrainCam);
         var key = new DirectionalLight3D { LightEnergy = 1.4f };
         key.RotationDegrees = new Vector3(-55f, -35f, 0f);
         _terrainViewport.AddChild(key);
