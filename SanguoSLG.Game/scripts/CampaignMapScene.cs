@@ -68,6 +68,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId, int Damage)> _animDmg = new(); // 교전 피해 팝업
     private int _animSiegeDmgIdx;
     private readonly List<(double Time, Vector3 Pos, int Damage)> _animSiegeDmg = new(); // 성 피해 팝업(성벽+수비)
+    private int _animArrowIdx;
+    private readonly List<(double Time, Vector3 From, int TargetUnitId)> _animArrows = new(); // 성 반격 화살
 
     // 병력 → 편대원 수(design-ui §3): 9천↑=9, 7천↑=7, 5천↑=5, 3천↑=3, 그 밑=1.
     private static int FormationFor(int troops) =>
@@ -1285,6 +1287,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animKillIdx = 0;
         _animDmgIdx = 0;
         _animSiegeDmgIdx = 0;
+        _animArrowIdx = 0;
         _advanceBtn.Busy = true;
         _advanceBtn.Progress = 0f;
         _dayLabel.Visible = true;
@@ -1302,6 +1305,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animKills.Clear();
         _animDmg.Clear();
         _animSiegeDmg.Clear();
+        _animArrows.Clear();
         var alive = new HashSet<int>(startHex.Keys);
         var prev = new Dictionary<int, HexCoord>(startHex);
         var movesInDay = new Dictionary<(int, int), int>();
@@ -1359,6 +1363,7 @@ public sealed partial class CampaignMapScene : Node3D
                 {
                     if (counters[i] <= 0) { continue; }
                     var uid = ex.Besiegers[i].Value;
+                    _animArrows.Add((atkTime, cityPos + new Vector3(0f, 0.85f, 0f), uid)); // 성벽 위에서 발사
                     _animDmg.Add((atkTime + 0.35, uid, counters[i]));
                     var unit = turn.Units.FirstOrDefault(x => x.Id.Value == uid);
                     if (unit is null) { continue; }
@@ -1383,6 +1388,25 @@ public sealed partial class CampaignMapScene : Node3D
         _animKills.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSiegeDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animArrows.Sort((a, b) => a.Time.CompareTo(b.Time));
+    }
+
+    // 성 반격 화살 일제사 — 성벽 위에서 대상 부대로 5발(고정 산포·비행시간 변주, 난수 없음).
+    private static readonly (Vector3 Off, float Flight)[] VolleyPattern =
+    {
+        (new Vector3(0f, 0f, 0f), 0.42f),
+        (new Vector3(0.16f, 0f, 0.10f), 0.47f),
+        (new Vector3(-0.14f, 0f, 0.12f), 0.45f),
+        (new Vector3(0.09f, 0f, -0.15f), 0.50f),
+        (new Vector3(-0.11f, 0f, -0.11f), 0.44f),
+    };
+
+    private void SpawnCastleVolley(Vector3 from, Vector3 targetPos)
+    {
+        foreach (var (off, flight) in VolleyPattern)
+        {
+            ProjectileView.SpawnArrow(this, from + (off * 0.5f), targetPos + off + new Vector3(0f, 0.15f, 0f), flight);
+        }
     }
 
     // 피해 숫자 팝업 — 위로 떠오르며 사라진다(효과 연출은 후속, 우선 수치 피드백만).
@@ -1886,6 +1910,13 @@ public sealed partial class CampaignMapScene : Node3D
                 var sd = _animSiegeDmg[_animSiegeDmgIdx];
                 SpawnDamagePopup(sd.Pos, sd.Damage);
                 _animSiegeDmgIdx++;
+            }
+
+            while (_animArrowIdx < _animArrows.Count && _animArrows[_animArrowIdx].Time <= _animT)
+            {
+                var ar = _animArrows[_animArrowIdx];
+                if (_armyTokens.TryGetValue(ar.TargetUnitId, out var tok)) { SpawnCastleVolley(ar.From, tok.Position); }
+                _animArrowIdx++;
             }
 
             while (_animKillIdx < _animKills.Count && _animKills[_animKillIdx].Time <= _animT)
