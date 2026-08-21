@@ -141,6 +141,8 @@ public sealed partial class CampaignMapScene : Node3D
     private int _depTargetIndex = -1;
     private int _depSelectedUnit = -1; // 허브에서 선택된 예약 부대(컨트롤 바 대상)
     private CanvasLayer? _targetHintLayer;
+    private HexCoord? _pendingTargetHex;   // 목표 클릭 후 '확인' 대기 중인 목적지(아직 미확정)
+    private Button _targetConfirmBtn = null!;
 
     // 모달 드래그.
     private bool _dragging;
@@ -602,7 +604,18 @@ public sealed partial class CampaignMapScene : Node3D
         if ((mb.Position - _leftDownPos).Length() >= 6f) { return; } // 드래그 = 카메라 팬(선택 아님)
 
         // ── 좌'클릭' 처리 ──
-        if (_depTargeting) { ApplyTarget(RayToGround(mb.Position)); return; }
+        // 목표 지정 중: 목적지를 '가리키기'만 하고, 마우스 옆 '확인'을 눌러야 확정된다.
+        if (_depTargeting)
+        {
+            if (RayToGround(mb.Position) is { } th)
+            {
+                _pendingTargetHex = th;
+                _targetConfirmBtn.Position = mb.Position + new Vector2(14f, -8f);
+                _targetConfirmBtn.Visible = true;
+            }
+
+            return;
+        }
 
         if (RayToGround(mb.Position) is not { } hex)
         {
@@ -881,14 +894,22 @@ public sealed partial class CampaignMapScene : Node3D
         pc.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.CenterTop, Control.LayoutPresetMode.KeepSize, 16);
         pc.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 10));
         layer.AddChild(pc);
-        pc.AddChild(MakeLabel("목적지를 클릭하세요  ·  적 성 = 공격  ·  우클릭 취소", 15, GoldBright));
+        pc.AddChild(MakeLabel("목적지 클릭 → '확인'을 눌러 확정  ·  적 성 = 공격  ·  우클릭 취소", 15, GoldBright));
     }
 
     private void FinishTargeting()
     {
         _depTargeting = false;
         _depTargetIndex = -1;
+        _pendingTargetHex = null;
+        _targetConfirmBtn.Visible = false;
         if (_targetHintLayer is not null) { _targetHintLayer.QueueFree(); _targetHintLayer = null; }
+    }
+
+    // 목적지 '확인' — 여기서만 실제 목표가 확정된다(확인 없이 나가면 목표 미지정).
+    private void ConfirmTarget()
+    {
+        if (_pendingTargetHex is { } h) { ApplyTarget(h); }
     }
 
     private void ApplyTarget(HexCoord? hex)
@@ -1119,6 +1140,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OnAdvance()
     {
         if (_advancing) { return; } // 진행 중 재클릭 무시(버튼도 disabled)
+        if (_depTargeting) { FinishTargeting(); } // 목표 지정 중 진행 = 미확정 목표 취소
 
         // 예약된 출전을 진행 시작 시점에 일괄 편성(대기열 → 야전).
         Dbg($"--- ADVANCE week={_week} pending={_pendingDeploys.Count} armiesBefore={_state.Armies.Count} ---");
@@ -1310,6 +1332,16 @@ public sealed partial class CampaignMapScene : Node3D
 
         BuildUnitMenu(layer);
         BuildTerrainCard(layer);
+
+        // 목표 지정 '확인' 버튼 — 목적지 클릭 시 마우스 옆에 떴다가 누르면 확정.
+        var confirmLayer = new CanvasLayer { Layer = 26 };
+        AddChild(confirmLayer);
+        _targetConfirmBtn = MakeButton("✓ 확인", accent: true);
+        _targetConfirmBtn.AddThemeFontSizeOverride("font_size", 13);
+        _targetConfirmBtn.CustomMinimumSize = new Vector2(70, 30);
+        _targetConfirmBtn.Visible = false;
+        _targetConfirmBtn.Pressed += ConfirmTarget;
+        confirmLayer.AddChild(_targetConfirmBtn);
 
         _confirm = new ConfirmationDialog { Title = "명령 확인" };
         _confirm.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 16));
@@ -1776,13 +1808,15 @@ public sealed partial class CampaignMapScene : Node3D
             var tname = tmpl?.Name ?? rq.TroopCode;
             var vname = _state.Generals.First(g => g.Id == rq.Vanguard).Name;
 
+            var cell = new Control { CustomMinimumSize = new Vector2(104, 118) };
             var tile = new PanelContainer
             {
-                CustomMinimumSize = new Vector2(104, 118),
                 MouseFilter = Control.MouseFilterEnum.Stop,
                 MouseDefaultCursorShape = Control.CursorShape.PointingHand,
             };
+            tile.SetAnchorsPreset(Control.LayoutPreset.FullRect);
             tile.AddThemeStyleboxOverride("panel", CardBox(gi == _depSelectedUnit));
+            cell.AddChild(tile);
             var tv = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
             tv.AddThemeConstantOverride("separation", 2);
             tile.AddChild(tv);
@@ -1807,7 +1841,25 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { _depSelectedUnit = idx; OpenDeployHub(); }
             };
-            grid.AddChild(tile);
+
+            // 우측 상단 X — 이 예약을 바로 취소.
+            var xbtn = MakeButton("✕");
+            xbtn.AddThemeFontSizeOverride("font_size", 11);
+            xbtn.CustomMinimumSize = new Vector2(20, 20);
+            xbtn.SetAnchorsPreset(Control.LayoutPreset.TopRight);
+            xbtn.OffsetLeft = -22;
+            xbtn.OffsetTop = 2;
+            xbtn.OffsetRight = -2;
+            xbtn.OffsetBottom = 22;
+            xbtn.Pressed += () =>
+            {
+                _pendingDeploys.RemoveAt(idx);
+                if (_depSelectedUnit == idx) { _depSelectedUnit = -1; }
+                SelectCity(_depModalCity);
+                OpenDeployHub();
+            };
+            cell.AddChild(xbtn);
+            grid.AddChild(cell);
         }
 
         // ＋ 타일 — 그리드의 다음 칸에 자연스럽게 이어짐(6칸 채우면 다음 줄).
