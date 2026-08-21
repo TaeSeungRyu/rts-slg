@@ -75,6 +75,9 @@ public partial class MapView3D : Node3D
         WaterTopY = MeasureTopY(_water);
     }
 
+    /// <summary>지형별 타일 모델(UI 미리보기용). 없으면 null.</summary>
+    public PackedScene? TileScene(TerrainType terrain) => _tiles.TryGetValue(terrain, out var s) ? s : null;
+
     private static float MeasureTopY(PackedScene scene)
     {
         var probe = scene.Instantiate<Node3D>();

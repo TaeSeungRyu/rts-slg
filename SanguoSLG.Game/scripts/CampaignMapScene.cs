@@ -74,6 +74,14 @@ public sealed partial class CampaignMapScene : Node3D
     private int _selectedUnitId = -1;
     private bool _leftDown;            // 좌클릭 vs 좌드래그(맵 이동) 구분용
     private Vector2 _leftDownPos;
+
+    // 지형 정보 카드(클릭 지점 위에 떠오름 — 상단 3D 에셋+이름, 하단 정보).
+    private PanelContainer _terrainCard = null!;
+    private SubViewport _terrainViewport = null!;
+    private Node3D _terrainHolder = null!;
+    private Label _terrainName = null!;
+    private VBoxContainer _terrainInfo = null!;
+    private HexCoord? _terrainHex;
     private OptionButton? _paramSel;
     private ConfirmationDialog _confirm = null!;
     private System.Action? _onConfirm;
@@ -626,6 +634,8 @@ public sealed partial class CampaignMapScene : Node3D
         _selected = null;
         _infoCard.Visible = false;
         _cmdMenu.Visible = false;
+        _terrainCard.Visible = false;
+        _terrainHex = null;
         PlaceMenu(_unitMenu, u.Field.Position, 60f);
         _unitMenu.Visible = true;
         MoveRing(u.Field.Position);
@@ -679,37 +689,96 @@ public sealed partial class CampaignMapScene : Node3D
         menu.Position = new Vector2(px, py);
     }
 
-    // 맵 바닥 정보 카드(좌표·지형·통행·최근접 아군 성). 성 정보 카드 슬롯을 재사용한다.
+    // 지형 정보 카드 — 클릭 지점 위에 떠오른다. 상단 3D 에셋+이름, 하단 이동·전투 보정.
     private void ShowMapInfo(HexCoord h)
     {
         _selected = null;
         _cmdMenu.Visible = false;
         _unitMenu.Visible = false;
         _selectedUnitId = -1;
-
-        Clear(_infoRows);
-        _infoRows.AddChild(MakeLabel("《 지형 정보 》", 15, GoldBright));
-        var g = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        g.AddThemeConstantOverride("h_separation", 10);
-        g.AddThemeConstantOverride("v_separation", 5);
-        _infoRows.AddChild(g);
-
-        void Row(string k, string v)
-        {
-            g.AddChild(MakeLabel(k, 12, Parchment));
-            g.AddChild(MakeLabel(v, 12, GoldBright));
-        }
+        _infoCard.Visible = false;
 
         var inMap = _map.Contains(h);
-        Row("좌표", $"({h.Q}, {h.R})");
-        Row("지형", inMap ? TerrainName(_passability.TerrainAt(h)) : "맵 밖");
-        Row("통행", inMap && _passability.CanEnter(MovementDomain.Land, h) ? "가능" : "불가");
-        var pcity = _state.Cities.Where(c => c.Owner == Player)
-            .OrderBy(c => c.Position.Distance(h)).FirstOrDefault();
-        if (pcity is not null) { Row("아군 성", $"{pcity.Name} · {pcity.Position.Distance(h)}칸"); }
+        var terrain = inMap ? _passability.TerrainAt(h) : TerrainType.Plains;
 
-        _infoCard.Visible = true;
+        // 상단: 지형 에셋 모델 미리보기(이전 모델 제거 후 교체).
+        foreach (var c in _terrainHolder.GetChildren()) { c.QueueFree(); }
+        if (inMap && _view.TileScene(terrain) is { } scene)
+        {
+            var inst = scene.Instantiate<Node3D>();
+            inst.Position = Vector3.Zero;
+            _terrainHolder.AddChild(inst);
+        }
+
+        _terrainName.Text = inMap ? TerrainName(terrain) : "맵 밖";
+
+        // 하단: 이동·전투 보정.
+        Clear(_terrainInfo);
+        void Row(string k, string v)
+        {
+            var hb = new HBoxContainer();
+            hb.AddThemeConstantOverride("separation", 8);
+            var kl = MakeLabel(k, 11, Parchment);
+            kl.CustomMinimumSize = new Vector2(38, 0);
+            hb.AddChild(kl);
+            var vl = MakeLabel(v, 11, GoldBright);
+            vl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            vl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            hb.AddChild(vl);
+            _terrainInfo.AddChild(hb);
+        }
+
+        Row("좌표", $"({h.Q}, {h.R})");
+        Row("이동", inMap ? MoveCostText(terrain, h) : "통행 불가");
+        var combat = CombatBonusText(terrain);
+        Row("전투", combat.Length > 0 ? combat : "병종 보정 없음");
+
+        _terrainHex = h;
+        PlaceTerrainCard(h);
+        _terrainCard.Visible = true;
         MoveRing(h);
+    }
+
+    // 지형 카드를 클릭한 헥사 화면좌표 '위'에 배치(가운데 정렬, 화면 밖 clamp).
+    private void PlaceTerrainCard(HexCoord h)
+    {
+        var world = _view.HexToWorld(h) + new Vector3(0f, _view.TileTopY + 0.3f, 0f);
+        var screen = _camera.UnprojectPosition(world);
+        var sz = _terrainCard.GetCombinedMinimumSize();
+        var vp = GetViewport().GetVisibleRect().Size;
+        var px = Mathf.Clamp(screen.X - sz.X / 2f, 8f, System.Math.Max(8f, vp.X - sz.X - 8f));
+        var py = Mathf.Clamp(screen.Y - sz.Y - 14f, 8f, System.Math.Max(8f, vp.Y - sz.Y - 8f));
+        _terrainCard.Position = new Vector2(px, py);
+    }
+
+    // 이동 비용 표기(design-movement 지형 패널티). 소형산·늪·소하천 = 2, 통행 불가 = 표시, 그 외 1.
+    private string MoveCostText(TerrainType t, HexCoord h)
+    {
+        if (!_passability.CanEnter(MovementDomain.Land, h)) { return "통행 불가"; }
+        return t is TerrainType.Mountain or TerrainType.Swamp or TerrainType.River
+            ? "2칸 (지형 패널티)"
+            : "1칸";
+    }
+
+    // 병종별 전투 보정(TerrainCombatBonus). 보정 있는 병종만 나열.
+    private static string CombatBonusText(TerrainType t)
+    {
+        var parts = new List<string>();
+        foreach (var (cls, name) in new[]
+        {
+            (TroopClass.Infantry, "보병"), (TroopClass.Archer, "궁병"),
+            (TroopClass.Cavalry, "기병"), (TroopClass.Elephant, "상병"),
+        })
+        {
+            var (atk, df) = TerrainCombatBonus.For(cls, t);
+            if (atk == 0 && df == 0) { continue; }
+            var s = name + " ";
+            if (atk != 0) { s += $"공+{atk} "; }
+            if (df != 0) { s += $"방+{df}"; }
+            parts.Add(s.Trim());
+        }
+
+        return string.Join(", ", parts);
     }
 
     private static string TerrainName(TerrainType t) => t switch
@@ -1153,6 +1222,7 @@ public sealed partial class CampaignMapScene : Node3D
         _cmdList.AddChild(deployBtn);
 
         BuildUnitMenu(layer);
+        BuildTerrainCard(layer);
 
         _confirm = new ConfirmationDialog { Title = "명령 확인" };
         _confirm.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 16));
@@ -1160,6 +1230,51 @@ public sealed partial class CampaignMapScene : Node3D
         layer.AddChild(_confirm);
 
         HidePanels();
+    }
+
+    // 지형 정보 카드: 상단 = 지형 3D 에셋 미리보기 + 한글 이름, 하단 = 이동·전투 보정.
+    private void BuildTerrainCard(CanvasLayer layer)
+    {
+        _terrainCard = new PanelContainer { Visible = false, ZIndex = 60 };
+        _terrainCard.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 10));
+        _terrainCard.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
+        layer.AddChild(_terrainCard);
+
+        var box = new VBoxContainer { CustomMinimumSize = new Vector2(160, 0) };
+        box.AddThemeConstantOverride("separation", 4);
+        _terrainCard.AddChild(box);
+
+        // 상단: 지형 에셋 3D 미리보기(자체 월드 SubViewport).
+        var svc = new SubViewportContainer { Stretch = true, CustomMinimumSize = new Vector2(160, 120), MouseFilter = Control.MouseFilterEnum.Ignore };
+        box.AddChild(svc);
+        _terrainViewport = new SubViewport
+        {
+            Size = new Vector2I(160, 120),
+            RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
+            TransparentBg = true,
+            World3D = new World3D(),
+        };
+        svc.AddChild(_terrainViewport);
+        var cam = new Camera3D { Fov = 38f };
+        cam.Position = new Vector3(0f, 1.7f, 2.1f);
+        cam.LookAt(new Vector3(0f, 0.15f, 0f), Vector3.Up);
+        _terrainViewport.AddChild(cam);
+        var key = new DirectionalLight3D { LightEnergy = 1.3f };
+        key.RotationDegrees = new Vector3(-50f, -35f, 0f);
+        _terrainViewport.AddChild(key);
+        var fill = new DirectionalLight3D { LightEnergy = 0.5f };
+        fill.RotationDegrees = new Vector3(-25f, 140f, 0f);
+        _terrainViewport.AddChild(fill);
+        _terrainHolder = new Node3D();
+        _terrainViewport.AddChild(_terrainHolder);
+
+        _terrainName = MakeLabel("", 15, GoldBright);
+        _terrainName.HorizontalAlignment = HorizontalAlignment.Center;
+        box.AddChild(_terrainName);
+        box.AddChild(GoldRule());
+        _terrainInfo = new VBoxContainer();
+        _terrainInfo.AddThemeConstantOverride("separation", 2);
+        box.AddChild(_terrainInfo);
     }
 
     // 유닛 명령 팔레트 — 성 팔레트와 같은 개념(작은 떠있는 패널). 지금은 '정보'만 동작하고
@@ -1261,6 +1376,8 @@ public sealed partial class CampaignMapScene : Node3D
         _cmdMenu.Visible = false;
         _unitMenu.Visible = false;
         _selectedUnitId = -1;
+        _terrainCard.Visible = false;
+        _terrainHex = null;
         if (_ring is not null) { _ring.Visible = false; }
     }
 
@@ -1270,6 +1387,8 @@ public sealed partial class CampaignMapScene : Node3D
         _cmdIndex = -1;
         _unitMenu.Visible = false;
         _selectedUnitId = -1;
+        _terrainCard.Visible = false;
+        _terrainHex = null;
         var c = _state.Cities.First(x => x.Id == id);
         var troops = _state.Garrisons.Where(g => g.City == id).Select(g => $"{g.TroopCode} {g.Troops}");
         var officers = _state.GeneralsAt(id).Select(g => _state.Generals.First(x => x.Id == g).Name);
@@ -1345,6 +1464,8 @@ public sealed partial class CampaignMapScene : Node3D
             if (u is not null) { PlaceMenu(_unitMenu, u.Field.Position, 60f); }
             else { _unitMenu.Visible = false; }
         }
+
+        if (_terrainCard.Visible && _terrainHex is { } th) { PlaceTerrainCard(th); }
 
         if (_dragging && _dragPanel is not null)
         {
