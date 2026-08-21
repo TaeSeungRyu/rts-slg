@@ -572,18 +572,75 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
-        var hex = RayToGround(click.Position);
-        var city = hex is { } h ? _state.Cities.FirstOrDefault(c => c.Position == h) : null;
-        if (city is not null && city.Owner == Player)
-        {
-            SelectCity(city.Id);
-        }
-        else
+        if (RayToGround(click.Position) is not { } hex)
         {
             _selected = null;
             HidePanels();
+            return;
         }
+
+        var city = _state.Cities.FirstOrDefault(c => c.Position == hex);
+        if (city is not null)
+        {
+            if (city.Owner == Player) { SelectCity(city.Id); }
+            else { _selected = null; HidePanels(); }
+            return;
+        }
+
+        // 빈 바닥 클릭 → 맵(지형) 정보.
+        ShowMapInfo(hex);
     }
+
+    // 맵 바닥 정보 카드(좌표·지형·통행·최근접 아군 성). 성 정보 카드 슬롯을 재사용한다.
+    private void ShowMapInfo(HexCoord h)
+    {
+        _selected = null;
+        _cmdMenu.Visible = false;
+
+        Clear(_infoRows);
+        _infoRows.AddChild(MakeLabel("《 지형 정보 》", 15, GoldBright));
+        var g = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        g.AddThemeConstantOverride("h_separation", 10);
+        g.AddThemeConstantOverride("v_separation", 5);
+        _infoRows.AddChild(g);
+
+        void Row(string k, string v)
+        {
+            g.AddChild(MakeLabel(k, 12, Parchment));
+            g.AddChild(MakeLabel(v, 12, GoldBright));
+        }
+
+        var inMap = _map.Contains(h);
+        Row("좌표", $"({h.Q}, {h.R})");
+        Row("지형", inMap ? TerrainName(_passability.TerrainAt(h)) : "맵 밖");
+        Row("통행", inMap && _passability.CanEnter(MovementDomain.Land, h) ? "가능" : "불가");
+        var pcity = _state.Cities.Where(c => c.Owner == Player)
+            .OrderBy(c => c.Position.Distance(h)).FirstOrDefault();
+        if (pcity is not null) { Row("아군 성", $"{pcity.Name} · {pcity.Position.Distance(h)}칸"); }
+
+        _infoCard.Visible = true;
+        MoveRing(h);
+    }
+
+    private static string TerrainName(TerrainType t) => t switch
+    {
+        TerrainType.Plains => "평지",
+        TerrainType.Forest => "숲",
+        TerrainType.Mountain => "산",
+        TerrainType.Desert => "사막",
+        TerrainType.River => "강(소하천)",
+        TerrainType.Bridge => "다리",
+        TerrainType.WaterShallow => "얕은 물",
+        TerrainType.WaterDeep => "깊은 물",
+        TerrainType.Rocks => "바위",
+        TerrainType.RockHill => "돌언덕",
+        TerrainType.WaterRocks => "물속 바위",
+        TerrainType.Paddy => "논",
+        TerrainType.Farm => "밭",
+        TerrainType.Workshop => "공방",
+        TerrainType.RockMountain => "바위산",
+        _ => t.ToString(),
+    };
 
     // ── 목표 지정 ──
     private void BeginTargeting(int idx)
