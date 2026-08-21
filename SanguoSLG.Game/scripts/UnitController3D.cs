@@ -1705,6 +1705,17 @@ public partial class UnitController3D : Node3D
     // 편대를 세우고 편대원마다 애니메이션 대상 부위를 이름으로 수집한다.
     // 부위 이름 규약: 보병은 tools/blender/infantry_common.py, 기병은 make_troop_cavalry.py.
     // 다시 불러도 되도록 만들었다 — 병종 전환(T)이 이 함수를 재실행한다.
+    private int _formationSize = TroopCount;
+
+    /// <summary>편대원 수(1·3·5·7·9)를 바꾼다 — 병력 규모 표현(design-ui §3). 바뀌면 토큰을 다시 세운다.</summary>
+    public void SetFormationSize(int count)
+    {
+        var clamped = System.Array.IndexOf(TroopFormation.Sizes, count) >= 0 ? count : TroopCount;
+        if (clamped == _formationSize) { return; }
+        _formationSize = clamped;
+        BuildToken();
+    }
+
     private void BuildToken()
     {
         _members.Clear();
@@ -1714,7 +1725,7 @@ public partial class UnitController3D : Node3D
         _tokenRoot = new Node3D();
         AddChild(_tokenRoot);
         var (modelFile, solo, _) = TroopModels[_troopIndex];
-        TroopFormation.Build(_tokenRoot, GD.Load<PackedScene>(modelFile), solo ? 1 : TroopCount);
+        TroopFormation.Build(_tokenRoot, GD.Load<PackedScene>(modelFile), solo ? 1 : _formationSize);
 
         var index = 0;
         foreach (var child in _tokenRoot.GetChildren())

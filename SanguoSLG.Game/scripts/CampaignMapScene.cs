@@ -60,6 +60,14 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId, HexCoord To)> _animSteps = new();
     private int _animAtkIdx;
     private readonly List<(double Time, int UnitId, Vector3 FaceTo)> _animAttacks = new(); // 교전·공성 공격 모션
+    private int _animUpdIdx;
+    private readonly List<(double Time, int UnitId, int Troops)> _animUpdates = new(); // 병력 갱신(라벨·편대 규모)
+    private int _animKillIdx;
+    private readonly List<(double Time, int UnitId)> _animKills = new(); // 전멸·입성 — 토큰 즉시 제거
+
+    // 병력 → 편대원 수(design-ui §3): 9천↑=9, 7천↑=7, 5천↑=5, 3천↑=3, 그 밑=1.
+    private static int FormationFor(int troops) =>
+        troops >= 9000 ? 9 : troops >= 7000 ? 7 : troops >= 5000 ? 5 : troops >= 3000 ? 3 : 1;
     private GameState _pendingState = null!;
     private string _pendingNote = "";
     private AdvanceButton _advanceBtn = null!;
@@ -220,7 +228,7 @@ public sealed partial class CampaignMapScene : Node3D
         SpawnHover();
         BuildHud();
         BuildPanel();
-        camera.Setup(_view.HexToWorld(new HexCoord(4, 2)), 12f);
+        camera.Setup(_view.HexToWorld(new HexCoord(4, 2)), 14f);
         Redraw("자기 성(파란색)을 클릭해 명령을 내리세요. 적(촉)은 AI입니다.");
     }
 
@@ -1080,7 +1088,8 @@ public sealed partial class CampaignMapScene : Node3D
             [new(3, 4)] = TerrainType.Swamp, [new(4, 3)] = TerrainType.Swamp,
             [new(1, 0)] = TerrainType.Karst, [new(0, 5)] = TerrainType.Cliff, [new(9, 0)] = TerrainType.RockMountain,
         };
-        return new HexMap(0, 9, 0, 5, t);
+        // 사방 +2칸 — 성 보급 반경(3칸)이 지도 안에 온전히 보이도록.
+        return new HexMap(-2, 11, -2, 7, t);
     }
 
     private static readonly IReadOnlyList<City> _cities = new List<City>
@@ -1245,6 +1254,8 @@ public sealed partial class CampaignMapScene : Node3D
         _animT = 0;
         _animStepIdx = 0;
         _animAtkIdx = 0;
+        _animUpdIdx = 0;
+        _animKillIdx = 0;
         _advanceBtn.Busy = true;
         _advanceBtn.Progress = 0f;
         _dayLabel.Visible = true;
@@ -1257,6 +1268,9 @@ public sealed partial class CampaignMapScene : Node3D
     {
         _animSteps.Clear();
         _animAttacks.Clear();
+        _animUpdates.Clear();
+        _animKills.Clear();
+        var alive = new HashSet<int>(startHex.Keys);
         var prev = new Dictionary<int, HexCoord>(startHex);
         var movesInDay = new Dictionary<(int, int), int>();
         var dayOffset = 0;
@@ -1280,11 +1294,29 @@ public sealed partial class CampaignMapScene : Node3D
             var stopDay = dayOffset + System.Math.Max(1, turn.Movement.Days);
             var atkTime = ((stopDay - 1) * DaySeconds) + 3.15; // 그날 이동(≤3초)이 끝난 뒤
             ScheduleAttackMotions(turn, atkTime);
+
+            // 이 조각의 정산 반영: 병력 갱신(라벨·편대 규모) + 전멸/입성 부대 즉시 제거.
+            var settleTime = atkTime + 0.55; // 공격 모션이 보인 뒤
+            var survivors = new HashSet<int>();
+            foreach (var u in turn.Units)
+            {
+                survivors.Add(u.Id.Value);
+                _animUpdates.Add((settleTime, u.Id.Value, u.Pool.Active));
+            }
+
+            foreach (var id in alive.Where(id => !survivors.Contains(id)).OrderBy(id => id))
+            {
+                _animKills.Add((settleTime, id));
+            }
+
+            alive = survivors;
             dayOffset = stopDay;
         }
 
         _animSteps.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animAttacks.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animUpdates.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animKills.Sort((a, b) => a.Time.CompareTo(b.Time));
     }
 
     // 이 진행 조각에서 공격한 부대의 모션 예약: 야전 교전(피해를 준 부대 → 최근접 적 방향)
@@ -1744,6 +1776,22 @@ public sealed partial class CampaignMapScene : Node3D
                 var a = _animAttacks[_animAtkIdx];
                 if (_armyTokens.TryGetValue(a.UnitId, out var tok)) { tok.FaceToward(a.FaceTo); tok.PlayAttackMotion(); }
                 _animAtkIdx++;
+            }
+
+            while (_animUpdIdx < _animUpdates.Count && _animUpdates[_animUpdIdx].Time <= _animT)
+            {
+                var u = _animUpdates[_animUpdIdx];
+                if (_armyTokens.TryGetValue(u.UnitId, out var tok)) { tok.SetFormationSize(FormationFor(u.Troops)); }
+                if (_armyLabels.TryGetValue(u.UnitId, out var lbl)) { lbl.Text = $"{u.Troops}"; }
+                _animUpdIdx++;
+            }
+
+            while (_animKillIdx < _animKills.Count && _animKills[_animKillIdx].Time <= _animT)
+            {
+                var k = _animKills[_animKillIdx];
+                if (_armyTokens.Remove(k.UnitId, out var tok)) { tok.QueueFree(); }
+                if (_armyLabels.Remove(k.UnitId, out var lbl)) { lbl.QueueFree(); }
+                _animKillIdx++;
             }
 
             var day = System.Math.Min(AnimDays, (int)(_animT / DaySeconds) + 1);
@@ -3052,6 +3100,7 @@ public sealed partial class CampaignMapScene : Node3D
                 token = new UnitController3D();
                 AddChild(token);
                 token.InitDisplay(_view, color, troopIndex: 0, army.Field.Position); // 0 = 도검병
+                token.SetFormationSize(FormationFor(army.Pool.Active));
 
                 var lbl = new Label3D
                 {
@@ -3066,6 +3115,7 @@ public sealed partial class CampaignMapScene : Node3D
                 _armyLabels[army.Id.Value] = lbl;
             }
 
+            token.SetFormationSize(FormationFor(army.Pool.Active)); // 병력 규모 → 편대원 수(1·3·5·7·9)
             token.DisplayStepTo(army.Field.Position, 0.3f);
             var lblNode = _armyLabels[army.Id.Value];
             lblNode.Position = _view.HexToWorld(army.Field.Position) + new Vector3(0f, _view.TileTopY + 1.1f, 0f);
