@@ -171,7 +171,7 @@ dotnet test
 | [design-administration.md](doc/design-administration.md) | 내정 — 도시 속성·시간 축·수입·명령·세율·시설·약탈 규칙·출전/입성/함락 훅 |
 | [design-terrain.md](doc/design-terrain.md) | 지형 종류·타일 배치 |
 | [design-effect.md](doc/design-effect.md) | 시각 효과 계획(구현 O/X 표 포함) |
-| [design-ui.md](doc/design-ui.md) | UI 개선 4건 계획(미구현) |
+| [design-ui.md](doc/design-ui.md) | 게임 UI 상호작용 5건 — 현황은 문서 상단 요약(구현/부분/미구현) 참조 |
 | [design-water.md](doc/design-water.md) | 소하천/대하 표현 |
 | [spec-unit.md](doc/spec-unit.md) | 병종 11종 확정 스탯·모델·이동/사거리 데이터 |
 | [spec-general.md](doc/spec-general.md) | 무장 스탯·특기 슬롯 사양 |
