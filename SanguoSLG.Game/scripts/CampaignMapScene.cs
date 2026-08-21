@@ -658,12 +658,13 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
-        // 유닛 클릭 → 유닛 명령 팔레트(같은 칸에 겹치면 아군·id 우선).
+        // 유닛 클릭 → 유닛 명령 팔레트(같은 칸에 겹치면 아군·id 우선). 같은 유닛 재클릭 = 닫기.
         var unit = _state.Armies.Where(u => u.Field.Position == hex)
             .OrderBy(u => u.Field.Owner == Player ? 0 : 1).ThenBy(u => u.Id.Value)
             .FirstOrDefault();
         if (unit is not null)
         {
+            if (_unitMenu.Visible && _selectedUnitId == unit.Id.Value) { HidePanels(); return; }
             OpenUnitMenu(unit);
             return;
         }
@@ -671,12 +672,18 @@ public sealed partial class CampaignMapScene : Node3D
         var city = _state.Cities.FirstOrDefault(c => c.Position == hex);
         if (city is not null)
         {
-            if (city.Owner == Player) { SelectCity(city.Id); }
+            // 같은 성 재클릭 = 닫기.
+            if (city.Owner == Player)
+            {
+                if (_cmdMenu.Visible && _selected == city.Id) { _selected = null; HidePanels(); return; }
+                SelectCity(city.Id);
+            }
             else { _selected = null; HidePanels(); }
             return;
         }
 
-        // 빈 바닥 클릭 → 맵(지형) 정보.
+        // 빈 바닥 클릭 → 맵(지형) 정보. 같은 타일 재클릭 = 닫기.
+        if (_terrainCard.Visible && _terrainHex == hex) { HidePanels(); return; }
         ShowMapInfo(hex);
     }
 
@@ -1348,6 +1355,13 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 survivors.Add(u.Id.Value);
                 _animUpdates.Add((settleTime, u.Id.Value, u.Pool.Active));
+
+                // 패주 강제 후퇴(PushAway) 등 이동 틱에 안 잡히는 위치 변화 동기화.
+                if (prev.TryGetValue(u.Id.Value, out var lastPos) && lastPos != u.Field.Position)
+                {
+                    _animSteps.Add((settleTime, u.Id.Value, u.Field.Position));
+                    prev[u.Id.Value] = u.Field.Position;
+                }
             }
 
             // 공성 교환(이 조각 소속): 성 피해(성벽+수비) 팝업 + 부대별 반격 피해 팝업.
@@ -3276,7 +3290,7 @@ public sealed partial class CampaignMapScene : Node3D
             token.DisplayStepTo(army.Field.Position, 0.3f);
             var lblNode = _armyLabels[army.Id.Value];
             lblNode.Position = _view.HexToWorld(army.Field.Position) + new Vector3(0f, _view.TileTopY + 1.1f, 0f);
-            lblNode.Text = $"{army.Pool.Active}";
+            lblNode.Text = army.Routed ? $"{army.Pool.Active} 패주" : $"{army.Pool.Active}";
             lblNode.Visible = army.Field.Owner == Player; // 병력 수는 아군만 표시(적은 편대 규모로 가늠)
         }
 
