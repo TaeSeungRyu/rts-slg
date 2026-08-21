@@ -1251,20 +1251,27 @@ public sealed partial class CampaignMapScene : Node3D
         {
             Size = new Vector2I(160, 120),
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
-            TransparentBg = true,
-            World3D = new World3D(),
+            OwnWorld3D = true, // 자체 3D 월드 — 없으면 메인 씬 월드를 봐 빈 화면이 된다
         };
         svc.AddChild(_terrainViewport);
-        var cam = new Camera3D { Fov = 38f };
+        _terrainViewport.AddChild(new WorldEnvironment
+        {
+            Environment = new Godot.Environment
+            {
+                BackgroundMode = Godot.Environment.BGMode.Color,
+                BackgroundColor = new Color(0.09f, 0.07f, 0.06f),
+                AmbientLightSource = Godot.Environment.AmbientSource.Color,
+                AmbientLightColor = new Color(0.78f, 0.78f, 0.82f),
+                AmbientLightEnergy = 0.9f,
+            },
+        });
+        var cam = new Camera3D { Fov = 40f, Current = true };
         cam.Position = new Vector3(0f, 1.7f, 2.1f);
         cam.LookAt(new Vector3(0f, 0.15f, 0f), Vector3.Up);
         _terrainViewport.AddChild(cam);
-        var key = new DirectionalLight3D { LightEnergy = 1.3f };
-        key.RotationDegrees = new Vector3(-50f, -35f, 0f);
+        var key = new DirectionalLight3D { LightEnergy = 1.4f };
+        key.RotationDegrees = new Vector3(-55f, -35f, 0f);
         _terrainViewport.AddChild(key);
-        var fill = new DirectionalLight3D { LightEnergy = 0.5f };
-        fill.RotationDegrees = new Vector3(-25f, 140f, 0f);
-        _terrainViewport.AddChild(fill);
         _terrainHolder = new Node3D();
         _terrainViewport.AddChild(_terrainHolder);
 
