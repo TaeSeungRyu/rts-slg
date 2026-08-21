@@ -220,7 +220,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         foreach (var u in after.Armies.OrderBy(u => u.Id.Value))
         {
-            Dbg($"  army u{u.Id.Value} owner={u.Field.Owner.Value} {u.TroopCode} pos=({u.Field.Position.Q},{u.Field.Position.R}) troops={u.Pool.Active}(wounded {u.Pool.Wounded}) mode={u.Field.Mode} tgt={(u.Field.Target is { } t2 ? $"({t2.Q},{t2.R})" : "none")} prov={u.Provisions} morale={u.Morale} routed={u.Routed} van={U(u.VanguardId)} adj={U(u.AdjutantId)}");
+            Dbg($"  army u{u.Id.Value} owner={u.Field.Owner.Value} {u.TroopCode} pos=({u.Field.Position.Q},{u.Field.Position.R}) troops={u.Pool.Active}(wounded {u.Pool.Wounded}) mode={u.Field.Mode} tgt={(u.Field.Target is { } t2 ? $"({t2.Q},{t2.R})" : "none")} prov={u.Provisions} morale={u.Morale} van={U(u.VanguardId)} adj={U(u.AdjutantId)}");
         }
     }
 
@@ -804,7 +804,7 @@ public sealed partial class CampaignMapScene : Node3D
         Row("병력", $"{u.Pool.Active}");
         Row("선봉", van ?? "—");
         Row("부관", adj ?? "—");
-        Row("사기", $"{u.Morale}{(u.Routed ? " (패주)" : "")}");
+        Row("사기", $"{u.Morale}");
         Row("훈련", $"{u.Training}");
         Row("모드", ModeName(u.Field.Mode));
         Row("목표", u.Field.Target is { } t ? $"({t.Q}, {t.R})" : "없음");
@@ -1433,7 +1433,7 @@ public sealed partial class CampaignMapScene : Node3D
                 survivors.Add(u.Id.Value);
                 _animUpdates.Add((settleTime, u.Id.Value, u.Pool.Active));
 
-                // 패주 강제 후퇴(PushAway) 등 이동 틱에 안 잡히는 위치 변화 동기화.
+                // 교란 강제 후퇴(PushAway) 등 이동 틱에 안 잡히는 위치 변화 동기화.
                 if (prev.TryGetValue(u.Id.Value, out var lastPos) && lastPos != u.Field.Position)
                 {
                     _animSteps.Add((settleTime, u.Id.Value, u.Field.Position));
@@ -3368,7 +3368,7 @@ public sealed partial class CampaignMapScene : Node3D
             token.DisplayStepTo(army.Field.Position, 0.3f);
             var lblNode = _armyLabels[army.Id.Value];
             lblNode.Position = _view.HexToWorld(army.Field.Position) + new Vector3(0f, _view.TileTopY + 1.1f, 0f);
-            lblNode.Text = army.Routed ? $"{army.Pool.Active} 패주" : $"{army.Pool.Active}";
+            lblNode.Text = $"{army.Pool.Active}";
             lblNode.Visible = army.Field.Owner == Player; // 병력 수는 아군만 표시(적은 편대 규모로 가늠)
         }
 

@@ -8,7 +8,7 @@ using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
-/// <summary>사기·훈련(design-unit-state 2·3단계) — 공/방 배수, 증감, 패주.</summary>
+/// <summary>사기·훈련(design-unit-state 2·3단계) — 공/방 배수, 증감. 패주 없음(2026-08-21 폐지).</summary>
 public class MoraleTests
 {
     private static readonly IReadOnlyDictionary<string, TroopTemplate> T =
@@ -19,14 +19,14 @@ public class MoraleTests
             new CombatPhaseResolver(new BattleResolver(60), 70));
 
     private static CombatUnit Sword(int id, int owner, HexCoord pos, UnitMode mode = UnitMode.Attack,
-        HexCoord? target = null, int morale = 50, int training = 50, bool routed = false, int troops = 10000)
+        HexCoord? target = null, int morale = 50, int training = 50, int troops = 10000)
     {
         var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos, 2, 2, 1,
             MovementDomain.Land, mode, target, id);
         var stats = CombatStatsBuilder.BuildField(T["swordsman"], AptitudeGrade.A, 0, TerrainType.River, troops);
         return new CombatUnit(field, stats, new TroopPool(troops, 0), UnitCombatState.Create(60),
             60, 60, troops, TroopClass.Infantry, Provisions: -1, ProvisionsCapacity: 300, IsSupply: false,
-            Morale: morale, Training: training, Routed: routed);
+            Morale: morale, Training: training);
     }
 
     private static int DamageWith(int morale, int training)
@@ -84,42 +84,16 @@ public class MoraleTests
     }
 
     [Fact]
-    public void 사기가_임계밑이면_패주하고_적반대로_후퇴한다()
+    public void 사기가_바닥이어도_패주하지_않고_계속_싸운다()
     {
-        // 사기 5 부대가 인접 적에게서 강제 후퇴(공격 못 함). 패주 유지.
-        var routed = Sword(1, 1, new HexCoord(5, 0), mode: UnitMode.Attack, target: new HexCoord(5, 0),
-            morale: 5, routed: true);
-        var enemy = Sword(2, 2, new HexCoord(6, 0), mode: UnitMode.March);
-        var turn = Orchestrator().Run(new[] { routed, enemy });
+        // 패주 폐지(2026-08-21): 사기 0 부대도 명령이 없으면 병력 0까지 싸운다(공격·반격 정상).
+        var weak = Sword(1, 1, new HexCoord(5, 0), mode: UnitMode.Attack, target: new HexCoord(6, 0), morale: 0);
+        var enemy = Sword(2, 2, new HexCoord(6, 0), mode: UnitMode.Attack, target: new HexCoord(5, 0));
 
-        var r = turn.Units.Single(u => u.Id.Value == 1);
-        Assert.True(r.Field.Position.Distance(new HexCoord(6, 0)) > 1, "적에게서 멀어져 후퇴");
-        Assert.True(r.Routed);                       // 아직 패주(사기<40)
-        Assert.Null(turn.Combat);                    // 패주 부대는 공격 안 함
-    }
+        var turn = Orchestrator().Run(new[] { weak, enemy });
 
-    [Fact]
-    public void 패주한_부대는_명령_목표가_취소된다()
-    {
-        // 패주하면 목표를 지운다 — 도망친 뒤 사기를 회복해도 스스로 다시 진군하지 않는다.
-        var routed = Sword(1, 1, new HexCoord(5, 0), mode: UnitMode.March, target: new HexCoord(10, 0),
-            morale: 5, routed: true);
-        var turn = Orchestrator().Run(new[] { routed });
-
-        var u = turn.Units.Single();
-        Assert.True(u.Routed);
-        Assert.Null(u.Field.Target);
-    }
-
-    [Fact]
-    public void 패주는_사기가_회복임계_이상이면_해제된다()
-    {
-        // 사기 38 패주 부대가 무전투 휴식(+2) → 40 도달 → 패주 해제.
-        var r = Sword(1, 1, new HexCoord(0, 0), mode: UnitMode.March, target: new HexCoord(0, 0),
-            morale: 38, routed: true);
-        var turn = Orchestrator().Run(new[] { r });
-        var u = turn.Units.Single();
-        Assert.Equal(40, u.Morale);
-        Assert.False(u.Routed);
+        Assert.NotNull(turn.Combat);
+        Assert.True(turn.Combat!.DamageDealt.ContainsKey(new UnitId(1)), "사기 0이어도 공격한다");
+        Assert.Equal(new HexCoord(5, 0), turn.Units.Single(u => u.Id.Value == 1).Field.Position);
     }
 }

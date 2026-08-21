@@ -23,7 +23,6 @@ public sealed record CombatUnit(
     bool IsSupply = false,
     int Morale = 50,
     int Training = 50,
-    bool Routed = false,
     string TroopCode = "",
     GeneralId? VanguardId = null,
     GeneralId? AdjutantId = null,

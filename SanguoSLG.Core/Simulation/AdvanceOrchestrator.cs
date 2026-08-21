@@ -64,9 +64,6 @@ public sealed class AdvanceOrchestrator
         // (상태 tick이 진행 중간에 남은 진행을 줄여도, 그 진행의 효과는 온전히 적용).
         var dazedAtStart = units.Where(IsDazed).Select(u => u.Id).ToHashSet();
 
-        // 패주(사기<임계) 부대 — 이번 진행 공격 불가·강제 후퇴(적 반대). 진행 시작 스냅샷으로 판정.
-        var routedAtStart = units.Where(u => u.Routed).Select(u => u.Id).ToHashSet();
-
         // 1) 이동 — 진행 정지까지. 걸린 상태(혼란=행동불가, 수공=이동−1)를 이동 입력에 반영한다.
         var move = _movement.Advance(units.Select(MovementField).ToList(), maxDays, castles);
         var moved = move.Units.ToDictionary(f => f.Id);
@@ -76,7 +73,7 @@ public sealed class AdvanceOrchestrator
         var enteredIds = move.EnteredCastle.ToHashSet();
         var enteredCastle = units
             .Where(u => enteredIds.Contains(u.Id))
-            .Select(u => u with { State = u.State.ReturnToCastle(), Morale = 100, Routed = false })
+            .Select(u => u with { State = u.State.ReturnToCastle(), Morale = 100 })
             .ToList();
 
         // 2) 위치만 갱신(임시 이동 스탯은 버림) + 경과일만큼 발동 상태 진행(야전 가정).
@@ -140,24 +137,6 @@ public sealed class AdvanceOrchestrator
             }
         }
 
-        // 2.7) 패주 강제 후퇴(design-unit-state 2단계): 패주 부대를 가장 가까운 적 반대로 밀어낸다.
-        foreach (var id in routedAtStart.OrderBy(x => x.Value))
-        {
-            if (!state.TryGetValue(id, out var u) || u.Pool.Active <= 0)
-            {
-                continue;
-            }
-
-            var enemy = state.Values
-                .Where(o => o.Field.Owner != u.Field.Owner && o.Pool.Active > 0)
-                .OrderBy(o => o.Field.Position.Distance(u.Field.Position)).ThenBy(o => o.Id.Value)
-                .FirstOrDefault();
-            if (enemy is not null)
-            {
-                PushAway(state, id, enemy.Field.Position, 2);
-            }
-        }
-
         // 3) 계략 발동 — 예약이 발동일에 도달하면 대상 유효성으로 발동/캔슬. 즉발·지속 피해, 디버프,
         //    정화, 강제 후퇴(교란)를 여기서 적용한다. 발동 부대는 이번 교전 공격을 하지 않는다.
         //    후퇴가 위치를 바꾸므로 교전 탐지보다 먼저 발동한다.
@@ -168,14 +147,13 @@ public sealed class AdvanceOrchestrator
         //    부대는 공격자에서 뺀다(피격·방어는 정상).
         var engagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList())
             .Where(e => !firedStratagems.ContainsKey(e.Attacker)
-                && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker]))
-                && !routedAtStart.Contains(e.Attacker)) // 패주 부대는 공격 못 한다(피격·방어는 정상)
+                && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker])))
             .ToList();
 
         if (engagements.Count == 0)
         {
             SyncCargo(state);
-            var moraleOnly = ApplyMoraleAndRout(state, startTroops, NoEngagements, combat: null, starvation);
+            var moraleOnly = ApplyMorale(state, startTroops, NoEngagements, combat: null, starvation);
             var reinforcedOnly = Reinforce(state);
             return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, moraleOnly, reinforcedOnly);
         }
@@ -233,8 +211,8 @@ public sealed class AdvanceOrchestrator
         // 5.5) 보급부대 균일 피해 분배 — 이 진행의 손실(전투·DoT·굶주림)을 병종 구성에 반영.
         SyncCargo(state);
 
-        // 6) 사기 증감·패주 전이(전투 이후) — design-unit-state 2단계.
-        var moraleChange = ApplyMoraleAndRout(state, startTroops, engagements, combat, starvation);
+        // 6) 사기 증감(전투 이후) — design-unit-state 2단계. 패주 없음(2026-08-21 폐지).
+        var moraleChange = ApplyMorale(state, startTroops, engagements, combat, starvation);
 
         // 7) 병력보충(교전 정산이 끝난 뒤) — design-unit-state "병력보충 명령".
         var reinforced = Reinforce(state);
@@ -329,9 +307,9 @@ public sealed class AdvanceOrchestrator
 
     private static readonly IReadOnlyList<UnitEngagement> NoEngagements = new List<UnitEngagement>();
 
-    // 사기 증감·패주(design-unit-state 2단계): 피해율↓ / 교전 우세·격파↑ / 굶주림↓ / 무전투 휴식↑.
-    // 그 뒤 사기<임계면 패주 진입, ≥회복 임계면 해제(히스테리시스). 생존 부대만. 결정론: id 순.
-    private Dictionary<UnitId, int> ApplyMoraleAndRout(Dictionary<UnitId, CombatUnit> state,
+    // 사기 증감(design-unit-state 2단계): 피해율↓ / 교전 우세·격파↑ / 굶주림↓ / 무전투 휴식↑.
+    // 패주 없음(2026-08-21 폐지) — 부대는 별도 명령이 없으면 병력 0까지 싸운다. 결정론: id 순.
+    private Dictionary<UnitId, int> ApplyMorale(Dictionary<UnitId, CombatUnit> state,
         Dictionary<UnitId, int> startTroops, IReadOnlyList<UnitEngagement> engagements,
         CombatPhaseResult? combat, Dictionary<UnitId, int> starvation)
     {
@@ -377,11 +355,7 @@ public sealed class AdvanceOrchestrator
             }
 
             var morale = System.Math.Clamp(u.Morale + delta, 0, 100);
-            var routed = morale < _morale.RoutThreshold || (u.Routed && morale < _morale.RoutRecover);
-            // 패주하면 명령(목표)을 취소한다 — 도망친 부대가 사기를 회복해도 스스로 다시
-            // 진군하지 않는다(2026-08-20 사용자 결정). 재출동은 플레이어가 다시 명령한다.
-            var field = routed ? u.Field with { Target = null } : u.Field;
-            state[id] = u with { Morale = morale, Routed = routed, Field = field };
+            state[id] = u with { Morale = morale };
             if (delta != 0)
             {
                 changes[id] = delta;
@@ -399,8 +373,8 @@ public sealed class AdvanceOrchestrator
     // 수공(이동−1)은 속도를 깎는다(최소 1). 실제 Field는 위치만 되받아 보존한다.
     private static FieldUnit MovementField(CombatUnit u)
     {
-        // 패주·행동불가(혼란)는 목표를 향한 전진을 멈춘다(패주는 이후 적 반대로 강제 후퇴).
-        if (IsDazed(u) || u.Routed)
+        // 행동불가(혼란)는 목표를 향한 전진을 멈춘다.
+        if (IsDazed(u))
         {
             return u.Field with { Mode = UnitMode.Advance, Target = null, Speed = 0 };
         }

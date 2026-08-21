@@ -59,7 +59,6 @@ public class DeployServiceTests
         Assert.Equal("swordsman", u.TroopCode);
         Assert.Equal(60, u.Training);
         Assert.Equal(100, u.Morale); // 갓 편성 = 사기 만땅(입성의 거울)
-        Assert.False(u.Routed);
         Assert.Equal(new GeneralId(1), u.VanguardId);
         Assert.Equal(city.Position, u.Field.Position);
         Assert.Equal(300, u.Provisions);
