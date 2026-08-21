@@ -70,6 +70,8 @@ public sealed partial class CampaignMapScene : Node3D
     private VBoxContainer _infoRows = null!;
     private PanelContainer _cmdMenu = null!;
     private VBoxContainer _cmdList = null!;
+    private PanelContainer _unitMenu = null!; // 유닛 명령 팔레트(모양 위주 — 정보만 동작)
+    private int _selectedUnitId = -1;
     private OptionButton? _paramSel;
     private ConfirmationDialog _confirm = null!;
     private System.Action? _onConfirm;
@@ -579,6 +581,16 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
+        // 유닛 클릭 → 유닛 명령 팔레트(같은 칸에 겹치면 아군·id 우선).
+        var unit = _state.Armies.Where(u => u.Field.Position == hex)
+            .OrderBy(u => u.Field.Owner == Player ? 0 : 1).ThenBy(u => u.Id.Value)
+            .FirstOrDefault();
+        if (unit is not null)
+        {
+            OpenUnitMenu(unit);
+            return;
+        }
+
         var city = _state.Cities.FirstOrDefault(c => c.Position == hex);
         if (city is not null)
         {
@@ -591,11 +603,73 @@ public sealed partial class CampaignMapScene : Node3D
         ShowMapInfo(hex);
     }
 
+    // 유닛 팔레트 열기 — 성 팔레트처럼 유닛 화면좌표 옆에 띄운다.
+    private void OpenUnitMenu(CombatUnit u)
+    {
+        _selectedUnitId = u.Id.Value;
+        _selected = null;
+        _infoCard.Visible = false;
+        _cmdMenu.Visible = false;
+        PlaceMenu(_unitMenu, u.Field.Position, 60f);
+        _unitMenu.Visible = true;
+        MoveRing(u.Field.Position);
+    }
+
+    // 유닛 상태를 정보 카드에 표시(팔레트 '정보').
+    private void ShowUnitInfo(int unitId)
+    {
+        var u = _state.Armies.FirstOrDefault(a => a.Id.Value == unitId);
+        if (u is null) { return; }
+
+        var tmpl = _troops.FirstOrDefault(t => t.Code == u.TroopCode);
+        var faction = _state.Factions.FirstOrDefault(f => f.Id == u.Field.Owner);
+        var van = u.VanguardId is { } vid ? _state.Generals.FirstOrDefault(g => g.Id == vid)?.Name : null;
+        var adj = u.AdjutantId is { } aid ? _state.Generals.FirstOrDefault(g => g.Id == aid)?.Name : null;
+
+        Clear(_infoRows);
+        _infoRows.AddChild(MakeLabel($"《 {tmpl?.Name ?? u.TroopCode} 》 {faction?.Name}", 15, GoldBright));
+        var g = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        g.AddThemeConstantOverride("h_separation", 10);
+        g.AddThemeConstantOverride("v_separation", 5);
+        _infoRows.AddChild(g);
+
+        void Row(string k, string v)
+        {
+            g.AddChild(MakeLabel(k, 12, Parchment));
+            g.AddChild(MakeLabel(v, 12, GoldBright));
+        }
+
+        Row("병력", $"{u.Pool.Active}");
+        Row("주장", van ?? "—");
+        Row("부장", adj ?? "—");
+        Row("사기", $"{u.Morale}{(u.Routed ? " (패주)" : "")}");
+        Row("훈련", $"{u.Training}");
+        Row("모드", ModeName(u.Field.Mode));
+        Row("목표", u.Field.Target is { } t ? $"({t.Q}, {t.R})" : "없음");
+        Row("군량", u.TracksProvisions ? $"{u.Provisions}" : "무한");
+
+        _infoCard.Visible = true;
+    }
+
+    // 메뉴를 지정 헥사의 화면좌표 우측에 배치(화면 밖 clamp).
+    private void PlaceMenu(PanelContainer menu, HexCoord at, float offsetX)
+    {
+        var world = _view.HexToWorld(at) + new Vector3(0f, _view.TileTopY, 0f);
+        var screen = _camera.UnprojectPosition(world);
+        var sz = menu.GetCombinedMinimumSize();
+        var vp = GetViewport().GetVisibleRect().Size;
+        var px = Mathf.Clamp(screen.X + offsetX, 8f, System.Math.Max(8f, vp.X - sz.X - 8f));
+        var py = Mathf.Clamp(screen.Y - sz.Y * 0.5f, 8f, System.Math.Max(8f, vp.Y - sz.Y - 8f));
+        menu.Position = new Vector2(px, py);
+    }
+
     // 맵 바닥 정보 카드(좌표·지형·통행·최근접 아군 성). 성 정보 카드 슬롯을 재사용한다.
     private void ShowMapInfo(HexCoord h)
     {
         _selected = null;
         _cmdMenu.Visible = false;
+        _unitMenu.Visible = false;
+        _selectedUnitId = -1;
 
         Clear(_infoRows);
         _infoRows.AddChild(MakeLabel("《 지형 정보 》", 15, GoldBright));
@@ -1062,12 +1136,53 @@ public sealed partial class CampaignMapScene : Node3D
         deployBtn.Pressed += () => { if (_selected is { } c) { OpenDeployModal(c); } };
         _cmdList.AddChild(deployBtn);
 
+        BuildUnitMenu(layer);
+
         _confirm = new ConfirmationDialog { Title = "명령 확인" };
         _confirm.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 16));
         _confirm.Confirmed += () => _onConfirm?.Invoke();
         layer.AddChild(_confirm);
 
         HidePanels();
+    }
+
+    // 유닛 명령 팔레트 — 성 팔레트와 같은 개념(작은 떠있는 패널). 지금은 '정보'만 동작하고
+    // 이동(행군/전진/공격)·계략은 모양만(기능 미배선).
+    private void BuildUnitMenu(CanvasLayer layer)
+    {
+        _unitMenu = new PanelContainer { Visible = false, ZIndex = 50 };
+        _unitMenu.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 5, 4));
+        layer.AddChild(_unitMenu);
+        var menu = new VBoxContainer();
+        menu.AddThemeConstantOverride("separation", 1);
+        _unitMenu.AddChild(menu);
+
+        Button Item(string label, bool accent = false)
+        {
+            var b = MakeButton(label, accent: accent);
+            b.AddThemeFontSizeOverride("font_size", 11);
+            b.Alignment = HorizontalAlignment.Center;
+            b.CustomMinimumSize = new Vector2(74, 21);
+            return b;
+        }
+
+        menu.AddChild(MakeLabel("· 정보", 10, GoldBright));
+        var info = Item("정보", accent: true);
+        info.Pressed += () => { if (_selectedUnitId >= 0) { ShowUnitInfo(_selectedUnitId); } };
+        menu.AddChild(info);
+
+        menu.AddChild(MakeLabel("· 이동", 10, GoldBright));
+        foreach (var m in new[] { "행군", "전진", "공격" })
+        {
+            var b = Item(m);
+            b.Pressed += () => { _log.Text = $"(준비 중) 유닛 {m} 명령"; }; // 모양만 — 기능 미배선
+            menu.AddChild(b);
+        }
+
+        menu.AddChild(MakeLabel("· 계략", 10, GoldBright));
+        var strat = Item("계략");
+        strat.Pressed += () => { _log.Text = "(준비 중) 유닛 계략"; }; // 모양만
+        menu.AddChild(strat);
     }
 
 
@@ -1128,6 +1243,8 @@ public sealed partial class CampaignMapScene : Node3D
     {
         _infoCard.Visible = false;
         _cmdMenu.Visible = false;
+        _unitMenu.Visible = false;
+        _selectedUnitId = -1;
         if (_ring is not null) { _ring.Visible = false; }
     }
 
@@ -1135,6 +1252,8 @@ public sealed partial class CampaignMapScene : Node3D
     {
         _selected = id;
         _cmdIndex = -1;
+        _unitMenu.Visible = false;
+        _selectedUnitId = -1;
         var c = _state.Cities.First(x => x.Id == id);
         var troops = _state.Garrisons.Where(g => g.City == id).Select(g => $"{g.TroopCode} {g.Troops}");
         var officers = _state.GeneralsAt(id).Select(g => _state.Generals.First(x => x.Id == g).Name);
@@ -1202,6 +1321,13 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var c = _state.Cities.FirstOrDefault(x => x.Id == sel);
             if (c is not null) { PlacePalette(c.Position); }
+        }
+
+        if (_unitMenu.Visible && _selectedUnitId >= 0)
+        {
+            var u = _state.Armies.FirstOrDefault(a => a.Id.Value == _selectedUnitId);
+            if (u is not null) { PlaceMenu(_unitMenu, u.Field.Position, 60f); }
+            else { _unitMenu.Visible = false; }
         }
 
         if (_dragging && _dragPanel is not null)
