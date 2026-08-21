@@ -66,6 +66,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId)> _animKills = new(); // 전멸·입성 — 토큰 즉시 제거
     private int _animDmgIdx;
     private readonly List<(double Time, int UnitId, int Damage)> _animDmg = new(); // 교전 피해 팝업
+    private int _animSiegeDmgIdx;
+    private readonly List<(double Time, Vector3 Pos, int Damage)> _animSiegeDmg = new(); // 성 피해 팝업(성벽+수비)
 
     // 병력 → 편대원 수(design-ui §3): 9천↑=9, 7천↑=7, 5천↑=5, 3천↑=3, 그 밑=1.
     private static int FormationFor(int troops) =>
@@ -688,6 +690,13 @@ public sealed partial class CampaignMapScene : Node3D
         PlaceMenu(_unitMenu, u.Field.Position, 60f);
         _unitMenu.Visible = true;
         MoveRing(u.Field.Position);
+
+        // 아군 부대를 클릭했을 때만 그 부대의 이동 경로를 표시.
+        ClearPathMarkers();
+        if (u.Field.Owner == Player && u.Field.Target is { } tgt && tgt != u.Field.Position)
+        {
+            AddPathDots(u.Field.Position, tgt, _pathMarkers);
+        }
     }
 
     // 유닛 상태를 정보 카드에 표시(팔레트 '정보').
@@ -746,6 +755,7 @@ public sealed partial class CampaignMapScene : Node3D
         _unitMenu.Visible = false;
         _selectedUnitId = -1;
         _infoCard.Visible = false;
+        ClearPathMarkers();
 
         var inMap = _map.Contains(h);
         var terrain = inMap ? _passability.TerrainAt(h) : TerrainType.Plains;
@@ -956,7 +966,7 @@ public sealed partial class CampaignMapScene : Node3D
             _pendingDeploys[idx] = (req with { Target = h, Mode = mode }, label);
             Dbg($"TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode}");
             var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
-            _log.Text = $"목표 → {tName}{(enemyCity is not null ? " (공격모드)" : "")} · 경로 표시됨(출전으로 이어서 편성)";
+            _log.Text = $"목표 → {tName}{(enemyCity is not null ? " (공격모드)" : "")} · 목표 확정";
         }
 
         // 목표를 정하면 지도 뷰로 돌아가 경로를 바로 보여준다(허브 모달로 가리지 않는다).
@@ -1015,11 +1025,17 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
-    // ── 경로 프리뷰: 예약 부대의 성→목표 경로를 지도에 점으로 ──
-    private void DrawDeployPaths()
+    private void ClearPathMarkers()
     {
         foreach (var m in _pathMarkers) { m.QueueFree(); }
         _pathMarkers.Clear();
+    }
+
+    // ── 경로 프리뷰: 예약 부대의 성→목표 경로 — 편성(허브/편성) 모달이 열려 있는 동안만 표시 ──
+    private void DrawDeployPaths()
+    {
+        ClearPathMarkers();
+        if (_modalLayer is null) { return; } // 편성 중이 아니면 경로를 지도에 남기지 않는다
 
         foreach (var (req, _) in _pendingDeploys)
         {
@@ -1255,7 +1271,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         _pendingState = after;
         _pendingNote = note.Count > 0 ? string.Join(" · ", note) : "—";
-        BuildAnimation(startHex, turns);
+        BuildAnimation(startHex, turns, sieges);
 
         // 애니메이션 시작: 이동 전 상태(토큰=시작 위치)를 그린 뒤, _Process가 칸 단위로 이동시킨다.
         // 열려 있던 성 명령 팔레트·정보 카드는 자동으로 닫는다(진행 중 명령 불가).
@@ -1268,6 +1284,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animUpdIdx = 0;
         _animKillIdx = 0;
         _animDmgIdx = 0;
+        _animSiegeDmgIdx = 0;
         _advanceBtn.Busy = true;
         _advanceBtn.Progress = 0f;
         _dayLabel.Visible = true;
@@ -1276,19 +1293,22 @@ public sealed partial class CampaignMapScene : Node3D
 
     // 진행 결과의 이동 틱을 "언제 어느 칸으로" 스텝 목록으로 편다. 한 칸 = 1초, 하루 = 4초 슬롯
     // (하루의 마지막 1초는 공격 모션 몫). 교전·공성이 벌어진 진행 조각의 끝에 공격 모션을 스케줄.
-    private void BuildAnimation(Dictionary<int, HexCoord> startHex, IReadOnlyList<AdvanceTurn> turns)
+    private void BuildAnimation(Dictionary<int, HexCoord> startHex, IReadOnlyList<AdvanceTurn> turns,
+        IReadOnlyList<SiegeExchange> sieges)
     {
         _animSteps.Clear();
         _animAttacks.Clear();
         _animUpdates.Clear();
         _animKills.Clear();
         _animDmg.Clear();
+        _animSiegeDmg.Clear();
         var alive = new HashSet<int>(startHex.Keys);
         var prev = new Dictionary<int, HexCoord>(startHex);
         var movesInDay = new Dictionary<(int, int), int>();
         var dayOffset = 0;
-        foreach (var turn in turns)
+        for (var ti = 0; ti < turns.Count; ti++)
         {
+            var turn = turns[ti];
             foreach (var tick in turn.Movement.Ticks)
             {
                 var absDay = dayOffset + tick.Day;
@@ -1326,6 +1346,28 @@ public sealed partial class CampaignMapScene : Node3D
                 _animUpdates.Add((settleTime, u.Id.Value, u.Pool.Active));
             }
 
+            // 공성 교환(이 조각 소속): 성 피해(성벽+수비) 팝업 + 부대별 반격 피해 팝업.
+            // 반격으로 전멸한 공성 부대는 이 시점에 병력 갱신/제거(다음 조각을 기다리지 않는다).
+            foreach (var ex in sieges.Where(x => x.TurnIndex == ti))
+            {
+                var cityPos = _view.HexToWorld(_cities.First(c => c.Id == ex.City).Position)
+                    + new Vector3(0f, _view.TileTopY, 0f);
+                var cityDmg = ex.WallDamage + ex.TroopDamage;
+                if (cityDmg > 0) { _animSiegeDmg.Add((atkTime + 0.35, cityPos, cityDmg)); }
+                if (ex.BesiegerDamage is not { } counters) { continue; }
+                for (var i = 0; i < ex.Besiegers.Count && i < counters.Count; i++)
+                {
+                    if (counters[i] <= 0) { continue; }
+                    var uid = ex.Besiegers[i].Value;
+                    _animDmg.Add((atkTime + 0.35, uid, counters[i]));
+                    var unit = turn.Units.FirstOrDefault(x => x.Id.Value == uid);
+                    if (unit is null) { continue; }
+                    var remain = unit.Pool.Active - counters[i]; // 근사 표시(부상 회수 제외)
+                    if (remain <= 0) { _animKills.Add((settleTime + 0.05, uid)); alive.Remove(uid); }
+                    else { _animUpdates.Add((settleTime + 0.05, uid, remain)); }
+                }
+            }
+
             foreach (var id in alive.Where(id => !survivors.Contains(id)).OrderBy(id => id))
             {
                 _animKills.Add((settleTime, id));
@@ -1340,6 +1382,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animUpdates.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animKills.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animSiegeDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
     }
 
     // 피해 숫자 팝업 — 위로 떠오르며 사라진다(효과 연출은 후속, 우선 수치 피드백만).
@@ -1705,6 +1748,7 @@ public sealed partial class CampaignMapScene : Node3D
         _selectedUnitId = -1;
         _terrainCard.Visible = false;
         _terrainHex = null;
+        ClearPathMarkers();
         if (_ring is not null) { _ring.Visible = false; }
     }
 
@@ -1716,6 +1760,7 @@ public sealed partial class CampaignMapScene : Node3D
         _selectedUnitId = -1;
         _terrainCard.Visible = false;
         _terrainHex = null;
+        if (_modalLayer is null) { ClearPathMarkers(); }
         var c = _state.Cities.First(x => x.Id == id);
         var troops = _state.Garrisons.Where(g => g.City == id).Select(g => $"{g.TroopCode} {g.Troops}");
         var officers = _state.GeneralsAt(id).Select(g => _state.Generals.First(x => x.Id == g).Name);
@@ -1834,6 +1879,13 @@ public sealed partial class CampaignMapScene : Node3D
                 var d = _animDmg[_animDmgIdx];
                 if (_armyTokens.TryGetValue(d.UnitId, out var tok)) { SpawnDamagePopup(tok.Position, d.Damage); }
                 _animDmgIdx++;
+            }
+
+            while (_animSiegeDmgIdx < _animSiegeDmg.Count && _animSiegeDmg[_animSiegeDmgIdx].Time <= _animT)
+            {
+                var sd = _animSiegeDmg[_animSiegeDmgIdx];
+                SpawnDamagePopup(sd.Pos, sd.Damage);
+                _animSiegeDmgIdx++;
             }
 
             while (_animKillIdx < _animKills.Count && _animKills[_animKillIdx].Time <= _animT)
@@ -1975,6 +2027,7 @@ public sealed partial class CampaignMapScene : Node3D
         _vanTree = null;
         _depEditIndex = -1;
         _depTarget = null;
+        ClearPathMarkers(); // 편성이 닫히면 예약 경로도 지도에서 지운다
     }
 
     // ── 출전 모달: 병종 + 선봉(+부관) 선택 → 대기 병력을 야전 부대로 편성 ──
@@ -2162,6 +2215,7 @@ public sealed partial class CampaignMapScene : Node3D
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
+        DrawDeployPaths(); // 편성 중에만 예약 경로 표시(삭제·수정 즉시 반영)
     }
 
     // ── 편성 화면: 병종·수량·선봉/부관 → 저장(신규 추가 / 기존 수정) ──

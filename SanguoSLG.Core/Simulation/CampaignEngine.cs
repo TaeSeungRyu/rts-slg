@@ -91,7 +91,8 @@ public sealed class CampaignEngine
                 var result = _siege.Resolve(armies, work.Cities, work.Garrisons);
                 armies = result.Armies.Where(u => u.Pool.Active > 0).ToList();
                 work = work with { Cities = result.Cities, GarrisonForces = result.Garrisons };
-                siegeReports.AddRange(result.Exchanges);
+                // 어느 진행 조각의 공성인지 스탬프 — 표현 계층의 재생 타이밍용.
+                siegeReports.AddRange(result.Exchanges.Select(e => e with { TurnIndex = reports.Count - 1 }));
             }
 
             // 약탈(design-administration "시설 파괴·약탈") — 포위군이 진행마다 시설 1개 파괴·노획.

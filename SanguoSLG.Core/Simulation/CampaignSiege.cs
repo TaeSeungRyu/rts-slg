@@ -10,13 +10,17 @@ using SanguoSLG.Core.Spatial;
 /// <param name="NewWall">교환 후 남은 성벽.</param>
 /// <param name="TroopDamage">수비 병력 손실(성벽 초과분·붕괴 직격).</param>
 /// <param name="Besiegers">공성에 가담한 부대(입력 순서).</param>
+/// <param name="BesiegerDamage">부대별 성 반격 피해(<paramref name="Besiegers"/>와 같은 순서). 표현 계층 연출용.</param>
+/// <param name="TurnIndex">이 교환이 속한 진행 조각(AdvanceTurn) 인덱스 — 재생 타이밍용(-1 = 미지정).</param>
 public sealed record SiegeExchange(
     CityId City,
     bool WallStanding,
     int WallDamage,
     int NewWall,
     int TroopDamage,
-    IReadOnlyList<UnitId> Besiegers);
+    IReadOnlyList<UnitId> Besiegers,
+    IReadOnlyList<int>? BesiegerDamage = null,
+    int TurnIndex = -1);
 
 /// <summary>
 /// 캠페인 공성(design-combat "성 전투"). 이동이 성 접적으로 멈춘 뒤 한 진행마다 1회 교환: 성벽을
@@ -91,9 +95,11 @@ public sealed class CampaignSiege
                 DistributeDefenderLoss(garr, defenders, outcome.TroopDamage, defendTroops);
             }
 
+            var counters = new List<int>(besiegers.Count);
             for (var i = 0; i < besiegers.Count; i++)
             {
                 var counter = outcome.CounterDamage[i];
+                counters.Add(counter);
                 if (counter <= 0)
                 {
                     continue;
@@ -104,7 +110,7 @@ public sealed class CampaignSiege
             }
 
             exchanges.Add(new SiegeExchange(city.Id, outcome.WallStanding, outcome.WallDamage,
-                outcome.NewWall, outcome.TroopDamage, besiegers.Select(u => u.Id).ToList()));
+                outcome.NewWall, outcome.TroopDamage, besiegers.Select(u => u.Id).ToList(), counters));
         }
 
         return new Result(
