@@ -141,7 +141,7 @@ public sealed partial class CampaignMapScene : Node3D
     private Label? _depPreview;
     private readonly List<(Button Btn, UnitMode Mode)> _depModeButtons = new();
     private Label? _depModeDesc;
-    private Tree? _vanTree;              // 장수 편성 표(주장·부장 체크 + 정렬·내부 스크롤)
+    private Tree? _vanTree;              // 장수 편성 표(선봉·부관 체크 + 정렬·내부 스크롤)
     private List<GeneralId> _composeFree = new();
     private int _vanSortCol = 2;         // 2 이름 / 3 무 / 4 지 / 5 정 / 6 적성·특성
     private bool _vanSortAsc = true;
@@ -715,8 +715,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         Row("병력", $"{u.Pool.Active}");
-        Row("주장", van ?? "—");
-        Row("부장", adj ?? "—");
+        Row("선봉", van ?? "—");
+        Row("부관", adj ?? "—");
         Row("사기", $"{u.Morale}{(u.Routed ? " (패주)" : "")}");
         Row("훈련", $"{u.Training}");
         Row("모드", ModeName(u.Field.Mode));
@@ -2120,7 +2120,7 @@ public sealed partial class CampaignMapScene : Node3D
             var strain = _state.Garrisons.FirstOrDefault(g => g.City == city && g.TroopCode == srq.TroopCode)?.TrainingLevel ?? 0;
             var stgt = srq.Target is { } tg ? "→ " + (_state.Cities.FirstOrDefault(c => c.Position == tg)?.Name ?? $"({tg.Q},{tg.R})") : "목표 미지정(성 앞 대기)";
             box.AddChild(GoldRule());
-            box.AddChild(MakeLabel($"◈ {stmpl?.Name ?? srq.TroopCode} {srq.Troops}명 · 주장 {svan} · 훈련 {strain} · {stgt}", 13, GoldBright));
+            box.AddChild(MakeLabel($"◈ {stmpl?.Name ?? srq.TroopCode} {srq.Troops}명 · 선봉 {svan} · 훈련 {strain} · {stgt}", 13, GoldBright));
 
             var modeRow = new HBoxContainer();
             modeRow.AddThemeConstantOverride("separation", 6);
@@ -2321,10 +2321,10 @@ public sealed partial class CampaignMapScene : Node3D
         _depModeDesc.CustomMinimumSize = new Vector2(mw - 60f, 0); // autowrap 최소높이 과대 추정 → 하단 여백 방지
         box.AddChild(_depModeDesc);
 
-        // 3) 장수 편성 표 — 주장·부장 체크 컬럼 + 정렬(고정 높이·내부 스크롤).
+        // 3) 장수 편성 표 — 선봉·부관 체크 컬럼 + 정렬(고정 높이·내부 스크롤).
         _composeFree = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value).ToList();
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("장수 편성 (주장 필수 · 부장 선택 · 상단 눌러 정렬)", 13, GoldBright));
+        box.AddChild(MakeLabel("장수 편성 (선봉 필수 · 부관 선택 · 상단 눌러 정렬)", 13, GoldBright));
         _vanTree = new Tree
         {
             Columns = 7,
@@ -2338,7 +2338,7 @@ public sealed partial class CampaignMapScene : Node3D
         _vanTree.AddThemeFontSizeOverride("font_size", 13);
         _vanTree.AddThemeFontOverride("title_button_font", _font);
         _vanTree.AddThemeFontSizeOverride("title_button_font_size", 12);
-        foreach (var (col, t) in new[] { (0, "주장"), (1, "부장") })
+        foreach (var (col, t) in new[] { (0, "선봉"), (1, "부관") })
         {
             _vanTree.SetColumnTitle(col, t);
             _vanTree.SetColumnExpand(col, false);
@@ -2403,7 +2403,7 @@ public sealed partial class CampaignMapScene : Node3D
                 : System.Math.Clamp(rq.Provisions * 10000 / System.Math.Max(1, rq.Troops * _provPer10kPerDay), 0, capDays);
             if (_depProvSlider is { } ps) { ps.MaxValue = capDays; ps.Value = _depProvDays; }
 
-            PopulateVanTree(); // 주장·부장 체크 반영
+            PopulateVanTree(); // 선봉·부관 체크 반영
         }
 
         RestyleDeploy();
@@ -2573,7 +2573,7 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var (card, code) in _depTroopCards) { card.AddThemeStyleboxOverride("panel", CardBox(code == _depTroop)); }
     }
 
-    // 장수 편성 표 채우기(정렬 상태 반영). 0=주장 체크, 1=부장 체크, 메타데이터에 GeneralId.
+    // 장수 편성 표 채우기(정렬 상태 반영). 0=선봉 체크, 1=부관 체크, 메타데이터에 GeneralId.
     private void PopulateVanTree()
     {
         if (_vanTree is null) { return; }
@@ -2610,7 +2610,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
-    // 주장/부장 체크 토글 처리 — 주장은 1명(라디오처럼), 부장은 선택·주장과 달라야 한다.
+    // 선봉/부관 체크 토글 처리 — 선봉은 1명(라디오처럼), 부관은 선택·선봉과 달라야 한다.
     private void OnRosterEdited()
     {
         if (_vanTree is null) { return; }
@@ -2635,7 +2635,7 @@ public sealed partial class CampaignMapScene : Node3D
                 if (id == _depVan)
                 {
                     it.SetChecked(1, false);
-                    if (_depPreview is not null) { _depPreview.Text = "부장은 주장과 다른 장수여야 합니다."; }
+                    if (_depPreview is not null) { _depPreview.Text = "부관은 선봉과 다른 장수여야 합니다."; }
                     return;
                 }
 
