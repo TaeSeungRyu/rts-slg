@@ -784,14 +784,14 @@ public sealed partial class CampaignMapScene : Node3D
 
         // 하단: 이동·전투 보정.
         Clear(_terrainInfo);
-        void Row(string k, string v)
+        void Row(string k, string v, Color? valueColor = null)
         {
             var hb = new HBoxContainer();
             hb.AddThemeConstantOverride("separation", 8);
             var kl = MakeLabel(k, 11, Parchment);
             kl.CustomMinimumSize = new Vector2(38, 0);
             hb.AddChild(kl);
-            var vl = MakeLabel(v, 11, GoldBright);
+            var vl = MakeLabel(v, 11, valueColor ?? GoldBright);
             vl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             vl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             hb.AddChild(vl);
@@ -802,6 +802,16 @@ public sealed partial class CampaignMapScene : Node3D
         Row("이동", inMap ? MoveCostText(terrain, h) : "통행 불가");
         var combat = CombatBonusText(terrain);
         Row("전투", combat.Length > 0 ? combat : "병종 보정 없음");
+
+        // 아군 성 보급 반경 안이면 표시(초록 타일과 같은 의미 — 이 안에선 성이 군량을 채워준다).
+        var supplier = _cb.CityResupplyRadius > 0 && inMap
+            ? _state.Cities.Where(c => c.Owner == Player && c.Position.Distance(h) <= _cb.CityResupplyRadius)
+                .OrderBy(c => c.Position.Distance(h)).ThenBy(c => c.Id.Value).FirstOrDefault()
+            : null;
+        if (supplier is not null)
+        {
+            Row("보급", $"보급지역 ({supplier.Name}) — 아군 부대 군량 자동 보충", new Color(0.45f, 0.85f, 0.52f));
+        }
 
         _terrainHex = h;
         PlaceTerrainCard(h);
