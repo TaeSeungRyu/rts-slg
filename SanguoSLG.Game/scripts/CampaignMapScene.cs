@@ -106,6 +106,7 @@ public sealed partial class CampaignMapScene : Node3D
     private SpinBox? _depAmountSpin;
     private Label? _depPreview;
     private readonly List<(Button Btn, UnitMode Mode)> _depModeButtons = new();
+    private Label? _depModeDesc;
     private int _depProvDays; // 출전 시 휴대할 군량 일수(슬라이더). 0이면 군량 없이 나감
     private HSlider? _depProvSlider;
     private Label? _depProvLabel;
@@ -1434,6 +1435,9 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             box.AddChild(modeRow);
+            var mdesc = MakeLabel(ModeDesc(srq.Mode), 11, Parchment);
+            mdesc.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            box.AddChild(mdesc);
 
             var actRow = new HBoxContainer();
             actRow.AddThemeConstantOverride("separation", 6);
@@ -1476,6 +1480,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depAmountSpin = null;
         _depPreview = null;
         _depModeButtons.Clear();
+        _depModeDesc = null;
         _depProvDays = 0;
         _depProvSlider = null;
         _depProvLabel = null;
@@ -1605,6 +1610,9 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         box.AddChild(modeRow);
+        _depModeDesc = MakeLabel("", 11, Parchment);
+        _depModeDesc.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        box.AddChild(_depModeDesc);
 
         // 3) 선봉 / 4) 부관
         var free = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value).ToList();
@@ -1870,6 +1878,8 @@ public sealed partial class CampaignMapScene : Node3D
             btn.AddThemeStyleboxOverride("normal", Frame(sel ? AccentFill : InkSoft, sel ? GoldBright : Gold, sel ? 2 : 1, 5, 6));
             btn.AddThemeColorOverride("font_color", sel ? GoldBright : Parchment);
         }
+
+        if (_depModeDesc is not null) { _depModeDesc.Text = ModeDesc(_depMode); }
     }
 
     private static string ModeName(UnitMode m) => m switch
@@ -1878,6 +1888,15 @@ public sealed partial class CampaignMapScene : Node3D
         UnitMode.Advance => "전진",
         UnitMode.Attack => "공격",
         _ => m.ToString(),
+    };
+
+    // 이동 모드 설명(design-movement.md). 목표 지정·모드 선택 UI에 함께 노출.
+    private static string ModeDesc(UnitMode m) => m switch
+    {
+        UnitMode.March => "행군 — 전투를 피해 빠르게 재배치. 멈추지 않고 통과하지만, 사거리를 지나는 동안 반격 없이 큰 피해를 받는다.",
+        UnitMode.Advance => "전진 — 목표로 곧장 간다. 먼저 공격·추격은 하지 않되, 적이 막아서면 그 자리에서 멈춰 정상 쌍방 교전한다.",
+        UnitMode.Attack => "공격 — 탐지한 적을 추격·섬멸한다(원래 목표보다 우선). 적 성은 사거리에서 멈춰 공성한다.",
+        _ => "",
     };
 
     // 명령별 옵션 카드 목록: (표시명, 아이콘, 부가설명).
