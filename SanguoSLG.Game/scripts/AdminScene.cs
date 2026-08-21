@@ -134,7 +134,7 @@ public sealed partial class AdminScene : Control
         _cmdPanel.Visible = false;
         _detailPanel.Visible = false;
 
-        _confirm = new ConfirmationDialog { Title = "확인" };
+        _confirm = new ConfirmationDialog { Title = "확인", OkButtonText = "확인", CancelButtonText = "취소" };
         _confirm.Confirmed += () => _onConfirm?.Invoke();
         AddChild(_confirm);
     }

@@ -84,8 +84,7 @@ public sealed partial class CampaignMapScene : Node3D
     private VBoxContainer _terrainInfo = null!;
     private HexCoord? _terrainHex;
     private OptionButton? _paramSel;
-    private ConfirmationDialog _confirm = null!;
-    private System.Action? _onConfirm;
+    private CanvasLayer? _confirmLayer; // 커스텀 컨펌창(시스템 다이얼로그 대체 — 게임 스타일·한글 버튼)
     private MeshInstance3D? _ring;
     private MeshInstance3D _hover = null!;
     private ImageTexture _blankIcon = null!;
@@ -1137,9 +1136,26 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
+    // 진행 버튼 → 컨펌창(design-ui §4) → 확인 시 7일 재생 시작.
     private void OnAdvance()
     {
         if (_advancing) { return; } // 진행 중 재클릭 무시(버튼도 disabled)
+
+        var deploys = _pendingDeploys.Count;
+        var untargeted = _pendingDeploys.Count(p => p.Req.Target is null);
+        var msg = $"7일을 진행합니다. ({_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일 →)";
+        if (deploys > 0)
+        {
+            msg += $"\n출전 예약 {deploys}부대가 일괄 편성됩니다.";
+            if (untargeted > 0) { msg += $"\n⚠ 목표 미지정 {untargeted}부대는 성 앞에 나와 대기합니다."; }
+        }
+
+        ShowConfirm("진행 확인", msg + "\n\n진행하시겠습니까?", StartAdvance);
+    }
+
+    private void StartAdvance()
+    {
+        if (_advancing) { return; }
         if (_depTargeting) { FinishTargeting(); } // 목표 지정 중 진행 = 미확정 목표 취소
 
         // 예약된 출전을 진행 시작 시점에 일괄 편성(대기열 → 야전).
@@ -1343,12 +1359,62 @@ public sealed partial class CampaignMapScene : Node3D
         _targetConfirmBtn.Pressed += ConfirmTarget;
         confirmLayer.AddChild(_targetConfirmBtn);
 
-        _confirm = new ConfirmationDialog { Title = "명령 확인" };
-        _confirm.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 16));
-        _confirm.Confirmed += () => _onConfirm?.Invoke();
-        layer.AddChild(_confirm);
-
         HidePanels();
+    }
+
+    // 게임 스타일 컨펌창(금테·잉크 + 한글 확인/취소). 배경 클릭·취소 = 닫기만.
+    private void ShowConfirm(string title, string message, System.Action onOk)
+    {
+        _confirmLayer?.QueueFree();
+        var layer = new CanvasLayer { Layer = 40 };
+        AddChild(layer);
+        _confirmLayer = layer;
+
+        void Close() { layer.QueueFree(); if (_confirmLayer == layer) { _confirmLayer = null; } }
+
+        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.55f) };
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        backdrop.MouseFilter = Control.MouseFilterEnum.Stop;
+        backdrop.GuiInput += e =>
+        {
+            if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { Close(); }
+        };
+        layer.AddChild(backdrop);
+
+        var center = new CenterContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        layer.AddChild(center);
+
+        var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop };
+        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
+        panel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
+        center.AddChild(panel);
+
+        var box = new VBoxContainer { CustomMinimumSize = new Vector2(340, 0) };
+        box.AddThemeConstantOverride("separation", 8);
+        panel.AddChild(box);
+
+        var titleLbl = MakeLabel($"◈  {title}", 17, Gold);
+        titleLbl.HorizontalAlignment = HorizontalAlignment.Center;
+        box.AddChild(titleLbl);
+        box.AddChild(GoldRule());
+
+        var msg = MakeLabel(message, 14, Parchment);
+        msg.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        msg.CustomMinimumSize = new Vector2(340, 0);
+        box.AddChild(msg);
+
+        var btnRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        btnRow.AddThemeConstantOverride("separation", 12);
+        box.AddChild(btnRow);
+        var ok = MakeButton("확인", accent: true);
+        ok.CustomMinimumSize = new Vector2(110, 34);
+        ok.Pressed += () => { Close(); onOk(); };
+        btnRow.AddChild(ok);
+        var cancel = MakeButton("취소");
+        cancel.CustomMinimumSize = new Vector2(110, 34);
+        cancel.Pressed += Close;
+        btnRow.AddChild(cancel);
     }
 
     // 지형 정보 카드: 상단 = 지형 3D 에셋 미리보기 + 한글 이름, 하단 = 이동·전투 보정.
@@ -2765,17 +2831,17 @@ public sealed partial class CampaignMapScene : Node3D
             "stratagem" => $" · {Strats[p].Label}",
             _ => "",
         };
-        _confirm.DialogText = $"{_state.Cities.First(c => c.Id == city).Name} — {cmd.Label}{pLabel}{extra}\n수행 장수: {gName}\n\n실행하시겠습니까?";
-        _onConfirm = () =>
-        {
-            var r = _commander.Issue(_state, request);
-            if (r.Ok) { _state = r.State; }
-            _log.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
-            CloseModal();
-            SelectCity(city);
-            Redraw(_log.Text);
-        };
-        _confirm.PopupCentered();
+        ShowConfirm("명령 확인",
+            $"{_state.Cities.First(c => c.Id == city).Name} — {cmd.Label}{pLabel}{extra}\n수행 장수: {gName}\n\n실행하시겠습니까?",
+            () =>
+            {
+                var r = _commander.Issue(_state, request);
+                if (r.Ok) { _state = r.State; }
+                _log.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
+                CloseModal();
+                SelectCity(city);
+                Redraw(_log.Text);
+            });
     }
 
     private void MoveRing(HexCoord at)
