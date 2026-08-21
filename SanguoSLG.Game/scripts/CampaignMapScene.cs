@@ -64,10 +64,22 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId, int Troops)> _animUpdates = new(); // 병력 갱신(라벨·편대 규모)
     private int _animKillIdx;
     private readonly List<(double Time, int UnitId)> _animKills = new(); // 전멸·입성 — 토큰 즉시 제거
+    private int _animDmgIdx;
+    private readonly List<(double Time, int UnitId, int Damage)> _animDmg = new(); // 교전 피해 팝업
 
     // 병력 → 편대원 수(design-ui §3): 9천↑=9, 7천↑=7, 5천↑=5, 3천↑=3, 그 밑=1.
     private static int FormationFor(int troops) =>
         troops >= 9000 ? 9 : troops >= 7000 ? 7 : troops >= 5000 ? 5 : troops >= 3000 ? 3 : 1;
+
+    // 병종 코드 → UnitController3D.TroopModels 인덱스(모델 파일 순서와 일치해야 한다).
+    private static readonly Dictionary<string, int> TroopModelIndex = new()
+    {
+        ["swordsman"] = 0, ["cavalry"] = 1, ["archer"] = 2, ["thunder_cart"] = 3,
+        ["catapult"] = 4, ["siege_tower"] = 5, ["war_elephant"] = 6, ["small_boat"] = 7,
+        ["medium_ship"] = 8, ["large_ship"] = 9, ["geukbyeong"] = 10, ["namman"] = 11,
+        ["deunggap"] = 12, ["mudang"] = 13, ["cataphract"] = 14, ["hwarang"] = 15,
+        ["horse_archer"] = 16, ["turtleship"] = 17, ["waeseon"] = 18,
+    };
     private GameState _pendingState = null!;
     private string _pendingNote = "";
     private AdvanceButton _advanceBtn = null!;
@@ -1256,6 +1268,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animAtkIdx = 0;
         _animUpdIdx = 0;
         _animKillIdx = 0;
+        _animDmgIdx = 0;
         _advanceBtn.Busy = true;
         _advanceBtn.Progress = 0f;
         _dayLabel.Visible = true;
@@ -1270,6 +1283,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animAttacks.Clear();
         _animUpdates.Clear();
         _animKills.Clear();
+        _animDmg.Clear();
         var alive = new HashSet<int>(startHex.Keys);
         var prev = new Dictionary<int, HexCoord>(startHex);
         var movesInDay = new Dictionary<(int, int), int>();
@@ -1295,6 +1309,15 @@ public sealed partial class CampaignMapScene : Node3D
             var atkTime = ((stopDay - 1) * DaySeconds) + 3.15; // 그날 이동(≤3초)이 끝난 뒤
             ScheduleAttackMotions(turn, atkTime);
 
+            // 교전 피해 팝업 — 양측 모두, 공격 모션 직후에 뜬다.
+            if (turn.Combat is { } cbt)
+            {
+                foreach (var (uid, dmg) in cbt.DamageTaken.OrderBy(kv => kv.Key.Value))
+                {
+                    if (dmg > 0) { _animDmg.Add((atkTime + 0.35, uid.Value, dmg)); }
+                }
+            }
+
             // 이 조각의 정산 반영: 병력 갱신(라벨·편대 규모) + 전멸/입성 부대 즉시 제거.
             var settleTime = atkTime + 0.55; // 공격 모션이 보인 뒤
             var survivors = new HashSet<int>();
@@ -1317,6 +1340,27 @@ public sealed partial class CampaignMapScene : Node3D
         _animAttacks.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animUpdates.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animKills.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
+    }
+
+    // 피해 숫자 팝업 — 위로 떠오르며 사라진다(효과 연출은 후속, 우선 수치 피드백만).
+    private void SpawnDamagePopup(Vector3 at, int damage)
+    {
+        var lbl = new Label3D
+        {
+            Text = $"-{damage}",
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            FontSize = 44,
+            OutlineSize = 12,
+            NoDepthTest = true,
+            Modulate = new Color(1f, 0.36f, 0.30f),
+            Position = at + new Vector3(0f, 1.5f, 0f),
+        };
+        AddChild(lbl);
+        var tw = CreateTween();
+        tw.TweenProperty(lbl, "position", lbl.Position + new Vector3(0f, 0.9f, 0f), 1.1f);
+        tw.Parallel().TweenProperty(lbl, "modulate:a", 0f, 1.1f).SetDelay(0.35f);
+        tw.Finished += lbl.QueueFree;
     }
 
     // 이 진행 조각에서 공격한 부대의 모션 예약: 야전 교전(피해를 준 부대 → 최근접 적 방향)
@@ -1543,9 +1587,9 @@ public sealed partial class CampaignMapScene : Node3D
             },
         });
         _terrainCam = new Camera3D { Fov = 40f, Current = true };
+        _terrainViewport.AddChild(_terrainCam); // LookAt은 트리에 들어간 뒤에만 가능
         _terrainCam.Position = new Vector3(0f, 1.7f, 2.1f);
         _terrainCam.LookAt(new Vector3(0f, 0.15f, 0f), Vector3.Up);
-        _terrainViewport.AddChild(_terrainCam);
         var key = new DirectionalLight3D { LightEnergy = 1.4f };
         key.RotationDegrees = new Vector3(-55f, -35f, 0f);
         _terrainViewport.AddChild(key);
@@ -1784,6 +1828,13 @@ public sealed partial class CampaignMapScene : Node3D
                 if (_armyTokens.TryGetValue(u.UnitId, out var tok)) { tok.SetFormationSize(FormationFor(u.Troops)); }
                 if (_armyLabels.TryGetValue(u.UnitId, out var lbl)) { lbl.Text = $"{u.Troops}"; }
                 _animUpdIdx++;
+            }
+
+            while (_animDmgIdx < _animDmg.Count && _animDmg[_animDmgIdx].Time <= _animT)
+            {
+                var d = _animDmg[_animDmgIdx];
+                if (_armyTokens.TryGetValue(d.UnitId, out var tok)) { SpawnDamagePopup(tok.Position, d.Damage); }
+                _animDmgIdx++;
             }
 
             while (_animKillIdx < _animKills.Count && _animKills[_animKillIdx].Time <= _animT)
@@ -3099,7 +3150,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 token = new UnitController3D();
                 AddChild(token);
-                token.InitDisplay(_view, color, troopIndex: 0, army.Field.Position); // 0 = 도검병
+                token.InitDisplay(_view, color, TroopModelIndex.GetValueOrDefault(army.TroopCode, 0), army.Field.Position);
                 token.SetFormationSize(FormationFor(army.Pool.Active));
 
                 var lbl = new Label3D
@@ -3120,6 +3171,7 @@ public sealed partial class CampaignMapScene : Node3D
             var lblNode = _armyLabels[army.Id.Value];
             lblNode.Position = _view.HexToWorld(army.Field.Position) + new Vector3(0f, _view.TileTopY + 1.1f, 0f);
             lblNode.Text = $"{army.Pool.Active}";
+            lblNode.Visible = army.Field.Owner == Player; // 병력 수는 아군만 표시(적은 편대 규모로 가늠)
         }
 
         var counts = _state.Factions.OrderBy(f => f.Id.Value).Select(f =>
