@@ -72,6 +72,8 @@ public sealed partial class CampaignMapScene : Node3D
     private VBoxContainer _cmdList = null!;
     private PanelContainer _unitMenu = null!; // 유닛 명령 팔레트(모양 위주 — 정보만 동작)
     private int _selectedUnitId = -1;
+    private bool _leftDown;            // 좌클릭 vs 좌드래그(맵 이동) 구분용
+    private Vector2 _leftDownPos;
     private OptionButton? _paramSel;
     private ConfirmationDialog _confirm = null!;
     private System.Action? _onConfirm;
@@ -556,25 +558,39 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
-        // 목표 지정 모드: 좌클릭=목적지 설정, 우클릭=취소.
-        if (_depTargeting && @event is InputEventMouseButton { Pressed: true } mb)
-        {
-            if (mb.ButtonIndex == MouseButton.Right) { FinishTargeting(); OpenDeployHub(); return; }
-            if (mb.ButtonIndex == MouseButton.Left)
-            {
-                ApplyTarget(RayToGround(mb.Position));
-                return;
-            }
-
-            return;
-        }
-
-        if (@event is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click)
+        if (@event is not InputEventMouseButton mb)
         {
             return;
         }
 
-        if (RayToGround(click.Position) is not { } hex)
+        // 우클릭: 목표 지정 취소만(맵 이동 아님 — 이동은 좌드래그로).
+        if (mb.ButtonIndex == MouseButton.Right && mb.Pressed)
+        {
+            if (_depTargeting) { FinishTargeting(); OpenDeployHub(); }
+            return;
+        }
+
+        if (mb.ButtonIndex != MouseButton.Left)
+        {
+            return;
+        }
+
+        // 좌클릭 vs 좌드래그(맵 이동) 구분: 눌렀다 뗀 지점 이동량이 작으면 '클릭'.
+        if (mb.Pressed)
+        {
+            _leftDownPos = mb.Position;
+            _leftDown = true;
+            return;
+        }
+
+        if (!_leftDown) { return; }
+        _leftDown = false;
+        if ((mb.Position - _leftDownPos).Length() >= 6f) { return; } // 드래그 = 카메라 팬(선택 아님)
+
+        // ── 좌'클릭' 처리 ──
+        if (_depTargeting) { ApplyTarget(RayToGround(mb.Position)); return; }
+
+        if (RayToGround(mb.Position) is not { } hex)
         {
             _selected = null;
             HidePanels();

@@ -106,9 +106,9 @@ public partial class CameraController3D : Camera3D
             }
         }
         else if (@event is InputEventMouseMotion motion &&
-                 (motion.ButtonMask & (MouseButtonMask.Middle | MouseButtonMask.Right)) != 0)
+                 (motion.ButtonMask & (MouseButtonMask.Left | MouseButtonMask.Middle)) != 0)
         {
-            // 중클릭 또는 우클릭 드래그를 지면(x-z) 팬으로 변환. 거리에 비례해 감도를 키운다.
+            // 좌클릭 또는 중클릭 드래그를 지면(x-z) 팬으로 변환(우클릭 팬 제거). 거리 비례 감도.
             var sensitivity = _distance * 0.0016f;
             var (flatForward, flatRight) = FlatBasis();
             _targetPivot += (-flatRight * motion.Relative.X + flatForward * motion.Relative.Y) * sensitivity;
