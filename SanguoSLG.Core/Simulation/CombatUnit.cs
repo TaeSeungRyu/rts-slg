@@ -21,7 +21,6 @@ public sealed record CombatUnit(
     int Provisions = -1,
     int ProvisionsCapacity = 300,
     bool IsSupply = false,
-    int Morale = 50,
     int Training = 50,
     string TroopCode = "",
     GeneralId? VanguardId = null,

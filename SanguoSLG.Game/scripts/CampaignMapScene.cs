@@ -155,7 +155,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _provPer10kPerDay = 10; // 병력 1만당 하루 군량 소모(balance) — 일수↔군량 환산
     private string _dbgLog = ""; // 출전 디버그 로그 파일 경로(res://deploy-debug.log)
 
-    // 진행 상세 로그 — 진행 조각(turn)별 이동/교전/사기/소멸, 공성/함락/약탈, 주말 요약.
+    // 진행 상세 로그 — 진행 조각(turn)별 이동/교전/소멸, 공성/함락/약탈, 주말 요약.
     // 분석 규약: u{id}=부대, city{id}=성, 피해는 -N, 획득/회복은 +N.
     private void LogAdvanceDetail(Dictionary<int, HexCoord> startHex, IReadOnlyList<AdvanceTurn> turns,
         IReadOnlyList<SiegeExchange> sieges, IReadOnlyList<CaptureReport> captures,
@@ -188,7 +188,6 @@ public sealed partial class CampaignMapScene : Node3D
             if (t.StatusDamage.Count > 0) { Dbg("    statusDmg: " + string.Join(" ", t.StatusDamage.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:-{kv.Value}"))); }
             if (t.StratagemDamage.Count > 0) { Dbg("    stratDmg: " + string.Join(" ", t.StratagemDamage.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:-{kv.Value}"))); }
             if (t.Starvation.Count > 0) { Dbg("    starve: " + string.Join(" ", t.Starvation.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:-{kv.Value}"))); }
-            if (t.MoraleChange.Count > 0) { Dbg("    morale: " + string.Join(" ", t.MoraleChange.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:{kv.Value:+0;-0}"))); }
             if (t.Reinforced.Count > 0) { Dbg("    reinforced: " + string.Join(" ", t.Reinforced.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:+{kv.Value}"))); }
             if (t.EnteredCastle.Count > 0) { Dbg("    entered: " + string.Join(" ", t.EnteredCastle.Select(u => $"u{u.Id.Value}(troops {u.Pool.Active})"))); }
 
@@ -220,7 +219,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         foreach (var u in after.Armies.OrderBy(u => u.Id.Value))
         {
-            Dbg($"  army u{u.Id.Value} owner={u.Field.Owner.Value} {u.TroopCode} pos=({u.Field.Position.Q},{u.Field.Position.R}) troops={u.Pool.Active}(wounded {u.Pool.Wounded}) mode={u.Field.Mode} tgt={(u.Field.Target is { } t2 ? $"({t2.Q},{t2.R})" : "none")} prov={u.Provisions} morale={u.Morale} van={U(u.VanguardId)} adj={U(u.AdjutantId)}");
+            Dbg($"  army u{u.Id.Value} owner={u.Field.Owner.Value} {u.TroopCode} pos=({u.Field.Position.Q},{u.Field.Position.R}) troops={u.Pool.Active}(wounded {u.Pool.Wounded}) mode={u.Field.Mode} tgt={(u.Field.Target is { } t2 ? $"({t2.Q},{t2.R})" : "none")} prov={u.Provisions} van={U(u.VanguardId)} adj={U(u.AdjutantId)}");
         }
     }
 
@@ -804,7 +803,6 @@ public sealed partial class CampaignMapScene : Node3D
         Row("병력", $"{u.Pool.Active}");
         Row("선봉", van ?? "—");
         Row("부관", adj ?? "—");
-        Row("사기", $"{u.Morale}");
         Row("훈련", $"{u.Training}");
         Row("모드", ModeName(u.Field.Mode));
         Row("목표", u.Field.Target is { } t ? $"({t.Q}, {t.R})" : "없음");

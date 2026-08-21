@@ -21,7 +21,7 @@ public sealed class AdvanceOrchestrator
     private readonly int _provisionsPer10kPerDay;
     private readonly int _starvationLossPercentPerDay;
     private readonly int _resupplyRadius;
-    private readonly MoraleConfig _morale;
+    private readonly TrainingConfig _training;
 
     public AdvanceOrchestrator(
         MovementSimulator movement,
@@ -31,7 +31,7 @@ public sealed class AdvanceOrchestrator
         int provisionsPer10kPerDay = 10,
         int starvationLossPercentPerDay = 5,
         int resupplyRadius = 6,
-        MoraleConfig? morale = null,
+        TrainingConfig? training = null,
         int reinforcePercent = 20)
     {
         _movement = movement;
@@ -41,7 +41,7 @@ public sealed class AdvanceOrchestrator
         _provisionsPer10kPerDay = provisionsPer10kPerDay;
         _starvationLossPercentPerDay = starvationLossPercentPerDay;
         _resupplyRadius = resupplyRadius;
-        _morale = morale ?? new MoraleConfig();
+        _training = training ?? new TrainingConfig();
         _reinforcePercent = reinforcePercent;
     }
 
@@ -57,9 +57,6 @@ public sealed class AdvanceOrchestrator
         //      저(低)군량 부대에 하루치씩 채워준다(보급부대 재고 한도). 이동·소모보다 먼저 일어난다.
         units = Resupply(units);
 
-        // 사기 증감 검산용: 이 진행 시작 병력(피해율 계산).
-        var startTroops = units.ToDictionary(u => u.Id, u => u.Pool.Active);
-
         // 진행 시작 시점에 행동불가(혼란)인 부대 — 이동·전투 모두 이 스냅샷으로 판정한다
         // (상태 tick이 진행 중간에 남은 진행을 줄여도, 그 진행의 효과는 온전히 적용).
         var dazedAtStart = units.Where(IsDazed).Select(u => u.Id).ToHashSet();
@@ -73,7 +70,7 @@ public sealed class AdvanceOrchestrator
         var enteredIds = move.EnteredCastle.ToHashSet();
         var enteredCastle = units
             .Where(u => enteredIds.Contains(u.Id))
-            .Select(u => u with { State = u.State.ReturnToCastle(), Morale = 100 })
+            .Select(u => u with { State = u.State.ReturnToCastle() })
             .ToList();
 
         // 2) 위치만 갱신(임시 이동 스탯은 버림) + 경과일만큼 발동 상태 진행(야전 가정).
@@ -153,9 +150,8 @@ public sealed class AdvanceOrchestrator
         if (engagements.Count == 0)
         {
             SyncCargo(state);
-            var moraleOnly = ApplyMorale(state, startTroops, NoEngagements, combat: null, starvation);
             var reinforcedOnly = Reinforce(state);
-            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, moraleOnly, reinforcedOnly);
+            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, reinforcedOnly);
         }
 
         var attackers = engagements.Select(e => e.Attacker).ToHashSet();
@@ -211,13 +207,10 @@ public sealed class AdvanceOrchestrator
         // 5.5) 보급부대 균일 피해 분배 — 이 진행의 손실(전투·DoT·굶주림)을 병종 구성에 반영.
         SyncCargo(state);
 
-        // 6) 사기 증감(전투 이후) — design-unit-state 2단계. 패주 없음(2026-08-21 폐지).
-        var moraleChange = ApplyMorale(state, startTroops, engagements, combat, starvation);
-
-        // 7) 병력보충(교전 정산이 끝난 뒤) — design-unit-state "병력보충 명령".
+        // 6) 병력보충(교전 정산이 끝난 뒤) — design-unit-state "병력보충 명령".
         var reinforced = Reinforce(state);
 
-        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, moraleChange, reinforced);
+        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, reinforced);
     }
 
     // 보급부대 손실을 병종 구성에 균일(병력 비례)하게 분배한다 — 한 병종만 갈려나가지 않는다
@@ -303,66 +296,6 @@ public sealed class AdvanceOrchestrator
         }
 
         return transferred;
-    }
-
-    private static readonly IReadOnlyList<UnitEngagement> NoEngagements = new List<UnitEngagement>();
-
-    // 사기 증감(design-unit-state 2단계): 피해율↓ / 교전 우세·격파↑ / 굶주림↓ / 무전투 휴식↑.
-    // 패주 없음(2026-08-21 폐지) — 부대는 별도 명령이 없으면 병력 0까지 싸운다. 결정론: id 순.
-    private Dictionary<UnitId, int> ApplyMorale(Dictionary<UnitId, CombatUnit> state,
-        Dictionary<UnitId, int> startTroops, IReadOnlyList<UnitEngagement> engagements,
-        CombatPhaseResult? combat, Dictionary<UnitId, int> starvation)
-    {
-        var attackerTargets = engagements.ToDictionary(e => e.Attacker, e => e.Targets);
-        var engaged = engagements.SelectMany(e => e.Targets.Append(e.Attacker)).ToHashSet();
-        var changes = new Dictionary<UnitId, int>();
-
-        foreach (var id in state.Keys.OrderBy(k => k.Value).ToList())
-        {
-            var u = state[id];
-            if (u.Pool.Active <= 0)
-            {
-                continue; // 전멸 부대는 소멸(사기 무의미)
-            }
-
-            var start = startTroops.GetValueOrDefault(id, u.Pool.Active);
-            var lostPct = start > 0 ? (start - u.Pool.Active) * 100 / start : 0;
-
-            var delta = 0;
-            if (lostPct > 0)
-            {
-                delta -= lostPct * _morale.DamageLossNum / _morale.DamageLossDen;
-            }
-
-            if (starvation.ContainsKey(id))
-            {
-                delta -= _morale.StarveLoss;
-            }
-
-            if (attackerTargets.TryGetValue(id, out var targets)
-                && targets.Any(t => !state.TryGetValue(t, out var tv) || tv.Pool.Active <= 0))
-            {
-                delta += _morale.KillGain; // 격파
-            }
-
-            if (engaged.Contains(id) && lostPct < 10)
-            {
-                delta += _morale.WinGain; // 우세(적게 잃고 교전)
-            }
-            else if (!engaged.Contains(id) && lostPct == 0 && !starvation.ContainsKey(id))
-            {
-                delta += _morale.RestGain; // 무전투 휴식
-            }
-
-            var morale = System.Math.Clamp(u.Morale + delta, 0, 100);
-            state[id] = u with { Morale = morale };
-            if (delta != 0)
-            {
-                changes[id] = delta;
-            }
-        }
-
-        return changes;
     }
 
     private static readonly IReadOnlyDictionary<UnitId, ActiveSkill> NoActives = new Dictionary<UnitId, ActiveSkill>();
@@ -538,8 +471,9 @@ public sealed class AdvanceOrchestrator
             }
         }
 
-        // 사기·훈련 공/방 배수(design-unit-state 2·3단계): 공격은 준 피해에, 방어는 df에 +보너스%.
-        var quality = MoraleBonusPercent(u.Morale) + TrainingBonusPercent(u.Training);
+        // 훈련도 공/방 배수(design-unit-state 3단계): 공격은 준 피해에, 방어는 df에 +보너스%.
+        // 사기 시스템은 2026-08-21 전면 폐지 — 부대 질 보정은 훈련도만.
+        var quality = TrainingBonusPercent(u.Training);
         if (quality != 0)
         {
             outgoing = System.Math.Max(0, outgoing * (100 + quality) / 100);
@@ -549,9 +483,7 @@ public sealed class AdvanceOrchestrator
         return (stats, outgoing);
     }
 
-    private int MoraleBonusPercent(int morale) => (morale - 50) * _morale.MoraleBonusNum / _morale.MoraleBonusDen;
-
-    private int TrainingBonusPercent(int training) => (training - 50) * _morale.TrainingBonusNum / _morale.TrainingBonusDen;
+    private int TrainingBonusPercent(int training) => (training - 50) * _training.TrainingBonusNum / _training.TrainingBonusDen;
 
     // 예약된 계략을 발동/캔슬한다. 발동한 시전 부대 → 그 계략의 사전을 돌려주고(그 교전 공격 불가),
     // 계략 즉발 피해를 <paramref name="stratagemDamage"/>에 대상별로 누적한다.

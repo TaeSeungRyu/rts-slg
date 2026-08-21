@@ -133,7 +133,6 @@ dotnet test
 | 병종별 통솔(적성) / 무력 / 지력 / 정치 | `Aptitudes`(`AptitudeGrade`) / `Might` / `Intellect` / `Politics` |
 | 선봉 / 부관 | `Vanguard` / `Adjutant` |
 | 병력 | `Troops` |
-| 사기 | `Morale` |
 | 군량 | `Provisions` |
 | 자금 | `Gold` |
 | 충성도 | `Loyalty` |
@@ -167,7 +166,7 @@ dotnet test
 | [design-skill.md](doc/design-skill.md) + skill-actives/passives | 특기 체계, 액티브 게이지·발동, 패시브 버킷 |
 | [design-skill-admin.md](doc/design-skill-admin.md) | 내정 스킬 13종(상재·둔전·진무 등) — 효과 배선은 내정 구현과 함께 |
 | [design-general-lifecycle.md](doc/design-general-lifecycle.md) | 장수 충성도(숨김·급여·배신)·포로·함락 시 장수 처리·정찰·등용·외교(포로교환)·세력 소멸 |
-| [design-unit-state.md](doc/design-unit-state.md) | 사기·훈련도·군량·보급부대·병력보충 — 대부분 구현 ✅, 남은 ❓는 문서 끝 "미확정 질문 요약" |
+| [design-unit-state.md](doc/design-unit-state.md) | 훈련도·군량·보급부대·병력보충(사기·패주는 2026-08-21 폐지) — 남은 ❓는 문서 끝 "미확정 질문 요약" |
 | [design-administration.md](doc/design-administration.md) | 내정 — 도시 속성·시간 축·수입·명령·세율·시설·약탈 규칙·출전/입성/함락 훅 |
 | [design-terrain.md](doc/design-terrain.md) | 지형 종류·타일 배치 |
 | [design-effect.md](doc/design-effect.md) | 시각 효과 계획(구현 O/X 표 포함) |

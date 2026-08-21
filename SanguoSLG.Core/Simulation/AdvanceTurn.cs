@@ -20,15 +20,11 @@ public sealed record AdvanceTurn(
     IReadOnlyDictionary<Domain.UnitId, int> StratagemDamage,
     IReadOnlyList<CombatUnit>? Entered = null,
     IReadOnlyDictionary<Domain.UnitId, int>? StarvationLoss = null,
-    IReadOnlyDictionary<Domain.UnitId, int>? MoraleDelta = null,
     IReadOnlyDictionary<Domain.UnitId, int>? ReinforcedTroops = null)
 {
     public IReadOnlyList<CombatUnit> EnteredCastle => Entered ?? [];
 
     public IReadOnlyDictionary<Domain.UnitId, int> Starvation => StarvationLoss ?? EmptyLoss;
-
-    /// <summary>이 진행에 사기가 변한 부대 → 증감량(design-unit-state 2단계).</summary>
-    public IReadOnlyDictionary<Domain.UnitId, int> MoraleChange => MoraleDelta ?? EmptyLoss;
 
     /// <summary>이 진행에 병력보충으로 충원받은 부대 → 충원량(design-unit-state "병력보충 명령").</summary>
     public IReadOnlyDictionary<Domain.UnitId, int> Reinforced => ReinforcedTroops ?? EmptyLoss;
