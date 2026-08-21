@@ -141,10 +141,9 @@ public sealed partial class CampaignMapScene : Node3D
     private Label? _depPreview;
     private readonly List<(Button Btn, UnitMode Mode)> _depModeButtons = new();
     private Label? _depModeDesc;
-    private Tree? _vanTree;              // 선봉 선택 표(정렬·내부 스크롤)
-    private OptionButton? _adjOption;    // 부관 선택(선택)
+    private Tree? _vanTree;              // 장수 편성 표(주장·부장 체크 + 정렬·내부 스크롤)
     private List<GeneralId> _composeFree = new();
-    private int _vanSortCol;             // 0 이름 / 1 무 / 2 지 / 3 정 / 4 특성
+    private int _vanSortCol = 2;         // 2 이름 / 3 무 / 4 지 / 5 정 / 6 적성·특성
     private bool _vanSortAsc = true;
     private int _depProvDays; // 출전 시 휴대할 군량 일수(슬라이더). 0이면 군량 없이 나감
     private HSlider? _depProvSlider;
@@ -1974,7 +1973,6 @@ public sealed partial class CampaignMapScene : Node3D
         _depPreview = null;
         _depModeButtons.Clear();
         _vanTree = null;
-        _adjOption = null;
         _depEditIndex = -1;
         _depTarget = null;
     }
@@ -2186,8 +2184,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depModeButtons.Clear();
         _depModeDesc = null;
         _vanTree = null;
-        _adjOption = null;
-        _vanSortCol = 0;
+        _vanSortCol = 2;
         _vanSortAsc = true;
         _depProvDays = 0;
         _depProvSlider = null;
@@ -2255,6 +2252,7 @@ public sealed partial class CampaignMapScene : Node3D
                     if (_depProvSlider is { } ps) { ps.MaxValue = capDays; ps.Value = capDays; }
                     _depProvDays = capDays;
                     RestyleDeploy();
+                    PopulateVanTree(); // 적성 컬럼이 선택 병종 기준으로 갱신
                     UpdateProvLabel();
                     UpdateDepPreview();
                 }
@@ -2320,42 +2318,51 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(modeRow);
         _depModeDesc = MakeLabel("", 11, Parchment);
         _depModeDesc.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _depModeDesc.CustomMinimumSize = new Vector2(mw - 60f, 0); // autowrap 최소높이 과대 추정 → 하단 여백 방지
         box.AddChild(_depModeDesc);
 
-        // 3) 선봉 장수 — 정렬 가능한 표(고정 높이·내부 스크롤). 행 클릭 = 선봉 대상.
+        // 3) 장수 편성 표 — 주장·부장 체크 컬럼 + 정렬(고정 높이·내부 스크롤).
         _composeFree = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value).ToList();
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("선봉 장수 (표에서 클릭 · 상단 눌러 정렬)", 13, GoldBright));
+        box.AddChild(MakeLabel("장수 편성 (주장 필수 · 부장 선택 · 상단 눌러 정렬)", 13, GoldBright));
         _vanTree = new Tree
         {
-            Columns = 5,
+            Columns = 7,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, 190),
+            CustomMinimumSize = new Vector2(0, 200),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         _vanTree.AddThemeFontOverride("font", _font);
         _vanTree.AddThemeFontSizeOverride("font_size", 13);
         _vanTree.AddThemeFontOverride("title_button_font", _font);
         _vanTree.AddThemeFontSizeOverride("title_button_font_size", 12);
-        _vanTree.SetColumnTitle(0, "이름");
-        _vanTree.SetColumnExpand(0, true);
-        _vanTree.SetColumnExpandRatio(0, 3);
-        foreach (var (col, t) in new[] { (1, "무"), (2, "지"), (3, "정") })
+        foreach (var (col, t) in new[] { (0, "주장"), (1, "부장") })
+        {
+            _vanTree.SetColumnTitle(col, t);
+            _vanTree.SetColumnExpand(col, false);
+            _vanTree.SetColumnCustomMinimumWidth(col, 46);
+        }
+
+        _vanTree.SetColumnTitle(2, "이름");
+        _vanTree.SetColumnExpand(2, true);
+        _vanTree.SetColumnExpandRatio(2, 3);
+        foreach (var (col, t) in new[] { (3, "무"), (4, "지"), (5, "정") })
         {
             _vanTree.SetColumnTitle(col, t);
             _vanTree.SetColumnExpand(col, false);
             _vanTree.SetColumnCustomMinimumWidth(col, 36);
         }
 
-        _vanTree.SetColumnTitle(4, "특성");
-        _vanTree.SetColumnExpand(4, true);
-        _vanTree.SetColumnExpandRatio(4, 2);
-        _vanTree.ItemSelected += OnVanSelected;
+        _vanTree.SetColumnTitle(6, "적성·특성");
+        _vanTree.SetColumnExpand(6, true);
+        _vanTree.SetColumnExpandRatio(6, 2);
+        _vanTree.ItemEdited += OnRosterEdited;
         _vanTree.ColumnTitleClicked += (col, _) =>
         {
             var c = (int)col;
+            if (c < 2) { return; } // 체크 컬럼은 정렬 없음
             if (_vanSortCol == c) { _vanSortAsc = !_vanSortAsc; }
             else { _vanSortCol = c; _vanSortAsc = true; }
             PopulateVanTree();
@@ -2363,39 +2370,11 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(_vanTree);
         PopulateVanTree();
 
-        // 4) 부관(선택)
-        var adjRow = new HBoxContainer();
-        adjRow.AddThemeConstantOverride("separation", 8);
-        adjRow.AddChild(MakeLabel("부관 (선택)", 13, GoldBright));
-        _adjOption = new OptionButton();
-        _adjOption.AddThemeFontOverride("font", _font);
-        _adjOption.AddThemeFontSizeOverride("font_size", 13);
-        _adjOption.AddItem("없음", 0);
-        foreach (var gid in _composeFree)
-        {
-            _adjOption.AddItem(_state.Generals.First(g => g.Id == gid).Name, gid.Value);
-        }
-
-        _adjOption.ItemSelected += idx =>
-        {
-            var id = _adjOption.GetItemId((int)idx);
-            if (id == 0) { _depAdj = null; }
-            else if (_depVan is { } v && v.Value == id)
-            {
-                _adjOption.Selected = 0;
-                _depAdj = null;
-                if (_depPreview is not null) { _depPreview.Text = "부관은 선봉과 다른 장수여야 합니다."; }
-            }
-            else { _depAdj = new GeneralId(id); }
-
-            UpdateDepPreview();
-        };
-        adjRow.AddChild(_adjOption);
-        box.AddChild(adjRow);
-
         // 5) 미리보기 + 확인
         box.AddChild(GoldRule());
         _depPreview = MakeLabel("", 12, Parchment);
+        _depPreview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _depPreview.CustomMinimumSize = new Vector2(mw - 60f, 0);
         box.AddChild(_depPreview);
         var save = MakeButton("▶ 확인", accent: true);
         save.CustomMinimumSize = new Vector2(0, 34);
@@ -2424,12 +2403,7 @@ public sealed partial class CampaignMapScene : Node3D
                 : System.Math.Clamp(rq.Provisions * 10000 / System.Math.Max(1, rq.Troops * _provPer10kPerDay), 0, capDays);
             if (_depProvSlider is { } ps) { ps.MaxValue = capDays; ps.Value = _depProvDays; }
 
-            PopulateVanTree(); // 선봉 행 선택 반영
-            if (_depAdj is { } adjId && _adjOption is not null)
-            {
-                var oi = _adjOption.GetItemIndex(adjId.Value);
-                if (oi >= 0) { _adjOption.Selected = oi; }
-            }
+            PopulateVanTree(); // 주장·부장 체크 반영
         }
 
         RestyleDeploy();
@@ -2599,7 +2573,7 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var (card, code) in _depTroopCards) { card.AddThemeStyleboxOverride("panel", CardBox(code == _depTroop)); }
     }
 
-    // 선봉 표 채우기(정렬 상태 반영). 행 메타데이터에 GeneralId를 담고, 현재 선봉 행은 선택 표시.
+    // 장수 편성 표 채우기(정렬 상태 반영). 0=주장 체크, 1=부장 체크, 메타데이터에 GeneralId.
     private void PopulateVanTree()
     {
         if (_vanTree is null) { return; }
@@ -2608,10 +2582,10 @@ public sealed partial class CampaignMapScene : Node3D
         var gens = _composeFree.Select(id => _state.Generals.First(g => g.Id == id)).ToList();
         System.Comparison<General> cmp = _vanSortCol switch
         {
-            1 => (a, b) => a.Might.CompareTo(b.Might),
-            2 => (a, b) => a.Intellect.CompareTo(b.Intellect),
-            3 => (a, b) => a.Politics.CompareTo(b.Politics),
-            4 => (a, b) => string.Compare(TraitText(a), TraitText(b), System.StringComparison.Ordinal),
+            3 => (a, b) => a.Might.CompareTo(b.Might),
+            4 => (a, b) => a.Intellect.CompareTo(b.Intellect),
+            5 => (a, b) => a.Politics.CompareTo(b.Politics),
+            6 => (a, b) => string.Compare(AptTraitText(a), AptTraitText(b), System.StringComparison.Ordinal),
             _ => (a, b) => string.Compare(a.Name, b.Name, System.StringComparison.Ordinal),
         };
         gens.Sort(cmp);
@@ -2620,38 +2594,85 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var g in gens)
         {
             var item = _vanTree.CreateItem(root);
-            item.SetText(0, g.Name);
-            item.SetText(1, g.Might.ToString());
-            item.SetText(2, g.Intellect.ToString());
-            item.SetText(3, g.Politics.ToString());
-            item.SetText(4, TraitText(g));
+            item.SetCellMode(0, TreeItem.TreeCellMode.Check);
+            item.SetEditable(0, true);
+            item.SetChecked(0, _depVan is { } v && v == g.Id);
+            item.SetCellMode(1, TreeItem.TreeCellMode.Check);
+            item.SetEditable(1, true);
+            item.SetChecked(1, _depAdj is { } a && a == g.Id);
+            item.SetText(2, g.Name);
+            item.SetText(3, g.Might.ToString());
+            item.SetText(4, g.Intellect.ToString());
+            item.SetText(5, g.Politics.ToString());
+            item.SetText(6, AptTraitText(g));
             item.SetMetadata(0, g.Id.Value);
-            for (var col = 1; col <= 3; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
-            if (_depVan is { } v && v == g.Id) { item.Select(0); }
+            for (var col = 3; col <= 5; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
         }
     }
 
-    private void OnVanSelected()
+    // 주장/부장 체크 토글 처리 — 주장은 1명(라디오처럼), 부장은 선택·주장과 달라야 한다.
+    private void OnRosterEdited()
     {
-        var it = _vanTree?.GetSelected();
+        if (_vanTree is null) { return; }
+        var it = _vanTree.GetEdited();
         if (it is null) { return; }
-        _depVan = new GeneralId(it.GetMetadata(0).AsInt32());
-        if (_depAdj == _depVan)
+        var col = _vanTree.GetEditedColumn();
+        var id = new GeneralId(it.GetMetadata(0).AsInt32());
+
+        if (col == 0)
         {
-            _depAdj = null;
-            if (_adjOption is not null) { _adjOption.Selected = 0; }
+            if (it.IsChecked(0))
+            {
+                _depVan = id;
+                if (_depAdj == id) { _depAdj = null; }
+            }
+            else if (_depVan == id) { _depVan = null; }
+        }
+        else if (col == 1)
+        {
+            if (it.IsChecked(1))
+            {
+                if (id == _depVan)
+                {
+                    it.SetChecked(1, false);
+                    if (_depPreview is not null) { _depPreview.Text = "부장은 주장과 다른 장수여야 합니다."; }
+                    return;
+                }
+
+                _depAdj = id;
+            }
+            else if (_depAdj == id) { _depAdj = null; }
         }
 
+        SyncRosterChecks();
         UpdateDepPreview();
     }
 
-    // 특성 표기: 배틀 액티브 + 패시브 개수(없으면 —). 세부 스킬명 배선은 후속.
-    private static string TraitText(General g)
+    // 체크 상태를 _depVan/_depAdj에 맞춰 일괄 동기화(다른 행의 중복 체크 해제).
+    private void SyncRosterChecks()
+    {
+        var row = _vanTree?.GetRoot()?.GetFirstChild();
+        while (row is not null)
+        {
+            var id = new GeneralId(row.GetMetadata(0).AsInt32());
+            row.SetChecked(0, _depVan is { } v && v == id);
+            row.SetChecked(1, _depAdj is { } a && a == id);
+            row = row.GetNext();
+        }
+    }
+
+    // 적성·특성 표기: 선택한 병종에 대한 적성 등급 + 전투 특기(있으면). 병종 미선택이면 등급 생략.
+    private string AptTraitText(General g)
     {
         var parts = new List<string>();
+        if (_depTroop is { } code && _troops.FirstOrDefault(t => t.Code == code) is { } tmpl)
+        {
+            parts.Add($"적성 {g.AptitudeFor(tmpl.Class)}");
+        }
+
         if (!string.IsNullOrEmpty(g.BattleActive)) { parts.Add(g.BattleActive!); }
-        if (g.Passives.Count > 0) { parts.Add($"+{g.Passives.Count}"); }
-        return parts.Count > 0 ? string.Join(" ", parts) : "—";
+        if (g.Passives.Count > 0) { parts.Add($"특기 {g.Passives.Count}"); }
+        return parts.Count > 0 ? string.Join(" · ", parts) : "—";
     }
 
     private void RestyleModes()
