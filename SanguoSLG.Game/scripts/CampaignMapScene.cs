@@ -58,6 +58,8 @@ public sealed partial class CampaignMapScene : Node3D
     private double _animT;
     private int _animStepIdx;
     private readonly List<(double Time, int UnitId, HexCoord To)> _animSteps = new();
+    private int _animAtkIdx;
+    private readonly List<(double Time, int UnitId, Vector3 FaceTo)> _animAttacks = new(); // 교전·공성 공격 모션
     private GameState _pendingState = null!;
     private string _pendingNote = "";
     private AdvanceButton _advanceBtn = null!;
@@ -142,6 +144,7 @@ public sealed partial class CampaignMapScene : Node3D
     private CanvasLayer? _targetHintLayer;
     private HexCoord? _pendingTargetHex;   // 목표 클릭 후 '확인' 대기 중인 목적지(아직 미확정)
     private Button _targetConfirmBtn = null!;
+    private readonly List<MeshInstance3D> _previewMarkers = new(); // 미확정 목적지 경로 프리뷰
 
     // 모달 드래그.
     private bool _dragging;
@@ -604,6 +607,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         // ── 좌'클릭' 처리 ──
         // 목표 지정 중: 목적지를 '가리키기'만 하고, 마우스 옆 '확인'을 눌러야 확정된다.
+        // 경로 프리뷰는 확인 전에도 즉시 보여준다.
         if (_depTargeting)
         {
             if (RayToGround(mb.Position) is { } th)
@@ -611,6 +615,14 @@ public sealed partial class CampaignMapScene : Node3D
                 _pendingTargetHex = th;
                 _targetConfirmBtn.Position = mb.Position + new Vector2(14f, -8f);
                 _targetConfirmBtn.Visible = true;
+
+                foreach (var m in _previewMarkers) { m.QueueFree(); }
+                _previewMarkers.Clear();
+                if (_depTargetIndex >= 0 && _depTargetIndex < _pendingDeploys.Count
+                    && _state.Cities.FirstOrDefault(c => c.Id == _pendingDeploys[_depTargetIndex].Req.City) is { } fromCity)
+                {
+                    AddPathDots(fromCity.Position, th, _previewMarkers);
+                }
             }
 
             return;
@@ -902,6 +914,8 @@ public sealed partial class CampaignMapScene : Node3D
         _depTargetIndex = -1;
         _pendingTargetHex = null;
         _targetConfirmBtn.Visible = false;
+        foreach (var m in _previewMarkers) { m.QueueFree(); }
+        _previewMarkers.Clear();
         if (_targetHintLayer is not null) { _targetHintLayer.QueueFree(); _targetHintLayer = null; }
     }
 
@@ -988,6 +1002,18 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var m in _pathMarkers) { m.QueueFree(); }
         _pathMarkers.Clear();
 
+        foreach (var (req, _) in _pendingDeploys)
+        {
+            if (req.Target is not { } goal) { continue; }
+            var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
+            if (city is null) { continue; }
+            AddPathDots(city.Position, goal, _pathMarkers);
+        }
+    }
+
+    // start→goal A* 경로를 금색 점으로 그려 into에 담는다(공용 — 확정 경로·목표 지정 프리뷰).
+    private void AddPathDots(HexCoord start, HexCoord goal, List<MeshInstance3D> into)
+    {
         _pathDotMesh ??= new CylinderMesh { TopRadius = 0.12f, BottomRadius = 0.12f, Height = 0.05f, RadialSegments = 8 };
         _pathDotMat ??= new StandardMaterial3D
         {
@@ -998,26 +1024,19 @@ public sealed partial class CampaignMapScene : Node3D
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
         };
 
-        foreach (var (req, _) in _pendingDeploys)
+        var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanEnter(MovementDomain.Land, c));
+        var path = pf.FindPath(start, goal);
+        for (var i = 1; i < path.Count; i++)
         {
-            if (req.Target is not { } goal) { continue; }
-            var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
-            if (city is null) { continue; }
-            var start = city.Position;
-            var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanEnter(MovementDomain.Land, c));
-            var path = pf.FindPath(start, goal);
-            for (var i = 1; i < path.Count; i++)
+            var dot = new MeshInstance3D
             {
-                var dot = new MeshInstance3D
-                {
-                    Mesh = _pathDotMesh,
-                    MaterialOverride = _pathDotMat,
-                    CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-                    Position = _view.HexToWorld(path[i]) + new Vector3(0f, _view.TileTopY + 0.06f, 0f),
-                };
-                AddChild(dot);
-                _pathMarkers.Add(dot);
-            }
+                Mesh = _pathDotMesh,
+                MaterialOverride = _pathDotMat,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                Position = _view.HexToWorld(path[i]) + new Vector3(0f, _view.TileTopY + 0.06f, 0f),
+            };
+            AddChild(dot);
+            into.Add(dot);
         }
     }
 
@@ -1219,20 +1238,25 @@ public sealed partial class CampaignMapScene : Node3D
         BuildAnimation(startHex, turns);
 
         // 애니메이션 시작: 이동 전 상태(토큰=시작 위치)를 그린 뒤, _Process가 칸 단위로 이동시킨다.
+        // 열려 있던 성 명령 팔레트·정보 카드는 자동으로 닫는다(진행 중 명령 불가).
+        HidePanels();
         Redraw(_pendingNote);
         _advancing = true;
         _animT = 0;
         _animStepIdx = 0;
+        _animAtkIdx = 0;
         _advanceBtn.Busy = true;
         _advanceBtn.Progress = 0f;
         _dayLabel.Visible = true;
         _dayLabel.Text = "1일차";
     }
 
-    // 진행 결과의 이동 틱을 "언제 어느 칸으로" 스텝 목록으로 편다. 한 칸 = 1초, 하루 = 4초 슬롯.
+    // 진행 결과의 이동 틱을 "언제 어느 칸으로" 스텝 목록으로 편다. 한 칸 = 1초, 하루 = 4초 슬롯
+    // (하루의 마지막 1초는 공격 모션 몫). 교전·공성이 벌어진 진행 조각의 끝에 공격 모션을 스케줄.
     private void BuildAnimation(Dictionary<int, HexCoord> startHex, IReadOnlyList<AdvanceTurn> turns)
     {
         _animSteps.Clear();
+        _animAttacks.Clear();
         var prev = new Dictionary<int, HexCoord>(startHex);
         var movesInDay = new Dictionary<(int, int), int>();
         var dayOffset = 0;
@@ -1253,10 +1277,46 @@ public sealed partial class CampaignMapScene : Node3D
                 }
             }
 
-            dayOffset += System.Math.Max(1, turn.Movement.Days);
+            var stopDay = dayOffset + System.Math.Max(1, turn.Movement.Days);
+            var atkTime = ((stopDay - 1) * DaySeconds) + 3.15; // 그날 이동(≤3초)이 끝난 뒤
+            ScheduleAttackMotions(turn, atkTime);
+            dayOffset = stopDay;
         }
 
         _animSteps.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animAttacks.Sort((a, b) => a.Time.CompareTo(b.Time));
+    }
+
+    // 이 진행 조각에서 공격한 부대의 모션 예약: 야전 교전(피해를 준 부대 → 최근접 적 방향)
+    // + 공성(공격모드로 적 성 사거리 안 → 성 방향).
+    private void ScheduleAttackMotions(AdvanceTurn turn, double atkTime)
+    {
+        var fieldAttackers = new HashSet<int>();
+        if (turn.Combat is { } combat)
+        {
+            foreach (var id in combat.DamageDealt.Keys.OrderBy(k => k.Value))
+            {
+                var me = turn.Units.FirstOrDefault(u => u.Id == id);
+                var foe = me is null ? null : turn.Units
+                    .Where(u => u.Field.Owner != me.Field.Owner)
+                    .OrderBy(u => u.Field.Position.Distance(me.Field.Position)).ThenBy(u => u.Id.Value)
+                    .FirstOrDefault();
+                if (me is null || foe is null) { continue; }
+                _animAttacks.Add((atkTime, id.Value, _view.HexToWorld(foe.Field.Position)));
+                fieldAttackers.Add(id.Value);
+            }
+        }
+
+        foreach (var u in turn.Units.Where(u => u.Field.Mode == UnitMode.Attack && !u.IsSupply))
+        {
+            if (fieldAttackers.Contains(u.Id.Value)) { continue; }
+            var castle = _pendingState.Cities.FirstOrDefault(c => c.Owner != u.Field.Owner
+                && c.Position.Distance(u.Field.Position) <= u.Field.RangeCastle);
+            if (castle is not null)
+            {
+                _animAttacks.Add((atkTime, u.Id.Value, _view.HexToWorld(castle.Position)));
+            }
+        }
     }
 
     // 애니메이션 종료 — 최종 상태를 반영하고 버튼·텍스트를 원복한다.
@@ -1677,6 +1737,13 @@ public sealed partial class CampaignMapScene : Node3D
                 var s = _animSteps[_animStepIdx];
                 if (_armyTokens.TryGetValue(s.UnitId, out var tok)) { tok.DisplayStepTo(s.To, (float)StepSeconds); }
                 _animStepIdx++;
+            }
+
+            while (_animAtkIdx < _animAttacks.Count && _animAttacks[_animAtkIdx].Time <= _animT)
+            {
+                var a = _animAttacks[_animAtkIdx];
+                if (_armyTokens.TryGetValue(a.UnitId, out var tok)) { tok.FaceToward(a.FaceTo); tok.PlayAttackMotion(); }
+                _animAtkIdx++;
             }
 
             var day = System.Math.Min(AnimDays, (int)(_animT / DaySeconds) + 1);
