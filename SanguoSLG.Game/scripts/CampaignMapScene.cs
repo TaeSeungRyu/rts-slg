@@ -704,6 +704,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         // 상단: 지형 에셋 모델 미리보기(이전 모델 제거 후 교체).
         foreach (var c in _terrainHolder.GetChildren()) { c.QueueFree(); }
+        _terrainHolder.Rotation = Vector3.Zero; // 프레이밍은 회전 0 기준(이후 _Process가 빙글 회전)
         if (inMap && _view.TileScene(terrain) is { } scene)
         {
             var inst = scene.Instantiate<Node3D>();
@@ -1004,8 +1005,29 @@ public sealed partial class CampaignMapScene : Node3D
         return _map.Contains(coord) ? coord : null;
     }
 
-    // ── 아주 간단한 시나리오(코드): 평지 10x6, 두 세력, 각 성 1개·장수 2명·대기 병력 1만 ──
-    private static readonly HexMap _map = new(0, 9, 0, 5);
+    // ── 아주 간단한 시나리오(코드): 10x6 맵(지형 다양), 두 세력, 각 성 1개·장수 2명·대기 병력 1만 ──
+    private static readonly HexMap _map = BuildTestMap();
+
+    /// <summary>렌더(GameRoot3D)와 시뮬(passability)이 같은 지형을 쓰도록 공유하는 맵.</summary>
+    public static HexMap TestMap => _map;
+
+    // 지형 확인용 배치(성 발자국 (1,2)(1,3)(0,3)·(8,3)(8,4)(7,4)는 평지로 비움).
+    // 성↔성 이동로(대략 r2~3)는 통행 가능한 지형 위주로 둬 AI/부대가 막히지 않게 한다.
+    private static HexMap BuildTestMap()
+    {
+        var t = new Dictionary<HexCoord, TerrainType>
+        {
+            [new(3, 1)] = TerrainType.Forest, [new(4, 1)] = TerrainType.Forest, [new(3, 2)] = TerrainType.Forest,
+            [new(5, 0)] = TerrainType.Mountain, [new(6, 1)] = TerrainType.Mountain,
+            [new(2, 4)] = TerrainType.Mountain, [new(6, 4)] = TerrainType.Mountain,
+            [new(4, 4)] = TerrainType.Rocks, [new(5, 5)] = TerrainType.Rocks,
+            [new(2, 0)] = TerrainType.RockHill, [new(7, 1)] = TerrainType.RockHill,
+            [new(6, 2)] = TerrainType.Desert, [new(7, 2)] = TerrainType.Desert, [new(7, 3)] = TerrainType.DesertCactus,
+            [new(3, 4)] = TerrainType.Swamp, [new(4, 3)] = TerrainType.Swamp,
+            [new(1, 0)] = TerrainType.Karst, [new(0, 5)] = TerrainType.Cliff, [new(9, 0)] = TerrainType.RockMountain,
+        };
+        return new HexMap(0, 9, 0, 5, t);
+    }
 
     private static readonly IReadOnlyList<City> _cities = new List<City>
     {
@@ -1290,16 +1312,16 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainCard.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
         layer.AddChild(_terrainCard);
 
-        var box = new VBoxContainer { CustomMinimumSize = new Vector2(160, 0) };
+        var box = new VBoxContainer { CustomMinimumSize = new Vector2(132, 0) };
         box.AddThemeConstantOverride("separation", 4);
         _terrainCard.AddChild(box);
 
-        // 상단: 지형 에셋 3D 미리보기(자체 월드 SubViewport).
-        var svc = new SubViewportContainer { Stretch = true, CustomMinimumSize = new Vector2(160, 120), MouseFilter = Control.MouseFilterEnum.Ignore };
+        // 상단: 지형 에셋 3D 미리보기(자체 월드 SubViewport). 영역을 작게.
+        var svc = new SubViewportContainer { Stretch = true, CustomMinimumSize = new Vector2(112, 84), MouseFilter = Control.MouseFilterEnum.Ignore, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
         box.AddChild(svc);
         _terrainViewport = new SubViewport
         {
-            Size = new Vector2I(160, 120),
+            Size = new Vector2I(112, 84),
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
             OwnWorld3D = true, // 자체 3D 월드 — 없으면 메인 씬 월드를 봐 빈 화면이 된다
         };
@@ -1522,7 +1544,11 @@ public sealed partial class CampaignMapScene : Node3D
             else { _unitMenu.Visible = false; }
         }
 
-        if (_terrainCard.Visible && _terrainHex is { } th) { PlaceTerrainCard(th); }
+        if (_terrainCard.Visible && _terrainHex is { } th)
+        {
+            PlaceTerrainCard(th);
+            _terrainHolder.RotateY((float)delta * 0.6f); // 에셋을 천천히 빙글빙글
+        }
 
         if (_dragging && _dragPanel is not null)
         {
