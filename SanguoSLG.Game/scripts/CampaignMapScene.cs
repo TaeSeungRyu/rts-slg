@@ -155,6 +155,75 @@ public sealed partial class CampaignMapScene : Node3D
     private int _provPer10kPerDay = 10; // 병력 1만당 하루 군량 소모(balance) — 일수↔군량 환산
     private string _dbgLog = ""; // 출전 디버그 로그 파일 경로(res://deploy-debug.log)
 
+    // 진행 상세 로그 — 진행 조각(turn)별 이동/교전/사기/소멸, 공성/함락/약탈, 주말 요약.
+    // 분석 규약: u{id}=부대, city{id}=성, 피해는 -N, 획득/회복은 +N.
+    private void LogAdvanceDetail(Dictionary<int, HexCoord> startHex, IReadOnlyList<AdvanceTurn> turns,
+        IReadOnlyList<SiegeExchange> sieges, IReadOnlyList<CaptureReport> captures,
+        IReadOnlyList<PlunderReport> plunders, GameState after)
+    {
+        string U(GeneralId? g) => g is { } id ? (_state.Generals.FirstOrDefault(x => x.Id == id)?.Name ?? $"G{id.Value}") : "-";
+        var pos = new Dictionary<int, HexCoord>(startHex);
+        for (var ti = 0; ti < turns.Count; ti++)
+        {
+            var t = turns[ti];
+            Dbg($"  turn[{ti}] days={t.Movement.Days} stop={t.Movement.Reason}");
+            foreach (var u in t.Units.OrderBy(x => x.Id.Value))
+            {
+                if (pos.TryGetValue(u.Id.Value, out var f) && f != u.Field.Position)
+                {
+                    Dbg($"    move u{u.Id.Value}: ({f.Q},{f.R}) -> ({u.Field.Position.Q},{u.Field.Position.R})");
+                }
+
+                pos[u.Id.Value] = u.Field.Position;
+            }
+
+            if (t.Combat is { } c && c.DamageDealt.Count > 0)
+            {
+                Dbg("    combat dealt: " + string.Join(" ", c.DamageDealt.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:+{kv.Value}")));
+                Dbg("    combat taken: " + string.Join(" ", c.DamageTaken.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:-{kv.Value}")));
+            }
+
+            if (t.FiredActives.Count > 0) { Dbg("    actives: " + string.Join(" ", t.FiredActives.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:{kv.Value.Name}"))); }
+            if (t.FiredStratagems.Count > 0) { Dbg("    strats: " + string.Join(" ", t.FiredStratagems.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:{kv.Value.Name}"))); }
+            if (t.StatusDamage.Count > 0) { Dbg("    statusDmg: " + string.Join(" ", t.StatusDamage.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:-{kv.Value}"))); }
+            if (t.StratagemDamage.Count > 0) { Dbg("    stratDmg: " + string.Join(" ", t.StratagemDamage.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:-{kv.Value}"))); }
+            if (t.Starvation.Count > 0) { Dbg("    starve: " + string.Join(" ", t.Starvation.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:-{kv.Value}"))); }
+            if (t.MoraleChange.Count > 0) { Dbg("    morale: " + string.Join(" ", t.MoraleChange.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:{kv.Value:+0;-0}"))); }
+            if (t.Reinforced.Count > 0) { Dbg("    reinforced: " + string.Join(" ", t.Reinforced.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:+{kv.Value}"))); }
+            if (t.EnteredCastle.Count > 0) { Dbg("    entered: " + string.Join(" ", t.EnteredCastle.Select(u => $"u{u.Id.Value}(troops {u.Pool.Active})"))); }
+
+            var ids = t.Units.Select(x => x.Id.Value).ToHashSet();
+            foreach (var d in pos.Keys.Where(k => !ids.Contains(k)).OrderBy(k => k).ToList())
+            {
+                Dbg($"    removed: u{d} ({(t.EnteredCastle.Any(u => u.Id.Value == d) ? "입성" : "전멸")})");
+                pos.Remove(d);
+            }
+        }
+
+        foreach (var ex in sieges)
+        {
+            var counters = ex.BesiegerDamage is { } bd
+                ? string.Join(" ", ex.Besiegers.Zip(bd, (b, d) => $"u{b.Value}:-{d}"))
+                : "-";
+            Dbg($"  siege turn[{ex.TurnIndex}] city{ex.City.Value} wall -{ex.WallDamage} -> {ex.NewWall} defTroopDmg=-{ex.TroopDamage} counter: {counters}");
+        }
+
+        foreach (var cp in captures) { Dbg($"  capture: {cp}"); }
+        foreach (var pl in plunders) { Dbg($"  plunder: city{pl.City.Value} {pl.Facility} looter=u{pl.Looter.Value} gold+{pl.Gold} prov+{pl.Provisions}"); }
+
+        Dbg($"  == week-end {after.Year}y {after.Month}m {after.DayOfMonth}d ==");
+        foreach (var c in after.Cities.OrderBy(c => c.Id.Value))
+        {
+            var garrison = after.Garrisons.Where(g => g.City == c.Id).Sum(g => g.Troops);
+            Dbg($"  city{c.Id.Value} {c.Name} owner={c.Owner.Value} wall={c.Wall} prov={c.Provisions} gold={c.Gold} garrison={garrison}");
+        }
+
+        foreach (var u in after.Armies.OrderBy(u => u.Id.Value))
+        {
+            Dbg($"  army u{u.Id.Value} owner={u.Field.Owner.Value} {u.TroopCode} pos=({u.Field.Position.Q},{u.Field.Position.R}) troops={u.Pool.Active}(wounded {u.Pool.Wounded}) mode={u.Field.Mode} tgt={(u.Field.Target is { } t2 ? $"({t2.Q},{t2.R})" : "none")} prov={u.Provisions} morale={u.Morale} routed={u.Routed} van={U(u.VanguardId)} adj={U(u.AdjutantId)}");
+        }
+    }
+
     private void Dbg(string msg)
     {
         try { System.IO.File.AppendAllText(_dbgLog, msg + "\n"); } catch { }
@@ -942,6 +1011,7 @@ public sealed partial class CampaignMapScene : Node3D
     // ── 목표 지정 ──
     private void BeginTargeting(int idx)
     {
+        Dbg($"UI targeting-begin idx={idx}");
         CloseModal();
         HidePanels(); // 목표 지정 중에는 성 명령 팔레트·정보 카드가 가려선 안 된다.
         _depTargetIndex = idx;
@@ -1265,10 +1335,7 @@ public sealed partial class CampaignMapScene : Node3D
         var after = _engine.AdvanceWeek(preMove, out var turns, out var sieges, out var captures, out var plunders);
         _week++;
         Dbg($"  afterAdvance armies={after.Armies.Count} sieges={sieges.Count} caps={captures.Count} turns={turns.Count}");
-        foreach (var u in after.Armies.OrderBy(u => u.Id.Value))
-        {
-            Dbg($"    army#{u.Id.Value} owner={u.Field.Owner.Value} pos=({u.Field.Position.Q},{u.Field.Position.R}) troops={u.Pool.Active} mode={u.Field.Mode} tgt={(u.Field.Target is { } t ? $"{t.Q},{t.R}" : "none")} prov={u.Provisions} morale={u.Morale} routed={u.Routed}");
-        }
+        LogAdvanceDetail(startHex, turns, sieges, captures, plunders, after);
 
         var note = new List<string>();
         note.AddRange(deployNote);
@@ -2191,6 +2258,7 @@ public sealed partial class CampaignMapScene : Node3D
             xbtn.OffsetBottom = 22;
             xbtn.Pressed += () =>
             {
+                Dbg($"UI delete pending[{idx}] '{_pendingDeploys[idx].Label}'");
                 _pendingDeploys.RemoveAt(idx);
                 if (_depSelectedUnit == idx) { _depSelectedUnit = -1; }
                 SelectCity(_depModalCity);
@@ -2240,7 +2308,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var mb = MakeButton(mlabel);
                 mb.CustomMinimumSize = new Vector2(64, 30);
                 mb.AddThemeStyleboxOverride("normal", Frame(sel ? AccentFill : InkSoft, sel ? GoldBright : Gold, sel ? 2 : 1, 5, 6));
-                mb.Pressed += () => { _pendingDeploys[sidx] = (_pendingDeploys[sidx].Req with { Mode = mm }, _pendingDeploys[sidx].Label); OpenDeployHub(); };
+                mb.Pressed += () => { Dbg($"UI mode idx={sidx} -> {mm}"); _pendingDeploys[sidx] = (_pendingDeploys[sidx].Req with { Mode = mm }, _pendingDeploys[sidx].Label); OpenDeployHub(); };
                 modeRow.AddChild(mb);
             }
 
