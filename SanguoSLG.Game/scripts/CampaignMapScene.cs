@@ -255,6 +255,8 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly (string Label, CommandKind Kind, string Param)[] Cmds =
     {
         ("모병", CommandKind.Recruit, "troop"),
+        ("징병", CommandKind.Conscript, "troop"),
+        ("훈련", CommandKind.Train, "garrison"),
         ("세율", CommandKind.SetTaxRate, "tax"),
         ("병종 연구", CommandKind.Research, "troop"),
         ("성벽 수리", CommandKind.Repair, "wall"),
@@ -271,7 +273,8 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly (string Group, int[] Indices)[] CmdGroups =
     {
         ("내정", new[] { 0, 1, 2, 3 }),
-        ("계략", new[] { 4 }),
+        ("군비", new[] { 4, 5 }),
+        ("계략", new[] { 6 }),
     };
 
     private static readonly Sym[] CmdIcons = { Sym.Sword, Sym.Coin, Sym.Book, Sym.Wall, Sym.Scroll };
@@ -2976,6 +2979,16 @@ public sealed partial class CampaignMapScene : Node3D
             case "tax":
                 foreach (var v in new[] { 0, 10, 20, 30, 40, 50 }) { list.Add(($"{v}%", Icon(Sym.Coin), "세율")); }
                 break;
+            case "garrison":
+                foreach (var g in _state.Garrisons.Where(g => g.City == city.Id && g.Troops > 0)
+                    .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal))
+                {
+                    var t = _troops.FirstOrDefault(x => x.Code == g.TroopCode);
+                    list.Add((t?.Name ?? g.TroopCode, t is null ? Icon(Sym.Sword) : ClassEmblem(t.Class),
+                        $"{g.Troops}명 · 훈련 {g.TrainingLevel}"));
+                }
+
+                break;
             case "stratagem":
                 foreach (var s in Strats) { list.Add((s.Label, StratIcon(s.Code), StratDesc(s.Code))); }
                 break;
@@ -3270,7 +3283,15 @@ public sealed partial class CampaignMapScene : Node3D
     private void AskExecute(CityId city, int cmdIndex, GeneralId general, int p)
     {
         var cmd = Cmds[cmdIndex];
-        var troopCode = cmd.Param == "troop" ? _troops[p].Code : cmd.Param == "wall" ? FactionResearch.WallCode : "";
+        var troopCode = cmd.Param switch
+        {
+            "troop" => _troops[p].Code,
+            "wall" => FactionResearch.WallCode,
+            "garrison" => _state.Garrisons.Where(g => g.City == city && g.Troops > 0)
+                .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal)
+                .Select(g => g.TroopCode).ElementAtOrDefault(p) ?? "",
+            _ => "",
+        };
         var facility = cmd.Param == "stratagem" ? Strats[p].Code : "";
         var value = cmd.Param == "tax" ? p * 10 : 0;
 
@@ -3296,6 +3317,7 @@ public sealed partial class CampaignMapScene : Node3D
         var pLabel = cmd.Param switch
         {
             "troop" => $" · {_troops[p].Name}",
+            "garrison" => $" · {(_troops.FirstOrDefault(t => t.Code == troopCode)?.Name ?? troopCode)}",
             "tax" => $" · {value}%",
             "stratagem" => $" · {Strats[p].Label}",
             _ => "",
