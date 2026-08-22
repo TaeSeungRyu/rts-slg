@@ -331,7 +331,6 @@ public sealed partial class CampaignMapScene : Node3D
             },
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
             Visible = false,
-            RotationDegrees = new Vector3(0f, 30f, 0f), // flat-top 타일과 꼭짓점 정렬
             MaterialOverride = new StandardMaterial3D
             {
                 AlbedoColor = new Color(1f, 0.92f, 0.55f, 0.28f),
@@ -1079,11 +1078,10 @@ public sealed partial class CampaignMapScene : Node3D
         _supplyMarkers.Clear();
 
         var radius = _cb.CityResupplyRadius;
-        var show = radius > 0 && (_pendingDeploys.Count > 0 || _state.Armies.Any(u => u.Field.Owner == Player));
-        if (!show) { return; }
+        if (radius <= 0) { return; } // 보급영역은 상시 표시(2026-08-21 사용자 결정)
 
-        // 육각 마커는 타일과 꼭짓점 방향이 30° 어긋나므로 회전(아래 marker RotationDegrees)으로 정렬한다.
-        var hexR = _view.HexWorldSize * 0.94f;
+        // 타일 윗면은 모서리가 깎여(bevel) 실제 육각보다 좁다 — 조금 줄여 침범처럼 보이지 않게.
+        var hexR = _view.HexWorldSize * 0.86f;
         _supplyTileMesh ??= new CylinderMesh { TopRadius = hexR, BottomRadius = hexR, Height = 0.02f, RadialSegments = 6 };
         _supplyTileMat ??= new StandardMaterial3D
         {
@@ -1092,6 +1090,7 @@ public sealed partial class CampaignMapScene : Node3D
             EmissionEnabled = true,
             Emission = new Color(0.24f, 0.80f, 0.38f),
             EmissionEnergyMultiplier = 1.0f,
+            RenderPriority = -2, // 성 이름·병력 라벨(Label3D)보다 먼저 그려 글씨를 가리지 않게
         };
 
         var seen = new HashSet<HexCoord>();
@@ -1111,8 +1110,7 @@ public sealed partial class CampaignMapScene : Node3D
                         Mesh = _supplyTileMesh,
                         MaterialOverride = _supplyTileMat,
                         CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-                        Position = _view.HexToWorld(hex) + new Vector3(0f, _view.TileTopY + 0.03f, 0f),
-                        RotationDegrees = new Vector3(0f, 30f, 0f), // flat-top 타일과 꼭짓점 정렬(침범 방지)
+                        Position = _view.HexToWorld(hex) + new Vector3(0f, _view.TileTopY + 0.02f, 0f),
                     };
                     AddChild(marker);
                     _supplyMarkers.Add(marker);
