@@ -1266,7 +1266,7 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly IReadOnlyList<City> _cities = new List<City>
     {
         new(new CityId(1), "장안", new HexCoord(1, 2), new FactionId(1), 3000, CastleSize.Medium,
-            Gold: 2000, Security: 80, Population: 100_000, Ore: 8000, Wall: 1200),
+            Gold: 2000, Security: 80, Population: 100_000, Ore: 8000, Horses: 3000, Elephants: 30, Wall: 1200),
         new(new CityId(2), "성도", new HexCoord(8, 3), new FactionId(2), 3000, CastleSize.Medium,
             Gold: 2000, Security: 80, Population: 100_000, Ore: 8000, Wall: 1200),
         new(new CityId(3), "한중", new HexCoord(4, 6), new FactionId(2), 3000, CastleSize.Medium,
@@ -3146,6 +3146,16 @@ public sealed partial class CampaignMapScene : Node3D
                     var detail = cmd.Kind == CommandKind.Research
                         ? $"연구 Lv.{_state.ResearchOf(city.Owner, t.Code)}"
                         : ClassName(t.Class);
+                    if (cmd.Kind is CommandKind.Recruit or CommandKind.Conscript)
+                    {
+                        // 모집 자원 게이트를 미리 알려준다(발행 실패를 사후 로그로만 알던 문제).
+                        var lack = t.Class == TroopClass.Cavalry && city.Horses <= 0 ? "⚠ 말 부족 — 모집 불가"
+                            : t.Class == TroopClass.Elephant && city.Elephants <= 0 ? "⚠ 코끼리 부족 — 모집 불가"
+                            : city.Ore <= 0 ? "⚠ 광석 부족 — 모집 불가"
+                            : null;
+                        detail = lack ?? detail;
+                    }
+
                     list.Add((t.Name, ClassEmblem(t.Class), detail));
                 }
 
