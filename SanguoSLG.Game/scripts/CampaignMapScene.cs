@@ -260,6 +260,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("세율", CommandKind.SetTaxRate, "tax"),
         ("건설", CommandKind.Build, "facility"),
         ("병종 연구", CommandKind.Research, "troop"),
+        ("성벽 연구", CommandKind.Research, "wall"),
         ("성벽 수리", CommandKind.Repair, "wall"),
         ("시설 수리", CommandKind.Repair, "repairable"),
         ("도시 계략", CommandKind.CityStratagem, "stratagem"),
@@ -286,8 +287,8 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly (string Group, int[] Indices)[] CmdGroups =
     {
         ("내정", new[] { 0, 1, 2, 3, 4 }),
-        ("군비", new[] { 5, 6, 7 }),
-        ("계략", new[] { 8 }),
+        ("군비", new[] { 5, 6, 7, 8 }),
+        ("계략", new[] { 9 }),
     };
 
     private static readonly Sym[] CmdIcons = { Sym.Sword, Sym.Coin, Sym.Book, Sym.Wall, Sym.Scroll };
