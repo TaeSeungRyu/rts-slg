@@ -331,6 +331,7 @@ public sealed partial class CampaignMapScene : Node3D
             },
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
             Visible = false,
+            RotationDegrees = new Vector3(0f, 30f, 0f), // flat-top 타일과 꼭짓점 정렬
             MaterialOverride = new StandardMaterial3D
             {
                 AlbedoColor = new Color(1f, 0.92f, 0.55f, 0.28f),
@@ -1081,7 +1082,9 @@ public sealed partial class CampaignMapScene : Node3D
         var show = radius > 0 && (_pendingDeploys.Count > 0 || _state.Armies.Any(u => u.Field.Owner == Player));
         if (!show) { return; }
 
-        _supplyTileMesh ??= new CylinderMesh { TopRadius = 0.52f, BottomRadius = 0.52f, Height = 0.02f, RadialSegments = 6 };
+        // 육각 마커는 타일과 꼭짓점 방향이 30° 어긋나므로 회전(아래 marker RotationDegrees)으로 정렬한다.
+        var hexR = _view.HexWorldSize * 0.94f;
+        _supplyTileMesh ??= new CylinderMesh { TopRadius = hexR, BottomRadius = hexR, Height = 0.02f, RadialSegments = 6 };
         _supplyTileMat ??= new StandardMaterial3D
         {
             AlbedoColor = new Color(0.22f, 0.72f, 0.34f, 0.40f),
@@ -1094,18 +1097,22 @@ public sealed partial class CampaignMapScene : Node3D
         var seen = new HashSet<HexCoord>();
         foreach (var city in _state.Cities.Where(c => c.Owner == Player).OrderBy(c => c.Id.Value))
         {
+            // 성 발자국 타일(통행 불가)도 성의 일부이므로 영역에 포함 — 성 아래가 구멍으로 보이지 않게.
+            var footprint = CastleFootprint.TilesFor(city).ToHashSet();
             for (var dq = -radius; dq <= radius; dq++)
             {
                 for (var dr = System.Math.Max(-radius, -dq - radius); dr <= System.Math.Min(radius, -dq + radius); dr++)
                 {
                     var hex = new HexCoord(city.Position.Q + dq, city.Position.R + dr);
-                    if (!seen.Add(hex) || !_map.Contains(hex) || !_passability.CanEnter(MovementDomain.Land, hex)) { continue; }
+                    if (!seen.Add(hex) || !_map.Contains(hex)) { continue; }
+                    if (!footprint.Contains(hex) && !_passability.CanEnter(MovementDomain.Land, hex)) { continue; }
                     var marker = new MeshInstance3D
                     {
                         Mesh = _supplyTileMesh,
                         MaterialOverride = _supplyTileMat,
                         CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
                         Position = _view.HexToWorld(hex) + new Vector3(0f, _view.TileTopY + 0.03f, 0f),
+                        RotationDegrees = new Vector3(0f, 30f, 0f), // flat-top 타일과 꼭짓점 정렬(침범 방지)
                     };
                     AddChild(marker);
                     _supplyMarkers.Add(marker);
