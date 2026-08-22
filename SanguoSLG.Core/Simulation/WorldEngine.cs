@@ -109,20 +109,31 @@ public sealed class WorldEngine
                     break;
 
                 case CommandKind.Conscript:
-                    MergeGarrison(garrisons, cmd.City, cmd.TroopCode, cmd.Amount, trainingLevel: 0);
+                    MergeGarrison(garrisons, cmd.City, cmd.TroopCode, cmd.Amount, trainingLevel: 0, trainee: true);
                     var drop = cmd.Amount / 1000 * _commands.ConscriptSecurityDropPer1000;
                     cities[cmd.City] = city with { Security = System.Math.Clamp(city.Security - drop, 0, 100) };
                     break;
 
                 case CommandKind.Train:
-                    var idx = garrisons.FindIndex(g => g.City == cmd.City && g.TroopCode == cmd.TroopCode);
+                    var idx = garrisons.FindIndex(g => g.City == cmd.City && g.TroopCode == cmd.TroopCode
+                        && g.Trainee == cmd.TraineePool);
                     if (idx >= 0)
                     {
                         var g = garrisons[idx];
-                        garrisons[idx] = g with
+                        var raised = g with
                         {
                             TrainingLevel = System.Math.Min(_commands.TrainCap, g.TrainingLevel + cmd.Amount),
                         };
+                        // 신병 풀이 50에 도달하면 정규 풀로 자동 승격(가중 평균 — design-unit-state "신병 풀 분리").
+                        if (raised.Trainee && raised.TrainingLevel >= 50)
+                        {
+                            garrisons.RemoveAt(idx);
+                            MergeGarrison(garrisons, cmd.City, cmd.TroopCode, raised.Troops, raised.TrainingLevel);
+                        }
+                        else
+                        {
+                            garrisons[idx] = raised;
+                        }
                     }
 
                     break;
@@ -289,21 +300,21 @@ public sealed class WorldEngine
 
     // 대기 병력 합류(같은 도시·병종이면 가중 평균 희석, 없으면 새 항목).
     private static void MergeGarrison(List<GarrisonForce> garrisons, CityId city, string troopCode,
-        int troops, int trainingLevel)
+        int troops, int trainingLevel, bool trainee = false)
     {
         if (troops <= 0)
         {
             return;
         }
 
-        var idx = garrisons.FindIndex(g => g.City == city && g.TroopCode == troopCode);
+        var idx = garrisons.FindIndex(g => g.City == city && g.TroopCode == troopCode && g.Trainee == trainee);
         if (idx >= 0)
         {
             garrisons[idx] = garrisons[idx].Merge(troops, trainingLevel);
         }
         else
         {
-            garrisons.Add(new GarrisonForce(city, troopCode, troops, trainingLevel));
+            garrisons.Add(new GarrisonForce(city, troopCode, troops, trainingLevel, trainee));
         }
     }
 

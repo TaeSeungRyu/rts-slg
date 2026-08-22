@@ -15,7 +15,8 @@ public sealed record CommandRequest(
     int Value = 0,
     string Facility = "",
     string TroopCode = "",
-    CityId? TargetCity = null);
+    CityId? TargetCity = null,
+    bool TraineePool = false);
 
 /// <summary>명령 발행 결과 — 실패면 <see cref="Error"/>에 사유, 상태는 그대로.</summary>
 public sealed record CommandResult(bool Ok, string? Error, GameState State)
@@ -151,7 +152,8 @@ public sealed class CommandService
 
     private CommandResult IssueTrain(GameState state, City city, CommandRequest req, General? assist, int eff)
     {
-        if (!state.Garrisons.Any(g => g.City == city.Id && g.TroopCode == req.TroopCode && g.Troops > 0))
+        if (!state.Garrisons.Any(g => g.City == city.Id && g.TroopCode == req.TroopCode
+            && g.Trainee == req.TraineePool && g.Troops > 0))
         {
             return CommandResult.Fail("훈련할 대기 병력(병종)이 없다.", state);
         }
@@ -352,7 +354,7 @@ public sealed class CommandService
     {
         var cities = state.Cities.Select(c => c.Id == reservedCity.Id ? reservedCity : c).ToList();
         var command = new CityCommand(req.City, kind, req.Main, assist?.Id,
-            state.Day, state.Day + days, amount, facility, troopCode, targetCity);
+            state.Day, state.Day + days, amount, facility, troopCode, targetCity, req.TraineePool);
         var pending = state.Commands.Append(command).ToList();
         return CommandResult.Success(state with { Cities = cities, PendingCommands = pending });
     }

@@ -223,7 +223,7 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var c in after.Cities.OrderBy(c => c.Id.Value))
         {
             var garrison = after.Garrisons.Where(g => g.City == c.Id).Sum(g => g.Troops);
-            Dbg($"  city{c.Id.Value} {c.Name} owner={c.Owner.Value} wall={c.Wall} prov={c.Provisions} gold={c.Gold} garrison={garrison} 대기병력=[{string.Join(" ", after.Garrisons.Where(g => g.City == c.Id).OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).Select(g => $"{g.TroopCode}:{g.Troops}(훈{g.TrainingLevel})"))}]");
+            Dbg($"  city{c.Id.Value} {c.Name} owner={c.Owner.Value} wall={c.Wall} prov={c.Provisions} gold={c.Gold} garrison={garrison} 대기병력=[{string.Join(" ", after.Garrisons.Where(g => g.City == c.Id).OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).Select(g => $"{g.TroopCode}{(g.Trainee ? "*신병" : "")}:{g.Troops}(훈{g.TrainingLevel})"))}]");
         }
 
         foreach (var cmd2 in after.Commands.OrderBy(x => x.CompletionDay))
@@ -2017,7 +2017,9 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainHex = null;
         if (_modalLayer is null) { ClearPathMarkers(); }
         var c = _state.Cities.First(x => x.Id == id);
-        var troops = _state.Garrisons.Where(g => g.City == id).Select(g => $"{g.TroopCode} {g.Troops}");
+        var troops = _state.Garrisons.Where(g => g.City == id)
+            .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ThenBy(g => g.Trainee)
+            .Select(g => $"{g.TroopCode}{(g.Trainee ? "(신병)" : "")} {g.Troops}");
         var officers = _state.GeneralsAt(id).Select(g => _state.Generals.First(x => x.Id == g).Name);
         var pending = _state.Commands.Where(p => p.City == id).Select(p =>
             $"{KindName(p.Kind)} 남은 {p.CompletionDay - _state.Day}일");
@@ -2543,7 +2545,7 @@ public sealed partial class CampaignMapScene : Node3D
             var srq = _pendingDeploys[sidx].Req;
             var stmpl = _troops.FirstOrDefault(t => t.Code == srq.TroopCode);
             var svan = _state.Generals.First(g => g.Id == srq.Vanguard).Name;
-            var strain = _state.Garrisons.FirstOrDefault(g => g.City == city && g.TroopCode == srq.TroopCode)?.TrainingLevel ?? 0;
+            var strain = _state.Garrisons.FirstOrDefault(g => g.City == city && g.TroopCode == srq.TroopCode && !g.Trainee)?.TrainingLevel ?? 0;
             var stgt = srq.Target is { } tg ? "→ " + (_state.Cities.FirstOrDefault(c => c.Position == tg)?.Name ?? $"({tg.Q},{tg.R})") : "목표 미지정(성 앞 대기)";
             box.AddChild(GoldRule());
             box.AddChild(MakeLabel($"◈ {stmpl?.Name ?? srq.TroopCode} {srq.Troops}명 · 선봉 {svan} · 훈련 {strain} · {stgt}", 13, GoldBright));
@@ -2656,7 +2658,7 @@ public sealed partial class CampaignMapScene : Node3D
         tg.AddThemeConstantOverride("h_separation", 8);
         tg.AddThemeConstantOverride("v_separation", 8);
         box.AddChild(tg);
-        foreach (var gar in _state.Garrisons.Where(g => g.City == city && g.Troops > 0))
+        foreach (var gar in _state.Garrisons.Where(g => g.City == city && g.Troops > 0 && !g.Trainee))
         {
             var code = gar.TroopCode;
             var remaining = gar.Troops - usedTroops.GetValueOrDefault(code, 0);
@@ -3153,10 +3155,11 @@ public sealed partial class CampaignMapScene : Node3D
                 break;
             case "garrison":
                 foreach (var g in _state.Garrisons.Where(g => g.City == city.Id && g.Troops > 0)
-                    .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal))
+                    .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ThenBy(g => g.Trainee))
                 {
                     var t = _troops.FirstOrDefault(x => x.Code == g.TroopCode);
-                    list.Add((t?.Name ?? g.TroopCode, t is null ? Icon(Sym.Sword) : ClassEmblem(t.Class),
+                    var name = (t?.Name ?? g.TroopCode) + (g.Trainee ? " (신병)" : "");
+                    list.Add((name, t is null ? Icon(Sym.Sword) : ClassEmblem(t.Class),
                         $"{g.Troops}명 · 훈련 {g.TrainingLevel}"));
                 }
 
@@ -3490,11 +3493,10 @@ public sealed partial class CampaignMapScene : Node3D
         {
             "troop" => _troops[p].Code,
             "wall" => FactionResearch.WallCode,
-            "garrison" => _state.Garrisons.Where(g => g.City == city && g.Troops > 0)
-                .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal)
-                .Select(g => g.TroopCode).ElementAtOrDefault(p) ?? "",
+            "garrison" => GarrisonAt(city, p)?.TroopCode ?? "",
             _ => "",
         };
+        var traineePool = cmd.Param == "garrison" && (GarrisonAt(city, p)?.Trainee ?? false);
         var facility = cmd.Param switch
         {
             "stratagem" => Strats[p].Code,
@@ -3521,12 +3523,12 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility,
-            TroopCode: troopCode, TargetCity: target);
+            TroopCode: troopCode, TargetCity: target, TraineePool: traineePool);
         var gName = _state.Generals.First(g => g.Id == general).Name;
         var pLabel = cmd.Param switch
         {
             "troop" => $" · {_troops[p].Name}",
-            "garrison" => $" · {(_troops.FirstOrDefault(t => t.Code == troopCode)?.Name ?? troopCode)}",
+            "garrison" => $" · {(_troops.FirstOrDefault(t => t.Code == troopCode)?.Name ?? troopCode)}{(traineePool ? "(신병)" : "")}",
             "tax" => $" · {value}%",
             "facility" => $" · {Facilities[p].Label}",
             "repairable" => $" · {Repairables[p].Label}",
@@ -3546,6 +3548,12 @@ public sealed partial class CampaignMapScene : Node3D
                 Redraw(_log.Text);
             });
     }
+
+    // 훈련 옵션과 같은 정렬(병종 → 신병 뒤)의 p번째 대기 병력.
+    private GarrisonForce? GarrisonAt(CityId city, int p) => _state.Garrisons
+        .Where(g => g.City == city && g.Troops > 0)
+        .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ThenBy(g => g.Trainee)
+        .ElementAtOrDefault(p);
 
     private void MoveRing(HexCoord at)
     {

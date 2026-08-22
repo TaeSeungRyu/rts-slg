@@ -64,10 +64,10 @@ public sealed class DeployService
             return CommandResult.Fail("병종을 지정해야 한다.", state);
         }
 
-        var garrison = state.Garrisons.FirstOrDefault(g => g.City == req.City && g.TroopCode == req.TroopCode);
+        var garrison = state.Garrisons.FirstOrDefault(g => g.City == req.City && g.TroopCode == req.TroopCode && !g.Trainee);
         if (garrison is null || garrison.Troops <= 0)
         {
-            return CommandResult.Fail("그 병종의 대기 병력이 없다.", state);
+            return CommandResult.Fail("그 병종의 대기 병력이 없다(신병 풀은 훈련 후 출전).", state);
         }
 
         var troops = req.Troops <= 0 ? garrison.Troops : req.Troops;
@@ -173,7 +173,7 @@ public sealed class DeployService
                 return CommandResult.Fail("병종을 지정해야 한다.", state);
             }
 
-            var garrison = state.Garrisons.FirstOrDefault(g => g.City == req.City && g.TroopCode == line.TroopCode);
+            var garrison = state.Garrisons.FirstOrDefault(g => g.City == req.City && g.TroopCode == line.TroopCode && !g.Trainee);
             if (garrison is null || garrison.Troops <= 0)
             {
                 return CommandResult.Fail($"{line.TroopCode} 대기 병력이 없다.", state);

@@ -66,7 +66,7 @@ public sealed class CampaignSiege
 
         foreach (var city in cities.OrderBy(c => c.Id.Value))
         {
-            var defenders = garr.Where(g => g.City == city.Id).OrderBy(g => g.TroopCode, StringComparer.Ordinal).ToList();
+            var defenders = garr.Where(g => g.City == city.Id).OrderBy(g => g.TroopCode, StringComparer.Ordinal).ThenBy(g => g.Trainee).ToList();
             var defendTroops = defenders.Sum(g => g.Troops);
             if (city.Wall <= 0 && defendTroops <= 0)
             {

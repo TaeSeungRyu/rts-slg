@@ -158,7 +158,7 @@ public sealed class CampaignEngine
             FieldArmies = armies,
             GarrisonForces = work.Garrisons
                 .Where(g => g.Troops > 0)
-                .OrderBy(g => g.City.Value).ThenBy(g => g.TroopCode, System.StringComparer.Ordinal)
+                .OrderBy(g => g.City.Value).ThenBy(g => g.TroopCode, System.StringComparer.Ordinal).ThenBy(g => g.Trainee)
                 .ToList(),
         };
 
@@ -261,14 +261,16 @@ public sealed class CampaignEngine
                     continue;
                 }
 
-                var idx = garrisons.FindIndex(g => g.City == cityId && g.TroopCode == code);
+                // 훈련도 50 미만이면 신병 풀로(방어적 — 현 규칙상 야전 부대는 50 이상).
+                var trainee = training < 50;
+                var idx = garrisons.FindIndex(g => g.City == cityId && g.TroopCode == code && g.Trainee == trainee);
                 if (idx >= 0)
                 {
                     garrisons[idx] = garrisons[idx].Merge(troops, training);
                 }
                 else
                 {
-                    garrisons.Add(new GarrisonForce(cityId, code, troops, training));
+                    garrisons.Add(new GarrisonForce(cityId, code, troops, training, trainee));
                 }
             }
 

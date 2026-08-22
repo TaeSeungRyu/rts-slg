@@ -20,7 +20,8 @@ public sealed record CityCommand(
     int Amount,
     string Facility = "",
     string TroopCode = "",
-    CityId? TargetCity = null)
+    CityId? TargetCity = null,
+    bool TraineePool = false)
 {
     /// <summary>이 명령에 이 장수가 매여 있는가(주관 또는 보좌).</summary>
     public bool Locks(GeneralId general) => Main == general || Assist == general;
