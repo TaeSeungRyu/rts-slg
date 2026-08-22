@@ -121,7 +121,6 @@ public sealed partial class CampaignMapScene : Node3D
     private int _modalParam;
     private VBoxContainer _modalOfficers = null!; // 수행 장수 표 홀더
     private CityId? _stratTarget; // 도시 계략 대상 도시(선택 UI)
-    private readonly List<(PanelContainer Card, CityId Id)> _stratCityCards = new();
     private int _offSortCol = -1; // -1 = 명령 관련 능력치 내림차순(기본)
     private bool _offSortAsc;
     private Label _modalDetail = null!;
@@ -2135,49 +2134,69 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(_modalDetail);
         box.AddChild(GoldRule());
 
-        box.AddChild(MakeLabel("수행 장수 (행 클릭 = 실행 · 상단 눌러 정렬)", 19, GoldBright));
-        _offSortCol = -1;
-        _offSortAsc = false;
-        _modalOfficers = new VBoxContainer();
-        box.AddChild(_modalOfficers);
-        BuildOfficerCards(city, cmdIndex);
-
-        // 도시 계략: 대상 도시 선택(적 성이 여럿일 수 있다 — 카드 클릭으로 지정, 기본 = 첫 적 성).
+        // 도시 계략: 대상 도시 선택 — 수행 장수보다 먼저(계략 → 대상 → 장수 순).
+        // 성이 많아도 안전하게 고정 높이 표(내부 스크롤)로 목록을 담는다.
         _stratTarget = null;
-        _stratCityCards.Clear();
         if (cmd.Param == "stratagem")
         {
             var enemies = _state.Cities.Where(c => c.Owner != Player).OrderBy(c => c.Id.Value).ToList();
             if (enemies.Count > 0)
             {
                 _stratTarget = enemies[0].Id;
-                box.AddChild(MakeLabel("대상 도시를 선택하세요", 19, GoldBright));
-                var cityGrid = new GridContainer { Columns = System.Math.Min(colOpt, enemies.Count) };
-                cityGrid.AddThemeConstantOverride("h_separation", 10);
-                cityGrid.AddThemeConstantOverride("v_separation", 10);
-                box.AddChild(cityGrid);
+                box.AddChild(MakeLabel("대상 도시 (행 클릭 = 선택)", 19, GoldBright));
                 var from = _state.Cities.First(x => x.Id == city).Position;
-                foreach (var enemyCity in enemies)
+                var cityTree = new Tree
                 {
-                    var days = CityStratagems.Days(from, enemyCity.Position, _cb);
-                    var card = OptionCard((enemyCity.Name, Icon(Sym.Wall),
-                        $"거리 {from.Distance(enemyCity.Position)}칸 · 소요 {days}일"));
-                    var captured = enemyCity.Id;
-                    _stratCityCards.Add((card, captured));
-                    card.GuiInput += e =>
-                    {
-                        if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
-                        {
-                            _stratTarget = captured;
-                            RestyleStratCities();
-                        }
-                    };
-                    cityGrid.AddChild(card);
+                    Columns = 3,
+                    ColumnTitlesVisible = true,
+                    HideRoot = true,
+                    SelectMode = Tree.SelectModeEnum.Row,
+                    CustomMinimumSize = new Vector2(0, System.Math.Min(46 + (enemies.Count * 34), 150)),
+                    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                };
+                cityTree.AddThemeFontOverride("font", _font);
+                cityTree.AddThemeFontSizeOverride("font_size", 15);
+                cityTree.AddThemeFontOverride("title_button_font", _font);
+                cityTree.AddThemeFontSizeOverride("title_button_font_size", 14);
+                cityTree.SetColumnTitle(0, "도시");
+                cityTree.SetColumnExpand(0, true);
+                cityTree.SetColumnExpandRatio(0, 2);
+                foreach (var (col, t) in new[] { (1, "거리"), (2, "소요일") })
+                {
+                    cityTree.SetColumnTitle(col, t);
+                    cityTree.SetColumnExpand(col, false);
+                    cityTree.SetColumnCustomMinimumWidth(col, 76);
                 }
 
-                RestyleStratCities();
+                var croot = cityTree.CreateItem();
+                foreach (var enemyCity in enemies)
+                {
+                    var item = cityTree.CreateItem(croot);
+                    item.SetText(0, enemyCity.Name);
+                    item.SetText(1, $"{from.Distance(enemyCity.Position)}칸");
+                    item.SetText(2, $"{CityStratagems.Days(from, enemyCity.Position, _cb)}일");
+                    item.SetMetadata(0, enemyCity.Id.Value);
+                    item.SetTextAlignment(1, HorizontalAlignment.Center);
+                    item.SetTextAlignment(2, HorizontalAlignment.Center);
+                    if (enemyCity.Id == _stratTarget) { item.Select(0); }
+                }
+
+                cityTree.ItemSelected += () =>
+                {
+                    var it = cityTree.GetSelected();
+                    if (it is not null) { _stratTarget = new CityId(it.GetMetadata(0).AsInt32()); }
+                };
+                box.AddChild(cityTree);
+                box.AddChild(GoldRule());
             }
         }
+
+        box.AddChild(MakeLabel("수행 장수 (행 클릭 = 실행 · 상단 눌러 정렬)", 19, GoldBright));
+        _offSortCol = -1;
+        _offSortAsc = false;
+        _modalOfficers = new VBoxContainer();
+        box.AddChild(_modalOfficers);
+        BuildOfficerCards(city, cmdIndex);
 
         if (options.Count > 0) { PickOption(_modalParam, options[_modalParam]); }
 
@@ -2205,7 +2224,6 @@ public sealed partial class CampaignMapScene : Node3D
         _depEditIndex = -1;
         _depTarget = null;
         _stratTarget = null;
-        _stratCityCards.Clear();
         ClearPathMarkers(); // 편성이 닫히면 예약 경로도 지도에서 지운다
     }
 
@@ -2919,14 +2937,6 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         if (_depModeDesc is not null) { _depModeDesc.Text = ModeDesc(_depMode); }
-    }
-
-    private void RestyleStratCities()
-    {
-        foreach (var (card, id) in _stratCityCards)
-        {
-            card.AddThemeStyleboxOverride("panel", CardBox(_stratTarget == id));
-        }
     }
 
     private static string ModeName(UnitMode m) => m switch
