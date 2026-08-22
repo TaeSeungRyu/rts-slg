@@ -2092,7 +2092,21 @@ public sealed partial class CampaignMapScene : Node3D
             btn.AddThemeFontSizeOverride("font_size", 11);
             btn.Alignment = HorizontalAlignment.Center;
             btn.CustomMinimumSize = new Vector2(84, 21);
-            btn.Pressed += () => { CloseGroupMenu(); OpenModal(idx); };
+
+            // 모병·징병은 같은 종류가 이 성에서 진행 중이면 중복 발행 금지(2026-08-23).
+            var busy = Cmds[i].Kind is CommandKind.Recruit or CommandKind.Conscript
+                && _selected is { } selCity
+                && _state.Commands.Any(c => c.City == selCity && c.Kind == Cmds[i].Kind);
+            if (busy)
+            {
+                btn.Text = Cmds[i].Label + " (진행중)";
+                btn.Disabled = true;
+            }
+            else
+            {
+                btn.Pressed += () => { CloseGroupMenu(); OpenModal(idx); };
+            }
+
             _cmdSubList.AddChild(btn);
         }
 
@@ -3153,7 +3167,10 @@ public sealed partial class CampaignMapScene : Node3D
                             : t.Class == TroopClass.Elephant && city.Elephants <= 0 ? "⚠ 코끼리 부족 — 모집 불가"
                             : city.Ore <= 0 ? "⚠ 광석 부족 — 모집 불가"
                             : null;
-                        detail = lack ?? detail;
+                        var cost = t.Class == TroopClass.Cavalry ? "광석·인구 1/명 · 말 3명당 1"
+                            : t.Class == TroopClass.Elephant ? "광석·인구 1/명 · 코끼리 1000명당 1"
+                            : "광석·인구 1/명";
+                        detail = lack ?? cost;
                     }
 
                     list.Add((t.Name, ClassEmblem(t.Class), detail));
@@ -3518,6 +3535,23 @@ public sealed partial class CampaignMapScene : Node3D
 
         CityId? target = null;
         var extra = "";
+        if (cmd.Kind is CommandKind.Recruit or CommandKind.Conscript)
+        {
+            // 발행 시점 규칙(IssueRecruit)과 같은 식으로 예상치를 계산해 보여준다.
+            var cityData = _state.Cities.First(c => c.Id == city);
+            var caster = _state.Generals.First(g => g.Id == general);
+            var tmpl = _troops[p];
+            var eff = CommandEfficiency.Effective(caster, null, cityData, cmd.Kind, _cb);
+            var capPercent = cmd.Kind == CommandKind.Recruit ? _cb.RecruitPopCapPercent : _cb.ConscriptPopCapPercent;
+            var expect = System.Math.Min(CommandEfficiency.RecruitTroops(cityData.Population, capPercent, eff), cityData.Ore);
+            if (tmpl.Class == TroopClass.Cavalry) { expect = System.Math.Min(expect, cityData.Horses * 3); }
+            if (tmpl.Class == TroopClass.Elephant) { expect = System.Math.Min(expect, cityData.Elephants * 1000); }
+            extra = $"\n예상 모집 {expect}명 · 광석 −{expect} · 인구 −{expect}";
+            if (tmpl.Class == TroopClass.Cavalry) { extra += $" · 말 −{(expect + 2) / 3}"; }
+            if (tmpl.Class == TroopClass.Elephant) { extra += $" · 코끼리 −{(expect + 999) / 1000}"; }
+            if (cmd.Kind == CommandKind.Conscript) { extra += $" · 치안 −{expect / 1000 * _cb.ConscriptSecurityDropPer1000}"; }
+        }
+
         if (cmd.Param == "stratagem")
         {
             var enemy = _stratTarget is { } tc
