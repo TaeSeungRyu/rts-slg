@@ -216,11 +216,16 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var cp in captures) { Dbg($"  capture: {cp}"); }
         foreach (var pl in plunders) { Dbg($"  plunder: city{pl.City.Value} {pl.Facility} looter=u{pl.Looter.Value} gold+{pl.Gold} prov+{pl.Provisions}"); }
 
-        Dbg($"  == week-end {after.Year}y {after.Month}m {after.DayOfMonth}d ==");
+        Dbg($"  == week-end {after.Year}y {after.Month}m {after.DayOfMonth}d (day {after.Day}) ==");
         foreach (var c in after.Cities.OrderBy(c => c.Id.Value))
         {
             var garrison = after.Garrisons.Where(g => g.City == c.Id).Sum(g => g.Troops);
-            Dbg($"  city{c.Id.Value} {c.Name} owner={c.Owner.Value} wall={c.Wall} prov={c.Provisions} gold={c.Gold} garrison={garrison}");
+            Dbg($"  city{c.Id.Value} {c.Name} owner={c.Owner.Value} wall={c.Wall} prov={c.Provisions} gold={c.Gold} garrison={garrison} 대기병력=[{string.Join(" ", after.Garrisons.Where(g => g.City == c.Id).OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).Select(g => $"{g.TroopCode}:{g.Troops}(훈{g.TrainingLevel})"))}]");
+        }
+
+        foreach (var cmd2 in after.Commands.OrderBy(x => x.CompletionDay))
+        {
+            Dbg($"  cmd city{cmd2.City.Value} {KindName(cmd2.Kind)} 완료 day{cmd2.CompletionDay} (남은 {cmd2.CompletionDay - after.Day}일)");
         }
 
         foreach (var u in after.Armies.OrderBy(u => u.Id.Value))
@@ -3435,6 +3440,7 @@ public sealed partial class CampaignMapScene : Node3D
             () =>
             {
                 var r = _commander.Issue(_state, request);
+                Dbg($"UI issue {cmd.Label}{pLabel} city={city.Value} gen={general.Value} ok={r.Ok} err={r.Error ?? "-"}");
                 if (r.Ok) { _state = r.State; }
                 _log.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
                 CloseModal();
