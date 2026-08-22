@@ -238,6 +238,21 @@ public partial class UnitController3D : Node3D
     public void TintFormation(Color color, float strength = 0.62f)
         => FactionColorView.ApplyTint(_tokenRoot, color, strength);
 
+    /// <summary>표시 모드: 이미 그 칸이면 스냅(트윈·회전 없음), 아니면 행군 이동.
+    /// 제자리 트윈이 미세 보정 이동을 만들어 방향을 뒤집는 것을 막는다.</summary>
+    public void DisplaySyncTo(HexCoord to, float seconds)
+    {
+        var target = TokenPosition(to);
+        if ((Position - target).LengthSquared() < 0.01f)
+        {
+            Position = target;
+            _lastPosition = target;
+            return;
+        }
+
+        DisplayStepTo(to, seconds);
+    }
+
     /// <summary>표시 모드: 한 칸을 실제 행군 모션과 함께 이동한다.</summary>
     public void DisplayStepTo(HexCoord to, float seconds)
     {

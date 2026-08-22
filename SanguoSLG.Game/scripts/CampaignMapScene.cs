@@ -2016,6 +2016,12 @@ public sealed partial class CampaignMapScene : Node3D
                 _animKillIdx++;
             }
 
+            // 병력 라벨이 이동 중인 토큰을 따라가게(안 따라가면 라벨이 남아 적 위에 얹혀 보인다).
+            foreach (var (uid, lbl) in _armyLabels)
+            {
+                if (_armyTokens.TryGetValue(uid, out var utok)) { lbl.Position = utok.Position + new Vector3(0f, 1.1f, 0f); }
+            }
+
             var day = System.Math.Min(AnimDays, (int)(_animT / DaySeconds) + 1);
             _dayLabel.Text = $"{day}일차";
             _advanceBtn.Progress = (float)(_animT / (AnimDays * DaySeconds));
@@ -3363,7 +3369,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             token.SetFormationSize(FormationFor(army.Pool.Active)); // 병력 규모 → 편대원 수(1·3·5·7·9)
-            token.DisplayStepTo(army.Field.Position, 0.3f);
+            token.DisplaySyncTo(army.Field.Position, 0.3f); // 제자리면 스냅 — 보정 트윈이 방향을 뒤집지 않게
             var lblNode = _armyLabels[army.Id.Value];
             lblNode.Position = _view.HexToWorld(army.Field.Position) + new Vector3(0f, _view.TileTopY + 1.1f, 0f);
             lblNode.Text = $"{army.Pool.Active}";
