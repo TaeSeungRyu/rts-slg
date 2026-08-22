@@ -53,11 +53,18 @@ public sealed class CampaignEngine
     public GameState AdvanceWeek(GameState state, out IReadOnlyList<AdvanceTurn> turns,
         out IReadOnlyList<SiegeExchange> sieges, out IReadOnlyList<CaptureReport> captures,
         out IReadOnlyList<PlunderReport> plunders)
+        => AdvanceWeek(state, out turns, out sieges, out captures, out plunders, out _);
+
+    /// <summary>야전 전멸 장수 처리 보고(<paramref name="casualties"/>)까지 — design-general-lifecycle §4b.</summary>
+    public GameState AdvanceWeek(GameState state, out IReadOnlyList<AdvanceTurn> turns,
+        out IReadOnlyList<SiegeExchange> sieges, out IReadOnlyList<CaptureReport> captures,
+        out IReadOnlyList<PlunderReport> plunders, out IReadOnlyList<CasualtyReport> casualties)
     {
         var reports = new List<AdvanceTurn>();
         var siegeReports = new List<SiegeExchange>();
         var captureReports = new List<CaptureReport>();
         var plunderReports = new List<PlunderReport>();
+        var casualtyReports = new List<CasualtyReport>();
         var work = state;
         var armies = state.Armies.Where(u => u.Pool.Active > 0).ToList();
 
@@ -81,6 +88,30 @@ public sealed class CampaignEngine
             var turn = _field.Run(armies, maxDays: remaining, castles);
             reports.Add(turn);
             remaining -= System.Math.Max(1, turn.Movement.Days);
+
+            // 야전 전멸 장수 처리(§4b): 이 조각에서 사라진 부대(입성 제외)의 선봉·부관 판정.
+            // 교전 사망(피해 기록 있음)이면 최근접 적 부대의 세력이 포획 후보, 아니면 100% 탈출.
+            var survivors = turn.Units.Select(u => u.Id).ToHashSet();
+            var enteredNow = turn.EnteredCastle.Select(u => u.Id).ToHashSet();
+            var movedPos = turn.Movement.Units.ToDictionary(f => f.Id, f => f.Position);
+            foreach (var dead in armies
+                .Where(u => !survivors.Contains(u.Id) && !enteredNow.Contains(u.Id))
+                .OrderBy(u => u.Id.Value))
+            {
+                var at = movedPos.TryGetValue(dead.Id, out var mp) ? mp : dead.Field.Position;
+                FactionId? captor = null;
+                if (turn.Combat is { } cbt && cbt.DamageTaken.ContainsKey(dead.Id))
+                {
+                    captor = turn.Units
+                        .Where(o => o.Field.Owner != dead.Field.Owner)
+                        .OrderBy(o => o.Field.Position.Distance(at)).ThenBy(o => o.Id.Value)
+                        .Select(o => (FactionId?)o.Field.Owner)
+                        .FirstOrDefault();
+                }
+
+                work = FieldCasualties.ResolveUnit(work, dead, captor, at, _random, casualtyReports);
+            }
+
             armies = turn.Units.ToList();
 
             work = ApplyEntered(work, turn.EnteredCastle, cityAt);
@@ -89,6 +120,15 @@ public sealed class CampaignEngine
             if (_siege is not null)
             {
                 var result = _siege.Resolve(armies, work.Cities, work.Garrisons);
+
+                // 성 반격으로 전멸한 공성 부대의 장수 판정(§4b) — 포획 후보 = 그 성의 소유 세력.
+                foreach (var dead in result.Armies.Where(u => u.Pool.Active <= 0).OrderBy(u => u.Id.Value))
+                {
+                    var ex = result.Exchanges.FirstOrDefault(e => e.Besiegers.Contains(dead.Id));
+                    FactionId? captor = ex is null ? null : work.Cities.First(c => c.Id == ex.City).Owner;
+                    work = FieldCasualties.ResolveUnit(work, dead, captor, dead.Field.Position, _random, casualtyReports);
+                }
+
                 armies = result.Armies.Where(u => u.Pool.Active > 0).ToList();
                 work = work with { Cities = result.Cities, GarrisonForces = result.Garrisons };
                 // 어느 진행 조각의 공성인지 스탬프 — 표현 계층의 재생 타이밍용.
@@ -132,6 +172,7 @@ public sealed class CampaignEngine
         sieges = siegeReports;
         captures = captureReports;
         plunders = plunderReports;
+        casualties = casualtyReports;
         return _world.AdvanceDays(afterField, WeekDays);
     }
 

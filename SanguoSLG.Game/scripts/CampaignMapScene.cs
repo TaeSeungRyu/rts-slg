@@ -1392,13 +1392,23 @@ public sealed partial class CampaignMapScene : Node3D
         Dbg($"  afterDeploy armies={_state.Armies.Count}");
         var preMove = _state; // 이동 전(편성·AI 반영) — 애니메이션 시작 위치
         var startHex = preMove.Armies.ToDictionary(u => u.Id.Value, u => u.Field.Position);
-        var after = _engine.AdvanceWeek(preMove, out var turns, out var sieges, out var captures, out var plunders);
+        var after = _engine.AdvanceWeek(preMove, out var turns, out var sieges, out var captures, out var plunders, out var casualties);
         _week++;
         Dbg($"  afterAdvance armies={after.Armies.Count} sieges={sieges.Count} caps={captures.Count} turns={turns.Count}");
         LogAdvanceDetail(startHex, turns, sieges, captures, plunders, after);
 
         var note = new List<string>();
         note.AddRange(deployNote);
+        foreach (var cas in casualties)
+        {
+            var gName = _state.Generals.FirstOrDefault(g => g.Id == cas.General)?.Name ?? $"G{cas.General.Value}";
+            var text = cas.Captured
+                ? $"{gName} 포로(부대 전멸)"
+                : cas.Refuge is { } rf ? $"{gName} {_cities.First(c => c.Id == rf).Name}(으)로 귀환" : $"{gName} 재야로";
+            note.Add(text);
+            Dbg($"  casualty u{cas.Unit.Value} {gName} {(cas.Captured ? $"captured-by f{cas.Holder!.Value.Value}" : cas.Refuge is { } r2 ? $"fled-to city{r2.Value}" : "wanderer")}");
+        }
+
         foreach (var ex in sieges)
         {
             var cn = _cities.First(c => c.Id == ex.City).Name;
