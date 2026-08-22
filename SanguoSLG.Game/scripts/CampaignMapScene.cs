@@ -95,6 +95,9 @@ public sealed partial class CampaignMapScene : Node3D
     private Control _infoCard = null!;
     private VBoxContainer _infoRows = null!;
     private PanelContainer _cmdMenu = null!;
+    private PanelContainer _cmdSubMenu = null!; // 그룹 클릭 시 팔레트 옆에 뜨는 명령 플라이아웃
+    private VBoxContainer _cmdSubList = null!;
+    private int _openGroup = -1;
     private VBoxContainer _cmdList = null!;
     private PanelContainer _unitMenu = null!; // 유닛 명령 팔레트(모양 위주 — 정보만 동작)
     private int _selectedUnitId = -1;
@@ -1644,28 +1647,32 @@ public sealed partial class CampaignMapScene : Node3D
         _cmdList = new VBoxContainer();
         _cmdList.AddThemeConstantOverride("separation", 1);
         menu.AddChild(_cmdList);
-        foreach (var (group, indices) in CmdGroups)
+        // 팔레트에는 그룹 버튼만 — 누르면 옆에 그 그룹의 명령 플라이아웃이 뜬다.
+        for (var gi = 0; gi < CmdGroups.Length; gi++)
         {
-            _cmdList.AddChild(MakeLabel($"· {group}", 10, GoldBright));
-            foreach (var i in indices)
-            {
-                var idx = i;
-                var btn = MakeButton(Cmds[i].Label);
-                btn.AddThemeFontSizeOverride("font_size", 11);
-                btn.Alignment = HorizontalAlignment.Center;
-                btn.CustomMinimumSize = new Vector2(74, 21);
-                btn.Pressed += () => OpenModal(idx);
-                _cmdList.AddChild(btn);
-            }
+            var groupIdx = gi;
+            var gbtn = MakeButton(CmdGroups[gi].Group);
+            gbtn.AddThemeFontSizeOverride("font_size", 12);
+            gbtn.Alignment = HorizontalAlignment.Center;
+            gbtn.CustomMinimumSize = new Vector2(74, 24);
+            gbtn.Pressed += () => ToggleGroup(groupIdx);
+            _cmdList.AddChild(gbtn);
         }
 
-        _cmdList.AddChild(MakeLabel("· 군사", 10, GoldBright));
         var deployBtn = MakeButton("출전", accent: true);
-        deployBtn.AddThemeFontSizeOverride("font_size", 11);
+        deployBtn.AddThemeFontSizeOverride("font_size", 12);
         deployBtn.Alignment = HorizontalAlignment.Center;
-        deployBtn.CustomMinimumSize = new Vector2(74, 21);
-        deployBtn.Pressed += () => { if (_selected is { } c) { OpenDeployModal(c); } };
+        deployBtn.CustomMinimumSize = new Vector2(74, 24);
+        deployBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenDeployModal(c); } };
         _cmdList.AddChild(deployBtn);
+
+        // 그룹 플라이아웃(팔레트 우측에 붙는 작은 패널).
+        _cmdSubMenu = new PanelContainer { Visible = false, ZIndex = 51 };
+        _cmdSubMenu.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 5, 4));
+        layer.AddChild(_cmdSubMenu);
+        _cmdSubList = new VBoxContainer();
+        _cmdSubList.AddThemeConstantOverride("separation", 1);
+        _cmdSubMenu.AddChild(_cmdSubList);
 
         BuildUnitMenu(layer);
         BuildTerrainCard(layer);
@@ -1887,6 +1894,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         _infoCard.Visible = false;
         _cmdMenu.Visible = false;
+        CloseGroupMenu();
         _unitMenu.Visible = false;
         _selectedUnitId = -1;
         _terrainCard.Visible = false;
@@ -1899,6 +1907,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         _selected = id;
         _cmdIndex = -1;
+        CloseGroupMenu();
         _unitMenu.Visible = false;
         _selectedUnitId = -1;
         _terrainCard.Visible = false;
@@ -1964,13 +1973,56 @@ public sealed partial class CampaignMapScene : Node3D
         _cmdMenu.Position = new Vector2(px, py);
     }
 
+    // 그룹 버튼 토글 — 같은 그룹 재클릭 = 닫기, 다른 그룹 = 교체.
+    private void ToggleGroup(int groupIdx)
+    {
+        if (_openGroup == groupIdx) { CloseGroupMenu(); return; }
+        _openGroup = groupIdx;
+        Clear(_cmdSubList);
+        _cmdSubList.AddChild(MakeLabel($"· {CmdGroups[groupIdx].Group}", 10, GoldBright));
+        foreach (var i in CmdGroups[groupIdx].Indices)
+        {
+            var idx = i;
+            var btn = MakeButton(Cmds[i].Label);
+            btn.AddThemeFontSizeOverride("font_size", 11);
+            btn.Alignment = HorizontalAlignment.Center;
+            btn.CustomMinimumSize = new Vector2(84, 21);
+            btn.Pressed += () => { CloseGroupMenu(); OpenModal(idx); };
+            _cmdSubList.AddChild(btn);
+        }
+
+        PlaceGroupMenu();
+        _cmdSubMenu.Visible = true;
+    }
+
+    private void CloseGroupMenu()
+    {
+        _openGroup = -1;
+        _cmdSubMenu.Visible = false;
+    }
+
+    // 플라이아웃을 팔레트 바로 우측에 붙인다(화면 밖 clamp — 오른쪽이 좁으면 왼쪽에).
+    private void PlaceGroupMenu()
+    {
+        var sz = _cmdSubMenu.GetCombinedMinimumSize();
+        var vp = GetViewport().GetVisibleRect().Size;
+        var px = _cmdMenu.Position.X + _cmdMenu.Size.X + 4f;
+        if (px + sz.X > vp.X - 8f) { px = _cmdMenu.Position.X - sz.X - 4f; }
+        var py = Mathf.Clamp(_cmdMenu.Position.Y, 8f, System.Math.Max(8f, vp.Y - sz.Y - 8f));
+        _cmdSubMenu.Position = new Vector2(px, py);
+    }
+
     // 줌/이동 중에도 팔레트가 선택한 성을 따라가도록 갱신.
     public override void _Process(double delta)
     {
         if (_cmdMenu.Visible && _selected is { } sel)
         {
             var c = _state.Cities.FirstOrDefault(x => x.Id == sel);
-            if (c is not null) { PlacePalette(c.Position); }
+            if (c is not null)
+            {
+                PlacePalette(c.Position);
+                if (_cmdSubMenu.Visible) { PlaceGroupMenu(); }
+            }
         }
 
         if (_unitMenu.Visible && _selectedUnitId >= 0)
