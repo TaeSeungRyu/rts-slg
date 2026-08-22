@@ -204,4 +204,34 @@ public class CommandSystemTests
         Assert.Equal(1900, g.Troops);      // 기존 1000 + 신병 900(정치 90 동원)
         Assert.Equal(66, g.TrainingLevel); // (1000×80 + 900×50 + 950)/1900 = 66
     }
+
+    [Fact]
+    public void 취소하면_명령이_사라지고_장수가_풀린다()
+    {
+        var svc = Service();
+        var s0 = State(new[] { Town(1) }, new[] { Pol(1, 90) });
+        var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Recruit, new GeneralId(1), TroopCode: "swordsman"));
+        Assert.True(issued.State.IsGeneralBusy(new GeneralId(1)));
+
+        var cancelled = CommandService.Cancel(issued.State, issued.State.Commands.Single());
+
+        Assert.Empty(cancelled.Commands);
+        Assert.False(cancelled.IsGeneralBusy(new GeneralId(1)));
+    }
+
+    [Fact]
+    public void 취소해도_예약_자원은_환불되지_않는다()
+    {
+        var svc = Service();
+        var s0 = State(new[] { Town(1, ore: 5000, population: 100_000) }, new[] { Pol(1, 100) });
+        var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Recruit, new GeneralId(1), TroopCode: "swordsman"));
+        var reservedOre = issued.State.Cities.Single().Ore;
+        var reservedPop = issued.State.Cities.Single().Population;
+        Assert.True(reservedOre < 5000); // 발행 시 예약 차감 확인
+
+        var cancelled = CommandService.Cancel(issued.State, issued.State.Commands.Single());
+
+        Assert.Equal(reservedOre, cancelled.Cities.Single().Ore);      // 환불 없음
+        Assert.Equal(reservedPop, cancelled.Cities.Single().Population);
+    }
 }

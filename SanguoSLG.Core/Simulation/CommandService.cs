@@ -359,6 +359,24 @@ public sealed class CommandService
         return CommandResult.Success(state with { Cities = cities, PendingCommands = pending });
     }
 
+    /// <summary>
+    /// 진행 중 명령 취소(2026-08-23 사용자 결정 — 2026-08-17 "취소 없음" 번복).
+    /// 명령을 제거하고 수행 장수를 즉시 해제한다(잠금은 Commands에서 파생되므로 제거로 풀림).
+    /// 발행 시 예약된 자원·비용은 **환불하지 않는다**(함락 드롭과 같은 규칙 — 매몰 비용).
+    /// </summary>
+    public static GameState Cancel(GameState state, CityCommand command)
+    {
+        var pending = state.Commands.ToList();
+        var idx = pending.IndexOf(command);
+        if (idx < 0)
+        {
+            return state;
+        }
+
+        pending.RemoveAt(idx);
+        return state with { PendingCommands = pending };
+    }
+
     // 배속 규칙: 그 도시 소유 세력 소속 + 그 도시에 주둔 중이어야 명령을 수행할 수 있다.
     private static string? PostingError(GameState state, Domain.GeneralId general, City city)
     {

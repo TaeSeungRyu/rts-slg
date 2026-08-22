@@ -2019,7 +2019,7 @@ public sealed partial class CampaignMapScene : Node3D
         var c = _state.Cities.First(x => x.Id == id);
         var troops = _state.Garrisons.Where(g => g.City == id)
             .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ThenBy(g => g.Trainee)
-            .Select(g => $"{g.TroopCode}{(g.Trainee ? "(신병)" : "")} {g.Troops}");
+            .Select(g => $"{TroopName(g.TroopCode)}{(g.Trainee ? "(신병)" : "")} {g.Troops}");
         var officers = _state.GeneralsAt(id).Select(g => _state.Generals.First(x => x.Id == g).Name);
         var pending = _state.Commands.Where(p => p.City == id).Select(p =>
             $"{KindName(p.Kind)} 남은 {p.CompletionDay - _state.Day}일");
@@ -2059,6 +2059,12 @@ public sealed partial class CampaignMapScene : Node3D
         {
             AddCell(g2, Sym.Flag, "출전대기", string.Join(",", depQueue));
         }
+
+        var detailBtn = MakeButton("▶ 상세 · 진행 목록");
+        detailBtn.AddThemeFontSizeOverride("font_size", 12);
+        detailBtn.CustomMinimumSize = new Vector2(0, 26);
+        detailBtn.Pressed += () => OpenCityDetail(id);
+        _infoRows.AddChild(detailBtn);
 
         PlacePalette(c.Position);
         _infoCard.Visible = true;
@@ -2424,6 +2430,148 @@ public sealed partial class CampaignMapScene : Node3D
         _depModalCity = city;
         _depSelectedUnit = -1;
         OpenDeployHub();
+    }
+
+    // 병종 코드 → 한글 이름(성벽 연구 코드 포함).
+    private string TroopName(string code) => code == FactionResearch.WallCode ? "성벽"
+        : _troops.FirstOrDefault(t => t.Code == code)?.Name ?? code;
+
+    // 명령 한 줄 설명(상세 모달용): 종류 · 파라미터 — 장수 · 남은 일수.
+    private string CmdText(CityCommand c)
+    {
+        var main = _state.Generals.FirstOrDefault(g => g.Id == c.Main)?.Name ?? $"G{c.Main.Value}";
+        var param = c.TroopCode.Length > 0
+            ? $" · {TroopName(c.TroopCode)}{(c.TraineePool ? "(신병)" : "")}"
+            : c.Facility.Length > 0
+                ? $" · {FacilityLabel(c.Facility)}"
+                : "";
+        var target = c.TargetCity is { } tc
+            ? $" → {_state.Cities.FirstOrDefault(x => x.Id == tc)?.Name ?? $"성{tc.Value}"}"
+            : "";
+        return $"{KindName(c.Kind)}{param}{target} — {main} · 남은 {System.Math.Max(0, c.CompletionDay - _state.Day)}일";
+    }
+
+    private static string FacilityLabel(string code)
+    {
+        foreach (var (label, c) in Repairables)
+        {
+            if (c == code) { return label; }
+        }
+
+        foreach (var (label, c) in Strats)
+        {
+            if (c == code) { return label; }
+        }
+
+        return code;
+    }
+
+    // ── 성 상세 모달: 도시 수치 + 진행 중 명령(취소) + 출전 예약(취소) ──
+    private void OpenCityDetail(CityId city)
+    {
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.42f, 380f, 560f);
+        var mh = Mathf.Clamp(vp.Y * 0.85f, 360f, 760f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var c = _state.Cities.First(x => x.Id == city);
+
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel($"◈  《 {c.Name} 》 상세  ⠿", 18, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(40, 30);
+        close.Pressed += CloseModal;
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+
+        // 도시 수치(정보 카드보다 상세).
+        var g4 = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        g4.AddThemeConstantOverride("h_separation", 12);
+        g4.AddThemeConstantOverride("v_separation", 4);
+        box.AddChild(g4);
+        AddCell(g4, Sym.Coin, "금", $"{c.Gold}");
+        AddCell(g4, Sym.Grain, "군량", $"{c.Provisions}");
+        AddCell(g4, Sym.People, "인구", $"{c.Population}");
+        AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
+        AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
+        AddCell(g4, Sym.Coin, "세율", $"{c.TaxRate}%");
+        AddCell(g4, Sym.Ore, "광석", $"{c.Ore}");
+        AddCell(g4, Sym.Ore, "말/코끼리", $"{c.Horses}/{c.Elephants}");
+
+        box.AddChild(MakeLabel("대기 병력", 14, GoldBright));
+        foreach (var g in _state.Garrisons.Where(g => g.City == city)
+            .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ThenBy(g => g.Trainee))
+        {
+            box.AddChild(MakeLabel(
+                $"· {TroopName(g.TroopCode)}{(g.Trainee ? " (신병)" : "")}  {g.Troops}명 · 훈련 {g.TrainingLevel}",
+                12, Parchment));
+        }
+
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("진행 중 명령 (취소 = 자원 환불 없음)", 14, GoldBright));
+        var cmds = _state.Commands.Where(x => x.City == city).OrderBy(x => x.CompletionDay).ToList();
+        if (cmds.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
+        foreach (var pending in cmds)
+        {
+            var cmd = pending;
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            var lbl = MakeLabel("· " + CmdText(cmd), 12, Parchment);
+            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(lbl);
+            var cancel = MakeButton("취소");
+            cancel.CustomMinimumSize = new Vector2(56, 24);
+            cancel.Pressed += () => ShowConfirm("명령 취소",
+                $"{CmdText(cmd)}\n\n취소하면 예약된 자원·비용은 돌려받지 못합니다. 장수는 즉시 해제됩니다.",
+                () =>
+                {
+                    _state = CommandService.Cancel(_state, cmd);
+                    Dbg($"UI cancel-cmd city={city.Value} {KindName(cmd.Kind)} gen={cmd.Main.Value}");
+                    _log.Text = $"명령 취소: {KindName(cmd.Kind)}";
+                    SelectCity(city);
+                    OpenCityDetail(city);
+                });
+            row.AddChild(cancel);
+            box.AddChild(row);
+        }
+
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("출전 예약 (진행 시 편성 — 취소 시 소모 없음)", 14, GoldBright));
+        var deploys = new List<int>();
+        for (var i = 0; i < _pendingDeploys.Count; i++)
+        {
+            if (_pendingDeploys[i].Req.City == city) { deploys.Add(i); }
+        }
+
+        if (deploys.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
+        foreach (var di in deploys)
+        {
+            var idx = di;
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            var lbl = MakeLabel("· " + _pendingDeploys[idx].Label, 12, Parchment);
+            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(lbl);
+            var cancel = MakeButton("취소");
+            cancel.CustomMinimumSize = new Vector2(56, 24);
+            cancel.Pressed += () =>
+            {
+                Dbg($"UI cancel-deploy pending[{idx}] '{_pendingDeploys[idx].Label}'");
+                _pendingDeploys.RemoveAt(idx);
+                SelectCity(city);
+                OpenCityDetail(city);
+            };
+            row.AddChild(cancel);
+            box.AddChild(row);
+        }
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
     // ── 허브: 이 성의 출전 예약 목록(수정/삭제) + 부대 추가 ──
