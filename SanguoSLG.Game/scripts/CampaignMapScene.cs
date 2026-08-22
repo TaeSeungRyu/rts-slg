@@ -120,6 +120,8 @@ public sealed partial class CampaignMapScene : Node3D
     private CanvasLayer? _modalLayer;
     private int _modalParam;
     private VBoxContainer _modalOfficers = null!; // 수행 장수 표 홀더
+    private CityId? _stratTarget; // 도시 계략 대상 도시(선택 UI)
+    private readonly List<(PanelContainer Card, CityId Id)> _stratCityCards = new();
     private int _offSortCol = -1; // -1 = 명령 관련 능력치 내림차순(기본)
     private bool _offSortAsc;
     private Label _modalDetail = null!;
@@ -2140,6 +2142,43 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(_modalOfficers);
         BuildOfficerCards(city, cmdIndex);
 
+        // 도시 계략: 대상 도시 선택(적 성이 여럿일 수 있다 — 카드 클릭으로 지정, 기본 = 첫 적 성).
+        _stratTarget = null;
+        _stratCityCards.Clear();
+        if (cmd.Param == "stratagem")
+        {
+            var enemies = _state.Cities.Where(c => c.Owner != Player).OrderBy(c => c.Id.Value).ToList();
+            if (enemies.Count > 0)
+            {
+                _stratTarget = enemies[0].Id;
+                box.AddChild(MakeLabel("대상 도시를 선택하세요", 19, GoldBright));
+                var cityGrid = new GridContainer { Columns = System.Math.Min(colOpt, enemies.Count) };
+                cityGrid.AddThemeConstantOverride("h_separation", 10);
+                cityGrid.AddThemeConstantOverride("v_separation", 10);
+                box.AddChild(cityGrid);
+                var from = _state.Cities.First(x => x.Id == city).Position;
+                foreach (var enemyCity in enemies)
+                {
+                    var days = CityStratagems.Days(from, enemyCity.Position, _cb);
+                    var card = OptionCard((enemyCity.Name, Icon(Sym.Wall),
+                        $"거리 {from.Distance(enemyCity.Position)}칸 · 소요 {days}일"));
+                    var captured = enemyCity.Id;
+                    _stratCityCards.Add((card, captured));
+                    card.GuiInput += e =>
+                    {
+                        if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+                        {
+                            _stratTarget = captured;
+                            RestyleStratCities();
+                        }
+                    };
+                    cityGrid.AddChild(card);
+                }
+
+                RestyleStratCities();
+            }
+        }
+
         if (options.Count > 0) { PickOption(_modalParam, options[_modalParam]); }
 
         // 스크롤 높이를 내용에 맞추되 mh로 상한 → 짧은 명령은 아래 여백 없음, 긴 건 스크롤.
@@ -2165,6 +2204,8 @@ public sealed partial class CampaignMapScene : Node3D
         _vanTree = null;
         _depEditIndex = -1;
         _depTarget = null;
+        _stratTarget = null;
+        _stratCityCards.Clear();
         ClearPathMarkers(); // 편성이 닫히면 예약 경로도 지도에서 지운다
     }
 
@@ -2880,6 +2921,14 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depModeDesc is not null) { _depModeDesc.Text = ModeDesc(_depMode); }
     }
 
+    private void RestyleStratCities()
+    {
+        foreach (var (card, id) in _stratCityCards)
+        {
+            card.AddThemeStyleboxOverride("panel", CardBox(_stratTarget == id));
+        }
+    }
+
     private static string ModeName(UnitMode m) => m switch
     {
         UnitMode.March => "행군",
@@ -3219,7 +3268,10 @@ public sealed partial class CampaignMapScene : Node3D
         var extra = "";
         if (cmd.Param == "stratagem")
         {
-            var enemy = _state.Cities.FirstOrDefault(c => c.Owner != Player);
+            var enemy = _stratTarget is { } tc
+                ? _state.Cities.FirstOrDefault(c => c.Id == tc && c.Owner != Player)
+                : null;
+            enemy ??= _state.Cities.FirstOrDefault(c => c.Owner != Player);
             if (enemy is null) { return; }
             target = enemy.Id;
             var caster = _state.Generals.First(g => g.Id == general);
