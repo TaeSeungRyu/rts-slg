@@ -238,6 +238,11 @@ public partial class UnitController3D : Node3D
     public void TintFormation(Color color, float strength = 0.62f)
         => FactionColorView.ApplyTint(_tokenRoot, color, strength);
 
+    // 트윈 콜백은 편대 재구성(SetFormationSize→BuildToken)으로 노드가 해제된 뒤에도 발화할 수
+    // 있다 — 해제된 노드 접근(ObjectDisposedException)을 막는 생존 검사.
+    private static bool Alive([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] GodotObject? o)
+        => o is not null && IsInstanceValid(o);
+
     /// <summary>표시 모드: 이미 그 칸이면 스냅(트윈·회전 없음), 아니면 행군 이동.
     /// 제자리 트윈이 미세 보정 이동을 만들어 방향을 뒤집는 것을 막는다.</summary>
     public void DisplaySyncTo(HexCoord to, float seconds)
@@ -692,7 +697,7 @@ public partial class UnitController3D : Node3D
                 }
                 tween.Chain().TweenCallback(Callable.From(() =>
                 {
-                    if (member.Arrow is not null)
+                    if (Alive(member.Arrow))
                     {
                         member.Arrow.Visible = true;
                     }
@@ -879,7 +884,7 @@ public partial class UnitController3D : Node3D
                 .SetTrans(Tween.TransitionType.Sine);
             tween.Chain().TweenCallback(Callable.From(() =>
             {
-                if (member.Arrow is not null)
+                if (Alive(member.Arrow))
                 {
                     member.Arrow.Visible = true;
                 }
@@ -894,9 +899,10 @@ public partial class UnitController3D : Node3D
     // 발사 순간: 손의 화살을 숨기고, 그 자리에서 사거리만큼 앞의 지면으로 발사체를 날린다.
     private void LooseArrow(Member member, float scatter, float rangeTiles)
     {
-        var from = member.Arrow?.GlobalPosition
-            ?? member.Body.GlobalPosition + Vector3.Up * 0.10f;
-        if (member.Arrow is not null)
+        if (!Alive(member.Body)) { return; } // 편대 재구성으로 해제된 뒤 발화한 콜백
+        var from = Alive(member.Arrow) ? member.Arrow!.GlobalPosition
+            : member.Body.GlobalPosition + Vector3.Up * 0.10f;
+        if (Alive(member.Arrow))
         {
             member.Arrow.Visible = false;
         }
@@ -969,7 +975,7 @@ public partial class UnitController3D : Node3D
             }
             tween.Chain().TweenCallback(Callable.From(() =>
             {
-                if (member.Arrow is not null)
+                if (Alive(member.Arrow))
                 {
                     member.Arrow.Visible = true;
                 }
@@ -1075,7 +1081,7 @@ public partial class UnitController3D : Node3D
                 .SetTrans(Tween.TransitionType.Sine);
             tween.Chain().TweenCallback(Callable.From(() =>
             {
-                if (member.Arrow is not null)
+                if (Alive(member.Arrow))
                 {
                     member.Arrow.Visible = true;
                 }
@@ -1091,9 +1097,10 @@ public partial class UnitController3D : Node3D
     // 발사 순간: 바구니의 돌을 숨기고, 그 자리에서 사거리만큼 앞의 지면으로 돌을 날린다.
     private void LooseStone(Member member, float scatter)
     {
-        var from = member.Arrow?.GlobalPosition
-            ?? member.Body.GlobalPosition + Vector3.Up * 0.2f;
-        if (member.Arrow is not null)
+        if (!Alive(member.Body)) { return; } // 편대 재구성으로 해제된 뒤 발화한 콜백
+        var from = Alive(member.Arrow) ? member.Arrow!.GlobalPosition
+            : member.Body.GlobalPosition + Vector3.Up * 0.2f;
+        if (Alive(member.Arrow))
         {
             member.Arrow.Visible = false;
         }
@@ -1284,7 +1291,7 @@ public partial class UnitController3D : Node3D
             {
                 foreach (var arrow in member.DeckArrows)
                 {
-                    arrow.Visible = true;
+                    if (Alive(arrow)) { arrow.Visible = true; }
                 }
             }));
         }
@@ -1344,7 +1351,7 @@ public partial class UnitController3D : Node3D
     // 발사체가 아니라 일회성 파티클이다 — 다 타면 노드째 정리한다.
     private void BreatheFire(Member member)
     {
-        if (member.FireMuzzle is null)
+        if (!Alive(member.FireMuzzle))
         {
             return;
         }
