@@ -360,12 +360,17 @@ public sealed class CommandService
     }
 
     /// <summary>
-    /// 진행 중 명령 취소(2026-08-23 사용자 결정 — 2026-08-17 "취소 없음" 번복).
-    /// 명령을 제거하고 수행 장수를 즉시 해제한다(잠금은 Commands에서 파생되므로 제거로 풀림).
-    /// 발행 시 예약된 자원·비용은 **환불하지 않는다**(함락 드롭과 같은 규칙 — 매몰 비용).
+    /// 명령 취소(2026-08-23 사용자 결정): **시작 전(발행한 그 주, 첫 진행 전)에만** 취소할 수 있다.
+    /// 진행이 한 번이라도 지났으면(발행일 ≠ 현재일) 취소 불가 — 완료까지 간다.
+    /// 취소하면 명령 제거 + 수행 장수 즉시 해제. 발행 시 예약된 자원·비용은 환불하지 않는다.
     /// </summary>
     public static GameState Cancel(GameState state, CityCommand command)
     {
+        if (state.Day != command.StartDay)
+        {
+            return state; // 이미 진행이 시작된 명령 — 취소 불가
+        }
+
         var pending = state.Commands.ToList();
         var idx = pending.IndexOf(command);
         if (idx < 0)

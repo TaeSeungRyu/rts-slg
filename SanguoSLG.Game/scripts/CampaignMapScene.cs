@@ -2512,7 +2512,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("진행 중 명령 (취소 = 자원 환불 없음)", 14, GoldBright));
+        box.AddChild(MakeLabel("진행 중 명령 (시작 전만 취소 가능 · 환불 없음)", 14, GoldBright));
         var cmds = _state.Commands.Where(x => x.City == city).OrderBy(x => x.CompletionDay).ToList();
         if (cmds.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
         foreach (var pending in cmds)
@@ -2520,9 +2520,11 @@ public sealed partial class CampaignMapScene : Node3D
             var cmd = pending;
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 8);
-            var lbl = MakeLabel("· " + CmdText(cmd), 12, Parchment);
+            var started = _state.Day != cmd.StartDay; // 진행이 한 번이라도 지났으면 취소 불가
+            var lbl = MakeLabel("· " + CmdText(cmd) + (started ? "  (진행중)" : ""), 12, Parchment);
             lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             row.AddChild(lbl);
+            if (started) { box.AddChild(row); continue; }
             var cancel = MakeButton("취소");
             cancel.CustomMinimumSize = new Vector2(56, 24);
             cancel.Pressed += () => ShowConfirm("명령 취소",

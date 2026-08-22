@@ -220,6 +220,21 @@ public class CommandSystemTests
     }
 
     [Fact]
+    public void 진행이_시작된_명령은_취소되지_않는다()
+    {
+        var svc = Service();
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), B);
+        var s0 = State(new[] { Town(1) }, new[] { Pol(1, 90) });
+        var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Recruit, new GeneralId(1), TroopCode: "swordsman"));
+        var mid = world.AdvanceDays(issued.State, 3); // 진행 시작(발행일 ≠ 현재일)
+
+        var after = CommandService.Cancel(mid, mid.Commands.Single());
+
+        Assert.Single(after.Commands); // 취소 무시 — 완료까지 간다
+        Assert.True(after.IsGeneralBusy(new GeneralId(1)));
+    }
+
+    [Fact]
     public void 취소해도_예약_자원은_환불되지_않는다()
     {
         var svc = Service();
