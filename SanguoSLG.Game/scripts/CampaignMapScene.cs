@@ -1188,7 +1188,7 @@ public sealed partial class CampaignMapScene : Node3D
         return _map.Contains(coord) ? coord : null;
     }
 
-    // ── 아주 간단한 시나리오(코드): 10x6 맵(지형 다양), 두 세력, 각 성 1개·장수 2명·대기 병력 1만 ──
+    // ── 테스트 시나리오: 지형 다양 맵, 위(성 1) vs 촉(성 2 — 성도·한중) ──
     private static readonly HexMap _map = BuildTestMap();
 
     /// <summary>렌더(GameRoot3D)와 시뮬(passability)이 같은 지형을 쓰도록 공유하는 맵.</summary>
@@ -1219,6 +1219,8 @@ public sealed partial class CampaignMapScene : Node3D
             Gold: 2000, Security: 80, Population: 100_000, Ore: 8000, Wall: 1200),
         new(new CityId(2), "성도", new HexCoord(8, 3), new FactionId(2), 3000, CastleSize.Medium,
             Gold: 2000, Security: 80, Population: 100_000, Ore: 8000, Wall: 1200),
+        new(new CityId(3), "한중", new HexCoord(4, 6), new FactionId(2), 3000, CastleSize.Medium,
+            Gold: 2000, Security: 80, Population: 80_000, Ore: 6000, Wall: 1200),
     };
 
     private static readonly GameState _initial = new(1, 1,
@@ -1233,7 +1235,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             Officer(1), Officer(2), Officer(3), Officer(4), Officer(5),
             Officer(6), Officer(7), Officer(8), Officer(9), Officer(10),
-            Officer(11), Officer(12),
+            Officer(11), Officer(12), Officer(13), Officer(14),
         },
         Postings: new List<GeneralPosting>
         {
@@ -1249,6 +1251,8 @@ public sealed partial class CampaignMapScene : Node3D
             new(new GeneralId(10), new FactionId(1), new CityId(1)),
             new(new GeneralId(11), new FactionId(2), new CityId(2)),
             new(new GeneralId(12), new FactionId(2), new CityId(2)),
+            new(new GeneralId(13), new FactionId(2), new CityId(3)),
+            new(new GeneralId(14), new FactionId(2), new CityId(3)),
         },
         // 테스트: 플레이어 성 대기 병력 10만(3병종), 적 성 10만.
         GarrisonForces: new List<GarrisonForce>
@@ -1257,6 +1261,7 @@ public sealed partial class CampaignMapScene : Node3D
             new(new CityId(1), "archer", 30000, 60),
             new(new CityId(1), "cavalry", 20000, 60),
             new(new CityId(2), "swordsman", 100000, 60),
+            new(new CityId(3), "swordsman", 30000, 60),
         });
 
     private static General Officer(int id) => new(
