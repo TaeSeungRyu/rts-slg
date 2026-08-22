@@ -258,9 +258,22 @@ public sealed partial class CampaignMapScene : Node3D
         ("징병", CommandKind.Conscript, "troop"),
         ("훈련", CommandKind.Train, "garrison"),
         ("세율", CommandKind.SetTaxRate, "tax"),
+        ("건설", CommandKind.Build, "facility"),
         ("병종 연구", CommandKind.Research, "troop"),
         ("성벽 수리", CommandKind.Repair, "wall"),
+        ("시설 수리", CommandKind.Repair, "repairable"),
         ("도시 계략", CommandKind.CityStratagem, "stratagem"),
+    };
+
+    private static readonly (string Label, string Code)[] Facilities =
+    {
+        ("논", "paddy"), ("밭", "farm"), ("마을", "village"), ("공방", "workshop"),
+    };
+
+    private static readonly (string Label, string Code)[] Repairables =
+    {
+        ("논", "paddy"), ("밭", "farm"), ("마을", "village"), ("공방", "workshop"),
+        ("광산", "mine"), ("목장", "ranch"), ("상원", "elephant_garden"),
     };
 
     private static readonly (string Label, string Code)[] Strats =
@@ -272,9 +285,9 @@ public sealed partial class CampaignMapScene : Node3D
     // 명령 카테고리 그룹(삼국지14식 분류)과 명령별 아이콘.
     private static readonly (string Group, int[] Indices)[] CmdGroups =
     {
-        ("내정", new[] { 0, 1, 2, 3 }),
-        ("군비", new[] { 4, 5 }),
-        ("계략", new[] { 6 }),
+        ("내정", new[] { 0, 1, 2, 3, 4 }),
+        ("군비", new[] { 5, 6, 7 }),
+        ("계략", new[] { 8 }),
     };
 
     private static readonly Sym[] CmdIcons = { Sym.Sword, Sym.Coin, Sym.Book, Sym.Wall, Sym.Scroll };
@@ -2989,6 +3002,37 @@ public sealed partial class CampaignMapScene : Node3D
                 }
 
                 break;
+            case "facility":
+                foreach (var (label, code) in Facilities)
+                {
+                    var (owned, cost) = code switch
+                    {
+                        "paddy" => (city.Paddies, _cb.BuildCostPaddy),
+                        "farm" => (city.Farms, _cb.BuildCostFarm),
+                        "village" => (city.Villages, _cb.BuildCostVillage),
+                        _ => (city.Workshop ? 1 : 0, _cb.BuildCostWorkshop),
+                    };
+                    list.Add((label, Icon(Sym.Grain), $"보유 {owned} · 비용 {cost}금"));
+                }
+
+                break;
+            case "repairable":
+                foreach (var (label, code) in Repairables)
+                {
+                    var state = code switch
+                    {
+                        "paddy" => city.RuinedPaddies > 0 ? $"잔해 {city.RuinedPaddies}" : "이상 없음",
+                        "farm" => city.RuinedFarms > 0 ? $"잔해 {city.RuinedFarms}" : "이상 없음",
+                        "village" => city.RuinedVillages > 0 ? $"잔해 {city.RuinedVillages}" : "이상 없음",
+                        "workshop" => city.WorkshopRuined ? "파손" : "이상 없음",
+                        "mine" => city.MineDestroyed ? "파괴" : "이상 없음",
+                        "ranch" => city.RanchDestroyed ? "파괴" : "이상 없음",
+                        _ => city.ElephantGardenDestroyed ? "파괴" : "이상 없음",
+                    };
+                    list.Add((label, Icon(Sym.Wall), state));
+                }
+
+                break;
             case "stratagem":
                 foreach (var s in Strats) { list.Add((s.Label, StratIcon(s.Code), StratDesc(s.Code))); }
                 break;
@@ -3292,7 +3336,13 @@ public sealed partial class CampaignMapScene : Node3D
                 .Select(g => g.TroopCode).ElementAtOrDefault(p) ?? "",
             _ => "",
         };
-        var facility = cmd.Param == "stratagem" ? Strats[p].Code : "";
+        var facility = cmd.Param switch
+        {
+            "stratagem" => Strats[p].Code,
+            "facility" => Facilities[p].Code,
+            "repairable" => Repairables[p].Code,
+            _ => "",
+        };
         var value = cmd.Param == "tax" ? p * 10 : 0;
 
         CityId? target = null;
@@ -3319,6 +3369,8 @@ public sealed partial class CampaignMapScene : Node3D
             "troop" => $" · {_troops[p].Name}",
             "garrison" => $" · {(_troops.FirstOrDefault(t => t.Code == troopCode)?.Name ?? troopCode)}",
             "tax" => $" · {value}%",
+            "facility" => $" · {Facilities[p].Label}",
+            "repairable" => $" · {Repairables[p].Label}",
             "stratagem" => $" · {Strats[p].Label}",
             _ => "",
         };
