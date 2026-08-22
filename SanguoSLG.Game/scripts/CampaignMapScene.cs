@@ -119,7 +119,9 @@ public sealed partial class CampaignMapScene : Node3D
     // 명령 모달(명령 클릭 → 큰 창 + 아이콘 카드 그리드 → 카드 선택 → 장수 클릭 = 실행).
     private CanvasLayer? _modalLayer;
     private int _modalParam;
-    private GridContainer _modalOfficers = null!;
+    private VBoxContainer _modalOfficers = null!; // 수행 장수 표 홀더
+    private int _offSortCol = -1; // -1 = 명령 관련 능력치 내림차순(기본)
+    private bool _offSortAsc;
     private Label _modalDetail = null!;
     private readonly List<PanelContainer> _optionCards = new();
     private readonly Dictionary<TroopClass, ImageTexture> _emblems = new();
@@ -2121,10 +2123,10 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(_modalDetail);
         box.AddChild(GoldRule());
 
-        box.AddChild(MakeLabel("수행 장수 (클릭 = 실행)", 19, GoldBright));
-        _modalOfficers = new GridContainer { Columns = colOff };
-        _modalOfficers.AddThemeConstantOverride("h_separation", 10);
-        _modalOfficers.AddThemeConstantOverride("v_separation", 10);
+        box.AddChild(MakeLabel("수행 장수 (행 클릭 = 실행 · 상단 눌러 정렬)", 19, GoldBright));
+        _offSortCol = -1;
+        _offSortAsc = false;
+        _modalOfficers = new VBoxContainer();
         box.AddChild(_modalOfficers);
         BuildOfficerCards(city, cmdIndex);
 
@@ -2970,6 +2972,7 @@ public sealed partial class CampaignMapScene : Node3D
         _modalDetail.Text = o.Detail.Length > 0 ? $"▶  {o.Name}  —  {o.Detail}" : $"▶  {o.Name}";
     }
 
+    // 수행 장수 표(정렬·내부 스크롤) — 행 클릭 = 실행(컨펌창). ★ = 이 명령의 효율 능력치.
     private void BuildOfficerCards(CityId city, int cmdIndex)
     {
         Clear(_modalOfficers);
@@ -2982,51 +2985,77 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
-        foreach (var gid in free)
-        {
-            var g = _state.Generals.First(x => x.Id == gid);
-            var home = g.Region.Length > 0 && g.Region == cityData.Region ? "  🏠" : "";
-            var stat = cmd.Kind is CommandKind.Research or CommandKind.CityStratagem ? $"지 {g.Intellect}"
-                : cmd.Kind == CommandKind.Train ? $"무 {g.Might}" : $"정 {g.Politics}";
-            var card = OfficerCard(g.Name + home, stat);
-            var captured = gid;
-            card.GuiInput += e =>
-            {
-                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { AskExecute(city, cmdIndex, captured, _modalParam); }
-            };
-            _modalOfficers.AddChild(card);
-        }
-    }
+        // 이 명령의 효율 능력치 컬럼(1=무, 2=지, 3=정) — 기본 정렬(내림차순)과 ★ 표시에 쓴다.
+        var relevant = cmd.Kind is CommandKind.Research or CommandKind.CityStratagem ? 2
+            : cmd.Kind == CommandKind.Train ? 1 : 3;
 
-    private PanelContainer OfficerCard(string name, string stat)
-    {
-        var card = new PanelContainer
+        var tree = new Tree
         {
-            CustomMinimumSize = new Vector2(161, 107),
-            MouseFilter = Control.MouseFilterEnum.Stop,
-            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+            Columns = 4,
+            ColumnTitlesVisible = true,
+            HideRoot = true,
+            SelectMode = Tree.SelectModeEnum.Row,
+            CustomMinimumSize = new Vector2(0, 200),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
-        card.AddThemeStyleboxOverride("panel", CardBox(false));
-        var v = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        v.AddThemeConstantOverride("separation", 4);
-        card.AddChild(v);
-        v.AddChild(new TextureRect
+        tree.AddThemeFontOverride("font", _font);
+        tree.AddThemeFontSizeOverride("font_size", 15);
+        tree.AddThemeFontOverride("title_button_font", _font);
+        tree.AddThemeFontSizeOverride("title_button_font_size", 14);
+        tree.SetColumnTitle(0, "이름");
+        tree.SetColumnExpand(0, true);
+        tree.SetColumnExpandRatio(0, 3);
+        foreach (var (col, t) in new[] { (1, "무"), (2, "지"), (3, "정") })
         {
-            Texture = Icon(Sym.Officer),
-            CustomMinimumSize = new Vector2(43, 43),
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
-        });
-        var nm = MakeLabel(name, 19, Parchment);
-        nm.HorizontalAlignment = HorizontalAlignment.Center;
-        v.AddChild(nm);
-        var st = MakeLabel(stat, 16, GoldBright);
-        st.HorizontalAlignment = HorizontalAlignment.Center;
-        v.AddChild(st);
-        card.MouseEntered += () => card.AddThemeStyleboxOverride("panel", CardBox(false, hover: true));
-        card.MouseExited += () => card.AddThemeStyleboxOverride("panel", CardBox(false));
-        return card;
+            tree.SetColumnTitle(col, col == relevant ? t + "★" : t);
+            tree.SetColumnExpand(col, false);
+            tree.SetColumnCustomMinimumWidth(col, 52);
+        }
+
+        var gens = free.Select(id => _state.Generals.First(g => g.Id == id)).ToList();
+        System.Comparison<General> cmp = _offSortCol switch
+        {
+            0 => (a, b) => string.Compare(a.Name, b.Name, System.StringComparison.Ordinal),
+            1 => (a, b) => a.Might.CompareTo(b.Might),
+            2 => (a, b) => a.Intellect.CompareTo(b.Intellect),
+            3 => (a, b) => a.Politics.CompareTo(b.Politics),
+            _ => (a, b) => StatFor(b).CompareTo(StatFor(a)), // 기본: 효율 능력치 내림차순
+        };
+        gens.Sort(cmp);
+        if (_offSortCol >= 0 && !_offSortAsc) { gens.Reverse(); }
+
+        var root = tree.CreateItem();
+        foreach (var g in gens)
+        {
+            var item = tree.CreateItem(root);
+            var home = g.Region.Length > 0 && g.Region == cityData.Region ? " 🏠" : "";
+            item.SetText(0, g.Name + home);
+            item.SetText(1, g.Might.ToString());
+            item.SetText(2, g.Intellect.ToString());
+            item.SetText(3, g.Politics.ToString());
+            item.SetMetadata(0, g.Id.Value);
+            for (var col = 1; col <= 3; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
+        }
+
+        tree.ItemSelected += () =>
+        {
+            var it = tree.GetSelected();
+            if (it is null) { return; }
+            var gid = new GeneralId(it.GetMetadata(0).AsInt32());
+            tree.CallDeferred(Tree.MethodName.DeselectAll); // 컨펌 취소 후 같은 행 재클릭 가능하게
+            AskExecute(city, cmdIndex, gid, _modalParam);
+        };
+        tree.ColumnTitleClicked += (col, _) =>
+        {
+            var c = (int)col;
+            if (_offSortCol == c) { _offSortAsc = !_offSortAsc; }
+            else { _offSortCol = c; _offSortAsc = c == 0; } // 이름은 오름차순, 능력치는 내림차순부터
+            BuildOfficerCards(city, cmdIndex);
+        };
+        _modalOfficers.AddChild(tree);
+        return;
+
+        int StatFor(General g) => relevant switch { 1 => g.Might, 2 => g.Intellect, _ => g.Politics };
     }
 
     private StyleBoxFlat CardBox(bool selected, bool hover = false) => selected
