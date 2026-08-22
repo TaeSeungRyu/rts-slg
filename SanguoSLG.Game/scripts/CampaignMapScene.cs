@@ -2015,6 +2015,9 @@ public sealed partial class CampaignMapScene : Node3D
     // 줌/이동 중에도 팔레트가 선택한 성을 따라가도록 갱신.
     public override void _Process(double delta)
     {
+        // 미니 패널(플라이아웃)은 메인 팔레트와 운명을 같이한다 — 팔레트가 사라지면 함께 닫힘.
+        if (_cmdSubMenu.Visible && !_cmdMenu.Visible) { CloseGroupMenu(); }
+
         if (_cmdMenu.Visible && _selected is { } sel)
         {
             var c = _state.Cities.FirstOrDefault(x => x.Id == sel);
