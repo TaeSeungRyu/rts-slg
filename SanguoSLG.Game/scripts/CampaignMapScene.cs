@@ -99,8 +99,11 @@ public sealed partial class CampaignMapScene : Node3D
     private VBoxContainer _cmdSubList = null!;
     private int _openGroup = -1;
     private VBoxContainer _cmdList = null!;
-    private PanelContainer _unitMenu = null!; // 유닛 명령 팔레트(모양 위주 — 정보만 동작)
+    private PanelContainer _unitMenu = null!; // 유닛 명령 팔레트(정보·이동 재지정)
+    private VBoxContainer _unitCmdBox = null!; // 이동·계략 섹션 — 아군·평시에만 표시
     private int _selectedUnitId = -1;
+    private int _retargetUnitId = -1;  // ≥0이면 야전 부대 이동 재지정 목표 지정 중
+    private UnitMode _retargetMode;
     private bool _leftDown;            // 좌클릭 vs 좌드래그(맵 이동) 구분용
     private Vector2 _leftDownPos;
 
@@ -703,7 +706,13 @@ public sealed partial class CampaignMapScene : Node3D
         // 우클릭: 목표 지정 취소만(맵 이동 아님 — 이동은 좌드래그로).
         if (mb.ButtonIndex == MouseButton.Right && mb.Pressed)
         {
-            if (_depTargeting) { FinishTargeting(); OpenDeployHub(); }
+            if (_depTargeting)
+            {
+                var wasUnit = _retargetUnitId >= 0;
+                FinishTargeting();
+                if (!wasUnit) { OpenDeployHub(); }
+            }
+
             return;
         }
 
@@ -737,7 +746,12 @@ public sealed partial class CampaignMapScene : Node3D
 
                 foreach (var m in _previewMarkers) { m.QueueFree(); }
                 _previewMarkers.Clear();
-                if (_depTargetIndex >= 0 && _depTargetIndex < _pendingDeploys.Count
+                if (_retargetUnitId >= 0)
+                {
+                    var ru = _state.Armies.FirstOrDefault(a => a.Id.Value == _retargetUnitId);
+                    if (ru is not null) { AddPathDots(ru.Field.Position, th, _previewMarkers); }
+                }
+                else if (_depTargetIndex >= 0 && _depTargetIndex < _pendingDeploys.Count
                     && _state.Cities.FirstOrDefault(c => c.Id == _pendingDeploys[_depTargetIndex].Req.City) is { } fromCity)
                 {
                     AddPathDots(fromCity.Position, th, _previewMarkers);
@@ -792,6 +806,7 @@ public sealed partial class CampaignMapScene : Node3D
         _cmdMenu.Visible = false;
         _terrainCard.Visible = false;
         _terrainHex = null;
+        _unitCmdBox.Visible = u.Field.Owner == Player && !_advancing; // 적·재생 중엔 정보만
         PlaceMenu(_unitMenu, u.Field.Position, 60f);
         _unitMenu.Visible = true;
         MoveRing(u.Field.Position);
@@ -1042,6 +1057,12 @@ public sealed partial class CampaignMapScene : Node3D
         HidePanels(); // 목표 지정 중에는 성 명령 팔레트·정보 카드가 가려선 안 된다.
         _depTargetIndex = idx;
         _depTargeting = true;
+        ShowTargetHint("목적지 클릭 → '확인'을 눌러 확정  ·  적 성 = 공격  ·  우클릭 취소");
+    }
+
+    // 화면 상단 목표 지정 안내 배너.
+    private void ShowTargetHint(string text)
+    {
         var layer = new CanvasLayer { Layer = 25 };
         AddChild(layer);
         _targetHintLayer = layer;
@@ -1049,13 +1070,14 @@ public sealed partial class CampaignMapScene : Node3D
         pc.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.CenterTop, Control.LayoutPresetMode.KeepSize, 16);
         pc.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 10));
         layer.AddChild(pc);
-        pc.AddChild(MakeLabel("목적지 클릭 → '확인'을 눌러 확정  ·  적 성 = 공격  ·  우클릭 취소", 15, GoldBright));
+        pc.AddChild(MakeLabel(text, 15, GoldBright));
     }
 
     private void FinishTargeting()
     {
         _depTargeting = false;
         _depTargetIndex = -1;
+        _retargetUnitId = -1;
         _pendingTargetHex = null;
         _targetConfirmBtn.Visible = false;
         foreach (var m in _previewMarkers) { m.QueueFree(); }
@@ -1066,7 +1088,9 @@ public sealed partial class CampaignMapScene : Node3D
     // 목적지 '확인' — 여기서만 실제 목표가 확정된다(확인 없이 나가면 목표 미지정).
     private void ConfirmTarget()
     {
-        if (_pendingTargetHex is { } h) { ApplyTarget(h); }
+        if (_pendingTargetHex is not { } h) { return; }
+        if (_retargetUnitId >= 0) { ApplyUnitTarget(h); }
+        else { ApplyTarget(h); }
     }
 
     private void ApplyTarget(HexCoord? hex)
@@ -1827,18 +1851,82 @@ public sealed partial class CampaignMapScene : Node3D
         info.Pressed += () => { if (_selectedUnitId >= 0) { ShowUnitInfo(_selectedUnitId); } };
         menu.AddChild(info);
 
-        menu.AddChild(MakeLabel("· 이동", 10, GoldBright));
-        foreach (var m in new[] { "행군", "전진", "공격" })
+        // 명령 섹션 — 아군 부대·진행 중이 아닐 때만 보인다(적/재생 중엔 정보만).
+        _unitCmdBox = new VBoxContainer();
+        _unitCmdBox.AddThemeConstantOverride("separation", 1);
+        menu.AddChild(_unitCmdBox);
+
+        _unitCmdBox.AddChild(MakeLabel("· 이동", 10, GoldBright));
+        foreach (var (label, mode) in new[] { ("행군", UnitMode.March), ("전진", UnitMode.Advance), ("공격", UnitMode.Attack) })
         {
-            var b = Item(m);
-            b.Pressed += () => { _log.Text = $"(준비 중) 유닛 {m} 명령"; }; // 모양만 — 기능 미배선
-            menu.AddChild(b);
+            var mm = mode;
+            var b = Item(label);
+            b.TooltipText = ModeDesc(mm);
+            b.Pressed += () => BeginUnitTargeting(_selectedUnitId, mm);
+            _unitCmdBox.AddChild(b);
         }
 
-        menu.AddChild(MakeLabel("· 계략", 10, GoldBright));
+        var stop = Item("정지");
+        stop.TooltipText = "목표를 지우고 그 자리에서 대기한다.";
+        stop.Pressed += StopSelectedUnit;
+        _unitCmdBox.AddChild(stop);
+
+        _unitCmdBox.AddChild(MakeLabel("· 계략", 10, GoldBright));
         var strat = Item("계략");
-        strat.Pressed += () => { _log.Text = "(준비 중) 유닛 계략"; }; // 모양만
-        menu.AddChild(strat);
+        strat.Pressed += () => { _log.Text = "(준비 중) 유닛 계략"; }; // 후속 배선
+        _unitCmdBox.AddChild(strat);
+    }
+
+    // 야전 부대 이동 재지정 — 모드를 고르고 목적지를 클릭, '확인'으로 확정(출전 목표 지정과 동일 UX).
+    private void BeginUnitTargeting(int unitId, UnitMode mode)
+    {
+        if (_advancing || unitId < 0) { return; }
+        Dbg($"UI unit-retarget-begin u{unitId} mode={mode}");
+        HidePanels();
+        _retargetUnitId = unitId;
+        _retargetMode = mode;
+        _depTargeting = true;
+        ShowTargetHint($"{ModeName(mode)} 목적지 클릭 → '확인'으로 확정  ·  적 성 = 공격  ·  자기 성 = 복귀  ·  우클릭 취소");
+    }
+
+    // 정지: 목표를 지워 그 자리에서 대기(별도 명령까지 유지).
+    private void StopSelectedUnit()
+    {
+        if (_advancing || _selectedUnitId < 0) { return; }
+        var uid = _selectedUnitId;
+        var armies = _state.Armies
+            .Select(a => a.Id.Value == uid && a.Field.Owner == Player
+                ? a with { Field = a.Field with { Target = null } } : a)
+            .ToList();
+        _state = _state with { FieldArmies = armies };
+        Dbg($"UI unit-stop u{uid}");
+        _log.Text = $"부대가 그 자리에 대기합니다.";
+        Redraw(_log.Text);
+        var u = _state.Armies.FirstOrDefault(a => a.Id.Value == uid);
+        if (u is not null) { OpenUnitMenu(u); }
+    }
+
+    // 재지정 확정 — 적 성이면 공격모드로 전환, 자기 성이면 복귀(입성은 이동 규칙이 처리).
+    private void ApplyUnitTarget(HexCoord h)
+    {
+        var uid = _retargetUnitId;
+        var mode = _retargetMode;
+        FinishTargeting();
+        var u = _state.Armies.FirstOrDefault(a => a.Id.Value == uid && a.Field.Owner == Player);
+        if (u is null) { return; }
+
+        var enemyCity = _state.Cities.FirstOrDefault(c => c.Position == h && c.Owner != Player);
+        if (enemyCity is not null) { mode = UnitMode.Attack; }
+        var armies = _state.Armies
+            .Select(a => a.Id.Value == uid ? a with { Field = a.Field with { Mode = mode, Target = h } } : a)
+            .ToList();
+        _state = _state with { FieldArmies = armies };
+
+        var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
+        Dbg($"UI unit-retarget u{uid} -> ({h.Q},{h.R}) mode={mode}");
+        _log.Text = $"부대 → {tName} ({ModeName(mode)}모드)";
+        Redraw(_log.Text);
+        OpenUnitMenu(_state.Armies.First(a => a.Id.Value == uid)); // 팔레트 복귀 + 새 경로 표시
     }
 
 
