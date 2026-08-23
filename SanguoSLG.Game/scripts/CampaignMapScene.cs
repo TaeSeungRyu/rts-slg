@@ -126,6 +126,7 @@ public sealed partial class CampaignMapScene : Node3D
     private CanvasLayer? _modalLayer;
     private int _modalParam;
     private VBoxContainer _modalOfficers = null!; // 수행 장수 표 홀더
+    private int _cityDetailTab; // 성 상세 활성 탭(0=주둔·1=명령·2=예약)
     private CityId? _stratTarget; // 도시 계략 대상 도시(선택 UI)
     private int _offSortCol = -1; // -1 = 명령 관련 능력치 내림차순(기본)
     private bool _offSortAsc;
@@ -2530,66 +2531,126 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("주둔 장수 (행 클릭 = 상세)", 14, GoldBright));
+
+        // 탭 3종: 주둔 장수 / 진행 중 명령 / 출전 예약.
         var stationed = _state.GeneralsAt(city).OrderBy(x => x.Value)
             .Select(id => _state.Generals.First(x => x.Id == id)).ToList();
-        if (stationed.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
-        else
+        var cmds = _state.Commands.Where(x => x.City == city).OrderBy(x => x.CompletionDay).ToList();
+        var deploys = new List<int>();
+        for (var i = 0; i < _pendingDeploys.Count; i++)
         {
-            var gt = new Tree
-            {
-                Columns = 5,
-                ColumnTitlesVisible = true,
-                HideRoot = true,
-                SelectMode = Tree.SelectModeEnum.Row,
-                CustomMinimumSize = new Vector2(0, Mathf.Min(44 + stationed.Count * 29, 220)),
-                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            };
-            gt.AddThemeFontOverride("font", _font);
-            gt.AddThemeFontSizeOverride("font_size", 14);
-            gt.AddThemeFontOverride("title_button_font", _font);
-            gt.AddThemeFontSizeOverride("title_button_font_size", 13);
-            gt.SetColumnTitle(0, "이름");
-            gt.SetColumnExpand(0, true);
-            gt.SetColumnExpandRatio(0, 3);
-            foreach (var (col, t) in new[] { (1, "무"), (2, "지"), (3, "정") })
-            {
-                gt.SetColumnTitle(col, t);
-                gt.SetColumnExpand(col, false);
-                gt.SetColumnCustomMinimumWidth(col, 46);
-            }
-
-            gt.SetColumnTitle(4, "상태");
-            gt.SetColumnExpand(4, false);
-            gt.SetColumnCustomMinimumWidth(4, 96);
-            var groot = gt.CreateItem();
-            foreach (var gen in stationed)
-            {
-                var isGov = c.Governor == gen.Id;
-                var it = gt.CreateItem(groot);
-                it.SetText(0, (isGov ? "◆ " : "") + gen.Name);
-                it.SetText(1, gen.Might.ToString());
-                it.SetText(2, gen.Intellect.ToString());
-                it.SetText(3, gen.Politics.ToString());
-                it.SetText(4, isGov ? "태수" : GeneralStatus(gen.Id));
-                if (isGov) { it.SetCustomColor(0, GoldBright); it.SetCustomColor(4, GoldBright); }
-                it.SetMetadata(0, gen.Id.Value);
-                for (var col = 1; col <= 4; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
-            }
-
-            gt.ItemSelected += () =>
-            {
-                var it = gt.GetSelected();
-                if (it is null) { return; }
-                OpenGeneralDetail(new GeneralId(it.GetMetadata(0).AsInt32()), city);
-            };
-            box.AddChild(gt);
+            if (_pendingDeploys[i].Req.City == city) { deploys.Add(i); }
         }
 
-        box.AddChild(GoldRule());
+        var tabBar = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        tabBar.AddThemeConstantOverride("separation", 4);
+        box.AddChild(tabBar);
+        var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        content.AddThemeConstantOverride("separation", 6);
+        box.AddChild(content);
+
+        var labels = new[] { $"주둔 장수 {stationed.Count}", $"진행 명령 {cmds.Count}", $"출전 예약 {deploys.Count}" };
+        var tabBtns = new Button[3];
+        void ShowTab(int t)
+        {
+            _cityDetailTab = t;
+            for (var i = 0; i < 3; i++)
+            {
+                var on = i == t;
+                tabBtns[i].AddThemeColorOverride("font_color", on ? Ink : Parchment);
+                tabBtns[i].AddThemeStyleboxOverride("normal", Frame(on ? AccentFill : InkSoft, Gold, 1, 5, 6));
+            }
+
+            Clear(content);
+            switch (t)
+            {
+                case 0: BuildStationedTab(content, city, stationed); break;
+                case 1: BuildCommandsTab(content, city, cmds); break;
+                default: BuildDeployTab(content, city, deploys); break;
+            }
+
+            var h = box.GetCombinedMinimumSize().Y;
+            scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(h, mh));
+        }
+
+        for (var i = 0; i < 3; i++)
+        {
+            var t = i;
+            var b = MakeButton(labels[i]);
+            b.AddThemeFontSizeOverride("font_size", 12);
+            b.CustomMinimumSize = new Vector2(0, 28);
+            b.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            b.Pressed += () => ShowTab(t);
+            tabBtns[i] = b;
+            tabBar.AddChild(b);
+        }
+
+        ShowTab(Mathf.Clamp(_cityDetailTab, 0, 2));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    // ── 상세 탭 ①: 주둔 장수 표(태수 ◆·금색, 행 클릭 = 장수 상세) ──
+    private void BuildStationedTab(VBoxContainer box, CityId city, List<General> stationed)
+    {
+        var c = _state.Cities.First(x => x.Id == city);
+        box.AddChild(MakeLabel("주둔 장수 (행 클릭 = 상세)", 14, GoldBright));
+        if (stationed.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); return; }
+
+        var gt = new Tree
+        {
+            Columns = 5,
+            ColumnTitlesVisible = true,
+            HideRoot = true,
+            SelectMode = Tree.SelectModeEnum.Row,
+            CustomMinimumSize = new Vector2(0, Mathf.Min(44 + stationed.Count * 29, 320)),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        gt.AddThemeFontOverride("font", _font);
+        gt.AddThemeFontSizeOverride("font_size", 14);
+        gt.AddThemeFontOverride("title_button_font", _font);
+        gt.AddThemeFontSizeOverride("title_button_font_size", 13);
+        gt.SetColumnTitle(0, "이름");
+        gt.SetColumnExpand(0, true);
+        gt.SetColumnExpandRatio(0, 3);
+        foreach (var (col, t) in new[] { (1, "무"), (2, "지"), (3, "정") })
+        {
+            gt.SetColumnTitle(col, t);
+            gt.SetColumnExpand(col, false);
+            gt.SetColumnCustomMinimumWidth(col, 46);
+        }
+
+        gt.SetColumnTitle(4, "상태");
+        gt.SetColumnExpand(4, false);
+        gt.SetColumnCustomMinimumWidth(4, 96);
+        var groot = gt.CreateItem();
+        foreach (var gen in stationed)
+        {
+            var isGov = c.Governor == gen.Id;
+            var it = gt.CreateItem(groot);
+            it.SetText(0, (isGov ? "◆ " : "") + gen.Name);
+            it.SetText(1, gen.Might.ToString());
+            it.SetText(2, gen.Intellect.ToString());
+            it.SetText(3, gen.Politics.ToString());
+            it.SetText(4, isGov ? "태수" : GeneralStatus(gen.Id));
+            if (isGov) { it.SetCustomColor(0, GoldBright); it.SetCustomColor(4, GoldBright); }
+            it.SetMetadata(0, gen.Id.Value);
+            for (var col = 1; col <= 4; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
+        }
+
+        gt.ItemSelected += () =>
+        {
+            var it = gt.GetSelected();
+            if (it is null) { return; }
+            OpenGeneralDetail(new GeneralId(it.GetMetadata(0).AsInt32()), city);
+        };
+        box.AddChild(gt);
+    }
+
+    // ── 상세 탭 ②: 진행 중 명령(시작 전만 취소) ──
+    private void BuildCommandsTab(VBoxContainer box, CityId city, List<CityCommand> cmds)
+    {
         box.AddChild(MakeLabel("진행 중 명령 (시작 전만 취소 가능 · 환불 없음)", 14, GoldBright));
-        var cmds = _state.Commands.Where(x => x.City == city).OrderBy(x => x.CompletionDay).ToList();
-        if (cmds.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
+        if (cmds.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); return; }
         foreach (var pending in cmds)
         {
             var cmd = pending;
@@ -2600,7 +2661,7 @@ public sealed partial class CampaignMapScene : Node3D
             var lbl = MakeLabel("· " + CmdText(cmd) + (started ? "  (진행중)" : ""), 12, Parchment);
             lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             lbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            lbl.CustomMinimumSize = new Vector2(1, 0); // 최소폭을 없애 가로 오버플로 방지
+            lbl.CustomMinimumSize = new Vector2(1, 0);
             row.AddChild(lbl);
             if (started) { box.AddChild(row); continue; }
             var cancel = MakeButton("취소");
@@ -2618,16 +2679,13 @@ public sealed partial class CampaignMapScene : Node3D
             row.AddChild(cancel);
             box.AddChild(row);
         }
+    }
 
-        box.AddChild(GoldRule());
+    // ── 상세 탭 ③: 출전 예약(진행 전 취소 = 소모 없음) ──
+    private void BuildDeployTab(VBoxContainer box, CityId city, List<int> deploys)
+    {
         box.AddChild(MakeLabel("출전 예약 (진행 시 편성 — 취소 시 소모 없음)", 14, GoldBright));
-        var deploys = new List<int>();
-        for (var i = 0; i < _pendingDeploys.Count; i++)
-        {
-            if (_pendingDeploys[i].Req.City == city) { deploys.Add(i); }
-        }
-
-        if (deploys.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
+        if (deploys.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); return; }
         foreach (var di in deploys)
         {
             var idx = di;
@@ -2651,10 +2709,6 @@ public sealed partial class CampaignMapScene : Node3D
             row.AddChild(cancel);
             box.AddChild(row);
         }
-
-        var contentH = box.GetCombinedMinimumSize().Y;
-        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
-        CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
     // 대기 병력 카드 — 병종 엠블럼 + 이름(신병) + 병력·훈련도.
