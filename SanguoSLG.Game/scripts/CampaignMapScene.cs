@@ -251,9 +251,12 @@ public sealed partial class CampaignMapScene : Node3D
     private int _depTargetIndex = -1;
     private int _depSelectedUnit = -1; // 허브에서 선택된 예약 부대(컨트롤 바 대상)
     private CanvasLayer? _targetHintLayer;
-    private HexCoord? _pendingTargetHex;   // 목표 클릭 후 '확인' 대기 중인 목적지(아직 미확정)
     private Button _targetConfirmBtn = null!;
     private readonly List<MeshInstance3D> _previewMarkers = new(); // 미확정 목적지 경로 프리뷰
+    private CanvasLayer _targetEditLayer = null!;              // 경유지 취소 버튼·확인 버튼 레이어
+    private readonly List<HexCoord> _targetWaypoints = new();  // 클릭 순서대로 찍은 경유지(마지막 = 최종 목표)
+    private readonly List<Button> _targetCancelBtns = new();   // 경유지별 취소 버튼(각 지점 위에 추종)
+    private HexCoord _targetStart;                             // 경로 시작점(성/부대 위치)
 
     // 모달 드래그.
     private bool _dragging;
@@ -746,23 +749,18 @@ public sealed partial class CampaignMapScene : Node3D
         // 경로 프리뷰는 확인 전에도 즉시 보여준다.
         if (_depTargeting)
         {
-            if (RayToGround(mb.Position) is { } th)
+            // 클릭할 때마다 경유지를 이어 붙인다(직전 지점에서 A* 경로가 있어야 추가).
+            if (RayToGround(mb.Position) is { } th && th != LastTargetPoint())
             {
-                _pendingTargetHex = th;
-                _targetConfirmBtn.Position = mb.Position + new Vector2(14f, -8f);
-                _targetConfirmBtn.Visible = true;
-
-                foreach (var m in _previewMarkers) { m.QueueFree(); }
-                _previewMarkers.Clear();
-                if (_retargetUnitId >= 0)
+                var from = LastTargetPoint();
+                if (HasPath(from, th))
                 {
-                    var ru = _state.Armies.FirstOrDefault(a => a.Id.Value == _retargetUnitId);
-                    if (ru is not null) { AddPathDots(ru.Field.Position, th, _previewMarkers); }
+                    _targetWaypoints.Add(th);
+                    RebuildTargetEdit();
                 }
-                else if (_depTargetIndex >= 0 && _depTargetIndex < _pendingDeploys.Count
-                    && _state.Cities.FirstOrDefault(c => c.Id == _pendingDeploys[_depTargetIndex].Req.City) is { } fromCity)
+                else
                 {
-                    AddPathDots(fromCity.Position, th, _previewMarkers);
+                    _log.Text = "그 지점까지 갈 수 있는 경로가 없습니다.";
                 }
             }
 
@@ -819,12 +817,25 @@ public sealed partial class CampaignMapScene : Node3D
         _unitMenu.Visible = true;
         MoveRing(u.Field.Position);
 
-        // 아군 부대를 클릭했을 때만 그 부대의 이동 경로를 표시.
+        // 아군 부대를 클릭했을 때만 그 부대의 이동 경로를 표시(경유지가 있으면 경유지까지 이어서).
         ClearPathMarkers();
         if (u.Field.Owner == Player && u.Field.Target is { } tgt && tgt != u.Field.Position)
         {
-            AddPathDots(u.Field.Position, tgt, _pathMarkers);
+            AddRouteDots(u.Field.Position, u.Field.Waypoints, tgt, _pathMarkers);
         }
+    }
+
+    // 시작 → (경유지들) → 목표를 구간별로 이어 금색 점 경로를 그린다.
+    private void AddRouteDots(HexCoord start, IReadOnlyList<HexCoord>? waypoints, HexCoord target, List<MeshInstance3D> into)
+    {
+        var prev = start;
+        foreach (var wp in waypoints ?? [])
+        {
+            AddPathDots(prev, wp, into);
+            prev = wp;
+        }
+
+        AddPathDots(prev, target, into);
     }
 
     // 유닛 상태를 정보 카드에 표시(팔레트 '정보').
@@ -1065,7 +1076,81 @@ public sealed partial class CampaignMapScene : Node3D
         HidePanels(); // 목표 지정 중에는 성 명령 팔레트·정보 카드가 가려선 안 된다.
         _depTargetIndex = idx;
         _depTargeting = true;
-        ShowTargetHint("목적지 클릭 → '확인'을 눌러 확정  ·  적 성 = 공격  ·  우클릭 취소");
+        _targetWaypoints.Clear();
+        _targetStart = _state.Cities.FirstOrDefault(c => c.Id == _pendingDeploys[idx].Req.City)?.Position ?? default;
+        RebuildTargetEdit();
+        ShowTargetHint("지점을 순서대로 클릭 = 경유지 추가  ·  각 지점 위 취소로 삭제  ·  '확인'으로 확정  ·  적 성 = 공격  ·  우클릭 취소");
+    }
+
+    // 경로의 마지막 확정 지점(경유지가 없으면 시작점).
+    private HexCoord LastTargetPoint() => _targetWaypoints.Count > 0 ? _targetWaypoints[^1] : _targetStart;
+
+    // start→goal에 지형 통행 A* 경로가 존재하는가.
+    private bool HasPath(HexCoord start, HexCoord goal)
+    {
+        var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanEnter(MovementDomain.Land, c));
+        return pf.FindPath(start, goal).Count > 1;
+    }
+
+    // 경유지 목록이 바뀔 때: 취소 버튼을 다시 만들고 경로 프리뷰를 다시 그린다.
+    private void RebuildTargetEdit()
+    {
+        foreach (var b in _targetCancelBtns) { b.QueueFree(); }
+        _targetCancelBtns.Clear();
+        foreach (var m in _previewMarkers) { m.QueueFree(); }
+        _previewMarkers.Clear();
+
+        // 프리뷰: 시작점 → 경유지들을 구간별로 이어 그린다.
+        var prev = _targetStart;
+        foreach (var wp in _targetWaypoints)
+        {
+            AddPathDots(prev, wp, _previewMarkers);
+            prev = wp;
+        }
+
+        for (var i = 0; i < _targetWaypoints.Count; i++)
+        {
+            var idx = i;
+            var b = MakeButton("✕");
+            b.AddThemeFontSizeOverride("font_size", 12);
+            b.CustomMinimumSize = new Vector2(28, 24);
+            b.Pressed += () =>
+            {
+                if (idx < _targetWaypoints.Count) { _targetWaypoints.RemoveAt(idx); }
+                Dbg($"UI targeting-cancel-wp idx={idx} remain={_targetWaypoints.Count}");
+                RebuildTargetEdit(); // 중간 지점을 지우면 남은 지점으로 경로가 자동 재계산된다
+            };
+            _targetEditLayer.AddChild(b);
+            _targetCancelBtns.Add(b);
+        }
+
+        _targetConfirmBtn.Visible = _targetWaypoints.Count > 0;
+        PlaceTargetEdit();
+    }
+
+    // 취소 버튼(각 경유지 위)·확인 버튼(마지막 경유지 오른쪽)을 월드→화면 투영으로 배치. _Process가 매 프레임 호출.
+    private void PlaceTargetEdit()
+    {
+        var vp = GetViewport().GetVisibleRect().Size;
+        for (var i = 0; i < _targetCancelBtns.Count && i < _targetWaypoints.Count; i++)
+        {
+            var world = _view.HexToWorld(_targetWaypoints[i]) + new Vector3(0f, _view.TileTopY + 0.2f, 0f);
+            var s = _camera.UnprojectPosition(world);
+            var sz = _targetCancelBtns[i].GetCombinedMinimumSize();
+            _targetCancelBtns[i].Position = new Vector2(
+                Mathf.Clamp(s.X - sz.X * 0.5f, 4f, vp.X - sz.X - 4f),
+                Mathf.Clamp(s.Y - sz.Y - 22f, 4f, vp.Y - sz.Y - 4f));
+        }
+
+        if (_targetConfirmBtn.Visible && _targetWaypoints.Count > 0)
+        {
+            var world = _view.HexToWorld(_targetWaypoints[^1]) + new Vector3(0f, _view.TileTopY + 0.2f, 0f);
+            var s = _camera.UnprojectPosition(world);
+            var sz = _targetConfirmBtn.GetCombinedMinimumSize();
+            _targetConfirmBtn.Position = new Vector2(
+                Mathf.Clamp(s.X + 20f, 4f, vp.X - sz.X - 4f),
+                Mathf.Clamp(s.Y - sz.Y * 0.5f, 4f, vp.Y - sz.Y - 4f));
+        }
     }
 
     // 화면 상단 목표 지정 안내 배너.
@@ -1086,34 +1171,40 @@ public sealed partial class CampaignMapScene : Node3D
         _depTargeting = false;
         _depTargetIndex = -1;
         _retargetUnitId = -1;
-        _pendingTargetHex = null;
         _targetConfirmBtn.Visible = false;
+        _targetWaypoints.Clear();
+        foreach (var b in _targetCancelBtns) { b.QueueFree(); }
+        _targetCancelBtns.Clear();
         foreach (var m in _previewMarkers) { m.QueueFree(); }
         _previewMarkers.Clear();
         if (_targetHintLayer is not null) { _targetHintLayer.QueueFree(); _targetHintLayer = null; }
     }
 
-    // 목적지 '확인' — 여기서만 실제 목표가 확정된다(확인 없이 나가면 목표 미지정).
+    // 목적지 '확인' — 여기서만 목표가 확정된다. 마지막 경유지 = 최종 목표, 나머지 = 경유지.
     private void ConfirmTarget()
     {
-        if (_pendingTargetHex is not { } h) { return; }
-        if (_retargetUnitId >= 0) { ApplyUnitTarget(h); }
-        else { ApplyTarget(h); }
+        if (_targetWaypoints.Count == 0) { return; }
+        var target = _targetWaypoints[^1];
+        var mid = _targetWaypoints.Count > 1
+            ? _targetWaypoints.Take(_targetWaypoints.Count - 1).ToList()
+            : null;
+        if (_retargetUnitId >= 0) { ApplyUnitTarget(target, mid); }
+        else { ApplyTarget(target, mid); }
     }
 
-    private void ApplyTarget(HexCoord? hex)
+    private void ApplyTarget(HexCoord h, IReadOnlyList<HexCoord>? waypoints)
     {
-        if (hex is not { } h) { return; }
         var idx = _depTargetIndex;
         if (idx >= 0 && idx < _pendingDeploys.Count)
         {
             var (req, label) = _pendingDeploys[idx];
             var enemyCity = _state.Cities.FirstOrDefault(c => c.Position == h && c.Owner != Player);
             var mode = enemyCity is not null ? UnitMode.Attack : req.Mode;
-            _pendingDeploys[idx] = (req with { Target = h, Mode = mode }, label);
-            Dbg($"TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode}");
+            _pendingDeploys[idx] = (req with { Target = h, Mode = mode, Waypoints = waypoints }, label);
+            Dbg($"TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode} wps={waypoints?.Count ?? 0}");
             var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
-            _log.Text = $"목표 → {tName}{(enemyCity is not null ? " (공격모드)" : "")} · 목표 확정";
+            var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
+            _log.Text = $"목표 → {tName}{(enemyCity is not null ? " (공격모드)" : "")}{wpNote} · 목표 확정";
         }
 
         // 목표를 정하면 지도 뷰로 돌아가 경로를 바로 보여준다(허브 모달로 가리지 않는다).
@@ -1194,7 +1285,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (req.Target is not { } goal) { continue; }
             var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
             if (city is null) { continue; }
-            AddPathDots(city.Position, goal, _pathMarkers);
+            AddRouteDots(city.Position, req.Waypoints, goal, _pathMarkers);
         }
     }
 
@@ -1724,9 +1815,10 @@ public sealed partial class CampaignMapScene : Node3D
         BuildUnitMenu(layer);
         BuildTerrainCard(layer);
 
-        // 목표 지정 '확인' 버튼 — 목적지 클릭 시 마우스 옆에 떴다가 누르면 확정.
+        // 목표 지정 레이어 — 경유지별 취소 버튼 + 최종 '확인' 버튼. 지점을 순서대로 찍어 경로를 만든다.
         var confirmLayer = new CanvasLayer { Layer = 26 };
         AddChild(confirmLayer);
+        _targetEditLayer = confirmLayer;
         _targetConfirmBtn = MakeButton("✓ 확인", accent: true);
         _targetConfirmBtn.AddThemeFontSizeOverride("font_size", 13);
         _targetConfirmBtn.CustomMinimumSize = new Vector2(70, 30);
@@ -1904,7 +1996,10 @@ public sealed partial class CampaignMapScene : Node3D
         _retargetUnitId = unitId;
         _retargetMode = mode;
         _depTargeting = true;
-        ShowTargetHint($"{ModeName(mode)} 목적지 클릭 → '확인'으로 확정  ·  적 성 = 공격  ·  자기 성 = 복귀  ·  우클릭 취소");
+        _targetWaypoints.Clear();
+        _targetStart = _state.Armies.FirstOrDefault(a => a.Id.Value == unitId)?.Field.Position ?? default;
+        RebuildTargetEdit();
+        ShowTargetHint($"{ModeName(mode)}: 지점을 순서대로 클릭 = 경유지  ·  각 지점 위 취소로 삭제  ·  '확인'으로 확정  ·  적 성 = 공격  ·  자기 성 = 복귀  ·  우클릭 취소");
     }
 
     // 정지: 목표를 지워 그 자리에서 대기(별도 명령까지 유지).
@@ -1925,7 +2020,7 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 재지정 확정 — 적 성이면 공격모드로 전환, 자기 성이면 복귀(입성은 이동 규칙이 처리).
-    private void ApplyUnitTarget(HexCoord h)
+    private void ApplyUnitTarget(HexCoord h, IReadOnlyList<HexCoord>? waypoints)
     {
         var uid = _retargetUnitId;
         var mode = _retargetMode;
@@ -1936,13 +2031,14 @@ public sealed partial class CampaignMapScene : Node3D
         var enemyCity = _state.Cities.FirstOrDefault(c => c.Position == h && c.Owner != Player);
         if (enemyCity is not null) { mode = UnitMode.Attack; }
         var armies = _state.Armies
-            .Select(a => a.Id.Value == uid ? a with { Field = a.Field with { Mode = mode, Target = h } } : a)
+            .Select(a => a.Id.Value == uid ? a with { Field = a.Field with { Mode = mode, Target = h, Waypoints = waypoints } } : a)
             .ToList();
         _state = _state with { FieldArmies = armies };
 
         var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
-        Dbg($"UI unit-retarget u{uid} -> ({h.Q},{h.R}) mode={mode}");
-        _log.Text = $"부대 → {tName} ({ModeName(mode)}모드)";
+        var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
+        Dbg($"UI unit-retarget u{uid} -> ({h.Q},{h.R}) mode={mode} wps={waypoints?.Count ?? 0}");
+        _log.Text = $"부대 → {tName} ({ModeName(mode)}모드){wpNote}";
         Redraw(_log.Text);
         OpenUnitMenu(_state.Armies.First(a => a.Id.Value == uid)); // 팔레트 복귀 + 새 경로 표시
     }
@@ -2171,6 +2267,9 @@ public sealed partial class CampaignMapScene : Node3D
             PlaceTerrainCard(th);
             _terrainHolder.RotateY((float)delta * 0.6f); // 에셋을 천천히 빙글빙글
         }
+
+        // 경유지 취소·확인 버튼은 매 프레임 각 지점 위로 추종(줌·팬 따라감).
+        if (_depTargeting && _targetCancelBtns.Count > 0) { PlaceTargetEdit(); }
 
         if (_dragging && _dragPanel is not null)
         {
