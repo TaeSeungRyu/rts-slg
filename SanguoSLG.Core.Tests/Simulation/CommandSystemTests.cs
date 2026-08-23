@@ -58,6 +58,47 @@ public class CommandSystemTests
         Assert.Equal(90, away);
     }
 
+    // ── 태수 임명(즉시) ──
+
+    [Fact]
+    public void 태수임명_도시에_태수가_지정되고_잠기지_않는다()
+    {
+        var s0 = State(new[] { Town(1) }, new[] { Pol(1, 90) });
+
+        var r = Service().Issue(s0, new CommandRequest(new CityId(1), CommandKind.AppointGovernor, new GeneralId(1)));
+
+        Assert.True(r.Ok, r.Error);
+        Assert.Equal(new GeneralId(1), r.State.Cities.Single().Governor);
+        Assert.False(r.State.IsGeneralBusy(new GeneralId(1))); // 상주 역할 — 다른 명령과 병행 가능
+        Assert.Empty(r.State.Commands);                        // 진행 명령을 만들지 않는다
+    }
+
+    [Fact]
+    public void 태수임명_이미_그_도시_태수면_거부된다()
+    {
+        var s0 = State(new[] { Town(1) }, new[] { Pol(1, 90) });
+        var once = Service().Issue(s0, new CommandRequest(new CityId(1), CommandKind.AppointGovernor, new GeneralId(1)));
+
+        var again = Service().Issue(once.State, new CommandRequest(new CityId(1), CommandKind.AppointGovernor, new GeneralId(1)));
+
+        Assert.False(again.Ok);
+    }
+
+    [Fact]
+    public void 태수임명_다른_명령에_매인_장수도_태수로_지정된다()
+    {
+        var svc = Service();
+        var s0 = State(new[] { Town(1) }, new[] { Pol(1, 90) });
+        var busy = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.SetTaxRate, new GeneralId(1), Value: 30));
+        Assert.True(busy.Ok);
+        Assert.True(busy.State.IsGeneralBusy(new GeneralId(1)));
+
+        var appoint = svc.Issue(busy.State, new CommandRequest(new CityId(1), CommandKind.AppointGovernor, new GeneralId(1)));
+
+        Assert.True(appoint.Ok, appoint.Error);
+        Assert.Equal(new GeneralId(1), appoint.State.Cities.Single().Governor);
+    }
+
     // ── 발행 검증 ──
 
     [Fact]

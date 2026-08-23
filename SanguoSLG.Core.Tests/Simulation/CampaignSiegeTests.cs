@@ -121,6 +121,25 @@ public class CampaignSiegeTests
         Assert.Empty(r.Exchanges); // 함락(점거)은 다음 단계
     }
 
+    [Fact]
+    public void 공성_태수무력이_높으면_성반격이_강해진다()
+    {
+        City city = Town(9, 2, new HexCoord(5, 0), wall: 6000);
+        var garr = new List<GarrisonForce> { new(new CityId(9), "swordsman", 10000, 60) };
+
+        // 태수 없음(반격 100%).
+        var baseArmy = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0));
+        var noGov = Siege().Resolve([baseArmy], [city], garr);
+
+        // 태수 무력 100(위력 배수 140%).
+        var strongArmy = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0));
+        var withGov = Siege().Resolve([strongArmy], [city], garr, _ => StatScale.Percent(100));
+
+        var lossNoGov = 10000 - noGov.Armies.Single().Pool.Active;
+        var lossWithGov = 10000 - withGov.Armies.Single().Pool.Active;
+        Assert.True(lossWithGov > lossNoGov, $"태수 무력 반격이 더 커야 한다: {lossWithGov} > {lossNoGov}");
+    }
+
     // ── 캠페인 통합(CampaignEngine) ──
 
     [Fact]

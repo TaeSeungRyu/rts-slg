@@ -29,4 +29,7 @@ public enum CommandKind
 
     /// <summary>도시 계략 — 적 도시 대상(성벽파괴·선동·정찰·방화·절취·이간). 지력 확률, 거리 비례 소요일. design-stratagem "도시 계략".</summary>
     CityStratagem,
+
+    /// <summary>태수 임명 — 그 도시 주둔 장수를 태수로 지정(즉시·비용/기간/잠금 없음). 수입·내정 스킬·계략 방어·성 반격이 태수 능력에 연동. design-administration F.</summary>
+    AppointGovernor,
 }

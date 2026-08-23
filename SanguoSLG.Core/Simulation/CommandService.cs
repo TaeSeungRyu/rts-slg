@@ -57,6 +57,12 @@ public sealed class CommandService
             return CommandResult.Fail("주관 장수를 찾을 수 없다.", state);
         }
 
+        // 태수 임명은 즉시 상태 변경(기간·비용·잠금 없음) — 진행 명령 기계를 타지 않는다.
+        if (req.Kind == CommandKind.AppointGovernor)
+        {
+            return AppointGovernor(state, city, main);
+        }
+
         General? assist = null;
         if (req.Assist is { } assistId)
         {
@@ -357,6 +363,27 @@ public sealed class CommandService
             state.Day, state.Day + days, amount, facility, troopCode, targetCity, req.TraineePool);
         var pending = state.Commands.Append(command).ToList();
         return CommandResult.Success(state with { Cities = cities, PendingCommands = pending });
+    }
+
+    /// <summary>
+    /// 태수 임명(design-administration F). 즉시 실행 — 그 도시에 주둔한 소속 장수를 태수로 지정한다.
+    /// 기간·비용·잠금이 없고 진행 명령을 만들지 않는다(태수는 상주 역할이라 다른 내정 명령과 병행 가능).
+    /// 임명되면 그 장수의 능력으로 수입 효율(정치)·내정 스킬·계략 방어(지력)·성 반격(무력)이 돈다.
+    /// </summary>
+    private CommandResult AppointGovernor(GameState state, City city, General main)
+    {
+        if (state.Assignments.Count > 0 && PostingError(state, main.Id, city) is { } e)
+        {
+            return CommandResult.Fail($"태수 {e}", state);
+        }
+
+        if (city.Governor == main.Id)
+        {
+            return CommandResult.Fail("이미 이 도시의 태수다.", state);
+        }
+
+        var cities = state.Cities.Select(c => c.Id == city.Id ? c with { Governor = main.Id } : c).ToList();
+        return CommandResult.Success(state with { Cities = cities });
     }
 
     /// <summary>

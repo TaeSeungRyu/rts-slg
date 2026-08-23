@@ -119,7 +119,27 @@ public sealed class CampaignEngine
             // 공성 교환(design-combat "성 전투") — 접적으로 멈춘 공격 부대가 성벽·수비를 깎는다.
             if (_siege is not null)
             {
-                var result = _siege.Resolve(armies, work.Cities, work.Garrisons);
+                var siegeState = work;
+                var result = _siege.Resolve(armies, siegeState.Cities, siegeState.Garrisons, CounterAptitude);
+
+                // 성 반격 위력 = 유효 태수(그 도시에 실제 주둔한 소속 장수) 무력의 위력 배수. 없으면 100%.
+                int CounterAptitude(CityId cid)
+                {
+                    var cc = siegeState.Cities.FirstOrDefault(c => c.Id == cid);
+                    if (cc?.Governor is not { } gid)
+                    {
+                        return 100;
+                    }
+
+                    var posting = siegeState.PostingOf(gid);
+                    if (posting is null || posting.Location != cid || posting.Faction != cc.Owner)
+                    {
+                        return 100;
+                    }
+
+                    var gov = siegeState.Generals.FirstOrDefault(g => g.Id == gid);
+                    return gov is null ? 100 : StatScale.Percent(gov.Might);
+                }
 
                 // 성 반격으로 전멸한 공성 부대의 장수 판정(§4b) — 포획 후보 = 그 성의 소유 세력.
                 foreach (var dead in result.Armies.Where(u => u.Pool.Active <= 0).OrderBy(u => u.Id.Value))
