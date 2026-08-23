@@ -278,6 +278,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("성벽 수리", CommandKind.Repair, "wall"),
         ("시설 수리", CommandKind.Repair, "repairable"),
         ("도시 계략", CommandKind.CityStratagem, "stratagem"),
+        ("태수 임명", CommandKind.AppointGovernor, ""),
     };
 
     private static readonly (string Label, string Code)[] Facilities =
@@ -300,7 +301,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 명령 카테고리 그룹(삼국지14식 분류)과 명령별 아이콘.
     private static readonly (string Group, int[] Indices)[] CmdGroups =
     {
-        ("내정", new[] { 0, 1, 2, 3, 4 }),
+        ("내정", new[] { 0, 1, 2, 3, 4, 10 }),
         ("군비", new[] { 5, 6, 7, 8 }),
         ("계략", new[] { 9 }),
     };
@@ -2023,10 +2024,8 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainHex = null;
         if (_modalLayer is null) { ClearPathMarkers(); }
         var c = _state.Cities.First(x => x.Id == id);
-        var troops = _state.Garrisons.Where(g => g.City == id)
-            .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ThenBy(g => g.Trainee)
-            .Select(g => $"{TroopName(g.TroopCode)}{(g.Trainee ? "(신병)" : "")} {g.Troops}");
-        var officers = _state.GeneralsAt(id).Select(g => _state.Generals.First(x => x.Id == g).Name);
+        var totalTroops = _state.Garrisons.Where(g => g.City == id).Sum(g => g.Troops);
+        var govName = c.Governor is { } ggid ? _state.Generals.FirstOrDefault(x => x.Id == ggid)?.Name : null;
         var pending = _state.Commands.Where(p => p.City == id).Select(p =>
             $"{KindName(p.Kind)} 남은 {p.CompletionDay - _state.Day}일");
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
@@ -2053,8 +2052,8 @@ public sealed partial class CampaignMapScene : Node3D
         _infoRows.AddChild(g2);
         AddCell(g2, Sym.Ore, "광물", $"{c.Ore}/{c.Horses}/{c.Elephants}");
         AddCell(g2, Sym.Book, "시설", facilities);
-        AddCell(g2, Sym.Sword, "대기", troops.Any() ? string.Join(",", troops) : "없음");
-        AddCell(g2, Sym.Officer, "주둔", officers.Any() ? string.Join(",", officers) : "없음");
+        AddCell(g2, Sym.Sword, "대기", totalTroops > 0 ? $"{totalTroops}명" : "없음");
+        AddCell(g2, Sym.Officer, "태수", govName ?? "없음");
         if (pending.Any())
         {
             AddCell(g2, Sym.Scroll, "진행", string.Join(",", pending));
@@ -2485,7 +2484,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  《 {c.Name} 》 상세  ⠿", 18, Gold);
+        var detailGov = c.Governor is { } dgid ? _state.Generals.FirstOrDefault(x => x.Id == dgid)?.Name : null;
+        var title = MakeLabel($"《 {c.Name} 》 · 태수 {detailGov ?? "없음"}", 18, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -2509,13 +2509,24 @@ public sealed partial class CampaignMapScene : Node3D
         AddCell(g4, Sym.Ore, "광석", $"{c.Ore}");
         AddCell(g4, Sym.Ore, "말/코끼리", $"{c.Horses}/{c.Elephants}");
 
-        box.AddChild(MakeLabel("대기 병력", 14, GoldBright));
-        foreach (var g in _state.Garrisons.Where(g => g.City == city)
-            .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ThenBy(g => g.Trainee))
+        var garr = _state.Garrisons.Where(g => g.City == city)
+            .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ThenBy(g => g.Trainee).ToList();
+        box.AddChild(MakeLabel($"대기 병력  (총 {garr.Sum(g => g.Troops)}명)", 14, GoldBright));
+        if (garr.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
+        else
         {
-            box.AddChild(MakeLabel(
-                $"· {TroopName(g.TroopCode)}{(g.Trainee ? " (신병)" : "")}  {g.Troops}명 · 훈련 {g.TrainingLevel}",
-                12, Parchment));
+            // 카드가 많으면 가로 스크롤만(세로 스크롤은 모달 바깥 하나로 통일).
+            var hscroll = new ScrollContainer
+            {
+                CustomMinimumSize = new Vector2(0, 92),
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                VerticalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            };
+            box.AddChild(hscroll);
+            var strip = new HBoxContainer();
+            strip.AddThemeConstantOverride("separation", 6);
+            hscroll.AddChild(strip);
+            foreach (var g in garr) { strip.AddChild(GarrisonCard(g)); }
         }
 
         box.AddChild(GoldRule());
@@ -2554,12 +2565,14 @@ public sealed partial class CampaignMapScene : Node3D
             var groot = gt.CreateItem();
             foreach (var gen in stationed)
             {
+                var isGov = c.Governor == gen.Id;
                 var it = gt.CreateItem(groot);
-                it.SetText(0, gen.Name);
+                it.SetText(0, (isGov ? "◆ " : "") + gen.Name);
                 it.SetText(1, gen.Might.ToString());
                 it.SetText(2, gen.Intellect.ToString());
                 it.SetText(3, gen.Politics.ToString());
-                it.SetText(4, GeneralStatus(gen.Id));
+                it.SetText(4, isGov ? "태수" : GeneralStatus(gen.Id));
+                if (isGov) { it.SetCustomColor(0, GoldBright); it.SetCustomColor(4, GoldBright); }
                 it.SetMetadata(0, gen.Id.Value);
                 for (var col = 1; col <= 4; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
             }
@@ -2586,6 +2599,8 @@ public sealed partial class CampaignMapScene : Node3D
             var started = _advancing || _state.Day != cmd.StartDay;
             var lbl = MakeLabel("· " + CmdText(cmd) + (started ? "  (진행중)" : ""), 12, Parchment);
             lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            lbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            lbl.CustomMinimumSize = new Vector2(1, 0); // 최소폭을 없애 가로 오버플로 방지
             row.AddChild(lbl);
             if (started) { box.AddChild(row); continue; }
             var cancel = MakeButton("취소");
@@ -2620,6 +2635,8 @@ public sealed partial class CampaignMapScene : Node3D
             row.AddThemeConstantOverride("separation", 8);
             var lbl = MakeLabel("· " + _pendingDeploys[idx].Label, 12, Parchment);
             lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            lbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            lbl.CustomMinimumSize = new Vector2(1, 0);
             row.AddChild(lbl);
             if (_advancing) { box.AddChild(row); continue; }
             var cancel = MakeButton("취소");
@@ -2638,6 +2655,32 @@ public sealed partial class CampaignMapScene : Node3D
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    // 대기 병력 카드 — 병종 엠블럼 + 이름(신병) + 병력·훈련도.
+    private PanelContainer GarrisonCard(GarrisonForce g)
+    {
+        var tmpl = _troops.FirstOrDefault(t => t.Code == g.TroopCode);
+        var card = new PanelContainer { CustomMinimumSize = new Vector2(96, 84) };
+        card.AddThemeStyleboxOverride("panel", CardBox(false));
+        var v = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        v.AddThemeConstantOverride("separation", 2);
+        card.AddChild(v);
+        v.AddChild(new TextureRect
+        {
+            Texture = tmpl is not null ? ClassEmblem(tmpl.Class) : Icon(Sym.Sword),
+            CustomMinimumSize = new Vector2(34, 34),
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+        });
+        var name = MakeLabel(TroopName(g.TroopCode) + (g.Trainee ? " (신병)" : ""), 11, GoldBright);
+        name.HorizontalAlignment = HorizontalAlignment.Center;
+        v.AddChild(name);
+        var stat = MakeLabel($"{g.Troops}명 · 훈{g.TrainingLevel}", 11, Parchment);
+        stat.HorizontalAlignment = HorizontalAlignment.Center;
+        v.AddChild(stat);
+        return card;
     }
 
     // 장수 현재 상태 한 줄: 내정 명령 잠금 > 출전 예약 > 대기.
@@ -3682,7 +3725,10 @@ public sealed partial class CampaignMapScene : Node3D
         Clear(_modalOfficers);
         var cmd = Cmds[cmdIndex];
         var cityData = _state.Cities.First(x => x.Id == city);
-        var free = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g)).OrderBy(g => g.Value).ToList();
+        // 태수 임명은 상주 역할이라 다른 명령에 매인 장수도 지정 가능 — 주둔 장수 전체를 보인다.
+        var isAppoint = cmd.Kind == CommandKind.AppointGovernor;
+        var free = (isAppoint ? _state.GeneralsAt(city) : _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g)))
+            .OrderBy(g => g.Value).ToList();
         if (free.Count == 0)
         {
             _modalOfficers.AddChild(MakeLabel("(가능한 장수 없음)", 14, Parchment));
@@ -3734,7 +3780,8 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var item = tree.CreateItem(root);
             var home = g.Region.Length > 0 && g.Region == cityData.Region ? " 🏠" : "";
-            item.SetText(0, g.Name + home);
+            var govMark = isAppoint && cityData.Governor == g.Id ? " ◆현태수" : "";
+            item.SetText(0, g.Name + home + govMark);
             item.SetText(1, g.Might.ToString());
             item.SetText(2, g.Intellect.ToString());
             item.SetText(3, g.Politics.ToString());
@@ -3954,6 +4001,15 @@ public sealed partial class CampaignMapScene : Node3D
             var days = CityStratagems.Days(_state.Cities.First(c => c.Id == city).Position, enemy.Position, _cb);
             var defInt = enemy.Governor is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid)?.Intellect : null;
             extra = $"\n대상 {enemy.Name} · 소요 {days}일 · 성공률 {CityStratagems.SuccessPercent(caster.Intellect, defInt)}%";
+        }
+
+        if (cmd.Kind == CommandKind.AppointGovernor)
+        {
+            var gov = _state.Generals.First(g => g.Id == general);
+            var counter = System.Math.Clamp(100 + (gov.Might - 60), 50, 150);
+            var incomeOk = gov.Politics >= 60;
+            extra = $"\n정치 {gov.Politics} → 수입 {(incomeOk ? "정상(정치로 세율 증폭)" : "급감(정치 60 미만)")}"
+                + $"\n무력 {gov.Might} → 성 반격 ×{counter / 100.0:0.0#}";
         }
 
         var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility,
