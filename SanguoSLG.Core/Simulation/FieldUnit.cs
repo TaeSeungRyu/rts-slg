@@ -19,7 +19,8 @@ public sealed record FieldUnit(
     UnitMode Mode,
     HexCoord? Target,
     int CommandOrder,
-    int RangeCastle = 1)
+    int RangeCastle = 1,
+    IReadOnlyList<HexCoord>? Waypoints = null)
 {
     public FieldUnit MoveTo(HexCoord position) => this with { Position = position };
 }

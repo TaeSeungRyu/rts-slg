@@ -13,7 +13,8 @@ public sealed record DeployRequest(
     GeneralId? Adjutant = null,
     UnitMode Mode = UnitMode.March,
     HexCoord? Target = null,
-    int Provisions = -1);
+    int Provisions = -1,
+    IReadOnlyList<HexCoord>? Waypoints = null);
 
 /// <summary>보급부대 편성 한 줄 — 병종과 데려갈 병력(0 이하면 그 병종 전량).</summary>
 public sealed record SupplyLine(string TroopCode, int Troops);
@@ -117,7 +118,8 @@ public sealed class DeployService
         var research = state.ResearchOf(city.Owner, template.Code);
         var unitId = new UnitId(state.Armies.Count == 0 ? 1 : state.Armies.Max(u => u.Id.Value) + 1);
         var unit = UnitAssembler.Assemble(unitId, city.Owner, city.Position, req.Mode, req.Target,
-            unitId.Value, vanguard, adjutant, template, troops, _actives, _passives, FieldContext, research);
+            unitId.Value, vanguard, adjutant, template, troops, _actives, _passives, FieldContext, research,
+            req.Waypoints);
         unit = unit with { Provisions = carried, Training = garrison.TrainingLevel };
 
         var garrisons = state.Garrisons

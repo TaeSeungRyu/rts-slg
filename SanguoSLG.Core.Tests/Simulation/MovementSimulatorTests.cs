@@ -35,6 +35,36 @@ public class MovementSimulatorTests
         Assert.Equal(7, result.Days);
     }
 
+    // ── 경유지(행군 경로 지정) ──
+
+    [Fact]
+    public void 경유지_먼저_거쳐서_최종목표에_도착한다()
+    {
+        // (0,0)→목표(6,0)이지만 경유지(0,3)을 먼저 찍었다 — 직선(r=0)이 아니라 경유지 쪽(r↑)으로 향한다.
+        var wps = new[] { new HexCoord(0, 3) };
+        var a = new FieldUnit(new UnitId(1), new FactionId(1), new HexCoord(0, 0), 2, 2, 1,
+            MovementDomain.Land, UnitMode.March, new HexCoord(6, 0), 0, 1, wps);
+
+        var result = PlainField().Advance(new[] { a }, maxDays: 7);
+
+        // 경유지를 실제로 밟았다(스텝 스냅샷에 (0,3)이 나타난다).
+        Assert.Contains(result.Ticks, t => t.Units.Any(u => u.Id.Value == 1 && u.Position == new HexCoord(0, 3)));
+        // 최종적으로 목표에 도착.
+        Assert.Equal(new HexCoord(6, 0), result.Units.Single().Position);
+    }
+
+    [Fact]
+    public void 경유지_없으면_기존_단일목표와_동일하게_직선이동한다()
+    {
+        var a = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.March, target: new HexCoord(6, 0));
+
+        var result = PlainField().Advance(new[] { a }, maxDays: 7);
+
+        // 직선 경로(r은 계속 0)로만 움직인다.
+        Assert.All(result.Ticks, t => Assert.All(t.Units, u => Assert.Equal(0, u.Position.R)));
+        Assert.Equal(new HexCoord(6, 0), result.Units.Single().Position);
+    }
+
     // ── 케이스 1 — 공격모드 조우: 탐지 → 추격 → 사거리 정지 ──
 
     [Fact]

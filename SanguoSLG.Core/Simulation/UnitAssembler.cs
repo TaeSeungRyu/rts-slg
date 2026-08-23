@@ -16,7 +16,7 @@ public static class UnitAssembler
         General vanguard, General? adjutant, TroopTemplate template, int troops,
         IReadOnlyDictionary<string, ActiveSkill> actives,
         IReadOnlyDictionary<string, PassiveSkill> passives,
-        CombatContext context, int researchLevel = 0)
+        CombatContext context, int researchLevel = 0, IReadOnlyList<HexCoord>? waypoints = null)
     {
         var grade = vanguard.AptitudeFor(template.Class);
 
@@ -31,7 +31,7 @@ public static class UnitAssembler
         var domain = template.Class == TroopClass.Naval ? MovementDomain.DeepWater : MovementDomain.Land;
         var field = new FieldUnit(id, owner, position,
             template.MovementPerDay, template.Detection, template.RangeUnit,
-            domain, mode, target, commandOrder, template.RangeCastle);
+            domain, mode, target, commandOrder, template.RangeCastle, waypoints);
 
         var state = UnitCombatState.Create(
             vanguard.Intellect,

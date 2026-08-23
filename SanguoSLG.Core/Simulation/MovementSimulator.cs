@@ -33,7 +33,46 @@ public sealed class MovementSimulator
         public Queue<HexCoord>? Path;
         public int PathDay;
 
-        public Working(FieldUnit unit) => Unit = unit;
+        // 경유지 계획: 지나갈 중간 지점들 + 최종 목표(마지막). 한 구간씩 순서대로 밟는다.
+        // 경유지 없으면 [Target] 하나 — 기존 단일 목표 동작과 동일하다.
+        public readonly List<HexCoord> Goals;
+        public int GoalIdx;
+
+        // 현재 향하는 구간 목표(전부 밟았으면 null).
+        public HexCoord? CurrentGoal => GoalIdx < Goals.Count ? Goals[GoalIdx] : null;
+
+        public Working(FieldUnit unit)
+        {
+            Unit = unit;
+            Goals = BuildGoals(unit);
+            while (GoalIdx < Goals.Count - 1 && Goals[GoalIdx] == unit.Position)
+            {
+                GoalIdx++; // 시작 칸과 같은 선두 경유지는 건너뛴다
+            }
+        }
+    }
+
+    // 경유지 목록(중간 지점) 뒤에 최종 목표를 붙여 구간 목표 순서를 만든다(연속 중복 제거).
+    private static List<HexCoord> BuildGoals(FieldUnit unit)
+    {
+        var goals = new List<HexCoord>();
+        if (unit.Waypoints is { } wps)
+        {
+            foreach (var wp in wps)
+            {
+                if (goals.Count == 0 ? wp != unit.Position : wp != goals[^1])
+                {
+                    goals.Add(wp);
+                }
+            }
+        }
+
+        if (unit.Target is { } t && (goals.Count == 0 ? t != unit.Position : t != goals[^1]))
+        {
+            goals.Add(t);
+        }
+
+        return goals;
     }
 
     /// <summary>한 번의 "진행"을 끝까지 계산한다(최대 <paramref name="maxDays"/>일).</summary>
@@ -138,7 +177,7 @@ public sealed class MovementSimulator
                             w.PathDay = day;
                         }
                     }
-                    else if (w.Unit.Target is { } t && t != w.Unit.Position)
+                    else if (w.CurrentGoal is { } t && t != w.Unit.Position)
                     {
                         goalTile = t;
                         if (w.Path is null)
@@ -232,6 +271,16 @@ public sealed class MovementSimulator
                     }
                 }
 
+                // 경유지 도달 판정 — 현재 구간 목표 칸을 밟았고 뒤에 목표가 더 있으면 다음 구간으로.
+                foreach (var w in work)
+                {
+                    while (w.GoalIdx < w.Goals.Count - 1 && w.Unit.Position == w.Goals[w.GoalIdx])
+                    {
+                        w.GoalIdx++;
+                        w.Path = null; // 다음 구간 경로를 새 위치에서 재계산
+                    }
+                }
+
                 // 출격 대기 비용(#추가 2026-08-20): 성 위에서 나가려 했지만 앞선 부대에 밀려 못 나간
                 // 부대(나갈 칸을 못 잡았거나 desired가 밀린 경우)는 그 대기에 이동 1스텝을 쓴다.
                 // 이동력이 남으면 같은 날 뒤따라 나올 수 있고, 다 쓰면 그날은 성에서 대기한다.
@@ -292,7 +341,7 @@ public sealed class MovementSimulator
             // 3일 연속 못 움직인 유닛 추적(목표가 있는데 못 간 경우만)
             foreach (var w in work)
             {
-                var wantsMove = w.Pursuing || (w.Unit.Target is { } t && t != w.Unit.Position);
+                var wantsMove = w.Pursuing || (w.CurrentGoal is { } t && t != w.Unit.Position);
                 w.BlockedDays = wantsMove && !movedThisDay.Contains(w.Unit.Id.Value) ? w.BlockedDays + 1 : 0;
             }
 
@@ -308,7 +357,7 @@ public sealed class MovementSimulator
 
     // 목표도 없고 추격도 안 하는(움직일 뜻이 없는) 유닛인가
     private static bool NoIntent(Working w) =>
-        !w.Pursuing && (w.Unit.Target is not { } t || t == w.Unit.Position);
+        !w.Pursuing && (w.CurrentGoal is not { } t || t == w.Unit.Position);
 
     private int EffectiveSpeed(Working w, List<Working> work)
     {
