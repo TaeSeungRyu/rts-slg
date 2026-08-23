@@ -2530,9 +2530,10 @@ public sealed partial class CampaignMapScene : Node3D
             foreach (var g in garr) { strip.AddChild(GarrisonCard(g)); }
         }
 
-        box.AddChild(GoldRule());
+        box.AddChild(new Control { CustomMinimumSize = new Vector2(0, 2) });
 
-        // 탭 3종: 주둔 장수 / 진행 중 명령 / 출전 예약.
+        // 탭 3종: 주둔 장수 / 진행 중 명령 / 출전 예약. 탭 막대와 내용 패널을 붙여(간격 0)
+        // 폴더 탭처럼 — 활성 탭은 내용 패널과 같은 색·아래 테두리 없이 이어지고, 비활성은 어둡게 물러난다.
         var stationed = _state.GeneralsAt(city).OrderBy(x => x.Value)
             .Select(id => _state.Generals.First(x => x.Id == id)).ToList();
         var cmds = _state.Commands.Where(x => x.City == city).OrderBy(x => x.CompletionDay).ToList();
@@ -2542,12 +2543,20 @@ public sealed partial class CampaignMapScene : Node3D
             if (_pendingDeploys[i].Req.City == city) { deploys.Add(i); }
         }
 
+        var tabWrap = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        tabWrap.AddThemeConstantOverride("separation", 0);
+        box.AddChild(tabWrap);
+
         var tabBar = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        tabBar.AddThemeConstantOverride("separation", 4);
-        box.AddChild(tabBar);
+        tabBar.AddThemeConstantOverride("separation", 3);
+        tabWrap.AddChild(tabBar);
+
+        var contentPanel = new PanelContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        contentPanel.AddThemeStyleboxOverride("panel", TabContentStyle());
+        tabWrap.AddChild(contentPanel);
         var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         content.AddThemeConstantOverride("separation", 6);
-        box.AddChild(content);
+        contentPanel.AddChild(content);
 
         var labels = new[] { $"주둔 장수 {stationed.Count}", $"진행 명령 {cmds.Count}", $"출전 예약 {deploys.Count}" };
         var tabBtns = new Button[3];
@@ -2557,8 +2566,11 @@ public sealed partial class CampaignMapScene : Node3D
             for (var i = 0; i < 3; i++)
             {
                 var on = i == t;
-                tabBtns[i].AddThemeColorOverride("font_color", on ? Ink : Parchment);
-                tabBtns[i].AddThemeStyleboxOverride("normal", Frame(on ? AccentFill : InkSoft, Gold, 1, 5, 6));
+                tabBtns[i].AddThemeColorOverride("font_color", on ? GoldBright : new Color(Parchment, 0.6f));
+                tabBtns[i].AddThemeColorOverride("font_hover_color", on ? GoldBright : Parchment);
+                tabBtns[i].AddThemeStyleboxOverride("normal", TabStyle(on));
+                tabBtns[i].AddThemeStyleboxOverride("hover", TabStyle(on));
+                tabBtns[i].AddThemeStyleboxOverride("pressed", TabStyle(on));
             }
 
             Clear(content);
@@ -2576,10 +2588,12 @@ public sealed partial class CampaignMapScene : Node3D
         for (var i = 0; i < 3; i++)
         {
             var t = i;
-            var b = MakeButton(labels[i]);
-            b.AddThemeFontSizeOverride("font_size", 12);
-            b.CustomMinimumSize = new Vector2(0, 28);
-            b.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            var b = new Button { Text = labels[i], SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            b.AddThemeFontOverride("font", _font);
+            b.AddThemeFontSizeOverride("font_size", 13);
+            b.AddThemeColorOverride("font_pressed_color", GoldBright);
+            b.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+            b.CustomMinimumSize = new Vector2(0, 30);
             b.Pressed += () => ShowTab(t);
             tabBtns[i] = b;
             tabBar.AddChild(b);
@@ -2587,6 +2601,35 @@ public sealed partial class CampaignMapScene : Node3D
 
         ShowTab(Mathf.Clamp(_cityDetailTab, 0, 2));
         CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    // 폴더 탭 모양 — 위 모서리만 둥글고 아래는 각짐. 활성은 내용 패널과 같은 색·아래 테두리 없이 이어지고,
+    // 비활성은 어둡게 물러나 아래 테두리로 닫힌다.
+    private static readonly Color TabFill = new(0.17f, 0.11f, 0.085f); // 내용 패널 바탕(Ink보다 살짝 밝음)
+
+    private StyleBoxFlat TabStyle(bool active)
+    {
+        var s = new StyleBoxFlat { BgColor = active ? TabFill : Ink, BorderColor = active ? Gold : new Color(Gold, 0.4f) };
+        s.BorderWidthTop = s.BorderWidthLeft = s.BorderWidthRight = active ? 2 : 1;
+        s.BorderWidthBottom = active ? 0 : 1; // 활성은 아래로 열려 내용 패널과 이어진다
+        s.CornerRadiusTopLeft = s.CornerRadiusTopRight = 8;
+        s.CornerRadiusBottomLeft = s.CornerRadiusBottomRight = 0;
+        s.ContentMarginLeft = s.ContentMarginRight = 6;
+        s.ContentMarginTop = active ? 7 : 5;
+        s.ContentMarginBottom = active ? 7 : 5;
+        return s;
+    }
+
+    private StyleBoxFlat TabContentStyle()
+    {
+        var s = new StyleBoxFlat { BgColor = TabFill, BorderColor = Gold };
+        s.BorderWidthTop = 0; // 위는 활성 탭이 이어받는다
+        s.BorderWidthLeft = s.BorderWidthRight = s.BorderWidthBottom = 2;
+        s.CornerRadiusTopLeft = s.CornerRadiusTopRight = 0;
+        s.CornerRadiusBottomLeft = s.CornerRadiusBottomRight = 10;
+        s.ContentMarginLeft = s.ContentMarginRight = 10;
+        s.ContentMarginTop = s.ContentMarginBottom = 9;
+        return s;
     }
 
     // ── 상세 탭 ①: 주둔 장수 표(태수 ◆·금색, 행 클릭 = 장수 상세) ──
