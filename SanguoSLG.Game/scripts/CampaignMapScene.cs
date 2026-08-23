@@ -154,6 +154,9 @@ public sealed partial class CampaignMapScene : Node3D
     private Label? _depPreview;
     private readonly List<(Button Btn, UnitMode Mode)> _depModeButtons = new();
     private Label? _depModeDesc;
+    private IReadOnlyList<ActiveSkill> _activeSkills = [];
+    private IReadOnlyList<PassiveSkill> _passiveSkills = [];
+    private IReadOnlyList<AdminSkill> _adminSkills = [];
     private Tree? _vanTree;              // 장수 편성 표(선봉·부관 체크 + 정렬·내부 스크롤)
     private List<GeneralId> _composeFree = new();
     private int _vanSortCol = 2;         // 2 이름 / 3 무 / 4 지 / 5 정 / 6 적성·특성
@@ -314,6 +317,9 @@ public sealed partial class CampaignMapScene : Node3D
         _cb = new CommandBalanceLoader().LoadFromDirectory(dataDirectory);
         var actives = new ActiveSkillLoader().LoadFromDirectory(dataDirectory);
         var passives = new PassiveSkillLoader().LoadFromDirectory(dataDirectory);
+        _activeSkills = actives;
+        _passiveSkills = passives;
+        _adminSkills = new AdminSkillLoader().LoadFromDirectory(dataDirectory);
         var balance = new BalanceConfig(MonthlyTaxPerCity: 100);
         _provPer10kPerDay = balance.ProvisionsPer10kPerDay;
 
@@ -2512,6 +2518,61 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("주둔 장수 (행 클릭 = 상세)", 14, GoldBright));
+        var stationed = _state.GeneralsAt(city).OrderBy(x => x.Value)
+            .Select(id => _state.Generals.First(x => x.Id == id)).ToList();
+        if (stationed.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
+        else
+        {
+            var gt = new Tree
+            {
+                Columns = 5,
+                ColumnTitlesVisible = true,
+                HideRoot = true,
+                SelectMode = Tree.SelectModeEnum.Row,
+                CustomMinimumSize = new Vector2(0, Mathf.Min(44 + stationed.Count * 29, 220)),
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            };
+            gt.AddThemeFontOverride("font", _font);
+            gt.AddThemeFontSizeOverride("font_size", 14);
+            gt.AddThemeFontOverride("title_button_font", _font);
+            gt.AddThemeFontSizeOverride("title_button_font_size", 13);
+            gt.SetColumnTitle(0, "이름");
+            gt.SetColumnExpand(0, true);
+            gt.SetColumnExpandRatio(0, 3);
+            foreach (var (col, t) in new[] { (1, "무"), (2, "지"), (3, "정") })
+            {
+                gt.SetColumnTitle(col, t);
+                gt.SetColumnExpand(col, false);
+                gt.SetColumnCustomMinimumWidth(col, 46);
+            }
+
+            gt.SetColumnTitle(4, "상태");
+            gt.SetColumnExpand(4, false);
+            gt.SetColumnCustomMinimumWidth(4, 96);
+            var groot = gt.CreateItem();
+            foreach (var gen in stationed)
+            {
+                var it = gt.CreateItem(groot);
+                it.SetText(0, gen.Name);
+                it.SetText(1, gen.Might.ToString());
+                it.SetText(2, gen.Intellect.ToString());
+                it.SetText(3, gen.Politics.ToString());
+                it.SetText(4, GeneralStatus(gen.Id));
+                it.SetMetadata(0, gen.Id.Value);
+                for (var col = 1; col <= 4; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
+            }
+
+            gt.ItemSelected += () =>
+            {
+                var it = gt.GetSelected();
+                if (it is null) { return; }
+                OpenGeneralDetail(new GeneralId(it.GetMetadata(0).AsInt32()), city);
+            };
+            box.AddChild(gt);
+        }
+
+        box.AddChild(GoldRule());
         box.AddChild(MakeLabel("진행 중 명령 (시작 전만 취소 가능 · 환불 없음)", 14, GoldBright));
         var cmds = _state.Commands.Where(x => x.City == city).OrderBy(x => x.CompletionDay).ToList();
         if (cmds.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
@@ -2520,7 +2581,8 @@ public sealed partial class CampaignMapScene : Node3D
             var cmd = pending;
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 8);
-            var started = _state.Day != cmd.StartDay; // 진행이 한 번이라도 지났으면 취소 불가
+            // 재생 중엔 _state가 진행 전 스냅숏이라 StartDay 가드가 통과함 — _advancing도 차단
+            var started = _advancing || _state.Day != cmd.StartDay;
             var lbl = MakeLabel("· " + CmdText(cmd) + (started ? "  (진행중)" : ""), 12, Parchment);
             lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             row.AddChild(lbl);
@@ -2558,6 +2620,7 @@ public sealed partial class CampaignMapScene : Node3D
             var lbl = MakeLabel("· " + _pendingDeploys[idx].Label, 12, Parchment);
             lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             row.AddChild(lbl);
+            if (_advancing) { box.AddChild(row); continue; }
             var cancel = MakeButton("취소");
             cancel.CustomMinimumSize = new Vector2(56, 24);
             cancel.Pressed += () =>
@@ -2569,6 +2632,111 @@ public sealed partial class CampaignMapScene : Node3D
             };
             row.AddChild(cancel);
             box.AddChild(row);
+        }
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    // 장수 현재 상태 한 줄: 내정 명령 잠금 > 출전 예약 > 대기.
+    private string GeneralStatus(GeneralId id)
+    {
+        var locking = _state.Commands.FirstOrDefault(x => x.Locks(id));
+        if (locking is not null)
+        {
+            return KindName(locking.Kind) + " 중";
+        }
+
+        return _pendingDeploys.Any(d => d.Req.Vanguard == id || d.Req.Adjutant == id) ? "출전 예약" : "대기";
+    }
+
+    private static string GradeText(AptitudeGrade g) => g == AptitudeGrade.APlus ? "A+" : g.ToString();
+
+    // ── 장수 상세 모달: 능력치·적성·특기·내정 스킬·소개. ◀ = 성 상세로 복귀 ──
+    private void OpenGeneralDetail(GeneralId gid, CityId backCity)
+    {
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.36f, 340f, 480f);
+        var mh = Mathf.Clamp(vp.Y * 0.8f, 320f, 680f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var g = _state.Generals.First(x => x.Id == gid);
+
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var back = MakeButton("◀");
+        back.CustomMinimumSize = new Vector2(40, 30);
+        back.Pressed += () => OpenCityDetail(backCity);
+        titleRow.AddChild(back);
+        var title = MakeLabel($"◈  《 {g.Name} 》  ⠿", 18, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(40, 30);
+        close.Pressed += CloseModal;
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+
+        var g3 = new GridContainer { Columns = 3, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        g3.AddThemeConstantOverride("h_separation", 12);
+        g3.AddThemeConstantOverride("v_separation", 4);
+        box.AddChild(g3);
+        AddCell(g3, Sym.Sword, "무력", $"{g.Might}");
+        AddCell(g3, Sym.Book, "지력", $"{g.Intellect}");
+        AddCell(g3, Sym.Scroll, "정치", $"{g.Politics}");
+        box.AddChild(MakeLabel($"상태 {GeneralStatus(gid)} · 충성 ??", 12, Parchment));
+        if (g.Birth != 0 || g.Region.Length > 0)
+        {
+            var birth = g.Birth == 0 ? "" : g.Birth < 0 ? $"기원전 {-g.Birth}년생" : $"{g.Birth}년생";
+            var region = g.Region.Length > 0 ? $"출신 {g.Region}" : "";
+            box.AddChild(MakeLabel(string.Join(" · ", new[] { birth, region }.Where(t => t.Length > 0)), 12, Parchment));
+        }
+
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("병종 적성", 14, GoldBright));
+        var classes = new[]
+        {
+            TroopClass.Infantry, TroopClass.Archer, TroopClass.Cavalry,
+            TroopClass.Elephant, TroopClass.Siege, TroopClass.Naval,
+        };
+        box.AddChild(MakeLabel(
+            string.Join("   ", classes.Select(tc => $"{ClassName(tc)} {GradeText(g.AptitudeFor(tc))}")),
+            12, Parchment));
+
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("전투 특기", 14, GoldBright));
+        var battle = new List<string>();
+        if (g.BattleActive is { Length: > 0 } ac)
+        {
+            battle.Add($"[액티브] {_activeSkills.FirstOrDefault(a => a.Code == ac)?.Name ?? ac}");
+        }
+
+        foreach (var p in g.Passives)
+        {
+            battle.Add($"[패시브] {_passiveSkills.FirstOrDefault(x => x.Code == p.Code)?.Name ?? p.Code} Lv{p.Tier}");
+        }
+
+        if (battle.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
+        foreach (var line in battle) { box.AddChild(MakeLabel("· " + line, 12, Parchment)); }
+
+        box.AddChild(MakeLabel("내정 스킬", 14, GoldBright));
+        var admin = g.AdminPassives ?? [];
+        if (admin.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
+        foreach (var p in admin)
+        {
+            box.AddChild(MakeLabel(
+                $"· {_adminSkills.FirstOrDefault(x => x.Code == p.Code)?.Name ?? p.Code} Lv{p.Tier}", 12, Parchment));
+        }
+
+        if (g.Desc.Length > 0)
+        {
+            box.AddChild(GoldRule());
+            var desc = MakeLabel(g.Desc, 12, Parchment);
+            desc.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            desc.CustomMinimumSize = new Vector2(mw - 60, 0);
+            box.AddChild(desc);
         }
 
         var contentH = box.GetCombinedMinimumSize().Y;
