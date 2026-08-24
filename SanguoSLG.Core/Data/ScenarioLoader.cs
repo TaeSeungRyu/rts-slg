@@ -66,7 +66,8 @@ public sealed class ScenarioLoader
             LoyaltyBetrayScalePercent: balanceDto.LoyaltyBetrayScalePercent,
             LoyaltyUnpaidDropMin: balanceDto.LoyaltyUnpaidDropMin, LoyaltyUnpaidDropMax: balanceDto.LoyaltyUnpaidDropMax,
             LoyaltyPaidRecoverMin: balanceDto.LoyaltyPaidRecoverMin, LoyaltyPaidRecoverMax: balanceDto.LoyaltyPaidRecoverMax,
-            RewardGoldCost: balanceDto.RewardGoldCost, RewardLoyaltyGain: balanceDto.RewardLoyaltyGain);
+            RewardGoldCost: balanceDto.RewardGoldCost,
+            RewardLoyaltyGainMin: balanceDto.RewardLoyaltyGainMin, RewardLoyaltyGainMax: balanceDto.RewardLoyaltyGainMax);
 
         var cities = Deserialize<List<CityDto>>(citiesJson, "cities")
             .Select(d =>

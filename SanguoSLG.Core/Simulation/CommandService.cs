@@ -38,14 +38,16 @@ public sealed class CommandService
     private readonly IReadOnlyDictionary<string, TroopTemplate> _troops;
     private readonly BalanceConfig? _balance;
     private readonly IReadOnlyDictionary<string, AdminSkill> _adminSkills;
+    private readonly IRandomSource _random;
 
     public CommandService(CommandBalance balance, IReadOnlyList<TroopTemplate>? troops = null,
-        BalanceConfig? economy = null, IReadOnlyList<AdminSkill>? adminSkills = null)
+        BalanceConfig? economy = null, IReadOnlyList<AdminSkill>? adminSkills = null, IRandomSource? random = null)
     {
         _b = balance;
         _troops = (troops ?? []).ToDictionary(t => t.Code);
         _balance = economy; // 성벽 수리(연구 최대치 산출)에 필요 — 없으면 성벽 수리 불가
         _adminSkills = (adminSkills ?? []).ToDictionary(a => a.Code);
+        _random = random ?? new SeededRandomSource(0); // 포상 상승폭 등 즉시 명령의 소소한 난수(시드 — 결정론)
     }
 
     /// <summary>
@@ -568,9 +570,10 @@ public sealed class CommandService
             return CommandResult.Fail("금이 부족하다.", state);
         }
 
+        var gain = _random.Next(_balance.RewardLoyaltyGainMin, _balance.RewardLoyaltyGainMax + 1);
         var cities = state.Cities.Select(c => c.Id == cityId ? c.AddGold(-cost) : c).ToList();
         var generals = state.Generals.Select(g => g.Id == target && g.Loyalty < 100
-            ? g with { Loyalty = System.Math.Min(100, g.Loyalty + _balance.RewardLoyaltyGain) }
+            ? g with { Loyalty = System.Math.Min(100, g.Loyalty + gain) }
             : g).ToList();
         return CommandResult.Success(state with { Cities = cities, Generals = generals });
     }

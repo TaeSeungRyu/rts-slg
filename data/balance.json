@@ -44,5 +44,6 @@
   "loyalty_paid_recover_min": 1,
   "loyalty_paid_recover_max": 2,
   "reward_gold_cost": 100,
-  "reward_loyalty_gain": 20
+  "reward_loyalty_gain_min": 5,
+  "reward_loyalty_gain_max": 10
 }
