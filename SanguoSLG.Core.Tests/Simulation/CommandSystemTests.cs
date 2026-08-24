@@ -122,6 +122,22 @@ public class CommandSystemTests
         Assert.Equal(popNoSkill - (popNoSkill * 25 / 100), popWithGov);
     }
 
+    [Fact]
+    public void 교관_태수면_훈련_상승량이_가산된다()
+    {
+        var svc = new CommandService(B, Troops, adminSkills: AdminSkills);
+        var city = Town(1);
+        var garr = new List<GarrisonForce> { new(new CityId(1), "swordsman", 2000, 30) };
+        var req = new CommandRequest(new CityId(1), CommandKind.Train, new GeneralId(1), TroopCode: "swordsman");
+
+        GameState WithGarr(General gov) => WithGovernor(city, gov) with { GarrisonForces = garr };
+        var without = svc.Issue(WithGarr(GovWith(1, "merchant", 3, might: 70)), req);       // 교관 없음
+        var withGov = svc.Issue(WithGarr(GovWith(1, "drillmaster", 3, might: 70)), req);    // 교관 T3 = +6
+        Assert.True(withGov.Ok, withGov.Error);
+
+        Assert.Equal(without.State.Commands.Single().Amount + 6, withGov.State.Commands.Single().Amount);
+    }
+
     // ── 태수 임명(즉시) ──
 
     [Fact]

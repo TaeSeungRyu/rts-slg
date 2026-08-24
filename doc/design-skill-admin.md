@@ -21,7 +21,7 @@
 | `rancher` | 목마(牧馬) | horse_output | 말 산출 +10/20/30%(산출 도시만) | ✅ 담당관 |
 | `mahout` | 상사(象師) | elephant_output | 코끼리 산출 +10/20/30%(산출 도시만) | ✅ 담당관 |
 | `recruiter` | 모병관(募兵官) | recruit_amount | 모병·징병 병력 +10/20/30% | ✅ 명령 배선(2026-08-24) |
-| `drillmaster` | 교관(敎官) | training | 훈련 상승량 +2/4/6 | ⏳ 명령 배선 |
+| `drillmaster` | 교관(敎官) | training | 훈련 상승량 +2/4/6 | ✅ 명령 배선(2026-08-24) |
 | `popularity` | 인망(人望) | recruit_cost | 모병 시 **인구 감소** −8/15/25%(병력 수·광석 불변) | ✅ 명령 배선(2026-08-24) |
 | `quartermaster` | 병참(兵站) | provisions | 부대 군량 소모 −5/10/15% | ⏳ 보급 배선(10단계) |
 | `builder` | 축성(築城) | wall | 성벽 수리 회복량 +10/20/30%p(기본 25%·공방 +25%p와 합산) | ⏳ 수리 명령 배선(design-administration "건물 수리") |

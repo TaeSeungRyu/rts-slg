@@ -199,8 +199,9 @@ public sealed class CommandService
             return CommandResult.Fail("훈련할 대기 병력(병종)이 없다.", state);
         }
 
-        return Register(state, city, req, assist,
-            CommandEfficiency.TrainGain(eff, _b), _b.CommandDays, CommandKind.Train, "", req.TroopCode);
+        // 교관(재임 태수): 훈련 상승량 +2/4/6(수행 장수 무력 기반 상승량에 가산).
+        var gain = CommandEfficiency.TrainGain(eff, _b) + GovernorBucket(state, city, "training");
+        return Register(state, city, req, assist, gain, _b.CommandDays, CommandKind.Train, "", req.TroopCode);
     }
 
     private CommandResult IssueBuild(GameState state, City city, CommandRequest req, General? assist, General main)
