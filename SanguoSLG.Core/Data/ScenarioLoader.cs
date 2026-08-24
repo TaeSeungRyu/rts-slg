@@ -62,7 +62,9 @@ public sealed class ScenarioLoader
             balanceDto.GeneralSalaryPerMonth, ProvisionsPer10kPerDay: 10,
             MarketOrePrice: balanceDto.MarketOrePrice, MarketHorsePrice: balanceDto.MarketHorsePrice,
             MarketElephantPrice: balanceDto.MarketElephantPrice, MarketGrainPricePer100: balanceDto.MarketGrainPricePer100,
-            MarketJitterPercent: balanceDto.MarketJitterPercent, MarketSeasonalPercent: balanceDto.MarketSeasonalPercent);
+            MarketJitterPercent: balanceDto.MarketJitterPercent, MarketSeasonalPercent: balanceDto.MarketSeasonalPercent,
+            LoyaltyBetrayScalePercent: balanceDto.LoyaltyBetrayScalePercent,
+            LoyaltyUnpaidDropMin: balanceDto.LoyaltyUnpaidDropMin, LoyaltyUnpaidDropMax: balanceDto.LoyaltyUnpaidDropMax);
 
         var cities = Deserialize<List<CityDto>>(citiesJson, "cities")
             .Select(d =>

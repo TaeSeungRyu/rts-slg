@@ -37,5 +37,8 @@
   "market_elephant_price": 3000,
   "market_grain_price_per_100": 25,
   "market_jitter_percent": 15,
-  "market_seasonal_percent": [140, 135, 115, 110, 105, 100, 100, 95, 70, 70, 95, 135]
+  "market_seasonal_percent": [140, 135, 115, 110, 105, 100, 100, 95, 70, 70, 95, 135],
+  "loyalty_betray_scale_percent": 100,
+  "loyalty_unpaid_drop_min": 1,
+  "loyalty_unpaid_drop_max": 2
 }

@@ -108,6 +108,9 @@ internal sealed class BalanceDto
     public int MarketGrainPricePer100 { get; init; } = 25;
     public int MarketJitterPercent { get; init; } = 15;
     public List<int>? MarketSeasonalPercent { get; init; }
+    public int LoyaltyBetrayScalePercent { get; init; } = 100;
+    public int LoyaltyUnpaidDropMin { get; init; } = 1;
+    public int LoyaltyUnpaidDropMax { get; init; } = 2;
 }
 
 internal sealed class MapDto

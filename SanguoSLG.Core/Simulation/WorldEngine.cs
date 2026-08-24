@@ -85,9 +85,85 @@ public sealed class WorldEngine
             var draw = jitter > 0 ? _random.Next(-jitter, jitter + 1) : 0;
             var index = _balance.SeasonalPercent(next.Month) * (100 + draw) / 100;
             next = next with { MarketPricePercent = System.Math.Max(1, index) };
+
+            // 급여·배신(design-general-lifecycle §1): 월급 지급(세력 도시 금) → 미지급 충성 하락 → 배신 판정.
+            next = PayrollAndBetrayal(next);
         }
 
         return next;
+    }
+
+    // 월 급여·배신(design-general-lifecycle §1). 세력마다: 소속 장수(군주 제외) 급여를 도시 금 합계에서
+    // 지급하되 **충성 낮은 순으로 우선 지급**(이탈 위험자 보호), 못 받은(충성 높은) 장수는 충성 −min~max.
+    // 이어 주둔 장수(군주 제외·충성 100 미만)에 (100−충성)×스케일% 확률로 배신 판정 → 성공 시 재야화
+    // (배속 해제, 그 도시 태수/군사 지정도 해제). 출전중·포로는 대상 아님. 결정론: 세력·장수 id 순 + 주입 난수.
+    private GameState PayrollAndBetrayal(GameState state)
+    {
+        var salary = _balance.GeneralSalaryPerMonth;
+        var cityGold = state.Cities.ToDictionary(c => c.Id, c => c.Gold);
+        var loyalty = state.Generals.ToDictionary(g => g.Id, g => g.Loyalty);
+        var defectors = new List<GeneralId>();
+
+        foreach (var faction in state.Factions.OrderBy(f => f.Id.Value))
+        {
+            var ruler = faction.Ruler;
+            var members = state.Assignments
+                .Where(p => p.Faction == faction.Id && p.General != ruler)
+                .Select(p => p.General)
+                .OrderBy(id => loyalty.TryGetValue(id, out var l) ? l : 0).ThenBy(id => id.Value)
+                .ToList();
+            if (members.Count == 0)
+            {
+                continue;
+            }
+
+            // 재원 = 이 세력 도시 금 합계. 충성 낮은 순으로 20금씩 지급, 바닥나면 나머지는 미지급.
+            var cities = state.Cities.Where(c => c.Owner == faction.Id).OrderBy(c => c.Id.Value).ToList();
+            var pool = cities.Sum(c => cityGold[c.Id]);
+            var affordable = salary > 0 ? System.Math.Min(members.Count, pool / salary) : members.Count;
+            var spent = affordable * salary;
+
+            foreach (var c in cities) // 지출을 도시 id 순으로 차감
+            {
+                if (spent <= 0) { break; }
+                var take = System.Math.Min(cityGold[c.Id], spent);
+                cityGold[c.Id] -= take;
+                spent -= take;
+            }
+
+            for (var i = affordable; i < members.Count; i++) // 미지급(충성 높은 쪽) → 충성 하락
+            {
+                var drop = _random.Next(_balance.LoyaltyUnpaidDropMin, _balance.LoyaltyUnpaidDropMax + 1);
+                loyalty[members[i]] = System.Math.Max(0, loyalty[members[i]] - drop);
+            }
+        }
+
+        // 배신 판정(주둔 장수·군주 제외·충성 100 미만). 재야화 대상 수집.
+        var rulers = state.Factions.Select(f => f.Ruler).ToHashSet();
+        foreach (var p in state.Assignments.Where(p => p.Location is not null && !rulers.Contains(p.General))
+            .OrderBy(p => p.General.Value))
+        {
+            var l = loyalty.TryGetValue(p.General, out var lv) ? lv : 100;
+            if (l >= 100) { continue; }
+            var chance = (100 - l) * _balance.LoyaltyBetrayScalePercent / 100;
+            if (_random.Next(0, 100) < chance)
+            {
+                defectors.Add(p.General);
+            }
+        }
+
+        var generals = state.Generals.Select(g => loyalty.TryGetValue(g.Id, out var l) && l != g.Loyalty
+            ? g with { Loyalty = l } : g).ToList();
+        var cityList = state.Cities.Select(c =>
+        {
+            var nc = c with { Gold = cityGold[c.Id] };
+            if (c.Governor is { } gov && defectors.Contains(gov)) { nc = nc with { Governor = null }; }
+            if (c.Strategist is { } str && defectors.Contains(str)) { nc = nc with { Strategist = null }; }
+            return nc;
+        }).ToList();
+        var postings = state.Assignments.Where(p => !defectors.Contains(p.General)).ToList();
+
+        return state with { Generals = generals, Cities = cityList, Postings = postings };
     }
 
     // 명령 정산(design-administration "명령 실행 공통 규칙"): 완료일 명령의 효과를 도시에 적용하고

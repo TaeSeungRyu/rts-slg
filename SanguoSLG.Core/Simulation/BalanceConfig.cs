@@ -48,7 +48,10 @@ public sealed record BalanceConfig(
     int MarketElephantPrice = 3000,
     int MarketGrainPricePer100 = 25,
     int MarketJitterPercent = 15,
-    IReadOnlyList<int>? MarketSeasonalPercent = null)
+    IReadOnlyList<int>? MarketSeasonalPercent = null,
+    int LoyaltyBetrayScalePercent = 100,
+    int LoyaltyUnpaidDropMin = 1,
+    int LoyaltyUnpaidDropMax = 2)
 {
     /// <summary>월별 시장 시세 배수(%). 9·10월(추수) 최저, 겨울 최고. 미지정 시 기본 계절 곡선.</summary>
     public int SeasonalPercent(int month)
