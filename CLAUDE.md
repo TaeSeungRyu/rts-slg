@@ -2,6 +2,8 @@
 
 이 문서는 Claude Code가 이 저장소에서 작업할 때 반드시 따라야 할 규칙이다.
 
+> **작업 시작 전 반드시 [doc/ai-working-notes.md](doc/ai-working-notes.md)를 읽는다.** 스크린샷·자동실행·주석·아티팩트 등 **상시 작업 방식 규칙**, 조용히 통과하는 **검증 함정**, 그리고 Godot/Blender/Fooocus 등 **머신 의존 경로**(다른 PC에서 클론하면 갱신 필요)가 거기 있다.
+
 ## 프로젝트 개요
 
 삼국지 11 스타일의 **턴제 전략 시뮬레이션(SLG)** 게임. 오프라인 싱글플레이 전용이며 네트워크 기능은 없다.
@@ -159,6 +161,7 @@ dotnet test
 
 | 문서 | 이럴 때 참고 |
 |---|---|
+| [ai-working-notes.md](doc/ai-working-notes.md) | **AI 작업 방식(상시 규칙)·검증 함정·머신 의존 경로** — 새 세션/새 환경에서 작업 시작 전 필독 |
 | [plan-roadmap.md](doc/plan-roadmap.md) | **전체 현황·단계 계획(살아있는 문서)** — 다음 작업은 항상 여기서 확인, 단계 완료 시 갱신 |
 | [design-movement.md](doc/design-movement.md) | 이동·탐지·추격·정지·우회·성 입성/출격·지형 이동 패널티 |
 | [design-combat.md](doc/design-combat.md) | 피해 공식·병종 공/방·지형 전투 보정·성 전투(성벽/붕괴/반격/함락) |
