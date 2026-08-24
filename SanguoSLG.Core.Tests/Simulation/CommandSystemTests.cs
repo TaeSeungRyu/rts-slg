@@ -102,6 +102,26 @@ public class CommandSystemTests
         Assert.Equal(noSkill, noAdminData);
     }
 
+    [Fact]
+    public void 인망_태수면_모집_인구감소가_줄고_병력은_그대로다()
+    {
+        var svc = new CommandService(B, Troops, adminSkills: AdminSkills);
+        var city = Town(1, ore: 1_000_000, population: 1_000_000);
+        var req = new CommandRequest(new CityId(1), CommandKind.Recruit, new GeneralId(1), TroopCode: "swordsman");
+
+        var without = svc.Issue(WithGovernor(city, GovWith(1, "merchant", 3)), req);        // 인망 없음
+        var withGov = svc.Issue(WithGovernor(city, GovWith(1, "popularity", 3)), req);      // 인망 T3 = 인구 −25%
+        Assert.True(withGov.Ok, withGov.Error);
+
+        // 병력 수는 동일(인망은 병력을 늘리지 않는다).
+        Assert.Equal(without.State.Commands.Single().Amount, withGov.State.Commands.Single().Amount);
+
+        // 인구 감소만 25% 줄었다.
+        var popNoSkill = 1_000_000 - without.State.Cities.Single().Population;
+        var popWithGov = 1_000_000 - withGov.State.Cities.Single().Population;
+        Assert.Equal(popNoSkill - (popNoSkill * 25 / 100), popWithGov);
+    }
+
     // ── 태수 임명(즉시) ──
 
     [Fact]

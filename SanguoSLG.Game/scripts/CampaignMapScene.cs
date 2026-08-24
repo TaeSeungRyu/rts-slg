@@ -4201,7 +4201,9 @@ public sealed partial class CampaignMapScene : Node3D
             var expect = System.Math.Min(byPolitics, cityData.Ore);
             if (tmpl.Class == TroopClass.Cavalry) { expect = System.Math.Min(expect, cityData.Horses * 3); }
             if (tmpl.Class == TroopClass.Elephant) { expect = System.Math.Min(expect, cityData.Elephants * 1000); }
-            extra = $"\n예상 모집 {expect}명 · 광석 −{expect} · 인구 −{expect}";
+            var costCut = GovernorAdminBucket(cityData, "recruit_cost"); // 인망
+            var popCost = costCut > 0 ? expect - (expect * costCut / 100) : expect;
+            extra = $"\n예상 모집 {expect}명 · 광석 −{expect} · 인구 −{popCost}";
             if (tmpl.Class == TroopClass.Cavalry) { extra += $" · 말 −{(expect + 2) / 3}"; }
             if (tmpl.Class == TroopClass.Elephant) { extra += $" · 코끼리 −{(expect + 999) / 1000}"; }
             if (cmd.Kind == CommandKind.Conscript) { extra += $" · 치안 −{expect / 1000 * _cb.ConscriptSecurityDropPer1000}"; }

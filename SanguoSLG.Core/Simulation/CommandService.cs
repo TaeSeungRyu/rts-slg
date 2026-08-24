@@ -175,12 +175,16 @@ public sealed class CommandService
         }
 
         // 예약: 광석·인구 + 병종별 자원(말·코끼리, 올림) 즉시 차감. 정산 때 병력 지급.
+        // 인망(재임 태수): 모병으로 인한 인구 감소를 −8/15/25%(민심으로 자원해 인구 손실을 던다).
+        // 병력 수·광석은 그대로 — '비용'은 인구 드레인을 뜻한다(design-skill-admin 인망).
+        var costCut = GovernorBucket(state, city, "recruit_cost");
+        var popCost = costCut > 0 ? troops - (troops * costCut / 100) : troops;
         var horses = template.Class == TroopClass.Cavalry ? (troops + 2) / 3 : 0;
         var elephants = template.Class == TroopClass.Elephant ? (troops + 999) / 1000 : 0;
         var reserved = city with
         {
             Ore = city.Ore - troops,
-            Population = city.Population - troops,
+            Population = city.Population - popCost,
             Horses = city.Horses - horses,
             Elephants = city.Elephants - elephants,
         };
