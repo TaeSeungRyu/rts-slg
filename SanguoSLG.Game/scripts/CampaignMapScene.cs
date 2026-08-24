@@ -1816,6 +1816,13 @@ public sealed partial class CampaignMapScene : Node3D
         enlistBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenEnlistModal(c); } };
         _cmdList.AddChild(enlistBtn);
 
+        var rewardBtn = MakeButton("포상");
+        rewardBtn.AddThemeFontSizeOverride("font_size", 12);
+        rewardBtn.Alignment = HorizontalAlignment.Center;
+        rewardBtn.CustomMinimumSize = new Vector2(74, 24);
+        rewardBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenRewardModal(c); } };
+        _cmdList.AddChild(rewardBtn);
+
         var deployBtn = MakeButton("출전", accent: true);
         deployBtn.AddThemeFontSizeOverride("font_size", 12);
         deployBtn.Alignment = HorizontalAlignment.Center;
@@ -2142,6 +2149,7 @@ public sealed partial class CampaignMapScene : Node3D
         var c = _state.Cities.First(x => x.Id == id);
         var totalTroops = _state.Garrisons.Where(g => g.City == id).Sum(g => g.Troops);
         var govName = c.Governor is { } ggid ? _state.Generals.FirstOrDefault(x => x.Id == ggid)?.Name : null;
+        var straName = c.Strategist is { } gsid ? _state.Generals.FirstOrDefault(x => x.Id == gsid)?.Name : null;
         var pending = _state.Commands.Where(p => p.City == id).Select(p =>
             $"{KindName(p.Kind)} 남은 {p.CompletionDay - _state.Day}일");
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
@@ -2170,6 +2178,7 @@ public sealed partial class CampaignMapScene : Node3D
         AddCell(g2, Sym.Book, "시설", facilities);
         AddCell(g2, Sym.Sword, "대기", totalTroops > 0 ? $"{totalTroops}명" : "없음");
         AddCell(g2, Sym.Officer, "태수", govName ?? "없음");
+        AddCell(g2, Sym.Officer, "군사", straName ?? "없음");
         if (pending.Any())
         {
             AddCell(g2, Sym.Scroll, "진행", string.Join(",", pending));
@@ -2604,7 +2613,8 @@ public sealed partial class CampaignMapScene : Node3D
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
         var detailGov = c.Governor is { } dgid ? _state.Generals.FirstOrDefault(x => x.Id == dgid)?.Name : null;
-        var title = MakeLabel($"《 {c.Name} 》 · 태수 {detailGov ?? "없음"}", 18, Gold);
+        var detailStra = c.Strategist is { } dsid ? _state.Generals.FirstOrDefault(x => x.Id == dsid)?.Name : null;
+        var title = MakeLabel($"《 {c.Name} 》 · 태수 {detailGov ?? "없음"} · 군사 {detailStra ?? "없음"}", 16, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -2787,13 +2797,15 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var gen in stationed)
         {
             var isGov = c.Governor == gen.Id;
+            var isStra = c.Strategist == gen.Id;
+            var role = isGov && isStra ? "태수·군사" : isGov ? "태수" : isStra ? "군사" : null;
             var it = gt.CreateItem(groot);
-            it.SetText(0, (isGov ? "◆ " : "") + gen.Name);
+            it.SetText(0, (role is not null ? "◆ " : "") + gen.Name);
             it.SetText(1, gen.Might.ToString());
             it.SetText(2, gen.Intellect.ToString());
             it.SetText(3, gen.Politics.ToString());
-            it.SetText(4, isGov ? "태수" : GeneralStatus(gen.Id));
-            if (isGov) { it.SetCustomColor(0, GoldBright); it.SetCustomColor(4, GoldBright); }
+            it.SetText(4, role ?? GeneralStatus(gen.Id));
+            if (role is not null) { it.SetCustomColor(0, GoldBright); it.SetCustomColor(4, GoldBright); }
             it.SetMetadata(0, gen.Id.Value);
             for (var col = 1; col <= 4; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
         }
@@ -3122,6 +3134,63 @@ public sealed partial class CampaignMapScene : Node3D
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
+    // ── 포상 모달: 그 성 주둔 소속 장수 목록에서 포상(금 100 → 충성 급상승). 충성은 숨김이라 금액만. ──
+    private void OpenRewardModal(CityId cityId)
+    {
+        if (_advancing) { return; }
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.42f, 420f, 600f);
+        var mh = Mathf.Clamp(vp.Y * 0.8f, 340f, 700f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var city = _state.Cities.First(c => c.Id == cityId);
+
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel($"《 {city.Name} 》 포상 · 보유 금 {city.Gold}", 16, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(40, 30);
+        close.Pressed += CloseModal;
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("주둔 소속 장수에게 포상(100금) — 충성을 급히 올린다(충성은 숨김).", 12, Parchment));
+
+        const int rewardCost = 100;
+        var stationed = _state.GeneralsAt(cityId).OrderBy(x => x.Value)
+            .Select(id => _state.Generals.First(x => x.Id == id)).ToList();
+        if (stationed.Count == 0) { box.AddChild(MakeLabel("(주둔 장수 없음)", 12, Parchment)); }
+        foreach (var gen in stationed)
+        {
+            var g = gen;
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            var lbl = MakeLabel($"· {g.Name}  무{g.Might} 지{g.Intellect} 정{g.Politics}", 13, Parchment);
+            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(lbl);
+            var give = MakeButton($"포상 ({rewardCost}금)", accent: true);
+            give.CustomMinimumSize = new Vector2(110, 26);
+            give.Disabled = city.Gold < rewardCost;
+            give.Pressed += () =>
+            {
+                var r = _commander.Reward(_state, cityId, g.Id);
+                Dbg($"UI reward city={cityId.Value} gen={g.Id.Value} ok={r.Ok} err={r.Error ?? "-"}");
+                if (r.Ok) { _state = r.State; }
+                _log.Text = r.Ok ? $"포상: {g.Name}" : $"실패: {r.Error}";
+                SelectCity(cityId);
+                OpenRewardModal(cityId);
+            };
+            row.AddChild(give);
+            box.AddChild(row);
+        }
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
     // ── 시스템 팔레트: 좌상단 트레이(☰)에서 열림 — 전체 장수·도시·보물 목록(+저장/불러오기) ──
     private void OpenSystemPalette()
     {
@@ -3387,7 +3456,8 @@ public sealed partial class CampaignMapScene : Node3D
             AddCell(g4, Sym.Ore, "광석", $"{c.Ore}");
 
             var gov = c.Governor is { } gid ? _state.Generals.FirstOrDefault(x => x.Id == gid)?.Name : null;
-            box.AddChild(MakeLabel($"태수 {gov ?? "없음"}", 13, GoldBright));
+            var stra = c.Strategist is { } sid ? _state.Generals.FirstOrDefault(x => x.Id == sid)?.Name : null;
+            box.AddChild(MakeLabel($"태수 {gov ?? "없음"} · 군사 {stra ?? "없음"}", 13, GoldBright));
             var stationed = _state.GeneralsAt(cityId).Select(id => _state.Generals.First(x => x.Id == id).Name).ToList();
             box.AddChild(MakeLabel($"주둔 장수: {(stationed.Count > 0 ? string.Join(", ", stationed) : "없음")}", 12, Parchment));
             var troops = _state.Garrisons.Where(g => g.City == cityId).Sum(g => g.Troops);
