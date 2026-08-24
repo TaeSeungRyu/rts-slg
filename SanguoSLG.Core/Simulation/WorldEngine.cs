@@ -131,10 +131,24 @@ public sealed class WorldEngine
                 spent -= take;
             }
 
-            for (var i = affordable; i < members.Count; i++) // 미지급(충성 높은 쪽) → 충성 하락
+            for (var i = 0; i < members.Count; i++)
             {
-                var drop = _random.Next(_balance.LoyaltyUnpaidDropMin, _balance.LoyaltyUnpaidDropMax + 1);
-                loyalty[members[i]] = System.Math.Max(0, loyalty[members[i]] - drop);
+                if (i < affordable)
+                {
+                    // 지급 → 충성 회복 +min~max(상한 100 — 완충 초과분은 안 올림).
+                    var cur = loyalty[members[i]];
+                    if (cur < 100)
+                    {
+                        var up = _random.Next(_balance.LoyaltyPaidRecoverMin, _balance.LoyaltyPaidRecoverMax + 1);
+                        loyalty[members[i]] = System.Math.Min(100, cur + up);
+                    }
+                }
+                else
+                {
+                    // 미지급(충성 높은 쪽) → 충성 하락 −min~max.
+                    var drop = _random.Next(_balance.LoyaltyUnpaidDropMin, _balance.LoyaltyUnpaidDropMax + 1);
+                    loyalty[members[i]] = System.Math.Max(0, loyalty[members[i]] - drop);
+                }
             }
         }
 

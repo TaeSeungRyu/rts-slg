@@ -64,6 +64,27 @@ public class LoyaltyOperationTests
     }
 
     [Fact]
+    public void 급여를_주면_충성이_회복된다()
+    {
+        var s = State(cityGold: 100000, new[] { Gen(1, 80) });
+
+        var after = World(1).AdvanceDays(s, GameState.DaysPerMonth);
+
+        Assert.InRange(Loy(after, 1), 81, 82); // 지급 → +1~2
+    }
+
+    [Fact]
+    public void 회복은_100을_넘지_않고_완충_초과분은_안오른다()
+    {
+        var s = State(cityGold: 100000, new[] { Gen(1, 99), Gen(2, 200) });
+
+        var after = World(1).AdvanceDays(s, GameState.DaysPerMonth);
+
+        Assert.Equal(100, Loy(after, 1));  // 99 → +1~2지만 상한 100
+        Assert.Equal(200, Loy(after, 2));  // 완충(≥100)은 회복 없음
+    }
+
+    [Fact]
     public void 충성_100이상_주둔장수는_배신하지_않는다()
     {
         var s = State(cityGold: 100000, new[] { Gen(1, 100), Gen(2, 200) });

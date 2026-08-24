@@ -111,6 +111,8 @@ internal sealed class BalanceDto
     public int LoyaltyBetrayScalePercent { get; init; } = 100;
     public int LoyaltyUnpaidDropMin { get; init; } = 1;
     public int LoyaltyUnpaidDropMax { get; init; } = 2;
+    public int LoyaltyPaidRecoverMin { get; init; } = 1;
+    public int LoyaltyPaidRecoverMax { get; init; } = 2;
 }
 
 internal sealed class MapDto
