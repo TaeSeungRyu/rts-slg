@@ -328,7 +328,7 @@ public sealed partial class CampaignMapScene : Node3D
         var balance = new BalanceConfig(MonthlyTaxPerCity: 100);
         _provPer10kPerDay = balance.ProvisionsPer10kPerDay;
 
-        _commander = new CommandService(_cb, _troops, balance);
+        _commander = new CommandService(_cb, _troops, balance, _adminSkills);
         _deployer = new DeployService(_cb, _troops, actives, passives);
         _ai = new FactionAI(_commander, _deployer);
         _passability = new PassabilityMap(_map, [], _cities);
@@ -4017,6 +4017,25 @@ public sealed partial class CampaignMapScene : Node3D
         return rule;
     }
 
+    // 그 도시 재임 태수의 내정 스킬 버킷 합(미리보기용 — Core CommandService.GovernorBucket과 같은 규칙).
+    private int GovernorAdminBucket(City city, string bucket)
+    {
+        if (city.Governor is not { } gid) { return 0; }
+        var posting = _state.PostingOf(gid);
+        if (posting is null || posting.Location != city.Id || posting.Faction != city.Owner) { return 0; }
+        var gov = _state.Generals.FirstOrDefault(g => g.Id == gid);
+        if (gov is null) { return 0; }
+
+        var sum = 0;
+        foreach (var held in gov.AdminPassives ?? [])
+        {
+            var def = _adminSkills.FirstOrDefault(a => a.Code == held.Code);
+            if (def is not null && def.Bucket == bucket) { sum += def.AmountAtTier(held.Tier); }
+        }
+
+        return sum;
+    }
+
     private static string ClassName(TroopClass c) => c switch
     {
         TroopClass.Infantry => "보병",
@@ -4176,7 +4195,10 @@ public sealed partial class CampaignMapScene : Node3D
             var tmpl = _troops[p];
             var eff = CommandEfficiency.Effective(caster, null, cityData, cmd.Kind, _cb);
             var capPercent = cmd.Kind == CommandKind.Recruit ? _cb.RecruitPopCapPercent : _cb.ConscriptPopCapPercent;
-            var expect = System.Math.Min(CommandEfficiency.RecruitTroops(cityData.Population, capPercent, eff), cityData.Ore);
+            var byPolitics = CommandEfficiency.RecruitTroops(cityData.Population, capPercent, eff);
+            var amountBonus = GovernorAdminBucket(cityData, "recruit_amount"); // 모병관
+            if (amountBonus > 0) { byPolitics = byPolitics * (100 + amountBonus) / 100; }
+            var expect = System.Math.Min(byPolitics, cityData.Ore);
             if (tmpl.Class == TroopClass.Cavalry) { expect = System.Math.Min(expect, cityData.Horses * 3); }
             if (tmpl.Class == TroopClass.Elephant) { expect = System.Math.Min(expect, cityData.Elephants * 1000); }
             extra = $"\n예상 모집 {expect}명 · 광석 −{expect} · 인구 −{expect}";

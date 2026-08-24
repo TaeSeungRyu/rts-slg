@@ -35,12 +35,38 @@ public sealed class CommandService
     private readonly CommandBalance _b;
     private readonly IReadOnlyDictionary<string, TroopTemplate> _troops;
     private readonly BalanceConfig? _balance;
+    private readonly IReadOnlyDictionary<string, AdminSkill> _adminSkills;
 
-    public CommandService(CommandBalance balance, IReadOnlyList<TroopTemplate>? troops = null, BalanceConfig? economy = null)
+    public CommandService(CommandBalance balance, IReadOnlyList<TroopTemplate>? troops = null,
+        BalanceConfig? economy = null, IReadOnlyList<AdminSkill>? adminSkills = null)
     {
         _b = balance;
         _troops = (troops ?? []).ToDictionary(t => t.Code);
         _balance = economy; // 성벽 수리(연구 최대치 산출)에 필요 — 없으면 성벽 수리 불가
+        _adminSkills = (adminSkills ?? []).ToDictionary(a => a.Code);
+    }
+
+    /// <summary>
+    /// 그 도시의 **재임 태수**(도시에 실제 주둔한 소속 장수 = City.Governor)가 가진 내정 스킬의 버킷 합.
+    /// 태수 없거나 출전·타지 주둔이면 0. 수입 스킬과 달리 정치≥60 게이트를 두지 않는다 —
+    /// 정치 게이트는 수입(design-administration F) 전용 규칙이고, 명령 스킬(모병관·인망·교관·축성)은
+    /// 무력·정치를 가리지 않고 태수 재임만으로 작동한다(2026-08-24 결정).
+    /// </summary>
+    private int GovernorBucket(GameState state, City city, string bucket)
+    {
+        if (_adminSkills.Count == 0 || city.Governor is not { } gid)
+        {
+            return 0;
+        }
+
+        var posting = state.PostingOf(gid);
+        if (posting is null || posting.Location != city.Id || posting.Faction != city.Owner)
+        {
+            return 0;
+        }
+
+        var gov = state.Generals.FirstOrDefault(g => g.Id == gid);
+        return AdminBonus.Bucket(gov, _adminSkills, bucket);
     }
 
     public CommandResult Issue(GameState state, CommandRequest req)
@@ -126,6 +152,11 @@ public sealed class CommandService
         // 병력 = 인구 × 상한% × 동원율(유효 정치/100). 광석 1/명이 하드 캡.
         var capPercent = kind == CommandKind.Recruit ? _b.RecruitPopCapPercent : _b.ConscriptPopCapPercent;
         var byPolitics = CommandEfficiency.RecruitTroops(city.Population, capPercent, eff);
+
+        // 모병관(재임 태수): 모병·징병 병력 +10/20/30%. 자원·인구 하드 캡 이전에 증폭한다.
+        var amountBonus = GovernorBucket(state, city, "recruit_amount");
+        if (amountBonus > 0) { byPolitics = byPolitics * (100 + amountBonus) / 100; }
+
         var troops = System.Math.Min(byPolitics, city.Ore);
 
         // 병종별 추가 자원이 하드 캡을 더 조인다: 말 = 3명당 1, 코끼리 = 1000명당 1.

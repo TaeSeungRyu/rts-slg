@@ -58,6 +58,50 @@ public class CommandSystemTests
         Assert.Equal(90, away);
     }
 
+    // ── 태수 내정 스킬(재임 시 명령에 반영) ──
+
+    private static readonly IReadOnlyList<AdminSkill> AdminSkills =
+        new AdminSkillLoader().LoadFromDirectory(TestData.DataDirectory());
+
+    private static General GovWith(int id, string skillCode, int tier, int politics = 90, int might = 50) => new(
+        new GeneralId(id), $"gov{id}", new Dictionary<TroopClass, AptitudeGrade>(),
+        Might: might, Intellect: 50, Politics: politics,
+        AdminPassives: new[] { new GeneralSkill(skillCode, tier) });
+
+    private static GameState WithGovernor(City city, General gov) => new(
+        1, 1, new List<Faction>(), new List<City> { city with { Governor = gov.Id } },
+        new List<General> { gov },
+        Postings: new List<GeneralPosting> { new(gov.Id, city.Owner, city.Id) });
+
+    [Fact]
+    public void 모병관_태수면_모집_병력이_증가한다()
+    {
+        var svc = new CommandService(B, Troops, adminSkills: AdminSkills);
+        var city = Town(1, ore: 1_000_000); // 광석 하드 캡에 걸리지 않게 넉넉히
+        var req = new CommandRequest(new CityId(1), CommandKind.Recruit, new GeneralId(1), TroopCode: "swordsman");
+
+        var withGov = svc.Issue(WithGovernor(city, GovWith(1, "recruiter", 3)), req);      // 모병관 T3 = +30%
+        var without = svc.Issue(WithGovernor(city, GovWith(1, "merchant", 3)), req);       // 무관 스킬 = +0%
+        Assert.True(withGov.Ok, withGov.Error);
+
+        var boosted = withGov.State.Commands.Single().Amount;
+        var baseline = without.State.Commands.Single().Amount;
+        Assert.Equal(baseline * 130 / 100, boosted); // 정확히 +30%
+    }
+
+    [Fact]
+    public void 모병관이_없는_태수면_모집_병력이_그대로다()
+    {
+        var svc = new CommandService(B, Troops, adminSkills: AdminSkills);
+        var city = Town(1, ore: 1_000_000);
+        var req = new CommandRequest(new CityId(1), CommandKind.Recruit, new GeneralId(1), TroopCode: "swordsman");
+
+        var noSkill = svc.Issue(WithGovernor(city, GovWith(1, "merchant", 3)), req).State.Commands.Single().Amount;
+        var noAdminData = new CommandService(B, Troops).Issue(WithGovernor(city, GovWith(1, "recruiter", 3)), req)
+            .State.Commands.Single().Amount; // 스킬 데이터 미주입 → 보너스 0
+        Assert.Equal(noSkill, noAdminData);
+    }
+
     // ── 태수 임명(즉시) ──
 
     [Fact]

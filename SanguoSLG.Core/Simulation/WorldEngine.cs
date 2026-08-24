@@ -394,23 +394,7 @@ public sealed class WorldEngine
 
     // 담당관의 내정 패시브 스킬 중 해당 버킷의 티어값 합(상재=tax, 둔전=harvest, 진무=security).
     private int GovernorBucket(Domain.General? governor, string bucket)
-    {
-        if (governor is null)
-        {
-            return 0;
-        }
-
-        var sum = 0;
-        foreach (var held in governor.AdminPassives ?? [])
-        {
-            if (_adminSkills.TryGetValue(held.Code, out var def) && def.Bucket == bucket)
-            {
-                sum += def.AmountAtTier(held.Tier);
-            }
-        }
-
-        return sum;
-    }
+        => AdminBonus.Bucket(governor, _adminSkills, bucket);
 
     // 인구 충원율 배율(%): 바닥% + (100 − 바닥%) × 인구/최대치. 가득 찬 도시=100%, 텅 빈 도시=바닥%.
     private int PopulationFillPercent(City city)
