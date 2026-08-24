@@ -116,7 +116,8 @@ public sealed class AdvanceOrchestrator
                 continue;
             }
 
-            var eaten = u.Pool.Active * _provisionsPer10kPerDay * move.Days / 10000;
+            // 병참(선봉·부관 provisions 스킬 — 편성 시 SupplyUpkeepPercent에 확정)이 휴대 군량 소모를 줄인다.
+            var eaten = (int)((long)u.Pool.Active * _provisionsPer10kPerDay * move.Days * u.SupplyUpkeepPercent / 1_000_000);
             var remaining = u.Provisions - eaten;
             if (remaining >= 0)
             {

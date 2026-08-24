@@ -329,7 +329,7 @@ public sealed partial class CampaignMapScene : Node3D
         _provPer10kPerDay = balance.ProvisionsPer10kPerDay;
 
         _commander = new CommandService(_cb, _troops, balance, _adminSkills);
-        _deployer = new DeployService(_cb, _troops, actives, passives);
+        _deployer = new DeployService(_cb, _troops, actives, passives, _adminSkills);
         _ai = new FactionAI(_commander, _deployer);
         _passability = new PassabilityMap(_map, [], _cities);
         var movement = new MovementSimulator(_passability);

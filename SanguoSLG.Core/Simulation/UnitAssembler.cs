@@ -16,7 +16,8 @@ public static class UnitAssembler
         General vanguard, General? adjutant, TroopTemplate template, int troops,
         IReadOnlyDictionary<string, ActiveSkill> actives,
         IReadOnlyDictionary<string, PassiveSkill> passives,
-        CombatContext context, int researchLevel = 0, IReadOnlyList<HexCoord>? waypoints = null)
+        CombatContext context, int researchLevel = 0, IReadOnlyList<HexCoord>? waypoints = null,
+        IReadOnlyDictionary<string, AdminSkill>? adminSkills = null)
     {
         var grade = vanguard.AptitudeFor(template.Class);
 
@@ -24,6 +25,17 @@ public static class UnitAssembler
             .Concat(adjutant?.Passives ?? [])
             .Select(s => (passives[s.Code], s.Tier));
         var (atkBonus, dfBonus) = PassiveBucketEvaluator.Evaluate(held, context);
+
+        // 병참(재임 태수가 아니라 부대를 이끄는 선봉·부관의 내정 스킬 — 필드 군량은 종군 병참관의 몫,
+        //  design-skill-admin 2026-08-24): 두 장수의 provisions 버킷 합만큼 휴대 군량 소모를 줄인다.
+        var upkeepCut = 0;
+        if (adminSkills is not null)
+        {
+            upkeepCut = AdminBonus.Bucket(vanguard, adminSkills, "provisions")
+                + AdminBonus.Bucket(adjutant, adminSkills, "provisions");
+        }
+
+        var upkeepPercent = System.Math.Clamp(100 - upkeepCut, 1, 100);
 
         var stats = CombatStatsBuilder.BuildField(template, grade, researchLevel, TerrainType.River,
             troops, atkBonusPercent: atkBonus, dfBonusPercent: dfBonus);
@@ -41,7 +53,7 @@ public static class UnitAssembler
         return new CombatUnit(field, stats, new TroopPool(troops, 0), state,
             vanguard.Might, vanguard.Intellect, troops, template.Class,
             ProvisionsCapacity: template.ProvisionsCapacity, TroopCode: template.Code,
-            VanguardId: vanguard.Id, AdjutantId: adjutant?.Id);
+            VanguardId: vanguard.Id, AdjutantId: adjutant?.Id, SupplyUpkeepPercent: upkeepPercent);
     }
 
     private static ActiveSkill? Resolve(string? code, IReadOnlyDictionary<string, ActiveSkill> actives)

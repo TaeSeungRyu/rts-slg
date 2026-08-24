@@ -39,17 +39,20 @@ public sealed class DeployService
     private readonly IReadOnlyDictionary<string, TroopTemplate> _troops;
     private readonly IReadOnlyDictionary<string, ActiveSkill> _actives;
     private readonly IReadOnlyDictionary<string, PassiveSkill> _passives;
+    private readonly IReadOnlyDictionary<string, AdminSkill> _adminSkills;
 
     // 패시브 버킷은 조립 시점에 접힌다(현 구조) — 야전 상시 조건으로 평가한다.
     private static readonly CombatContext FieldContext = new(MeleeEngagement: true, IncomingMelee: true, InField: true);
 
     public DeployService(CommandBalance balance, IReadOnlyList<TroopTemplate> troops,
-        IReadOnlyList<ActiveSkill> actives, IReadOnlyList<PassiveSkill> passives)
+        IReadOnlyList<ActiveSkill> actives, IReadOnlyList<PassiveSkill> passives,
+        IReadOnlyList<AdminSkill>? adminSkills = null)
     {
         _b = balance;
         _troops = troops.ToDictionary(t => t.Code);
         _actives = actives.ToDictionary(a => a.Code);
         _passives = passives.ToDictionary(p => p.Code);
+        _adminSkills = (adminSkills ?? []).ToDictionary(a => a.Code);
     }
 
     public CommandResult Deploy(GameState state, DeployRequest req)
@@ -119,7 +122,7 @@ public sealed class DeployService
         var unitId = new UnitId(state.Armies.Count == 0 ? 1 : state.Armies.Max(u => u.Id.Value) + 1);
         var unit = UnitAssembler.Assemble(unitId, city.Owner, city.Position, req.Mode, req.Target,
             unitId.Value, vanguard, adjutant, template, troops, _actives, _passives, FieldContext, research,
-            req.Waypoints);
+            req.Waypoints, _adminSkills);
         unit = unit with { Provisions = carried, Training = garrison.TrainingLevel };
 
         var garrisons = state.Garrisons

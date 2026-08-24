@@ -27,7 +27,8 @@ public sealed record CombatUnit(
     GeneralId? AdjutantId = null,
     IReadOnlyList<SupplyComponent>? SupplyCargo = null,
     UnitId? ReinforceTarget = null,
-    int LootGold = 0)
+    int LootGold = 0,
+    int SupplyUpkeepPercent = 100)
 {
     public UnitId Id => Field.Id;
 

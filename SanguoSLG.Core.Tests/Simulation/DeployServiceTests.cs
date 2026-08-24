@@ -42,6 +42,43 @@ public class DeployServiceTests
     private static GeneralPosting At(int general, int city) =>
         new(new GeneralId(general), new FactionId(1), new CityId(city));
 
+    private static readonly IReadOnlyList<AdminSkill> AdminSkills =
+        new AdminSkillLoader().LoadFromDirectory(TestData.DataDirectory());
+
+    private static General Quartermaster(int id, int tier) => Gen(id) with
+    {
+        AdminPassives = new[] { new GeneralSkill("quartermaster", tier) },
+    };
+
+    [Fact]
+    public void 병참_선봉이면_부대_군량소모_계수가_줄어든다()
+    {
+        var city = Town(1, new HexCoord(2, 0), provisions: 5000);
+        var deployer = new DeployService(B, Troops, Actives, Passives, AdminSkills);
+        var s0 = State([city], [Quartermaster(1, 3)], // 병참 T3 = 소모 −15%
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 10000, 60)], postings: [At(1, 1)]);
+
+        var r = deployer.Deploy(s0, new DeployRequest(
+            new CityId(1), "swordsman", 10000, new GeneralId(1), Target: new HexCoord(6, 0)));
+
+        Assert.True(r.Ok, r.Error);
+        Assert.Equal(85, r.State.Armies.Single().SupplyUpkeepPercent); // 100 − 15
+    }
+
+    [Fact]
+    public void 병참이_없으면_소모계수는_100이다()
+    {
+        var city = Town(1, new HexCoord(2, 0), provisions: 5000);
+        var deployer = new DeployService(B, Troops, Actives, Passives, AdminSkills);
+        var s0 = State([city], [Gen(1)],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 10000, 60)], postings: [At(1, 1)]);
+
+        var r = deployer.Deploy(s0, new DeployRequest(
+            new CityId(1), "swordsman", 10000, new GeneralId(1), Target: new HexCoord(6, 0)));
+
+        Assert.Equal(100, r.State.Armies.Single().SupplyUpkeepPercent);
+    }
+
     [Fact]
     public void 출전_대기병력과_군량을_꺼내_야전부대를_만든다()
     {
