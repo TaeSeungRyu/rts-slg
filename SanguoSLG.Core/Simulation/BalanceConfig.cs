@@ -42,4 +42,20 @@ public sealed record BalanceConfig(
     int WallMaxMedium = 6000,
     int WallMaxLarge = 10000,
     int GeneralSalaryPerMonth = 20,
-    int ProvisionsPer10kPerDay = 10);
+    int ProvisionsPer10kPerDay = 10,
+    int MarketOrePrice = 1,
+    int MarketHorsePrice = 6,
+    int MarketElephantPrice = 3000,
+    int MarketGrainPricePer100 = 25,
+    int MarketJitterPercent = 15,
+    IReadOnlyList<int>? MarketSeasonalPercent = null)
+{
+    /// <summary>월별 시장 시세 배수(%). 9·10월(추수) 최저, 겨울 최고. 미지정 시 기본 계절 곡선.</summary>
+    public int SeasonalPercent(int month)
+    {
+        var table = MarketSeasonalPercent is { Count: 12 }
+            ? MarketSeasonalPercent
+            : new[] { 140, 135, 115, 110, 105, 100, 100, 95, 70, 70, 95, 135 };
+        return table[System.Math.Clamp(month, 1, 12) - 1];
+    }
+}

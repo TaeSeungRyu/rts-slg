@@ -31,5 +31,11 @@
   "wall_max_small": 3000,
   "wall_max_medium": 6000,
   "wall_max_large": 10000,
-  "general_salary_per_month": 20
+  "general_salary_per_month": 20,
+  "market_ore_price": 1,
+  "market_horse_price": 6,
+  "market_elephant_price": 3000,
+  "market_grain_price_per_100": 25,
+  "market_jitter_percent": 15,
+  "market_seasonal_percent": [140, 135, 115, 110, 105, 100, 100, 95, 70, 70, 95, 135]
 }

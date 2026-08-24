@@ -102,6 +102,12 @@ internal sealed class BalanceDto
     public int WallMaxMedium { get; init; } = 6000;
     public int WallMaxLarge { get; init; } = 10000;
     public int GeneralSalaryPerMonth { get; init; } = 20;
+    public int MarketOrePrice { get; init; } = 1;
+    public int MarketHorsePrice { get; init; } = 6;
+    public int MarketElephantPrice { get; init; } = 3000;
+    public int MarketGrainPricePer100 { get; init; } = 25;
+    public int MarketJitterPercent { get; init; } = 15;
+    public List<int>? MarketSeasonalPercent { get; init; }
 }
 
 internal sealed class MapDto

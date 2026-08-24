@@ -59,7 +59,10 @@ public sealed class ScenarioLoader
             balanceDto.SecurityLowThreshold, balanceDto.SecurityLowIncomePercent,
             balanceDto.GovernorMinPolitics, balanceDto.NoGovernorIncomePercent, balanceDto.GovernorTaxAmplifyAt100,
             balanceDto.WallMaxSmall, balanceDto.WallMaxMedium, balanceDto.WallMaxLarge,
-            balanceDto.GeneralSalaryPerMonth);
+            balanceDto.GeneralSalaryPerMonth, ProvisionsPer10kPerDay: 10,
+            MarketOrePrice: balanceDto.MarketOrePrice, MarketHorsePrice: balanceDto.MarketHorsePrice,
+            MarketElephantPrice: balanceDto.MarketElephantPrice, MarketGrainPricePer100: balanceDto.MarketGrainPricePer100,
+            MarketJitterPercent: balanceDto.MarketJitterPercent, MarketSeasonalPercent: balanceDto.MarketSeasonalPercent);
 
         var cities = Deserialize<List<CityDto>>(citiesJson, "cities")
             .Select(d =>

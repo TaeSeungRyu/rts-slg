@@ -78,6 +78,13 @@ public sealed class WorldEngine
             {
                 Cities = next.Cities.Select(c => TaxSecurity(Grow(Produce(Income(c, Gov(c)), Gov(c))), Gov(c))).ToList(),
             };
+
+            // 시장 시세 갱신(design-administration "시장"): 계절 배수 × 랜덤 지터(seeded — 결정론).
+            // 9·10월(추수) 최저, 겨울 최고. 다음 달 매입가에 반영된다.
+            var jitter = _balance.MarketJitterPercent;
+            var draw = jitter > 0 ? _random.Next(-jitter, jitter + 1) : 0;
+            var index = _balance.SeasonalPercent(next.Month) * (100 + draw) / 100;
+            next = next with { MarketPricePercent = System.Math.Max(1, index) };
         }
 
         return next;

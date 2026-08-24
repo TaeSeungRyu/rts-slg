@@ -20,7 +20,8 @@ public sealed record GameState(
     IReadOnlyList<CombatUnit>? FieldArmies = null,
     IReadOnlyList<Prisoner>? Captives = null,
     IReadOnlyList<FactionResearch>? ResearchTracks = null,
-    IReadOnlyList<CityIntel>? ScoutedCities = null)
+    IReadOnlyList<CityIntel>? ScoutedCities = null,
+    int MarketPricePercent = 100)
 {
     /// <summary>도시 대기 병력(병종별) — 모집 정산이 쌓고, 출전 편성이 꺼내 쓴다.</summary>
     public IReadOnlyList<GarrisonForce> Garrisons => GarrisonForces ?? [];
