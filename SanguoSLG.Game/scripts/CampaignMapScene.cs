@@ -283,6 +283,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("시설 수리", CommandKind.Repair, "repairable"),
         ("도시 계략", CommandKind.CityStratagem, "stratagem"),
         ("태수 임명", CommandKind.AppointGovernor, ""),
+        ("군사 임명", CommandKind.AppointStrategist, ""),
     };
 
     private static readonly (string Label, string Code)[] Facilities =
@@ -305,7 +306,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 명령 카테고리 그룹(삼국지14식 분류)과 명령별 아이콘.
     private static readonly (string Group, int[] Indices)[] CmdGroups =
     {
-        ("내정", new[] { 0, 1, 2, 3, 4, 10 }),
+        ("내정", new[] { 0, 1, 2, 3, 4, 10, 11 }),
         ("군비", new[] { 5, 6, 7, 8 }),
         ("계략", new[] { 9 }),
     };
@@ -1804,6 +1805,13 @@ public sealed partial class CampaignMapScene : Node3D
         marketBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenMarketModal(c); } };
         _cmdList.AddChild(marketBtn);
 
+        var enlistBtn = MakeButton("등용");
+        enlistBtn.AddThemeFontSizeOverride("font_size", 12);
+        enlistBtn.Alignment = HorizontalAlignment.Center;
+        enlistBtn.CustomMinimumSize = new Vector2(74, 24);
+        enlistBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenEnlistModal(c); } };
+        _cmdList.AddChild(enlistBtn);
+
         var deployBtn = MakeButton("출전", accent: true);
         deployBtn.AddThemeFontSizeOverride("font_size", 12);
         deployBtn.Alignment = HorizontalAlignment.Center;
@@ -2959,6 +2967,157 @@ public sealed partial class CampaignMapScene : Node3D
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
+    // ── 등용 모달: 대상(내 포로·정찰된 적 성 장수·출전중 적 장수) 선택 → 수행 장수 선택 → 군사 예측·확인 ──
+    private void OpenEnlistModal(CityId cityId)
+    {
+        if (_advancing) { return; }
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.46f, 460f, 680f);
+        var mh = Mathf.Clamp(vp.Y * 0.85f, 380f, 760f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var city = _state.Cities.First(c => c.Id == cityId);
+        var strat = city.Strategist is { } sid ? _state.Generals.FirstOrDefault(g => g.Id == sid) : null;
+
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel($"《 {city.Name} 》 등용 · 군사 {strat?.Name ?? "없음"}", 17, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(40, 30);
+        close.Pressed += CloseModal;
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+
+        // 후보 대상 수집: 내 포로 · 정찰된 적 성 장수 · 출전중 적 장수.
+        var targets = new List<(GeneralId Id, string Kind)>();
+        foreach (var p in _state.Prisoners.Where(p => p.Holder == Player))
+        {
+            targets.Add((p.General, "포로"));
+        }
+
+        foreach (var u in _state.Armies.Where(u => u.Field.Owner != Player))
+        {
+            if (u.VanguardId is { } v) { targets.Add((v, "출전중")); }
+            if (u.AdjutantId is { } a) { targets.Add((a, "출전중")); }
+        }
+
+        foreach (var post in _state.Assignments.Where(p => p.Faction != Player && p.Location is not null))
+        {
+            if (_state.IsScouted(Player, post.Location!.Value)) { targets.Add((post.General, "적 성")); }
+        }
+
+        if (targets.Count == 0)
+        {
+            box.AddChild(MakeLabel("등용할 대상이 없습니다. (적 성 정찰·적 부대 접촉·포로 확보 필요)", 13, Parchment));
+            var h0 = box.GetCombinedMinimumSize().Y;
+            scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(h0, mh));
+            CenterAndDrag(panel, titleRow, mw, mh, box);
+            return;
+        }
+
+        box.AddChild(MakeLabel("대상 선택 → 수행 장수 → 확인", 13, GoldBright));
+        foreach (var (tid, kind) in targets)
+        {
+            var targetId = tid;
+            var gen = _state.Generals.FirstOrDefault(g => g.Id == targetId);
+            if (gen is null) { continue; }
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            var lbl = MakeLabel($"· {gen.Name}  [{kind}]  무{gen.Might} 지{gen.Intellect} 정{gen.Politics}", 13, Parchment);
+            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(lbl);
+            var pick = MakeButton("등용");
+            pick.CustomMinimumSize = new Vector2(64, 26);
+            pick.Pressed += () => PickEnlistRecruiter(cityId, targetId);
+            row.AddChild(pick);
+            box.AddChild(row);
+        }
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    // 등용 수행 장수 선택(그 도시 주둔 자유 장수, 정치 기준) → 군사 예측·확인 → 발행.
+    private void PickEnlistRecruiter(CityId cityId, GeneralId targetId)
+    {
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.4f, 420f, 560f);
+        var mh = Mathf.Clamp(vp.Y * 0.8f, 340f, 680f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var city = _state.Cities.First(c => c.Id == cityId);
+        var target = _state.Generals.First(g => g.Id == targetId);
+        var strat = city.Strategist is { } sid ? _state.Generals.FirstOrDefault(g => g.Id == sid) : null;
+
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var back = MakeButton("◀");
+        back.CustomMinimumSize = new Vector2(40, 30);
+        back.Pressed += () => OpenEnlistModal(cityId);
+        titleRow.AddChild(back);
+        var title = MakeLabel($"등용 대상: {target.Name}", 16, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(40, 30);
+        close.Pressed += CloseModal;
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("수행 장수 (정치 높을수록 유리 · 행 클릭)", 13, GoldBright));
+
+        var free = _state.GeneralsAt(cityId).Where(g => !_state.IsGeneralBusy(g))
+            .Select(id => _state.Generals.First(g => g.Id == id)).OrderByDescending(g => g.Politics).ToList();
+        if (free.Count == 0) { box.AddChild(MakeLabel("(가능한 수행 장수 없음)", 12, Parchment)); }
+        foreach (var g in free)
+        {
+            var recruiter = g;
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            var lbl = MakeLabel($"· {recruiter.Name}  정{recruiter.Politics}", 13, Parchment);
+            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(lbl);
+            var go = MakeButton("선택");
+            go.CustomMinimumSize = new Vector2(60, 26);
+            go.Pressed += () =>
+            {
+                // 군사 예측: 성공 확률 밴드 + 신뢰도(군사 지력%). 군사 없으면 예측 불가.
+                var forecast = "예측 불가 (군사 없음)";
+                if (strat is not null)
+                {
+                    var odds = EnlistOdds.SuccessPercent(recruiter.Politics, target.Loyalty);
+                    var band = odds >= 40 ? "성공 유력" : odds >= 15 ? "반반" : "어려움";
+                    forecast = $"군사({strat.Name}) 예측: {band} · 신뢰도 {strat.Intellect}%";
+                }
+
+                ShowConfirm("등용",
+                    $"{target.Name}을(를) {recruiter.Name}이(가) 등용\n{forecast}\n\n" +
+                    "실패 시 대상이 충신이면 수행 장수가 잡힐 수 있습니다.",
+                    () =>
+                    {
+                        var req = new CommandRequest(cityId, CommandKind.Enlist, recruiter.Id, TargetGeneral: targetId);
+                        var r = _commander.Issue(_state, req);
+                        Dbg($"UI enlist city={cityId.Value} recruiter={recruiter.Id.Value} target={targetId.Value} ok={r.Ok} err={r.Error ?? "-"}");
+                        if (r.Ok) { _state = r.State; }
+                        _log.Text = r.Ok ? $"등용 시도: {target.Name} ({recruiter.Name})" : $"실패: {r.Error}";
+                        CloseModal();
+                        SelectCity(cityId);
+                        Redraw(_log.Text);
+                    });
+            };
+            row.AddChild(go);
+            box.AddChild(row);
+        }
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
     // 장수 현재 상태 한 줄: 내정 명령 잠금 > 출전 예약 > 대기.
     private string GeneralStatus(GeneralId id)
     {
@@ -4001,8 +4160,8 @@ public sealed partial class CampaignMapScene : Node3D
         Clear(_modalOfficers);
         var cmd = Cmds[cmdIndex];
         var cityData = _state.Cities.First(x => x.Id == city);
-        // 태수 임명은 상주 역할이라 다른 명령에 매인 장수도 지정 가능 — 주둔 장수 전체를 보인다.
-        var isAppoint = cmd.Kind == CommandKind.AppointGovernor;
+        // 태수·군사 임명은 상주 역할이라 다른 명령에 매인 장수도 지정 가능 — 주둔 장수 전체를 보인다.
+        var isAppoint = cmd.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist;
         var free = (isAppoint ? _state.GeneralsAt(city) : _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g)))
             .OrderBy(g => g.Value).ToList();
         if (free.Count == 0)
@@ -4012,7 +4171,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         // 이 명령의 효율 능력치 컬럼(1=무, 2=지, 3=정) — 기본 정렬(내림차순)과 ★ 표시에 쓴다.
-        var relevant = cmd.Kind is CommandKind.Research or CommandKind.CityStratagem ? 2
+        var relevant = cmd.Kind is CommandKind.Research or CommandKind.CityStratagem or CommandKind.AppointStrategist ? 2
             : cmd.Kind == CommandKind.Train ? 1 : 3;
 
         var tree = new Tree
@@ -4385,6 +4544,9 @@ public sealed partial class CampaignMapScene : Node3D
         CommandKind.Research => "연구",
         CommandKind.Repair => "수리",
         CommandKind.CityStratagem => "계략",
+        CommandKind.AppointGovernor => "태수 임명",
+        CommandKind.AppointStrategist => "군사 임명",
+        CommandKind.Enlist => "등용",
         _ => k.ToString(),
     };
 
