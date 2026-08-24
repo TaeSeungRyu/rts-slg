@@ -38,5 +38,6 @@
   "stratagem_incite_security": 10,
   "stratagem_arson_percent": 20,
   "stratagem_steal_percent": 20,
-  "stratagem_discord_loyalty": 20
+  "stratagem_discord_loyalty_min": 5,
+  "stratagem_discord_loyalty_max": 15
 }

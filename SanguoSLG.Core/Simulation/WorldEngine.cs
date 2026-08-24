@@ -450,7 +450,8 @@ public sealed class WorldEngine
                 if (victim is not null)
                 {
                     var idx = generals.FindIndex(g => g.Id == victim.Id);
-                    generals[idx] = victim with { Loyalty = System.Math.Max(0, victim.Loyalty - _commands.StratagemDiscordLoyalty) };
+                    var cut = _random.Next(_commands.StratagemDiscordLoyaltyMin, _commands.StratagemDiscordLoyaltyMax + 1);
+                    generals[idx] = victim with { Loyalty = System.Math.Max(0, victim.Loyalty - cut) };
                 }
 
                 break;

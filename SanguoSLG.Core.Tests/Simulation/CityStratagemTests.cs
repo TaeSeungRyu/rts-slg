@@ -167,9 +167,23 @@ public class CityStratagemTests
             intel: [Scouted()]);
         var issued = Service().Issue(s, Req("sow_discord"));
         Assert.True(issued.Ok, issued.Error);
-        var done = Advance(issued.State, 11, roll: 0);
+        // 난수 [성공 판정 0, 이간 감소량 10] — 5~15 랜덤 중 10.
+        var done = new WorldEngine(Bal, B, random: new FixedRandom(0, 10)).AdvanceDays(issued.State, 11);
 
-        Assert.Equal(70, done.LoyaltyOf(new GeneralId(11)));  // 충성 최저(90) −20
+        Assert.Equal(80, done.LoyaltyOf(new GeneralId(11)));  // 충성 최저(90) −10
         Assert.Equal(150, done.LoyaltyOf(new GeneralId(10))); // 그대로
+    }
+
+    [Fact]
+    public void 이간_정찰안된_도시는_발행이_거부된다()
+    {
+        var s = State([Mine(), Enemy()], [Gen(1), Gen(10, loyalty: 90)],
+            postings:
+            [
+                new GeneralPosting(new GeneralId(1), new FactionId(1), new CityId(1)),
+                new GeneralPosting(new GeneralId(10), new FactionId(2), new CityId(2)),
+            ]); // 정찰 없음
+
+        Assert.False(Service().Issue(s, Req("sow_discord")).Ok);
     }
 }
