@@ -48,6 +48,10 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly Dictionary<int, UnitController3D> _armyTokens = new();
     private readonly Dictionary<int, Label3D> _armyLabels = new();
     private Label _status = null!;
+    private Label _hudRuler = null!;
+    private Label _hudDate = null!;
+    private TextureRect _hudFace = null!;
+    private PanelContainer _hudFacePanel = null!;
     private Label _log = null!;
 
     // 진행 애니메이션(4초=하루, 1초=한 칸, 7일=28초). StepSeconds를 키우면 이동이 느려진다.
@@ -3118,6 +3122,242 @@ public sealed partial class CampaignMapScene : Node3D
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
+    // ── 시스템 팔레트: 좌상단 트레이(☰)에서 열림 — 전체 장수·도시·보물 목록(+저장/불러오기) ──
+    private void OpenSystemPalette()
+    {
+        if (_advancing) { return; }
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.3f, 300f, 420f);
+        var mh = Mathf.Clamp(vp.Y * 0.6f, 260f, 520f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel("☰  시스템", 18, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(40, 30);
+        close.Pressed += CloseModal;
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+
+        void Item(string label, System.Action open)
+        {
+            var b = MakeButton(label, accent: true);
+            b.AddThemeFontSizeOverride("font_size", 14);
+            b.CustomMinimumSize = new Vector2(0, 40);
+            b.Pressed += open;
+            box.AddChild(b);
+        }
+
+        Item("전체 장수 목록", OpenGeneralRoster);
+        Item("전체 도시 목록", OpenCityRoster);
+        Item("보물 목록", OpenTreasureList);
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    // 시스템 모달 공통 헤더(◀ 시스템으로 복귀 · ✕ 닫기).
+    private VBoxContainer SystemView(string titleText, float mw, out ScrollContainer scroll, out PanelContainer panel, out HBoxContainer titleRow)
+    {
+        var box = DeployScaffold(mw, out scroll, out panel);
+        titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var back = MakeButton("◀");
+        back.CustomMinimumSize = new Vector2(40, 30);
+        back.Pressed += OpenSystemPalette;
+        titleRow.AddChild(back);
+        var title = MakeLabel(titleText, 17, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(40, 30);
+        close.Pressed += CloseModal;
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+        return box;
+    }
+
+    // 전체 장수 목록 — 소속·위치·능력. 행 클릭 = 장수 상세(포로/재야/야전 포함).
+    private void OpenGeneralRoster()
+    {
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.5f, 480f, 720f);
+        var mh = Mathf.Clamp(vp.Y * 0.85f, 380f, 760f);
+        var box = SystemView("전체 장수 목록", mw, out var scroll, out var panel, out var titleRow);
+
+        string FactionName(FactionId f) => _state.Factions.FirstOrDefault(x => x.Id == f)?.Name ?? "?";
+        string Where(General g)
+        {
+            if (_state.PrisonerOf(g.Id) is { } p) { return $"{FactionName(p.Holder)} 포로"; }
+            if (_state.PostingOf(g.Id) is { } post)
+            {
+                var loc = post.Location is { } c ? _state.Cities.FirstOrDefault(x => x.Id == c)?.Name ?? "성" : "야전";
+                return $"{FactionName(post.Faction)} · {loc}";
+            }
+
+            return "재야";
+        }
+
+        var tree = new Tree
+        {
+            Columns = 5, ColumnTitlesVisible = true, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
+            CustomMinimumSize = new Vector2(0, Mathf.Min(mh - 60, 44 + _state.Generals.Count * 28)),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        tree.AddThemeFontOverride("font", _font);
+        tree.AddThemeFontSizeOverride("font_size", 14);
+        tree.AddThemeFontOverride("title_button_font", _font);
+        tree.AddThemeFontSizeOverride("title_button_font_size", 13);
+        tree.SetColumnTitle(0, "이름"); tree.SetColumnExpand(0, true); tree.SetColumnExpandRatio(0, 2);
+        foreach (var (col, t) in new[] { (1, "무"), (2, "지"), (3, "정") })
+        {
+            tree.SetColumnTitle(col, t); tree.SetColumnExpand(col, false); tree.SetColumnCustomMinimumWidth(col, 42);
+        }
+
+        tree.SetColumnTitle(4, "소속·위치"); tree.SetColumnExpand(4, true); tree.SetColumnExpandRatio(4, 3);
+        var root = tree.CreateItem();
+        foreach (var g in _state.Generals.OrderBy(g => g.Id.Value))
+        {
+            var it = tree.CreateItem(root);
+            it.SetText(0, g.Name);
+            it.SetText(1, g.Might.ToString());
+            it.SetText(2, g.Intellect.ToString());
+            it.SetText(3, g.Politics.ToString());
+            it.SetText(4, Where(g));
+            it.SetMetadata(0, g.Id.Value);
+            for (var col = 1; col <= 3; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
+        }
+
+        tree.ItemSelected += () =>
+        {
+            var it = tree.GetSelected();
+            if (it is not null) { OpenGeneralCard(new GeneralId(it.GetMetadata(0).AsInt32())); }
+        };
+        box.AddChild(tree);
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    // 장수 상세를 시스템 목록에서 열 때 — 성이 없는(재야·포로·야전) 장수도 안전하게(◀는 상세 카드 자체 닫기).
+    private void OpenGeneralCard(GeneralId gid)
+    {
+        var loc = _state.PostingOf(gid)?.Location ?? _state.Cities.FirstOrDefault(c => c.Owner == Player)?.Id;
+        OpenGeneralDetail(gid, loc ?? new CityId(0));
+    }
+
+    // 전체 도시 목록 — 이름·세력·(정찰/소유 시)수치. 행 클릭 = 읽기 전용 상세(미정찰이면 정보 가림).
+    private void OpenCityRoster()
+    {
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.44f, 420f, 640f);
+        var mh = Mathf.Clamp(vp.Y * 0.85f, 360f, 720f);
+        var box = SystemView("전체 도시 목록", mw, out var scroll, out var panel, out var titleRow);
+
+        foreach (var c in _state.Cities.OrderBy(c => c.Id.Value))
+        {
+            var city = c;
+            var known = c.Owner == Player || _state.IsScouted(Player, c.Id);
+            var owner = _state.Factions.FirstOrDefault(f => f.Id == c.Owner)?.Name ?? "?";
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            var lbl = MakeLabel($"· {c.Name}  [{owner}]  {(known ? "" : "— 미정찰")}", 13,
+                known ? Parchment : new Color(Parchment, 0.55f));
+            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(lbl);
+            var view = MakeButton("보기");
+            view.CustomMinimumSize = new Vector2(60, 26);
+            view.Pressed += () => OpenCityInfoReadonly(city.Id);
+            row.AddChild(view);
+            box.AddChild(row);
+        }
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    // 읽기 전용 도시 정보 — 소유·정찰 시에만 수치 노출, 아니면 "정찰 필요"로 가린다.
+    private void OpenCityInfoReadonly(CityId cityId)
+    {
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.36f, 340f, 480f);
+        var mh = Mathf.Clamp(vp.Y * 0.7f, 300f, 600f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var c = _state.Cities.First(x => x.Id == cityId);
+        var known = c.Owner == Player || _state.IsScouted(Player, cityId);
+
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var back = MakeButton("◀");
+        back.CustomMinimumSize = new Vector2(40, 30);
+        back.Pressed += OpenCityRoster;
+        titleRow.AddChild(back);
+        var owner = _state.Factions.FirstOrDefault(f => f.Id == c.Owner)?.Name ?? "?";
+        var title = MakeLabel($"《 {c.Name} 》 [{owner}]", 17, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(40, 30);
+        close.Pressed += CloseModal;
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+
+        if (!known)
+        {
+            box.AddChild(MakeLabel("정찰되지 않은 적 도시 — 정보를 볼 수 없습니다.\n(도시 계략 '정찰'로 드러납니다.)", 13, Parchment));
+        }
+        else
+        {
+            var g4 = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            g4.AddThemeConstantOverride("h_separation", 12);
+            g4.AddThemeConstantOverride("v_separation", 4);
+            box.AddChild(g4);
+            AddCell(g4, Sym.Coin, "금", $"{c.Gold}");
+            AddCell(g4, Sym.Grain, "군량", $"{c.Provisions}");
+            AddCell(g4, Sym.People, "인구", $"{c.Population}");
+            AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
+            AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
+            AddCell(g4, Sym.Ore, "광석", $"{c.Ore}");
+
+            var gov = c.Governor is { } gid ? _state.Generals.FirstOrDefault(x => x.Id == gid)?.Name : null;
+            box.AddChild(MakeLabel($"태수 {gov ?? "없음"}", 13, GoldBright));
+            var stationed = _state.GeneralsAt(cityId).Select(id => _state.Generals.First(x => x.Id == id).Name).ToList();
+            box.AddChild(MakeLabel($"주둔 장수: {(stationed.Count > 0 ? string.Join(", ", stationed) : "없음")}", 12, Parchment));
+            var troops = _state.Garrisons.Where(g => g.City == cityId).Sum(g => g.Troops);
+            box.AddChild(MakeLabel($"대기 병력 총 {troops}명", 12, Parchment));
+        }
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    // 보물 목록 — 탐색(design-general-lifecycle §8) 미구현이라 안내만.
+    private void OpenTreasureList()
+    {
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.34f, 340f, 460f);
+        var mh = Mathf.Clamp(vp.Y * 0.5f, 220f, 420f);
+        var box = SystemView("보물 목록", mw, out var scroll, out var panel, out var titleRow);
+        box.AddChild(MakeLabel("보물 시스템은 준비 중입니다.\n탐색으로 얻은 보물을 여기서 확인하고,\n포상·능력 강화에 사용하게 됩니다.", 13, Parchment));
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
     // 장수 현재 상태 한 줄: 내정 명령 잠금 > 출전 예약 > 대기.
     private string GeneralStatus(GeneralId id)
     {
@@ -4702,7 +4942,22 @@ public sealed partial class CampaignMapScene : Node3D
                 + _state.Armies.Where(u => u.Field.Owner == f.Id).Sum(u => u.Pool.Active);
             return $"{f.Name} 성{cities} 병{troops}";
         });
-        _status.Text = $"{_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일 (주 {_week})   {string.Join("   |   ", counts)}";
+        // 좌상단 HUD: 군주 얼굴·이름 / 년월일 / 세력 요약.
+        var ruler = _state.Factions.FirstOrDefault(f => f.Id == Player) is { } pf
+            ? _state.Generals.FirstOrDefault(g => g.Id == pf.Ruler)
+            : null;
+        _hudRuler.Text = ruler is not null ? $"군주 {ruler.Name}" : "군주 —";
+        _hudFace.Texture = ruler is not null ? PortraitFor(ruler.Id) : null;
+        _hudFacePanel.Visible = _hudFace.Texture is not null;
+        _hudDate.Text = $"{_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일 · 주 {_week}";
+
+        var myCities = _state.CityCount(Player);
+        var myGenerals = _state.GeneralsOf(Player).Count();
+        var myGold = _state.Cities.Where(c => c.Owner == Player).Sum(c => c.Gold);
+        var myTroops = _state.Garrisons.Where(g => _state.Cities.Any(c => c.Id == g.City && c.Owner == Player)).Sum(g => g.Troops)
+            + _state.Armies.Where(u => u.Field.Owner == Player).Sum(u => u.Pool.Active);
+        _status.Text = $"도시 {myCities} · 장수 {myGenerals} · 금 {myGold} · 병력 {myTroops}      "
+            + string.Join("  |  ", counts);
         _log.Text = note;
     }
 
@@ -4714,7 +4969,7 @@ public sealed partial class CampaignMapScene : Node3D
         var panel = new PanelContainer();
         panel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         panel.Position = new Vector2(12, 12);
-        panel.CustomMinimumSize = new Vector2(400, 0);
+        panel.CustomMinimumSize = new Vector2(420, 0);
         panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 10));
         layer.AddChild(panel);
 
@@ -4722,12 +4977,42 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddThemeConstantOverride("separation", 4);
         panel.AddChild(box);
 
+        // 상단: [군주 얼굴] [군주 이름 / 년월일]  ······  [트레이 아이콘 → 시스템]
         var top = new HBoxContainer();
         top.AddThemeConstantOverride("separation", 10);
         box.AddChild(top);
-        _status = MakeLabel("", 15, Gold);
+
+        _hudFacePanel = new PanelContainer { CustomMinimumSize = new Vector2(44, 44) };
+        _hudFacePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.05f), Gold, 1, 6, 2));
+        top.AddChild(_hudFacePanel);
+        _hudFace = new TextureRect
+        {
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            CustomMinimumSize = new Vector2(40, 40),
+        };
+        _hudFacePanel.AddChild(_hudFace);
+
+        var nameCol = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        nameCol.AddThemeConstantOverride("separation", 1);
+        top.AddChild(nameCol);
+        _hudRuler = MakeLabel("", 16, GoldBright);
+        nameCol.AddChild(_hudRuler);
+        _hudDate = MakeLabel("", 13, Parchment);
+        nameCol.AddChild(_hudDate);
+
+        var tray = MakeButton("☰");
+        tray.AddThemeFontSizeOverride("font_size", 20);
+        tray.CustomMinimumSize = new Vector2(44, 44);
+        tray.TooltipText = "시스템";
+        tray.Pressed += OpenSystemPalette;
+        top.AddChild(tray);
+
+        // 세력 요약(도시·병력).
+        _status = MakeLabel("", 13, Gold);
         _status.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        top.AddChild(_status);
+        _status.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        box.AddChild(_status);
 
         _log = MakeLabel("", 12, Parchment);
         _log.AutowrapMode = TextServer.AutowrapMode.WordSmart;
