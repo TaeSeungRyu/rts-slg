@@ -3156,10 +3156,65 @@ public sealed partial class CampaignMapScene : Node3D
         Item("전체 장수 목록", OpenGeneralRoster);
         Item("전체 도시 목록", OpenCityRoster);
         Item("보물 목록", OpenTreasureList);
+        box.AddChild(GoldRule());
+        Item("게임 저장", () => ShowConfirm("게임 저장", "현재 상태를 저장합니다(같은 슬롯 덮어쓰기).", SaveGame));
+        Item("게임 불러오기", () =>
+        {
+            if (!System.IO.File.Exists(SavePath))
+            {
+                _log.Text = "세이브가 없습니다.";
+                CloseModal();
+                return;
+            }
+
+            ShowConfirm("게임 불러오기", "현재 진행을 버리고 저장된 게임을 불러옵니다.", LoadGame);
+        });
 
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    // 세이브 슬롯 경로(user:// — Godot 사용자 데이터 폴더의 실제 경로).
+    private static string SavePath => ProjectSettings.GlobalizePath("user://sanguo-save.json");
+
+    private void SaveGame()
+    {
+        try
+        {
+            SaveService.Save(_state, SavePath);
+            _log.Text = $"저장했습니다. ({_state.Year}년 {_state.Month}월)";
+        }
+        catch (System.Exception e)
+        {
+            _log.Text = "저장 실패: " + e.Message;
+        }
+
+        CloseModal();
+        Redraw(_log.Text);
+    }
+
+    private void LoadGame()
+    {
+        GameState loaded;
+        try { loaded = SaveService.Load(SavePath); }
+        catch (System.Exception e) { _log.Text = "불러오기 실패: " + e.Message; CloseModal(); return; }
+
+        _state = loaded;
+        _pendingDeploys.Clear();
+        _selected = null;
+        _selectedUnitId = -1;
+        _week = System.Math.Max(0, (_state.Day - 1) / 7);
+
+        // 야전 토큰·라벨을 전부 지우고 로드 상태에 맞춰 Redraw가 다시 만든다(도시 색·주둔은 Redraw가 동기화).
+        foreach (var t in _armyTokens.Values) { t.QueueFree(); }
+        foreach (var l in _armyLabels.Values) { l.QueueFree(); }
+        _armyTokens.Clear();
+        _armyLabels.Clear();
+
+        CloseModal();
+        HidePanels();
+        Redraw($"게임을 불러왔습니다. ({_state.Year}년 {_state.Month}월)");
     }
 
     // 시스템 모달 공통 헤더(◀ 시스템으로 복귀 · ✕ 닫기).
