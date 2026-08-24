@@ -206,6 +206,39 @@ public class CommandSystemTests
         Assert.False(r.Ok);
     }
 
+    // ── 포상(즉시) ──
+
+    private static GameState PostedState(City city, General g) => new(
+        1, 1, new List<Faction>(), new List<City> { city }, new List<General> { g },
+        Postings: new List<GeneralPosting> { new(g.Id, city.Owner, city.Id) });
+
+    [Fact]
+    public void 포상_금을_써서_충성을_올리고_상한_100을_넘지_않는다()
+    {
+        var svc = new CommandService(B, Troops, Econ);
+        var g = new General(new GeneralId(1), "g1", new Dictionary<TroopClass, AptitudeGrade>(),
+            Might: 50, Intellect: 50, Politics: 50, Loyalty: 70);
+        var s = PostedState(Town(1, gold: 1000), g);
+
+        var r = svc.Reward(s, new CityId(1), new GeneralId(1)); // +20 → 90, 비용 100
+        Assert.True(r.Ok, r.Error);
+        Assert.Equal(90, r.State.Generals.Single().Loyalty);
+        Assert.Equal(900, r.State.Cities.Single().Gold);
+
+        var r2 = svc.Reward(r.State, new CityId(1), new GeneralId(1)); // 90+20 → 상한 100
+        Assert.Equal(100, r2.State.Generals.Single().Loyalty);
+    }
+
+    [Fact]
+    public void 포상_금이_부족하면_거부된다()
+    {
+        var svc = new CommandService(B, Troops, Econ);
+        var g = new General(new GeneralId(1), "g1", new Dictionary<TroopClass, AptitudeGrade>(),
+            Might: 50, Intellect: 50, Politics: 50, Loyalty: 70);
+        var r = svc.Reward(PostedState(Town(1, gold: 10), g), new CityId(1), new GeneralId(1));
+        Assert.False(r.Ok);
+    }
+
     // ── 태수 임명(즉시) ──
 
     [Fact]

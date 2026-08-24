@@ -539,6 +539,43 @@ public sealed class CommandService
     }
 
     /// <summary>
+    /// 포상(design-general-lifecycle §1). 즉시 실행 — 성 금고에서 포상 비용을 써 그 도시 주둔 소속
+    /// 장수의 충성을 급히 끌어올린다(+RewardLoyaltyGain, **상한 100**). 급여 회복(+1~2/월)보다 빠른
+    /// 응급 수단 — 이간·미지급으로 흔들린 장수를 배신 전에 붙잡는다. 충성 100 이상(완충)은 효과 없음.
+    /// </summary>
+    public CommandResult Reward(GameState state, CityId cityId, GeneralId target)
+    {
+        if (_balance is null)
+        {
+            return CommandResult.Fail("포상에는 경제 설정이 필요하다.", state);
+        }
+
+        var city = state.Cities.FirstOrDefault(c => c.Id == cityId);
+        if (city is null)
+        {
+            return CommandResult.Fail("도시를 찾을 수 없다.", state);
+        }
+
+        if (!state.GeneralsAt(cityId).Contains(target)
+            || state.PostingOf(target)?.Faction != city.Owner)
+        {
+            return CommandResult.Fail("이 도시에 주둔한 소속 장수만 포상할 수 있다.", state);
+        }
+
+        var cost = _balance.RewardGoldCost;
+        if (city.Gold < cost)
+        {
+            return CommandResult.Fail("금이 부족하다.", state);
+        }
+
+        var cities = state.Cities.Select(c => c.Id == cityId ? c.AddGold(-cost) : c).ToList();
+        var generals = state.Generals.Select(g => g.Id == target && g.Loyalty < 100
+            ? g with { Loyalty = System.Math.Min(100, g.Loyalty + _balance.RewardLoyaltyGain) }
+            : g).ToList();
+        return CommandResult.Success(state with { Cities = cities, Generals = generals });
+    }
+
+    /// <summary>
     /// 태수 임명(design-administration F). 즉시 실행 — 그 도시에 주둔한 소속 장수를 태수로 지정한다.
     /// 기간·비용·잠금이 없고 진행 명령을 만들지 않는다(태수는 상주 역할이라 다른 내정 명령과 병행 가능).
     /// 임명되면 그 장수의 능력으로 수입 효율(정치)·내정 스킬·계략 방어(지력)·성 반격(무력)이 돈다.

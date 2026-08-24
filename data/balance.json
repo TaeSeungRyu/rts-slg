@@ -42,5 +42,7 @@
   "loyalty_unpaid_drop_min": 1,
   "loyalty_unpaid_drop_max": 2,
   "loyalty_paid_recover_min": 1,
-  "loyalty_paid_recover_max": 2
+  "loyalty_paid_recover_max": 2,
+  "reward_gold_cost": 100,
+  "reward_loyalty_gain": 20
 }

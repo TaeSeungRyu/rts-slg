@@ -3205,6 +3205,30 @@ public sealed partial class CampaignMapScene : Node3D
         var metaLbl = MakeLabel(string.Join(" · ", meta), 12, Parchment);
         metaLbl.HorizontalAlignment = HorizontalAlignment.Center;
         box.AddChild(metaLbl);
+
+        // 포상: 그 도시 주둔 소속 장수만(충성 급상승 — 충성은 숨김이라 금액만 표기). 재생 중 불가.
+        var backCityData = _state.Cities.FirstOrDefault(c => c.Id == backCity);
+        if (!_advancing && backCityData is { Owner: var owner } && owner == Player
+            && _state.GeneralsAt(backCity).Contains(gid))
+        {
+            const int rewardCost = 100; // balance.json reward_gold_cost 기본값
+            var reward = MakeButton($"포상 ({rewardCost}금)", accent: true);
+            reward.AddThemeFontSizeOverride("font_size", 12);
+            reward.CustomMinimumSize = new Vector2(0, 28);
+            reward.Pressed += () => ShowConfirm("포상",
+                $"{g.Name}에게 포상 ({rewardCost}금)\n충성을 급히 끌어올립니다(상한까지).",
+                () =>
+                {
+                    var r = _commander.Reward(_state, backCity, gid);
+                    Dbg($"UI reward city={backCity.Value} gen={gid.Value} ok={r.Ok} err={r.Error ?? "-"}");
+                    if (r.Ok) { _state = r.State; }
+                    _log.Text = r.Ok ? $"포상: {g.Name}" : $"실패: {r.Error}";
+                    SelectCity(backCity);
+                    OpenGeneralDetail(gid, backCity);
+                });
+            box.AddChild(reward);
+        }
+
         box.AddChild(GoldRule());
 
         // 하단 1: 능력치 — 3열 균등 그리드.

@@ -53,7 +53,9 @@ public sealed record BalanceConfig(
     int LoyaltyUnpaidDropMin = 1,
     int LoyaltyUnpaidDropMax = 2,
     int LoyaltyPaidRecoverMin = 1,
-    int LoyaltyPaidRecoverMax = 2)
+    int LoyaltyPaidRecoverMax = 2,
+    int RewardGoldCost = 100,
+    int RewardLoyaltyGain = 20)
 {
     /// <summary>월별 시장 시세 배수(%). 9·10월(추수) 최저, 겨울 최고. 미지정 시 기본 계절 곡선.</summary>
     public int SeasonalPercent(int month)
