@@ -44,7 +44,8 @@ public sealed record City(
     bool WorkshopRuined = false,
     bool MineDestroyed = false,
     bool RanchDestroyed = false,
-    bool ElephantGardenDestroyed = false)
+    bool ElephantGardenDestroyed = false,
+    GeneralId? Strategist = null)
 {
     /// <summary>소유 세력을 바꾼 새 도시를 반환한다.</summary>
     public City WithOwner(FactionId owner) => this with { Owner = owner };

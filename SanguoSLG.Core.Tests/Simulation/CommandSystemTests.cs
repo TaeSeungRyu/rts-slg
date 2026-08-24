@@ -209,6 +209,19 @@ public class CommandSystemTests
     // ── 태수 임명(즉시) ──
 
     [Fact]
+    public void 군사임명_도시에_군사가_지정되고_잠기지_않는다()
+    {
+        var s0 = State(new[] { Town(1) }, new[] { Pol(1, 90) });
+
+        var r = Service().Issue(s0, new CommandRequest(new CityId(1), CommandKind.AppointStrategist, new GeneralId(1)));
+
+        Assert.True(r.Ok, r.Error);
+        Assert.Equal(new GeneralId(1), r.State.Cities.Single().Strategist);
+        Assert.False(r.State.IsGeneralBusy(new GeneralId(1)));
+        Assert.Empty(r.State.Commands);
+    }
+
+    [Fact]
     public void 태수임명_도시에_태수가_지정되고_잠기지_않는다()
     {
         var s0 = State(new[] { Town(1) }, new[] { Pol(1, 90) });

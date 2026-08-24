@@ -32,4 +32,7 @@ public enum CommandKind
 
     /// <summary>태수 임명 — 그 도시 주둔 장수를 태수로 지정(즉시·비용/기간/잠금 없음). 수입·내정 스킬·계략 방어·성 반격이 태수 능력에 연동. design-administration F.</summary>
     AppointGovernor,
+
+    /// <summary>군사 임명 — 그 도시 주둔 장수를 군사로 지정(즉시). 지력으로 등용 성공/실패를 예측한다(신뢰도=지력%). design-general-lifecycle §6.</summary>
+    AppointStrategist,
 }
