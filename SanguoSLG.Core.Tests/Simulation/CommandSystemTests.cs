@@ -138,6 +138,74 @@ public class CommandSystemTests
         Assert.Equal(without.State.Commands.Single().Amount + 6, withGov.State.Commands.Single().Amount);
     }
 
+    // ── 시장 매입(즉시) + 교역 ──
+
+    private static readonly BalanceConfig Econ = new(MonthlyTaxPerCity: 0);
+
+    private static CommandService MarketSvc() => new(B, Troops, Econ, AdminSkills);
+
+    [Fact]
+    public void 시장_금으로_광석을_사면_금은_줄고_광석은_는다()
+    {
+        var city = Town(1, gold: 10_000, ore: 0); // 시세 100%, 광석 1금/단위
+        var s = new GameState(1, 1, new List<Faction>(), new List<City> { city }, new List<General>());
+
+        var r = MarketSvc().BuyFromMarket(s, new CityId(1), MarketResource.Ore, 500);
+
+        Assert.True(r.Ok, r.Error);
+        Assert.Equal(500, r.State.Cities.Single().Ore);
+        Assert.Equal(10_000 - 500, r.State.Cities.Single().Gold); // 500단위 × 1금
+    }
+
+    [Fact]
+    public void 시장_군량은_비상용으로_금으로_메운다()
+    {
+        var city = Town(1, gold: 10_000) with { Provisions = 0 };
+        var s = new GameState(1, 1, new List<Faction>(), new List<City> { city }, new List<General>());
+
+        var r = MarketSvc().BuyFromMarket(s, new CityId(1), MarketResource.Grain, 1000);
+
+        Assert.True(r.Ok, r.Error);
+        Assert.Equal(1000, r.State.Cities.Single().Provisions);
+        Assert.Equal(10_000 - 250, r.State.Cities.Single().Gold); // 25금/100량 × 1000 = 250
+    }
+
+    [Fact]
+    public void 교역_태수면_매입가가_싸진다()
+    {
+        var svc = MarketSvc();
+        var city = Town(1, gold: 100_000, ore: 0);
+        var plain = new GameState(1, 1, new List<Faction>(), new List<City> { city }, new List<General>());
+        var withGov = WithGovernor(city, GovWith(1, "trader", 3)); // 교역 T3 = −20%
+
+        var basePrice = svc.MarketUnitPricePer100(plain, city, MarketResource.Ore);
+        var govPrice = svc.MarketUnitPricePer100(withGov, withGov.Cities.Single(), MarketResource.Ore);
+        Assert.Equal(basePrice * 80 / 100, govPrice);
+    }
+
+    [Fact]
+    public void 시장_시세가_비싸면_같은_수량이_더_비싸다()
+    {
+        var svc = MarketSvc();
+        var city = Town(1, gold: 100_000, ore: 0);
+        var cheap = new GameState(1, 1, new List<Faction>(), new List<City> { city }, new List<General>())
+            with { MarketPricePercent = 70 };  // 추수철
+        var dear = cheap with { MarketPricePercent = 140 }; // 겨울
+
+        Assert.True(svc.BuyFromMarket(cheap, new CityId(1), MarketResource.Horses, 100).State.Cities.Single().Gold
+            > svc.BuyFromMarket(dear, new CityId(1), MarketResource.Horses, 100).State.Cities.Single().Gold);
+    }
+
+    [Fact]
+    public void 시장_금이_부족하면_거부된다()
+    {
+        var city = Town(1, gold: 10, ore: 0);
+        var s = new GameState(1, 1, new List<Faction>(), new List<City> { city }, new List<General>());
+
+        var r = MarketSvc().BuyFromMarket(s, new CityId(1), MarketResource.Elephants, 10); // 3000금/마리
+        Assert.False(r.Ok);
+    }
+
     // ── 태수 임명(즉시) ──
 
     [Fact]

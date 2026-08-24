@@ -404,6 +404,69 @@ public sealed class CommandService
     }
 
     /// <summary>
+    /// 시장 매입 단가(100단위당 금, design-administration "시장"). 품목 기본가 × 이번 달 시세
+    /// (<see cref="GameState.MarketPricePercent"/>) × (100 − 교역 할인). 교역(재임 태수 market_discount)이
+    /// 매입가를 낮춘다. 경제 설정이 없으면 0.
+    /// </summary>
+    public int MarketUnitPricePer100(GameState state, City city, MarketResource res)
+    {
+        if (_balance is null)
+        {
+            return 0;
+        }
+
+        var basePer100 = res switch
+        {
+            MarketResource.Ore => _balance.MarketOrePrice * 100,
+            MarketResource.Horses => _balance.MarketHorsePrice * 100,
+            MarketResource.Elephants => _balance.MarketElephantPrice * 100,
+            _ => _balance.MarketGrainPricePer100,
+        };
+        var discount = GovernorBucket(state, city, "market_discount");
+        return (int)((long)basePer100 * state.MarketPricePercent / 100 * (100 - discount) / 100);
+    }
+
+    /// <summary>
+    /// 시장 매입(design-administration "시장"). 즉시 실행 — 성 금고로 자원을 산다(장수·기간·잠금 없음).
+    /// 군량은 옵셔널 품목 — 약탈·보급 차단 등 비상 시 금으로 메운다. 교역 스킬이 매입가를 낮춘다.
+    /// </summary>
+    public CommandResult BuyFromMarket(GameState state, CityId cityId, MarketResource res, int units)
+    {
+        if (_balance is null)
+        {
+            return CommandResult.Fail("시장에는 경제 설정이 필요하다.", state);
+        }
+
+        var city = state.Cities.FirstOrDefault(c => c.Id == cityId);
+        if (city is null)
+        {
+            return CommandResult.Fail("도시를 찾을 수 없다.", state);
+        }
+
+        if (units <= 0)
+        {
+            return CommandResult.Fail("구매 수량을 지정해야 한다.", state);
+        }
+
+        var cost = (int)(((long)MarketUnitPricePer100(state, city, res) * units + 99) / 100); // 올림
+        if (city.Gold < cost)
+        {
+            return CommandResult.Fail("금이 부족하다.", state);
+        }
+
+        var bought = city.AddGold(-cost);
+        bought = res switch
+        {
+            MarketResource.Ore => bought with { Ore = bought.Ore + units },
+            MarketResource.Horses => bought with { Horses = bought.Horses + units },
+            MarketResource.Elephants => bought with { Elephants = bought.Elephants + units },
+            _ => bought with { Provisions = bought.Provisions + units },
+        };
+        var cities = state.Cities.Select(c => c.Id == cityId ? bought : c).ToList();
+        return CommandResult.Success(state with { Cities = cities });
+    }
+
+    /// <summary>
     /// 태수 임명(design-administration F). 즉시 실행 — 그 도시에 주둔한 소속 장수를 태수로 지정한다.
     /// 기간·비용·잠금이 없고 진행 명령을 만들지 않는다(태수는 상주 역할이라 다른 내정 명령과 병행 가능).
     /// 임명되면 그 장수의 능력으로 수입 효율(정치)·내정 스킬·계략 방어(지력)·성 반격(무력)이 돈다.
