@@ -1,6 +1,7 @@
 namespace SanguoSLG.Core.Simulation;
 
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Spatial;
 
 /// <summary>명령 발행 요청(design-administration.md). 산출량은 능력에서 계산되므로 지정하지 않는다.</summary>
 /// <param name="Value">세율 명령의 목표 세율(그 외 무시).</param>
@@ -16,7 +17,8 @@ public sealed record CommandRequest(
     string Facility = "",
     string TroopCode = "",
     CityId? TargetCity = null,
-    bool TraineePool = false);
+    bool TraineePool = false,
+    GeneralId? TargetGeneral = null);
 
 /// <summary>명령 발행 결과 — 실패면 <see cref="Error"/>에 사유, 상태는 그대로.</summary>
 public sealed record CommandResult(bool Ok, string? Error, GameState State)
@@ -141,8 +143,72 @@ public sealed class CommandService
             CommandKind.Research => IssueResearch(state, city, req, assist, main),
             CommandKind.Repair => IssueRepair(state, city, req, assist),
             CommandKind.CityStratagem => IssueCityStratagem(state, city, req, assist),
+            CommandKind.Enlist => IssueEnlist(state, city, req, assist, main),
             _ => CommandResult.Fail("알 수 없는 명령이다.", state),
         };
+    }
+
+    // 등용 발행(design-general-lifecycle §6): 대상 = 정찰된 적 성 주둔 장수 · 출전중 적 장수 · 내 포로.
+    // 성공 판정은 완료 시점(WorldEngine)에서 2단계 난수로. 소요일 = 거리 비례(도시 계략과 같은 식).
+    private CommandResult IssueEnlist(GameState state, City city, CommandRequest req, General? assist, General main)
+    {
+        if (req.TargetGeneral is not { } targetId)
+        {
+            return CommandResult.Fail("등용 대상 장수를 지정해야 한다.", state);
+        }
+
+        if (targetId == req.Main || (assist is not null && targetId == assist.Id))
+        {
+            return CommandResult.Fail("수행 장수는 등용 대상이 될 수 없다.", state);
+        }
+
+        var kind = EnlistTargetKind(state, city, targetId, out var targetPos);
+        if (kind == EnlistKind.Invalid)
+        {
+            return CommandResult.Fail("등용할 수 없는 대상이다(내 포로·정찰된 적 성 장수·출전중 적 장수만).", state);
+        }
+
+        // 소요일: 포로(내 도시)는 거리 0 → 기본 7일. 성/출전중은 수행 도시↔대상 위치 거리 비례.
+        var days = targetPos is { } pos ? CityStratagems.Days(city.Position, pos, _b) : _b.CommandDays;
+        return Register(state, city, req, assist, amount: 0, days, CommandKind.Enlist, "", "", null, targetGeneral: targetId);
+    }
+
+    /// <summary>등용 대상의 종류(내 포로 / 정찰된 적 성 장수 / 출전중 적 장수 / 불가)와 대상 위치.</summary>
+    public enum EnlistKind { Invalid, Prisoner, CityGeneral, FieldGeneral }
+
+    public EnlistKind EnlistTargetKind(GameState state, City casterCity, GeneralId target, out HexCoord? targetPos)
+    {
+        targetPos = null;
+        var faction = casterCity.Owner;
+
+        // 내 포로.
+        if (state.PrisonerOf(target) is { } p && p.Holder == faction)
+        {
+            return EnlistKind.Prisoner;
+        }
+
+        // 출전중(야전 부대) 적 장수 — 선봉 또는 부관.
+        var army = state.Armies.FirstOrDefault(u => u.Field.Owner != faction
+            && (u.VanguardId == target || u.AdjutantId == target));
+        if (army is not null)
+        {
+            targetPos = army.Field.Position;
+            return EnlistKind.FieldGeneral;
+        }
+
+        // 정찰된 적 성 주둔 장수.
+        var posting = state.PostingOf(target);
+        if (posting is { Location: { } loc } && posting.Faction != faction)
+        {
+            var targetCity = state.Cities.FirstOrDefault(c => c.Id == loc);
+            if (targetCity is not null && state.IsScouted(faction, loc))
+            {
+                targetPos = targetCity.Position;
+                return EnlistKind.CityGeneral;
+            }
+        }
+
+        return EnlistKind.Invalid;
     }
 
     private CommandResult IssueRecruit(GameState state, City city, CommandRequest req, General? assist,
@@ -399,11 +465,12 @@ public sealed class CommandService
     }
 
     private static CommandResult Register(GameState state, City reservedCity, CommandRequest req, General? assist,
-        int amount, int days, CommandKind kind, string facility, string troopCode = "", CityId? targetCity = null)
+        int amount, int days, CommandKind kind, string facility, string troopCode = "", CityId? targetCity = null,
+        GeneralId? targetGeneral = null)
     {
         var cities = state.Cities.Select(c => c.Id == reservedCity.Id ? reservedCity : c).ToList();
         var command = new CityCommand(req.City, kind, req.Main, assist?.Id,
-            state.Day, state.Day + days, amount, facility, troopCode, targetCity, req.TraineePool);
+            state.Day, state.Day + days, amount, facility, troopCode, targetCity, req.TraineePool, targetGeneral);
         var pending = state.Commands.Append(command).ToList();
         return CommandResult.Success(state with { Cities = cities, PendingCommands = pending });
     }

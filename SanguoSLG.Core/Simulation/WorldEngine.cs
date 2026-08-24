@@ -101,6 +101,9 @@ public sealed class WorldEngine
         var research = state.Research.ToList();
         var generals = state.Generals.ToList();
         var intel = state.Intel.ToList();
+        var postings = state.Assignments.ToList();
+        var prisoners = state.Prisoners.ToList();
+        var armies = state.Armies.ToList();
 
         foreach (var cmd in due)
         {
@@ -188,6 +191,9 @@ public sealed class WorldEngine
                 case CommandKind.CityStratagem:
                     ResolveCityStratagem(state, cmd, city, cities, generals, intel);
                     break;
+                case CommandKind.Enlist:
+                    ResolveEnlist(cmd, city, generals, postings, prisoners, armies);
+                    break;
             }
         }
 
@@ -205,8 +211,92 @@ public sealed class WorldEngine
             ScoutedCities = intel
                 .OrderBy(i => i.Faction.Value).ThenBy(i => i.City.Value)
                 .ToList(),
+            Postings = postings,
+            Captives = prisoners,
+            FieldArmies = armies,
             PendingCommands = state.Commands.Where(c => c.CompletionDay != state.Day).ToList(),
         };
+    }
+
+    // 등용 정산(design-general-lifecycle §6): 완료 시점에 대상 종류를 다시 확인하고 2단계 난수 판정.
+    // 성공: 성/포로=장수만 수행 도시 주둔, 출전중=부대째 전향. 실패: 충성≥90 대상은 50% 수행 장수 포로(포로 대상 제외).
+    private void ResolveEnlist(CityCommand cmd, City casterCity, List<Domain.General> generals,
+        List<Domain.GeneralPosting> postings, List<Domain.Prisoner> prisoners, List<CombatUnit> armies)
+    {
+        if (cmd.TargetGeneral is not { } targetId)
+        {
+            return;
+        }
+
+        var recruiter = generals.FirstOrDefault(g => g.Id == cmd.Main);
+        var target = generals.FirstOrDefault(g => g.Id == targetId);
+        if (recruiter is null || target is null)
+        {
+            return;
+        }
+
+        var faction = casterCity.Owner;
+        var prisoner = prisoners.FirstOrDefault(p => p.General == targetId && p.Holder == faction);
+        var army = prisoner is null
+            ? armies.FirstOrDefault(u => u.Field.Owner != faction && (u.VanguardId == targetId || u.AdjutantId == targetId))
+            : null;
+        var cityPosting = prisoner is null && army is null
+            ? postings.FirstOrDefault(p => p.General == targetId && p.Faction != faction && p.Location is not null)
+            : null;
+        if (prisoner is null && army is null && cityPosting is null)
+        {
+            return; // 대상이 사라졌거나 이미 아군
+        }
+
+        // 2단계: 정치% → 이탈(100−충성)%.
+        var success = _random.Next(0, 100) < System.Math.Clamp(recruiter.Politics, 0, 100)
+            && _random.Next(0, 100) < EnlistOdds.BetrayalPercent(target.Loyalty);
+
+        if (success)
+        {
+            // 합류 장수의 충성을 새 주군 기준 100으로(연쇄 전향 방지 — §6 ❓ 기본값 결정).
+            var gi = generals.FindIndex(g => g.Id == targetId);
+            if (gi >= 0)
+            {
+                generals[gi] = generals[gi] with { Loyalty = 100 };
+            }
+
+            if (army is not null)
+            {
+                // 부대째 전향 — 소유 전환. 부대의 두 장수 모두 우리 세력 야전(Location null)으로.
+                var ai = armies.IndexOf(army);
+                armies[ai] = army with { Field = army.Field with { Owner = faction } };
+                SetPosting(postings, targetId, faction, null);
+                if (army.VanguardId is { } v) { SetPosting(postings, v, faction, null); }
+                if (army.AdjutantId is { } a) { SetPosting(postings, a, faction, null); }
+            }
+            else
+            {
+                if (prisoner is not null) { prisoners.Remove(prisoner); }
+                SetPosting(postings, targetId, faction, casterCity.Id); // 장수만 수행 도시 주둔
+            }
+
+            return;
+        }
+
+        // 실패: 적지(성/출전중)의 충성 ≥90 대상은 50% 확률로 수행 장수를 포로로 잡는다.
+        if (prisoner is null && target.Loyalty >= 90)
+        {
+            var captor = army?.Field.Owner ?? cityPosting!.Faction;
+            if (_random.Next(0, 100) < 50)
+            {
+                prisoners.Add(new Domain.Prisoner(cmd.Main, captor, faction));
+                postings.RemoveAll(p => p.General == cmd.Main);
+            }
+        }
+    }
+
+    private static void SetPosting(List<Domain.GeneralPosting> postings, Domain.GeneralId g,
+        Domain.FactionId faction, Domain.CityId? location)
+    {
+        var i = postings.FindIndex(p => p.General == g);
+        var np = new Domain.GeneralPosting(g, faction, location);
+        if (i >= 0) { postings[i] = np; } else { postings.Add(np); }
     }
 
     // 도시 계략 정산(design-stratagem "수행 규칙"): 지력 확률 성공 판정(시드 난수) → 실패 = 무효.

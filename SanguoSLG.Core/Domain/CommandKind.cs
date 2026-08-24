@@ -35,4 +35,7 @@ public enum CommandKind
 
     /// <summary>군사 임명 — 그 도시 주둔 장수를 군사로 지정(즉시). 지력으로 등용 성공/실패를 예측한다(신뢰도=지력%). design-general-lifecycle §6.</summary>
     AppointStrategist,
+
+    /// <summary>등용 — 적 성 장수·출전중 적 장수·내 포로를 영입. 정치% → 대상 이탈(100−충성)% 2단계. 거리 비례 소요일. design-general-lifecycle §6.</summary>
+    Enlist,
 }
