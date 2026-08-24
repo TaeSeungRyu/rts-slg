@@ -1797,6 +1797,13 @@ public sealed partial class CampaignMapScene : Node3D
             _cmdList.AddChild(gbtn);
         }
 
+        var marketBtn = MakeButton("시장");
+        marketBtn.AddThemeFontSizeOverride("font_size", 12);
+        marketBtn.Alignment = HorizontalAlignment.Center;
+        marketBtn.CustomMinimumSize = new Vector2(74, 24);
+        marketBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenMarketModal(c); } };
+        _cmdList.AddChild(marketBtn);
+
         var deployBtn = MakeButton("출전", accent: true);
         deployBtn.AddThemeFontSizeOverride("font_size", 12);
         deployBtn.Alignment = HorizontalAlignment.Center;
@@ -2877,6 +2884,79 @@ public sealed partial class CampaignMapScene : Node3D
         stat.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(stat);
         return card;
+    }
+
+    // ── 시장 모달: 이번 달 시세로 성 금고에서 자원 매입(즉시). 군량은 비상 보급용. 교역 태수면 할인 ──
+    private void OpenMarketModal(CityId cityId)
+    {
+        if (_advancing) { return; }
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.44f, 440f, 640f);
+        var mh = Mathf.Clamp(vp.Y * 0.85f, 360f, 720f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var city = _state.Cities.First(c => c.Id == cityId);
+
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var pct = _state.MarketPricePercent;
+        var season = pct <= 85 ? "싼 철" : pct >= 120 ? "비싼 철" : "보통";
+        var title = MakeLabel($"《 {city.Name} 》 시장 · 시세 {pct}% ({season})", 17, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(40, 30);
+        close.Pressed += CloseModal;
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel($"보유 금 {city.Gold}", 13, GoldBright));
+
+        (MarketResource Res, string Name, string Note, int Stock, int[] Batches)[] items =
+        {
+            (MarketResource.Ore, "광석", "모든 병력 생산", city.Ore, new[] { 1000, 5000 }),
+            (MarketResource.Horses, "말", "기병 생산", city.Horses, new[] { 100, 500 }),
+            (MarketResource.Elephants, "코끼리", "상병 생산", city.Elephants, new[] { 1, 10 }),
+            (MarketResource.Grain, "군량 (비상 보급)", "약탈·보급 차단 대비", city.Provisions, new[] { 1000, 5000 }),
+        };
+
+        foreach (var it in items)
+        {
+            box.AddChild(GoldRule());
+            var per100 = _commander.MarketUnitPricePer100(_state, city, it.Res);
+            box.AddChild(MakeLabel($"{it.Name}  ·  보유 {it.Stock}  ·  단가 {per100 / 100.0:0.##}금/단위  —  {it.Note}",
+                13, it.Res == MarketResource.Grain ? GoldBright : Parchment));
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            box.AddChild(row);
+            foreach (var qty in it.Batches)
+            {
+                var res = it.Res;
+                var units = qty;
+                var cost = (int)(((long)per100 * units + 99) / 100);
+                var btn = MakeButton($"+{units} ({cost}금)");
+                btn.AddThemeFontSizeOverride("font_size", 12);
+                btn.CustomMinimumSize = new Vector2(0, 28);
+                btn.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+                btn.Disabled = city.Gold < cost;
+                btn.Pressed += () => ShowConfirm("시장 매입",
+                    $"{city.Name} 시장에서 {it.Name} {units} 매입\n비용 {cost}금 (시세 {pct}%)",
+                    () =>
+                    {
+                        var r = _commander.BuyFromMarket(_state, cityId, res, units);
+                        Dbg($"UI market-buy city={cityId.Value} {res} x{units} ok={r.Ok} err={r.Error ?? "-"}");
+                        if (r.Ok) { _state = r.State; }
+                        _log.Text = r.Ok ? $"시장: {it.Name} {units} 매입 (−{cost}금)" : $"실패: {r.Error}";
+                        SelectCity(cityId);
+                        OpenMarketModal(cityId);
+                    });
+                row.AddChild(btn);
+            }
+        }
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
     // 장수 현재 상태 한 줄: 내정 명령 잠금 > 출전 예약 > 대기.
