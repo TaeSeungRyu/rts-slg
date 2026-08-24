@@ -34,6 +34,28 @@ public class WallRepairTests
     private static CommandRequest Req() =>
         new(new CityId(1), CommandKind.Repair, new GeneralId(1), TroopCode: FactionResearch.WallCode);
 
+    private static readonly IReadOnlyList<AdminSkill> AdminSkills =
+        new AdminSkillLoader().LoadFromDirectory(TestData.DataDirectory());
+
+    [Fact]
+    public void 축성_태수면_성벽_수리_회복량이_커진다()
+    {
+        // 최대 1200(레벨0). wall=0 → 손상 1200. 회복 = 기본 25% + 축성 T3 30%p = 55% → 1200×55% = 660.
+        var gov = new General(new GeneralId(1), "gov", new Dictionary<TroopClass, AptitudeGrade>(),
+            Might: 50, Intellect: 50, Politics: 70, AdminPassives: new[] { new GeneralSkill("builder", 3) });
+        var city = Town(1, wall: 0, gold: 5000);
+        var s = new GameState(1, 1, new List<Faction>(), new List<City> { city with { Governor = gov.Id } },
+            new List<General> { gov },
+            Postings: new List<GeneralPosting> { new(gov.Id, new FactionId(1), new CityId(1)) });
+
+        var withGov = new CommandService(B, Troops, Bal, AdminSkills).Issue(s, Req());
+        var without = Service().Issue(State(Town(1, wall: 0, gold: 5000)), Req());
+
+        Assert.True(withGov.Ok, withGov.Error);
+        Assert.Equal(1200 * 25 / 100, without.State.Commands.Single().Amount); // 축성 없음 = 300
+        Assert.Equal(1200 * 55 / 100, withGov.State.Commands.Single().Amount);  // 축성 T3 = 660
+    }
+
     [Fact]
     public void 발행_손상된_성벽을_수리예약하고_금을_차감한다()
     {

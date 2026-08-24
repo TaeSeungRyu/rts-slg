@@ -332,7 +332,9 @@ public sealed class CommandService
         }
 
         var maxWall = CastleWall.Max(city.Castle, _balance, state.WallLevelOf(city.Owner));
-        var recovery = _b.WallRepairPercent + (city.Workshop ? _b.WallRepairWorkshopBonus : 0);
+        // 축성(재임 태수): 성벽 수리 회복량 +10/20/30%p(기본 25%·공방 +25%p와 합산 — design-skill-admin).
+        var recovery = _b.WallRepairPercent + (city.Workshop ? _b.WallRepairWorkshopBonus : 0)
+            + GovernorBucket(state, city, "wall");
         var restore = System.Math.Min(maxWall - city.Wall, maxWall * recovery / 100);
         if (restore <= 0)
         {
