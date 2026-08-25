@@ -35,6 +35,23 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 경유지_통과분은_결과_부대에서_제거된다()
+    {
+        // 목표(4,0)로 가며 경유지(2,0)를 지나면, 결과 부대의 Waypoints에서 그 경유지가 빠져야 한다.
+        // (안 빠지면 다음 진행 조각에 경로를 처음부터 다시 밟아 왕복 — AdvanceOrchestrator 전달 버그.)
+        var a = Sword(1, 1, new HexCoord(0, 0)) with
+        {
+            Field = new FieldUnit(new UnitId(1), new FactionId(1), new HexCoord(0, 0), 2, 2, 1,
+                MovementDomain.Land, UnitMode.Advance, new HexCoord(4, 0), 0, 1, new[] { new HexCoord(2, 0) }),
+        };
+
+        var turn = MakeOrchestrator().Run(new[] { a });
+
+        Assert.Equal(new HexCoord(4, 0), turn.Units[0].Field.Position);          // 목표 도달
+        Assert.True(turn.Units[0].Field.Waypoints is null or { Count: 0 });      // 경유지 소비 반영
+    }
+
+    [Fact]
     public void 적없으면_이동만_전투없음()
     {
         var a = Sword(1, 1, new HexCoord(0, 0)) with

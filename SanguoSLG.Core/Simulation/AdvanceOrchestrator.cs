@@ -79,7 +79,9 @@ public sealed class AdvanceOrchestrator
         {
             state[u.Id] = u with
             {
-                Field = u.Field with { Position = moved[u.Id].Position },
+                // 위치와 함께 **남은 경유지**도 이동 결과에서 가져온다 — 안 그러면 소비한 경유지가
+                // 원본 Field에 그대로 남아 다음 진행 조각마다 경로를 처음부터 다시 밟아 왕복한다.
+                Field = u.Field with { Position = moved[u.Id].Position, Waypoints = moved[u.Id].Waypoints },
                 State = u.State.AdvanceField(move.Days),
             };
         }
