@@ -70,6 +70,21 @@ public class MovementSimulatorTests
     }
 
     [Fact]
+    public void 목표에_선_채_인접_경유지가_남아도_왕복하지_않는다()
+    {
+        // 목표(3,0)에 서 있고 인접 경유지(2,0)가 남은 상태 — 진행마다 GoalIdx가 0으로 리셋돼도
+        // 되돌아가지 않고 제자리에 있어야 한다(무한 왕복 버그 재현).
+        var wps = new[] { new HexCoord(2, 0) };
+        var u = new FieldUnit(new UnitId(1), new FactionId(1), new HexCoord(3, 0), 2, 2, 1,
+            MovementDomain.Land, UnitMode.March, new HexCoord(3, 0), 0, 1, wps);
+
+        var r1 = PlainField().Advance(new[] { u }, maxDays: 7);
+        Assert.Equal(new HexCoord(3, 0), r1.Units.Single().Position);
+        var r2 = PlainField().Advance(new[] { r1.Units.Single() }, maxDays: 7);
+        Assert.Equal(new HexCoord(3, 0), r2.Units.Single().Position);
+    }
+
+    [Fact]
     public void 경유지_없으면_기존_단일목표와_동일하게_직선이동한다()
     {
         var a = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.March, target: new HexCoord(6, 0));

@@ -248,7 +248,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         foreach (var u in after.Armies.OrderBy(u => u.Id.Value))
         {
-            Dbg($"  army u{u.Id.Value} owner={u.Field.Owner.Value} {u.TroopCode} pos=({u.Field.Position.Q},{u.Field.Position.R}) troops={u.Pool.Active}(wounded {u.Pool.Wounded}) mode={u.Field.Mode} tgt={(u.Field.Target is { } t2 ? $"({t2.Q},{t2.R})" : "none")} prov={u.Provisions} van={U(u.VanguardId)} adj={U(u.AdjutantId)}");
+            Dbg($"  army u{u.Id.Value} owner={u.Field.Owner.Value} {u.TroopCode} pos=({u.Field.Position.Q},{u.Field.Position.R}) troops={u.Pool.Active}(wounded {u.Pool.Wounded}) mode={u.Field.Mode} tgt={(u.Field.Target is { } t2 ? $"({t2.Q},{t2.R})" : "none")} wps=[{string.Join(",", (u.Field.Waypoints ?? []).Select(w => $"({w.Q},{w.R})"))}] prov={u.Provisions} van={U(u.VanguardId)} adj={U(u.AdjutantId)}");
         }
     }
 

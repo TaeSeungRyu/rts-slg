@@ -45,9 +45,11 @@ public sealed class MovementSimulator
         {
             Unit = unit;
             Goals = BuildGoals(unit);
-            while (GoalIdx < Goals.Count - 1 && Goals[GoalIdx] == unit.Position)
+            // 이미 닿거나 인접한(거리 1 이내) 선두 경유지는 건너뛴다 — 진행마다 GoalIdx가 0으로 리셋되므로,
+            // 목표에 선 채 인접 경유지가 남아 있으면 매 진행 그 경유지로 되돌아가는 왕복이 생긴다. 도달 판정과 일치.
+            while (GoalIdx < Goals.Count - 1 && Goals[GoalIdx].Distance(unit.Position) <= 1)
             {
-                GoalIdx++; // 시작 칸과 같은 선두 경유지는 건너뛴다
+                GoalIdx++;
             }
         }
     }
