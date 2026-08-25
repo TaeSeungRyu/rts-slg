@@ -3141,35 +3141,115 @@ public sealed partial class CampaignMapScene : Node3D
             row.AddChild(lbl);
             var go = MakeButton("선택");
             go.CustomMinimumSize = new Vector2(60, 26);
-            go.Pressed += () =>
-            {
-                // 군사 예측: 성공 확률 밴드 + 신뢰도(군사 지력%). 군사 없으면 예측 불가.
-                var forecast = "예측 불가 (군사 없음)";
-                if (strat is not null)
-                {
-                    var odds = EnlistOdds.SuccessPercent(recruiter.Politics, target.Loyalty);
-                    var band = odds >= 40 ? "성공 유력" : odds >= 15 ? "반반" : "어려움";
-                    forecast = $"군사({strat.Name}) 예측: {band} · 신뢰도 {strat.Intellect}%";
-                }
-
-                ShowConfirm("등용",
-                    $"{target.Name}을(를) {recruiter.Name}이(가) 등용\n{forecast}\n\n" +
-                    "실패 시 대상이 충신이면 수행 장수가 잡힐 수 있습니다.",
-                    () =>
-                    {
-                        var req = new CommandRequest(cityId, CommandKind.Enlist, recruiter.Id, TargetGeneral: targetId);
-                        var r = _commander.Issue(_state, req);
-                        Dbg($"UI enlist city={cityId.Value} recruiter={recruiter.Id.Value} target={targetId.Value} ok={r.Ok} err={r.Error ?? "-"}");
-                        if (r.Ok) { _state = r.State; }
-                        _log.Text = r.Ok ? $"등용 시도: {target.Name} ({recruiter.Name})" : $"실패: {r.Error}";
-                        CloseModal();
-                        SelectCity(cityId);
-                        Redraw(_log.Text);
-                    });
-            };
+            go.Pressed += () => ConfirmEnlist(cityId, recruiter.Id, targetId);
             row.AddChild(go);
             box.AddChild(row);
         }
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    // 등용 확인 창 — 군사 초상 + 예측 설명 + 확인/취소. 군사가 있으면 지력% 신뢰도로 성공/실패를 아뢴다.
+    private void ConfirmEnlist(CityId cityId, GeneralId recruiterId, GeneralId targetId)
+    {
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.38f, 380f, 520f);
+        var mh = Mathf.Clamp(vp.Y * 0.8f, 320f, 640f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var city = _state.Cities.First(c => c.Id == cityId);
+        var recruiter = _state.Generals.First(g => g.Id == recruiterId);
+        var target = _state.Generals.First(g => g.Id == targetId);
+        var strat = city.Strategist is { } sid ? _state.Generals.FirstOrDefault(g => g.Id == sid) : null;
+
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var back = MakeButton("◀");
+        back.CustomMinimumSize = new Vector2(40, 30);
+        back.Pressed += () => PickEnlistRecruiter(cityId, targetId);
+        titleRow.AddChild(back);
+        var title = MakeLabel("등용 확인", 17, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.HorizontalAlignment = HorizontalAlignment.Center;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(40, 30);
+        close.Pressed += CloseModal;
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+
+        // 군사 초상 + 아룀. 군사 없으면 예측 불가 안내.
+        var advisorRow = new HBoxContainer();
+        advisorRow.AddThemeConstantOverride("separation", 10);
+        box.AddChild(advisorRow);
+        var facePanel = new PanelContainer { CustomMinimumSize = new Vector2(72, 72) };
+        facePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.05f), Gold, 1, 6, 3));
+        advisorRow.AddChild(facePanel);
+        if (strat is not null && PortraitFor(strat.Id) is { } tex)
+        {
+            facePanel.AddChild(new TextureRect
+            {
+                Texture = tex, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, CustomMinimumSize = new Vector2(66, 66),
+            });
+        }
+        else
+        {
+            var mark = MakeLabel("◈", 34, new Color(Gold, 0.45f));
+            mark.HorizontalAlignment = HorizontalAlignment.Center;
+            mark.VerticalAlignment = VerticalAlignment.Center;
+            facePanel.AddChild(mark);
+        }
+
+        string saying;
+        if (strat is null)
+        {
+            saying = "군사가 없어 성패를 가늠할 수 없습니다.\n(군사를 임명하면 예측을 들을 수 있습니다.)";
+        }
+        else
+        {
+            var odds = EnlistOdds.SuccessPercent(recruiter.Politics, target.Loyalty);
+            var band = odds >= 40 ? "성공이 유력합니다" : odds >= 15 ? "반반으로 봅니다" : "어려워 보입니다";
+            saying = $"군사 {strat.Name}이(가) 아룁니다:\n\"{target.Name} 등용은 {band}.\"\n(예측 신뢰도 {strat.Intellect}%)";
+        }
+
+        var sayLabel = MakeLabel(saying, 13, GoldBright);
+        sayLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        sayLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        sayLabel.CustomMinimumSize = new Vector2(mw - 110, 0);
+        advisorRow.AddChild(sayLabel);
+
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel($"수행: {recruiter.Name} (정치 {recruiter.Politics})  →  대상: {target.Name}", 13, Parchment));
+        var warn = MakeLabel("실패 시, 대상이 충신이면 수행 장수가 붙잡힐 수 있습니다.", 12, new Color(Parchment, 0.8f));
+        warn.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        warn.CustomMinimumSize = new Vector2(mw - 40, 0);
+        box.AddChild(warn);
+
+        var btnRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        btnRow.AddThemeConstantOverride("separation", 12);
+        box.AddChild(btnRow);
+        var ok = MakeButton("등용 시행", accent: true);
+        ok.CustomMinimumSize = new Vector2(130, 36);
+        ok.Pressed += () =>
+        {
+            var req = new CommandRequest(cityId, CommandKind.Enlist, recruiterId, TargetGeneral: targetId);
+            var r = _commander.Issue(_state, req);
+            Dbg($"UI enlist city={cityId.Value} recruiter={recruiterId.Value} target={targetId.Value} ok={r.Ok} err={r.Error ?? "-"}");
+            if (r.Ok) { _state = r.State; }
+            _log.Text = r.Ok ? $"등용 시도: {target.Name} ({recruiter.Name})" : $"실패: {r.Error}";
+            CloseModal();
+            SelectCity(cityId);
+            Redraw(_log.Text);
+        };
+        btnRow.AddChild(ok);
+        var cancel = MakeButton("취소");
+        cancel.CustomMinimumSize = new Vector2(90, 36);
+        cancel.Pressed += () => PickEnlistRecruiter(cityId, targetId);
+        btnRow.AddChild(cancel);
 
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
