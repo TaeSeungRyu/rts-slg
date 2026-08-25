@@ -3219,16 +3219,20 @@ public sealed partial class CampaignMapScene : Node3D
                 {
                     _pendingRewards.RemoveAll(r => r.City == cityId && r.Target == g.Id);
                     _log.Text = $"포상 예약 취소: {g.Name}";
+                    Dbg($"UI reward-unreserve city={cityId.Value} gen={g.Id.Value}");
+                    SelectCity(cityId);
+                    OpenRewardModal(cityId);
+                    return;
                 }
-                else
+
+                ShowConfirm("포상 예약", $"{g.Name}에게 포상 ({rewardCost}금)\n진행 시 수행됩니다. 예약하시겠습니까?", () =>
                 {
                     _pendingRewards.Add((cityId, g.Id, $"{g.Name} 포상"));
                     _log.Text = $"포상 예약: {g.Name} (진행 시 수행)";
-                }
-
-                Dbg($"UI reward-reserve city={cityId.Value} gen={g.Id.Value} reserved={!reserved}");
-                SelectCity(cityId);
-                OpenRewardModal(cityId);
+                    Dbg($"UI reward-reserve city={cityId.Value} gen={g.Id.Value}");
+                    SelectCity(cityId);
+                    OpenRewardModal(cityId);
+                });
             };
             row.AddChild(give);
             box.AddChild(row);
@@ -3632,11 +3636,24 @@ public sealed partial class CampaignMapScene : Node3D
             reward.CustomMinimumSize = new Vector2(0, 28);
             reward.Pressed += () =>
             {
-                if (reservedR) { _pendingRewards.RemoveAll(r => r.City == backCity && r.Target == gid); _log.Text = $"포상 예약 취소: {g.Name}"; }
-                else { _pendingRewards.Add((backCity, gid, $"{g.Name} 포상")); _log.Text = $"포상 예약: {g.Name} (진행 시 수행)"; }
-                Dbg($"UI reward-reserve card city={backCity.Value} gen={gid.Value} reserved={!reservedR}");
-                SelectCity(backCity);
-                OpenGeneralDetail(gid, backCity);
+                if (reservedR)
+                {
+                    _pendingRewards.RemoveAll(r => r.City == backCity && r.Target == gid);
+                    _log.Text = $"포상 예약 취소: {g.Name}";
+                    Dbg($"UI reward-unreserve card city={backCity.Value} gen={gid.Value}");
+                    SelectCity(backCity);
+                    OpenGeneralDetail(gid, backCity);
+                    return;
+                }
+
+                ShowConfirm("포상 예약", $"{g.Name}에게 포상 ({rewardCost}금)\n진행 시 수행됩니다. 예약하시겠습니까?", () =>
+                {
+                    _pendingRewards.Add((backCity, gid, $"{g.Name} 포상"));
+                    _log.Text = $"포상 예약: {g.Name} (진행 시 수행)";
+                    Dbg($"UI reward-reserve card city={backCity.Value} gen={gid.Value}");
+                    SelectCity(backCity);
+                    OpenGeneralDetail(gid, backCity);
+                });
             };
             box.AddChild(reward);
         }
