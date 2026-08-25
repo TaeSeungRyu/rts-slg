@@ -1450,6 +1450,9 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (_advancing) { return; } // 진행 중 재클릭 무시(버튼도 disabled)
 
+        // 목표 지정 중 그려둔 경로가 있으면 진행 전에 자동 확정 — '✓확인' 안 눌러 조용히 버려지던 함정 방지.
+        if (_depTargeting && _targetWaypoints.Count > 0) { ConfirmTarget(); }
+
         var deploys = _pendingDeploys.Count;
         var untargeted = _pendingDeploys.Count(p => p.Req.Target is null);
         var msg = $"7일을 진행합니다. ({_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일 →)";
