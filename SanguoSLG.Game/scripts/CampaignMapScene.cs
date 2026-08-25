@@ -52,6 +52,12 @@ public sealed partial class CampaignMapScene : Node3D
     private Label _hudDate = null!;
     private TextureRect _hudFace = null!;
     private PanelContainer _hudFacePanel = null!;
+    private PanelContainer _reportPanel = null!;   // 좌하단 보고(삼국지11 오마주 결과창)
+    private VBoxContainer _reportBox = null!;
+    private const int ReportMax = 8;               // 좌하단에 보이는 최근 줄 수
+    private const int ReportHistoryMax = 300;      // 전체 로그 보관 상한(오래된 것부터 버림)
+    private readonly List<(string Text, Color Color)> _pendingReport = new(); // 이번 진행 결과(재생 끝나면 flush)
+    private readonly List<(string Text, Color Color)> _reportHistory = new(); // 전체 로그(스크롤 열람용)
     private Label _log = null!;
 
     // 진행 애니메이션(4초=하루, 1초=한 칸, 7일=28초). StepSeconds를 키우면 이동이 느려진다.
@@ -1485,8 +1491,8 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var dr = _deployer.Deploy(_state, req);
             Dbg($"  deploy '{label}': ok={dr.Ok} err={dr.Error ?? "-"} armiesNow={dr.State.Armies.Count}");
-            if (dr.Ok) { _state = dr.State; deployNote.Add(label); }
-            else { deployNote.Add($"출전실패({dr.Error})"); }
+            if (dr.Ok) { _state = dr.State; deployNote.Add($"[출전] {label} 부대가 출진했습니다."); }
+            else { deployNote.Add($"[출전] 편성 실패({dr.Error})"); }
         }
 
         _pendingDeploys.Clear();
@@ -1494,12 +1500,13 @@ public sealed partial class CampaignMapScene : Node3D
         // 예약된 포상을 진행 시작에 수행(취소되지 않은 것만). 금 부족이면 Reward가 실패 반환 → 건너뜀.
         foreach (var (rc, tg, label) in _pendingRewards)
         {
+            var gName = _state.Generals.FirstOrDefault(g => g.Id == tg)?.Name ?? $"G{tg.Value}";
             var loyBefore = _state.LoyaltyOf(tg); // 검증용: 충성 변화(숨김 수치라 dev 로그로만)
             var rr = _commander.Reward(_state, rc, tg);
             var loyAfter = rr.Ok ? rr.State.LoyaltyOf(tg) : loyBefore;
             Dbg($"  reward '{label}': ok={rr.Ok} loyalty {loyBefore}->{loyAfter} (+{loyAfter - loyBefore}) err={rr.Error ?? "-"}");
-            if (rr.Ok) { _state = rr.State; deployNote.Add(label); }
-            else { deployNote.Add($"포상실패({rr.Error})"); }
+            if (rr.Ok) { _state = rr.State; deployNote.Add($"[포상] {gName} 장수를 포상하였습니다. 충성도가 올랐습니다."); }
+            else { deployNote.Add($"[포상] {gName} 포상 실패({rr.Error})"); }
         }
 
         _pendingRewards.Clear();
@@ -1519,31 +1526,48 @@ public sealed partial class CampaignMapScene : Node3D
         LogAdvanceDetail(startHex, turns, sieges, captures, plunders, after);
 
         var note = new List<string>();
-        note.AddRange(deployNote);
+        _pendingReport.Clear();
+        void Ev(string t, Color c) { note.Add(t); _pendingReport.Add((t, c)); }
+
+        var siegeCol = new Color(0.9f, 0.6f, 0.4f);
+        foreach (var dn in deployNote) { Ev(dn, dn.Contains("실패") ? AccentFill : Parchment); }
+        AddCombatReport(turns, Ev); // 교전·특기·계략·지속 피해(내 세력만)
+
         foreach (var cas in casualties)
         {
+            if (!preMove.Armies.Any(u => u.Id == cas.Unit && u.Field.Owner == Player)) { continue; } // 내 부대만
             var gName = _state.Generals.FirstOrDefault(g => g.Id == cas.General)?.Name ?? $"G{cas.General.Value}";
             var text = cas.Captured
-                ? $"{gName} 포로(부대 전멸)"
-                : cas.Refuge is { } rf ? $"{gName} {_cities.First(c => c.Id == rf).Name}(으)로 귀환" : $"{gName} 재야로";
-            note.Add(text);
+                ? $"[손실] {gName} 장수, 부대가 전멸하여 포로가 되었습니다."
+                : cas.Refuge is { } rf ? $"[손실] {gName} 장수, 부대가 전멸하여 {_cities.First(c => c.Id == rf).Name}(으)로 귀환했습니다."
+                : $"[손실] {gName} 장수, 부대가 전멸하여 재야가 되었습니다.";
+            Ev(text, AccentFill);
             Dbg($"  casualty u{cas.Unit.Value} {gName} {(cas.Captured ? $"captured-by f{cas.Holder!.Value.Value}" : cas.Refuge is { } r2 ? $"fled-to city{r2.Value}" : "wanderer")}");
         }
 
         foreach (var ex in sieges)
         {
+            var mine = preMove.Cities.First(c => c.Id == ex.City).Owner == Player;
+            var byMe = ex.Besiegers.Any(b => preMove.Armies.Any(u => u.Id == b && u.Field.Owner == Player));
+            if (!mine && !byMe) { continue; } // 내 세력 관련 공성만
             var cn = _cities.First(c => c.Id == ex.City).Name;
-            note.Add(ex.WallDamage > 0
-                ? $"공성 {cn} 성벽 -{ex.WallDamage}→{ex.NewWall}"
-                : $"공성 {cn} 성벽 무피해");
+            Ev(mine
+                ? (ex.WallDamage > 0 ? $"[공성] 아군 {cn}이(가) 공격받아 성벽 피해 {ex.WallDamage}(남은 {ex.NewWall})." : $"[공성] 아군 {cn}이(가) 공격받았으나 성벽은 버텼습니다.")
+                : (ex.WallDamage > 0 ? $"[공성] {cn} 성벽에 피해 {ex.WallDamage}을(를) 입혔습니다(남은 {ex.NewWall})." : $"[공성] {cn} 성벽에 피해를 주지 못했습니다."),
+                siegeCol);
         }
 
-        if (plunders.Count > 0) { note.Add($"약탈 {plunders.Count}"); }
         foreach (var c in captures)
         {
+            var wasMine = preMove.Cities.First(x => x.Id == c.City).Owner == Player;
+            var mineNow = c.NewOwner == Player;
+            if (!wasMine && !mineNow) { continue; } // 내 세력 관련만
             var name = _cities.First(x => x.Id == c.City).Name;
             var owner = after.Factions.First(f => f.Id == c.NewOwner).Name;
-            note.Add($"★{name}→{owner}{(c.FactionEliminated ? "(멸망)" : "")}");
+            Ev(mineNow
+                ? $"[함락] {name}을(를) 점령했습니다!"
+                : $"[함락] 아군 {name}을(를) 빼앗겼습니다(→ {owner}){(c.FactionEliminated ? " · 세력 멸망" : "")}",
+                GoldBright);
         }
 
         _pendingState = after;
@@ -1753,6 +1777,14 @@ public sealed partial class CampaignMapScene : Node3D
 
         _state = _pendingState;
         Redraw(_pendingNote);
+
+        // 이번 진행의 사건을 날짜 헤더와 함께 보고 패널로 flush.
+        if (_pendingReport.Count > 0)
+        {
+            Report($"── {_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일 ──", Gold);
+            foreach (var (t, c) in _pendingReport) { Report(t, c); }
+            _pendingReport.Clear();
+        }
 
         var alive = _state.Factions.Where(f => _state.CityCount(f.Id) > 0).ToList();
         if (alive.Count <= 1)
@@ -3015,6 +3047,7 @@ public sealed partial class CampaignMapScene : Node3D
                         Dbg($"UI market-buy city={cityId.Value} {res} x{units} ok={r.Ok} err={r.Error ?? "-"}");
                         if (r.Ok) { _state = r.State; }
                         _log.Text = r.Ok ? $"시장: {it.Name} {units} 매입 (−{cost}금)" : $"실패: {r.Error}";
+                        if (r.Ok) { Report($"[내정] {city.Name} 시장에서 {it.Name} {units}을(를) {cost}금에 사들였습니다.", Parchment); }
                         SelectCity(cityId);
                         OpenMarketModal(cityId);
                     });
@@ -3249,6 +3282,7 @@ public sealed partial class CampaignMapScene : Node3D
             Dbg($"UI enlist city={cityId.Value} recruiter={recruiterId.Value} target={targetId.Value} ok={r.Ok} err={r.Error ?? "-"}");
             if (r.Ok) { _state = r.State; }
             _log.Text = r.Ok ? $"등용 시도: {target.Name} ({recruiter.Name})" : $"실패: {r.Error}";
+            if (r.Ok) { Report($"[인사] {recruiter.Name} 장수가 {target.Name} 등용에 나섰습니다.", GoldBright); }
             CloseModal();
             SelectCity(cityId);
             Redraw(_log.Text);
@@ -5036,6 +5070,7 @@ public sealed partial class CampaignMapScene : Node3D
                 Dbg($"UI issue {cmd.Label}{pLabel} city={city.Value} gen={general.Value} ok={r.Ok} err={r.Error ?? "-"}");
                 if (r.Ok) { _state = r.State; }
                 _log.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
+                if (r.Ok) { Report($"[내정] {_state.Cities.First(c => c.Id == city).Name}에서 {gName} 장수가 {cmd.Label}{pLabel}을(를) 맡았습니다.", Parchment); }
                 CloseModal();
                 SelectCity(city);
                 Redraw(_log.Text);
@@ -5298,7 +5333,179 @@ public sealed partial class CampaignMapScene : Node3D
         _log.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(_log);
 
+        BuildReportPanel();
         BuildAdvanceControl();
+    }
+
+    // 교전·특기·지속 피해를 자연 문장으로(내 세력만). "도검병을 이끄는 XX가 XX과 교전하여 피해 A를 주고 B를 받았습니다."
+    private void AddCombatReport(IReadOnlyList<AdvanceTurn> turns, System.Action<string, Color> ev)
+    {
+        var combatCol = new Color(0.9f, 0.6f, 0.4f);
+        var skillCol = new Color(0.62f, 0.82f, 1f);
+
+        string Van(CombatUnit u) => _state.Generals.FirstOrDefault(g => g.Id == u.VanguardId)?.Name ?? $"부대{u.Id.Value}";
+        string Desc(CombatUnit u) => $"{TroopName(u.TroopCode)}을(를) 이끄는 {Van(u)}";
+
+        // 부대 메타(소유·설명)와, 각 부대가 교전한 첫 상대(가장 가까운 적) 추정.
+        var meta = new Dictionary<int, (bool Player, string Desc)>();
+        foreach (var t in turns)
+        {
+            foreach (var u in t.Units) { meta[u.Id.Value] = (u.Field.Owner == Player, Desc(u)); }
+        }
+
+        string Opponent(int uid)
+        {
+            foreach (var t in turns)
+            {
+                if (t.Combat is not { } c || !c.DamageDealt.ContainsKey(new UnitId(uid))) { continue; }
+                var me = t.Units.FirstOrDefault(x => x.Id.Value == uid);
+                if (me is null) { continue; }
+                var foe = t.Units.Where(x => x.Field.Owner != me.Field.Owner)
+                    .OrderBy(x => x.Field.Position.Distance(me.Field.Position)).ThenBy(x => x.Id.Value).FirstOrDefault();
+                if (foe is not null) { return Desc(foe); }
+            }
+
+            return "적군";
+        }
+
+        // 특기 발동(내 세력).
+        var skilled = new HashSet<int>();
+        foreach (var t in turns)
+        {
+            foreach (var (uid, sk) in t.FiredActives.OrderBy(k => k.Key.Value))
+            {
+                if (meta.TryGetValue(uid.Value, out var m) && m.Player) { skilled.Add(uid.Value); ev($"[특기] {m.Desc}이(가) 특기 「{sk.Name}」을(를) 발동했습니다.", skillCol); }
+            }
+
+            foreach (var (uid, st) in t.FiredStratagems.OrderBy(k => k.Key.Value))
+            {
+                if (meta.TryGetValue(uid.Value, out var m) && m.Player) { ev($"[계략] {m.Desc}이(가) 계략 「{st.Name}」을(를) 펼쳤습니다.", skillCol); }
+            }
+        }
+
+        // 교전 합산(내 세력): 가함/피해 총합 → 한 부대당 한 문장.
+        var dealt = new Dictionary<int, int>();
+        var taken = new Dictionary<int, int>();
+        foreach (var t in turns)
+        {
+            if (t.Combat is not { } c) { continue; }
+            foreach (var (uid, d) in c.DamageDealt) { if (meta.TryGetValue(uid.Value, out var m) && m.Player) { dealt[uid.Value] = dealt.GetValueOrDefault(uid.Value) + d; } }
+            foreach (var (uid, d) in c.DamageTaken) { if (meta.TryGetValue(uid.Value, out var m) && m.Player) { taken[uid.Value] = taken.GetValueOrDefault(uid.Value) + d; } }
+        }
+
+        foreach (var uid in dealt.Keys.Union(taken.Keys).OrderBy(x => x))
+        {
+            var skillWord = skilled.Contains(uid) ? "스킬 " : "";
+            ev($"[교전] {meta[uid].Desc}이(가) {Opponent(uid)}과(와) 교전하여 {skillWord}피해 {dealt.GetValueOrDefault(uid)}을(를) 주고 {taken.GetValueOrDefault(uid)}을(를) 받았습니다.", combatCol);
+        }
+
+        // 지속·계략 즉발 피해(내 세력).
+        var dot = new Dictionary<int, int>();
+        foreach (var t in turns)
+        {
+            foreach (var (uid, d) in t.StatusDamage) { if (meta.TryGetValue(uid.Value, out var m) && m.Player) { dot[uid.Value] = dot.GetValueOrDefault(uid.Value) + d; } }
+            foreach (var (uid, d) in t.StratagemDamage) { if (meta.TryGetValue(uid.Value, out var m) && m.Player) { dot[uid.Value] = dot.GetValueOrDefault(uid.Value) + d; } }
+        }
+
+        foreach (var uid in dot.Keys.OrderBy(x => x))
+        {
+            ev($"[교전] {meta[uid].Desc}이(가) 계략·지속 피해 {dot[uid]}을(를) 입었습니다.", combatCol);
+        }
+    }
+
+    // 좌하단 보고 패널(삼국지11 오마주) — 진행 결과·명령 발행 등 사건을 최근 순으로 쌓아 보여준다.
+    private void BuildReportPanel()
+    {
+        var layer = new CanvasLayer();
+        AddChild(layer);
+
+        _reportPanel = new PanelContainer { Visible = false };
+        _reportPanel.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.94f), Gold, 2, 8, 9));
+        _reportPanel.AnchorTop = 1f; _reportPanel.AnchorBottom = 1f;
+        _reportPanel.GrowVertical = Control.GrowDirection.Begin; // 바닥에서 위로 자란다
+        _reportPanel.OffsetLeft = 12f; _reportPanel.OffsetBottom = -12f;
+        _reportPanel.CustomMinimumSize = new Vector2(320, 0);
+        layer.AddChild(_reportPanel);
+
+        var v = new VBoxContainer();
+        v.AddThemeConstantOverride("separation", 2);
+        _reportPanel.AddChild(v);
+
+        var headRow = new HBoxContainer();
+        headRow.AddThemeConstantOverride("separation", 8);
+        v.AddChild(headRow);
+        var head = MakeLabel("◈ 보고", 13, Gold);
+        head.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        headRow.AddChild(head);
+        var full = MakeButton("전체");
+        full.AddThemeFontSizeOverride("font_size", 11);
+        full.CustomMinimumSize = new Vector2(48, 22);
+        full.Pressed += OpenFullLog;
+        headRow.AddChild(full);
+
+        v.AddChild(GoldRule());
+        _reportBox = new VBoxContainer();
+        _reportBox.AddThemeConstantOverride("separation", 1);
+        v.AddChild(_reportBox);
+    }
+
+    // 보고 한 줄 추가 — 전체 히스토리(캡 300)에 쌓고, 좌하단엔 최근 ReportMax줄만 보인다. color로 사건 성격 구분.
+    private void Report(string text, Color? color = null)
+    {
+        if (_reportBox is null) { return; }
+        var c = color ?? Parchment;
+        _reportHistory.Add((text, c));
+        while (_reportHistory.Count > ReportHistoryMax) { _reportHistory.RemoveAt(0); }
+
+        var l = MakeLabel(text, 12, c);
+        l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        l.CustomMinimumSize = new Vector2(300, 0);
+        _reportBox.AddChild(l);
+        while (_reportBox.GetChildCount() > ReportMax)
+        {
+            var old = _reportBox.GetChild(0);
+            _reportBox.RemoveChild(old);
+            old.QueueFree();
+        }
+
+        _reportPanel.Visible = true;
+    }
+
+    // 전체 로그 열람(스크롤) — 보고 패널의 "전체" 버튼. 최근이 아래, 오래된 것 위.
+    private void OpenFullLog()
+    {
+        if (_advancing) { return; }
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.5f, 480f, 760f);
+        var mh = Mathf.Clamp(vp.Y * 0.8f, 380f, 760f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel($"◈ 전체 보고 ({_reportHistory.Count})", 17, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(40, 30);
+        close.Pressed += CloseModal;
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+
+        if (_reportHistory.Count == 0) { box.AddChild(MakeLabel("(기록 없음)", 12, Parchment)); }
+        foreach (var (text, color) in _reportHistory)
+        {
+            var l = MakeLabel(text, 12, color);
+            l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            l.CustomMinimumSize = new Vector2(mw - 40, 0);
+            box.AddChild(l);
+        }
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+        scroll.SetDeferred("scroll_vertical", 100000); // 최신(아래)으로
     }
 
     // 진행 버튼(화면 우측 하단, 100×100 원형 아이콘) + 진행 중 "N일차" 텍스트(버튼 20px 위).
