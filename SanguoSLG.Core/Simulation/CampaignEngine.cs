@@ -16,6 +16,10 @@ public sealed class CampaignEngine
 
     private readonly AdvanceOrchestrator _field;
     private readonly WorldEngine _world;
+
+    /// <summary>직전 <see cref="AdvanceWeek(GameState, out IReadOnlyList{AdvanceTurn})"/>의 내정/라이프사이클 사건(보고용).</summary>
+    public IReadOnlyList<WorldEvent> LastWorldEvents => _world.LastEvents;
+
     private readonly CampaignSiege? _siege;
     private readonly CityCapture? _capture;
     private readonly CityPlunder? _plunder;

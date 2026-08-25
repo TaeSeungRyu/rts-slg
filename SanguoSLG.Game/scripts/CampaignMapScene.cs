@@ -1570,6 +1570,27 @@ public sealed partial class CampaignMapScene : Node3D
                 GoldBright);
         }
 
+        // 내정/라이프사이클 사건(Core WorldEvent) — 내 세력만. 명령 완료 수치·이간·배신.
+        foreach (var we in _engine.LastWorldEvents.Where(e => e.Faction == Player))
+        {
+            var gName = we.General is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid)?.Name ?? "장수" : "";
+            var cName = we.City is { } cid ? _cities.FirstOrDefault(c => c.Id == cid)?.Name ?? "성" : "";
+            var troop = we.Code.Length > 0 ? TroopName(we.Code) : "";
+            var (text, col) = we.Kind switch
+            {
+                WorldEventKind.Recruit => ($"[내정] {cName}에서 {troop} {we.Amount}명을 모집했습니다.", Parchment),
+                WorldEventKind.Conscript => ($"[내정] {cName}에서 {troop} {we.Amount}명을 징병했습니다.", Parchment),
+                WorldEventKind.Train => ($"[내정] {cName}의 {troop} 훈련도가 올랐습니다(+{we.Amount}).", Parchment),
+                WorldEventKind.Build => ($"[내정] {cName}에 {FacilityLabel(we.Code)} 건설을 마쳤습니다.", Parchment),
+                WorldEventKind.Research => ($"[군비] {cName}에서 연구를 마쳤습니다.", Parchment),
+                WorldEventKind.Repair => ($"[내정] {cName} 수리를 마쳤습니다.", Parchment),
+                WorldEventKind.Discord => ($"[내정] 적의 이간으로 {gName} 장수의 충성이 흔들렸습니다.", AccentFill),
+                WorldEventKind.Betray => ($"[인사] {gName} 장수가 세력을 등지고 떠났습니다.", AccentFill),
+                _ => ("", Parchment),
+            };
+            if (text.Length > 0) { Ev(text, col); }
+        }
+
         _pendingState = after;
         _pendingNote = note.Count > 0 ? string.Join(" · ", note) : "—";
         BuildAnimation(startHex, turns, sieges);

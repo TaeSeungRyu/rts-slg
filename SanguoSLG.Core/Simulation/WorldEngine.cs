@@ -24,9 +24,15 @@ public sealed class WorldEngine
 
     private readonly IRandomSource _random;
 
+    private readonly List<WorldEvent> _events = new();
+
+    /// <summary>직전 <see cref="AdvanceDays"/> 호출 동안 일어난 내정/라이프사이클 사건(표현 계층 보고용).</summary>
+    public IReadOnlyList<WorldEvent> LastEvents => _events;
+
     /// <summary><paramref name="days"/>일을 진행한 새 상태를 반환한다.</summary>
     public GameState AdvanceDays(GameState state, int days)
     {
+        _events.Clear();
         for (var i = 0; i < days; i++)
         {
             state = AdvanceDay(state);
@@ -163,6 +169,7 @@ public sealed class WorldEngine
             if (_random.Next(0, 100) < chance)
             {
                 defectors.Add(p.General);
+                _events.Add(new WorldEvent(WorldEventKind.Betray, p.Faction, p.General, p.Location));
             }
         }
 
@@ -284,6 +291,23 @@ public sealed class WorldEngine
                 case CommandKind.Enlist:
                     ResolveEnlist(cmd, city, generals, postings, prisoners, armies);
                     break;
+            }
+
+            // 명령 완료 사건(표현 계층 보고용) — 모병·징병·훈련·건설·연구·수리만.
+            var evKind = cmd.Kind switch
+            {
+                CommandKind.Recruit => (WorldEventKind?)WorldEventKind.Recruit,
+                CommandKind.Conscript => WorldEventKind.Conscript,
+                CommandKind.Train => WorldEventKind.Train,
+                CommandKind.Build => WorldEventKind.Build,
+                CommandKind.Research => WorldEventKind.Research,
+                CommandKind.Repair => WorldEventKind.Repair,
+                _ => null,
+            };
+            if (evKind is { } ek)
+            {
+                _events.Add(new WorldEvent(ek, city.Owner, cmd.Main, cmd.City, cmd.Amount,
+                    cmd.TroopCode.Length > 0 ? cmd.TroopCode : cmd.Facility));
             }
         }
 
@@ -452,6 +476,7 @@ public sealed class WorldEngine
                     var idx = generals.FindIndex(g => g.Id == victim.Id);
                     var cut = _random.Next(_commands.StratagemDiscordLoyaltyMin, _commands.StratagemDiscordLoyaltyMax + 1);
                     generals[idx] = victim with { Loyalty = System.Math.Max(0, victim.Loyalty - cut) };
+                    _events.Add(new WorldEvent(WorldEventKind.Discord, target.Owner, victim.Id, targetId, cut));
                 }
 
                 break;
