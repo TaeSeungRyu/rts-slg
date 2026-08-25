@@ -271,10 +271,12 @@ public sealed class MovementSimulator
                     }
                 }
 
-                // 경유지 도달 판정 — 현재 구간 목표 칸을 밟았고 뒤에 목표가 더 있으면 다음 구간으로.
+                // 경유지 도달 판정 — 현재 구간 목표(중간 경유지)에 **닿거나 인접하면**(거리 1 이내) 다음 구간으로.
+                // 경유지는 경로 힌트라 정확히 그 칸에 못 서도(점유·통행불가·우회) 근처를 지나면 통과로 친다 —
+                // 정확 도달만 요구하면 못 밟는 경유지 근처에서 영영 진동하기 때문. 최종 목표(Goals의 마지막)는 제외.
                 foreach (var w in work)
                 {
-                    while (w.GoalIdx < w.Goals.Count - 1 && w.Unit.Position == w.Goals[w.GoalIdx])
+                    while (w.GoalIdx < w.Goals.Count - 1 && w.Unit.Position.Distance(w.Goals[w.GoalIdx]) <= 1)
                     {
                         w.GoalIdx++;
                         w.Path = null; // 다음 구간 경로를 새 위치에서 재계산

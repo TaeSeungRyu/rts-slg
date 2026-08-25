@@ -47,8 +47,8 @@ public class MovementSimulatorTests
 
         var result = PlainField().Advance(new[] { a }, maxDays: 7);
 
-        // 경유지를 실제로 밟았다(스텝 스냅샷에 (0,3)이 나타난다).
-        Assert.Contains(result.Ticks, t => t.Units.Any(u => u.Id.Value == 1 && u.Position == new HexCoord(0, 3)));
+        // 경유지(0,3) 근처를 거쳐 갔다 — 직선(r=0)이 아니라 r이 2 이상으로 올라갔다(경유지 인접까지 접근).
+        Assert.Contains(result.Ticks, t => t.Units.Any(u => u.Id.Value == 1 && u.Position.R >= 2));
         // 최종적으로 목표에 도착.
         Assert.Equal(new HexCoord(6, 0), result.Units.Single().Position);
     }

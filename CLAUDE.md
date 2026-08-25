@@ -11,19 +11,19 @@
 - 플랫폼: Windows 데스크톱 (우선), 이후 Linux/macOS 고려
 - 시점: 헥사 그리드 기반 쿼터뷰(기울어진 3D 카메라)
 - 표현 방식: **실시간 3D 렌더링 (Godot 3D)**. 저폴리/에셋 기반 3D 헥사 맵 + 실시간 조명·그림자. (2026-08-04 결정: 원래 "2D 스프라이트 + 노멀맵" 계획이었으나, 무료 카툰 2D의 시각적 한계로 3D 전환. 사용자 판단 — UI/비주얼 만족이 프로젝트 지속의 관문)
-- **Core는 여전히 렌더링 방식을 모른다**: 헥사 좌표·A*·시뮬레이션은 2D/3D와 무관. 3D 전환은 Game(표현) 계층만 바꾼다. axial↔월드 좌표 변환은 Game에서만.
+- **Core는 여전히 렌더링 방식을 모른다**: 헥사 좌표·A\*·시뮬레이션은 2D/3D와 무관. 3D 전환은 Game(표현) 계층만 바꾼다. axial↔월드 좌표 변환은 Game에서만.
 - 개발자는 1인이며 C#/.NET 백엔드 경험이 주력이다. 게임 엔진 관용구보다 **일반적인 C# 설계 원칙**을 우선한다.
 
 ## 기술 스택
 
-| 항목 | 버전 / 선택 |
-|---|---|
-| 언어 | C# (nullable enable, implicit usings 사용) |
-| 런타임 | .NET 9 SDK |
-| 엔진 | Godot 4.7 (.NET / Mono 빌드) |
-| 테스트 | xUnit |
-| 직렬화 | `System.Text.Json` (Newtonsoft 사용 금지) |
-| 에셋 파이프라인 | 무료 CC0 3D 에셋(Kenney 등) + Godot 3D. 필요 시 Blender 편집 |
+| 항목            | 버전 / 선택                                                                                |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| 언어            | C# (nullable enable, implicit usings 사용)                                                 |
+| 런타임          | .NET 9 SDK                                                                                 |
+| 엔진            | Godot 4.7 (.NET / Mono 빌드), Godot_v4.7.1-stable_win64, Godot_v4.7.1-stable_win64_console |
+| 테스트          | xUnit                                                                                      |
+| 직렬화          | `System.Text.Json` (Newtonsoft 사용 금지)                                                  |
+| 에셋 파이프라인 | 무료 CC0 3D 에셋(Kenney 등) + Godot 3D. 필요 시 Blender 편집                               |
 
 GDScript는 사용하지 않는다. 모든 게임 코드는 C#으로 작성한다.
 
@@ -108,13 +108,13 @@ dotnet test
 
 ### 명명
 
-| 대상 | 규칙 | 예 |
-|---|---|---|
-| 클래스/메서드/프로퍼티 | PascalCase | `BattleResolver` |
-| private 필드 | `_camelCase` | `_currentTurn` |
-| 상수 | PascalCase | `MaxTroopCount` |
-| 테스트 메서드 | `대상_조건_기대결과` | `Resolve_방어측이산지에있으면_방어보정이적용된다` |
-| JSON 키 | snake_case | `"leadership_stat"` |
+| 대상                   | 규칙                 | 예                                                |
+| ---------------------- | -------------------- | ------------------------------------------------- |
+| 클래스/메서드/프로퍼티 | PascalCase           | `BattleResolver`                                  |
+| private 필드           | `_camelCase`         | `_currentTurn`                                    |
+| 상수                   | PascalCase           | `MaxTroopCount`                                   |
+| 테스트 메서드          | `대상_조건_기대결과` | `Resolve_방어측이산지에있으면_방어보정이적용된다` |
+| JSON 키                | snake_case           | `"leadership_stat"`                               |
 
 ---
 
@@ -122,32 +122,32 @@ dotnet test
 
 코드에서는 영어를 쓰되 아래 대응을 지킨다. UI 문자열과 주석은 한국어를 쓴다.
 
-| 한국어 | 코드 식별자 |
-|---|---|
-| 무장 | `General` |
-| 세력 | `Faction` |
-| 군주 | `Ruler` |
-| 도시 | `City` |
-| 부대 | `Unit` |
-| 병종 | `TroopType` |
-| 특기 | `Skill` |
-| 내정 | `Administration` |
+| 한국어                                 | 코드 식별자                                                       |
+| -------------------------------------- | ----------------------------------------------------------------- |
+| 무장                                   | `General`                                                         |
+| 세력                                   | `Faction`                                                         |
+| 군주                                   | `Ruler`                                                           |
+| 도시                                   | `City`                                                            |
+| 부대                                   | `Unit`                                                            |
+| 병종                                   | `TroopType`                                                       |
+| 특기                                   | `Skill`                                                           |
+| 내정                                   | `Administration`                                                  |
 | 병종별 통솔(적성) / 무력 / 지력 / 정치 | `Aptitudes`(`AptitudeGrade`) / `Might` / `Intellect` / `Politics` |
-| 선봉 / 부관 | `Vanguard` / `Adjutant` |
-| 병력 | `Troops` |
-| 군량 | `Provisions` |
-| 자금 | `Gold` |
-| 충성도 | `Loyalty` |
-| 계략 | `Stratagem` |
-| 턴 / 개월 | `Turn` / `Month` |
-| 헥사 좌표 | `HexCoord` |
+| 선봉 / 부관                            | `Vanguard` / `Adjutant`                                           |
+| 병력                                   | `Troops`                                                          |
+| 군량                                   | `Provisions`                                                      |
+| 자금                                   | `Gold`                                                            |
+| 충성도                                 | `Loyalty`                                                         |
+| 계략                                   | `Stratagem`                                                       |
+| 턴 / 개월                              | `Turn` / `Month`                                                  |
+| 헥사 좌표                              | `HexCoord`                                                        |
 
 ## 헥사 그리드 규약
 
 - **flat-top 육각형**, **axial 좌표계**(`q`, `r`) 사용. offset 좌표계와 섞지 않는다
 - `HexCoord`는 Core에 정의된 `readonly record struct`
 - 화면 좌표 변환은 Game 프로젝트에서만 수행한다. Core는 화면 픽셀을 모른다
-- 길찾기는 Core에 자체 A* 구현. Godot의 `AStarGrid2D`는 Core에서 사용 불가
+- 길찾기는 Core에 자체 A\* 구현. Godot의 `AStarGrid2D`는 Core에서 사용 불가
 
 ---
 
@@ -159,29 +159,29 @@ dotnet test
 명명 규칙: `design-*` = 설계 논의·확정 규칙, `spec-*` = 확정 사양 + 구현 현황,
 `plan-*` = 단계별 계획(이력), `test/*` = GUI·통합 검증 케이스 정의.
 
-| 문서 | 이럴 때 참고 |
-|---|---|
-| [ai-working-notes.md](doc/ai-working-notes.md) | **AI 작업 방식(상시 규칙)·검증 함정·머신 의존 경로** — 새 세션/새 환경에서 작업 시작 전 필독 |
-| [plan-roadmap.md](doc/plan-roadmap.md) | **전체 현황·단계 계획(살아있는 문서)** — 다음 작업은 항상 여기서 확인, 단계 완료 시 갱신 |
-| [design-movement.md](doc/design-movement.md) | 이동·탐지·추격·정지·우회·성 입성/출격·지형 이동 패널티 |
-| [design-combat.md](doc/design-combat.md) | 피해 공식·병종 공/방·지형 전투 보정·성 전투(성벽/붕괴/반격/함락) |
-| [design-stratagem.md](doc/design-stratagem.md) | 계략 11종 수치·시전 사거리·지속 상태·정화 |
-| [design-skill.md](doc/design-skill.md) + skill-actives/passives | 특기 체계, 액티브 게이지·발동, 패시브 버킷 |
-| [design-skill-admin.md](doc/design-skill-admin.md) | 내정 스킬 13종(상재·둔전·진무 등) — 효과 배선은 내정 구현과 함께 |
-| [design-general-lifecycle.md](doc/design-general-lifecycle.md) | 장수 충성도(숨김·급여·배신)·포로·함락 시 장수 처리·정찰·등용·외교(포로교환)·세력 소멸 |
-| [design-unit-state.md](doc/design-unit-state.md) | 훈련도·군량·보급부대·병력보충(사기·패주는 2026-08-21 폐지) — 남은 ❓는 문서 끝 "미확정 질문 요약" |
-| [design-administration.md](doc/design-administration.md) | 내정 — 도시 속성·시간 축·수입·명령·세율·시설·약탈 규칙·출전/입성/함락 훅 |
-| [design-terrain.md](doc/design-terrain.md) | 지형 종류·타일 배치 |
-| [design-effect.md](doc/design-effect.md) | 시각 효과 계획(구현 O/X 표 포함) |
-| [design-ui.md](doc/design-ui.md) | 게임 UI 상호작용 5건 — 현황은 문서 상단 요약(구현/부분/미구현) 참조 |
-| [design-water.md](doc/design-water.md) | 소하천/대하 표현 |
-| [spec-unit.md](doc/spec-unit.md) | 병종 11종 확정 스탯·모델·이동/사거리 데이터 |
-| [spec-general.md](doc/spec-general.md) | 무장 스탯·특기 슬롯 사양 |
-| [spec-city.md](doc/spec-city.md) | 도시 속성 스키마·성곽 등급·도시 흐름 구현 현황 |
-| [asset-icon-generation.md](doc/asset-icon-generation.md) | Fooocus 아이콘 생성 — UI 설정·프롬프트 템플릿·SUBJECT 표·진행 현황 |
-| [asset-general-portraits.md](doc/asset-general-portraits.md) | 장수 초상 계획 — Image Prompt로 화풍 고정·속성 매핑·배선 계획 |
-| [test/movement-cases.md](doc/test/movement-cases.md) | 이동 검증 케이스 1~8 정의·구현 현황 |
-| [test/combat-movement-cases.md](doc/test/combat-movement-cases.md) | 이동→전투 통합 케이스·공성 하베스트 케이스 |
+| 문서                                                               | 이럴 때 참고                                                                                      |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| [ai-working-notes.md](doc/ai-working-notes.md)                     | **AI 작업 방식(상시 규칙)·검증 함정·머신 의존 경로** — 새 세션/새 환경에서 작업 시작 전 필독      |
+| [plan-roadmap.md](doc/plan-roadmap.md)                             | **전체 현황·단계 계획(살아있는 문서)** — 다음 작업은 항상 여기서 확인, 단계 완료 시 갱신          |
+| [design-movement.md](doc/design-movement.md)                       | 이동·탐지·추격·정지·우회·성 입성/출격·지형 이동 패널티                                            |
+| [design-combat.md](doc/design-combat.md)                           | 피해 공식·병종 공/방·지형 전투 보정·성 전투(성벽/붕괴/반격/함락)                                  |
+| [design-stratagem.md](doc/design-stratagem.md)                     | 계략 11종 수치·시전 사거리·지속 상태·정화                                                         |
+| [design-skill.md](doc/design-skill.md) + skill-actives/passives    | 특기 체계, 액티브 게이지·발동, 패시브 버킷                                                        |
+| [design-skill-admin.md](doc/design-skill-admin.md)                 | 내정 스킬 13종(상재·둔전·진무 등) — 효과 배선은 내정 구현과 함께                                  |
+| [design-general-lifecycle.md](doc/design-general-lifecycle.md)     | 장수 충성도(숨김·급여·배신)·포로·함락 시 장수 처리·정찰·등용·외교(포로교환)·세력 소멸             |
+| [design-unit-state.md](doc/design-unit-state.md)                   | 훈련도·군량·보급부대·병력보충(사기·패주는 2026-08-21 폐지) — 남은 ❓는 문서 끝 "미확정 질문 요약" |
+| [design-administration.md](doc/design-administration.md)           | 내정 — 도시 속성·시간 축·수입·명령·세율·시설·약탈 규칙·출전/입성/함락 훅                          |
+| [design-terrain.md](doc/design-terrain.md)                         | 지형 종류·타일 배치                                                                               |
+| [design-effect.md](doc/design-effect.md)                           | 시각 효과 계획(구현 O/X 표 포함)                                                                  |
+| [design-ui.md](doc/design-ui.md)                                   | 게임 UI 상호작용 5건 — 현황은 문서 상단 요약(구현/부분/미구현) 참조                               |
+| [design-water.md](doc/design-water.md)                             | 소하천/대하 표현                                                                                  |
+| [spec-unit.md](doc/spec-unit.md)                                   | 병종 11종 확정 스탯·모델·이동/사거리 데이터                                                       |
+| [spec-general.md](doc/spec-general.md)                             | 무장 스탯·특기 슬롯 사양                                                                          |
+| [spec-city.md](doc/spec-city.md)                                   | 도시 속성 스키마·성곽 등급·도시 흐름 구현 현황                                                    |
+| [asset-icon-generation.md](doc/asset-icon-generation.md)           | Fooocus 아이콘 생성 — UI 설정·프롬프트 템플릿·SUBJECT 표·진행 현황                                |
+| [asset-general-portraits.md](doc/asset-general-portraits.md)       | 장수 초상 계획 — Image Prompt로 화풍 고정·속성 매핑·배선 계획                                     |
+| [test/movement-cases.md](doc/test/movement-cases.md)               | 이동 검증 케이스 1~8 정의·구현 현황                                                               |
+| [test/combat-movement-cases.md](doc/test/combat-movement-cases.md) | 이동→전투 통합 케이스·공성 하베스트 케이스                                                        |
 
 ---
 
