@@ -3185,20 +3185,20 @@ public sealed partial class CampaignMapScene : Node3D
         var advisorRow = new HBoxContainer();
         advisorRow.AddThemeConstantOverride("separation", 10);
         box.AddChild(advisorRow);
-        var facePanel = new PanelContainer { CustomMinimumSize = new Vector2(72, 72) };
-        facePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.05f), Gold, 1, 6, 3));
+        var facePanel = new PanelContainer { CustomMinimumSize = new Vector2(128, 128) };
+        facePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.05f), Gold, 2, 8, 4));
         advisorRow.AddChild(facePanel);
         if (strat is not null && PortraitFor(strat.Id) is { } tex)
         {
             facePanel.AddChild(new TextureRect
             {
                 Texture = tex, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, CustomMinimumSize = new Vector2(66, 66),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, CustomMinimumSize = new Vector2(120, 120),
             });
         }
         else
         {
-            var mark = MakeLabel("◈", 34, new Color(Gold, 0.45f));
+            var mark = MakeLabel("◈", 60, new Color(Gold, 0.45f));
             mark.HorizontalAlignment = HorizontalAlignment.Center;
             mark.VerticalAlignment = VerticalAlignment.Center;
             facePanel.AddChild(mark);
@@ -3224,10 +3224,16 @@ public sealed partial class CampaignMapScene : Node3D
 
         box.AddChild(GoldRule());
         box.AddChild(MakeLabel($"수행: {recruiter.Name} (정치 {recruiter.Politics})  →  대상: {target.Name}", 13, Parchment));
-        var warn = MakeLabel("실패 시, 대상이 충신이면 수행 장수가 붙잡힐 수 있습니다.", 12, new Color(Parchment, 0.8f));
-        warn.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        warn.CustomMinimumSize = new Vector2(mw - 40, 0);
-        box.AddChild(warn);
+
+        // 포로는 적지가 아니라 실패해도 수행 장수가 잡히지 않는다 — 그 경고는 포로일 때 숨긴다.
+        var isPrisoner = _commander.EnlistTargetKind(_state, city, targetId, out _) == CommandService.EnlistKind.Prisoner;
+        if (!isPrisoner)
+        {
+            var warn = MakeLabel("실패 시, 대상이 충신이면 수행 장수가 붙잡힐 수 있습니다.", 12, new Color(Parchment, 0.8f));
+            warn.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            warn.CustomMinimumSize = new Vector2(mw - 40, 0);
+            box.AddChild(warn);
+        }
 
         var btnRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         btnRow.AddThemeConstantOverride("separation", 12);
