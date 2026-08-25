@@ -623,6 +623,16 @@ public sealed class MovementSimulator
 
     private static AdvanceResult Finish(
         List<MovementTick> ticks, List<Working> work, StopReason reason, int days, List<UnitId> entered) =>
-        new(ticks, work.OrderBy(w => w.Unit.Id.Value).Select(w => w.Unit).ToList(), reason, days,
+        new(ticks, work.OrderBy(w => w.Unit.Id.Value).Select(TrimWaypoints).ToList(), reason, days,
             entered.OrderBy(id => id.Value).ToList());
+
+    // 소비한 경유지를 결과 부대에서 잘라낸다 — 안 그러면 다음 진행에 경로를 처음부터 다시 밟아 되돌아간다.
+    // 남은 경유지 = 현재 구간 목표부터 최종 목표 직전까지(최종 목표는 Target으로 유지).
+    private static FieldUnit TrimWaypoints(Working w)
+    {
+        if (w.Unit.Waypoints is null or { Count: 0 }) { return w.Unit; }
+        var remainingCount = System.Math.Max(0, w.Goals.Count - 1 - w.GoalIdx);
+        var remaining = w.Goals.Skip(w.GoalIdx).Take(remainingCount).ToList();
+        return w.Unit with { Waypoints = remaining.Count > 0 ? remaining : null };
+    }
 }

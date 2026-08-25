@@ -54,6 +54,22 @@ public class MovementSimulatorTests
     }
 
     [Fact]
+    public void 경유지_도착_후_다음_진행에_되돌아가지_않는다()
+    {
+        var wps = new[] { new HexCoord(0, 3) };
+        var a = new FieldUnit(new UnitId(1), new FactionId(1), new HexCoord(0, 0), 2, 2, 1,
+            MovementDomain.Land, UnitMode.March, new HexCoord(6, 0), 0, 1, wps);
+
+        var u1 = PlainField().Advance(new[] { a }, maxDays: 7).Units.Single();
+        Assert.Equal(new HexCoord(6, 0), u1.Position);                 // 최종 목표 도착
+        Assert.True(u1.Waypoints is null or { Count: 0 });             // 소비한 경유지 제거
+
+        // 다음 진행: 목표에 서서 되돌아가지 않는다(첫 경유지로 회귀 버그 방지).
+        var u2 = PlainField().Advance(new[] { u1 }, maxDays: 7).Units.Single();
+        Assert.Equal(new HexCoord(6, 0), u2.Position);
+    }
+
+    [Fact]
     public void 경유지_없으면_기존_단일목표와_동일하게_직선이동한다()
     {
         var a = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.March, target: new HexCoord(6, 0));
