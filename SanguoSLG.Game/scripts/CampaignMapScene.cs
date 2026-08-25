@@ -1494,8 +1494,10 @@ public sealed partial class CampaignMapScene : Node3D
         // 예약된 포상을 진행 시작에 수행(취소되지 않은 것만). 금 부족이면 Reward가 실패 반환 → 건너뜀.
         foreach (var (rc, tg, label) in _pendingRewards)
         {
+            var loyBefore = _state.LoyaltyOf(tg); // 검증용: 충성 변화(숨김 수치라 dev 로그로만)
             var rr = _commander.Reward(_state, rc, tg);
-            Dbg($"  reward '{label}': ok={rr.Ok} err={rr.Error ?? "-"}");
+            var loyAfter = rr.Ok ? rr.State.LoyaltyOf(tg) : loyBefore;
+            Dbg($"  reward '{label}': ok={rr.Ok} loyalty {loyBefore}->{loyAfter} (+{loyAfter - loyBefore}) err={rr.Error ?? "-"}");
             if (rr.Ok) { _state = rr.State; deployNote.Add(label); }
             else { deployNote.Add($"포상실패({rr.Error})"); }
         }
