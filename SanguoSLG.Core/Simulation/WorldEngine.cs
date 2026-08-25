@@ -390,19 +390,21 @@ public sealed class WorldEngine
                 SetPosting(postings, targetId, faction, casterCity.Id); // 장수만 수행 도시 주둔
             }
 
+            _events.Add(new WorldEvent(WorldEventKind.EnlistSuccess, faction, targetId, casterCity.Id));
             return;
         }
 
         // 실패: 적지(성/출전중)의 충성 ≥90 대상은 50% 확률로 수행 장수를 포로로 잡는다.
-        if (prisoner is null && target.Loyalty >= 90)
+        if (prisoner is null && target.Loyalty >= 90 && _random.Next(0, 100) < 50)
         {
             var captor = army?.Field.Owner ?? cityPosting!.Faction;
-            if (_random.Next(0, 100) < 50)
-            {
-                prisoners.Add(new Domain.Prisoner(cmd.Main, captor, faction));
-                postings.RemoveAll(p => p.General == cmd.Main);
-            }
+            prisoners.Add(new Domain.Prisoner(cmd.Main, captor, faction));
+            postings.RemoveAll(p => p.General == cmd.Main);
+            _events.Add(new WorldEvent(WorldEventKind.EnlistCaptured, faction, cmd.Main, casterCity.Id));
+            return;
         }
+
+        _events.Add(new WorldEvent(WorldEventKind.EnlistFail, faction, targetId, casterCity.Id));
     }
 
     private static void SetPosting(List<Domain.GeneralPosting> postings, Domain.GeneralId g,

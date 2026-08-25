@@ -13,6 +13,9 @@ public enum WorldEventKind
     Repair,     // 수리 완료
     Discord,    // 이간당함(충성 하락)
     Betray,     // 배신·재야화
+    EnlistSuccess,  // 등용 성공(대상 합류)
+    EnlistFail,     // 등용 실패
+    EnlistCaptured, // 등용 실패 + 수행 장수 포로
 }
 
 /// <summary>

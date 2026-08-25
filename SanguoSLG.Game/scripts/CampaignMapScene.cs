@@ -1586,6 +1586,9 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.Repair => ($"[내정] {cName} 수리를 마쳤습니다.", Parchment),
                 WorldEventKind.Discord => ($"[내정] 적의 이간으로 {gName} 장수의 충성이 흔들렸습니다.", AccentFill),
                 WorldEventKind.Betray => ($"[인사] {gName} 장수가 세력을 등지고 떠났습니다.", AccentFill),
+                WorldEventKind.EnlistSuccess => ($"[인사] 등용 성공! {gName} 장수가 우리 세력에 합류했습니다.", GoldBright),
+                WorldEventKind.EnlistFail => ($"[인사] {gName} 장수 등용에 실패했습니다.", Parchment),
+                WorldEventKind.EnlistCaptured => ($"[인사] 등용 실패 — {gName} 장수가 적에게 붙잡혔습니다.", AccentFill),
                 _ => ("", Parchment),
             };
             if (text.Length > 0) { Ev(text, col); }
