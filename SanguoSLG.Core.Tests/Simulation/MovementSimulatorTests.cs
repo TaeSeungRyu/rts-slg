@@ -108,6 +108,76 @@ public class MovementSimulatorTests
         Assert.Equal(m1.Position, m2.Position);         // 다시 진행해도 제자리 — 왕복 없음
     }
 
+    // 위치 집합을 문자열 키로(결정론·수렴 판정용). id 오름차순.
+    private static string Key(IEnumerable<FieldUnit> units) =>
+        string.Join("|", units.OrderBy(u => u.Id.Value).Select(u => $"{u.Id.Value}:{u.Position.Q},{u.Position.R}"));
+
+    // 진행을 반복해 위치가 연속 2주 동일하면 '수렴'. period>1로 반복되면 수렴 실패(진동).
+    private static (bool Converged, List<FieldUnit> Final, int Iter) RunToStable(
+        MovementSimulator sim, IReadOnlyList<FieldUnit> start, int maxWeeks = 25)
+    {
+        var units = start.ToList();
+        var prev = Key(units);
+        for (var i = 1; i <= maxWeeks; i++)
+        {
+            units = sim.Advance(units, maxDays: 7).Units.ToList();
+            var key = Key(units);
+            if (key == prev) { return (true, units, i); }
+            prev = key;
+        }
+
+        return (false, units, maxWeeks);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void N개_부대가_같은_목표면_무한왕복없이_안정배치로_수렴한다(int n)
+    {
+        // 2~5부대에 같은 목표를 지정 — 먼저 도착한 하나가 목표를 점유하고 나머지는 인접권에
+        // 서로 다른 칸으로 정지, 무한 왕복 없이 안정 배치로 수렴해야 한다.
+        var target = new HexCoord(10, 0);
+        var starts = new[] { 0, 2, -2, 4, -4 };
+        var units = Enumerable.Range(0, n)
+            .Select(i => Unit(i + 1, owner: 1, new HexCoord(0, starts[i]), UnitMode.March, target: target))
+            .ToArray();
+
+        var (converged, final, iter) = RunToStable(PlainField(), units);
+
+        Assert.True(converged, $"{n}부대 수렴 실패(진동) — {iter}주 내 안정 배치 없음");
+        Assert.Equal(n, final.Select(u => u.Position).Distinct().Count());     // 한 칸에 겹치지 않음
+        Assert.Contains(final, u => u.Position == target);                     // 하나는 목표 점유
+        Assert.All(final, u => Assert.True(u.Position.Distance(target) <= 1,   // 나머지는 목표 인접권
+            $"부대 u{u.Id.Value}가 목표에서 {u.Position.Distance(target)}칸 떨어져 정지"));
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void 아군과_적군이_같은_목표로_수렴하면_교전정지로_끝나고_결정론적이다(int n)
+    {
+        // 아군 n부대(공격)와 적 n부대가 같은 중앙 칸을 목표로 마주 접근 — 서로 만나 교전/사거리
+        // 정지로 끝나야 하고(무한 진행 아님), 같은 입력이면 같은 결과(결정론)여야 한다.
+        var center = new HexCoord(10, 0);
+        var offs = new[] { 0, 2, -2 };
+        var allies = Enumerable.Range(0, n).Select(i =>
+            Unit(i + 1, owner: 1, new HexCoord(0, offs[i]), UnitMode.Attack, target: center, detection: 3)).ToList();
+        var foes = Enumerable.Range(0, n).Select(i =>
+            Unit(100 + i, owner: 2, new HexCoord(20, offs[i]), UnitMode.Attack, target: center, detection: 3)).ToList();
+        var start = allies.Concat(foes).ToList();
+
+        var r1 = PlainField().Advance(start, maxDays: 7);
+        var r2 = PlainField().Advance(start, maxDays: 7);
+
+        Assert.Equal(Key(r1.Units), Key(r2.Units));                            // 결정론
+        Assert.Contains(r1.Reason, new[] { StopReason.Engaged, StopReason.EnemyInRange });
+        // 같은 세력끼리는 한 칸에 겹치지 않는다.
+        Assert.Equal(r1.Units.Count(u => u.Owner.Value == 1),
+            r1.Units.Where(u => u.Owner.Value == 1).Select(u => u.Position).Distinct().Count());
+    }
+
     [Fact]
     public void 경유지_없으면_기존_단일목표와_동일하게_직선이동한다()
     {
