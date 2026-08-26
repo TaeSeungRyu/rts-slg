@@ -63,6 +63,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 진행 애니메이션(4초=하루, 1초=한 칸, 7일=28초). StepSeconds를 키우면 이동이 느려진다.
     private const double DaySeconds = 4.0;
     private const double StepSeconds = 1.0;
+    private const double MoveSeconds = 3.0; // 하루 4초 중 이동 몫(나머지 1초 = 공격)
     private const int AnimDays = 7;
     private bool _advancing;
     private double _animT;
@@ -1627,7 +1628,7 @@ public sealed partial class CampaignMapScene : Node3D
         _dayLabel.Visible = true;
         _dayTurnLabel.Visible = true;
         _dayLabel.Text = "1일차";
-        _dayTurnLabel.Text = _dayKind[1] == "공격" ? "⚔ 공격턴" : "▷ 이동턴";
+        _dayTurnLabel.Text = "▷ 이동턴"; // 재생 시작(0초)은 항상 이동
     }
 
     // 진행 결과의 이동 틱을 "언제 어느 칸으로" 스텝 목록으로 편다. 한 칸 = 1초, 하루 = 4초 슬롯
@@ -2461,9 +2462,11 @@ public sealed partial class CampaignMapScene : Node3D
 
             var day = System.Math.Min(AnimDays, (int)(_animT / DaySeconds) + 1);
             _dayLabel.Text = $"{day}일차";
-            var kind = _dayKind[day];
-            _dayTurnLabel.Text = kind == "공격" ? "⚔ 공격턴" : "▷ 이동턴";
-            _dayTurnLabel.AddThemeColorOverride("font_color", kind == "공격" ? new Color(0.98f, 0.62f, 0.42f) : new Color(0.6f, 0.85f, 0.7f));
+            // 하루 4초 = 이동 3초 + 공격 1초. 공격 있는 날도 3초까지는 '이동턴', 그 뒤 1초만 '공격턴'.
+            var dayElapsed = _animT - (day - 1) * DaySeconds;
+            var attacking = _dayKind[day] == "공격" && dayElapsed >= MoveSeconds;
+            _dayTurnLabel.Text = attacking ? "⚔ 공격턴" : "▷ 이동턴";
+            _dayTurnLabel.AddThemeColorOverride("font_color", attacking ? new Color(0.98f, 0.62f, 0.42f) : new Color(0.6f, 0.85f, 0.7f));
             _advanceBtn.Progress = (float)(_animT / (AnimDays * DaySeconds));
 
             if (_animT >= AnimDays * DaySeconds) { FinishAdvance(); }
