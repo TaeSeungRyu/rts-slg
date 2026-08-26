@@ -53,8 +53,9 @@ public sealed partial class CampaignMapScene : Node3D
     private TextureRect _hudFace = null!;
     private PanelContainer _hudFacePanel = null!;
     private PanelContainer _reportPanel = null!;   // 좌하단 보고(삼국지11 오마주 결과창)
+    private ScrollContainer _reportScroll = null!; // 보고 내용 스크롤(이전 내용 열람)
     private VBoxContainer _reportBox = null!;
-    private const int ReportMax = 8;               // 좌하단에 보이는 최근 줄 수
+    private const int ReportBoxMax = 80;           // 좌하단 스크롤 박스에 유지하는 최근 줄 수(전체는 [전체] 모달)
     private const int ReportHistoryMax = 300;      // 전체 로그 보관 상한(오래된 것부터 버림)
     private readonly List<(string Text, Color Color)> _pendingReport = new(); // 이번 진행 결과(재생 끝나면 flush)
     private readonly List<(string Text, Color Color)> _reportHistory = new(); // 전체 로그(스크롤 열람용)
@@ -5470,12 +5471,15 @@ public sealed partial class CampaignMapScene : Node3D
         var layer = new CanvasLayer();
         AddChild(layer);
 
+        // 좌하단 고정 크기 패널 — 내용이 늘어도 패널 자체는 커지지 않는다(리사이즈로 위치가 튀던 문제
+        // 방지). 이전 내용은 내부 ScrollContainer로 스크롤해서 본다.
+        const float panelW = 340f, panelH = 200f;
         _reportPanel = new PanelContainer { Visible = false };
         _reportPanel.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.94f), Gold, 2, 8, 9));
+        _reportPanel.AnchorLeft = 0f; _reportPanel.AnchorRight = 0f;
         _reportPanel.AnchorTop = 1f; _reportPanel.AnchorBottom = 1f;
-        _reportPanel.GrowVertical = Control.GrowDirection.Begin; // 바닥에서 위로 자란다
-        _reportPanel.OffsetLeft = 12f; _reportPanel.OffsetBottom = -12f;
-        _reportPanel.CustomMinimumSize = new Vector2(320, 0);
+        _reportPanel.OffsetLeft = 12f; _reportPanel.OffsetRight = 12f + panelW;
+        _reportPanel.OffsetTop = -(panelH + 12f); _reportPanel.OffsetBottom = -12f;
         layer.AddChild(_reportPanel);
 
         var v = new VBoxContainer();
@@ -5495,9 +5499,17 @@ public sealed partial class CampaignMapScene : Node3D
         headRow.AddChild(full);
 
         v.AddChild(GoldRule());
+
+        _reportScroll = new ScrollContainer();
+        _reportScroll.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        _reportScroll.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        _reportScroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
+        v.AddChild(_reportScroll);
+
         _reportBox = new VBoxContainer();
         _reportBox.AddThemeConstantOverride("separation", 1);
-        v.AddChild(_reportBox);
+        _reportBox.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        _reportScroll.AddChild(_reportBox);
     }
 
     // 보고 한 줄 추가 — 전체 히스토리(캡 300)에 쌓고, 좌하단엔 최근 ReportMax줄만 보인다. color로 사건 성격 구분.
@@ -5512,7 +5524,7 @@ public sealed partial class CampaignMapScene : Node3D
         l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         l.CustomMinimumSize = new Vector2(300, 0);
         _reportBox.AddChild(l);
-        while (_reportBox.GetChildCount() > ReportMax)
+        while (_reportBox.GetChildCount() > ReportBoxMax)
         {
             var old = _reportBox.GetChild(0);
             _reportBox.RemoveChild(old);
@@ -5520,6 +5532,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _reportPanel.Visible = true;
+        // 새 줄이 추가되면 맨 아래(최신)로 스크롤 — 레이아웃이 갱신된 뒤 실행한다.
+        _reportScroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, l);
     }
 
     // 전체 로그 열람(스크롤) — 보고 패널의 "전체" 버튼. 최근이 아래, 오래된 것 위.
