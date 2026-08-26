@@ -98,6 +98,8 @@ public sealed partial class CampaignMapScene : Node3D
     private string _pendingNote = "";
     private AdvanceButton _advanceBtn = null!;
     private Label _dayLabel = null!;
+    private Label _dayTurnLabel = null!;               // N일차 아래 "이동턴/공격턴"
+    private readonly string[] _dayKind = new string[AnimDays + 1]; // 1..AnimDays: "이동"/"공격"
 
     // 명령 UX(성 클릭 → 정보 카드 + 명령 목록 → 파라미터·장수 목록 → 컨펌).
     private CityId? _selected;
@@ -1623,7 +1625,9 @@ public sealed partial class CampaignMapScene : Node3D
         _advanceBtn.Busy = true;
         _advanceBtn.Progress = 0f;
         _dayLabel.Visible = true;
+        _dayTurnLabel.Visible = true;
         _dayLabel.Text = "1일차";
+        _dayTurnLabel.Text = _dayKind[1] == "공격" ? "⚔ 공격턴" : "▷ 이동턴";
     }
 
     // 진행 결과의 이동 틱을 "언제 어느 칸으로" 스텝 목록으로 편다. 한 칸 = 1초, 하루 = 4초 슬롯
@@ -1638,6 +1642,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animDmg.Clear();
         _animSiegeDmg.Clear();
         _animArrows.Clear();
+        for (var d = 0; d <= AnimDays; d++) { _dayKind[d] = "이동"; } // 기본 이동턴, 아래서 교전·공성 있는 날만 공격턴
         var alive = new HashSet<int>(startHex.Keys);
         var prev = new Dictionary<int, HexCoord>(startHex);
         var movesInDay = new Dictionary<(int, int), int>();
@@ -1663,6 +1668,12 @@ public sealed partial class CampaignMapScene : Node3D
             var stopDay = dayOffset + System.Math.Max(1, turn.Movement.Days);
             var atkTime = ((stopDay - 1) * DaySeconds) + 3.15; // 그날 이동(≤3초)이 끝난 뒤
             ScheduleAttackMotions(turn, atkTime);
+
+            // 그 턴에 교전/공성이 있었으면 정지일(stopDay)을 '공격턴'으로 표기.
+            if (stopDay >= 1 && stopDay <= AnimDays && (turn.Combat is not null || sieges.Any(s => s.TurnIndex == ti)))
+            {
+                _dayKind[stopDay] = "공격";
+            }
 
             // 교전 피해 팝업 — 양측 모두, 공격 모션 직후에 뜬다.
             if (turn.Combat is { } cbt)
@@ -1807,6 +1818,7 @@ public sealed partial class CampaignMapScene : Node3D
         _advanceBtn.Busy = false;
         _advanceBtn.Progress = 0f;
         _dayLabel.Visible = false;
+        _dayTurnLabel.Visible = false;
 
         _state = _pendingState;
         Redraw(_pendingNote);
@@ -2449,6 +2461,9 @@ public sealed partial class CampaignMapScene : Node3D
 
             var day = System.Math.Min(AnimDays, (int)(_animT / DaySeconds) + 1);
             _dayLabel.Text = $"{day}일차";
+            var kind = _dayKind[day];
+            _dayTurnLabel.Text = kind == "공격" ? "⚔ 공격턴" : "▷ 이동턴";
+            _dayTurnLabel.AddThemeColorOverride("font_color", kind == "공격" ? new Color(0.98f, 0.62f, 0.42f) : new Color(0.6f, 0.85f, 0.7f));
             _advanceBtn.Progress = (float)(_animT / (AnimDays * DaySeconds));
 
             if (_animT >= AnimDays * DaySeconds) { FinishAdvance(); }
@@ -5555,11 +5570,21 @@ public sealed partial class CampaignMapScene : Node3D
         vb.OffsetLeft = -16f; vb.OffsetTop = -16f; vb.OffsetRight = -16f; vb.OffsetBottom = -16f;
         layer.AddChild(vb);
 
-        _dayLabel = MakeLabel("", 20, GoldBright);
+        _dayLabel = MakeLabel("", 24, GoldBright);
         _dayLabel.HorizontalAlignment = HorizontalAlignment.Center;
         _dayLabel.CustomMinimumSize = new Vector2(100, 0);
+        _dayLabel.AddThemeConstantOverride("outline_size", 6); // 배경 대비 — 어두운 외곽선
+        _dayLabel.AddThemeColorOverride("font_outline_color", new Color(0.05f, 0.03f, 0.02f, 0.95f));
         _dayLabel.Visible = false;
         vb.AddChild(_dayLabel);
+
+        _dayTurnLabel = MakeLabel("", 15, Parchment);
+        _dayTurnLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _dayTurnLabel.CustomMinimumSize = new Vector2(100, 0);
+        _dayTurnLabel.AddThemeConstantOverride("outline_size", 5);
+        _dayTurnLabel.AddThemeColorOverride("font_outline_color", new Color(0.05f, 0.03f, 0.02f, 0.95f));
+        _dayTurnLabel.Visible = false;
+        vb.AddChild(_dayTurnLabel);
 
         // 이미지는 교체 가능 — res://assets/icons/icon_advance.png 파일만 바꾸면 됨(없으면 ▶ 폴백).
         _advanceBtn = new AdvanceButton
