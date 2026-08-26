@@ -1602,6 +1602,15 @@ public sealed partial class CampaignMapScene : Node3D
         // 열려 있던 성 명령 팔레트·정보 카드는 자동으로 닫는다(진행 중 명령 불가).
         HidePanels();
         Redraw(_pendingNote);
+
+        // 진행(재생) 동안 아군 부대의 이동 경로를 표시한다(재생이 끝나면 FinishAdvance의 Redraw가 지운다).
+        ClearPathMarkers();
+        foreach (var u in preMove.Armies.Where(u => u.Field.Owner == Player
+            && u.Field.Target is { } t && t != u.Field.Position))
+        {
+            AddRouteDots(u.Field.Position, u.Field.Waypoints, u.Field.Target!.Value, _pathMarkers);
+        }
+
         _advancing = true;
         _animT = 0;
         _animStepIdx = 0;
