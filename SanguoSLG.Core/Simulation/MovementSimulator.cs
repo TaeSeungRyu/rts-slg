@@ -495,12 +495,18 @@ public sealed class MovementSimulator
             }
         }
 
-        // ② 측면 우회 — 같은 거리의 빈 칸(직전 칸으로 되돌아가지 않는다)
-        foreach (var n in here.Neighbors())
+        // ② 측면 우회 — 같은 거리의 빈 칸(직전 칸으로 되돌아가지 않는다).
+        // 단, 막힌 칸이 최종 목표 자체(next==g, 즉 목표에 인접)면 우회하지 않는다 — 목표를 아군이
+        // 점유 중이면 목표 둘레를 도는 무한 왕복이 생긴다(턴 경계마다 LastPos가 리셋돼 진동 방지가
+        // 무력화됨). 그럴 땐 원래 칸을 반환해 인접에서 대기시킨다.
+        if (next != g)
         {
-            if (!occupied.Contains(n) && n.Distance(g) == hereDist && n != w.LastPos && _passability.CanEnter(w.Unit.Domain, n))
+            foreach (var n in here.Neighbors())
             {
-                return n;
+                if (!occupied.Contains(n) && n.Distance(g) == hereDist && n != w.LastPos && _passability.CanEnter(w.Unit.Domain, n))
+                {
+                    return n;
+                }
             }
         }
 

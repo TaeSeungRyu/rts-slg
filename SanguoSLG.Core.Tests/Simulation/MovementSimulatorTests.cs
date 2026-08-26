@@ -85,6 +85,30 @@ public class MovementSimulatorTests
     }
 
     [Fact]
+    public void 두_부대가_같은_목표칸이면_뒤_부대는_인접에서_멈추고_왕복하지_않는다()
+    {
+        // 목표 칸을 아군이 영구 점유하면(같은 목표를 두 부대에 지정), 뒤 부대가 그 둘레를 도는
+        // 무한 왕복이 생겼다(로그: (-2,-1)↔(-1,-2) 진동). 턴 경계마다 LastPos가 리셋돼 진동 방지가
+        // 무력화되던 문제 — 막힌 칸이 최종 목표면 우회하지 않고 인접에서 대기해야 한다.
+        var target = new HexCoord(3, 0);
+        var occupier = Unit(1, owner: 1, target, UnitMode.March, target: target); // 이미 목표에 서 있음
+        var mover = Unit(2, owner: 1, new HexCoord(0, 0), UnitMode.March, target: target);
+
+        var sim = PlainField();
+        var r1 = sim.Advance(new[] { occupier, mover }, maxDays: 7);
+        var o1 = r1.Units.Single(u => u.Id.Value == 1);
+        var m1 = r1.Units.Single(u => u.Id.Value == 2);
+
+        Assert.Equal(target, o1.Position);              // 점유 부대는 목표 유지
+        Assert.NotEqual(target, m1.Position);           // 뒤 부대는 목표에 못 들어감
+        Assert.Equal(1, m1.Position.Distance(target));  // 목표 인접에서 정지
+
+        var r2 = sim.Advance(new[] { o1, m1 }, maxDays: 7);
+        var m2 = r2.Units.Single(u => u.Id.Value == 2);
+        Assert.Equal(m1.Position, m2.Position);         // 다시 진행해도 제자리 — 왕복 없음
+    }
+
+    [Fact]
     public void 경유지_없으면_기존_단일목표와_동일하게_직선이동한다()
     {
         var a = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.March, target: new HexCoord(6, 0));
