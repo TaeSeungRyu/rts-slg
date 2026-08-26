@@ -156,6 +156,11 @@ public partial class UnitController3D : Node3D
     private float _marchTime;
     private Vector3 _lastPosition;
 
+    // 현재 이동 칸의 진행 방향(yaw). 매 프레임 moved 델타가 아니라 스텝 시작 시 고정한 값을
+    // 향해 돌린다 — Sine 이징의 시작/끝(속도≈0) 구간이나 트윈 간섭에도 방향이 풀리지 않는다.
+    private float _stepYaw;
+    private bool _hasStepYaw;
+
     /// <summary>돌격 중 전진·후퇴 구간 — 이동이 아니어도 다리를 굴린다.</summary>
     private bool _chargeMoving;
 
@@ -262,8 +267,15 @@ public partial class UnitController3D : Node3D
     public void DisplayStepTo(HexCoord to, float seconds)
     {
         _moving = true;
+        var target = TokenPosition(to);
+        var dir = target - Position;
+        if (dir.LengthSquared() > 0.000001f)
+        {
+            _stepYaw = Mathf.Atan2(dir.X, dir.Z); // 이 칸의 진행 방향을 스텝 시작에 고정
+            _hasStepYaw = true;
+        }
         var tween = CreateTween();
-        tween.TweenProperty(this, "position", TokenPosition(to), seconds)
+        tween.TweenProperty(this, "position", target, seconds)
             .SetTrans(Tween.TransitionType.Sine);
         tween.Finished += () => _moving = false;
     }
@@ -348,11 +360,12 @@ public partial class UnitController3D : Node3D
 
         if (animMove)
         {
-            // 돌격 중에는 회전하지 않는다 — 후퇴 구간에서 방향을 뒤집어버린다
-            if (_moving && moved.LengthSquared() > 0.000001f)
+            // 돌격 중에는 회전하지 않는다 — 후퇴 구간에서 방향을 뒤집어버린다.
+            // 이 칸에 고정해 둔 진행 방향(_stepYaw)을 향해 돈다 — moved 델타에 의존하지 않아
+            // 이징의 속도≈0 구간에서도 방향이 풀리지 않는다.
+            if (_moving && _hasStepYaw)
             {
-                var targetYaw = Mathf.Atan2(moved.X, moved.Z);
-                Rotation = new Vector3(0f, Mathf.LerpAngle(Rotation.Y, targetYaw, 1f - Mathf.Exp(-14f * dt)), 0f);
+                Rotation = new Vector3(0f, Mathf.LerpAngle(Rotation.Y, _stepYaw, 1f - Mathf.Exp(-14f * dt)), 0f);
             }
 
             _marchTime = Mathf.Wrap(_marchTime + moved.Length() * stride, 0f, Mathf.Tau);
