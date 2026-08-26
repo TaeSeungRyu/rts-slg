@@ -149,7 +149,9 @@ public class MovementSimulatorTests
         Assert.True(converged, $"{n}부대 수렴 실패(진동) — {iter}주 내 안정 배치 없음");
         Assert.Equal(n, final.Select(u => u.Position).Distinct().Count());     // 한 칸에 겹치지 않음
         Assert.Contains(final, u => u.Position == target);                     // 하나는 목표 점유
-        Assert.All(final, u => Assert.True(u.Position.Distance(target) <= 1,   // 나머지는 목표 인접권
+        // 나머지는 목표 둘레에 모여 정지한다(옆으로 새지 않으므로 접근 방향이 몰리면 한 링 바깥에
+        // 설 수 있다 — 우왕좌왕이 아니라 '더 못 다가가 대기'). 거리 2 이내면 뭉쳐 선 것으로 본다.
+        Assert.All(final, u => Assert.True(u.Position.Distance(target) <= 2,
             $"부대 u{u.Id.Value}가 목표에서 {u.Position.Distance(target)}칸 떨어져 정지"));
     }
 

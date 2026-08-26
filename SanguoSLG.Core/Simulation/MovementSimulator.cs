@@ -26,6 +26,7 @@ public sealed class MovementSimulator
         public int MovedToday;
         public bool Pursuing;
         public int BlockedDays;
+        public bool BlockedAtGoal; // 고정 목표로 더 못 다가가 대기 중(도착으로 간주 — 우왕좌왕·타 부대 조기정지 방지)
         public HexCoord? LastPos; // 직전에 있던 칸 — 측면 우회가 되돌아가 진동하는 것을 막는다
 
         // 남은 경로(현재 칸 제외). 비추격은 목표 지정 시 1회, 추격은 매일 재계산한다
@@ -126,7 +127,10 @@ public sealed class MovementSimulator
                 // 하루짜리 진행 여러 번으로 쪼개지지 않게 한다(사기·상태 tick의 주당 중복 적용 방지).
                 if (work.All(w => NoIntent(w) && !OnCastle(w, castles)))
                 {
-                    return Finish(ticks, work, StopReason.AllArrived, ticks.Count == 0 ? maxDays : daysElapsed, entered);
+                    // 목표로 더 못 다가가 대기(도착 간주)하는 부대가 하나라도 있으면 '막힘'으로 보고한다
+                    // — 진단 로그가 '전원 도착'과 '막혀 정지'를 구분할 수 있게(게임 로직엔 영향 없음).
+                    var allReason = work.Any(w => w.BlockedAtGoal) ? StopReason.Blocked : StopReason.AllArrived;
+                    return Finish(ticks, work, allReason, ticks.Count == 0 ? maxDays : daysElapsed, entered);
                 }
 
                 // 이번 스텝에 움직이려는 유닛의 희망 칸을 모은다.
@@ -231,6 +235,16 @@ public sealed class MovementSimulator
                         }
 
                         var step = StepOrDetour(w, w.Path.Peek(), goalTile, occupied, occupantOwner);
+                        if (step == w.Unit.Position)
+                        {
+                            // 고정 목표로 더 못 다가감 — 도착으로 간주해 대기(우왕좌왕·타 부대 조기정지 방지).
+                            // 빈자리가 생기면 다음 스텝에 ①이 다시 전진시킨다.
+                            w.BlockedAtGoal = true;
+                            w.Path = null;
+                            continue;
+                        }
+
+                        w.BlockedAtGoal = false;
                         if (step != w.Path.Peek())
                         {
                             w.Path = null; // 우회했으니 새 위치에서 경로를 다시 잡는다(스텝은 항상 인접)
@@ -345,7 +359,7 @@ public sealed class MovementSimulator
             // 3일 연속 못 움직인 유닛 추적(목표가 있는데 못 간 경우만)
             foreach (var w in work)
             {
-                var wantsMove = w.Pursuing || (w.CurrentGoal is { } t && t != w.Unit.Position);
+                var wantsMove = w.Pursuing || (w.CurrentGoal is { } t && t != w.Unit.Position && !w.BlockedAtGoal);
                 w.BlockedDays = wantsMove && !movedThisDay.Contains(w.Unit.Id.Value) ? w.BlockedDays + 1 : 0;
             }
 
@@ -359,9 +373,11 @@ public sealed class MovementSimulator
         return Finish(ticks, work, reason, daysElapsed, entered);
     }
 
-    // 목표도 없고 추격도 안 하는(움직일 뜻이 없는) 유닛인가
+    // 목표도 없고 추격도 안 하는(움직일 뜻이 없는) 유닛인가.
+    // 고정 목표로 더 못 다가가 대기 중(BlockedAtGoal)이면 도착으로 간주한다 — 목표를 아군이
+    // 점유해 못 들어가는 부대가 진행을 무한정 붙잡지 않도록.
     private static bool NoIntent(Working w) =>
-        !w.Pursuing && (w.CurrentGoal is not { } t || t == w.Unit.Position);
+        !w.Pursuing && (w.CurrentGoal is not { } t || t == w.Unit.Position || w.BlockedAtGoal);
 
     private int EffectiveSpeed(Working w, List<Working> work)
     {
@@ -486,7 +502,7 @@ public sealed class MovementSimulator
         var here = w.Unit.Position;
         var hereDist = here.Distance(g);
 
-        // ① 직진 우회 — 목표에 더 가까운 빈 칸
+        // ① 직진 우회 — 목표에 더 가까운 빈 칸(항상 허용)
         foreach (var n in here.Neighbors())
         {
             if (!occupied.Contains(n) && n.Distance(g) < hereDist && _passability.CanEnter(w.Unit.Domain, n))
@@ -495,22 +511,30 @@ public sealed class MovementSimulator
             }
         }
 
-        // ② 측면 우회 — 같은 거리의 빈 칸(직전 칸으로 되돌아가지 않는다).
-        // 단, 막힌 칸이 최종 목표 자체(next==g, 즉 목표에 인접)면 우회하지 않는다 — 목표를 아군이
-        // 점유 중이면 목표 둘레를 도는 무한 왕복이 생긴다(턴 경계마다 LastPos가 리셋돼 진동 방지가
-        // 무력화됨). 그럴 땐 원래 칸을 반환해 인접에서 대기시킨다.
-        if (next != g)
+        // ② 측면 우회 — 같은 거리의 빈 칸(직전 칸 제외). 단 '생산적'일 때만 한다: 그 옆칸에서
+        // 목표에 더 가까운 빈 칸으로 이어질 때(하나의 아군을 돌아 목표로 나아가는 경우). 목표 둘레가
+        // 꽉 차 어느 옆칸으로 가도 더 못 다가가면 우회가 무의미하고, 부대가 많으면 같은 거리 칸들
+        // 사이를 오가며 우왕좌왕한다(턴 경계마다 LastPos가 리셋돼 진동 방지도 무력화). 1스텝 앞을
+        // 봐 이 둘을 가른다 — 카운트 없이 결정론적.
+        foreach (var n in here.Neighbors())
         {
-            foreach (var n in here.Neighbors())
+            if (occupied.Contains(n) || n.Distance(g) != hereDist || n == w.LastPos
+                || !_passability.CanEnter(w.Unit.Domain, n))
             {
-                if (!occupied.Contains(n) && n.Distance(g) == hereDist && n != w.LastPos && _passability.CanEnter(w.Unit.Domain, n))
-                {
-                    return n;
-                }
+                continue;
+            }
+
+            var opensUp = n.Neighbors().Any(m =>
+                !occupied.Contains(m) && m.Distance(g) < hereDist && _passability.CanEnter(w.Unit.Domain, m));
+            if (opensUp)
+            {
+                return n;
             }
         }
 
-        return next;
+        // 더 못 다가가고 생산적 우회도 없다 — 추격은 대기(점유 칸 반환, Resolve가 막고 정체 카운트로
+        // 이어짐), 고정 목표는 제자리 반환(호출부에서 '도착 간주'해 우왕좌왕·타 부대 조기정지 방지).
+        return w.Pursuing ? next : here;
     }
 
     // 현재 위치에서 goal까지의 남은 경로(시작 칸 제외)를 큐로 만든다.
