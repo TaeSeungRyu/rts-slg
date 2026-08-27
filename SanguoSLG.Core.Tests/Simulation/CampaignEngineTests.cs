@@ -37,6 +37,36 @@ public class CampaignEngineTests
         new(1, 1, new List<Faction>(), new List<City>(), new List<General>(), FieldArmies: armies.ToList());
 
     [Fact]
+    public void 공사장_인접부대는_소유무시하고_피해를_주고_체력이_다까이면_건설취소된다()
+    {
+        // 공사 중 시설은 병력 1000짜리 무방비 목표(체력 1000, 진행당 인접 부대 하나에 500 피해).
+        // 아군·적군 가리지 않고 인접하면 피해 — 여기선 같은 세력 부대로 소유 무시를 검증한다.
+        var movement = new MovementSimulator(new PassabilityMap(new HexMap(0, 30, -5, 8), [], []));
+        var field = new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70));
+        var engine = new CampaignEngine(field, new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)),
+            buildSiteHp: 1000, buildSiteDamagePerTurn: 500);
+
+        var plot = new HexCoord(10, 0);
+        var city = new City(new CityId(1), "성", new HexCoord(9, 0), new FactionId(1), Provisions: 1000);
+        var cmd = new CityCommand(new CityId(1), CommandKind.Build, new GeneralId(1), null,
+            StartDay: 1, CompletionDay: 100, Amount: 0, Facility: "paddy", Plot: plot);
+        var ally = Army(1, 1, new HexCoord(10, 1), UnitMode.March, target: null); // 공사 타일에 인접(같은 세력)
+        var s0 = new GameState(1, 1,
+            new List<Faction> { new(new FactionId(1), "위", new GeneralId(1), 1000, "#0af") },
+            new List<City> { city }, new List<General>(),
+            PendingCommands: new List<CityCommand> { cmd },
+            FieldArmies: new[] { ally });
+
+        var after1 = engine.AdvanceWeek(s0, out _);
+        var c1 = after1.Commands.SingleOrDefault(x => x.Kind == CommandKind.Build);
+        Assert.NotNull(c1);
+        Assert.Equal(500, c1!.SiteDamage); // 정지 부대 → 한 주 한 턴, 500 피해 누적
+
+        var after2 = engine.AdvanceWeek(after1, out _);
+        Assert.DoesNotContain(after2.Commands, x => x.Kind == CommandKind.Build); // 1000 도달 → 건설 취소
+    }
+
+    [Fact]
     public void 성보급_반경내_아군_야전부대는_성비축에서_군량을_채워_굶지않는다()
     {
         // 성문 앞 대기 부대가 자기 성 옆에서 아사하던 문제. 성 반경 안 아군 부대는 매 진행

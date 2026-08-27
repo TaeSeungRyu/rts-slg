@@ -368,7 +368,8 @@ public sealed partial class CampaignMapScene : Node3D
             world,
             new CampaignSiege(new BattleResolver(60), _troops),
             new CityCapture(), new SeededRandomSource(42),
-            new CityPlunder(_cb), _cb.CityResupplyRadius);
+            new CityPlunder(_cb), _cb.CityResupplyRadius,
+            _cb.BuildSiteHp, _cb.BuildSiteDamagePerTurn);
         _state = _initial;
 
         _dbgLog = ProjectSettings.GlobalizePath("res://deploy-debug.log");

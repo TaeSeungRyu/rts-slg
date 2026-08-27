@@ -25,10 +25,13 @@ public sealed class CampaignEngine
     private readonly CityPlunder? _plunder;
     private readonly IRandomSource _random;
     private readonly int _cityResupplyRadius;
+    private readonly int _buildSiteHp;
+    private readonly int _buildSiteDamagePerTurn;
 
     public CampaignEngine(AdvanceOrchestrator field, WorldEngine world,
         CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null,
-        CityPlunder? plunder = null, int cityResupplyRadius = 0)
+        CityPlunder? plunder = null, int cityResupplyRadius = 0,
+        int buildSiteHp = 0, int buildSiteDamagePerTurn = 0)
     {
         _field = field;
         _world = world;
@@ -37,6 +40,8 @@ public sealed class CampaignEngine
         _plunder = plunder;
         _random = random ?? new SeededRandomSource(0);
         _cityResupplyRadius = cityResupplyRadius;
+        _buildSiteHp = buildSiteHp;
+        _buildSiteDamagePerTurn = buildSiteDamagePerTurn;
     }
 
     /// <summary>7일을 진행한 새 상태를 반환한다. 야전 진행 보고 목록은 <paramref name="turns"/>로.</summary>
@@ -168,6 +173,13 @@ public sealed class CampaignEngine
                 plunderReports.AddRange(looted.Reports);
             }
 
+            // 공사장 피해(2026-08-27) — 공사 중 시설은 병력 1000짜리 무방비 목표. 아군·적군 가리지 않고
+            // 인접(거리1) 부대가 매 진행 공격하고(공사는 반격 없음), 체력이 다 깎이면 건설이 취소된다.
+            if (_buildSiteHp > 0 && _buildSiteDamagePerTurn > 0)
+            {
+                work = DamageConstructionSites(work, armies);
+            }
+
             // 함락 처리(design-general-lifecycle §4) — 성벽0+수비0에 근접 공격군이 있으면 점거.
             if (_capture is not null)
             {
@@ -198,6 +210,41 @@ public sealed class CampaignEngine
         plunders = plunderReports;
         casualties = casualtyReports;
         return _world.AdvanceDays(afterField, WeekDays);
+    }
+
+    // 공사장 피해: 인접 부대(소유 무시)가 매 진행 공사에 피해를 입히고, 누적 피해가 체력을 넘으면
+    // 그 건설 명령을 취소한다(예약 자원은 환불하지 않는다 — 취소와 동일). 결정론: 명령 순서 유지.
+    private GameState DamageConstructionSites(GameState work, List<CombatUnit> armies)
+    {
+        var cmds = work.Commands.ToList();
+        var changed = false;
+        for (var i = cmds.Count - 1; i >= 0; i--)
+        {
+            var c = cmds[i];
+            if (c.Kind != CommandKind.Build || c.Plot is not { } plot)
+            {
+                continue;
+            }
+
+            var attackers = armies.Count(u => u.Field.Position.Distance(plot) <= 1);
+            if (attackers == 0)
+            {
+                continue;
+            }
+
+            changed = true;
+            var dmg = c.SiteDamage + (attackers * _buildSiteDamagePerTurn);
+            if (dmg >= _buildSiteHp)
+            {
+                cmds.RemoveAt(i); // 공사장 파괴 → 건설 취소
+            }
+            else
+            {
+                cmds[i] = c with { SiteDamage = dmg };
+            }
+        }
+
+        return changed ? work with { PendingCommands = cmds } : work;
     }
 
     // 성 보급: 아군 성 반경(_cityResupplyRadius) 안의 아군 야전 부대(군량 추적) 군량을 성 비축에서

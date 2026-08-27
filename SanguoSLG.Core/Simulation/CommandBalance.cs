@@ -43,6 +43,13 @@ public sealed record CommandBalance
     /// 여기에 더해 평지·숲만 허용). 성 타일 자체·이미 놓인 칸은 제외한다.</summary>
     public int BuildPlotRadius { get; init; } = 2;
 
+    /// <summary>공사장 체력(2026-08-27) — 공사 중 시설은 병력 1000짜리 무방비 목표로 취급한다.
+    /// 아군·적군 가리지 않고 인접 부대가 매 진행 공격하고(공사는 반격 없음), 다 깎이면 건설이 취소된다.</summary>
+    public int BuildSiteHp { get; init; } = 1000;
+
+    /// <summary>공사장이 인접 부대 하나에게 매 진행 받는 피해. 여러 부대면 합산.</summary>
+    public int BuildSiteDamagePerTurn { get; init; } = 500;
+
     /// <summary>성곽 등급별 시설 슬롯(논·밭·마을 합계 상한).</summary>
     public int BuildSlotsSmall { get; init; } = 3;
     public int BuildSlotsMedium { get; init; } = 6;
