@@ -3119,12 +3119,13 @@ public sealed partial class CampaignMapScene : Node3D
         info.AddChild(MakeLabel($"보유 금 {city.Gold}", 13, GoldBright));
         info.AddChild(MakeLabel("수량을 슬라이더나 숫자로 정해 매입합니다.\n자원은 병력 생산·비상 보급에 씁니다.", 11, Parchment));
 
-        (MarketResource Res, string Name, string Note, int Stock, int Step)[] items =
+        // ImgPath: 향후 자원별 사진(있으면 로드). SymFallback: 없을 때 쓰는 절차적 아이콘(없으면 플레이스홀더).
+        (MarketResource Res, string Name, string Note, int Stock, string ImgPath, Sym? SymFallback)[] items =
         {
-            (MarketResource.Ore, "광석", "모든 병력 생산", city.Ore, 1000),
-            (MarketResource.Horses, "말", "기병 생산", city.Horses, 100),
-            (MarketResource.Elephants, "코끼리", "상병 생산", city.Elephants, 1),
-            (MarketResource.Grain, "군량 (비상 보급)", "약탈·보급 차단 대비", city.Provisions, 1000),
+            (MarketResource.Ore, "광석", "모든 병력 생산", city.Ore, "res://assets/ui/market_ore.png", Sym.Ore),
+            (MarketResource.Horses, "말", "기병 생산", city.Horses, "res://assets/ui/market_horses.png", null),
+            (MarketResource.Elephants, "코끼리", "상병 생산", city.Elephants, "res://assets/ui/market_elephants.png", null),
+            (MarketResource.Grain, "군량 (비상 보급)", "약탈·보급 차단 대비", city.Provisions, "res://assets/ui/market_grain.png", Sym.Grain),
         };
 
         foreach (var it in items)
@@ -3133,24 +3134,57 @@ public sealed partial class CampaignMapScene : Node3D
             var res = it.Res;
             var name = it.Name;
             var per100 = _commander.MarketUnitPricePer100(_state, city, res);
-            var step = it.Step;
-            // 예산 안에서 살 수 있는 최대 수량(step 배수로 내림). 금이 부족하면 최소 step까지는 슬라이더를 연다.
+            const int step = 1; // 1단위로 자유롭게 조정(슬라이더/숫자 입력)
+            // 예산 안에서 살 수 있는 최대 수량. 금이 부족해도 최소 1까지는 슬라이더를 연다.
             var affordable = per100 > 0 ? (int)((long)city.Gold * 100 / per100) : 0;
-            affordable -= affordable % step;
             var maxUnits = System.Math.Max(step, affordable);
 
-            box.AddChild(MakeLabel($"{name}  ·  보유 {it.Stock}  ·  단가 {per100 / 100.0:0.##}금/단위  —  {it.Note}",
+            // 자원 행: [사진 슬롯] + [설명 + 컨트롤]. 사진은 파일 있으면 로드, 없으면 아이콘/플레이스홀더.
+            var resRow = new HBoxContainer();
+            resRow.AddThemeConstantOverride("separation", 10);
+            box.AddChild(resRow);
+
+            var resImg = new PanelContainer();
+            resImg.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.55f), Gold, 1, 4, 4));
+            resImg.CustomMinimumSize = new Vector2(60, 60);
+            resImg.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+            var resTex = LoadOptionalTexture(it.ImgPath) ?? (it.SymFallback is { } sym ? Icon(sym) : null);
+            if (resTex is not null)
+            {
+                resImg.AddChild(new TextureRect
+                {
+                    Texture = resTex,
+                    StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                    ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                });
+            }
+            else
+            {
+                var ph = MakeLabel(name, 10, new Color(Parchment, 0.55f));
+                ph.HorizontalAlignment = HorizontalAlignment.Center;
+                ph.VerticalAlignment = VerticalAlignment.Center;
+                resImg.AddChild(ph);
+            }
+
+            resRow.AddChild(resImg);
+
+            var rightV = new VBoxContainer();
+            rightV.AddThemeConstantOverride("separation", 4);
+            rightV.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            resRow.AddChild(rightV);
+
+            rightV.AddChild(MakeLabel($"{name}  ·  보유 {it.Stock}  ·  단가 {per100 / 100.0:0.##}금/단위  —  {it.Note}",
                 13, res == MarketResource.Grain ? GoldBright : Parchment));
 
             var ctrl = new HBoxContainer();
             ctrl.AddThemeConstantOverride("separation", 8);
-            box.AddChild(ctrl);
+            rightV.AddChild(ctrl);
 
             var slider = new HSlider { MinValue = 0, MaxValue = maxUnits, Step = step };
             slider.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             slider.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             slider.CustomMinimumSize = new Vector2(0, 24);
-            slider.Value = System.Math.Min(step, affordable);
+            slider.Value = System.Math.Min(1000, affordable); // 기본 제안값(이후 1단위로 자유 조정)
             ctrl.AddChild(slider);
 
             var spin = new SpinBox { MinValue = 0, MaxValue = maxUnits, Step = step, Value = slider.Value };
