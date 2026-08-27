@@ -247,7 +247,10 @@ public sealed class WorldEngine
                     break;
 
                 case CommandKind.Build:
-                    cities[cmd.City] = Build(city, cmd.Facility);
+                    // 완료 시 공사 인력(발행 때 인구에서 뗀 BuildSiteHp)을 인구로 되돌린다.
+                    // (적에게 공사장이 파괴되면 그 인력은 전멸해 돌아오지 않는다 — 건설 취소 경로.)
+                    cities[cmd.City] = Build(city, cmd.Facility)
+                        with { Population = city.Population + _commands.BuildSiteHp };
                     // 사용자가 지정한 타일에 배치 기록(표현 계층이 그 자리에 모델을 얹는다). append-only.
                     if (cmd.Plot is { } builtPlot)
                     {

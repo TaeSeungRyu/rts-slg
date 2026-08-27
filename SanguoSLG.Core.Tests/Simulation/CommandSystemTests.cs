@@ -336,10 +336,14 @@ public class CommandSystemTests
         var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "paddy", Plot: plot));
         Assert.True(issued.Ok);
         Assert.Equal(1000 - B.BuildCostPaddy, issued.State.Cities.Single().Gold); // 발행 즉시 비용 예약
+        Assert.Equal(100_000 - B.BuildSiteHp, issued.State.Cities.Single().Population); // 공사 인력만큼 인구 차감
 
         // 완료일(발행일 + BuildDays)까지 세계를 진행하면 시설이 실제로 늘고 명령이 잠금 해제된다.
         var done = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100), B).AdvanceDays(issued.State, B.BuildDays);
         Assert.Equal(1, done.Cities.Single().Paddies); // 논 +1
+        // 완료 시 공사 인력(1000)이 인구로 복귀 — 30일 자연 증가분도 있으므로 '차감후 + 인력' 이상.
+        Assert.True(done.Cities.Single().Population >= issued.State.Cities.Single().Population + B.BuildSiteHp,
+            $"인구 복귀 실패: {done.Cities.Single().Population}");
         Assert.Empty(done.Commands);
         // 지정한 타일에 배치가 기록된다(표현 계층이 그 자리에 모델을 얹는다).
         var placement = Assert.Single(done.Placements);
