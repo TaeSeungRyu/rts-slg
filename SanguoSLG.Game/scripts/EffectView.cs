@@ -16,12 +16,14 @@ public static class EffectView
     // 발동 규칙 계층과 검수 하네스 모두 여기를 참조한다.
     public static EffectTargetScope ScopeOf(EffectKind kind) => kind switch
     {
-        EffectKind.Tear or EffectKind.Shatter => EffectTargetScope.Unit,
+        EffectKind.Tear or EffectKind.Shatter or EffectKind.SoulRise => EffectTargetScope.Unit,
         EffectKind.Villagers => EffectTargetScope.Building,
         _ => EffectTargetScope.Both,
     };
 
-    public static Node3D Attach(Node3D target, EffectKind kind, float scale = 1f)
+    // loop=false는 1회성 효과(SoulRise·Lightning)에서만 의미가 있다 — 재생을 마치면
+    // 반환된 루트를 효과가 스스로 QueueFree한다. 나머지 효과는 항상 반복 표시다.
+    public static Node3D Attach(Node3D target, EffectKind kind, float scale = 1f, bool loop = true)
     {
         var root = new Node3D { Name = $"Effect_{kind}" };
         target.AddChild(root);
@@ -60,6 +62,12 @@ public static class EffectView
                 break;
             case EffectKind.Confusion:
                 root.AddChild(new ConfusionEffect { S = scale });
+                break;
+            case EffectKind.SoulRise:
+                root.AddChild(new SoulRiseEffect { S = scale, Loop = loop });
+                break;
+            case EffectKind.Lightning:
+                root.AddChild(new LightningEffect { S = scale, Loop = loop });
                 break;
             default:
                 throw new InvalidOperationException($"미구현 효과: {kind}");
