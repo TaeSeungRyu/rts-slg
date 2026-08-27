@@ -5673,9 +5673,10 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (_advancing) { return; }
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        // 전체 보고는 화면 전체창으로 — 좌우·상하 여백만 남기고 최대한 넓게.
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.5f, 480f, 760f);
-        var mh = Mathf.Clamp(vp.Y * 0.8f, 380f, 760f);
+        var mw = Mathf.Max(480f, vp.X - 32f);
+        var mh = Mathf.Max(360f, vp.Y - 32f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
 
         var titleRow = new HBoxContainer();
