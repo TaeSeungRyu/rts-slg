@@ -18,7 +18,8 @@ public sealed record CommandRequest(
     string TroopCode = "",
     CityId? TargetCity = null,
     bool TraineePool = false,
-    GeneralId? TargetGeneral = null);
+    GeneralId? TargetGeneral = null,
+    Spatial.HexCoord? Plot = null);
 
 /// <summary>명령 발행 결과 — 실패면 <see cref="Error"/>에 사유, 상태는 그대로.</summary>
 public sealed record CommandResult(bool Ok, string? Error, GameState State)
@@ -313,8 +314,26 @@ public sealed class CommandService
             return CommandResult.Fail("금이 부족하다.", state);
         }
 
+        // 배치 타일 검증 — 성 중심 반경 안, 성 타일 아님, 아직 다른 시설이 없는 칸.
+        // (평지·숲만 허용하는 지형 조건은 지형 데이터를 가진 표현 계층이 후보를 걸러 보장한다.)
+        if (req.Plot is not { } plot)
+        {
+            return CommandResult.Fail("설치할 타일을 지정해야 한다.", state);
+        }
+
+        if (plot == city.Position || plot.Distance(city.Position) > _b.BuildPlotRadius)
+        {
+            return CommandResult.Fail("성 주변에만 지을 수 있다.", state);
+        }
+
+        if (state.Placements.Any(p => p.Plot == plot) || state.Cities.Any(c => c.Position == plot)
+            || state.Commands.Any(c => c.Kind == CommandKind.Build && c.Plot == plot))
+        {
+            return CommandResult.Fail("이미 무언가 있는 칸이다.", state);
+        }
+
         var reserved = city.AddGold(-cost);
-        return Register(state, reserved, req, assist, amount: 0, _b.BuildDays, CommandKind.Build, req.Facility);
+        return Register(state, reserved, req, assist, amount: 0, _b.BuildDays, CommandKind.Build, req.Facility, plot: plot);
     }
 
     private CommandResult IssueResearch(GameState state, City city, CommandRequest req, General? assist, General main)
@@ -468,11 +487,11 @@ public sealed class CommandService
 
     private static CommandResult Register(GameState state, City reservedCity, CommandRequest req, General? assist,
         int amount, int days, CommandKind kind, string facility, string troopCode = "", CityId? targetCity = null,
-        GeneralId? targetGeneral = null)
+        GeneralId? targetGeneral = null, Spatial.HexCoord? plot = null)
     {
         var cities = state.Cities.Select(c => c.Id == reservedCity.Id ? reservedCity : c).ToList();
         var command = new CityCommand(req.City, kind, req.Main, assist?.Id,
-            state.Day, state.Day + days, amount, facility, troopCode, targetCity, req.TraineePool, targetGeneral);
+            state.Day, state.Day + days, amount, facility, troopCode, targetCity, req.TraineePool, targetGeneral, plot);
         var pending = state.Commands.Append(command).ToList();
         return CommandResult.Success(state with { Cities = cities, PendingCommands = pending });
     }

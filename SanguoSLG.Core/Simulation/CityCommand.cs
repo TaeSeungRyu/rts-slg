@@ -22,7 +22,8 @@ public sealed record CityCommand(
     string TroopCode = "",
     CityId? TargetCity = null,
     bool TraineePool = false,
-    GeneralId? TargetGeneral = null)
+    GeneralId? TargetGeneral = null,
+    Spatial.HexCoord? Plot = null)
 {
     /// <summary>이 명령에 이 장수가 매여 있는가(주관 또는 보좌).</summary>
     public bool Locks(GeneralId general) => Main == general || Assist == general;

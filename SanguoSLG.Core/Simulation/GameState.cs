@@ -21,8 +21,12 @@ public sealed record GameState(
     IReadOnlyList<Prisoner>? Captives = null,
     IReadOnlyList<FactionResearch>? ResearchTracks = null,
     IReadOnlyList<CityIntel>? ScoutedCities = null,
-    int MarketPricePercent = 100)
+    int MarketPricePercent = 100,
+    IReadOnlyList<FacilityPlacement>? FacilityPlacements = null)
 {
+    /// <summary>건설한 시설이 놓인 성 주변 타일(표현 계층이 모델을 얹는다). 건설 완료 시 append.</summary>
+    public IReadOnlyList<FacilityPlacement> Placements => FacilityPlacements ?? [];
+
     /// <summary>도시 대기 병력(병종별) — 모집 정산이 쌓고, 출전 편성이 꺼내 쓴다.</summary>
     public IReadOnlyList<GarrisonForce> Garrisons => GarrisonForces ?? [];
 

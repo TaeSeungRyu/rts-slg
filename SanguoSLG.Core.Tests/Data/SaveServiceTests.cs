@@ -41,7 +41,8 @@ public class SaveServiceTests
             GarrisonForces: new List<GarrisonForce> { new(new CityId(1), "swordsman", 8000, 55, Trainee: true) },
             FieldArmies: new List<CombatUnit> { unit },
             Captives: new List<Prisoner> { new(new GeneralId(1), new FactionId(1), new FactionId(2)) },
-            MarketPricePercent: 130);
+            MarketPricePercent: 130,
+            FacilityPlacements: new List<FacilityPlacement> { new(new CityId(1), new HexCoord(1, 0), "paddy") });
 
         var round = SaveService.Deserialize(SaveService.Serialize(state));
 
@@ -68,5 +69,9 @@ public class SaveServiceTests
         Assert.Equal(new HexCoord(5, 0), ru.Field.Target);
         Assert.Equal(new HexCoord(3, 1), ru.Field.Waypoints!.Single());
         Assert.Single(round.Prisoners);
+        // 시설 배치 타일(건설 위치)도 왕복 보존.
+        var rp = Assert.Single(round.Placements);
+        Assert.Equal(new HexCoord(1, 0), rp.Plot);
+        Assert.Equal("paddy", rp.Code);
     }
 }

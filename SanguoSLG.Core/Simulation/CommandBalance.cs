@@ -39,6 +39,10 @@ public sealed record CommandBalance
     /// <summary>건설 전제 — 수행 장수 정치 &gt; 이 값.</summary>
     public int BuildPoliticsRequired { get; init; } = 70;
 
+    /// <summary>건설 배치 가능 반경 — 성 중심에서 이 거리 이내 타일에만 시설을 놓을 수 있다(표현 계층은
+    /// 여기에 더해 평지·숲만 허용). 성 타일 자체·이미 놓인 칸은 제외한다.</summary>
+    public int BuildPlotRadius { get; init; } = 2;
+
     /// <summary>성곽 등급별 시설 슬롯(논·밭·마을 합계 상한).</summary>
     public int BuildSlotsSmall { get; init; } = 3;
     public int BuildSlotsMedium { get; init; } = 6;

@@ -318,8 +318,9 @@ public class CommandSystemTests
         var svc = Service();
         var s0 = State(new[] { Town(1) }, new[] { Pol(1, 70), Pol(2, 71) });
 
-        Assert.False(svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(1), Facility: "paddy")).Ok);
-        Assert.True(svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "paddy")).Ok);
+        var plot = new HexCoord(1, 0); // 성(0,0) 주변 유효 칸
+        Assert.False(svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(1), Facility: "paddy", Plot: plot)).Ok);
+        Assert.True(svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "paddy", Plot: plot)).Ok);
     }
 
     [Fact]
@@ -331,7 +332,8 @@ public class CommandSystemTests
             new List<City> { Town(1, gold: 1000) },
             new List<General> { Pol(2, 90) });
 
-        var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "paddy"));
+        var plot = new HexCoord(1, 0);
+        var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "paddy", Plot: plot));
         Assert.True(issued.Ok);
         Assert.Equal(1000 - B.BuildCostPaddy, issued.State.Cities.Single().Gold); // 발행 즉시 비용 예약
 
@@ -339,6 +341,46 @@ public class CommandSystemTests
         var done = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100), B).AdvanceDays(issued.State, B.BuildDays);
         Assert.Equal(1, done.Cities.Single().Paddies); // 논 +1
         Assert.Empty(done.Commands);
+        // 지정한 타일에 배치가 기록된다(표현 계층이 그 자리에 모델을 얹는다).
+        var placement = Assert.Single(done.Placements);
+        Assert.Equal(plot, placement.Plot);
+        Assert.Equal("paddy", placement.Code);
+        Assert.Equal(new CityId(1), placement.City);
+    }
+
+    [Fact]
+    public void 발행_건설은_타일_미지정이면_거부된다()
+    {
+        var svc = Service();
+        var s0 = State(new[] { Town(1) }, new[] { Pol(2, 90) });
+        var r = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "paddy"));
+        Assert.False(r.Ok);
+        Assert.Contains("타일", r.Error);
+    }
+
+    [Fact]
+    public void 발행_건설은_성에서_먼_타일이면_거부된다()
+    {
+        var svc = Service();
+        var s0 = State(new[] { Town(1) }, new[] { Pol(2, 90) }); // 성 (0,0)
+        var far = new HexCoord(5, 0); // 반경(2) 초과
+        var r = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "paddy", Plot: far));
+        Assert.False(r.Ok);
+        Assert.Contains("주변", r.Error);
+    }
+
+    [Fact]
+    public void 발행_건설은_이미_시설이_있는_타일이면_거부된다()
+    {
+        var svc = Service();
+        var plot = new HexCoord(1, 0);
+        var s0 = State(new[] { Town(1) }, new[] { Pol(2, 90), Pol(3, 90) }) with
+        {
+            FacilityPlacements = new[] { new FacilityPlacement(new CityId(1), plot, "farm") },
+        };
+        var r = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "paddy", Plot: plot));
+        Assert.False(r.Ok);
+        Assert.Contains("이미", r.Error);
     }
 
     [Fact]

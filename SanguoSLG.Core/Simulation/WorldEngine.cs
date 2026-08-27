@@ -201,6 +201,7 @@ public sealed class WorldEngine
         var postings = state.Assignments.ToList();
         var prisoners = state.Prisoners.ToList();
         var armies = state.Armies.ToList();
+        var placements = state.Placements.ToList();
 
         foreach (var cmd in due)
         {
@@ -247,6 +248,12 @@ public sealed class WorldEngine
 
                 case CommandKind.Build:
                     cities[cmd.City] = Build(city, cmd.Facility);
+                    // 사용자가 지정한 타일에 배치 기록(표현 계층이 그 자리에 모델을 얹는다). append-only.
+                    if (cmd.Plot is { } builtPlot)
+                    {
+                        placements.Add(new FacilityPlacement(cmd.City, builtPlot, cmd.Facility));
+                    }
+
                     break;
 
                 case CommandKind.SetTaxRate:
@@ -329,6 +336,7 @@ public sealed class WorldEngine
             Captives = prisoners,
             FieldArmies = armies,
             PendingCommands = state.Commands.Where(c => c.CompletionDay != state.Day).ToList(),
+            FacilityPlacements = placements,
         };
     }
 
