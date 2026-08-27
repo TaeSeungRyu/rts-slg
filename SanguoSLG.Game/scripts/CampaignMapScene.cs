@@ -146,6 +146,7 @@ public sealed partial class CampaignMapScene : Node3D
     private Node3D? _placeGhost;
     private MeshInstance3D? _placeMarker;
     private HexCoord? _placeValidHex;
+    private CanvasLayer? _placeDim;   // 배치 중 화면 전체를 살짝 어둡게
     private ImageTexture _dotIcon = null!;
 
     // 명령 모달(명령 클릭 → 큰 창 + 아이콘 카드 그리드 → 카드 선택 → 장수 클릭 = 실행).
@@ -5356,6 +5357,19 @@ public sealed partial class CampaignMapScene : Node3D
     private void BeginPlacement(CityId city, int cmdIndex, GeneralId general, int p)
     {
         CloseModal();
+        _cmdMenu.Visible = false; // 명령 팔레트(내정·군비·계략)는 배치 중 숨긴다
+
+        // 화면 전체를 살짝 어둡게 — 배치에 집중하도록. 맵 클릭은 통과(MouseFilter=Ignore).
+        _placeDim = new CanvasLayer { Layer = 40 };
+        var dim = new ColorRect
+        {
+            Color = new Color(0f, 0f, 0f, 0.32f),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        dim.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _placeDim.AddChild(dim);
+        AddChild(_placeDim);
+
         _placing = true;
         _placeCity = city;
         _placeCmdIndex = cmdIndex;
@@ -5404,6 +5418,8 @@ public sealed partial class CampaignMapScene : Node3D
         _placeGhost = null;
         _placeMarker?.QueueFree();
         _placeMarker = null;
+        _placeDim?.QueueFree();
+        _placeDim = null;
     }
 
     // 커서 아래 칸으로 고스트·마커를 옮기고 유효성을 갱신한다(마우스 이동 시).
@@ -5425,7 +5441,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (_placeGhost is not null)
         {
             _placeGhost.Visible = true;
-            _placeGhost.Position = world;
+            // 실제 배치와 같이 타일 윗면으로 올린다 — 지형 타일과 y=0에서 겹쳐 투명 Z-파이팅(깜빡임)이 나던 문제.
+            _placeGhost.Position = world + new Vector3(0f, _view.TileTopY, 0f);
         }
 
         if (_placeMarker is not null)
@@ -5492,10 +5509,69 @@ public sealed partial class CampaignMapScene : Node3D
         var siteScene = GD.Load<PackedScene>("res://assets/models/construction.glb");
         foreach (var c in _state.Commands.Where(c => c.Kind == CommandKind.Build && c.Plot is not null))
         {
+            var origin = _view.HexToWorld(c.Plot!.Value) + new Vector3(0f, _view.TileTopY, 0f);
             var site = siteScene.Instantiate<Node3D>();
-            site.Position = _view.HexToWorld(c.Plot!.Value) + new Vector3(0f, _view.TileTopY, 0f);
+            site.Position = origin;
+            site.AddChild(BuildConstructionDust()); // 흙먼지 — 사람이 일하고 있다는 신호
             _facilityLayer.AddChild(site);
+
+            // 남은 일수 UI(총 일수에서 감소) — 타일 위에 띄운다.
+            var total = c.CompletionDay - c.StartDay;
+            var remaining = System.Math.Max(0, c.CompletionDay - _state.Day);
+            var lbl = new Label3D
+            {
+                Text = $"🏗 {remaining}/{total}일",
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                FontSize = 30,
+                OutlineSize = 10,
+                NoDepthTest = true,
+                Modulate = new Color(1f, 0.92f, 0.6f),
+                Position = origin + new Vector3(0f, 0.95f, 0f),
+            };
+            _facilityLayer.AddChild(lbl);
         }
+    }
+
+    // 공사 흙먼지 — 옅은 갈색 입자가 낮게 피어올라 흩어진다(작업 중 신호).
+    private static CpuParticles3D BuildConstructionDust()
+    {
+        var gradient = new Gradient();
+        gradient.SetColor(0, new Color(0.72f, 0.62f, 0.44f, 0f));
+        gradient.AddPoint(0.3f, new Color(0.74f, 0.64f, 0.46f, 0.5f));
+        gradient.SetColor(1, new Color(0.8f, 0.72f, 0.55f, 0f));
+
+        var mesh = new SphereMesh
+        {
+            Radius = 0.03f,
+            Height = 0.06f,
+            RadialSegments = 6,
+            Rings = 3,
+            Material = new StandardMaterial3D
+            {
+                VertexColorUseAsAlbedo = true,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            },
+        };
+
+        return new CpuParticles3D
+        {
+            Position = new Vector3(0f, 0.12f, 0f),
+            Amount = 10,
+            Lifetime = 2.2f,
+            Preprocess = 2.5f,
+            Mesh = mesh,
+            EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
+            EmissionBoxExtents = new Vector3(0.28f, 0.02f, 0.28f),
+            Direction = new Vector3(0.3f, 1f, 0f),
+            Spread = 12f,
+            InitialVelocityMin = 0.06f,
+            InitialVelocityMax = 0.12f,
+            Gravity = new Vector3(0.04f, 0.02f, 0.02f),
+            ScaleAmountMin = 0.6f,
+            ScaleAmountMax = 1.5f,
+            ColorRamp = gradient,
+        };
     }
 
     // 훈련 옵션과 같은 정렬(병종 → 신병 뒤)의 p번째 대기 병력.
