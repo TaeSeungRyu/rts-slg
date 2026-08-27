@@ -61,10 +61,10 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(string Text, Color Color)> _reportHistory = new(); // 전체 로그(스크롤 열람용)
     private Label _log = null!;
 
-    // 진행 애니메이션(4초=하루, 1초=한 칸, 7일=28초). StepSeconds를 키우면 이동이 느려진다.
-    private const double DaySeconds = 4.0;
-    private const double StepSeconds = 1.0;
-    private const double MoveSeconds = 3.0; // 하루 4초 중 이동 몫(나머지 1초 = 공격)
+    // 진행 애니메이션(2.5초=하루 = 이동 1.5초 + 공격 1초, 한 칸 0.5초, 최대 3칸/일). StepSeconds를 키우면 이동이 느려진다.
+    private const double DaySeconds = 2.5;
+    private const double StepSeconds = 0.5;
+    private const double MoveSeconds = 1.5; // 하루 2.5초 중 이동 몫(나머지 1초 = 공격)
     private const int AnimDays = 7;
     private bool _advancing;
     private double _animT;
@@ -1740,7 +1740,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             var stopDay = dayOffset + System.Math.Max(1, turn.Movement.Days);
-            var atkTime = ((stopDay - 1) * DaySeconds) + 3.15; // 그날 이동(≤3초)이 끝난 뒤
+            var atkTime = ((stopDay - 1) * DaySeconds) + MoveSeconds + 0.15; // 그날 이동(≤1.5초)이 끝난 뒤
             ScheduleAttackMotions(turn, atkTime);
 
             // 그 턴에 교전/공성이 있었으면 정지일(stopDay)을 '공격턴'으로 표기.
