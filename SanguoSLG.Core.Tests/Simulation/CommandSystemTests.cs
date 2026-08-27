@@ -323,6 +323,71 @@ public class CommandSystemTests
     }
 
     [Fact]
+    public void 완료_건설은_시설을_늘리고_발행시_비용을_예약한다()
+    {
+        var svc = Service();
+        var s0 = new GameState(1, 1,
+            new List<Faction> { new(new FactionId(1), "위", new GeneralId(2), Gold: 100_000, Color: "#2d5fd0") },
+            new List<City> { Town(1, gold: 1000) },
+            new List<General> { Pol(2, 90) });
+
+        var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "paddy"));
+        Assert.True(issued.Ok);
+        Assert.Equal(1000 - B.BuildCostPaddy, issued.State.Cities.Single().Gold); // 발행 즉시 비용 예약
+
+        // 완료일(발행일 + BuildDays)까지 세계를 진행하면 시설이 실제로 늘고 명령이 잠금 해제된다.
+        var done = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100), B).AdvanceDays(issued.State, B.BuildDays);
+        Assert.Equal(1, done.Cities.Single().Paddies); // 논 +1
+        Assert.Empty(done.Commands);
+    }
+
+    [Fact]
+    public void 발행_건설은_시설_슬롯이_차면_거부된다()
+    {
+        var svc = Service();
+        // 중성 슬롯 6개(BuildSlotsMedium) — 논3·밭2·마을1 = 6으로 가득.
+        var full = Town(1, gold: 5000) with { Paddies = 3, Farms = 2, Villages = 1 };
+        var s0 = State(new[] { full }, new[] { Pol(2, 90) });
+        var r = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "paddy"));
+        Assert.False(r.Ok);
+        Assert.Contains("슬롯", r.Error);
+    }
+
+    [Fact]
+    public void 발행_건설_슬롯은_잔해도_차지한다()
+    {
+        var svc = Service();
+        // 온전 3 + 잔해 3 = 6으로 가득. 잔해는 새로 짓지 말고 수리로 복구하라는 압력.
+        var ruined = Town(1, gold: 5000) with { Paddies = 3, RuinedFarms = 3 };
+        var s0 = State(new[] { ruined }, new[] { Pol(2, 90) });
+        var r = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "village"));
+        Assert.False(r.Ok);
+        Assert.Contains("슬롯", r.Error);
+    }
+
+    [Fact]
+    public void 발행_공방은_이미_있으면_거부된다()
+    {
+        var svc = Service();
+        var withShop = Town(1, gold: 5000) with { Workshop = true };
+        var s0 = State(new[] { withShop }, new[] { Pol(2, 90) });
+        var r = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "workshop"));
+        Assert.False(r.Ok);
+        Assert.Contains("공방", r.Error);
+    }
+
+    [Fact]
+    public void 발행_건설은_금이_부족하면_거부된다()
+    {
+        var svc = Service();
+        var poor = Town(1, gold: B.BuildCostPaddy - 1);
+        var s0 = State(new[] { poor }, new[] { Pol(2, 90) });
+        var r = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "paddy"));
+        Assert.False(r.Ok);
+        Assert.Contains("금", r.Error);
+    }
+
+    [Fact]
     public void 발행_모집은_병종을_지정해야_한다()
     {
         var svc = Service();

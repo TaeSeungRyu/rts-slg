@@ -5224,6 +5224,32 @@ public sealed partial class CampaignMapScene : Node3D
             extra = $"\n대상 {enemy.Name} · 소요 {days}일 · 성공률 {CityStratagems.SuccessPercent(caster.Intellect, defInt)}%";
         }
 
+        if (cmd.Kind == CommandKind.Build)
+        {
+            var c = _state.Cities.First(x => x.Id == city);
+            var code = Facilities[p].Code;
+            var cost = code switch
+            {
+                "paddy" => _cb.BuildCostPaddy,
+                "farm" => _cb.BuildCostFarm,
+                "village" => _cb.BuildCostVillage,
+                _ => _cb.BuildCostWorkshop,
+            };
+            if (code == "workshop")
+            {
+                extra = $"\n비용 {cost}금 · {_cb.BuildDays}일 · 성별 1개"
+                    + (c.Workshop ? "\n※ 이미 공방이 있어 지을 수 없습니다" : "");
+            }
+            else
+            {
+                var used = c.Paddies + c.Farms + c.Villages
+                    + c.RuinedPaddies + c.RuinedFarms + c.RuinedVillages;
+                var max = CommandEfficiency.BuildSlots(c.Castle, _cb);
+                extra = $"\n비용 {cost}금 · {_cb.BuildDays}일 · 슬롯 {used}/{max}"
+                    + (used >= max ? "\n※ 슬롯이 가득 찼습니다(잔해는 수리로 복구)" : "");
+            }
+        }
+
         if (cmd.Kind == CommandKind.AppointGovernor)
         {
             var gov = _state.Generals.First(g => g.Id == general);
