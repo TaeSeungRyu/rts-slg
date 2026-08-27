@@ -5488,47 +5488,14 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
-        // 공사 중(진행 중 건설 명령)에는 공사장 에셋을 그 자리에 얹는다.
+        // 공사 중(진행 중 건설 명령)에는 공사장 에셋(construction.glb)을 그 타일 위에 얹는다.
+        var siteScene = GD.Load<PackedScene>("res://assets/models/construction.glb");
         foreach (var c in _state.Commands.Where(c => c.Kind == CommandKind.Build && c.Plot is not null))
         {
-            var site = BuildConstructionSite(_view.HexWorldSize);
+            var site = siteScene.Instantiate<Node3D>();
             site.Position = _view.HexToWorld(c.Plot!.Value) + new Vector3(0f, _view.TileTopY, 0f);
             _facilityLayer.AddChild(site);
         }
-    }
-
-    // 공사장 에셋(절차적 저폴리) — 흙 기단 + 목재 비계(기둥 4·상단 보 2·발판). 건설 중 타일에 얹는다.
-    private static Node3D BuildConstructionSite(float s)
-    {
-        var root = new Node3D();
-        var wood = new StandardMaterial3D { AlbedoColor = new Color(0.56f, 0.40f, 0.22f) };
-        var dirt = new StandardMaterial3D { AlbedoColor = new Color(0.46f, 0.35f, 0.23f) };
-        var plank = new StandardMaterial3D { AlbedoColor = new Color(0.70f, 0.55f, 0.34f) };
-
-        MeshInstance3D Box(Vector3 size, Vector3 pos, StandardMaterial3D mat, float yaw = 0f) => new()
-        {
-            Mesh = new BoxMesh { Size = size },
-            Position = pos,
-            RotationDegrees = new Vector3(0f, yaw, 0f),
-            MaterialOverride = mat,
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-        };
-
-        var half = s * 0.42f;        // 기둥 배치 반경
-        var postH = s * 0.62f;       // 기둥 높이
-        var postW = s * 0.06f;       // 기둥 굵기
-
-        root.AddChild(Box(new Vector3(s * 1.0f, s * 0.06f, s * 1.0f), new Vector3(0f, s * 0.03f, 0f), dirt)); // 기단
-        foreach (var (dx, dz) in new[] { (-half, -half), (half, -half), (-half, half), (half, half) })
-        {
-            root.AddChild(Box(new Vector3(postW, postH, postW), new Vector3(dx, postH * 0.5f, dz), wood)); // 기둥
-        }
-
-        var beamY = postH * 0.92f;
-        root.AddChild(Box(new Vector3(half * 2.1f, postW, postW), new Vector3(0f, beamY, -half), wood)); // 상단 보(앞)
-        root.AddChild(Box(new Vector3(half * 2.1f, postW, postW), new Vector3(0f, beamY, half), wood));  // 상단 보(뒤)
-        root.AddChild(Box(new Vector3(s * 0.9f, s * 0.04f, s * 0.22f), new Vector3(0f, s * 0.30f, 0f), plank, 18f)); // 비스듬한 발판
-        return root;
     }
 
     // 훈련 옵션과 같은 정렬(병종 → 신병 뒤)의 p번째 대기 병력.
