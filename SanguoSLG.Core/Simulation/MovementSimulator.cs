@@ -532,9 +532,25 @@ public sealed class MovementSimulator
             }
         }
 
-        // 더 못 다가가고 생산적 우회도 없다 — 추격은 대기(점유 칸 반환, Resolve가 막고 정체 카운트로
-        // 이어짐), 고정 목표는 제자리 반환(호출부에서 '도착 간주'해 우왕좌왕·타 부대 조기정지 방지).
-        return w.Pursuing ? next : here;
+        // 생산적 우회가 없을 때의 처리 — 모드로 가른다.
+        // 공격/추격(성·적을 '점유'가 아니라 '사거리 안에서 친다')은 같은 거리 아무 빈 칸으로라도 흩어져
+        // 다른 접근로를 찾는다(포위). 안 그러면 여러 부대가 한 칸이 빌 때까지 줄서서 대기한다.
+        // 행군/전진(목표 칸을 직접 점유)은 제자리 대기(도착 간주 — 목표 둘레가 꽉 차면 우왕좌왕 방지).
+        if (w.Unit.Mode == UnitMode.Attack || w.Pursuing)
+        {
+            foreach (var n in here.Neighbors())
+            {
+                if (!occupied.Contains(n) && n.Distance(g) == hereDist && n != w.LastPos
+                    && _passability.CanEnter(w.Unit.Domain, n))
+                {
+                    return n;
+                }
+            }
+
+            return next; // 완전 포위 — 대기(Resolve가 점유 칸을 막고 정체 카운트로 이어짐)
+        }
+
+        return here; // 행군·전진 — 제자리 대기(호출부에서 도착 간주)
     }
 
     // 현재 위치에서 goal까지의 남은 경로(시작 칸 제외)를 큐로 만든다.

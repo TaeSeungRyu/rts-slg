@@ -564,6 +564,30 @@ public class MovementSimulatorTests
     }
 
     [Fact]
+    public void 공격부대_여럿이_같은_성을_노리면_한칸_대기하지않고_흩어져_포위한다()
+    {
+        // 같은 성을 노리는 공격 부대들이 앞 부대가 접근 칸을 차지했다고 그 칸이 빌 때까지 줄서서
+        // 대기하면 안 된다(적 공격이 '같은 칸 기다림'으로 보이던 문제). 뒤 부대는 다른 사거리 칸으로
+        // 흩어져 진행을 거듭하며 함께 포위해야 한다.
+        var castle = new SiegeSite(new HexCoord(8, 0), new FactionId(2));
+        var target = new HexCoord(7, 0);
+        var units = new[]
+        {
+            Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack, target),
+            Unit(2, owner: 1, new HexCoord(0, 1), UnitMode.Attack, target),
+        }.ToList();
+
+        // 성 접적은 선착 부대만 그날 공성하고 진행이 끊기므로, 여러 진행을 돌려 뒤 부대까지 붙게 한다.
+        var sim = PlainField();
+        for (var i = 0; i < 12; i++) { units = sim.Advance(units, castles: new[] { castle }).Units.ToList(); }
+
+        // 둘 다 성 사거리(1) 안에 도달(포위) — 한 부대가 멀리서 대기하지 않는다.
+        Assert.All(units, u => Assert.True(u.Position.Distance(castle.Position) <= 1,
+            $"부대 u{u.Id.Value}가 성에서 {u.Position.Distance(castle.Position)}칸(미포위·대기)"));
+        Assert.Equal(2, units.Select(u => u.Position).Distinct().Count()); // 서로 다른 칸에서 포위
+    }
+
+    [Fact]
     public void 성접적_공성사거리2부대는_거리2에서_더다가가지않는다()
     {
         // 투석기(공성 사거리 2)는 성에서 거리 2 칸에 든 순간 홀드 — 반격 사거리 1 밖을 유지한다.
