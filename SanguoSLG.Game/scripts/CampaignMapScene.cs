@@ -134,6 +134,18 @@ public sealed partial class CampaignMapScene : Node3D
     private MeshInstance3D? _ring;
     private MeshInstance3D _hover = null!;
     private ImageTexture _blankIcon = null!;
+
+    // 시설 배치(건설) — 반투명 고스트가 커서를 따라다니고, 평지·숲 유효 칸에서만 설치 컨펌이 뜬다.
+    private Node3D _facilityLayer = null!;   // 완성 시설 + 공사중 모델을 담는 컨테이너(Redraw마다 재구성)
+    private bool _placing;
+    private string _placeCode = "";
+    private CityId _placeCity;
+    private int _placeCmdIndex;
+    private GeneralId _placeGeneral;
+    private int _placeParam;
+    private Node3D? _placeGhost;
+    private MeshInstance3D? _placeMarker;
+    private HexCoord? _placeValidHex;
     private ImageTexture _dotIcon = null!;
 
     // 명령 모달(명령 클릭 → 큰 창 + 아이콘 카드 그리드 → 카드 선택 → 장수 클릭 = 실행).
@@ -397,6 +409,9 @@ public sealed partial class CampaignMapScene : Node3D
             },
         };
         AddChild(_hover);
+
+        _facilityLayer = new Node3D();
+        AddChild(_facilityLayer);
     }
 
     // 단색 아이콘 텍스처 생성(라디오 대체용) — (x,y)→색 함수로 채운다.
@@ -730,6 +745,14 @@ public sealed partial class CampaignMapScene : Node3D
         // 마우스 오버: 밑 타일에 호버 육각.
         if (@event is InputEventMouseMotion motion)
         {
+            // 시설 배치 중: 고스트가 커서를 따라다니며 유효/무효 색을 바꾼다(일반 호버는 숨긴다).
+            if (_placing)
+            {
+                _hover.Visible = false;
+                UpdatePlacementHover(motion.Position);
+                return;
+            }
+
             if (RayToGround(motion.Position) is { } hoverHex)
             {
                 _hover.Visible = true;
@@ -748,9 +771,16 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
-        // 우클릭: 목표 지정 취소만(맵 이동 아님 — 이동은 좌드래그로).
+        // 우클릭: 목표 지정/시설 배치 취소.
         if (mb.ButtonIndex == MouseButton.Right && mb.Pressed)
         {
+            if (_placing)
+            {
+                FinishPlacement();
+                _log.Text = "설치를 취소했습니다.";
+                return;
+            }
+
             if (_depTargeting)
             {
                 var wasUnit = _retargetUnitId >= 0;
@@ -777,6 +807,23 @@ public sealed partial class CampaignMapScene : Node3D
         if (!_leftDown) { return; }
         _leftDown = false;
         if ((mb.Position - _leftDownPos).Length() >= 6f) { return; } // 드래그 = 카메라 팬(선택 아님)
+
+        // 시설 배치 중: 유효 칸(평지·숲)이면 설치 컨펌으로, 무효 칸이면 아무것도 하지 않는다.
+        if (_placing)
+        {
+            if (_placeValidHex is { } plot)
+            {
+                var (pCity, pIdx, pGen, pParam) = (_placeCity, _placeCmdIndex, _placeGeneral, _placeParam);
+                FinishPlacement();
+                AskExecute(pCity, pIdx, pGen, pParam, plot); // 설치 컨펌 → 발행
+            }
+            else
+            {
+                _log.Text = "평지·숲 위에만 설치할 수 있습니다.";
+            }
+
+            return;
+        }
 
         // ── 좌'클릭' 처리 ──
         // 목표 지정 중: 목적지를 '가리키기'만 하고, 마우스 옆 '확인'을 눌러야 확정된다.
@@ -5166,9 +5213,17 @@ public sealed partial class CampaignMapScene : Node3D
         _ => "",
     };
 
-    private void AskExecute(CityId city, int cmdIndex, GeneralId general, int p)
+    private void AskExecute(CityId city, int cmdIndex, GeneralId general, int p, HexCoord? plot = null)
     {
         var cmd = Cmds[cmdIndex];
+
+        // 건설은 위치를 지정해야 한다 — 아직 타일을 안 골랐으면 배치 모드로 넘어간다(고스트가 커서를 따라감).
+        if (cmd.Kind == CommandKind.Build && plot is null)
+        {
+            BeginPlacement(city, cmdIndex, general, p);
+            return;
+        }
+
         var troopCode = cmd.Param switch
         {
             "troop" => _troops[p].Code,
@@ -5260,7 +5315,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility,
-            TroopCode: troopCode, TargetCity: target, TraineePool: traineePool);
+            TroopCode: troopCode, TargetCity: target, TraineePool: traineePool, Plot: plot);
         var gName = _state.Generals.First(g => g.Id == general).Name;
         var pLabel = cmd.Param switch
         {
@@ -5285,6 +5340,195 @@ public sealed partial class CampaignMapScene : Node3D
                 SelectCity(city);
                 Redraw(_log.Text);
             });
+    }
+
+    // 시설 코드 → 지형 모델 종류(고스트·완성 모델 로드용).
+    private static TerrainType FacilityTerrain(string code) => code switch
+    {
+        "paddy" => TerrainType.Paddy,
+        "farm" => TerrainType.Farm,
+        "village" => TerrainType.Village1,
+        _ => TerrainType.Workshop,
+    };
+
+    // 건설 배치 모드 진입 — 명령 모달을 닫고 반투명 고스트를 띄운다. 커서를 따라다니며,
+    // 평지·숲 유효 칸에서만 초록, 그 외엔 빨강(클릭해도 컨펌 안 뜸).
+    private void BeginPlacement(CityId city, int cmdIndex, GeneralId general, int p)
+    {
+        CloseModal();
+        _placing = true;
+        _placeCity = city;
+        _placeCmdIndex = cmdIndex;
+        _placeGeneral = general;
+        _placeParam = p;
+        _placeCode = Facilities[p].Code;
+        _placeValidHex = null;
+
+        _placeGhost = _view.TileScene(FacilityTerrain(_placeCode))?.Instantiate<Node3D>();
+        if (_placeGhost is not null)
+        {
+            SetTransparency(_placeGhost, 0.5f);
+            _placeGhost.Visible = false;
+            AddChild(_placeGhost);
+        }
+
+        _placeMarker = new MeshInstance3D
+        {
+            Mesh = new CylinderMesh
+            {
+                TopRadius = _view.HexWorldSize * 0.96f,
+                BottomRadius = _view.HexWorldSize * 0.96f,
+                Height = 0.05f,
+                RadialSegments = 6,
+            },
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            Visible = false,
+            MaterialOverride = new StandardMaterial3D
+            {
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                EmissionEnabled = true,
+                NoDepthTest = true,
+            },
+        };
+        AddChild(_placeMarker);
+
+        _log.Text = $"{Facilities[p].Label} 설치 위치 — 평지·숲 위에서 클릭(우클릭 취소).";
+    }
+
+    // 배치 모드 종료 — 고스트·마커 정리.
+    private void FinishPlacement()
+    {
+        _placing = false;
+        _placeValidHex = null;
+        _placeGhost?.QueueFree();
+        _placeGhost = null;
+        _placeMarker?.QueueFree();
+        _placeMarker = null;
+    }
+
+    // 커서 아래 칸으로 고스트·마커를 옮기고 유효성을 갱신한다(마우스 이동 시).
+    private void UpdatePlacementHover(Vector2 screen)
+    {
+        if (RayToGround(screen) is not { } hex)
+        {
+            if (_placeGhost is not null) { _placeGhost.Visible = false; }
+            if (_placeMarker is not null) { _placeMarker.Visible = false; }
+            _placeValidHex = null;
+            return;
+        }
+
+        var city = _state.Cities.First(c => c.Id == _placeCity);
+        var valid = IsBuildablePlot(hex, city);
+        _placeValidHex = valid ? hex : null;
+
+        var world = _view.HexToWorld(hex);
+        if (_placeGhost is not null)
+        {
+            _placeGhost.Visible = true;
+            _placeGhost.Position = world;
+        }
+
+        if (_placeMarker is not null)
+        {
+            _placeMarker.Visible = true;
+            _placeMarker.Position = world + new Vector3(0f, _view.TileTopY + 0.03f, 0f);
+            var mat = (StandardMaterial3D)_placeMarker.MaterialOverride;
+            var col = valid ? new Color(0.35f, 0.85f, 0.4f, 0.4f) : new Color(0.9f, 0.3f, 0.28f, 0.4f);
+            mat.AlbedoColor = col;
+            mat.Emission = new Color(col.R * 0.6f, col.G * 0.6f, col.B * 0.6f);
+        }
+    }
+
+    // 설치 가능 칸인가 — 평지·숲, 성 반경 안, 성 타일 아님, 이미 시설·공사·성이 없는 칸.
+    private bool IsBuildablePlot(HexCoord hex, City city)
+    {
+        if (!_map.Contains(hex) || hex == city.Position) { return false; }
+        if (hex.Distance(city.Position) > _cb.BuildPlotRadius) { return false; }
+        var t = _passability.TerrainAt(hex);
+        if (t is not (TerrainType.Plains or TerrainType.Forest)) { return false; } // 평지·숲만
+        if (_state.Placements.Any(pp => pp.Plot == hex)) { return false; }
+        if (_state.Commands.Any(c => c.Kind == CommandKind.Build && c.Plot == hex)) { return false; }
+        if (_state.Cities.Any(c => c.Position == hex)) { return false; }
+        return true;
+    }
+
+    // 노드 트리 전체 메시를 반투명하게(고스트용). Godot4 GeometryInstance3D.Transparency.
+    private static void SetTransparency(Node node, float amount)
+    {
+        if (node is GeometryInstance3D gi) { gi.Transparency = amount; }
+        foreach (var child in node.GetChildren()) { SetTransparency(child, amount); }
+    }
+
+    // 완성 시설 + 공사중 모델을 성별·시설별 온전/잔해 개수에 맞춰 다시 그린다.
+    private void RedrawFacilities()
+    {
+        if (_facilityLayer is null) { return; }
+        foreach (var ch in _facilityLayer.GetChildren()) { ch.QueueFree(); }
+
+        foreach (var city in _state.Cities)
+        {
+            foreach (var (code, intact) in new[]
+                     {
+                         ("paddy", city.Paddies), ("farm", city.Farms),
+                         ("village", city.Villages), ("workshop", city.Workshop ? 1 : 0),
+                     })
+            {
+                // append-only 배치 목록을 순서대로 앞에서부터 intact개만 실제 모델로 그린다
+                // (나머지는 약탈로 잔해가 된 것 — 타일을 비운다).
+                var placed = _state.Placements.Where(pp => pp.City == city.Id && pp.Code == code).ToList();
+                for (var i = 0; i < intact && i < placed.Count; i++)
+                {
+                    var scene = _view.TileScene(FacilityTerrain(code));
+                    if (scene is null) { continue; }
+                    var node = scene.Instantiate<Node3D>();
+                    // 기존 평지/숲 타일 위에 얹는다 — 타일 윗면 높이만큼 올려 바닥끼리 Z-파이팅을 피한다.
+                    node.Position = _view.HexToWorld(placed[i].Plot) + new Vector3(0f, _view.TileTopY, 0f);
+                    _facilityLayer.AddChild(node);
+                }
+            }
+        }
+
+        // 공사 중(진행 중 건설 명령)에는 공사장 에셋을 그 자리에 얹는다.
+        foreach (var c in _state.Commands.Where(c => c.Kind == CommandKind.Build && c.Plot is not null))
+        {
+            var site = BuildConstructionSite(_view.HexWorldSize);
+            site.Position = _view.HexToWorld(c.Plot!.Value) + new Vector3(0f, _view.TileTopY, 0f);
+            _facilityLayer.AddChild(site);
+        }
+    }
+
+    // 공사장 에셋(절차적 저폴리) — 흙 기단 + 목재 비계(기둥 4·상단 보 2·발판). 건설 중 타일에 얹는다.
+    private static Node3D BuildConstructionSite(float s)
+    {
+        var root = new Node3D();
+        var wood = new StandardMaterial3D { AlbedoColor = new Color(0.56f, 0.40f, 0.22f) };
+        var dirt = new StandardMaterial3D { AlbedoColor = new Color(0.46f, 0.35f, 0.23f) };
+        var plank = new StandardMaterial3D { AlbedoColor = new Color(0.70f, 0.55f, 0.34f) };
+
+        MeshInstance3D Box(Vector3 size, Vector3 pos, StandardMaterial3D mat, float yaw = 0f) => new()
+        {
+            Mesh = new BoxMesh { Size = size },
+            Position = pos,
+            RotationDegrees = new Vector3(0f, yaw, 0f),
+            MaterialOverride = mat,
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        };
+
+        var half = s * 0.42f;        // 기둥 배치 반경
+        var postH = s * 0.62f;       // 기둥 높이
+        var postW = s * 0.06f;       // 기둥 굵기
+
+        root.AddChild(Box(new Vector3(s * 1.0f, s * 0.06f, s * 1.0f), new Vector3(0f, s * 0.03f, 0f), dirt)); // 기단
+        foreach (var (dx, dz) in new[] { (-half, -half), (half, -half), (-half, half), (half, half) })
+        {
+            root.AddChild(Box(new Vector3(postW, postH, postW), new Vector3(dx, postH * 0.5f, dz), wood)); // 기둥
+        }
+
+        var beamY = postH * 0.92f;
+        root.AddChild(Box(new Vector3(half * 2.1f, postW, postW), new Vector3(0f, beamY, -half), wood)); // 상단 보(앞)
+        root.AddChild(Box(new Vector3(half * 2.1f, postW, postW), new Vector3(0f, beamY, half), wood));  // 상단 보(뒤)
+        root.AddChild(Box(new Vector3(s * 0.9f, s * 0.04f, s * 0.22f), new Vector3(0f, s * 0.30f, 0f), plank, 18f)); // 비스듬한 발판
+        return root;
     }
 
     // 훈련 옵션과 같은 정렬(병종 → 신병 뒤)의 p번째 대기 병력.
@@ -5407,6 +5651,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         DrawSupplyZones();
         DrawDeployPaths();
+        RedrawFacilities();
 
         // 성 라벨·색 갱신.
         foreach (var city in _state.Cities)

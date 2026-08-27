@@ -7,8 +7,9 @@ using SanguoSLG.Core.Spatial;
 /// 상태 변경은 명시적 메서드(with 식)를 통해서만 이뤄진다.
 /// 금은 도시별 소유(2026-08-13 확정 — 수송·약탈이 전략 요소), 광석·말·코끼리는
 /// 병력 생산 자원 비축(design-administration "생산 자원과 시장"), Region은 지역 코드(regions.json).
-/// 시설(논·밭·마을·공방)은 개수로만 둔다 — 타일 위치는 표현(Game) 계층 몫이고,
-/// 컬렉션을 넣으면 record 값 동등성이 깨져 결정론 검증이 무너진다.
+/// 시설(논·밭·마을·공방)은 개수로만 둔다 — 컬렉션을 넣으면 record 값 동등성이 깨져 결정론
+/// 검증이 무너진다. 사용자가 지정한 타일 위치는 City가 아니라 GameState.FacilityPlacements
+/// 목록에 따로 둔다(<see cref="SanguoSLG.Core.Simulation.FacilityPlacement"/>).
 /// Wall은 현재 성벽 값(공성으로 깎이고 0이면 붕괴) — 시나리오 로드 시 등급별 최대치로 초기화한다.
 /// Ruined*는 약탈로 부서진 시설 잔해(슬롯을 차지, 수리 = 건설비 50%로 복구 — 재건보다 싸다).
 /// *Destroyed는 지역 고정 자원 시설(광산·목장·상원)의 파괴 상태 — 생산 = Produces* &amp;&amp; !*Destroyed,
