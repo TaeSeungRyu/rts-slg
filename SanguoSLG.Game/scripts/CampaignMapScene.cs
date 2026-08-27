@@ -434,6 +434,24 @@ public sealed partial class CampaignMapScene : Node3D
         [Sym.Officer] = "res://assets/icons/icon_officer.png",
     };
 
+    // 선택적 텍스처 로더 — 파일이 있으면 싣고, 없으면 null(플레이스홀더로 대체). 향후 아트가
+    // 준비되면 파일만 넣으면 UI에 그대로 반영된다.
+    private readonly Dictionary<string, ImageTexture?> _optionalTextures = new();
+    private ImageTexture? LoadOptionalTexture(string resPath)
+    {
+        if (_optionalTextures.TryGetValue(resPath, out var cached)) { return cached; }
+        ImageTexture? tex = null;
+        if (Godot.FileAccess.FileExists(resPath))
+        {
+            var img = Image.LoadFromFile(ProjectSettings.GlobalizePath(resPath));
+            img.GenerateMipmaps();
+            tex = ImageTexture.CreateFromImage(img);
+        }
+
+        _optionalTextures[resPath] = tex;
+        return tex;
+    }
+
     private ImageTexture Icon(Sym s)
     {
         if (_icons.TryGetValue(s, out var c)) { return c; }
@@ -3062,49 +3080,129 @@ public sealed partial class CampaignMapScene : Node3D
         close.Pressed += CloseModal;
         titleRow.AddChild(close);
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel($"보유 금 {city.Gold}", 13, GoldBright));
 
-        (MarketResource Res, string Name, string Note, int Stock, int[] Batches)[] items =
+        // 상단 배너 — 향후 시장 일러스트가 들어갈 이미지 슬롯 + 시세·보유 금 정보. 파일이 있으면
+        // 그림을 싣고, 없으면 자리를 잡아두는 플레이스홀더를 보여준다(그림 준비 시 그대로 교체).
+        var banner = new HBoxContainer();
+        banner.AddThemeConstantOverride("separation", 12);
+        box.AddChild(banner);
+
+        var imgSlot = new PanelContainer();
+        imgSlot.AddThemeStyleboxOverride("panel", Frame(new Color(Ink, 0.55f), Gold, 1, 6, 6));
+        imgSlot.CustomMinimumSize = new Vector2(160, 100);
+        var marketTex = LoadOptionalTexture("res://assets/ui/market.png");
+        if (marketTex is not null)
         {
-            (MarketResource.Ore, "광석", "모든 병력 생산", city.Ore, new[] { 1000, 5000 }),
-            (MarketResource.Horses, "말", "기병 생산", city.Horses, new[] { 100, 500 }),
-            (MarketResource.Elephants, "코끼리", "상병 생산", city.Elephants, new[] { 1, 10 }),
-            (MarketResource.Grain, "군량 (비상 보급)", "약탈·보급 차단 대비", city.Provisions, new[] { 1000, 5000 }),
+            imgSlot.AddChild(new TextureRect
+            {
+                Texture = marketTex,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            });
+        }
+        else
+        {
+            var hint = MakeLabel("시장 그림\n(준비 중)", 11, new Color(Parchment, 0.55f));
+            hint.HorizontalAlignment = HorizontalAlignment.Center;
+            hint.VerticalAlignment = VerticalAlignment.Center;
+            imgSlot.AddChild(hint);
+        }
+
+        banner.AddChild(imgSlot);
+
+        var info = new VBoxContainer();
+        info.AddThemeConstantOverride("separation", 4);
+        info.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        info.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        banner.AddChild(info);
+        info.AddChild(MakeLabel($"시세 {pct}% ({season})", 14, Gold));
+        info.AddChild(MakeLabel($"보유 금 {city.Gold}", 13, GoldBright));
+        info.AddChild(MakeLabel("수량을 슬라이더나 숫자로 정해 매입합니다.\n자원은 병력 생산·비상 보급에 씁니다.", 11, Parchment));
+
+        (MarketResource Res, string Name, string Note, int Stock, int Step)[] items =
+        {
+            (MarketResource.Ore, "광석", "모든 병력 생산", city.Ore, 1000),
+            (MarketResource.Horses, "말", "기병 생산", city.Horses, 100),
+            (MarketResource.Elephants, "코끼리", "상병 생산", city.Elephants, 1),
+            (MarketResource.Grain, "군량 (비상 보급)", "약탈·보급 차단 대비", city.Provisions, 1000),
         };
 
         foreach (var it in items)
         {
             box.AddChild(GoldRule());
-            var per100 = _commander.MarketUnitPricePer100(_state, city, it.Res);
-            box.AddChild(MakeLabel($"{it.Name}  ·  보유 {it.Stock}  ·  단가 {per100 / 100.0:0.##}금/단위  —  {it.Note}",
-                13, it.Res == MarketResource.Grain ? GoldBright : Parchment));
-            var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 8);
-            box.AddChild(row);
-            foreach (var qty in it.Batches)
+            var res = it.Res;
+            var name = it.Name;
+            var per100 = _commander.MarketUnitPricePer100(_state, city, res);
+            var step = it.Step;
+            // 예산 안에서 살 수 있는 최대 수량(step 배수로 내림). 금이 부족하면 최소 step까지는 슬라이더를 연다.
+            var affordable = per100 > 0 ? (int)((long)city.Gold * 100 / per100) : 0;
+            affordable -= affordable % step;
+            var maxUnits = System.Math.Max(step, affordable);
+
+            box.AddChild(MakeLabel($"{name}  ·  보유 {it.Stock}  ·  단가 {per100 / 100.0:0.##}금/단위  —  {it.Note}",
+                13, res == MarketResource.Grain ? GoldBright : Parchment));
+
+            var ctrl = new HBoxContainer();
+            ctrl.AddThemeConstantOverride("separation", 8);
+            box.AddChild(ctrl);
+
+            var slider = new HSlider { MinValue = 0, MaxValue = maxUnits, Step = step };
+            slider.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            slider.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+            slider.CustomMinimumSize = new Vector2(0, 24);
+            slider.Value = System.Math.Min(step, affordable);
+            ctrl.AddChild(slider);
+
+            var spin = new SpinBox { MinValue = 0, MaxValue = maxUnits, Step = step, Value = slider.Value };
+            spin.CustomMinimumSize = new Vector2(104, 0);
+            ctrl.AddChild(spin);
+
+            var costLbl = MakeLabel("", 13, GoldBright);
+            costLbl.CustomMinimumSize = new Vector2(88, 0);
+            costLbl.HorizontalAlignment = HorizontalAlignment.Right;
+            ctrl.AddChild(costLbl);
+
+            var buy = MakeButton("매입");
+            buy.CustomMinimumSize = new Vector2(64, 30);
+            ctrl.AddChild(buy);
+
+            void Sync(int units)
             {
-                var res = it.Res;
-                var units = qty;
+                var cst = (int)(((long)per100 * units + 99) / 100);
+                costLbl.Text = $"{cst}금";
+                buy.Disabled = units <= 0 || cst > city.Gold;
+            }
+
+            slider.ValueChanged += val =>
+            {
+                if ((int)spin.Value != (int)val) { spin.Value = val; }
+                Sync((int)val);
+            };
+            spin.ValueChanged += val =>
+            {
+                if ((int)slider.Value != (int)val) { slider.Value = val; }
+                Sync((int)val);
+            };
+            Sync((int)slider.Value);
+
+            buy.Pressed += () =>
+            {
+                var units = (int)slider.Value;
+                if (units <= 0) { return; }
                 var cost = (int)(((long)per100 * units + 99) / 100);
-                var btn = MakeButton($"+{units} ({cost}금)");
-                btn.AddThemeFontSizeOverride("font_size", 12);
-                btn.CustomMinimumSize = new Vector2(0, 28);
-                btn.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-                btn.Disabled = city.Gold < cost;
-                btn.Pressed += () => ShowConfirm("시장 매입",
-                    $"{city.Name} 시장에서 {it.Name} {units} 매입\n비용 {cost}금 (시세 {pct}%)",
+                ShowConfirm("시장 매입",
+                    $"{city.Name} 시장에서 {name} {units} 매입\n비용 {cost}금 (시세 {pct}%)",
                     () =>
                     {
                         var r = _commander.BuyFromMarket(_state, cityId, res, units);
                         Dbg($"UI market-buy city={cityId.Value} {res} x{units} ok={r.Ok} err={r.Error ?? "-"}");
                         if (r.Ok) { _state = r.State; }
-                        _log.Text = r.Ok ? $"시장: {it.Name} {units} 매입 (−{cost}금)" : $"실패: {r.Error}";
-                        if (r.Ok) { Report($"[내정] {city.Name} 시장에서 {it.Name} {units}을(를) {cost}금에 사들였습니다.", Parchment); }
+                        _log.Text = r.Ok ? $"시장: {name} {units} 매입 (−{cost}금)" : $"실패: {r.Error}";
+                        if (r.Ok) { Report($"[내정] {city.Name} 시장에서 {name} {units}을(를) {cost}금에 사들였습니다.", Parchment); }
                         SelectCity(cityId);
                         OpenMarketModal(cityId);
                     });
-                row.AddChild(btn);
-            }
+            };
         }
 
         var contentH = box.GetCombinedMinimumSize().Y;
