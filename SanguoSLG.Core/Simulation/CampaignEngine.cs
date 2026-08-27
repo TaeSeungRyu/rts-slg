@@ -212,8 +212,9 @@ public sealed class CampaignEngine
         return _world.AdvanceDays(afterField, WeekDays);
     }
 
-    // 공사장 피해: 인접 부대(소유 무시)가 매 진행 공사에 피해를 입히고, 누적 피해가 체력을 넘으면
-    // 그 건설 명령을 취소한다(예약 자원은 환불하지 않는다 — 취소와 동일). 결정론: 명령 순서 유지.
+    // 공사장 피해: 적대 세력 부대만 공사를 '유닛'으로 보고 공격한다(내 군대는 적 공사를, 적 군대는 내
+    // 공사를 친다). 인접(거리1) 적 부대가 매 진행 피해를 입히고, 누적 피해가 체력을 넘으면 그 건설
+    // 명령을 취소한다(예약 자원·인력은 환불하지 않는다). 결정론: 명령 순서 유지.
     private GameState DamageConstructionSites(GameState work, List<CombatUnit> armies)
     {
         var cmds = work.Commands.ToList();
@@ -226,7 +227,14 @@ public sealed class CampaignEngine
                 continue;
             }
 
-            var attackers = armies.Count(u => u.Field.Position.Distance(plot) <= 1);
+            // 공사 세력 = 그 도시의 현재 소유. 도시가 사라졌으면(함락 등) 공사도 방치 — 피해 없음.
+            var owner = work.Cities.FirstOrDefault(cc => cc.Id == c.City)?.Owner;
+            if (owner is null)
+            {
+                continue;
+            }
+
+            var attackers = armies.Count(u => u.Field.Owner != owner && u.Field.Position.Distance(plot) <= 1);
             if (attackers == 0)
             {
                 continue;

@@ -349,6 +349,22 @@ public class CommandSystemTests
     }
 
     [Fact]
+    public void 발행_건설은_인구가_공사인력_이하면_거부되고_성공시_인구를_뗀다()
+    {
+        var svc = Service();
+        var plot = new HexCoord(1, 0);
+        // 인구 1000(=BuildSiteHp) → 초과가 아니라 거부.
+        Assert.False(svc.Issue(State(new[] { Town(1, population: 1000) }, new[] { Pol(2, 90) }),
+            new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "paddy", Plot: plot)).Ok);
+
+        // 인구 5000 → 성공하고 공사 인력(1000)을 인구에서 뗀다.
+        var r = svc.Issue(State(new[] { Town(1, population: 5000) }, new[] { Pol(2, 90) }),
+            new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2), Facility: "paddy", Plot: plot));
+        Assert.True(r.Ok);
+        Assert.Equal(5000 - B.BuildSiteHp, r.State.Cities.Single().Population);
+    }
+
+    [Fact]
     public void 발행_건설은_타일_미지정이면_거부된다()
     {
         var svc = Service();

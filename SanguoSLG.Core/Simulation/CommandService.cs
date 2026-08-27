@@ -314,6 +314,12 @@ public sealed class CommandService
             return CommandResult.Fail("금이 부족하다.", state);
         }
 
+        // 공사 인력 = 인구에서 뗀다. 공사장 체력(BuildSiteHp)이 곧 이 인력이고, 인구가 그보다 적으면 못 짓는다.
+        if (city.Population <= _b.BuildSiteHp)
+        {
+            return CommandResult.Fail($"인구가 부족하다(공사 인력 {_b.BuildSiteHp} 초과 필요).", state);
+        }
+
         // 배치 타일 검증 — 성 중심 반경 안, 성 타일 아님, 아직 다른 시설이 없는 칸.
         // (평지·숲만 허용하는 지형 조건은 지형 데이터를 가진 표현 계층이 후보를 걸러 보장한다.)
         if (req.Plot is not { } plot)
@@ -332,7 +338,7 @@ public sealed class CommandService
             return CommandResult.Fail("이미 무언가 있는 칸이다.", state);
         }
 
-        var reserved = city.AddGold(-cost);
+        var reserved = city.AddGold(-cost) with { Population = city.Population - _b.BuildSiteHp };
         return Register(state, reserved, req, assist, amount: 0, _b.BuildDays, CommandKind.Build, req.Facility, plot: plot);
     }
 

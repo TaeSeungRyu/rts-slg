@@ -5292,18 +5292,20 @@ public sealed partial class CampaignMapScene : Node3D
                 "village" => _cb.BuildCostVillage,
                 _ => _cb.BuildCostWorkshop,
             };
+            var manpower = $" · 인력 {_cb.BuildSiteHp}(인구)";
+            var popWarn = c.Population <= _cb.BuildSiteHp ? $"\n※ 인구가 부족합니다(인력 {_cb.BuildSiteHp} 초과 필요)" : "";
             if (code == "workshop")
             {
-                extra = $"\n비용 {cost}금 · {_cb.BuildDays}일 · 성별 1개"
-                    + (c.Workshop ? "\n※ 이미 공방이 있어 지을 수 없습니다" : "");
+                extra = $"\n비용 {cost}금 · {_cb.BuildDays}일 · 성별 1개{manpower}"
+                    + (c.Workshop ? "\n※ 이미 공방이 있어 지을 수 없습니다" : "") + popWarn;
             }
             else
             {
                 var used = c.Paddies + c.Farms + c.Villages
                     + c.RuinedPaddies + c.RuinedFarms + c.RuinedVillages;
                 var max = CommandEfficiency.BuildSlots(c.Castle, _cb);
-                extra = $"\n비용 {cost}금 · {_cb.BuildDays}일 · 슬롯 {used}/{max}"
-                    + (used >= max ? "\n※ 슬롯이 가득 찼습니다(잔해는 수리로 복구)" : "");
+                extra = $"\n비용 {cost}금 · {_cb.BuildDays}일 · 슬롯 {used}/{max}{manpower}"
+                    + (used >= max ? "\n※ 슬롯이 가득 찼습니다(잔해는 수리로 복구)" : "") + popWarn;
             }
         }
 
