@@ -980,11 +980,15 @@ public sealed partial class CampaignMapScene : Node3D
 
         var inMap = _map.Contains(h);
         var terrain = inMap ? _passability.TerrainAt(h) : TerrainType.Plains;
+        // 그 타일에 건설한 시설이 있으면 지형 대신 시설로 표기·미리보기(지형 데이터는 평지 그대로여도
+        // 사용자에겐 논·밭·마을·공방으로 보여야 한다).
+        var facility = inMap ? FacilityAt(h) : null;
+        var previewTerrain = facility is { } fc ? FacilityTerrain(fc) : terrain;
 
-        // 상단: 지형 에셋 모델 미리보기(이전 모델 제거 후 교체).
+        // 상단: 지형/시설 에셋 모델 미리보기(이전 모델 제거 후 교체).
         foreach (var c in _terrainHolder.GetChildren()) { c.QueueFree(); }
         _terrainHolder.Rotation = Vector3.Zero; // 프레이밍은 회전 0 기준(이후 _Process가 빙글 회전)
-        if (inMap && _view.TileScene(terrain) is { } scene)
+        if (inMap && _view.TileScene(previewTerrain) is { } scene)
         {
             var inst = scene.Instantiate<Node3D>();
             inst.Position = Vector3.Zero;
@@ -992,7 +996,7 @@ public sealed partial class CampaignMapScene : Node3D
             FrameTerrainCamera(inst); // 모델 실제 크기(AABB)에 맞춰 카메라 배치
         }
 
-        _terrainName.Text = inMap ? TerrainName(terrain) : "맵 밖";
+        _terrainName.Text = !inMap ? "맵 밖" : facility is { } fn ? FacilityName(fn) : TerrainName(terrain);
 
         // 하단: 이동·전투 보정.
         Clear(_terrainInfo);
@@ -1011,6 +1015,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         Row("좌표", $"({h.Q}, {h.R})");
+        if (facility is not null) { Row("지형", $"{TerrainName(terrain)} 위 건설"); }
         Row("이동", inMap ? MoveCostText(terrain, h) : "통행 불가");
         var combat = CombatBonusText(terrain);
         Row("전투", combat.Length > 0 ? combat : "병종 보정 없음");
@@ -5353,6 +5358,17 @@ public sealed partial class CampaignMapScene : Node3D
         "farm" => TerrainType.Farm,
         "village" => TerrainType.Village1,
         _ => TerrainType.Workshop,
+    };
+
+    // 그 타일에 건설된 시설 코드(없으면 null). 배치 목록에서 찾는다.
+    private string? FacilityAt(HexCoord h) => _state.Placements.FirstOrDefault(p => p.Plot == h)?.Code;
+
+    private static string FacilityName(string code) => code switch
+    {
+        "paddy" => "논",
+        "farm" => "밭",
+        "village" => "마을",
+        _ => "공방",
     };
 
     // 건설 배치 모드 진입 — 명령 모달을 닫고 반투명 고스트를 띄운다. 커서를 따라다니며,
