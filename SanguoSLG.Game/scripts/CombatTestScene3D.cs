@@ -676,10 +676,11 @@ public partial class CombatTestScene3D : Node3D
             RefreshCastleLabel();
         }
 
-        // 결과에서 사라진 부대 = 이번 진행에 전멸 → 토큰을 없앤다(영혼 상승 연출은 후속, design-effect SoulRise).
+        // 결과에서 사라진 부대 = 이번 진행에 전멸 → 소멸 지점에 영혼 상승을 1회 재생하고 토큰을 없앤다.
         var survivors = turn.Units.Select(u => u.Id.Value).ToHashSet();
         foreach (var id in _units.Select(u => u.Id.Value).Where(id => !survivors.Contains(id)).ToList())
         {
+            PlaySoulRise(id);
             DespawnToken(id);
         }
 
@@ -697,8 +698,22 @@ public partial class CombatTestScene3D : Node3D
         _pending = null;
     }
 
-    // 전멸 부대 소멸: 토큰과 라벨을 제거한다. TODO(design-effect SoulRise): 제거 전 소멸 지점에
-    // 영혼이 땅에서 솟아오르는 연출을 1회 재생.
+    // 전멸 소멸 연출(design-effect SoulRise): 토큰 자리에 1회 재생. 효과 루트는 재생 후
+    // 스스로 정리되고, 빈 자리 노드는 케이스 전환 시 _spawned가 거둔다.
+    private void PlaySoulRise(int id)
+    {
+        if (!_tokens.TryGetValue(id, out var ctrl))
+        {
+            return;
+        }
+
+        var spot = new Node3D { Position = ctrl.Position };
+        AddChild(spot);
+        _spawned.Add(spot);
+        EffectView.Attach(spot, EffectKind.SoulRise, 0.7f, loop: false);
+    }
+
+    // 부대 토큰 제거(입성·전멸 공용). 전멸 연출은 호출부가 PlaySoulRise로 먼저 재생한다.
     private void DespawnToken(int id)
     {
         if (_tokens.TryGetValue(id, out var ctrl))

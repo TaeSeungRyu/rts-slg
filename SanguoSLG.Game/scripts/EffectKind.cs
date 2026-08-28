@@ -27,4 +27,10 @@ public enum EffectKind
     /// <summary>깨지는 듯한 효과.</summary>
     Shatter,
     Confusion,
+
+    /// <summary>영혼이 땅에서 위로 솟아오르는 효과 — 부대 전멸 소멸 연출(실사용 1회성).</summary>
+    SoulRise,
+
+    /// <summary>번개가 내리치는 효과 — 낙뢰(계략) 명중 연출(실사용 1회성).</summary>
+    Lightning,
 }

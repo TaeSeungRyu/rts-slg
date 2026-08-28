@@ -312,20 +312,8 @@ public partial class GameRoot3D : Node3D
         _sun = BuildSunLight(tone);
         AddChild(_sun);
 
-        var mapView = new MapView3D();
-        AddChild(mapView);
-        var map = new HexMap(0, 24, 0, 66);
-        mapView.Build(map, new System.Collections.Generic.HashSet<HexCoord>(), new TileConditionMap());
-
-        var camera = new CameraController3D { Fov = 55f };
-        AddChild(camera);
-        camera.Current = true;
-
-        var font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
-        var swords = GD.Load<PackedScene>("res://assets/models/troop-swordsman.glb");
-
         // 구현된 효과마다 밴드 하나: 편대 규모별(1·3·5·7·9) + 성 3종에 지속표시.
-        // 효과가 늘면 (효과, 이름) 한 줄씩 추가한다.
+        // 효과가 늘면 (효과, 이름) 한 줄씩 추가한다 — 맵 세로 크기는 밴드 수를 따라간다.
         // 적용 대상 범위는 EffectView.ScopeOf가 단일 출처(doc "적용 대상 제약").
         var bands = new (EffectKind Kind, string Tag)[]
         {
@@ -335,7 +323,20 @@ public partial class GameRoot3D : Node3D
             (EffectKind.Bubbles, "Bubbles"), (EffectKind.Burst, "Burst"),
             (EffectKind.Tear, "Tear"), (EffectKind.Shatter, "Shatter"),
             (EffectKind.Confusion, "Confusion"),
+            (EffectKind.SoulRise, "SoulRise"), (EffectKind.Lightning, "Lightning"),
         };
+
+        var mapView = new MapView3D();
+        AddChild(mapView);
+        var map = new HexMap(0, 24, 0, bands.Length * 6);
+        mapView.Build(map, new System.Collections.Generic.HashSet<HexCoord>(), new TileConditionMap());
+
+        var camera = new CameraController3D { Fov = 55f };
+        AddChild(camera);
+        camera.Current = true;
+
+        var font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
+        var swords = GD.Load<PackedScene>("res://assets/models/troop-swordsman.glb");
         for (var b = 0; b < bands.Length; b++)
         {
             var (kind, tag) = bands[b];

@@ -60,7 +60,7 @@
 - **계략 부분 정화 (미구현)** — 강도 배율에 따른 부분 정화(지금은 전량 제거). 시전 부대 발동 전 전멸=캔슬(명시만 남음).
 
 ### D. 표현·연출 (design-ui · design-effect · design-water)
-- **부대 소멸·전투 연출 ("시뮬 통과 후" 약속)** — SoulRise·Lightning 등 design-effect의 X 항목.
+- **부대 소멸·전투 연출 ("시뮬 통과 후" 약속)** — ✅ SoulRise·Lightning 구현(2026-08-28, design-effect 14종 전부 O). 남은 것: Lightning 발동 배선(❓ StratagemDamage가 낙뢰·폭파를 구분하지 않음 — design-effect "신규 효과" 참조).
 - **유닛 팔레트 실동작 (design-ui §1 부분)** — 지금은 모양·정보만. §3 미구현.
 - **대하(큰 강) 통행 (design-water, 예정)** — 다리로만 도하·수군/배 필요.
 - **장수 초상 교체 (콘텐츠 단계)** → [asset-general-portraits.md](asset-general-portraits.md) (Image Prompt 화풍 고정·`general_{id}.png` 배선+폴백).
