@@ -48,7 +48,8 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검�
   위치는 `GameState.FacilityPlacements`(저장 보존). 규칙은 [design-administration.md](doc/design-administration.md) "시설 건설".
 - 시장 매입 UI: 수량 **슬라이더/숫자(1단위)**·자원 사진 슬롯. 이동: 다중 부대 동일 목표 수렴(우왕좌왕 해결).
 - **좌하단 보고 패널**(삼국지11 오마주): 고정 위치·스크롤·[전체]는 전체 화면. 진행 재생 중 아군 이동 경로 표시.
-- **내정 스킬 12종 전부 배선**. 테스트 **536개(Core)** 통과, 밸런스 **42/42 수렴**.
+- **내정 스킬 12종 전부 배선**. **시각 효과 14종 전부 구현**(design-effect — SoulRise 전멸 소멸·Lightning;
+  낙뢰 발동 배선은 ❓ 보류). 테스트 **536개(Core)** 통과, 밸런스 **42/42 수렴**.
 - 표현: `run-maptest`(캠페인 3D)·`run-admin`(내정) 씬. 최근 배치 수동 QA는 [doc/test/qa-checklist.md](doc/test/qa-checklist.md).
 
 ## 5. 다음 작업
