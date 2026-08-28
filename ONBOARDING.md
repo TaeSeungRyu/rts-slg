@@ -19,7 +19,7 @@
 
 ```bash
 dotnet build                                              # Core·Tests·Sandbox  (⚠ Game 미포함)
-dotnet test                                               # xUnit (현재 535개)
+dotnet test                                               # xUnit (현재 536개)
 dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검증 — 루트 build가 빼먹으므로 필수
 "<godot-mono>" --headless --path SanguoSLG.Game --build-solutions --quit   # 씬/솔루션 컴파일 검증
 ```
@@ -37,7 +37,7 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검�
 | 4 | [doc/test/qa-checklist.md](doc/test/qa-checklist.md) | 최근 배치 수동 QA 체크리스트 |
 | — | `doc/design-*.md` · `doc/spec-*.md` | 영역별 설계 논의·확정 사양 |
 
-## 4. 현재 상태 (2026-08-27)
+## 4. 현재 상태 (2026-08-28)
 
 - **캠페인 루프 완성**: 이동(다중 경유지)·전투·공성·함락·약탈, 내정 명령(모병·징병·훈련·건설·세율·
   연구·수리·도시계략), 태수/군사 임명, 등용(적 성·출전중·포로), 충성 운영(급여·미지급·배신·포상),
@@ -48,7 +48,7 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검�
   위치는 `GameState.FacilityPlacements`(저장 보존). 규칙은 [design-administration.md](doc/design-administration.md) "시설 건설".
 - 시장 매입 UI: 수량 **슬라이더/숫자(1단위)**·자원 사진 슬롯. 이동: 다중 부대 동일 목표 수렴(우왕좌왕 해결).
 - **좌하단 보고 패널**(삼국지11 오마주): 고정 위치·스크롤·[전체]는 전체 화면. 진행 재생 중 아군 이동 경로 표시.
-- **내정 스킬 12종 전부 배선**. 테스트 **535개(Core)** 통과, 밸런스 **42/42 수렴**.
+- **내정 스킬 12종 전부 배선**. 테스트 **536개(Core)** 통과, 밸런스 **42/42 수렴**.
 - 표현: `run-maptest`(캠페인 3D)·`run-admin`(내정) 씬. 최근 배치 수동 QA는 [doc/test/qa-checklist.md](doc/test/qa-checklist.md).
 
 ## 5. 다음 작업
