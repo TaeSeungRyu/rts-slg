@@ -982,7 +982,8 @@ public sealed partial class CampaignMapScene : Node3D
         var terrain = inMap ? _passability.TerrainAt(h) : TerrainType.Plains;
         // 그 타일에 건설한 시설이 있으면 지형 대신 시설로 표기·미리보기(지형 데이터는 평지 그대로여도
         // 사용자에겐 논·밭·마을·공방으로 보여야 한다).
-        var facility = inMap ? FacilityAt(h) : null;
+        var placement = inMap ? FacilityPlacementAt(h) : null;
+        var facility = placement?.Code;
         var previewTerrain = facility is { } fc ? FacilityTerrain(fc) : terrain;
 
         // 상단: 지형/시설 에셋 모델 미리보기(이전 모델 제거 후 교체).
@@ -1015,7 +1016,11 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         Row("좌표", $"({h.Q}, {h.R})");
-        if (facility is not null) { Row("지형", $"{TerrainName(terrain)} 위 건설"); }
+        if (facility is not null)
+        {
+            Row("지형", $"{TerrainName(terrain)} 위 건설");
+            Row("체력", $"{placement!.HitPoints}");
+        }
         Row("이동", inMap ? MoveCostText(terrain, h) : "통행 불가");
         var combat = CombatBonusText(terrain);
         Row("전투", combat.Length > 0 ? combat : "병종 보정 없음");
@@ -1028,6 +1033,18 @@ public sealed partial class CampaignMapScene : Node3D
         if (supplier is not null)
         {
             Row("보급", $"보급지역 ({supplier.Name}) — 아군 부대 군량 자동 보충", new Color(0.45f, 0.85f, 0.52f));
+        }
+
+        if (placement is not null
+            && _state.Cities.FirstOrDefault(c => c.Id == placement.City)?.Owner == Player
+            && !_advancing)
+        {
+            var up = MakeButton("▶ 업그레이드");
+            up.AddThemeFontSizeOverride("font_size", 12);
+            up.CustomMinimumSize = new Vector2(0, 26);
+            up.Disabled = FacilityHealth.NextTier(placement.HitPoints) is null;
+            up.Pressed += () => OpenFacilityUpgradeModal(placement);
+            _terrainInfo.AddChild(up);
         }
 
         _terrainHex = h;
@@ -5416,6 +5433,9 @@ public sealed partial class CampaignMapScene : Node3D
     // 그 타일에 건설된 시설 코드(없으면 null). 배치 목록에서 찾는다.
     private string? FacilityAt(HexCoord h) => _state.Placements.FirstOrDefault(p => p.Plot == h)?.Code;
 
+    private FacilityPlacement? FacilityPlacementAt(HexCoord h)
+        => _state.Placements.FirstOrDefault(p => p.Plot == h);
+
     private static string FacilityName(string code) => code switch
     {
         "paddy" => "논",
@@ -5423,6 +5443,126 @@ public sealed partial class CampaignMapScene : Node3D
         "village" => "마을",
         _ => "공방",
     };
+
+    private int FacilityBuildCost(string code) => code switch
+    {
+        "paddy" => _cb.BuildCostPaddy,
+        "farm" => _cb.BuildCostFarm,
+        "village" => _cb.BuildCostVillage,
+        "workshop" => _cb.BuildCostWorkshop,
+        _ => 0,
+    };
+
+    private void OpenFacilityUpgradeModal(FacilityPlacement placement)
+    {
+        CloseModal();
+        var city = _state.Cities.FirstOrDefault(c => c.Id == placement.City);
+        if (city is null) { return; }
+
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.44f, 430f, 620f);
+        var box = DeployScaffold(mw, out _, out _);
+        box.AddChild(MakeLabel($"◈  {FacilityName(placement.Code)} 업그레이드   《 {city.Name} 》", 22, Gold));
+        box.AddChild(GoldRule());
+
+        var next = FacilityHealth.NextTier(placement.HitPoints);
+        var cost = FacilityBuildCost(placement.Code);
+        var info = next is { } n
+            ? $"체력 {placement.HitPoints} → {n}\n비용 {cost}금 · 소요 {_cb.BuildDays}일"
+            : $"체력 {placement.HitPoints} · 최대 단계";
+        var infoLabel = MakeLabel(info, 15, Parchment);
+        infoLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        box.AddChild(infoLabel);
+        box.AddChild(MakeLabel("수행 장수 (행 클릭 = 실행 · 상단 눌러 정렬)", 17, GoldBright));
+
+        var holder = new VBoxContainer();
+        box.AddChild(holder);
+        BuildFacilityUpgradeOfficerCards(holder, placement);
+    }
+
+    private void BuildFacilityUpgradeOfficerCards(VBoxContainer holder, FacilityPlacement placement)
+    {
+        Clear(holder);
+        var city = _state.Cities.First(c => c.Id == placement.City);
+        var free = _state.GeneralsAt(city.Id).Where(g => !_state.IsGeneralBusy(g)).OrderBy(g => g.Value).ToList();
+        if (free.Count == 0)
+        {
+            holder.AddChild(MakeLabel("(가능한 장수 없음)", 14, Parchment));
+            return;
+        }
+
+        var tree = new Tree
+        {
+            Columns = 4,
+            ColumnTitlesVisible = true,
+            HideRoot = true,
+            SelectMode = Tree.SelectModeEnum.Row,
+            CustomMinimumSize = new Vector2(0, Mathf.Min(46 + free.Count * 34, 420)),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        tree.AddThemeFontOverride("font", _font);
+        tree.AddThemeFontSizeOverride("font_size", 15);
+        tree.AddThemeFontOverride("title_button_font", _font);
+        tree.AddThemeFontSizeOverride("title_button_font_size", 14);
+        tree.SetColumnTitle(0, "이름");
+        tree.SetColumnExpand(0, true);
+        tree.SetColumnExpandRatio(0, 3);
+        foreach (var (col, t) in new[] { (1, "무"), (2, "지"), (3, "정★") })
+        {
+            tree.SetColumnTitle(col, t);
+            tree.SetColumnExpand(col, false);
+            tree.SetColumnCustomMinimumWidth(col, 52);
+        }
+
+        var gens = free.Select(id => _state.Generals.First(g => g.Id == id)).OrderByDescending(g => g.Politics).ToList();
+        var root = tree.CreateItem();
+        foreach (var g in gens)
+        {
+            var item = tree.CreateItem(root);
+            var home = g.Region.Length > 0 && g.Region == city.Region ? " 🏠" : "";
+            item.SetText(0, g.Name + home);
+            item.SetText(1, g.Might.ToString());
+            item.SetText(2, g.Intellect.ToString());
+            item.SetText(3, g.Politics.ToString());
+            item.SetMetadata(0, g.Id.Value);
+            for (var col = 1; col <= 3; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
+        }
+
+        tree.ItemSelected += () =>
+        {
+            var it = tree.GetSelected();
+            if (it is null) { return; }
+            var gid = new GeneralId(it.GetMetadata(0).AsInt32());
+            tree.CallDeferred(Tree.MethodName.DeselectAll);
+            AskFacilityUpgrade(placement, gid);
+        };
+        holder.AddChild(tree);
+    }
+
+    private void AskFacilityUpgrade(FacilityPlacement placement, GeneralId general)
+    {
+        var city = _state.Cities.First(c => c.Id == placement.City);
+        var gName = _state.Generals.First(g => g.Id == general).Name;
+        var next = FacilityHealth.NextTier(placement.HitPoints);
+        var cost = FacilityBuildCost(placement.Code);
+        var detail = next is { } n
+            ? $"{FacilityName(placement.Code)} 체력 {placement.HitPoints} → {n}\n[소요 {_cb.BuildDays}일] 비용 {cost}금"
+            : $"{FacilityName(placement.Code)} 체력 {placement.HitPoints}\n※ 이미 최대 단계입니다";
+        ShowConfirm("업그레이드 확인",
+            $"{city.Name} — {detail}\n수행 장수: {gName}\n\n실행하시겠습니까?",
+            () =>
+            {
+                var request = new CommandRequest(city.Id, CommandKind.Upgrade, general, Plot: placement.Plot);
+                var r = _commander.Issue(_state, request);
+                Dbg($"UI issue 시설 업그레이드 city={city.Id.Value} plot=({placement.Plot.Q},{placement.Plot.R}) gen={general.Value} ok={r.Ok} err={r.Error ?? "-"}");
+                if (r.Ok) { _state = r.State; }
+                _log.Text = r.Ok ? $"발행: {FacilityName(placement.Code)} 업그레이드 — {gName}" : $"실패: {r.Error}";
+                if (r.Ok) { Report($"[내정] {city.Name}에서 {gName} 장수가 {FacilityName(placement.Code)} 업그레이드를 맡았습니다.", Parchment); }
+                CloseModal();
+                ShowMapInfo(placement.Plot);
+                Redraw(_log.Text);
+            });
+    }
 
     // 건설 배치 모드 진입 — 명령 모달을 닫고 반투명 고스트를 띄운다. 커서를 따라다니며,
     // 평지·숲 유효 칸에서만 초록, 그 외엔 빨강(클릭해도 컨펌 안 뜸).
@@ -5688,6 +5828,7 @@ public sealed partial class CampaignMapScene : Node3D
         CommandKind.Conscript => "징병",
         CommandKind.Train => "훈련",
         CommandKind.Build => "건설",
+        CommandKind.Upgrade => "업그레이드",
         CommandKind.SetTaxRate => "세율",
         CommandKind.Research => "연구",
         CommandKind.Repair => "수리",
