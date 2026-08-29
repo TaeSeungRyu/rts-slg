@@ -82,14 +82,16 @@
 > `AdvanceField` tick · `StratagemResource`/`Reservation`/`Mastery`/`Strength`). **비어 있는 건 "명령 페이즈에서
 > 예약을 거는 진입점(seam) + UI"뿐이다.** 규칙 원본: [design-stratagem.md](./design-stratagem.md).
 
-**Phase 1 — Core 시전 seam (+테스트)**
-- `FieldStratagemService`(신설, 도시 명령의 `CommandService`에 대응):
+**Phase 1 — Core 시전 seam (+테스트) ✅ (2026-08-29)**
+- `FieldStratagemService`(도시 명령의 `CommandService`에 대응):
   - `Castable(state, casterId)` — 지금 시전 가능한 계략(모략력 ≥ 비용 · 숙달 `CanCast` · 선봉 존재).
   - `Targets(state, casterId, code)` — 사거리(`stratagems.json`의 `range`) 안의 적 부대 목록(예약 시점 UI 게이트).
   - `Reserve(state, casterId, code, targetId)` — 검증 후 시전자 `UnitCombatState`에 예약 설정, 새 `GameState` 반환.
     컨펌 정보 노출: **발동일(+2)** · **비용(모략력)** · **예상 강도**(시전 선봉 지력 − 대상 선봉 지력).
-- 결정론 유지(난수 없음). 발동 경로는 재사용.
-- 테스트: 시전 가능 필터 · 사거리 게이트 · 예약 설정 · 모략력/숙달 부족 거부 · **예약 → `AdvanceWeek` 발동** 통합.
+- 결정론 유지(난수 없음). 발동 경로는 재사용. 공격 계략은 적군, 정화 계략은 아군 대상으로 분기하고
+  예약 시점 지형 조건도 검증한다.
+- 테스트 완료: 시전 가능 필터 · 선봉/중복 예약 게이트 · 적/아군 대상 분기 · 사거리/지형 게이트 · 예약 설정 ·
+  모략력/숙달 부족 거부 · 컨펌 정보 · **예약 → `AdvanceWeek` 발동** 통합.
 
 **Phase 2 — Game UI 배선(맵 씬)**
 - 부대 정보 카드에 **모략력(Current/Max) · 숙달 레벨 · 예약(대상·발동일)** 추가.
