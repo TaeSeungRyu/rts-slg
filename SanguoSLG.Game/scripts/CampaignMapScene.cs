@@ -5474,8 +5474,18 @@ public sealed partial class CampaignMapScene : Node3D
 
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.44f, 430f, 620f);
-        var box = DeployScaffold(mw, out _, out _);
-        box.AddChild(MakeLabel($"◈  {FacilityName(placement.Code)} 업그레이드   《 {city.Name} 》", 22, Gold));
+        var mh = Mathf.Clamp(vp.Y * 0.68f, 340f, 600f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel($"◈  {FacilityName(placement.Code)} 업그레이드   《 {city.Name} 》  ⠿", 22, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(40, 34);
+        close.Pressed += CloseModal;
+        titleRow.AddChild(close);
         box.AddChild(GoldRule());
 
         var next = FacilityHealth.NextTier(placement.HitPoints);
@@ -5491,6 +5501,8 @@ public sealed partial class CampaignMapScene : Node3D
         var holder = new VBoxContainer();
         box.AddChild(holder);
         BuildFacilityUpgradeOfficerCards(holder, placement);
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(box.GetCombinedMinimumSize().Y, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
     private void BuildFacilityUpgradeOfficerCards(VBoxContainer holder, FacilityPlacement placement)
