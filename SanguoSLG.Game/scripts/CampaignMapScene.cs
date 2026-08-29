@@ -4944,7 +4944,7 @@ public sealed partial class CampaignMapScene : Node3D
         var gate = active ? "연구 진행중"
             : city.Gold < cost ? "금 부족"
             : $"{cost}금";
-        return $"Lv.{level}→{next} · +{ResearchCurve.Bonus(level)}→+{ResearchCurve.Bonus(next)} · {gate}";
+        return $"Lv.{level}→{next} · 보정 +{ResearchCurve.Bonus(level)}→+{ResearchCurve.Bonus(next)}\n{gate}";
     }
 
     // 아이콘 카드(큰 아이콘 + 이름 + 설명). 클릭 판정은 호출부에서 GuiInput으로.
@@ -4952,7 +4952,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var card = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(138, 121),
+            CustomMinimumSize = new Vector2(148, o.Detail.Contains('\n') ? 138 : 121),
             MouseFilter = Control.MouseFilterEnum.Stop,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand,
         };
@@ -5319,7 +5319,7 @@ public sealed partial class CampaignMapScene : Node3D
             extra = $"\n현재 Lv.{level} 보정 +{ResearchCurve.Bonus(level)}"
                 + (level >= _cb.ResearchMaxLevel
                     ? "\n※ 이미 최대 단계입니다"
-                    : $"\n다음 Lv.{next} 보정 +{ResearchCurve.Bonus(next)} · 비용 {cost}금 · 소요 {days}일")
+                    : $"\n[소요 {days}일] 다음 Lv.{next} 보정 +{ResearchCurve.Bonus(next)} · 비용 {cost}금")
                 + (cityData.Workshop ? "" : "\n※ 공방이 있는 도시에서만 연구할 수 있습니다")
                 + (active is null ? "" : $"\n※ 이미 연구가 진행 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
                 + (level < _cb.ResearchMaxLevel && cityData.Gold < cost ? $"\n※ 금이 부족합니다(보유 {cityData.Gold})" : "");
