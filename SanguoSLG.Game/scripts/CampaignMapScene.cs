@@ -1958,7 +1958,7 @@ public sealed partial class CampaignMapScene : Node3D
         _cmdList = new VBoxContainer();
         _cmdList.AddThemeConstantOverride("separation", 1);
         menu.AddChild(_cmdList);
-        // 팔레트에는 그룹 버튼만 — 누르면 옆에 그 그룹의 명령 플라이아웃이 뜬다.
+        // 팔레트에는 그룹 버튼만 둔다. 단일 명령인 계략은 중간 플라이아웃 없이 모달을 바로 연다.
         for (var gi = 0; gi < CmdGroups.Length; gi++)
         {
             var groupIdx = gi;
@@ -1966,7 +1966,18 @@ public sealed partial class CampaignMapScene : Node3D
             gbtn.AddThemeFontSizeOverride("font_size", 12);
             gbtn.Alignment = HorizontalAlignment.Center;
             gbtn.CustomMinimumSize = new Vector2(74, 24);
-            gbtn.Pressed += () => ToggleGroup(groupIdx);
+            gbtn.Pressed += () =>
+            {
+                var commands = CmdGroups[groupIdx].Indices;
+                if (commands.Length == 1 && Cmds[commands[0]].Kind == CommandKind.CityStratagem)
+                {
+                    CloseGroupMenu();
+                    OpenModal(commands[0]);
+                    return;
+                }
+
+                ToggleGroup(groupIdx);
+            };
             _cmdList.AddChild(gbtn);
         }
 
