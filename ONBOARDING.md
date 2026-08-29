@@ -9,7 +9,7 @@
 
 ## 1. 클론 직후 준비
 
-- 설치: **.NET 9 SDK**, **Godot 4.7.1 mono(.NET) 빌드**(일반 빌드는 C# 실행 불가).
+- 설치: **.NET 9 SDK 이상**, **Godot 4.7.2 mono(.NET) 빌드**(일반 빌드는 C# 실행 불가).
 - **`run-*.bat`의 `GODOT` 경로**를 자기 PC 설치 위치로 수정한다(기본값은 이 개발 PC의 `D:\godot\...`).
   머신 의존 경로 전체는 [doc/ai-working-notes.md](doc/ai-working-notes.md) §5.
 - Blender·Fooocus·Kenney 에셋 팩은 **새 아트를 만들 때만** 필요. 이미 쓰는 에셋은 저장소에 커밋돼 있어

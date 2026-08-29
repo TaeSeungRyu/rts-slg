@@ -20,7 +20,7 @@
 | --------------- | ------------------------------------------------------------------------------------------ |
 | 언어            | C# (nullable enable, implicit usings 사용)                                                 |
 | 런타임          | .NET 9 SDK                                                                                 |
-| 엔진            | Godot 4.7 (.NET / Mono 빌드), Godot_v4.7.1-stable_win64, Godot_v4.7.1-stable_win64_console |
+| 엔진            | Godot 4.7 (.NET / Mono 빌드), Godot_v4.7.2-stable_win64, Godot_v4.7.2-stable_win64_console |
 | 테스트          | xUnit                                                                                      |
 | 직렬화          | `System.Text.Json` (Newtonsoft 사용 금지)                                                  |
 | 에셋 파이프라인 | 무료 CC0 3D 에셋(Kenney 등) + Godot 3D. 필요 시 Blender 편집                               |

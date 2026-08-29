@@ -114,7 +114,7 @@ Godot에서 z-파이팅 깜빡임. 새 Blender 스크립트의 `make_mat()`에 `
 
 | 도구 | 이 PC 경로 | 용도 |
 |---|---|---|
-| **Godot 4.7.1 (.NET/mono)** | `D:\godot\Godot_v4.7.1-stable_mono_win64\` (GUI·`_console` 둘 다) | 씬 임포트·헤드리스 빌드·실행. **반드시 mono(.NET) 빌드** — 일반 빌드는 `GodotSharp` 없어 C# 실행 불가 |
+| **Godot 4.7.2 (.NET/mono)** | `D:\LOCAL-WORK-STATION\Godot_v4.7.2-stable_win64\` (GUI·`_console` 둘 다) | 씬 임포트·헤드리스 빌드·실행. **반드시 mono(.NET) 빌드** — 일반 빌드는 `GodotSharp` 없어 C# 실행 불가 |
 | **Blender 5.1.2** | `D:\Blander\blender.exe` (폴더명 오타 "Blander" 주의) | 3D 에셋 제작/편집(헤드리스 `--background --python`) |
 | **Fooocus** | `E:/Fooocus_win64_2-5-0` (포터블, 과거 D→E 이동) | 아이콘·초상 이미지 생성 |
 | **Kenney 에셋 원본(CC0)** | `D:\dev\assets\kenney\` (Hexagon Kit 3D 72 GLB 등) | 새 모델 통합 시 선별 복사 원본 |
