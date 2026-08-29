@@ -1019,7 +1019,16 @@ public sealed partial class CampaignMapScene : Node3D
         if (facility is not null)
         {
             Row("지형", $"{TerrainName(terrain)} 위 건설");
-            Row("체력", $"{placement!.HitPoints}");
+            var pendingUpgrade = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Upgrade
+                && c.City == placement!.City && c.Plot == placement.Plot);
+            var nextHp = FacilityHealth.NextTier(placement!.HitPoints);
+            var hpText = nextHp is { } n ? $"{placement.HitPoints} → {n}" : $"{placement.HitPoints} · 최대";
+            Row("체력", hpText);
+            Row("방어", $"최하 방어 {FacilityHealth.Defense} · 공격/반격 없음");
+            if (pendingUpgrade is not null)
+            {
+                Row("진행", $"업그레이드 · 남은 {System.Math.Max(0, pendingUpgrade.CompletionDay - _state.Day)}일");
+            }
         }
         Row("이동", inMap ? MoveCostText(terrain, h) : "통행 불가");
         var combat = CombatBonusText(terrain);
@@ -1042,7 +1051,10 @@ public sealed partial class CampaignMapScene : Node3D
             var up = MakeButton("▶ 업그레이드");
             up.AddThemeFontSizeOverride("font_size", 12);
             up.CustomMinimumSize = new Vector2(0, 26);
-            up.Disabled = FacilityHealth.NextTier(placement.HitPoints) is null;
+            var upgrading = _state.Commands.Any(c => c.Kind == CommandKind.Upgrade
+                && c.City == placement.City && c.Plot == placement.Plot);
+            up.Disabled = FacilityHealth.NextTier(placement.HitPoints) is null || upgrading;
+            if (upgrading) { up.Text = "업그레이드 진행중"; }
             up.Pressed += () => OpenFacilityUpgradeModal(placement);
             _terrainInfo.AddChild(up);
         }
