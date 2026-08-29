@@ -294,7 +294,8 @@ public sealed class CommandService
 
         if (req.Facility == "workshop")
         {
-            if (city.Workshop)
+            if (city.Workshop || state.Commands.Any(c => c.City == city.Id
+                    && c.Kind == CommandKind.Build && c.Facility == "workshop"))
             {
                 return CommandResult.Fail("공방은 성별 1개만 지을 수 있다.", state);
             }

@@ -499,6 +499,23 @@ public class CommandSystemTests
     }
 
     [Fact]
+    public void 발행_공방은_건설중이어도_추가로_지을수없다()
+    {
+        var svc = Service();
+        var s0 = State(new[] { Town(1, gold: 5000) }, new[] { Pol(2, 90), Pol(3, 90) });
+
+        var first = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(2),
+            Facility: "workshop", Plot: new HexCoord(1, 0)));
+        Assert.True(first.Ok);
+
+        var second = svc.Issue(first.State, new CommandRequest(new CityId(1), CommandKind.Build, new GeneralId(3),
+            Facility: "workshop", Plot: new HexCoord(0, 1)));
+
+        Assert.False(second.Ok);
+        Assert.Contains("공방", second.Error);
+    }
+
+    [Fact]
     public void 발행_건설은_금이_부족하면_거부된다()
     {
         var svc = Service();
