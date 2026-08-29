@@ -4926,6 +4926,11 @@ public sealed partial class CampaignMapScene : Node3D
 
     private string ResearchOptionDetail(City city, string troopCode)
     {
+        if (!city.Workshop)
+        {
+            return "공방 필요";
+        }
+
         var level = _state.ResearchOf(city.Owner, troopCode);
         if (level >= _cb.ResearchMaxLevel)
         {
@@ -4936,8 +4941,7 @@ public sealed partial class CampaignMapScene : Node3D
         var cost = CommandEfficiency.ResearchCost(next, _cb);
         var active = _state.Commands.Any(c => c.Kind == CommandKind.Research
             && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == city.Owner);
-        var gate = !city.Workshop ? "공방 필요"
-            : active ? "연구 진행중"
+        var gate = active ? "연구 진행중"
             : city.Gold < cost ? "금 부족"
             : $"{cost}금";
         return $"Lv.{level}→{next} · +{ResearchCurve.Bonus(level)}→+{ResearchCurve.Bonus(next)} · {gate}";
