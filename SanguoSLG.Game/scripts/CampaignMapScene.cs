@@ -4852,7 +4852,7 @@ public sealed partial class CampaignMapScene : Node3D
                 foreach (var t in _troops)
                 {
                     var detail = cmd.Kind == CommandKind.Research
-                        ? $"연구 Lv.{_state.ResearchOf(city.Owner, t.Code)}"
+                        ? ResearchOptionDetail(city, t.Code)
                         : ClassName(t.Class);
                     if (cmd.Kind is CommandKind.Recruit or CommandKind.Conscript)
                     {
@@ -4922,6 +4922,25 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         return list;
+    }
+
+    private string ResearchOptionDetail(City city, string troopCode)
+    {
+        var level = _state.ResearchOf(city.Owner, troopCode);
+        if (level >= _cb.ResearchMaxLevel)
+        {
+            return $"Lv.{level} 최대 · 보정 +{ResearchCurve.Bonus(level)}";
+        }
+
+        var next = level + 1;
+        var cost = CommandEfficiency.ResearchCost(next, _cb);
+        var active = _state.Commands.Any(c => c.Kind == CommandKind.Research
+            && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == city.Owner);
+        var gate = !city.Workshop ? "공방 필요"
+            : active ? "연구 진행중"
+            : city.Gold < cost ? "금 부족"
+            : $"{cost}금";
+        return $"Lv.{level}→{next} · +{ResearchCurve.Bonus(level)}→+{ResearchCurve.Bonus(next)} · {gate}";
     }
 
     // 아이콘 카드(큰 아이콘 + 이름 + 설명). 클릭 판정은 호출부에서 GuiInput으로.
@@ -5281,6 +5300,25 @@ public sealed partial class CampaignMapScene : Node3D
             if (tmpl.Class == TroopClass.Cavalry) { extra += $" · 말 −{(expect + 2) / 3}"; }
             if (tmpl.Class == TroopClass.Elephant) { extra += $" · 코끼리 −{(expect + 999) / 1000}"; }
             if (cmd.Kind == CommandKind.Conscript) { extra += $" · 치안 −{expect / 1000 * _cb.ConscriptSecurityDropPer1000}"; }
+        }
+
+        if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
+        {
+            var cityData = _state.Cities.First(c => c.Id == city);
+            var caster = _state.Generals.First(g => g.Id == general);
+            var level = _state.ResearchOf(cityData.Owner, troopCode);
+            var next = System.Math.Min(level + 1, _cb.ResearchMaxLevel);
+            var cost = level >= _cb.ResearchMaxLevel ? 0 : CommandEfficiency.ResearchCost(next, _cb);
+            var days = System.Math.Max(_cb.ResearchBaseDays - System.Math.Clamp((caster.Intellect - 50) / 5, 0, 10), 1);
+            var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
+                && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
+            extra = $"\n현재 Lv.{level} 보정 +{ResearchCurve.Bonus(level)}"
+                + (level >= _cb.ResearchMaxLevel
+                    ? "\n※ 이미 최대 단계입니다"
+                    : $"\n다음 Lv.{next} 보정 +{ResearchCurve.Bonus(next)} · 비용 {cost}금 · 소요 {days}일")
+                + (cityData.Workshop ? "" : "\n※ 공방이 있는 도시에서만 연구할 수 있습니다")
+                + (active is null ? "" : $"\n※ 이미 연구가 진행 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
+                + (level < _cb.ResearchMaxLevel && cityData.Gold < cost ? $"\n※ 금이 부족합니다(보유 {cityData.Gold})" : "");
         }
 
         if (cmd.Param == "stratagem")
