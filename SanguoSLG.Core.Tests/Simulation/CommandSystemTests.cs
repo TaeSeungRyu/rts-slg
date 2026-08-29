@@ -354,6 +354,65 @@ public class CommandSystemTests
     }
 
     [Fact]
+    public void 완료_시설업그레이드는_건설비를_예약하고_체력을_다음단계로_올린다()
+    {
+        var svc = Service();
+        var plot = new HexCoord(1, 0);
+        var s0 = State(new[] { Town(1, gold: 5000) }, new[] { Pol(2, 90) }) with
+        {
+            FacilityPlacements = new[] { new FacilityPlacement(new CityId(1), plot, "paddy", FacilityHealth.Level1) },
+        };
+
+        var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Upgrade, new GeneralId(2), Plot: plot));
+
+        Assert.True(issued.Ok);
+        Assert.Equal(5000 - B.BuildCostPaddy, issued.State.Cities.Single().Gold);
+        Assert.Equal(FacilityHealth.Level1, issued.State.Placements.Single().HitPoints);
+
+        var done = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100), B).AdvanceDays(issued.State, B.BuildDays);
+        Assert.Equal(FacilityHealth.Level2, done.Placements.Single().HitPoints);
+        Assert.Empty(done.Commands);
+    }
+
+    [Fact]
+    public void 발행_시설업그레이드는_최대단계와_없는시설을_거부한다()
+    {
+        var svc = Service();
+        var plot = new HexCoord(1, 0);
+        var max = State(new[] { Town(1, gold: 5000) }, new[] { Pol(2, 90) }) with
+        {
+            FacilityPlacements = new[] { new FacilityPlacement(new CityId(1), plot, "paddy", FacilityHealth.Level3) },
+        };
+
+        var r1 = svc.Issue(max, new CommandRequest(new CityId(1), CommandKind.Upgrade, new GeneralId(2), Plot: plot));
+        var r2 = svc.Issue(State(new[] { Town(1, gold: 5000) }, new[] { Pol(2, 90) }),
+            new CommandRequest(new CityId(1), CommandKind.Upgrade, new GeneralId(2), Plot: plot));
+
+        Assert.False(r1.Ok);
+        Assert.Contains("최대", r1.Error);
+        Assert.False(r2.Ok);
+        Assert.Contains("시설", r2.Error);
+    }
+
+    [Fact]
+    public void 발행_시설업그레이드는_같은시설_중복진행을_거부한다()
+    {
+        var svc = Service();
+        var plot = new HexCoord(1, 0);
+        var s0 = State(new[] { Town(1, gold: 5000) }, new[] { Pol(2, 90), Pol(3, 90) }) with
+        {
+            FacilityPlacements = new[] { new FacilityPlacement(new CityId(1), plot, "paddy", FacilityHealth.Level1) },
+        };
+        var first = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Upgrade, new GeneralId(2), Plot: plot));
+        Assert.True(first.Ok);
+
+        var second = svc.Issue(first.State, new CommandRequest(new CityId(1), CommandKind.Upgrade, new GeneralId(3), Plot: plot));
+
+        Assert.False(second.Ok);
+        Assert.Contains("업그레이드 중", second.Error);
+    }
+
+    [Fact]
     public void 발행_건설은_인구가_공사인력_이하면_거부되고_성공시_인구를_뗀다()
     {
         var svc = Service();

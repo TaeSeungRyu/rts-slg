@@ -18,6 +18,9 @@ public enum CommandKind
     /// <summary>건설 — 논·밭·마을·공방 1채. 효율 능력 = 정치, 전제 정치 > 70. 30일.</summary>
     Build,
 
+    /// <summary>시설 업그레이드 — 기존 시설 체력 1000→2000→5000. 장수 필요, 건설 비용과 일수 사용.</summary>
+    Upgrade,
+
     /// <summary>세율 — 세율 변경(효율 무관). 7일.</summary>
     SetTaxRate,
 

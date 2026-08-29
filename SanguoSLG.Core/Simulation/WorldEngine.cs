@@ -259,6 +259,10 @@ public sealed class WorldEngine
 
                     break;
 
+                case CommandKind.Upgrade:
+                    UpgradePlacement(placements, cmd);
+                    break;
+
                 case CommandKind.SetTaxRate:
                     cities[cmd.City] = city with { TaxRate = cmd.Amount };
                     break;
@@ -310,6 +314,7 @@ public sealed class WorldEngine
                 CommandKind.Conscript => WorldEventKind.Conscript,
                 CommandKind.Train => WorldEventKind.Train,
                 CommandKind.Build => WorldEventKind.Build,
+                CommandKind.Upgrade => WorldEventKind.Build,
                 CommandKind.Research => WorldEventKind.Research,
                 CommandKind.Repair => WorldEventKind.Repair,
                 _ => null,
@@ -508,6 +513,20 @@ public sealed class WorldEngine
         "elephant_garden" => city with { ElephantGardenDestroyed = false },
         _ => city,
     };
+
+    private static void UpgradePlacement(List<FacilityPlacement> placements, CityCommand cmd)
+    {
+        if (cmd.Plot is not { } plot)
+        {
+            return;
+        }
+
+        var idx = placements.FindIndex(p => p.City == cmd.City && p.Plot == plot);
+        if (idx >= 0)
+        {
+            placements[idx] = placements[idx] with { HitPoints = cmd.Amount };
+        }
+    }
 
     // 세력 연구 트랙 +1(최대 캡). 없으면 새 트랙(1단계). 갱신된 단계를 돌려준다.
     private static int ResearchUp(List<FactionResearch> research, FactionId faction, string troopCode, int maxLevel)

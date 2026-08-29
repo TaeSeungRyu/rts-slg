@@ -142,6 +142,7 @@ public sealed class CommandService
             CommandKind.Conscript => IssueRecruit(state, city, req, assist, eff, CommandKind.Conscript),
             CommandKind.Train => IssueTrain(state, city, req, assist, eff),
             CommandKind.Build => IssueBuild(state, city, req, assist, main),
+            CommandKind.Upgrade => IssueUpgrade(state, city, req, assist),
             CommandKind.SetTaxRate => IssueTax(state, city, req, assist),
             CommandKind.Research => IssueResearch(state, city, req, assist, main),
             CommandKind.Repair => IssueRepair(state, city, req, assist),
@@ -340,6 +341,45 @@ public sealed class CommandService
 
         var reserved = city.AddGold(-cost) with { Population = city.Population - _b.BuildSiteHp };
         return Register(state, reserved, req, assist, amount: 0, _b.BuildDays, CommandKind.Build, req.Facility, plot: plot);
+    }
+
+    private CommandResult IssueUpgrade(GameState state, City city, CommandRequest req, General? assist)
+    {
+        if (req.Plot is not { } plot)
+        {
+            return CommandResult.Fail("업그레이드할 시설을 지정해야 한다.", state);
+        }
+
+        var placement = state.Placements.FirstOrDefault(p => p.City == city.Id && p.Plot == plot);
+        if (placement is null)
+        {
+            return CommandResult.Fail("업그레이드할 시설이 없다.", state);
+        }
+
+        var cost = BuildCost(placement.Code);
+        if (cost < 0)
+        {
+            return CommandResult.Fail("알 수 없는 시설이다.", state);
+        }
+
+        if (FacilityHealth.NextTier(placement.HitPoints) is not { } next)
+        {
+            return CommandResult.Fail("이미 최대 단계까지 업그레이드했다.", state);
+        }
+
+        if (city.Gold < cost)
+        {
+            return CommandResult.Fail("금이 부족하다.", state);
+        }
+
+        if (state.Commands.Any(c => c.Kind == CommandKind.Upgrade && c.Plot == plot))
+        {
+            return CommandResult.Fail("이미 업그레이드 중인 시설이다.", state);
+        }
+
+        var reserved = city.AddGold(-cost);
+        return Register(state, reserved, req, assist, amount: next, _b.BuildDays,
+            CommandKind.Upgrade, placement.Code, plot: plot);
     }
 
     private CommandResult IssueResearch(GameState state, City city, CommandRequest req, General? assist, General main)
