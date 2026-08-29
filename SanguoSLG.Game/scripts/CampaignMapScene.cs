@@ -1022,7 +1022,8 @@ public sealed partial class CampaignMapScene : Node3D
             var pendingUpgrade = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Upgrade
                 && c.City == placement!.City && c.Plot == placement.Plot);
             var nextHp = FacilityHealth.NextTier(placement!.HitPoints);
-            var hpText = nextHp is { } n ? $"{placement.HitPoints} → {n}" : $"{placement.HitPoints} · 최대";
+            var hpText = placement.Code == "workshop" ? $"{placement.HitPoints}"
+                : nextHp is { } n ? $"{placement.HitPoints} → {n}" : $"{placement.HitPoints} · 최대";
             Row("체력", hpText);
             Row("방어", $"최하 방어 {FacilityHealth.Defense} · 공격/반격 없음");
             if (pendingUpgrade is not null)
