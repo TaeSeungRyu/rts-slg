@@ -254,7 +254,7 @@ public sealed class WorldEngine
                     // 사용자가 지정한 타일에 배치 기록(표현 계층이 그 자리에 모델을 얹는다). append-only.
                     if (cmd.Plot is { } builtPlot)
                     {
-                        placements.Add(new FacilityPlacement(cmd.City, builtPlot, cmd.Facility));
+                        placements.Add(new FacilityPlacement(cmd.City, builtPlot, cmd.Facility, FacilityHealth.Level1));
                     }
 
                     break;

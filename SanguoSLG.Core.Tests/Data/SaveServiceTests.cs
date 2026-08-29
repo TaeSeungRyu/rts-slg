@@ -42,7 +42,7 @@ public class SaveServiceTests
             FieldArmies: new List<CombatUnit> { unit },
             Captives: new List<Prisoner> { new(new GeneralId(1), new FactionId(1), new FactionId(2)) },
             MarketPricePercent: 130,
-            FacilityPlacements: new List<FacilityPlacement> { new(new CityId(1), new HexCoord(1, 0), "paddy") });
+            FacilityPlacements: new List<FacilityPlacement> { new(new CityId(1), new HexCoord(1, 0), "paddy", FacilityHealth.Level2) });
 
         var round = SaveService.Deserialize(SaveService.Serialize(state));
 
@@ -73,5 +73,6 @@ public class SaveServiceTests
         var rp = Assert.Single(round.Placements);
         Assert.Equal(new HexCoord(1, 0), rp.Plot);
         Assert.Equal("paddy", rp.Code);
+        Assert.Equal(FacilityHealth.Level2, rp.HitPoints);
     }
 }

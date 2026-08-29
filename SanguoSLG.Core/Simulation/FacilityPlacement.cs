@@ -12,4 +12,4 @@ using SanguoSLG.Core.Spatial;
 /// 온전 개수(City.Paddies 등)/잔해 개수(City.RuinedPaddies 등)에 맞춰 앞에서부터 온전/잔해로 나눠
 /// 그린다 — 그래서 약탈·수리를 이 목록에 배선하지 않아도 화면이 어긋나지 않는다.
 /// </summary>
-public sealed record FacilityPlacement(CityId City, HexCoord Plot, string Code);
+public sealed record FacilityPlacement(CityId City, HexCoord Plot, string Code, int HitPoints = FacilityHealth.Level1);

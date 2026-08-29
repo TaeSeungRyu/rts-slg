@@ -350,6 +350,7 @@ public class CommandSystemTests
         Assert.Equal(plot, placement.Plot);
         Assert.Equal("paddy", placement.Code);
         Assert.Equal(new CityId(1), placement.City);
+        Assert.Equal(FacilityHealth.Level1, placement.HitPoints);
     }
 
     [Fact]
