@@ -2661,7 +2661,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             for (var i = 0; i < options.Count; i++)
             {
-                if (IsFacilityBuildDisabled(cityData, Facilities[i].Code, workshopOnly: true))
+                if (IsFacilityBuildDisabled(cityData, Facilities[i].Code))
                 {
                     _disabledOptions.Add(i);
                 }
@@ -4999,15 +4999,18 @@ public sealed partial class CampaignMapScene : Node3D
         return $"Lv.{level}→{next} · 보정 +{ResearchCurve.Bonus(level)}→+{ResearchCurve.Bonus(next)}\n{gate}";
     }
 
-    private bool IsFacilityBuildDisabled(City city, string code, bool workshopOnly)
+    private bool IsFacilityBuildDisabled(City city, string code)
     {
-        if (workshopOnly && code != "workshop")
+        if (code == "workshop")
         {
-            return false;
+            return city.Workshop || _state.Commands.Any(c => c.City == city.Id
+                && c.Kind == CommandKind.Build && c.Facility == "workshop");
         }
 
-        return code == "workshop" && (city.Workshop || _state.Commands.Any(c => c.City == city.Id
-            && c.Kind == CommandKind.Build && c.Facility == "workshop"));
+        var pending = _state.Commands.Count(c => c.City == city.Id && c.Kind == CommandKind.Build && c.Facility != "workshop");
+        var used = city.Paddies + city.Farms + city.Villages
+            + city.RuinedPaddies + city.RuinedFarms + city.RuinedVillages + pending;
+        return used >= CommandEfficiency.BuildSlots(city.Castle, _cb);
     }
 
     // 아이콘 카드(큰 아이콘 + 이름 + 설명). 클릭 판정은 호출부에서 GuiInput으로.
