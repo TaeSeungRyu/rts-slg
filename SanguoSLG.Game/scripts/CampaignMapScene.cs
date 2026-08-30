@@ -4925,7 +4925,8 @@ public sealed partial class CampaignMapScene : Node3D
                         "village" => (city.Villages, _cb.BuildCostVillage),
                         _ => (city.Workshop ? 1 : 0, _cb.BuildCostWorkshop),
                     };
-                    list.Add((label, Icon(Sym.Grain), $"보유 {owned} · 비용 {cost}금"));
+                    var max = code == "workshop" ? 1 : CommandEfficiency.BuildSlots(city.Castle, _cb);
+                    list.Add((label, Icon(Sym.Grain), $"보유 {owned} / 최대 {max}\n비용 {cost}금"));
                 }
 
                 break;

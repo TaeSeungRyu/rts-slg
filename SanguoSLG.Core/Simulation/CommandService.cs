@@ -303,8 +303,9 @@ public sealed class CommandService
         else
         {
             // 잔해(약탈로 부서진 시설)도 슬롯을 차지한다 — 새로 짓지 말고 수리(50%)로 복구하라는 압력.
+            var pending = state.Commands.Count(c => c.City == city.Id && c.Kind == CommandKind.Build && c.Facility != "workshop");
             var used = city.Paddies + city.Farms + city.Villages
-                + city.RuinedPaddies + city.RuinedFarms + city.RuinedVillages;
+                + city.RuinedPaddies + city.RuinedFarms + city.RuinedVillages + pending;
             if (used >= CommandEfficiency.BuildSlots(city.Castle, _b))
             {
                 return CommandResult.Fail("시설 슬롯이 가득 찼다(잔해는 수리로 복구).", state);
