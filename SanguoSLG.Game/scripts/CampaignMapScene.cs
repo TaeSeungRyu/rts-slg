@@ -6424,9 +6424,15 @@ public sealed partial class CampaignMapScene : Node3D
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         // 전체 보고는 화면 전체창으로 — 좌우·상하 여백만 남기고 최대한 넓게.
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Max(480f, vp.X - 32f);
-        var mh = Mathf.Max(360f, vp.Y - 32f);
+        var margin = 10f;
+        var mw = Mathf.Max(480f, vp.X - margin * 2f - 28f);
+        var mh = Mathf.Max(360f, vp.Y - margin * 2f - 28f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
+        panel.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        panel.OffsetLeft = margin;
+        panel.OffsetTop = margin;
+        panel.OffsetRight = -margin;
+        panel.OffsetBottom = -margin;
 
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
@@ -6449,9 +6455,7 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(l);
         }
 
-        var contentH = box.GetCombinedMinimumSize().Y;
-        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
-        CenterAndDrag(panel, titleRow, mw, mh, box);
+        scroll.CustomMinimumSize = new Vector2(mw, mh);
         scroll.SetDeferred("scroll_vertical", 100000); // 최신(아래)으로
     }
 
