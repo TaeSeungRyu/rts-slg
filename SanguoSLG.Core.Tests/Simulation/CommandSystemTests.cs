@@ -374,6 +374,28 @@ public class CommandSystemTests
         Assert.Empty(done.Commands);
     }
 
+    [Theory]
+    [InlineData("paddy", 300)]
+    [InlineData("farm", 200)]
+    [InlineData("village", 400)]
+    public void 완료_일반시설업그레이드는_시설별_건설비와_공통체력단계를_쓴다(string facility, int expectedCost)
+    {
+        var svc = Service();
+        var plot = new HexCoord(1, 0);
+        var s0 = State(new[] { Town(1, gold: 5000) }, new[] { Pol(2, 90) }) with
+        {
+            FacilityPlacements = new[] { new FacilityPlacement(new CityId(1), plot, facility, FacilityHealth.Level2) },
+        };
+
+        var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Upgrade, new GeneralId(2), Plot: plot));
+
+        Assert.True(issued.Ok);
+        Assert.Equal(5000 - expectedCost, issued.State.Cities.Single().Gold);
+
+        var done = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100), B).AdvanceDays(issued.State, B.BuildDays);
+        Assert.Equal(FacilityHealth.Level3, done.Placements.Single().HitPoints);
+    }
+
     [Fact]
     public void 발행_시설업그레이드는_최대단계와_없는시설을_거부한다()
     {
