@@ -772,6 +772,27 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
+        if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
+        {
+            if (_placing)
+            {
+                FinishPlacement();
+                _log.Text = "설치를 취소했습니다.";
+                return;
+            }
+
+            if (_depTargeting)
+            {
+                var wasUnit = _retargetUnitId >= 0;
+                FinishTargeting();
+                if (!wasUnit) { OpenDeployHub(); }
+                return;
+            }
+
+            CloseAnyModalOrPanel();
+            return;
+        }
+
         if (@event is not InputEventMouseButton mb)
         {
             return;
@@ -792,8 +813,10 @@ public sealed partial class CampaignMapScene : Node3D
                 var wasUnit = _retargetUnitId >= 0;
                 FinishTargeting();
                 if (!wasUnit) { OpenDeployHub(); }
+                return;
             }
 
+            CloseAnyModalOrPanel();
             return;
         }
 
@@ -2825,6 +2848,31 @@ public sealed partial class CampaignMapScene : Node3D
         _depTarget = null;
         _stratTarget = null;
         ClearPathMarkers(); // 편성이 닫히면 예약 경로도 지도에서 지운다
+    }
+
+    private bool CloseAnyModalOrPanel()
+    {
+        if (_confirmLayer is not null)
+        {
+            _confirmLayer.QueueFree();
+            _confirmLayer = null;
+            return true;
+        }
+
+        if (_modalLayer is not null)
+        {
+            CloseModal();
+            return true;
+        }
+
+        if (_terrainCard.Visible || _infoCard.Visible || _cmdMenu.Visible || _unitMenu.Visible || _cmdSubMenu.Visible)
+        {
+            _selected = null;
+            HidePanels();
+            return true;
+        }
+
+        return false;
     }
 
     // ── 출전 모달: 병종 + 선봉(+부관) 선택 → 대기 병력을 야전 부대로 편성 ──
