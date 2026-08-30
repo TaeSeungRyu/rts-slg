@@ -5828,6 +5828,12 @@ public sealed partial class CampaignMapScene : Node3D
             };
             _facilityLayer.AddChild(lbl);
         }
+
+        foreach (var c in _state.Commands.Where(c => c.Kind == CommandKind.Upgrade && c.Plot is not null))
+        {
+            var origin = _view.HexToWorld(c.Plot!.Value) + new Vector3(0f, _view.TileTopY, 0f);
+            _facilityLayer.AddChild(BuildUpgradeSmoke(origin));
+        }
     }
 
     // 공사 흙먼지 — 옅은 갈색 입자가 낮게 피어올라 흩어진다(작업 중 신호).
@@ -5868,6 +5874,47 @@ public sealed partial class CampaignMapScene : Node3D
             Gravity = new Vector3(0.04f, 0.02f, 0.02f),
             ScaleAmountMin = 0.6f,
             ScaleAmountMax = 1.5f,
+            ColorRamp = gradient,
+        };
+    }
+
+    private static CpuParticles3D BuildUpgradeSmoke(Vector3 origin)
+    {
+        var gradient = new Gradient();
+        gradient.SetColor(0, new Color(0.55f, 0.55f, 0.52f, 0f));
+        gradient.AddPoint(0.25f, new Color(0.62f, 0.60f, 0.55f, 0.48f));
+        gradient.SetColor(1, new Color(0.78f, 0.76f, 0.70f, 0f));
+
+        var mesh = new SphereMesh
+        {
+            Radius = 0.045f,
+            Height = 0.09f,
+            RadialSegments = 8,
+            Rings = 4,
+            Material = new StandardMaterial3D
+            {
+                VertexColorUseAsAlbedo = true,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            },
+        };
+
+        return new CpuParticles3D
+        {
+            Position = origin + new Vector3(0f, 0.45f, 0f),
+            Amount = 16,
+            Lifetime = 2.8f,
+            Preprocess = 2.8f,
+            Mesh = mesh,
+            EmissionShape = CpuParticles3D.EmissionShapeEnum.Sphere,
+            EmissionSphereRadius = 0.18f,
+            Direction = Vector3.Up,
+            Spread = 24f,
+            InitialVelocityMin = 0.08f,
+            InitialVelocityMax = 0.2f,
+            Gravity = new Vector3(0.03f, 0.035f, 0.01f),
+            ScaleAmountMin = 0.7f,
+            ScaleAmountMax = 1.8f,
             ColorRamp = gradient,
         };
     }
