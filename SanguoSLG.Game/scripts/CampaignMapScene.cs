@@ -159,6 +159,7 @@ public sealed partial class CampaignMapScene : Node3D
     private bool _offSortAsc;
     private Label _modalDetail = null!;
     private readonly List<PanelContainer> _optionCards = new();
+    private readonly HashSet<int> _disabledOptions = new();
     private readonly Dictionary<TroopClass, ImageTexture> _emblems = new();
 
     // 출전 모달 선택 상태.
@@ -2654,7 +2655,23 @@ public sealed partial class CampaignMapScene : Node3D
         var cityData = _state.Cities.First(x => x.Id == city);
         var options = OptionList(cmd, cityData);
         _optionCards.Clear();
+        _disabledOptions.Clear();
         _modalParam = cmd.Param == "tax" ? 2 : 0;
+        if (cmd.Param == "facility")
+        {
+            for (var i = 0; i < options.Count; i++)
+            {
+                if (IsFacilityBuildDisabled(cityData, Facilities[i].Code, workshopOnly: true))
+                {
+                    _disabledOptions.Add(i);
+                }
+            }
+
+            if (_disabledOptions.Contains(_modalParam))
+            {
+                _modalParam = Enumerable.Range(0, options.Count).FirstOrDefault(i => !_disabledOptions.Contains(i));
+            }
+        }
         if (options.Count > 0)
         {
             box.AddChild(MakeLabel(cmd.Param == "stratagem" ? "계략을 선택하세요" : "대상을 선택하세요", 19, GoldBright));
@@ -2665,12 +2682,16 @@ public sealed partial class CampaignMapScene : Node3D
             for (var i = 0; i < options.Count; i++)
             {
                 var idx = i;
-                var card = OptionCard(options[i]);
+                var disabled = _disabledOptions.Contains(idx);
+                var card = OptionCard(options[i], disabled);
                 _optionCards.Add(card);
-                card.GuiInput += e =>
+                if (!disabled)
                 {
-                    if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { PickOption(idx, options[idx]); }
-                };
+                    card.GuiInput += e =>
+                    {
+                        if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { PickOption(idx, options[idx]); }
+                    };
+                }
                 grid.AddChild(card);
             }
         }
@@ -4978,14 +4999,26 @@ public sealed partial class CampaignMapScene : Node3D
         return $"Lv.{level}→{next} · 보정 +{ResearchCurve.Bonus(level)}→+{ResearchCurve.Bonus(next)}\n{gate}";
     }
 
+    private bool IsFacilityBuildDisabled(City city, string code, bool workshopOnly)
+    {
+        if (workshopOnly && code != "workshop")
+        {
+            return false;
+        }
+
+        return code == "workshop" && (city.Workshop || _state.Commands.Any(c => c.City == city.Id
+            && c.Kind == CommandKind.Build && c.Facility == "workshop"));
+    }
+
     // 아이콘 카드(큰 아이콘 + 이름 + 설명). 클릭 판정은 호출부에서 GuiInput으로.
-    private PanelContainer OptionCard((string Name, ImageTexture Icon, string Detail) o)
+    private PanelContainer OptionCard((string Name, ImageTexture Icon, string Detail) o, bool disabled = false)
     {
         var card = new PanelContainer
         {
             CustomMinimumSize = new Vector2(148, o.Detail.Contains('\n') ? 138 : 121),
             MouseFilter = Control.MouseFilterEnum.Stop,
-            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+            MouseDefaultCursorShape = disabled ? Control.CursorShape.Forbidden : Control.CursorShape.PointingHand,
+            Modulate = disabled ? new Color(1f, 1f, 1f, 0.42f) : Colors.White,
         };
         card.AddThemeStyleboxOverride("panel", CardBox(false));
 
@@ -5009,6 +5042,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         card.MouseEntered += () =>
         {
+            if (disabled) { return; }
             if (!_optionCards.Contains(card) || _optionCards.IndexOf(card) != _modalParam)
             {
                 card.AddThemeStyleboxOverride("panel", CardBox(false, hover: true));
@@ -5016,6 +5050,7 @@ public sealed partial class CampaignMapScene : Node3D
         };
         card.MouseExited += () =>
         {
+            if (disabled) { return; }
             if (!_optionCards.Contains(card) || _optionCards.IndexOf(card) != _modalParam)
             {
                 card.AddThemeStyleboxOverride("panel", CardBox(false));
@@ -5288,6 +5323,10 @@ public sealed partial class CampaignMapScene : Node3D
     private void AskExecute(CityId city, int cmdIndex, GeneralId general, int p, HexCoord? plot = null)
     {
         var cmd = Cmds[cmdIndex];
+        if (_disabledOptions.Contains(p))
+        {
+            return;
+        }
 
         // 건설은 위치를 지정해야 한다 — 아직 타일을 안 골랐으면 배치 모드로 넘어간다(고스트가 커서를 따라감).
         if (cmd.Kind == CommandKind.Build && plot is null)
