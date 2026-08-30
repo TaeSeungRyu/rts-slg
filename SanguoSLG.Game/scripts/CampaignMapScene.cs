@@ -984,7 +984,8 @@ public sealed partial class CampaignMapScene : Node3D
         // 그 타일에 건설한 시설이 있으면 지형 대신 시설로 표기·미리보기(지형 데이터는 평지 그대로여도
         // 사용자에겐 논·밭·마을·공방으로 보여야 한다).
         var placement = inMap ? FacilityPlacementAt(h) : null;
-        var facility = placement?.Code;
+        var pendingBuild = inMap ? PendingFacilityBuildAt(h) : null;
+        var facility = placement?.Code ?? pendingBuild?.Facility;
         var previewTerrain = facility is { } fc ? FacilityTerrain(fc) : terrain;
 
         // 상단: 지형/시설 에셋 모델 미리보기(이전 모델 제거 후 교체).
@@ -1020,17 +1021,31 @@ public sealed partial class CampaignMapScene : Node3D
         if (facility is not null)
         {
             Row("지형", $"{TerrainName(terrain)} 위 건설");
-            var pendingUpgrade = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Upgrade
-                && c.City == placement!.City && c.Plot == placement.Plot);
-            var nextHp = FacilityHealth.NextTier(placement!.HitPoints);
-            var hpText = placement.Code == "workshop" ? $"{placement.HitPoints}"
-                : nextHp is { } n ? $"{placement.HitPoints} → {n}" : $"{placement.HitPoints} · 최대";
-            Row("체력", hpText);
-            Row("방어", $"최하 방어 {FacilityHealth.Defense} · 공격/반격 없음");
-            if (pendingUpgrade is not null)
+            if (pendingBuild is not null)
             {
-                Row("진행", $"업그레이드 · 남은 {System.Math.Max(0, pendingUpgrade.CompletionDay - _state.Day)}일");
+                Row("상태", $"건설중 · 남은 {System.Math.Max(0, pendingBuild.CompletionDay - _state.Day)}일",
+                    new Color(0.98f, 0.78f, 0.42f));
             }
+
+            if (placement is not null)
+            {
+                var pendingUpgrade = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Upgrade
+                    && c.City == placement.City && c.Plot == placement.Plot);
+                var nextHp = FacilityHealth.NextTier(placement.HitPoints);
+                var hpText = placement.Code == "workshop" ? $"{placement.HitPoints}"
+                    : nextHp is { } n ? $"{placement.HitPoints} → {n}" : $"{placement.HitPoints} · 최대";
+                Row("체력", hpText);
+                if (pendingUpgrade is not null)
+                {
+                    Row("진행", $"업그레이드 · 남은 {System.Math.Max(0, pendingUpgrade.CompletionDay - _state.Day)}일");
+                }
+            }
+            else
+            {
+                Row("체력", "건설 완료 후 1000");
+            }
+
+            Row("방어", $"최하 방어 {FacilityHealth.Defense} · 공격/반격 없음");
         }
         Row("이동", inMap ? MoveCostText(terrain, h) : "통행 불가");
         var combat = CombatBonusText(terrain);
@@ -5491,6 +5506,9 @@ public sealed partial class CampaignMapScene : Node3D
 
     private FacilityPlacement? FacilityPlacementAt(HexCoord h)
         => _state.Placements.FirstOrDefault(p => p.Plot == h);
+
+    private CityCommand? PendingFacilityBuildAt(HexCoord h)
+        => _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Build && c.Plot == h);
 
     private static string FacilityName(string code) => code switch
     {
