@@ -41,6 +41,7 @@ public sealed partial class CampaignMapScene : Node3D
     private CommandService _commander = null!;
     private IReadOnlyList<TroopTemplate> _troops = null!;
     private CommandBalance _cb = null!;
+    private BalanceConfig _balance = null!;
     private GameState _state = null!;
     private int _week;
 
@@ -187,6 +188,7 @@ public sealed partial class CampaignMapScene : Node3D
     private IReadOnlyList<ActiveSkill> _activeSkills = [];
     private IReadOnlyList<PassiveSkill> _passiveSkills = [];
     private IReadOnlyList<AdminSkill> _adminSkills = [];
+    private IReadOnlyDictionary<string, AdminSkill> _adminSkillMap = new Dictionary<string, AdminSkill>();
     private Tree? _vanTree;              // 장수 편성 표(선봉·부관 체크 + 정렬·내부 스크롤)
     private List<GeneralId> _composeFree = new();
     private int _vanSortCol = 2;         // 2 이름 / 3 무 / 4 지 / 5 정 / 6 적성·특성
@@ -355,15 +357,16 @@ public sealed partial class CampaignMapScene : Node3D
         _activeSkills = actives;
         _passiveSkills = passives;
         _adminSkills = new AdminSkillLoader().LoadFromDirectory(dataDirectory);
-        var balance = new BalanceConfig(MonthlyTaxPerCity: 100);
-        _provPer10kPerDay = balance.ProvisionsPer10kPerDay;
+        _adminSkillMap = _adminSkills.ToDictionary(s => s.Code, System.StringComparer.Ordinal);
+        _balance = new BalanceConfig(MonthlyTaxPerCity: 100);
+        _provPer10kPerDay = _balance.ProvisionsPer10kPerDay;
 
-        _commander = new CommandService(_cb, _troops, balance, _adminSkills);
+        _commander = new CommandService(_cb, _troops, _balance, _adminSkills);
         _deployer = new DeployService(_cb, _troops, actives, passives, _adminSkills);
         _ai = new FactionAI(_commander, _deployer);
         _passability = new PassabilityMap(_map, [], _cities);
         var movement = new MovementSimulator(_passability);
-        var world = new WorldEngine(balance, _cb);
+        var world = new WorldEngine(_balance, _cb);
         _engine = new CampaignEngine(
             new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70)),
             world,
@@ -2389,6 +2392,9 @@ public sealed partial class CampaignMapScene : Node3D
         _infoRows.AddChild(g4);
         AddCell(g4, Sym.Coin, "금", $"{c.Gold}");
         AddCell(g4, Sym.Grain, "군량", $"{c.Provisions}");
+        var (monthlyGold, monthlyProvisions) = MonthlyIncomePreview(c);
+        AddCell(g4, Sym.Coin, "월 금", $"+{monthlyGold}");
+        AddCell(g4, Sym.Grain, "월 군량", $"+{monthlyProvisions}");
         AddCell(g4, Sym.People, "인구", $"{c.Population}");
         AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
         AddCell(g4, Sym.Coin, "세율", $"{c.TaxRate}%");
@@ -3010,6 +3016,76 @@ public sealed partial class CampaignMapScene : Node3D
         s.ContentMarginTop = s.ContentMarginBottom = 9;
         return s;
     }
+
+    private (int Gold, int Provisions) MonthlyIncomePreview(City city)
+    {
+        var governor = city.Governor is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
+        var effective = governor is not null && governor.Politics >= _balance.GovernorMinPolitics;
+        var goldBase = GoldBase(city.Castle) + city.Villages * _balance.VillageGold;
+        var provisionsBase = ProvisionsBase(city.Castle)
+            + city.Paddies * _balance.PaddyProvisions
+            + city.Farms * _balance.FarmProvisions;
+        var gold = ScaleMonthlyIncome(goldBase, city, effective, governor, effective ? AdminBonus.Bucket(governor, _adminSkillMap, "tax") : 0);
+        var provisions = ScaleMonthlyIncome(provisionsBase, city, effective, governor, effective ? AdminBonus.Bucket(governor, _adminSkillMap, "harvest") : 0);
+        return (gold, provisions);
+    }
+
+    private int ScaleMonthlyIncome(int baseAmount, City city, bool effectiveGovernor, General? governor, int bucketPercent)
+    {
+        var amount = baseAmount * (100 + bucketPercent) / 100;
+        var rate = System.Math.Clamp(city.TaxRate, 0, _balance.TaxRateMax);
+        if (effectiveGovernor)
+        {
+            var span = 100 - _balance.GovernorMinPolitics;
+            var amplify = span <= 0 ? 0 : System.Math.Max(0, governor!.Politics - _balance.GovernorMinPolitics)
+                * _balance.GovernorTaxAmplifyAt100 / span;
+            var effectiveRate = rate * (100 + amplify) / 100;
+            amount = amount * effectiveRate / _balance.TaxRateBase;
+        }
+        else
+        {
+            amount = amount * rate / _balance.TaxRateBase;
+            amount = amount * _balance.NoGovernorIncomePercent / 100;
+        }
+
+        amount = amount * PopulationFillPercent(city) / 100;
+        if (city.Security < _balance.SecurityLowThreshold)
+        {
+            amount = amount * _balance.SecurityLowIncomePercent / 100;
+        }
+
+        return amount;
+    }
+
+    private int PopulationFillPercent(City city)
+    {
+        var max = PopulationMax(city.Castle);
+        if (max <= 0) { return 100; }
+        var fill = System.Math.Min(city.Population, max);
+        return _balance.PopulationIncomeFloorPercent
+            + (100 - _balance.PopulationIncomeFloorPercent) * fill / max;
+    }
+
+    private int PopulationMax(CastleSize castle) => castle switch
+    {
+        CastleSize.Large => _balance.PopulationMaxLarge,
+        CastleSize.Medium => _balance.PopulationMaxMedium,
+        _ => _balance.PopulationMaxSmall,
+    };
+
+    private int GoldBase(CastleSize castle) => castle switch
+    {
+        CastleSize.Large => _balance.GoldBaseLarge,
+        CastleSize.Medium => _balance.GoldBaseMedium,
+        _ => _balance.GoldBaseSmall,
+    };
+
+    private int ProvisionsBase(CastleSize castle) => castle switch
+    {
+        CastleSize.Large => _balance.ProvisionsBaseLarge,
+        CastleSize.Medium => _balance.ProvisionsBaseMedium,
+        _ => _balance.ProvisionsBaseSmall,
+    };
 
     // ── 상세 탭 ①: 주둔 장수 표(태수 ◆·금색, 행 클릭 = 장수 상세) ──
     private void BuildStationedTab(VBoxContainer box, CityId city, List<General> stationed)
