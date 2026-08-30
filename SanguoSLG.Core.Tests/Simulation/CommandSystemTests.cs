@@ -378,7 +378,8 @@ public class CommandSystemTests
     [InlineData("paddy", 300)]
     [InlineData("farm", 200)]
     [InlineData("village", 400)]
-    public void 완료_일반시설업그레이드는_시설별_건설비와_공통체력단계를_쓴다(string facility, int expectedCost)
+    [InlineData("workshop", 800)]
+    public void 완료_시설업그레이드는_시설별_건설비와_공통체력단계를_쓴다(string facility, int expectedCost)
     {
         var svc = Service();
         var plot = new HexCoord(1, 0);
