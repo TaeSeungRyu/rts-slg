@@ -127,6 +127,30 @@ public class WorldEngineTests
         Assert.Equal(1000 + 2000 + 600 + 150, city.Provisions);
     }
 
+    [Theory]
+    [InlineData(1, 0, 0, 0, 300)]
+    [InlineData(0, 1, 0, 0, 150)]
+    [InlineData(0, 0, 1, 50, 0)]
+    public void 논밭마을은_정의된_시설효과를_각각_월말수입에_더한다(
+        int paddies,
+        int farms,
+        int villages,
+        int expectedGoldBonus,
+        int expectedProvisionsBonus)
+    {
+        var cities = new List<City>
+        {
+            new(new CityId(1), "시설검산", new HexCoord(0, 0), new FactionId(1), 1000, CastleSize.Small,
+                Gold: 0, Population: 100_000, Paddies: paddies, Farms: farms, Villages: villages),
+        };
+        var s = Governed(cities);
+
+        var after = new WorldEngine(Balance).AdvanceDays(s, 30).Cities.Single();
+
+        Assert.Equal(Balance.GoldBaseSmall + expectedGoldBonus, after.Gold);
+        Assert.Equal(1000 + Balance.ProvisionsBaseSmall + expectedProvisionsBonus, after.Provisions);
+    }
+
     [Fact]
     public void 자원은_산출_도시에서만_매월_는다()
     {
