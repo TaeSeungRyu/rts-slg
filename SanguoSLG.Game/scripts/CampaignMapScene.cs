@@ -5833,6 +5833,19 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var origin = _view.HexToWorld(c.Plot!.Value) + new Vector3(0f, _view.TileTopY, 0f);
             _facilityLayer.AddChild(BuildUpgradeSmoke(origin));
+            var total = c.CompletionDay - c.StartDay;
+            var remaining = System.Math.Max(0, c.CompletionDay - _state.Day);
+            var lbl = new Label3D
+            {
+                Text = $"⬆ {remaining}/{total}일",
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                FontSize = 30,
+                OutlineSize = 10,
+                NoDepthTest = true,
+                Modulate = new Color(0.72f, 0.92f, 1f),
+                Position = origin + new Vector3(0f, 1.08f, 0f),
+            };
+            _facilityLayer.AddChild(lbl);
         }
     }
 
