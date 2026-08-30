@@ -2150,6 +2150,19 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddThemeConstantOverride("separation", 4);
         _terrainCard.AddChild(box);
 
+        var closeRow = new HBoxContainer();
+        closeRow.Alignment = BoxContainer.AlignmentMode.End;
+        box.AddChild(closeRow);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(28, 24);
+        close.AddThemeFontSizeOverride("font_size", 11);
+        close.Pressed += () =>
+        {
+            _terrainCard.Visible = false;
+            _terrainHex = null;
+        };
+        closeRow.AddChild(close);
+
         // 상단: 지형 에셋 3D 미리보기(자체 월드 SubViewport). 영역을 작게.
         var svc = new SubViewportContainer { Stretch = true, CustomMinimumSize = new Vector2(112, 84), MouseFilter = Control.MouseFilterEnum.Ignore, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
         box.AddChild(svc);
