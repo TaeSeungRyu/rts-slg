@@ -1053,13 +1053,12 @@ public sealed partial class CampaignMapScene : Node3D
                     new Color(0.98f, 0.78f, 0.42f));
             }
 
-            Row("효과", FacilityEffectText(facility));
-
             if (placement is not null)
             {
                 var pendingUpgrade = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Upgrade
                     && c.City == placement.City && c.Plot == placement.Plot);
                 var nextHp = FacilityHealth.NextTier(placement.HitPoints);
+                Row("효과", FacilityEffectText(placement.Code, placement.HitPoints));
                 var hpText = placement.Code == "workshop" ? $"{placement.HitPoints}"
                     : nextHp is { } n ? $"{placement.HitPoints} → {n}" : $"{placement.HitPoints} · 최대";
                 Row("체력", hpText);
@@ -1070,6 +1069,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
             else
             {
+                Row("효과", FacilityEffectText(facility));
                 Row("체력", "건설 완료 후 1000");
             }
 
@@ -3087,13 +3087,23 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var governor = city.Governor is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
         var effective = governor is not null && governor.Politics >= _balance.GovernorMinPolitics;
-        var goldBase = GoldBase(city.Castle) + city.Villages * _balance.VillageGold;
+        var goldBase = GoldBase(city.Castle) + FacilityOutput(city, "village", city.Villages, _balance.VillageGold);
         var provisionsBase = ProvisionsBase(city.Castle)
-            + city.Paddies * _balance.PaddyProvisions
-            + city.Farms * _balance.FarmProvisions;
+            + FacilityOutput(city, "paddy", city.Paddies, _balance.PaddyProvisions)
+            + FacilityOutput(city, "farm", city.Farms, _balance.FarmProvisions);
         var gold = ScaleMonthlyIncome(goldBase, city, effective, governor, effective ? AdminBonus.Bucket(governor, _adminSkillMap, "tax") : 0);
         var provisions = ScaleMonthlyIncome(provisionsBase, city, effective, governor, effective ? AdminBonus.Bucket(governor, _adminSkillMap, "harvest") : 0);
         return (gold, provisions);
+    }
+
+    private int FacilityOutput(City city, string code, int intactCount, int baseOutput)
+    {
+        var placements = _state.Placements
+            .Where(p => p.City == city.Id && p.Code == code)
+            .Take(intactCount)
+            .ToList();
+        var output = placements.Sum(p => baseOutput * FacilityHealth.OutputMultiplier(p.HitPoints));
+        return output + System.Math.Max(0, intactCount - placements.Count) * baseOutput;
     }
 
     private int ScaleMonthlyIncome(int baseAmount, City city, bool effectiveGovernor, General? governor, int bucketPercent)
@@ -5667,13 +5677,27 @@ public sealed partial class CampaignMapScene : Node3D
         _ => Icon(Sym.Grain),
     };
 
-    private string FacilityEffectText(string code) => code switch
+    private string FacilityEffectText(string code, int hitPoints = FacilityHealth.Level1)
     {
-        "paddy" => $"월 군량 +{_balance.PaddyProvisions}",
-        "farm" => $"월 군량 +{_balance.FarmProvisions}",
-        "village" => $"월 금 +{_balance.VillageGold}",
-        "workshop" => $"병종 연구 가능 · 성벽 수리 +{_cb.WallRepairWorkshopBonus}% · 공성 병기 생산 기반",
-        _ => "",
+        var current = FacilityEffectValue(code, hitPoints);
+        var next = FacilityHealth.NextTier(hitPoints);
+        var nextText = next is { } n && code != "workshop" ? $" → +{FacilityEffectValue(code, n)}" : "";
+        return code switch
+        {
+            "paddy" => $"월 군량 +{current}{nextText}",
+            "farm" => $"월 군량 +{current}{nextText}",
+            "village" => $"월 금 +{current}{nextText}",
+            "workshop" => $"병종 연구 가능 · 성벽 수리 +{_cb.WallRepairWorkshopBonus}% · 공성 병기 생산 기반",
+            _ => "",
+        };
+    }
+
+    private int FacilityEffectValue(string code, int hitPoints) => code switch
+    {
+        "paddy" => _balance.PaddyProvisions * FacilityHealth.OutputMultiplier(hitPoints),
+        "farm" => _balance.FarmProvisions * FacilityHealth.OutputMultiplier(hitPoints),
+        "village" => _balance.VillageGold * FacilityHealth.OutputMultiplier(hitPoints),
+        _ => 0,
     };
 
     private int FacilityBuildCost(string code) => code switch

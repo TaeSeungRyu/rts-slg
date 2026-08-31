@@ -151,6 +151,36 @@ public class WorldEngineTests
         Assert.Equal(1000 + Balance.ProvisionsBaseSmall + expectedProvisionsBonus, after.Provisions);
     }
 
+    [Theory]
+    [InlineData("paddy", 2, 0, 600)]
+    [InlineData("paddy", 5, 0, 1500)]
+    [InlineData("farm", 2, 0, 300)]
+    [InlineData("farm", 5, 0, 750)]
+    [InlineData("village", 2, 100, 0)]
+    [InlineData("village", 5, 250, 0)]
+    public void 업그레이드된_시설은_체력단계에_따라_월수입도_증가한다(
+        string facility,
+        int levelMultiplier,
+        int expectedGoldBonus,
+        int expectedProvisionsBonus)
+    {
+        var hitPoints = levelMultiplier == 5 ? FacilityHealth.Level3 : FacilityHealth.Level2;
+        var city = new City(new CityId(1), "시설검산", new HexCoord(0, 0), new FactionId(1), 1000, CastleSize.Small,
+            Gold: 0, Population: 100_000,
+            Paddies: facility == "paddy" ? 1 : 0,
+            Farms: facility == "farm" ? 1 : 0,
+            Villages: facility == "village" ? 1 : 0);
+        var s = Governed(new[] { city }) with
+        {
+            FacilityPlacements = new[] { new FacilityPlacement(city.Id, new HexCoord(1, 0), facility, hitPoints) },
+        };
+
+        var after = new WorldEngine(Balance).AdvanceDays(s, 30).Cities.Single();
+
+        Assert.Equal(Balance.GoldBaseSmall + expectedGoldBonus, after.Gold);
+        Assert.Equal(1000 + Balance.ProvisionsBaseSmall + expectedProvisionsBonus, after.Provisions);
+    }
+
     [Fact]
     public void 자원은_산출_도시에서만_매월_는다()
     {

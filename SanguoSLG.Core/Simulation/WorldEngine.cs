@@ -82,7 +82,7 @@ public sealed class WorldEngine
             }
             next = next with
             {
-                Cities = next.Cities.Select(c => TaxSecurity(Grow(Produce(Income(c, Gov(c)), Gov(c))), Gov(c))).ToList(),
+                Cities = next.Cities.Select(c => TaxSecurity(Grow(Produce(Income(next, c, Gov(c)), Gov(c))), Gov(c))).ToList(),
             };
 
             // 시장 시세 갱신(design-administration "시장"): 계절 배수 × 랜덤 지터(seeded — 결정론).
@@ -576,12 +576,12 @@ public sealed class WorldEngine
     // 군량 = 성 규모 기본치 + 논·밭 가산. 여기에 세 배율이 곱해진다(모두 정수 %):
     //   ① 세율 배율(세율/기준 20%)  ② 인구 충원율 배율(바닥% ~ 100%)  ③ 저치안 페널티(<임계면 감액).
     // 공방은 수입이 아니라 생산·연구 게이트(③).
-    private City Income(City city, Domain.General? governor)
+    private City Income(GameState state, City city, Domain.General? governor)
     {
-        var goldBase = GoldBase(city.Castle) + city.Villages * _balance.VillageGold;
+        var goldBase = GoldBase(city.Castle) + FacilityOutput(state, city, "village", city.Villages, _balance.VillageGold);
         var provBase = ProvisionsBase(city.Castle)
-            + city.Paddies * _balance.PaddyProvisions
-            + city.Farms * _balance.FarmProvisions;
+            + FacilityOutput(state, city, "paddy", city.Paddies, _balance.PaddyProvisions)
+            + FacilityOutput(state, city, "farm", city.Farms, _balance.FarmProvisions);
 
         // 담당관(태수) 없거나 정치 미달이면 도시 경제가 무척 낮게 돌아간다(사용자 확정 2026-08-16).
         var effective = governor is not null && governor.Politics >= _balance.GovernorMinPolitics;
@@ -593,6 +593,16 @@ public sealed class WorldEngine
         var gold = Scale(goldBase, city, effective, governor, goldBucket);
         var provisions = Scale(provBase, city, effective, governor, provBucket);
         return city with { Gold = city.Gold + gold, Provisions = city.Provisions + provisions };
+    }
+
+    private static int FacilityOutput(GameState state, City city, string code, int intactCount, int baseOutput)
+    {
+        var placements = state.Placements
+            .Where(p => p.City == city.Id && p.Code == code)
+            .Take(intactCount)
+            .ToList();
+        var output = placements.Sum(p => baseOutput * FacilityHealth.OutputMultiplier(p.HitPoints));
+        return output + System.Math.Max(0, intactCount - placements.Count) * baseOutput;
     }
 
     // 수입 = base × (스킬 버킷) × 세율배율 × 인구 충원율 × 저치안. 세율배율은 담당관에 따라 갈린다:

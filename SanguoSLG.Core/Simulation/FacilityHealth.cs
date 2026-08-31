@@ -16,4 +16,11 @@ public static class FacilityHealth
         Level2 => Level3,
         _ => null,
     };
+
+    public static int OutputMultiplier(int hitPoints) => hitPoints switch
+    {
+        Level2 => 2,
+        Level3 => 5,
+        _ => 1,
+    };
 }
