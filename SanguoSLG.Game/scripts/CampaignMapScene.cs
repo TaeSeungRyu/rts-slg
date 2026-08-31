@@ -849,6 +849,7 @@ public sealed partial class CampaignMapScene : Node3D
             else
             {
                 _log.Text = "평지·숲 위에만 설치할 수 있습니다.";
+                ShowNotice("실행 불가", _log.Text);
             }
 
             return;
@@ -2161,6 +2162,54 @@ public sealed partial class CampaignMapScene : Node3D
         cancel.CustomMinimumSize = new Vector2(110, 34);
         cancel.Pressed += Close;
         btnRow.AddChild(cancel);
+    }
+
+    private void ShowNotice(string title, string message)
+    {
+        _confirmLayer?.QueueFree();
+        var layer = new CanvasLayer { Layer = 42 };
+        AddChild(layer);
+        _confirmLayer = layer;
+
+        void Close() { layer.QueueFree(); if (_confirmLayer == layer) { _confirmLayer = null; } }
+
+        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.32f) };
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        backdrop.MouseFilter = Control.MouseFilterEnum.Stop;
+        backdrop.GuiInput += e =>
+        {
+            if (e is InputEventMouseButton { Pressed: true }) { Close(); }
+        };
+        layer.AddChild(backdrop);
+
+        var center = new CenterContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        layer.AddChild(center);
+
+        var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop };
+        panel.AddThemeStyleboxOverride("panel", Frame(Ink, new Color(0.95f, 0.42f, 0.32f), 2, 10, 14));
+        center.AddChild(panel);
+
+        var box = new VBoxContainer { CustomMinimumSize = new Vector2(360, 0) };
+        box.AddThemeConstantOverride("separation", 8);
+        panel.AddChild(box);
+
+        var titleLbl = MakeLabel($"⚠ {title}", 17, new Color(1f, 0.64f, 0.48f));
+        titleLbl.HorizontalAlignment = HorizontalAlignment.Center;
+        box.AddChild(titleLbl);
+        box.AddChild(GoldRule());
+
+        var msg = MakeLabel(message, 14, Parchment);
+        msg.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        msg.CustomMinimumSize = new Vector2(360, 0);
+        box.AddChild(msg);
+
+        var okRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        box.AddChild(okRow);
+        var ok = MakeButton("확인", accent: true);
+        ok.CustomMinimumSize = new Vector2(110, 34);
+        ok.Pressed += Close;
+        okRow.AddChild(ok);
     }
 
     // 지형 정보 카드: 상단 = 지형 3D 에셋 미리보기 + 한글 이름, 하단 = 이동·전투 보정.
@@ -3516,6 +3565,7 @@ public sealed partial class CampaignMapScene : Node3D
                         if (r.Ok) { _state = r.State; }
                         _log.Text = r.Ok ? $"시장: {name} {units} 매입 (−{cost}금)" : $"실패: {r.Error}";
                         if (r.Ok) { Report($"[내정] {city.Name} 시장에서 {name} {units}을(를) {cost}금에 사들였습니다.", Parchment); }
+                        else { ShowNotice("시장 매입 실패", r.Error ?? "조건에 맞지 않아 실행할 수 없습니다."); }
                         SelectCity(cityId);
                         OpenMarketModal(cityId);
                     });
@@ -3750,6 +3800,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (r.Ok) { _state = r.State; }
             _log.Text = r.Ok ? $"등용 시도: {target.Name} ({recruiter.Name})" : $"실패: {r.Error}";
             if (r.Ok) { Report($"[인사] {recruiter.Name} 장수가 {target.Name} 등용에 나섰습니다.", GoldBright); }
+            else { ShowNotice("등용 실패", r.Error ?? "조건에 맞지 않아 실행할 수 없습니다."); }
             CloseModal();
             SelectCity(cityId);
             Redraw(_log.Text);
@@ -5638,6 +5689,7 @@ public sealed partial class CampaignMapScene : Node3D
                 if (r.Ok) { _state = r.State; }
                 _log.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
                 if (r.Ok) { Report($"[내정] {_state.Cities.First(c => c.Id == city).Name}에서 {gName} 장수가 {cmd.Label}{pLabel}을(를) 맡았습니다.", Parchment); }
+                else { ShowNotice("명령 실패", r.Error ?? "조건에 맞지 않아 실행할 수 없습니다."); }
                 CloseModal();
                 SelectCity(city);
                 Redraw(_log.Text);
@@ -5826,6 +5878,7 @@ public sealed partial class CampaignMapScene : Node3D
                 if (r.Ok) { _state = r.State; }
                 _log.Text = r.Ok ? $"발행: {FacilityName(placement.Code)} 업그레이드 — {gName}" : $"실패: {r.Error}";
                 if (r.Ok) { Report($"[내정] {city.Name}에서 {gName} 장수가 {FacilityName(placement.Code)} 업그레이드를 맡았습니다.", Parchment); }
+                else { ShowNotice("업그레이드 실패", r.Error ?? "조건에 맞지 않아 실행할 수 없습니다."); }
                 CloseModal();
                 ShowMapInfo(placement.Plot);
                 Redraw(_log.Text);
