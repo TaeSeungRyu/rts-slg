@@ -1053,6 +1053,8 @@ public sealed partial class CampaignMapScene : Node3D
                     new Color(0.98f, 0.78f, 0.42f));
             }
 
+            Row("효과", FacilityEffectText(facility));
+
             if (placement is not null)
             {
                 var pendingUpgrade = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Upgrade
@@ -5102,7 +5104,7 @@ public sealed partial class CampaignMapScene : Node3D
                         _ => (city.Workshop ? 1 : 0, _cb.BuildCostWorkshop),
                     };
                     var max = code == "workshop" ? 1 : CommandEfficiency.BuildSlots(city.Castle, _cb);
-                    list.Add((label, Icon(Sym.Grain), $"보유 {owned} / 최대 {max}\n비용 {cost}금"));
+                    list.Add((label, FacilityIcon(code), $"보유 {owned} / 최대 {max}\n비용 {cost}금\n효과: {FacilityEffectText(code)}"));
                 }
 
                 break;
@@ -5656,6 +5658,22 @@ public sealed partial class CampaignMapScene : Node3D
         "farm" => "밭",
         "village" => "마을",
         _ => "공방",
+    };
+
+    private ImageTexture FacilityIcon(string code) => code switch
+    {
+        "village" => Icon(Sym.Coin),
+        "workshop" => Icon(Sym.Book),
+        _ => Icon(Sym.Grain),
+    };
+
+    private string FacilityEffectText(string code) => code switch
+    {
+        "paddy" => $"월 군량 +{_balance.PaddyProvisions}",
+        "farm" => $"월 군량 +{_balance.FarmProvisions}",
+        "village" => $"월 금 +{_balance.VillageGold}",
+        "workshop" => $"병종 연구 가능 · 성벽 수리 +{_cb.WallRepairWorkshopBonus}% · 공성 병기 생산 기반",
+        _ => "",
     };
 
     private int FacilityBuildCost(string code) => code switch
