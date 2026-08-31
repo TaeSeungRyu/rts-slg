@@ -599,6 +599,8 @@ public sealed class WorldEngine
     {
         var placements = state.Placements
             .Where(p => p.City == city.Id && p.Code == code)
+            .OrderByDescending(p => FacilityHealth.OutputMultiplier(p.HitPoints))
+            .ThenByDescending(p => p.HitPoints)
             .Take(intactCount)
             .ToList();
         var output = placements.Sum(p => baseOutput * FacilityHealth.OutputMultiplier(p.HitPoints));

@@ -155,6 +155,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _modalParam;
     private VBoxContainer _modalOfficers = null!; // 수행 장수 표 홀더
     private int _cityDetailTab; // 성 상세 활성 탭(0=주둔·1=명령·2=예약)
+    private CityId? _openCityDetailCity; // 열린 성 상세 모달이 있으면 진행 완료 후 새 수치로 다시 그린다.
     private CityId? _stratTarget; // 도시 계략 대상 도시(선택 UI)
     private int _offSortCol = -1; // -1 = 명령 관련 능력치 내림차순(기본)
     private bool _offSortAsc;
@@ -1988,10 +1989,13 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (_selected is { } sel && _state.Cities.Any(c => c.Id == sel && c.Owner == Player))
         {
+            var refreshDetail = _openCityDetailCity == sel;
             SelectCity(sel);
+            if (refreshDetail) { OpenCityDetail(sel); }
         }
         else
         {
+            _openCityDetailCity = null;
             _selected = null;
             HidePanels();
         }
@@ -2881,6 +2885,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void CloseModal()
     {
+        _openCityDetailCity = null;
         if (_modalLayer is not null)
         {
             _modalLayer.QueueFree();
@@ -2972,6 +2977,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenCityDetail(CityId city)
     {
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        _openCityDetailCity = city;
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.42f, 380f, 560f);
         var mh = Mathf.Clamp(vp.Y * 0.85f, 360f, 760f);
@@ -3149,6 +3155,8 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var placements = _state.Placements
             .Where(p => p.City == city.Id && p.Code == code)
+            .OrderByDescending(p => FacilityHealth.OutputMultiplier(p.HitPoints))
+            .ThenByDescending(p => p.HitPoints)
             .Take(intactCount)
             .ToList();
         var output = placements.Sum(p => baseOutput * FacilityHealth.OutputMultiplier(p.HitPoints));
