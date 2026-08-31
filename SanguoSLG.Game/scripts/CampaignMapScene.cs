@@ -2948,6 +2948,9 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(g4);
         AddCell(g4, Sym.Coin, "금", $"{c.Gold}");
         AddCell(g4, Sym.Grain, "군량", $"{c.Provisions}");
+        var (monthlyGold, monthlyProvisions) = MonthlyIncomePreview(c);
+        AddCell(g4, Sym.Coin, "월 금", $"+{monthlyGold}");
+        AddCell(g4, Sym.Grain, "월 군량", $"+{monthlyProvisions}");
         AddCell(g4, Sym.People, "인구", $"{c.Population}");
         AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
         AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
