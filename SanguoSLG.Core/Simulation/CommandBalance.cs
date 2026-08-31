@@ -127,5 +127,5 @@ public sealed record CommandBalance
     public int BuildCostPaddy { get; init; } = 300;
     public int BuildCostFarm { get; init; } = 200;
     public int BuildCostVillage { get; init; } = 400;
-    public int BuildCostWorkshop { get; init; } = 800;
+    public int BuildCostWorkshop { get; init; } = 400;
 }

@@ -378,7 +378,7 @@ public class CommandSystemTests
     [InlineData("paddy", 300)]
     [InlineData("farm", 200)]
     [InlineData("village", 400)]
-    [InlineData("workshop", 800)]
+    [InlineData("workshop", 400)]
     public void 완료_시설업그레이드는_시설별_건설비와_공통체력단계를_쓴다(string facility, int expectedCost)
     {
         var svc = Service();

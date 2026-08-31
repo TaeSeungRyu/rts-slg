@@ -77,7 +77,7 @@ public class CityPlunderTests
         var second = Plunder().Resolve(first.Armies, first.Cities);
         Assert.Equal("workshop", second.Reports.Single().Facility); // 마지막이 공방
         Assert.False(second.Cities.Single().Workshop);
-        Assert.Equal(400, second.Armies.Single().LootGold); // 공방 800×50%
+        Assert.Equal(200, second.Armies.Single().LootGold); // 공방 400×50%
     }
 
     [Fact]
