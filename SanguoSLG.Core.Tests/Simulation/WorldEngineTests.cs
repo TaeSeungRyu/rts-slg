@@ -358,7 +358,7 @@ public class WorldEngineTests
         {
             V2Officer(1, might: 85),      // 치안 +2
             V2Officer(2, politics: 80),   // 금 +260, 군량 +700
-            V2Officer(3, might: 70),      // 병력 +550
+            V2Officer(3, might: 70),      // 훈련도 50 병력 +550
             V2Officer(4, might: 100),     // 훈련 +4
         };
         var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, generals.ToList(),
@@ -374,7 +374,7 @@ public class WorldEngineTests
         Assert.Equal(260, resultCity.Gold);
         Assert.Equal(1700, resultCity.Provisions);
         Assert.Equal(1550, garrison.Troops);
-        Assert.Equal(44, garrison.TrainingLevel);
+        Assert.Equal(48, garrison.TrainingLevel);
     }
 
     [Fact]

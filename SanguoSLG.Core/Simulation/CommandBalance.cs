@@ -137,6 +137,6 @@ public sealed record CommandBalance
     public int AutoDomesticProvisionsPoliticsMultiplier { get; init; } = 5;
     public int AutoRecruitTroopsBase { get; init; } = 200;
     public int AutoRecruitTroopsMightMultiplier { get; init; } = 5;
-    public int AutoRecruitTroopTrainingLevel { get; init; } = 40;
+    public int AutoRecruitTroopTrainingLevel { get; init; } = 50;
     public string AutoRecruitDefaultTroopCode { get; init; } = "swordsman";
 }
