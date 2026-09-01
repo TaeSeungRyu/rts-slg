@@ -5371,6 +5371,12 @@ public sealed partial class CampaignMapScene : Node3D
             tree.SetColumnExpand(col, false);
             tree.SetColumnCustomMinimumWidth(col, 52);
         }
+        if (IsAutoOfficerCommand(cmd.Kind))
+        {
+            tree.SetColumnTitle(4, "월 예상 효과");
+            tree.SetColumnExpand(4, true);
+            tree.SetColumnExpandRatio(4, 3);
+        }
 
         var gens = free.Select(id => _state.Generals.First(g => g.Id == id)).ToList();
         System.Comparison<General> cmp = _offSortCol switch
@@ -5403,6 +5409,11 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetText(1, g.Might.ToString());
             item.SetText(2, g.Intellect.ToString());
             item.SetText(3, g.Politics.ToString());
+            if (IsAutoOfficerCommand(cmd.Kind))
+            {
+                item.SetText(4, OfficerMonthlyEffect(cmd.Kind, g));
+            }
+
             item.SetMetadata(0, g.Id.Value);
             for (var col = 1; col <= 3; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
         }
@@ -5953,6 +5964,15 @@ public sealed partial class CampaignMapScene : Node3D
         < 80 => 1,
         < 100 => 2,
         _ => 3,
+    };
+
+    private string OfficerMonthlyEffect(CommandKind kind, General officer) => kind switch
+    {
+        CommandKind.AppointSecurityOfficer => $"치안 +{OfficerMightTier(officer.Might)}",
+        CommandKind.AppointDomesticOfficer => $"금 +{_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier} / 군량 +{_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier}",
+        CommandKind.AppointRecruitmentOfficer => $"병력 +{_cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier}",
+        CommandKind.AppointTrainingOfficer => $"훈련도 +{System.Math.Max(1, OfficerMightTier(officer.Might) + 1)}",
+        _ => "",
     };
 
     // 건설 배치 모드 진입 — 명령 모달을 닫고 반투명 고스트를 띄운다. 커서를 따라다니며,
