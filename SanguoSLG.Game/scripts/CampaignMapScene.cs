@@ -1732,6 +1732,7 @@ public sealed partial class CampaignMapScene : Node3D
             };
             if (text.Length > 0) { Ev(text, col); }
         }
+        AddAutoOfficerReport(preMove, after, Ev);
 
         _pendingState = after;
         _pendingNote = note.Count > 0 ? string.Join(" · ", note) : "—";
@@ -6618,6 +6619,59 @@ public sealed partial class CampaignMapScene : Node3D
         {
             ev($"[교전] {meta[uid].Desc}이(가) 계략·지속 피해 {dot[uid]}을(를) 입었습니다.", combatCol);
         }
+    }
+
+    private void AddAutoOfficerReport(GameState before, GameState after, System.Action<string, Color> ev)
+    {
+        if (!_cb.AutoOfficerSystemEnabled) { return; }
+
+        var col = new Color(0.74f, 0.9f, 0.72f);
+        foreach (var city in after.Cities.Where(c => c.Owner == Player).OrderBy(c => c.Id.Value))
+        {
+            if (!HasAnyAutoOfficer(city)) { continue; }
+            var prev = before.Cities.FirstOrDefault(c => c.Id == city.Id);
+            if (prev is null) { continue; }
+
+            var parts = new List<string>();
+            AddDelta(parts, "치안", city.Security - prev.Security);
+            AddDelta(parts, "금", city.Gold - prev.Gold);
+            AddDelta(parts, "군량", city.Provisions - prev.Provisions);
+
+            var beforeTroops = before.Garrisons.Where(g => g.City == city.Id).Sum(g => g.Troops);
+            var afterTroops = after.Garrisons.Where(g => g.City == city.Id).Sum(g => g.Troops);
+            AddDelta(parts, "병력", afterTroops - beforeTroops);
+
+            var beforeTraining = WeightedTraining(before.Garrisons.Where(g => g.City == city.Id));
+            var afterTraining = WeightedTraining(after.Garrisons.Where(g => g.City == city.Id));
+            AddDelta(parts, "훈련도", afterTraining - beforeTraining);
+
+            if (parts.Count > 0)
+            {
+                ev($"[자동내정] {city.Name}: {string.Join(" · ", parts)}", col);
+            }
+        }
+    }
+
+    private static bool HasAnyAutoOfficer(City city)
+        => city.SecurityOfficer is not null || city.DomesticOfficer is not null
+            || city.RecruitmentOfficer is not null || city.TrainingOfficer is not null;
+
+    private static int WeightedTraining(IEnumerable<GarrisonForce> garrisons)
+    {
+        var total = 0;
+        long sum = 0;
+        foreach (var g in garrisons)
+        {
+            total += g.Troops;
+            sum += g.Troops * (long)g.TrainingLevel;
+        }
+
+        return total <= 0 ? 0 : (int)((sum + total / 2) / total);
+    }
+
+    private static void AddDelta(List<string> parts, string label, int delta)
+    {
+        if (delta != 0) { parts.Add($"{label} {(delta > 0 ? "+" : "")}{delta}"); }
     }
 
     // 좌하단 보고 패널(삼국지11 오마주) — 진행 결과·명령 발행 등 사건을 최근 순으로 쌓아 보여준다.
