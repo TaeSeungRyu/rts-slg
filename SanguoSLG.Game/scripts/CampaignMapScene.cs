@@ -301,7 +301,7 @@ public sealed partial class CampaignMapScene : Node3D
     private Mesh? _pathDotMesh;
     private Material? _pathDotMat;
 
-    // 1단계 지원 명령(내정 — 출전은 2단계). (표시명, 종류, 파라미터: troop/tax/wall/stratagem/none)
+    // 1단계 지원 명령(전투 중심 v2 팔레트에서 노출할 기존 명령만 연결).
     private static readonly (string Label, CommandKind Kind, string Param)[] Cmds =
     {
         ("모병", CommandKind.Recruit, "troop"),
@@ -335,11 +335,11 @@ public sealed partial class CampaignMapScene : Node3D
         ("방화", "arson"), ("절취", "steal"), ("이간", "sow_discord"),
     };
 
-    // 명령 카테고리 그룹(삼국지14식 분류)과 명령별 아이콘.
+    // v2 명령 카테고리. 반복 내정(모병·징병·세율·시장·건설·등용·포상)은 팔레트에서 숨긴다.
     private static readonly (string Group, int[] Indices)[] CmdGroups =
     {
-        ("내정", new[] { 0, 1, 2, 3, 4, 10, 11 }),
-        ("군비", new[] { 5, 6, 7, 8 }),
+        ("연구", new[] { 5, 6 }),
+        ("수리", new[] { 7, 8 }),
         ("계략", new[] { 9 }),
     };
 
@@ -1059,11 +1059,8 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var pendingUpgrade = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Upgrade
                     && c.City == placement.City && c.Plot == placement.Plot);
-                var nextHp = FacilityHealth.NextTier(placement.HitPoints);
                 Row("효과", FacilityEffectText(placement.Code, placement.HitPoints));
-                var hpText = placement.Code == "workshop" ? $"{placement.HitPoints}"
-                    : nextHp is { } n ? $"{placement.HitPoints} → {n}" : $"{placement.HitPoints} · 최대";
-                Row("체력", hpText);
+                Row("체력", $"{placement.HitPoints}");
                 if (pendingUpgrade is not null)
                 {
                     Row("진행", $"업그레이드 · 남은 {System.Math.Max(0, pendingUpgrade.CompletionDay - _state.Day)}일");
@@ -1089,21 +1086,6 @@ public sealed partial class CampaignMapScene : Node3D
         if (supplier is not null)
         {
             Row("보급", $"보급지역 ({supplier.Name}) — 아군 부대 군량 자동 보충", new Color(0.45f, 0.85f, 0.52f));
-        }
-
-        if (placement is not null
-            && _state.Cities.FirstOrDefault(c => c.Id == placement.City)?.Owner == Player
-            && !_advancing)
-        {
-            var up = MakeButton("▶ 업그레이드");
-            up.AddThemeFontSizeOverride("font_size", 12);
-            up.CustomMinimumSize = new Vector2(0, 26);
-            var upgrading = _state.Commands.Any(c => c.Kind == CommandKind.Upgrade
-                && c.City == placement.City && c.Plot == placement.Plot);
-            up.Disabled = FacilityHealth.NextTier(placement.HitPoints) is null || upgrading;
-            if (upgrading) { up.Text = "업그레이드 진행중"; }
-            up.Pressed += () => OpenFacilityUpgradeModal(placement);
-            _terrainInfo.AddChild(up);
         }
 
         _terrainHex = h;
@@ -2060,33 +2042,30 @@ public sealed partial class CampaignMapScene : Node3D
             _cmdList.AddChild(gbtn);
         }
 
-        var marketBtn = MakeButton("시장");
-        marketBtn.AddThemeFontSizeOverride("font_size", 12);
-        marketBtn.Alignment = HorizontalAlignment.Center;
-        marketBtn.CustomMinimumSize = new Vector2(74, 24);
-        marketBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenMarketModal(c); } };
-        _cmdList.AddChild(marketBtn);
-
-        var enlistBtn = MakeButton("등용");
-        enlistBtn.AddThemeFontSizeOverride("font_size", 12);
-        enlistBtn.Alignment = HorizontalAlignment.Center;
-        enlistBtn.CustomMinimumSize = new Vector2(74, 24);
-        enlistBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenEnlistModal(c); } };
-        _cmdList.AddChild(enlistBtn);
-
-        var rewardBtn = MakeButton("포상");
-        rewardBtn.AddThemeFontSizeOverride("font_size", 12);
-        rewardBtn.Alignment = HorizontalAlignment.Center;
-        rewardBtn.CustomMinimumSize = new Vector2(74, 24);
-        rewardBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenRewardModal(c); } };
-        _cmdList.AddChild(rewardBtn);
-
         var deployBtn = MakeButton("출전", accent: true);
         deployBtn.AddThemeFontSizeOverride("font_size", 12);
         deployBtn.Alignment = HorizontalAlignment.Center;
         deployBtn.CustomMinimumSize = new Vector2(74, 24);
         deployBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenDeployModal(c); } };
         _cmdList.AddChild(deployBtn);
+
+        var supplyBtn = MakeButton("보급부대", accent: true);
+        supplyBtn.AddThemeFontSizeOverride("font_size", 12);
+        supplyBtn.Alignment = HorizontalAlignment.Center;
+        supplyBtn.CustomMinimumSize = new Vector2(74, 24);
+        supplyBtn.Pressed += () =>
+        {
+            CloseGroupMenu();
+            ShowNotice("보급부대", "보급부대 전용 편성 UI는 Phase 11에서 분리됩니다.\n현재는 출전 화면에서 보급부대를 편성하세요.");
+            if (_selected is { } c) { OpenDeployModal(c); }
+        };
+        _cmdList.AddChild(supplyBtn);
+
+        AddV2PendingButton(_cmdList, "생산", "논·밭·마을에 장수와 500명 부대를 보내는 생산 작전은 Phase 10에서 구현합니다.");
+        AddV2PendingButton(_cmdList, "재편성", "부대 재편성 전용 UI는 v2 전환 후속 단계에서 구현합니다.\n현재는 출전 예약과 입성으로 병력을 정리하세요.");
+        AddV2PendingButton(_cmdList, "보충", "자동 담당자 병력 생산과 연계한 보충 명령은 Phase 2~4 이후 구현합니다.");
+        AddV2PendingButton(_cmdList, "탐색", "미등록 장수·자원·이벤트·아이템 탐색은 Phase 9에서 구현합니다.");
+        AddV2PendingButton(_cmdList, "담당자", "치안·내정·병력·훈련 담당자 4슬롯은 Phase 2에서 구현합니다.");
 
         // 그룹 플라이아웃(팔레트 우측에 붙는 작은 패널).
         _cmdSubMenu = new PanelContainer { Visible = false, ZIndex = 51 };
@@ -2111,6 +2090,20 @@ public sealed partial class CampaignMapScene : Node3D
         confirmLayer.AddChild(_targetConfirmBtn);
 
         HidePanels();
+    }
+
+    private void AddV2PendingButton(VBoxContainer list, string label, string message)
+    {
+        var btn = MakeButton(label);
+        btn.AddThemeFontSizeOverride("font_size", 12);
+        btn.Alignment = HorizontalAlignment.Center;
+        btn.CustomMinimumSize = new Vector2(74, 24);
+        btn.Pressed += () =>
+        {
+            CloseGroupMenu();
+            ShowNotice($"{label} 준비 중", message);
+        };
+        list.AddChild(btn);
     }
 
     // 게임 스타일 컨펌창(금테·잉크 + 한글 확인/취소). 배경 클릭·취소 = 닫기만.
@@ -2486,9 +2479,7 @@ public sealed partial class CampaignMapScene : Node3D
         var (monthlyGold, monthlyProvisions) = MonthlyIncomePreview(c);
         AddCell(g4, Sym.Coin, "월 금", $"+{monthlyGold}");
         AddCell(g4, Sym.Grain, "월 군량", $"+{monthlyProvisions}");
-        AddCell(g4, Sym.People, "인구", $"{c.Population}");
         AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
-        AddCell(g4, Sym.Coin, "세율", $"{c.TaxRate}%");
         AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
 
         // 긴 값: 전체폭 2칸(라벨·값).
@@ -3008,10 +2999,8 @@ public sealed partial class CampaignMapScene : Node3D
         var (monthlyGold, monthlyProvisions) = MonthlyIncomePreview(c);
         AddCell(g4, Sym.Coin, "월 금", $"+{monthlyGold}");
         AddCell(g4, Sym.Grain, "월 군량", $"+{monthlyProvisions}");
-        AddCell(g4, Sym.People, "인구", $"{c.Population}");
         AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
         AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
-        AddCell(g4, Sym.Coin, "세율", $"{c.TaxRate}%");
         AddCell(g4, Sym.Ore, "광석", $"{c.Ore}");
         AddCell(g4, Sym.Ore, "말/코끼리", $"{c.Horses}/{c.Elephants}");
 
