@@ -316,6 +316,10 @@ public sealed partial class CampaignMapScene : Node3D
         ("도시 계략", CommandKind.CityStratagem, "stratagem"),
         ("태수 임명", CommandKind.AppointGovernor, ""),
         ("군사 임명", CommandKind.AppointStrategist, ""),
+        ("치안 담당", CommandKind.AppointSecurityOfficer, ""),
+        ("내정 담당", CommandKind.AppointDomesticOfficer, ""),
+        ("병력 담당", CommandKind.AppointRecruitmentOfficer, ""),
+        ("훈련 담당", CommandKind.AppointTrainingOfficer, ""),
     };
 
     private static readonly (string Label, string Code)[] Facilities =
@@ -341,6 +345,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("연구", new[] { 5, 6 }),
         ("수리", new[] { 7, 8 }),
         ("계략", new[] { 9 }),
+        ("담당자", new[] { 12, 13, 14, 15 }),
     };
 
     private static readonly Sym[] CmdIcons = { Sym.Sword, Sym.Coin, Sym.Book, Sym.Wall, Sym.Scroll };
@@ -2065,7 +2070,6 @@ public sealed partial class CampaignMapScene : Node3D
         AddV2PendingButton(_cmdList, "재편성", "부대 재편성 전용 UI는 v2 전환 후속 단계에서 구현합니다.\n현재는 출전 예약과 입성으로 병력을 정리하세요.");
         AddV2PendingButton(_cmdList, "보충", "자동 담당자 병력 생산과 연계한 보충 명령은 Phase 2~4 이후 구현합니다.");
         AddV2PendingButton(_cmdList, "탐색", "미등록 장수·자원·이벤트·아이템 탐색은 Phase 9에서 구현합니다.");
-        AddV2PendingButton(_cmdList, "담당자", "치안·내정·병력·훈련 담당자 4슬롯은 Phase 2에서 구현합니다.");
 
         // 그룹 플라이아웃(팔레트 우측에 붙는 작은 패널).
         _cmdSubMenu = new PanelContainer { Visible = false, ZIndex = 51 };
@@ -2462,6 +2466,10 @@ public sealed partial class CampaignMapScene : Node3D
         var totalTroops = _state.Garrisons.Where(g => g.City == id).Sum(g => g.Troops);
         var govName = c.Governor is { } ggid ? _state.Generals.FirstOrDefault(x => x.Id == ggid)?.Name : null;
         var straName = c.Strategist is { } gsid ? _state.Generals.FirstOrDefault(x => x.Id == gsid)?.Name : null;
+        var securityName = OfficerName(c.SecurityOfficer);
+        var domesticName = OfficerName(c.DomesticOfficer);
+        var recruitmentName = OfficerName(c.RecruitmentOfficer);
+        var trainingName = OfficerName(c.TrainingOfficer);
         var pending = _state.Commands.Where(p => p.City == id).Select(p =>
             $"{KindName(p.Kind)} 남은 {p.CompletionDay - _state.Day}일");
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
@@ -2492,6 +2500,10 @@ public sealed partial class CampaignMapScene : Node3D
         AddCell(g2, Sym.Sword, "대기", totalTroops > 0 ? $"{totalTroops}명" : "없음");
         AddCell(g2, Sym.Officer, "태수", govName ?? "없음");
         AddCell(g2, Sym.Officer, "군사", straName ?? "없음");
+        AddCell(g2, Sym.Shield, "치안담당", securityName ?? "없음");
+        AddCell(g2, Sym.Coin, "내정담당", domesticName ?? "없음");
+        AddCell(g2, Sym.Sword, "병력담당", recruitmentName ?? "없음");
+        AddCell(g2, Sym.Book, "훈련담당", trainingName ?? "없음");
         if (pending.Any())
         {
             AddCell(g2, Sym.Scroll, "진행", string.Join(",", pending));
@@ -2514,6 +2526,9 @@ public sealed partial class CampaignMapScene : Node3D
         _cmdMenu.Visible = !_advancing; // 진행 중에는 명령 팔레트를 숨긴다(상태 카드는 보임)
         MoveRing(c.Position);
     }
+
+    private string? OfficerName(GeneralId? id)
+        => id is { } gid ? _state.Generals.FirstOrDefault(x => x.Id == gid)?.Name : null;
 
     // 명령 팔레트를 성 화면좌표의 우측에 배치(화면 밖으로 안 나가게 clamp). 줌/이동 시 매 프레임 추종.
     private void PlacePalette(HexCoord at)
@@ -2977,8 +2992,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var detailGov = c.Governor is { } dgid ? _state.Generals.FirstOrDefault(x => x.Id == dgid)?.Name : null;
-        var detailStra = c.Strategist is { } dsid ? _state.Generals.FirstOrDefault(x => x.Id == dsid)?.Name : null;
+        var detailGov = OfficerName(c.Governor);
+        var detailStra = OfficerName(c.Strategist);
         var title = MakeLabel($"《 {c.Name} 》 · 태수 {detailGov ?? "없음"} · 군사 {detailStra ?? "없음"}", 16, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
@@ -3003,6 +3018,10 @@ public sealed partial class CampaignMapScene : Node3D
         AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
         AddCell(g4, Sym.Ore, "광석", $"{c.Ore}");
         AddCell(g4, Sym.Ore, "말/코끼리", $"{c.Horses}/{c.Elephants}");
+
+        var officers = $"치안 {OfficerName(c.SecurityOfficer) ?? "없음"} · 내정 {OfficerName(c.DomesticOfficer) ?? "없음"}\n"
+            + $"병력 {OfficerName(c.RecruitmentOfficer) ?? "없음"} · 훈련 {OfficerName(c.TrainingOfficer) ?? "없음"}";
+        box.AddChild(MakeLabel($"담당자: {officers}", 13, GoldBright));
 
         var garr = _state.Garrisons.Where(g => g.City == city)
             .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ThenBy(g => g.Trainee).ToList();
@@ -5294,8 +5313,10 @@ public sealed partial class CampaignMapScene : Node3D
         Clear(_modalOfficers);
         var cmd = Cmds[cmdIndex];
         var cityData = _state.Cities.First(x => x.Id == city);
-        // 태수·군사 임명은 상주 역할이라 다른 명령에 매인 장수도 지정 가능 — 주둔 장수 전체를 보인다.
-        var isAppoint = cmd.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist;
+        // 임명/담당 지정은 상주 역할이라 다른 명령에 매인 장수도 지정 가능 — 주둔 장수 전체를 보인다.
+        var isAppoint = cmd.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist
+            or CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer
+            or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer;
         var free = (isAppoint ? _state.GeneralsAt(city) : _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g)))
             .OrderBy(g => g.Value).ToList();
         if (free.Count == 0)
@@ -5306,7 +5327,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         // 이 명령의 효율 능력치 컬럼(1=무, 2=지, 3=정) — 기본 정렬(내림차순)과 ★ 표시에 쓴다.
         var relevant = cmd.Kind is CommandKind.Research or CommandKind.CityStratagem or CommandKind.AppointStrategist ? 2
-            : cmd.Kind == CommandKind.Train ? 1 : 3;
+            : cmd.Kind is CommandKind.Train or CommandKind.AppointSecurityOfficer
+                or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer ? 1 : 3;
 
         var tree = new Tree
         {
@@ -5349,8 +5371,17 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var item = tree.CreateItem(root);
             var home = g.Region.Length > 0 && g.Region == cityData.Region ? " 🏠" : "";
-            var govMark = isAppoint && cityData.Governor == g.Id ? " ◆현태수" : "";
-            item.SetText(0, g.Name + home + govMark);
+            var roleMark = cmd.Kind switch
+            {
+                CommandKind.AppointGovernor when cityData.Governor == g.Id => " ◆현태수",
+                CommandKind.AppointStrategist when cityData.Strategist == g.Id => " ◆현군사",
+                CommandKind.AppointSecurityOfficer when cityData.SecurityOfficer == g.Id => " ◆현치안",
+                CommandKind.AppointDomesticOfficer when cityData.DomesticOfficer == g.Id => " ◆현내정",
+                CommandKind.AppointRecruitmentOfficer when cityData.RecruitmentOfficer == g.Id => " ◆현병력",
+                CommandKind.AppointTrainingOfficer when cityData.TrainingOfficer == g.Id => " ◆현훈련",
+                _ => "",
+            };
+            item.SetText(0, g.Name + home + roleMark);
             item.SetText(1, g.Might.ToString());
             item.SetText(2, g.Intellect.ToString());
             item.SetText(3, g.Politics.ToString());
@@ -5664,6 +5695,22 @@ public sealed partial class CampaignMapScene : Node3D
                 + $"\n무력 {gov.Might} → 성 반격 ×{counter / 100.0:0.0#}";
         }
 
+        if (cmd.Kind is CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer
+            or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer)
+        {
+            var officer = _state.Generals.First(g => g.Id == general);
+            extra = cmd.Kind switch
+            {
+                CommandKind.AppointSecurityOfficer => $"\n무력 {officer.Might} → 월말 치안 {(officer.Might < 60 ? "+0" : officer.Might < 80 ? "+1" : officer.Might < 100 ? "+2" : "+3")}",
+                CommandKind.AppointDomesticOfficer => $"\n정치 {officer.Politics} → 월 금 +{_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier}"
+                    + $"\n월 군량 +{_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier}",
+                CommandKind.AppointRecruitmentOfficer => $"\n무력 {officer.Might} → 월 병력 +{_cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier}"
+                    + $" ({TroopName(_cb.AutoRecruitDefaultTroopCode)})",
+                CommandKind.AppointTrainingOfficer => $"\n무력 {officer.Might} → 월 훈련도 +{System.Math.Max(1, OfficerMightTier(officer.Might) + 1)}",
+                _ => "",
+            };
+        }
+
         var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility,
             TroopCode: troopCode, TargetCity: target, TraineePool: traineePool, Plot: plot);
         var gName = _state.Generals.First(g => g.Id == general).Name;
@@ -5881,6 +5928,14 @@ public sealed partial class CampaignMapScene : Node3D
                 Redraw(_log.Text);
             });
     }
+
+    private static int OfficerMightTier(int might) => might switch
+    {
+        < 60 => 0,
+        < 80 => 1,
+        < 100 => 2,
+        _ => 3,
+    };
 
     // 건설 배치 모드 진입 — 명령 모달을 닫고 반투명 고스트를 띄운다. 커서를 따라다니며,
     // 평지·숲 유효 칸에서만 초록, 그 외엔 빨강(클릭해도 컨펌 안 뜸).
@@ -6213,6 +6268,10 @@ public sealed partial class CampaignMapScene : Node3D
         CommandKind.CityStratagem => "계략",
         CommandKind.AppointGovernor => "태수 임명",
         CommandKind.AppointStrategist => "군사 임명",
+        CommandKind.AppointSecurityOfficer => "치안 담당",
+        CommandKind.AppointDomesticOfficer => "내정 담당",
+        CommandKind.AppointRecruitmentOfficer => "병력 담당",
+        CommandKind.AppointTrainingOfficer => "훈련 담당",
         CommandKind.Enlist => "등용",
         _ => k.ToString(),
     };
