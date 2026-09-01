@@ -318,8 +318,41 @@ public class CommandSystemTests
             _ => null,
         };
         Assert.Equal(new GeneralId(1), assigned);
+        if (kind == CommandKind.AppointRecruitmentOfficer)
+        {
+            Assert.Equal(B.AutoRecruitDefaultTroopCode, city.AutoRecruitTroopCode);
+        }
+
         Assert.False(r.State.IsGeneralBusy(new GeneralId(1)));
         Assert.Empty(r.State.Commands);
+    }
+
+    [Fact]
+    public void v2_병력담당_자동생산_병종을_도시에_저장한다()
+    {
+        var s0 = State(new[] { Town(1) }, new[] { Mig(1, 80) });
+
+        var r = Service().Issue(s0,
+            new CommandRequest(new CityId(1), CommandKind.AppointRecruitmentOfficer, new GeneralId(1),
+                TroopCode: "cavalry"));
+
+        Assert.True(r.Ok, r.Error);
+        Assert.Equal(new GeneralId(1), r.State.Cities.Single().RecruitmentOfficer);
+        Assert.Equal("cavalry", r.State.Cities.Single().AutoRecruitTroopCode);
+    }
+
+    [Fact]
+    public void v2_병력담당_해상병종은_자동생산으로_지정할수없다()
+    {
+        var s0 = State(new[] { Town(1) }, new[] { Mig(1, 80) });
+
+        var r = Service().Issue(s0,
+            new CommandRequest(new CityId(1), CommandKind.AppointRecruitmentOfficer, new GeneralId(1),
+                TroopCode: "small_boat"));
+
+        Assert.False(r.Ok);
+        Assert.Contains("해상", r.Error);
+        Assert.Null(r.State.Cities.Single().RecruitmentOfficer);
     }
 
     [Fact]

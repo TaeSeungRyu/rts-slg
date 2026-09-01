@@ -102,7 +102,7 @@ public sealed class CommandService
         if (req.Kind is CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer
             or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer)
         {
-            return AppointCityOfficer(state, city, main, req.Kind);
+            return AppointCityOfficer(state, city, main, req);
         }
 
         General? assist = null;
@@ -692,18 +692,37 @@ public sealed class CommandService
         return CommandResult.Success(state with { Cities = cities });
     }
 
-    private CommandResult AppointCityOfficer(GameState state, City city, General main, CommandKind kind)
+    private CommandResult AppointCityOfficer(GameState state, City city, General main, CommandRequest req)
     {
+        var kind = req.Kind;
         if (state.Assignments.Count > 0 && PostingError(state, main.Id, city) is { } e)
         {
             return CommandResult.Fail($"담당자 {e}", state);
+        }
+
+        var autoRecruitTroopCode = city.AutoRecruitTroopCode;
+        if (kind == CommandKind.AppointRecruitmentOfficer)
+        {
+            autoRecruitTroopCode = string.IsNullOrWhiteSpace(req.TroopCode)
+                ? _b.AutoRecruitDefaultTroopCode
+                : req.TroopCode;
+            if (!_troops.TryGetValue(autoRecruitTroopCode, out var troop))
+            {
+                return CommandResult.Fail("자동 생산 병종을 선택해야 한다.", state);
+            }
+
+            if (troop.Class == TroopClass.Naval)
+            {
+                return CommandResult.Fail("해상 병종은 자동 생산할 수 없다.", state);
+            }
         }
 
         var already = kind switch
         {
             CommandKind.AppointSecurityOfficer => city.SecurityOfficer == main.Id,
             CommandKind.AppointDomesticOfficer => city.DomesticOfficer == main.Id,
-            CommandKind.AppointRecruitmentOfficer => city.RecruitmentOfficer == main.Id,
+            CommandKind.AppointRecruitmentOfficer => city.RecruitmentOfficer == main.Id
+                && city.AutoRecruitTroopCode == autoRecruitTroopCode,
             CommandKind.AppointTrainingOfficer => city.TrainingOfficer == main.Id,
             _ => false,
         };
@@ -716,7 +735,11 @@ public sealed class CommandService
         {
             CommandKind.AppointSecurityOfficer => c with { SecurityOfficer = main.Id },
             CommandKind.AppointDomesticOfficer => c with { DomesticOfficer = main.Id },
-            CommandKind.AppointRecruitmentOfficer => c with { RecruitmentOfficer = main.Id },
+            CommandKind.AppointRecruitmentOfficer => c with
+            {
+                RecruitmentOfficer = main.Id,
+                AutoRecruitTroopCode = autoRecruitTroopCode,
+            },
             CommandKind.AppointTrainingOfficer => c with { TrainingOfficer = main.Id },
             _ => c,
         } : c).ToList();
