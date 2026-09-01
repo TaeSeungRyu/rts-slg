@@ -2455,10 +2455,10 @@ public sealed partial class CampaignMapScene : Node3D
         var totalTroops = _state.Garrisons.Where(g => g.City == id).Sum(g => g.Troops);
         var govName = c.Governor is { } ggid ? _state.Generals.FirstOrDefault(x => x.Id == ggid)?.Name : null;
         var straName = c.Strategist is { } gsid ? _state.Generals.FirstOrDefault(x => x.Id == gsid)?.Name : null;
-        var securityName = OfficerNameWithMonthlyEffect(c.SecurityOfficer, CommandKind.AppointSecurityOfficer);
-        var domesticName = OfficerNameWithMonthlyEffect(c.DomesticOfficer, CommandKind.AppointDomesticOfficer);
-        var recruitmentName = OfficerNameWithMonthlyEffect(c.RecruitmentOfficer, CommandKind.AppointRecruitmentOfficer);
-        var trainingName = OfficerNameWithMonthlyEffect(c.TrainingOfficer, CommandKind.AppointTrainingOfficer);
+        var securityName = OfficerNameWithMonthlyEffect(c.SecurityOfficer, CommandKind.AppointSecurityOfficer, c);
+        var domesticName = OfficerNameWithMonthlyEffect(c.DomesticOfficer, CommandKind.AppointDomesticOfficer, c);
+        var recruitmentName = OfficerNameWithMonthlyEffect(c.RecruitmentOfficer, CommandKind.AppointRecruitmentOfficer, c);
+        var trainingName = OfficerNameWithMonthlyEffect(c.TrainingOfficer, CommandKind.AppointTrainingOfficer, c);
         var pending = _state.Commands.Where(p => p.City == id).Select(p =>
             $"{KindName(p.Kind)} 남은 {p.CompletionDay - _state.Day}일");
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
@@ -2476,7 +2476,7 @@ public sealed partial class CampaignMapScene : Node3D
         var (monthlyGold, monthlyProvisions) = MonthlyIncomePreview(c);
         AddCell(g4, Sym.Coin, "월 금", $"+{monthlyGold}");
         AddCell(g4, Sym.Grain, "월 군량", $"+{monthlyProvisions}");
-        AddCell(g4, Sym.Sword, "월 증가 병력", $"+{MonthlyRecruitPreview(c)}");
+        AddCell(g4, Sym.Sword, "월 증가 병력", MonthlyRecruitSummary(c));
         AddCell(g4, Sym.Book, "월 훈련도", $"+{MonthlyTrainingPreview(c)}");
         AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
         AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
@@ -2521,11 +2521,11 @@ public sealed partial class CampaignMapScene : Node3D
     private string? OfficerName(GeneralId? id)
         => id is { } gid ? _state.Generals.FirstOrDefault(x => x.Id == gid)?.Name : null;
 
-    private string? OfficerNameWithMonthlyEffect(GeneralId? id, CommandKind kind)
+    private string? OfficerNameWithMonthlyEffect(GeneralId? id, CommandKind kind, City city)
     {
         if (id is not { } gid) { return null; }
         var officer = _state.Generals.FirstOrDefault(x => x.Id == gid);
-        return officer is null ? null : $"{officer.Name} ({OfficerMonthlyEffect(kind, officer)})";
+        return officer is null ? null : $"{officer.Name} ({OfficerMonthlyEffect(kind, officer, city)})";
     }
 
     private static bool IsAutoOfficerCommand(CommandKind kind)
@@ -3033,7 +3033,7 @@ public sealed partial class CampaignMapScene : Node3D
         var (monthlyGold, monthlyProvisions) = MonthlyIncomePreview(c);
         AddCell(g4, Sym.Coin, "월 금", $"+{monthlyGold}");
         AddCell(g4, Sym.Grain, "월 군량", $"+{monthlyProvisions}");
-        AddCell(g4, Sym.Sword, "월 병력", $"+{MonthlyRecruitPreview(c)}");
+        AddCell(g4, Sym.Sword, "월 병력", MonthlyRecruitSummary(c));
         AddCell(g4, Sym.Book, "월 훈련도", $"+{MonthlyTrainingPreview(c)}");
         AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
         AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
@@ -3195,6 +3195,22 @@ public sealed partial class CampaignMapScene : Node3D
         var officer = city.RecruitmentOfficer is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
         return officer is null ? 0 : _cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier;
     }
+
+    private string MonthlyRecruitSummary(City city)
+    {
+        var officer = city.RecruitmentOfficer is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
+        if (officer is null) { return "+0"; }
+
+        var troopCode = AutoRecruitTroopCode(city);
+        var troops = _cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier;
+        var cost = _cb.AutoRecruitGoldCost(troopCode, troops);
+        return $"+{troops} {TroopName(troopCode)} / -{cost}금";
+    }
+
+    private string AutoRecruitTroopCode(City city)
+        => string.IsNullOrWhiteSpace(city.AutoRecruitTroopCode)
+            ? _cb.AutoRecruitDefaultTroopCode
+            : city.AutoRecruitTroopCode;
 
     private int MonthlyTrainingPreview(City city)
     {
@@ -5395,7 +5411,7 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetText(3, g.Politics.ToString());
             if (IsAutoOfficerCommand(cmd.Kind))
             {
-                item.SetText(4, OfficerMonthlyEffect(cmd.Kind, g));
+                item.SetText(4, OfficerMonthlyEffect(cmd.Kind, g, cityData));
             }
 
             item.SetMetadata(0, g.Id.Value);
@@ -5960,11 +5976,11 @@ public sealed partial class CampaignMapScene : Node3D
         _ => 3,
     };
 
-    private string OfficerMonthlyEffect(CommandKind kind, General officer) => kind switch
+    private string OfficerMonthlyEffect(CommandKind kind, General officer, City city) => kind switch
     {
         CommandKind.AppointSecurityOfficer => $"치안 +{OfficerMightTier(officer.Might)}",
         CommandKind.AppointDomesticOfficer => $"금 +{_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier} / 군량 +{_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier}",
-        CommandKind.AppointRecruitmentOfficer => $"병력 +{_cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier}",
+        CommandKind.AppointRecruitmentOfficer => $"병력 +{_cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier} {TroopName(AutoRecruitTroopCode(city))}",
         CommandKind.AppointTrainingOfficer => $"훈련도 +{System.Math.Max(1, OfficerMightTier(officer.Might) + 1)}",
         _ => "",
     };
@@ -6614,7 +6630,12 @@ public sealed partial class CampaignMapScene : Node3D
 
             var beforeTroops = before.Garrisons.Where(g => g.City == city.Id).Sum(g => g.Troops);
             var afterTroops = after.Garrisons.Where(g => g.City == city.Id).Sum(g => g.Troops);
-            AddDelta(parts, "병력", afterTroops - beforeTroops);
+            var troopDelta = afterTroops - beforeTroops;
+            if (troopDelta != 0)
+            {
+                var troopCode = AutoRecruitTroopCode(city);
+                parts.Add($"병력 {(troopDelta > 0 ? "+" : "")}{troopDelta}({TroopName(troopCode)})");
+            }
 
             var beforeTraining = WeightedTraining(before.Garrisons.Where(g => g.City == city.Id));
             var afterTraining = WeightedTraining(after.Garrisons.Where(g => g.City == city.Id));
