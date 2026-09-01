@@ -30,6 +30,15 @@
   "auto_recruit_troops_might_multiplier": 5,
   "auto_recruit_troop_training_level": 50,
   "auto_recruit_default_troop_code": "swordsman",
+  "auto_recruit_gold_cost_per100_by_troop": {
+    "swordsman": 1,
+    "archer": 1,
+    "thunder_cart": 1,
+    "catapult": 3,
+    "siege_tower": 3,
+    "cavalry": 4,
+    "war_elephant": 6
+  },
   "deploy_min_training": 50,
   "supply_max_troops": 20000,
   "city_resupply_radius": 3,

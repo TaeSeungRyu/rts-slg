@@ -139,4 +139,23 @@ public sealed record CommandBalance
     public int AutoRecruitTroopsMightMultiplier { get; init; } = 5;
     public int AutoRecruitTroopTrainingLevel { get; init; } = 50;
     public string AutoRecruitDefaultTroopCode { get; init; } = "swordsman";
+    public Dictionary<string, int> AutoRecruitGoldCostPer100ByTroop { get; init; } = new()
+    {
+        ["swordsman"] = 1,
+        ["archer"] = 1,
+        ["thunder_cart"] = 1,
+        ["catapult"] = 3,
+        ["siege_tower"] = 3,
+        ["cavalry"] = 4,
+        ["war_elephant"] = 6,
+    };
+
+    public int AutoRecruitGoldCostPer100(string troopCode)
+        => AutoRecruitGoldCostPer100ByTroop.TryGetValue(troopCode, out var cost) ? cost : 0;
+
+    public int AutoRecruitGoldCost(string troopCode, int troops)
+    {
+        var costPer100 = AutoRecruitGoldCostPer100(troopCode);
+        return costPer100 <= 0 || troops <= 0 ? 0 : (troops * costPer100 + 99) / 100;
+    }
 }

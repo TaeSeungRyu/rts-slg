@@ -131,9 +131,16 @@ public sealed class WorldEngine
 
             if (recruiter is not null)
             {
+                var troopCode = string.IsNullOrWhiteSpace(next.AutoRecruitTroopCode)
+                    ? _commands.AutoRecruitDefaultTroopCode
+                    : next.AutoRecruitTroopCode;
                 var troops = _commands.AutoRecruitTroopsBase + recruiter.Might * _commands.AutoRecruitTroopsMightMultiplier;
-                MergeGarrison(garrisons, next.Id, _commands.AutoRecruitDefaultTroopCode, troops,
-                    _commands.AutoRecruitTroopTrainingLevel);
+                var cost = _commands.AutoRecruitGoldCost(troopCode, troops);
+                if (cost > 0 && next.Gold >= cost)
+                {
+                    next = next with { Gold = next.Gold - cost };
+                    MergeGarrison(garrisons, next.Id, troopCode, troops, _commands.AutoRecruitTroopTrainingLevel);
+                }
             }
 
             if (trainer is not null)
