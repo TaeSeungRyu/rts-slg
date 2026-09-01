@@ -2487,6 +2487,8 @@ public sealed partial class CampaignMapScene : Node3D
         var (monthlyGold, monthlyProvisions) = MonthlyIncomePreview(c);
         AddCell(g4, Sym.Coin, "월 금", $"+{monthlyGold}");
         AddCell(g4, Sym.Grain, "월 군량", $"+{monthlyProvisions}");
+        AddCell(g4, Sym.Sword, "월 증가 병력", $"+{MonthlyRecruitPreview(c)}");
+        AddCell(g4, Sym.Book, "월 훈련도", $"+{MonthlyTrainingPreview(c)}");
         AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
         AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
 
@@ -3182,6 +3184,18 @@ public sealed partial class CampaignMapScene : Node3D
         var gold = ScaleMonthlyIncome(goldBase, city, effective, governor, effective ? AdminBonus.Bucket(governor, _adminSkillMap, "tax") : 0);
         var provisions = ScaleMonthlyIncome(provisionsBase, city, effective, governor, effective ? AdminBonus.Bucket(governor, _adminSkillMap, "harvest") : 0);
         return (gold, provisions);
+    }
+
+    private int MonthlyRecruitPreview(City city)
+    {
+        var officer = city.RecruitmentOfficer is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
+        return officer is null ? 0 : _cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier;
+    }
+
+    private int MonthlyTrainingPreview(City city)
+    {
+        var officer = city.TrainingOfficer is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
+        return officer is null ? 0 : System.Math.Max(1, OfficerMightTier(officer.Might) + 1);
     }
 
     private int FacilityOutput(City city, string code, int intactCount, int baseOutput)
