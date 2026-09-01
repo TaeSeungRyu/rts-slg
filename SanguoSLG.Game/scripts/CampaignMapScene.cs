@@ -2466,10 +2466,10 @@ public sealed partial class CampaignMapScene : Node3D
         var totalTroops = _state.Garrisons.Where(g => g.City == id).Sum(g => g.Troops);
         var govName = c.Governor is { } ggid ? _state.Generals.FirstOrDefault(x => x.Id == ggid)?.Name : null;
         var straName = c.Strategist is { } gsid ? _state.Generals.FirstOrDefault(x => x.Id == gsid)?.Name : null;
-        var securityName = OfficerName(c.SecurityOfficer);
-        var domesticName = OfficerName(c.DomesticOfficer);
-        var recruitmentName = OfficerName(c.RecruitmentOfficer);
-        var trainingName = OfficerName(c.TrainingOfficer);
+        var securityName = OfficerNameWithMonthlyEffect(c.SecurityOfficer, CommandKind.AppointSecurityOfficer);
+        var domesticName = OfficerNameWithMonthlyEffect(c.DomesticOfficer, CommandKind.AppointDomesticOfficer);
+        var recruitmentName = OfficerNameWithMonthlyEffect(c.RecruitmentOfficer, CommandKind.AppointRecruitmentOfficer);
+        var trainingName = OfficerNameWithMonthlyEffect(c.TrainingOfficer, CommandKind.AppointTrainingOfficer);
         var pending = _state.Commands.Where(p => p.City == id).Select(p =>
             $"{KindName(p.Kind)} 남은 {p.CompletionDay - _state.Day}일");
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
@@ -2529,6 +2529,13 @@ public sealed partial class CampaignMapScene : Node3D
 
     private string? OfficerName(GeneralId? id)
         => id is { } gid ? _state.Generals.FirstOrDefault(x => x.Id == gid)?.Name : null;
+
+    private string? OfficerNameWithMonthlyEffect(GeneralId? id, CommandKind kind)
+    {
+        if (id is not { } gid) { return null; }
+        var officer = _state.Generals.FirstOrDefault(x => x.Id == gid);
+        return officer is null ? null : $"{officer.Name} ({OfficerMonthlyEffect(kind, officer)})";
+    }
 
     private static bool IsAutoOfficerCommand(CommandKind kind)
         => kind is CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer
