@@ -2808,7 +2808,10 @@ public sealed partial class CampaignMapScene : Node3D
         }
         if (options.Count > 0)
         {
-            box.AddChild(MakeLabel(cmd.Param == "stratagem" ? "계략을 선택하세요" : "대상을 선택하세요", 19, GoldBright));
+            var optionTitle = cmd.Kind == CommandKind.AppointRecruitmentOfficer
+                ? "자동 생산 병종을 선택하세요"
+                : cmd.Param == "stratagem" ? "계략을 선택하세요" : "대상을 선택하세요";
+            box.AddChild(MakeLabel(optionTitle, 19, GoldBright));
             var grid = new GridContainer { Columns = System.Math.Min(colOpt, options.Count) };
             grid.AddThemeConstantOverride("h_separation", 10);
             grid.AddThemeConstantOverride("v_separation", 10);
@@ -5111,6 +5114,19 @@ public sealed partial class CampaignMapScene : Node3D
         (string Label, CommandKind Kind, string Param) cmd, City city)
     {
         var list = new List<(string, ImageTexture, string)>();
+        if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
+        {
+            var previewTroops = _cb.AutoRecruitTroopsBase;
+            foreach (var t in AutoRecruitTroopOptions())
+            {
+                var costPer100 = _cb.AutoRecruitGoldCostPer100(t.Code);
+                var monthlyCost = _cb.AutoRecruitGoldCost(t.Code, previewTroops);
+                list.Add((t.Name, ClassEmblem(t.Class), $"{ClassName(t.Class)} · 100명당 {costPer100}금\n기본 월 비용 {monthlyCost}금"));
+            }
+
+            return list;
+        }
+
         switch (cmd.Param)
         {
             case "troop":
@@ -5189,6 +5205,12 @@ public sealed partial class CampaignMapScene : Node3D
 
         return list;
     }
+
+    private List<TroopTemplate> AutoRecruitTroopOptions()
+        => _troops.Where(t => t.Class != TroopClass.Naval && _cb.AutoRecruitGoldCostPer100(t.Code) > 0)
+            .OrderBy(t => _cb.AutoRecruitGoldCostPer100(t.Code))
+            .ThenBy(t => t.Code, System.StringComparer.Ordinal)
+            .ToList();
 
     private string ResearchOptionDetail(City city, string troopCode)
     {
@@ -5582,6 +5604,11 @@ public sealed partial class CampaignMapScene : Node3D
             "garrison" => GarrisonAt(city, p)?.TroopCode ?? "",
             _ => "",
         };
+        if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
+        {
+            var autoOptions = AutoRecruitTroopOptions();
+            troopCode = p >= 0 && p < autoOptions.Count ? autoOptions[p].Code : _cb.AutoRecruitDefaultTroopCode;
+        }
         var traineePool = cmd.Param == "garrison" && (GarrisonAt(city, p)?.Trainee ?? false);
         var facility = cmd.Param switch
         {
@@ -5696,7 +5723,8 @@ public sealed partial class CampaignMapScene : Node3D
                 CommandKind.AppointDomesticOfficer => $"\n정치 {officer.Politics} → 월 금 +{_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier}"
                     + $"\n월 군량 +{_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier}",
                 CommandKind.AppointRecruitmentOfficer => $"\n무력 {officer.Might} → 월 병력 +{_cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier}"
-                    + $" ({TroopName(_cb.AutoRecruitDefaultTroopCode)})",
+                    + $" ({TroopName(troopCode)})"
+                    + $"\n월 비용 {AutoRecruitCostFor(officer, troopCode)}금 · 도시 금 부족 시 생산 없음",
                 CommandKind.AppointTrainingOfficer => $"\n무력 {officer.Might} → 월 훈련도 +{System.Math.Max(1, OfficerMightTier(officer.Might) + 1)}",
                 _ => "",
             };
@@ -5715,6 +5743,10 @@ public sealed partial class CampaignMapScene : Node3D
             "stratagem" => $" · {Strats[p].Label}",
             _ => "",
         };
+        if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
+        {
+            pLabel = $" · {TroopName(troopCode)}";
+        }
         ShowConfirm("명령 확인",
             $"{_state.Cities.First(c => c.Id == city).Name} — {cmd.Label}{pLabel}{extra}\n수행 장수: {gName}\n\n실행하시겠습니까?",
             () =>
@@ -5936,6 +5968,9 @@ public sealed partial class CampaignMapScene : Node3D
         CommandKind.AppointTrainingOfficer => $"훈련도 +{System.Math.Max(1, OfficerMightTier(officer.Might) + 1)}",
         _ => "",
     };
+
+    private int AutoRecruitCostFor(General officer, string troopCode)
+        => _cb.AutoRecruitGoldCost(troopCode, _cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier);
 
     // 건설 배치 모드 진입 — 명령 모달을 닫고 반투명 고스트를 띄운다. 커서를 따라다니며,
     // 평지·숲 유효 칸에서만 초록, 그 외엔 빨강(클릭해도 컨펌 안 뜸).
