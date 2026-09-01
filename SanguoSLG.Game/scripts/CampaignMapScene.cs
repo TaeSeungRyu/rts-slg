@@ -5372,7 +5372,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var tree = new Tree
         {
-            Columns = 4,
+            Columns = IsAutoOfficerCommand(cmd.Kind) ? 5 : 4,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
