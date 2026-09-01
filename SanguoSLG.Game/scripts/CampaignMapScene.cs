@@ -3012,8 +3012,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         _openCityDetailCity = city;
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.42f, 380f, 560f);
-        var mh = Mathf.Clamp(vp.Y * 0.85f, 360f, 760f);
+        var mw = Mathf.Clamp(vp.X * 0.52f, 460f, 680f);
+        var mh = Mathf.Clamp(vp.Y * 0.88f, 420f, 820f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var c = _state.Cities.First(x => x.Id == city);
 
@@ -3026,7 +3026,7 @@ public sealed partial class CampaignMapScene : Node3D
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
         var close = MakeButton("✕");
-        close.CustomMinimumSize = new Vector2(40, 30);
+        close.CustomMinimumSize = new Vector2(46, 34);
         close.Pressed += CloseModal;
         titleRow.AddChild(close);
         box.AddChild(GoldRule());
