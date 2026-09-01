@@ -9,7 +9,7 @@ using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
-/// <summary>세력 AI 최소판(12단계) — 모집·출전·재조준 판단이 결정론적으로 나오는지.</summary>
+/// <summary>세력 AI 최소판 — v2 기준 출전·재조준 판단이 결정론적으로 나오는지.</summary>
 public class FactionAiTests
 {
     private static readonly CommandBalance B = new();
@@ -37,7 +37,7 @@ public class FactionAiTests
         new(new GeneralId(general), new FactionId(faction), new CityId(city));
 
     [Fact]
-    public void 모집_대기병력이_적으면_모집하고_장수가_잠긴다()
+    public void v2_대기병력이_적으면_수동모집하지_않는다()
     {
         var s = new GameState(1, 1, new List<Faction>(),
             new List<City> { Town(1, 1, new HexCoord(0, 0)), Town(9, 2, new HexCoord(12, 0)) },
@@ -46,9 +46,8 @@ public class FactionAiTests
 
         var after = Ai().PlanWeek(s, new FactionId(1));
 
-        Assert.Single(after.Commands);
-        Assert.Equal(CommandKind.Recruit, after.Commands[0].Kind);
-        Assert.True(after.IsGeneralBusy(new GeneralId(1)));
+        Assert.Empty(after.Commands);
+        Assert.False(after.IsGeneralBusy(new GeneralId(1)));
     }
 
     [Fact]
@@ -70,7 +69,7 @@ public class FactionAiTests
     }
 
     [Fact]
-    public void 출전_장수가_1명뿐이면_출전하지않고_모집한다()
+    public void 출전_장수가_1명뿐이면_출전하지않고_수동모집도_하지않는다()
     {
         var s = new GameState(1, 1, new List<Faction>(),
             new List<City> { Town(1, 1, new HexCoord(0, 0)), Town(9, 2, new HexCoord(10, 0)) },
@@ -80,9 +79,8 @@ public class FactionAiTests
 
         var after = Ai().PlanWeek(s, new FactionId(1));
 
-        Assert.Empty(after.Armies);                 // 출전 안 함(1명 남겨야)
-        Assert.Single(after.Commands);              // 대신 모집
-        Assert.Equal(CommandKind.Recruit, after.Commands[0].Kind);
+        Assert.Empty(after.Armies);
+        Assert.Empty(after.Commands);
     }
 
     [Fact]
@@ -117,7 +115,6 @@ public class FactionAiTests
         var b = Ai().PlanWeek(s, new FactionId(1));
 
         Assert.Equal(a.Commands.Count, b.Commands.Count);
-        Assert.Equal(a.Commands[0].City, b.Commands[0].City);
-        Assert.Equal(a.Commands[0].TroopCode, b.Commands[0].TroopCode);
+        Assert.Empty(a.Commands);
     }
 }

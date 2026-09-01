@@ -1636,18 +1636,6 @@ public sealed partial class CampaignMapScene : Node3D
 
         _pendingDeploys.Clear();
 
-        // 예약된 포상을 진행 시작에 수행(취소되지 않은 것만). 금 부족이면 Reward가 실패 반환 → 건너뜀.
-        foreach (var (rc, tg, label) in _pendingRewards)
-        {
-            var gName = _state.Generals.FirstOrDefault(g => g.Id == tg)?.Name ?? $"G{tg.Value}";
-            var loyBefore = _state.LoyaltyOf(tg); // 검증용: 충성 변화(숨김 수치라 dev 로그로만)
-            var rr = _commander.Reward(_state, rc, tg);
-            var loyAfter = rr.Ok ? rr.State.LoyaltyOf(tg) : loyBefore;
-            Dbg($"  reward '{label}': ok={rr.Ok} loyalty {loyBefore}->{loyAfter} (+{loyAfter - loyBefore}) err={rr.Error ?? "-"}");
-            if (rr.Ok) { _state = rr.State; deployNote.Add($"[포상] {gName} 장수를 포상하였습니다. 충성도가 올랐습니다."); }
-            else { deployNote.Add($"[포상] {gName} 포상 실패({rr.Error})"); }
-        }
-
         _pendingRewards.Clear();
 
         // 플레이어 세력은 직접 조작 — AI는 나머지 세력만 굴린다.
@@ -1717,8 +1705,8 @@ public sealed partial class CampaignMapScene : Node3D
             var troop = we.Code.Length > 0 ? TroopName(we.Code) : "";
             var (text, col) = we.Kind switch
             {
-                WorldEventKind.Recruit => ($"[내정] {cName}에서 {troop} {we.Amount}명을 모집했습니다.", Parchment),
-                WorldEventKind.Conscript => ($"[내정] {cName}에서 {troop} {we.Amount}명을 징병했습니다.", Parchment),
+                WorldEventKind.Recruit => ("", Parchment),
+                WorldEventKind.Conscript => ("", Parchment),
                 WorldEventKind.Train => ($"[내정] {cName}의 {troop} 훈련도가 올랐습니다(+{we.Amount}).", Parchment),
                 WorldEventKind.Build => ($"[내정] {cName}에 {FacilityLabel(we.Code)} 건설을 마쳤습니다.", Parchment),
                 WorldEventKind.Research => ($"[군비] {cName}에서 연구를 마쳤습니다.", Parchment),
@@ -3101,8 +3089,7 @@ public sealed partial class CampaignMapScene : Node3D
         content.AddThemeConstantOverride("separation", 6);
         contentPanel.AddChild(content);
 
-        var rewardCount = _pendingRewards.Count(r => r.City == city);
-        var labels = new[] { $"주둔 장수 {stationed.Count}", $"진행 명령 {cmds.Count}", $"예약 {deploys.Count + rewardCount}" };
+        var labels = new[] { $"주둔 장수 {stationed.Count}", $"진행 명령 {cmds.Count}", $"예약 {deploys.Count}" };
         var tabBtns = new Button[3];
         void ShowTab(int t)
         {
@@ -3375,7 +3362,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
-    // ── 상세 탭 ③: 예약(출전·포상 — 진행 시 수행, 그 전까진 취소) ──
+    // ── 상세 탭 ③: 예약(출전 — 진행 시 수행, 그 전까진 취소) ──
     private void BuildDeployTab(VBoxContainer box, CityId city, List<int> deploys)
     {
         box.AddChild(MakeLabel("출전 예약 (진행 시 편성 — 취소 시 소모 없음)", 14, GoldBright));
@@ -3404,31 +3391,6 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(row);
         }
 
-        box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("포상 예약 (진행 시 수행 — 취소 가능)", 14, GoldBright));
-        var rewards = _pendingRewards.Where(r => r.City == city).ToList();
-        if (rewards.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
-        foreach (var rw in rewards)
-        {
-            var reward = rw;
-            var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 8);
-            var lbl = MakeLabel("· " + reward.Label, 12, Parchment);
-            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            row.AddChild(lbl);
-            if (_advancing) { box.AddChild(row); continue; }
-            var cancel = MakeButton("취소");
-            cancel.CustomMinimumSize = new Vector2(56, 24);
-            cancel.Pressed += () =>
-            {
-                _pendingRewards.RemoveAll(r => r.City == reward.City && r.Target == reward.Target);
-                Dbg($"UI cancel-reward city={reward.City.Value} gen={reward.Target.Value}");
-                SelectCity(city);
-                OpenCityDetail(city);
-            };
-            row.AddChild(cancel);
-            box.AddChild(row);
-        }
     }
 
     // 대기 병력 카드 — 병종 엠블럼 + 이름(신병) + 병력·훈련도.
@@ -4215,7 +4177,6 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(g4);
             AddCell(g4, Sym.Coin, "금", $"{c.Gold}");
             AddCell(g4, Sym.Grain, "군량", $"{c.Provisions}");
-            AddCell(g4, Sym.People, "인구", $"{c.Population}");
             AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
             AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
             AddCell(g4, Sym.Ore, "광석", $"{c.Ore}");
@@ -4329,46 +4290,12 @@ public sealed partial class CampaignMapScene : Node3D
             portrait.AddChild(ph);
         }
 
-        var meta = new List<string> { $"상태 {GeneralStatus(gid)}", "충성 ??" };
+        var meta = new List<string> { $"상태 {GeneralStatus(gid)}" };
         if (g.Birth != 0) { meta.Add(g.Birth < 0 ? $"기원전 {-g.Birth}년생" : $"{g.Birth}년생"); }
         if (g.Region.Length > 0) { meta.Add($"출신 {g.Region}"); }
         var metaLbl = MakeLabel(string.Join(" · ", meta), 12, Parchment);
         metaLbl.HorizontalAlignment = HorizontalAlignment.Center;
         box.AddChild(metaLbl);
-
-        // 포상 예약: 그 도시 주둔 소속 장수만(진행 시 수행·취소 가능). 충성은 숨김이라 금액만 표기. 재생 중 불가.
-        var backCityData = _state.Cities.FirstOrDefault(c => c.Id == backCity);
-        if (!_advancing && backCityData is { Owner: var owner } && owner == Player
-            && _state.GeneralsAt(backCity).Contains(gid))
-        {
-            const int rewardCost = 100; // balance.json reward_gold_cost 기본값
-            var reservedR = _pendingRewards.Any(r => r.City == backCity && r.Target == gid);
-            var reward = MakeButton(reservedR ? "포상 예약 취소" : $"포상 예약 ({rewardCost}금)", accent: !reservedR);
-            reward.AddThemeFontSizeOverride("font_size", 12);
-            reward.CustomMinimumSize = new Vector2(0, 28);
-            reward.Pressed += () =>
-            {
-                if (reservedR)
-                {
-                    _pendingRewards.RemoveAll(r => r.City == backCity && r.Target == gid);
-                    _log.Text = $"포상 예약 취소: {g.Name}";
-                    Dbg($"UI reward-unreserve card city={backCity.Value} gen={gid.Value}");
-                    SelectCity(backCity);
-                    OpenGeneralDetail(gid, backCity);
-                    return;
-                }
-
-                ShowConfirm("포상 예약", $"{g.Name}에게 포상 ({rewardCost}금)\n진행 시 수행됩니다. 예약하시겠습니까?", () =>
-                {
-                    _pendingRewards.Add((backCity, gid, $"{g.Name} 포상"));
-                    _log.Text = $"포상 예약: {g.Name} (진행 시 수행)";
-                    Dbg($"UI reward-reserve card city={backCity.Value} gen={gid.Value}");
-                    SelectCity(backCity);
-                    OpenGeneralDetail(gid, backCity);
-                });
-            };
-            box.AddChild(reward);
-        }
 
         box.AddChild(GoldRule());
 

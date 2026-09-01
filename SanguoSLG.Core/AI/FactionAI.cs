@@ -13,13 +13,12 @@ using SanguoSLG.Core.Spatial;
 /// </summary>
 public sealed class FactionAI
 {
-    private readonly CommandService _commands;
     private readonly DeployService _deployer;
     private readonly AiConfig _config;
 
     public FactionAI(CommandService commands, DeployService deployer, AiConfig? config = null)
     {
-        _commands = commands;
+        _ = commands;
         _deployer = deployer;
         _config = config ?? new AiConfig();
     }
@@ -57,15 +56,6 @@ public sealed class FactionAI
                     {
                         state = result.State;
                     }
-                }
-            }
-            else if (city.Ore >= _config.MinOre)
-            {
-                var result = _commands.Issue(state, new CommandRequest(
-                    city.Id, CommandKind.Recruit, gid, TroopCode: _config.Troop));
-                if (result.Ok)
-                {
-                    state = result.State;
                 }
             }
         }
