@@ -3042,6 +3042,8 @@ public sealed partial class CampaignMapScene : Node3D
         var (monthlyGold, monthlyProvisions) = MonthlyIncomePreview(c);
         AddCell(g4, Sym.Coin, "월 금", $"+{monthlyGold}");
         AddCell(g4, Sym.Grain, "월 군량", $"+{monthlyProvisions}");
+        AddCell(g4, Sym.Sword, "월 병력", $"+{MonthlyRecruitPreview(c)}");
+        AddCell(g4, Sym.Book, "월 훈련도", $"+{MonthlyTrainingPreview(c)}");
         AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
         AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
         AddCell(g4, Sym.Ore, "광석", $"{c.Ore}");
@@ -3176,6 +3178,17 @@ public sealed partial class CampaignMapScene : Node3D
 
     private (int Gold, int Provisions) MonthlyIncomePreview(City city)
     {
+        if (_cb.AutoOfficerSystemEnabled)
+        {
+            var domestic = city.DomesticOfficer is { } did
+                ? _state.Generals.FirstOrDefault(g => g.Id == did)
+                : null;
+            return domestic is null
+                ? (0, 0)
+                : (_cb.AutoDomesticGoldBase + domestic.Politics * _cb.AutoDomesticGoldPoliticsMultiplier,
+                    _cb.AutoDomesticProvisionsBase + domestic.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier);
+        }
+
         var governor = city.Governor is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
         var effective = governor is not null && governor.Politics >= _balance.GovernorMinPolitics;
         var goldBase = GoldBase(city.Castle) + FacilityOutput(city, "village", city.Villages, _balance.VillageGold);
