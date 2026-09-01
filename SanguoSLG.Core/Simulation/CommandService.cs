@@ -99,6 +99,12 @@ public sealed class CommandService
             return AppointStrategist(state, city, main);
         }
 
+        if (req.Kind is CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer
+            or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer)
+        {
+            return AppointCityOfficer(state, city, main, req.Kind);
+        }
+
         General? assist = null;
         if (req.Assist is { } assistId)
         {
@@ -683,6 +689,37 @@ public sealed class CommandService
         }
 
         var cities = state.Cities.Select(c => c.Id == city.Id ? c with { Strategist = main.Id } : c).ToList();
+        return CommandResult.Success(state with { Cities = cities });
+    }
+
+    private CommandResult AppointCityOfficer(GameState state, City city, General main, CommandKind kind)
+    {
+        if (state.Assignments.Count > 0 && PostingError(state, main.Id, city) is { } e)
+        {
+            return CommandResult.Fail($"담당자 {e}", state);
+        }
+
+        var already = kind switch
+        {
+            CommandKind.AppointSecurityOfficer => city.SecurityOfficer == main.Id,
+            CommandKind.AppointDomesticOfficer => city.DomesticOfficer == main.Id,
+            CommandKind.AppointRecruitmentOfficer => city.RecruitmentOfficer == main.Id,
+            CommandKind.AppointTrainingOfficer => city.TrainingOfficer == main.Id,
+            _ => false,
+        };
+        if (already)
+        {
+            return CommandResult.Fail("이미 이 담당으로 지정된 장수다.", state);
+        }
+
+        var cities = state.Cities.Select(c => c.Id == city.Id ? kind switch
+        {
+            CommandKind.AppointSecurityOfficer => c with { SecurityOfficer = main.Id },
+            CommandKind.AppointDomesticOfficer => c with { DomesticOfficer = main.Id },
+            CommandKind.AppointRecruitmentOfficer => c with { RecruitmentOfficer = main.Id },
+            CommandKind.AppointTrainingOfficer => c with { TrainingOfficer = main.Id },
+            _ => c,
+        } : c).ToList();
         return CommandResult.Success(state with { Cities = cities });
     }
 

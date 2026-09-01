@@ -296,6 +296,48 @@ public class CommandSystemTests
         Assert.Equal(new GeneralId(1), appoint.State.Cities.Single().Governor);
     }
 
+    [Theory]
+    [InlineData(CommandKind.AppointSecurityOfficer, "치안")]
+    [InlineData(CommandKind.AppointDomesticOfficer, "내정")]
+    [InlineData(CommandKind.AppointRecruitmentOfficer, "병력")]
+    [InlineData(CommandKind.AppointTrainingOfficer, "훈련")]
+    public void v2_담당자임명_도시_슬롯을_즉시_바꾸고_잠기지_않는다(CommandKind kind, string _)
+    {
+        var s0 = State(new[] { Town(1) }, new[] { Pol(1, 90) });
+
+        var r = Service().Issue(s0, new CommandRequest(new CityId(1), kind, new GeneralId(1)));
+
+        Assert.True(r.Ok, r.Error);
+        var city = r.State.Cities.Single();
+        var assigned = kind switch
+        {
+            CommandKind.AppointSecurityOfficer => city.SecurityOfficer,
+            CommandKind.AppointDomesticOfficer => city.DomesticOfficer,
+            CommandKind.AppointRecruitmentOfficer => city.RecruitmentOfficer,
+            CommandKind.AppointTrainingOfficer => city.TrainingOfficer,
+            _ => null,
+        };
+        Assert.Equal(new GeneralId(1), assigned);
+        Assert.False(r.State.IsGeneralBusy(new GeneralId(1)));
+        Assert.Empty(r.State.Commands);
+    }
+
+    [Fact]
+    public void v2_담당자임명_다른_도시_장수는_거부된다()
+    {
+        var city = Town(1);
+        var g = Pol(1, 90);
+        var s0 = State(new[] { city, Town(2) }, new[] { g }) with
+        {
+            Postings = new List<GeneralPosting> { new(g.Id, city.Owner, new CityId(2)) },
+        };
+
+        var r = Service().Issue(s0, new CommandRequest(new CityId(1), CommandKind.AppointDomesticOfficer, g.Id));
+
+        Assert.False(r.Ok);
+        Assert.Contains("담당자", r.Error);
+    }
+
     // ── 발행 검증 ──
 
     [Fact]

@@ -84,6 +84,10 @@ public sealed class WorldEngine
             {
                 Cities = next.Cities.Select(c => TaxSecurity(Grow(Produce(Income(next, c, Gov(c)), Gov(c))), Gov(c))).ToList(),
             };
+            if (_commands.AutoOfficerSystemEnabled)
+            {
+                next = ApplyAutoOfficers(next, byId);
+            }
 
             // 시장 시세 갱신(design-administration "시장"): 계절 배수 × 랜덤 지터(seeded — 결정론).
             // 9·10월(추수) 최저, 겨울 최고. 다음 달 매입가에 반영된다.
@@ -98,6 +102,81 @@ public sealed class WorldEngine
 
         return next;
     }
+
+    private GameState ApplyAutoOfficers(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId)
+    {
+        var garrisons = state.Garrisons.ToList();
+        var cities = new List<City>();
+        foreach (var city in state.Cities)
+        {
+            var next = city;
+            var security = ValidOfficer(state, city, city.SecurityOfficer, byId);
+            var domestic = ValidOfficer(state, city, city.DomesticOfficer, byId);
+            var recruiter = ValidOfficer(state, city, city.RecruitmentOfficer, byId);
+            var trainer = ValidOfficer(state, city, city.TrainingOfficer, byId);
+
+            var securityDelta = security is null ? _commands.AutoSecurityNoOfficerDelta : MightTier(security.Might);
+            next = next with { Security = System.Math.Clamp(next.Security + securityDelta, 0, 100) };
+
+            if (domestic is not null)
+            {
+                next = next with
+                {
+                    Gold = next.Gold + _commands.AutoDomesticGoldBase
+                        + domestic.Politics * _commands.AutoDomesticGoldPoliticsMultiplier,
+                    Provisions = next.Provisions + _commands.AutoDomesticProvisionsBase
+                        + domestic.Politics * _commands.AutoDomesticProvisionsPoliticsMultiplier,
+                };
+            }
+
+            if (recruiter is not null)
+            {
+                var troops = _commands.AutoRecruitTroopsBase + recruiter.Might * _commands.AutoRecruitTroopsMightMultiplier;
+                MergeGarrison(garrisons, next.Id, _commands.AutoRecruitDefaultTroopCode, troops,
+                    _commands.AutoRecruitTroopTrainingLevel);
+            }
+
+            if (trainer is not null)
+            {
+                var gain = System.Math.Max(1, MightTier(trainer.Might) + 1);
+                garrisons = garrisons.Select(g => g.City == next.Id
+                    ? g with { TrainingLevel = System.Math.Min(_commands.TrainCap, g.TrainingLevel + gain) }
+                    : g).ToList();
+            }
+
+            cities.Add(next);
+        }
+
+        return state with { Cities = cities, GarrisonForces = garrisons };
+    }
+
+    private Domain.General? ValidOfficer(GameState state, City city, GeneralId? id,
+        IReadOnlyDictionary<GeneralId, Domain.General> byId)
+    {
+        if (id is not { } gid || !byId.TryGetValue(gid, out var general))
+        {
+            return null;
+        }
+
+        if (state.Assignments.Count > 0)
+        {
+            var posting = state.PostingOf(gid);
+            if (posting is null || posting.Location != city.Id || posting.Faction != city.Owner)
+            {
+                return null;
+            }
+        }
+
+        return general;
+    }
+
+    private static int MightTier(int might) => might switch
+    {
+        < 60 => 0,
+        < 80 => 1,
+        < 100 => 2,
+        _ => 3,
+    };
 
     // 월 급여·배신(design-general-lifecycle §1). 세력마다: 소속 장수(군주 제외) 급여를 도시 금 합계에서
     // 지급하되 **충성 낮은 순으로 우선 지급**(이탈 위험자 보호), 못 받은(충성 높은) 장수는 충성 −min~max.

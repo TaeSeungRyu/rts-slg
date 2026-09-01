@@ -321,6 +321,82 @@ public class WorldEngineTests
         Assert.Equal(new[] { 1, 2, 3 }, a.Cities.Select(c => c.Id.Value));
     }
 
+    // ── v2 자동 담당자 — 전투 중심 리디자인 Phase 2 ──
+
+    private static readonly BalanceConfig V2OnlyBalance = new(
+        MonthlyTaxPerCity: 0,
+        PopulationGrowthPercent: 0,
+        GoldBaseSmall: 0,
+        GoldBaseMedium: 0,
+        GoldBaseLarge: 0,
+        ProvisionsBaseSmall: 0,
+        ProvisionsBaseMedium: 0,
+        ProvisionsBaseLarge: 0,
+        PaddyProvisions: 0,
+        FarmProvisions: 0,
+        VillageGold: 0,
+        OreOutputPerMonth: 0,
+        HorsesOutputPerMonth: 0,
+        ElephantsOutputPerMonth: 0,
+        SecurityNaturalRecovery: 0,
+        GeneralSalaryPerMonth: 0);
+
+    private static General V2Officer(int id, int might = 50, int politics = 50) => new(
+        new GeneralId(id), $"담당{id}", new Dictionary<TroopClass, AptitudeGrade>(),
+        Might: might, Intellect: 50, Politics: politics);
+
+    [Fact]
+    public void v2_담당자가_월말에_치안_내정_병력_훈련을_자동_처리한다()
+    {
+        var city = new City(new CityId(1), "자동성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 0, Population: 0, Security: 50,
+            SecurityOfficer: new GeneralId(1),
+            DomesticOfficer: new GeneralId(2),
+            RecruitmentOfficer: new GeneralId(3),
+            TrainingOfficer: new GeneralId(4));
+        var generals = new[]
+        {
+            V2Officer(1, might: 85),      // 치안 +2
+            V2Officer(2, politics: 80),   // 금 +260, 군량 +700
+            V2Officer(3, might: 70),      // 병력 +550
+            V2Officer(4, might: 100),     // 훈련 +4
+        };
+        var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, generals.ToList(),
+            Postings: generals.Select(g => new GeneralPosting(g.Id, city.Owner, city.Id)).ToList(),
+            GarrisonForces: new List<GarrisonForce> { new(city.Id, "swordsman", 1000, 40) });
+
+        var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
+            .AdvanceDays(state, 30);
+        var resultCity = after.Cities.Single();
+        var garrison = after.Garrisons.Single(g => g.City == city.Id && g.TroopCode == "swordsman");
+
+        Assert.Equal(52, resultCity.Security);
+        Assert.Equal(260, resultCity.Gold);
+        Assert.Equal(1700, resultCity.Provisions);
+        Assert.Equal(1550, garrison.Troops);
+        Assert.Equal(44, garrison.TrainingLevel);
+    }
+
+    [Fact]
+    public void v2_담당자가_없으면_치안만_떨어지고_나머지는_현상_유지된다()
+    {
+        var city = new City(new CityId(1), "공석성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 0, Population: 0, Security: 50);
+        var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, new List<General>(),
+            GarrisonForces: new List<GarrisonForce> { new(city.Id, "swordsman", 1000, 40) });
+
+        var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
+            .AdvanceDays(state, 30);
+        var resultCity = after.Cities.Single();
+        var garrison = after.Garrisons.Single();
+
+        Assert.Equal(48, resultCity.Security);
+        Assert.Equal(0, resultCity.Gold);
+        Assert.Equal(1000, resultCity.Provisions);
+        Assert.Equal(1000, garrison.Troops);
+        Assert.Equal(40, garrison.TrainingLevel);
+    }
+
     // ── 내정담당관(태수) — design-administration "내정 심화" A/담당관 ──
 
     private static GameState WithGovernor(City city, General? governor, IEnumerable<AdminSkill>? admin = null)

@@ -128,4 +128,15 @@ public sealed record CommandBalance
     public int BuildCostFarm { get; init; } = 200;
     public int BuildCostVillage { get; init; } = 400;
     public int BuildCostWorkshop { get; init; } = 400;
+
+    public bool AutoOfficerSystemEnabled { get; init; } = false;
+    public int AutoSecurityNoOfficerDelta { get; init; } = -2;
+    public int AutoDomesticGoldBase { get; init; } = 100;
+    public int AutoDomesticGoldPoliticsMultiplier { get; init; } = 2;
+    public int AutoDomesticProvisionsBase { get; init; } = 300;
+    public int AutoDomesticProvisionsPoliticsMultiplier { get; init; } = 5;
+    public int AutoRecruitTroopsBase { get; init; } = 200;
+    public int AutoRecruitTroopsMightMultiplier { get; init; } = 5;
+    public int AutoRecruitTroopTrainingLevel { get; init; } = 40;
+    public string AutoRecruitDefaultTroopCode { get; init; } = "swordsman";
 }
