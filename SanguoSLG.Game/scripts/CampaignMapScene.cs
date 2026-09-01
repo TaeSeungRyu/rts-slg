@@ -2530,6 +2530,19 @@ public sealed partial class CampaignMapScene : Node3D
     private string? OfficerName(GeneralId? id)
         => id is { } gid ? _state.Generals.FirstOrDefault(x => x.Id == gid)?.Name : null;
 
+    private static bool IsAutoOfficerCommand(CommandKind kind)
+        => kind is CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer
+            or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer;
+
+    private static string OfficerRoleDescription(CommandKind kind) => kind switch
+    {
+        CommandKind.AppointSecurityOfficer => "치안을 담당합니다. 매월 무력에 따라 치안을 유지하거나 회복합니다.",
+        CommandKind.AppointDomesticOfficer => "내정을 담당합니다. 매월 정치에 따라 금과 군량을 생산합니다.",
+        CommandKind.AppointRecruitmentOfficer => "병력을 담당합니다. 매월 무력에 따라 도시 대기 병력을 생산합니다.",
+        CommandKind.AppointTrainingOfficer => "훈련을 담당합니다. 매월 무력에 따라 도시 대기 병력의 훈련도를 올립니다.",
+        _ => "",
+    };
+
     // 명령 팔레트를 성 화면좌표의 우측에 배치(화면 밖으로 안 나가게 clamp). 줌/이동 시 매 프레임 추종.
     private void PlacePalette(HexCoord at)
     {
@@ -2768,6 +2781,11 @@ public sealed partial class CampaignMapScene : Node3D
         close.CustomMinimumSize = new Vector2(46, 43);
         close.Pressed += CloseModal;
         titleRow.AddChild(close);
+        if (IsAutoOfficerCommand(cmd.Kind))
+        {
+            box.AddChild(MakeLabel(OfficerRoleDescription(cmd.Kind), 15, Parchment));
+        }
+
         box.AddChild(GoldRule());
 
         var cityData = _state.Cities.First(x => x.Id == city);
