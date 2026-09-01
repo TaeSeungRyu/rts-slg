@@ -6,6 +6,12 @@
 > 결정론: 모든 확률 판정은 시드 `IRandomSource`로만(규칙 4). 관련 문서:
 > [design-administration.md](./design-administration.md)(명령), [spec-general.md](./spec-general.md)(데이터).
 
+> **v2 전환 기준(2026-09-01):** 이 문서는 기존 장수 라이프사이클 구현 이력으로 보존한다.
+> 앞으로의 신규 구현은 [전투 중심 리디자인 v2](./plan-combat-redesign-v2.md)와
+> [v2 전투 중심 전환 작업 로드맵](./plan-v2-implementation-roadmap.md)을 우선한다.
+> v2에서는 **충성·급여·배신·포로교환을 제거**하고, 장수 획득은 **탐색, 성 함락 30%, 세력 멸망 70%** 규칙으로 단순화한다.
+> 탐색은 미등록 장수·금·군량·이벤트 유닛·아이템 발견 기능으로 유지한다.
+
 ## 왜 한 묶음인가
 
 ```
