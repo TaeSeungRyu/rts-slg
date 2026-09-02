@@ -358,6 +358,48 @@ public class CommandSystemTests
     }
 
     [Fact]
+    public void v2_담당자임명_이미_담당중인_장수는_다른_담당을_맡을수없다()
+    {
+        var s0 = State(new[] { Town(1), Town(2) }, new[] { Mig(1, 80) });
+
+        var first = Service().Issue(s0,
+            new CommandRequest(new CityId(1), CommandKind.AppointRecruitmentOfficer, new GeneralId(1),
+                TroopCode: "cavalry"));
+        var second = Service().Issue(first.State,
+            new CommandRequest(new CityId(1), CommandKind.AppointTrainingOfficer, new GeneralId(1)));
+        var third = Service().Issue(first.State,
+            new CommandRequest(new CityId(2), CommandKind.AppointRecruitmentOfficer, new GeneralId(1)));
+
+        Assert.True(first.Ok, first.Error);
+        Assert.False(second.Ok);
+        Assert.Contains("이미 다른 담당", second.Error);
+        Assert.Equal(new GeneralId(1), second.State.Cities.Single(c => c.Id.Value == 1).RecruitmentOfficer);
+        Assert.Null(second.State.Cities.Single(c => c.Id.Value == 1).TrainingOfficer);
+        Assert.False(third.Ok);
+        Assert.Contains("이미 다른 담당", third.Error);
+        Assert.Null(third.State.Cities.Single(c => c.Id.Value == 2).RecruitmentOfficer);
+    }
+
+    [Fact]
+    public void v2_담당자임명_같은_병력담당의_자동생산_병종은_변경할수있다()
+    {
+        var s0 = State(new[] { Town(1) }, new[] { Mig(1, 80) });
+
+        var first = Service().Issue(s0,
+            new CommandRequest(new CityId(1), CommandKind.AppointRecruitmentOfficer, new GeneralId(1),
+                TroopCode: "cavalry"));
+        var changed = Service().Issue(first.State,
+            new CommandRequest(new CityId(1), CommandKind.AppointRecruitmentOfficer, new GeneralId(1),
+                TroopCode: "archer,swordsman"));
+
+        Assert.True(first.Ok, first.Error);
+        Assert.True(changed.Ok, changed.Error);
+        Assert.Equal(new GeneralId(1), changed.State.Cities.Single().RecruitmentOfficer);
+        Assert.Equal("archer", changed.State.Cities.Single().AutoRecruitTroopCode);
+        Assert.Equal("archer,swordsman", changed.State.Cities.Single().AutoRecruitTroopCodes);
+    }
+
+    [Fact]
     public void v2_병력담당_해상병종은_자동생산으로_지정할수없다()
     {
         var s0 = State(new[] { Town(1) }, new[] { Mig(1, 80) });

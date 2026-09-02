@@ -741,6 +741,12 @@ public sealed class CommandService
             return CommandResult.Fail("이미 이 담당으로 지정된 장수다.", state);
         }
 
+        if (AssignedOfficerRole(state, main.Id) is { } assigned
+            && (assigned.City != city.Id || assigned.Kind != kind))
+        {
+            return CommandResult.Fail("이미 다른 담당을 맡고 있다.", state);
+        }
+
         var cities = state.Cities.Select(c => c.Id == city.Id ? kind switch
         {
             CommandKind.AppointSecurityOfficer => c with { SecurityOfficer = main.Id },
@@ -755,6 +761,34 @@ public sealed class CommandService
             _ => c,
         } : c).ToList();
         return CommandResult.Success(state with { Cities = cities });
+    }
+
+    private static (CityId City, CommandKind Kind)? AssignedOfficerRole(GameState state, GeneralId general)
+    {
+        foreach (var city in state.Cities)
+        {
+            if (city.SecurityOfficer == general)
+            {
+                return (city.Id, CommandKind.AppointSecurityOfficer);
+            }
+
+            if (city.DomesticOfficer == general)
+            {
+                return (city.Id, CommandKind.AppointDomesticOfficer);
+            }
+
+            if (city.RecruitmentOfficer == general)
+            {
+                return (city.Id, CommandKind.AppointRecruitmentOfficer);
+            }
+
+            if (city.TrainingOfficer == general)
+            {
+                return (city.Id, CommandKind.AppointTrainingOfficer);
+            }
+        }
+
+        return null;
     }
 
     internal static IEnumerable<string> AutoRecruitTroopCodes(string value)
