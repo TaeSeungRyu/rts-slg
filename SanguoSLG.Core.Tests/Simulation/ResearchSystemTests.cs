@@ -119,6 +119,24 @@ public class ResearchSystemTests
     }
 
     [Fact]
+    public void 발행_자동담당자는_전투교리_연구를_수행할수있고_담당은_유지된다()
+    {
+        var city = Town(1, workshop: true, gold: 5000) with
+        {
+            DomesticOfficer = new GeneralId(1),
+        };
+        var s = State(new[] { city }, new[] { Wit(1, 80) });
+
+        var r = Service().Issue(s,
+            new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1), TroopCode: "swordsman"));
+
+        Assert.True(r.Ok, r.Error);
+        Assert.True(r.State.IsGeneralBusy(new GeneralId(1)));
+        Assert.Equal(new GeneralId(1), r.State.Cities.Single().DomesticOfficer);
+        Assert.Single(r.State.Commands);
+    }
+
+    [Fact]
     public void 발행_최대단계면_더_연구할수없다()
     {
         var s = State(new[] { Town(1, workshop: true) }, new[] { Wit(1, 50) })
