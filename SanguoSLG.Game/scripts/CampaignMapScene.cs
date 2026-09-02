@@ -5432,7 +5432,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var tree = new Tree
         {
-            Columns = IsAutoOfficerCommand(cmd.Kind) ? 5 : 4,
+            Columns = IsAutoOfficerCommand(cmd.Kind) ? 6 : 4,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
@@ -5455,9 +5455,12 @@ public sealed partial class CampaignMapScene : Node3D
         }
         if (IsAutoOfficerCommand(cmd.Kind))
         {
-            tree.SetColumnTitle(4, "월 예상 효과");
+            tree.SetColumnTitle(4, "현재 업무");
             tree.SetColumnExpand(4, true);
-            tree.SetColumnExpandRatio(4, 3);
+            tree.SetColumnExpandRatio(4, 2);
+            tree.SetColumnTitle(5, "월 예상 효과");
+            tree.SetColumnExpand(5, true);
+            tree.SetColumnExpandRatio(5, 3);
         }
 
         var gens = free.Select(id => _state.Generals.First(g => g.Id == id)).ToList();
@@ -5477,14 +5480,10 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var item = tree.CreateItem(root);
             var home = g.Region.Length > 0 && g.Region == cityData.Region ? " 🏠" : "";
-            var roleMark = cmd.Kind switch
+            var roleMark = IsAutoOfficerCommand(cmd.Kind) ? "" : cmd.Kind switch
             {
                 CommandKind.AppointGovernor when cityData.Governor == g.Id => " ◆현태수",
                 CommandKind.AppointStrategist when cityData.Strategist == g.Id => " ◆현군사",
-                CommandKind.AppointSecurityOfficer when cityData.SecurityOfficer == g.Id => " ◆현치안",
-                CommandKind.AppointDomesticOfficer when cityData.DomesticOfficer == g.Id => " ◆현내정",
-                CommandKind.AppointRecruitmentOfficer when cityData.RecruitmentOfficer == g.Id => " ◆현병력",
-                CommandKind.AppointTrainingOfficer when cityData.TrainingOfficer == g.Id => " ◆현훈련",
                 _ => "",
             };
             item.SetText(0, g.Name + home + roleMark);
@@ -5493,11 +5492,18 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetText(3, g.Politics.ToString());
             if (IsAutoOfficerCommand(cmd.Kind))
             {
-                item.SetText(4, OfficerMonthlyEffect(cmd.Kind, g, cityData));
+                item.SetText(4, CurrentOfficerAssignment(g.Id) is { } current
+                    ? $"{current.CityName} · {KindName(current.Kind)}"
+                    : "-");
+                item.SetText(5, OfficerMonthlyEffect(cmd.Kind, g, cityData));
             }
 
             item.SetMetadata(0, g.Id.Value);
             for (var col = 1; col <= 3; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
+            if (IsAutoOfficerCommand(cmd.Kind))
+            {
+                item.SetTextAlignment(4, HorizontalAlignment.Center);
+            }
         }
 
         tree.ItemSelected += () =>
