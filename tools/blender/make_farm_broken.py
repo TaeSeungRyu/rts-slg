@@ -11,8 +11,8 @@ import bmesh
 import bpy
 from mathutils import Vector
 
-SRC = r"D:\dev\window\slg\SanguoSLG.Game\assets\models\building-farm.glb"
-OUT = r"D:\dev\window\slg\SanguoSLG.Game\assets\models\farm-broken.glb"
+SRC = r"D:\LOCAL-WORK-STATION\rts-slg\SanguoSLG.Game\assets\models\building-farm.glb"
+OUT = r"D:\LOCAL-WORK-STATION\rts-slg\SanguoSLG.Game\assets\models\farm-broken.glb"
 
 SPLIT_Z = 0.205   # 타일 윗면(0.2) 바로 위 — 이보다 위는 작물, 아래는 기단
 SPREAD = 0.045    # 조각을 바깥으로 벌리는 거리

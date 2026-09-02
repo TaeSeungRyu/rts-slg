@@ -10,7 +10,7 @@ import bpy
 import math
 from mathutils import Matrix
 
-OUT = r"D:\dev\window\slg\SanguoSLG.Game\assets\models\cavalry.glb"
+OUT = r"D:\LOCAL-WORK-STATION\rts-slg\SanguoSLG.Game\assets\models\cavalry.glb"
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 

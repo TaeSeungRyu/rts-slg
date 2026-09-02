@@ -12,7 +12,7 @@ import bpy
 import math
 from mathutils import Matrix
 
-MODEL_DIR = r"D:\dev\window\slg\SanguoSLG.Game\assets\models"
+MODEL_DIR = r"D:\LOCAL-WORK-STATION\rts-slg\SanguoSLG.Game\assets\models"
 
 # 부위별 기준 높이 — 무기를 얹을 때 참조한다
 HIP_Z = 0.078

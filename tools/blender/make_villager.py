@@ -5,7 +5,7 @@
 # 키 ~0.05 (집 벽 높이 0.06의 0.8배). 몸 색은 Godot에서 팔레트로 덧입힌다(body 노드명 기준).
 import bpy
 
-OUT = r"D:\dev\window\slg\SanguoSLG.Game\assets\models\villager.glb"
+OUT = r"D:\LOCAL-WORK-STATION\rts-slg\SanguoSLG.Game\assets\models\villager.glb"
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 

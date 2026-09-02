@@ -7,7 +7,7 @@
 import bpy
 import math
 
-OUT = r"D:\dev\window\slg\SanguoSLG.Game\assets\models\rubble.glb"
+OUT = r"D:\LOCAL-WORK-STATION\rts-slg\SanguoSLG.Game\assets\models\rubble.glb"
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 

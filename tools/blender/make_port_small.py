@@ -10,7 +10,7 @@
 import bpy
 import math
 
-OUT = r"D:\dev\window\slg\SanguoSLG.Game\assets\models\port-small.glb"
+OUT = r"D:\LOCAL-WORK-STATION\rts-slg\SanguoSLG.Game\assets\models\port-small.glb"
 
 Z = 0.2  # 타일 윗면(지면) 높이
 

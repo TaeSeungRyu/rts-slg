@@ -7,7 +7,7 @@
 import bpy
 import math
 
-OUT = r"D:\dev\window\slg\SanguoSLG.Game\assets\models\ice-mountain.glb"
+OUT = r"D:\LOCAL-WORK-STATION\rts-slg\SanguoSLG.Game\assets\models\ice-mountain.glb"
 
 HEX_R = 0.5774
 TILE_H = 0.2

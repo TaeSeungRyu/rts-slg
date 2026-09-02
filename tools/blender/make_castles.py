@@ -11,7 +11,7 @@
 import bpy
 import math
 
-OUT_DIR = r"D:\dev\window\slg\SanguoSLG.Game\assets\models"
+OUT_DIR = r"D:\LOCAL-WORK-STATION\rts-slg\SanguoSLG.Game\assets\models"
 
 HEX_R = 1.0                      # 타일 반경(월드) — 이웃 간격 sqrt(3)
 APOTHEM = math.sqrt(3.0) / 2.0   # 변 중심까지 거리
