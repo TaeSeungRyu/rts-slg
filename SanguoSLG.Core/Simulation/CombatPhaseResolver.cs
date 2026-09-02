@@ -39,7 +39,8 @@ public sealed class CombatPhaseResolver
             takenPercent[id] = p.DefenseActive is null ? 100 : BattleResolver.DamageTakenPercent(p.DefenseActive, p.Might);
 
             var desiredHeal = p.HealActive is null ? 0 : BattleResolver.HealAmount(p.HealActive, p.Intellect, p.MaxTroops);
-            healMoved[id] = System.Math.Min(desiredHeal, p.Pool.Wounded);
+            var room = System.Math.Max(0, p.MaxTroops - p.Pool.Active);
+            healMoved[id] = System.Math.Min(System.Math.Min(desiredHeal, p.Pool.Wounded), room);
             attackStats[id] = p.Stats with { Troops = p.Pool.Active + healMoved[id] };
         }
 

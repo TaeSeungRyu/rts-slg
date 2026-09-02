@@ -69,6 +69,14 @@ public class CombatPhaseActiveTests
     }
 
     [Fact]
+    public void 회복_최대병력을_넘지_않는다()
+    {
+        var r = Run(Sword(troops: 10000, wounded: 2000, intellect: 80, heal: A["regroup"]), Sword());
+
+        Assert.Equal(9240, r.Pools[new UnitId(1)].Active);
+    }
+
+    [Fact]
     public void 액티브없으면_4c2와_동일한_평타()
     {
         var r = Run(Sword(), Sword());

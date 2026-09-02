@@ -4960,6 +4960,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depVan is not { } van) { Err("선봉 장수를 선택하세요."); return; }
         if (_depAmount <= 0) { Err("병력 수량을 정하세요."); return; }
         if (_depAdj == van) { Err("부관은 선봉과 다른 장수여야 합니다."); return; }
+        var available = AvailableDeployTroops(_depModalCity, _depTroop, _depEditIndex);
+        if (_depAmount > available) { Err($"대기 병력이 부족합니다. 최대 {available}명까지 출전할 수 있습니다."); return; }
 
         var tName = _troops.FirstOrDefault(t => t.Code == _depTroop)?.Name ?? _depTroop;
         var vName = _state.Generals.First(g => g.Id == van).Name;
@@ -4974,6 +4976,20 @@ public sealed partial class CampaignMapScene : Node3D
 
         SelectCity(_depModalCity);
         OpenDeployHub();
+    }
+
+    private int AvailableDeployTroops(CityId city, string troopCode, int editIndex)
+    {
+        var stock = _state.Garrisons.FirstOrDefault(g => g.City == city && g.TroopCode == troopCode && !g.Trainee)?.Troops ?? 0;
+        var reserved = 0;
+        for (var i = 0; i < _pendingDeploys.Count; i++)
+        {
+            if (i == editIndex) { continue; }
+            var rq = _pendingDeploys[i].Req;
+            if (rq.City == city && rq.TroopCode == troopCode) { reserved += rq.Troops; }
+        }
+
+        return System.Math.Max(0, stock - reserved);
     }
 
     private readonly Dictionary<int, ImageTexture> _portraits = new();

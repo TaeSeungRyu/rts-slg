@@ -21,6 +21,8 @@ public sealed class EngagementResolver
         // 2. 회복 — 병력을 먼저 늘려 이후 공격·피격 기준 병력에 반영한다.
         var healA = a.HealActive is null ? 0 : BattleResolver.HealAmount(a.HealActive, a.Intellect, a.MaxTroops);
         var healB = b.HealActive is null ? 0 : BattleResolver.HealAmount(b.HealActive, b.Intellect, b.MaxTroops);
+        healA = System.Math.Min(healA, System.Math.Max(0, a.MaxTroops - a.Stats.Troops));
+        healB = System.Math.Min(healB, System.Math.Max(0, b.MaxTroops - b.Stats.Troops));
         var statsA = a.Stats with { Troops = a.Stats.Troops + healA };
         var statsB = b.Stats with { Troops = b.Stats.Troops + healB };
 

@@ -53,11 +53,20 @@ public class EngagementResolverTests
     [Fact]
     public void 회복은_공격전에_병력을늘려_딜이증가한다()
     {
-        // A 정비(지력80) → 1800 회복 → 병력 11800으로 공격: 11800·8·95÷(1000·10) = 896
-        var r = Engine.Resolve(Sword(intellect: 80, heal: A["regroup"]), Sword());
+        // A 정비(지력80) → 1800 회복 → 병력 9800으로 공격: 9800·8·95÷(1000·10) = 744
+        var r = Engine.Resolve(Sword(troops: 8000, intellect: 80, heal: A["regroup"]), Sword());
         Assert.Equal(1800, r.HealA);
-        Assert.Equal(896, r.DamageToB); // 늘어난 병력으로 더 때린다
+        Assert.Equal(744, r.DamageToB); // 늘어난 병력으로 더 때린다
         Assert.Equal(760, r.DamageToA);
+    }
+
+    [Fact]
+    public void 회복은_최대병력을_넘기지_않는다()
+    {
+        var r = Engine.Resolve(Sword(intellect: 80, heal: A["regroup"]), Sword());
+
+        Assert.Equal(0, r.HealA);
+        Assert.Equal(760, r.DamageToB);
     }
 
     [Fact]
