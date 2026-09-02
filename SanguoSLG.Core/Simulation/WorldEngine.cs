@@ -59,6 +59,12 @@ public sealed class WorldEngine
             next = ResolveCommands(next);
         }
 
+        if (_commands.AutoOfficerSystemEnabled && next.DayOfMonth % 7 == 0)
+        {
+            var byId = next.Generals.ToDictionary(g => g.Id);
+            next = ApplyAutoRecruitment(next, byId);
+        }
+
         // 월말 틱(그 달 30일): 수입(금·군량 = 성 규모 기본치 + 시설 가산) + 자원 산출 + 인구 성장.
         if (next.DayOfMonth == GameState.DaysPerMonth)
         {
@@ -129,20 +135,6 @@ public sealed class WorldEngine
                 };
             }
 
-            if (recruiter is not null)
-            {
-                var troopCode = string.IsNullOrWhiteSpace(next.AutoRecruitTroopCode)
-                    ? _commands.AutoRecruitDefaultTroopCode
-                    : next.AutoRecruitTroopCode;
-                var troops = _commands.AutoRecruitTroopsBase + recruiter.Might * _commands.AutoRecruitTroopsMightMultiplier;
-                var cost = _commands.AutoRecruitGoldCost(troopCode, troops);
-                if (cost > 0 && next.Gold >= cost)
-                {
-                    next = next with { Gold = next.Gold - cost };
-                    MergeGarrison(garrisons, next.Id, troopCode, troops, _commands.AutoRecruitTroopTrainingLevel);
-                }
-            }
-
             if (trainer is not null)
             {
                 var gain = System.Math.Max(1, MightTier(trainer.Might) + 1);
@@ -155,6 +147,53 @@ public sealed class WorldEngine
         }
 
         return state with { Cities = cities, GarrisonForces = garrisons };
+    }
+
+    private GameState ApplyAutoRecruitment(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId)
+    {
+        var garrisons = state.Garrisons.ToList();
+        var cities = new List<City>();
+        foreach (var city in state.Cities)
+        {
+            var next = city;
+            var recruiter = ValidOfficer(state, city, city.RecruitmentOfficer, byId);
+            if (recruiter is not null)
+            {
+                var troopCodes = SelectedAutoRecruitTroopCodes(next).OrderBy(_commands.AutoRecruitGoldCostPer100)
+                    .ThenBy(c => c, System.StringComparer.Ordinal).ToList();
+                var totalTroops = _commands.AutoRecruitTroopsBase + recruiter.Might * _commands.AutoRecruitTroopsMightMultiplier;
+                for (var i = 0; i < troopCodes.Count; i++)
+                {
+                    var code = troopCodes[i];
+                    var troops = totalTroops / troopCodes.Count + (i < totalTroops % troopCodes.Count ? 1 : 0);
+                    var cost = _commands.AutoRecruitGoldCost(code, troops);
+                    if (cost <= 0 || next.Gold < cost)
+                    {
+                        continue;
+                    }
+
+                    next = next with { Gold = next.Gold - cost };
+                    MergeGarrison(garrisons, next.Id, code, troops, _commands.AutoRecruitTroopTrainingLevel);
+                }
+            }
+
+            cities.Add(next);
+        }
+
+        return state with { Cities = cities, GarrisonForces = garrisons };
+    }
+
+    private IEnumerable<string> SelectedAutoRecruitTroopCodes(City city)
+    {
+        var codes = CommandService.AutoRecruitTroopCodes(city.AutoRecruitTroopCodes).ToList();
+        if (codes.Count > 0)
+        {
+            return codes;
+        }
+
+        return string.IsNullOrWhiteSpace(city.AutoRecruitTroopCode)
+            ? [_commands.AutoRecruitDefaultTroopCode]
+            : [city.AutoRecruitTroopCode];
     }
 
     private Domain.General? ValidOfficer(GameState state, City city, GeneralId? id,

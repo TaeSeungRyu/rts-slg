@@ -349,12 +349,13 @@ public class WorldEngineTests
     public void v2_담당자가_월말에_치안_내정_병력_훈련을_자동_처리한다()
     {
         var city = new City(new CityId(1), "자동성", new HexCoord(0, 0), new FactionId(1), 1000,
-            Gold: 0, Population: 0, Security: 50,
+            Gold: 1000, Population: 0, Security: 50,
             SecurityOfficer: new GeneralId(1),
             DomesticOfficer: new GeneralId(2),
             RecruitmentOfficer: new GeneralId(3),
             TrainingOfficer: new GeneralId(4),
-            AutoRecruitTroopCode: "swordsman");
+            AutoRecruitTroopCode: "swordsman",
+            AutoRecruitTroopCodes: "swordsman");
         var generals = new[]
         {
             V2Officer(1, might: 85),      // 치안 +2
@@ -372,10 +373,27 @@ public class WorldEngineTests
         var garrison = after.Garrisons.Single(g => g.City == city.Id && g.TroopCode == "swordsman");
 
         Assert.Equal(52, resultCity.Security);
-        Assert.Equal(254, resultCity.Gold);
+        Assert.Equal(1220, resultCity.Gold);
         Assert.Equal(1700, resultCity.Provisions);
-        Assert.Equal(1550, garrison.Troops);
-        Assert.Equal(48, garrison.TrainingLevel);
+        Assert.Equal(4800, garrison.Troops);
+        Assert.Equal(52, garrison.TrainingLevel);
+    }
+
+    [Fact]
+    public void v2_병력담당은_무력100이면_한달에_오천명을_생산한다()
+    {
+        var city = new City(new CityId(1), "병영성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Population: 0, Security: 50,
+            RecruitmentOfficer: new GeneralId(1),
+            AutoRecruitTroopCodes: "swordsman");
+        var generals = new[] { V2Officer(1, might: 100) };
+        var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, generals.ToList(),
+            Postings: generals.Select(g => new GeneralPosting(g.Id, city.Owner, city.Id)).ToList());
+
+        var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
+            .AdvanceDays(state, 30);
+
+        Assert.Equal(5000, after.Garrisons.Single().Troops);
     }
 
     [Fact]
@@ -384,7 +402,7 @@ public class WorldEngineTests
         var city = new City(new CityId(1), "빈성", new HexCoord(0, 0), new FactionId(1), 1000,
             Gold: 2, Population: 0, Security: 50,
             RecruitmentOfficer: new GeneralId(1),
-            AutoRecruitTroopCode: "war_elephant");
+            AutoRecruitTroopCodes: "war_elephant");
         var generals = new[] { V2Officer(1, might: 70) };
         var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, generals.ToList(),
             Postings: generals.Select(g => new GeneralPosting(g.Id, city.Owner, city.Id)).ToList());
@@ -402,7 +420,7 @@ public class WorldEngineTests
         var city = new City(new CityId(1), "기병성", new HexCoord(0, 0), new FactionId(1), 1000,
             Gold: 100, Population: 0, Security: 50,
             RecruitmentOfficer: new GeneralId(1),
-            AutoRecruitTroopCode: "cavalry");
+            AutoRecruitTroopCodes: "cavalry");
         var generals = new[] { V2Officer(1, might: 70) };
         var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, generals.ToList(),
             Postings: generals.Select(g => new GeneralPosting(g.Id, city.Owner, city.Id)).ToList());
@@ -412,8 +430,30 @@ public class WorldEngineTests
 
         var garrison = after.Garrisons.Single();
         Assert.Equal("cavalry", garrison.TroopCode);
-        Assert.Equal(550, garrison.Troops);
-        Assert.Equal(78, after.Cities.Single().Gold);
+        Assert.Equal(1900, garrison.Troops);
+        Assert.Equal(24, after.Cities.Single().Gold);
+    }
+
+    [Fact]
+    public void v2_병력담당은_다중병종을_싼순서로_나눠_생산한다()
+    {
+        var city = new City(new CityId(1), "복합성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 100, Population: 0, Security: 50,
+            RecruitmentOfficer: new GeneralId(1),
+            AutoRecruitTroopCodes: "war_elephant,swordsman,cavalry");
+        var generals = new[] { V2Officer(1, might: 100) };
+        var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, generals.ToList(),
+            Postings: generals.Select(g => new GeneralPosting(g.Id, city.Owner, city.Id)).ToList());
+
+        var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
+            .AdvanceDays(state, 7);
+
+        var produced = after.Garrisons.OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ToList();
+        Assert.Equal(3, produced.Count);
+        Assert.Contains(produced, g => g.TroopCode == "swordsman" && g.Troops == 417);
+        Assert.Contains(produced, g => g.TroopCode == "cavalry" && g.Troops == 417);
+        Assert.Contains(produced, g => g.TroopCode == "war_elephant" && g.Troops == 416);
+        Assert.Equal(53, after.Cities.Single().Gold);
     }
 
     [Fact]
