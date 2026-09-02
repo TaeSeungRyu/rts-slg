@@ -310,7 +310,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("훈련", CommandKind.Train, "garrison"),
         ("세율", CommandKind.SetTaxRate, "tax"),
         ("건설", CommandKind.Build, "facility"),
-        ("병종 연구", CommandKind.Research, "troop"),
+        ("전투 교리", CommandKind.Research, "troop"),
         ("성벽 연구", CommandKind.Research, "wall"),
         ("성벽 수리", CommandKind.Repair, "wall"),
         ("시설 수리", CommandKind.Repair, "repairable"),
@@ -5284,13 +5284,13 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (!city.Workshop)
         {
-            return "공방 필요";
+            return "세력 전투 교리\n공방 필요";
         }
 
         var level = _state.ResearchOf(city.Owner, troopCode);
         if (level >= _cb.ResearchMaxLevel)
         {
-            return $"Lv.{level} 최대 · 보정 +{ResearchCurve.Bonus(level)}";
+            return $"세력 전투 교리\nLv.{level} 최대 · 보정 +{ResearchCurve.Bonus(level)}";
         }
 
         var next = level + 1;
@@ -5300,7 +5300,7 @@ public sealed partial class CampaignMapScene : Node3D
         var gate = active ? "연구 진행중"
             : city.Gold < cost ? "금 부족"
             : $"비용 {cost}금";
-        return $"Lv.{level}→{next} · 보정 +{ResearchCurve.Bonus(level)}→+{ResearchCurve.Bonus(next)}\n{gate}";
+        return $"세력 전투 교리\nLv.{level}→{next} · 보정 +{ResearchCurve.Bonus(level)}→+{ResearchCurve.Bonus(next)}\n{gate}";
     }
 
     private bool IsFacilityBuildDisabled(City city, string code)
@@ -5761,7 +5761,8 @@ public sealed partial class CampaignMapScene : Node3D
             var days = System.Math.Max(_cb.ResearchBaseDays - System.Math.Clamp((caster.Intellect - 50) / 5, 0, 10), 1);
             var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
                 && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
-            extra = $"\nLv.{level} → Lv.{next}"
+            extra = $"\n세력 전투 교리"
+                + $"\nLv.{level} → Lv.{next}"
                 + (level >= _cb.ResearchMaxLevel
                     ? "\n※ 이미 최대 단계입니다"
                     : $"\n보정 +{ResearchCurve.Bonus(level)} → +{ResearchCurve.Bonus(next)}"
