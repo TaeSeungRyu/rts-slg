@@ -162,6 +162,7 @@ public sealed partial class CampaignMapScene : Node3D
     private Label _modalDetail = null!;
     private readonly List<PanelContainer> _optionCards = new();
     private readonly HashSet<int> _disabledOptions = new();
+    private readonly HashSet<int> _modalMultiParams = new();
     private readonly Dictionary<TroopClass, ImageTexture> _emblems = new();
 
     // 출전 모달 선택 상태.
@@ -2790,6 +2791,7 @@ public sealed partial class CampaignMapScene : Node3D
         var options = OptionList(cmd, cityData);
         _optionCards.Clear();
         _disabledOptions.Clear();
+        _modalMultiParams.Clear();
         _modalParam = cmd.Param == "tax" ? 2 : 0;
         if (cmd.Param == "facility")
         {
@@ -2808,8 +2810,20 @@ public sealed partial class CampaignMapScene : Node3D
         }
         if (options.Count > 0)
         {
+            if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
+            {
+                var current = CurrentAutoRecruitTroopCodes(cityData).ToHashSet(System.StringComparer.Ordinal);
+                var autoOptions = AutoRecruitTroopOptions();
+                for (var i = 0; i < autoOptions.Count; i++)
+                {
+                    if (current.Contains(autoOptions[i].Code)) { _modalMultiParams.Add(i); }
+                }
+
+                if (_modalMultiParams.Count == 0) { _modalMultiParams.Add(0); }
+            }
+
             var optionTitle = cmd.Kind == CommandKind.AppointRecruitmentOfficer
-                ? "자동 생산 병종을 선택하세요"
+                ? "자동 생산 병종을 선택하세요 (여러 개 선택 가능)"
                 : cmd.Param == "stratagem" ? "계략을 선택하세요" : "대상을 선택하세요";
             box.AddChild(MakeLabel(optionTitle, 19, GoldBright));
             var grid = new GridContainer { Columns = System.Math.Min(colOpt, options.Count) };
@@ -2826,7 +2840,11 @@ public sealed partial class CampaignMapScene : Node3D
                 {
                     card.GuiInput += e =>
                     {
-                        if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { PickOption(idx, options[idx]); }
+                        if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+                        {
+                            if (cmd.Kind == CommandKind.AppointRecruitmentOfficer) { ToggleMultiOption(idx, options[idx]); }
+                            else { PickOption(idx, options[idx]); }
+                        }
                     };
                 }
                 grid.AddChild(card);
@@ -2901,7 +2919,11 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(_modalOfficers);
         BuildOfficerCards(city, cmdIndex);
 
-        if (options.Count > 0) { PickOption(_modalParam, options[_modalParam]); }
+        if (options.Count > 0)
+        {
+            if (cmd.Kind == CommandKind.AppointRecruitmentOfficer) { RefreshMultiOptionCards(options); }
+            else { PickOption(_modalParam, options[_modalParam]); }
+        }
 
         // 스크롤 높이를 내용에 맞추되 mh로 상한 → 짧은 명령은 아래 여백 없음, 긴 건 스크롤.
         var contentH = box.GetCombinedMinimumSize().Y;
@@ -2918,6 +2940,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _optionCards.Clear();
+        _modalMultiParams.Clear();
         _depTroopCards.Clear();
         _depVanCards.Clear();
         _depAdjCards.Clear();
@@ -3208,9 +3231,14 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     private string AutoRecruitTroopCode(City city)
-        => string.IsNullOrWhiteSpace(city.AutoRecruitTroopCode)
-            ? _cb.AutoRecruitDefaultTroopCode
-            : city.AutoRecruitTroopCode;
+        => CurrentAutoRecruitTroopCodes(city).First();
+
+    private IEnumerable<string> CurrentAutoRecruitTroopCodes(City city)
+    {
+        var codes = city.AutoRecruitTroopCodes.Split(',', System.StringSplitOptions.TrimEntries | System.StringSplitOptions.RemoveEmptyEntries);
+        if (codes.Length > 0) { return codes; }
+        return string.IsNullOrWhiteSpace(city.AutoRecruitTroopCode) ? [_cb.AutoRecruitDefaultTroopCode] : [city.AutoRecruitTroopCode];
+    }
 
     private int MonthlyTrainingPreview(City city)
     {
@@ -5298,7 +5326,7 @@ public sealed partial class CampaignMapScene : Node3D
         card.MouseEntered += () =>
         {
             if (disabled) { return; }
-            if (!_optionCards.Contains(card) || _optionCards.IndexOf(card) != _modalParam)
+            if (!_optionCards.Contains(card) || !IsOptionSelected(_optionCards.IndexOf(card)))
             {
                 card.AddThemeStyleboxOverride("panel", CardBox(false, hover: true));
             }
@@ -5306,7 +5334,7 @@ public sealed partial class CampaignMapScene : Node3D
         card.MouseExited += () =>
         {
             if (disabled) { return; }
-            if (!_optionCards.Contains(card) || _optionCards.IndexOf(card) != _modalParam)
+            if (!_optionCards.Contains(card) || !IsOptionSelected(_optionCards.IndexOf(card)))
             {
                 card.AddThemeStyleboxOverride("panel", CardBox(false));
             }
@@ -5323,6 +5351,36 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _modalDetail.Text = o.Detail.Length > 0 ? $"▶  {o.Name}  —  {o.Detail}" : $"▶  {o.Name}";
+    }
+
+    private bool IsOptionSelected(int idx)
+        => _modalMultiParams.Count > 0 ? _modalMultiParams.Contains(idx) : idx == _modalParam;
+
+    private void ToggleMultiOption(int idx, (string Name, ImageTexture Icon, string Detail) _)
+    {
+        if (_modalMultiParams.Contains(idx))
+        {
+            if (_modalMultiParams.Count > 1) { _modalMultiParams.Remove(idx); }
+        }
+        else
+        {
+            _modalMultiParams.Add(idx);
+        }
+
+        RefreshMultiOptionCards(OptionList((Cmds.First(c => c.Kind == CommandKind.AppointRecruitmentOfficer).Label,
+            CommandKind.AppointRecruitmentOfficer, ""), _state.Cities.First(x => x.Id == _selected)));
+    }
+
+    private void RefreshMultiOptionCards(List<(string Name, ImageTexture Icon, string Detail)> options)
+    {
+        for (var i = 0; i < _optionCards.Count; i++)
+        {
+            _optionCards[i].AddThemeStyleboxOverride("panel", CardBox(_modalMultiParams.Contains(i)));
+        }
+
+        var selected = _modalMultiParams.OrderBy(i => i).Where(i => i >= 0 && i < options.Count)
+            .Select(i => options[i].Name).ToList();
+        _modalDetail.Text = selected.Count == 0 ? "▶  선택 없음" : $"▶  자동 생산: {string.Join(", ", selected)}";
     }
 
     // 수행 장수 표(정렬·내부 스크롤) — 행 클릭 = 실행(컨펌창). ★ = 이 명령의 효율 능력치.
@@ -5623,7 +5681,11 @@ public sealed partial class CampaignMapScene : Node3D
         if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
         {
             var autoOptions = AutoRecruitTroopOptions();
-            troopCode = p >= 0 && p < autoOptions.Count ? autoOptions[p].Code : _cb.AutoRecruitDefaultTroopCode;
+            var selected = _modalMultiParams.OrderBy(i => i)
+                .Where(i => i >= 0 && i < autoOptions.Count)
+                .Select(i => autoOptions[i].Code).ToList();
+            if (selected.Count == 0 && p >= 0 && p < autoOptions.Count) { selected.Add(autoOptions[p].Code); }
+            troopCode = selected.Count == 0 ? _cb.AutoRecruitDefaultTroopCode : string.Join(',', selected);
         }
         var traineePool = cmd.Param == "garrison" && (GarrisonAt(city, p)?.Trainee ?? false);
         var facility = cmd.Param switch
@@ -5739,8 +5801,8 @@ public sealed partial class CampaignMapScene : Node3D
                 CommandKind.AppointDomesticOfficer => $"\n정치 {officer.Politics} → 월 금 +{_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier}"
                     + $"\n월 군량 +{_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier}",
                 CommandKind.AppointRecruitmentOfficer => $"\n무력 {officer.Might} → 월 병력 +{_cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier}"
-                    + $" ({TroopName(troopCode)})"
-                    + $"\n월 비용 {AutoRecruitCostFor(officer, troopCode)}금 · 도시 금 부족 시 생산 없음",
+                    + $"\n선택 병종 {AutoRecruitTroopNames(troopCode)}"
+                    + $"\n월 예상 비용 {AutoRecruitMonthlyCostFor(officer, troopCode)}금 · 도시 금 부족 시 생산 없음",
                 CommandKind.AppointTrainingOfficer => $"\n무력 {officer.Might} → 월 훈련도 +{System.Math.Max(1, OfficerMightTier(officer.Might) + 1)}",
                 _ => "",
             };
@@ -5761,7 +5823,7 @@ public sealed partial class CampaignMapScene : Node3D
         };
         if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
         {
-            pLabel = $" · {TroopName(troopCode)}";
+            pLabel = $" · {AutoRecruitTroopNames(troopCode)}";
         }
         ShowConfirm("명령 확인",
             $"{_state.Cities.First(c => c.Id == city).Name} — {cmd.Label}{pLabel}{extra}\n수행 장수: {gName}\n\n실행하시겠습니까?",
@@ -5985,8 +6047,27 @@ public sealed partial class CampaignMapScene : Node3D
         _ => "",
     };
 
-    private int AutoRecruitCostFor(General officer, string troopCode)
-        => _cb.AutoRecruitGoldCost(troopCode, _cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier);
+    private int AutoRecruitMonthlyCostFor(General officer, string troopCodes)
+    {
+        var codes = troopCodes.Split(',', System.StringSplitOptions.TrimEntries | System.StringSplitOptions.RemoveEmptyEntries);
+        if (codes.Length == 0) { codes = [_cb.AutoRecruitDefaultTroopCode]; }
+        var total = _cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier;
+        var sum = 0;
+        for (var i = 0; i < codes.Length; i++)
+        {
+            var troops = total / codes.Length + (i < total % codes.Length ? 1 : 0);
+            sum += _cb.AutoRecruitGoldCost(codes[i], troops);
+        }
+
+        return sum * 4;
+    }
+
+    private string AutoRecruitTroopNames(string troopCodes)
+    {
+        var names = troopCodes.Split(',', System.StringSplitOptions.TrimEntries | System.StringSplitOptions.RemoveEmptyEntries)
+            .Select(TroopName).ToList();
+        return names.Count == 0 ? TroopName(_cb.AutoRecruitDefaultTroopCode) : string.Join(", ", names);
+    }
 
     // 건설 배치 모드 진입 — 명령 모달을 닫고 반투명 고스트를 띄운다. 커서를 따라다니며,
     // 평지·숲 유효 칸에서만 초록, 그 외엔 빨강(클릭해도 컨펌 안 뜸).
