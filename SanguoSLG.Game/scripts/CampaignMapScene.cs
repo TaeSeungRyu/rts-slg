@@ -1833,6 +1833,14 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var cityPos = _view.HexToWorld(_cities.First(c => c.Id == ex.City).Position)
                     + new Vector3(0f, _view.TileTopY, 0f);
+                foreach (var uid in ex.Besiegers.Select(x => x.Value).OrderBy(x => x))
+                {
+                    if (turn.Units.Any(u => u.Id.Value == uid))
+                    {
+                        _animAttacks.Add((atkTime, uid, cityPos));
+                    }
+                }
+
                 var cityDmg = ex.WallDamage + ex.TroopDamage;
                 if (cityDmg > 0) { _animSiegeDmg.Add((atkTime + 0.35, cityPos, cityDmg)); }
                 if (ex.BesiegerDamage is not { } counters) { continue; }
