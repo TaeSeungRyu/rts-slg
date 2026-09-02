@@ -2477,7 +2477,7 @@ public sealed partial class CampaignMapScene : Node3D
         var (monthlyGold, monthlyProvisions) = MonthlyIncomePreview(c);
         AddCell(g4, Sym.Coin, "월 금", $"+{monthlyGold}");
         AddCell(g4, Sym.Grain, "월 군량", $"+{monthlyProvisions}");
-        AddCell(g4, Sym.Sword, "월 증가 병력", MonthlyRecruitSummary(c));
+        AddCell(g4, Sym.Sword, "월 증가 병력", $"+{MonthlyRecruitPreview(c)}");
         AddCell(g4, Sym.Book, "월 훈련도", $"+{MonthlyTrainingPreview(c)}");
         AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
         AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
