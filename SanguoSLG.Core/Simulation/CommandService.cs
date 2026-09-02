@@ -701,20 +701,30 @@ public sealed class CommandService
         }
 
         var autoRecruitTroopCode = city.AutoRecruitTroopCode;
+        var autoRecruitTroopCodes = city.AutoRecruitTroopCodes;
         if (kind == CommandKind.AppointRecruitmentOfficer)
         {
-            autoRecruitTroopCode = string.IsNullOrWhiteSpace(req.TroopCode)
-                ? _b.AutoRecruitDefaultTroopCode
-                : req.TroopCode;
-            if (!_troops.TryGetValue(autoRecruitTroopCode, out var troop))
+            var selectedTroops = AutoRecruitTroopCodes(req.TroopCode).ToList();
+            if (selectedTroops.Count == 0)
             {
-                return CommandResult.Fail("자동 생산 병종을 선택해야 한다.", state);
+                selectedTroops.Add(_b.AutoRecruitDefaultTroopCode);
             }
 
-            if (troop.Class == TroopClass.Naval)
+            foreach (var code in selectedTroops)
             {
-                return CommandResult.Fail("해상 병종은 자동 생산할 수 없다.", state);
+                if (!_troops.TryGetValue(code, out var troop))
+                {
+                    return CommandResult.Fail("자동 생산 병종을 선택해야 한다.", state);
+                }
+
+                if (troop.Class == TroopClass.Naval)
+                {
+                    return CommandResult.Fail("해상 병종은 자동 생산할 수 없다.", state);
+                }
             }
+
+            autoRecruitTroopCode = selectedTroops[0];
+            autoRecruitTroopCodes = string.Join(',', selectedTroops);
         }
 
         var already = kind switch
@@ -722,7 +732,7 @@ public sealed class CommandService
             CommandKind.AppointSecurityOfficer => city.SecurityOfficer == main.Id,
             CommandKind.AppointDomesticOfficer => city.DomesticOfficer == main.Id,
             CommandKind.AppointRecruitmentOfficer => city.RecruitmentOfficer == main.Id
-                && city.AutoRecruitTroopCode == autoRecruitTroopCode,
+                && city.AutoRecruitTroopCodes == autoRecruitTroopCodes,
             CommandKind.AppointTrainingOfficer => city.TrainingOfficer == main.Id,
             _ => false,
         };
@@ -739,12 +749,17 @@ public sealed class CommandService
             {
                 RecruitmentOfficer = main.Id,
                 AutoRecruitTroopCode = autoRecruitTroopCode,
+                AutoRecruitTroopCodes = autoRecruitTroopCodes,
             },
             CommandKind.AppointTrainingOfficer => c with { TrainingOfficer = main.Id },
             _ => c,
         } : c).ToList();
         return CommandResult.Success(state with { Cities = cities });
     }
+
+    internal static IEnumerable<string> AutoRecruitTroopCodes(string value)
+        => value.Split(',', System.StringSplitOptions.TrimEntries | System.StringSplitOptions.RemoveEmptyEntries)
+            .Distinct(System.StringComparer.Ordinal);
 
     /// <summary>
     /// 명령 취소(2026-08-23 사용자 결정): **시작 전(발행한 그 주, 첫 진행 전)에만** 취소할 수 있다.

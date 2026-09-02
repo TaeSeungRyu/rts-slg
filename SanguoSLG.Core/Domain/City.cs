@@ -51,7 +51,8 @@ public sealed record City(
     GeneralId? DomesticOfficer = null,
     GeneralId? RecruitmentOfficer = null,
     GeneralId? TrainingOfficer = null,
-    string AutoRecruitTroopCode = "")
+    string AutoRecruitTroopCode = "",
+    string AutoRecruitTroopCodes = "")
 {
     /// <summary>소유 세력을 바꾼 새 도시를 반환한다.</summary>
     public City WithOwner(FactionId owner) => this with { Owner = owner };

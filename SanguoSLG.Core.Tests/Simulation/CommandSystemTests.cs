@@ -321,6 +321,7 @@ public class CommandSystemTests
         if (kind == CommandKind.AppointRecruitmentOfficer)
         {
             Assert.Equal(B.AutoRecruitDefaultTroopCode, city.AutoRecruitTroopCode);
+            Assert.Equal(B.AutoRecruitDefaultTroopCode, city.AutoRecruitTroopCodes);
         }
 
         Assert.False(r.State.IsGeneralBusy(new GeneralId(1)));
@@ -339,6 +340,21 @@ public class CommandSystemTests
         Assert.True(r.Ok, r.Error);
         Assert.Equal(new GeneralId(1), r.State.Cities.Single().RecruitmentOfficer);
         Assert.Equal("cavalry", r.State.Cities.Single().AutoRecruitTroopCode);
+        Assert.Equal("cavalry", r.State.Cities.Single().AutoRecruitTroopCodes);
+    }
+
+    [Fact]
+    public void v2_병력담당_자동생산_병종을_여러개_저장한다()
+    {
+        var s0 = State(new[] { Town(1) }, new[] { Mig(1, 80) });
+
+        var r = Service().Issue(s0,
+            new CommandRequest(new CityId(1), CommandKind.AppointRecruitmentOfficer, new GeneralId(1),
+                TroopCode: "cavalry,archer,thunder_cart"));
+
+        Assert.True(r.Ok, r.Error);
+        Assert.Equal("cavalry", r.State.Cities.Single().AutoRecruitTroopCode);
+        Assert.Equal("cavalry,archer,thunder_cart", r.State.Cities.Single().AutoRecruitTroopCodes);
     }
 
     [Fact]
