@@ -129,8 +129,11 @@ public sealed class DeployService
             .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)
             .Where(g => g.Troops > 0)
             .ToList();
+        var deployingGenerals = new HashSet<GeneralId>(
+            new[] { req.Vanguard, req.Adjutant }.OfType<GeneralId>());
         var cities = state.Cities
             .Select(c => c.Id == city.Id ? c with { Provisions = c.Provisions - carried } : c)
+            .Select(c => ClearOfficerRoles(c, deployingGenerals))
             .ToList();
         var postings = state.Assignments
             .Select(p => p.General == req.Vanguard || (req.Adjutant is { } a && p.General == a)
@@ -240,8 +243,10 @@ public sealed class DeployService
                 : g)
             .Where(g => g.Troops > 0)
             .ToList();
+        var deployingGenerals = new HashSet<GeneralId> { req.Vanguard };
         var cities = state.Cities
             .Select(c => c.Id == city.Id ? c with { Provisions = c.Provisions - carried } : c)
+            .Select(c => ClearOfficerRoles(c, deployingGenerals))
             .ToList();
         var postings = state.Assignments
             .Select(p => p.General == req.Vanguard ? p with { Location = null } : p)
@@ -277,5 +282,24 @@ public sealed class DeployService
         }
 
         return null;
+    }
+
+    private static City ClearOfficerRoles(City city, IReadOnlySet<GeneralId> generals)
+    {
+        static GeneralId? Clear(GeneralId? officer, IReadOnlySet<GeneralId> generals)
+            => officer is { } id && generals.Contains(id) ? null : officer;
+
+        var clearRecruitment = city.RecruitmentOfficer is { } recruitment
+            && generals.Contains(recruitment);
+
+        return city with
+        {
+            SecurityOfficer = Clear(city.SecurityOfficer, generals),
+            DomesticOfficer = Clear(city.DomesticOfficer, generals),
+            RecruitmentOfficer = Clear(city.RecruitmentOfficer, generals),
+            TrainingOfficer = Clear(city.TrainingOfficer, generals),
+            AutoRecruitTroopCode = clearRecruitment ? string.Empty : city.AutoRecruitTroopCode,
+            AutoRecruitTroopCodes = clearRecruitment ? string.Empty : city.AutoRecruitTroopCodes,
+        };
     }
 }

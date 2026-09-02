@@ -104,6 +104,68 @@ public class DeployServiceTests
     }
 
     [Fact]
+    public void 출전_담당자로_지정된_장수는_담당에서_해제된다()
+    {
+        var city = Town(1, new HexCoord(2, 0), provisions: 5000) with
+        {
+            DomesticOfficer = new GeneralId(1),
+            TrainingOfficer = new GeneralId(2),
+        };
+        var s0 = State([city], [Gen(1), Gen(2)],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 10000, 60)],
+            postings: [At(1, 1), At(2, 1)]);
+
+        var r = Service().Deploy(s0, new DeployRequest(
+            new CityId(1), "swordsman", 10000, new GeneralId(1), new GeneralId(2)));
+
+        Assert.True(r.Ok, r.Error);
+        var changed = r.State.Cities.Single();
+        Assert.Null(changed.DomesticOfficer);
+        Assert.Null(changed.TrainingOfficer);
+    }
+
+    [Fact]
+    public void 출전_병력담당자가_나가면_자동생산_설정도_비운다()
+    {
+        var city = Town(1, new HexCoord(2, 0), provisions: 5000) with
+        {
+            RecruitmentOfficer = new GeneralId(1),
+            AutoRecruitTroopCode = "cavalry",
+            AutoRecruitTroopCodes = "cavalry,archer",
+        };
+        var s0 = State([city], [Gen(1)],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 10000, 60)],
+            postings: [At(1, 1)]);
+
+        var r = Service().Deploy(s0, new DeployRequest(
+            new CityId(1), "swordsman", 10000, new GeneralId(1)));
+
+        Assert.True(r.Ok, r.Error);
+        var changed = r.State.Cities.Single();
+        Assert.Null(changed.RecruitmentOfficer);
+        Assert.Equal(string.Empty, changed.AutoRecruitTroopCode);
+        Assert.Equal(string.Empty, changed.AutoRecruitTroopCodes);
+    }
+
+    [Fact]
+    public void 보급부대_출전_담당자로_지정된_장수는_담당에서_해제된다()
+    {
+        var city = Town(1, new HexCoord(2, 0), provisions: 5000) with
+        {
+            SecurityOfficer = new GeneralId(1),
+        };
+        var s0 = State([city], [Gen(1)],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 10000, 60)],
+            postings: [At(1, 1)]);
+
+        var r = Service().DeploySupply(s0, new SupplyDeployRequest(
+            new CityId(1), [new SupplyLine("swordsman", 5000)], new GeneralId(1)));
+
+        Assert.True(r.Ok, r.Error);
+        Assert.Null(r.State.Cities.Single().SecurityOfficer);
+    }
+
+    [Fact]
     public void 출전_군량_요청량을_지정하면_그만큼만_휴대한다()
     {
         var city = Town(1, new HexCoord(2, 0), provisions: 5000);
