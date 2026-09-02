@@ -5299,7 +5299,7 @@ public sealed partial class CampaignMapScene : Node3D
             && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == city.Owner);
         var gate = active ? "연구 진행중"
             : city.Gold < cost ? "금 부족"
-            : $"{cost}금";
+            : $"비용 {cost}금";
         return $"Lv.{level}→{next} · 보정 +{ResearchCurve.Bonus(level)}→+{ResearchCurve.Bonus(next)}\n{gate}";
     }
 
@@ -5761,11 +5761,13 @@ public sealed partial class CampaignMapScene : Node3D
             var days = System.Math.Max(_cb.ResearchBaseDays - System.Math.Clamp((caster.Intellect - 50) / 5, 0, 10), 1);
             var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
                 && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
-            extra = $"\n현재 Lv.{level} 보정 +{ResearchCurve.Bonus(level)}"
+            extra = $"\nLv.{level} → Lv.{next}"
                 + (level >= _cb.ResearchMaxLevel
                     ? "\n※ 이미 최대 단계입니다"
-                    : $"\n[소요 {days}일] 다음 Lv.{next} 보정 +{ResearchCurve.Bonus(next)} · 비용 {cost}금")
-                + (cityData.Workshop ? "" : "\n※ 공방이 있는 도시에서만 연구할 수 있습니다")
+                    : $"\n보정 +{ResearchCurve.Bonus(level)} → +{ResearchCurve.Bonus(next)}"
+                        + $"\n비용 {cost}금"
+                        + $"\n[소요 {days}일]")
+                + (cityData.Workshop ? "" : "\n※ 공방 필요")
                 + (active is null ? "" : $"\n※ 이미 연구가 진행 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
                 + (level < _cb.ResearchMaxLevel && cityData.Gold < cost ? $"\n※ 금이 부족합니다(보유 {cityData.Gold})" : "");
         }
