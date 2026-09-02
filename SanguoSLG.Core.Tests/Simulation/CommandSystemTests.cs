@@ -381,6 +381,26 @@ public class CommandSystemTests
     }
 
     [Fact]
+    public void v2_담당자임명_교체승인시_기존담당을_해제하고_새담당으로_바꾼다()
+    {
+        var s0 = State(new[] { Town(1), Town(2) }, new[] { Mig(1, 80) });
+
+        var first = Service().Issue(s0,
+            new CommandRequest(new CityId(1), CommandKind.AppointRecruitmentOfficer, new GeneralId(1),
+                TroopCode: "cavalry"));
+        var replaced = Service().Issue(first.State,
+            new CommandRequest(new CityId(2), CommandKind.AppointTrainingOfficer, new GeneralId(1),
+                ReplaceOfficerAssignment: true));
+
+        Assert.True(first.Ok, first.Error);
+        Assert.True(replaced.Ok, replaced.Error);
+        Assert.Null(replaced.State.Cities.Single(c => c.Id.Value == 1).RecruitmentOfficer);
+        Assert.Equal(string.Empty, replaced.State.Cities.Single(c => c.Id.Value == 1).AutoRecruitTroopCode);
+        Assert.Equal(string.Empty, replaced.State.Cities.Single(c => c.Id.Value == 1).AutoRecruitTroopCodes);
+        Assert.Equal(new GeneralId(1), replaced.State.Cities.Single(c => c.Id.Value == 2).TrainingOfficer);
+    }
+
+    [Fact]
     public void v2_담당자임명_같은_병력담당의_자동생산_병종은_변경할수있다()
     {
         var s0 = State(new[] { Town(1) }, new[] { Mig(1, 80) });

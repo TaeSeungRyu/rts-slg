@@ -5832,8 +5832,13 @@ public sealed partial class CampaignMapScene : Node3D
             };
         }
 
+        var replacingOfficer = IsAutoOfficerCommand(cmd.Kind)
+            ? CurrentOfficerAssignment(general) is { } current
+                && (current.City != city || current.Kind != cmd.Kind)
+            : false;
         var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility,
-            TroopCode: troopCode, TargetCity: target, TraineePool: traineePool, Plot: plot);
+            TroopCode: troopCode, TargetCity: target, TraineePool: traineePool, Plot: plot,
+            ReplaceOfficerAssignment: replacingOfficer);
         var gName = _state.Generals.First(g => g.Id == general).Name;
         var pLabel = cmd.Param switch
         {
@@ -5849,8 +5854,12 @@ public sealed partial class CampaignMapScene : Node3D
         {
             pLabel = $" · {AutoRecruitTroopNames(troopCode)}";
         }
-        ShowConfirm("명령 확인",
-            $"{_state.Cities.First(c => c.Id == city).Name} — {cmd.Label}{pLabel}{extra}\n수행 장수: {gName}\n\n실행하시겠습니까?",
+        var confirmTitle = replacingOfficer ? "담당 교체 확인" : "명령 확인";
+        var replaceText = replacingOfficer && CurrentOfficerAssignment(general) is { } oldRole
+            ? $"\n\n※ {gName}은 현재 {oldRole.CityName}의 {KindName(oldRole.Kind)}입니다.\n동의하면 기존 담당에서 해제하고 {cmd.Label}(으)로 교체합니다."
+            : "";
+        ShowConfirm(confirmTitle,
+            $"{_state.Cities.First(c => c.Id == city).Name} — {cmd.Label}{pLabel}{extra}\n수행 장수: {gName}{replaceText}\n\n실행하시겠습니까?",
             () =>
             {
                 var r = _commander.Issue(_state, request);
@@ -6052,6 +6061,19 @@ public sealed partial class CampaignMapScene : Node3D
                 ShowMapInfo(placement.Plot);
                 Redraw(_log.Text);
             });
+    }
+
+    private (CityId City, string CityName, CommandKind Kind)? CurrentOfficerAssignment(GeneralId general)
+    {
+        foreach (var c in _state.Cities)
+        {
+            if (c.SecurityOfficer == general) { return (c.Id, c.Name, CommandKind.AppointSecurityOfficer); }
+            if (c.DomesticOfficer == general) { return (c.Id, c.Name, CommandKind.AppointDomesticOfficer); }
+            if (c.RecruitmentOfficer == general) { return (c.Id, c.Name, CommandKind.AppointRecruitmentOfficer); }
+            if (c.TrainingOfficer == general) { return (c.Id, c.Name, CommandKind.AppointTrainingOfficer); }
+        }
+
+        return null;
     }
 
     private static int OfficerMightTier(int might) => might switch

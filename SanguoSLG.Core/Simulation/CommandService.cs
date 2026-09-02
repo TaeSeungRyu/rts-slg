@@ -19,7 +19,8 @@ public sealed record CommandRequest(
     CityId? TargetCity = null,
     bool TraineePool = false,
     GeneralId? TargetGeneral = null,
-    Spatial.HexCoord? Plot = null);
+    Spatial.HexCoord? Plot = null,
+    bool ReplaceOfficerAssignment = false);
 
 /// <summary>명령 발행 결과 — 실패면 <see cref="Error"/>에 사유, 상태는 그대로.</summary>
 public sealed record CommandResult(bool Ok, string? Error, GameState State)
@@ -741,27 +742,53 @@ public sealed class CommandService
             return CommandResult.Fail("이미 이 담당으로 지정된 장수다.", state);
         }
 
-        if (AssignedOfficerRole(state, main.Id) is { } assigned
+        var assignedRole = AssignedOfficerRole(state, main.Id);
+        if (assignedRole is { } assigned
             && (assigned.City != city.Id || assigned.Kind != kind))
         {
-            return CommandResult.Fail("이미 다른 담당을 맡고 있다.", state);
+            if (!req.ReplaceOfficerAssignment)
+            {
+                return CommandResult.Fail("이미 다른 담당을 맡고 있다.", state);
+            }
         }
 
-        var cities = state.Cities.Select(c => c.Id == city.Id ? kind switch
-        {
-            CommandKind.AppointSecurityOfficer => c with { SecurityOfficer = main.Id },
-            CommandKind.AppointDomesticOfficer => c with { DomesticOfficer = main.Id },
-            CommandKind.AppointRecruitmentOfficer => c with
+        var cities = state.Cities
+            .Select(c => assignedRole is { } assigned
+                && req.ReplaceOfficerAssignment
+                && c.Id == assigned.City
+                    ? ClearOfficerRole(c, assigned.Kind)
+                    : c)
+            .Select(c => c.Id == city.Id ? kind switch
             {
-                RecruitmentOfficer = main.Id,
-                AutoRecruitTroopCode = autoRecruitTroopCode,
-                AutoRecruitTroopCodes = autoRecruitTroopCodes,
-            },
-            CommandKind.AppointTrainingOfficer => c with { TrainingOfficer = main.Id },
-            _ => c,
-        } : c).ToList();
+                CommandKind.AppointSecurityOfficer => c with { SecurityOfficer = main.Id },
+                CommandKind.AppointDomesticOfficer => c with { DomesticOfficer = main.Id },
+                CommandKind.AppointRecruitmentOfficer => c with
+                {
+                    RecruitmentOfficer = main.Id,
+                    AutoRecruitTroopCode = autoRecruitTroopCode,
+                    AutoRecruitTroopCodes = autoRecruitTroopCodes,
+                },
+                CommandKind.AppointTrainingOfficer => c with { TrainingOfficer = main.Id },
+                _ => c,
+            } : c)
+            .ToList();
         return CommandResult.Success(state with { Cities = cities });
     }
+
+    private static City ClearOfficerRole(City city, CommandKind kind)
+        => kind switch
+        {
+            CommandKind.AppointSecurityOfficer => city with { SecurityOfficer = null },
+            CommandKind.AppointDomesticOfficer => city with { DomesticOfficer = null },
+            CommandKind.AppointRecruitmentOfficer => city with
+            {
+                RecruitmentOfficer = null,
+                AutoRecruitTroopCode = string.Empty,
+                AutoRecruitTroopCodes = string.Empty,
+            },
+            CommandKind.AppointTrainingOfficer => city with { TrainingOfficer = null },
+            _ => city,
+        };
 
     private static (CityId City, CommandKind Kind)? AssignedOfficerRole(GameState state, GeneralId general)
     {
