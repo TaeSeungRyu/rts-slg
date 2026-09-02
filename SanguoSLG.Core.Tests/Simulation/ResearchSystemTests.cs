@@ -156,4 +156,19 @@ public class ResearchSystemTests
         Assert.Equal(a0.Stats.AtkStat + 10, a9.Stats.AtkStat); // 9단계 누적 +10
         Assert.Equal(a0.Stats.DfStat + 10, a9.Stats.DfStat);
     }
+
+    [Fact]
+    public void 전투교리_연구단계는_공성_공격자_스탯에도_반영된다()
+    {
+        var template = Troops.Single(t => t.Code == "swordsman");
+
+        var none = CombatStatsBuilder.BuildSiegeAttacker(
+            template, AptitudeGrade.A, researchLevel: 0, TerrainType.Plains, troops: 10000);
+        var researched = CombatStatsBuilder.BuildSiegeAttacker(
+            template, AptitudeGrade.A, researchLevel: 9, TerrainType.Plains, troops: 10000);
+
+        Assert.Equal(none.AtkBuilding + 10, researched.AtkBuilding);
+        Assert.Equal(none.AtkUnit + 10, researched.AtkUnit);
+        Assert.Equal(none.Df + 10, researched.Df);
+    }
 }
