@@ -3224,10 +3224,10 @@ public sealed partial class CampaignMapScene : Node3D
         var officer = city.RecruitmentOfficer is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
         if (officer is null) { return "+0"; }
 
-        var troopCode = AutoRecruitTroopCode(city);
-        var troops = _cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier;
-        var cost = _cb.AutoRecruitGoldCost(troopCode, troops);
-        return $"+{troops} {TroopName(troopCode)} / -{cost}금";
+        var troopCodes = string.Join(',', CurrentAutoRecruitTroopCodes(city));
+        var troops = AutoRecruitMonthlyTroopsFor(officer);
+        var cost = AutoRecruitMonthlyCostFor(officer, troopCodes);
+        return $"+{troops} {AutoRecruitTroopNames(troopCodes)} / -{cost}금";
     }
 
     private string AutoRecruitTroopCode(City city)
@@ -5164,8 +5164,8 @@ public sealed partial class CampaignMapScene : Node3D
             foreach (var t in AutoRecruitTroopOptions())
             {
                 var costPer100 = _cb.AutoRecruitGoldCostPer100(t.Code);
-                var monthlyCost = _cb.AutoRecruitGoldCost(t.Code, previewTroops);
-                list.Add((t.Name, ClassEmblem(t.Class), $"{ClassName(t.Class)} · 100명당 {costPer100}금\n기본 월 비용 {monthlyCost}금"));
+                var tickCost = _cb.AutoRecruitGoldCost(t.Code, previewTroops);
+                list.Add((t.Name, ClassEmblem(t.Class), $"{ClassName(t.Class)} · 100명당 {costPer100}금\n7일 기본 비용 {tickCost}금"));
             }
 
             return list;
@@ -5800,7 +5800,7 @@ public sealed partial class CampaignMapScene : Node3D
                 CommandKind.AppointSecurityOfficer => $"\n무력 {officer.Might} → 월말 치안 {(officer.Might < 60 ? "+0" : officer.Might < 80 ? "+1" : officer.Might < 100 ? "+2" : "+3")}",
                 CommandKind.AppointDomesticOfficer => $"\n정치 {officer.Politics} → 월 금 +{_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier}"
                     + $"\n월 군량 +{_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier}",
-                CommandKind.AppointRecruitmentOfficer => $"\n무력 {officer.Might} → 월 병력 +{_cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier}"
+                CommandKind.AppointRecruitmentOfficer => $"\n무력 {officer.Might} → 월 병력 +{AutoRecruitMonthlyTroopsFor(officer)}"
                     + $"\n선택 병종 {AutoRecruitTroopNames(troopCode)}"
                     + $"\n월 예상 비용 {AutoRecruitMonthlyCostFor(officer, troopCode)}금 · 도시 금 부족 시 생산 없음",
                 CommandKind.AppointTrainingOfficer => $"\n무력 {officer.Might} → 월 훈련도 +{System.Math.Max(1, OfficerMightTier(officer.Might) + 1)}",
@@ -6042,7 +6042,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         CommandKind.AppointSecurityOfficer => $"치안 +{OfficerMightTier(officer.Might)}",
         CommandKind.AppointDomesticOfficer => $"금 +{_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier} / 군량 +{_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier}",
-        CommandKind.AppointRecruitmentOfficer => $"병력 +{_cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier} {TroopName(AutoRecruitTroopCode(city))}",
+        CommandKind.AppointRecruitmentOfficer => $"병력 +{AutoRecruitMonthlyTroopsFor(officer)}",
         CommandKind.AppointTrainingOfficer => $"훈련도 +{System.Math.Max(1, OfficerMightTier(officer.Might) + 1)}",
         _ => "",
     };
@@ -6061,6 +6061,9 @@ public sealed partial class CampaignMapScene : Node3D
 
         return sum * 4;
     }
+
+    private int AutoRecruitMonthlyTroopsFor(General officer)
+        => (_cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier) * 4;
 
     private string AutoRecruitTroopNames(string troopCodes)
     {
@@ -6714,8 +6717,7 @@ public sealed partial class CampaignMapScene : Node3D
             var troopDelta = afterTroops - beforeTroops;
             if (troopDelta != 0)
             {
-                var troopCode = AutoRecruitTroopCode(city);
-                parts.Add($"병력 {(troopDelta > 0 ? "+" : "")}{troopDelta}({TroopName(troopCode)})");
+                parts.Add($"병력 {(troopDelta > 0 ? "+" : "")}{troopDelta}({AutoRecruitTroopNames(string.Join(',', CurrentAutoRecruitTroopCodes(city)))})");
             }
 
             var beforeTraining = WeightedTraining(before.Garrisons.Where(g => g.City == city.Id));
