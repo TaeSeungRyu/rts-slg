@@ -310,6 +310,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("훈련", CommandKind.Train, "garrison"),
         ("세율", CommandKind.SetTaxRate, "tax"),
         ("건설", CommandKind.Build, "facility"),
+        ("주력병종", CommandKind.SelectMajorTroop, "major"),
         ("전투 교리", CommandKind.Research, "troop"),
         ("성벽 강화", CommandKind.Research, "wall"),
         ("성벽 수리", CommandKind.Repair, "wall"),
@@ -2800,6 +2801,10 @@ public sealed partial class CampaignMapScene : Node3D
         {
             box.AddChild(MakeLabel("전투 교리는 세력 병종의 공격과 방어 보정을 올립니다. 일반 병종은 Lv.7, 주력병종은 Lv.10까지 연구할 수 있습니다.", 15, Parchment));
         }
+        else if (cmd.Kind == CommandKind.SelectMajorTroop)
+        {
+            box.AddChild(MakeLabel("주력병종은 세력을 대표하는 병종입니다. 최대 2개까지 선택 가능하며, 한 번 적용하면 철회할 수 없습니다.", 15, Parchment));
+        }
 
         box.AddChild(GoldRule());
 
@@ -2824,6 +2829,22 @@ public sealed partial class CampaignMapScene : Node3D
                 _modalParam = Enumerable.Range(0, options.Count).FirstOrDefault(i => !_disabledOptions.Contains(i));
             }
         }
+        if (cmd.Kind == CommandKind.SelectMajorTroop)
+        {
+            var selectedMajors = _state.MajorTroops.Where(t => t.Faction == cityData.Owner)
+                .Select(t => t.TroopCode)
+                .ToHashSet(System.StringComparer.Ordinal);
+            var majorOptions = _troops.Where(t => t.Class != TroopClass.Naval)
+                .OrderBy(t => t.Code, System.StringComparer.Ordinal)
+                .ToList();
+            for (var i = 0; i < majorOptions.Count; i++)
+            {
+                if (selectedMajors.Contains(majorOptions[i].Code) || selectedMajors.Count >= 2)
+                {
+                    _disabledOptions.Add(i);
+                }
+            }
+        }
         if (options.Count > 0)
         {
             if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
@@ -2840,6 +2861,7 @@ public sealed partial class CampaignMapScene : Node3D
 
             var optionTitle = cmd.Kind == CommandKind.AppointRecruitmentOfficer
                 ? "자동 생산 병종을 선택하세요 (여러 개 선택 가능)"
+                : cmd.Kind == CommandKind.SelectMajorTroop ? "주력병종을 선택하세요 (1~2개 선택 후 적용)"
                 : cmd.Param == "stratagem" ? "계략을 선택하세요" : "대상을 선택하세요";
             box.AddChild(MakeLabel(optionTitle, 19, GoldBright));
             var grid = new GridContainer { Columns = System.Math.Min(colOpt, options.Count) };
@@ -2858,23 +2880,30 @@ public sealed partial class CampaignMapScene : Node3D
                     {
                         if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
                         {
-                            if (cmd.Kind == CommandKind.AppointRecruitmentOfficer) { ToggleMultiOption(idx, options[idx]); }
+                            if (cmd.Kind == CommandKind.AppointRecruitmentOfficer || cmd.Kind == CommandKind.SelectMajorTroop) { ToggleMultiOption(idx, options[idx]); }
                             else { PickOption(idx, options[idx]); }
                         }
                     };
                 }
                 grid.AddChild(card);
             }
-
-            if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
-            {
-                AddMajorTroopSelector(box, cityData);
-            }
         }
 
         _modalDetail = MakeLabel("", 17, Parchment);
         box.AddChild(_modalDetail);
         box.AddChild(GoldRule());
+
+        if (cmd.Kind == CommandKind.SelectMajorTroop)
+        {
+            var apply = MakeButton("적용", accent: true);
+            apply.CustomMinimumSize = new Vector2(140, 38);
+            apply.Pressed += () => ConfirmMajorTroops(cityData.Id);
+            box.AddChild(apply);
+            RefreshMultiOptionCards(options);
+            var contentMajorH = box.GetCombinedMinimumSize().Y;
+            scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentMajorH, mh));
+            return;
+        }
 
         // 도시 계략: 대상 도시 선택 — 수행 장수보다 먼저(계략 → 대상 → 장수 순).
         // 성이 많아도 안전하게 고정 높이 표(내부 스크롤)로 목록을 담는다.
@@ -5208,6 +5237,23 @@ public sealed partial class CampaignMapScene : Node3D
             return list;
         }
 
+        if (cmd.Kind == CommandKind.SelectMajorTroop)
+        {
+            var selected = _state.MajorTroops.Where(t => t.Faction == city.Owner)
+                .Select(t => t.TroopCode)
+                .ToHashSet(System.StringComparer.Ordinal);
+            foreach (var t in _troops.Where(t => t.Class != TroopClass.Naval).OrderBy(t => t.Code, System.StringComparer.Ordinal))
+            {
+                var detail = selected.Contains(t.Code)
+                    ? "이미 주력병종"
+                    : selected.Count >= 2 ? "선택 완료"
+                    : "Lv.10 연구 가능";
+                list.Add((t.Name, ClassEmblem(t.Class), detail));
+            }
+
+            return list;
+        }
+
         switch (cmd.Param)
         {
             case "troop":
@@ -5316,39 +5362,23 @@ public sealed partial class CampaignMapScene : Node3D
     private int ResearchMaxLevelFor(FactionId faction, string troopCode)
         => _state.IsMajorTroop(faction, troopCode) ? _cb.ResearchMaxLevel : 7;
 
-    private void AddMajorTroopSelector(VBoxContainer box, City city)
-    {
-        var selected = _state.MajorTroops.Where(t => t.Faction == city.Owner)
-            .Select(t => t.TroopCode)
-            .ToHashSet(System.StringComparer.Ordinal);
-        var names = selected.Count == 0
-            ? "없음"
-            : string.Join(", ", selected.Select(TroopName));
-        box.AddChild(MakeLabel($"주력병종: {names}  ({selected.Count}/2)", 17, GoldBright));
-        box.AddChild(MakeLabel("주력병종은 세력을 대표하는 병종입니다. 최대 2개까지 한 번만 선택 가능하며, 선택한 병종만 Lv.10까지 연구할 수 있습니다.", 14, Parchment));
-
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 8);
-        box.AddChild(row);
-        foreach (var t in _troops.Where(t => t.Class != TroopClass.Naval).OrderBy(t => t.Code, System.StringComparer.Ordinal))
-        {
-            var isSelected = selected.Contains(t.Code);
-            var full = selected.Count >= 2 && !isSelected;
-            var btn = MakeButton(isSelected ? $"★ {t.Name}" : t.Name, accent: isSelected);
-            btn.CustomMinimumSize = new Vector2(96, 32);
-            btn.Disabled = isSelected || full;
-            if (!isSelected && !full)
-            {
-                btn.Pressed += () => ConfirmMajorTroop(city.Id, t.Code);
-            }
-            row.AddChild(btn);
-        }
-    }
-
-    private void ConfirmMajorTroop(CityId cityId, string troopCode)
+    private void ConfirmMajorTroops(CityId cityId)
     {
         var city = _state.Cities.First(c => c.Id == cityId);
-        var name = TroopName(troopCode);
+        var options = _troops.Where(t => t.Class != TroopClass.Naval)
+            .OrderBy(t => t.Code, System.StringComparer.Ordinal)
+            .ToList();
+        var selected = _modalMultiParams.OrderBy(i => i)
+            .Where(i => i >= 0 && i < options.Count)
+            .Select(i => options[i].Code)
+            .ToList();
+        if (selected.Count == 0)
+        {
+            ShowNotice("주력병종 선택", "선택한 병종이 없습니다.");
+            return;
+        }
+
+        var names = string.Join(", ", selected.Select(TroopName));
         var actor = _state.GeneralsAt(cityId).FirstOrDefault();
         if (actor.Value == 0)
         {
@@ -5356,24 +5386,30 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         ShowConfirm("주력병종 선택",
-            $"{city.Name} 세력의 주력병종으로 {name}을(를) 선택합니다.\n\n주력병종은 철회할 수 없고, 최대 2개까지만 선택 가능합니다.\n선택한 병종은 Lv.10까지 전투 교리 연구가 가능합니다.\n\n선택하시겠습니까?",
+            $"{city.Name} 세력의 주력병종으로 {names}을(를) 선택합니다.\n\n주력병종은 철회할 수 없고, 최대 2개까지만 선택 가능합니다.\n선택한 병종은 Lv.10까지 전투 교리 연구가 가능합니다.\n\n적용하시겠습니까?",
             () =>
             {
-                var req = new CommandRequest(cityId, CommandKind.SelectMajorTroop, actor, TroopCode: troopCode);
-                var r = _commander.Issue(_state, req);
-                if (r.Ok)
+                CommandResult? last = null;
+                foreach (var code in selected)
                 {
-                    _state = r.State;
-                    Report($"[전투 교리] {city.Name} 세력의 주력병종으로 {name}을(를) 선택했습니다.", GoldBright);
+                    last = _commander.Issue(_state,
+                        new CommandRequest(cityId, CommandKind.SelectMajorTroop, actor, TroopCode: code));
+                    if (!last.Ok) { break; }
+                    _state = last.State;
+                }
+
+                if (last?.Ok == true)
+                {
+                    Report($"[주력병종] {city.Name} 세력의 주력병종으로 {names}을(를) 선택했습니다.", GoldBright);
                 }
                 else
                 {
-                    ShowNotice("주력병종 선택 실패", r.Error ?? "조건에 맞지 않아 실행할 수 없습니다.");
+                    ShowNotice("주력병종 선택 실패", last?.Error ?? "조건에 맞지 않아 실행할 수 없습니다.");
                 }
 
                 CloseModal();
                 SelectCity(cityId);
-                Redraw(r.Ok ? $"주력병종 선택: {name}" : $"실패: {r.Error}");
+                Redraw(last?.Ok == true ? $"주력병종 선택: {names}" : $"실패: {last?.Error}");
             });
     }
 
@@ -5456,17 +5492,29 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void ToggleMultiOption(int idx, (string Name, ImageTexture Icon, string Detail) _)
     {
+        var cmd = Cmds[_cmdIndex];
         if (_modalMultiParams.Contains(idx))
         {
-            if (_modalMultiParams.Count > 1) { _modalMultiParams.Remove(idx); }
+            if (cmd.Kind == CommandKind.SelectMajorTroop || _modalMultiParams.Count > 1) { _modalMultiParams.Remove(idx); }
         }
         else
         {
+            if (cmd.Kind == CommandKind.SelectMajorTroop)
+            {
+                var city = _state.Cities.First(x => x.Id == _selected);
+                var already = _state.MajorTroops.Count(t => t.Faction == city.Owner);
+                var remaining = System.Math.Max(0, 2 - already);
+                if (_modalMultiParams.Count >= remaining)
+                {
+                    ShowNotice("주력병종 선택", $"주력병종은 최대 2개까지 선택할 수 있습니다. 남은 선택 수: {remaining}");
+                    return;
+                }
+            }
+
             _modalMultiParams.Add(idx);
         }
 
-        RefreshMultiOptionCards(OptionList((Cmds.First(c => c.Kind == CommandKind.AppointRecruitmentOfficer).Label,
-            CommandKind.AppointRecruitmentOfficer, ""), _state.Cities.First(x => x.Id == _selected)));
+        RefreshMultiOptionCards(OptionList(cmd, _state.Cities.First(x => x.Id == _selected)));
     }
 
     private void RefreshMultiOptionCards(List<(string Name, ImageTexture Icon, string Detail)> options)
@@ -5478,7 +5526,9 @@ public sealed partial class CampaignMapScene : Node3D
 
         var selected = _modalMultiParams.OrderBy(i => i).Where(i => i >= 0 && i < options.Count)
             .Select(i => options[i].Name).ToList();
-        _modalDetail.Text = selected.Count == 0 ? "▶  선택 없음" : $"▶  자동 생산: {string.Join(", ", selected)}";
+        var cmd = Cmds[_cmdIndex];
+        var label = cmd.Kind == CommandKind.SelectMajorTroop ? "주력병종" : "자동 생산";
+        _modalDetail.Text = selected.Count == 0 ? "▶  선택 없음" : $"▶  {label}: {string.Join(", ", selected)}";
     }
 
     // 수행 장수 표(정렬·내부 스크롤) — 행 클릭 = 실행(컨펌창). ★ = 이 명령의 효율 능력치.
