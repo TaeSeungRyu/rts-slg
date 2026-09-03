@@ -20,6 +20,7 @@ public sealed record GameState(
     IReadOnlyList<CombatUnit>? FieldArmies = null,
     IReadOnlyList<Prisoner>? Captives = null,
     IReadOnlyList<FactionResearch>? ResearchTracks = null,
+    IReadOnlyList<FactionMajorTroop>? MajorTroopSelections = null,
     IReadOnlyList<CityIntel>? ScoutedCities = null,
     int MarketPricePercent = 100,
     IReadOnlyList<FacilityPlacement>? FacilityPlacements = null)
@@ -60,9 +61,15 @@ public sealed record GameState(
     /// <summary>세력 병종 연구 트랙(design-combat "병종 연구").</summary>
     public IReadOnlyList<FactionResearch> Research => ResearchTracks ?? [];
 
+    /// <summary>세력 대표 병종 목록. 세력당 최대 2개, 철회 불가.</summary>
+    public IReadOnlyList<FactionMajorTroop> MajorTroops => MajorTroopSelections ?? [];
+
     /// <summary>이 세력의 그 병종 연구 단계(없으면 0 = 미연구).</summary>
     public int ResearchOf(FactionId faction, string troopCode)
         => Research.FirstOrDefault(r => r.Faction == faction && r.TroopCode == troopCode)?.Level ?? 0;
+
+    public bool IsMajorTroop(FactionId faction, string troopCode)
+        => MajorTroops.Any(t => t.Faction == faction && t.TroopCode == troopCode);
 
     /// <summary>이 세력의 성벽 연구 단계(0=미연구 20% … 4=완료 100%).</summary>
     public int WallLevelOf(FactionId faction) => ResearchOf(faction, FactionResearch.WallCode);

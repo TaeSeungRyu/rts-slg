@@ -100,6 +100,11 @@ public sealed class CommandService
             return AppointStrategist(state, city, main);
         }
 
+        if (req.Kind == CommandKind.SelectMajorTroop)
+        {
+            return SelectMajorTroop(state, city, req);
+        }
+
         if (req.Kind is CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer
             or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer)
         {
@@ -409,7 +414,7 @@ public sealed class CommandService
         }
 
         var level = isWall ? state.WallLevelOf(city.Owner) : state.ResearchOf(city.Owner, req.TroopCode);
-        var maxLevel = isWall ? _b.WallResearchMaxLevel : _b.ResearchMaxLevel;
+        var maxLevel = isWall ? _b.WallResearchMaxLevel : ResearchMaxLevelFor(state, city.Owner, req.TroopCode);
         if (level >= maxLevel)
         {
             return CommandResult.Fail("이미 최대 단계까지 연구했다.", state);
@@ -426,6 +431,31 @@ public sealed class CommandService
         var reserved = city.AddGold(-cost);
         return Register(state, reserved, req, assist, amount: 0, days, CommandKind.Research, "", req.TroopCode);
     }
+
+    private CommandResult SelectMajorTroop(GameState state, City city, CommandRequest req)
+    {
+        if (!_troops.ContainsKey(req.TroopCode))
+        {
+            return CommandResult.Fail("주력병종을 선택해야 한다.", state);
+        }
+
+        if (state.IsMajorTroop(city.Owner, req.TroopCode))
+        {
+            return CommandResult.Fail("이미 주력병종으로 선택했다.", state);
+        }
+
+        var selected = state.MajorTroops.Where(t => t.Faction == city.Owner).ToList();
+        if (selected.Count >= 2)
+        {
+            return CommandResult.Fail("주력병종은 최대 2개까지 선택할 수 있다.", state);
+        }
+
+        var majors = state.MajorTroops.Append(new FactionMajorTroop(city.Owner, req.TroopCode)).ToList();
+        return CommandResult.Success(state with { MajorTroopSelections = majors });
+    }
+
+    private int ResearchMaxLevelFor(GameState state, FactionId faction, string troopCode)
+        => state.IsMajorTroop(faction, troopCode) ? _b.ResearchMaxLevel : 7;
 
     private CommandResult IssueRepair(GameState state, City city, CommandRequest req, General? assist)
     {

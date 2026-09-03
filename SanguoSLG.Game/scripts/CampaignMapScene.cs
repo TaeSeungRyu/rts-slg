@@ -2857,6 +2857,11 @@ public sealed partial class CampaignMapScene : Node3D
                 }
                 grid.AddChild(card);
             }
+
+            if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
+            {
+                AddMajorTroopSelector(box, cityData);
+            }
         }
 
         _modalDetail = MakeLabel("", 17, Parchment);
@@ -5282,15 +5287,12 @@ public sealed partial class CampaignMapScene : Node3D
 
     private string ResearchOptionDetail(City city, string troopCode)
     {
-        if (!city.Workshop)
-        {
-            return "세력 전투 교리\n공방 필요";
-        }
-
         var level = _state.ResearchOf(city.Owner, troopCode);
-        if (level >= _cb.ResearchMaxLevel)
+        var maxLevel = ResearchMaxLevelFor(city.Owner, troopCode);
+        var major = _state.IsMajorTroop(city.Owner, troopCode);
+        if (level >= maxLevel)
         {
-            return $"세력 전투 교리\nLv.{level} 최대 · 보정 +{ResearchCurve.Bonus(level)}";
+            return $"{(major ? "주력 전투 교리" : "세력 전투 교리")}\nLv.{level}/{maxLevel} 최대 · 보정 +{ResearchCurve.Bonus(level)}";
         }
 
         var next = level + 1;
@@ -5300,7 +5302,71 @@ public sealed partial class CampaignMapScene : Node3D
         var gate = active ? "연구 진행중"
             : city.Gold < cost ? "금 부족"
             : $"비용 {cost}금";
-        return $"세력 전투 교리\nLv.{level}→{next} · 보정 +{ResearchCurve.Bonus(level)}→+{ResearchCurve.Bonus(next)}\n{gate}";
+        return $"{(major ? "주력 전투 교리" : "세력 전투 교리")}\nLv.{level}→{next}/{maxLevel} · 보정 +{ResearchCurve.Bonus(level)}→+{ResearchCurve.Bonus(next)}\n{gate}";
+    }
+
+    private int ResearchMaxLevelFor(FactionId faction, string troopCode)
+        => _state.IsMajorTroop(faction, troopCode) ? _cb.ResearchMaxLevel : 7;
+
+    private void AddMajorTroopSelector(VBoxContainer box, City city)
+    {
+        var selected = _state.MajorTroops.Where(t => t.Faction == city.Owner)
+            .Select(t => t.TroopCode)
+            .ToHashSet(System.StringComparer.Ordinal);
+        var names = selected.Count == 0
+            ? "없음"
+            : string.Join(", ", selected.Select(TroopName));
+        box.AddChild(MakeLabel($"주력병종: {names}  ({selected.Count}/2)", 17, GoldBright));
+        box.AddChild(MakeLabel("주력병종은 세력을 대표하는 병종입니다. 최대 2개까지 한 번만 선택 가능하며, 선택한 병종만 Lv.10까지 연구할 수 있습니다.", 14, Parchment));
+
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 8);
+        box.AddChild(row);
+        foreach (var t in _troops.Where(t => t.Class != TroopClass.Naval).OrderBy(t => t.Code, System.StringComparer.Ordinal))
+        {
+            var isSelected = selected.Contains(t.Code);
+            var full = selected.Count >= 2 && !isSelected;
+            var btn = MakeButton(isSelected ? $"★ {t.Name}" : t.Name, accent: isSelected);
+            btn.CustomMinimumSize = new Vector2(96, 32);
+            btn.Disabled = isSelected || full;
+            if (!isSelected && !full)
+            {
+                btn.Pressed += () => ConfirmMajorTroop(city.Id, t.Code);
+            }
+            row.AddChild(btn);
+        }
+    }
+
+    private void ConfirmMajorTroop(CityId cityId, string troopCode)
+    {
+        var city = _state.Cities.First(c => c.Id == cityId);
+        var name = TroopName(troopCode);
+        var actor = _state.GeneralsAt(cityId).FirstOrDefault();
+        if (actor.Value == 0)
+        {
+            actor = _state.Generals.First().Id;
+        }
+
+        ShowConfirm("주력병종 선택",
+            $"{city.Name} 세력의 주력병종으로 {name}을(를) 선택합니다.\n\n주력병종은 철회할 수 없고, 최대 2개까지만 선택 가능합니다.\n선택한 병종은 Lv.10까지 전투 교리 연구가 가능합니다.\n\n선택하시겠습니까?",
+            () =>
+            {
+                var req = new CommandRequest(cityId, CommandKind.SelectMajorTroop, actor, TroopCode: troopCode);
+                var r = _commander.Issue(_state, req);
+                if (r.Ok)
+                {
+                    _state = r.State;
+                    Report($"[전투 교리] {city.Name} 세력의 주력병종으로 {name}을(를) 선택했습니다.", GoldBright);
+                }
+                else
+                {
+                    ShowNotice("주력병종 선택 실패", r.Error ?? "조건에 맞지 않아 실행할 수 없습니다.");
+                }
+
+                CloseModal();
+                SelectCity(cityId);
+                Redraw(r.Ok ? $"주력병종 선택: {name}" : $"실패: {r.Error}");
+            });
     }
 
     private bool IsFacilityBuildDisabled(City city, string code)
@@ -5756,21 +5822,21 @@ public sealed partial class CampaignMapScene : Node3D
             var cityData = _state.Cities.First(c => c.Id == city);
             var caster = _state.Generals.First(g => g.Id == general);
             var level = _state.ResearchOf(cityData.Owner, troopCode);
-            var next = System.Math.Min(level + 1, _cb.ResearchMaxLevel);
-            var cost = level >= _cb.ResearchMaxLevel ? 0 : CommandEfficiency.ResearchCost(next, _cb);
+            var maxLevel = ResearchMaxLevelFor(cityData.Owner, troopCode);
+            var next = System.Math.Min(level + 1, maxLevel);
+            var cost = level >= maxLevel ? 0 : CommandEfficiency.ResearchCost(next, _cb);
             var days = System.Math.Max(_cb.ResearchBaseDays - System.Math.Clamp((caster.Intellect - 50) / 5, 0, 10), 1);
             var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
                 && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
-            extra = $"\n세력 전투 교리"
-                + $"\nLv.{level} → Lv.{next}"
-                + (level >= _cb.ResearchMaxLevel
+            extra = $"\n{(_state.IsMajorTroop(cityData.Owner, troopCode) ? "주력 전투 교리" : "세력 전투 교리")}"
+                + $"\nLv.{level} → Lv.{next}/{maxLevel}"
+                + (level >= maxLevel
                     ? "\n※ 이미 최대 단계입니다"
                     : $"\n보정 +{ResearchCurve.Bonus(level)} → +{ResearchCurve.Bonus(next)}"
                         + $"\n비용 {cost}금"
                         + $"\n[소요 {days}일]")
-                + (cityData.Workshop ? "" : "\n※ 공방 필요")
                 + (active is null ? "" : $"\n※ 이미 연구가 진행 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
-                + (level < _cb.ResearchMaxLevel && cityData.Gold < cost ? $"\n※ 금이 부족합니다(보유 {cityData.Gold})" : "");
+                + (level < maxLevel && cityData.Gold < cost ? $"\n※ 금이 부족합니다(보유 {cityData.Gold})" : "");
         }
 
         if (cmd.Param == "stratagem")

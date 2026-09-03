@@ -404,7 +404,8 @@ public sealed class WorldEngine
                     }
                     else
                     {
-                        ResearchUp(research, city.Owner, cmd.TroopCode, _commands.ResearchMaxLevel);
+                        var maxLevel = state.IsMajorTroop(city.Owner, cmd.TroopCode) ? _commands.ResearchMaxLevel : 7;
+                        ResearchUp(research, city.Owner, cmd.TroopCode, maxLevel);
                     }
 
                     break;

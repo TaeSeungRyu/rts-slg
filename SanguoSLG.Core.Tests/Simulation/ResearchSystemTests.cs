@@ -81,9 +81,13 @@ public class ResearchSystemTests
     [Fact]
     public void 발행_최종단계는_한_성_금고로는_모자랄수있다()
     {
-        // 9단계 도달 세력이 10단계(비용 16000)를 공방 도시 금고 8000으로 발행 → 실패(부담 증대).
+        // 주력병종 9단계 도달 세력이 10단계(비용 16000)를 도시 금고 8000으로 발행 → 실패(부담 증대).
         var s = State(new[] { Town(1, workshop: true, gold: 8000) }, new[] { Wit(1, 90) })
-            with { ResearchTracks = new List<FactionResearch> { new(new FactionId(1), "swordsman", 9) } };
+            with
+            {
+                ResearchTracks = new List<FactionResearch> { new(new FactionId(1), "swordsman", 9) },
+                MajorTroopSelections = new List<FactionMajorTroop> { new(new FactionId(1), "swordsman") },
+            };
 
         var r = Service().Issue(s, new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1), TroopCode: "swordsman"));
         Assert.False(r.Ok);
@@ -140,11 +144,45 @@ public class ResearchSystemTests
     public void 발행_최대단계면_더_연구할수없다()
     {
         var s = State(new[] { Town(1, workshop: true) }, new[] { Wit(1, 50) })
-            with { ResearchTracks = new List<FactionResearch> { new(new FactionId(1), "swordsman", 10) } };
+            with { ResearchTracks = new List<FactionResearch> { new(new FactionId(1), "swordsman", 7) } };
 
         var r = Service().Issue(s, new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1), TroopCode: "swordsman"));
         Assert.False(r.Ok);
         Assert.Contains("최대", r.Error);
+    }
+
+    [Fact]
+    public void 주력병종은_최대_2개까지_선택하고_철회없이_10단계까지_연구할수있다()
+    {
+        var s = State(new[] { Town(1, workshop: false, gold: 20000) }, new[] { Wit(1, 80) })
+            with
+            {
+                ResearchTracks = new List<FactionResearch> { new(new FactionId(1), "swordsman", 7) },
+            };
+
+        var normalLimit = Service().Issue(s,
+            new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1), TroopCode: "swordsman"));
+        var major1 = Service().Issue(s,
+            new CommandRequest(new CityId(1), CommandKind.SelectMajorTroop, new GeneralId(1), TroopCode: "swordsman"));
+        var major2 = Service().Issue(major1.State,
+            new CommandRequest(new CityId(1), CommandKind.SelectMajorTroop, new GeneralId(1), TroopCode: "archer"));
+        var duplicate = Service().Issue(major2.State,
+            new CommandRequest(new CityId(1), CommandKind.SelectMajorTroop, new GeneralId(1), TroopCode: "swordsman"));
+        var major3 = Service().Issue(major2.State,
+            new CommandRequest(new CityId(1), CommandKind.SelectMajorTroop, new GeneralId(1), TroopCode: "cavalry"));
+        var majorResearch = Service().Issue(major2.State,
+            new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1), TroopCode: "swordsman"));
+
+        Assert.False(normalLimit.Ok);
+        Assert.Contains("최대", normalLimit.Error);
+        Assert.True(major1.Ok, major1.Error);
+        Assert.True(major2.Ok, major2.Error);
+        Assert.Equal(2, major2.State.MajorTroops.Count(t => t.Faction == new FactionId(1)));
+        Assert.False(duplicate.Ok);
+        Assert.Contains("이미", duplicate.Error);
+        Assert.False(major3.Ok);
+        Assert.Contains("최대 2개", major3.Error);
+        Assert.True(majorResearch.Ok, majorResearch.Error);
     }
 
     [Fact]
