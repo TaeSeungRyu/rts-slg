@@ -38,12 +38,11 @@ public class WallResearchTests
     }
 
     [Fact]
-    public void 발행_성벽연구는_공방과_금이_필요하다()
+    public void 발행_성벽연구는_공방이_없어도_가능하지만_금은_필요하다()
     {
         var noWorkshop = Town(1, CastleSize.Medium, workshop: false, wall: 1200);
         var r1 = Service().Issue(WorldState(noWorkshop, Wit(1)), Req());
-        Assert.False(r1.Ok);
-        Assert.Contains("공방", r1.Error);
+        Assert.True(r1.Ok, r1.Error);
 
         var poor = Town(1, CastleSize.Medium, workshop: true, wall: 1200, gold: 500);
         var r2 = Service().Issue(WorldState(poor, Wit(1)), Req()); // 1단계 비용 1000 > 500

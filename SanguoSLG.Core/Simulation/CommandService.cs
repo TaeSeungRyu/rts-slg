@@ -393,12 +393,6 @@ public sealed class CommandService
 
     private CommandResult IssueResearch(GameState state, City city, CommandRequest req, General? assist, General main)
     {
-        // 공방 게이트(design-combat "연구는 공방에서") — 공방 없는 도시에선 연구 불가.
-        if (!city.Workshop)
-        {
-            return CommandResult.Fail("연구는 공방이 있는 도시에서만 가능하다.", state);
-        }
-
         // 세력당 동시 1개 연구만(병종·성벽 공통 — 2026-08-17 확정).
         var faction = city.Owner;
         if (state.Commands.Any(c => c.Kind == CommandKind.Research

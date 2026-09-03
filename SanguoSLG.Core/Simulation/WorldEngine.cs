@@ -393,8 +393,7 @@ public sealed class WorldEngine
                     break;
 
                 case CommandKind.Research:
-                    // 공방 게이트 재확인 — 완료 시점에 공방을 잃었으면 연구 성과는 증발한다.
-                    if (city.Workshop && cmd.TroopCode == FactionResearch.WallCode)
+                    if (cmd.TroopCode == FactionResearch.WallCode)
                     {
                         var wallLevel = ResearchUp(research, city.Owner, FactionResearch.WallCode, _commands.WallResearchMaxLevel);
                         // 성벽 연구 완료 → 그 세력 모든 도시 성벽을 새 최대치로(전면 증축).
@@ -403,7 +402,7 @@ public sealed class WorldEngine
                             cities[owned.Id] = owned with { Wall = CastleWall.Max(owned.Castle, _balance, wallLevel) };
                         }
                     }
-                    else if (city.Workshop)
+                    else
                     {
                         ResearchUp(research, city.Owner, cmd.TroopCode, _commands.ResearchMaxLevel);
                     }

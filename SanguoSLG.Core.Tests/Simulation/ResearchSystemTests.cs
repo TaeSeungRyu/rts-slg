@@ -30,12 +30,12 @@ public class ResearchSystemTests
         new(1, 1, new List<Faction>(), cities.ToList(), generals.ToList());
 
     [Fact]
-    public void 발행_공방이_없으면_연구할수없다()
+    public void 발행_공방이_없어도_전투교리_연구를_시작할수있다()
     {
         var s = State(new[] { Town(1, workshop: false) }, new[] { Wit(1, 70) });
         var r = Service().Issue(s, new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1), TroopCode: "swordsman"));
-        Assert.False(r.Ok);
-        Assert.Contains("공방", r.Error);
+        Assert.True(r.Ok, r.Error);
+        Assert.Single(r.State.Commands);
     }
 
     [Fact]
