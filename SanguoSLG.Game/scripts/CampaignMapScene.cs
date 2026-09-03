@@ -5346,7 +5346,7 @@ public sealed partial class CampaignMapScene : Node3D
         var major = _state.IsMajorTroop(city.Owner, troopCode);
         if (level >= maxLevel)
         {
-            return $"{(major ? "주력 전투 교리" : "세력 전투 교리")}\nLv.{level}/{maxLevel} 최대 · 보정 +{ResearchCurve.Bonus(level)}";
+            return $"{ResearchStars(level, major)}\n최대 · 공·방 +{ResearchCurve.Bonus(level)}";
         }
 
         var next = level + 1;
@@ -5356,11 +5356,37 @@ public sealed partial class CampaignMapScene : Node3D
         var gate = active ? "연구 진행중"
             : city.Gold < cost ? "금 부족"
             : $"비용 {cost}금";
-        return $"{(major ? "주력 전투 교리" : "세력 전투 교리")}\nLv.{level}→{next}/{maxLevel} · 보정 +{ResearchCurve.Bonus(level)}→+{ResearchCurve.Bonus(next)}\n{gate}";
+        var inc = ResearchCurve.Bonus(next) - ResearchCurve.Bonus(level);
+        return $"{ResearchStars(level, major)}\n공·방 +{inc}\n{gate}";
     }
 
     private int ResearchMaxLevelFor(FactionId faction, string troopCode)
         => _state.IsMajorTroop(faction, troopCode) ? _cb.ResearchMaxLevel : 7;
+
+    private static string ResearchStars(int level, bool major)
+    {
+        var gold = "#" + GoldBright.ToHtml(false);
+        var empty = "#" + Parchment.ToHtml(false);
+        var locked = "#777777";
+        var s = "";
+        for (var i = 1; i <= 10; i++)
+        {
+            if (!major && i > 7)
+            {
+                s += $"[color={locked}]☆[/color]";
+            }
+            else if (i <= level)
+            {
+                s += $"[color={gold}]★[/color]";
+            }
+            else
+            {
+                s += $"[color={empty}]☆[/color]";
+            }
+        }
+
+        return s;
+    }
 
     private void ConfirmMajorTroops(CityId cityId)
     {
@@ -5453,9 +5479,19 @@ public sealed partial class CampaignMapScene : Node3D
         var name = MakeLabel(o.Name, 19, GoldBright);
         name.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(name);
-        var det = MakeLabel(o.Detail, 14, Parchment);
-        det.HorizontalAlignment = HorizontalAlignment.Center;
-        v.AddChild(det);
+        if (o.Detail.Contains("[color=", System.StringComparison.Ordinal))
+        {
+            var det = MakeRichLabel(o.Detail, 14, Parchment);
+            det.HorizontalAlignment = HorizontalAlignment.Center;
+            det.CustomMinimumSize = new Vector2(132, 0);
+            v.AddChild(det);
+        }
+        else
+        {
+            var det = MakeLabel(o.Detail, 14, Parchment);
+            det.HorizontalAlignment = HorizontalAlignment.Center;
+            v.AddChild(det);
+        }
 
         card.MouseEntered += () =>
         {
@@ -5484,7 +5520,8 @@ public sealed partial class CampaignMapScene : Node3D
             _optionCards[i].AddThemeStyleboxOverride("panel", CardBox(i == idx));
         }
 
-        _modalDetail.Text = o.Detail.Length > 0 ? $"▶  {o.Name}  —  {o.Detail}" : $"▶  {o.Name}";
+        var detail = PlainUiText(o.Detail);
+        _modalDetail.Text = detail.Length > 0 ? $"▶  {o.Name}  —  {detail}" : $"▶  {o.Name}";
     }
 
     private bool IsOptionSelected(int idx)
@@ -5529,6 +5566,19 @@ public sealed partial class CampaignMapScene : Node3D
         var cmd = Cmds[_cmdIndex];
         var label = cmd.Kind == CommandKind.SelectMajorTroop ? "주력병종" : "자동 생산";
         _modalDetail.Text = selected.Count == 0 ? "▶  선택 없음" : $"▶  {label}: {string.Join(", ", selected)}";
+    }
+
+    private static string PlainUiText(string value)
+    {
+        var text = value.Replace("[/color]", "", System.StringComparison.Ordinal);
+        while (true)
+        {
+            var start = text.IndexOf("[color=", System.StringComparison.Ordinal);
+            if (start < 0) { return text; }
+            var end = text.IndexOf(']', start);
+            if (end < 0) { return text; }
+            text = text.Remove(start, end - start + 1);
+        }
     }
 
     // 수행 장수 표(정렬·내부 스크롤) — 행 클릭 = 실행(컨펌창). ★ = 이 명령의 효율 능력치.
@@ -6630,6 +6680,22 @@ public sealed partial class CampaignMapScene : Node3D
         l.AddThemeFontOverride("font", _font);
         l.AddThemeFontSizeOverride("font_size", size);
         l.AddThemeColorOverride("font_color", color);
+        return l;
+    }
+
+    private RichTextLabel MakeRichLabel(string text, int size, Color color)
+    {
+        var l = new RichTextLabel
+        {
+            BbcodeEnabled = true,
+            Text = text,
+            FitContent = true,
+            ScrollActive = false,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        l.AddThemeFontOverride("normal_font", _font);
+        l.AddThemeFontSizeOverride("normal_font_size", size);
+        l.AddThemeColorOverride("default_color", color);
         return l;
     }
 
