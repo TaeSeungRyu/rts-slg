@@ -311,7 +311,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("세율", CommandKind.SetTaxRate, "tax"),
         ("건설", CommandKind.Build, "facility"),
         ("전투 교리", CommandKind.Research, "troop"),
-        ("성벽 연구", CommandKind.Research, "wall"),
+        ("성벽 강화", CommandKind.Research, "wall"),
         ("성벽 수리", CommandKind.Repair, "wall"),
         ("시설 수리", CommandKind.Repair, "repairable"),
         ("도시 계략", CommandKind.CityStratagem, "stratagem"),
@@ -2791,6 +2791,14 @@ public sealed partial class CampaignMapScene : Node3D
         if (IsAutoOfficerCommand(cmd.Kind))
         {
             box.AddChild(MakeLabel(OfficerRoleDescription(cmd.Kind), 15, Parchment));
+        }
+        else if (cmd.Kind == CommandKind.Research && cmd.Param == "wall")
+        {
+            box.AddChild(MakeLabel("성벽 강화는 병종 전투 교리가 아니라 세력 전체 성의 최대 성벽을 올리는 방어 연구입니다.", 15, Parchment));
+        }
+        else if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
+        {
+            box.AddChild(MakeLabel("전투 교리는 세력 병종의 공격과 방어 보정을 올립니다. 일반 병종은 Lv.7, 주력병종은 Lv.10까지 연구할 수 있습니다.", 15, Parchment));
         }
 
         box.AddChild(GoldRule());
@@ -5837,6 +5845,29 @@ public sealed partial class CampaignMapScene : Node3D
                         + $"\n[소요 {days}일]")
                 + (active is null ? "" : $"\n※ 이미 연구가 진행 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
                 + (level < maxLevel && cityData.Gold < cost ? $"\n※ 금이 부족합니다(보유 {cityData.Gold})" : "");
+        }
+
+        if (cmd.Kind == CommandKind.Research && cmd.Param == "wall")
+        {
+            var cityData = _state.Cities.First(c => c.Id == city);
+            var caster = _state.Generals.First(g => g.Id == general);
+            var level = _state.WallLevelOf(cityData.Owner);
+            var next = System.Math.Min(level + 1, _cb.WallResearchMaxLevel);
+            var cost = level >= _cb.WallResearchMaxLevel ? 0 : _cb.WallResearchCostPerLevel * next;
+            var days = System.Math.Max(_cb.ResearchBaseDays - System.Math.Clamp((caster.Intellect - 50) / 5, 0, 10), 1);
+            var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
+                && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
+            var currentMax = CastleWall.Max(cityData.Castle, _balance, level);
+            var nextMax = CastleWall.Max(cityData.Castle, _balance, next);
+            extra = $"\n세력 성벽 강화"
+                + $"\n현재 성벽 최대 {currentMax} → {nextMax}"
+                + (level >= _cb.WallResearchMaxLevel
+                    ? "\n※ 이미 최대 단계입니다"
+                    : $"\n비용 {cost}금"
+                        + $"\n[소요 {days}일]")
+                + "\n완료 시 같은 세력의 모든 성 최대 성벽이 상승합니다."
+                + (active is null ? "" : $"\n※ 이미 연구가 진행 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
+                + (level < _cb.WallResearchMaxLevel && cityData.Gold < cost ? $"\n※ 금이 부족합니다(보유 {cityData.Gold})" : "");
         }
 
         if (cmd.Param == "stratagem")
