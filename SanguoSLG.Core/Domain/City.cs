@@ -11,6 +11,7 @@ using SanguoSLG.Core.Spatial;
 /// 검증이 무너진다. 사용자가 지정한 타일 위치는 City가 아니라 GameState.FacilityPlacements
 /// 목록에 따로 둔다(<see cref="SanguoSLG.Core.Simulation.FacilityPlacement"/>).
 /// Wall은 현재 성벽 값(공성으로 깎이고 0이면 붕괴) — 시나리오 로드 시 등급별 최대치로 초기화한다.
+/// WallLevel은 해당 도시의 성벽 강화 단계(0=미강화 20% … 4=완료 100%)다.
 /// Ruined*는 약탈로 부서진 시설 잔해(슬롯을 차지, 수리 = 건설비 50%로 복구 — 재건보다 싸다).
 /// *Destroyed는 지역 고정 자원 시설(광산·목장·상원)의 파괴 상태 — 생산 = Produces* &amp;&amp; !*Destroyed,
 /// 수리는 정액(design-administration "자원 생산 시설"·"건물 수리").
@@ -52,7 +53,8 @@ public sealed record City(
     GeneralId? RecruitmentOfficer = null,
     GeneralId? TrainingOfficer = null,
     string AutoRecruitTroopCode = "",
-    string AutoRecruitTroopCodes = "")
+    string AutoRecruitTroopCodes = "",
+    int WallLevel = 0)
 {
     /// <summary>소유 세력을 바꾼 새 도시를 반환한다.</summary>
     public City WithOwner(FactionId owner) => this with { Owner = owner };

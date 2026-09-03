@@ -395,12 +395,12 @@ public sealed class WorldEngine
                 case CommandKind.Research:
                     if (cmd.TroopCode == FactionResearch.WallCode)
                     {
-                        var wallLevel = ResearchUp(research, city.Owner, FactionResearch.WallCode, _commands.WallResearchMaxLevel);
-                        // 성벽 연구 완료 → 그 세력 모든 도시 성벽을 새 최대치로(전면 증축).
-                        foreach (var owned in cities.Values.Where(c => c.Owner == city.Owner).ToList())
+                        var wallLevel = System.Math.Clamp(cmd.Amount, 0, _commands.WallResearchMaxLevel);
+                        cities[cmd.City] = city with
                         {
-                            cities[owned.Id] = owned with { Wall = CastleWall.Max(owned.Castle, _balance, wallLevel) };
-                        }
+                            WallLevel = wallLevel,
+                            Wall = CastleWall.Max(city.Castle, _balance, wallLevel),
+                        };
                     }
                     else
                     {
@@ -414,7 +414,7 @@ public sealed class WorldEngine
                     // 성벽 수리 — 예약 시 산출한 회복량(Amount)을 더하되 현 최대치를 넘지 않는다.
                     if (cmd.TroopCode == FactionResearch.WallCode)
                     {
-                        var maxWall = CastleWall.Max(city.Castle, _balance, state.WallLevelOf(city.Owner));
+                        var maxWall = CastleWall.Max(city.Castle, _balance, city.WallLevel);
                         cities[cmd.City] = city with { Wall = System.Math.Min(maxWall, city.Wall + cmd.Amount) };
                     }
                     else
@@ -580,7 +580,7 @@ public sealed class WorldEngine
         switch (cmd.Facility)
         {
             case "wall_break":
-                var maxWall = CastleWall.Max(target.Castle, _balance, state.WallLevelOf(target.Owner));
+                var maxWall = CastleWall.Max(target.Castle, _balance, target.WallLevel);
                 cities[targetId] = target with { Wall = System.Math.Max(0, target.Wall - maxWall * _commands.StratagemWallBreakPercent / 100) };
                 break;
 

@@ -8,7 +8,7 @@ using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
-/// <summary>11b 성벽 연구 — 세력 5단계(20~100%), 시작 미연구 20%, 완료 시 세력 전 도시 성벽 증축.</summary>
+/// <summary>11b 성벽 강화 — 도시별 5단계(20~100%), 시작 미강화 20%, 완료 시 해당 도시 성벽 증축.</summary>
 public class WallResearchTests
 {
     private static readonly CommandBalance B = new();
@@ -51,7 +51,7 @@ public class WallResearchTests
     }
 
     [Fact]
-    public void 루프_성벽연구_완료시_세력_전_도시_성벽이_증축된다()
+    public void 루프_성벽연구_완료시_해당_도시_성벽만_증축된다()
     {
         var world = new WorldEngine(Bal, B);
         var s = new GameState(1, 1, new List<Faction>(),
@@ -68,10 +68,13 @@ public class WallResearchTests
 
         var done = world.AdvanceDays(issued.State, 30);
 
-        Assert.Equal(1, done.WallLevelOf(new FactionId(1)));
-        // 1단계 40%: 중성 6000×40%=2400, 소성 3000×40%=1200 — 공방 없는 성도 같이 오른다(세력 단위).
-        Assert.Equal(2400, done.Cities.First(c => c.Id == new CityId(1)).Wall);
-        Assert.Equal(1200, done.Cities.First(c => c.Id == new CityId(2)).Wall);
+        var c1 = done.Cities.First(c => c.Id == new CityId(1));
+        var c2 = done.Cities.First(c => c.Id == new CityId(2));
+        Assert.Equal(1, c1.WallLevel);
+        Assert.Equal(0, c2.WallLevel);
+        // 1단계 40%: 중성 6000×40%=2400. 선택하지 않은 소성은 기존 600 유지.
+        Assert.Equal(2400, c1.Wall);
+        Assert.Equal(600, c2.Wall);
     }
 
     [Fact]

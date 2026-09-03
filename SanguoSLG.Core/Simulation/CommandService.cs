@@ -413,7 +413,7 @@ public sealed class CommandService
             return CommandResult.Fail("연구할 병종을 지정해야 한다.", state);
         }
 
-        var level = isWall ? state.WallLevelOf(city.Owner) : state.ResearchOf(city.Owner, req.TroopCode);
+        var level = isWall ? city.WallLevel : state.ResearchOf(city.Owner, req.TroopCode);
         var maxLevel = isWall ? _b.WallResearchMaxLevel : ResearchMaxLevelFor(state, city.Owner, req.TroopCode);
         if (level >= maxLevel)
         {
@@ -429,7 +429,7 @@ public sealed class CommandService
         // 효율 능력 = 지력: 지력이 높을수록 기간 단축(기본 30일, 지력 100이면 −10일).
         var days = System.Math.Max(_b.ResearchBaseDays - System.Math.Clamp((main.Intellect - 50) / 5, 0, 10), 1);
         var reserved = city.AddGold(-cost);
-        return Register(state, reserved, req, assist, amount: 0, days, CommandKind.Research, "", req.TroopCode);
+        return Register(state, reserved, req, assist, amount: isWall ? level + 1 : 0, days, CommandKind.Research, "", req.TroopCode);
     }
 
     private CommandResult SelectMajorTroop(GameState state, City city, CommandRequest req)
@@ -502,7 +502,7 @@ public sealed class CommandService
             return CommandResult.Fail("성벽 수리에는 경제 설정이 필요하다.", state);
         }
 
-        var maxWall = CastleWall.Max(city.Castle, _balance, state.WallLevelOf(city.Owner));
+        var maxWall = CastleWall.Max(city.Castle, _balance, city.WallLevel);
         // 축성(재임 태수): 성벽 수리 회복량 +10/20/30%p(기본 25%·공방 +25%p와 합산 — design-skill-admin).
         var recovery = _b.WallRepairPercent + (city.Workshop ? _b.WallRepairWorkshopBonus : 0)
             + GovernorBucket(state, city, "wall");

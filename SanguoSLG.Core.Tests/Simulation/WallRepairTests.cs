@@ -23,13 +23,12 @@ public class WallRepairTests
         new GeneralId(id), $"g{id}", new Dictionary<TroopClass, AptitudeGrade>(),
         Might: 50, Intellect: 50, Politics: 70);
 
-    private static City Town(int id, int wall, bool workshop = false, int gold = 5000, int wallLevel4 = 1) =>
+    private static City Town(int id, int wall, bool workshop = false, int gold = 5000, int wallLevel = 0) =>
         new(new CityId(id), $"c{id}", new HexCoord(id, 0), new FactionId(1), 3000, CastleSize.Medium,
-            Gold: gold, Wall: wall, Workshop: workshop);
+            Gold: gold, Wall: wall, Workshop: workshop, WallLevel: wallLevel);
 
-    private static GameState State(City city, IEnumerable<FactionResearch>? research = null) =>
-        new(1, 1, new List<Faction>(), new List<City> { city }, new List<General> { Pol(1) },
-            ResearchTracks: research?.ToList());
+    private static GameState State(City city) =>
+        new(1, 1, new List<Faction>(), new List<City> { city }, new List<General> { Pol(1) });
 
     private static CommandRequest Req() =>
         new(new CityId(1), CommandKind.Repair, new GeneralId(1), TroopCode: FactionResearch.WallCode);
@@ -116,8 +115,7 @@ public class WallRepairTests
     public void 발행_성벽연구가_높으면_최대치가_커져_더_많이_수리한다()
     {
         // 성벽 연구 4단계 → 중성 최대 6000(100%). 현재 600 → 회복 25% = 1500.
-        var s = State(Town(1, wall: 600, gold: 5000),
-            research: new[] { new FactionResearch(new FactionId(1), FactionResearch.WallCode, 4) });
+        var s = State(Town(1, wall: 600, gold: 5000, wallLevel: 4));
         var r = Service().Issue(s, Req());
 
         Assert.True(r.Ok, r.Error);
