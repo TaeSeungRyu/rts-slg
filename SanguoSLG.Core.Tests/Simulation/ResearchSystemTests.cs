@@ -8,7 +8,7 @@ using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
-/// <summary>11a 병종 연구 — 세력 단위·공방 게이트·지력 기간·완료 +1단계·부대 스탯 반영.</summary>
+/// <summary>전투 교리 — 세력 단위·공방 비의존·지력 기간·완료 +1단계·부대 스탯 반영.</summary>
 public class ResearchSystemTests
 {
     private static readonly CommandBalance B = new();
@@ -101,7 +101,7 @@ public class ResearchSystemTests
     [Fact]
     public void 발행_세력은_동시에_하나의_연구만_할수있다()
     {
-        // 공방 도시 2개(같은 세력). 하나 연구 걸면 다른 공방에서 두 번째 연구 불가.
+        // 같은 세력의 도시 2개. 하나 연구 걸면 다른 도시에서 두 번째 연구 불가.
         var s = State(
             new[] { Town(1, workshop: true), Town(2, workshop: true) },
             new[] { Wit(1, 60), Wit(2, 60) })

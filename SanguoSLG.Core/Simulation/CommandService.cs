@@ -398,7 +398,7 @@ public sealed class CommandService
 
     private CommandResult IssueResearch(GameState state, City city, CommandRequest req, General? assist, General main)
     {
-        // 세력당 동시 1개 연구만(병종·성벽 공통 — 2026-08-17 확정).
+        // 세력당 동시 1개 연구만(전투 교리·성벽 강화 공통 — 2026-08-17 확정).
         var faction = city.Owner;
         if (state.Commands.Any(c => c.Kind == CommandKind.Research
             && state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == faction))

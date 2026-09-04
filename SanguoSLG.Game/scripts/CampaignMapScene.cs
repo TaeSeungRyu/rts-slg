@@ -6142,7 +6142,7 @@ public sealed partial class CampaignMapScene : Node3D
             "paddy" => $"월 군량 +{current}{nextText}",
             "farm" => $"월 군량 +{current}{nextText}",
             "village" => $"월 금 +{current}{nextText}",
-            "workshop" => $"병종 연구 가능\n성벽 수리 +{_cb.WallRepairWorkshopBonus}%\n공성 병기 생산 기반",
+            "workshop" => $"성벽 수리 +{_cb.WallRepairWorkshopBonus}%\n공성 병기 생산 기반",
             _ => "",
         };
     }
