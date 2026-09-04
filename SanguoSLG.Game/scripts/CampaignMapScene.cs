@@ -338,7 +338,7 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly (string Label, string Code)[] Strats =
     {
         ("정찰", "scout"), ("성벽파괴", "wall_break"), ("선동", "incite"),
-        ("방화", "arson"), ("절취", "steal"), ("이간", "sow_discord"),
+        ("방화", "arson"), ("절취", "steal"),
     };
 
     // v2 명령 카테고리. 반복 내정(모병·징병·세율·시장·건설·등용·포상)은 팔레트에서 숨긴다.
@@ -1713,7 +1713,6 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.Build => ($"[내정] {cName}에 {FacilityLabel(we.Code)} 건설을 마쳤습니다.", Parchment),
                 WorldEventKind.Research => ($"[군비] {cName}에서 연구를 마쳤습니다.", Parchment),
                 WorldEventKind.Repair => ($"[내정] {cName} 수리를 마쳤습니다.", Parchment),
-                WorldEventKind.Discord => ($"[내정] 적의 이간으로 {gName} 장수의 충성이 흔들렸습니다.", AccentFill),
                 WorldEventKind.Betray => ($"[인사] {gName} 장수가 세력을 등지고 떠났습니다.", AccentFill),
                 WorldEventKind.EnlistSuccess => ($"[인사] 등용 성공! {gName} 장수가 우리 세력에 합류했습니다.", GoldBright),
                 WorldEventKind.EnlistFail => ($"[인사] {gName} 장수 등용에 실패했습니다.", Parchment),
@@ -5863,7 +5862,6 @@ public sealed partial class CampaignMapScene : Node3D
             "wall_break" => Sym.Wall,
             "incite" => Sym.Shield,
             "steal" => Sym.Coin,
-            "sow_discord" => Sym.Officer,
             _ => Sym.Scroll,
         });
     }
@@ -5875,7 +5873,6 @@ public sealed partial class CampaignMapScene : Node3D
         "incite" => "치안 −10",
         "arson" => "군량 −20%",
         "steal" => "금 20% 절취",
-        "sow_discord" => "충성 −20",
         _ => "",
     };
 

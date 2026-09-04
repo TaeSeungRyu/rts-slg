@@ -8,7 +8,7 @@ using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
-/// <summary>10e 도시 계략 6종 — 거리 비례 소요일·지력 성공률·정찰 전제·효과 정산.</summary>
+/// <summary>도시 계략 5종 — 거리 비례 소요일·지력 성공률·정찰 전제·효과 정산.</summary>
 public class CityStratagemTests
 {
     private static readonly CommandBalance B = new();
@@ -154,7 +154,7 @@ public class CityStratagemTests
     }
 
     [Fact]
-    public void 이간_대상_도시의_충성_최저_장수가_깎인다()
+    public void 발행_이간은_도시계략에서_제거되어_거부된다()
     {
         var s = State([Mine(), Enemy()],
             [Gen(1), Gen(10, loyalty: 150), Gen(11, loyalty: 90)],
@@ -165,25 +165,9 @@ public class CityStratagemTests
                 new GeneralPosting(new GeneralId(11), new FactionId(2), new CityId(2)),
             ],
             intel: [Scouted()]);
+
         var issued = Service().Issue(s, Req("sow_discord"));
-        Assert.True(issued.Ok, issued.Error);
-        // 난수 [성공 판정 0, 이간 감소량 10] — 5~15 랜덤 중 10.
-        var done = new WorldEngine(Bal, B, random: new FixedRandom(0, 10)).AdvanceDays(issued.State, 11);
-
-        Assert.Equal(80, done.LoyaltyOf(new GeneralId(11)));  // 충성 최저(90) −10
-        Assert.Equal(150, done.LoyaltyOf(new GeneralId(10))); // 그대로
-    }
-
-    [Fact]
-    public void 이간_정찰안된_도시는_발행이_거부된다()
-    {
-        var s = State([Mine(), Enemy()], [Gen(1), Gen(10, loyalty: 90)],
-            postings:
-            [
-                new GeneralPosting(new GeneralId(1), new FactionId(1), new CityId(1)),
-                new GeneralPosting(new GeneralId(10), new FactionId(2), new CityId(2)),
-            ]); // 정찰 없음
-
-        Assert.False(Service().Issue(s, Req("sow_discord")).Ok);
+        Assert.False(issued.Ok);
+        Assert.Contains("계략", issued.Error);
     }
 }

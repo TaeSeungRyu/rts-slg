@@ -557,7 +557,7 @@ public sealed class WorldEngine
     }
 
     // 도시 계략 정산(design-stratagem "수행 규칙"): 지력 확률 성공 판정(시드 난수) → 실패 = 무효.
-    // 대상이 그 사이 아군이 됐으면(함락 등) 캔슬. 효과는 종류별(성벽·치안·정찰·군량·금·충성).
+    // 대상이 그 사이 아군이 됐으면(함락 등) 캔슬. 효과는 종류별(성벽·치안·정찰·군량·금).
     private void ResolveCityStratagem(GameState state, CityCommand cmd, City casterCity,
         Dictionary<CityId, City> cities, List<Domain.General> generals, List<Domain.CityIntel> intel)
     {
@@ -606,23 +606,6 @@ public sealed class WorldEngine
                 cities[cmd.City] = cities[cmd.City].AddGold(stolen); // 수행 도시에 예치
                 break;
 
-            case "sow_discord":
-                // 대상 도시 주둔 장수 중 충성 최저 1명(동률 id순) −N.
-                var victim = state.Assignments
-                    .Where(p => p.Location == targetId)
-                    .Select(p => generals.FirstOrDefault(g => g.Id == p.General))
-                    .OfType<Domain.General>()
-                    .OrderBy(g => g.Loyalty).ThenBy(g => g.Id.Value)
-                    .FirstOrDefault();
-                if (victim is not null)
-                {
-                    var idx = generals.FindIndex(g => g.Id == victim.Id);
-                    var cut = _random.Next(_commands.StratagemDiscordLoyaltyMin, _commands.StratagemDiscordLoyaltyMax + 1);
-                    generals[idx] = victim with { Loyalty = System.Math.Max(0, victim.Loyalty - cut) };
-                    _events.Add(new WorldEvent(WorldEventKind.Discord, target.Owner, victim.Id, targetId, cut));
-                }
-
-                break;
         }
     }
 

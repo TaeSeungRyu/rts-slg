@@ -119,10 +119,6 @@ public sealed record CommandBalance
     /// <summary>도시 계략 절취 — 금고의 이 %를 훔쳐 수행 도시에 예치한다.</summary>
     public int StratagemStealPercent { get; init; } = 20;
 
-    /// <summary>도시 계략 이간 — 대상 도시 충성 최저 장수의 충성을 min~max 랜덤만큼 깎는다(정찰 전제).</summary>
-    public int StratagemDiscordLoyaltyMin { get; init; } = 5;
-    public int StratagemDiscordLoyaltyMax { get; init; } = 15;
-
     /// <summary>시설 건설 비용(금).</summary>
     public int BuildCostPaddy { get; init; } = 300;
     public int BuildCostFarm { get; init; } = 200;

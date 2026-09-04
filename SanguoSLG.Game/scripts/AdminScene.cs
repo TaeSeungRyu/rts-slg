@@ -55,7 +55,7 @@ public sealed partial class AdminScene : Control
     private static readonly (string Label, string Code)[] Stratagems =
     {
         ("정찰", "scout"), ("성벽파괴", "wall_break"), ("선동", "incite"),
-        ("방화", "arson"), ("절취", "steal"), ("이간", "sow_discord"),
+        ("방화", "arson"), ("절취", "steal"),
     };
 
     private static readonly (string Label, string Code)[] Facilities =

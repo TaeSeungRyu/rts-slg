@@ -11,7 +11,6 @@ public enum WorldEventKind
     Build,      // 건설 완공
     Research,   // 연구 완료
     Repair,     // 수리 완료
-    Discord,    // 이간당함(충성 하락)
     Betray,     // 배신·재야화
     EnlistSuccess,  // 등용 성공(대상 합류)
     EnlistFail,     // 등용 실패
