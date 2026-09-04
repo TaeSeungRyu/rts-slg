@@ -345,7 +345,7 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly (string Group, int[] Indices)[] CmdGroups =
     {
         ("연구", new[] { 5, 6 }),
-        ("수리", new[] { 7, 8 }),
+        ("성벽", new[] { 7, 8 }),
         ("계략", new[] { 9 }),
         ("담당자", new[] { 12, 13, 14, 15 }),
     };
