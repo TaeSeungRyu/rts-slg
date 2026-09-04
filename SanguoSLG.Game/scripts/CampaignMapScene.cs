@@ -2765,10 +2765,13 @@ public sealed partial class CampaignMapScene : Node3D
 
         // 창 크기에 맞춘 반응형 모달(작은 화면에서도 넘치지 않게 상·하한 캡).
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.66f, 460f, 778f);
+        var wideDoctrineModal = cmd.Kind == CommandKind.Research && cmd.Param == "troop";
+        var mw = wideDoctrineModal
+            ? Mathf.Clamp(vp.X * 0.82f, 620f, 980f)
+            : Mathf.Clamp(vp.X * 0.66f, 460f, 778f);
         // 모달을 세로로 길게 — 장수 표 내부 스크롤과 겹치는 2중 스크롤 방지.
         var mh = Mathf.Clamp(vp.Y * 0.92f, 374f, 940f);
-        var colOpt = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 146f), 3, 5);
+        var colOpt = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / (wideDoctrineModal ? 186f : 146f)), 3, 5);
         var colOff = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 169f), 2, 4);
 
         var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(mw, 0) };
@@ -5456,9 +5459,10 @@ public sealed partial class CampaignMapScene : Node3D
     // 아이콘 카드(큰 아이콘 + 이름 + 설명). 클릭 판정은 호출부에서 GuiInput으로.
     private PanelContainer OptionCard((string Name, ImageTexture Icon, string Detail) o, bool disabled = false)
     {
+        var starDetail = o.Detail.Contains("[color=", System.StringComparison.Ordinal);
         var card = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(148, o.Detail.Contains('\n') ? 138 : 121),
+            CustomMinimumSize = new Vector2(starDetail ? 186 : 148, o.Detail.Contains('\n') ? 138 : 121),
             MouseFilter = Control.MouseFilterEnum.Stop,
             MouseDefaultCursorShape = disabled ? Control.CursorShape.Forbidden : Control.CursorShape.PointingHand,
             Modulate = disabled ? new Color(1f, 1f, 1f, 0.42f) : Colors.White,
@@ -5479,11 +5483,11 @@ public sealed partial class CampaignMapScene : Node3D
         var name = MakeLabel(o.Name, 19, GoldBright);
         name.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(name);
-        if (o.Detail.Contains("[color=", System.StringComparison.Ordinal))
+        if (starDetail)
         {
             var det = MakeRichLabel(o.Detail, 14, Parchment);
             det.HorizontalAlignment = HorizontalAlignment.Center;
-            det.CustomMinimumSize = new Vector2(132, 0);
+            det.CustomMinimumSize = new Vector2(170, 0);
             v.AddChild(det);
         }
         else
