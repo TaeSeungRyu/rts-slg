@@ -2837,12 +2837,10 @@ public sealed partial class CampaignMapScene : Node3D
             var selectedMajors = _state.MajorTroops.Where(t => t.Faction == cityData.Owner)
                 .Select(t => t.TroopCode)
                 .ToHashSet(System.StringComparer.Ordinal);
-            var majorOptions = _troops.Where(t => t.Class != TroopClass.Naval)
-                .OrderBy(t => t.Code, System.StringComparer.Ordinal)
-                .ToList();
+            var majorOptions = MajorTroopOptions(cityData);
             for (var i = 0; i < majorOptions.Count; i++)
             {
-                if (selectedMajors.Contains(majorOptions[i].Code) || selectedMajors.Count >= 2)
+                if (!selectedMajors.Contains(majorOptions[i].Code) && selectedMajors.Count >= 2)
                 {
                     _disabledOptions.Add(i);
                 }
@@ -5245,11 +5243,11 @@ public sealed partial class CampaignMapScene : Node3D
             var selected = _state.MajorTroops.Where(t => t.Faction == city.Owner)
                 .Select(t => t.TroopCode)
                 .ToHashSet(System.StringComparer.Ordinal);
-            foreach (var t in _troops.Where(t => t.Class != TroopClass.Naval).OrderBy(t => t.Code, System.StringComparer.Ordinal))
+            foreach (var t in MajorTroopOptions(city))
             {
                 var detail = selected.Contains(t.Code)
                     ? "이미 주력병종"
-                    : selected.Count >= 2 ? "선택 완료"
+                    : selected.Count >= 2 ? "선택 불가"
                     : "Lv.10 연구 가능";
                 list.Add((t.Name, ClassEmblem(t.Class), detail));
             }
@@ -5342,6 +5340,17 @@ public sealed partial class CampaignMapScene : Node3D
             .ThenBy(t => t.Code, System.StringComparer.Ordinal)
             .ToList();
 
+    private List<TroopTemplate> MajorTroopOptions(City city)
+    {
+        var selected = _state.MajorTroops.Where(t => t.Faction == city.Owner)
+            .Select(t => t.TroopCode)
+            .ToHashSet(System.StringComparer.Ordinal);
+        return _troops.Where(t => t.Class != TroopClass.Naval)
+            .OrderByDescending(t => selected.Contains(t.Code))
+            .ThenBy(t => t.Code, System.StringComparer.Ordinal)
+            .ToList();
+    }
+
     private string ResearchOptionDetail(City city, string troopCode)
     {
         var level = _state.ResearchOf(city.Owner, troopCode);
@@ -5394,9 +5403,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void ConfirmMajorTroops(CityId cityId)
     {
         var city = _state.Cities.First(c => c.Id == cityId);
-        var options = _troops.Where(t => t.Class != TroopClass.Naval)
-            .OrderBy(t => t.Code, System.StringComparer.Ordinal)
-            .ToList();
+        var options = MajorTroopOptions(city);
         var selected = _modalMultiParams.OrderBy(i => i)
             .Where(i => i >= 0 && i < options.Count)
             .Select(i => options[i].Code)
@@ -5543,6 +5550,14 @@ public sealed partial class CampaignMapScene : Node3D
             if (cmd.Kind == CommandKind.SelectMajorTroop)
             {
                 var city = _state.Cities.First(x => x.Id == _selected);
+                var options = MajorTroopOptions(city);
+                if (idx >= 0 && idx < options.Count
+                    && _state.MajorTroops.Any(t => t.Faction == city.Owner && t.TroopCode == options[idx].Code))
+                {
+                    ShowNotice("주력병종 선택", $"{TroopName(options[idx].Code)}은(는) 이미 주력병종입니다.");
+                    return;
+                }
+
                 var already = _state.MajorTroops.Count(t => t.Faction == city.Owner);
                 var remaining = System.Math.Max(0, 2 - already);
                 if (_modalMultiParams.Count >= remaining)
