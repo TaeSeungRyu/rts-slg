@@ -8,6 +8,7 @@ using SanguoSLG.Core.Spatial;
 /// <param name="Facility">건설·수리 시설 종류 또는 도시 계략 종류(CityStratagems.Kinds).</param>
 /// <param name="TroopCode">모집(모병·징병)·훈련의 병종 코드 — 2026-08-16 확정: 병종은 모집 시 지정.</param>
 /// <param name="TargetCity">도시 계략의 대상(적) 도시.</param>
+/// <param name="TargetFaction">외교 대상 세력.</param>
 public sealed record CommandRequest(
     CityId City,
     CommandKind Kind,
@@ -17,6 +18,7 @@ public sealed record CommandRequest(
     string Facility = "",
     string TroopCode = "",
     CityId? TargetCity = null,
+    FactionId? TargetFaction = null,
     bool TraineePool = false,
     GeneralId? TargetGeneral = null,
     Spatial.HexCoord? Plot = null,
@@ -160,8 +162,47 @@ public sealed class CommandService
             CommandKind.Repair => IssueRepair(state, city, req, assist),
             CommandKind.CityStratagem => IssueCityStratagem(state, city, req, assist),
             CommandKind.Enlist => IssueEnlist(state, city, req, assist, main),
+            CommandKind.FormAlliance => IssueFormAlliance(state, city, req, assist),
             _ => CommandResult.Fail("알 수 없는 명령이다.", state),
         };
+    }
+
+    private CommandResult IssueFormAlliance(GameState state, City city, CommandRequest req, General? assist)
+    {
+        if (req.TargetFaction is not { } targetFaction)
+        {
+            return CommandResult.Fail("동맹 대상 세력을 지정해야 한다.", state);
+        }
+
+        if (targetFaction == city.Owner)
+        {
+            return CommandResult.Fail("자기 세력과는 동맹을 맺을 수 없다.", state);
+        }
+
+        if (state.AreAllied(city.Owner, targetFaction))
+        {
+            return CommandResult.Fail("이미 동맹 중인 세력이다.", state);
+        }
+
+        if (city.Gold < _b.AllianceGoldCost)
+        {
+            return CommandResult.Fail($"동맹 비용 {_b.AllianceGoldCost}금이 필요하다.", state);
+        }
+
+        var targetCity = state.Cities
+            .Where(c => c.Owner == targetFaction)
+            .OrderBy(c => c.Position.Distance(city.Position))
+            .ThenBy(c => c.Id.Value)
+            .FirstOrDefault();
+        if (targetCity is null)
+        {
+            return CommandResult.Fail("대상 세력의 도시가 없다.", state);
+        }
+
+        var reservedCity = city with { Gold = city.Gold - _b.AllianceGoldCost };
+        var days = CityStratagems.Days(city.Position, targetCity.Position, _b);
+        return Register(state, reservedCity, req, assist, amount: _b.AllianceGoldCost, days,
+            CommandKind.FormAlliance, "", targetCity: targetCity.Id, targetFaction: targetFaction);
     }
 
     // 등용 발행: 대상 = 정찰된 적 성 주둔 장수 · 출전중 적 장수.
@@ -559,11 +600,12 @@ public sealed class CommandService
 
     private static CommandResult Register(GameState state, City reservedCity, CommandRequest req, General? assist,
         int amount, int days, CommandKind kind, string facility, string troopCode = "", CityId? targetCity = null,
-        GeneralId? targetGeneral = null, Spatial.HexCoord? plot = null)
+        GeneralId? targetGeneral = null, Spatial.HexCoord? plot = null, FactionId? targetFaction = null)
     {
         var cities = state.Cities.Select(c => c.Id == reservedCity.Id ? reservedCity : c).ToList();
         var command = new CityCommand(req.City, kind, req.Main, assist?.Id,
-            state.Day, state.Day + days, amount, facility, troopCode, targetCity, req.TraineePool, targetGeneral, plot);
+            state.Day, state.Day + days, amount, facility, troopCode, targetCity, req.TraineePool, targetGeneral, plot,
+            TargetFaction: targetFaction);
         var pending = state.Commands.Append(command).ToList();
         return CommandResult.Success(state with { Cities = cities, PendingCommands = pending });
     }

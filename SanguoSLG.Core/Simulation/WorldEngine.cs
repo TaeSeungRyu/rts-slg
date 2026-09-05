@@ -231,6 +231,7 @@ public sealed class WorldEngine
         var cities = state.Cities.ToDictionary(c => c.Id);
         var garrisons = state.Garrisons.ToList();
         var research = state.Research.ToList();
+        var alliances = state.Alliances.ToList();
         var generals = state.Generals.ToList();
         var intel = state.Intel.ToList();
         var postings = state.Assignments.ToList();
@@ -340,6 +341,9 @@ public sealed class WorldEngine
                 case CommandKind.Enlist:
                     ResolveEnlist(cmd, city, generals, postings, armies);
                     break;
+                case CommandKind.FormAlliance:
+                    ResolveFormAlliance(state, cmd, city, generals, alliances);
+                    break;
             }
 
             // 명령 완료 사건(표현 계층 보고용) — 모병·징병·훈련·건설·연구·수리만.
@@ -370,6 +374,9 @@ public sealed class WorldEngine
                 .ToList(),
             ResearchTracks = research
                 .OrderBy(r => r.Faction.Value).ThenBy(r => r.TroopCode, System.StringComparer.Ordinal)
+                .ToList(),
+            FactionAlliances = alliances
+                .OrderBy(a => a.A.Value).ThenBy(a => a.B.Value)
                 .ToList(),
             Generals = generals,
             ScoutedCities = intel
@@ -440,6 +447,40 @@ public sealed class WorldEngine
         var i = postings.FindIndex(p => p.General == g);
         var np = new Domain.GeneralPosting(g, faction, location);
         if (i >= 0) { postings[i] = np; } else { postings.Add(np); }
+    }
+
+    private void ResolveFormAlliance(GameState state, CityCommand cmd, City casterCity,
+        List<Domain.General> generals, List<Domain.FactionAlliance> alliances)
+    {
+        if (cmd.TargetFaction is not { } targetFaction || targetFaction == casterCity.Owner)
+        {
+            return;
+        }
+
+        if (state.AreAllied(casterCity.Owner, targetFaction))
+        {
+            return;
+        }
+
+        var envoy = generals.FirstOrDefault(g => g.Id == cmd.Main);
+        if (envoy is null)
+        {
+            return;
+        }
+
+        var success = _random.Next(0, 100) < DiplomacyRules.AllianceSuccessPercent(envoy.Politics);
+        var targetCode = targetFaction.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (success)
+        {
+            alliances.Add(Domain.FactionAlliance.Create(casterCity.Owner, targetFaction, state.Day));
+            _events.Add(new WorldEvent(WorldEventKind.AllianceSuccess, casterCity.Owner, cmd.Main, casterCity.Id,
+                cmd.Amount, targetCode));
+        }
+        else
+        {
+            _events.Add(new WorldEvent(WorldEventKind.AllianceFail, casterCity.Owner, cmd.Main, casterCity.Id,
+                cmd.Amount, targetCode));
+        }
     }
 
     // 도시 계략 정산(design-stratagem "수행 규칙"): 지력 확률 성공 판정(시드 난수) → 실패 = 무효.

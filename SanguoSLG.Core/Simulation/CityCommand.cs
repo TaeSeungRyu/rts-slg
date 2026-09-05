@@ -10,6 +10,7 @@ using SanguoSLG.Core.Domain;
 /// <param name="Amount">정산 시 적용할 산출량 — 모병·징병 병력, 훈련 상승량, 세율 값(건설은 0).</param>
 /// <param name="Facility">건설·수리 시설 종류 또는 도시 계략 종류, 그 외 빈 문자열.</param>
 /// <param name="TargetCity">도시 계략의 대상(적) 도시 — 그 외 명령은 null.</param>
+/// <param name="TargetFaction">외교 대상 세력 — 그 외 명령은 null.</param>
 public sealed record CityCommand(
     CityId City,
     CommandKind Kind,
@@ -24,7 +25,8 @@ public sealed record CityCommand(
     bool TraineePool = false,
     GeneralId? TargetGeneral = null,
     Spatial.HexCoord? Plot = null,
-    int SiteDamage = 0)
+    int SiteDamage = 0,
+    FactionId? TargetFaction = null)
 {
     /// <summary>이 명령에 이 장수가 매여 있는가(주관 또는 보좌).</summary>
     public bool Locks(GeneralId general) => Main == general || Assist == general;

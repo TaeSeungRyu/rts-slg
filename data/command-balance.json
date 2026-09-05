@@ -59,5 +59,6 @@
   "stratagem_wall_break_percent": 10,
   "stratagem_incite_security": 10,
   "stratagem_arson_percent": 20,
-  "stratagem_steal_percent": 20
+  "stratagem_steal_percent": 20,
+  "alliance_gold_cost": 300
 }

@@ -56,4 +56,7 @@ public enum CommandKind
 
     /// <summary>등용 — 정찰된 적 성 장수·출전중 적 장수를 정치 확률로 영입. 거리 비례 소요일.</summary>
     Enlist,
+
+    /// <summary>동맹 — 대상 세력에 사절을 보내 정치 확률로 동맹을 체결한다. 금 비용과 거리 비례 소요일.</summary>
+    FormAlliance,
 }

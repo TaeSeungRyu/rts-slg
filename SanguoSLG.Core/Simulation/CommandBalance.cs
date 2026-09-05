@@ -154,4 +154,7 @@ public sealed record CommandBalance
         var costPer100 = AutoRecruitGoldCostPer100(troopCode);
         return costPer100 <= 0 || troops <= 0 ? 0 : (troops * costPer100 + 99) / 100;
     }
+
+    /// <summary>동맹 체결 시 수행 도시 금고에서 즉시 소비되는 비용.</summary>
+    public int AllianceGoldCost { get; init; } = 300;
 }
