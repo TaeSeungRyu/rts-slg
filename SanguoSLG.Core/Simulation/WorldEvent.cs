@@ -22,7 +22,7 @@ public enum WorldEventKind
 /// <param name="Faction">이 사건의 주체(또는 피해) 세력 — 플레이어 필터에 쓴다.</param>
 /// <param name="General">관련 장수(수행·피해 대상 등). 없으면 null.</param>
 /// <param name="City">관련 도시. 없으면 null.</param>
-/// <param name="Amount">수치(병력·훈련 상승·충성 변화 등).</param>
+/// <param name="Amount">수치(병력·훈련 상승 등).</param>
 /// <param name="Code">병종/시설 코드 등 부가 식별자(없으면 빈 문자열).</param>
 public sealed record WorldEvent(
     WorldEventKind Kind,

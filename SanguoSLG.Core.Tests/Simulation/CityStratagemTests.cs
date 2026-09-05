@@ -26,9 +26,9 @@ public class CityStratagemTests
 
     private static CommandService Service() => new(B, Troops, Bal);
 
-    private static General Gen(int id, int intellect = 80, int loyalty = 100) => new(
+    private static General Gen(int id, int intellect = 80) => new(
         new GeneralId(id), $"g{id}", new Dictionary<TroopClass, AptitudeGrade>(),
-        Might: 50, Intellect: intellect, Politics: 50, Loyalty: loyalty);
+        Might: 50, Intellect: intellect, Politics: 50);
 
     private static City Mine(int gold = 2000) =>
         new(new CityId(1), "아군성", new HexCoord(0, 0), new FactionId(1), 3000, CastleSize.Medium, Gold: gold);
@@ -157,7 +157,7 @@ public class CityStratagemTests
     public void 발행_이간은_도시계략에서_제거되어_거부된다()
     {
         var s = State([Mine(), Enemy()],
-            [Gen(1), Gen(10, loyalty: 150), Gen(11, loyalty: 90)],
+            [Gen(1), Gen(10), Gen(11)],
             postings:
             [
                 new GeneralPosting(new GeneralId(1), new FactionId(1), new CityId(1)), // 수행 장수 주둔

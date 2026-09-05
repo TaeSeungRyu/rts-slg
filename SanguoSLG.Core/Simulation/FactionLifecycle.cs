@@ -3,24 +3,14 @@ namespace SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Domain;
 
 /// <summary>
-/// 세력·장수 라이프사이클 전이(design-general-lifecycle §2·3). 충성 증감, 포로 전환, 세력 소멸을
-/// 순수 함수로 모은다 — 함락(10d)·충성 운영·등용이 공통으로 쓴다. 결정론: 순수 계산, 난수 미사용
-/// (확률 판정은 호출부가 시드 난수로 하고 결과만 여기 넘긴다).
+/// 세력·장수 라이프사이클 전이. 포로 전환과 세력 소멸을 순수 함수로 모은다.
+/// 결정론: 순수 계산, 난수 미사용(확률 판정은 호출부가 시드 난수로 하고 결과만 여기 넘긴다).
 /// </summary>
 public static class FactionLifecycle
 {
-    /// <summary>충성도 증감(스칼라, 하한 0 — 상한 없음: 시작값 &gt;100 완충 보존). roster General을 교체한다.</summary>
-    public static GameState AdjustLoyalty(GameState state, GeneralId general, int delta)
-    {
-        var generals = state.Generals
-            .Select(g => g.Id == general ? g with { Loyalty = System.Math.Max(0, g.Loyalty + delta) } : g)
-            .ToList();
-        return state with { Generals = generals };
-    }
-
     /// <summary>
     /// 장수를 <paramref name="holder"/> 세력의 포로로 만든다 — 기존 배속 해제 + 포로 목록 등록
-    /// (같은 장수 중복 방지). <paramref name="origin"/>은 원 세력(포로교환·소멸 처리 기준).
+    /// (같은 장수 중복 방지). <paramref name="origin"/>은 원 세력.
     /// </summary>
     public static GameState MakePrisoner(GameState state, GeneralId general, FactionId holder, FactionId origin)
     {

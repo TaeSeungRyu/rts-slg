@@ -40,7 +40,7 @@ public sealed record GameState(
     /// <summary>장수 배속(소속 세력·주둔 도시).</summary>
     public IReadOnlyList<GeneralPosting> Assignments => Postings ?? [];
 
-    /// <summary>포로 목록(억류 세력·원 세력). 함락·등용 실패로 생긴다(design-general-lifecycle §2).</summary>
+    /// <summary>포로 목록(억류 세력·원 세력). 함락 정산에서 쓰는 임시 상태.</summary>
     public IReadOnlyList<Prisoner> Prisoners => Captives ?? [];
 
     /// <summary>이 장수가 어느 세력의 포로인가(아니면 null).</summary>
@@ -53,10 +53,6 @@ public sealed record GameState(
 
     /// <summary>이 세력이 소유한 도시 수(0이면 세력 소멸 대상 — design-general-lifecycle §3).</summary>
     public int CityCount(FactionId faction) => Cities.Count(c => c.Owner == faction);
-
-    /// <summary>이 장수의 현재 충성도(재야·포로 포함 — roster 값을 그대로 읽는다).</summary>
-    public int LoyaltyOf(GeneralId general)
-        => Generals.FirstOrDefault(g => g.Id == general)?.Loyalty ?? 0;
 
     /// <summary>세력 병종 연구 트랙(design-combat "병종 연구").</summary>
     public IReadOnlyList<FactionResearch> Research => ResearchTracks ?? [];

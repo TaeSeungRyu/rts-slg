@@ -20,9 +20,9 @@ public class EnlistTests
     private static CommandService Svc() => new(B, Troops, Bal);
     private static WorldEngine World(int seed) => new(Bal, B, random: new SeededRandomSource(seed));
 
-    private static General Gen(int id, int faction_unused, int politics = 50, int loyalty = 100) => new(
+    private static General Gen(int id, int faction_unused, int politics = 50) => new(
         new GeneralId(id), $"g{id}", new Dictionary<TroopClass, AptitudeGrade>(),
-        Might: 50, Intellect: 50, Politics: politics, Loyalty: loyalty);
+        Might: 50, Intellect: 50, Politics: politics);
 
     private static City City(int id, int owner, int q = 0) =>
         new(new CityId(id), $"c{id}", new HexCoord(q, 0), new FactionId(owner), 1000, CastleSize.Medium, Gold: 1000);
