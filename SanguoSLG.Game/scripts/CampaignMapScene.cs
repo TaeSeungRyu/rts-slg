@@ -348,7 +348,9 @@ public sealed partial class CampaignMapScene : Node3D
         ("연구", new[] { 5, 6 }),
         ("성벽", new[] { 7, 8 }),
         ("계략", new[] { 9 }),
-        ("담당자", new[] { 12, 13, 14, 15 }),
+        ("외교", new[] { 10, 11 }),
+        ("임명", new[] { 12, 13 }),
+        ("담당자", new[] { 14, 15, 16, 17 }),
     };
 
     private static readonly Sym[] CmdIcons = { Sym.Sword, Sym.Coin, Sym.Book, Sym.Wall, Sym.Scroll };
