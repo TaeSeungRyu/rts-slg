@@ -3,6 +3,7 @@ namespace SanguoSLG.Core.Tests.Simulation;
 using System.Collections.Generic;
 using System.Linq;
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 using Xunit;
@@ -18,6 +19,12 @@ public class DiplomacyTests
 
     private static readonly CommandBalance B = new() { AllianceGoldCost = 300 };
     private static readonly BalanceConfig Bal = new(MonthlyTaxPerCity: 0);
+    private static readonly IReadOnlyList<TroopTemplate> Troops =
+        new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory());
+    private static readonly IReadOnlyList<ActiveSkill> Actives =
+        new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory());
+    private static readonly IReadOnlyList<PassiveSkill> Passives =
+        new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory());
 
     private static General Gen(int id, int politics = 80) => new(
         new GeneralId(id), $"g{id}", new Dictionary<TroopClass, AptitudeGrade>(),
@@ -81,5 +88,27 @@ public class DiplomacyTests
 
         Assert.False(done.AreAllied(new FactionId(1), new FactionId(2)));
         Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.AllianceFail && e.Code == "2");
+    }
+
+    [Fact]
+    public void 동맹파기는_즉시_동맹을_해제하고_공격을_다시_허용한다()
+    {
+        var s = new GameState(1, 1, new List<Faction>(),
+            new List<City> { City(1, 1, 0), City(2, 2, 3) },
+            new List<General> { Gen(1) },
+            Postings: new List<GeneralPosting> { At(1, 1, 1) },
+            GarrisonForces: new List<GarrisonForce> { new(new CityId(1), "swordsman", 10000, 60) },
+            FactionAlliances: new List<FactionAlliance> { FactionAlliance.Create(new FactionId(1), new FactionId(2), 1) });
+
+        var broken = new CommandService(B).Issue(s,
+            new CommandRequest(new CityId(1), CommandKind.BreakAlliance, new GeneralId(1), TargetFaction: new FactionId(2)));
+
+        Assert.True(broken.Ok, broken.Error);
+        Assert.False(broken.State.AreAllied(new FactionId(1), new FactionId(2)));
+
+        var deploy = new DeployService(B, Troops, Actives, Passives).Deploy(broken.State,
+            new DeployRequest(new CityId(1), "swordsman", 5000, new GeneralId(1),
+                Mode: UnitMode.Attack, Target: new HexCoord(3, 0)));
+        Assert.True(deploy.Ok, deploy.Error);
     }
 }

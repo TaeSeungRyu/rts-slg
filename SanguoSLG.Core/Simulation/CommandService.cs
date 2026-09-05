@@ -163,8 +163,30 @@ public sealed class CommandService
             CommandKind.CityStratagem => IssueCityStratagem(state, city, req, assist),
             CommandKind.Enlist => IssueEnlist(state, city, req, assist, main),
             CommandKind.FormAlliance => IssueFormAlliance(state, city, req, assist),
+            CommandKind.BreakAlliance => IssueBreakAlliance(state, city, req),
             _ => CommandResult.Fail("알 수 없는 명령이다.", state),
         };
+    }
+
+    private static CommandResult IssueBreakAlliance(GameState state, City city, CommandRequest req)
+    {
+        if (req.TargetFaction is not { } targetFaction)
+        {
+            return CommandResult.Fail("동맹파기 대상 세력을 지정해야 한다.", state);
+        }
+
+        if (targetFaction == city.Owner)
+        {
+            return CommandResult.Fail("자기 세력과의 동맹은 파기할 수 없다.", state);
+        }
+
+        if (!state.AreAllied(city.Owner, targetFaction))
+        {
+            return CommandResult.Fail("동맹 중인 세력이 아니다.", state);
+        }
+
+        var alliances = state.Alliances.Where(a => !a.Matches(city.Owner, targetFaction)).ToList();
+        return CommandResult.Success(state with { FactionAlliances = alliances });
     }
 
     private CommandResult IssueFormAlliance(GameState state, City city, CommandRequest req, General? assist)
