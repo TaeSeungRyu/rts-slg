@@ -338,8 +338,7 @@ public class WorldEngineTests
         OreOutputPerMonth: 0,
         HorsesOutputPerMonth: 0,
         ElephantsOutputPerMonth: 0,
-        SecurityNaturalRecovery: 0,
-        GeneralSalaryPerMonth: 0);
+        SecurityNaturalRecovery: 0);
 
     private static General V2Officer(int id, int might = 50, int politics = 50) => new(
         new GeneralId(id), $"담당{id}", new Dictionary<TroopClass, AptitudeGrade>(),

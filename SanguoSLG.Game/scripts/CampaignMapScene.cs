@@ -1696,7 +1696,7 @@ public sealed partial class CampaignMapScene : Node3D
                 GoldBright);
         }
 
-        // 내정/라이프사이클 사건(Core WorldEvent) — 내 세력만. 명령 완료 수치·이간·배신.
+        // 내정/라이프사이클 사건(Core WorldEvent) — 내 세력만. 명령 완료 수치.
         foreach (var we in _engine.LastWorldEvents.Where(e => e.Faction == Player))
         {
             var gName = we.General is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid)?.Name ?? "장수" : "";
@@ -1710,7 +1710,6 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.Build => ($"[내정] {cName}에 {FacilityLabel(we.Code)} 건설을 마쳤습니다.", Parchment),
                 WorldEventKind.Research => ($"[군비] {cName}에서 연구를 마쳤습니다.", Parchment),
                 WorldEventKind.Repair => ($"[내정] {cName} 수리를 마쳤습니다.", Parchment),
-                WorldEventKind.Betray => ($"[인사] {gName} 장수가 세력을 등지고 떠났습니다.", AccentFill),
                 WorldEventKind.EnlistSuccess => ($"[인사] 등용 성공! {gName} 장수가 우리 세력에 합류했습니다.", GoldBright),
                 WorldEventKind.EnlistFail => ($"[인사] {gName} 장수 등용에 실패했습니다.", Parchment),
                 WorldEventKind.EnlistCaptured => ($"[인사] 등용 실패 — {gName} 장수가 적에게 붙잡혔습니다.", AccentFill),
