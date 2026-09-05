@@ -175,7 +175,6 @@ public sealed partial class CampaignMapScene : Node3D
 
     // 출전 대기열 — "진행" 시 일괄 시작(즉시 실행 아님).
     private readonly List<(DeployRequest Req, string Label)> _pendingDeploys = new();
-    private readonly List<(CityId City, GeneralId Target, string Label)> _pendingRewards = new(); // 포상 예약(진행 시 수행·취소 가능)
 
     // 출전 모달(허브=예약 목록 / 편성 화면) + 수량/미리보기.
     private CityId _depModalCity;
@@ -341,7 +340,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("방화", "arson"), ("절취", "steal"),
     };
 
-    // v2 명령 카테고리. 반복 내정(모병·징병·세율·시장·건설·등용·포상)은 팔레트에서 숨긴다.
+    // v2 명령 카테고리. 반복 내정(모병·징병·세율·시장·건설·등용)은 팔레트에서 숨긴다.
     private static readonly (string Group, int[] Indices)[] CmdGroups =
     {
         ("연구", new[] { 5, 6 }),
@@ -1637,8 +1636,6 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _pendingDeploys.Clear();
-
-        _pendingRewards.Clear();
 
         // 플레이어 세력은 직접 조작 — AI는 나머지 세력만 굴린다.
         foreach (var f in _state.Factions.Where(f => f.Id != Player).OrderBy(f => f.Id.Value))
@@ -3944,76 +3941,6 @@ public sealed partial class CampaignMapScene : Node3D
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
-    // ── 포상 모달: 그 성 주둔 소속 장수 목록에서 포상(금 100 → 충성 급상승). 충성은 숨김이라 금액만. ──
-    private void OpenRewardModal(CityId cityId)
-    {
-        if (_advancing) { return; }
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
-        var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.42f, 420f, 600f);
-        var mh = Mathf.Clamp(vp.Y * 0.8f, 340f, 700f);
-        var box = DeployScaffold(mw, out var scroll, out var panel);
-        var city = _state.Cities.First(c => c.Id == cityId);
-
-        var titleRow = new HBoxContainer();
-        box.AddChild(titleRow);
-        var title = MakeLabel($"《 {city.Name} 》 포상 · 보유 금 {city.Gold}", 16, Gold);
-        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        title.MouseFilter = Control.MouseFilterEnum.Ignore;
-        titleRow.AddChild(title);
-        var close = MakeButton("✕");
-        close.CustomMinimumSize = new Vector2(40, 30);
-        close.Pressed += CloseModal;
-        titleRow.AddChild(close);
-        box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("주둔 소속 장수에게 포상(100금) 예약 — 진행 시 수행, 그 전까진 취소 가능.", 12, Parchment));
-
-        const int rewardCost = 100;
-        var stationed = _state.GeneralsAt(cityId).OrderBy(x => x.Value)
-            .Select(id => _state.Generals.First(x => x.Id == id)).ToList();
-        if (stationed.Count == 0) { box.AddChild(MakeLabel("(주둔 장수 없음)", 12, Parchment)); }
-        foreach (var gen in stationed)
-        {
-            var g = gen;
-            var reserved = _pendingRewards.Any(r => r.City == cityId && r.Target == g.Id);
-            var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 8);
-            var lbl = MakeLabel($"· {g.Name}  무{g.Might} 지{g.Intellect} 정{g.Politics}{(reserved ? "  (예약됨)" : "")}", 13,
-                reserved ? GoldBright : Parchment);
-            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            row.AddChild(lbl);
-            var give = MakeButton(reserved ? "취소" : $"포상 ({rewardCost}금)", accent: !reserved);
-            give.CustomMinimumSize = new Vector2(110, 26);
-            give.Pressed += () =>
-            {
-                if (reserved)
-                {
-                    _pendingRewards.RemoveAll(r => r.City == cityId && r.Target == g.Id);
-                    _log.Text = $"포상 예약 취소: {g.Name}";
-                    Dbg($"UI reward-unreserve city={cityId.Value} gen={g.Id.Value}");
-                    SelectCity(cityId);
-                    OpenRewardModal(cityId);
-                    return;
-                }
-
-                ShowConfirm("포상 예약", $"{g.Name}에게 포상 ({rewardCost}금)\n진행 시 수행됩니다. 예약하시겠습니까?", () =>
-                {
-                    _pendingRewards.Add((cityId, g.Id, $"{g.Name} 포상"));
-                    _log.Text = $"포상 예약: {g.Name} (진행 시 수행)";
-                    Dbg($"UI reward-reserve city={cityId.Value} gen={g.Id.Value}");
-                    SelectCity(cityId);
-                    OpenRewardModal(cityId);
-                });
-            };
-            row.AddChild(give);
-            box.AddChild(row);
-        }
-
-        var contentH = box.GetCombinedMinimumSize().Y;
-        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
-        CenterAndDrag(panel, titleRow, mw, mh, box);
-    }
-
     // ── 시스템 팔레트: 좌상단 트레이(☰)에서 열림 — 전체 장수·도시·보물 목록(+저장/불러오기) ──
     private void OpenSystemPalette()
     {
@@ -4094,7 +4021,6 @@ public sealed partial class CampaignMapScene : Node3D
 
         _state = loaded;
         _pendingDeploys.Clear();
-        _pendingRewards.Clear();
         _selected = null;
         _selectedUnitId = -1;
         _week = System.Math.Max(0, (_state.Day - 1) / 7);
@@ -4300,7 +4226,7 @@ public sealed partial class CampaignMapScene : Node3D
         var mw = Mathf.Clamp(vp.X * 0.34f, 340f, 460f);
         var mh = Mathf.Clamp(vp.Y * 0.5f, 220f, 420f);
         var box = SystemView("보물 목록", mw, out var scroll, out var panel, out var titleRow);
-        box.AddChild(MakeLabel("보물 시스템은 준비 중입니다.\n탐색으로 얻은 보물을 여기서 확인하고,\n포상·능력 강화에 사용하게 됩니다.", 13, Parchment));
+        box.AddChild(MakeLabel("보물 시스템은 준비 중입니다.\n탐색으로 얻은 보물을 여기서 확인하고,\n능력 강화에 사용하게 됩니다.", 13, Parchment));
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);

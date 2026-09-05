@@ -49,7 +49,7 @@ public sealed class CommandService
         _troops = (troops ?? []).ToDictionary(t => t.Code);
         _balance = economy; // 성벽 수리(연구 최대치 산출)에 필요 — 없으면 성벽 수리 불가
         _adminSkills = (adminSkills ?? []).ToDictionary(a => a.Code);
-        _random = random ?? new SeededRandomSource(0); // 포상 상승폭 등 즉시 명령의 소소한 난수(시드 — 결정론)
+        _random = random ?? new SeededRandomSource(0);
     }
 
     /// <summary>
@@ -636,44 +636,6 @@ public sealed class CommandService
         };
         var cities = state.Cities.Select(c => c.Id == cityId ? bought : c).ToList();
         return CommandResult.Success(state with { Cities = cities });
-    }
-
-    /// <summary>
-    /// 포상(design-general-lifecycle §1). 즉시 실행 — 성 금고에서 포상 비용을 써 그 도시 주둔 소속
-    /// 장수의 충성을 급히 끌어올린다(+RewardLoyaltyGain, **상한 100**). 급여 회복(+1~2/월)보다 빠른
-    /// 응급 수단 — 이간·미지급으로 흔들린 장수를 배신 전에 붙잡는다. 충성 100 이상(완충)은 효과 없음.
-    /// </summary>
-    public CommandResult Reward(GameState state, CityId cityId, GeneralId target)
-    {
-        if (_balance is null)
-        {
-            return CommandResult.Fail("포상에는 경제 설정이 필요하다.", state);
-        }
-
-        var city = state.Cities.FirstOrDefault(c => c.Id == cityId);
-        if (city is null)
-        {
-            return CommandResult.Fail("도시를 찾을 수 없다.", state);
-        }
-
-        if (!state.GeneralsAt(cityId).Contains(target)
-            || state.PostingOf(target)?.Faction != city.Owner)
-        {
-            return CommandResult.Fail("이 도시에 주둔한 소속 장수만 포상할 수 있다.", state);
-        }
-
-        var cost = _balance.RewardGoldCost;
-        if (city.Gold < cost)
-        {
-            return CommandResult.Fail("금이 부족하다.", state);
-        }
-
-        var gain = _random.Next(_balance.RewardLoyaltyGainMin, _balance.RewardLoyaltyGainMax + 1);
-        var cities = state.Cities.Select(c => c.Id == cityId ? c.AddGold(-cost) : c).ToList();
-        var generals = state.Generals.Select(g => g.Id == target && g.Loyalty < 100
-            ? g with { Loyalty = System.Math.Min(100, g.Loyalty + gain) }
-            : g).ToList();
-        return CommandResult.Success(state with { Cities = cities, Generals = generals });
     }
 
     /// <summary>

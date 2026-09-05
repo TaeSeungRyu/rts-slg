@@ -113,9 +113,6 @@ internal sealed class BalanceDto
     public int LoyaltyUnpaidDropMax { get; init; } = 2;
     public int LoyaltyPaidRecoverMin { get; init; } = 1;
     public int LoyaltyPaidRecoverMax { get; init; } = 2;
-    public int RewardGoldCost { get; init; } = 100;
-    public int RewardLoyaltyGainMin { get; init; } = 5;
-    public int RewardLoyaltyGainMax { get; init; } = 10;
 }
 
 internal sealed class MapDto
