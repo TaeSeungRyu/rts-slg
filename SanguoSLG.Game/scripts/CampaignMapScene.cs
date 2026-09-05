@@ -5968,7 +5968,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var strategist = cityData.Strategist is { } sid ? _state.Generals.FirstOrDefault(g => g.Id == sid) : null;
                 var prediction = strategist is null
                     ? "군사 없음 → 성공 여부 예측 불가"
-                    : $"군사 {strategist.Name} 예측: 성공률 {odds}% 판단 · 예측 신뢰도 {strategist.Intellect}%";
+                    : $"군사 {strategist.Name} 예측: {(DiplomacyRules.AdvisorPredictsSuccess(odds, strategist.Intellect, new SeededRandomSource(_state.Day + actor.Id.Value * 31 + tf.Value * 17)) ? "성공할 듯합니다" : "실패할 듯합니다")} · 예측 신뢰도 {strategist.Intellect}%";
                 extra = $"\n대상 {targetFactionName}"
                     + $"\n비용 {_cb.AllianceGoldCost}금 · 소요 {days}일"
                     + $"\n동맹 성공 확률 {odds}%"

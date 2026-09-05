@@ -111,4 +111,12 @@ public class DiplomacyTests
                 Mode: UnitMode.Attack, Target: new HexCoord(3, 0)));
         Assert.True(deploy.Ok, deploy.Error);
     }
+
+    [Fact]
+    public void 군사_예측은_지력_확률로_성공여부를_맞춘다()
+    {
+        Assert.True(DiplomacyRules.AdvisorPredictsSuccess(95, 100, new FixedRandom(99)));
+        Assert.True(DiplomacyRules.AdvisorPredictsSuccess(95, 70, new FixedRandom(69)));
+        Assert.False(DiplomacyRules.AdvisorPredictsSuccess(95, 70, new FixedRandom(70)));
+    }
 }
