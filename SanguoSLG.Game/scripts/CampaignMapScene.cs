@@ -315,6 +315,8 @@ public sealed partial class CampaignMapScene : Node3D
         ("성벽 수리", CommandKind.Repair, "wall"),
         ("시설 수리", CommandKind.Repair, "repairable"),
         ("도시 계략", CommandKind.CityStratagem, "stratagem"),
+        ("동맹", CommandKind.FormAlliance, "faction"),
+        ("동맹파기", CommandKind.BreakAlliance, "faction"),
         ("태수 임명", CommandKind.AppointGovernor, ""),
         ("군사 임명", CommandKind.AppointStrategist, ""),
         ("치안 담당", CommandKind.AppointSecurityOfficer, ""),
@@ -1702,6 +1704,9 @@ public sealed partial class CampaignMapScene : Node3D
             var gName = we.General is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid)?.Name ?? "장수" : "";
             var cName = we.City is { } cid ? _cities.FirstOrDefault(c => c.Id == cid)?.Name ?? "성" : "";
             var troop = we.Code.Length > 0 ? TroopName(we.Code) : "";
+            var targetFaction = int.TryParse(we.Code, out var factionId)
+                ? _state.Factions.FirstOrDefault(f => f.Id == new FactionId(factionId))?.Name ?? $"세력 {factionId}"
+                : "";
             var (text, col) = we.Kind switch
             {
                 WorldEventKind.Recruit => ("", Parchment),
@@ -1712,6 +1717,8 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.Repair => ($"[내정] {cName} 수리를 마쳤습니다.", Parchment),
                 WorldEventKind.EnlistSuccess => ($"[인사] 등용 성공! {gName} 장수가 우리 세력에 합류했습니다.", GoldBright),
                 WorldEventKind.EnlistFail => ($"[인사] {gName} 장수 등용에 실패했습니다.", Parchment),
+                WorldEventKind.AllianceSuccess => ($"[외교] {targetFaction} 세력과 동맹을 맺었습니다.", GoldBright),
+                WorldEventKind.AllianceFail => ($"[외교] {targetFaction} 세력과의 동맹 교섭에 실패했습니다.", Parchment),
                 _ => ("", Parchment),
             };
             if (text.Length > 0) { Ev(text, col); }
@@ -2801,6 +2808,14 @@ public sealed partial class CampaignMapScene : Node3D
         else if (cmd.Kind == CommandKind.SelectMajorTroop)
         {
             box.AddChild(MakeLabel("주력병종은 세력을 대표하는 병종입니다. 최대 2개까지 선택 가능하며, 한 번 적용하면 철회할 수 없습니다.", 15, Parchment));
+        }
+        else if (cmd.Kind == CommandKind.FormAlliance)
+        {
+            box.AddChild(MakeLabel($"대상 세력에 사절을 보내 동맹을 제안합니다. 비용 {_cb.AllianceGoldCost}금, 성공 확률은 수행 장수 정치로 정합니다.", 15, Parchment));
+        }
+        else if (cmd.Kind == CommandKind.BreakAlliance)
+        {
+            box.AddChild(MakeLabel("대상 세력과의 동맹을 즉시 파기합니다. 파기 후에는 다시 공격 대상이 될 수 있습니다.", 15, Parchment));
         }
 
         box.AddChild(GoldRule());
@@ -5165,6 +5180,20 @@ public sealed partial class CampaignMapScene : Node3D
 
         switch (cmd.Param)
         {
+            case "faction":
+                foreach (var faction in _state.Factions.Where(f => f.Id != city.Owner).OrderBy(f => f.Id.Value))
+                {
+                    var targetCity = _state.Cities.Where(c => c.Owner == faction.Id)
+                        .OrderBy(c => c.Position.Distance(city.Position))
+                        .ThenBy(c => c.Id.Value)
+                        .FirstOrDefault();
+                    var relation = _state.AreAllied(city.Owner, faction.Id) ? "동맹 중" : "외교 가능";
+                    var distance = targetCity is null ? "도시 없음"
+                        : $"거리 {city.Position.Distance(targetCity.Position)}칸 · {CityStratagems.Days(city.Position, targetCity.Position, _cb)}일";
+                    list.Add((faction.Name, Icon(Sym.Scroll), $"{relation}\n{distance}"));
+                }
+
+                break;
             case "troop":
                 foreach (var t in _troops)
                 {
@@ -5807,6 +5836,20 @@ public sealed partial class CampaignMapScene : Node3D
             "garrison" => GarrisonAt(city, p)?.TroopCode ?? "",
             _ => "",
         };
+        FactionId? targetFaction = null;
+        if (cmd.Param == "faction")
+        {
+            var factions = _state.Factions.Where(f => f.Id != _state.Cities.First(c => c.Id == city).Owner)
+                .OrderBy(f => f.Id.Value)
+                .ToList();
+            if (p < 0 || p >= factions.Count)
+            {
+                ShowNotice("외교 실패", "대상 세력을 선택해야 합니다.");
+                return;
+            }
+
+            targetFaction = factions[p].Id;
+        }
         if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
         {
             var autoOptions = AutoRecruitTroopOptions();
@@ -5909,6 +5952,34 @@ public sealed partial class CampaignMapScene : Node3D
             extra = $"\n대상 {enemy.Name} · 소요 {days}일 · 성공률 {CityStratagems.SuccessPercent(caster.Intellect, defInt)}%";
         }
 
+        if ((cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance) && targetFaction is { } tf)
+        {
+            var cityData = _state.Cities.First(c => c.Id == city);
+            var targetFactionName = _state.Factions.FirstOrDefault(f => f.Id == tf)?.Name ?? $"세력 {tf.Value}";
+            var targetCity = _state.Cities.Where(c => c.Owner == tf)
+                .OrderBy(c => c.Position.Distance(cityData.Position))
+                .ThenBy(c => c.Id.Value)
+                .FirstOrDefault();
+            var actor = _state.Generals.First(g => g.Id == general);
+            if (cmd.Kind == CommandKind.FormAlliance)
+            {
+                var days = targetCity is null ? _cb.CommandDays : CityStratagems.Days(cityData.Position, targetCity.Position, _cb);
+                var odds = DiplomacyRules.AllianceSuccessPercent(actor.Politics);
+                var strategist = cityData.Strategist is { } sid ? _state.Generals.FirstOrDefault(g => g.Id == sid) : null;
+                var prediction = strategist is null
+                    ? "군사 없음 → 성공 여부 예측 불가"
+                    : $"군사 {strategist.Name} 예측: 성공률 {odds}% 판단 · 예측 신뢰도 {strategist.Intellect}%";
+                extra = $"\n대상 {targetFactionName}"
+                    + $"\n비용 {_cb.AllianceGoldCost}금 · 소요 {days}일"
+                    + $"\n동맹 성공 확률 {odds}%"
+                    + $"\n{prediction}";
+            }
+            else
+            {
+                extra = $"\n대상 {targetFactionName}\n즉시 동맹을 파기합니다.";
+            }
+        }
+
         if (cmd.Kind == CommandKind.Build)
         {
             var c = _state.Cities.First(x => x.Id == city);
@@ -5968,7 +6039,7 @@ public sealed partial class CampaignMapScene : Node3D
                 && (current.City != city || current.Kind != cmd.Kind)
             : false;
         var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility,
-            TroopCode: troopCode, TargetCity: target, TraineePool: traineePool, Plot: plot,
+            TroopCode: troopCode, TargetCity: target, TargetFaction: targetFaction, TraineePool: traineePool, Plot: plot,
             ReplaceOfficerAssignment: replacingOfficer);
         var gName = _state.Generals.First(g => g.Id == general).Name;
         var pLabel = cmd.Param switch
@@ -5979,6 +6050,7 @@ public sealed partial class CampaignMapScene : Node3D
             "facility" => $" · {Facilities[p].Label}",
             "repairable" => $" · {Repairables[p].Label}",
             "stratagem" => $" · {Strats[p].Label}",
+            "faction" => targetFaction is { } diplomTarget ? $" · {_state.Factions.FirstOrDefault(f => f.Id == diplomTarget)?.Name ?? $"세력 {diplomTarget.Value}"}" : "",
             _ => "",
         };
         if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
@@ -5997,7 +6069,11 @@ public sealed partial class CampaignMapScene : Node3D
                 Dbg($"UI issue {cmd.Label}{pLabel} city={city.Value} gen={general.Value} ok={r.Ok} err={r.Error ?? "-"}");
                 if (r.Ok) { _state = r.State; }
                 _log.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
-                if (r.Ok) { Report($"[내정] {_state.Cities.First(c => c.Id == city).Name}에서 {gName} 장수가 {cmd.Label}{pLabel}을(를) 맡았습니다.", Parchment); }
+                if (r.Ok)
+                {
+                    var category = cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance ? "외교" : "내정";
+                    Report($"[{category}] {_state.Cities.First(c => c.Id == city).Name}에서 {gName} 장수가 {cmd.Label}{pLabel}을(를) 맡았습니다.", Parchment);
+                }
                 else { ShowNotice("명령 실패", r.Error ?? "조건에 맞지 않아 실행할 수 없습니다."); }
                 CloseModal();
                 SelectCity(city);
