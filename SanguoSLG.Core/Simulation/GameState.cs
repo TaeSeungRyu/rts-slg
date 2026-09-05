@@ -21,6 +21,7 @@ public sealed record GameState(
     IReadOnlyList<Prisoner>? Captives = null,
     IReadOnlyList<FactionResearch>? ResearchTracks = null,
     IReadOnlyList<FactionMajorTroop>? MajorTroopSelections = null,
+    IReadOnlyList<FactionAlliance>? FactionAlliances = null,
     IReadOnlyList<CityIntel>? ScoutedCities = null,
     int MarketPricePercent = 100,
     IReadOnlyList<FacilityPlacement>? FacilityPlacements = null)
@@ -59,6 +60,12 @@ public sealed record GameState(
 
     /// <summary>세력 대표 병종 목록. 세력당 최대 2개, 철회 불가.</summary>
     public IReadOnlyList<FactionMajorTroop> MajorTroops => MajorTroopSelections ?? [];
+
+    /// <summary>현재 동맹 목록. 동맹은 세력쌍 단위로 저장한다.</summary>
+    public IReadOnlyList<FactionAlliance> Alliances => FactionAlliances ?? [];
+
+    public bool AreAllied(FactionId left, FactionId right)
+        => left != right && Alliances.Any(a => a.Matches(left, right) && a.ActiveOn(Day));
 
     /// <summary>이 세력의 그 병종 연구 단계(없으면 0 = 미연구).</summary>
     public int ResearchOf(FactionId faction, string troopCode)

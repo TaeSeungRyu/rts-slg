@@ -111,6 +111,15 @@ public sealed class DeployService
             return CommandResult.Fail(error, state);
         }
 
+        if (req.Mode == UnitMode.Attack && req.Target is { } target)
+        {
+            var targetCity = state.Cities.FirstOrDefault(c => c.Position == target);
+            if (targetCity is not null && state.AreAllied(city.Owner, targetCity.Owner))
+            {
+                return CommandResult.Fail("동맹 세력의 성은 공격할 수 없다.", state);
+            }
+        }
+
         // 군량 휴대: 요청량(일수 슬라이더 → 병력 비례 환산; 음수면 상한까지 자동)과 적재 상한(한 달치
         // × 병력 비례), 성 비축 중 가장 작은 쪽.
         var capacity = template.ProvisionsCapacity * troops / 10000;

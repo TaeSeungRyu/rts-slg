@@ -35,9 +35,11 @@ public class DeployServiceTests
 
     private static GameState State(
         IEnumerable<City> cities, IEnumerable<General> generals,
-        IEnumerable<GarrisonForce>? garrisons = null, IEnumerable<GeneralPosting>? postings = null) =>
+        IEnumerable<GarrisonForce>? garrisons = null, IEnumerable<GeneralPosting>? postings = null,
+        IEnumerable<FactionAlliance>? alliances = null) =>
         new(1, 1, new List<Faction>(), cities.ToList(), generals.ToList(),
-            Postings: postings?.ToList(), GarrisonForces: garrisons?.ToList());
+            Postings: postings?.ToList(), GarrisonForces: garrisons?.ToList(),
+            FactionAlliances: alliances?.ToList());
 
     private static GeneralPosting At(int general, int city) =>
         new(new GeneralId(general), new FactionId(1), new CityId(city));
@@ -101,6 +103,23 @@ public class DeployServiceTests
         Assert.Equal(4700, r.State.Cities.Single().Provisions);
         Assert.Empty(r.State.Garrisons);
         Assert.Null(r.State.PostingOf(new GeneralId(1))!.Location);
+    }
+
+    [Fact]
+    public void 출전_동맹_세력의_성은_공격할수없다()
+    {
+        var mine = Town(1, new HexCoord(2, 0), provisions: 5000);
+        var ally = new City(new CityId(2), "ally", new HexCoord(6, 0), new FactionId(2), 3000);
+        var s0 = State([mine, ally], [Gen(1)],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 10000, 60)],
+            postings: [At(1, 1)],
+            alliances: [FactionAlliance.Create(new FactionId(1), new FactionId(2), startDay: 1)]);
+
+        var r = Service().Deploy(s0, new DeployRequest(new CityId(1), "swordsman", 10000, new GeneralId(1),
+            Mode: UnitMode.Attack, Target: ally.Position));
+
+        Assert.False(r.Ok);
+        Assert.Contains("동맹", r.Error);
     }
 
     [Fact]

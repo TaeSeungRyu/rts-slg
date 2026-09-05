@@ -41,6 +41,7 @@ public class SaveServiceTests
             GarrisonForces: new List<GarrisonForce> { new(new CityId(1), "swordsman", 8000, 55, Trainee: true) },
             FieldArmies: new List<CombatUnit> { unit },
             Captives: new List<Prisoner> { new(new GeneralId(1), new FactionId(1), new FactionId(2)) },
+            FactionAlliances: new List<FactionAlliance> { FactionAlliance.Create(new FactionId(1), new FactionId(2), 40, 100) },
             MarketPricePercent: 130,
             FacilityPlacements: new List<FacilityPlacement> { new(new CityId(1), new HexCoord(1, 0), "paddy", FacilityHealth.Level2) });
 
@@ -68,6 +69,7 @@ public class SaveServiceTests
         Assert.Equal(new HexCoord(5, 0), ru.Field.Target);
         Assert.Equal(new HexCoord(3, 1), ru.Field.Waypoints!.Single());
         Assert.Single(round.Prisoners);
+        Assert.True(round.AreAllied(new FactionId(1), new FactionId(2)));
         // 시설 배치 타일(건설 위치)도 왕복 보존.
         var rp = Assert.Single(round.Placements);
         Assert.Equal(new HexCoord(1, 0), rp.Plot);
