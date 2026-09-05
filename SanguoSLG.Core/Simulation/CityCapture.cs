@@ -7,8 +7,8 @@ using SanguoSLG.Core.Spatial;
 /// <param name="City">함락된 도시.</param>
 /// <param name="NewOwner">점거 세력.</param>
 /// <param name="OldOwner">옛 소유 세력.</param>
-/// <param name="Captured">포로가 된 주둔 장수.</param>
-/// <param name="Fled">원 세력 다른 도시로 후퇴한 주둔 장수.</param>
+/// <param name="Captured">점거 세력에 합류한 장수.</param>
+/// <param name="Fled">원 세력 다른 도시로 후퇴하거나 타 세력으로 편입된 장수.</param>
 /// <param name="FactionEliminated">이 함락으로 옛 세력이 소멸했는가.</param>
 public sealed record CaptureReport(
     CityId City, FactionId NewOwner, FactionId OldOwner,
@@ -17,8 +17,9 @@ public sealed record CaptureReport(
 /// <summary>
 /// 캠페인 함락 처리(design-general-lifecycle §4·design-combat "함락 처리"). 성벽 0 + 수비 0 도시에
 /// 근접(거리 1) 적 공격 부대가 있으면 자동 입성·점거한다. 소유 전환 + 자원 전부 승계(인구 −10%·
-/// 치안 30 리셋), 진행 중 명령 드롭, 주둔 장수 개별 판정(50% 포로 / 50% 원 세력 최근접 도시 후퇴,
-/// 원 도시 0이면 세력 소멸). 결정론: 도시·부대 id 순, 50% 판정은 시드 난수만.
+/// 치안 30 리셋), 진행 중 명령 드롭, 주둔 장수 개별 판정(30% 점거 세력 합류 / 나머지 원 세력
+/// 최근접 도시 후퇴, 원 도시 0이면 세력 소멸). 멸망 시 남은 장수는 70% 점거 세력 합류, 실패자는
+/// 70% 타 세력 편입, 나머지는 재야화된다. 결정론: 도시·부대·장수 id 순, 확률 판정은 시드 난수만.
 /// </summary>
 public sealed class CityCapture
 {
@@ -133,16 +134,19 @@ public sealed class CityCapture
 
         if (next.CityCount(oldOwner) == 0)
         {
-            next = FactionLifecycle.EliminateFaction(next, oldOwner); // 전원 재야
+            next = ResolveFactionExtinction(next, oldOwner, captor, city.Id, random, captured, fled);
             reports.Add(new CaptureReport(city.Id, captor, oldOwner, captured, fled, FactionEliminated: true));
             return next;
         }
 
         foreach (var gid in stationed)
         {
-            if (random.Next(0, 2) == 0)
+            if (random.Next(0, 100) < 30)
             {
-                next = FactionLifecycle.MakePrisoner(next, gid, holder: captor, origin: oldOwner);
+                var postings2 = next.Assignments.Select(p => p.General == gid
+                    ? p with { Faction = captor, Location = city.Id }
+                    : p).ToList();
+                next = next with { Postings = postings2 };
                 captured.Add(gid);
             }
             else
@@ -161,6 +165,36 @@ public sealed class CityCapture
 
         reports.Add(new CaptureReport(city.Id, captor, oldOwner, captured, fled, FactionEliminated: false));
         return next;
+    }
+
+    private static GameState ResolveFactionExtinction(GameState state, FactionId oldOwner, FactionId captor,
+        CityId capturedCity, IRandomSource random, List<GeneralId> joinedCaptor, List<GeneralId> reassigned)
+    {
+        var eliminatedGenerals = state.Assignments
+            .Where(p => p.Faction == oldOwner)
+            .Select(p => p.General)
+            .OrderBy(g => g.Value)
+            .ToList();
+
+        var postings = state.Assignments.Where(p => p.Faction != oldOwner).ToList();
+        foreach (var gid in eliminatedGenerals)
+        {
+            if (random.Next(0, 100) < 70)
+            {
+                postings.Add(new GeneralPosting(gid, captor, capturedCity));
+                joinedCaptor.Add(gid);
+                continue;
+            }
+
+            if (random.Next(0, 100) < 70 && NearestOtherFactionCity(state, captor, capturedCity) is { } refuge)
+            {
+                postings.Add(new GeneralPosting(gid, refuge.Owner, refuge.Id));
+                reassigned.Add(gid);
+            }
+        }
+
+        var captives = state.Prisoners.Where(p => p.Holder != oldOwner && p.Origin != oldOwner).ToList();
+        return state with { Postings = postings, Captives = captives };
     }
 
     private static void AddGarrison(List<GarrisonForce> garrisons, CityId city, string troopCode, int troops, int training)
@@ -188,5 +222,15 @@ public sealed class CityCapture
             .OrderBy(c => c.Position.Distance(from)).ThenBy(c => c.Id.Value)
             .FirstOrDefault();
         return owned?.Id;
+    }
+
+    private static City? NearestOtherFactionCity(GameState state, FactionId captor, CityId fromCity)
+    {
+        var origin = state.Cities.First(c => c.Id == fromCity);
+        return state.Cities
+            .Where(c => c.Owner != captor && c.Id != fromCity)
+            .OrderBy(c => c.Position.Distance(origin.Position))
+            .ThenBy(c => c.Id.Value)
+            .FirstOrDefault();
     }
 }

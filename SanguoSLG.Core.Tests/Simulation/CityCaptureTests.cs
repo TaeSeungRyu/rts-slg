@@ -14,7 +14,7 @@ public class CityCaptureTests
     private static readonly IReadOnlyDictionary<string, TroopTemplate> T =
         new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory()).ToDictionary(x => x.Code);
 
-    // 시드 난수 — 50% 판정 순서를 고정한다.
+    // 시드 난수 — 함락/멸망 확률 판정 순서를 고정한다.
     private sealed class FixedRandom(params int[] values) : IRandomSource
     {
         private readonly int[] _v = values;
@@ -115,7 +115,7 @@ public class CityCaptureTests
     }
 
     [Fact]
-    public void 함락_주둔장수는_50퍼센트_포로_50퍼센트_후퇴한다()
+    public void 함락_주둔장수는_30퍼센트_합류하고_나머지는_후퇴한다()
     {
         // 옛 세력(2)은 다른 도시(9)도 보유 → 소멸 안 함. 주둔 장수 2명(태수 포함).
         var fallen = Fallen(1, 2, new HexCoord(5, 0));
@@ -129,20 +129,20 @@ public class CityCaptureTests
                 new GeneralPosting(new GeneralId(11), new FactionId(2), new CityId(1)),
             ]);
 
-        // Next(0,2): 첫 장수 0=포로, 둘째 1=후퇴.
-        var after = new CityCapture().ResolveAll(s, new FixedRandom(0, 1), out var reports);
+        // Next(0,100): 첫 장수 29=합류, 둘째 30=후퇴.
+        var after = new CityCapture().ResolveAll(s, new FixedRandom(29, 30), out var reports);
 
         var r = Assert.Single(reports);
         Assert.False(r.FactionEliminated);
         Assert.Equal(new GeneralId(10), Assert.Single(r.Captured));
         Assert.Equal(new GeneralId(11), Assert.Single(r.Fled));
 
-        // 포로: 억류 세력 1, 원 세력 2, 배속 해제.
-        var p = after.PrisonerOf(new GeneralId(10));
-        Assert.NotNull(p);
-        Assert.Equal((new FactionId(1), new FactionId(2)), (p!.Holder, p.Origin));
+        // 합류: 점거 세력 소속으로 함락 도시 주둔.
+        var joined = after.PostingOf(new GeneralId(10));
+        Assert.Equal((new FactionId(1), new CityId(1)), (joined!.Faction, joined.Location));
         // 후퇴: 원 세력 최근접 보유 도시(9)로 주둔 이동.
         Assert.Equal(new CityId(9), after.PostingOf(new GeneralId(11))!.Location);
+        Assert.Empty(after.Prisoners);
     }
 
     [Fact]
@@ -181,7 +181,7 @@ public class CityCaptureTests
     }
 
     [Fact]
-    public void 함락_마지막_도시를_잃으면_세력이_소멸하고_전원_재야가_된다()
+    public void 함락_마지막_도시를_잃으면_70퍼센트_확률로_점거세력에_합류한다()
     {
         var last = Fallen(1, 2, new HexCoord(5, 0));       // 세력 2의 유일한 도시
         var captor = Attacker(1, 1, new HexCoord(4, 0), new HexCoord(5, 0));
@@ -193,12 +193,34 @@ public class CityCaptureTests
                 new GeneralPosting(new GeneralId(11), new FactionId(2), null), // 출전 중
             ]);
 
-        var after = new CityCapture().ResolveAll(s, new FixedRandom(0), out var reports);
+        var after = new CityCapture().ResolveAll(s, new FixedRandom(69, 70, 99), out var reports);
 
         var r = Assert.Single(reports);
         Assert.True(r.FactionEliminated);
-        Assert.Null(after.PostingOf(new GeneralId(10)));   // 전원 재야
-        Assert.Null(after.PostingOf(new GeneralId(11)));
-        Assert.Empty(after.Prisoners);                      // 소멸이라 포로도 안 잡힘
+        Assert.Equal(new GeneralId(10), Assert.Single(r.Captured));
+        Assert.Empty(r.Fled);
+        Assert.Equal((new FactionId(1), new CityId(1)), (after.PostingOf(new GeneralId(10))!.Faction, after.PostingOf(new GeneralId(10))!.Location));
+        Assert.Null(after.PostingOf(new GeneralId(11)));   // 획득 실패 + 타 세력 없음 → 재야
+        Assert.Empty(after.Prisoners);
+    }
+
+    [Fact]
+    public void 세력멸망_미획득_장수는_70퍼센트_확률로_타세력에_편입된다()
+    {
+        var last = Fallen(1, 2, new HexCoord(5, 0));       // 세력 2의 유일한 도시
+        var third = new City(new CityId(9), "제3성", new HexCoord(12, 0), new FactionId(3), 0);
+        var captor = Attacker(1, 1, new HexCoord(4, 0), new HexCoord(5, 0));
+        var s = State([last, third], [captor],
+            generals: [Gen(10)],
+            postings: [new GeneralPosting(new GeneralId(10), new FactionId(2), new CityId(1))]);
+
+        // 점거 세력 합류 실패(70), 타 세력 편입 성공(69).
+        var after = new CityCapture().ResolveAll(s, new FixedRandom(70, 69), out var reports);
+
+        var r = Assert.Single(reports);
+        Assert.True(r.FactionEliminated);
+        Assert.Empty(r.Captured);
+        Assert.Equal(new GeneralId(10), Assert.Single(r.Fled));
+        Assert.Equal((new FactionId(3), new CityId(9)), (after.PostingOf(new GeneralId(10))!.Faction, after.PostingOf(new GeneralId(10))!.Location));
     }
 }
