@@ -338,7 +338,7 @@ public sealed class WorldEngine
                     ResolveCityStratagem(state, cmd, city, cities, generals, intel);
                     break;
                 case CommandKind.Enlist:
-                    ResolveEnlist(cmd, city, generals, postings, prisoners, armies);
+                    ResolveEnlist(cmd, city, generals, postings, armies);
                     break;
             }
 
@@ -383,10 +383,10 @@ public sealed class WorldEngine
         };
     }
 
-    // 등용 정산(design-general-lifecycle §6): 완료 시점에 대상 종류를 다시 확인하고 2단계 난수 판정.
-    // 성공: 성/포로=장수만 수행 도시 주둔, 출전중=부대째 전향. 실패: 충성≥90 대상은 50% 수행 장수 포로(포로 대상 제외).
+    // 등용 정산: 완료 시점에 대상 종류를 다시 확인하고 수행 장수 정치 단일 확률로 판정.
+    // 성공: 성 장수는 수행 도시 주둔, 출전중 장수는 부대째 전향. 실패 시 추가 페널티는 없다.
     private void ResolveEnlist(CityCommand cmd, City casterCity, List<Domain.General> generals,
-        List<Domain.GeneralPosting> postings, List<Domain.Prisoner> prisoners, List<CombatUnit> armies)
+        List<Domain.GeneralPosting> postings, List<CombatUnit> armies)
     {
         if (cmd.TargetGeneral is not { } targetId)
         {
@@ -401,34 +401,21 @@ public sealed class WorldEngine
         }
 
         var faction = casterCity.Owner;
-        var prisoner = prisoners.FirstOrDefault(p => p.General == targetId && p.Holder == faction);
-        var army = prisoner is null
-            ? armies.FirstOrDefault(u => u.Field.Owner != faction && (u.VanguardId == targetId || u.AdjutantId == targetId))
-            : null;
-        var cityPosting = prisoner is null && army is null
+        var army = armies.FirstOrDefault(u => u.Field.Owner != faction && (u.VanguardId == targetId || u.AdjutantId == targetId));
+        var cityPosting = army is null
             ? postings.FirstOrDefault(p => p.General == targetId && p.Faction != faction && p.Location is not null)
             : null;
-        if (prisoner is null && army is null && cityPosting is null)
+        if (army is null && cityPosting is null)
         {
             return; // 대상이 사라졌거나 이미 아군
         }
 
-        // 2단계: 정치% → 이탈(100−충성)%.
-        var success = _random.Next(0, 100) < System.Math.Clamp(recruiter.Politics, 0, 100)
-            && _random.Next(0, 100) < EnlistOdds.BetrayalPercent(target.Loyalty);
+        var success = _random.Next(0, 100) < EnlistOdds.SuccessPercent(recruiter.Politics);
 
         if (success)
         {
-            // 합류 장수의 충성을 새 주군 기준 100으로(연쇄 전향 방지 — §6 ❓ 기본값 결정).
-            var gi = generals.FindIndex(g => g.Id == targetId);
-            if (gi >= 0)
-            {
-                generals[gi] = generals[gi] with { Loyalty = 100 };
-            }
-
             if (army is not null)
             {
-                // 부대째 전향 — 소유 전환. 부대의 두 장수 모두 우리 세력 야전(Location null)으로.
                 var ai = armies.IndexOf(army);
                 armies[ai] = army with { Field = army.Field with { Owner = faction } };
                 SetPosting(postings, targetId, faction, null);
@@ -437,21 +424,10 @@ public sealed class WorldEngine
             }
             else
             {
-                if (prisoner is not null) { prisoners.Remove(prisoner); }
-                SetPosting(postings, targetId, faction, casterCity.Id); // 장수만 수행 도시 주둔
+                SetPosting(postings, targetId, faction, casterCity.Id);
             }
 
             _events.Add(new WorldEvent(WorldEventKind.EnlistSuccess, faction, targetId, casterCity.Id));
-            return;
-        }
-
-        // 실패: 적지(성/출전중)의 충성 ≥90 대상은 50% 확률로 수행 장수를 포로로 잡는다.
-        if (prisoner is null && target.Loyalty >= 90 && _random.Next(0, 100) < 50)
-        {
-            var captor = army?.Field.Owner ?? cityPosting!.Faction;
-            prisoners.Add(new Domain.Prisoner(cmd.Main, captor, faction));
-            postings.RemoveAll(p => p.General == cmd.Main);
-            _events.Add(new WorldEvent(WorldEventKind.EnlistCaptured, faction, cmd.Main, casterCity.Id));
             return;
         }
 

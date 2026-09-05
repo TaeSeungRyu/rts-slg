@@ -1712,7 +1712,6 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.Repair => ($"[내정] {cName} 수리를 마쳤습니다.", Parchment),
                 WorldEventKind.EnlistSuccess => ($"[인사] 등용 성공! {gName} 장수가 우리 세력에 합류했습니다.", GoldBright),
                 WorldEventKind.EnlistFail => ($"[인사] {gName} 장수 등용에 실패했습니다.", Parchment),
-                WorldEventKind.EnlistCaptured => ($"[인사] 등용 실패 — {gName} 장수가 적에게 붙잡혔습니다.", AccentFill),
                 _ => ("", Parchment),
             };
             if (text.Length > 0) { Ev(text, col); }
@@ -3701,7 +3700,7 @@ public sealed partial class CampaignMapScene : Node3D
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
-    // ── 등용 모달: 대상(내 포로·정찰된 적 성 장수·출전중 적 장수) 선택 → 수행 장수 선택 → 군사 예측·확인 ──
+    // ── 등용 모달: 대상(정찰된 적 성 장수·출전중 적 장수) 선택 → 수행 장수 선택 → 군사 예측·확인 ──
     private void OpenEnlistModal(CityId cityId)
     {
         if (_advancing) { return; }
@@ -3725,13 +3724,8 @@ public sealed partial class CampaignMapScene : Node3D
         titleRow.AddChild(close);
         box.AddChild(GoldRule());
 
-        // 후보 대상 수집: 내 포로 · 정찰된 적 성 장수 · 출전중 적 장수.
+        // 후보 대상 수집: 정찰된 적 성 장수 · 출전중 적 장수.
         var targets = new List<(GeneralId Id, string Kind)>();
-        foreach (var p in _state.Prisoners.Where(p => p.Holder == Player))
-        {
-            targets.Add((p.General, "포로"));
-        }
-
         foreach (var u in _state.Armies.Where(u => u.Field.Owner != Player))
         {
             if (u.VanguardId is { } v) { targets.Add((v, "출전중")); }
@@ -3745,7 +3739,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (targets.Count == 0)
         {
-            box.AddChild(MakeLabel("등용할 대상이 없습니다. (적 성 정찰·적 부대 접촉·포로 확보 필요)", 13, Parchment));
+            box.AddChild(MakeLabel("등용할 대상이 없습니다. (적 성 정찰·적 부대 접촉 필요)", 13, Parchment));
             var h0 = box.GetCombinedMinimumSize().Y;
             scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(h0, mh));
             CenterAndDrag(panel, titleRow, mw, mh, box);
@@ -3887,7 +3881,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else
         {
-            var odds = EnlistOdds.SuccessPercent(recruiter.Politics, target.Loyalty);
+            var odds = EnlistOdds.SuccessPercent(recruiter.Politics);
             var band = odds >= 40 ? "성공이 유력합니다" : odds >= 15 ? "반반으로 봅니다" : "어려워 보입니다";
             saying = $"군사 {strat.Name}이(가) 아룁니다:\n\"{target.Name} 등용은 {band}.\"\n(예측 신뢰도 {strat.Intellect}%)";
         }
@@ -3900,16 +3894,6 @@ public sealed partial class CampaignMapScene : Node3D
 
         box.AddChild(GoldRule());
         box.AddChild(MakeLabel($"수행: {recruiter.Name} (정치 {recruiter.Politics})  →  대상: {target.Name}", 13, Parchment));
-
-        // 포로는 적지가 아니라 실패해도 수행 장수가 잡히지 않는다 — 그 경고는 포로일 때 숨긴다.
-        var isPrisoner = _commander.EnlistTargetKind(_state, city, targetId, out _) == CommandService.EnlistKind.Prisoner;
-        if (!isPrisoner)
-        {
-            var warn = MakeLabel("실패 시, 대상이 충신이면 수행 장수가 붙잡힐 수 있습니다.", 12, new Color(Parchment, 0.8f));
-            warn.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            warn.CustomMinimumSize = new Vector2(mw - 40, 0);
-            box.AddChild(warn);
-        }
 
         var btnRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         btnRow.AddThemeConstantOverride("separation", 12);

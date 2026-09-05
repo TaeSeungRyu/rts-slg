@@ -164,8 +164,8 @@ public sealed class CommandService
         };
     }
 
-    // 등용 발행(design-general-lifecycle §6): 대상 = 정찰된 적 성 주둔 장수 · 출전중 적 장수 · 내 포로.
-    // 성공 판정은 완료 시점(WorldEngine)에서 2단계 난수로. 소요일 = 거리 비례(도시 계략과 같은 식).
+    // 등용 발행: 대상 = 정찰된 적 성 주둔 장수 · 출전중 적 장수.
+    // 성공 판정은 완료 시점(WorldEngine)에서 정치 단일 난수로. 소요일 = 거리 비례(도시 계략과 같은 식).
     private CommandResult IssueEnlist(GameState state, City city, CommandRequest req, General? assist, General main)
     {
         if (req.TargetGeneral is not { } targetId)
@@ -181,27 +181,20 @@ public sealed class CommandService
         var kind = EnlistTargetKind(state, city, targetId, out var targetPos);
         if (kind == EnlistKind.Invalid)
         {
-            return CommandResult.Fail("등용할 수 없는 대상이다(내 포로·정찰된 적 성 장수·출전중 적 장수만).", state);
+            return CommandResult.Fail("등용할 수 없는 대상이다(정찰된 적 성 장수·출전중 적 장수만).", state);
         }
 
-        // 소요일: 포로(내 도시)는 거리 0 → 기본 7일. 성/출전중은 수행 도시↔대상 위치 거리 비례.
         var days = targetPos is { } pos ? CityStratagems.Days(city.Position, pos, _b) : _b.CommandDays;
         return Register(state, city, req, assist, amount: 0, days, CommandKind.Enlist, "", "", null, targetGeneral: targetId);
     }
 
-    /// <summary>등용 대상의 종류(내 포로 / 정찰된 적 성 장수 / 출전중 적 장수 / 불가)와 대상 위치.</summary>
-    public enum EnlistKind { Invalid, Prisoner, CityGeneral, FieldGeneral }
+    /// <summary>등용 대상의 종류(정찰된 적 성 장수 / 출전중 적 장수 / 불가)와 대상 위치.</summary>
+    public enum EnlistKind { Invalid, CityGeneral, FieldGeneral }
 
     public EnlistKind EnlistTargetKind(GameState state, City casterCity, GeneralId target, out HexCoord? targetPos)
     {
         targetPos = null;
         var faction = casterCity.Owner;
-
-        // 내 포로.
-        if (state.PrisonerOf(target) is { } p && p.Holder == faction)
-        {
-            return EnlistKind.Prisoner;
-        }
 
         // 출전중(야전 부대) 적 장수 — 선봉 또는 부관.
         var army = state.Armies.FirstOrDefault(u => u.Field.Owner != faction

@@ -8,7 +8,7 @@ using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
-/// <summary>등용(design-general-lifecycle §6) — 2단계 판정(정치%→이탈%), 대상 3종, 실패 시 잡힘.</summary>
+/// <summary>등용(design-general-lifecycle §6) — 수행 장수 정치 단일 판정, 대상은 정찰된 성 장수·출전중 장수.</summary>
 public class EnlistTests
 {
     private static readonly CommandBalance B = new();
@@ -44,21 +44,18 @@ public class EnlistTests
         new(new CityId(city), CommandKind.Enlist, new GeneralId(recruiter), TargetGeneral: new GeneralId(target));
 
     [Fact]
-    public void 등용_포로를_영입하면_내_세력_수행도시_주둔이_된다()
+    public void 등용_포로는_대상이_아니다()
     {
         var s = new GameState(1, 1, new List<Faction>(),
             new List<City> { City(1, owner: 1) },
-            new List<General> { Gen(1, 1, politics: 100), Gen(9, 2, loyalty: 0) },
+            new List<General> { Gen(1, 1, politics: 100), Gen(9, 2) },
             Postings: new List<GeneralPosting> { At(1, 1, 1) },
             Captives: new List<Prisoner> { new(new GeneralId(9), new FactionId(1), new FactionId(2)) });
 
-        var done = RunToDone(World(1), Svc(), s, EnlistReq(1, 1, 9), out var ok);
+        var issued = Svc().Issue(s, EnlistReq(1, 1, 9));
 
-        Assert.True(ok);
-        Assert.Empty(done.Prisoners); // 포로에서 빠짐
-        var post = done.PostingOf(new GeneralId(9));
-        Assert.Equal(new FactionId(1), post!.Faction);
-        Assert.Equal(new CityId(1), post.Location);
+        Assert.False(issued.Ok);
+        Assert.Contains("정찰된", issued.Error);
     }
 
     [Fact]
@@ -66,7 +63,7 @@ public class EnlistTests
     {
         var s = new GameState(1, 1, new List<Faction>(),
             new List<City> { City(1, owner: 1, q: 0), City(2, owner: 2, q: 3) },
-            new List<General> { Gen(1, 1, politics: 100), Gen(9, 2, loyalty: 0) },
+            new List<General> { Gen(1, 1, politics: 100), Gen(9, 2) },
             Postings: new List<GeneralPosting> { At(1, 1, 1), At(9, 2, 2) },
             ScoutedCities: new List<CityIntel> { new(new FactionId(1), new CityId(2)) });
 
@@ -83,7 +80,7 @@ public class EnlistTests
     {
         var s = new GameState(1, 1, new List<Faction>(),
             new List<City> { City(1, owner: 1, q: 0), City(2, owner: 2, q: 3) },
-            new List<General> { Gen(1, 1, politics: 100), Gen(9, 2, loyalty: 0) },
+            new List<General> { Gen(1, 1, politics: 100), Gen(9, 2) },
             Postings: new List<GeneralPosting> { At(1, 1, 1), At(9, 2, 2) }); // 정찰 없음
 
         var r = Svc().Issue(s, EnlistReq(1, 1, 9));
@@ -103,7 +100,7 @@ public class EnlistTests
 
         var s = new GameState(1, 1, new List<Faction>(),
             new List<City> { City(1, owner: 1) },
-            new List<General> { Gen(1, 1, politics: 100), Gen(9, 2, loyalty: 0) },
+            new List<General> { Gen(1, 1, politics: 100), Gen(9, 2) },
             Postings: new List<GeneralPosting> { At(1, 1, 1), At(9, 2, null) },
             FieldArmies: new List<CombatUnit> { enemyUnit });
 
@@ -117,63 +114,27 @@ public class EnlistTests
     }
 
     [Fact]
-    public void 등용_충성_100이상이면_절대_넘어오지_않는다()
-    {
-        var s = new GameState(1, 1, new List<Faction>(),
-            new List<City> { City(1, owner: 1) },
-            new List<General> { Gen(1, 1, politics: 100), Gen(9, 2, loyalty: 100) },
-            Postings: new List<GeneralPosting> { At(1, 1, 1) },
-            Captives: new List<Prisoner> { new(new GeneralId(9), new FactionId(1), new FactionId(2)) });
-
-        // 여러 시드로 돌려도 이탈 0% → 항상 실패(포로 그대로).
-        for (var seed = 0; seed < 10; seed++)
-        {
-            var done = RunToDone(World(seed), Svc(), s, EnlistReq(1, 1, 9), out _);
-            Assert.Single(done.Prisoners);
-        }
-    }
-
-    [Fact]
-    public void 등용_실패해도_충성90미만_대상이면_수행장수는_안잡힌다()
+    public void 등용_실패해도_수행장수는_잡히지않는다()
     {
         var s = new GameState(1, 1, new List<Faction>(),
             new List<City> { City(1, owner: 1, q: 0), City(2, owner: 2, q: 3) },
-            new List<General> { Gen(1, 1, politics: 0), Gen(9, 2, loyalty: 80) }, // 정치 0 → 항상 실패
+            new List<General> { Gen(1, 1, politics: 0), Gen(9, 2) }, // 정치 0 → 항상 실패
             Postings: new List<GeneralPosting> { At(1, 1, 1), At(9, 2, 2) },
             ScoutedCities: new List<CityIntel> { new(new FactionId(1), new CityId(2)) });
 
         for (var seed = 0; seed < 10; seed++)
         {
             var done = RunToDone(World(seed), Svc(), s, EnlistReq(1, 1, 9), out _);
-            Assert.Empty(done.Prisoners); // 충성<90 → 잡힘 없음
+            Assert.Empty(done.Prisoners);
             Assert.Equal(new FactionId(1), done.PostingOf(new GeneralId(1))!.Faction); // 수행 장수 건재
         }
     }
 
     [Fact]
-    public void 등용_실패시_충성90이상_적장수는_수행장수를_잡을수있다()
+    public void 성공확률_공식은_정치_단일값이다()
     {
-        var s = new GameState(1, 1, new List<Faction>(),
-            new List<City> { City(1, owner: 1, q: 0), City(2, owner: 2, q: 3) },
-            new List<General> { Gen(1, 1, politics: 0), Gen(9, 2, loyalty: 200) }, // 항상 실패·충신
-            Postings: new List<GeneralPosting> { At(1, 1, 1), At(9, 2, 2) },
-            ScoutedCities: new List<CityIntel> { new(new FactionId(1), new CityId(2)) });
-
-        var captured = 0;
-        for (var seed = 0; seed < 20; seed++)
-        {
-            var done = RunToDone(World(seed), Svc(), s, EnlistReq(1, 1, 9), out _);
-            if (done.PrisonerOf(new GeneralId(1)) is { } p) { Assert.Equal(new FactionId(2), p.Holder); captured++; }
-        }
-
-        Assert.True(captured is > 0 and < 20, $"50% 확률로 잡힘 — 일부만 잡혀야 한다(잡힘 {captured}/20)");
-    }
-
-    [Fact]
-    public void 성공확률_공식은_정치와_이탈의_곱이다()
-    {
-        Assert.Equal(18, EnlistOdds.SuccessPercent(90, 80)); // 90% × 20%
-        Assert.Equal(0, EnlistOdds.SuccessPercent(100, 100)); // 이탈 0%
-        Assert.Equal(80, EnlistOdds.SuccessPercent(80, 0));   // 80% × 100%
+        Assert.Equal(0, EnlistOdds.SuccessPercent(0));
+        Assert.Equal(80, EnlistOdds.SuccessPercent(80));
+        Assert.Equal(100, EnlistOdds.SuccessPercent(120));
     }
 }

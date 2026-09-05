@@ -54,6 +54,6 @@ public enum CommandKind
     /// <summary>v2 훈련 담당 지정 — 무력으로 월말 대기 병력 훈련도 증가. 즉시·비용/기간/잠금 없음.</summary>
     AppointTrainingOfficer,
 
-    /// <summary>등용 — 적 성 장수·출전중 적 장수·내 포로를 영입. 정치% → 대상 이탈(100−충성)% 2단계. 거리 비례 소요일. design-general-lifecycle §6.</summary>
+    /// <summary>등용 — 정찰된 적 성 장수·출전중 적 장수를 정치 확률로 영입. 거리 비례 소요일.</summary>
     Enlist,
 }
