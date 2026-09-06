@@ -324,6 +324,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("병력 담당", CommandKind.AppointRecruitmentOfficer, ""),
         ("훈련 담당", CommandKind.AppointTrainingOfficer, ""),
         ("위인 영입", CommandKind.RecruitHero, "hero"),
+        ("탐색", CommandKind.Explore, ""),
     };
 
     private static readonly (string Label, string Code)[] Facilities =
@@ -353,6 +354,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("임명", new[] { 13, 14 }),
         ("담당자", new[] { 15, 16, 17, 18 }),
         ("인재", new[] { 19 }),
+        ("탐색", new[] { 20 }),
     };
 
     private static readonly Sym[] CmdIcons = { Sym.Sword, Sym.Coin, Sym.Book, Sym.Wall, Sym.Scroll };
@@ -1731,6 +1733,7 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.Repair => ($"[내정] {cName} 수리를 마쳤습니다.", Parchment),
                 WorldEventKind.EnlistSuccess => ($"[인사] 등용 성공! {gName} 장수가 우리 세력에 합류했습니다.", GoldBright),
                 WorldEventKind.EnlistFail => ($"[인사] {gName} 장수 등용에 실패했습니다.", Parchment),
+                WorldEventKind.Explore => (ExplorationEventText(cName, gName, we.Code), we.Code is "divine_beast_trace" or "ancient_relic_clue" ? GoldBright : Parchment),
                 WorldEventKind.AllianceSuccess => ($"[외교] {targetFaction} 세력과 동맹을 맺었습니다.", GoldBright),
                 WorldEventKind.AllianceFail => ($"[외교] {targetFaction} 세력과의 동맹 교섭에 실패했습니다.", Parchment),
                 _ => ("", Parchment),
@@ -2049,7 +2052,7 @@ public sealed partial class CampaignMapScene : Node3D
             gbtn.Pressed += () =>
             {
                 var commands = CmdGroups[groupIdx].Indices;
-                if (commands.Length == 1 && Cmds[commands[0]].Kind == CommandKind.CityStratagem)
+                if (commands.Length == 1 && Cmds[commands[0]].Kind is CommandKind.CityStratagem or CommandKind.Explore)
                 {
                     CloseGroupMenu();
                     OpenModal(commands[0]);
@@ -2083,7 +2086,6 @@ public sealed partial class CampaignMapScene : Node3D
         AddV2PendingButton(_cmdList, "생산", "논·밭·마을에 장수와 500명 부대를 보내는 생산 작전은 Phase 10에서 구현합니다.");
         AddV2PendingButton(_cmdList, "재편성", "부대 재편성 전용 UI는 v2 전환 후속 단계에서 구현합니다.\n현재는 출전 예약과 입성으로 병력을 정리하세요.");
         AddV2PendingButton(_cmdList, "보충", "자동 담당자 병력 생산과 연계한 보충 명령은 Phase 2~4 이후 구현합니다.");
-        AddV2PendingButton(_cmdList, "탐색", "미등록 장수·자원·이벤트·아이템 탐색은 Phase 9에서 구현합니다.");
 
         // 그룹 플라이아웃(팔레트 우측에 붙는 작은 패널).
         _cmdSubMenu = new PanelContainer { Visible = false, ZIndex = 51 };
@@ -2830,6 +2832,10 @@ public sealed partial class CampaignMapScene : Node3D
         else if (cmd.Kind == CommandKind.BreakAlliance)
         {
             box.AddChild(MakeLabel("대상 세력과의 동맹을 즉시 파기합니다. 파기 후에는 다시 공격 대상이 될 수 있습니다.", 15, Parchment));
+        }
+        else if (cmd.Kind == CommandKind.Explore)
+        {
+            box.AddChild(MakeLabel("탐색은 인재 등용을 제외하고 신수, 고대유물, 지방호족, 소문/단서를 찾습니다. 실패해도 손실은 없습니다.", 15, Parchment));
         }
 
         box.AddChild(GoldRule());
@@ -6166,6 +6172,12 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
+        if (cmd.Kind == CommandKind.Explore)
+        {
+            extra = $"\n소요 {_cb.CommandDays}일"
+                + "\n결과 확률: 신수 1% · 고대유물 1% · 지방호족 10% · 소문/단서 5% · 없음 83%";
+        }
+
         if (cmd.Kind == CommandKind.Build)
         {
             var c = _state.Cities.First(x => x.Id == city);
@@ -6847,7 +6859,18 @@ public sealed partial class CampaignMapScene : Node3D
         CommandKind.AppointRecruitmentOfficer => "병력 담당",
         CommandKind.AppointTrainingOfficer => "훈련 담당",
         CommandKind.Enlist => "등용",
+        CommandKind.RecruitHero => "위인 영입",
+        CommandKind.Explore => "탐색",
         _ => k.ToString(),
+    };
+
+    private static string ExplorationEventText(string cityName, string generalName, string code) => code switch
+    {
+        "divine_beast_trace" => $"[탐색] {generalName} 장수가 {cityName}에서 신수의 흔적을 발견했습니다.",
+        "ancient_relic_clue" => $"[탐색] {generalName} 장수가 {cityName}에서 고대유물의 단서를 발견했습니다.",
+        "local_clan_support" => $"[탐색] {cityName}의 지방호족이 금과 군량을 지원했습니다.",
+        "rumor_clue" => $"[탐색] {generalName} 장수가 {cityName}에서 소문/단서를 얻었습니다.",
+        _ => $"[탐색] {generalName} 장수가 {cityName}을 탐색했지만 별다른 성과가 없었습니다.",
     };
 
     // ── 게임풍 스타일 헬퍼 ──
