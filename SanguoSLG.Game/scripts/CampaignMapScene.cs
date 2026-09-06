@@ -4073,7 +4073,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         _state = new HeroUnlockService().Evaluate(_state);
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.68f, 640f, 980f);
+        var mw = Mathf.Clamp(vp.X * 0.86f, 820f, 1280f);
         var mh = Mathf.Clamp(vp.Y * 0.85f, 380f, 760f);
         var box = SystemView("전체 장수 목록", mw, out var scroll, out var panel, out var titleRow);
 
@@ -4124,14 +4124,17 @@ public sealed partial class CampaignMapScene : Node3D
         tree.AddThemeFontOverride("title_button_font", _font);
         tree.AddThemeFontSizeOverride("title_button_font_size", 13);
         tree.SetColumnTitle(0, "이름"); tree.SetColumnExpand(0, true); tree.SetColumnExpandRatio(0, 2);
+        tree.SetColumnCustomMinimumWidth(0, 110);
         foreach (var (col, t) in new[] { (1, "무"), (2, "지"), (3, "정") })
         {
             tree.SetColumnTitle(col, t); tree.SetColumnExpand(col, false); tree.SetColumnCustomMinimumWidth(col, 42);
         }
 
         tree.SetColumnTitle(4, "소속·위치"); tree.SetColumnExpand(4, true); tree.SetColumnExpandRatio(4, 3);
+        tree.SetColumnCustomMinimumWidth(4, 150);
         tree.SetColumnTitle(5, "위인 유형"); tree.SetColumnExpand(5, true); tree.SetColumnExpandRatio(5, 2);
-        tree.SetColumnTitle(6, "상태"); tree.SetColumnExpand(6, false); tree.SetColumnCustomMinimumWidth(6, 58);
+        tree.SetColumnCustomMinimumWidth(5, 150);
+        tree.SetColumnTitle(6, "상태"); tree.SetColumnExpand(6, false); tree.SetColumnCustomMinimumWidth(6, 74);
         var root = tree.CreateItem();
         foreach (var g in _state.Generals.OrderBy(g => g.Id.Value))
         {
