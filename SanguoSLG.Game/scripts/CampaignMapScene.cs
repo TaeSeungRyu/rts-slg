@@ -4071,8 +4071,9 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenGeneralRoster()
     {
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        _state = new HeroUnlockService().Evaluate(_state);
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.5f, 480f, 720f);
+        var mw = Mathf.Clamp(vp.X * 0.68f, 640f, 980f);
         var mh = Mathf.Clamp(vp.Y * 0.85f, 380f, 760f);
         var box = SystemView("전체 장수 목록", mw, out var scroll, out var panel, out var titleRow);
 
@@ -4089,9 +4090,32 @@ public sealed partial class CampaignMapScene : Node3D
             return "재야";
         }
 
+        string HeroType(GeneralId id)
+        {
+            var state = _state.HeroStates.FirstOrDefault(s => s.General == id);
+            var hero = _state.HeroUnlocks.FirstOrDefault(h => h.General == id);
+            if (state is null || hero is null) { return "-"; }
+            return HeroTypeName(hero.Type, state.Status);
+        }
+
+        string HeroStatus(GeneralId id)
+        {
+            var state = _state.HeroStates.FirstOrDefault(s => s.General == id);
+            if (state is null) { return "-"; }
+            return state.Status switch
+            {
+                HeroUnlockStatus.Locked => "잠김",
+                HeroUnlockStatus.Unlocked => "해금",
+                HeroUnlockStatus.Recruited => "소속",
+                HeroUnlockStatus.Wanderer => "유랑",
+                HeroUnlockStatus.Excluded => "제외",
+                _ => state.Status.ToString(),
+            };
+        }
+
         var tree = new Tree
         {
-            Columns = 5, ColumnTitlesVisible = true, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
+            Columns = 7, ColumnTitlesVisible = true, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
             CustomMinimumSize = new Vector2(0, Mathf.Min(mh - 60, 44 + _state.Generals.Count * 28)),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
@@ -4106,6 +4130,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         tree.SetColumnTitle(4, "소속·위치"); tree.SetColumnExpand(4, true); tree.SetColumnExpandRatio(4, 3);
+        tree.SetColumnTitle(5, "위인 유형"); tree.SetColumnExpand(5, true); tree.SetColumnExpandRatio(5, 2);
+        tree.SetColumnTitle(6, "상태"); tree.SetColumnExpand(6, false); tree.SetColumnCustomMinimumWidth(6, 58);
         var root = tree.CreateItem();
         foreach (var g in _state.Generals.OrderBy(g => g.Id.Value))
         {
@@ -4115,8 +4141,11 @@ public sealed partial class CampaignMapScene : Node3D
             it.SetText(2, g.Intellect.ToString());
             it.SetText(3, g.Politics.ToString());
             it.SetText(4, Where(g));
+            it.SetText(5, HeroType(g.Id));
+            it.SetText(6, HeroStatus(g.Id));
             it.SetMetadata(0, g.Id.Value);
             for (var col = 1; col <= 3; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
+            it.SetTextAlignment(6, HorizontalAlignment.Center);
         }
 
         tree.ItemSelected += () =>
