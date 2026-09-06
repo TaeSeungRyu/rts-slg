@@ -4166,7 +4166,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenGeneralCard(GeneralId gid)
     {
         var loc = _state.PostingOf(gid)?.Location ?? _state.Cities.FirstOrDefault(c => c.Owner == Player)?.Id;
-        OpenGeneralDetail(gid, loc ?? new CityId(0));
+        OpenGeneralDetail(gid, loc ?? new CityId(0), OpenGeneralRoster);
     }
 
     // 전체 도시 목록 — 이름·세력·(정찰/소유 시)수치. 행 클릭 = 읽기 전용 상세(미정찰이면 정보 가림).
@@ -4295,7 +4295,7 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // ── 장수 상세 카드: 상단 초상 / 타이틀 = 이름 / 하단 능력치·병종 적성·특기(그리드 정렬) ──
-    private void OpenGeneralDetail(GeneralId gid, CityId backCity)
+    private void OpenGeneralDetail(GeneralId gid, CityId backCity, System.Action? backAction = null)
     {
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
@@ -4308,7 +4308,11 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(titleRow);
         var back = MakeButton("◀");
         back.CustomMinimumSize = new Vector2(40, 30);
-        back.Pressed += () => OpenCityDetail(backCity);
+        back.Pressed += () =>
+        {
+            if (backAction is not null) { backAction(); }
+            else { OpenCityDetail(backCity); }
+        };
         titleRow.AddChild(back);
         var title = MakeLabel($"《 {g.Name} 》", 19, GoldBright);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
