@@ -37,6 +37,45 @@ public class FactionAiTests
         new(new GeneralId(general), new FactionId(faction), new CityId(city));
 
     [Fact]
+    public void 해금된_AI_위인은_금을_내고_자동_영입한다()
+    {
+        var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Region,
+            Conditions: [new HeroUnlockCondition("owned_cities", 1)], RecruitGold: 900);
+        var s = new GameState(1, 1,
+            new List<Faction> { new(new FactionId(1), "위", new GeneralId(1), 1000, "#2d5fd0") },
+            new List<City> { Town(1, 1, new HexCoord(0, 0)) },
+            new List<General> { Gen(1), Gen(6) },
+            Postings: new List<GeneralPosting> { At(1, 1, 1) },
+            HeroUnlockDefinitions: new List<HeroUnlockDefinition> { hero },
+            HeroUnlockStates: new List<HeroUnlockState> { new(new GeneralId(6), HeroUnlockStatus.Locked) });
+
+        var after = Ai().PlanWeek(s, new FactionId(1));
+
+        Assert.Equal(HeroUnlockStatus.Recruited, after.HeroStates.Single().Status);
+        Assert.Equal((new FactionId(1), new CityId(1)), (after.PostingOf(new GeneralId(6))!.Faction, after.PostingOf(new GeneralId(6))!.Location));
+        Assert.Equal(1100, after.Cities.Single().Gold);
+    }
+
+    [Fact]
+    public void AI_영입_불가_위인은_해금되어도_자동_영입하지_않는다()
+    {
+        var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Region,
+            Conditions: [new HeroUnlockCondition("owned_cities", 1)], RecruitGold: 900, AiCanRecruit: false);
+        var s = new GameState(1, 1,
+            new List<Faction> { new(new FactionId(1), "위", new GeneralId(1), 1000, "#2d5fd0") },
+            new List<City> { Town(1, 1, new HexCoord(0, 0)) },
+            new List<General> { Gen(1), Gen(6) },
+            Postings: new List<GeneralPosting> { At(1, 1, 1) },
+            HeroUnlockDefinitions: new List<HeroUnlockDefinition> { hero },
+            HeroUnlockStates: new List<HeroUnlockState> { new(new GeneralId(6), HeroUnlockStatus.Locked) });
+
+        var after = Ai().PlanWeek(s, new FactionId(1));
+
+        Assert.Equal(HeroUnlockStatus.Unlocked, after.HeroStates.Single().Status);
+        Assert.Null(after.PostingOf(new GeneralId(6)));
+    }
+
+    [Fact]
     public void v2_대기병력이_적으면_수동모집하지_않는다()
     {
         var s = new GameState(1, 1, new List<Faction>(),

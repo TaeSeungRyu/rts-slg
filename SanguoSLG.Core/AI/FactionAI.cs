@@ -13,12 +13,13 @@ using SanguoSLG.Core.Spatial;
 /// </summary>
 public sealed class FactionAI
 {
+    private readonly CommandService _commands;
     private readonly DeployService _deployer;
     private readonly AiConfig _config;
 
     public FactionAI(CommandService commands, DeployService deployer, AiConfig? config = null)
     {
-        _ = commands;
+        _commands = commands;
         _deployer = deployer;
         _config = config ?? new AiConfig();
     }
@@ -27,6 +28,7 @@ public sealed class FactionAI
     public GameState PlanWeek(GameState state, FactionId faction)
     {
         state = Retarget(state, faction);
+        state = RecruitUnlockedHeroes(state, faction);
 
         foreach (var city in state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).ToList())
         {
@@ -57,6 +59,50 @@ public sealed class FactionAI
                         state = result.State;
                     }
                 }
+            }
+        }
+
+        return state;
+    }
+
+    private GameState RecruitUnlockedHeroes(GameState state, FactionId faction)
+    {
+        state = new HeroUnlockService().Evaluate(state);
+        foreach (var heroState in state.HeroStates
+            .Where(s => s.CanRecruit && s.EligibleFaction == faction)
+            .OrderBy(s => state.HeroUnlocks.FirstOrDefault(h => h.General == s.General)?.RecruitGold ?? int.MaxValue)
+            .ThenBy(s => s.General.Value)
+            .ToList())
+        {
+            var hero = state.HeroUnlocks.FirstOrDefault(h => h.General == heroState.General);
+            if (hero is null || !hero.AiCanRecruit)
+            {
+                continue;
+            }
+
+            var city = state.Cities
+                .Where(c => c.Owner == faction && c.Gold >= hero.RecruitGold)
+                .OrderByDescending(c => c.Gold)
+                .ThenBy(c => c.Id.Value)
+                .FirstOrDefault();
+            if (city is null)
+            {
+                continue;
+            }
+
+            var actor = city.Governor
+                ?? state.Assignments.FirstOrDefault(p => p.Location == city.Id && p.Faction == faction)?.General
+                ?? state.Factions.FirstOrDefault(f => f.Id == faction)?.Ruler;
+            if (actor is null)
+            {
+                continue;
+            }
+
+            var result = _commands.Issue(state,
+                new CommandRequest(city.Id, CommandKind.RecruitHero, actor.Value, TargetGeneral: hero.General));
+            if (result.Ok)
+            {
+                state = result.State;
             }
         }
 
