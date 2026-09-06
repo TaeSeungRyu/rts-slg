@@ -26,6 +26,18 @@ public class ExplorationServiceTests
         Assert.Equal(expected, ExplorationService.KindForRoll(roll));
     }
 
+    [Theory]
+    [InlineData(11, 0, ExplorationResultKind.LocalClan)]
+    [InlineData(12, 0, ExplorationResultKind.Rumor)]
+    [InlineData(21, 100, ExplorationResultKind.LocalClan)]
+    [InlineData(22, 100, ExplorationResultKind.Rumor)]
+    [InlineData(26, 100, ExplorationResultKind.Rumor)]
+    [InlineData(27, 100, ExplorationResultKind.None)]
+    public void 정치가_높으면_지방호족_확률만_증가한다(int roll, int politics, ExplorationResultKind expected)
+    {
+        Assert.Equal(expected, ExplorationService.KindForRoll(roll, politics));
+    }
+
     [Fact]
     public void 지방호족은_금과_군량_보상을_가진다()
     {

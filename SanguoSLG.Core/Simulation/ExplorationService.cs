@@ -8,17 +8,23 @@ public sealed class ExplorationService
     public ExplorationDiscovery Explore(GameState state, City city, General explorer, IRandomSource random)
     {
         var roll = random.Next(0, 100);
-        var kind = KindForRoll(roll);
+        var kind = KindForRoll(roll, explorer.Politics);
         return BuildDiscovery(state.Day, city.Owner, city.Id, explorer.Id, kind);
     }
 
-    public static ExplorationResultKind KindForRoll(int roll)
+    public static ExplorationResultKind KindForRoll(int roll, int politics = 0)
+    {
+        var localClanBonus = System.Math.Clamp(politics, 0, 100) / 10;
+        return KindForRollWithLocalClanBonus(roll, localClanBonus);
+    }
+
+    private static ExplorationResultKind KindForRollWithLocalClanBonus(int roll, int localClanBonus)
         => roll switch
         {
             < 1 => ExplorationResultKind.DivineBeast,
             < 2 => ExplorationResultKind.AncientRelic,
-            < 12 => ExplorationResultKind.LocalClan,
-            < 17 => ExplorationResultKind.Rumor,
+            _ when roll < 12 + localClanBonus => ExplorationResultKind.LocalClan,
+            _ when roll < 17 + localClanBonus => ExplorationResultKind.Rumor,
             _ => ExplorationResultKind.None,
         };
 
