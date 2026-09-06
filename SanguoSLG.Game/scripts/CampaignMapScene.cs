@@ -1736,7 +1736,7 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.Repair => ($"[내정] {cName} 수리를 마쳤습니다.", Parchment),
                 WorldEventKind.EnlistSuccess => ($"[인사] 등용 성공! {gName} 장수가 우리 세력에 합류했습니다.", GoldBright),
                 WorldEventKind.EnlistFail => ($"[인사] {gName} 장수 등용에 실패했습니다.", Parchment),
-                WorldEventKind.Explore => (ExplorationEventText(cName, gName, we.Code), we.Code is "divine_beast_trace" or "ancient_relic_clue" ? GoldBright : Parchment),
+                WorldEventKind.Explore => (ExplorationEventText(cName, gName, we.Code, we.Amount, we.ExtraAmount), we.Code is "divine_beast_trace" or "ancient_relic_clue" ? GoldBright : Parchment),
                 WorldEventKind.AllianceSuccess => ($"[외교] {targetFaction} 세력과 동맹을 맺었습니다.", GoldBright),
                 WorldEventKind.AllianceFail => ($"[외교] {targetFaction} 세력과의 동맹 교섭에 실패했습니다.", Parchment),
                 _ => ("", Parchment),
@@ -6875,11 +6875,11 @@ public sealed partial class CampaignMapScene : Node3D
         _ => k.ToString(),
     };
 
-    private static string ExplorationEventText(string cityName, string generalName, string code) => code switch
+    private static string ExplorationEventText(string cityName, string generalName, string code, int gold, int provisions) => code switch
     {
         "divine_beast_trace" => $"[탐색] {generalName} 장수가 {cityName}에서 신수의 흔적을 발견했습니다.",
         "ancient_relic_clue" => $"[탐색] {generalName} 장수가 {cityName}에서 고대유물의 단서를 발견했습니다.",
-        "local_clan_support" => $"[탐색] {cityName}의 지방호족이 금과 군량을 지원했습니다.",
+        "local_clan_support" => $"[탐색] {cityName}의 지방호족이 금 {gold}, 군량 {provisions}을(를) 지원했습니다.",
         "rumor_clue" => $"[탐색] {generalName} 장수가 {cityName}에서 소문/단서를 얻었습니다.",
         _ => $"[탐색] {generalName} 장수가 {cityName}을 탐색했지만 별다른 성과가 없었습니다.",
     };

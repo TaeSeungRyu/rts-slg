@@ -418,7 +418,7 @@ public sealed class WorldEngine
         }
 
         _events.Add(new WorldEvent(WorldEventKind.Explore, discovery.Faction, discovery.Explorer, discovery.City,
-            discovery.Gold, discovery.Code));
+            discovery.Gold, discovery.Code, discovery.Provisions));
     }
 
     // 등용 정산: 완료 시점에 대상 종류를 다시 확인하고 수행 장수 정치 단일 확률로 판정.

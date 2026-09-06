@@ -44,7 +44,8 @@ public class ExplorationCommandTests
         Assert.Equal(800, city.Provisions);
         var discovery = Assert.Single(after.Discoveries);
         Assert.Equal(ExplorationResultKind.LocalClan, discovery.Kind);
-        Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.Explore && e.Code == "local_clan_support");
+        Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.Explore
+            && e.Code == "local_clan_support" && e.Amount == 200 && e.ExtraAmount == 600);
     }
 
     [Fact]

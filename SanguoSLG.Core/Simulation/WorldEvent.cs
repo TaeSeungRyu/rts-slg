@@ -27,10 +27,12 @@ public enum WorldEventKind
 /// <param name="City">관련 도시. 없으면 null.</param>
 /// <param name="Amount">수치(병력·훈련 상승 등).</param>
 /// <param name="Code">병종/시설 코드 등 부가 식별자(없으면 빈 문자열).</param>
+/// <param name="ExtraAmount">보조 수치. 탐색 지방호족에서는 군량 지원량.</param>
 public sealed record WorldEvent(
     WorldEventKind Kind,
     FactionId Faction,
     GeneralId? General = null,
     CityId? City = null,
     int Amount = 0,
-    string Code = "");
+    string Code = "",
+    int ExtraAmount = 0);
