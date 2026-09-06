@@ -6174,8 +6174,12 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (cmd.Kind == CommandKind.Explore)
         {
+            var actor = _state.Generals.First(g => g.Id == general);
+            var localClanOdds = 10 + System.Math.Clamp(actor.Politics, 0, 100) / 10;
+            var noneOdds = 100 - 1 - 1 - localClanOdds - 5;
             extra = $"\n소요 {_cb.CommandDays}일"
-                + "\n결과 확률: 신수 1% · 고대유물 1% · 지방호족 10% · 소문/단서 5% · 없음 83%";
+                + $"\n정치 {actor.Politics} 기준 확률"
+                + $"\n신수 1% · 고대유물 1% · 지방호족 {localClanOdds}% · 소문/단서 5% · 없음 {noneOdds}%";
         }
 
         if (cmd.Kind == CommandKind.Build)
