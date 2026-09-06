@@ -66,6 +66,32 @@ internal sealed class GeneralSkillDto
     public int Tier { get; init; } = 1;
 }
 
+internal sealed class HeroUnlockDto
+{
+    public int General { get; init; }
+    public string Type { get; init; } = "faction";
+    public int? Faction { get; init; }
+    public List<string> HomeRegions { get; init; } = new();
+    public List<int> HomeCities { get; init; } = new();
+    public List<HeroUnlockConditionDto> Conditions { get; init; } = new();
+    public List<HeroUnlockConditionDto> WandererConditions { get; init; } = new();
+    public int RecruitGold { get; init; }
+    public bool AiCanRecruit { get; init; } = true;
+    public string Title { get; init; } = "";
+    public string Desc { get; init; } = "";
+}
+
+internal sealed class HeroUnlockConditionDto
+{
+    public string Code { get; init; } = "";
+    public int Value { get; init; }
+    public string? Text { get; init; }
+    public string? TroopCode { get; init; }
+    public int? Faction { get; init; }
+    public int? City { get; init; }
+    public string? Region { get; init; }
+}
+
 internal sealed class BalanceDto
 {
     public int MonthlyTaxPerCity { get; init; }

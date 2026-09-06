@@ -16,7 +16,10 @@ public sealed record Scenario(
     HexMap Map,
     IReadOnlyList<MapFeature> Features,
     TileConditionMap Conditions,
-    IReadOnlyList<GeneralPosting>? Postings = null)
+    IReadOnlyList<GeneralPosting>? Postings = null,
+    IReadOnlyList<HeroUnlockDefinition>? HeroUnlocks = null)
 {
     public IReadOnlyList<GeneralPosting> PostingList => Postings ?? [];
+
+    public IReadOnlyList<HeroUnlockDefinition> HeroUnlockList => HeroUnlocks ?? [];
 }

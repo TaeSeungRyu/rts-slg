@@ -15,6 +15,7 @@ public class ScenarioLoaderTests
         Assert.NotEmpty(scenario.Factions);
         Assert.NotEmpty(scenario.Cities);
         Assert.NotEmpty(scenario.Generals);
+        Assert.NotEmpty(scenario.HeroUnlockList);
         Assert.True(scenario.Balance.MonthlyTaxPerCity > 0);
 
         // 참조 무결성: 모든 도시의 소유 세력이 실제 존재한다.
@@ -24,6 +25,12 @@ public class ScenarioLoaderTests
         // 참조 무결성: 모든 세력의 군주가 실제 무장으로 존재한다.
         var generalIds = scenario.Generals.Select(g => g.Id).ToHashSet();
         Assert.All(scenario.Factions, f => Assert.Contains(f.Ruler, generalIds));
+        Assert.All(scenario.HeroUnlockList, h => Assert.Contains(h.General, generalIds));
+
+        // 참조 무결성: 세력형 위인의 소속 세력과 도시형 위인의 도시 참조가 실제 존재한다.
+        Assert.All(scenario.HeroUnlockList.Where(h => h.Faction is not null), h => Assert.Contains(h.Faction!.Value, factionIds));
+        var cityIds = scenario.Cities.Select(c => c.Id).ToHashSet();
+        Assert.All(scenario.HeroUnlockList.SelectMany(h => h.CityList), c => Assert.Contains(c, cityIds));
 
         // 참조 무결성: 모든 도시가 맵 경계 안에 있다.
         Assert.All(scenario.Cities, c => Assert.True(scenario.Map.Contains(c.Position), $"{c.Name}이 맵 밖에 있다."));
@@ -37,7 +44,8 @@ public class ScenarioLoaderTests
             citiesJson: """[ { "id": 2, "name": "허창", "q": 3, "r": -1, "owner": 1, "provisions": 5000 } ]""",
             generalsJson: """[ { "id": 5, "name": "조조", "aptitudes": { "infantry": "S", "cavalry": "A+" }, "might": 72, "intellect": 91, "politics": 94, "battle_active": "peerless", "battle_passives": [ { "code": "fierce_assault", "tier": 3 } ] } ]""",
             balanceJson: """{ "monthly_tax_per_city": 120 }""",
-            mapJson: """{ "min_q": 0, "max_q": 5, "min_r": -1, "max_r": 2 }""");
+            mapJson: """{ "min_q": 0, "max_q": 5, "min_r": -1, "max_r": 2 }""",
+            heroUnlocksJson: """[ { "general": 5, "type": "faction", "faction": 1, "home_regions": [ "yuzhou" ], "conditions": [ { "code": "owned_cities", "value": 2, "text": "도시 2개" } ], "wanderer_conditions": [ { "code": "owned_cities", "value": 3 } ], "recruit_gold": 700, "ai_can_recruit": false, "title": "패왕", "desc": "테스트 위인" } ]""");
 
         var faction = Assert.Single(scenario.Factions);
         Assert.Equal(new FactionId(1), faction.Id);
@@ -61,6 +69,18 @@ public class ScenarioLoaderTests
         Assert.Equal(new GeneralSkill("fierce_assault", 3), Assert.Single(general.Passives));
 
         Assert.Equal(120, scenario.Balance.MonthlyTaxPerCity);
+
+        var hero = Assert.Single(scenario.HeroUnlockList);
+        Assert.Equal(new GeneralId(5), hero.General);
+        Assert.Equal(HeroUnlockType.Faction, hero.Type);
+        Assert.Equal(new FactionId(1), hero.Faction);
+        Assert.Equal("yuzhou", Assert.Single(hero.RegionList));
+        Assert.Equal("owned_cities", Assert.Single(hero.ConditionList).Code);
+        Assert.Equal(2, Assert.Single(hero.ConditionList).Value);
+        Assert.Equal("owned_cities", Assert.Single(hero.WandererConditionList).Code);
+        Assert.Equal(700, hero.RecruitGold);
+        Assert.False(hero.AiCanRecruit);
+        Assert.Equal("패왕", hero.Title);
 
         Assert.Equal(0, scenario.Map.MinQ);
         Assert.Equal(5, scenario.Map.MaxQ);

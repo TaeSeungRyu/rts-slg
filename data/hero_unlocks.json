@@ -1,0 +1,85 @@
+[
+  {
+    "general": 6,
+    "type": "faction",
+    "faction": 2,
+    "home_regions": [ "jingzhou", "yizhou" ],
+    "conditions": [
+      { "code": "owned_cities", "value": 2, "text": "도시 2개 이상 보유" },
+      { "code": "city_security_at_least", "value": 80, "text": "치안 80 이상 도시 보유" }
+    ],
+    "wanderer_conditions": [
+      { "code": "owned_region_cities", "region": "jingzhou", "value": 1, "text": "형주권 도시 보유" },
+      { "code": "city_security_at_least", "value": 80, "text": "치안 80 이상 도시 보유" }
+    ],
+    "recruit_gold": 1500,
+    "title": "와룡",
+    "desc": "촉의 정체성을 강화하는 세력형 위인"
+  },
+  {
+    "general": 9,
+    "type": "faction",
+    "faction": 2,
+    "home_regions": [ "jizhou" ],
+    "conditions": [
+      { "code": "defeated_enemy_units", "value": 3, "text": "적 부대 3회 격파" }
+    ],
+    "wanderer_conditions": [
+      { "code": "defeated_enemy_units", "value": 5, "text": "적 부대 5회 격파" }
+    ],
+    "recruit_gold": 1000,
+    "title": "상산의 용장",
+    "desc": "전투 성과로 해금되는 촉 세력형 위인"
+  },
+  {
+    "general": 29,
+    "type": "faction",
+    "faction": 1,
+    "home_regions": [ "yuzhou" ],
+    "conditions": [
+      { "code": "monthly_gold_at_least", "value": 300, "text": "월 금 생산 300 이상" }
+    ],
+    "wanderer_conditions": [
+      { "code": "monthly_gold_at_least", "value": 500, "text": "월 금 생산 500 이상" }
+    ],
+    "recruit_gold": 1200,
+    "title": "왕좌지재",
+    "desc": "위의 내정 기반 세력형 위인"
+  },
+  {
+    "general": 11,
+    "type": "region",
+    "home_regions": [ "jingzhou" ],
+    "conditions": [
+      { "code": "owned_region_cities", "region": "jingzhou", "value": 1, "text": "형주권 도시 보유" },
+      { "code": "research_level", "troop_code": "archer", "value": 4, "text": "궁병 연구 Lv.4" }
+    ],
+    "recruit_gold": 900,
+    "title": "형주의 노장",
+    "desc": "형주권 정복과 궁병 연구로 해금되는 도시형 위인"
+  },
+  {
+    "general": 41,
+    "type": "region",
+    "home_regions": [ "liangzhou" ],
+    "conditions": [
+      { "code": "owned_region_cities", "region": "liangzhou", "value": 1, "text": "서량권 도시 보유" },
+      { "code": "major_troop", "troop_code": "cavalry", "value": 1, "text": "기병을 주력병종으로 선택" }
+    ],
+    "recruit_gold": 1300,
+    "title": "서량의 기병장",
+    "desc": "서량 지역과 기병 특화로 해금되는 도시형 위인"
+  },
+  {
+    "general": 7,
+    "type": "region",
+    "home_regions": [ "yangzhou" ],
+    "conditions": [
+      { "code": "owned_region_cities", "region": "yangzhou", "value": 1, "text": "강동권 도시 보유" },
+      { "code": "research_level", "troop_code": "naval", "value": 3, "text": "수군 연구 Lv.3" }
+    ],
+    "recruit_gold": 1500,
+    "title": "강동의 대도독",
+    "desc": "강동 수계 장악과 수군 연구로 해금되는 도시형 위인"
+  }
+]

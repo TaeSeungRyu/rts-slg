@@ -33,12 +33,13 @@ public sealed class ScenarioLoader
             Read("generals.json"),
             Read("balance.json"),
             Read("map.json"),
-            ReadOptional("postings.json"));
+            ReadOptional("postings.json"),
+            ReadOptional("hero_unlocks.json"));
     }
 
     /// <summary>JSON 문자열에서 직접 로드한다(테스트·임베딩용).</summary>
     public Scenario LoadFromJson(string factionsJson, string citiesJson, string generalsJson, string balanceJson,
-        string mapJson, string postingsJson = "[]")
+        string mapJson, string postingsJson = "[]", string heroUnlocksJson = "[]")
     {
         var factions = Deserialize<List<FactionDto>>(factionsJson, "factions")
             .Select(d => new Faction(new FactionId(d.Id), d.Name, new GeneralId(d.Ruler), d.Gold, d.Color))
@@ -90,9 +91,44 @@ public sealed class ScenarioLoader
         }
 
         var postings = new PostingLoader().LoadFromJson(postingsJson);
+        var heroUnlocks = Deserialize<List<HeroUnlockDto>>(heroUnlocksJson, "hero_unlocks")
+            .Select(ToHeroUnlock)
+            .ToList();
 
-        return new Scenario(factions, cities, generals, balance, map, features, conditions, postings);
+        return new Scenario(factions, cities, generals, balance, map, features, conditions, postings, heroUnlocks);
     }
+
+    private static HeroUnlockDefinition ToHeroUnlock(HeroUnlockDto dto)
+        => new(
+            new GeneralId(dto.General),
+            ParseHeroUnlockType(dto.Type),
+            dto.Faction is { } faction ? new FactionId(faction) : null,
+            dto.HomeRegions,
+            dto.HomeCities.Select(id => new CityId(id)).ToList(),
+            dto.Conditions.Select(ToHeroUnlockCondition).ToList(),
+            dto.WandererConditions.Select(ToHeroUnlockCondition).ToList(),
+            dto.RecruitGold,
+            dto.AiCanRecruit,
+            dto.Title,
+            dto.Desc);
+
+    private static HeroUnlockCondition ToHeroUnlockCondition(HeroUnlockConditionDto dto)
+        => new(
+            dto.Code,
+            dto.Value,
+            dto.Text,
+            dto.TroopCode,
+            dto.Faction is { } faction ? new FactionId(faction) : null,
+            dto.City is { } city ? new CityId(city) : null,
+            dto.Region);
+
+    private static HeroUnlockType ParseHeroUnlockType(string name) => name switch
+    {
+        "faction" => HeroUnlockType.Faction,
+        "region" => HeroUnlockType.Region,
+        "wanderer" => HeroUnlockType.Wanderer,
+        _ => throw new InvalidDataException($"알 수 없는 위인 해금 유형: {name}"),
+    };
 
     private static HexMap BuildMap(MapDto dto)
     {
