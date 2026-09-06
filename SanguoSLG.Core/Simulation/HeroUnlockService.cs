@@ -65,6 +65,12 @@ public sealed class HeroUnlockService
                 continue;
             }
 
+            if (!UnlockYearReached(state, hero))
+            {
+                states[hero.General] = current;
+                continue;
+            }
+
             var eligible = EligibleFaction(state, hero, current);
             if (eligible is null)
             {
@@ -126,6 +132,14 @@ public sealed class HeroUnlockService
         }
 
         return null;
+    }
+
+    private static bool UnlockYearReached(GameState state, HeroUnlockDefinition hero)
+    {
+        var requiredYear = hero.UnlockYear > 0
+            ? hero.UnlockYear
+            : state.Generals.FirstOrDefault(g => g.Id == hero.General)?.UnlockYear ?? 0;
+        return requiredYear <= 0 || state.Year >= requiredYear;
     }
 
     private static bool IsSatisfied(GameState state, HeroUnlockCondition condition, FactionId faction)

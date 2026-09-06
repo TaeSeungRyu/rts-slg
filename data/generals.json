@@ -152,6 +152,7 @@
     "id": 6,
     "name": "제갈량",
     "birth": 181,
+    "unlock_year": 207,
     "region": "xuzhou",
     "desc": "와룡 — 촉한의 승상이자 천하삼분의 설계자",
     "aptitudes": {
@@ -187,6 +188,7 @@
     "id": 7,
     "name": "주유",
     "birth": 175,
+    "unlock_year": 190,
     "region": "yangzhou",
     "desc": "적벽에서 조조를 불태운 미주랑",
     "aptitudes": {
@@ -249,6 +251,7 @@
     "id": 9,
     "name": "조운",
     "birth": 168,
+    "unlock_year": 190,
     "region": "jizhou",
     "desc": "장판에서 아두를 구한 상산의 호장",
     "aptitudes": {
@@ -305,6 +308,7 @@
     "id": 11,
     "name": "황충",
     "birth": 148,
+    "unlock_year": 190,
     "region": "jingzhou",
     "desc": "정군산에서 하후연을 벤 노장 — 백발백중",
     "aptitudes": {
@@ -785,6 +789,7 @@
     "id": 29,
     "name": "순욱",
     "birth": 163,
+    "unlock_year": 190,
     "region": "yuzhou",
     "desc": "왕좌지재 — 조조의 장자방",
     "aptitudes": {
@@ -1162,6 +1167,7 @@
     "id": 41,
     "name": "마초",
     "birth": 176,
+    "unlock_year": 211,
     "region": "liangzhou",
     "desc": "서량의 금마초 — 조조를 떨게 한 기마의 신",
     "aptitudes": {

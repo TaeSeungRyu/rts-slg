@@ -56,6 +56,7 @@ internal sealed class GeneralDto
     public List<GeneralSkillDto> BattlePassives { get; init; } = new();
     public List<GeneralSkillDto> AdminPassives { get; init; } = new();
     public int Birth { get; init; }
+    public int UnlockYear { get; init; }
     public string Region { get; init; } = "";
     public string Desc { get; init; } = "";
 }
@@ -75,6 +76,7 @@ internal sealed class HeroUnlockDto
     public List<int> HomeCities { get; init; } = new();
     public List<HeroUnlockConditionDto> Conditions { get; init; } = new();
     public List<HeroUnlockConditionDto> WandererConditions { get; init; } = new();
+    public int UnlockYear { get; init; }
     public int RecruitGold { get; init; }
     public bool AiCanRecruit { get; init; } = true;
     public string Title { get; init; } = "";

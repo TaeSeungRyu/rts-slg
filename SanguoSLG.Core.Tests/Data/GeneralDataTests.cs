@@ -78,6 +78,7 @@ public class GeneralDataTests
         {
             Assert.Contains(g.Region, regions);
             Assert.NotEqual(0, g.Birth); // 음수 = 기원전
+            Assert.True(g.UnlockYear >= 0);
             Assert.False(string.IsNullOrWhiteSpace(g.Desc));
         }
     }

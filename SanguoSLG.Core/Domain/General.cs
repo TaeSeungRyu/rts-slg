@@ -18,6 +18,7 @@ public sealed record General(
     IReadOnlyList<GeneralSkill>? BattlePassives = null,
     IReadOnlyList<GeneralSkill>? AdminPassives = null,
     int Birth = 0,
+    int UnlockYear = 0,
     string Region = "",
     string Desc = "")
 {

@@ -37,6 +37,7 @@ public sealed class GeneralLoader
         d.BattlePassives.Select(s => new GeneralSkill(s.Code, s.Tier)).ToList(),
         d.AdminPassives.Select(s => new GeneralSkill(s.Code, s.Tier)).ToList(),
         d.Birth,
+        d.UnlockYear,
         d.Region,
         d.Desc);
 

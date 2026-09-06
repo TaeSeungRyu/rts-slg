@@ -56,6 +56,49 @@ public class HeroUnlockServiceTests
     }
 
     [Fact]
+    public void 해금_가능_년도_전에는_조건이_맞아도_잠김을_유지한다()
+    {
+        var hero = new HeroUnlockDefinition(
+            new GeneralId(6),
+            HeroUnlockType.Faction,
+            new FactionId(2),
+            Conditions: [new HeroUnlockCondition("owned_cities", 1)]);
+        var state = State([hero], [City(1, new FactionId(2), "jingzhou", 90)])
+            with
+            {
+                Day = 1,
+                StartYear = 190,
+                Generals = [new General(new GeneralId(6), "제갈량", new Dictionary<TroopClass, AptitudeGrade>(), 38, 100, 95, UnlockYear: 207)],
+            };
+
+        var next = new HeroUnlockService().Evaluate(state);
+
+        Assert.Equal(HeroUnlockStatus.Locked, Assert.Single(next.HeroStates).Status);
+    }
+
+    [Fact]
+    public void 해금_정의의_년도는_캐릭터_년도보다_우선한다()
+    {
+        var hero = new HeroUnlockDefinition(
+            new GeneralId(6),
+            HeroUnlockType.Faction,
+            new FactionId(2),
+            Conditions: [new HeroUnlockCondition("owned_cities", 1)],
+            UnlockYear: 190);
+        var state = State([hero], [City(1, new FactionId(2), "jingzhou", 90)])
+            with
+            {
+                Day = 1,
+                StartYear = 190,
+                Generals = [new General(new GeneralId(6), "제갈량", new Dictionary<TroopClass, AptitudeGrade>(), 38, 100, 95, UnlockYear: 207)],
+            };
+
+        var next = new HeroUnlockService().Evaluate(state);
+
+        Assert.Equal(HeroUnlockStatus.Unlocked, Assert.Single(next.HeroStates).Status);
+    }
+
+    [Fact]
     public void 멸망한_세력의_잠긴_세력형_위인은_유랑_상태가_된다()
     {
         var lockedHero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Faction, new FactionId(2));

@@ -9,6 +9,7 @@ public sealed record HeroUnlockDefinition(
     IReadOnlyList<CityId>? HomeCities = null,
     IReadOnlyList<HeroUnlockCondition>? Conditions = null,
     IReadOnlyList<HeroUnlockCondition>? WandererConditions = null,
+    int UnlockYear = 0,
     int RecruitGold = 0,
     bool AiCanRecruit = true,
     string Title = "",

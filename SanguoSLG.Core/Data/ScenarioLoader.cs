@@ -107,6 +107,7 @@ public sealed class ScenarioLoader
             dto.HomeCities.Select(id => new CityId(id)).ToList(),
             dto.Conditions.Select(ToHeroUnlockCondition).ToList(),
             dto.WandererConditions.Select(ToHeroUnlockCondition).ToList(),
+            dto.UnlockYear,
             dto.RecruitGold,
             dto.AiCanRecruit,
             dto.Title,

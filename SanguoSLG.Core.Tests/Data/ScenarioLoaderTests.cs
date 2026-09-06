@@ -42,10 +42,10 @@ public class ScenarioLoaderTests
         var scenario = new ScenarioLoader().LoadFromJson(
             factionsJson: """[ { "id": 1, "name": "위", "ruler": 5, "gold": 1000 } ]""",
             citiesJson: """[ { "id": 2, "name": "허창", "q": 3, "r": -1, "owner": 1, "provisions": 5000 } ]""",
-            generalsJson: """[ { "id": 5, "name": "조조", "aptitudes": { "infantry": "S", "cavalry": "A+" }, "might": 72, "intellect": 91, "politics": 94, "battle_active": "peerless", "battle_passives": [ { "code": "fierce_assault", "tier": 3 } ] } ]""",
+            generalsJson: """[ { "id": 5, "name": "조조", "aptitudes": { "infantry": "S", "cavalry": "A+" }, "might": 72, "intellect": 91, "politics": 94, "battle_active": "peerless", "battle_passives": [ { "code": "fierce_assault", "tier": 3 } ], "unlock_year": 190 } ]""",
             balanceJson: """{ "monthly_tax_per_city": 120 }""",
             mapJson: """{ "min_q": 0, "max_q": 5, "min_r": -1, "max_r": 2 }""",
-            heroUnlocksJson: """[ { "general": 5, "type": "faction", "faction": 1, "home_regions": [ "yuzhou" ], "conditions": [ { "code": "owned_cities", "value": 2, "text": "도시 2개" } ], "wanderer_conditions": [ { "code": "owned_cities", "value": 3 } ], "recruit_gold": 700, "ai_can_recruit": false, "title": "패왕", "desc": "테스트 위인" } ]""");
+            heroUnlocksJson: """[ { "general": 5, "type": "faction", "faction": 1, "home_regions": [ "yuzhou" ], "conditions": [ { "code": "owned_cities", "value": 2, "text": "도시 2개" } ], "wanderer_conditions": [ { "code": "owned_cities", "value": 3 } ], "unlock_year": 195, "recruit_gold": 700, "ai_can_recruit": false, "title": "패왕", "desc": "테스트 위인" } ]""");
 
         var faction = Assert.Single(scenario.Factions);
         Assert.Equal(new FactionId(1), faction.Id);
@@ -66,6 +66,7 @@ public class ScenarioLoaderTests
         Assert.Equal(AptitudeGrade.F, general.AptitudeFor(TroopClass.Naval)); // 미정의 = F
         Assert.Equal(72, general.Might);
         Assert.Equal("peerless", general.BattleActive);
+        Assert.Equal(190, general.UnlockYear);
         Assert.Equal(new GeneralSkill("fierce_assault", 3), Assert.Single(general.Passives));
 
         Assert.Equal(120, scenario.Balance.MonthlyTaxPerCity);
@@ -78,6 +79,7 @@ public class ScenarioLoaderTests
         Assert.Equal("owned_cities", Assert.Single(hero.ConditionList).Code);
         Assert.Equal(2, Assert.Single(hero.ConditionList).Value);
         Assert.Equal("owned_cities", Assert.Single(hero.WandererConditionList).Code);
+        Assert.Equal(195, hero.UnlockYear);
         Assert.Equal(700, hero.RecruitGold);
         Assert.False(hero.AiCanRecruit);
         Assert.Equal("패왕", hero.Title);
