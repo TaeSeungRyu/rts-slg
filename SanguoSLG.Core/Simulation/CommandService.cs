@@ -113,6 +113,11 @@ public sealed class CommandService
             return AppointCityOfficer(state, city, main, req);
         }
 
+        if (req.Kind == CommandKind.RecruitHero)
+        {
+            return RecruitHero(state, city, req);
+        }
+
         General? assist = null;
         if (req.Assist is { } assistId)
         {
@@ -162,10 +167,58 @@ public sealed class CommandService
             CommandKind.Repair => IssueRepair(state, city, req, assist),
             CommandKind.CityStratagem => IssueCityStratagem(state, city, req, assist),
             CommandKind.Enlist => IssueEnlist(state, city, req, assist, main),
+            CommandKind.RecruitHero => RecruitHero(state, city, req),
             CommandKind.FormAlliance => IssueFormAlliance(state, city, req, assist),
             CommandKind.BreakAlliance => IssueBreakAlliance(state, city, req),
             _ => CommandResult.Fail("알 수 없는 명령이다.", state),
         };
+    }
+
+    private static CommandResult RecruitHero(GameState state, City city, CommandRequest req)
+    {
+        if (req.TargetGeneral is not { } generalId)
+        {
+            return CommandResult.Fail("영입할 위인을 지정해야 한다.", state);
+        }
+
+        var hero = state.HeroUnlocks.FirstOrDefault(h => h.General == generalId);
+        if (hero is null)
+        {
+            return CommandResult.Fail("위인 해금 정의를 찾을 수 없다.", state);
+        }
+
+        var heroState = state.HeroStates.FirstOrDefault(s => s.General == generalId);
+        if (heroState is null || !heroState.CanRecruit)
+        {
+            return CommandResult.Fail("아직 영입할 수 없는 위인이다.", state);
+        }
+
+        if (heroState.EligibleFaction != city.Owner)
+        {
+            return CommandResult.Fail("이 세력에서 영입할 수 없는 위인이다.", state);
+        }
+
+        if (state.PostingOf(generalId) is not null)
+        {
+            return CommandResult.Fail("이미 소속된 장수다.", state);
+        }
+
+        if (city.Gold < hero.RecruitGold)
+        {
+            return CommandResult.Fail($"위인 영입 비용 {hero.RecruitGold}금이 필요하다.", state);
+        }
+
+        var cities = state.Cities
+            .Select(c => c.Id == city.Id ? c with { Gold = c.Gold - hero.RecruitGold } : c)
+            .ToList();
+        var postings = state.Assignments.Append(new GeneralPosting(generalId, city.Owner, city.Id)).ToList();
+        var heroStates = state.HeroStates
+            .Select(s => s.General == generalId
+                ? s with { Status = HeroUnlockStatus.Recruited, EligibleFaction = city.Owner, UpdatedDay = state.Day }
+                : s)
+            .ToList();
+
+        return CommandResult.Success(state with { Cities = cities, Postings = postings, HeroUnlockStates = heroStates });
     }
 
     private static CommandResult IssueBreakAlliance(GameState state, City city, CommandRequest req)
