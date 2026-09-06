@@ -5740,7 +5740,9 @@ public sealed partial class CampaignMapScene : Node3D
         var isAppoint = cmd.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist
             or CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer
             or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer;
-        var free = (isAppoint ? _state.GeneralsAt(city) : _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g)))
+        var free = (isAppoint
+                ? _state.GeneralsAt(city)
+                : _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !_state.IsGeneralInField(g)))
             .OrderBy(g => g.Value).ToList();
         if (free.Count == 0)
         {
