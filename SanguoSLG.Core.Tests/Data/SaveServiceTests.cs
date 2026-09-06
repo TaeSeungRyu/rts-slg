@@ -43,7 +43,15 @@ public class SaveServiceTests
             Captives: new List<Prisoner> { new(new GeneralId(1), new FactionId(1), new FactionId(2)) },
             FactionAlliances: new List<FactionAlliance> { FactionAlliance.Create(new FactionId(1), new FactionId(2), 40, 100) },
             MarketPricePercent: 130,
-            FacilityPlacements: new List<FacilityPlacement> { new(new CityId(1), new HexCoord(1, 0), "paddy", FacilityHealth.Level2) });
+            FacilityPlacements: new List<FacilityPlacement> { new(new CityId(1), new HexCoord(1, 0), "paddy", FacilityHealth.Level2) },
+            HeroUnlockDefinitions: new List<HeroUnlockDefinition>
+            {
+                new(new GeneralId(1), HeroUnlockType.Faction, new FactionId(1), RecruitGold: 900, Title: "무성")
+            },
+            HeroUnlockStates: new List<HeroUnlockState>
+            {
+                new(new GeneralId(1), HeroUnlockStatus.Unlocked, new FactionId(1), 45)
+            });
 
         var round = SaveService.Deserialize(SaveService.Serialize(state));
 
@@ -75,5 +83,9 @@ public class SaveServiceTests
         Assert.Equal(new HexCoord(1, 0), rp.Plot);
         Assert.Equal("paddy", rp.Code);
         Assert.Equal(FacilityHealth.Level2, rp.HitPoints);
+        // 위인 정의와 런타임 해금 상태도 왕복 보존.
+        Assert.Equal(HeroUnlockType.Faction, round.HeroUnlocks.Single().Type);
+        Assert.Equal(HeroUnlockStatus.Unlocked, round.HeroStates.Single().Status);
+        Assert.Equal(new FactionId(1), round.HeroStates.Single().EligibleFaction);
     }
 }

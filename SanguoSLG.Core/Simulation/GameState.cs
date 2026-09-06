@@ -24,10 +24,18 @@ public sealed record GameState(
     IReadOnlyList<FactionAlliance>? FactionAlliances = null,
     IReadOnlyList<CityIntel>? ScoutedCities = null,
     int MarketPricePercent = 100,
-    IReadOnlyList<FacilityPlacement>? FacilityPlacements = null)
+    IReadOnlyList<FacilityPlacement>? FacilityPlacements = null,
+    IReadOnlyList<HeroUnlockDefinition>? HeroUnlockDefinitions = null,
+    IReadOnlyList<HeroUnlockState>? HeroUnlockStates = null)
 {
     /// <summary>건설한 시설이 놓인 성 주변 타일(표현 계층이 모델을 얹는다). 건설 완료 시 append.</summary>
     public IReadOnlyList<FacilityPlacement> Placements => FacilityPlacements ?? [];
+
+    /// <summary>시나리오 정적 위인 해금 정의.</summary>
+    public IReadOnlyList<HeroUnlockDefinition> HeroUnlocks => HeroUnlockDefinitions ?? [];
+
+    /// <summary>위인 해금 런타임 상태.</summary>
+    public IReadOnlyList<HeroUnlockState> HeroStates => HeroUnlockStates ?? [];
 
     /// <summary>도시 대기 병력(병종별) — 모집 정산이 쌓고, 출전 편성이 꺼내 쓴다.</summary>
     public IReadOnlyList<GarrisonForce> Garrisons => GarrisonForces ?? [];
@@ -110,6 +118,13 @@ public sealed record GameState(
     public int DayOfMonth => (Day - 1) % DaysPerMonth + 1;
 
     /// <summary>시나리오로부터 시작 상태(시작 연도 1월 1일)를 만든다.</summary>
-    public static GameState FromScenario(Scenario scenario, int startYear = 1) =>
-        new(1, startYear, scenario.Factions, scenario.Cities, scenario.Generals, Postings: scenario.Postings);
+    public static GameState FromScenario(Scenario scenario, int startYear = 1)
+    {
+        var heroUnlocks = scenario.HeroUnlockList;
+        return new(1, startYear, scenario.Factions, scenario.Cities, scenario.Generals, Postings: scenario.Postings,
+            HeroUnlockDefinitions: heroUnlocks,
+            HeroUnlockStates: heroUnlocks
+                .Select(h => new HeroUnlockState(h.General, HeroUnlockStatus.Locked))
+                .ToList());
+    }
 }
