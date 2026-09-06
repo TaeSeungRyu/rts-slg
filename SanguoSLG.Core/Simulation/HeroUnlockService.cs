@@ -57,11 +57,11 @@ public sealed class HeroUnlockService
     {
         if (current.Status == HeroUnlockStatus.Wanderer)
         {
-            foreach (var faction in state.Factions.Select(f => f.Id).Where(f => state.CityCount(f) > 0))
+            foreach (var candidate in state.Factions.Select(f => f.Id).Where(f => state.CityCount(f) > 0))
             {
-                if (IsWandererSatisfied(state, hero, faction))
+                if (IsWandererSatisfied(state, hero, candidate))
                 {
-                    return faction;
+                    return candidate;
                 }
             }
 
@@ -75,11 +75,11 @@ public sealed class HeroUnlockService
 
         if (hero.Type == HeroUnlockType.Region)
         {
-            foreach (var faction in state.Factions.Select(f => f.Id).Where(f => state.CityCount(f) > 0))
+            foreach (var candidate in state.Factions.Select(f => f.Id).Where(f => state.CityCount(f) > 0))
             {
-                if (IsSatisfied(state, hero, faction))
+                if (IsSatisfied(state, hero, candidate))
                 {
-                    return faction;
+                    return candidate;
                 }
             }
 
