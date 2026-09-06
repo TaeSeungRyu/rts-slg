@@ -381,7 +381,10 @@ public sealed partial class CampaignMapScene : Node3D
         _ai = new FactionAI(_commander, _deployer);
         _passability = new PassabilityMap(_map, [], _cities);
         var movement = new MovementSimulator(_passability);
-        var world = new WorldEngine(_balance, _cb);
+        // 플레이 세션에서는 탐색·외교 결과가 매 실행 같은 초반 난수열에 묶이지 않도록 세션 시드를 쓴다.
+        // Core 테스트는 WorldEngine에 고정 IRandomSource를 주입해 결정론을 유지한다.
+        var sessionSeed = unchecked((int)(System.DateTime.UtcNow.Ticks ^ System.Environment.TickCount64));
+        var world = new WorldEngine(_balance, _cb, random: new SeededRandomSource(sessionSeed));
         _engine = new CampaignEngine(
             new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70)),
             world,
