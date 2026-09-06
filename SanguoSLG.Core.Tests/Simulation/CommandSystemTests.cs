@@ -507,6 +507,25 @@ public class CommandSystemTests
     }
 
     [Fact]
+    public void 발행_탐색은_담당자로_지정된_장수도_선택할_수_있다()
+    {
+        var city = Town(1);
+        var s0 = State(new[] { city }, new[] { Pol(1, 90) }) with
+        {
+            Postings = new[] { new GeneralPosting(new GeneralId(1), city.Owner, city.Id) },
+        };
+        var appointed = Service().Issue(s0,
+            new CommandRequest(city.Id, CommandKind.AppointDomesticOfficer, new GeneralId(1)));
+        Assert.True(appointed.Ok, appointed.Error);
+
+        var explore = Service().Issue(appointed.State,
+            new CommandRequest(city.Id, CommandKind.Explore, new GeneralId(1)));
+
+        Assert.True(explore.Ok, explore.Error);
+        Assert.Equal(CommandKind.Explore, Assert.Single(explore.State.Commands).Kind);
+    }
+
+    [Fact]
     public void 발행_건설은_정치_70이하면_거부된다()
     {
         var svc = Service();
