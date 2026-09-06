@@ -55,6 +55,30 @@ public class HeroUnlockServiceTests
         Assert.Equal(new FactionId(1), unlocked.EligibleFaction);
     }
 
+    [Fact]
+    public void 멸망한_세력의_잠긴_세력형_위인은_유랑_상태가_된다()
+    {
+        var lockedHero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Faction, new FactionId(2));
+        var recruitedHero = new HeroUnlockDefinition(new GeneralId(9), HeroUnlockType.Faction, new FactionId(2));
+        var regionHero = new HeroUnlockDefinition(new GeneralId(11), HeroUnlockType.Region, HomeRegions: [ "jingzhou" ]);
+        var state = State([lockedHero, recruitedHero, regionHero], [City(1, new FactionId(1), "jingzhou", 90)])
+            with
+            {
+                HeroUnlockStates =
+                [
+                    new HeroUnlockState(new GeneralId(6), HeroUnlockStatus.Locked),
+                    new HeroUnlockState(new GeneralId(9), HeroUnlockStatus.Recruited, new FactionId(2)),
+                    new HeroUnlockState(new GeneralId(11), HeroUnlockStatus.Locked),
+                ],
+            };
+
+        var next = new HeroUnlockService().MarkFactionEliminated(state, new FactionId(2));
+
+        Assert.Equal(HeroUnlockStatus.Wanderer, next.HeroStates.Single(s => s.General == new GeneralId(6)).Status);
+        Assert.Equal(HeroUnlockStatus.Recruited, next.HeroStates.Single(s => s.General == new GeneralId(9)).Status);
+        Assert.Equal(HeroUnlockStatus.Locked, next.HeroStates.Single(s => s.General == new GeneralId(11)).Status);
+    }
+
     private static GameState State(IReadOnlyList<HeroUnlockDefinition> heroes, IReadOnlyList<City> cities)
         => new(
             10,

@@ -194,7 +194,8 @@ public sealed class CityCapture
         }
 
         var captives = state.Prisoners.Where(p => p.Holder != oldOwner && p.Origin != oldOwner).ToList();
-        return state with { Postings = postings, Captives = captives };
+        var next = state with { Postings = postings, Captives = captives };
+        return new HeroUnlockService().MarkFactionEliminated(next, oldOwner);
     }
 
     private static void AddGarrison(List<GarrisonForce> garrisons, CityId city, string troopCode, int troops, int training)

@@ -5,6 +5,45 @@ using SanguoSLG.Core.Domain;
 /// <summary>위인 해금 조건을 현재 GameState 기준으로 판정하고 상태를 갱신한다.</summary>
 public sealed class HeroUnlockService
 {
+    public GameState MarkFactionEliminated(GameState state, FactionId eliminatedFaction)
+    {
+        if (state.HeroUnlocks.Count == 0)
+        {
+            return state;
+        }
+
+        var factionHeroes = state.HeroUnlocks
+            .Where(h => h.Type == HeroUnlockType.Faction && h.Faction == eliminatedFaction)
+            .Select(h => h.General)
+            .ToHashSet();
+        if (factionHeroes.Count == 0)
+        {
+            return state;
+        }
+
+        var states = state.HeroStates.ToDictionary(s => s.General);
+        var changed = false;
+        foreach (var general in factionHeroes)
+        {
+            var current = states.GetValueOrDefault(general)
+                ?? new HeroUnlockState(general, HeroUnlockStatus.Locked);
+            if (current.Status == HeroUnlockStatus.Locked)
+            {
+                states[general] = current with
+                {
+                    Status = HeroUnlockStatus.Wanderer,
+                    EligibleFaction = null,
+                    UpdatedDay = state.Day,
+                };
+                changed = true;
+            }
+        }
+
+        return changed
+            ? state with { HeroUnlockStates = states.Values.OrderBy(s => s.General.Value).ToList() }
+            : state;
+    }
+
     public GameState Evaluate(GameState state)
     {
         if (state.HeroUnlocks.Count == 0)
