@@ -2733,9 +2733,10 @@ public sealed partial class CampaignMapScene : Node3D
 
             var day = System.Math.Min(AnimDays, (int)(_animT / DaySeconds) + 1);
             _dayLabel.Text = $"{day}일차";
-            // 하루 4초 = 이동 3초 + 공격 1초. 공격 있는 날도 3초까지는 '이동턴', 그 뒤 1초만 '공격턴'.
+            // 하루는 이동 연출 뒤 공격 판정 슬롯으로 고정 분리한다.
+            // 실제 교전이 없어도 플레이어가 진행 구조를 읽을 수 있게 "공격턴"은 항상 표시한다.
             var dayElapsed = _animT - (day - 1) * DaySeconds;
-            var attacking = _dayKind[day] == "공격" && dayElapsed >= MoveSeconds;
+            var attacking = dayElapsed >= MoveSeconds;
             _dayTurnLabel.Text = attacking ? "⚔ 공격턴" : "▷ 이동턴";
             _dayTurnLabel.AddThemeColorOverride("font_color", attacking ? new Color(0.98f, 0.62f, 0.42f) : new Color(0.6f, 0.85f, 0.7f));
             _advanceBtn.Progress = (float)(_animT / (AnimDays * DaySeconds));
