@@ -168,6 +168,7 @@ public sealed class CommandService
             CommandKind.CityStratagem => IssueCityStratagem(state, city, req, assist),
             CommandKind.Enlist => IssueEnlist(state, city, req, assist, main),
             CommandKind.RecruitHero => RecruitHero(state, city, req),
+            CommandKind.Explore => IssueExplore(state, city, req, assist),
             CommandKind.FormAlliance => IssueFormAlliance(state, city, req, assist),
             CommandKind.BreakAlliance => IssueBreakAlliance(state, city, req),
             _ => CommandResult.Fail("알 수 없는 명령이다.", state),
@@ -335,6 +336,9 @@ public sealed class CommandService
 
         return EnlistKind.Invalid;
     }
+
+    private CommandResult IssueExplore(GameState state, City city, CommandRequest req, General? assist)
+        => Register(state, city, req, assist, amount: 0, _b.CommandDays, CommandKind.Explore, "");
 
     private CommandResult IssueRecruit(GameState state, City city, CommandRequest req, General? assist,
         int eff, CommandKind kind)

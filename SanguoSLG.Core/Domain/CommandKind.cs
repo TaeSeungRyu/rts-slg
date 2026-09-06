@@ -60,6 +60,9 @@ public enum CommandKind
     /// <summary>위인 영입 — 해금된 세력형/도시형/유랑 위인을 금을 내고 즉시 도시로 합류시킨다.</summary>
     RecruitHero,
 
+    /// <summary>탐색 — 인재를 제외한 신수·고대유물·지방호족·소문/단서를 찾는다. 7일.</summary>
+    Explore,
+
     /// <summary>동맹 — 대상 세력에 사절을 보내 정치 확률로 동맹을 체결한다. 금 비용과 거리 비례 소요일.</summary>
     FormAlliance,
 

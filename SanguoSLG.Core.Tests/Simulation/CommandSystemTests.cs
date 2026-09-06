@@ -470,6 +470,21 @@ public class CommandSystemTests
     }
 
     [Fact]
+    public void 발행_탐색은_7일_명령으로_장수를_잠근다()
+    {
+        var svc = Service();
+        var s0 = State(new[] { Town(1) }, new[] { Pol(1, 90) });
+
+        var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Explore, new GeneralId(1)));
+
+        Assert.True(issued.Ok, issued.Error);
+        var command = Assert.Single(issued.State.Commands);
+        Assert.Equal(CommandKind.Explore, command.Kind);
+        Assert.Equal(s0.Day + B.CommandDays, command.CompletionDay);
+        Assert.True(issued.State.IsGeneralBusy(new GeneralId(1)));
+    }
+
+    [Fact]
     public void 발행_건설은_정치_70이하면_거부된다()
     {
         var svc = Service();
