@@ -51,6 +51,11 @@ public class SaveServiceTests
             HeroUnlockStates: new List<HeroUnlockState>
             {
                 new(new GeneralId(1), HeroUnlockStatus.Unlocked, new FactionId(1), 45)
+            },
+            ExplorationDiscoveries: new List<ExplorationDiscovery>
+            {
+                new(45, new FactionId(1), new CityId(1), new GeneralId(1), ExplorationResultKind.Rumor,
+                    "wolong_rumor", Text: "와룡의 소문")
             });
 
         var round = SaveService.Deserialize(SaveService.Serialize(state));
@@ -87,5 +92,8 @@ public class SaveServiceTests
         Assert.Equal(HeroUnlockType.Faction, round.HeroUnlocks.Single().Type);
         Assert.Equal(HeroUnlockStatus.Unlocked, round.HeroStates.Single().Status);
         Assert.Equal(new FactionId(1), round.HeroStates.Single().EligibleFaction);
+        var discovery = Assert.Single(round.Discoveries);
+        Assert.Equal(ExplorationResultKind.Rumor, discovery.Kind);
+        Assert.Equal("wolong_rumor", discovery.Code);
     }
 }
