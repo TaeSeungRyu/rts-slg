@@ -14,6 +14,12 @@ public class ExplorationCommandTests
         public int Next(int minInclusive, int maxExclusive) => value;
     }
 
+    private sealed class FixedRandomSequence(params int[] values) : IRandomSource
+    {
+        private int _index;
+        public int Next(int minInclusive, int maxExclusive) => values[_index++ % values.Length];
+    }
+
     private static City City(int gold = 100, int provisions = 200) =>
         new(new CityId(1), "허창", new HexCoord(0, 0), new FactionId(1), provisions,
             Gold: gold);
@@ -56,5 +62,29 @@ public class ExplorationCommandTests
         Assert.Equal(200, after.Cities.Single().Provisions);
         Assert.Equal(ExplorationResultKind.None, Assert.Single(after.Discoveries).Kind);
         Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.Explore && e.Code == "nothing");
+    }
+
+    [Fact]
+    public void 여러_성의_탐색_명령은_각_도시별로_독립_정산된다()
+    {
+        var service = new CommandService(new CommandBalance());
+        var c1 = City();
+        var c2 = City() with { Id = new CityId(2), Name = "업", Position = new HexCoord(5, 0), Gold = 300 };
+        var g1 = General();
+        var g2 = General() with { Id = new GeneralId(2), Name = "탐색관2" };
+        var state = new GameState(1, 1, new List<Faction>(), [c1, c2], [g1, g2],
+            Postings: [new GeneralPosting(g1.Id, c1.Owner, c1.Id), new GeneralPosting(g2.Id, c2.Owner, c2.Id)]);
+        var first = service.Issue(state, new CommandRequest(c1.Id, CommandKind.Explore, g1.Id)).State;
+        var second = service.Issue(first, new CommandRequest(c2.Id, CommandKind.Explore, g2.Id)).State;
+
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), new CommandBalance(),
+            random: new FixedRandomSequence(2, 99));
+        var after = world.AdvanceDays(second, 7);
+
+        Assert.Equal(2, after.Discoveries.Count);
+        Assert.Contains(after.Discoveries, d => d.City == c1.Id && d.Kind == ExplorationResultKind.LocalClan);
+        Assert.Contains(after.Discoveries, d => d.City == c2.Id && d.Kind == ExplorationResultKind.None);
+        Assert.Equal(300, after.Cities.Single(c => c.Id == c1.Id).Gold);
+        Assert.Equal(300, after.Cities.Single(c => c.Id == c2.Id).Gold);
     }
 }
