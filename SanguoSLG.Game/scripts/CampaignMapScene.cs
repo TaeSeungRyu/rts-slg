@@ -387,7 +387,17 @@ public sealed partial class CampaignMapScene : Node3D
             new CityCapture(), new SeededRandomSource(42),
             new CityPlunder(_cb), _cb.CityResupplyRadius,
             _cb.BuildSiteHp, _cb.BuildSiteDamagePerTurn);
-        _state = _initial;
+        var scenario = new ScenarioLoader().LoadFromDirectory(dataDirectory);
+        _state = _initial with
+        {
+            StartYear = 190,
+            Factions = scenario.Factions,
+            Generals = scenario.Generals,
+            HeroUnlockDefinitions = scenario.HeroUnlockList,
+            HeroUnlockStates = scenario.HeroUnlockList
+                .Select(h => new HeroUnlockState(h.General, HeroUnlockStatus.Locked))
+                .ToList(),
+        };
 
         _dbgLog = ProjectSettings.GlobalizePath("res://deploy-debug.log");
         try { System.IO.File.WriteAllText(_dbgLog, "=== maptest deploy debug ===\n"); } catch { }
@@ -2829,6 +2839,8 @@ public sealed partial class CampaignMapScene : Node3D
         {
             box.AddChild(MakeLabel("조건을 달성해 해금된 세력형/도시형/유랑 위인을 금을 내고 영입합니다.", 15, Parchment));
             BuildHeroRecruitCards(box, cityData);
+            var contentHeroH = box.GetCombinedMinimumSize().Y;
+            scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentHeroH, mh));
             return;
         }
 
