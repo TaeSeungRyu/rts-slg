@@ -5314,13 +5314,15 @@ public sealed partial class CampaignMapScene : Node3D
     private void BuildHeroRecruitCards(VBoxContainer box, City city)
     {
         _state = new HeroUnlockService().Evaluate(_state);
-        var available = _state.HeroStates
-            .Where(s => s.CanRecruit && s.EligibleFaction == city.Owner)
-            .OrderBy(s => s.General.Value)
+        var states = _state.HeroUnlocks
+            .Select(h => (_state.HeroStates.FirstOrDefault(s => s.General == h.General)
+                ?? new HeroUnlockState(h.General, HeroUnlockStatus.Locked), h))
+            .OrderBy(x => x.Item1.CanRecruit && x.Item1.EligibleFaction == city.Owner ? 0 : 1)
+            .ThenBy(x => x.h.General.Value)
             .ToList();
-        if (available.Count == 0)
+        if (states.Count == 0)
         {
-            box.AddChild(MakeLabel("현재 영입 가능한 위인이 없습니다.\n전투, 연구, 도시 점령, 치안 조건을 달성하면 이곳에 표시됩니다.", 15, Parchment));
+            box.AddChild(MakeLabel("위인 해금 데이터가 없습니다.", 15, Parchment));
             return;
         }
 
@@ -5329,14 +5331,16 @@ public sealed partial class CampaignMapScene : Node3D
         grid.AddThemeConstantOverride("v_separation", 10);
         box.AddChild(grid);
 
-        foreach (var state in available)
+        foreach (var (state, hero) in states)
         {
-            var hero = _state.HeroUnlocks.First(h => h.General == state.General);
             var general = _state.Generals.FirstOrDefault(g => g.Id == state.General);
             var name = general?.Name ?? $"장수 {state.General.Value}";
             var type = HeroTypeName(hero.Type, state.Status);
+            var canRecruit = state.CanRecruit && state.EligibleFaction == city.Owner && city.Gold >= hero.RecruitGold;
+            var status = HeroStatusText(state, city.Owner);
             var card = new PanelContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-            card.AddThemeStyleboxOverride("panel", Frame(new Color(0.12f, 0.08f, 0.04f, 0.94f), Gold, 1, 8, 10));
+            card.AddThemeStyleboxOverride("panel", Frame(new Color(0.12f, 0.08f, 0.04f, state.CanRecruit ? 0.94f : 0.72f),
+                state.CanRecruit ? Gold : new Color(Parchment, 0.35f), 1, 8, 10));
             grid.AddChild(card);
 
             var row = new HBoxContainer();
@@ -5353,11 +5357,11 @@ public sealed partial class CampaignMapScene : Node3D
 
             var text = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             row.AddChild(text);
-            text.AddChild(MakeLabel($"{name} · {type}", 17, Gold));
-            text.AddChild(MakeLabel($"{hero.Title}\n{hero.Desc}\n비용 {hero.RecruitGold}금", 13, Parchment));
+            text.AddChild(MakeLabel($"{name} · {type}", 17, state.CanRecruit ? Gold : new Color(Gold, 0.65f)));
+            text.AddChild(MakeLabel($"{status}\n{HeroRequirementText(hero, general)}\n비용 {hero.RecruitGold}금", 13, Parchment));
 
-            var recruit = MakeButton(city.Gold >= hero.RecruitGold ? "영입" : "금 부족", accent: city.Gold >= hero.RecruitGold);
-            recruit.Disabled = city.Gold < hero.RecruitGold;
+            var recruit = MakeButton(canRecruit ? "영입" : state.CanRecruit ? "금 부족" : "잠김", accent: canRecruit);
+            recruit.Disabled = !canRecruit;
             recruit.CustomMinimumSize = new Vector2(72, 54);
             recruit.Pressed += () => ConfirmRecruitHero(city, hero, name, type);
             row.AddChild(recruit);
@@ -5400,6 +5404,39 @@ public sealed partial class CampaignMapScene : Node3D
             HeroUnlockType.Wanderer => "유랑 위인",
             _ => "위인",
         };
+
+    private static string HeroStatusText(HeroUnlockState state, FactionId viewer)
+        => state.Status switch
+        {
+            HeroUnlockStatus.Locked => "상태: 잠김",
+            HeroUnlockStatus.Unlocked when state.EligibleFaction == viewer => "상태: 해금됨",
+            HeroUnlockStatus.Unlocked => $"상태: 타 세력 해금({state.EligibleFaction?.Value ?? 0})",
+            HeroUnlockStatus.Recruited => "상태: 소속됨",
+            HeroUnlockStatus.Wanderer => "상태: 유랑",
+            HeroUnlockStatus.Excluded => "상태: 제외",
+            _ => $"상태: {state.Status}",
+        };
+
+    private string HeroRequirementText(HeroUnlockDefinition hero, General? general)
+    {
+        var requiredYear = hero.UnlockYear > 0 ? hero.UnlockYear : general?.UnlockYear ?? 0;
+        var year = requiredYear > 0 ? $"해금 가능 {requiredYear}년" : "해금 가능 년도 제한 없음";
+        var conditions = hero.ConditionList.Count == 0
+            ? "조건 없음"
+            : string.Join(", ", hero.ConditionList.Select(c => c.Text ?? HeroConditionLabel(c)));
+        return $"{year}\n조건: {conditions}";
+    }
+
+    private string HeroConditionLabel(HeroUnlockCondition c) => c.Code switch
+    {
+        "owned_cities" => $"도시 {c.Value}개 보유",
+        "owned_region_cities" => $"{c.Region} 지역 도시 {c.Value}개 보유",
+        "city_security_at_least" => $"치안 {c.Value} 이상 도시 보유",
+        "research_level" => $"{TroopName(c.TroopCode ?? "")} 연구 Lv.{c.Value}",
+        "major_troop" => $"{TroopName(c.TroopCode ?? "")} 주력병종",
+        "gold_at_least" or "monthly_gold_at_least" => $"금 {c.Value} 이상",
+        _ => c.Code,
+    };
 
     private List<TroopTemplate> AutoRecruitTroopOptions()
         => _troops.Where(t => t.Class != TroopClass.Naval && _cb.AutoRecruitGoldCostPer100(t.Code) > 0)

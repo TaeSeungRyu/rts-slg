@@ -118,7 +118,7 @@ public sealed record GameState(
     public int DayOfMonth => (Day - 1) % DaysPerMonth + 1;
 
     /// <summary>시나리오로부터 시작 상태(시작 연도 1월 1일)를 만든다.</summary>
-    public static GameState FromScenario(Scenario scenario, int startYear = 1)
+    public static GameState FromScenario(Scenario scenario, int startYear = 190)
     {
         var heroUnlocks = scenario.HeroUnlockList;
         return new(1, startYear, scenario.Factions, scenario.Cities, scenario.Generals, Postings: scenario.Postings,
