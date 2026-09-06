@@ -323,6 +323,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("내정 담당", CommandKind.AppointDomesticOfficer, ""),
         ("병력 담당", CommandKind.AppointRecruitmentOfficer, ""),
         ("훈련 담당", CommandKind.AppointTrainingOfficer, ""),
+        ("위인 영입", CommandKind.RecruitHero, "hero"),
     };
 
     private static readonly (string Label, string Code)[] Facilities =
@@ -351,6 +352,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("외교", new[] { 11, 12 }),
         ("임명", new[] { 13, 14 }),
         ("담당자", new[] { 15, 16, 17, 18 }),
+        ("인재", new[] { 19 }),
     };
 
     private static readonly Sym[] CmdIcons = { Sym.Sword, Sym.Coin, Sym.Book, Sym.Wall, Sym.Scroll };
@@ -2823,6 +2825,13 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(GoldRule());
 
         var cityData = _state.Cities.First(x => x.Id == city);
+        if (cmd.Kind == CommandKind.RecruitHero)
+        {
+            box.AddChild(MakeLabel("조건을 달성해 해금된 세력형/도시형/유랑 위인을 금을 내고 영입합니다.", 15, Parchment));
+            BuildHeroRecruitCards(box, cityData);
+            return;
+        }
+
         var options = OptionList(cmd, cityData);
         _optionCards.Clear();
         _disabledOptions.Clear();
@@ -5272,6 +5281,96 @@ public sealed partial class CampaignMapScene : Node3D
 
         return list;
     }
+
+    private void BuildHeroRecruitCards(VBoxContainer box, City city)
+    {
+        _state = new HeroUnlockService().Evaluate(_state);
+        var available = _state.HeroStates
+            .Where(s => s.CanRecruit && s.EligibleFaction == city.Owner)
+            .OrderBy(s => s.General.Value)
+            .ToList();
+        if (available.Count == 0)
+        {
+            box.AddChild(MakeLabel("현재 영입 가능한 위인이 없습니다.\n전투, 연구, 도시 점령, 치안 조건을 달성하면 이곳에 표시됩니다.", 15, Parchment));
+            return;
+        }
+
+        var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        grid.AddThemeConstantOverride("h_separation", 10);
+        grid.AddThemeConstantOverride("v_separation", 10);
+        box.AddChild(grid);
+
+        foreach (var state in available)
+        {
+            var hero = _state.HeroUnlocks.First(h => h.General == state.General);
+            var general = _state.Generals.FirstOrDefault(g => g.Id == state.General);
+            var name = general?.Name ?? $"장수 {state.General.Value}";
+            var type = HeroTypeName(hero.Type, state.Status);
+            var card = new PanelContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            card.AddThemeStyleboxOverride("panel", Frame(new Color(0.12f, 0.08f, 0.04f, 0.94f), Gold, 1, 8, 10));
+            grid.AddChild(card);
+
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 10);
+            card.AddChild(row);
+
+            var portrait = new TextureRect
+            {
+                Texture = OfficerPortrait(state.General),
+                CustomMinimumSize = new Vector2(58, 58),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            };
+            row.AddChild(portrait);
+
+            var text = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            row.AddChild(text);
+            text.AddChild(MakeLabel($"{name} · {type}", 17, Gold));
+            text.AddChild(MakeLabel($"{hero.Title}\n{hero.Desc}\n비용 {hero.RecruitGold}금", 13, Parchment));
+
+            var recruit = MakeButton(city.Gold >= hero.RecruitGold ? "영입" : "금 부족", accent: city.Gold >= hero.RecruitGold);
+            recruit.Disabled = city.Gold < hero.RecruitGold;
+            recruit.CustomMinimumSize = new Vector2(72, 54);
+            recruit.Pressed += () => ConfirmRecruitHero(city, hero, name, type);
+            row.AddChild(recruit);
+        }
+    }
+
+    private void ConfirmRecruitHero(City city, HeroUnlockDefinition hero, string name, string type)
+    {
+        var actor = city.Governor
+            ?? _state.Assignments.FirstOrDefault(p => p.Location == city.Id && p.Faction == city.Owner)?.General
+            ?? _state.Factions.FirstOrDefault(f => f.Id == city.Owner)?.Ruler
+            ?? hero.General;
+        ShowConfirm("위인 영입",
+            $"{city.Name}에서 {name}을(를) 영입합니다.\n유형: {type}\n비용: {hero.RecruitGold}금\n\n진행하시겠습니까?",
+            () =>
+            {
+                var request = new CommandRequest(city.Id, CommandKind.RecruitHero, actor, TargetGeneral: hero.General);
+                var result = _commander.Issue(_state, request);
+                if (result.Ok)
+                {
+                    _state = result.State;
+                    _log.Text = $"위인 영입: {name}";
+                    Report($"[인재] {city.Name}에서 {name}을(를) 영입했습니다.", GoldBright);
+                    CloseModal();
+                    SelectCity(city.Id);
+                    Redraw(_log.Text);
+                }
+                else
+                {
+                    ShowNotice("위인 영입 실패", result.Error ?? "조건에 맞지 않아 영입할 수 없습니다.");
+                }
+            });
+    }
+
+    private static string HeroTypeName(HeroUnlockType type, HeroUnlockStatus status)
+        => status == HeroUnlockStatus.Wanderer ? "유랑 위인" : type switch
+        {
+            HeroUnlockType.Faction => "세력형 위인",
+            HeroUnlockType.Region => "도시형 위인",
+            HeroUnlockType.Wanderer => "유랑 위인",
+            _ => "위인",
+        };
 
     private List<TroopTemplate> AutoRecruitTroopOptions()
         => _troops.Where(t => t.Class != TroopClass.Naval && _cb.AutoRecruitGoldCostPer100(t.Code) > 0)
