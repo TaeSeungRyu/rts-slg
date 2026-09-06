@@ -338,7 +338,14 @@ public sealed class CommandService
     }
 
     private CommandResult IssueExplore(GameState state, City city, CommandRequest req, General? assist)
-        => Register(state, city, req, assist, amount: 0, _b.CommandDays, CommandKind.Explore, "");
+    {
+        if (state.IsGeneralInField(req.Main) || (assist is not null && state.IsGeneralInField(assist.Id)))
+        {
+            return CommandResult.Fail("출전 중인 장수는 탐색을 수행할 수 없다.", state);
+        }
+
+        return Register(state, city, req, assist, amount: 0, _b.CommandDays, CommandKind.Explore, "");
+    }
 
     private CommandResult IssueRecruit(GameState state, City city, CommandRequest req, General? assist,
         int eff, CommandKind kind)

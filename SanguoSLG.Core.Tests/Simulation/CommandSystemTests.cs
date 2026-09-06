@@ -485,6 +485,28 @@ public class CommandSystemTests
     }
 
     [Fact]
+    public void 발행_탐색은_출전중인_장수를_거부한다()
+    {
+        var troop = Troops.First(t => t.Code == "swordsman");
+        var field = new FieldUnit(new UnitId(1), new FactionId(1), new HexCoord(2, 0),
+            troop.MovementPerDay, troop.Detection, troop.RangeUnit, MovementDomain.Land, UnitMode.March,
+            null, 1, troop.RangeCastle);
+        var army = new CombatUnit(field,
+            CombatStatsBuilder.BuildField(troop, AptitudeGrade.A, 0, TerrainType.River, 5000),
+            new TroopPool(5000, 0), UnitCombatState.Create(60),
+            70, 60, 5000, troop.Class, TroopCode: troop.Code, VanguardId: new GeneralId(1));
+        var s0 = State(new[] { Town(1) }, new[] { Pol(1, 90) }) with
+        {
+            FieldArmies = new[] { army },
+        };
+
+        var issued = Service().Issue(s0, new CommandRequest(new CityId(1), CommandKind.Explore, new GeneralId(1)));
+
+        Assert.False(issued.Ok);
+        Assert.Contains("출전 중", issued.Error);
+    }
+
+    [Fact]
     public void 발행_건설은_정치_70이하면_거부된다()
     {
         var svc = Service();

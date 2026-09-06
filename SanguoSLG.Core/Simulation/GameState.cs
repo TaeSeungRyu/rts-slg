@@ -99,6 +99,10 @@ public sealed record GameState(
     /// <summary>이 장수가 진행 중 명령에 매여 잠겨 있는가.</summary>
     public bool IsGeneralBusy(GeneralId general) => Commands.Any(c => c.Locks(general));
 
+    /// <summary>이 장수가 야전 부대의 선봉·부관으로 출전 중인가.</summary>
+    public bool IsGeneralInField(GeneralId general)
+        => Armies.Any(u => u.VanguardId == general || u.AdjutantId == general);
+
     /// <summary>이 장수의 배속(없으면 null — 재야).</summary>
     public GeneralPosting? PostingOf(GeneralId general)
         => Assignments.FirstOrDefault(p => p.General == general);
