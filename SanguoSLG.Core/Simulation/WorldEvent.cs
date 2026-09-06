@@ -13,6 +13,7 @@ public enum WorldEventKind
     Repair,     // 수리 완료
     EnlistSuccess,  // 등용 성공(대상 합류)
     EnlistFail,     // 등용 실패
+    Explore,        // 탐색 완료
     AllianceSuccess, // 동맹 성공
     AllianceFail,    // 동맹 실패
 }

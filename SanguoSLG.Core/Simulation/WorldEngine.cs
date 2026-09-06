@@ -238,6 +238,7 @@ public sealed class WorldEngine
         var prisoners = state.Prisoners.ToList();
         var armies = state.Armies.ToList();
         var placements = state.Placements.ToList();
+        var discoveries = state.Discoveries.ToList();
 
         foreach (var cmd in due)
         {
@@ -341,6 +342,9 @@ public sealed class WorldEngine
                 case CommandKind.Enlist:
                     ResolveEnlist(cmd, city, generals, postings, armies);
                     break;
+                case CommandKind.Explore:
+                    ResolveExplore(state, cmd, city, cities, generals, discoveries);
+                    break;
                 case CommandKind.FormAlliance:
                     ResolveFormAlliance(state, cmd, city, generals, alliances);
                     break;
@@ -387,7 +391,34 @@ public sealed class WorldEngine
             FieldArmies = armies,
             PendingCommands = state.Commands.Where(c => c.CompletionDay != state.Day).ToList(),
             FacilityPlacements = placements,
+            ExplorationDiscoveries = discoveries
+                .OrderBy(d => d.Day).ThenBy(d => d.City.Value).ThenBy(d => d.Explorer.Value)
+                .ToList(),
         };
+    }
+
+    private void ResolveExplore(GameState state, CityCommand cmd, City city,
+        Dictionary<CityId, City> cities, List<General> generals, List<ExplorationDiscovery> discoveries)
+    {
+        var explorer = generals.FirstOrDefault(g => g.Id == cmd.Main);
+        if (explorer is null)
+        {
+            return;
+        }
+
+        var discovery = new ExplorationService().Explore(state, city, explorer, _random);
+        discoveries.Add(discovery);
+        if (discovery.Gold > 0 || discovery.Provisions > 0)
+        {
+            cities[cmd.City] = city with
+            {
+                Gold = city.Gold + discovery.Gold,
+                Provisions = city.Provisions + discovery.Provisions,
+            };
+        }
+
+        _events.Add(new WorldEvent(WorldEventKind.Explore, discovery.Faction, discovery.Explorer, discovery.City,
+            discovery.Gold, discovery.Code));
     }
 
     // 등용 정산: 완료 시점에 대상 종류를 다시 확인하고 수행 장수 정치 단일 확률로 판정.
