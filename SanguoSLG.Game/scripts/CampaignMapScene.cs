@@ -1986,6 +1986,7 @@ public sealed partial class CampaignMapScene : Node3D
             Report($"── {_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일 ──", Gold);
             foreach (var (t, c) in _pendingReport) { Report(t, c); }
             _pendingReport.Clear();
+            ScrollReportToBottomDeferred();
         }
 
         var alive = _state.Factions.Where(f => _state.CityCount(f.Id) > 0).ToList();
@@ -7310,6 +7311,18 @@ public sealed partial class CampaignMapScene : Node3D
         _reportPanel.Visible = true;
         // 새 줄이 추가되면 맨 아래(최신)로 스크롤 — 레이아웃이 갱신된 뒤 실행한다.
         _reportScroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, l);
+        ScrollReportToBottomDeferred();
+    }
+
+    private void ScrollReportToBottomDeferred()
+        => Callable.From(ScrollReportToBottom).CallDeferred();
+
+    private void ScrollReportToBottom()
+    {
+        if (_reportScroll is null) { return; }
+        var bar = _reportScroll.GetVScrollBar();
+        if (bar is null) { return; }
+        bar.Value = bar.MaxValue;
     }
 
     // 전체 로그 열람(스크롤) — 보고 패널의 "전체" 버튼. 최근이 아래, 오래된 것 위.
