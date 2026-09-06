@@ -62,6 +62,40 @@ public sealed class FactionAI
             }
         }
 
+        state = ExploreWithIdleOfficers(state, faction);
+        return state;
+    }
+
+    private GameState ExploreWithIdleOfficers(GameState state, FactionId faction)
+    {
+        if (!state.Factions.Any(f => f.Id == faction))
+        {
+            return state;
+        }
+
+        foreach (var city in state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).ToList())
+        {
+            if (state.Commands.Any(c => c.City == city.Id && c.Kind == CommandKind.Explore))
+            {
+                continue;
+            }
+
+            var free = state.GeneralsAt(city.Id)
+                .Where(g => !state.IsGeneralBusy(g))
+                .OrderBy(g => g.Value)
+                .ToList();
+            if (free.Count <= _config.KeepGeneralsHome)
+            {
+                continue;
+            }
+
+            var result = _commands.Issue(state, new CommandRequest(city.Id, CommandKind.Explore, free[0]));
+            if (result.Ok)
+            {
+                state = result.State;
+            }
+        }
+
         return state;
     }
 

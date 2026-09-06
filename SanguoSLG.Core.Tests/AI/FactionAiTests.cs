@@ -90,6 +90,22 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI는_남는_장수로_탐색을_발행한다()
+    {
+        var s = new GameState(1, 1,
+            new List<Faction> { new(new FactionId(1), "위", new GeneralId(1), 1000, "#2d5fd0") },
+            new List<City> { Town(1, 1, new HexCoord(0, 0)), Town(9, 2, new HexCoord(12, 0)) },
+            new List<General> { Gen(1), Gen(2) },
+            Postings: new List<GeneralPosting> { At(1, 1, 1), At(2, 1, 1) });
+
+        var after = Ai().PlanWeek(s, new FactionId(1));
+
+        var command = Assert.Single(after.Commands);
+        Assert.Equal(CommandKind.Explore, command.Kind);
+        Assert.True(after.IsGeneralBusy(new GeneralId(1)));
+    }
+
+    [Fact]
     public void 출전_대기병력이_문턱이상이고_장수가_남으면_최근접_적성으로_출전한다()
     {
         var enemy = Town(9, 2, new HexCoord(10, 0));
