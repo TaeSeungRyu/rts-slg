@@ -938,12 +938,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (city is not null)
         {
             // 같은 성 재클릭 = 닫기.
-            if (city.Owner == Player)
-            {
-                if (_cmdMenu.Visible && _selected == city.Id) { _selected = null; HidePanels(); return; }
-                SelectCity(city.Id);
-            }
-            else { _selected = null; HidePanels(); }
+            if (_infoCard.Visible && _selected == city.Id) { _selected = null; HidePanels(); return; }
+            SelectCity(city.Id);
             return;
         }
 
@@ -2532,6 +2528,8 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainHex = null;
         if (_modalLayer is null) { ClearPathMarkers(); }
         var c = _state.Cities.First(x => x.Id == id);
+        var owned = c.Owner == Player;
+        var known = owned || _state.IsScouted(Player, id);
         var totalTroops = _state.Garrisons.Where(g => g.City == id).Sum(g => g.Troops);
         var govName = c.Governor is { } ggid ? _state.Generals.FirstOrDefault(x => x.Id == ggid)?.Name : null;
         var straName = c.Strategist is { } gsid ? _state.Generals.FirstOrDefault(x => x.Id == gsid)?.Name : null;
@@ -2545,6 +2543,20 @@ public sealed partial class CampaignMapScene : Node3D
 
         Clear(_infoRows);
         _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 15, GoldBright));
+        if (!known)
+        {
+            _infoRows.AddChild(MakeLabel("정찰 필요 — 도시 계략 '정찰' 성공 후 정보를 볼 수 있습니다.", 13, Parchment));
+            var detailUnknown = MakeButton("▶ 상세");
+            detailUnknown.AddThemeFontSizeOverride("font_size", 12);
+            detailUnknown.CustomMinimumSize = new Vector2(0, 26);
+            detailUnknown.Pressed += () => OpenCityInfoReadonly(id);
+            _infoRows.AddChild(detailUnknown);
+            PlacePalette(c.Position);
+            _infoCard.Visible = true;
+            _cmdMenu.Visible = false;
+            MoveRing(c.Position);
+            return;
+        }
 
         // 짧은 수치: 4칸(라벨·값·라벨·값) 2쌍씩.
         var g4 = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -2589,12 +2601,12 @@ public sealed partial class CampaignMapScene : Node3D
         var detailBtn = MakeButton("▶ 상세 · 진행 목록");
         detailBtn.AddThemeFontSizeOverride("font_size", 12);
         detailBtn.CustomMinimumSize = new Vector2(0, 26);
-        detailBtn.Pressed += () => OpenCityDetail(id);
+        detailBtn.Pressed += () => { if (owned) { OpenCityDetail(id); } else { OpenCityInfoReadonly(id); } };
         _infoRows.AddChild(detailBtn);
 
         PlacePalette(c.Position);
         _infoCard.Visible = true;
-        _cmdMenu.Visible = !_advancing; // 진행 중에는 명령 팔레트를 숨긴다(상태 카드는 보임)
+        _cmdMenu.Visible = owned && !_advancing; // 진행 중·적 성에는 명령 팔레트를 숨긴다(상태 카드는 보임)
         MoveRing(c.Position);
     }
 
@@ -6222,7 +6234,13 @@ public sealed partial class CampaignMapScene : Node3D
             var caster = _state.Generals.First(g => g.Id == general);
             var days = CityStratagems.Days(_state.Cities.First(c => c.Id == city).Position, enemy.Position, _cb);
             var defInt = enemy.Governor is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid)?.Intellect : null;
-            extra = $"\n대상 {enemy.Name} · 소요 {days}일 · 성공률 {CityStratagems.SuccessPercent(caster.Intellect, defInt)}%";
+            var odds = CityStratagems.SuccessPercent(caster.Intellect, defInt);
+            var origin = _state.Cities.First(c => c.Id == city);
+            var strategist = origin.Strategist is { } sid ? _state.Generals.FirstOrDefault(g => g.Id == sid) : null;
+            var prediction = strategist is null
+                ? "군사 없음 → 성공 여부 예측 불가"
+                : $"군사 {strategist.Name} 예측: {(DiplomacyRules.AdvisorPredictsSuccess(odds, strategist.Intellect, new SeededRandomSource(_state.Day + caster.Id.Value * 31 + enemy.Id.Value * 17)) ? "성공할 듯합니다" : "실패할 듯합니다")}";
+            extra = $"\n대상 {enemy.Name} · 소요 {days}일\n{prediction}";
         }
 
         if ((cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance) && targetFaction is { } tf)
