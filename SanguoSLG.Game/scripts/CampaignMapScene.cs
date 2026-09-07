@@ -6329,7 +6329,8 @@ public sealed partial class CampaignMapScene : Node3D
         if ((cmd.Kind == CommandKind.Research && cmd.Param == "troop")
             || cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance
             || cmd.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist
-            || IsAutoOfficerCommand(cmd.Kind))
+            || IsAutoOfficerCommand(cmd.Kind)
+            || cmd.Kind == CommandKind.Explore)
         {
             ShowOfficerConfirm(confirmTitle, confirmMessage, general, ExecuteConfirmed);
         }
