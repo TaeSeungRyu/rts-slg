@@ -26,6 +26,11 @@ public sealed class ProductionService
 
         var placement = state.Placements.FirstOrDefault(p => p.City == cityId && p.Plot == target && p.Code == facility);
         if (placement is null) { return CommandResult.Fail("해당 위치에 생산 시설이 없다.", state); }
+        if (!ProductionTargetIntact(state, city, target, facility))
+        {
+            return CommandResult.Fail("파괴되었거나 사용할 수 없는 생산 시설이다.", state);
+        }
+
         if (state.ProductionOps.Any(p => p.Target == target && p.Phase != ProductionPhase.Returning))
         {
             return CommandResult.Fail("이미 해당 시설에서 생산 작전이 진행 중이다.", state);
@@ -76,5 +81,20 @@ public sealed class ProductionService
             Postings = postings,
             ProductionOperations = state.ProductionOps.Append(op).ToList(),
         });
+    }
+
+    private static bool ProductionTargetIntact(GameState state, City city, HexCoord target, string facility)
+    {
+        var intact = facility switch
+        {
+            ProductionRules.Paddy => city.Paddies,
+            ProductionRules.Farm => city.Farms,
+            ProductionRules.Village => city.Villages,
+            _ => 0,
+        };
+        return state.Placements
+            .Where(p => p.City == city.Id && p.Code == facility)
+            .Take(intact)
+            .Any(p => p.Plot == target);
     }
 }

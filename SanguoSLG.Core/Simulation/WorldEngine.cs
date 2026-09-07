@@ -296,7 +296,8 @@ public sealed class WorldEngine
 
         foreach (var op in state.ProductionOps.OrderBy(o => o.Id))
         {
-            if (!cities.TryGetValue(op.City, out var city) || city.Owner != op.Owner)
+            if (!cities.TryGetValue(op.City, out var city) || city.Owner != op.Owner
+                || !ProductionTargetIntact(state, city, op))
             {
                 _events.Add(new WorldEvent(WorldEventKind.ProductionLost, op.Owner, op.General, op.City,
                     op.Troops, op.Facility));
@@ -333,6 +334,21 @@ public sealed class WorldEngine
             Postings = postings,
             ProductionOperations = kept.OrderBy(o => o.Id).ToList(),
         };
+    }
+
+    private static bool ProductionTargetIntact(GameState state, City city, ProductionOperation op)
+    {
+        var intact = op.Facility switch
+        {
+            ProductionRules.Paddy => city.Paddies,
+            ProductionRules.Farm => city.Farms,
+            ProductionRules.Village => city.Villages,
+            _ => 0,
+        };
+        return state.Placements
+            .Where(p => p.City == city.Id && p.Code == op.Facility)
+            .Take(intact)
+            .Any(p => p.Plot == op.Target);
     }
 
     private static ProductionOperation AdvanceProductionOperation(GameState state, ProductionOperation op)
