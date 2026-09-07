@@ -2174,7 +2174,8 @@ public sealed partial class CampaignMapScene : Node3D
         panel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
         center.AddChild(panel);
 
-        var box = new VBoxContainer { CustomMinimumSize = new Vector2(340, 0) };
+        var confirmWidth = officer is null ? 340f : 460f;
+        var box = new VBoxContainer { CustomMinimumSize = new Vector2(confirmWidth, 0) };
         box.AddThemeConstantOverride("separation", 8);
         panel.AddChild(box);
 
@@ -2185,28 +2186,41 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (officer is { } officerId)
         {
-            var row = new HBoxContainer();
+            var row = new HBoxContainer { CustomMinimumSize = new Vector2(confirmWidth, 86) };
             row.AddThemeConstantOverride("separation", 10);
             box.AddChild(row);
 
-            row.AddChild(new TextureRect
+            var portraitFrame = new PanelContainer
+            {
+                CustomMinimumSize = new Vector2(84, 84),
+                SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
+                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            };
+            portraitFrame.AddThemeStyleboxOverride("panel", Frame(InkSoft, Gold, 1, 6, 4));
+            row.AddChild(portraitFrame);
+
+            portraitFrame.AddChild(new TextureRect
             {
                 Texture = OfficerPortrait(officerId),
                 CustomMinimumSize = new Vector2(76, 76),
-                ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
+                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+                ExpandMode = TextureRect.ExpandModeEnum.KeepSize,
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             });
 
             var speech = MakeLabel($"“{OfficerConfirmLines[_confirmRandom.Next(OfficerConfirmLines.Length)]}”", 14, GoldBright);
             speech.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            speech.CustomMinimumSize = new Vector2(confirmWidth - 104, 0);
             speech.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            speech.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
             speech.VerticalAlignment = VerticalAlignment.Center;
             row.AddChild(speech);
         }
 
         var msg = MakeLabel(message, 14, Parchment);
         msg.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        msg.CustomMinimumSize = new Vector2(340, 0);
+        msg.CustomMinimumSize = new Vector2(confirmWidth, 0);
         box.AddChild(msg);
 
         var btnRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
