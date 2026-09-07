@@ -397,6 +397,24 @@ public class WorldEngineTests
     }
 
     [Fact]
+    public void v2_담당자_치안변화는_첫_진행에서_보인다()
+    {
+        var city = new City(new CityId(1), "전선성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Population: 0, Security: 80,
+            SecurityOfficer: new GeneralId(1),
+            RecruitmentOfficer: new GeneralId(2),
+            AutoRecruitTroopCodes: "swordsman");
+        var generals = new[] { V2Officer(1, might: 85), V2Officer(2, might: 70) };
+        var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, generals.ToList(),
+            Postings: generals.Select(g => new GeneralPosting(g.Id, city.Owner, city.Id)).ToList());
+
+        var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
+            .AdvanceDays(state, 7);
+
+        Assert.Equal(79, after.Cities.Single().Security);
+    }
+
+    [Fact]
     public void v2_병력담당은_무력100이면_한달에_오천명을_생산한다()
     {
         var city = new City(new CityId(1), "병영성", new HexCoord(0, 0), new FactionId(1), 1000,

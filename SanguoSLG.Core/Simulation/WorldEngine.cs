@@ -62,6 +62,11 @@ public sealed class WorldEngine
         if (_commands.AutoOfficerSystemEnabled && next.DayOfMonth % 7 == 0)
         {
             var byId = next.Generals.ToDictionary(g => g.Id);
+            if (next.DayOfMonth == 7)
+            {
+                next = ApplyAutoOfficerSecurity(next, byId);
+            }
+
             next = ApplyAutoRecruitment(next, byId);
         }
 
@@ -114,14 +119,8 @@ public sealed class WorldEngine
         foreach (var city in state.Cities)
         {
             var next = city;
-            var security = ValidOfficer(state, city, city.SecurityOfficer, byId);
             var domestic = ValidOfficer(state, city, city.DomesticOfficer, byId);
-            var recruiter = ValidOfficer(state, city, city.RecruitmentOfficer, byId);
             var trainer = ValidOfficer(state, city, city.TrainingOfficer, byId);
-
-            var securityDelta = security is null ? _commands.AutoSecurityNoOfficerDelta : MightTier(security.Might);
-            if (recruiter is not null) { securityDelta += _commands.AutoRecruitSecurityDelta; }
-            next = next with { Security = System.Math.Clamp(next.Security + securityDelta, 0, 100) };
 
             if (domestic is not null)
             {
@@ -146,6 +145,19 @@ public sealed class WorldEngine
         }
 
         return state with { Cities = cities, GarrisonForces = garrisons };
+    }
+
+    private GameState ApplyAutoOfficerSecurity(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId)
+    {
+        var cities = state.Cities.Select(city =>
+        {
+            var security = ValidOfficer(state, city, city.SecurityOfficer, byId);
+            var recruiter = ValidOfficer(state, city, city.RecruitmentOfficer, byId);
+            var delta = security is null ? _commands.AutoSecurityNoOfficerDelta : MightTier(security.Might);
+            if (recruiter is not null) { delta += _commands.AutoRecruitSecurityDelta; }
+            return city with { Security = System.Math.Clamp(city.Security + delta, 0, 100) };
+        }).ToList();
+        return state with { Cities = cities };
     }
 
     private GameState ApplyAutoRecruitment(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId)
