@@ -1094,11 +1094,25 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var pendingUpgrade = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Upgrade
                     && c.City == placement.City && c.Plot == placement.Plot);
+                var production = ProductionAt(placement.Plot);
                 Row("효과", FacilityEffectText(placement.Code, placement.HitPoints));
                 Row("체력", $"{placement.HitPoints}");
                 if (pendingUpgrade is not null)
                 {
                     Row("진행", $"업그레이드 · 남은 {System.Math.Max(0, pendingUpgrade.CompletionDay - _state.Day)}일");
+                }
+                if (production is not null)
+                {
+                    var gName = OfficerName(production.General) ?? $"G{production.General.Value}";
+                    var troopName = TroopName(production.TroopCode);
+                    var status = production.Phase switch
+                    {
+                        ProductionPhase.Outbound => $"이동중 · {gName} · {troopName} {production.Troops}명",
+                        ProductionPhase.Gathering => $"채집중 · {gName} · {troopName} {production.Troops}명 · 남은 {production.GatherRemaining(_state.Day)}일",
+                        ProductionPhase.Returning => $"복귀중 · {gName} · {troopName} {production.Troops}명",
+                        _ => "",
+                    };
+                    Row("생산", status, GoldBright);
                 }
             }
             else
@@ -1749,6 +1763,8 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.AllianceFail => ($"[외교] {targetFaction} 세력과의 동맹 교섭에 실패했습니다.", Parchment),
                 WorldEventKind.StratagemSuccess => ($"[계략] {gName}의 {FacilityLabel(we.Code)} 성공 — {cName}에 효과가 적용되었습니다.", GoldBright),
                 WorldEventKind.StratagemFail => ($"[계략] {gName}의 {FacilityLabel(we.Code)} 실패 — {cName}에는 아무 효과가 없었습니다.", Parchment),
+                WorldEventKind.ProductionComplete => ($"[생산] {gName} 장수가 {cName}의 {FacilityLabel(we.Code)} 생산을 마쳤습니다. 금 +{we.Amount}, 군량 +{we.ExtraAmount}.", GoldBright),
+                WorldEventKind.ProductionLost => ($"[생산] {gName} 장수의 {FacilityLabel(we.Code)} 생산 부대 {we.Amount}명이 소실되었습니다.", AccentFill),
                 _ => ("", Parchment),
             };
             if (text.Length > 0) { Ev(text, col); }
@@ -6607,6 +6623,9 @@ public sealed partial class CampaignMapScene : Node3D
     private FacilityPlacement? FacilityPlacementAt(HexCoord h)
         => _state.Placements.FirstOrDefault(p => p.Plot == h);
 
+    private ProductionOperation? ProductionAt(HexCoord h)
+        => _state.ProductionOps.FirstOrDefault(p => p.Target == h);
+
     private CityCommand? PendingFacilityBuildAt(HexCoord h)
         => _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Build && c.Plot == h);
 
@@ -7083,6 +7102,23 @@ public sealed partial class CampaignMapScene : Node3D
                 NoDepthTest = true,
                 Modulate = new Color(0.72f, 0.92f, 1f),
                 Position = origin + new Vector3(0f, 1.08f, 0f),
+            };
+            _facilityLayer.AddChild(lbl);
+        }
+
+        foreach (var op in _state.ProductionOps.Where(o => o.Phase == ProductionPhase.Gathering))
+        {
+            var origin = _view.HexToWorld(op.Target) + new Vector3(0f, _view.TileTopY, 0f);
+            var gName = OfficerName(op.General) ?? $"G{op.General.Value}";
+            var lbl = new Label3D
+            {
+                Text = $"생산중\n{gName} · {op.GatherRemaining(_state.Day)}일",
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                FontSize = 26,
+                OutlineSize = 9,
+                NoDepthTest = true,
+                Modulate = new Color(0.72f, 1f, 0.72f),
+                Position = origin + new Vector3(0f, 1.22f, 0f),
             };
             _facilityLayer.AddChild(lbl);
         }
