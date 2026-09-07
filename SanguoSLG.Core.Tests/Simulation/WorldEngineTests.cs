@@ -127,6 +127,20 @@ public class WorldEngineTests
         Assert.Equal(1000 + 2000 + 600 + 150, city.Provisions);
     }
 
+    [Fact]
+    public void 군량은_칠일마다_분할_생산된다()
+    {
+        var city = new City(new CityId(1), "군량성", new HexCoord(0, 0), new FactionId(1), 1000, CastleSize.Small,
+            Gold: 0, Population: 100_000, Paddies: 1);
+        var s = Governed(new[] { city });
+
+        var d7 = new WorldEngine(Balance).AdvanceDays(s, 7).Cities.Single();
+        var d30 = new WorldEngine(Balance).AdvanceDays(s, 30).Cities.Single();
+
+        Assert.Equal(1000 + (Balance.ProvisionsBaseSmall + Balance.PaddyProvisions) / 4, d7.Provisions);
+        Assert.Equal(1000 + Balance.ProvisionsBaseSmall + Balance.PaddyProvisions, d30.Provisions);
+    }
+
     [Theory]
     [InlineData(1, 0, 0, 0, 300)]
     [InlineData(0, 1, 0, 0, 150)]

@@ -129,7 +129,7 @@ public class CityPlunderTests
         Assert.Empty(after.Armies);
         var c = after.Cities.Single();
         Assert.Equal(500 + 350, c.Gold);
-        Assert.Equal(1000 + 120, c.Provisions);
+        Assert.Equal(1000 + 120 + 19, c.Provisions);
     }
 
     [Fact]

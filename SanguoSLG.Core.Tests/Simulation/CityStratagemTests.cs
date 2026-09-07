@@ -115,7 +115,7 @@ public class CityStratagemTests
         var issued = Service().Issue(s, Req("arson"));
         var done = Advance(issued.State, 11, roll: 99); // 실패(99 ≥ 50)
 
-        Assert.Equal(3000, done.Cities.First(c => c.Id == new CityId(2)).Provisions); // 무효
+        Assert.Equal(3038, done.Cities.First(c => c.Id == new CityId(2)).Provisions); // 무효 + 7일 군량 생산
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public class CityStratagemTests
         var issued = Service().Issue(s, Req("arson"));
         var done = Advance(issued.State, 11, roll: 0);
 
-        Assert.Equal(2400, done.Cities.First(c => c.Id == new CityId(2)).Provisions); // −20%
+        Assert.Equal(2431, done.Cities.First(c => c.Id == new CityId(2)).Provisions); // 7일 군량 생산 후 −20%
     }
 
     [Fact]

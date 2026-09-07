@@ -41,7 +41,7 @@ public class ExplorationCommandTests
 
         var city = after.Cities.Single();
         Assert.Equal(300, city.Gold);
-        Assert.Equal(800, city.Provisions);
+        Assert.Equal(819, city.Provisions);
         var discovery = Assert.Single(after.Discoveries);
         Assert.Equal(ExplorationResultKind.LocalClan, discovery.Kind);
         Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.Explore
@@ -60,7 +60,7 @@ public class ExplorationCommandTests
         var after = world.AdvanceDays(issued, 7);
 
         Assert.Equal(100, after.Cities.Single().Gold);
-        Assert.Equal(200, after.Cities.Single().Provisions);
+        Assert.Equal(219, after.Cities.Single().Provisions);
         Assert.Equal(ExplorationResultKind.None, Assert.Single(after.Discoveries).Kind);
         Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.Explore && e.Code == "nothing");
     }

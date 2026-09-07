@@ -59,15 +59,19 @@ public sealed class WorldEngine
             next = ResolveCommands(next);
         }
 
-        if (_commands.AutoOfficerSystemEnabled && next.DayOfMonth % 7 == 0)
+        if (next.DayOfMonth % 7 == 0)
         {
             var byId = next.Generals.ToDictionary(g => g.Id);
-            if (next.DayOfMonth == 7)
+            if (_commands.AutoOfficerSystemEnabled && next.DayOfMonth == 7)
             {
                 next = ApplyAutoOfficerSecurity(next, byId);
             }
 
-            next = ApplyAutoRecruitment(next, byId);
+            next = ApplyWeeklyProvisions(next, byId, includeDomesticOfficer: _commands.AutoOfficerSystemEnabled);
+            if (_commands.AutoOfficerSystemEnabled)
+            {
+                next = ApplyAutoRecruitment(next, byId);
+            }
         }
 
         // 월말 틱(그 달 30일): 수입(금·군량 = 성 규모 기본치 + 시설 가산) + 자원 산출 + 인구 성장.
@@ -75,25 +79,13 @@ public sealed class WorldEngine
         {
             var byId = next.Generals.ToDictionary(g => g.Id);
 
-            // 담당관은 그 도시에 실제 주둔 중일 때만 유효 — 출전(Location null)하면 유령 태수가 되지
-            // 않게 한다. 배속 데이터가 없으면(포커스 테스트) 주둔 검사를 생략한다.
-            Domain.General? Gov(City c)
-            {
-                if (c.Governor is not { } gid || !byId.TryGetValue(gid, out var g))
-                {
-                    return null;
-                }
-
-                if (next.Assignments.Count > 0 && next.PostingOf(gid)?.Location != c.Id)
-                {
-                    return null;
-                }
-
-                return g;
-            }
             next = next with
             {
-                Cities = next.Cities.Select(c => TaxSecurity(Grow(Produce(Income(next, c, Gov(c)), Gov(c))), Gov(c))).ToList(),
+                Cities = next.Cities.Select(c =>
+                {
+                    var gov = ValidGovernor(next, c, byId);
+                    return TaxSecurity(Grow(Produce(Income(next, c, gov), gov)), gov);
+                }).ToList(),
             };
             if (_commands.AutoOfficerSystemEnabled)
             {
@@ -128,8 +120,6 @@ public sealed class WorldEngine
                 {
                     Gold = next.Gold + _commands.AutoDomesticGoldBase
                         + domestic.Politics * _commands.AutoDomesticGoldPoliticsMultiplier,
-                    Provisions = next.Provisions + _commands.AutoDomesticProvisionsBase
-                        + domestic.Politics * _commands.AutoDomesticProvisionsPoliticsMultiplier,
                 };
             }
 
@@ -147,6 +137,27 @@ public sealed class WorldEngine
         return state with { Cities = cities, GarrisonForces = garrisons };
     }
 
+    private GameState ApplyWeeklyProvisions(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId, bool includeDomesticOfficer)
+    {
+        var tick = state.DayOfMonth / 7;
+        if (tick < 1 || tick > 4) { return state; }
+
+        var cities = state.Cities.Select(city =>
+        {
+            var governor = ValidGovernor(state, city, byId);
+            var domestic = ValidOfficer(state, city, city.DomesticOfficer, byId);
+            var monthly = MonthlyProvisionsIncome(state, city, governor);
+            if (includeDomesticOfficer && domestic is not null)
+            {
+                monthly += _commands.AutoDomesticProvisionsBase
+                    + domestic.Politics * _commands.AutoDomesticProvisionsPoliticsMultiplier;
+            }
+
+            return city with { Provisions = city.Provisions + SplitMonthlyAmount(monthly, tick) };
+        }).ToList();
+        return state with { Cities = cities };
+    }
+
     private GameState ApplyAutoOfficerSecurity(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId)
     {
         var cities = state.Cities.Select(city =>
@@ -158,6 +169,28 @@ public sealed class WorldEngine
             return city with { Security = System.Math.Clamp(city.Security + delta, 0, 100) };
         }).ToList();
         return state with { Cities = cities };
+    }
+
+    private static int SplitMonthlyAmount(int monthly, int tick)
+    {
+        var baseAmount = monthly / 4;
+        var remainder = monthly % 4;
+        return baseAmount + (tick <= remainder ? 1 : 0);
+    }
+
+    private Domain.General? ValidGovernor(GameState state, City city, IReadOnlyDictionary<GeneralId, Domain.General> byId)
+    {
+        if (city.Governor is not { } gid || !byId.TryGetValue(gid, out var governor))
+        {
+            return null;
+        }
+
+        if (state.Assignments.Count > 0 && state.PostingOf(gid)?.Location != city.Id)
+        {
+            return null;
+        }
+
+        return governor;
     }
 
     private GameState ApplyAutoRecruitment(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId)
@@ -661,20 +694,25 @@ public sealed class WorldEngine
     private City Income(GameState state, City city, Domain.General? governor)
     {
         var goldBase = GoldBase(city.Castle) + FacilityOutput(state, city, "village", city.Villages, _balance.VillageGold);
-        var provBase = ProvisionsBase(city.Castle)
-            + FacilityOutput(state, city, "paddy", city.Paddies, _balance.PaddyProvisions)
-            + FacilityOutput(state, city, "farm", city.Farms, _balance.FarmProvisions);
 
         // 담당관(태수) 없거나 정치 미달이면 도시 경제가 무척 낮게 돌아간다(사용자 확정 2026-08-16).
         var effective = governor is not null && governor.Politics >= _balance.GovernorMinPolitics;
 
-        // 내정 스킬 버킷(상재→금, 둔전→군량)은 유효 담당관일 때만.
+        // 내정 스킬 버킷(상재→금)은 유효 담당관일 때만.
         var goldBucket = effective ? GovernorBucket(governor, "tax") : 0;
-        var provBucket = effective ? GovernorBucket(governor, "harvest") : 0;
 
         var gold = Scale(goldBase, city, effective, governor, goldBucket);
-        var provisions = Scale(provBase, city, effective, governor, provBucket);
-        return city with { Gold = city.Gold + gold, Provisions = city.Provisions + provisions };
+        return city with { Gold = city.Gold + gold };
+    }
+
+    private int MonthlyProvisionsIncome(GameState state, City city, Domain.General? governor)
+    {
+        var provBase = ProvisionsBase(city.Castle)
+            + FacilityOutput(state, city, "paddy", city.Paddies, _balance.PaddyProvisions)
+            + FacilityOutput(state, city, "farm", city.Farms, _balance.FarmProvisions);
+        var effective = governor is not null && governor.Politics >= _balance.GovernorMinPolitics;
+        var provBucket = effective ? GovernorBucket(governor, "harvest") : 0;
+        return Scale(provBase, city, effective, governor, provBucket);
     }
 
     private static int FacilityOutput(GameState state, City city, string code, int intactCount, int baseOutput)
