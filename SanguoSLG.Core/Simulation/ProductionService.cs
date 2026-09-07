@@ -59,7 +59,8 @@ public sealed class ProductionService
 
         var opId = state.ProductionOps.Count == 0 ? 1 : state.ProductionOps.Max(o => o.Id) + 1;
         var op = new ProductionOperation(opId, city.Id, city.Owner, city.Position, target, facility,
-            troopCode, ProductionOperation.FixedTroops, generalId, state.Day, ProductionRules.GatherDays(general.Politics),
+            troopCode, ProductionOperation.FixedTroops, garrison.TrainingLevel,
+            System.Math.Max(1, troop.MovementPerDay), generalId, state.Day, ProductionRules.GatherDays(general.Politics),
             PhaseStartedDay: state.Day, Position: city.Position, OutboundPath: path);
         var garrisons = state.Garrisons
             .Select(g => g == garrison ? g with { Troops = g.Troops - ProductionOperation.FixedTroops } : g)

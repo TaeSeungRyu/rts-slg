@@ -24,6 +24,8 @@ public sealed record ProductionOperation(
     string Facility,
     string TroopCode,
     int Troops,
+    int TrainingLevel,
+    int Speed,
     GeneralId General,
     int StartedDay,
     int GatherDays,

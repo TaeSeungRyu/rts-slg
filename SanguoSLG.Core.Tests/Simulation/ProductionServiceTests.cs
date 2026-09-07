@@ -52,6 +52,8 @@ public class ProductionServiceTests
         var op = result.State.ProductionOps.Single();
         Assert.Equal(ProductionPhase.Outbound, op.Phase);
         Assert.Equal(ProductionOperation.FixedTroops, op.Troops);
+        Assert.Equal(50, op.TrainingLevel);
+        Assert.True(op.Speed > 0);
         Assert.Equal(new HexCoord(2, 0), op.Target);
         Assert.Equal(10, op.GatherDays);
         Assert.True(op.OutPath.Count >= 2);
@@ -65,5 +67,21 @@ public class ProductionServiceTests
 
         Assert.False(result.Ok);
         Assert.Contains("500", result.Error);
+    }
+
+    [Fact]
+    public void 생산_작전은_도착_채집_복귀후_보상을_지급한다()
+    {
+        var started = new ProductionService(Troops)
+            .Start(State(politics: 100), new CityId(1), new HexCoord(2, 0), ProductionRules.Village, "swordsman", new GeneralId(1))
+            .State;
+
+        var after = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0))
+            .AdvanceDays(started, 20);
+
+        Assert.Empty(after.ProductionOps);
+        Assert.Equal(1000, after.Garrisons.Single(g => g.TroopCode == "swordsman").Troops);
+        Assert.Equal(new CityId(1), after.PostingOf(new GeneralId(1))!.Location);
+        Assert.Equal(500, after.Cities.Single().Gold);
     }
 }

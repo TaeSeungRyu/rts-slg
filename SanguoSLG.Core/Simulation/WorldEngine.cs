@@ -1,6 +1,7 @@
 namespace SanguoSLG.Core.Simulation;
 
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Spatial;
 
 /// <summary>
 /// 세계 시계 엔진(design-administration "시간 축"). 일 단위로 시간을 흘리며 주기 틱을 발화한다.
@@ -61,6 +62,11 @@ public sealed class WorldEngine
         if (next.Commands.Any(c => c.CompletionDay == next.Day))
         {
             next = ResolveCommands(next);
+        }
+
+        if (next.ProductionOps.Count > 0)
+        {
+            next = AdvanceProductionOperations(next);
         }
 
         if (next.DayOfMonth % 7 == 0)
@@ -280,6 +286,97 @@ public sealed class WorldEngine
         < 100 => 2,
         _ => 3,
     };
+
+    private GameState AdvanceProductionOperations(GameState state)
+    {
+        var cities = state.Cities.ToDictionary(c => c.Id);
+        var garrisons = state.Garrisons.ToList();
+        var postings = state.Assignments.ToList();
+        var kept = new List<ProductionOperation>();
+
+        foreach (var op in state.ProductionOps.OrderBy(o => o.Id))
+        {
+            if (!cities.TryGetValue(op.City, out var city) || city.Owner != op.Owner)
+            {
+                _events.Add(new WorldEvent(WorldEventKind.ProductionLost, op.Owner, op.General, op.City,
+                    op.Troops, op.Facility));
+                continue;
+            }
+
+            var next = AdvanceProductionOperation(state, op);
+            if (next.Phase == ProductionPhase.Returning && next.Position == next.Origin)
+            {
+                var reward = ProductionRules.Reward(next.Facility,
+                    state.Generals.FirstOrDefault(g => g.Id == next.General)?.Politics ?? 0);
+                cities[next.City] = city with
+                {
+                    Gold = city.Gold + reward.Gold,
+                    Provisions = city.Provisions + reward.Provisions,
+                };
+                MergeGarrison(garrisons, next.City, next.TroopCode, next.Troops, next.TrainingLevel);
+                postings = postings.Select(p => p.General == next.General ? p with { Location = next.City } : p).ToList();
+                _events.Add(new WorldEvent(WorldEventKind.ProductionComplete, next.Owner, next.General,
+                    next.City, reward.Gold, next.Facility, reward.Provisions));
+                continue;
+            }
+
+            kept.Add(next);
+        }
+
+        return state with
+        {
+            Cities = cities.Values.OrderBy(c => c.Id.Value).ToList(),
+            GarrisonForces = garrisons
+                .Where(g => g.Troops > 0)
+                .OrderBy(g => g.City.Value).ThenBy(g => g.TroopCode, System.StringComparer.Ordinal)
+                .ToList(),
+            Postings = postings,
+            ProductionOperations = kept.OrderBy(o => o.Id).ToList(),
+        };
+    }
+
+    private static ProductionOperation AdvanceProductionOperation(GameState state, ProductionOperation op)
+    {
+        return op.Phase switch
+        {
+            ProductionPhase.Outbound => AdvanceProductionAlongPath(op, op.OutPath, ProductionPhase.Gathering, state.Day),
+            ProductionPhase.Gathering => state.Day - op.PhaseStartedDay >= op.GatherDays
+                ? StartProductionReturn(op, state.Day)
+                : op,
+            ProductionPhase.Returning => AdvanceProductionAlongPath(op, op.BackPath, ProductionPhase.Returning, state.Day),
+            _ => op,
+        };
+    }
+
+    private static ProductionOperation AdvanceProductionAlongPath(ProductionOperation op, IReadOnlyList<HexCoord> path,
+        ProductionPhase arrivalPhase, int day)
+    {
+        if (path.Count == 0) { return op; }
+        var idx = System.Math.Max(0, path.ToList().FindIndex(p => p == op.Position));
+        if (idx < 0) { idx = 0; }
+        var nextIdx = System.Math.Min(path.Count - 1, idx + System.Math.Max(1, op.Speed));
+        var position = path[nextIdx];
+        if (nextIdx < path.Count - 1)
+        {
+            return op with { Position = position };
+        }
+
+        return arrivalPhase == ProductionPhase.Gathering
+            ? op with { Position = position, Phase = ProductionPhase.Gathering, PhaseStartedDay = day }
+            : op with { Position = position };
+    }
+
+    private static ProductionOperation StartProductionReturn(ProductionOperation op, int day)
+    {
+        var back = op.OutPath.Reverse().ToList();
+        return op with
+        {
+            Phase = ProductionPhase.Returning,
+            PhaseStartedDay = day,
+            ReturnPath = back,
+            Position = op.Target,
+        };
+    }
 
     // 명령 정산(design-administration "명령 실행 공통 규칙"): 완료일 명령의 효과를 도시에 적용하고
     // 목록에서 뺀다. 도시 id 순으로 결정론. 발행 시 자원·금은 이미 예약(차감)됐으므로 여기선 산출만 반영.
