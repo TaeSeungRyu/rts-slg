@@ -120,6 +120,7 @@ public sealed class WorldEngine
             var trainer = ValidOfficer(state, city, city.TrainingOfficer, byId);
 
             var securityDelta = security is null ? _commands.AutoSecurityNoOfficerDelta : MightTier(security.Might);
+            if (recruiter is not null) { securityDelta += _commands.AutoRecruitSecurityDelta; }
             next = next with { Security = System.Math.Clamp(next.Security + securityDelta, 0, 100) };
 
             if (domestic is not null)

@@ -371,11 +371,29 @@ public class WorldEngineTests
         var resultCity = after.Cities.Single();
         var garrison = after.Garrisons.Single(g => g.City == city.Id && g.TroopCode == "swordsman");
 
-        Assert.Equal(52, resultCity.Security);
+        Assert.Equal(49, resultCity.Security);
         Assert.Equal(1220, resultCity.Gold);
         Assert.Equal(1700, resultCity.Provisions);
         Assert.Equal(4800, garrison.Troops);
         Assert.Equal(52, garrison.TrainingLevel);
+    }
+
+    [Fact]
+    public void v2_병력담당의_치안하락은_치안담당_회복과_합산된다()
+    {
+        var city = new City(new CityId(1), "병역성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Population: 0, Security: 70,
+            SecurityOfficer: new GeneralId(1),
+            RecruitmentOfficer: new GeneralId(2),
+            AutoRecruitTroopCodes: "swordsman");
+        var generals = new[] { V2Officer(1, might: 100), V2Officer(2, might: 70) };
+        var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, generals.ToList(),
+            Postings: generals.Select(g => new GeneralPosting(g.Id, city.Owner, city.Id)).ToList());
+
+        var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
+            .AdvanceDays(state, 30);
+
+        Assert.Equal(70, after.Cities.Single().Security);
     }
 
     [Fact]

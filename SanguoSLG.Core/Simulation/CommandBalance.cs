@@ -127,6 +127,7 @@ public sealed record CommandBalance
 
     public bool AutoOfficerSystemEnabled { get; init; } = false;
     public int AutoSecurityNoOfficerDelta { get; init; } = -2;
+    public int AutoRecruitSecurityDelta { get; init; } = -3;
     public int AutoDomesticGoldBase { get; init; } = 100;
     public int AutoDomesticGoldPoliticsMultiplier { get; init; } = 2;
     public int AutoDomesticProvisionsBase { get; init; } = 300;

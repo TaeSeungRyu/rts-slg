@@ -2631,7 +2631,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         CommandKind.AppointSecurityOfficer => "치안을 담당합니다. 매월 무력에 따라 치안을 유지하거나 회복합니다.",
         CommandKind.AppointDomesticOfficer => "내정을 담당합니다. 매월 정치에 따라 금과 군량을 생산합니다.",
-        CommandKind.AppointRecruitmentOfficer => "병력을 담당합니다. 매월 무력에 따라 도시 대기 병력을 생산합니다.",
+        CommandKind.AppointRecruitmentOfficer => "병력을 담당합니다. 매월 무력에 따라 도시 대기 병력을 생산하고 치안이 하락합니다.",
         CommandKind.AppointTrainingOfficer => "훈련을 담당합니다. 매월 무력에 따라 도시 대기 병력의 훈련도를 올립니다.",
         _ => "",
     };
@@ -6339,7 +6339,8 @@ public sealed partial class CampaignMapScene : Node3D
                     + $"\n월 군량 +{_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier}",
                 CommandKind.AppointRecruitmentOfficer => $"\n무력 {officer.Might} → 월 병력 +{AutoRecruitMonthlyTroopsFor(officer)}"
                     + $"\n선택 병종 {AutoRecruitTroopNames(troopCode)}"
-                    + $"\n월 예상 비용 {AutoRecruitMonthlyCostFor(officer, troopCode)}금 · 도시 금 부족 시 생산 없음",
+                    + $"\n월 예상 비용 {AutoRecruitMonthlyCostFor(officer, troopCode)}금 · 치안 {_cb.AutoRecruitSecurityDelta}"
+                    + "\n도시 금 부족 시 생산 없음",
                 CommandKind.AppointTrainingOfficer => $"\n무력 {officer.Might} → 월 훈련도 +{System.Math.Max(1, OfficerMightTier(officer.Might) + 1)}",
                 _ => "",
             };
@@ -6620,7 +6621,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         CommandKind.AppointSecurityOfficer => $"치안 +{OfficerMightTier(officer.Might)}",
         CommandKind.AppointDomesticOfficer => $"금 +{_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier} / 군량 +{_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier}",
-        CommandKind.AppointRecruitmentOfficer => $"병력 +{AutoRecruitMonthlyTroopsFor(officer)}",
+        CommandKind.AppointRecruitmentOfficer => $"병력 +{AutoRecruitMonthlyTroopsFor(officer)} / 치안 {_cb.AutoRecruitSecurityDelta}",
         CommandKind.AppointTrainingOfficer => $"훈련도 +{System.Math.Max(1, OfficerMightTier(officer.Might) + 1)}",
         _ => "",
     };
