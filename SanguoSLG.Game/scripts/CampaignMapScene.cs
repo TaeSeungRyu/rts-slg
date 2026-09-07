@@ -6326,7 +6326,8 @@ public sealed partial class CampaignMapScene : Node3D
             Redraw(_log.Text);
         }
 
-        if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
+        if ((cmd.Kind == CommandKind.Research && cmd.Param == "troop")
+            || cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance)
         {
             ShowOfficerConfirm(confirmTitle, confirmMessage, general, ExecuteConfirmed);
         }
