@@ -30,8 +30,18 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly Color GoldBright = new(0.98f, 0.85f, 0.52f);     // 강조
     private static readonly Color Parchment = new(0.93f, 0.87f, 0.75f);      // 본문 글자(양피지)
     private static readonly Color AccentFill = new(0.60f, 0.16f, 0.12f);     // 선택·실행(朱)
+    private static readonly string[] OfficerConfirmLines =
+    {
+        "신에게 맡겨 주세요.",
+        "반드시 성과를 올리겠습니다.",
+        "주군의 뜻을 받들겠습니다.",
+        "이 일은 제가 책임지겠습니다.",
+        "오늘의 결단이 내일의 승세가 될 것입니다.",
+        "명만 내려 주십시오.",
+    };
 
     private Font _font = null!;
+    private readonly System.Random _confirmRandom = new();
 
     private MapView3D _view = null!;
     private CameraController3D _camera = null!;
@@ -2132,6 +2142,12 @@ public sealed partial class CampaignMapScene : Node3D
 
     // 게임 스타일 컨펌창(금테·잉크 + 한글 확인/취소). 배경 클릭·취소 = 닫기만.
     private void ShowConfirm(string title, string message, System.Action onOk)
+        => ShowConfirmWithOfficer(title, message, null, onOk);
+
+    private void ShowOfficerConfirm(string title, string message, GeneralId officer, System.Action onOk)
+        => ShowConfirmWithOfficer(title, message, officer, onOk);
+
+    private void ShowConfirmWithOfficer(string title, string message, GeneralId? officer, System.Action onOk)
     {
         _confirmLayer?.QueueFree();
         var layer = new CanvasLayer { Layer = 40 };
@@ -2166,6 +2182,27 @@ public sealed partial class CampaignMapScene : Node3D
         titleLbl.HorizontalAlignment = HorizontalAlignment.Center;
         box.AddChild(titleLbl);
         box.AddChild(GoldRule());
+
+        if (officer is { } officerId)
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 10);
+            box.AddChild(row);
+
+            row.AddChild(new TextureRect
+            {
+                Texture = OfficerPortrait(officerId),
+                CustomMinimumSize = new Vector2(76, 76),
+                ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            });
+
+            var speech = MakeLabel($"“{OfficerConfirmLines[_confirmRandom.Next(OfficerConfirmLines.Length)]}”", 14, GoldBright);
+            speech.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            speech.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            speech.VerticalAlignment = VerticalAlignment.Center;
+            row.AddChild(speech);
+        }
 
         var msg = MakeLabel(message, 14, Parchment);
         msg.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -6270,24 +6307,33 @@ public sealed partial class CampaignMapScene : Node3D
         var replaceText = replacingOfficer && CurrentOfficerAssignment(general) is { } oldRole
             ? $"\n\n※ {gName}은 현재 {oldRole.CityName}의 {KindName(oldRole.Kind)}입니다.\n동의하면 기존 담당에서 해제하고 {cmd.Label}(으)로 교체합니다."
             : "";
-        ShowConfirm(confirmTitle,
-            $"{_state.Cities.First(c => c.Id == city).Name} — {cmd.Label}{pLabel}{extra}\n수행 장수: {gName}{replaceText}\n\n실행하시겠습니까?",
-            () =>
+        var confirmMessage =
+            $"{_state.Cities.First(c => c.Id == city).Name} — {cmd.Label}{pLabel}{extra}\n수행 장수: {gName}{replaceText}\n\n실행하시겠습니까?";
+        void ExecuteConfirmed()
+        {
+            var r = _commander.Issue(_state, request);
+            Dbg($"UI issue {cmd.Label}{pLabel} city={city.Value} gen={general.Value} ok={r.Ok} err={r.Error ?? "-"}");
+            if (r.Ok) { _state = r.State; }
+            _log.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
+            if (r.Ok)
             {
-                var r = _commander.Issue(_state, request);
-                Dbg($"UI issue {cmd.Label}{pLabel} city={city.Value} gen={general.Value} ok={r.Ok} err={r.Error ?? "-"}");
-                if (r.Ok) { _state = r.State; }
-                _log.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
-                if (r.Ok)
-                {
-                    var category = cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance ? "외교" : "내정";
-                    Report($"[{category}] {_state.Cities.First(c => c.Id == city).Name}에서 {gName} 장수가 {cmd.Label}{pLabel}을(를) 맡았습니다.", Parchment);
-                }
-                else { ShowNotice("명령 실패", r.Error ?? "조건에 맞지 않아 실행할 수 없습니다."); }
-                CloseModal();
-                SelectCity(city);
-                Redraw(_log.Text);
-            });
+                var category = cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance ? "외교" : "내정";
+                Report($"[{category}] {_state.Cities.First(c => c.Id == city).Name}에서 {gName} 장수가 {cmd.Label}{pLabel}을(를) 맡았습니다.", Parchment);
+            }
+            else { ShowNotice("명령 실패", r.Error ?? "조건에 맞지 않아 실행할 수 없습니다."); }
+            CloseModal();
+            SelectCity(city);
+            Redraw(_log.Text);
+        }
+
+        if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
+        {
+            ShowOfficerConfirm(confirmTitle, confirmMessage, general, ExecuteConfirmed);
+        }
+        else
+        {
+            ShowConfirm(confirmTitle, confirmMessage, ExecuteConfirmed);
+        }
     }
 
     // 시설 코드 → 지형 모델 종류(고스트·완성 모델 로드용).
