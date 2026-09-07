@@ -2911,6 +2911,19 @@ public sealed partial class CampaignMapScene : Node3D
         _disabledOptions.Clear();
         _modalMultiParams.Clear();
         _modalParam = cmd.Param == "tax" ? 2 : 0;
+        if (cmd.Param == "faction" && options.Count == 0)
+        {
+            var empty = cmd.Kind == CommandKind.FormAlliance
+                ? "동맹을 제안할 수 있는 세력이 없습니다."
+                : cmd.Kind == CommandKind.BreakAlliance
+                    ? "파기할 동맹 세력이 없습니다."
+                    : "선택할 대상 세력이 없습니다.";
+            box.AddChild(MakeLabel(empty, 17, Parchment));
+            var emptyContentH = box.GetCombinedMinimumSize().Y;
+            scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(emptyContentH, mh));
+            return;
+        }
+
         if (cmd.Param == "facility")
         {
             for (var i = 0; i < options.Count; i++)
@@ -5265,6 +5278,20 @@ public sealed partial class CampaignMapScene : Node3D
     };
 
     // 명령별 옵션 카드 목록: (표시명, 아이콘, 부가설명).
+    private List<Faction> DiplomacyTargets(CommandKind kind, City city)
+    {
+        return _state.Factions
+            .Where(f => f.Id != city.Owner)
+            .Where(f => kind switch
+            {
+                CommandKind.FormAlliance => !_state.AreAllied(city.Owner, f.Id),
+                CommandKind.BreakAlliance => _state.AreAllied(city.Owner, f.Id),
+                _ => true,
+            })
+            .OrderBy(f => f.Id.Value)
+            .ToList();
+    }
+
     private List<(string Name, ImageTexture Icon, string Detail)> OptionList(
         (string Label, CommandKind Kind, string Param) cmd, City city)
     {
@@ -5302,7 +5329,7 @@ public sealed partial class CampaignMapScene : Node3D
         switch (cmd.Param)
         {
             case "faction":
-                foreach (var faction in _state.Factions.Where(f => f.Id != city.Owner).OrderBy(f => f.Id.Value))
+                foreach (var faction in DiplomacyTargets(cmd.Kind, city))
                 {
                     var targetCity = _state.Cities.Where(c => c.Owner == faction.Id)
                         .OrderBy(c => c.Position.Distance(city.Position))
@@ -6089,9 +6116,7 @@ public sealed partial class CampaignMapScene : Node3D
         FactionId? targetFaction = null;
         if (cmd.Param == "faction")
         {
-            var factions = _state.Factions.Where(f => f.Id != _state.Cities.First(c => c.Id == city).Owner)
-                .OrderBy(f => f.Id.Value)
-                .ToList();
+            var factions = DiplomacyTargets(cmd.Kind, _state.Cities.First(c => c.Id == city));
             if (p < 0 || p >= factions.Count)
             {
                 ShowNotice("외교 실패", "대상 세력을 선택해야 합니다.");
