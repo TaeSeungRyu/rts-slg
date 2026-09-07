@@ -7430,8 +7430,14 @@ public sealed partial class CampaignMapScene : Node3D
         ScrollReportToBottomDeferred();
     }
 
-    private void ScrollReportToBottomDeferred()
-        => Callable.From(ScrollReportToBottom).CallDeferred();
+    private async void ScrollReportToBottomDeferred()
+    {
+        Callable.From(ScrollReportToBottom).CallDeferred();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        ScrollReportToBottom();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        ScrollReportToBottom();
+    }
 
     private void ScrollReportToBottom()
     {
@@ -7439,6 +7445,7 @@ public sealed partial class CampaignMapScene : Node3D
         var bar = _reportScroll.GetVScrollBar();
         if (bar is null) { return; }
         bar.Value = bar.MaxValue;
+        _reportScroll.ScrollVertical = (int)bar.MaxValue;
     }
 
     // 전체 로그 열람(스크롤) — 보고 패널의 "전체" 버튼. 최근이 아래, 오래된 것 위.
