@@ -47,6 +47,7 @@ public sealed partial class CampaignMapScene : Node3D
     private CameraController3D _camera = null!;
     private FactionAI _ai = null!;
     private DeployService _deployer = null!;
+    private ProductionService _producer = null!;
     private CampaignEngine _engine = null!;
     private CommandService _commander = null!;
     private IReadOnlyList<TroopTemplate> _troops = null!;
@@ -390,6 +391,7 @@ public sealed partial class CampaignMapScene : Node3D
         _deployer = new DeployService(_cb, _troops, actives, passives, _adminSkills);
         _ai = new FactionAI(_commander, _deployer);
         _passability = new PassabilityMap(_map, [], _cities);
+        _producer = new ProductionService(_troops, h => _passability.CanEnter(MovementDomain.Land, h));
         var movement = new MovementSimulator(_passability);
         // 플레이 세션에서는 탐색·외교 결과가 매 실행 같은 초반 난수열에 묶이지 않도록 세션 시드를 쓴다.
         // Core 테스트는 WorldEngine에 고정 IRandomSource를 주입해 결정론을 유지한다.
@@ -2095,7 +2097,12 @@ public sealed partial class CampaignMapScene : Node3D
         };
         _cmdList.AddChild(supplyBtn);
 
-        AddV2PendingButton(_cmdList, "생산", "논·밭·마을에 장수와 500명 부대를 보내는 생산 작전은 Phase 10에서 구현합니다.");
+        var productionBtn = MakeButton("생산", accent: true);
+        productionBtn.AddThemeFontSizeOverride("font_size", 12);
+        productionBtn.Alignment = HorizontalAlignment.Center;
+        productionBtn.CustomMinimumSize = new Vector2(74, 24);
+        productionBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenProductionModal(c); } };
+        _cmdList.AddChild(productionBtn);
         AddV2PendingButton(_cmdList, "재편성", "부대 재편성 전용 UI는 v2 전환 후속 단계에서 구현합니다.\n현재는 출전 예약과 입성으로 병력을 정리하세요.");
         AddV2PendingButton(_cmdList, "보충", "자동 담당자 병력 생산과 연계한 보충 명령은 Phase 2~4 이후 구현합니다.");
 
@@ -4556,6 +4563,179 @@ public sealed partial class CampaignMapScene : Node3D
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    private void OpenProductionModal(CityId city)
+    {
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var cityData = _state.Cities.First(c => c.Id == city);
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.54f, 520f, 760f);
+        var mh = Mathf.Clamp(vp.Y * 0.75f, 390f, 650f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel($"◈  생산 작전   《 {cityData.Name} 》", 21, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(34, 32);
+        close.Pressed += () => { CloseModal(); SelectCity(city); };
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("논·밭·마을에 장수와 500명 부대를 보내 8~14일간 채집합니다.\n명령이 시작되면 취소할 수 없고, 채집 중 피격되면 투입 병력은 모두 소실됩니다.", 13, Parchment));
+
+        var targets = ProductionTargets(cityData).ToList();
+        var generals = _state.GeneralsAt(city)
+            .Where(g => !_state.IsGeneralBusy(g) && !_state.IsGeneralInField(g))
+            .Select(id => _state.Generals.First(g => g.Id == id))
+            .OrderByDescending(g => g.Politics).ThenBy(g => g.Id.Value)
+            .ToList();
+        var garrisons = _state.Garrisons
+            .Where(g => g.City == city && !g.Trainee && g.Troops >= ProductionOperation.FixedTroops)
+            .Join(_troops.Where(t => t.Class != TroopClass.Naval), g => g.TroopCode, t => t.Code, (g, t) => (Garrison: g, Troop: t))
+            .OrderBy(x => x.Troop.Name, System.StringComparer.Ordinal)
+            .ToList();
+
+        HexCoord? selectedTarget = targets.FirstOrDefault().Plot;
+        string selectedFacility = targets.FirstOrDefault().Code ?? "";
+        GeneralId? selectedGeneral = generals.FirstOrDefault()?.Id;
+        string selectedTroop = garrisons.FirstOrDefault().Troop?.Code ?? "";
+        var summary = MakeLabel("", 14, GoldBright);
+
+        void RefreshSummary()
+        {
+            var general = selectedGeneral is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
+            var days = general is null ? 0 : ProductionRules.GatherDays(general.Politics);
+            var reward = general is null ? (0, 0) : ProductionRules.Reward(selectedFacility, general.Politics);
+            var rewardText = reward.Item1 > 0 ? $"금 +{reward.Item1}" : reward.Item2 > 0 ? $"군량 +{reward.Item2}" : "-";
+            summary.Text = selectedTarget is null || general is null || string.IsNullOrWhiteSpace(selectedTroop)
+                ? "대상 시설, 장수, 병종을 선택하세요."
+                : $"예상: {FacilityName(selectedFacility)} · {general.Name} 정치 {general.Politics} · 채집 {days}일 · 보상 {rewardText} · 투입 500명";
+        }
+
+        box.AddChild(MakeLabel("1. 생산 대상", 15, GoldBright));
+        if (targets.Count == 0)
+        {
+            box.AddChild(MakeLabel("(생산 가능한 논·밭·마을이 없습니다)", 13, Parchment));
+        }
+        else
+        {
+            var grid = new GridContainer { Columns = 3 };
+            grid.AddThemeConstantOverride("h_separation", 8);
+            grid.AddThemeConstantOverride("v_separation", 8);
+            box.AddChild(grid);
+            foreach (var target in targets)
+            {
+                var btn = MakeButton($"{FacilityName(target.Code)}\n({target.Plot.Q},{target.Plot.R})");
+                btn.CustomMinimumSize = new Vector2(150, 44);
+                btn.Pressed += () =>
+                {
+                    selectedTarget = target.Plot;
+                    selectedFacility = target.Code;
+                    RefreshSummary();
+                };
+                grid.AddChild(btn);
+            }
+        }
+
+        box.AddChild(MakeLabel("2. 주최 장수", 15, GoldBright));
+        if (generals.Count == 0)
+        {
+            box.AddChild(MakeLabel("(투입 가능한 장수가 없습니다)", 13, Parchment));
+        }
+        else
+        {
+            var grid = new GridContainer { Columns = 3 };
+            grid.AddThemeConstantOverride("h_separation", 8);
+            grid.AddThemeConstantOverride("v_separation", 8);
+            box.AddChild(grid);
+            foreach (var general in generals)
+            {
+                var reward = ProductionRules.Reward(selectedFacility, general.Politics);
+                var rewardText = reward.Gold > 0 ? $"금 {reward.Gold}" : reward.Provisions > 0 ? $"군량 {reward.Provisions}" : "보상 -";
+                var btn = MakeButton($"{general.Name}\n정치 {general.Politics} · {ProductionRules.GatherDays(general.Politics)}일 · {rewardText}");
+                btn.CustomMinimumSize = new Vector2(170, 48);
+                btn.Pressed += () =>
+                {
+                    selectedGeneral = general.Id;
+                    RefreshSummary();
+                };
+                grid.AddChild(btn);
+            }
+        }
+
+        box.AddChild(MakeLabel("3. 투입 병종 (500명 고정)", 15, GoldBright));
+        if (garrisons.Count == 0)
+        {
+            box.AddChild(MakeLabel("(500명 이상 대기 중인 지상 병종이 없습니다)", 13, Parchment));
+        }
+        else
+        {
+            var grid = new GridContainer { Columns = 3 };
+            grid.AddThemeConstantOverride("h_separation", 8);
+            grid.AddThemeConstantOverride("v_separation", 8);
+            box.AddChild(grid);
+            foreach (var (garrison, troop) in garrisons)
+            {
+                var btn = MakeButton($"{troop.Name}\n대기 {garrison.Troops} · 이동 {troop.MovementPerDay}");
+                btn.CustomMinimumSize = new Vector2(170, 48);
+                btn.Pressed += () =>
+                {
+                    selectedTroop = troop.Code;
+                    RefreshSummary();
+                };
+                grid.AddChild(btn);
+            }
+        }
+
+        box.AddChild(summary);
+        var start = MakeButton("생산 시작", accent: true);
+        start.CustomMinimumSize = new Vector2(0, 38);
+        start.Pressed += () =>
+        {
+            if (selectedTarget is not { } target || selectedGeneral is not { } general || string.IsNullOrWhiteSpace(selectedTroop))
+            {
+                ShowNotice("생산 불가", "대상 시설, 장수, 병종을 모두 선택해야 합니다.");
+                return;
+            }
+
+            var gName = _state.Generals.First(g => g.Id == general).Name;
+            var troopName = _troops.First(t => t.Code == selectedTroop).Name;
+            ShowConfirm("생산 작전 확인",
+                $"{cityData.Name}에서 {FacilityName(selectedFacility)} 생산을 시작합니다.\n수행 장수: {gName}\n투입 병종: {troopName} 500명\n\n시작 후 취소할 수 없습니다.",
+                () =>
+                {
+                    var result = _producer.Start(_state, city, target, selectedFacility, selectedTroop, general);
+                    if (!result.Ok)
+                    {
+                        ShowNotice("생산 실패", result.Error ?? "조건에 맞지 않아 실행할 수 없습니다.");
+                        return;
+                    }
+
+                    _state = result.State;
+                    Report($"[생산] {cityData.Name}에서 {gName} 장수가 {FacilityName(selectedFacility)} 생산 작전을 시작했습니다.", Parchment);
+                    CloseModal();
+                    SelectCity(city);
+                    Redraw("생산 작전 시작");
+                });
+        };
+        box.AddChild(start);
+        RefreshSummary();
+
+        scroll.CustomMinimumSize = new Vector2(mw, mh);
+    }
+
+    private IEnumerable<(HexCoord Plot, string Code)> ProductionTargets(City city)
+    {
+        foreach (var (code, intact) in new[] { ("paddy", city.Paddies), ("farm", city.Farms), ("village", city.Villages) })
+        {
+            foreach (var p in _state.Placements.Where(p => p.City == city.Id && p.Code == code).Take(intact))
+            {
+                yield return (p.Plot, p.Code);
+            }
+        }
     }
 
     // ── 허브: 이 성의 출전 예약 목록(수정/삭제) + 부대 추가 ──
