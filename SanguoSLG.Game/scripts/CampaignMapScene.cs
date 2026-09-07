@@ -2142,10 +2142,10 @@ public sealed partial class CampaignMapScene : Node3D
     private void ShowConfirm(string title, string message, System.Action onOk)
         => ShowConfirmWithOfficer(title, message, null, onOk);
 
-    private void ShowOfficerConfirm(string title, string message, GeneralId officer, System.Action onOk)
-        => ShowConfirmWithOfficer(title, message, officer, onOk);
+    private void ShowOfficerConfirm(string title, string message, GeneralId officer, System.Action onOk, string? officerLine = null)
+        => ShowConfirmWithOfficer(title, message, officer, onOk, officerLine);
 
-    private void ShowConfirmWithOfficer(string title, string message, GeneralId? officer, System.Action onOk)
+    private void ShowConfirmWithOfficer(string title, string message, GeneralId? officer, System.Action onOk, string? officerLine = null)
     {
         _confirmLayer?.QueueFree();
         var layer = new CanvasLayer { Layer = 40 };
@@ -2207,7 +2207,8 @@ public sealed partial class CampaignMapScene : Node3D
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             });
 
-            var speech = MakeLabel($"“{OfficerConfirmLines[_confirmRandom.Next(OfficerConfirmLines.Length)]}”", 14, GoldBright);
+            var speechText = officerLine ?? $"“{OfficerConfirmLines[_confirmRandom.Next(OfficerConfirmLines.Length)]}”";
+            var speech = MakeLabel(speechText, 14, GoldBright);
             speech.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             speech.CustomMinimumSize = new Vector2(confirmWidth, 0);
             speech.HorizontalAlignment = HorizontalAlignment.Center;
@@ -6158,6 +6159,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         CityId? target = null;
         var extra = "";
+        var confirmOfficer = general;
+        string? confirmOfficerLine = null;
         if (cmd.Kind is CommandKind.Recruit or CommandKind.Conscript)
         {
             // 발행 시점 규칙(IssueRecruit)과 같은 식으로 예상치를 계산해 보여준다.
@@ -6239,10 +6242,15 @@ public sealed partial class CampaignMapScene : Node3D
             var odds = CityStratagems.SuccessPercent(caster.Intellect, defInt);
             var origin = _state.Cities.First(c => c.Id == city);
             var strategist = origin.Strategist is { } sid ? _state.Generals.FirstOrDefault(g => g.Id == sid) : null;
-            var prediction = strategist is null
-                ? "군사 없음 → 성공 여부 예측 불가"
-                : $"군사 {strategist.Name} 예측: {(DiplomacyRules.AdvisorPredictsSuccess(odds, strategist.Intellect, new SeededRandomSource(_state.Day + caster.Id.Value * 31 + enemy.Id.Value * 17)) ? "성공할 듯합니다" : "실패할 듯합니다")}";
-            extra = $"\n대상 {enemy.Name} · 소요 {days}일\n{prediction}";
+            if (strategist is not null)
+            {
+                confirmOfficer = strategist.Id;
+                confirmOfficerLine = $"군사 {strategist.Name} 예측: "
+                    + (DiplomacyRules.AdvisorPredictsSuccess(odds, strategist.Intellect, new SeededRandomSource(_state.Day + caster.Id.Value * 31 + enemy.Id.Value * 17))
+                        ? "성공할 듯합니다"
+                        : "실패할 듯합니다");
+            }
+            extra = $"\n대상 {enemy.Name} · 소요 {days}일";
         }
 
         if ((cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance) && targetFaction is { } tf)
@@ -6384,12 +6392,13 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         if ((cmd.Kind == CommandKind.Research && cmd.Param == "troop")
+            || cmd.Kind == CommandKind.CityStratagem
             || cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance
             || cmd.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist
             || IsAutoOfficerCommand(cmd.Kind)
             || cmd.Kind == CommandKind.Explore)
         {
-            ShowOfficerConfirm(confirmTitle, confirmMessage, general, ExecuteConfirmed);
+            ShowOfficerConfirm(confirmTitle, confirmMessage, confirmOfficer, ExecuteConfirmed, confirmOfficerLine);
         }
         else
         {
