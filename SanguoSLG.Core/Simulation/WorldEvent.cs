@@ -16,6 +16,8 @@ public enum WorldEventKind
     Explore,        // 탐색 완료
     AllianceSuccess, // 동맹 성공
     AllianceFail,    // 동맹 실패
+    StratagemSuccess, // 도시 계략 성공
+    StratagemFail,    // 도시 계략 실패
 }
 
 /// <summary>

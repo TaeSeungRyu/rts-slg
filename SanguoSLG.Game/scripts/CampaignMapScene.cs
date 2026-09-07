@@ -1745,6 +1745,8 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.Explore => (ExplorationEventText(cName, gName, we.Code, we.Amount, we.ExtraAmount), we.Code is "divine_beast_trace" or "ancient_relic_clue" ? GoldBright : Parchment),
                 WorldEventKind.AllianceSuccess => ($"[외교] {targetFaction} 세력과 동맹을 맺었습니다.", GoldBright),
                 WorldEventKind.AllianceFail => ($"[외교] {targetFaction} 세력과의 동맹 교섭에 실패했습니다.", Parchment),
+                WorldEventKind.StratagemSuccess => ($"[계략] {gName}의 {FacilityLabel(we.Code)} 성공 — {cName}에 효과가 적용되었습니다.", GoldBright),
+                WorldEventKind.StratagemFail => ($"[계략] {gName}의 {FacilityLabel(we.Code)} 실패 — {cName}에는 아무 효과가 없었습니다.", Parchment),
                 _ => ("", Parchment),
             };
             if (text.Length > 0) { Ev(text, col); }

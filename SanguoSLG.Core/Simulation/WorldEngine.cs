@@ -532,8 +532,11 @@ public sealed class WorldEngine
         var success = _random.Next(0, 100) < CityStratagems.SuccessPercent(casterIntellect, defenderIntellect);
         if (!success)
         {
+            _events.Add(new WorldEvent(WorldEventKind.StratagemFail, casterCity.Owner, cmd.Main, targetId, Code: cmd.Facility));
             return; // 실패 = 무효(소요 기간·장수 잠금이 이미 비용)
         }
+
+        _events.Add(new WorldEvent(WorldEventKind.StratagemSuccess, casterCity.Owner, cmd.Main, targetId, Code: cmd.Facility));
 
         switch (cmd.Facility)
         {
