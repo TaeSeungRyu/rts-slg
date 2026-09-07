@@ -109,6 +109,20 @@ public class CityStratagemTests
     }
 
     [Fact]
+    public void 정찰_성과는_성공일부터_육십일간_유지된다()
+    {
+        var s = State([Mine(), Enemy()], [Gen(1)]);
+        var issued = Service().Issue(s, Req("scout"));
+        var done = Advance(issued.State, 11, roll: 0);
+
+        var stillKnown = new WorldEngine(Bal, B, random: new FixedRandom(0)).AdvanceDays(done, 60);
+        var expired = new WorldEngine(Bal, B, random: new FixedRandom(0)).AdvanceDays(done, 61);
+
+        Assert.True(stillKnown.IsScouted(new FactionId(1), new CityId(2)));
+        Assert.False(expired.IsScouted(new FactionId(1), new CityId(2)));
+    }
+
+    [Fact]
     public void 실패하면_아무_효과가_없다()
     {
         var s = State([Mine(), Enemy(governor: 9)], [Gen(1, intellect: 80), Gen(9, intellect: 80)], intel: [Scouted()]);

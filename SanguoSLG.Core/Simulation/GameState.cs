@@ -94,7 +94,7 @@ public sealed record GameState(
 
     /// <summary>이 세력이 이 도시를 정찰했는가 — 나머지 도시 계략·등용의 전제.</summary>
     public bool IsScouted(FactionId faction, CityId city)
-        => Intel.Any(i => i.Faction == faction && i.City == city);
+        => Intel.Any(i => i.Faction == faction && i.City == city && i.ExpiresDay >= Day);
 
     /// <summary>이 장수가 진행 중 명령에 매여 잠겨 있는가.</summary>
     public bool IsGeneralBusy(GeneralId general) => Commands.Any(c => c.Locks(general));

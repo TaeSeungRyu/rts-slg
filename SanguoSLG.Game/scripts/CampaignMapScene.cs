@@ -2630,9 +2630,9 @@ public sealed partial class CampaignMapScene : Node3D
     private static string OfficerRoleDescription(CommandKind kind) => kind switch
     {
         CommandKind.AppointSecurityOfficer => "치안을 담당합니다. 매월 무력에 따라 치안을 유지하거나 회복합니다.",
-        CommandKind.AppointDomesticOfficer => "내정을 담당합니다. 매월 정치에 따라 금과 군량을 생산합니다.",
-        CommandKind.AppointRecruitmentOfficer => "병력을 담당합니다. 매월 무력에 따라 도시 대기 병력을 생산하고 치안이 하락합니다.",
-        CommandKind.AppointTrainingOfficer => "훈련을 담당합니다. 매월 무력에 따라 도시 대기 병력의 훈련도를 올립니다.",
+        CommandKind.AppointDomesticOfficer => "내정을 담당합니다. 매월 정치에 따라 금을 생산하고, 7일마다 군량을 생산합니다.",
+        CommandKind.AppointRecruitmentOfficer => "병력을 담당합니다. 7일마다 무력에 따라 도시 대기 병력을 생산하고 치안이 하락합니다.",
+        CommandKind.AppointTrainingOfficer => "훈련을 담당합니다. 7일마다 무력에 따라 도시 대기 병력의 훈련도를 올립니다.",
         _ => "",
     };
 
@@ -2910,6 +2910,11 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(GoldRule());
 
         var cityData = _state.Cities.First(x => x.Id == city);
+        if (IsAutoOfficerCommand(cmd.Kind))
+        {
+            AddClearOfficerButton(box, cityData, cmd.Kind);
+        }
+
         if (cmd.Kind == CommandKind.RecruitHero)
         {
             box.AddChild(MakeLabel("조건을 달성해 해금된 세력형/도시형/유랑 위인을 금을 내고 영입합니다.", 15, Parchment));
@@ -6341,7 +6346,7 @@ public sealed partial class CampaignMapScene : Node3D
                     + $"\n선택 병종 {AutoRecruitTroopNames(troopCode)}"
                     + $"\n월 예상 비용 {AutoRecruitMonthlyCostFor(officer, troopCode)}금 · 치안 {_cb.AutoRecruitSecurityDelta}"
                     + "\n도시 금 부족 시 생산 없음",
-                CommandKind.AppointTrainingOfficer => $"\n무력 {officer.Might} → 월 훈련도 +{System.Math.Max(1, OfficerMightTier(officer.Might) + 1)}",
+                CommandKind.AppointTrainingOfficer => $"\n무력 {officer.Might} → 7일 훈련도 +{System.Math.Max(1, OfficerMightTier(officer.Might) + 1)}",
                 _ => "",
             };
         }
@@ -6609,6 +6614,59 @@ public sealed partial class CampaignMapScene : Node3D
         return null;
     }
 
+    private GeneralId? CurrentOfficerForRole(City city, CommandKind kind) => kind switch
+    {
+        CommandKind.AppointSecurityOfficer => city.SecurityOfficer,
+        CommandKind.AppointDomesticOfficer => city.DomesticOfficer,
+        CommandKind.AppointRecruitmentOfficer => city.RecruitmentOfficer,
+        CommandKind.AppointTrainingOfficer => city.TrainingOfficer,
+        _ => null,
+    };
+
+    private static City ClearOfficerRole(City city, CommandKind kind) => kind switch
+    {
+        CommandKind.AppointSecurityOfficer => city with { SecurityOfficer = null },
+        CommandKind.AppointDomesticOfficer => city with { DomesticOfficer = null },
+        CommandKind.AppointRecruitmentOfficer => city with
+        {
+            RecruitmentOfficer = null,
+            AutoRecruitTroopCode = string.Empty,
+            AutoRecruitTroopCodes = string.Empty,
+        },
+        CommandKind.AppointTrainingOfficer => city with { TrainingOfficer = null },
+        _ => city,
+    };
+
+    private void AddClearOfficerButton(VBoxContainer box, City city, CommandKind kind)
+    {
+        var current = CurrentOfficerForRole(city, kind);
+        if (current is null) { return; }
+
+        var name = OfficerName(current) ?? "현재 담당자";
+        var row = new HBoxContainer();
+        row.AddChild(MakeLabel($"현재 {KindName(kind)}: {name}", 14, Parchment));
+        var clear = MakeButton("담당 해제");
+        clear.CustomMinimumSize = new Vector2(110, 30);
+        clear.Pressed += () =>
+        {
+            ShowConfirm("담당 해제 확인",
+                $"{city.Name}의 {KindName(kind)}에서 {name}을(를) 해제하시겠습니까?",
+                () =>
+                {
+                    _state = _state with
+                    {
+                        Cities = _state.Cities.Select(c => c.Id == city.Id ? ClearOfficerRole(c, kind) : c).ToList(),
+                    };
+                    Report($"[내정] {city.Name}의 {KindName(kind)}에서 {name} 장수를 해제했습니다.", Parchment);
+                    CloseModal();
+                    SelectCity(city.Id);
+                    Redraw($"{KindName(kind)} 해제");
+                });
+        };
+        row.AddChild(clear);
+        box.AddChild(row);
+    }
+
     private static int OfficerMightTier(int might) => might switch
     {
         < 60 => 0,
@@ -6622,7 +6680,7 @@ public sealed partial class CampaignMapScene : Node3D
         CommandKind.AppointSecurityOfficer => $"치안 +{OfficerMightTier(officer.Might)}",
         CommandKind.AppointDomesticOfficer => $"금 +{_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier} / 군량 +{_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier}",
         CommandKind.AppointRecruitmentOfficer => $"병력 +{AutoRecruitMonthlyTroopsFor(officer)} / 치안 {_cb.AutoRecruitSecurityDelta}",
-        CommandKind.AppointTrainingOfficer => $"훈련도 +{System.Math.Max(1, OfficerMightTier(officer.Might) + 1)}",
+        CommandKind.AppointTrainingOfficer => $"7일 훈련도 +{System.Math.Max(1, OfficerMightTier(officer.Might) + 1)}",
         _ => "",
     };
 

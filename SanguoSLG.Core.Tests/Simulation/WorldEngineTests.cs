@@ -389,7 +389,7 @@ public class WorldEngineTests
         Assert.Equal(1220, resultCity.Gold);
         Assert.Equal(1700, resultCity.Provisions);
         Assert.Equal(4800, garrison.Troops);
-        Assert.Equal(52, garrison.TrainingLevel);
+        Assert.Equal(59, garrison.TrainingLevel);
     }
 
     [Fact]
@@ -426,6 +426,45 @@ public class WorldEngineTests
             .AdvanceDays(state, 7);
 
         Assert.Equal(79, after.Cities.Single().Security);
+    }
+
+    [Fact]
+    public void v2_자동담당자_모드에서는_월말_기존치안회복을_적용하지_않는다()
+    {
+        var city = new City(new CityId(1), "월말성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Population: 0, Security: 80,
+            SecurityOfficer: new GeneralId(1),
+            RecruitmentOfficer: new GeneralId(2),
+            AutoRecruitTroopCodes: "swordsman");
+        var generals = new[] { V2Officer(1, might: 85), V2Officer(2, might: 70) };
+        var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, generals.ToList(),
+            Postings: generals.Select(g => new GeneralPosting(g.Id, city.Owner, city.Id)).ToList());
+
+        var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
+            .AdvanceDays(state, 30);
+
+        Assert.Equal(79, after.Cities.Single().Security);
+    }
+
+    [Fact]
+    public void v2_훈련담당은_칠일마다_대기병력_훈련도를_올린다()
+    {
+        var city = new City(new CityId(1), "훈련성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Population: 0, Security: 80,
+            TrainingOfficer: new GeneralId(1));
+        var generals = new[] { V2Officer(1, might: 100) };
+        var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, generals.ToList(),
+            Postings: generals.Select(g => new GeneralPosting(g.Id, city.Owner, city.Id)).ToList(),
+            GarrisonForces: new List<GarrisonForce>
+            {
+                new(city.Id, "swordsman", 1000, 40),
+                new(city.Id, "archer", 1000, 40),
+            });
+
+        var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
+            .AdvanceDays(state, 7);
+
+        Assert.All(after.Garrisons, g => Assert.Equal(44, g.TrainingLevel));
     }
 
     [Fact]

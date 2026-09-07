@@ -52,6 +52,10 @@ public sealed class WorldEngine
             Factions = state.Factions.OrderBy(f => f.Id.Value).ToList(),
             Cities = state.Cities.OrderBy(c => c.Id.Value).ToList(),
         };
+        if (next.Intel.Count > 0)
+        {
+            next = next with { ScoutedCities = next.Intel.Where(i => i.ExpiresDay >= next.Day).ToList() };
+        }
 
         // 명령 정산: 완료일에 도달한 명령의 효과를 적용하고 목록에서 뺀다(수행 장수 잠금 해제).
         if (next.Commands.Any(c => c.CompletionDay == next.Day))
@@ -71,6 +75,7 @@ public sealed class WorldEngine
             if (_commands.AutoOfficerSystemEnabled)
             {
                 next = ApplyAutoRecruitment(next, byId);
+                next = ApplyAutoTraining(next, byId);
             }
         }
 
@@ -84,7 +89,8 @@ public sealed class WorldEngine
                 Cities = next.Cities.Select(c =>
                 {
                     var gov = ValidGovernor(next, c, byId);
-                    return TaxSecurity(Grow(Produce(Income(next, c, gov), gov)), gov);
+                    var updated = Grow(Produce(Income(next, c, gov), gov));
+                    return _commands.AutoOfficerSystemEnabled ? updated : TaxSecurity(updated, gov);
                 }).ToList(),
             };
             if (_commands.AutoOfficerSystemEnabled)
@@ -106,13 +112,11 @@ public sealed class WorldEngine
 
     private GameState ApplyAutoOfficers(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId)
     {
-        var garrisons = state.Garrisons.ToList();
         var cities = new List<City>();
         foreach (var city in state.Cities)
         {
             var next = city;
             var domestic = ValidOfficer(state, city, city.DomesticOfficer, byId);
-            var trainer = ValidOfficer(state, city, city.TrainingOfficer, byId);
 
             if (domestic is not null)
             {
@@ -123,18 +127,10 @@ public sealed class WorldEngine
                 };
             }
 
-            if (trainer is not null)
-            {
-                var gain = System.Math.Max(1, MightTier(trainer.Might) + 1);
-                garrisons = garrisons.Select(g => g.City == next.Id
-                    ? g with { TrainingLevel = System.Math.Min(_commands.TrainCap, g.TrainingLevel + gain) }
-                    : g).ToList();
-            }
-
             cities.Add(next);
         }
 
-        return state with { Cities = cities, GarrisonForces = garrisons };
+        return state with { Cities = cities };
     }
 
     private GameState ApplyWeeklyProvisions(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId, bool includeDomesticOfficer)
@@ -225,6 +221,23 @@ public sealed class WorldEngine
         }
 
         return state with { Cities = cities, GarrisonForces = garrisons };
+    }
+
+    private GameState ApplyAutoTraining(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId)
+    {
+        var garrisons = state.Garrisons.ToList();
+        foreach (var city in state.Cities)
+        {
+            var trainer = ValidOfficer(state, city, city.TrainingOfficer, byId);
+            if (trainer is null) { continue; }
+
+            var gain = System.Math.Max(1, MightTier(trainer.Might) + 1);
+            garrisons = garrisons.Select(g => g.City == city.Id
+                ? g with { TrainingLevel = System.Math.Min(_commands.TrainCap, g.TrainingLevel + gain) }
+                : g).ToList();
+        }
+
+        return state with { GarrisonForces = garrisons };
     }
 
     private IEnumerable<string> SelectedAutoRecruitTroopCodes(City city)
@@ -596,10 +609,8 @@ public sealed class WorldEngine
                 break;
 
             case "scout":
-                if (!intel.Any(i => i.Faction == casterCity.Owner && i.City == targetId))
-                {
-                    intel.Add(new Domain.CityIntel(casterCity.Owner, targetId));
-                }
+                intel.RemoveAll(i => i.Faction == casterCity.Owner && i.City == targetId);
+                intel.Add(new Domain.CityIntel(casterCity.Owner, targetId, state.Day + 60));
 
                 break;
 
