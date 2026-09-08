@@ -4701,6 +4701,27 @@ public sealed partial class CampaignMapScene : Node3D
         GeneralId? selectedGeneral = generals.FirstOrDefault()?.Id;
         string selectedTroop = garrisons.FirstOrDefault().Troop?.Code ?? "";
         var summary = MakeLabel("", 14, GoldBright);
+        var generalButtons = new List<(Button Button, General General)>();
+        var troopButtons = new List<(Button Button, GarrisonForce Garrison, TroopTemplate Troop)>();
+
+        void RefreshSelectionButtons()
+        {
+            foreach (var (btn, general) in generalButtons)
+            {
+                var reward = string.IsNullOrWhiteSpace(selectedFacility)
+                    ? (Gold: 0, Provisions: 0)
+                    : ProductionRules.Reward(selectedFacility, general.Politics);
+                var rewardText = reward.Gold > 0 ? $"금 {reward.Gold}" : reward.Provisions > 0 ? $"군량 {reward.Provisions}" : "보상 -";
+                var mark = selectedGeneral == general.Id ? "☑" : "☐";
+                btn.Text = $"{mark} {general.Name}\n정치 {general.Politics} · {ProductionRules.GatherDays(general.Politics)}일 · {rewardText}";
+            }
+
+            foreach (var (btn, garrison, troop) in troopButtons)
+            {
+                var mark = selectedTroop == troop.Code ? "☑" : "☐";
+                btn.Text = $"{mark} {troop.Name}\n대기 {garrison.Troops} · 이동 {troop.MovementPerDay}";
+            }
+        }
 
         void RefreshSummary()
         {
@@ -4739,6 +4760,7 @@ public sealed partial class CampaignMapScene : Node3D
                     selectedTarget = target.Plot;
                     selectedFacility = target.Code;
                     RefreshSummary();
+                    RefreshSelectionButtons();
                 };
                 grid.AddChild(btn);
             }
@@ -4757,18 +4779,16 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(grid);
             foreach (var general in generals)
             {
-                var reward = string.IsNullOrWhiteSpace(selectedFacility)
-                    ? (Gold: 0, Provisions: 0)
-                    : ProductionRules.Reward(selectedFacility, general.Politics);
-                var rewardText = reward.Gold > 0 ? $"금 {reward.Gold}" : reward.Provisions > 0 ? $"군량 {reward.Provisions}" : "보상 -";
-                var btn = MakeButton($"{general.Name}\n정치 {general.Politics} · {ProductionRules.GatherDays(general.Politics)}일 · {rewardText}");
+                var btn = MakeButton("");
                 btn.CustomMinimumSize = new Vector2(170, 48);
                 btn.Pressed += () =>
                 {
                     selectedGeneral = general.Id;
                     RefreshSummary();
+                    RefreshSelectionButtons();
                 };
                 grid.AddChild(btn);
+                generalButtons.Add((btn, general));
             }
         }
 
@@ -4785,18 +4805,21 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(grid);
             foreach (var (garrison, troop) in garrisons)
             {
-                var btn = MakeButton($"{troop.Name}\n대기 {garrison.Troops} · 이동 {troop.MovementPerDay}");
+                var btn = MakeButton("");
                 btn.CustomMinimumSize = new Vector2(170, 48);
                 btn.Pressed += () =>
                 {
                     selectedTroop = troop.Code;
                     RefreshSummary();
+                    RefreshSelectionButtons();
                 };
                 grid.AddChild(btn);
+                troopButtons.Add((btn, garrison, troop));
             }
         }
 
         box.AddChild(summary);
+        RefreshSelectionButtons();
         var start = MakeButton("생산 시작", accent: true);
         start.CustomMinimumSize = new Vector2(0, 38);
         start.Pressed += () =>
