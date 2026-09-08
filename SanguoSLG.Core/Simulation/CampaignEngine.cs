@@ -1,6 +1,7 @@
 namespace SanguoSLG.Core.Simulation;
 
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Spatial;
 
 /// <summary>
 /// 캠페인 진행(2026-08-16 확정): **진행 버튼 1번 = 7일 고정.** 야전(AdvanceOrchestrator)이
@@ -13,6 +14,7 @@ public sealed class CampaignEngine
 {
     /// <summary>진행 1번의 길이(일) — 7일 고정(2026-08-16 확정).</summary>
     public const int WeekDays = 7;
+    private const int ProductionUnitIdBase = -1_000_000;
 
     private readonly AdvanceOrchestrator _field;
     private readonly WorldEngine _world;
@@ -94,7 +96,18 @@ public sealed class CampaignEngine
                 (work, armies) = ResupplyFromCities(work, armies);
             }
 
-            var turn = _field.Run(armies, maxDays: remaining, castles);
+            var productionUnits = ProductionCombatUnits(work);
+            var productionUnitIds = productionUnits.Select(u => u.Id).ToHashSet();
+            var turnInput = productionUnits.Count == 0 ? armies : armies.Concat(productionUnits).ToList();
+
+            var turn = _field.Run(turnInput, maxDays: remaining, castles);
+            var hitProductionIds = HitProductionUnits(turn, productionUnitIds);
+            if (hitProductionIds.Count > 0)
+            {
+                work = RemoveHitProductionOperations(work, hitProductionIds);
+            }
+
+            turn = StripProductionUnits(turn, productionUnitIds);
             reports.Add(turn);
             remaining -= System.Math.Max(1, turn.Movement.Days);
 
@@ -204,6 +217,100 @@ public sealed class CampaignEngine
         plunders = plunderReports;
         casualties = casualtyReports;
         return _world.AdvanceDays(afterField, WeekDays);
+    }
+
+    private static List<CombatUnit> ProductionCombatUnits(GameState work)
+        => work.ProductionOps
+            .Where(o => o.Phase == ProductionPhase.Gathering)
+            .OrderBy(o => o.Id)
+            .Select(o =>
+            {
+                var id = ProductionUnitId(o.Id);
+                return new CombatUnit(
+                    new FieldUnit(id, o.Owner, o.Target,
+                        Speed: 0, Detection: 0, AttackRange: 0, MovementDomain.Land, UnitMode.March,
+                        Target: null, CommandOrder: ProductionUnitIdBase + o.Id),
+                    new CombatStats(Troops: o.Troops, AtkStat: 0, DfStat: 1),
+                    new TroopPool(o.Troops, 0),
+                    UnitCombatState.Create(0),
+                    Might: 1,
+                    Intellect: 1,
+                    MaxTroops: o.Troops,
+                    TroopCode: o.TroopCode,
+                    Training: o.TrainingLevel);
+            })
+            .ToList();
+
+    private static UnitId ProductionUnitId(int operationId) => new(ProductionUnitIdBase + operationId);
+
+    private static int ProductionOperationId(UnitId unitId) => unitId.Value - ProductionUnitIdBase;
+
+    private static HashSet<UnitId> HitProductionUnits(AdvanceTurn turn, HashSet<UnitId> productionUnitIds)
+    {
+        var survivors = turn.Units.ToDictionary(u => u.Id);
+        return productionUnitIds
+            .Where(id => turn.Combat?.DamageTaken.ContainsKey(id) == true
+                || !survivors.TryGetValue(id, out var unit)
+                || unit.Pool.Active < ProductionOperation.FixedTroops)
+            .ToHashSet();
+    }
+
+    private static GameState RemoveHitProductionOperations(GameState work, HashSet<UnitId> hitProductionIds)
+    {
+        var hitOps = hitProductionIds.Select(ProductionOperationId).ToHashSet();
+        return work with { ProductionOperations = work.ProductionOps.Where(o => !hitOps.Contains(o.Id)).ToList() };
+    }
+
+    private static AdvanceTurn StripProductionUnits(AdvanceTurn turn, HashSet<UnitId> productionUnitIds)
+    {
+        if (productionUnitIds.Count == 0) { return turn; }
+        var movement = turn.Movement with
+        {
+            Units = turn.Movement.Units.Where(u => !productionUnitIds.Contains(u.Id)).ToList(),
+            Ticks = turn.Movement.Ticks
+                .Select(t => t with
+                {
+                    Units = t.Units.Where(u => !productionUnitIds.Contains(u.Id)).ToList(),
+                    Events = t.Events.Where(e => !productionUnitIds.Contains(e.Unit)
+                        && (e.Other is null || !productionUnitIds.Contains(e.Other.Value))).ToList(),
+                })
+                .ToList(),
+            Entered = turn.Movement.EnteredCastle.Where(id => !productionUnitIds.Contains(id)).ToList(),
+        };
+
+        return turn with
+        {
+            Units = turn.Units.Where(u => !productionUnitIds.Contains(u.Id)).ToList(),
+            Movement = movement,
+            Combat = StripProductionCombat(turn.Combat, productionUnitIds),
+            Entered = turn.EnteredCastle.Where(u => !productionUnitIds.Contains(u.Id)).ToList(),
+            FiredActives = turn.FiredActives.Where(kv => !productionUnitIds.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value),
+            FiredStratagems = turn.FiredStratagems.Where(kv => !productionUnitIds.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value),
+            StatusDamage = turn.StatusDamage.Where(kv => !productionUnitIds.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value),
+            StratagemDamage = turn.StratagemDamage.Where(kv => !productionUnitIds.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value),
+            StarvationLoss = turn.Starvation.Where(kv => !productionUnitIds.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value),
+            ReinforcedTroops = turn.Reinforced.Where(kv => !productionUnitIds.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value),
+        };
+    }
+
+    private static CombatPhaseResult? StripProductionCombat(CombatPhaseResult? combat, HashSet<UnitId> productionUnitIds)
+    {
+        if (combat is null) { return null; }
+        return combat with
+        {
+            DamageTaken = combat.DamageTaken.Where(kv => !productionUnitIds.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value),
+            DamageDealt = combat.DamageDealt.Where(kv => !productionUnitIds.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value),
+            Pools = combat.Pools.Where(kv => !productionUnitIds.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value),
+        };
     }
 
     // 공사장 피해: 적대 세력 부대만 공사를 '유닛'으로 보고 공격한다(내 군대는 적 공사를, 적 군대는 내
