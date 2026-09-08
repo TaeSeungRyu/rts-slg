@@ -20,7 +20,8 @@ public sealed record AdvanceTurn(
     IReadOnlyDictionary<Domain.UnitId, int> StratagemDamage,
     IReadOnlyList<CombatUnit>? Entered = null,
     IReadOnlyDictionary<Domain.UnitId, int>? StarvationLoss = null,
-    IReadOnlyDictionary<Domain.UnitId, int>? ReinforcedTroops = null)
+    IReadOnlyDictionary<Domain.UnitId, int>? ReinforcedTroops = null,
+    IReadOnlyDictionary<Domain.UnitId, Spatial.HexCoord>? ProductionAttackTargets = null)
 {
     public IReadOnlyList<CombatUnit> EnteredCastle => Entered ?? [];
 

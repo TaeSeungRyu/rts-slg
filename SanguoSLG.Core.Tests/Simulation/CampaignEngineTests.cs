@@ -73,6 +73,9 @@ public class CampaignEngineTests
         Assert.Contains(turns, t => t.Combat is not null);
         var evt = Assert.Single(engine.LastWorldEvents, e => e.Kind == WorldEventKind.ProductionLost);
         Assert.Equal(ProductionOperation.FixedTroops, evt.Amount);
+        Assert.Contains(turns, t => t.ProductionAttackTargets?.GetValueOrDefault(attacker.Id) == op.Target);
+        Assert.All(turns.Where(t => t.Combat is not null), t =>
+            Assert.False(t.Combat!.DamageTaken.ContainsKey(attacker.Id)));
     }
 
     [Fact]
@@ -108,6 +111,7 @@ public class CampaignEngineTests
 
         Assert.Empty(after.ProductionOps);
         Assert.Contains(turns, t => t.Combat is not null);
+        Assert.Contains(turns, t => t.ProductionAttackTargets?.GetValueOrDefault(attacker.Id) == op.Target);
     }
 
     [Fact]

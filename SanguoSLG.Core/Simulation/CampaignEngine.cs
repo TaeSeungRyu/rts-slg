@@ -103,6 +103,20 @@ public sealed class CampaignEngine
             var turnInput = productionUnits.Count == 0 ? armies : armies.Concat(productionUnits).ToList();
 
             var turn = _field.Run(turnInput, maxDays: remaining, castles);
+            // 생산 대상은 저장용 야전 부대에서 제거해도 공격 모션의 목표 위치는 보존한다.
+            var attackedProduction = productionUnits.Where(u =>
+                turn.Combat?.DamageTaken.GetValueOrDefault(u.Id) > 0).ToList();
+            turn = turn with
+            {
+                ProductionAttackTargets = turn.Units
+                    .Where(u => turn.Combat?.DamageDealt.GetValueOrDefault(u.Id) > 0)
+                    .Select(u => (Unit: u, Target: attackedProduction
+                        .Where(p => p.Field.Owner != u.Field.Owner
+                            && p.Field.Position.Distance(u.Field.Position) <= u.Field.AttackRange)
+                        .OrderBy(p => p.Field.Position.Distance(u.Field.Position)).FirstOrDefault()))
+                    .Where(x => x.Target is not null)
+                    .ToDictionary(x => x.Unit.Id, x => x.Target!.Field.Position),
+            };
             var hitProductionIds = HitProductionUnits(turn, productionUnitIds);
             if (hitProductionIds.Count > 0)
             {
@@ -251,7 +265,7 @@ public sealed class CampaignEngine
     {
         var survivors = turn.Units.ToDictionary(u => u.Id);
         return productionUnitIds
-            .Where(id => turn.Combat?.DamageTaken.ContainsKey(id) == true
+            .Where(id => turn.Combat?.DamageTaken.GetValueOrDefault(id) > 0
                 || !survivors.TryGetValue(id, out var unit)
                 || unit.Pool.Active < ProductionOperation.FixedTroops)
             .ToHashSet();

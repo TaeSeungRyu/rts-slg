@@ -2040,10 +2040,19 @@ public sealed partial class CampaignMapScene : Node3D
     private void ScheduleAttackMotions(AdvanceTurn turn, double atkTime)
     {
         var fieldAttackers = new HashSet<int>();
+        if (turn.ProductionAttackTargets is { } productionTargets)
+        {
+            foreach (var (id, position) in productionTargets)
+            {
+                _animAttacks.Add((atkTime, id.Value, _view.HexToWorld(position)));
+                fieldAttackers.Add(id.Value);
+            }
+        }
         if (turn.Combat is { } combat)
         {
             foreach (var id in combat.DamageDealt.Keys.OrderBy(k => k.Value))
             {
+                if (fieldAttackers.Contains(id.Value)) { continue; }
                 var me = turn.Units.FirstOrDefault(u => u.Id == id);
                 var foe = me is null ? null : turn.Units
                     .Where(u => u.Field.Owner != me.Field.Owner)
