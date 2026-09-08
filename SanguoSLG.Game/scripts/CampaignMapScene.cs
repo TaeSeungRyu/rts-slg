@@ -212,6 +212,7 @@ public sealed partial class CampaignMapScene : Node3D
     private Label? _depProvLabel;
     private int _provPer10kPerDay = 10; // 병력 1만당 하루 군량 소모(balance) — 일수↔군량 환산
     private string _dbgLog = ""; // 출전 디버그 로그 파일 경로(res://deploy-debug.log)
+    private const float FacilityDisplayScale = 0.5f;
 
     // 진행 상세 로그 — 진행 조각(turn)별 이동/교전/소멸, 공성/함락/약탈, 주말 요약.
     // 분석 규약: u{id}=부대, city{id}=성, 피해는 -N, 획득/회복은 +N.
@@ -7144,6 +7145,7 @@ public sealed partial class CampaignMapScene : Node3D
                     var node = scene.Instantiate<Node3D>();
                     // 기존 평지/숲 타일 위에 얹는다 — 타일 윗면 높이만큼 올려 바닥끼리 Z-파이팅을 피한다.
                     node.Position = _view.HexToWorld(placed[i].Plot) + new Vector3(0f, _view.TileTopY, 0f);
+                    node.Scale *= FacilityDisplayScale;
                     _facilityLayer.AddChild(node);
                 }
 
@@ -7151,6 +7153,7 @@ public sealed partial class CampaignMapScene : Node3D
                 {
                     var node = rubbleScene.Instantiate<Node3D>();
                     node.Position = _view.HexToWorld(placed[i].Plot) + new Vector3(0f, _view.TileTopY, 0f);
+                    node.Scale *= FacilityDisplayScale;
                     _facilityLayer.AddChild(node);
                 }
             }
@@ -7163,6 +7166,7 @@ public sealed partial class CampaignMapScene : Node3D
             var origin = _view.HexToWorld(c.Plot!.Value) + new Vector3(0f, _view.TileTopY, 0f);
             var site = siteScene.Instantiate<Node3D>();
             site.Position = origin;
+            site.Scale *= FacilityDisplayScale;
             site.AddChild(BuildConstructionDust()); // 흙먼지 — 사람이 일하고 있다는 신호
             _facilityLayer.AddChild(site);
 
@@ -7177,7 +7181,7 @@ public sealed partial class CampaignMapScene : Node3D
                 OutlineSize = 10,
                 NoDepthTest = true,
                 Modulate = new Color(1f, 0.92f, 0.6f),
-                Position = origin + new Vector3(0f, 0.95f, 0f),
+                Position = origin + new Vector3(0f, 0.7f, 0f),
             };
             _facilityLayer.AddChild(lbl);
         }
@@ -7196,7 +7200,7 @@ public sealed partial class CampaignMapScene : Node3D
                 OutlineSize = 10,
                 NoDepthTest = true,
                 Modulate = new Color(0.72f, 0.92f, 1f),
-                Position = origin + new Vector3(0f, 1.08f, 0f),
+                Position = origin + new Vector3(0f, 0.82f, 0f),
             };
             _facilityLayer.AddChild(lbl);
         }
@@ -7213,7 +7217,7 @@ public sealed partial class CampaignMapScene : Node3D
                 OutlineSize = 9,
                 NoDepthTest = true,
                 Modulate = new Color(0.72f, 1f, 0.72f),
-                Position = origin + new Vector3(0f, 1.22f, 0f),
+                Position = origin + new Vector3(0f, 0.92f, 0f),
             };
             _facilityLayer.AddChild(lbl);
         }
