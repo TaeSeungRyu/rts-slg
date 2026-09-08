@@ -76,6 +76,41 @@ public class CampaignEngineTests
     }
 
     [Fact]
+    public void 이동중인_생산_작전도_대상_시설_위치에서_교전_대상이_된다()
+    {
+        var city = new City(new CityId(1), "성", new HexCoord(0, 0), new FactionId(1), Provisions: 1000);
+        var op = new ProductionOperation(
+            Id: 1,
+            City: city.Id,
+            Owner: city.Owner,
+            Origin: city.Position,
+            Target: new HexCoord(8, 0),
+            Facility: ProductionRules.Village,
+            TroopCode: "swordsman",
+            Troops: ProductionOperation.FixedTroops,
+            TrainingLevel: 50,
+            Speed: 2,
+            General: new GeneralId(1),
+            StartedDay: 1,
+            GatherDays: 10,
+            Phase: ProductionPhase.Outbound,
+            PhaseStartedDay: 1,
+            Position: city.Position,
+            OutboundPath: [city.Position, new HexCoord(7, 0), new HexCoord(8, 0)],
+            ReturnPath: [new HexCoord(8, 0), new HexCoord(7, 0), city.Position]);
+        var attacker = Army(10, 2, new HexCoord(3, 0), UnitMode.Attack, new HexCoord(12, 0));
+        var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, new List<General>(),
+            FieldArmies: new List<CombatUnit> { attacker },
+            ProductionOperations: new List<ProductionOperation> { op });
+
+        var engine = Engine();
+        var after = engine.AdvanceWeek(state, out var turns);
+
+        Assert.Empty(after.ProductionOps);
+        Assert.Contains(turns, t => t.Combat is not null);
+    }
+
+    [Fact]
     public void 공사장은_적군에게만_피해를_받고_체력이_다까이면_건설취소된다()
     {
         // 공사 중 시설은 병력 1000짜리 무방비 목표(체력 1000, 진행당 인접 적 부대 하나에 500 피해).

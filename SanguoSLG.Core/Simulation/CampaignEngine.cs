@@ -227,8 +227,9 @@ public sealed class CampaignEngine
             .Select(o =>
             {
                 var id = ProductionUnitId(o.Id);
+                var combatPosition = o.Phase == ProductionPhase.Returning ? o.Position : o.Target;
                 return new CombatUnit(
-                    new FieldUnit(id, o.Owner, o.Position,
+                    new FieldUnit(id, o.Owner, combatPosition,
                         Speed: 0, Detection: 0, AttackRange: 0, MovementDomain.Land, UnitMode.March,
                         Target: null, CommandOrder: ProductionUnitIdBase + o.Id),
                     new CombatStats(Troops: o.Troops, AtkStat: 0, DfStat: 1),
