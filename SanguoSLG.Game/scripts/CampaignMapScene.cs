@@ -90,6 +90,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId, int Troops)> _animUpdates = new(); // 병력 갱신(라벨·편대 규모)
     private int _animKillIdx;
     private readonly List<(double Time, int UnitId)> _animKills = new(); // 전멸·입성 — 토큰 즉시 제거
+    private int _animProductionKillIdx;
+    private readonly List<(double Time, int OperationId)> _animProductionKills = new(); // 생산 부대 시설 도착 — 토큰 제거
     private int _animEffectIdx;
     private readonly List<(double Time, Vector3 Pos)> _animDeathEffects = new(); // 병력 전멸·생산 소실 1회성 효과
     private int _animDmgIdx;
@@ -1839,6 +1841,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animAtkIdx = 0;
         _animUpdIdx = 0;
         _animKillIdx = 0;
+        _animProductionKillIdx = 0;
         _animEffectIdx = 0;
         _animDmgIdx = 0;
         _animSiegeDmgIdx = 0;
@@ -1860,6 +1863,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animAttacks.Clear();
         _animUpdates.Clear();
         _animKills.Clear();
+        _animProductionKills.Clear();
         _animDeathEffects.Clear();
         _animDmg.Clear();
         _animSiegeDmg.Clear();
@@ -1983,6 +1987,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animAttacks.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animUpdates.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animKills.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animProductionKills.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animDeathEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSiegeDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
@@ -2010,6 +2015,7 @@ public sealed partial class CampaignMapScene : Node3D
 
                 if (phase == ProductionPhase.Outbound && nextIdx == path.Count - 1)
                 {
+                    _animProductionKills.Add(((day - 1) * DaySeconds + StepSeconds + 0.05, op.Id));
                     phase = ProductionPhase.Gathering;
                     break;
                 }
@@ -2929,6 +2935,14 @@ public sealed partial class CampaignMapScene : Node3D
                 var e = _animDeathEffects[_animEffectIdx];
                 PlayRisingSkulls(e.Pos);
                 _animEffectIdx++;
+            }
+
+            while (_animProductionKillIdx < _animProductionKills.Count && _animProductionKills[_animProductionKillIdx].Time <= _animT)
+            {
+                var k = _animProductionKills[_animProductionKillIdx];
+                if (_productionTokens.Remove(k.OperationId, out var tok)) { tok.QueueFree(); }
+                if (_productionLabels.Remove(k.OperationId, out var lbl)) { lbl.QueueFree(); }
+                _animProductionKillIdx++;
             }
 
             while (_animKillIdx < _animKills.Count && _animKills[_animKillIdx].Time <= _animT)
