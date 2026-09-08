@@ -2331,7 +2331,7 @@ public sealed partial class CampaignMapScene : Node3D
 
             var portraitFrame = new PanelContainer
             {
-                CustomMinimumSize = new Vector2(76, 76),
+                CustomMinimumSize = new Vector2(86, 110),
                 SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             };
@@ -2341,10 +2341,10 @@ public sealed partial class CampaignMapScene : Node3D
             portraitFrame.AddChild(new TextureRect
             {
                 Texture = OfficerPortrait(officerId),
-                CustomMinimumSize = new Vector2(68, 68),
+                CustomMinimumSize = new Vector2(78, 102),
                 SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-                ExpandMode = TextureRect.ExpandModeEnum.KeepSize,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             });
 
@@ -4146,7 +4146,7 @@ public sealed partial class CampaignMapScene : Node3D
         var advisorRow = new HBoxContainer();
         advisorRow.AddThemeConstantOverride("separation", 10);
         box.AddChild(advisorRow);
-        var facePanel = new PanelContainer { CustomMinimumSize = new Vector2(128, 128) };
+        var facePanel = new PanelContainer { CustomMinimumSize = new Vector2(118, 146) };
         facePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.05f), Gold, 2, 8, 4));
         advisorRow.AddChild(facePanel);
         if (strat is not null && PortraitFor(strat.Id) is { } tex)
@@ -4154,7 +4154,7 @@ public sealed partial class CampaignMapScene : Node3D
             facePanel.AddChild(new TextureRect
             {
                 Texture = tex, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, CustomMinimumSize = new Vector2(120, 120),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, CustomMinimumSize = new Vector2(108, 136),
             });
         }
         else
@@ -4552,11 +4552,22 @@ public sealed partial class CampaignMapScene : Node3D
 
     private static string GradeText(AptitudeGrade g) => g == AptitudeGrade.APlus ? "A+" : g.ToString();
 
-    // 초상 텍스처 — assets/portraits/general_{id:D3}.png가 생기면 자동 표시(지금은 플레이스홀더).
+    // 초상 텍스처 — assets/portraits/{id}.png가 있으면 자동 표시한다.
+    private static string? PortraitPathFor(GeneralId id)
+    {
+        var candidates = new[]
+        {
+            $"res://assets/portraits/{id.Value}.png",
+            $"res://assets/portraits/general_{id.Value:D3}.png",
+            $"res://assets/portraits/general_{id.Value}.png",
+        };
+        return candidates.FirstOrDefault(path => ResourceLoader.Exists(path) || Godot.FileAccess.FileExists(path));
+    }
+
     private static Texture2D? PortraitFor(GeneralId id)
     {
-        var path = $"res://assets/portraits/general_{id.Value:D3}.png";
-        return ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
+        var path = PortraitPathFor(id);
+        return path is not null ? GD.Load<Texture2D>(path) : null;
     }
 
     // ── 장수 상세 카드: 상단 초상 / 타이틀 = 이름 / 하단 능력치·병종 적성·특기(그리드 정렬) ──
@@ -4593,7 +4604,7 @@ public sealed partial class CampaignMapScene : Node3D
         var portrait = new PanelContainer
         {
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(0, 180),
+            CustomMinimumSize = new Vector2(0, 260),
         };
         portrait.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.05f), Gold, 1, 8, 8));
         box.AddChild(portrait);
@@ -5497,13 +5508,12 @@ public sealed partial class CampaignMapScene : Node3D
 
     private readonly Dictionary<int, ImageTexture> _portraits = new();
 
-    // 장수 초상: assets/portraits/general_{id}.png 있으면 그것, 없으면 공용 장수 흉상(icon_officer) 폴백.
+    // 장수 초상: assets/portraits/{id}.png 있으면 그것, 없으면 공용 장수 흉상(icon_officer) 폴백.
     private ImageTexture OfficerPortrait(GeneralId id)
     {
         if (_portraits.TryGetValue(id.Value, out var cached)) { return cached; }
 
-        var path = $"res://assets/portraits/general_{id.Value}.png";
-        if (Godot.FileAccess.FileExists(path))
+        if (PortraitPathFor(id) is { } path)
         {
             var img = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
             img.GenerateMipmaps();
@@ -5861,8 +5871,9 @@ public sealed partial class CampaignMapScene : Node3D
             var portrait = new TextureRect
             {
                 Texture = OfficerPortrait(state.General),
-                CustomMinimumSize = new Vector2(58, 58),
+                CustomMinimumSize = new Vector2(62, 78),
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             };
             row.AddChild(portrait);
 
@@ -7705,14 +7716,14 @@ public sealed partial class CampaignMapScene : Node3D
         top.AddThemeConstantOverride("separation", 10);
         box.AddChild(top);
 
-        _hudFacePanel = new PanelContainer { CustomMinimumSize = new Vector2(44, 44) };
+        _hudFacePanel = new PanelContainer { CustomMinimumSize = new Vector2(44, 56) };
         _hudFacePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.05f), Gold, 1, 6, 2));
         top.AddChild(_hudFacePanel);
         _hudFace = new TextureRect
         {
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            CustomMinimumSize = new Vector2(40, 40),
+            CustomMinimumSize = new Vector2(40, 52),
         };
         _hudFacePanel.AddChild(_hudFace);
 

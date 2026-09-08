@@ -54,8 +54,8 @@ gold ring, circular frame, border, medallion, deformed face, extra faces, text, 
 ## 4. 후처리 & 배선 (계획)
 
 - **후처리**: 뽑은 초상(오브젝트, 다크 배경) → `frame_icon.py`로 금테 프레임 합성(scale ~0.9),
-  256px, `SanguoSLG.Game/assets/portraits/general_{id}.png`.
-- **배선(예정)**: `GeneralId → res://assets/portraits/general_{id}.png` 로더 추가.
+  256px, `SanguoSLG.Game/assets/portraits/{id}.png`.
+- **배선**: `GeneralId → res://assets/portraits/{id}.png` 로더 연결 완료.
   - 파일 있으면 장수 초상, 없으면 기존 `icon_officer` 폴백(현 `SymFiles`/`EmblemFiles` 패턴과 동일).
   - 적용 위치: 명령 모달 **장수 카드**, 정보 카드 **주둔** 행, 컨펌창.
   - `BuildOfficerCards`가 장수별 초상을 쓰도록 `GeneralId`로 로드하게 수정.
