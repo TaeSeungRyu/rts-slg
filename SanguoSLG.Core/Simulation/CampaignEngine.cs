@@ -20,7 +20,8 @@ public sealed class CampaignEngine
     private readonly WorldEngine _world;
 
     /// <summary>직전 <see cref="AdvanceWeek(GameState, out IReadOnlyList{AdvanceTurn})"/>의 내정/라이프사이클 사건(보고용).</summary>
-    public IReadOnlyList<WorldEvent> LastWorldEvents => _world.LastEvents;
+    public IReadOnlyList<WorldEvent> LastWorldEvents => _campaignEvents.Concat(_world.LastEvents).ToList();
+    private readonly List<WorldEvent> _campaignEvents = [];
 
     private readonly CampaignSiege? _siege;
     private readonly CityCapture? _capture;
@@ -76,6 +77,7 @@ public sealed class CampaignEngine
         var captureReports = new List<CaptureReport>();
         var plunderReports = new List<PlunderReport>();
         var casualtyReports = new List<CasualtyReport>();
+        _campaignEvents.Clear();
         var work = state;
         var armies = state.Armies.Where(u => u.Pool.Active > 0).ToList();
 
@@ -221,13 +223,12 @@ public sealed class CampaignEngine
 
     private static List<CombatUnit> ProductionCombatUnits(GameState work)
         => work.ProductionOps
-            .Where(o => o.Phase == ProductionPhase.Gathering)
             .OrderBy(o => o.Id)
             .Select(o =>
             {
                 var id = ProductionUnitId(o.Id);
                 return new CombatUnit(
-                    new FieldUnit(id, o.Owner, o.Target,
+                    new FieldUnit(id, o.Owner, o.Position,
                         Speed: 0, Detection: 0, AttackRange: 0, MovementDomain.Land, UnitMode.March,
                         Target: null, CommandOrder: ProductionUnitIdBase + o.Id),
                     new CombatStats(Troops: o.Troops, AtkStat: 0, DfStat: 1),
@@ -255,9 +256,15 @@ public sealed class CampaignEngine
             .ToHashSet();
     }
 
-    private static GameState RemoveHitProductionOperations(GameState work, HashSet<UnitId> hitProductionIds)
+    private GameState RemoveHitProductionOperations(GameState work, HashSet<UnitId> hitProductionIds)
     {
         var hitOps = hitProductionIds.Select(ProductionOperationId).ToHashSet();
+        foreach (var op in work.ProductionOps.Where(o => hitOps.Contains(o.Id)).OrderBy(o => o.Id))
+        {
+            _campaignEvents.Add(new WorldEvent(WorldEventKind.ProductionLost, op.Owner, op.General, op.City,
+                op.Troops, op.Facility));
+        }
+
         return work with { ProductionOperations = work.ProductionOps.Where(o => !hitOps.Contains(o.Id)).ToList() };
     }
 

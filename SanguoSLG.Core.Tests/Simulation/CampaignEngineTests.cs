@@ -59,17 +59,20 @@ public class CampaignEngineTests
             Position: new HexCoord(8, 0),
             OutboundPath: [city.Position, new HexCoord(7, 0), new HexCoord(8, 0)],
             ReturnPath: [new HexCoord(8, 0), new HexCoord(7, 0), city.Position]);
-        var attacker = Army(10, 2, new HexCoord(6, 0), UnitMode.Attack, new HexCoord(12, 0));
+        var attacker = Army(10, 2, new HexCoord(3, 0), UnitMode.Attack, new HexCoord(12, 0));
         var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, new List<General>(),
             FieldArmies: new List<CombatUnit> { attacker },
             ProductionOperations: new List<ProductionOperation> { op });
 
-        var after = Engine().AdvanceWeek(state, out var turns);
+        var engine = Engine();
+        var after = engine.AdvanceWeek(state, out var turns);
 
         Assert.Empty(after.ProductionOps);
         Assert.Single(after.Armies);
         Assert.All(turns.SelectMany(t => t.Units), u => Assert.True(u.Id.Value > 0));
         Assert.Contains(turns, t => t.Combat is not null);
+        var evt = Assert.Single(engine.LastWorldEvents, e => e.Kind == WorldEventKind.ProductionLost);
+        Assert.Equal(ProductionOperation.FixedTroops, evt.Amount);
     }
 
     [Fact]
