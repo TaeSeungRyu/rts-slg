@@ -19,10 +19,14 @@ public class GeneralDataTests
     }
 
     [Fact]
-    public void 명단_규모_중국100플러스_한국30_일본10()
+    public void 명단_규모_중국100플러스_한국15_일본10()
     {
         Assert.True(All.Count(g => g.Id.Value < 200) >= 100);
-        Assert.Equal(30, All.Count(g => g.Id.Value is > 200 and < 300));
+        Assert.Equal(15, All.Count(g => g.Id.Value is > 200 and < 300));
+        Assert.Equal(5, All.Count(g => g.Region == "goguryeo"));
+        Assert.Equal(5, All.Count(g => g.Region == "baekje"));
+        Assert.Equal(5, All.Count(g => g.Region == "silla"));
+        Assert.Contains(All, g => g.Name == "선덕여왕");
         Assert.Equal(10, All.Count(g => g.Id.Value > 300));
     }
 

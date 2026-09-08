@@ -28,8 +28,15 @@ for g in generals:
         "apas": [f'{admin_names[s["code"]]} {s["tier"]}' for s in g.get("admin_passives", [])],
     })
 
+realm_counts = {
+    "china": sum(1 for g in rows if g["realm"] == "china"),
+    "korea": sum(1 for g in rows if g["realm"] == "korea"),
+    "japan": sum(1 for g in rows if g["realm"] == "japan"),
+}
+total_count = len(rows)
+
 HTML = """<!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>장수 명감 — 152인</title>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>장수 명감 — __TOTAL__인</title>
 <style>
 :root {
   --bg: #F4F4F1; --panel: #FFFFFF; --ink: #23272B; --muted: #6E7378;
@@ -124,7 +131,7 @@ tbody tr:hover td { background: var(--seal-soft); }
 <div class="wrap">
 <header>
   <h1>장수 명감</h1>
-  <span class="sub">중국 112 · 한국 30 · 일본 10 — data/generals.json 기준</span>
+  <span class="sub">중국 __CHINA__ · 한국 __KOREA__ · 일본 __JAPAN__ — data/generals.json 기준</span>
 </header>
 <div class="toolbar">
   <div class="tabs" id="tabs">
@@ -226,7 +233,12 @@ render();
 </script></body></html>
 """
 
-html = HTML.replace("/*__DATA__*/", json.dumps(rows, ensure_ascii=False))
+html = (HTML
+    .replace("__TOTAL__", str(total_count))
+    .replace("__CHINA__", str(realm_counts["china"]))
+    .replace("__KOREA__", str(realm_counts["korea"]))
+    .replace("__JAPAN__", str(realm_counts["japan"]))
+    .replace("/*__DATA__*/", json.dumps(rows, ensure_ascii=False)))
 out = os.path.join(ROOT, "doc", "roster.html")
 io.open(out, "w", encoding="utf-8", newline="\n").write(html)
 print("written", len(html), "bytes,", len(rows), "generals")
