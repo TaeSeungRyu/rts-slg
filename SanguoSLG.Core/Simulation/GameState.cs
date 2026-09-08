@@ -2,6 +2,7 @@ namespace SanguoSLG.Core.Simulation;
 
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Spatial;
 
 /// <summary>
 /// 한 시점의 게임 전체 상태(불변). 시간은 **일(日) 단위 세계 시계** 하나로 흐른다
@@ -133,10 +134,79 @@ public sealed record GameState(
     public static GameState FromScenario(Scenario scenario, int startYear = 190)
     {
         var heroUnlocks = scenario.HeroUnlockList;
+        var placements = BuildInitialFacilityPlacements(scenario);
         return new(1, startYear, scenario.Factions, scenario.Cities, scenario.Generals, Postings: scenario.Postings,
+            FacilityPlacements: placements,
             HeroUnlockDefinitions: heroUnlocks,
             HeroUnlockStates: heroUnlocks
                 .Select(h => new HeroUnlockState(h.General, HeroUnlockStatus.Locked))
                 .ToList());
+    }
+
+    private static IReadOnlyList<FacilityPlacement> BuildInitialFacilityPlacements(Scenario scenario)
+    {
+        var occupied = scenario.Cities.Select(c => c.Position).ToHashSet();
+        foreach (var feature in scenario.Features)
+        {
+            occupied.Add(feature.Position);
+        }
+
+        var placements = new List<FacilityPlacement>();
+        foreach (var city in scenario.Cities.OrderBy(c => c.Id.Value))
+        {
+            foreach (var code in FacilityCodes(city))
+            {
+                var plot = NextFacilityPlot(scenario.Map, city.Position, occupied);
+                if (plot is null)
+                {
+                    continue;
+                }
+
+                placements.Add(new FacilityPlacement(city.Id, plot.Value, code, FacilityHealth.Level1));
+                occupied.Add(plot.Value);
+            }
+        }
+
+        return placements;
+    }
+
+    private static HexCoord? NextFacilityPlot(HexMap map, HexCoord origin, IReadOnlySet<HexCoord> occupied)
+    {
+        foreach (var plot in FacilityCandidatePlots(map, origin))
+        {
+            if (!occupied.Contains(plot) && TerrainRules.CanEnter(MovementDomain.Land, map.TerrainAt(plot)))
+            {
+                return plot;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> FacilityCodes(City city)
+    {
+        for (var i = 0; i < city.Villages; i++) { yield return ProductionRules.Village; }
+        for (var i = 0; i < city.Paddies; i++) { yield return ProductionRules.Paddy; }
+        for (var i = 0; i < city.Farms; i++) { yield return ProductionRules.Farm; }
+        if (city.Workshop) { yield return "workshop"; }
+    }
+
+    private static IEnumerable<HexCoord> FacilityCandidatePlots(HexMap map, HexCoord origin)
+    {
+        var maxRadius = System.Math.Max(map.MaxQ - map.MinQ, map.MaxR - map.MinR) + 2;
+        for (var radius = 1; radius <= maxRadius; radius++)
+        {
+            foreach (var q in Enumerable.Range(map.MinQ, map.MaxQ - map.MinQ + 1))
+            {
+                foreach (var r in Enumerable.Range(map.MinR, map.MaxR - map.MinR + 1))
+                {
+                    var p = new HexCoord(q, r);
+                    if (p.Distance(origin) == radius && map.Contains(p))
+                    {
+                        yield return p;
+                    }
+                }
+            }
+        }
     }
 }

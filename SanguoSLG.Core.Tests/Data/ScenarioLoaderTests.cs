@@ -1,5 +1,6 @@
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
@@ -11,6 +12,7 @@ public class ScenarioLoaderTests
     public void LoadFromDirectory_실제_더미시나리오가_유효하다()
     {
         var scenario = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
+        var state = GameState.FromScenario(scenario);
 
         Assert.NotEmpty(scenario.Factions);
         Assert.NotEmpty(scenario.Cities);
@@ -34,6 +36,11 @@ public class ScenarioLoaderTests
 
         // 참조 무결성: 모든 도시가 맵 경계 안에 있다.
         Assert.All(scenario.Cities, c => Assert.True(scenario.Map.Contains(c.Position), $"{c.Name}이 맵 밖에 있다."));
+
+        var expectedFacilities = scenario.Cities.Sum(c => c.Paddies + c.Farms + c.Villages + (c.Workshop ? 1 : 0));
+        Assert.Equal(expectedFacilities, state.Placements.Count);
+        Assert.All(state.Placements, p => Assert.True(scenario.Map.Contains(p.Plot), $"시설이 맵 밖에 있다: {p.Code} {p.Plot}"));
+        Assert.Equal(state.Placements.Count, state.Placements.Select(p => p.Plot).Distinct().Count());
     }
 
     [Fact]
