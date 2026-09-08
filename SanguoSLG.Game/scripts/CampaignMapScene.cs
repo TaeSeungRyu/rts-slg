@@ -7578,8 +7578,8 @@ public sealed partial class CampaignMapScene : Node3D
             token.DisplaySyncTo(op.Position, 0.3f);
             var label = _productionLabels[op.Id];
             label.Position = _view.HexToWorld(op.Position) + new Vector3(0f, _view.TileTopY + 0.82f, 0f);
-            label.Text = op.Phase == ProductionPhase.Returning ? "생산 복귀\n500" : "생산 이동\n500";
-            label.Visible = op.Owner == Player;
+            label.Text = "";
+            label.Visible = false;
         }
 
         var counts = _state.Factions.OrderBy(f => f.Id.Value).Select(f =>
