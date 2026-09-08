@@ -7087,12 +7087,15 @@ public sealed partial class CampaignMapScene : Node3D
         if (_facilityLayer is null) { return; }
         foreach (var ch in _facilityLayer.GetChildren()) { ch.QueueFree(); }
 
+        var rubbleScene = GD.Load<PackedScene>("res://assets/models/rubble.glb");
         foreach (var city in _state.Cities)
         {
-            foreach (var (code, intact) in new[]
+            foreach (var (code, intact, ruined) in new[]
                      {
-                         ("paddy", city.Paddies), ("farm", city.Farms),
-                         ("village", city.Villages), ("workshop", city.Workshop ? 1 : 0),
+                         ("paddy", city.Paddies, city.RuinedPaddies),
+                         ("farm", city.Farms, city.RuinedFarms),
+                         ("village", city.Villages, city.RuinedVillages),
+                         ("workshop", city.Workshop ? 1 : 0, city.WorkshopRuined ? 1 : 0),
                      })
             {
                 // append-only 배치 목록을 순서대로 앞에서부터 intact개만 실제 모델로 그린다
@@ -7104,6 +7107,13 @@ public sealed partial class CampaignMapScene : Node3D
                     if (scene is null) { continue; }
                     var node = scene.Instantiate<Node3D>();
                     // 기존 평지/숲 타일 위에 얹는다 — 타일 윗면 높이만큼 올려 바닥끼리 Z-파이팅을 피한다.
+                    node.Position = _view.HexToWorld(placed[i].Plot) + new Vector3(0f, _view.TileTopY, 0f);
+                    _facilityLayer.AddChild(node);
+                }
+
+                for (var i = intact; i < intact + ruined && i < placed.Count; i++)
+                {
+                    var node = rubbleScene.Instantiate<Node3D>();
                     node.Position = _view.HexToWorld(placed[i].Plot) + new Vector3(0f, _view.TileTopY, 0f);
                     _facilityLayer.AddChild(node);
                 }
