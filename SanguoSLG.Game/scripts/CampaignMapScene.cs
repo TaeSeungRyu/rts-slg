@@ -1084,6 +1084,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         Row("좌표", $"({h.Q}, {h.R})");
+        Button? productionButton = null;
         if (facility is not null)
         {
             Row("지형", $"{TerrainName(terrain)} 위 건설");
@@ -1120,10 +1121,9 @@ public sealed partial class CampaignMapScene : Node3D
                 else if (ProductionRules.IsProductionFacility(placement.Code)
                     && _state.Cities.FirstOrDefault(c => c.Id == placement.City)?.Owner == Player)
                 {
-                    var btn = MakeButton("생산");
-                    btn.CustomMinimumSize = new Vector2(0, 30);
-                    btn.Pressed += () => OpenProductionModal(placement.City, placement.Plot);
-                    _terrainInfo.AddChild(btn);
+                    productionButton = MakeButton("생산");
+                    productionButton.CustomMinimumSize = new Vector2(0, 30);
+                    productionButton.Pressed += () => OpenProductionModal(placement.City, placement.Plot);
                 }
             }
             else
@@ -1146,6 +1146,10 @@ public sealed partial class CampaignMapScene : Node3D
         if (supplier is not null)
         {
             Row("보급", $"보급지역 ({supplier.Name}) — 아군 부대 군량 자동 보충", new Color(0.45f, 0.85f, 0.52f));
+        }
+        if (productionButton is not null)
+        {
+            _terrainInfo.AddChild(productionButton);
         }
 
         _terrainHex = h;
