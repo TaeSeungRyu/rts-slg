@@ -16,7 +16,7 @@ public static class EffectView
     // 발동 규칙 계층과 검수 하네스 모두 여기를 참조한다.
     public static EffectTargetScope ScopeOf(EffectKind kind) => kind switch
     {
-        EffectKind.Tear or EffectKind.Shatter or EffectKind.SoulRise => EffectTargetScope.Unit,
+        EffectKind.Tear or EffectKind.Shatter or EffectKind.SoulRise or EffectKind.RisingSkulls => EffectTargetScope.Unit,
         EffectKind.Villagers => EffectTargetScope.Building,
         _ => EffectTargetScope.Both,
     };
@@ -68,6 +68,9 @@ public static class EffectView
                 break;
             case EffectKind.Lightning:
                 root.AddChild(new LightningEffect { S = scale, Loop = loop });
+                break;
+            case EffectKind.RisingSkulls:
+                root.AddChild(new RisingSkullsEffect { S = scale, Loop = loop });
                 break;
             default:
                 throw new InvalidOperationException($"미구현 효과: {kind}");

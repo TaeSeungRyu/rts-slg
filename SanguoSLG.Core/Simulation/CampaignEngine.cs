@@ -120,6 +120,12 @@ public sealed class CampaignEngine
             var hitProductionIds = HitProductionUnits(turn, productionUnitIds);
             if (hitProductionIds.Count > 0)
             {
+                turn = turn with
+                {
+                    LostProductionPositions = productionUnits
+                        .Where(u => hitProductionIds.Contains(u.Id))
+                        .ToDictionary(u => u.Id, u => u.Field.Position),
+                };
                 work = RemoveHitProductionOperations(work, hitProductionIds);
             }
 

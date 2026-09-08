@@ -21,7 +21,8 @@ public sealed record AdvanceTurn(
     IReadOnlyList<CombatUnit>? Entered = null,
     IReadOnlyDictionary<Domain.UnitId, int>? StarvationLoss = null,
     IReadOnlyDictionary<Domain.UnitId, int>? ReinforcedTroops = null,
-    IReadOnlyDictionary<Domain.UnitId, Spatial.HexCoord>? ProductionAttackTargets = null)
+    IReadOnlyDictionary<Domain.UnitId, Spatial.HexCoord>? ProductionAttackTargets = null,
+    IReadOnlyDictionary<Domain.UnitId, Spatial.HexCoord>? LostProductionPositions = null)
 {
     public IReadOnlyList<CombatUnit> EnteredCastle => Entered ?? [];
 
@@ -30,5 +31,10 @@ public sealed record AdvanceTurn(
     /// <summary>이 진행에 병력보충으로 충원받은 부대 → 충원량(design-unit-state "병력보충 명령").</summary>
     public IReadOnlyDictionary<Domain.UnitId, int> Reinforced => ReinforcedTroops ?? EmptyLoss;
 
+    /// <summary>이 진행에 피격으로 소실된 생산 부대 → 소실 위치(표현 계층 1회성 전멸 효과용).</summary>
+    public IReadOnlyDictionary<Domain.UnitId, Spatial.HexCoord> LostProduction => LostProductionPositions ?? EmptyPositions;
+
     private static readonly IReadOnlyDictionary<Domain.UnitId, int> EmptyLoss = new Dictionary<Domain.UnitId, int>();
+    private static readonly IReadOnlyDictionary<Domain.UnitId, Spatial.HexCoord> EmptyPositions =
+        new Dictionary<Domain.UnitId, Spatial.HexCoord>();
 }

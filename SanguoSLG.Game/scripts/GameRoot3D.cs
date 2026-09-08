@@ -324,6 +324,7 @@ public partial class GameRoot3D : Node3D
             (EffectKind.Tear, "Tear"), (EffectKind.Shatter, "Shatter"),
             (EffectKind.Confusion, "Confusion"),
             (EffectKind.SoulRise, "SoulRise"), (EffectKind.Lightning, "Lightning"),
+            (EffectKind.RisingSkulls, "RisingSkulls"),
         };
 
         var mapView = new MapView3D();

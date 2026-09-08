@@ -33,4 +33,7 @@ public enum EffectKind
 
     /// <summary>번개가 내리치는 효과 — 낙뢰(계략) 명중 연출(실사용 1회성).</summary>
     Lightning,
+
+    /// <summary>해골이 솟아오르는 효과 — 병력 전멸 소멸 연출(실사용 1회성).</summary>
+    RisingSkulls,
 }

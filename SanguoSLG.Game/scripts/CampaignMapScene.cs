@@ -90,6 +90,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId, int Troops)> _animUpdates = new(); // 병력 갱신(라벨·편대 규모)
     private int _animKillIdx;
     private readonly List<(double Time, int UnitId)> _animKills = new(); // 전멸·입성 — 토큰 즉시 제거
+    private int _animEffectIdx;
+    private readonly List<(double Time, Vector3 Pos)> _animDeathEffects = new(); // 병력 전멸·생산 소실 1회성 효과
     private int _animDmgIdx;
     private readonly List<(double Time, int UnitId, int Damage)> _animDmg = new(); // 교전 피해 팝업
     private int _animSiegeDmgIdx;
@@ -1837,6 +1839,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animAtkIdx = 0;
         _animUpdIdx = 0;
         _animKillIdx = 0;
+        _animEffectIdx = 0;
         _animDmgIdx = 0;
         _animSiegeDmgIdx = 0;
         _animArrowIdx = 0;
@@ -1857,6 +1860,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animAttacks.Clear();
         _animUpdates.Clear();
         _animKills.Clear();
+        _animDeathEffects.Clear();
         _animDmg.Clear();
         _animSiegeDmg.Clear();
         _animArrows.Clear();
@@ -1944,14 +1948,29 @@ public sealed partial class CampaignMapScene : Node3D
                     var unit = turn.Units.FirstOrDefault(x => x.Id.Value == uid);
                     if (unit is null) { continue; }
                     var remain = unit.Pool.Active - counters[i]; // 근사 표시(부상 회수 제외)
-                    if (remain <= 0) { _animKills.Add((settleTime + 0.05, uid)); alive.Remove(uid); }
+                    if (remain <= 0)
+                    {
+                        _animDeathEffects.Add((settleTime, _view.HexToWorld(unit.Field.Position)));
+                        _animKills.Add((settleTime + 0.05, uid));
+                        alive.Remove(uid);
+                    }
                     else { _animUpdates.Add((settleTime + 0.05, uid, remain)); }
                 }
             }
 
+            var enteredNow = turn.EnteredCastle.Select(u => u.Id.Value).ToHashSet();
             foreach (var id in alive.Where(id => !survivors.Contains(id)).OrderBy(id => id))
             {
                 _animKills.Add((settleTime, id));
+                if (!enteredNow.Contains(id) && prev.TryGetValue(id, out var deadAt))
+                {
+                    _animDeathEffects.Add((settleTime - 0.05, _view.HexToWorld(deadAt)));
+                }
+            }
+
+            foreach (var (_, pos) in turn.LostProduction.OrderBy(kv => kv.Key.Value))
+            {
+                _animDeathEffects.Add((settleTime - 0.05, _view.HexToWorld(pos)));
             }
 
             alive = survivors;
@@ -1964,6 +1983,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animAttacks.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animUpdates.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animKills.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animDeathEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSiegeDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animArrows.Sort((a, b) => a.Time.CompareTo(b.Time));
@@ -2033,6 +2053,16 @@ public sealed partial class CampaignMapScene : Node3D
         tw.TweenProperty(lbl, "position", lbl.Position + new Vector3(0f, 0.9f, 0f), 1.1f);
         tw.Parallel().TweenProperty(lbl, "modulate:a", 0f, 1.1f).SetDelay(0.35f);
         tw.Finished += lbl.QueueFree;
+    }
+
+    private void PlayRisingSkulls(Vector3 at)
+    {
+        var spot = new Node3D { Position = at + new Vector3(0f, _view.TileTopY + 0.08f, 0f) };
+        AddChild(spot);
+        EffectView.Attach(spot, EffectKind.RisingSkulls, 0.9f, loop: false);
+        var cleanup = CreateTween();
+        cleanup.TweenInterval(2.3f);
+        cleanup.Finished += spot.QueueFree;
     }
 
     // 이 진행 조각에서 공격한 부대의 모션 예약: 야전 교전(피해를 준 부대 → 최근접 적 방향)
@@ -2892,6 +2922,13 @@ public sealed partial class CampaignMapScene : Node3D
                 var ar = _animArrows[_animArrowIdx];
                 if (_armyTokens.TryGetValue(ar.TargetUnitId, out var tok)) { SpawnCastleVolley(ar.From, tok.Position); }
                 _animArrowIdx++;
+            }
+
+            while (_animEffectIdx < _animDeathEffects.Count && _animDeathEffects[_animEffectIdx].Time <= _animT)
+            {
+                var e = _animDeathEffects[_animEffectIdx];
+                PlayRisingSkulls(e.Pos);
+                _animEffectIdx++;
             }
 
             while (_animKillIdx < _animKills.Count && _animKills[_animKillIdx].Time <= _animT)
