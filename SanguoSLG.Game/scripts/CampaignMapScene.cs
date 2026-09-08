@@ -4713,6 +4713,20 @@ public sealed partial class CampaignMapScene : Node3D
         var generalButtons = new List<(Button Button, General General)>();
         var troopButtons = new List<(Button Button, GarrisonForce Garrison, TroopTemplate Troop)>();
 
+        void StyleSelectionCard(Button button, bool selected)
+        {
+            button.ToggleMode = true;
+            button.SetPressedNoSignal(selected);
+            button.AddThemeColorOverride("font_color", selected ? Ink : Parchment);
+            button.AddThemeColorOverride("font_hover_color", selected ? Ink : GoldBright);
+            button.AddThemeColorOverride("font_pressed_color", Ink);
+            button.AddThemeColorOverride("font_hover_pressed_color", Ink);
+            button.AddThemeStyleboxOverride("normal", Frame(InkSoft, Gold, 1, 8, 10));
+            button.AddThemeStyleboxOverride("pressed", Frame(Gold, GoldBright, 2, 8, 10));
+            button.AddThemeStyleboxOverride("hover_pressed", Frame(GoldBright, GoldBright, 2, 8, 10));
+            button.AddThemeStyleboxOverride("focus", Frame(Colors.Transparent, GoldBright, 2, 8, 10));
+        }
+
         void RefreshSelectionButtons()
         {
             foreach (var (btn, general) in generalButtons)
@@ -4721,14 +4735,16 @@ public sealed partial class CampaignMapScene : Node3D
                     ? (Gold: 0, Provisions: 0)
                     : ProductionRules.Reward(selectedFacility, general.Politics);
                 var rewardText = reward.Gold > 0 ? $"금 {reward.Gold}" : reward.Provisions > 0 ? $"군량 {reward.Provisions}" : "보상 -";
-                var mark = selectedGeneral == general.Id ? "☑" : "☐";
-                btn.Text = $"{mark} {general.Name}\n정치 {general.Politics} · {ProductionRules.GatherDays(general.Politics)}일 · {rewardText}";
+                var selected = selectedGeneral == general.Id;
+                btn.Text = $"{general.Name}{(selected ? " · 선택됨" : "")}\n정치 {general.Politics} · {ProductionRules.GatherDays(general.Politics)}일 · {rewardText}";
+                StyleSelectionCard(btn, selected);
             }
 
             foreach (var (btn, garrison, troop) in troopButtons)
             {
-                var mark = selectedTroop == troop.Code ? "☑" : "☐";
-                btn.Text = $"{mark} {troop.Name}\n대기 {garrison.Troops} · 이동 {troop.MovementPerDay}";
+                var selected = selectedTroop == troop.Code;
+                btn.Text = $"{troop.Name}{(selected ? " · 선택됨" : "")}\n대기 {garrison.Troops} · 이동 {troop.MovementPerDay}";
+                StyleSelectionCard(btn, selected);
             }
         }
 
