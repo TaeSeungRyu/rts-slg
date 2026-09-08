@@ -304,6 +304,13 @@ public sealed class WorldEngine
                 continue;
             }
 
+            if (ProductionUnitAttacked(op, state.Armies))
+            {
+                _events.Add(new WorldEvent(WorldEventKind.ProductionLost, op.Owner, op.General, op.City,
+                    op.Troops, op.Facility));
+                continue;
+            }
+
             var next = AdvanceProductionOperation(state, op);
             if (next.Phase == ProductionPhase.Returning && next.Position == next.Origin)
             {
@@ -334,6 +341,16 @@ public sealed class WorldEngine
             Postings = postings,
             ProductionOperations = kept.OrderBy(o => o.Id).ToList(),
         };
+    }
+
+    private static bool ProductionUnitAttacked(ProductionOperation op, IReadOnlyList<CombatUnit> armies)
+    {
+        if (op.Phase != ProductionPhase.Gathering) { return false; }
+        return armies.Any(unit =>
+            unit.Pool.Active > 0
+            && unit.Field.Mode == UnitMode.Attack
+            && unit.Field.Owner != op.Owner
+            && unit.Field.Position.Distance(op.Target) <= unit.Field.AttackRange);
     }
 
     private static bool ProductionTargetIntact(GameState state, City city, ProductionOperation op)

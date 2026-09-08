@@ -29,6 +29,14 @@ public class ProductionServiceTests
             new(new CityId(1), new HexCoord(2, 0), ProductionRules.Village),
         });
 
+    private static CombatUnit EnemyAttacker() => new(
+        new FieldUnit(new UnitId(99), new FactionId(2), new HexCoord(2, 0),
+            Speed: 2, Detection: 2, AttackRange: 1, MovementDomain.Land, UnitMode.Attack,
+            Target: new HexCoord(2, 0), CommandOrder: 0),
+        new CombatStats(Troops: 1000, AtkStat: 10, DfStat: 10),
+        new TroopPool(Active: 1000, Wounded: 0),
+        UnitCombatState.Create(50));
+
     [Theory]
     [InlineData(59, 14)]
     [InlineData(60, 12)]
@@ -100,5 +108,24 @@ public class ProductionServiceTests
         Assert.Empty(after.ProductionOps);
         Assert.Equal(500, after.Garrisons.Single().Troops);
         Assert.Null(after.PostingOf(new GeneralId(1))!.Location);
+    }
+
+    [Fact]
+    public void 생산_부대는_채집중_공격받으면_투입병력만_소실된다()
+    {
+        var started = new ProductionService(Troops)
+            .Start(State(politics: 100), new CityId(1), new HexCoord(2, 0), ProductionRules.Village, "swordsman", new GeneralId(1))
+            .State;
+        var gathering = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0))
+            .AdvanceDays(started, 1);
+        Assert.Equal(ProductionPhase.Gathering, gathering.ProductionOps.Single().Phase);
+
+        var attacked = gathering with { FieldArmies = new List<CombatUnit> { EnemyAttacker() } };
+        var after = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0))
+            .AdvanceDays(attacked, 1);
+
+        Assert.Empty(after.ProductionOps);
+        Assert.Equal(500, after.Garrisons.Single().Troops);
+        Assert.Equal(1000, after.Armies.Single().Pool.Active);
     }
 }
