@@ -2313,7 +2313,13 @@ public sealed partial class CampaignMapScene : Node3D
         panel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
         center.AddChild(panel);
 
-        var confirmWidth = officer is null ? 320f : 340f;
+        var viewport = GetViewport().GetVisibleRect().Size;
+        var officerTexture = officer is { } portraitId ? OfficerPortrait(portraitId) : null;
+        var portraitHeight = Mathf.Min(360f, viewport.Y * 0.40f);
+        var portraitWidth = officerTexture is null ? 0f
+            : portraitHeight * officerTexture.GetWidth() / Mathf.Max(1f, officerTexture.GetHeight());
+        portraitWidth = Mathf.Min(portraitWidth, viewport.X - 96f);
+        var confirmWidth = Mathf.Min(Mathf.Max(320f, portraitWidth + 16f), viewport.X - 64f);
         var box = new VBoxContainer { CustomMinimumSize = new Vector2(confirmWidth, 0) };
         box.AddThemeConstantOverride("separation", 8);
         panel.AddChild(box);
@@ -2323,15 +2329,25 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(titleLbl);
         box.AddChild(GoldRule());
 
-        if (officer is { } officerId)
+        var contentScroll = new ScrollContainer
+        {
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            CustomMinimumSize = new Vector2(confirmWidth, 0),
+        };
+        box.AddChild(contentScroll);
+        var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        content.AddThemeConstantOverride("separation", 10);
+        contentScroll.AddChild(content);
+
+        if (officerTexture is not null)
         {
             var officerBox = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
             officerBox.AddThemeConstantOverride("separation", 6);
-            box.AddChild(officerBox);
+            content.AddChild(officerBox);
 
             var portraitFrame = new PanelContainer
             {
-                CustomMinimumSize = new Vector2(86, 110),
+                CustomMinimumSize = new Vector2(portraitWidth + 8f, portraitHeight + 8f),
                 SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             };
@@ -2340,8 +2356,8 @@ public sealed partial class CampaignMapScene : Node3D
 
             portraitFrame.AddChild(new TextureRect
             {
-                Texture = OfficerPortrait(officerId),
-                CustomMinimumSize = new Vector2(78, 102),
+                Texture = officerTexture,
+                CustomMinimumSize = new Vector2(portraitWidth, portraitHeight),
                 SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
@@ -2351,15 +2367,19 @@ public sealed partial class CampaignMapScene : Node3D
             var speechText = officerLine ?? $"“{OfficerConfirmLines[_confirmRandom.Next(OfficerConfirmLines.Length)]}”";
             var speech = MakeLabel(speechText, 14, GoldBright);
             speech.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            speech.CustomMinimumSize = new Vector2(confirmWidth, 0);
+            speech.CustomMinimumSize = new Vector2(confirmWidth - 20f, 0);
             speech.HorizontalAlignment = HorizontalAlignment.Center;
             officerBox.AddChild(speech);
         }
 
         var msg = MakeLabel(message, 14, Parchment);
         msg.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        msg.CustomMinimumSize = new Vector2(confirmWidth, 0);
-        box.AddChild(msg);
+        msg.CustomMinimumSize = new Vector2(confirmWidth - 20f, 0);
+        content.AddChild(msg);
+        void FitConfirmContent() => contentScroll.CustomMinimumSize = new Vector2(confirmWidth,
+            Mathf.Min(content.GetCombinedMinimumSize().Y, Mathf.Max(80f, viewport.Y - 180f)));
+        content.MinimumSizeChanged += FitConfirmContent;
+        FitConfirmContent();
 
         var btnRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         btnRow.AddThemeConstantOverride("separation", 12);
@@ -4575,9 +4595,11 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.34f, 340f, 440f);
         var mh = Mathf.Clamp(vp.Y * 0.85f, 360f, 720f);
+        var portraitHeight = mh * 0.65f;
+        var mw = Mathf.Min(Mathf.Max(360f, portraitHeight * 0.8f + 16f), vp.X - 64f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
+        var rootBox = box;
         var g = _state.Generals.First(x => x.Id == gid);
 
         var titleRow = new HBoxContainer();
@@ -4600,11 +4622,10 @@ public sealed partial class CampaignMapScene : Node3D
         close.Pressed += CloseModal;
         titleRow.AddChild(close);
 
-        // 상단: 초상 영역(초상 파일이 생기면 자동 교체).
         var portrait = new PanelContainer
         {
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(0, 260),
+            CustomMinimumSize = new Vector2(0, portraitHeight),
         };
         portrait.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.05f), Gold, 1, 8, 8));
         box.AddChild(portrait);
@@ -4634,10 +4655,21 @@ public sealed partial class CampaignMapScene : Node3D
             portrait.AddChild(ph);
         }
 
+        var detailsScroll = new ScrollContainer
+        {
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            CustomMinimumSize = new Vector2(0, mh - portraitHeight - 50f),
+        };
+        rootBox.AddChild(detailsScroll);
+        box = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        box.AddThemeConstantOverride("separation", 8);
+        detailsScroll.AddChild(box);
+
         var meta = new List<string> { $"상태 {GeneralStatus(gid)}" };
         if (g.Birth != 0) { meta.Add(g.Birth < 0 ? $"기원전 {-g.Birth}년생" : $"{g.Birth}년생"); }
         if (g.Region.Length > 0) { meta.Add($"출신 {g.Region}"); }
         var metaLbl = MakeLabel(string.Join(" · ", meta), 12, Parchment);
+        metaLbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         metaLbl.HorizontalAlignment = HorizontalAlignment.Center;
         box.AddChild(metaLbl);
 
@@ -4724,9 +4756,9 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(desc);
         }
 
-        var contentH = box.GetCombinedMinimumSize().Y;
+        var contentH = rootBox.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
-        CenterAndDrag(panel, titleRow, mw, mh, box);
+        CenterAndDrag(panel, titleRow, mw, mh, rootBox);
     }
 
     private void OpenProductionModal(CityId city, HexCoord? fixedTarget = null)
