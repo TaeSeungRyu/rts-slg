@@ -1114,6 +1114,14 @@ public sealed partial class CampaignMapScene : Node3D
                     };
                     Row("생산", status, GoldBright);
                 }
+                else if (ProductionRules.IsProductionFacility(placement.Code)
+                    && _state.Cities.FirstOrDefault(c => c.Id == placement.City)?.Owner == Player)
+                {
+                    var btn = MakeButton("생산");
+                    btn.CustomMinimumSize = new Vector2(0, 30);
+                    btn.Pressed += () => OpenProductionModal(placement.City, placement.Plot);
+                    _terrainInfo.AddChild(btn);
+                }
             }
             else
             {
@@ -4581,7 +4589,7 @@ public sealed partial class CampaignMapScene : Node3D
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
-    private void OpenProductionModal(CityId city)
+    private void OpenProductionModal(CityId city, HexCoord? fixedTarget = null)
     {
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var cityData = _state.Cities.First(c => c.Id == city);
@@ -4614,8 +4622,13 @@ public sealed partial class CampaignMapScene : Node3D
             .OrderBy(x => x.Troop.Name, System.StringComparer.Ordinal)
             .ToList();
 
-        HexCoord? selectedTarget = targets.FirstOrDefault().Plot;
-        string selectedFacility = targets.FirstOrDefault().Code ?? "";
+        var firstTarget = targets.FirstOrDefault();
+        var fixedOption = fixedTarget is { } ft ? targets.FirstOrDefault(t => t.Plot == ft) : default;
+        var hasFixedTarget = fixedTarget is not null && !string.IsNullOrWhiteSpace(fixedOption.Code);
+        HexCoord? selectedTarget = hasFixedTarget ? fixedOption.Plot
+            : string.IsNullOrWhiteSpace(firstTarget.Code) ? null : firstTarget.Plot;
+        string selectedFacility = hasFixedTarget ? fixedOption.Code
+            : string.IsNullOrWhiteSpace(firstTarget.Code) ? string.Empty : firstTarget.Code;
         GeneralId? selectedGeneral = generals.FirstOrDefault()?.Id;
         string selectedTroop = garrisons.FirstOrDefault().Troop?.Code ?? "";
         var summary = MakeLabel("", 14, GoldBright);
@@ -4624,7 +4637,9 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var general = selectedGeneral is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
             var days = general is null ? 0 : ProductionRules.GatherDays(general.Politics);
-            var reward = general is null ? (0, 0) : ProductionRules.Reward(selectedFacility, general.Politics);
+            var reward = general is null || string.IsNullOrWhiteSpace(selectedFacility)
+                ? (0, 0)
+                : ProductionRules.Reward(selectedFacility, general.Politics);
             var rewardText = reward.Item1 > 0 ? $"금 +{reward.Item1}" : reward.Item2 > 0 ? $"군량 +{reward.Item2}" : "-";
             summary.Text = selectedTarget is null || general is null || string.IsNullOrWhiteSpace(selectedTroop)
                 ? "대상 시설, 장수, 병종을 선택하세요."
@@ -4635,6 +4650,10 @@ public sealed partial class CampaignMapScene : Node3D
         if (targets.Count == 0)
         {
             box.AddChild(MakeLabel("(생산 가능한 논·밭·마을이 없습니다)", 13, Parchment));
+        }
+        else if (hasFixedTarget)
+        {
+            box.AddChild(MakeLabel($"{FacilityName(selectedFacility)} ({selectedTarget!.Value.Q},{selectedTarget.Value.R})\n선택한 시설에서 생산을 진행합니다.", 13, GoldBright));
         }
         else
         {
@@ -4669,7 +4688,9 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(grid);
             foreach (var general in generals)
             {
-                var reward = ProductionRules.Reward(selectedFacility, general.Politics);
+                var reward = string.IsNullOrWhiteSpace(selectedFacility)
+                    ? (Gold: 0, Provisions: 0)
+                    : ProductionRules.Reward(selectedFacility, general.Politics);
                 var rewardText = reward.Gold > 0 ? $"금 {reward.Gold}" : reward.Provisions > 0 ? $"군량 {reward.Provisions}" : "보상 -";
                 var btn = MakeButton($"{general.Name}\n정치 {general.Politics} · {ProductionRules.GatherDays(general.Politics)}일 · {rewardText}");
                 btn.CustomMinimumSize = new Vector2(170, 48);
