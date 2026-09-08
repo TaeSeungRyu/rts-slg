@@ -59,6 +59,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly Dictionary<int, Label3D> _cityLabels = new();
     private readonly Dictionary<int, UnitController3D> _armyTokens = new();
     private readonly Dictionary<int, Label3D> _armyLabels = new();
+    private readonly Dictionary<int, UnitController3D> _productionTokens = new();
+    private readonly Dictionary<int, Label3D> _productionLabels = new();
     private Label _status = null!;
     private Label _hudRuler = null!;
     private Label _hudDate = null!;
@@ -1809,7 +1811,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         _pendingState = after;
         _pendingNote = note.Count > 0 ? string.Join(" · ", note) : "—";
-        BuildAnimation(startHex, turns, sieges);
+        BuildAnimation(startHex, turns, sieges, preMove);
 
         // 애니메이션 시작: 이동 전 상태(토큰=시작 위치)를 그린 뒤, _Process가 칸 단위로 이동시킨다.
         // 열려 있던 성 명령 팔레트·정보 카드는 자동으로 닫는다(진행 중 명령 불가).
@@ -1844,7 +1846,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 진행 결과의 이동 틱을 "언제 어느 칸으로" 스텝 목록으로 편다. 한 칸 = 1초, 하루 = 4초 슬롯
     // (하루의 마지막 1초는 공격 모션 몫). 교전·공성이 벌어진 진행 조각의 끝에 공격 모션을 스케줄.
     private void BuildAnimation(Dictionary<int, HexCoord> startHex, IReadOnlyList<AdvanceTurn> turns,
-        IReadOnlyList<SiegeExchange> sieges)
+        IReadOnlyList<SiegeExchange> sieges, GameState preMove)
     {
         _animSteps.Clear();
         _animAttacks.Clear();
@@ -1951,6 +1953,8 @@ public sealed partial class CampaignMapScene : Node3D
             dayOffset = stopDay;
         }
 
+        ScheduleProductionAnimations(preMove);
+
         _animSteps.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animAttacks.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animUpdates.Sort((a, b) => a.Time.CompareTo(b.Time));
@@ -1958,6 +1962,34 @@ public sealed partial class CampaignMapScene : Node3D
         _animDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSiegeDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animArrows.Sort((a, b) => a.Time.CompareTo(b.Time));
+    }
+
+    private void ScheduleProductionAnimations(GameState preMove)
+    {
+        foreach (var op in preMove.ProductionOps.OrderBy(o => o.Id))
+        {
+            var position = op.Position;
+            var phase = op.Phase;
+            var path = phase == ProductionPhase.Returning ? op.BackPath : op.OutPath;
+            for (var day = 1; day <= AnimDays; day++)
+            {
+                if (phase == ProductionPhase.Gathering) { break; }
+                var idx = path.ToList().FindIndex(p => p == position);
+                if (idx < 0) { break; }
+                var nextIdx = System.Math.Min(path.Count - 1, idx + System.Math.Max(1, op.Speed));
+                position = path[nextIdx];
+                if (nextIdx > idx)
+                {
+                    _animSteps.Add(((day - 1) * DaySeconds, -op.Id, position));
+                }
+
+                if (phase == ProductionPhase.Outbound && nextIdx == path.Count - 1)
+                {
+                    phase = ProductionPhase.Gathering;
+                    break;
+                }
+            }
+        }
     }
 
     // 성 반격 화살 일제사 — 성벽 위에서 대상 부대로 5발(고정 산포·비행시간 변주, 난수 없음).
@@ -2804,7 +2836,11 @@ public sealed partial class CampaignMapScene : Node3D
             while (_animStepIdx < _animSteps.Count && _animSteps[_animStepIdx].Time <= _animT)
             {
                 var s = _animSteps[_animStepIdx];
-                if (_armyTokens.TryGetValue(s.UnitId, out var tok)) { tok.DisplayStepTo(s.To, (float)StepSeconds); }
+                if (s.UnitId < 0)
+                {
+                    if (_productionTokens.TryGetValue(-s.UnitId, out var tok)) { tok.DisplayStepTo(s.To, (float)StepSeconds); }
+                }
+                else if (_armyTokens.TryGetValue(s.UnitId, out var tok)) { tok.DisplayStepTo(s.To, (float)StepSeconds); }
                 _animStepIdx++;
             }
 
@@ -7470,6 +7506,49 @@ public sealed partial class CampaignMapScene : Node3D
             lblNode.Position = _view.HexToWorld(army.Field.Position) + new Vector3(0f, _view.TileTopY + 1.1f, 0f);
             lblNode.Text = $"{army.Pool.Active}";
             lblNode.Visible = army.Field.Owner == Player; // 병력 수는 아군만 표시(적은 편대 규모로 가늠)
+        }
+
+        var activeProduction = _state.ProductionOps
+            .Where(o => o.Phase is ProductionPhase.Outbound or ProductionPhase.Returning)
+            .Select(o => o.Id)
+            .ToHashSet();
+        foreach (var id in _productionTokens.Keys.Where(id => !activeProduction.Contains(id)).ToList())
+        {
+            _productionTokens[id].QueueFree();
+            _productionLabels[id].QueueFree();
+            _productionTokens.Remove(id);
+            _productionLabels.Remove(id);
+        }
+
+        foreach (var op in _state.ProductionOps.Where(o => o.Phase is ProductionPhase.Outbound or ProductionPhase.Returning))
+        {
+            if (!_productionTokens.TryGetValue(op.Id, out var token))
+            {
+                token = new UnitController3D();
+                AddChild(token);
+                token.InitDisplay(_view, op.Owner == Player ? Blue : Red,
+                    TroopModelIndex.GetValueOrDefault(op.TroopCode, 0), op.Position);
+                token.SetFormationSize(1);
+                token.Scale *= 0.72f;
+
+                var lbl = new Label3D
+                {
+                    Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                    FontSize = 28,
+                    OutlineSize = 8,
+                    NoDepthTest = true,
+                    Modulate = op.Owner == Player ? Blue : Red,
+                };
+                AddChild(lbl);
+                _productionTokens[op.Id] = token;
+                _productionLabels[op.Id] = lbl;
+            }
+
+            token.DisplaySyncTo(op.Position, 0.3f);
+            var label = _productionLabels[op.Id];
+            label.Position = _view.HexToWorld(op.Position) + new Vector3(0f, _view.TileTopY + 0.82f, 0f);
+            label.Text = op.Phase == ProductionPhase.Returning ? "생산 복귀\n500" : "생산 이동\n500";
+            label.Visible = op.Owner == Player;
         }
 
         var counts = _state.Factions.OrderBy(f => f.Id.Value).Select(f =>
