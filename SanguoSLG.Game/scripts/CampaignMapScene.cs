@@ -2065,7 +2065,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var spot = new Node3D { Position = at + new Vector3(0f, _view.TileTopY + 0.08f, 0f) };
         AddChild(spot);
-        EffectView.Attach(spot, EffectKind.RisingSkulls, 0.9f, loop: false);
+        EffectView.Attach(spot, EffectKind.RisingSkulls, 1.08f, loop: false);
         var cleanup = CreateTween();
         cleanup.TweenInterval(2.3f);
         cleanup.Finished += spot.QueueFree;
