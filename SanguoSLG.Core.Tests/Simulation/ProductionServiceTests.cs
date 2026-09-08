@@ -95,7 +95,7 @@ public class ProductionServiceTests
     }
 
     [Fact]
-    public void 생산_대상_시설이_파괴되면_투입병력은_소실된다()
+    public void 생산_작전은_시설_수량_변화만으로_소실되지_않는다()
     {
         var started = new ProductionService(Troops)
             .Start(State(politics: 100), new CityId(1), new HexCoord(2, 0), ProductionRules.Village, "swordsman", new GeneralId(1))
@@ -103,11 +103,11 @@ public class ProductionServiceTests
         var damaged = started with { Cities = started.Cities.Select(c => c with { Villages = 0 }).ToList() };
 
         var after = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0))
-            .AdvanceDays(damaged, 1);
+            .AdvanceDays(damaged, 20);
 
         Assert.Empty(after.ProductionOps);
-        Assert.Equal(500, after.Garrisons.Single().Troops);
-        Assert.Null(after.PostingOf(new GeneralId(1))!.Location);
+        Assert.Equal(1000, after.Garrisons.Single(g => g.TroopCode == "swordsman").Troops);
+        Assert.Equal(new CityId(1), after.PostingOf(new GeneralId(1))!.Location);
     }
 
     [Fact]

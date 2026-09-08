@@ -8,7 +8,7 @@ using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
-/// <summary>경제전 B단계 — 시설 파괴·약탈(포위군 진행당 1개·노획 50%·군량 휴대 한도·입성 예치).</summary>
+/// <summary>경제전 B단계 — 현재 시설은 포위 공격으로 파괴되지 않는다. 노획물 입성 예치는 유지한다.</summary>
 public class CityPlunderTests
 {
     private static readonly CommandBalance B = new();
@@ -35,49 +35,31 @@ public class CityPlunderTests
             Gold: 2000, Paddies: paddies, Farms: farms, Villages: villages, Workshop: workshop);
 
     [Fact]
-    public void 약탈_포위군이_마을을_부수고_금을_노획한다()
+    public void 포위군은_마을을_파괴하지_않는다()
     {
         var city = Town(1, 2, new HexCoord(5, 0), villages: 2, paddies: 1);
         var looter = Besieger(1, 1, new HexCoord(4, 0), city.Position);
 
         var r = Plunder().Resolve([looter], [city]);
 
-        var report = Assert.Single(r.Reports);
-        Assert.Equal(("village", 200, 0), (report.Facility, report.Gold, report.Provisions)); // 마을 400×50%
-        Assert.Equal(1, r.Cities.Single().Villages);       // 진행당 1개만
-        Assert.Equal(1, r.Cities.Single().Paddies);        // 우선순위: 마을 먼저
-        Assert.Equal(200, r.Armies.Single().LootGold);
+        Assert.Empty(r.Reports);
+        Assert.Equal(2, r.Cities.Single().Villages);
+        Assert.Equal(1, r.Cities.Single().Paddies);
+        Assert.Equal(0, r.Armies.Single().LootGold);
     }
 
     [Fact]
-    public void 약탈_군량_노획은_휴대_한도까지만_싣는다()
+    public void 포위군은_논밭과_공방을_파괴하지_않는다()
     {
-        // 논 → 군량 150 노획. 휴대 여유가 30뿐이면 30만 싣고 나머지 소실.
-        var city = Town(1, 2, new HexCoord(5, 0), paddies: 1);
+        var city = Town(1, 2, new HexCoord(5, 0), paddies: 1, farms: 1, workshop: true);
         var looter = Besieger(1, 1, new HexCoord(4, 0), city.Position, troops: 10000, provisions: 270);
-        // MaxProvisions = 300(검병 10000) → 여유 30.
 
         var r = Plunder().Resolve([looter], [city]);
 
-        var report = Assert.Single(r.Reports);
-        Assert.Equal(30, report.Provisions);
-        Assert.Equal(300, r.Armies.Single().Provisions);
-        Assert.Equal(0, r.Cities.Single().Paddies);
-    }
-
-    [Fact]
-    public void 약탈_우선순위는_마을_논_밭_공방_순이다()
-    {
-        var city = Town(1, 2, new HexCoord(5, 0), farms: 1, workshop: true);
-        var looter = Besieger(1, 1, new HexCoord(4, 0), city.Position, provisions: 0);
-
-        var first = Plunder().Resolve([looter], [city]);
-        Assert.Equal("farm", first.Reports.Single().Facility); // 마을·논 없으니 밭
-
-        var second = Plunder().Resolve(first.Armies, first.Cities);
-        Assert.Equal("workshop", second.Reports.Single().Facility); // 마지막이 공방
-        Assert.False(second.Cities.Single().Workshop);
-        Assert.Equal(200, second.Armies.Single().LootGold); // 공방 400×50%
+        Assert.Empty(r.Reports);
+        var c = r.Cities.Single();
+        Assert.Equal((1, 1, true), (c.Paddies, c.Farms, c.Workshop));
+        Assert.Equal(270, r.Armies.Single().Provisions);
     }
 
     [Fact]
@@ -133,9 +115,8 @@ public class CityPlunderTests
     }
 
     [Fact]
-    public void 캠페인_포위군이_주마다_시설을_태운다()
+    public void 캠페인_포위군도_시설을_태우지_않는다()
     {
-        // 성벽·수비가 버티는 동안 포위군이 시설을 하나씩 태우는 경제전.
         var city = Town(9, 2, new HexCoord(5, 0), villages: 2, paddies: 2) with { Wall = 99999 };
         var looter = Besieger(1, 1, new HexCoord(4, 0), city.Position, provisions: 0);
         var s = new GameState(1, 1, new List<Faction>(), new List<City> { city }, new List<General>(),
@@ -150,8 +131,8 @@ public class CityPlunderTests
 
         var after = engine.AdvanceWeek(s, out _, out _, out _, out var plunders);
 
-        Assert.True(plunders.Count >= 1, "포위 중 약탈이 일어난다");
+        Assert.Empty(plunders);
         var c = after.Cities.Single();
-        Assert.True(c.Villages + c.Paddies < 4, $"시설이 줄었다: 마을{c.Villages} 논{c.Paddies}");
+        Assert.Equal((2, 2), (c.Villages, c.Paddies));
     }
 }

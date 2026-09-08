@@ -8,7 +8,7 @@ using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
-/// <summary>경제전 C단계 — 자원 시설(광산·목장·상원) 파괴/수리 + 일반 시설 잔해 수리.</summary>
+/// <summary>경제전 C단계 — 수리는 잔해 상태 복구를 다루되, 전투 포위로 새 시설 파괴는 만들지 않는다.</summary>
 public class FacilityRepairTests
 {
     private static readonly CommandBalance B = new();
@@ -39,7 +39,7 @@ public class FacilityRepairTests
     // ── 자원 시설 파괴(약탈 확장) ──
 
     [Fact]
-    public void 약탈_일반시설이_없으면_자원시설을_부수고_생산이_중단된다()
+    public void 약탈_일반시설이_없어도_자원시설은_파괴되지_않는다()
     {
         var city = new City(new CityId(1), "c1", new HexCoord(5, 0), new FactionId(1), 1000, CastleSize.Medium,
             Gold: 500, ProducesOre: true);
@@ -47,19 +47,18 @@ public class FacilityRepairTests
 
         var r = new CityPlunder(B).Resolve([looter], [city]);
 
-        var report = Assert.Single(r.Reports);
-        Assert.Equal(("mine", 200), (report.Facility, report.Gold)); // 정액 노획
-        Assert.True(r.Cities.Single().MineDestroyed);
+        Assert.Empty(r.Reports);
+        Assert.False(r.Cities.Single().MineDestroyed);
 
-        // 파괴된 광산은 월말 산출이 없다.
+        // 광산이 유지되므로 월말 산출도 계속된다.
         var world = new WorldEngine(Bal, B);
         var s = new GameState(1, 1, new List<Faction>(), r.Cities.ToList(), new List<General>());
         var afterMonth = world.AdvanceDays(s, 30);
-        Assert.Equal(r.Cities.Single().Ore, afterMonth.Cities.Single().Ore); // 산출 0
+        Assert.True(afterMonth.Cities.Single().Ore > r.Cities.Single().Ore);
     }
 
     [Fact]
-    public void 약탈_부서진_일반시설은_잔해로_남는다()
+    public void 약탈_일반시설은_잔해로_바뀌지_않는다()
     {
         var city = new City(new CityId(1), "c1", new HexCoord(5, 0), new FactionId(1), 1000, CastleSize.Medium,
             Paddies: 1);
@@ -68,7 +67,7 @@ public class FacilityRepairTests
         var r = new CityPlunder(B).Resolve([looter], [city]);
 
         var c = r.Cities.Single();
-        Assert.Equal((0, 1), (c.Paddies, c.RuinedPaddies)); // 잔해로 전환
+        Assert.Equal((1, 0), (c.Paddies, c.RuinedPaddies));
     }
 
     // ── 시설 수리 ──
