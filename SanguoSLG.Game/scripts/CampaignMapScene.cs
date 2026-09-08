@@ -1568,11 +1568,38 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly IReadOnlyList<City> _cities = new List<City>
     {
         new(new CityId(1), "장안", new HexCoord(1, 2), new FactionId(1), 3000, CastleSize.Medium,
-            Gold: 2000, Security: 80, Population: 100_000, Ore: 8000, Horses: 3000, Elephants: 30, Wall: 1200),
+            Gold: 2000, Security: 80, Population: 100_000, Ore: 8000, Horses: 3000, Elephants: 30,
+            Paddies: 2, Farms: 2, Villages: 2, Wall: 1200),
         new(new CityId(2), "성도", new HexCoord(8, 3), new FactionId(2), 3000, CastleSize.Medium,
-            Gold: 2000, Security: 80, Population: 100_000, Ore: 8000, Wall: 1200),
+            Gold: 2000, Security: 80, Population: 100_000, Ore: 8000,
+            Paddies: 2, Farms: 2, Villages: 2, Wall: 1200),
         new(new CityId(3), "한중", new HexCoord(4, 6), new FactionId(2), 3000, CastleSize.Medium,
-            Gold: 2000, Security: 80, Population: 80_000, Ore: 6000, Wall: 1200),
+            Gold: 2000, Security: 80, Population: 80_000, Ore: 6000,
+            Paddies: 2, Farms: 2, Villages: 2, Wall: 1200),
+    };
+
+    private static readonly IReadOnlyList<FacilityPlacement> _initialFacilityPlacements = new List<FacilityPlacement>
+    {
+        new(new CityId(1), new HexCoord(0, 2), "village", FacilityHealth.Level1),
+        new(new CityId(1), new HexCoord(2, 2), "village", FacilityHealth.Level1),
+        new(new CityId(1), new HexCoord(0, 1), "paddy", FacilityHealth.Level1),
+        new(new CityId(1), new HexCoord(1, 1), "paddy", FacilityHealth.Level1),
+        new(new CityId(1), new HexCoord(2, 1), "farm", FacilityHealth.Level1),
+        new(new CityId(1), new HexCoord(2, 3), "farm", FacilityHealth.Level1),
+
+        new(new CityId(2), new HexCoord(7, 2), "village", FacilityHealth.Level1),
+        new(new CityId(2), new HexCoord(8, 2), "village", FacilityHealth.Level1),
+        new(new CityId(2), new HexCoord(9, 2), "paddy", FacilityHealth.Level1),
+        new(new CityId(2), new HexCoord(9, 3), "paddy", FacilityHealth.Level1),
+        new(new CityId(2), new HexCoord(7, 3), "farm", FacilityHealth.Level1),
+        new(new CityId(2), new HexCoord(9, 4), "farm", FacilityHealth.Level1),
+
+        new(new CityId(3), new HexCoord(3, 5), "village", FacilityHealth.Level1),
+        new(new CityId(3), new HexCoord(4, 5), "village", FacilityHealth.Level1),
+        new(new CityId(3), new HexCoord(5, 5), "paddy", FacilityHealth.Level1),
+        new(new CityId(3), new HexCoord(5, 6), "paddy", FacilityHealth.Level1),
+        new(new CityId(3), new HexCoord(3, 6), "farm", FacilityHealth.Level1),
+        new(new CityId(3), new HexCoord(4, 7), "farm", FacilityHealth.Level1),
     };
 
     private static readonly GameState _initial = new(1, 1,
@@ -1614,7 +1641,8 @@ public sealed partial class CampaignMapScene : Node3D
             new(new CityId(1), "cavalry", 20000, 60),
             new(new CityId(2), "swordsman", 100000, 60),
             new(new CityId(3), "swordsman", 30000, 60),
-        });
+        },
+        FacilityPlacements: _initialFacilityPlacements);
 
     private static General Officer(int id) => new(
         new GeneralId(id), $"장수{id}",
