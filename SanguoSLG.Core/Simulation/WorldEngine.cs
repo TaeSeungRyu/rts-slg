@@ -10,6 +10,9 @@ using SanguoSLG.Core.Spatial;
 /// </summary>
 public sealed class WorldEngine
 {
+    public static readonly FactionId BanditFaction = new(0);
+    public const string BanditTroopCode = "bandit";
+
     private readonly BalanceConfig _balance;
     private readonly CommandBalance _commands;
     private readonly IReadOnlyDictionary<string, Domain.AdminSkill> _adminSkills;
@@ -39,6 +42,7 @@ public sealed class WorldEngine
             state = AdvanceDay(state);
         }
 
+        state = SpawnLowSecurityBandits(state);
         return state;
     }
 
@@ -266,6 +270,63 @@ public sealed class WorldEngine
 
     private int ApplyLowSecurityOutputPenalty(int amount, int security)
         => amount * _commands.LowSecurityOutputPercent(security) / 100;
+
+    private GameState SpawnLowSecurityBandits(GameState state)
+    {
+        var armies = state.Armies.ToList();
+        var occupied = state.Cities.Select(c => c.Position)
+            .Concat(armies.Select(a => a.Field.Position))
+            .ToHashSet();
+        var nextUnitId = armies.Count == 0 ? 1 : armies.Max(a => a.Id.Value) + 1;
+
+        foreach (var city in state.Cities.OrderBy(c => c.Id.Value))
+        {
+            var chance = _commands.BanditRaidChance(city.Security);
+            if (chance.Percent <= 0 || chance.Troops <= 0)
+            {
+                continue;
+            }
+
+            if (HasBanditTargetingCity(state, city))
+            {
+                continue;
+            }
+
+            if (_random.Next(0, 100) >= chance.Percent)
+            {
+                continue;
+            }
+
+            var spawn = city.Position.Neighbors().Cast<HexCoord?>().FirstOrDefault(p => p is { } h && !occupied.Contains(h));
+            if (spawn is not { } spawnPosition)
+            {
+                continue;
+            }
+
+            var field = new FieldUnit(new UnitId(nextUnitId++), BanditFaction, spawnPosition,
+                Speed: 2, Detection: 2, AttackRange: 1, MovementDomain.Land, UnitMode.Attack,
+                Target: city.Position, CommandOrder: 0);
+            var stats = new CombatStats(chance.Troops, AtkStat: 3, DfStat: 1, AptitudePercent: 80);
+            var unit = new CombatUnit(field, stats, new TroopPool(chance.Troops, 0),
+                UnitCombatState.Create(30), Might: 50, Intellect: 30, MaxTroops: chance.Troops,
+                Class: TroopClass.Infantry, Provisions: -1, Training: 40, TroopCode: BanditTroopCode);
+            armies.Add(unit);
+            occupied.Add(spawnPosition);
+            _events.Add(new WorldEvent(WorldEventKind.BanditRaid, city.Owner, City: city.Id,
+                Amount: chance.Troops, Code: BanditTroopCode));
+        }
+
+        return state with
+        {
+            FieldArmies = armies.OrderBy(a => a.Id.Value).ToList(),
+        };
+    }
+
+    private static bool HasBanditTargetingCity(GameState state, City city)
+        => state.Armies.Any(a =>
+            a.Field.Owner == BanditFaction
+            && a.Pool.Active > 0
+            && a.Field.Target == city.Position);
 
     private Domain.General? ValidOfficer(GameState state, City city, GeneralId? id,
         IReadOnlyDictionary<GeneralId, Domain.General> byId)

@@ -143,6 +143,15 @@ public sealed record CommandBalance
     public int LowSecurityPenaltyPercent3 { get; init; } = 40;
     public int LowSecurityPenaltyThreshold4 { get; init; } = 20;
     public int LowSecurityPenaltyPercent4 { get; init; } = 20;
+    public int BanditSpawnThreshold1 { get; init; } = 60;
+    public int BanditSpawnPercent1 { get; init; } = 20;
+    public int BanditTroops1 { get; init; } = 1800;
+    public int BanditSpawnThreshold2 { get; init; } = 40;
+    public int BanditSpawnPercent2 { get; init; } = 35;
+    public int BanditTroops2 { get; init; } = 2400;
+    public int BanditSpawnThreshold3 { get; init; } = 20;
+    public int BanditSpawnPercent3 { get; init; } = 50;
+    public int BanditTroops3 { get; init; } = 3000;
     public string AutoRecruitDefaultTroopCode { get; init; } = "swordsman";
     public Dictionary<string, int> AutoRecruitGoldCostPer100ByTroop { get; init; } = new()
     {
@@ -187,6 +196,26 @@ public sealed record CommandBalance
         }
 
         return 100;
+    }
+
+    public (int Percent, int Troops) BanditRaidChance(int security)
+    {
+        if (security <= BanditSpawnThreshold3)
+        {
+            return (BanditSpawnPercent3, BanditTroops3);
+        }
+
+        if (security <= BanditSpawnThreshold2)
+        {
+            return (BanditSpawnPercent2, BanditTroops2);
+        }
+
+        if (security <= BanditSpawnThreshold1)
+        {
+            return (BanditSpawnPercent1, BanditTroops1);
+        }
+
+        return (0, 0);
     }
 
     /// <summary>동맹 체결 시 수행 도시 금고에서 즉시 소비되는 비용.</summary>

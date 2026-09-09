@@ -20,6 +20,7 @@ public enum WorldEventKind
     StratagemFail,    // 도시 계략 실패
     ProductionComplete, // 생산 작전 복귀·보상 지급
     ProductionLost,     // 생산 작전 중 피격·소실
+    BanditRaid,         // 저치안 도적 출현
 }
 
 /// <summary>

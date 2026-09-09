@@ -10,6 +10,13 @@ public class WorldEngineTests
 {
     private static readonly BalanceConfig Balance = new(MonthlyTaxPerCity: 100);
 
+    private sealed class FixedRandom(params int[] values) : IRandomSource
+    {
+        private readonly int[] _values = values;
+        private int _index;
+        public int Next(int minInclusive, int maxExclusive) => _values[_index++ % _values.Length];
+    }
+
     // 정치 60 담당관(세율 증폭 0 = 유효 담당관의 기준선). 수입 검산은 이 담당관을 붙여 단순화한다.
     private static readonly General Gov = new(new GeneralId(99), "태수",
         new Dictionary<TroopClass, AptitudeGrade>(), Might: 50, Intellect: 50, Politics: 60);
@@ -562,6 +569,50 @@ public class WorldEngineTests
         Assert.Equal(1000, resultCity.Provisions);
         Assert.Equal(1000, garrison.Troops);
         Assert.Equal(40, garrison.TrainingLevel);
+    }
+
+    [Fact]
+    public void v2_치안60이하면_진행_종료때_도적이_성을_공격한다()
+    {
+        var city = new City(new CityId(1), "불안성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 0, Population: 0, Security: 50);
+        var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, new List<General>());
+        var world = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true },
+            random: new FixedRandom(0));
+
+        var after = world.AdvanceDays(state, 7);
+        var bandit = Assert.Single(after.Armies);
+
+        Assert.Equal(WorldEngine.BanditFaction, bandit.Field.Owner);
+        Assert.Equal(WorldEngine.BanditTroopCode, bandit.TroopCode);
+        Assert.Equal(1800, bandit.Pool.Active);
+        Assert.Equal(UnitMode.Attack, bandit.Field.Mode);
+        Assert.Equal(city.Position, bandit.Field.Target);
+        Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.BanditRaid
+            && e.City == city.Id && e.Amount == 1800);
+    }
+
+    [Fact]
+    public void v2_해당성을_공격중인_도적이_있으면_추가_출현하지_않는다()
+    {
+        var city = new City(new CityId(1), "습격성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 0, Population: 0, Security: 20);
+        var bandit = new CombatUnit(
+            new FieldUnit(new UnitId(7), WorldEngine.BanditFaction, new HexCoord(1, 0), 2, 2, 1,
+                MovementDomain.Land, UnitMode.Attack, city.Position, 0),
+            new CombatStats(3000, 3, 1, 80),
+            new TroopPool(3000, 0),
+            UnitCombatState.Create(30),
+            TroopCode: WorldEngine.BanditTroopCode);
+        var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, new List<General>(),
+            FieldArmies: new List<CombatUnit> { bandit });
+        var world = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true },
+            random: new FixedRandom(0));
+
+        var after = world.AdvanceDays(state, 7);
+
+        Assert.Single(after.Armies);
+        Assert.DoesNotContain(world.LastEvents, e => e.Kind == WorldEventKind.BanditRaid);
     }
 
     // ── 내정담당관(태수) — design-administration "내정 심화" A/담당관 ──
