@@ -3,6 +3,7 @@ namespace SanguoSLG.Game;
 using Godot;
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Simulation;
 
 public partial class GeneralEditorScene : Control
 {
@@ -13,6 +14,9 @@ public partial class GeneralEditorScene : Control
     private readonly Dictionary<string, string> _activeNames = new();
     private readonly Dictionary<string, string> _passiveNames = new();
     private readonly Dictionary<string, string> _adminNames = new();
+    private readonly Dictionary<string, ActiveSkill> _activeSkills = new();
+    private readonly Dictionary<string, PassiveSkill> _passiveSkills = new();
+    private readonly Dictionary<string, AdminSkill> _adminSkills = new();
     private readonly Dictionary<int, GeneralPortraitRecord> _portraitsByGeneralId = new();
     private readonly List<GeneralEditorRecord> _generals = [];
     private readonly Dictionary<string, OptionButton> _aptitudeInputs = new();
@@ -27,6 +31,7 @@ public partial class GeneralEditorScene : Control
     private SpinBox _intellectInput = null!;
     private SpinBox _politicsInput = null!;
     private OptionButton _activeInput = null!;
+    private Label _activeDescription = null!;
     private Label _changePreview = null!;
     private GridContainer _passiveGrid = null!;
     private GridContainer _adminGrid = null!;
@@ -172,8 +177,18 @@ public partial class GeneralEditorScene : Control
 
         editor.AddChild(SectionLabel("전투 액티브"));
         _activeInput = new OptionButton();
-        _activeInput.ItemSelected += _ => UpdateChangePreview();
+        _activeInput.ItemSelected += _ =>
+        {
+            UpdateActiveDescription();
+            UpdateChangePreview();
+        };
         editor.AddChild(_activeInput);
+        _activeDescription = new Label
+        {
+            Text = "액티브를 선택하면 효과가 표시됩니다.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
+        editor.AddChild(_activeDescription);
 
         editor.AddChild(SectionLabel("전투 패시브"));
         _passiveGrid = new GridContainer { Columns = 2 };
@@ -217,19 +232,25 @@ public partial class GeneralEditorScene : Control
             _activeNames.Clear();
             _passiveNames.Clear();
             _adminNames.Clear();
+            _activeSkills.Clear();
+            _passiveSkills.Clear();
+            _adminSkills.Clear();
             foreach (var skill in new ActiveSkillLoader().LoadFromDirectory(_dataDirectory))
             {
                 _activeNames[skill.Code] = skill.Name;
+                _activeSkills[skill.Code] = skill;
             }
 
             foreach (var skill in new PassiveSkillLoader().LoadFromDirectory(_dataDirectory))
             {
                 _passiveNames[skill.Code] = skill.Name;
+                _passiveSkills[skill.Code] = skill;
             }
 
             foreach (var skill in new AdminSkillLoader().LoadFromDirectory(_dataDirectory))
             {
                 _adminNames[skill.Code] = skill.Name;
+                _adminSkills[skill.Code] = skill;
             }
 
             foreach (var general in GeneralEditorStore.LoadGenerals(File.ReadAllText(Path.Combine(_dataDirectory, "generals.json"))))
@@ -359,6 +380,7 @@ public partial class GeneralEditorScene : Control
         }
 
         SelectOption(_activeInput, string.IsNullOrWhiteSpace(general.BattleActive) ? "" : general.BattleActive);
+        UpdateActiveDescription();
         foreach (var (code, input) in _passiveInputs)
         {
             var held = general.BattlePassives.FirstOrDefault(s => s.Code == code);
@@ -648,6 +670,20 @@ public partial class GeneralEditorScene : Control
     {
         var value = input.GetItemMetadata(input.Selected).AsString();
         return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private void UpdateActiveDescription()
+    {
+        var code = SelectedMetadata(_activeInput);
+        if (code is null)
+        {
+            _activeDescription.Text = "전투 액티브 없음";
+            return;
+        }
+
+        _activeDescription.Text = _activeSkills.TryGetValue(code, out var skill)
+            ? $"{skill.Name} ({skill.Code})\n{SkillDescriptions.Active(skill)}"
+            : $"등록되지 않은 액티브입니다: {code}";
     }
 
     private static string SkillText(IReadOnlyList<GeneralEditorSkill> skills)
