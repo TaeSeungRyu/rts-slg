@@ -135,7 +135,7 @@ public sealed class CommandService
 
         if (state.IsGeneralBusy(req.Main) || (assist is not null && state.IsGeneralBusy(assist.Id)))
         {
-            return CommandResult.Fail("수행 장수가 다른 명령에 매여 있다.", state);
+            return CommandResult.Fail("수행 장수가 다른 명령에 매여 있거나 생산·출전 중이다.", state);
         }
 
         // 배속 검증(소유·배속 기반) — 배속이 하나라도 있을 때만 강제한다. 배속을 안 넣은
@@ -693,7 +693,8 @@ public sealed class CommandService
             state.Day, state.Day + days, amount, facility, troopCode, targetCity, req.TraineePool, targetGeneral, plot,
             TargetFaction: targetFaction);
         var pending = state.Commands.Append(command).ToList();
-        return CommandResult.Success(state with { Cities = cities, PendingCommands = pending });
+        return CommandResult.Success((state with { Cities = cities, PendingCommands = pending })
+            .ReleaseOfficerDuties(assist is null ? [req.Main] : [req.Main, assist.Id]));
     }
 
     /// <summary>
@@ -802,6 +803,10 @@ public sealed class CommandService
 
     private CommandResult AppointCityOfficer(GameState state, City city, General main, CommandRequest req)
     {
+        if (state.IsGeneralBusy(main.Id))
+        {
+            return CommandResult.Fail("다른 명령·생산·출전 중인 장수는 담당자로 임명할 수 없다.", state);
+        }
         var kind = req.Kind;
         if (state.Assignments.Count > 0 && PostingError(state, main.Id, city) is { } e)
         {

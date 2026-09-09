@@ -18,6 +18,26 @@ public class CommandSystemTests
 
     private static CommandService Service() => new(B, Troops);
 
+    [Theory]
+    [InlineData(CommandKind.Research)]
+    [InlineData(CommandKind.Repair)]
+    [InlineData(CommandKind.CityStratagem)]
+    [InlineData(CommandKind.FormAlliance)]
+    [InlineData(CommandKind.Explore)]
+    public void 진행중_주관과_보좌는_담당자로_임명할수없다(CommandKind kind)
+    {
+        var state = State([Town(1)], [Pol(1, 90), Pol(2, 80)]) with
+        {
+            PendingCommands = [new CityCommand(new CityId(1), kind, new GeneralId(1), new GeneralId(2), 1, 8, 0)],
+        };
+        foreach (var id in new[] { new GeneralId(1), new GeneralId(2) })
+        {
+            var result = Service().Issue(state, new CommandRequest(new CityId(1), CommandKind.AppointDomesticOfficer, id));
+            Assert.False(result.Ok);
+            Assert.Null(result.State.Cities.Single().DomesticOfficer);
+        }
+    }
+
     private static General Pol(int id, int politics, string region = "") => new(
         new GeneralId(id), $"g{id}",
         new Dictionary<TroopClass, AptitudeGrade>(), Might: 50, Intellect: 50, Politics: politics, Region: region);

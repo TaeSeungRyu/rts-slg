@@ -37,6 +37,7 @@ public sealed class WorldEngine
     public GameState AdvanceDays(GameState state, int days)
     {
         _events.Clear();
+        state = state.ReleaseOfficerDuties(state.Generals.Where(g => state.IsGeneralBusy(g.Id)).Select(g => g.Id).ToArray());
         for (var i = 0; i < days; i++)
         {
             state = AdvanceDay(state);

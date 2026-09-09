@@ -123,20 +123,26 @@ public class ResearchSystemTests
     }
 
     [Fact]
-    public void 발행_자동담당자는_전투교리_연구를_수행할수있고_담당은_유지된다()
+    public void 발행_연구는_기존담당을_해제하고_태수군사_겸임은_유지한다()
     {
         var city = Town(1, workshop: true, gold: 5000) with
         {
             DomesticOfficer = new GeneralId(1),
+            Governor = new GeneralId(1),
+            Strategist = new GeneralId(1),
+            TrainingOfficer = new GeneralId(2),
         };
-        var s = State(new[] { city }, new[] { Wit(1, 80) });
+        var s = State(new[] { city }, new[] { Wit(1, 80), Wit(2, 70) });
 
         var r = Service().Issue(s,
-            new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1), TroopCode: "swordsman"));
+            new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1), Assist: new GeneralId(2), TroopCode: "swordsman"));
 
         Assert.True(r.Ok, r.Error);
         Assert.True(r.State.IsGeneralBusy(new GeneralId(1)));
-        Assert.Equal(new GeneralId(1), r.State.Cities.Single().DomesticOfficer);
+        Assert.Null(r.State.Cities.Single().DomesticOfficer);
+        Assert.Null(r.State.Cities.Single().TrainingOfficer);
+        Assert.Equal(new GeneralId(1), r.State.Cities.Single().Governor);
+        Assert.Equal(new GeneralId(1), r.State.Cities.Single().Strategist);
         Assert.Single(r.State.Commands);
     }
 

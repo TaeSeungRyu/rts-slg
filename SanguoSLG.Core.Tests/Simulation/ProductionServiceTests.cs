@@ -47,16 +47,35 @@ public class ProductionServiceTests
         Assert.Equal(days, ProductionRules.GatherDays(politics));
     }
 
+    [Theory]
+    [InlineData(ProductionPhase.Outbound)]
+    [InlineData(ProductionPhase.Gathering)]
+    [InlineData(ProductionPhase.Returning)]
+    public void 생산_모든단계에서_새명령과_담당_중복을_금지한다(ProductionPhase phase)
+    {
+        var result = new ProductionService(Troops).Start(State(), new CityId(1), new HexCoord(2, 0),
+            ProductionRules.Village, "swordsman", new GeneralId(1));
+        Assert.True(result.Ok, result.Error);
+        var state = result.State with { ProductionOperations = [result.State.ProductionOps.Single() with { Phase = phase }] };
+        Assert.True(state.IsGeneralBusy(new GeneralId(1)));
+        var service = new CommandService(new CommandBalance(), Troops);
+        Assert.False(service.Issue(state, new CommandRequest(new CityId(1), CommandKind.AppointDomesticOfficer, new GeneralId(1))).Ok);
+        Assert.False(service.Issue(state, new CommandRequest(new CityId(1), CommandKind.Explore, new GeneralId(1))).Ok);
+    }
+
     [Fact]
     public void 생산_작전은_병력오백과_장수를_도시에서_뺀다()
     {
         var state = State();
+        state = state with { Cities = [state.Cities.Single() with { DomesticOfficer = new GeneralId(1) }] };
 
         var result = new ProductionService(Troops)
             .Start(state, new CityId(1), new HexCoord(2, 0), ProductionRules.Village, "swordsman", new GeneralId(1));
 
         Assert.True(result.Ok, result.Error);
         Assert.Equal(500, result.State.Garrisons.Single().Troops);
+        Assert.Null(result.State.Cities.Single().DomesticOfficer);
+        Assert.True(result.State.IsGeneralBusy(new GeneralId(1)));
         Assert.Null(result.State.PostingOf(new GeneralId(1))!.Location);
         var op = result.State.ProductionOps.Single();
         Assert.Equal(ProductionPhase.Outbound, op.Phase);

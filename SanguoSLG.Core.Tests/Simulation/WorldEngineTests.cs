@@ -8,6 +8,20 @@ namespace SanguoSLG.Core.Tests.Simulation;
 /// <summary>일 단위 세계 시계 + 월말 세금 틱(도시 금고) — design-administration "시간 축".</summary>
 public class WorldEngineTests
 {
+    [Fact]
+    public void 이전상태의_진행명령과_담당_중복을_정리한다()
+    {
+        var general = V2Officer(1, might: 100);
+        var city = new City(new CityId(1), "중복성", new HexCoord(0, 0), new FactionId(1), 1000,
+            SecurityOfficer: general.Id, Governor: general.Id, Strategist: general.Id);
+        var state = new GameState(1, 1, [], [city], [general],
+            PendingCommands: [new(city.Id, CommandKind.Explore, general.Id, null, 1, 8, 0)]);
+        var after = new WorldEngine(V2OnlyBalance).AdvanceDays(state, 1);
+        Assert.Null(after.Cities.Single().SecurityOfficer);
+        Assert.Equal(general.Id, after.Cities.Single().Governor);
+        Assert.Equal(general.Id, after.Cities.Single().Strategist);
+    }
+
     private static readonly BalanceConfig Balance = new(MonthlyTaxPerCity: 100);
 
     private sealed class FixedRandom(params int[] values) : IRandomSource

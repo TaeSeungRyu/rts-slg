@@ -4203,7 +4203,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(GoldRule());
         box.AddChild(MakeLabel("수행 장수 (정치 높을수록 유리 · 행 클릭)", 13, GoldBright));
 
-        var free = _state.GeneralsAt(cityId).Where(g => !_state.IsGeneralBusy(g))
+        var free = _state.GeneralsAt(cityId).Where(g => !OfficerUnavailable(g))
             .Select(id => _state.Generals.First(g => g.Id == id)).OrderByDescending(g => g.Politics).ToList();
         if (free.Count == 0) { box.AddChild(MakeLabel("(가능한 수행 장수 없음)", 12, Parchment)); }
         foreach (var g in free)
@@ -4962,7 +4962,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var targets = ProductionTargets(cityData).ToList();
         var generals = _state.GeneralsAt(city)
-            .Where(g => !_state.IsGeneralBusy(g) && !_state.IsGeneralInField(g))
+            .Where(g => !OfficerUnavailable(g) && !_state.IsGeneralInField(g))
             .Select(id => _state.Generals.First(g => g.Id == id))
             .OrderByDescending(g => g.Politics).ThenBy(g => g.Id.Value)
             .ToList();
@@ -5008,7 +5008,7 @@ public sealed partial class CampaignMapScene : Node3D
                     : ProductionRules.Reward(selectedFacility, general.Politics);
                 var rewardText = reward.Gold > 0 ? $"금 {reward.Gold}" : reward.Provisions > 0 ? $"군량 {reward.Provisions}" : "보상 -";
                 var selected = selectedGeneral == general.Id;
-                btn.Text = $"{general.Name}{(selected ? " · 선택됨" : "")}\n정치 {general.Politics} · {ProductionRules.GatherDays(general.Politics)}일 · {rewardText}";
+                btn.Text = $"{general.Name}{(selected ? " · 선택됨" : "")}\n현재 담당업무: {CurrentDuty(general.Id)}\n정치 {general.Politics} · {ProductionRules.GatherDays(general.Politics)}일 · {rewardText}";
                 StyleSelectionCard(btn, selected);
             }
 
@@ -5131,10 +5131,11 @@ public sealed partial class CampaignMapScene : Node3D
             var gName = _state.Generals.First(g => g.Id == general).Name;
             var troopName = _troops.First(t => t.Code == selectedTroop).Name;
             ShowConfirm("생산 작전 확인",
-                $"{cityData.Name}에서 {FacilityName(selectedFacility)} 생산을 시작합니다.\n수행 장수: {gName}\n투입 병종: {troopName} 500명\n\n시작 후 취소할 수 없습니다.",
+                $"{cityData.Name}에서 {FacilityName(selectedFacility)} 생산을 시작합니다.\n수행 장수: {gName}\n투입 병종: {troopName} 500명{DutyReleaseNotice(general)}\n\n시작 후 취소할 수 없습니다.",
                 () =>
                 {
                     if (_advancing) { return; }
+                    if (OfficerUnavailable(general)) { ShowNotice("생산 불가", "장수가 다른 업무 또는 출전 예약 중입니다."); return; }
                     var result = _producer.Start(_state, city, target, selectedFacility, selectedTroop, general);
                     if (!result.Ok)
                     {
@@ -5510,7 +5511,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(MakeLabel("장수 편성 (선봉 필수 · 부관 선택 · 상단 눌러 정렬)", 13, GoldBright));
         _vanTree = new Tree
         {
-            Columns = 7,
+            Columns = 8,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
@@ -5541,6 +5542,8 @@ public sealed partial class CampaignMapScene : Node3D
         _vanTree.SetColumnTitle(6, "적성·특성");
         _vanTree.SetColumnExpand(6, true);
         _vanTree.SetColumnExpandRatio(6, 2);
+        _vanTree.SetColumnTitle(7, "현재 담당업무");
+        _vanTree.SetColumnExpand(7, true);
         _vanTree.ItemEdited += OnRosterEdited;
         _vanTree.ColumnTitleClicked += (col, _) =>
         {
@@ -5695,6 +5698,14 @@ public sealed partial class CampaignMapScene : Node3D
         var provisions = _depProvDays * _depAmount * _provPer10kPerDay / 10000;
         var req = new DeployRequest(_depModalCity, _depTroop, _depAmount, van, _depAdj, _depMode, _depTarget, provisions);
         var entry = (req, $"{tName} {_depAmount}({vName}{aName}) · {ModeName(_depMode)} · 군량{_depProvDays}일");
+        var ids = req.Adjutant is { } adjId ? new[] { van, adjId } : new[] { van };
+        ShowConfirm("출전 예약 확인", $"{entry.Item2}{DutyReleaseNotice(ids)}", () =>
+        {
+        if (_advancing || ids.Any(id => _state.IsGeneralBusy(id))
+            || _pendingDeploys.Where((_, index) => index != _depEditIndex)
+                .Any(p => ids.Contains(p.Req.Vanguard) || p.Req.Adjutant is { } adj && ids.Contains(adj)))
+        { ShowNotice("출전 불가", "선택한 장수가 다른 업무를 수행 중입니다."); return; }
+        _state = _state.ReleaseOfficerDuties(ids);
         if (_depEditIndex >= 0 && _depEditIndex < _pendingDeploys.Count) { _pendingDeploys[_depEditIndex] = entry; }
         else { _pendingDeploys.Add(entry); }
 
@@ -5702,6 +5713,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         SelectCity(_depModalCity);
         OpenDeployHub();
+        });
     }
 
     private int AvailableDeployTroops(CityId city, string troopCode, int editIndex)
@@ -5803,6 +5815,8 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetText(4, g.Intellect.ToString());
             item.SetText(5, g.Politics.ToString());
             item.SetText(6, AptTraitText(g));
+            item.SetText(7, CurrentDuty(g.Id));
+            item.SetTooltipText(7, CurrentDuty(g.Id));
             item.SetMetadata(0, g.Id.Value);
             for (var col = 3; col <= 5; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
         }
@@ -6450,7 +6464,7 @@ public sealed partial class CampaignMapScene : Node3D
             or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer;
         var free = (isAppoint
                 ? _state.GeneralsAt(city)
-                : _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !_state.IsGeneralInField(g)))
+                : _state.GeneralsAt(city).Where(g => !OfficerUnavailable(g) && !_state.IsGeneralInField(g)))
             .OrderBy(g => g.Value).ToList();
         if (free.Count == 0)
         {
@@ -6465,7 +6479,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var tree = new Tree
         {
-            Columns = IsAutoOfficerCommand(cmd.Kind) ? 6 : 4,
+            Columns = IsAutoOfficerCommand(cmd.Kind) ? 6 : 5,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
@@ -6486,11 +6500,11 @@ public sealed partial class CampaignMapScene : Node3D
             tree.SetColumnExpand(col, false);
             tree.SetColumnCustomMinimumWidth(col, 52);
         }
+        tree.SetColumnTitle(4, "현재 담당업무");
+        tree.SetColumnExpand(4, true);
+        tree.SetColumnExpandRatio(4, 3);
         if (IsAutoOfficerCommand(cmd.Kind))
         {
-            tree.SetColumnTitle(4, "현재 업무");
-            tree.SetColumnExpand(4, true);
-            tree.SetColumnExpandRatio(4, 2);
             tree.SetColumnTitle(5, "주 예상 효과");
             tree.SetColumnExpand(5, true);
             tree.SetColumnExpandRatio(5, 3);
@@ -6525,10 +6539,18 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetText(3, g.Politics.ToString());
             if (IsAutoOfficerCommand(cmd.Kind))
             {
-                item.SetText(4, CurrentOfficerAssignment(g.Id) is { } current
-                    ? $"{current.CityName} · {KindName(current.Kind)}"
-                    : "-");
                 item.SetText(5, OfficerWeeklyEffect(cmd.Kind, g, cityData));
+            }
+            item.SetText(4, CurrentDuty(g.Id));
+            item.SetTooltipText(4, CurrentDuty(g.Id));
+            if (cmd.Kind is not (CommandKind.AppointGovernor or CommandKind.AppointStrategist)
+                && OfficerUnavailable(g.Id))
+            {
+                for (var column = 0; column < tree.Columns; column++)
+                {
+                    item.SetSelectable(column, false);
+                    item.SetCustomColor(column, new Color(0.5f, 0.5f, 0.5f));
+                }
             }
 
             item.SetMetadata(0, g.Id.Value);
@@ -6987,9 +7009,16 @@ public sealed partial class CampaignMapScene : Node3D
             ? $"\n\n※ {gName}은 현재 {oldRole.CityName}의 {KindName(oldRole.Kind)}입니다.\n동의하면 기존 담당에서 해제하고 {cmd.Label}(으)로 교체합니다."
             : "";
         var confirmMessage =
-            $"{_state.Cities.First(c => c.Id == city).Name} — {cmd.Label}{pLabel}{extra}\n수행 장수: {gName}{replaceText}\n\n실행하시겠습니까?";
+            $"{_state.Cities.First(c => c.Id == city).Name} — {cmd.Label}{pLabel}{extra}\n수행 장수: {gName}{replaceText}"
+            + (cmd.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist || IsAutoOfficerCommand(cmd.Kind)
+                ? "" : DutyReleaseNotice(general)) + "\n\n실행하시겠습니까?";
         void ExecuteConfirmed()
         {
+            if (cmd.Kind is not (CommandKind.AppointGovernor or CommandKind.AppointStrategist) && OfficerUnavailable(general))
+            {
+                ShowNotice("명령 불가", "다른 업무 또는 출전 예약 중인 장수입니다.");
+                return;
+            }
             var r = _commander.Issue(_state, request);
             Dbg($"UI issue {cmd.Label}{pLabel} city={city.Value} gen={general.Value} ok={r.Ok} err={r.Error ?? "-"}");
             if (r.Ok) { _state = r.State; }
@@ -7131,7 +7160,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         Clear(holder);
         var city = _state.Cities.First(c => c.Id == placement.City);
-        var free = _state.GeneralsAt(city.Id).Where(g => !_state.IsGeneralBusy(g)).OrderBy(g => g.Value).ToList();
+        var free = _state.GeneralsAt(city.Id).Where(g => !OfficerUnavailable(g)).OrderBy(g => g.Value).ToList();
         if (free.Count == 0)
         {
             holder.AddChild(MakeLabel("(가능한 장수 없음)", 14, Parchment));
@@ -7140,7 +7169,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var tree = new Tree
         {
-            Columns = 4,
+            Columns = 5,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
@@ -7161,6 +7190,8 @@ public sealed partial class CampaignMapScene : Node3D
             tree.SetColumnCustomMinimumWidth(col, 52);
         }
 
+        tree.SetColumnTitle(4, "현재 담당업무");
+        tree.SetColumnExpand(4, true);
         var gens = free.Select(id => _state.Generals.First(g => g.Id == id)).OrderByDescending(g => g.Politics).ToList();
         var root = tree.CreateItem();
         foreach (var g in gens)
@@ -7171,6 +7202,8 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetText(1, g.Might.ToString());
             item.SetText(2, g.Intellect.ToString());
             item.SetText(3, g.Politics.ToString());
+            item.SetText(4, CurrentDuty(g.Id));
+            item.SetTooltipText(4, CurrentDuty(g.Id));
             item.SetMetadata(0, g.Id.Value);
             for (var col = 1; col <= 3; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
         }
@@ -7196,7 +7229,7 @@ public sealed partial class CampaignMapScene : Node3D
             ? $"{FacilityName(placement.Code)} 체력 {placement.HitPoints} → {n}\n[소요 {_cb.BuildDays}일] 비용 {cost}금"
             : $"{FacilityName(placement.Code)} 체력 {placement.HitPoints}\n※ 이미 최대 단계입니다";
         ShowConfirm("업그레이드 확인",
-            $"{city.Name} — {detail}\n수행 장수: {gName}\n\n실행하시겠습니까?",
+            $"{city.Name} — {detail}\n수행 장수: {gName}{DutyReleaseNotice(general)}\n\n실행하시겠습니까?",
             () =>
             {
                 var request = new CommandRequest(city.Id, CommandKind.Upgrade, general, Plot: placement.Plot);

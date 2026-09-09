@@ -102,7 +102,22 @@ public sealed record GameState(
         => Intel.Any(i => i.Faction == faction && i.City == city && i.ExpiresDay >= Day);
 
     /// <summary>이 장수가 진행 중 명령에 매여 잠겨 있는가.</summary>
-    public bool IsGeneralBusy(GeneralId general) => Commands.Any(c => c.Locks(general));
+    public bool IsGeneralBusy(GeneralId general) => Commands.Any(c => c.Locks(general))
+        || ProductionOps.Any(p => p.General == general) || IsGeneralInField(general);
+
+    public GameState ReleaseOfficerDuties(params GeneralId[] generals)
+    {
+        var ids = generals.ToHashSet();
+        return this with { Cities = Cities.Select(c => c with
+        {
+            SecurityOfficer = c.SecurityOfficer is { } s && ids.Contains(s) ? null : c.SecurityOfficer,
+            DomesticOfficer = c.DomesticOfficer is { } d && ids.Contains(d) ? null : c.DomesticOfficer,
+            RecruitmentOfficer = c.RecruitmentOfficer is { } r && ids.Contains(r) ? null : c.RecruitmentOfficer,
+            TrainingOfficer = c.TrainingOfficer is { } t && ids.Contains(t) ? null : c.TrainingOfficer,
+            AutoRecruitTroopCode = c.RecruitmentOfficer is { } r1 && ids.Contains(r1) ? "" : c.AutoRecruitTroopCode,
+            AutoRecruitTroopCodes = c.RecruitmentOfficer is { } r2 && ids.Contains(r2) ? "" : c.AutoRecruitTroopCodes,
+        }).ToList() };
+    }
 
     /// <summary>이 장수가 야전 부대의 선봉·부관으로 출전 중인가.</summary>
     public bool IsGeneralInField(GeneralId general)

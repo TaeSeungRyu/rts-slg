@@ -75,7 +75,7 @@ public sealed class ProductionService
             .Select(p => p.General == generalId ? p with { Location = null } : p)
             .ToList();
 
-        return CommandResult.Success(state with
+        return CommandResult.Success(state.ReleaseOfficerDuties(generalId) with
         {
             GarrisonForces = garrisons,
             Postings = postings,
