@@ -73,12 +73,13 @@ public sealed class WorldEngine
             next = AdvanceProductionOperations(next);
         }
 
-        if (next.DayOfMonth % 7 == 0)
+        if ((_commands.AutoOfficerSystemEnabled ? next.Day : next.DayOfMonth) % 7 == 0)
         {
             var byId = next.Generals.ToDictionary(g => g.Id);
-            if (_commands.AutoOfficerSystemEnabled && next.DayOfMonth == 7)
+            if (_commands.AutoOfficerSystemEnabled)
             {
                 next = ApplyAutoOfficerSecurity(next, byId);
+                next = ApplyAutoOfficers(next, byId);
             }
 
             next = ApplyWeeklyProvisions(next, byId, includeDomesticOfficer: _commands.AutoOfficerSystemEnabled);
@@ -99,14 +100,10 @@ public sealed class WorldEngine
                 Cities = next.Cities.Select(c =>
                 {
                     var gov = ValidGovernor(next, c, byId);
-                    var updated = Grow(Produce(Income(next, c, gov), gov));
+                    var updated = Grow(Produce(_commands.AutoOfficerSystemEnabled ? c : Income(next, c, gov), gov));
                     return _commands.AutoOfficerSystemEnabled ? updated : TaxSecurity(updated, gov);
                 }).ToList(),
             };
-            if (_commands.AutoOfficerSystemEnabled)
-            {
-                next = ApplyAutoOfficers(next, byId);
-            }
 
             // 시장 시세 갱신(design-administration "시장"): 계절 배수 × 랜덤 지터(seeded — 결정론).
             // 9·10월(추수) 최저, 겨울 최고. 다음 달 매입가에 반영된다.
@@ -125,7 +122,9 @@ public sealed class WorldEngine
         var cities = new List<City>();
         foreach (var city in state.Cities)
         {
-            var next = city;
+            var governor = ValidGovernor(state, city, byId);
+            var baseGold = Income(state, city, governor).Gold - city.Gold;
+            var next = city with { Gold = city.Gold + SplitMonthlyAmount(baseGold, WeeklyIncomeTick(state.Day)) };
             var domestic = ValidOfficer(state, city, city.DomesticOfficer, byId);
 
             if (domestic is not null)
@@ -135,7 +134,7 @@ public sealed class WorldEngine
                 gold = ApplyLowSecurityOutputPenalty(gold, next.Security);
                 next = next with
                 {
-                    Gold = next.Gold + gold,
+                    Gold = next.Gold + SplitMonthlyAmount(gold, WeeklyIncomeTick(state.Day)),
                 };
             }
 
@@ -147,7 +146,7 @@ public sealed class WorldEngine
 
     private GameState ApplyWeeklyProvisions(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId, bool includeDomesticOfficer)
     {
-        var tick = state.DayOfMonth / 7;
+        var tick = _commands.AutoOfficerSystemEnabled ? WeeklyIncomeTick(state.Day) : state.DayOfMonth / 7;
         if (tick < 1 || tick > 4) { return state; }
 
         var cities = state.Cities.Select(city =>
@@ -186,6 +185,8 @@ public sealed class WorldEngine
         var remainder = monthly % 4;
         return baseAmount + (tick <= remainder ? 1 : 0);
     }
+
+    private static int WeeklyIncomeTick(int day) => (day / 7 - 1) % 4 + 1;
 
     private Domain.General? ValidGovernor(GameState state, City city, IReadOnlyDictionary<GeneralId, Domain.General> byId)
     {

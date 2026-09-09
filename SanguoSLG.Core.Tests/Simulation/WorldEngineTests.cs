@@ -366,7 +366,7 @@ public class WorldEngineTests
         Might: might, Intellect: 50, Politics: politics);
 
     [Fact]
-    public void v2_담당자가_월말에_치안_내정_병력_훈련을_자동_처리한다()
+    public void v2_담당자가_4주간_치안_내정_병력_훈련을_자동_처리한다()
     {
         var city = new City(new CityId(1), "자동성", new HexCoord(0, 0), new FactionId(1), 1000,
             Gold: 1000, Population: 0, Security: 50,
@@ -392,7 +392,7 @@ public class WorldEngineTests
         var resultCity = after.Cities.Single();
         var garrison = after.Garrisons.Single(g => g.City == city.Id && g.TroopCode == "swordsman");
 
-        Assert.Equal(49, resultCity.Security);
+        Assert.Equal(46, resultCity.Security);
         Assert.Equal(1132, resultCity.Gold);
         Assert.Equal(1420, resultCity.Provisions);
         Assert.Equal(3280, garrison.Troops);
@@ -450,7 +450,7 @@ public class WorldEngineTests
         var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
             .AdvanceDays(state, 30);
 
-        Assert.Equal(79, after.Cities.Single().Security);
+        Assert.Equal(76, after.Cities.Single().Security);
     }
 
     [Fact]
@@ -478,7 +478,7 @@ public class WorldEngineTests
     public void v2_병력담당은_무력100이면_한달에_오천명을_생산한다()
     {
         var city = new City(new CityId(1), "병영성", new HexCoord(0, 0), new FactionId(1), 1000,
-            Gold: 1000, Population: 0, Security: 80,
+            Gold: 1000, Population: 0, Security: 100,
             RecruitmentOfficer: new GeneralId(1),
             AutoRecruitTroopCodes: "swordsman");
         var generals = new[] { V2Officer(1, might: 100) };
@@ -525,8 +525,8 @@ public class WorldEngineTests
 
         var garrison = after.Garrisons.Single();
         Assert.Equal("cavalry", garrison.TroopCode);
-        Assert.Equal(1900, garrison.Troops);
-        Assert.Equal(24, after.Cities.Single().Gold);
+        Assert.Equal(2470, garrison.Troops);
+        Assert.Equal(0, after.Cities.Single().Gold);
     }
 
     [Fact]
@@ -564,11 +564,52 @@ public class WorldEngineTests
         var resultCity = after.Cities.Single();
         var garrison = after.Garrisons.Single();
 
-        Assert.Equal(48, resultCity.Security);
+        Assert.Equal(42, resultCity.Security);
         Assert.Equal(0, resultCity.Gold);
         Assert.Equal(1000, resultCity.Provisions);
         Assert.Equal(1000, garrison.Troops);
         Assert.Equal(40, garrison.TrainingLevel);
+    }
+
+    [Fact]
+    public void v2_월경계를_넘어도_모든담당효과는_매주_한번_정산된다()
+    {
+        var generals = new[] { V2Officer(1, might: 85), V2Officer(2, politics: 80),
+            V2Officer(3, might: 100), V2Officer(4, might: 100) };
+        var city = new City(new CityId(1), "주간성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 0, Population: 0, Security: 100,
+            SecurityOfficer: generals[0].Id, DomesticOfficer: generals[1].Id,
+            RecruitmentOfficer: generals[2].Id, TrainingOfficer: generals[3].Id,
+            AutoRecruitTroopCodes: "swordsman");
+        var state = new GameState(1, 1, [], [city], generals,
+            Postings: generals.Select(g => new GeneralPosting(g.Id, city.Owner, city.Id)).ToList(),
+            GarrisonForces: [new(city.Id, "archer", 500, 40)]);
+        var engine = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true });
+        for (var week = 1; week <= 9; week++)
+        {
+            state = engine.AdvanceDays(state, 7);
+            Assert.Equal(100 - week, state.Cities.Single().Security);
+            Assert.Equal(52 * week, state.Cities.Single().Gold);
+            Assert.Equal(1000 + 175 * week, state.Cities.Single().Provisions);
+            Assert.Equal(1250 * week, state.Garrisons.Single(g => g.TroopCode == "swordsman").Troops);
+            Assert.Equal(40 + 4 * week, state.Garrisons.Single(g => g.TroopCode == "archer").TrainingLevel);
+        }
+    }
+
+    [Fact]
+    public void v2_치안담당이_없으면_병력담당부담도_매주_누적된다()
+    {
+        var general = V2Officer(1, might: 100);
+        var city = new City(new CityId(1), "공석성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Security: 100, RecruitmentOfficer: general.Id, AutoRecruitTroopCodes: "swordsman");
+        var state = new GameState(1, 1, [], [city], [general],
+            Postings: [new(general.Id, city.Owner, city.Id)]);
+        var engine = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true });
+        for (var week = 1; week <= 5; week++)
+        {
+            state = engine.AdvanceDays(state, 7);
+            Assert.Equal(100 - 5 * week, state.Cities.Single().Security);
+        }
     }
 
     [Fact]
