@@ -4590,14 +4590,15 @@ public sealed partial class CampaignMapScene : Node3D
         return path is not null ? GD.Load<Texture2D>(path) : null;
     }
 
-    // ── 장수 상세 카드: 상단 초상 / 타이틀 = 이름 / 하단 능력치·병종 적성·특기(그리드 정렬) ──
     private void OpenGeneralDetail(GeneralId gid, CityId backCity, System.Action? backAction = null)
     {
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
-        var mh = Mathf.Clamp(vp.Y * 0.85f, 360f, 720f);
-        var portraitHeight = mh * 0.65f;
-        var mw = Mathf.Min(Mathf.Max(360f, portraitHeight * 0.8f + 16f), vp.X - 64f);
+        var mw = Mathf.Min(960f, vp.X - 64f);
+        var mh = Mathf.Min(vp.Y * 0.82f, mw * 0.78f);
+        var portraitHeight = mh - 50f;
+        var portraitWidth = mw * 0.54f;
+        var detailWidth = mw - portraitWidth - 18f;
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var rootBox = box;
         var g = _state.Generals.First(x => x.Id == gid);
@@ -4622,13 +4623,15 @@ public sealed partial class CampaignMapScene : Node3D
         close.Pressed += CloseModal;
         titleRow.AddChild(close);
 
+        var body = new HBoxContainer();
+        body.AddThemeConstantOverride("separation", 18);
+        rootBox.AddChild(body);
         var portrait = new PanelContainer
         {
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(0, portraitHeight),
+            CustomMinimumSize = new Vector2(portraitWidth, portraitHeight),
         };
         portrait.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.05f), Gold, 1, 8, 8));
-        box.AddChild(portrait);
+        body.AddChild(portrait);
         if (PortraitFor(gid) is { } tex)
         {
             portrait.AddChild(new TextureRect
@@ -4658,9 +4661,10 @@ public sealed partial class CampaignMapScene : Node3D
         var detailsScroll = new ScrollContainer
         {
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
-            CustomMinimumSize = new Vector2(0, mh - portraitHeight - 50f),
+            CustomMinimumSize = new Vector2(detailWidth, portraitHeight),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
-        rootBox.AddChild(detailsScroll);
+        body.AddChild(detailsScroll);
         box = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         box.AddThemeConstantOverride("separation", 8);
         detailsScroll.AddChild(box);
@@ -4675,7 +4679,6 @@ public sealed partial class CampaignMapScene : Node3D
 
         box.AddChild(GoldRule());
 
-        // 하단 1: 능력치 — 3열 균등 그리드.
         Label Cell(string text, int size, Color color)
         {
             var l = MakeLabel(text, size, color);
@@ -4692,7 +4695,6 @@ public sealed partial class CampaignMapScene : Node3D
 
         box.AddChild(GoldRule());
 
-        // 하단 2: 병종 적성 — 6열 균등 그리드(윗줄 병종, 아랫줄 등급. A 이상은 금색).
         box.AddChild(MakeLabel("병종 적성", 13, GoldBright));
         var classes = new[]
         {
@@ -4711,39 +4713,42 @@ public sealed partial class CampaignMapScene : Node3D
 
         box.AddChild(GoldRule());
 
-        // 하단 3: 특기 — [구분 | 이름] 2열 그리드로 정렬.
-        box.AddChild(MakeLabel("특기", 13, GoldBright));
-        var skills = new List<(string Tag, string Name)>();
+        box.AddChild(MakeLabel("특기 · 선택하여 효과 확인", 13, GoldBright));
+        var skills = new List<(string Tag, string Name, string Description)>();
         if (g.BattleActive is { Length: > 0 } ac)
         {
-            skills.Add(("액티브", _activeSkills.FirstOrDefault(a => a.Code == ac)?.Name ?? ac));
+            var definition = _activeSkills.FirstOrDefault(a => a.Code == ac);
+            skills.Add(("액티브", definition?.Name ?? ac, SkillDescriptions.Active(definition)));
         }
 
         foreach (var p in g.Passives)
         {
-            skills.Add(("패시브", $"{_passiveSkills.FirstOrDefault(x => x.Code == p.Code)?.Name ?? p.Code} Lv{p.Tier}"));
+            var definition = _passiveSkills.FirstOrDefault(x => x.Code == p.Code);
+            skills.Add(("패시브", $"{definition?.Name ?? p.Code} Lv{p.Tier}", SkillDescriptions.Passive(definition, p.Tier)));
         }
 
         foreach (var p in g.AdminPassives ?? [])
         {
-            skills.Add(("내정 패시브", $"{_adminSkills.FirstOrDefault(x => x.Code == p.Code)?.Name ?? p.Code} Lv{p.Tier}"));
+            var definition = _adminSkills.FirstOrDefault(x => x.Code == p.Code);
+            skills.Add(("내정 패시브", $"{definition?.Name ?? p.Code} Lv{p.Tier}", SkillDescriptions.Admin(definition, p.Tier)));
         }
 
         if (skills.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
         else
         {
-            var sg = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-            sg.AddThemeConstantOverride("h_separation", 10);
-            sg.AddThemeConstantOverride("v_separation", 2);
+            var sg = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            sg.AddThemeConstantOverride("separation", 6);
             box.AddChild(sg);
-            foreach (var (tag, name) in skills)
+            foreach (var (tag, name, description) in skills)
             {
-                var tagLbl = MakeLabel($"[{tag}]", 12, GoldBright);
-                tagLbl.CustomMinimumSize = new Vector2(64, 0);
-                sg.AddChild(tagLbl);
-                var nameLbl = MakeLabel(name, 12, Parchment);
-                nameLbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-                sg.AddChild(nameLbl);
+                var skillButton = MakeButton($"[{tag}]  {name}   ›");
+                skillButton.Alignment = HorizontalAlignment.Left;
+                skillButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+                skillButton.CustomMinimumSize = new Vector2(0, 38);
+                skillButton.ClipText = true;
+                skillButton.TooltipText = $"{name} · 설명 보기";
+                skillButton.Pressed += () => ShowSkillDescription(name, tag, description);
+                sg.AddChild(skillButton);
             }
         }
 
@@ -4752,7 +4757,7 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(GoldRule());
             var desc = MakeLabel(g.Desc, 12, Parchment);
             desc.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            desc.CustomMinimumSize = new Vector2(mw - 60, 0);
+            desc.CustomMinimumSize = new Vector2(Mathf.Max(0, detailWidth - 20f), 0);
             box.AddChild(desc);
         }
 
