@@ -26,6 +26,9 @@ obj/
 shot_*.png
 tone_*.png
 
+# 개발용 에디터 백업
+tools/general-editor/backups/
+
 # Claude Code 개인 설정 (프로젝트 공용 settings.json은 커밋 가능)
 .claude/settings.local.json
 .claude/

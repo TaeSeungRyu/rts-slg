@@ -38,6 +38,8 @@ public partial class GeneralEditorScene : Control
     private Label _faceLabel = null!;
     private GeneralEditorRecord? _selected;
     private string _dataDirectory = "";
+    private DateTime _generalsLoadedAt;
+    private DateTime _portraitsLoadedAt;
 
     public override void _Ready()
     {
@@ -233,6 +235,7 @@ public partial class GeneralEditorScene : Control
                 _generals.Add(general);
                 _generalsById[general.Id] = general;
             }
+            _generalsLoadedAt = File.GetLastWriteTimeUtc(Path.Combine(_dataDirectory, "generals.json"));
 
             var portraitPath = Path.Combine(_dataDirectory, "general-portraits.json");
             if (File.Exists(portraitPath))
@@ -242,6 +245,7 @@ public partial class GeneralEditorScene : Control
                     _portraitsByGeneralId[portrait.GeneralId] = portrait;
                 }
             }
+            _portraitsLoadedAt = File.Exists(portraitPath) ? File.GetLastWriteTimeUtc(portraitPath) : DateTime.MinValue;
 
             RebuildSkillOptions();
             RebuildRegions();
@@ -475,9 +479,26 @@ public partial class GeneralEditorScene : Control
             }
 
             var path = Path.Combine(_dataDirectory, "generals.json");
+            if (File.GetLastWriteTimeUtc(path) != _generalsLoadedAt)
+            {
+                _status.Text = "generals.json이 외부에서 변경되었습니다. 재로드 후 다시 저장하세요.";
+                return;
+            }
+
+            var portraitPath = Path.Combine(_dataDirectory, "general-portraits.json");
+            var portraitWriteTime = File.Exists(portraitPath) ? File.GetLastWriteTimeUtc(portraitPath) : DateTime.MinValue;
+            if (portraitWriteTime != _portraitsLoadedAt)
+            {
+                _status.Text = "general-portraits.json이 외부에서 변경되었습니다. 재로드 후 다시 저장하세요.";
+                return;
+            }
+
+            BackupDataFiles();
             var saved = GeneralEditorStore.ReplaceGeneral(File.ReadAllText(path), edited);
             File.WriteAllText(path, saved);
             SavePortraitMetadata(edited.Id);
+            _generalsLoadedAt = File.GetLastWriteTimeUtc(path);
+            _portraitsLoadedAt = File.GetLastWriteTimeUtc(portraitPath);
             var index = _generals.FindIndex(g => g.Id == edited.Id);
             if (index >= 0)
             {
@@ -519,6 +540,18 @@ public partial class GeneralEditorScene : Control
                 .Select(kv => new GeneralEditorSkill(kv.Key, (int)kv.Value.Tier.Value))
                 .ToList(),
         };
+    }
+
+    private void BackupDataFiles()
+    {
+        var backupDir = Path.Combine(RepositoryRoot(), "tools", "general-editor", "backups", DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+        Directory.CreateDirectory(backupDir);
+        File.Copy(Path.Combine(_dataDirectory, "generals.json"), Path.Combine(backupDir, "generals.json"), overwrite: true);
+        var portraitsPath = Path.Combine(_dataDirectory, "general-portraits.json");
+        if (File.Exists(portraitsPath))
+        {
+            File.Copy(portraitsPath, Path.Combine(backupDir, "general-portraits.json"), overwrite: true);
+        }
     }
 
     private void SavePortraitMetadata(int generalId)

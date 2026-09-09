@@ -136,6 +136,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _selectedUnitId = -1;
     private int _retargetUnitId = -1;  // ≥0이면 야전 부대 이동 재지정 목표 지정 중
     private UnitMode _retargetMode;
+    private string _dataDirectory = "";
     private bool _leftDown;            // 좌클릭 vs 좌드래그(맵 이동) 구분용
     private Vector2 _leftDownPos;
 
@@ -381,6 +382,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         _view = view;
         _camera = camera;
+        _dataDirectory = dataDirectory;
         _font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
 
         _troops = new TroopTypeLoader().LoadFromDirectory(dataDirectory);
@@ -1005,6 +1007,31 @@ public sealed partial class CampaignMapScene : Node3D
 
         Clear(_infoRows);
         _infoRows.AddChild(MakeLabel($"《 {tmpl?.Name ?? u.TroopCode} 》 {faction?.Name}", 15, GoldBright));
+        if (u.VanguardId is { } vanguardId)
+        {
+            var faceRow = new HBoxContainer();
+            faceRow.AddThemeConstantOverride("separation", 8);
+            _infoRows.AddChild(faceRow);
+            if (CircularPortraitFor(vanguardId) is { } face)
+            {
+                var frame = new PanelContainer { CustomMinimumSize = new Vector2(74, 74) };
+                frame.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.05f), Gold, 1, 37, 0));
+                frame.AddChild(new TextureRect
+                {
+                    Texture = face,
+                    CustomMinimumSize = new Vector2(70, 70),
+                    ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                    StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                });
+                faceRow.AddChild(frame);
+            }
+
+            var names = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            names.AddChild(MakeLabel($"선봉 {van ?? "—"}", 13, GoldBright));
+            names.AddChild(MakeLabel($"부관 {adj ?? "—"}", 12, Parchment));
+            faceRow.AddChild(names);
+        }
+
         var g = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         g.AddThemeConstantOverride("h_separation", 10);
         g.AddThemeConstantOverride("v_separation", 5);
@@ -4588,6 +4615,83 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var path = PortraitPathFor(id);
         return path is not null ? GD.Load<Texture2D>(path) : null;
+    }
+
+    private Texture2D? CircularPortraitFor(GeneralId id)
+    {
+        var portrait = LoadPortraitMetadata(id);
+        var path = portrait is not null
+            ? "res://" + portrait.PortraitPath.Replace('\\', '/').Replace("SanguoSLG.Game/", "")
+            : PortraitPathFor(id);
+        if (path is null)
+        {
+            return null;
+        }
+
+        var globalPath = ProjectSettings.GlobalizePath(path);
+        if (!File.Exists(globalPath))
+        {
+            return PortraitFor(id);
+        }
+
+        var image = Image.LoadFromFile(globalPath);
+        if (image is null || image.IsEmpty())
+        {
+            return PortraitFor(id);
+        }
+
+        portrait ??= new GeneralPortraitRecord(id.Value, $"SanguoSLG.Game/assets/portraits/{id.Value}.png", 0.5, 0.35, 1);
+        return ImageTexture.CreateFromImage(BuildCircularPortraitImage(image, portrait));
+    }
+
+    private GeneralPortraitRecord? LoadPortraitMetadata(GeneralId id)
+    {
+        try
+        {
+            var path = Path.Combine(_dataDirectory, "general-portraits.json");
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+
+            return GeneralEditorStore.LoadPortraits(File.ReadAllText(path)).FirstOrDefault(p => p.GeneralId == id.Value);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Image BuildCircularPortraitImage(Image source, GeneralPortraitRecord portrait)
+    {
+        const int size = 192;
+        var side = Math.Max(1, Math.Min(source.GetWidth(), source.GetHeight()) / portrait.FaceZoom);
+        var centerX = source.GetWidth() * portrait.FaceCenterX;
+        var centerY = source.GetHeight() * portrait.FaceCenterY;
+        var left = Math.Clamp(centerX - side / 2.0, 0, Math.Max(0, source.GetWidth() - side));
+        var top = Math.Clamp(centerY - side / 2.0, 0, Math.Max(0, source.GetHeight() - side));
+        var crop = source.GetRegion(new Rect2I((int)Math.Round(left), (int)Math.Round(top), (int)Math.Round(side), (int)Math.Round(side)));
+        crop.Resize(size, size, Image.Interpolation.Lanczos);
+
+        var radius = size / 2.0;
+        var output = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
+        for (var y = 0; y < size; y++)
+        {
+            for (var x = 0; x < size; x++)
+            {
+                var dx = x + 0.5 - radius;
+                var dy = y + 0.5 - radius;
+                var color = crop.GetPixel(x, y);
+                if (dx * dx + dy * dy > radius * radius)
+                {
+                    color.A = 0;
+                }
+
+                output.SetPixel(x, y, color);
+            }
+        }
+
+        return output;
     }
 
     private void OpenGeneralDetail(GeneralId gid, CityId backCity, System.Action? backAction = null)
