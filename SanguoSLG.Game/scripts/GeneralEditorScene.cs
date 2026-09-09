@@ -20,8 +20,8 @@ public partial class GeneralEditorScene : Control
     private readonly Dictionary<int, GeneralPortraitRecord> _portraitsByGeneralId = new();
     private readonly List<GeneralEditorRecord> _generals = [];
     private readonly Dictionary<string, OptionButton> _aptitudeInputs = new();
-    private readonly Dictionary<string, (CheckBox Check, SpinBox Tier)> _passiveInputs = new();
     private readonly Dictionary<string, (CheckBox Check, SpinBox Tier)> _adminInputs = new();
+    private readonly List<GeneralEditorSkill> _selectedBattlePassives = [];
     private LineEdit _search = null!;
     private OptionButton _regionFilter = null!;
     private ItemList _list = null!;
@@ -33,7 +33,9 @@ public partial class GeneralEditorScene : Control
     private OptionButton _activeInput = null!;
     private Label _activeDescription = null!;
     private Label _changePreview = null!;
-    private GridContainer _passiveGrid = null!;
+    private OptionButton _passiveSelect = null!;
+    private Label _passiveDescription = null!;
+    private VBoxContainer _passiveList = null!;
     private GridContainer _adminGrid = null!;
     private TextureRect _portraitPreview = null!;
     private TextureRect _facePreview = null!;
@@ -191,8 +193,22 @@ public partial class GeneralEditorScene : Control
         editor.AddChild(_activeDescription);
 
         editor.AddChild(SectionLabel("전투 패시브"));
-        _passiveGrid = new GridContainer { Columns = 2 };
-        editor.AddChild(_passiveGrid);
+        var passiveAddRow = new HBoxContainer();
+        editor.AddChild(passiveAddRow);
+        _passiveSelect = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _passiveSelect.ItemSelected += _ => UpdatePassiveCandidateDescription();
+        passiveAddRow.AddChild(_passiveSelect);
+        var addPassive = new Button { Text = "추가", CustomMinimumSize = new Vector2(82, 0) };
+        addPassive.Pressed += AddSelectedBattlePassive;
+        passiveAddRow.AddChild(addPassive);
+        _passiveDescription = new Label
+        {
+            Text = "전투 패시브를 선택하면 효과가 표시됩니다.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
+        editor.AddChild(_passiveDescription);
+        _passiveList = new VBoxContainer();
+        editor.AddChild(_passiveList);
 
         editor.AddChild(SectionLabel("내정 패시브"));
         _adminGrid = new GridContainer { Columns = 2 };
@@ -381,12 +397,9 @@ public partial class GeneralEditorScene : Control
 
         SelectOption(_activeInput, string.IsNullOrWhiteSpace(general.BattleActive) ? "" : general.BattleActive);
         UpdateActiveDescription();
-        foreach (var (code, input) in _passiveInputs)
-        {
-            var held = general.BattlePassives.FirstOrDefault(s => s.Code == code);
-            input.Check.ButtonPressed = held is not null;
-            input.Tier.Value = held?.Tier ?? 1;
-        }
+        _selectedBattlePassives.Clear();
+        _selectedBattlePassives.AddRange(general.BattlePassives.Select(s => new GeneralEditorSkill(s.Code, s.Tier)));
+        RefreshBattlePassiveList();
 
         foreach (var (code, input) in _adminInputs)
         {
@@ -459,8 +472,20 @@ public partial class GeneralEditorScene : Control
             _activeInput.SetItemMetadata(index, code);
         }
 
-        RebuildSkillGrid(_passiveGrid, _passiveInputs, _passiveNames);
+        RebuildSkillSelect(_passiveSelect, _passiveNames);
+        UpdatePassiveCandidateDescription();
         RebuildSkillGrid(_adminGrid, _adminInputs, _adminNames);
+    }
+
+    private void RebuildSkillSelect(OptionButton input, Dictionary<string, string> names)
+    {
+        input.Clear();
+        foreach (var (code, name) in names.OrderBy(kv => kv.Value))
+        {
+            var index = input.ItemCount;
+            input.AddItem($"{name} ({code})");
+            input.SetItemMetadata(index, code);
+        }
     }
 
     private void RebuildSkillGrid(GridContainer parent, Dictionary<string, (CheckBox Check, SpinBox Tier)> inputs, Dictionary<string, string> names)
@@ -566,10 +591,7 @@ public partial class GeneralEditorScene : Control
             Politics = (int)_politicsInput.Value,
             Aptitudes = TroopKeys.ToDictionary(k => k, k => SelectedText(_aptitudeInputs[k])),
             BattleActive = SelectedMetadata(_activeInput),
-            BattlePassives = _passiveInputs
-                .Where(kv => kv.Value.Check.ButtonPressed)
-                .Select(kv => new GeneralEditorSkill(kv.Key, (int)kv.Value.Tier.Value))
-                .ToList(),
+            BattlePassives = _selectedBattlePassives.ToList(),
             AdminPassives = _adminInputs
                 .Where(kv => kv.Value.Check.ButtonPressed)
                 .Select(kv => new GeneralEditorSkill(kv.Key, (int)kv.Value.Tier.Value))
@@ -684,6 +706,124 @@ public partial class GeneralEditorScene : Control
         _activeDescription.Text = _activeSkills.TryGetValue(code, out var skill)
             ? $"{skill.Name} ({skill.Code})\n{SkillDescriptions.Active(skill)}"
             : $"등록되지 않은 액티브입니다: {code}";
+    }
+
+    private void UpdatePassiveCandidateDescription()
+    {
+        if (_passiveSelect.ItemCount == 0)
+        {
+            _passiveDescription.Text = "선택 가능한 전투 패시브가 없습니다.";
+            return;
+        }
+
+        var code = SelectedMetadata(_passiveSelect);
+        _passiveDescription.Text = code is not null && _passiveSkills.TryGetValue(code, out var skill)
+            ? $"{skill.Name} ({skill.Code})\n{SkillDescriptions.Passive(skill, 1)}"
+            : "전투 패시브를 선택하면 효과가 표시됩니다.";
+    }
+
+    private void AddSelectedBattlePassive()
+    {
+        if (_passiveSelect.ItemCount == 0)
+        {
+            return;
+        }
+
+        var code = SelectedMetadata(_passiveSelect);
+        if (code is null)
+        {
+            return;
+        }
+
+        if (_selectedBattlePassives.Any(s => s.Code == code))
+        {
+            _status.Text = "이미 추가된 전투 패시브입니다.";
+            return;
+        }
+
+        var totalBattle = (SelectedMetadata(_activeInput) is null ? 0 : 1) + _selectedBattlePassives.Count + 1;
+        if (totalBattle > 4)
+        {
+            _status.Text = "전투 스킬은 액티브 포함 최대 4개입니다.";
+            return;
+        }
+
+        _selectedBattlePassives.Add(new GeneralEditorSkill(code, 1));
+        RefreshBattlePassiveList();
+        UpdateChangePreview();
+    }
+
+    private void RefreshBattlePassiveList()
+    {
+        ClearChildren(_passiveList);
+        if (_selectedBattlePassives.Count == 0)
+        {
+            _passiveList.AddChild(new Label { Text = "추가된 전투 패시브 없음" });
+            return;
+        }
+
+        foreach (var skill in _selectedBattlePassives.ToList())
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            _passiveList.AddChild(row);
+
+            var name = _passiveNames.GetValueOrDefault(skill.Code, skill.Code);
+            var label = new Label
+            {
+                Text = $"{name} ({skill.Code})",
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                TooltipText = _passiveSkills.TryGetValue(skill.Code, out var def) ? SkillDescriptions.Passive(def, skill.Tier) : "",
+            };
+            row.AddChild(label);
+
+            var tier = new SpinBox
+            {
+                MinValue = 1,
+                MaxValue = 3,
+                Step = 1,
+                Rounded = true,
+                Value = skill.Tier,
+                CustomMinimumSize = new Vector2(72, 0),
+            };
+            tier.ValueChanged += value =>
+            {
+                var idx = _selectedBattlePassives.FindIndex(s => s.Code == skill.Code);
+                if (idx >= 0)
+                {
+                    _selectedBattlePassives[idx] = skill with { Tier = (int)value };
+                    RefreshBattlePassiveList();
+                    UpdateChangePreview();
+                }
+            };
+            row.AddChild(tier);
+
+            var desc = new Button { Text = "설명", CustomMinimumSize = new Vector2(70, 0) };
+            desc.Pressed += () =>
+            {
+                _passiveDescription.Text = _passiveSkills.TryGetValue(skill.Code, out var def)
+                    ? $"{name} ({skill.Code})\n{SkillDescriptions.Passive(def, skill.Tier)}"
+                    : $"등록되지 않은 전투 패시브입니다: {skill.Code}";
+            };
+            row.AddChild(desc);
+
+            var remove = new Button { Text = "제거", CustomMinimumSize = new Vector2(70, 0) };
+            remove.Pressed += () =>
+            {
+                _selectedBattlePassives.RemoveAll(s => s.Code == skill.Code);
+                RefreshBattlePassiveList();
+                UpdateChangePreview();
+            };
+            row.AddChild(remove);
+        }
+    }
+
+    private static void ClearChildren(Container parent)
+    {
+        foreach (var child in parent.GetChildren())
+        {
+            child.QueueFree();
+        }
     }
 
     private static string SkillText(IReadOnlyList<GeneralEditorSkill> skills)
