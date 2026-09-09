@@ -386,10 +386,10 @@ public class WorldEngineTests
         var garrison = after.Garrisons.Single(g => g.City == city.Id && g.TroopCode == "swordsman");
 
         Assert.Equal(49, resultCity.Security);
-        Assert.Equal(1220, resultCity.Gold);
-        Assert.Equal(1700, resultCity.Provisions);
-        Assert.Equal(4800, garrison.Troops);
-        Assert.Equal(59, garrison.TrainingLevel);
+        Assert.Equal(1132, resultCity.Gold);
+        Assert.Equal(1420, resultCity.Provisions);
+        Assert.Equal(3280, garrison.Troops);
+        Assert.Equal(53, garrison.TrainingLevel);
     }
 
     [Fact]
@@ -471,7 +471,7 @@ public class WorldEngineTests
     public void v2_병력담당은_무력100이면_한달에_오천명을_생산한다()
     {
         var city = new City(new CityId(1), "병영성", new HexCoord(0, 0), new FactionId(1), 1000,
-            Gold: 1000, Population: 0, Security: 50,
+            Gold: 1000, Population: 0, Security: 80,
             RecruitmentOfficer: new GeneralId(1),
             AutoRecruitTroopCodes: "swordsman");
         var generals = new[] { V2Officer(1, might: 100) };
@@ -506,7 +506,7 @@ public class WorldEngineTests
     public void v2_병력담당은_선택한_병종을_생산하고_비용을_차감한다()
     {
         var city = new City(new CityId(1), "기병성", new HexCoord(0, 0), new FactionId(1), 1000,
-            Gold: 100, Population: 0, Security: 50,
+            Gold: 100, Population: 0, Security: 80,
             RecruitmentOfficer: new GeneralId(1),
             AutoRecruitTroopCodes: "cavalry");
         var generals = new[] { V2Officer(1, might: 70) };
@@ -526,7 +526,7 @@ public class WorldEngineTests
     public void v2_병력담당은_다중병종을_싼순서로_나눠_생산한다()
     {
         var city = new City(new CityId(1), "복합성", new HexCoord(0, 0), new FactionId(1), 1000,
-            Gold: 100, Population: 0, Security: 50,
+            Gold: 100, Population: 0, Security: 80,
             RecruitmentOfficer: new GeneralId(1),
             AutoRecruitTroopCodes: "war_elephant,swordsman,cavalry");
         var generals = new[] { V2Officer(1, might: 100) };

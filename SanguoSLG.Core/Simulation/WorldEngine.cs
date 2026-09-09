@@ -126,10 +126,12 @@ public sealed class WorldEngine
 
             if (domestic is not null)
             {
+                var gold = _commands.AutoDomesticGoldBase
+                    + domestic.Politics * _commands.AutoDomesticGoldPoliticsMultiplier;
+                gold = ApplyLowSecurityOutputPenalty(gold, next.Security);
                 next = next with
                 {
-                    Gold = next.Gold + _commands.AutoDomesticGoldBase
-                        + domestic.Politics * _commands.AutoDomesticGoldPoliticsMultiplier,
+                    Gold = next.Gold + gold,
                 };
             }
 
@@ -151,8 +153,9 @@ public sealed class WorldEngine
             var monthly = MonthlyProvisionsIncome(state, city, governor);
             if (includeDomesticOfficer && domestic is not null)
             {
-                monthly += _commands.AutoDomesticProvisionsBase
+                var domesticMonthly = _commands.AutoDomesticProvisionsBase
                     + domestic.Politics * _commands.AutoDomesticProvisionsPoliticsMultiplier;
+                monthly += ApplyLowSecurityOutputPenalty(domesticMonthly, city.Security);
             }
 
             return city with { Provisions = city.Provisions + SplitMonthlyAmount(monthly, tick) };
@@ -208,6 +211,7 @@ public sealed class WorldEngine
                 var troopCodes = SelectedAutoRecruitTroopCodes(next).OrderBy(_commands.AutoRecruitGoldCostPer100)
                     .ThenBy(c => c, System.StringComparer.Ordinal).ToList();
                 var totalTroops = _commands.AutoRecruitTroopsBase + recruiter.Might * _commands.AutoRecruitTroopsMightMultiplier;
+                totalTroops = ApplyLowSecurityOutputPenalty(totalTroops, next.Security);
                 for (var i = 0; i < troopCodes.Count; i++)
                 {
                     var code = troopCodes[i];
@@ -238,6 +242,7 @@ public sealed class WorldEngine
             if (trainer is null) { continue; }
 
             var gain = System.Math.Max(1, MightTier(trainer.Might) + 1);
+            gain = System.Math.Max(1, ApplyLowSecurityOutputPenalty(gain, city.Security));
             garrisons = garrisons.Select(g => g.City == city.Id
                 ? g with { TrainingLevel = System.Math.Min(_commands.TrainCap, g.TrainingLevel + gain) }
                 : g).ToList();
@@ -258,6 +263,9 @@ public sealed class WorldEngine
             ? [_commands.AutoRecruitDefaultTroopCode]
             : [city.AutoRecruitTroopCode];
     }
+
+    private int ApplyLowSecurityOutputPenalty(int amount, int security)
+        => amount * _commands.LowSecurityOutputPercent(security) / 100;
 
     private Domain.General? ValidOfficer(GameState state, City city, GeneralId? id,
         IReadOnlyDictionary<GeneralId, Domain.General> byId)

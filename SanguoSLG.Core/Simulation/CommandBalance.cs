@@ -135,6 +135,14 @@ public sealed record CommandBalance
     public int AutoRecruitTroopsBase { get; init; } = 250;
     public int AutoRecruitTroopsMightMultiplier { get; init; } = 10;
     public int AutoRecruitTroopTrainingLevel { get; init; } = 50;
+    public int LowSecurityPenaltyThreshold1 { get; init; } = 70;
+    public int LowSecurityPenaltyPercent1 { get; init; } = 80;
+    public int LowSecurityPenaltyThreshold2 { get; init; } = 60;
+    public int LowSecurityPenaltyPercent2 { get; init; } = 60;
+    public int LowSecurityPenaltyThreshold3 { get; init; } = 40;
+    public int LowSecurityPenaltyPercent3 { get; init; } = 40;
+    public int LowSecurityPenaltyThreshold4 { get; init; } = 20;
+    public int LowSecurityPenaltyPercent4 { get; init; } = 20;
     public string AutoRecruitDefaultTroopCode { get; init; } = "swordsman";
     public Dictionary<string, int> AutoRecruitGoldCostPer100ByTroop { get; init; } = new()
     {
@@ -154,6 +162,31 @@ public sealed record CommandBalance
     {
         var costPer100 = AutoRecruitGoldCostPer100(troopCode);
         return costPer100 <= 0 || troops <= 0 ? 0 : (troops * costPer100 + 99) / 100;
+    }
+
+    public int LowSecurityOutputPercent(int security)
+    {
+        if (security <= LowSecurityPenaltyThreshold4)
+        {
+            return LowSecurityPenaltyPercent4;
+        }
+
+        if (security <= LowSecurityPenaltyThreshold3)
+        {
+            return LowSecurityPenaltyPercent3;
+        }
+
+        if (security <= LowSecurityPenaltyThreshold2)
+        {
+            return LowSecurityPenaltyPercent2;
+        }
+
+        if (security <= LowSecurityPenaltyThreshold1)
+        {
+            return LowSecurityPenaltyPercent1;
+        }
+
+        return 100;
     }
 
     /// <summary>동맹 체결 시 수행 도시 금고에서 즉시 소비되는 비용.</summary>
