@@ -805,6 +805,9 @@ public partial class GeneralEditorScene : Control
         if (_selectedBattlePassives.Count == 0)
         {
             _passiveList.AddChild(new Label { Text = "추가된 전투 패시브 없음" });
+            var add = new Button { Text = "선택한 전투 패시브 추가", CustomMinimumSize = new Vector2(0, 34) };
+            add.Pressed += AddSelectedBattlePassive;
+            _passiveList.AddChild(add);
             return;
         }
 
@@ -870,6 +873,9 @@ public partial class GeneralEditorScene : Control
         if (_selectedAdminPassives.Count == 0)
         {
             _adminList.AddChild(new Label { Text = "추가된 내정 패시브 없음" });
+            var add = new Button { Text = "선택한 내정 패시브 추가", CustomMinimumSize = new Vector2(0, 34) };
+            add.Pressed += AddSelectedAdminPassive;
+            _adminList.AddChild(add);
             return;
         }
 
@@ -933,7 +939,8 @@ public partial class GeneralEditorScene : Control
     {
         foreach (var child in parent.GetChildren())
         {
-            child.QueueFree();
+            parent.RemoveChild(child);
+            child.Free();
         }
     }
 
