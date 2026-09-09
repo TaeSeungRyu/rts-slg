@@ -28,4 +28,5 @@ public sealed record TroopTemplate(
     int RangeUnit = 1,
     int RangeBuilding = 1,
     int RangeCastle = 1,
-    int ProvisionsCapacity = 300);
+    int ProvisionsCapacity = 300,
+    int Vision = 3);

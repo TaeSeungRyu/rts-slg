@@ -1,6 +1,7 @@
 [
   {
     "code": "swordsman",
+    "vision": 3,
     "name": "도검병",
     "class": "infantry",
     "atk_unit": 8,
@@ -15,6 +16,7 @@
   },
   {
     "code": "archer",
+    "vision": 3,
     "name": "궁병",
     "class": "archer",
     "atk_unit": 10,
@@ -29,6 +31,7 @@
   },
   {
     "code": "cavalry",
+    "vision": 4,
     "name": "기병",
     "class": "cavalry",
     "atk_unit": 12,
@@ -43,6 +46,7 @@
   },
   {
     "code": "war_elephant",
+    "vision": 3,
     "name": "상병",
     "class": "elephant",
     "atk_unit": 14,
@@ -57,6 +61,7 @@
   },
   {
     "code": "catapult",
+    "vision": 2,
     "name": "투석기",
     "class": "siege",
     "atk_unit": 12,
@@ -71,6 +76,7 @@
   },
   {
     "code": "siege_tower",
+    "vision": 2,
     "name": "공성탑",
     "class": "siege",
     "atk_unit": 10,
@@ -85,6 +91,7 @@
   },
   {
     "code": "thunder_cart",
+    "vision": 2,
     "name": "충차",
     "class": "siege",
     "atk_unit": 6,
@@ -99,6 +106,7 @@
   },
   {
     "code": "turtleship",
+    "vision": 4,
     "name": "거북선",
     "class": "naval",
     "atk_unit": 16,
@@ -113,6 +121,7 @@
   },
   {
     "code": "large_ship",
+    "vision": 4,
     "name": "대선",
     "class": "naval",
     "atk_unit": 12,
@@ -127,6 +136,7 @@
   },
   {
     "code": "medium_ship",
+    "vision": 4,
     "name": "중선",
     "class": "naval",
     "atk_unit": 10,
@@ -141,6 +151,7 @@
   },
   {
     "code": "small_boat",
+    "vision": 4,
     "name": "소선",
     "class": "naval",
     "atk_unit": 8,

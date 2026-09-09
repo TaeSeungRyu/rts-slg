@@ -134,6 +134,10 @@ internal sealed class BalanceDto
     public int MarketGrainPricePer100 { get; init; } = 25;
     public int MarketJitterPercent { get; init; } = 15;
     public List<int>? MarketSeasonalPercent { get; init; }
+    public int VisionCastleSmall { get; init; } = 4;
+    public int VisionCastleMedium { get; init; } = 5;
+    public int VisionCastleLarge { get; init; } = 6;
+    public int VisionSupply { get; init; } = 2;
 }
 
 internal sealed class MapDto

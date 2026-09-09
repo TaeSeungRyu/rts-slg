@@ -25,7 +25,8 @@ public sealed class TroopTypeLoader
 
         return dtos
             .Select(d => new TroopTemplate(d.Code, d.Name, ParseClass(d.Class), d.AtkUnit, d.AtkBuilding, d.Df,
-                d.MovementPerDay, d.Detection, d.RangeUnit, d.RangeBuilding, d.RangeCastle, d.ProvisionsCapacity))
+                d.MovementPerDay, d.Detection, d.RangeUnit, d.RangeBuilding, d.RangeCastle, d.ProvisionsCapacity,
+                d.Vision >= 0 ? d.Vision : throw new InvalidDataException($"병종 시야는 음수일 수 없습니다: {d.Code}")))
             .ToList();
     }
 
@@ -54,5 +55,6 @@ public sealed class TroopTypeLoader
         public int RangeBuilding { get; init; } = 1;
         public int RangeCastle { get; init; } = 1;
         public int ProvisionsCapacity { get; init; } = 300;
+        public int Vision { get; init; } = 3;
     }
 }
