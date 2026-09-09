@@ -25,5 +25,13 @@
   { "code": "heavy_blow", "name": "강타", "type": "strike",  "grade": "low", "damage_mult_percent": 130 },
   { "code": "double_hit", "name": "연타", "type": "strike",  "grade": "low", "damage_mult_percent": 120 },
   { "code": "brace",      "name": "방비", "type": "defense", "grade": "low", "damage_reduction_percent": 20 },
-  { "code": "patch",      "name": "수습", "type": "heal",    "grade": "low", "heal_percent": 8 }
+  { "code": "patch",      "name": "수습", "type": "heal",    "grade": "low", "heal_percent": 8 },
+
+  { "code": "fire_plot", "name": "화계", "type": "tactic", "grade": "high", "description": "대상 병력과 대상 주위 1칸 이내의 적군 병력에 2진행 동안 매 진행 병력 2% 영구 소실을 적용합니다." },
+  { "code": "lightning", "name": "낙뢰", "type": "tactic", "grade": "high", "description": "대상 병력 10%, 대상 주위 1칸 이내의 적군 병력 5% 피해를 줍니다." },
+  { "code": "confound", "name": "혼란", "type": "tactic", "grade": "high", "description": "대상 부대의 지력이 시전자보다 낮으면 100% 발동합니다. 대상은 2진행 동안 행동할 수 없고 이후 자동 회복합니다." },
+  { "code": "rout", "name": "교란", "type": "tactic", "grade": "high", "description": "대상 부대의 지력이 시전자보다 낮으면 100% 발동합니다. 대상을 시전자 반대 방향으로 5칸 강제 후퇴시킵니다." },
+  { "code": "discord", "name": "이간", "type": "tactic", "grade": "high", "description": "기존 이간 효과를 유지합니다. 대상의 적성과 전투 패시브를 2진행 동안 무효화합니다." },
+  { "code": "douse", "name": "소화", "type": "tactic", "grade": "low", "description": "화계 계열 지속 피해 상태를 제거합니다." },
+  { "code": "cleanse", "name": "진정", "type": "tactic", "grade": "low", "description": "화계 이외의 해로운 지속 상태를 제거합니다." }
 ]

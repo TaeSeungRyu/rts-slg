@@ -24,7 +24,7 @@ public sealed class ActiveSkillLoader
         return dtos.Select(d => new ActiveSkill(
             d.Code, d.Name, ParseType(d.Type), d.Grade,
             d.DamageMultPercent, d.DefenderDfReductionPercent, d.ExecutePercent, d.ExecuteCapPercent,
-            d.BuildingOnly, d.DamageReductionPercent, d.HealPercent, d.HealCapPercent)).ToList();
+            d.BuildingOnly, d.DamageReductionPercent, d.HealPercent, d.HealCapPercent, d.Description)).ToList();
     }
 
     private static ActiveType ParseType(string name) => name switch
@@ -32,6 +32,7 @@ public sealed class ActiveSkillLoader
         "strike" => ActiveType.Strike,
         "defense" => ActiveType.Defense,
         "heal" => ActiveType.Heal,
+        "tactic" => ActiveType.Tactic,
         _ => throw new InvalidDataException($"알 수 없는 액티브 유형: {name}"),
     };
 
@@ -49,5 +50,6 @@ public sealed class ActiveSkillLoader
         public int DamageReductionPercent { get; init; }
         public int HealPercent { get; init; }
         public int HealCapPercent { get; init; } = 40;
+        public string Description { get; init; } = "";
     }
 }

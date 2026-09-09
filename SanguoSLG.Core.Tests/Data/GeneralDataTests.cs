@@ -3,6 +3,7 @@ namespace SanguoSLG.Core.Tests.Data;
 using System.Linq;
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Simulation;
 using Xunit;
 
 /// <summary>data/generals.json 무결성 — 코드 참조·중복·스킬 규칙(spec-general)을 지킨다.</summary>
@@ -60,6 +61,20 @@ public class GeneralDataTests
         {
             var total = (g.BattleActive is null ? 0 : 1) + g.Passives.Count;
             Assert.InRange(total, 0, 4);
+        }
+    }
+
+    [Fact]
+    public void 계략전환_액티브는_스킬데이터에_등록되어있다()
+    {
+        var actives = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())
+            .ToDictionary(a => a.Code);
+
+        foreach (var code in new[] { "fire_plot", "lightning", "confound", "rout", "discord", "douse", "cleanse" })
+        {
+            Assert.True(actives.TryGetValue(code, out var skill), $"{code} 누락");
+            Assert.Equal(ActiveType.Tactic, skill.Type);
+            Assert.False(string.IsNullOrWhiteSpace(skill.Description));
         }
     }
 

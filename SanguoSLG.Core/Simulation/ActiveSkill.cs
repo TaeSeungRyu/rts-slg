@@ -29,4 +29,5 @@ public sealed record ActiveSkill(
     bool BuildingOnly = false,
     int DamageReductionPercent = 0,
     int HealPercent = 0,
-    int HealCapPercent = 40);
+    int HealCapPercent = 40,
+    string Description = "");

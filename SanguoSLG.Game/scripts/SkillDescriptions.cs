@@ -39,6 +39,14 @@ internal static class SkillDescriptions
                     : "현재 적용되는 병력 회복 효과는 없습니다. 추가 효과는 구현 예정입니다.");
                 effects.Add($"지력 60 기준이며 선봉 지력에 따라 달라집니다. 회복률 상한은 {skill.HealCapPercent}%입니다.");
                 break;
+            case ActiveType.Tactic:
+                effects.Add("책략형 · 기존 계략을 전투 액티브 슬롯으로 전환한 스킬입니다.");
+                if (!string.IsNullOrWhiteSpace(skill.Description))
+                {
+                    effects.Add(skill.Description);
+                }
+                effects.Add("실제 전투 효과 배선은 Phase 14A에서 진행합니다. 지금은 에디터 선택과 데이터 검증에 등록된 상태입니다.");
+                break;
         }
         effects.Add($"야전 {ActiveGauge.ReadyDays}일 충전 후 유효한 교전에서 자동 발동합니다. 부대당 교전 1회 발동하며 선봉이 우선합니다. 사용하거나 성으로 복귀하면 충전이 초기화됩니다.");
         if (skill.Code is "armor_break" or "tiger_strike" or "chain_strike" or "breakthrough"

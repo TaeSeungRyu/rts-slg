@@ -1,6 +1,6 @@
 namespace SanguoSLG.Core.Simulation;
 
-/// <summary>전투 액티브 스킬 유형(design-skill-actives.md). 계략은 별도 시스템이다.</summary>
+/// <summary>전투 액티브 스킬 유형(design-skill-actives.md).</summary>
 public enum ActiveType
 {
     /// <summary>타격형 — 일반 공격을 특수 공격으로 대체(무력 연동).</summary>
@@ -11,4 +11,7 @@ public enum ActiveType
 
     /// <summary>회복형 — 일반 공격은 유지하고 병력을 회복한다(지력 연동).</summary>
     Heal,
+
+    /// <summary>책략형 — 기존 계략을 액티브 슬롯으로 전환하는 후속 구현 대상.</summary>
+    Tactic,
 }
