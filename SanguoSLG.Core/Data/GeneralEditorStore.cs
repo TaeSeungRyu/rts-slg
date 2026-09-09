@@ -32,8 +32,11 @@ public sealed class GeneralEditorStore
     private static readonly HashSet<string> Grades = ["F", "D", "C", "B", "A", "A+", "S", "SS", "SSS"];
 
     public static IReadOnlyList<GeneralEditorRecord> LoadGenerals(string json)
-        => JsonSerializer.Deserialize<List<GeneralEditorRecord>>(json, ReadOptions)
+    {
+        var records = JsonSerializer.Deserialize<List<GeneralEditorRecord>>(json, ReadOptions)
             ?? throw new InvalidDataException("장수 데이터를 읽을 수 없습니다.");
+        return records.Select(Normalize).ToList();
+    }
 
     public static IReadOnlyList<GeneralPortraitRecord> LoadPortraits(string json)
         => JsonSerializer.Deserialize<List<GeneralPortraitRecord>>(json, ReadOptions)
@@ -254,6 +257,16 @@ public sealed class GeneralEditorStore
         node["admin_passives"] = JsonSerializer.SerializeToNode(edited.AdminPassives, WriteOptions);
     }
 
+    private static GeneralEditorRecord Normalize(GeneralEditorRecord record)
+        => record with
+        {
+            Aptitudes = record.Aptitudes ?? new Dictionary<string, string>(),
+            BattlePassives = record.BattlePassives ?? [],
+            AdminPassives = record.AdminPassives ?? [],
+            Region = record.Region ?? "",
+            Desc = record.Desc ?? "",
+        };
+
     private static void ApplyPortrait(JsonObject node, GeneralPortraitRecord edited)
     {
         node["general_id"] = edited.GeneralId;
@@ -311,4 +324,3 @@ public sealed class GeneralEditorStore
         }
     }
 }
-

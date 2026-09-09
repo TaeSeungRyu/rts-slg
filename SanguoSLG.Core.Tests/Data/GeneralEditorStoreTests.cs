@@ -90,5 +90,28 @@ public class GeneralEditorStoreTests
 
         Assert.True(result.IsValid);
     }
-}
 
+    [Fact]
+    public void LoadGenerals_누락된스킬배열은_빈배열로_정규화한다()
+    {
+        const string json = """
+        [
+          {
+            "id": 1,
+            "name": "테스트",
+            "aptitudes": { "infantry": "S", "archer": "A", "cavalry": "B", "elephant": "C", "siege": "D", "naval": "F" },
+            "might": 70,
+            "intellect": 70,
+            "politics": 70
+          }
+        ]
+        """;
+
+        var general = GeneralEditorStore.LoadGenerals(json).Single();
+
+        Assert.NotNull(general.BattlePassives);
+        Assert.NotNull(general.AdminPassives);
+        Assert.Empty(general.BattlePassives);
+        Assert.Empty(general.AdminPassives);
+    }
+}
