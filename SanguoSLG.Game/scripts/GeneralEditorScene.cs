@@ -36,6 +36,7 @@ public partial class GeneralEditorScene : Control
     private Label _changePreview = null!;
     private OptionButton _passiveSelect = null!;
     private Label _passiveDescription = null!;
+    private TextureRect _passiveIcon = null!;
     private VBoxContainer _passiveList = null!;
     private OptionButton _adminSelect = null!;
     private Label _adminDescription = null!;
@@ -227,6 +228,8 @@ public partial class GeneralEditorScene : Control
         var addPassive = new Button { Text = "추가", CustomMinimumSize = new Vector2(82, 0) };
         addPassive.Pressed += AddSelectedBattlePassive;
         passiveAddRow.AddChild(addPassive);
+        _passiveIcon = ActiveSkillIcons.Preview(null);
+        passiveLeft.AddChild(_passiveIcon);
         _passiveDescription = new Label
         {
             Text = "전투 패시브를 선택하면 효과가 표시됩니다.",
@@ -760,6 +763,8 @@ public partial class GeneralEditorScene : Control
 
     private void UpdatePassiveCandidateDescription()
     {
+        _passiveIcon.Texture = ActiveSkillIcons.Load($"passive/{SelectedMetadata(_passiveSelect)}");
+        _passiveIcon.Visible = _passiveIcon.Texture is not null;
         if (_passiveSelect.ItemCount == 0)
         {
             _passiveDescription.Text = "선택 가능한 전투 패시브가 없습니다.";
@@ -864,6 +869,7 @@ public partial class GeneralEditorScene : Control
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 8);
             _passiveList.AddChild(row);
+            row.AddChild(ActiveSkillIcons.Preview($"passive/{skill.Code}", 36));
 
             var name = _passiveNames.GetValueOrDefault(skill.Code, skill.Code);
             var label = new Label
@@ -901,6 +907,8 @@ public partial class GeneralEditorScene : Control
                 _passiveDescription.Text = _passiveSkills.TryGetValue(skill.Code, out var def)
                     ? $"{name} ({skill.Code})\n{SkillDescriptions.Passive(def, skill.Tier)}"
                     : $"등록되지 않은 전투 패시브입니다: {skill.Code}";
+                _passiveIcon.Texture = ActiveSkillIcons.Load($"passive/{skill.Code}");
+                _passiveIcon.Visible = _passiveIcon.Texture is not null;
             };
             row.AddChild(desc);
 

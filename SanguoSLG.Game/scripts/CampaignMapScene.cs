@@ -4854,23 +4854,23 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(GoldRule());
 
         box.AddChild(MakeLabel("특기 · 선택하여 효과 확인", 13, GoldBright));
-        var skills = new List<(string Tag, string Name, string Description)>();
+        var skills = new List<(string Tag, string Name, string Description, string? Icon)>();
         if (g.BattleActive is { Length: > 0 } ac)
         {
             var definition = _activeSkills.FirstOrDefault(a => a.Code == ac);
-            skills.Add(("액티브", definition?.Name ?? ac, SkillDescriptions.Active(definition)));
+            skills.Add(("액티브", definition?.Name ?? ac, SkillDescriptions.Active(definition), ac));
         }
 
         foreach (var p in g.Passives)
         {
             var definition = _passiveSkills.FirstOrDefault(x => x.Code == p.Code);
-            skills.Add(("패시브", $"{definition?.Name ?? p.Code} Lv{p.Tier}", SkillDescriptions.Passive(definition, p.Tier)));
+            skills.Add(("패시브", $"{definition?.Name ?? p.Code} Lv{p.Tier}", SkillDescriptions.Passive(definition, p.Tier), $"passive/{p.Code}"));
         }
 
         foreach (var p in g.AdminPassives ?? [])
         {
             var definition = _adminSkills.FirstOrDefault(x => x.Code == p.Code);
-            skills.Add(("내정 패시브", $"{definition?.Name ?? p.Code} Lv{p.Tier}", SkillDescriptions.Admin(definition, p.Tier)));
+            skills.Add(("내정 패시브", $"{definition?.Name ?? p.Code} Lv{p.Tier}", SkillDescriptions.Admin(definition, p.Tier), null));
         }
 
         if (skills.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
@@ -4879,7 +4879,7 @@ public sealed partial class CampaignMapScene : Node3D
             var sg = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             sg.AddThemeConstantOverride("separation", 6);
             box.AddChild(sg);
-            foreach (var (tag, name, description) in skills)
+            foreach (var (tag, name, description, iconCode) in skills)
             {
                 var skillButton = MakeButton($"[{tag}]  {name}   ›");
                 skillButton.Alignment = HorizontalAlignment.Left;
@@ -4887,7 +4887,6 @@ public sealed partial class CampaignMapScene : Node3D
                 skillButton.CustomMinimumSize = new Vector2(0, 38);
                 skillButton.ClipText = true;
                 skillButton.TooltipText = $"{name} · 설명 보기";
-                var iconCode = tag == "액티브" ? g.BattleActive : null;
                 if (iconCode is not null) { ActiveSkillIcons.Apply(skillButton, iconCode); }
                 skillButton.Pressed += () => ShowSkillDescription(name, tag, description, iconCode);
                 sg.AddChild(skillButton);
