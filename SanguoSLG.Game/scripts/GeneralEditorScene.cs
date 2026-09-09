@@ -95,8 +95,10 @@ public partial class GeneralEditorScene : Control
         {
             CustomMinimumSize = new Vector2(310, 0),
             SizeFlagsVertical = SizeFlags.ExpandFill,
+            AllowReselect = true,
         };
         _list.ItemSelected += OnGeneralSelected;
+        _list.ItemActivated += OnGeneralSelected;
         body.AddChild(_list);
 
         var detail = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
@@ -312,10 +314,21 @@ public partial class GeneralEditorScene : Control
 
     private void OnGeneralSelected(long index)
     {
-        var id = (int)_list.GetItemMetadata((int)index);
+        var item = (int)index;
+        if (item < 0 || item >= _list.ItemCount)
+        {
+            return;
+        }
+
+        var id = _list.GetItemMetadata(item).AsInt32();
         if (_generalsById.TryGetValue(id, out var general))
         {
             ShowGeneral(general);
+            _status.Text = $"{general.Name} 선택";
+        }
+        else
+        {
+            _status.Text = $"장수 ID {id}를 찾을 수 없습니다.";
         }
     }
 
