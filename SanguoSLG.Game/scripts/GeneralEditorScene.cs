@@ -182,23 +182,42 @@ public partial class GeneralEditorScene : Control
         }
 
         var activeSection = AddSection(editor, "전투 액티브");
+        var activeBody = new HBoxContainer();
+        activeBody.AddThemeConstantOverride("separation", 12);
+        activeSection.AddChild(activeBody);
+        var activeLeft = new VBoxContainer
+        {
+            CustomMinimumSize = new Vector2(280, 0),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        activeBody.AddChild(activeLeft);
         _activeInput = new OptionButton();
         _activeInput.ItemSelected += _ =>
         {
             UpdateActiveDescription();
             UpdateChangePreview();
         };
-        activeSection.AddChild(_activeInput);
+        activeLeft.AddChild(_activeInput);
         _activeDescription = new Label
         {
             Text = "액티브를 선택하면 효과가 표시됩니다.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
-        activeSection.AddChild(_activeDescription);
+        activeBody.AddChild(DescriptionPanel(_activeDescription));
 
         var passiveSection = AddSection(editor, "전투 패시브");
+        var passiveBody = new HBoxContainer();
+        passiveBody.AddThemeConstantOverride("separation", 12);
+        passiveSection.AddChild(passiveBody);
+        var passiveLeft = new VBoxContainer
+        {
+            CustomMinimumSize = new Vector2(360, 0),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        passiveBody.AddChild(passiveLeft);
         var passiveAddRow = new HBoxContainer();
-        passiveSection.AddChild(passiveAddRow);
+        passiveLeft.AddChild(passiveAddRow);
         _passiveSelect = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _passiveSelect.ItemSelected += _ => UpdatePassiveCandidateDescription();
         passiveAddRow.AddChild(_passiveSelect);
@@ -209,14 +228,24 @@ public partial class GeneralEditorScene : Control
         {
             Text = "전투 패시브를 선택하면 효과가 표시됩니다.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
-        passiveSection.AddChild(_passiveDescription);
+        passiveBody.AddChild(DescriptionPanel(_passiveDescription));
         _passiveList = new VBoxContainer();
-        passiveSection.AddChild(_passiveList);
+        passiveLeft.AddChild(_passiveList);
 
         var adminSection = AddSection(editor, "내정 패시브");
+        var adminBody = new HBoxContainer();
+        adminBody.AddThemeConstantOverride("separation", 12);
+        adminSection.AddChild(adminBody);
+        var adminLeft = new VBoxContainer
+        {
+            CustomMinimumSize = new Vector2(360, 0),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        adminBody.AddChild(adminLeft);
         var adminAddRow = new HBoxContainer();
-        adminSection.AddChild(adminAddRow);
+        adminLeft.AddChild(adminAddRow);
         _adminSelect = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _adminSelect.ItemSelected += _ => UpdateAdminCandidateDescription();
         adminAddRow.AddChild(_adminSelect);
@@ -227,10 +256,11 @@ public partial class GeneralEditorScene : Control
         {
             Text = "내정 패시브를 선택하면 효과가 표시됩니다.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
-        adminSection.AddChild(_adminDescription);
+        adminBody.AddChild(DescriptionPanel(_adminDescription));
         _adminList = new VBoxContainer();
-        adminSection.AddChild(_adminList);
+        adminLeft.AddChild(_adminList);
 
         var saveSection = AddSection(editor, "변경 및 저장");
         _changePreview = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.WordSmart };
@@ -490,6 +520,19 @@ public partial class GeneralEditorScene : Control
         };
         box.AddChild(line);
         return box;
+    }
+
+    private PanelContainer DescriptionPanel(Control content)
+    {
+        var panel = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(360, 0),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        panel.AddThemeStyleboxOverride("panel", DescriptionBox());
+        panel.AddChild(content);
+        return panel;
     }
 
     private void RebuildSkillOptions()
@@ -1049,6 +1092,21 @@ public partial class GeneralEditorScene : Control
             ContentMarginTop = 10,
             ContentMarginRight = 12,
             ContentMarginBottom = 10,
+        };
+
+    private static StyleBoxFlat DescriptionBox()
+        => new()
+        {
+            BgColor = new Color(0.04f, 0.035f, 0.03f, 0.82f),
+            BorderColor = new Color(0.82f, 0.67f, 0.36f, 0.35f),
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            ContentMarginLeft = 10,
+            ContentMarginTop = 8,
+            ContentMarginRight = 10,
+            ContentMarginBottom = 8,
         };
 
     private static string FindDataDirectory()
