@@ -4726,7 +4726,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         foreach (var p in g.AdminPassives ?? [])
         {
-            skills.Add(("내정", $"{_adminSkills.FirstOrDefault(x => x.Code == p.Code)?.Name ?? p.Code} Lv{p.Tier}"));
+            skills.Add(("내정 패시브", $"{_adminSkills.FirstOrDefault(x => x.Code == p.Code)?.Name ?? p.Code} Lv{p.Tier}"));
         }
 
         if (skills.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
