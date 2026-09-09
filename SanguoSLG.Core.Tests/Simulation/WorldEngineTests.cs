@@ -609,6 +609,10 @@ public class WorldEngineTests
         {
             state = engine.AdvanceDays(state, 7);
             Assert.Equal(100 - 5 * week, state.Cities.Single().Security);
+            Assert.Contains(engine.LastEvents, e => e.Kind == WorldEventKind.SecurityFactor
+                && e.Code == "vacancy" && e.General is null && e.Amount == -2);
+            Assert.Contains(engine.LastEvents, e => e.Kind == WorldEventKind.SecurityFactor
+                && e.Code == "recruitment" && e.General == general.Id && e.Amount == -3);
         }
     }
 

@@ -173,7 +173,14 @@ public sealed class WorldEngine
             var security = ValidOfficer(state, city, city.SecurityOfficer, byId);
             var recruiter = ValidOfficer(state, city, city.RecruitmentOfficer, byId);
             var delta = security is null ? _commands.AutoSecurityNoOfficerDelta : MightTier(security.Might);
-            if (recruiter is not null) { delta += _commands.AutoRecruitSecurityDelta; }
+            _events.Add(new WorldEvent(WorldEventKind.SecurityFactor, city.Owner, security?.Id, city.Id,
+                Amount: delta, Code: security is null ? "vacancy" : "security"));
+            if (recruiter is not null)
+            {
+                delta += _commands.AutoRecruitSecurityDelta;
+                _events.Add(new WorldEvent(WorldEventKind.SecurityFactor, city.Owner, recruiter.Id, city.Id,
+                    Amount: _commands.AutoRecruitSecurityDelta, Code: "recruitment"));
+            }
             return city with { Security = System.Math.Clamp(city.Security + delta, 0, 100) };
         }).ToList();
         return state with { Cities = cities };

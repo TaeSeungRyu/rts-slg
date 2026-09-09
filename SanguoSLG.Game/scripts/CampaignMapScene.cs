@@ -1853,6 +1853,7 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.ProductionComplete => ($"[생산] {gName} 장수가 {cName}의 {FacilityLabel(we.Code)} 생산을 마쳤습니다. 금 +{we.Amount}, 군량 +{we.ExtraAmount}.", GoldBright),
                 WorldEventKind.ProductionLost => ($"[생산] {gName} 장수의 {FacilityLabel(we.Code)} 생산 부대 {we.Amount}명이 소실되었습니다.", AccentFill),
                 WorldEventKind.BanditRaid => ($"[치안] {cName} 주변에 도적 {we.Amount}명이 출현해 성을 노립니다.", AccentFill),
+                WorldEventKind.SecurityFactor => ($"[치안 요인] {cName}: {(we.Code == "vacancy" ? "치안 담당 공석" : we.Code == "recruitment" ? $"병력 담당 {gName}" : $"치안 담당 {gName}")} {we.Amount:+0;-0;0} / 7일 (합산 후 0~100 적용)", Parchment),
                 _ => ("", Parchment),
             };
             if (text.Length > 0) { Ev(text, col); }
@@ -2797,6 +2798,9 @@ public sealed partial class CampaignMapScene : Node3D
         AddCell(g2, Sym.Officer, "태수", govName ?? "없음");
         AddCell(g2, Sym.Officer, "군사", straName ?? "없음");
         AddCell(g2, Sym.Shield, "치안담당", securityName ?? "없음");
+        var securityBreakdown = MakeLabel(SecurityWeeklySummary(c), 12, Parchment);
+        securityBreakdown.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _infoRows.AddChild(securityBreakdown);
         AddCell(g2, Sym.Coin, "내정담당", domesticName ?? "없음");
         AddCell(g2, Sym.Sword, "병력담당", recruitmentName ?? "없음");
         AddCell(g2, Sym.Book, "훈련담당", trainingName ?? "없음");
@@ -7264,6 +7268,20 @@ public sealed partial class CampaignMapScene : Node3D
         _ => "",
     };
 
+    private string SecurityWeeklySummary(City city)
+    {
+        General? Officer(GeneralId? id) => id is { } gid
+            && (_state.Assignments.Count == 0 || _state.PostingOf(gid) is { } posting
+                && posting.Location == city.Id && posting.Faction == city.Owner)
+                ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
+        var security = Officer(city.SecurityOfficer);
+        var recruiter = Officer(city.RecruitmentOfficer);
+        var recovery = security is null ? _cb.AutoSecurityNoOfficerDelta : OfficerMightTier(security.Might);
+        var burden = recruiter is null ? 0 : _cb.AutoRecruitSecurityDelta;
+        return $"주 치안 {recovery + burden:+0;-0;0} = {(security is null ? "공석" : security.Name)} {recovery:+0;-0;0}"
+            + (recruiter is null ? "" : $" / 병력 담당 {recruiter.Name} {burden:+0;-0;0}");
+    }
+
     private int AutoRecruitWeeklyCostFor(General officer, string troopCodes, City? city = null)
     {
         var codes = troopCodes.Split(',', System.StringSplitOptions.TrimEntries | System.StringSplitOptions.RemoveEmptyEntries);
@@ -8032,7 +8050,6 @@ public sealed partial class CampaignMapScene : Node3D
         var col = new Color(0.74f, 0.9f, 0.72f);
         foreach (var city in after.Cities.Where(c => c.Owner == Player).OrderBy(c => c.Id.Value))
         {
-            if (!HasAnyAutoOfficer(city)) { continue; }
             var prev = before.Cities.FirstOrDefault(c => c.Id == city.Id);
             if (prev is null) { continue; }
 
