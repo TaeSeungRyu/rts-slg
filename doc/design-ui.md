@@ -1,5 +1,7 @@
 # 설계 노트 — 게임 UI/상호작용 (2026-08-11 작성 · 2026-08-21 현황 갱신)
 
+> **2026-09-09 전환 계획:** 계략 팔레트와 별도 예약·모략력 UI는 Phase 14A에서 폐기하고 전투 액티브로 통합한다. [전환 설계](./design-stratagem.md)가 아래 계략 UI 설명보다 우선한다. 정찰 결과의 60일 표시·시야는 유지한다. 현재 구현은 아직 전환 전이다.
+
 > 본 게임 씬의 클릭·명령·정보 표시 상호작용 명세. 전투/계략/이동 규칙은
 > [design-combat.md](./design-combat.md)·[design-stratagem.md](./design-stratagem.md)·[design-movement.md](./design-movement.md),
 > 전투 정산 진입점은 Core `AdvanceOrchestrator`(구현됨).

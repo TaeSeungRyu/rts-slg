@@ -1,5 +1,7 @@
 # 설계 노트 — 전투 계산 (2026-08-07)
 
+> **2026-09-09 전환 계획:** 독립 계략을 전투 액티브로 통합한다. [design-stratagem.md](./design-stratagem.md) 현행 설계의 효과·진행 경계와 [design-skill-actives.md](./design-skill-actives.md)의 적용 순서를 우선한다. 아래 기존 계략 처리 설명은 전환 전 구현 기록이며, 실제 엔진 전환은 v2 Phase 14A에서 수행한다.
+
 > 병종 기본 공격·방어와 장수 적성 배수의 설계.
 > 병종 분류·사거리는 [spec-unit.md](./spec-unit.md), 교전 발동·모드 규칙은
 > [design-movement.md](./design-movement.md) 참조.
