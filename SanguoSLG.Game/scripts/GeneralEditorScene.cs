@@ -120,8 +120,9 @@ public partial class GeneralEditorScene : Control
         _summary.AddThemeFontSizeOverride("font_size", 18);
         editor.AddChild(_summary);
 
+        var portraitSection = AddSection(editor, "초상·원형 얼굴");
         var portraitRow = new HBoxContainer();
-        editor.AddChild(portraitRow);
+        portraitSection.AddChild(portraitRow);
         _portraitPreview = new TextureRect
         {
             CustomMinimumSize = new Vector2(220, 300),
@@ -154,15 +155,16 @@ public partial class GeneralEditorScene : Control
         };
         faceBox.AddChild(resetFace);
 
+        var statSection = AddSection(editor, "능력치");
         var statRow = new HBoxContainer();
-        editor.AddChild(statRow);
+        statSection.AddChild(statRow);
         _mightInput = AddStat(statRow, "무력");
         _intellectInput = AddStat(statRow, "지력");
         _politicsInput = AddStat(statRow, "정치");
 
-        editor.AddChild(SectionLabel("병종 적성"));
+        var aptitudeSection = AddSection(editor, "병종 적성");
         var aptitudeGrid = new GridContainer { Columns = 3 };
-        editor.AddChild(aptitudeGrid);
+        aptitudeSection.AddChild(aptitudeGrid);
         foreach (var key in TroopKeys)
         {
             var row = new HBoxContainer();
@@ -179,24 +181,24 @@ public partial class GeneralEditorScene : Control
             _aptitudeInputs[key] = input;
         }
 
-        editor.AddChild(SectionLabel("전투 액티브"));
+        var activeSection = AddSection(editor, "전투 액티브");
         _activeInput = new OptionButton();
         _activeInput.ItemSelected += _ =>
         {
             UpdateActiveDescription();
             UpdateChangePreview();
         };
-        editor.AddChild(_activeInput);
+        activeSection.AddChild(_activeInput);
         _activeDescription = new Label
         {
             Text = "액티브를 선택하면 효과가 표시됩니다.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
-        editor.AddChild(_activeDescription);
+        activeSection.AddChild(_activeDescription);
 
-        editor.AddChild(SectionLabel("전투 패시브"));
+        var passiveSection = AddSection(editor, "전투 패시브");
         var passiveAddRow = new HBoxContainer();
-        editor.AddChild(passiveAddRow);
+        passiveSection.AddChild(passiveAddRow);
         _passiveSelect = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _passiveSelect.ItemSelected += _ => UpdatePassiveCandidateDescription();
         passiveAddRow.AddChild(_passiveSelect);
@@ -208,13 +210,13 @@ public partial class GeneralEditorScene : Control
             Text = "전투 패시브를 선택하면 효과가 표시됩니다.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
-        editor.AddChild(_passiveDescription);
+        passiveSection.AddChild(_passiveDescription);
         _passiveList = new VBoxContainer();
-        editor.AddChild(_passiveList);
+        passiveSection.AddChild(_passiveList);
 
-        editor.AddChild(SectionLabel("내정 패시브"));
+        var adminSection = AddSection(editor, "내정 패시브");
         var adminAddRow = new HBoxContainer();
-        editor.AddChild(adminAddRow);
+        adminSection.AddChild(adminAddRow);
         _adminSelect = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _adminSelect.ItemSelected += _ => UpdateAdminCandidateDescription();
         adminAddRow.AddChild(_adminSelect);
@@ -226,15 +228,16 @@ public partial class GeneralEditorScene : Control
             Text = "내정 패시브를 선택하면 효과가 표시됩니다.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
-        editor.AddChild(_adminDescription);
+        adminSection.AddChild(_adminDescription);
         _adminList = new VBoxContainer();
-        editor.AddChild(_adminList);
+        adminSection.AddChild(_adminList);
 
+        var saveSection = AddSection(editor, "변경 및 저장");
         _changePreview = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        editor.AddChild(_changePreview);
+        saveSection.AddChild(_changePreview);
 
         var buttons = new HBoxContainer();
-        editor.AddChild(buttons);
+        saveSection.AddChild(buttons);
         var reset = new Button { Text = "선택 장수 되돌리기" };
         reset.Pressed += () =>
         {
@@ -466,11 +469,27 @@ public partial class GeneralEditorScene : Control
         return slider;
     }
 
-    private static Label SectionLabel(string text)
+    private VBoxContainer AddSection(VBoxContainer parent, string title)
     {
-        var label = new Label { Text = text };
+        var panel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        panel.AddThemeStyleboxOverride("panel", SectionBox());
+        parent.AddChild(panel);
+
+        var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        box.AddThemeConstantOverride("separation", 8);
+        panel.AddChild(box);
+
+        var label = new Label { Text = title };
         label.AddThemeFontSizeOverride("font_size", 18);
-        return label;
+        box.AddChild(label);
+
+        var line = new ColorRect
+        {
+            Color = new Color(0.82f, 0.67f, 0.36f, 0.55f),
+            CustomMinimumSize = new Vector2(0, 1),
+        };
+        box.AddChild(line);
+        return box;
     }
 
     private void RebuildSkillOptions()
@@ -1010,6 +1029,21 @@ public partial class GeneralEditorScene : Control
         theme.DefaultFontSize = 15;
         return theme;
     }
+
+    private static StyleBoxFlat SectionBox()
+        => new()
+        {
+            BgColor = new Color(0.08f, 0.055f, 0.045f, 0.92f),
+            BorderColor = new Color(0.82f, 0.67f, 0.36f, 0.65f),
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            ContentMarginLeft = 12,
+            ContentMarginTop = 10,
+            ContentMarginRight = 12,
+            ContentMarginBottom = 10,
+        };
 
     private static string FindDataDirectory()
     {
