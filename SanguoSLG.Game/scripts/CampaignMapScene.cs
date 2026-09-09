@@ -2773,6 +2773,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         Clear(_infoRows);
         _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 15, GoldBright));
+        if (!owned && _state.IsScouted(Player, id))
+            _infoRows.AddChild(MakeLabel($"정찰 남은 일수: {ScoutDaysLeft(id)}일", 13, GoldBright));
         if (!known)
         {
             _infoRows.AddChild(MakeLabel("정찰 필요 — 도시 계략 '정찰' 성공 후 정보를 볼 수 있습니다.", 13, Parchment));
@@ -2934,6 +2936,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 줌/이동 중에도 팔레트가 선택한 성을 따라가도록 갱신.
     public override void _Process(double delta)
     {
+        AnimateScoutLabels(delta);
         // 미니 패널(플라이아웃)은 메인 팔레트와 운명을 같이한다 — 팔레트가 사라지면 함께 닫힘.
         if (_cmdSubMenu.Visible && !_cmdMenu.Visible) { CloseGroupMenu(); }
 
@@ -7841,6 +7844,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void Redraw(string note)
     {
+        RefreshScoutLabels();
         DrawSupplyZones();
         DrawDeployPaths();
         RedrawFacilities();
