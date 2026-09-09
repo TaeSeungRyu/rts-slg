@@ -13,6 +13,7 @@ public partial class GeneralEditorScene : Control
     private readonly Dictionary<string, string> _activeNames = new();
     private readonly Dictionary<string, string> _passiveNames = new();
     private readonly Dictionary<string, string> _adminNames = new();
+    private readonly Dictionary<int, GeneralPortraitRecord> _portraitsByGeneralId = new();
     private readonly List<GeneralEditorRecord> _generals = [];
     private readonly Dictionary<string, OptionButton> _aptitudeInputs = new();
     private readonly Dictionary<string, (CheckBox Check, SpinBox Tier)> _passiveInputs = new();
@@ -29,6 +30,12 @@ public partial class GeneralEditorScene : Control
     private Label _changePreview = null!;
     private GridContainer _passiveGrid = null!;
     private GridContainer _adminGrid = null!;
+    private TextureRect _portraitPreview = null!;
+    private TextureRect _facePreview = null!;
+    private HSlider _faceX = null!;
+    private HSlider _faceY = null!;
+    private HSlider _faceZoom = null!;
+    private Label _faceLabel = null!;
     private GeneralEditorRecord? _selected;
     private string _dataDirectory = "";
 
@@ -100,6 +107,40 @@ public partial class GeneralEditorScene : Control
         _summary.AddThemeFontSizeOverride("font_size", 18);
         editor.AddChild(_summary);
 
+        var portraitRow = new HBoxContainer();
+        editor.AddChild(portraitRow);
+        _portraitPreview = new TextureRect
+        {
+            CustomMinimumSize = new Vector2(220, 300),
+            ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        };
+        portraitRow.AddChild(_portraitPreview);
+
+        var faceBox = new VBoxContainer { CustomMinimumSize = new Vector2(230, 0) };
+        portraitRow.AddChild(faceBox);
+        _facePreview = new TextureRect
+        {
+            CustomMinimumSize = new Vector2(180, 180),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        };
+        faceBox.AddChild(_facePreview);
+        _faceLabel = new Label { Text = "" };
+        faceBox.AddChild(_faceLabel);
+        _faceX = AddSlider(faceBox, "얼굴 X", 0.5, 0, 1, 0.01);
+        _faceY = AddSlider(faceBox, "얼굴 Y", 0.35, 0, 1, 0.01);
+        _faceZoom = AddSlider(faceBox, "확대", 1, 1, 4, 0.05);
+        var resetFace = new Button { Text = "얼굴 구도 초기화" };
+        resetFace.Pressed += () =>
+        {
+            _faceX.Value = 0.5;
+            _faceY.Value = 0.35;
+            _faceZoom.Value = 1;
+            UpdatePortraitPreview();
+        };
+        faceBox.AddChild(resetFace);
+
         var statRow = new HBoxContainer();
         editor.AddChild(statRow);
         _mightInput = AddStat(statRow, "무력");
@@ -168,6 +209,7 @@ public partial class GeneralEditorScene : Control
             _dataDirectory = FindDataDirectory();
             _generals.Clear();
             _generalsById.Clear();
+            _portraitsByGeneralId.Clear();
             _activeNames.Clear();
             _passiveNames.Clear();
             _adminNames.Clear();
@@ -190,6 +232,15 @@ public partial class GeneralEditorScene : Control
             {
                 _generals.Add(general);
                 _generalsById[general.Id] = general;
+            }
+
+            var portraitPath = Path.Combine(_dataDirectory, "general-portraits.json");
+            if (File.Exists(portraitPath))
+            {
+                foreach (var portrait in GeneralEditorStore.LoadPortraits(File.ReadAllText(portraitPath)))
+                {
+                    _portraitsByGeneralId[portrait.GeneralId] = portrait;
+                }
             }
 
             RebuildSkillOptions();
@@ -305,6 +356,12 @@ public partial class GeneralEditorScene : Control
             input.Tier.Value = held?.Tier ?? 1;
         }
 
+        var portrait = PortraitFor(general.Id);
+        _faceX.Value = portrait.FaceCenterX;
+        _faceY.Value = portrait.FaceCenterY;
+        _faceZoom.Value = portrait.FaceZoom;
+        UpdatePortraitPreview();
+
         UpdateChangePreview();
     }
 
@@ -323,6 +380,25 @@ public partial class GeneralEditorScene : Control
         box.AddChild(spin);
         parent.AddChild(box);
         return spin;
+    }
+
+    private HSlider AddSlider(VBoxContainer parent, string label, double value, double min, double max, double step)
+    {
+        parent.AddChild(new Label { Text = label });
+        var slider = new HSlider
+        {
+            MinValue = min,
+            MaxValue = max,
+            Step = step,
+            Value = value,
+        };
+        slider.ValueChanged += _ =>
+        {
+            UpdatePortraitPreview();
+            UpdateChangePreview();
+        };
+        parent.AddChild(slider);
+        return slider;
     }
 
     private static Label SectionLabel(string text)
@@ -401,6 +477,7 @@ public partial class GeneralEditorScene : Control
             var path = Path.Combine(_dataDirectory, "generals.json");
             var saved = GeneralEditorStore.ReplaceGeneral(File.ReadAllText(path), edited);
             File.WriteAllText(path, saved);
+            SavePortraitMetadata(edited.Id);
             var index = _generals.FindIndex(g => g.Id == edited.Id);
             if (index >= 0)
             {
@@ -444,6 +521,22 @@ public partial class GeneralEditorScene : Control
         };
     }
 
+    private void SavePortraitMetadata(int generalId)
+    {
+        var edited = CurrentPortraitRecord(generalId);
+        var validation = GeneralEditorStore.ValidatePortraits([edited], new HashSet<int>(_generals.Select(g => g.Id)),
+            relative => File.Exists(Path.Combine(RepositoryRoot(), relative)));
+        if (!validation.IsValid)
+        {
+            throw new InvalidDataException(string.Join("\n", validation.Errors));
+        }
+
+        var path = Path.Combine(_dataDirectory, "general-portraits.json");
+        var original = File.Exists(path) ? File.ReadAllText(path) : "[]";
+        File.WriteAllText(path, GeneralEditorStore.ReplacePortrait(original, edited));
+        _portraitsByGeneralId[generalId] = edited;
+    }
+
     private void UpdateChangePreview()
     {
         if (_selected is null || _changePreview is null)
@@ -466,6 +559,11 @@ public partial class GeneralEditorScene : Control
             AddChange(changes, "전투 액티브", _selected.BattleActive ?? "없음", edited.BattleActive ?? "없음");
             AddChange(changes, "전투 패시브", SkillText(_selected.BattlePassives), SkillText(edited.BattlePassives));
             AddChange(changes, "내정 패시브", SkillText(_selected.AdminPassives), SkillText(edited.AdminPassives));
+            var originalPortrait = PortraitFor(_selected.Id);
+            var editedPortrait = CurrentPortraitRecord(_selected.Id);
+            AddChange(changes, "얼굴 X", originalPortrait.FaceCenterX.ToString("0.00"), editedPortrait.FaceCenterX.ToString("0.00"));
+            AddChange(changes, "얼굴 Y", originalPortrait.FaceCenterY.ToString("0.00"), editedPortrait.FaceCenterY.ToString("0.00"));
+            AddChange(changes, "얼굴 확대", originalPortrait.FaceZoom.ToString("0.00"), editedPortrait.FaceZoom.ToString("0.00"));
             _changePreview.Text = changes.Count == 0 ? "변경 없음" : "변경 예정\n" + string.Join("\n", changes);
         }
         catch (Exception ex)
@@ -508,6 +606,87 @@ public partial class GeneralEditorScene : Control
 
     private static string SkillText(IReadOnlyList<GeneralEditorSkill> skills)
         => skills.Count == 0 ? "없음" : string.Join(", ", skills.OrderBy(s => s.Code).Select(s => $"{s.Code} Lv{s.Tier}"));
+
+    private GeneralPortraitRecord PortraitFor(int generalId)
+        => _portraitsByGeneralId.TryGetValue(generalId, out var portrait)
+            ? portrait
+            : new GeneralPortraitRecord(generalId, $"SanguoSLG.Game/assets/portraits/{generalId}.png", 0.5, 0.35, 1);
+
+    private GeneralPortraitRecord CurrentPortraitRecord(int generalId)
+    {
+        var current = PortraitFor(generalId);
+        return current with
+        {
+            FaceCenterX = _faceX.Value,
+            FaceCenterY = _faceY.Value,
+            FaceZoom = _faceZoom.Value,
+        };
+    }
+
+    private void UpdatePortraitPreview()
+    {
+        if (_selected is null || _portraitPreview is null)
+        {
+            return;
+        }
+
+        var portrait = CurrentPortraitRecord(_selected.Id);
+        var path = Path.Combine(RepositoryRoot(), portrait.PortraitPath);
+        if (!File.Exists(path))
+        {
+            _portraitPreview.Texture = null;
+            _facePreview.Texture = null;
+            _faceLabel.Text = "초상 파일 없음";
+            return;
+        }
+
+        var image = Image.LoadFromFile(path);
+        if (image is null || image.IsEmpty())
+        {
+            _portraitPreview.Texture = null;
+            _facePreview.Texture = null;
+            _faceLabel.Text = "초상 로드 실패";
+            return;
+        }
+
+        _portraitPreview.Texture = ImageTexture.CreateFromImage(image);
+        _facePreview.Texture = ImageTexture.CreateFromImage(BuildFaceImage(image, portrait));
+        _faceLabel.Text = $"X {portrait.FaceCenterX:0.00} / Y {portrait.FaceCenterY:0.00} / 확대 {portrait.FaceZoom:0.00}";
+    }
+
+    private static Image BuildFaceImage(Image source, GeneralPortraitRecord portrait)
+    {
+        const int previewSize = 192;
+        var side = Math.Max(1, Math.Min(source.GetWidth(), source.GetHeight()) / portrait.FaceZoom);
+        var centerX = source.GetWidth() * portrait.FaceCenterX;
+        var centerY = source.GetHeight() * portrait.FaceCenterY;
+        var left = Math.Clamp(centerX - side / 2.0, 0, Math.Max(0, source.GetWidth() - side));
+        var top = Math.Clamp(centerY - side / 2.0, 0, Math.Max(0, source.GetHeight() - side));
+        var crop = source.GetRegion(new Rect2I((int)Math.Round(left), (int)Math.Round(top), (int)Math.Round(side), (int)Math.Round(side)));
+        crop.Resize(previewSize, previewSize, Image.Interpolation.Lanczos);
+
+        var radius = previewSize / 2.0;
+        var output = Image.CreateEmpty(previewSize, previewSize, false, Image.Format.Rgba8);
+        for (var y = 0; y < previewSize; y++)
+        {
+            for (var x = 0; x < previewSize; x++)
+            {
+                var dx = x + 0.5 - radius;
+                var dy = y + 0.5 - radius;
+                var color = crop.GetPixel(x, y);
+                if (dx * dx + dy * dy > radius * radius)
+                {
+                    color.A = 0;
+                }
+
+                output.SetPixel(x, y, color);
+            }
+        }
+
+        return output;
+    }
+
+    private string RepositoryRoot() => Path.GetFullPath(Path.Combine(_dataDirectory, ".."));
 
     private static Theme BuildTheme()
     {
