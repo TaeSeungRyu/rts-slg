@@ -20,8 +20,8 @@ public partial class GeneralEditorScene : Control
     private readonly Dictionary<int, GeneralPortraitRecord> _portraitsByGeneralId = new();
     private readonly List<GeneralEditorRecord> _generals = [];
     private readonly Dictionary<string, OptionButton> _aptitudeInputs = new();
-    private readonly Dictionary<string, (CheckBox Check, SpinBox Tier)> _adminInputs = new();
     private readonly List<GeneralEditorSkill> _selectedBattlePassives = [];
+    private readonly List<GeneralEditorSkill> _selectedAdminPassives = [];
     private LineEdit _search = null!;
     private OptionButton _regionFilter = null!;
     private ItemList _list = null!;
@@ -36,7 +36,9 @@ public partial class GeneralEditorScene : Control
     private OptionButton _passiveSelect = null!;
     private Label _passiveDescription = null!;
     private VBoxContainer _passiveList = null!;
-    private GridContainer _adminGrid = null!;
+    private OptionButton _adminSelect = null!;
+    private Label _adminDescription = null!;
+    private VBoxContainer _adminList = null!;
     private TextureRect _portraitPreview = null!;
     private TextureRect _facePreview = null!;
     private HSlider _faceX = null!;
@@ -211,8 +213,22 @@ public partial class GeneralEditorScene : Control
         editor.AddChild(_passiveList);
 
         editor.AddChild(SectionLabel("내정 패시브"));
-        _adminGrid = new GridContainer { Columns = 2 };
-        editor.AddChild(_adminGrid);
+        var adminAddRow = new HBoxContainer();
+        editor.AddChild(adminAddRow);
+        _adminSelect = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _adminSelect.ItemSelected += _ => UpdateAdminCandidateDescription();
+        adminAddRow.AddChild(_adminSelect);
+        var addAdmin = new Button { Text = "추가", CustomMinimumSize = new Vector2(82, 0) };
+        addAdmin.Pressed += AddSelectedAdminPassive;
+        adminAddRow.AddChild(addAdmin);
+        _adminDescription = new Label
+        {
+            Text = "내정 패시브를 선택하면 효과가 표시됩니다.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
+        editor.AddChild(_adminDescription);
+        _adminList = new VBoxContainer();
+        editor.AddChild(_adminList);
 
         _changePreview = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.WordSmart };
         editor.AddChild(_changePreview);
@@ -401,12 +417,9 @@ public partial class GeneralEditorScene : Control
         _selectedBattlePassives.AddRange(general.BattlePassives.Select(s => new GeneralEditorSkill(s.Code, s.Tier)));
         RefreshBattlePassiveList();
 
-        foreach (var (code, input) in _adminInputs)
-        {
-            var held = general.AdminPassives.FirstOrDefault(s => s.Code == code);
-            input.Check.ButtonPressed = held is not null;
-            input.Tier.Value = held?.Tier ?? 1;
-        }
+        _selectedAdminPassives.Clear();
+        _selectedAdminPassives.AddRange(general.AdminPassives.Select(s => new GeneralEditorSkill(s.Code, s.Tier)));
+        RefreshAdminPassiveList();
 
         var portrait = PortraitFor(general.Id);
         _faceX.Value = portrait.FaceCenterX;
@@ -474,7 +487,8 @@ public partial class GeneralEditorScene : Control
 
         RebuildSkillSelect(_passiveSelect, _passiveNames);
         UpdatePassiveCandidateDescription();
-        RebuildSkillGrid(_adminGrid, _adminInputs, _adminNames);
+        RebuildSkillSelect(_adminSelect, _adminNames);
+        UpdateAdminCandidateDescription();
     }
 
     private void RebuildSkillSelect(OptionButton input, Dictionary<string, string> names)
@@ -485,34 +499,6 @@ public partial class GeneralEditorScene : Control
             var index = input.ItemCount;
             input.AddItem($"{name} ({code})");
             input.SetItemMetadata(index, code);
-        }
-    }
-
-    private void RebuildSkillGrid(GridContainer parent, Dictionary<string, (CheckBox Check, SpinBox Tier)> inputs, Dictionary<string, string> names)
-    {
-        foreach (var child in parent.GetChildren())
-        {
-            child.QueueFree();
-        }
-
-        inputs.Clear();
-        foreach (var (code, name) in names.OrderBy(kv => kv.Value))
-        {
-            var check = new CheckBox { Text = $"{name} ({code})", ClipText = true };
-            check.Toggled += _ => UpdateChangePreview();
-            parent.AddChild(check);
-
-            var tier = new SpinBox
-            {
-                MinValue = 1,
-                MaxValue = 3,
-                Step = 1,
-                Rounded = true,
-                CustomMinimumSize = new Vector2(70, 0),
-            };
-            tier.ValueChanged += _ => UpdateChangePreview();
-            parent.AddChild(tier);
-            inputs[code] = (check, tier);
         }
     }
 
@@ -592,10 +578,7 @@ public partial class GeneralEditorScene : Control
             Aptitudes = TroopKeys.ToDictionary(k => k, k => SelectedText(_aptitudeInputs[k])),
             BattleActive = SelectedMetadata(_activeInput),
             BattlePassives = _selectedBattlePassives.ToList(),
-            AdminPassives = _adminInputs
-                .Where(kv => kv.Value.Check.ButtonPressed)
-                .Select(kv => new GeneralEditorSkill(kv.Key, (int)kv.Value.Tier.Value))
-                .ToList(),
+            AdminPassives = _selectedAdminPassives.ToList(),
         };
     }
 
@@ -753,6 +736,50 @@ public partial class GeneralEditorScene : Control
         UpdateChangePreview();
     }
 
+    private void UpdateAdminCandidateDescription()
+    {
+        if (_adminSelect.ItemCount == 0)
+        {
+            _adminDescription.Text = "선택 가능한 내정 패시브가 없습니다.";
+            return;
+        }
+
+        var code = SelectedMetadata(_adminSelect);
+        _adminDescription.Text = code is not null && _adminSkills.TryGetValue(code, out var skill)
+            ? $"{skill.Name} ({skill.Code})\n{SkillDescriptions.Admin(skill, 1)}"
+            : "내정 패시브를 선택하면 효과가 표시됩니다.";
+    }
+
+    private void AddSelectedAdminPassive()
+    {
+        if (_adminSelect.ItemCount == 0)
+        {
+            return;
+        }
+
+        var code = SelectedMetadata(_adminSelect);
+        if (code is null)
+        {
+            return;
+        }
+
+        if (_selectedAdminPassives.Any(s => s.Code == code))
+        {
+            _status.Text = "이미 추가된 내정 패시브입니다.";
+            return;
+        }
+
+        if (_selectedAdminPassives.Count >= 4)
+        {
+            _status.Text = "내정 패시브는 최대 4개입니다.";
+            return;
+        }
+
+        _selectedAdminPassives.Add(new GeneralEditorSkill(code, 1));
+        RefreshAdminPassiveList();
+        UpdateChangePreview();
+    }
+
     private void RefreshBattlePassiveList()
     {
         ClearChildren(_passiveList);
@@ -812,6 +839,71 @@ public partial class GeneralEditorScene : Control
             {
                 _selectedBattlePassives.RemoveAll(s => s.Code == skill.Code);
                 RefreshBattlePassiveList();
+                UpdateChangePreview();
+            };
+            row.AddChild(remove);
+        }
+    }
+
+    private void RefreshAdminPassiveList()
+    {
+        ClearChildren(_adminList);
+        if (_selectedAdminPassives.Count == 0)
+        {
+            _adminList.AddChild(new Label { Text = "추가된 내정 패시브 없음" });
+            return;
+        }
+
+        foreach (var skill in _selectedAdminPassives.ToList())
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            _adminList.AddChild(row);
+
+            var name = _adminNames.GetValueOrDefault(skill.Code, skill.Code);
+            var label = new Label
+            {
+                Text = $"{name} ({skill.Code})",
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                TooltipText = _adminSkills.TryGetValue(skill.Code, out var def) ? SkillDescriptions.Admin(def, skill.Tier) : "",
+            };
+            row.AddChild(label);
+
+            var tier = new SpinBox
+            {
+                MinValue = 1,
+                MaxValue = 3,
+                Step = 1,
+                Rounded = true,
+                Value = skill.Tier,
+                CustomMinimumSize = new Vector2(72, 0),
+            };
+            tier.ValueChanged += value =>
+            {
+                var idx = _selectedAdminPassives.FindIndex(s => s.Code == skill.Code);
+                if (idx >= 0)
+                {
+                    _selectedAdminPassives[idx] = skill with { Tier = (int)value };
+                    RefreshAdminPassiveList();
+                    UpdateChangePreview();
+                }
+            };
+            row.AddChild(tier);
+
+            var desc = new Button { Text = "설명", CustomMinimumSize = new Vector2(70, 0) };
+            desc.Pressed += () =>
+            {
+                _adminDescription.Text = _adminSkills.TryGetValue(skill.Code, out var def)
+                    ? $"{name} ({skill.Code})\n{SkillDescriptions.Admin(def, skill.Tier)}"
+                    : $"등록되지 않은 내정 패시브입니다: {skill.Code}";
+            };
+            row.AddChild(desc);
+
+            var remove = new Button { Text = "제거", CustomMinimumSize = new Vector2(70, 0) };
+            remove.Pressed += () =>
+            {
+                _selectedAdminPassives.RemoveAll(s => s.Code == skill.Code);
+                RefreshAdminPassiveList();
                 UpdateChangePreview();
             };
             row.AddChild(remove);
