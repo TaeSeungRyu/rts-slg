@@ -4,7 +4,7 @@ using Godot;
 
 public sealed partial class CampaignMapScene
 {
-    private void ShowSkillDescription(string name, string category, string description)
+    private void ShowSkillDescription(string name, string category, string description, string? iconCode = null)
     {
         _confirmLayer?.QueueFree();
         var layer = new CanvasLayer { Layer = 42 };
@@ -36,7 +36,12 @@ public sealed partial class CampaignMapScene
         box.AddThemeConstantOverride("separation", 12);
         panel.AddChild(box);
         var titleRow = new HBoxContainer();
+        titleRow.AddThemeConstantOverride("separation", 14);
         box.AddChild(titleRow);
+        if (ActiveSkillIcons.Load(iconCode) is not null)
+        {
+            titleRow.AddChild(ActiveSkillIcons.Preview(iconCode));
+        }
         var title = MakeLabel(name, 20, GoldBright);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         titleRow.AddChild(title);

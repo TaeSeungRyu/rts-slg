@@ -1051,6 +1051,18 @@ public sealed partial class CampaignMapScene : Node3D
         Row("목표", u.Field.Target is { } t ? $"({t.Q}, {t.R})" : "없음");
         Row("군량", u.TracksProvisions ? $"{u.Provisions}" : "무한");
 
+        foreach (var (role, skill) in new[] { ("선봉", u.State.VanguardActive), ("부관", u.State.AdjutantActive) })
+        {
+            if (skill is null) { continue; }
+            var button = MakeButton($"{role} · {skill.Name}   ›");
+            button.Alignment = HorizontalAlignment.Left;
+            button.ClipText = true;
+            button.TooltipText = SkillDescriptions.Active(skill);
+            ActiveSkillIcons.Apply(button, skill.Code, 32);
+            button.Pressed += () => ShowSkillDescription(skill.Name, "액티브", SkillDescriptions.Active(skill), skill.Code);
+            _infoRows.AddChild(button);
+        }
+
         _infoCard.Visible = true;
     }
 
@@ -4875,7 +4887,9 @@ public sealed partial class CampaignMapScene : Node3D
                 skillButton.CustomMinimumSize = new Vector2(0, 38);
                 skillButton.ClipText = true;
                 skillButton.TooltipText = $"{name} · 설명 보기";
-                skillButton.Pressed += () => ShowSkillDescription(name, tag, description);
+                var iconCode = tag == "액티브" ? g.BattleActive : null;
+                if (iconCode is not null) { ActiveSkillIcons.Apply(skillButton, iconCode); }
+                skillButton.Pressed += () => ShowSkillDescription(name, tag, description, iconCode);
                 sg.AddChild(skillButton);
             }
         }

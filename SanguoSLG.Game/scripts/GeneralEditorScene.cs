@@ -32,6 +32,7 @@ public partial class GeneralEditorScene : Control
     private SpinBox _politicsInput = null!;
     private OptionButton _activeInput = null!;
     private Label _activeDescription = null!;
+    private TextureRect _activeIcon = null!;
     private Label _changePreview = null!;
     private OptionButton _passiveSelect = null!;
     private Label _passiveDescription = null!;
@@ -198,6 +199,8 @@ public partial class GeneralEditorScene : Control
             UpdateChangePreview();
         };
         activeLeft.AddChild(_activeInput);
+        _activeIcon = ActiveSkillIcons.Preview(null, 100);
+        activeLeft.AddChild(_activeIcon);
         _activeDescription = new Label
         {
             Text = "액티브를 선택하면 효과가 표시됩니다.",
@@ -742,6 +745,8 @@ public partial class GeneralEditorScene : Control
     private void UpdateActiveDescription()
     {
         var code = SelectedMetadata(_activeInput);
+        _activeIcon.Texture = ActiveSkillIcons.Load(code);
+        _activeIcon.Visible = _activeIcon.Texture is not null;
         if (code is null)
         {
             _activeDescription.Text = "전투 액티브 없음";
