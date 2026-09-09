@@ -1898,6 +1898,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animArrows.Clear();
         for (var d = 0; d <= AnimDays; d++) { _dayKind[d] = "이동"; } // 기본 이동턴, 아래서 교전·공성 있는 날만 공격턴
         var alive = new HashSet<int>(startHex.Keys);
+        var deathEffectUnitIds = new HashSet<int>();
         var prev = new Dictionary<int, HexCoord>(startHex);
         var movesInDay = new Dictionary<(int, int), int>();
         var dayOffset = 0;
@@ -1982,9 +1983,13 @@ public sealed partial class CampaignMapScene : Node3D
                     var remain = unit.Pool.Active - counters[i]; // 근사 표시(부상 회수 제외)
                     if (remain <= 0)
                     {
-                        _animDeathEffects.Add((settleTime, _view.HexToWorld(unit.Field.Position)));
+                        if (deathEffectUnitIds.Add(uid))
+                        {
+                            _animDeathEffects.Add((settleTime, _view.HexToWorld(unit.Field.Position)));
+                        }
                         _animKills.Add((settleTime + 0.05, uid));
                         alive.Remove(uid);
+                        survivors.Remove(uid);
                     }
                     else { _animUpdates.Add((settleTime + 0.05, uid, remain)); }
                 }
@@ -1996,7 +2001,10 @@ public sealed partial class CampaignMapScene : Node3D
                 _animKills.Add((settleTime, id));
                 if (!enteredNow.Contains(id) && prev.TryGetValue(id, out var deadAt))
                 {
-                    _animDeathEffects.Add((settleTime - 0.05, _view.HexToWorld(deadAt)));
+                    if (deathEffectUnitIds.Add(id))
+                    {
+                        _animDeathEffects.Add((settleTime - 0.05, _view.HexToWorld(deadAt)));
+                    }
                 }
             }
 
