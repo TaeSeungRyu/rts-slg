@@ -51,6 +51,7 @@ public sealed class CityCapture
 
             var besiegers = state.Armies
                 .Where(u => u.Pool.Active > 0 && u.Field.Owner != current.Owner
+                    && u.Field.Owner != WorldEngine.BanditFaction
                     && u.Field.Mode == UnitMode.Attack && !u.IsSupply
                     && u.Field.Position.Distance(current.Position) <= 1)
                 .OrderBy(u => u.Id.Value)

@@ -254,7 +254,7 @@ public sealed class WorldEngine
             if (trainer is null) { continue; }
 
             var gain = System.Math.Max(1, MightTier(trainer.Might) + 1);
-            gain = System.Math.Max(1, ApplyLowSecurityOutputPenalty(gain, city.Security));
+            gain = ApplyLowSecurityOutputPenalty(gain, city.Security);
             garrisons = garrisons.Select(g => g.City == city.Id
                 ? g with { TrainingLevel = System.Math.Min(_commands.TrainCap, g.TrainingLevel + gain) }
                 : g).ToList();

@@ -50,6 +50,23 @@ public class CityCaptureTests
             FieldArmies: armies.ToList());
 
     [Fact]
+    public void 도적은_성벽과_수비가_없어도_성을_점령하지_못한다()
+    {
+        var city = Fallen(1, 2, new HexCoord(5, 0));
+        var bandit = Attacker(1, WorldEngine.BanditFaction.Value, new HexCoord(4, 0), city.Position);
+        var state = State([city], [bandit]);
+        var after = new CityCapture().ResolveAll(state, new FixedRandom(0), out var reports);
+        Assert.Equal(city, after.Cities.Single());
+        Assert.Single(after.Armies);
+        Assert.Empty(reports);
+
+        var regular = Attacker(2, 1, new HexCoord(5, -1), city.Position);
+        after = new CityCapture().ResolveAll(state with { FieldArmies = [bandit, regular] }, new FixedRandom(0), out reports);
+        Assert.Equal(new FactionId(1), after.Cities.Single().Owner);
+        Assert.Single(reports);
+    }
+
+    [Fact]
     public void 함락_근접_공격군이_점거하고_자원승계_인구페널티가_적용된다()
     {
         var city = Fallen(1, owner: 2, new HexCoord(5, 0), population: 200_000);

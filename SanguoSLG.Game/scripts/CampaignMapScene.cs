@@ -1788,6 +1788,18 @@ public sealed partial class CampaignMapScene : Node3D
         var siegeCol = new Color(0.9f, 0.6f, 0.4f);
         foreach (var dn in deployNote) { Ev(dn, dn.Contains("실패") ? AccentFill : Parchment); }
         AddCombatReport(turns, Ev); // 교전·특기·계략·지속 피해(내 세력만)
+        foreach (var bandit in preMove.Armies.Where(a => a.Field.Owner == WorldEngine.BanditFaction))
+        {
+            var targetCity = preMove.Cities.FirstOrDefault(c => c.Position == bandit.Field.Target);
+            if (targetCity?.Owner != Player) { continue; }
+            var defeated = turns.Any(t => !t.Units.Any(u => u.Id == bandit.Id && u.Pool.Active > 0))
+                || sieges.Any(ex => ex.BesiegerDamage is { } damage && ex.TurnIndex >= 0
+                    && ex.TurnIndex < turns.Count
+                    && ex.Besiegers.Select((id, index) => (id, index)).Any(x => x.id == bandit.Id
+                        && x.index < damage.Count && turns[ex.TurnIndex].Units.FirstOrDefault(u => u.Id == x.id) is { } unit
+                        && damage[x.index] >= unit.Pool.Active));
+            if (defeated) { Ev($"[치안] {targetCity.Name}을 노리던 도적 부대를 격퇴했습니다.", GoldBright); }
+        }
 
         foreach (var cas in casualties)
         {
@@ -1807,6 +1819,10 @@ public sealed partial class CampaignMapScene : Node3D
             var byMe = ex.Besiegers.Any(b => preMove.Armies.Any(u => u.Id == b && u.Field.Owner == Player));
             if (!mine && !byMe) { continue; } // 내 세력 관련 공성만
             var cn = _cities.First(c => c.Id == ex.City).Name;
+            if (ex.Besiegers.Any(id => preMove.Armies.Any(a => a.Id == id && a.Field.Owner == WorldEngine.BanditFaction)))
+            {
+                Ev($"[도적 습격] {cn} 공격 · 성벽 피해 {ex.WallDamage} · 수비 병력 피해 {ex.TroopDamage}", siegeCol);
+            }
             Ev(mine
                 ? (ex.WallDamage > 0 ? $"[공성] 아군 {cn}이(가) 공격받아 성벽 피해 {ex.WallDamage}(남은 {ex.NewWall})." : $"[공성] 아군 {cn}이(가) 공격받았으나 성벽은 버텼습니다.")
                 : (ex.WallDamage > 0 ? $"[공성] {cn} 성벽에 피해 {ex.WallDamage}을(를) 입혔습니다(남은 {ex.NewWall})." : $"[공성] {cn} 성벽에 피해를 주지 못했습니다."),
@@ -3475,6 +3491,17 @@ public sealed partial class CampaignMapScene : Node3D
         var officers = $"치안 {OfficerName(c.SecurityOfficer) ?? "없음"} · 내정 {OfficerName(c.DomesticOfficer) ?? "없음"}\n"
             + $"병력 {OfficerName(c.RecruitmentOfficer) ?? "없음"} · 훈련 {OfficerName(c.TrainingOfficer) ?? "없음"}";
         box.AddChild(MakeLabel($"담당자: {officers}", 13, GoldBright));
+        var outputPercent = _cb.LowSecurityOutputPercent(c.Security);
+        var raid = _cb.BanditRaidChance(c.Security);
+        var existingRaid = _state.Armies.Any(a => a.Field.Owner == WorldEngine.BanditFaction
+            && a.Pool.Active > 0 && a.Field.Target == c.Position);
+        var securityDetails = MakeLabel(SecurityWeeklySummary(c)
+            + $"\n치안 {c.Security} · 금/군량/병력/훈련 산출 {outputPercent}% (감소 {100 - outputPercent}%)"
+            + (existingRaid ? "\n도적 습격 중 · 같은 성에 추가 출현 없음"
+                : raid.Percent > 0 ? $"\n진행 종료 시 도적 출현 확률 {raid.Percent}% · 병력 {raid.Troops:N0}명"
+                : "\n도적 출현 위험 없음"), 13, outputPercent < 100 ? AccentFill : Parchment);
+        securityDetails.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        box.AddChild(securityDetails);
 
         var garr = _state.Garrisons.Where(g => g.City == city)
             .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ThenBy(g => g.Trainee).ToList();
@@ -3659,8 +3686,8 @@ public sealed partial class CampaignMapScene : Node3D
         var officer = city.TrainingOfficer is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
         return officer is null
             ? 0
-            : System.Math.Max(1, ApplyLowSecurityOutputPenalty(System.Math.Max(1, OfficerMightTier(officer.Might) + 1),
-                city.Security));
+            : ApplyLowSecurityOutputPenalty(System.Math.Max(1, OfficerMightTier(officer.Might) + 1),
+                city.Security);
     }
 
     private int FacilityOutput(City city, string code, int intactCount, int baseOutput)
@@ -6927,7 +6954,7 @@ public sealed partial class CampaignMapScene : Node3D
                     + $"\n선택 병종 {AutoRecruitTroopNames(troopCode)}"
                     + $"\n주 예상 비용 {AutoRecruitWeeklyCostFor(officer, troopCode, _state.Cities.First(c => c.Id == city))}금 · 치안 {_cb.AutoRecruitSecurityDelta}"
                     + "\n도시 금 부족 시 생산 없음",
-                CommandKind.AppointTrainingOfficer => $"\n무력 {officer.Might} → 7일 훈련도 +{System.Math.Max(1, ApplyLowSecurityOutputPenalty(System.Math.Max(1, OfficerMightTier(officer.Might) + 1), _state.Cities.First(c => c.Id == city).Security))}",
+                CommandKind.AppointTrainingOfficer => $"\n무력 {officer.Might} → 7일 훈련도 +{ApplyLowSecurityOutputPenalty(System.Math.Max(1, OfficerMightTier(officer.Might) + 1), _state.Cities.First(c => c.Id == city).Security)}",
                 _ => "",
             };
         }
@@ -7264,7 +7291,7 @@ public sealed partial class CampaignMapScene : Node3D
         CommandKind.AppointSecurityOfficer => $"치안 +{OfficerMightTier(officer.Might)}",
         CommandKind.AppointDomesticOfficer => $"금 +{WeeklyIncomeAmount(ApplyLowSecurityOutputPenalty(_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier, city.Security))} / 군량 +{WeeklyIncomeAmount(ApplyLowSecurityOutputPenalty(_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier, city.Security))}",
         CommandKind.AppointRecruitmentOfficer => $"병력 +{AutoRecruitWeeklyTroopsFor(officer, city)} / 치안 {_cb.AutoRecruitSecurityDelta}",
-        CommandKind.AppointTrainingOfficer => $"7일 훈련도 +{System.Math.Max(1, ApplyLowSecurityOutputPenalty(System.Math.Max(1, OfficerMightTier(officer.Might) + 1), city.Security))}",
+        CommandKind.AppointTrainingOfficer => $"7일 훈련도 +{ApplyLowSecurityOutputPenalty(System.Math.Max(1, OfficerMightTier(officer.Might) + 1), city.Security)}",
         _ => "",
     };
 

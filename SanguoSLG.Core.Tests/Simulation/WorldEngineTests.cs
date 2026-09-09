@@ -617,6 +617,18 @@ public class WorldEngineTests
     }
 
     [Fact]
+    public void v2_저치안_훈련페널티가_최소1_보정으로_무효화되지_않는다()
+    {
+        var general = V2Officer(1, might: 50);
+        var city = new City(new CityId(1), "훈련성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Security: 20, TrainingOfficer: general.Id);
+        var state = new GameState(1, 1, [], [city], [general],
+            GarrisonForces: [new(city.Id, "swordsman", 1000, 50)]);
+        var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true }).AdvanceDays(state, 7);
+        Assert.Equal(50, after.Garrisons.Single().TrainingLevel);
+    }
+
+    [Fact]
     public void v2_치안60이하면_진행_종료때_도적이_성을_공격한다()
     {
         var city = new City(new CityId(1), "불안성", new HexCoord(0, 0), new FactionId(1), 1000,
