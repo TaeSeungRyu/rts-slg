@@ -46,6 +46,9 @@ public sealed partial class CampaignMapScene
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         titleRow.AddChild(title);
         var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(34, 34);
+        close.SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
+        close.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
         close.Pressed += Close;
         titleRow.AddChild(close);
         box.AddChild(MakeLabel(category, 13, Gold));
