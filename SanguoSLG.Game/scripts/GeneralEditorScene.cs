@@ -939,8 +939,7 @@ public partial class GeneralEditorScene : Control
     {
         foreach (var child in parent.GetChildren())
         {
-            parent.RemoveChild(child);
-            child.Free();
+            child.QueueFree();
         }
     }
 
