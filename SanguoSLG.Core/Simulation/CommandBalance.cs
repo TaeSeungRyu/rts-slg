@@ -173,6 +173,14 @@ public sealed record CommandBalance
         return costPer100 <= 0 || troops <= 0 ? 0 : (troops * costPer100 + 99) / 100;
     }
 
+    public static int AutoRecruitRate(int value) => System.Math.Clamp(value, 1, 3);
+
+    public int AutoRecruitSecurityDeltaForRate(int value)
+    {
+        var rate = AutoRecruitRate(value);
+        return AutoRecruitSecurityDelta - (rate == 1 ? 0 : rate);
+    }
+
     public int LowSecurityOutputPercent(int security)
     {
         if (security <= LowSecurityPenaltyThreshold4)

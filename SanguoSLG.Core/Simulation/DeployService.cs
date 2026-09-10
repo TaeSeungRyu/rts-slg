@@ -309,6 +309,7 @@ public sealed class DeployService
             TrainingOfficer = Clear(city.TrainingOfficer, generals),
             AutoRecruitTroopCode = clearRecruitment ? string.Empty : city.AutoRecruitTroopCode,
             AutoRecruitTroopCodes = clearRecruitment ? string.Empty : city.AutoRecruitTroopCodes,
+            AutoRecruitRate = clearRecruitment ? 1 : city.AutoRecruitRate,
         };
     }
 }

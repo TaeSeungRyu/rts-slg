@@ -346,6 +346,7 @@ public class CommandSystemTests
         {
             Assert.Equal(B.AutoRecruitDefaultTroopCode, city.AutoRecruitTroopCode);
             Assert.Equal(B.AutoRecruitDefaultTroopCode, city.AutoRecruitTroopCodes);
+            Assert.Equal(1, city.AutoRecruitRate);
         }
 
         Assert.False(r.State.IsGeneralBusy(new GeneralId(1)));
@@ -379,6 +380,19 @@ public class CommandSystemTests
         Assert.True(r.Ok, r.Error);
         Assert.Equal("cavalry", r.State.Cities.Single().AutoRecruitTroopCode);
         Assert.Equal("cavalry,archer,thunder_cart", r.State.Cities.Single().AutoRecruitTroopCodes);
+    }
+
+    [Fact]
+    public void v2_병력담당_자동생산_비율을_도시에_저장한다()
+    {
+        var s0 = State(new[] { Town(1) }, new[] { Mig(1, 80) });
+
+        var r = Service().Issue(s0,
+            new CommandRequest(new CityId(1), CommandKind.AppointRecruitmentOfficer, new GeneralId(1),
+                Value: 3, TroopCode: "swordsman"));
+
+        Assert.True(r.Ok, r.Error);
+        Assert.Equal(3, r.State.Cities.Single().AutoRecruitRate);
     }
 
     [Fact]
@@ -421,6 +435,7 @@ public class CommandSystemTests
         Assert.Null(replaced.State.Cities.Single(c => c.Id.Value == 1).RecruitmentOfficer);
         Assert.Equal(string.Empty, replaced.State.Cities.Single(c => c.Id.Value == 1).AutoRecruitTroopCode);
         Assert.Equal(string.Empty, replaced.State.Cities.Single(c => c.Id.Value == 1).AutoRecruitTroopCodes);
+        Assert.Equal(1, replaced.State.Cities.Single(c => c.Id.Value == 1).AutoRecruitRate);
         Assert.Equal(new GeneralId(1), replaced.State.Cities.Single(c => c.Id.Value == 2).TrainingOfficer);
     }
 

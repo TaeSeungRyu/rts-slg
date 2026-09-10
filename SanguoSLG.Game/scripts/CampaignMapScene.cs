@@ -180,8 +180,10 @@ public sealed partial class CampaignMapScene : Node3D
     private bool _offSortAsc;
     private Label _modalDetail = null!;
     private readonly List<PanelContainer> _optionCards = new();
+    private readonly List<PanelContainer> _autoRecruitRateCards = new();
     private readonly HashSet<int> _disabledOptions = new();
     private readonly HashSet<int> _modalMultiParams = new();
+    private int _autoRecruitRateParam = 1;
     private readonly Dictionary<TroopClass, ImageTexture> _emblems = new();
 
     // 출전 모달 선택 상태.
@@ -3264,9 +3266,11 @@ public sealed partial class CampaignMapScene : Node3D
 
         var options = OptionList(cmd, cityData);
         _optionCards.Clear();
+        _autoRecruitRateCards.Clear();
         _disabledOptions.Clear();
         _modalMultiParams.Clear();
         _modalParam = cmd.Param == "tax" ? 2 : 0;
+        _autoRecruitRateParam = System.Math.Clamp(cityData.AutoRecruitRate <= 0 ? 1 : cityData.AutoRecruitRate, 1, 3);
         if (cmd.Param == "faction" && options.Count == 0)
         {
             var empty = cmd.Kind == CommandKind.FormAlliance
@@ -3351,6 +3355,11 @@ public sealed partial class CampaignMapScene : Node3D
                 }
                 grid.AddChild(card);
             }
+        }
+
+        if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
+        {
+            AddAutoRecruitRatePicker(box, options);
         }
 
         _modalDetail = MakeLabel("", 17, Parchment);
@@ -3454,6 +3463,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _optionCards.Clear();
+        _autoRecruitRateCards.Clear();
         _modalMultiParams.Clear();
         _depTroopCards.Clear();
         _depVanCards.Clear();
@@ -3750,8 +3760,7 @@ public sealed partial class CampaignMapScene : Node3D
         var officer = city.RecruitmentOfficer is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
         return officer is null
             ? 0
-            : ApplyLowSecurityOutputPenalty(_cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier,
-                city.Security);
+            : AutoRecruitWeeklyTroopsFor(officer, city);
     }
 
     private string WeeklyRecruitSummary(City city)
@@ -3762,7 +3771,8 @@ public sealed partial class CampaignMapScene : Node3D
         var troopCodes = string.Join(',', CurrentAutoRecruitTroopCodes(city));
         var troops = AutoRecruitWeeklyTroopsFor(officer, city);
         var cost = AutoRecruitWeeklyCostFor(officer, troopCodes, city);
-        return $"+{troops} {AutoRecruitTroopNames(troopCodes)} / -{cost}금";
+        var rate = CommandBalance.AutoRecruitRate(city.AutoRecruitRate);
+        return $"+{troops} {AutoRecruitTroopNames(troopCodes)} / -{cost}금 / {rate}배";
     }
 
     private string AutoRecruitTroopCode(City city)
@@ -6488,6 +6498,47 @@ public sealed partial class CampaignMapScene : Node3D
     private bool IsOptionSelected(int idx)
         => _modalMultiParams.Count > 0 ? _modalMultiParams.Contains(idx) : idx == _modalParam;
 
+    private void AddAutoRecruitRatePicker(VBoxContainer box, List<(string Name, ImageTexture Icon, string Detail)> troopOptions)
+    {
+        box.AddChild(MakeLabel("생산 비율을 선택하세요", 19, GoldBright));
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 10);
+        box.AddChild(row);
+        for (var rate = 1; rate <= 3; rate++)
+        {
+            var r = rate;
+            var extraSecurity = r == 1 ? 0 : r;
+            var detail = r == 1 ? "기본 생산\n치안 추가 부담 없음" : $"기본×{r}\n비용×{r} · 치안 추가 -{extraSecurity}";
+            var card = OptionCard(($"{r}배", Icon(Sym.People), detail));
+            card.CustomMinimumSize = new Vector2(168, 126);
+            card.GuiInput += e =>
+            {
+                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+                {
+                    _autoRecruitRateParam = r;
+                    RefreshAutoRecruitRateCards(troopOptions);
+                }
+            };
+            _autoRecruitRateCards.Add(card);
+            row.AddChild(card);
+        }
+
+        RefreshAutoRecruitRateCards(troopOptions);
+    }
+
+    private void RefreshAutoRecruitRateCards(List<(string Name, ImageTexture Icon, string Detail)> troopOptions)
+    {
+        for (var i = 0; i < _autoRecruitRateCards.Count; i++)
+        {
+            _autoRecruitRateCards[i].AddThemeStyleboxOverride("panel", CardBox(i + 1 == _autoRecruitRateParam));
+        }
+
+        if (_modalDetail is not null && troopOptions.Count > 0)
+        {
+            RefreshMultiOptionCards(troopOptions);
+        }
+    }
+
     private void ToggleMultiOption(int idx, (string Name, ImageTexture Icon, string Detail) _)
     {
         var cmd = Cmds[_cmdIndex];
@@ -6534,7 +6585,8 @@ public sealed partial class CampaignMapScene : Node3D
             .Select(i => options[i].Name).ToList();
         var cmd = Cmds[_cmdIndex];
         var label = cmd.Kind == CommandKind.SelectMajorTroop ? "주력병종" : "자동 생산";
-        _modalDetail.Text = selected.Count == 0 ? "▶  선택 없음" : $"▶  {label}: {string.Join(", ", selected)}";
+        var rate = cmd.Kind == CommandKind.AppointRecruitmentOfficer ? $" · {_autoRecruitRateParam}배" : "";
+        _modalDetail.Text = selected.Count == 0 ? "▶  선택 없음" : $"▶  {label}: {string.Join(", ", selected)}{rate}";
     }
 
     private static string PlainUiText(string value)
@@ -6888,7 +6940,9 @@ public sealed partial class CampaignMapScene : Node3D
             "repairable" => Repairables[p].Code,
             _ => "",
         };
-        var value = cmd.Param == "tax" ? p * 10 : 0;
+        var value = cmd.Kind == CommandKind.AppointRecruitmentOfficer
+            ? _autoRecruitRateParam
+            : cmd.Param == "tax" ? p * 10 : 0;
 
         CityId? target = null;
         var extra = "";
@@ -7070,9 +7124,10 @@ public sealed partial class CampaignMapScene : Node3D
                 CommandKind.AppointSecurityOfficer => $"\n무력 {officer.Might} → 주 치안 {(officer.Might < 60 ? "+0" : officer.Might < 80 ? "+1" : officer.Might < 100 ? "+2" : "+3")}",
                 CommandKind.AppointDomesticOfficer => $"\n정치 {officer.Politics} → 주 금 +{WeeklyIncomeAmount(ApplyLowSecurityOutputPenalty(_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier, _state.Cities.First(c => c.Id == city).Security))}"
                     + $"\n주 군량 +{WeeklyIncomeAmount(ApplyLowSecurityOutputPenalty(_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier, _state.Cities.First(c => c.Id == city).Security))}",
-                CommandKind.AppointRecruitmentOfficer => $"\n무력 {officer.Might} → 주 병력 +{AutoRecruitWeeklyTroopsFor(officer, _state.Cities.First(c => c.Id == city))}"
+                CommandKind.AppointRecruitmentOfficer => $"\n무력 {officer.Might} → 주 병력 +{AutoRecruitWeeklyTroopsFor(officer, _state.Cities.First(c => c.Id == city), _autoRecruitRateParam)}"
                     + $"\n선택 병종 {AutoRecruitTroopNames(troopCode)}"
-                    + $"\n주 예상 비용 {AutoRecruitWeeklyCostFor(officer, troopCode, _state.Cities.First(c => c.Id == city))}금 · 치안 {_cb.AutoRecruitSecurityDelta}"
+                    + $"\n생산 비율 {_autoRecruitRateParam}배"
+                    + $"\n주 예상 비용 {AutoRecruitWeeklyCostFor(officer, troopCode, _state.Cities.First(c => c.Id == city), _autoRecruitRateParam)}금 · 치안 {_cb.AutoRecruitSecurityDeltaForRate(_autoRecruitRateParam)}"
                     + "\n도시 금 부족 시 생산 없음",
                 CommandKind.AppointTrainingOfficer => $"\n무력 {officer.Might} → 7일 훈련도 +{ApplyLowSecurityOutputPenalty(System.Math.Max(1, OfficerMightTier(officer.Might) + 1), _state.Cities.First(c => c.Id == city).Security)}",
                 _ => "",
@@ -7421,7 +7476,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         CommandKind.AppointSecurityOfficer => $"치안 +{OfficerMightTier(officer.Might)}",
         CommandKind.AppointDomesticOfficer => $"금 +{WeeklyIncomeAmount(ApplyLowSecurityOutputPenalty(_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier, city.Security))} / 군량 +{WeeklyIncomeAmount(ApplyLowSecurityOutputPenalty(_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier, city.Security))}",
-        CommandKind.AppointRecruitmentOfficer => $"병력 +{AutoRecruitWeeklyTroopsFor(officer, city)} / 치안 {_cb.AutoRecruitSecurityDelta}",
+        CommandKind.AppointRecruitmentOfficer => $"병력 +{AutoRecruitWeeklyTroopsFor(officer, city)} / 치안 {_cb.AutoRecruitSecurityDeltaForRate(city.AutoRecruitRate)}",
         CommandKind.AppointTrainingOfficer => $"7일 훈련도 +{ApplyLowSecurityOutputPenalty(System.Math.Max(1, OfficerMightTier(officer.Might) + 1), city.Security)}",
         _ => "",
     };
@@ -7435,16 +7490,17 @@ public sealed partial class CampaignMapScene : Node3D
         var security = Officer(city.SecurityOfficer);
         var recruiter = Officer(city.RecruitmentOfficer);
         var recovery = security is null ? _cb.AutoSecurityNoOfficerDelta : OfficerMightTier(security.Might);
-        var burden = recruiter is null ? 0 : _cb.AutoRecruitSecurityDelta;
+        var burden = recruiter is null ? 0 : _cb.AutoRecruitSecurityDeltaForRate(city.AutoRecruitRate);
         return $"주 치안 {recovery + burden:+0;-0;0} = {(security is null ? "공석" : security.Name)} {recovery:+0;-0;0}"
             + (recruiter is null ? "" : $" / 병력 담당 {recruiter.Name} {burden:+0;-0;0}");
     }
 
-    private int AutoRecruitWeeklyCostFor(General officer, string troopCodes, City? city = null)
+    private int AutoRecruitWeeklyCostFor(General officer, string troopCodes, City? city = null, int? rateOverride = null)
     {
         var codes = troopCodes.Split(',', System.StringSplitOptions.TrimEntries | System.StringSplitOptions.RemoveEmptyEntries);
         if (codes.Length == 0) { codes = [_cb.AutoRecruitDefaultTroopCode]; }
-        var total = _cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier;
+        var rate = CommandBalance.AutoRecruitRate(rateOverride ?? city?.AutoRecruitRate ?? 1);
+        var total = (_cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier) * rate;
         if (city is not null)
         {
             total = ApplyLowSecurityOutputPenalty(total, city.Security);
@@ -7459,9 +7515,10 @@ public sealed partial class CampaignMapScene : Node3D
         return sum;
     }
 
-    private int AutoRecruitWeeklyTroopsFor(General officer, City? city = null)
+    private int AutoRecruitWeeklyTroopsFor(General officer, City? city = null, int? rateOverride = null)
     {
-        var weekly = _cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier;
+        var rate = CommandBalance.AutoRecruitRate(rateOverride ?? city?.AutoRecruitRate ?? 1);
+        var weekly = (_cb.AutoRecruitTroopsBase + officer.Might * _cb.AutoRecruitTroopsMightMultiplier) * rate;
         if (city is not null)
         {
             weekly = ApplyLowSecurityOutputPenalty(weekly, city.Security);

@@ -116,6 +116,7 @@ public sealed record GameState(
             TrainingOfficer = c.TrainingOfficer is { } t && ids.Contains(t) ? null : c.TrainingOfficer,
             AutoRecruitTroopCode = c.RecruitmentOfficer is { } r1 && ids.Contains(r1) ? "" : c.AutoRecruitTroopCode,
             AutoRecruitTroopCodes = c.RecruitmentOfficer is { } r2 && ids.Contains(r2) ? "" : c.AutoRecruitTroopCodes,
+            AutoRecruitRate = c.RecruitmentOfficer is { } r3 && ids.Contains(r3) ? 1 : c.AutoRecruitRate,
         }).ToList() };
     }
 

@@ -524,6 +524,26 @@ public class WorldEngineTests
     }
 
     [Fact]
+    public void v2_병력담당은_생산비율만큼_병력과_비용과_치안부담을_늘린다()
+    {
+        var city = new City(new CityId(1), "증산성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Population: 0, Security: 100,
+            RecruitmentOfficer: new GeneralId(1),
+            AutoRecruitTroopCodes: "swordsman",
+            AutoRecruitRate: 3);
+        var general = V2Officer(1, might: 100);
+        var state = new GameState(1, 1, [], [city], [general],
+            Postings: [new(general.Id, city.Owner, city.Id)]);
+
+        var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
+            .AdvanceDays(state, 7);
+
+        Assert.Equal(1500, after.Garrisons.Single().Troops);
+        Assert.Equal(985, after.Cities.Single().Gold);
+        Assert.Equal(92, after.Cities.Single().Security);
+    }
+
+    [Fact]
     public void v2_병력담당은_선택한_병종을_생산하고_비용을_차감한다()
     {
         var city = new City(new CityId(1), "기병성", new HexCoord(0, 0), new FactionId(1), 1000,

@@ -815,8 +815,10 @@ public sealed class CommandService
 
         var autoRecruitTroopCode = city.AutoRecruitTroopCode;
         var autoRecruitTroopCodes = city.AutoRecruitTroopCodes;
+        var autoRecruitRate = city.AutoRecruitRate <= 0 ? 1 : city.AutoRecruitRate;
         if (kind == CommandKind.AppointRecruitmentOfficer)
         {
+            autoRecruitRate = CommandBalance.AutoRecruitRate(req.Value);
             var selectedTroops = AutoRecruitTroopCodes(req.TroopCode).ToList();
             if (selectedTroops.Count == 0)
             {
@@ -845,7 +847,8 @@ public sealed class CommandService
             CommandKind.AppointSecurityOfficer => city.SecurityOfficer == main.Id,
             CommandKind.AppointDomesticOfficer => city.DomesticOfficer == main.Id,
             CommandKind.AppointRecruitmentOfficer => city.RecruitmentOfficer == main.Id
-                && city.AutoRecruitTroopCodes == autoRecruitTroopCodes,
+                && city.AutoRecruitTroopCodes == autoRecruitTroopCodes
+                && city.AutoRecruitRate == autoRecruitRate,
             CommandKind.AppointTrainingOfficer => city.TrainingOfficer == main.Id,
             _ => false,
         };
@@ -879,6 +882,7 @@ public sealed class CommandService
                     RecruitmentOfficer = main.Id,
                     AutoRecruitTroopCode = autoRecruitTroopCode,
                     AutoRecruitTroopCodes = autoRecruitTroopCodes,
+                    AutoRecruitRate = autoRecruitRate,
                 },
                 CommandKind.AppointTrainingOfficer => c with { TrainingOfficer = main.Id },
                 _ => c,
@@ -897,6 +901,7 @@ public sealed class CommandService
                 RecruitmentOfficer = null,
                 AutoRecruitTroopCode = string.Empty,
                 AutoRecruitTroopCodes = string.Empty,
+                AutoRecruitRate = 1,
             },
             CommandKind.AppointTrainingOfficer => city with { TrainingOfficer = null },
             _ => city,

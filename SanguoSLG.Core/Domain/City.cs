@@ -54,6 +54,7 @@ public sealed record City(
     GeneralId? TrainingOfficer = null,
     string AutoRecruitTroopCode = "",
     string AutoRecruitTroopCodes = "",
+    int AutoRecruitRate = 1,
     int WallLevel = 0)
 {
     /// <summary>소유 세력을 바꾼 새 도시를 반환한다.</summary>

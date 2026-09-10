@@ -178,9 +178,10 @@ public sealed class WorldEngine
                 Amount: delta, Code: security is null ? "vacancy" : "security"));
             if (recruiter is not null)
             {
-                delta += _commands.AutoRecruitSecurityDelta;
+                var recruitDelta = _commands.AutoRecruitSecurityDeltaForRate(city.AutoRecruitRate);
+                delta += recruitDelta;
                 _events.Add(new WorldEvent(WorldEventKind.SecurityFactor, city.Owner, recruiter.Id, city.Id,
-                    Amount: _commands.AutoRecruitSecurityDelta, Code: "recruitment"));
+                    Amount: recruitDelta, Code: "recruitment"));
             }
             return city with { Security = System.Math.Clamp(city.Security + delta, 0, 100) };
         }).ToList();
@@ -223,7 +224,8 @@ public sealed class WorldEngine
             {
                 var troopCodes = SelectedAutoRecruitTroopCodes(next).OrderBy(_commands.AutoRecruitGoldCostPer100)
                     .ThenBy(c => c, System.StringComparer.Ordinal).ToList();
-                var totalTroops = _commands.AutoRecruitTroopsBase + recruiter.Might * _commands.AutoRecruitTroopsMightMultiplier;
+                var rate = CommandBalance.AutoRecruitRate(next.AutoRecruitRate);
+                var totalTroops = (_commands.AutoRecruitTroopsBase + recruiter.Might * _commands.AutoRecruitTroopsMightMultiplier) * rate;
                 totalTroops = ApplyLowSecurityOutputPenalty(totalTroops, next.Security);
                 for (var i = 0; i < troopCodes.Count; i++)
                 {
