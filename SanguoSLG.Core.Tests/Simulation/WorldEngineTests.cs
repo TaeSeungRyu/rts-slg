@@ -394,7 +394,7 @@ public class WorldEngineTests
         {
             V2Officer(1, might: 85),      // 치안 +2
             V2Officer(2, politics: 80),   // 금 +260, 군량 +700
-            V2Officer(3, might: 70),      // 훈련도 50 병력 +550
+            V2Officer(3, might: 70),      // 훈련도 50 병력 +350/주
             V2Officer(4, might: 100),     // 훈련 +4
         };
         var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, generals.ToList(),
@@ -407,10 +407,10 @@ public class WorldEngineTests
         var garrison = after.Garrisons.Single(g => g.City == city.Id && g.TroopCode == "swordsman");
 
         Assert.Equal(46, resultCity.Security);
-        Assert.Equal(1132, resultCity.Gold);
+        Assert.Equal(1144, resultCity.Gold);
         Assert.Equal(1420, resultCity.Provisions);
-        Assert.Equal(3280, garrison.Troops);
-        Assert.Equal(53, garrison.TrainingLevel);
+        Assert.Equal(1840, garrison.Troops);
+        Assert.Equal(51, garrison.TrainingLevel);
     }
 
     [Fact]
@@ -489,7 +489,7 @@ public class WorldEngineTests
     }
 
     [Fact]
-    public void v2_병력담당은_무력100이면_한달에_오천명을_생산한다()
+    public void v2_병력담당은_무력100이면_칠일에_오백명을_생산한다()
     {
         var city = new City(new CityId(1), "병영성", new HexCoord(0, 0), new FactionId(1), 1000,
             Gold: 1000, Population: 0, Security: 100,
@@ -500,9 +500,9 @@ public class WorldEngineTests
             Postings: generals.Select(g => new GeneralPosting(g.Id, city.Owner, city.Id)).ToList());
 
         var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
-            .AdvanceDays(state, 30);
+            .AdvanceDays(state, 7);
 
-        Assert.Equal(5000, after.Garrisons.Single().Troops);
+        Assert.Equal(500, after.Garrisons.Single().Troops);
     }
 
     [Fact]
@@ -539,8 +539,8 @@ public class WorldEngineTests
 
         var garrison = after.Garrisons.Single();
         Assert.Equal("cavalry", garrison.TroopCode);
-        Assert.Equal(2470, garrison.Troops);
-        Assert.Equal(0, after.Cities.Single().Gold);
+        Assert.Equal(1120, garrison.Troops);
+        Assert.Equal(53, after.Cities.Single().Gold);
     }
 
     [Fact]
@@ -559,10 +559,10 @@ public class WorldEngineTests
 
         var produced = after.Garrisons.OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ToList();
         Assert.Equal(3, produced.Count);
-        Assert.Contains(produced, g => g.TroopCode == "swordsman" && g.Troops == 417);
-        Assert.Contains(produced, g => g.TroopCode == "cavalry" && g.Troops == 417);
-        Assert.Contains(produced, g => g.TroopCode == "war_elephant" && g.Troops == 416);
-        Assert.Equal(53, after.Cities.Single().Gold);
+        Assert.Contains(produced, g => g.TroopCode == "swordsman" && g.Troops == 167);
+        Assert.Contains(produced, g => g.TroopCode == "cavalry" && g.Troops == 167);
+        Assert.Contains(produced, g => g.TroopCode == "war_elephant" && g.Troops == 166);
+        Assert.Equal(81, after.Cities.Single().Gold);
     }
 
     [Fact]
@@ -603,9 +603,9 @@ public class WorldEngineTests
         {
             state = engine.AdvanceDays(state, 7);
             Assert.Equal(100 - week, state.Cities.Single().Security);
-            Assert.Equal(52 * week, state.Cities.Single().Gold);
+            Assert.Equal(60 * week, state.Cities.Single().Gold);
             Assert.Equal(1000 + 175 * week, state.Cities.Single().Provisions);
-            Assert.Equal(1250 * week, state.Garrisons.Single(g => g.TroopCode == "swordsman").Troops);
+            Assert.Equal(500 * week, state.Garrisons.Single(g => g.TroopCode == "swordsman").Troops);
             Assert.Equal(40 + 4 * week, state.Garrisons.Single(g => g.TroopCode == "archer").TrainingLevel);
         }
     }

@@ -132,8 +132,8 @@ public sealed record CommandBalance
     public int AutoDomesticGoldPoliticsMultiplier { get; init; } = 2;
     public int AutoDomesticProvisionsBase { get; init; } = 300;
     public int AutoDomesticProvisionsPoliticsMultiplier { get; init; } = 5;
-    public int AutoRecruitTroopsBase { get; init; } = 250;
-    public int AutoRecruitTroopsMightMultiplier { get; init; } = 10;
+    public int AutoRecruitTroopsBase { get; init; } = 0;
+    public int AutoRecruitTroopsMightMultiplier { get; init; } = 5;
     public int AutoRecruitTroopTrainingLevel { get; init; } = 50;
     public int LowSecurityPenaltyThreshold1 { get; init; } = 70;
     public int LowSecurityPenaltyPercent1 { get; init; } = 80;
