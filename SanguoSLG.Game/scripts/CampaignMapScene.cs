@@ -1520,6 +1520,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<MeshInstance3D> _supplyMarkers = new();
     private Mesh? _supplyTileMesh;
     private Material? _supplyTileMat;
+    private Material? _fieldSupplyTileMat;
+    private const int FieldSupplyRadius = 6;
 
     // ── 보급 영역: 아군 성 반경(city_resupply_radius) 안을 초록 타일로 표시 ──
     // 부대가 나가 있을 때(또는 출전 예약이 있을 때)만 보여, 이 영역을 벗어나면 휴대 군량으로
@@ -1544,6 +1546,28 @@ public sealed partial class CampaignMapScene : Node3D
             EmissionEnergyMultiplier = 1.0f,
             RenderPriority = -2, // 성 이름·병력 라벨(Label3D)보다 먼저 그려 글씨를 가리지 않게
         };
+        _fieldSupplyTileMat ??= new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.18f, 0.58f, 0.95f, 0.34f),
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            EmissionEnabled = true,
+            Emission = new Color(0.25f, 0.64f, 1.0f),
+            EmissionEnergyMultiplier = 0.85f,
+            RenderPriority = -1,
+        };
+
+        void AddMarker(HexCoord hex, Material mat, float yOffset)
+        {
+            var marker = new MeshInstance3D
+            {
+                Mesh = _supplyTileMesh,
+                MaterialOverride = mat,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                Position = _view.HexToWorld(hex) + new Vector3(0f, _view.TileTopY + yOffset, 0f),
+            };
+            AddChild(marker);
+            _supplyMarkers.Add(marker);
+        }
 
         var seen = new HashSet<HexCoord>();
         foreach (var city in _state.Cities.Where(c => c.Owner == Player).OrderBy(c => c.Id.Value))
@@ -1557,15 +1581,27 @@ public sealed partial class CampaignMapScene : Node3D
                     var hex = new HexCoord(city.Position.Q + dq, city.Position.R + dr);
                     if (!seen.Add(hex) || !_map.Contains(hex)) { continue; }
                     if (!footprint.Contains(hex) && !_passability.CanEnter(MovementDomain.Land, hex)) { continue; }
-                    var marker = new MeshInstance3D
-                    {
-                        Mesh = _supplyTileMesh,
-                        MaterialOverride = _supplyTileMat,
-                        CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-                        Position = _view.HexToWorld(hex) + new Vector3(0f, _view.TileTopY + 0.02f, 0f),
-                    };
-                    AddChild(marker);
-                    _supplyMarkers.Add(marker);
+                    AddMarker(hex, _supplyTileMat, 0.02f);
+                }
+            }
+        }
+
+        var fieldSeen = new HashSet<HexCoord>();
+        foreach (var supply in _state.Armies
+            .Where(u => u.Field.Owner == Player && u.IsSupply && u.Pool.Active > 0 && u.Provisions > 0)
+            .OrderBy(u => u.Id.Value))
+        {
+            for (var dq = -FieldSupplyRadius; dq <= FieldSupplyRadius; dq++)
+            {
+                for (var dr = System.Math.Max(-FieldSupplyRadius, -dq - FieldSupplyRadius);
+                     dr <= System.Math.Min(FieldSupplyRadius, -dq + FieldSupplyRadius);
+                     dr++)
+                {
+                    var hex = new HexCoord(supply.Field.Position.Q + dq, supply.Field.Position.R + dr);
+                    if (!fieldSeen.Add(hex) || !_map.Contains(hex)) { continue; }
+                    if (!_passability.CanEnter(MovementDomain.Land, hex)
+                        && !_state.Cities.Any(c => CastleFootprint.TilesFor(c).Contains(hex))) { continue; }
+                    AddMarker(hex, _fieldSupplyTileMat, 0.045f);
                 }
             }
         }

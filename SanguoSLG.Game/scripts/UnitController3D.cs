@@ -271,6 +271,8 @@ public partial class UnitController3D : Node3D
     /// <summary>표시 모드: 한 칸을 실제 행군 모션과 함께 이동한다.</summary>
     public void DisplayStepTo(HexCoord to, float seconds)
     {
+        Visible = true;
+        if (Alive(_tokenRoot)) { _tokenRoot.Visible = true; }
         _moving = true;
         PlayNativeSupplyAnimation("state_move");
         var target = TokenPosition(to);
@@ -286,6 +288,8 @@ public partial class UnitController3D : Node3D
         tween.Finished += () =>
         {
             _moving = false;
+            Visible = true;
+            if (Alive(_tokenRoot)) { _tokenRoot.Visible = true; }
             PlayNativeSupplyAnimation("state_camp");
         };
     }
@@ -1795,6 +1799,8 @@ public partial class UnitController3D : Node3D
             _lastPosition = Position;
             FactionColorView.Apply(_tokenRoot, _factionColor);
             MapView3D.TuneImportedMeshes(_tokenRoot);
+            Visible = true;
+            _tokenRoot.Visible = true;
             PlayNativeSupplyAnimation("state_camp");
             return;
         }
@@ -1956,6 +1962,8 @@ public partial class UnitController3D : Node3D
     private void PlayNativeSupplyAnimation(string preferred, string fallback = "")
     {
         if (!_nativeSupply) { return; }
+        Visible = true;
+        if (Alive(_tokenRoot)) { _tokenRoot.Visible = true; }
         foreach (var player in _nativeAnimations.Where(Alive))
         {
             var names = player.GetAnimationList();
