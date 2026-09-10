@@ -55,7 +55,7 @@ public class BattlefieldVisionTests
     public void 정찰_60일만료와_다른세력정보_제외()
     {
         var city = City(2, 20, Enemy);
-        var state = new GameState(10, 190, [], [city], [], ScoutedCities: [new CityIntel(Player, city.Id, 69)]);
+        var state = new GameState(10, 190, [], [city], [], ScoutedCities: [new CityIntel(Player, city.Id, 70)]);
         for (var day = 10; day < 70; day++)
             Assert.Contains(city.Position, Vision.VisibleTiles(state with { Day = day }, Player, Map));
         var expired = state with { Day = 70 };
@@ -114,6 +114,19 @@ public class BattlefieldVisionTests
         var custom = new TroopTypeLoader().LoadFromJson(json);
         Assert.Equal(7, new BattlefieldVision(new BalanceConfig(0), custom).UnitRadius(Unit("dragon", Player)));
         Assert.Throws<InvalidDataException>(() => new TroopTypeLoader().LoadFromJson(json.Replace("7", "-1")));
+    }
+
+    [Fact]
+    public void 정찰만료후에도_겹치는_아군부대시야는_유지()
+    {
+        var enemy = City(2, 10, Enemy);
+        var state = new GameState(60, 190, [], [enemy], [],
+            FieldArmies: [Unit("swordsman", Player, 8)], ScoutedCities: [new CityIntel(Player, enemy.Id, 60)]);
+        var visible = Vision.VisibleTiles(state, Player, Map);
+        Assert.False(state.IsScouted(Player, enemy.Id));
+        Assert.True(BattlefieldVision.CanInspectCity(state, Player, enemy, visible));
+        Assert.Contains(new HexCoord(11, 0), visible);
+        Assert.DoesNotContain(new HexCoord(12, 0), visible);
     }
 
     [Fact]

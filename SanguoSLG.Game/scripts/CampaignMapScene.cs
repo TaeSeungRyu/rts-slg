@@ -414,6 +414,9 @@ public sealed partial class CampaignMapScene : Node3D
             new CityPlunder(_cb), _cb.CityResupplyRadius,
             _cb.BuildSiteHp, _cb.BuildSiteDamagePerTurn);
         var scenario = new ScenarioLoader().LoadFromDirectory(dataDirectory);
+        _vision = new BattlefieldVision(scenario.Balance, _troops);
+        _fog = new BattlefieldFogView(_view);
+        _fog.RegisterMap();
         _state = _initial with
         {
             StartYear = 190,
@@ -935,7 +938,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         // 유닛 클릭 → 유닛 명령 팔레트(같은 칸에 겹치면 아군·id 우선). 같은 유닛 재클릭 = 닫기.
-        var unit = _state.Armies.Where(u => u.Field.Position == hex)
+        var unit = DisplayedArmies.Where(u => u.Field.Position == hex && CanSeeUnit(u))
             .OrderBy(u => u.Field.Owner == Player ? 0 : 1).ThenBy(u => u.Id.Value)
             .FirstOrDefault();
         if (unit is not null)
@@ -962,6 +965,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 유닛 팔레트 열기 — 성 팔레트처럼 유닛 화면좌표 옆에 띄운다.
     private void OpenUnitMenu(CombatUnit u)
     {
+        if (!CanSeeUnit(u)) return;
         _selectedUnitId = u.Id.Value;
         _selected = null;
         _infoCard.Visible = false;
@@ -997,8 +1001,8 @@ public sealed partial class CampaignMapScene : Node3D
     // 유닛 상태를 정보 카드에 표시(팔레트 '정보').
     private void ShowUnitInfo(int unitId)
     {
-        var u = _state.Armies.FirstOrDefault(a => a.Id.Value == unitId);
-        if (u is null) { return; }
+        var u = DisplayedArmies.FirstOrDefault(a => a.Id.Value == unitId);
+        if (u is null || !CanSeeUnit(u)) { return; }
 
         var tmpl = _troops.FirstOrDefault(t => t.Code == u.TroopCode);
         var faction = _state.Factions.FirstOrDefault(f => f.Id == u.Field.Owner);
@@ -1007,6 +1011,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         Clear(_infoRows);
         _infoRows.AddChild(MakeLabel($"《 {tmpl?.Name ?? u.TroopCode} 》 {faction?.Name}", 15, GoldBright));
+        _infoRows.AddChild(MakeLabel($"시야 {_vision.UnitRadius(u)}칸", 13, Parchment));
         if (u.VanguardId is { } vanguardId)
         {
             var faceRow = new HBoxContainer();
@@ -1081,6 +1086,12 @@ public sealed partial class CampaignMapScene : Node3D
     // 지형 정보 카드 — 클릭 지점 위에 떠오른다. 상단 3D 에셋+이름, 하단 이동·전투 보정.
     private void ShowMapInfo(HexCoord h)
     {
+        if (!_visibleTiles.Contains(h))
+        {
+            HidePanels();
+            ShowNotice("시야 밖", "아군 성·부대를 가까이 이동시키거나 적 성을 정찰하면 주변 정보를 볼 수 있습니다.");
+            return;
+        }
         _selected = null;
         _cmdMenu.Visible = false;
         _unitMenu.Visible = false;
@@ -1718,6 +1729,7 @@ public sealed partial class CampaignMapScene : Node3D
             };
             AddChild(label);
             _cityLabels[city.Id.Value] = label;
+            _fog.Register(node, city.Position);
         }
     }
 
@@ -1917,6 +1929,11 @@ public sealed partial class CampaignMapScene : Node3D
     private void BuildAnimation(Dictionary<int, HexCoord> startHex, IReadOnlyList<AdvanceTurn> turns,
         IReadOnlyList<SiegeExchange> sieges, GameState preMove)
     {
+        _animationProductionPositions.Clear();
+        _visionRefreshTime = 0;
+        _lostProductionVision.Clear();
+        _productionVisionLosses.Clear();
+        foreach (var op in preMove.ProductionOps) _animationProductionPositions[op.Id] = op.Position;
         _animSteps.Clear();
         _animAttacks.Clear();
         _animUpdates.Clear();
@@ -2041,6 +2058,8 @@ public sealed partial class CampaignMapScene : Node3D
             foreach (var (_, pos) in turn.LostProduction.OrderBy(kv => kv.Key.Value))
             {
                 _animDeathEffects.Add((settleTime - 0.05, _view.HexToWorld(pos)));
+                foreach (var op in preMove.ProductionOps.Where(o => o.Target == pos))
+                    _productionVisionLosses.Add((settleTime + 0.05, op.Id));
             }
 
             alive = survivors;
@@ -2101,6 +2120,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void SpawnCastleVolley(Vector3 from, Vector3 targetPos)
     {
+        if (!IsVisibleAt(from) || !IsVisibleAt(targetPos)) return;
         foreach (var (off, flight) in VolleyPattern)
         {
             ProjectileView.SpawnArrow(this, from + (off * 0.5f), targetPos + off + new Vector3(0f, 0.15f, 0f), flight);
@@ -2110,6 +2130,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 피해 숫자 팝업 — 위로 떠오르며 사라진다(효과 연출은 후속, 우선 수치 피드백만).
     private void SpawnDamagePopup(Vector3 at, int damage)
     {
+        if (!IsVisibleAt(at)) return;
         var lbl = new Label3D
         {
             Text = $"-{damage}",
@@ -2129,6 +2150,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void PlayRisingSkulls(Vector3 at)
     {
+        if (!IsVisibleAt(at)) return;
         var spot = new Node3D { Position = at + new Vector3(0f, _view.TileTopY + 0.08f, 0f) };
         AddChild(spot);
         EffectView.Attach(spot, EffectKind.RisingSkulls, 1.08f, loop: false);
@@ -2759,7 +2781,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_modalLayer is null) { ClearPathMarkers(); }
         var c = _state.Cities.First(x => x.Id == id);
         var owned = c.Owner == Player;
-        var known = owned || _state.IsScouted(Player, id);
+        var known = CanInspectCity(c);
         var totalTroops = _state.Garrisons.Where(g => g.City == id).Sum(g => g.Troops);
         var govName = c.Governor is { } ggid ? _state.Generals.FirstOrDefault(x => x.Id == ggid)?.Name : null;
         var straName = c.Strategist is { } gsid ? _state.Generals.FirstOrDefault(x => x.Id == gsid)?.Name : null;
@@ -2773,11 +2795,12 @@ public sealed partial class CampaignMapScene : Node3D
 
         Clear(_infoRows);
         _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 15, GoldBright));
+        _infoRows.AddChild(MakeLabel($"성 시야 {_vision.CityRadius(c.Castle)}칸", 13, Parchment));
         if (!owned && _state.IsScouted(Player, id))
             _infoRows.AddChild(MakeLabel($"정찰 남은 일수: {ScoutDaysLeft(id)}일", 13, GoldBright));
         if (!known)
         {
-            _infoRows.AddChild(MakeLabel("정찰 필요 — 도시 계략 '정찰' 성공 후 정보를 볼 수 있습니다.", 13, Parchment));
+            _infoRows.AddChild(MakeLabel("시야 밖 — 아군 시야에 들어오거나 정찰에 성공하면 정보를 볼 수 있습니다.", 13, Parchment));
             var detailUnknown = MakeButton("▶ 상세");
             detailUnknown.AddThemeFontSizeOverride("font_size", 12);
             detailUnknown.CustomMinimumSize = new Vector2(0, 26);
@@ -2940,7 +2963,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 미니 패널(플라이아웃)은 메인 팔레트와 운명을 같이한다 — 팔레트가 사라지면 함께 닫힘.
         if (_cmdSubMenu.Visible && !_cmdMenu.Visible) { CloseGroupMenu(); }
 
-        if (_cmdMenu.Visible && _selected is { } sel)
+        if (_infoCard.Visible && _selected is { } sel)
         {
             var c = _state.Cities.FirstOrDefault(x => x.Id == sel);
             if (c is not null)
@@ -2952,7 +2975,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (_unitMenu.Visible && _selectedUnitId >= 0)
         {
-            var u = _state.Armies.FirstOrDefault(a => a.Id.Value == _selectedUnitId);
+            var u = DisplayedArmies.FirstOrDefault(a => a.Id.Value == _selectedUnitId);
             if (u is not null) { PlaceMenu(_unitMenu, u.Field.Position, 60f); }
             else { _unitMenu.Visible = false; }
         }
@@ -2975,6 +2998,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_advancing)
         {
             _animT += delta;
+            RefreshPlaybackVision(delta);
             while (_animStepIdx < _animSteps.Count && _animSteps[_animStepIdx].Time <= _animT)
             {
                 var s = _animSteps[_animStepIdx];
@@ -2989,7 +3013,8 @@ public sealed partial class CampaignMapScene : Node3D
             while (_animAtkIdx < _animAttacks.Count && _animAttacks[_animAtkIdx].Time <= _animT)
             {
                 var a = _animAttacks[_animAtkIdx];
-                if (_armyTokens.TryGetValue(a.UnitId, out var tok)) { tok.FaceToward(a.FaceTo); tok.PlayAttackMotion(); }
+                if (_armyTokens.TryGetValue(a.UnitId, out var tok) && tok.Visible)
+                { tok.FaceToward(a.FaceTo); tok.PlayAttackMotion(); }
                 _animAtkIdx++;
             }
 
@@ -3032,6 +3057,8 @@ public sealed partial class CampaignMapScene : Node3D
             while (_animProductionKillIdx < _animProductionKills.Count && _animProductionKills[_animProductionKillIdx].Time <= _animT)
             {
                 var k = _animProductionKills[_animProductionKillIdx];
+                if (_state.ProductionOps.FirstOrDefault(o => o.Id == k.OperationId) is { } arriving)
+                    _animationProductionPositions[k.OperationId] = arriving.Target;
                 if (_productionTokens.Remove(k.OperationId, out var tok)) { tok.QueueFree(); }
                 if (_productionLabels.Remove(k.OperationId, out var lbl)) { lbl.QueueFree(); }
                 _animProductionKillIdx++;
@@ -3452,6 +3479,11 @@ public sealed partial class CampaignMapScene : Node3D
     // ── 성 상세 모달: 도시 수치 + 진행 중 명령(취소) + 출전 예약(취소) ──
     private void OpenCityDetail(CityId city)
     {
+        if (_state.Cities.FirstOrDefault(c => c.Id == city)?.Owner != Player)
+        {
+            OpenCityInfoReadonly(city);
+            return;
+        }
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         _openCityDetailCity = city;
         var vp = GetViewport().GetVisibleRect().Size;
@@ -4134,7 +4166,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         // 후보 대상 수집: 정찰된 적 성 장수 · 출전중 적 장수.
         var targets = new List<(GeneralId Id, string Kind)>();
-        foreach (var u in _state.Armies.Where(u => u.Field.Owner != Player))
+        foreach (var u in _state.Armies.Where(u => u.Field.Owner != Player && CanSeeUnit(u)))
         {
             if (u.VanguardId is { } v) { targets.Add((v, "출전중")); }
             if (u.AdjutantId is { } a) { targets.Add((a, "출전중")); }
@@ -4563,11 +4595,11 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var c in _state.Cities.OrderBy(c => c.Id.Value))
         {
             var city = c;
-            var known = c.Owner == Player || _state.IsScouted(Player, c.Id);
+            var known = CanInspectCity(c);
             var owner = _state.Factions.FirstOrDefault(f => f.Id == c.Owner)?.Name ?? "?";
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 8);
-            var lbl = MakeLabel($"· {c.Name}  [{owner}]  {(known ? "" : "— 미정찰")}", 13,
+            var lbl = MakeLabel($"· {c.Name}  [{owner}]  {(known ? "" : "— 시야 밖")}", 13,
                 known ? Parchment : new Color(Parchment, 0.55f));
             lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             row.AddChild(lbl);
@@ -4592,7 +4624,9 @@ public sealed partial class CampaignMapScene : Node3D
         var mh = Mathf.Clamp(vp.Y * 0.7f, 300f, 600f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var c = _state.Cities.First(x => x.Id == cityId);
-        var known = c.Owner == Player || _state.IsScouted(Player, cityId);
+        var known = CanInspectCity(c);
+        _intelPanel = known ? panel : null;
+        _intelPanelCity = known ? cityId : null;
 
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
@@ -4613,10 +4647,12 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (!known)
         {
-            box.AddChild(MakeLabel("정찰되지 않은 적 도시 — 정보를 볼 수 없습니다.\n(도시 계략 '정찰'로 드러납니다.)", 13, Parchment));
+            box.AddChild(MakeLabel("시야 밖 적 도시 — 정보를 볼 수 없습니다.\n아군 시야에 들어오거나 정찰에 성공하면 공개됩니다.", 13, Parchment));
         }
         else
         {
+            if (c.Owner != Player && _state.IsScouted(Player, c.Id))
+                box.AddChild(MakeLabel($"정찰 남은 일수: {ScoutDaysLeft(c.Id)}일", 13, GoldBright));
             var g4 = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             g4.AddThemeConstantOverride("h_separation", 12);
             g4.AddThemeConstantOverride("v_separation", 4);
@@ -7848,6 +7884,8 @@ public sealed partial class CampaignMapScene : Node3D
         DrawSupplyZones();
         DrawDeployPaths();
         RedrawFacilities();
+        foreach (var child in _facilityLayer.GetChildren().OfType<Node3D>())
+            _fog.Register(child, _view.WorldToHex(child.Position));
 
         // 성 라벨·색 갱신.
         foreach (var city in _state.Cities)
@@ -7949,7 +7987,7 @@ public sealed partial class CampaignMapScene : Node3D
             var cities = _state.CityCount(f.Id);
             var troops = _state.Garrisons.Where(g => _state.Cities.Any(c => c.Id == g.City && c.Owner == f.Id)).Sum(g => g.Troops)
                 + _state.Armies.Where(u => u.Field.Owner == f.Id).Sum(u => u.Pool.Active);
-            return $"{f.Name} 성{cities} 병{troops}";
+            return f.Id == Player ? $"{f.Name} 성{cities} 병{troops}" : $"{f.Name} 성{cities}";
         });
         // 좌상단 HUD: 군주 얼굴·이름 / 년월일 / 세력 요약.
         var ruler = _state.Factions.FirstOrDefault(f => f.Id == Player) is { } pf
@@ -7968,6 +8006,7 @@ public sealed partial class CampaignMapScene : Node3D
         _status.Text = $"도시 {myCities} · 장수 {myGenerals} · 금 {myGold} · 병력 {myTroops}      "
             + string.Join("  |  ", counts);
         _log.Text = note;
+        RefreshBattlefieldVision();
     }
 
     private void BuildHud()

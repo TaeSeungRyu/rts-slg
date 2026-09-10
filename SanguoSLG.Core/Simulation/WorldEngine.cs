@@ -60,7 +60,7 @@ public sealed class WorldEngine
         };
         if (next.Intel.Count > 0)
         {
-            next = next with { ScoutedCities = next.Intel.Where(i => i.ExpiresDay >= next.Day).ToList() };
+            next = next with { ScoutedCities = next.Intel.Where(i => i.ExpiresDay > next.Day).ToList() };
         }
 
         // 명령 정산: 완료일에 도달한 명령의 효과를 적용하고 목록에서 뺀다(수행 장수 잠금 해제).

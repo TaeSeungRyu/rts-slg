@@ -115,11 +115,12 @@ public class CityStratagemTests
         var issued = Service().Issue(s, Req("scout"));
         var done = Advance(issued.State, 11, roll: 0);
 
-        var stillKnown = new WorldEngine(Bal, B, random: new FixedRandom(0)).AdvanceDays(done, 60);
-        var expired = new WorldEngine(Bal, B, random: new FixedRandom(0)).AdvanceDays(done, 61);
+        var stillKnown = new WorldEngine(Bal, B, random: new FixedRandom(0)).AdvanceDays(done, 59);
+        var expired = new WorldEngine(Bal, B, random: new FixedRandom(0)).AdvanceDays(done, 60);
 
         Assert.True(stillKnown.IsScouted(new FactionId(1), new CityId(2)));
         Assert.False(expired.IsScouted(new FactionId(1), new CityId(2)));
+        Assert.Empty(expired.Intel);
     }
 
     [Fact]
