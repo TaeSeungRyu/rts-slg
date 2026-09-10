@@ -45,7 +45,7 @@ public sealed class BattlefieldVision(BalanceConfig balance, IReadOnlyList<Troop
     }
 
     public static bool CanInspectCity(GameState state, FactionId viewer, City city, IReadOnlySet<HexCoord> visible)
-        => city.Owner == viewer || state.IsScouted(viewer, city.Id) || visible.Contains(city.Position);
+        => city.Owner == viewer || state.IsScouted(viewer, city.Id);
 
     public static bool CanSeeUnit(FactionId viewer, CombatUnit unit, IReadOnlySet<HexCoord> visible)
         => unit.Pool.Active > 0 && (unit.Field.Owner == viewer || visible.Contains(unit.Field.Position));

@@ -48,8 +48,8 @@ public sealed record BalanceConfig(
     int MarketJitterPercent = 15,
     IReadOnlyList<int>? MarketSeasonalPercent = null,
     int VisionCastleSmall = 4,
-    int VisionCastleMedium = 5,
-    int VisionCastleLarge = 6,
+    int VisionCastleMedium = 4,
+    int VisionCastleLarge = 5,
     int VisionSupply = 2)
 {
     /// <summary>월별 시장 시세 배수(%). 9·10월(추수) 최저, 겨울 최고. 미지정 시 기본 계절 곡선.</summary>

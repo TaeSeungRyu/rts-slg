@@ -25,8 +25,8 @@ public class BattlefieldVisionTests
 
     [Theory]
     [InlineData(CastleSize.Small, 4)]
-    [InlineData(CastleSize.Medium, 5)]
-    [InlineData(CastleSize.Large, 6)]
+    [InlineData(CastleSize.Medium, 4)]
+    [InlineData(CastleSize.Large, 5)]
     public void 성_크기별_헥사반경과_경계(CastleSize size, int radius)
     {
         var state = new GameState(1, 190, [], [City(1, 0, Player, size)], []);
@@ -91,8 +91,21 @@ public class BattlefieldVisionTests
         var visible = Vision.VisibleTiles(state, Player, Map);
         Assert.False(BattlefieldVision.CanSeeUnit(Player, unit, visible));
         Assert.True(BattlefieldVision.CanSeeUnit(Player, unit with { Field = unit.Field.MoveTo(new HexCoord(4, 0)) }, visible));
-        Assert.True(BattlefieldVision.CanInspectCity(state, Player, City(2, 4, Enemy), visible));
+        Assert.False(BattlefieldVision.CanInspectCity(state, Player, City(2, 4, Enemy), visible));
         Assert.False(BattlefieldVision.CanInspectCity(state, Player, City(3, 5, Enemy), visible));
+    }
+
+    [Fact]
+    public void 적성_상세정보는_시야가아니라_정찰정보로만_열린다()
+    {
+        var visibleCity = City(2, 4, Enemy);
+        var scoutedCity = City(3, 12, Enemy);
+        var state = new GameState(1, 190, [], [City(1, 0, Player), visibleCity, scoutedCity], [],
+            ScoutedCities: [new CityIntel(Player, scoutedCity.Id, 60)]);
+        var visible = Vision.VisibleTiles(state, Player, Map);
+        Assert.Contains(visibleCity.Position, visible);
+        Assert.False(BattlefieldVision.CanInspectCity(state, Player, visibleCity, visible));
+        Assert.True(BattlefieldVision.CanInspectCity(state, Player, scoutedCity, visible));
     }
 
     [Fact]
@@ -124,7 +137,7 @@ public class BattlefieldVisionTests
             FieldArmies: [Unit("swordsman", Player, 8)], ScoutedCities: [new CityIntel(Player, enemy.Id, 60)]);
         var visible = Vision.VisibleTiles(state, Player, Map);
         Assert.False(state.IsScouted(Player, enemy.Id));
-        Assert.True(BattlefieldVision.CanInspectCity(state, Player, enemy, visible));
+        Assert.False(BattlefieldVision.CanInspectCity(state, Player, enemy, visible));
         Assert.Contains(new HexCoord(11, 0), visible);
         Assert.DoesNotContain(new HexCoord(12, 0), visible);
     }
