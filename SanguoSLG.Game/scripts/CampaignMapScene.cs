@@ -47,6 +47,7 @@ public sealed partial class CampaignMapScene : Node3D
     private CameraController3D _camera = null!;
     private FactionAI _ai = null!;
     private DeployService _deployer = null!;
+    private FieldUnitCommandService _unitCommander = null!;
     private ProductionService _producer = null!;
     private CampaignEngine _engine = null!;
     private CommandService _commander = null!;
@@ -400,6 +401,7 @@ public sealed partial class CampaignMapScene : Node3D
         _deployer = new DeployService(_cb, _troops, actives, passives, _adminSkills);
         _ai = new FactionAI(_commander, _deployer);
         _passability = new PassabilityMap(_map, [], _cities);
+        _unitCommander = new FieldUnitCommandService((domain, hex) => _passability.CanEnter(domain, hex));
         _producer = new ProductionService(_troops, h => _passability.CanEnter(MovementDomain.Land, h));
         var movement = new MovementSimulator(_passability);
         // 플레이 세션에서는 탐색·외교 결과가 매 실행 같은 초반 난수열에 묶이지 않도록 세션 시드를 쓴다.
@@ -2666,11 +2668,14 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (_advancing || _selectedUnitId < 0) { return; }
         var uid = _selectedUnitId;
-        var armies = _state.Armies
-            .Select(a => a.Id.Value == uid && a.Field.Owner == Player
-                ? a with { Field = a.Field with { Target = null } } : a)
-            .ToList();
-        _state = _state with { FieldArmies = armies };
+        var result = _unitCommander.Stop(_state, Player, new UnitId(uid));
+        if (!result.Ok)
+        {
+            ShowNotice("명령 실패", result.Error ?? "정지할 수 없습니다.");
+            return;
+        }
+
+        _state = result.State;
         Dbg($"UI unit-stop u{uid}");
         _log.Text = $"부대가 그 자리에 대기합니다.";
         Redraw(_log.Text);
@@ -2689,10 +2694,15 @@ public sealed partial class CampaignMapScene : Node3D
 
         var enemyCity = _state.Cities.FirstOrDefault(c => c.Position == h && c.Owner != Player);
         if (enemyCity is not null) { mode = UnitMode.Attack; }
-        var armies = _state.Armies
-            .Select(a => a.Id.Value == uid ? a with { Field = a.Field with { Mode = mode, Target = h, Waypoints = waypoints } } : a)
-            .ToList();
-        _state = _state with { FieldArmies = armies };
+        var result = _unitCommander.Reassign(_state, Player,
+            new FieldUnitCommandRequest(new UnitId(uid), mode, h, waypoints, _visibleTiles));
+        if (!result.Ok)
+        {
+            ShowNotice("명령 실패", result.Error ?? "목표를 지정할 수 없습니다.");
+            return;
+        }
+
+        _state = result.State;
 
         var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
         var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
