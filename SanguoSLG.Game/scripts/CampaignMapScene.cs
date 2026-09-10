@@ -1057,6 +1057,8 @@ public sealed partial class CampaignMapScene : Node3D
         Row("모드", ModeName(u.Field.Mode));
         Row("목표", u.Field.Target is { } t ? $"({t.Q}, {t.R})" : "없음");
         Row("군량", u.TracksProvisions ? $"{u.Provisions}" : "무한");
+        Row("선봉 액티브", ActiveSlotText(u.State.VanguardActive, u.State.VanguardGauge));
+        Row("부관 액티브", ActiveSlotText(u.State.AdjutantActive, u.State.AdjutantGauge));
 
         foreach (var (role, skill) in new[] { ("선봉", u.State.VanguardActive), ("부관", u.State.AdjutantActive) })
         {
@@ -1071,6 +1073,14 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _infoCard.Visible = true;
+    }
+
+    private static string ActiveSlotText(ActiveSkill? skill, ActiveGauge gauge)
+    {
+        if (skill is null) { return "없음"; }
+        return gauge.IsReady
+            ? $"{skill.Name} 준비"
+            : $"{skill.Name} {gauge.ElapsedDays}/{ActiveGauge.ReadyDays}일";
     }
 
     // 메뉴를 지정 헥사의 화면좌표 우측에 배치(화면 밖 clamp).
@@ -2647,10 +2657,11 @@ public sealed partial class CampaignMapScene : Node3D
         ret.Pressed += ReturnSelectedUnit;
         _unitCmdBox.AddChild(ret);
 
-        _unitCmdBox.AddChild(MakeLabel("· 계략", 10, GoldBright));
-        var strat = Item("계략");
-        strat.Pressed += () => { _log.Text = "(준비 중) 유닛 계략"; }; // 후속 배선
-        _unitCmdBox.AddChild(strat);
+        _unitCmdBox.AddChild(MakeLabel("· 액티브", 10, GoldBright));
+        var active = Item("슬롯 보기");
+        active.TooltipText = "선봉·부관 액티브 스킬의 충전 상태를 정보 카드에서 확인한다.";
+        active.Pressed += () => { if (_selectedUnitId >= 0) { ShowUnitInfo(_selectedUnitId); } };
+        _unitCmdBox.AddChild(active);
     }
 
     // 야전 부대 이동 재지정 — 모드를 고르고 목적지를 클릭, '확인'으로 확정(출전 목표 지정과 동일 UX).
