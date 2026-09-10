@@ -25,7 +25,8 @@ public sealed record SupplyDeployRequest(
     IReadOnlyList<SupplyLine> Lines,
     GeneralId Vanguard,
     UnitMode Mode = UnitMode.March,
-    HexCoord? Target = null);
+    HexCoord? Target = null,
+    int Provisions = -1);
 
 /// <summary>
 /// 출전(design-administration "부대와의 연결"·design-unit-state). 대기 병력 + 장수 → 야전 부대:
@@ -247,7 +248,8 @@ public sealed class DeployService
             vanguard.Might, vanguard.Intellect, total, TroopClass.Infantry,
             ProvisionsCapacity: capacity, IsSupply: true, Training: training,
             VanguardId: vanguard.Id, SupplyCargo: components);
-        var carried = System.Math.Min(unit.MaxProvisions(), city.Provisions);
+        var wanted = req.Provisions < 0 ? unit.MaxProvisions() : System.Math.Min(req.Provisions, unit.MaxProvisions());
+        var carried = System.Math.Min(wanted, city.Provisions);
         unit = unit with { Provisions = carried };
 
         var taken = components.ToDictionary(c => c.TroopCode, c => c.Troops);

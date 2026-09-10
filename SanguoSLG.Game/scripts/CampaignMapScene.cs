@@ -3639,6 +3639,10 @@ public sealed partial class CampaignMapScene : Node3D
         _depVanCards.Clear();
         _depVan = null;
         _depPreview = null;
+        _depProvDays = 0;
+        _depProvSlider = null;
+        _depProvLabel = null;
+        _vanTree = null;
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
 
         var usedTroops = ReservedTroopsByCode(city, editIndex, editingSupply: true);
@@ -3648,6 +3652,7 @@ public sealed partial class CampaignMapScene : Node3D
             var req = _pendingSupplyDeploys[editIndex].Req;
             _depVan = req.Vanguard;
             foreach (var line in req.Lines) { _supplyDraft[line.TroopCode] = line.Troops; }
+            _depProvDays = SupplyProvisionDaysFromAmount(req.Provisions);
         }
 
         var vp = GetViewport().GetVisibleRect().Size;
@@ -3698,6 +3703,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var n = (int)v;
                 if (n <= 0) { _supplyDraft.Remove(gar.TroopCode); }
                 else { _supplyDraft[gar.TroopCode] = n; }
+                SyncSupplyProvisionSlider();
                 UpdateSupplyPreview();
             };
             row.AddChild(spin);
@@ -3705,28 +3711,74 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("주장 선택 (보급부대는 부관 없음)", 13, GoldBright));
-        var genGrid = new GridContainer { Columns = 3 };
-        genGrid.AddThemeConstantOverride("h_separation", 8);
-        genGrid.AddThemeConstantOverride("v_separation", 8);
-        box.AddChild(genGrid);
-        foreach (var generalId in _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value))
+        box.AddChild(MakeLabel("군량 (보급 일수)", 13, GoldBright));
+        var provRow = new HBoxContainer();
+        provRow.AddThemeConstantOverride("separation", 10);
+        _depProvSlider = new HSlider
         {
-            var general = _state.Generals.First(g => g.Id == generalId);
-            var card = DeployCard(OfficerPortrait(general.Id), general.Name, $"현재 담당업무: {CurrentDuty(general.Id)}");
-            card.GuiInput += e =>
-            {
-                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
-                {
-                    _depVan = general.Id;
-                    foreach (var (c, id) in _depVanCards) { c.AddThemeStyleboxOverride("panel", CardBox(id == _depVan)); }
-                    UpdateSupplyPreview();
-                }
-            };
-            _depVanCards.Add((card, general.Id));
-            card.AddThemeStyleboxOverride("panel", CardBox(general.Id == _depVan));
-            genGrid.AddChild(card);
+            MinValue = 0,
+            MaxValue = 50,
+            Step = 1,
+            Value = _depProvDays,
+            CustomMinimumSize = new Vector2(260, 24),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        };
+        _depProvSlider.ValueChanged += v => { _depProvDays = (int)v; UpdateSupplyPreview(); };
+        provRow.AddChild(_depProvSlider);
+        _depProvLabel = MakeLabel("", 12, Parchment);
+        _depProvLabel.CustomMinimumSize = new Vector2(240, 0);
+        provRow.AddChild(_depProvLabel);
+        box.AddChild(provRow);
+        SyncSupplyProvisionSlider();
+
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("주장 선택 (보급부대는 부관 없음 · 상단 눌러 정렬)", 13, GoldBright));
+        _composeFree = _state.GeneralsAt(city)
+            .Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g))
+            .OrderBy(g => g.Value)
+            .ToList();
+        _vanTree = new Tree
+        {
+            Columns = 6,
+            ColumnTitlesVisible = true,
+            HideRoot = true,
+            SelectMode = Tree.SelectModeEnum.Row,
+            CustomMinimumSize = new Vector2(0, 190),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        _vanTree.AddThemeFontOverride("font", _font);
+        _vanTree.AddThemeFontSizeOverride("font_size", 13);
+        _vanTree.AddThemeFontOverride("title_button_font", _font);
+        _vanTree.AddThemeFontSizeOverride("title_button_font_size", 12);
+        _vanTree.SetColumnTitle(0, "주장"); _vanTree.SetColumnExpand(0, false); _vanTree.SetColumnCustomMinimumWidth(0, 52);
+        _vanTree.SetColumnTitle(1, "이름"); _vanTree.SetColumnExpand(1, true); _vanTree.SetColumnExpandRatio(1, 2);
+        foreach (var (col, titleText) in new[] { (2, "무"), (3, "지"), (4, "정") })
+        {
+            _vanTree.SetColumnTitle(col, titleText);
+            _vanTree.SetColumnExpand(col, false);
+            _vanTree.SetColumnCustomMinimumWidth(col, 42);
         }
+        _vanTree.SetColumnTitle(5, "현재 담당업무");
+        _vanTree.SetColumnExpand(5, true);
+        _vanTree.ColumnTitleClicked += (col, _) =>
+        {
+            var c = (int)col;
+            if (c == 0) { return; }
+            _vanSortCol = c;
+            _vanSortAsc = !_vanSortAsc;
+            PopulateSupplyGeneralTree();
+        };
+        _vanTree.ItemSelected += () =>
+        {
+            var it = _vanTree.GetSelected();
+            if (it is null) { return; }
+            _depVan = new GeneralId(it.GetMetadata(0).AsInt32());
+            PopulateSupplyGeneralTree();
+            UpdateSupplyPreview();
+        };
+        box.AddChild(_vanTree);
+        PopulateSupplyGeneralTree();
 
         box.AddChild(GoldRule());
         _depPreview = MakeLabel("", 12, Parchment);
@@ -6129,9 +6181,91 @@ public sealed partial class CampaignMapScene : Node3D
             .ToList();
         var vanguard = _depVan is { } v ? _state.Generals.First(g => g.Id == v).Name : "주장 미선택";
         var status = total > _cb.SupplyMaxTroops ? $"  ⚠ 최대 {_cb.SupplyMaxTroops}명 초과" : "";
-        _depPreview.Text = $"현재 편성: 보급부대 {total}명 · 주장 {vanguard}{status}\n"
+        var provisions = SupplyProvisionsToCarry();
+        var daysPer10k = _provPer10kPerDay <= 0 ? 0 : provisions / _provPer10kPerDay;
+        if (_depProvLabel is not null)
+        {
+            var cityProv = _state.Cities.First(x => x.Id == _depModalCity).Provisions;
+            _depProvLabel.Text = $"휴대 {provisions} / 성 비축 {cityProv} · 1만 기준 약 {daysPer10k}일";
+        }
+        _depPreview.Text = $"현재 편성: 보급부대 {total}명 · 주장 {vanguard} · 군량 {_depProvDays}일{status}\n"
             + (lines.Count == 0 ? "병종을 선택하세요." : string.Join(" · ", lines))
-            + "\n공격 명령 불가 · 전용 보급부대 모델 사용 · 보급 범위 안 아군 군량을 자동 보충";
+            + $"\n휴대 군량 {provisions} · 1만 병력 기준 약 {daysPer10k}일 보급 가능 · 전용 보급부대 모델 사용";
+    }
+
+    private void PopulateSupplyGeneralTree()
+    {
+        if (_vanTree is null) { return; }
+        _vanTree.Clear();
+        var root = _vanTree.CreateItem();
+        IEnumerable<GeneralId> ordered = _composeFree;
+        ordered = _vanSortCol switch
+        {
+            1 => _vanSortAsc ? ordered.OrderBy(id => _state.Generals.First(g => g.Id == id).Name, System.StringComparer.Ordinal)
+                : ordered.OrderByDescending(id => _state.Generals.First(g => g.Id == id).Name, System.StringComparer.Ordinal),
+            2 => _vanSortAsc ? ordered.OrderBy(id => _state.Generals.First(g => g.Id == id).Might)
+                : ordered.OrderByDescending(id => _state.Generals.First(g => g.Id == id).Might),
+            3 => _vanSortAsc ? ordered.OrderBy(id => _state.Generals.First(g => g.Id == id).Intellect)
+                : ordered.OrderByDescending(id => _state.Generals.First(g => g.Id == id).Intellect),
+            4 => _vanSortAsc ? ordered.OrderBy(id => _state.Generals.First(g => g.Id == id).Politics)
+                : ordered.OrderByDescending(id => _state.Generals.First(g => g.Id == id).Politics),
+            _ => ordered.OrderBy(id => id.Value),
+        };
+        foreach (var generalId in ordered)
+        {
+            var general = _state.Generals.First(g => g.Id == generalId);
+            var item = _vanTree.CreateItem(root);
+            item.SetText(0, general.Id == _depVan ? "◆" : "◇");
+            item.SetText(1, general.Name);
+            item.SetText(2, general.Might.ToString());
+            item.SetText(3, general.Intellect.ToString());
+            item.SetText(4, general.Politics.ToString());
+            item.SetText(5, CurrentDuty(general.Id));
+            item.SetMetadata(0, general.Id.Value);
+            for (var col = 2; col <= 4; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
+            item.SetTextAlignment(0, HorizontalAlignment.Center);
+        }
+    }
+
+    private int SupplyCapacityForDraft()
+    {
+        var total = _supplyDraft.Values.Sum();
+        if (total <= 0) { return 0; }
+        long weighted = 0;
+        foreach (var (code, amount) in _supplyDraft)
+        {
+            if (amount <= 0) { continue; }
+            var template = _troops.FirstOrDefault(t => t.Code == code);
+            weighted += (long)(template?.ProvisionsCapacity ?? 300) * amount;
+        }
+        return (int)(weighted / total);
+    }
+
+    private int SupplyProvisionsToCarry()
+    {
+        var total = _supplyDraft.Values.Sum();
+        if (total <= 0) { return 0; }
+        var capacity = SupplyCapacityForDraft() * total / 10000;
+        var wanted = _depProvDays * total * _provPer10kPerDay / 10000;
+        var cityProv = _state.Cities.First(x => x.Id == _depModalCity).Provisions;
+        return System.Math.Min(System.Math.Min(wanted, capacity), cityProv);
+    }
+
+    private int SupplyProvisionDaysFromAmount(int provisions)
+    {
+        var total = _supplyDraft.Values.Sum();
+        if (provisions < 0 || total <= 0) { return System.Math.Max(1, SupplyCapacityForDraft() / System.Math.Max(1, _provPer10kPerDay)); }
+        return System.Math.Clamp(provisions * 10000 / System.Math.Max(1, total * _provPer10kPerDay), 0,
+            System.Math.Max(1, SupplyCapacityForDraft() / System.Math.Max(1, _provPer10kPerDay)));
+    }
+
+    private void SyncSupplyProvisionSlider()
+    {
+        if (_depProvSlider is null) { return; }
+        var maxDays = System.Math.Max(1, SupplyCapacityForDraft() / System.Math.Max(1, _provPer10kPerDay));
+        _depProvSlider.MaxValue = maxDays;
+        if (_depProvDays <= 0 || _depProvDays > maxDays) { _depProvDays = maxDays; }
+        _depProvSlider.SetValueNoSignal(_depProvDays);
     }
 
     private Dictionary<string, int> ReservedTroopsByCode(CityId city, int editIndex, bool editingSupply)
@@ -6194,10 +6328,11 @@ public sealed partial class CampaignMapScene : Node3D
         var ids = new[] { van };
         var vName = _state.Generals.First(g => g.Id == van).Name;
         var lineText = string.Join(", ", lines.Select(l => $"{_troops.FirstOrDefault(t => t.Code == l.TroopCode)?.Name ?? l.TroopCode} {l.Troops}"));
-        var req = new SupplyDeployRequest(_depModalCity, lines, van, UnitMode.March);
-        var entry = (req, $"보급 {total}({vName}) · {lineText}");
+        var provisions = SupplyProvisionsToCarry();
+        var req = new SupplyDeployRequest(_depModalCity, lines, van, UnitMode.March, Provisions: provisions);
+        var entry = (req, $"보급 {total}({vName}) · 군량{_depProvDays}일 · {lineText}");
         ShowConfirm("보급부대 예약 확인",
-            $"{entry.Item2}\n\n공격 명령은 불가능하며, 규모와 무관하게 보급부대 전용 모델로 표시됩니다.{DutyReleaseNotice(ids)}",
+            $"{entry.Item2}\n휴대 군량 {provisions} · 1만 병력 기준 약 {(_provPer10kPerDay <= 0 ? 0 : provisions / _provPer10kPerDay)}일 보급 가능\n\n규모와 무관하게 보급부대 전용 모델로 표시됩니다.{DutyReleaseNotice(ids)}",
             () =>
             {
                 if (_advancing || ids.Any(id => _state.IsGeneralBusy(id))
