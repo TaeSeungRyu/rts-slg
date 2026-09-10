@@ -23,11 +23,20 @@ import bpy
 import math
 import os
 import sys
+from pathlib import Path
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import infantry_common as ic
 
 OUTPUT_FILE = "troop-supply.glb"
+
+# 현재 스크립트가 있는 위치를 기준으로 프로젝트 루트를 자동 계산한다.
+# 예상 위치:
+#   <repo>/tools/blender/make_troop_supply.py
+# 따라서 parents[2]가 <repo>가 된다.
+SCRIPT_PATH = Path(__file__).resolve()
+REPO_ROOT = SCRIPT_PATH.parents[2]
+MODEL_DIR = REPO_ROOT / "SanguoSLG.Game" / "assets" / "models"
 
 FPS = 24
 FRAME_START = 1
@@ -173,9 +182,25 @@ def apply_rotation_scale(obj):
     )
 
 
-def mesh_object(name, verts, faces, material, parent=None):
+def mesh_object(
+    name,
+    verts,
+    faces,
+    material,
+    parent=None,
+    double_sided=False,
+    thickness=0.0,
+):
     mesh = bpy.data.meshes.new(name + "_mesh")
-    mesh.from_pydata(verts, [], faces)
+
+    final_faces = list(faces)
+
+    # 일반 얇은 면에서만 필요할 때 사용.
+    # 천막의 긴 천 면은 아래의 thickness 방식으로 실제 두께를 만든다.
+    if double_sided and thickness <= 0.0:
+        final_faces += [tuple(reversed(face)) for face in faces]
+
+    mesh.from_pydata(verts, [], final_faces)
     mesh.update()
 
     obj = bpy.data.objects.new(name, mesh)
@@ -186,6 +211,26 @@ def mesh_object(name, verts, faces, material, parent=None):
 
     if parent is not None:
         ic.parent_to(obj, parent)
+
+    # 동일 위치에 앞/뒤 face를 겹치는 대신 실제 두께를 만든다.
+    # 이 방식이 Blender/Godot 양쪽에서 각도에 따른 컬링/뚫림 현상이 훨씬 안정적이다.
+    if thickness > 0.0:
+        bpy.context.view_layer.objects.active = obj
+        obj.select_set(True)
+
+        solidify = obj.modifiers.new(
+            name="TentCanvasThickness",
+            type="SOLIDIFY",
+        )
+        solidify.thickness = thickness
+        solidify.offset = 0.0
+        solidify.use_even_offset = True
+
+        bpy.ops.object.modifier_apply(
+            modifier=solidify.name,
+        )
+
+        obj.select_set(False)
 
     return obj
 
@@ -592,6 +637,7 @@ def build_tent(parent):
         left_faces,
         M_CANVAS,
         tent,
+        thickness=0.006,
     )
 
     right_verts = [
@@ -608,6 +654,7 @@ def build_tent(parent):
         right_faces,
         M_CANVAS,
         tent,
+        thickness=0.006,
     )
 
     # 뒤쪽 삼각면
@@ -624,6 +671,7 @@ def build_tent(parent):
         back_faces,
         M_CANVAS_DARK,
         tent,
+        thickness=0.004,
     )
 
     # 앞쪽은 완전히 막지 않고
@@ -641,6 +689,7 @@ def build_tent(parent):
         flap_left_faces,
         M_CANVAS,
         tent,
+        thickness=0.004,
     )
 
     flap_right_verts = [
@@ -656,6 +705,7 @@ def build_tent(parent):
         flap_right_faces,
         M_CANVAS,
         tent,
+        thickness=0.004,
     )
 
     # 입구 안쪽을 어둡게 만들어 천막 깊이감
@@ -1197,14 +1247,13 @@ for name, frame in (
 # Export
 # ---------------------------------------------------------------------------
 
-output_path = os.path.join(
-    ic.MODEL_DIR,
-    OUTPUT_FILE,
+MODEL_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
 )
 
-os.makedirs(
-    ic.MODEL_DIR,
-    exist_ok=True,
+output_path = str(
+    MODEL_DIR / OUTPUT_FILE
 )
 
 export_kwargs = dict(
@@ -1235,6 +1284,9 @@ print("")
 print("==============================================")
 print(" Supply Unit Export Complete")
 print("==============================================")
+print("SCRIPT  :", str(SCRIPT_PATH))
+print("ROOT    :", str(REPO_ROOT))
+print("MODEL   :", str(MODEL_DIR))
 print("OUTPUT  :", output_path)
 print("IDLE    :", IDLE_START, "-", IDLE_END)
 print("MOVE    :", MOVE_START, "-", MOVE_END)
