@@ -5414,23 +5414,55 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else
         {
-            var grid = new GridContainer { Columns = 3 };
-            grid.AddThemeConstantOverride("h_separation", 8);
-            grid.AddThemeConstantOverride("v_separation", 8);
-            box.AddChild(grid);
+            var tree = new Tree
+            {
+                Columns = 4,
+                ColumnTitlesVisible = true,
+                HideRoot = true,
+                SelectMode = Tree.SelectModeEnum.Row,
+                CustomMinimumSize = new Vector2(0, Mathf.Min(130, 34 + targets.Count * 28)),
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            };
+            tree.AddThemeFontOverride("font", _font);
+            tree.AddThemeFontSizeOverride("font_size", 13);
+            tree.AddThemeFontOverride("title_button_font", _font);
+            tree.AddThemeFontSizeOverride("title_button_font_size", 12);
+            tree.SetColumnTitle(0, "선택"); tree.SetColumnExpand(0, false); tree.SetColumnCustomMinimumWidth(0, 52);
+            tree.SetColumnTitle(1, "대상"); tree.SetColumnExpand(1, true);
+            tree.SetColumnTitle(2, "좌표"); tree.SetColumnExpand(2, false); tree.SetColumnCustomMinimumWidth(2, 72);
+            tree.SetColumnTitle(3, "예상 보상"); tree.SetColumnExpand(3, true);
+            var root = tree.CreateItem();
             foreach (var target in targets)
             {
-                var btn = MakeButton($"{FacilityName(target.Code)}\n({target.Plot.Q},{target.Plot.R})");
-                btn.CustomMinimumSize = new Vector2(150, 44);
-                btn.Pressed += () =>
-                {
-                    selectedTarget = target.Plot;
-                    selectedFacility = target.Code;
-                    RefreshSummary();
-                    RefreshSelectionButtons();
-                };
-                grid.AddChild(btn);
+                var item = tree.CreateItem(root);
+                item.SetText(0, target.Plot == selectedTarget ? "◆" : "◇");
+                item.SetText(1, FacilityName(target.Code));
+                item.SetText(2, $"{target.Plot.Q},{target.Plot.R}");
+                var sample = selectedGeneral is { } sg ? _state.Generals.FirstOrDefault(g => g.Id == sg) : null;
+                var reward = sample is null ? (Gold: 0, Provisions: 0) : ProductionRules.Reward(target.Code, sample.Politics);
+                item.SetText(3, reward.Gold > 0 ? $"금 +{reward.Gold}" : reward.Provisions > 0 ? $"군량 +{reward.Provisions}" : "-");
+                item.SetMetadata(0, Variant.From(target.Plot.Q));
+                item.SetMetadata(1, Variant.From(target.Plot.R));
+                item.SetMetadata(2, Variant.From(target.Code));
             }
+            tree.ItemSelected += () =>
+            {
+                var it = tree.GetSelected();
+                if (it is null) { return; }
+                selectedTarget = new HexCoord(it.GetMetadata(0).AsInt32(), it.GetMetadata(1).AsInt32());
+                selectedFacility = it.GetMetadata(2).AsString();
+                for (var item = root.GetFirstChild(); item is not null; item = item.GetNext())
+                {
+                    item.SetText(0, item == it ? "◆" : "◇");
+                    var sample = selectedGeneral is { } sg ? _state.Generals.FirstOrDefault(g => g.Id == sg) : null;
+                    var code = item.GetMetadata(2).AsString();
+                    var reward = sample is null ? (Gold: 0, Provisions: 0) : ProductionRules.Reward(code, sample.Politics);
+                    item.SetText(3, reward.Gold > 0 ? $"금 +{reward.Gold}" : reward.Provisions > 0 ? $"군량 +{reward.Provisions}" : "-");
+                }
+                RefreshSummary();
+                RefreshSelectionButtons();
+            };
+            box.AddChild(tree);
         }
 
         box.AddChild(MakeLabel("2. 주최 장수", 15, GoldBright));
@@ -5440,23 +5472,62 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else
         {
-            var grid = new GridContainer { Columns = 3 };
-            grid.AddThemeConstantOverride("h_separation", 8);
-            grid.AddThemeConstantOverride("v_separation", 8);
-            box.AddChild(grid);
+            var tree = new Tree
+            {
+                Columns = 7,
+                ColumnTitlesVisible = true,
+                HideRoot = true,
+                SelectMode = Tree.SelectModeEnum.Row,
+                CustomMinimumSize = new Vector2(0, Mathf.Min(180, 34 + generals.Count * 28)),
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            };
+            tree.AddThemeFontOverride("font", _font);
+            tree.AddThemeFontSizeOverride("font_size", 13);
+            tree.AddThemeFontOverride("title_button_font", _font);
+            tree.AddThemeFontSizeOverride("title_button_font_size", 12);
+            tree.SetColumnTitle(0, "선택"); tree.SetColumnExpand(0, false); tree.SetColumnCustomMinimumWidth(0, 52);
+            tree.SetColumnTitle(1, "이름"); tree.SetColumnExpand(1, true);
+            foreach (var (col, titleText) in new[] { (2, "무"), (3, "지"), (4, "정"), (5, "일수") })
+            {
+                tree.SetColumnTitle(col, titleText);
+                tree.SetColumnExpand(col, false);
+                tree.SetColumnCustomMinimumWidth(col, 42);
+            }
+            tree.SetColumnTitle(6, "현재 담당업무 / 예상 보상"); tree.SetColumnExpand(6, true); tree.SetColumnExpandRatio(6, 3);
+            var root = tree.CreateItem();
             foreach (var general in generals)
             {
-                var btn = MakeButton("");
-                btn.CustomMinimumSize = new Vector2(170, 48);
-                btn.Pressed += () =>
-                {
-                    selectedGeneral = general.Id;
-                    RefreshSummary();
-                    RefreshSelectionButtons();
-                };
-                grid.AddChild(btn);
-                generalButtons.Add((btn, general));
+                var item = tree.CreateItem(root);
+                item.SetText(0, general.Id == selectedGeneral ? "◆" : "◇");
+                item.SetText(1, general.Name);
+                item.SetText(2, general.Might.ToString());
+                item.SetText(3, general.Intellect.ToString());
+                item.SetText(4, general.Politics.ToString());
+                item.SetText(5, $"{ProductionRules.GatherDays(general.Politics)}일");
+                var reward = string.IsNullOrWhiteSpace(selectedFacility) ? (Gold: 0, Provisions: 0) : ProductionRules.Reward(selectedFacility, general.Politics);
+                var rewardText = reward.Gold > 0 ? $"금 +{reward.Gold}" : reward.Provisions > 0 ? $"군량 +{reward.Provisions}" : "-";
+                item.SetText(6, $"{CurrentDuty(general.Id)} · {rewardText}");
+                item.SetMetadata(0, general.Id.Value);
+                for (var col = 2; col <= 5; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
             }
+            tree.ItemSelected += () =>
+            {
+                var it = tree.GetSelected();
+                if (it is null) { return; }
+                selectedGeneral = new GeneralId(it.GetMetadata(0).AsInt32());
+                for (var item = root.GetFirstChild(); item is not null; item = item.GetNext())
+                {
+                    var gid = new GeneralId(item.GetMetadata(0).AsInt32());
+                    var g = _state.Generals.First(x => x.Id == gid);
+                    item.SetText(0, gid == selectedGeneral ? "◆" : "◇");
+                    var reward = string.IsNullOrWhiteSpace(selectedFacility) ? (Gold: 0, Provisions: 0) : ProductionRules.Reward(selectedFacility, g.Politics);
+                    var rewardText = reward.Gold > 0 ? $"금 +{reward.Gold}" : reward.Provisions > 0 ? $"군량 +{reward.Provisions}" : "-";
+                    item.SetText(6, $"{CurrentDuty(g.Id)} · {rewardText}");
+                }
+                RefreshSummary();
+                RefreshSelectionButtons();
+            };
+            box.AddChild(tree);
         }
 
         box.AddChild(MakeLabel("3. 투입 병종 (500명 고정)", 15, GoldBright));
@@ -5466,23 +5537,52 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else
         {
-            var grid = new GridContainer { Columns = 3 };
-            grid.AddThemeConstantOverride("h_separation", 8);
-            grid.AddThemeConstantOverride("v_separation", 8);
-            box.AddChild(grid);
+            var tree = new Tree
+            {
+                Columns = 5,
+                ColumnTitlesVisible = true,
+                HideRoot = true,
+                SelectMode = Tree.SelectModeEnum.Row,
+                CustomMinimumSize = new Vector2(0, Mathf.Min(170, 34 + garrisons.Count * 28)),
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            };
+            tree.AddThemeFontOverride("font", _font);
+            tree.AddThemeFontSizeOverride("font_size", 13);
+            tree.AddThemeFontOverride("title_button_font", _font);
+            tree.AddThemeFontSizeOverride("title_button_font_size", 12);
+            tree.SetColumnTitle(0, "선택"); tree.SetColumnExpand(0, false); tree.SetColumnCustomMinimumWidth(0, 52);
+            tree.SetColumnTitle(1, "병종"); tree.SetColumnExpand(1, true);
+            foreach (var (col, titleText) in new[] { (2, "대기"), (3, "훈련"), (4, "이동") })
+            {
+                tree.SetColumnTitle(col, titleText);
+                tree.SetColumnExpand(col, false);
+                tree.SetColumnCustomMinimumWidth(col, 58);
+            }
+            var root = tree.CreateItem();
             foreach (var (garrison, troop) in garrisons)
             {
-                var btn = MakeButton("");
-                btn.CustomMinimumSize = new Vector2(170, 48);
-                btn.Pressed += () =>
-                {
-                    selectedTroop = troop.Code;
-                    RefreshSummary();
-                    RefreshSelectionButtons();
-                };
-                grid.AddChild(btn);
-                troopButtons.Add((btn, garrison, troop));
+                var item = tree.CreateItem(root);
+                item.SetText(0, selectedTroop == troop.Code ? "◆" : "◇");
+                item.SetText(1, troop.Name);
+                item.SetText(2, garrison.Troops.ToString());
+                item.SetText(3, garrison.TrainingLevel.ToString());
+                item.SetText(4, troop.MovementPerDay.ToString());
+                item.SetMetadata(0, troop.Code);
+                for (var col = 2; col <= 4; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
             }
+            tree.ItemSelected += () =>
+            {
+                var it = tree.GetSelected();
+                if (it is null) { return; }
+                selectedTroop = it.GetMetadata(0).AsString();
+                for (var item = root.GetFirstChild(); item is not null; item = item.GetNext())
+                {
+                    item.SetText(0, item.GetMetadata(0).AsString() == selectedTroop ? "◆" : "◇");
+                }
+                RefreshSummary();
+                RefreshSelectionButtons();
+            };
+            box.AddChild(tree);
         }
 
         box.AddChild(summary);
