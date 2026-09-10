@@ -7,7 +7,8 @@ using SanguoSLG.Core.Domain;
 public sealed partial class CampaignMapScene
 {
     private bool OfficerUnavailable(GeneralId id) => _state.IsGeneralBusy(id)
-        || _pendingDeploys.Any(p => p.Req.Vanguard == id || p.Req.Adjutant == id);
+        || _pendingDeploys.Any(p => p.Req.Vanguard == id || p.Req.Adjutant == id)
+        || _pendingSupplyDeploys.Any(p => p.Req.Vanguard == id);
 
     private string CurrentDuty(GeneralId id)
     {
@@ -23,6 +24,7 @@ public sealed partial class CampaignMapScene
         var unit = _state.Armies.FirstOrDefault(u => u.VanguardId == id || u.AdjutantId == id);
         if (unit is not null) { duties.Add(unit.IsSupply ? "보급부대 출전" : "출전"); }
         if (_pendingDeploys.Any(p => p.Req.Vanguard == id || p.Req.Adjutant == id)) { duties.Add("출전 예약"); }
+        if (_pendingSupplyDeploys.Any(p => p.Req.Vanguard == id)) { duties.Add("보급부대 예약"); }
         return duties.Count == 0 ? "없음" : string.Join(" / ", duties);
     }
 

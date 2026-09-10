@@ -35,6 +35,8 @@ public partial class UnitController3D : Node3D
     // 표시 모드: 입력·길찾기 없이 외부(이동 시뮬 하베스트)가 위치·공격만 구동한다.
     // 정규 조작 유닛은 false — 이 플래그가 켜진 쪽만 입력/호버를 끈다.
     private bool _display;
+    private bool _nativeSupply;
+    private readonly List<AnimationPlayer> _nativeAnimations = new();
 
     // 편대 검수용 임시 지정 — 병종 데이터(data/troop-types.json)가 생기면 그쪽에서 받는다.
     // Solo: 편대 없이 항상 1개로 표현(대선 규칙).
@@ -65,7 +67,10 @@ public partial class UnitController3D : Node3D
         ("res://assets/models/troop-wild-elephant.glb", true, MovementDomain.Land),
         ("res://assets/models/troop-eastern-dragon.glb", true, MovementDomain.Land),
         ("res://assets/models/troop-giant-squid.glb", true, MovementDomain.DeepWater),
+        ("res://assets/models/troop-supply.glb", true, MovementDomain.Land),
     };
+
+    public static int SupplyModelIndex => TroopModels.Length - 1;
 
     private const int TroopCount = 7;
 
@@ -267,6 +272,7 @@ public partial class UnitController3D : Node3D
     public void DisplayStepTo(HexCoord to, float seconds)
     {
         _moving = true;
+        PlayNativeSupplyAnimation("state_move");
         var target = TokenPosition(to);
         var dir = target - Position;
         if (dir.LengthSquared() > 0.000001f)
@@ -277,7 +283,11 @@ public partial class UnitController3D : Node3D
         var tween = CreateTween();
         tween.TweenProperty(this, "position", target, seconds)
             .SetTrans(Tween.TransitionType.Sine);
-        tween.Finished += () => _moving = false;
+        tween.Finished += () =>
+        {
+            _moving = false;
+            PlayNativeSupplyAnimation("state_camp");
+        };
     }
 
     /// <summary>표시 모드: 지정 방향(월드)을 바라보게 돌린다 — 공격 전에 대상을 향하게.</summary>
@@ -494,6 +504,19 @@ public partial class UnitController3D : Node3D
         }
 
         _attacking = true;
+        if (_nativeSupply)
+        {
+            PlayNativeSupplyAnimation("shot_arrow", fallback: "state_camp");
+            var tween = CreateTween();
+            tween.TweenInterval(AttackScatterSeconds + WindUpSeconds + SwingSeconds + RecoverSeconds);
+            tween.Finished += () =>
+            {
+                _attacking = false;
+                PlayNativeSupplyAnimation("state_camp");
+            };
+            return;
+        }
+
         if (_motion == MotionKind.Serpent)
         {
             if (_kraken)
@@ -1755,11 +1778,27 @@ public partial class UnitController3D : Node3D
     {
         _members.Clear();
         _dust = null;
+        _nativeSupply = false;
+        _nativeAnimations.Clear();
         _tokenRoot?.QueueFree();
 
         _tokenRoot = new Node3D();
         AddChild(_tokenRoot);
         var (modelFile, solo, _) = TroopModels[_troopIndex];
+        if (modelFile.EndsWith("troop-supply.glb", System.StringComparison.Ordinal))
+        {
+            _nativeSupply = true;
+            var instance = GD.Load<PackedScene>(modelFile).Instantiate<Node3D>();
+            _tokenRoot.AddChild(instance);
+            foreach (var player in FindAnimationPlayers(instance)) { _nativeAnimations.Add(player); }
+            _motion = MotionKind.Infantry;
+            _lastPosition = Position;
+            FactionColorView.Apply(_tokenRoot, _factionColor);
+            MapView3D.TuneImportedMeshes(_tokenRoot);
+            PlayNativeSupplyAnimation("state_camp");
+            return;
+        }
+
         TroopFormation.Build(_tokenRoot, GD.Load<PackedScene>(modelFile), solo ? 1 : _formationSize);
 
         var index = 0;
@@ -1903,6 +1942,31 @@ public partial class UnitController3D : Node3D
         _lastPosition = Position;
         FactionColorView.Apply(_tokenRoot, _factionColor);
         MapView3D.TuneImportedMeshes(_tokenRoot);
+    }
+
+    private static IEnumerable<AnimationPlayer> FindAnimationPlayers(Node node)
+    {
+        foreach (var child in node.GetChildren())
+        {
+            if (child is AnimationPlayer player) { yield return player; }
+            foreach (var nested in FindAnimationPlayers(child)) { yield return nested; }
+        }
+    }
+
+    private void PlayNativeSupplyAnimation(string preferred, string fallback = "")
+    {
+        if (!_nativeSupply) { return; }
+        foreach (var player in _nativeAnimations.Where(Alive))
+        {
+            var names = player.GetAnimationList();
+            var selected = names.FirstOrDefault(n => n.ToString().Contains(preferred, System.StringComparison.OrdinalIgnoreCase));
+            if (selected == default && fallback.Length > 0)
+            {
+                selected = names.FirstOrDefault(n => n.ToString().Contains(fallback, System.StringComparison.OrdinalIgnoreCase));
+            }
+            if (selected == default && names.Length > 0) { selected = names[0]; }
+            if (selected != default) { player.Play(selected); }
+        }
     }
 
     private static SwingPart[] InfantryLegs(System.Func<string, Node3D> part) => new[]

@@ -196,6 +196,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     // 출전 대기열 — "진행" 시 일괄 시작(즉시 실행 아님).
     private readonly List<(DeployRequest Req, string Label)> _pendingDeploys = new();
+    private readonly List<(SupplyDeployRequest Req, string Label)> _pendingSupplyDeploys = new();
 
     // 출전 모달(허브=예약 목록 / 편성 화면) + 수량/미리보기.
     private CityId _depModalCity;
@@ -219,6 +220,10 @@ public sealed partial class CampaignMapScene : Node3D
     private HSlider? _depProvSlider;
     private Label? _depProvLabel;
     private int _provPer10kPerDay = 10; // 병력 1만당 하루 군량 소모(balance) — 일수↔군량 환산
+    private readonly Dictionary<string, int> _supplyDraft = new(System.StringComparer.Ordinal);
+    private readonly List<(PanelContainer Card, string Code)> _supplyTroopCards = new();
+    private int _supplyEditIndex = -1;
+    private bool _targetingSupplyDeploy;
     private string _dbgLog = ""; // 출전 디버그 로그 파일 경로(res://deploy-debug.log)
     private const float FacilityDisplayScale = 0.5f;
 
@@ -1349,16 +1354,26 @@ public sealed partial class CampaignMapScene : Node3D
 
     // ── 목표 지정 ──
     private void BeginTargeting(int idx)
+        => BeginTargeting(idx, supply: false);
+
+    private void BeginSupplyTargeting(int idx)
+        => BeginTargeting(idx, supply: true);
+
+    private void BeginTargeting(int idx, bool supply)
     {
-        Dbg($"UI targeting-begin idx={idx}");
+        Dbg($"UI targeting-begin idx={idx} supply={supply}");
         CloseModal();
         HidePanels(); // 목표 지정 중에는 성 명령 팔레트·정보 카드가 가려선 안 된다.
         _depTargetIndex = idx;
+        _targetingSupplyDeploy = supply;
         _depTargeting = true;
         _targetWaypoints.Clear();
-        _targetStart = _state.Cities.FirstOrDefault(c => c.Id == _pendingDeploys[idx].Req.City)?.Position ?? default;
+        var reqCity = supply ? _pendingSupplyDeploys[idx].Req.City : _pendingDeploys[idx].Req.City;
+        _targetStart = _state.Cities.FirstOrDefault(c => c.Id == reqCity)?.Position ?? default;
         RebuildTargetEdit();
-        ShowTargetHint("지점을 순서대로 클릭 = 경유지 추가  ·  각 지점 위 취소로 삭제  ·  '확인'으로 확정  ·  적 성 = 공격  ·  우클릭 취소");
+        ShowTargetHint(supply
+            ? "보급부대 목표 지정 · 지점을 순서대로 클릭 · '확인'으로 확정 · 공격 불가 · 우클릭 취소"
+            : "지점을 순서대로 클릭 = 경유지 추가  ·  각 지점 위 취소로 삭제  ·  '확인'으로 확정  ·  적 성 = 공격  ·  우클릭 취소");
     }
 
     // 경로의 마지막 확정 지점(경유지가 없으면 시작점).
@@ -1449,6 +1464,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         _depTargeting = false;
         _depTargetIndex = -1;
+        _targetingSupplyDeploy = false;
         _retargetUnitId = -1;
         _targetConfirmBtn.Visible = false;
         _targetWaypoints.Clear();
@@ -1474,7 +1490,15 @@ public sealed partial class CampaignMapScene : Node3D
     private void ApplyTarget(HexCoord h, IReadOnlyList<HexCoord>? waypoints)
     {
         var idx = _depTargetIndex;
-        if (idx >= 0 && idx < _pendingDeploys.Count)
+        if (_targetingSupplyDeploy && idx >= 0 && idx < _pendingSupplyDeploys.Count)
+        {
+            var (req, label) = _pendingSupplyDeploys[idx];
+            _pendingSupplyDeploys[idx] = (req with { Target = h, Mode = UnitMode.March }, label);
+            Dbg($"SUPPLY TARGET idx={idx} -> ({h.Q},{h.R})");
+            var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
+            _log.Text = $"보급부대 목표 → {tName} · 목표 확정";
+        }
+        else if (idx >= 0 && idx < _pendingDeploys.Count)
         {
             var (req, label) = _pendingDeploys[idx];
             var enemyCity = _state.Cities.FirstOrDefault(c => c.Position == h && c.Owner != Player);
@@ -1565,6 +1589,14 @@ public sealed partial class CampaignMapScene : Node3D
             var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
             if (city is null) { continue; }
             AddRouteDots(city.Position, req.Waypoints, goal, _pathMarkers);
+        }
+
+        foreach (var (req, _) in _pendingSupplyDeploys)
+        {
+            if (req.Target is not { } goal) { continue; }
+            var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
+            if (city is null) { continue; }
+            AddPathDots(city.Position, goal, _pathMarkers);
         }
     }
 
@@ -1755,8 +1787,9 @@ public sealed partial class CampaignMapScene : Node3D
         // 목표 지정 중 그려둔 경로가 있으면 진행 전에 자동 확정 — '✓확인' 안 눌러 조용히 버려지던 함정 방지.
         if (_depTargeting && _targetWaypoints.Count > 0) { ConfirmTarget(); }
 
-        var deploys = _pendingDeploys.Count;
-        var untargeted = _pendingDeploys.Count(p => p.Req.Target is null);
+        var deploys = _pendingDeploys.Count + _pendingSupplyDeploys.Count;
+        var untargeted = _pendingDeploys.Count(p => p.Req.Target is null)
+            + _pendingSupplyDeploys.Count(p => p.Req.Target is null);
         var msg = $"7일을 진행합니다. ({_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일 →)";
         if (deploys > 0)
         {
@@ -1773,7 +1806,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depTargeting) { FinishTargeting(); } // 목표 지정 중 진행 = 미확정 목표 취소
 
         // 예약된 출전을 진행 시작 시점에 일괄 편성(대기열 → 야전).
-        Dbg($"--- ADVANCE week={_week} pending={_pendingDeploys.Count} armiesBefore={_state.Armies.Count} ---");
+        Dbg($"--- ADVANCE week={_week} pending={_pendingDeploys.Count} supplyPending={_pendingSupplyDeploys.Count} armiesBefore={_state.Armies.Count} ---");
         for (var i = 0; i < _pendingDeploys.Count; i++)
         {
             var rq = _pendingDeploys[i].Req;
@@ -1792,6 +1825,16 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _pendingDeploys.Clear();
+
+        foreach (var (req, label) in _pendingSupplyDeploys)
+        {
+            var dr = _deployer.DeploySupply(_state, req);
+            Dbg($"  supply-deploy '{label}': ok={dr.Ok} err={dr.Error ?? "-"} armiesNow={dr.State.Armies.Count}");
+            if (dr.Ok) { _state = dr.State; deployNote.Add($"[보급부대] {label} 부대가 출진했습니다."); }
+            else { deployNote.Add($"[보급부대] 편성 실패({dr.Error})"); }
+        }
+
+        _pendingSupplyDeploys.Clear();
 
         // 플레이어 세력은 직접 조작 — AI는 나머지 세력만 굴린다.
         foreach (var f in _state.Factions.Where(f => f.Id != Player).OrderBy(f => f.Id.Value))
@@ -2328,8 +2371,7 @@ public sealed partial class CampaignMapScene : Node3D
         supplyBtn.Pressed += () =>
         {
             CloseGroupMenu();
-            ShowNotice("보급부대", "보급부대 전용 편성 UI는 Phase 11에서 분리됩니다.\n현재는 출전 화면에서 보급부대를 편성하세요.");
-            if (_selected is { } c) { OpenDeployModal(c); }
+            if (_selected is { } c) { OpenSupplyHub(c); }
         };
         _cmdList.AddChild(supplyBtn);
 
@@ -2911,7 +2953,9 @@ public sealed partial class CampaignMapScene : Node3D
             AddCell(g2, Sym.Scroll, "진행", string.Join(",", pending));
         }
 
-        var depQueue = _pendingDeploys.Where(p => p.Req.City == id).Select(p => p.Label).ToList();
+        var depQueue = _pendingDeploys.Where(p => p.Req.City == id).Select(p => p.Label)
+            .Concat(_pendingSupplyDeploys.Where(p => p.Req.City == id).Select(p => p.Label))
+            .ToList();
         if (depQueue.Count > 0)
         {
             AddCell(g2, Sym.Flag, "출전대기", string.Join(",", depQueue));
@@ -3514,6 +3558,191 @@ public sealed partial class CampaignMapScene : Node3D
         OpenDeployHub();
     }
 
+    private void OpenSupplyHub(CityId city)
+    {
+        _depModalCity = city;
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        _depSelectedUnit = -1;
+
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.52f, 440f, 680f);
+        var mh = Mathf.Clamp(vp.Y * 0.78f, 350f, 620f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var cityName = _state.Cities.First(x => x.Id == city).Name;
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel($"◈  보급부대 편성   《 {cityName} 》  ⠿", 19, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(34, 32);
+        close.Pressed += () => { CloseModal(); SelectCity(city); };
+        titleRow.AddChild(close);
+        box.AddChild(MakeLabel("보급부대는 어떤 병종이든 편성할 수 있지만 공격 명령은 받을 수 없습니다.\n비싼 병종을 보급부대로 쓰면 그만큼 전투 손실입니다.", 12, Parchment));
+        box.AddChild(GoldRule());
+
+        var mine = Enumerable.Range(0, _pendingSupplyDeploys.Count)
+            .Where(i => _pendingSupplyDeploys[i].Req.City == city)
+            .ToList();
+        box.AddChild(MakeLabel($"예약된 보급부대 ({mine.Count})", 14, GoldBright));
+        if (mine.Count == 0)
+        {
+            box.AddChild(MakeLabel("(없음)", 12, Parchment));
+        }
+
+        foreach (var i in mine)
+        {
+            var idx = i;
+            var req = _pendingSupplyDeploys[idx].Req;
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 6);
+            var target = req.Target is { } tg
+                ? _state.Cities.FirstOrDefault(c => c.Position == tg)?.Name ?? $"({tg.Q},{tg.R})"
+                : "목표 미지정";
+            var lbl = MakeLabel("· " + _pendingSupplyDeploys[idx].Label + $" · {target}", 12, Parchment);
+            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(lbl);
+            var targetBtn = MakeButton("목표");
+            targetBtn.CustomMinimumSize = new Vector2(54, 28);
+            targetBtn.Pressed += () => BeginSupplyTargeting(idx);
+            row.AddChild(targetBtn);
+            var edit = MakeButton("수정");
+            edit.CustomMinimumSize = new Vector2(54, 28);
+            edit.Pressed += () => OpenSupplyCompose(idx);
+            row.AddChild(edit);
+            var del = MakeButton("삭제");
+            del.CustomMinimumSize = new Vector2(54, 28);
+            del.Pressed += () => { _pendingSupplyDeploys.RemoveAt(idx); OpenSupplyHub(city); };
+            row.AddChild(del);
+            box.AddChild(row);
+        }
+
+        var add = MakeButton("＋ 보급부대 추가", accent: true);
+        add.CustomMinimumSize = new Vector2(0, 36);
+        add.Pressed += () => OpenSupplyCompose(-1);
+        box.AddChild(add);
+        box.AddChild(MakeLabel("지도에서는 병력 규모와 무관하게 전용 보급부대 모델(troop-supply.glb)로 표시됩니다.", 11, Parchment));
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+        DrawDeployPaths();
+    }
+
+    private void OpenSupplyCompose(int editIndex)
+    {
+        var city = _depModalCity;
+        _supplyEditIndex = editIndex;
+        _supplyDraft.Clear();
+        _supplyTroopCards.Clear();
+        _depVanCards.Clear();
+        _depVan = null;
+        _depPreview = null;
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+
+        var usedTroops = ReservedTroopsByCode(city, editIndex, editingSupply: true);
+        var usedGens = ReservedDeployGenerals(editIndex, editingSupply: true);
+        if (editIndex >= 0 && editIndex < _pendingSupplyDeploys.Count)
+        {
+            var req = _pendingSupplyDeploys[editIndex].Req;
+            _depVan = req.Vanguard;
+            foreach (var line in req.Lines) { _supplyDraft[line.TroopCode] = line.Troops; }
+        }
+
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.55f, 460f, 720f);
+        var mh = Mathf.Clamp(vp.Y * 0.88f, 370f, 760f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var cityName = _state.Cities.First(x => x.Id == city).Name;
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel($"◈  {(editIndex >= 0 ? "보급부대 수정" : "보급부대 추가")}   《 {cityName} 》  ⠿", 18, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var back = MakeButton("◀ 목록");
+        back.CustomMinimumSize = new Vector2(60, 32);
+        back.Pressed += () => OpenSupplyHub(city);
+        titleRow.AddChild(back);
+        box.AddChild(GoldRule());
+
+        box.AddChild(MakeLabel($"보급 병력 선택 (총원 최대 {_cb.SupplyMaxTroops}명)", 13, GoldBright));
+        foreach (var gar in _state.Garrisons.Where(g => g.City == city && g.Troops > 0 && !g.Trainee).OrderBy(g => g.TroopCode))
+        {
+            var template = _troops.FirstOrDefault(t => t.Code == gar.TroopCode);
+            var available = System.Math.Max(0, gar.Troops - usedTroops.GetValueOrDefault(gar.TroopCode, 0));
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            row.AddChild(new TextureRect
+            {
+                Texture = template is not null ? ClassEmblem(template.Class) : Icon(Sym.People),
+                CustomMinimumSize = new Vector2(34, 34),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            });
+            var name = MakeLabel($"{template?.Name ?? gar.TroopCode} · 가능 {available} · 훈{gar.TrainingLevel}", 12, Parchment);
+            name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(name);
+            var spin = new SpinBox
+            {
+                MinValue = 0,
+                MaxValue = available,
+                Step = 100,
+                Value = System.Math.Min(available, _supplyDraft.GetValueOrDefault(gar.TroopCode, 0)),
+                CustomMinimumSize = new Vector2(120, 30),
+            };
+            spin.AddThemeFontOverride("font", _font);
+            spin.ValueChanged += v =>
+            {
+                var n = (int)v;
+                if (n <= 0) { _supplyDraft.Remove(gar.TroopCode); }
+                else { _supplyDraft[gar.TroopCode] = n; }
+                UpdateSupplyPreview();
+            };
+            row.AddChild(spin);
+            box.AddChild(row);
+        }
+
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("주장 선택 (보급부대는 부관 없음)", 13, GoldBright));
+        var genGrid = new GridContainer { Columns = 3 };
+        genGrid.AddThemeConstantOverride("h_separation", 8);
+        genGrid.AddThemeConstantOverride("v_separation", 8);
+        box.AddChild(genGrid);
+        foreach (var generalId in _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value))
+        {
+            var general = _state.Generals.First(g => g.Id == generalId);
+            var card = DeployCard(OfficerPortrait(general.Id), general.Name, $"현재 담당업무: {CurrentDuty(general.Id)}");
+            card.GuiInput += e =>
+            {
+                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+                {
+                    _depVan = general.Id;
+                    foreach (var (c, id) in _depVanCards) { c.AddThemeStyleboxOverride("panel", CardBox(id == _depVan)); }
+                    UpdateSupplyPreview();
+                }
+            };
+            _depVanCards.Add((card, general.Id));
+            card.AddThemeStyleboxOverride("panel", CardBox(general.Id == _depVan));
+            genGrid.AddChild(card);
+        }
+
+        box.AddChild(GoldRule());
+        _depPreview = MakeLabel("", 12, Parchment);
+        _depPreview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        box.AddChild(_depPreview);
+        var save = MakeButton("▶ 확인", accent: true);
+        save.CustomMinimumSize = new Vector2(0, 34);
+        save.Pressed += SaveSupplyCompose;
+        box.AddChild(save);
+        UpdateSupplyPreview();
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
     // 병종 코드 → 한글 이름(성벽 연구 코드 포함).
     private string TroopName(string code) => code == FactionResearch.WallCode ? "성벽"
         : _troops.FirstOrDefault(t => t.Code == code)?.Name ?? code;
@@ -3642,6 +3871,11 @@ public sealed partial class CampaignMapScene : Node3D
         {
             if (_pendingDeploys[i].Req.City == city) { deploys.Add(i); }
         }
+        var supplyDeploys = new List<int>();
+        for (var i = 0; i < _pendingSupplyDeploys.Count; i++)
+        {
+            if (_pendingSupplyDeploys[i].Req.City == city) { supplyDeploys.Add(i); }
+        }
 
         var tabWrap = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         tabWrap.AddThemeConstantOverride("separation", 0);
@@ -3658,7 +3892,7 @@ public sealed partial class CampaignMapScene : Node3D
         content.AddThemeConstantOverride("separation", 6);
         contentPanel.AddChild(content);
 
-        var labels = new[] { $"주둔 장수 {stationed.Count}", $"진행 명령 {cmds.Count}", $"예약 {deploys.Count}" };
+        var labels = new[] { $"주둔 장수 {stationed.Count}", $"진행 명령 {cmds.Count}", $"예약 {deploys.Count + supplyDeploys.Count}" };
         var tabBtns = new Button[3];
         void ShowTab(int t)
         {
@@ -3678,7 +3912,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 case 0: BuildStationedTab(content, city, stationed); break;
                 case 1: BuildCommandsTab(content, city, cmds); break;
-                default: BuildDeployTab(content, city, deploys); break;
+                default: BuildDeployTab(content, city, deploys, supplyDeploys); break;
             }
 
             var h = box.GetCombinedMinimumSize().Y;
@@ -3967,10 +4201,10 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // ── 상세 탭 ③: 예약(출전 — 진행 시 수행, 그 전까진 취소) ──
-    private void BuildDeployTab(VBoxContainer box, CityId city, List<int> deploys)
+    private void BuildDeployTab(VBoxContainer box, CityId city, List<int> deploys, List<int> supplyDeploys)
     {
         box.AddChild(MakeLabel("출전 예약 (진행 시 편성 — 취소 시 소모 없음)", 14, GoldBright));
-        if (deploys.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
+        if (deploys.Count == 0 && supplyDeploys.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
         foreach (var di in deploys)
         {
             var idx = di;
@@ -3988,6 +4222,30 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 Dbg($"UI cancel-deploy pending[{idx}] '{_pendingDeploys[idx].Label}'");
                 _pendingDeploys.RemoveAt(idx);
+                SelectCity(city);
+                OpenCityDetail(city);
+            };
+            row.AddChild(cancel);
+            box.AddChild(row);
+        }
+
+        foreach (var si in supplyDeploys)
+        {
+            var idx = si;
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            var lbl = MakeLabel("· [보급] " + _pendingSupplyDeploys[idx].Label, 12, Parchment);
+            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            lbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            lbl.CustomMinimumSize = new Vector2(1, 0);
+            row.AddChild(lbl);
+            if (_advancing) { box.AddChild(row); continue; }
+            var cancel = MakeButton("취소");
+            cancel.CustomMinimumSize = new Vector2(56, 24);
+            cancel.Pressed += () =>
+            {
+                Dbg($"UI cancel-supply pending[{idx}] '{_pendingSupplyDeploys[idx].Label}'");
+                _pendingSupplyDeploys.RemoveAt(idx);
                 SelectCity(city);
                 OpenCityDetail(city);
             };
@@ -4516,6 +4774,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         _state = loaded;
         _pendingDeploys.Clear();
+        _pendingSupplyDeploys.Clear();
         _selected = null;
         _selectedUnitId = -1;
         _week = System.Math.Max(0, (_state.Day - 1) / 7);
@@ -5506,17 +5765,8 @@ public sealed partial class CampaignMapScene : Node3D
         var cols = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 128f), 2, 4);
 
         // 다른 예약(수정 중인 것 제외)이 이미 소모한 병력·장수.
-        var usedTroops = new Dictionary<string, int>();
-        var usedGens = new HashSet<GeneralId>();
-        for (var i = 0; i < _pendingDeploys.Count; i++)
-        {
-            if (i == editIndex) { continue; }
-            var rq = _pendingDeploys[i].Req;
-            if (rq.City != city) { continue; }
-            usedTroops[rq.TroopCode] = usedTroops.GetValueOrDefault(rq.TroopCode, 0) + rq.Troops;
-            usedGens.Add(rq.Vanguard);
-            if (rq.Adjutant is { } a) { usedGens.Add(a); }
-        }
+        var usedTroops = ReservedTroopsByCode(city, editIndex, editingSupply: false);
+        var usedGens = ReservedDeployGenerals(editIndex, editingSupply: false);
 
         // 1) 병종
         box.AddChild(MakeLabel("병종 (대기 병력)", 13, GoldBright));
@@ -5768,6 +6018,105 @@ public sealed partial class CampaignMapScene : Node3D
         _depPreview.Text = "현재 편성:  " + (parts.Count > 0 ? string.Join(" · ", parts) : "(병종·수량·장수 선택)");
     }
 
+    private void UpdateSupplyPreview()
+    {
+        if (_depPreview is null) { return; }
+        var total = _supplyDraft.Values.Sum();
+        var lines = _supplyDraft
+            .Where(p => p.Value > 0)
+            .OrderBy(p => p.Key, System.StringComparer.Ordinal)
+            .Select(p => $"{_troops.FirstOrDefault(t => t.Code == p.Key)?.Name ?? p.Key} {p.Value}")
+            .ToList();
+        var vanguard = _depVan is { } v ? _state.Generals.First(g => g.Id == v).Name : "주장 미선택";
+        var status = total > _cb.SupplyMaxTroops ? $"  ⚠ 최대 {_cb.SupplyMaxTroops}명 초과" : "";
+        _depPreview.Text = $"현재 편성: 보급부대 {total}명 · 주장 {vanguard}{status}\n"
+            + (lines.Count == 0 ? "병종을 선택하세요." : string.Join(" · ", lines))
+            + "\n공격 명령 불가 · 전용 보급부대 모델 사용 · 보급 범위 안 아군 군량을 자동 보충";
+    }
+
+    private Dictionary<string, int> ReservedTroopsByCode(CityId city, int editIndex, bool editingSupply)
+    {
+        var used = new Dictionary<string, int>(System.StringComparer.Ordinal);
+        for (var i = 0; i < _pendingDeploys.Count; i++)
+        {
+            if (!editingSupply && i == editIndex) { continue; }
+            var rq = _pendingDeploys[i].Req;
+            if (rq.City != city) { continue; }
+            used[rq.TroopCode] = used.GetValueOrDefault(rq.TroopCode, 0) + rq.Troops;
+        }
+
+        for (var i = 0; i < _pendingSupplyDeploys.Count; i++)
+        {
+            if (editingSupply && i == editIndex) { continue; }
+            var rq = _pendingSupplyDeploys[i].Req;
+            if (rq.City != city) { continue; }
+            foreach (var line in rq.Lines)
+            {
+                used[line.TroopCode] = used.GetValueOrDefault(line.TroopCode, 0) + line.Troops;
+            }
+        }
+
+        return used;
+    }
+
+    private HashSet<GeneralId> ReservedDeployGenerals(int editIndex, bool editingSupply)
+    {
+        var used = new HashSet<GeneralId>();
+        for (var i = 0; i < _pendingDeploys.Count; i++)
+        {
+            if (!editingSupply && i == editIndex) { continue; }
+            var rq = _pendingDeploys[i].Req;
+            used.Add(rq.Vanguard);
+            if (rq.Adjutant is { } a) { used.Add(a); }
+        }
+
+        for (var i = 0; i < _pendingSupplyDeploys.Count; i++)
+        {
+            if (editingSupply && i == editIndex) { continue; }
+            used.Add(_pendingSupplyDeploys[i].Req.Vanguard);
+        }
+
+        return used;
+    }
+
+    private void SaveSupplyCompose()
+    {
+        void Err(string m) { if (_depPreview is not null) { _depPreview.Text = "⚠ " + m; } }
+        var lines = _supplyDraft
+            .Where(p => p.Value > 0)
+            .OrderBy(p => p.Key, System.StringComparer.Ordinal)
+            .Select(p => new SupplyLine(p.Key, p.Value))
+            .ToList();
+        var total = lines.Sum(l => l.Troops);
+        if (lines.Count == 0) { Err("보급부대에 투입할 병종과 병력을 선택하세요."); return; }
+        if (total > _cb.SupplyMaxTroops) { Err($"보급부대는 최대 {_cb.SupplyMaxTroops}명까지 편성할 수 있습니다."); return; }
+        if (_depVan is not { } van) { Err("보급부대 주장을 선택하세요."); return; }
+        var ids = new[] { van };
+        var vName = _state.Generals.First(g => g.Id == van).Name;
+        var lineText = string.Join(", ", lines.Select(l => $"{_troops.FirstOrDefault(t => t.Code == l.TroopCode)?.Name ?? l.TroopCode} {l.Troops}"));
+        var req = new SupplyDeployRequest(_depModalCity, lines, van, UnitMode.March);
+        var entry = (req, $"보급 {total}({vName}) · {lineText}");
+        ShowConfirm("보급부대 예약 확인",
+            $"{entry.Item2}\n\n공격 명령은 불가능하며, 규모와 무관하게 보급부대 전용 모델로 표시됩니다.{DutyReleaseNotice(ids)}",
+            () =>
+            {
+                if (_advancing || ids.Any(id => _state.IsGeneralBusy(id))
+                    || _pendingSupplyDeploys.Where((_, index) => index != _supplyEditIndex).Any(p => p.Req.Vanguard == van)
+                    || _pendingDeploys.Any(p => p.Req.Vanguard == van || p.Req.Adjutant == van))
+                {
+                    ShowNotice("보급부대 편성 불가", "선택한 장수가 다른 업무를 수행 중입니다.");
+                    return;
+                }
+
+                _state = _state.ReleaseOfficerDuties(ids);
+                if (_supplyEditIndex >= 0 && _supplyEditIndex < _pendingSupplyDeploys.Count) { _pendingSupplyDeploys[_supplyEditIndex] = entry; }
+                else { _pendingSupplyDeploys.Add(entry); }
+                Dbg($"SUPPLY SAVE city={req.City.Value} total={total} van={van.Value} lines={lines.Count}");
+                SelectCity(_depModalCity);
+                OpenSupplyHub(_depModalCity);
+            });
+    }
+
     // 슬라이더 일수 → 실제 휴대 군량(병력 비례 환산). 적재 상한·성 비축 안에서 자른다(미리보기용).
     private int ProvisionsToCarry()
     {
@@ -5811,7 +6160,8 @@ public sealed partial class CampaignMapScene : Node3D
         {
         if (_advancing || ids.Any(id => _state.IsGeneralBusy(id))
             || _pendingDeploys.Where((_, index) => index != _depEditIndex)
-                .Any(p => ids.Contains(p.Req.Vanguard) || p.Req.Adjutant is { } adj && ids.Contains(adj)))
+                .Any(p => ids.Contains(p.Req.Vanguard) || p.Req.Adjutant is { } adj && ids.Contains(adj))
+            || _pendingSupplyDeploys.Any(p => ids.Contains(p.Req.Vanguard)))
         { ShowNotice("출전 불가", "선택한 장수가 다른 업무를 수행 중입니다."); return; }
         _state = _state.ReleaseOfficerDuties(ids);
         if (_depEditIndex >= 0 && _depEditIndex < _pendingDeploys.Count) { _pendingDeploys[_depEditIndex] = entry; }
@@ -5833,6 +6183,11 @@ public sealed partial class CampaignMapScene : Node3D
             if (i == editIndex) { continue; }
             var rq = _pendingDeploys[i].Req;
             if (rq.City == city && rq.TroopCode == troopCode) { reserved += rq.Troops; }
+        }
+
+        foreach (var rq in _pendingSupplyDeploys.Where(p => p.Req.City == city).Select(p => p.Req))
+        {
+            reserved += rq.Lines.Where(l => l.TroopCode == troopCode).Sum(l => l.Troops);
         }
 
         return System.Math.Max(0, stock - reserved);
@@ -8037,8 +8392,10 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 token = new UnitController3D();
                 AddChild(token);
-                token.InitDisplay(_view, color, TroopModelIndex.GetValueOrDefault(army.TroopCode, 0), army.Field.Position);
-                token.SetFormationSize(FormationFor(army.Pool.Active));
+                token.InitDisplay(_view, color,
+                    army.IsSupply ? UnitController3D.SupplyModelIndex : TroopModelIndex.GetValueOrDefault(army.TroopCode, 0),
+                    army.Field.Position);
+                token.SetFormationSize(army.IsSupply ? 1 : FormationFor(army.Pool.Active));
 
                 var lbl = new Label3D
                 {
@@ -8053,7 +8410,7 @@ public sealed partial class CampaignMapScene : Node3D
                 _armyLabels[army.Id.Value] = lbl;
             }
 
-            token.SetFormationSize(FormationFor(army.Pool.Active)); // 병력 규모 → 편대원 수(1·3·5·7·9)
+            token.SetFormationSize(army.IsSupply ? 1 : FormationFor(army.Pool.Active)); // 보급부대는 규모와 무관하게 단일 전용 모델
             token.DisplaySyncTo(army.Field.Position, 0.3f); // 제자리면 스냅 — 보정 트윈이 방향을 뒤집지 않게
             var lblNode = _armyLabels[army.Id.Value];
             lblNode.Position = _view.HexToWorld(army.Field.Position) + new Vector3(0f, _view.TileTopY + 1.1f, 0f);
