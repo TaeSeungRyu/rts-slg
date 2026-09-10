@@ -114,12 +114,12 @@ Godot에서 z-파이팅 깜빡임. 새 Blender 스크립트의 `make_mat()`에 `
 
 | 도구 | 이 PC 경로 | 용도 |
 |---|---|---|
-| **Godot 4.7.2 (.NET/mono)** | `D:\LOCAL-WORK-STATION\Godot_v4.7.2-stable_win64\` (GUI·`_console` 둘 다) | 씬 임포트·헤드리스 빌드·실행. **반드시 mono(.NET) 빌드** — 일반 빌드는 `GodotSharp` 없어 C# 실행 불가 |
+| **Godot 4.7.2 (.NET/mono)** | `D:\LOCAL-WORK-STATION\Godot_v4.7.2-stable_mono_win64\` (GUI·`_console` 둘 다) | 씬 임포트·헤드리스 빌드·실행. **반드시 mono(.NET) 빌드** — 일반 빌드는 `GodotSharp` 없어 C# 실행 불가 |
 | **Blender** | `D:\LOCAL-WORK-STATION\blender\blender.exe` | 3D 에셋 제작/편집(헤드리스 `--background --python`) |
 | **Fooocus** | `E:/Fooocus_win64_2-5-0` (포터블, 과거 D→E 이동) | 아이콘·초상 이미지 생성 |
 | **Kenney 에셋 원본(CC0)** | `D:\dev\assets\kenney\` (Hexagon Kit 3D 72 GLB 등) | 새 모델 통합 시 선별 복사 원본 |
 
-- **`run-*.bat`들이 Godot 경로를 하드코딩**할 수 있다. 이 PC의 기준 경로는 `D:\LOCAL-WORK-STATION\Godot_v4.7.2-stable_win64\`이며, 새 PC에선 각 배치의 `GODOT` 한 줄을 고친다.
+- **`run-*.bat`들이 Godot 경로를 하드코딩**할 수 있다. 이 PC의 기준 경로는 `D:\LOCAL-WORK-STATION\Godot_v4.7.2-stable_mono_win64\`이며, 새 PC에선 각 배치의 `GODOT` 한 줄을 고친다.
 - 이미지 처리는 Fooocus 임베디드 파이썬 대신 **시스템 `python`(Pillow)** 을 쓴다. PIL은 Windows 경로(`C:/`·`D:/`·`E:/`)만 읽고 bash `/tmp`는 못 읽는다.
 - 이미 사용 중인 에셋(폰트·아이콘·모델·타일)은 저장소에 커밋돼 있어 **게임 실행에는 위 도구가 불필요**하다.
   위 도구들은 **새 아트를 만들 때만** 필요하다.
