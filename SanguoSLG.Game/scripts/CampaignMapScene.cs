@@ -2642,6 +2642,11 @@ public sealed partial class CampaignMapScene : Node3D
         stop.Pressed += StopSelectedUnit;
         _unitCmdBox.AddChild(stop);
 
+        var ret = Item("복귀");
+        ret.TooltipText = "가장 가까운 아군 성으로 행군해 입성한다.";
+        ret.Pressed += ReturnSelectedUnit;
+        _unitCmdBox.AddChild(ret);
+
         _unitCmdBox.AddChild(MakeLabel("· 계략", 10, GoldBright));
         var strat = Item("계략");
         strat.Pressed += () => { _log.Text = "(준비 중) 유닛 계략"; }; // 후속 배선
@@ -2681,6 +2686,39 @@ public sealed partial class CampaignMapScene : Node3D
         Redraw(_log.Text);
         var u = _state.Armies.FirstOrDefault(a => a.Id.Value == uid);
         if (u is not null) { OpenUnitMenu(u); }
+    }
+
+    private void ReturnSelectedUnit()
+    {
+        if (_advancing || _selectedUnitId < 0) { return; }
+        var uid = _selectedUnitId;
+        var unit = _state.Armies.FirstOrDefault(a => a.Id.Value == uid && a.Field.Owner == Player);
+        if (unit is null) { return; }
+
+        var city = _state.Cities
+            .Where(c => c.Owner == Player)
+            .OrderBy(c => c.Position.Distance(unit.Field.Position))
+            .ThenBy(c => c.Id.Value)
+            .FirstOrDefault();
+        if (city is null)
+        {
+            ShowNotice("명령 실패", "복귀할 아군 성이 없습니다.");
+            return;
+        }
+
+        var result = _unitCommander.ReturnToCity(_state, Player, unit.Id, city.Id);
+        if (!result.Ok)
+        {
+            ShowNotice("명령 실패", result.Error ?? "복귀할 수 없습니다.");
+            return;
+        }
+
+        _state = result.State;
+        Dbg($"UI unit-return u{uid} city={city.Id.Value}");
+        _log.Text = $"부대가 {city.Name}(으)로 복귀합니다.";
+        Redraw(_log.Text);
+        var changed = _state.Armies.FirstOrDefault(a => a.Id.Value == uid);
+        if (changed is not null) { OpenUnitMenu(changed); }
     }
 
     // 재지정 확정 — 적 성이면 공격모드로 전환, 자기 성이면 복귀(입성은 이동 규칙이 처리).
