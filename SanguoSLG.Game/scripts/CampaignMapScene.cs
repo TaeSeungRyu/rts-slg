@@ -178,7 +178,7 @@ public sealed partial class CampaignMapScene : Node3D
     private CityId? _stratTarget; // 도시 계략 대상 도시(선택 UI)
     private int _offSortCol = -1; // -1 = 명령 관련 능력치 내림차순(기본)
     private bool _offSortAsc;
-    private Label _modalDetail = null!;
+    private Label? _modalDetail;
     private readonly List<PanelContainer> _optionCards = new();
     private readonly List<PanelContainer> _autoRecruitRateCards = new();
     private readonly HashSet<int> _disabledOptions = new();
@@ -3165,6 +3165,7 @@ public sealed partial class CampaignMapScene : Node3D
         _cmdIndex = cmdIndex;
         var cmd = Cmds[cmdIndex];
         CloseModal();
+        _modalDetail = null;
 
         var layer = new CanvasLayer { Layer = 20 };
         AddChild(layer);
@@ -3270,7 +3271,9 @@ public sealed partial class CampaignMapScene : Node3D
         _disabledOptions.Clear();
         _modalMultiParams.Clear();
         _modalParam = cmd.Param == "tax" ? 2 : 0;
-        _autoRecruitRateParam = System.Math.Clamp(cityData.AutoRecruitRate <= 0 ? 1 : cityData.AutoRecruitRate, 1, 3);
+        _autoRecruitRateParam = cityData.RecruitmentOfficer is null
+            ? 1
+            : System.Math.Clamp(cityData.AutoRecruitRate <= 0 ? 1 : cityData.AutoRecruitRate, 1, 3);
         if (cmd.Param == "faction" && options.Count == 0)
         {
             var empty = cmd.Kind == CommandKind.FormAlliance
@@ -6489,7 +6492,10 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         var detail = PlainUiText(o.Detail);
-        _modalDetail.Text = detail.Length > 0 ? $"▶  {o.Name}  —  {detail}" : $"▶  {o.Name}";
+        if (GodotObject.IsInstanceValid(_modalDetail))
+        {
+            _modalDetail!.Text = detail.Length > 0 ? $"▶  {o.Name}  —  {detail}" : $"▶  {o.Name}";
+        }
     }
 
     private bool IsOptionSelected(int idx)
@@ -6530,7 +6536,7 @@ public sealed partial class CampaignMapScene : Node3D
             _autoRecruitRateCards[i].AddThemeStyleboxOverride("panel", CardBox(i + 1 == _autoRecruitRateParam));
         }
 
-        if (_modalDetail is not null && troopOptions.Count > 0)
+        if (GodotObject.IsInstanceValid(_modalDetail) && troopOptions.Count > 0)
         {
             RefreshMultiOptionCards(troopOptions);
         }
@@ -6583,7 +6589,10 @@ public sealed partial class CampaignMapScene : Node3D
         var cmd = Cmds[_cmdIndex];
         var label = cmd.Kind == CommandKind.SelectMajorTroop ? "주력병종" : "자동 생산";
         var rate = cmd.Kind == CommandKind.AppointRecruitmentOfficer ? $" · {_autoRecruitRateParam}배" : "";
-        _modalDetail.Text = selected.Count == 0 ? "▶  선택 없음" : $"▶  {label}: {string.Join(", ", selected)}{rate}";
+        if (GodotObject.IsInstanceValid(_modalDetail))
+        {
+            _modalDetail!.Text = selected.Count == 0 ? "▶  선택 없음" : $"▶  {label}: {string.Join(", ", selected)}{rate}";
+        }
     }
 
     private static string PlainUiText(string value)
@@ -6730,7 +6739,7 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     private StyleBoxFlat CardBox(bool selected, bool hover = false) => selected
-        ? Frame(AccentFill, GoldBright, 2, 9, 9)
+        ? Frame(AccentFill, GoldBright, 4, 9, 9)
         : hover ? Frame(InkHover, GoldBright, 2, 9, 9) : Frame(InkSoft, Gold, 1, 9, 9);
 
     private Control GoldRule()
