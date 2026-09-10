@@ -80,6 +80,11 @@ public sealed class DeployService
             return CommandResult.Fail("대기 병력이 부족하다.", state);
         }
 
+        if (troops > _b.DeployMaxTroops)
+        {
+            return CommandResult.Fail($"부대는 최대 {_b.DeployMaxTroops}명까지 편성할 수 있다.", state);
+        }
+
         if (garrison.TrainingLevel < _b.DeployMinTraining)
         {
             return CommandResult.Fail($"훈련도 {_b.DeployMinTraining} 미만 부대는 투입할 수 없다(징병 훈련 중).", state);

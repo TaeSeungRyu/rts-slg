@@ -5531,7 +5531,7 @@ public sealed partial class CampaignMapScene : Node3D
             var warn = gar.TrainingLevel < 50 ? "  ⚠훈련부족" : "";
             var emblem = template is not null ? ClassEmblem(template.Class) : Icon(Sym.Sword);
             var card = DeployCard(emblem, name, $"{remaining}명 · 훈{gar.TrainingLevel}{warn}");
-            var cap = remaining;
+            var cap = System.Math.Min(remaining, _cb.DeployMaxTroops);
             _depTroopCards.Add((card, code));
             card.GuiInput += e =>
             {
@@ -5561,14 +5561,10 @@ public sealed partial class CampaignMapScene : Node3D
         _depAmountSpin.AddThemeFontSizeOverride("font_size", 14);
         _depAmountSpin.ValueChanged += v => { _depAmount = (int)v; UpdateProvLabel(); UpdateDepPreview(); };
         amtRow.AddChild(_depAmountSpin);
-        foreach (var (plabel, frac) in new[] { ("전량", 1.0), ("½", 0.5), ("¼", 0.25) })
-        {
-            var pf = frac;
-            var pb = MakeButton(plabel);
-            pb.CustomMinimumSize = new Vector2(48, 28);
-            pb.Pressed += () => { if (_depAmountSpin is { } sp) { sp.Value = System.Math.Floor(sp.MaxValue * pf); } };
-            amtRow.AddChild(pb);
-        }
+        var maxButton = MakeButton("최대");
+        maxButton.CustomMinimumSize = new Vector2(58, 28);
+        maxButton.Pressed += () => { if (_depAmountSpin is { } sp) { sp.Value = sp.MaxValue; } };
+        amtRow.AddChild(maxButton);
 
         box.AddChild(amtRow);
 
@@ -5684,7 +5680,7 @@ public sealed partial class CampaignMapScene : Node3D
             _depAdj = rq.Adjutant;
             var gar = _state.Garrisons.FirstOrDefault(g => g.City == city && g.TroopCode == rq.TroopCode);
             var capEdit = (gar?.Troops ?? rq.Troops) - usedTroops.GetValueOrDefault(rq.TroopCode, 0);
-            _depAmountSpin.MaxValue = System.Math.Max(capEdit, rq.Troops);
+            _depAmountSpin.MaxValue = System.Math.Min(_cb.DeployMaxTroops, System.Math.Max(capEdit, rq.Troops));
             _depAmountSpin.Value = rq.Troops;
             _depAmount = rq.Troops;
             _depMode = rq.Mode;
@@ -5796,6 +5792,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depTroop is null) { Err("병종을 선택하세요."); return; }
         if (_depVan is not { } van) { Err("선봉 장수를 선택하세요."); return; }
         if (_depAmount <= 0) { Err("병력 수량을 정하세요."); return; }
+        if (_depAmount > _cb.DeployMaxTroops) { Err($"일반 부대는 최대 {_cb.DeployMaxTroops}명까지 출전할 수 있습니다."); return; }
         if (_depAdj == van) { Err("부관은 선봉과 다른 장수여야 합니다."); return; }
         var available = AvailableDeployTroops(_depModalCity, _depTroop, _depEditIndex);
         if (_depAmount > available) { Err($"대기 병력이 부족합니다. 최대 {available}명까지 출전할 수 있습니다."); return; }

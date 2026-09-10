@@ -57,6 +57,7 @@
     "war_elephant": 6
   },
   "deploy_min_training": 50,
+  "deploy_max_troops": 10000,
   "supply_max_troops": 20000,
   "city_resupply_radius": 3,
   "research_base_days": 30,

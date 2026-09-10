@@ -58,6 +58,9 @@ public sealed record CommandBalance
     /// <summary>출전 가능 최소 훈련도(징병 부대는 이 밑이면 투입 불가 — design-unit-state 모집).</summary>
     public int DeployMinTraining { get; init; } = 50;
 
+    /// <summary>일반 전투부대 최대 편성 병력. 집단군은 별도 규칙을 사용한다.</summary>
+    public int DeployMaxTroops { get; init; } = 10000;
+
     /// <summary>보급부대 최대 편성 병력(design-unit-state 1단계-보급).</summary>
     public int SupplyMaxTroops { get; init; } = 20000;
 

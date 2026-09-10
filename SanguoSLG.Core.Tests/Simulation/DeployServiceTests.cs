@@ -252,6 +252,19 @@ public class DeployServiceTests
     }
 
     [Fact]
+    public void 출전_일반부대는_최대_일만명까지만_편성된다()
+    {
+        var s0 = State([Town(1, new HexCoord(0, 0))], [Gen(1)],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 50000, 60)],
+            postings: [At(1, 1)]);
+
+        var r = Service().Deploy(s0, new DeployRequest(new CityId(1), "swordsman", 15000, new GeneralId(1)));
+
+        Assert.False(r.Ok);
+        Assert.Contains("최대", r.Error);
+    }
+
+    [Fact]
     public void 출전_내정명령에_잠긴_장수는_출전할수없다()
     {
         var s0 = State([Town(1, new HexCoord(0, 0))], [Gen(1)],
