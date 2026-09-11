@@ -14,6 +14,7 @@ using SanguoSLG.Core.Spatial;
 /// </summary>
 public sealed class AdvanceOrchestrator
 {
+    public const int DefaultResupplyRadius = 4;
     private readonly MovementSimulator _movement;
     private readonly CombatPhaseResolver _combat;
     private readonly int _woundedPercent;
@@ -30,7 +31,7 @@ public sealed class AdvanceOrchestrator
         Func<HexCoord, TerrainType>? terrainAt = null,
         int provisionsPer10kPerDay = 10,
         int starvationLossPercentPerDay = 5,
-        int resupplyRadius = 6,
+        int resupplyRadius = DefaultResupplyRadius,
         TrainingConfig? training = null,
         int reinforcePercent = 20)
     {

@@ -51,6 +51,19 @@ public class AdvanceOrchestratorTests
         Assert.True(turn.Units[0].Field.Waypoints is null or { Count: 0 });      // 경유지 소비 반영
     }
 
+    [Theory]
+    [InlineData(4, 10000)]
+    [InlineData(5, 9500)]
+    public void 보급은_기본_반경_4칸까지만_도달한다(int distance, int expectedTroops)
+    {
+        var supply = Sword(1, 1, new HexCoord(0, 0)) with
+        { IsSupply = true, Provisions = 1000 };
+        var recipient = Sword(2, 1, new HexCoord(distance, 0)) with
+        { Provisions = 0 };
+        var turn = MakeOrchestrator().Run(new[] { supply, recipient }, maxDays: 1);
+        Assert.Equal(expectedTroops, turn.Units.Single(u => u.Id.Value == 2).Pool.Active);
+    }
+
     [Fact]
     public void 적없으면_이동만_전투없음()
     {

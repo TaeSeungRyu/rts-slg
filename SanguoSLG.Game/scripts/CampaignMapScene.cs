@@ -1527,7 +1527,7 @@ public sealed partial class CampaignMapScene : Node3D
     private Mesh? _supplyTileMesh;
     private Material? _supplyTileMat;
     private Material? _fieldSupplyTileMat;
-    private const int FieldSupplyRadius = 6;
+    private const int FieldSupplyRadius = AdvanceOrchestrator.DefaultResupplyRadius;
     private const int SupplyExtraCarryDays = 20;
 
     // ── 보급 영역: 아군 성 반경(city_resupply_radius) 안을 초록 타일로 표시 ──
