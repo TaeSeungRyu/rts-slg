@@ -31,6 +31,8 @@ public partial class UnitController3D : Node3D
     private Camera3D _camera = null!;
     private bool _moving;
     private bool _attacking;
+    private bool _queuedAttack;
+    private Vector3 _queuedAttackTarget;
 
     // 표시 모드: 입력·길찾기 없이 외부(이동 시뮬 하베스트)가 위치·공격만 구동한다.
     // 정규 조작 유닛은 false — 이 플래그가 켜진 쪽만 입력/호버를 끈다.
@@ -296,6 +298,7 @@ public partial class UnitController3D : Node3D
             Visible = true;
             if (Alive(_tokenRoot)) { _tokenRoot.Visible = true; }
             PlayNativeSupplyAnimation("state_camp");
+            PlayQueuedAttackIfAny();
         };
     }
 
@@ -307,6 +310,31 @@ public partial class UnitController3D : Node3D
         {
             Rotation = new Vector3(0f, Mathf.Atan2(d.X, d.Z), 0f);
         }
+    }
+
+    public void PlayAttackMotionToward(Vector3 worldTarget)
+    {
+        if (_moving || _attacking)
+        {
+            _queuedAttack = true;
+            _queuedAttackTarget = worldTarget;
+            return;
+        }
+
+        FaceToward(worldTarget);
+        PlayAttackMotion();
+    }
+
+    private void PlayQueuedAttackIfAny()
+    {
+        if (!_queuedAttack || _moving || _attacking)
+        {
+            return;
+        }
+
+        var target = _queuedAttackTarget;
+        _queuedAttack = false;
+        PlayAttackMotionToward(target);
     }
 
     public override void _Process(double delta)

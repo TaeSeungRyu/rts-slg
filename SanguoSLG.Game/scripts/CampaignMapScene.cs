@@ -3241,7 +3241,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var a = _animAttacks[_animAtkIdx];
                 if (_armyTokens.TryGetValue(a.UnitId, out var tok) && tok.Visible)
-                { tok.FaceToward(a.FaceTo); tok.PlayAttackMotion(); }
+                { tok.PlayAttackMotionToward(a.FaceTo); }
                 _animAtkIdx++;
             }
 
