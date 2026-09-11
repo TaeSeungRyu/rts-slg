@@ -1527,6 +1527,7 @@ public sealed partial class CampaignMapScene : Node3D
     private Material? _supplyTileMat;
     private Material? _fieldSupplyTileMat;
     private const int FieldSupplyRadius = 6;
+    private const int SupplyExtraCarryDays = 20;
 
     // ── 보급 영역: 아군 성 반경(city_resupply_radius) 안을 초록 타일로 표시 ──
     // 부대가 나가 있을 때(또는 출전 예약이 있을 때)만 보여, 이 영역을 벗어나면 휴대 군량으로
@@ -3733,7 +3734,7 @@ public sealed partial class CampaignMapScene : Node3D
             var spin = new SpinBox
             {
                 MinValue = 0,
-                MaxValue = available,
+                MaxValue = System.Math.Min(available, _cb.SupplyMaxTroops),
                 Step = 100,
                 Value = System.Math.Min(available, _supplyDraft.GetValueOrDefault(gar.TroopCode, 0)),
                 CustomMinimumSize = new Vector2(120, 30),
@@ -3742,6 +3743,13 @@ public sealed partial class CampaignMapScene : Node3D
             spin.ValueChanged += v =>
             {
                 var n = (int)v;
+                var otherTotal = _supplyDraft.Where(p => p.Key != gar.TroopCode).Sum(p => p.Value);
+                var maxForThis = System.Math.Max(0, System.Math.Min(available, _cb.SupplyMaxTroops - otherTotal));
+                if (n > maxForThis)
+                {
+                    n = maxForThis;
+                    spin.SetValueNoSignal(n);
+                }
                 if (n <= 0) { _supplyDraft.Remove(gar.TroopCode); }
                 else { _supplyDraft[gar.TroopCode] = n; }
                 SyncSupplyProvisionSlider();
@@ -6282,11 +6290,14 @@ public sealed partial class CampaignMapScene : Node3D
         return (int)(weighted / total);
     }
 
+    private int SupplyMaxCarryDays()
+        => System.Math.Max(1, SupplyCapacityForDraft() / System.Math.Max(1, _provPer10kPerDay) + SupplyExtraCarryDays);
+
     private int SupplyProvisionsToCarry()
     {
         var total = _supplyDraft.Values.Sum();
         if (total <= 0) { return 0; }
-        var capacity = SupplyCapacityForDraft() * total / 10000;
+        var capacity = SupplyMaxCarryDays() * total * _provPer10kPerDay / 10000;
         var wanted = _depProvDays * total * _provPer10kPerDay / 10000;
         var cityProv = _state.Cities.First(x => x.Id == _depModalCity).Provisions;
         return System.Math.Min(System.Math.Min(wanted, capacity), cityProv);
@@ -6295,15 +6306,15 @@ public sealed partial class CampaignMapScene : Node3D
     private int SupplyProvisionDaysFromAmount(int provisions)
     {
         var total = _supplyDraft.Values.Sum();
-        if (provisions < 0 || total <= 0) { return System.Math.Max(1, SupplyCapacityForDraft() / System.Math.Max(1, _provPer10kPerDay)); }
+        if (provisions < 0 || total <= 0) { return SupplyMaxCarryDays(); }
         return System.Math.Clamp(provisions * 10000 / System.Math.Max(1, total * _provPer10kPerDay), 0,
-            System.Math.Max(1, SupplyCapacityForDraft() / System.Math.Max(1, _provPer10kPerDay)));
+            SupplyMaxCarryDays());
     }
 
     private void SyncSupplyProvisionSlider()
     {
         if (_depProvSlider is null) { return; }
-        var maxDays = System.Math.Max(1, SupplyCapacityForDraft() / System.Math.Max(1, _provPer10kPerDay));
+        var maxDays = SupplyMaxCarryDays();
         _depProvSlider.MaxValue = maxDays;
         if (_depProvDays <= 0 || _depProvDays > maxDays) { _depProvDays = maxDays; }
         _depProvSlider.SetValueNoSignal(_depProvDays);
