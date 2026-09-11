@@ -61,6 +61,10 @@ SanguoSLG/
 
 `Simulation/`, `AI/`, `Domain/`에 로직을 추가하거나 수정하면 같은 커밋에 xUnit 테스트를 함께 작성한다. 전투 계산식, 내정 수치 변동, 턴 전이 조건은 예외 없이 테스트 대상이다.
 
+사용자 요구사항을 처리할 때는 **QA가 완료 기준**이다. 수정 후 요구사항별로 적절한 검증을 반드시 수행한다.
+자동화 가능한 로직은 xUnit 테스트로, Game/Godot 변경은 Game 프로젝트 빌드와 Godot headless 로딩으로 확인한다.
+UI·연출처럼 눈으로만 최종 판단 가능한 항목도 빌드·로딩·실행 경로 점검까지 수행하고, 남는 수동 확인 범위를 명확히 보고한다.
+
 작업 완료 전 반드시 실행:
 
 ```bash
@@ -219,6 +223,7 @@ godot --headless --path SanguoSLG.Game --build-solutions --quit
 - Conventional Commits 사용: `feat:`, `fix:`, `refactor:`, `test:`, `chore:`
 - 커밋 메시지 본문은 한국어
 - 빌드가 깨진 상태나 테스트 실패 상태로 커밋하지 않는다
+- 요구사항별 QA가 끝나기 전에는 완료·커밋·푸시하지 않는다
 
 ---
 

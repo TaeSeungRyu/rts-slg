@@ -26,6 +26,7 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검�
 
 - 플레이(주 진입 씬): **`run-maptest.bat`**(캠페인 맵). 내정 전용 씬은 `run-admin.bat`.
 - 밸런스 검증: `dotnet run --project SanguoSLG.Sandbox -- --balance 42` (현재 42/42 수렴).
+- 작업 완료 기준: 요구사항별 QA 필수. Core는 xUnit, Game/Godot은 Game 빌드와 headless 로딩까지 확인하고, 시각·손맛은 수동 확인 범위를 명확히 남긴다.
 
 ## 3. 어디를 읽고 이어가나 (문서 맵)
 
