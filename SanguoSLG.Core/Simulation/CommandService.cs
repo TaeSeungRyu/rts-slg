@@ -22,7 +22,10 @@ public sealed record CommandRequest(
     bool TraineePool = false,
     GeneralId? TargetGeneral = null,
     Spatial.HexCoord? Plot = null,
-    bool ReplaceOfficerAssignment = false);
+    bool ReplaceOfficerAssignment = false,
+    IReadOnlyList<ResearchFundingShare>? ResearchFunding = null);
+
+public sealed record ResearchFundingShare(CityId City, int Ratio);
 
 /// <summary>명령 발행 결과 — 실패면 <see cref="Error"/>에 사유, 상태는 그대로.</summary>
 public sealed record CommandResult(bool Ok, string? Error, GameState State)
@@ -541,15 +544,77 @@ public sealed class CommandService
         }
 
         var cost = isWall ? _b.WallResearchCostPerLevel * (level + 1) : CommandEfficiency.ResearchCost(level + 1, _b);
-        if (city.Gold < cost)
+        var funding = ReserveResearchCost(state, city, req, faction, cost);
+        if (!funding.Ok)
         {
-            return CommandResult.Fail("금이 부족하다.", state);
+            return CommandResult.Fail(funding.Error ?? "금이 부족하다.", state);
         }
 
-        // 효율 능력 = 지력: 지력이 높을수록 기간 단축(기본 30일, 지력 100이면 −10일).
         var days = System.Math.Max(_b.ResearchBaseDays - System.Math.Clamp((main.Intellect - 50) / 5, 0, 10), 1);
-        var reserved = city.AddGold(-cost);
-        return Register(state, reserved, req, assist, amount: isWall ? level + 1 : 0, days, CommandKind.Research, "", req.TroopCode);
+        return Register(funding.State, req, assist, amount: isWall ? level + 1 : 0, days, CommandKind.Research, "", req.TroopCode);
+    }
+
+    private static CommandResult ReserveResearchCost(GameState state, City city, CommandRequest req, FactionId faction, int cost)
+    {
+        var shares = req.ResearchFunding?.Where(s => s.Ratio > 0).ToList() ?? [];
+        if (shares.Count == 0)
+        {
+            if (city.Gold < cost)
+            {
+                return CommandResult.Fail("금이 부족하다.", state);
+            }
+
+            var reservedCities = state.Cities.Select(c => c.Id == city.Id ? city.AddGold(-cost) : c).ToList();
+            return CommandResult.Success(state with { Cities = reservedCities });
+        }
+
+        var cityMap = state.Cities.ToDictionary(c => c.Id);
+        foreach (var share in shares)
+        {
+            if (!cityMap.TryGetValue(share.City, out var fundingCity) || fundingCity.Owner != faction)
+            {
+                return CommandResult.Fail("연구 비용은 보유 도시에서만 분담할 수 있다.", state);
+            }
+        }
+
+        var grouped = shares
+            .GroupBy(s => s.City)
+            .Select(g => new ResearchFundingShare(g.Key, g.Sum(s => s.Ratio)))
+            .OrderBy(s => s.City.Value)
+            .ToList();
+        var totalRatio = grouped.Sum(s => s.Ratio);
+        if (totalRatio <= 0)
+        {
+            return CommandResult.Fail("연구 비용 분담 비율을 지정해야 한다.", state);
+        }
+
+        var allocations = grouped.Select(s =>
+        {
+            var raw = (long)cost * s.Ratio;
+            return (s.City, Amount: (int)(raw / totalRatio), Remainder: raw % totalRatio);
+        }).ToList();
+        var assigned = allocations.Sum(a => a.Amount);
+        allocations = allocations
+            .OrderByDescending(a => a.Remainder)
+            .ThenBy(a => a.City.Value)
+            .Select((a, index) => a with { Amount = a.Amount + (index < cost - assigned ? 1 : 0) })
+            .OrderBy(a => a.City.Value)
+            .ToList();
+
+        foreach (var allocation in allocations)
+        {
+            var fundingCity = cityMap[allocation.City];
+            if (fundingCity.Gold < allocation.Amount)
+            {
+                return CommandResult.Fail($"{fundingCity.Name} 금이 부족하다({allocation.Amount}금 필요).", state);
+            }
+        }
+
+        var byCity = allocations.ToDictionary(a => a.City, a => a.Amount);
+        var cities = state.Cities
+            .Select(c => byCity.TryGetValue(c.Id, out var amount) ? c.AddGold(-amount) : c)
+            .ToList();
+        return CommandResult.Success(state with { Cities = cities });
     }
 
     private CommandResult SelectMajorTroop(GameState state, City city, CommandRequest req)
@@ -689,11 +754,19 @@ public sealed class CommandService
         GeneralId? targetGeneral = null, Spatial.HexCoord? plot = null, FactionId? targetFaction = null)
     {
         var cities = state.Cities.Select(c => c.Id == reservedCity.Id ? reservedCity : c).ToList();
+        return Register(state with { Cities = cities }, req, assist, amount, days, kind, facility, troopCode, targetCity,
+            targetGeneral, plot, targetFaction);
+    }
+
+    private static CommandResult Register(GameState state, CommandRequest req, General? assist,
+        int amount, int days, CommandKind kind, string facility, string troopCode = "", CityId? targetCity = null,
+        GeneralId? targetGeneral = null, Spatial.HexCoord? plot = null, FactionId? targetFaction = null)
+    {
         var command = new CityCommand(req.City, kind, req.Main, assist?.Id,
             state.Day, state.Day + days, amount, facility, troopCode, targetCity, req.TraineePool, targetGeneral, plot,
             TargetFaction: targetFaction);
         var pending = state.Commands.Append(command).ToList();
-        return CommandResult.Success((state with { Cities = cities, PendingCommands = pending })
+        return CommandResult.Success((state with { PendingCommands = pending })
             .ReleaseOfficerDuties(assist is null ? [req.Main] : [req.Main, assist.Id]));
     }
 

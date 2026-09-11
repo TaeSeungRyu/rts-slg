@@ -186,6 +186,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly HashSet<int> _disabledOptions = new();
     private readonly HashSet<int> _modalMultiParams = new();
     private int _autoRecruitRateParam = 1;
+    private readonly Dictionary<int, SpinBox> _researchFundingRatios = new();
+    private Label? _researchFundingPreview;
     private readonly Dictionary<TroopClass, ImageTexture> _emblems = new();
 
     // 출전 모달 선택 상태.
@@ -3538,6 +3540,11 @@ public sealed partial class CampaignMapScene : Node3D
             AddAutoRecruitRatePicker(box, options);
         }
 
+        if (cmd.Kind == CommandKind.Research)
+        {
+            AddResearchFundingPicker(box, cityData);
+        }
+
         _modalDetail = MakeLabel("", 17, Parchment);
         box.AddChild(_modalDetail);
         box.AddChild(GoldRule());
@@ -3640,6 +3647,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         _optionCards.Clear();
         _autoRecruitRateCards.Clear();
+        _researchFundingRatios.Clear();
+        _researchFundingPreview = null;
         _modalMultiParams.Clear();
         _depTroopCards.Clear();
         _depVanCards.Clear();
@@ -7240,6 +7249,8 @@ public sealed partial class CampaignMapScene : Node3D
         {
             _modalDetail!.Text = detail.Length > 0 ? $"▶  {o.Name}  —  {detail}" : $"▶  {o.Name}";
         }
+
+        RefreshResearchFundingPreview();
     }
 
     private bool IsOptionSelected(int idx)
@@ -7271,6 +7282,192 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         RefreshAutoRecruitRateCards(troopOptions);
+    }
+
+    private void AddResearchFundingPicker(VBoxContainer box, City city)
+    {
+        _researchFundingRatios.Clear();
+        _researchFundingPreview = null;
+        var cities = _state.Cities.Where(c => c.Owner == city.Owner)
+            .OrderBy(c => c.Id.Value)
+            .ToList();
+        if (cities.Count <= 1)
+        {
+            return;
+        }
+
+        box.AddChild(MakeLabel("연구비 분담 도시", 19, GoldBright));
+        box.AddChild(MakeLabel("비율을 0으로 두면 해당 성은 이번 연구비를 부담하지 않습니다.", 13, Parchment));
+        var tree = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        tree.AddThemeConstantOverride("h_separation", 10);
+        tree.AddThemeConstantOverride("v_separation", 6);
+        box.AddChild(tree);
+        foreach (var head in new[] { "도시", "보유 금", "비율", "예상 분담" })
+        {
+            var h = MakeLabel(head, 14, Gold);
+            h.HorizontalAlignment = HorizontalAlignment.Center;
+            tree.AddChild(h);
+        }
+
+        foreach (var c in cities)
+        {
+            tree.AddChild(MakeLabel(c.Name, 14, Parchment));
+            var gold = MakeLabel($"{c.Gold}금", 14, Parchment);
+            gold.HorizontalAlignment = HorizontalAlignment.Center;
+            tree.AddChild(gold);
+            var ratio = new SpinBox
+            {
+                MinValue = 0,
+                MaxValue = 10,
+                Step = 1,
+                Value = 1,
+                CustomMinimumSize = new Vector2(74, 31),
+                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+            };
+            ratio.ValueChanged += _ => RefreshResearchFundingPreview();
+            _researchFundingRatios[c.Id.Value] = ratio;
+            tree.AddChild(ratio);
+            var amount = MakeLabel("", 14, Parchment);
+            amount.Name = $"ResearchFundingAmount{c.Id.Value}";
+            amount.HorizontalAlignment = HorizontalAlignment.Center;
+            tree.AddChild(amount);
+        }
+
+        _researchFundingPreview = MakeLabel("", 14, Parchment);
+        box.AddChild(_researchFundingPreview);
+        RefreshResearchFundingPreview();
+    }
+
+    private List<ResearchFundingShare> CurrentResearchFundingShares()
+        => _researchFundingRatios
+            .Select(kv => new ResearchFundingShare(new CityId(kv.Key), (int)kv.Value.Value))
+            .Where(s => s.Ratio > 0)
+            .OrderBy(s => s.City.Value)
+            .ToList();
+
+    private int CurrentResearchCost(City city)
+    {
+        var cmd = Cmds[_cmdIndex];
+        if (cmd.Kind != CommandKind.Research)
+        {
+            return 0;
+        }
+
+        if (cmd.Param == "wall")
+        {
+            return city.WallLevel >= _cb.WallResearchMaxLevel ? 0 : _cb.WallResearchCostPerLevel * (city.WallLevel + 1);
+        }
+
+        if (_modalParam < 0 || _modalParam >= _troops.Count)
+        {
+            return 0;
+        }
+
+        var troopCode = _troops[_modalParam].Code;
+        var level = _state.ResearchOf(city.Owner, troopCode);
+        var max = ResearchMaxLevelFor(city.Owner, troopCode);
+        return level >= max ? 0 : CommandEfficiency.ResearchCost(level + 1, _cb);
+    }
+
+    private void RefreshResearchFundingPreview()
+    {
+        if (!GodotObject.IsInstanceValid(_researchFundingPreview) || _selected is not { } cityId)
+        {
+            return;
+        }
+
+        var city = _state.Cities.FirstOrDefault(c => c.Id == cityId);
+        if (city is null)
+        {
+            return;
+        }
+
+        var cost = CurrentResearchCost(city);
+        var shares = CurrentResearchFundingShares();
+        var allocations = AllocateResearchFunding(cost, shares);
+        var cityMap = _state.Cities.ToDictionary(c => c.Id.Value);
+        foreach (var kv in _researchFundingRatios)
+        {
+            var label = _researchFundingPreview.GetParent()?.FindChild($"ResearchFundingAmount{kv.Key}", true, false) as Label;
+            if (label is null)
+            {
+                continue;
+            }
+
+            var amount = allocations.FirstOrDefault(a => a.City.Value == kv.Key).Amount;
+            label.Text = amount > 0 ? $"{amount}금" : "-";
+            if (cityMap.TryGetValue(kv.Key, out var c) && amount > c.Gold)
+            {
+                label.Modulate = Red;
+            }
+            else
+            {
+                label.Modulate = Parchment;
+            }
+        }
+
+        if (shares.Count == 0)
+        {
+            _researchFundingPreview!.Text = "※ 최소 1개 도시의 분담 비율이 필요합니다.";
+            _researchFundingPreview.Modulate = Red;
+            return;
+        }
+
+        var shortage = allocations.FirstOrDefault(a => cityMap.TryGetValue(a.City.Value, out var c) && a.Amount > c.Gold);
+        if (shortage.City.Value != 0 && cityMap.TryGetValue(shortage.City.Value, out var sc))
+        {
+            _researchFundingPreview!.Text = $"※ {sc.Name} 금 부족: {shortage.Amount}금 필요 / 보유 {sc.Gold}금";
+            _researchFundingPreview.Modulate = Red;
+            return;
+        }
+
+        _researchFundingPreview!.Text = $"총 연구비 {cost}금 · 분담 비율 합계 {shares.Sum(s => s.Ratio)}";
+        _researchFundingPreview.Modulate = Parchment;
+    }
+
+    private static List<(CityId City, int Amount)> AllocateResearchFunding(int cost, IReadOnlyList<ResearchFundingShare> shares)
+    {
+        var grouped = shares.Where(s => s.Ratio > 0)
+            .GroupBy(s => s.City)
+            .Select(g => new ResearchFundingShare(g.Key, g.Sum(s => s.Ratio)))
+            .OrderBy(s => s.City.Value)
+            .ToList();
+        var total = grouped.Sum(s => s.Ratio);
+        if (cost <= 0 || total <= 0)
+        {
+            return grouped.Select(s => (s.City, 0)).ToList();
+        }
+
+        var allocations = grouped.Select(s =>
+        {
+            var raw = (long)cost * s.Ratio;
+            return (s.City, Amount: (int)(raw / total), Remainder: raw % total);
+        }).ToList();
+        var assigned = allocations.Sum(a => a.Amount);
+        return allocations
+            .OrderByDescending(a => a.Remainder)
+            .ThenBy(a => a.City.Value)
+            .Select((a, index) => (a.City, a.Amount + (index < cost - assigned ? 1 : 0)))
+            .OrderBy(a => a.City.Value)
+            .ToList();
+    }
+
+    private bool ResearchFundingCanCover(City city, int cost)
+    {
+        if (_researchFundingRatios.Count == 0)
+        {
+            return city.Gold >= cost;
+        }
+
+        var cityMap = _state.Cities.ToDictionary(c => c.Id.Value);
+        var shares = CurrentResearchFundingShares();
+        if (shares.Count == 0)
+        {
+            return false;
+        }
+
+        return AllocateResearchFunding(cost, shares)
+            .All(a => cityMap.TryGetValue(a.City.Value, out var c) && c.Gold >= a.Amount);
     }
 
     private void RefreshAutoRecruitRateCards(List<(string Name, ImageTexture Icon, string Detail)> troopOptions)
@@ -7739,7 +7936,7 @@ public sealed partial class CampaignMapScene : Node3D
                         + $"\n비용 {cost}금"
                         + $"\n[소요 {days}일]")
                 + (active is null ? "" : $"\n※ 이미 연구가 진행 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
-                + (level < maxLevel && cityData.Gold < cost ? $"\n※ 금이 부족합니다(보유 {cityData.Gold})" : "");
+                + (level < maxLevel && !ResearchFundingCanCover(cityData, cost) ? "\n※ 연구비 분담 도시의 금이 부족합니다" : "");
         }
 
         if (cmd.Kind == CommandKind.Research && cmd.Param == "wall")
@@ -7762,7 +7959,7 @@ public sealed partial class CampaignMapScene : Node3D
                         + $"\n[소요 {days}일]")
                 + "\n완료 시 이 도시의 최대 성벽만 상승합니다."
                 + (active is null ? "" : $"\n※ 이미 연구가 진행 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
-                + (level < _cb.WallResearchMaxLevel && cityData.Gold < cost ? $"\n※ 금이 부족합니다(보유 {cityData.Gold})" : "");
+                + (level < _cb.WallResearchMaxLevel && !ResearchFundingCanCover(cityData, cost) ? "\n※ 연구비 분담 도시의 금이 부족합니다" : "");
         }
 
         if (cmd.Param == "stratagem")
@@ -7888,9 +8085,12 @@ public sealed partial class CampaignMapScene : Node3D
             ? CurrentOfficerAssignment(general) is { } current
                 && (current.City != city || current.Kind != cmd.Kind)
             : false;
+        var researchFunding = cmd.Kind == CommandKind.Research && _researchFundingRatios.Count > 0
+            ? CurrentResearchFundingShares()
+            : null;
         var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility,
             TroopCode: troopCode, TargetCity: target, TargetFaction: targetFaction, TraineePool: traineePool, Plot: plot,
-            ReplaceOfficerAssignment: replacingOfficer);
+            ReplaceOfficerAssignment: replacingOfficer, ResearchFunding: researchFunding);
         var gName = _state.Generals.First(g => g.Id == general).Name;
         var pLabel = cmd.Param switch
         {

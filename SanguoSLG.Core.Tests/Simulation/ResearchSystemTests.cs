@@ -51,6 +51,70 @@ public class ResearchSystemTests
     }
 
     [Fact]
+    public void 발행_보유도시_비율대로_연구비를_분담한다()
+    {
+        var s = State(
+            new[] { Town(1, workshop: true, gold: 500), Town(2, workshop: false, gold: 500) },
+            new[] { Wit(1, 80) });
+        var request = new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1),
+            TroopCode: "swordsman",
+            ResearchFunding:
+            [
+                new ResearchFundingShare(new CityId(1), 1),
+                new ResearchFundingShare(new CityId(2), 3),
+            ]);
+
+        var r = Service().Issue(s, request);
+
+        Assert.True(r.Ok, r.Error);
+        Assert.Equal(450, r.State.Cities.Single(c => c.Id == new CityId(1)).Gold);
+        Assert.Equal(350, r.State.Cities.Single(c => c.Id == new CityId(2)).Gold);
+        Assert.Single(r.State.Commands);
+    }
+
+    [Fact]
+    public void 발행_분담금이_부족하면_아무_도시도_차감하지_않는다()
+    {
+        var s = State(
+            new[] { Town(1, workshop: true, gold: 500), Town(2, workshop: false, gold: 40) },
+            new[] { Wit(1, 80) });
+        var request = new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1),
+            TroopCode: "swordsman",
+            ResearchFunding:
+            [
+                new ResearchFundingShare(new CityId(1), 1),
+                new ResearchFundingShare(new CityId(2), 1),
+            ]);
+
+        var r = Service().Issue(s, request);
+
+        Assert.False(r.Ok);
+        Assert.Contains("c2", r.Error);
+        Assert.Equal(500, r.State.Cities.Single(c => c.Id == new CityId(1)).Gold);
+        Assert.Equal(40, r.State.Cities.Single(c => c.Id == new CityId(2)).Gold);
+        Assert.Empty(r.State.Commands);
+    }
+
+    [Fact]
+    public void 발행_타세력도시는_연구비를_분담할수없다()
+    {
+        var enemy = Town(2, workshop: false, gold: 500) with { Owner = new FactionId(2) };
+        var s = State(new[] { Town(1, workshop: true, gold: 500), enemy }, new[] { Wit(1, 80) });
+        var request = new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1),
+            TroopCode: "swordsman",
+            ResearchFunding:
+            [
+                new ResearchFundingShare(new CityId(1), 1),
+                new ResearchFundingShare(new CityId(2), 1),
+            ]);
+
+        var r = Service().Issue(s, request);
+
+        Assert.False(r.Ok);
+        Assert.Contains("보유 도시", r.Error);
+    }
+
+    [Fact]
     public void 루프_완료되면_세력_병종_연구가_1단계_오른다()
     {
         var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), B);
