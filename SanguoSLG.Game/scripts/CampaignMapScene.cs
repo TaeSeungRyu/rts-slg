@@ -3816,14 +3816,14 @@ public sealed partial class CampaignMapScene : Node3D
             if (c == 0) { return; }
             _vanSortCol = c;
             _vanSortAsc = !_vanSortAsc;
-            PopulateSupplyGeneralTree();
+            CallDeferred(nameof(PopulateSupplyGeneralTreeDeferred));
         };
         _vanTree.ItemSelected += () =>
         {
             var it = _vanTree.GetSelected();
             if (it is null) { return; }
             _depVan = new GeneralId(it.GetMetadata(0).AsInt32());
-            PopulateSupplyGeneralTree();
+            RestyleSupplyGeneralTreeSelection();
             UpdateSupplyPreview();
         };
         box.AddChild(_vanTree);
@@ -6273,6 +6273,19 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetMetadata(0, general.Id.Value);
             for (var col = 2; col <= 4; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
             item.SetTextAlignment(0, HorizontalAlignment.Center);
+        }
+    }
+
+    private void PopulateSupplyGeneralTreeDeferred()
+        => PopulateSupplyGeneralTree();
+
+    private void RestyleSupplyGeneralTreeSelection()
+    {
+        if (_vanTree?.GetRoot() is not { } root) { return; }
+        for (var item = root.GetFirstChild(); item is not null; item = item.GetNext())
+        {
+            var id = new GeneralId(item.GetMetadata(0).AsInt32());
+            item.SetText(0, id == _depVan ? "◆" : "◇");
         }
     }
 
