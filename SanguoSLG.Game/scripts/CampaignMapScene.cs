@@ -1226,6 +1226,12 @@ public sealed partial class CampaignMapScene : Node3D
         {
             Row("보급", $"보급지역 ({supplier.Name}) — 아군 부대 군량 자동 보충", new Color(0.45f, 0.85f, 0.52f));
         }
+        if (FieldSupplierAt(h) is { } fieldSupply)
+        {
+            var leader = fieldSupply.VanguardId is { } vid ? OfficerName(vid) : null;
+            var label = string.IsNullOrWhiteSpace(leader) ? $"U{fieldSupply.Id.Value}" : leader;
+            Row("보급부대", $"{label} 보충 범위 — 아군 부대 군량 자동 보충", new Color(0.92f, 0.58f, 1.0f));
+        }
         if (productionButton is not null)
         {
             _terrainInfo.AddChild(productionButton);
@@ -1236,6 +1242,14 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainCard.Visible = true;
         MoveRing(h);
     }
+
+    private CombatUnit? FieldSupplierAt(HexCoord h)
+        => _state.Armies
+            .Where(u => u.Field.Owner == Player && u.IsSupply && u.Pool.Active > 0 && u.Provisions > 0
+                && u.Field.Position.Distance(h) <= FieldSupplyRadius)
+            .OrderBy(u => u.Field.Position.Distance(h))
+            .ThenBy(u => u.Id.Value)
+            .FirstOrDefault();
 
     // 미리보기 카메라를 모델 AABB(월드)에 맞춰 배치 — 지형마다 native 크기가 달라도 꽉 차게.
     private void FrameTerrainCamera(Node3D model)
