@@ -101,6 +101,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, Vector3 Pos, int Damage)> _animSiegeDmg = new(); // 성 피해 팝업(성벽+수비)
     private int _animArrowIdx;
     private readonly List<(double Time, Vector3 From, int TargetUnitId)> _animArrows = new(); // 성 반격 화살
+    private int _animSupplyArrowIdx;
+    private readonly List<(double Time, int UnitId, Vector3 Target)> _animSupplyArrows = new(); // 보급부대 공격 화살
 
     // 병력 → 편대원 수(design-ui §3): 9천↑=9, 7천↑=7, 5천↑=5, 3천↑=3, 그 밑=1.
     private static int FormationFor(int troops) =>
@@ -2047,6 +2049,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animDmgIdx = 0;
         _animSiegeDmgIdx = 0;
         _animArrowIdx = 0;
+        _animSupplyArrowIdx = 0;
         _advanceBtn.Busy = true;
         _advanceBtn.Progress = 0f;
         _dayLabel.Visible = true;
@@ -2074,6 +2077,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animDmg.Clear();
         _animSiegeDmg.Clear();
         _animArrows.Clear();
+        _animSupplyArrows.Clear();
         for (var d = 0; d <= AnimDays; d++) { _dayKind[d] = "이동"; } // 기본 이동턴, 아래서 교전·공성 있는 날만 공격턴
         var alive = new HashSet<int>(startHex.Keys);
         var deathEffectUnitIds = new HashSet<int>();
@@ -2141,9 +2145,13 @@ public sealed partial class CampaignMapScene : Node3D
                     + new Vector3(0f, _view.TileTopY, 0f);
                 foreach (var uid in ex.Besiegers.Select(x => x.Value).OrderBy(x => x))
                 {
-                    if (turn.Units.Any(u => u.Id.Value == uid))
+                    if (turn.Units.FirstOrDefault(u => u.Id.Value == uid) is { } siegeUnit)
                     {
                         _animAttacks.Add((atkTime, uid, cityPos));
+                        if (siegeUnit.IsSupply)
+                        {
+                            _animSupplyArrows.Add((atkTime + 0.08, uid, cityPos));
+                        }
                     }
                 }
 
@@ -2208,6 +2216,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSiegeDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animArrows.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animSupplyArrows.Sort((a, b) => a.Time.CompareTo(b.Time));
     }
 
     private void ScheduleProductionAnimations(GameState preMove)
@@ -2258,6 +2267,19 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
+    // 보급부대 공격 화살 — 보급부대 전용 에셋 애니메이션과 별개로 씬 타임라인에서 직접 쏜다.
+    // 에셋 애니메이션 이름/상태 전환이 실패해도 공격 판정이 예약되면 반드시 보이는 피드백을 제공한다.
+    private void SpawnSupplyVolley(Vector3 from, Vector3 targetPos)
+    {
+        if (!IsVisibleAt(from) || !IsVisibleAt(targetPos)) return;
+        var raisedFrom = from + new Vector3(0f, 0.85f, 0f);
+        var raisedTo = targetPos + new Vector3(0f, 0.25f, 0f);
+        foreach (var (off, flight) in VolleyPattern.Take(3))
+        {
+            ProjectileView.SpawnArrow(this, raisedFrom + (off * 0.35f), raisedTo + off, flight);
+        }
+    }
+
     // 피해 숫자 팝업 — 위로 떠오르며 사라진다(효과 연출은 후속, 우선 수치 피드백만).
     private void SpawnDamagePopup(Vector3 at, int damage)
     {
@@ -2295,6 +2317,15 @@ public sealed partial class CampaignMapScene : Node3D
     private void ScheduleAttackMotions(AdvanceTurn turn, double atkTime)
     {
         var fieldAttackers = new HashSet<int>();
+        void AddAttack(CombatUnit unit, Vector3 target)
+        {
+            _animAttacks.Add((atkTime, unit.Id.Value, target));
+            if (unit.IsSupply)
+            {
+                _animSupplyArrows.Add((atkTime + 0.08, unit.Id.Value, target));
+            }
+        }
+
         if (turn.ProductionAttackTargets is { } productionTargets)
         {
             foreach (var (id, position) in productionTargets)
@@ -2314,7 +2345,7 @@ public sealed partial class CampaignMapScene : Node3D
                     .OrderBy(u => u.Field.Position.Distance(me.Field.Position)).ThenBy(u => u.Id.Value)
                     .FirstOrDefault();
                 if (me is null || foe is null) { continue; }
-                _animAttacks.Add((atkTime, id.Value, _view.HexToWorld(foe.Field.Position)));
+                AddAttack(me, _view.HexToWorld(foe.Field.Position));
                 fieldAttackers.Add(id.Value);
             }
         }
@@ -2326,7 +2357,7 @@ public sealed partial class CampaignMapScene : Node3D
                 && c.Position.Distance(u.Field.Position) <= u.Field.RangeCastle);
             if (castle is not null)
             {
-                _animAttacks.Add((atkTime, u.Id.Value, _view.HexToWorld(castle.Position)));
+                AddAttack(u, _view.HexToWorld(castle.Position));
             }
         }
     }
@@ -3241,6 +3272,13 @@ public sealed partial class CampaignMapScene : Node3D
                 var ar = _animArrows[_animArrowIdx];
                 if (_armyTokens.TryGetValue(ar.TargetUnitId, out var tok)) { SpawnCastleVolley(ar.From, tok.Position); }
                 _animArrowIdx++;
+            }
+
+            while (_animSupplyArrowIdx < _animSupplyArrows.Count && _animSupplyArrows[_animSupplyArrowIdx].Time <= _animT)
+            {
+                var ar = _animSupplyArrows[_animSupplyArrowIdx];
+                if (_armyTokens.TryGetValue(ar.UnitId, out var tok) && tok.Visible) { SpawnSupplyVolley(tok.Position, ar.Target); }
+                _animSupplyArrowIdx++;
             }
 
             while (_animEffectIdx < _animDeathEffects.Count && _animDeathEffects[_animEffectIdx].Time <= _animT)
