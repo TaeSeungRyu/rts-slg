@@ -3942,6 +3942,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     // 병종 코드 → 한글 이름(성벽 연구 코드 포함).
     private string TroopName(string code) => code == FactionResearch.WallCode ? "성벽"
+        : code == FactionResearch.CommandTroopsCode ? "통솔 병력"
         : _troops.FirstOrDefault(t => t.Code == code)?.Name ?? code;
 
     // 명령 한 줄 설명(상세 모달용): 종류 · 파라미터 — 장수 · 남은 일수.
@@ -6843,6 +6844,11 @@ public sealed partial class CampaignMapScene : Node3D
 
                 break;
             case "troop":
+                if (cmd.Kind == CommandKind.Research)
+                {
+                    list.Add(("통솔 병력", Icon(Sym.People), CommandTroopsResearchOptionDetail(city)));
+                }
+
                 foreach (var t in _troops)
                 {
                     var detail = cmd.Kind == CommandKind.Research
@@ -6917,6 +6923,19 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         return list;
+    }
+
+    private string CommandTroopsResearchOptionDetail(City city)
+    {
+        var level = _state.ResearchOf(city.Owner, FactionResearch.CommandTroopsCode);
+        var current = CommandEfficiency.CommandTroopDeployLimit(level, _cb);
+        if (level >= 10)
+        {
+            return $"Lv.{level}/10\n최대 편성 {current}명";
+        }
+
+        var next = level + 1;
+        return $"Lv.{level} → Lv.{next}/10\n편성 {current} → {CommandEfficiency.CommandTroopDeployLimit(next, _cb)}명\n비용 {CommandEfficiency.CommandTroopResearchCost(next)}금";
     }
 
     private void BuildHeroRecruitCards(VBoxContainer box, City city)
@@ -7358,12 +7377,19 @@ public sealed partial class CampaignMapScene : Node3D
             return city.WallLevel >= _cb.WallResearchMaxLevel ? 0 : _cb.WallResearchCostPerLevel * (city.WallLevel + 1);
         }
 
-        if (_modalParam < 0 || _modalParam >= _troops.Count)
+        if (cmd.Param == "troop" && _modalParam == 0)
+        {
+            var commandLevel = _state.ResearchOf(city.Owner, FactionResearch.CommandTroopsCode);
+            return commandLevel >= 10 ? 0 : CommandEfficiency.CommandTroopResearchCost(commandLevel + 1);
+        }
+
+        var troopIndex = cmd.Kind == CommandKind.Research ? _modalParam - 1 : _modalParam;
+        if (troopIndex < 0 || troopIndex >= _troops.Count)
         {
             return 0;
         }
 
-        var troopCode = _troops[_modalParam].Code;
+        var troopCode = _troops[troopIndex].Code;
         var level = _state.ResearchOf(city.Owner, troopCode);
         var max = ResearchMaxLevelFor(city.Owner, troopCode);
         return level >= max ? 0 : CommandEfficiency.ResearchCost(level + 1, _cb);
@@ -7853,6 +7879,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         var troopCode = cmd.Param switch
         {
+            "troop" when cmd.Kind == CommandKind.Research && p == 0 => FactionResearch.CommandTroopsCode,
+            "troop" when cmd.Kind == CommandKind.Research => _troops[p - 1].Code,
             "troop" => _troops[p].Code,
             "wall" => FactionResearch.WallCode,
             "garrison" => GarrisonAt(city, p)?.TroopCode ?? "",
@@ -7921,22 +7949,40 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var cityData = _state.Cities.First(c => c.Id == city);
             var caster = _state.Generals.First(g => g.Id == general);
-            var level = _state.ResearchOf(cityData.Owner, troopCode);
-            var maxLevel = ResearchMaxLevelFor(cityData.Owner, troopCode);
-            var next = System.Math.Min(level + 1, maxLevel);
-            var cost = level >= maxLevel ? 0 : CommandEfficiency.ResearchCost(next, _cb);
             var days = System.Math.Max(_cb.ResearchBaseDays - System.Math.Clamp((caster.Intellect - 50) / 5, 0, 10), 1);
             var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
                 && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
-            extra = $"\n{(_state.IsMajorTroop(cityData.Owner, troopCode) ? "주력 전투 교리" : "세력 전투 교리")}"
-                + $"\nLv.{level} → Lv.{next}/{maxLevel}"
-                + (level >= maxLevel
-                    ? "\n※ 이미 최대 단계입니다"
-                    : $"\n보정 +{ResearchCurve.Bonus(level)} → +{ResearchCurve.Bonus(next)}"
-                        + $"\n비용 {cost}금"
-                        + $"\n[소요 {days}일]")
-                + (active is null ? "" : $"\n※ 이미 연구가 진행 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
-                + (level < maxLevel && !ResearchFundingCanCover(cityData, cost) ? "\n※ 연구비 분담 도시의 금이 부족합니다" : "");
+            if (troopCode == FactionResearch.CommandTroopsCode)
+            {
+                var level = _state.ResearchOf(cityData.Owner, troopCode);
+                var next = System.Math.Min(level + 1, 10);
+                var cost = level >= 10 ? 0 : CommandEfficiency.CommandTroopResearchCost(next);
+                extra = "\n세력 통솔 병력"
+                    + $"\nLv.{level} → Lv.{next}/10"
+                    + (level >= 10
+                        ? "\n※ 이미 최대 단계입니다"
+                        : $"\n편성 상한 {CommandEfficiency.CommandTroopDeployLimit(level, _cb)}명 → {CommandEfficiency.CommandTroopDeployLimit(next, _cb)}명"
+                            + $"\n비용 {cost}금"
+                            + $"\n[소요 {days}일]")
+                    + (active is null ? "" : $"\n※ 이미 연구가 진행 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
+                    + (level < 10 && !ResearchFundingCanCover(cityData, cost) ? "\n※ 연구비 분담 도시의 금이 부족합니다" : "");
+            }
+            else
+            {
+                var level = _state.ResearchOf(cityData.Owner, troopCode);
+                var maxLevel = ResearchMaxLevelFor(cityData.Owner, troopCode);
+                var next = System.Math.Min(level + 1, maxLevel);
+                var cost = level >= maxLevel ? 0 : CommandEfficiency.ResearchCost(next, _cb);
+                extra = $"\n{(_state.IsMajorTroop(cityData.Owner, troopCode) ? "주력 전투 교리" : "세력 전투 교리")}"
+                    + $"\nLv.{level} → Lv.{next}/{maxLevel}"
+                    + (level >= maxLevel
+                        ? "\n※ 이미 최대 단계입니다"
+                        : $"\n보정 +{ResearchCurve.Bonus(level)} → +{ResearchCurve.Bonus(next)}"
+                            + $"\n비용 {cost}금"
+                            + $"\n[소요 {days}일]")
+                    + (active is null ? "" : $"\n※ 이미 연구가 진행 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
+                    + (level < maxLevel && !ResearchFundingCanCover(cityData, cost) ? "\n※ 연구비 분담 도시의 금이 부족합니다" : "");
+            }
         }
 
         if (cmd.Kind == CommandKind.Research && cmd.Param == "wall")
@@ -8094,7 +8140,8 @@ public sealed partial class CampaignMapScene : Node3D
         var gName = _state.Generals.First(g => g.Id == general).Name;
         var pLabel = cmd.Param switch
         {
-            "troop" => $" · {_troops[p].Name}",
+            "troop" when troopCode == FactionResearch.CommandTroopsCode => " · 통솔 병력",
+            "troop" => $" · {_troops.FirstOrDefault(t => t.Code == troopCode)?.Name ?? troopCode}",
             "garrison" => $" · {(_troops.FirstOrDefault(t => t.Code == troopCode)?.Name ?? troopCode)}{(traineePool ? "(신병)" : "")}",
             "tax" => $" · {value}%",
             "facility" => $" · {Facilities[p].Label}",
