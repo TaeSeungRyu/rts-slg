@@ -1515,10 +1515,13 @@ public sealed partial class CampaignMapScene : Node3D
         if (_targetingSupplyDeploy && idx >= 0 && idx < _pendingSupplyDeploys.Count)
         {
             var (req, label) = _pendingSupplyDeploys[idx];
-            _pendingSupplyDeploys[idx] = (req with { Target = h, Mode = UnitMode.March }, label);
-            Dbg($"SUPPLY TARGET idx={idx} -> ({h.Q},{h.R})");
+            var enemyCity = _state.Cities.FirstOrDefault(c => c.Position == h && c.Owner != Player);
+            var enemyUnit = DisplayedArmies.FirstOrDefault(u => u.Field.Position == h && u.Field.Owner != Player && CanSeeUnit(u));
+            var mode = enemyCity is not null || enemyUnit is not null ? UnitMode.Attack : UnitMode.March;
+            _pendingSupplyDeploys[idx] = (req with { Target = h, Mode = mode }, label);
+            Dbg($"SUPPLY TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode}");
             var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
-            _log.Text = $"보급부대 목표 → {tName} · 목표 확정";
+            _log.Text = $"보급부대 목표 → {tName}{(mode == UnitMode.Attack ? " (공격모드)" : "")} · 목표 확정";
         }
         else if (idx >= 0 && idx < _pendingDeploys.Count)
         {
@@ -2857,7 +2860,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (u is null) { return; }
 
         var enemyCity = _state.Cities.FirstOrDefault(c => c.Position == h && c.Owner != Player);
-        if (enemyCity is not null) { mode = UnitMode.Attack; }
+        var enemyUnit = DisplayedArmies.FirstOrDefault(a => a.Field.Position == h && a.Field.Owner != Player && CanSeeUnit(a));
+        if (enemyCity is not null || enemyUnit is not null) { mode = UnitMode.Attack; }
         var result = _unitCommander.Reassign(_state, Player,
             new FieldUnitCommandRequest(new UnitId(uid), mode, h, waypoints, _visibleTiles));
         if (!result.Ok)

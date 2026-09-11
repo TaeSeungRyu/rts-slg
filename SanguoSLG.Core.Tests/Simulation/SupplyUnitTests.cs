@@ -190,6 +190,21 @@ public class SupplyUnitTests
         Assert.Empty(turn.Reinforced);
     }
 
+    [Fact]
+    public void 보급부대도_공격모드면_최하스탯으로_교전한다()
+    {
+        var supply = Supply(1, 1, new HexCoord(5, 0),
+            [new SupplyComponent("swordsman", 10000, 60)],
+            mode: UnitMode.Attack, target: new HexCoord(6, 0));
+        var enemy = Army(2, 2, new HexCoord(6, 0), UnitMode.March, null);
+
+        var turn = Orchestrator().Run([supply, enemy], maxDays: 1);
+
+        Assert.NotNull(turn.Combat);
+        Assert.Contains(turn.Combat!.DamageDealt, kv => kv.Key.Value == 1 && kv.Value > 0);
+        Assert.True(turn.Units.Single(u => u.Id.Value == 2).Pool.Active < enemy.Pool.Active);
+    }
+
     // ── 입성 ──
 
     [Fact]
