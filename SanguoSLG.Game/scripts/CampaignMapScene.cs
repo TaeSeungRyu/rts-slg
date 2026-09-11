@@ -1523,6 +1523,7 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     private readonly List<MeshInstance3D> _supplyMarkers = new();
+    private readonly List<(MeshInstance3D Marker, int UnitId, Vector3 Offset)> _movingSupplyMarkers = new();
     private Mesh? _supplyTileMesh;
     private Material? _supplyTileMat;
     private Material? _fieldSupplyTileMat;
@@ -1536,6 +1537,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         foreach (var m in _supplyMarkers) { m.QueueFree(); }
         _supplyMarkers.Clear();
+        _movingSupplyMarkers.Clear();
 
         var radius = _cb.CityResupplyRadius;
         if (radius <= 0) { return; } // 보급영역은 상시 표시(2026-08-21 사용자 결정)
@@ -1592,7 +1594,6 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
-        var fieldSeen = new HashSet<HexCoord>();
         foreach (var supply in _state.Armies
             .Where(u => u.Field.Owner == Player && u.IsSupply && u.Pool.Active > 0 && u.Provisions > 0)
             .OrderBy(u => u.Id.Value))
@@ -1604,10 +1605,13 @@ public sealed partial class CampaignMapScene : Node3D
                      dr++)
                 {
                     var hex = new HexCoord(supply.Field.Position.Q + dq, supply.Field.Position.R + dr);
-                    if (!fieldSeen.Add(hex) || !_map.Contains(hex)) { continue; }
+                    if (!_map.Contains(hex)) { continue; }
                     if (!_passability.CanEnter(MovementDomain.Land, hex)
                         && !_state.Cities.Any(c => CastleFootprint.TilesFor(c).Contains(hex))) { continue; }
                     AddMarker(hex, _fieldSupplyTileMat, 0.045f);
+                    var marker = _supplyMarkers[^1];
+                    var center = _view.HexToWorld(supply.Field.Position);
+                    _movingSupplyMarkers.Add((marker, supply.Id.Value, marker.Position - center));
                 }
             }
         }
@@ -3106,6 +3110,12 @@ public sealed partial class CampaignMapScene : Node3D
     // 줌/이동 중에도 팔레트가 선택한 성을 따라가도록 갱신.
     public override void _Process(double delta)
     {
+        foreach (var (marker, unitId, offset) in _movingSupplyMarkers)
+        {
+            if (!_armyTokens.TryGetValue(unitId, out var token) || !IsInstanceValid(token)) { continue; }
+            marker.Position = new Vector3(token.Position.X + offset.X, marker.Position.Y, token.Position.Z + offset.Z);
+            marker.Visible = token.Visible;
+        }
         AnimateScoutLabels(delta);
         // 미니 패널(플라이아웃)은 메인 팔레트와 운명을 같이한다 — 팔레트가 사라지면 함께 닫힘.
         if (_cmdSubMenu.Visible && !_cmdMenu.Visible) { CloseGroupMenu(); }
