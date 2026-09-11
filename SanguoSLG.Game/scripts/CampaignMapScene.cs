@@ -7317,13 +7317,9 @@ public sealed partial class CampaignMapScene : Node3D
         var cities = _state.Cities.Where(c => c.Owner == city.Owner)
             .OrderBy(c => c.Id.Value)
             .ToList();
-        if (cities.Count <= 1)
-        {
-            return;
-        }
 
         box.AddChild(MakeLabel("연구비 분담 도시", 19, GoldBright));
-        box.AddChild(MakeLabel("비율을 0으로 두면 해당 성은 이번 연구비를 부담하지 않습니다.", 13, Parchment));
+        box.AddChild(MakeLabel("보유 성별 연구비 부담 비율입니다. 비율을 0으로 두면 해당 성은 이번 연구비를 부담하지 않습니다.", 13, Parchment));
         var tree = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         tree.AddThemeConstantOverride("h_separation", 10);
         tree.AddThemeConstantOverride("v_separation", 6);
