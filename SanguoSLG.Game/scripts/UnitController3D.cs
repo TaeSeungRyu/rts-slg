@@ -2035,8 +2035,16 @@ public partial class UnitController3D : Node3D
         Visible = true;
         if (Alive(_tokenRoot)) { _tokenRoot.Visible = true; }
         var moving = preferred.Contains("move", System.StringComparison.OrdinalIgnoreCase);
-        if (Alive(_nativeSupplyCamp)) { _nativeSupplyCamp.Visible = !moving; }
-        if (Alive(_nativeSupplyMove)) { _nativeSupplyMove.Visible = moving; }
+        if (Alive(_nativeSupplyCamp))
+        {
+            _nativeSupplyCamp.Scale = Vector3.One;
+            _nativeSupplyCamp.Visible = !moving;
+        }
+        if (Alive(_nativeSupplyMove))
+        {
+            _nativeSupplyMove.Scale = Vector3.One;
+            _nativeSupplyMove.Visible = moving;
+        }
         foreach (var player in _nativeAnimations.Where(Alive))
         {
             if (preferred is "state_move" or "state_camp")

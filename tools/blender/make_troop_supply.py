@@ -49,6 +49,7 @@ COUNTER_START, COUNTER_END = 73, 96
 
 HIDDEN = 0.001
 VISIBLE = 1.0
+STATE_VISIBLE = 1.0
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
@@ -967,10 +968,10 @@ shot_r = build_projectile_arrow(
 # ---------------------------------------------------------------------------
 
 for start, end, move_visible, camp_visible in (
-    (IDLE_START, IDLE_END, HIDDEN, VISIBLE),
-    (MOVE_START, MOVE_END, VISIBLE, HIDDEN),
-    (ATTACK_START, ATTACK_END, HIDDEN, VISIBLE),
-    (COUNTER_START, COUNTER_END, HIDDEN, VISIBLE),
+    (IDLE_START, IDLE_END, STATE_VISIBLE, STATE_VISIBLE),
+    (MOVE_START, MOVE_END, STATE_VISIBLE, STATE_VISIBLE),
+    (ATTACK_START, ATTACK_END, STATE_VISIBLE, STATE_VISIBLE),
+    (COUNTER_START, COUNTER_END, STATE_VISIBLE, STATE_VISIBLE),
 ):
     key_scale(move_group, start, move_visible)
     key_scale(move_group, end, move_visible)
