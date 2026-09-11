@@ -985,6 +985,7 @@ public sealed partial class CampaignMapScene : Node3D
         PlaceMenu(_unitMenu, u.Field.Position, 60f);
         _unitMenu.Visible = true;
         MoveRing(u.Field.Position);
+        DrawSupplyZones();
 
         // 아군 부대를 클릭했을 때만 그 부대의 이동 경로를 표시(경유지가 있으면 경유지까지 이어서).
         ClearPathMarkers();
@@ -1122,6 +1123,7 @@ public sealed partial class CampaignMapScene : Node3D
         _selectedUnitId = -1;
         _infoCard.Visible = false;
         ClearPathMarkers();
+        ClearSupplyZoneMarkers();
 
         var inMap = _map.Contains(h);
         var terrain = inMap ? _passability.TerrainAt(h) : TerrainType.Plains;
@@ -1544,17 +1546,28 @@ public sealed partial class CampaignMapScene : Node3D
     private const int FieldSupplyRadius = AdvanceOrchestrator.DefaultResupplyRadius;
     private const int SupplyExtraCarryDays = 20;
 
+    private void ClearSupplyZoneMarkers()
+    {
+        foreach (var m in _supplyMarkers) { m.QueueFree(); }
+        _supplyMarkers.Clear();
+        _movingSupplyMarkers.Clear();
+    }
+
     // ── 보급 영역: 아군 성 반경(city_resupply_radius) 안을 초록 타일로 표시 ──
     // 부대가 나가 있을 때(또는 출전 예약이 있을 때)만 보여, 이 영역을 벗어나면 휴대 군량으로
     // 버텨야 함을 알린다.
     private void DrawSupplyZones()
     {
-        foreach (var m in _supplyMarkers) { m.QueueFree(); }
-        _supplyMarkers.Clear();
-        _movingSupplyMarkers.Clear();
-
+        ClearSupplyZoneMarkers();
         var radius = _cb.CityResupplyRadius;
-        if (radius <= 0) { return; } // 보급영역은 상시 표시(2026-08-21 사용자 결정)
+        var selectedCity = _selected is { } cityId
+            ? _state.Cities.FirstOrDefault(c => c.Id == cityId && c.Owner == Player)
+            : null;
+        var selectedSupply = _selectedUnitId >= 0
+            ? _state.Armies.FirstOrDefault(u => u.Id.Value == _selectedUnitId
+                && u.Field.Owner == Player && u.IsSupply && u.Pool.Active > 0 && u.Provisions > 0)
+            : null;
+        if (selectedCity is null && selectedSupply is null) { return; }
 
         // 타일 윗면은 모서리가 깎여(bevel) 실제 육각보다 좁다 — 조금 줄여 침범처럼 보이지 않게.
         var hexR = _view.HexWorldSize * 0.86f;
@@ -1591,26 +1604,23 @@ public sealed partial class CampaignMapScene : Node3D
             _supplyMarkers.Add(marker);
         }
 
-        var seen = new HashSet<HexCoord>();
-        foreach (var city in _state.Cities.Where(c => c.Owner == Player).OrderBy(c => c.Id.Value))
+        if (selectedCity is not null && radius > 0)
         {
             // 성 발자국 타일(통행 불가)도 성의 일부이므로 영역에 포함 — 성 아래가 구멍으로 보이지 않게.
-            var footprint = CastleFootprint.TilesFor(city).ToHashSet();
+            var footprint = CastleFootprint.TilesFor(selectedCity).ToHashSet();
             for (var dq = -radius; dq <= radius; dq++)
             {
                 for (var dr = System.Math.Max(-radius, -dq - radius); dr <= System.Math.Min(radius, -dq + radius); dr++)
                 {
-                    var hex = new HexCoord(city.Position.Q + dq, city.Position.R + dr);
-                    if (!seen.Add(hex) || !_map.Contains(hex)) { continue; }
+                    var hex = new HexCoord(selectedCity.Position.Q + dq, selectedCity.Position.R + dr);
+                    if (!_map.Contains(hex)) { continue; }
                     if (!footprint.Contains(hex) && !_passability.CanEnter(MovementDomain.Land, hex)) { continue; }
                     AddMarker(hex, _supplyTileMat, 0.02f);
                 }
             }
         }
 
-        foreach (var supply in _state.Armies
-            .Where(u => u.Field.Owner == Player && u.IsSupply && u.Pool.Active > 0 && u.Provisions > 0)
-            .OrderBy(u => u.Id.Value))
+        if (selectedSupply is { } supply)
         {
             for (var dq = -FieldSupplyRadius; dq <= FieldSupplyRadius; dq++)
             {
@@ -2929,6 +2939,7 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainCard.Visible = false;
         _terrainHex = null;
         ClearPathMarkers();
+        ClearSupplyZoneMarkers();
         if (_ring is not null) { _ring.Visible = false; }
     }
 
@@ -2942,6 +2953,7 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainCard.Visible = false;
         _terrainHex = null;
         if (_modalLayer is null) { ClearPathMarkers(); }
+        DrawSupplyZones();
         var c = _state.Cities.First(x => x.Id == id);
         var owned = c.Owner == Player;
         var known = CanInspectCity(c);
