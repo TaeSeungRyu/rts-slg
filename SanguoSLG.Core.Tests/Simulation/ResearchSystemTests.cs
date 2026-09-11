@@ -143,6 +143,18 @@ public class ResearchSystemTests
     }
 
     [Fact]
+    public void 통솔병력_연구_상한과_비용_계산식()
+    {
+        Assert.Equal(1000, CommandEfficiency.CommandTroopResearchCost(1));
+        Assert.Equal(10000, CommandEfficiency.CommandTroopResearchCost(10));
+        Assert.Equal(10000, CommandEfficiency.CommandTroopDeployLimit(0, B));
+        Assert.Equal(11000, CommandEfficiency.CommandTroopDeployLimit(1, B));
+        Assert.Equal(20000, CommandEfficiency.CommandTroopDeployLimit(10, B));
+        Assert.Equal(20000, CommandEfficiency.CommandTroopDeployLimit(99, B));
+        Assert.Equal(FactionResearch.CommandTroopsCode, FactionResearch.CommandTroopsCode);
+    }
+
+    [Fact]
     public void 발행_최종단계는_한_성_금고로는_모자랄수있다()
     {
         // 주력병종 9단계 도달 세력이 10단계(비용 16000)를 도시 금고 8000으로 발행 → 실패(부담 증대).

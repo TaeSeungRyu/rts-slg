@@ -59,6 +59,11 @@ public static class CommandEfficiency
         return cost;
     }
 
+    public static int CommandTroopResearchCost(int nextLevel) => 1000 * System.Math.Clamp(nextLevel, 1, 10);
+
+    public static int CommandTroopDeployLimit(int level, CommandBalance b)
+        => b.DeployMaxTroops + System.Math.Clamp(level, 0, 10) * 1000;
+
     /// <summary>성곽 등급별 시설 슬롯 총량.</summary>
     public static int BuildSlots(CastleSize castle, CommandBalance b) => castle switch
     {

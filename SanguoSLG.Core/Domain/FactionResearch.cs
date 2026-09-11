@@ -9,4 +9,6 @@ public sealed record FactionResearch(FactionId Faction, string TroopCode, int Le
 {
     /// <summary>성벽 연구 트랙의 예약 코드(병종 코드와 겹치지 않음) — 세력 단위 성벽 최대값 5단계.</summary>
     public const string WallCode = "__wall__";
+
+    public const string CommandTroopsCode = "__command_troops__";
 }
