@@ -520,6 +520,7 @@ public partial class UnitController3D : Node3D
         if (_nativeSupply)
         {
             PlayNativeSupplyAnimation("shot_arrow", fallback: "state_camp");
+            LooseSupplyArrows();
             var tween = CreateTween();
             tween.TweenInterval(AttackScatterSeconds + WindUpSeconds + SwingSeconds + RecoverSeconds);
             tween.Finished += () =>
@@ -528,6 +529,31 @@ public partial class UnitController3D : Node3D
                 PlayNativeSupplyAnimation("state_camp");
             };
             return;
+        }
+
+        // 보급부대 공격: 전용 에셋 애니메이션을 보조해 화살 투사체를 직접 발사한다.
+        // 공격 예약 직전 FaceToward가 호출되므로 현재 회전 방향으로 짧은 일제사가 날아간다.
+        void LooseSupplyArrows()
+        {
+            if (!Alive(_overlay)) { return; }
+
+            var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
+            var lateral = new Vector3(forward.Z, 0f, -forward.X);
+            var origins = new[]
+            {
+                new Vector3(0f, 0.85f, 0f),
+                lateral * 0.22f + new Vector3(0f, 0.78f, 0f),
+                -lateral * 0.22f + new Vector3(0f, 0.78f, 0f),
+            };
+
+            for (var i = 0; i < origins.Length; i++)
+            {
+                var from = GlobalPosition + origins[i];
+                var scatter = (i - 1) * 0.18f;
+                var to = new Vector3(from.X, Position.Y + 0.15f, from.Z)
+                    + forward * 1.65f + lateral * scatter;
+                ProjectileView.SpawnArrow(_overlay, from, to, 0.42f + i * 0.04f);
+            }
         }
 
         if (_motion == MotionKind.Serpent)
