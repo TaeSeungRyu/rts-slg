@@ -1732,7 +1732,7 @@ public sealed partial class CampaignMapScene : Node3D
     /// <summary>렌더(GameRoot3D)와 시뮬(passability)이 같은 지형을 쓰도록 공유하는 맵.</summary>
     public static HexMap TestMap => _map;
 
-    // 지형 확인용 배치(성 발자국 (1,2)(1,3)(0,3)·(8,3)(8,4)(7,4)는 평지로 비움).
+    // 지형 확인용 배치(성 발자국 (1,2)(1,3)(0,3)·(-1,5)(-1,6)(-2,6)·(8,3)(8,4)(7,4)는 평지로 비움).
     // 성↔성 이동로(대략 r2~3)는 통행 가능한 지형 위주로 둬 AI/부대가 막히지 않게 한다.
     private static HexMap BuildTestMap()
     {
@@ -1740,7 +1740,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             [new(3, 1)] = TerrainType.Forest, [new(4, 1)] = TerrainType.Forest, [new(3, 2)] = TerrainType.Forest,
             [new(5, 0)] = TerrainType.Mountain, [new(6, 1)] = TerrainType.Mountain,
-            [new(2, 4)] = TerrainType.Mountain, [new(6, 4)] = TerrainType.Mountain,
+            [new(2, 4)] = TerrainType.Mountain, [new(6, 4)] = TerrainType.Mountain, [new(-3, 7)] = TerrainType.Mountain,
             [new(4, 4)] = TerrainType.Rocks, [new(5, 5)] = TerrainType.Rocks,
             [new(2, 0)] = TerrainType.RockHill, [new(7, 1)] = TerrainType.RockHill,
             [new(6, 2)] = TerrainType.Desert, [new(7, 2)] = TerrainType.Desert, [new(7, 3)] = TerrainType.DesertCactus,
@@ -1748,13 +1748,16 @@ public sealed partial class CampaignMapScene : Node3D
             [new(1, 0)] = TerrainType.Karst, [new(0, 5)] = TerrainType.Cliff, [new(9, 0)] = TerrainType.RockMountain,
         };
         // 사방 +2칸 — 성 보급 반경(3칸)이 지도 안에 온전히 보이도록.
-        return new HexMap(-2, 11, -2, 7, t);
+        return new HexMap(-4, 12, -3, 9, t);
     }
 
     private static readonly IReadOnlyList<City> _cities = new List<City>
     {
         new(new CityId(1), "장안", new HexCoord(1, 2), new FactionId(1), 3000, CastleSize.Medium,
             Gold: 2000, Security: 80, Population: 100_000, Ore: 8000, Horses: 3000, Elephants: 30,
+            Paddies: 2, Farms: 2, Villages: 2, Wall: 1200),
+        new(new CityId(4), "업", new HexCoord(-1, 5), new FactionId(1), 3000, CastleSize.Medium,
+            Gold: 3000, Security: 82, Population: 90_000, Ore: 7000, Horses: 1500, Elephants: 10,
             Paddies: 2, Farms: 2, Villages: 2, Wall: 1200),
         new(new CityId(2), "성도", new HexCoord(8, 3), new FactionId(2), 3000, CastleSize.Medium,
             Gold: 2000, Security: 80, Population: 100_000, Ore: 8000,
@@ -1772,6 +1775,13 @@ public sealed partial class CampaignMapScene : Node3D
         new(new CityId(1), new HexCoord(1, 1), "paddy", FacilityHealth.Level1),
         new(new CityId(1), new HexCoord(2, 1), "farm", FacilityHealth.Level1),
         new(new CityId(1), new HexCoord(2, 3), "farm", FacilityHealth.Level1),
+
+        new(new CityId(4), new HexCoord(-2, 5), "village", FacilityHealth.Level1),
+        new(new CityId(4), new HexCoord(0, 5), "village", FacilityHealth.Level1),
+        new(new CityId(4), new HexCoord(-3, 5), "paddy", FacilityHealth.Level1),
+        new(new CityId(4), new HexCoord(0, 4), "paddy", FacilityHealth.Level1),
+        new(new CityId(4), new HexCoord(-3, 6), "farm", FacilityHealth.Level1),
+        new(new CityId(4), new HexCoord(0, 6), "farm", FacilityHealth.Level1),
 
         new(new CityId(2), new HexCoord(7, 2), "village", FacilityHealth.Level1),
         new(new CityId(2), new HexCoord(8, 2), "village", FacilityHealth.Level1),
@@ -1795,7 +1805,7 @@ public sealed partial class CampaignMapScene : Node3D
             new(new FactionId(2), "촉", new GeneralId(11), 0, "#d23830"),
         },
         _cities.ToList(),
-        // 테스트: 플레이어 성(장안) 장수 10명, 적 성(성도) 2명.
+        // 테스트: 플레이어 성(장안·업) 장수 10명, 적 성(성도·한중) 4명.
         new List<General>
         {
             Officer(1), Officer(2), Officer(3), Officer(4), Officer(5),
@@ -1811,20 +1821,22 @@ public sealed partial class CampaignMapScene : Node3D
             new(new GeneralId(5), new FactionId(1), new CityId(1)),
             new(new GeneralId(6), new FactionId(1), new CityId(1)),
             new(new GeneralId(7), new FactionId(1), new CityId(1)),
-            new(new GeneralId(8), new FactionId(1), new CityId(1)),
-            new(new GeneralId(9), new FactionId(1), new CityId(1)),
-            new(new GeneralId(10), new FactionId(1), new CityId(1)),
+            new(new GeneralId(8), new FactionId(1), new CityId(4)),
+            new(new GeneralId(9), new FactionId(1), new CityId(4)),
+            new(new GeneralId(10), new FactionId(1), new CityId(4)),
             new(new GeneralId(11), new FactionId(2), new CityId(2)),
             new(new GeneralId(12), new FactionId(2), new CityId(2)),
             new(new GeneralId(13), new FactionId(2), new CityId(3)),
             new(new GeneralId(14), new FactionId(2), new CityId(3)),
         },
-        // 테스트: 플레이어 성 대기 병력 10만(3병종), 적 성 10만.
+        // 테스트: 플레이어 2개 성 대기 병력, 적 2개 성 대기 병력.
         GarrisonForces: new List<GarrisonForce>
         {
             new(new CityId(1), "swordsman", 50000, 60),
             new(new CityId(1), "archer", 30000, 60),
             new(new CityId(1), "cavalry", 20000, 60),
+            new(new CityId(4), "swordsman", 30000, 60),
+            new(new CityId(4), "archer", 20000, 60),
             new(new CityId(2), "swordsman", 100000, 60),
             new(new CityId(3), "swordsman", 30000, 60),
         },
