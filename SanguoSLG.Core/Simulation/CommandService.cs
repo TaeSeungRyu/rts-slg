@@ -531,19 +531,24 @@ public sealed class CommandService
 
         // 병종 연구 vs 성벽 연구(TroopCode == WallCode) — 단계 캡·비용 곡선이 다르다.
         var isWall = req.TroopCode == FactionResearch.WallCode;
-        if (!isWall && !_troops.ContainsKey(req.TroopCode))
+        var isCommandTroops = req.TroopCode == FactionResearch.CommandTroopsCode;
+        if (!isWall && !isCommandTroops && !_troops.ContainsKey(req.TroopCode))
         {
             return CommandResult.Fail("연구할 병종을 지정해야 한다.", state);
         }
 
         var level = isWall ? city.WallLevel : state.ResearchOf(city.Owner, req.TroopCode);
-        var maxLevel = isWall ? _b.WallResearchMaxLevel : ResearchMaxLevelFor(state, city.Owner, req.TroopCode);
+        var maxLevel = isWall ? _b.WallResearchMaxLevel
+            : isCommandTroops ? 10
+            : ResearchMaxLevelFor(state, city.Owner, req.TroopCode);
         if (level >= maxLevel)
         {
             return CommandResult.Fail("이미 최대 단계까지 연구했다.", state);
         }
 
-        var cost = isWall ? _b.WallResearchCostPerLevel * (level + 1) : CommandEfficiency.ResearchCost(level + 1, _b);
+        var cost = isWall ? _b.WallResearchCostPerLevel * (level + 1)
+            : isCommandTroops ? CommandEfficiency.CommandTroopResearchCost(level + 1)
+            : CommandEfficiency.ResearchCost(level + 1, _b);
         var funding = ReserveResearchCost(state, city, req, faction, cost);
         if (!funding.Ok)
         {

@@ -155,6 +155,32 @@ public class ResearchSystemTests
     }
 
     [Fact]
+    public void 통솔병력_연구는_발행_완료_최대단계를_지원한다()
+    {
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), B);
+        var s = State(new[] { Town(1, workshop: false, gold: 5000) }, new[] { Wit(1, 100) });
+
+        var issued = Service().Issue(s, new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1),
+            TroopCode: FactionResearch.CommandTroopsCode));
+        var done = world.AdvanceDays(issued.State, 20);
+        var maxed = s with
+        {
+            ResearchTracks = new List<FactionResearch>
+            {
+                new(new FactionId(1), FactionResearch.CommandTroopsCode, 10),
+            },
+        };
+        var blocked = Service().Issue(maxed, new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1),
+            TroopCode: FactionResearch.CommandTroopsCode));
+
+        Assert.True(issued.Ok, issued.Error);
+        Assert.Equal(4000, issued.State.Cities.Single().Gold);
+        Assert.Equal(1, done.ResearchOf(new FactionId(1), FactionResearch.CommandTroopsCode));
+        Assert.False(blocked.Ok);
+        Assert.Contains("최대", blocked.Error);
+    }
+
+    [Fact]
     public void 발행_최종단계는_한_성_금고로는_모자랄수있다()
     {
         // 주력병종 9단계 도달 세력이 10단계(비용 16000)를 도시 금고 8000으로 발행 → 실패(부담 증대).
