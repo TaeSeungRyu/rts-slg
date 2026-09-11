@@ -36,10 +36,11 @@ public class DeployServiceTests
     private static GameState State(
         IEnumerable<City> cities, IEnumerable<General> generals,
         IEnumerable<GarrisonForce>? garrisons = null, IEnumerable<GeneralPosting>? postings = null,
-        IEnumerable<FactionAlliance>? alliances = null) =>
+        IEnumerable<FactionAlliance>? alliances = null,
+        IEnumerable<FactionResearch>? research = null) =>
         new(1, 1, new List<Faction>(), cities.ToList(), generals.ToList(),
             Postings: postings?.ToList(), GarrisonForces: garrisons?.ToList(),
-            FactionAlliances: alliances?.ToList());
+            FactionAlliances: alliances?.ToList(), ResearchTracks: research?.ToList());
 
     private static GeneralPosting At(int general, int city) =>
         new(new GeneralId(general), new FactionId(1), new CityId(city));
@@ -262,6 +263,23 @@ public class DeployServiceTests
 
         Assert.False(r.Ok);
         Assert.Contains("최대", r.Error);
+    }
+
+    [Fact]
+    public void 출전_통솔병력_연구단계만큼_일반부대_최대편성이_늘어난다()
+    {
+        var s0 = State([Town(1, new HexCoord(0, 0))], [Gen(1)],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 50000, 60)],
+            postings: [At(1, 1)],
+            research: [new FactionResearch(new FactionId(1), FactionResearch.CommandTroopsCode, 1)]);
+
+        var ok = Service().Deploy(s0, new DeployRequest(new CityId(1), "swordsman", 11000, new GeneralId(1)));
+        var blocked = Service().Deploy(s0, new DeployRequest(new CityId(1), "swordsman", 11001, new GeneralId(1)));
+
+        Assert.True(ok.Ok, ok.Error);
+        Assert.Equal(11000, ok.State.Armies.Single().Pool.Active);
+        Assert.False(blocked.Ok);
+        Assert.Contains("11000", blocked.Error);
     }
 
     [Fact]

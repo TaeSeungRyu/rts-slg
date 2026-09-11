@@ -81,9 +81,11 @@ public sealed class DeployService
             return CommandResult.Fail("대기 병력이 부족하다.", state);
         }
 
-        if (troops > _b.DeployMaxTroops)
+        var maxDeployTroops = CommandEfficiency.CommandTroopDeployLimit(
+            state.ResearchOf(city.Owner, FactionResearch.CommandTroopsCode), _b);
+        if (troops > maxDeployTroops)
         {
-            return CommandResult.Fail($"부대는 최대 {_b.DeployMaxTroops}명까지 편성할 수 있다.", state);
+            return CommandResult.Fail($"부대는 최대 {maxDeployTroops}명까지 편성할 수 있다.", state);
         }
 
         if (garrison.TrainingLevel < _b.DeployMinTraining)
