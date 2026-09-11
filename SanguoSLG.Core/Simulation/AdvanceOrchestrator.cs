@@ -78,11 +78,23 @@ public sealed class AdvanceOrchestrator
         var state = new Dictionary<UnitId, CombatUnit>();
         foreach (var u in units.Where(u => !enteredIds.Contains(u.Id)))
         {
+            var field = moved[u.Id];
+            if (field.Mode == UnitMode.March && ReachedMarchDestination(field))
+            {
+                field = field with { Mode = UnitMode.Advance, Target = null, Waypoints = null };
+            }
+
             state[u.Id] = u with
             {
                 // 위치와 함께 **남은 경유지**도 이동 결과에서 가져온다 — 안 그러면 소비한 경유지가
                 // 원본 Field에 그대로 남아 다음 진행 조각마다 경로를 처음부터 다시 밟아 왕복한다.
-                Field = u.Field with { Position = moved[u.Id].Position, Waypoints = moved[u.Id].Waypoints },
+                Field = u.Field with
+                {
+                    Position = field.Position,
+                    Mode = field.Mode,
+                    Target = field.Target,
+                    Waypoints = field.Waypoints,
+                },
                 State = u.State.AdvanceField(move.Days),
             };
         }
@@ -305,6 +317,9 @@ public sealed class AdvanceOrchestrator
     private static readonly IReadOnlyDictionary<UnitId, ActiveSkill> NoActives = new Dictionary<UnitId, ActiveSkill>();
 
     private static bool IsDazed(CombatUnit u) => u.State.Statuses.Any(s => s.IsDaze);
+
+    private static bool ReachedMarchDestination(FieldUnit field)
+        => field.Target is { } target && field.Position == target && (field.Waypoints is null || field.Waypoints.Count == 0);
 
     // 이동 시뮬에 넣을 임시 FieldUnit. 혼란(행동불가)은 제자리에 묶고(속도 0·목표·모드 중립),
     // 수공(이동−1)은 속도를 깎는다(최소 1). 실제 Field는 위치만 되받아 보존한다.

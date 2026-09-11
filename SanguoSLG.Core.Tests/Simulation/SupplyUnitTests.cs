@@ -206,6 +206,24 @@ public class SupplyUnitTests
     }
 
     [Fact]
+    public void 보급부대는_행군목적지에_도착하면_즉시_반격가능상태가_된다()
+    {
+        var supply = Supply(1, 1, new HexCoord(0, 0),
+            [new SupplyComponent("swordsman", 10000, 60)],
+            mode: UnitMode.March, target: new HexCoord(1, 0));
+        var enemy = Army(2, 2, new HexCoord(2, 0), UnitMode.Attack, null);
+
+        var turn = Orchestrator().Run([supply, enemy], maxDays: 7);
+
+        var afterSupply = turn.Units.Single(u => u.Id.Value == 1);
+        Assert.Equal(new HexCoord(1, 0), afterSupply.Field.Position);
+        Assert.Equal(UnitMode.Advance, afterSupply.Field.Mode);
+        Assert.NotNull(turn.Combat);
+        Assert.Contains(turn.Combat!.DamageDealt, kv => kv.Key.Value == 1 && kv.Value > 0);
+        Assert.True(turn.Units.Single(u => u.Id.Value == 2).Pool.Active < enemy.Pool.Active);
+    }
+
+    [Fact]
     public void 보급부대도_공격모드면_성벽을_최하스탯으로_공격한다()
     {
         var supply = Supply(1, 1, new HexCoord(4, 0),
