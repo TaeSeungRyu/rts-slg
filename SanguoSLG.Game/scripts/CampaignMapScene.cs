@@ -1059,6 +1059,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         Row("병력", $"{u.Pool.Active}");
+        Row("부상병", u.Pool.Wounded > 0 ? $"{u.Pool.Wounded}" : "없음");
         Row("선봉", van ?? "—");
         Row("부관", adj ?? "—");
         Row("훈련", $"{u.Training}");
@@ -3011,6 +3012,7 @@ public sealed partial class CampaignMapScene : Node3D
         AddCell(g2, Sym.Ore, "광물", $"{c.Ore}/{c.Horses}/{c.Elephants}");
         AddCell(g2, Sym.Book, "시설", facilities);
         AddCell(g2, Sym.Sword, "대기", totalTroops > 0 ? $"{totalTroops}명" : "없음");
+        AddCell(g2, Sym.Shield, "부상병", WoundedForFaction(c.Owner));
         AddCell(g2, Sym.Officer, "태수", govName ?? "없음");
         AddCell(g2, Sym.Officer, "군사", straName ?? "없음");
         AddCell(g2, Sym.Shield, "치안담당", securityName ?? "없음");
@@ -3047,6 +3049,13 @@ public sealed partial class CampaignMapScene : Node3D
 
     private string? OfficerName(GeneralId? id)
         => id is { } gid ? _state.Generals.FirstOrDefault(x => x.Id == gid)?.Name : null;
+
+    private string WoundedForFaction(FactionId faction)
+    {
+        var wounded = _state.Armies.Where(u => u.Field.Owner == faction && u.Pool.Active > 0)
+            .Sum(u => u.Pool.Wounded);
+        return wounded > 0 ? $"{wounded}명" : "없음";
+    }
 
     private string? OfficerNameWithMonthlyEffect(GeneralId? id, CommandKind kind, City city)
     {
@@ -3958,6 +3967,7 @@ public sealed partial class CampaignMapScene : Node3D
         AddCell(g4, Sym.Book, "주 훈련도", $"+{WeeklyTrainingPreview(c)}");
         AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
         AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
+        AddCell(g4, Sym.Shield, "부상병", WoundedForFaction(c.Owner));
         AddCell(g4, Sym.Ore, "광석", $"{c.Ore}");
         AddCell(g4, Sym.Ore, "말/코끼리", $"{c.Horses}/{c.Elephants}");
 
@@ -5130,6 +5140,7 @@ public sealed partial class CampaignMapScene : Node3D
             AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
             AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
             AddCell(g4, Sym.Ore, "광석", $"{c.Ore}");
+            AddCell(g4, Sym.Shield, "부상병", WoundedForFaction(c.Owner));
 
             var gov = c.Governor is { } gid ? _state.Generals.FirstOrDefault(x => x.Id == gid)?.Name : null;
             var stra = c.Strategist is { } sid ? _state.Generals.FirstOrDefault(x => x.Id == sid)?.Name : null;
