@@ -48,7 +48,7 @@ public class SupplyUnitTests
     {
         var total = cargo.Sum(c => c.Troops);
         var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos,
-            Speed: 1, Detection: 1, AttackRange: 1, MovementDomain.Land, mode, target, id, RangeCastle: 0);
+            Speed: 1, Detection: 1, AttackRange: 1, MovementDomain.Land, mode, target, id, RangeCastle: 1);
         return new CombatUnit(field, new CombatStats(total, 8, 8), new TroopPool(total, 0),
             UnitCombatState.Create(60), 60, 60, total, TroopClass.Infantry,
             IsSupply: true, SupplyCargo: cargo, ReinforceTarget: reinforce);
@@ -76,7 +76,7 @@ public class SupplyUnitTests
         Assert.True(u.IsSupply);
         Assert.Equal(18000, u.Pool.Active);
         Assert.Equal(1, u.Field.Speed);
-        Assert.Equal(0, u.Field.RangeCastle);
+        Assert.Equal(1, u.Field.RangeCastle);
         Assert.Equal(Troops.Min(t => t.AtkUnit), u.Stats.AtkStat);
         Assert.Equal(Troops.Min(t => t.Df), u.Stats.DfStat);
         Assert.Equal(System.Math.Max(1, Troops.Min(t => t.RangeUnit)), u.Field.AttackRange);
@@ -203,6 +203,23 @@ public class SupplyUnitTests
         Assert.NotNull(turn.Combat);
         Assert.Contains(turn.Combat!.DamageDealt, kv => kv.Key.Value == 1 && kv.Value > 0);
         Assert.True(turn.Units.Single(u => u.Id.Value == 2).Pool.Active < enemy.Pool.Active);
+    }
+
+    [Fact]
+    public void 보급부대도_공격모드면_성벽을_최하스탯으로_공격한다()
+    {
+        var supply = Supply(1, 1, new HexCoord(4, 0),
+            [new SupplyComponent("swordsman", 10000, 60)],
+            mode: UnitMode.Attack, target: new HexCoord(5, 0));
+        var city = new City(new CityId(9), "적성", new HexCoord(5, 0), new FactionId(2), 0, Wall: 1000);
+        var siege = new CampaignSiege(new BattleResolver(60), Troops);
+
+        var r = siege.Resolve([supply], [city], []);
+
+        var ex = Assert.Single(r.Exchanges);
+        Assert.Contains(new UnitId(1), ex.Besiegers);
+        Assert.True(ex.WallDamage > 0, "보급부대도 공격 모드면 성벽을 공격해야 한다");
+        Assert.True(r.Cities.Single().Wall < 1000);
     }
 
     // ── 입성 ──

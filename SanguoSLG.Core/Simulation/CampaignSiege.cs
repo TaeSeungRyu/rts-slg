@@ -76,9 +76,9 @@ public sealed class CampaignSiege
 
             var besiegers = armies
                 .Where(u => u.Pool.Active > 0 && u.Field.Owner != city.Owner
-                    && u.Field.Mode == UnitMode.Attack && !u.IsSupply && u.TroopCode.Length > 0
-                    && _troops.ContainsKey(u.TroopCode)
-                    && u.Field.Position.Distance(city.Position) <= _troops[u.TroopCode].RangeCastle)
+                    && u.Field.Mode == UnitMode.Attack
+                    && (u.IsSupply || (u.TroopCode.Length > 0 && _troops.ContainsKey(u.TroopCode)))
+                    && u.Field.Position.Distance(city.Position) <= u.Field.RangeCastle)
                 .OrderBy(u => u.Id.Value)
                 .ToList();
             if (besiegers.Count == 0)
@@ -151,6 +151,22 @@ public sealed class CampaignSiege
 
     private SiegeAttacker BuildAttacker(CombatUnit u, HexCoord castlePos)
     {
+        if (u.IsSupply)
+        {
+            var minBuildingAttack = Math.Max(1, _troops.Values.Min(t => t.AtkBuilding));
+            var (supplyTerrainAtk, _) = TerrainCombatBonus.For(u.Class, _terrainAt(u.Field.Position));
+            var supplyInCounterRange = u.Field.Position.Distance(castlePos) <= 1;
+            return new SiegeAttacker(
+                u.Pool.Active,
+                minBuildingAttack + supplyTerrainAtk,
+                u.Stats.AtkStat,
+                u.Stats.DfStat,
+                u.Stats.AptitudePercent,
+                100,
+                100,
+                supplyInCounterRange);
+        }
+
         var template = _troops[u.TroopCode];
         var (terrainAtk, _) = TerrainCombatBonus.For(template.Class, _terrainAt(u.Field.Position));
         var inCounterRange = u.Field.Position.Distance(castlePos) <= 1;

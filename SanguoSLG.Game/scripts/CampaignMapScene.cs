@@ -2319,7 +2319,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
-        foreach (var u in turn.Units.Where(u => u.Field.Mode == UnitMode.Attack && !u.IsSupply))
+        foreach (var u in turn.Units.Where(u => u.Field.Mode == UnitMode.Attack))
         {
             if (fieldAttackers.Contains(u.Id.Value)) { continue; }
             var castle = _pendingState.Cities.FirstOrDefault(c => c.Owner != u.Field.Owner

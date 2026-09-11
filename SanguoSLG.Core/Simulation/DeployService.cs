@@ -247,7 +247,7 @@ public sealed class DeployService
         var unitId = new UnitId(state.Armies.Count == 0 ? 1 : state.Armies.Max(u => u.Id.Value) + 1);
         var field = new FieldUnit(unitId, city.Owner, city.Position,
             Speed: 1, templates.Min(t => t.Detection), minRange,
-            MovementDomain.Land, req.Mode, req.Target, unitId.Value, RangeCastle: 0);
+            MovementDomain.Land, req.Mode, req.Target, unitId.Value, RangeCastle: 1);
         var unit = new CombatUnit(field, stats, new TroopPool(total, 0), UnitCombatState.Create(vanguard.Intellect),
             vanguard.Might, vanguard.Intellect, total, TroopClass.Infantry,
             ProvisionsCapacity: capacity, IsSupply: true, Training: training,
