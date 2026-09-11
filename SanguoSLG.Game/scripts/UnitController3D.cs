@@ -37,6 +37,8 @@ public partial class UnitController3D : Node3D
     private bool _display;
     private bool _nativeSupply;
     private readonly List<AnimationPlayer> _nativeAnimations = new();
+    private Node3D? _nativeSupplyCamp;
+    private Node3D? _nativeSupplyMove;
 
     // 편대 검수용 임시 지정 — 병종 데이터(data/troop-types.json)가 생기면 그쪽에서 받는다.
     // Solo: 편대 없이 항상 1개로 표현(대선 규칙).
@@ -1784,6 +1786,8 @@ public partial class UnitController3D : Node3D
         _dust = null;
         _nativeSupply = false;
         _nativeAnimations.Clear();
+        _nativeSupplyCamp = null;
+        _nativeSupplyMove = null;
         _tokenRoot?.QueueFree();
 
         _tokenRoot = new Node3D();
@@ -1795,6 +1799,8 @@ public partial class UnitController3D : Node3D
             var instance = GD.Load<PackedScene>(modelFile).Instantiate<Node3D>();
             _tokenRoot.AddChild(instance);
             foreach (var player in FindAnimationPlayers(instance)) { _nativeAnimations.Add(player); }
+            _nativeSupplyCamp = instance.FindChild("state_camp", true, false) as Node3D;
+            _nativeSupplyMove = instance.FindChild("state_move", true, false) as Node3D;
             _motion = MotionKind.Infantry;
             _lastPosition = Position;
             FactionColorView.Apply(_tokenRoot, _factionColor);
@@ -1964,6 +1970,9 @@ public partial class UnitController3D : Node3D
         if (!_nativeSupply) { return; }
         Visible = true;
         if (Alive(_tokenRoot)) { _tokenRoot.Visible = true; }
+        var moving = preferred.Contains("move", System.StringComparison.OrdinalIgnoreCase);
+        if (Alive(_nativeSupplyCamp)) { _nativeSupplyCamp.Visible = !moving; }
+        if (Alive(_nativeSupplyMove)) { _nativeSupplyMove.Visible = moving; }
         foreach (var player in _nativeAnimations.Where(Alive))
         {
             var names = player.GetAnimationList();
@@ -1973,7 +1982,11 @@ public partial class UnitController3D : Node3D
                 selected = names.FirstOrDefault(n => n.ToString().Contains(fallback, System.StringComparison.OrdinalIgnoreCase));
             }
             if (selected == default && names.Length > 0) { selected = names[0]; }
-            if (selected != default) { player.Play(selected); }
+            if (selected != default)
+            {
+                player.Play(selected);
+                player.Advance(0);
+            }
         }
     }
 

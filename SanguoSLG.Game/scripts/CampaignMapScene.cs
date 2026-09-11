@@ -1553,11 +1553,11 @@ public sealed partial class CampaignMapScene : Node3D
         };
         _fieldSupplyTileMat ??= new StandardMaterial3D
         {
-            AlbedoColor = new Color(0.18f, 0.58f, 0.95f, 0.34f),
+            AlbedoColor = new Color(0.82f, 0.28f, 1.0f, 0.46f),
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
             EmissionEnabled = true,
-            Emission = new Color(0.25f, 0.64f, 1.0f),
-            EmissionEnergyMultiplier = 0.85f,
+            Emission = new Color(0.92f, 0.36f, 1.0f),
+            EmissionEnergyMultiplier = 1.15f,
             RenderPriority = -1,
         };
 
