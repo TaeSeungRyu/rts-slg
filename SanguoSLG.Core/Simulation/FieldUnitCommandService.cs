@@ -20,11 +20,6 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
             return CommandResult.Fail("명령할 수 있는 아군 부대가 없습니다.", state);
         }
 
-        if (unit.IsSupply && req.Mode == UnitMode.Attack)
-        {
-            return CommandResult.Fail("보급부대는 공격 명령을 받을 수 없습니다.", state);
-        }
-
         if (!CanTarget(state, faction, unit, req.Target, req.VisibleTiles))
         {
             return CommandResult.Fail("시야 밖이거나 이동할 수 없는 목표입니다.", state);

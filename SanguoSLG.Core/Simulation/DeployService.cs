@@ -167,8 +167,8 @@ public sealed class DeployService
 
     /// <summary>
     /// 보급부대 출전(design-unit-state 1단계-보급). 혼합 병종 편성 — 총원 2만 상한, 이동속도 1,
-    /// 공/방 = 구성 병종 최하 기본치(연구·적성·특기 미반영), 스킬 미발동, 적재 = 병종별 적재 가중 × 5.
-    /// 탐지·사거리도 구성 최소치, 성 공격 불가. 훈련 게이트는 일반 출전과 같다(징병 투입 방지).
+    /// 공/방 = 게임 전체 병종 최하 기본치(연구·적성·특기 미반영), 스킬 미발동, 적재 = 병종별 적재 가중 × 5.
+    /// 탐지·사거리도 최저 전투 가능치, 성 공성/점령은 불가. 훈련 게이트는 일반 출전과 같다(징병 투입 방지).
     /// </summary>
     public CommandResult DeploySupply(GameState state, SupplyDeployRequest req)
     {
@@ -234,15 +234,19 @@ public sealed class DeployService
         }
 
         var templates = components.Select(c => _troops[c.TroopCode]).ToList();
+        var allTemplates = _troops.Values.ToList();
+        var minAttack = System.Math.Max(1, allTemplates.Min(t => t.AtkUnit));
+        var minDefense = System.Math.Max(1, allTemplates.Min(t => t.Df));
+        var minRange = System.Math.Max(1, allTemplates.Min(t => t.RangeUnit));
         var stats = new CombatStats(total,
-            templates.Min(t => t.AtkUnit), templates.Min(t => t.Df),
+            minAttack, minDefense,
             AptitudePercent: 100, AtkBonusPercent: 100, DfBonusPercent: 100);
         var capacity = (int)(components.Zip(templates, (c, t) => (long)t.ProvisionsCapacity * c.Troops).Sum() / total);
         var training = (int)((components.Sum(c => (long)c.TrainingLevel * c.Troops) + total / 2) / total);
 
         var unitId = new UnitId(state.Armies.Count == 0 ? 1 : state.Armies.Max(u => u.Id.Value) + 1);
         var field = new FieldUnit(unitId, city.Owner, city.Position,
-            Speed: 1, templates.Min(t => t.Detection), templates.Min(t => t.RangeUnit),
+            Speed: 1, templates.Min(t => t.Detection), minRange,
             MovementDomain.Land, req.Mode, req.Target, unitId.Value, RangeCastle: 0);
         var unit = new CombatUnit(field, stats, new TroopPool(total, 0), UnitCombatState.Create(vanguard.Intellect),
             vanguard.Might, vanguard.Intellect, total, TroopClass.Infantry,

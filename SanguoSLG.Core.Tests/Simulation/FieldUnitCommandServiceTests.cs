@@ -81,15 +81,15 @@ public class FieldUnitCommandServiceTests
     }
 
     [Fact]
-    public void 보급부대는_공격명령을_거부한다()
+    public void 보급부대도_공격명령을_받을수있다()
     {
         var state = new GameState(1, 190, [], [], [], FieldArmies: [Unit(1, Player, default, supply: true)]);
 
         var result = Service().Reassign(state, Player,
             new FieldUnitCommandRequest(new UnitId(1), UnitMode.Attack, new HexCoord(1, 0)));
 
-        Assert.False(result.Ok);
-        Assert.Contains("보급부대", result.Error);
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(UnitMode.Attack, result.State.Armies.Single().Field.Mode);
     }
 
     [Fact]

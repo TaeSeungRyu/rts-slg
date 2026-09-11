@@ -77,8 +77,9 @@ public class SupplyUnitTests
         Assert.Equal(18000, u.Pool.Active);
         Assert.Equal(1, u.Field.Speed);
         Assert.Equal(0, u.Field.RangeCastle);
-        Assert.Equal(8, u.Stats.AtkStat);   // min(검병 8, 기병 12)
-        Assert.Equal(10, u.Stats.DfStat);   // min(검병 10, 기병 12)
+        Assert.Equal(Troops.Min(t => t.AtkUnit), u.Stats.AtkStat);
+        Assert.Equal(Troops.Min(t => t.Df), u.Stats.DfStat);
+        Assert.Equal(System.Math.Max(1, Troops.Min(t => t.RangeUnit)), u.Field.AttackRange);
         Assert.Equal(100, u.Stats.AptitudePercent);
         Assert.Equal(["cavalry", "swordsman"], u.Cargo.Select(c => c.TroopCode));
         // 적재 = 가중 평균 능력(283) × 병력 비례 × 5 = 2545 — 비축(10000)이 넉넉하니 상한까지.

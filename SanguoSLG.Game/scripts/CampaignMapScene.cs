@@ -1064,6 +1064,11 @@ public sealed partial class CampaignMapScene : Node3D
         Row("모드", ModeName(u.Field.Mode));
         Row("목표", u.Field.Target is { } t ? $"({t.Q}, {t.R})" : "없음");
         Row("군량", u.TracksProvisions ? $"{u.Provisions}" : "무한");
+        if (u.IsSupply)
+        {
+            Row("보급범위", $"{FieldSupplyRadius}칸");
+            Row("전투규칙", "공격 가능 · 스킬/적성 미적용 · 공방 최하");
+        }
         Row("선봉 액티브", ActiveSlotText(u.State.VanguardActive, u.State.VanguardGauge));
         Row("부관 액티브", ActiveSlotText(u.State.AdjutantActive, u.State.AdjutantGauge));
 
@@ -1372,7 +1377,7 @@ public sealed partial class CampaignMapScene : Node3D
         _targetStart = _state.Cities.FirstOrDefault(c => c.Id == reqCity)?.Position ?? default;
         RebuildTargetEdit();
         ShowTargetHint(supply
-            ? "보급부대 목표 지정 · 지점을 순서대로 클릭 · '확인'으로 확정 · 공격 불가 · 우클릭 취소"
+            ? "보급부대 목표 지정 · 지점을 순서대로 클릭 · '확인'으로 확정 · 출전 후 공격 명령 가능 · 우클릭 취소"
             : "지점을 순서대로 클릭 = 경유지 추가  ·  각 지점 위 취소로 삭제  ·  '확인'으로 확정  ·  적 성 = 공격  ·  우클릭 취소");
     }
 
@@ -3615,7 +3620,7 @@ public sealed partial class CampaignMapScene : Node3D
         close.CustomMinimumSize = new Vector2(34, 32);
         close.Pressed += () => { CloseModal(); SelectCity(city); };
         titleRow.AddChild(close);
-        box.AddChild(MakeLabel("보급부대는 어떤 병종이든 편성할 수 있지만 공격 명령은 받을 수 없습니다.\n비싼 병종을 보급부대로 쓰면 그만큼 전투 손실입니다.", 12, Parchment));
+        box.AddChild(MakeLabel("보급부대는 어떤 병종이든 편성할 수 있고, 출전 후 공격 명령도 가능합니다.\n단, 액티브·패시브·병종 적성은 적용되지 않으며 공방은 게임 최하 수치입니다.", 12, Parchment));
         box.AddChild(GoldRule());
 
         var mine = Enumerable.Range(0, _pendingSupplyDeploys.Count)
@@ -6226,7 +6231,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         _depPreview.Text = $"현재 편성: 보급부대 {total}명 · 주장 {vanguard} · 군량 {_depProvDays}일{status}\n"
             + (lines.Count == 0 ? "병종을 선택하세요." : string.Join(" · ", lines))
-            + $"\n휴대 군량 {provisions} · 1만 병력 기준 약 {daysPer10k}일 보급 가능 · 전용 보급부대 모델 사용";
+            + $"\n휴대 군량 {provisions} · 1만 병력 기준 약 {daysPer10k}일 보급 가능 · 스킬/적성 미적용 · 공방 최하";
     }
 
     private void PopulateSupplyGeneralTree()
@@ -6368,7 +6373,7 @@ public sealed partial class CampaignMapScene : Node3D
         var req = new SupplyDeployRequest(_depModalCity, lines, van, UnitMode.March, Provisions: provisions);
         var entry = (req, $"보급 {total}({vName}) · 군량{_depProvDays}일 · {lineText}");
         ShowConfirm("보급부대 예약 확인",
-            $"{entry.Item2}\n휴대 군량 {provisions} · 1만 병력 기준 약 {(_provPer10kPerDay <= 0 ? 0 : provisions / _provPer10kPerDay)}일 보급 가능\n\n규모와 무관하게 보급부대 전용 모델로 표시됩니다.{DutyReleaseNotice(ids)}",
+            $"{entry.Item2}\n휴대 군량 {provisions} · 1만 병력 기준 약 {(_provPer10kPerDay <= 0 ? 0 : provisions / _provPer10kPerDay)}일 보급 가능\n\n스킬/적성은 적용되지 않고 공방은 게임 최하 수치입니다.{DutyReleaseNotice(ids)}",
             () =>
             {
                 if (_advancing || ids.Any(id => _state.IsGeneralBusy(id))
