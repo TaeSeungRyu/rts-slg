@@ -39,6 +39,9 @@ public partial class UnitController3D : Node3D
     private readonly List<AnimationPlayer> _nativeAnimations = new();
     private Node3D? _nativeSupplyCamp;
     private Node3D? _nativeSupplyMove;
+    private readonly List<(Node3D Node, Vector3 Base)> _nativeSupplyLegs = new();
+    private readonly List<Node3D> _nativeSupplyWheels = new();
+    private float _nativeSupplyMoveTime;
 
     // 편대 검수용 임시 지정 — 병종 데이터(data/troop-types.json)가 생기면 그쪽에서 받는다.
     // Solo: 편대 없이 항상 1개로 표현(대선 규칙).
@@ -310,13 +313,7 @@ public partial class UnitController3D : Node3D
     {
         if (_nativeSupply)
         {
-            foreach (var player in _nativeAnimations.Where(Alive))
-            {
-                if (!player.IsPlaying())
-                {
-                    player.Play();
-                }
-            }
+            AnimateNativeSupply((float)delta);
         }
         // 카메라 조작(팬/회전) 중에는 호버·경로 미리보기를 상태 기반으로 강제 종료 — 깜빡임 방지.
         if (!_display && IsCameraManeuvering() && _hoverCoord is not null)
@@ -1798,6 +1795,9 @@ public partial class UnitController3D : Node3D
         _nativeAnimations.Clear();
         _nativeSupplyCamp = null;
         _nativeSupplyMove = null;
+        _nativeSupplyLegs.Clear();
+        _nativeSupplyWheels.Clear();
+        _nativeSupplyMoveTime = 0f;
         _tokenRoot?.QueueFree();
 
         _tokenRoot = new Node3D();
@@ -1814,6 +1814,10 @@ public partial class UnitController3D : Node3D
             }
             _nativeSupplyCamp = instance.FindChild("state_camp", true, false) as Node3D;
             _nativeSupplyMove = instance.FindChild("state_move", true, false) as Node3D;
+            AddNativeSupplyLeg(instance, "move_guard_leg_l");
+            AddNativeSupplyLeg(instance, "move_guard_leg_r");
+            AddNativeSupplyWheel(instance, "supply_cart_wheel_L");
+            AddNativeSupplyWheel(instance, "supply_cart_wheel_R");
             _motion = MotionKind.Infantry;
             _lastPosition = Position;
             FactionColorView.Apply(_tokenRoot, _factionColor);
@@ -1978,6 +1982,53 @@ public partial class UnitController3D : Node3D
         }
     }
 
+    private void AddNativeSupplyLeg(Node root, string name)
+    {
+        if (root.FindChild(name, true, false) is Node3D leg)
+        {
+            _nativeSupplyLegs.Add((leg, leg.Rotation));
+        }
+    }
+
+    private void AddNativeSupplyWheel(Node root, string name)
+    {
+        if (root.FindChild(name, true, false) is Node3D wheel)
+        {
+            _nativeSupplyWheels.Add(wheel);
+        }
+    }
+
+    private void AnimateNativeSupply(float dt)
+    {
+        if (!_moving)
+        {
+            _nativeSupplyMoveTime = 0f;
+            foreach (var (leg, baseRotation) in _nativeSupplyLegs)
+            {
+                if (Alive(leg)) { leg.Rotation = baseRotation; }
+            }
+
+            return;
+        }
+
+        _nativeSupplyMoveTime = Mathf.Wrap(_nativeSupplyMoveTime + dt * 10f, 0f, Mathf.Tau);
+        for (var i = 0; i < _nativeSupplyLegs.Count; i++)
+        {
+            var (leg, baseRotation) = _nativeSupplyLegs[i];
+            if (!Alive(leg)) { continue; }
+            var phase = i % 2 == 0 ? 0f : Mathf.Pi;
+            leg.Rotation = baseRotation + new Vector3(Mathf.Sin(_nativeSupplyMoveTime + phase) * 0.42f, 0f, 0f);
+        }
+
+        foreach (var wheel in _nativeSupplyWheels)
+        {
+            if (Alive(wheel))
+            {
+                wheel.RotateObjectLocal(Vector3.Right, -dt * 9.5f);
+            }
+        }
+    }
+
     private void PlayNativeSupplyAnimation(string preferred, string fallback = "")
     {
         if (!_nativeSupply) { return; }
@@ -1988,6 +2039,12 @@ public partial class UnitController3D : Node3D
         if (Alive(_nativeSupplyMove)) { _nativeSupplyMove.Visible = moving; }
         foreach (var player in _nativeAnimations.Where(Alive))
         {
+            if (preferred is "state_move" or "state_camp")
+            {
+                player.Stop();
+                continue;
+            }
+
             if (SupplyAnimationFor(player, preferred, fallback) is { } animation)
             {
                 player.Play(animation);
