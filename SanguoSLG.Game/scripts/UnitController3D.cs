@@ -39,6 +39,8 @@ public partial class UnitController3D : Node3D
     private readonly List<AnimationPlayer> _nativeAnimations = new();
     private Node3D? _nativeSupplyCamp;
     private Node3D? _nativeSupplyMove;
+    private double _supplyAnimationStart;
+    private double _supplyAnimationTime;
 
     // 편대 검수용 임시 지정 — 병종 데이터(data/troop-types.json)가 생기면 그쪽에서 받는다.
     // Solo: 편대 없이 항상 1개로 표현(대선 규칙).
@@ -308,6 +310,12 @@ public partial class UnitController3D : Node3D
 
     public override void _Process(double delta)
     {
+        if (_nativeSupply)
+        {
+            _supplyAnimationTime = (_supplyAnimationTime + delta) % (23.0 / 24.0);
+            foreach (var player in _nativeAnimations.Where(Alive))
+                player.Seek(_supplyAnimationStart + _supplyAnimationTime, true);
+        }
         // 카메라 조작(팬/회전) 중에는 호버·경로 미리보기를 상태 기반으로 강제 종료 — 깜빡임 방지.
         if (!_display && IsCameraManeuvering() && _hoverCoord is not null)
         {
@@ -1798,7 +1806,23 @@ public partial class UnitController3D : Node3D
             _nativeSupply = true;
             var instance = GD.Load<PackedScene>(modelFile).Instantiate<Node3D>();
             _tokenRoot.AddChild(instance);
-            foreach (var player in FindAnimationPlayers(instance)) { _nativeAnimations.Add(player); }
+            foreach (var player in FindAnimationPlayers(instance))
+            {
+                var combined = new Animation();
+                foreach (var name in player.GetAnimationList().Where(n => n != "RESET"))
+                {
+                    var source = player.GetAnimation(name);
+                    combined.Length = System.Math.Max(combined.Length, source.Length);
+                    for (var track = 0; track < source.GetTrackCount(); track++)
+                        source.CopyTrack(track, combined);
+                }
+                var library = new AnimationLibrary();
+                library.AddAnimation("timeline", combined);
+                player.AddAnimationLibrary("supply", library);
+                player.Play("supply/timeline");
+                player.Pause();
+                _nativeAnimations.Add(player);
+            }
             _nativeSupplyCamp = instance.FindChild("state_camp", true, false) as Node3D;
             _nativeSupplyMove = instance.FindChild("state_move", true, false) as Node3D;
             _motion = MotionKind.Infantry;
@@ -1971,22 +1995,13 @@ public partial class UnitController3D : Node3D
         Visible = true;
         if (Alive(_tokenRoot)) { _tokenRoot.Visible = true; }
         var moving = preferred.Contains("move", System.StringComparison.OrdinalIgnoreCase);
+        _supplyAnimationStart = moving ? 1.0 : preferred == "shot_arrow" ? 2.0 : 0.0;
+        _supplyAnimationTime = 0;
         if (Alive(_nativeSupplyCamp)) { _nativeSupplyCamp.Visible = !moving; }
         if (Alive(_nativeSupplyMove)) { _nativeSupplyMove.Visible = moving; }
         foreach (var player in _nativeAnimations.Where(Alive))
         {
-            var names = player.GetAnimationList();
-            var selected = names.FirstOrDefault(n => n.ToString().Contains(preferred, System.StringComparison.OrdinalIgnoreCase));
-            if (selected == default && fallback.Length > 0)
-            {
-                selected = names.FirstOrDefault(n => n.ToString().Contains(fallback, System.StringComparison.OrdinalIgnoreCase));
-            }
-            if (selected == default && names.Length > 0) { selected = names[0]; }
-            if (selected != default)
-            {
-                player.Play(selected);
-                player.Advance(0);
-            }
+            player.Seek(_supplyAnimationStart, true);
         }
     }
 
