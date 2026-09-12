@@ -352,4 +352,16 @@ public class SupplyUnitTests
         Assert.Equal(("swordsman", 8000, 60),
             after.Garrisons[1] is { } b ? (b.TroopCode, b.Troops, b.TrainingLevel) : default);
     }
+
+    [Fact]
+    public void 수송부대_모델_공격불가_금적재_군량소모절반()
+    {
+        var transport = Army(1, 1, new HexCoord(0, 0), UnitMode.March, new HexCoord(5, 0), troops: 12000)
+            with { IsTransport = true, CargoGold = 700, LootGold = 30, Provisions = 500 };
+
+        Assert.True(transport.IsTransport);
+        Assert.False(transport.CanInitiateCombat);
+        Assert.Equal(730, transport.CarryingGold);
+        Assert.Equal(50, transport.ProvisionsUpkeepPercent);
+    }
 }
