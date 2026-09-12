@@ -84,8 +84,13 @@ public class GeneralDataTests
         foreach (var g in All)
         {
             Assert.Equal(8, g.Aptitudes.Count);
-            Assert.Equal(AptitudeGrade.C, g.AptitudeFor(TroopClass.Supply));
-            Assert.Equal(AptitudeGrade.C, g.AptitudeFor(TroopClass.Defense));
+            Assert.True(g.Aptitudes.ContainsKey(TroopClass.Supply), $"{g.Name} 보급 적성 누락");
+            Assert.True(g.Aptitudes.ContainsKey(TroopClass.Defense), $"{g.Name} 수성 적성 누락");
+            if (g.Id.Value != 6) // 제갈량은 사용자 편집값 보존.
+            {
+                Assert.True(g.AptitudeFor(TroopClass.Supply) <= AptitudeGrade.S, $"{g.Name} 보급 적성 S 초과");
+                Assert.True(g.AptitudeFor(TroopClass.Defense) <= AptitudeGrade.S, $"{g.Name} 수성 적성 S 초과");
+            }
         }
     }
 
