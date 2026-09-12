@@ -420,7 +420,7 @@ public sealed class MovementSimulator
 
         HexCoord? best = null;
         var bestDist = int.MaxValue;
-        foreach (var n in here.Neighbors())
+        foreach (var n in RotatedNeighbors(here, w.Unit.CommandOrder))
         {
             if (!occupied.Contains(n) && !claimed.Contains(n) && _passability.CanEnter(w.Unit.Domain, n)
                 && n.Distance(goal) <= hereDist && n.Distance(goal) < bestDist)
@@ -436,7 +436,7 @@ public sealed class MovementSimulator
         }
 
         // 이 스텝 첫 출격 부대: 목표 쪽 칸이 없어도(완전 포위 근처 등) 가장 가까운 빈 칸으로 내려선다.
-        foreach (var n in here.Neighbors())
+        foreach (var n in RotatedNeighbors(here, w.Unit.CommandOrder))
         {
             if (!occupied.Contains(n) && _passability.CanEnter(w.Unit.Domain, n) && n.Distance(goal) < bestDist)
             {
@@ -452,7 +452,7 @@ public sealed class MovementSimulator
     // 여러 부대는 서로 다른 이웃으로 흩어져 성 앞에 대기한다.
     private HexCoord? GateStepAny(Working w, HashSet<HexCoord> occupied, HashSet<HexCoord> claimed)
     {
-        foreach (var n in w.Unit.Position.Neighbors())
+        foreach (var n in RotatedNeighbors(w.Unit.Position, w.Unit.CommandOrder))
         {
             if (!occupied.Contains(n) && !claimed.Contains(n) && _passability.CanEnter(w.Unit.Domain, n))
             {
@@ -461,6 +461,21 @@ public sealed class MovementSimulator
         }
 
         return null;
+    }
+
+    private static IEnumerable<HexCoord> RotatedNeighbors(HexCoord center, int seed)
+    {
+        var neighbors = center.Neighbors().ToArray();
+        if (neighbors.Length == 0)
+        {
+            yield break;
+        }
+
+        var start = Math.Abs(seed) % neighbors.Length;
+        for (var i = 0; i < neighbors.Length; i++)
+        {
+            yield return neighbors[(start + i) % neighbors.Length];
+        }
     }
 
     // 다음 스텝 칸이 자기 성인가 — 입성 조건. 성 타일은 통행 불가지만 경로는 목표 칸을 허용하므로,

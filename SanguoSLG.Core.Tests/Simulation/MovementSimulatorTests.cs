@@ -35,6 +35,21 @@ public class MovementSimulatorTests
         Assert.Equal(7, result.Days);
     }
 
+    [Fact]
+    public void 성에서_목표없이_출전하는_부대는_육방향으로_분산된다()
+    {
+        var castle = new SiegeSite(new HexCoord(5, 0), new FactionId(1));
+        var units = Enumerable.Range(0, 6)
+            .Select(i => Unit(i + 1, owner: 1, castle.Position, UnitMode.March, target: null, commandOrder: i))
+            .ToList();
+
+        var result = PlainField().Advance(units, maxDays: 1, castles: [castle]);
+        var positions = result.Units.Select(u => u.Position).ToHashSet();
+
+        Assert.Equal(6, positions.Count);
+        Assert.All(positions, p => Assert.Equal(1, p.Distance(castle.Position)));
+    }
+
     // ── 경유지(행군 경로 지정) ──
 
     [Fact]
