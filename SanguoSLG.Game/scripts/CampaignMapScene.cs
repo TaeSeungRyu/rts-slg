@@ -3729,7 +3729,7 @@ public sealed partial class CampaignMapScene : Node3D
         close.CustomMinimumSize = new Vector2(34, 32);
         close.Pressed += () => { CloseModal(); SelectCity(city); };
         titleRow.AddChild(close);
-        box.AddChild(MakeLabel("보급부대는 어떤 병종이든 편성할 수 있고, 출전 후 공격 명령도 가능합니다.\n단, 액티브·패시브·병종 적성은 적용되지 않으며 공방은 게임 최하 수치입니다.", 12, Parchment));
+        box.AddChild(MakeLabel("보급부대는 어떤 병종이든 편성할 수 있고, 출전 후 공격 명령도 가능합니다.\n선봉의 보급 적성과 전투 스킬이 적용되지만, 기본 공방 수치는 게임 최하로 고정됩니다.", 12, Parchment));
         box.AddChild(GoldRule());
 
         var mine = Enumerable.Range(0, _pendingSupplyDeploys.Count)
@@ -3897,7 +3897,7 @@ public sealed partial class CampaignMapScene : Node3D
             .ToList();
         _vanTree = new Tree
         {
-            Columns = 6,
+            Columns = 7,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
@@ -3916,8 +3916,11 @@ public sealed partial class CampaignMapScene : Node3D
             _vanTree.SetColumnExpand(col, false);
             _vanTree.SetColumnCustomMinimumWidth(col, 42);
         }
-        _vanTree.SetColumnTitle(5, "현재 담당업무");
-        _vanTree.SetColumnExpand(5, true);
+        _vanTree.SetColumnTitle(5, "보급");
+        _vanTree.SetColumnExpand(5, false);
+        _vanTree.SetColumnCustomMinimumWidth(5, 48);
+        _vanTree.SetColumnTitle(6, "현재 담당업무");
+        _vanTree.SetColumnExpand(6, true);
         _vanTree.ColumnTitleClicked += (col, _) =>
         {
             var c = (int)col;
@@ -3932,6 +3935,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (it is null) { return; }
             _depVan = new GeneralId(it.GetMetadata(0).AsInt32());
             RestyleSupplyGeneralTreeSelection();
+            SyncSupplyProvisionSlider();
             UpdateSupplyPreview();
         };
         box.AddChild(_vanTree);
@@ -5071,7 +5075,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var tree = new Tree
         {
-            Columns = 7, ColumnTitlesVisible = true, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
+            Columns = 8, ColumnTitlesVisible = true, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
             CustomMinimumSize = new Vector2(0, Mathf.Min(mh - 60, 44 + _state.Generals.Count * 28)),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
@@ -5087,10 +5091,11 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         tree.SetColumnTitle(4, "소속·위치"); tree.SetColumnExpand(4, true); tree.SetColumnExpandRatio(4, 3);
-        tree.SetColumnCustomMinimumWidth(4, 150);
-        tree.SetColumnTitle(5, "위인 유형"); tree.SetColumnExpand(5, true); tree.SetColumnExpandRatio(5, 2);
-        tree.SetColumnCustomMinimumWidth(5, 150);
-        tree.SetColumnTitle(6, "상태"); tree.SetColumnExpand(6, false); tree.SetColumnCustomMinimumWidth(6, 74);
+        tree.SetColumnCustomMinimumWidth(4, 140);
+        tree.SetColumnTitle(5, "보급"); tree.SetColumnExpand(5, false); tree.SetColumnCustomMinimumWidth(5, 52);
+        tree.SetColumnTitle(6, "위인 유형"); tree.SetColumnExpand(6, true); tree.SetColumnExpandRatio(6, 2);
+        tree.SetColumnCustomMinimumWidth(6, 140);
+        tree.SetColumnTitle(7, "상태"); tree.SetColumnExpand(7, false); tree.SetColumnCustomMinimumWidth(7, 74);
         var root = tree.CreateItem();
         foreach (var g in _state.Generals.OrderBy(g => g.Id.Value))
         {
@@ -5100,11 +5105,13 @@ public sealed partial class CampaignMapScene : Node3D
             it.SetText(2, g.Intellect.ToString());
             it.SetText(3, g.Politics.ToString());
             it.SetText(4, Where(g));
-            it.SetText(5, HeroType(g.Id));
-            it.SetText(6, HeroStatus(g.Id));
+            it.SetText(5, GradeText(g.AptitudeFor(TroopClass.Supply)));
+            it.SetText(6, HeroType(g.Id));
+            it.SetText(7, HeroStatus(g.Id));
             it.SetMetadata(0, g.Id.Value);
             for (var col = 1; col <= 3; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
-            it.SetTextAlignment(6, HorizontalAlignment.Center);
+            it.SetTextAlignment(5, HorizontalAlignment.Center);
+            it.SetTextAlignment(7, HorizontalAlignment.Center);
         }
 
         tree.ItemSelected += () =>
@@ -5452,9 +5459,9 @@ public sealed partial class CampaignMapScene : Node3D
         var classes = new[]
         {
             TroopClass.Infantry, TroopClass.Archer, TroopClass.Cavalry,
-            TroopClass.Elephant, TroopClass.Siege, TroopClass.Naval,
+            TroopClass.Elephant, TroopClass.Siege, TroopClass.Naval, TroopClass.Supply,
         };
-        var apt = new GridContainer { Columns = 6, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        var apt = new GridContainer { Columns = 7, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         apt.AddThemeConstantOverride("v_separation", 1);
         box.AddChild(apt);
         foreach (var tc in classes) { apt.AddChild(Cell(ClassName(tc), 11, new Color(Parchment, 0.75f))); }
@@ -6348,9 +6355,13 @@ public sealed partial class CampaignMapScene : Node3D
             var cityProv = _state.Cities.First(x => x.Id == _depModalCity).Provisions;
             _depProvLabel.Text = $"휴대 {provisions} / 성 비축 {cityProv} · 1만 기준 약 {daysPer10k}일";
         }
+        var (gradeText, efficiency, skills) = _depVan is { } vanId
+            ? SupplyLeaderPreview(_state.Generals.First(g => g.Id == vanId))
+            : ("-", 100, "주장 선택 후 표시");
         _depPreview.Text = $"현재 편성: 보급부대 {total}명 · 주장 {vanguard} · 군량 {_depProvDays}일{status}\n"
             + (lines.Count == 0 ? "병종을 선택하세요." : string.Join(" · ", lines))
-            + $"\n휴대 군량 {provisions} · 1만 병력 기준 약 {daysPer10k}일 보급 가능 · 스킬/적성 미적용 · 공방 최하";
+            + $"\n보급 적성 {gradeText} · 병참 효율 {efficiency}% · 적용 스킬 {skills}"
+            + $"\n휴대 군량 {provisions} · 1만 병력 기준 약 {daysPer10k}일 보급 가능 · 기본 공방 최하";
     }
 
     private void PopulateSupplyGeneralTree()
@@ -6369,6 +6380,8 @@ public sealed partial class CampaignMapScene : Node3D
                 : ordered.OrderByDescending(id => _state.Generals.First(g => g.Id == id).Intellect),
             4 => _vanSortAsc ? ordered.OrderBy(id => _state.Generals.First(g => g.Id == id).Politics)
                 : ordered.OrderByDescending(id => _state.Generals.First(g => g.Id == id).Politics),
+            5 => _vanSortAsc ? ordered.OrderBy(id => _state.Generals.First(g => g.Id == id).AptitudeFor(TroopClass.Supply))
+                : ordered.OrderByDescending(id => _state.Generals.First(g => g.Id == id).AptitudeFor(TroopClass.Supply)),
             _ => ordered.OrderBy(id => id.Value),
         };
         foreach (var generalId in ordered)
@@ -6380,9 +6393,10 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetText(2, general.Might.ToString());
             item.SetText(3, general.Intellect.ToString());
             item.SetText(4, general.Politics.ToString());
-            item.SetText(5, CurrentDuty(general.Id));
+            item.SetText(5, GradeText(general.AptitudeFor(TroopClass.Supply)));
+            item.SetText(6, CurrentDuty(general.Id));
             item.SetMetadata(0, general.Id.Value);
-            for (var col = 2; col <= 4; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
+            for (var col = 2; col <= 5; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
             item.SetTextAlignment(0, HorizontalAlignment.Center);
         }
     }
@@ -6411,7 +6425,38 @@ public sealed partial class CampaignMapScene : Node3D
             var template = _troops.FirstOrDefault(t => t.Code == code);
             weighted += (long)(template?.ProvisionsCapacity ?? 300) * amount;
         }
-        return (int)(weighted / total);
+        var baseCapacity = (int)(weighted / total);
+        return SupplyLogisticsRules.Apply(baseCapacity, SupplyEfficiencyForSelectedSupplyLeader());
+    }
+
+    private int SupplyEfficiencyForSelectedSupplyLeader()
+        => _depVan is { } van
+            ? SupplyLogisticsRules.EfficiencyPercent(_state.Generals.First(g => g.Id == van).AptitudeFor(TroopClass.Supply))
+            : 100;
+
+    private (string Grade, int Efficiency, string Skills) SupplyLeaderPreview(General general)
+    {
+        var grade = general.AptitudeFor(TroopClass.Supply);
+        return (GradeText(grade), SupplyLogisticsRules.EfficiencyPercent(grade), SupplySkillSummary(general));
+    }
+
+    private string SupplySkillSummary(General general)
+    {
+        var names = new List<string>();
+        if (general.BattleActive is { Length: > 0 } ac
+            && _activeSkills.FirstOrDefault(s => s.Code == ac) is { } active
+            && active.Type != ActiveType.Tactic)
+        {
+            names.Add(active.Name);
+        }
+
+        foreach (var held in general.Passives)
+        {
+            var skill = _passiveSkills.FirstOrDefault(s => s.Code == held.Code);
+            if (skill is not null) { names.Add($"{skill.Name}{held.Tier}"); }
+        }
+
+        return names.Count == 0 ? "없음" : string.Join(", ", names);
     }
 
     private int SupplyMaxCarryDays()
@@ -6502,13 +6547,15 @@ public sealed partial class CampaignMapScene : Node3D
         if (total > _cb.SupplyMaxTroops) { Err($"보급부대는 최대 {_cb.SupplyMaxTroops}명까지 편성할 수 있습니다."); return; }
         if (_depVan is not { } van) { Err("보급부대 주장을 선택하세요."); return; }
         var ids = new[] { van };
-        var vName = _state.Generals.First(g => g.Id == van).Name;
+        var general = _state.Generals.First(g => g.Id == van);
+        var vName = general.Name;
         var lineText = string.Join(", ", lines.Select(l => $"{_troops.FirstOrDefault(t => t.Code == l.TroopCode)?.Name ?? l.TroopCode} {l.Troops}"));
         var provisions = SupplyProvisionsToCarry();
         var req = new SupplyDeployRequest(_depModalCity, lines, van, UnitMode.March, Provisions: provisions);
         var entry = (req, $"보급 {total}({vName}) · 군량{_depProvDays}일 · {lineText}");
+        var (gradeText, efficiency, skills) = SupplyLeaderPreview(general);
         ShowConfirm("보급부대 예약 확인",
-            $"{entry.Item2}\n휴대 군량 {provisions} · 1만 병력 기준 약 {(_provPer10kPerDay <= 0 ? 0 : provisions / _provPer10kPerDay)}일 보급 가능\n\n스킬/적성은 적용되지 않고 공방은 게임 최하 수치입니다.{DutyReleaseNotice(ids)}",
+            $"{entry.Item2}\n보급 적성 {gradeText} · 병참 효율 {efficiency}%\n적용 스킬: {skills}\n휴대 군량 {provisions} · 1만 병력 기준 약 {(_provPer10kPerDay <= 0 ? 0 : provisions / _provPer10kPerDay)}일 보급 가능\n\n기본 공방은 게임 최하 수치입니다.{DutyReleaseNotice(ids)}",
             () =>
             {
                 if (_advancing || ids.Any(id => _state.IsGeneralBusy(id))
