@@ -29,6 +29,7 @@ public sealed class FactionAI
     {
         state = Retarget(state, faction);
         state = RecruitUnlockedHeroes(state, faction);
+        state = PlanSupplyDeploys(state, faction);
 
         foreach (var city in state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).ToList())
         {
@@ -63,6 +64,56 @@ public sealed class FactionAI
         }
 
         state = ExploreWithIdleOfficers(state, faction);
+        return state;
+    }
+
+    private GameState PlanSupplyDeploys(GameState state, FactionId faction)
+    {
+        if (_config.SupplyDeployTarget <= 0 || _config.SupplyDeploySize <= 0)
+        {
+            return state;
+        }
+
+        foreach (var city in state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).ToList())
+        {
+            var free = state.GeneralsAt(city.Id)
+                .Where(g => !state.IsGeneralBusy(g))
+                .Select(id => state.Generals.First(g => g.Id == id))
+                .OrderByDescending(g => g.AptitudeFor(TroopClass.Supply))
+                .ThenBy(g => g.Id.Value)
+                .ToList();
+            if (free.Count <= _config.KeepGeneralsHome)
+            {
+                continue;
+            }
+
+            var garrison = state.Garrisons
+                .Where(g => g.City == city.Id && g.TroopCode == _config.Troop && !g.Trainee)
+                .Sum(g => g.Troops);
+            if (garrison < _config.SupplyDeployTarget)
+            {
+                continue;
+            }
+
+            var target = NearestEnemyCity(state, faction, city.Position);
+            if (target is not { } dest)
+            {
+                continue;
+            }
+
+            var vanguard = free[0];
+            var result = _deployer.DeploySupply(state, new SupplyDeployRequest(
+                city.Id,
+                [new SupplyLine(_config.Troop, System.Math.Min(garrison, _config.SupplyDeploySize))],
+                vanguard.Id,
+                UnitMode.Attack,
+                dest));
+            if (result.Ok)
+            {
+                state = result.State;
+            }
+        }
+
         return state;
     }
 

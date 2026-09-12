@@ -26,8 +26,21 @@ public class FactionAiTests
 
     private static General Gen(int id) => new(
         new GeneralId(id), $"g{id}",
-        new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Infantry] = AptitudeGrade.A },
+        new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Infantry] = AptitudeGrade.A,
+            [TroopClass.Supply] = AptitudeGrade.C,
+        },
         Might: 70, Intellect: 60, Politics: 80);
+
+    private static General SupplyGen(int id, AptitudeGrade grade) => Gen(id) with
+    {
+        Aptitudes = new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Infantry] = AptitudeGrade.A,
+            [TroopClass.Supply] = grade,
+        },
+    };
 
     private static City Town(int id, int owner, HexCoord pos, int ore = 5000) =>
         new(new CityId(id), $"c{id}", pos, new FactionId(owner), 3000, CastleSize.Medium,
@@ -136,6 +149,25 @@ public class FactionAiTests
 
         Assert.Empty(after.Armies);
         Assert.Empty(after.Commands);
+    }
+
+    [Fact]
+    public void 보급부대_AI는_보급적성이_높은_장수를_우선한다()
+    {
+        var enemy = Town(9, 2, new HexCoord(10, 0));
+        var s = new GameState(1, 1, new List<Faction>(),
+            new List<City> { Town(1, 1, new HexCoord(0, 0)), enemy },
+            new List<General> { SupplyGen(1, AptitudeGrade.C), SupplyGen(2, AptitudeGrade.S) },
+            Postings: new List<GeneralPosting> { At(1, 1, 1), At(2, 1, 1) },
+            GarrisonForces: new List<GarrisonForce> { new(new CityId(1), "swordsman", 12000, 60) });
+
+        var after = Ai(new AiConfig(SupplyDeployTarget: 10000, SupplyDeploySize: 5000)).PlanWeek(s, new FactionId(1));
+
+        var supply = Assert.Single(after.Armies);
+        Assert.True(supply.IsSupply);
+        Assert.Equal(new GeneralId(2), supply.VanguardId);
+        Assert.Equal(145, supply.SupplyEfficiencyPercent);
+        Assert.Equal(enemy.Position, supply.Field.Target);
     }
 
     [Fact]
