@@ -573,7 +573,7 @@ public sealed class CampaignEngine
                 continue;
             }
 
-            var gold = unit.LootGold;
+            var gold = unit.CarryingGold;
             var provisions = unit.TracksProvisions ? unit.Provisions : 0;
             if (gold > 0 || provisions > 0)
             {
@@ -588,7 +588,7 @@ public sealed class CampaignEngine
                 }
             }
 
-            var incoming = unit.IsSupply && unit.Cargo.Count > 0
+            var incoming = (unit.IsSupply || unit.IsTransport) && unit.Cargo.Count > 0
                 ? unit.Cargo.Select(c => (c.TroopCode, c.Troops, Training: c.TrainingLevel))
                 : unit.TroopCode.Length > 0
                     ? [(unit.TroopCode, unit.Pool.Active, Training: unit.Training)]

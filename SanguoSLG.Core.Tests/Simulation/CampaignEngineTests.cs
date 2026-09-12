@@ -237,4 +237,35 @@ public class CampaignEngineTests
         var g = after.Garrisons.Single();
         Assert.Equal(("swordsman", 8000, 70), (g.TroopCode, g.Troops, g.TrainingLevel));
     }
+
+    [Fact]
+    public void 입성한_수송부대는_병종별_대기병력과_금군량을_도착성에_예치한다()
+    {
+        var source = new City(new CityId(1), "출발", new HexCoord(0, 0), new FactionId(1), 0);
+        var destination = new City(new CityId(2), "도착", new HexCoord(5, 0), new FactionId(1), 100, Gold: 20);
+        var field = new FieldUnit(new UnitId(9), new FactionId(1), new HexCoord(3, 0),
+            Speed: 2, Detection: 1, AttackRange: 0, MovementDomain.Land, UnitMode.March,
+            destination.Position, CommandOrder: 9, RangeCastle: 0);
+        var transport = new CombatUnit(field, new CombatStats(3000, 1, 1), new TroopPool(3000, 0),
+            UnitCombatState.Create(0), MaxTroops: 3000, Provisions: 600, Training: 60,
+            TroopCode: "transport",
+            SupplyCargo:
+            [
+                new SupplyComponent("archer", 1000, 70),
+                new SupplyComponent("swordsman", 2000, 60),
+            ],
+            CargoGold: 450,
+            IsTransport: true);
+        var s = new GameState(1, 1, new List<Faction>(), [source, destination], new List<General>(),
+            FieldArmies: [transport]);
+
+        var after = Engine().AdvanceWeek(s, out _);
+
+        Assert.Empty(after.Armies);
+        Assert.Equal(470, after.Cities.Single(c => c.Id == destination.Id).Gold);
+        Assert.True(after.Cities.Single(c => c.Id == destination.Id).Provisions > 100);
+        Assert.DoesNotContain(after.Garrisons, g => g.TroopCode == "transport");
+        Assert.Equal(1000, after.Garrisons.Single(g => g.City == destination.Id && g.TroopCode == "archer").Troops);
+        Assert.Equal(2000, after.Garrisons.Single(g => g.City == destination.Id && g.TroopCode == "swordsman").Troops);
+    }
 }
