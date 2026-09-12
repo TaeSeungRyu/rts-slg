@@ -1972,12 +1972,22 @@ public sealed partial class CampaignMapScene : Node3D
             Dbg($"  casualty u{cas.Unit.Value} {gName} {(cas.Captured ? $"captured-by f{cas.Holder!.Value.Value}" : cas.Refuge is { } r2 ? $"fled-to city{r2.Value}" : "wanderer")}");
         }
 
+        var reportedActingDefenders = new HashSet<CityId>();
         foreach (var ex in sieges)
         {
             var mine = preMove.Cities.First(c => c.Id == ex.City).Owner == Player;
             var byMe = ex.Besiegers.Any(b => preMove.Armies.Any(u => u.Id == b && u.Field.Owner == Player));
             if (!mine && !byMe) { continue; } // 내 세력 관련 공성만
             var cn = _cities.First(c => c.Id == ex.City).Name;
+            if (mine && reportedActingDefenders.Add(ex.City))
+            {
+                var cityBefore = preMove.Cities.First(c => c.Id == ex.City);
+                var leader = SiegeDefenseCommand.Select(preMove, cityBefore);
+                if (leader is { Acting: true, General: not null })
+                {
+                    Ev($"[수성] {cn}: 태수 부재로 {leader.Name} 장수가 임시 수성 지휘를 맡았습니다(수성 {GradeText(leader.Aptitude)}).", GoldBright);
+                }
+            }
             if (ex.Besiegers.Any(id => preMove.Armies.Any(a => a.Id == id && a.Field.Owner == WorldEngine.BanditFaction)))
             {
                 Ev($"[도적 습격] {cn} 공격 · 성벽 피해 {ex.WallDamage} · 수비 병력 피해 {ex.TroopDamage}", siegeCol);
@@ -3101,9 +3111,41 @@ public sealed partial class CampaignMapScene : Node3D
 
     private string WoundedForFaction(FactionId faction)
     {
-        var wounded = _state.Armies.Where(u => u.Field.Owner == faction && u.Pool.Active > 0)
+        var fieldWounded = _state.Armies.Where(u => u.Field.Owner == faction && u.Pool.Active > 0)
             .Sum(u => u.Pool.Wounded);
+        var cityWounded = _state.Cities.Where(c => c.Owner == faction)
+            .Sum(c => _state.CityWounded.Where(w => w.City == c.Id).Sum(w => w.Troops));
+        var wounded = fieldWounded + cityWounded;
         return wounded > 0 ? $"{wounded}명" : "없음";
+    }
+
+    private string WoundedForCity(CityId city)
+    {
+        var wounded = _state.CityWounded.Where(w => w.City == city).Sum(w => w.Troops);
+        return wounded > 0 ? $"{wounded}명" : "없음";
+    }
+
+    private string SiegeDefenseSummary(City city)
+    {
+        var leader = SiegeDefenseCommand.Select(_state, city);
+        var leaderText = leader.General is null
+            ? "수성 지휘관 없음"
+            : $"수성 지휘관 {leader.Name}{(leader.Acting ? " (대리)" : "")}";
+        var active = leader.General is { } gid
+            ? _state.Generals.FirstOrDefault(g => g.Id == gid)?.BattleActive
+            : null;
+        var activeName = active is { Length: > 0 }
+            ? _activeSkills.FirstOrDefault(a => a.Code == active)?.Name ?? active
+            : "없음";
+        var passives = leader.General is { } pgid
+            ? _state.Generals.FirstOrDefault(g => g.Id == pgid)?.Passives
+                .Select(p => _passiveSkills.FirstOrDefault(x => x.Code == p.Code)?.Name ?? p.Code)
+                .ToList() ?? []
+            : [];
+        var charge = _state.SiegeDefenseCharges.FirstOrDefault(c => c.City == city.Id && c.Leader == leader.General)?.ChargeDays ?? 0;
+        var wounded = _state.CityWounded.Where(w => w.City == city.Id).Sum(w => w.Troops);
+        var recovery = _state.SiegeDefenseCharges.Any(c => c.City == city.Id) && wounded > 0 ? " · 부상병 회복 정지" : "";
+        return $"{leaderText} · 수성 {GradeText(leader.Aptitude)} · 액티브 {activeName} · 패시브 {(passives.Count == 0 ? "없음" : string.Join(", ", passives))} · 충전 {charge}/{CityDefenseCharge.RequiredDays}일{recovery}";
     }
 
     private string? OfficerNameWithMonthlyEffect(GeneralId? id, CommandKind kind, City city)
@@ -4035,7 +4077,7 @@ public sealed partial class CampaignMapScene : Node3D
         AddCell(g4, Sym.Book, "주 훈련도", $"+{WeeklyTrainingPreview(c)}");
         AddCell(g4, Sym.Shield, "치안", $"{c.Security}");
         AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
-        AddCell(g4, Sym.Shield, "부상병", WoundedForFaction(c.Owner));
+        AddCell(g4, Sym.Shield, "부상병", WoundedForCity(c.Id));
         AddCell(g4, Sym.Ore, "광석", $"{c.Ore}");
         AddCell(g4, Sym.Ore, "말/코끼리", $"{c.Horses}/{c.Elephants}");
 
@@ -5459,9 +5501,9 @@ public sealed partial class CampaignMapScene : Node3D
         var classes = new[]
         {
             TroopClass.Infantry, TroopClass.Archer, TroopClass.Cavalry,
-            TroopClass.Elephant, TroopClass.Siege, TroopClass.Naval, TroopClass.Supply,
+            TroopClass.Elephant, TroopClass.Siege, TroopClass.Naval, TroopClass.Supply, TroopClass.Defense,
         };
-        var apt = new GridContainer { Columns = 7, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        var apt = new GridContainer { Columns = 8, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         apt.AddThemeConstantOverride("v_separation", 1);
         box.AddChild(apt);
         foreach (var tc in classes) { apt.AddChild(Cell(ClassName(tc), 11, new Color(Parchment, 0.75f))); }
