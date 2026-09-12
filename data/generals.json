@@ -12,7 +12,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 72,
     "intellect": 91,
@@ -52,7 +53,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 73,
     "intellect": 74,
@@ -88,7 +90,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "B",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 97,
     "intellect": 75,
@@ -114,7 +117,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "D",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 98,
     "intellect": 30,
@@ -140,7 +144,8 @@
       "elephant": "C",
       "siege": "D",
       "naval": "D",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 100,
     "intellect": 26,
@@ -167,7 +172,8 @@
       "elephant": "A",
       "siege": "S",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 38,
     "intellect": 100,
@@ -204,7 +210,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "SS",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 71,
     "intellect": 96,
@@ -236,7 +243,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "D",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 90,
     "intellect": 60,
@@ -269,7 +277,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 96,
     "intellect": 76,
@@ -301,7 +310,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "S",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 94,
     "intellect": 62,
@@ -328,7 +338,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 93,
     "intellect": 62,
@@ -354,7 +365,8 @@
       "elephant": "C",
       "siege": "S",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 63,
     "intellect": 98,
@@ -390,7 +402,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 92,
     "intellect": 78,
@@ -416,7 +429,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 89,
     "intellect": 69,
@@ -442,7 +456,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 90,
     "intellect": 68,
@@ -468,7 +483,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 83,
     "intellect": 55,
@@ -494,7 +510,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 79,
     "intellect": 60,
@@ -520,7 +537,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 78,
     "intellect": 74,
@@ -552,7 +570,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "D",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 95,
     "intellect": 35,
@@ -578,7 +597,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "D",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 96,
     "intellect": 36,
@@ -604,7 +624,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 94,
     "intellect": 58,
@@ -630,7 +651,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 91,
     "intellect": 60,
@@ -656,7 +678,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 86,
     "intellect": 62,
@@ -682,7 +705,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 80,
     "intellect": 48,
@@ -708,7 +732,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 68,
     "intellect": 80,
@@ -743,7 +768,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 78,
     "intellect": 64,
@@ -769,7 +795,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 77,
     "intellect": 62,
@@ -795,7 +822,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 30,
     "intellect": 98,
@@ -827,7 +855,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 32,
     "intellect": 95,
@@ -862,7 +891,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 33,
     "intellect": 93,
@@ -897,7 +927,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 40,
     "intellect": 97,
@@ -932,7 +963,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 55,
     "intellect": 92,
@@ -963,7 +995,8 @@
       "elephant": "C",
       "siege": "S",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 42,
     "intellect": 90,
@@ -994,7 +1027,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 62,
     "intellect": 84,
@@ -1029,7 +1063,8 @@
       "elephant": "C",
       "siege": "S",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 72,
     "intellect": 75,
@@ -1065,7 +1100,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "D",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 84,
     "intellect": 40,
@@ -1091,7 +1127,8 @@
       "elephant": "C",
       "siege": "S",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 87,
     "intellect": 89,
@@ -1123,7 +1160,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 65,
     "intellect": 90,
@@ -1154,7 +1192,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 72,
     "intellect": 88,
@@ -1185,7 +1224,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 65,
     "intellect": 86,
@@ -1217,7 +1257,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "D",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 97,
     "intellect": 44,
@@ -1243,7 +1284,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 92,
     "intellect": 69,
@@ -1269,7 +1311,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 89,
     "intellect": 90,
@@ -1295,7 +1338,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 82,
     "intellect": 54,
@@ -1321,7 +1365,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 76,
     "intellect": 72,
@@ -1347,7 +1392,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 74,
     "intellect": 58,
@@ -1372,7 +1418,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 34,
     "intellect": 97,
@@ -1407,7 +1454,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 38,
     "intellect": 94,
@@ -1438,7 +1486,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 30,
     "intellect": 87,
@@ -1473,7 +1522,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 52,
     "intellect": 85,
@@ -1498,7 +1548,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 60,
     "intellect": 92,
@@ -1529,7 +1580,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 82,
     "intellect": 62,
@@ -1555,7 +1607,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 84,
     "intellect": 60,
@@ -1581,7 +1634,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 85,
     "intellect": 52,
@@ -1607,7 +1661,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 81,
     "intellect": 66,
@@ -1633,7 +1688,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 75,
     "intellect": 74,
@@ -1664,7 +1720,8 @@
       "elephant": "S",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 87,
     "intellect": 42,
@@ -1696,7 +1753,8 @@
       "elephant": "A",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 80,
     "intellect": 45,
@@ -1728,7 +1786,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 80,
     "intellect": 58,
@@ -1754,7 +1813,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 72,
     "intellect": 62,
@@ -1779,7 +1839,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 91,
     "intellect": 75,
@@ -1811,7 +1872,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 94,
     "intellect": 70,
@@ -1837,7 +1899,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 67,
     "intellect": 80,
@@ -1872,7 +1935,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "B",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 93,
     "intellect": 66,
@@ -1898,7 +1962,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 78,
     "intellect": 70,
@@ -1930,7 +1995,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "S",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 83,
     "intellect": 64,
@@ -1956,7 +2022,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 80,
     "intellect": 58,
@@ -1982,7 +2049,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 90,
     "intellect": 48,
@@ -2008,7 +2076,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 84,
     "intellect": 56,
@@ -2034,7 +2103,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "S",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 86,
     "intellect": 90,
@@ -2066,7 +2136,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "S",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 70,
     "intellect": 97,
@@ -2102,7 +2173,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 68,
     "intellect": 88,
@@ -2134,7 +2206,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 56,
     "intellect": 92,
@@ -2173,7 +2246,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "B",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 20,
     "intellect": 84,
@@ -2202,7 +2276,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "B",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 32,
     "intellect": 86,
@@ -2237,7 +2312,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 82,
     "intellect": 68,
@@ -2263,7 +2339,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 80,
     "intellect": 72,
@@ -2289,7 +2366,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 78,
     "intellect": 74,
@@ -2315,7 +2393,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 78,
     "intellect": 50,
@@ -2341,7 +2420,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 74,
     "intellect": 70,
@@ -2366,7 +2446,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "D",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 87,
     "intellect": 52,
@@ -2392,7 +2473,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "D",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 88,
     "intellect": 40,
@@ -2418,7 +2500,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "D",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 74,
     "intellect": 42,
@@ -2443,7 +2526,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "D",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 73,
     "intellect": 40,
@@ -2468,7 +2552,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "D",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 88,
     "intellect": 52,
@@ -2500,7 +2585,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "D",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 70,
     "intellect": 72,
@@ -2525,7 +2611,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 70,
     "intellect": 72,
@@ -2560,7 +2647,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 93,
     "intellect": 42,
@@ -2586,7 +2674,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 92,
     "intellect": 40,
@@ -2612,7 +2701,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 30,
     "intellect": 91,
@@ -2643,7 +2733,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 32,
     "intellect": 89,
@@ -2674,7 +2765,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 52,
     "intellect": 50,
@@ -2699,7 +2791,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 82,
     "intellect": 50,
@@ -2725,7 +2818,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 84,
     "intellect": 58,
@@ -2757,7 +2851,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 55,
     "intellect": 70,
@@ -2792,7 +2887,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 68,
     "intellect": 50,
@@ -2817,7 +2913,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 80,
     "intellect": 68,
@@ -2843,7 +2940,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 30,
     "intellect": 40,
@@ -2862,7 +2960,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 84,
     "intellect": 76,
@@ -2888,7 +2987,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 40,
     "intellect": 90,
@@ -2920,7 +3020,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 45,
     "intellect": 78,
@@ -2945,7 +3046,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 50,
     "intellect": 72,
@@ -2970,7 +3072,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 48,
     "intellect": 92,
@@ -3001,7 +3104,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 88,
     "intellect": 60,
@@ -3027,7 +3131,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "B",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 48,
     "intellect": 62,
@@ -3052,7 +3157,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 28,
     "intellect": 70,
@@ -3077,7 +3183,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 22,
     "intellect": 80,
@@ -3106,7 +3213,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "B",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 55,
     "intellect": 58,
@@ -3125,7 +3233,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 50,
     "intellect": 70,
@@ -3160,7 +3269,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 74,
     "intellect": 72,
@@ -3185,7 +3295,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 52,
     "intellect": 86,
@@ -3216,7 +3327,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 35,
     "intellect": 78,
@@ -3235,7 +3347,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "B",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 95,
     "intellect": 85,
@@ -3271,7 +3384,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "B",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 82,
     "intellect": 96,
@@ -3307,7 +3421,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "B",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 94,
     "intellect": 82,
@@ -3339,7 +3454,8 @@
       "elephant": "C",
       "siege": "S",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 85,
     "intellect": 80,
@@ -3371,7 +3487,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 90,
     "intellect": 55,
@@ -3397,7 +3514,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "A",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 88,
     "intellect": 82,
@@ -3433,7 +3551,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 93,
     "intellect": 75,
@@ -3459,7 +3578,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "B",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 90,
     "intellect": 70,
@@ -3485,7 +3605,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "B",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 76,
     "intellect": 68,
@@ -3510,7 +3631,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 58,
     "intellect": 60,
@@ -3535,7 +3657,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "B",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 92,
     "intellect": 90,
@@ -3567,7 +3690,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 80,
     "intellect": 40,
@@ -3593,7 +3717,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 82,
     "intellect": 55,
@@ -3619,7 +3744,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "S",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 86,
     "intellect": 78,
@@ -3651,7 +3777,8 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 30,
     "intellect": 86,
@@ -3686,7 +3813,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "B",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 88,
     "intellect": 92,
@@ -3726,7 +3854,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "B",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 75,
     "intellect": 88,
@@ -3762,7 +3891,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 85,
     "intellect": 92,
@@ -3798,7 +3928,8 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "C"
+      "supply": "C",
+      "defense": "C"
     },
     "might": 96,
     "intellect": 84,

@@ -50,6 +50,7 @@ public sealed class GeneralLoader
         "siege" => TroopClass.Siege,
         "naval" => TroopClass.Naval,
         "supply" => TroopClass.Supply,
+        "defense" => TroopClass.Defense,
         _ => throw new InvalidDataException($"알 수 없는 병종 분류: {value}"),
     };
 

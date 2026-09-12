@@ -79,12 +79,13 @@ public class GeneralDataTests
     }
 
     [Fact]
-    public void 모든_장수는_병종7분류_적성을_전부가진다()
+    public void 모든_장수는_병종8분류_적성을_전부가진다()
     {
         foreach (var g in All)
         {
-            Assert.Equal(7, g.Aptitudes.Count);
+            Assert.Equal(8, g.Aptitudes.Count);
             Assert.Equal(AptitudeGrade.C, g.AptitudeFor(TroopClass.Supply));
+            Assert.Equal(AptitudeGrade.C, g.AptitudeFor(TroopClass.Defense));
         }
     }
 

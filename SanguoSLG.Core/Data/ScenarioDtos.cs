@@ -47,7 +47,7 @@ internal sealed class GeneralDto
     public int Id { get; init; }
     public string Name { get; init; } = "";
 
-    // 병종 분류 7종 → 등급 문자열("F"~"SSS", "A+"). spec-general "병종별 통솔".
+    // 병종/역할 분류 8종 → 등급 문자열("F"~"SSS", "A+"). spec-general "병종별 통솔".
     public Dictionary<string, string> Aptitudes { get; init; } = new();
     public int Might { get; init; }
     public int Intellect { get; init; }

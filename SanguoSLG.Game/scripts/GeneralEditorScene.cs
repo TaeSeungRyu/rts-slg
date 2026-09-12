@@ -7,7 +7,7 @@ using SanguoSLG.Core.Simulation;
 
 public partial class GeneralEditorScene : Control
 {
-    private static readonly string[] TroopKeys = ["infantry", "archer", "cavalry", "elephant", "siege", "naval", "supply"];
+    private static readonly string[] TroopKeys = ["infantry", "archer", "cavalry", "elephant", "siege", "naval", "supply", "defense"];
     private static readonly string[] GradeValues = ["F", "D", "C", "B", "A", "A+", "S", "SS", "SSS"];
 
     private readonly Dictionary<int, GeneralEditorRecord> _generalsById = new();
@@ -1156,6 +1156,7 @@ public partial class GeneralEditorScene : Control
         "siege" => "공성",
         "naval" => "해상",
         "supply" => "보급",
+        "defense" => "수성",
         _ => code,
     };
 }
