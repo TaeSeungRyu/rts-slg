@@ -253,6 +253,75 @@ public class DeployServiceTests
     }
 
     [Fact]
+    public void 수송_병력과_금군량을_꺼내_행군부대를_만든다()
+    {
+        var source = Town(1, new HexCoord(0, 0), provisions: 3000) with { Gold = 900 };
+        var destination = Town(2, new HexCoord(6, 0), provisions: 1000) with { Gold = 100 };
+        var s0 = State([source, destination], [],
+            garrisons:
+            [
+                new GarrisonForce(new CityId(1), "swordsman", 20000, 70),
+                new GarrisonForce(new CityId(1), "archer", 10000, 60),
+            ]);
+
+        var r = Service().DeployTransport(s0, new TransportDeployRequest(
+            new CityId(1),
+            [new TransportLine("swordsman", 12000), new TransportLine("archer", 5000)],
+            new CityId(2),
+            Gold: 400,
+            Provisions: 800));
+
+        Assert.True(r.Ok, r.Error);
+        var unit = r.State.Armies.Single();
+        Assert.True(unit.IsTransport);
+        Assert.False(unit.CanInitiateCombat);
+        Assert.Equal(UnitMode.March, unit.Field.Mode);
+        Assert.Equal(destination.Position, unit.Field.Target);
+        Assert.Equal(17_000, unit.Pool.Active);
+        Assert.Equal(400, unit.CargoGold);
+        Assert.Equal(800, unit.Provisions);
+        Assert.Equal("transport", unit.TroopCode);
+        Assert.Equal(500, r.State.Cities.Single(c => c.Id == source.Id).Gold);
+        Assert.Equal(2200, r.State.Cities.Single(c => c.Id == source.Id).Provisions);
+        Assert.Equal(8000, r.State.Garrisons.Single(g => g.TroopCode == "swordsman").Troops);
+        Assert.Equal(5000, r.State.Garrisons.Single(g => g.TroopCode == "archer").Troops);
+    }
+
+    [Fact]
+    public void 수송_병력은_최대_오만명까지만_편성된다()
+    {
+        var source = Town(1, new HexCoord(0, 0), provisions: 3000) with { Gold = 900 };
+        var destination = Town(2, new HexCoord(6, 0), provisions: 1000);
+        var s0 = State([source, destination], [],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 60000, 70)]);
+
+        var r = Service().DeployTransport(s0, new TransportDeployRequest(
+            new CityId(1), [new TransportLine("swordsman", 50001)], new CityId(2)));
+
+        Assert.False(r.Ok);
+        Assert.Contains("50000", r.Error);
+    }
+
+    [Fact]
+    public void 수송_보유한_금군량을_초과하면_거부된다()
+    {
+        var source = Town(1, new HexCoord(0, 0), provisions: 300) with { Gold = 100 };
+        var destination = Town(2, new HexCoord(6, 0), provisions: 1000);
+        var s0 = State([source, destination], [],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 10000, 70)]);
+
+        var tooMuchGold = Service().DeployTransport(s0, new TransportDeployRequest(
+            new CityId(1), [new TransportLine("swordsman", 1000)], new CityId(2), Gold: 101));
+        var tooMuchProvisions = Service().DeployTransport(s0, new TransportDeployRequest(
+            new CityId(1), [new TransportLine("swordsman", 1000)], new CityId(2), Provisions: 301));
+
+        Assert.False(tooMuchGold.Ok);
+        Assert.Contains("금", tooMuchGold.Error);
+        Assert.False(tooMuchProvisions.Ok);
+        Assert.Contains("군량", tooMuchProvisions.Error);
+    }
+
+    [Fact]
     public void 출전_일반부대는_최대_일만명까지만_편성된다()
     {
         var s0 = State([Town(1, new HexCoord(0, 0))], [Gen(1)],

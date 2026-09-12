@@ -28,6 +28,18 @@ public sealed record SupplyDeployRequest(
     HexCoord? Target = null,
     int Provisions = -1);
 
+/// <summary>수송부대 편성 한 줄 — 병종과 이동시킬 병력(0 이하면 그 병종 전량).</summary>
+public sealed record TransportLine(string TroopCode, int Troops);
+
+/// <summary>수송부대 출전 요청 — 성 간 병력·금·군량 이동(Phase 11D). 장수 없이 행군 전용.</summary>
+public sealed record TransportDeployRequest(
+    CityId City,
+    IReadOnlyList<TransportLine> Lines,
+    CityId Destination,
+    int Gold = 0,
+    int Provisions = 0,
+    IReadOnlyList<HexCoord>? Waypoints = null);
+
 /// <summary>
 /// 출전(design-administration "부대와의 연결"·design-unit-state). 대기 병력 + 장수 → 야전 부대:
 /// 군량을 성 비축에서 떼어 휴대(적재 상한 = 한 달치), 훈련도 승계, 장수는 야전으로(Location null).
@@ -36,6 +48,8 @@ public sealed record SupplyDeployRequest(
 /// </summary>
 public sealed class DeployService
 {
+    public const int TransportMaxTroops = 50_000;
+
     private readonly CommandBalance _b;
     private readonly IReadOnlyDictionary<string, TroopTemplate> _troops;
     private readonly IReadOnlyDictionary<string, ActiveSkill> _actives;
@@ -288,6 +302,127 @@ public sealed class DeployService
             Cities = cities,
             GarrisonForces = garrisons,
             Postings = postings,
+            FieldArmies = state.Armies.Append(unit).ToList(),
+        });
+    }
+
+    /// <summary>
+    /// 수송부대 편성(Phase 11D). 병력은 최대 5만, 금·군량은 도시 보유량 내에서 원하는 만큼 싣는다.
+    /// 수송부대는 행군모드 고정이며 공격·방어·스킬·점령을 하지 않는 물자 이동 전용 부대다.
+    /// </summary>
+    public CommandResult DeployTransport(GameState state, TransportDeployRequest req)
+    {
+        var city = state.Cities.FirstOrDefault(c => c.Id == req.City);
+        if (city is null)
+        {
+            return CommandResult.Fail("출발 도시를 찾을 수 없다.", state);
+        }
+
+        var destination = state.Cities.FirstOrDefault(c => c.Id == req.Destination);
+        if (destination is null)
+        {
+            return CommandResult.Fail("도착 도시를 찾을 수 없다.", state);
+        }
+
+        if (destination.Owner != city.Owner)
+        {
+            return CommandResult.Fail("수송은 같은 세력의 성으로만 보낼 수 있다.", state);
+        }
+
+        if (destination.Id == city.Id)
+        {
+            return CommandResult.Fail("같은 성으로는 수송할 수 없다.", state);
+        }
+
+        if (req.Gold < 0 || req.Provisions < 0)
+        {
+            return CommandResult.Fail("수송 물자는 0 이상이어야 한다.", state);
+        }
+
+        if (req.Gold > city.Gold)
+        {
+            return CommandResult.Fail("수송할 금이 부족하다.", state);
+        }
+
+        if (req.Provisions > city.Provisions)
+        {
+            return CommandResult.Fail("수송할 군량이 부족하다.", state);
+        }
+
+        if (req.Lines.Count == 0)
+        {
+            return CommandResult.Fail("수송할 병종이 없다.", state);
+        }
+
+        if (req.Lines.Select(l => l.TroopCode).Distinct().Count() != req.Lines.Count)
+        {
+            return CommandResult.Fail("같은 병종을 두 줄로 수송할 수 없다.", state);
+        }
+
+        var components = new List<SupplyComponent>();
+        foreach (var line in req.Lines.OrderBy(l => l.TroopCode, System.StringComparer.Ordinal))
+        {
+            if (!_troops.ContainsKey(line.TroopCode))
+            {
+                return CommandResult.Fail("병종을 지정해야 한다.", state);
+            }
+
+            var garrison = state.Garrisons.FirstOrDefault(g => g.City == req.City && g.TroopCode == line.TroopCode && !g.Trainee);
+            if (garrison is null || garrison.Troops <= 0)
+            {
+                return CommandResult.Fail($"{line.TroopCode} 대기 병력이 없다.", state);
+            }
+
+            var troops = line.Troops <= 0 ? garrison.Troops : line.Troops;
+            if (troops > garrison.Troops)
+            {
+                return CommandResult.Fail($"{line.TroopCode} 대기 병력이 부족하다.", state);
+            }
+
+            components.Add(new SupplyComponent(line.TroopCode, troops, garrison.TrainingLevel));
+        }
+
+        var total = components.Sum(c => c.Troops);
+        if (total <= 0)
+        {
+            return CommandResult.Fail("수송 병력은 1명 이상이어야 한다.", state);
+        }
+
+        if (total > TransportMaxTroops)
+        {
+            return CommandResult.Fail($"수송부대는 최대 {TransportMaxTroops}명까지 편성할 수 있다.", state);
+        }
+
+        var templates = components.Select(c => _troops[c.TroopCode]).ToList();
+        var allTemplates = _troops.Values.ToList();
+        var minAttack = System.Math.Max(1, allTemplates.Min(t => t.AtkUnit));
+        var minDefense = System.Math.Max(1, allTemplates.Min(t => t.Df));
+        var capacity = (int)(components.Zip(templates, (c, t) => (long)t.ProvisionsCapacity * c.Troops).Sum() / total);
+        var training = (int)((components.Sum(c => (long)c.TrainingLevel * c.Troops) + total / 2) / total);
+        var unitId = new UnitId(state.Armies.Count == 0 ? 1 : state.Armies.Max(u => u.Id.Value) + 1);
+        var field = new FieldUnit(unitId, city.Owner, city.Position,
+            Speed: 1, Detection: 1, AttackRange: 0, MovementDomain.Land,
+            UnitMode.March, destination.Position, unitId.Value, RangeCastle: 0, Waypoints: req.Waypoints);
+        var unit = new CombatUnit(field, new CombatStats(total, minAttack, minDefense), new TroopPool(total, 0),
+            UnitCombatState.Create(0), 0, 0, total, TroopClass.Infantry,
+            Provisions: req.Provisions, ProvisionsCapacity: capacity, IsSupply: false, Training: training,
+            TroopCode: "transport", SupplyCargo: components, CargoGold: req.Gold, IsTransport: true);
+
+        var taken = components.ToDictionary(c => c.TroopCode, c => c.Troops);
+        var garrisons = state.Garrisons
+            .Select(g => g.City == req.City && taken.TryGetValue(g.TroopCode, out var n)
+                ? g with { Troops = g.Troops - n }
+                : g)
+            .Where(g => g.Troops > 0)
+            .ToList();
+        var cities = state.Cities
+            .Select(c => c.Id == city.Id ? c with { Gold = c.Gold - req.Gold, Provisions = c.Provisions - req.Provisions } : c)
+            .ToList();
+
+        return CommandResult.Success(state with
+        {
+            Cities = cities,
+            GarrisonForces = garrisons,
             FieldArmies = state.Armies.Append(unit).ToList(),
         });
     }
