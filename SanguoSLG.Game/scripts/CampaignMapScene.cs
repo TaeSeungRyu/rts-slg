@@ -180,6 +180,8 @@ public sealed partial class CampaignMapScene : Node3D
     private CityId? _stratTarget; // 도시 계략 대상 도시(선택 UI)
     private int _offSortCol = -1; // -1 = 명령 관련 능력치 내림차순(기본)
     private bool _offSortAsc;
+    private int _generalRosterSortCol;
+    private bool _generalRosterSortAsc = true;
     private Label? _modalDetail;
     private readonly List<PanelContainer> _optionCards = new();
     private readonly List<PanelContainer> _autoRecruitRateCards = new();
@@ -5075,7 +5077,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         _state = new HeroUnlockService().Evaluate(_state);
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.86f, 820f, 1280f);
+        var mw = Mathf.Clamp(vp.X * 0.92f, 980f, 1500f);
         var mh = Mathf.Clamp(vp.Y * 0.85f, 380f, 760f);
         var box = SystemView("전체 장수 목록", mw, out var scroll, out var panel, out var titleRow);
 
@@ -5115,32 +5117,54 @@ public sealed partial class CampaignMapScene : Node3D
             };
         }
 
+        IEnumerable<General> OrderedGenerals()
+        {
+            var generals = _state.Generals.AsEnumerable();
+            IOrderedEnumerable<General> ordered = _generalRosterSortCol switch
+            {
+                0 => _generalRosterSortAsc ? generals.OrderBy(g => g.Name, System.StringComparer.Ordinal) : generals.OrderByDescending(g => g.Name, System.StringComparer.Ordinal),
+                1 => _generalRosterSortAsc ? generals.OrderBy(g => g.Might) : generals.OrderByDescending(g => g.Might),
+                2 => _generalRosterSortAsc ? generals.OrderBy(g => g.Intellect) : generals.OrderByDescending(g => g.Intellect),
+                3 => _generalRosterSortAsc ? generals.OrderBy(g => g.Politics) : generals.OrderByDescending(g => g.Politics),
+                4 => _generalRosterSortAsc ? generals.OrderBy(g => Where(g), System.StringComparer.Ordinal) : generals.OrderByDescending(g => Where(g), System.StringComparer.Ordinal),
+                >= 5 and <= 12 => _generalRosterSortAsc
+                    ? generals.OrderBy(g => AptitudeSortValue(g.AptitudeFor(GeneralRosterAptitudes[_generalRosterSortCol - 5].Class)))
+                    : generals.OrderByDescending(g => AptitudeSortValue(g.AptitudeFor(GeneralRosterAptitudes[_generalRosterSortCol - 5].Class))),
+                13 => _generalRosterSortAsc ? generals.OrderBy(g => HeroType(g.Id), System.StringComparer.Ordinal) : generals.OrderByDescending(g => HeroType(g.Id), System.StringComparer.Ordinal),
+                14 => _generalRosterSortAsc ? generals.OrderBy(g => HeroStatus(g.Id), System.StringComparer.Ordinal) : generals.OrderByDescending(g => HeroStatus(g.Id), System.StringComparer.Ordinal),
+                _ => generals.OrderBy(g => g.Id.Value),
+            };
+            return ordered.ThenBy(g => g.Id.Value);
+        }
+
         var tree = new Tree
         {
-            Columns = 8, ColumnTitlesVisible = true, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
+            Columns = 15, ColumnTitlesVisible = true, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
             CustomMinimumSize = new Vector2(0, Mathf.Min(mh - 60, 44 + _state.Generals.Count * 28)),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         tree.AddThemeFontOverride("font", _font);
-        tree.AddThemeFontSizeOverride("font_size", 14);
+        tree.AddThemeFontSizeOverride("font_size", 13);
         tree.AddThemeFontOverride("title_button_font", _font);
-        tree.AddThemeFontSizeOverride("title_button_font_size", 13);
-        tree.SetColumnTitle(0, "이름"); tree.SetColumnExpand(0, true); tree.SetColumnExpandRatio(0, 2);
-        tree.SetColumnCustomMinimumWidth(0, 110);
+        tree.AddThemeFontSizeOverride("title_button_font_size", 12);
+        tree.SetColumnTitle(0, SortTitle(0, "이름")); tree.SetColumnExpand(0, true); tree.SetColumnExpandRatio(0, 2); tree.SetColumnCustomMinimumWidth(0, 96);
         foreach (var (col, t) in new[] { (1, "무"), (2, "지"), (3, "정") })
         {
-            tree.SetColumnTitle(col, t); tree.SetColumnExpand(col, false); tree.SetColumnCustomMinimumWidth(col, 42);
+            tree.SetColumnTitle(col, SortTitle(col, t)); tree.SetColumnExpand(col, false); tree.SetColumnCustomMinimumWidth(col, 38);
         }
+        tree.SetColumnTitle(4, SortTitle(4, "소속·위치")); tree.SetColumnExpand(4, true); tree.SetColumnExpandRatio(4, 2); tree.SetColumnCustomMinimumWidth(4, 118);
+        for (var i = 0; i < GeneralRosterAptitudes.Length; i++)
+        {
+            var col = 5 + i;
+            tree.SetColumnTitle(col, SortTitle(col, GeneralRosterAptitudes[i].Short));
+            tree.SetColumnExpand(col, false);
+            tree.SetColumnCustomMinimumWidth(col, i >= 6 ? 54 : 40);
+        }
+        tree.SetColumnTitle(13, SortTitle(13, "위인")); tree.SetColumnExpand(13, true); tree.SetColumnExpandRatio(13, 1); tree.SetColumnCustomMinimumWidth(13, 96);
+        tree.SetColumnTitle(14, SortTitle(14, "상태")); tree.SetColumnExpand(14, false); tree.SetColumnCustomMinimumWidth(14, 64);
 
-        tree.SetColumnTitle(4, "소속·위치"); tree.SetColumnExpand(4, true); tree.SetColumnExpandRatio(4, 2);
-        tree.SetColumnCustomMinimumWidth(4, 130);
-        tree.SetColumnTitle(5, "병종 적성"); tree.SetColumnExpand(5, true); tree.SetColumnExpandRatio(5, 3);
-        tree.SetColumnCustomMinimumWidth(5, 260);
-        tree.SetColumnTitle(6, "위인 유형"); tree.SetColumnExpand(6, true); tree.SetColumnExpandRatio(6, 2);
-        tree.SetColumnCustomMinimumWidth(6, 140);
-        tree.SetColumnTitle(7, "상태"); tree.SetColumnExpand(7, false); tree.SetColumnCustomMinimumWidth(7, 74);
         var root = tree.CreateItem();
-        foreach (var g in _state.Generals.OrderBy(g => g.Id.Value))
+        foreach (var g in OrderedGenerals())
         {
             var it = tree.CreateItem(root);
             it.SetText(0, g.Name);
@@ -5148,18 +5172,32 @@ public sealed partial class CampaignMapScene : Node3D
             it.SetText(2, g.Intellect.ToString());
             it.SetText(3, g.Politics.ToString());
             it.SetText(4, Where(g));
-            it.SetText(5, GeneralAptitudeSummary(g));
-            it.SetText(6, HeroType(g.Id));
-            it.SetText(7, HeroStatus(g.Id));
+            for (var i = 0; i < GeneralRosterAptitudes.Length; i++)
+            {
+                var col = 5 + i;
+                var grade = g.AptitudeFor(GeneralRosterAptitudes[i].Class);
+                it.SetText(col, GradeText(grade));
+                it.SetTextAlignment(col, HorizontalAlignment.Center);
+                if (grade >= AptitudeGrade.A) { it.SetCustomColor(col, GoldBright); }
+            }
+            it.SetText(13, HeroType(g.Id));
+            it.SetText(14, HeroStatus(g.Id));
             it.SetMetadata(0, g.Id.Value);
             for (var col = 1; col <= 3; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
-            it.SetTextAlignment(7, HorizontalAlignment.Center);
+            it.SetTextAlignment(14, HorizontalAlignment.Center);
         }
 
         tree.ItemSelected += () =>
         {
             var it = tree.GetSelected();
             if (it is not null) { OpenGeneralCard(new GeneralId(it.GetMetadata(0).AsInt32())); }
+        };
+        tree.ColumnTitleClicked += (col, _) =>
+        {
+            var column = (int)col;
+            if (_generalRosterSortCol == column) { _generalRosterSortAsc = !_generalRosterSortAsc; }
+            else { _generalRosterSortCol = column; _generalRosterSortAsc = column is 0 or 4 or 13 or 14; }
+            OpenGeneralRoster();
         };
         box.AddChild(tree);
         var contentH = box.GetCombinedMinimumSize().Y;
@@ -6500,6 +6538,36 @@ public sealed partial class CampaignMapScene : Node3D
 
         return names.Count == 0 ? "없음" : string.Join(", ", names);
     }
+
+
+    private static readonly (string Short, string Label, TroopClass Class)[] GeneralRosterAptitudes =
+    [
+        ("보", "보병", TroopClass.Infantry),
+        ("궁", "궁병", TroopClass.Archer),
+        ("기", "기병", TroopClass.Cavalry),
+        ("상", "상병", TroopClass.Elephant),
+        ("공", "공성", TroopClass.Siege),
+        ("해", "해상", TroopClass.Naval),
+        ("보급", "보급", TroopClass.Supply),
+        ("수성", "수성", TroopClass.Defense),
+    ];
+
+    private string SortTitle(int col, string text)
+        => _generalRosterSortCol == col ? text + (_generalRosterSortAsc ? " ▲" : " ▼") : text;
+
+    private static int AptitudeSortValue(AptitudeGrade grade) => grade switch
+    {
+        AptitudeGrade.F => 0,
+        AptitudeGrade.D => 1,
+        AptitudeGrade.C => 2,
+        AptitudeGrade.B => 3,
+        AptitudeGrade.A => 4,
+        AptitudeGrade.APlus => 5,
+        AptitudeGrade.S => 6,
+        AptitudeGrade.SS => 7,
+        AptitudeGrade.SSS => 8,
+        _ => -1,
+    };
 
     private string GeneralAptitudeSummary(General general)
     {
