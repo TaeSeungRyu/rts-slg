@@ -257,17 +257,19 @@ public class DeployServiceTests
     {
         var source = Town(1, new HexCoord(0, 0), provisions: 3000) with { Gold = 900 };
         var destination = Town(2, new HexCoord(6, 0), provisions: 1000) with { Gold = 100 };
-        var s0 = State([source, destination], [],
+        var s0 = State([source, destination], [Gen(1)],
             garrisons:
             [
                 new GarrisonForce(new CityId(1), "swordsman", 20000, 70),
                 new GarrisonForce(new CityId(1), "archer", 10000, 60),
-            ]);
+            ],
+            postings: [At(1, 1)]);
 
         var r = Service().DeployTransport(s0, new TransportDeployRequest(
             new CityId(1),
             [new TransportLine("swordsman", 12000), new TransportLine("archer", 5000)],
             new CityId(2),
+            new GeneralId(1),
             Gold: 400,
             Provisions: 800));
 
@@ -276,7 +278,9 @@ public class DeployServiceTests
         Assert.True(unit.IsTransport);
         Assert.False(unit.CanInitiateCombat);
         Assert.Equal(UnitMode.March, unit.Field.Mode);
+        Assert.Equal(2, unit.Field.Speed);
         Assert.Equal(destination.Position, unit.Field.Target);
+        Assert.Equal(new GeneralId(1), unit.VanguardId);
         Assert.Equal(17_000, unit.Pool.Active);
         Assert.Equal(400, unit.CargoGold);
         Assert.Equal(800, unit.Provisions);
@@ -285,6 +289,7 @@ public class DeployServiceTests
         Assert.Equal(2200, r.State.Cities.Single(c => c.Id == source.Id).Provisions);
         Assert.Equal(8000, r.State.Garrisons.Single(g => g.TroopCode == "swordsman").Troops);
         Assert.Equal(5000, r.State.Garrisons.Single(g => g.TroopCode == "archer").Troops);
+        Assert.Null(r.State.PostingOf(new GeneralId(1))!.Location);
     }
 
     [Fact]
@@ -292,11 +297,12 @@ public class DeployServiceTests
     {
         var source = Town(1, new HexCoord(0, 0), provisions: 3000) with { Gold = 900 };
         var destination = Town(2, new HexCoord(6, 0), provisions: 1000);
-        var s0 = State([source, destination], [],
+        var s0 = State([source, destination], [Gen(1)],
+            postings: [At(1, 1)],
             garrisons: [new GarrisonForce(new CityId(1), "swordsman", 60000, 70)]);
 
         var r = Service().DeployTransport(s0, new TransportDeployRequest(
-            new CityId(1), [new TransportLine("swordsman", 50001)], new CityId(2)));
+            new CityId(1), [new TransportLine("swordsman", 50001)], new CityId(2), new GeneralId(1)));
 
         Assert.False(r.Ok);
         Assert.Contains("50000", r.Error);
@@ -307,13 +313,14 @@ public class DeployServiceTests
     {
         var source = Town(1, new HexCoord(0, 0), provisions: 300) with { Gold = 100 };
         var destination = Town(2, new HexCoord(6, 0), provisions: 1000);
-        var s0 = State([source, destination], [],
+        var s0 = State([source, destination], [Gen(1)],
+            postings: [At(1, 1)],
             garrisons: [new GarrisonForce(new CityId(1), "swordsman", 10000, 70)]);
 
         var tooMuchGold = Service().DeployTransport(s0, new TransportDeployRequest(
-            new CityId(1), [new TransportLine("swordsman", 1000)], new CityId(2), Gold: 101));
+            new CityId(1), [new TransportLine("swordsman", 1000)], new CityId(2), new GeneralId(1), Gold: 101));
         var tooMuchProvisions = Service().DeployTransport(s0, new TransportDeployRequest(
-            new CityId(1), [new TransportLine("swordsman", 1000)], new CityId(2), Provisions: 301));
+            new CityId(1), [new TransportLine("swordsman", 1000)], new CityId(2), new GeneralId(1), Provisions: 301));
 
         Assert.False(tooMuchGold.Ok);
         Assert.Contains("금", tooMuchGold.Error);

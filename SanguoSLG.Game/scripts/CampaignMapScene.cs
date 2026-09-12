@@ -5392,7 +5392,11 @@ public sealed partial class CampaignMapScene : Node3D
             return KindName(locking.Kind) + " 중";
         }
 
-        return _pendingDeploys.Any(d => d.Req.Vanguard == id || d.Req.Adjutant == id) ? "출전 예약" : "대기";
+        return _pendingDeploys.Any(d => d.Req.Vanguard == id || d.Req.Adjutant == id)
+            || _pendingSupplyDeploys.Any(d => d.Req.Vanguard == id)
+            || _pendingTransportDeploys.Any(d => d.Req.Vanguard == id)
+            ? "출전 예약"
+            : "대기";
     }
 
     private static string GradeText(AptitudeGrade g) => g == AptitudeGrade.APlus ? "A+" : g.ToString();
@@ -6200,6 +6204,21 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
+        var reservedGenerals = ReservedDeployGenerals(-1, editingSupply: false);
+        var generals = _state.GeneralsAt(city)
+            .Where(g => !OfficerUnavailable(g) && !reservedGenerals.Contains(g))
+            .Select(id => _state.Generals.First(g => g.Id == id))
+            .OrderByDescending(g => AptitudeRank(g.AptitudeFor(TroopClass.Supply)))
+            .ThenByDescending(g => g.Politics)
+            .ThenBy(g => g.Id.Value)
+            .ToList();
+        if (generals.Count == 0)
+        {
+            ShowNotice("수송 불가", "수송을 맡길 대기 장수가 없습니다.");
+            OpenDeployHub();
+            return;
+        }
+
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.46f, 420f, 620f);
         var mh = Mathf.Clamp(vp.Y * 0.72f, 360f, 620f);
@@ -6215,7 +6234,7 @@ public sealed partial class CampaignMapScene : Node3D
         back.Pressed += OpenDeployHub;
         titleRow.AddChild(back);
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("주둔 병력과 금·군량을 다른 아군 성으로 이동합니다.\n수송부대는 행군 전용이며 공격·방어·점령을 할 수 없고, 이동 중 군량 소모가 50% 감소합니다.", 12, Parchment));
+        box.AddChild(MakeLabel("주둔 병력과 금·군량을 다른 아군 성으로 이동합니다.\n수송부대는 장수를 배치하지만 행군 전용이며 공격·방어·점령을 할 수 없고, 속도 2·군량 소모 50%로 이동합니다.", 12, Parchment));
 
         var form = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         form.AddThemeConstantOverride("h_separation", 10);
@@ -6229,6 +6248,14 @@ public sealed partial class CampaignMapScene : Node3D
             destOpt.AddItem($"{d.Name} · 거리 {source.Position.Distance(d.Position)}", d.Id.Value);
         }
         form.AddChild(destOpt);
+
+        form.AddChild(MakeLabel("수송 장수", 12, GoldBright));
+        var generalOpt = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        foreach (var g in generals)
+        {
+            generalOpt.AddItem($"{g.Name} · 보급 {GradeText(g.AptitudeFor(TroopClass.Supply))} · 정{g.Politics}", g.Id.Value);
+        }
+        form.AddChild(generalOpt);
 
         form.AddChild(MakeLabel("병종", 12, GoldBright));
         var troopOpt = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -6280,13 +6307,15 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var g = garrisons[Mathf.Clamp(troopOpt.Selected, 0, garrisons.Count - 1)];
             var d = destinations[Mathf.Clamp(destOpt.Selected, 0, destinations.Count - 1)];
+            var leader = generals[Mathf.Clamp(generalOpt.Selected, 0, generals.Count - 1)];
             troopSpin.MaxValue = System.Math.Min(DeployService.TransportMaxTroops, g.Troops);
             if (troopSpin.Value > troopSpin.MaxValue) { troopSpin.Value = troopSpin.MaxValue; }
             var name = _troops.FirstOrDefault(t => t.Code == g.TroopCode)?.Name ?? g.TroopCode;
-            preview.Text = $"예약 미리보기: {source.Name} → {d.Name} · {name} {(int)troopSpin.Value}명 · 금 {(int)goldSpin.Value} · 군량 {(int)provSpin.Value}";
+            preview.Text = $"예약 미리보기: {source.Name} → {d.Name} · {leader.Name} · {name} {(int)troopSpin.Value}명 · 금 {(int)goldSpin.Value} · 군량 {(int)provSpin.Value}";
         }
 
         destOpt.ItemSelected += _ => Refresh();
+        generalOpt.ItemSelected += _ => Refresh();
         troopOpt.ItemSelected += _ => Refresh();
         troopSpin.ValueChanged += _ => Refresh();
         goldSpin.ValueChanged += _ => Refresh();
@@ -6299,16 +6328,28 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var g = garrisons[Mathf.Clamp(troopOpt.Selected, 0, garrisons.Count - 1)];
             var d = destinations[Mathf.Clamp(destOpt.Selected, 0, destinations.Count - 1)];
+            var leader = generals[Mathf.Clamp(generalOpt.Selected, 0, generals.Count - 1)];
             var troops = (int)troopSpin.Value;
             var gold = (int)goldSpin.Value;
             var provisions = (int)provSpin.Value;
             var name = _troops.FirstOrDefault(t => t.Code == g.TroopCode)?.Name ?? g.TroopCode;
-            var label = $"{source.Name}→{d.Name} · {name} {troops}명 · 금 {gold} · 군량 {provisions}";
-            _pendingTransportDeploys.Add((new TransportDeployRequest(city,
-                [new TransportLine(g.TroopCode, troops)], d.Id, gold, provisions), label));
-            _log.Text = $"수송 예약: {label}";
-            SelectCity(city);
-            OpenDeployHub();
+            var label = $"{source.Name}→{d.Name} · {leader.Name} · {name} {troops}명 · 금 {gold} · 군량 {provisions}";
+            var ids = new[] { leader.Id };
+            ShowConfirm("수송 예약 확인", $"{label}{DutyReleaseNotice(ids)}", () =>
+            {
+                if (_advancing || ids.Any(id => _state.IsGeneralBusy(id)) || ReservedDeployGenerals(-1, editingSupply: false).Contains(leader.Id))
+                {
+                    ShowNotice("수송 불가", "선택한 장수가 다른 업무를 수행 중입니다.");
+                    return;
+                }
+
+                _state = _state.ReleaseOfficerDuties(ids);
+                _pendingTransportDeploys.Add((new TransportDeployRequest(city,
+                    [new TransportLine(g.TroopCode, troops)], d.Id, leader.Id, gold, provisions), label));
+                _log.Text = $"수송 예약: {label}";
+                SelectCity(city);
+                OpenDeployHub();
+            });
         };
         box.AddChild(save);
 
@@ -6918,6 +6959,15 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
+        foreach (var (rq, _) in _pendingTransportDeploys)
+        {
+            if (rq.City != city) { continue; }
+            foreach (var line in rq.Lines)
+            {
+                used[line.TroopCode] = used.GetValueOrDefault(line.TroopCode, 0) + line.Troops;
+            }
+        }
+
         return used;
     }
 
@@ -6936,6 +6986,11 @@ public sealed partial class CampaignMapScene : Node3D
         {
             if (editingSupply && i == editIndex) { continue; }
             used.Add(_pendingSupplyDeploys[i].Req.Vanguard);
+        }
+
+        foreach (var (rq, _) in _pendingTransportDeploys)
+        {
+            used.Add(rq.Vanguard);
         }
 
         return used;

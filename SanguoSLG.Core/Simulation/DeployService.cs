@@ -36,6 +36,7 @@ public sealed record TransportDeployRequest(
     CityId City,
     IReadOnlyList<TransportLine> Lines,
     CityId Destination,
+    GeneralId Vanguard,
     int Gold = 0,
     int Provisions = 0,
     IReadOnlyList<HexCoord>? Waypoints = null);
@@ -308,7 +309,7 @@ public sealed class DeployService
 
     /// <summary>
     /// 수송부대 편성(Phase 11D). 병력은 최대 5만, 금·군량은 도시 보유량 내에서 원하는 만큼 싣는다.
-    /// 수송부대는 행군모드 고정이며 공격·방어·스킬·점령을 하지 않는 물자 이동 전용 부대다.
+    /// 수송부대는 장수를 배치하지만 행군모드 고정이며 공격·방어·스킬·점령을 하지 않는 물자 이동 전용 부대다.
     /// </summary>
     public CommandResult DeployTransport(GameState state, TransportDeployRequest req)
     {
@@ -393,6 +394,17 @@ public sealed class DeployService
             return CommandResult.Fail($"수송부대는 최대 {TransportMaxTroops}명까지 편성할 수 있다.", state);
         }
 
+        var vanguard = state.Generals.FirstOrDefault(g => g.Id == req.Vanguard);
+        if (vanguard is null)
+        {
+            return CommandResult.Fail("수송 장수를 찾을 수 없다.", state);
+        }
+
+        if (ValidateGenerals(state, city, req.Vanguard, adjutant: null) is { } error)
+        {
+            return CommandResult.Fail(error, state);
+        }
+
         var templates = components.Select(c => _troops[c.TroopCode]).ToList();
         var allTemplates = _troops.Values.ToList();
         var minAttack = System.Math.Max(1, allTemplates.Min(t => t.AtkUnit));
@@ -401,12 +413,12 @@ public sealed class DeployService
         var training = (int)((components.Sum(c => (long)c.TrainingLevel * c.Troops) + total / 2) / total);
         var unitId = new UnitId(state.Armies.Count == 0 ? 1 : state.Armies.Max(u => u.Id.Value) + 1);
         var field = new FieldUnit(unitId, city.Owner, city.Position,
-            Speed: 1, Detection: 1, AttackRange: 0, MovementDomain.Land,
+            Speed: 2, Detection: 1, AttackRange: 0, MovementDomain.Land,
             UnitMode.March, destination.Position, unitId.Value, RangeCastle: 0, Waypoints: req.Waypoints);
         var unit = new CombatUnit(field, new CombatStats(total, minAttack, minDefense), new TroopPool(total, 0),
-            UnitCombatState.Create(0), 0, 0, total, TroopClass.Infantry,
+            UnitCombatState.Create(vanguard.Intellect), vanguard.Might, vanguard.Intellect, total, TroopClass.Infantry,
             Provisions: req.Provisions, ProvisionsCapacity: capacity, IsSupply: false, Training: training,
-            TroopCode: "transport", SupplyCargo: components, CargoGold: req.Gold, IsTransport: true);
+            TroopCode: "transport", VanguardId: vanguard.Id, SupplyCargo: components, CargoGold: req.Gold, IsTransport: true);
 
         var taken = components.ToDictionary(c => c.TroopCode, c => c.Troops);
         var garrisons = state.Garrisons
@@ -417,12 +429,17 @@ public sealed class DeployService
             .ToList();
         var cities = state.Cities
             .Select(c => c.Id == city.Id ? c with { Gold = c.Gold - req.Gold, Provisions = c.Provisions - req.Provisions } : c)
+            .Select(c => ClearOfficerRoles(c, new HashSet<GeneralId> { req.Vanguard }))
+            .ToList();
+        var postings = state.Assignments
+            .Select(p => p.General == req.Vanguard ? p with { Location = null } : p)
             .ToList();
 
         return CommandResult.Success(state with
         {
             Cities = cities,
             GarrisonForces = garrisons,
+            Postings = postings,
             FieldArmies = state.Armies.Append(unit).ToList(),
         });
     }
