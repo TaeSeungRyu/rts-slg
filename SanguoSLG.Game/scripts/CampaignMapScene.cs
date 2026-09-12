@@ -425,7 +425,7 @@ public sealed partial class CampaignMapScene : Node3D
             new CampaignSiege(new BattleResolver(60), _troops),
             new CityCapture(), new SeededRandomSource(42),
             new CityPlunder(_cb), _cb.CityResupplyRadius,
-            _cb.BuildSiteHp, _cb.BuildSiteDamagePerTurn, passives);
+            _cb.BuildSiteHp, _cb.BuildSiteDamagePerTurn, passives, actives);
         var scenario = new ScenarioLoader().LoadFromDirectory(dataDirectory);
         _vision = new BattlefieldVision(scenario.Balance, _troops);
         _fog = new BattlefieldFogView(_view);

@@ -201,4 +201,60 @@ public class CampaignSiegeTests
             "태수의 수성 적성과 성 주둔 패시브가 수비 피해를 줄여야 한다.");
     }
 
+
+    [Fact]
+    public void 수성액티브는_5일_충전되면_공성방어에_적용된다()
+    {
+        var attacker = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0), troops: 12000);
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 0, size: CastleSize.Medium) with { Governor = new GeneralId(10) };
+        var garr = new List<GarrisonForce> { new(new CityId(9), "swordsman", 10000, 60) };
+        var passives = new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).ToList();
+        var actives = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).ToList();
+        var governor = new General(new GeneralId(10), "태수", new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Defense] = AptitudeGrade.C,
+        }, Might: 100, Intellect: 80, Politics: 70, BattleActive: "hold_the_line");
+        var state = new GameState(1, 190, [], [city], [governor], Postings: [new GeneralPosting(governor.Id, city.Owner, city.Id)],
+            GarrisonForces: garr, FieldArmies: [attacker],
+            DefenseCharges: [new CityDefenseCharge(city.Id, governor.Id, 4)]);
+
+        var active = new CampaignEngine(
+            new AdvanceOrchestrator(new MovementSimulator(new PassabilityMap(new HexMap(0, 30, -8, 8), [], [])), new CombatPhaseResolver(new BattleResolver(60), 70)),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)), Siege(), passives: passives, actives: actives)
+            .AdvanceWeek(state, out _, out _);
+
+        var notReady = new CampaignEngine(
+            new AdvanceOrchestrator(new MovementSimulator(new PassabilityMap(new HexMap(0, 30, -8, 8), [], [])), new CombatPhaseResolver(new BattleResolver(60), 70)),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)), Siege(), passives: passives, actives: actives)
+            .AdvanceWeek(state with { FieldArmies = [attacker], DefenseCharges = [new CityDefenseCharge(city.Id, governor.Id, 0)] }, out _, out _);
+
+        Assert.True(active.Garrisons.Sum(g => g.Troops) > notReady.Garrisons.Sum(g => g.Troops),
+            "5일 충전된 방어 액티브가 수비 피해를 더 줄여야 한다.");
+        Assert.All(active.SiegeDefenseCharges, c => Assert.InRange(c.ChargeDays, 0, CityDefenseCharge.RequiredDays));
+    }
+
+    [Fact]
+    public void 수성액티브_충전은_공격이_없으면_초기화된다()
+    {
+        var farBase = Army(1, 1, new HexCoord(0, 0), new HexCoord(5, 0), troops: 12000);
+        var far = farBase with { Field = farBase.Field with { Mode = UnitMode.March } };
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 6000, size: CastleSize.Medium) with { Governor = new GeneralId(10) };
+        var governor = new General(new GeneralId(10), "태수", new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Defense] = AptitudeGrade.C,
+        }, Might: 80, Intellect: 80, Politics: 70, BattleActive: "hold_the_line");
+        var state = new GameState(1, 190, [], [city], [governor], Postings: [new GeneralPosting(governor.Id, city.Owner, city.Id)],
+            GarrisonForces: [new GarrisonForce(city.Id, "swordsman", 10000, 60)], FieldArmies: [far],
+            DefenseCharges: [new CityDefenseCharge(city.Id, governor.Id, 4)]);
+
+        var after = new CampaignEngine(
+            new AdvanceOrchestrator(new MovementSimulator(new PassabilityMap(new HexMap(0, 30, -8, 8), [], [])), new CombatPhaseResolver(new BattleResolver(60), 70)),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)), Siege(),
+            actives: new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).ToList())
+            .AdvanceWeek(state, out _, out var sieges);
+
+        Assert.Empty(sieges);
+        Assert.Empty(after.SiegeDefenseCharges);
+    }
+
 }
