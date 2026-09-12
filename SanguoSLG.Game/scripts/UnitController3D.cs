@@ -43,6 +43,7 @@ public partial class UnitController3D : Node3D
     private Node3D? _nativeSupplyMove;
     private readonly List<(Node3D Node, Vector3 Base)> _nativeSupplyLegs = new();
     private readonly List<Node3D> _nativeSupplyWheels = new();
+    private readonly List<(Node3D LeftArm, Vector3 LeftBase, Node3D RightArm, Vector3 RightBase)> _nativeSupplyArchers = new();
     private float _nativeSupplyMoveTime;
 
     // 편대 검수용 임시 지정 — 병종 데이터(data/troop-types.json)가 생기면 그쪽에서 받는다.
@@ -547,7 +548,8 @@ public partial class UnitController3D : Node3D
         _attacking = true;
         if (_nativeSupply)
         {
-            PlayNativeSupplyAnimation("shot_arrow", fallback: "state_camp");
+            PlayNativeSupplyAnimation("state_camp");
+            PlayNativeSupplyShotMotion();
             LooseSupplyArrows();
             var tween = CreateTween();
             tween.TweenInterval(AttackScatterSeconds + WindUpSeconds + SwingSeconds + RecoverSeconds);
@@ -1851,6 +1853,7 @@ public partial class UnitController3D : Node3D
         _nativeSupplyMove = null;
         _nativeSupplyLegs.Clear();
         _nativeSupplyWheels.Clear();
+        _nativeSupplyArchers.Clear();
         _nativeSupplyMoveTime = 0f;
         _tokenRoot?.QueueFree();
 
@@ -1872,6 +1875,8 @@ public partial class UnitController3D : Node3D
             AddNativeSupplyLeg(instance, "move_guard_leg_r");
             AddNativeSupplyWheel(instance, "supply_cart_wheel_L");
             AddNativeSupplyWheel(instance, "supply_cart_wheel_R");
+            AddNativeSupplyArcher(instance, "camp_archer_l");
+            AddNativeSupplyArcher(instance, "camp_archer_r");
             _motion = MotionKind.Infantry;
             _lastPosition = Position;
             FactionColorView.Apply(_tokenRoot, _factionColor);
@@ -2049,6 +2054,45 @@ public partial class UnitController3D : Node3D
         if (root.FindChild(name, true, false) is Node3D wheel)
         {
             _nativeSupplyWheels.Add(wheel);
+        }
+    }
+
+    private void AddNativeSupplyArcher(Node root, string prefix)
+    {
+        if (root.FindChild(prefix + "_arm_l", true, false) is Node3D left
+            && root.FindChild(prefix + "_arm_r", true, false) is Node3D right)
+        {
+            _nativeSupplyArchers.Add((left, left.Rotation, right, right.Rotation));
+        }
+    }
+
+    private void PlayNativeSupplyShotMotion()
+    {
+        if (_nativeSupplyArchers.Count == 0) { return; }
+
+        for (var i = 0; i < _nativeSupplyArchers.Count; i++)
+        {
+            var (left, leftBase, right, rightBase) = _nativeSupplyArchers[i];
+            if (!Alive(left) || !Alive(right)) { continue; }
+
+            left.Rotation = leftBase;
+            right.Rotation = rightBase;
+
+            var delay = i * 0.05f;
+            var tween = CreateTween();
+            tween.SetParallel(true);
+            tween.TweenProperty(left, "rotation", leftBase + new Vector3(Mathf.DegToRad(-14f), 0f, Mathf.DegToRad(-5f)), 0.18f)
+                .SetDelay(delay);
+            tween.TweenProperty(right, "rotation", rightBase + new Vector3(Mathf.DegToRad(34f), 0f, Mathf.DegToRad(18f)), 0.18f)
+                .SetDelay(delay);
+            tween.TweenProperty(left, "rotation", leftBase + new Vector3(Mathf.DegToRad(-6f), 0f, Mathf.DegToRad(4f)), 0.08f)
+                .SetDelay(delay + 0.18f);
+            tween.TweenProperty(right, "rotation", rightBase + new Vector3(Mathf.DegToRad(-18f), 0f, Mathf.DegToRad(-6f)), 0.08f)
+                .SetDelay(delay + 0.18f);
+            tween.TweenProperty(left, "rotation", leftBase, 0.22f)
+                .SetDelay(delay + 0.34f);
+            tween.TweenProperty(right, "rotation", rightBase, 0.22f)
+                .SetDelay(delay + 0.34f);
         }
     }
 

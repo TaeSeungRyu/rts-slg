@@ -5090,9 +5090,10 @@ public sealed partial class CampaignMapScene : Node3D
             tree.SetColumnTitle(col, t); tree.SetColumnExpand(col, false); tree.SetColumnCustomMinimumWidth(col, 42);
         }
 
-        tree.SetColumnTitle(4, "소속·위치"); tree.SetColumnExpand(4, true); tree.SetColumnExpandRatio(4, 3);
-        tree.SetColumnCustomMinimumWidth(4, 140);
-        tree.SetColumnTitle(5, "보급"); tree.SetColumnExpand(5, false); tree.SetColumnCustomMinimumWidth(5, 52);
+        tree.SetColumnTitle(4, "소속·위치"); tree.SetColumnExpand(4, true); tree.SetColumnExpandRatio(4, 2);
+        tree.SetColumnCustomMinimumWidth(4, 130);
+        tree.SetColumnTitle(5, "병종 적성"); tree.SetColumnExpand(5, true); tree.SetColumnExpandRatio(5, 3);
+        tree.SetColumnCustomMinimumWidth(5, 260);
         tree.SetColumnTitle(6, "위인 유형"); tree.SetColumnExpand(6, true); tree.SetColumnExpandRatio(6, 2);
         tree.SetColumnCustomMinimumWidth(6, 140);
         tree.SetColumnTitle(7, "상태"); tree.SetColumnExpand(7, false); tree.SetColumnCustomMinimumWidth(7, 74);
@@ -5105,12 +5106,11 @@ public sealed partial class CampaignMapScene : Node3D
             it.SetText(2, g.Intellect.ToString());
             it.SetText(3, g.Politics.ToString());
             it.SetText(4, Where(g));
-            it.SetText(5, GradeText(g.AptitudeFor(TroopClass.Supply)));
+            it.SetText(5, GeneralAptitudeSummary(g));
             it.SetText(6, HeroType(g.Id));
             it.SetText(7, HeroStatus(g.Id));
             it.SetMetadata(0, g.Id.Value);
             for (var col = 1; col <= 3; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
-            it.SetTextAlignment(5, HorizontalAlignment.Center);
             it.SetTextAlignment(7, HorizontalAlignment.Center);
         }
 
@@ -6457,6 +6457,22 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         return names.Count == 0 ? "없음" : string.Join(", ", names);
+    }
+
+    private string GeneralAptitudeSummary(General general)
+    {
+        var pairs = new[]
+        {
+            (Label: "보", Class: TroopClass.Infantry),
+            (Label: "궁", Class: TroopClass.Archer),
+            (Label: "기", Class: TroopClass.Cavalry),
+            (Label: "상", Class: TroopClass.Elephant),
+            (Label: "공", Class: TroopClass.Siege),
+            (Label: "해", Class: TroopClass.Naval),
+            (Label: "보급", Class: TroopClass.Supply),
+        };
+
+        return string.Join(" · ", pairs.Select(p => $"{p.Label}{GradeText(general.AptitudeFor(p.Class))}"));
     }
 
     private int SupplyMaxCarryDays()
