@@ -53,6 +53,7 @@ public sealed class CampaignSiege
         IReadOnlyList<CombatUnit> Armies,
         IReadOnlyList<City> Cities,
         IReadOnlyList<GarrisonForce> Garrisons,
+        IReadOnlyList<CityWoundedForce> CityWounded,
         IReadOnlyList<SiegeExchange> Exchanges);
 
     /// <summary>이번 진행의 공성 교환을 전부 정산한 새 상태를 반환한다.</summary>
@@ -60,11 +61,12 @@ public sealed class CampaignSiege
     /// <param name="defenseBonus">도시별 성벽/수비 방어 보너스 퍼센트(태수/수성 지휘관 연동). null이면 전부 100%.</param>
     public Result Resolve(IReadOnlyList<CombatUnit> armies, IReadOnlyList<City> cities,
         IReadOnlyList<GarrisonForce> garrisons, Func<CityId, int>? counterAptitude = null,
-        Func<CityId, int>? defenseBonus = null)
+        Func<CityId, int>? defenseBonus = null, IReadOnlyList<CityWoundedForce>? cityWounded = null)
     {
         var byUnit = armies.ToDictionary(u => u.Id);
         var cityById = cities.ToDictionary(c => c.Id);
         var garr = garrisons.ToList();
+        var wounded = (cityWounded ?? []).ToList();
         var exchanges = new List<SiegeExchange>();
 
         foreach (var city in cities.OrderBy(c => c.Id.Value))
@@ -97,7 +99,7 @@ public sealed class CampaignSiege
             cityById[city.Id] = city with { Wall = outcome.NewWall };
             if (outcome.TroopDamage > 0 && defendTroops > 0)
             {
-                DistributeDefenderLoss(garr, defenders, outcome.TroopDamage, defendTroops);
+                DistributeDefenderLoss(garr, wounded, defenders, outcome.TroopDamage, defendTroops, _woundedPercent);
             }
 
             var counters = new List<int>(besiegers.Count);
@@ -122,12 +124,13 @@ public sealed class CampaignSiege
             armies.Select(u => byUnit[u.Id]).ToList(),
             cities.Select(c => cityById[c.Id]).ToList(),
             garr.Where(g => g.Troops > 0).ToList(),
+            wounded.Where(w => w.Troops > 0).ToList(),
             exchanges);
     }
 
     // 수비 병력 손실을 병종별 대기 병력에 병력 비례로 분배한다(잔여는 병종 코드 순 1씩 — 결정론).
-    private static void DistributeDefenderLoss(List<GarrisonForce> garr, IReadOnlyList<GarrisonForce> defenders,
-        int totalLoss, int total)
+    private static void DistributeDefenderLoss(List<GarrisonForce> garr, List<CityWoundedForce> wounded, IReadOnlyList<GarrisonForce> defenders,
+        int totalLoss, int total, int woundedPercent)
     {
         var loss = Math.Min(totalLoss, total);
         var applied = 0;
@@ -147,6 +150,19 @@ public sealed class CampaignSiege
         {
             var idx = garr.IndexOf(force);
             garr[idx] = force with { Troops = force.Troops - share };
+            var woundedTroops = share * woundedPercent / 100;
+            if (woundedTroops > 0)
+            {
+                var wIdx = wounded.FindIndex(w => w.City == force.City && w.TroopCode == force.TroopCode && w.Trainee == force.Trainee);
+                if (wIdx >= 0)
+                {
+                    wounded[wIdx] = wounded[wIdx].Merge(woundedTroops, force.TrainingLevel);
+                }
+                else
+                {
+                    wounded.Add(new CityWoundedForce(force.City, force.TroopCode, woundedTroops, force.TrainingLevel, force.Trainee));
+                }
+            }
         }
 
         garr.RemoveAll(g => g.Troops <= 0);

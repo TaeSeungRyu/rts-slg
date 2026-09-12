@@ -170,7 +170,7 @@ public sealed class CampaignEngine
             {
                 var siegeState = work;
                 var activeChargeDays = System.Math.Max(1, turn.Movement.Days);
-                var result = _siege.Resolve(armies, siegeState.Cities, siegeState.Garrisons, CounterAptitude, DefenseBonus);
+                var result = _siege.Resolve(armies, siegeState.Cities, siegeState.Garrisons, CounterAptitude, DefenseBonus, siegeState.CityWounded);
 
                 // 성 반격/방어 보정 = 태수 또는 대리 수성 지휘관 1명의 적성·스킬만 반영한다.
                 int CounterAptitude(CityId cid)
@@ -191,8 +191,10 @@ public sealed class CampaignEngine
                 }
 
                 armies = result.Armies.Where(u => u.Pool.Active > 0).ToList();
-                work = work with { Cities = result.Cities, GarrisonForces = result.Garrisons };
-                work = UpdateDefenseCharges(work, siegeState, result.Exchanges.Select(e => e.City).ToHashSet(), activeChargeDays);
+                var attackedCities = result.Exchanges.Select(e => e.City).ToHashSet();
+                work = work with { Cities = result.Cities, GarrisonForces = result.Garrisons, CityWoundedForces = result.CityWounded };
+                work = UpdateDefenseCharges(work, siegeState, attackedCities, activeChargeDays);
+                work = RecoverCityWounded(work, attackedCities);
                 // 어느 진행 조각의 공성인지 스탬프 — 표현 계층의 재생 타이밍용.
                 siegeReports.AddRange(result.Exchanges.Select(e => e with { TurnIndex = reports.Count - 1 }));
             }
@@ -458,6 +460,45 @@ public sealed class CampaignEngine
         }
 
         return defensePercent;
+    }
+
+    private static GameState RecoverCityWounded(GameState state, IReadOnlySet<CityId> besiegedCities)
+    {
+        if (state.CityWounded.Count == 0)
+        {
+            return state;
+        }
+
+        var garrisons = state.Garrisons.ToList();
+        var wounded = state.CityWounded.ToList();
+        for (var i = wounded.Count - 1; i >= 0; i--)
+        {
+            var w = wounded[i];
+            if (besiegedCities.Contains(w.City) || w.Troops <= 0)
+            {
+                continue;
+            }
+
+            var recover = System.Math.Max(1, w.Troops / 10);
+            recover = System.Math.Min(recover, w.Troops);
+            var idx = garrisons.FindIndex(g => g.City == w.City && g.TroopCode == w.TroopCode && g.Trainee == w.Trainee);
+            if (idx >= 0)
+            {
+                garrisons[idx] = garrisons[idx].Merge(recover, w.TrainingLevel);
+            }
+            else
+            {
+                garrisons.Add(new GarrisonForce(w.City, w.TroopCode, recover, w.TrainingLevel, w.Trainee));
+            }
+
+            wounded[i] = w with { Troops = w.Troops - recover };
+            if (wounded[i].Troops <= 0)
+            {
+                wounded.RemoveAt(i);
+            }
+        }
+
+        return state with { GarrisonForces = garrisons, CityWoundedForces = wounded };
     }
 
     private static GameState UpdateDefenseCharges(GameState current, GameState beforeSiege, IReadOnlySet<CityId> attackedCities, int elapsedDays)

@@ -257,4 +257,40 @@ public class CampaignSiegeTests
         Assert.Empty(after.SiegeDefenseCharges);
     }
 
+
+    [Fact]
+    public void 공성_수비손실은_일부_도시부상병으로_쌓인다()
+    {
+        var sword = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0), troops: 20000);
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 0);
+        var garr = new List<GarrisonForce> { new(new CityId(9), "swordsman", 10000, 60) };
+
+        var r = Siege().Resolve([sword], [city], garr);
+
+        var ex = Assert.Single(r.Exchanges);
+        Assert.True(ex.TroopDamage > 0);
+        Assert.Equal(ex.TroopDamage * 70 / 100, r.CityWounded.Sum(w => w.Troops));
+    }
+
+    [Fact]
+    public void 수성중인_성의_부상병은_회복되지_않고_공격이_끊기면_회복된다()
+    {
+        var attacker = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0), troops: 12000);
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 0, size: CastleSize.Medium);
+        var state = new GameState(1, 190, [], [city], [],
+            GarrisonForces: [new GarrisonForce(city.Id, "swordsman", 10000, 60)],
+            CityWoundedForces: [new CityWoundedForce(city.Id, "swordsman", 1000, 60)],
+            FieldArmies: [attacker]);
+
+        var underSiege = Engine().AdvanceWeek(state, out _, out var sieges);
+        Assert.NotEmpty(sieges);
+        Assert.True(underSiege.CityWounded.Sum(w => w.Troops) >= 1000,
+            "공격받은 진행에서는 기존 도시 부상병이 회복되지 않아야 한다.");
+
+        var quiet = Engine().AdvanceWeek(underSiege with { FieldArmies = [attacker with { Field = attacker.Field with { Mode = UnitMode.March } }] }, out _, out var quietSieges);
+        Assert.Empty(quietSieges);
+        Assert.True(quiet.CityWounded.Sum(w => w.Troops) < underSiege.CityWounded.Sum(w => w.Troops),
+            "공격이 끊긴 진행부터 도시 부상병 회복이 재개되어야 한다.");
+    }
+
 }

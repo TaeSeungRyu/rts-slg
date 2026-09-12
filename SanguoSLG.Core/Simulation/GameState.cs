@@ -30,7 +30,8 @@ public sealed record GameState(
     IReadOnlyList<HeroUnlockState>? HeroUnlockStates = null,
     IReadOnlyList<ExplorationDiscovery>? ExplorationDiscoveries = null,
     IReadOnlyList<ProductionOperation>? ProductionOperations = null,
-    IReadOnlyList<CityDefenseCharge>? DefenseCharges = null)
+    IReadOnlyList<CityDefenseCharge>? DefenseCharges = null,
+    IReadOnlyList<CityWoundedForce>? CityWoundedForces = null)
 {
     /// <summary>건설한 시설이 놓인 성 주변 타일(표현 계층이 모델을 얹는다). 건설 완료 시 append.</summary>
     public IReadOnlyList<FacilityPlacement> Placements => FacilityPlacements ?? [];
@@ -49,6 +50,9 @@ public sealed record GameState(
 
     /// <summary>도시별 수성 액티브 충전 상태. 적 공성이 없는 진행 뒤에는 0으로 초기화된다.</summary>
     public IReadOnlyList<CityDefenseCharge> SiegeDefenseCharges => DefenseCharges ?? [];
+
+    /// <summary>도시 수비대 부상병 풀. 수성 중인 성은 회복되지 않는다.</summary>
+    public IReadOnlyList<CityWoundedForce> CityWounded => CityWoundedForces ?? [];
 
     /// <summary>도시 대기 병력(병종별) — 모집 정산이 쌓고, 출전 편성이 꺼내 쓴다.</summary>
     public IReadOnlyList<GarrisonForce> Garrisons => GarrisonForces ?? [];
