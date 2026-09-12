@@ -44,6 +44,12 @@ public class SupplyUnitTests
         },
     };
 
+    private static General SkillGen(int id, string? active = null, IReadOnlyList<GeneralSkill>? passives = null) => Gen(id) with
+    {
+        BattleActive = active,
+        BattlePassives = passives ?? [],
+    };
+
     private static CombatUnit Army(int id, int owner, HexCoord pos, UnitMode mode, HexCoord? target,
         int troops = 10000, string code = "swordsman", int training = 50, int maxTroops = 0)
     {
@@ -120,6 +126,42 @@ public class SupplyUnitTests
         Assert.Equal(100, u.Stats.AptitudePercent);
         Assert.Equal(120, u.SupplyEfficiencyPercent);
         Assert.Equal(SupplyLogisticsRules.Apply(1500, 120), u.Provisions);
+    }
+
+    [Fact]
+    public void 편성_보급부대는_선봉의_전투스킬을_제한적으로_적용한다()
+    {
+        var city = new City(new CityId(1), "성", new HexCoord(2, 0), new FactionId(1), 10000, CastleSize.Medium);
+        var s0 = new GameState(1, 1, new List<Faction>(), [city],
+            [SkillGen(1, "peerless", [new GeneralSkill("fierce_assault", 3), new GeneralSkill("steadfast_guard", 2)])],
+            Postings: [new GeneralPosting(new GeneralId(1), new FactionId(1), new CityId(1))],
+            GarrisonForces: [new GarrisonForce(new CityId(1), "swordsman", 10000, 60)]);
+
+        var r = Service().DeploySupply(s0, new SupplyDeployRequest(new CityId(1),
+            [new SupplyLine("swordsman", 10000)], new GeneralId(1)));
+
+        Assert.True(r.Ok, r.Error);
+        var u = r.State.Armies.Single();
+        Assert.Equal("peerless", u.State.VanguardActive?.Code);
+        Assert.Equal(106, u.Stats.AtkBonusPercent); // 맹공 3레벨 +12%의 절반
+        Assert.Equal(104, u.Stats.DfBonusPercent);  // 견수 2레벨 +8%의 절반
+        Assert.Equal(Troops.Min(t => t.AtkUnit), u.Stats.AtkStat);
+        Assert.Equal(Troops.Min(t => t.Df), u.Stats.DfStat);
+    }
+
+    [Fact]
+    public void 편성_보급부대는_계략형_액티브를_직접전투_스킬로_장착하지_않는다()
+    {
+        var city = new City(new CityId(1), "성", new HexCoord(2, 0), new FactionId(1), 10000, CastleSize.Medium);
+        var s0 = new GameState(1, 1, new List<Faction>(), [city], [SkillGen(1, "fire_plot")],
+            Postings: [new GeneralPosting(new GeneralId(1), new FactionId(1), new CityId(1))],
+            GarrisonForces: [new GarrisonForce(new CityId(1), "swordsman", 10000, 60)]);
+
+        var r = Service().DeploySupply(s0, new SupplyDeployRequest(new CityId(1),
+            [new SupplyLine("swordsman", 10000)], new GeneralId(1)));
+
+        Assert.True(r.Ok, r.Error);
+        Assert.Null(r.State.Armies.Single().State.VanguardActive);
     }
 
     [Fact]

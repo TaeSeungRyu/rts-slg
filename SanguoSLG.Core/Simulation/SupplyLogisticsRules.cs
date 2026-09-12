@@ -24,4 +24,8 @@ public static class SupplyLogisticsRules
 
     public static int Apply(int value, int efficiencyPercent)
         => (int)(((long)value * efficiencyPercent + 50) / 100);
+
+    /// <summary>보급부대에 적용되는 전투 패시브 배율. 100% 기준 초과/미달분을 절반만 적용한다.</summary>
+    public static int ScaleCombatSkillPercent(int percent)
+        => 100 + (percent - 100) / 2;
 }

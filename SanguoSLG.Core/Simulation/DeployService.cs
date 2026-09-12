@@ -241,9 +241,15 @@ public sealed class DeployService
         var minDefense = System.Math.Max(1, allTemplates.Min(t => t.Df));
         var minRange = System.Math.Max(1, allTemplates.Min(t => t.RangeUnit));
         var supplyEfficiency = SupplyLogisticsRules.EfficiencyPercent(vanguard.AptitudeFor(TroopClass.Supply));
+        var heldPassives = vanguard.Passives
+            .Where(s => _passives.ContainsKey(s.Code))
+            .Select(s => (_passives[s.Code], s.Tier));
+        var (passiveAtk, passiveDf) = PassiveBucketEvaluator.Evaluate(heldPassives, FieldContext);
+        passiveAtk = SupplyLogisticsRules.ScaleCombatSkillPercent(passiveAtk);
+        passiveDf = SupplyLogisticsRules.ScaleCombatSkillPercent(passiveDf);
         var stats = new CombatStats(total,
             minAttack, minDefense,
-            AptitudePercent: 100, AtkBonusPercent: 100, DfBonusPercent: 100);
+            AptitudePercent: 100, AtkBonusPercent: passiveAtk, DfBonusPercent: passiveDf);
         var capacity = (int)(components.Zip(templates, (c, t) => (long)t.ProvisionsCapacity * c.Troops).Sum() / total);
         var training = (int)((components.Sum(c => (long)c.TrainingLevel * c.Troops) + total / 2) / total);
 
@@ -251,7 +257,9 @@ public sealed class DeployService
         var field = new FieldUnit(unitId, city.Owner, city.Position,
             Speed: 1, templates.Min(t => t.Detection), minRange,
             MovementDomain.Land, req.Mode, req.Target, unitId.Value, RangeCastle: 1);
-        var unit = new CombatUnit(field, stats, new TroopPool(total, 0), UnitCombatState.Create(vanguard.Intellect),
+        var unit = new CombatUnit(field, stats, new TroopPool(total, 0), UnitCombatState.Create(
+                vanguard.Intellect,
+                vanguardActive: ResolveSupplyActive(vanguard.BattleActive)),
             vanguard.Might, vanguard.Intellect, total, TroopClass.Infantry,
             ProvisionsCapacity: capacity, IsSupply: true, Training: training,
             VanguardId: vanguard.Id, SupplyCargo: components, SupplyEfficiencyPercent: supplyEfficiency);
@@ -282,6 +290,16 @@ public sealed class DeployService
             Postings = postings,
             FieldArmies = state.Armies.Append(unit).ToList(),
         });
+    }
+
+    private ActiveSkill? ResolveSupplyActive(string? code)
+    {
+        if (code is null || !_actives.TryGetValue(code, out var skill) || skill.Type == ActiveType.Tactic)
+        {
+            return null;
+        }
+
+        return skill;
     }
 
     // 출전 장수 공통 검증: 내정 명령 잠금·(배속이 있으면) 그 도시 주둔 + 소속 세력.
