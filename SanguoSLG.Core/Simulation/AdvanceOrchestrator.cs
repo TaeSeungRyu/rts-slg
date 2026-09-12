@@ -287,7 +287,8 @@ public sealed class AdvanceOrchestrator
 
             var comp = supply.Cargo[idx];
             var room = target.MaxTroops - target.Pool.Active;
-            var give = System.Math.Min(comp.Troops * _reinforcePercent / 100, room);
+            var baseGive = comp.Troops * _reinforcePercent / 100;
+            var give = System.Math.Min(SupplyLogisticsRules.Apply(baseGive, supply.SupplyEfficiencyPercent), room);
             if (give <= 0)
             {
                 continue;
@@ -368,7 +369,8 @@ public sealed class AdvanceOrchestrator
                 }
 
                 var oneDay = recipient.Pool.Active * _provisionsPer10kPerDay / 10000;
-                var give = System.Math.Min(System.Math.Min(oneDay, deficit), stock);
+                var give = System.Math.Min(System.Math.Min(
+                    SupplyLogisticsRules.Apply(oneDay, supply.SupplyEfficiencyPercent), deficit), stock);
                 if (give <= 0)
                 {
                     continue;

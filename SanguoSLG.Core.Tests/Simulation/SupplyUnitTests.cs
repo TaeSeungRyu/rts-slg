@@ -28,8 +28,21 @@ public class SupplyUnitTests
 
     private static General Gen(int id) => new(
         new GeneralId(id), $"g{id}",
-        new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Infantry] = AptitudeGrade.A },
+        new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Infantry] = AptitudeGrade.A,
+            [TroopClass.Supply] = AptitudeGrade.C,
+        },
         Might: 70, Intellect: 60, Politics: 80);
+
+    private static General SupplyGen(int id, AptitudeGrade grade) => Gen(id) with
+    {
+        Aptitudes = new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Infantry] = AptitudeGrade.A,
+            [TroopClass.Supply] = grade,
+        },
+    };
 
     private static CombatUnit Army(int id, int owner, HexCoord pos, UnitMode mode, HexCoord? target,
         int troops = 10000, string code = "swordsman", int training = 50, int maxTroops = 0)
@@ -81,11 +94,32 @@ public class SupplyUnitTests
         Assert.Equal(Troops.Min(t => t.Df), u.Stats.DfStat);
         Assert.Equal(System.Math.Max(1, Troops.Min(t => t.RangeUnit)), u.Field.AttackRange);
         Assert.Equal(100, u.Stats.AptitudePercent);
+        Assert.Equal(100, u.SupplyEfficiencyPercent);
         Assert.Equal(["cavalry", "swordsman"], u.Cargo.Select(c => c.TroopCode));
         // 적재 = 가중 평균 능력(283) × 병력 비례 × 5 = 2545 — 비축(10000)이 넉넉하니 상한까지.
         Assert.Equal(2545, u.Provisions);
         Assert.Empty(r.State.Garrisons);
         Assert.Null(r.State.PostingOf(new GeneralId(1))!.Location);
+    }
+
+    [Fact]
+    public void 편성_보급적성은_공방이_아닌_병참효율에만_적용된다()
+    {
+        var city = new City(new CityId(1), "성", new HexCoord(2, 0), new FactionId(1), 10000, CastleSize.Medium);
+        var s0 = new GameState(1, 1, new List<Faction>(), [city], [SupplyGen(1, AptitudeGrade.A)],
+            Postings: [new GeneralPosting(new GeneralId(1), new FactionId(1), new CityId(1))],
+            GarrisonForces: [new GarrisonForce(new CityId(1), "swordsman", 10000, 60)]);
+
+        var r = Service().DeploySupply(s0, new SupplyDeployRequest(new CityId(1),
+            [new SupplyLine("swordsman", 10000)], new GeneralId(1)));
+
+        Assert.True(r.Ok, r.Error);
+        var u = r.State.Armies.Single();
+        Assert.Equal(Troops.Min(t => t.AtkUnit), u.Stats.AtkStat);
+        Assert.Equal(Troops.Min(t => t.Df), u.Stats.DfStat);
+        Assert.Equal(100, u.Stats.AptitudePercent);
+        Assert.Equal(120, u.SupplyEfficiencyPercent);
+        Assert.Equal(SupplyLogisticsRules.Apply(1500, 120), u.Provisions);
     }
 
     [Fact]
@@ -188,6 +222,20 @@ public class SupplyUnitTests
         var turn = Orchestrator().Run([archer, supply, far, supply2], maxDays: 1);
 
         Assert.Empty(turn.Reinforced);
+    }
+
+    [Fact]
+    public void 병력보충_보급적성이_높으면_충원량이_증가한다()
+    {
+        var target = Army(1, 1, new HexCoord(5, 0), UnitMode.Advance, null, troops: 5000, maxTroops: 10000, training: 50);
+        var supply = Supply(2, 1, new HexCoord(6, 0),
+            [new SupplyComponent("swordsman", 10000, 100)], reinforce: new UnitId(1))
+            with { SupplyEfficiencyPercent = 120 };
+
+        var turn = Orchestrator().Run([target, supply], maxDays: 1);
+
+        Assert.Equal(2400, turn.Reinforced[new UnitId(1)]);
+        Assert.Equal(7400, turn.Units.Single(u => u.Id.Value == 1).Pool.Active);
     }
 
     [Fact]

@@ -28,7 +28,8 @@ public sealed record CombatUnit(
     IReadOnlyList<SupplyComponent>? SupplyCargo = null,
     UnitId? ReinforceTarget = null,
     int LootGold = 0,
-    int SupplyUpkeepPercent = 100)
+    int SupplyUpkeepPercent = 100,
+    int SupplyEfficiencyPercent = 100)
 {
     public UnitId Id => Field.Id;
 
@@ -40,5 +41,8 @@ public sealed record CombatUnit(
 
     /// <summary>이 부대의 최대 휴대 군량(적재능력 × 병력 비례, 보급부대는 ×배수). design-unit-state 1단계-보급.</summary>
     public int MaxProvisions(int supplyMultiplier = 5)
-        => ProvisionsCapacity * Pool.Active / 10000 * (IsSupply ? supplyMultiplier : 1);
+    {
+        var baseCapacity = ProvisionsCapacity * Pool.Active / 10000 * (IsSupply ? supplyMultiplier : 1);
+        return IsSupply ? SupplyLogisticsRules.Apply(baseCapacity, SupplyEfficiencyPercent) : baseCapacity;
+    }
 }
