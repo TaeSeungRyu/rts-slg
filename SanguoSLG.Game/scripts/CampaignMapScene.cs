@@ -204,6 +204,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 출전 대기열 — "진행" 시 일괄 시작(즉시 실행 아님).
     private readonly List<(DeployRequest Req, string Label)> _pendingDeploys = new();
     private readonly List<(SupplyDeployRequest Req, string Label)> _pendingSupplyDeploys = new();
+    private readonly List<(TransportDeployRequest Req, string Label)> _pendingTransportDeploys = new();
 
     // 출전 모달(허브=예약 목록 / 편성 화면) + 수량/미리보기.
     private CityId _depModalCity;
@@ -1880,7 +1881,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 목표 지정 중 그려둔 경로가 있으면 진행 전에 자동 확정 — '✓확인' 안 눌러 조용히 버려지던 함정 방지.
         if (_depTargeting && _targetWaypoints.Count > 0) { ConfirmTarget(); }
 
-        var deploys = _pendingDeploys.Count + _pendingSupplyDeploys.Count;
+        var deploys = _pendingDeploys.Count + _pendingSupplyDeploys.Count + _pendingTransportDeploys.Count;
         var untargeted = _pendingDeploys.Count(p => p.Req.Target is null)
             + _pendingSupplyDeploys.Count(p => p.Req.Target is null);
         var msg = $"7일을 진행합니다. ({_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일 →)";
@@ -1899,7 +1900,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depTargeting) { FinishTargeting(); } // 목표 지정 중 진행 = 미확정 목표 취소
 
         // 예약된 출전을 진행 시작 시점에 일괄 편성(대기열 → 야전).
-        Dbg($"--- ADVANCE week={_week} pending={_pendingDeploys.Count} supplyPending={_pendingSupplyDeploys.Count} armiesBefore={_state.Armies.Count} ---");
+        Dbg($"--- ADVANCE week={_week} pending={_pendingDeploys.Count} supplyPending={_pendingSupplyDeploys.Count} transportPending={_pendingTransportDeploys.Count} armiesBefore={_state.Armies.Count} ---");
         for (var i = 0; i < _pendingDeploys.Count; i++)
         {
             var rq = _pendingDeploys[i].Req;
@@ -1928,6 +1929,16 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _pendingSupplyDeploys.Clear();
+
+        foreach (var (req, label) in _pendingTransportDeploys)
+        {
+            var dr = _deployer.DeployTransport(_state, req);
+            Dbg($"  transport-deploy '{label}': ok={dr.Ok} err={dr.Error ?? "-"} armiesNow={dr.State.Armies.Count}");
+            if (dr.Ok) { _state = dr.State; deployNote.Add($"[수송] {label} 부대가 출발했습니다."); }
+            else { deployNote.Add($"[수송] 편성 실패({dr.Error})"); }
+        }
+
+        _pendingTransportDeploys.Clear();
 
         // 플레이어 세력은 직접 조작 — AI는 나머지 세력만 굴린다.
         foreach (var f in _state.Factions.Where(f => f.Id != Player).OrderBy(f => f.Id.Value))
@@ -3091,6 +3102,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var depQueue = _pendingDeploys.Where(p => p.Req.City == id).Select(p => p.Label)
             .Concat(_pendingSupplyDeploys.Where(p => p.Req.City == id).Select(p => p.Label))
+            .Concat(_pendingTransportDeploys.Where(p => p.Req.City == id).Select(p => p.Label))
             .ToList();
         if (depQueue.Count > 0)
         {
@@ -4136,6 +4148,11 @@ public sealed partial class CampaignMapScene : Node3D
         {
             if (_pendingSupplyDeploys[i].Req.City == city) { supplyDeploys.Add(i); }
         }
+        var transportDeploys = new List<int>();
+        for (var i = 0; i < _pendingTransportDeploys.Count; i++)
+        {
+            if (_pendingTransportDeploys[i].Req.City == city) { transportDeploys.Add(i); }
+        }
 
         var tabWrap = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         tabWrap.AddThemeConstantOverride("separation", 0);
@@ -4152,7 +4169,7 @@ public sealed partial class CampaignMapScene : Node3D
         content.AddThemeConstantOverride("separation", 6);
         contentPanel.AddChild(content);
 
-        var labels = new[] { $"주둔 장수 {stationed.Count}", $"진행 명령 {cmds.Count}", $"예약 {deploys.Count + supplyDeploys.Count}" };
+        var labels = new[] { $"주둔 장수 {stationed.Count}", $"진행 명령 {cmds.Count}", $"예약 {deploys.Count + supplyDeploys.Count + transportDeploys.Count}" };
         var tabBtns = new Button[3];
         void ShowTab(int t)
         {
@@ -4172,7 +4189,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 case 0: BuildStationedTab(content, city, stationed); break;
                 case 1: BuildCommandsTab(content, city, cmds); break;
-                default: BuildDeployTab(content, city, deploys, supplyDeploys); break;
+                default: BuildDeployTab(content, city, deploys, supplyDeploys, transportDeploys); break;
             }
 
             var h = box.GetCombinedMinimumSize().Y;
@@ -4461,10 +4478,10 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // ── 상세 탭 ③: 예약(출전 — 진행 시 수행, 그 전까진 취소) ──
-    private void BuildDeployTab(VBoxContainer box, CityId city, List<int> deploys, List<int> supplyDeploys)
+    private void BuildDeployTab(VBoxContainer box, CityId city, List<int> deploys, List<int> supplyDeploys, List<int> transportDeploys)
     {
         box.AddChild(MakeLabel("출전 예약 (진행 시 편성 — 취소 시 소모 없음)", 14, GoldBright));
-        if (deploys.Count == 0 && supplyDeploys.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
+        if (deploys.Count == 0 && supplyDeploys.Count == 0 && transportDeploys.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
         foreach (var di in deploys)
         {
             var idx = di;
@@ -4506,6 +4523,30 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 Dbg($"UI cancel-supply pending[{idx}] '{_pendingSupplyDeploys[idx].Label}'");
                 _pendingSupplyDeploys.RemoveAt(idx);
+                SelectCity(city);
+                OpenCityDetail(city);
+            };
+            row.AddChild(cancel);
+            box.AddChild(row);
+        }
+
+        foreach (var ti in transportDeploys)
+        {
+            var idx = ti;
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            var lbl = MakeLabel("· [수송] " + _pendingTransportDeploys[idx].Label, 12, Parchment);
+            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            lbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            lbl.CustomMinimumSize = new Vector2(1, 0);
+            row.AddChild(lbl);
+            if (_advancing) { box.AddChild(row); continue; }
+            var cancel = MakeButton("취소");
+            cancel.CustomMinimumSize = new Vector2(56, 24);
+            cancel.Pressed += () =>
+            {
+                Dbg($"UI cancel-transport pending[{idx}] '{_pendingTransportDeploys[idx].Label}'");
+                _pendingTransportDeploys.RemoveAt(idx);
                 SelectCity(city);
                 OpenCityDetail(city);
             };
@@ -5035,6 +5076,7 @@ public sealed partial class CampaignMapScene : Node3D
         _state = loaded;
         _pendingDeploys.Clear();
         _pendingSupplyDeploys.Clear();
+        _pendingTransportDeploys.Clear();
         _selected = null;
         _selectedUnitId = -1;
         _week = System.Math.Max(0, (_state.Day - 1) / 7);
@@ -6057,6 +6099,11 @@ public sealed partial class CampaignMapScene : Node3D
         };
         grid.AddChild(addTile);
 
+        var transportBtn = MakeButton("＋ 수송 추가", accent: true);
+        transportBtn.CustomMinimumSize = new Vector2(0, 34);
+        transportBtn.Pressed += () => OpenTransportCompose(city);
+        box.AddChild(transportBtn);
+
         // 선택 부대 컨트롤 바(모드 3종 / 목표 / 편성 수정 / 삭제)
         if (_depSelectedUnit >= 0 && _depSelectedUnit < _pendingDeploys.Count)
         {
@@ -6110,6 +6157,150 @@ public sealed partial class CampaignMapScene : Node3D
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
         DrawDeployPaths(); // 편성 중에만 예약 경로 표시(삭제·수정 즉시 반영)
+    }
+
+    private void OpenTransportCompose(CityId city)
+    {
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var source = _state.Cities.First(c => c.Id == city);
+        var destinations = _state.Cities
+            .Where(c => c.Owner == source.Owner && c.Id != source.Id)
+            .OrderBy(c => c.Position.Distance(source.Position))
+            .ThenBy(c => c.Id.Value)
+            .ToList();
+        if (destinations.Count == 0)
+        {
+            ShowNotice("수송 불가", "수송할 같은 세력의 다른 성이 없습니다.");
+            OpenDeployHub();
+            return;
+        }
+
+        var garrisons = _state.Garrisons
+            .Where(g => g.City == city && g.Troops > 0 && !g.Trainee)
+            .OrderBy(g => g.TroopCode, System.StringComparer.Ordinal)
+            .ToList();
+        if (garrisons.Count == 0)
+        {
+            ShowNotice("수송 불가", "수송할 대기 병력이 없습니다.");
+            OpenDeployHub();
+            return;
+        }
+
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.46f, 420f, 620f);
+        var mh = Mathf.Clamp(vp.Y * 0.72f, 360f, 620f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel($"◈  수송 편성   《 {source.Name} 》  ⠿", 18, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var back = MakeButton("◀ 목록");
+        back.CustomMinimumSize = new Vector2(60, 32);
+        back.Pressed += OpenDeployHub;
+        titleRow.AddChild(back);
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("주둔 병력과 금·군량을 다른 아군 성으로 이동합니다.\n수송부대는 행군 전용이며 공격·방어·점령을 할 수 없고, 이동 중 군량 소모가 50% 감소합니다.", 12, Parchment));
+
+        var form = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        form.AddThemeConstantOverride("h_separation", 10);
+        form.AddThemeConstantOverride("v_separation", 8);
+        box.AddChild(form);
+
+        form.AddChild(MakeLabel("도착 성", 12, GoldBright));
+        var destOpt = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        foreach (var d in destinations)
+        {
+            destOpt.AddItem($"{d.Name} · 거리 {source.Position.Distance(d.Position)}", d.Id.Value);
+        }
+        form.AddChild(destOpt);
+
+        form.AddChild(MakeLabel("병종", 12, GoldBright));
+        var troopOpt = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        foreach (var g in garrisons)
+        {
+            var name = _troops.FirstOrDefault(t => t.Code == g.TroopCode)?.Name ?? g.TroopCode;
+            troopOpt.AddItem($"{name} · {g.Troops}명 · 훈{g.TrainingLevel}");
+        }
+        form.AddChild(troopOpt);
+
+        form.AddChild(MakeLabel("병력", 12, GoldBright));
+        var troopSpin = new SpinBox
+        {
+            MinValue = 1,
+            MaxValue = System.Math.Min(DeployService.TransportMaxTroops, garrisons[0].Troops),
+            Step = 100,
+            Value = System.Math.Min(DeployService.TransportMaxTroops, garrisons[0].Troops),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        form.AddChild(troopSpin);
+
+        form.AddChild(MakeLabel("금", 12, GoldBright));
+        var goldSpin = new SpinBox
+        {
+            MinValue = 0,
+            MaxValue = source.Gold,
+            Step = 100,
+            Value = 0,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        form.AddChild(goldSpin);
+
+        form.AddChild(MakeLabel("군량", 12, GoldBright));
+        var provSpin = new SpinBox
+        {
+            MinValue = 0,
+            MaxValue = source.Provisions,
+            Step = 100,
+            Value = 0,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        form.AddChild(provSpin);
+
+        var preview = MakeLabel("", 12, Parchment);
+        preview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        box.AddChild(preview);
+
+        void Refresh()
+        {
+            var g = garrisons[Mathf.Clamp(troopOpt.Selected, 0, garrisons.Count - 1)];
+            var d = destinations[Mathf.Clamp(destOpt.Selected, 0, destinations.Count - 1)];
+            troopSpin.MaxValue = System.Math.Min(DeployService.TransportMaxTroops, g.Troops);
+            if (troopSpin.Value > troopSpin.MaxValue) { troopSpin.Value = troopSpin.MaxValue; }
+            var name = _troops.FirstOrDefault(t => t.Code == g.TroopCode)?.Name ?? g.TroopCode;
+            preview.Text = $"예약 미리보기: {source.Name} → {d.Name} · {name} {(int)troopSpin.Value}명 · 금 {(int)goldSpin.Value} · 군량 {(int)provSpin.Value}";
+        }
+
+        destOpt.ItemSelected += _ => Refresh();
+        troopOpt.ItemSelected += _ => Refresh();
+        troopSpin.ValueChanged += _ => Refresh();
+        goldSpin.ValueChanged += _ => Refresh();
+        provSpin.ValueChanged += _ => Refresh();
+        Refresh();
+
+        var save = MakeButton("수송 예약", accent: true);
+        save.CustomMinimumSize = new Vector2(0, 36);
+        save.Pressed += () =>
+        {
+            var g = garrisons[Mathf.Clamp(troopOpt.Selected, 0, garrisons.Count - 1)];
+            var d = destinations[Mathf.Clamp(destOpt.Selected, 0, destinations.Count - 1)];
+            var troops = (int)troopSpin.Value;
+            var gold = (int)goldSpin.Value;
+            var provisions = (int)provSpin.Value;
+            var name = _troops.FirstOrDefault(t => t.Code == g.TroopCode)?.Name ?? g.TroopCode;
+            var label = $"{source.Name}→{d.Name} · {name} {troops}명 · 금 {gold} · 군량 {provisions}";
+            _pendingTransportDeploys.Add((new TransportDeployRequest(city,
+                [new TransportLine(g.TroopCode, troops)], d.Id, gold, provisions), label));
+            _log.Text = $"수송 예약: {label}";
+            SelectCity(city);
+            OpenDeployHub();
+        };
+        box.AddChild(save);
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
     // ── 편성 화면: 병종·수량·선봉/부관 → 저장(신규 추가 / 기존 수정) ──
