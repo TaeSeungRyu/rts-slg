@@ -47,6 +47,16 @@ public class CombatPhaseActiveTests
     }
 
     [Fact]
+    public void 참_처형은_부상없이_영구소실된다()
+    {
+        var r = Run(Sword(might: 80, strike: A["reap"]), Sword());
+
+        Assert.Equal(300, r.DamageTaken[new UnitId(2)]);
+        Assert.Equal(9700, r.Pools[new UnitId(2)].Active);
+        Assert.Equal(0, r.Pools[new UnitId(2)].Wounded);
+    }
+
+    [Fact]
     public void 철벽_받는피해_감소()
     {
         // A 무쌍(무80) vs B 철벽(무80): B 받는 1459 × 0.64 = 933

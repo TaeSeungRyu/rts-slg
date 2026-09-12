@@ -59,17 +59,19 @@ public class StratagemTests
     }
 
     [Fact]
-    public void 낙뢰_즉발_병력25퍼센트_강도등호()
+    public void 낙뢰_즉발_병력5퍼센트_강도등호()
     {
-        // 낙뢰 base 25%, 지력 동수(강도 100) → 1만의 25% = 2500
-        Assert.Equal(2500, St["lightning"].Damage(10000, casterIntellect: 80, targetIntellect: 80));
+        // 낙뢰 일반 피해 base 5%, 지력 동수(강도 100) → 1만의 5% = 500
+        Assert.Equal(500, St["lightning"].Damage(10000, casterIntellect: 80, targetIntellect: 80));
+        Assert.Equal(1000, St["lightning"].PermanentLoss(10000, casterIntellect: 80, targetIntellect: 80));
+        Assert.Equal(500, St["lightning"].PermanentLoss(10000, casterIntellect: 80, targetIntellect: 80, aoe: true));
     }
 
     [Fact]
     public void 화계_지속tick_강도반영()
     {
-        // 화계 base 3%/진행, 지력차 +40(강도 140) → 3×1.4 = 4.2% → 1만의 4.2% = 420 (tick당)
-        Assert.Equal(420, St["fire_plot"].Damage(10000, casterIntellect: 100, targetIntellect: 60));
+        // 화계 base 2%/진행, 지력차 +40(강도 140) → 2×1.4 = 2.8% → 1만의 2.8% = 280 (tick당)
+        Assert.Equal(280, St["fire_plot"].Damage(10000, casterIntellect: 100, targetIntellect: 60));
     }
 
     [Fact]

@@ -61,9 +61,9 @@ public class ActiveSkillTests
     [Fact]
     public void 참_병력비례처형_atk무관()
     {
-        // 무력80: 5% × 1.2 = 6% (상한 10%). 1만 × 6% = 600
+        // 무력80: 3% × 1.2 = 3.6%이나 상한 3%. 2만 × 3% = 600
         var dmg = Resolver.StrikeDamage(SwordA(), SwordA(20000), A["reap"], might: 80);
-        Assert.Equal(1200, dmg); // 2만 × 6%
+        Assert.Equal(600, dmg);
     }
 
     [Fact]

@@ -21,6 +21,9 @@ using SanguoSLG.Core.Spatial;
 /// <param name="MoveDownTiles">이동 속도 감소 칸(수공). 0이면 없음.</param>
 /// <param name="InstantPercent">지속 효과와 별개로 발동 시 터지는 추가 즉발 피해 %(수공 15%). 0이면 없음.</param>
 /// <param name="AoeRadius">즉발 피해가 미치는 대상 주변 반경(폭파 1 = 대상+인접). 0이면 단일 대상.</param>
+/// <param name="AoeDamagePercent">주변 일반 피해 퍼센트. -1이면 중심 피해와 같은 <paramref name="BaseValue"/>를 사용한다.</param>
+/// <param name="PermanentPercent">중심 대상에게 부상 전환 없이 적용하는 영구 사망 퍼센트.</param>
+/// <param name="AoePermanentPercent">대상 주변 반경 안의 다른 적에게 적용하는 영구 사망 퍼센트.</param>
 public sealed record Stratagem(
     string Code,
     string Name,
@@ -36,7 +39,10 @@ public sealed record Stratagem(
     int RetreatTiles = 0,
     int MoveDownTiles = 0,
     int InstantPercent = 0,
-    int AoeRadius = 0)
+    int AoeRadius = 0,
+    int AoeDamagePercent = -1,
+    int PermanentPercent = 0,
+    int AoePermanentPercent = 0)
 {
     /// <summary>대상 타일 지형에서 발동 가능한가.</summary>
     public bool CanCastOn(TerrainType targetTerrain) => TerrainRule switch
@@ -62,6 +68,24 @@ public sealed record Stratagem(
         return (int)((long)targetTroops * BaseValue * strength / 10000);
     }
 
+    /// <summary>대상 주변 적에게 주는 일반 피해. -1이면 중심 피해와 같은 비율을 사용한다.</summary>
+    public int AoeDamage(int targetTroops, int casterIntellect, int targetIntellect)
+    {
+        if (EffectKind != StratagemEffectKind.InstantDamage || AoeRadius <= 0)
+        {
+            return 0;
+        }
+
+        var percent = AoeDamagePercent < 0 ? BaseValue : AoeDamagePercent;
+        if (percent <= 0)
+        {
+            return 0;
+        }
+
+        var strength = StratagemStrength.Percent(casterIntellect, targetIntellect);
+        return (int)((long)targetTroops * percent * strength / 10000);
+    }
+
     /// <summary>
     /// 지속 효과(디버프 등)와 별개로 발동 시 터지는 추가 즉발 피해(수공 15%, 강도 반영).
     /// <see cref="InstantPercent"/>이 0이면 0.
@@ -75,6 +99,19 @@ public sealed record Stratagem(
 
         var strength = StratagemStrength.Percent(casterIntellect, targetIntellect);
         return (int)((long)targetTroops * InstantPercent * strength / 10000);
+    }
+
+    /// <summary>부상 전환 없이 바로 사망 처리되는 영구 소실량.</summary>
+    public int PermanentLoss(int targetTroops, int casterIntellect, int targetIntellect, bool aoe = false)
+    {
+        var percent = aoe ? AoePermanentPercent : PermanentPercent;
+        if (percent <= 0)
+        {
+            return 0;
+        }
+
+        var strength = StratagemStrength.Percent(casterIntellect, targetIntellect);
+        return (int)((long)targetTroops * percent * strength / 10000);
     }
 
     /// <summary>
@@ -94,7 +131,8 @@ public sealed record Stratagem(
         {
             StatusKind.Burn or StatusKind.Poison => new StatusEffect(
                 Status.Value, TickBasisPoints: BaseValue * strength, Remaining: Duration,
-                IsFire: Status.Value == StatusKind.Burn),
+                IsFire: Status.Value == StatusKind.Burn,
+                PermanentLoss: Status.Value == StatusKind.Burn),
 
             StatusKind.AttackDown => new StatusEffect(
                 Status.Value, TickBasisPoints: 0, Remaining: Duration, IsFire: false,

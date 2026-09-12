@@ -46,6 +46,7 @@ public sealed class CombatPhaseResolver
 
         // 3) 계략 디버프는 이미 Stats에 반영. 4) 공격 — 스냅샷 기준 동시 누적.
         var damage = new Dictionary<UnitId, int>();
+        var permanentDamage = new Dictionary<UnitId, int>();
         var dealt = new Dictionary<UnitId, int>();
         foreach (var engagement in engagements)
         {
@@ -67,7 +68,15 @@ public sealed class CombatPhaseResolver
 
                 raw = raw * attacker.OutgoingDamagePercent / 100; // 수공·연막 디버프(공격자 준 피해 감소)
                 raw = raw * takenPercent[targetId] / 100; // 방어 액티브 감소
-                damage[targetId] = damage.GetValueOrDefault(targetId) + raw;
+                if (i == 0 && attacker.StrikeActive?.ExecutePercent > 0)
+                {
+                    permanentDamage[targetId] = permanentDamage.GetValueOrDefault(targetId) + raw;
+                }
+                else
+                {
+                    damage[targetId] = damage.GetValueOrDefault(targetId) + raw;
+                }
+
                 dealt[engagement.Attacker] = dealt.GetValueOrDefault(engagement.Attacker) + raw;
             }
         }
@@ -78,9 +87,24 @@ public sealed class CombatPhaseResolver
         {
             var pool = healMoved[id] > 0 ? p.Pool.Heal(healMoved[id]) : p.Pool;
             var taken = damage.GetValueOrDefault(id);
-            pools[id] = taken > 0 ? pool.TakeDamage(taken, _woundedPercent) : pool;
+            var permanent = permanentDamage.GetValueOrDefault(id);
+            if (taken > 0)
+            {
+                pool = pool.TakeDamage(taken, _woundedPercent);
+            }
+            if (permanent > 0)
+            {
+                pool = pool.TakeDamage(permanent, woundedPercent: 0);
+            }
+            pools[id] = pool;
         }
 
-        return new CombatPhaseResult(damage, dealt, pools);
+        var totalDamage = damage.ToDictionary(kv => kv.Key, kv => kv.Value);
+        foreach (var (id, permanent) in permanentDamage)
+        {
+            totalDamage[id] = totalDamage.GetValueOrDefault(id) + permanent;
+        }
+
+        return new CombatPhaseResult(totalDamage, dealt, pools);
     }
 }

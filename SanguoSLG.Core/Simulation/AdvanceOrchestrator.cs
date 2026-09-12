@@ -110,13 +110,18 @@ public sealed class AdvanceOrchestrator
                 continue;
             }
 
-            var tick = u.State.TotalTickDamage(u.Pool.Active);
+            var tick = u.State.Statuses.Where(s => !s.PermanentLoss).Sum(s => s.TickDamage(u.Pool.Active));
+            var permanentTick = u.State.Statuses.Where(s => s.PermanentLoss).Sum(s => s.TickDamage(u.Pool.Active));
             var ticked = u.State.TickStatuses();
             var pool = tick > 0 ? u.Pool.TakeDamage(tick, _woundedPercent) : u.Pool;
-            state[id] = u with { Pool = pool, State = ticked };
-            if (tick > 0)
+            if (permanentTick > 0)
             {
-                statusDamage[id] = tick;
+                pool = pool.TakeDamage(permanentTick, woundedPercent: 0);
+            }
+            state[id] = u with { Pool = pool, State = ticked };
+            if (tick + permanentTick > 0)
+            {
+                statusDamage[id] = tick + permanentTick;
             }
         }
 
@@ -407,11 +412,19 @@ public sealed class AdvanceOrchestrator
                 continue;
             }
 
-            var dmg = stratagem.Damage(u.Pool.Active, caster.Intellect, u.Intellect);
+            var targetTroopsBefore = u.Pool.Active;
+            var dmg = stratagem.AoeDamage(targetTroopsBefore, caster.Intellect, u.Intellect);
             if (dmg > 0)
             {
                 state[id] = u with { Pool = u.Pool.TakeDamage(dmg, _woundedPercent) };
+                u = state[id];
                 stratagemDamage[id] = stratagemDamage.GetValueOrDefault(id) + dmg;
+            }
+            var permanent = stratagem.PermanentLoss(targetTroopsBefore, caster.Intellect, u.Intellect, aoe: true);
+            if (permanent > 0)
+            {
+                state[id] = u with { Pool = u.Pool.TakeDamage(permanent, woundedPercent: 0) };
+                stratagemDamage[id] = stratagemDamage.GetValueOrDefault(id) + permanent;
             }
         }
     }
@@ -547,15 +560,25 @@ public sealed class AdvanceOrchestrator
                     {
                         // 즉발: 지금 피해. 지속(DoT): 상태를 걸고 다음 진행부터 tick. 정화: 걸린 상태 제거.
                         case StratagemEffectKind.InstantDamage:
-                            var damage = stratagem.Damage(t.Pool.Active, caster.Intellect, t.Intellect);
+                            var targetTroopsBefore = t.Pool.Active;
+                            var damage = stratagem.Damage(targetTroopsBefore, caster.Intellect, t.Intellect);
                             if (damage > 0)
                             {
                                 state[reservation.TargetId] = t with { Pool = t.Pool.TakeDamage(damage, _woundedPercent) };
+                                t = state[reservation.TargetId];
                                 stratagemDamage[reservation.TargetId] = stratagemDamage.GetValueOrDefault(reservation.TargetId) + damage;
                             }
 
+                            var permanent = stratagem.PermanentLoss(targetTroopsBefore, caster.Intellect, t.Intellect);
+                            if (permanent > 0)
+                            {
+                                state[reservation.TargetId] = t with { Pool = t.Pool.TakeDamage(permanent, woundedPercent: 0) };
+                                t = state[reservation.TargetId];
+                                stratagemDamage[reservation.TargetId] = stratagemDamage.GetValueOrDefault(reservation.TargetId) + permanent;
+                            }
+
                             // 폭파: 대상 반경 안의 다른 적 전원에게도 같은 즉발 피해(광역).
-                            if (stratagem.AoeRadius > 0)
+                            if (stratagem.AoeRadius > 0 || stratagem.AoePermanentPercent > 0)
                             {
                                 ApplyAoe(state, stratagem, caster, reservation.TargetId, stratagemDamage);
                             }

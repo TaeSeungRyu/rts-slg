@@ -34,13 +34,14 @@ public class StatusEffectTests
     [Fact]
     public void 화계_MakeStatus_강도반영_화계계열()
     {
-        // 화계 base 3%/진행, 지력차 +40(강도 140) → 만분율 420, 6진행, 화계 계열
+        // 화계 base 2%/진행, 지력차 +40(강도 140) → 만분율 280, 4진행, 화계 계열
         var status = St["fire_plot"].MakeStatus(casterIntellect: 100, targetIntellect: 60);
         Assert.NotNull(status);
         Assert.Equal(StatusKind.Burn, status!.Kind);
-        Assert.Equal(420, status.TickBasisPoints);
-        Assert.Equal(6, status.Remaining);
+        Assert.Equal(280, status.TickBasisPoints);
+        Assert.Equal(4, status.Remaining);
         Assert.True(status.IsFire);
+        Assert.True(status.PermanentLoss);
     }
 
     [Fact]
@@ -194,7 +195,8 @@ public class StatusEffectTests
     public void 폭파_광역반경_1_단일대상은_0()
     {
         Assert.Equal(1, St["detonate"].AoeRadius);
-        Assert.Equal(0, St["lightning"].AoeRadius); // 낙뢰는 단일 대상
+        Assert.Equal(1, St["lightning"].AoeRadius); // 낙뢰는 주변 영구 소실
+        Assert.Equal(0, St["lightning"].AoeDamagePercent); // 주변 일반 피해는 없음
     }
 
     [Fact]

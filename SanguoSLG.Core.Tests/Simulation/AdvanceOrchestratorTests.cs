@@ -111,11 +111,11 @@ public class AdvanceOrchestratorTests
         var uCaster = turn.Units.Single(u => u.Id.Value == 1);
         var uTarget = turn.Units.Single(u => u.Id.Value == 2);
 
-        // 낙뢰 즉발 25%(지력 동수, 강도 100) = 2500 → 대상 병력 감소
-        Assert.Equal(7500, uTarget.Pool.Active);
-        Assert.Equal(1750, uTarget.Pool.Wounded);
-        // 시전 부대는 공격 안 함 → 대상만 반격(줄어든 7500으로 570)
-        Assert.Equal(9430, uCaster.Pool.Active);
+        // 낙뢰 즉발: 5% 피해(부상 공식) + 10% 영구 소실 = 총 1500 감소
+        Assert.Equal(8500, uTarget.Pool.Active);
+        Assert.Equal(350, uTarget.Pool.Wounded);
+        // 시전 부대는 공격 안 함 → 대상만 반격(줄어든 8500으로 646)
+        Assert.Equal(9354, uCaster.Pool.Active);
         // 모략력 45 소비, 숙달 +1, 예약 해제
         Assert.Equal(15, uCaster.State.Resource.Current);
         Assert.Equal(286, uCaster.State.MasteryPoints);
@@ -141,16 +141,17 @@ public class AdvanceOrchestratorTests
         Assert.Equal(10000, tg1.Pool.Active);
         Assert.Empty(t1.StatusDamage);
         var burn = Assert.Single(tg1.State.Statuses);
-        Assert.Equal(420, burn.TickBasisPoints); // 3% × 강도 140
-        Assert.Equal(6, burn.Remaining);
+        Assert.Equal(280, burn.TickBasisPoints); // 2% × 강도 140
+        Assert.Equal(4, burn.Remaining);
+        Assert.True(burn.PermanentLoss);
 
-        // 진행 2: 화상 tick — 420 피해(70% 부상)
+        // 진행 2: 화상 tick — 280 영구 소실(부상 없음)
         var t2 = orch.Run(t1.Units);
         var tg2 = t2.Units.Single(u => u.Id.Value == 2);
-        Assert.Equal(420, t2.StatusDamage[new UnitId(2)]);
-        Assert.Equal(9580, tg2.Pool.Active);
-        Assert.Equal(294, tg2.Pool.Wounded);
-        Assert.Equal(5, Assert.Single(tg2.State.Statuses).Remaining);
+        Assert.Equal(280, t2.StatusDamage[new UnitId(2)]);
+        Assert.Equal(9720, tg2.Pool.Active);
+        Assert.Equal(0, tg2.Pool.Wounded);
+        Assert.Equal(3, Assert.Single(tg2.State.Statuses).Remaining);
     }
 
     [Fact]
@@ -335,6 +336,33 @@ public class AdvanceOrchestratorTests
         Assert.Equal(600, turn.StratagemDamage[new UnitId(2)]);
         Assert.Equal(600, turn.StratagemDamage[new UnitId(3)]);
         Assert.False(turn.StratagemDamage.ContainsKey(new UnitId(4)));
+    }
+
+    [Fact]
+    public void 낙뢰는_대상피해와_주변영구소실을_구분한다()
+    {
+        var casterState = UnitCombatState.Create(60, masteryPoints: 285)
+            .ReserveStratagem(St["lightning"], new UnitId(2))
+            .AdvanceField(2);
+        var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.March, casterState);
+        var target = Sword(2, 2, new HexCoord(1, 0), UnitMode.March);
+        var nearEnemy = Sword(3, 2, new HexCoord(2, 0), UnitMode.March);
+        var farEnemy = Sword(4, 2, new HexCoord(4, 0), UnitMode.March);
+        var nearAlly = Sword(5, 1, new HexCoord(1, 1), UnitMode.March);
+
+        var turn = MakeOrchestrator().Run(new[] { caster, target, nearEnemy, farEnemy, nearAlly });
+        CombatUnit U(int id) => turn.Units.Single(u => u.Id.Value == id);
+
+        Assert.Equal(8500, U(2).Pool.Active); // 대상: 5% 피해 + 10% 영구 소실
+        Assert.Equal(350, U(2).Pool.Wounded); // 5% 피해 중 70%만 부상
+        Assert.Equal(9500, U(3).Pool.Active); // 주변 적: 5% 영구 소실
+        Assert.Equal(0, U(3).Pool.Wounded);
+        Assert.Equal(10000, U(4).Pool.Active);
+        Assert.Equal(10000, U(5).Pool.Active);
+        Assert.Equal(1500, turn.StratagemDamage[new UnitId(2)]);
+        Assert.Equal(500, turn.StratagemDamage[new UnitId(3)]);
+        Assert.False(turn.StratagemDamage.ContainsKey(new UnitId(4)));
+        Assert.False(turn.StratagemDamage.ContainsKey(new UnitId(5)));
     }
 
     [Fact]
