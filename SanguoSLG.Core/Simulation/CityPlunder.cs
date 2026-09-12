@@ -40,6 +40,7 @@ public sealed class CityPlunder
             var looter = armies
                 .Where(u => u.Pool.Active > 0 && u.Field.Owner != current.Owner
                     && u.Field.Mode == UnitMode.Attack && !u.IsSupply
+                    && u.CanInitiateCombat
                     && u.Field.Position.Distance(current.Position) <= 1)
                 .OrderBy(u => u.Id.Value)
                 .Select(u => byUnit[u.Id])

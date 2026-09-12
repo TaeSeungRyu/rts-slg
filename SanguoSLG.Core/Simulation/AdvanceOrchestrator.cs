@@ -137,7 +137,7 @@ public sealed class AdvanceOrchestrator
             }
 
             // 병참(선봉·부관 provisions 스킬 — 편성 시 SupplyUpkeepPercent에 확정)이 휴대 군량 소모를 줄인다.
-            var eaten = (int)((long)u.Pool.Active * _provisionsPer10kPerDay * move.Days * u.SupplyUpkeepPercent / 1_000_000);
+            var eaten = (int)((long)u.Pool.Active * _provisionsPer10kPerDay * move.Days * u.ProvisionsUpkeepPercent / 1_000_000);
             var remaining = u.Provisions - eaten;
             if (remaining >= 0)
             {
@@ -165,6 +165,7 @@ public sealed class AdvanceOrchestrator
         //    부대는 공격자에서 뺀다(피격·방어는 정상).
         var engagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList())
             .Where(e => !firedStratagems.ContainsKey(e.Attacker)
+                && state[e.Attacker].CanInitiateCombat
                 && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker])))
             .ToList();
 

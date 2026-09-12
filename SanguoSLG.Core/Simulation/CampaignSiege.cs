@@ -81,6 +81,7 @@ public sealed class CampaignSiege
             var besiegers = armies
                 .Where(u => u.Pool.Active > 0 && u.Field.Owner != city.Owner
                     && u.Field.Mode == UnitMode.Attack
+                    && u.CanInitiateCombat
                     && (u.IsSupply || (u.TroopCode.Length > 0 && _troops.ContainsKey(u.TroopCode)))
                     && u.Field.Position.Distance(city.Position) <= u.Field.RangeCastle)
                 .OrderBy(u => u.Id.Value)

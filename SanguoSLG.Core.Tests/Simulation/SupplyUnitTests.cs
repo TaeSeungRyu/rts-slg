@@ -364,4 +364,28 @@ public class SupplyUnitTests
         Assert.Equal(730, transport.CarryingGold);
         Assert.Equal(50, transport.ProvisionsUpkeepPercent);
     }
+
+    [Fact]
+    public void 수송부대는_진행중_군량을_절반만_소모한다()
+    {
+        var transport = Army(1, 1, new HexCoord(0, 0), UnitMode.March, new HexCoord(14, 0), troops: 10000)
+            with { IsTransport = true, Provisions = 100 };
+
+        var turn = Orchestrator().Run([transport], maxDays: 7);
+
+        Assert.Equal(65, turn.Units.Single().Provisions);
+    }
+
+    [Fact]
+    public void 수송부대는_공격모드여도_교전을_시작하지_않는다()
+    {
+        var transport = Army(1, 1, new HexCoord(0, 0), UnitMode.Attack, null, troops: 10000)
+            with { IsTransport = true, Provisions = 100 };
+        var enemy = Army(2, 2, new HexCoord(1, 0), UnitMode.March, null, troops: 10000);
+
+        var turn = Orchestrator().Run([transport, enemy], maxDays: 1);
+
+        Assert.Null(turn.Combat);
+        Assert.Equal(10000, turn.Units.Single(u => u.Id.Value == 2).Pool.Active);
+    }
 }
