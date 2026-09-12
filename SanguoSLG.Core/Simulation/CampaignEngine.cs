@@ -135,6 +135,7 @@ public sealed class CampaignEngine
             }
 
             turn = StripProductionUnits(turn, productionUnitIds);
+            turn = ApplyFieldSpoils(armies, turn);
             reports.Add(turn);
             remaining -= System.Math.Max(1, turn.Movement.Days);
 
@@ -624,5 +625,49 @@ public sealed class CampaignEngine
         }
 
         return work with { GarrisonForces = garrisons, Postings = postings, Cities = cities };
+    }
+
+    private static AdvanceTurn ApplyFieldSpoils(IReadOnlyList<CombatUnit> before, AdvanceTurn turn)
+    {
+        if (turn.Combat is null)
+        {
+            return turn;
+        }
+
+        var survivors = turn.Units.ToDictionary(u => u.Id);
+        var entered = turn.EnteredCastle.Select(u => u.Id).ToHashSet();
+        var movedPos = turn.Movement.Units.ToDictionary(f => f.Id, f => f.Position);
+        var changed = false;
+
+        foreach (var dead in before
+            .Where(u => u.Pool.Active > 0
+                && !survivors.ContainsKey(u.Id)
+                && !entered.Contains(u.Id)
+                && turn.Combat.DamageTaken.ContainsKey(u.Id)
+                && (u.CarryingGold > 0 || (u.TracksProvisions && u.Provisions > 0)))
+            .OrderBy(u => u.Id.Value))
+        {
+            var at = movedPos.TryGetValue(dead.Id, out var pos) ? pos : dead.Field.Position;
+            var receiver = survivors.Values
+                .Where(u => u.Pool.Active > 0 && u.Field.Owner != dead.Field.Owner)
+                .OrderBy(u => u.Field.Position.Distance(at))
+                .ThenBy(u => u.Id.Value)
+                .FirstOrDefault();
+            if (receiver is null)
+            {
+                continue;
+            }
+
+            survivors[receiver.Id] = receiver with
+            {
+                LootGold = receiver.LootGold + dead.CarryingGold,
+                Provisions = receiver.TracksProvisions
+                    ? receiver.Provisions + (dead.TracksProvisions ? dead.Provisions : 0)
+                    : receiver.Provisions,
+            };
+            changed = true;
+        }
+
+        return changed ? turn with { Units = turn.Units.Select(u => survivors[u.Id]).ToList() } : turn;
     }
 }

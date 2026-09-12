@@ -268,4 +268,25 @@ public class CampaignEngineTests
         Assert.Equal(1000, after.Garrisons.Single(g => g.City == destination.Id && g.TroopCode == "archer").Troops);
         Assert.Equal(2000, after.Garrisons.Single(g => g.City == destination.Id && g.TroopCode == "swordsman").Troops);
     }
+
+    [Fact]
+    public void 야전에서_괴멸한_부대의_금군량은_가장가까운_상대부대가_노획한다()
+    {
+        var attacker = Army(1, 1, new HexCoord(0, 0), UnitMode.Attack, null, troops: 10000)
+            with { Provisions = 10 };
+        var field = new FieldUnit(new UnitId(2), new FactionId(2), new HexCoord(1, 0),
+            Speed: 1, Detection: 1, AttackRange: 0, MovementDomain.Land, UnitMode.March,
+            Target: null, CommandOrder: 2);
+        var transport = new CombatUnit(field, new CombatStats(100, 1, 1), new TroopPool(100, 0),
+            UnitCombatState.Create(0), MaxTroops: 100, Provisions: 1000, TroopCode: "transport",
+            CargoGold: 250, IsTransport: true);
+        var s = World(attacker, transport);
+
+        var after = Engine().AdvanceWeek(s, out _);
+
+        var winner = after.Armies.Single(u => u.Id == attacker.Id);
+        Assert.Equal(250, winner.LootGold);
+        Assert.True(winner.Provisions > winner.MaxProvisions(), $"노획 군량은 휴대 한도를 초과해도 유지된다: {winner.Provisions}");
+        Assert.DoesNotContain(after.Armies, u => u.Id == transport.Id);
+    }
 }
