@@ -7758,6 +7758,7 @@ public sealed partial class CampaignMapScene : Node3D
         TroopClass.Elephant => "상병",
         TroopClass.Siege => "공성",
         TroopClass.Naval => "해상",
+        TroopClass.Supply => "보급",
         _ => "",
     };
 
@@ -7769,6 +7770,7 @@ public sealed partial class CampaignMapScene : Node3D
         TroopClass.Elephant => new Color(0.72f, 0.72f, 0.76f),
         TroopClass.Siege => new Color(0.85f, 0.52f, 0.28f),
         TroopClass.Naval => new Color(0.36f, 0.68f, 0.78f),
+        TroopClass.Supply => new Color(0.74f, 0.67f, 0.48f),
         _ => Gold,
     };
 

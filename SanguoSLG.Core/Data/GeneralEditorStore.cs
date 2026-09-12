@@ -27,6 +27,7 @@ public sealed class GeneralEditorStore
         "elephant",
         "siege",
         "naval",
+        "supply",
     ];
 
     private static readonly HashSet<string> Grades = ["F", "D", "C", "B", "A", "A+", "S", "SS", "SSS"];

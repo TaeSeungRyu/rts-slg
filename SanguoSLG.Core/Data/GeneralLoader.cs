@@ -49,6 +49,7 @@ public sealed class GeneralLoader
         "elephant" => TroopClass.Elephant,
         "siege" => TroopClass.Siege,
         "naval" => TroopClass.Naval,
+        "supply" => TroopClass.Supply,
         _ => throw new InvalidDataException($"알 수 없는 병종 분류: {value}"),
     };
 

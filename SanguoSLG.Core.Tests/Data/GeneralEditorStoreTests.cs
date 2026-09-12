@@ -15,7 +15,7 @@ public class GeneralEditorStoreTests
             "id": 1,
             "name": "조조",
             "unknown_future_field": "keep",
-            "aptitudes": { "infantry": "S", "archer": "A", "cavalry": "S", "elephant": "C", "siege": "B", "naval": "C" },
+            "aptitudes": { "infantry": "S", "archer": "A", "cavalry": "S", "elephant": "C", "siege": "B", "naval": "C", "supply": "C" },
             "might": 72,
             "intellect": 91,
             "politics": 94,
@@ -59,6 +59,7 @@ public class GeneralEditorStoreTests
                 ["elephant"] = "C",
                 ["siege"] = "D",
                 ["naval"] = "F",
+                ["supply"] = "C",
             },
             101,
             50,
@@ -99,7 +100,7 @@ public class GeneralEditorStoreTests
           {
             "id": 1,
             "name": "테스트",
-            "aptitudes": { "infantry": "S", "archer": "A", "cavalry": "B", "elephant": "C", "siege": "D", "naval": "F" },
+            "aptitudes": { "infantry": "S", "archer": "A", "cavalry": "B", "elephant": "C", "siege": "D", "naval": "F", "supply": "C" },
             "might": 70,
             "intellect": 70,
             "politics": 70

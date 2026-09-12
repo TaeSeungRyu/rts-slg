@@ -1,7 +1,7 @@
 namespace SanguoSLG.Core.Domain;
 
 /// <summary>
-/// 병종 분류 6종(spec-unit.md "병종 분류"). 공격·방어 능력과 장수 적성이 분류 단위로 정의된다.
+/// 병종 분류 7종(spec-unit.md "병종 분류"). 공격·방어 능력과 장수 적성이 분류 단위로 정의된다.
 /// </summary>
 public enum TroopClass
 {
@@ -22,4 +22,7 @@ public enum TroopClass
 
     /// <summary>해상(대하 유닛).</summary>
     Naval,
+
+    /// <summary>보급(보급부대 병참 적성).</summary>
+    Supply,
 }
