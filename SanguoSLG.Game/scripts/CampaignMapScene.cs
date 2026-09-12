@@ -2504,19 +2504,8 @@ public sealed partial class CampaignMapScene : Node3D
         deployBtn.AddThemeFontSizeOverride("font_size", 12);
         deployBtn.Alignment = HorizontalAlignment.Center;
         deployBtn.CustomMinimumSize = new Vector2(74, 24);
-        deployBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenDeployModal(c); } };
+        deployBtn.Pressed += ToggleDeployGroup;
         _cmdList.AddChild(deployBtn);
-
-        var supplyBtn = MakeButton("보급부대", accent: true);
-        supplyBtn.AddThemeFontSizeOverride("font_size", 12);
-        supplyBtn.Alignment = HorizontalAlignment.Center;
-        supplyBtn.CustomMinimumSize = new Vector2(74, 24);
-        supplyBtn.Pressed += () =>
-        {
-            CloseGroupMenu();
-            if (_selected is { } c) { OpenSupplyHub(c); }
-        };
-        _cmdList.AddChild(supplyBtn);
 
         var productionBtn = MakeButton("생산", accent: true);
         productionBtn.AddThemeFontSizeOverride("font_size", 12);
@@ -3226,6 +3215,36 @@ public sealed partial class CampaignMapScene : Node3D
 
             _cmdSubList.AddChild(btn);
         }
+
+        PlaceGroupMenu();
+        _cmdSubMenu.Visible = true;
+    }
+
+    private void ToggleDeployGroup()
+    {
+        const int DeployGroupMarker = -100;
+        if (_openGroup == DeployGroupMarker) { CloseGroupMenu(); return; }
+        _openGroup = DeployGroupMarker;
+        Clear(_cmdSubList);
+        _cmdSubList.AddChild(MakeLabel("· 출전", 10, GoldBright));
+
+        void Add(string label, System.Action action)
+        {
+            var btn = MakeButton(label);
+            btn.AddThemeFontSizeOverride("font_size", 11);
+            btn.Alignment = HorizontalAlignment.Center;
+            btn.CustomMinimumSize = new Vector2(84, 21);
+            btn.Pressed += () =>
+            {
+                CloseGroupMenu();
+                action();
+            };
+            _cmdSubList.AddChild(btn);
+        }
+
+        Add("전투편성", () => { if (_selected is { } c) { OpenDeployModal(c); } });
+        Add("보급편성", () => { if (_selected is { } c) { OpenSupplyHub(c); } });
+        Add("수송편성", () => { if (_selected is { } c) { OpenTransportCompose(c); } });
 
         PlaceGroupMenu();
         _cmdSubMenu.Visible = true;
@@ -6098,11 +6117,6 @@ public sealed partial class CampaignMapScene : Node3D
             if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { OpenDeployCompose(-1); }
         };
         grid.AddChild(addTile);
-
-        var transportBtn = MakeButton("＋ 수송 추가", accent: true);
-        transportBtn.CustomMinimumSize = new Vector2(0, 34);
-        transportBtn.Pressed += () => OpenTransportCompose(city);
-        box.AddChild(transportBtn);
 
         // 선택 부대 컨트롤 바(모드 3종 / 목표 / 편성 수정 / 삭제)
         if (_depSelectedUnit >= 0 && _depSelectedUnit < _pendingDeploys.Count)
