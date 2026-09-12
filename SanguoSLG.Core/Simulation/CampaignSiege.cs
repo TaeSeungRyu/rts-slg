@@ -56,9 +56,11 @@ public sealed class CampaignSiege
         IReadOnlyList<SiegeExchange> Exchanges);
 
     /// <summary>이번 진행의 공성 교환을 전부 정산한 새 상태를 반환한다.</summary>
-    /// <param name="counterAptitude">도시별 성 반격 위력 퍼센트(태수 무력 연동). null이면 전부 100%.</param>
+    /// <param name="counterAptitude">도시별 성 반격 위력 퍼센트(태수/수성 지휘관 연동). null이면 전부 100%.</param>
+    /// <param name="defenseBonus">도시별 성벽/수비 방어 보너스 퍼센트(태수/수성 지휘관 연동). null이면 전부 100%.</param>
     public Result Resolve(IReadOnlyList<CombatUnit> armies, IReadOnlyList<City> cities,
-        IReadOnlyList<GarrisonForce> garrisons, Func<CityId, int>? counterAptitude = null)
+        IReadOnlyList<GarrisonForce> garrisons, Func<CityId, int>? counterAptitude = null,
+        Func<CityId, int>? defenseBonus = null)
     {
         var byUnit = armies.ToDictionary(u => u.Id);
         var cityById = cities.ToDictionary(c => c.Id);
@@ -87,7 +89,8 @@ public sealed class CampaignSiege
             }
 
             var counterPercent = counterAptitude?.Invoke(city.Id) ?? 100;
-            var castle = new CastleState(city.Wall, defendTroops, CastleUnitDmg, WallDf, CollapsedDf, counterPercent);
+            var defensePercent = defenseBonus?.Invoke(city.Id) ?? 100;
+            var castle = new CastleState(city.Wall, defendTroops, CastleUnitDmg, WallDf, CollapsedDf, counterPercent, defensePercent);
             var attackers = besiegers.Select(u => BuildAttacker(u, city.Position)).ToList();
             var outcome = _resolver.ResolveSiege(attackers, castle);
 

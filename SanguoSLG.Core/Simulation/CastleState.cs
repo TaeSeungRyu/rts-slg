@@ -9,11 +9,13 @@ namespace SanguoSLG.Core.Simulation;
 /// <param name="UnitDmg">성의 유닛dmg(반격에 쓰임, 기본 10).</param>
 /// <param name="WallDf">성벽이 서 있을 때 df(기본 12).</param>
 /// <param name="CollapsedDf">성벽 붕괴 후 df(기본 6, 공성탑 수준으로 격하).</param>
-/// <param name="AptitudePercent">수성 장수 적성.</param>
+/// <param name="AptitudePercent">수성 지휘관 적성·무력·공격 패시브가 합산된 성 반격 배수.</param>
+/// <param name="DefenseBonusPercent">수성 지휘관 적성·방어 패시브가 합산된 성벽/수비 방어 배수.</param>
 public sealed record CastleState(
     int WallCurrent,
     int Troops,
     int UnitDmg = 10,
     int WallDf = 12,
     int CollapsedDf = 6,
-    int AptitudePercent = 100);
+    int AptitudePercent = 100,
+    int DefenseBonusPercent = 100);

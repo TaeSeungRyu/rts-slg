@@ -114,7 +114,7 @@ public sealed class BattleResolver
                 var a = attackers[i];
                 wallDamage += DamageFormula.Resolve(
                     a.Troops, a.AtkBuilding, castle.WallDf,
-                    new[] { a.AptitudePercent, a.AtkBonusPercent }, System.Array.Empty<int>());
+                    new[] { a.AptitudePercent, a.AtkBonusPercent }, new[] { castle.DefenseBonusPercent });
             }
 
             var newWall = System.Math.Max(0, castle.WallCurrent - wallDamage);
@@ -141,7 +141,7 @@ public sealed class BattleResolver
             var a = attackers[i];
             troopDamage += DamageFormula.Resolve(
                 a.Troops, a.AtkUnit, castle.CollapsedDf,
-                new[] { a.AptitudePercent, a.AtkBonusPercent }, System.Array.Empty<int>());
+                new[] { a.AptitudePercent, a.AtkBonusPercent }, new[] { castle.DefenseBonusPercent });
         }
 
         // 붕괴 반격 격하: 반격 총량을 공격 부대 병력 비율로 나눠 준다.

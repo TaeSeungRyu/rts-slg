@@ -158,4 +158,47 @@ public class CampaignSiegeTests
         Assert.True(c.Wall < 6000, $"성벽이 깎였다: {c.Wall}");
         Assert.Equal(new CityId(9), c.Id);
     }
+
+    [Fact]
+    public void 캠페인_공성방어는_태수_수성적성과_패시브만_적용한다()
+    {
+        var attacker = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0), troops: 12000);
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 0, size: CastleSize.Medium) with { Governor = new GeneralId(10) };
+        var garr = new List<GarrisonForce> { new(new CityId(9), "swordsman", 10000, 60) };
+        var passives = new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).ToList();
+        var governor = new General(new GeneralId(10), "태수", new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Defense] = AptitudeGrade.S,
+        }, Might: 100, Intellect: 80, Politics: 70,
+            BattlePassives: [new GeneralSkill("castle_defender", 3)]);
+        var other = new General(new GeneralId(11), "주둔명장", new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Defense] = AptitudeGrade.SSS,
+        }, Might: 100, Intellect: 100, Politics: 70,
+            BattlePassives: [new GeneralSkill("turtle_stance", 3), new GeneralSkill("castle_defender", 3)]);
+        var postings = new List<GeneralPosting>
+        {
+            new(governor.Id, city.Owner, city.Id),
+            new(other.Id, city.Owner, city.Id),
+        };
+        var state = new GameState(1, 190, [], [city], [governor, other], Postings: postings,
+            GarrisonForces: garr, FieldArmies: [attacker]);
+
+        var withGovernorOnly = new CampaignEngine(
+            new AdvanceOrchestrator(new MovementSimulator(new PassabilityMap(new HexMap(0, 30, -8, 8), [], [])), new CombatPhaseResolver(new BattleResolver(60), 70)),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)), Siege(), passives: passives)
+            .AdvanceWeek(state, out _, out var siegeReports);
+
+        var noSkillCity = city with { Governor = null };
+        var noSkillState = state with { Cities = [noSkillCity], Postings = [], FieldArmies = [attacker] };
+        var noSkill = new CampaignEngine(
+            new AdvanceOrchestrator(new MovementSimulator(new PassabilityMap(new HexMap(0, 30, -8, 8), [], [])), new CombatPhaseResolver(new BattleResolver(60), 70)),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)), Siege(), passives: passives)
+            .AdvanceWeek(noSkillState, out _, out _);
+
+        Assert.NotEmpty(siegeReports);
+        Assert.True(withGovernorOnly.Garrisons.Sum(g => g.Troops) > noSkill.Garrisons.Sum(g => g.Troops),
+            "태수의 수성 적성과 성 주둔 패시브가 수비 피해를 줄여야 한다.");
+    }
+
 }

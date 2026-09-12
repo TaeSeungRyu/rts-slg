@@ -26,6 +26,7 @@ public sealed class CampaignEngine
     private readonly CampaignSiege? _siege;
     private readonly CityCapture? _capture;
     private readonly CityPlunder? _plunder;
+    private readonly IReadOnlyDictionary<string, PassiveSkill> _passives;
     private readonly IRandomSource _random;
     private readonly int _cityResupplyRadius;
     private readonly int _buildSiteHp;
@@ -34,13 +35,15 @@ public sealed class CampaignEngine
     public CampaignEngine(AdvanceOrchestrator field, WorldEngine world,
         CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null,
         CityPlunder? plunder = null, int cityResupplyRadius = 0,
-        int buildSiteHp = 0, int buildSiteDamagePerTurn = 0)
+        int buildSiteHp = 0, int buildSiteDamagePerTurn = 0,
+        IReadOnlyList<PassiveSkill>? passives = null)
     {
         _field = field;
         _world = world;
         _siege = siege;
         _capture = capture;
         _plunder = plunder;
+        _passives = (passives ?? []).ToDictionary(p => p.Code);
         _random = random ?? new SeededRandomSource(0);
         _cityResupplyRadius = cityResupplyRadius;
         _buildSiteHp = buildSiteHp;
@@ -164,26 +167,14 @@ public sealed class CampaignEngine
             if (_siege is not null)
             {
                 var siegeState = work;
-                var result = _siege.Resolve(armies, siegeState.Cities, siegeState.Garrisons, CounterAptitude);
+                var result = _siege.Resolve(armies, siegeState.Cities, siegeState.Garrisons, CounterAptitude, DefenseBonus);
 
-                // 성 반격 위력 = 유효 태수(그 도시에 실제 주둔한 소속 장수) 무력의 위력 배수. 없으면 100%.
+                // 성 반격/방어 보정 = 태수 또는 대리 수성 지휘관 1명의 적성·스킬만 반영한다.
                 int CounterAptitude(CityId cid)
-                {
-                    var cc = siegeState.Cities.FirstOrDefault(c => c.Id == cid);
-                    if (cc?.Governor is not { } gid)
-                    {
-                        return 100;
-                    }
+                    => SiegeDefensePercents(siegeState, cid).CounterPercent;
 
-                    var posting = siegeState.PostingOf(gid);
-                    if (posting is null || posting.Location != cid || posting.Faction != cc.Owner)
-                    {
-                        return 100;
-                    }
-
-                    var gov = siegeState.Generals.FirstOrDefault(g => g.Id == gid);
-                    return gov is null ? 100 : StatScale.Percent(gov.Might);
-                }
+                int DefenseBonus(CityId cid)
+                    => SiegeDefensePercents(siegeState, cid).DefensePercent;
 
                 // 성 반격으로 전멸한 공성 부대의 장수 판정(§4b) — 포획 후보 = 그 성의 소유 세력.
                 foreach (var dead in result.Armies.Where(u => u.Pool.Active <= 0).OrderBy(u => u.Id.Value))
@@ -424,6 +415,42 @@ public sealed class CampaignEngine
 
     // 입성 부대 → 그 도시 대기 병력 편입(병종·훈련도 보존, 가중 평균) + 실린 장수 그 도시 주둔 복귀
     // + 예치: 노획 금·잔여 휴대 군량을 성 비축에 합산(design-administration "복귀 예치").
+    private (int CounterPercent, int DefensePercent, SiegeDefenseLeader Leader) SiegeDefensePercents(GameState state, CityId cityId)
+    {
+        var city = state.Cities.FirstOrDefault(c => c.Id == cityId);
+        if (city is null)
+        {
+            return (100, 100, new SiegeDefenseLeader(cityId, null, false, AptitudeGrade.F, 0, 0, ""));
+        }
+
+        var leader = SiegeDefenseCommand.Select(state, city);
+        if (leader.General is not { } generalId)
+        {
+            return (100, 100, leader);
+        }
+
+        var general = state.Generals.FirstOrDefault(g => g.Id == generalId);
+        if (general is null)
+        {
+            return (100, 100, leader);
+        }
+
+        var held = new List<(PassiveSkill Skill, int Tier)>();
+        foreach (var generalSkill in general.Passives)
+        {
+            if (_passives.TryGetValue(generalSkill.Code, out var skill))
+            {
+                held.Add((skill, generalSkill.Tier));
+            }
+        }
+        var context = new CombatContext(InCastle: true, InField: false, IncomingMelee: true, IncomingRanged: true);
+        var (passiveAtk, passiveDf) = PassiveBucketEvaluator.Evaluate(held, context);
+        var aptitude = general.AptitudeFor(TroopClass.Defense).Percent();
+        var counter = StatScale.Percent(general.Might) * aptitude / 100 * passiveAtk / 100;
+        var defense = aptitude * passiveDf / 100;
+        return (System.Math.Max(25, counter), System.Math.Max(25, defense), leader);
+    }
+
     private static GameState ApplyEntered(GameState work, IReadOnlyList<CombatUnit> entered,
         IReadOnlyDictionary<Spatial.HexCoord, CityId> cityAt)
     {
