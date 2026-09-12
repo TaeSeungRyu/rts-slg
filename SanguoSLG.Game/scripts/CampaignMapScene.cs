@@ -191,6 +191,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly Dictionary<int, SpinBox> _researchFundingRatios = new();
     private Label? _researchFundingPreview;
     private readonly Dictionary<TroopClass, ImageTexture> _emblems = new();
+    private readonly Dictionary<TroopClass, ImageTexture> _aptitudeCardTextures = new();
 
     // 출전 모달 선택 상태.
     private string? _depTroop;
@@ -5536,19 +5537,13 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(GoldRule());
 
         box.AddChild(MakeLabel("병종 적성", 13, GoldBright));
-        var classes = new[]
-        {
-            TroopClass.Infantry, TroopClass.Archer, TroopClass.Cavalry,
-            TroopClass.Elephant, TroopClass.Siege, TroopClass.Naval, TroopClass.Supply, TroopClass.Defense,
-        };
-        var apt = new GridContainer { Columns = 8, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        apt.AddThemeConstantOverride("v_separation", 1);
+        var apt = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        apt.AddThemeConstantOverride("h_separation", 6);
+        apt.AddThemeConstantOverride("v_separation", 6);
         box.AddChild(apt);
-        foreach (var tc in classes) { apt.AddChild(Cell(ClassName(tc), 11, new Color(Parchment, 0.75f))); }
-        foreach (var tc in classes)
+        foreach (var spec in GeneralRosterAptitudes)
         {
-            var grade = g.AptitudeFor(tc);
-            apt.AddChild(Cell(GradeText(grade), 14, grade >= AptitudeGrade.A ? GoldBright : Parchment));
+            apt.AddChild(GeneralAptitudeCard(g, spec.Label, spec.Class));
         }
 
         box.AddChild(GoldRule());
@@ -6551,6 +6546,87 @@ public sealed partial class CampaignMapScene : Node3D
         ("보급", "보급", TroopClass.Supply),
         ("수성", "수성", TroopClass.Defense),
     ];
+
+    private static readonly Dictionary<TroopClass, string> AptitudeCardFiles = new()
+    {
+        [TroopClass.Infantry] = "res://assets/ui/cards/01_infantry_bobyeong.png",
+        [TroopClass.Archer] = "res://assets/ui/cards/02_archer_gungbyeong.png",
+        [TroopClass.Cavalry] = "res://assets/ui/cards/03_cavalry_gibyeong.png",
+        [TroopClass.Elephant] = "res://assets/ui/cards/04_elephant_sangbyeong.png",
+        [TroopClass.Siege] = "res://assets/ui/cards/05_siege_gongseong.png",
+        [TroopClass.Naval] = "res://assets/ui/cards/06_naval_haesang.png",
+        [TroopClass.Supply] = "res://assets/ui/cards/07_supply_bogeup.png",
+        [TroopClass.Defense] = "res://assets/ui/cards/08_castle_defense_suseong.png",
+    };
+
+    private PanelContainer GeneralAptitudeCard(General general, string label, TroopClass troopClass)
+    {
+        var grade = general.AptitudeFor(troopClass);
+        var card = new PanelContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 116),
+        };
+        card.AddThemeStyleboxOverride("panel", Frame(new Color(0.105f, 0.07f, 0.05f), new Color(Gold, 0.55f), 1, 7, 6));
+
+        var v = new VBoxContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        v.AddThemeConstantOverride("separation", 3);
+        card.AddChild(v);
+
+        var imageWrap = new PanelContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 76),
+        };
+        imageWrap.AddThemeStyleboxOverride("panel", Frame(new Color(0.045f, 0.035f, 0.03f), new Color(ClassColor(troopClass), 0.55f), 1, 5, 2));
+        v.AddChild(imageWrap);
+
+        if (AptitudeCardTexture(troopClass) is { } tex)
+        {
+            imageWrap.AddChild(new TextureRect
+            {
+                Texture = tex,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            });
+        }
+        else
+        {
+            var fallback = MakeLabel(label, 14, new Color(Parchment, 0.75f));
+            fallback.HorizontalAlignment = HorizontalAlignment.Center;
+            fallback.VerticalAlignment = VerticalAlignment.Center;
+            imageWrap.AddChild(fallback);
+        }
+
+        var name = MakeLabel(label, 11, new Color(Parchment, 0.78f));
+        name.HorizontalAlignment = HorizontalAlignment.Center;
+        v.AddChild(name);
+
+        var gradeText = MakeLabel(GradeText(grade), 15, grade >= AptitudeGrade.A ? GoldBright : Parchment);
+        gradeText.HorizontalAlignment = HorizontalAlignment.Center;
+        v.AddChild(gradeText);
+
+        return card;
+    }
+
+    private ImageTexture? AptitudeCardTexture(TroopClass troopClass)
+    {
+        if (_aptitudeCardTextures.TryGetValue(troopClass, out var cached)) { return cached; }
+        if (!AptitudeCardFiles.TryGetValue(troopClass, out var path)) { return null; }
+
+        var localPath = ProjectSettings.GlobalizePath(path);
+        if (!System.IO.File.Exists(localPath)) { return null; }
+        var image = Image.LoadFromFile(localPath);
+        if (image is null || image.IsEmpty()) { return null; }
+        image.GenerateMipmaps();
+        var texture = ImageTexture.CreateFromImage(image);
+        _aptitudeCardTextures[troopClass] = texture;
+        return texture;
+    }
 
     private string SortTitle(int col, string text)
         => _generalRosterSortCol == col ? text + (_generalRosterSortAsc ? " ▲" : " ▼") : text;
