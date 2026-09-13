@@ -3959,7 +3959,7 @@ public sealed partial class CampaignMapScene : Node3D
             var amountRow = new HBoxContainer();
             amountRow.AddThemeConstantOverride("separation", 8);
             amountRow.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            var slider = new HSlider
+            var slider = ApplySliderStyle(new HSlider
             {
                 MinValue = 0,
                 MaxValue = System.Math.Min(available, _cb.SupplyMaxTroops),
@@ -3968,7 +3968,7 @@ public sealed partial class CampaignMapScene : Node3D
                 CustomMinimumSize = new Vector2(180, 24),
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-            };
+            });
             var spin = new SpinBox
             {
                 MinValue = 0,
@@ -4784,7 +4784,7 @@ public sealed partial class CampaignMapScene : Node3D
             ctrl.AddThemeConstantOverride("separation", 8);
             rightV.AddChild(ctrl);
 
-            var slider = new HSlider { MinValue = 0, MaxValue = maxUnits, Step = step };
+            var slider = ApplySliderStyle(new HSlider { MinValue = 0, MaxValue = maxUnits, Step = step });
             slider.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             slider.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             slider.CustomMinimumSize = new Vector2(0, 24);
@@ -6330,7 +6330,7 @@ public sealed partial class CampaignMapScene : Node3D
             Value = 0,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
-        var goldSlider = new HSlider { MinValue = 0, MaxValue = source.Gold, Step = 100, Value = 0, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        var goldSlider = ApplySliderStyle(new HSlider { MinValue = 0, MaxValue = source.Gold, Step = 100, Value = 0, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
         goldBox.AddChild(goldSlider);
         goldBox.AddChild(goldSpin);
         form.AddChild(goldBox);
@@ -6345,7 +6345,7 @@ public sealed partial class CampaignMapScene : Node3D
             Value = 0,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
-        var provSlider = new HSlider { MinValue = 0, MaxValue = source.Provisions, Step = 100, Value = 0, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        var provSlider = ApplySliderStyle(new HSlider { MinValue = 0, MaxValue = source.Provisions, Step = 100, Value = 0, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
         provBox.AddChild(provSlider);
         provBox.AddChild(provSpin);
         form.AddChild(provBox);
@@ -6381,7 +6381,7 @@ public sealed partial class CampaignMapScene : Node3D
             var amountRow = new HBoxContainer();
             amountRow.AddThemeConstantOverride("separation", 6);
             amountRow.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            var slider = new HSlider
+            var slider = ApplySliderStyle(new HSlider
             {
                 MinValue = 0,
                 MaxValue = remaining,
@@ -6390,7 +6390,7 @@ public sealed partial class CampaignMapScene : Node3D
                 CustomMinimumSize = new Vector2(0, 24),
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-            };
+            });
             var spin = new SpinBox
             {
                 MinValue = 0,
@@ -9756,6 +9756,14 @@ public sealed partial class CampaignMapScene : Node3D
         popup.AddThemeIconOverride("checked", _dotIcon);
         popup.AddThemeIconOverride("unchecked", _blankIcon);
         return o;
+    }
+
+    private HSlider ApplySliderStyle(HSlider slider)
+    {
+        slider.AddThemeStyleboxOverride("slider", Frame(new Color(0.72f, 0.72f, 0.72f, 0.9f), new Color(0.95f, 0.86f, 0.58f, 0.65f), 1, 3, 0));
+        slider.AddThemeStyleboxOverride("grabber_area", Frame(new Color(GoldBright, 0.35f), new Color(GoldBright, 0.0f), 0, 3, 0));
+        slider.AddThemeStyleboxOverride("grabber_area_highlight", Frame(new Color(GoldBright, 0.55f), new Color(GoldBright, 0.0f), 0, 3, 0));
+        return slider;
     }
 
 
