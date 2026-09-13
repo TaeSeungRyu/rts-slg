@@ -9842,9 +9842,20 @@ public sealed partial class CampaignMapScene : Node3D
 
     private HSlider ApplySliderStyle(HSlider slider)
     {
-        slider.AddThemeStyleboxOverride("slider", Frame(new Color(0.56f, 0.56f, 0.56f, 0.95f), new Color(0.78f, 0.78f, 0.78f, 0.70f), 1, 3, 0));
-        slider.AddThemeStyleboxOverride("grabber_area", Frame(new Color(0.94f, 0.93f, 0.88f, 0.85f), new Color(1.0f, 0.98f, 0.90f, 0.0f), 0, 3, 0));
-        slider.AddThemeStyleboxOverride("grabber_area_highlight", Frame(new Color(1.0f, 0.98f, 0.92f, 0.95f), new Color(1.0f, 0.98f, 0.90f, 0.0f), 0, 3, 0));
+        static StyleBoxFlat Bar(Color bg, Color border)
+        {
+            var s = new StyleBoxFlat { BgColor = bg, BorderColor = border };
+            s.SetBorderWidthAll(1);
+            s.SetCornerRadiusAll(4);
+            s.ContentMarginTop = 4;
+            s.ContentMarginBottom = 4;
+            return s;
+        }
+
+        slider.CustomMinimumSize = new Vector2(Mathf.Max(slider.CustomMinimumSize.X, 120f), Mathf.Max(slider.CustomMinimumSize.Y, 28f));
+        slider.AddThemeStyleboxOverride("slider", Bar(new Color(0.54f, 0.54f, 0.54f, 0.96f), new Color(0.80f, 0.80f, 0.80f, 0.78f)));
+        slider.AddThemeStyleboxOverride("grabber_area", Bar(new Color(0.96f, 0.96f, 0.92f, 0.90f), new Color(1.0f, 1.0f, 0.96f, 0.90f)));
+        slider.AddThemeStyleboxOverride("grabber_area_highlight", Bar(new Color(1.0f, 1.0f, 0.96f, 0.98f), new Color(1.0f, 1.0f, 0.98f, 0.95f)));
         return slider;
     }
 
