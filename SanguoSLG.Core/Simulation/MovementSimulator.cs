@@ -101,6 +101,7 @@ public sealed class MovementSimulator
             while (true)
             {
                 var events = new List<TickEvent>();
+                var enteredThisTick = new List<FieldUnit>();
 
                 // 공격모드 유닛의 추격 상태를 갱신한다(탐지 시작/시야 상실).
                 // 도착 판정보다 먼저 — 목표 없이 서 있어도 적이 탐지에 들면 추격해야 한다.
@@ -257,6 +258,7 @@ public sealed class MovementSimulator
                 // 입성 확정 — 야전에서 빠진다(이후 탐지·전투·점유 대상이 아니다).
                 foreach (var w in enteringNow)
                 {
+                    enteredThisTick.Add(w.Unit);
                     entered.Add(w.Unit.Id);
                     events.Add(new TickEvent(TickEventKind.EnteredCastle, w.Unit.Id, null));
                     work.Remove(w);
@@ -292,10 +294,12 @@ public sealed class MovementSimulator
                 // 진행 순서상 "이동턴 → 성복귀/입성 여부 → 공격턴"을 보장한다.
                 foreach (var w in work
                     .Where(w => w.Unit.Target is { } target
+                        && !w.Pursuing && w.CurrentGoal == target && w.Unit.Speed > 0
                         && w.Unit.Position.Distance(target) <= 1
                         && IsOwnCastle(w, target, castles))
                     .ToList())
                 {
+                    enteredThisTick.Add(w.Unit);
                     entered.Add(w.Unit.Id);
                     events.Add(new TickEvent(TickEventKind.EnteredCastle, w.Unit.Id, null));
                     work.Remove(w);
@@ -332,7 +336,7 @@ public sealed class MovementSimulator
                 // 사건이 있거나 실제로 움직였으면 스냅샷을 남긴다
                 if (events.Count > 0 || applied.Count > 0)
                 {
-                    ticks.Add(Snapshot(day, work, events));
+                    ticks.Add(Snapshot(day, work, events) with { EnteredUnits = enteredThisTick });
                 }
 
                 // 정면 충돌(자리 맞바꾸기·같은 칸)은 즉시 교전한다.

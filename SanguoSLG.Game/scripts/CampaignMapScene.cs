@@ -2164,26 +2164,13 @@ public sealed partial class CampaignMapScene : Node3D
         for (var d = 0; d <= AnimDays; d++) { _dayKind[d] = "이동"; } // 기본 이동턴, 아래서 교전·공성 있는 날만 공격턴
         var alive = new HashSet<int>(startHex.Keys);
         var deathEffectUnitIds = new HashSet<int>();
-        var prev = new Dictionary<int, HexCoord>(startHex);
-        var movesInDay = new Dictionary<(int, int), int>();
+        var playback = new MovementPlayback(startHex);
+        var prev = playback.Positions;
         var dayOffset = 0;
         for (var ti = 0; ti < turns.Count; ti++)
         {
             var turn = turns[ti];
-            foreach (var tick in turn.Movement.Ticks)
-            {
-                var absDay = dayOffset + tick.Day;
-                foreach (var fu in tick.Units)
-                {
-                    var id = fu.Id.Value;
-                    if (!prev.TryGetValue(id, out var pv)) { prev[id] = fu.Position; continue; }
-                    if (fu.Position == pv) { continue; }
-                    var k = movesInDay.GetValueOrDefault((id, absDay), 0);
-                    _animSteps.Add(((absDay - 1) * DaySeconds + k * StepSeconds, id, fu.Position));
-                    movesInDay[(id, absDay)] = k + 1;
-                    prev[id] = fu.Position;
-                }
-            }
+            playback.Append(turn.Movement, dayOffset, DaySeconds, StepSeconds);
 
             var stopDay = dayOffset + System.Math.Max(1, turn.Movement.Days);
             var atkTime = ((stopDay - 1) * DaySeconds) + MoveSeconds + 0.15; // 그날 이동(≤1.5초)이 끝난 뒤
@@ -2267,7 +2254,8 @@ public sealed partial class CampaignMapScene : Node3D
             var enteredNow = turn.EnteredCastle.Select(u => u.Id.Value).ToHashSet();
             foreach (var id in alive.Where(id => !survivors.Contains(id)).OrderBy(id => id))
             {
-                _animKills.Add((settleTime, id));
+                _animKills.Add((enteredNow.Contains(id) && playback.Entries.TryGetValue(id, out var entryTime)
+                    ? entryTime : settleTime, id));
                 if (!enteredNow.Contains(id) && prev.TryGetValue(id, out var deadAt))
                 {
                     if (deathEffectUnitIds.Add(id))
@@ -2288,6 +2276,7 @@ public sealed partial class CampaignMapScene : Node3D
             dayOffset = stopDay;
         }
 
+        _animSteps.AddRange(playback.Moves);
         ScheduleProductionAnimations(preMove);
 
         _animSteps.Sort((a, b) => a.Time.CompareTo(b.Time));

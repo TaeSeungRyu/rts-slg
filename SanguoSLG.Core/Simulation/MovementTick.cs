@@ -7,4 +7,7 @@ namespace SanguoSLG.Core.Simulation;
 public sealed record MovementTick(
     int Day,
     IReadOnlyList<FieldUnit> Units,
-    IReadOnlyList<TickEvent> Events);
+    IReadOnlyList<TickEvent> Events)
+{
+    public IReadOnlyList<FieldUnit> EnteredUnits { get; init; } = [];
+}

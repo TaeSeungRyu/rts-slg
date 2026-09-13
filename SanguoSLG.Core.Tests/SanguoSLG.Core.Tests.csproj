@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SanguoSLG.Core\SanguoSLG.Core.csproj" />
+    <Compile Include="..\SanguoSLG.Game\scripts\MovementPlayback.cs" Link="Presentation\MovementPlayback.cs" />
   </ItemGroup>
 
 </Project>
