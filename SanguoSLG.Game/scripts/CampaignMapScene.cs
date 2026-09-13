@@ -232,6 +232,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(PanelContainer Card, string Code)> _supplyTroopCards = new();
     private int _supplyEditIndex = -1;
     private bool _targetingSupplyDeploy;
+    private readonly Dictionary<string, int> _transportDraft = new(System.StringComparer.Ordinal);
     private string _dbgLog = ""; // 출전 디버그 로그 파일 경로(res://deploy-debug.log)
     private const float FacilityDisplayScale = 0.5f;
 
@@ -3244,7 +3245,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         Add("전투편성", () => { if (_selected is { } c) { OpenDeployModal(c); } });
         Add("보급편성", () => { if (_selected is { } c) { OpenSupplyHub(c); } });
-        Add("수송편성", () => { if (_selected is { } c) { OpenTransportCompose(c); } });
+        Add("수송편성", () => { if (_selected is { } c) { OpenTransportHub(c); } });
 
         PlaceGroupMenu();
         _cmdSubMenu.Visible = true;
@@ -3811,43 +3812,83 @@ public sealed partial class CampaignMapScene : Node3D
         var mine = Enumerable.Range(0, _pendingSupplyDeploys.Count)
             .Where(i => _pendingSupplyDeploys[i].Req.City == city)
             .ToList();
-        box.AddChild(MakeLabel($"예약된 보급부대 ({mine.Count})", 14, GoldBright));
-        if (mine.Count == 0)
-        {
-            box.AddChild(MakeLabel("(없음)", 12, Parchment));
-        }
+        box.AddChild(MakeLabel($"예약된 보급부대 ({mine.Count})   — 타일을 눌러 수정", 14, GoldBright));
+        var grid = new GridContainer { Columns = 6 };
+        grid.AddThemeConstantOverride("h_separation", 8);
+        grid.AddThemeConstantOverride("v_separation", 8);
+        box.AddChild(grid);
 
         foreach (var i in mine)
         {
             var idx = i;
             var req = _pendingSupplyDeploys[idx].Req;
-            var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 6);
             var target = req.Target is { } tg
                 ? _state.Cities.FirstOrDefault(c => c.Position == tg)?.Name ?? $"({tg.Q},{tg.R})"
                 : "목표 미지정";
-            var lbl = MakeLabel("· " + _pendingSupplyDeploys[idx].Label + $" · {target}", 12, Parchment);
-            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            row.AddChild(lbl);
+            var leader = _state.Generals.FirstOrDefault(g => g.Id == req.Vanguard)?.Name ?? "-";
+            var total = req.Lines.Sum(l => l.Troops);
+            var cell = new Control { CustomMinimumSize = new Vector2(104, 132) };
+            var tile = new PanelContainer
+            {
+                MouseFilter = Control.MouseFilterEnum.Stop,
+                MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+            };
+            tile.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+            tile.AddThemeStyleboxOverride("panel", CardBox(false));
+            cell.AddChild(tile);
+            var tv = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+            tv.AddThemeConstantOverride("separation", 2);
+            tile.AddChild(tv);
+            tv.AddChild(new TextureRect
+            {
+                Texture = Icon(Sym.Grain),
+                CustomMinimumSize = new Vector2(42, 42),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+            });
+            var l1 = MakeLabel($"보급 {total}명", 11, GoldBright);
+            l1.HorizontalAlignment = HorizontalAlignment.Center;
+            tv.AddChild(l1);
+            var l2 = MakeLabel(leader, 11, Parchment);
+            l2.HorizontalAlignment = HorizontalAlignment.Center;
+            tv.AddChild(l2);
+            var l3 = MakeLabel(target, 10, req.Target is null ? new Color(0.85f, 0.5f, 0.4f) : Parchment);
+            l3.HorizontalAlignment = HorizontalAlignment.Center;
+            tv.AddChild(l3);
+            var actionRow = new HBoxContainer();
+            actionRow.AddThemeConstantOverride("separation", 2);
+            tv.AddChild(actionRow);
             var targetBtn = MakeButton("목표");
-            targetBtn.CustomMinimumSize = new Vector2(54, 28);
+            targetBtn.CustomMinimumSize = new Vector2(34, 22);
             targetBtn.Pressed += () => BeginSupplyTargeting(idx);
-            row.AddChild(targetBtn);
-            var edit = MakeButton("수정");
-            edit.CustomMinimumSize = new Vector2(54, 28);
-            edit.Pressed += () => OpenSupplyCompose(idx);
-            row.AddChild(edit);
-            var del = MakeButton("삭제");
-            del.CustomMinimumSize = new Vector2(54, 28);
+            actionRow.AddChild(targetBtn);
+            var del = MakeButton("✕");
+            del.CustomMinimumSize = new Vector2(26, 22);
             del.Pressed += () => { _pendingSupplyDeploys.RemoveAt(idx); OpenSupplyHub(city); };
-            row.AddChild(del);
-            box.AddChild(row);
+            actionRow.AddChild(del);
+            tile.GuiInput += e =>
+            {
+                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { OpenSupplyCompose(idx); }
+            };
+            grid.AddChild(cell);
         }
 
-        var add = MakeButton("＋ 보급부대 추가", accent: true);
-        add.CustomMinimumSize = new Vector2(0, 36);
-        add.Pressed += () => OpenSupplyCompose(-1);
-        box.AddChild(add);
+        var addTile = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(104, 132),
+            MouseFilter = Control.MouseFilterEnum.Stop,
+            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+        };
+        addTile.AddThemeStyleboxOverride("panel", CardBox(false));
+        var al = MakeLabel("＋", 32, GoldBright);
+        al.HorizontalAlignment = HorizontalAlignment.Center;
+        al.VerticalAlignment = VerticalAlignment.Center;
+        addTile.AddChild(al);
+        addTile.GuiInput += e =>
+        {
+            if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { OpenSupplyCompose(-1); }
+        };
+        grid.AddChild(addTile);
         box.AddChild(MakeLabel("지도에서는 병력 규모와 무관하게 전용 보급부대 모델(troop-supply.glb)로 표시됩니다.", 11, Parchment));
 
         var contentH = box.GetCombinedMinimumSize().Y;
@@ -6180,6 +6221,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenTransportCompose(CityId city)
     {
         _depModalCity = city;
+        _transportDraft.Clear();
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var source = _state.Cities.First(c => c.Id == city);
         var destinations = _state.Cities
@@ -6190,9 +6232,11 @@ public sealed partial class CampaignMapScene : Node3D
         if (destinations.Count == 0)
         {
             ShowNotice("수송 불가", "수송할 같은 세력의 다른 성이 없습니다.");
-            OpenDeployHub();
+            OpenTransportHub(city);
             return;
         }
+
+        var usedTroops = ReservedTroopsByCode(city, editIndex: -1, editingSupply: false);
 
         var garrisons = _state.Garrisons
             .Where(g => g.City == city && g.Troops > 0 && !g.Trainee)
@@ -6201,7 +6245,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (garrisons.Count == 0)
         {
             ShowNotice("수송 불가", "수송할 대기 병력이 없습니다.");
-            OpenDeployHub();
+            OpenTransportHub(city);
             return;
         }
 
@@ -6216,7 +6260,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (generals.Count == 0)
         {
             ShowNotice("수송 불가", "수송을 맡길 대기 장수가 없습니다.");
-            OpenDeployHub();
+            OpenTransportHub(city);
             return;
         }
 
@@ -6232,7 +6276,7 @@ public sealed partial class CampaignMapScene : Node3D
         titleRow.AddChild(title);
         var back = MakeButton("◀ 목록");
         back.CustomMinimumSize = new Vector2(60, 32);
-        back.Pressed += OpenDeployHub;
+        back.Pressed += () => OpenTransportHub(city);
         titleRow.AddChild(back);
         box.AddChild(GoldRule());
         box.AddChild(MakeLabel("주둔 병력과 금·군량을 다른 아군 성으로 이동합니다.\n수송부대는 장수를 배치하지만 행군 전용이며 공격·방어·점령을 할 수 없고, 속도 2·군량 소모 50%로 이동합니다.", 12, Parchment));
@@ -6258,27 +6302,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
         form.AddChild(generalOpt);
 
-        form.AddChild(MakeLabel("병종", 12, GoldBright));
-        var troopOpt = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        foreach (var g in garrisons)
-        {
-            var name = _troops.FirstOrDefault(t => t.Code == g.TroopCode)?.Name ?? g.TroopCode;
-            troopOpt.AddItem($"{name} · {g.Troops}명 · 훈{g.TrainingLevel}");
-        }
-        form.AddChild(troopOpt);
-
-        form.AddChild(MakeLabel("병력", 12, GoldBright));
-        var troopSpin = new SpinBox
-        {
-            MinValue = 1,
-            MaxValue = System.Math.Min(DeployService.TransportMaxTroops, garrisons[0].Troops),
-            Step = 100,
-            Value = System.Math.Min(DeployService.TransportMaxTroops, garrisons[0].Troops),
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-        };
-        form.AddChild(troopSpin);
-
         form.AddChild(MakeLabel("금", 12, GoldBright));
+        var goldBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         var goldSpin = new SpinBox
         {
             MinValue = 0,
@@ -6287,9 +6312,13 @@ public sealed partial class CampaignMapScene : Node3D
             Value = 0,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
-        form.AddChild(goldSpin);
+        var goldSlider = new HSlider { MinValue = 0, MaxValue = source.Gold, Step = 100, Value = 0, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        goldBox.AddChild(goldSlider);
+        goldBox.AddChild(goldSpin);
+        form.AddChild(goldBox);
 
         form.AddChild(MakeLabel("군량", 12, GoldBright));
+        var provBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         var provSpin = new SpinBox
         {
             MinValue = 0,
@@ -6298,43 +6327,116 @@ public sealed partial class CampaignMapScene : Node3D
             Value = 0,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
-        form.AddChild(provSpin);
+        var provSlider = new HSlider { MinValue = 0, MaxValue = source.Provisions, Step = 100, Value = 0, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        provBox.AddChild(provSlider);
+        provBox.AddChild(provSpin);
+        form.AddChild(provBox);
 
         var preview = MakeLabel("", 12, Parchment);
         preview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+
+        box.AddChild(MakeLabel("수송 병종 (여러 개 선택 가능)", 13, GoldBright));
+        var troopGrid = new GridContainer { Columns = 3, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        troopGrid.AddThemeConstantOverride("h_separation", 8);
+        troopGrid.AddThemeConstantOverride("v_separation", 8);
+        box.AddChild(troopGrid);
+
+        var transportSpins = new Dictionary<string, SpinBox>(System.StringComparer.Ordinal);
+        foreach (var gar in garrisons)
+        {
+            var code = gar.TroopCode;
+            var remaining = System.Math.Max(0, gar.Troops - usedTroops.GetValueOrDefault(code, 0));
+            if (remaining <= 0) { continue; }
+            var template = _troops.FirstOrDefault(t => t.Code == code);
+            var name = template?.Name ?? code;
+            var card = new PanelContainer { CustomMinimumSize = new Vector2(150, 128), MouseFilter = Control.MouseFilterEnum.Stop };
+            card.AddThemeStyleboxOverride("panel", CardBox(false));
+            var cv = new VBoxContainer();
+            cv.AddThemeConstantOverride("separation", 4);
+            card.AddChild(cv);
+            var label = MakeLabel(name, 12, GoldBright);
+            label.HorizontalAlignment = HorizontalAlignment.Center;
+            cv.AddChild(label);
+            var sub = MakeLabel($"대기 {remaining}명 · 훈{gar.TrainingLevel}", 10, Parchment);
+            sub.HorizontalAlignment = HorizontalAlignment.Center;
+            cv.AddChild(sub);
+            var spin = new SpinBox
+            {
+                MinValue = 0,
+                MaxValue = remaining,
+                Step = 100,
+                Value = 0,
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            };
+            cv.AddChild(spin);
+            var maxBtn = MakeButton("최대");
+            maxBtn.CustomMinimumSize = new Vector2(0, 24);
+            maxBtn.Pressed += () => spin.Value = spin.MaxValue;
+            cv.AddChild(maxBtn);
+            spin.ValueChanged += v =>
+            {
+                var value = (int)v;
+                if (value <= 0) { _transportDraft.Remove(code); }
+                else { _transportDraft[code] = value; }
+                card.AddThemeStyleboxOverride("panel", CardBox(value > 0));
+                Refresh();
+            };
+            card.GuiInput += e =>
+            {
+                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+                {
+                    spin.Value = spin.Value > 0 ? 0 : System.Math.Min(remaining, 1000);
+                }
+            };
+            transportSpins[code] = spin;
+            troopGrid.AddChild(card);
+        }
+
         box.AddChild(preview);
 
         void Refresh()
         {
-            var g = garrisons[Mathf.Clamp(troopOpt.Selected, 0, garrisons.Count - 1)];
             var d = destinations[Mathf.Clamp(destOpt.Selected, 0, destinations.Count - 1)];
             var leader = generals[Mathf.Clamp(generalOpt.Selected, 0, generals.Count - 1)];
-            troopSpin.MaxValue = System.Math.Min(DeployService.TransportMaxTroops, g.Troops);
-            if (troopSpin.Value > troopSpin.MaxValue) { troopSpin.Value = troopSpin.MaxValue; }
-            var name = _troops.FirstOrDefault(t => t.Code == g.TroopCode)?.Name ?? g.TroopCode;
-            preview.Text = $"예약 미리보기: {source.Name} → {d.Name} · {leader.Name} · {name} {(int)troopSpin.Value}명 · 금 {(int)goldSpin.Value} · 군량 {(int)provSpin.Value}";
+            var total = _transportDraft.Values.Sum();
+            if (total > DeployService.TransportMaxTroops)
+            {
+                preview.Text = $"⚠ 수송 병력은 최대 {DeployService.TransportMaxTroops}명입니다. 현재 {total}명";
+                return;
+            }
+
+            var lineText = _transportDraft.Count == 0
+                ? "병종 미선택"
+                : string.Join(", ", _transportDraft.OrderBy(p => p.Key).Select(p => $"{_troops.FirstOrDefault(t => t.Code == p.Key)?.Name ?? p.Key} {p.Value}명"));
+            preview.Text = $"예약 미리보기: {source.Name} → {d.Name} · {leader.Name} · {lineText} · 금 {(int)goldSpin.Value} · 군량 {(int)provSpin.Value}";
         }
 
         destOpt.ItemSelected += _ => Refresh();
         generalOpt.ItemSelected += _ => Refresh();
-        troopOpt.ItemSelected += _ => Refresh();
-        troopSpin.ValueChanged += _ => Refresh();
-        goldSpin.ValueChanged += _ => Refresh();
-        provSpin.ValueChanged += _ => Refresh();
+        goldSlider.ValueChanged += v => { goldSpin.SetValueNoSignal(v); Refresh(); };
+        goldSpin.ValueChanged += v => { goldSlider.SetValueNoSignal(v); Refresh(); };
+        provSlider.ValueChanged += v => { provSpin.SetValueNoSignal(v); Refresh(); };
+        provSpin.ValueChanged += v => { provSlider.SetValueNoSignal(v); Refresh(); };
         Refresh();
 
         var save = MakeButton("수송 예약", accent: true);
         save.CustomMinimumSize = new Vector2(0, 36);
         save.Pressed += () =>
         {
-            var g = garrisons[Mathf.Clamp(troopOpt.Selected, 0, garrisons.Count - 1)];
             var d = destinations[Mathf.Clamp(destOpt.Selected, 0, destinations.Count - 1)];
             var leader = generals[Mathf.Clamp(generalOpt.Selected, 0, generals.Count - 1)];
-            var troops = (int)troopSpin.Value;
             var gold = (int)goldSpin.Value;
             var provisions = (int)provSpin.Value;
-            var name = _troops.FirstOrDefault(t => t.Code == g.TroopCode)?.Name ?? g.TroopCode;
-            var label = $"{source.Name}→{d.Name} · {leader.Name} · {name} {troops}명 · 금 {gold} · 군량 {provisions}";
+            var lines = _transportDraft
+                .Where(p => p.Value > 0)
+                .OrderBy(p => p.Key, System.StringComparer.Ordinal)
+                .Select(p => new TransportLine(p.Key, p.Value))
+                .ToList();
+            var troops = lines.Sum(l => l.Troops);
+            if (lines.Count == 0) { ShowNotice("수송 불가", "수송할 병종과 병력을 선택하세요."); return; }
+            if (troops > DeployService.TransportMaxTroops) { ShowNotice("수송 불가", $"수송 병력은 최대 {DeployService.TransportMaxTroops}명입니다."); return; }
+            var lineText = string.Join(", ", lines.Select(l => $"{_troops.FirstOrDefault(t => t.Code == l.TroopCode)?.Name ?? l.TroopCode} {l.Troops}명"));
+            var label = $"{source.Name}→{d.Name} · {leader.Name} · {lineText} · 금 {gold} · 군량 {provisions}";
             var ids = new GeneralId[] { leader.Id };
             ShowConfirm("수송 예약 확인", $"{label}{DutyReleaseNotice(ids)}", () =>
             {
@@ -6345,15 +6447,115 @@ public sealed partial class CampaignMapScene : Node3D
                 }
 
                 _state = _state.ReleaseOfficerDuties(ids);
-                _pendingTransportDeploys.Add((new TransportDeployRequest(city,
-                    [new TransportLine(g.TroopCode, troops)], d.Id, leader.Id, gold, provisions), label));
+                _pendingTransportDeploys.Add((new TransportDeployRequest(city, lines, d.Id, leader.Id, gold, provisions), label));
                 _log.Text = $"수송 예약: {label}";
                 SelectCity(city);
-                OpenDeployHub();
+                OpenTransportHub(city);
             });
         };
         box.AddChild(save);
 
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    private void OpenTransportHub(CityId city)
+    {
+        _depModalCity = city;
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        _depSelectedUnit = -1;
+
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.57f, 470f, 730f);
+        var mh = Mathf.Clamp(vp.Y * 0.8f, 360f, 640f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var cityName = _state.Cities.First(x => x.Id == city).Name;
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel($"◈  수송 예약   《 {cityName} 》  ⠿", 19, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(34, 32);
+        close.Pressed += () => { CloseModal(); SelectCity(city); };
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+
+        var mine = Enumerable.Range(0, _pendingTransportDeploys.Count)
+            .Where(i => _pendingTransportDeploys[i].Req.City == city)
+            .ToList();
+        box.AddChild(MakeLabel($"예약된 수송부대 ({mine.Count})   — 전투편성과 같은 방식으로 추가/취소", 14, GoldBright));
+
+        var grid = new GridContainer { Columns = 6 };
+        grid.AddThemeConstantOverride("h_separation", 8);
+        grid.AddThemeConstantOverride("v_separation", 8);
+        box.AddChild(grid);
+
+        foreach (var ti in mine)
+        {
+            var idx = ti;
+            var req = _pendingTransportDeploys[idx].Req;
+            var dest = _state.Cities.FirstOrDefault(c => c.Id == req.Destination)?.Name ?? $"성{req.Destination.Value}";
+            var leader = _state.Generals.FirstOrDefault(g => g.Id == req.Vanguard)?.Name ?? "-";
+            var cell = new Control { CustomMinimumSize = new Vector2(104, 118) };
+            var tile = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop };
+            tile.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+            tile.AddThemeStyleboxOverride("panel", CardBox(false));
+            cell.AddChild(tile);
+            var tv = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+            tv.AddThemeConstantOverride("separation", 2);
+            tile.AddChild(tv);
+            tv.AddChild(new TextureRect
+            {
+                Texture = Icon(Sym.Grain),
+                CustomMinimumSize = new Vector2(42, 42),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+            });
+            var total = req.Lines.Sum(l => l.Troops);
+            var l1 = MakeLabel($"→ {dest}", 11, GoldBright);
+            l1.HorizontalAlignment = HorizontalAlignment.Center;
+            tv.AddChild(l1);
+            var l2 = MakeLabel($"{leader}", 11, Parchment);
+            l2.HorizontalAlignment = HorizontalAlignment.Center;
+            tv.AddChild(l2);
+            var l3 = MakeLabel($"{total}명", 10, Parchment);
+            l3.HorizontalAlignment = HorizontalAlignment.Center;
+            tv.AddChild(l3);
+
+            var xbtn = MakeButton("✕");
+            xbtn.AddThemeFontSizeOverride("font_size", 11);
+            xbtn.CustomMinimumSize = new Vector2(20, 20);
+            xbtn.SetAnchorsPreset(Control.LayoutPreset.TopRight);
+            xbtn.OffsetLeft = -22;
+            xbtn.OffsetTop = 2;
+            xbtn.OffsetRight = -2;
+            xbtn.OffsetBottom = 22;
+            xbtn.Pressed += () => { _pendingTransportDeploys.RemoveAt(idx); OpenTransportHub(city); };
+            cell.AddChild(xbtn);
+            grid.AddChild(cell);
+        }
+
+        var addTile = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(104, 118),
+            MouseFilter = Control.MouseFilterEnum.Stop,
+            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+        };
+        addTile.AddThemeStyleboxOverride("panel", CardBox(false));
+        var al = MakeLabel("＋", 32, GoldBright);
+        al.HorizontalAlignment = HorizontalAlignment.Center;
+        al.VerticalAlignment = VerticalAlignment.Center;
+        addTile.AddChild(al);
+        addTile.GuiInput += e =>
+        {
+            if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { OpenTransportCompose(city); }
+        };
+        grid.AddChild(addTile);
+
+        box.AddChild(MakeLabel("수송부대는 속도 2, 군량 소모 50%로 이동합니다. 공격·방어·점령은 하지 않습니다.", 11, Parchment));
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
