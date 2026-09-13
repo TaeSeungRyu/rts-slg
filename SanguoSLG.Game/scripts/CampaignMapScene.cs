@@ -6379,7 +6379,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(MakeLabel("수송 장수 선택 (표에서 1명 선택)", 13, GoldBright));
         var generalTree = new Tree
         {
-            Columns = 4,
+            Columns = 5,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
@@ -6393,7 +6393,8 @@ public sealed partial class CampaignMapScene : Node3D
         generalTree.SetColumnTitle(0, "선택"); generalTree.SetColumnExpand(0, false); generalTree.SetColumnCustomMinimumWidth(0, 54);
         generalTree.SetColumnTitle(1, "이름"); generalTree.SetColumnExpand(1, true); generalTree.SetColumnExpandRatio(1, 2);
         generalTree.SetColumnTitle(2, "보급"); generalTree.SetColumnExpand(2, false); generalTree.SetColumnCustomMinimumWidth(2, 54);
-        generalTree.SetColumnTitle(3, "현재 담당업무"); generalTree.SetColumnExpand(3, true); generalTree.SetColumnExpandRatio(3, 2);
+        generalTree.SetColumnTitle(3, "정치"); generalTree.SetColumnExpand(3, false); generalTree.SetColumnCustomMinimumWidth(3, 54);
+        generalTree.SetColumnTitle(4, "현재 담당업무"); generalTree.SetColumnExpand(4, true); generalTree.SetColumnExpandRatio(4, 2);
         var root = generalTree.CreateItem();
         foreach (var g in generals)
         {
@@ -6403,8 +6404,9 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetChecked(0, g.Id == selectedTransportGeneral);
             item.SetText(1, g.Name);
             item.SetText(2, GradeText(g.AptitudeFor(TroopClass.Supply)));
-            item.SetText(3, CurrentDuty(g.Id));
-            for (var c = 0; c < 4; c++) { item.SetSelectable(c, true); }
+            item.SetText(3, g.Politics.ToString());
+            item.SetText(4, CurrentDuty(g.Id));
+            for (var c = 0; c < 5; c++) { item.SetSelectable(c, true); }
             if (g.Id == selectedTransportGeneral) { item.Select(0); }
         }
         generalTree.ItemSelected += () =>
