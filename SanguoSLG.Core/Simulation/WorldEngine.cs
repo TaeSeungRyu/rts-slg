@@ -567,7 +567,7 @@ public sealed class WorldEngine
                             Wall = CastleWall.Max(city.Castle, _balance, wallLevel),
                         };
                     }
-                    else if (cmd.TroopCode == FactionResearch.CommandTroopsCode)
+                    else if (cmd.TroopCode is FactionResearch.CommandTroopsCode or FactionResearch.ArmyGroupCode)
                     {
                         ResearchUp(research, city.Owner, cmd.TroopCode, 10);
                     }
