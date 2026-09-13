@@ -6208,7 +6208,7 @@ public sealed partial class CampaignMapScene : Node3D
         var generals = _state.GeneralsAt(city)
             .Where(g => !OfficerUnavailable(g) && !reservedGenerals.Contains(g))
             .Select(id => _state.Generals.First(g => g.Id == id))
-            .OrderByDescending(g => AptitudeRank(g.AptitudeFor(TroopClass.Supply)))
+            .OrderByDescending(g => AptitudeSortValue(g.AptitudeFor(TroopClass.Supply)))
             .ThenByDescending(g => g.Politics)
             .ThenBy(g => g.Id.Value)
             .ToList();
@@ -6334,7 +6334,7 @@ public sealed partial class CampaignMapScene : Node3D
             var provisions = (int)provSpin.Value;
             var name = _troops.FirstOrDefault(t => t.Code == g.TroopCode)?.Name ?? g.TroopCode;
             var label = $"{source.Name}→{d.Name} · {leader.Name} · {name} {troops}명 · 금 {gold} · 군량 {provisions}";
-            var ids = new[] { leader.Id };
+            var ids = new GeneralId[] { leader.Id };
             ShowConfirm("수송 예약 확인", $"{label}{DutyReleaseNotice(ids)}", () =>
             {
                 if (_advancing || ids.Any(id => _state.IsGeneralBusy(id)) || ReservedDeployGenerals(-1, editingSupply: false).Contains(leader.Id))
