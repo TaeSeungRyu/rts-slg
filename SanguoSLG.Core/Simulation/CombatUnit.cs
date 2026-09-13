@@ -31,7 +31,9 @@ public sealed record CombatUnit(
     int SupplyUpkeepPercent = 100,
     int SupplyEfficiencyPercent = 100,
     bool IsTransport = false,
-    int CargoGold = 0)
+    int CargoGold = 0,
+    bool IsArmyGroup = false,
+    CityId? OriginCity = null)
 {
     public UnitId Id => Field.Id;
 
@@ -41,7 +43,7 @@ public sealed record CombatUnit(
     /// <summary>군량을 추적하는 부대인가(−1 = 미추적 = 무한 보급 가정 — 전술 하베스트·단발 전투용).</summary>
     public bool TracksProvisions => Provisions >= 0;
 
-    /// <summary>수송부대는 물자 운반 전용이라 공격·반격·공성·점령을 할 수 없다.</summary>
+    /// <summary>수송부대는 물자 운반 전용이라 공격·반격·공성·점령을 할 수 없다. 집단군은 전투 가능하다.</summary>
     public bool CanInitiateCombat => !IsTransport;
 
     /// <summary>수송부대는 적에게 잡히면 노획 대상이 되는 금과 군량을 갖는다.</summary>

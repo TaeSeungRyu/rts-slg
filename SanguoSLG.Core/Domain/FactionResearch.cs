@@ -11,4 +11,7 @@ public sealed record FactionResearch(FactionId Faction, string TroopCode, int Le
     public const string WallCode = "__wall__";
 
     public const string CommandTroopsCode = "__command_troops__";
+
+    /// <summary>집단군 편성 상한 연구 트랙의 예약 코드 — 일반 통솔 병력 연구와 별도다.</summary>
+    public const string ArmyGroupCode = "__army_group__";
 }

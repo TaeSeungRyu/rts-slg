@@ -64,6 +64,14 @@ public static class CommandEfficiency
     public static int CommandTroopDeployLimit(int level, CommandBalance b)
         => b.DeployMaxTroops + System.Math.Clamp(level, 0, 10) * 1000;
 
+    public static int ArmyGroupDeployLimit(int level, CommandBalance b)
+    {
+        var maxLevel = System.Math.Max(1, b.ArmyGroupResearchMaxLevel);
+        var cappedLevel = System.Math.Clamp(level, 0, maxLevel);
+        var span = System.Math.Max(0, b.ArmyGroupResearchMaxTroops - b.ArmyGroupBaseMaxTroops);
+        return b.ArmyGroupBaseMaxTroops + span * cappedLevel / maxLevel;
+    }
+
     /// <summary>성곽 등급별 시설 슬롯 총량.</summary>
     public static int BuildSlots(CastleSize castle, CommandBalance b) => castle switch
     {

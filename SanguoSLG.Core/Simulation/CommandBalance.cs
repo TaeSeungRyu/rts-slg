@@ -64,6 +64,39 @@ public sealed record CommandBalance
     /// <summary>보급부대 최대 편성 병력(design-unit-state 1단계-보급).</summary>
     public int SupplyMaxTroops { get; init; } = 20000;
 
+    /// <summary>집단군 기본 최대 편성 병력(Phase 11A). 연구 전 상한.</summary>
+    public int ArmyGroupBaseMaxTroops { get; init; } = 30000;
+
+    /// <summary>집단군 연구 완료 시 최대 편성 병력(Phase 11A).</summary>
+    public int ArmyGroupResearchMaxTroops { get; init; } = 40000;
+
+    /// <summary>집단군 상한 연구 최대 단계. 기본 3만에서 10단계로 4만까지 오른다.</summary>
+    public int ArmyGroupResearchMaxLevel { get; init; } = 10;
+
+    /// <summary>집단군 최소 편성 병력. 보병·궁병·공성 병기 각각 이 수치 이상 포함해야 한다.</summary>
+    public int ArmyGroupMinClassTroops { get; init; } = 5000;
+
+    /// <summary>집단군 월드맵 이동속도. 구성 병종 개별 속도 대신 고정값을 사용한다.</summary>
+    public int ArmyGroupSpeed { get; init; } = 1;
+
+    /// <summary>집단군 시야/탐지 기본값.</summary>
+    public int ArmyGroupDetection { get; init; } = 1;
+
+    /// <summary>집단군 모든 공격 사거리. 유닛·건물·성 모두 인접 1칸만 공격한다.</summary>
+    public int ArmyGroupRange { get; init; } = 1;
+
+    /// <summary>집단군 유닛 공격력. 성 공격은 충차급 공성 능력치를 사용한다.</summary>
+    public int ArmyGroupAtkUnit { get; init; } = 10;
+
+    /// <summary>집단군 성·건물 공격력. 충차급 공성 능력치를 사용한다.</summary>
+    public int ArmyGroupAtkBuilding { get; init; } = 6;
+
+    /// <summary>집단군 방어력. 충차급 방어 능력치를 사용한다.</summary>
+    public int ArmyGroupDefense { get; init; } = 6;
+
+    /// <summary>집단군 군량 적재 기본값(1만 명 기준).</summary>
+    public int ArmyGroupProvisionsCapacity { get; init; } = 300;
+
     /// <summary>성 보급 반경(칸) — 아군 성 이 반경 안의 아군 야전 부대는 매 진행 성 비축에서 군량을
     /// 채운다(성문 앞 대기·수비 부대가 굶지 않도록). 0이면 성 보급 없음.</summary>
     public int CityResupplyRadius { get; init; } = 3;

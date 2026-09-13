@@ -407,6 +407,199 @@ public class DeployServiceTests
     }
 
     [Fact]
+    public void 집단군_보병궁병공성_최소편성을_만족하면_삼만명까지_편성된다()
+    {
+        var city = Town(1, new HexCoord(0, 0), provisions: 5000);
+        var s0 = State([city], [Gen(1), Gen(2)],
+            garrisons:
+            [
+                new GarrisonForce(new CityId(1), "swordsman", 10000, 70),
+                new GarrisonForce(new CityId(1), "archer", 10000, 60),
+                new GarrisonForce(new CityId(1), "siege_tower", 10000, 80),
+            ],
+            postings: [At(1, 1), At(2, 1)]);
+
+        var r = Service().DeployArmyGroup(s0, new ArmyGroupDeployRequest(
+            new CityId(1),
+            [
+                new SupplyLine("swordsman", 10000),
+                new SupplyLine("archer", 10000),
+                new SupplyLine("siege_tower", 10000),
+            ],
+            new GeneralId(1),
+            new GeneralId(2),
+            Target: new HexCoord(5, 0)));
+
+        Assert.True(r.Ok, r.Error);
+        var unit = r.State.Armies.Single();
+        Assert.True(unit.IsArmyGroup);
+        Assert.True(unit.CanInitiateCombat);
+        Assert.Equal(new CityId(1), unit.OriginCity);
+        Assert.Equal("army_group", unit.TroopCode);
+        Assert.Equal(30000, unit.Pool.Active);
+        Assert.Equal(30000, unit.MaxTroops);
+        Assert.Equal(1, unit.Field.Speed);
+        Assert.Equal(1, unit.Field.AttackRange);
+        Assert.Equal(1, unit.Field.RangeCastle);
+        Assert.Equal(10, unit.Stats.AtkStat);
+        Assert.Equal(6, unit.Stats.DfStat);
+        Assert.Equal(70, unit.Training);
+        Assert.Equal(new GeneralId(1), unit.VanguardId);
+        Assert.Equal(new GeneralId(2), unit.AdjutantId);
+        Assert.Equal(3, unit.Cargo.Count);
+        Assert.Empty(r.State.Garrisons);
+        Assert.Equal(4100, r.State.Cities.Single().Provisions);
+        Assert.Null(r.State.PostingOf(new GeneralId(1))!.Location);
+        Assert.Null(r.State.PostingOf(new GeneralId(2))!.Location);
+    }
+
+    [Fact]
+    public void 집단군_기본상한은_삼만명이다()
+    {
+        var s0 = State([Town(1, new HexCoord(0, 0))], [Gen(1)],
+            garrisons:
+            [
+                new GarrisonForce(new CityId(1), "swordsman", 15000, 70),
+                new GarrisonForce(new CityId(1), "archer", 10000, 70),
+                new GarrisonForce(new CityId(1), "siege_tower", 6000, 70),
+            ],
+            postings: [At(1, 1)]);
+
+        var r = Service().DeployArmyGroup(s0, new ArmyGroupDeployRequest(
+            new CityId(1),
+            [
+                new SupplyLine("swordsman", 15000),
+                new SupplyLine("archer", 10000),
+                new SupplyLine("siege_tower", 6000),
+            ],
+            new GeneralId(1)));
+
+        Assert.False(r.Ok);
+        Assert.Contains("30000", r.Error);
+    }
+
+    [Fact]
+    public void 집단군_연구를_완료하면_사만명까지_편성된다()
+    {
+        var s0 = State([Town(1, new HexCoord(0, 0), provisions: 5000)], [Gen(1)],
+            garrisons:
+            [
+                new GarrisonForce(new CityId(1), "swordsman", 15000, 70),
+                new GarrisonForce(new CityId(1), "archer", 15000, 70),
+                new GarrisonForce(new CityId(1), "siege_tower", 10001, 70),
+            ],
+            postings: [At(1, 1)],
+            research: [new FactionResearch(new FactionId(1), FactionResearch.ArmyGroupCode, 10)]);
+
+        var ok = Service().DeployArmyGroup(s0, new ArmyGroupDeployRequest(
+            new CityId(1),
+            [
+                new SupplyLine("swordsman", 15000),
+                new SupplyLine("archer", 15000),
+                new SupplyLine("siege_tower", 10000),
+            ],
+            new GeneralId(1)));
+        var blocked = Service().DeployArmyGroup(s0, new ArmyGroupDeployRequest(
+            new CityId(1),
+            [
+                new SupplyLine("swordsman", 15000),
+                new SupplyLine("archer", 15000),
+                new SupplyLine("siege_tower", 10001),
+            ],
+            new GeneralId(1)));
+
+        Assert.True(ok.Ok, ok.Error);
+        Assert.Equal(40000, ok.State.Armies.Single().Pool.Active);
+        Assert.False(blocked.Ok);
+        Assert.Contains("40000", blocked.Error);
+    }
+
+    [Fact]
+    public void 집단군_각_필수병과가_최소병력보다_적으면_거부된다()
+    {
+        var s0 = State([Town(1, new HexCoord(0, 0))], [Gen(1)],
+            garrisons:
+            [
+                new GarrisonForce(new CityId(1), "swordsman", 20000, 70),
+                new GarrisonForce(new CityId(1), "archer", 6000, 70),
+                new GarrisonForce(new CityId(1), "siege_tower", 4000, 70),
+            ],
+            postings: [At(1, 1)]);
+
+        var r = Service().DeployArmyGroup(s0, new ArmyGroupDeployRequest(
+            new CityId(1),
+            [
+                new SupplyLine("swordsman", 20000),
+                new SupplyLine("archer", 6000),
+                new SupplyLine("siege_tower", 4000),
+            ],
+            new GeneralId(1)));
+
+        Assert.False(r.Ok);
+        Assert.Contains("각각 5000명", r.Error);
+    }
+
+    [Fact]
+    public void 집단군은_보병궁병공성_외_병종을_편성할수없다()
+    {
+        var s0 = State([Town(1, new HexCoord(0, 0))], [Gen(1)],
+            garrisons:
+            [
+                new GarrisonForce(new CityId(1), "swordsman", 10000, 70),
+                new GarrisonForce(new CityId(1), "archer", 10000, 70),
+                new GarrisonForce(new CityId(1), "cavalry", 10000, 70),
+            ],
+            postings: [At(1, 1)]);
+
+        var r = Service().DeployArmyGroup(s0, new ArmyGroupDeployRequest(
+            new CityId(1),
+            [
+                new SupplyLine("swordsman", 10000),
+                new SupplyLine("archer", 10000),
+                new SupplyLine("cavalry", 10000),
+            ],
+            new GeneralId(1)));
+
+        Assert.False(r.Ok);
+        Assert.Contains("보병·궁병·공성", r.Error);
+    }
+
+    [Fact]
+    public void 집단군은_원점성_기준으로_동시에_하나만_보유한다()
+    {
+        var city = Town(1, new HexCoord(0, 0));
+        var existing = new CombatUnit(
+            new FieldUnit(new UnitId(1), new FactionId(1), new HexCoord(4, 0), 1, 1, 1,
+                MovementDomain.Land, UnitMode.March, null, 1),
+            new CombatStats(30000, 10, 6),
+            new TroopPool(30000, 0),
+            UnitCombatState.Create(60),
+            TroopCode: "army_group",
+            IsArmyGroup: true,
+            OriginCity: city.Id);
+        var s0 = State([city], [Gen(1)],
+            garrisons:
+            [
+                new GarrisonForce(new CityId(1), "swordsman", 10000, 70),
+                new GarrisonForce(new CityId(1), "archer", 10000, 70),
+                new GarrisonForce(new CityId(1), "siege_tower", 10000, 70),
+            ],
+            postings: [At(1, 1)]) with { FieldArmies = [existing] };
+
+        var r = Service().DeployArmyGroup(s0, new ArmyGroupDeployRequest(
+            new CityId(1),
+            [
+                new SupplyLine("swordsman", 10000),
+                new SupplyLine("archer", 10000),
+                new SupplyLine("siege_tower", 10000),
+            ],
+            new GeneralId(1)));
+
+        Assert.False(r.Ok);
+        Assert.Contains("이미", r.Error);
+    }
+
+    [Fact]
     public void 출전_내정명령에_잠긴_장수는_출전할수없다()
     {
         var s0 = State([Town(1, new HexCoord(0, 0))], [Gen(1)],

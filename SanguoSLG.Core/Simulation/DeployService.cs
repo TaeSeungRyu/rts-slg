@@ -28,6 +28,17 @@ public sealed record SupplyDeployRequest(
     HexCoord? Target = null,
     int Provisions = -1);
 
+/// <summary>집단군 출전 요청 — 보병·궁병·공성 병기를 묶어 성 원점 기준 1개만 편성한다.</summary>
+public sealed record ArmyGroupDeployRequest(
+    CityId City,
+    IReadOnlyList<SupplyLine> Lines,
+    GeneralId Vanguard,
+    GeneralId? Adjutant = null,
+    UnitMode Mode = UnitMode.March,
+    HexCoord? Target = null,
+    int Provisions = -1,
+    IReadOnlyList<HexCoord>? Waypoints = null);
+
 /// <summary>수송부대 편성 한 줄 — 병종과 이동시킬 병력(0 이하면 그 병종 전량).</summary>
 public sealed record TransportLine(string TroopCode, int Troops);
 
@@ -296,6 +307,162 @@ public sealed class DeployService
             .ToList();
         var postings = state.Assignments
             .Select(p => p.General == req.Vanguard ? p with { Location = null } : p)
+            .ToList();
+
+        return CommandResult.Success(state with
+        {
+            Cities = cities,
+            GarrisonForces = garrisons,
+            Postings = postings,
+            FieldArmies = state.Armies.Append(unit).ToList(),
+        });
+    }
+
+    /// <summary>
+    /// 집단군 편성(Phase 11A). 보병·궁병·공성 병기를 최소 병력 이상 포함한 대규모 혼성 부대다.
+    /// 성 하나는 자신을 원점으로 하는 집단군을 출전 중 포함 동시에 1개만 보유한다.
+    /// </summary>
+    public CommandResult DeployArmyGroup(GameState state, ArmyGroupDeployRequest req)
+    {
+        var city = state.Cities.FirstOrDefault(c => c.Id == req.City);
+        if (city is null)
+        {
+            return CommandResult.Fail("도시를 찾을 수 없다.", state);
+        }
+
+        if (state.Armies.Any(u => u.IsArmyGroup && u.OriginCity == city.Id))
+        {
+            return CommandResult.Fail("이 성을 원점으로 하는 집단군은 이미 출전 중이다.", state);
+        }
+
+        if (req.Lines.Count == 0)
+        {
+            return CommandResult.Fail("편성할 병종이 없다.", state);
+        }
+
+        if (req.Lines.Select(l => l.TroopCode).Distinct().Count() != req.Lines.Count)
+        {
+            return CommandResult.Fail("같은 병종을 두 줄로 편성할 수 없다.", state);
+        }
+
+        var components = new List<SupplyComponent>();
+        var templates = new List<TroopTemplate>();
+        foreach (var line in req.Lines.OrderBy(l => l.TroopCode, System.StringComparer.Ordinal))
+        {
+            if (!_troops.TryGetValue(line.TroopCode, out var template))
+            {
+                return CommandResult.Fail("병종을 지정해야 한다.", state);
+            }
+
+            if (template.Class is not (TroopClass.Infantry or TroopClass.Archer or TroopClass.Siege))
+            {
+                return CommandResult.Fail("집단군은 보병·궁병·공성 병기만 편성할 수 있다.", state);
+            }
+
+            var garrison = state.Garrisons.FirstOrDefault(g => g.City == req.City && g.TroopCode == line.TroopCode && !g.Trainee);
+            if (garrison is null || garrison.Troops <= 0)
+            {
+                return CommandResult.Fail($"{line.TroopCode} 대기 병력이 없다.", state);
+            }
+
+            var troops = line.Troops <= 0 ? garrison.Troops : line.Troops;
+            if (troops > garrison.Troops)
+            {
+                return CommandResult.Fail($"{line.TroopCode} 대기 병력이 부족하다.", state);
+            }
+
+            if (garrison.TrainingLevel < _b.DeployMinTraining)
+            {
+                return CommandResult.Fail($"훈련도 {_b.DeployMinTraining} 미만 부대는 투입할 수 없다(징병 훈련 중).", state);
+            }
+
+            components.Add(new SupplyComponent(line.TroopCode, troops, garrison.TrainingLevel));
+            templates.Add(template);
+        }
+
+        var total = components.Sum(c => c.Troops);
+        if (total <= 0)
+        {
+            return CommandResult.Fail("집단군 병력은 1명 이상이어야 한다.", state);
+        }
+
+        var maxDeployTroops = CommandEfficiency.ArmyGroupDeployLimit(
+            state.ResearchOf(city.Owner, FactionResearch.ArmyGroupCode), _b);
+        if (total > maxDeployTroops)
+        {
+            return CommandResult.Fail($"집단군은 최대 {maxDeployTroops}명까지 편성할 수 있다.", state);
+        }
+
+        foreach (var requiredClass in new[] { TroopClass.Infantry, TroopClass.Archer, TroopClass.Siege })
+        {
+            var classTotal = components
+                .Zip(templates, (component, template) => (component, template))
+                .Where(x => x.template.Class == requiredClass)
+                .Sum(x => x.component.Troops);
+            if (classTotal < _b.ArmyGroupMinClassTroops)
+            {
+                return CommandResult.Fail($"집단군은 보병·궁병·공성 병기를 각각 {_b.ArmyGroupMinClassTroops}명 이상 포함해야 한다.", state);
+            }
+        }
+
+        var vanguard = state.Generals.FirstOrDefault(g => g.Id == req.Vanguard);
+        if (vanguard is null)
+        {
+            return CommandResult.Fail("선봉 장수를 찾을 수 없다.", state);
+        }
+
+        General? adjutant = null;
+        if (req.Adjutant is { } adjId)
+        {
+            if (adjId == req.Vanguard)
+            {
+                return CommandResult.Fail("부관은 선봉과 달라야 한다.", state);
+            }
+
+            adjutant = state.Generals.FirstOrDefault(g => g.Id == adjId);
+            if (adjutant is null)
+            {
+                return CommandResult.Fail("부관 장수를 찾을 수 없다.", state);
+            }
+        }
+
+        if (ValidateGenerals(state, city, req.Vanguard, req.Adjutant) is { } error)
+        {
+            return CommandResult.Fail(error, state);
+        }
+
+        var training = (int)((components.Sum(c => (long)c.TrainingLevel * c.Troops) + total / 2) / total);
+        var unitId = new UnitId(state.Armies.Count == 0 ? 1 : state.Armies.Max(u => u.Id.Value) + 1);
+        var field = new FieldUnit(unitId, city.Owner, city.Position,
+            _b.ArmyGroupSpeed, _b.ArmyGroupDetection, _b.ArmyGroupRange,
+            MovementDomain.Land, req.Mode, req.Target, unitId.Value,
+            RangeCastle: _b.ArmyGroupRange, Waypoints: req.Waypoints);
+        var stats = new CombatStats(total, _b.ArmyGroupAtkUnit, _b.ArmyGroupDefense, AptitudePercent: 100);
+        var unit = new CombatUnit(field, stats, new TroopPool(total, 0), UnitCombatState.Create(vanguard.Intellect),
+            vanguard.Might, vanguard.Intellect, total, TroopClass.Siege,
+            ProvisionsCapacity: _b.ArmyGroupProvisionsCapacity, Training: training,
+            TroopCode: "army_group", VanguardId: vanguard.Id, AdjutantId: adjutant?.Id,
+            SupplyCargo: components, IsArmyGroup: true, OriginCity: city.Id);
+
+        var wanted = req.Provisions < 0 ? unit.MaxProvisions() : System.Math.Min(req.Provisions, unit.MaxProvisions());
+        var carried = System.Math.Min(wanted, city.Provisions);
+        unit = unit with { Provisions = carried };
+
+        var taken = components.ToDictionary(c => c.TroopCode, c => c.Troops);
+        var garrisons = state.Garrisons
+            .Select(g => g.City == req.City && taken.TryGetValue(g.TroopCode, out var n)
+                ? g with { Troops = g.Troops - n }
+                : g)
+            .Where(g => g.Troops > 0)
+            .ToList();
+        var deployingGenerals = new HashSet<GeneralId>(
+            new[] { req.Vanguard, req.Adjutant }.OfType<GeneralId>());
+        var cities = state.Cities
+            .Select(c => c.Id == city.Id ? c with { Provisions = c.Provisions - carried } : c)
+            .Select(c => ClearOfficerRoles(c, deployingGenerals))
+            .ToList();
+        var postings = state.Assignments
+            .Select(p => deployingGenerals.Contains(p.General) ? p with { Location = null } : p)
             .ToList();
 
         return CommandResult.Success(state with
