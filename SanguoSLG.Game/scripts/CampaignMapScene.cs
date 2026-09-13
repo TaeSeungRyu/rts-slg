@@ -6322,14 +6322,6 @@ public sealed partial class CampaignMapScene : Node3D
         }
         form.AddChild(destOpt);
 
-        form.AddChild(MakeLabel("수송 장수", 12, GoldBright));
-        var generalOpt = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        foreach (var g in generals)
-        {
-            generalOpt.AddItem($"{g.Name} · 보급 {GradeText(g.AptitudeFor(TroopClass.Supply))} · 정{g.Politics}", g.Id.Value);
-        }
-        form.AddChild(generalOpt);
-
         form.AddChild(MakeLabel("금", 12, GoldBright));
         var goldBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         var goldSpin = ApplyNumberInputStyle(new SpinBox
@@ -6362,6 +6354,54 @@ public sealed partial class CampaignMapScene : Node3D
 
         var preview = MakeLabel("", 12, Parchment);
         preview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+
+        var selectedTransportGeneral = generals[0].Id;
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("수송 장수 선택 (표에서 1명 선택)", 13, GoldBright));
+        var generalTree = new Tree
+        {
+            Columns = 4,
+            ColumnTitlesVisible = true,
+            HideRoot = true,
+            SelectMode = Tree.SelectModeEnum.Row,
+            CustomMinimumSize = new Vector2(0, 180),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        generalTree.AddThemeFontOverride("font", _font);
+        generalTree.AddThemeFontSizeOverride("font_size", 13);
+        generalTree.AddThemeFontOverride("title_button_font", _font);
+        generalTree.AddThemeFontSizeOverride("title_button_font_size", 12);
+        generalTree.SetColumnTitle(0, "선택"); generalTree.SetColumnExpand(0, false); generalTree.SetColumnCustomMinimumWidth(0, 54);
+        generalTree.SetColumnTitle(1, "이름"); generalTree.SetColumnExpand(1, true); generalTree.SetColumnExpandRatio(1, 2);
+        generalTree.SetColumnTitle(2, "보급"); generalTree.SetColumnExpand(2, false); generalTree.SetColumnCustomMinimumWidth(2, 54);
+        generalTree.SetColumnTitle(3, "현재 담당업무"); generalTree.SetColumnExpand(3, true); generalTree.SetColumnExpandRatio(3, 2);
+        var root = generalTree.CreateItem();
+        foreach (var g in generals)
+        {
+            var item = generalTree.CreateItem(root);
+            item.SetMetadata(0, g.Id.Value);
+            item.SetCellMode(0, TreeItem.TreeCellMode.Check);
+            item.SetChecked(0, g.Id == selectedTransportGeneral);
+            item.SetText(1, g.Name);
+            item.SetText(2, GradeText(g.AptitudeFor(TroopClass.Supply)));
+            item.SetText(3, CurrentDuty(g.Id));
+            for (var c = 0; c < 4; c++) { item.SetSelectable(c, true); }
+            if (g.Id == selectedTransportGeneral) { item.Select(0); }
+        }
+        generalTree.ItemSelected += () =>
+        {
+            var item = generalTree.GetSelected();
+            if (item is null) { return; }
+            selectedTransportGeneral = new GeneralId((int)item.GetMetadata(0));
+            var row = generalTree.GetRoot()?.GetFirstChild();
+            while (row is not null)
+            {
+                row.SetChecked(0, (int)row.GetMetadata(0) == selectedTransportGeneral.Value);
+                row = row.GetNext();
+            }
+            Refresh();
+        };
+        box.AddChild(generalTree);
 
         box.AddChild(MakeLabel("수송 병종 (여러 개 선택 가능)", 13, GoldBright));
         var troopGrid = new GridContainer { Columns = 3, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -6444,7 +6484,7 @@ public sealed partial class CampaignMapScene : Node3D
         void Refresh()
         {
             var d = destinations[Mathf.Clamp(destOpt.Selected, 0, destinations.Count - 1)];
-            var leader = generals[Mathf.Clamp(generalOpt.Selected, 0, generals.Count - 1)];
+            var leader = generals.First(g => g.Id == selectedTransportGeneral);
             var total = _transportDraft.Values.Sum();
             if (total > DeployService.TransportMaxTroops)
             {
@@ -6459,7 +6499,6 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         destOpt.ItemSelected += _ => Refresh();
-        generalOpt.ItemSelected += _ => Refresh();
         goldSlider.ValueChanged += v => { goldSpin.SetValueNoSignal(v); Refresh(); };
         goldSpin.ValueChanged += v => { goldSlider.SetValueNoSignal(v); Refresh(); };
         provSlider.ValueChanged += v => { provSpin.SetValueNoSignal(v); Refresh(); };
@@ -6471,7 +6510,7 @@ public sealed partial class CampaignMapScene : Node3D
         save.Pressed += () =>
         {
             var d = destinations[Mathf.Clamp(destOpt.Selected, 0, destinations.Count - 1)];
-            var leader = generals[Mathf.Clamp(generalOpt.Selected, 0, generals.Count - 1)];
+            var leader = generals.First(g => g.Id == selectedTransportGeneral);
             var gold = (int)goldSpin.Value;
             var provisions = (int)provSpin.Value;
             var lines = _transportDraft
