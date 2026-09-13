@@ -6535,10 +6535,14 @@ public sealed partial class CampaignMapScene : Node3D
             .ToList();
         box.AddChild(MakeLabel($"예약된 수송부대 ({mine.Count})   — 전투편성과 같은 방식으로 추가/취소", 14, GoldBright));
 
-        var grid = new GridContainer { Columns = 6 };
+        var grid = new GridContainer { Columns = 3, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         grid.AddThemeConstantOverride("h_separation", 8);
         grid.AddThemeConstantOverride("v_separation", 8);
         box.AddChild(grid);
+        if (mine.Count == 0)
+        {
+            box.AddChild(MakeLabel("예약된 수송부대가 없습니다. 아래 추가하기를 눌러 병력과 물자를 보낼 수 있습니다.", 12, Parchment));
+        }
 
         foreach (var ti in mine)
         {
@@ -6546,8 +6550,12 @@ public sealed partial class CampaignMapScene : Node3D
             var req = _pendingTransportDeploys[idx].Req;
             var dest = _state.Cities.FirstOrDefault(c => c.Id == req.Destination)?.Name ?? $"성{req.Destination.Value}";
             var leader = _state.Generals.FirstOrDefault(g => g.Id == req.Vanguard)?.Name ?? "-";
-            var cell = new Control { CustomMinimumSize = new Vector2(104, 118) };
-            var tile = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop };
+            var cell = new Control { CustomMinimumSize = new Vector2(170, 146), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            var tile = new PanelContainer
+            {
+                MouseFilter = Control.MouseFilterEnum.Stop,
+                MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+            };
             tile.SetAnchorsPreset(Control.LayoutPreset.FullRect);
             tile.AddThemeStyleboxOverride("panel", CardBox(false));
             cell.AddChild(tile);
@@ -6572,27 +6580,35 @@ public sealed partial class CampaignMapScene : Node3D
             l3.HorizontalAlignment = HorizontalAlignment.Center;
             tv.AddChild(l3);
 
-            var xbtn = MakeButton("✕");
-            xbtn.AddThemeFontSizeOverride("font_size", 11);
-            xbtn.CustomMinimumSize = new Vector2(20, 20);
-            xbtn.SetAnchorsPreset(Control.LayoutPreset.TopRight);
-            xbtn.OffsetLeft = -22;
-            xbtn.OffsetTop = 2;
-            xbtn.OffsetRight = -2;
-            xbtn.OffsetBottom = 22;
+            var actionRow = new HBoxContainer();
+            actionRow.AddThemeConstantOverride("separation", 4);
+            tv.AddChild(actionRow);
+            var edit = MakeButton("수정");
+            edit.CustomMinimumSize = new Vector2(80, 26);
+            edit.Pressed += () => OpenTransportCompose(city);
+            actionRow.AddChild(edit);
+            var xbtn = MakeButton("삭제");
+            xbtn.CustomMinimumSize = new Vector2(56, 26);
             xbtn.Pressed += () => { _pendingTransportDeploys.RemoveAt(idx); OpenTransportHub(city); };
-            cell.AddChild(xbtn);
+            actionRow.AddChild(xbtn);
+            tile.GuiInput += e =>
+            {
+                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { OpenTransportCompose(city); }
+            };
             grid.AddChild(cell);
         }
 
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("새 수송부대", 14, GoldBright));
         var addTile = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(104, 118),
+            CustomMinimumSize = new Vector2(0, 58),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             MouseFilter = Control.MouseFilterEnum.Stop,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand,
         };
         addTile.AddThemeStyleboxOverride("panel", CardBox(false));
-        var al = MakeLabel("＋", 32, GoldBright);
+        var al = MakeLabel("＋ 추가하기", 18, GoldBright);
         al.HorizontalAlignment = HorizontalAlignment.Center;
         al.VerticalAlignment = VerticalAlignment.Center;
         addTile.AddChild(al);
@@ -6600,7 +6616,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { OpenTransportCompose(city); }
         };
-        grid.AddChild(addTile);
+        box.AddChild(addTile);
 
         box.AddChild(MakeLabel("수송부대는 속도 2, 군량 소모 50%로 이동합니다. 공격·방어·점령은 하지 않습니다.", 11, Parchment));
         var contentH = box.GetCombinedMinimumSize().Y;
