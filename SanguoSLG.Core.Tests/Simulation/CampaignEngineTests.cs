@@ -289,6 +289,31 @@ public class CampaignEngineTests
     }
 
     [Fact]
+    public void 수송부대도_목표성에_인접하면_공격턴_전에_바로_입성한다()
+    {
+        var source = new City(new CityId(1), "출발", new HexCoord(0, 0), new FactionId(1), 0);
+        var destination = new City(new CityId(2), "업", new HexCoord(4, 0), new FactionId(1), 100, Gold: 20);
+        var field = new FieldUnit(new UnitId(9), new FactionId(1), new HexCoord(2, 0),
+            Speed: 2, Detection: 1, AttackRange: 0, MovementDomain.Land, UnitMode.March,
+            destination.Position, CommandOrder: 9, RangeCastle: 0);
+        var transport = new CombatUnit(field, new CombatStats(3000, 1, 1), new TroopPool(3000, 0),
+            UnitCombatState.Create(0), MaxTroops: 3000, Provisions: 600, Training: 60,
+            TroopCode: "transport",
+            SupplyCargo: [new SupplyComponent("swordsman", 3000, 60)],
+            CargoGold: 450,
+            IsTransport: true);
+        var s = new GameState(1, 1, new List<Faction>(), [source, destination], new List<General>(),
+            FieldArmies: [transport]);
+
+        var after = Engine().AdvanceWeek(s, out var turns);
+
+        Assert.Empty(after.Armies);
+        Assert.Contains(turns, t => t.EnteredCastle.Any(u => u.Id == transport.Id));
+        Assert.Equal(470, after.Cities.Single(c => c.Id == destination.Id).Gold);
+        Assert.Equal(3000, after.Garrisons.Single(g => g.City == destination.Id && g.TroopCode == "swordsman").Troops);
+    }
+
+    [Fact]
     public void 야전에서_괴멸한_부대의_금군량은_가장가까운_상대부대가_노획한다()
     {
         var attacker = Army(1, 1, new HexCoord(0, 0), UnitMode.Attack, null, troops: 10000)

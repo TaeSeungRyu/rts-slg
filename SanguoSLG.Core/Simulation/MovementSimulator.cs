@@ -287,6 +287,20 @@ public sealed class MovementSimulator
                     }
                 }
 
+                // 성 입성 공통 규칙: 자기 성을 목표로 이동 중인 부대가 이동 직후 성에 인접하면
+                // 성 타일 진입을 별도 1스텝/다음날로 미루지 않고 즉시 입성 처리한다.
+                // 진행 순서상 "이동턴 → 성복귀/입성 여부 → 공격턴"을 보장한다.
+                foreach (var w in work
+                    .Where(w => w.Unit.Target is { } target
+                        && w.Unit.Position.Distance(target) <= 1
+                        && IsOwnCastle(w, target, castles))
+                    .ToList())
+                {
+                    entered.Add(w.Unit.Id);
+                    events.Add(new TickEvent(TickEventKind.EnteredCastle, w.Unit.Id, null));
+                    work.Remove(w);
+                }
+
                 // 경유지 도달 판정 — 현재 구간 목표(중간 경유지)에 **닿거나 인접하면**(거리 1 이내) 다음 구간으로.
                 // 경유지는 경로 힌트라 정확히 그 칸에 못 서도(점유·통행불가·우회) 근처를 지나면 통과로 친다 —
                 // 정확 도달만 요구하면 못 밟는 경유지 근처에서 영영 진동하기 때문. 최종 목표(Goals의 마지막)는 제외.

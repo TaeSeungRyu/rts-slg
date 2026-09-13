@@ -669,18 +669,16 @@ public class MovementSimulatorTests
     }
 
     [Fact]
-    public void 성입성_이동력을다써서_인접에도착하면_그날은_입성못하고_다음날_들어간다()
+    public void 성입성_이동력을다써서_인접에도착해도_그날_바로_입성한다()
     {
-        // 이동력 2를 (6,0)→(7,0) 이동에 다 쓰면 인접해도 그날은 입성 불가(입성도 이동이다).
+        // 성 입성은 별도 성 타일 진입 스텝을 기다리지 않는다.
+        // 이동력 2로 (5,0)→(7,0)까지 이동해 목표 성에 인접하면 같은 날 즉시 입성한다.
         var castle = new SiegeSite(new HexCoord(8, 0), new FactionId(1));
         var u = Unit(1, owner: 1, new HexCoord(5, 0), UnitMode.March, target: new HexCoord(8, 0), speed: 2);
 
         var day1 = PlainField().Advance(new[] { u }, maxDays: 1, castles: new[] { castle });
-        Assert.Empty(day1.EnteredCastle);
-        Assert.Equal(new HexCoord(7, 0), day1.Units.Single().Position);
-
-        var day2 = PlainField().Advance(new[] { u }, maxDays: 2, castles: new[] { castle });
-        Assert.Equal(new[] { new UnitId(1) }, day2.EnteredCastle);
+        Assert.Equal(new[] { new UnitId(1) }, day1.EnteredCastle);
+        Assert.Empty(day1.Units);
     }
 
     [Fact]
