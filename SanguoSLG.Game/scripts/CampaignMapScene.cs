@@ -317,6 +317,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 목표 지정 모드(지도 클릭으로 예약 부대의 목적지 설정).
     private bool _depTargeting;
     private int _depTargetIndex = -1;
+    private bool _targetingTransportDeploy;
     private int _depSelectedUnit = -1; // 허브에서 선택된 예약 부대(컨트롤 바 대상)
     private CanvasLayer? _targetHintLayer;
     private Button _targetConfirmBtn = null!;
@@ -1390,19 +1391,25 @@ public sealed partial class CampaignMapScene : Node3D
     private void BeginSupplyTargeting(int idx)
         => BeginTargeting(idx, supply: true);
 
-    private void BeginTargeting(int idx, bool supply)
+    private void BeginTransportTargeting(int idx)
+        => BeginTargeting(idx, supply: false, transport: true);
+
+    private void BeginTargeting(int idx, bool supply, bool transport = false)
     {
-        Dbg($"UI targeting-begin idx={idx} supply={supply}");
+        Dbg($"UI targeting-begin idx={idx} supply={supply} transport={transport}");
         CloseModal();
         HidePanels(); // 목표 지정 중에는 성 명령 팔레트·정보 카드가 가려선 안 된다.
         _depTargetIndex = idx;
         _targetingSupplyDeploy = supply;
+        _targetingTransportDeploy = transport;
         _depTargeting = true;
         _targetWaypoints.Clear();
-        var reqCity = supply ? _pendingSupplyDeploys[idx].Req.City : _pendingDeploys[idx].Req.City;
+        var reqCity = transport ? _pendingTransportDeploys[idx].Req.City : supply ? _pendingSupplyDeploys[idx].Req.City : _pendingDeploys[idx].Req.City;
         _targetStart = _state.Cities.FirstOrDefault(c => c.Id == reqCity)?.Position ?? default;
         RebuildTargetEdit();
-        ShowTargetHint(supply
+        ShowTargetHint(transport
+            ? "수송부대 목표 지정 · 도착할 아군 성을 클릭 · '확인'으로 확정 · 우클릭 취소"
+            : supply
             ? "보급부대 목표 지정 · 지점을 순서대로 클릭 · '확인'으로 확정 · 출전 후 공격 명령 가능 · 우클릭 취소"
             : "지점을 순서대로 클릭 = 경유지 추가  ·  각 지점 위 취소로 삭제  ·  '확인'으로 확정  ·  적 성 = 공격  ·  우클릭 취소");
     }
@@ -1496,6 +1503,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depTargeting = false;
         _depTargetIndex = -1;
         _targetingSupplyDeploy = false;
+        _targetingTransportDeploy = false;
         _retargetUnitId = -1;
         _targetConfirmBtn.Visible = false;
         _targetWaypoints.Clear();
@@ -1531,6 +1539,24 @@ public sealed partial class CampaignMapScene : Node3D
             Dbg($"SUPPLY TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode}");
             var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
             _log.Text = $"보급부대 목표 → {tName}{(mode == UnitMode.Attack ? " (공격모드)" : "")} · 목표 확정";
+        }
+        else if (_targetingTransportDeploy && idx >= 0 && idx < _pendingTransportDeploys.Count)
+        {
+            var (req, label) = _pendingTransportDeploys[idx];
+            var source = _state.Cities.FirstOrDefault(c => c.Id == req.City);
+            var dest = _state.Cities.FirstOrDefault(c => c.Position == h && source is not null && c.Owner == source.Owner && c.Id != source.Id);
+            if (dest is null)
+            {
+                ShowNotice("수송 목표 불가", "수송 목표는 같은 세력의 다른 성만 선택할 수 있습니다.");
+                FinishTargeting();
+                SelectCity(_depModalCity);
+                Redraw("수송 목표 지정 취소");
+                return;
+            }
+            var newLabel = TransportLabel(req with { Destination = dest.Id });
+            _pendingTransportDeploys[idx] = (req with { Destination = dest.Id }, newLabel);
+            Dbg($"TRANSPORT TARGET idx={idx} -> city={dest.Id.Value} ({h.Q},{h.R})");
+            _log.Text = $"수송부대 목표 → {dest.Name} · 목표 확정";
         }
         else if (idx >= 0 && idx < _pendingDeploys.Count)
         {
@@ -6326,20 +6352,13 @@ public sealed partial class CampaignMapScene : Node3D
         back.Pressed += () => OpenTransportHub(city);
         titleRow.AddChild(back);
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("주둔 병력과 금·군량을 다른 아군 성으로 이동합니다.\n수송부대는 장수를 배치하지만 행군 전용이며 공격·방어·점령을 할 수 없고, 속도 2·군량 소모 50%로 이동합니다.", 12, Parchment));
+        box.AddChild(MakeLabel("주둔 병력과 금·군량을 다른 아군 성으로 이동합니다.\n수송부대는 장수를 배치하지만 행군 전용이며 공격·방어·점령을 할 수 없고, 속도 2·군량 소모 50%로 이동합니다.\n예약 후 목록에서 '목표 지정'을 눌러 지도에서 도착 성을 선택하세요.", 12, Parchment));
 
         var form = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         form.AddThemeConstantOverride("h_separation", 10);
         form.AddThemeConstantOverride("v_separation", 8);
         box.AddChild(form);
-
-        form.AddChild(MakeLabel("도착 성", 12, GoldBright));
-        var destOpt = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        foreach (var d in destinations)
-        {
-            destOpt.AddItem($"{d.Name} · 거리 {source.Position.Distance(d.Position)}", d.Id.Value);
-        }
-        form.AddChild(destOpt);
+        var defaultDestination = destinations[0];
 
         form.AddChild(MakeLabel("금", 12, GoldBright));
         var goldBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -6485,7 +6504,6 @@ public sealed partial class CampaignMapScene : Node3D
 
         void Refresh()
         {
-            var d = destinations[Mathf.Clamp(destOpt.Selected, 0, destinations.Count - 1)];
             var leader = generals.First(g => g.Id == selectedTransportGeneral);
             var total = _transportDraft.Values.Sum();
             if (total > DeployService.TransportMaxTroops)
@@ -6497,10 +6515,9 @@ public sealed partial class CampaignMapScene : Node3D
             var lineText = _transportDraft.Count == 0
                 ? "병종 미선택"
                 : string.Join(", ", _transportDraft.OrderBy(p => p.Key).Select(p => $"{_troops.FirstOrDefault(t => t.Code == p.Key)?.Name ?? p.Key} {p.Value}명"));
-            preview.Text = $"예약 미리보기: {source.Name} → {d.Name} · {leader.Name} · {lineText} · 금 {(int)goldSpin.Value} · 군량 {(int)provSpin.Value}";
+            preview.Text = $"예약 미리보기: {source.Name} → {defaultDestination.Name}(임시) · {leader.Name} · {lineText} · 금 {(int)goldSpin.Value} · 군량 {(int)provSpin.Value}\n※ 목표는 예약 후 목록에서 지도 선택으로 변경할 수 있습니다.";
         }
 
-        destOpt.ItemSelected += _ => Refresh();
         goldSlider.ValueChanged += v => { goldSpin.SetValueNoSignal(v); Refresh(); };
         goldSpin.ValueChanged += v => { goldSlider.SetValueNoSignal(v); Refresh(); };
         provSlider.ValueChanged += v => { provSpin.SetValueNoSignal(v); Refresh(); };
@@ -6511,7 +6528,6 @@ public sealed partial class CampaignMapScene : Node3D
         save.CustomMinimumSize = new Vector2(0, 36);
         save.Pressed += () =>
         {
-            var d = destinations[Mathf.Clamp(destOpt.Selected, 0, destinations.Count - 1)];
             var leader = generals.First(g => g.Id == selectedTransportGeneral);
             var gold = (int)goldSpin.Value;
             var provisions = (int)provSpin.Value;
@@ -6524,7 +6540,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (lines.Count == 0) { ShowNotice("수송 불가", "수송할 병종과 병력을 선택하세요."); return; }
             if (troops > DeployService.TransportMaxTroops) { ShowNotice("수송 불가", $"수송 병력은 최대 {DeployService.TransportMaxTroops}명입니다."); return; }
             var lineText = string.Join(", ", lines.Select(l => $"{_troops.FirstOrDefault(t => t.Code == l.TroopCode)?.Name ?? l.TroopCode} {l.Troops}명"));
-            var label = $"{source.Name}→{d.Name} · {leader.Name} · {lineText} · 금 {gold} · 군량 {provisions}";
+            var label = TransportLabel(new TransportDeployRequest(city, lines, defaultDestination.Id, leader.Id, gold, provisions));
             var ids = new GeneralId[] { leader.Id };
             ShowConfirm("수송 예약 확인", $"{label}{DutyReleaseNotice(ids)}", () =>
             {
@@ -6535,7 +6551,7 @@ public sealed partial class CampaignMapScene : Node3D
                 }
 
                 _state = _state.ReleaseOfficerDuties(ids);
-                _pendingTransportDeploys.Add((new TransportDeployRequest(city, lines, d.Id, leader.Id, gold, provisions), label));
+                _pendingTransportDeploys.Add((new TransportDeployRequest(city, lines, defaultDestination.Id, leader.Id, gold, provisions), label));
                 _log.Text = $"수송 예약: {label}";
                 SelectCity(city);
                 OpenTransportHub(city);
@@ -6663,6 +6679,10 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(MakeLabel($"◈ {dest}행 · 수송 {total}명 · 주장 {leader} · 금 {req.Gold} · 군량 {req.Provisions}", 13, GoldBright));
             var actRow = new HBoxContainer();
             actRow.AddThemeConstantOverride("separation", 6);
+            var targetBtn = MakeButton("목표 지정", accent: true);
+            targetBtn.CustomMinimumSize = new Vector2(96, 32);
+            targetBtn.Pressed += () => BeginTransportTargeting(sidx);
+            actRow.AddChild(targetBtn);
             var edit = MakeButton("편성 수정", accent: true);
             edit.CustomMinimumSize = new Vector2(96, 32);
             edit.Pressed += () => OpenTransportCompose(city);
@@ -6678,6 +6698,17 @@ public sealed partial class CampaignMapScene : Node3D
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    private string TransportLabel(TransportDeployRequest req)
+    {
+        var source = _state.Cities.FirstOrDefault(c => c.Id == req.City)?.Name ?? $"성{req.City.Value}";
+        var dest = _state.Cities.FirstOrDefault(c => c.Id == req.Destination)?.Name ?? $"성{req.Destination.Value}";
+        var leader = _state.Generals.FirstOrDefault(g => g.Id == req.Vanguard)?.Name ?? "-";
+        var lineText = req.Lines.Count == 0
+            ? "병력 없음"
+            : string.Join(", ", req.Lines.Select(l => $"{_troops.FirstOrDefault(t => t.Code == l.TroopCode)?.Name ?? l.TroopCode} {l.Troops}명"));
+        return $"{source}→{dest} · {leader} · {lineText} · 금 {req.Gold} · 군량 {req.Provisions}";
     }
 
     // ── 편성 화면: 병종·수량·선봉/부관 → 저장(신규 추가 / 기존 수정) ──
