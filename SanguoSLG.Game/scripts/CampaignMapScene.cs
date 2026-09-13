@@ -3969,15 +3969,14 @@ public sealed partial class CampaignMapScene : Node3D
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             });
-            var spin = new SpinBox
+            var spin = ApplyNumberInputStyle(new SpinBox
             {
                 MinValue = 0,
                 MaxValue = System.Math.Min(available, _cb.SupplyMaxTroops),
                 Step = 100,
                 Value = slider.Value,
                 CustomMinimumSize = new Vector2(120, 30),
-            };
-            spin.AddThemeFontOverride("font", _font);
+            });
             void SetSupplyAmount(double v, bool fromSlider)
             {
                 var n = (int)v;
@@ -4791,7 +4790,7 @@ public sealed partial class CampaignMapScene : Node3D
             slider.Value = System.Math.Min(1000, affordable); // 기본 제안값(이후 1단위로 자유 조정)
             ctrl.AddChild(slider);
 
-            var spin = new SpinBox { MinValue = 0, MaxValue = maxUnits, Step = step, Value = slider.Value };
+            var spin = ApplyNumberInputStyle(new SpinBox { MinValue = 0, MaxValue = maxUnits, Step = step, Value = slider.Value });
             spin.CustomMinimumSize = new Vector2(104, 0);
             ctrl.AddChild(spin);
 
@@ -6322,14 +6321,14 @@ public sealed partial class CampaignMapScene : Node3D
 
         form.AddChild(MakeLabel("금", 12, GoldBright));
         var goldBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        var goldSpin = new SpinBox
+        var goldSpin = ApplyNumberInputStyle(new SpinBox
         {
             MinValue = 0,
             MaxValue = source.Gold,
             Step = 100,
             Value = 0,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-        };
+        });
         var goldSlider = ApplySliderStyle(new HSlider { MinValue = 0, MaxValue = source.Gold, Step = 100, Value = 0, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
         goldBox.AddChild(goldSlider);
         goldBox.AddChild(goldSpin);
@@ -6337,14 +6336,14 @@ public sealed partial class CampaignMapScene : Node3D
 
         form.AddChild(MakeLabel("군량", 12, GoldBright));
         var provBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        var provSpin = new SpinBox
+        var provSpin = ApplyNumberInputStyle(new SpinBox
         {
             MinValue = 0,
             MaxValue = source.Provisions,
             Step = 100,
             Value = 0,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-        };
+        });
         var provSlider = ApplySliderStyle(new HSlider { MinValue = 0, MaxValue = source.Provisions, Step = 100, Value = 0, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
         provBox.AddChild(provSlider);
         provBox.AddChild(provSpin);
@@ -6391,14 +6390,14 @@ public sealed partial class CampaignMapScene : Node3D
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             });
-            var spin = new SpinBox
+            var spin = ApplyNumberInputStyle(new SpinBox
             {
                 MinValue = 0,
                 MaxValue = remaining,
                 Step = 100,
                 Value = 0,
                 CustomMinimumSize = new Vector2(86, 28),
-            };
+            });
             amountRow.AddChild(slider);
             amountRow.AddChild(spin);
             cv.AddChild(amountRow);
@@ -6689,7 +6688,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(MakeLabel("병력 수량", 13, GoldBright));
         var amtRow = new HBoxContainer();
         amtRow.AddThemeConstantOverride("separation", 6);
-        _depAmountSpin = new SpinBox { MinValue = 0, MaxValue = 0, Step = 100, Value = 0, CustomMinimumSize = new Vector2(130, 30) };
+        _depAmountSpin = ApplyNumberInputStyle(new SpinBox { MinValue = 0, MaxValue = 0, Step = 100, Value = 0, CustomMinimumSize = new Vector2(130, 30) });
         _depAmountSpin.AddThemeFontOverride("font", _font);
         _depAmountSpin.AddThemeFontSizeOverride("font_size", 14);
         _depAmountSpin.ValueChanged += v => { _depAmount = (int)v; UpdateProvLabel(); UpdateDepPreview(); };
@@ -9764,6 +9763,29 @@ public sealed partial class CampaignMapScene : Node3D
         slider.AddThemeStyleboxOverride("grabber_area", Frame(new Color(GoldBright, 0.35f), new Color(GoldBright, 0.0f), 0, 3, 0));
         slider.AddThemeStyleboxOverride("grabber_area_highlight", Frame(new Color(GoldBright, 0.55f), new Color(GoldBright, 0.0f), 0, 3, 0));
         return slider;
+    }
+
+    private SpinBox ApplyNumberInputStyle(SpinBox spin)
+    {
+        spin.AddThemeFontOverride("font", _font);
+        spin.AddThemeFontSizeOverride("font_size", 12);
+        spin.AddThemeColorOverride("font_color", Ink);
+        spin.AddThemeColorOverride("font_readonly_color", new Color(Ink, 0.75f));
+        spin.AddThemeStyleboxOverride("normal", Frame(new Color(0.82f, 0.80f, 0.72f), Gold, 1, 4, 6));
+        spin.AddThemeStyleboxOverride("focus", Frame(new Color(0.90f, 0.87f, 0.75f), GoldBright, 2, 4, 6));
+        spin.AddThemeStyleboxOverride("hover", Frame(new Color(0.88f, 0.85f, 0.76f), GoldBright, 1, 4, 6));
+        if (spin.GetLineEdit() is { } line)
+        {
+            line.PlaceholderText = "숫자를 입력하세요";
+            line.AddThemeFontOverride("font", _font);
+            line.AddThemeFontSizeOverride("font_size", 12);
+            line.AddThemeColorOverride("font_color", Ink);
+            line.AddThemeColorOverride("font_placeholder_color", new Color(Ink, 0.50f));
+            line.AddThemeStyleboxOverride("normal", Frame(new Color(0.82f, 0.80f, 0.72f), Gold, 1, 4, 6));
+            line.AddThemeStyleboxOverride("focus", Frame(new Color(0.90f, 0.87f, 0.75f), GoldBright, 2, 4, 6));
+            line.AddThemeStyleboxOverride("read_only", Frame(new Color(0.70f, 0.68f, 0.62f), new Color(Gold, 0.55f), 1, 4, 6));
+        }
+        return spin;
     }
 
 
