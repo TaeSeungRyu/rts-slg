@@ -3956,16 +3956,29 @@ public sealed partial class CampaignMapScene : Node3D
             var name = MakeLabel($"{template?.Name ?? gar.TroopCode} · 가능 {available} · 훈{gar.TrainingLevel}", 12, Parchment);
             name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             row.AddChild(name);
-            var spin = new SpinBox
+            var amountRow = new HBoxContainer();
+            amountRow.AddThemeConstantOverride("separation", 8);
+            amountRow.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            var slider = new HSlider
             {
                 MinValue = 0,
                 MaxValue = System.Math.Min(available, _cb.SupplyMaxTroops),
                 Step = 100,
                 Value = System.Math.Min(available, _supplyDraft.GetValueOrDefault(gar.TroopCode, 0)),
+                CustomMinimumSize = new Vector2(180, 24),
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            };
+            var spin = new SpinBox
+            {
+                MinValue = 0,
+                MaxValue = System.Math.Min(available, _cb.SupplyMaxTroops),
+                Step = 100,
+                Value = slider.Value,
                 CustomMinimumSize = new Vector2(120, 30),
             };
             spin.AddThemeFontOverride("font", _font);
-            spin.ValueChanged += v =>
+            void SetSupplyAmount(double v, bool fromSlider)
             {
                 var n = (int)v;
                 var otherTotal = _supplyDraft.Where(p => p.Key != gar.TroopCode).Sum(p => p.Value);
@@ -3973,14 +3986,19 @@ public sealed partial class CampaignMapScene : Node3D
                 if (n > maxForThis)
                 {
                     n = maxForThis;
-                    spin.SetValueNoSignal(n);
                 }
+                if (fromSlider) { spin.SetValueNoSignal(n); }
+                else { slider.SetValueNoSignal(n); }
                 if (n <= 0) { _supplyDraft.Remove(gar.TroopCode); }
                 else { _supplyDraft[gar.TroopCode] = n; }
                 SyncSupplyProvisionSlider();
                 UpdateSupplyPreview();
-            };
-            row.AddChild(spin);
+            }
+            slider.ValueChanged += v => SetSupplyAmount(v, true);
+            spin.ValueChanged += v => SetSupplyAmount(v, false);
+            amountRow.AddChild(slider);
+            amountRow.AddChild(spin);
+            row.AddChild(amountRow);
             box.AddChild(row);
         }
 
@@ -6360,27 +6378,46 @@ public sealed partial class CampaignMapScene : Node3D
             var sub = MakeLabel($"대기 {remaining}명 · 훈{gar.TrainingLevel}", 10, Parchment);
             sub.HorizontalAlignment = HorizontalAlignment.Center;
             cv.AddChild(sub);
+            var amountRow = new HBoxContainer();
+            amountRow.AddThemeConstantOverride("separation", 6);
+            amountRow.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            var slider = new HSlider
+            {
+                MinValue = 0,
+                MaxValue = remaining,
+                Step = 100,
+                Value = 0,
+                CustomMinimumSize = new Vector2(0, 24),
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            };
             var spin = new SpinBox
             {
                 MinValue = 0,
                 MaxValue = remaining,
                 Step = 100,
                 Value = 0,
-                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                CustomMinimumSize = new Vector2(86, 28),
             };
-            cv.AddChild(spin);
+            amountRow.AddChild(slider);
+            amountRow.AddChild(spin);
+            cv.AddChild(amountRow);
             var maxBtn = MakeButton("최대");
             maxBtn.CustomMinimumSize = new Vector2(0, 24);
             maxBtn.Pressed += () => spin.Value = spin.MaxValue;
             cv.AddChild(maxBtn);
-            spin.ValueChanged += v =>
+            void SetTransportAmount(double v, bool fromSlider)
             {
                 var value = (int)v;
                 if (value <= 0) { _transportDraft.Remove(code); }
                 else { _transportDraft[code] = value; }
+                if (fromSlider) { spin.SetValueNoSignal(value); }
+                else { slider.SetValueNoSignal(value); }
                 card.AddThemeStyleboxOverride("panel", CardBox(value > 0));
                 Refresh();
-            };
+            }
+            slider.ValueChanged += v => SetTransportAmount(v, true);
+            spin.ValueChanged += v => SetTransportAmount(v, false);
             card.GuiInput += e =>
             {
                 if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
