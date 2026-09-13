@@ -460,7 +460,6 @@ public sealed partial class CampaignMapScene : Node3D
             var dy = y - 9;
             var d2 = dx * dx + dy * dy;
             if (d2 <= 49) { return new Color(0.98f, 0.98f, 0.95f, 1f); }
-            if (d2 <= 64) { return new Color(0.18f, 0.18f, 0.16f, 0.9f); }
             return new Color(0, 0, 0, 0);
         });
 
