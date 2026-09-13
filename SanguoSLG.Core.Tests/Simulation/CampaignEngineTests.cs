@@ -239,6 +239,25 @@ public class CampaignEngineTests
     }
 
     [Fact]
+    public void 이동턴에_목표성_인접까지_도착한_아군부대는_공격턴_전에_바로_입성한다()
+    {
+        var home = new City(new CityId(1), "성", new HexCoord(5, 0), new FactionId(1), 0);
+        var field = new FieldUnit(new UnitId(1), new FactionId(1), new HexCoord(3, 0),
+            Speed: 1, Detection: 1, AttackRange: 1, MovementDomain.Land, UnitMode.March,
+            Target: home.Position, CommandOrder: 1, RangeCastle: 1);
+        var returning = new CombatUnit(field, new CombatStats(8000, 10, 10), new TroopPool(8000, 0),
+            UnitCombatState.Create(60), MaxTroops: 8000, TroopCode: "swordsman", Training: 70);
+        var s = new GameState(1, 1, new List<Faction>(), new List<City> { home }, new List<General>(),
+            FieldArmies: new List<CombatUnit> { returning });
+
+        var after = Engine().AdvanceWeek(s, out var turns);
+
+        Assert.Empty(after.Armies);
+        Assert.Contains(turns, t => t.EnteredCastle.Any(u => u.Id == returning.Id));
+        Assert.Equal(8000, after.Garrisons.Single().Troops);
+    }
+
+    [Fact]
     public void 입성한_수송부대는_병종별_대기병력과_금군량을_도착성에_예치한다()
     {
         var source = new City(new CityId(1), "출발", new HexCoord(0, 0), new FactionId(1), 0);

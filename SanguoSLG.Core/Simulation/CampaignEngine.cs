@@ -135,6 +135,7 @@ public sealed class CampaignEngine
             }
 
             turn = StripProductionUnits(turn, productionUnitIds);
+            turn = EnterOwnCastleAfterMovement(turn, work.Cities);
             turn = ApplyFieldSpoils(armies, turn);
             reports.Add(turn);
             remaining -= System.Math.Max(1, turn.Movement.Days);
@@ -162,9 +163,8 @@ public sealed class CampaignEngine
                 work = FieldCasualties.ResolveUnit(work, dead, captor, at, _random, casualtyReports);
             }
 
-            armies = turn.Units.ToList();
-
             work = ApplyEntered(work, turn.EnteredCastle, cityAt);
+            armies = turn.Units.ToList();
 
             // 공성 교환(design-combat "성 전투") — 접적으로 멈춘 공격 부대가 성벽·수비를 깎는다.
             if (_siege is not null)
@@ -625,6 +625,51 @@ public sealed class CampaignEngine
         }
 
         return work with { GarrisonForces = garrisons, Postings = postings, Cities = cities };
+    }
+
+    private static AdvanceTurn EnterOwnCastleAfterMovement(AdvanceTurn turn, IReadOnlyList<City> cities)
+    {
+        if (turn.Units.Count == 0)
+        {
+            return turn;
+        }
+
+        var ownTargets = cities.ToDictionary(c => c.Position, c => c);
+        var alreadyEntered = turn.EnteredCastle.Select(u => u.Id).ToHashSet();
+        var extraEntered = new List<CombatUnit>();
+        var remaining = new List<CombatUnit>();
+        foreach (var unit in turn.Units)
+        {
+            if (alreadyEntered.Contains(unit.Id))
+            {
+                continue;
+            }
+
+            if (unit.Field.Target is { } target
+                && unit.Field.Position.Distance(target) <= 1
+                && ownTargets.TryGetValue(target, out var city)
+                && city.Owner == unit.Field.Owner)
+            {
+                extraEntered.Add(unit);
+                continue;
+            }
+
+            remaining.Add(unit);
+        }
+
+        if (extraEntered.Count == 0)
+        {
+            return turn;
+        }
+
+        var entered = turn.EnteredCastle.Concat(extraEntered).ToList();
+        var enteredIds = extraEntered.Select(u => u.Id).ToHashSet();
+        var movement = turn.Movement with
+        {
+            Units = turn.Movement.Units.Where(f => !enteredIds.Contains(f.Id)).ToList(),
+            Entered = turn.Movement.EnteredCastle.Concat(extraEntered.Select(u => u.Id)).Distinct().ToList(),
+        };
+        return turn with { Units = remaining, Entered = entered, Movement = movement };
     }
 
     private static AdvanceTurn ApplyFieldSpoils(IReadOnlyList<CombatUnit> before, AdvanceTurn turn)
