@@ -9859,9 +9859,9 @@ public sealed partial class CampaignMapScene : Node3D
 
     private HSlider ApplySliderStyle(HSlider slider)
     {
-        slider.AddThemeStyleboxOverride("slider", Frame(new Color(0.72f, 0.72f, 0.72f, 0.9f), new Color(0.95f, 0.86f, 0.58f, 0.65f), 1, 3, 0));
-        slider.AddThemeStyleboxOverride("grabber_area", Frame(new Color(GoldBright, 0.35f), new Color(GoldBright, 0.0f), 0, 3, 0));
-        slider.AddThemeStyleboxOverride("grabber_area_highlight", Frame(new Color(GoldBright, 0.55f), new Color(GoldBright, 0.0f), 0, 3, 0));
+        slider.AddThemeStyleboxOverride("slider", Frame(new Color(0.56f, 0.56f, 0.56f, 0.95f), new Color(0.78f, 0.78f, 0.78f, 0.70f), 1, 3, 0));
+        slider.AddThemeStyleboxOverride("grabber_area", Frame(new Color(0.94f, 0.93f, 0.88f, 0.85f), new Color(1.0f, 0.98f, 0.90f, 0.0f), 0, 3, 0));
+        slider.AddThemeStyleboxOverride("grabber_area_highlight", Frame(new Color(1.0f, 0.98f, 0.92f, 0.95f), new Color(1.0f, 0.98f, 0.90f, 0.0f), 0, 3, 0));
         return slider;
     }
 
