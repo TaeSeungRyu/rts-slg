@@ -82,7 +82,7 @@ public sealed class CampaignSiege
                 .Where(u => u.Pool.Active > 0 && u.Field.Owner != city.Owner
                     && u.Field.Mode == UnitMode.Attack
                     && u.CanInitiateCombat
-                    && (u.IsSupply || (u.TroopCode.Length > 0 && _troops.ContainsKey(u.TroopCode)))
+                    && (u.IsSupply || u.IsArmyGroup || (u.TroopCode.Length > 0 && _troops.ContainsKey(u.TroopCode)))
                     && u.Field.Position.Distance(city.Position) <= u.Field.RangeCastle)
                 .OrderBy(u => u.Id.Value)
                 .ToList();
@@ -185,6 +185,20 @@ public sealed class CampaignSiege
                 100,
                 100,
                 supplyInCounterRange);
+        }
+
+        if (u.IsArmyGroup)
+        {
+            var armyGroupInCounterRange = u.Field.Position.Distance(castlePos) <= 1;
+            return new SiegeAttacker(
+                u.Pool.Active,
+                AtkBuilding: 6,
+                u.Stats.AtkStat,
+                u.Stats.DfStat,
+                u.Stats.AptitudePercent,
+                100,
+                100,
+                armyGroupInCounterRange);
         }
 
         var template = _troops[u.TroopCode];

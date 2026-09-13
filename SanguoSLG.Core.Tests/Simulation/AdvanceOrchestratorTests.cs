@@ -34,6 +34,22 @@ public class AdvanceOrchestratorTests
             cs ?? UnitCombatState.Create(60), might, Intellect: 60, MaxTroops: 10000);
     }
 
+    private static CombatUnit ArmyGroup(int id, int owner, HexCoord pos,
+        UnitCombatState? cs = null, int active = 30000)
+    {
+        var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos, 1, 1, 1,
+            MovementDomain.Land, UnitMode.Attack, null, id, RangeCastle: 1);
+        return new CombatUnit(field, new CombatStats(active, 10, 6), new TroopPool(active, 0),
+            cs ?? UnitCombatState.Create(60), 70, Intellect: 80, MaxTroops: 30000, TroopClass.Siege,
+            TroopCode: "army_group", IsArmyGroup: true, OriginCity: new CityId(1),
+            SupplyCargo:
+            [
+                new SupplyComponent("swordsman", 10000, 70),
+                new SupplyComponent("archer", 10000, 70),
+                new SupplyComponent("siege_tower", 10000, 70),
+            ]);
+    }
+
     [Fact]
     public void 경유지_통과분은_결과_부대에서_제거된다()
     {
@@ -91,6 +107,32 @@ public class AdvanceOrchestratorTests
         Assert.Equal(9240, ua.Pool.Active);   // 760 피해
         Assert.Equal(532, ua.Pool.Wounded);   // 70% 부상
         Assert.Equal(9240, ub.Pool.Active);
+    }
+
+    [Fact]
+    public void 집단군은_액티브가_준비되어도_발동하지_않는다()
+    {
+        var ready = UnitCombatState.Create(80, A["peerless"]).AdvanceField(5);
+        var group = ArmyGroup(1, 1, new HexCoord(0, 0), ready);
+        var enemy = Sword(2, 2, new HexCoord(1, 0));
+
+        var turn = MakeOrchestrator().Run([group, enemy], maxDays: 1);
+
+        Assert.NotNull(turn.Combat);
+        Assert.Empty(turn.FiredActives);
+        Assert.True(turn.Units.Single(u => u.Id.Value == 2).Pool.Active < 10000, "액티브 없이도 일반 공격은 해야 한다");
+    }
+
+    [Fact]
+    public void 집단군_손실은_내부_병종구성에도_반영된다()
+    {
+        var damaged = ArmyGroup(1, 1, new HexCoord(0, 0), active: 27000);
+
+        var turn = MakeOrchestrator().Run([damaged], maxDays: 1);
+
+        var group = turn.Units.Single();
+        Assert.Equal(27000, group.Cargo.Sum(c => c.Troops));
+        Assert.All(group.Cargo, c => Assert.Equal(9000, c.Troops));
     }
 
     private static readonly System.Collections.Generic.IReadOnlyDictionary<string, Stratagem> St =

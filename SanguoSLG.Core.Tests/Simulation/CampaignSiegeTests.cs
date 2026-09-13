@@ -36,6 +36,21 @@ public class CampaignSiegeTests
             60, 60, troops, t.Class, TroopCode: code, Training: 50);
     }
 
+    private static CombatUnit ArmyGroup(int id, int owner, HexCoord pos, HexCoord target, int troops = 30000)
+    {
+        var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos,
+            Speed: 1, Detection: 1, AttackRange: 1, MovementDomain.Land, UnitMode.Attack, target, id, RangeCastle: 1);
+        return new CombatUnit(field, new CombatStats(troops, AtkStat: 10, DfStat: 6), new TroopPool(troops, 0),
+            UnitCombatState.Create(60), 60, 60, troops, TroopClass.Siege,
+            TroopCode: "army_group", IsArmyGroup: true, OriginCity: new CityId(1),
+            SupplyCargo:
+            [
+                new SupplyComponent("swordsman", troops / 3, 70),
+                new SupplyComponent("archer", troops / 3, 70),
+                new SupplyComponent("siege_tower", troops - troops / 3 * 2, 70),
+            ]);
+    }
+
     private static City Town(int id, int owner, HexCoord pos, int wall, CastleSize size = CastleSize.Medium) =>
         new(new CityId(id), $"c{id}", pos, new FactionId(owner), 0, size, Wall: wall);
 
@@ -69,6 +84,21 @@ public class CampaignSiegeTests
 
         Assert.True(r.Cities.Single().Wall < 6000, "투석기가 성벽을 깎는다");
         Assert.Equal(5000, r.Armies.Single().Pool.Active); // 반격 없음
+    }
+
+    [Fact]
+    public void 공성_집단군은_전용_성공격값으로_성벽을_공격한다()
+    {
+        var group = ArmyGroup(1, 1, new HexCoord(4, 0), new HexCoord(5, 0));
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 6000);
+        var garr = new List<GarrisonForce> { new(new CityId(9), "swordsman", 10000, 60) };
+
+        var r = Siege().Resolve([group], [city], garr);
+
+        var ex = Assert.Single(r.Exchanges);
+        Assert.True(ex.WallDamage > 0, "집단군도 성벽을 공격해야 한다");
+        Assert.True(r.Cities.Single().Wall < 6000);
+        Assert.True(r.Armies.Single().Pool.Active < 30000, "인접 집단군은 성 반격을 받는다");
     }
 
     [Fact]

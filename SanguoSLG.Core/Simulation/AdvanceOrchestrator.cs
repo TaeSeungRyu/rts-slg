@@ -188,7 +188,7 @@ public sealed class AdvanceOrchestrator
         {
             var u = state[id];
             // 행동불가(혼란)면 액티브도 못 쓴다(피격·방어는 정상).
-            var (skill, newState) = dazedAtStart.Contains(id) || IsDazed(u)
+            var (skill, newState) = u.IsArmyGroup || dazedAtStart.Contains(id) || IsDazed(u)
                 ? ((ActiveSkill?)null, u.State)
                 : u.State.FiringActive();
 
@@ -242,7 +242,7 @@ public sealed class AdvanceOrchestrator
         foreach (var id in state.Keys.OrderBy(k => k.Value).ToList())
         {
             var u = state[id];
-            if (!u.IsSupply || u.Cargo.Count == 0)
+            if ((!u.IsSupply && !u.IsArmyGroup) || u.Cargo.Count == 0)
             {
                 continue;
             }
