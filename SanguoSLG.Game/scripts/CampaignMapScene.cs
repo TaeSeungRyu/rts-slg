@@ -3813,10 +3813,14 @@ public sealed partial class CampaignMapScene : Node3D
             .Where(i => _pendingSupplyDeploys[i].Req.City == city)
             .ToList();
         box.AddChild(MakeLabel($"예약된 보급부대 ({mine.Count})   — 타일을 눌러 수정", 14, GoldBright));
-        var grid = new GridContainer { Columns = 6 };
+        var grid = new GridContainer { Columns = 3, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         grid.AddThemeConstantOverride("h_separation", 8);
         grid.AddThemeConstantOverride("v_separation", 8);
         box.AddChild(grid);
+        if (mine.Count == 0)
+        {
+            box.AddChild(MakeLabel("예약된 보급부대가 없습니다. 아래 추가하기를 눌러 새 보급부대를 편성하세요.", 12, Parchment));
+        }
 
         foreach (var i in mine)
         {
@@ -3827,7 +3831,7 @@ public sealed partial class CampaignMapScene : Node3D
                 : "목표 미지정";
             var leader = _state.Generals.FirstOrDefault(g => g.Id == req.Vanguard)?.Name ?? "-";
             var total = req.Lines.Sum(l => l.Troops);
-            var cell = new Control { CustomMinimumSize = new Vector2(104, 132) };
+            var cell = new Control { CustomMinimumSize = new Vector2(170, 156), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             var tile = new PanelContainer
             {
                 MouseFilter = Control.MouseFilterEnum.Stop,
@@ -3856,14 +3860,18 @@ public sealed partial class CampaignMapScene : Node3D
             l3.HorizontalAlignment = HorizontalAlignment.Center;
             tv.AddChild(l3);
             var actionRow = new HBoxContainer();
-            actionRow.AddThemeConstantOverride("separation", 2);
+            actionRow.AddThemeConstantOverride("separation", 4);
             tv.AddChild(actionRow);
-            var targetBtn = MakeButton("목표");
-            targetBtn.CustomMinimumSize = new Vector2(34, 22);
+            var targetBtn = MakeButton("목표 지정", accent: req.Target is null);
+            targetBtn.CustomMinimumSize = new Vector2(72, 26);
             targetBtn.Pressed += () => BeginSupplyTargeting(idx);
             actionRow.AddChild(targetBtn);
+            var edit = MakeButton("수정");
+            edit.CustomMinimumSize = new Vector2(48, 26);
+            edit.Pressed += () => OpenSupplyCompose(idx);
+            actionRow.AddChild(edit);
             var del = MakeButton("✕");
-            del.CustomMinimumSize = new Vector2(26, 22);
+            del.CustomMinimumSize = new Vector2(30, 26);
             del.Pressed += () => { _pendingSupplyDeploys.RemoveAt(idx); OpenSupplyHub(city); };
             actionRow.AddChild(del);
             tile.GuiInput += e =>
@@ -3873,14 +3881,17 @@ public sealed partial class CampaignMapScene : Node3D
             grid.AddChild(cell);
         }
 
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("새 보급부대", 14, GoldBright));
         var addTile = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(104, 132),
+            CustomMinimumSize = new Vector2(0, 58),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             MouseFilter = Control.MouseFilterEnum.Stop,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand,
         };
         addTile.AddThemeStyleboxOverride("panel", CardBox(false));
-        var al = MakeLabel("＋", 32, GoldBright);
+        var al = MakeLabel("＋ 추가하기", 18, GoldBright);
         al.HorizontalAlignment = HorizontalAlignment.Center;
         al.VerticalAlignment = VerticalAlignment.Center;
         addTile.AddChild(al);
@@ -3888,7 +3899,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { OpenSupplyCompose(-1); }
         };
-        grid.AddChild(addTile);
+        box.AddChild(addTile);
         box.AddChild(MakeLabel("지도에서는 병력 규모와 무관하게 전용 보급부대 모델(troop-supply.glb)로 표시됩니다.", 11, Parchment));
 
         var contentH = box.GetCombinedMinimumSize().Y;
