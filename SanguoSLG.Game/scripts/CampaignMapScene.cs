@@ -156,6 +156,7 @@ public sealed partial class CampaignMapScene : Node3D
     private MeshInstance3D? _ring;
     private MeshInstance3D _hover = null!;
     private ImageTexture _blankIcon = null!;
+    private ImageTexture _sliderGrabberIcon = null!;
 
     // 시설 배치(건설) — 반투명 고스트가 커서를 따라다니고, 평지·숲 유효 칸에서만 설치 컨펌이 뜬다.
     private Node3D _facilityLayer = null!;   // 완성 시설 + 공사중 모델을 담는 컨테이너(Redraw마다 재구성)
@@ -453,6 +454,15 @@ public sealed partial class CampaignMapScene : Node3D
 
         _blankIcon = SolidIcon(1, (_, _) => new Color(0, 0, 0, 0));
         _dotIcon = SolidIcon(14, (x, y) => System.Math.Abs(x - 7) + System.Math.Abs(y - 7) <= 4 ? GoldBright : new Color(0, 0, 0, 0));
+        _sliderGrabberIcon = SolidIcon(18, (x, y) =>
+        {
+            var dx = x - 9;
+            var dy = y - 9;
+            var d2 = dx * dx + dy * dy;
+            if (d2 <= 49) { return new Color(0.98f, 0.98f, 0.95f, 1f); }
+            if (d2 <= 64) { return new Color(0.18f, 0.18f, 0.16f, 0.9f); }
+            return new Color(0, 0, 0, 0);
+        });
 
         SpawnCastles();
         SpawnHover();
@@ -4061,7 +4071,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(MakeLabel("군량 (보급 일수)", 13, GoldBright));
         var provRow = new HBoxContainer();
         provRow.AddThemeConstantOverride("separation", 10);
-        _depProvSlider = new HSlider
+        _depProvSlider = ApplySliderStyle(new HSlider
         {
             MinValue = 0,
             MaxValue = 50,
@@ -4070,7 +4080,7 @@ public sealed partial class CampaignMapScene : Node3D
             CustomMinimumSize = new Vector2(260, 24),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-        };
+        });
         _depProvSlider.ValueChanged += v => { _depProvDays = (int)v; UpdateSupplyPreview(); };
         provRow.AddChild(_depProvSlider);
         _depProvLabel = MakeLabel("", 12, Parchment);
@@ -6818,7 +6828,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(MakeLabel("군량 (일수)", 13, GoldBright));
         var provRow = new HBoxContainer();
         provRow.AddThemeConstantOverride("separation", 10);
-        _depProvSlider = new HSlider
+        _depProvSlider = ApplySliderStyle(new HSlider
         {
             MinValue = 0,
             MaxValue = 50,
@@ -6827,7 +6837,7 @@ public sealed partial class CampaignMapScene : Node3D
             CustomMinimumSize = new Vector2(240, 24),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-        };
+        });
         _depProvSlider.ValueChanged += v => { _depProvDays = (int)v; UpdateProvLabel(); UpdateDepPreview(); };
         provRow.AddChild(_depProvSlider);
         _depProvLabel = MakeLabel("병종을 먼저 선택", 12, Parchment);
@@ -9887,6 +9897,9 @@ public sealed partial class CampaignMapScene : Node3D
         slider.AddThemeStyleboxOverride("slider", Bar(new Color(0.54f, 0.54f, 0.54f, 0.96f), new Color(0.80f, 0.80f, 0.80f, 0.78f)));
         slider.AddThemeStyleboxOverride("grabber_area", Bar(new Color(0.96f, 0.96f, 0.92f, 0.90f), new Color(1.0f, 1.0f, 0.96f, 0.90f)));
         slider.AddThemeStyleboxOverride("grabber_area_highlight", Bar(new Color(1.0f, 1.0f, 0.96f, 0.98f), new Color(1.0f, 1.0f, 0.98f, 0.95f)));
+        slider.AddThemeIconOverride("grabber", _sliderGrabberIcon);
+        slider.AddThemeIconOverride("grabber_highlight", _sliderGrabberIcon);
+        slider.AddThemeIconOverride("grabber_disabled", _sliderGrabberIcon);
         return slider;
     }
 
