@@ -35,7 +35,7 @@ public sealed record TransportLine(string TroopCode, int Troops);
 public sealed record TransportDeployRequest(
     CityId City,
     IReadOnlyList<TransportLine> Lines,
-    CityId Destination,
+    CityId? Destination,
     GeneralId Vanguard,
     int Gold = 0,
     int Provisions = 0,
@@ -319,7 +319,12 @@ public sealed class DeployService
             return CommandResult.Fail("출발 도시를 찾을 수 없다.", state);
         }
 
-        var destination = state.Cities.FirstOrDefault(c => c.Id == req.Destination);
+        if (req.Destination is null)
+        {
+            return CommandResult.Fail("수송 목표를 지정해야 한다.", state);
+        }
+
+        var destination = state.Cities.FirstOrDefault(c => c.Id == req.Destination.Value);
         if (destination is null)
         {
             return CommandResult.Fail("도착 도시를 찾을 수 없다.", state);

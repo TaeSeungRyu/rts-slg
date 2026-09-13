@@ -355,6 +355,28 @@ public class DeployServiceTests
     }
 
     [Fact]
+    public void 수송_목표가_없으면_출발하지_않는다()
+    {
+        var source = Town(1, new HexCoord(0, 0), provisions: 3000) with { Gold = 1200 };
+        var destination = Town(2, new HexCoord(6, 0), provisions: 1000);
+        var s0 = State([source, destination], [Gen(1)],
+            postings: [At(1, 1)],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 10000, 70)]);
+
+        var r = Service().DeployTransport(s0, new TransportDeployRequest(
+            new CityId(1),
+            [new TransportLine("swordsman", 1000)],
+            null,
+            new GeneralId(1),
+            Gold: 100,
+            Provisions: 100));
+
+        Assert.False(r.Ok);
+        Assert.Contains("목표", r.Error);
+        Assert.Empty(r.State.Armies);
+    }
+
+    [Fact]
     public void 출전_일반부대는_최대_일만명까지만_편성된다()
     {
         var s0 = State([Town(1, new HexCoord(0, 0))], [Gen(1)],
