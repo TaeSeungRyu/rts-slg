@@ -4060,8 +4060,8 @@ public sealed partial class CampaignMapScene : Node3D
                 {
                     n = maxForThis;
                 }
-                if (fromSlider) { spin.SetValueNoSignal(n); }
-                else { slider.SetValueNoSignal(n); }
+                slider.SetValueNoSignal(n);
+                spin.SetValueNoSignal(n);
                 if (n <= 0) { _supplyDraft.Remove(gar.TroopCode); }
                 else { _supplyDraft[gar.TroopCode] = n; }
                 SyncSupplyProvisionSlider();
