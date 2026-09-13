@@ -6422,33 +6422,28 @@ public sealed partial class CampaignMapScene : Node3D
         };
         box.AddChild(generalTree);
 
-        box.AddChild(MakeLabel("수송 병종 (여러 개 선택 가능)", 13, GoldBright));
-        var troopGrid = new GridContainer { Columns = 3, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        troopGrid.AddThemeConstantOverride("h_separation", 8);
-        troopGrid.AddThemeConstantOverride("v_separation", 8);
-        box.AddChild(troopGrid);
-
-        var transportSpins = new Dictionary<string, SpinBox>(System.StringComparer.Ordinal);
+        box.AddChild(MakeLabel("수송 병력 선택 (여러 개 선택 가능)", 13, GoldBright));
         foreach (var gar in garrisons)
         {
             var code = gar.TroopCode;
             var remaining = System.Math.Max(0, gar.Troops - usedTroops.GetValueOrDefault(code, 0));
             if (remaining <= 0) { continue; }
             var template = _troops.FirstOrDefault(t => t.Code == code);
-            var name = template?.Name ?? code;
-            var card = new PanelContainer { CustomMinimumSize = new Vector2(150, 128), MouseFilter = Control.MouseFilterEnum.Stop };
-            card.AddThemeStyleboxOverride("panel", CardBox(false));
-            var cv = new VBoxContainer();
-            cv.AddThemeConstantOverride("separation", 4);
-            card.AddChild(cv);
-            var label = MakeLabel(name, 12, GoldBright);
-            label.HorizontalAlignment = HorizontalAlignment.Center;
-            cv.AddChild(label);
-            var sub = MakeLabel($"대기 {remaining}명 · 훈{gar.TrainingLevel}", 10, Parchment);
-            sub.HorizontalAlignment = HorizontalAlignment.Center;
-            cv.AddChild(sub);
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            row.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(new TextureRect
+            {
+                Texture = template is not null ? ClassEmblem(template.Class) : Icon(Sym.People),
+                CustomMinimumSize = new Vector2(34, 34),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            });
+            var name = MakeLabel($"{template?.Name ?? code} · 가능 {remaining} · 훈{gar.TrainingLevel}", 12, Parchment);
+            name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(name);
             var amountRow = new HBoxContainer();
-            amountRow.AddThemeConstantOverride("separation", 6);
+            amountRow.AddThemeConstantOverride("separation", 8);
             amountRow.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             var slider = ApplySliderStyle(new HSlider
             {
@@ -6456,7 +6451,7 @@ public sealed partial class CampaignMapScene : Node3D
                 MaxValue = remaining,
                 Step = 100,
                 Value = 0,
-                CustomMinimumSize = new Vector2(0, 24),
+                CustomMinimumSize = new Vector2(180, 24),
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             });
@@ -6466,15 +6461,8 @@ public sealed partial class CampaignMapScene : Node3D
                 MaxValue = remaining,
                 Step = 100,
                 Value = 0,
-                CustomMinimumSize = new Vector2(86, 28),
+                CustomMinimumSize = new Vector2(120, 30),
             });
-            amountRow.AddChild(slider);
-            amountRow.AddChild(spin);
-            cv.AddChild(amountRow);
-            var maxBtn = MakeButton("최대");
-            maxBtn.CustomMinimumSize = new Vector2(0, 24);
-            maxBtn.Pressed += () => spin.Value = spin.MaxValue;
-            cv.AddChild(maxBtn);
             void SetTransportAmount(double v, bool fromSlider)
             {
                 var value = (int)v;
@@ -6482,22 +6470,15 @@ public sealed partial class CampaignMapScene : Node3D
                 else { _transportDraft[code] = value; }
                 if (fromSlider) { spin.SetValueNoSignal(value); }
                 else { slider.SetValueNoSignal(value); }
-                card.AddThemeStyleboxOverride("panel", CardBox(value > 0));
                 Refresh();
             }
             slider.ValueChanged += v => SetTransportAmount(v, true);
             spin.ValueChanged += v => SetTransportAmount(v, false);
-            card.GuiInput += e =>
-            {
-                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
-                {
-                    spin.Value = spin.Value > 0 ? 0 : System.Math.Min(remaining, 1000);
-                }
-            };
-            transportSpins[code] = spin;
-            troopGrid.AddChild(card);
+            amountRow.AddChild(slider);
+            amountRow.AddChild(spin);
+            row.AddChild(amountRow);
+            box.AddChild(row);
         }
-
         box.AddChild(preview);
 
         void Refresh()
