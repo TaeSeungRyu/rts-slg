@@ -6360,7 +6360,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(form);
         var defaultDestination = destinations[0];
 
-        form.AddChild(MakeLabel("금", 12, GoldBright));
+        form.AddChild(MakeLabel($"금\n보유 {source.Gold}", 12, GoldBright));
         var goldBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         var goldSpin = ApplyNumberInputStyle(new SpinBox
         {
@@ -6375,7 +6375,7 @@ public sealed partial class CampaignMapScene : Node3D
         goldBox.AddChild(goldSpin);
         form.AddChild(goldBox);
 
-        form.AddChild(MakeLabel("군량", 12, GoldBright));
+        form.AddChild(MakeLabel($"군량\n보유 {source.Provisions}", 12, GoldBright));
         var provBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         var provSpin = ApplyNumberInputStyle(new SpinBox
         {
@@ -6515,7 +6515,7 @@ public sealed partial class CampaignMapScene : Node3D
             var lineText = _transportDraft.Count == 0
                 ? "병종 미선택"
                 : string.Join(", ", _transportDraft.OrderBy(p => p.Key).Select(p => $"{_troops.FirstOrDefault(t => t.Code == p.Key)?.Name ?? p.Key} {p.Value}명"));
-            preview.Text = $"예약 미리보기: {source.Name} → {defaultDestination.Name}(임시) · {leader.Name} · {lineText} · 금 {(int)goldSpin.Value} · 군량 {(int)provSpin.Value}\n※ 목표는 예약 후 목록에서 지도 선택으로 변경할 수 있습니다.";
+            preview.Text = $"예약 미리보기: {source.Name} → {defaultDestination.Name}(임시) · {leader.Name} · {lineText} · 금 {(int)goldSpin.Value} · 군량 {(int)provSpin.Value}\n※ 금·군량은 병력 수와 무관하게 도시 보유량 안에서 원하는 만큼 실을 수 있습니다.\n※ 목표는 예약 후 목록에서 지도 선택으로 변경할 수 있습니다.";
         }
 
         goldSlider.ValueChanged += v => { goldSpin.SetValueNoSignal(v); Refresh(); };

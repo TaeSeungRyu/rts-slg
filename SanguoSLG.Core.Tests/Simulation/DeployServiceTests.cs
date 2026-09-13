@@ -329,6 +329,32 @@ public class DeployServiceTests
     }
 
     [Fact]
+    public void 수송_금군량은_병력수와_무관하게_도시_보유량까지_실을_수_있다()
+    {
+        var source = Town(1, new HexCoord(0, 0), provisions: 3000) with { Gold = 1200 };
+        var destination = Town(2, new HexCoord(6, 0), provisions: 1000);
+        var s0 = State([source, destination], [Gen(1)],
+            postings: [At(1, 1)],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 10000, 70)]);
+
+        var r = Service().DeployTransport(s0, new TransportDeployRequest(
+            new CityId(1),
+            [new TransportLine("swordsman", 1000)],
+            new CityId(2),
+            new GeneralId(1),
+            Gold: 1200,
+            Provisions: 3000));
+
+        Assert.True(r.Ok, r.Error);
+        var unit = r.State.Armies.Single();
+        Assert.Equal(1000, unit.Pool.Active);
+        Assert.Equal(1200, unit.CargoGold);
+        Assert.Equal(3000, unit.Provisions);
+        Assert.Equal(0, r.State.Cities.Single(c => c.Id == source.Id).Gold);
+        Assert.Equal(0, r.State.Cities.Single(c => c.Id == source.Id).Provisions);
+    }
+
+    [Fact]
     public void 출전_일반부대는_최대_일만명까지만_편성된다()
     {
         var s0 = State([Town(1, new HexCoord(0, 0))], [Gen(1)],
