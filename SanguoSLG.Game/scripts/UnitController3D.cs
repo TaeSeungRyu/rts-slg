@@ -76,9 +76,11 @@ public partial class UnitController3D : Node3D
         ("res://assets/models/troop-eastern-dragon.glb", true, MovementDomain.Land),
         ("res://assets/models/troop-giant-squid.glb", true, MovementDomain.DeepWater),
         ("res://assets/models/troop-supply.glb", true, MovementDomain.Land),
+        ("res://assets/models/troop-army-group.glb", true, MovementDomain.Land),
     };
 
-    public static int SupplyModelIndex => TroopModels.Length - 1;
+    public static int SupplyModelIndex => TroopModels.Length - 2;
+    public static int ArmyGroupModelIndex => TroopModels.Length - 1;
 
     private const int TroopCount = 7;
 
