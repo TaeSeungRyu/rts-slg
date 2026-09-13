@@ -6179,6 +6179,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void OpenTransportCompose(CityId city)
     {
+        _depModalCity = city;
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var source = _state.Cities.First(c => c.Id == city);
         var destinations = _state.Cities
