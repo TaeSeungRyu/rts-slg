@@ -85,6 +85,7 @@ public sealed partial class CampaignMapScene : Node3D
     private double _animT;
     private int _animStepIdx;
     private readonly List<(double Time, int UnitId, HexCoord To)> _animSteps = new();
+    private readonly Dictionary<int, HexCoord> _animStartOverrides = new();
     private int _animAtkIdx;
     private readonly List<(double Time, int UnitId, Vector3 FaceTo)> _animAttacks = new(); // 교전·공성 공격 모션
     private int _animUpdIdx;
@@ -1816,8 +1817,8 @@ public sealed partial class CampaignMapScene : Node3D
             [new(3, 4)] = TerrainType.Swamp, [new(4, 3)] = TerrainType.Swamp,
             [new(1, 0)] = TerrainType.Karst, [new(0, 5)] = TerrainType.Cliff, [new(9, 0)] = TerrainType.RockMountain,
         };
-        // 사방 +2칸 — 성 보급 반경(3칸)이 지도 안에 온전히 보이도록.
-        return new HexMap(-4, 12, -3, 9, t);
+        // 좌측 테스트 성(중형·대형)과 성 보급 반경이 지도 안에 온전히 보이도록 좌측을 넓힌다.
+        return new HexMap(-11, 12, -3, 9, t);
     }
 
     private static readonly IReadOnlyList<City> _cities = new List<City>
@@ -1828,6 +1829,12 @@ public sealed partial class CampaignMapScene : Node3D
         new(new CityId(4), "업", new HexCoord(-1, 5), new FactionId(1), 3000, CastleSize.Medium,
             Gold: 3000, Security: 82, Population: 90_000, Ore: 7000, Horses: 1500, Elephants: 10,
             Paddies: 2, Farms: 2, Villages: 2, Wall: 1200),
+        new(new CityId(5), "좌중성", new HexCoord(-5, 1), new FactionId(1), 3000, CastleSize.Medium,
+            Gold: 2500, Security: 80, Population: 80_000, Ore: 5000, Horses: 1000, Elephants: 10,
+            Paddies: 2, Farms: 2, Villages: 2, Wall: 1200),
+        new(new CityId(6), "좌대성", new HexCoord(-8, 5), new FactionId(1), 3000, CastleSize.Large,
+            Gold: 3000, Security: 80, Population: 120_000, Ore: 7000, Horses: 2000, Elephants: 20,
+            Paddies: 3, Farms: 3, Villages: 3, Wall: 3000),
         new(new CityId(2), "성도", new HexCoord(8, 3), new FactionId(2), 3000, CastleSize.Medium,
             Gold: 2000, Security: 80, Population: 100_000, Ore: 8000,
             Paddies: 2, Farms: 2, Villages: 2, Wall: 1200),
@@ -1874,11 +1881,12 @@ public sealed partial class CampaignMapScene : Node3D
             new(new FactionId(2), "촉", new GeneralId(11), 0, "#d23830"),
         },
         _cities.ToList(),
-        // 테스트: 플레이어 성(장안·업) 장수 10명, 적 성(성도·한중) 4명.
+        // 테스트: 플레이어 성(장안·업·좌중성·좌대성) 장수 16명, 적 성(성도·한중) 4명.
         new List<General>
         {
             Officer(1), Officer(2), Officer(3), Officer(4), Officer(5),
             Officer(6), Officer(7), Officer(8), Officer(9), Officer(10),
+            Officer(15), Officer(16), Officer(17), Officer(18), Officer(19), Officer(20),
             Officer(11), Officer(12), Officer(13), Officer(14),
         },
         Postings: new List<GeneralPosting>
@@ -1893,6 +1901,12 @@ public sealed partial class CampaignMapScene : Node3D
             new(new GeneralId(8), new FactionId(1), new CityId(4)),
             new(new GeneralId(9), new FactionId(1), new CityId(4)),
             new(new GeneralId(10), new FactionId(1), new CityId(4)),
+            new(new GeneralId(15), new FactionId(1), new CityId(5)),
+            new(new GeneralId(16), new FactionId(1), new CityId(5)),
+            new(new GeneralId(17), new FactionId(1), new CityId(5)),
+            new(new GeneralId(18), new FactionId(1), new CityId(6)),
+            new(new GeneralId(19), new FactionId(1), new CityId(6)),
+            new(new GeneralId(20), new FactionId(1), new CityId(6)),
             new(new GeneralId(11), new FactionId(2), new CityId(2)),
             new(new GeneralId(12), new FactionId(2), new CityId(2)),
             new(new GeneralId(13), new FactionId(2), new CityId(3)),
@@ -1912,6 +1926,12 @@ public sealed partial class CampaignMapScene : Node3D
             new(new CityId(4), "thunder_cart", 8000, 60),
             new(new CityId(4), "catapult", 8000, 60),
             new(new CityId(4), "siege_tower", 8000, 60),
+            new(new CityId(5), "swordsman", 30000, 60),
+            new(new CityId(5), "archer", 20000, 60),
+            new(new CityId(5), "catapult", 8000, 60),
+            new(new CityId(6), "swordsman", 40000, 60),
+            new(new CityId(6), "archer", 30000, 60),
+            new(new CityId(6), "catapult", 12000, 60),
             new(new CityId(2), "swordsman", 100000, 60),
             new(new CityId(2), "catapult", 10000, 60),
             new(new CityId(3), "swordsman", 30000, 60),
@@ -2160,6 +2180,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 열려 있던 성 명령 팔레트·정보 카드는 자동으로 닫는다(진행 중 명령 불가).
         HidePanels();
         Redraw(_pendingNote);
+        ApplyAnimationStartOverrides();
 
         // 진행(재생) 동안 아군 부대의 이동 경로를 표시한다(재생이 끝나면 FinishAdvance의 Redraw가 지운다).
         ClearPathMarkers();
@@ -2200,6 +2221,7 @@ public sealed partial class CampaignMapScene : Node3D
         _productionVisionLosses.Clear();
         foreach (var op in preMove.ProductionOps) _animationProductionPositions[op.Id] = op.Position;
         _animSteps.Clear();
+        _animStartOverrides.Clear();
         _animAttacks.Clear();
         _animUpdates.Clear();
         _animKills.Clear();
@@ -2325,6 +2347,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _animSteps.AddRange(playback.Moves);
+        BuildEgressAnimationStartOverrides(preMove, playback.Moves);
         ScheduleProductionAnimations(preMove);
 
         _animSteps.Sort((a, b) => a.Time.CompareTo(b.Time));
@@ -2337,6 +2360,50 @@ public sealed partial class CampaignMapScene : Node3D
         _animSiegeDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animArrows.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSupplyArrows.Sort((a, b) => a.Time.CompareTo(b.Time));
+    }
+
+    private void BuildEgressAnimationStartOverrides(GameState preMove, IReadOnlyList<(double Time, int UnitId, HexCoord To)> moves)
+    {
+        foreach (var firstMove in moves
+            .Where(m => m.UnitId > 0)
+            .GroupBy(m => m.UnitId)
+            .Select(g => g.OrderBy(m => m.Time).First()))
+        {
+            var unit = preMove.Armies.FirstOrDefault(u => u.Id.Value == firstMove.UnitId);
+            if (unit is null) { continue; }
+            var city = preMove.Cities.FirstOrDefault(c => c.Owner == unit.Field.Owner
+                && CastleFootprint.TilesFor(c).Contains(unit.Field.Position));
+            if (city is null) { continue; }
+
+            var footprint = CastleFootprint.TilesFor(city).ToHashSet();
+            if (footprint.Contains(firstMove.To)) { continue; }
+            HexCoord? edge = footprint
+                .Where(tile => tile.Distance(firstMove.To) == 1)
+                .OrderBy(tile => tile.Distance(unit.Field.Position))
+                .ThenBy(tile => tile.Q)
+                .ThenBy(tile => tile.R)
+                .Cast<HexCoord?>()
+                .FirstOrDefault();
+            if (edge is { } start && start != unit.Field.Position)
+            {
+                _animStartOverrides[firstMove.UnitId] = start;
+            }
+        }
+    }
+
+    private void ApplyAnimationStartOverrides()
+    {
+        foreach (var (id, start) in _animStartOverrides)
+        {
+            if (_armyTokens.TryGetValue(id, out var token))
+            {
+                token.DisplaySnapTo(start);
+            }
+            if (_armyLabels.TryGetValue(id, out var label))
+            {
+                label.Position = _view.HexToWorld(start) + new Vector3(0f, _view.TileTopY + 1.1f, 0f);
+            }
+        }
     }
 
     private void ScheduleProductionAnimations(GameState preMove)

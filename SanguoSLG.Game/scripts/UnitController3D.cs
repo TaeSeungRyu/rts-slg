@@ -279,6 +279,15 @@ public partial class UnitController3D : Node3D
         DisplayStepTo(to, seconds);
     }
 
+    public void DisplaySnapTo(HexCoord to)
+    {
+        var target = TokenPosition(to);
+        Position = target;
+        _lastPosition = target;
+        _moving = false;
+        _chargeMoving = false;
+    }
+
     /// <summary>표시 모드: 한 칸을 실제 행군 모션과 함께 이동한다.</summary>
     public void DisplayStepTo(HexCoord to, float seconds)
     {

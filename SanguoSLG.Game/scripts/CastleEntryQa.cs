@@ -105,9 +105,13 @@ public partial class CastleEntryQa : Node
             typeof(CampaignMapScene).GetMethod("BuildAnimation", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .Invoke(scene, [new Dictionary<int, HexCoord> { [1] = city.Position }, turns, Array.Empty<SiegeExchange>(), state]);
             var moves = Read<List<(double Time, int UnitId, HexCoord To)>>(scene, "_animSteps");
+            var starts = Read<Dictionary<int, HexCoord>>(scene, "_animStartOverrides");
             if (moves.Count != 1 || moves[0].To != target
                 || Read<List<(double Time, int UnitId)>>(scene, "_animKills").Count != 0)
                 throw new InvalidOperationException($"{size}/{direction}/{kind}/{speed}: incomplete exit or removed unit");
+            var visualStart = starts.GetValueOrDefault(1, city.Position);
+            if (visualStart.Distance(target) != 1)
+                throw new InvalidOperationException($"{size}/{direction}/{kind}/{speed}: visual egress starts too far {visualStart} -> {target}");
         }
         finally { scene.Free(); }
     }
