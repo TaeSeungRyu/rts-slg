@@ -1903,10 +1903,18 @@ public sealed partial class CampaignMapScene : Node3D
             new(new CityId(1), "swordsman", 50000, 60),
             new(new CityId(1), "archer", 30000, 60),
             new(new CityId(1), "cavalry", 20000, 60),
+            new(new CityId(1), "thunder_cart", 12000, 60),
+            new(new CityId(1), "catapult", 12000, 60),
+            new(new CityId(1), "siege_tower", 12000, 60),
             new(new CityId(4), "swordsman", 30000, 60),
             new(new CityId(4), "archer", 20000, 60),
+            new(new CityId(4), "thunder_cart", 8000, 60),
+            new(new CityId(4), "catapult", 8000, 60),
+            new(new CityId(4), "siege_tower", 8000, 60),
             new(new CityId(2), "swordsman", 100000, 60),
+            new(new CityId(2), "catapult", 10000, 60),
             new(new CityId(3), "swordsman", 30000, 60),
+            new(new CityId(3), "siege_tower", 8000, 60),
         },
         FacilityPlacements: _initialFacilityPlacements);
 
