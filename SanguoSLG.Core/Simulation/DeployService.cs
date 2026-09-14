@@ -68,6 +68,9 @@ public sealed class DeployService
     private readonly IReadOnlyDictionary<string, PassiveSkill> _passives;
     private readonly IReadOnlyDictionary<string, AdminSkill> _adminSkills;
 
+    public CommandBalance Balance => _b;
+    public IReadOnlyDictionary<string, TroopTemplate> Troops => _troops;
+
     // 패시브 버킷은 조립 시점에 접힌다(현 구조) — 야전 상시 조건으로 평가한다.
     private static readonly CombatContext FieldContext = new(MeleeEngagement: true, IncomingMelee: true, InField: true);
 

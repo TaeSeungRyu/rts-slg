@@ -42,6 +42,18 @@ public class FactionAiTests
         },
     };
 
+    private static General ArmyGroupGen(int id, AptitudeGrade infantry = AptitudeGrade.A, AptitudeGrade archer = AptitudeGrade.A, AptitudeGrade siege = AptitudeGrade.A, AptitudeGrade cavalry = AptitudeGrade.C) => Gen(id) with
+    {
+        Aptitudes = new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Infantry] = infantry,
+            [TroopClass.Archer] = archer,
+            [TroopClass.Siege] = siege,
+            [TroopClass.Cavalry] = cavalry,
+            [TroopClass.Supply] = AptitudeGrade.C,
+        },
+    };
+
     private static City Town(int id, int owner, HexCoord pos, int ore = 5000) =>
         new(new CityId(id), $"c{id}", pos, new FactionId(owner), 3000, CastleSize.Medium,
             Gold: 2000, Population: 100_000, Ore: ore);
@@ -168,6 +180,83 @@ public class FactionAiTests
         Assert.Equal(new GeneralId(2), supply.VanguardId);
         Assert.Equal(145, supply.SupplyEfficiencyPercent);
         Assert.Equal(enemy.Position, supply.Field.Target);
+    }
+
+    [Fact]
+    public void AI는_적성_주둔병력이_더_많고_혼성병력이_사만이상이면_집단군을_절반씩_편성한다()
+    {
+        var enemy = Town(9, 2, new HexCoord(10, 0));
+        var s = new GameState(1, 1, new List<Faction>(),
+            new List<City> { Town(1, 1, new HexCoord(0, 0), ore: 0) with { Provisions = 5000 }, enemy },
+            new List<General> { ArmyGroupGen(1), ArmyGroupGen(2), ArmyGroupGen(3), ArmyGroupGen(4) },
+            Postings: new List<GeneralPosting> { At(1, 1, 1), At(2, 1, 1), At(3, 1, 1), At(4, 1, 1) },
+            GarrisonForces: new List<GarrisonForce>
+            {
+                new(new CityId(1), "swordsman", 20000, 60),
+                new(new CityId(1), "archer", 20000, 60),
+                new(new CityId(1), "catapult", 20000, 60),
+                new(new CityId(9), "swordsman", 25000, 60),
+            });
+
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(s, new FactionId(1));
+
+        var group = Assert.Single(after.Armies);
+        Assert.True(group.IsArmyGroup);
+        Assert.Equal(30000, group.Pool.Active);
+        Assert.Equal(enemy.Position, group.Field.Target);
+        Assert.Equal(new GeneralId(1), group.VanguardId);
+        Assert.Equal(new GeneralId(2), group.AdjutantId);
+        Assert.Equal(10000, group.Cargo.Single(c => c.TroopCode == "swordsman").Troops);
+        Assert.Equal(10000, group.Cargo.Single(c => c.TroopCode == "archer").Troops);
+        Assert.Equal(10000, group.Cargo.Single(c => c.TroopCode == "catapult").Troops);
+    }
+
+    [Fact]
+    public void AI는_자유장수가_네명보다_적으면_집단군을_편성하지_않는다()
+    {
+        var s = new GameState(1, 1, new List<Faction>(),
+            new List<City> { Town(1, 1, new HexCoord(0, 0), ore: 0) with { Provisions = 5000 }, Town(9, 2, new HexCoord(10, 0)) },
+            new List<General> { ArmyGroupGen(1), ArmyGroupGen(2), ArmyGroupGen(3) },
+            Postings: new List<GeneralPosting> { At(1, 1, 1), At(2, 1, 1), At(3, 1, 1) },
+            GarrisonForces: new List<GarrisonForce>
+            {
+                new(new CityId(1), "swordsman", 20000, 60),
+                new(new CityId(1), "archer", 20000, 60),
+                new(new CityId(1), "catapult", 20000, 60),
+                new(new CityId(9), "swordsman", 25000, 60),
+            });
+
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(s, new FactionId(1));
+
+        Assert.DoesNotContain(after.Armies, a => a.IsArmyGroup);
+    }
+
+    [Fact]
+    public void AI는_다른병종_S급_선봉후보를_집단군에_쓰지_않는다()
+    {
+        var enemy = Town(9, 2, new HexCoord(10, 0));
+        var s = new GameState(1, 1, new List<Faction>(),
+            new List<City> { Town(1, 1, new HexCoord(0, 0), ore: 0) with { Provisions = 5000 }, enemy },
+            new List<General>
+            {
+                ArmyGroupGen(1, cavalry: AptitudeGrade.S),
+                ArmyGroupGen(2, infantry: AptitudeGrade.B, archer: AptitudeGrade.B, siege: AptitudeGrade.B),
+                ArmyGroupGen(3),
+                ArmyGroupGen(4),
+            },
+            Postings: new List<GeneralPosting> { At(1, 1, 1), At(2, 1, 1), At(3, 1, 1), At(4, 1, 1) },
+            GarrisonForces: new List<GarrisonForce>
+            {
+                new(new CityId(1), "swordsman", 20000, 60),
+                new(new CityId(1), "archer", 20000, 60),
+                new(new CityId(1), "catapult", 20000, 60),
+                new(new CityId(9), "swordsman", 25000, 60),
+            });
+
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(s, new FactionId(1));
+
+        var group = Assert.Single(after.Armies, a => a.IsArmyGroup);
+        Assert.Equal(new GeneralId(3), group.VanguardId);
     }
 
     [Fact]

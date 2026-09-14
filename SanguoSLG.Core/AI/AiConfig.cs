@@ -9,6 +9,8 @@ namespace SanguoSLG.Core.AI;
 /// <param name="DeploySize">한 번에 편성하는 병력(일반 부대 상한 이하).</param>
 /// <param name="SupplyDeployTarget">0이면 비활성. 대기 병력이 이 이상이면 보급부대 편성을 고려한다.</param>
 /// <param name="SupplyDeploySize">한 번에 편성하는 보급부대 병력.</param>
+/// <param name="ArmyGroupDeployTarget">0이면 비활성. 보병·궁병·공성 편성 가능 병력이 이 이상이면 집단군 편성을 고려한다.</param>
+/// <param name="ArmyGroupMinFreeGenerals">집단군 편성에 필요한 최소 자유 장수 수.</param>
 /// <param name="MinOre">광석이 이 이상일 때만 모집한다.</param>
 /// <param name="KeepGeneralsHome">출전하려면 도시에 남는 자유 장수가 이 수 이상이어야 한다(모집용 확보).</param>
 public sealed record AiConfig(
@@ -17,5 +19,7 @@ public sealed record AiConfig(
     int DeploySize = 10000,
     int SupplyDeployTarget = 0,
     int SupplyDeploySize = 5000,
+    int ArmyGroupDeployTarget = 40000,
+    int ArmyGroupMinFreeGenerals = 4,
     int MinOre = 300,
     int KeepGeneralsHome = 1);

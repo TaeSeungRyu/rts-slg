@@ -30,6 +30,7 @@ public sealed class FactionAI
         state = Retarget(state, faction);
         state = RecruitUnlockedHeroes(state, faction);
         state = PlanSupplyDeploys(state, faction);
+        state = PlanArmyGroupDeploys(state, faction);
 
         foreach (var city in state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).ToList())
         {
@@ -64,6 +65,78 @@ public sealed class FactionAI
         }
 
         state = ExploreWithIdleOfficers(state, faction);
+        return state;
+    }
+
+    private GameState PlanArmyGroupDeploys(GameState state, FactionId faction)
+    {
+        if (_config.ArmyGroupDeployTarget <= 0 || _config.ArmyGroupMinFreeGenerals <= 0)
+        {
+            return state;
+        }
+
+        foreach (var city in state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).ToList())
+        {
+            if (state.Armies.Any(u => u.IsArmyGroup && u.OriginCity == city.Id))
+            {
+                continue;
+            }
+
+            var free = state.GeneralsAt(city.Id)
+                .Where(g => !state.IsGeneralBusy(g))
+                .Select(id => state.Generals.First(g => g.Id == id))
+                .OrderByDescending(ArmyGroupAptitude)
+                .ThenByDescending(g => g.Might)
+                .ThenBy(g => g.Id.Value)
+                .ToList();
+            if (free.Count < _config.ArmyGroupMinFreeGenerals)
+            {
+                continue;
+            }
+
+            var target = NearestEnemyCityInfo(state, faction, city.Position);
+            if (target is null)
+            {
+                continue;
+            }
+
+            var ownMainTroops = state.Garrisons
+                .Where(g => g.City == city.Id && g.TroopCode == _config.Troop && !g.Trainee)
+                .Sum(g => g.Troops);
+            if (target.Value.GarrisonTroops <= ownMainTroops)
+            {
+                continue;
+            }
+
+            var eligible = state.Garrisons
+                .Where(g => g.City == city.Id && g.Troops > 0 && !g.Trainee)
+                .Join(_deployer.Troops.Values, g => g.TroopCode, t => t.Code, (g, t) => (Garrison: g, Troop: t))
+                .Where(x => x.Troop.Class is TroopClass.Infantry or TroopClass.Archer or TroopClass.Siege)
+                .OrderBy(x => x.Troop.Code, System.StringComparer.Ordinal)
+                .ToList();
+            if (eligible.Sum(x => x.Garrison.Troops) < _config.ArmyGroupDeployTarget)
+            {
+                continue;
+            }
+
+            var vanguard = free.FirstOrDefault(g => !HasStandaloneEliteAptitude(g));
+            if (vanguard is null)
+            {
+                continue;
+            }
+
+            var adjutant = free.FirstOrDefault(g => g.Id != vanguard.Id);
+            var maxTroops = CommandEfficiency.ArmyGroupDeployLimit(
+                state.ResearchOf(city.Owner, FactionResearch.ArmyGroupCode), _deployer.Balance);
+            var lines = HalfArmyGroupLines(eligible, maxTroops);
+            var result = _deployer.DeployArmyGroup(state, new ArmyGroupDeployRequest(
+                city.Id, lines, vanguard.Id, adjutant?.Id, UnitMode.Attack, target.Value.City.Position));
+            if (result.Ok)
+            {
+                state = result.State;
+            }
+        }
+
         return state;
     }
 
@@ -215,4 +288,59 @@ public sealed class FactionAI
             .OrderBy(c => c.Position.Distance(from)).ThenBy(c => c.Id.Value)
             .Select(c => (HexCoord?)c.Position)
             .FirstOrDefault();
+
+    private static (City City, int GarrisonTroops)? NearestEnemyCityInfo(GameState state, FactionId self, HexCoord from)
+    {
+        var city = state.Cities.Where(c => c.Owner != self)
+            .OrderBy(c => c.Position.Distance(from))
+            .ThenBy(c => c.Id.Value)
+            .FirstOrDefault();
+        if (city is null)
+        {
+            return null;
+        }
+
+        return (city, state.Garrisons.Where(g => g.City == city.Id).Sum(g => g.Troops));
+    }
+
+    private static AptitudeGrade ArmyGroupAptitude(General general)
+        => AptitudeGrades.AverageFloor(
+            general.AptitudeFor(TroopClass.Infantry),
+            general.AptitudeFor(TroopClass.Archer),
+            general.AptitudeFor(TroopClass.Siege));
+
+    private static bool HasStandaloneEliteAptitude(General general)
+        => general.AptitudeFor(TroopClass.Cavalry) >= AptitudeGrade.S
+            || general.AptitudeFor(TroopClass.Elephant) >= AptitudeGrade.S
+            || general.AptitudeFor(TroopClass.Naval) >= AptitudeGrade.S;
+
+    private static IReadOnlyList<SupplyLine> HalfArmyGroupLines(
+        IReadOnlyList<(GarrisonForce Garrison, TroopTemplate Troop)> eligible,
+        int maxTroops)
+    {
+        var lines = eligible
+            .Select(x => new SupplyLine(x.Garrison.TroopCode, x.Garrison.Troops / 2))
+            .Where(l => l.Troops > 0)
+            .ToList();
+        var total = lines.Sum(l => l.Troops);
+        if (total <= maxTroops)
+        {
+            return lines;
+        }
+
+        var overflow = total - maxTroops;
+        for (var i = lines.Count - 1; i >= 0 && overflow > 0; i--)
+        {
+            var cut = System.Math.Min(overflow, System.Math.Max(0, lines[i].Troops - 5000));
+            if (cut <= 0)
+            {
+                continue;
+            }
+
+            lines[i] = lines[i] with { Troops = lines[i].Troops - cut };
+            overflow -= cut;
+        }
+
+        return lines;
+    }
 }

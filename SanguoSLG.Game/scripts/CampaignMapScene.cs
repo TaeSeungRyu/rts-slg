@@ -194,6 +194,7 @@ public sealed partial class CampaignMapScene : Node3D
     private Label? _researchFundingPreview;
     private readonly Dictionary<TroopClass, ImageTexture> _emblems = new();
     private readonly Dictionary<TroopClass, ImageTexture> _aptitudeCardTextures = new();
+    private ImageTexture? _armyGroupIcon;
 
     // 출전 모달 선택 상태.
     private string? _depTroop;
@@ -6817,11 +6818,7 @@ public sealed partial class CampaignMapScene : Node3D
             tv.AddThemeConstantOverride("separation", 2);
             tv.MouseFilter = Control.MouseFilterEnum.Ignore;
             tile.AddChild(tv);
-            var badge = MakeLabel("集", 24, GoldBright);
-            badge.HorizontalAlignment = HorizontalAlignment.Center;
-            badge.VerticalAlignment = VerticalAlignment.Center;
-            badge.MouseFilter = Control.MouseFilterEnum.Ignore;
-            tv.AddChild(badge);
+            tv.AddChild(FixedIcon(ArmyGroupIcon(), 46));
             var n1 = MakeLabel($"집단군 {total:N0}", 12, GoldBright);
             n1.HorizontalAlignment = HorizontalAlignment.Center;
             n1.MouseFilter = Control.MouseFilterEnum.Ignore;
@@ -7968,14 +7965,7 @@ public sealed partial class CampaignMapScene : Node3D
         var v = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         v.AddThemeConstantOverride("separation", 3);
         card.AddChild(v);
-        v.AddChild(new TextureRect
-        {
-            Texture = icon,
-            CustomMinimumSize = new Vector2(46, 46),
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
-        });
+        v.AddChild(FixedIcon(icon, 46));
         var t = MakeLabel(title, 15, GoldBright);
         t.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(t);
@@ -8189,11 +8179,11 @@ public sealed partial class CampaignMapScene : Node3D
 
                 break;
             case "troop":
-                if (cmd.Kind == CommandKind.Research)
-                {
-                    list.Add(("통솔 병력", Icon(Sym.People), CommandTroopsResearchOptionDetail(city)));
-                    list.Add(("집단군", Icon(Sym.Shield), ArmyGroupResearchOptionDetail(city)));
-                }
+        if (cmd.Kind == CommandKind.Research)
+        {
+            list.Add(("통솔 병력", Icon(Sym.People), CommandTroopsResearchOptionDetail(city)));
+            list.Add(("집단군", ArmyGroupIcon(), ArmyGroupResearchOptionDetail(city)));
+        }
 
                 foreach (var t in _troops)
                 {
@@ -8570,14 +8560,7 @@ public sealed partial class CampaignMapScene : Node3D
         var v = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         v.AddThemeConstantOverride("separation", 4);
         card.AddChild(v);
-        v.AddChild(new TextureRect
-        {
-            Texture = o.Icon,
-            CustomMinimumSize = new Vector2(49, 49),
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
-        });
+        v.AddChild(FixedIcon(o.Icon, 49));
         var name = MakeLabel(o.Name, 19, GoldBright);
         name.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(name);
@@ -9189,6 +9172,33 @@ public sealed partial class CampaignMapScene : Node3D
         _emblems[c] = tex;
         return tex;
     }
+
+    private ImageTexture ArmyGroupIcon()
+    {
+        if (_armyGroupIcon is { } cached) { return cached; }
+
+        const string path = "res://assets/ui/cards/troop_army_group.png";
+        if (Godot.FileAccess.FileExists(path))
+        {
+            var img = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
+            img.GenerateMipmaps();
+            _armyGroupIcon = ImageTexture.CreateFromImage(img);
+            return _armyGroupIcon;
+        }
+
+        _armyGroupIcon = Icon(Sym.Shield);
+        return _armyGroupIcon;
+    }
+
+    private static TextureRect FixedIcon(Texture2D icon, int size) => new()
+    {
+        Texture = icon,
+        CustomMinimumSize = new Vector2(size, size),
+        StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+        MouseFilter = Control.MouseFilterEnum.Ignore,
+    };
 
     private readonly Dictionary<string, ImageTexture> _stratIcons = new();
 
