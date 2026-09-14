@@ -94,7 +94,7 @@ public sealed class CampaignSiege
             var counterPercent = counterAptitude?.Invoke(city.Id) ?? 100;
             var defensePercent = defenseBonus?.Invoke(city.Id) ?? 100;
             var castle = new CastleState(city.Wall, defendTroops, CastleUnitDmg, WallDf, CollapsedDf, counterPercent, defensePercent);
-            var attackers = besiegers.Select(u => BuildAttacker(u, city.Position)).ToList();
+            var attackers = besiegers.Select(u => BuildAttacker(u, city)).ToList();
             var outcome = _resolver.ResolveSiege(attackers, castle);
 
             cityById[city.Id] = city with { Wall = outcome.NewWall };
@@ -169,13 +169,13 @@ public sealed class CampaignSiege
         garr.RemoveAll(g => g.Troops <= 0);
     }
 
-    private SiegeAttacker BuildAttacker(CombatUnit u, HexCoord castlePos)
+    private SiegeAttacker BuildAttacker(CombatUnit u, City city)
     {
+        var inCounterRange = CastleFootprint.TilesFor(city).Min(tile => tile.Distance(u.Field.Position)) <= 1;
         if (u.IsSupply)
         {
             var minBuildingAttack = Math.Max(1, _troops.Values.Min(t => t.AtkBuilding));
             var (supplyTerrainAtk, _) = TerrainCombatBonus.For(u.Class, _terrainAt(u.Field.Position));
-            var supplyInCounterRange = u.Field.Position.Distance(castlePos) <= 1;
             return new SiegeAttacker(
                 u.Pool.Active,
                 minBuildingAttack + supplyTerrainAtk,
@@ -184,12 +184,11 @@ public sealed class CampaignSiege
                 u.Stats.AptitudePercent,
                 100,
                 100,
-                supplyInCounterRange);
+                inCounterRange);
         }
 
         if (u.IsArmyGroup)
         {
-            var armyGroupInCounterRange = u.Field.Position.Distance(castlePos) <= 1;
             return new SiegeAttacker(
                 u.Pool.Active,
                 AtkBuilding: 6,
@@ -198,12 +197,11 @@ public sealed class CampaignSiege
                 u.Stats.AptitudePercent,
                 100,
                 100,
-                armyGroupInCounterRange);
+                inCounterRange);
         }
 
         var template = _troops[u.TroopCode];
         var (terrainAtk, _) = TerrainCombatBonus.For(template.Class, _terrainAt(u.Field.Position));
-        var inCounterRange = u.Field.Position.Distance(castlePos) <= 1;
         return new SiegeAttacker(
             u.Pool.Active,
             template.AtkBuilding + terrainAtk,

@@ -2583,10 +2583,15 @@ public sealed partial class CampaignMapScene : Node3D
         {
             if (fieldAttackers.Contains(u.Id.Value)) { continue; }
             var castle = _pendingState.Cities.FirstOrDefault(c => c.Owner != u.Field.Owner
-                && c.Position.Distance(u.Field.Position) <= u.Field.RangeCastle);
+                && CastleFootprint.TilesFor(c).Min(tile => tile.Distance(u.Field.Position)) <= u.Field.RangeCastle);
             if (castle is not null)
             {
-                AddAttack(u, _view.HexToWorld(castle.Position));
+                var targetTile = CastleFootprint.TilesFor(castle)
+                    .OrderBy(tile => tile.Distance(u.Field.Position))
+                    .ThenBy(tile => tile.Q)
+                    .ThenBy(tile => tile.R)
+                    .First();
+                AddAttack(u, _view.HexToWorld(targetTile));
             }
         }
     }

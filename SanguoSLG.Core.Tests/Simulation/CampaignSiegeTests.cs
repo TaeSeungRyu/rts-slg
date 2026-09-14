@@ -73,6 +73,26 @@ public class CampaignSiegeTests
         Assert.True(r.Armies.Single().Pool.Active < 10000, "인접 공격 부대는 반격을 받는다");
     }
 
+    [Theory]
+    [InlineData(CastleSize.Medium, 5, 1, 6, 1)]
+    [InlineData(CastleSize.Large, 6, 1, 7, 1)]
+    public void 다중타일성_footprint_어느칸을_공격해도_성반격을_받는다(
+        CastleSize size, int footprintQ, int footprintR, int attackerQ, int attackerR)
+    {
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 6000, size);
+        var footprintTile = new HexCoord(footprintQ, footprintR);
+        Assert.Contains(footprintTile, CastleFootprint.TilesFor(city));
+        var sword = Army(1, 1, new HexCoord(attackerQ, attackerR), footprintTile);
+        var garr = new List<GarrisonForce> { new(new CityId(9), "swordsman", 10000, 60) };
+
+        var r = Siege().Resolve([sword], [city], garr);
+
+        var ex = Assert.Single(r.Exchanges);
+        Assert.True(ex.WallDamage > 0, "성 footprint 어느 칸을 공격해도 성벽이 반응해야 한다");
+        Assert.True(ex.BesiegerDamage is { Count: 1 } && ex.BesiegerDamage[0] > 0, "성 footprint 인접 공격 부대는 반격을 받아야 한다");
+        Assert.True(r.Armies.Single().Pool.Active < sword.Pool.Active);
+    }
+
     [Fact]
     public void 공성_사거리2_공성병기는_반격을_받지않는다()
     {
