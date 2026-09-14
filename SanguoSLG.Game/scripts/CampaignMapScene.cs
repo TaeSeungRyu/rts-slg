@@ -1988,15 +1988,15 @@ public sealed partial class CampaignMapScene : Node3D
 
     private static float CastleLabelHeight(CastleSize size) => size switch
     {
-        CastleSize.Large => 1.75f,
-        CastleSize.Medium => 1.55f,
+        CastleSize.Large => 2.2f,
+        CastleSize.Medium => 1.85f,
         _ => 1.4f,
     };
 
     private static float CastleModelScale(CastleSize size) => size switch
     {
-        CastleSize.Large => 0.72f,
-        CastleSize.Medium => 0.78f,
+        CastleSize.Large => 0.95f,
+        CastleSize.Medium => 0.98f,
         _ => 1.0f,
     };
 
