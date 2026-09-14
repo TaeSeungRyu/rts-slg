@@ -1891,6 +1891,9 @@ public partial class UnitController3D : Node3D
             AddNativeSupplyWheel(instance, "move_siege_wheel_r");
             AddNativeSupplyArcher(instance, "camp_archer_l");
             AddNativeSupplyArcher(instance, "camp_archer_r");
+            AddNativeSupplyArcher(instance, "front_l");
+            AddNativeSupplyArcher(instance, "front_c");
+            AddNativeSupplyArcher(instance, "front_r");
             AddNativeSupplyArcher(instance, "archer_l");
             AddNativeSupplyArcher(instance, "archer_r");
             _motion = MotionKind.Infantry;

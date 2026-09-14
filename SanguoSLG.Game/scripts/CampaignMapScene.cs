@@ -6984,20 +6984,24 @@ public sealed partial class CampaignMapScene : Node3D
             table.AddChild(MakeLabel($"{gar.TrainingLevel}", 12, gar.TrainingLevel < 50 ? AccentFill : Parchment));
         }
 
-        box.AddChild(MakeLabel("장수 선택 (행 클릭: 첫 클릭 선봉, 같은 행 다시 클릭 해제 / 다른 행 클릭 시 부관 지정)", 13, GoldBright));
+        box.AddChild(MakeLabel("장수 편성 (선봉 필수 · 부관 선택 · 전투편성과 동일하게 체크)", 13, GoldBright));
         var tree = new Tree
         {
-            Columns = 7,
+            Columns = 8,
+            ColumnTitlesVisible = true,
             HideRoot = true,
+            SelectMode = Tree.SelectModeEnum.Row,
             CustomMinimumSize = new Vector2(0, 180),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         tree.AddThemeFontOverride("font", _font);
         tree.AddThemeFontSizeOverride("font_size", 12);
-        foreach (var (col, name, width) in new[] { (0, "역할", 70), (1, "이름", 110), (2, "집단군", 66), (3, "무", 42), (4, "지", 42), (5, "정", 42), (6, "현재 업무", 170) })
+        tree.AddThemeFontOverride("title_button_font", _font);
+        tree.AddThemeFontSizeOverride("title_button_font_size", 12);
+        foreach (var (col, name, width) in new[] { (0, "선봉", 46), (1, "부관", 46), (2, "이름", 110), (3, "집단군", 66), (4, "무", 42), (5, "지", 42), (6, "정", 42), (7, "현재 업무", 170) })
         {
             tree.SetColumnTitle(col, name);
-            tree.SetColumnExpand(col, col is 1 or 6);
+            tree.SetColumnExpand(col, col is 2 or 7);
             tree.SetColumnCustomMinimumWidth(col, width);
         }
         var root = tree.CreateItem();
@@ -7011,32 +7015,29 @@ public sealed partial class CampaignMapScene : Node3D
             .ThenBy(g => g.Id.Value))
         {
             var item = tree.CreateItem(root);
+            item.SetCellMode(0, TreeItem.TreeCellMode.Check);
+            item.SetEditable(0, true);
+            item.SetChecked(0, g.Id == _depVan);
+            item.SetCellMode(1, TreeItem.TreeCellMode.Check);
+            item.SetEditable(1, true);
+            item.SetChecked(1, g.Id == _depAdj);
             item.SetMetadata(0, g.Id.Value);
-            item.SetText(0, g.Id == _depVan ? "선봉" : g.Id == _depAdj ? "부관" : "");
-            item.SetText(1, g.Name);
-            item.SetText(2, GradeText(ArmyGroupAptitude(g)));
-            item.SetText(3, g.Might.ToString());
-            item.SetText(4, g.Intellect.ToString());
-            item.SetText(5, g.Politics.ToString());
-            item.SetText(6, CurrentDuty(g.Id));
+            item.SetText(2, g.Name);
+            item.SetText(3, GradeText(ArmyGroupAptitude(g)));
+            item.SetText(4, g.Might.ToString());
+            item.SetText(5, g.Intellect.ToString());
+            item.SetText(6, g.Politics.ToString());
+            item.SetText(7, CurrentDuty(g.Id));
+            for (var col = 3; col <= 6; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
         }
-        tree.ItemSelected += () =>
+        _vanTree = tree;
+        tree.ItemEdited += OnArmyGroupRosterEdited;
+        tree.ColumnTitleClicked += (col, _) =>
         {
-            var item = tree.GetSelected();
-            if (item is null) { return; }
-            var gid = new GeneralId(item.GetMetadata(0).AsInt32());
-            if (_depVan == gid) { _depVan = null; }
-            else if (_depVan is null) { _depVan = gid; }
-            else if (_depAdj == gid) { _depAdj = null; }
-            else { _depAdj = gid; }
-            var child = root.GetFirstChild();
-            while (child is not null)
-            {
-                var id = new GeneralId(child.GetMetadata(0).AsInt32());
-                child.SetText(0, id == _depVan ? "선봉" : id == _depAdj ? "부관" : "");
-                child = child.GetNext();
-            }
-            UpdateArmyGroupPreview();
+            var c = (int)col;
+            if (c < 2) { return; }
+            if (_vanSortCol == c) { _vanSortAsc = !_vanSortAsc; }
+            else { _vanSortCol = c; _vanSortAsc = true; }
         };
         box.AddChild(tree);
 
@@ -7114,6 +7115,43 @@ public sealed partial class CampaignMapScene : Node3D
             general.AptitudeFor(TroopClass.Infantry),
             general.AptitudeFor(TroopClass.Archer),
             general.AptitudeFor(TroopClass.Siege));
+
+    private void OnArmyGroupRosterEdited()
+    {
+        if (_vanTree is null) { return; }
+        var it = _vanTree.GetEdited();
+        if (it is null) { return; }
+        var col = _vanTree.GetEditedColumn();
+        var id = new GeneralId(it.GetMetadata(0).AsInt32());
+
+        if (col == 0)
+        {
+            if (it.IsChecked(0))
+            {
+                _depVan = id;
+                if (_depAdj == id) { _depAdj = null; }
+            }
+            else if (_depVan == id) { _depVan = null; }
+        }
+        else if (col == 1)
+        {
+            if (it.IsChecked(1))
+            {
+                if (id == _depVan)
+                {
+                    it.SetChecked(1, false);
+                    if (_depPreview is not null) { _depPreview.Text = "부관은 선봉과 다른 장수여야 합니다."; }
+                    return;
+                }
+
+                _depAdj = id;
+            }
+            else if (_depAdj == id) { _depAdj = null; }
+        }
+
+        SyncRosterChecks();
+        UpdateArmyGroupPreview();
+    }
 
     private string ArmyGroupLineText(IReadOnlyList<SupplyLine> lines)
         => string.Join(", ", lines.Select(l => $"{TroopName(l.TroopCode)} {l.Troops:N0}"));
