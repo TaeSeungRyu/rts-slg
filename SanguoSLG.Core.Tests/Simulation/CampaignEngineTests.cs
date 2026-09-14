@@ -337,6 +337,31 @@ public class CampaignEngineTests
     }
 
     [Fact]
+    public void 중형성_내부칸을_목표로_출격해도_주간진행에서_왕복하지_않는다()
+    {
+        var city = new City(new CityId(1), "장안", new HexCoord(1, 2), new FactionId(1), 0, CastleSize.Medium);
+        var interiorTarget = new HexCoord(1, 3);
+        var projectedOutside = new HexCoord(1, 4);
+        var field = new FieldUnit(new UnitId(1), new FactionId(1), city.Position,
+            Speed: 2, Detection: 1, AttackRange: 1, MovementDomain.Land, UnitMode.Attack,
+            Target: interiorTarget, CommandOrder: 1, RangeCastle: 1);
+        var unit = new CombatUnit(field, new CombatStats(8000, 10, 10), new TroopPool(8000, 0),
+            UnitCombatState.Create(60), MaxTroops: 8000, TroopCode: "swordsman", Training: 70);
+        var movement = new MovementSimulator(new PassabilityMap(new HexMap(-5, 12, -5, 12), [], [city]));
+        var engine = new CampaignEngine(new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70)),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)));
+        var state = new GameState(1, 1, [], [city], [], FieldArmies: [unit]);
+
+        var afterFirst = engine.AdvanceWeek(state, out _);
+        var afterSecond = engine.AdvanceWeek(afterFirst, out _);
+        var army = Assert.Single(afterSecond.Armies);
+
+        Assert.Equal(projectedOutside, army.Field.Position);
+        Assert.Null(army.Field.Target);
+        Assert.Null(army.Field.Waypoints);
+    }
+
+    [Fact]
     public void 야전에서_괴멸한_부대의_금군량은_가장가까운_상대부대가_노획한다()
     {
         var attacker = Army(1, 1, new HexCoord(0, 0), UnitMode.Attack, null, troops: 10000)

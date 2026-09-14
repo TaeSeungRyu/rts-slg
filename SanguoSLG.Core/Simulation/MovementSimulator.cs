@@ -42,10 +42,14 @@ public sealed class MovementSimulator
         // 현재 향하는 구간 목표(전부 밟았으면 null).
         public HexCoord? CurrentGoal => GoalIdx < Goals.Count ? Goals[GoalIdx] : null;
 
-        public Working(FieldUnit unit)
+        public Working(FieldUnit unit, PassabilityMap passability)
         {
-            Unit = unit;
-            Goals = BuildGoals(unit);
+            Goals = BuildGoals(unit, passability);
+            Unit = unit.Target is not null && Goals.Count > 0
+                ? unit with { Target = Goals[^1] }
+                : unit.Target is not null && Goals.Count == 0
+                    ? unit with { Target = null }
+                    : unit;
             // 이미 닿거나 인접한(거리 1 이내) 선두 경유지는 건너뛴다 — 진행마다 GoalIdx가 0으로 리셋되므로,
             // 목표에 선 채 인접 경유지가 남아 있으면 매 진행 그 경유지로 되돌아가는 왕복이 생긴다. 도달 판정과 일치.
             while (GoalIdx < Goals.Count - 1 && Goals[GoalIdx].Distance(unit.Position) <= 1)
@@ -56,33 +60,64 @@ public sealed class MovementSimulator
     }
 
     // 경유지 목록(중간 지점) 뒤에 최종 목표를 붙여 구간 목표 순서를 만든다(연속 중복 제거).
-    private static List<HexCoord> BuildGoals(FieldUnit unit)
+    private static List<HexCoord> BuildGoals(FieldUnit unit, PassabilityMap passability)
     {
         var goals = new List<HexCoord>();
         if (unit.Waypoints is { } wps)
         {
             foreach (var wp in wps)
             {
-                if (goals.Count == 0 ? wp != unit.Position : wp != goals[^1])
+                var goal = NormalizeCastleInteriorGoal(unit.Position, wp, passability);
+                if (goal is not null && (goals.Count == 0 ? goal.Value != unit.Position : goal.Value != goals[^1]))
                 {
-                    goals.Add(wp);
+                    goals.Add(goal.Value);
                 }
             }
         }
 
         if (unit.Target is { } t && (goals.Count == 0 ? t != unit.Position : t != goals[^1]))
         {
-            goals.Add(t);
+            var goal = NormalizeCastleInteriorGoal(unit.Position, t, passability);
+            if (goal is not null && (goals.Count == 0 ? goal.Value != unit.Position : goal.Value != goals[^1]))
+            {
+                goals.Add(goal.Value);
+            }
         }
 
         return goals;
+    }
+
+    private static HexCoord? NormalizeCastleInteriorGoal(HexCoord origin, HexCoord goal, PassabilityMap passability)
+    {
+        if (passability.CastleAnchorAt(origin) is not { } originAnchor
+            || passability.CastleAnchorAt(goal) != originAnchor)
+        {
+            return goal;
+        }
+
+        // 다중 타일 성의 발자국 내부를 목표로 찍으면 부대가 "성 위에 머물 수 없음" 규칙과
+        // 내부 목표를 동시에 만족시키려다 성 안팎을 왕복한다. 내부 목표는 같은 방향의 성 밖
+        // 첫 통행 가능 칸으로 보정한다. 앵커 자체를 찍은 경우에는 목표 없는 출격과 동일하게 본다.
+        var step = goal - originAnchor;
+        if (step == new HexCoord(0, 0))
+        {
+            return null;
+        }
+
+        var projected = goal;
+        for (var i = 0; i < 8 && passability.CastleAnchorAt(projected) == originAnchor; i++)
+        {
+            projected += step;
+        }
+
+        return passability.CanEnter(MovementDomain.Land, projected) ? projected : goal;
     }
 
     /// <summary>한 번의 "진행"을 끝까지 계산한다(최대 <paramref name="maxDays"/>일).</summary>
     public AdvanceResult Advance(IReadOnlyList<FieldUnit> units, int maxDays = 7,
         IReadOnlyList<SiegeSite>? castles = null)
     {
-        var work = units.OrderBy(u => u.Id.Value).Select(u => new Working(u)).ToList();
+        var work = units.OrderBy(u => u.Id.Value).Select(u => new Working(u, _passability)).ToList();
         var ticks = new List<MovementTick>();
         var entered = new List<UnitId>();
         var reason = StopReason.MaxDays;

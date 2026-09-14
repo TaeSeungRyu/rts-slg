@@ -78,6 +78,25 @@ public class MovementSimulatorTests
         Assert.Single(result.Ticks);
     }
 
+    [Fact]
+    public void 다중타일성_내부칸을_목표로_찍어도_성안팎을_왕복하지_않는다()
+    {
+        var city = new City(new CityId(1), "장안", new HexCoord(1, 2), new FactionId(1), 3000, CastleSize.Medium);
+        var passability = new PassabilityMap(new HexMap(-5, 12, -5, 12), [], [city]);
+        var interiorTarget = new HexCoord(1, 3); // 중형성 발자국 내부: anchor + (0,1)
+        var projectedOutside = new HexCoord(1, 4);
+        var unit = Unit(1, owner: 1, city.Position, UnitMode.Attack, interiorTarget, speed: 2);
+        var sim = new MovementSimulator(passability);
+
+        var first = sim.Advance([unit], maxDays: 7, castles: [new SiegeSite(city.Position, city.Owner)]);
+        var second = sim.Advance(first.Units, maxDays: 7, castles: [new SiegeSite(city.Position, city.Owner)]);
+
+        Assert.Equal(projectedOutside, first.Units.Single().Position);
+        Assert.Equal(projectedOutside, first.Units.Single().Target);
+        Assert.Equal(projectedOutside, second.Units.Single().Position);
+        Assert.DoesNotContain(second.Ticks.SelectMany(t => t.Units), u => CastleFootprint.TilesFor(city).Contains(u.Position));
+    }
+
     [Theory]
     [InlineData(5, 1)]
     [InlineData(4, 1)]
