@@ -210,6 +210,32 @@ public class CampaignSiegeTests
     }
 
     [Fact]
+    public void 캠페인_성반격으로_전멸한_공성부대의_금군량은_방어성에_예치된다()
+    {
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 6000, size: CastleSize.Medium) with
+        {
+            Gold = 100,
+            Provisions = 200,
+        };
+        var attacker = Army(1, 1, new HexCoord(4, 0), city.Position, troops: 50) with
+        {
+            LootGold = 250,
+            CargoGold = 50,
+            Provisions = 700,
+        };
+        var garr = new List<GarrisonForce> { new(city.Id, "swordsman", 10000, 60) };
+        var state = new GameState(1, 1, [], [city], [], GarrisonForces: garr, FieldArmies: [attacker]);
+
+        var after = Engine().AdvanceWeek(state, out _, out var sieges);
+
+        var afterCity = after.Cities.Single(c => c.Id == city.Id);
+        Assert.NotEmpty(sieges);
+        Assert.Empty(after.Armies);
+        Assert.Equal(400, afterCity.Gold);
+        Assert.True(afterCity.Provisions >= 900, $"전리품 군량 700 이상이 방어성에 들어가야 한다: {afterCity.Provisions}");
+    }
+
+    [Fact]
     public void 캠페인_공성방어는_태수_수성적성과_패시브만_적용한다()
     {
         var attacker = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0), troops: 12000);

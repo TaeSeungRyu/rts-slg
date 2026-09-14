@@ -185,16 +185,21 @@ public sealed class CampaignEngine
                 }
 
                 // 성 반격으로 전멸한 공성 부대의 장수 판정(§4b) — 포획 후보 = 그 성의 소유 세력.
+                var siegeCities = result.Cities.ToList();
                 foreach (var dead in result.Armies.Where(u => u.Pool.Active <= 0).OrderBy(u => u.Id.Value))
                 {
                     var ex = result.Exchanges.FirstOrDefault(e => e.Besiegers.Contains(dead.Id));
                     FactionId? captor = ex is null ? null : work.Cities.First(c => c.Id == ex.City).Owner;
+                    if (ex is not null)
+                    {
+                        DepositSiegeSpoils(siegeCities, ex.City, dead);
+                    }
                     work = FieldCasualties.ResolveUnit(work, dead, captor, dead.Field.Position, _random, casualtyReports);
                 }
 
                 armies = result.Armies.Where(u => u.Pool.Active > 0).ToList();
                 var attackedCities = result.Exchanges.Select(e => e.City).ToHashSet();
-                work = work with { Cities = result.Cities, GarrisonForces = result.Garrisons, CityWoundedForces = result.CityWounded };
+                work = work with { Cities = siegeCities, GarrisonForces = result.Garrisons, CityWoundedForces = result.CityWounded };
                 work = UpdateDefenseCharges(work, siegeState, attackedCities, activeChargeDays);
                 work = RecoverCityWounded(work, attackedCities);
                 // 어느 진행 조각의 공성인지 스탬프 — 표현 계층의 재생 타이밍용.
@@ -627,6 +632,29 @@ public sealed class CampaignEngine
         }
 
         return work with { GarrisonForces = garrisons, Postings = postings, Cities = cities };
+    }
+
+    private static void DepositSiegeSpoils(List<City> cities, CityId cityId, CombatUnit dead)
+    {
+        var gold = dead.CarryingGold;
+        var provisions = dead.TracksProvisions ? dead.Provisions : 0;
+        if (gold <= 0 && provisions <= 0)
+        {
+            return;
+        }
+
+        var idx = cities.FindIndex(c => c.Id == cityId);
+        if (idx < 0)
+        {
+            return;
+        }
+
+        var city = cities[idx];
+        cities[idx] = city with
+        {
+            Gold = city.Gold + gold,
+            Provisions = city.Provisions + provisions,
+        };
     }
 
     private static AdvanceTurn ApplyFieldSpoils(IReadOnlyList<CombatUnit> before, AdvanceTurn turn)
