@@ -10702,14 +10702,14 @@ public sealed partial class CampaignMapScene : Node3D
                 + _state.Armies.Where(u => u.Field.Owner == f.Id).Sum(u => u.Pool.Active);
             return f.Id == Player ? $"{f.Name} 성{cities} 병{troops}" : $"{f.Name} 성{cities}";
         });
-        // 좌상단 HUD: 군주 얼굴·이름 / 년월일 / 세력 요약.
+        // 좌상단 HUD: 캐릭터 영역은 얼굴만 표시하고 텍스트는 세력 요약 영역으로 분리한다.
         var ruler = _state.Factions.FirstOrDefault(f => f.Id == Player) is { } pf
             ? _state.Generals.FirstOrDefault(g => g.Id == pf.Ruler)
             : null;
-        _hudRuler.Text = ruler is not null ? $"군주 {ruler.Name}" : "군주 —";
+        _hudRuler.Text = "";
         _hudFace.Texture = ruler is not null ? PortraitFor(ruler.Id) : null;
         _hudFacePanel.Visible = _hudFace.Texture is not null;
-        _hudDate.Text = $"{_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일 · 주 {_week}";
+        _hudDate.Text = "";
 
         var myCities = _state.CityCount(Player);
         var myGenerals = _state.GeneralsOf(Player).Count();
@@ -10738,7 +10738,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddThemeConstantOverride("separation", 4);
         panel.AddChild(box);
 
-        // 상단: [군주 얼굴] [군주 이름 / 년월일]  ······  [트레이 아이콘 → 시스템]
+        // 상단: [군주 얼굴]  ······  [트레이 아이콘 → 시스템]
         var top = new HBoxContainer();
         top.AddThemeConstantOverride("separation", 10);
         box.AddChild(top);
@@ -10754,13 +10754,15 @@ public sealed partial class CampaignMapScene : Node3D
         };
         _hudFacePanel.AddChild(_hudFace);
 
-        var nameCol = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        nameCol.AddThemeConstantOverride("separation", 1);
-        top.AddChild(nameCol);
+        // 캐릭터 영역에서 텍스트가 순간적으로 나타났다 사라지는 현상을 막기 위해
+        // 군주명/날짜 라벨은 화면 레이아웃에 추가하지 않는다.
         _hudRuler = MakeLabel("", 16, GoldBright);
-        nameCol.AddChild(_hudRuler);
+        _hudRuler.Visible = false;
         _hudDate = MakeLabel("", 13, Parchment);
-        nameCol.AddChild(_hudDate);
+        _hudDate.Visible = false;
+
+        var topSpacer = new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        top.AddChild(topSpacer);
 
         var tray = MakeButton("☰");
         tray.AddThemeFontSizeOverride("font_size", 20);
