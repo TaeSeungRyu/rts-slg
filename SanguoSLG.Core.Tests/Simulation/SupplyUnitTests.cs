@@ -196,6 +196,68 @@ public class SupplyUnitTests
         Assert.Contains("훈련도", r.Error);
     }
 
+    [Fact]
+    public void 집단군_적성은_선봉의_보병궁병공성_평균을_반내림한다()
+    {
+        var city = new City(new CityId(1), "성", new HexCoord(0, 0), new FactionId(1), 10000, CastleSize.Medium)
+            with { Provisions = 10000 };
+        var leader = new General(new GeneralId(1), "집단군장",
+            new Dictionary<TroopClass, AptitudeGrade>
+            {
+                [TroopClass.Infantry] = AptitudeGrade.S,
+                [TroopClass.Archer] = AptitudeGrade.A,
+                [TroopClass.Siege] = AptitudeGrade.S,
+            },
+            Might: 70, Intellect: 60, Politics: 80);
+        var s0 = new GameState(1, 1, [], [city], [leader],
+            Postings: [new GeneralPosting(leader.Id, city.Owner, city.Id)],
+            GarrisonForces:
+            [
+                new GarrisonForce(city.Id, "swordsman", 6000, 60),
+                new GarrisonForce(city.Id, "archer", 6000, 60),
+                new GarrisonForce(city.Id, "catapult", 6000, 60),
+            ]);
+
+        var r = Service().DeployArmyGroup(s0, new ArmyGroupDeployRequest(city.Id,
+            [new SupplyLine("swordsman", 5000), new SupplyLine("archer", 5000), new SupplyLine("catapult", 5000)],
+            leader.Id));
+
+        Assert.True(r.Ok, r.Error);
+        var u = r.State.Armies.Single();
+        Assert.True(u.IsArmyGroup);
+        Assert.Equal(AptitudeGrade.APlus.Percent(), u.Stats.AptitudePercent);
+    }
+
+    [Fact]
+    public void 집단군_적성_SAA는_A로_반내림한다()
+    {
+        var city = new City(new CityId(1), "성", new HexCoord(0, 0), new FactionId(1), 10000, CastleSize.Medium)
+            with { Provisions = 10000 };
+        var leader = new General(new GeneralId(1), "집단군장",
+            new Dictionary<TroopClass, AptitudeGrade>
+            {
+                [TroopClass.Infantry] = AptitudeGrade.S,
+                [TroopClass.Archer] = AptitudeGrade.A,
+                [TroopClass.Siege] = AptitudeGrade.A,
+            },
+            Might: 70, Intellect: 60, Politics: 80);
+        var s0 = new GameState(1, 1, [], [city], [leader],
+            Postings: [new GeneralPosting(leader.Id, city.Owner, city.Id)],
+            GarrisonForces:
+            [
+                new GarrisonForce(city.Id, "swordsman", 6000, 60),
+                new GarrisonForce(city.Id, "archer", 6000, 60),
+                new GarrisonForce(city.Id, "catapult", 6000, 60),
+            ]);
+
+        var r = Service().DeployArmyGroup(s0, new ArmyGroupDeployRequest(city.Id,
+            [new SupplyLine("swordsman", 5000), new SupplyLine("archer", 5000), new SupplyLine("catapult", 5000)],
+            leader.Id));
+
+        Assert.True(r.Ok, r.Error);
+        Assert.Equal(AptitudeGrade.A.Percent(), r.State.Armies.Single().Stats.AptitudePercent);
+    }
+
     // ── 균일 피해 ──
 
     [Fact]

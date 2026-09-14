@@ -437,7 +437,11 @@ public sealed class DeployService
             _b.ArmyGroupSpeed, _b.ArmyGroupDetection, _b.ArmyGroupRange,
             MovementDomain.Land, req.Mode, req.Target, unitId.Value,
             RangeCastle: _b.ArmyGroupRange, Waypoints: req.Waypoints);
-        var stats = new CombatStats(total, _b.ArmyGroupAtkUnit, _b.ArmyGroupDefense, AptitudePercent: 100);
+        var armyGroupGrade = AptitudeGrades.AverageFloor(
+            vanguard.AptitudeFor(TroopClass.Infantry),
+            vanguard.AptitudeFor(TroopClass.Archer),
+            vanguard.AptitudeFor(TroopClass.Siege));
+        var stats = new CombatStats(total, _b.ArmyGroupAtkUnit, _b.ArmyGroupDefense, AptitudePercent: armyGroupGrade.Percent());
         var unit = new CombatUnit(field, stats, new TroopPool(total, 0), UnitCombatState.Create(vanguard.Intellect),
             vanguard.Might, vanguard.Intellect, total, TroopClass.Siege,
             ProvisionsCapacity: _b.ArmyGroupProvisionsCapacity, Training: training,

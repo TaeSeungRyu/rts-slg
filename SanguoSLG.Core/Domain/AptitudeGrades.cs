@@ -17,4 +17,19 @@ public static class AptitudeGrades
         AptitudeGrade.SSS => 200,
         _ => throw new System.ArgumentOutOfRangeException(nameof(grade)),
     };
+
+    /// <summary>
+    /// 여러 병종 적성의 평균 등급. 등급을 F=0 … SSS=8로 환산해 산술 평균을 내고 반내림한다.
+    /// 예: S/A/S = A+, S/A/A = A.
+    /// </summary>
+    public static AptitudeGrade AverageFloor(params AptitudeGrade[] grades)
+    {
+        if (grades.Length == 0)
+        {
+            return AptitudeGrade.F;
+        }
+
+        var score = grades.Sum(g => (int)g) / grades.Length;
+        return (AptitudeGrade)Math.Clamp(score, (int)AptitudeGrade.F, (int)AptitudeGrade.SSS);
+    }
 }

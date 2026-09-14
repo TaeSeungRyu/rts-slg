@@ -1877,10 +1877,14 @@ public partial class UnitController3D : Node3D
             AddNativeSupplyLeg(instance, "move_guard_leg_r");
             AddNativeSupplyLeg(instance, "move_front_l_leg_l");
             AddNativeSupplyLeg(instance, "move_front_l_leg_r");
+            AddNativeSupplyLeg(instance, "move_front_c_leg_l");
+            AddNativeSupplyLeg(instance, "move_front_c_leg_r");
             AddNativeSupplyLeg(instance, "move_front_r_leg_l");
             AddNativeSupplyLeg(instance, "move_front_r_leg_r");
-            AddNativeSupplyLeg(instance, "move_archer_leg_l");
-            AddNativeSupplyLeg(instance, "move_archer_leg_r");
+            AddNativeSupplyLeg(instance, "move_archer_l_leg_l");
+            AddNativeSupplyLeg(instance, "move_archer_l_leg_r");
+            AddNativeSupplyLeg(instance, "move_archer_r_leg_l");
+            AddNativeSupplyLeg(instance, "move_archer_r_leg_r");
             AddNativeSupplyWheel(instance, "supply_cart_wheel_L");
             AddNativeSupplyWheel(instance, "supply_cart_wheel_R");
             AddNativeSupplyWheel(instance, "move_siege_wheel_l");

@@ -396,8 +396,8 @@ def export_army_group():
 #                 [대군기]
 #                 [공성]
 #
-# MOVE:       [보병]   [보병]
-#                 [궁병]
+# MOVE:     [보병] [보병] [보병]
+#              [궁병] [궁병]
 #                 [공성]
 
 army_root = empty("army_group_root")
@@ -415,8 +415,10 @@ camp_roots = [
 
 move_roots = [
     build_swordsman("move_front_l", -0.110, -0.145, rot_z=math.radians(-3)),
+    build_swordsman("move_front_c", 0.000, -0.180, rot_z=0.0),
     build_swordsman("move_front_r", 0.110, -0.145, rot_z=math.radians(3)),
-    build_archer("move_archer", 0.000, 0.015, rot_z=0.0),
+    build_archer("move_archer_l", -0.080, 0.015, rot_z=math.radians(-3)),
+    build_archer("move_archer_r", 0.080, 0.015, rot_z=math.radians(3)),
     build_command_flag(),
 ]
 

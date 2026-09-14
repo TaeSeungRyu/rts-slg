@@ -6945,6 +6945,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var maxTroops = CommandEfficiency.ArmyGroupDeployLimit(_state.ResearchOf(cityData.Owner, FactionResearch.ArmyGroupCode), _cb);
         box.AddChild(MakeLabel($"편성 상한 {maxTroops:N0}명 · 필수 최소 {_cb.ArmyGroupMinClassTroops:N0}명: 보병 / 궁병 / 공성", 13, GoldBright));
+        box.AddChild(MakeLabel("집단군 병종 특성은 선봉의 보병·궁병·공성 적성을 평균낸 뒤 반내림합니다. 예: S/A/S = A+, S/A/A = A", 12, Parchment));
 
         var usedTroops = ReservedTroopsByCode(city, editIndex, editingSupply: false);
         var table = new GridContainer { Columns = 5, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -6986,17 +6987,17 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(MakeLabel("장수 선택 (행 클릭: 첫 클릭 선봉, 같은 행 다시 클릭 해제 / 다른 행 클릭 시 부관 지정)", 13, GoldBright));
         var tree = new Tree
         {
-            Columns = 6,
+            Columns = 7,
             HideRoot = true,
             CustomMinimumSize = new Vector2(0, 180),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         tree.AddThemeFontOverride("font", _font);
         tree.AddThemeFontSizeOverride("font_size", 12);
-        foreach (var (col, name, width) in new[] { (0, "역할", 70), (1, "이름", 120), (2, "무", 42), (3, "지", 42), (4, "정", 42), (5, "현재 업무", 180) })
+        foreach (var (col, name, width) in new[] { (0, "역할", 70), (1, "이름", 110), (2, "집단군", 66), (3, "무", 42), (4, "지", 42), (5, "정", 42), (6, "현재 업무", 170) })
         {
             tree.SetColumnTitle(col, name);
-            tree.SetColumnExpand(col, col is 1 or 5);
+            tree.SetColumnExpand(col, col is 1 or 6);
             tree.SetColumnCustomMinimumWidth(col, width);
         }
         var root = tree.CreateItem();
@@ -7013,10 +7014,11 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetMetadata(0, g.Id.Value);
             item.SetText(0, g.Id == _depVan ? "선봉" : g.Id == _depAdj ? "부관" : "");
             item.SetText(1, g.Name);
-            item.SetText(2, g.Might.ToString());
-            item.SetText(3, g.Intellect.ToString());
-            item.SetText(4, g.Politics.ToString());
-            item.SetText(5, CurrentDuty(g.Id));
+            item.SetText(2, GradeText(ArmyGroupAptitude(g)));
+            item.SetText(3, g.Might.ToString());
+            item.SetText(4, g.Intellect.ToString());
+            item.SetText(5, g.Politics.ToString());
+            item.SetText(6, CurrentDuty(g.Id));
         }
         tree.ItemSelected += () =>
         {
@@ -7104,8 +7106,14 @@ public sealed partial class CampaignMapScene : Node3D
         var min = _cb.ArmyGroupMinClassTroops;
         _depPreview.Text = $"총 {total:N0} / 상한 {maxTroops:N0}\n"
             + $"보병 {byClass.GetValueOrDefault(TroopClass.Infantry):N0}/{min:N0} · 궁병 {byClass.GetValueOrDefault(TroopClass.Archer):N0}/{min:N0} · 공성 {byClass.GetValueOrDefault(TroopClass.Siege):N0}/{min:N0}\n"
-            + $"선봉 {(_depVan is { } v ? OfficerName(v) ?? "-" : "미선택")} · 부관 {(_depAdj is { } a ? OfficerName(a) ?? "-" : "없음")}";
+            + $"선봉 {(_depVan is { } v ? $"{OfficerName(v) ?? "-"} · 집단군 {GradeText(ArmyGroupAptitude(_state.Generals.First(g => g.Id == v)))}" : "미선택")} · 부관 {(_depAdj is { } a ? OfficerName(a) ?? "-" : "없음")}";
     }
+
+    private static AptitudeGrade ArmyGroupAptitude(General general)
+        => AptitudeGrades.AverageFloor(
+            general.AptitudeFor(TroopClass.Infantry),
+            general.AptitudeFor(TroopClass.Archer),
+            general.AptitudeFor(TroopClass.Siege));
 
     private string ArmyGroupLineText(IReadOnlyList<SupplyLine> lines)
         => string.Join(", ", lines.Select(l => $"{TroopName(l.TroopCode)} {l.Troops:N0}"));
