@@ -79,7 +79,7 @@ public sealed class AdvanceOrchestrator
         foreach (var u in units.Where(u => !enteredIds.Contains(u.Id)))
         {
             var field = moved[u.Id];
-            if (field.Mode == UnitMode.March && ReachedMarchDestination(field))
+            if (ReachedOpenDestination(field, castles))
             {
                 field = field with { Mode = UnitMode.Advance, Target = null, Waypoints = null };
             }
@@ -325,8 +325,20 @@ public sealed class AdvanceOrchestrator
 
     private static bool IsDazed(CombatUnit u) => u.State.Statuses.Any(s => s.IsDaze);
 
-    private static bool ReachedMarchDestination(FieldUnit field)
-        => field.Target is { } target && field.Position == target && (field.Waypoints is null || field.Waypoints.Count == 0);
+    private static bool ReachedOpenDestination(FieldUnit field, IReadOnlyList<SiegeSite>? castles)
+    {
+        if (field.Target is not { } target
+            || field.Position != target
+            || field.Waypoints is { Count: > 0 })
+        {
+            return false;
+        }
+
+        // 성 목표는 입성/공성 규칙이 따로 처리한다. 여기서는 사용자가 지도 빈 타일을 찍은
+        // 전투·보급·집단군·일반 부대가 목표 도착 후 다음 진행에서 같은 목표를 붙잡고
+        // 재이동/우회하지 않도록 오더만 정리한다.
+        return castles is null || !castles.Any(c => c.Position == target);
+    }
 
     // 이동 시뮬에 넣을 임시 FieldUnit. 혼란(행동불가)은 제자리에 묶고(속도 0·목표·모드 중립),
     // 수공(이동−1)은 속도를 깎는다(최소 1). 실제 Field는 위치만 되받아 보존한다.

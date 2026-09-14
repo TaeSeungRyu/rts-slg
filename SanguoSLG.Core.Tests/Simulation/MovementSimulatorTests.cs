@@ -64,6 +64,20 @@ public class MovementSimulatorTests
         Assert.Equal(new HexCoord(1, -1), result.Units.Single().Position);
     }
 
+    [Fact]
+    public void 성에서_한칸_목표로_출격하면_속도가_남아도_목표에서_멈춘다()
+    {
+        var castle = new SiegeSite(new HexCoord(0, 0), new FactionId(1));
+        var target = new HexCoord(1, -1);
+        var unit = Unit(1, owner: 1, castle.Position, UnitMode.Attack, target, speed: 3);
+
+        var result = PlainField().Advance([unit], maxDays: 1, castles: [castle]);
+
+        Assert.Equal(target, result.Units.Single().Position);
+        Assert.Equal(StopReason.AllArrived, result.Reason);
+        Assert.Single(result.Ticks);
+    }
+
     [Theory]
     [InlineData(5, 1)]
     [InlineData(4, 1)]

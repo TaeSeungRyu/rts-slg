@@ -314,6 +314,29 @@ public class CampaignEngineTests
     }
 
     [Fact]
+    public void 성에서_빈타일_한칸으로_출격한_부대는_다음진행에도_추가이동하지_않는다()
+    {
+        var city = new City(new CityId(1), "소성", new HexCoord(0, 0), new FactionId(1), 0);
+        var target = new HexCoord(1, -1);
+        var field = new FieldUnit(new UnitId(1), new FactionId(1), city.Position,
+            Speed: 3, Detection: 1, AttackRange: 1, MovementDomain.Land, UnitMode.Attack,
+            Target: target, CommandOrder: 1, RangeCastle: 1);
+        var unit = new CombatUnit(field, new CombatStats(8000, 10, 10), new TroopPool(8000, 0),
+            UnitCombatState.Create(60), MaxTroops: 8000, TroopCode: "swordsman", Training: 70);
+        var state = new GameState(1, 1, new List<Faction>(), [city], new List<General>(),
+            FieldArmies: [unit]);
+
+        var afterFirst = Engine().AdvanceWeek(state, out _);
+        var afterSecond = Engine().AdvanceWeek(afterFirst, out _);
+        var army = Assert.Single(afterSecond.Armies);
+
+        Assert.Equal(target, army.Field.Position);
+        Assert.Null(army.Field.Target);
+        Assert.Null(army.Field.Waypoints);
+        Assert.Equal(UnitMode.Advance, army.Field.Mode);
+    }
+
+    [Fact]
     public void 야전에서_괴멸한_부대의_금군량은_가장가까운_상대부대가_노획한다()
     {
         var attacker = Army(1, 1, new HexCoord(0, 0), UnitMode.Attack, null, troops: 10000)
