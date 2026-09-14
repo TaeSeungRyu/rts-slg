@@ -50,6 +50,20 @@ public class MovementSimulatorTests
         Assert.All(positions, p => Assert.Equal(1, p.Distance(castle.Position)));
     }
 
+    [Fact]
+    public void 성에서_목표방향으로_출전할때_거리동률이면_각도가_가장_가까운_게이트를_고른다()
+    {
+        // 목표 (2,-1)은 성 기준 오른쪽 대각선 방향이다. 기존 로직은 거리 동률에서 고정 순서상
+        // (1,0)을 먼저 골라 3시로 나온 뒤 꺾였고, 새 규칙은 목표 각도와 일치하는 (1,-1)을 고른다.
+        var castle = new SiegeSite(new HexCoord(0, 0), new FactionId(1));
+        var unit = Unit(1, owner: 1, castle.Position, UnitMode.March, target: new HexCoord(2, -1),
+            speed: 1, commandOrder: 0);
+
+        var result = PlainField().Advance([unit], maxDays: 1, castles: [castle]);
+
+        Assert.Equal(new HexCoord(1, -1), result.Units.Single().Position);
+    }
+
     // ── 경유지(행군 경로 지정) ──
 
     [Fact]

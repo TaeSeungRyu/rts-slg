@@ -436,34 +436,36 @@ public sealed class MovementSimulator
         var here = w.Unit.Position;
         var hereDist = here.Distance(goal);
 
-        HexCoord? best = null;
-        var bestDist = int.MaxValue;
-        foreach (var n in RotatedNeighbors(here, w.Unit.CommandOrder))
+        var candidates = RotatedNeighbors(here, w.Unit.CommandOrder)
+            .Where(n => !occupied.Contains(n) && !claimed.Contains(n) && _passability.CanEnter(w.Unit.Domain, n)
+                && n.Distance(goal) <= hereDist)
+            .OrderBy(n => n.Distance(goal))
+            .ThenByDescending(n => AxisAgreement(here, n, goal))
+            .ThenBy(n => DirectionError(here, n, goal))
+            .ToList();
+        if (candidates.Count > 0)
         {
-            if (!occupied.Contains(n) && !claimed.Contains(n) && _passability.CanEnter(w.Unit.Domain, n)
-                && n.Distance(goal) <= hereDist && n.Distance(goal) < bestDist)
-            {
-                best = n;
-                bestDist = n.Distance(goal);
-            }
+            return candidates[0];
         }
 
-        if (best is not null || claimed.Count > 0)
+        if (claimed.Count > 0)
         {
-            return best; // 뒤 부대는 목표 쪽 빈 칸이 없으면 대기(뒤로 돌아 나가지 않는다)
+            return null; // 뒤 부대는 목표 쪽 빈 칸이 없으면 대기(뒤로 돌아 나가지 않는다)
         }
 
         // 이 스텝 첫 출격 부대: 목표 쪽 칸이 없어도(완전 포위 근처 등) 가장 가까운 빈 칸으로 내려선다.
+        HexCoord? fallback = null;
+        var bestDist = int.MaxValue;
         foreach (var n in RotatedNeighbors(here, w.Unit.CommandOrder))
         {
             if (!occupied.Contains(n) && _passability.CanEnter(w.Unit.Domain, n) && n.Distance(goal) < bestDist)
             {
-                best = n;
+                fallback = n;
                 bestDist = n.Distance(goal);
             }
         }
 
-        return best;
+        return fallback;
     }
 
     // 목표 없는 출격 게이트 스텝: 빈·통행이며 아직 안 찜한(claimed) 이웃 중 고정 방향 순서 첫 칸.
@@ -494,6 +496,37 @@ public sealed class MovementSimulator
         {
             yield return neighbors[(start + i) % neighbors.Length];
         }
+    }
+
+    private static double DirectionError(HexCoord from, HexCoord next, HexCoord goal)
+    {
+        var fromWorld = AxialToWorld(from);
+        var nextWorld = AxialToWorld(next);
+        var goalWorld = AxialToWorld(goal);
+        var stepX = nextWorld.X - fromWorld.X;
+        var stepY = nextWorld.Y - fromWorld.Y;
+        var desiredX = goalWorld.X - fromWorld.X;
+        var desiredY = goalWorld.Y - fromWorld.Y;
+        var stepLen = Math.Sqrt(stepX * stepX + stepY * stepY);
+        var desiredLen = Math.Sqrt(desiredX * desiredX + desiredY * desiredY);
+        if (stepLen <= 0.000001 || desiredLen <= 0.000001)
+        {
+            return 0;
+        }
+
+        var dot = (stepX * desiredX + stepY * desiredY) / (stepLen * desiredLen);
+        return 1.0 - Math.Clamp(dot, -1.0, 1.0);
+    }
+
+    private static (double X, double Y) AxialToWorld(HexCoord coord)
+        => (Math.Sqrt(3.0) * (coord.Q + coord.R / 2.0), 1.5 * coord.R);
+
+    private static int AxisAgreement(HexCoord from, HexCoord next, HexCoord goal)
+    {
+        var step = next - from;
+        var desired = goal - from;
+        static int Score(int a, int b) => b == 0 ? 0 : Math.Sign(a) == Math.Sign(b) ? 1 : 0;
+        return Score(step.Q, desired.Q) + Score(step.R, desired.R);
     }
 
     // 다음 스텝 칸이 자기 성인가 — 입성 조건. 성 타일은 통행 불가지만 경로는 목표 칸을 허용하므로,
