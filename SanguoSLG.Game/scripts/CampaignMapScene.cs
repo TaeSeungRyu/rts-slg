@@ -1835,6 +1835,9 @@ public sealed partial class CampaignMapScene : Node3D
         new(new CityId(6), "좌대성", new HexCoord(-8, 5), new FactionId(1), 3000, CastleSize.Large,
             Gold: 3000, Security: 80, Population: 120_000, Ore: 7000, Horses: 2000, Elephants: 20,
             Paddies: 3, Farms: 3, Villages: 3, Wall: 3000),
+        new(new CityId(7), "좌소성", new HexCoord(-8, 1), new FactionId(1), 3000, CastleSize.Small,
+            Gold: 1500, Security: 80, Population: 50_000, Ore: 3000, Horses: 700, Elephants: 0,
+            Paddies: 1, Farms: 1, Villages: 1, Wall: 600),
         new(new CityId(2), "성도", new HexCoord(8, 3), new FactionId(2), 3000, CastleSize.Medium,
             Gold: 2000, Security: 80, Population: 100_000, Ore: 8000,
             Paddies: 2, Farms: 2, Villages: 2, Wall: 1200),
@@ -1881,12 +1884,13 @@ public sealed partial class CampaignMapScene : Node3D
             new(new FactionId(2), "촉", new GeneralId(11), 0, "#d23830"),
         },
         _cities.ToList(),
-        // 테스트: 플레이어 성(장안·업·좌중성·좌대성) 장수 16명, 적 성(성도·한중) 4명.
+        // 테스트: 플레이어 성(장안·업·좌중성·좌대성·좌소성) 장수 18명, 적 성(성도·한중) 4명.
         new List<General>
         {
             Officer(1), Officer(2), Officer(3), Officer(4), Officer(5),
             Officer(6), Officer(7), Officer(8), Officer(9), Officer(10),
             Officer(15), Officer(16), Officer(17), Officer(18), Officer(19), Officer(20),
+            Officer(21), Officer(22),
             Officer(11), Officer(12), Officer(13), Officer(14),
         },
         Postings: new List<GeneralPosting>
@@ -1907,6 +1911,8 @@ public sealed partial class CampaignMapScene : Node3D
             new(new GeneralId(18), new FactionId(1), new CityId(6)),
             new(new GeneralId(19), new FactionId(1), new CityId(6)),
             new(new GeneralId(20), new FactionId(1), new CityId(6)),
+            new(new GeneralId(21), new FactionId(1), new CityId(7)),
+            new(new GeneralId(22), new FactionId(1), new CityId(7)),
             new(new GeneralId(11), new FactionId(2), new CityId(2)),
             new(new GeneralId(12), new FactionId(2), new CityId(2)),
             new(new GeneralId(13), new FactionId(2), new CityId(3)),
@@ -1932,6 +1938,8 @@ public sealed partial class CampaignMapScene : Node3D
             new(new CityId(6), "swordsman", 40000, 60),
             new(new CityId(6), "archer", 30000, 60),
             new(new CityId(6), "catapult", 12000, 60),
+            new(new CityId(7), "swordsman", 20000, 60),
+            new(new CityId(7), "archer", 10000, 60),
             new(new CityId(2), "swordsman", 100000, 60),
             new(new CityId(2), "catapult", 10000, 60),
             new(new CityId(3), "swordsman", 30000, 60),
@@ -1949,12 +1957,13 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var city in _cities)
         {
             var node = GD.Load<PackedScene>(CastleModelPath(city.Castle)).Instantiate<Node3D>();
-            node.Position = _view.HexToWorld(city.Position) + new Vector3(0f, _view.TileTopY, 0f);
+            node.Position = CastleVisualCenter(city) + new Vector3(0f, _view.TileTopY, 0f);
+            node.Scale *= CastleModelScale(city.Castle);
             AddChild(node);
 
             var label = new Label3D
             {
-                Position = _view.HexToWorld(city.Position) + new Vector3(0f, _view.TileTopY + CastleLabelHeight(city.Castle), 0f),
+                Position = CastleVisualCenter(city) + new Vector3(0f, _view.TileTopY + CastleLabelHeight(city.Castle), 0f),
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                 FontSize = 48,
                 OutlineSize = 12,
@@ -1975,10 +1984,25 @@ public sealed partial class CampaignMapScene : Node3D
 
     private static float CastleLabelHeight(CastleSize size) => size switch
     {
-        CastleSize.Large => 2.2f,
-        CastleSize.Medium => 1.8f,
+        CastleSize.Large => 1.75f,
+        CastleSize.Medium => 1.55f,
         _ => 1.4f,
     };
+
+    private static float CastleModelScale(CastleSize size) => size switch
+    {
+        CastleSize.Large => 0.72f,
+        CastleSize.Medium => 0.78f,
+        _ => 1.0f,
+    };
+
+    private Vector3 CastleVisualCenter(City city)
+    {
+        var points = CastleFootprint.TilesFor(city).Select(_view.HexToWorld).ToList();
+        var sum = Vector3.Zero;
+        foreach (var p in points) { sum += p; }
+        return points.Count == 0 ? _view.HexToWorld(city.Position) : sum / points.Count;
+    }
 
     // 진행 버튼 → 컨펌창(design-ui §4) → 확인 시 7일 재생 시작.
     private void OnAdvance()
@@ -10146,7 +10170,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
-    // 설치 가능 칸인가 — 평지·숲, 성 반경 안, 성 타일 아님, 이미 시설·공사·성이 없는 칸.
+    // 설치 가능 칸인가 — 평지·숲, 성 반경 안, 성 footprint 아님, 이미 시설·공사 없는 칸.
     private bool IsBuildablePlot(HexCoord hex, City city)
     {
         if (!_map.Contains(hex) || hex == city.Position) { return false; }
@@ -10155,9 +10179,12 @@ public sealed partial class CampaignMapScene : Node3D
         if (t is not (TerrainType.Plains or TerrainType.Forest)) { return false; } // 평지·숲만
         if (_state.Placements.Any(pp => pp.Plot == hex)) { return false; }
         if (_state.Commands.Any(c => c.Kind == CommandKind.Build && c.Plot == hex)) { return false; }
-        if (_state.Cities.Any(c => c.Position == hex)) { return false; }
+        if (IsCastleBlockedFacilityPlot(hex)) { return false; }
         return true;
     }
+
+    private bool IsCastleBlockedFacilityPlot(HexCoord hex) =>
+        _state.Cities.Any(city => CastleFootprint.TilesFor(city).Contains(hex));
 
     // 노드 트리 전체 메시를 반투명하게(고스트용). Godot4 GeometryInstance3D.Transparency.
     private static void SetTransparency(Node node, float amount)
@@ -10188,6 +10215,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var placed = _state.Placements.Where(pp => pp.City == city.Id && pp.Code == code).ToList();
                 for (var i = 0; i < intact && i < placed.Count; i++)
                 {
+                    if (IsCastleBlockedFacilityPlot(placed[i].Plot)) { continue; }
                     var scene = _view.TileScene(FacilityTerrain(code));
                     if (scene is null) { continue; }
                     var node = scene.Instantiate<Node3D>();
@@ -10199,6 +10227,7 @@ public sealed partial class CampaignMapScene : Node3D
 
                 for (var i = intact; i < intact + ruined && i < placed.Count; i++)
                 {
+                    if (IsCastleBlockedFacilityPlot(placed[i].Plot)) { continue; }
                     var node = rubbleScene.Instantiate<Node3D>();
                     node.Position = _view.HexToWorld(placed[i].Plot) + new Vector3(0f, _view.TileTopY, 0f);
                     node.Scale *= FacilityDisplayScale;
@@ -10211,6 +10240,7 @@ public sealed partial class CampaignMapScene : Node3D
         var siteScene = GD.Load<PackedScene>("res://assets/models/construction.glb");
         foreach (var c in _state.Commands.Where(c => c.Kind == CommandKind.Build && c.Plot is not null))
         {
+            if (IsCastleBlockedFacilityPlot(c.Plot!.Value)) { continue; }
             var origin = _view.HexToWorld(c.Plot!.Value) + new Vector3(0f, _view.TileTopY, 0f);
             var site = siteScene.Instantiate<Node3D>();
             site.Position = origin;
@@ -10236,6 +10266,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         foreach (var c in _state.Commands.Where(c => c.Kind == CommandKind.Upgrade && c.Plot is not null))
         {
+            if (IsCastleBlockedFacilityPlot(c.Plot!.Value)) { continue; }
             var origin = _view.HexToWorld(c.Plot!.Value) + new Vector3(0f, _view.TileTopY, 0f);
             _facilityLayer.AddChild(BuildUpgradeSmoke(origin));
             var total = c.CompletionDay - c.StartDay;
