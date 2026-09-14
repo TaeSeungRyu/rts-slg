@@ -434,6 +434,14 @@ public sealed class MovementSimulator
     private HexCoord? GateStep(Working w, HexCoord goal, HashSet<HexCoord> occupied, HashSet<HexCoord> claimed)
     {
         var here = w.Unit.Position;
+        if (here.Distance(goal) == 1
+            && !occupied.Contains(goal)
+            && !claimed.Contains(goal)
+            && _passability.CanEnter(w.Unit.Domain, goal))
+        {
+            return goal;
+        }
+
         var hereDist = here.Distance(goal);
 
         var candidates = RotatedNeighbors(here, w.Unit.CommandOrder)

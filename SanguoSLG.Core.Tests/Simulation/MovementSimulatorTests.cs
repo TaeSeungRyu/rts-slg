@@ -64,6 +64,22 @@ public class MovementSimulatorTests
         Assert.Equal(new HexCoord(1, -1), result.Units.Single().Position);
     }
 
+    [Theory]
+    [InlineData(5, 1)]
+    [InlineData(4, 1)]
+    public void 성에서_인접_목표를_찍으면_우회하지_않고_그_칸으로_바로_출전한다(int q, int r)
+    {
+        // 사용자가 성 바로 옆 5시/7시 방향 1칸을 찍은 경우다. 이때는 게이트 정렬을 타면 안 되고,
+        // 선택한 인접 칸 자체가 첫 이동 칸이어야 한다.
+        var castle = new SiegeSite(new HexCoord(5, 0), new FactionId(1));
+        var target = new HexCoord(q, r);
+        var unit = Unit(1, owner: 1, castle.Position, UnitMode.March, target, speed: 1, commandOrder: 0);
+
+        var result = PlainField().Advance([unit], maxDays: 1, castles: [castle]);
+
+        Assert.Equal(target, result.Units.Single().Position);
+    }
+
     // ── 경유지(행군 경로 지정) ──
 
     [Fact]
