@@ -9180,14 +9180,51 @@ public sealed partial class CampaignMapScene : Node3D
         const string path = "res://assets/ui/cards/troop_army_group.png";
         if (Godot.FileAccess.FileExists(path))
         {
-            var img = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
-            img.GenerateMipmaps();
-            _armyGroupIcon = ImageTexture.CreateFromImage(img);
+            _armyGroupIcon = CircularImageIcon(path);
             return _armyGroupIcon;
         }
 
         _armyGroupIcon = Icon(Sym.Shield);
         return _armyGroupIcon;
+    }
+
+    private ImageTexture CircularImageIcon(string path)
+    {
+        var src = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
+        var side = System.Math.Min(src.GetWidth(), src.GetHeight());
+        var crop = src.GetRegion(new Rect2I((src.GetWidth() - side) / 2, (src.GetHeight() - side) / 2, side, side));
+        crop.Resize(IconBig, IconBig, Image.Interpolation.Lanczos);
+
+        var img = NewBig();
+        var cx = IconBig / 2f;
+        var cy = IconBig / 2f;
+        var r = IconBig * 0.39f;
+        var goldW = IconBig * 0.055f;
+        for (var y = 0; y < IconBig; y++)
+        {
+            var rimShade = Mathf.Lerp(1.16f, 0.74f, (float)y / (IconBig - 1));
+            for (var x = 0; x < IconBig; x++)
+            {
+                var dd = System.MathF.Sqrt(((x - cx) * (x - cx)) + ((y - cy) * (y - cy)));
+                var fill = Mathf.Clamp(((r - dd) / 1.7f) + 0.5f, 0f, 1f);
+                if (fill > 0f)
+                {
+                    var p = crop.GetPixel(x, y);
+                    BlendPix(img, x, y, new Color(p.R, p.G, p.B), fill * p.A);
+                }
+
+                var rimIn = Mathf.Clamp(((dd - (r - 0.8f)) / 1.7f) + 0.5f, 0f, 1f);
+                var rimOut = Mathf.Clamp((((r + goldW) - dd) / 1.7f) + 0.5f, 0f, 1f);
+                var rim = rimIn * rimOut;
+                if (rim > 0f)
+                {
+                    BlendPix(img, x, y, new Color(Mathf.Clamp(Gold.R * rimShade, 0, 1), Mathf.Clamp(Gold.G * rimShade, 0, 1), Mathf.Clamp(Gold.B * rimShade, 0, 1)), rim);
+                }
+            }
+        }
+
+        GlossU(img, (IconUnits * 0.5f) - 3.0f, (IconUnits * 0.5f) - 3.6f, 6.5f, 0.38f);
+        return Shadowed(img);
     }
 
     private static TextureRect FixedIcon(Texture2D icon, int size) => new()
