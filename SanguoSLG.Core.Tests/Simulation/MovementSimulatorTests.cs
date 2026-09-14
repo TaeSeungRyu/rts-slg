@@ -114,11 +114,11 @@ public class MovementSimulatorTests
     }
 
     [Theory]
-    [InlineData(CastleSize.Medium, 1, 4, 1, 3)]
-    [InlineData(CastleSize.Medium, -1, 4, 0, 3)]
-    [InlineData(CastleSize.Large, 1, 4, 1, 3)]
-    [InlineData(CastleSize.Large, -1, 4, 0, 3)]
-    public void 다중타일성_남쪽출격은_옆문으로_우회하지_않는다(CastleSize size, int q, int r, int firstQ, int firstR)
+    [InlineData(CastleSize.Medium, 1, 4)]
+    [InlineData(CastleSize.Medium, -1, 4)]
+    [InlineData(CastleSize.Large, 1, 4)]
+    [InlineData(CastleSize.Large, -1, 4)]
+    public void 다중타일성_외곽한칸_목표는_성내부칸을_소비하지_않고_바로_출격한다(CastleSize size, int q, int r)
     {
         var city = new City(new CityId(1), "장안", new HexCoord(1, 2), new FactionId(1), 3000, size);
         var passability = new PassabilityMap(new HexMap(-5, 12, -5, 12), [], [city]);
@@ -128,9 +128,8 @@ public class MovementSimulatorTests
         var result = sim.Advance([unit], maxDays: 1, castles: [new SiegeSite(city.Position, city.Owner)]);
         var positions = result.Ticks.SelectMany(t => t.Units).Where(u => u.Id == unit.Id)
             .Select(u => u.Position).Distinct().ToArray();
-        Assert.Equal(new[] { new HexCoord(firstQ, firstR), target }, positions);
+        Assert.Equal(new[] { target }, positions);
         Assert.Equal(target, result.Units.Single().Position);
-        Assert.False(passability.CanEnter(MovementDomain.Land, new HexCoord(firstQ, firstR)));
     }
 
     // ── 경유지(행군 경로 지정) ──
@@ -158,7 +157,10 @@ public class MovementSimulatorTests
                 foreach (var position in result.Ticks.SelectMany(t => t.Units).Select(u => u.Position).Distinct())
                 {
                     if (position == previous) continue;
-                    Assert.Equal(previous + direction, position);
+                    var expected = previous == city.Position && footprint.Contains(previous + direction)
+                        ? target
+                        : previous + direction;
+                    Assert.Equal(expected, position);
                     previous = position;
                 }
                 unit = Assert.Single(result.Units);

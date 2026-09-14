@@ -105,14 +105,7 @@ public partial class CastleEntryQa : Node
             typeof(CampaignMapScene).GetMethod("BuildAnimation", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .Invoke(scene, [new Dictionary<int, HexCoord> { [1] = city.Position }, turns, Array.Empty<SiegeExchange>(), state]);
             var moves = Read<List<(double Time, int UnitId, HexCoord To)>>(scene, "_animSteps");
-            var previous = city.Position;
-            foreach (var move in moves)
-            {
-                if (move.To != previous + direction)
-                    throw new InvalidOperationException($"{size}/{direction}/{kind}/{speed}: bent exit {previous} -> {move.To}");
-                previous = move.To;
-            }
-            if (previous != target || moves.Count != city.Position.Distance(target)
+            if (moves.Count != 1 || moves[0].To != target
                 || Read<List<(double Time, int UnitId)>>(scene, "_animKills").Count != 0)
                 throw new InvalidOperationException($"{size}/{direction}/{kind}/{speed}: incomplete exit or removed unit");
         }

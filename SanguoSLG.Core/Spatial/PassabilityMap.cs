@@ -48,6 +48,9 @@ public sealed class PassabilityMap
     public HexCoord? CastleAnchorAt(HexCoord coord) =>
         _castleAnchors.TryGetValue(coord, out var anchor) ? anchor : null;
 
+    public IEnumerable<HexCoord> CastleTilesForAnchor(HexCoord anchor) =>
+        _castleAnchors.Where(kv => kv.Value == anchor).Select(kv => kv.Key);
+
     public bool CanExitThrough(MovementDomain domain, HexCoord from, HexCoord next) =>
         CanEnter(domain, next)
         || (_map.Contains(next) && CastleAnchorAt(from) is { } anchor

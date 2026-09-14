@@ -470,12 +470,9 @@ public sealed class MovementSimulator
     private HexCoord? GateStep(Working w, HexCoord goal, HashSet<HexCoord> occupied, HashSet<HexCoord> claimed)
     {
         var here = w.Unit.Position;
-        if (here.Distance(goal) == 1
-            && !occupied.Contains(goal)
-            && !claimed.Contains(goal)
-            && _passability.CanExitThrough(w.Unit.Domain, here, goal))
+        if (CastleExteriorExitCandidates(w, goal, occupied, claimed) is { Count: > 0 } exits)
         {
-            return goal;
+            return exits[0];
         }
 
         var hereDist = here.Distance(goal);
@@ -510,6 +507,31 @@ public sealed class MovementSimulator
         }
 
         return fallback;
+    }
+
+    private List<HexCoord>? CastleExteriorExitCandidates(Working w, HexCoord goal, HashSet<HexCoord> occupied,
+        HashSet<HexCoord> claimed)
+    {
+        if (_passability.CastleAnchorAt(w.Unit.Position) is not { } anchor)
+        {
+            return null;
+        }
+
+        var footprint = _passability.CastleTilesForAnchor(anchor).ToHashSet();
+        var exits = footprint
+            .SelectMany(tile => tile.Neighbors())
+            .Where(n => !footprint.Contains(n)
+                && !occupied.Contains(n)
+                && !claimed.Contains(n)
+                && _passability.CanEnter(w.Unit.Domain, n))
+            .Distinct()
+            .OrderBy(n => n == goal ? 0 : 1)
+            .ThenBy(n => n.Distance(goal))
+            .ThenByDescending(n => AxisAgreement(anchor, n, goal))
+            .ThenBy(n => DirectionError(anchor, n, goal))
+            .ToList();
+
+        return exits;
     }
 
     // 목표 없는 출격 게이트 스텝: 빈·통행이며 아직 안 찜한(claimed) 이웃 중 고정 방향 순서 첫 칸.
