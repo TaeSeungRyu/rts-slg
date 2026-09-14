@@ -1862,7 +1862,7 @@ public partial class UnitController3D : Node3D
         _tokenRoot = new Node3D();
         AddChild(_tokenRoot);
         var (modelFile, solo, _) = TroopModels[_troopIndex];
-        if (modelFile.EndsWith("troop-supply.glb", System.StringComparison.Ordinal))
+        if (UsesNativeStateMotion(modelFile))
         {
             _nativeSupply = true;
             var instance = GD.Load<PackedScene>(modelFile).Instantiate<Node3D>();
@@ -1875,10 +1875,20 @@ public partial class UnitController3D : Node3D
             _nativeSupplyMove = instance.FindChild("state_move", true, false) as Node3D;
             AddNativeSupplyLeg(instance, "move_guard_leg_l");
             AddNativeSupplyLeg(instance, "move_guard_leg_r");
+            AddNativeSupplyLeg(instance, "move_front_l_leg_l");
+            AddNativeSupplyLeg(instance, "move_front_l_leg_r");
+            AddNativeSupplyLeg(instance, "move_front_r_leg_l");
+            AddNativeSupplyLeg(instance, "move_front_r_leg_r");
+            AddNativeSupplyLeg(instance, "move_archer_leg_l");
+            AddNativeSupplyLeg(instance, "move_archer_leg_r");
             AddNativeSupplyWheel(instance, "supply_cart_wheel_L");
             AddNativeSupplyWheel(instance, "supply_cart_wheel_R");
+            AddNativeSupplyWheel(instance, "move_siege_wheel_l");
+            AddNativeSupplyWheel(instance, "move_siege_wheel_r");
             AddNativeSupplyArcher(instance, "camp_archer_l");
             AddNativeSupplyArcher(instance, "camp_archer_r");
+            AddNativeSupplyArcher(instance, "archer_l");
+            AddNativeSupplyArcher(instance, "archer_r");
             _motion = MotionKind.Infantry;
             _lastPosition = Position;
             FactionColorView.Apply(_tokenRoot, _factionColor);
@@ -2042,6 +2052,10 @@ public partial class UnitController3D : Node3D
             foreach (var nested in FindAnimationPlayers(child)) { yield return nested; }
         }
     }
+
+    private static bool UsesNativeStateMotion(string modelFile)
+        => modelFile.EndsWith("troop-supply.glb", System.StringComparison.Ordinal)
+           || modelFile.EndsWith("troop-army-group.glb", System.StringComparison.Ordinal);
 
     private void AddNativeSupplyLeg(Node root, string name)
     {

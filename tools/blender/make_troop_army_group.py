@@ -23,12 +23,16 @@ import math
 import os
 import sys
 from mathutils import Matrix
+from pathlib import Path
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import infantry_common as ic
 
 SIEGE_VARIANT = "catapult"  # "catapult" | "thunder_cart"
 OUTPUT_FILE = "troop-army-group.glb"
+SCRIPT_PATH = Path(__file__).resolve()
+REPO_ROOT = SCRIPT_PATH.parents[2]
+MODEL_DIR = REPO_ROOT / "SanguoSLG.Game" / "assets" / "models"
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
@@ -37,6 +41,14 @@ M_STRING = ic.make_mat("army_group_string", (0.85, 0.82, 0.72), roughness=0.6)
 M_FLETCH = ic.make_mat("army_group_fletch", (0.88, 0.88, 0.86))
 M_STONE = ic.make_mat("army_group_stone", (0.52, 0.52, 0.50))
 M_PENCIL = ic.make_mat("army_group_pencil", (0.72, 0.52, 0.22))
+
+
+def empty(name, parent=None):
+    obj = bpy.data.objects.new(name, None)
+    bpy.context.collection.objects.link(obj)
+    if parent is not None:
+        ic.parent_to(obj, parent)
+    return obj
 
 
 def bake_rotation(obj):
@@ -361,43 +373,74 @@ def build_command_flag():
     return pole
 
 
+def export_army_group():
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = str(MODEL_DIR / OUTPUT_FILE)
+    export_kwargs = dict(
+        filepath=output_path,
+        export_format="GLB",
+        use_selection=False,
+        export_animations=False,
+        export_extras=True,
+        export_yup=True,
+        export_apply=False,
+    )
+    bpy.ops.export_scene.gltf(**export_kwargs)
+    print("EXPORTED:", output_path)
+
+
 # 정면은 기존 병종과 동일하게 -Y.
 #
-#       [보병] [보병] [보병]
-#          [궁병] [궁병]
-#             [대군기]
-#             [공성]
+# CAMP:     [보병] [보병] [보병]
+#              [궁병] [궁병]
+#                 [대군기]
+#                 [공성]
+#
+# MOVE:       [보병]   [보병]
+#                 [궁병]
+#                 [공성]
 
-roots = []
+army_root = empty("army_group_root")
+camp_group = empty("state_camp", army_root)
+move_group = empty("state_move", army_root)
 
-roots.append(build_swordsman("front_l", -0.155, -0.155, rot_z=math.radians(-4)))
-roots.append(build_swordsman("front_c",  0.000, -0.185, rot_z=0.0))
-roots.append(build_swordsman("front_r",  0.155, -0.155, rot_z=math.radians(4)))
+camp_roots = [
+    build_swordsman("front_l", -0.155, -0.155, rot_z=math.radians(-4)),
+    build_swordsman("front_c", 0.000, -0.185, rot_z=0.0),
+    build_swordsman("front_r", 0.155, -0.155, rot_z=math.radians(4)),
+    build_archer("archer_l", -0.095, 0.005, rot_z=math.radians(-3)),
+    build_archer("archer_r", 0.095, 0.005, rot_z=math.radians(3)),
+    build_command_flag(),
+]
 
-roots.append(build_archer("archer_l", -0.095, 0.005, rot_z=math.radians(-3)))
-roots.append(build_archer("archer_r",  0.095, 0.005, rot_z=math.radians(3)))
-
-roots.append(build_command_flag())
+move_roots = [
+    build_swordsman("move_front_l", -0.110, -0.145, rot_z=math.radians(-3)),
+    build_swordsman("move_front_r", 0.110, -0.145, rot_z=math.radians(3)),
+    build_archer("move_archer", 0.000, 0.015, rot_z=0.0),
+    build_command_flag(),
+]
 
 if SIEGE_VARIANT == "catapult":
-    roots.append(build_catapult("siege", 0.0, 0.205))
+    camp_roots.append(build_catapult("siege", 0.0, 0.205))
+    move_roots.append(build_catapult("move_siege", 0.0, 0.205))
 elif SIEGE_VARIANT == "thunder_cart":
-    roots.append(build_thunder_cart("siege", 0.0, 0.205))
+    camp_roots.append(build_thunder_cart("siege", 0.0, 0.205))
+    move_roots.append(build_thunder_cart("move_siege", 0.0, 0.205))
 else:
     raise ValueError(
         f"Unknown SIEGE_VARIANT={SIEGE_VARIANT!r}; use 'catapult' or 'thunder_cart'."
     )
 
-army_root = bpy.data.objects.new("army_group_root", None)
-bpy.context.collection.objects.link(army_root)
+for root in camp_roots:
+    ic.parent_to(root, camp_group)
 
-for root in roots:
-    root.parent = army_root
-    root.matrix_parent_inverse = army_root.matrix_world.inverted()
+for root in move_roots:
+    ic.parent_to(root, move_group)
 
 army_root["asset_type"] = "army_group"
 army_root["siege_variant"] = SIEGE_VARIANT
 army_root["formation"] = "3_infantry_2_archer_1_siege"
-army_root["max_troops"] = 40000
+army_root["base_max_troops"] = 30000
+army_root["research_max_troops"] = 40000
 
-ic.export(OUTPUT_FILE)
+export_army_group()
