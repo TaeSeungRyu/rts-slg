@@ -1948,13 +1948,13 @@ public sealed partial class CampaignMapScene : Node3D
     {
         foreach (var city in _cities)
         {
-            var node = GD.Load<PackedScene>("res://assets/models/castle-small.glb").Instantiate<Node3D>();
+            var node = GD.Load<PackedScene>(CastleModelPath(city.Castle)).Instantiate<Node3D>();
             node.Position = _view.HexToWorld(city.Position) + new Vector3(0f, _view.TileTopY, 0f);
             AddChild(node);
 
             var label = new Label3D
             {
-                Position = _view.HexToWorld(city.Position) + new Vector3(0f, _view.TileTopY + 1.4f, 0f),
+                Position = _view.HexToWorld(city.Position) + new Vector3(0f, _view.TileTopY + CastleLabelHeight(city.Castle), 0f),
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                 FontSize = 48,
                 OutlineSize = 12,
@@ -1965,6 +1965,20 @@ public sealed partial class CampaignMapScene : Node3D
             _fog.Register(node, city.Position);
         }
     }
+
+    private static string CastleModelPath(CastleSize size) => size switch
+    {
+        CastleSize.Large => "res://assets/models/castle-large.glb",
+        CastleSize.Medium => "res://assets/models/castle-medium.glb",
+        _ => "res://assets/models/castle-small.glb",
+    };
+
+    private static float CastleLabelHeight(CastleSize size) => size switch
+    {
+        CastleSize.Large => 2.2f,
+        CastleSize.Medium => 1.8f,
+        _ => 1.4f,
+    };
 
     // 진행 버튼 → 컨펌창(design-ui §4) → 확인 시 7일 재생 시작.
     private void OnAdvance()
