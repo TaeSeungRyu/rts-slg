@@ -422,8 +422,9 @@ public sealed class MovementSimulator
             && c.Position.Distance(w.Unit.Position) <= w.Unit.RangeCastle);
 
     // 성 타일 위에 서 있는가(출격 대기) — 성은 이동 불가 지형이라 머무를 수 없다.
-    private static bool OnCastle(Working w, IReadOnlyList<SiegeSite>? castles)
-        => castles is not null && castles.Any(c => c.Position == w.Unit.Position);
+    private bool OnCastle(Working w, IReadOnlyList<SiegeSite>? castles)
+        => castles is not null && castles.Any(c => c.Position == w.Unit.Position
+            || c.Position == _passability.CastleAnchorAt(w.Unit.Position));
 
     // 출격 게이트 스텝: 목표 방향으로 흩어져 나오도록 한다. 후보는 빈·통행이며 이번 스텝에 다른
     // 출격 부대가 찜하지 않은(claimed) 이웃. 적 점유 칸은 후보에서 뺀다(성문 위 교전 금지).
@@ -437,7 +438,7 @@ public sealed class MovementSimulator
         if (here.Distance(goal) == 1
             && !occupied.Contains(goal)
             && !claimed.Contains(goal)
-            && _passability.CanEnter(w.Unit.Domain, goal))
+            && _passability.CanExitThrough(w.Unit.Domain, here, goal))
         {
             return goal;
         }
@@ -445,7 +446,7 @@ public sealed class MovementSimulator
         var hereDist = here.Distance(goal);
 
         var candidates = RotatedNeighbors(here, w.Unit.CommandOrder)
-            .Where(n => !occupied.Contains(n) && !claimed.Contains(n) && _passability.CanEnter(w.Unit.Domain, n)
+            .Where(n => !occupied.Contains(n) && !claimed.Contains(n) && _passability.CanExitThrough(w.Unit.Domain, here, n)
                 && n.Distance(goal) <= hereDist)
             .OrderBy(n => n.Distance(goal))
             .ThenByDescending(n => AxisAgreement(here, n, goal))

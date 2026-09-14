@@ -13,6 +13,7 @@ public sealed class PassabilityMap
     private readonly HexMap _map;
     private readonly HashSet<HexCoord> _blockedForAll = new();
     private readonly HashSet<HexCoord> _mountainOnly = new();
+    private readonly Dictionary<HexCoord, HexCoord> _castleAnchors = new();
 
     public PassabilityMap(HexMap map, IEnumerable<MapFeature> features, IEnumerable<City> cities)
     {
@@ -23,6 +24,7 @@ public sealed class PassabilityMap
             foreach (var tile in CastleFootprint.TilesFor(city))
             {
                 _blockedForAll.Add(tile);
+                _castleAnchors[tile] = city.Position;
             }
         }
 
@@ -42,6 +44,14 @@ public sealed class PassabilityMap
 
     /// <summary>좌표의 지형(이동 패널티 판정 등에 쓴다).</summary>
     public TerrainType TerrainAt(HexCoord coord) => _map.TerrainAt(coord);
+
+    public HexCoord? CastleAnchorAt(HexCoord coord) =>
+        _castleAnchors.TryGetValue(coord, out var anchor) ? anchor : null;
+
+    public bool CanExitThrough(MovementDomain domain, HexCoord from, HexCoord next) =>
+        CanEnter(domain, next)
+        || (_map.Contains(next) && CastleAnchorAt(from) is { } anchor
+            && CastleAnchorAt(next) == anchor);
 
     /// <summary>해당 통행 영역의 유닛이 이 좌표에 들어갈 수 있는가.</summary>
     public bool CanEnter(MovementDomain domain, HexCoord coord)

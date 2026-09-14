@@ -24,6 +24,16 @@ public partial class CastleEntryQa : Node
                 count++;
             }
             GD.Print($"CASTLE_ENTRY_QA PASS: {count} campaign/animation cases");
+            var exits = 0;
+            foreach (var size in new[] { CastleSize.Small, CastleSize.Medium, CastleSize.Large })
+            foreach (var direction in new HexCoord(0, 0).Neighbors())
+            foreach (var kind in new[] { "battle", "supply", "transport", "army_group" })
+            foreach (var speed in new[] { 1, 2, 3 })
+            {
+                CheckExit(size, direction, kind, speed);
+                exits++;
+            }
+            GD.Print($"CASTLE_EXIT_QA PASS: {exits} campaign/animation cases");
             GetTree().Quit();
         }
         catch (Exception error)
@@ -69,6 +79,42 @@ public partial class CastleEntryQa : Node
             if (entered && (previous.Distance(city.Position) != 1
                 || Math.Abs(kills[0].Time - (moves[^1].Time + 0.55)) > 0.00001))
                 throw new InvalidOperationException("Entry removal is not synchronized with final movement");
+        }
+        finally { scene.Free(); }
+    }
+
+    private static void CheckExit(CastleSize size, HexCoord direction, string kind, int speed)
+    {
+        var city = new City(new CityId(1), "장안", new HexCoord(1, 2), new FactionId(1), 3000, size);
+        var footprint = CastleFootprint.TilesFor(city).ToHashSet();
+        var target = city.Position + direction;
+        while (footprint.Contains(target)) target += direction;
+        var field = new FieldUnit(new UnitId(1), city.Owner, city.Position, speed, 0, 1,
+            MovementDomain.Land, UnitMode.Advance, target, 0);
+        var unit = new CombatUnit(field, new CombatStats(1000, 1, 1), new TroopPool(1000, 0),
+            UnitCombatState.Create(0), TroopCode: kind == "battle" ? "swordsman" : kind,
+            IsSupply: kind == "supply", IsTransport: kind == "transport");
+        var state = new GameState(1, 1, [], [city], [], FieldArmies: [unit]);
+        var passability = new PassabilityMap(new HexMap(-10, 15, -10, 15), [], [city]);
+        var engine = new CampaignEngine(new AdvanceOrchestrator(new MovementSimulator(passability),
+            new CombatPhaseResolver(new BattleResolver(60), 70)), new WorldEngine(new BalanceConfig(100)));
+        engine.AdvanceWeek(state, out var turns);
+        var scene = new CampaignMapScene();
+        try
+        {
+            typeof(CampaignMapScene).GetMethod("BuildAnimation", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(scene, [new Dictionary<int, HexCoord> { [1] = city.Position }, turns, Array.Empty<SiegeExchange>(), state]);
+            var moves = Read<List<(double Time, int UnitId, HexCoord To)>>(scene, "_animSteps");
+            var previous = city.Position;
+            foreach (var move in moves)
+            {
+                if (move.To != previous + direction)
+                    throw new InvalidOperationException($"{size}/{direction}/{kind}/{speed}: bent exit {previous} -> {move.To}");
+                previous = move.To;
+            }
+            if (previous != target || moves.Count != city.Position.Distance(target)
+                || Read<List<(double Time, int UnitId)>>(scene, "_animKills").Count != 0)
+                throw new InvalidOperationException($"{size}/{direction}/{kind}/{speed}: incomplete exit or removed unit");
         }
         finally { scene.Free(); }
     }

@@ -80,7 +80,73 @@ public class MovementSimulatorTests
         Assert.Equal(target, result.Units.Single().Position);
     }
 
+    [Theory]
+    [InlineData(CastleSize.Medium, 1, 4, 1, 3)]
+    [InlineData(CastleSize.Medium, -1, 4, 0, 3)]
+    [InlineData(CastleSize.Large, 1, 4, 1, 3)]
+    [InlineData(CastleSize.Large, -1, 4, 0, 3)]
+    public void 다중타일성_남쪽출격은_옆문으로_우회하지_않는다(CastleSize size, int q, int r, int firstQ, int firstR)
+    {
+        var city = new City(new CityId(1), "장안", new HexCoord(1, 2), new FactionId(1), 3000, size);
+        var passability = new PassabilityMap(new HexMap(-5, 12, -5, 12), [], [city]);
+        var sim = new MovementSimulator(passability);
+        var target = new HexCoord(q, r);
+        var unit = Unit(1, 1, city.Position, UnitMode.Advance, target, speed: 2);
+        var result = sim.Advance([unit], maxDays: 1, castles: [new SiegeSite(city.Position, city.Owner)]);
+        var positions = result.Ticks.SelectMany(t => t.Units).Where(u => u.Id == unit.Id)
+            .Select(u => u.Position).Distinct().ToArray();
+        Assert.Equal(new[] { new HexCoord(firstQ, firstR), target }, positions);
+        Assert.Equal(target, result.Units.Single().Position);
+        Assert.False(passability.CanEnter(MovementDomain.Land, new HexCoord(firstQ, firstR)));
+    }
+
     // ── 경유지(행군 경로 지정) ──
+    [Theory]
+    [InlineData(CastleSize.Small)]
+    [InlineData(CastleSize.Medium)]
+    [InlineData(CastleSize.Large)]
+    public void 성출격_모든방향과모드와속도에서_직선경로를_유지한다(CastleSize size)
+    {
+        var city = new City(new CityId(1), "성", new HexCoord(1, 2), new FactionId(1), 3000, size);
+        var passability = new PassabilityMap(new HexMap(-10, 15, -10, 15), [], [city]);
+        var footprint = CastleFootprint.TilesFor(city).ToHashSet();
+        foreach (var direction in new HexCoord(0, 0).Neighbors())
+        foreach (var mode in new[] { UnitMode.March, UnitMode.Advance, UnitMode.Attack })
+        foreach (var speed in new[] { 1, 2, 3 })
+        {
+            var target = city.Position + direction;
+            while (footprint.Contains(target)) target += direction;
+            var unit = Unit(1, 1, city.Position, mode, target, speed);
+            var sim = new MovementSimulator(passability);
+            var previous = city.Position;
+            for (var day = 0; day < 4 && previous != target; day++)
+            {
+                var result = sim.Advance([unit], maxDays: 1, castles: [new SiegeSite(city.Position, city.Owner)]);
+                foreach (var position in result.Ticks.SelectMany(t => t.Units).Select(u => u.Position).Distinct())
+                {
+                    if (position == previous) continue;
+                    Assert.Equal(previous + direction, position);
+                    previous = position;
+                }
+                unit = Assert.Single(result.Units);
+                Assert.Empty(result.EnteredCastle);
+            }
+            Assert.Equal(target, unit.Position);
+        }
+    }
+
+    [Fact]
+    public void 출격통행예외는_같은성_내부에서만_허용한다()
+    {
+        var city = new City(new CityId(1), "성", new HexCoord(1, 2), new FactionId(1), 3000, CastleSize.Medium);
+        var other = new City(new CityId(2), "다른성", new HexCoord(3, 2), new FactionId(1), 3000);
+        var map = new PassabilityMap(new HexMap(-5, 12, -5, 12), [], [city, other]);
+        Assert.True(map.CanExitThrough(MovementDomain.Land, city.Position, new HexCoord(1, 3)));
+        Assert.False(map.CanExitThrough(MovementDomain.Land, new HexCoord(1, 4), new HexCoord(1, 3)));
+        Assert.False(map.CanExitThrough(MovementDomain.Land, city.Position, other.Position));
+        Assert.False(map.CanEnter(MovementDomain.Land, new HexCoord(1, 3)));
+    }
+
 
     [Fact]
     public void 경유지_먼저_거쳐서_최종목표에_도착한다()

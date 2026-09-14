@@ -1444,7 +1444,7 @@ public sealed partial class CampaignMapScene : Node3D
     // start→goal에 지형 통행 A* 경로가 존재하는가.
     private bool HasPath(HexCoord start, HexCoord goal)
     {
-        var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanEnter(MovementDomain.Land, c));
+        var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanExitThrough(MovementDomain.Land, start, c));
         return pf.FindPath(start, goal).Count > 1;
     }
 
@@ -1759,7 +1759,7 @@ public sealed partial class CampaignMapScene : Node3D
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
         };
 
-        var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanEnter(MovementDomain.Land, c));
+        var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanExitThrough(MovementDomain.Land, start, c));
         var path = pf.FindPath(start, goal);
         for (var i = 1; i < path.Count; i++)
         {
