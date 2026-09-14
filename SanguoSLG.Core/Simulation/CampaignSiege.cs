@@ -83,7 +83,7 @@ public sealed class CampaignSiege
                     && u.Field.Mode == UnitMode.Attack
                     && u.CanInitiateCombat
                     && (u.IsSupply || u.IsArmyGroup || (u.TroopCode.Length > 0 && _troops.ContainsKey(u.TroopCode)))
-                    && u.Field.Position.Distance(city.Position) <= u.Field.RangeCastle)
+                    && CastleFootprint.TilesFor(city).Min(tile => tile.Distance(u.Field.Position)) <= u.Field.RangeCastle)
                 .OrderBy(u => u.Id.Value)
                 .ToList();
             if (besiegers.Count == 0)

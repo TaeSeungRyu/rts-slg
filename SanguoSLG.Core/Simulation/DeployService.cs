@@ -150,7 +150,7 @@ public sealed class DeployService
 
         if (req.Mode == UnitMode.Attack && req.Target is { } target)
         {
-            var targetCity = state.Cities.FirstOrDefault(c => c.Position == target);
+            var targetCity = state.Cities.FirstOrDefault(c => CastleFootprint.TilesFor(c).Contains(target));
             if (targetCity is not null && state.AreAllied(city.Owner, targetCity.Owner))
             {
                 return CommandResult.Fail("동맹 세력의 성은 공격할 수 없다.", state);

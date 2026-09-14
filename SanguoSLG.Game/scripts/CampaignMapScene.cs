@@ -984,7 +984,7 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
-        var city = _state.Cities.FirstOrDefault(c => c.Position == hex);
+        var city = CityAtHex(hex);
         if (city is not null)
         {
             // 같은 성 재클릭 = 닫기.
@@ -1021,6 +1021,10 @@ public sealed partial class CampaignMapScene : Node3D
             AddRouteDots(u.Field.Position, u.Field.Waypoints, tgt, _pathMarkers);
         }
     }
+
+    private City? CityAtHex(HexCoord hex, System.Func<City, bool>? predicate = null) =>
+        _state.Cities.FirstOrDefault(c => CastleFootprint.TilesFor(c).Contains(hex)
+            && (predicate is null || predicate(c)));
 
     // 시작 → (경유지들) → 목표를 구간별로 이어 금색 점 경로를 그린다.
     private void AddRouteDots(HexCoord start, IReadOnlyList<HexCoord>? waypoints, HexCoord target, List<MeshInstance3D> into)
@@ -1559,19 +1563,19 @@ public sealed partial class CampaignMapScene : Node3D
         if (_targetingSupplyDeploy && idx >= 0 && idx < _pendingSupplyDeploys.Count)
         {
             var (req, label) = _pendingSupplyDeploys[idx];
-            var enemyCity = _state.Cities.FirstOrDefault(c => c.Position == h && c.Owner != Player);
+            var enemyCity = CityAtHex(h, c => c.Owner != Player);
             var enemyUnit = DisplayedArmies.FirstOrDefault(u => u.Field.Position == h && u.Field.Owner != Player && CanSeeUnit(u));
             var mode = enemyCity is not null || enemyUnit is not null ? UnitMode.Attack : UnitMode.March;
             _pendingSupplyDeploys[idx] = (req with { Target = h, Mode = mode }, label);
             Dbg($"SUPPLY TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode}");
-            var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
+            var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
             _log.Text = $"보급부대 목표 → {tName}{(mode == UnitMode.Attack ? " (공격모드)" : "")} · 목표 확정";
         }
         else if (_targetingTransportDeploy && idx >= 0 && idx < _pendingTransportDeploys.Count)
         {
             var (req, label) = _pendingTransportDeploys[idx];
             var source = _state.Cities.FirstOrDefault(c => c.Id == req.City);
-            var dest = _state.Cities.FirstOrDefault(c => c.Position == h && source is not null && c.Owner == source.Owner && c.Id != source.Id);
+            var dest = CityAtHex(h, c => source is not null && c.Owner == source.Owner && c.Id != source.Id);
             if (dest is null)
             {
                 ShowNotice("수송 목표 불가", "수송 목표는 같은 세력의 다른 성만 선택할 수 있습니다.");
@@ -1588,23 +1592,23 @@ public sealed partial class CampaignMapScene : Node3D
         else if (_targetingArmyGroupDeploy && idx >= 0 && idx < _pendingArmyGroupDeploys.Count)
         {
             var (req, label) = _pendingArmyGroupDeploys[idx];
-            var enemyCity = _state.Cities.FirstOrDefault(c => c.Position == h && c.Owner != Player);
+            var enemyCity = CityAtHex(h, c => c.Owner != Player);
             var enemyUnit = DisplayedArmies.FirstOrDefault(u => u.Field.Position == h && u.Field.Owner != Player && CanSeeUnit(u));
             var mode = enemyCity is not null || enemyUnit is not null ? UnitMode.Attack : req.Mode;
             _pendingArmyGroupDeploys[idx] = (req with { Target = h, Mode = mode, Waypoints = waypoints }, label);
             Dbg($"ARMYGROUP TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode} wps={waypoints?.Count ?? 0}");
-            var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
+            var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
             var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
             _log.Text = $"집단군 목표 → {tName}{(mode == UnitMode.Attack ? " (공격모드)" : "")}{wpNote} · 목표 확정";
         }
         else if (idx >= 0 && idx < _pendingDeploys.Count)
         {
             var (req, label) = _pendingDeploys[idx];
-            var enemyCity = _state.Cities.FirstOrDefault(c => c.Position == h && c.Owner != Player);
+            var enemyCity = CityAtHex(h, c => c.Owner != Player);
             var mode = enemyCity is not null ? UnitMode.Attack : req.Mode;
             _pendingDeploys[idx] = (req with { Target = h, Mode = mode, Waypoints = waypoints }, label);
             Dbg($"TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode} wps={waypoints?.Count ?? 0}");
-            var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
+            var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
             var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
             _log.Text = $"목표 → {tName}{(enemyCity is not null ? " (공격모드)" : "")}{wpNote} · 목표 확정";
         }
@@ -3104,7 +3108,7 @@ public sealed partial class CampaignMapScene : Node3D
         var u = _state.Armies.FirstOrDefault(a => a.Id.Value == uid && a.Field.Owner == Player);
         if (u is null) { return; }
 
-        var enemyCity = _state.Cities.FirstOrDefault(c => c.Position == h && c.Owner != Player);
+        var enemyCity = CityAtHex(h, c => c.Owner != Player);
         var enemyUnit = DisplayedArmies.FirstOrDefault(a => a.Field.Position == h && a.Field.Owner != Player && CanSeeUnit(a));
         if (enemyCity is not null || enemyUnit is not null) { mode = UnitMode.Attack; }
         var result = _unitCommander.Reassign(_state, Player,
@@ -3117,7 +3121,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         _state = result.State;
 
-        var tName = _state.Cities.FirstOrDefault(c => c.Position == h)?.Name ?? $"({h.Q},{h.R})";
+        var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
         var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
         Dbg($"UI unit-retarget u{uid} -> ({h.Q},{h.R}) mode={mode} wps={waypoints?.Count ?? 0}");
         _log.Text = $"부대 → {tName} ({ModeName(mode)}모드){wpNote}";
@@ -11089,3 +11093,4 @@ public sealed partial class CampaignMapScene : Node3D
         return ImageTexture.CreateFromImage(img);
     }
 }
+

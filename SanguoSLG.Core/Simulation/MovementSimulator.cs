@@ -454,11 +454,11 @@ public sealed class MovementSimulator
     // 자신의 공성 사거리 안에 있는 적 성(고정 목록 순서 — 결정론)
     private static SiegeSite? CastleWithin(Working w, IReadOnlyList<SiegeSite>? castles) => castles?
         .FirstOrDefault(c => c.Owner != w.Unit.Owner
-            && c.Position.Distance(w.Unit.Position) <= w.Unit.RangeCastle);
+            && c.DistanceTo(w.Unit.Position) <= w.Unit.RangeCastle);
 
     // 성 타일 위에 서 있는가(출격 대기) — 성은 이동 불가 지형이라 머무를 수 없다.
     private bool OnCastle(Working w, IReadOnlyList<SiegeSite>? castles)
-        => castles is not null && castles.Any(c => c.Position == w.Unit.Position
+        => castles is not null && castles.Any(c => c.Contains(w.Unit.Position)
             || c.Position == _passability.CastleAnchorAt(w.Unit.Position));
 
     // 출격 게이트 스텝: 목표 방향으로 흩어져 나오도록 한다. 후보는 빈·통행이며 이번 스텝에 다른
@@ -600,7 +600,7 @@ public sealed class MovementSimulator
     private static bool IsOwnCastle(Working w, HexCoord next, IReadOnlyList<SiegeSite>? castles)
         => castles is not null
             && w.Unit.Target == next
-            && castles.Any(c => c.Owner == w.Unit.Owner && c.Position == next);
+            && castles.Any(c => c.Owner == w.Unit.Owner && c.Contains(next));
 
     // 사거리·탐지 안의 적 중 가장 가까운 하나(동률이면 명령 순번, 그다음 UnitId — 결정론)
     private static Working? NearestEnemyWithin(Working self, List<Working> work, int range) => work

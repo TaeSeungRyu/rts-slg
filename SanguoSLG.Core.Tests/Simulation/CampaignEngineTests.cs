@@ -362,6 +362,46 @@ public class CampaignEngineTests
     }
 
     [Fact]
+    public void 다중타일성_어느_성타일을_목표로_복귀해도_입성한다()
+    {
+        var city = new City(new CityId(1), "대성", new HexCoord(3, 0), new FactionId(1), 0, CastleSize.Large);
+        var targetTile = new HexCoord(4, 1); // 대형성 footprint 내부, 앵커가 아님
+        var field = new FieldUnit(new UnitId(1), new FactionId(1), new HexCoord(4, 3),
+            Speed: 2, Detection: 1, AttackRange: 1, MovementDomain.Land, UnitMode.March,
+            Target: targetTile, CommandOrder: 1, RangeCastle: 1);
+        var returning = new CombatUnit(field, new CombatStats(8000, 10, 10), new TroopPool(8000, 0),
+            UnitCombatState.Create(60), MaxTroops: 8000, TroopCode: "swordsman", Training: 70);
+        var movement = new MovementSimulator(new PassabilityMap(new HexMap(-5, 10, -5, 10), [], [city]));
+        var engine = new CampaignEngine(new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70)),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)));
+        var state = new GameState(1, 1, [], [city], [], FieldArmies: [returning]);
+
+        var after = engine.AdvanceWeek(state, out var turns);
+
+        Assert.Empty(after.Armies);
+        Assert.Contains(turns, t => t.EnteredCastle.Any(u => u.Id == returning.Id));
+        Assert.Equal(8000, after.Garrisons.Single(g => g.City == city.Id && g.TroopCode == "swordsman").Troops);
+    }
+
+    [Fact]
+    public void 다중타일성_footprint_어느_쪽에_붙어도_공성으로_정지한다()
+    {
+        var enemy = new City(new CityId(2), "적대성", new HexCoord(3, 0), new FactionId(2), 3000, CastleSize.Large, Wall: 3000);
+        var attacker = Army(1, 1, new HexCoord(5, 1), UnitMode.Attack, enemy.Position, troops: 8000);
+        var movement = new MovementSimulator(new PassabilityMap(new HexMap(-5, 10, -5, 10), [], [enemy]));
+        var engine = new CampaignEngine(new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70)),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)),
+            new CampaignSiege(new BattleResolver(60), T.Values.ToList()));
+        var state = new GameState(1, 1, [], [enemy], [], FieldArmies: [attacker],
+            GarrisonForces: [new GarrisonForce(enemy.Id, "swordsman", 1000, 60)]);
+
+        var after = engine.AdvanceWeek(state, out _, out var sieges);
+
+        Assert.NotEmpty(sieges);
+        Assert.True(after.Cities.Single(c => c.Id == enemy.Id).Wall < enemy.Wall);
+    }
+
+    [Fact]
     public void 야전에서_괴멸한_부대의_금군량은_가장가까운_상대부대가_노획한다()
     {
         var attacker = Army(1, 1, new HexCoord(0, 0), UnitMode.Attack, null, troops: 10000)

@@ -92,9 +92,11 @@ public sealed class CampaignEngine
             // 성 접적 정지용 장애물 — 매 진행마다 현재 소유로 갱신(함락으로 주인이 바뀌므로).
             var castles = work.Cities
                 .OrderBy(c => c.Id.Value)
-                .Select(c => new SiegeSite(c.Position, c.Owner))
+                .Select(c => new SiegeSite(c.Position, c.Owner, CastleFootprint.TilesFor(c).ToList()))
                 .ToList();
-            var cityAt = work.Cities.ToDictionary(c => c.Position, c => c.Id);
+            var cityAt = work.Cities
+                .SelectMany(c => CastleFootprint.TilesFor(c).Select(tile => (tile, c.Id)))
+                .ToDictionary(x => x.tile, x => x.Id);
 
             // 성 보급(2026-08-20): 이동 전, 아군 성 반경 안의 아군 야전 부대 군량을 성 비축에서 채운다
             //  — 성문 앞 대기·수비 부대가 굶지 않도록(보급부대와 같은 원리, 성이 고정 보급원).
