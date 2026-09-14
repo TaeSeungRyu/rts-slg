@@ -6808,29 +6808,31 @@ public sealed partial class CampaignMapScene : Node3D
             var leader = _state.Generals.FirstOrDefault(g => g.Id == req.Vanguard)?.Name ?? "-";
             var total = req.Lines.Sum(l => l.Troops);
             var target = req.Target is { } tg ? _state.Cities.FirstOrDefault(c => c.Position == tg)?.Name ?? $"({tg.Q},{tg.R})" : "목표 미지정";
-            var cell = new Control { CustomMinimumSize = new Vector2(104, 118) };
+            var cell = new Control { CustomMinimumSize = new Vector2(112, 96) };
             var tile = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop, MouseDefaultCursorShape = Control.CursorShape.PointingHand };
             tile.SetAnchorsPreset(Control.LayoutPreset.FullRect);
             tile.AddThemeStyleboxOverride("panel", CardBox(idx == _depSelectedUnit));
             cell.AddChild(tile);
             var tv = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
             tv.AddThemeConstantOverride("separation", 2);
+            tv.MouseFilter = Control.MouseFilterEnum.Ignore;
             tile.AddChild(tv);
-            tv.AddChild(new TextureRect
-            {
-                Texture = Icon(Sym.Shield),
-                CustomMinimumSize = new Vector2(46, 46),
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
-            });
-            var n1 = MakeLabel($"집단군 {total}", 12, GoldBright);
+            var badge = MakeLabel("集", 24, GoldBright);
+            badge.HorizontalAlignment = HorizontalAlignment.Center;
+            badge.VerticalAlignment = VerticalAlignment.Center;
+            badge.MouseFilter = Control.MouseFilterEnum.Ignore;
+            tv.AddChild(badge);
+            var n1 = MakeLabel($"집단군 {total:N0}", 12, GoldBright);
             n1.HorizontalAlignment = HorizontalAlignment.Center;
+            n1.MouseFilter = Control.MouseFilterEnum.Ignore;
             tv.AddChild(n1);
             var n2 = MakeLabel(leader, 11, Parchment);
             n2.HorizontalAlignment = HorizontalAlignment.Center;
+            n2.MouseFilter = Control.MouseFilterEnum.Ignore;
             tv.AddChild(n2);
             var n3 = MakeLabel(target, 10, req.Target is null ? new Color(0.85f, 0.5f, 0.4f) : GoldBright);
             n3.HorizontalAlignment = HorizontalAlignment.Center;
+            n3.MouseFilter = Control.MouseFilterEnum.Ignore;
             tv.AddChild(n3);
             tile.GuiInput += e =>
             {
@@ -6853,7 +6855,7 @@ public sealed partial class CampaignMapScene : Node3D
         var hasPending = mine.Count > 0;
         var addTile = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(104, 118),
+            CustomMinimumSize = new Vector2(112, 96),
             MouseFilter = Control.MouseFilterEnum.Stop,
             MouseDefaultCursorShape = existingGroup || hasPending ? Control.CursorShape.Forbidden : Control.CursorShape.PointingHand,
         };
@@ -6861,6 +6863,7 @@ public sealed partial class CampaignMapScene : Node3D
         var addLabel = MakeLabel(existingGroup ? "출전중" : hasPending ? "예약됨" : "＋", hasPending || existingGroup ? 15 : 32, existingGroup || hasPending ? new Color(0.55f, 0.52f, 0.46f) : GoldBright);
         addLabel.HorizontalAlignment = HorizontalAlignment.Center;
         addLabel.VerticalAlignment = VerticalAlignment.Center;
+        addLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
         addTile.AddChild(addLabel);
         if (!existingGroup && !hasPending)
         {
