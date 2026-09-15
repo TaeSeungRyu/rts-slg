@@ -59,12 +59,15 @@ internal sealed class GeneralDto
     public int UnlockYear { get; init; }
     public string Region { get; init; } = "";
     public string Desc { get; init; } = "";
+    public int Level { get; init; } = 1;
+    public int Experience { get; init; }
 }
 
 internal sealed class GeneralSkillDto
 {
     public string Code { get; init; } = "";
     public int Tier { get; init; } = 1;
+    public int Experience { get; init; }
 }
 
 internal sealed class HeroUnlockDto
