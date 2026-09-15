@@ -10772,8 +10772,8 @@ public sealed partial class CampaignMapScene : Node3D
         var panel = new PanelContainer();
         panel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         panel.Position = new Vector2(10, 10);
-        panel.CustomMinimumSize = new Vector2(420, 0);
-        panel.AddThemeStyleboxOverride("panel", Frame(new Color(0.035f, 0.028f, 0.024f, 0.88f), new Color(Gold, 0.42f), 1, 18, 10));
+        panel.CustomMinimumSize = new Vector2(390, 0);
+        panel.AddThemeStyleboxOverride("panel", Frame(new Color(0.035f, 0.028f, 0.024f, 0.88f), new Color(Gold, 0.42f), 1, 14, 8));
         layer.AddChild(panel);
 
         var box = new VBoxContainer();
@@ -10785,14 +10785,18 @@ public sealed partial class CampaignMapScene : Node3D
         top.AddThemeConstantOverride("separation", 8);
         box.AddChild(top);
 
-        _hudFacePanel = new PanelContainer { CustomMinimumSize = new Vector2(88, 88) };
-        _hudFacePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.09f, 0.055f, 0.032f), GoldBright, 3, 44, 4));
+        _hudFacePanel = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(82, 82),
+            ClipContents = true,
+        };
+        _hudFacePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.09f, 0.055f, 0.032f), GoldBright, 3, 41, 5));
         top.AddChild(_hudFacePanel);
         _hudFace = new TextureRect
         {
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
-            CustomMinimumSize = new Vector2(80, 80),
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            CustomMinimumSize = new Vector2(72, 72),
         };
         _hudFacePanel.AddChild(_hudFace);
 
@@ -10800,7 +10804,7 @@ public sealed partial class CampaignMapScene : Node3D
         _hudRuler.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         _hudRuler.VerticalAlignment = VerticalAlignment.Center;
         _hudRuler.HorizontalAlignment = HorizontalAlignment.Left;
-        _hudRuler.CustomMinimumSize = new Vector2(230, 82);
+        _hudRuler.CustomMinimumSize = new Vector2(230, 76);
         _hudRuler.AutowrapMode = TextServer.AutowrapMode.Off;
         _hudRuler.AddThemeStyleboxOverride("normal", Frame(new Color(0.07f, 0.048f, 0.036f, 0.96f), new Color(Gold, 0.62f), 1, 12, 12));
         top.AddChild(_hudRuler);
@@ -10808,11 +10812,12 @@ public sealed partial class CampaignMapScene : Node3D
         _hudDate.Visible = false;
 
         var tray = MakeButton("☰");
-        tray.AddThemeFontSizeOverride("font_size", 22);
-        tray.CustomMinimumSize = new Vector2(54, 54);
-        tray.AddThemeStyleboxOverride("normal", Frame(new Color(0.13f, 0.08f, 0.035f), GoldBright, 2, 28, 0));
-        tray.AddThemeStyleboxOverride("hover", Frame(new Color(GoldBright, 0.95f), GoldBright, 2, 28, 0));
-        tray.AddThemeStyleboxOverride("pressed", Frame(AccentFill, GoldBright, 2, 28, 0));
+        tray.AddThemeFontSizeOverride("font_size", 18);
+        tray.CustomMinimumSize = new Vector2(42, 42);
+        tray.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        tray.AddThemeStyleboxOverride("normal", Frame(new Color(0.13f, 0.08f, 0.035f), GoldBright, 2, 21, 0));
+        tray.AddThemeStyleboxOverride("hover", Frame(new Color(GoldBright, 0.95f), GoldBright, 2, 21, 0));
+        tray.AddThemeStyleboxOverride("pressed", Frame(AccentFill, GoldBright, 2, 21, 0));
         tray.TooltipText = "시스템";
         tray.Pressed += OpenSystemPalette;
         top.AddChild(tray);
