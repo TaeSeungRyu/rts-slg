@@ -525,6 +525,7 @@ public sealed class WorldEngine
         var armies = state.Armies.ToList();
         var placements = state.Placements.ToList();
         var discoveries = state.Discoveries.ToList();
+        var portShips = state.PortShips.ToList();
 
         foreach (var cmd in due)
         {
@@ -581,6 +582,10 @@ public sealed class WorldEngine
                         placements.Add(new FacilityPlacement(cmd.City, builtPlot, cmd.Facility, FacilityHealth.Level1));
                     }
 
+                    break;
+
+                case CommandKind.BuildShip:
+                    AddPortShip(portShips, cmd.City, cmd.TroopCode, cmd.Amount);
                     break;
 
                 case CommandKind.Upgrade:
@@ -648,6 +653,7 @@ public sealed class WorldEngine
                 CommandKind.Conscript => WorldEventKind.Conscript,
                 CommandKind.Train => WorldEventKind.Train,
                 CommandKind.Build => WorldEventKind.Build,
+                CommandKind.BuildShip => WorldEventKind.ShipBuild,
                 CommandKind.Upgrade => WorldEventKind.Build,
                 CommandKind.Research => WorldEventKind.Research,
                 CommandKind.Repair => WorldEventKind.Repair,
@@ -685,7 +691,29 @@ public sealed class WorldEngine
             ExplorationDiscoveries = discoveries
                 .OrderBy(d => d.Day).ThenBy(d => d.City.Value).ThenBy(d => d.Explorer.Value)
                 .ToList(),
+            PortShipStocks = portShips
+                .Where(s => s.Count > 0)
+                .OrderBy(s => s.City.Value).ThenBy(s => s.ShipCode, System.StringComparer.Ordinal)
+                .ToList(),
         };
+    }
+
+    private static void AddPortShip(List<PortShipStock> stocks, CityId city, string shipCode, int count)
+    {
+        if (shipCode.Length == 0 || count <= 0)
+        {
+            return;
+        }
+
+        var idx = stocks.FindIndex(s => s.City == city && s.ShipCode == shipCode);
+        if (idx >= 0)
+        {
+            stocks[idx] = stocks[idx] with { Count = stocks[idx].Count + count };
+        }
+        else
+        {
+            stocks.Add(new PortShipStock(city, shipCode, count));
+        }
     }
 
     private void ResolveExplore(GameState state, CityCommand cmd, City city,

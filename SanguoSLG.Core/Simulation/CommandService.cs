@@ -164,6 +164,7 @@ public sealed class CommandService
             CommandKind.Conscript => IssueRecruit(state, city, req, assist, eff, CommandKind.Conscript),
             CommandKind.Train => IssueTrain(state, city, req, assist, eff),
             CommandKind.Build => IssueBuild(state, city, req, assist, main),
+            CommandKind.BuildShip => IssueBuildShip(state, city, req, assist),
             CommandKind.Upgrade => IssueUpgrade(state, city, req, assist),
             CommandKind.SetTaxRate => IssueTax(state, city, req, assist),
             CommandKind.Research => IssueResearch(state, city, req, assist, main),
@@ -558,6 +559,35 @@ public sealed class CommandService
 
         var days = System.Math.Max(_b.ResearchBaseDays - System.Math.Clamp((main.Intellect - 50) / 5, 0, 10), 1);
         return Register(funding.State, req, assist, amount: isWall ? level + 1 : 0, days, CommandKind.Research, "", req.TroopCode);
+    }
+
+    public static int ShipBuildDays(string shipCode) => shipCode switch
+    {
+        "small_boat" => 14,
+        "medium_ship" => 30,
+        "large_ship" => 60,
+        _ => 0,
+    };
+
+    private CommandResult IssueBuildShip(GameState state, City city, CommandRequest req, General? assist)
+    {
+        if (!city.IsPort)
+        {
+            return CommandResult.Fail("항구에서만 선박을 생산할 수 있다.", state);
+        }
+
+        var days = ShipBuildDays(req.TroopCode);
+        if (days <= 0)
+        {
+            return CommandResult.Fail("생산할 선박을 지정해야 한다.", state);
+        }
+
+        if (state.Commands.Any(c => c.City == city.Id && c.Kind == CommandKind.BuildShip))
+        {
+            return CommandResult.Fail("이미 선박을 생산 중이다.", state);
+        }
+
+        return Register(state, city, req, assist, amount: 1, days, CommandKind.BuildShip, "", req.TroopCode);
     }
 
     private static CommandResult ReserveResearchCost(GameState state, City city, CommandRequest req, FactionId faction, int cost)

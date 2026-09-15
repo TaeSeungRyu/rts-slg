@@ -803,6 +803,37 @@ public class CommandSystemTests
         Assert.Contains("공방", second.Error);
     }
 
+    [Theory]
+    [InlineData("small_boat", 14)]
+    [InlineData("medium_ship", 30)]
+    [InlineData("large_ship", 60)]
+    public void 항구는_선박을_정해진_기간에_생산해_저장한다(string shipCode, int days)
+    {
+        var svc = Service();
+        var port = Town(1, gold: 5000) with { Port = PortSize.Small };
+        var s0 = State([port], [Pol(2, 90)]);
+
+        var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.BuildShip, new GeneralId(2),
+            TroopCode: shipCode));
+
+        Assert.True(issued.Ok, issued.Error);
+        Assert.Equal(1 + days, issued.State.Commands.Single().CompletionDay);
+
+        var done = new WorldEngine(new BalanceConfig(100)).AdvanceDays(issued.State, days);
+        var stock = done.PortShips.Single(s => s.City == port.Id && s.ShipCode == shipCode);
+        Assert.Equal(1, stock.Count);
+    }
+
+    [Fact]
+    public void 일반_도시는_선박을_생산할수없다()
+    {
+        var r = Service().Issue(State([Town(1, gold: 5000)], [Pol(2, 90)]),
+            new CommandRequest(new CityId(1), CommandKind.BuildShip, new GeneralId(2), TroopCode: "small_boat"));
+
+        Assert.False(r.Ok);
+        Assert.Contains("항구", r.Error);
+    }
+
     [Fact]
     public void 발행_건설은_금이_부족하면_거부된다()
     {

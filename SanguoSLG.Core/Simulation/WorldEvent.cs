@@ -23,6 +23,7 @@ public enum WorldEventKind
     BanditRaid,         // 저치안 도적 출현
     SecurityFactor,
     GeneralGrowth,      // 장수/패시브 성장
+    ShipBuild,          // 항구 선박 생산 완료
 }
 
 /// <summary>
