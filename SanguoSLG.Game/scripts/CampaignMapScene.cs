@@ -5865,8 +5865,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         var nextLevelExp = GeneralGrowth.RequiredExperienceForNextLevel(g.ClampedLevel);
         var levelText = g.ClampedLevel >= GeneralGrowth.MaxLevel
-            ? $"Lv. {g.ClampedLevel}  MAX"
-            : $"Lv. {g.ClampedLevel}";
+            ? $"전투LV {g.ClampedLevel}  MAX"
+            : $"전투LV {g.ClampedLevel}";
         var cardLevel = MakeLabel(levelText, 20, Parchment);
         cardLevel.HorizontalAlignment = HorizontalAlignment.Center;
         portraitCard.AddChild(cardLevel);
@@ -7797,6 +7797,11 @@ public sealed partial class CampaignMapScene : Node3D
         var gradeText = MakeLabel(GradeText(grade), 15, grade >= AptitudeGrade.A ? GoldBright : Parchment);
         gradeText.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(gradeText);
+
+        var levelBonus = GeneralGrowth.LevelCombatBonus(general.ClampedLevel);
+        var bonusText = MakeLabel($"+{levelBonus:0.0}", 11, new Color(GoldBright, 0.88f));
+        bonusText.HorizontalAlignment = HorizontalAlignment.Center;
+        v.AddChild(bonusText);
 
         return card;
     }
