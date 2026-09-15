@@ -744,7 +744,9 @@ public sealed class CampaignEngine
 
                 generals[idx] = grown;
                 _campaignEvents.Add(new WorldEvent(WorldEventKind.GeneralGrowth, unit.Field.Owner, generalId,
-                    Amount: generalExp, Code: leveledUp ? "level_up" : "combat", ExtraAmount: passiveTierUps));
+                    Amount: generalExp,
+                    Code: passiveTierUps > 0 ? (leveledUp ? "level_up_passive_up" : "passive_up") : (leveledUp ? "level_up" : "combat"),
+                    ExtraAmount: passiveExp));
             }
         }
 

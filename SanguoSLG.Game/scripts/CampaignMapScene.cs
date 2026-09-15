@@ -2208,7 +2208,7 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.ProductionLost => ($"[생산] {gName} 장수의 {FacilityLabel(we.Code)} 생산 부대 {we.Amount}명이 소실되었습니다.", AccentFill),
                 WorldEventKind.BanditRaid => ($"[치안] {cName} 주변에 도적 {we.Amount}명이 출현해 성을 노립니다.", AccentFill),
                 WorldEventKind.SecurityFactor => ($"[치안 요인] {cName}: {(we.Code == "vacancy" ? "치안 담당 공석" : we.Code == "recruitment" ? $"병력 담당 {gName}" : $"치안 담당 {gName}")} {we.Amount:+0;-0;0} / 7일 (합산 후 0~100 적용)", Parchment),
-                WorldEventKind.GeneralGrowth => ($"[성장] {gName} 장수 경험치 +{we.Amount}{(we.Code == "level_up" ? " · 레벨 상승!" : "")}{(we.ExtraAmount > 0 ? $" · 패시브 {we.ExtraAmount}개 성장" : "")}", we.Code == "level_up" || we.ExtraAmount > 0 ? GoldBright : Parchment),
+                WorldEventKind.GeneralGrowth => ($"[성장] {gName} 장수 경험치 +{we.Amount} · 패시브 경험치 +{we.ExtraAmount}{(we.Code.Contains("level_up") ? " · 레벨 상승!" : "")}{(we.Code.Contains("passive_up") ? " · 패시브 성장!" : "")}", we.Code.Contains("level_up") || we.Code.Contains("passive_up") ? GoldBright : Parchment),
                 _ => ("", Parchment),
             };
             if (text.Length > 0) { Ev(text, col); }

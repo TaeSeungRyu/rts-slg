@@ -948,6 +948,31 @@ public class CommandSystemTests
     }
 
     [Fact]
+    public void 루프_훈련은_이단계_패시브도_경험치를_누적한다()
+    {
+        var svc = Service();
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), B);
+        var garrisons = new[] { new GarrisonForce(new CityId(1), "siege_tower", 2000, 50) };
+        var general = Mig(15, 90) with
+        {
+            Name = "서황",
+            BattlePassives = [new GeneralSkill("siege_helper", 2)],
+        };
+        var s0 = State(new[] { Town(1) }, new[] { general }, garrisons);
+
+        var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Train, new GeneralId(15), TroopCode: "siege_tower"));
+        Assert.True(issued.Ok);
+        var done = world.AdvanceDays(issued.State, 7);
+
+        var xuhuang = done.Generals.Single(g => g.Id == new GeneralId(15));
+        Assert.Equal(2, xuhuang.BattlePassives!.Single().Tier);
+        Assert.Equal(30, xuhuang.BattlePassives!.Single().Experience);
+        Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.GeneralGrowth
+            && e.General == new GeneralId(15)
+            && e.ExtraAmount == GeneralGrowth.TrainPassiveExperience);
+    }
+
+    [Fact]
     public void 루프_같은_병종을_두번_모집하면_가중평균으로_합류한다()
     {
         var svc = Service();

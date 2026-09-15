@@ -720,7 +720,9 @@ public sealed class WorldEngine
 
         generals[idx] = grown;
         _events.Add(new WorldEvent(WorldEventKind.GeneralGrowth, faction, generalId, city,
-            GeneralGrowth.TrainGeneralExperience, leveledUp ? "level_up" : "training", passiveTierUps));
+            GeneralGrowth.TrainGeneralExperience,
+            passiveTierUps > 0 ? (leveledUp ? "level_up_passive_up" : "passive_up") : (leveledUp ? "level_up" : "training"),
+            GeneralGrowth.TrainPassiveExperience));
     }
 
     // 등용 정산: 완료 시점에 대상 종류를 다시 확인하고 수행 장수 정치 단일 확률로 판정.
