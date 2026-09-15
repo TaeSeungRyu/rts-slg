@@ -10761,8 +10761,8 @@ public sealed partial class CampaignMapScene : Node3D
         var panel = new PanelContainer();
         panel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         panel.Position = new Vector2(12, 12);
-        panel.CustomMinimumSize = new Vector2(420, 0);
-        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 10));
+        panel.CustomMinimumSize = new Vector2(500, 0);
+        panel.AddThemeStyleboxOverride("panel", Frame(new Color(0.055f, 0.043f, 0.034f, 0.94f), new Color(Gold, 0.9f), 2, 12, 12));
         layer.AddChild(panel);
 
         var box = new VBoxContainer();
@@ -10771,23 +10771,26 @@ public sealed partial class CampaignMapScene : Node3D
 
         // 상단: [군주 얼굴]  ······  [트레이 아이콘 → 시스템]
         var top = new HBoxContainer();
-        top.AddThemeConstantOverride("separation", 10);
+        top.AddThemeConstantOverride("separation", 12);
         box.AddChild(top);
 
-        _hudFacePanel = new PanelContainer { CustomMinimumSize = new Vector2(44, 56) };
-        _hudFacePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.05f), Gold, 1, 6, 2));
+        _hudFacePanel = new PanelContainer { CustomMinimumSize = new Vector2(55, 70) };
+        _hudFacePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.12f, 0.08f, 0.045f), GoldBright, 2, 9, 3));
         top.AddChild(_hudFacePanel);
         _hudFace = new TextureRect
         {
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            CustomMinimumSize = new Vector2(40, 52),
+            CustomMinimumSize = new Vector2(50, 65),
         };
         _hudFacePanel.AddChild(_hudFace);
 
         _hudRuler = MakeLabel("", 15, GoldBright);
         _hudRuler.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         _hudRuler.VerticalAlignment = VerticalAlignment.Center;
+        _hudRuler.HorizontalAlignment = HorizontalAlignment.Center;
+        _hudRuler.CustomMinimumSize = new Vector2(0, 42);
+        _hudRuler.AddThemeStyleboxOverride("normal", Frame(new Color(0.09f, 0.065f, 0.045f, 0.92f), new Color(Gold, 0.48f), 1, 10, 8));
         top.AddChild(_hudRuler);
         _hudDate = MakeLabel("", 13, Parchment);
         _hudDate.Visible = false;
