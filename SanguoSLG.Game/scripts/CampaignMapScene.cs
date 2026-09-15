@@ -4422,6 +4422,9 @@ public sealed partial class CampaignMapScene : Node3D
         return parts.Count == 0 ? "선박 데이터 없음" : string.Join(" · ", parts);
     }
 
+    private int PortEmbarkCapacity(CityId city)
+        => _state.PortShips.Where(s => s.City == city).Sum(s => s.Count) * DeployService.ShipTroopCapacity;
+
     private static string PortSizeName(PortSize size) => size switch
     {
         PortSize.Small => "소형",
@@ -4524,7 +4527,8 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var portInfo = MakeLabel(
                 $"항구: {PortSizeName(c.Port)} · 항구 주 수입 금 +{PortWeeklyGold(c)}, 군량 +{PortWeeklyProvisions(c)}\n"
-                + $"저장 선박: {PortShipStockSummary(c.Id)}",
+                + $"저장 선박: {PortShipStockSummary(c.Id)}\n"
+                + $"승선 가능 병력: {PortEmbarkCapacity(c.Id):N0}명",
                 13,
                 GoldBright);
             portInfo.AutowrapMode = TextServer.AutowrapMode.WordSmart;
