@@ -10733,29 +10733,22 @@ public sealed partial class CampaignMapScene : Node3D
             label.Visible = false;
         }
 
-        var counts = _state.Factions.OrderBy(f => f.Id.Value).Select(f =>
-        {
-            var cities = _state.CityCount(f.Id);
-            var troops = _state.Garrisons.Where(g => _state.Cities.Any(c => c.Id == g.City && c.Owner == f.Id)).Sum(g => g.Troops)
-                + _state.Armies.Where(u => u.Field.Owner == f.Id).Sum(u => u.Pool.Active);
-            return f.Id == Player ? $"{f.Name} 성{cities} 병{troops}" : $"{f.Name} 성{cities}";
-        });
-        // 좌상단 HUD: 캐릭터 영역은 얼굴만 표시하고 텍스트는 세력 요약 영역으로 분리한다.
+        // 좌상단 HUD: 텍스트는 년도, 군주명, 점령 도시 수만 표시한다.
         var ruler = _state.Factions.FirstOrDefault(f => f.Id == Player) is { } pf
             ? _state.Generals.FirstOrDefault(g => g.Id == pf.Ruler)
             : null;
-        _hudRuler.Text = "";
+        var rulerName = ruler?.Name ?? "미지정";
+        var myCities = _state.CityCount(Player);
+        _hudRuler.Text = $"{_state.Year}년 · {rulerName} · 도시 {myCities}";
         _hudFace.Texture = ruler is not null ? PortraitFor(ruler.Id) : null;
         _hudFacePanel.Visible = _hudFace.Texture is not null;
         _hudDate.Text = "";
 
-        var myCities = _state.CityCount(Player);
         var myGenerals = _state.GeneralsOf(Player).Count();
         var myGold = _state.Cities.Where(c => c.Owner == Player).Sum(c => c.Gold);
         var myTroops = _state.Garrisons.Where(g => _state.Cities.Any(c => c.Id == g.City && c.Owner == Player)).Sum(g => g.Troops)
             + _state.Armies.Where(u => u.Field.Owner == Player).Sum(u => u.Pool.Active);
-        _status.Text = $"도시 {myCities} · 장수 {myGenerals} · 금 {myGold} · 병력 {myTroops}      "
-            + string.Join("  |  ", counts);
+        _status.Text = $"도시 {myCities} · 장수 {myGenerals} · 금 {myGold} · 병력 {myTroops}";
         _log.Text = note;
         RefreshBattlefieldVision();
     }
@@ -10792,15 +10785,12 @@ public sealed partial class CampaignMapScene : Node3D
         };
         _hudFacePanel.AddChild(_hudFace);
 
-        // 캐릭터 영역에서 텍스트가 순간적으로 나타났다 사라지는 현상을 막기 위해
-        // 군주명/날짜 라벨은 화면 레이아웃에 추가하지 않는다.
-        _hudRuler = MakeLabel("", 16, GoldBright);
-        _hudRuler.Visible = false;
+        _hudRuler = MakeLabel("", 15, GoldBright);
+        _hudRuler.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        _hudRuler.VerticalAlignment = VerticalAlignment.Center;
+        top.AddChild(_hudRuler);
         _hudDate = MakeLabel("", 13, Parchment);
         _hudDate.Visible = false;
-
-        var topSpacer = new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        top.AddChild(topSpacer);
 
         var tray = MakeButton("☰");
         tray.AddThemeFontSizeOverride("font_size", 20);
