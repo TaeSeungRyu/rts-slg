@@ -479,6 +479,20 @@ public sealed partial class CampaignMapScene : Node3D
         Redraw("자기 성(파란색)을 클릭해 명령을 내리세요. 적(촉)은 AI입니다.");
     }
 
+    public override void _ExitTree()
+    {
+        _icons.Clear();
+        _optionalTextures.Clear();
+        _emblems.Clear();
+        _aptitudeCardTextures.Clear();
+        _armyGroupIcon = null;
+        _blankIcon = null!;
+        _dotIcon = null!;
+        _sliderGrabberIcon = null!;
+        _font = null!;
+        ActiveSkillIcons.ClearCache();
+    }
+
     // 마우스 밑 타일에 금색 반투명 육각(이동/전투 씬의 호버 육각과 같은 표현).
     private void SpawnHover()
     {
@@ -10810,6 +10824,7 @@ public sealed partial class CampaignMapScene : Node3D
         top.AddChild(_hudRuler);
         _hudDate = MakeLabel("", 13, Parchment);
         _hudDate.Visible = false;
+        box.AddChild(_hudDate);
 
         var tray = MakeButton("☰");
         tray.AddThemeFontSizeOverride("font_size", 18);
@@ -10828,10 +10843,12 @@ public sealed partial class CampaignMapScene : Node3D
         _status.Visible = false;
         _status.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         _status.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        box.AddChild(_status);
 
         _log = MakeLabel("", 12, Parchment);
         _log.Visible = false;
         _log.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        box.AddChild(_log);
 
         BuildReportPanel();
         BuildAdvanceControl();

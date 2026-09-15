@@ -59,6 +59,16 @@ public partial class GeneralEditorScene : Control
         Reload();
     }
 
+    public override void _ExitTree()
+    {
+        if (_portraitPreview is not null) { _portraitPreview.Texture = null; }
+        if (_facePreview is not null) { _facePreview.Texture = null; }
+        if (_activeIcon is not null) { _activeIcon.Texture = null; }
+        if (_passiveIcon is not null) { _passiveIcon.Texture = null; }
+        if (_adminIcon is not null) { _adminIcon.Texture = null; }
+        ActiveSkillIcons.ClearCache();
+    }
+
     private void BuildUi()
     {
         var root = new VBoxContainer

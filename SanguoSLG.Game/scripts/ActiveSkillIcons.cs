@@ -39,4 +39,6 @@ public static class ActiveSkillIcons
         MouseFilter = Control.MouseFilterEnum.Ignore,
         TextureFilter = CanvasItem.TextureFilterEnum.Linear,
     };
+
+    public static void ClearCache() => Cache.Clear();
 }
