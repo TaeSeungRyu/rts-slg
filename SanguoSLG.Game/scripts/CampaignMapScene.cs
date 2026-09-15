@@ -10806,13 +10806,25 @@ public sealed partial class CampaignMapScene : Node3D
         };
         _hudFacePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.09f, 0.055f, 0.032f), GoldBright, 3, 41, 5));
         top.AddChild(_hudFacePanel);
+        var faceInset = new MarginContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        faceInset.AddThemeConstantOverride("margin_left", 8);
+        faceInset.AddThemeConstantOverride("margin_top", 8);
+        faceInset.AddThemeConstantOverride("margin_right", 8);
+        faceInset.AddThemeConstantOverride("margin_bottom", 8);
+        _hudFacePanel.AddChild(faceInset);
         _hudFace = new TextureRect
         {
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            CustomMinimumSize = new Vector2(72, 72),
+            CustomMinimumSize = new Vector2(64, 64),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
         };
-        _hudFacePanel.AddChild(_hudFace);
+        faceInset.AddChild(_hudFace);
 
         _hudRuler = MakeLabel("", 14, GoldBright);
         _hudRuler.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
