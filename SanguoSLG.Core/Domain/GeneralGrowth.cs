@@ -6,8 +6,8 @@ public static class GeneralGrowth
     public const int MinLevel = 1;
     public const int MaxLevel = 50;
     public const int MaxPassiveTier = 3;
-    public const int TrainGeneralExperience = 60;
-    public const int TrainPassiveExperience = 30;
+    public const int TrainGeneralExperience = 30;
+    public const int TrainPassiveExperience = 15;
     public const int AdminDutyPassiveExperience = 10;
     public const int ProductionPassiveExperience = 30;
 
