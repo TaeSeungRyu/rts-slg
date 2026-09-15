@@ -89,6 +89,24 @@ public class CityCaptureTests
     }
 
     [Fact]
+    public void 항구가_함락되면_저장된_선박은_새_소유자가_사용한다()
+    {
+        var port = Fallen(1, owner: 2, new HexCoord(5, 0), population: 40_000)
+            with { Port = PortSize.Small };
+        var captor = Attacker(1, owner: 1, new HexCoord(4, 0), port.Position, troops: 8000);
+        var state = State([port], [captor]) with
+        {
+            PortShipStocks = [new PortShipStock(port.Id, "small_boat", 3)],
+        };
+
+        var after = new CityCapture().ResolveAll(state, new FixedRandom(0), out _);
+
+        Assert.Equal(new FactionId(1), after.Cities.Single(c => c.Id == port.Id).Owner);
+        var stock = after.PortShips.Single(s => s.City == port.Id && s.ShipCode == "small_boat");
+        Assert.Equal(3, stock.Count);
+    }
+
+    [Fact]
     public void 함락_수비가_남아있으면_점거하지_않는다()
     {
         var city = Fallen(1, 2, new HexCoord(5, 0));
