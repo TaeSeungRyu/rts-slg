@@ -12,6 +12,8 @@ public sealed class WorldEngine
 {
     public static readonly FactionId BanditFaction = new(0);
     public const string BanditTroopCode = "bandit";
+    public const int PortSmallWeeklyGold = 25;
+    public const int PortSmallWeeklyProvisions = 100;
 
     private readonly BalanceConfig _balance;
     private readonly CommandBalance _commands;
@@ -84,6 +86,7 @@ public sealed class WorldEngine
             }
 
             next = ApplyWeeklyProvisions(next, byId, includeDomesticOfficer: _commands.AutoOfficerSystemEnabled);
+            next = ApplyPortWeeklyIncome(next);
             if (_commands.AutoOfficerSystemEnabled)
             {
                 next = ApplyAutoRecruitment(next, byId);
@@ -166,6 +169,27 @@ public sealed class WorldEngine
             }
 
             return city with { Provisions = city.Provisions + SplitMonthlyAmount(monthly, tick) };
+        }).ToList();
+        return state with { Cities = cities };
+    }
+
+    private static GameState ApplyPortWeeklyIncome(GameState state)
+    {
+        var cities = state.Cities.Select(city =>
+        {
+            var multiplier = city.Port switch
+            {
+                PortSize.Medium => 2,
+                PortSize.Small => 1,
+                _ => 0,
+            };
+            return multiplier == 0
+                ? city
+                : city with
+                {
+                    Gold = city.Gold + PortSmallWeeklyGold * multiplier,
+                    Provisions = city.Provisions + PortSmallWeeklyProvisions * multiplier,
+                };
         }).ToList();
         return state with { Cities = cities };
     }

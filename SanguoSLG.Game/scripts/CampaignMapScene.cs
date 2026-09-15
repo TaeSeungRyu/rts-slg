@@ -1834,7 +1834,20 @@ public sealed partial class CampaignMapScene : Node3D
             [new(6, 2)] = TerrainType.Desert, [new(7, 2)] = TerrainType.Desert, [new(7, 3)] = TerrainType.DesertCactus,
             [new(3, 4)] = TerrainType.Swamp, [new(4, 3)] = TerrainType.Swamp,
             [new(1, 0)] = TerrainType.Karst, [new(0, 5)] = TerrainType.Cliff, [new(9, 0)] = TerrainType.RockMountain,
+            [new(-10, -2)] = TerrainType.PortSmall, [new(-6, -2)] = TerrainType.PortSmall, [new(10, 8)] = TerrainType.PortSmall,
         };
+        for (var q = -11; q <= 12; q++)
+        {
+            t[new HexCoord(q, -3)] = TerrainType.WaterShallow;
+            if (q <= -4 || q >= 9)
+            {
+                t[new HexCoord(q, -2)] = t.TryGetValue(new HexCoord(q, -2), out var existing) ? existing : TerrainType.WaterShallow;
+            }
+        }
+        for (var q = 9; q <= 12; q++)
+        {
+            t[new HexCoord(q, 9)] = TerrainType.WaterShallow;
+        }
         // 좌측 테스트 성(중형·대형)과 성 보급 반경이 지도 안에 온전히 보이도록 좌측을 넓힌다.
         return new HexMap(-11, 12, -3, 9, t);
     }
@@ -1856,12 +1869,18 @@ public sealed partial class CampaignMapScene : Node3D
         new(new CityId(7), "좌소성", new HexCoord(-8, 1), new FactionId(1), 3000, CastleSize.Small,
             Gold: 1500, Security: 80, Population: 50_000, Ore: 3000, Horses: 700, Elephants: 0,
             Paddies: 1, Farms: 1, Villages: 1, Wall: 600),
+        new(new CityId(8), "위소항", new HexCoord(-10, -2), new FactionId(1), 3000, CastleSize.Small,
+            Gold: 1500, Security: 80, Population: 40_000, Wall: 400, Port: PortSize.Small),
+        new(new CityId(9), "위중항", new HexCoord(-6, -2), new FactionId(1), 4000, CastleSize.Medium,
+            Gold: 2000, Security: 80, Population: 60_000, Wall: 800, Port: PortSize.Medium),
         new(new CityId(2), "성도", new HexCoord(8, 3), new FactionId(2), 3000, CastleSize.Medium,
             Gold: 2000, Security: 80, Population: 100_000, Ore: 8000,
             Paddies: 2, Farms: 2, Villages: 2, Wall: 1200),
         new(new CityId(3), "한중", new HexCoord(4, 6), new FactionId(2), 3000, CastleSize.Medium,
             Gold: 2000, Security: 80, Population: 80_000, Ore: 6000,
             Paddies: 2, Farms: 2, Villages: 2, Wall: 1200),
+        new(new CityId(10), "촉소항", new HexCoord(10, 8), new FactionId(2), 3000, CastleSize.Small,
+            Gold: 1500, Security: 80, Population: 40_000, Wall: 400, Port: PortSize.Small),
     };
 
     private static readonly IReadOnlyList<FacilityPlacement> _initialFacilityPlacements = new List<FacilityPlacement>
@@ -1974,14 +1993,14 @@ public sealed partial class CampaignMapScene : Node3D
     {
         foreach (var city in _cities)
         {
-            var node = GD.Load<PackedScene>(CastleModelPath(city.Castle)).Instantiate<Node3D>();
+            var node = GD.Load<PackedScene>(CastleModelPath(city)).Instantiate<Node3D>();
             node.Position = CastleVisualCenter(city) + new Vector3(0f, _view.TileTopY, 0f);
-            node.Scale *= CastleModelScale(city.Castle);
+            node.Scale *= CastleModelScale(city);
             AddChild(node);
 
             var label = new Label3D
             {
-                Position = CastleVisualCenter(city) + new Vector3(0f, _view.TileTopY + CastleLabelHeight(city.Castle), 0f),
+                Position = CastleVisualCenter(city) + new Vector3(0f, _view.TileTopY + CastleLabelHeight(city), 0f),
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                 FontSize = 48,
                 OutlineSize = 12,
@@ -1993,6 +2012,13 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
+    private static string CastleModelPath(City city)
+    {
+        if (city.Port == PortSize.Small) { return "res://assets/models/port-small.glb"; }
+        if (city.Port == PortSize.Medium) { return "res://assets/models/port-medium.glb"; }
+        return CastleModelPath(city.Castle);
+    }
+
     private static string CastleModelPath(CastleSize size) => size switch
     {
         CastleSize.Large => "res://assets/models/castle-large.glb",
@@ -2000,11 +2026,20 @@ public sealed partial class CampaignMapScene : Node3D
         _ => "res://assets/models/castle-small.glb",
     };
 
+    private static float CastleLabelHeight(City city) => city.IsPort ? 1.25f : CastleLabelHeight(city.Castle);
+
     private static float CastleLabelHeight(CastleSize size) => size switch
     {
         CastleSize.Large => 2.2f,
         CastleSize.Medium => 1.85f,
         _ => 1.4f,
+    };
+
+    private static float CastleModelScale(City city) => city.Port switch
+    {
+        PortSize.Medium => 0.72f,
+        PortSize.Small => 0.88f,
+        _ => CastleModelScale(city.Castle),
     };
 
     private static float CastleModelScale(CastleSize size) => size switch

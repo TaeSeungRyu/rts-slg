@@ -9,7 +9,8 @@
 
   "features": [
     { "type": "port_medium", "q": 4, "r": 10 },
-    { "type": "port_medium", "q": 4, "r": 12 }
+    { "type": "port_medium", "q": 4, "r": 12 },
+    { "type": "port_medium", "q": 15, "r": 10 }
   ],
   "conditions": [
     { "state": "damaged", "q": 1,  "r": 3 },
@@ -46,7 +47,7 @@
       "GGGGGGGGGGGGGGGGGGGG",
       "GGGGGGGGGGGGGGGGGGGG",
       "GGGGGGGGGGGGGGGGGGGG",
-      "G1GGGGGGGGGGGGGGGGGG",
+      "G1GGGGGGGGGGG1GGGG1G",
       "WWWWWWWWWWWWWWWWWWWW",
       "G1GGGGGGGGGGGGGGGGGG",
       "WWWWWWWWWWWWWWWWWWWW"

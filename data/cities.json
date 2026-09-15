@@ -55,6 +55,34 @@
     "governor": 29
   },
   {
+    "id": 7,
+    "name": "위소항",
+    "q": 13,
+    "r": 10,
+    "owner": 1,
+    "provisions": 3000,
+    "castle": "small",
+    "port": "small",
+    "gold": 700,
+    "population": 40000,
+    "region": "jizhou",
+    "governor": 18
+  },
+  {
+    "id": 8,
+    "name": "위중항",
+    "q": 15,
+    "r": 10,
+    "owner": 1,
+    "provisions": 4000,
+    "castle": "medium",
+    "port": "medium",
+    "gold": 900,
+    "population": 60000,
+    "region": "jizhou",
+    "governor": 19
+  },
+  {
     "id": 4,
     "name": "장안",
     "q": 1,
@@ -109,5 +137,19 @@
     "produces_ore": true,
     "produces_elephants": true,
     "governor": 6
+  },
+  {
+    "id": 9,
+    "name": "촉소항",
+    "q": 18,
+    "r": 10,
+    "owner": 2,
+    "provisions": 3000,
+    "castle": "small",
+    "port": "small",
+    "gold": 700,
+    "population": 40000,
+    "region": "yizhou",
+    "governor": 41
   }
 ]

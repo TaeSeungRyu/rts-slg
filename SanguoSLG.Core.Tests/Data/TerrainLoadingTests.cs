@@ -83,6 +83,9 @@ public class TerrainLoadingTests
         var scenario = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
 
         Assert.All(scenario.Cities, c =>
-            Assert.Equal(TerrainType.Plains, scenario.Map.TerrainAt(c.Position)));
+            Assert.True(
+                scenario.Map.TerrainAt(c.Position) == TerrainType.Plains
+                || (c.IsPort && scenario.Map.TerrainAt(c.Position) == TerrainType.PortSmall),
+                $"{c.Name} 도시 지형은 평야 또는 항구여야 한다."));
     }
 }

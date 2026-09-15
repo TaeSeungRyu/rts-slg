@@ -162,6 +162,26 @@ public class WorldEngineTests
         Assert.Equal(1000 + Balance.ProvisionsBaseSmall + Balance.PaddyProvisions, d30.Provisions);
     }
 
+    [Fact]
+    public void 항구는_칠일마다_금과_군량을_생산하고_중형은_소형의_두배다()
+    {
+        var small = new City(new CityId(1), "소형항", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 100, Population: 0, Port: PortSize.Small);
+        var medium = new City(new CityId(2), "중형항", new HexCoord(1, 0), new FactionId(1), 1000,
+            Gold: 100, Population: 0, Port: PortSize.Medium);
+        var state = new GameState(1, 1, [], [small, medium], []);
+        var balance = Balance with { ProvisionsBaseSmall = 0, ProvisionsBaseMedium = 0 };
+
+        var after = new WorldEngine(balance).AdvanceDays(state, 7);
+        var s = after.Cities.Single(c => c.Id == small.Id);
+        var m = after.Cities.Single(c => c.Id == medium.Id);
+
+        Assert.Equal(100 + WorldEngine.PortSmallWeeklyGold, s.Gold);
+        Assert.Equal(1000 + WorldEngine.PortSmallWeeklyProvisions, s.Provisions);
+        Assert.Equal(100 + WorldEngine.PortSmallWeeklyGold * 2, m.Gold);
+        Assert.Equal(1000 + WorldEngine.PortSmallWeeklyProvisions * 2, m.Provisions);
+    }
+
     [Theory]
     [InlineData(1, 0, 0, 0, 300)]
     [InlineData(0, 1, 0, 0, 150)]
