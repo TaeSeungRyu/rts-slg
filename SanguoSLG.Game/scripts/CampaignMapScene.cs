@@ -5827,13 +5827,18 @@ public sealed partial class CampaignMapScene : Node3D
         };
         portrait.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.05f), Gold, 1, 8, 8));
         body.AddChild(portrait);
+        var portraitCard = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        portraitCard.AddThemeConstantOverride("separation", 7);
+        portrait.AddChild(portraitCard);
+        var imageHeight = Mathf.Max(180f, portraitHeight - 160f);
         if (PortraitFor(gid) is { } tex)
         {
-            portrait.AddChild(new TextureRect
+            portraitCard.AddChild(new TextureRect
             {
                 Texture = tex,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                CustomMinimumSize = new Vector2(portraitWidth - 18f, imageHeight),
             });
         }
         else
@@ -5850,8 +5855,42 @@ public sealed partial class CampaignMapScene : Node3D
             var note = MakeLabel("초상 준비 중", 11, new Color(Parchment, 0.6f));
             note.HorizontalAlignment = HorizontalAlignment.Center;
             ph.AddChild(note);
-            portrait.AddChild(ph);
+            portraitCard.AddChild(ph);
         }
+
+        portraitCard.AddChild(GoldRule());
+        var cardName = MakeLabel(g.Name, 22, GoldBright);
+        cardName.HorizontalAlignment = HorizontalAlignment.Center;
+        portraitCard.AddChild(cardName);
+
+        var nextLevelExp = GeneralGrowth.RequiredExperienceForNextLevel(g.ClampedLevel);
+        var levelText = g.ClampedLevel >= GeneralGrowth.MaxLevel
+            ? $"Lv. {g.ClampedLevel}  MAX"
+            : $"Lv. {g.ClampedLevel}";
+        var cardLevel = MakeLabel(levelText, 20, Parchment);
+        cardLevel.HorizontalAlignment = HorizontalAlignment.Center;
+        portraitCard.AddChild(cardLevel);
+
+        var expBar = new ProgressBar
+        {
+            MinValue = 0,
+            MaxValue = g.ClampedLevel >= GeneralGrowth.MaxLevel ? 1 : nextLevelExp,
+            Value = g.ClampedLevel >= GeneralGrowth.MaxLevel ? 1 : System.Math.Clamp(g.Experience, 0, nextLevelExp),
+            ShowPercentage = false,
+            CustomMinimumSize = new Vector2(portraitWidth - 28f, 16),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        expBar.AddThemeStyleboxOverride("background", Frame(new Color(0.15f, 0.15f, 0.15f), new Color(0.35f, 0.31f, 0.22f), 1, 6, 0));
+        expBar.AddThemeStyleboxOverride("fill", Frame(new Color(0.95f, 0.72f, 0.28f), new Color(1f, 0.88f, 0.48f), 1, 6, 0));
+        portraitCard.AddChild(expBar);
+        var expLabel = MakeLabel(g.ClampedLevel >= GeneralGrowth.MaxLevel ? "경험치 MAX" : $"경험치 {g.Experience} / {nextLevelExp}", 12, Parchment);
+        expLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        portraitCard.AddChild(expLabel);
+
+        var cardDesc = MakeLabel(g.Desc.Length > 0 ? g.Desc : "설명 없음", 12, new Color(Parchment, 0.86f));
+        cardDesc.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        cardDesc.HorizontalAlignment = HorizontalAlignment.Center;
+        portraitCard.AddChild(cardDesc);
 
         var detailsScroll = new ScrollContainer
         {
@@ -5864,7 +5903,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddThemeConstantOverride("separation", 8);
         detailsScroll.AddChild(box);
 
-        var meta = new List<string> { $"상태 {GeneralStatus(gid)}", $"Lv.{g.ClampedLevel}", $"경험치 {g.Experience}/{GeneralGrowth.RequiredExperienceForNextLevel(g.ClampedLevel)}" };
+        var meta = new List<string> { $"상태 {GeneralStatus(gid)}" };
         if (g.Birth != 0) { meta.Add(g.Birth < 0 ? $"기원전 {-g.Birth}년생" : $"{g.Birth}년생"); }
         if (g.Region.Length > 0) { meta.Add($"출신 {g.Region}"); }
         var metaLbl = MakeLabel(string.Join(" · ", meta), 12, Parchment);
@@ -5942,15 +5981,6 @@ public sealed partial class CampaignMapScene : Node3D
                 skillButton.Pressed += () => ShowSkillDescription(name, tag, description, iconCode);
                 sg.AddChild(skillButton);
             }
-        }
-
-        if (g.Desc.Length > 0)
-        {
-            box.AddChild(GoldRule());
-            var desc = MakeLabel(g.Desc, 12, Parchment);
-            desc.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            desc.CustomMinimumSize = new Vector2(Mathf.Max(0, detailWidth - 20f), 0);
-            box.AddChild(desc);
         }
 
         var contentH = rootBox.GetCombinedMinimumSize().Y;
