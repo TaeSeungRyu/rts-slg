@@ -19,7 +19,8 @@ public static class CombatStatsBuilder
         int troops,
         bool targetIsBuilding = false,
         int atkBonusPercent = 100,
-        int dfBonusPercent = 100)
+        int dfBonusPercent = 100,
+        int levelBonusFlat = 0)
     {
         var research = ResearchCurve.Bonus(researchLevel);
         var (terrainAtk, terrainDf) = TerrainCombatBonus.For(template.Class, terrain);
@@ -27,8 +28,8 @@ public static class CombatStatsBuilder
 
         return new CombatStats(
             troops,
-            atkBase + research + terrainAtk,
-            template.Df + research + terrainDf,
+            atkBase + research + terrainAtk + levelBonusFlat,
+            template.Df + research + terrainDf + levelBonusFlat,
             grade.Percent(),
             atkBonusPercent,
             dfBonusPercent);
@@ -49,7 +50,8 @@ public static class CombatStatsBuilder
         bool targetIsBuilding = false,
         bool attackFromImpassable = false,
         int passiveAtkBonus = 100,
-        int passiveDfBonus = 100)
+        int passiveDfBonus = 100,
+        int levelBonusFlat = 0)
     {
         var research = ResearchCurve.Bonus(researchLevel);
         var (terrainAtk, terrainDf) = TerrainCombatBonus.For(baseTemplate.Class, terrain);
@@ -65,8 +67,8 @@ public static class CombatStatsBuilder
 
         return new CombatStats(
             troops,
-            atkBase + research + terrainAtk,
-            dfBase + research + terrainDf,
+            atkBase + research + terrainAtk + levelBonusFlat,
+            dfBase + research + terrainDf + levelBonusFlat,
             grade.Percent(),
             passiveAtkBonus + selfBonus,
             passiveDfBonus);
@@ -104,16 +106,17 @@ public static class CombatStatsBuilder
         int troops,
         bool inCounterRange = true,
         int atkBonusPercent = 100,
-        int dfBonusPercent = 100)
+        int dfBonusPercent = 100,
+        int levelBonusFlat = 0)
     {
         var research = ResearchCurve.Bonus(researchLevel);
         var (terrainAtk, terrainDf) = TerrainCombatBonus.For(template.Class, terrain);
 
         return new SiegeAttacker(
             troops,
-            template.AtkBuilding + research + terrainAtk,
-            template.AtkUnit + research + terrainAtk,
-            template.Df + research + terrainDf,
+            template.AtkBuilding + research + terrainAtk + levelBonusFlat,
+            template.AtkUnit + research + terrainAtk + levelBonusFlat,
+            template.Df + research + terrainDf + levelBonusFlat,
             grade.Percent(),
             atkBonusPercent,
             dfBonusPercent,

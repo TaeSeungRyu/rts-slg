@@ -80,4 +80,22 @@ public class UnitAssemblerTests
         Assert.Equal(MovementDomain.DeepWater, unit.Field.Domain);
         Assert.Equal(MovementDomain.Land, Assemble("주유", null, "swordsman").Field.Domain);
     }
+
+    [Fact]
+    public void 조립_선봉_레벨은_공격과_방어에_반영된다()
+    {
+        var low = new General(new GeneralId(9001), "Lv1", new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Infantry] = AptitudeGrade.A,
+        }, Might: 70, Intellect: 70, Politics: 70, Level: 1);
+        var high = low with { Id = new GeneralId(9002), Name = "Lv50", Level = 50 };
+
+        var baseline = UnitAssembler.Assemble(new UnitId(1), new FactionId(1), new HexCoord(0, 0), UnitMode.Attack,
+            new HexCoord(5, 0), 0, low, null, T["swordsman"], 10000, A, P, Melee);
+        var grown = UnitAssembler.Assemble(new UnitId(2), new FactionId(1), new HexCoord(0, 0), UnitMode.Attack,
+            new HexCoord(5, 0), 0, high, null, T["swordsman"], 10000, A, P, Melee);
+
+        Assert.True(grown.Stats.AtkStat > baseline.Stats.AtkStat);
+        Assert.True(grown.Stats.DfStat > baseline.Stats.DfStat);
+    }
 }

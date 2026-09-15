@@ -37,8 +37,9 @@ public static class UnitAssembler
 
         var upkeepPercent = System.Math.Clamp(100 - upkeepCut, 1, 100);
 
+        var levelBonus = GeneralGrowth.LevelCombatBonusRounded(vanguard.ClampedLevel);
         var stats = CombatStatsBuilder.BuildField(template, grade, researchLevel, TerrainType.River,
-            troops, atkBonusPercent: atkBonus, dfBonusPercent: dfBonus);
+            troops, atkBonusPercent: atkBonus, dfBonusPercent: dfBonus, levelBonusFlat: levelBonus);
 
         var domain = template.Class == TroopClass.Naval ? MovementDomain.DeepWater : MovementDomain.Land;
         var field = new FieldUnit(id, owner, position,
