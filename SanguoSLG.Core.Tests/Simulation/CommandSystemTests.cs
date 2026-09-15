@@ -938,12 +938,12 @@ public class CommandSystemTests
         var done = world.AdvanceDays(issued.State, 7);
 
         var grown = done.Generals.Single(g => g.Id == new GeneralId(2));
-        Assert.Equal(2, grown.Level);
-        Assert.Equal(15, grown.Experience);
-        Assert.Equal(2, grown.BattlePassives!.Single().Tier);
-        Assert.Equal(10, grown.BattlePassives!.Single().Experience);
+        Assert.Equal(1, grown.Level);
+        Assert.Equal(110, grown.Experience);
+        Assert.Equal(1, grown.BattlePassives!.Single().Tier);
+        Assert.Equal(95, grown.BattlePassives!.Single().Experience);
         Assert.Equal(2, grown.AdminPassives!.Single().Tier);
-        Assert.Equal(20, grown.AdminPassives!.Single().Experience);
+        Assert.Equal(5, grown.AdminPassives!.Single().Experience);
         Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.GeneralGrowth && e.General == new GeneralId(2));
     }
 
@@ -966,7 +966,7 @@ public class CommandSystemTests
 
         var xuhuang = done.Generals.Single(g => g.Id == new GeneralId(15));
         Assert.Equal(2, xuhuang.BattlePassives!.Single().Tier);
-        Assert.Equal(30, xuhuang.BattlePassives!.Single().Experience);
+        Assert.Equal(GeneralGrowth.TrainPassiveExperience, xuhuang.BattlePassives!.Single().Experience);
         Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.GeneralGrowth
             && e.General == new GeneralId(15)
             && e.ExtraAmount == GeneralGrowth.TrainPassiveExperience);
