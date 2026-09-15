@@ -10774,15 +10774,16 @@ public sealed partial class CampaignMapScene : Node3D
         tray.Pressed += OpenSystemPalette;
         top.AddChild(tray);
 
-        // 세력 요약(도시·병력).
+        // 좌상단 캐릭터 HUD에는 추가 텍스트를 붙이지 않는다.
+        // _status/_log는 기존 코드의 상태 전달용 라벨로만 유지하고 화면 레이아웃에는 추가하지 않는다.
         _status = MakeLabel("", 13, Gold);
+        _status.Visible = false;
         _status.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         _status.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        box.AddChild(_status);
 
         _log = MakeLabel("", 12, Parchment);
+        _log.Visible = false;
         _log.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        box.AddChild(_log);
 
         BuildReportPanel();
         BuildAdvanceControl();
