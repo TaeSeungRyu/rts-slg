@@ -15,6 +15,8 @@ public sealed class CampaignEngine
     /// <summary>진행 1번의 길이(일) — 7일 고정(2026-08-16 확정).</summary>
     public const int WeekDays = 7;
     private const int ProductionUnitIdBase = -1_000_000;
+    private const int CombatGeneralExperience = 20;
+    private const int CombatPassiveExperience = 10;
 
     private readonly AdvanceOrchestrator _field;
     private readonly WorldEngine _world;
@@ -138,6 +140,16 @@ public sealed class CampaignEngine
 
             turn = StripProductionUnits(turn, productionUnitIds);
             turn = ApplyFieldSpoils(armies, turn);
+            if (turn.Combat is { } combat)
+            {
+                var participantIds = combat.DamageTaken.Keys.Concat(combat.DamageDealt.Keys).ToHashSet();
+                var participants = armies.Concat(turn.Units)
+                    .Where(u => participantIds.Contains(u.Id))
+                    .GroupBy(u => u.Id)
+                    .Select(g => g.First())
+                    .ToList();
+                work = AwardCombatGrowth(work, participants, CombatGeneralExperience, CombatPassiveExperience);
+            }
             reports.Add(turn);
             remaining -= System.Math.Max(1, turn.Movement.Days);
 
@@ -186,6 +198,14 @@ public sealed class CampaignEngine
 
                 // 성 반격으로 전멸한 공성 부대의 장수 판정(§4b) — 포획 후보 = 그 성의 소유 세력.
                 var siegeCities = result.Cities.ToList();
+                if (result.Exchanges.Count > 0)
+                {
+                    var siegeParticipantIds = result.Exchanges.SelectMany(e => e.Besiegers).ToHashSet();
+                    var siegeParticipants = armies
+                        .Where(u => siegeParticipantIds.Contains(u.Id))
+                        .ToList();
+                    work = AwardCombatGrowth(work, siegeParticipants, CombatGeneralExperience, CombatPassiveExperience);
+                }
                 foreach (var dead in result.Armies.Where(u => u.Pool.Active <= 0).OrderBy(u => u.Id.Value))
                 {
                     var ex = result.Exchanges.FirstOrDefault(e => e.Besiegers.Contains(dead.Id));
@@ -655,6 +675,71 @@ public sealed class CampaignEngine
             Gold = city.Gold + gold,
             Provisions = city.Provisions + provisions,
         };
+    }
+
+    private GameState AwardCombatGrowth(GameState state, IReadOnlyList<CombatUnit> units, int generalExp, int passiveExp)
+    {
+        if (units.Count == 0)
+        {
+            return state;
+        }
+
+        var generals = state.Generals.ToList();
+        var awarded = new HashSet<GeneralId>();
+
+        foreach (var unit in units.OrderBy(u => u.Id.Value))
+        {
+            foreach (var generalId in new[] { unit.VanguardId, unit.AdjutantId }.OfType<GeneralId>())
+            {
+                if (!awarded.Add(generalId))
+                {
+                    continue;
+                }
+
+                var idx = generals.FindIndex(g => g.Id == generalId);
+                if (idx < 0)
+                {
+                    continue;
+                }
+
+                var grown = GeneralGrowth.AddGeneralExperience(generals[idx], generalExp, out var leveledUp);
+                var passiveTierUps = 0;
+
+                if (grown.BattlePassives is { Count: > 0 })
+                {
+                    var battle = grown.BattlePassives.Select(s =>
+                    {
+                        var next = GeneralGrowth.AddPassiveExperience(s, passiveExp, out var tierUp);
+                        if (tierUp)
+                        {
+                            passiveTierUps++;
+                        }
+                        return next;
+                    }).ToList();
+                    grown = grown with { BattlePassives = battle };
+                }
+
+                if (grown.AdminPassives is { Count: > 0 })
+                {
+                    var admin = grown.AdminPassives.Select(s =>
+                    {
+                        var next = GeneralGrowth.AddPassiveExperience(s, passiveExp, out var tierUp);
+                        if (tierUp)
+                        {
+                            passiveTierUps++;
+                        }
+                        return next;
+                    }).ToList();
+                    grown = grown with { AdminPassives = admin };
+                }
+
+                generals[idx] = grown;
+                _campaignEvents.Add(new WorldEvent(WorldEventKind.GeneralGrowth, unit.Field.Owner, generalId,
+                    Amount: generalExp, Code: leveledUp ? "level_up" : "combat", ExtraAmount: passiveTierUps));
+            }
+        }
+
+        return state with { Generals = generals };
     }
 
     private static AdvanceTurn ApplyFieldSpoils(IReadOnlyList<CombatUnit> before, AdvanceTurn turn)

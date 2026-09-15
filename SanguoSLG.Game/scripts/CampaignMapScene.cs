@@ -2208,6 +2208,7 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.ProductionLost => ($"[생산] {gName} 장수의 {FacilityLabel(we.Code)} 생산 부대 {we.Amount}명이 소실되었습니다.", AccentFill),
                 WorldEventKind.BanditRaid => ($"[치안] {cName} 주변에 도적 {we.Amount}명이 출현해 성을 노립니다.", AccentFill),
                 WorldEventKind.SecurityFactor => ($"[치안 요인] {cName}: {(we.Code == "vacancy" ? "치안 담당 공석" : we.Code == "recruitment" ? $"병력 담당 {gName}" : $"치안 담당 {gName}")} {we.Amount:+0;-0;0} / 7일 (합산 후 0~100 적용)", Parchment),
+                WorldEventKind.GeneralGrowth => ($"[성장] {gName} 장수 경험치 +{we.Amount}{(we.Code == "level_up" ? " · 레벨 상승!" : "")}{(we.ExtraAmount > 0 ? $" · 패시브 {we.ExtraAmount}개 성장" : "")}", we.Code == "level_up" || we.ExtraAmount > 0 ? GoldBright : Parchment),
                 _ => ("", Parchment),
             };
             if (text.Length > 0) { Ev(text, col); }
@@ -5863,7 +5864,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddThemeConstantOverride("separation", 8);
         detailsScroll.AddChild(box);
 
-        var meta = new List<string> { $"상태 {GeneralStatus(gid)}" };
+        var meta = new List<string> { $"상태 {GeneralStatus(gid)}", $"Lv.{g.ClampedLevel}", $"경험치 {g.Experience}/{GeneralGrowth.RequiredExperienceForNextLevel(g.ClampedLevel)}" };
         if (g.Birth != 0) { meta.Add(g.Birth < 0 ? $"기원전 {-g.Birth}년생" : $"{g.Birth}년생"); }
         if (g.Region.Length > 0) { meta.Add($"출신 {g.Region}"); }
         var metaLbl = MakeLabel(string.Join(" · ", meta), 12, Parchment);
@@ -5912,13 +5913,15 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var p in g.Passives)
         {
             var definition = _passiveSkills.FirstOrDefault(x => x.Code == p.Code);
-            skills.Add(("패시브", $"{definition?.Name ?? p.Code} Lv{p.Tier}", SkillDescriptions.Passive(definition, p.Tier), $"passive/{p.Code}"));
+            var expText = p.Tier >= GeneralGrowth.MaxPassiveTier ? "MAX" : $"{p.Experience}/{GeneralGrowth.RequiredPassiveExperienceForNextTier(p.Tier)}";
+            skills.Add(("패시브", $"{definition?.Name ?? p.Code} Lv{p.Tier} · {expText}", SkillDescriptions.Passive(definition, p.Tier), $"passive/{p.Code}"));
         }
 
         foreach (var p in g.AdminPassives ?? [])
         {
             var definition = _adminSkills.FirstOrDefault(x => x.Code == p.Code);
-            skills.Add(("내정 패시브", $"{definition?.Name ?? p.Code} Lv{p.Tier}", SkillDescriptions.Admin(definition, p.Tier), $"admin/{p.Code}"));
+            var expText = p.Tier >= GeneralGrowth.MaxPassiveTier ? "MAX" : $"{p.Experience}/{GeneralGrowth.RequiredPassiveExperienceForNextTier(p.Tier)}";
+            skills.Add(("내정 패시브", $"{definition?.Name ?? p.Code} Lv{p.Tier} · {expText}", SkillDescriptions.Admin(definition, p.Tier), $"admin/{p.Code}"));
         }
 
         if (skills.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }

@@ -37,6 +37,33 @@ public class CampaignEngineTests
         new(1, 1, new List<Faction>(), new List<City>(), new List<General>(), FieldArmies: armies.ToList());
 
     [Fact]
+    public void 야전_교전에_참여한_장수와_패시브가_경험치를_얻는다()
+    {
+        var leftGeneral = new General(new GeneralId(1), "좌군", new Dictionary<TroopClass, AptitudeGrade>(),
+            Might: 70, Intellect: 70, Politics: 70, BattlePassives: [new GeneralSkill("drilled", 1)]);
+        var rightGeneral = new General(new GeneralId(2), "우군", new Dictionary<TroopClass, AptitudeGrade>(),
+            Might: 70, Intellect: 70, Politics: 70, BattlePassives: [new GeneralSkill("guard_drill", 1)]);
+        var left = Army(1, 1, new HexCoord(4, 0), UnitMode.Attack, new HexCoord(5, 0)) with
+        {
+            VanguardId = leftGeneral.Id,
+        };
+        var right = Army(2, 2, new HexCoord(5, 0), UnitMode.Attack, new HexCoord(4, 0)) with
+        {
+            VanguardId = rightGeneral.Id,
+        };
+        var state = new GameState(1, 1, new List<Faction>(), new List<City>(), [leftGeneral, rightGeneral],
+            FieldArmies: [left, right]);
+
+        var engine = Engine();
+        var after = engine.AdvanceWeek(state, out var turns);
+
+        Assert.Contains(turns, t => t.Combat is not null);
+        Assert.All(after.Generals, g => Assert.True(g.Experience > 0));
+        Assert.All(after.Generals, g => Assert.True(g.BattlePassives!.Single().Experience > 0));
+        Assert.Contains(engine.LastWorldEvents, e => e.Kind == WorldEventKind.GeneralGrowth && e.Code == "combat");
+    }
+
+    [Fact]
     public void 생산_부대는_야전_탐지와_교전_대상이_된다()
     {
         var city = new City(new CityId(1), "성", new HexCoord(0, 0), new FactionId(1), Provisions: 1000);
