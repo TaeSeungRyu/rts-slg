@@ -20,7 +20,8 @@ public sealed record FieldUnit(
     HexCoord? Target,
     int CommandOrder,
     int RangeCastle = 1,
-    IReadOnlyList<HexCoord>? Waypoints = null)
+    IReadOnlyList<HexCoord>? Waypoints = null,
+    CityId? ReturnCity = null)
 {
     public FieldUnit MoveTo(HexCoord position) => this with { Position = position };
 }

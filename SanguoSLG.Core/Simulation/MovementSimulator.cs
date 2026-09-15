@@ -600,7 +600,9 @@ public sealed class MovementSimulator
     private static bool IsOwnCastle(Working w, HexCoord next, IReadOnlyList<SiegeSite>? castles)
         => castles is not null
             && w.Unit.Target == next
-            && castles.Any(c => c.Owner == w.Unit.Owner && c.Contains(next));
+            && castles.Any(c => c.Owner == w.Unit.Owner
+                && c.Contains(next)
+                && (w.Unit.ReturnCity is null || c.City == w.Unit.ReturnCity));
 
     // 사거리·탐지 안의 적 중 가장 가까운 하나(동률이면 명령 순번, 그다음 UnitId — 결정론)
     private static Working? NearestEnemyWithin(Working self, List<Working> work, int range) => work

@@ -266,6 +266,27 @@ public class CampaignEngineTests
     }
 
     [Fact]
+    public void 복귀_대상성이_지정되면_다른_아군성에_들어가지_않는다()
+    {
+        var up = new City(new CityId(1), "업", new HexCoord(3, 0), new FactionId(1), 0);
+        var changan = new City(new CityId(2), "장안", new HexCoord(6, 0), new FactionId(1), 0);
+        var field = new FieldUnit(new UnitId(1), new FactionId(1), new HexCoord(2, 0),
+            Speed: 2, Detection: 1, AttackRange: 1, MovementDomain.Land, UnitMode.March,
+            Target: changan.Position, CommandOrder: 1, RangeCastle: 1, ReturnCity: changan.Id);
+        var returning = new CombatUnit(field, new CombatStats(8000, 10, 10), new TroopPool(8000, 0),
+            UnitCombatState.Create(60), MaxTroops: 8000, TroopCode: "swordsman", Training: 70);
+        var movement = new MovementSimulator(new PassabilityMap(new HexMap(0, 8, -3, 3), [], [up, changan]));
+        var engine = new CampaignEngine(new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70)),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)));
+        var state = new GameState(1, 1, [], [up, changan], [], FieldArmies: [returning]);
+
+        var after = engine.AdvanceWeek(state, out _);
+
+        Assert.Empty(after.Armies);
+        Assert.Equal(changan.Id, after.Garrisons.Single().City);
+    }
+
+    [Fact]
     public void 이동턴에_목표성_인접까지_도착한_아군부대는_공격턴_전에_바로_입성한다()
     {
         var home = new City(new CityId(1), "성", new HexCoord(5, 0), new FactionId(1), 0);

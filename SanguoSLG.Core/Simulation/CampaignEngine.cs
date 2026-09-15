@@ -94,7 +94,7 @@ public sealed class CampaignEngine
             // 성 접적 정지용 장애물 — 매 진행마다 현재 소유로 갱신(함락으로 주인이 바뀌므로).
             var castles = work.Cities
                 .OrderBy(c => c.Id.Value)
-                .Select(c => new SiegeSite(c.Position, c.Owner, CastleFootprint.TilesFor(c).ToList()))
+                .Select(c => new SiegeSite(c.Position, c.Owner, CastleFootprint.TilesFor(c).ToList(), c.Id))
                 .ToList();
             var cityAt = work.Cities
                 .SelectMany(c => CastleFootprint.TilesFor(c).Select(tile => (tile, c.Id)))
@@ -596,7 +596,16 @@ public sealed class CampaignEngine
         var cities = work.Cities.ToList();
         foreach (var unit in entered)
         {
-            if (unit.Field.Target is not { } pos || !cityAt.TryGetValue(pos, out var cityId))
+            CityId cityId;
+            if (unit.Field.ReturnCity is { } returnCity)
+            {
+                cityId = returnCity;
+            }
+            else if (unit.Field.Target is { } pos && cityAt.TryGetValue(pos, out var targetCity))
+            {
+                cityId = targetCity;
+            }
+            else
             {
                 continue;
             }

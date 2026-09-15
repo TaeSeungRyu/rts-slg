@@ -8,7 +8,8 @@ public sealed record FieldUnitCommandRequest(
     UnitMode Mode,
     HexCoord Target,
     IReadOnlyList<HexCoord>? Waypoints = null,
-    IReadOnlySet<HexCoord>? VisibleTiles = null);
+    IReadOnlySet<HexCoord>? VisibleTiles = null,
+    CityId? ReturnCity = null);
 
 public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool> canEnter)
 {
@@ -33,7 +34,7 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
         var mode = state.Cities.Any(c => c.Position == req.Target && c.Owner != faction) ? UnitMode.Attack : req.Mode;
         var armies = state.Armies
             .Select(a => a.Id == req.Unit
-                ? a with { Field = a.Field with { Mode = mode, Target = req.Target, Waypoints = req.Waypoints } }
+                ? a with { Field = a.Field with { Mode = mode, Target = req.Target, Waypoints = req.Waypoints, ReturnCity = req.ReturnCity } }
                 : a)
             .ToList();
         return CommandResult.Success(state with { FieldArmies = armies });
@@ -61,7 +62,7 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
             return CommandResult.Fail("복귀할 아군 성을 찾을 수 없습니다.", state);
         }
 
-        return Reassign(state, faction, new FieldUnitCommandRequest(unitId, UnitMode.March, city.Position));
+        return Reassign(state, faction, new FieldUnitCommandRequest(unitId, UnitMode.March, city.Position, ReturnCity: city.Id));
     }
 
     private bool CanTarget(GameState state, FactionId faction, CombatUnit unit, HexCoord target,
