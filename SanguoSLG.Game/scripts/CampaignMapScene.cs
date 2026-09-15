@@ -10750,7 +10750,7 @@ public sealed partial class CampaignMapScene : Node3D
             : null;
         var rulerName = ruler?.Name ?? "미지정";
         var myCities = _state.CityCount(Player);
-        _hudRuler.Text = $"{_state.Year}년 · {rulerName} · 도시 {myCities}";
+        _hudRuler.Text = $"{_state.Year}년\n군주 {rulerName}\n점령 도시 {myCities}";
         _hudFace.Texture = ruler is not null ? PortraitFor(ruler.Id) : null;
         _hudFacePanel.Visible = _hudFace.Texture is not null;
         _hudDate.Text = "";
@@ -10771,44 +10771,48 @@ public sealed partial class CampaignMapScene : Node3D
 
         var panel = new PanelContainer();
         panel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
-        panel.Position = new Vector2(12, 12);
-        panel.CustomMinimumSize = new Vector2(500, 0);
-        panel.AddThemeStyleboxOverride("panel", Frame(new Color(0.055f, 0.043f, 0.034f, 0.94f), new Color(Gold, 0.9f), 2, 12, 12));
+        panel.Position = new Vector2(10, 10);
+        panel.CustomMinimumSize = new Vector2(420, 0);
+        panel.AddThemeStyleboxOverride("panel", Frame(new Color(0.035f, 0.028f, 0.024f, 0.88f), new Color(Gold, 0.42f), 1, 18, 10));
         layer.AddChild(panel);
 
         var box = new VBoxContainer();
-        box.AddThemeConstantOverride("separation", 4);
+        box.AddThemeConstantOverride("separation", 0);
         panel.AddChild(box);
 
-        // 상단: [군주 얼굴]  ······  [트레이 아이콘 → 시스템]
+        // 상단: 참고 이미지처럼 큰 원형 군주 초상 + 우측 정보판 + 원형 시스템 버튼으로 구성한다.
         var top = new HBoxContainer();
-        top.AddThemeConstantOverride("separation", 12);
+        top.AddThemeConstantOverride("separation", 8);
         box.AddChild(top);
 
-        _hudFacePanel = new PanelContainer { CustomMinimumSize = new Vector2(55, 70) };
-        _hudFacePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.12f, 0.08f, 0.045f), GoldBright, 2, 9, 3));
+        _hudFacePanel = new PanelContainer { CustomMinimumSize = new Vector2(88, 88) };
+        _hudFacePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.09f, 0.055f, 0.032f), GoldBright, 3, 44, 4));
         top.AddChild(_hudFacePanel);
         _hudFace = new TextureRect
         {
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            CustomMinimumSize = new Vector2(50, 65),
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            CustomMinimumSize = new Vector2(80, 80),
         };
         _hudFacePanel.AddChild(_hudFace);
 
-        _hudRuler = MakeLabel("", 15, GoldBright);
+        _hudRuler = MakeLabel("", 14, GoldBright);
         _hudRuler.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         _hudRuler.VerticalAlignment = VerticalAlignment.Center;
-        _hudRuler.HorizontalAlignment = HorizontalAlignment.Center;
-        _hudRuler.CustomMinimumSize = new Vector2(0, 42);
-        _hudRuler.AddThemeStyleboxOverride("normal", Frame(new Color(0.09f, 0.065f, 0.045f, 0.92f), new Color(Gold, 0.48f), 1, 10, 8));
+        _hudRuler.HorizontalAlignment = HorizontalAlignment.Left;
+        _hudRuler.CustomMinimumSize = new Vector2(230, 82);
+        _hudRuler.AutowrapMode = TextServer.AutowrapMode.Off;
+        _hudRuler.AddThemeStyleboxOverride("normal", Frame(new Color(0.07f, 0.048f, 0.036f, 0.96f), new Color(Gold, 0.62f), 1, 12, 12));
         top.AddChild(_hudRuler);
         _hudDate = MakeLabel("", 13, Parchment);
         _hudDate.Visible = false;
 
         var tray = MakeButton("☰");
-        tray.AddThemeFontSizeOverride("font_size", 20);
-        tray.CustomMinimumSize = new Vector2(44, 44);
+        tray.AddThemeFontSizeOverride("font_size", 22);
+        tray.CustomMinimumSize = new Vector2(54, 54);
+        tray.AddThemeStyleboxOverride("normal", Frame(new Color(0.13f, 0.08f, 0.035f), GoldBright, 2, 28, 0));
+        tray.AddThemeStyleboxOverride("hover", Frame(new Color(GoldBright, 0.95f), GoldBright, 2, 28, 0));
+        tray.AddThemeStyleboxOverride("pressed", Frame(AccentFill, GoldBright, 2, 28, 0));
         tray.TooltipText = "시스템";
         tray.Pressed += OpenSystemPalette;
         top.AddChild(tray);
