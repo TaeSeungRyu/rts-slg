@@ -515,6 +515,31 @@ public class WorldEngineTests
     }
 
     [Fact]
+    public void v2_내정담당은_칠일마다_내정패시브_경험치를_획득한다()
+    {
+        var city = new City(new CityId(1), "내정성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Population: 0, Security: 80,
+            DomesticOfficer: new GeneralId(1));
+        var general = V2Officer(1, politics: 90) with
+        {
+            AdminPassives = [new GeneralSkill("merchant", 1, 0)]
+        };
+        var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, [general],
+            Postings: [new GeneralPosting(general.Id, city.Owner, city.Id)]);
+        var world = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true });
+
+        var after = world.AdvanceDays(state, 7);
+        var grown = after.Generals.Single();
+
+        Assert.Equal(GeneralGrowth.AdminDutyPassiveExperience, grown.AdminPassives!.Single().Experience);
+        Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.GeneralGrowth
+            && e.General == general.Id
+            && e.Amount == 0
+            && e.ExtraAmount == GeneralGrowth.AdminDutyPassiveExperience
+            && e.Code == "admin_duty");
+    }
+
+    [Fact]
     public void v2_병력담당은_무력100이면_칠일에_오백명을_생산한다()
     {
         var city = new City(new CityId(1), "병영성", new HexCoord(0, 0), new FactionId(1), 1000,

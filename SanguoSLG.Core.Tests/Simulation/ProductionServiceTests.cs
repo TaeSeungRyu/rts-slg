@@ -114,6 +114,30 @@ public class ProductionServiceTests
     }
 
     [Fact]
+    public void 생산_완료시_내정패시브_경험치를_획득한다()
+    {
+        var state = State(politics: 100) with
+        {
+            Generals = [General(100) with { AdminPassives = [new GeneralSkill("tuntian", 1, 0)] }]
+        };
+        var started = new ProductionService(Troops)
+            .Start(state, new CityId(1), new HexCoord(2, 0), ProductionRules.Village, "swordsman", new GeneralId(1))
+            .State;
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0));
+
+        var after = world.AdvanceDays(started, 20);
+        var grown = after.Generals.Single();
+
+        Assert.Empty(after.ProductionOps);
+        Assert.Equal(GeneralGrowth.ProductionPassiveExperience, grown.AdminPassives!.Single().Experience);
+        Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.GeneralGrowth
+            && e.General == new GeneralId(1)
+            && e.Amount == 0
+            && e.ExtraAmount == GeneralGrowth.ProductionPassiveExperience
+            && e.Code == "production");
+    }
+
+    [Fact]
     public void 생산_작전은_시설_수량_변화만으로_소실되지_않는다()
     {
         var started = new ProductionService(Troops)

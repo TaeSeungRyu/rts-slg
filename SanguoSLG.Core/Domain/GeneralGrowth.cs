@@ -8,6 +8,8 @@ public static class GeneralGrowth
     public const int MaxPassiveTier = 3;
     public const int TrainGeneralExperience = 60;
     public const int TrainPassiveExperience = 30;
+    public const int AdminDutyPassiveExperience = 10;
+    public const int ProductionPassiveExperience = 30;
 
     /// <summary>다음 레벨 필요 경험치 = 100 + 현재 레벨 × 25.</summary>
     public static int RequiredExperienceForNextLevel(int currentLevel)

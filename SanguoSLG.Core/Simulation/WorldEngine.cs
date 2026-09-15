@@ -121,6 +121,7 @@ public sealed class WorldEngine
     private GameState ApplyAutoOfficers(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId)
     {
         var cities = new List<City>();
+        var generals = state.Generals.ToList();
         foreach (var city in state.Cities)
         {
             var governor = ValidGovernor(state, city, byId);
@@ -137,12 +138,14 @@ public sealed class WorldEngine
                 {
                     Gold = next.Gold + SplitMonthlyAmount(gold, WeeklyIncomeTick(state.Day)),
                 };
+                ApplyAdminPassiveGrowth(generals, domestic.Id, city.Owner, city.Id,
+                    GeneralGrowth.AdminDutyPassiveExperience, "admin_duty");
             }
 
             cities.Add(next);
         }
 
-        return state with { Cities = cities };
+        return state with { Cities = cities, Generals = generals };
     }
 
     private GameState ApplyWeeklyProvisions(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId, bool includeDomesticOfficer)
@@ -373,6 +376,7 @@ public sealed class WorldEngine
     {
         var cities = state.Cities.ToDictionary(c => c.Id);
         var garrisons = state.Garrisons.ToList();
+        var generals = state.Generals.ToList();
         var postings = state.Assignments.ToList();
         var kept = new List<ProductionOperation>();
 
@@ -404,6 +408,8 @@ public sealed class WorldEngine
                 };
                 MergeGarrison(garrisons, next.City, next.TroopCode, next.Troops, next.TrainingLevel);
                 postings = postings.Select(p => p.General == next.General ? p with { Location = next.City } : p).ToList();
+                ApplyAdminPassiveGrowth(generals, next.General, next.Owner, next.City,
+                    GeneralGrowth.ProductionPassiveExperience, "production");
                 _events.Add(new WorldEvent(WorldEventKind.ProductionComplete, next.Owner, next.General,
                     next.City, reward.Gold, next.Facility, reward.Provisions));
                 continue;
@@ -420,6 +426,7 @@ public sealed class WorldEngine
                 .OrderBy(g => g.City.Value).ThenBy(g => g.TroopCode, System.StringComparer.Ordinal)
                 .ToList(),
             Postings = postings,
+            Generals = generals,
             ProductionOperations = kept.OrderBy(o => o.Id).ToList(),
         };
     }
@@ -725,6 +732,36 @@ public sealed class WorldEngine
             GeneralGrowth.TrainGeneralExperience,
             passiveTierUps > 0 ? (leveledUp ? "level_up_passive_up" : "passive_up") : (leveledUp ? "level_up" : "training"),
             GeneralGrowth.TrainPassiveExperience));
+    }
+
+    private void ApplyAdminPassiveGrowth(List<General> generals, GeneralId generalId, FactionId faction, CityId city,
+        int passiveExperience, string code)
+    {
+        var idx = generals.FindIndex(g => g.Id == generalId);
+        if (idx < 0 || generals[idx].AdminPassives is not { Count: > 0 } adminPassives)
+        {
+            return;
+        }
+
+        var passiveTierUps = 0;
+        var grown = generals[idx] with
+        {
+            AdminPassives = adminPassives.Select(s =>
+            {
+                var next = GeneralGrowth.AddPassiveExperience(s, passiveExperience, out var tierUp);
+                if (tierUp)
+                {
+                    passiveTierUps++;
+                }
+                return next;
+            }).ToList()
+        };
+
+        generals[idx] = grown;
+        _events.Add(new WorldEvent(WorldEventKind.GeneralGrowth, faction, generalId, city,
+            0,
+            passiveTierUps > 0 ? $"{code}_passive_up" : code,
+            passiveExperience));
     }
 
     // 등용 정산: 완료 시점에 대상 종류를 다시 확인하고 수행 장수 정치 단일 확률로 판정.
