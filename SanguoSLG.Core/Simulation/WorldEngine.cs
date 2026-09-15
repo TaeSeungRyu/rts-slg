@@ -251,6 +251,7 @@ public sealed class WorldEngine
     private GameState ApplyAutoTraining(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId)
     {
         var garrisons = state.Garrisons.ToList();
+        var generals = state.Generals.ToList();
         foreach (var city in state.Cities)
         {
             var trainer = ValidOfficer(state, city, city.TrainingOfficer, byId);
@@ -261,9 +262,10 @@ public sealed class WorldEngine
             garrisons = garrisons.Select(g => g.City == city.Id
                 ? g with { TrainingLevel = System.Math.Min(_commands.TrainCap, g.TrainingLevel + gain) }
                 : g).ToList();
+            ApplyTrainingGrowth(generals, trainer.Id, city.Owner, city.Id);
         }
 
-        return state with { GarrisonForces = garrisons };
+        return state with { GarrisonForces = garrisons, Generals = generals };
     }
 
     private IEnumerable<string> SelectedAutoRecruitTroopCodes(City city)

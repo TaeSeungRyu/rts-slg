@@ -489,6 +489,32 @@ public class WorldEngineTests
     }
 
     [Fact]
+    public void v2_훈련담당도_전투레벨과_패시브_경험치를_획득한다()
+    {
+        var city = new City(new CityId(1), "서황성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Population: 0, Security: 80,
+            TrainingOfficer: new GeneralId(1));
+        var general = V2Officer(1, might: 100) with
+        {
+            BattlePassives = [new GeneralSkill("siege_helper", 2, 0)]
+        };
+        var state = new GameState(1, 1, new List<Faction>(), new List<City> { city }, [general],
+            Postings: [new GeneralPosting(general.Id, city.Owner, city.Id)],
+            GarrisonForces: [new GarrisonForce(city.Id, "swordsman", 1000, 40)]);
+        var world = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true });
+
+        var after = world.AdvanceDays(state, 7);
+        var grown = after.Generals.Single();
+
+        Assert.Equal(GeneralGrowth.TrainGeneralExperience, grown.Experience);
+        Assert.Equal(GeneralGrowth.TrainPassiveExperience, grown.BattlePassives!.Single().Experience);
+        Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.GeneralGrowth
+            && e.General == general.Id
+            && e.Amount == GeneralGrowth.TrainGeneralExperience
+            && e.ExtraAmount == GeneralGrowth.TrainPassiveExperience);
+    }
+
+    [Fact]
     public void v2_병력담당은_무력100이면_칠일에_오백명을_생산한다()
     {
         var city = new City(new CityId(1), "병영성", new HexCoord(0, 0), new FactionId(1), 1000,
