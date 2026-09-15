@@ -3,6 +3,7 @@
 작성일: 2026-09-01  
 기준 문서:
 
+- [README.md](./README.md)
 - [plan-combat-redesign-v2.md](./plan-combat-redesign-v2.md)
 - [plan-combat-focused-refactor.md](./plan-combat-focused-refactor.md)
 - [plan-roadmap.md](./plan-roadmap.md)
