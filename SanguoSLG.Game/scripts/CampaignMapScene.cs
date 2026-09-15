@@ -2279,6 +2279,7 @@ public sealed partial class CampaignMapScene : Node3D
         var deathEffectUnitIds = new HashSet<int>();
         var playback = new MovementPlayback(startHex);
         var prev = playback.Positions;
+        var unitSnapshot = preMove.Armies.ToDictionary(u => u.Id.Value);
         var dayOffset = 0;
         for (var ti = 0; ti < turns.Count; ti++)
         {
@@ -2287,7 +2288,7 @@ public sealed partial class CampaignMapScene : Node3D
 
             var stopDay = dayOffset + System.Math.Max(1, turn.Movement.Days);
             var atkTime = ((stopDay - 1) * DaySeconds) + MoveSeconds + 0.15; // 그날 이동(≤1.5초)이 끝난 뒤
-            ScheduleAttackMotions(turn, atkTime);
+            ScheduleAttackMotions(turn, atkTime, unitSnapshot);
 
             // 그 턴에 교전/공성이 있었으면 정지일(stopDay)을 '공격턴'으로 표기.
             if (stopDay >= 1 && stopDay <= AnimDays && (turn.Combat is not null || sieges.Any(s => s.TurnIndex == ti)))
@@ -2386,6 +2387,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             alive = survivors;
+            unitSnapshot = turn.Units.ToDictionary(u => u.Id.Value);
             dayOffset = stopDay;
         }
 
@@ -2544,7 +2546,8 @@ public sealed partial class CampaignMapScene : Node3D
 
     // 이 진행 조각에서 공격한 부대의 모션 예약: 야전 교전(피해를 준 부대 → 최근접 적 방향)
     // + 공성(공격모드로 적 성 사거리 안 → 성 방향).
-    private void ScheduleAttackMotions(AdvanceTurn turn, double atkTime)
+    private void ScheduleAttackMotions(AdvanceTurn turn, double atkTime,
+        IReadOnlyDictionary<int, CombatUnit>? beforeCombatUnits = null)
     {
         var fieldAttackers = new HashSet<int>();
         void AddAttack(CombatUnit unit, Vector3 target)
@@ -2569,8 +2572,16 @@ public sealed partial class CampaignMapScene : Node3D
             foreach (var id in combat.DamageDealt.Keys.OrderBy(k => k.Value))
             {
                 if (fieldAttackers.Contains(id.Value)) { continue; }
-                var me = turn.Units.FirstOrDefault(u => u.Id == id);
-                var foe = me is null ? null : turn.Units
+                var me = turn.Units.FirstOrDefault(u => u.Id == id)
+                    ?? (beforeCombatUnits?.TryGetValue(id.Value, out var beforeMe) == true ? beforeMe : null);
+                var currentOrBefore = turn.Units
+                    .Concat(beforeCombatUnits?.Values ?? [])
+                    .GroupBy(u => u.Id)
+                    .ToDictionary(g => g.Key, g => g.First());
+                var foe = me is null ? null : combat.DamageTaken.Keys
+                    .Where(targetId => targetId != id)
+                    .Select(targetId => currentOrBefore.TryGetValue(targetId, out var target) ? target : null)
+                    .OfType<CombatUnit>()
                     .Where(u => u.Field.Owner != me.Field.Owner)
                     .OrderBy(u => u.Field.Position.Distance(me.Field.Position)).ThenBy(u => u.Id.Value)
                     .FirstOrDefault();
