@@ -920,6 +920,34 @@ public class CommandSystemTests
     }
 
     [Fact]
+    public void 루프_훈련은_장수와_패시브_경험치를_올린다()
+    {
+        var svc = Service();
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), B);
+        var garrisons = new[] { new GarrisonForce(new CityId(1), "swordsman", 2000, 50) };
+        var general = Mig(2, 80) with
+        {
+            Experience = 80,
+            BattlePassives = [new GeneralSkill("drilled", 1, Experience: 80)],
+            AdminPassives = [new GeneralSkill("recruiter", 1, Experience: 90)],
+        };
+        var s0 = State(new[] { Town(1) }, new[] { general }, garrisons);
+
+        var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.Train, new GeneralId(2), TroopCode: "swordsman"));
+        Assert.True(issued.Ok);
+        var done = world.AdvanceDays(issued.State, 7);
+
+        var grown = done.Generals.Single(g => g.Id == new GeneralId(2));
+        Assert.Equal(2, grown.Level);
+        Assert.Equal(15, grown.Experience);
+        Assert.Equal(2, grown.BattlePassives!.Single().Tier);
+        Assert.Equal(10, grown.BattlePassives!.Single().Experience);
+        Assert.Equal(2, grown.AdminPassives!.Single().Tier);
+        Assert.Equal(20, grown.AdminPassives!.Single().Experience);
+        Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.GeneralGrowth && e.General == new GeneralId(2));
+    }
+
+    [Fact]
     public void 루프_같은_병종을_두번_모집하면_가중평균으로_합류한다()
     {
         var svc = Service();

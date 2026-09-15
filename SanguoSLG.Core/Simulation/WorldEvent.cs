@@ -22,6 +22,7 @@ public enum WorldEventKind
     ProductionLost,     // 생산 작전 중 피격·소실
     BanditRaid,         // 저치안 도적 출현
     SecurityFactor,
+    GeneralGrowth,      // 장수/패시브 성장
 }
 
 /// <summary>

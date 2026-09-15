@@ -534,6 +534,7 @@ public sealed class WorldEngine
                         }
                     }
 
+                    ApplyTrainingGrowth(generals, cmd.Main, city.Owner, cmd.City);
                     break;
 
                 case CommandKind.Build:
@@ -676,6 +677,50 @@ public sealed class WorldEngine
 
         _events.Add(new WorldEvent(WorldEventKind.Explore, discovery.Faction, discovery.Explorer, discovery.City,
             discovery.Gold, discovery.Code, discovery.Provisions));
+    }
+
+    private void ApplyTrainingGrowth(List<General> generals, GeneralId generalId, FactionId faction, CityId city)
+    {
+        var idx = generals.FindIndex(g => g.Id == generalId);
+        if (idx < 0)
+        {
+            return;
+        }
+
+        var grown = GeneralGrowth.AddGeneralExperience(generals[idx], GeneralGrowth.TrainGeneralExperience, out var leveledUp);
+        var passiveTierUps = 0;
+
+        if (grown.BattlePassives is { Count: > 0 })
+        {
+            var battle = grown.BattlePassives.Select(s =>
+            {
+                var next = GeneralGrowth.AddPassiveExperience(s, GeneralGrowth.TrainPassiveExperience, out var tierUp);
+                if (tierUp)
+                {
+                    passiveTierUps++;
+                }
+                return next;
+            }).ToList();
+            grown = grown with { BattlePassives = battle };
+        }
+
+        if (grown.AdminPassives is { Count: > 0 })
+        {
+            var admin = grown.AdminPassives.Select(s =>
+            {
+                var next = GeneralGrowth.AddPassiveExperience(s, GeneralGrowth.TrainPassiveExperience, out var tierUp);
+                if (tierUp)
+                {
+                    passiveTierUps++;
+                }
+                return next;
+            }).ToList();
+            grown = grown with { AdminPassives = admin };
+        }
+
+        generals[idx] = grown;
+        _events.Add(new WorldEvent(WorldEventKind.GeneralGrowth, faction, generalId, city,
+            GeneralGrowth.TrainGeneralExperience, leveledUp ? "level_up" : "training", passiveTierUps));
     }
 
     // 등용 정산: 완료 시점에 대상 종류를 다시 확인하고 수행 장수 정치 단일 확률로 판정.
