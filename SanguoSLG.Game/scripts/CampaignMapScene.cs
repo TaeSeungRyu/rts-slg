@@ -10765,7 +10765,7 @@ public sealed partial class CampaignMapScene : Node3D
         var rulerName = ruler?.Name ?? "미지정";
         var myCities = _state.CityCount(Player);
         _hudRuler.Text = $"{_state.Year}년\n군주 {rulerName}\n점령 도시 {myCities}";
-        _hudFace.Texture = ruler is not null ? PortraitFor(ruler.Id) : null;
+        _hudFace.Texture = ruler is not null ? CircularPortraitFor(ruler.Id) : null;
         _hudFacePanel.Visible = _hudFace.Texture is not null;
         _hudDate.Text = "";
 
