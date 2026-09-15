@@ -355,6 +355,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("훈련", CommandKind.Train, "garrison"),
         ("세율", CommandKind.SetTaxRate, "tax"),
         ("건설", CommandKind.Build, "facility"),
+        ("선박 생산", CommandKind.BuildShip, "ship"),
         ("주력병종", CommandKind.SelectMajorTroop, "major"),
         ("전투 교리", CommandKind.Research, "troop"),
         ("성벽 강화", CommandKind.Research, "wall"),
@@ -393,14 +394,15 @@ public sealed partial class CampaignMapScene : Node3D
     // v2 명령 카테고리. 반복 내정(모병·징병·세율·시장·건설·등용)은 팔레트에서 숨긴다.
     private static readonly (string Group, int[] Indices)[] CmdGroups =
     {
-        ("연구", new[] { 5, 6 }),
-        ("성벽", new[] { 7, 8 }),
-        ("계략", new[] { 10 }),
-        ("외교", new[] { 11, 12 }),
-        ("임명", new[] { 13, 14 }),
-        ("담당자", new[] { 15, 16, 17, 18 }),
-        ("인재", new[] { 19 }),
-        ("탐색", new[] { 20 }),
+        ("항구", new[] { 5 }),
+        ("연구", new[] { 6, 7 }),
+        ("성벽", new[] { 8, 9 }),
+        ("계략", new[] { 11 }),
+        ("외교", new[] { 12, 13 }),
+        ("임명", new[] { 14, 15 }),
+        ("담당자", new[] { 16, 17, 18, 19 }),
+        ("인재", new[] { 20 }),
+        ("탐색", new[] { 21 }),
     };
 
     private static readonly Sym[] CmdIcons = { Sym.Sword, Sym.Coin, Sym.Book, Sym.Wall, Sym.Scroll };
@@ -2244,6 +2246,7 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.Conscript => ("", Parchment),
                 WorldEventKind.Train => ($"[내정] {cName}의 {troop} 훈련도가 올랐습니다(+{we.Amount}).", Parchment),
                 WorldEventKind.Build => ($"[내정] {cName}에 {FacilityLabel(we.Code)} 건설을 마쳤습니다.", Parchment),
+                WorldEventKind.ShipBuild => ($"[항구] {cName}에서 {troop} 생산을 마쳤습니다.", GoldBright),
                 WorldEventKind.Research => ($"[군비] {cName}에서 연구를 마쳤습니다.", Parchment),
                 WorldEventKind.Repair => ($"[내정] {cName} 수리를 마쳤습니다.", Parchment),
                 WorldEventKind.EnlistSuccess => ($"[인사] 등용 성공! {gName} 장수가 우리 세력에 합류했습니다.", GoldBright),
@@ -3757,6 +3760,10 @@ public sealed partial class CampaignMapScene : Node3D
         {
             box.AddChild(MakeLabel("주력병종은 세력을 대표하는 병종입니다. 최대 2개까지 선택 가능하며, 한 번 적용하면 철회할 수 없습니다.", 15, Parchment));
         }
+        else if (cmd.Kind == CommandKind.BuildShip)
+        {
+            box.AddChild(MakeLabel("항구에서 선박을 생산해 저장합니다. 저장된 선박은 차후 해상 출전 때 1척당 최대 1만 병력을 선박 부대로 전환합니다.", 15, Parchment));
+        }
         else if (cmd.Kind == CommandKind.FormAlliance)
         {
             box.AddChild(MakeLabel($"대상 세력에 사절을 보내 동맹을 제안합니다. 비용 {_cb.AllianceGoldCost}금, 성공 확률은 수행 장수 정치로 정합니다.", 15, Parchment));
@@ -4384,6 +4391,58 @@ public sealed partial class CampaignMapScene : Node3D
         : code == FactionResearch.ArmyGroupCode ? "집단군"
         : _troops.FirstOrDefault(t => t.Code == code)?.Name ?? code;
 
+    private static readonly string[] PortShipCodes = { "small_boat", "medium_ship", "large_ship" };
+
+    private List<TroopTemplate> PortShipOptions()
+    {
+        var ships = new List<TroopTemplate>();
+        foreach (var code in PortShipCodes)
+        {
+            var ship = _troops.FirstOrDefault(t => t.Code == code);
+            if (ship is not null) { ships.Add(ship); }
+        }
+
+        return ships;
+    }
+
+    private TroopTemplate? PortShipOptionAt(int index)
+    {
+        var ships = PortShipOptions();
+        return index >= 0 && index < ships.Count ? ships[index] : null;
+    }
+
+    private int PortShipStock(CityId city, string shipCode)
+        => _state.PortShips.FirstOrDefault(s => s.City == city && s.ShipCode == shipCode)?.Count ?? 0;
+
+    private string PortShipStockSummary(CityId city)
+    {
+        var parts = PortShipOptions()
+            .Select(t => $"{t.Name} {PortShipStock(city, t.Code)}척")
+            .ToList();
+        return parts.Count == 0 ? "선박 데이터 없음" : string.Join(" · ", parts);
+    }
+
+    private static string PortSizeName(PortSize size) => size switch
+    {
+        PortSize.Small => "소형",
+        PortSize.Medium => "중형",
+        _ => "일반",
+    };
+
+    private static int PortWeeklyGold(City city) => city.Port switch
+    {
+        PortSize.Medium => WorldEngine.PortSmallWeeklyGold * 2,
+        PortSize.Small => WorldEngine.PortSmallWeeklyGold,
+        _ => 0,
+    };
+
+    private static int PortWeeklyProvisions(City city) => city.Port switch
+    {
+        PortSize.Medium => WorldEngine.PortSmallWeeklyProvisions * 2,
+        PortSize.Small => WorldEngine.PortSmallWeeklyProvisions,
+        _ => 0,
+    };
+
     // 명령 한 줄 설명(상세 모달용): 종류 · 파라미터 — 장수 · 남은 일수.
     private string CmdText(CityCommand c)
     {
@@ -4461,6 +4520,16 @@ public sealed partial class CampaignMapScene : Node3D
         AddCell(g4, Sym.Shield, "부상병", WoundedForCity(c.Id));
         AddCell(g4, Sym.Ore, "광석", $"{c.Ore}");
         AddCell(g4, Sym.Ore, "말/코끼리", $"{c.Horses}/{c.Elephants}");
+        if (c.IsPort)
+        {
+            var portInfo = MakeLabel(
+                $"항구: {PortSizeName(c.Port)} · 항구 주 수입 금 +{PortWeeklyGold(c)}, 군량 +{PortWeeklyProvisions(c)}\n"
+                + $"저장 선박: {PortShipStockSummary(c.Id)}",
+                13,
+                GoldBright);
+            portInfo.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            box.AddChild(portInfo);
+        }
 
         var officers = $"치안 {OfficerName(c.SecurityOfficer) ?? "없음"} · 내정 {OfficerName(c.DomesticOfficer) ?? "없음"}\n"
             + $"병력 {OfficerName(c.RecruitmentOfficer) ?? "없음"} · 훈련 {OfficerName(c.TrainingOfficer) ?? "없음"}";
@@ -8433,6 +8502,21 @@ public sealed partial class CampaignMapScene : Node3D
                 }
 
                 break;
+            case "ship":
+                if (!city.IsPort)
+                {
+                    list.Add(("항구 필요", Icon(Sym.Scroll), "선박은 항구에서만 생산할 수 있습니다."));
+                    break;
+                }
+
+                foreach (var t in PortShipOptions())
+                {
+                    var stock = PortShipStock(city.Id, t.Code);
+                    var days = CommandService.ShipBuildDays(t.Code);
+                    list.Add((t.Name, ClassEmblem(t.Class), $"저장 {stock}척\n생산 {days}일\n1척당 병력 10,000명 탑승"));
+                }
+
+                break;
             case "facility":
                 foreach (var (label, code) in Facilities)
                 {
@@ -9507,6 +9591,7 @@ public sealed partial class CampaignMapScene : Node3D
             "troop" when cmd.Kind == CommandKind.Research && p == 1 => FactionResearch.ArmyGroupCode,
             "troop" when cmd.Kind == CommandKind.Research => _troops[p - 2].Code,
             "troop" => _troops[p].Code,
+            "ship" => PortShipOptionAt(p)?.Code ?? "",
             "wall" => FactionResearch.WallCode,
             "garrison" => GarrisonAt(city, p)?.TroopCode ?? "",
             _ => "",
@@ -9740,6 +9825,26 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
+        if (cmd.Kind == CommandKind.BuildShip)
+        {
+            var c = _state.Cities.First(x => x.Id == city);
+            var ship = PortShipOptionAt(p);
+            if (!c.IsPort || ship is null)
+            {
+                extra = "\n※ 선박 생산은 항구에서만 가능합니다.";
+            }
+            else
+            {
+                var days = CommandService.ShipBuildDays(ship.Code);
+                var active = _state.Commands.FirstOrDefault(x => x.City == city && x.Kind == CommandKind.BuildShip);
+                extra = $"\n항구 {PortSizeName(c.Port)}"
+                    + $"\n현재 저장 {PortShipStock(c.Id, ship.Code)}척"
+                    + $"\n완료 시 {ship.Name} +1척"
+                    + $"\n[소요 {days}일]"
+                    + (active is null ? "" : $"\n※ 이미 선박 생산 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일");
+            }
+        }
+
         if (cmd.Kind == CommandKind.AppointGovernor)
         {
             var gov = _state.Generals.First(g => g.Id == general);
@@ -9787,6 +9892,7 @@ public sealed partial class CampaignMapScene : Node3D
             "garrison" => $" · {(_troops.FirstOrDefault(t => t.Code == troopCode)?.Name ?? troopCode)}{(traineePool ? "(신병)" : "")}",
             "tax" => $" · {value}%",
             "facility" => $" · {Facilities[p].Label}",
+            "ship" => $" · {TroopName(troopCode)}",
             "repairable" => $" · {Repairables[p].Label}",
             "stratagem" => $" · {Strats[p].Label}",
             "faction" => targetFaction is { } diplomTarget ? $" · {_state.Factions.FirstOrDefault(f => f.Id == diplomTarget)?.Name ?? $"세력 {diplomTarget.Value}"}" : "",
@@ -10534,6 +10640,7 @@ public sealed partial class CampaignMapScene : Node3D
         CommandKind.Conscript => "징병",
         CommandKind.Train => "훈련",
         CommandKind.Build => "건설",
+        CommandKind.BuildShip => "선박 생산",
         CommandKind.Upgrade => "업그레이드",
         CommandKind.SetTaxRate => "세율",
         CommandKind.Research => "연구",
