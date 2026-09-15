@@ -52,6 +52,18 @@ public sealed record TransportDeployRequest(
     int Provisions = 0,
     IReadOnlyList<HexCoord>? Waypoints = null);
 
+public sealed record NavalDeployRequest(
+    CityId City,
+    string ShipCode,
+    string SourceTroopCode,
+    int Troops,
+    GeneralId Vanguard,
+    GeneralId? Adjutant = null,
+    UnitMode Mode = UnitMode.March,
+    HexCoord? Target = null,
+    int Provisions = -1,
+    IReadOnlyList<HexCoord>? Waypoints = null);
+
 /// <summary>
 /// 출전(design-administration "부대와의 연결"·design-unit-state). 대기 병력 + 장수 → 야전 부대:
 /// 군량을 성 비축에서 떼어 휴대(적재 상한 = 한 달치), 훈련도 승계, 장수는 야전으로(Location null).
@@ -61,6 +73,7 @@ public sealed record TransportDeployRequest(
 public sealed class DeployService
 {
     public const int TransportMaxTroops = 50_000;
+    public const int ShipTroopCapacity = 10_000;
 
     private readonly CommandBalance _b;
     private readonly IReadOnlyDictionary<string, TroopTemplate> _troops;
@@ -476,6 +489,123 @@ public sealed class DeployService
         {
             Cities = cities,
             GarrisonForces = garrisons,
+            Postings = postings,
+            FieldArmies = state.Armies.Append(unit).ToList(),
+        });
+    }
+
+    public CommandResult DeployNaval(GameState state, NavalDeployRequest req)
+    {
+        var city = state.Cities.FirstOrDefault(c => c.Id == req.City);
+        if (city is null)
+        {
+            return CommandResult.Fail("도시를 찾을 수 없다.", state);
+        }
+
+        if (!city.IsPort)
+        {
+            return CommandResult.Fail("항구에서만 해상 출전할 수 있다.", state);
+        }
+
+        if (!_troops.TryGetValue(req.ShipCode, out var ship) || ship.Class != TroopClass.Naval)
+        {
+            return CommandResult.Fail("사용할 선박을 지정해야 한다.", state);
+        }
+
+        if (!_troops.ContainsKey(req.SourceTroopCode))
+        {
+            return CommandResult.Fail("승선할 병종을 지정해야 한다.", state);
+        }
+
+        var stock = state.PortShips.FirstOrDefault(s => s.City == city.Id && s.ShipCode == req.ShipCode);
+        if (stock is null || stock.Count <= 0)
+        {
+            return CommandResult.Fail("저장된 선박이 없다.", state);
+        }
+
+        var garrison = state.Garrisons.FirstOrDefault(g => g.City == req.City && g.TroopCode == req.SourceTroopCode && !g.Trainee);
+        if (garrison is null || garrison.Troops <= 0)
+        {
+            return CommandResult.Fail("승선할 대기 병력이 없다.", state);
+        }
+
+        var troops = req.Troops <= 0 ? System.Math.Min(garrison.Troops, ShipTroopCapacity) : req.Troops;
+        if (troops > ShipTroopCapacity)
+        {
+            return CommandResult.Fail($"선박 1척에는 최대 {ShipTroopCapacity}명만 승선할 수 있다.", state);
+        }
+
+        if (troops > garrison.Troops)
+        {
+            return CommandResult.Fail("대기 병력이 부족하다.", state);
+        }
+
+        if (garrison.TrainingLevel < _b.DeployMinTraining)
+        {
+            return CommandResult.Fail($"훈련도 {_b.DeployMinTraining} 미만 부대는 투입할 수 없다(징병 훈련 중).", state);
+        }
+
+        var vanguard = state.Generals.FirstOrDefault(g => g.Id == req.Vanguard);
+        if (vanguard is null)
+        {
+            return CommandResult.Fail("선봉 장수를 찾을 수 없다.", state);
+        }
+
+        General? adjutant = null;
+        if (req.Adjutant is { } adjId)
+        {
+            if (adjId == req.Vanguard)
+            {
+                return CommandResult.Fail("부관은 선봉과 달라야 한다.", state);
+            }
+
+            adjutant = state.Generals.FirstOrDefault(g => g.Id == adjId);
+            if (adjutant is null)
+            {
+                return CommandResult.Fail("부관 장수를 찾을 수 없다.", state);
+            }
+        }
+
+        if (ValidateGenerals(state, city, req.Vanguard, req.Adjutant) is { } error)
+        {
+            return CommandResult.Fail(error, state);
+        }
+
+        var capacity = ship.ProvisionsCapacity * troops / 10000;
+        var wanted = req.Provisions < 0 ? capacity : System.Math.Min(req.Provisions, capacity);
+        var carried = System.Math.Min(wanted, city.Provisions);
+        var research = state.ResearchOf(city.Owner, ship.Code);
+        var unitId = new UnitId(state.Armies.Count == 0 ? 1 : state.Armies.Max(u => u.Id.Value) + 1);
+        var unit = UnitAssembler.Assemble(unitId, city.Owner, city.Position, req.Mode, req.Target,
+            unitId.Value, vanguard, adjutant, ship, troops, _actives, _passives, FieldContext, research,
+            req.Waypoints, _adminSkills);
+        unit = unit with { Provisions = carried, Training = garrison.TrainingLevel };
+
+        var garrisons = state.Garrisons
+            .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)
+            .Where(g => g.Troops > 0)
+            .ToList();
+        var stocks = state.PortShips
+            .Select(s => s == stock ? s with { Count = s.Count - 1 } : s)
+            .Where(s => s.Count > 0)
+            .ToList();
+        var deployingGenerals = new HashSet<GeneralId>(
+            new[] { req.Vanguard, req.Adjutant }.OfType<GeneralId>());
+        var cities = state.Cities
+            .Select(c => c.Id == city.Id ? c with { Provisions = c.Provisions - carried } : c)
+            .Select(c => ClearOfficerRoles(c, deployingGenerals))
+            .ToList();
+        var postings = state.Assignments
+            .Select(p => p.General == req.Vanguard || (req.Adjutant is { } a && p.General == a)
+                ? p with { Location = null }
+                : p)
+            .ToList();
+
+        return CommandResult.Success(state with
+        {
+            Cities = cities,
+            GarrisonForces = garrisons,
+            PortShipStocks = stocks,
             Postings = postings,
             FieldArmies = state.Armies.Append(unit).ToList(),
         });

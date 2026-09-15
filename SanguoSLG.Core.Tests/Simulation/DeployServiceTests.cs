@@ -213,6 +213,43 @@ public class DeployServiceTests
     }
 
     [Fact]
+    public void 항구_해상출전은_저장선박과_주둔병력을_소비해_선박부대를_만든다()
+    {
+        var port = Town(1, new HexCoord(2, 0), provisions: 5000) with { Port = PortSize.Small };
+        var s0 = State([port], [Gen(1)],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 12000, 60)],
+            postings: [At(1, 1)])
+            with { PortShipStocks = [new PortShipStock(port.Id, "small_boat", 2)] };
+
+        var r = Service().DeployNaval(s0, new NavalDeployRequest(
+            port.Id, "small_boat", "swordsman", 10000, new GeneralId(1), Target: new HexCoord(4, 0)));
+
+        Assert.True(r.Ok, r.Error);
+        var unit = r.State.Armies.Single();
+        Assert.Equal("small_boat", unit.TroopCode);
+        Assert.Equal(TroopClass.Naval, unit.Class);
+        Assert.Equal(10000, unit.Pool.Active);
+        Assert.Equal(2000, r.State.Garrisons.Single().Troops);
+        Assert.Equal(1, r.State.PortShips.Single().Count);
+    }
+
+    [Fact]
+    public void 항구_해상출전은_선박_한척당_최대_일만명이다()
+    {
+        var port = Town(1, new HexCoord(2, 0), provisions: 5000) with { Port = PortSize.Small };
+        var s0 = State([port], [Gen(1)],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 12000, 60)],
+            postings: [At(1, 1)])
+            with { PortShipStocks = [new PortShipStock(port.Id, "small_boat", 1)] };
+
+        var r = Service().DeployNaval(s0, new NavalDeployRequest(
+            port.Id, "small_boat", "swordsman", 10001, new GeneralId(1)));
+
+        Assert.False(r.Ok);
+        Assert.Contains("10000", r.Error);
+    }
+
+    [Fact]
     public void 출전_병력_일부만_데려가면_나머지는_대기한다()
     {
         var s0 = State([Town(1, new HexCoord(0, 0))], [Gen(1)],
