@@ -136,6 +136,8 @@ public sealed partial class CampaignMapScene : Node3D
     private VBoxContainer _cmdSubList = null!;
     private int _openGroup = -1;
     private VBoxContainer _cmdList = null!;
+    private Button? _portCommandButton;
+    private Button? _productionCommandButton;
     private PanelContainer _unitMenu = null!; // 유닛 명령 팔레트(정보·이동 재지정)
     private VBoxContainer _unitCmdBox = null!; // 이동·계략 섹션 — 아군·평시에만 표시
     private int _selectedUnitId = -1;
@@ -2856,6 +2858,7 @@ public sealed partial class CampaignMapScene : Node3D
 
                 ToggleGroup(groupIdx);
             };
+            if (CmdGroups[gi].Group == "항구") { _portCommandButton = gbtn; }
             _cmdList.AddChild(gbtn);
         }
 
@@ -2871,6 +2874,7 @@ public sealed partial class CampaignMapScene : Node3D
         productionBtn.Alignment = HorizontalAlignment.Center;
         productionBtn.CustomMinimumSize = new Vector2(74, 24);
         productionBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenProductionModal(c); } };
+        _productionCommandButton = productionBtn;
         _cmdList.AddChild(productionBtn);
         AddV2PendingButton(_cmdList, "재편성", "부대 재편성 전용 UI는 v2 전환 후속 단계에서 구현합니다.\n현재는 출전 예약과 입성으로 병력을 정리하세요.");
         AddV2PendingButton(_cmdList, "보충", "자동 담당자 병력 생산과 연계한 보충 명령은 Phase 2~4 이후 구현합니다.");
@@ -3380,6 +3384,8 @@ public sealed partial class CampaignMapScene : Node3D
         var c = _state.Cities.First(x => x.Id == id);
         var owned = c.Owner == Player;
         var known = CanInspectCity(c);
+        if (_portCommandButton is not null) { _portCommandButton.Visible = c.IsPort; }
+        if (_productionCommandButton is not null) { _productionCommandButton.Visible = !c.IsPort; }
         var totalTroops = _state.Garrisons.Where(g => g.City == id).Sum(g => g.Troops);
         var govName = c.Governor is { } ggid ? _state.Generals.FirstOrDefault(x => x.Id == ggid)?.Name : null;
         var straName = c.Strategist is { } gsid ? _state.Generals.FirstOrDefault(x => x.Id == gsid)?.Name : null;
