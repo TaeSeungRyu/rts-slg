@@ -1893,20 +1893,29 @@ public sealed partial class CampaignMapScene : Node3D
             [new(1, 0)] = TerrainType.Karst, [new(0, 5)] = TerrainType.Cliff, [new(9, 0)] = TerrainType.RockMountain,
             [new(-10, -2)] = TerrainType.PortSmall, [new(-6, -2)] = TerrainType.PortSmall, [new(10, 8)] = TerrainType.PortSmall,
         };
-        for (var q = -11; q <= 12; q++)
+        for (var q = -12; q <= 13; q++)
         {
-            t[new HexCoord(q, -3)] = TerrainType.WaterShallow;
-            if (q <= -4 || q >= 9)
+            for (var r = -5; r <= -3; r++)
             {
-                t[new HexCoord(q, -2)] = t.TryGetValue(new HexCoord(q, -2), out var existing) ? existing : TerrainType.WaterShallow;
+                t.TryAdd(new HexCoord(q, r), TerrainType.WaterShallow);
             }
         }
-        for (var q = 9; q <= 12; q++)
+        for (var q = 7; q <= 14; q++)
         {
-            t[new HexCoord(q, 9)] = TerrainType.WaterShallow;
+            for (var r = 9; r <= 11; r++)
+            {
+                t.TryAdd(new HexCoord(q, r), TerrainType.WaterShallow);
+            }
+        }
+        for (var q = 13; q <= 14; q++)
+        {
+            for (var r = -5; r <= 11; r++)
+            {
+                t.TryAdd(new HexCoord(q, r), TerrainType.WaterShallow);
+            }
         }
         // 좌측 테스트 성(중형·대형)과 성 보급 반경이 지도 안에 온전히 보이도록 좌측을 넓힌다.
-        return new HexMap(-11, 12, -3, 9, t);
+        return new HexMap(-12, 14, -5, 11, t);
     }
 
     private static readonly IReadOnlyList<City> _cities = new List<City>

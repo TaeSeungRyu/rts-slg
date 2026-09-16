@@ -37,6 +37,25 @@ public partial class PortRegressionQa : Node
                     throw new InvalidOperationException($"입항 실패: {source.Name} → {port.Name}");
                 cases++;
             }
+            var navalCases = 0;
+            var navalPathfinder = new HexPathfinder(h => passability.CanEnter(MovementDomain.DeepWater, h)
+                || cities.Any(c => c.IsPort && CastleFootprint.TilesFor(c).Contains(h)));
+            var waterTiles = map.Tiles()
+                .Where(h => map.TerrainAt(h) is TerrainType.WaterShallow or TerrainType.WaterDeep)
+                .ToList();
+            foreach (var port in cities.Where(c => c.IsPort))
+            {
+                var target = waterTiles
+                    .Where(h => h.Distance(port.Position) >= 3)
+                    .OrderByDescending(h => h.Distance(port.Position))
+                    .FirstOrDefault();
+                if (target == default)
+                    throw new InvalidOperationException($"출항 테스트용 바다 타일 부족: {port.Name}");
+                var path = navalPathfinder.FindPath(port.Position, target);
+                if (path.Count < 2)
+                    throw new InvalidOperationException($"출항 경로 없음: {port.Name} → ({target.Q},{target.R})");
+                navalCases++;
+            }
             var view = new MapView3D();
             AddChild(view);
             view.Build(map, new HashSet<HexCoord>(), new TileConditionMap(), CampaignMapScene.TestPortTiles);
@@ -65,7 +84,7 @@ public partial class PortRegressionQa : Node
                 model.Free();
             }
             scene.Free();
-            GD.Print($"PORT_QA PASS: {cases} actual-map transport routes; 3 port mesh orientations; no duplicate piers");
+            GD.Print($"PORT_QA PASS: {cases} actual-map transport routes; {navalCases} naval routes; 3 port mesh orientations; no duplicate piers");
             GetTree().Quit();
         }
         catch (Exception e) { GD.PushError(e.ToString()); GetTree().Quit(1); }
