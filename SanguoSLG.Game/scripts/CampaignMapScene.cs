@@ -6922,6 +6922,7 @@ public sealed partial class CampaignMapScene : Node3D
         var selectedShip = ships[0].Code;
         var selectedTroop = garrisons[0].Troop.Code;
         var selectedGeneral = generals[0].Id;
+        GeneralId? selectedAdjutant = null;
         var amount = Math.Min(DeployService.ShipTroopCapacity, garrisons[0].Available);
 
         var vp = GetViewport().GetVisibleRect().Size;
@@ -6948,22 +6949,50 @@ public sealed partial class CampaignMapScene : Node3D
             amount = Math.Clamp(amount, 0, max);
             var ship = ships.FirstOrDefault(s => s.Code == selectedShip);
             var leader = generals.FirstOrDefault(g => g.Id == selectedGeneral);
-            preview.Text = $"예약 미리보기: {ship?.Name ?? selectedShip} 1척 · {gar.Troop?.Name ?? selectedTroop} {amount:N0}명 · 지휘 {leader?.Name ?? "-"}\n※ 목표는 예약 후 지도에서 바다/대하 타일로 지정합니다.";
+            var adjutant = selectedAdjutant is { } adj ? generals.FirstOrDefault(g => g.Id == adj)?.Name ?? "-" : "없음";
+            preview.Text = $"예약 미리보기: {ship?.Name ?? selectedShip} 1척 · {gar.Troop?.Name ?? selectedTroop} {amount:N0}명 · 주장수 {leader?.Name ?? "-"} · 부장수 {adjutant}\n※ 목표는 예약 후 지도에서 바다/대하 타일로 지정합니다.";
         }
 
         box.AddChild(MakeLabel("1. 선박 선택", 14, GoldBright));
-        var shipGrid = new GridContainer { Columns = 3, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        shipGrid.AddThemeConstantOverride("h_separation", 8);
-        shipGrid.AddThemeConstantOverride("v_separation", 8);
-        box.AddChild(shipGrid);
+        var shipTree = new Tree
+        {
+            Columns = 5,
+            ColumnTitlesVisible = true,
+            HideRoot = true,
+            SelectMode = Tree.SelectModeEnum.Row,
+            CustomMinimumSize = new Vector2(0, Mathf.Min(140, 34 + ships.Count * 28)),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        shipTree.AddThemeFontOverride("font", _font);
+        shipTree.AddThemeFontSizeOverride("font_size", 13);
+        shipTree.SetColumnTitle(0, "선택"); shipTree.SetColumnExpand(0, false); shipTree.SetColumnCustomMinimumWidth(0, 52);
+        shipTree.SetColumnTitle(1, "선박"); shipTree.SetColumnExpand(1, true);
+        shipTree.SetColumnTitle(2, "보유"); shipTree.SetColumnExpand(2, false); shipTree.SetColumnCustomMinimumWidth(2, 54);
+        shipTree.SetColumnTitle(3, "수용"); shipTree.SetColumnExpand(3, false); shipTree.SetColumnCustomMinimumWidth(3, 74);
+        shipTree.SetColumnTitle(4, "역할"); shipTree.SetColumnExpand(4, true);
+        var shipRoot = shipTree.CreateItem();
         foreach (var ship in ships)
         {
-            var code = ship.Code;
-            var btn = MakeButton($"{ship.Name}\n보유 {PortShipStock(city, code)}척");
-            btn.CustomMinimumSize = new Vector2(0, 54);
-            btn.Pressed += () => { selectedShip = code; Refresh(); };
-            shipGrid.AddChild(btn);
+            var item = shipTree.CreateItem(shipRoot);
+            item.SetText(0, ship.Code == selectedShip ? "◆" : "◇");
+            item.SetText(1, ship.Name);
+            item.SetText(2, $"{PortShipStock(city, ship.Code)}척");
+            item.SetText(3, $"{DeployService.ShipTroopCapacity:N0}");
+            item.SetText(4, "출항 시 병종이 선박으로 전환");
+            item.SetMetadata(0, ship.Code);
         }
+        shipTree.ItemSelected += () =>
+        {
+            var item = shipTree.GetSelected();
+            if (item is null) { return; }
+            selectedShip = item.GetMetadata(0).AsString();
+            for (var row = shipRoot.GetFirstChild(); row is not null; row = row.GetNext())
+            {
+                row.SetText(0, row.GetMetadata(0).AsString() == selectedShip ? "◆" : "◇");
+            }
+            Refresh();
+        };
+        box.AddChild(shipTree);
 
         box.AddChild(MakeLabel("2. 승선 병력", 14, GoldBright));
         var troopTree = new Tree
@@ -7026,10 +7055,10 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(amountSlider);
         box.AddChild(amountSpin);
 
-        box.AddChild(MakeLabel("3. 지휘 장수", 14, GoldBright));
+        box.AddChild(MakeLabel("3. 지휘 장수 (주장수 필수 · 부장수 선택)", 14, GoldBright));
         var generalTree = new Tree
         {
-            Columns = 5,
+            Columns = 6,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
@@ -7038,31 +7067,69 @@ public sealed partial class CampaignMapScene : Node3D
         };
         generalTree.AddThemeFontOverride("font", _font);
         generalTree.AddThemeFontSizeOverride("font_size", 13);
-        generalTree.SetColumnTitle(0, "선택"); generalTree.SetColumnExpand(0, false); generalTree.SetColumnCustomMinimumWidth(0, 52);
+        generalTree.SetColumnTitle(0, "주장"); generalTree.SetColumnExpand(0, false); generalTree.SetColumnCustomMinimumWidth(0, 52);
         generalTree.SetColumnTitle(1, "이름"); generalTree.SetColumnExpand(1, true);
         generalTree.SetColumnTitle(2, "해상"); generalTree.SetColumnExpand(2, false); generalTree.SetColumnCustomMinimumWidth(2, 54);
         generalTree.SetColumnTitle(3, "무력"); generalTree.SetColumnExpand(3, false); generalTree.SetColumnCustomMinimumWidth(3, 54);
-        generalTree.SetColumnTitle(4, "현재 담당업무"); generalTree.SetColumnExpand(4, true);
+        generalTree.SetColumnTitle(4, "부장"); generalTree.SetColumnExpand(4, false); generalTree.SetColumnCustomMinimumWidth(4, 52);
+        generalTree.SetColumnTitle(5, "현재 담당업무"); generalTree.SetColumnExpand(5, true);
         var generalRoot = generalTree.CreateItem();
         foreach (var general in generals)
         {
             var item = generalTree.CreateItem(generalRoot);
-            item.SetText(0, general.Id == selectedGeneral ? "◆" : "◇");
+            item.SetCellMode(0, TreeItem.TreeCellMode.Check);
+            item.SetEditable(0, true);
+            item.SetChecked(0, general.Id == selectedGeneral);
             item.SetText(1, general.Name);
             item.SetText(2, GradeText(general.AptitudeFor(TroopClass.Naval)));
             item.SetText(3, general.Might.ToString());
-            item.SetText(4, CurrentDuty(general.Id));
+            item.SetCellMode(4, TreeItem.TreeCellMode.Check);
+            item.SetEditable(4, true);
+            item.SetChecked(4, general.Id == selectedAdjutant);
+            item.SetText(5, CurrentDuty(general.Id));
             item.SetMetadata(0, general.Id.Value);
         }
-        generalTree.ItemSelected += () =>
+        void SyncGeneralChecks()
         {
-            var item = generalTree.GetSelected();
-            if (item is null) { return; }
-            selectedGeneral = new GeneralId(item.GetMetadata(0).AsInt32());
             for (var row = generalRoot.GetFirstChild(); row is not null; row = row.GetNext())
             {
-                row.SetText(0, row.GetMetadata(0).AsInt32() == selectedGeneral.Value ? "◆" : "◇");
+                var id = new GeneralId(row.GetMetadata(0).AsInt32());
+                row.SetChecked(0, id == selectedGeneral);
+                row.SetChecked(4, id == selectedAdjutant);
             }
+        }
+        generalTree.ItemEdited += () =>
+        {
+            var item = generalTree.GetEdited();
+            if (item is null) { return; }
+            var id = new GeneralId(item.GetMetadata(0).AsInt32());
+            var col = generalTree.GetEditedColumn();
+            if (col == 0)
+            {
+                if (item.IsChecked(0))
+                {
+                    selectedGeneral = id;
+                    if (selectedAdjutant == id) { selectedAdjutant = null; }
+                }
+            }
+            else if (col == 4)
+            {
+                if (item.IsChecked(4))
+                {
+                    if (id == selectedGeneral)
+                    {
+                        item.SetChecked(4, false);
+                        preview.Text = "부장수는 주장수와 다른 장수여야 합니다.";
+                        return;
+                    }
+                    selectedAdjutant = id;
+                }
+                else if (selectedAdjutant == id)
+                {
+                    selectedAdjutant = null;
+                }
+            }
+            SyncGeneralChecks();
             Refresh();
         };
         box.AddChild(generalTree);
@@ -7073,16 +7140,17 @@ public sealed partial class CampaignMapScene : Node3D
         save.CustomMinimumSize = new Vector2(0, 36);
         save.Pressed += () =>
         {
-            var req = new NavalDeployRequest(city, selectedShip, selectedTroop, amount, selectedGeneral);
+            var req = new NavalDeployRequest(city, selectedShip, selectedTroop, amount, selectedGeneral, selectedAdjutant);
             var label = NavalLabel(req);
-            ShowConfirm("출항 예약 확인", $"{label}\n\n예약 후 목록에서 '목표 지정'을 눌러 바다/대하 타일을 선택하세요.{DutyReleaseNotice(selectedGeneral)}", () =>
+            var ids = selectedAdjutant is { } adj ? new[] { selectedGeneral, adj } : new[] { selectedGeneral };
+            ShowConfirm("출항 예약 확인", $"{label}\n\n예약 후 목록에서 '목표 지정'을 눌러 바다/대하 타일을 선택하세요.{DutyReleaseNotice(ids)}", () =>
             {
-                if (_advancing || OfficerUnavailable(selectedGeneral) || ReservedDeployGenerals(-1, editingSupply: false).Contains(selectedGeneral))
+                if (_advancing || ids.Any(OfficerUnavailable) || ReservedDeployGenerals(-1, editingSupply: false).Overlaps(ids))
                 {
                     ShowNotice("출항 불가", "선택한 장수가 다른 업무를 수행 중입니다.");
                     return;
                 }
-                _state = _state.ReleaseOfficerDuties(new[] { selectedGeneral });
+                _state = _state.ReleaseOfficerDuties(ids);
                 _pendingNavalDeploys.Add((req, label));
                 _log.Text = $"출항 예약: {label}";
                 SelectCity(city);
@@ -7101,7 +7169,8 @@ public sealed partial class CampaignMapScene : Node3D
         var ship = _troops.FirstOrDefault(t => t.Code == req.ShipCode)?.Name ?? req.ShipCode;
         var source = _troops.FirstOrDefault(t => t.Code == req.SourceTroopCode)?.Name ?? req.SourceTroopCode;
         var leader = _state.Generals.FirstOrDefault(g => g.Id == req.Vanguard)?.Name ?? "-";
-        return $"{ship} · {source} {req.Troops:N0}명 승선 · 지휘 {leader}";
+        var adjutant = req.Adjutant is { } adj ? _state.Generals.FirstOrDefault(g => g.Id == adj)?.Name ?? "-" : "없음";
+        return $"{ship} · {source} {req.Troops:N0}명 승선 · 주장수 {leader} · 부장수 {adjutant}";
     }
 
     private void OpenTransportCompose(CityId city)

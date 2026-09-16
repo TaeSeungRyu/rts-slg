@@ -234,6 +234,25 @@ public class DeployServiceTests
     }
 
     [Fact]
+    public void 항구_해상출전은_부장수를_함께_야전으로_배치한다()
+    {
+        var port = Town(1, new HexCoord(2, 0), provisions: 5000) with { Port = PortSize.Small };
+        var s0 = State([port], [Gen(1), Gen(2)],
+            garrisons: [new GarrisonForce(new CityId(1), "swordsman", 12000, 60)],
+            postings: [At(1, 1), At(2, 1)])
+            with { PortShipStocks = [new PortShipStock(port.Id, "small_boat", 1)] };
+
+        var r = Service().DeployNaval(s0, new NavalDeployRequest(
+            port.Id, "small_boat", "swordsman", 8000, new GeneralId(1), new GeneralId(2), Target: new HexCoord(4, 0)));
+
+        Assert.True(r.Ok, r.Error);
+        var unit = r.State.Armies.Single();
+        Assert.Equal(new GeneralId(1), unit.VanguardId);
+        Assert.Equal(new GeneralId(2), unit.AdjutantId);
+        Assert.All(r.State.Assignments, p => Assert.Null(p.Location));
+    }
+
+    [Fact]
     public void 항구_해상출전은_선박_한척당_최대_일만명이다()
     {
         var port = Town(1, new HexCoord(2, 0), provisions: 5000) with { Port = PortSize.Small };
