@@ -210,6 +210,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(SupplyDeployRequest Req, string Label)> _pendingSupplyDeploys = new();
     private readonly List<(TransportDeployRequest Req, string Label)> _pendingTransportDeploys = new();
     private readonly List<(ArmyGroupDeployRequest Req, string Label)> _pendingArmyGroupDeploys = new();
+    private readonly List<(NavalDeployRequest Req, string Label)> _pendingNavalDeploys = new();
 
     // 출전 모달(허브=예약 목록 / 편성 화면) + 수량/미리보기.
     private CityId _depModalCity;
@@ -241,6 +242,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly Dictionary<string, int> _armyGroupDraft = new(System.StringComparer.Ordinal);
     private int _armyGroupEditIndex = -1;
     private bool _targetingArmyGroupDeploy;
+    private bool _targetingNavalDeploy;
     private readonly Dictionary<string, int> _transportDraft = new(System.StringComparer.Ordinal);
     private string _dbgLog = ""; // 출전 디버그 로그 파일 경로(res://deploy-debug.log)
     private const float FacilityDisplayScale = 0.5f;
@@ -1434,25 +1436,32 @@ public sealed partial class CampaignMapScene : Node3D
     private void BeginTransportTargeting(int idx)
         => BeginTargeting(idx, supply: false, transport: true);
 
-    private void BeginTargeting(int idx, bool supply, bool transport = false, bool armyGroup = false)
+    private void BeginNavalTargeting(int idx)
+        => BeginTargeting(idx, supply: false, transport: false, armyGroup: false, naval: true);
+
+    private void BeginTargeting(int idx, bool supply, bool transport = false, bool armyGroup = false, bool naval = false)
     {
-        Dbg($"UI targeting-begin idx={idx} supply={supply} transport={transport} armyGroup={armyGroup}");
+        Dbg($"UI targeting-begin idx={idx} supply={supply} transport={transport} armyGroup={armyGroup} naval={naval}");
         CloseModal();
         HidePanels(); // 목표 지정 중에는 성 명령 팔레트·정보 카드가 가려선 안 된다.
         _depTargetIndex = idx;
         _targetingSupplyDeploy = supply;
         _targetingTransportDeploy = transport;
         _targetingArmyGroupDeploy = armyGroup;
+        _targetingNavalDeploy = naval;
         _depTargeting = true;
         _targetWaypoints.Clear();
         var reqCity = transport ? _pendingTransportDeploys[idx].Req.City
             : armyGroup ? _pendingArmyGroupDeploys[idx].Req.City
+            : naval ? _pendingNavalDeploys[idx].Req.City
             : supply ? _pendingSupplyDeploys[idx].Req.City
             : _pendingDeploys[idx].Req.City;
         _targetStart = _state.Cities.FirstOrDefault(c => c.Id == reqCity)?.Position ?? default;
         RebuildTargetEdit();
         ShowTargetHint(transport
             ? "수송부대 목표 지정 · 도착할 아군 성을 클릭 · '확인'으로 확정 · 우클릭 취소"
+            : naval
+            ? "출항 목표 지정 · 바다/대하 타일만 클릭 · '확인'으로 확정 · 우클릭 취소"
             : armyGroup
             ? "집단군 목표 지정 · 지점을 순서대로 클릭 · '확인'으로 확정 · 적 성 = 공격 · 우클릭 취소"
             : supply
@@ -1466,7 +1475,8 @@ public sealed partial class CampaignMapScene : Node3D
     // start→goal에 지형 통행 A* 경로가 존재하는가.
     private bool HasPath(HexCoord start, HexCoord goal)
     {
-        var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanExitThrough(MovementDomain.Land, start, c));
+        var domain = _targetingNavalDeploy ? MovementDomain.DeepWater : MovementDomain.Land;
+        var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanExitThrough(domain, start, c));
         return pf.FindPath(start, goal).Count > 1;
     }
 
@@ -1551,6 +1561,7 @@ public sealed partial class CampaignMapScene : Node3D
         _targetingSupplyDeploy = false;
         _targetingTransportDeploy = false;
         _targetingArmyGroupDeploy = false;
+        _targetingNavalDeploy = false;
         _retargetUnitId = -1;
         _targetConfirmBtn.Visible = false;
         _targetWaypoints.Clear();
@@ -1578,6 +1589,11 @@ public sealed partial class CampaignMapScene : Node3D
         var idx = _depTargetIndex;
         if (_targetingSupplyDeploy && idx >= 0 && idx < _pendingSupplyDeploys.Count)
         {
+            if (!IsLandDeployTarget(h))
+            {
+                RejectTarget("보급 목표 불가", "보급부대는 육상 타일 또는 도시만 목표로 지정할 수 있습니다.");
+                return;
+            }
             var (req, label) = _pendingSupplyDeploys[idx];
             var enemyCity = CityAtHex(h, c => c.Owner != Player);
             var enemyUnit = DisplayedArmies.FirstOrDefault(u => u.Field.Position == h && u.Field.Owner != Player && CanSeeUnit(u));
@@ -1605,8 +1621,26 @@ public sealed partial class CampaignMapScene : Node3D
             Dbg($"TRANSPORT TARGET idx={idx} -> city={dest.Id.Value} ({h.Q},{h.R})");
             _log.Text = $"수송부대 목표 → {dest.Name} · 목표 확정";
         }
+        else if (_targetingNavalDeploy && idx >= 0 && idx < _pendingNavalDeploys.Count)
+        {
+            if (!_passability.CanEnter(MovementDomain.DeepWater, h))
+            {
+                RejectTarget("출항 목표 불가", "출항 목표는 바다/대하 타일만 선택할 수 있습니다.");
+                return;
+            }
+            var (req, label) = _pendingNavalDeploys[idx];
+            _pendingNavalDeploys[idx] = (req with { Target = h, Mode = UnitMode.March, Waypoints = waypoints }, label);
+            Dbg($"NAVAL TARGET idx={idx} -> ({h.Q},{h.R}) wps={waypoints?.Count ?? 0}");
+            var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
+            _log.Text = $"출항 목표 → ({h.Q},{h.R}){wpNote} · 목표 확정";
+        }
         else if (_targetingArmyGroupDeploy && idx >= 0 && idx < _pendingArmyGroupDeploys.Count)
         {
+            if (!IsLandDeployTarget(h))
+            {
+                RejectTarget("집단군 목표 불가", "집단군은 육상 타일 또는 도시만 목표로 지정할 수 있습니다.");
+                return;
+            }
             var (req, label) = _pendingArmyGroupDeploys[idx];
             var enemyCity = CityAtHex(h, c => c.Owner != Player);
             var enemyUnit = DisplayedArmies.FirstOrDefault(u => u.Field.Position == h && u.Field.Owner != Player && CanSeeUnit(u));
@@ -1619,6 +1653,11 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (idx >= 0 && idx < _pendingDeploys.Count)
         {
+            if (!IsLandDeployTarget(h))
+            {
+                RejectTarget("출전 목표 불가", "전투편성 부대는 육상 타일 또는 도시만 목표로 지정할 수 있습니다. 항구에서는 '출항'을 사용하세요.");
+                return;
+            }
             var (req, label) = _pendingDeploys[idx];
             var enemyCity = CityAtHex(h, c => c.Owner != Player);
             var mode = enemyCity is not null ? UnitMode.Attack : req.Mode;
@@ -1634,6 +1673,17 @@ public sealed partial class CampaignMapScene : Node3D
         FinishTargeting();
         SelectCity(_depModalCity);
         Redraw(_log.Text);
+    }
+
+    private bool IsLandDeployTarget(HexCoord h)
+        => CityAtHex(h) is not null || _passability.CanEnter(MovementDomain.Land, h);
+
+    private void RejectTarget(string title, string message)
+    {
+        ShowNotice(title, message);
+        FinishTargeting();
+        SelectCity(_depModalCity);
+        Redraw(message);
     }
 
     private readonly List<MeshInstance3D> _supplyMarkers = new();
@@ -1781,7 +1831,8 @@ public sealed partial class CampaignMapScene : Node3D
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
         };
 
-        var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanExitThrough(MovementDomain.Land, start, c));
+        var domain = _targetingNavalDeploy ? MovementDomain.DeepWater : MovementDomain.Land;
+        var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanExitThrough(domain, start, c));
         var path = pf.FindPath(start, goal);
         for (var i = 1; i < path.Count; i++)
         {
@@ -1997,6 +2048,10 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var node = GD.Load<PackedScene>(CastleModelPath(city)).Instantiate<Node3D>();
             node.Position = CastleVisualCenter(city) + new Vector3(0f, _view.TileTopY, 0f);
+            if (city.IsPort)
+            {
+                node.Rotation = new Vector3(0f, PortFacingYaw(city), 0f);
+            }
             node.Scale *= CastleModelScale(city);
             AddChild(node);
 
@@ -2059,6 +2114,28 @@ public sealed partial class CampaignMapScene : Node3D
         return points.Count == 0 ? _view.HexToWorld(city.Position) : sum / points.Count;
     }
 
+    private float PortFacingYaw(City city)
+    {
+        var footprint = CastleFootprint.TilesFor(city).ToList();
+        var footprintSet = footprint.ToHashSet();
+        HexCoord? water = footprint
+            .SelectMany(h => h.Neighbors())
+            .Where(h => !footprintSet.Contains(h) && IsWaterLike(_passability.TerrainAt(h)))
+            .OrderBy(h => h.Distance(city.Position))
+            .Select(h => (HexCoord?)h)
+            .FirstOrDefault();
+        if (water is not { } target) { return 0f; }
+
+        var from = CastleVisualCenter(city);
+        var to = _view.HexToWorld(target);
+        var dir = to - from;
+        if (dir.LengthSquared() <= 0.0001f) { return 0f; }
+        return Mathf.Atan2(dir.X, dir.Z);
+    }
+
+    private static bool IsWaterLike(TerrainType terrain) =>
+        terrain is TerrainType.WaterShallow or TerrainType.WaterDeep or TerrainType.WaterRocks;
+
     // 진행 버튼 → 컨펌창(design-ui §4) → 확인 시 7일 재생 시작.
     private void OnAdvance()
     {
@@ -2067,10 +2144,11 @@ public sealed partial class CampaignMapScene : Node3D
         // 목표 지정 중 그려둔 경로가 있으면 진행 전에 자동 확정 — '✓확인' 안 눌러 조용히 버려지던 함정 방지.
         if (_depTargeting && _targetWaypoints.Count > 0) { ConfirmTarget(); }
 
-        var deploys = _pendingDeploys.Count + _pendingSupplyDeploys.Count + _pendingTransportDeploys.Count + _pendingArmyGroupDeploys.Count;
+        var deploys = _pendingDeploys.Count + _pendingSupplyDeploys.Count + _pendingTransportDeploys.Count + _pendingArmyGroupDeploys.Count + _pendingNavalDeploys.Count;
         var untargeted = _pendingDeploys.Count(p => p.Req.Target is null)
             + _pendingSupplyDeploys.Count(p => p.Req.Target is null)
-            + _pendingArmyGroupDeploys.Count(p => p.Req.Target is null);
+            + _pendingArmyGroupDeploys.Count(p => p.Req.Target is null)
+            + _pendingNavalDeploys.Count(p => p.Req.Target is null);
         var msg = $"7일을 진행합니다. ({_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일 →)";
         if (deploys > 0)
         {
@@ -2087,7 +2165,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depTargeting) { FinishTargeting(); } // 목표 지정 중 진행 = 미확정 목표 취소
 
         // 예약된 출전을 진행 시작 시점에 일괄 편성(대기열 → 야전).
-        Dbg($"--- ADVANCE week={_week} pending={_pendingDeploys.Count} supplyPending={_pendingSupplyDeploys.Count} transportPending={_pendingTransportDeploys.Count} armyGroupPending={_pendingArmyGroupDeploys.Count} armiesBefore={_state.Armies.Count} ---");
+        Dbg($"--- ADVANCE week={_week} pending={_pendingDeploys.Count} supplyPending={_pendingSupplyDeploys.Count} transportPending={_pendingTransportDeploys.Count} armyGroupPending={_pendingArmyGroupDeploys.Count} navalPending={_pendingNavalDeploys.Count} armiesBefore={_state.Armies.Count} ---");
         for (var i = 0; i < _pendingDeploys.Count; i++)
         {
             var rq = _pendingDeploys[i].Req;
@@ -2126,6 +2204,25 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _pendingArmyGroupDeploys.Clear();
+
+        var remainingNavalDeploys = new List<(NavalDeployRequest Req, string Label)>();
+        foreach (var (req, label) in _pendingNavalDeploys)
+        {
+            if (req.Target is null)
+            {
+                Dbg($"  naval-deploy '{label}': skipped missing target");
+                deployNote.Add("[출항] 목표 미지정 예약은 출항하지 않았습니다.");
+                remainingNavalDeploys.Add((req, label));
+                continue;
+            }
+            var dr = _deployer.DeployNaval(_state, req);
+            Dbg($"  naval-deploy '{label}': ok={dr.Ok} err={dr.Error ?? "-"} armiesNow={dr.State.Armies.Count}");
+            if (dr.Ok) { _state = dr.State; deployNote.Add($"[출항] {label} 부대가 출항했습니다."); }
+            else { deployNote.Add($"[출항] 편성 실패({dr.Error})"); }
+        }
+
+        _pendingNavalDeploys.Clear();
+        _pendingNavalDeploys.AddRange(remainingNavalDeploys);
 
         var remainingTransportDeploys = new List<(TransportDeployRequest Req, string Label)>();
         foreach (var (req, label) in _pendingTransportDeploys)
@@ -3478,6 +3575,18 @@ public sealed partial class CampaignMapScene : Node3D
             _cmdSubList.AddChild(btn);
         }
 
+        if (CmdGroups[groupIdx].Group == "항구")
+        {
+            var isPort = _selected is { } sel && _state.Cities.FirstOrDefault(c => c.Id == sel) is { IsPort: true };
+            var navalBtn = MakeButton(isPort ? "출항" : "출항 (항구 필요)");
+            navalBtn.AddThemeFontSizeOverride("font_size", 11);
+            navalBtn.Alignment = HorizontalAlignment.Center;
+            navalBtn.CustomMinimumSize = new Vector2(84, 21);
+            navalBtn.Disabled = !isPort;
+            navalBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenNavalHub(c); } };
+            _cmdSubList.AddChild(navalBtn);
+        }
+
         PlaceGroupMenu();
         _cmdSubMenu.Visible = true;
     }
@@ -3507,7 +3616,14 @@ public sealed partial class CampaignMapScene : Node3D
         Add("전투편성", () => { if (_selected is { } c) { OpenDeployModal(c); } });
         Add("보급편성", () => { if (_selected is { } c) { OpenSupplyHub(c); } });
         Add("수송편성", () => { if (_selected is { } c) { OpenTransportHub(c); } });
-        Add("집단군편성", () => { if (_selected is { } c) { OpenArmyGroupHub(c); } });
+        if (_selected is { } selectedCity && _state.Cities.FirstOrDefault(c => c.Id == selectedCity) is { IsPort: true })
+        {
+            Add("출항", () => { if (_selected is { } c) { OpenNavalHub(c); } });
+        }
+        else
+        {
+            Add("집단군편성", () => { if (_selected is { } c) { OpenArmyGroupHub(c); } });
+        }
 
         PlaceGroupMenu();
         _cmdSubMenu.Visible = true;
@@ -5817,6 +5933,7 @@ public sealed partial class CampaignMapScene : Node3D
         return _pendingDeploys.Any(d => d.Req.Vanguard == id || d.Req.Adjutant == id)
             || _pendingSupplyDeploys.Any(d => d.Req.Vanguard == id)
             || _pendingTransportDeploys.Any(d => d.Req.Vanguard == id)
+            || _pendingNavalDeploys.Any(d => d.Req.Vanguard == id || d.Req.Adjutant == id)
             || _pendingArmyGroupDeploys.Any(d => d.Req.Vanguard == id || d.Req.Adjutant == id)
             ? "출전 예약"
             : "대기";
@@ -6630,6 +6747,353 @@ public sealed partial class CampaignMapScene : Node3D
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
         DrawDeployPaths(); // 편성 중에만 예약 경로 표시(삭제·수정 즉시 반영)
+    }
+
+    private void OpenNavalHub(CityId city)
+    {
+        _depModalCity = city;
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var port = _state.Cities.First(c => c.Id == city);
+        if (!port.IsPort)
+        {
+            ShowNotice("출항 불가", "출항은 항구에서만 사용할 수 있습니다.");
+            SelectCity(city);
+            return;
+        }
+
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.57f, 470f, 730f);
+        var mh = Mathf.Clamp(vp.Y * 0.8f, 360f, 640f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel($"◈  출항 예약   《 {port.Name} 》  ⠿", 19, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(34, 32);
+        close.Pressed += () => { CloseModal(); SelectCity(city); };
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel($"저장 선박: {PortShipStockSummary(city)}\n출항은 선박 1척과 주둔 병력 최대 {DeployService.ShipTroopCapacity:N0}명을 사용하며, 목표는 바다/대하 타일만 지정할 수 있습니다.", 12, Parchment));
+
+        var mine = Enumerable.Range(0, _pendingNavalDeploys.Count)
+            .Where(i => _pendingNavalDeploys[i].Req.City == city)
+            .ToList();
+        box.AddChild(MakeLabel($"예약된 출항부대 ({mine.Count})   — 타일을 눌러 선택", 14, GoldBright));
+        if (!mine.Contains(_depSelectedUnit)) { _depSelectedUnit = -1; }
+
+        var grid = new GridContainer { Columns = 6 };
+        grid.AddThemeConstantOverride("h_separation", 8);
+        grid.AddThemeConstantOverride("v_separation", 8);
+        box.AddChild(grid);
+
+        foreach (var ni in mine)
+        {
+            var idx = ni;
+            var req = _pendingNavalDeploys[idx].Req;
+            var ship = _troops.FirstOrDefault(t => t.Code == req.ShipCode);
+            var source = _troops.FirstOrDefault(t => t.Code == req.SourceTroopCode);
+            var leader = _state.Generals.FirstOrDefault(g => g.Id == req.Vanguard)?.Name ?? "-";
+            var target = req.Target is { } tg ? $"({tg.Q},{tg.R})" : "목표 미지정";
+            var cell = new Control { CustomMinimumSize = new Vector2(104, 118) };
+            var tile = new PanelContainer
+            {
+                MouseFilter = Control.MouseFilterEnum.Stop,
+                MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+            };
+            tile.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+            tile.AddThemeStyleboxOverride("panel", CardBox(idx == _depSelectedUnit));
+            cell.AddChild(tile);
+            var tv = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+            tv.AddThemeConstantOverride("separation", 2);
+            tile.AddChild(tv);
+            tv.AddChild(new TextureRect
+            {
+                Texture = ClassEmblem(TroopClass.Naval),
+                CustomMinimumSize = new Vector2(46, 46),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+            });
+            var l1 = MakeLabel($"{ship?.Name ?? req.ShipCode}", 11, GoldBright);
+            l1.HorizontalAlignment = HorizontalAlignment.Center;
+            tv.AddChild(l1);
+            var l2 = MakeLabel($"{leader} · {req.Troops:N0}", 10, Parchment);
+            l2.HorizontalAlignment = HorizontalAlignment.Center;
+            tv.AddChild(l2);
+            var l3 = MakeLabel(target, 10, req.Target is null ? new Color(0.85f, 0.5f, 0.4f) : Parchment);
+            l3.HorizontalAlignment = HorizontalAlignment.Center;
+            tv.AddChild(l3);
+
+            var del = MakeButton("✕");
+            del.AddThemeFontSizeOverride("font_size", 11);
+            del.CustomMinimumSize = new Vector2(20, 20);
+            del.SetAnchorsPreset(Control.LayoutPreset.TopRight);
+            del.OffsetLeft = -22;
+            del.OffsetTop = 2;
+            del.OffsetRight = -2;
+            del.OffsetBottom = 22;
+            del.Pressed += () => { _pendingNavalDeploys.RemoveAt(idx); _depSelectedUnit = -1; OpenNavalHub(city); };
+            cell.AddChild(del);
+            tile.GuiInput += e =>
+            {
+                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { _depSelectedUnit = idx; OpenNavalHub(city); }
+            };
+            grid.AddChild(cell);
+        }
+
+        var addTile = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(104, 118),
+            MouseFilter = Control.MouseFilterEnum.Stop,
+            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+        };
+        addTile.AddThemeStyleboxOverride("panel", CardBox(false));
+        var al = MakeLabel("＋", 32, GoldBright);
+        al.HorizontalAlignment = HorizontalAlignment.Center;
+        al.VerticalAlignment = VerticalAlignment.Center;
+        addTile.AddChild(al);
+        addTile.GuiInput += e =>
+        {
+            if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { OpenNavalCompose(city); }
+        };
+        grid.AddChild(addTile);
+
+        if (_depSelectedUnit >= 0 && _depSelectedUnit < _pendingNavalDeploys.Count)
+        {
+            var sidx = _depSelectedUnit;
+            var req = _pendingNavalDeploys[sidx].Req;
+            var target = req.Target is { } tg ? $"→ ({tg.Q},{tg.R})" : "목표 미지정";
+            box.AddChild(GoldRule());
+            box.AddChild(MakeLabel($"◈ {NavalLabel(req)} · {target}", 13, GoldBright));
+            var actRow = new HBoxContainer();
+            actRow.AddThemeConstantOverride("separation", 6);
+            var targetBtn = MakeButton("목표 지정", accent: true);
+            targetBtn.CustomMinimumSize = new Vector2(96, 32);
+            targetBtn.Pressed += () => BeginNavalTargeting(sidx);
+            actRow.AddChild(targetBtn);
+            var rm = MakeButton("삭제");
+            rm.CustomMinimumSize = new Vector2(72, 32);
+            rm.Pressed += () => { _pendingNavalDeploys.RemoveAt(sidx); _depSelectedUnit = -1; OpenNavalHub(city); };
+            actRow.AddChild(rm);
+            box.AddChild(actRow);
+        }
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    private void OpenNavalCompose(CityId city)
+    {
+        _depModalCity = city;
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var port = _state.Cities.First(c => c.Id == city);
+        var ships = PortShipOptions().Where(s => PortShipStock(city, s.Code) > 0).ToList();
+        var usedTroops = ReservedTroopsByCode(city, editIndex: -1, editingSupply: false);
+        var garrisons = _state.Garrisons
+            .Where(g => g.City == city && !g.Trainee && g.Troops - usedTroops.GetValueOrDefault(g.TroopCode, 0) > 0)
+            .Join(_troops.Where(t => t.Class != TroopClass.Naval), g => g.TroopCode, t => t.Code, (g, t) => (Garrison: g, Troop: t, Available: g.Troops - usedTroops.GetValueOrDefault(g.TroopCode, 0)))
+            .OrderBy(x => x.Troop.Name, System.StringComparer.Ordinal)
+            .ToList();
+        var reservedGenerals = ReservedDeployGenerals(-1, editingSupply: false);
+        var generals = _state.GeneralsAt(city)
+            .Where(g => !OfficerUnavailable(g) && !reservedGenerals.Contains(g))
+            .Select(id => _state.Generals.First(g => g.Id == id))
+            .OrderByDescending(g => AptitudeSortValue(g.AptitudeFor(TroopClass.Naval)))
+            .ThenByDescending(g => g.Might)
+            .ThenBy(g => g.Id.Value)
+            .ToList();
+
+        if (ships.Count == 0) { ShowNotice("출항 불가", "항구에 저장된 선박이 없습니다."); OpenNavalHub(city); return; }
+        if (garrisons.Count == 0) { ShowNotice("출항 불가", "승선시킬 지상 병력이 없습니다."); OpenNavalHub(city); return; }
+        if (generals.Count == 0) { ShowNotice("출항 불가", "출항을 맡길 대기 장수가 없습니다."); OpenNavalHub(city); return; }
+
+        var selectedShip = ships[0].Code;
+        var selectedTroop = garrisons[0].Troop.Code;
+        var selectedGeneral = generals[0].Id;
+        var amount = Math.Min(DeployService.ShipTroopCapacity, garrisons[0].Available);
+
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.50f, 450f, 660f);
+        var mh = Mathf.Clamp(vp.Y * 0.74f, 360f, 630f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel($"◈  출항 편성   《 {port.Name} 》  ⠿", 18, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.MouseFilter = Control.MouseFilterEnum.Ignore;
+        titleRow.AddChild(title);
+        var back = MakeButton("◀ 목록");
+        back.CustomMinimumSize = new Vector2(60, 32);
+        back.Pressed += () => OpenNavalHub(city);
+        titleRow.AddChild(back);
+        box.AddChild(GoldRule());
+
+        var preview = MakeLabel("", 12, GoldBright);
+        void Refresh()
+        {
+            var gar = garrisons.FirstOrDefault(x => x.Troop.Code == selectedTroop);
+            var max = gar.Troop is null ? 0 : Math.Min(DeployService.ShipTroopCapacity, gar.Available);
+            amount = Math.Clamp(amount, 0, max);
+            var ship = ships.FirstOrDefault(s => s.Code == selectedShip);
+            var leader = generals.FirstOrDefault(g => g.Id == selectedGeneral);
+            preview.Text = $"예약 미리보기: {ship?.Name ?? selectedShip} 1척 · {gar.Troop?.Name ?? selectedTroop} {amount:N0}명 · 지휘 {leader?.Name ?? "-"}\n※ 목표는 예약 후 지도에서 바다/대하 타일로 지정합니다.";
+        }
+
+        box.AddChild(MakeLabel("1. 선박 선택", 14, GoldBright));
+        var shipGrid = new GridContainer { Columns = 3, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        shipGrid.AddThemeConstantOverride("h_separation", 8);
+        shipGrid.AddThemeConstantOverride("v_separation", 8);
+        box.AddChild(shipGrid);
+        foreach (var ship in ships)
+        {
+            var code = ship.Code;
+            var btn = MakeButton($"{ship.Name}\n보유 {PortShipStock(city, code)}척");
+            btn.CustomMinimumSize = new Vector2(0, 54);
+            btn.Pressed += () => { selectedShip = code; Refresh(); };
+            shipGrid.AddChild(btn);
+        }
+
+        box.AddChild(MakeLabel("2. 승선 병력", 14, GoldBright));
+        var troopTree = new Tree
+        {
+            Columns = 5,
+            ColumnTitlesVisible = true,
+            HideRoot = true,
+            SelectMode = Tree.SelectModeEnum.Row,
+            CustomMinimumSize = new Vector2(0, Mathf.Min(170, 34 + garrisons.Count * 28)),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        troopTree.AddThemeFontOverride("font", _font);
+        troopTree.AddThemeFontSizeOverride("font_size", 13);
+        troopTree.SetColumnTitle(0, "선택"); troopTree.SetColumnExpand(0, false); troopTree.SetColumnCustomMinimumWidth(0, 52);
+        troopTree.SetColumnTitle(1, "병종"); troopTree.SetColumnExpand(1, true);
+        troopTree.SetColumnTitle(2, "가능"); troopTree.SetColumnExpand(2, false); troopTree.SetColumnCustomMinimumWidth(2, 70);
+        troopTree.SetColumnTitle(3, "훈련"); troopTree.SetColumnExpand(3, false); troopTree.SetColumnCustomMinimumWidth(3, 54);
+        troopTree.SetColumnTitle(4, "비고"); troopTree.SetColumnExpand(4, true);
+        var troopRoot = troopTree.CreateItem();
+        foreach (var (garrison, troop, available) in garrisons)
+        {
+            var item = troopTree.CreateItem(troopRoot);
+            item.SetText(0, troop.Code == selectedTroop ? "◆" : "◇");
+            item.SetText(1, troop.Name);
+            item.SetText(2, available.ToString());
+            item.SetText(3, garrison.TrainingLevel.ToString());
+            item.SetText(4, "승선 시 선박 병종으로 전환");
+            item.SetMetadata(0, troop.Code);
+        }
+        troopTree.ItemSelected += () =>
+        {
+            var item = troopTree.GetSelected();
+            if (item is null) { return; }
+            selectedTroop = item.GetMetadata(0).AsString();
+            var max = Math.Min(DeployService.ShipTroopCapacity, garrisons.First(x => x.Troop.Code == selectedTroop).Available);
+            amount = Math.Min(amount <= 0 ? max : amount, max);
+            for (var row = troopRoot.GetFirstChild(); row is not null; row = row.GetNext())
+            {
+                row.SetText(0, row.GetMetadata(0).AsString() == selectedTroop ? "◆" : "◇");
+            }
+            Refresh();
+        };
+        box.AddChild(troopTree);
+
+        var amountSlider = ApplySliderStyle(new HSlider { MinValue = 1, MaxValue = Math.Min(DeployService.ShipTroopCapacity, garrisons[0].Available), Step = 100, Value = amount, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
+        var amountSpin = ApplyNumberInputStyle(new SpinBox { MinValue = 1, MaxValue = amountSlider.MaxValue, Step = 100, Value = amount, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
+        void SyncAmount(double value, bool fromSlider)
+        {
+            var max = Math.Min(DeployService.ShipTroopCapacity, garrisons.First(x => x.Troop.Code == selectedTroop).Available);
+            amountSlider.MaxValue = max;
+            amountSpin.MaxValue = max;
+            amount = Math.Clamp((int)value, 1, max);
+            if (fromSlider) { amountSpin.SetValueNoSignal(amount); }
+            else { amountSlider.SetValueNoSignal(amount); }
+            Refresh();
+        }
+        amountSlider.ValueChanged += v => SyncAmount(v, true);
+        amountSpin.ValueChanged += v => SyncAmount(v, false);
+        box.AddChild(MakeLabel("승선 인원", 12, Parchment));
+        box.AddChild(amountSlider);
+        box.AddChild(amountSpin);
+
+        box.AddChild(MakeLabel("3. 지휘 장수", 14, GoldBright));
+        var generalTree = new Tree
+        {
+            Columns = 5,
+            ColumnTitlesVisible = true,
+            HideRoot = true,
+            SelectMode = Tree.SelectModeEnum.Row,
+            CustomMinimumSize = new Vector2(0, Mathf.Min(180, 34 + generals.Count * 28)),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        generalTree.AddThemeFontOverride("font", _font);
+        generalTree.AddThemeFontSizeOverride("font_size", 13);
+        generalTree.SetColumnTitle(0, "선택"); generalTree.SetColumnExpand(0, false); generalTree.SetColumnCustomMinimumWidth(0, 52);
+        generalTree.SetColumnTitle(1, "이름"); generalTree.SetColumnExpand(1, true);
+        generalTree.SetColumnTitle(2, "해상"); generalTree.SetColumnExpand(2, false); generalTree.SetColumnCustomMinimumWidth(2, 54);
+        generalTree.SetColumnTitle(3, "무력"); generalTree.SetColumnExpand(3, false); generalTree.SetColumnCustomMinimumWidth(3, 54);
+        generalTree.SetColumnTitle(4, "현재 담당업무"); generalTree.SetColumnExpand(4, true);
+        var generalRoot = generalTree.CreateItem();
+        foreach (var general in generals)
+        {
+            var item = generalTree.CreateItem(generalRoot);
+            item.SetText(0, general.Id == selectedGeneral ? "◆" : "◇");
+            item.SetText(1, general.Name);
+            item.SetText(2, GradeText(general.AptitudeFor(TroopClass.Naval)));
+            item.SetText(3, general.Might.ToString());
+            item.SetText(4, CurrentDuty(general.Id));
+            item.SetMetadata(0, general.Id.Value);
+        }
+        generalTree.ItemSelected += () =>
+        {
+            var item = generalTree.GetSelected();
+            if (item is null) { return; }
+            selectedGeneral = new GeneralId(item.GetMetadata(0).AsInt32());
+            for (var row = generalRoot.GetFirstChild(); row is not null; row = row.GetNext())
+            {
+                row.SetText(0, row.GetMetadata(0).AsInt32() == selectedGeneral.Value ? "◆" : "◇");
+            }
+            Refresh();
+        };
+        box.AddChild(generalTree);
+        box.AddChild(preview);
+        Refresh();
+
+        var save = MakeButton("출항 예약", accent: true);
+        save.CustomMinimumSize = new Vector2(0, 36);
+        save.Pressed += () =>
+        {
+            var req = new NavalDeployRequest(city, selectedShip, selectedTroop, amount, selectedGeneral);
+            var label = NavalLabel(req);
+            ShowConfirm("출항 예약 확인", $"{label}\n\n예약 후 목록에서 '목표 지정'을 눌러 바다/대하 타일을 선택하세요.{DutyReleaseNotice(selectedGeneral)}", () =>
+            {
+                if (_advancing || OfficerUnavailable(selectedGeneral) || ReservedDeployGenerals(-1, editingSupply: false).Contains(selectedGeneral))
+                {
+                    ShowNotice("출항 불가", "선택한 장수가 다른 업무를 수행 중입니다.");
+                    return;
+                }
+                _state = _state.ReleaseOfficerDuties(new[] { selectedGeneral });
+                _pendingNavalDeploys.Add((req, label));
+                _log.Text = $"출항 예약: {label}";
+                SelectCity(city);
+                OpenNavalHub(city);
+            });
+        };
+        box.AddChild(save);
+
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    private string NavalLabel(NavalDeployRequest req)
+    {
+        var ship = _troops.FirstOrDefault(t => t.Code == req.ShipCode)?.Name ?? req.ShipCode;
+        var source = _troops.FirstOrDefault(t => t.Code == req.SourceTroopCode)?.Name ?? req.SourceTroopCode;
+        var leader = _state.Generals.FirstOrDefault(g => g.Id == req.Vanguard)?.Name ?? "-";
+        return $"{ship} · {source} {req.Troops:N0}명 승선 · 지휘 {leader}";
     }
 
     private void OpenTransportCompose(CityId city)
@@ -8049,6 +8513,12 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
+        foreach (var (rq, _) in _pendingNavalDeploys)
+        {
+            if (rq.City != city) { continue; }
+            used[rq.SourceTroopCode] = used.GetValueOrDefault(rq.SourceTroopCode, 0) + rq.Troops;
+        }
+
         for (var i = 0; i < _pendingArmyGroupDeploys.Count; i++)
         {
             if (!editingSupply && i == editIndex) { continue; }
@@ -8083,6 +8553,12 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var (rq, _) in _pendingTransportDeploys)
         {
             used.Add(rq.Vanguard);
+        }
+
+        foreach (var (rq, _) in _pendingNavalDeploys)
+        {
+            used.Add(rq.Vanguard);
+            if (rq.Adjutant is { } a) { used.Add(a); }
         }
 
         for (var i = 0; i < _pendingArmyGroupDeploys.Count; i++)
