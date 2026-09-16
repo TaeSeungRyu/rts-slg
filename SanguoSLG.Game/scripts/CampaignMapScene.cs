@@ -1872,6 +1872,8 @@ public sealed partial class CampaignMapScene : Node3D
 
     /// <summary>렌더(GameRoot3D)와 시뮬(passability)이 같은 지형을 쓰도록 공유하는 맵.</summary>
     public static HexMap TestMap => _map;
+    public static System.Collections.Generic.ISet<HexCoord> TestPortTiles =>
+        _cities.Where(c => c.IsPort).Select(c => c.Position).ToHashSet();
 
     // 지형 확인용 배치(성 발자국 (1,2)(1,3)(0,3)·(-1,5)(-1,6)(-2,6)·(8,3)(8,4)(7,4)는 평지로 비움).
     // 성↔성 이동로(대략 r2~3)는 통행 가능한 지형 위주로 둬 AI/부대가 막히지 않게 한다.

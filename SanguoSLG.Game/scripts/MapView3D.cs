@@ -99,7 +99,8 @@ public partial class MapView3D : Node3D
     /// <param name="occupied">지물(산 등)이 점유한 타일 — 지물 모델이 자체 기단을 포함하므로
     /// 바닥 타일을 중복 렌더하지 않는다(옆면 Z-파이팅 깜빡임 방지).</param>
     /// <param name="conditions">타일별 파괴 상태. 정상이 아닌 타일에는 공통 파괴 레이어를 입힌다.</param>
-    public void Build(HexMap map, System.Collections.Generic.ISet<HexCoord> occupied, TileConditionMap conditions)
+    public void Build(HexMap map, System.Collections.Generic.ISet<HexCoord> occupied, TileConditionMap conditions,
+        System.Collections.Generic.ISet<HexCoord>? cityPorts = null)
     {
         foreach (var tile in map.Tiles())
         {
@@ -130,6 +131,7 @@ public partial class MapView3D : Node3D
                 var ground = _tiles[TerrainType.Plains].Instantiate<Node3D>();
                 ground.Position = HexToWorld(tile);
                 AddChild(ground);
+                if (cityPorts?.Contains(tile) == true) { continue; }
 
                 var contents = _tiles[terrain].Instantiate<Node3D>();
                 contents.Position = HexToWorld(tile);

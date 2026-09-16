@@ -237,7 +237,8 @@ public partial class GameRoot3D : Node3D
 
         var mapView = new MapView3D();
         AddChild(mapView);
-        mapView.Build(CampaignMapScene.TestMap, new System.Collections.Generic.HashSet<HexCoord>(), new TileConditionMap());
+        mapView.Build(CampaignMapScene.TestMap, new System.Collections.Generic.HashSet<HexCoord>(),
+            new TileConditionMap(), CampaignMapScene.TestPortTiles);
 
         var camera = new CameraController3D { Fov = 55f };
         AddChild(camera);
