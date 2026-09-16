@@ -317,6 +317,7 @@ public class DeployServiceTests
         Assert.Equal(UnitMode.March, unit.Field.Mode);
         Assert.Equal(2, unit.Field.Speed);
         Assert.Equal(destination.Position, unit.Field.Target);
+        Assert.Equal(destination.Id, unit.Field.ReturnCity);
         Assert.Equal(new GeneralId(1), unit.VanguardId);
         Assert.Equal(17_000, unit.Pool.Active);
         Assert.Equal(400, unit.CargoGold);

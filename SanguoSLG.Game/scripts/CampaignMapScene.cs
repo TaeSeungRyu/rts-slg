@@ -3178,10 +3178,11 @@ public sealed partial class CampaignMapScene : Node3D
         if (u is null) { return; }
 
         var enemyCity = CityAtHex(h, c => c.Owner != Player);
+        var ownCity = CityAtHex(h, c => c.Owner == Player);
         var enemyUnit = DisplayedArmies.FirstOrDefault(a => a.Field.Position == h && a.Field.Owner != Player && CanSeeUnit(a));
         if (enemyCity is not null || enemyUnit is not null) { mode = UnitMode.Attack; }
         var result = _unitCommander.Reassign(_state, Player,
-            new FieldUnitCommandRequest(new UnitId(uid), mode, h, waypoints, _visibleTiles));
+            new FieldUnitCommandRequest(new UnitId(uid), mode, h, waypoints, _visibleTiles, ReturnCity: ownCity?.Id));
         if (!result.Ok)
         {
             ShowNotice("명령 실패", result.Error ?? "목표를 지정할 수 없습니다.");

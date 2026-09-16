@@ -337,7 +337,7 @@ public sealed class AdvanceOrchestrator
         // 성 목표는 입성/공성 규칙이 따로 처리한다. 여기서는 사용자가 지도 빈 타일을 찍은
         // 전투·보급·집단군·일반 부대가 목표 도착 후 다음 진행에서 같은 목표를 붙잡고
         // 재이동/우회하지 않도록 오더만 정리한다.
-        return castles is null || !castles.Any(c => c.Position == target);
+        return castles is null || !castles.Any(c => c.Contains(target));
     }
 
     // 이동 시뮬에 넣을 임시 FieldUnit. 혼란(행동불가)은 제자리에 묶고(속도 0·목표·모드 중립),

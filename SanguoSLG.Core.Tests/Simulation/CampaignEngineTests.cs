@@ -37,6 +37,51 @@ public class CampaignEngineTests
         new(1, 1, new List<Faction>(), new List<City>(), new List<General>(), FieldArmies: armies.ToList());
 
     [Fact]
+    public void 수송부대_둘이_같은_항구로_연속입성해_주둔병력으로_정산된다()
+    {
+        var source = new City(new CityId(1), "출발성", new HexCoord(0, 0), new FactionId(1), 5000,
+            CastleSize.Small, Gold: 1000, Population: 100_000, Ore: 50_000);
+        var port = new City(new CityId(2), "항구", new HexCoord(5, 0), new FactionId(1), 1000,
+            CastleSize.Small, Gold: 100, Population: 40_000, Ore: 0, Port: PortSize.Small);
+        var generals = new[]
+        {
+            new General(new GeneralId(1), "수송장1", new Dictionary<TroopClass, AptitudeGrade>(), 70, 60, 80),
+            new General(new GeneralId(2), "수송장2", new Dictionary<TroopClass, AptitudeGrade>(), 70, 60, 80),
+        };
+        var s0 = new GameState(1, 1, new List<Faction>(), [source, port], generals,
+            Postings:
+            [
+                new GeneralPosting(new GeneralId(1), new FactionId(1), source.Id),
+                new GeneralPosting(new GeneralId(2), new FactionId(1), source.Id),
+            ],
+            GarrisonForces: [new GarrisonForce(source.Id, "swordsman", 12_000, 70)]);
+        var deployer = new DeployService(new CommandBalance(), T.Values.ToList(), [], []);
+        var first = deployer.DeployTransport(s0, new TransportDeployRequest(
+            source.Id, [new TransportLine("swordsman", 5_000)], port.Id, new GeneralId(1), Gold: 100, Provisions: 200));
+        Assert.True(first.Ok, first.Error);
+        var second = deployer.DeployTransport(first.State, new TransportDeployRequest(
+            source.Id, [new TransportLine("swordsman", 4_000)], port.Id, new GeneralId(2), Gold: 50, Provisions: 100));
+        Assert.True(second.Ok, second.Error);
+
+        var map = new HexMap(0, 8, -2, 2);
+        var movement = new MovementSimulator(new PassabilityMap(map, [], [source, port]));
+        var field = new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70));
+        var engine = new CampaignEngine(field, new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0)));
+
+        var after = engine.AdvanceWeek(second.State, out var turns);
+
+        Assert.Empty(after.Armies);
+        Assert.Contains(turns.SelectMany(t => t.EnteredCastle), u => u.Id.Value == 1);
+        Assert.Contains(turns.SelectMany(t => t.EnteredCastle), u => u.Id.Value == 2);
+        var arrived = after.Garrisons.Single(g => g.City == port.Id && g.TroopCode == "swordsman");
+        Assert.Equal(9_000, arrived.Troops);
+        Assert.Equal(port.Id, after.PostingOf(new GeneralId(1))!.Location);
+        Assert.Equal(port.Id, after.PostingOf(new GeneralId(2))!.Location);
+        Assert.True(after.Cities.Single(c => c.Id == port.Id).Gold >= 250);
+        Assert.True(after.Cities.Single(c => c.Id == port.Id).Provisions >= 1300);
+    }
+
+    [Fact]
     public void 야전_교전에_참여한_장수와_패시브가_경험치를_얻는다()
     {
         var leftGeneral = new General(new GeneralId(1), "좌군", new Dictionary<TroopClass, AptitudeGrade>(),

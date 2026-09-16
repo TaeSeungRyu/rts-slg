@@ -972,6 +972,46 @@ public class MovementSimulatorTests
     }
 
     [Fact]
+    public void 항구_목표_수송부대_여러개가_같은진행에서_연속입성한다()
+    {
+        // 항구도 성과 같은 거점이다. 먼저 입성한 부대가 야전에서 빠진 뒤,
+        // 뒤따르는 수송부대도 같은 진행 안에서 멈추지 않고 항구로 들어가야 한다.
+        var port = new City(new CityId(9), "항구", new HexCoord(5, 0), new FactionId(1), 0,
+            CastleSize.Small, Port: PortSize.Small);
+        var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, -2, 2), [], [port]));
+        var site = new SiegeSite(port.Position, port.Owner, CastleFootprint.TilesFor(port).ToList(), port.Id);
+        var a = Unit(1, owner: 1, new HexCoord(3, 0), UnitMode.March, target: port.Position, speed: 2)
+            with { ReturnCity = port.Id };
+        var b = Unit(2, owner: 1, new HexCoord(2, 0), UnitMode.March, target: port.Position, speed: 2)
+            with { ReturnCity = port.Id };
+
+        var result = sim.Advance(new[] { a, b }, maxDays: 7, castles: new[] { site });
+
+        Assert.Empty(result.Units);
+        Assert.Equal(new[] { new UnitId(1), new UnitId(2) }, result.EnteredCastle);
+    }
+
+    [Fact]
+    public void 중형항구_발자국_타일을_목표로_찍어도_자기항구로_입성한다()
+    {
+        // 중형 항구/중형성은 여러 타일을 차지한다. 사용자가 앵커가 아닌 점유 타일을 찍거나,
+        // 경로가 앵커가 아닌 점유 타일 쪽으로 붙어도 같은 자기 거점 입성으로 처리해야 한다.
+        var port = new City(new CityId(9), "중형항구", new HexCoord(5, 0), new FactionId(1), 0,
+            CastleSize.Medium, Port: PortSize.Medium);
+        var footprintTarget = new HexCoord(5, 1);
+        Assert.Contains(footprintTarget, CastleFootprint.TilesFor(port));
+        var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, -2, 3), [], [port]));
+        var site = new SiegeSite(port.Position, port.Owner, CastleFootprint.TilesFor(port).ToList(), port.Id);
+        var unit = Unit(1, owner: 1, new HexCoord(3, 1), UnitMode.March, target: footprintTarget, speed: 2)
+            with { ReturnCity = port.Id };
+
+        var result = sim.Advance(new[] { unit }, maxDays: 7, castles: new[] { site });
+
+        Assert.Empty(result.Units);
+        Assert.Equal(new[] { new UnitId(1) }, result.EnteredCastle);
+    }
+
+    [Fact]
     public void 목표없는유닛끼리는_아무일도없이_전원도착으로끝난다()
     {
         var a1 = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack, target: null);

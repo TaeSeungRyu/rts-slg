@@ -68,7 +68,7 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
     private bool CanTarget(GameState state, FactionId faction, CombatUnit unit, HexCoord target,
         IReadOnlySet<HexCoord>? visible)
     {
-        var city = state.Cities.FirstOrDefault(c => c.Position == target);
+        var city = state.Cities.FirstOrDefault(c => CastleFootprint.TilesFor(c).Contains(target));
         if (city is not null)
         {
             if (city.Owner == faction) { return true; }

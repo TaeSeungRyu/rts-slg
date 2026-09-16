@@ -599,9 +599,10 @@ public sealed class MovementSimulator
     // 목표가 자기 성인 유닛의 마지막 스텝만 여기 걸린다(추격·통과 경로는 성 타일을 지나지 않는다).
     private static bool IsOwnCastle(Working w, HexCoord next, IReadOnlyList<SiegeSite>? castles)
         => castles is not null
-            && w.Unit.Target == next
             && castles.Any(c => c.Owner == w.Unit.Owner
                 && c.Contains(next)
+                && w.Unit.Target is { } target
+                && c.Contains(target)
                 && (w.Unit.ReturnCity is null || c.City == w.Unit.ReturnCity));
 
     // 사거리·탐지 안의 적 중 가장 가까운 하나(동률이면 명령 순번, 그다음 UnitId — 결정론)

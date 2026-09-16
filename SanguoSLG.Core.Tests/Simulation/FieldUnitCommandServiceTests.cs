@@ -53,6 +53,21 @@ public class FieldUnitCommandServiceTests
     }
 
     [Fact]
+    public void 중형항구_발자국_타일도_아군_목표로_지정할수있다()
+    {
+        var port = new City(new CityId(2), "항구", new HexCoord(5, 0), Player, 1000,
+            CastleSize.Medium, Port: PortSize.Medium);
+        var footprintTile = new HexCoord(5, 1);
+        var state = new GameState(1, 190, [], [port], [], FieldArmies: [Unit(1, Player, default)]);
+
+        var result = Service((_, h) => h != footprintTile).Reassign(state, Player,
+            new FieldUnitCommandRequest(new UnitId(1), UnitMode.March, footprintTile));
+
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(footprintTile, result.State.Armies.Single().Field.Target);
+    }
+
+    [Fact]
     public void 시야밖_적성은_목표로_지정할수없다()
     {
         var enemyCity = City(2, Enemy, new HexCoord(5, 0));
