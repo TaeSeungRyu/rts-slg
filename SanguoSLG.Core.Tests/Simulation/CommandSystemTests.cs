@@ -46,6 +46,10 @@ public class CommandSystemTests
         new GeneralId(id), $"m{id}",
         new Dictionary<TroopClass, AptitudeGrade>(), Might: might, Intellect: 50, Politics: 50);
 
+    private static General Int(int id, int intellect) => new(
+        new GeneralId(id), $"i{id}",
+        new Dictionary<TroopClass, AptitudeGrade>(), Might: 50, Intellect: intellect, Politics: 50);
+
     private static City Town(int id, string region = "jizhou", int gold = 1000, int ore = 5000,
         int population = 100_000, CastleSize castle = CastleSize.Medium, int horses = 0, int elephants = 0) =>
         new(new CityId(id), $"c{id}", new HexCoord(0, 0), new FactionId(1), 5000, castle,
@@ -811,7 +815,7 @@ public class CommandSystemTests
     {
         var svc = Service();
         var port = Town(1, gold: 5000) with { Port = PortSize.Small };
-        var s0 = State([port], [Pol(2, 90)]);
+        var s0 = State([port], [Int(2, 50)]);
 
         var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.BuildShip, new GeneralId(2),
             TroopCode: shipCode));
@@ -822,6 +826,20 @@ public class CommandSystemTests
         var done = new WorldEngine(new BalanceConfig(100)).AdvanceDays(issued.State, days);
         var stock = done.PortShips.Single(s => s.City == port.Id && s.ShipCode == shipCode);
         Assert.Equal(1, stock.Count);
+    }
+
+    [Fact]
+    public void 항구_선박생산은_지력100이면_7일_단축된다()
+    {
+        var svc = Service();
+        var port = Town(1, gold: 5000) with { Port = PortSize.Small };
+        var s0 = State([port], [Int(2, 100)]);
+
+        var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.BuildShip, new GeneralId(2),
+            TroopCode: "medium_ship"));
+
+        Assert.True(issued.Ok, issued.Error);
+        Assert.Equal(1 + 23, issued.State.Commands.Single().CompletionDay);
     }
 
     [Fact]

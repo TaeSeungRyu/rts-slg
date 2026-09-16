@@ -9070,8 +9070,8 @@ public sealed partial class CampaignMapScene : Node3D
                 foreach (var t in PortShipOptions())
                 {
                     var stock = PortShipStock(city.Id, t.Code);
-                    var days = CommandService.ShipBuildDays(t.Code);
-                    list.Add((t.Name, ClassEmblem(t.Class), $"저장 {stock}척\n생산 {days}일\n1척당 병력 10,000명 탑승"));
+                    var days = CommandService.ShipBuildBaseDays(t.Code);
+                    list.Add((t.Name, ClassEmblem(t.Class), $"저장 {stock}척\n기본 {days}일 · 지력 100이면 -7일\n1척당 병력 10,000명 탑승"));
                 }
 
                 break;
@@ -10393,12 +10393,14 @@ public sealed partial class CampaignMapScene : Node3D
             }
             else
             {
-                var days = CommandService.ShipBuildDays(ship.Code);
+                var builder = _state.Generals.First(g => g.Id == general);
+                var baseDays = CommandService.ShipBuildBaseDays(ship.Code);
+                var days = CommandService.ShipBuildDays(ship.Code, builder.Intellect);
                 var active = _state.Commands.FirstOrDefault(x => x.City == city && x.Kind == CommandKind.BuildShip);
                 extra = $"\n항구 {PortSizeName(c.Port)}"
                     + $"\n현재 저장 {PortShipStock(c.Id, ship.Code)}척"
                     + $"\n완료 시 {ship.Name} +1척"
-                    + $"\n[소요 {days}일]"
+                    + $"\n[소요 {days}일] · 기본 {baseDays}일, 지력 {builder.Intellect} 반영"
                     + (active is null ? "" : $"\n※ 이미 선박 생산 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일");
             }
         }

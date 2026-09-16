@@ -561,13 +561,25 @@ public sealed class CommandService
         return Register(funding.State, req, assist, amount: isWall ? level + 1 : 0, days, CommandKind.Research, "", req.TroopCode);
     }
 
-    public static int ShipBuildDays(string shipCode) => shipCode switch
+    public static int ShipBuildBaseDays(string shipCode) => shipCode switch
     {
         "small_boat" => 14,
         "medium_ship" => 30,
         "large_ship" => 60,
         _ => 0,
     };
+
+    public static int ShipBuildDays(string shipCode, int intellect = 50)
+    {
+        var baseDays = ShipBuildBaseDays(shipCode);
+        if (baseDays <= 0)
+        {
+            return 0;
+        }
+
+        var reduction = System.Math.Clamp((intellect - 50) * 7 / 50, 0, 7);
+        return System.Math.Max(1, baseDays - reduction);
+    }
 
     private CommandResult IssueBuildShip(GameState state, City city, CommandRequest req, General? assist)
     {
@@ -576,7 +588,7 @@ public sealed class CommandService
             return CommandResult.Fail("항구에서만 선박을 생산할 수 있다.", state);
         }
 
-        var days = ShipBuildDays(req.TroopCode);
+        var days = ShipBuildDays(req.TroopCode, state.Generals.FirstOrDefault(g => g.Id == req.Main)?.Intellect ?? 50);
         if (days <= 0)
         {
             return CommandResult.Fail("생산할 선박을 지정해야 한다.", state);
