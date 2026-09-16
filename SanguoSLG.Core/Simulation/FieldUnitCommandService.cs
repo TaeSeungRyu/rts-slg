@@ -31,7 +31,9 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
             return CommandResult.Fail("경유지 중 이동할 수 없는 지점이 있습니다.", state);
         }
 
-        var mode = state.Cities.Any(c => c.Position == req.Target && c.Owner != faction) ? UnitMode.Attack : req.Mode;
+        var mode = state.Cities.Any(c => CastleFootprint.TilesFor(c).Contains(req.Target) && c.Owner != faction)
+            ? UnitMode.Attack
+            : req.Mode;
         var armies = state.Armies
             .Select(a => a.Id == req.Unit
                 ? a with { Field = a.Field with { Mode = mode, Target = req.Target, Waypoints = req.Waypoints, ReturnCity = req.ReturnCity } }
@@ -71,8 +73,7 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
         var city = state.Cities.FirstOrDefault(c => CastleFootprint.TilesFor(c).Contains(target));
         if (city is not null)
         {
-            if (city.Owner == faction) { return true; }
-            return visible is null || visible.Contains(target) || state.IsScouted(faction, city.Id);
+            return true;
         }
 
         return canEnter(unit.Field.Domain, target);

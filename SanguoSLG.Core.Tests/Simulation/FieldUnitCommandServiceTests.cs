@@ -68,7 +68,7 @@ public class FieldUnitCommandServiceTests
     }
 
     [Fact]
-    public void 시야밖_적성은_목표로_지정할수없다()
+    public void 시야밖_적성도_이동목표로_지정할수있다()
     {
         var enemyCity = City(2, Enemy, new HexCoord(5, 0));
         var state = new GameState(1, 190, [], [enemyCity], [], FieldArmies: [Unit(1, Player, default)]);
@@ -77,8 +77,24 @@ public class FieldUnitCommandServiceTests
             new FieldUnitCommandRequest(new UnitId(1), UnitMode.Attack, enemyCity.Position,
                 VisibleTiles: new HashSet<HexCoord>()));
 
-        Assert.False(result.Ok);
-        Assert.Contains("시야", result.Error);
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(UnitMode.Attack, result.State.Armies.Single().Field.Mode);
+    }
+
+    [Fact]
+    public void 시야밖_적성_발자국_타일도_공격목표로_전환된다()
+    {
+        var enemyCity = new City(new CityId(2), "적항", new HexCoord(5, 0), Enemy, 1000,
+            CastleSize.Medium, Port: PortSize.Medium);
+        var footprintTile = new HexCoord(5, 1);
+        var state = new GameState(1, 190, [], [enemyCity], [], FieldArmies: [Unit(1, Player, default)]);
+
+        var result = Service().Reassign(state, Player,
+            new FieldUnitCommandRequest(new UnitId(1), UnitMode.March, footprintTile,
+                VisibleTiles: new HashSet<HexCoord>()));
+
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(UnitMode.Attack, result.State.Armies.Single().Field.Mode);
     }
 
     [Fact]
