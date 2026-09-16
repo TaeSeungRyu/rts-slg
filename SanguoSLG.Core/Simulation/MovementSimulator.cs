@@ -265,7 +265,7 @@ public sealed class MovementSimulator
 
                         // 남의 성 타일로는 못 들어간다 — 경로는 목표 칸을 허용하지만(입성용),
                         // 목표 성이 적 소유(함락 등)면 그 앞에서 대기한다.
-                        if (castles is not null && castles.Any(cs => cs.Position == w.Path.Peek()))
+                        if (castles is not null && castles.Any(cs => cs.Contains(w.Path.Peek())))
                         {
                             continue;
                         }
@@ -694,8 +694,10 @@ public sealed class MovementSimulator
     {
         var domain = w.Unit.Domain;
         var start = w.Unit.Position;
+        var destinationAnchor = _passability.CastleAnchorAt(goal);
         var pathfinder = new HexPathfinder(c =>
-            c == start || c == goal || _passability.CanEnter(domain, c));
+            c == start || c == goal || _passability.CanEnter(domain, c)
+            || (destinationAnchor is not null && _passability.CastleAnchorAt(c) == destinationAnchor));
         var path = pathfinder.FindPath(start, goal);
         var queue = new Queue<HexCoord>();
         for (var i = 1; i < path.Count; i++)

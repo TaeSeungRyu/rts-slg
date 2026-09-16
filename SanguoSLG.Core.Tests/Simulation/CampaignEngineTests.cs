@@ -36,13 +36,16 @@ public class CampaignEngineTests
     private static GameState World(params CombatUnit[] armies) =>
         new(1, 1, new List<Faction>(), new List<City>(), new List<General>(), FieldArmies: armies.ToList());
 
-    [Fact]
-    public void 수송부대_둘이_같은_항구로_연속입성해_주둔병력으로_정산된다()
+    [Theory]
+    [InlineData(PortSize.Small)]
+    [InlineData(PortSize.Medium)]
+    public void 수송부대_둘이_같은_항구로_연속입성해_주둔병력으로_정산된다(PortSize size)
     {
         var source = new City(new CityId(1), "출발성", new HexCoord(0, 0), new FactionId(1), 5000,
             CastleSize.Small, Gold: 1000, Population: 100_000, Ore: 50_000);
         var port = new City(new CityId(2), "항구", new HexCoord(5, 0), new FactionId(1), 1000,
-            CastleSize.Small, Gold: 100, Population: 40_000, Ore: 0, Port: PortSize.Small);
+            size == PortSize.Medium ? CastleSize.Medium : CastleSize.Small,
+            Gold: 100, Population: 40_000, Ore: 0, Port: size);
         var generals = new[]
         {
             new General(new GeneralId(1), "수송장1", new Dictionary<TroopClass, AptitudeGrade>(), 70, 60, 80),
@@ -63,7 +66,13 @@ public class CampaignEngineTests
             source.Id, [new TransportLine("swordsman", 4_000)], port.Id, new GeneralId(2), Gold: 50, Provisions: 100));
         Assert.True(second.Ok, second.Error);
 
-        var map = new HexMap(0, 8, -2, 2);
+        var terrain = new Dictionary<HexCoord, TerrainType>();
+        for (var q = 0; q <= 8; q++)
+        for (var r = -2; r <= 0; r++)
+            terrain[new HexCoord(q, r)] = TerrainType.WaterShallow;
+        terrain[source.Position] = TerrainType.Plains;
+        terrain[port.Position] = TerrainType.PortSmall;
+        var map = new HexMap(0, 8, -2, 3, terrain);
         var movement = new MovementSimulator(new PassabilityMap(map, [], [source, port]));
         var field = new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70));
         var engine = new CampaignEngine(field, new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0)));
