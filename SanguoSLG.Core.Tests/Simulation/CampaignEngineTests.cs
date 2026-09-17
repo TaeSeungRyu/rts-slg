@@ -36,6 +36,37 @@ public class CampaignEngineTests
     private static GameState World(params CombatUnit[] armies) =>
         new(1, 1, new List<Faction>(), new List<City>(), new List<General>(), FieldArmies: armies.ToList());
 
+    [Fact]
+    public void 실제교전에_참가한_장수는_사용병종_숙련경험치를_얻는다()
+    {
+        var attacker = Army(1, 1, new HexCoord(3, 0), UnitMode.Attack, new HexCoord(4, 0)) with
+        {
+            VanguardId = new GeneralId(1),
+        };
+        var defender = Army(2, 2, new HexCoord(4, 0), UnitMode.Advance, null) with
+        {
+            VanguardId = new GeneralId(2),
+        };
+        var general = new General(new GeneralId(1), "보병 숙련장",
+            new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Infantry] = AptitudeGrade.D },
+            70, 60, 50,
+            AptitudeExperience: new Dictionary<TroopClass, int>
+            {
+                [TroopClass.Infantry] = AptitudeGrowth.RequiredExperience - AptitudeGrowth.ExperiencePerCombat,
+            });
+        var enemy = new General(new GeneralId(2), "적장",
+            new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Infantry] = AptitudeGrade.D }, 60, 60, 60);
+        var state = new GameState(1, 1, [], [], [general, enemy], FieldArmies: [attacker, defender]);
+
+        var engine = Engine();
+        var after = engine.AdvanceWeek(state, out _);
+
+        var grown = after.Generals.Single(g => g.Id == general.Id);
+        Assert.Equal(AptitudeGrade.C, grown.AptitudeFor(TroopClass.Infantry));
+        Assert.Contains(engine.LastWorldEvents, e => e.Kind == WorldEventKind.AptitudeGrowth
+            && e.General == general.Id && e.Code == TroopClass.Infantry.ToString());
+    }
+
     [Theory]
     [InlineData(PortSize.Small)]
     [InlineData(PortSize.Medium)]

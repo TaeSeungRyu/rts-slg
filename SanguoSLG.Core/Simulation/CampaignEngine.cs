@@ -744,15 +744,46 @@ public sealed class CampaignEngine
                     grown = grown with { AdminPassives = admin };
                 }
 
+                var aptitudeUps = new List<TroopClass>();
+                foreach (var troopClass in AptitudeClassesFor(unit))
+                {
+                    grown = AptitudeGrowth.AddExperience(grown, troopClass,
+                        AptitudeGrowth.ExperiencePerCombat, out var aptitudeUp);
+                    if (aptitudeUp)
+                    {
+                        aptitudeUps.Add(troopClass);
+                    }
+                }
+
                 generals[idx] = grown;
                 _campaignEvents.Add(new WorldEvent(WorldEventKind.GeneralGrowth, unit.Field.Owner, generalId,
                     Amount: generalExp,
                     Code: passiveTierUps > 0 ? (leveledUp ? "level_up_passive_up" : "passive_up") : (leveledUp ? "level_up" : "combat"),
                     ExtraAmount: passiveExp));
+                foreach (var troopClass in aptitudeUps)
+                {
+                    _campaignEvents.Add(new WorldEvent(WorldEventKind.AptitudeGrowth, unit.Field.Owner, generalId,
+                        Amount: (int)grown.AptitudeFor(troopClass), Code: troopClass.ToString()));
+                }
             }
         }
 
         return state with { Generals = generals };
+    }
+
+    private static IReadOnlyList<TroopClass> AptitudeClassesFor(CombatUnit unit)
+    {
+        if (unit.IsSupply)
+        {
+            return [TroopClass.Supply];
+        }
+
+        if (unit.IsArmyGroup)
+        {
+            return [TroopClass.Infantry, TroopClass.Archer, TroopClass.Siege];
+        }
+
+        return [unit.Class];
     }
 
     private static AdvanceTurn ApplyFieldSpoils(IReadOnlyList<CombatUnit> before, AdvanceTurn turn)
