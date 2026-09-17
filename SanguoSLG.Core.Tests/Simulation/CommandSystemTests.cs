@@ -1029,7 +1029,7 @@ public class CommandSystemTests
         {
             Experience = 80,
             BattlePassives = [new GeneralSkill("drilled", 1, Experience: 80)],
-            AdminPassives = [new GeneralSkill("recruiter", 1, Experience: 90)],
+            AdminPassives = [new GeneralSkill("recruiter", 1, Experience: 490)],
         };
         var s0 = State(new[] { Town(1) }, new[] { general }, garrisons);
 

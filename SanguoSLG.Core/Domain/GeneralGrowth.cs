@@ -23,9 +23,14 @@ public static class GeneralGrowth
     public static int LevelCombatBonusRounded(int level)
         => (int)System.Math.Round(LevelCombatBonus(level), MidpointRounding.AwayFromZero);
 
-    /// <summary>패시브 다음 티어 필요 경험치. 1→2는 100, 2→3은 200.</summary>
+    /// <summary>패시브 다음 티어 필요 경험치. 1→2는 500, 2→3은 2,000.</summary>
     public static int RequiredPassiveExperienceForNextTier(int currentTier)
-        => currentTier >= MaxPassiveTier ? int.MaxValue : System.Math.Clamp(currentTier, 1, MaxPassiveTier) * 100;
+        => currentTier switch
+        {
+            <= 1 => 500,
+            2 => 2_000,
+            _ => int.MaxValue,
+        };
 
     public static General AddGeneralExperience(General general, int gained, out bool leveledUp)
     {
