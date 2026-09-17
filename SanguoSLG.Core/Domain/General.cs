@@ -22,11 +22,19 @@ public sealed record General(
     string Region = "",
     string Desc = "",
     int Level = 1,
-    int Experience = 0)
+    int Experience = 0,
+    IReadOnlyDictionary<TroopClass, int>? AptitudeExperience = null,
+    IReadOnlyDictionary<TroopClass, AptitudeGrade>? AptitudeBaseGrades = null)
 {
     /// <summary>병종 분류의 통솔 등급. 정의가 없으면 F.</summary>
     public AptitudeGrade AptitudeFor(TroopClass troopClass)
         => Aptitudes.TryGetValue(troopClass, out var grade) ? grade : AptitudeGrade.F;
+
+    public int AptitudeExperienceFor(TroopClass troopClass)
+        => AptitudeExperience?.GetValueOrDefault(troopClass) ?? 0;
+
+    public AptitudeGrade AptitudeBaseFor(TroopClass troopClass)
+        => AptitudeBaseGrades?.GetValueOrDefault(troopClass) ?? AptitudeFor(troopClass);
 
     /// <summary>보유 전투 패시브(없으면 빈 목록).</summary>
     public IReadOnlyList<GeneralSkill> Passives => BattlePassives ?? [];
