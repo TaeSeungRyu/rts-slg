@@ -111,7 +111,9 @@ public sealed class CampaignEngine
             var productionUnitIds = productionUnits.Select(u => u.Id).ToHashSet();
             var turnInput = productionUnits.Count == 0 ? armies : armies.Concat(productionUnits).ToList();
 
-            var turn = _field.Run(turnInput, maxDays: remaining, castles);
+            // 이동 → 공격 → 점령을 하루 단위로 확정한다. 주간 전체를 한 번에
+            // 계산하면 공격턴에서 수비가 전멸해도 다음 진행까지 함락이 지연된다.
+            var turn = _field.Run(turnInput, maxDays: 1, castles);
             // 생산 대상은 저장용 야전 부대에서 제거해도 공격 모션의 목표 위치는 보존한다.
             var attackedProduction = productionUnits.Where(u =>
                 turn.Combat?.DamageTaken.GetValueOrDefault(u.Id) > 0).ToList();

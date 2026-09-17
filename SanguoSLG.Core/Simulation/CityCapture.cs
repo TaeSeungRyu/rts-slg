@@ -104,7 +104,17 @@ public sealed class CityCapture
         var postings = state.Assignments.ToList();
         foreach (var unit in entrants.OrderBy(u => u.Id.Value))
         {
-            AddGarrison(garrisons, city.Id, unit.TroopCode, unit.Pool.Active, unit.Training);
+            if (unit.IsArmyGroup && unit.Cargo.Count > 0)
+            {
+                foreach (var component in unit.Cargo)
+                {
+                    AddGarrison(garrisons, city.Id, component.TroopCode, component.Troops, component.TrainingLevel);
+                }
+            }
+            else
+            {
+                AddGarrison(garrisons, city.Id, unit.TroopCode, unit.Pool.Active, unit.Training);
+            }
             foreach (var gid in new[] { unit.VanguardId, unit.AdjutantId }.OfType<GeneralId>())
             {
                 var idx = postings.FindIndex(p => p.General == gid);
