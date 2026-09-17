@@ -2819,6 +2819,14 @@ public sealed partial class CampaignMapScene : Node3D
 
         _state = _pendingState;
         Redraw(_pendingNote);
+        // 프레임 지연으로 이동 대기열이 남아도 진행 종료 후 뒤늦게 튀지 않도록 최종 칸에 확정한다.
+        foreach (var unit in _state.Armies)
+        {
+            if (_armyTokens.TryGetValue(unit.Id.Value, out var token))
+            {
+                token.DisplaySnapTo(unit.Field.Position);
+            }
+        }
 
         // 이번 진행의 사건을 날짜 헤더와 함께 보고 패널로 flush.
         if (_pendingReport.Count > 0)

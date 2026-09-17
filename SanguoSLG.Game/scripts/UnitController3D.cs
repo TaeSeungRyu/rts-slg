@@ -179,6 +179,8 @@ public partial class UnitController3D : Node3D
 
     /// <summary>돌격 중 전진·후퇴 구간 — 이동이 아니어도 다리를 굴린다.</summary>
     private bool _chargeMoving;
+    private readonly Queue<(HexCoord To, float Seconds)> _displayMoveQueue = new();
+    private Tween? _displayMoveTween;
 
     /// <summary>공성 중에서도 던지는 쪽(투석기) — 말뚝 대신 팔을 젖혀 돌을 날린다.</summary>
     private bool _siegeThrower;
@@ -281,6 +283,9 @@ public partial class UnitController3D : Node3D
 
     public void DisplaySnapTo(HexCoord to)
     {
+        _displayMoveTween?.Kill();
+        _displayMoveTween = null;
+        _displayMoveQueue.Clear();
         var target = TokenPosition(to);
         Position = target;
         _lastPosition = target;
@@ -290,6 +295,17 @@ public partial class UnitController3D : Node3D
 
     /// <summary>표시 모드: 한 칸을 실제 행군 모션과 함께 이동한다.</summary>
     public void DisplayStepTo(HexCoord to, float seconds)
+    {
+        if (_moving)
+        {
+            _displayMoveQueue.Enqueue((to, seconds));
+            return;
+        }
+
+        StartDisplayStep(to, seconds);
+    }
+
+    private void StartDisplayStep(HexCoord to, float seconds)
     {
         Visible = true;
         if (Alive(_tokenRoot)) { _tokenRoot.Visible = true; }
@@ -302,16 +318,25 @@ public partial class UnitController3D : Node3D
             _stepYaw = Mathf.Atan2(dir.X, dir.Z); // 이 칸의 진행 방향을 스텝 시작에 고정
             _hasStepYaw = true;
         }
-        var tween = CreateTween();
-        tween.TweenProperty(this, "position", target, seconds)
+        _displayMoveTween = CreateTween();
+        _displayMoveTween.TweenProperty(this, "position", target, seconds)
             .SetTrans(Tween.TransitionType.Sine);
-        tween.Finished += () =>
+        _displayMoveTween.Finished += () =>
         {
-            _moving = false;
+            _displayMoveTween = null;
             Visible = true;
             if (Alive(_tokenRoot)) { _tokenRoot.Visible = true; }
-            PlayNativeSupplyAnimation("state_camp");
-            PlayQueuedAttackIfAny();
+            if (_displayMoveQueue.Count > 0)
+            {
+                var next = _displayMoveQueue.Dequeue();
+                StartDisplayStep(next.To, next.Seconds);
+            }
+            else
+            {
+                _moving = false;
+                PlayNativeSupplyAnimation("state_camp");
+                PlayQueuedAttackIfAny();
+            }
         };
     }
 
