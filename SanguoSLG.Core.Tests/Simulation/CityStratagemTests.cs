@@ -131,6 +131,8 @@ public class CityStratagemTests
         var done = Advance(issued.State, 11, roll: 99); // 실패(99 ≥ 50)
 
         Assert.Equal(3038, done.Cities.First(c => c.Id == new CityId(2)).Provisions); // 무효 + 7일 군량 생산
+        Assert.Equal(AdministrationGrowth.StratagemExperience,
+            done.Generals.Single(g => g.Id == new GeneralId(1)).AdminExperience);
     }
 
     [Fact]
@@ -141,6 +143,8 @@ public class CityStratagemTests
         var done = Advance(issued.State, 11, roll: 0);
 
         Assert.Equal(2431, done.Cities.First(c => c.Id == new CityId(2)).Provisions); // 7일 군량 생산 후 −20%
+        Assert.Equal(AdministrationGrowth.StratagemExperience,
+            done.Generals.Single(g => g.Id == new GeneralId(1)).AdminExperience);
     }
 
     [Fact]

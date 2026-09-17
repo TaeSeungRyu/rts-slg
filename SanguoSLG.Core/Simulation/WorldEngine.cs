@@ -589,6 +589,8 @@ public sealed class WorldEngine
 
                 case CommandKind.BuildShip:
                     AddPortShip(portShips, cmd.City, cmd.TroopCode, cmd.Amount);
+                    ApplyAdministrationGrowth(generals, cmd.Main, city.Owner, cmd.City,
+                        ShipAdministrationExperience(cmd.TroopCode), "ship_build");
                     break;
 
                 case CommandKind.Upgrade:
@@ -718,6 +720,14 @@ public sealed class WorldEngine
             stocks.Add(new PortShipStock(city, shipCode, count));
         }
     }
+
+    private static int ShipAdministrationExperience(string shipCode) => shipCode switch
+    {
+        "small_boat" => AdministrationGrowth.SmallShipExperience,
+        "medium_ship" => AdministrationGrowth.MediumShipExperience,
+        "large_ship" => AdministrationGrowth.LargeShipExperience,
+        _ => 0,
+    };
 
     private void ResolveExplore(GameState state, CityCommand cmd, City city,
         Dictionary<CityId, City> cities, List<General> generals, List<ExplorationDiscovery> discoveries)
@@ -972,10 +982,14 @@ public sealed class WorldEngine
         var success = _random.Next(0, 100) < CityStratagems.SuccessPercent(casterIntellect, defenderIntellect);
         if (!success)
         {
+            ApplyAdministrationGrowth(generals, cmd.Main, casterCity.Owner, casterCity.Id,
+                AdministrationGrowth.StratagemExperience, "stratagem");
             _events.Add(new WorldEvent(WorldEventKind.StratagemFail, casterCity.Owner, cmd.Main, targetId, Code: cmd.Facility));
             return; // 실패 = 무효(소요 기간·장수 잠금이 이미 비용)
         }
 
+        ApplyAdministrationGrowth(generals, cmd.Main, casterCity.Owner, casterCity.Id,
+            AdministrationGrowth.StratagemExperience, "stratagem");
         _events.Add(new WorldEvent(WorldEventKind.StratagemSuccess, casterCity.Owner, cmd.Main, targetId, Code: cmd.Facility));
 
         switch (cmd.Facility)
