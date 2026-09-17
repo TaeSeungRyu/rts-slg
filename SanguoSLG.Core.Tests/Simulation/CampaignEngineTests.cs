@@ -67,6 +67,27 @@ public class CampaignEngineTests
             && e.General == general.Id && e.Code == TroopClass.Infantry.ToString());
     }
 
+    [Fact]
+    public void 승급된_병종적성은_이미_출전한_부대의_다음_전투일부터_반영된다()
+    {
+        var general = new General(new GeneralId(1), "성장한 선봉",
+            new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Infantry] = AptitudeGrade.C },
+            70, 60, 50);
+        var stale = Army(1, 1, new HexCoord(3, 0), UnitMode.Advance, null) with
+        {
+            VanguardId = general.Id,
+            Stats = Army(9, 1, new HexCoord(3, 0), UnitMode.Advance, null).Stats with
+            {
+                AptitudePercent = AptitudeGrade.D.Percent(),
+            },
+        };
+        var state = new GameState(1, 1, [], [], [general], FieldArmies: [stale]);
+
+        var after = Engine().AdvanceWeek(state, out _);
+
+        Assert.Equal(AptitudeGrade.C.Percent(), after.Armies.Single().Stats.AptitudePercent);
+    }
+
     [Theory]
     [InlineData(PortSize.Small)]
     [InlineData(PortSize.Medium)]

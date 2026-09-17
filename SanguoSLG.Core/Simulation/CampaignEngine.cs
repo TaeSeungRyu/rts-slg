@@ -107,6 +107,11 @@ public sealed class CampaignEngine
                 (work, armies) = ResupplyFromCities(work, armies);
             }
 
+            // 장수의 병종 숙련 승급은 이미 출전한 부대에도 다음 전투일부터 반영한다.
+            // 편성 당시 캐시한 적성 배수를 그대로 두면 장기 원정 중에는 성장 효과가
+            // 전혀 적용되지 않으므로, 하루 조각을 계산하기 전에 선봉의 현재 적성으로 갱신한다.
+            armies = RefreshAptitudePercents(armies, work.Generals);
+
             var productionUnits = ProductionCombatUnits(work);
             var productionUnitIds = productionUnits.Select(u => u.Id).ToHashSet();
             var turnInput = productionUnits.Count == 0 ? armies : armies.Concat(productionUnits).ToList();
@@ -784,6 +789,27 @@ public sealed class CampaignEngine
         }
 
         return [unit.Class];
+    }
+
+    private static List<CombatUnit> RefreshAptitudePercents(
+        IReadOnlyList<CombatUnit> armies, IReadOnlyList<General> generals)
+    {
+        var byId = generals.ToDictionary(g => g.Id);
+        return armies.Select(unit =>
+        {
+            if (unit.VanguardId is not { } vanguardId || !byId.TryGetValue(vanguardId, out var vanguard))
+            {
+                return unit;
+            }
+
+            var grade = unit.IsArmyGroup
+                ? AptitudeGrades.AverageFloor(
+                    vanguard.AptitudeFor(TroopClass.Infantry),
+                    vanguard.AptitudeFor(TroopClass.Archer),
+                    vanguard.AptitudeFor(TroopClass.Siege))
+                : vanguard.AptitudeFor(unit.IsSupply ? TroopClass.Supply : unit.Class);
+            return unit with { Stats = unit.Stats with { AptitudePercent = grade.Percent() } };
+        }).ToList();
     }
 
     private static AdvanceTurn ApplyFieldSpoils(IReadOnlyList<CombatUnit> before, AdvanceTurn turn)
