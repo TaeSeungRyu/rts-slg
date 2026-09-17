@@ -2394,6 +2394,7 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.BanditRaid => ($"[치안] {cName} 주변에 도적 {we.Amount}명이 출현해 성을 노립니다.", AccentFill),
                 WorldEventKind.SecurityFactor => ($"[치안 요인] {cName}: {(we.Code == "vacancy" ? "치안 담당 공석" : we.Code == "recruitment" ? $"병력 담당 {gName}" : $"치안 담당 {gName}")} {we.Amount:+0;-0;0} / 7일 (합산 후 0~100 적용)", Parchment),
                 WorldEventKind.GeneralGrowth => ($"[성장] {gName}{(we.Amount > 0 ? $" 장수 경험치 +{we.Amount}" : "")}{(we.ExtraAmount > 0 ? $" · 패시브 경험치 +{we.ExtraAmount}" : "")}{(we.Code.Contains("level_up") ? " · 레벨 상승!" : "")}{(we.Code.Contains("passive_up") ? " · 패시브 성장!" : "")}", we.Code.Contains("level_up") || we.Code.Contains("passive_up") ? GoldBright : Parchment),
+                WorldEventKind.AdministrationGrowth => ($"[내정 성장] {gName} · {AdministrationGrowthSourceLabel(we.Code)} 경험치 +{we.Amount}{(we.Code.EndsWith("_level_up", System.StringComparison.Ordinal) ? $" · 내정LV {we.ExtraAmount} 상승!" : "")}", we.Code.EndsWith("_level_up", System.StringComparison.Ordinal) ? GoldBright : Parchment),
                 WorldEventKind.AptitudeGrowth => ($"[숙련] {gName}의 {(System.Enum.TryParse<TroopClass>(we.Code, out var aptitudeClass) ? ClassName(aptitudeClass) : we.Code)} 적성이 {GradeText((AptitudeGrade)we.Amount)}로 상승했습니다!", GoldBright),
                 _ => ("", Parchment),
             };
@@ -6172,7 +6173,7 @@ public sealed partial class CampaignMapScene : Node3D
         var portraitCard = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         portraitCard.AddThemeConstantOverride("separation", 7);
         portrait.AddChild(portraitCard);
-        var imageHeight = Mathf.Max(180f, portraitHeight - 160f);
+        var imageHeight = Mathf.Max(180f, portraitHeight - 250f);
         if (PortraitFor(gid) is { } tex)
         {
             portraitCard.AddChild(new TextureRect
@@ -6229,6 +6230,34 @@ public sealed partial class CampaignMapScene : Node3D
         expLabel.HorizontalAlignment = HorizontalAlignment.Center;
         portraitCard.AddChild(expLabel);
 
+        var nextAdminExp = AdministrationGrowth.RequiredExperienceForNextLevel(g.ClampedAdminLevel);
+        var adminLevelText = g.ClampedAdminLevel >= AdministrationGrowth.MaxLevel
+            ? $"내정LV {g.ClampedAdminLevel}  MAX"
+            : $"내정LV {g.ClampedAdminLevel}";
+        var adminLevel = MakeLabel(adminLevelText, 18, new Color(0.68f, 0.88f, 0.98f));
+        adminLevel.HorizontalAlignment = HorizontalAlignment.Center;
+        portraitCard.AddChild(adminLevel);
+
+        var adminExpBar = new ProgressBar
+        {
+            MinValue = 0,
+            MaxValue = g.ClampedAdminLevel >= AdministrationGrowth.MaxLevel ? 1 : nextAdminExp,
+            Value = g.ClampedAdminLevel >= AdministrationGrowth.MaxLevel
+                ? 1
+                : System.Math.Clamp(g.AdminExperience, 0, nextAdminExp),
+            ShowPercentage = false,
+            CustomMinimumSize = new Vector2(portraitWidth - 28f, 16),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        adminExpBar.AddThemeStyleboxOverride("background", Frame(new Color(0.15f, 0.15f, 0.15f), new Color(0.28f, 0.36f, 0.40f), 1, 6, 0));
+        adminExpBar.AddThemeStyleboxOverride("fill", Frame(new Color(0.30f, 0.68f, 0.82f), new Color(0.68f, 0.90f, 1f), 1, 6, 0));
+        portraitCard.AddChild(adminExpBar);
+        var adminExpLabel = MakeLabel(g.ClampedAdminLevel >= AdministrationGrowth.MaxLevel
+            ? "내정 경험치 MAX"
+            : $"내정 경험치 {g.AdminExperience} / {nextAdminExp}", 12, Parchment);
+        adminExpLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        portraitCard.AddChild(adminExpLabel);
+
         var cardDesc = MakeLabel(g.Desc.Length > 0 ? g.Desc : "설명 없음", 12, new Color(Parchment, 0.86f));
         cardDesc.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         cardDesc.HorizontalAlignment = HorizontalAlignment.Center;
@@ -6267,7 +6296,12 @@ public sealed partial class CampaignMapScene : Node3D
         stat.AddThemeConstantOverride("v_separation", 2);
         box.AddChild(stat);
         foreach (var name in new[] { "무력", "지력", "정치" }) { stat.AddChild(Cell(name, 12, GoldBright)); }
-        foreach (var v in new[] { g.Might, g.Intellect, g.Politics }) { stat.AddChild(Cell(v.ToString(), 17, Parchment)); }
+        var adminBonus = AdministrationGrowth.AbilityBonus(g.ClampedAdminLevel);
+        var bonusSuffix = adminBonus > 0 ? $" (+{adminBonus:0.0})" : "";
+        foreach (var value in new[] { g.Might.ToString(), $"{g.Intellect}{bonusSuffix}", $"{g.Politics}{bonusSuffix}" })
+        {
+            stat.AddChild(Cell(value, 17, Parchment));
+        }
 
         box.AddChild(GoldRule());
 
@@ -10038,6 +10072,21 @@ public sealed partial class CampaignMapScene : Node3D
         TroopClass.Defense => "수성",
         _ => "",
     };
+
+    private static string AdministrationGrowthSourceLabel(string code)
+    {
+        var source = code.EndsWith("_level_up", System.StringComparison.Ordinal)
+            ? code[..^"_level_up".Length]
+            : code;
+        return source switch
+        {
+            "admin_duty" => "담당",
+            "production" => "생산",
+            "stratagem" => "계략",
+            "ship_build" => "함선 제작",
+            _ => "내정",
+        };
+    }
 
     private static Color ClassColor(TroopClass c) => c switch
     {
