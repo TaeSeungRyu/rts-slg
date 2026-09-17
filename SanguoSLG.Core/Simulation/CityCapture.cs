@@ -12,7 +12,11 @@ using SanguoSLG.Core.Spatial;
 /// <param name="FactionEliminated">이 함락으로 옛 세력이 소멸했는가.</param>
 public sealed record CaptureReport(
     CityId City, FactionId NewOwner, FactionId OldOwner,
-    IReadOnlyList<GeneralId> Captured, IReadOnlyList<GeneralId> Fled, bool FactionEliminated);
+    IReadOnlyList<GeneralId> Captured, IReadOnlyList<GeneralId> Fled, bool FactionEliminated,
+    IReadOnlyList<UnitId>? Occupiers = null, int TurnIndex = -1)
+{
+    public IReadOnlyList<UnitId> OccupyingUnits => Occupiers ?? [];
+}
 
 /// <summary>
 /// 캠페인 함락 처리(design-general-lifecycle §4·design-combat "함락 처리"). 성벽 0 + 수비 0 도시에
@@ -150,7 +154,8 @@ public sealed class CityCapture
         if (next.CityCount(oldOwner) == 0)
         {
             next = ResolveFactionExtinction(next, oldOwner, captor, city.Id, random, captured, fled);
-            reports.Add(new CaptureReport(city.Id, captor, oldOwner, captured, fled, FactionEliminated: true));
+            reports.Add(new CaptureReport(city.Id, captor, oldOwner, captured, fled, FactionEliminated: true,
+                entrants.Select(u => u.Id).ToList()));
             return next;
         }
 
@@ -178,7 +183,8 @@ public sealed class CityCapture
             }
         }
 
-        reports.Add(new CaptureReport(city.Id, captor, oldOwner, captured, fled, FactionEliminated: false));
+        reports.Add(new CaptureReport(city.Id, captor, oldOwner, captured, fled, FactionEliminated: false,
+            entrants.Select(u => u.Id).ToList()));
         return next;
     }
 

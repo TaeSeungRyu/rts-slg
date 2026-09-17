@@ -120,6 +120,32 @@ public class CityCaptureTests
     }
 
     [Fact]
+    public void 집단군이_성을_점령하면_구성_병종별로_주둔한다()
+    {
+        var city = Fallen(1, owner: 2, new HexCoord(5, 0));
+        var armyGroup = Attacker(1, owner: 1, new HexCoord(4, 0), city.Position, troops: 15000) with
+        {
+            IsArmyGroup = true,
+            TroopCode = "army_group",
+            SupplyCargo =
+            [
+                new SupplyComponent("swordsman", 5000, 60),
+                new SupplyComponent("archer", 5000, 70),
+                new SupplyComponent("siege_tower", 5000, 80),
+            ],
+        };
+
+        var after = new CityCapture().ResolveAll(State([city], [armyGroup]), new FixedRandom(0), out var reports);
+
+        Assert.Single(reports);
+        Assert.Empty(after.Armies);
+        Assert.DoesNotContain(after.Garrisons, g => g.TroopCode == "army_group");
+        Assert.Equal(15000, after.Garrisons.Sum(g => g.Troops));
+        Assert.Equal(["archer", "siege_tower", "swordsman"],
+            after.Garrisons.Select(g => g.TroopCode).OrderBy(x => x).ToArray());
+    }
+
+    [Fact]
     public void 함락_수비가_남아있으면_점거하지_않는다()
     {
         var city = Fallen(1, 2, new HexCoord(5, 0));
@@ -223,7 +249,9 @@ public class CityCaptureTests
         }
 
         Assert.Equal(new FactionId(1), s.Cities.Single().Owner); // 점거 완료
-        Assert.Single(caps);
+        var capture = Assert.Single(caps);
+        Assert.True(capture.TurnIndex >= 0);
+        Assert.Equal(new UnitId(1), Assert.Single(capture.OccupyingUnits));
         Assert.Equal(new CityId(1), s.PostingOf(new GeneralId(20))!.Location); // 선봉 장수가 새 주둔
         Assert.Contains(s.Garrisons, g => g.City == new CityId(1) && g.TroopCode == "swordsman");
     }

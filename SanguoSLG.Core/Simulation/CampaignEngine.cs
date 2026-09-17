@@ -249,7 +249,7 @@ public sealed class CampaignEngine
             {
                 work = _capture.ResolveAll(work with { FieldArmies = armies }, _random, out var caps);
                 armies = work.Armies.Where(u => u.Pool.Active > 0).ToList();
-                captureReports.AddRange(caps);
+                captureReports.AddRange(caps.Select(c => c with { TurnIndex = reports.Count - 1 }));
             }
         }
 

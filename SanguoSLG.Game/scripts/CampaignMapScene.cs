@@ -104,6 +104,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, Vector3 From, int TargetUnitId)> _animArrows = new(); // 성 반격 화살
     private int _animSupplyArrowIdx;
     private readonly List<(double Time, int UnitId, Vector3 Target)> _animSupplyArrows = new(); // 보급부대 공격 화살
+    private int _animCaptureIdx;
+    private readonly List<(double Time, CityId City)> _animCaptures = new();
 
     // 병력 → 편대원 수(design-ui §3): 9천↑=9, 7천↑=7, 5천↑=5, 3천↑=3, 그 밑=1.
     private static int FormationFor(int troops) =>
@@ -2400,7 +2402,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         _pendingState = after;
         _pendingNote = note.Count > 0 ? string.Join(" · ", note) : "—";
-        BuildAnimation(startHex, turns, sieges, preMove);
+        BuildAnimation(startHex, turns, sieges, captures, preMove);
 
         // 애니메이션 시작: 이동 전 상태(토큰=시작 위치)를 그린 뒤, _Process가 칸 단위로 이동시킨다.
         // 열려 있던 성 명령 팔레트·정보 카드는 자동으로 닫는다(진행 중 명령 불가).
@@ -2428,6 +2430,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animSiegeDmgIdx = 0;
         _animArrowIdx = 0;
         _animSupplyArrowIdx = 0;
+        _animCaptureIdx = 0;
         _advanceBtn.Busy = true;
         _advanceBtn.Progress = 0f;
         _dayLabel.Visible = true;
@@ -2439,7 +2442,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 진행 결과의 이동 틱을 "언제 어느 칸으로" 스텝 목록으로 편다. 한 칸 = 1초, 하루 = 4초 슬롯
     // (하루의 마지막 1초는 공격 모션 몫). 교전·공성이 벌어진 진행 조각의 끝에 공격 모션을 스케줄.
     private void BuildAnimation(Dictionary<int, HexCoord> startHex, IReadOnlyList<AdvanceTurn> turns,
-        IReadOnlyList<SiegeExchange> sieges, GameState preMove)
+        IReadOnlyList<SiegeExchange> sieges, IReadOnlyList<CaptureReport> captures, GameState preMove)
     {
         _animationProductionPositions.Clear();
         _visionRefreshTime = 0;
@@ -2457,6 +2460,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animSiegeDmg.Clear();
         _animArrows.Clear();
         _animSupplyArrows.Clear();
+        _animCaptures.Clear();
         for (var d = 0; d <= AnimDays; d++) { _dayKind[d] = "이동"; } // 기본 이동턴, 아래서 교전·공성 있는 날만 공격턴
         var alive = new HashSet<int>(startHex.Keys);
         var deathEffectUnitIds = new HashSet<int>();
@@ -2548,6 +2552,18 @@ public sealed partial class CampaignMapScene : Node3D
                 }
             }
 
+            foreach (var capture in captures.Where(c => c.TurnIndex == ti))
+            {
+                var captureTime = settleTime + 0.08;
+                _animCaptures.Add((captureTime, capture.City));
+                foreach (var occupier in capture.OccupyingUnits)
+                {
+                    _animKills.Add((captureTime, occupier.Value));
+                    alive.Remove(occupier.Value);
+                    survivors.Remove(occupier.Value);
+                }
+            }
+
             var enteredNow = turn.EnteredCastle.Select(u => u.Id.Value).ToHashSet();
             foreach (var id in alive.Where(id => !survivors.Contains(id)).OrderBy(id => id))
             {
@@ -2588,6 +2604,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animSiegeDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animArrows.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSupplyArrows.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animCaptures.Sort((a, b) => a.Time.CompareTo(b.Time));
     }
 
     private void BuildEgressAnimationStartOverrides(GameState preMove, IReadOnlyList<(double Time, int UnitId, HexCoord To)> moves)
@@ -3812,6 +3829,24 @@ public sealed partial class CampaignMapScene : Node3D
                 if (_productionTokens.Remove(k.OperationId, out var tok)) { tok.QueueFree(); }
                 if (_productionLabels.Remove(k.OperationId, out var lbl)) { lbl.QueueFree(); }
                 _animProductionKillIdx++;
+            }
+
+            while (_animCaptureIdx < _animCaptures.Count && _animCaptures[_animCaptureIdx].Time <= _animT)
+            {
+                var capture = _animCaptures[_animCaptureIdx];
+                var capturedCity = _pendingState.Cities.FirstOrDefault(c => c.Id == capture.City);
+                if (capturedCity is not null)
+                {
+                    _state = _state with
+                    {
+                        Cities = _state.Cities.Select(c => c.Id == capture.City ? capturedCity : c).ToList(),
+                    };
+                    var troops = _pendingState.Garrisons.Where(g => g.City == capture.City).Sum(g => g.Troops);
+                    var label = _cityLabels[capture.City.Value];
+                    label.Text = $"{capturedCity.Name} [{_pendingState.Factions.First(f => f.Id == capturedCity.Owner).Name}]\n성벽 {capturedCity.Wall}  병 {troops}";
+                    label.Modulate = capturedCity.Owner == Player ? Blue : Red;
+                }
+                _animCaptureIdx++;
             }
 
             while (_animKillIdx < _animKills.Count && _animKills[_animKillIdx].Time <= _animT)
