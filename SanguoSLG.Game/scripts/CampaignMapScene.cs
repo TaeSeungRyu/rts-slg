@@ -1633,10 +1633,13 @@ public sealed partial class CampaignMapScene : Node3D
                 return;
             }
             var (req, label) = _pendingNavalDeploys[idx];
-            _pendingNavalDeploys[idx] = (req with { Target = h, Mode = UnitMode.March, Waypoints = waypoints }, label);
-            Dbg($"NAVAL TARGET idx={idx} -> ({h.Q},{h.R}) wps={waypoints?.Count ?? 0}");
+            var enemyPort = CityAtHex(h, c => c.Owner != Player && c.IsPort);
+            var enemyShip = DisplayedArmies.FirstOrDefault(u => u.Field.Position == h && u.Field.Owner != Player && CanSeeUnit(u));
+            var navalMode = enemyPort is not null || enemyShip is not null ? UnitMode.Attack : UnitMode.March;
+            _pendingNavalDeploys[idx] = (req with { Target = h, Mode = navalMode, Waypoints = waypoints }, label);
+            Dbg($"NAVAL TARGET idx={idx} -> ({h.Q},{h.R}) mode={navalMode} wps={waypoints?.Count ?? 0}");
             var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
-            _log.Text = $"출항 목표 → ({h.Q},{h.R}){wpNote} · 목표 확정";
+            _log.Text = $"출항 목표 → ({h.Q},{h.R}){(navalMode == UnitMode.Attack ? " (공격모드)" : "")}{wpNote} · 목표 확정";
         }
         else if (_targetingArmyGroupDeploy && idx >= 0 && idx < _pendingArmyGroupDeploys.Count)
         {
