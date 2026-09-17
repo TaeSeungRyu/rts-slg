@@ -91,6 +91,7 @@ public sealed class WorldEngine
             {
                 next = ApplyAutoRecruitment(next, byId);
                 next = ApplyAutoTraining(next, byId);
+                next = ApplyAdministrationDutyGrowth(next, byId);
             }
         }
 
@@ -434,6 +435,8 @@ public sealed class WorldEngine
                 postings = postings.Select(p => p.General == next.General ? p with { Location = next.City } : p).ToList();
                 ApplyAdminPassiveGrowth(generals, next.General, next.Owner, next.City,
                     GeneralGrowth.ProductionPassiveExperience, "production");
+                ApplyAdministrationGrowth(generals, next.General, next.Owner, next.City,
+                    AdministrationGrowth.ProductionExperience, "production");
                 _events.Add(new WorldEvent(WorldEventKind.ProductionComplete, next.Owner, next.General,
                     next.City, reward.Gold, next.Facility, reward.Provisions));
                 continue;
@@ -814,6 +817,48 @@ public sealed class WorldEngine
             0,
             passiveTierUps > 0 ? $"{code}_passive_up" : code,
             passiveExperience));
+    }
+
+    private GameState ApplyAdministrationDutyGrowth(GameState state,
+        IReadOnlyDictionary<GeneralId, General> byId)
+    {
+        var generals = state.Generals.ToList();
+        var awarded = new HashSet<GeneralId>();
+        foreach (var city in state.Cities.OrderBy(c => c.Id.Value))
+        {
+            foreach (var officer in new[]
+                     {
+                         city.SecurityOfficer, city.DomesticOfficer,
+                         city.RecruitmentOfficer, city.TrainingOfficer,
+                     })
+            {
+                if (officer is not { } generalId || awarded.Contains(generalId)
+                    || ValidOfficer(state, city, generalId, byId) is null)
+                {
+                    continue;
+                }
+
+                awarded.Add(generalId);
+                ApplyAdministrationGrowth(generals, generalId, city.Owner, city.Id,
+                    AdministrationGrowth.DutyExperience, "admin_duty");
+            }
+        }
+
+        return state with { Generals = generals };
+    }
+
+    private void ApplyAdministrationGrowth(List<General> generals, GeneralId generalId,
+        FactionId faction, CityId city, int experience, string code)
+    {
+        var index = generals.FindIndex(g => g.Id == generalId);
+        if (index < 0)
+        {
+            return;
+        }
+
+        generals[index] = AdministrationGrowth.AddExperience(generals[index], experience, out var leveledUp);
+        _events.Add(new WorldEvent(WorldEventKind.AdministrationGrowth, faction, generalId, city,
+            experience, leveledUp ? $"{code}_level_up" : code, generals[index].ClampedAdminLevel));
     }
 
     // 등용 정산: 완료 시점에 대상 종류를 다시 확인하고 수행 장수 정치 단일 확률로 판정.

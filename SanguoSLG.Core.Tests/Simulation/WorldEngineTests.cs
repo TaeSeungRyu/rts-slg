@@ -557,6 +557,30 @@ public class WorldEngineTests
             && e.Amount == 0
             && e.ExtraAmount == GeneralGrowth.AdminDutyPassiveExperience
             && e.Code == "admin_duty");
+        Assert.Equal(AdministrationGrowth.DutyExperience, grown.AdminExperience);
+        Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.AdministrationGrowth
+            && e.General == general.Id && e.Amount == AdministrationGrowth.DutyExperience);
+    }
+
+    [Fact]
+    public void v2_같은장수가_여러담당슬롯에_있어도_내정경험치는_주당한번만_받는다()
+    {
+        var officer = new GeneralId(1);
+        var city = new City(new CityId(1), "중복성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Population: 0, Security: 80,
+            SecurityOfficer: officer, DomesticOfficer: officer,
+            RecruitmentOfficer: officer, TrainingOfficer: officer);
+        var general = V2Officer(1, might: 90, politics: 90);
+        var state = new GameState(1, 1, [], [city], [general],
+            Postings: [new GeneralPosting(officer, city.Owner, city.Id)]);
+        var world = new WorldEngine(V2OnlyBalance,
+            new CommandBalance { AutoOfficerSystemEnabled = true });
+
+        var after = world.AdvanceDays(state, 7);
+
+        Assert.Equal(AdministrationGrowth.DutyExperience, after.Generals.Single().AdminExperience);
+        Assert.Single(world.LastEvents, e => e.Kind == WorldEventKind.AdministrationGrowth
+            && e.General == officer && e.Code == "admin_duty");
     }
 
     [Fact]

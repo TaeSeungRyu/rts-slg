@@ -23,6 +23,7 @@ public enum WorldEventKind
     BanditRaid,         // 저치안 도적 출현
     SecurityFactor,
     GeneralGrowth,      // 장수/패시브 성장
+    AdministrationGrowth, // 내정레벨 경험치·레벨 상승
     AptitudeGrowth,     // 실제 사용 병종 숙련 상승
     ShipBuild,          // 항구 선박 생산 완료
 }

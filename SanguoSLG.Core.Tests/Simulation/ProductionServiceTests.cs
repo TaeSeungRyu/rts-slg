@@ -130,10 +130,15 @@ public class ProductionServiceTests
 
         Assert.Empty(after.ProductionOps);
         Assert.Equal(GeneralGrowth.ProductionPassiveExperience, grown.AdminPassives!.Single().Experience);
+        Assert.Equal(AdministrationGrowth.ProductionExperience, grown.AdminExperience);
         Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.GeneralGrowth
             && e.General == new GeneralId(1)
             && e.Amount == 0
             && e.ExtraAmount == GeneralGrowth.ProductionPassiveExperience
+            && e.Code == "production");
+        Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.AdministrationGrowth
+            && e.General == new GeneralId(1)
+            && e.Amount == AdministrationGrowth.ProductionExperience
             && e.Code == "production");
     }
 
