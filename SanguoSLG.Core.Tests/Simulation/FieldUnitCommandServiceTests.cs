@@ -20,6 +20,14 @@ public class FieldUnitCommandServiceTests
             new CombatStats(100, 10, 10), new TroopPool(1000, 0), UnitCombatState.Create(50),
             IsSupply: supply, TroopCode: supply ? "supply" : "swordsman");
 
+    private static CombatUnit NavalUnit(int id, FactionId owner, HexCoord pos)
+        => Unit(id, owner, pos) with
+        {
+            Class = TroopClass.Naval,
+            Field = Unit(id, owner, pos).Field with { Domain = MovementDomain.DeepWater },
+            TroopCode = "ship_small",
+        };
+
     [Fact]
     public void 이동_명령은_목표와_경유지를_바꾼다()
     {
@@ -121,6 +129,22 @@ public class FieldUnitCommandServiceTests
 
         Assert.True(result.Ok, result.Error);
         Assert.Equal(UnitMode.Attack, result.State.Armies.Single().Field.Mode);
+    }
+
+    [Fact]
+    public void 해상부대는_항구만_도시목표로_허용한다()
+    {
+        var land = City(2, Enemy, new HexCoord(5, 0));
+        var port = land with { Id = new CityId(3), Position = new HexCoord(6, 0), Port = PortSize.Small };
+        var state = new GameState(1, 190, [], [land, port], [], FieldArmies: [NavalUnit(1, Player, default)]);
+
+        var landResult = Service().Reassign(state, Player,
+            new FieldUnitCommandRequest(new UnitId(1), UnitMode.Attack, land.Position));
+        Assert.False(landResult.Ok);
+
+        var portResult = Service().Reassign(state, Player,
+            new FieldUnitCommandRequest(new UnitId(1), UnitMode.Attack, port.Position));
+        Assert.True(portResult.Ok, portResult.Error);
     }
 
     [Fact]

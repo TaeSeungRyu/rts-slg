@@ -73,7 +73,9 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
         var city = state.Cities.FirstOrDefault(c => CastleFootprint.TilesFor(c).Contains(target));
         if (city is not null)
         {
-            return true;
+            // 해상 부대는 항구만 출입·공격 목표로 삼을 수 있다. 일반 성을 허용하면
+            // UI에서 항구가 아닌 육지 성을 클릭했을 때도 선박 경로가 성벽으로 끝난다.
+            return unit.Class != TroopClass.Naval || city.IsPort;
         }
 
         return canEnter(unit.Field.Domain, target);

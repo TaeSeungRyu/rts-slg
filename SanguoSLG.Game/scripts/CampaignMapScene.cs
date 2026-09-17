@@ -245,6 +245,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _armyGroupEditIndex = -1;
     private bool _targetingArmyGroupDeploy;
     private bool _targetingNavalDeploy;
+    private bool _targetingNavalUnit;
     private readonly Dictionary<string, int> _transportDraft = new(System.StringComparer.Ordinal);
     private string _dbgLog = ""; // 출전 디버그 로그 파일 경로(res://deploy-debug.log)
     private const float FacilityDisplayScale = 0.5f;
@@ -1477,7 +1478,7 @@ public sealed partial class CampaignMapScene : Node3D
     // start→goal에 지형 통행 A* 경로가 존재하는가.
     private bool HasPath(HexCoord start, HexCoord goal)
     {
-        var domain = _targetingNavalDeploy ? MovementDomain.DeepWater : MovementDomain.Land;
+        var domain = (_targetingNavalDeploy || _targetingNavalUnit) ? MovementDomain.DeepWater : MovementDomain.Land;
         var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanExitThrough(domain, start, c));
         return pf.FindPath(start, goal).Count > 1;
     }
@@ -1564,6 +1565,7 @@ public sealed partial class CampaignMapScene : Node3D
         _targetingTransportDeploy = false;
         _targetingArmyGroupDeploy = false;
         _targetingNavalDeploy = false;
+        _targetingNavalUnit = false;
         _retargetUnitId = -1;
         _targetConfirmBtn.Visible = false;
         _targetWaypoints.Clear();
@@ -3220,11 +3222,14 @@ public sealed partial class CampaignMapScene : Node3D
         HidePanels();
         _retargetUnitId = unitId;
         _retargetMode = mode;
+        _targetingNavalUnit = _state.Armies.FirstOrDefault(a => a.Id.Value == unitId)?.Class == TroopClass.Naval;
         _depTargeting = true;
         _targetWaypoints.Clear();
         _targetStart = _state.Armies.FirstOrDefault(a => a.Id.Value == unitId)?.Field.Position ?? default;
         RebuildTargetEdit();
-        ShowTargetHint($"{ModeName(mode)}: 지점을 순서대로 클릭 = 경유지  ·  각 지점 위 취소로 삭제  ·  '확인'으로 확정  ·  적 성 = 공격  ·  자기 성 = 복귀  ·  우클릭 취소");
+        ShowTargetHint(_targetingNavalUnit
+            ? $"{ModeName(mode)}: 바다/항구를 클릭 = 경유지  ·  '확인'으로 확정  ·  적 항구 = 공격  ·  우클릭 취소"
+            : $"{ModeName(mode)}: 지점을 순서대로 클릭 = 경유지  ·  각 지점 위 취소로 삭제  ·  '확인'으로 확정  ·  적 성 = 공격  ·  자기 성 = 복귀  ·  우클릭 취소");
     }
 
     // 정지: 목표를 지워 그 자리에서 대기(별도 명령까지 유지).
@@ -3285,12 +3290,18 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var uid = _retargetUnitId;
         var mode = _retargetMode;
+        var navalUnit = _targetingNavalUnit;
         FinishTargeting();
         var u = _state.Armies.FirstOrDefault(a => a.Id.Value == uid && a.Field.Owner == Player);
         if (u is null) { return; }
 
         var enemyCity = CityAtHex(h, c => c.Owner != Player);
         var ownCity = CityAtHex(h, c => c.Owner == Player);
+        if (navalUnit && !_passability.CanEnter(MovementDomain.DeepWater, h) && CityAtHex(h) is null)
+        {
+            RejectTarget("해상 목표 불가", "해상 부대는 바다·대하 또는 항구만 목표로 지정할 수 있습니다.");
+            return;
+        }
         var enemyUnit = DisplayedArmies.FirstOrDefault(a => a.Field.Position == h && a.Field.Owner != Player && CanSeeUnit(a));
         if (enemyCity is not null || enemyUnit is not null) { mode = UnitMode.Attack; }
         var result = _unitCommander.Reassign(_state, Player,
