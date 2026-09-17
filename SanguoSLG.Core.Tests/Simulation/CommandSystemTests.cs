@@ -880,6 +880,19 @@ public class CommandSystemTests
     }
 
     [Fact]
+    public void 항구_선박생산은_내정레벨의_유효지력을_반영한다()
+    {
+        var port = Town(1, gold: 5000) with { Port = PortSize.Small };
+        var builder = Int(2, 99) with { AdminLevel = 4 };
+
+        var issued = Service().Issue(State([port], [builder]),
+            new CommandRequest(port.Id, CommandKind.BuildShip, builder.Id, TroopCode: "medium_ship"));
+
+        Assert.True(issued.Ok, issued.Error);
+        Assert.Equal(1 + 23, issued.State.Commands.Single().CompletionDay);
+    }
+
+    [Fact]
     public void 일반_도시는_선박을_생산할수없다()
     {
         var r = Service().Issue(State([Town(1, gold: 5000)], [Pol(2, 90)]),

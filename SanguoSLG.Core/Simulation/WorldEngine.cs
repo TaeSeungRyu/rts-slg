@@ -136,7 +136,7 @@ public sealed class WorldEngine
             if (domestic is not null)
             {
                 var gold = _commands.AutoDomesticGoldBase
-                    + domestic.Politics * _commands.AutoDomesticGoldPoliticsMultiplier;
+                    + AdministrationGrowth.EffectivePoliticsRounded(domestic) * _commands.AutoDomesticGoldPoliticsMultiplier;
                 gold = ApplyLowSecurityOutputPenalty(gold, next.Security);
                 next = next with
                 {
@@ -165,7 +165,7 @@ public sealed class WorldEngine
             if (includeDomesticOfficer && domestic is not null)
             {
                 var domesticMonthly = _commands.AutoDomesticProvisionsBase
-                    + domestic.Politics * _commands.AutoDomesticProvisionsPoliticsMultiplier;
+                    + AdministrationGrowth.EffectivePoliticsRounded(domestic) * _commands.AutoDomesticProvisionsPoliticsMultiplier;
                 monthly += ApplyLowSecurityOutputPenalty(domesticMonthly, city.Security);
             }
 
@@ -425,7 +425,9 @@ public sealed class WorldEngine
             if (next.Phase == ProductionPhase.Returning && next.Position == next.Origin)
             {
                 var reward = ProductionRules.Reward(next.Facility,
-                    state.Generals.FirstOrDefault(g => g.Id == next.General)?.Politics ?? 0);
+                    state.Generals.FirstOrDefault(g => g.Id == next.General) is { } producer
+                        ? AdministrationGrowth.EffectivePoliticsRounded(producer)
+                        : 0);
                 cities[next.City] = city with
                 {
                     Gold = city.Gold + reward.Gold,
@@ -898,7 +900,8 @@ public sealed class WorldEngine
             return; // 대상이 사라졌거나 이미 아군
         }
 
-        var success = _random.Next(0, 100) < EnlistOdds.SuccessPercent(recruiter.Politics);
+        var success = _random.Next(0, 100) < EnlistOdds.SuccessPercent(
+            AdministrationGrowth.EffectivePoliticsRounded(recruiter));
 
         if (success)
         {
@@ -949,7 +952,8 @@ public sealed class WorldEngine
             return;
         }
 
-        var success = _random.Next(0, 100) < DiplomacyRules.AllianceSuccessPercent(envoy.Politics);
+        var success = _random.Next(0, 100) < DiplomacyRules.AllianceSuccessPercent(
+            AdministrationGrowth.EffectivePoliticsRounded(envoy));
         var targetCode = targetFaction.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (success)
         {
@@ -975,9 +979,13 @@ public sealed class WorldEngine
             return;
         }
 
-        var casterIntellect = generals.FirstOrDefault(g => g.Id == cmd.Main)?.Intellect ?? 40;
-        var defenderIntellect = target.Governor is { } gov
-            ? generals.FirstOrDefault(g => g.Id == gov)?.Intellect
+        var casterIntellect = generals.FirstOrDefault(g => g.Id == cmd.Main) is { } caster
+            ? AdministrationGrowth.EffectiveIntellectRounded(caster)
+            : 40;
+        int? defenderIntellect = target.Governor is { } gov
+            ? generals.FirstOrDefault(g => g.Id == gov) is { } defender
+                ? AdministrationGrowth.EffectiveIntellectRounded(defender)
+                : null
             : null;
         var success = _random.Next(0, 100) < CityStratagems.SuccessPercent(casterIntellect, defenderIntellect);
         if (!success)
@@ -1102,7 +1110,8 @@ public sealed class WorldEngine
         var goldBase = GoldBase(city.Castle) + FacilityOutput(state, city, "village", city.Villages, _balance.VillageGold);
 
         // 담당관(태수) 없거나 정치 미달이면 도시 경제가 무척 낮게 돌아간다(사용자 확정 2026-08-16).
-        var effective = governor is not null && governor.Politics >= _balance.GovernorMinPolitics;
+        var effective = governor is not null
+            && AdministrationGrowth.EffectivePolitics(governor) >= _balance.GovernorMinPolitics;
 
         // 내정 스킬 버킷(상재→금)은 유효 담당관일 때만.
         var goldBucket = effective ? GovernorBucket(governor, "tax") : 0;
@@ -1116,7 +1125,8 @@ public sealed class WorldEngine
         var provBase = ProvisionsBase(city.Castle)
             + FacilityOutput(state, city, "paddy", city.Paddies, _balance.PaddyProvisions)
             + FacilityOutput(state, city, "farm", city.Farms, _balance.FarmProvisions);
-        var effective = governor is not null && governor.Politics >= _balance.GovernorMinPolitics;
+        var effective = governor is not null
+            && AdministrationGrowth.EffectivePolitics(governor) >= _balance.GovernorMinPolitics;
         var provBucket = effective ? GovernorBucket(governor, "harvest") : 0;
         return Scale(provBase, city, effective, governor, provBucket);
     }
@@ -1171,7 +1181,7 @@ public sealed class WorldEngine
             return 0;
         }
 
-        return System.Math.Max(0, governor.Politics - _balance.GovernorMinPolitics)
+        return System.Math.Max(0, AdministrationGrowth.EffectivePoliticsRounded(governor) - _balance.GovernorMinPolitics)
             * _balance.GovernorTaxAmplifyAt100 / span;
     }
 
@@ -1201,7 +1211,8 @@ public sealed class WorldEngine
         var taxDelta = rate >= _balance.TaxRateMax
             ? -_balance.TaxMaxSecurityPenalty
             : (_balance.TaxRateBase - rate) / 5;
-        var effective = governor is not null && governor.Politics >= _balance.GovernorMinPolitics;
+        var effective = governor is not null
+            && AdministrationGrowth.EffectivePolitics(governor) >= _balance.GovernorMinPolitics;
         var pacify = effective ? GovernorBucket(governor, "security") / 10 : 0; // 진무 티어(10/20/30)→+1/2/3
         var delta = _balance.SecurityNaturalRecovery + taxDelta + pacify;
         return city with { Security = System.Math.Clamp(city.Security + delta, 0, 100) };
@@ -1211,7 +1222,8 @@ public sealed class WorldEngine
     // 스킬이 있으면 해당 자원 산출량이 티어%만큼 증가한다(그 자원을 내지 않는 도시엔 효과 없음).
     private City Produce(City city, Domain.General? governor)
     {
-        var effective = governor is not null && governor.Politics >= _balance.GovernorMinPolitics;
+        var effective = governor is not null
+            && AdministrationGrowth.EffectivePolitics(governor) >= _balance.GovernorMinPolitics;
         int Output(int baseOutput, bool produces, string bucket)
         {
             if (!produces)

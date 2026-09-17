@@ -74,6 +74,21 @@ public class DiplomacyTests
     }
 
     [Fact]
+    public void 동맹_성공률은_내정레벨의_유효정치를_반영한다()
+    {
+        var envoy = Gen(1, politics: 49) with { AdminLevel = 4 };
+        var state = new GameState(1, 1, [], [City(1, 1, 0), City(2, 2, 3)], [envoy],
+            Postings: [At(1, 1, 1)]);
+        var issued = new CommandService(B).Issue(state,
+            new CommandRequest(new CityId(1), CommandKind.FormAlliance, envoy.Id, TargetFaction: new FactionId(2)));
+        var world = new WorldEngine(Bal, B, random: new FixedRandom(49));
+
+        var done = world.AdvanceDays(issued.State, issued.State.Commands.Single().CompletionDay - issued.State.Day);
+
+        Assert.True(done.AreAllied(new FactionId(1), new FactionId(2)));
+    }
+
+    [Fact]
     public void 동맹_실패는_동맹상태를_만들지_않고_실패이벤트를_남긴다()
     {
         var s = new GameState(1, 1, new List<Faction>(),

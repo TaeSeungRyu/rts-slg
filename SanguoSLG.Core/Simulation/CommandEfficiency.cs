@@ -80,7 +80,8 @@ public static class CommandEfficiency
         _ => b.BuildSlotsSmall,
     };
 
-    private static int Stat(General g, bool politics) => politics ? g.Politics : g.Might;
+    private static int Stat(General g, bool politics)
+        => politics ? AdministrationGrowth.EffectivePoliticsRounded(g) : g.Might;
 
     private static int HomePercent(General g, City city, CommandBalance b)
         => g.Region.Length > 0 && g.Region == city.Region ? 100 + b.HomeRegionBonusPercent : 100;

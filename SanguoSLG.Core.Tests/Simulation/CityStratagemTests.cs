@@ -148,6 +148,18 @@ public class CityStratagemTests
     }
 
     [Fact]
+    public void 도시계략은_내정레벨의_유효지력을_반영한다()
+    {
+        var caster = Gen(1, intellect: 79) with { AdminLevel = 4 };
+        var state = State([Mine(), Enemy(governor: 9)], [caster, Gen(9, intellect: 80)], intel: [Scouted()]);
+        var issued = Service().Issue(state, Req("arson"));
+
+        var done = Advance(issued.State, 11, roll: 49);
+
+        Assert.Equal(2431, done.Cities.First(c => c.Id == new CityId(2)).Provisions);
+    }
+
+    [Fact]
     public void 절취_성공하면_금이_수행_도시로_넘어온다()
     {
         var s = State([Mine(gold: 2000), Enemy()], [Gen(1)], intel: [Scouted()]);

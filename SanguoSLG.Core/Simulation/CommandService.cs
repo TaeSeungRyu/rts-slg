@@ -417,7 +417,7 @@ public sealed class CommandService
 
     private CommandResult IssueBuild(GameState state, City city, CommandRequest req, General? assist, General main)
     {
-        if (main.Politics <= _b.BuildPoliticsRequired)
+        if (AdministrationGrowth.EffectivePolitics(main) <= _b.BuildPoliticsRequired)
         {
             return CommandResult.Fail($"건설은 정치 {_b.BuildPoliticsRequired} 초과 장수만 가능하다.", state);
         }
@@ -557,7 +557,8 @@ public sealed class CommandService
             return CommandResult.Fail(funding.Error ?? "금이 부족하다.", state);
         }
 
-        var days = System.Math.Max(_b.ResearchBaseDays - System.Math.Clamp((main.Intellect - 50) / 5, 0, 10), 1);
+        var days = System.Math.Max(_b.ResearchBaseDays - System.Math.Clamp(
+            (AdministrationGrowth.EffectiveIntellectRounded(main) - 50) / 5, 0, 10), 1);
         return Register(funding.State, req, assist, amount: isWall ? level + 1 : 0, days, CommandKind.Research, "", req.TroopCode);
     }
 
@@ -598,7 +599,9 @@ public sealed class CommandService
             return CommandResult.Fail("항구에서만 선박을 생산할 수 있다.", state);
         }
 
-        var days = ShipBuildDays(req.TroopCode, state.Generals.FirstOrDefault(g => g.Id == req.Main)?.Intellect ?? 50);
+        var builder = state.Generals.FirstOrDefault(g => g.Id == req.Main);
+        var days = ShipBuildDays(req.TroopCode,
+            builder is null ? 50 : AdministrationGrowth.EffectiveIntellectRounded(builder));
         if (days <= 0)
         {
             return CommandResult.Fail("생산할 선박을 지정해야 한다.", state);

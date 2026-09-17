@@ -28,6 +28,12 @@ public static class AdministrationGrowth
     public static double EffectivePolitics(General general)
         => general.Politics + AbilityBonus(general.ClampedAdminLevel);
 
+    public static int EffectiveIntellectRounded(General general)
+        => (int)System.Math.Round(EffectiveIntellect(general), MidpointRounding.AwayFromZero);
+
+    public static int EffectivePoliticsRounded(General general)
+        => (int)System.Math.Round(EffectivePolitics(general), MidpointRounding.AwayFromZero);
+
     public static General AddExperience(General general, int gained, out bool leveledUp)
     {
         var level = general.ClampedAdminLevel;

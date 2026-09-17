@@ -47,6 +47,21 @@ public class ProductionServiceTests
         Assert.Equal(days, ProductionRules.GatherDays(politics));
     }
 
+    [Fact]
+    public void 생산_기간은_내정레벨의_유효정치를_반영한다()
+    {
+        var state = State(politics: 79) with
+        {
+            Generals = [General(79) with { AdminLevel = 4 }],
+        };
+
+        var result = new ProductionService(Troops).Start(state, new CityId(1), new HexCoord(2, 0),
+            ProductionRules.Village, "swordsman", new GeneralId(1));
+
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(10, result.State.ProductionOps.Single().GatherDays);
+    }
+
     [Theory]
     [InlineData(ProductionPhase.Outbound)]
     [InlineData(ProductionPhase.Gathering)]

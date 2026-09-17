@@ -8,7 +8,7 @@ public sealed class ExplorationService
     public ExplorationDiscovery Explore(GameState state, City city, General explorer, IRandomSource random)
     {
         var roll = random.Next(0, 100);
-        var kind = KindForRoll(roll, explorer.Politics);
+        var kind = KindForRoll(roll, AdministrationGrowth.EffectivePoliticsRounded(explorer));
         return BuildDiscovery(state.Day, city.Owner, city.Id, explorer.Id, kind);
     }
 

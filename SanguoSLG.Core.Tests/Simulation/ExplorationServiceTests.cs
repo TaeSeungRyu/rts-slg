@@ -52,4 +52,17 @@ public class ExplorationServiceTests
         Assert.Equal(600, discovery.Provisions);
         Assert.Equal(new GeneralId(1), discovery.Explorer);
     }
+
+    [Fact]
+    public void 탐색은_내정레벨의_유효정치를_반영한다()
+    {
+        var state = new GameState(3, 190, [], [], []);
+        var city = new City(new CityId(1), "장안", new HexCoord(0, 0), new FactionId(1), 1000);
+        var general = new General(new GeneralId(1), "탐색장", new Dictionary<TroopClass, AptitudeGrade>(),
+            70, 70, 49, AdminLevel: 4);
+
+        var discovery = new ExplorationService().Explore(state, city, general, new FixedRandom(16));
+
+        Assert.Equal(ExplorationResultKind.LocalClan, discovery.Kind);
+    }
 }
