@@ -7,7 +7,8 @@ public static class AdministrationGrowth
     public const int MaxLevel = 50;
     public const int DutyExperience = 10;
     public const int ProductionExperience = 30;
-    public const int StratagemExperience = 20;
+    public const int StratagemSuccessExperience = 60;
+    public const int StratagemFailureExperience = 30;
     public const int SmallShipExperience = 20;
     public const int MediumShipExperience = 40;
     public const int LargeShipExperience = 80;

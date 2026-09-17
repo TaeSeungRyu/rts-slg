@@ -991,13 +991,13 @@ public sealed class WorldEngine
         if (!success)
         {
             ApplyAdministrationGrowth(generals, cmd.Main, casterCity.Owner, casterCity.Id,
-                AdministrationGrowth.StratagemExperience, "stratagem");
+                AdministrationGrowth.StratagemFailureExperience, "stratagem");
             _events.Add(new WorldEvent(WorldEventKind.StratagemFail, casterCity.Owner, cmd.Main, targetId, Code: cmd.Facility));
             return; // 실패 = 무효(소요 기간·장수 잠금이 이미 비용)
         }
 
         ApplyAdministrationGrowth(generals, cmd.Main, casterCity.Owner, casterCity.Id,
-            AdministrationGrowth.StratagemExperience, "stratagem");
+            AdministrationGrowth.StratagemSuccessExperience, "stratagem");
         _events.Add(new WorldEvent(WorldEventKind.StratagemSuccess, casterCity.Owner, cmd.Main, targetId, Code: cmd.Facility));
 
         switch (cmd.Facility)
