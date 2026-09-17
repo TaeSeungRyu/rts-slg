@@ -89,6 +89,19 @@ public class CityCaptureTests
     }
 
     [Fact]
+    public void 중형성_발자국_상단에_접근한_공격군도_즉시_점거한다()
+    {
+        var city = Fallen(1, owner: 2, new HexCoord(5, 0));
+        var topTile = CastleFootprint.TilesFor(city).OrderByDescending(t => t.R).First();
+        var attacker = Attacker(1, owner: 1, topTile + new HexCoord(0, 1), city.Position);
+        var after = new CityCapture().ResolveAll(State([city], [attacker]), new FixedRandom(0), out var reports);
+
+        Assert.Single(reports);
+        Assert.Equal(new FactionId(1), after.Cities.Single().Owner);
+        Assert.Empty(after.Armies);
+    }
+
+    [Fact]
     public void 항구가_함락되면_저장된_선박은_새_소유자가_사용한다()
     {
         var port = Fallen(1, owner: 2, new HexCoord(5, 0), population: 40_000)

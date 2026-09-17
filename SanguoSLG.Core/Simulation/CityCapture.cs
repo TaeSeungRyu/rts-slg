@@ -54,7 +54,10 @@ public sealed class CityCapture
                     && u.Field.Owner != WorldEngine.BanditFaction
                     && u.Field.Mode == UnitMode.Attack && !u.IsSupply
                     && u.CanInitiateCombat
-                    && u.Field.Position.Distance(current.Position) <= 1)
+                    // 중형·대형 성과 항구는 기준점이 아닌 모든 발자국 칸으로 접근한다.
+                    // 공성 판정과 동일한 기준을 써서 상단/측면 칸에서 공격을 끝낸 부대도
+                    // 다음 이동턴을 기다리지 않고 즉시 입성·점거시킨다.
+                    && CastleFootprint.TilesFor(current).Min(tile => tile.Distance(u.Field.Position)) <= 1)
                 .OrderBy(u => u.Id.Value)
                 .ToList();
             if (besiegers.Count == 0)
