@@ -2394,6 +2394,7 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.BanditRaid => ($"[치안] {cName} 주변에 도적 {we.Amount}명이 출현해 성을 노립니다.", AccentFill),
                 WorldEventKind.SecurityFactor => ($"[치안 요인] {cName}: {(we.Code == "vacancy" ? "치안 담당 공석" : we.Code == "recruitment" ? $"병력 담당 {gName}" : $"치안 담당 {gName}")} {we.Amount:+0;-0;0} / 7일 (합산 후 0~100 적용)", Parchment),
                 WorldEventKind.GeneralGrowth => ($"[성장] {gName}{(we.Amount > 0 ? $" 장수 경험치 +{we.Amount}" : "")}{(we.ExtraAmount > 0 ? $" · 패시브 경험치 +{we.ExtraAmount}" : "")}{(we.Code.Contains("level_up") ? " · 레벨 상승!" : "")}{(we.Code.Contains("passive_up") ? " · 패시브 성장!" : "")}", we.Code.Contains("level_up") || we.Code.Contains("passive_up") ? GoldBright : Parchment),
+                WorldEventKind.AptitudeGrowth => ($"[숙련] {gName}의 {(System.Enum.TryParse<TroopClass>(we.Code, out var aptitudeClass) ? ClassName(aptitudeClass) : we.Code)} 적성이 {GradeText((AptitudeGrade)we.Amount)}로 상승했습니다!", GoldBright),
                 _ => ("", Parchment),
             };
             if (text.Length > 0) { Ev(text, col); }
@@ -8510,7 +8511,7 @@ public sealed partial class CampaignMapScene : Node3D
         var card = new PanelContainer
         {
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(0, 116),
+            CustomMinimumSize = new Vector2(0, 148),
         };
         card.AddThemeStyleboxOverride("panel", Frame(new Color(0.105f, 0.07f, 0.05f), new Color(Gold, 0.55f), 1, 7, 6));
 
@@ -8559,6 +8560,16 @@ public sealed partial class CampaignMapScene : Node3D
         var bonusText = MakeLabel($"+{levelBonus:0.0}", 11, new Color(GoldBright, 0.88f));
         bonusText.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(bonusText);
+
+        var cap = AptitudeGrowth.NormalCap(general.AptitudeBaseFor(troopClass));
+        var experience = general.AptitudeExperienceFor(troopClass);
+        var growthText = grade >= cap
+            ? $"숙련 MAX · 상한 {GradeText(cap)}"
+            : $"숙련 {experience}/{AptitudeGrowth.RequiredExperience} · 상한 {GradeText(cap)}";
+        var growth = MakeLabel(growthText, 9, new Color(Parchment, 0.72f));
+        growth.HorizontalAlignment = HorizontalAlignment.Center;
+        growth.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        v.AddChild(growth);
 
         return card;
     }
