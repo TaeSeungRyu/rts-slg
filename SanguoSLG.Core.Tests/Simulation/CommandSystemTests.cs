@@ -828,6 +828,41 @@ public class CommandSystemTests
         Assert.Equal(1, stock.Count);
     }
 
+    [Theory]
+    [InlineData("small_boat", 200)]
+    [InlineData("medium_ship", 400)]
+    [InlineData("large_ship", 600)]
+    [InlineData("turtleship", 1200)]
+    public void 항구_선박생산은_선박별_금액을_즉시_차감한다(string shipCode, int cost)
+    {
+        var svc = Service();
+        var port = Town(1, gold: 5000) with { Port = PortSize.Small };
+        var s0 = State([port], [Int(2, 50)]);
+
+        var issued = svc.Issue(s0, new CommandRequest(new CityId(1), CommandKind.BuildShip, new GeneralId(2),
+            TroopCode: shipCode));
+
+        if (shipCode == "turtleship")
+        {
+            Assert.False(issued.Ok);
+            return;
+        }
+
+        Assert.True(issued.Ok, issued.Error);
+        Assert.Equal(5000 - cost, issued.State.Cities.Single().Gold);
+    }
+
+    [Fact]
+    public void 항구_선박생산은_금이_부족하면_거부된다()
+    {
+        var port = Town(1, gold: 199) with { Port = PortSize.Small };
+        var result = Service().Issue(State([port], [Int(2, 50)]),
+            new CommandRequest(new CityId(1), CommandKind.BuildShip, new GeneralId(2), TroopCode: "small_boat"));
+
+        Assert.False(result.Ok);
+        Assert.Contains("200금", result.Error);
+    }
+
     [Fact]
     public void 항구_선박생산은_지력100이면_7일_단축된다()
     {

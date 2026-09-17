@@ -10419,10 +10419,11 @@ public sealed partial class CampaignMapScene : Node3D
                 var builder = _state.Generals.First(g => g.Id == general);
                 var baseDays = CommandService.ShipBuildBaseDays(ship.Code);
                 var days = CommandService.ShipBuildDays(ship.Code, builder.Intellect);
+                var cost = CommandService.ShipBuildCost(ship.Code);
                 var active = _state.Commands.FirstOrDefault(x => x.City == city && x.Kind == CommandKind.BuildShip);
                 extra = $"\n항구 {PortSizeName(c.Port)}"
                     + $"\n현재 저장 {PortShipStock(c.Id, ship.Code)}척"
-                    + $"\n완료 시 {ship.Name} +1척"
+                    + $"\n완료 시 {ship.Name} +1척 · 비용 {cost}금"
                     + $"\n[소요 {days}일] · 기본 {baseDays}일, 지력 {builder.Intellect} 반영"
                     + (active is null ? "" : $"\n※ 이미 선박 생산 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일");
             }

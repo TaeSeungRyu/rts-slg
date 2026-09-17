@@ -581,6 +581,16 @@ public sealed class CommandService
         return System.Math.Max(1, baseDays - reduction);
     }
 
+    /// <summary>선박 1척 생산 비용(항구 생산 명령 발행 시 즉시 차감).</summary>
+    public static int ShipBuildCost(string shipCode) => shipCode switch
+    {
+        "small_boat" => 200,
+        "medium_ship" => 400,
+        "large_ship" => 600,
+        "turtleship" => 1200,
+        _ => 0,
+    };
+
     private CommandResult IssueBuildShip(GameState state, City city, CommandRequest req, General? assist)
     {
         if (!city.IsPort)
@@ -594,12 +604,25 @@ public sealed class CommandService
             return CommandResult.Fail("생산할 선박을 지정해야 한다.", state);
         }
 
+        var cost = ShipBuildCost(req.TroopCode);
+        if (cost <= 0)
+        {
+            return CommandResult.Fail("생산할 선박을 지정해야 한다.", state);
+        }
+
+        if (city.Gold < cost)
+        {
+            return CommandResult.Fail($"선박 생산에 {cost}금이 필요하다.", state);
+        }
+
         if (state.Commands.Any(c => c.City == city.Id && c.Kind == CommandKind.BuildShip))
         {
             return CommandResult.Fail("이미 선박을 생산 중이다.", state);
         }
 
-        return Register(state, city, req, assist, amount: 1, days, CommandKind.BuildShip, "", req.TroopCode);
+        var reserved = city.AddGold(-cost);
+        var funded = state with { Cities = state.Cities.Select(c => c.Id == city.Id ? reserved : c).ToList() };
+        return Register(funded, reserved, req, assist, amount: 1, days, CommandKind.BuildShip, "", req.TroopCode);
     }
 
     private static CommandResult ReserveResearchCost(GameState state, City city, CommandRequest req, FactionId faction, int cost)
