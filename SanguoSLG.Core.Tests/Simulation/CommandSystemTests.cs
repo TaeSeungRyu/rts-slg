@@ -823,6 +823,7 @@ public class CommandSystemTests
 
         Assert.True(issued.Ok, issued.Error);
         Assert.Equal(1 + days, issued.State.Commands.Single().CompletionDay);
+        Assert.Equal(0, issued.State.Generals.Single().AdminExperience);
 
         var done = new WorldEngine(new BalanceConfig(100)).AdvanceDays(issued.State, days);
         var stock = done.PortShips.Single(s => s.City == port.Id && s.ShipCode == shipCode);

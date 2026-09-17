@@ -160,6 +160,23 @@ public class CityStratagemTests
     }
 
     [Fact]
+    public void 대상이_아군이되어_취소된_계략은_내정경험치를_지급하지_않는다()
+    {
+        var state = State([Mine(), Enemy()], [Gen(1)]);
+        var issued = Service().Issue(state, Req("scout"));
+        var cancelled = issued.State with
+        {
+            Cities = issued.State.Cities.Select(c => c.Id == new CityId(2)
+                ? c with { Owner = new FactionId(1) }
+                : c).ToList(),
+        };
+
+        var done = Advance(cancelled, 11, roll: 0);
+
+        Assert.Equal(0, done.Generals.Single().AdminExperience);
+    }
+
+    [Fact]
     public void 절취_성공하면_금이_수행_도시로_넘어온다()
     {
         var s = State([Mine(gold: 2000), Enemy()], [Gen(1)], intel: [Scouted()]);
