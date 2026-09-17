@@ -45,7 +45,7 @@ public sealed partial class AdminScene : Control
         ("훈련", CommandKind.Train, "troop"),
         ("건설", CommandKind.Build, "facility"),
         ("세율", CommandKind.SetTaxRate, "tax"),
-        ("전투 교리", CommandKind.Research, "troop"),
+        ("전투교리", CommandKind.Research, "troop"),
         ("성벽 강화", CommandKind.Research, "wall"),
         ("성벽 수리", CommandKind.Repair, "wall"),
         ("시설 수리", CommandKind.Repair, "repairable"),

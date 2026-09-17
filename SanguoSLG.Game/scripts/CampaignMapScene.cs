@@ -364,7 +364,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("건설", CommandKind.Build, "facility"),
         ("선박 생산", CommandKind.BuildShip, "ship"),
         ("주력병종", CommandKind.SelectMajorTroop, "major"),
-        ("전투 교리", CommandKind.Research, "troop"),
+        ("전투교리", CommandKind.Research, "troop"),
         ("성벽 강화", CommandKind.Research, "wall"),
         ("성벽 수리", CommandKind.Repair, "wall"),
         ("시설 수리", CommandKind.Repair, "repairable"),
@@ -3958,11 +3958,11 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "wall")
         {
-            box.AddChild(MakeLabel("성벽 강화는 병종 전투 교리가 아니라 해당 도시의 최대 성벽을 올리는 방어 연구입니다.", 15, Parchment));
+            box.AddChild(MakeLabel("성벽 강화는 병종 전투교리가 아니라 해당 도시의 최대 성벽을 올리는 방어 연구입니다.", 15, Parchment));
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
         {
-            box.AddChild(MakeLabel("전투 교리는 세력 병종의 공격과 방어 보정을 올립니다. 일반 병종은 Lv.7, 주력병종은 Lv.10까지 연구할 수 있습니다.", 15, Parchment));
+            box.AddChild(MakeLabel("전투교리는 세력 병종의 공격과 방어 보정을 올립니다. 일반 병종은 Lv.7, 주력병종은 Lv.10까지 연구할 수 있습니다.", 15, Parchment));
         }
         else if (cmd.Kind == CommandKind.SelectMajorTroop)
         {
@@ -9450,7 +9450,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         ShowConfirm("주력병종 선택",
-            $"{city.Name} 세력의 주력병종으로 {names}을(를) 선택합니다.\n\n주력병종은 철회할 수 없고, 최대 2개까지만 선택 가능합니다.\n선택한 병종은 Lv.10까지 전투 교리 연구가 가능합니다.\n\n적용하시겠습니까?",
+            $"{city.Name} 세력의 주력병종으로 {names}을(를) 선택합니다.\n\n주력병종은 철회할 수 없고, 최대 2개까지만 선택 가능합니다.\n선택한 병종은 Lv.10까지 전투교리 연구가 가능합니다.\n\n적용하시겠습니까?",
             () =>
             {
                 CommandResult? last = null;
@@ -10350,7 +10350,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var maxLevel = ResearchMaxLevelFor(cityData.Owner, troopCode);
                 var next = System.Math.Min(level + 1, maxLevel);
                 var cost = level >= maxLevel ? 0 : CommandEfficiency.ResearchCost(next, _cb);
-                extra = $"\n{(_state.IsMajorTroop(cityData.Owner, troopCode) ? "주력 전투 교리" : "세력 전투 교리")}"
+                extra = $"\n{(_state.IsMajorTroop(cityData.Owner, troopCode) ? "주력 전투교리" : "세력 전투교리")}"
                     + $"\nLv.{level} → Lv.{next}/{maxLevel}"
                     + (level >= maxLevel
                         ? "\n※ 이미 최대 단계입니다"
