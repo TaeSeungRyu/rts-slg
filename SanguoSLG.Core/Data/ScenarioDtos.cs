@@ -62,6 +62,8 @@ internal sealed class GeneralDto
     public string Desc { get; init; } = "";
     public int Level { get; init; } = 1;
     public int Experience { get; init; }
+    public int AdminLevel { get; init; } = 1;
+    public int AdminExperience { get; init; }
 }
 
 internal sealed class GeneralSkillDto

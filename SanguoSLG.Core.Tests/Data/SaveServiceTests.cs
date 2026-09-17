@@ -28,7 +28,7 @@ public class SaveServiceTests
 
         var g = new General(new GeneralId(1), "관우",
             new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Cavalry] = AptitudeGrade.S, [TroopClass.Infantry] = AptitudeGrade.A },
-            Might: 97, Intellect: 75, Politics: 62, Region: "hedong");
+            Might: 97, Intellect: 75, Politics: 62, Region: "hedong", AdminLevel: 12, AdminExperience: 345);
 
         var city = new City(new CityId(1), "장안", new HexCoord(1, 2), new FactionId(1), 3000, CastleSize.Large,
             Gold: 5000, Population: 200_000, Ore: 8000, Governor: new GeneralId(1), Strategist: new GeneralId(1),
@@ -67,6 +67,8 @@ public class SaveServiceTests
         Assert.Equal("관우", rg.Name);
         Assert.Equal(AptitudeGrade.S, rg.AptitudeFor(TroopClass.Cavalry));
         Assert.Equal(AptitudeGrade.A, rg.AptitudeFor(TroopClass.Infantry));
+        Assert.Equal(12, rg.AdminLevel);
+        Assert.Equal(345, rg.AdminExperience);
         // 도시(태수·군사·성벽).
         var rc = round.Cities.Single();
         Assert.Equal(5000, rc.Gold);

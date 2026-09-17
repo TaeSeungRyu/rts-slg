@@ -41,7 +41,9 @@ public sealed class GeneralLoader
         d.Region,
         d.Desc,
         d.Level,
-        d.Experience);
+        d.Experience,
+        AdminLevel: d.AdminLevel,
+        AdminExperience: d.AdminExperience);
 
     private static TroopClass ParseClass(string value) => value switch
     {

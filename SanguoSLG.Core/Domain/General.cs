@@ -24,7 +24,9 @@ public sealed record General(
     int Level = 1,
     int Experience = 0,
     IReadOnlyDictionary<TroopClass, int>? AptitudeExperience = null,
-    IReadOnlyDictionary<TroopClass, AptitudeGrade>? AptitudeBaseGrades = null)
+    IReadOnlyDictionary<TroopClass, AptitudeGrade>? AptitudeBaseGrades = null,
+    int AdminLevel = 1,
+    int AdminExperience = 0)
 {
     /// <summary>병종 분류의 통솔 등급. 정의가 없으면 F.</summary>
     public AptitudeGrade AptitudeFor(TroopClass troopClass)
@@ -41,4 +43,8 @@ public sealed record General(
 
     /// <summary>레벨은 Phase 12 기준 1~50으로 보정한다.</summary>
     public int ClampedLevel => System.Math.Clamp(Level, GeneralGrowth.MinLevel, GeneralGrowth.MaxLevel);
+
+    /// <summary>내정레벨은 Phase 12A 기준 1~50으로 보정한다.</summary>
+    public int ClampedAdminLevel
+        => System.Math.Clamp(AdminLevel, AdministrationGrowth.MinLevel, AdministrationGrowth.MaxLevel);
 }
