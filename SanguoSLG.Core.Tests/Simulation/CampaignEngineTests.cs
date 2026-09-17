@@ -391,6 +391,33 @@ public class CampaignEngineTests
     }
 
     [Fact]
+    public void 복귀한_집단군은_army_group이_아닌_구성병종으로_환원된다()
+    {
+        var home = new City(new CityId(1), "본성", new HexCoord(5, 0), new FactionId(1), 100);
+        var field = new FieldUnit(new UnitId(8), new FactionId(1), new HexCoord(4, 0),
+            Speed: 1, Detection: 1, AttackRange: 1, MovementDomain.Land, UnitMode.March,
+            home.Position, CommandOrder: 8, RangeCastle: 1, ReturnCity: home.Id);
+        var group = new CombatUnit(field, new CombatStats(15000, 10, 6), new TroopPool(15000, 0),
+            UnitCombatState.Create(60), MaxTroops: 15000, TroopCode: "army_group", Training: 70,
+            SupplyCargo:
+            [
+                new SupplyComponent("swordsman", 5000, 60),
+                new SupplyComponent("archer", 5000, 70),
+                new SupplyComponent("siege_tower", 5000, 80),
+            ],
+            IsArmyGroup: true, OriginCity: home.Id);
+        var state = new GameState(1, 1, [], [home], [], FieldArmies: [group]);
+
+        var after = Engine().AdvanceWeek(state, out _);
+
+        Assert.Empty(after.Armies);
+        Assert.DoesNotContain(after.Garrisons, g => g.TroopCode == "army_group");
+        Assert.Equal(15000, after.Garrisons.Sum(g => g.Troops));
+        Assert.Equal(["archer", "siege_tower", "swordsman"],
+            after.Garrisons.Select(g => g.TroopCode).OrderBy(x => x).ToArray());
+    }
+
+    [Fact]
     public void 수송부대도_목표성에_인접하면_공격턴_전에_바로_입성한다()
     {
         var source = new City(new CityId(1), "출발", new HexCoord(0, 0), new FactionId(1), 0);
