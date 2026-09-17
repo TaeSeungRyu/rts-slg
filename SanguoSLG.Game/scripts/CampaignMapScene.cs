@@ -1039,7 +1039,7 @@ public sealed partial class CampaignMapScene : Node3D
         ClearPathMarkers();
         if (u.Field.Owner == Player && u.Field.Target is { } tgt && tgt != u.Field.Position)
         {
-            AddRouteDots(u.Field.Position, u.Field.Waypoints, tgt, _pathMarkers);
+            AddRouteDots(u.Field.Position, u.Field.Waypoints, tgt, _pathMarkers, u.Class == TroopClass.Naval);
         }
     }
 
@@ -1048,16 +1048,16 @@ public sealed partial class CampaignMapScene : Node3D
             && (predicate is null || predicate(c)));
 
     // 시작 → (경유지들) → 목표를 구간별로 이어 금색 점 경로를 그린다.
-    private void AddRouteDots(HexCoord start, IReadOnlyList<HexCoord>? waypoints, HexCoord target, List<MeshInstance3D> into)
+    private void AddRouteDots(HexCoord start, IReadOnlyList<HexCoord>? waypoints, HexCoord target, List<MeshInstance3D> into, bool naval = false)
     {
         var prev = start;
         foreach (var wp in waypoints ?? [])
         {
-            AddPathDots(prev, wp, into);
+            AddPathDots(prev, wp, into, naval);
             prev = wp;
         }
 
-        AddPathDots(prev, target, into);
+        AddPathDots(prev, target, into, naval);
     }
 
     // 유닛 상태를 정보 카드에 표시(팔레트 '정보').
@@ -1823,10 +1823,18 @@ public sealed partial class CampaignMapScene : Node3D
             if (city is null) { continue; }
             AddPathDots(city.Position, goal, _pathMarkers);
         }
+
+        foreach (var (req, _) in _pendingNavalDeploys)
+        {
+            if (req.Target is not { } goal) { continue; }
+            var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
+            if (city is null) { continue; }
+            AddRouteDots(city.Position, req.Waypoints, goal, _pathMarkers, naval: true);
+        }
     }
 
     // start→goal A* 경로를 금색 점으로 그려 into에 담는다(공용 — 확정 경로·목표 지정 프리뷰).
-    private void AddPathDots(HexCoord start, HexCoord goal, List<MeshInstance3D> into)
+    private void AddPathDots(HexCoord start, HexCoord goal, List<MeshInstance3D> into, bool naval = false)
     {
         _pathDotMesh ??= new CylinderMesh { TopRadius = 0.12f, BottomRadius = 0.12f, Height = 0.05f, RadialSegments = 8 };
         _pathDotMat ??= new StandardMaterial3D
@@ -1838,7 +1846,7 @@ public sealed partial class CampaignMapScene : Node3D
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
         };
 
-        var domain = _targetingNavalDeploy ? MovementDomain.DeepWater : MovementDomain.Land;
+        var domain = (naval || _targetingNavalDeploy || _targetingNavalUnit) ? MovementDomain.DeepWater : MovementDomain.Land;
         var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanExitThrough(domain, start, c));
         var path = pf.FindPath(start, goal);
         for (var i = 1; i < path.Count; i++)
@@ -1901,6 +1909,14 @@ public sealed partial class CampaignMapScene : Node3D
         for (var q = -12; q <= 13; q++)
         {
             for (var r = -5; r <= -3; r++)
+            {
+                t.TryAdd(new HexCoord(q, r), TerrainType.WaterShallow);
+            }
+        }
+        // 좌측 항구 시험 해역: 좌측 가장자리에서도 항구 출항 후 바다 경로를 충분히 선택할 수 있게 한다.
+        for (var q = -12; q <= -4; q++)
+        {
+            for (var r = -2; r <= -1; r++)
             {
                 t.TryAdd(new HexCoord(q, r), TerrainType.WaterShallow);
             }
