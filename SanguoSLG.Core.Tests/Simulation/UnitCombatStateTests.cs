@@ -47,6 +47,29 @@ public class UnitCombatStateTests
     }
 
     [Fact]
+    public void 효과미정_책략형은_발동하거나_게이지를_소비하지않는다()
+    {
+        var s = UnitCombatState.Create(80, A["fire_plot"]).AdvanceField(5);
+
+        var (skill, after) = s.FiringActive();
+
+        Assert.Null(skill);
+        Assert.True(after.VanguardGauge.IsReady);
+    }
+
+    [Fact]
+    public void 선봉_책략형이_대기중이면_준비된_부관_일반액티브를_발동한다()
+    {
+        var s = UnitCombatState.Create(80, A["fire_plot"], A["iron_wall"]).AdvanceField(5);
+
+        var (skill, after) = s.FiringActive();
+
+        Assert.Equal("iron_wall", skill?.Code);
+        Assert.True(after.VanguardGauge.IsReady);
+        Assert.False(after.AdjutantGauge.IsReady);
+    }
+
+    [Fact]
     public void 성복귀하면_게이지0_모략력충전_예약취소()
     {
         var s = UnitCombatState.Create(80, A["peerless"])

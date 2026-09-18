@@ -78,11 +78,13 @@ public sealed record UnitCombatState(
     /// </summary>
     public (ActiveSkill? Skill, UnitCombatState State) FiringActive()
     {
-        if (VanguardActive is not null && VanguardGauge.IsReady)
+        // Phase 14A 준비 단계: 책략형 액티브는 사용자가 확정 효과를 다시 정의하기 전까지
+        // 게이지를 소비하거나 "발동"으로 보고하지 않는다. 기존 저장/장수 배정은 보존한다.
+        if (VanguardActive is { Type: not ActiveType.Tactic } && VanguardGauge.IsReady)
         {
             return (VanguardActive, this with { VanguardGauge = VanguardGauge.Fire() });
         }
-        if (AdjutantActive is not null && AdjutantGauge.IsReady)
+        if (AdjutantActive is { Type: not ActiveType.Tactic } && AdjutantGauge.IsReady)
         {
             return (AdjutantActive, this with { AdjutantGauge = AdjutantGauge.Fire() });
         }
