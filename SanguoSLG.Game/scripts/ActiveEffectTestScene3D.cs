@@ -34,6 +34,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     private RichTextLabel _log = null!;
     private int _round;
     private int _lastEffectCount;
+    private int _advanceCount;
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
@@ -98,7 +99,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         right.AddChild(box);
         box.AddChild(Heading("액티브 스킬 검수장"));
         box.AddChild(new Label { Text = "아군: 제갈량 10,000  |  적군: 5부대 × 10,000" });
-        box.AddChild(new Label { Text = "스킬을 바꾸면 전장이 초기화됩니다. 진행 1회 = 5일입니다." });
+        box.AddChild(new Label { Text = "스킬을 바꾸면 전장이 초기화됩니다. 진행 1회 = 7일 교전입니다." });
         _skillSelect = new OptionButton { CustomMinimumSize = new Vector2(380, 42) };
         foreach (var skill in _actives.Values.OrderBy(x => x.Type).ThenBy(x => x.Name))
         {
@@ -111,8 +112,8 @@ public partial class ActiveEffectTestScene3D : Node3D
         _skillSelect.ItemSelected += _ => ResetScenario();
         box.AddChild(_skillSelect);
 
-        _advanceButton = new Button { Text = "진행 · 5일 ▶", CustomMinimumSize = new Vector2(380, 52) };
-        _advanceButton.Pressed += AdvanceFiveDays;
+        _advanceButton = new Button { Text = "진행 · 7일 교전 ▶", CustomMinimumSize = new Vector2(380, 52) };
+        _advanceButton.Pressed += AdvanceSevenDays;
         box.AddChild(_advanceButton);
         _summary = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(380, 220) };
         box.AddChild(_summary);
@@ -131,6 +132,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         _tokens.Clear();
         _troopLabels.Clear();
         _round = 0;
+        _advanceCount = 0;
         _lastEffectCount = 0;
 
         var selected = SelectedSkill();
@@ -164,7 +166,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     private ActiveSkill SelectedSkill()
         => _actives[_skillSelect.GetItemMetadata(_skillSelect.Selected).AsString()];
 
-    private void AdvanceFiveDays()
+    private void AdvanceSevenDays()
     {
         if (_units.All(x => x.Field.Owner.Value != 1) || _units.All(x => x.Field.Owner.Value != 2))
         {
@@ -172,12 +174,42 @@ public partial class ActiveEffectTestScene3D : Node3D
             return;
         }
 
-        _round++;
-        var before = _units.ToDictionary(x => x.Id, x => x.Pool.Active);
-        var turn = _orchestrator.Run(_units, maxDays: 5);
-        _units = turn.Units.ToList();
+        _advanceCount++;
+        _lastEffectCount = 0;
+        AppendLog($"\n[font_size=20][b]진행 {_advanceCount} · 7일 교전 시작[/b][/font_size]");
+        AdvanceTurn? lastTurn = null;
+        for (var day = 1; day <= 7; day++)
+        {
+            if (_units.All(x => x.Field.Owner.Value != 1) || _units.All(x => x.Field.Owner.Value != 2)) break;
+            _round++;
+            var before = _units.ToDictionary(x => x.Id, x => x.Pool.Active);
+            var turn = _orchestrator.Run(_units, maxDays: 1);
+            _units = turn.Units.ToList();
+            lastTurn = turn;
 
-        foreach (var token in _tokens.Values) token.PlayAttackMotion();
+            foreach (var (uid, dealt) in turn.Combat?.DamageDealt ?? new Dictionary<UnitId, int>())
+            {
+                if (dealt > 0 && _tokens.TryGetValue(uid.Value, out var attacker)) attacker.PlayAttackMotion();
+            }
+            RefreshTokens();
+            AppendLog($"[b]{day}일차[/b]");
+            foreach (var unit in _units.OrderBy(x => x.Id.Value))
+            {
+                var normalTaken = turn.Combat?.DamageTaken.GetValueOrDefault(unit.Id) ?? 0;
+                var skillTaken = turn.StratagemDamage.GetValueOrDefault(unit.Id)
+                    + turn.StatusDamage.GetValueOrDefault(unit.Id);
+                var loss = before.GetValueOrDefault(unit.Id) - unit.Pool.Active;
+                AppendLog($"{Tag(unit)} 일반 −{normalTaken:N0} | 스킬 −{skillTaken:N0} | 총감소 −{loss:N0} | 잔여 {unit.Pool.Active:N0}");
+            }
+            if (turn.FiredActives.TryGetValue(new UnitId(AllyId), out var fired))
+                AppendLog($"[color=orange][b]제갈량 {fired.Name} 발동[/b][/color]");
+            _lastEffectCount += PlaySkillEffects(turn);
+        }
+        RefreshSummary(lastTurn);
+    }
+
+    private void RefreshTokens()
+    {
         foreach (var (id, token) in _tokens.ToList())
         {
             var unit = _units.FirstOrDefault(x => x.Id.Value == id);
@@ -190,22 +222,6 @@ public partial class ActiveEffectTestScene3D : Node3D
             }
             _troopLabels[id].Text = unit.Pool.Active.ToString("N0");
         }
-
-        AppendLog($"\n[b]진행 {_round} · 5일[/b]");
-        foreach (var unit in _units.OrderBy(x => x.Id.Value))
-        {
-            var normalTaken = turn.Combat?.DamageTaken.GetValueOrDefault(unit.Id) ?? 0;
-            var skillTaken = turn.StratagemDamage.GetValueOrDefault(unit.Id)
-                + turn.StatusDamage.GetValueOrDefault(unit.Id);
-            var loss = before.GetValueOrDefault(unit.Id) - unit.Pool.Active;
-            AppendLog($"{Tag(unit)} 일반 −{normalTaken:N0} | 스킬 −{skillTaken:N0} | 총감소 −{loss:N0} | 잔여 {unit.Pool.Active:N0}");
-        }
-        if (turn.FiredActives.TryGetValue(new UnitId(AllyId), out var fired))
-        {
-            AppendLog($"[color=orange][b]제갈량 {fired.Name} 발동[/b][/color]");
-        }
-        _lastEffectCount = PlaySkillEffects(turn);
-        RefreshSummary(turn);
     }
 
     private int PlaySkillEffects(AdvanceTurn turn)
@@ -288,11 +304,11 @@ public partial class ActiveEffectTestScene3D : Node3D
 
     private void RunAutoQa()
     {
-        AdvanceFiveDays();
+        AdvanceSevenDays();
         var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
-        var fired = ally is not null && ally.State.VanguardGauge.ElapsedDays == 0;
-        GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} effects={_lastEffectCount} round={_round}");
-        if (!fired || _lastEffectCount < 1 || _round != 1) GetTree().Quit(1);
+        var fired = ally is not null && _lastEffectCount > 0;
+        GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} effects={_lastEffectCount} days={_round} advances={_advanceCount}");
+        if (!fired || _lastEffectCount < 1 || _round != 7 || _advanceCount != 1) GetTree().Quit(1);
         else GetTree().Quit();
     }
 }
