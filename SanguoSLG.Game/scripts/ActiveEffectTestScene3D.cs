@@ -33,6 +33,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     private Label _summary = null!;
     private RichTextLabel _log = null!;
     private int _round;
+    private int _lastEffectCount;
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
@@ -130,6 +131,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         _tokens.Clear();
         _troopLabels.Clear();
         _round = 0;
+        _lastEffectCount = 0;
 
         var selected = SelectedSkill();
         _units =
@@ -202,7 +204,26 @@ public partial class ActiveEffectTestScene3D : Node3D
         {
             AppendLog($"[color=orange][b]제갈량 {fired.Name} 발동[/b][/color]");
         }
+        _lastEffectCount = PlaySkillEffects(turn);
         RefreshSummary(turn);
+    }
+
+    private int PlaySkillEffects(AdvanceTurn turn)
+    {
+        if (!turn.FiredActives.TryGetValue(new UnitId(AllyId), out var fired) || fired.Code != "fire_plot")
+        {
+            return 0;
+        }
+
+        var count = 0;
+        foreach (var target in _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)))
+        {
+            if (!_tokens.TryGetValue(target.Id.Value, out var token)) continue;
+            EffectView.Attach(token, EffectKind.Fire, 0.9f, loop: false);
+            count++;
+        }
+        AppendLog($"화계 연출: 적군 {count}부대에 빨강색 상승 화염 표시");
+        return count;
     }
 
     private void Spawn(CombatUnit unit)
@@ -270,8 +291,8 @@ public partial class ActiveEffectTestScene3D : Node3D
         AdvanceFiveDays();
         var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var fired = ally is not null && ally.State.VanguardGauge.ElapsedDays == 0;
-        GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} round={_round}");
-        if (!fired || _round != 1) GetTree().Quit(1);
+        GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} effects={_lastEffectCount} round={_round}");
+        if (!fired || _lastEffectCount < 1 || _round != 1) GetTree().Quit(1);
         else GetTree().Quit();
     }
 }
