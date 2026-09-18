@@ -47,7 +47,7 @@
     "required_level": 5,
     "cost": 20,
     "base_value": 0,
-    "duration": 3,
+    "duration": 1,
     "range": 1,
     "terrain_rule": "none",
     "status_kind": "daze"
@@ -58,11 +58,11 @@
     "effect_kind": "instant_damage",
     "required_level": 7,
     "cost": 23,
-    "base_value": 5,
+    "base_value": 0,
     "duration": 0,
     "range": 2,
     "terrain_rule": "none",
-    "retreat_tiles": 3
+    "retreat_tiles": 4
   },
   {
     "code": "discord",

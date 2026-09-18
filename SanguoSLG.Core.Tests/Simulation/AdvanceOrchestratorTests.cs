@@ -124,6 +124,40 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 오일충전된_화계는_부대액티브로_발동한다()
+    {
+        var ready = UnitCombatState.Create(90, A["fire_plot"]).AdvanceField(5);
+        var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.March, ready);
+        var target = Sword(2, 2, new HexCoord(1, 0), UnitMode.March);
+
+        var turn = MakeOrchestrator().Run([caster, target], maxDays: 1);
+        var burned = turn.Units.Single(u => u.Id.Value == 2);
+
+        Assert.Equal("fire_plot", turn.FiredActives[new UnitId(1)].Code);
+        Assert.Contains(burned.State.Statuses, s => s.Kind == StatusKind.Burn && s.Remaining == 4);
+        Assert.False(turn.Units.Single(u => u.Id.Value == 1).State.VanguardGauge.IsReady);
+    }
+
+    [Fact]
+    public void 교란은_경로의_부대를_무시하고_빈_사칸_목적지로_후퇴시킨다()
+    {
+        var ready = UnitCombatState.Create(90, A["rout"]).AdvanceField(5);
+        var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.March, ready) with { Intellect = 90 };
+        var target = Sword(2, 2, new HexCoord(1, 0), UnitMode.March) with { Intellect = 60 };
+        var blockers = new[]
+        {
+            Sword(3, 1, new HexCoord(2, 0), UnitMode.March),
+            Sword(4, 1, new HexCoord(3, 0), UnitMode.March),
+            Sword(5, 1, new HexCoord(4, 0), UnitMode.March),
+        };
+
+        var turn = MakeOrchestrator().Run([caster, target, .. blockers], maxDays: 1);
+
+        Assert.Equal(new HexCoord(5, 0), turn.Units.Single(u => u.Id.Value == 2).Field.Position);
+        Assert.Equal("rout", turn.FiredActives[new UnitId(1)].Code);
+    }
+
+    [Fact]
     public void 집단군_손실은_내부_병종구성에도_반영된다()
     {
         var damaged = ArmyGroup(1, 1, new HexCoord(0, 0), active: 27000);
@@ -410,7 +444,7 @@ public class AdvanceOrchestratorTests
     [Fact]
     public void 교란_강제후퇴_대상을_시전자에게서_밀어낸다()
     {
-        // 시전자(1) 서쪽, 대상(2) 동쪽 인접. 교란 발동 → 즉발 5% + 후퇴 3칸(동쪽으로).
+        // 레거시 예약도 확정 규칙을 따른다: 피해 없이 최대 4칸 후퇴.
         var casterState = UnitCombatState.Create(60)
             .ReserveStratagem(St["rout"], new UnitId(2))
             .AdvanceField(2);
@@ -420,9 +454,9 @@ public class AdvanceOrchestratorTests
         var turn = MakeOrchestrator().Run(new[] { caster, target });
         var ut = turn.Units.Single(u => u.Id.Value == 2);
 
-        Assert.Equal(new HexCoord(4, 0), ut.Field.Position); // (1,0)에서 3칸 밀림
-        Assert.Equal(10000 - 500, ut.Pool.Active);            // 즉발 5%(강도 100)
-        Assert.Equal(500, turn.StratagemDamage[new UnitId(2)]);
+        Assert.Equal(new HexCoord(5, 0), ut.Field.Position);
+        Assert.Equal(10000, ut.Pool.Active);
+        Assert.False(turn.StratagemDamage.ContainsKey(new UnitId(2)));
     }
 
     [Fact]

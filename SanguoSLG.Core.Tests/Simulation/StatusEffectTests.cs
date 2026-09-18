@@ -156,12 +156,12 @@ public class StatusEffectTests
     [Fact]
     public void 혼란_MakeStatus_행동불가는_지속에_강도반영()
     {
-        // 혼란: 행동불가 3진행 × 강도 100 → 3진행, Daze
+        // 혼란: 행동불가 1진행, Daze
         var status = St["confound"].MakeStatus(80, 80);
         Assert.NotNull(status);
         Assert.Equal(StatusKind.Daze, status!.Kind);
         Assert.True(status.IsDaze);
-        Assert.Equal(3, status.Remaining);
+        Assert.Equal(1, status.Remaining);
     }
 
     [Fact]
@@ -184,11 +184,10 @@ public class StatusEffectTests
     }
 
     [Fact]
-    public void 교란_즉발피해_5퍼센트_후퇴3칸()
+    public void 교란_피해없이_후퇴4칸()
     {
-        // 교란: 즉발 5%(강도 반영) + 후퇴 3칸
-        Assert.Equal(500, St["rout"].Damage(10000, casterIntellect: 80, targetIntellect: 80));
-        Assert.Equal(3, St["rout"].RetreatTiles);
+        Assert.Equal(0, St["rout"].Damage(10000, casterIntellect: 80, targetIntellect: 80));
+        Assert.Equal(4, St["rout"].RetreatTiles);
     }
 
     [Fact]

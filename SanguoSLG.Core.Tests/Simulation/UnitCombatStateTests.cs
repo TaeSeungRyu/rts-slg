@@ -70,6 +70,17 @@ public class UnitCombatStateTests
     }
 
     [Fact]
+    public void 책략형은_전용발동에서_오일게이지를_소비한다()
+    {
+        var s = UnitCombatState.Create(80, A["fire_plot"]).AdvanceField(5);
+
+        var (skill, after) = s.FiringTactic();
+
+        Assert.Equal("fire_plot", skill?.Code);
+        Assert.False(after.VanguardGauge.IsReady);
+    }
+
+    [Fact]
     public void 성복귀하면_게이지0_모략력충전_예약취소()
     {
         var s = UnitCombatState.Create(80, A["peerless"])

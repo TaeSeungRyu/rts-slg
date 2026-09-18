@@ -161,10 +161,17 @@ public sealed class AdvanceOrchestrator
         var stratagemDamage = new Dictionary<UnitId, int>();
         var firedStratagems = FireStratagems(state, stratagemDamage);
 
+        // 3.5) 5일 충전형 책략 액티브. 도시 계략과 무관한 부대 액티브 7종만 여기서 자동 발동한다.
+        // 교란 위치 변경은 교전 탐지보다 먼저 확정되어 이후 이동/교전의 시작 위치가 된다.
+        var firedActives = new Dictionary<UnitId, ActiveSkill>();
+        FireTacticActives(state, firedActives, stratagemDamage);
+
         // 4) 전투 페이즈 발동 — 정지·후퇴가 반영된 위치로 사거리 전수검사. 발동 부대와 행동불가(혼란)
         //    부대는 공격자에서 뺀다(피격·방어는 정상).
         var engagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList())
             .Where(e => !firedStratagems.ContainsKey(e.Attacker)
+                && (!firedActives.TryGetValue(e.Attacker, out var tactic)
+                    || tactic.Code is "douse" or "cleanse")
                 && state[e.Attacker].CanInitiateCombat
                 && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker])))
             .ToList();
@@ -173,7 +180,7 @@ public sealed class AdvanceOrchestrator
         {
             SyncCargo(state);
             var reinforcedOnly = Reinforce(state);
-            return new AdvanceTurn(Ordered(state), move, null, NoActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, reinforcedOnly);
+            return new AdvanceTurn(Ordered(state), move, null, firedActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, reinforcedOnly);
         }
 
         var attackers = engagements.Select(e => e.Attacker).ToHashSet();
@@ -183,7 +190,6 @@ public sealed class AdvanceOrchestrator
 
         // 4) 교전 참가 부대마다 액티브 발동(선봉 우선)을 정하고 BattleParticipant를 만든다.
         var participants = new Dictionary<UnitId, BattleParticipant>();
-        var firedActives = new Dictionary<UnitId, ActiveSkill>();
         foreach (var id in participating)
         {
             var u = state[id];
@@ -340,6 +346,122 @@ public sealed class AdvanceOrchestrator
         return castles is null || !castles.Any(c => c.Contains(target));
     }
 
+    private void FireTacticActives(Dictionary<UnitId, CombatUnit> state,
+        Dictionary<UnitId, ActiveSkill> fired, Dictionary<UnitId, int> damage)
+    {
+        foreach (var casterId in state.Keys.OrderBy(id => id.Value).ToList())
+        {
+            var caster = state[casterId];
+            if (caster.IsArmyGroup || IsDazed(caster))
+            {
+                continue;
+            }
+            var skill = ReadyTactic(caster.State);
+            if (skill is null)
+            {
+                continue;
+            }
+
+            if (skill.Code is "douse" or "cleanse")
+            {
+                var scope = skill.Code == "douse" ? PurgeScope.Fire : PurgeScope.NonFire;
+                var allies = state.Values.Where(u => u.Field.Owner == caster.Field.Owner
+                    && u.Field.Position.Distance(caster.Field.Position) <= 2
+                    && HasPurgeable(u.State, scope)).OrderBy(u => u.Id.Value).ToList();
+                if (allies.Count == 0)
+                {
+                    continue;
+                }
+                foreach (var ally in allies)
+                {
+                    state[ally.Id] = ally with { State = ally.State.Purge(scope) };
+                }
+                ConsumeTactic(state, casterId, skill, fired);
+                continue;
+            }
+
+            var range = skill.Code == "lightning" ? 3 : skill.Code == "rout" ? 2 : 1;
+            var target = state.Values.Where(u => u.Field.Owner != caster.Field.Owner && u.Pool.Active > 0
+                    && u.Field.Position.Distance(caster.Field.Position) <= range)
+                .Where(u => skill.Code is not ("confound" or "rout") || caster.Intellect > u.Intellect)
+                .OrderBy(u => u.Field.Position.Distance(caster.Field.Position)).ThenBy(u => u.Id.Value)
+                .FirstOrDefault();
+            if (target is null)
+            {
+                continue;
+            }
+
+            switch (skill.Code)
+            {
+                case "fire_plot":
+                    ApplyBurn(state, caster, target);
+                    break;
+                case "lightning":
+                    ApplyLightning(state, caster, target, damage);
+                    break;
+                case "confound":
+                    state[target.Id] = target with { State = target.State.AddStatus(
+                        new StatusEffect(StatusKind.Daze, 0, 1, false)) };
+                    break;
+                case "rout":
+                    PushAway(state, target.Id, caster.Field.Position, 4);
+                    break;
+                case "discord":
+                    state[target.Id] = target with { State = target.State.AddStatus(
+                        new StatusEffect(StatusKind.Nullify, 0, 2, false, NullifyAptPassive: true)) };
+                    break;
+                default:
+                    continue;
+            }
+            ConsumeTactic(state, casterId, skill, fired);
+        }
+    }
+
+    private static ActiveSkill? ReadyTactic(UnitCombatState state)
+    {
+        if (state.VanguardActive is { Type: ActiveType.Tactic } v && state.VanguardGauge.IsReady) return v;
+        if (state.AdjutantActive is { Type: ActiveType.Tactic } a && state.AdjutantGauge.IsReady) return a;
+        return null;
+    }
+
+    private static void ConsumeTactic(Dictionary<UnitId, CombatUnit> state, UnitId casterId,
+        ActiveSkill skill, Dictionary<UnitId, ActiveSkill> fired)
+    {
+        var caster = state[casterId];
+        var (_, consumed) = caster.State.FiringTactic();
+        state[casterId] = caster with { State = consumed };
+        fired[casterId] = skill;
+    }
+
+    private static bool HasPurgeable(UnitCombatState state, PurgeScope scope)
+        => scope == PurgeScope.Fire ? state.Statuses.Any(s => s.IsFire) : state.Statuses.Any(s => !s.IsFire);
+
+    private static void ApplyBurn(Dictionary<UnitId, CombatUnit> state, CombatUnit caster, CombatUnit target)
+    {
+        foreach (var enemy in state.Values.Where(u => u.Field.Owner != caster.Field.Owner
+                     && u.Field.Position.Distance(target.Field.Position) <= 1).ToList())
+        {
+            state[enemy.Id] = enemy with { State = enemy.State.AddStatus(
+                new StatusEffect(StatusKind.Burn, 200, 4, true, PermanentLoss: true)) };
+        }
+    }
+
+    private void ApplyLightning(Dictionary<UnitId, CombatUnit> state, CombatUnit caster, CombatUnit target,
+        Dictionary<UnitId, int> damage)
+    {
+        foreach (var enemy in state.Values.Where(u => u.Field.Owner != caster.Field.Owner
+                     && u.Field.Position.Distance(target.Field.Position) <= 1).ToList())
+        {
+            var center = enemy.Id == target.Id;
+            var normal = center ? enemy.Pool.Active * 5 / 100 : 0;
+            var permanent = enemy.Pool.Active * (center ? 10 : 5) / 100;
+            var pool = normal > 0 ? enemy.Pool.TakeDamage(normal, _woundedPercent) : enemy.Pool;
+            if (permanent > 0) pool = pool.TakeDamage(permanent, 0);
+            state[enemy.Id] = enemy with { Pool = pool };
+            damage[enemy.Id] = damage.GetValueOrDefault(enemy.Id) + normal + permanent;
+        }
+    }
+
     // 이동 시뮬에 넣을 임시 FieldUnit. 혼란(행동불가)은 제자리에 묶고(속도 0·목표·모드 중립),
     // 수공(이동−1)은 속도를 깎는다(최소 1). 실제 Field는 위치만 되받아 보존한다.
     private static FieldUnit MovementField(CombatUnit u)
@@ -451,8 +573,8 @@ public sealed class AdvanceOrchestrator
         PushAway(state, targetId, caster.Field.Position, tiles);
     }
 
-    // 대상을 <paramref name="fromPos"/>에서 멀어지는 방향으로 <paramref name="tiles"/>칸 밀어낸다. 매 스텝
-    // 거리를 늘리는 이웃(고정 방향 순서 — 결정론) 중 통행 가능·비점유 칸으로. 막히면 그만큼만(부분 후퇴).
+    // 목적지만 통행 가능·비점유이면 경로 중 다른 부대는 무시하고 뚫고 후퇴한다. 정확히 4칸부터
+    // 1칸까지 도착 후보를 찾으며, 같은 거리에서는 시전자에게서 가장 멀어지는 좌표를 우선한다.
     private void PushAway(Dictionary<UnitId, CombatUnit> state, UnitId targetId, HexCoord fromPos, int tiles)
     {
         if (tiles <= 0)
@@ -462,36 +584,37 @@ public sealed class AdvanceOrchestrator
 
         var target = state[targetId];
         var occupied = state.Values.Where(u => u.Id != targetId).Select(u => u.Field.Position).ToHashSet();
-        var pos = target.Field.Position;
-        for (var step = 0; step < tiles; step++)
+        var origin = target.Field.Position;
+        HexCoord? destination = null;
+        for (var distance = tiles; distance >= 1 && destination is null; distance--)
         {
-            var current = pos;
-            var moved = false;
-            foreach (var n in current.Neighbors())
+            var candidates = new List<HexCoord>();
+            for (var dq = -distance; dq <= distance; dq++)
             {
-                if (n.Distance(fromPos) <= current.Distance(fromPos)
-                    || occupied.Contains(n)
-                    || !_movement.CanEnter(target.Field.Domain, n))
+                for (var dr = -distance; dr <= distance; dr++)
                 {
-                    continue;
+                    var c = new HexCoord(origin.Q + dq, origin.R + dr);
+                    if (origin.Distance(c) == distance && c.Distance(fromPos) > origin.Distance(fromPos)
+                        && !occupied.Contains(c) && _movement.CanEnter(target.Field.Domain, c))
+                    {
+                        candidates.Add(c);
+                    }
                 }
-
-                pos = n;
-                moved = true;
-                break;
             }
-
-            if (!moved)
-            {
-                break; // 막힘 — 밀려난 만큼만(부분 후퇴)
-            }
+            var away = origin - fromPos;
+            destination = candidates.OrderByDescending(c => DirectionScore(away, c - origin))
+                .ThenByDescending(c => c.Distance(fromPos)).ThenBy(c => c.Q).ThenBy(c => c.R)
+                .Cast<HexCoord?>().FirstOrDefault();
         }
 
-        if (pos != target.Field.Position)
+        if (destination is { } pos)
         {
             state[targetId] = target with { Field = target.Field with { Position = pos } };
         }
     }
+
+    private static int DirectionScore(HexCoord a, HexCoord b)
+        => a.Q * b.Q + a.R * b.R + a.S * b.S;
 
     // 지형 공방 보정(이동 후 위치·병종 분류)을 얹은 뒤, 걸린 능력치 디버프를 유효 능력치 + 준 피해
     // 배수로 접는다. 이간(무효)은 적성·가산 버킷을 100으로 되돌리고, 수공·연막은 준 피해를 곱으로 줄인다.

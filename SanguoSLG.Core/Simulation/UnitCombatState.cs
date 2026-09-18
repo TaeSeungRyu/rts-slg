@@ -92,6 +92,21 @@ public sealed record UnitCombatState(
         return (null, this);
     }
 
+    /// <summary>5일 충전된 책략형 액티브만 선봉 우선으로 소비한다. 유효 대상이 없을 때는 호출하지 않는다.</summary>
+    public (ActiveSkill? Skill, UnitCombatState State) FiringTactic()
+    {
+        if (VanguardActive is { Type: ActiveType.Tactic } && VanguardGauge.IsReady)
+        {
+            return (VanguardActive, this with { VanguardGauge = VanguardGauge.Fire() });
+        }
+        if (AdjutantActive is { Type: ActiveType.Tactic } && AdjutantGauge.IsReady)
+        {
+            return (AdjutantActive, this with { AdjutantGauge = AdjutantGauge.Fire() });
+        }
+
+        return (null, this);
+    }
+
     /// <summary>진행 중인 계략의 이 시점 발동 판정(예약 없으면 Pending).</summary>
     public StratagemFireOutcome StratagemDue(bool targetValid)
         => Reservation is null ? StratagemFireOutcome.Pending : Reservation.Evaluate(targetValid);
