@@ -99,6 +99,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, Vector3 Pos)> _animDeathEffects = new(); // 병력 전멸·생산 소실 1회성 효과
     private int _animDmgIdx;
     private readonly List<(double Time, int UnitId, int Damage)> _animDmg = new(); // 교전 피해 팝업
+    private int _animSkillDmgIdx;
+    private readonly List<(double Time, int UnitId, int Damage)> _animSkillDmg = new(); // 액티브·상태 피해 팝업
     private int _animSiegeDmgIdx;
     private readonly List<(double Time, Vector3 Pos, int Damage)> _animSiegeDmg = new(); // 성 피해 팝업(성벽+수비)
     private int _animArrowIdx;
@@ -2434,6 +2436,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animProductionKillIdx = 0;
         _animEffectIdx = 0;
         _animDmgIdx = 0;
+        _animSkillDmgIdx = 0;
         _animSiegeDmgIdx = 0;
         _animArrowIdx = 0;
         _animSupplyArrowIdx = 0;
@@ -2466,6 +2469,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animProductionKills.Clear();
         _animDeathEffects.Clear();
         _animDmg.Clear();
+        _animSkillDmg.Clear();
         _animSiegeDmg.Clear();
         _animArrows.Clear();
         _animSupplyArrows.Clear();
@@ -2578,7 +2582,7 @@ public sealed partial class CampaignMapScene : Node3D
             foreach (var (uid, damage) in turn.StatusDamage.Concat(turn.StratagemDamage)
                 .GroupBy(x => x.Key).Select(g => (g.Key, g.Sum(x => x.Value))))
             {
-                if (damage > 0) _animDmg.Add((atkTime + 0.42, uid.Value, damage));
+                if (damage > 0) _animSkillDmg.Add((atkTime + 0.42, uid.Value, damage));
             }
 
             foreach (var capture in captures.Where(c => c.TurnIndex == ti))
@@ -2630,6 +2634,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animProductionKills.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animDeathEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animSkillDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSiegeDmg.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animArrows.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSupplyArrows.Sort((a, b) => a.Time.CompareTo(b.Time));
@@ -2745,16 +2750,22 @@ public sealed partial class CampaignMapScene : Node3D
 
     // 피해 숫자 팝업 — 위로 떠오르며 사라진다(효과 연출은 후속, 우선 수치 피드백만).
     private void SpawnDamagePopup(Vector3 at, int damage)
+        => SpawnFloatingCombatText(at, $"-{damage}", new Color(1f, 0.36f, 0.30f), 44);
+
+    private void SpawnSkillDamagePopup(Vector3 at, int damage)
+        => SpawnFloatingCombatText(at, $"SKILL -{damage}", new Color(1f, 0.72f, 0.20f), 48);
+
+    private void SpawnFloatingCombatText(Vector3 at, string text, Color color, int fontSize)
     {
         if (!IsVisibleAt(at)) return;
         var lbl = new Label3D
         {
-            Text = $"-{damage}",
+            Text = text,
             Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-            FontSize = 44,
+            FontSize = fontSize,
             OutlineSize = 12,
             NoDepthTest = true,
-            Modulate = new Color(1f, 0.36f, 0.30f),
+            Modulate = color,
             Position = at + new Vector3(0f, 1.5f, 0f),
         };
         AddChild(lbl);
@@ -3838,6 +3849,13 @@ public sealed partial class CampaignMapScene : Node3D
                 var d = _animDmg[_animDmgIdx];
                 if (_armyTokens.TryGetValue(d.UnitId, out var tok)) { SpawnDamagePopup(tok.Position, d.Damage); }
                 _animDmgIdx++;
+            }
+
+            while (_animSkillDmgIdx < _animSkillDmg.Count && _animSkillDmg[_animSkillDmgIdx].Time <= _animT)
+            {
+                var d = _animSkillDmg[_animSkillDmgIdx];
+                if (_armyTokens.TryGetValue(d.UnitId, out var tok)) SpawnSkillDamagePopup(tok.Position, d.Damage);
+                _animSkillDmgIdx++;
             }
 
             while (_animActiveIdx < _animActives.Count && _animActives[_animActiveIdx].Time <= _animT)
