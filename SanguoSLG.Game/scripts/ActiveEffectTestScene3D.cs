@@ -98,7 +98,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var box = new VBoxContainer();
         right.AddChild(box);
         box.AddChild(Heading("액티브 스킬 검수장"));
-        box.AddChild(new Label { Text = "아군: 제갈량 10,000  |  적군: 5부대 × 10,000" });
+        box.AddChild(new Label { Text = "아군: 제갈량 30,000  |  적군: 5부대 × 10,000" });
         box.AddChild(new Label { Text = "스킬을 바꾸면 전장이 초기화됩니다. 진행 1회 = 7일 교전입니다." });
         _skillSelect = new OptionButton { CustomMinimumSize = new Vector2(380, 42) };
         foreach (var skill in _actives.Values.OrderBy(x => x.Type).ThenBy(x => x.Name))
@@ -138,7 +138,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var selected = SelectedSkill();
         _units =
         [
-            MakeUnit(AllyId, 1, new HexCoord(4, 3), 100, selected),
+            MakeUnit(AllyId, 1, new HexCoord(4, 3), 100, selected, troops: 30000),
             MakeUnit(11, 2, new HexCoord(5, 1), 62),
             MakeUnit(12, 2, new HexCoord(5, 2), 66),
             MakeUnit(13, 2, new HexCoord(5, 3), 70),
@@ -151,15 +151,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         RefreshSummary(null);
     }
 
-    private CombatUnit MakeUnit(int id, int owner, HexCoord at, int intellect, ActiveSkill? active = null)
+    private CombatUnit MakeUnit(int id, int owner, HexCoord at, int intellect, ActiveSkill? active = null, int troops = 10000)
     {
-        var stats = CombatStatsBuilder.BuildField(_template, AptitudeGrade.A, 0, TerrainType.River, 10000);
+        var stats = CombatStatsBuilder.BuildField(_template, AptitudeGrade.A, 0, TerrainType.River, troops);
         var field = new FieldUnit(new UnitId(id), new FactionId(owner), at,
             _template.MovementPerDay, _template.Detection, _template.RangeUnit,
             MovementDomain.Land, UnitMode.Advance, null, id, _template.RangeCastle);
-        return new CombatUnit(field, stats, new TroopPool(10000, 0),
+        return new CombatUnit(field, stats, new TroopPool(troops, 0),
             UnitCombatState.Create(intellect, active), owner == 1 ? _zhugeLiang.Might : 70,
-            intellect, 10000, _template.Class, TroopCode: _template.Code,
+            intellect, troops, _template.Class, TroopCode: _template.Code,
             VanguardId: owner == 1 ? _zhugeLiang.Id : null);
     }
 
@@ -249,7 +249,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         token.InitDisplay(_view, unit.Field.Owner.Value == 1 ? AllyColor : EnemyColor, 0, unit.Field.Position);
         var name = unit.Field.Owner.Value == 1 ? "제갈량" : $"적군 {unit.Id.Value - 10}";
         token.AddChild(MakeWorldLabel(name, 0.58f, 82));
-        var troops = MakeWorldLabel("10,000", 0.34f, 68);
+        var troops = MakeWorldLabel(unit.Pool.Active.ToString("N0"), 0.34f, 68);
         token.AddChild(troops);
         _tokens[unit.Id.Value] = token;
         _troopLabels[unit.Id.Value] = troops;
@@ -308,7 +308,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var fired = ally is not null && _lastEffectCount > 0;
         GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} effects={_lastEffectCount} days={_round} advances={_advanceCount}");
-        if (!fired || _lastEffectCount < 1 || _round != 7 || _advanceCount != 1) GetTree().Quit(1);
+        if (!fired || _lastEffectCount < 1 || _round != 7 || _advanceCount != 1 || ally?.MaxTroops != 30000) GetTree().Quit(1);
         else GetTree().Quit();
     }
 }
