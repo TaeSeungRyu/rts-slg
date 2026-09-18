@@ -60,6 +60,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly Dictionary<int, Label3D> _cityLabels = new();
     private readonly Dictionary<int, UnitController3D> _armyTokens = new();
     private readonly Dictionary<int, Label3D> _armyLabels = new();
+    private readonly Dictionary<int, ActiveSkillGaugeView3D> _activeGauges = new();
     private readonly Dictionary<int, UnitController3D> _productionTokens = new();
     private readonly Dictionary<int, Label3D> _productionLabels = new();
     private Label _status = null!;
@@ -106,6 +107,10 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId, Vector3 Target)> _animSupplyArrows = new(); // 보급부대 공격 화살
     private int _animCaptureIdx;
     private readonly List<(double Time, CityId City)> _animCaptures = new();
+    private int _animActiveIdx;
+    private readonly List<(double Time, int UnitId, ActiveSkill Skill)> _animActives = new();
+    private int _animSkillEffectIdx;
+    private readonly List<(double Time, int TargetUnitId, ActiveSkill Skill)> _animSkillEffects = new();
 
     // 병력 → 편대원 수(design-ui §3): 9천↑=9, 7천↑=7, 5천↑=5, 3천↑=3, 그 밑=1.
     private static int FormationFor(int troops) =>
@@ -2433,6 +2438,8 @@ public sealed partial class CampaignMapScene : Node3D
         _animArrowIdx = 0;
         _animSupplyArrowIdx = 0;
         _animCaptureIdx = 0;
+        _animActiveIdx = 0;
+        _animSkillEffectIdx = 0;
         _advanceBtn.Busy = true;
         _advanceBtn.Progress = 0f;
         _dayLabel.Visible = true;
@@ -2463,6 +2470,8 @@ public sealed partial class CampaignMapScene : Node3D
         _animArrows.Clear();
         _animSupplyArrows.Clear();
         _animCaptures.Clear();
+        _animActives.Clear();
+        _animSkillEffects.Clear();
         for (var d = 0; d <= AnimDays; d++) { _dayKind[d] = "이동"; } // 기본 이동턴, 아래서 교전·공성 있는 날만 공격턴
         var alive = new HashSet<int>(startHex.Keys);
         var deathEffectUnitIds = new HashSet<int>();
@@ -2478,6 +2487,19 @@ public sealed partial class CampaignMapScene : Node3D
             var stopDay = dayOffset + System.Math.Max(1, turn.Movement.Days);
             var atkTime = ((stopDay - 1) * DaySeconds) + MoveSeconds + 0.15; // 그날 이동(≤1.5초)이 끝난 뒤
             ScheduleAttackMotions(turn, atkTime, unitSnapshot);
+
+            foreach (var (casterId, skill) in turn.FiredActives.OrderBy(x => x.Key.Value))
+            {
+                _animActives.Add((atkTime + 0.02, casterId.Value, skill));
+                var caster = turn.Units.FirstOrDefault(x => x.Id == casterId)
+                    ?? (unitSnapshot.TryGetValue(casterId.Value, out var previousCaster) ? previousCaster : null);
+                if (caster is not null && skill.Code == "fire_plot")
+                {
+                    foreach (var target in turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
+                        && x.State.Statuses.Any(s => s.IsFire)))
+                        _animSkillEffects.Add((atkTime + 0.16, target.Id.Value, skill));
+                }
+            }
 
             // 그 턴에 교전/공성이 있었으면 정지일(stopDay)을 '공격턴'으로 표기.
             if (stopDay >= 1 && stopDay <= AnimDays && (turn.Combat is not null || sieges.Any(s => s.TurnIndex == ti)))
@@ -2553,6 +2575,11 @@ public sealed partial class CampaignMapScene : Node3D
                     else { _animUpdates.Add((settleTime + 0.05, uid, remain)); }
                 }
             }
+            foreach (var (uid, damage) in turn.StatusDamage.Concat(turn.StratagemDamage)
+                .GroupBy(x => x.Key).Select(g => (g.Key, g.Sum(x => x.Value))))
+            {
+                if (damage > 0) _animDmg.Add((atkTime + 0.42, uid.Value, damage));
+            }
 
             foreach (var capture in captures.Where(c => c.TurnIndex == ti))
             {
@@ -2607,6 +2634,8 @@ public sealed partial class CampaignMapScene : Node3D
         _animArrows.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSupplyArrows.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animCaptures.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animActives.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
     }
 
     private void BuildEgressAnimationStartOverrides(GameState preMove, IReadOnlyList<(double Time, int UnitId, HexCoord To)> moves)
@@ -3765,6 +3794,14 @@ public sealed partial class CampaignMapScene : Node3D
             else { _dragPanel.Position = GetViewport().GetMousePosition() - _dragOffset; }
         }
 
+        foreach (var (unitId, gauge) in _activeGauges)
+        {
+            var unit = DisplayedArmies.FirstOrDefault(x => x.Id.Value == unitId);
+            gauge.Visible = unit is not null
+                && (unit.State.VanguardActive is not null || unit.State.AdjutantActive is not null)
+                && (_advancing || (_unitMenu.Visible && _selectedUnitId == unitId));
+        }
+
         if (_advancing)
         {
             _animT += delta;
@@ -3801,6 +3838,25 @@ public sealed partial class CampaignMapScene : Node3D
                 var d = _animDmg[_animDmgIdx];
                 if (_armyTokens.TryGetValue(d.UnitId, out var tok)) { SpawnDamagePopup(tok.Position, d.Damage); }
                 _animDmgIdx++;
+            }
+
+            while (_animActiveIdx < _animActives.Count && _animActives[_animActiveIdx].Time <= _animT)
+            {
+                var active = _animActives[_animActiveIdx];
+                var army = _pendingState.Armies.FirstOrDefault(x => x.Id.Value == active.UnitId)
+                    ?? _state.Armies.FirstOrDefault(x => x.Id.Value == active.UnitId);
+                var general = army?.VanguardId is { } gid ? _pendingState.Generals.FirstOrDefault(x => x.Id == gid) : null;
+                ActiveSkillPresentation.ShowBanner(this, general?.Name ?? $"부대 {active.UnitId}", active.Skill,
+                    general is null ? null : CircularPortraitFor(general.Id));
+                _animActiveIdx++;
+            }
+
+            while (_animSkillEffectIdx < _animSkillEffects.Count && _animSkillEffects[_animSkillEffectIdx].Time <= _animT)
+            {
+                var effect = _animSkillEffects[_animSkillEffectIdx];
+                if (_armyTokens.TryGetValue(effect.TargetUnitId, out var target) && target.Visible)
+                    ActiveSkillPresentation.AttachEffect(target, effect.Skill);
+                _animSkillEffectIdx++;
             }
 
             while (_animSiegeDmgIdx < _animSiegeDmg.Count && _animSiegeDmg[_animSiegeDmgIdx].Time <= _animT)
@@ -11523,6 +11579,7 @@ public sealed partial class CampaignMapScene : Node3D
             _armyLabels[id].QueueFree();
             _armyTokens.Remove(id);
             _armyLabels.Remove(id);
+            _activeGauges.Remove(id);
         }
 
         foreach (var army in _state.Armies)
@@ -11550,6 +11607,9 @@ public sealed partial class CampaignMapScene : Node3D
                 AddChild(lbl);
                 _armyTokens[army.Id.Value] = token;
                 _armyLabels[army.Id.Value] = lbl;
+                var gauge = new ActiveSkillGaugeView3D { Visible = false };
+                token.AddChild(gauge);
+                _activeGauges[army.Id.Value] = gauge;
             }
 
             token.SetFormationSize(army.IsSupply || army.IsArmyGroup ? 1 : FormationFor(army.Pool.Active)); // 보급부대·집단군은 규모와 무관하게 단일 전용 모델
@@ -11558,6 +11618,15 @@ public sealed partial class CampaignMapScene : Node3D
             lblNode.Position = _view.HexToWorld(army.Field.Position) + new Vector3(0f, _view.TileTopY + 1.1f, 0f);
             lblNode.Text = $"{army.Pool.Active}";
             lblNode.Visible = army.Field.Owner == Player; // 병력 수는 아군만 표시(적은 편대 규모로 가늠)
+            if (_activeGauges.TryGetValue(army.Id.Value, out var activeGauge))
+            {
+                var gauge = army.State.VanguardActive is not null
+                    ? army.State.VanguardGauge
+                    : army.State.AdjutantGauge;
+                activeGauge.SetGauge(gauge);
+                activeGauge.Visible = (army.State.VanguardActive is not null || army.State.AdjutantActive is not null)
+                    && (_advancing || (_unitMenu.Visible && _selectedUnitId == army.Id.Value));
+            }
         }
 
         var activeProduction = _state.ProductionOps
