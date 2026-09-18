@@ -27,6 +27,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     private AdvanceOrchestrator _orchestrator = null!;
     private readonly Dictionary<int, UnitController3D> _tokens = new();
     private readonly Dictionary<int, Label3D> _troopLabels = new();
+    private readonly Dictionary<int, ActiveSkillGaugeView3D> _gauges = new();
     private List<CombatUnit> _units = [];
     private OptionButton _skillSelect = null!;
     private Button _advanceButton = null!;
@@ -135,6 +136,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         foreach (var token in _tokens.Values) token.QueueFree();
         _tokens.Clear();
         _troopLabels.Clear();
+        _gauges.Clear();
         _round = 0;
         _advanceCount = 0;
         _lastEffectCount = 0;
@@ -226,9 +228,11 @@ public partial class ActiveEffectTestScene3D : Node3D
                 token.QueueFree();
                 _tokens.Remove(id);
                 _troopLabels.Remove(id);
+                _gauges.Remove(id);
                 continue;
             }
             _troopLabels[id].Text = unit.Pool.Active.ToString("N0");
+            if (_gauges.TryGetValue(id, out var gauge)) gauge.SetGauge(unit.State.VanguardGauge);
         }
     }
 
@@ -261,6 +265,10 @@ public partial class ActiveEffectTestScene3D : Node3D
         token.AddChild(troops);
         _tokens[unit.Id.Value] = token;
         _troopLabels[unit.Id.Value] = troops;
+        var gauge = new ActiveSkillGaugeView3D { Visible = unit.State.VanguardActive is not null };
+        token.AddChild(gauge);
+        gauge.SetGauge(unit.State.VanguardGauge);
+        _gauges[unit.Id.Value] = gauge;
     }
 
     private static Label3D MakeWorldLabel(string text, float y, int size) => new()
@@ -321,7 +329,8 @@ public partial class ActiveEffectTestScene3D : Node3D
         ResetScenario();
         var resetAlly = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var resetPassed = _units.Count == 6 && _units.Count(x => x.Field.Owner.Value == 2) == 5
-            && resetAlly?.Pool.Active == 30000 && _round == 0 && _advanceCount == 0 && _allyActiveFireCount == 0;
+            && _gauges.Count == 6 && resetAlly?.Pool.Active == 30000
+            && _round == 0 && _advanceCount == 0 && _allyActiveFireCount == 0;
         GD.Print($"[activeeffecttestauto] reset={resetPassed} units={_units.Count} ally={resetAlly?.Pool.Active} days={_round}");
         GetTree().Quit(battlePassed && resetPassed ? 0 : 1);
     }
