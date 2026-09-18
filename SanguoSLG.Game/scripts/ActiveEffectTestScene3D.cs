@@ -116,6 +116,9 @@ public partial class ActiveEffectTestScene3D : Node3D
         _advanceButton = new Button { Text = "진행 · 7일 교전 ▶", CustomMinimumSize = new Vector2(380, 52) };
         _advanceButton.Pressed += AdvanceSevenDays;
         box.AddChild(_advanceButton);
+        var resetButton = new Button { Text = "초기화 ↺", CustomMinimumSize = new Vector2(380, 42) };
+        resetButton.Pressed += ResetScenario;
+        box.AddChild(resetButton);
         _summary = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(380, 220) };
         box.AddChild(_summary);
     }
@@ -313,7 +316,13 @@ public partial class ActiveEffectTestScene3D : Node3D
         var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var fired = ally is not null && _lastEffectCount > 0;
         GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} fireCount={_allyActiveFireCount} effects={_lastEffectCount} days={_round} advances={_advanceCount}");
-        if (!fired || _allyActiveFireCount != 1 || _lastEffectCount < 1 || _round != 7 || _advanceCount != 1 || ally?.MaxTroops != 30000) GetTree().Quit(1);
-        else GetTree().Quit();
+        var battlePassed = fired && _allyActiveFireCount == 1 && _lastEffectCount >= 1
+            && _round == 7 && _advanceCount == 1 && ally?.MaxTroops == 30000;
+        ResetScenario();
+        var resetAlly = _units.FirstOrDefault(x => x.Id.Value == AllyId);
+        var resetPassed = _units.Count == 6 && _units.Count(x => x.Field.Owner.Value == 2) == 5
+            && resetAlly?.Pool.Active == 30000 && _round == 0 && _advanceCount == 0 && _allyActiveFireCount == 0;
+        GD.Print($"[activeeffecttestauto] reset={resetPassed} units={_units.Count} ally={resetAlly?.Pool.Active} days={_round}");
+        GetTree().Quit(battlePassed && resetPassed ? 0 : 1);
     }
 }
