@@ -49,6 +49,7 @@ public sealed partial class AdminScene : Control
         ("성벽 강화", CommandKind.Research, "wall"),
         ("성벽 수리", CommandKind.Repair, "wall"),
         ("시설 수리", CommandKind.Repair, "repairable"),
+        ("도시 계략", CommandKind.CityStratagem, "stratagem"),
     };
 
     private static readonly (string Label, string Code)[] Stratagems =
