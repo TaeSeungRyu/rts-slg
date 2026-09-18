@@ -212,6 +212,7 @@ public partial class ActiveEffectTestScene3D : Node3D
             {
                 _allyActiveFireCount++;
                 AppendLog($"[color=orange][b]제갈량 {fired.Name} 발동[/b][/color]");
+                ActiveSkillPresentation.ShowBanner(this, "제갈량", fired);
             }
             _lastEffectCount += PlaySkillEffects(turn);
         }
@@ -247,8 +248,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         foreach (var target in _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)))
         {
             if (!_tokens.TryGetValue(target.Id.Value, out var token)) continue;
-            EffectView.Attach(token, EffectKind.Fire, 0.9f, loop: false);
-            count++;
+            if (ActiveSkillPresentation.AttachEffect(token, fired)) count++;
         }
         AppendLog($"화계 연출: 적군 {count}부대에 빨강색 상승 화염 표시");
         return count;
