@@ -64,6 +64,13 @@ public partial class GameRoot3D : Node3D
             return;
         }
 
+        // 액티브 스킬 전용 검수장: 제갈량 1부대와 고정 적군 5부대로 5일 충전·피해·연출을 확인한다.
+        if (OS.GetCmdlineArgs().Contains("--activeeffecttest") || OS.GetCmdlineUserArgs().Contains("--activeeffecttest"))
+        {
+            BuildActiveEffectTest();
+            return;
+        }
+
         // 내정 전용 게임 씬 1단계(12b): --admin. 도시 현황 + 진행 버튼(Core AdminSession).
         if (OS.GetCmdlineArgs().Contains("--admin") || OS.GetCmdlineUserArgs().Contains("--admin"))
         {
@@ -299,6 +306,29 @@ public partial class GameRoot3D : Node3D
         MapView3D.TuneImportedMeshes(this);
 
         var scene = new CombatTestScene3D();
+        AddChild(scene);
+        scene.Build(mapView, camera, FindDataDirectory());
+    }
+
+    private void BuildActiveEffectTest()
+    {
+        var tone = TonePreset.FromCmdline();
+        _environment = BuildEnvironment(tone);
+        AddChild(new WorldEnvironment { Environment = _environment });
+        _sun = BuildSunLight(tone);
+        AddChild(_sun);
+
+        var mapView = new MapView3D();
+        AddChild(mapView);
+        var testMap = new HexMap(0, 11, 0, 6);
+        mapView.Build(testMap, new System.Collections.Generic.HashSet<HexCoord>(), new TileConditionMap());
+
+        var camera = new CameraController3D { Fov = 55f };
+        AddChild(camera);
+        camera.Current = true;
+
+        MapView3D.TuneImportedMeshes(this);
+        var scene = new ActiveEffectTestScene3D();
         AddChild(scene);
         scene.Build(mapView, camera, FindDataDirectory());
     }
