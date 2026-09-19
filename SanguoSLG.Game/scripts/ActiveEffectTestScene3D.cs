@@ -100,7 +100,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var box = new VBoxContainer();
         right.AddChild(box);
         box.AddChild(Heading("액티브 스킬 검수장"));
-        box.AddChild(new Label { Text = "아군: 제갈량 30,000  |  적군: 5부대 × 10,000" });
+        box.AddChild(new Label { Text = "아군: 제갈량 10,000  |  적군: 5부대 × 10,000" });
         box.AddChild(new Label { Text = "스킬을 바꾸면 전장이 초기화됩니다. 진행 1회 = 7일 교전입니다." });
         _skillSelect = new OptionButton { CustomMinimumSize = new Vector2(380, 42) };
         foreach (var skill in _actives.Values.OrderBy(x => x.Type).ThenBy(x => x.Name))
@@ -145,7 +145,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var selected = SelectedSkill();
         _units =
         [
-            MakeUnit(AllyId, 1, new HexCoord(4, 3), 100, selected, troops: 30000),
+            MakeUnit(AllyId, 1, new HexCoord(4, 3), 100, selected),
             MakeUnit(11, 2, new HexCoord(5, 1), 62),
             MakeUnit(12, 2, new HexCoord(5, 2), 66),
             MakeUnit(13, 2, new HexCoord(5, 3), 70),
@@ -325,11 +325,11 @@ public partial class ActiveEffectTestScene3D : Node3D
         var fired = ally is not null && _lastEffectCount > 0;
         GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} fireCount={_allyActiveFireCount} effects={_lastEffectCount} days={_round} advances={_advanceCount}");
         var battlePassed = fired && _allyActiveFireCount == 1 && _lastEffectCount >= 1
-            && _round == 7 && _advanceCount == 1 && ally?.MaxTroops == 30000;
+            && _round == 7 && _advanceCount == 1 && ally?.MaxTroops == 10000;
         ResetScenario();
         var resetAlly = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var resetPassed = _units.Count == 6 && _units.Count(x => x.Field.Owner.Value == 2) == 5
-            && _gauges.Count == 6 && resetAlly?.Pool.Active == 30000
+            && _gauges.Count == 6 && resetAlly?.Pool.Active == 10000
             && _round == 0 && _advanceCount == 0 && _allyActiveFireCount == 0;
         GD.Print($"[activeeffecttestauto] reset={resetPassed} units={_units.Count} ally={resetAlly?.Pool.Active} days={_round}");
         GetTree().Quit(battlePassed && resetPassed ? 0 : 1);
