@@ -506,7 +506,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var fired = ally is not null && _lastEffectCount > 0;
         var swordCountPassed = expectedSkill != "one_man_army"
             || _tokens.Values.SelectMany(x => x.FindChildren("*", "", true, false).OfType<Node>())
-                .OfType<OneManArmySwordEffectView3D>().Any(x => x.SwordCount == 3);
+                .OfType<OneManArmySwordEffectView3D>().Any(x => x.SwordCount == 3 && x.AnimationClipCount >= 3);
         var gaugePassed = _gauges.TryGetValue(AllyId, out var battleGauge)
             && battleGauge.SkillCode == expectedSkill && battleGauge.FilledSegments == 1
             && battleGauge.HasSpacedHorizontalLayout;
