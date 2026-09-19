@@ -37,6 +37,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     private int _lastEffectCount;
     private int _advanceCount;
     private int _allyActiveFireCount;
+    private int _allyActiveFireDay;
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
@@ -141,6 +142,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         _advanceCount = 0;
         _lastEffectCount = 0;
         _allyActiveFireCount = 0;
+        _allyActiveFireDay = 0;
 
         var selected = SelectedSkill();
         _units =
@@ -211,6 +213,7 @@ public partial class ActiveEffectTestScene3D : Node3D
             if (turn.FiredActives.TryGetValue(new UnitId(AllyId), out var fired))
             {
                 _allyActiveFireCount++;
+                _allyActiveFireDay = day;
                 AppendLog($"[color=orange][b]제갈량 {fired.Name} 발동[/b][/color]");
                 ActiveSkillPresentation.ShowBanner(this, "제갈량", fired);
             }
@@ -297,7 +300,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     private void RefreshSummary(AdvanceTurn? turn)
     {
         var selected = SelectedSkill();
-        var fired = _allyActiveFireCount > 0 ? $"발동 완료 ({_allyActiveFireCount}회)" : "대기";
+        var fired = _allyActiveFireCount > 0 ? $"{_allyActiveFireDay}일차 발동 ({_allyActiveFireCount}회)" : "대기";
         var rows = _units.OrderBy(x => x.Id.Value).Select(x => $"{Tag(x),-8} {x.Pool.Active,6:N0}");
         _summary.Text = $"선택 스킬: {selected.Name}\n유형: {TypeName(selected.Type)}\n상태: {fired}\n\n병력 현황\n{string.Join("\n", rows)}";
     }
@@ -323,14 +326,14 @@ public partial class ActiveEffectTestScene3D : Node3D
         AdvanceSevenDays();
         var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var fired = ally is not null && _lastEffectCount > 0;
-        GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} fireCount={_allyActiveFireCount} effects={_lastEffectCount} days={_round} advances={_advanceCount}");
-        var battlePassed = fired && _allyActiveFireCount == 1 && _lastEffectCount >= 1
+        GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} fireDay={_allyActiveFireDay} fireCount={_allyActiveFireCount} effects={_lastEffectCount} days={_round} advances={_advanceCount}");
+        var battlePassed = fired && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount >= 1
             && _round == 7 && _advanceCount == 1 && ally?.MaxTroops == 10000;
         ResetScenario();
         var resetAlly = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var resetPassed = _units.Count == 6 && _units.Count(x => x.Field.Owner.Value == 2) == 5
             && _gauges.Count == 6 && resetAlly?.Pool.Active == 10000
-            && _round == 0 && _advanceCount == 0 && _allyActiveFireCount == 0;
+            && _round == 0 && _advanceCount == 0 && _allyActiveFireCount == 0 && _allyActiveFireDay == 0;
         GD.Print($"[activeeffecttestauto] reset={resetPassed} units={_units.Count} ally={resetAlly?.Pool.Active} days={_round}");
         GetTree().Quit(battlePassed && resetPassed ? 0 : 1);
     }

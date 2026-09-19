@@ -25,9 +25,9 @@ public class UnitCombatStateTests
     }
 
     [Fact]
-    public void 야전5일이면_두게이지_준비_선봉우선_발동후_부관차례()
+    public void 야전5일충전후_6일차면_두게이지_준비_선봉우선_발동후_부관차례()
     {
-        var s = UnitCombatState.Create(80, A["peerless"], A["iron_wall"]).AdvanceField(5);
+        var s = UnitCombatState.Create(80, A["peerless"], A["iron_wall"]).AdvanceField(6);
         Assert.True(s.VanguardGauge.IsReady && s.AdjutantGauge.IsReady);
 
         var (skill1, s2) = s.FiringActive();
@@ -49,7 +49,7 @@ public class UnitCombatStateTests
     [Fact]
     public void 효과미정_책략형은_발동하거나_게이지를_소비하지않는다()
     {
-        var s = UnitCombatState.Create(80, A["fire_plot"]).AdvanceField(5);
+        var s = UnitCombatState.Create(80, A["fire_plot"]).AdvanceField(6);
 
         var (skill, after) = s.FiringActive();
 
@@ -60,7 +60,7 @@ public class UnitCombatStateTests
     [Fact]
     public void 선봉_책략형이_대기중이면_준비된_부관_일반액티브를_발동한다()
     {
-        var s = UnitCombatState.Create(80, A["fire_plot"], A["iron_wall"]).AdvanceField(5);
+        var s = UnitCombatState.Create(80, A["fire_plot"], A["iron_wall"]).AdvanceField(6);
 
         var (skill, after) = s.FiringActive();
 
@@ -72,7 +72,7 @@ public class UnitCombatStateTests
     [Fact]
     public void 책략형은_전용발동에서_오일게이지를_소비한다()
     {
-        var s = UnitCombatState.Create(80, A["fire_plot"]).AdvanceField(5);
+        var s = UnitCombatState.Create(80, A["fire_plot"]).AdvanceField(6);
 
         var (skill, after) = s.FiringTactic();
 

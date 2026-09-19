@@ -11,10 +11,10 @@ public class ActiveGaugeTests
         => Assert.False(new ActiveGauge().IsReady);
 
     [Fact]
-    public void 야전_5일누적되면_준비됨()
+    public void 야전_5일은_충전하고_6일차에_준비됨()
     {
-        Assert.False(new ActiveGauge().Tick(4).IsReady);
-        Assert.True(new ActiveGauge().Tick(4).Tick(1).IsReady);
+        Assert.False(new ActiveGauge().Tick(5).IsReady);
+        Assert.True(new ActiveGauge().Tick(5).Tick(1).IsReady);
     }
 
     [Fact]

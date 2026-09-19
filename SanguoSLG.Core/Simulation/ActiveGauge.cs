@@ -11,8 +11,8 @@ public sealed record ActiveGauge(int ElapsedDays = 0)
     /// <summary>발동에 필요한 야전 경과일(design 확정 5일).</summary>
     public const int ReadyDays = 5;
 
-    /// <summary>발동 준비됨(경과일이 문턱 이상).</summary>
-    public bool IsReady => ElapsedDays >= ReadyDays;
+    /// <summary>1~5일차 충전을 모두 마치고 다음 날(6일차) 발동할 준비가 됨.</summary>
+    public bool IsReady => ElapsedDays > ReadyDays;
 
     /// <summary>야전 하루-진행 경과: 경과일을 <paramref name="days"/>만큼 늘린다.</summary>
     public ActiveGauge Tick(int days) => days <= 0 ? this : new ActiveGauge(ElapsedDays + days);

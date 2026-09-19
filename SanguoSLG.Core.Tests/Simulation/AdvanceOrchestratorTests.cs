@@ -112,7 +112,7 @@ public class AdvanceOrchestratorTests
     [Fact]
     public void 집단군은_액티브가_준비되어도_발동하지_않는다()
     {
-        var ready = UnitCombatState.Create(80, A["peerless"]).AdvanceField(5);
+        var ready = UnitCombatState.Create(80, A["peerless"]).AdvanceField(6);
         var group = ArmyGroup(1, 1, new HexCoord(0, 0), ready);
         var enemy = Sword(2, 2, new HexCoord(1, 0));
 
@@ -126,7 +126,7 @@ public class AdvanceOrchestratorTests
     [Fact]
     public void 오일충전된_화계는_부대액티브로_발동한다()
     {
-        var ready = UnitCombatState.Create(90, A["fire_plot"]).AdvanceField(5);
+        var ready = UnitCombatState.Create(90, A["fire_plot"]).AdvanceField(6);
         var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.March, ready);
         var target = Sword(2, 2, new HexCoord(1, 0), UnitMode.March);
 
@@ -141,7 +141,7 @@ public class AdvanceOrchestratorTests
     [Fact]
     public void 교란은_경로의_부대를_무시하고_빈_사칸_목적지로_후퇴시킨다()
     {
-        var ready = UnitCombatState.Create(90, A["rout"]).AdvanceField(5);
+        var ready = UnitCombatState.Create(90, A["rout"]).AdvanceField(6);
         var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.March, ready) with { Intellect = 90 };
         var target = Sword(2, 2, new HexCoord(1, 0), UnitMode.March) with { Intellect = 60 };
         var blockers = new[]
@@ -566,8 +566,8 @@ public class AdvanceOrchestratorTests
     [Fact]
     public void 준비된_타격액티브가_교전에서_발동한다()
     {
-        // 선봉 무쌍 게이지 준비(야전 5일 사전 누적), 무력 80
-        var readyState = UnitCombatState.Create(60, vanguardActive: A["peerless"]).AdvanceField(5);
+        // 선봉 무쌍 게이지 준비(야전 5일 충전 후 6일차), 무력 80
+        var readyState = UnitCombatState.Create(60, vanguardActive: A["peerless"]).AdvanceField(6);
         var a = Sword(1, 1, new HexCoord(0, 0), cs: readyState, might: 80);
         var b = Sword(2, 2, new HexCoord(1, 0));
         var turn = MakeOrchestrator().Run(new[] { a, b });
