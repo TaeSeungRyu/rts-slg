@@ -61,7 +61,11 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestauto"))
+        if (args.Contains("--activeeffecttestpresentqa"))
+        {
+            CallDeferred(MethodName.RunPresentationQa);
+        }
+        else if (args.Contains("--activeeffecttestauto"))
         {
             CallDeferred(MethodName.RunAutoQa);
         }
@@ -193,14 +197,8 @@ public partial class ActiveEffectTestScene3D : Node3D
             caster.AddChild(_chargeView);
         }
         AppendLog("[color=#ffd05a]1~5일차 · 액티브 준비 중…[/color]");
-        var timer = GetTree().CreateTimer(2.0);
-        timer.Timeout += () =>
-        {
-            AdvanceSevenDays();
-            _presentationRunning = false;
-            _advanceButton.Disabled = false;
-            _skillSelect.Disabled = false;
-        };
+        BeginAdvanceBatch();
+        RunPresentedDay(1);
     }
 
     private void AdvanceSevenDays()
@@ -211,45 +209,68 @@ public partial class ActiveEffectTestScene3D : Node3D
             return;
         }
 
-        _advanceCount++;
-        _lastEffectCount = 0;
-        AppendLog($"\n[font_size=20][b]진행 {_advanceCount} · 7일 교전 시작[/b][/font_size]");
+        BeginAdvanceBatch();
         AdvanceTurn? lastTurn = null;
         for (var day = 1; day <= 7; day++)
         {
-            if (_units.All(x => x.Field.Owner.Value != 1) || _units.All(x => x.Field.Owner.Value != 2)) break;
-            _round++;
-            var before = _units.ToDictionary(x => x.Id, x => x.Pool.Active);
-            var turn = _orchestrator.Run(_units, maxDays: 1);
-            _units = turn.Units.ToList();
-            lastTurn = turn;
-
-            foreach (var (uid, dealt) in turn.Combat?.DamageDealt ?? new Dictionary<UnitId, int>())
-            {
-                if (dealt > 0 && _tokens.TryGetValue(uid.Value, out var attacker)) attacker.PlayAttackMotion();
-            }
-            RefreshTokens();
-            AppendLog($"[b]{day}일차[/b]");
-            foreach (var unit in _units.OrderBy(x => x.Id.Value))
-            {
-                var normalTaken = turn.Combat?.DamageTaken.GetValueOrDefault(unit.Id) ?? 0;
-                var skillTaken = turn.StratagemDamage.GetValueOrDefault(unit.Id)
-                    + turn.StatusDamage.GetValueOrDefault(unit.Id);
-                var loss = before.GetValueOrDefault(unit.Id) - unit.Pool.Active;
-                AppendLog($"{Tag(unit)} 일반 −{normalTaken:N0} | 스킬 −{skillTaken:N0} | 총감소 −{loss:N0} | 잔여 {unit.Pool.Active:N0}");
-            }
-            if (turn.FiredActives.TryGetValue(new UnitId(AllyId), out var fired))
-            {
-                _allyActiveFireCount++;
-                _allyActiveFireDay = day;
-                AppendLog($"[color=orange][b]제갈량 {fired.Name} 발동[/b][/color]");
-                ActiveSkillPresentation.ShowBanner(this, "제갈량", fired);
-                _chargeView?.Complete();
-                _chargeView = null;
-            }
-            _lastEffectCount += PlaySkillEffects(turn);
+            lastTurn = AdvanceOneDay(day);
+            if (lastTurn is null) break;
         }
         RefreshSummary(lastTurn);
+    }
+
+    private void BeginAdvanceBatch()
+    {
+        _advanceCount++;
+        _lastEffectCount = 0;
+        AppendLog($"\n[font_size=20][b]진행 {_advanceCount} · 7일 교전 시작[/b][/font_size]");
+    }
+
+    private void RunPresentedDay(int day)
+    {
+        if (day > 7 || AdvanceOneDay(day) is null)
+        {
+            RefreshSummary(null);
+            _presentationRunning = false;
+            _advanceButton.Disabled = false;
+            _skillSelect.Disabled = false;
+            return;
+        }
+        RefreshSummary(null);
+        var timer = GetTree().CreateTimer(0.72);
+        timer.Timeout += () => RunPresentedDay(day + 1);
+    }
+
+    private AdvanceTurn? AdvanceOneDay(int day)
+    {
+        if (_units.All(x => x.Field.Owner.Value != 1) || _units.All(x => x.Field.Owner.Value != 2)) return null;
+        _round++;
+        var before = _units.ToDictionary(x => x.Id, x => x.Pool.Active);
+        var turn = _orchestrator.Run(_units, maxDays: 1);
+        _units = turn.Units.ToList();
+
+        foreach (var (uid, dealt) in turn.Combat?.DamageDealt ?? new Dictionary<UnitId, int>())
+            if (dealt > 0 && _tokens.TryGetValue(uid.Value, out var attacker)) attacker.PlayAttackMotion();
+        RefreshTokens();
+        AppendLog($"[b]{day}일차[/b]");
+        foreach (var unit in _units.OrderBy(x => x.Id.Value))
+        {
+            var normalTaken = turn.Combat?.DamageTaken.GetValueOrDefault(unit.Id) ?? 0;
+            var skillTaken = turn.StratagemDamage.GetValueOrDefault(unit.Id) + turn.StatusDamage.GetValueOrDefault(unit.Id);
+            var loss = before.GetValueOrDefault(unit.Id) - unit.Pool.Active;
+            AppendLog($"{Tag(unit)} 일반 −{normalTaken:N0} | 스킬 −{skillTaken:N0} | 총감소 −{loss:N0} | 잔여 {unit.Pool.Active:N0}");
+        }
+        if (turn.FiredActives.TryGetValue(new UnitId(AllyId), out var fired))
+        {
+            _allyActiveFireCount++;
+            _allyActiveFireDay = day;
+            AppendLog($"[color=orange][b]제갈량 {fired.Name} 발동[/b][/color]");
+            ActiveSkillPresentation.ShowBanner(this, "제갈량", fired);
+            _chargeView?.Complete();
+            _chargeView = null;
+        }
+        _lastEffectCount += PlaySkillEffects(turn);
+        return turn;
     }
 
     private void RefreshTokens()
@@ -266,7 +287,7 @@ public partial class ActiveEffectTestScene3D : Node3D
                 continue;
             }
             _troopLabels[id].Text = unit.Pool.Active.ToString("N0");
-            if (_gauges.TryGetValue(id, out var gauge)) gauge.SetGauge(unit.State.VanguardGauge);
+            if (_gauges.TryGetValue(id, out var gauge)) gauge.SetSkill(unit.State.VanguardActive, unit.State.VanguardGauge);
         }
     }
 
@@ -300,7 +321,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         _troopLabels[unit.Id.Value] = troops;
         var gauge = new ActiveSkillGaugeView3D { Visible = unit.State.VanguardActive is not null };
         token.AddChild(gauge);
-        gauge.SetGauge(unit.State.VanguardGauge);
+        gauge.SetSkill(unit.State.VanguardActive, unit.State.VanguardGauge);
         _gauges[unit.Id.Value] = gauge;
     }
 
@@ -358,15 +379,31 @@ public partial class ActiveEffectTestScene3D : Node3D
         AdvanceSevenDays();
         var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var fired = ally is not null && _lastEffectCount > 0;
+        var gaugePassed = _gauges.TryGetValue(AllyId, out var battleGauge)
+            && battleGauge.SkillCode == "fire_plot" && battleGauge.FilledSegments == 1;
         GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} fireDay={_allyActiveFireDay} fireCount={_allyActiveFireCount} effects={_lastEffectCount} days={_round} advances={_advanceCount}");
-        var battlePassed = fired && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount >= 1
+        var battlePassed = fired && gaugePassed && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount >= 1
             && _round == 7 && _advanceCount == 1 && ally?.MaxTroops == 10000;
         ResetScenario();
         var resetAlly = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var resetPassed = _units.Count == 6 && _units.Count(x => x.Field.Owner.Value == 2) == 5
             && _gauges.Count == 6 && resetAlly?.Pool.Active == 10000
+            && _gauges[AllyId].SkillCode == "fire_plot" && _gauges[AllyId].FilledSegments == 0
             && _round == 0 && _advanceCount == 0 && _allyActiveFireCount == 0 && _allyActiveFireDay == 0;
         GD.Print($"[activeeffecttestauto] reset={resetPassed} units={_units.Count} ally={resetAlly?.Pool.Active} days={_round}");
         GetTree().Quit(battlePassed && resetPassed ? 0 : 1);
+    }
+
+    private void RunPresentationQa()
+    {
+        BeginSevenDayPresentation();
+        var timer = GetTree().CreateTimer(6.2);
+        timer.Timeout += () =>
+        {
+            var passed = !_presentationRunning && _round == 7 && _allyActiveFireDay == 6
+                && _allyActiveFireCount == 1 && _gauges[AllyId].FilledSegments == 1;
+            GD.Print($"[activeeffecttestpresentqa] passed={passed} days={_round} fireDay={_allyActiveFireDay} gauge={_gauges[AllyId].FilledSegments}");
+            GetTree().Quit(passed ? 0 : 1);
+        };
     }
 }

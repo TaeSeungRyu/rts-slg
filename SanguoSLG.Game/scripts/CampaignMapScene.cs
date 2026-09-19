@@ -11641,7 +11641,8 @@ public sealed partial class CampaignMapScene : Node3D
                 var gauge = army.State.VanguardActive is not null
                     ? army.State.VanguardGauge
                     : army.State.AdjutantGauge;
-                activeGauge.SetGauge(gauge);
+                var skill = army.State.VanguardActive ?? army.State.AdjutantActive;
+                activeGauge.SetSkill(skill, gauge);
                 activeGauge.Visible = (army.State.VanguardActive is not null || army.State.AdjutantActive is not null)
                     && (_advancing || (_unitMenu.Visible && _selectedUnitId == army.Id.Value));
             }
