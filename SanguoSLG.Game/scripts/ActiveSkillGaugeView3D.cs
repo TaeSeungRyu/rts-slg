@@ -14,15 +14,16 @@ public sealed partial class ActiveSkillGaugeView3D : Node3D
     private readonly MeshInstance3D[] _segments = new MeshInstance3D[ActiveGauge.ReadyDays];
     private static readonly Vector3[] SegmentPositions =
     {
-        new(-0.14f, -0.17f, 0f), new(-0.07f, -0.17f, 0f), new(0f, -0.17f, 0f),
-        new(0.07f, -0.17f, 0f), new(0.14f, -0.17f, 0f),
+        new(-0.16f, -0.17f, 0f), new(-0.08f, -0.17f, 0f), new(0f, -0.17f, 0f),
+        new(0.08f, -0.17f, 0f), new(0.16f, -0.17f, 0f),
     };
     private Sprite3D _icon = null!;
     private Label3D _progress = null!;
 
     public override void _Ready()
     {
-        Position = new Vector3(0f, 1.08f, 0f);
+        TopLevel = true;
+        AlignAboveParent();
         _icon = new Sprite3D
         {
             PixelSize = 0.00062f,
@@ -49,7 +50,7 @@ public sealed partial class ActiveSkillGaugeView3D : Node3D
         {
             var segment = new MeshInstance3D
             {
-                Mesh = new SphereMesh { Radius = 0.035f, Height = 0.07f, RadialSegments = 12, Rings = 6 },
+                Mesh = new SphereMesh { Radius = 0.026f, Height = 0.052f, RadialSegments = 12, Rings = 6 },
                 Position = SegmentPositions[i],
                 MaterialOverride = Material(Empty),
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
@@ -59,10 +60,21 @@ public sealed partial class ActiveSkillGaugeView3D : Node3D
         }
     }
 
-    public bool HasCompactSingleRowLayout
+    public override void _Process(double delta) => AlignAboveParent();
+
+    private void AlignAboveParent()
+    {
+        if (GetParent() is not Node3D owner) return;
+        GlobalPosition = owner.GlobalPosition + Vector3.Up * 1.08f;
+        var camera = GetViewport()?.GetCamera3D();
+        if (camera is not null && !GlobalPosition.IsEqualApprox(camera.GlobalPosition))
+            LookAt(camera.GlobalPosition, Vector3.Up);
+    }
+
+    public bool HasSpacedHorizontalLayout
         => _segments.Select(x => x.Position.Y).Distinct().Count() == 1
-            && _segments.Max(x => x.Position.X) - _segments.Min(x => x.Position.X) <= 0.281f
-            && _segments.All(x => x.Mesh is SphereMesh sphere && sphere.Radius <= 0.0351f);
+            && _segments.Zip(_segments.Skip(1), (left, right) => right.Position.X - left.Position.X).All(gap => gap >= 0.079f)
+            && _segments.All(x => x.Mesh is SphereMesh sphere && sphere.Radius <= 0.0261f);
 
     public void SetGauge(ActiveGauge gauge)
     {
