@@ -16,7 +16,9 @@ namespace SanguoSLG.Game;
 public partial class ActiveEffectTestScene3D : Node3D
 {
     private const int AllyId = 1;
-    private const double NormalDayPresentationSeconds = 0.72;
+    // 보병 공격 최장 1회는 편대 산개(0.55)+전진(0.16)+타격(0.07)+멈춤(0.08)+복귀(0.28)=1.14초다.
+    // 이보다 짧으면 다음 날 게이지만 오르고 PlayAttackMotion이 무시되므로 프레임 여유를 둔다.
+    private const double NormalDayPresentationSeconds = 1.30;
     // 가장 긴 단발 효과(무쌍 1.55초)와 배너 전환을 잘리지 않고 확인할 최소 시간.
     private const double ActiveDayPresentationSeconds = 1.85;
     private static readonly Color AllyColor = new("#3e78c4");
@@ -507,15 +509,17 @@ public partial class ActiveEffectTestScene3D : Node3D
     private void RunPresentationQa()
     {
         BeginSevenDayPresentation();
-        var timer = GetTree().CreateTimer(7.1);
+        var timer = GetTree().CreateTimer(10.3);
         timer.Timeout += () =>
         {
             var passed = !_presentationRunning && _round == 7 && _allyActiveFireDay == 6
                 && _chargeAppearedDay == 5 && _allyActiveFireCount == 1 && _gauges[AllyId].FilledSegments == 1
                 && !_gauges[AllyId].Visible && _chargeView is null
                 && _tokens[AllyId].FindChild("Effect_Burst", true, false) is null
-                && _extendedActiveTurns == 1 && ActiveDayPresentationSeconds >= 1.55;
-            GD.Print($"[activeeffecttestpresentqa] passed={passed} days={_round} fireDay={_allyActiveFireDay} activeTurns={_extendedActiveTurns} activeSeconds={ActiveDayPresentationSeconds:F2} gauge={_gauges[AllyId].FilledSegments} visible={_gauges[AllyId].Visible} burstAlive={_tokens[AllyId].FindChild("Effect_Burst", true, false) is not null}");
+                && _extendedActiveTurns == 1 && ActiveDayPresentationSeconds >= 1.55
+                // 액티브 발동일은 일반 공격을 대체한다: 일반 공격 6회 + 액티브 1회 = 7일의 가시 행동.
+                && _tokens[AllyId].AttackMotionStartCount + _allyActiveFireCount == 7;
+            GD.Print($"[activeeffecttestpresentqa] passed={passed} days={_round} attacks={_tokens[AllyId].AttackMotionStartCount} actives={_allyActiveFireCount} fireDay={_allyActiveFireDay} activeTurns={_extendedActiveTurns} activeSeconds={ActiveDayPresentationSeconds:F2} gauge={_gauges[AllyId].FilledSegments} visible={_gauges[AllyId].Visible} burstAlive={_tokens[AllyId].FindChild("Effect_Burst", true, false) is not null}");
             GetTree().Quit(passed ? 0 : 1);
         };
     }

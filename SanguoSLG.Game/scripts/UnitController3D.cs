@@ -568,6 +568,7 @@ public partial class UnitController3D : Node3D
     private const float SwingSeconds = 0.07f;
     private const float MeleeStepSeconds = 0.16f;      // 보병 근접의 들어가는 한 발
     private const float RecoverSeconds = 0.28f;
+    public int AttackMotionStartCount { get; private set; }
 
     /// <summary>
     /// 공격 모션. 편대원이 동시에 같은 동작을 하면 아무리 크게 흔들어도 밋밋해지므로,
@@ -583,6 +584,7 @@ public partial class UnitController3D : Node3D
         }
 
         _attacking = true;
+        AttackMotionStartCount++;
         if (_nativeSupply)
         {
             PlayNativeSupplyAnimation("state_camp");
