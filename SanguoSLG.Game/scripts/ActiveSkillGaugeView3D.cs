@@ -14,8 +14,8 @@ public sealed partial class ActiveSkillGaugeView3D : Node3D
     private readonly MeshInstance3D[] _segments = new MeshInstance3D[ActiveGauge.ReadyDays];
     private static readonly Vector3[] SegmentPositions =
     {
-        new(-0.10f, 0.19f, 0f), new(0.10f, 0.19f, 0f),
-        new(-0.20f, -0.16f, 0f), new(0f, -0.20f, 0f), new(0.20f, -0.16f, 0f),
+        new(-0.14f, -0.17f, 0f), new(-0.07f, -0.17f, 0f), new(0f, -0.17f, 0f),
+        new(0.07f, -0.17f, 0f), new(0.14f, -0.17f, 0f),
     };
     private Sprite3D _icon = null!;
     private Label3D _progress = null!;
@@ -49,7 +49,7 @@ public sealed partial class ActiveSkillGaugeView3D : Node3D
         {
             var segment = new MeshInstance3D
             {
-                Mesh = new SphereMesh { Radius = 0.055f, Height = 0.11f, RadialSegments = 12, Rings = 6 },
+                Mesh = new SphereMesh { Radius = 0.035f, Height = 0.07f, RadialSegments = 12, Rings = 6 },
                 Position = SegmentPositions[i],
                 MaterialOverride = Material(Empty),
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
@@ -59,8 +59,10 @@ public sealed partial class ActiveSkillGaugeView3D : Node3D
         }
     }
 
-    public bool HasTwoOverThreeLayout
-        => _segments.Count(x => x.Position.Y > 0f) == 2 && _segments.Count(x => x.Position.Y < 0f) == 3;
+    public bool HasCompactSingleRowLayout
+        => _segments.Select(x => x.Position.Y).Distinct().Count() == 1
+            && _segments.Max(x => x.Position.X) - _segments.Min(x => x.Position.X) <= 0.281f
+            && _segments.All(x => x.Mesh is SphereMesh sphere && sphere.Radius <= 0.0351f);
 
     public void SetGauge(ActiveGauge gauge)
     {
