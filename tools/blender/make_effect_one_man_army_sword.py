@@ -9,7 +9,7 @@ OUT = os.path.join(ROOT, "SanguoSLG.Game", "assets", "models", "effect-one-man-a
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.context.scene.render.fps = 30
 bpy.context.scene.frame_start = 1
-bpy.context.scene.frame_end = 30
+bpy.context.scene.frame_end = 36
 
 
 def material(name, color, emission=0.0, metallic=0.0):
@@ -74,37 +74,60 @@ pommel.name = "SwordPommel"
 pommel.data.materials.append(gold)
 pommel.parent = root
 
-# 검끝이 아래를 향하도록 뒤집은 뒤 하늘에서 적 편대 중심으로 급강하한다.
-root.rotation_euler = (math.pi, 0.0, math.radians(-8))
-root.location = (0.0, 0.0, 1.42)
-root.scale = (0.08, 0.08, 0.08)
-root.keyframe_insert("location", frame=1)
-root.keyframe_insert("scale", frame=1)
-root.location = (0.0, 0.0, 1.30)
-root.scale = (1.0, 1.0, 1.0)
-root.keyframe_insert("location", frame=6)
-root.keyframe_insert("scale", frame=6)
-root.location = (0.0, 0.0, 0.16)
-root.keyframe_insert("location", frame=15)
-root.keyframe_insert("scale", frame=15)
-root.location = (0.0, 0.0, 0.12)
-root.scale = (1.08, 1.08, 1.08)
-root.keyframe_insert("location", frame=20)
-root.keyframe_insert("scale", frame=20)
-root.scale = (0.01, 0.01, 0.01)
-root.keyframe_insert("scale", frame=29)
+# 원본 검 형상을 두 번 복제해 세 자루가 편대 내부 서로 다른 지점에 시간차로 떨어진다.
+root.name = "OneManArmySword_1"
+sword_roots = [root]
+template_parts = list(root.children)
+for index in range(2, 4):
+    clone_root = bpy.data.objects.new(f"OneManArmySword_{index}", None)
+    bpy.context.collection.objects.link(clone_root)
+    for part in template_parts:
+        clone = part.copy()
+        if part.data is not None:
+            clone.data = part.data.copy()
+        clone.name = f"{part.name}_{index}"
+        bpy.context.collection.objects.link(clone)
+        clone.parent = clone_root
+    sword_roots.append(clone_root)
 
-# 충돌 지점의 붉은 원형 충격파.
-bpy.ops.mesh.primitive_torus_add(major_radius=0.10, minor_radius=0.014, major_segments=24, minor_segments=6)
-ring = bpy.context.object
-ring.name = "SwordImpactRing"
-ring.data.materials.append(crimson)
-ring.scale = (0.01, 0.01, 0.01)
-ring.keyframe_insert("scale", frame=14)
-ring.scale = (2.5, 2.5, 0.35)
-ring.keyframe_insert("scale", frame=22)
-ring.scale = (0.01, 0.01, 0.01)
-ring.keyframe_insert("scale", frame=29)
+
+def animate_sword(sword, index, x, y, delay):
+    sword.rotation_euler = (math.pi, 0.0, math.radians((-8, 7, -3)[index]))
+    sword.location = (x, y, 1.42)
+    sword.scale = (0.08, 0.08, 0.08)
+    sword.keyframe_insert("location", frame=1 + delay)
+    sword.keyframe_insert("scale", frame=1 + delay)
+    sword.location = (x, y, 1.30)
+    sword.scale = (1.0, 1.0, 1.0)
+    sword.keyframe_insert("location", frame=6 + delay)
+    sword.keyframe_insert("scale", frame=6 + delay)
+    sword.location = (x, y, 0.16)
+    sword.keyframe_insert("location", frame=15 + delay)
+    sword.keyframe_insert("scale", frame=15 + delay)
+    sword.location = (x, y, 0.12)
+    sword.scale = (1.08, 1.08, 1.08)
+    sword.keyframe_insert("location", frame=20 + delay)
+    sword.keyframe_insert("scale", frame=20 + delay)
+    sword.scale = (0.01, 0.01, 0.01)
+    sword.keyframe_insert("scale", frame=29 + delay)
+
+    bpy.ops.mesh.primitive_torus_add(
+        major_radius=0.10, minor_radius=0.014, major_segments=24, minor_segments=6,
+        location=(x, y, 0.0),
+    )
+    ring = bpy.context.object
+    ring.name = f"SwordImpactRing_{index + 1}"
+    ring.data.materials.append(crimson)
+    ring.scale = (0.01, 0.01, 0.01)
+    ring.keyframe_insert("scale", frame=14 + delay)
+    ring.scale = (2.2, 2.2, 0.35)
+    ring.keyframe_insert("scale", frame=22 + delay)
+    ring.scale = (0.01, 0.01, 0.01)
+    ring.keyframe_insert("scale", frame=29 + delay)
+
+
+for i, (sword, placement) in enumerate(zip(sword_roots, [(-0.15, 0.08, 0), (0.14, 0.09, 3), (0.0, -0.14, 6)])):
+    animate_sword(sword, i, *placement)
 
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 bpy.ops.export_scene.gltf(filepath=OUT, export_format="GLB", export_animations=True)
