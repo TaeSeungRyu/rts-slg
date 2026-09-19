@@ -38,6 +38,8 @@ public partial class ActiveEffectTestScene3D : Node3D
     private int _advanceCount;
     private int _allyActiveFireCount;
     private int _allyActiveFireDay;
+    private ActiveSkillChargeView3D? _chargeView;
+    private bool _presentationRunning;
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
@@ -116,7 +118,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         box.AddChild(_skillSelect);
 
         _advanceButton = new Button { Text = "진행 · 7일 교전 ▶", CustomMinimumSize = new Vector2(380, 52) };
-        _advanceButton.Pressed += AdvanceSevenDays;
+        _advanceButton.Pressed += BeginSevenDayPresentation;
         box.AddChild(_advanceButton);
         var resetButton = new Button { Text = "초기화 ↺", CustomMinimumSize = new Vector2(380, 42) };
         resetButton.Pressed += ResetScenario;
@@ -143,6 +145,10 @@ public partial class ActiveEffectTestScene3D : Node3D
         _lastEffectCount = 0;
         _allyActiveFireCount = 0;
         _allyActiveFireDay = 0;
+        _presentationRunning = false;
+        _chargeView?.QueueFree();
+        _chargeView = null;
+        if (_advanceButton is not null) _advanceButton.Disabled = false;
 
         var selected = SelectedSkill();
         _units =
@@ -174,6 +180,28 @@ public partial class ActiveEffectTestScene3D : Node3D
 
     private ActiveSkill SelectedSkill()
         => _actives[_skillSelect.GetItemMetadata(_skillSelect.Selected).AsString()];
+
+    private void BeginSevenDayPresentation()
+    {
+        if (_presentationRunning) return;
+        _presentationRunning = true;
+        _advanceButton.Disabled = true;
+        _skillSelect.Disabled = true;
+        if (_tokens.TryGetValue(AllyId, out var caster))
+        {
+            _chargeView = new ActiveSkillChargeView3D();
+            caster.AddChild(_chargeView);
+        }
+        AppendLog("[color=#ffd05a]1~5일차 · 액티브 준비 중…[/color]");
+        var timer = GetTree().CreateTimer(2.0);
+        timer.Timeout += () =>
+        {
+            AdvanceSevenDays();
+            _presentationRunning = false;
+            _advanceButton.Disabled = false;
+            _skillSelect.Disabled = false;
+        };
+    }
 
     private void AdvanceSevenDays()
     {
@@ -216,6 +244,8 @@ public partial class ActiveEffectTestScene3D : Node3D
                 _allyActiveFireDay = day;
                 AppendLog($"[color=orange][b]제갈량 {fired.Name} 발동[/b][/color]");
                 ActiveSkillPresentation.ShowBanner(this, "제갈량", fired);
+                _chargeView?.Complete();
+                _chargeView = null;
             }
             _lastEffectCount += PlaySkillEffects(turn);
         }
@@ -323,6 +353,8 @@ public partial class ActiveEffectTestScene3D : Node3D
 
     private void RunAutoQa()
     {
+        _chargeView = new ActiveSkillChargeView3D();
+        _tokens[AllyId].AddChild(_chargeView);
         AdvanceSevenDays();
         var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var fired = ally is not null && _lastEffectCount > 0;
