@@ -29,7 +29,7 @@ public sealed partial class ActiveSkillChargeView3D : Node3D
 
     public void Complete()
     {
-        if (GetParent() is Node3D caster) EffectView.Attach(caster, EffectKind.Burst, 0.72f, loop: false);
+        if (GetParent() is Node3D caster) ActiveSkillPresentation.ShowCasterActivation(caster);
         var tween = CreateTween();
         tween.TweenProperty(this, "scale", Vector3.One * 1.65f, 0.18f);
         tween.TweenProperty(this, "scale", Vector3.Zero, 0.16f);

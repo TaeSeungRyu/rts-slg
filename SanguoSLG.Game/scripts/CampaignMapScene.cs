@@ -3866,6 +3866,8 @@ public sealed partial class CampaignMapScene : Node3D
                 var general = army?.VanguardId is { } gid ? _pendingState.Generals.FirstOrDefault(x => x.Id == gid) : null;
                 ActiveSkillPresentation.ShowBanner(this, general?.Name ?? $"부대 {active.UnitId}", active.Skill,
                     general is null ? null : CircularPortraitFor(general.Id));
+                if (_armyTokens.TryGetValue(active.UnitId, out var caster) && caster.Visible)
+                    ActiveSkillPresentation.ShowCasterActivation(caster);
                 _animActiveIdx++;
             }
 

@@ -6,6 +6,9 @@ namespace SanguoSLG.Game;
 /// <summary>검수장과 캠페인이 함께 쓰는 액티브 발동 표현 진입점.</summary>
 public static class ActiveSkillPresentation
 {
+    public static void ShowCasterActivation(Node3D caster)
+        => EffectView.Attach(caster, EffectKind.Burst, 0.72f, loop: false);
+
     public static bool AttachEffect(Node3D target, ActiveSkill skill)
     {
         if (skill.Code != "fire_plot") return false;
