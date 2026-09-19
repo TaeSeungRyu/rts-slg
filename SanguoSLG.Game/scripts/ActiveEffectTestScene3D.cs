@@ -63,7 +63,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestresetqa"))
+        if (args.Contains("--activeeffecttestpeerlessqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "peerless");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunAutoQa);
+        }
+        else if (args.Contains("--activeeffecttestresetqa"))
         {
             CallDeferred(MethodName.RunResetQa);
         }
@@ -309,18 +317,26 @@ public partial class ActiveEffectTestScene3D : Node3D
 
     private int PlaySkillEffects(AdvanceTurn turn)
     {
-        if (!turn.FiredActives.TryGetValue(new UnitId(AllyId), out var fired) || fired.Code != "fire_plot")
+        if (!turn.FiredActives.TryGetValue(new UnitId(AllyId), out var fired))
         {
             return 0;
         }
 
         var count = 0;
-        foreach (var target in _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)))
+        var targets = fired.Code == "fire_plot"
+            ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)).ToList()
+            : fired.Code == "peerless"
+                ? _units.Where(x => x.Field.Owner.Value == 2
+                    && (turn.Combat?.DamageTaken.GetValueOrDefault(x.Id) ?? 0) > 0)
+                    .OrderBy(x => x.Field.Position.Distance(_units.First(a => a.Id.Value == AllyId).Field.Position))
+                    .Take(1).ToList()
+                : [];
+        foreach (var target in targets)
         {
             if (!_tokens.TryGetValue(target.Id.Value, out var token)) continue;
             if (ActiveSkillPresentation.AttachEffect(token, fired)) count++;
         }
-        AppendLog($"화계 연출: 적군 {count}부대에 빨강색 상승 화염 표시");
+        if (count > 0) AppendLog($"{fired.Name} 연출: 적군 {count}부대에 전용 효과 표시");
         return count;
     }
 
@@ -392,9 +408,10 @@ public partial class ActiveEffectTestScene3D : Node3D
     {
         AdvanceSevenDays();
         var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
+        var expectedSkill = SelectedSkill().Code;
         var fired = ally is not null && _lastEffectCount > 0;
         var gaugePassed = _gauges.TryGetValue(AllyId, out var battleGauge)
-            && battleGauge.SkillCode == "fire_plot" && battleGauge.FilledSegments == 1
+            && battleGauge.SkillCode == expectedSkill && battleGauge.FilledSegments == 1
             && battleGauge.HasTwoOverThreeLayout;
         GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} fireDay={_allyActiveFireDay} fireCount={_allyActiveFireCount} effects={_lastEffectCount} days={_round} advances={_advanceCount}");
         var battlePassed = fired && gaugePassed && _chargeAppearedDay == 5
@@ -404,7 +421,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var resetAlly = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var resetPassed = _units.Count == 6 && _units.Count(x => x.Field.Owner.Value == 2) == 5
             && _gauges.Count == 6 && resetAlly?.Pool.Active == 10000
-            && _gauges[AllyId].SkillCode == "fire_plot" && _gauges[AllyId].FilledSegments == 0
+            && _gauges[AllyId].SkillCode == expectedSkill && _gauges[AllyId].FilledSegments == 0
             && _round == 0 && _advanceCount == 0 && _allyActiveFireCount == 0
             && _allyActiveFireDay == 0 && _chargeAppearedDay == 0;
         GD.Print($"[activeeffecttestauto] reset={resetPassed} units={_units.Count} ally={resetAlly?.Pool.Active} days={_round}");

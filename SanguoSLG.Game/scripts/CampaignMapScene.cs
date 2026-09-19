@@ -2503,6 +2503,15 @@ public sealed partial class CampaignMapScene : Node3D
                         && x.State.Statuses.Any(s => s.IsFire)))
                         _animSkillEffects.Add((atkTime + 0.16, target.Id.Value, skill));
                 }
+                else if (caster is not null && skill.Code == "peerless" && turn.Combat is { } activeCombat)
+                {
+                    var target = turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
+                            && activeCombat.DamageTaken.GetValueOrDefault(x.Id) > 0)
+                        .OrderBy(x => x.Field.Position.Distance(caster.Field.Position))
+                        .ThenBy(x => x.Id.Value)
+                        .FirstOrDefault();
+                    if (target is not null) _animSkillEffects.Add((atkTime + 0.16, target.Id.Value, skill));
+                }
             }
 
             // 그 턴에 교전/공성이 있었으면 정지일(stopDay)을 '공격턴'으로 표기.

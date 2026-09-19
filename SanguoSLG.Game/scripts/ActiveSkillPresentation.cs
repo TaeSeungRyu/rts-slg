@@ -11,9 +11,17 @@ public static class ActiveSkillPresentation
 
     public static bool AttachEffect(Node3D target, ActiveSkill skill)
     {
-        if (skill.Code != "fire_plot") return false;
-        EffectView.Attach(target, EffectKind.Fire, 0.9f, loop: false);
-        return true;
+        if (skill.Code == "fire_plot")
+        {
+            EffectView.Attach(target, EffectKind.Fire, 0.9f, loop: false);
+            return true;
+        }
+        if (skill.Code == "peerless")
+        {
+            target.AddChild(new PeerlessCloudEffectView3D());
+            return true;
+        }
+        return false;
     }
 
     public static void ShowBanner(Node owner, string generalName, ActiveSkill skill, Texture2D? portrait = null)
