@@ -24,12 +24,14 @@ public partial class ActiveEffectTestScene3D : Node3D
     private Dictionary<string, ActiveSkill> _actives = null!;
     private TroopTemplate _template = null!;
     private General _zhugeLiang = null!;
+    private General _adjutant = null!;
     private AdvanceOrchestrator _orchestrator = null!;
     private readonly Dictionary<int, UnitController3D> _tokens = new();
     private readonly Dictionary<int, Label3D> _troopLabels = new();
     private readonly Dictionary<int, ActiveSkillGaugeView3D> _gauges = new();
     private List<CombatUnit> _units = [];
     private OptionButton _skillSelect = null!;
+    private OptionButton _adjutantSkillSelect = null!;
     private Button _advanceButton = null!;
     private Label _summary = null!;
     private RichTextLabel _log = null!;
@@ -42,6 +44,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     private bool _presentationRunning;
     private int _presentationGeneration;
     private int _chargeAppearedDay;
+    private readonly List<string> _allyFiredSkillCodes = [];
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
@@ -50,6 +53,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         _actives = new ActiveSkillLoader().LoadFromDirectory(dataDirectory).ToDictionary(x => x.Code);
         _template = new TroopTypeLoader().LoadFromDirectory(dataDirectory).First(x => x.Code == "swordsman");
         _zhugeLiang = new GeneralLoader().LoadFromDirectory(dataDirectory).First(x => x.Name == "제갈량");
+        _adjutant = new GeneralLoader().LoadFromDirectory(dataDirectory).First(x => x.Name == "조운");
 
         var map = new HexMap(0, 11, 0, 6);
         _orchestrator = new AdvanceOrchestrator(
@@ -63,7 +67,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestpeerlessqa"))
+        if (args.Contains("--activeeffecttestadjutantqa"))
+        {
+            var index = Enumerable.Range(0, _adjutantSkillSelect.ItemCount)
+                .First(i => _adjutantSkillSelect.GetItemMetadata(i).AsString() == "peerless");
+            _adjutantSkillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunAdjutantQa);
+        }
+        else if (args.Contains("--activeeffecttestpeerlessqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
                 .First(i => _skillSelect.GetItemMetadata(i).AsString() == "peerless");
@@ -125,7 +137,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var box = new VBoxContainer();
         right.AddChild(box);
         box.AddChild(Heading("액티브 스킬 검수장"));
-        box.AddChild(new Label { Text = "아군: 제갈량 10,000  |  적군: 5부대 × 10,000" });
+        box.AddChild(new Label { Text = $"아군: 주장 제갈량 + 부관 {_adjutant.Name} · 10,000  |  적군: 5부대 × 10,000" });
         box.AddChild(new Label { Text = "스킬을 바꾸면 전장이 초기화됩니다. 진행 1회 = 7일 교전입니다." });
         _skillSelect = new OptionButton { CustomMinimumSize = new Vector2(380, 42) };
         foreach (var skill in _actives.Values.OrderBy(x => x.Type).ThenBy(x => x.Name))
@@ -137,7 +149,20 @@ public partial class ActiveEffectTestScene3D : Node3D
             .First(i => _skillSelect.GetItemMetadata(i).AsString() == "fire_plot");
         _skillSelect.Select(fireIndex);
         _skillSelect.ItemSelected += _ => ResetScenario();
+        box.AddChild(new Label { Text = "주장 액티브", Modulate = new Color(1f, 0.82f, 0.42f) });
         box.AddChild(_skillSelect);
+
+        box.AddChild(new Label { Text = "부관 액티브", Modulate = new Color(1f, 0.82f, 0.42f) });
+        _adjutantSkillSelect = new OptionButton { CustomMinimumSize = new Vector2(380, 42) };
+        _adjutantSkillSelect.AddItem("없음");
+        _adjutantSkillSelect.SetItemMetadata(0, "");
+        foreach (var skill in _actives.Values.OrderBy(x => x.Type).ThenBy(x => x.Name))
+        {
+            _adjutantSkillSelect.AddItem($"{skill.Name} · {TypeName(skill.Type)}");
+            _adjutantSkillSelect.SetItemMetadata(_adjutantSkillSelect.ItemCount - 1, skill.Code);
+        }
+        _adjutantSkillSelect.ItemSelected += _ => ResetScenario();
+        box.AddChild(_adjutantSkillSelect);
 
         _advanceButton = new Button { Text = "진행 · 7일 교전 ▶", CustomMinimumSize = new Vector2(380, 52) };
         _advanceButton.Pressed += BeginSevenDayPresentation;
@@ -172,14 +197,17 @@ public partial class ActiveEffectTestScene3D : Node3D
         _allyActiveFireCount = 0;
         _allyActiveFireDay = 0;
         _chargeAppearedDay = 0;
+        _allyFiredSkillCodes.Clear();
         _presentationRunning = false;
         if (_advanceButton is not null) _advanceButton.Disabled = false;
         if (_skillSelect is not null) _skillSelect.Disabled = false;
+        if (_adjutantSkillSelect is not null) _adjutantSkillSelect.Disabled = false;
 
         var selected = SelectedSkill();
+        var adjutantSelected = SelectedAdjutantSkill();
         _units =
         [
-            MakeUnit(AllyId, 1, new HexCoord(4, 3), 100, selected),
+            MakeUnit(AllyId, 1, new HexCoord(4, 3), 100, selected, adjutantSelected),
             MakeUnit(11, 2, new HexCoord(5, 1), 62),
             MakeUnit(12, 2, new HexCoord(5, 2), 66),
             MakeUnit(13, 2, new HexCoord(5, 3), 70),
@@ -188,11 +216,12 @@ public partial class ActiveEffectTestScene3D : Node3D
         ];
         foreach (var unit in _units) Spawn(unit);
         FaceOpponents();
-        _log.Text = $"[b]전장 초기화[/b]\n제갈량 액티브: {selected.Name}\n적군은 이동하지 않으며 전투·피해 계산은 실제 Core 규칙을 사용합니다.\n";
+        _log.Text = $"[b]전장 초기화[/b]\n주장 제갈량: {selected.Name}\n부관 {_adjutant.Name}: {adjutantSelected?.Name ?? "없음"}\n적군은 이동하지 않으며 전투·피해 계산은 실제 Core 규칙을 사용합니다.\n";
         RefreshSummary(null);
     }
 
-    private CombatUnit MakeUnit(int id, int owner, HexCoord at, int intellect, ActiveSkill? active = null, int troops = 10000)
+    private CombatUnit MakeUnit(int id, int owner, HexCoord at, int intellect, ActiveSkill? active = null,
+        ActiveSkill? adjutantActive = null, int troops = 10000)
     {
         var stats = CombatStatsBuilder.BuildField(
             _template,
@@ -211,13 +240,20 @@ public partial class ActiveEffectTestScene3D : Node3D
             _template.MovementPerDay, _template.Detection, _template.RangeUnit,
             MovementDomain.Land, UnitMode.Advance, null, id, _template.RangeCastle);
         return new CombatUnit(field, stats, new TroopPool(troops, 0),
-            UnitCombatState.Create(intellect, active), owner == 1 ? _zhugeLiang.Might : 45,
+            UnitCombatState.Create(intellect, active, adjutantActive), owner == 1 ? _zhugeLiang.Might : 45,
             intellect, troops, _template.Class, TroopCode: _template.Code,
-            VanguardId: owner == 1 ? _zhugeLiang.Id : null);
+            VanguardId: owner == 1 ? _zhugeLiang.Id : null,
+            AdjutantId: owner == 1 ? _adjutant.Id : null);
     }
 
     private ActiveSkill SelectedSkill()
         => _actives[_skillSelect.GetItemMetadata(_skillSelect.Selected).AsString()];
+
+    private ActiveSkill? SelectedAdjutantSkill()
+    {
+        var code = _adjutantSkillSelect.GetItemMetadata(_adjutantSkillSelect.Selected).AsString();
+        return string.IsNullOrWhiteSpace(code) ? null : _actives[code];
+    }
 
     private void BeginSevenDayPresentation()
     {
@@ -226,6 +262,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         foreach (var gauge in _gauges.Values) gauge.Visible = true;
         _advanceButton.Disabled = true;
         _skillSelect.Disabled = true;
+        _adjutantSkillSelect.Disabled = true;
         AppendLog("[color=#ffd05a]1~5일차 · 액티브 준비 중…[/color]");
         BeginAdvanceBatch();
         RunPresentedDay(1, _presentationGeneration);
@@ -266,6 +303,7 @@ public partial class ActiveEffectTestScene3D : Node3D
             _presentationRunning = false;
             _advanceButton.Disabled = false;
             _skillSelect.Disabled = false;
+            _adjutantSkillSelect.Disabled = false;
             return;
         }
         RefreshSummary(null);
@@ -306,6 +344,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         {
             _allyActiveFireCount++;
             _allyActiveFireDay = day;
+            _allyFiredSkillCodes.Add(fired.Code);
             AppendLog($"[color=orange][b]제갈량 {fired.Name} 발동[/b][/color]");
             ActiveSkillPresentation.ShowBanner(this, "제갈량", fired);
             _chargeView?.Complete();
@@ -409,9 +448,10 @@ public partial class ActiveEffectTestScene3D : Node3D
     private void RefreshSummary(AdvanceTurn? turn)
     {
         var selected = SelectedSkill();
+        var adjutant = SelectedAdjutantSkill();
         var fired = _allyActiveFireCount > 0 ? $"{_allyActiveFireDay}일차 발동 ({_allyActiveFireCount}회)" : "대기";
         var rows = _units.OrderBy(x => x.Id.Value).Select(x => $"{Tag(x),-8} {x.Pool.Active,6:N0}");
-        _summary.Text = $"선택 스킬: {selected.Name}\n유형: {TypeName(selected.Type)}\n상태: {fired}\n\n병력 현황\n{string.Join("\n", rows)}";
+        _summary.Text = $"주장 스킬: {selected.Name} · {TypeName(selected.Type)}\n부관 스킬: {adjutant?.Name ?? "없음"}{(adjutant is null ? "" : $" · {TypeName(adjutant.Type)}")}\n상태: {fired}\n\n병력 현황\n{string.Join("\n", rows)}";
     }
 
     private void AppendLog(string line)
@@ -469,6 +509,22 @@ public partial class ActiveEffectTestScene3D : Node3D
         };
     }
 
+    private void RunAdjutantQa()
+    {
+        var expectedVanguard = SelectedSkill().Code;
+        var expectedAdjutant = SelectedAdjutantSkill()?.Code;
+        AdvanceSevenDays();
+        var ally = _units.Single(x => x.Id.Value == AllyId);
+        var passed = expectedAdjutant is not null
+            && ally.AdjutantId == _adjutant.Id
+            && ally.State.VanguardActive?.Code == expectedVanguard
+            && ally.State.AdjutantActive?.Code == expectedAdjutant
+            && _allyFiredSkillCodes.SequenceEqual(new[] { expectedVanguard, expectedAdjutant })
+            && _allyActiveFireCount == 2 && _round == 7;
+        GD.Print($"[activeeffecttestadjutantqa] passed={passed} adjutant={_adjutant.Name} vanguard={expectedVanguard} adjutantSkill={expectedAdjutant} fired={string.Join(",", _allyFiredSkillCodes)}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private void RunResetQa()
     {
         BeginSevenDayPresentation();
@@ -483,7 +539,7 @@ public partial class ActiveEffectTestScene3D : Node3D
                 var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
                 var passed = !_presentationRunning && _round == 0 && _advanceCount == 0
                     && _chargeView is null && ally?.Pool.Active == 10000 && !_advanceButton.Disabled && !_skillSelect.Disabled
-                    && !_gauges[AllyId].Visible;
+                    && !_adjutantSkillSelect.Disabled && !_gauges[AllyId].Visible;
                 GD.Print($"[activeeffecttestresetqa] passed={passed} days={_round} advances={_advanceCount} ally={ally?.Pool.Active}");
                 GetTree().Quit(passed ? 0 : 1);
             };
