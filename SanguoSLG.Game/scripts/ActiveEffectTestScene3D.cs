@@ -16,6 +16,9 @@ namespace SanguoSLG.Game;
 public partial class ActiveEffectTestScene3D : Node3D
 {
     private const int AllyId = 1;
+    private const double NormalDayPresentationSeconds = 0.72;
+    // 가장 긴 단발 효과(무쌍 1.55초)와 배너 전환을 잘리지 않고 확인할 최소 시간.
+    private const double ActiveDayPresentationSeconds = 1.85;
     private static readonly Color AllyColor = new("#3e78c4");
     private static readonly Color EnemyColor = new("#b8423c");
 
@@ -45,6 +48,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     private int _presentationGeneration;
     private int _chargeAppearedDay;
     private readonly List<string> _allyFiredSkillCodes = [];
+    private int _extendedActiveTurns;
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
@@ -198,6 +202,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         _allyActiveFireDay = 0;
         _chargeAppearedDay = 0;
         _allyFiredSkillCodes.Clear();
+        _extendedActiveTurns = 0;
         _presentationRunning = false;
         if (_advanceButton is not null) _advanceButton.Disabled = false;
         if (_skillSelect is not null) _skillSelect.Disabled = false;
@@ -296,7 +301,8 @@ public partial class ActiveEffectTestScene3D : Node3D
     private void RunPresentedDay(int day, int generation)
     {
         if (generation != _presentationGeneration) return;
-        if (day > 7 || AdvanceOneDay(day) is null)
+        var turn = day <= 7 ? AdvanceOneDay(day) : null;
+        if (day > 7 || turn is null)
         {
             RefreshSummary(null);
             FinishPresentationEffects();
@@ -307,7 +313,11 @@ public partial class ActiveEffectTestScene3D : Node3D
             return;
         }
         RefreshSummary(null);
-        var timer = GetTree().CreateTimer(0.72);
+        var hasActivePresentation = turn.FiredActives.Count > 0;
+        if (hasActivePresentation) _extendedActiveTurns++;
+        var timer = GetTree().CreateTimer(hasActivePresentation
+            ? ActiveDayPresentationSeconds
+            : NormalDayPresentationSeconds);
         timer.Timeout += () => RunPresentedDay(day + 1, generation);
     }
 
@@ -497,14 +507,15 @@ public partial class ActiveEffectTestScene3D : Node3D
     private void RunPresentationQa()
     {
         BeginSevenDayPresentation();
-        var timer = GetTree().CreateTimer(6.2);
+        var timer = GetTree().CreateTimer(7.1);
         timer.Timeout += () =>
         {
             var passed = !_presentationRunning && _round == 7 && _allyActiveFireDay == 6
                 && _chargeAppearedDay == 5 && _allyActiveFireCount == 1 && _gauges[AllyId].FilledSegments == 1
                 && !_gauges[AllyId].Visible && _chargeView is null
-                && _tokens[AllyId].FindChild("Effect_Burst", true, false) is null;
-            GD.Print($"[activeeffecttestpresentqa] passed={passed} days={_round} fireDay={_allyActiveFireDay} gauge={_gauges[AllyId].FilledSegments} visible={_gauges[AllyId].Visible} burstAlive={_tokens[AllyId].FindChild("Effect_Burst", true, false) is not null}");
+                && _tokens[AllyId].FindChild("Effect_Burst", true, false) is null
+                && _extendedActiveTurns == 1 && ActiveDayPresentationSeconds >= 1.55;
+            GD.Print($"[activeeffecttestpresentqa] passed={passed} days={_round} fireDay={_allyActiveFireDay} activeTurns={_extendedActiveTurns} activeSeconds={ActiveDayPresentationSeconds:F2} gauge={_gauges[AllyId].FilledSegments} visible={_gauges[AllyId].Visible} burstAlive={_tokens[AllyId].FindChild("Effect_Burst", true, false) is not null}");
             GetTree().Quit(passed ? 0 : 1);
         };
     }
