@@ -89,6 +89,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunAdjutantQa);
         }
+        else if (args.Contains("--activeeffecttestonemanarmyqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "one_man_army");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunAutoQa);
+        }
         else if (args.Contains("--activeeffecttestpeerlessqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -410,7 +418,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var count = 0;
         var targets = fired.Code == "fire_plot"
             ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)).ToList()
-            : fired.Code == "peerless"
+            : fired.Code is "peerless" or "one_man_army"
                 ? _units.Where(x => x.Field.Owner.Value == 2
                     && (turn.Combat?.DamageTaken.GetValueOrDefault(x.Id) ?? 0) > 0)
                     .OrderBy(x => x.Field.Position.Distance(_units.First(a => a.Id.Value == AllyId).Field.Position))

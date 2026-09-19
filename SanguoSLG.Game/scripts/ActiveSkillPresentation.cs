@@ -29,6 +29,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new PeerlessCloudEffectView3D());
             return true;
         }
+        if (skill.Code == "one_man_army")
+        {
+            target.AddChild(new OneManArmySwordEffectView3D());
+            return true;
+        }
         return false;
     }
 
