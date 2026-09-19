@@ -207,6 +207,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     {
         if (_presentationRunning) return;
         _presentationRunning = true;
+        foreach (var gauge in _gauges.Values) gauge.Visible = true;
         _advanceButton.Disabled = true;
         _skillSelect.Disabled = true;
         AppendLog("[color=#ffd05a]1~5일차 · 액티브 준비 중…[/color]");
@@ -245,6 +246,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         if (day > 7 || AdvanceOneDay(day) is null)
         {
             RefreshSummary(null);
+            FinishPresentationEffects();
             _presentationRunning = false;
             _advanceButton.Disabled = false;
             _skillSelect.Disabled = false;
@@ -266,9 +268,9 @@ public partial class ActiveEffectTestScene3D : Node3D
         foreach (var (uid, dealt) in turn.Combat?.DamageDealt ?? new Dictionary<UnitId, int>())
             if (dealt > 0 && _tokens.TryGetValue(uid.Value, out var attacker)) attacker.PlayAttackMotion();
         RefreshTokens();
-        if (day == ActiveGauge.ReadyDays
-            && _gauges.TryGetValue(AllyId, out var allyGauge)
+        if (_gauges.TryGetValue(AllyId, out var allyGauge)
             && allyGauge.FilledSegments == ActiveGauge.ReadyDays
+            && _chargeView is null
             && _tokens.TryGetValue(AllyId, out var caster))
         {
             _chargeView = new ActiveSkillChargeView3D();
@@ -295,6 +297,14 @@ public partial class ActiveEffectTestScene3D : Node3D
         }
         _lastEffectCount += PlaySkillEffects(turn);
         return turn;
+    }
+
+    private void FinishPresentationEffects()
+    {
+        foreach (var gauge in _gauges.Values) gauge.Visible = false;
+        var charge = _chargeView;
+        _chargeView = null;
+        if (GodotObject.IsInstanceValid(charge) && !charge!.IsQueuedForDeletion()) charge.QueueFree();
     }
 
     private void RefreshTokens()
@@ -351,7 +361,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         token.AddChild(troops);
         _tokens[unit.Id.Value] = token;
         _troopLabels[unit.Id.Value] = troops;
-        var gauge = new ActiveSkillGaugeView3D { Visible = unit.State.VanguardActive is not null };
+        var gauge = new ActiveSkillGaugeView3D { Visible = false };
         token.AddChild(gauge);
         gauge.SetSkill(unit.State.VanguardActive, unit.State.VanguardGauge);
         _gauges[unit.Id.Value] = gauge;
@@ -435,8 +445,9 @@ public partial class ActiveEffectTestScene3D : Node3D
         timer.Timeout += () =>
         {
             var passed = !_presentationRunning && _round == 7 && _allyActiveFireDay == 6
-                && _chargeAppearedDay == 5 && _allyActiveFireCount == 1 && _gauges[AllyId].FilledSegments == 1;
-            GD.Print($"[activeeffecttestpresentqa] passed={passed} days={_round} fireDay={_allyActiveFireDay} gauge={_gauges[AllyId].FilledSegments}");
+                && _chargeAppearedDay == 5 && _allyActiveFireCount == 1 && _gauges[AllyId].FilledSegments == 1
+                && !_gauges[AllyId].Visible && _chargeView is null;
+            GD.Print($"[activeeffecttestpresentqa] passed={passed} days={_round} fireDay={_allyActiveFireDay} gauge={_gauges[AllyId].FilledSegments} visible={_gauges[AllyId].Visible}");
             GetTree().Quit(passed ? 0 : 1);
         };
     }
@@ -454,7 +465,8 @@ public partial class ActiveEffectTestScene3D : Node3D
             {
                 var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
                 var passed = !_presentationRunning && _round == 0 && _advanceCount == 0
-                    && _chargeView is null && ally?.Pool.Active == 10000 && !_advanceButton.Disabled && !_skillSelect.Disabled;
+                    && _chargeView is null && ally?.Pool.Active == 10000 && !_advanceButton.Disabled && !_skillSelect.Disabled
+                    && !_gauges[AllyId].Visible;
                 GD.Print($"[activeeffecttestresetqa] passed={passed} days={_round} advances={_advanceCount} ally={ally?.Pool.Active}");
                 GetTree().Quit(passed ? 0 : 1);
             };
