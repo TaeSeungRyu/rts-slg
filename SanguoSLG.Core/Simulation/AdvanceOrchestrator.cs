@@ -419,7 +419,11 @@ public sealed class AdvanceOrchestrator
 
     private static ActiveSkill? ReadyTactic(UnitCombatState state)
     {
-        if (state.VanguardActive is { Type: ActiveType.Tactic } v && state.VanguardGauge.IsReady) return v;
+        // 주장과 부관이 동시에 준비되면 스킬 유형과 무관하게 주장을 먼저 처리한다.
+        // 그렇지 않으면 부관 계략형이 3.5단계에서 먼저 발동하고 주장 전투형이 4단계에서
+        // 같은 공격턴에 덮어써져 한쪽 연출이 사라진다.
+        if (state.VanguardActive is { } v && state.VanguardGauge.IsReady)
+            return v.Type == ActiveType.Tactic ? v : null;
         if (state.AdjutantActive is { Type: ActiveType.Tactic } a && state.AdjutantGauge.IsReady) return a;
         return null;
     }

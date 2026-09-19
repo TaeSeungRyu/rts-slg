@@ -139,6 +139,25 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 주장과_부관이_동시에_준비되면_주장_완료후_다음_공격턴에_부관이_발동한다()
+    {
+        var ready = UnitCombatState.Create(90, A["peerless"], A["fire_plot"]).AdvanceField(6);
+        var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.Advance, ready);
+        var target = Sword(2, 2, new HexCoord(1, 0), UnitMode.Advance);
+
+        var first = MakeOrchestrator().Run([caster, target], maxDays: 1);
+        var afterFirst = first.Units.Single(u => u.Id.Value == 1);
+        Assert.Equal("peerless", first.FiredActives[new UnitId(1)].Code);
+        Assert.False(afterFirst.State.VanguardGauge.IsReady);
+        Assert.True(afterFirst.State.AdjutantGauge.IsReady);
+
+        var second = MakeOrchestrator().Run(first.Units, maxDays: 1);
+        var afterSecond = second.Units.Single(u => u.Id.Value == 1);
+        Assert.Equal("fire_plot", second.FiredActives[new UnitId(1)].Code);
+        Assert.False(afterSecond.State.AdjutantGauge.IsReady);
+    }
+
+    [Fact]
     public void 교란은_경로의_부대를_무시하고_빈_사칸_목적지로_후퇴시킨다()
     {
         var ready = UnitCombatState.Create(90, A["rout"]).AdvanceField(6);

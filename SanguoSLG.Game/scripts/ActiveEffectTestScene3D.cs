@@ -73,7 +73,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestadjutantqa"))
+        if (args.Contains("--activeeffecttestadjutantpresentqa"))
+        {
+            var index = Enumerable.Range(0, _adjutantSkillSelect.ItemCount)
+                .First(i => _adjutantSkillSelect.GetItemMetadata(i).AsString() == "peerless");
+            _adjutantSkillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunAdjutantPresentationQa);
+        }
+        else if (args.Contains("--activeeffecttestadjutantqa"))
         {
             var index = Enumerable.Range(0, _adjutantSkillSelect.ItemCount)
                 .First(i => _adjutantSkillSelect.GetItemMetadata(i).AsString() == "peerless");
@@ -538,6 +546,23 @@ public partial class ActiveEffectTestScene3D : Node3D
             && _allyActiveFireCount == 2 && _round == 7;
         GD.Print($"[activeeffecttestadjutantqa] passed={passed} adjutant={_adjutant.Name} vanguard={expectedVanguard} adjutantSkill={expectedAdjutant} fired={string.Join(",", _allyFiredSkillCodes)}");
         GetTree().Quit(passed ? 0 : 1);
+    }
+
+    private void RunAdjutantPresentationQa()
+    {
+        var expectedVanguard = SelectedSkill().Code;
+        var expectedAdjutant = SelectedAdjutantSkill()!.Code;
+        BeginSevenDayPresentation();
+        var timer = GetTree().CreateTimer(10.8);
+        timer.Timeout += () =>
+        {
+            var passed = !_presentationRunning && _round == 7 && _extendedActiveTurns == 2
+                && _allyFiredSkillCodes.SequenceEqual(new[] { expectedVanguard, expectedAdjutant })
+                && _allyActiveFireCount == 2 && _chargeView is null
+                && ActiveDayPresentationSeconds >= 1.85;
+            GD.Print($"[activeeffecttestadjutantpresentqa] passed={passed} fired={string.Join(",", _allyFiredSkillCodes)} activeTurns={_extendedActiveTurns} seconds={ActiveDayPresentationSeconds:F2}");
+            GetTree().Quit(passed ? 0 : 1);
+        };
     }
 
     private void RunResetQa()
