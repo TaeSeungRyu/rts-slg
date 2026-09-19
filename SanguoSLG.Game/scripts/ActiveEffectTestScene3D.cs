@@ -41,6 +41,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     private ActiveSkillChargeView3D? _chargeView;
     private bool _presentationRunning;
     private int _presentationGeneration;
+    private int _chargeAppearedDay;
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
@@ -158,6 +159,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         _lastEffectCount = 0;
         _allyActiveFireCount = 0;
         _allyActiveFireDay = 0;
+        _chargeAppearedDay = 0;
         _presentationRunning = false;
         if (_advanceButton is not null) _advanceButton.Disabled = false;
         if (_skillSelect is not null) _skillSelect.Disabled = false;
@@ -199,11 +201,6 @@ public partial class ActiveEffectTestScene3D : Node3D
         _presentationRunning = true;
         _advanceButton.Disabled = true;
         _skillSelect.Disabled = true;
-        if (_tokens.TryGetValue(AllyId, out var caster))
-        {
-            _chargeView = new ActiveSkillChargeView3D();
-            caster.AddChild(_chargeView);
-        }
         AppendLog("[color=#ffd05a]1~5일차 · 액티브 준비 중…[/color]");
         BeginAdvanceBatch();
         RunPresentedDay(1, _presentationGeneration);
@@ -261,6 +258,16 @@ public partial class ActiveEffectTestScene3D : Node3D
         foreach (var (uid, dealt) in turn.Combat?.DamageDealt ?? new Dictionary<UnitId, int>())
             if (dealt > 0 && _tokens.TryGetValue(uid.Value, out var attacker)) attacker.PlayAttackMotion();
         RefreshTokens();
+        if (day == ActiveGauge.ReadyDays
+            && _gauges.TryGetValue(AllyId, out var allyGauge)
+            && allyGauge.FilledSegments == ActiveGauge.ReadyDays
+            && _tokens.TryGetValue(AllyId, out var caster))
+        {
+            _chargeView = new ActiveSkillChargeView3D();
+            caster.AddChild(_chargeView);
+            _chargeAppearedDay = day;
+            AppendLog("[color=#ffd05a]액티브 준비 완료 — 발동 대기[/color]");
+        }
         AppendLog($"[b]{day}일차[/b]");
         foreach (var unit in _units.OrderBy(x => x.Id.Value))
         {
@@ -383,8 +390,6 @@ public partial class ActiveEffectTestScene3D : Node3D
 
     private void RunAutoQa()
     {
-        _chargeView = new ActiveSkillChargeView3D();
-        _tokens[AllyId].AddChild(_chargeView);
         AdvanceSevenDays();
         var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var fired = ally is not null && _lastEffectCount > 0;
@@ -392,14 +397,16 @@ public partial class ActiveEffectTestScene3D : Node3D
             && battleGauge.SkillCode == "fire_plot" && battleGauge.FilledSegments == 1
             && battleGauge.HasTwoOverThreeLayout;
         GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} fireDay={_allyActiveFireDay} fireCount={_allyActiveFireCount} effects={_lastEffectCount} days={_round} advances={_advanceCount}");
-        var battlePassed = fired && gaugePassed && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount >= 1
+        var battlePassed = fired && gaugePassed && _chargeAppearedDay == 5
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount >= 1
             && _round == 7 && _advanceCount == 1 && ally?.MaxTroops == 10000;
         ResetScenario();
         var resetAlly = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var resetPassed = _units.Count == 6 && _units.Count(x => x.Field.Owner.Value == 2) == 5
             && _gauges.Count == 6 && resetAlly?.Pool.Active == 10000
             && _gauges[AllyId].SkillCode == "fire_plot" && _gauges[AllyId].FilledSegments == 0
-            && _round == 0 && _advanceCount == 0 && _allyActiveFireCount == 0 && _allyActiveFireDay == 0;
+            && _round == 0 && _advanceCount == 0 && _allyActiveFireCount == 0
+            && _allyActiveFireDay == 0 && _chargeAppearedDay == 0;
         GD.Print($"[activeeffecttestauto] reset={resetPassed} units={_units.Count} ally={resetAlly?.Pool.Active} days={_round}");
         GetTree().Quit(battlePassed && resetPassed ? 0 : 1);
     }
@@ -411,7 +418,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         timer.Timeout += () =>
         {
             var passed = !_presentationRunning && _round == 7 && _allyActiveFireDay == 6
-                && _allyActiveFireCount == 1 && _gauges[AllyId].FilledSegments == 1;
+                && _chargeAppearedDay == 5 && _allyActiveFireCount == 1 && _gauges[AllyId].FilledSegments == 1;
             GD.Print($"[activeeffecttestpresentqa] passed={passed} days={_round} fireDay={_allyActiveFireDay} gauge={_gauges[AllyId].FilledSegments}");
             GetTree().Quit(passed ? 0 : 1);
         };
