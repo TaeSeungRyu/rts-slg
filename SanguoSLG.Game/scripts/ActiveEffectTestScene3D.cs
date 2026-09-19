@@ -21,6 +21,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     private const double NormalDayPresentationSeconds = 1.30;
     // 가장 긴 단발 효과(무쌍 1.55초)와 배너 전환을 잘리지 않고 확인할 최소 시간.
     private const double ActiveDayPresentationSeconds = 1.85;
+    private const double AdjutantChainDelaySeconds = 0.20;
     private static readonly Color AllyColor = new("#3e78c4");
     private static readonly Color EnemyColor = new("#b8423c");
 
@@ -51,6 +52,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     private int _chargeAppearedDay;
     private readonly List<string> _allyFiredSkillCodes = [];
     private int _extendedActiveTurns;
+    private int _compressedAdjutantChains;
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
@@ -221,6 +223,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         _chargeAppearedDay = 0;
         _allyFiredSkillCodes.Clear();
         _extendedActiveTurns = 0;
+        _compressedAdjutantChains = 0;
         _presentationRunning = false;
         if (_advanceButton is not null) _advanceButton.Disabled = false;
         if (_skillSelect is not null) _skillSelect.Disabled = false;
@@ -333,9 +336,17 @@ public partial class ActiveEffectTestScene3D : Node3D
         RefreshSummary(null);
         var hasActivePresentation = turn.FiredActives.Count > 0;
         if (hasActivePresentation) _extendedActiveTurns++;
-        var timer = GetTree().CreateTimer(hasActivePresentation
-            ? ActiveDayPresentationSeconds
-            : NormalDayPresentationSeconds);
+        var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
+        var chainAdjutant = hasActivePresentation
+            && turn.FiredActives.ContainsKey(new UnitId(AllyId))
+            && _allyFiredSkillCodes.Count == 1
+            && ally?.State.AdjutantActive is not null
+            && ally.State.AdjutantGauge.IsReady;
+        if (chainAdjutant) _compressedAdjutantChains++;
+        var delay = chainAdjutant
+            ? AdjutantChainDelaySeconds
+            : hasActivePresentation ? ActiveDayPresentationSeconds : NormalDayPresentationSeconds;
+        var timer = GetTree().CreateTimer(delay);
         timer.Timeout += () => RunPresentedDay(day + 1, generation);
     }
 
@@ -370,11 +381,12 @@ public partial class ActiveEffectTestScene3D : Node3D
         }
         if (turn.FiredActives.TryGetValue(new UnitId(AllyId), out var fired))
         {
+            var casterName = _allyFiredSkillCodes.Count == 0 ? "제갈량" : _adjutant.Name;
             _allyActiveFireCount++;
             _allyActiveFireDay = day;
             _allyFiredSkillCodes.Add(fired.Code);
-            AppendLog($"[color=orange][b]제갈량 {fired.Name} 발동[/b][/color]");
-            ActiveSkillPresentation.ShowBanner(this, "제갈량", fired);
+            AppendLog($"[color=orange][b]{casterName} {fired.Name} 발동[/b][/color]");
+            ActiveSkillPresentation.ShowBanner(this, casterName, fired);
             _chargeView?.Complete();
             _chargeView = null;
         }
@@ -564,14 +576,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         var expectedVanguard = SelectedSkill().Code;
         var expectedAdjutant = SelectedAdjutantSkill()!.Code;
         BeginSevenDayPresentation();
-        var timer = GetTree().CreateTimer(10.8);
+        var timer = GetTree().CreateTimer(9.2);
         timer.Timeout += () =>
         {
             var passed = !_presentationRunning && _round == 7 && _extendedActiveTurns == 2
                 && _allyFiredSkillCodes.SequenceEqual(new[] { expectedVanguard, expectedAdjutant })
                 && _allyActiveFireCount == 2 && _chargeView is null
+                && _compressedAdjutantChains == 1 && AdjutantChainDelaySeconds == 0.20
                 && ActiveDayPresentationSeconds >= 1.85;
-            GD.Print($"[activeeffecttestadjutantpresentqa] passed={passed} fired={string.Join(",", _allyFiredSkillCodes)} activeTurns={_extendedActiveTurns} seconds={ActiveDayPresentationSeconds:F2}");
+            GD.Print($"[activeeffecttestadjutantpresentqa] passed={passed} fired={string.Join(",", _allyFiredSkillCodes)} activeTurns={_extendedActiveTurns} chains={_compressedAdjutantChains} chainDelay={AdjutantChainDelaySeconds:F2}");
             GetTree().Quit(passed ? 0 : 1);
         };
     }
