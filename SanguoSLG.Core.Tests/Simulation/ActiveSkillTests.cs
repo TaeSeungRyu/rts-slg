@@ -51,6 +51,15 @@ public class ActiveSkillTests
     }
 
     [Fact]
+    public void 일기당천_기본피해는_평타의_1_5배다()
+    {
+        // 무력60은 공통 무력 배율 1.0, 도검 평타 760 × 일기당천 1.5 = 1140.
+        Assert.Equal(150, A["one_man_army"].DamageMultPercent);
+        var dmg = Resolver.StrikeDamage(SwordA(), SwordA(), A["one_man_army"], might: 60);
+        Assert.Equal(1140, dmg);
+    }
+
+    [Fact]
     public void 일섬_df30퍼센트감소_관통()
     {
         // df 10 → 7, 평타(atk8,df7)=1085 × 1.0 × 1.2 = 1302

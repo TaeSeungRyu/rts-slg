@@ -71,7 +71,7 @@
     "name": "일기당천",
     "type": "strike",
     "grade": "high",
-    "damage_mult_percent": 140
+    "damage_mult_percent": 150
   },
   {
     "code": "iron_wall",
