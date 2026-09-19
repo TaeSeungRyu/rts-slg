@@ -12,7 +12,7 @@ public sealed partial class PeerlessCloudEffectView3D : Node3D
     {
         // 지면 아래로 묻히지 않되 병사 머리 위까지 뜨지 않는 편대 중심 높이.
         Position = new Vector3(0f, 0.24f, 0f);
-        Scale = Vector3.One * 0.92f;
+        Scale = Vector3.One * 1.16f;
         var visual = GD.Load<PackedScene>("res://assets/models/effect-peerless-red-cloud.glb").Instantiate<Node3D>();
         AddChild(visual);
         foreach (var player in FindPlayers(visual))
@@ -49,15 +49,16 @@ public sealed partial class PeerlessCloudEffectView3D : Node3D
     private void SpawnPuff(Vector3 position)
     {
         var gradient = new Gradient();
-        gradient.SetColor(0, new Color(1f, 0.12f, 0.06f, 0.95f));
-        gradient.AddPoint(0.55f, new Color(0.72f, 0.02f, 0.04f, 0.72f));
-        gradient.SetColor(1, new Color(0.28f, 0.01f, 0.02f, 0f));
+        gradient.SetColor(0, new Color(0.96f, 0.015f, 0.02f, 1f));
+        gradient.AddPoint(0.55f, new Color(0.62f, 0.004f, 0.012f, 0.88f));
+        gradient.SetColor(1, new Color(0.24f, 0.001f, 0.005f, 0f));
         var material = new StandardMaterial3D
         {
-            AlbedoColor = Colors.White,
+            AlbedoColor = new Color(0.82f, 0.012f, 0.018f, 1f),
+            VertexColorUseAsAlbedo = true,
             EmissionEnabled = true,
-            Emission = new Color(0.95f, 0.04f, 0.03f),
-            EmissionEnergyMultiplier = 2.2f,
+            Emission = new Color(0.88f, 0.008f, 0.014f),
+            EmissionEnergyMultiplier = 3.1f,
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
         };
@@ -69,14 +70,14 @@ public sealed partial class PeerlessCloudEffectView3D : Node3D
             OneShot = true,
             Explosiveness = 1f,
             Emitting = true,
-            Mesh = new SphereMesh { Radius = 0.045f, Height = 0.09f, Material = material },
+            Mesh = new SphereMesh { Radius = 0.060f, Height = 0.12f, Material = material },
             Direction = Vector3.Up,
             Spread = 180f,
             InitialVelocityMin = 0.10f,
             InitialVelocityMax = 0.26f,
             Gravity = new Vector3(0f, -0.08f, 0f),
             ScaleAmountMin = 0.65f,
-            ScaleAmountMax = 1.4f,
+            ScaleAmountMax = 1.65f,
             ColorRamp = gradient,
         };
         AddChild(particles);

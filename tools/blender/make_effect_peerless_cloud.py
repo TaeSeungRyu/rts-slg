@@ -20,9 +20,9 @@ def mat(name, color, emission):
     bsdf.inputs["Roughness"].default_value = 0.82
     return value
 
-crimson = mat("PeerlessCrimson", (0.62, 0.012, 0.02), 3.8)
-scarlet = mat("PeerlessScarlet", (1.0, 0.035, 0.015), 6.0)
-dark = mat("PeerlessDark", (0.18, 0.004, 0.008), 1.2)
+crimson = mat("PeerlessCrimson", (0.72, 0.004, 0.012), 5.2)
+scarlet = mat("PeerlessScarlet", (1.0, 0.008, 0.012), 7.5)
+dark = mat("PeerlessDark", (0.34, 0.001, 0.006), 2.4)
 
 root = bpy.data.objects.new("PeerlessCloudRoot", None)
 bpy.context.collection.objects.link(root)
