@@ -79,6 +79,10 @@ public partial class ActiveEffectTestScene3D : Node3D
         {
             CallDeferred(MethodName.RunPresentationQa);
         }
+        else if (args.Contains("--activeeffecttesttworoundsqa"))
+        {
+            CallDeferred(MethodName.RunTwoRoundsQa);
+        }
         else if (args.Contains("--activeeffecttestauto"))
         {
             CallDeferred(MethodName.RunAutoQa);
@@ -190,12 +194,24 @@ public partial class ActiveEffectTestScene3D : Node3D
 
     private CombatUnit MakeUnit(int id, int owner, HexCoord at, int intellect, ActiveSkill? active = null, int troops = 10000)
     {
-        var stats = CombatStatsBuilder.BuildField(_template, AptitudeGrade.A, 0, TerrainType.River, troops);
+        var stats = CombatStatsBuilder.BuildField(
+            _template,
+            owner == 1 ? AptitudeGrade.A : AptitudeGrade.D,
+            0,
+            TerrainType.River,
+            troops);
+        // 이 하베스트의 적군은 액티브를 두 번 관찰할 수 있도록 의도적으로 저전투력으로 둔다.
+        if (owner != 1)
+            stats = stats with
+            {
+                AtkStat = Math.Max(1, (int)Math.Round(stats.AtkStat * 0.55)),
+                DfStat = Math.Max(1, (int)Math.Round(stats.DfStat * 0.55)),
+            };
         var field = new FieldUnit(new UnitId(id), new FactionId(owner), at,
             _template.MovementPerDay, _template.Detection, _template.RangeUnit,
             MovementDomain.Land, UnitMode.Advance, null, id, _template.RangeCastle);
         return new CombatUnit(field, stats, new TroopPool(troops, 0),
-            UnitCombatState.Create(intellect, active), owner == 1 ? _zhugeLiang.Might : 70,
+            UnitCombatState.Create(intellect, active), owner == 1 ? _zhugeLiang.Might : 45,
             intellect, troops, _template.Class, TroopCode: _template.Code,
             VanguardId: owner == 1 ? _zhugeLiang.Id : null);
     }
@@ -471,5 +487,24 @@ public partial class ActiveEffectTestScene3D : Node3D
                 GetTree().Quit(passed ? 0 : 1);
             };
         };
+    }
+
+    private void RunTwoRoundsQa()
+    {
+        var allyBefore = _units.Single(x => x.Id.Value == AllyId);
+        var enemyBefore = _units.First(x => x.Field.Owner.Value == 2);
+        var enemyWeaker = enemyBefore.Stats.AtkStat < allyBefore.Stats.AtkStat
+            && enemyBefore.Stats.DfStat < allyBefore.Stats.DfStat
+            && enemyBefore.Stats.AptitudePercent < allyBefore.Stats.AptitudePercent;
+
+        AdvanceSevenDays();
+        AdvanceSevenDays();
+
+        var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
+        var enemies = _units.Count(x => x.Field.Owner.Value == 2);
+        var passed = enemyWeaker && _advanceCount == 2 && _round == 14
+            && _allyActiveFireCount == 2 && ally is not null && ally.Pool.Active > 0 && enemies > 0;
+        GD.Print($"[activeeffecttesttworoundsqa] passed={passed} weaker={enemyWeaker} days={_round} fires={_allyActiveFireCount} ally={ally?.Pool.Active} enemies={enemies}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 }
