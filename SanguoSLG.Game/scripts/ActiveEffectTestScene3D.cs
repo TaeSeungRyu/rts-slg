@@ -40,6 +40,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     private int _allyActiveFireDay;
     private ActiveSkillChargeView3D? _chargeView;
     private bool _presentationRunning;
+    private int _presentationGeneration;
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
@@ -61,7 +62,11 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestpresentqa"))
+        if (args.Contains("--activeeffecttestresetqa"))
+        {
+            CallDeferred(MethodName.RunResetQa);
+        }
+        else if (args.Contains("--activeeffecttestpresentqa"))
         {
             CallDeferred(MethodName.RunPresentationQa);
         }
@@ -140,6 +145,10 @@ public partial class ActiveEffectTestScene3D : Node3D
 
     private void ResetScenario()
     {
+        _presentationGeneration++;
+        var charge = _chargeView;
+        _chargeView = null;
+        if (GodotObject.IsInstanceValid(charge) && !charge!.IsQueuedForDeletion()) charge.QueueFree();
         foreach (var token in _tokens.Values) token.QueueFree();
         _tokens.Clear();
         _troopLabels.Clear();
@@ -150,9 +159,8 @@ public partial class ActiveEffectTestScene3D : Node3D
         _allyActiveFireCount = 0;
         _allyActiveFireDay = 0;
         _presentationRunning = false;
-        _chargeView?.QueueFree();
-        _chargeView = null;
         if (_advanceButton is not null) _advanceButton.Disabled = false;
+        if (_skillSelect is not null) _skillSelect.Disabled = false;
 
         var selected = SelectedSkill();
         _units =
@@ -198,7 +206,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         }
         AppendLog("[color=#ffd05a]1~5일차 · 액티브 준비 중…[/color]");
         BeginAdvanceBatch();
-        RunPresentedDay(1);
+        RunPresentedDay(1, _presentationGeneration);
     }
 
     private void AdvanceSevenDays()
@@ -226,8 +234,9 @@ public partial class ActiveEffectTestScene3D : Node3D
         AppendLog($"\n[font_size=20][b]진행 {_advanceCount} · 7일 교전 시작[/b][/font_size]");
     }
 
-    private void RunPresentedDay(int day)
+    private void RunPresentedDay(int day, int generation)
     {
+        if (generation != _presentationGeneration) return;
         if (day > 7 || AdvanceOneDay(day) is null)
         {
             RefreshSummary(null);
@@ -238,7 +247,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         }
         RefreshSummary(null);
         var timer = GetTree().CreateTimer(0.72);
-        timer.Timeout += () => RunPresentedDay(day + 1);
+        timer.Timeout += () => RunPresentedDay(day + 1, generation);
     }
 
     private AdvanceTurn? AdvanceOneDay(int day)
@@ -404,6 +413,26 @@ public partial class ActiveEffectTestScene3D : Node3D
                 && _allyActiveFireCount == 1 && _gauges[AllyId].FilledSegments == 1;
             GD.Print($"[activeeffecttestpresentqa] passed={passed} days={_round} fireDay={_allyActiveFireDay} gauge={_gauges[AllyId].FilledSegments}");
             GetTree().Quit(passed ? 0 : 1);
+        };
+    }
+
+    private void RunResetQa()
+    {
+        BeginSevenDayPresentation();
+        var first = GetTree().CreateTimer(0.18);
+        first.Timeout += () =>
+        {
+            ResetScenario();
+            ResetScenario(); // 이미 해제된 준비 효과를 다시 해제해도 예외가 없어야 한다.
+            var verify = GetTree().CreateTimer(1.0);
+            verify.Timeout += () =>
+            {
+                var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
+                var passed = !_presentationRunning && _round == 0 && _advanceCount == 0
+                    && _chargeView is null && ally?.Pool.Active == 10000 && !_advanceButton.Disabled && !_skillSelect.Disabled;
+                GD.Print($"[activeeffecttestresetqa] passed={passed} days={_round} advances={_advanceCount} ally={ally?.Pool.Active}");
+                GetTree().Quit(passed ? 0 : 1);
+            };
         };
     }
 }
