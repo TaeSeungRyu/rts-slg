@@ -28,42 +28,43 @@ root = bpy.data.objects.new("PeerlessCloudRoot", None)
 bpy.context.collection.objects.link(root)
 
 lobes = [
-    (0.00, 0.00, 0.10, 0.24), (-0.16, 0.02, 0.13, 0.19), (0.17, 0.01, 0.14, 0.20),
-    (-0.08, -0.12, 0.19, 0.17), (0.09, -0.13, 0.18, 0.16),
-    (-0.05, 0.14, 0.22, 0.15), (0.10, 0.13, 0.20, 0.14), (0.00, 0.00, 0.31, 0.13),
+    (-0.18, -0.10, 0.08, 0.11), (0.14, -0.12, 0.10, 0.10), (-0.05, 0.15, 0.09, 0.12),
+    (0.20, 0.10, 0.12, 0.09), (-0.20, 0.12, 0.11, 0.10), (0.02, -0.02, 0.16, 0.12),
+    (0.08, 0.18, 0.13, 0.09), (-0.10, -0.18, 0.12, 0.09), (0.00, 0.02, 0.20, 0.11),
 ]
 for i, (x, y, z, radius) in enumerate(lobes):
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=radius, location=(x, y, z))
     cloud = bpy.context.object
     cloud.name = f"CloudLobe_{i + 1}"
-    cloud.scale = (1.25, 0.82, 0.92)
+    cloud.scale = (1.18, 0.88, 0.95)
     cloud.data.materials.append((scarlet, crimson, dark)[i % 3])
     cloud.parent = root
     start = cloud.location.copy()
-    cloud.scale *= 0.15
-    cloud.keyframe_insert("scale", frame=1)
-    cloud.keyframe_insert("location", frame=1)
-    cloud.scale *= 7.4
+    start_frame = 1 + (i % 5) * 3
+    cloud.scale *= 0.05
+    cloud.keyframe_insert("scale", frame=start_frame)
+    cloud.keyframe_insert("location", frame=start_frame)
+    cloud.scale *= 13.0
     direction = start.normalized() if start.length > 0.01 else start.copy()
     if start.length <= 0.01:
         direction.z = 1.0
-    cloud.location = start + direction * (0.18 + i * 0.012)
-    cloud.keyframe_insert("scale", frame=11)
-    cloud.keyframe_insert("location", frame=11)
-    cloud.scale *= 1.45
-    cloud.location.z += 0.22
-    cloud.keyframe_insert("scale", frame=25)
-    cloud.keyframe_insert("location", frame=25)
+    cloud.location = start + direction * (0.07 + i * 0.006)
+    cloud.keyframe_insert("scale", frame=start_frame + 4)
+    cloud.keyframe_insert("location", frame=start_frame + 4)
+    cloud.scale *= 0.15
+    cloud.location.z += 0.12
+    cloud.keyframe_insert("scale", frame=start_frame + 10)
+    cloud.keyframe_insert("location", frame=start_frame + 10)
 
 root.rotation_euler = (0, 0, 0)
 root.keyframe_insert("rotation_euler", frame=1)
-root.rotation_euler.z = math.radians(105)
-root.keyframe_insert("rotation_euler", frame=25)
+root.rotation_euler.z = math.radians(55)
+root.keyframe_insert("rotation_euler", frame=28)
 
 if root.animation_data and root.animation_data.action:
     root.animation_data.action.name = "PeerlessBurst"
 bpy.context.scene.frame_start = 1
-bpy.context.scene.frame_end = 25
+bpy.context.scene.frame_end = 28
 bpy.context.scene.render.fps = 30
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 bpy.ops.export_scene.gltf(filepath=OUT, export_format="GLB", export_animations=True)

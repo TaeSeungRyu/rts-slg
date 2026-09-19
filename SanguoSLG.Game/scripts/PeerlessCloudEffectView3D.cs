@@ -8,7 +8,9 @@ public sealed partial class PeerlessCloudEffectView3D : Node3D
 {
     public override void _Ready()
     {
-        Position = new Vector3(0f, 0.34f, 0f);
+        // 편대 머리 위가 아니라 병사들 사이, 발밑보다 살짝 높은 중심부에서 연속 폭발한다.
+        Position = new Vector3(0f, 0.10f, 0f);
+        Scale = Vector3.One * 0.72f;
         var visual = GD.Load<PackedScene>("res://assets/models/effect-peerless-red-cloud.glb").Instantiate<Node3D>();
         AddChild(visual);
         foreach (var player in FindPlayers(visual))
