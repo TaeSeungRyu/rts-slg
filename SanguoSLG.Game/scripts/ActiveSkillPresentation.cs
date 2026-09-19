@@ -7,7 +7,15 @@ namespace SanguoSLG.Game;
 public static class ActiveSkillPresentation
 {
     public static void ShowCasterActivation(Node3D caster)
-        => EffectView.Attach(caster, EffectKind.Burst, 0.72f, loop: false);
+    {
+        // Burst는 범용 EffectView에서 반복형 파티클이므로 loop 인자만으로는 스스로 사라지지 않는다.
+        // 발동 순간에만 보이도록 효과 루트에 수명 타이머를 붙여 확실히 정리한다.
+        var effect = EffectView.Attach(caster, EffectKind.Burst, 0.72f, loop: false);
+        var lifetime = new Godot.Timer { OneShot = true, WaitTime = 0.55 };
+        effect.AddChild(lifetime);
+        lifetime.Timeout += effect.QueueFree;
+        lifetime.Start();
+    }
 
     public static bool AttachEffect(Node3D target, ActiveSkill skill)
     {

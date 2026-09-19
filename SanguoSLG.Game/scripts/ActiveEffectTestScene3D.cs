@@ -462,8 +462,9 @@ public partial class ActiveEffectTestScene3D : Node3D
         {
             var passed = !_presentationRunning && _round == 7 && _allyActiveFireDay == 6
                 && _chargeAppearedDay == 5 && _allyActiveFireCount == 1 && _gauges[AllyId].FilledSegments == 1
-                && !_gauges[AllyId].Visible && _chargeView is null;
-            GD.Print($"[activeeffecttestpresentqa] passed={passed} days={_round} fireDay={_allyActiveFireDay} gauge={_gauges[AllyId].FilledSegments} visible={_gauges[AllyId].Visible}");
+                && !_gauges[AllyId].Visible && _chargeView is null
+                && _tokens[AllyId].FindChild("Effect_Burst", true, false) is null;
+            GD.Print($"[activeeffecttestpresentqa] passed={passed} days={_round} fireDay={_allyActiveFireDay} gauge={_gauges[AllyId].FilledSegments} visible={_gauges[AllyId].Visible} burstAlive={_tokens[AllyId].FindChild("Effect_Burst", true, false) is not null}");
             GetTree().Quit(passed ? 0 : 1);
         };
     }
