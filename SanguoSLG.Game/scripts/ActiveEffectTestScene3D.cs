@@ -389,7 +389,8 @@ public partial class ActiveEffectTestScene3D : Node3D
         var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var fired = ally is not null && _lastEffectCount > 0;
         var gaugePassed = _gauges.TryGetValue(AllyId, out var battleGauge)
-            && battleGauge.SkillCode == "fire_plot" && battleGauge.FilledSegments == 1;
+            && battleGauge.SkillCode == "fire_plot" && battleGauge.FilledSegments == 1
+            && battleGauge.HasTwoOverThreeLayout;
         GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} fireDay={_allyActiveFireDay} fireCount={_allyActiveFireCount} effects={_lastEffectCount} days={_round} advances={_advanceCount}");
         var battlePassed = fired && gaugePassed && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount >= 1
             && _round == 7 && _advanceCount == 1 && ally?.MaxTroops == 10000;

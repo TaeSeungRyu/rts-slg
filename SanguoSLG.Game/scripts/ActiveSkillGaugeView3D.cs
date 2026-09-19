@@ -1,5 +1,6 @@
 using Godot;
 using SanguoSLG.Core.Simulation;
+using System.Linq;
 
 namespace SanguoSLG.Game;
 
@@ -11,6 +12,11 @@ public sealed partial class ActiveSkillGaugeView3D : Node3D
     private static readonly Color Empty = new(0.16f, 0.16f, 0.18f, 0.88f);
     private static readonly Color Filled = new(1f, 0.77f, 0.22f, 1f);
     private readonly MeshInstance3D[] _segments = new MeshInstance3D[ActiveGauge.ReadyDays];
+    private static readonly Vector3[] SegmentPositions =
+    {
+        new(-0.10f, 0.19f, 0f), new(0.10f, 0.19f, 0f),
+        new(-0.20f, -0.16f, 0f), new(0f, -0.20f, 0f), new(0.20f, -0.16f, 0f),
+    };
     private Sprite3D _icon = null!;
     private Label3D _progress = null!;
 
@@ -41,11 +47,10 @@ public sealed partial class ActiveSkillGaugeView3D : Node3D
         AddChild(_progress);
         for (var i = 0; i < _segments.Length; i++)
         {
-            var angle = Mathf.DegToRad(-140f + i * 70f);
             var segment = new MeshInstance3D
             {
                 Mesh = new SphereMesh { Radius = 0.055f, Height = 0.11f, RadialSegments = 12, Rings = 6 },
-                Position = new Vector3(Mathf.Cos(angle) * 0.28f, Mathf.Sin(angle) * 0.18f, 0f),
+                Position = SegmentPositions[i],
                 MaterialOverride = Material(Empty),
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
             };
@@ -53,6 +58,9 @@ public sealed partial class ActiveSkillGaugeView3D : Node3D
             _segments[i] = segment;
         }
     }
+
+    public bool HasTwoOverThreeLayout
+        => _segments.Count(x => x.Position.Y > 0f) == 2 && _segments.Count(x => x.Position.Y < 0f) == 3;
 
     public void SetGauge(ActiveGauge gauge)
     {
