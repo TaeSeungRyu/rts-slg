@@ -540,6 +540,11 @@ public partial class ActiveEffectTestScene3D : Node3D
                 if (ActiveSkillPresentation.ShowBreakthrough(breakthroughCaster, token)) count++;
                 continue;
             }
+            if (fired.Code == "tiger_strike" && _tokens.TryGetValue(AllyId, out var tigerCaster))
+            {
+                if (ActiveSkillPresentation.ShowTigerStrike(tigerCaster, token)) count++;
+                continue;
+            }
             if (fired.Code is "peerless" or "reap")
             {
                 if (ActiveSkillPresentation.AttachEffect(token, fired)) count++;
@@ -698,19 +703,28 @@ public partial class ActiveEffectTestScene3D : Node3D
 
     private void RunTigerStrikeQa()
     {
+        var allyPosition = _tokens[AllyId].GlobalPosition;
+        var expectedDirection = _tokens.Where(x => x.Key != AllyId)
+            .OrderBy(x => x.Value.GlobalPosition.DistanceTo(allyPosition))
+            .Select(x => x.Value.GlobalPosition - allyPosition)
+            .First();
+        expectedDirection.Y = 0f;
+        expectedDirection = expectedDirection.Normalized();
         AdvanceSevenDays();
         var tiger = FindChildren("*", "", true, false).OfType<TigerStrikeEffectView3D>().FirstOrDefault();
-        var spawned = tiger is not null && tiger.HasTigerModel && tiger.AttackTravelDistance >= 1f
+        var spawned = tiger is not null && tiger.TigerCount == 4 && tiger.AttackTravelDistance >= 1f
+            && tiger.AttackDirection.Dot(expectedDirection) > 0.99f
             && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
-        var impactTimer = GetTree().CreateTimer(0.94);
+        var impactTimer = GetTree().CreateTimer(1.05);
         impactTimer.Timeout += () =>
         {
-            var attacked = IsInstanceValid(tiger) && tiger!.ReachedFormationCenter && tiger.AttackCompleted;
-            var cleanupTimer = GetTree().CreateTimer(0.30);
+            var attacked = IsInstanceValid(tiger) && tiger!.ReachedFormationCenterCount == 4
+                && tiger.CompletedTigerCount == 4;
+            var cleanupTimer = GetTree().CreateTimer(0.38);
             cleanupTimer.Timeout += () =>
             {
                 var removed = !IsInstanceValid(tiger) || tiger!.IsQueuedForDeletion();
-                GD.Print($"[tigerstrikeqa] spawned={spawned} attacked={attacked} removed={removed} distance={tiger?.AttackTravelDistance:F2}");
+                GD.Print($"[tigerstrikeqa] spawned={spawned} tigers={tiger?.TigerCount} direction={tiger?.AttackDirection} attacked={attacked} removed={removed} distance={tiger?.AttackTravelDistance:F2}");
                 GetTree().Quit(spawned && attacked && removed ? 0 : 1);
             };
         };

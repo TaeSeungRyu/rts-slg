@@ -13,6 +13,17 @@ public static class ActiveSkillPresentation
         return true;
     }
 
+    public static bool ShowTigerStrike(Node3D caster, Node3D target)
+    {
+        var parent = target.GetParent();
+        if (parent is null) return false;
+        var effect = new TigerStrikeEffectView3D();
+        effect.Configure(caster.GlobalPosition, target.GlobalPosition);
+        parent.AddChild(effect);
+        effect.GlobalPosition = target.GlobalPosition;
+        return true;
+    }
+
     public static void ShowCasterActivation(Node3D caster)
     {
         // Burst는 범용 EffectView에서 반복형 파티클이므로 loop 인자만으로는 스스로 사라지지 않는다.
@@ -44,11 +55,6 @@ public static class ActiveSkillPresentation
         if (skill.Code == "reap")
         {
             EffectView.Attach(target, EffectKind.Shatter, 1f, loop: false);
-            return true;
-        }
-        if (skill.Code == "tiger_strike")
-        {
-            target.AddChild(new TigerStrikeEffectView3D());
             return true;
         }
         if (skill.Code == "one_man_army")

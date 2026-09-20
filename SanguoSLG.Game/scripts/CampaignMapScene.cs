@@ -3888,6 +3888,9 @@ public sealed partial class CampaignMapScene : Node3D
                     if (effect.Skill.Code == "breakthrough"
                         && _armyTokens.TryGetValue(effect.CasterUnitId, out var caster) && caster.Visible)
                         ActiveSkillPresentation.ShowBreakthrough(caster, target);
+                    else if (effect.Skill.Code == "tiger_strike"
+                        && _armyTokens.TryGetValue(effect.CasterUnitId, out var tigerCaster) && tigerCaster.Visible)
+                        ActiveSkillPresentation.ShowTigerStrike(tigerCaster, target);
                     else
                         ActiveSkillPresentation.AttachEffect(target, effect.Skill);
                 }
