@@ -24,7 +24,7 @@ public static class ActiveSkillPresentation
             EffectView.Attach(target, EffectKind.Fire, 0.9f, loop: false);
             return true;
         }
-        if (skill.Code == "peerless")
+        if (skill.Code is "peerless" or "barrage")
         {
             target.AddChild(new PeerlessCloudEffectView3D());
             return true;

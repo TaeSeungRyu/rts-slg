@@ -76,7 +76,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestflashqa"))
+        if (args.Contains("--activeeffecttestbarrageqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "barrage");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunAutoQa);
+        }
+        else if (args.Contains("--activeeffecttestflashqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
                 .First(i => _skillSelect.GetItemMetadata(i).AsString() == "flash");
@@ -493,7 +501,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var count = 0;
         var targets = fired.Code == "fire_plot"
             ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)).ToList()
-            : fired.Code is "peerless" or "one_man_army" or "flash"
+            : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage"
                 ? beforeUnits.Values.Where(x => x.Field.Owner.Value == 2
                     && (turn.Combat?.DamageTaken.GetValueOrDefault(x.Id) ?? 0) > 0)
                     .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
@@ -598,11 +606,14 @@ public partial class ActiveEffectTestScene3D : Node3D
         var flashPassed = expectedSkill != "flash"
             || FindChildren("*", "", true, false).OfType<FlashSlashEffectView3D>()
                 .Any(x => x.SlashCount >= 8 && x.HasCrescentBlade && x.SparkCount == 4 && x.FadeDuration >= 0.5f);
+        var barragePassed = expectedSkill != "barrage"
+            || FindChildren("*", "", true, false).OfType<PeerlessCloudEffectView3D>()
+                .Any(x => x.SpawnedBurstCount >= 1);
         var gaugePassed = _gauges.TryGetValue(AllyId, out var battleGauge)
             && battleGauge.SkillCode == expectedSkill && battleGauge.FilledSegments == 1
             && battleGauge.HasSpacedHorizontalLayout;
         GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} fireDay={_allyActiveFireDay} fireCount={_allyActiveFireCount} effects={_lastEffectCount} days={_round} advances={_advanceCount}");
-        var battlePassed = fired && gaugePassed && swordCountPassed && flashPassed && _chargeAppearedDay == 5
+        var battlePassed = fired && gaugePassed && swordCountPassed && flashPassed && barragePassed && _chargeAppearedDay == 5
             && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount >= 1
             && _round == 7 && _advanceCount == 1 && ally?.MaxTroops == 10000;
         ResetScenario();

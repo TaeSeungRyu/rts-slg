@@ -1924,7 +1924,7 @@ UI:
 | 공격 | `chain_strike` | 연환격 | ✅ | ⬜ | ⬜ | 미정 |
 | 공격 | `breakthrough` | 돌파 | ✅ | ⬜ | ⬜ | 미정 |
 | 공격 | `reap` | 참 | ✅ | ⬜ | ⬜ | 미정 |
-| 공격 | `barrage` | 포화 | ✅ | ⬜ | ⬜ | 미정 |
+| 공격 | `barrage` | 포화 | ✅ | ✅ | ✅ | `PeerlessCloud`, 기존 무쌍의 붉은 구름 연속 폭발 효과 재사용 |
 | 공격 | `one_man_army` | 일기당천 | ✅ | ✅ | ✅ | `OneManArmySword`, 하늘에서 편대 크기 약 60%의 대검이 적 부대에 낙하 |
 | 공격 | `heavy_blow` | 강타 | ✅ | ⬜ | ⬜ | 미정 |
 | 공격 | `double_hit` | 연타 | ✅ | ⬜ | ⬜ | 미정 |
