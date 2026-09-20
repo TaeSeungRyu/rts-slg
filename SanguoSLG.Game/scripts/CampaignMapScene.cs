@@ -112,7 +112,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _animActiveIdx;
     private readonly List<(double Time, int UnitId, ActiveSkill Skill)> _animActives = new();
     private int _animSkillEffectIdx;
-    private readonly List<(double Time, int TargetUnitId, ActiveSkill Skill)> _animSkillEffects = new();
+    private readonly List<(double Time, int CasterUnitId, int TargetUnitId, ActiveSkill Skill)> _animSkillEffects = new();
 
     // 병력 → 편대원 수(design-ui §3): 9천↑=9, 7천↑=7, 5천↑=5, 3천↑=3, 그 밑=1.
     private static int FormationFor(int troops) =>
@@ -2501,16 +2501,16 @@ public sealed partial class CampaignMapScene : Node3D
                 {
                     foreach (var target in turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
                         && x.State.Statuses.Any(s => s.IsFire)))
-                        _animSkillEffects.Add((atkTime + 0.16, target.Id.Value, skill));
+                        _animSkillEffects.Add((atkTime + 0.16, casterId.Value, target.Id.Value, skill));
                 }
-                else if (caster is not null && skill.Code == "peerless" && turn.Combat is { } activeCombat)
+                else if (caster is not null && skill.Type == ActiveType.Strike && turn.Combat is { } activeCombat)
                 {
                     var target = turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
                             && activeCombat.DamageTaken.GetValueOrDefault(x.Id) > 0)
                         .OrderBy(x => x.Field.Position.Distance(caster.Field.Position))
                         .ThenBy(x => x.Id.Value)
                         .FirstOrDefault();
-                    if (target is not null) _animSkillEffects.Add((atkTime + 0.16, target.Id.Value, skill));
+                    if (target is not null) _animSkillEffects.Add((atkTime + 0.16, casterId.Value, target.Id.Value, skill));
                 }
             }
 
@@ -3884,7 +3884,13 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var effect = _animSkillEffects[_animSkillEffectIdx];
                 if (_armyTokens.TryGetValue(effect.TargetUnitId, out var target) && target.Visible)
-                    ActiveSkillPresentation.AttachEffect(target, effect.Skill);
+                {
+                    if (effect.Skill.Code == "breakthrough"
+                        && _armyTokens.TryGetValue(effect.CasterUnitId, out var caster) && caster.Visible)
+                        ActiveSkillPresentation.ShowBreakthrough(caster, target);
+                    else
+                        ActiveSkillPresentation.AttachEffect(target, effect.Skill);
+                }
                 _animSkillEffectIdx++;
             }
 

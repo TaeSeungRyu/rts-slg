@@ -76,7 +76,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestreapqa"))
+        if (args.Contains("--activeeffecttestbreakthroughqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "breakthrough");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunBreakthroughQa);
+        }
+        else if (args.Contains("--activeeffecttestreapqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
                 .First(i => _skillSelect.GetItemMetadata(i).AsString() == "reap");
@@ -509,7 +517,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var count = 0;
         var targets = fired.Code == "fire_plot"
             ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)).ToList()
-            : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage" or "reap"
+            : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage" or "reap" or "breakthrough"
                 ? beforeUnits.Values.Where(x => x.Field.Owner.Value == 2
                     && (turn.Combat?.DamageTaken.GetValueOrDefault(x.Id) ?? 0) > 0)
                     .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
@@ -518,6 +526,11 @@ public partial class ActiveEffectTestScene3D : Node3D
         foreach (var target in targets)
         {
             if (!_tokens.TryGetValue(target.Id.Value, out var token)) continue;
+            if (fired.Code == "breakthrough" && _tokens.TryGetValue(AllyId, out var breakthroughCaster))
+            {
+                if (ActiveSkillPresentation.ShowBreakthrough(breakthroughCaster, token)) count++;
+                continue;
+            }
             if (fired.Code is "peerless" or "reap")
             {
                 if (ActiveSkillPresentation.AttachEffect(token, fired)) count++;
@@ -628,12 +641,18 @@ public partial class ActiveEffectTestScene3D : Node3D
         var shatterPassed = expectedSkill != "reap"
             || FindChildren("*", "", true, false).OfType<ShatterEffect>()
                 .Any(x => !x.Loop && x.FragmentCount >= 6);
+        var breakthroughPassed = expectedSkill != "breakthrough"
+            || (_tokens.TryGetValue(AllyId, out var breakthroughCaster)
+                && breakthroughCaster.BreakthroughMotionCount == 1
+                && breakthroughCaster.LastBreakthroughDistance > 0.48f
+                && breakthroughCaster.FindChildren("*", "", true, false)
+                    .OfType<BreakthroughSmokeEffectView3D>().Any(x => x.SmokeEmitterCount == 3));
         var gaugePassed = _gauges.TryGetValue(AllyId, out var battleGauge)
             && battleGauge.SkillCode == expectedSkill && battleGauge.FilledSegments == 1
             && battleGauge.HasSpacedHorizontalLayout;
         GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} fireDay={_allyActiveFireDay} fireCount={_allyActiveFireCount} effects={_lastEffectCount} days={_round} advances={_advanceCount}");
         var battlePassed = fired && gaugePassed && swordCountPassed && flashPassed && barragePassed
-            && tearPassed && shatterPassed && _chargeAppearedDay == 5
+            && tearPassed && shatterPassed && breakthroughPassed && _chargeAppearedDay == 5
             && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount >= 1
             && _round == 7 && _advanceCount == 1 && ally?.MaxTroops == 10000;
         ResetScenario();
@@ -645,6 +664,27 @@ public partial class ActiveEffectTestScene3D : Node3D
             && _allyActiveFireDay == 0 && _chargeAppearedDay == 0;
         GD.Print($"[activeeffecttestauto] reset={resetPassed} units={_units.Count} ally={resetAlly?.Pool.Active} days={_round}");
         GetTree().Quit(battlePassed && resetPassed ? 0 : 1);
+    }
+
+    private void RunBreakthroughQa()
+    {
+        AdvanceSevenDays();
+        var caster = _tokens.GetValueOrDefault(AllyId);
+        var started = caster is not null
+            && caster.BreakthroughMotionCount == 1
+            && caster.LastBreakthroughDistance > 0.48f
+            && caster.LastBreakthroughPassPoint.DistanceTo(caster.LastBreakthroughOrigin) > 0.48f
+            && caster.FindChildren("*", "", true, false).OfType<BreakthroughSmokeEffectView3D>()
+                .Any(x => x.SmokeEmitterCount == 3)
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(0.82);
+        timer.Timeout += () =>
+        {
+            var returned = caster is not null
+                && caster.GlobalPosition.DistanceTo(caster.LastBreakthroughOrigin) < 0.01f;
+            GD.Print($"[breakthroughqa] started={started} distance={caster?.LastBreakthroughDistance:F2} returned={returned} smoke=3");
+            GetTree().Quit(started && returned ? 0 : 1);
+        };
     }
 
     private void RunPresentationQa()

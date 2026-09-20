@@ -363,6 +363,37 @@ public partial class UnitController3D : Node3D
         PlayAttackMotion();
     }
 
+    public int BreakthroughMotionCount { get; private set; }
+    public float LastBreakthroughDistance { get; private set; }
+    public Vector3 LastBreakthroughOrigin { get; private set; }
+    public Vector3 LastBreakthroughPassPoint { get; private set; }
+
+    /// <summary>돌파 액티브 전용: 적 편대의 중앙을 직선으로 넘어선 뒤 원래 위치로 복귀한다.</summary>
+    public void PlayBreakthroughMotionToward(Vector3 worldTarget)
+    {
+        var origin = GlobalPosition;
+        var delta = worldTarget - origin;
+        delta.Y = 0f;
+        if (delta.LengthSquared() <= 0.000001f) return;
+
+        var direction = delta.Normalized();
+        var passPoint = worldTarget + direction * 0.48f;
+        FaceToward(worldTarget);
+        var smoke = new BreakthroughSmokeEffectView3D();
+        AddChild(smoke);
+        BreakthroughMotionCount++;
+        LastBreakthroughOrigin = origin;
+        LastBreakthroughPassPoint = passPoint;
+        LastBreakthroughDistance = origin.DistanceTo(passPoint);
+
+        var charge = CreateTween();
+        charge.TweenProperty(this, "global_position", passPoint, 0.24f)
+            .SetTrans(Tween.TransitionType.Expo).SetEase(Tween.EaseType.In);
+        charge.TweenInterval(0.08f);
+        charge.Chain().TweenProperty(this, "global_position", origin, 0.34f)
+            .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+    }
+
     private void PlayQueuedAttackIfAny()
     {
         if (!_queuedAttack || _moving || _attacking)

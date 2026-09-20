@@ -6,6 +6,13 @@ namespace SanguoSLG.Game;
 /// <summary>검수장과 캠페인이 함께 쓰는 액티브 발동 표현 진입점.</summary>
 public static class ActiveSkillPresentation
 {
+    public static bool ShowBreakthrough(Node3D caster, Node3D target)
+    {
+        if (caster is not UnitController3D unit) return false;
+        unit.PlayBreakthroughMotionToward(target.GlobalPosition);
+        return true;
+    }
+
     public static void ShowCasterActivation(Node3D caster)
     {
         // Burst는 범용 EffectView에서 반복형 파티클이므로 loop 인자만으로는 스스로 사라지지 않는다.
