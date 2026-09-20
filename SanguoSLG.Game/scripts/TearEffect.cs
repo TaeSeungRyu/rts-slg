@@ -13,6 +13,8 @@ public partial class TearEffect : Node3D
 {
     public float S = 1f;
     public Node3D Target = null!;
+    public bool Loop = true;
+    public int FragmentCount => _fragments.Count;
 
     private const int Pieces = 4;
     private const float Period = 2.8f;
@@ -39,7 +41,7 @@ public partial class TearEffect : Node3D
         }
 
         _t += (float)delta;
-        var cycle = Mathf.PosMod(_t / Period, 1f);
+        var cycle = Loop ? Mathf.PosMod(_t / Period, 1f) : Mathf.Clamp(_t / Period, 0f, 1f);
 
         var rest = cycle >= TearEnd;
         foreach (var o in _originals)
@@ -52,6 +54,7 @@ public partial class TearEffect : Node3D
         }
         if (rest)
         {
+            if (!Loop) QueueFree();
             return;
         }
 
@@ -65,5 +68,11 @@ public partial class TearEffect : Node3D
             var axis = new Vector3((f.Seed % 3) - 1, 1f, (f.Seed % 2) == 0 ? 1 : -1).Normalized();
             f.Node.Rotation = axis * (1.4f * tt);
         }
+    }
+
+    public override void _ExitTree()
+    {
+        foreach (var original in _originals)
+            if (IsInstanceValid(original)) original.Visible = true;
     }
 }

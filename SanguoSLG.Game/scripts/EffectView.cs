@@ -55,7 +55,7 @@ public static class EffectView
                 root.AddChild(new BurstEffect { S = scale });
                 break;
             case EffectKind.Tear:
-                root.AddChild(new TearEffect { S = scale, Target = target });
+                root.AddChild(new TearEffect { S = scale, Target = target, Loop = loop });
                 break;
             case EffectKind.Shatter:
                 root.AddChild(new ShatterEffect { S = scale, Target = target });

@@ -510,6 +510,11 @@ public partial class ActiveEffectTestScene3D : Node3D
         foreach (var target in targets)
         {
             if (!_tokens.TryGetValue(target.Id.Value, out var token)) continue;
+            if (fired.Code is "peerless" or "reap")
+            {
+                if (ActiveSkillPresentation.AttachEffect(token, fired)) count++;
+                continue;
+            }
             // 효과를 부대 토큰의 자식으로 붙이면 다음 연계 스킬로 토큰이 전멸할 때 재생 중 효과도
             // 함께 제거된다. 생존 여부와 무관하게 처음부터 마지막 명중 위치의 독립 앵커에 붙인다.
             var deadOnThisHit = _units.All(x => x.Id != target.Id);
@@ -609,11 +614,14 @@ public partial class ActiveEffectTestScene3D : Node3D
         var barragePassed = expectedSkill != "barrage"
             || FindChildren("*", "", true, false).OfType<PeerlessCloudEffectView3D>()
                 .Any(x => x.SpawnedBurstCount >= 1);
+        var tearPassed = expectedSkill != "peerless"
+            || FindChildren("*", "", true, false).OfType<TearEffect>()
+                .Any(x => !x.Loop && x.FragmentCount == 4);
         var gaugePassed = _gauges.TryGetValue(AllyId, out var battleGauge)
             && battleGauge.SkillCode == expectedSkill && battleGauge.FilledSegments == 1
             && battleGauge.HasSpacedHorizontalLayout;
         GD.Print($"[activeeffecttestauto] units={_units.Count} enemy={_units.Count(x => x.Field.Owner.Value == 2)} skill={SelectedSkill().Code} fired={fired} fireDay={_allyActiveFireDay} fireCount={_allyActiveFireCount} effects={_lastEffectCount} days={_round} advances={_advanceCount}");
-        var battlePassed = fired && gaugePassed && swordCountPassed && flashPassed && barragePassed && _chargeAppearedDay == 5
+        var battlePassed = fired && gaugePassed && swordCountPassed && flashPassed && barragePassed && tearPassed && _chargeAppearedDay == 5
             && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount >= 1
             && _round == 7 && _advanceCount == 1 && ally?.MaxTroops == 10000;
         ResetScenario();
