@@ -75,7 +75,18 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestlethaladjutantqa"))
+        if (args.Contains("--activeeffecttestsecondadvancelethalqa"))
+        {
+            var vanguardIndex = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "one_man_army");
+            var adjutantIndex = Enumerable.Range(0, _adjutantSkillSelect.ItemCount)
+                .First(i => _adjutantSkillSelect.GetItemMetadata(i).AsString() == "peerless");
+            _skillSelect.Select(vanguardIndex);
+            _adjutantSkillSelect.Select(adjutantIndex);
+            ResetScenario();
+            CallDeferred(MethodName.RunSecondAdvanceLethalQa);
+        }
+        else if (args.Contains("--activeeffecttestlethaladjutantqa"))
         {
             var vanguardIndex = Enumerable.Range(0, _skillSelect.ItemCount)
                 .First(i => _skillSelect.GetItemMetadata(i).AsString() == "iron_wall");
@@ -421,6 +432,10 @@ public partial class ActiveEffectTestScene3D : Node3D
             var unit = _units.FirstOrDefault(x => x.Id.Value == id);
             if (unit is null)
             {
+                // QueueFree는 프레임 끝에 처리된다. 0.2초 뒤 부관 연계가 예약된 경우에도 전멸 부대가
+                // 다음 스킬 발동까지 남아 보이지 않도록, 전멸 판정 즉시 렌더링부터 끈다.
+                token.Visible = false;
+                token.SetProcess(false);
                 token.QueueFree();
                 _tokens.Remove(id);
                 _troopLabels.Remove(id);
@@ -637,6 +652,47 @@ public partial class ActiveEffectTestScene3D : Node3D
             && anchor.FindChildren("*", "", true, false).OfType<OneManArmySwordEffectView3D>().Any()
             && _lastEffectCount > 0;
         GD.Print($"[activeeffecttestlethaladjutantqa] passed={passed} before={enemiesBefore.Count} after={enemiesAfter.Count} effectCount={_lastEffectCount} anchor={anchor is not null}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    private void RunSecondAdvanceLethalQa()
+    {
+        // 1회차 종료 시 두 게이지가 1칸 남는 실제 재현 조건.
+        AdvanceSevenDays();
+        BeginAdvanceBatch();
+        for (var day = 1; day <= 4; day++)
+        {
+            if (AdvanceOneDay(day) is null) break;
+        }
+
+        var enemyIdsBefore = _units.Where(x => x.Field.Owner.Value == 2).Select(x => x.Id).ToHashSet();
+        var tokenRefs = enemyIdsBefore.ToDictionary(id => id, id => _tokens[id.Value]);
+        var allyPosition = _units.Single(x => x.Id.Value == AllyId).Field.Position;
+        var lethalTarget = _units.Where(x => x.Field.Owner.Value == 2)
+            .OrderBy(x => x.Field.Position.Distance(allyPosition)).ThenBy(x => x.Id.Value).First().Id;
+        var followUpTarget = _units.Where(x => x.Field.Owner.Value == 2 && x.Id != lethalTarget)
+            .OrderBy(x => x.Field.Position.Distance(allyPosition)).ThenBy(x => x.Id.Value).First().Id;
+        _units = _units.Select(x => x.Id == lethalTarget
+            ? x with { Pool = x.Pool with { Active = 1 } }
+            : x.Id == followUpTarget
+                ? x with { Field = x.Field with { Position = new HexCoord(4, 4) } }
+            : x).ToList();
+
+        var vanguardTurn = AdvanceOneDay(5);
+        var enemyIdsAfterVanguard = _units.Where(x => x.Field.Owner.Value == 2).Select(x => x.Id).ToHashSet();
+        var removed = enemyIdsBefore.Except(enemyIdsAfterVanguard).ToList();
+        var removedImmediatelyHidden = removed.Count > 0 && removed.All(id =>
+            !tokenRefs[id].Visible && tokenRefs[id].IsQueuedForDeletion());
+
+        var adjutantTurn = AdvanceOneDay(6);
+        var passed = vanguardTurn is not null && adjutantTurn is not null
+            && vanguardTurn.FiredActives.TryGetValue(new UnitId(AllyId), out var vanguard)
+            && vanguard.Code == "one_man_army"
+            && adjutantTurn.FiredActives.TryGetValue(new UnitId(AllyId), out var adjutant)
+            && adjutant.Code == "peerless"
+            && removedImmediatelyHidden
+            && _allyFiredSkillCodes.TakeLast(2).SequenceEqual(new[] { "one_man_army", "peerless" });
+        GD.Print($"[activeeffecttestsecondadvancelethalqa] passed={passed} removed={removed.Count} hiddenBeforeAdjutant={removedImmediatelyHidden} fired={string.Join(",", _allyFiredSkillCodes.TakeLast(2))}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
