@@ -53,6 +53,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     private readonly List<string> _allyFiredSkillCodes = [];
     private int _extendedActiveTurns;
     private int _compressedAdjutantChains;
+    private int _batchAllyActiveFireCount;
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
@@ -75,7 +76,18 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestsecondadvancelethalqa"))
+        if (args.Contains("--activeeffecttesttwopresentationqa"))
+        {
+            var vanguardIndex = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "one_man_army");
+            var adjutantIndex = Enumerable.Range(0, _adjutantSkillSelect.ItemCount)
+                .First(i => _adjutantSkillSelect.GetItemMetadata(i).AsString() == "peerless");
+            _skillSelect.Select(vanguardIndex);
+            _adjutantSkillSelect.Select(adjutantIndex);
+            ResetScenario();
+            CallDeferred(MethodName.RunTwoPresentationQa);
+        }
+        else if (args.Contains("--activeeffecttestsecondadvancelethalqa"))
         {
             var vanguardIndex = Enumerable.Range(0, _skillSelect.ItemCount)
                 .First(i => _skillSelect.GetItemMetadata(i).AsString() == "one_man_army");
@@ -246,6 +258,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         _allyFiredSkillCodes.Clear();
         _extendedActiveTurns = 0;
         _compressedAdjutantChains = 0;
+        _batchAllyActiveFireCount = 0;
         _presentationRunning = false;
         if (_advanceButton is not null) _advanceButton.Disabled = false;
         if (_skillSelect is not null) _skillSelect.Disabled = false;
@@ -338,6 +351,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     {
         _advanceCount++;
         _lastEffectCount = 0;
+        _batchAllyActiveFireCount = 0;
         AppendLog($"\n[font_size=20][b]진행 {_advanceCount} · 7일 교전 시작[/b][/font_size]");
     }
 
@@ -361,9 +375,11 @@ public partial class ActiveEffectTestScene3D : Node3D
         var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
         var chainAdjutant = hasActivePresentation
             && turn.FiredActives.ContainsKey(new UnitId(AllyId))
-            && _allyFiredSkillCodes.Count == 1
+            && _batchAllyActiveFireCount == 1
             && ally?.State.AdjutantActive is not null
-            && ally.State.AdjutantGauge.IsReady;
+            // 첫 진행 뒤 주장=1칸·부관=0칸으로 한 칸 어긋난다. 현재 준비 완료뿐 아니라
+            // 바로 다음 전투 일차의 1칸 충전으로 확정 발동하는 경우도 0.2초 연계한다.
+            && (ally.State.AdjutantGauge.IsReady || ally.State.AdjutantGauge.Tick(1).IsReady);
         if (chainAdjutant) _compressedAdjutantChains++;
         var delay = chainAdjutant
             ? AdjutantChainDelaySeconds
@@ -405,8 +421,9 @@ public partial class ActiveEffectTestScene3D : Node3D
         }
         if (turn.FiredActives.TryGetValue(new UnitId(AllyId), out var fired))
         {
-            var casterName = _allyFiredSkillCodes.Count == 0 ? "제갈량" : _adjutant.Name;
+            var casterName = _batchAllyActiveFireCount == 0 ? "제갈량" : _adjutant.Name;
             _allyActiveFireCount++;
+            _batchAllyActiveFireCount++;
             _allyActiveFireDay = day;
             _allyFiredSkillCodes.Add(fired.Code);
             AppendLog($"[color=orange][b]{casterName} {fired.Name} 발동[/b][/color]");
@@ -694,6 +711,36 @@ public partial class ActiveEffectTestScene3D : Node3D
             && _allyFiredSkillCodes.TakeLast(2).SequenceEqual(new[] { "one_man_army", "peerless" });
         GD.Print($"[activeeffecttestsecondadvancelethalqa] passed={passed} removed={removed.Count} hiddenBeforeAdjutant={removedImmediatelyHidden} fired={string.Join(",", _allyFiredSkillCodes.TakeLast(2))}");
         GetTree().Quit(passed ? 0 : 1);
+    }
+
+    private void RunTwoPresentationQa()
+    {
+        BeginSevenDayPresentation();
+        var first = GetTree().CreateTimer(9.1);
+        first.Timeout += () =>
+        {
+            var firstPassed = !_presentationRunning && _advanceCount == 1
+                && _compressedAdjutantChains == 1 && _batchAllyActiveFireCount == 2
+                && _allyFiredSkillCodes.TakeLast(2).SequenceEqual(new[] { "one_man_army", "peerless" });
+            if (!firstPassed)
+            {
+                GD.Print($"[activeeffecttesttwopresentationqa] passed=False stage=first chains={_compressedAdjutantChains} batchFires={_batchAllyActiveFireCount}");
+                GetTree().Quit(1);
+                return;
+            }
+
+            BeginSevenDayPresentation();
+            var second = GetTree().CreateTimer(9.1);
+            second.Timeout += () =>
+            {
+                var expected = new[] { "one_man_army", "peerless", "one_man_army", "peerless" };
+                var passed = !_presentationRunning && _advanceCount == 2
+                    && _compressedAdjutantChains == 2 && _batchAllyActiveFireCount == 2
+                    && _allyFiredSkillCodes.TakeLast(4).SequenceEqual(expected);
+                GD.Print($"[activeeffecttesttwopresentationqa] passed={passed} advances={_advanceCount} chains={_compressedAdjutantChains} batchFires={_batchAllyActiveFireCount} fired={string.Join(",", _allyFiredSkillCodes.TakeLast(4))}");
+                GetTree().Quit(passed ? 0 : 1);
+            };
+        };
     }
 
     private void RunResetQa()
