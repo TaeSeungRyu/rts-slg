@@ -34,6 +34,11 @@ public static class ActiveSkillPresentation
             EffectView.Attach(target, EffectKind.Tear, 1f, loop: false);
             return true;
         }
+        if (skill.Code == "reap")
+        {
+            EffectView.Attach(target, EffectKind.Shatter, 1f, loop: false);
+            return true;
+        }
         if (skill.Code == "one_man_army")
         {
             target.AddChild(new OneManArmySwordEffectView3D());

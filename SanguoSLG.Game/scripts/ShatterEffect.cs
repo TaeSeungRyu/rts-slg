@@ -13,6 +13,8 @@ public partial class ShatterEffect : Node3D
 {
     public float S = 1f;
     public Node3D Target = null!;
+    public bool Loop = true;
+    public int FragmentCount => _fragments.Count;
 
     private const float Period = 2.6f;
     private const float ExplodeStart = 0.10f;
@@ -38,7 +40,7 @@ public partial class ShatterEffect : Node3D
         }
 
         _t += (float)delta;
-        var cycle = Mathf.PosMod(_t / Period, 1f);
+        var cycle = Loop ? Mathf.PosMod(_t / Period, 1f) : Mathf.Clamp(_t / Period, 0f, 1f);
 
         var rest = cycle >= ExplodeEnd;
         foreach (var o in _originals)
@@ -51,6 +53,7 @@ public partial class ShatterEffect : Node3D
         }
         if (rest)
         {
+            if (!Loop) QueueFree();
             return;
         }
 
@@ -65,5 +68,11 @@ public partial class ShatterEffect : Node3D
             var axis = new Vector3((f.Seed % 3) - 1, (f.Seed % 5) - 2, (f.Seed % 2) == 0 ? 1 : -1).Normalized();
             f.Node.Rotation = axis * ((4f + f.Seed % 5) * tt);
         }
+    }
+
+    public override void _ExitTree()
+    {
+        foreach (var original in _originals)
+            if (IsInstanceValid(original)) original.Visible = true;
     }
 }
