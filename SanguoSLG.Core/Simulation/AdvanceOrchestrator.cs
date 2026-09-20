@@ -222,7 +222,8 @@ public sealed class AdvanceOrchestrator
                 StrikeActive: skill?.Type == ActiveType.Strike ? skill : null,
                 DefenseActive: skill?.Type == ActiveType.Defense ? skill : null,
                 HealActive: skill?.Type == ActiveType.Heal ? skill : null,
-                OutgoingDamagePercent: outgoing);
+                OutgoingDamagePercent: outgoing,
+                Class: u.Class);
         }
 
         // 5) 동시 정산 → 병력 반영.

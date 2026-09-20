@@ -60,7 +60,8 @@ public sealed class BattleResolver
     /// 타격형 액티브가 대체 공격으로 주는 피해(design-skill-actives.md). 정상 공격 피해에 배수와
     /// 무력 스케일을 곱한다. 대상 df 감소(일섬·파갑)와 병력 비례 처형(참)을 반영한다.
     /// </summary>
-    public int StrikeDamage(CombatStats attacker, CombatStats defender, ActiveSkill skill, int might, bool targetIsBuilding = false)
+    public int StrikeDamage(CombatStats attacker, CombatStats defender, ActiveSkill skill, int might,
+        bool targetIsBuilding = false, Domain.TroopClass attackerClass = Domain.TroopClass.Infantry)
     {
         var m = StatScale.Percent(might);
 
@@ -71,7 +72,11 @@ public sealed class BattleResolver
             return (int)((long)defender.Troops * pct / 100);
         }
 
-        var mult = skill.BuildingOnly && !targetIsBuilding ? 100 : skill.DamageMultPercent;
+        var mult = skill.BuildingOnly && !targetIsBuilding
+            ? 100
+            : attackerClass == Domain.TroopClass.Cavalry && skill.CavalryDamageMultPercent > 0
+                ? skill.CavalryDamageMultPercent
+                : skill.DamageMultPercent;
         var effectiveDf = System.Math.Max(1, defender.DfStat * (100 - skill.DefenderDfReductionPercent) / 100);
         var normal = Damage(attacker, defender with { DfStat = effectiveDf });
         return (int)((long)normal * mult * m / 10000); // ÷100(배수) ÷100(M)
@@ -112,9 +117,10 @@ public sealed class BattleResolver
             for (var i = 0; i < attackers.Count; i++)
             {
                 var a = attackers[i];
-                wallDamage += DamageFormula.Resolve(
+                var resolved = DamageFormula.Resolve(
                     a.Troops, a.AtkBuilding, castle.WallDf,
                     new[] { a.AptitudePercent, a.AtkBonusPercent }, new[] { castle.DefenseBonusPercent });
+                wallDamage += resolved * a.ActiveDamagePercent / 100;
             }
 
             var newWall = System.Math.Max(0, castle.WallCurrent - wallDamage);
@@ -139,9 +145,10 @@ public sealed class BattleResolver
         for (var i = 0; i < attackers.Count; i++)
         {
             var a = attackers[i];
-            troopDamage += DamageFormula.Resolve(
+            var resolved = DamageFormula.Resolve(
                 a.Troops, a.AtkUnit, castle.CollapsedDf,
                 new[] { a.AptitudePercent, a.AtkBonusPercent }, new[] { castle.DefenseBonusPercent });
+            troopDamage += resolved * a.ActiveDamagePercent / 100;
         }
 
         // 붕괴 반격 격하: 반격 총량을 공격 부대 병력 비율로 나눠 준다.

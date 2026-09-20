@@ -31,10 +31,10 @@ public sealed class EngagementResolver
         // 4. 공격 — 스냅샷(statsA/statsB) 기준 동시 산출. 타격 액티브면 대체, 아니면 일반.
         var rawAtoB = a.StrikeActive is null
             ? _resolver.Damage(statsA, statsB)
-            : _resolver.StrikeDamage(statsA, statsB, a.StrikeActive, a.Might, a.TargetIsBuilding);
+            : _resolver.StrikeDamage(statsA, statsB, a.StrikeActive, a.Might, a.TargetIsBuilding, a.Class);
         var rawBtoA = b.StrikeActive is null
             ? _resolver.Damage(statsB, statsA)
-            : _resolver.StrikeDamage(statsB, statsA, b.StrikeActive, b.Might, b.TargetIsBuilding);
+            : _resolver.StrikeDamage(statsB, statsA, b.StrikeActive, b.Might, b.TargetIsBuilding, b.Class);
 
         // 5. 방어 감소를 받는 쪽에 적용.
         var dmgToB = (int)((long)rawAtoB * takenB / 100);

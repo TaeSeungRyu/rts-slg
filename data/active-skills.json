@@ -27,7 +27,7 @@
     "name": "분쇄",
     "type": "strike",
     "grade": "high",
-    "damage_mult_percent": 200,
+    "damage_mult_percent": 180,
     "building_only": true
   },
   {
@@ -49,7 +49,8 @@
     "name": "돌파",
     "type": "strike",
     "grade": "high",
-    "damage_mult_percent": 130
+    "damage_mult_percent": 130,
+    "cavalry_damage_mult_percent": 160
   },
   {
     "code": "reap",

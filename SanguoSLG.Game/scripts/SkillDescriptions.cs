@@ -21,6 +21,8 @@ internal static class SkillDescriptions
                 {
                     effects.Add($"일반 공격 피해의 {skill.DamageMultPercent}%로 공격합니다.");
                 }
+                if (skill.CavalryDamageMultPercent > 0)
+                    effects.Add($"기병 분류로 발동하면 피해가 {skill.CavalryDamageMultPercent}%로 증가합니다.");
                 if (skill.BuildingOnly) { effects.Add("위 피해 배수는 건물 대상에 적용됩니다. 부대 대상에는 기본 공격 배수를 사용합니다."); }
                 if (skill.DefenderDfReductionPercent > 0)
                 {

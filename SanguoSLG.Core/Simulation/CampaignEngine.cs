@@ -193,6 +193,15 @@ public sealed class CampaignEngine
                 var activeChargeDays = System.Math.Max(1, turn.Movement.Days);
                 var result = _siege.Resolve(armies, siegeState.Cities, siegeState.Garrisons, CounterAptitude, DefenseBonus, siegeState.CityWounded);
 
+                if (result.FiredActives.Count > 0)
+                {
+                    var mergedActives = reports[^1].FiredActives
+                        .Concat(result.FiredActives)
+                        .GroupBy(x => x.Key)
+                        .ToDictionary(x => x.Key, x => x.Last().Value);
+                    reports[^1] = reports[^1] with { FiredActives = mergedActives };
+                }
+
                 // 성 반격/방어 보정 = 태수 또는 대리 수성 지휘관 1명의 적성·스킬만 반영한다.
                 int CounterAptitude(CityId cid)
                     => SiegeDefensePercents(siegeState, cid).CounterPercent;

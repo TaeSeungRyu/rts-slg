@@ -54,7 +54,8 @@ public sealed class CampaignSiege
         IReadOnlyList<City> Cities,
         IReadOnlyList<GarrisonForce> Garrisons,
         IReadOnlyList<CityWoundedForce> CityWounded,
-        IReadOnlyList<SiegeExchange> Exchanges);
+        IReadOnlyList<SiegeExchange> Exchanges,
+        IReadOnlyDictionary<UnitId, ActiveSkill> FiredActives);
 
     /// <summary>이번 진행의 공성 교환을 전부 정산한 새 상태를 반환한다.</summary>
     /// <param name="counterAptitude">도시별 성 반격 위력 퍼센트(태수/수성 지휘관 연동). null이면 전부 100%.</param>
@@ -68,6 +69,7 @@ public sealed class CampaignSiege
         var garr = garrisons.ToList();
         var wounded = (cityWounded ?? []).ToList();
         var exchanges = new List<SiegeExchange>();
+        var firedActives = new Dictionary<UnitId, ActiveSkill>();
 
         foreach (var city in cities.OrderBy(c => c.Id.Value))
         {
@@ -94,7 +96,19 @@ public sealed class CampaignSiege
             var counterPercent = counterAptitude?.Invoke(city.Id) ?? 100;
             var defensePercent = defenseBonus?.Invoke(city.Id) ?? 100;
             var castle = new CastleState(city.Wall, defendTroops, CastleUnitDmg, WallDf, CollapsedDf, counterPercent, defensePercent);
-            var attackers = besiegers.Select(u => BuildAttacker(u, city)).ToList();
+            var activeByUnit = new Dictionary<UnitId, ActiveSkill?>();
+            foreach (var besieger in besiegers)
+            {
+                var current = byUnit[besieger.Id];
+                var (active, nextState) = current.State.FiringBuildingActive();
+                activeByUnit[current.Id] = active;
+                if (active is not null)
+                {
+                    byUnit[current.Id] = current with { State = nextState };
+                    firedActives[current.Id] = active;
+                }
+            }
+            var attackers = besiegers.Select(u => BuildAttacker(byUnit[u.Id], city, activeByUnit[u.Id])).ToList();
             var outcome = _resolver.ResolveSiege(attackers, castle);
 
             cityById[city.Id] = city with { Wall = outcome.NewWall };
@@ -126,7 +140,8 @@ public sealed class CampaignSiege
             cities.Select(c => cityById[c.Id]).ToList(),
             garr.Where(g => g.Troops > 0).ToList(),
             wounded.Where(w => w.Troops > 0).ToList(),
-            exchanges);
+            exchanges,
+            firedActives);
     }
 
     // 수비 병력 손실을 병종별 대기 병력에 병력 비례로 분배한다(잔여는 병종 코드 순 1씩 — 결정론).
@@ -169,9 +184,10 @@ public sealed class CampaignSiege
         garr.RemoveAll(g => g.Troops <= 0);
     }
 
-    private SiegeAttacker BuildAttacker(CombatUnit u, City city)
+    private SiegeAttacker BuildAttacker(CombatUnit u, City city, ActiveSkill? active = null)
     {
         var inCounterRange = CastleFootprint.TilesFor(city).Min(tile => tile.Distance(u.Field.Position)) <= 1;
+        var activeDamagePercent = active is { BuildingOnly: true } ? active.DamageMultPercent : 100;
         if (u.IsSupply)
         {
             var minBuildingAttack = Math.Max(1, _troops.Values.Min(t => t.AtkBuilding));
@@ -184,7 +200,8 @@ public sealed class CampaignSiege
                 u.Stats.AptitudePercent,
                 100,
                 100,
-                inCounterRange);
+                inCounterRange,
+                activeDamagePercent);
         }
 
         if (u.IsArmyGroup)
@@ -197,7 +214,8 @@ public sealed class CampaignSiege
                 u.Stats.AptitudePercent,
                 100,
                 100,
-                inCounterRange);
+                inCounterRange,
+                activeDamagePercent);
         }
 
         var template = _troops[u.TroopCode];
@@ -210,6 +228,7 @@ public sealed class CampaignSiege
             u.Stats.AptitudePercent,
             u.Stats.AtkBonusPercent,
             u.Stats.DfBonusPercent,
-            inCounterRange);
+            inCounterRange,
+            activeDamagePercent);
     }
 }

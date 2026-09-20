@@ -78,9 +78,20 @@ public class ActiveSkillTests
     [Fact]
     public void 분쇄_유닛대상이면_평타로_보류()
     {
-        // 건물 아님 → 배수 200 무시하고 평타(760)
+        // 건물 아님 → 배수 180 무시하고 평타(760)
         var dmg = Resolver.StrikeDamage(SwordA(), SwordA(), A["crush"], might: 60, targetIsBuilding: false);
         Assert.Equal(760, dmg);
+    }
+
+    [Fact]
+    public void 돌파_기병이면_1_6배_그외에는_1_3배()
+    {
+        var normal = Resolver.StrikeDamage(SwordA(), SwordA(), A["breakthrough"], might: 60,
+            attackerClass: TroopClass.Infantry);
+        var cavalry = Resolver.StrikeDamage(SwordA(), SwordA(), A["breakthrough"], might: 60,
+            attackerClass: TroopClass.Cavalry);
+        Assert.Equal(988, normal);
+        Assert.Equal(1216, cavalry);
     }
 
     [Fact]

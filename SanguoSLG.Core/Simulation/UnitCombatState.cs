@@ -92,6 +92,16 @@ public sealed record UnitCombatState(
         return (null, this);
     }
 
+    /// <summary>성·항구 공격에서 준비된 건물 전용 타격 액티브만 소비한다.</summary>
+    public (ActiveSkill? Skill, UnitCombatState State) FiringBuildingActive()
+    {
+        if (VanguardActive is { Type: ActiveType.Strike, BuildingOnly: true } && VanguardGauge.IsReady)
+            return (VanguardActive, this with { VanguardGauge = VanguardGauge.Fire() });
+        if (AdjutantActive is { Type: ActiveType.Strike, BuildingOnly: true } && AdjutantGauge.IsReady)
+            return (AdjutantActive, this with { AdjutantGauge = AdjutantGauge.Fire() });
+        return (null, this);
+    }
+
     /// <summary>5일 충전된 책략형 액티브만 선봉 우선으로 소비한다. 유효 대상이 없을 때는 호출하지 않는다.</summary>
     public (ActiveSkill? Skill, UnitCombatState State) FiringTactic()
     {

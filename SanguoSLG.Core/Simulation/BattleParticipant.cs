@@ -27,4 +27,5 @@ public sealed record BattleParticipant(
     ActiveSkill? DefenseActive = null,
     ActiveSkill? HealActive = null,
     bool TargetIsBuilding = false,
-    int OutgoingDamagePercent = 100);
+    int OutgoingDamagePercent = 100,
+    Domain.TroopClass Class = Domain.TroopClass.Infantry);

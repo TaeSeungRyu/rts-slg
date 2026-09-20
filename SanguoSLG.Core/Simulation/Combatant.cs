@@ -21,4 +21,5 @@ public sealed record Combatant(
     ActiveSkill? StrikeActive = null,
     ActiveSkill? DefenseActive = null,
     ActiveSkill? HealActive = null,
-    bool TargetIsBuilding = false);
+    bool TargetIsBuilding = false,
+    Domain.TroopClass Class = Domain.TroopClass.Infantry);

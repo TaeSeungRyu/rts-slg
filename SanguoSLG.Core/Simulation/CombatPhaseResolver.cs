@@ -58,7 +58,8 @@ public sealed class CombatPhaseResolver
 
                 // 타격 액티브는 주대상 공격을 대체한다(부차 대상은 일반 60%).
                 var raw = i == 0 && attacker.StrikeActive is not null
-                    ? _resolver.StrikeDamage(attackStats[engagement.Attacker], attackStats[targetId], attacker.StrikeActive, attacker.Might, attacker.TargetIsBuilding)
+                    ? _resolver.StrikeDamage(attackStats[engagement.Attacker], attackStats[targetId], attacker.StrikeActive,
+                        attacker.Might, attacker.TargetIsBuilding, attacker.Class)
                     : _resolver.Damage(attackStats[engagement.Attacker], attackStats[targetId], primaryTarget: i == 0);
 
                 if (target.Mode == UnitMode.March)

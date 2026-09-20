@@ -73,6 +73,24 @@ public class CampaignSiegeTests
         Assert.True(r.Armies.Single().Pool.Active < 10000, "인접 공격 부대는 반격을 받는다");
     }
 
+    [Fact]
+    public void 준비된_분쇄는_공성에서_발동해_성벽피해를_1_8배하고_게이지를_소비한다()
+    {
+        var crush = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).Single(x => x.Code == "crush");
+        var normal = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0));
+        var readyState = UnitCombatState.Create(60, crush) with { VanguardGauge = new ActiveGauge(6) };
+        var ready = normal with { State = readyState };
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 6000);
+        var garr = new List<GarrisonForce> { new(new CityId(9), "swordsman", 10000, 60) };
+
+        var baseline = Siege().Resolve([normal], [city], garr);
+        var result = Siege().Resolve([ready], [city], garr);
+
+        Assert.Equal(baseline.Exchanges.Single().WallDamage * 180 / 100, result.Exchanges.Single().WallDamage);
+        Assert.Equal("crush", Assert.Single(result.FiredActives).Value.Code);
+        Assert.Equal(0, result.Armies.Single().State.VanguardGauge.ElapsedDays);
+    }
+
     [Theory]
     [InlineData(CastleSize.Medium, 5, 1, 6, 1)]
     [InlineData(CastleSize.Large, 6, 1, 7, 1)]

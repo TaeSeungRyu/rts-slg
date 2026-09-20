@@ -24,7 +24,8 @@ public sealed class ActiveSkillLoader
         return dtos.Select(d => new ActiveSkill(
             d.Code, d.Name, ParseType(d.Type), d.Grade,
             d.DamageMultPercent, d.DefenderDfReductionPercent, d.ExecutePercent, d.ExecuteCapPercent,
-            d.BuildingOnly, d.DamageReductionPercent, d.HealPercent, d.HealCapPercent, d.Description)).ToList();
+            d.BuildingOnly, d.DamageReductionPercent, d.HealPercent, d.HealCapPercent, d.Description,
+            d.CavalryDamageMultPercent)).ToList();
     }
 
     private static ActiveType ParseType(string name) => name switch
@@ -51,5 +52,6 @@ public sealed class ActiveSkillLoader
         public int HealPercent { get; init; }
         public int HealCapPercent { get; init; } = 40;
         public string Description { get; init; } = "";
+        public int CavalryDamageMultPercent { get; init; }
     }
 }

@@ -21,4 +21,5 @@ public sealed record SiegeAttacker(
     int AptitudePercent = 100,
     int AtkBonusPercent = 100,
     int DfBonusPercent = 100,
-    bool InCounterRange = true);
+    bool InCounterRange = true,
+    int ActiveDamagePercent = 100);

@@ -83,4 +83,19 @@ public class SiegeResolverTests
         // 붕괴 반격(단독이라 분할 share=1): 1만·10·95÷(1000·도검df 10) = 950
         Assert.Equal(950, r.CounterDamage[0]);
     }
+
+    [Fact]
+    public void 분쇄_1_8배는_성벽과_붕괴후수비병력에_모두_적용된다()
+    {
+        var normal = AttackerA("swordsman");
+        var crush = normal with { ActiveDamagePercent = 180 };
+
+        var wallNormal = Resolver.ResolveSiege([normal], new CastleState(6000, 10000, AptitudePercent: 95));
+        var wallCrush = Resolver.ResolveSiege([crush], new CastleState(6000, 10000, AptitudePercent: 95));
+        Assert.Equal(wallNormal.WallDamage * 180 / 100, wallCrush.WallDamage);
+
+        var collapsedNormal = Resolver.ResolveSiege([normal], new CastleState(0, 10000, AptitudePercent: 95));
+        var collapsedCrush = Resolver.ResolveSiege([crush], new CastleState(0, 10000, AptitudePercent: 95));
+        Assert.Equal(collapsedNormal.TroopDamage * 180 / 100, collapsedCrush.TroopDamage);
+    }
 }
