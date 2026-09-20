@@ -60,6 +60,7 @@
 | 16 | 액티브 스킬 준비 효과 | `SkillCharge` | Blender 애니메이션 | 유닛 | O | `effect-skill-charge.glb` — 금빛 이중 룬과 5개 광점이 회전·맥동한다. `ActiveSkillChargeView3D`가 1~5일차 준비 중 시전자 위에 표시하고 6일차 발동 순간 `Burst`와 함께 확대 소멸한다(2026-09-19) |
 | 17 | 포화 붉은 구름 폭발 | `PeerlessCloud` | Blender 애니메이션 | 유닛 | O | `effect-peerless-red-cloud.glb` — 진홍·주홍·암적색 구름 덩어리가 명중점에서 빠르게 부풀고 흩어진다. `ActiveSkillPresentation` 공용 라우터로 검수장과 캠페인 `포화` 대상에 1회 재생한다(2026-09-21, 기존 무쌍 연출 이관) |
 | 18 | 돌파 관통 돌진 | `BreakthroughSmoke` | 노드·파티클 | 유닛 | O | 시전자 부대가 회색 연기 방출기 3개를 몸에 두르고 적 편대 중앙에서 0.48만큼 더 전진해 일직선으로 관통한 뒤 원래 위치로 복귀한다. 검수장과 캠페인이 `ActiveSkillPresentation.ShowBreakthrough`를 공유한다(2026-09-21) |
+| 19 | 맹호격 대호 덮치기 | `TigerStrike` | 모델·노드 | 유닛 | O | 기존 `troop-great-tiger.glb` 대호가 명중점 측면에서 나타나 몸을 낮추고 적 편대 중앙을 덮친 뒤 전방으로 빠져나가며 축소 소멸한다. 검수장과 캠페인이 `ActiveSkillPresentation`을 공유한다(2026-09-21) |
 
 ### 적용 대상 제약
 

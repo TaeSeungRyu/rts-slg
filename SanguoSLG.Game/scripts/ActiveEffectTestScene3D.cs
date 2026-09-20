@@ -76,7 +76,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestbreakthroughqa"))
+        if (args.Contains("--activeeffecttesttigerstrikeqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "tiger_strike");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunTigerStrikeQa);
+        }
+        else if (args.Contains("--activeeffecttestbreakthroughqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
                 .First(i => _skillSelect.GetItemMetadata(i).AsString() == "breakthrough");
@@ -517,7 +525,8 @@ public partial class ActiveEffectTestScene3D : Node3D
         var count = 0;
         var targets = fired.Code == "fire_plot"
             ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)).ToList()
-            : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage" or "reap" or "breakthrough"
+            : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage" or "reap"
+                or "breakthrough" or "tiger_strike"
                 ? beforeUnits.Values.Where(x => x.Field.Owner.Value == 2
                     && (turn.Combat?.DamageTaken.GetValueOrDefault(x.Id) ?? 0) > 0)
                     .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
@@ -684,6 +693,26 @@ public partial class ActiveEffectTestScene3D : Node3D
                 && caster.GlobalPosition.DistanceTo(caster.LastBreakthroughOrigin) < 0.01f;
             GD.Print($"[breakthroughqa] started={started} distance={caster?.LastBreakthroughDistance:F2} returned={returned} smoke=3");
             GetTree().Quit(started && returned ? 0 : 1);
+        };
+    }
+
+    private void RunTigerStrikeQa()
+    {
+        AdvanceSevenDays();
+        var tiger = FindChildren("*", "", true, false).OfType<TigerStrikeEffectView3D>().FirstOrDefault();
+        var spawned = tiger is not null && tiger.HasTigerModel && tiger.AttackTravelDistance >= 1f
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var impactTimer = GetTree().CreateTimer(0.94);
+        impactTimer.Timeout += () =>
+        {
+            var attacked = IsInstanceValid(tiger) && tiger!.ReachedFormationCenter && tiger.AttackCompleted;
+            var cleanupTimer = GetTree().CreateTimer(0.30);
+            cleanupTimer.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(tiger) || tiger!.IsQueuedForDeletion();
+                GD.Print($"[tigerstrikeqa] spawned={spawned} attacked={attacked} removed={removed} distance={tiger?.AttackTravelDistance:F2}");
+                GetTree().Quit(spawned && attacked && removed ? 0 : 1);
+            };
         };
     }
 

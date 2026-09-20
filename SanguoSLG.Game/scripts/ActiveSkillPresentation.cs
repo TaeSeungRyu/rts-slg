@@ -46,6 +46,11 @@ public static class ActiveSkillPresentation
             EffectView.Attach(target, EffectKind.Shatter, 1f, loop: false);
             return true;
         }
+        if (skill.Code == "tiger_strike")
+        {
+            target.AddChild(new TigerStrikeEffectView3D());
+            return true;
+        }
         if (skill.Code == "one_man_army")
         {
             target.AddChild(new OneManArmySwordEffectView3D());
