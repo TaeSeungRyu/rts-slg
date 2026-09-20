@@ -75,7 +75,18 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestadjutantpresentqa"))
+        if (args.Contains("--activeeffecttestlethaladjutantqa"))
+        {
+            var vanguardIndex = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "iron_wall");
+            var adjutantIndex = Enumerable.Range(0, _adjutantSkillSelect.ItemCount)
+                .First(i => _adjutantSkillSelect.GetItemMetadata(i).AsString() == "one_man_army");
+            _skillSelect.Select(vanguardIndex);
+            _adjutantSkillSelect.Select(adjutantIndex);
+            ResetScenario();
+            CallDeferred(MethodName.RunLethalAdjutantEffectQa);
+        }
+        else if (args.Contains("--activeeffecttestadjutantpresentqa"))
         {
             var index = Enumerable.Range(0, _adjutantSkillSelect.ItemCount)
                 .First(i => _adjutantSkillSelect.GetItemMetadata(i).AsString() == "peerless");
@@ -354,12 +365,14 @@ public partial class ActiveEffectTestScene3D : Node3D
     {
         if (_units.All(x => x.Field.Owner.Value != 1) || _units.All(x => x.Field.Owner.Value != 2)) return null;
         _round++;
+        var beforeUnits = _units.ToDictionary(x => x.Id);
         var before = _units.ToDictionary(x => x.Id, x => x.Pool.Active);
         var turn = _orchestrator.Run(_units, maxDays: 1);
         _units = turn.Units.ToList();
 
         foreach (var (uid, dealt) in turn.Combat?.DamageDealt ?? new Dictionary<UnitId, int>())
             if (dealt > 0 && _tokens.TryGetValue(uid.Value, out var attacker)) attacker.PlayAttackMotion();
+        _lastEffectCount += PlaySkillEffects(turn, beforeUnits);
         RefreshTokens();
         if (_gauges.TryGetValue(AllyId, out var allyGauge)
             && allyGauge.FilledSegments == ActiveGauge.ReadyDays
@@ -390,7 +403,6 @@ public partial class ActiveEffectTestScene3D : Node3D
             _chargeView?.Complete();
             _chargeView = null;
         }
-        _lastEffectCount += PlaySkillEffects(turn);
         return turn;
     }
 
@@ -420,7 +432,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         }
     }
 
-    private int PlaySkillEffects(AdvanceTurn turn)
+    private int PlaySkillEffects(AdvanceTurn turn, IReadOnlyDictionary<UnitId, CombatUnit> beforeUnits)
     {
         if (!turn.FiredActives.TryGetValue(new UnitId(AllyId), out var fired))
         {
@@ -431,15 +443,28 @@ public partial class ActiveEffectTestScene3D : Node3D
         var targets = fired.Code == "fire_plot"
             ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)).ToList()
             : fired.Code is "peerless" or "one_man_army"
-                ? _units.Where(x => x.Field.Owner.Value == 2
+                ? beforeUnits.Values.Where(x => x.Field.Owner.Value == 2
                     && (turn.Combat?.DamageTaken.GetValueOrDefault(x.Id) ?? 0) > 0)
-                    .OrderBy(x => x.Field.Position.Distance(_units.First(a => a.Id.Value == AllyId).Field.Position))
+                    .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
                     .Take(1).ToList()
                 : [];
         foreach (var target in targets)
         {
             if (!_tokens.TryGetValue(target.Id.Value, out var token)) continue;
-            if (ActiveSkillPresentation.AttachEffect(token, fired)) count++;
+            Node3D effectTarget = token;
+            if (_units.All(x => x.Id != target.Id))
+            {
+                // 전멸 토큰은 곧 제거되므로 마지막 위치에 독립 앵커를 남겨 명중 효과의 수명을 보장한다.
+                var anchor = new Node3D { Name = "LethalSkillEffectAnchor" };
+                AddChild(anchor);
+                anchor.GlobalPosition = token.GlobalPosition;
+                var cleanup = new Godot.Timer { OneShot = true, WaitTime = 2.1 };
+                anchor.AddChild(cleanup);
+                cleanup.Timeout += anchor.QueueFree;
+                cleanup.Start();
+                effectTarget = anchor;
+            }
+            if (ActiveSkillPresentation.AttachEffect(effectTarget, fired)) count++;
         }
         if (count > 0) AppendLog($"{fired.Name} 연출: 적군 {count}부대에 전용 효과 표시");
         return count;
@@ -587,6 +612,32 @@ public partial class ActiveEffectTestScene3D : Node3D
             GD.Print($"[activeeffecttestadjutantpresentqa] passed={passed} fired={string.Join(",", _allyFiredSkillCodes)} activeTurns={_extendedActiveTurns} chains={_compressedAdjutantChains} chainDelay={AdjutantChainDelaySeconds:F2}");
             GetTree().Quit(passed ? 0 : 1);
         };
+    }
+
+    private void RunLethalAdjutantEffectQa()
+    {
+        BeginAdvanceBatch();
+        for (var day = 1; day <= 6; day++)
+        {
+            if (AdvanceOneDay(day) is null) break;
+        }
+
+        var enemiesBefore = _units.Where(x => x.Field.Owner.Value == 2).Select(x => x.Id).ToHashSet();
+        _units = _units.Select(x => x.Field.Owner.Value == 2
+            ? x with { Pool = x.Pool with { Active = 1 } }
+            : x).ToList();
+        var turn = AdvanceOneDay(7);
+        var enemiesAfter = _units.Where(x => x.Field.Owner.Value == 2).Select(x => x.Id).ToHashSet();
+        var anchor = FindChild("LethalSkillEffectAnchor", true, false);
+        var passed = turn is not null
+            && turn.FiredActives.TryGetValue(new UnitId(AllyId), out var fired)
+            && fired.Code == "one_man_army"
+            && enemiesBefore.Except(enemiesAfter).Any()
+            && anchor is not null
+            && anchor.FindChildren("*", "", true, false).OfType<OneManArmySwordEffectView3D>().Any()
+            && _lastEffectCount > 0;
+        GD.Print($"[activeeffecttestlethaladjutantqa] passed={passed} before={enemiesBefore.Count} after={enemiesAfter.Count} effectCount={_lastEffectCount} anchor={anchor is not null}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     private void RunResetQa()
