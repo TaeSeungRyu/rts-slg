@@ -34,6 +34,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new OneManArmySwordEffectView3D());
             return true;
         }
+        if (skill.Code == "flash")
+        {
+            target.AddChild(new FlashSlashEffectView3D());
+            return true;
+        }
         return false;
     }
 
