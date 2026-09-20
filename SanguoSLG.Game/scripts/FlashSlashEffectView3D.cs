@@ -7,12 +7,16 @@ namespace SanguoSLG.Game;
 public sealed partial class FlashSlashEffectView3D : Node3D
 {
     public int SlashCount { get; private set; }
+    public bool HasCrescentBlade { get; private set; }
+    public int SparkCount { get; private set; }
 
     public override void _Ready()
     {
         var visual = GD.Load<PackedScene>("res://assets/models/effect-flash-slash.glb").Instantiate<Node3D>();
         AddChild(visual);
         SlashCount = visual.FindChildren("FlashSlash_*", "", true, false).Count;
+        HasCrescentBlade = visual.FindChild("FlashSlash_MainCrescent", true, false) is not null;
+        SparkCount = visual.FindChildren("FlashSlash_Spark_*", "", true, false).Count;
         foreach (var player in FindPlayers(visual))
         {
             var animation = player.GetAnimationList().FirstOrDefault(x => x != "RESET");
