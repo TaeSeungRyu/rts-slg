@@ -597,7 +597,7 @@ public partial class ActiveEffectTestScene3D : Node3D
                 .OfType<OneManArmySwordEffectView3D>().Any(x => x.SwordCount == 3 && x.AnimationClipCount >= 3);
         var flashPassed = expectedSkill != "flash"
             || FindChildren("*", "", true, false).OfType<FlashSlashEffectView3D>()
-                .Any(x => x.SlashCount >= 8 && x.HasCrescentBlade && x.SparkCount == 4);
+                .Any(x => x.SlashCount >= 8 && x.HasCrescentBlade && x.SparkCount == 4 && x.FadeDuration >= 0.5f);
         var gaugePassed = _gauges.TryGetValue(AllyId, out var battleGauge)
             && battleGauge.SkillCode == expectedSkill && battleGauge.FilledSegments == 1
             && battleGauge.HasSpacedHorizontalLayout;
