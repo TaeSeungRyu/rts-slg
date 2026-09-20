@@ -67,6 +67,15 @@ public static class ActiveSkillPresentation
             target.AddChild(new FlashSlashEffectView3D());
             return true;
         }
+        if (skill.Code == "crush")
+        {
+            var parent = target.GetParent();
+            if (parent is null) return false;
+            var effect = new CrushShieldBreakEffectView3D();
+            parent.AddChild(effect);
+            effect.GlobalPosition = target.GlobalPosition;
+            return true;
+        }
         return false;
     }
 

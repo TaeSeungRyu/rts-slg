@@ -61,6 +61,7 @@
 | 17 | 포화 붉은 구름 폭발 | `PeerlessCloud` | Blender 애니메이션 | 유닛 | O | `effect-peerless-red-cloud.glb` — 진홍·주홍·암적색 구름 덩어리가 명중점에서 빠르게 부풀고 흩어진다. `ActiveSkillPresentation` 공용 라우터로 검수장과 캠페인 `포화` 대상에 1회 재생한다(2026-09-21, 기존 무쌍 연출 이관) |
 | 18 | 돌파 관통 돌진 | `BreakthroughSmoke` | 노드·파티클 | 유닛 | O | 시전자 부대가 회색 연기 방출기 3개를 몸에 두르고 적 편대 중앙에서 0.48만큼 더 전진해 일직선으로 관통한 뒤 원래 위치로 복귀한다. 검수장과 캠페인이 `ActiveSkillPresentation.ShowBreakthrough`를 공유한다(2026-09-21) |
 | 19 | 맹호격 대호 무리 | `TigerStrike` | 모델·노드 | 유닛 | O | 작은 `troop-great-tiger.glb` 대호 4마리가 공격자에서 적군으로 향하는 실제 방향을 기준으로 나란히 시간차 돌진해 편대 중앙을 덮친 뒤 전방으로 빠져나가며 소멸한다. 검수장과 캠페인이 `ActiveSkillPresentation.ShowTigerStrike`를 공유한다(2026-09-21) |
+| 20 | 분쇄 방패 파괴 | `CrushShieldBreak` | 노드 | 유닛 | O | 적 편대 중앙에 3×3 금속 정사각 방패가 순간 형성되고, 충격과 함께 9개 조각이 회전하며 바깥으로 튕겨 나가 축소 소멸한다. 부대 소멸과 무관한 독립 월드 효과로 재생한다(2026-09-21) |
 
 ### 적용 대상 제약
 

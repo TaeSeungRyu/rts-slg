@@ -76,7 +76,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttesttigerstrikeqa"))
+        if (args.Contains("--activeeffecttestcrushqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "crush");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunCrushQa);
+        }
+        else if (args.Contains("--activeeffecttesttigerstrikeqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
                 .First(i => _skillSelect.GetItemMetadata(i).AsString() == "tiger_strike");
@@ -526,7 +534,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var targets = fired.Code == "fire_plot"
             ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)).ToList()
             : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage" or "reap"
-                or "breakthrough" or "tiger_strike"
+                or "breakthrough" or "tiger_strike" or "crush"
                 ? beforeUnits.Values.Where(x => x.Field.Owner.Value == 2
                     && (turn.Combat?.DamageTaken.GetValueOrDefault(x.Id) ?? 0) > 0)
                     .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
@@ -726,6 +734,26 @@ public partial class ActiveEffectTestScene3D : Node3D
                 var removed = !IsInstanceValid(tiger) || tiger!.IsQueuedForDeletion();
                 GD.Print($"[tigerstrikeqa] spawned={spawned} tigers={tiger?.TigerCount} direction={tiger?.AttackDirection} attacked={attacked} removed={removed} distance={tiger?.AttackTravelDistance:F2}");
                 GetTree().Quit(spawned && attacked && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunCrushQa()
+    {
+        AdvanceSevenDays();
+        var shield = FindChildren("*", "", true, false).OfType<CrushShieldBreakEffectView3D>().FirstOrDefault();
+        var spawned = shield is not null && shield.FragmentCount == 9 && shield.MaxScatterDistance >= 0.44f
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var impactTimer = GetTree().CreateTimer(1.00);
+        impactTimer.Timeout += () =>
+        {
+            var shattered = IsInstanceValid(shield) && shield!.ShieldAppeared && shield.ShatterCompleted;
+            var cleanupTimer = GetTree().CreateTimer(0.30);
+            cleanupTimer.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(shield) || shield!.IsQueuedForDeletion();
+                GD.Print($"[crushqa] spawned={spawned} fragments={shield?.FragmentCount} shattered={shattered} removed={removed} scatter={shield?.MaxScatterDistance:F2}");
+                GetTree().Quit(spawned && shattered && removed ? 0 : 1);
             };
         };
     }
