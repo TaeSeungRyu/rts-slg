@@ -76,7 +76,18 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttesttwopresentationqa"))
+        if (args.Contains("--activeeffecttesteffectsurvivesdeathqa"))
+        {
+            var vanguardIndex = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "one_man_army");
+            var adjutantIndex = Enumerable.Range(0, _adjutantSkillSelect.ItemCount)
+                .First(i => _adjutantSkillSelect.GetItemMetadata(i).AsString() == "peerless");
+            _skillSelect.Select(vanguardIndex);
+            _adjutantSkillSelect.Select(adjutantIndex);
+            ResetScenario();
+            CallDeferred(MethodName.RunEffectSurvivesDeathQa);
+        }
+        else if (args.Contains("--activeeffecttesttwopresentationqa"))
         {
             var vanguardIndex = Enumerable.Range(0, _skillSelect.ItemCount)
                 .First(i => _skillSelect.GetItemMetadata(i).AsString() == "one_man_army");
@@ -483,20 +494,20 @@ public partial class ActiveEffectTestScene3D : Node3D
         foreach (var target in targets)
         {
             if (!_tokens.TryGetValue(target.Id.Value, out var token)) continue;
-            Node3D effectTarget = token;
-            if (_units.All(x => x.Id != target.Id))
-            {
-                // 전멸 토큰은 곧 제거되므로 마지막 위치에 독립 앵커를 남겨 명중 효과의 수명을 보장한다.
-                var anchor = new Node3D { Name = "LethalSkillEffectAnchor" };
-                AddChild(anchor);
-                anchor.GlobalPosition = token.GlobalPosition;
-                var cleanup = new Godot.Timer { OneShot = true, WaitTime = 2.1 };
-                anchor.AddChild(cleanup);
-                cleanup.Timeout += anchor.QueueFree;
-                cleanup.Start();
-                effectTarget = anchor;
-            }
-            if (ActiveSkillPresentation.AttachEffect(effectTarget, fired)) count++;
+            // 효과를 부대 토큰의 자식으로 붙이면 다음 연계 스킬로 토큰이 전멸할 때 재생 중 효과도
+            // 함께 제거된다. 생존 여부와 무관하게 처음부터 마지막 명중 위치의 독립 앵커에 붙인다.
+            var deadOnThisHit = _units.All(x => x.Id != target.Id);
+            var anchor = new Node3D { Name = deadOnThisHit ? "LethalSkillEffectAnchor" : "ActiveSkillEffectAnchor" };
+            anchor.SetMeta("target_unit_id", target.Id.Value);
+            anchor.SetMeta("skill_code", fired.Code);
+            anchor.SetMeta("advance_count", _advanceCount);
+            AddChild(anchor);
+            anchor.GlobalPosition = token.GlobalPosition;
+            var cleanup = new Godot.Timer { OneShot = true, WaitTime = 2.3 };
+            anchor.AddChild(cleanup);
+            cleanup.Timeout += anchor.QueueFree;
+            cleanup.Start();
+            if (ActiveSkillPresentation.AttachEffect(anchor, fired)) count++;
         }
         if (count > 0) AppendLog($"{fired.Name} 연출: 적군 {count}부대에 전용 효과 표시");
         return count;
@@ -741,6 +752,31 @@ public partial class ActiveEffectTestScene3D : Node3D
                 GetTree().Quit(passed ? 0 : 1);
             };
         };
+    }
+
+    private void RunEffectSurvivesDeathQa()
+    {
+        AdvanceSevenDays();
+        var anchor = FindChildren("*", "", true, false)
+            .OfType<Node3D>()
+            .LastOrDefault(x => x.HasMeta("skill_code") && x.GetMeta("skill_code").AsString() == "one_man_army");
+        var targetId = anchor?.GetMeta("target_unit_id").AsInt32() ?? -1;
+        var tokenRemovedForQa = false;
+        if (targetId > 0 && _tokens.TryGetValue(targetId, out var token))
+        {
+            token.Visible = false;
+            token.QueueFree();
+            tokenRemovedForQa = true;
+        }
+
+        var swordEffect = anchor?.FindChildren("*", "", true, false)
+            .OfType<OneManArmySwordEffectView3D>().FirstOrDefault();
+        var effectStillAlive = GodotObject.IsInstanceValid(anchor) && !anchor!.IsQueuedForDeletion()
+            && GodotObject.IsInstanceValid(swordEffect) && !swordEffect!.IsQueuedForDeletion();
+        var independentFromToken = anchor?.GetParent() == this && swordEffect?.GetParent() == anchor;
+        var passed = targetId > 0 && tokenRemovedForQa && effectStillAlive && independentFromToken;
+        GD.Print($"[activeeffecttesteffectsurvivesdeathqa] passed={passed} target={targetId} tokenRemoved={tokenRemovedForQa} firstEffectAlive={effectStillAlive} independent={independentFromToken}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     private void RunResetQa()
