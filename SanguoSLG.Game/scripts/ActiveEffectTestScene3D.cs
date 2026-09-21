@@ -76,7 +76,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestchainstrikeqa"))
+        if (args.Contains("--activeeffecttestarmorbreakqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "armor_break");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunArmorBreakQa);
+        }
+        else if (args.Contains("--activeeffecttestchainstrikeqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
                 .First(i => _skillSelect.GetItemMetadata(i).AsString() == "chain_strike");
@@ -542,7 +550,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var targets = fired.Code == "fire_plot"
             ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)).ToList()
             : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage" or "reap"
-                or "breakthrough" or "tiger_strike" or "chain_strike" or "crush"
+                or "breakthrough" or "tiger_strike" or "chain_strike" or "armor_break" or "crush"
                 ? beforeUnits.Values.Where(x => x.Field.Owner.Value == 2
                     && (turn.Combat?.DamageTaken.GetValueOrDefault(x.Id) ?? 0) > 0)
                     .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
@@ -782,6 +790,26 @@ public partial class ActiveEffectTestScene3D : Node3D
                 var removed = !IsInstanceValid(swords) || swords!.IsQueuedForDeletion();
                 GD.Print($"[chainstrikeqa] spawned={spawned} slashes={swords?.SlashCount} crossed={crossed} removed={removed} span={swords?.SlashSpan:F2}");
                 GetTree().Quit(spawned && crossed && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunArmorBreakQa()
+    {
+        AdvanceSevenDays();
+        var armor = FindChildren("*", "", true, false).OfType<ArmorBreakEffectView3D>().FirstOrDefault();
+        var spawned = armor is not null && armor.FragmentCount == 6 && armor.MaxScatterDistance >= 0.45f
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var breakTimer = GetTree().CreateTimer(0.96);
+        breakTimer.Timeout += () =>
+        {
+            var broken = IsInstanceValid(armor) && armor!.ArmorAppeared && armor.BreakCompleted;
+            var cleanupTimer = GetTree().CreateTimer(0.36);
+            cleanupTimer.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(armor) || armor!.IsQueuedForDeletion();
+                GD.Print($"[armorbreakqa] spawned={spawned} fragments={armor?.FragmentCount} broken={broken} removed={removed} scatter={armor?.MaxScatterDistance:F2}");
+                GetTree().Quit(spawned && broken && removed ? 0 : 1);
             };
         };
     }

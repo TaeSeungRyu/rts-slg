@@ -72,6 +72,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new ChainStrikeSwordEffectView3D());
             return true;
         }
+        if (skill.Code == "armor_break")
+        {
+            target.AddChild(new ArmorBreakEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();
