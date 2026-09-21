@@ -76,7 +76,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestcrushqa"))
+        if (args.Contains("--activeeffecttestchainstrikeqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "chain_strike");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunChainStrikeQa);
+        }
+        else if (args.Contains("--activeeffecttestcrushqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
                 .First(i => _skillSelect.GetItemMetadata(i).AsString() == "crush");
@@ -754,6 +762,26 @@ public partial class ActiveEffectTestScene3D : Node3D
                 var removed = !IsInstanceValid(shield) || shield!.IsQueuedForDeletion();
                 GD.Print($"[crushqa] spawned={spawned} fragments={shield?.FragmentCount} shattered={shattered} removed={removed} scatter={shield?.MaxScatterDistance:F2}");
                 GetTree().Quit(spawned && shattered && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunChainStrikeQa()
+    {
+        AdvanceSevenDays();
+        var swords = FindChildren("*", "", true, false).OfType<ChainStrikeSwordEffectView3D>().FirstOrDefault();
+        var spawned = swords is not null && swords.SlashCount == 2 && swords.SlashSpan >= 1.3f
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var motionTimer = GetTree().CreateTimer(0.78);
+        motionTimer.Timeout += () =>
+        {
+            var crossed = IsInstanceValid(swords) && swords!.CompletedSlashCount == 2;
+            var cleanupTimer = GetTree().CreateTimer(0.42);
+            cleanupTimer.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(swords) || swords!.IsQueuedForDeletion();
+                GD.Print($"[chainstrikeqa] spawned={spawned} slashes={swords?.SlashCount} crossed={crossed} removed={removed} span={swords?.SlashSpan:F2}");
+                GetTree().Quit(spawned && crossed && removed ? 0 : 1);
             };
         };
     }

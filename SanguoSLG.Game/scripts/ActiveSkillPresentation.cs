@@ -67,6 +67,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new FlashSlashEffectView3D());
             return true;
         }
+        if (skill.Code == "chain_strike")
+        {
+            target.AddChild(new ChainStrikeSwordEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();
