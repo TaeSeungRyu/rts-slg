@@ -542,7 +542,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var targets = fired.Code == "fire_plot"
             ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)).ToList()
             : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage" or "reap"
-                or "breakthrough" or "tiger_strike" or "crush"
+                or "breakthrough" or "tiger_strike" or "chain_strike" or "crush"
                 ? beforeUnits.Values.Where(x => x.Field.Owner.Value == 2
                     && (turn.Combat?.DamageTaken.GetValueOrDefault(x.Id) ?? 0) > 0)
                     .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
