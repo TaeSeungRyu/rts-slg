@@ -10,12 +10,12 @@ using SanguoSLG.Core.Domain;
 /// </summary>
 public static class CombatPhase
 {
-    /// <summary>정지 시점 위치에서 발동하는 교전 목록(공격자 UnitId 오름차순).</summary>
+    /// <summary>정지 시점 위치에서 발동하는 교전 목록(공격 명령 순번, 동률이면 UnitId 오름차순).</summary>
     public static IReadOnlyList<UnitEngagement> DetectEngagements(IReadOnlyList<FieldUnit> units)
     {
         var result = new List<UnitEngagement>();
 
-        foreach (var attacker in units.OrderBy(u => u.Id.Value))
+        foreach (var attacker in units.OrderBy(u => u.CommandOrder).ThenBy(u => u.Id.Value))
         {
             // 행군모드는 공격하지 않는다(전진·공격모드만 교전 개시).
             if (attacker.Mode == UnitMode.March)

@@ -190,13 +190,26 @@ public sealed class AdvanceOrchestrator
 
         // 4) 교전 참가 부대마다 액티브 발동(선봉 우선)을 정하고 BattleParticipant를 만든다.
         var participants = new Dictionary<UnitId, BattleParticipant>();
-        foreach (var id in participating)
+        // 방어형은 공격·계략형보다 먼저 확정한다. 이후 공격형은 최초 공격 명령 순서대로 고른다.
+        var defenseSkills = new Dictionary<UnitId, ActiveSkill>();
+        foreach (var id in participating.OrderBy(id => state[id].Field.CommandOrder).ThenBy(id => id.Value))
+        {
+            var u = state[id];
+            if (u.IsArmyGroup || dazedAtStart.Contains(id) || IsDazed(u)) continue;
+            var (defense, defendedState) = u.State.FiringDefenseActive();
+            if (defense is null) continue;
+            defenseSkills[id] = defense;
+            firedActives[id] = defense;
+            state[id] = u with { State = defendedState };
+        }
+
+        foreach (var id in participating.OrderBy(id => state[id].Field.CommandOrder).ThenBy(id => id.Value))
         {
             var u = state[id];
             // 행동불가(혼란)면 액티브도 못 쓴다(피격·방어는 정상).
             var (skill, newState) = u.IsArmyGroup || dazedAtStart.Contains(id) || IsDazed(u)
                 ? ((ActiveSkill?)null, u.State)
-                : u.State.FiringActive();
+                : defenseSkills.ContainsKey(id) ? ((ActiveSkill?)null, u.State) : u.State.FiringActive();
 
             // 타격 액티브는 공격자만 쓴다(방어자만이면 보류·게이지 유지).
             if (skill?.Type == ActiveType.Strike && !attackers.Contains(id))
@@ -220,7 +233,7 @@ public sealed class AdvanceOrchestrator
                 u.Intellect,
                 u.MaxTroops,
                 StrikeActive: skill?.Type == ActiveType.Strike ? skill : null,
-                DefenseActive: skill?.Type == ActiveType.Defense ? skill : null,
+                DefenseActive: defenseSkills.GetValueOrDefault(id),
                 HealActive: skill?.Type == ActiveType.Heal ? skill : null,
                 OutgoingDamagePercent: outgoing,
                 Class: u.Class);
@@ -350,7 +363,10 @@ public sealed class AdvanceOrchestrator
     private void FireTacticActives(Dictionary<UnitId, CombatUnit> state,
         Dictionary<UnitId, ActiveSkill> fired, Dictionary<UnitId, int> damage)
     {
-        foreach (var casterId in state.Keys.OrderBy(id => id.Value).ToList())
+        // 공격형과 같은 우선순위: 먼저 내려진 공격 명령 순서, 동률이면 UnitId 순서.
+        foreach (var casterId in state.Keys
+                     .OrderBy(id => state[id].Field.CommandOrder)
+                     .ThenBy(id => id.Value).ToList())
         {
             var caster = state[casterId];
             if (caster.IsArmyGroup || IsDazed(caster))

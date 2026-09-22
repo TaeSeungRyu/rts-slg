@@ -2494,20 +2494,27 @@ public sealed partial class CampaignMapScene : Node3D
             var atkTime = ((stopDay - 1) * DaySeconds) + MoveSeconds + 0.15; // 그날 이동(≤1.5초)이 끝난 뒤
             ScheduleAttackMotions(turn, atkTime, unitSnapshot);
 
-            foreach (var (casterId, skill) in turn.FiredActives.OrderBy(x => x.Key.Value))
+            var orderedActives = turn.FiredActives
+                .OrderBy(x => x.Value.Type == ActiveType.Defense ? 0 : 1)
+                .ThenBy(x => turn.Units.FirstOrDefault(u => u.Id == x.Key)?.Field.CommandOrder ?? int.MaxValue)
+                .ThenBy(x => x.Key.Value)
+                .ToList();
+            for (var activeIndex = 0; activeIndex < orderedActives.Count; activeIndex++)
             {
-                _animActives.Add((atkTime + 0.02, casterId.Value, skill));
+                var (casterId, skill) = orderedActives[activeIndex];
+                var activeTime = atkTime + 0.02 + activeIndex * 0.2;
+                _animActives.Add((activeTime, casterId.Value, skill));
                 var caster = turn.Units.FirstOrDefault(x => x.Id == casterId)
                     ?? (unitSnapshot.TryGetValue(casterId.Value, out var previousCaster) ? previousCaster : null);
                 if (caster is not null && skill.Code == "fire_plot")
                 {
                     foreach (var target in turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
                         && x.State.Statuses.Any(s => s.IsFire)))
-                        _animSkillEffects.Add((atkTime + 0.16, casterId.Value, target.Id.Value, skill));
+                        _animSkillEffects.Add((activeTime + 0.14, casterId.Value, target.Id.Value, skill));
                 }
                 else if (caster is not null && skill.Code == "iron_wall")
                 {
-                    _animSkillEffects.Add((atkTime + 0.16, casterId.Value, casterId.Value, skill));
+                    _animSkillEffects.Add((activeTime + 0.14, casterId.Value, casterId.Value, skill));
                 }
                 else if (caster is not null && skill.Type == ActiveType.Strike && turn.Combat is { } activeCombat)
                 {
@@ -2516,7 +2523,7 @@ public sealed partial class CampaignMapScene : Node3D
                         .OrderBy(x => x.Field.Position.Distance(caster.Field.Position))
                         .ThenBy(x => x.Id.Value)
                         .FirstOrDefault();
-                    if (target is not null) _animSkillEffects.Add((atkTime + 0.16, casterId.Value, target.Id.Value, skill));
+                    if (target is not null) _animSkillEffects.Add((activeTime + 0.14, casterId.Value, target.Id.Value, skill));
                 }
             }
 

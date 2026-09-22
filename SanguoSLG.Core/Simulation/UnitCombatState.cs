@@ -92,6 +92,23 @@ public sealed record UnitCombatState(
         return (null, this);
     }
 
+    /// <summary>
+    /// 준비된 최우선 액티브가 방어형일 때만 소비한다. 주장 우선 규칙을 건너뛰지 않으므로
+    /// 주장 공격형이 준비된 상태에서 부관 방어형이 먼저 발동하지 않는다.
+    /// </summary>
+    public (ActiveSkill? Skill, UnitCombatState State) FiringDefenseActive()
+    {
+        if (VanguardActive is { } v && VanguardGauge.IsReady)
+            return v.Type == ActiveType.Defense
+                ? (v, this with { VanguardGauge = VanguardGauge.Fire() })
+                : (null, this);
+        if (AdjutantActive is { } a && AdjutantGauge.IsReady)
+            return a.Type == ActiveType.Defense
+                ? (a, this with { AdjutantGauge = AdjutantGauge.Fire() })
+                : (null, this);
+        return (null, this);
+    }
+
     /// <summary>성·항구 공격에서 준비된 건물 전용 타격 액티브만 소비한다.</summary>
     public (ActiveSkill? Skill, UnitCombatState State) FiringBuildingActive()
     {

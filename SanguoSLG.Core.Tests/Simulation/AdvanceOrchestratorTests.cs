@@ -158,6 +158,21 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 방어액티브는_공격액티브보다_먼저_확정되어_피해를_줄인다()
+    {
+        var attackerState = UnitCombatState.Create(80, A["peerless"]).AdvanceField(6);
+        var defenderState = UnitCombatState.Create(80, A["iron_wall"]).AdvanceField(6);
+        var attacker = Sword(1, 1, new HexCoord(0, 0), UnitMode.Attack, attackerState) with { Might = 80 };
+        var defender = Sword(2, 2, new HexCoord(1, 0), UnitMode.Attack, defenderState) with { Might = 80 };
+
+        var turn = MakeOrchestrator().Run([attacker, defender], maxDays: 1);
+
+        Assert.Equal("peerless", turn.FiredActives[new UnitId(1)].Code);
+        Assert.Equal("iron_wall", turn.FiredActives[new UnitId(2)].Code);
+        Assert.Equal(933, turn.Combat!.DamageTaken[new UnitId(2)]);
+    }
+
+    [Fact]
     public void 교란은_경로의_부대를_무시하고_빈_사칸_목적지로_후퇴시킨다()
     {
         var ready = UnitCombatState.Create(90, A["rout"]).AdvanceField(6);

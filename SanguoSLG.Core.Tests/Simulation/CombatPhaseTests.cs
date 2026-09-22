@@ -79,4 +79,16 @@ public class CombatPhaseTests
 
         Assert.Equal(new[] { new UnitId(2), new UnitId(3), new UnitId(4) }, eng.Targets);
     }
+
+    [Fact]
+    public void 공격과_계략의_공통기준인_명령순번대로_공격자를_정렬한다()
+    {
+        var lateIdEarlyOrder = Unit(9, 1, new HexCoord(0, 0), UnitMode.Attack, commandOrder: 1);
+        var earlyIdLateOrder = Unit(1, 1, new HexCoord(0, 1), UnitMode.Attack, commandOrder: 7);
+        var target = Unit(20, 2, new HexCoord(1, 0), UnitMode.March, attackRange: 0);
+
+        var engagements = CombatPhase.DetectEngagements([earlyIdLateOrder, target, lateIdEarlyOrder]);
+
+        Assert.Equal([new UnitId(9), new UnitId(1)], engagements.Select(e => e.Attacker).ToArray());
+    }
 }
