@@ -36,6 +36,8 @@ dark = material("RiposteDark", (0.07, 0.025, 0.012), 0.70, 0.26, 0.18)
 
 root = bpy.data.objects.new("RiposteRoot", None)
 bpy.context.collection.objects.link(root)
+# 직전 반격진 대비 20% 축소.
+root.scale = (0.8, 0.8, 0.8)
 
 
 def cylinder(name, radius, depth, location, mat, vertices=6, scale=(1, 1, 1)):

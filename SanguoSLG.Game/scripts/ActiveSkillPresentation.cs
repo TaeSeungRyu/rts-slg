@@ -96,7 +96,9 @@ public static class ActiveSkillPresentation
         }
         if (skill.Code == "riposte")
         {
-            target.AddChild(new RiposteFormationEffectView3D());
+            var effect = new RiposteFormationEffectView3D();
+            if (facingPosition is { } enemy) effect.ConfigureFacing(enemy);
+            target.AddChild(effect);
             return true;
         }
         if (skill.Code == "turtle_formation")
