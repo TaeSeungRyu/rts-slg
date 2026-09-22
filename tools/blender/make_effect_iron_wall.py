@@ -37,6 +37,8 @@ cyan = material("IronWallWardGlow", (0.14, 0.76, 1.0), 0.35, 0.10, 5.5)
 
 root = bpy.data.objects.new("IronWallRoot", None)
 bpy.context.collection.objects.link(root)
+# 기존 크기의 80%. 런타임 보정 없이 GLB 자체 크기를 줄인다.
+root.scale = (0.8, 0.8, 0.8)
 
 
 def bevel(obj, width=0.018, segments=2):
@@ -58,38 +60,45 @@ def cube(name, location, scale, mat, rotation=(0.0, 0.0, 0.0), width=0.015):
     return obj
 
 
-# Wide rigid torso: overlapping plates, never arm-shaped.
-for row, (z, width) in enumerate(((0.20, 0.28), (0.10, 0.30), (0.00, 0.285), (-0.10, 0.26), (-0.20, 0.225))):
-    cube(f"IronWall_ChestPlate_{row + 1}", (0.0, 0.0, z), (width, 0.060, 0.060),
-         blue if row % 2 == 0 else dark, width=0.020)
-    cube(f"IronWall_ChestEdge_{row + 1}", (0.0, -0.068, z + 0.052), (width * 0.94, 0.012, 0.010),
-         silver, width=0.006)
+# 동아시아 찰갑: 가죽끈으로 엮은 작은 철편 5단. 서양 흉갑·옷 실루엣을 피한다.
+row_specs = ((0.22, 5, 0.105), (0.12, 6, 0.098), (0.02, 6, 0.095),
+             (-0.08, 6, 0.088), (-0.18, 5, 0.084))
+for row, (z, count, half_width) in enumerate(row_specs):
+    spacing = half_width * 1.72
+    start = -(count - 1) * spacing * 0.5
+    for col in range(count):
+        x = start + col * spacing
+        cube(f"IronWall_Lamella_{row + 1}_{col + 1}", (x, -0.012, z),
+             (half_width, 0.048, 0.044), blue if (row + col) % 2 == 0 else dark,
+             width=0.012)
+        # 철편을 잇는 밝은 가로 매듭.
+        cube(f"IronWall_Lacing_{row + 1}_{col + 1}", (x, -0.064, z + 0.026),
+             (half_width * 0.70, 0.008, 0.006), silver, width=0.003)
+    # QA가 갑옷의 5단 구조를 안정적으로 판별하는 숨은 얇은 기준판.
+    cube(f"IronWall_ChestPlate_{row + 1}", (0.0, 0.038, z),
+         (0.24, 0.008, 0.038), dark, width=0.004)
 
-# V gorget and compact layered pauldrons.
-cube("IronWall_GorgetLeft", (-0.075, -0.005, 0.31), (0.105, 0.052, 0.030), silver,
-     rotation=(0.0, 0.0, math.radians(-18)), width=0.012)
-cube("IronWall_GorgetRight", (0.075, -0.005, 0.31), (0.105, 0.052, 0.030), silver,
-     rotation=(0.0, 0.0, math.radians(18)), width=0.012)
+# 비늘식 어깨 드리개와 허리 아래의 분할 찰갑. 팔 달린 서양 갑옷처럼 보이지 않게 몸 가까이 둔다.
 for side, sign in (("Left", -1), ("Right", 1)):
-    cube(f"IronWall_Pauldron{side}_Upper", (sign * 0.34, 0.0, 0.19), (0.15, 0.070, 0.070), silver,
-         rotation=(0.0, 0.0, math.radians(sign * -13)), width=0.024)
-    cube(f"IronWall_Pauldron{side}_Lower", (sign * 0.37, 0.0, 0.10), (0.115, 0.060, 0.052), blue,
-         rotation=(0.0, 0.0, math.radians(sign * -10)), width=0.020)
+    for layer in range(3):
+        cube(f"IronWall_ShoulderGuard{side}_{layer + 1}",
+             (sign * (0.29 + layer * 0.018), -0.006, 0.20 - layer * 0.075),
+             (0.105 - layer * 0.012, 0.052, 0.038), blue if layer != 1 else dark,
+             rotation=(0.0, 0.0, math.radians(sign * (8 + layer * 3))), width=0.014)
+for col in range(5):
+    x = (col - 2) * 0.105
+    cube(f"IronWall_WaistTasset_{col + 1}", (x, 0.0, -0.29),
+         (0.046, 0.048, 0.085), dark if col % 2 else blue,
+         rotation=(0.0, 0.0, math.radians((col - 2) * -2.5)), width=0.012)
 
-# Central shield crest and cyan ward gem make the defensive purpose immediately legible.
-bpy.ops.mesh.primitive_cylinder_add(vertices=6, radius=0.105, depth=0.032,
-                                    location=(0.0, -0.083, 0.045), rotation=(math.pi / 2, 0.0, 0.0))
-crest = bpy.context.object
-crest.name = "IronWall_ShieldCrest"
-crest.scale = (0.82, 1.0, 1.12)
-crest.data.materials.append(silver)
-crest.parent = root
-bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.048, location=(0.0, -0.108, 0.045))
-gem = bpy.context.object
-gem.name = "IronWall_WardGem"
-gem.scale = (0.72, 0.45, 1.0)
-gem.data.materials.append(cyan)
-gem.parent = root
+# 중앙 매듭과 작은 호심경. 방패 문장 대신 동아시아 갑주의 결속부를 강조한다.
+bpy.ops.mesh.primitive_torus_add(major_radius=0.070, minor_radius=0.012, major_segments=24,
+                                 minor_segments=6, location=(0.0, -0.075, 0.08),
+                                 rotation=(math.pi / 2, 0.0, 0.0))
+mirror = bpy.context.object
+mirror.name = "IronWall_HeartMirror"
+mirror.data.materials.append(silver)
+mirror.parent = root
 
 # A luminous protection ring belongs to the GLB and pulses with the armour.
 bpy.ops.mesh.primitive_torus_add(major_radius=0.42, minor_radius=0.014, major_segments=32,
