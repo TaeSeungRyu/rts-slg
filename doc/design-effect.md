@@ -68,7 +68,7 @@
 | 24 | 연타 이중 충격 | `DoubleHitImpact` | Blender GLB·노드 | 유닛 | O | `effect-double-hit.glb`의 금빛 충격핵이 적 편대 좌우에서 0.22초 간격으로 두 번 폭발하며, 각 타격마다 이중 충격 고리와 방사형 파편이 퍼진다. 검수장과 캠페인이 공용 라우터를 사용한다(2026-09-22) |
 | 25 | 철벽 조선 두정갑 | `IronWallArmor` | Blender GLB·노드 | 유닛 | O | `effect-iron-wall.glb`의 붉은 5단 두정갑·금속 못·검은 테두리·어깨 가리개와 보호 고리가 아군 시전자 앞에서 실제 적 부대를 바라보며 나타났다 축소 소멸한다. 직전 버전 대비 80%(최초 대비 64%), 월드 수직 고정(2026-09-23) |
 | 26 | 반격진 육각 방패 | `RiposteFormation` | Blender GLB·노드 | 유닛 | O | `effect-riposte.glb`의 청동·금빛 4겹 육각 방패와 반격 창끝 문양이 실제 적 부대를 바라보며 솟아 반격 태세를 표시한 뒤 소멸한다. 최초 버전 대비 GLB 크기 80%(2026-09-23) |
-| 27 | 귀갑진 낙하 방패 | `TurtleFormation` | Blender GLB·노드 | 유닛 | O | `effect-turtle-formation.glb`의 작은 비취색 육각 방패 7장이 위에서 시간차로 낙하해 아군 진형을 겹겹이 덮은 뒤 함께 소멸한다(2026-09-23) |
+| 27 | 귀갑진 낙하 방패 | `TurtleFormation` | Blender GLB·노드 | 유닛 | O | `effect-turtle-formation.glb`의 작은 비취색 육각 방패 7장이 실제 적 부대를 바라보는 진형면 위로 시간차 낙하해 아군을 겹겹이 덮은 뒤 함께 소멸한다(2026-09-23) |
 
 ### 적용 대상 제약
 

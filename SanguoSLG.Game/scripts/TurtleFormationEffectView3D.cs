@@ -15,6 +15,7 @@ public sealed partial class TurtleFormationEffectView3D : Node3D
     ];
 
     private Node3D? _anchor;
+    private Vector3? _enemyPosition;
     private readonly List<Node3D> _shields = [];
 
     public bool LoadedFromGlb { get; private set; }
@@ -23,13 +24,15 @@ public sealed partial class TurtleFormationEffectView3D : Node3D
     public bool DisplayCompleted { get; private set; }
     public float CameraFacingDot { get; private set; }
 
+    public void ConfigureFacing(Vector3 enemyPosition) => _enemyPosition = enemyPosition;
+
     public override void _Ready()
     {
         _anchor = GetParentOrNull<Node3D>();
         var anchorPosition = _anchor?.GlobalPosition ?? GlobalPosition;
         TopLevel = true;
         GlobalPosition = anchorPosition + Vector3.Up * 0.58f;
-        AlignToCamera();
+        AlignToEnemy();
 
         var packed = GD.Load<PackedScene>(AssetPath);
         if (packed is null)
@@ -76,14 +79,13 @@ public sealed partial class TurtleFormationEffectView3D : Node3D
     public override void _Process(double delta)
     {
         if (IsInstanceValid(_anchor)) GlobalPosition = _anchor!.GlobalPosition + Vector3.Up * 0.58f;
-        AlignToCamera();
+        AlignToEnemy();
     }
 
-    private void AlignToCamera()
+    private void AlignToEnemy()
     {
-        var camera = GetViewport()?.GetCamera3D();
-        if (camera is null) return;
-        var front = camera.GlobalPosition - GlobalPosition;
+        if (_enemyPosition is not { } enemyPosition) return;
+        var front = enemyPosition - GlobalPosition;
         front.Y = 0f;
         if (front.LengthSquared() < 0.000001f) return;
         front = front.Normalized();

@@ -103,7 +103,9 @@ public static class ActiveSkillPresentation
         }
         if (skill.Code == "turtle_formation")
         {
-            target.AddChild(new TurtleFormationEffectView3D());
+            var effect = new TurtleFormationEffectView3D();
+            if (facingPosition is { } enemy) effect.ConfigureFacing(enemy);
+            target.AddChild(effect);
             return true;
         }
         if (skill.Code == "crush")
