@@ -92,6 +92,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new IronWallArmorEffectView3D());
             return true;
         }
+        if (skill.Code == "riposte")
+        {
+            target.AddChild(new RiposteFormationEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();

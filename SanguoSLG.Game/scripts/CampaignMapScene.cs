@@ -2512,7 +2512,7 @@ public sealed partial class CampaignMapScene : Node3D
                         && x.State.Statuses.Any(s => s.IsFire)))
                         _animSkillEffects.Add((activeTime + 0.14, casterId.Value, target.Id.Value, skill));
                 }
-                else if (caster is not null && skill.Code == "iron_wall")
+                else if (caster is not null && skill.Type == ActiveType.Defense)
                 {
                     _animSkillEffects.Add((activeTime + 0.14, casterId.Value, casterId.Value, skill));
                 }

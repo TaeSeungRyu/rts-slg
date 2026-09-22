@@ -84,6 +84,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunIronWallQa);
         }
+        else if (args.Contains("--activeeffecttestriposteqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "riposte");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunRiposteQa);
+        }
         else if (args.Contains("--activeeffecttestdoublehitqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -571,7 +579,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         }
 
         var count = 0;
-        if (fired.Code == "iron_wall" && _tokens.TryGetValue(AllyId, out var defensiveCaster))
+        if (fired.Type == ActiveType.Defense && _tokens.TryGetValue(AllyId, out var defensiveCaster))
         {
             if (ActiveSkillPresentation.AttachEffect(defensiveCaster, fired)) count++;
             if (count > 0) AppendLog($"{fired.Name} 연출: 아군 시전자에 전용 효과 표시");
@@ -910,6 +918,29 @@ public partial class ActiveEffectTestScene3D : Node3D
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
                 GD.Print($"[ironwallqa] spawned={spawned} plates={plateCount} ring={hasRing} frontFacing={frontFacing} facingDot={facingDot:F3} upright={upright} displayed={displayed} removed={removed}");
                 GetTree().Quit(spawned && frontFacing && displayed && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunRiposteQa()
+    {
+        AdvanceSevenDays();
+        var effect = _tokens[AllyId].FindChildren("*", "", true, false)
+            .OfType<RiposteFormationEffectView3D>().FirstOrDefault();
+        var spawned = effect is not null && effect.LoadedFromGlb && effect.ShieldLayerCount == 4
+            && effect.CounterSpikeCount == 3 && _allyActiveFireDay == 6 && _allyActiveFireCount == 1
+            && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(1.12);
+        timer.Timeout += () =>
+        {
+            var displayed = IsInstanceValid(effect) && effect!.DisplayCompleted;
+            var frontFacing = IsInstanceValid(effect) && effect!.TopLevel && effect.CameraFacingDot > 0.999f;
+            var cleanup = GetTree().CreateTimer(0.36);
+            cleanup.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+                GD.Print($"[riposteqa] spawned={spawned} displayed={displayed} frontFacing={frontFacing} removed={removed}");
+                GetTree().Quit(spawned && displayed && frontFacing && removed ? 0 : 1);
             };
         };
     }
