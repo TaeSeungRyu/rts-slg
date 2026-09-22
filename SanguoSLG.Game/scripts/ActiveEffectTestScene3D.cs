@@ -76,7 +76,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestheavyblowqa"))
+        if (args.Contains("--activeeffecttestdoublehitqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "double_hit");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunDoubleHitQa);
+        }
+        else if (args.Contains("--activeeffecttestheavyblowqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
                 .First(i => _skillSelect.GetItemMetadata(i).AsString() == "heavy_blow");
@@ -558,7 +566,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var targets = fired.Code == "fire_plot"
             ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)).ToList()
             : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage" or "reap"
-                or "breakthrough" or "tiger_strike" or "chain_strike" or "armor_break" or "heavy_blow" or "crush"
+                or "breakthrough" or "tiger_strike" or "chain_strike" or "armor_break" or "heavy_blow" or "double_hit" or "crush"
                 ? beforeUnits.Values.Where(x => x.Field.Owner.Value == 2
                     && (turn.Combat?.DamageTaken.GetValueOrDefault(x.Id) ?? 0) > 0)
                     .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
@@ -840,6 +848,27 @@ public partial class ActiveEffectTestScene3D : Node3D
                 var removed = !IsInstanceValid(explosion) || explosion!.IsQueuedForDeletion();
                 GD.Print($"[heavyblowqa] spawned={spawned} bomb={explosion?.BombPartCount} shards={explosion?.ShardCount} smoke={explosion?.SmokeCount} exploded={exploded} removed={removed}");
                 GetTree().Quit(spawned && exploded && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunDoubleHitQa()
+    {
+        AdvanceSevenDays();
+        var effect = FindChildren("*", "", true, false).OfType<DoubleHitImpactEffectView3D>().FirstOrDefault();
+        var spawned = effect is not null && effect.LoadedFromGlb && effect.ImpactCoreCount == 2
+            && effect.RingCount == 4 && effect.RayCount == 16
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var impactTimer = GetTree().CreateTimer(0.94);
+        impactTimer.Timeout += () =>
+        {
+            var struckTwice = IsInstanceValid(effect) && effect!.CompletedImpactCount == 2;
+            var cleanupTimer = GetTree().CreateTimer(0.42);
+            cleanupTimer.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+                GD.Print($"[doublehitqa] spawned={spawned} cores={effect?.ImpactCoreCount} rings={effect?.RingCount} rays={effect?.RayCount} completed={effect?.CompletedImpactCount} removed={removed}");
+                GetTree().Quit(spawned && struckTwice && removed ? 0 : 1);
             };
         };
     }

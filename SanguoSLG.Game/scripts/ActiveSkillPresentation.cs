@@ -82,6 +82,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new HeavyBlowExplosionEffectView3D());
             return true;
         }
+        if (skill.Code == "double_hit")
+        {
+            target.AddChild(new DoubleHitImpactEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();
