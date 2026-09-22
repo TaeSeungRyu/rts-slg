@@ -589,7 +589,12 @@ public partial class ActiveEffectTestScene3D : Node3D
         var count = 0;
         if (fired.Type == ActiveType.Defense && _tokens.TryGetValue(AllyId, out var defensiveCaster))
         {
-            if (ActiveSkillPresentation.AttachEffect(defensiveCaster, fired)) count++;
+            var enemy = _units.Where(x => x.Field.Owner.Value == 2)
+                .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
+                .FirstOrDefault();
+            var enemyPosition = enemy is not null && _tokens.TryGetValue(enemy.Id.Value, out var enemyToken)
+                ? enemyToken.GlobalPosition : defensiveCaster.GlobalPosition + Vector3.Forward;
+            if (ActiveSkillPresentation.AttachEffect(defensiveCaster, fired, enemyPosition)) count++;
             if (count > 0) AppendLog($"{fired.Name} 연출: 아군 시전자에 전용 효과 표시");
             return count;
         }

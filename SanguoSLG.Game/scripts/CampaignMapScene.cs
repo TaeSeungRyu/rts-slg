@@ -2514,7 +2514,10 @@ public sealed partial class CampaignMapScene : Node3D
                 }
                 else if (caster is not null && skill.Type == ActiveType.Defense)
                 {
-                    _animSkillEffects.Add((activeTime + 0.14, casterId.Value, casterId.Value, skill));
+                    var target = turn.Units.Where(x => x.Field.Owner != caster.Field.Owner && x.Pool.Active > 0)
+                        .OrderBy(x => x.Field.Position.Distance(caster.Field.Position))
+                        .ThenBy(x => x.Id.Value).FirstOrDefault();
+                    _animSkillEffects.Add((activeTime + 0.14, casterId.Value, target?.Id.Value ?? casterId.Value, skill));
                 }
                 else if (caster is not null && skill.Type == ActiveType.Strike && turn.Combat is { } activeCombat)
                 {
@@ -3903,7 +3906,10 @@ public sealed partial class CampaignMapScene : Node3D
                 var effect = _animSkillEffects[_animSkillEffectIdx];
                 if (_armyTokens.TryGetValue(effect.TargetUnitId, out var target) && target.Visible)
                 {
-                    if (effect.Skill.Code == "breakthrough"
+                    if (effect.Skill.Type == ActiveType.Defense
+                        && _armyTokens.TryGetValue(effect.CasterUnitId, out var defenseCaster) && defenseCaster.Visible)
+                        ActiveSkillPresentation.AttachEffect(defenseCaster, effect.Skill, target.GlobalPosition);
+                    else if (effect.Skill.Code == "breakthrough"
                         && _armyTokens.TryGetValue(effect.CasterUnitId, out var caster) && caster.Visible)
                         ActiveSkillPresentation.ShowBreakthrough(caster, target);
                     else if (effect.Skill.Code == "tiger_strike"

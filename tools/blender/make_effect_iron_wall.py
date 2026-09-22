@@ -30,15 +30,15 @@ def material(name, color, metallic=0.0, roughness=0.22, emission=0.0):
     return mat
 
 
-dark = material("IronWallDeepSteel", (0.035, 0.09, 0.16), 0.94, 0.16, 0.32)
-blue = material("IronWallBlueSteel", (0.12, 0.34, 0.62), 0.90, 0.15, 0.78)
-silver = material("IronWallSilverEdge", (0.58, 0.75, 0.90), 0.91, 0.12, 1.35)
-cyan = material("IronWallWardGlow", (0.14, 0.76, 1.0), 0.35, 0.10, 5.5)
+dark = material("JoseonBlackIron", (0.035, 0.025, 0.022), 0.82, 0.20, 0.22)
+blue = material("JoseonCrimsonArmor", (0.40, 0.025, 0.018), 0.58, 0.23, 0.62)
+silver = material("JoseonGoldenStud", (0.88, 0.46, 0.07), 0.88, 0.13, 1.55)
+cyan = material("IronWallWardGlow", (1.0, 0.20, 0.06), 0.35, 0.10, 4.8)
 
 root = bpy.data.objects.new("IronWallRoot", None)
 bpy.context.collection.objects.link(root)
-# 기존 크기의 80%. 런타임 보정 없이 GLB 자체 크기를 줄인다.
-root.scale = (0.8, 0.8, 0.8)
+# 직전 GLB보다 다시 20% 축소(0.8 × 0.8 = 최초 대비 0.64).
+root.scale = (0.64, 0.64, 0.64)
 
 
 def bevel(obj, width=0.018, segments=2):
@@ -60,25 +60,24 @@ def cube(name, location, scale, mat, rotation=(0.0, 0.0, 0.0), width=0.015):
     return obj
 
 
-# 동아시아 찰갑: 가죽끈으로 엮은 작은 철편 5단. 서양 흉갑·옷 실루엣을 피한다.
-row_specs = ((0.22, 5, 0.105), (0.12, 6, 0.098), (0.02, 6, 0.095),
-             (-0.08, 6, 0.088), (-0.18, 5, 0.084))
-for row, (z, count, half_width) in enumerate(row_specs):
-    spacing = half_width * 1.72
-    start = -(count - 1) * spacing * 0.5
-    for col in range(count):
-        x = start + col * spacing
-        cube(f"IronWall_Lamella_{row + 1}_{col + 1}", (x, -0.012, z),
-             (half_width, 0.048, 0.044), blue if (row + col) % 2 == 0 else dark,
-             width=0.012)
-        # 철편을 잇는 밝은 가로 매듭.
-        cube(f"IronWall_Lacing_{row + 1}_{col + 1}", (x, -0.064, z + 0.026),
-             (half_width * 0.70, 0.008, 0.006), silver, width=0.003)
-    # QA가 갑옷의 5단 구조를 안정적으로 판별하는 숨은 얇은 기준판.
-    cube(f"IronWall_ChestPlate_{row + 1}", (0.0, 0.038, z),
-         (0.24, 0.008, 0.038), dark, width=0.004)
+# 조선 두정갑: 붉은 직물 위에 금속 두정(둥근 못)을 박은 5단 몸통.
+for row, (z, width) in enumerate(((0.22, 0.30), (0.12, 0.315), (0.02, 0.31),
+                                  (-0.08, 0.29), (-0.18, 0.26))):
+    cube(f"IronWall_ChestPlate_{row + 1}", (0.0, 0.0, z),
+         (width, 0.055, 0.052), blue, width=0.018)
+    cube(f"IronWall_BlackBorder_{row + 1}", (0.0, -0.060, z + 0.047),
+         (width * 0.96, 0.010, 0.009), dark, width=0.004)
+    for col in range(5):
+        x = (col - 2) * width * 0.42
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=6, radius=0.016,
+                                             location=(x, -0.074, z))
+        stud = bpy.context.object
+        stud.name = f"IronWall_DujeongStud_{row + 1}_{col + 1}"
+        stud.scale = (1.0, 0.45, 1.0)
+        stud.data.materials.append(silver)
+        stud.parent = root
 
-# 비늘식 어깨 드리개와 허리 아래의 분할 찰갑. 팔 달린 서양 갑옷처럼 보이지 않게 몸 가까이 둔다.
+# 검은 테두리의 붉은 어깨 가리개와 분할된 허리 갑상.
 for side, sign in (("Left", -1), ("Right", 1)):
     for layer in range(3):
         cube(f"IronWall_ShoulderGuard{side}_{layer + 1}",
@@ -88,10 +87,10 @@ for side, sign in (("Left", -1), ("Right", 1)):
 for col in range(5):
     x = (col - 2) * 0.105
     cube(f"IronWall_WaistTasset_{col + 1}", (x, 0.0, -0.29),
-         (0.046, 0.048, 0.085), dark if col % 2 else blue,
+         (0.046, 0.048, 0.085), blue if col % 2 else dark,
          rotation=(0.0, 0.0, math.radians((col - 2) * -2.5)), width=0.012)
 
-# 중앙 매듭과 작은 호심경. 방패 문장 대신 동아시아 갑주의 결속부를 강조한다.
+# 중앙 호심경과 붉은 보호 고리.
 bpy.ops.mesh.primitive_torus_add(major_radius=0.070, minor_radius=0.012, major_segments=24,
                                  minor_segments=6, location=(0.0, -0.075, 0.08),
                                  rotation=(math.pi / 2, 0.0, 0.0))

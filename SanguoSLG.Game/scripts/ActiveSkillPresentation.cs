@@ -35,7 +35,7 @@ public static class ActiveSkillPresentation
         lifetime.Start();
     }
 
-    public static bool AttachEffect(Node3D target, ActiveSkill skill)
+    public static bool AttachEffect(Node3D target, ActiveSkill skill, Vector3? facingPosition = null)
     {
         if (skill.Code == "fire_plot")
         {
@@ -89,7 +89,9 @@ public static class ActiveSkillPresentation
         }
         if (skill.Code == "iron_wall")
         {
-            target.AddChild(new IronWallArmorEffectView3D());
+            var effect = new IronWallArmorEffectView3D();
+            if (facingPosition is { } enemy) effect.ConfigureFacing(enemy);
+            target.AddChild(effect);
             return true;
         }
         if (skill.Code == "riposte")

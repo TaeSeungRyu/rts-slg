@@ -7,6 +7,7 @@ public sealed partial class IronWallArmorEffectView3D : Node3D
 {
     private const string AssetPath = "res://assets/models/effect-iron-wall.glb";
     private Node3D? _anchor;
+    private Vector3? _enemyPosition;
 
     public bool LoadedFromGlb { get; private set; }
     public int ChestPlateCount { get; private set; }
@@ -16,6 +17,8 @@ public sealed partial class IronWallArmorEffectView3D : Node3D
     public float CameraFacingDot { get; private set; }
     public bool IsUpright => Mathf.Abs(GlobalBasis.Y.Dot(Vector3.Up)) > 0.999f;
 
+    public void ConfigureFacing(Vector3 enemyPosition) => _enemyPosition = enemyPosition;
+
     public override void _Ready()
     {
         // 부대 자체의 방향·기울기를 상속하지 않는다. 철벽은 월드에서 똑바로 선 채
@@ -24,7 +27,7 @@ public sealed partial class IronWallArmorEffectView3D : Node3D
         var anchorPosition = _anchor?.GlobalPosition ?? GlobalPosition;
         TopLevel = true;
         GlobalPosition = anchorPosition + Vector3.Up * 0.68f;
-        AlignToCamera();
+        AlignToEnemy();
         var scene = GD.Load<PackedScene>(AssetPath);
         if (scene is null)
         {
@@ -76,18 +79,17 @@ public sealed partial class IronWallArmorEffectView3D : Node3D
     public override void _Process(double delta)
     {
         if (IsInstanceValid(_anchor)) GlobalPosition = _anchor!.GlobalPosition + Vector3.Up * 0.68f;
-        AlignToCamera();
+        AlignToEnemy();
     }
 
-    private void AlignToCamera()
+    private void AlignToEnemy()
     {
-        var camera = GetViewport()?.GetCamera3D();
-        if (camera is null) return;
-        var towardCamera = camera.GlobalPosition - GlobalPosition;
-        towardCamera.Y = 0f;
-        if (towardCamera.LengthSquared() < 0.000001f) return;
+        if (_enemyPosition is not { } enemyPosition) return;
+        var towardEnemy = enemyPosition - GlobalPosition;
+        towardEnemy.Y = 0f;
+        if (towardEnemy.LengthSquared() < 0.000001f) return;
 
-        var front = towardCamera.Normalized();
+        var front = towardEnemy.Normalized();
         var right = Vector3.Up.Cross(front).Normalized();
         GlobalBasis = new Basis(right, Vector3.Up, front).Orthonormalized();
         CameraFacingDot = GlobalBasis.Z.Dot(front);
