@@ -798,13 +798,14 @@ public partial class ActiveEffectTestScene3D : Node3D
     {
         AdvanceSevenDays();
         var armor = FindChildren("*", "", true, false).OfType<ArmorBreakEffectView3D>().FirstOrDefault();
-        var spawned = armor is not null && armor.FragmentCount == 6 && armor.MaxScatterDistance >= 0.45f
+        var spawned = armor is not null && armor.FragmentCount == 8 && armor.MaxScatterDistance >= 0.25f
+            && armor.ArmorHoldSeconds >= 0.7f
             && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
-        var breakTimer = GetTree().CreateTimer(0.96);
+        var breakTimer = GetTree().CreateTimer(2.02);
         breakTimer.Timeout += () =>
         {
             var broken = IsInstanceValid(armor) && armor!.ArmorAppeared && armor.BreakCompleted;
-            var cleanupTimer = GetTree().CreateTimer(0.36);
+            var cleanupTimer = GetTree().CreateTimer(0.52);
             cleanupTimer.Timeout += () =>
             {
                 var removed = !IsInstanceValid(armor) || armor!.IsQueuedForDeletion();

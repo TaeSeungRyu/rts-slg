@@ -12,6 +12,7 @@ public sealed partial class ArmorBreakEffectView3D : Node3D
     public bool ArmorAppeared { get; private set; }
     public bool BreakCompleted { get; private set; }
     public float MaxScatterDistance { get; private set; }
+    public float ArmorHoldSeconds => 0.72f;
 
     public override void _Ready()
     {
@@ -37,12 +38,24 @@ public sealed partial class ArmorBreakEffectView3D : Node3D
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
         };
 
-        AddFragment("ArmorBreak_ChestLeft", new Vector3(-0.105f, 0f, 0f), new Vector3(0.20f, 0.34f, 0.055f), steel, new Vector3(-0.42f, 0.12f, 0.18f));
-        AddFragment("ArmorBreak_ChestRight", new Vector3(0.105f, 0f, 0f), new Vector3(0.20f, 0.34f, 0.055f), steel, new Vector3(0.42f, 0.12f, 0.18f));
-        AddFragment("ArmorBreak_ShoulderLeft", new Vector3(-0.29f, 0.08f, 0f), new Vector3(0.18f, 0.15f, 0.065f), trim, new Vector3(-0.50f, 0.24f, 0.12f), -0.24f);
-        AddFragment("ArmorBreak_ShoulderRight", new Vector3(0.29f, 0.08f, 0f), new Vector3(0.18f, 0.15f, 0.065f), trim, new Vector3(0.50f, 0.24f, 0.12f), 0.24f);
-        AddFragment("ArmorBreak_WaistLeft", new Vector3(-0.10f, -0.25f, 0f), new Vector3(0.18f, 0.14f, 0.05f), trim, new Vector3(-0.34f, -0.22f, 0.20f));
-        AddFragment("ArmorBreak_WaistRight", new Vector3(0.10f, -0.25f, 0f), new Vector3(0.18f, 0.14f, 0.05f), trim, new Vector3(0.34f, -0.22f, 0.20f));
+        // 납작한 옷 실루엣이 아니라, 볼록한 좌우 흉갑과 큰 견갑·목가리개·금속 허리판으로
+        // 한눈에 판금 갑옷임을 읽을 수 있게 한다. 각 부위가 그대로 파괴 파편이 된다.
+        AddFragment("ArmorBreak_BreastplateLeft", new SphereMesh { Radius = 0.19f, Height = 0.38f, RadialSegments = 16, Rings = 8, Material = steel },
+            new Vector3(-0.105f, 0.02f, 0f), new Vector3(0.86f, 1f, 0.28f), new Vector3(-0.19f, 0.07f, 0.10f));
+        AddFragment("ArmorBreak_BreastplateRight", new SphereMesh { Radius = 0.19f, Height = 0.38f, RadialSegments = 16, Rings = 8, Material = steel },
+            new Vector3(0.105f, 0.02f, 0f), new Vector3(0.86f, 1f, 0.28f), new Vector3(0.19f, 0.07f, 0.10f));
+        AddFragment("ArmorBreak_PauldronLeft", new SphereMesh { Radius = 0.16f, Height = 0.22f, RadialSegments = 14, Rings = 7, Material = trim },
+            new Vector3(-0.30f, 0.10f, 0f), new Vector3(1.20f, 0.68f, 0.34f), new Vector3(-0.24f, 0.13f, 0.08f), -0.20f);
+        AddFragment("ArmorBreak_PauldronRight", new SphereMesh { Radius = 0.16f, Height = 0.22f, RadialSegments = 14, Rings = 7, Material = trim },
+            new Vector3(0.30f, 0.10f, 0f), new Vector3(1.20f, 0.68f, 0.34f), new Vector3(0.24f, 0.13f, 0.08f), 0.20f);
+        AddFragment("ArmorBreak_Gorget", new TorusMesh { InnerRadius = 0.075f, OuterRadius = 0.135f, Rings = 12, RingSegments = 8, Material = trim },
+            new Vector3(0f, 0.27f, 0f), new Vector3(1.35f, 0.72f, 0.42f), new Vector3(0f, 0.20f, 0.08f));
+        AddFragment("ArmorBreak_CenterRidge", new BoxMesh { Size = new Vector3(0.045f, 0.40f, 0.055f), Material = trim },
+            new Vector3(0f, 0.01f, 0.045f), Vector3.One, new Vector3(0.04f, 0.16f, 0.13f));
+        AddFragment("ArmorBreak_WaistLeft", new BoxMesh { Size = new Vector3(0.19f, 0.13f, 0.065f), Material = steel },
+            new Vector3(-0.10f, -0.23f, 0f), Vector3.One, new Vector3(-0.16f, -0.15f, 0.11f), -0.10f);
+        AddFragment("ArmorBreak_WaistRight", new BoxMesh { Size = new Vector3(0.19f, 0.13f, 0.065f), Material = steel },
+            new Vector3(0.10f, -0.23f, 0f), Vector3.One, new Vector3(0.16f, -0.15f, 0.11f), 0.10f);
 
         var flash = new MeshInstance3D
         {
@@ -67,34 +80,34 @@ public sealed partial class ArmorBreakEffectView3D : Node3D
         };
         AddChild(flash);
         var flashTween = CreateTween();
-        flashTween.TweenInterval(0.30f);
-        flashTween.TweenProperty(flash, "scale", Vector3.One, 0.07f);
-        flashTween.TweenProperty(flash, "scale", new Vector3(0.02f, 1.15f, 0.02f), 0.16f);
+        flashTween.TweenInterval(1.08f);
+        flashTween.TweenProperty(flash, "scale", Vector3.One, 0.10f);
+        flashTween.TweenProperty(flash, "scale", new Vector3(0.02f, 1.15f, 0.02f), 0.24f);
         flashTween.TweenCallback(Callable.From(flash.QueueFree));
 
-        var appeared = new Godot.Timer { OneShot = true, WaitTime = 0.23 };
+        var appeared = new Godot.Timer { OneShot = true, WaitTime = 0.32 };
         AddChild(appeared);
         appeared.Timeout += () => ArmorAppeared = true;
         appeared.Start();
-        var broken = new Godot.Timer { OneShot = true, WaitTime = 0.90 };
+        var broken = new Godot.Timer { OneShot = true, WaitTime = 1.92 };
         AddChild(broken);
         broken.Timeout += () => BreakCompleted = true;
         broken.Start();
-        var cleanup = new Godot.Timer { OneShot = true, WaitTime = 1.25 };
+        var cleanup = new Godot.Timer { OneShot = true, WaitTime = 2.45 };
         AddChild(cleanup);
         cleanup.Timeout += QueueFree;
         cleanup.Start();
     }
 
-    private void AddFragment(string name, Vector3 origin, Vector3 size, Material material, Vector3 scatter, float rotationZ = 0f)
+    private void AddFragment(string name, PrimitiveMesh mesh, Vector3 origin, Vector3 baseScale, Vector3 scatter, float rotationZ = 0f)
     {
         var fragment = new MeshInstance3D
         {
             Name = name,
-            Mesh = new BoxMesh { Size = size, Material = material },
+            Mesh = mesh,
             Position = origin,
             Rotation = new Vector3(0f, 0f, rotationZ),
-            Scale = Vector3.One * 0.02f,
+            Scale = baseScale * 0.02f,
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         };
         AddChild(fragment);
@@ -102,12 +115,12 @@ public sealed partial class ArmorBreakEffectView3D : Node3D
         MaxScatterDistance = Mathf.Max(MaxScatterDistance, scatter.Length());
 
         var tween = CreateTween();
-        tween.TweenProperty(fragment, "scale", Vector3.One, 0.18f)
+        tween.TweenProperty(fragment, "scale", baseScale, 0.28f)
             .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
-        tween.TweenInterval(0.20f);
-        tween.TweenProperty(fragment, "position", origin + scatter, 0.42f)
+        tween.TweenInterval(ArmorHoldSeconds);
+        tween.TweenProperty(fragment, "position", origin + scatter, 0.70f)
             .SetTrans(Tween.TransitionType.Expo).SetEase(Tween.EaseType.Out);
-        tween.Parallel().TweenProperty(fragment, "rotation", new Vector3(scatter.Y * 4f, scatter.X * 4f, rotationZ + scatter.X * 3f), 0.42f);
-        tween.Parallel().TweenProperty(fragment, "scale", Vector3.One * 0.04f, 0.46f);
+        tween.Parallel().TweenProperty(fragment, "rotation", new Vector3(scatter.Y * 3f, scatter.X * 3f, rotationZ + scatter.X * 2f), 0.70f);
+        tween.Parallel().TweenProperty(fragment, "scale", baseScale * 0.06f, 0.76f);
     }
 }
