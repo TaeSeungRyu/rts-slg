@@ -37,8 +37,8 @@ cyan = material("IronWallWardGlow", (1.0, 0.20, 0.06), 0.35, 0.10, 4.8)
 
 root = bpy.data.objects.new("IronWallRoot", None)
 bpy.context.collection.objects.link(root)
-# 직전 GLB보다 다시 20% 축소(0.8 × 0.8 = 최초 대비 0.64).
-root.scale = (0.64, 0.64, 0.64)
+# 직전 GLB보다 다시 20% 축소(최초 대비 0.512).
+root.scale = (0.512, 0.512, 0.512)
 
 
 def bevel(obj, width=0.018, segments=2):

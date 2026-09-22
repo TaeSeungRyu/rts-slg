@@ -35,6 +35,8 @@ glow = material("TurtleGlow", (0.20, 1.0, 0.66), 0.36, 0.12, 3.6)
 dark = material("TurtleDark", (0.018, 0.10, 0.075), 0.68, 0.25, 0.16)
 root = bpy.data.objects.new("TurtleFormationRoot", None)
 bpy.context.collection.objects.link(root)
+# 직전 귀갑진 방패 대비 20% 축소.
+root.scale = (0.8, 0.8, 0.8)
 
 
 def shield(name, radius, depth, y, mat):

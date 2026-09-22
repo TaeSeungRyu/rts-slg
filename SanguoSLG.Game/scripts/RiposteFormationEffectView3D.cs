@@ -7,7 +7,6 @@ public sealed partial class RiposteFormationEffectView3D : Node3D
 {
     private const string AssetPath = "res://assets/models/effect-riposte.glb";
     private Node3D? _anchor;
-    private Vector3? _enemyPosition;
 
     public bool LoadedFromGlb { get; private set; }
     public int ShieldLayerCount { get; private set; }
@@ -15,15 +14,13 @@ public sealed partial class RiposteFormationEffectView3D : Node3D
     public bool DisplayCompleted { get; private set; }
     public float CameraFacingDot { get; private set; }
 
-    public void ConfigureFacing(Vector3 enemyPosition) => _enemyPosition = enemyPosition;
-
     public override void _Ready()
     {
         _anchor = GetParentOrNull<Node3D>();
         var anchorPosition = _anchor?.GlobalPosition ?? GlobalPosition;
         TopLevel = true;
         GlobalPosition = anchorPosition + Vector3.Up * 0.62f;
-        AlignToEnemy();
+        AlignToCamera();
 
         var scene = GD.Load<PackedScene>(AssetPath);
         if (scene is null)
@@ -63,13 +60,14 @@ public sealed partial class RiposteFormationEffectView3D : Node3D
     public override void _Process(double delta)
     {
         if (IsInstanceValid(_anchor)) GlobalPosition = _anchor!.GlobalPosition + Vector3.Up * 0.62f;
-        AlignToEnemy();
+        AlignToCamera();
     }
 
-    private void AlignToEnemy()
+    private void AlignToCamera()
     {
-        if (_enemyPosition is not { } enemyPosition) return;
-        var front = enemyPosition - GlobalPosition;
+        var camera = GetViewport()?.GetCamera3D();
+        if (camera is null) return;
+        var front = camera.GlobalPosition - GlobalPosition;
         front.Y = 0f;
         if (front.LengthSquared() < 0.000001f) return;
         front = front.Normalized();

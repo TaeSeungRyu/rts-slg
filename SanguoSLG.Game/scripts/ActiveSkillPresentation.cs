@@ -90,21 +90,18 @@ public static class ActiveSkillPresentation
         if (skill.Code == "iron_wall")
         {
             var effect = new IronWallArmorEffectView3D();
-            if (facingPosition is { } enemy) effect.ConfigureFacing(enemy);
             target.AddChild(effect);
             return true;
         }
         if (skill.Code == "riposte")
         {
             var effect = new RiposteFormationEffectView3D();
-            if (facingPosition is { } enemy) effect.ConfigureFacing(enemy);
             target.AddChild(effect);
             return true;
         }
         if (skill.Code == "turtle_formation")
         {
             var effect = new TurtleFormationEffectView3D();
-            if (facingPosition is { } enemy) effect.ConfigureFacing(enemy);
             target.AddChild(effect);
             return true;
         }
