@@ -6,16 +6,25 @@ namespace SanguoSLG.Game;
 public sealed partial class IronWallArmorEffectView3D : Node3D
 {
     private const string AssetPath = "res://assets/models/effect-iron-wall.glb";
+    private Node3D? _anchor;
 
     public bool LoadedFromGlb { get; private set; }
     public int ChestPlateCount { get; private set; }
     public bool HasProtectionRing { get; private set; }
     public bool ArmorAppeared { get; private set; }
     public bool DisplayCompleted { get; private set; }
+    public float CameraFacingDot { get; private set; }
+    public bool IsUpright => Mathf.Abs(GlobalBasis.Y.Dot(Vector3.Up)) > 0.999f;
 
     public override void _Ready()
     {
-        Position = new Vector3(0f, 0.68f, 0f);
+        // 부대 자체의 방향·기울기를 상속하지 않는다. 철벽은 월드에서 똑바로 선 채
+        // 카메라 쪽을 정면으로 바라보는 표식이다.
+        _anchor = GetParentOrNull<Node3D>();
+        var anchorPosition = _anchor?.GlobalPosition ?? GlobalPosition;
+        TopLevel = true;
+        GlobalPosition = anchorPosition + Vector3.Up * 0.68f;
+        AlignToCamera();
         var scene = GD.Load<PackedScene>(AssetPath);
         if (scene is null)
         {
@@ -62,5 +71,25 @@ public sealed partial class IronWallArmorEffectView3D : Node3D
         AddChild(cleanup);
         cleanup.Timeout += QueueFree;
         cleanup.Start();
+    }
+
+    public override void _Process(double delta)
+    {
+        if (IsInstanceValid(_anchor)) GlobalPosition = _anchor!.GlobalPosition + Vector3.Up * 0.68f;
+        AlignToCamera();
+    }
+
+    private void AlignToCamera()
+    {
+        var camera = GetViewport()?.GetCamera3D();
+        if (camera is null) return;
+        var towardCamera = camera.GlobalPosition - GlobalPosition;
+        towardCamera.Y = 0f;
+        if (towardCamera.LengthSquared() < 0.000001f) return;
+
+        var front = towardCamera.Normalized();
+        var right = Vector3.Up.Cross(front).Normalized();
+        GlobalBasis = new Basis(right, Vector3.Up, front).Orthonormalized();
+        CameraFacingDot = GlobalBasis.Z.Dot(front);
     }
 }

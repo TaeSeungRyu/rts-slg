@@ -897,13 +897,19 @@ public partial class ActiveEffectTestScene3D : Node3D
         var displayTimer = GetTree().CreateTimer(1.52);
         displayTimer.Timeout += () =>
         {
+            var frontFacing = IsInstanceValid(effect) && effect!.TopLevel && effect.IsUpright
+                && effect.CameraFacingDot > 0.999f;
             var displayed = IsInstanceValid(effect) && effect!.ArmorAppeared && effect.DisplayCompleted;
+            var plateCount = effect?.ChestPlateCount ?? 0;
+            var hasRing = effect?.HasProtectionRing ?? false;
+            var facingDot = effect?.CameraFacingDot ?? 0f;
+            var upright = effect?.IsUpright ?? false;
             var cleanupTimer = GetTree().CreateTimer(0.18);
             cleanupTimer.Timeout += () =>
             {
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
-                GD.Print($"[ironwallqa] spawned={spawned} plates={effect?.ChestPlateCount} ring={effect?.HasProtectionRing} displayed={displayed} removed={removed}");
-                GetTree().Quit(spawned && displayed && removed ? 0 : 1);
+                GD.Print($"[ironwallqa] spawned={spawned} plates={plateCount} ring={hasRing} frontFacing={frontFacing} facingDot={facingDot:F3} upright={upright} displayed={displayed} removed={removed}");
+                GetTree().Quit(spawned && frontFacing && displayed && removed ? 0 : 1);
             };
         };
     }
