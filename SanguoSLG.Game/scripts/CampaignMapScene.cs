@@ -493,6 +493,8 @@ public sealed partial class CampaignMapScene : Node3D
         BuildPanel();
         camera.Setup(_view.HexToWorld(new HexCoord(4, 2)), 14f);
         Redraw("자기 성(파란색)을 클릭해 명령을 내리세요. 적(촉)은 AI입니다.");
+        var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
+        if (args.Contains("--maptestgaugelifetimeqa")) CallDeferred(nameof(RunActiveGaugeLifetimeQa));
     }
 
     public override void _ExitTree()
@@ -3814,8 +3816,13 @@ public sealed partial class CampaignMapScene : Node3D
             else { _dragPanel.Position = GetViewport().GetMousePosition() - _dragOffset; }
         }
 
-        foreach (var (unitId, gauge) in _activeGauges)
+        foreach (var (unitId, gauge) in _activeGauges.ToList())
         {
+            if (!GodotObject.IsInstanceValid(gauge) || gauge.IsQueuedForDeletion())
+            {
+                _activeGauges.Remove(unitId);
+                continue;
+            }
             var unit = DisplayedArmies.FirstOrDefault(x => x.Id.Value == unitId);
             gauge.Visible = unit is not null
                 && (unit.State.VanguardActive is not null || unit.State.AdjutantActive is not null)
@@ -3956,6 +3963,7 @@ public sealed partial class CampaignMapScene : Node3D
             while (_animKillIdx < _animKills.Count && _animKills[_animKillIdx].Time <= _animT)
             {
                 var k = _animKills[_animKillIdx];
+                _activeGauges.Remove(k.UnitId);
                 if (_armyTokens.Remove(k.UnitId, out var tok)) { tok.QueueFree(); }
                 if (_armyLabels.Remove(k.UnitId, out var lbl)) { lbl.QueueFree(); }
                 _animKillIdx++;
@@ -5829,6 +5837,7 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var l in _armyLabels.Values) { l.QueueFree(); }
         _armyTokens.Clear();
         _armyLabels.Clear();
+        _activeGauges.Clear();
 
         CloseModal();
         HidePanels();
@@ -11729,6 +11738,30 @@ public sealed partial class CampaignMapScene : Node3D
         _status.Text = $"도시 {myCities} · 장수 {myGenerals} · 금 {myGold} · 병력 {myTroops}";
         _log.Text = note;
         RefreshBattlefieldVision();
+    }
+
+    /// <summary>토큰의 자식 게이지가 토큰과 함께 해제된 직후 사전의 폐기 참조를 안전하게 정리하는 회귀 QA.</summary>
+    private void RunActiveGaugeLifetimeQa()
+    {
+        const int qaUnitId = -987654;
+        var token = new Node3D { Name = "GaugeLifetimeQaToken" };
+        AddChild(token);
+        var gauge = new ActiveSkillGaugeView3D { Visible = false };
+        token.AddChild(gauge);
+        _activeGauges[qaUnitId] = gauge;
+        token.QueueFree();
+
+        var timer = GetTree().CreateTimer(0.12);
+        timer.Timeout += () =>
+        {
+            // _Process가 해제 참조를 제거했어야 한다. 남아 있어도 동일 검사를 거쳐 절대 접근하지 않는다.
+            if (_activeGauges.TryGetValue(qaUnitId, out var stale)
+                && (!GodotObject.IsInstanceValid(stale) || stale.IsQueuedForDeletion()))
+                _activeGauges.Remove(qaUnitId);
+            var passed = !_activeGauges.ContainsKey(qaUnitId);
+            GD.Print($"[maptestgaugelifetimeqa] passed={passed} gaugeRemoved={!_activeGauges.ContainsKey(qaUnitId)}");
+            GetTree().Quit(passed ? 0 : 1);
+        };
     }
 
     private void BuildHud()
