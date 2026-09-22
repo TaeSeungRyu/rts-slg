@@ -77,6 +77,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new ArmorBreakEffectView3D());
             return true;
         }
+        if (skill.Code == "heavy_blow")
+        {
+            target.AddChild(new HeavyBlowExplosionEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();

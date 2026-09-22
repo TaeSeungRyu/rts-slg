@@ -76,7 +76,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestarmorbreakqa"))
+        if (args.Contains("--activeeffecttestheavyblowqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "heavy_blow");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunHeavyBlowQa);
+        }
+        else if (args.Contains("--activeeffecttestarmorbreakqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
                 .First(i => _skillSelect.GetItemMetadata(i).AsString() == "armor_break");
@@ -550,7 +558,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         var targets = fired.Code == "fire_plot"
             ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)).ToList()
             : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage" or "reap"
-                or "breakthrough" or "tiger_strike" or "chain_strike" or "armor_break" or "crush"
+                or "breakthrough" or "tiger_strike" or "chain_strike" or "armor_break" or "heavy_blow" or "crush"
                 ? beforeUnits.Values.Where(x => x.Field.Owner.Value == 2
                     && (turn.Combat?.DamageTaken.GetValueOrDefault(x.Id) ?? 0) > 0)
                     .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
@@ -811,6 +819,27 @@ public partial class ActiveEffectTestScene3D : Node3D
                 var removed = !IsInstanceValid(armor) || armor!.IsQueuedForDeletion();
                 GD.Print($"[armorbreakqa] spawned={spawned} fragments={armor?.FragmentCount} broken={broken} removed={removed} scatter={armor?.MaxScatterDistance:F2}");
                 GetTree().Quit(spawned && broken && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunHeavyBlowQa()
+    {
+        AdvanceSevenDays();
+        var explosion = FindChildren("*", "", true, false).OfType<HeavyBlowExplosionEffectView3D>().FirstOrDefault();
+        var spawned = explosion is not null && explosion.LoadedFromGlb && explosion.BombPartCount >= 5
+            && explosion.ShardCount == 14 && explosion.SmokeCount == 9
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var explosionTimer = GetTree().CreateTimer(1.18);
+        explosionTimer.Timeout += () =>
+        {
+            var exploded = IsInstanceValid(explosion) && explosion!.ExplosionCompleted;
+            var cleanupTimer = GetTree().CreateTimer(0.38);
+            cleanupTimer.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(explosion) || explosion!.IsQueuedForDeletion();
+                GD.Print($"[heavyblowqa] spawned={spawned} bomb={explosion?.BombPartCount} shards={explosion?.ShardCount} smoke={explosion?.SmokeCount} exploded={exploded} removed={removed}");
+                GetTree().Quit(spawned && exploded && removed ? 0 : 1);
             };
         };
     }
