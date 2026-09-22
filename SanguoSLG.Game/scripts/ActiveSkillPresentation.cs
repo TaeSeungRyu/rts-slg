@@ -97,6 +97,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new RiposteFormationEffectView3D());
             return true;
         }
+        if (skill.Code == "turtle_formation")
+        {
+            target.AddChild(new TurtleFormationEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();

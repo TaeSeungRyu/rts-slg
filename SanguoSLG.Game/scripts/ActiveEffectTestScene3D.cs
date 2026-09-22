@@ -92,6 +92,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunRiposteQa);
         }
+        else if (args.Contains("--activeeffecttestturtleformationqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "turtle_formation");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunTurtleFormationQa);
+        }
         else if (args.Contains("--activeeffecttestdoublehitqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -940,6 +948,28 @@ public partial class ActiveEffectTestScene3D : Node3D
             {
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
                 GD.Print($"[riposteqa] spawned={spawned} displayed={displayed} frontFacing={frontFacing} removed={removed}");
+                GetTree().Quit(spawned && displayed && frontFacing && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunTurtleFormationQa()
+    {
+        AdvanceSevenDays();
+        var effect = _tokens[AllyId].FindChildren("*", "", true, false)
+            .OfType<TurtleFormationEffectView3D>().FirstOrDefault();
+        var spawned = effect is not null && effect.LoadedFromGlb && effect.ShieldCount == 7
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(1.12);
+        timer.Timeout += () =>
+        {
+            var displayed = IsInstanceValid(effect) && effect!.DisplayCompleted && effect.LandedCount == 7;
+            var frontFacing = IsInstanceValid(effect) && effect!.TopLevel && effect.CameraFacingDot > 0.999f;
+            var cleanup = GetTree().CreateTimer(0.42);
+            cleanup.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+                GD.Print($"[turtleformationqa] spawned={spawned} landed=7 displayed={displayed} frontFacing={frontFacing} removed={removed}");
                 GetTree().Quit(spawned && displayed && frontFacing && removed ? 0 : 1);
             };
         };
