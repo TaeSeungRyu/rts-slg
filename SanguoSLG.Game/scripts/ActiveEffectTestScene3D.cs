@@ -76,7 +76,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestdoublehitqa"))
+        if (args.Contains("--activeeffecttestironwallqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "iron_wall");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunIronWallQa);
+        }
+        else if (args.Contains("--activeeffecttestdoublehitqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
                 .First(i => _skillSelect.GetItemMetadata(i).AsString() == "double_hit");
@@ -563,6 +571,12 @@ public partial class ActiveEffectTestScene3D : Node3D
         }
 
         var count = 0;
+        if (fired.Code == "iron_wall" && _tokens.TryGetValue(AllyId, out var defensiveCaster))
+        {
+            if (ActiveSkillPresentation.AttachEffect(defensiveCaster, fired)) count++;
+            if (count > 0) AppendLog($"{fired.Name} 연출: 아군 시전자에 전용 효과 표시");
+            return count;
+        }
         var targets = fired.Code == "fire_plot"
             ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)).ToList()
             : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage" or "reap"
@@ -869,6 +883,27 @@ public partial class ActiveEffectTestScene3D : Node3D
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
                 GD.Print($"[doublehitqa] spawned={spawned} cores={effect?.ImpactCoreCount} rings={effect?.RingCount} rays={effect?.RayCount} completed={effect?.CompletedImpactCount} removed={removed}");
                 GetTree().Quit(spawned && struckTwice && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunIronWallQa()
+    {
+        AdvanceSevenDays();
+        var effect = _tokens[AllyId].FindChildren("*", "", true, false).OfType<IronWallArmorEffectView3D>().FirstOrDefault();
+        var spawned = effect is not null && effect.LoadedFromGlb && effect.ChestPlateCount == 5
+            && effect.HasProtectionRing && _allyActiveFireDay == 6 && _allyActiveFireCount == 1
+            && _lastEffectCount == 1;
+        var displayTimer = GetTree().CreateTimer(1.52);
+        displayTimer.Timeout += () =>
+        {
+            var displayed = IsInstanceValid(effect) && effect!.ArmorAppeared && effect.DisplayCompleted;
+            var cleanupTimer = GetTree().CreateTimer(0.18);
+            cleanupTimer.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+                GD.Print($"[ironwallqa] spawned={spawned} plates={effect?.ChestPlateCount} ring={effect?.HasProtectionRing} displayed={displayed} removed={removed}");
+                GetTree().Quit(spawned && displayed && removed ? 0 : 1);
             };
         };
     }

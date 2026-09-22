@@ -87,6 +87,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new DoubleHitImpactEffectView3D());
             return true;
         }
+        if (skill.Code == "iron_wall")
+        {
+            target.AddChild(new IronWallArmorEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();

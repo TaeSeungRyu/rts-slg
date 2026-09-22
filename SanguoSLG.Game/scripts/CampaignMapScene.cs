@@ -2505,6 +2505,10 @@ public sealed partial class CampaignMapScene : Node3D
                         && x.State.Statuses.Any(s => s.IsFire)))
                         _animSkillEffects.Add((atkTime + 0.16, casterId.Value, target.Id.Value, skill));
                 }
+                else if (caster is not null && skill.Code == "iron_wall")
+                {
+                    _animSkillEffects.Add((atkTime + 0.16, casterId.Value, casterId.Value, skill));
+                }
                 else if (caster is not null && skill.Type == ActiveType.Strike && turn.Combat is { } activeCombat)
                 {
                     var target = turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
