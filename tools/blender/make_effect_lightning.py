@@ -366,6 +366,14 @@ scene.timeline_markers.new("LIGHTNING", frame=1)
 scene.timeline_markers.new("IMPACT", frame=5)
 scene.timeline_markers.new("END", frame=FRAME_END)
 
+# Godot에서 확실하게 보이도록 GLB는 정적 형상만 담고, 세 번의 낙하 타이밍은 C# 뷰가
+# 직접 제어한다. Blender scale 키를 glTF로 가져올 때 첫 프레임의 0.001 scale에 고정되어
+# 실기기에서 번개가 보이지 않던 문제를 피한다.
+for obj in bpy.context.scene.objects:
+    obj.animation_data_clear()
+    if obj.name.startswith(("flash_", "impact", "sparks", "main_", "branch_", "ground_", "spark_")):
+        obj.scale = (1.0, 1.0, 1.0)
+
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
 output_path = str(MODEL_DIR / OUTPUT_FILE)
 
@@ -373,8 +381,8 @@ export_kwargs = dict(
     filepath=output_path,
     export_format="GLB",
     use_selection=False,
-    export_animations=True,
-    export_frame_range=True,
+    export_animations=False,
+    export_frame_range=False,
     export_extras=True,
     export_yup=True,
     export_apply=False,

@@ -1,4 +1,3 @@
-using System.Linq;
 using Godot;
 
 namespace SanguoSLG.Game;
@@ -20,14 +19,37 @@ public sealed partial class LightningGlbEffectView3D : Node3D
         AddChild(visual);
         visual.Scale = Vector3.One * 1.35f;
         LoadedFromGlb = true;
-        var player = visual.FindChildren("*", "AnimationPlayer", true, false).OfType<AnimationPlayer>().FirstOrDefault();
-        if (player is not null)
+        var flashes = new[] { "flash_1", "flash_2", "flash_3" };
+        for (var index = 0; index < flashes.Length; index++)
         {
-            var animation = player.GetAnimationList().FirstOrDefault(name => name != "RESET");
-            if (!string.IsNullOrEmpty(animation)) { player.Play(animation); AnimationStarted = true; }
+            var flash = visual.FindChild(flashes[index], true, false) as Node3D;
+            if (flash is null) continue;
+            var destination = flash.Position;
+            flash.Position = destination + Vector3.Up * 0.72f;
+            flash.Scale = new Vector3(1f, 0.03f, 1f);
+            flash.Visible = false;
+            var tween = CreateTween();
+            tween.TweenInterval(index * 0.34f);
+            tween.TweenCallback(Callable.From(() => flash.Visible = true));
+            tween.TweenProperty(flash, "position", destination, 0.18f)
+                .SetTrans(Tween.TransitionType.Expo).SetEase(Tween.EaseType.In);
+            tween.Parallel().TweenProperty(flash, "scale", Vector3.One, 0.18f);
+            tween.TweenInterval(0.15f);
+            tween.TweenProperty(flash, "scale", new Vector3(0.7f, 0.05f, 0.7f), 0.10f);
+            tween.TweenCallback(Callable.From(() => flash.Visible = false));
+            AnimationStarted = true;
         }
-        if (!AnimationStarted) { GD.PushError("낙뢰 GLB에서 재생할 애니메이션을 찾지 못했습니다."); QueueFree(); return; }
-        var completed = new Godot.Timer { OneShot = true, WaitTime = 1.78 };
+        var impact = visual.FindChild("impact", true, false) as Node3D;
+        if (impact is not null)
+        {
+            impact.Scale = Vector3.One * 0.02f;
+            var impactTween = CreateTween();
+            impactTween.TweenInterval(0.18f);
+            impactTween.TweenProperty(impact, "scale", Vector3.One * 1.2f, 0.85f);
+            impactTween.TweenProperty(impact, "scale", Vector3.One * 0.02f, 0.35f);
+        }
+        if (!AnimationStarted) { GD.PushError("낙뢰 GLB에서 flash_1~3 노드를 찾지 못했습니다."); QueueFree(); return; }
+        var completed = new Godot.Timer { OneShot = true, WaitTime = 1.30 };
         AddChild(completed);
         completed.Timeout += () => AnimationCompleted = true;
         completed.Start();
