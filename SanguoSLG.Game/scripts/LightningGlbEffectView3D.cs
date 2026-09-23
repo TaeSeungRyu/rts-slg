@@ -27,11 +27,11 @@ public sealed partial class LightningGlbEffectView3D : Node3D
             if (!string.IsNullOrEmpty(animation)) { player.Play(animation); AnimationStarted = true; }
         }
         if (!AnimationStarted) { GD.PushError("낙뢰 GLB에서 재생할 애니메이션을 찾지 못했습니다."); QueueFree(); return; }
-        var completed = new Godot.Timer { OneShot = true, WaitTime = 0.82 };
+        var completed = new Godot.Timer { OneShot = true, WaitTime = 1.78 };
         AddChild(completed);
         completed.Timeout += () => AnimationCompleted = true;
         completed.Start();
-        var cleanup = new Godot.Timer { OneShot = true, WaitTime = 1.05 };
+        var cleanup = new Godot.Timer { OneShot = true, WaitTime = 2.05 };
         AddChild(cleanup);
         cleanup.Timeout += QueueFree;
         cleanup.Start();

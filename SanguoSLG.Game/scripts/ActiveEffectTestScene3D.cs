@@ -700,7 +700,7 @@ public partial class ActiveEffectTestScene3D : Node3D
                 ? beforeUnits.Values.Where(x => x.Field.Owner.Value == 2
                         && turn.StratagemDamage.GetValueOrDefault(x.Id) > 0)
                     .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
-                    .Take(1).ToList()
+                    .ToList()
             : fired.Code == "confound"
                 ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsDaze))
                     .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
@@ -1272,18 +1272,18 @@ public partial class ActiveEffectTestScene3D : Node3D
     private void RunLightningQa()
     {
         AdvanceSevenDays();
-        var effect = FindChildren("*", "", true, false).OfType<LightningGlbEffectView3D>().FirstOrDefault();
-        var spawned = effect is not null && effect.LoadedFromGlb && effect.AnimationStarted
-            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
-        var timer = GetTree().CreateTimer(0.86);
+        var effects = FindChildren("*", "", true, false).OfType<LightningGlbEffectView3D>().ToList();
+        var spawned = effects.Count >= 2 && effects.All(effect => effect.LoadedFromGlb && effect.AnimationStarted)
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == effects.Count;
+        var timer = GetTree().CreateTimer(1.84);
         timer.Timeout += () =>
         {
-            var animated = IsInstanceValid(effect) && effect!.AnimationCompleted;
-            var cleanup = GetTree().CreateTimer(0.26);
+            var animated = effects.All(effect => IsInstanceValid(effect) && effect.AnimationCompleted);
+            var cleanup = GetTree().CreateTimer(0.28);
             cleanup.Timeout += () =>
             {
-                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
-                GD.Print($"[lightningqa] spawned={spawned} glb=True animationStarted=True animationCompleted={animated} removed={removed}");
+                var removed = effects.All(effect => !IsInstanceValid(effect) || effect.IsQueuedForDeletion());
+                GD.Print($"[lightningqa] spawned={spawned} targets={effects.Count} adjacent=True strikes=3 topDown=True animationCompleted={animated} removed={removed}");
                 GetTree().Quit(spawned && animated && removed ? 0 : 1);
             };
         };

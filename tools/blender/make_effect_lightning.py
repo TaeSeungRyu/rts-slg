@@ -7,7 +7,7 @@ OUTPUT_FILE = "effect-lightning.glb"
 
 FPS = 24
 FRAME_START = 1
-FRAME_END = 18
+FRAME_END = 42
 
 SCRIPT_PATH = Path(__file__).resolve()
 REPO_ROOT = SCRIPT_PATH.parents[2]
@@ -175,6 +175,7 @@ root["ground_radius"] = GROUND_RADIUS
 
 flash_1 = empty("flash_1", root)
 flash_2 = empty("flash_2", root)
+flash_3 = empty("flash_3", root)
 impact = empty("impact", root)
 sparks = empty("sparks", root)
 
@@ -268,6 +269,14 @@ create_bolt(
     verts=5,
 )
 
+main_points_3 = [(0.16, 0.015, BOLT_TOP_Z), (0.11, -0.008, 0.700), (0.18, 0.012, 0.575),
+                 (0.12, -0.018, 0.445), (0.17, 0.008, 0.315), (0.13, -0.005, 0.180),
+                 (0.15, 0.000, BOLT_BOTTOM_Z)]
+create_bolt("main_bolt_3", main_points_3, MAIN_THICKNESS * 0.95, MAT_CORE, flash_3)
+create_bolt("main_glow_3", main_points_3, MAIN_THICKNESS * 1.65, MAT_GLOW, flash_3)
+create_bolt("branch_3a", [(0.11, -0.008, 0.700), (0.02, 0.035, 0.605), (-0.02, 0.02, 0.54)],
+            BRANCH_THICKNESS * 0.8, MAT_CORE, flash_3, verts=5)
+
 # 지면 충격
 create_ground_ring("impact_ring_outer", GROUND_RADIUS, 0.010, MAT_GROUND, impact)
 create_ground_ring("impact_ring_inner", GROUND_RADIUS * 0.52, 0.007, MAT_CORE, impact)
@@ -310,40 +319,47 @@ for i, (start, end) in enumerate(spark_specs):
         parent=sparks,
     )
 
-# 애니메이션
-for group in (flash_1, flash_2, impact, sparks):
+# 애니메이션: 각 번개의 세그먼트를 높이순으로 켜서 위에서 아래로 내려친다.
+def animate_flash_top_down(group, start_frame):
+    group.scale = (VISIBLE, VISIBLE, VISIBLE)
+    segments = [obj for bolt in group.children for obj in bolt.children if obj.type == "MESH"]
+    segments.sort(key=lambda obj: obj.location.z, reverse=True)
+    for index, segment in enumerate(segments):
+        key_scale(segment, 1, HIDDEN)
+        on = start_frame + min(index, 7)
+        key_scale(segment, on, HIDDEN)
+        key_scale(segment, on + 1, VISIBLE)
+        key_scale(segment, on + 5, VISIBLE)
+        key_scale(segment, on + 7, HIDDEN)
+        key_scale(segment, FRAME_END, HIDDEN)
+
+animate_flash_top_down(flash_1, 2)
+animate_flash_top_down(flash_2, 12)
+animate_flash_top_down(flash_3, 22)
+for group in (impact, sparks):
     key_scale(group, 1, HIDDEN)
 
-key_scale(flash_1, 2, VISIBLE)
-key_scale(flash_1, 3, VISIBLE)
-key_scale(flash_1, 4, HIDDEN)
+key_scale(impact, 9, HIDDEN)
+key_scale(impact, 11, 0.35)
+key_scale(impact, 17, 1.00)
+key_scale(impact, 27, 1.18)
+key_scale(impact, 36, HIDDEN)
 
-key_scale(flash_2, 4, HIDDEN)
-key_scale(flash_2, 5, VISIBLE)
-key_scale(flash_2, 6, VISIBLE)
-key_scale(flash_2, 7, HIDDEN)
+key_scale(sparks, 10, HIDDEN)
+key_scale(sparks, 12, 0.45)
+key_scale(sparks, 18, VISIBLE)
+key_scale(sparks, 29, 0.65)
+key_scale(sparks, 36, HIDDEN)
 
-key_scale(impact, 4, HIDDEN)
-key_scale(impact, 5, 0.35)
-key_scale(impact, 7, 1.00)
-key_scale(impact, 10, 1.18)
-key_scale(impact, 14, HIDDEN)
+key_loc(sparks, 12, z=0.0)
+key_loc(sparks, 24, z=0.045)
+key_loc(sparks, 36, z=0.075)
 
-key_scale(sparks, 5, HIDDEN)
-key_scale(sparks, 6, 0.45)
-key_scale(sparks, 8, VISIBLE)
-key_scale(sparks, 12, 0.65)
-key_scale(sparks, 14, HIDDEN)
+key_rot_z(sparks, 12, 0)
+key_rot_z(sparks, 24, 18)
+key_rot_z(sparks, 36, 28)
 
-key_loc(sparks, 6, z=0.0)
-key_loc(sparks, 9, z=0.045)
-key_loc(sparks, 14, z=0.075)
-
-key_rot_z(sparks, 6, 0)
-key_rot_z(sparks, 10, 18)
-key_rot_z(sparks, 14, 28)
-
-for group in (flash_1, flash_2, impact, sparks):
+for group in (impact, sparks):
     key_scale(group, FRAME_END, HIDDEN)
 
 scene.timeline_markers.new("LIGHTNING", frame=1)
