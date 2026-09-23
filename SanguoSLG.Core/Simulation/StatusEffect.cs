@@ -16,6 +16,9 @@ namespace SanguoSLG.Core.Simulation;
 /// <param name="NullifyAptPassive">적성·가산 버킷을 100으로 되돌림(이간).</param>
 /// <param name="MoveDownTiles">이동 속도 감소 칸(수공). 0이면 없음.</param>
 /// <param name="PermanentLoss">지속 피해를 부상 전환 없이 영구 사망으로 처리한다.</param>
+/// <param name="DfDownPercent">방어력 감소 %.</param>
+/// <param name="AtkBonusPercent">공격력 증가 %.</param>
+/// <param name="DfBonusPercent">방어력 증가 %.</param>
 public sealed record StatusEffect(
     StatusKind Kind,
     int TickBasisPoints,
@@ -25,7 +28,10 @@ public sealed record StatusEffect(
     bool RangedOnly = false,
     bool NullifyAptPassive = false,
     int MoveDownTiles = 0,
-    bool PermanentLoss = false)
+    bool PermanentLoss = false,
+    int DfDownPercent = 0,
+    int AtkBonusPercent = 0,
+    int DfBonusPercent = 0)
 {
     /// <summary>행동불가(혼란) — 이동·공격·액티브 금지.</summary>
     public bool IsDaze => Kind == StatusKind.Daze;

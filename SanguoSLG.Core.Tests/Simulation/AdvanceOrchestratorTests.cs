@@ -253,6 +253,23 @@ public class AdvanceOrchestratorTests
             s => s.Kind == StatusKind.Evasion);
     }
 
+    [Theory]
+    [InlineData("armor_break", StatusKind.ArmorBreak, 2)]
+    [InlineData("rally", StatusKind.Rally, 1)]
+    public void 파갑과_고무는_발동후_삼진행_상태를_부여한다(string skillCode, StatusKind kind, int holderId)
+    {
+        var ready = UnitCombatState.Create(80, A[skillCode]).AdvanceField(6);
+        var caster = Sword(1, 1, new HexCoord(0, 0), cs: ready);
+        var target = Sword(2, 2, new HexCoord(1, 0));
+
+        var turn = MakeOrchestrator().Run([caster, target], maxDays: 1);
+        var status = Assert.Single(turn.Units.Single(u => u.Id.Value == holderId).State.Statuses,
+            s => s.Kind == kind);
+
+        Assert.Equal(3, status.Remaining);
+        Assert.Equal(skillCode, turn.FiredActives[new UnitId(1)].Code);
+    }
+
     [Fact]
     public void 회피술은_근접피해를_줄이지_않는다()
     {
@@ -539,6 +556,37 @@ public class AdvanceOrchestratorTests
         Assert.Equal(600, turn.StratagemDamage[new UnitId(2)]);
         Assert.Equal(600, turn.StratagemDamage[new UnitId(3)]);
         Assert.False(turn.StratagemDamage.ContainsKey(new UnitId(4)));
+    }
+
+    [Fact]
+    public void 파갑_지속상태는_방어력을_20퍼센트_낮춘다()
+    {
+        var orch = MakeOrchestrator();
+        var control = orch.Run([Sword(1, 1, new HexCoord(0, 0)), Sword(2, 2, new HexCoord(1, 0))]);
+        var controlLoss = 10000 - control.Units.Single(u => u.Id.Value == 2).Pool.Active;
+        var broken = UnitCombatState.Create(60).AddStatus(new StatusEffect(
+            StatusKind.ArmorBreak, 0, 2, false, DfDownPercent: 20));
+        var affected = orch.Run([Sword(1, 1, new HexCoord(0, 0)), Sword(2, 2, new HexCoord(1, 0), cs: broken)]);
+        var affectedLoss = 10000 - affected.Units.Single(u => u.Id.Value == 2).Pool.Active;
+
+        Assert.True(affectedLoss > controlLoss, $"파갑 피해({affectedLoss})가 기본({controlLoss})보다 커야 함");
+    }
+
+    [Fact]
+    public void 고무_지속상태는_공격과_방어를_10퍼센트_높인다()
+    {
+        var orch = MakeOrchestrator();
+        var control = orch.Run([Sword(1, 1, new HexCoord(0, 0)), Sword(2, 2, new HexCoord(1, 0))]);
+        var controlGiven = 10000 - control.Units.Single(u => u.Id.Value == 2).Pool.Active;
+        var controlTaken = 10000 - control.Units.Single(u => u.Id.Value == 1).Pool.Active;
+        var rallied = UnitCombatState.Create(60).AddStatus(new StatusEffect(
+            StatusKind.Rally, 0, 2, false, AtkBonusPercent: 10, DfBonusPercent: 10));
+        var affected = orch.Run([Sword(1, 1, new HexCoord(0, 0), cs: rallied), Sword(2, 2, new HexCoord(1, 0))]);
+        var affectedGiven = 10000 - affected.Units.Single(u => u.Id.Value == 2).Pool.Active;
+        var affectedTaken = 10000 - affected.Units.Single(u => u.Id.Value == 1).Pool.Active;
+
+        Assert.True(affectedGiven > controlGiven, $"고무 준 피해({affectedGiven})가 기본({controlGiven})보다 커야 함");
+        Assert.True(affectedTaken < controlTaken, $"고무 받은 피해({affectedTaken})가 기본({controlTaken})보다 작아야 함");
     }
 
     [Fact]

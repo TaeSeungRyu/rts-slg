@@ -26,4 +26,10 @@ public enum StatusKind
 
     /// <summary>회피술. 원거리(사거리 2 이상)로 받는 피해를 30% 줄인다.</summary>
     Evasion,
+
+    /// <summary>파갑. 방어력을 20% 낮춘다.</summary>
+    ArmorBreak,
+
+    /// <summary>고무. 공격력과 방어력을 10% 높인다.</summary>
+    Rally,
 }

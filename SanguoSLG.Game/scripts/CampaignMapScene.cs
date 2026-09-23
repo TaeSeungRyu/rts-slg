@@ -498,6 +498,7 @@ public sealed partial class CampaignMapScene : Node3D
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
         if (args.Contains("--maptestgaugelifetimeqa")) CallDeferred(nameof(RunActiveGaugeLifetimeQa));
         if (args.Contains("--maptestgaugeprogressqa")) CallDeferred(nameof(RunActiveGaugeProgressQa));
+        if (args.Contains("--maptestunitstatusqa")) CallDeferred(nameof(RunUnitStatusDisplayQa));
     }
 
     public override void _ExitTree()
@@ -1139,6 +1140,9 @@ public sealed partial class CampaignMapScene : Node3D
         }
         Row("선봉 액티브", ActiveSlotText(u.State.VanguardActive, u.State.VanguardGauge));
         Row("부관 액티브", ActiveSlotText(u.State.AdjutantActive, u.State.AdjutantGauge));
+        var activeStatuses = ActiveStatusLines(u.State);
+        if (activeStatuses.Count > 0)
+            Row("현재 상태", string.Join("\n", activeStatuses));
 
         foreach (var (role, skill) in new[] { ("선봉", u.State.VanguardActive), ("부관", u.State.AdjutantActive) })
         {
@@ -1172,6 +1176,21 @@ public sealed partial class CampaignMapScene : Node3D
             ? (state.AdjutantActive, state.AdjutantGauge)
             : (state.VanguardActive, state.VanguardGauge);
     }
+
+    private static IReadOnlyList<string> ActiveStatusLines(UnitCombatState state)
+        => state.Statuses.Where(status => !status.IsExpired).Select(status => status.Kind switch
+        {
+            StatusKind.Burn => $"화계 · 병력 {status.TickBasisPoints / 100.0:0.##}% 영구 소실 · {status.Remaining}진행",
+            StatusKind.Poison => $"중독 · 병력 {status.TickBasisPoints / 100.0:0.##}% 피해 · {status.Remaining}진행",
+            StatusKind.AttackDown => $"공격력 -{status.AtkDownPercent}% · {status.Remaining}진행",
+            StatusKind.RangedDown => $"원거리 공격력 -{status.AtkDownPercent}% · {status.Remaining}진행",
+            StatusKind.Nullify => $"이간 · 적성/패시브 무효 · {status.Remaining}진행",
+            StatusKind.Daze => $"혼란 · 행동 불가 · {status.Remaining}진행",
+            StatusKind.Evasion => $"회피술 · 원거리 피해 -30% · {status.Remaining}진행",
+            StatusKind.ArmorBreak => $"파갑 · 방어력 -{status.DfDownPercent}% · {status.Remaining}진행",
+            StatusKind.Rally => $"고무 · 공격/방어 +{status.AtkBonusPercent}% · {status.Remaining}진행",
+            _ => $"{status.Kind} · {status.Remaining}진행",
+        }).ToList();
 
     // 메뉴를 지정 헥사의 화면좌표 우측에 배치(화면 밖 clamp).
     private void PlaceMenu(PanelContainer menu, HexCoord at, float offsetX)
@@ -11880,6 +11899,24 @@ public sealed partial class CampaignMapScene : Node3D
         GD.Print($"[maptestgaugeprogressqa] passed={passed} observed={string.Join(',', observed)} skill={gauge.SkillCode}");
         _activeGauges.Remove(qaUnitId);
         token.QueueFree();
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>부대 상세 상태가 수치·남은 진행을 표시하고 만료 즉시 사라지는 회귀 QA.</summary>
+    private void RunUnitStatusDisplayQa()
+    {
+        var state = UnitCombatState.Create(80)
+            .AddStatus(new StatusEffect(StatusKind.ArmorBreak, 0, 2, false, DfDownPercent: 20))
+            .AddStatus(new StatusEffect(StatusKind.Rally, 0, 1, false, AtkBonusPercent: 10, DfBonusPercent: 10));
+        var visible = ActiveStatusLines(state);
+        var afterOne = ActiveStatusLines(state.TickStatuses());
+        var afterTwo = ActiveStatusLines(state.TickStatuses().TickStatuses());
+        var passed = visible.Any(x => x.Contains("파갑") && x.Contains("-20%") && x.Contains("2진행"))
+            && visible.Any(x => x.Contains("고무") && x.Contains("+10%") && x.Contains("1진행"))
+            && afterOne.All(x => !x.Contains("고무"))
+            && afterOne.Any(x => x.Contains("파갑") && x.Contains("1진행"))
+            && afterTwo.Count == 0;
+        GD.Print($"[maptestunitstatusqa] passed={passed} initial={string.Join('|', visible)} after1={string.Join('|', afterOne)} after2={afterTwo.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

@@ -192,6 +192,7 @@ public sealed class AdvanceOrchestrator
         var participants = new Dictionary<UnitId, BattleParticipant>();
         // 방어형은 공격·계략형보다 먼저 확정한다. 이후 공격형은 최초 공격 명령 순서대로 고른다.
         var defenseSkills = new Dictionary<UnitId, ActiveSkill>();
+        var armorBreakTargets = new HashSet<UnitId>();
         foreach (var id in participating.OrderBy(id => state[id].Field.CommandOrder).ThenBy(id => id.Value))
         {
             var u = state[id];
@@ -229,6 +230,16 @@ public sealed class AdvanceOrchestrator
             if (skill is not null)
             {
                 firedActives[id] = skill;
+                if (skill.Code == "rally")
+                {
+                    newState = newState.AddStatus(new StatusEffect(
+                        StatusKind.Rally, 0, 3, false, AtkBonusPercent: 10, DfBonusPercent: 10));
+                }
+                else if (skill.Code == "armor_break")
+                {
+                    var primaryTarget = engagements.FirstOrDefault(e => e.Attacker == id)?.Targets.FirstOrDefault();
+                    if (primaryTarget is { } targetId) armorBreakTargets.Add(targetId);
+                }
             }
 
             state[id] = u with { State = newState };
@@ -255,6 +266,14 @@ public sealed class AdvanceOrchestrator
         foreach (var (id, pool) in combat.Pools)
         {
             state[id] = state[id] with { Pool = pool };
+        }
+        // 파갑의 이번 타격은 ActiveSkill.DefenderDfReductionPercent로 한 번만 계산하고,
+        // 이후 교전부터 적용할 3진행 디버프는 정산 뒤에 부여해 중복 저하를 막는다.
+        foreach (var targetId in armorBreakTargets)
+        {
+            if (state.TryGetValue(targetId, out var target) && target.Pool.Active > 0)
+                state[targetId] = target with { State = target.State.AddStatus(new StatusEffect(
+                    StatusKind.ArmorBreak, 0, 3, false, DfDownPercent: 20)) };
         }
 
         // 5.5) 보급부대 균일 피해 분배 — 이 진행의 손실(전투·DoT·굶주림)을 병종 구성에 반영.
@@ -668,6 +687,18 @@ public sealed class AdvanceOrchestrator
             if (s.AtkDownPercent > 0 && (!s.RangedOnly || u.Field.AttackRange >= 2))
             {
                 outgoing = outgoing * System.Math.Max(0, 100 - s.AtkDownPercent) / 100;
+            }
+            if (s.AtkBonusPercent > 0)
+            {
+                outgoing = outgoing * (100 + s.AtkBonusPercent) / 100;
+            }
+            if (s.DfDownPercent > 0 || s.DfBonusPercent > 0)
+            {
+                stats = stats with
+                {
+                    DfStat = System.Math.Max(1,
+                        stats.DfStat * (100 - s.DfDownPercent + s.DfBonusPercent) / 100)
+                };
             }
         }
 
