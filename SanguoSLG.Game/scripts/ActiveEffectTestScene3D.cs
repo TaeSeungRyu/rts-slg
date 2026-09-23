@@ -1014,15 +1014,16 @@ public partial class ActiveEffectTestScene3D : Node3D
         var spawned = effect is not null && effect.LoadedFromGlb && effect.WindStreakCount == 5
             && effect.WindMoteCount == 8 && _allyActiveFireDay == 6 && _allyActiveFireCount == 1
             && _lastEffectCount == 1;
-        var timer = GetTree().CreateTimer(1.08);
+        var timer = GetTree().CreateTimer(1.32);
         timer.Timeout += () =>
         {
-            var displayed = IsInstanceValid(effect) && effect!.SweepCompleted && effect.IsScreenAligned;
+            var displayed = IsInstanceValid(effect) && effect!.SweepCompleted && effect.IsScreenAligned
+                && effect.CompletedStreakCount == 5;
             var cleanup = GetTree().CreateTimer(0.32);
             cleanup.Timeout += () =>
             {
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
-                GD.Print($"[evasionqa] spawned={spawned} streaks=5 motes=8 screenAligned={displayed} removed={removed}");
+                GD.Print($"[evasionqa] spawned={spawned} streaks=5 completed=5 motes=8 screenAligned={displayed} removed={removed}");
                 GetTree().Quit(spawned && displayed && removed ? 0 : 1);
             };
         };

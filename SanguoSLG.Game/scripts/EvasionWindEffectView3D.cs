@@ -1,3 +1,4 @@
+using System.Linq;
 using Godot;
 
 namespace SanguoSLG.Game;
@@ -13,6 +14,7 @@ public sealed partial class EvasionWindEffectView3D : Node3D
     public int WindMoteCount { get; private set; }
     public bool SweepCompleted { get; private set; }
     public bool IsScreenAligned { get; private set; }
+    public int CompletedStreakCount { get; private set; }
 
     public override void _Ready()
     {
@@ -33,25 +35,50 @@ public sealed partial class EvasionWindEffectView3D : Node3D
         visual.Name = "EvasionWindGlbVisual";
         AddChild(visual);
         LoadedFromGlb = true;
-        WindStreakCount = visual.FindChildren("Evasion_WindStreak_*", "", true, false).Count;
-        WindMoteCount = visual.FindChildren("Evasion_WindMote_*", "", true, false).Count;
+        var streaks = visual.FindChildren("Evasion_WindStreak_*", "", true, false)
+            .OfType<Node3D>().OrderBy(node => node.Name.ToString()).ToList();
+        var motes = visual.FindChildren("Evasion_WindMote_*", "", true, false)
+            .OfType<Node3D>().OrderBy(node => node.Name.ToString()).ToList();
+        WindStreakCount = streaks.Count;
+        WindMoteCount = motes.Count;
 
-        var baseScale = visual.Scale;
-        visual.Position = new Vector3(-0.48f, 0f, 0f);
-        visual.Scale = baseScale * 0.08f;
-        var tween = CreateTween();
-        tween.TweenProperty(visual, "scale", baseScale, 0.16f)
-            .SetTrans(Tween.TransitionType.Expo).SetEase(Tween.EaseType.Out);
-        tween.Parallel().TweenProperty(visual, "position", new Vector3(0.16f, 0f, 0f), 0.72f)
-            .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
-        tween.TweenProperty(visual, "position", new Vector3(0.42f, 0f, 0f), 0.28f);
-        tween.Parallel().TweenProperty(visual, "scale", baseScale * 0.02f, 0.30f);
+        // 선 전체를 한 덩어리로 밀지 않고, 각 바람줄기가 서로 다른 박자와 속도로 통과한다.
+        for (var index = 0; index < streaks.Count; index++)
+        {
+            var streak = streaks[index];
+            var destination = streak.Position + Vector3.Right * (0.22f + index % 2 * 0.10f);
+            var baseScale = streak.Scale;
+            streak.Position -= Vector3.Right * (0.58f + index * 0.06f);
+            streak.Scale = baseScale * 0.05f;
+            var tween = CreateTween();
+            tween.TweenInterval(index * 0.07f);
+            tween.TweenProperty(streak, "scale", baseScale, 0.13f);
+            tween.Parallel().TweenProperty(streak, "position", destination, 0.48f + index * 0.045f)
+                .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+            tween.TweenProperty(streak, "position", destination + Vector3.Right * 0.22f, 0.18f);
+            tween.Parallel().TweenProperty(streak, "scale", baseScale * 0.02f, 0.20f);
+            tween.TweenCallback(Callable.From(() => CompletedStreakCount++));
+        }
+        for (var index = 0; index < motes.Count; index++)
+        {
+            var mote = motes[index];
+            var origin = mote.Position;
+            var baseScale = mote.Scale;
+            mote.Position = origin - Vector3.Right * (0.46f + index % 3 * 0.08f);
+            mote.Scale = baseScale * 0.04f;
+            var tween = CreateTween();
+            tween.TweenInterval(0.04f + index * 0.045f);
+            tween.TweenProperty(mote, "scale", baseScale, 0.10f);
+            tween.Parallel().TweenProperty(mote, "position",
+                origin + Vector3.Right * 0.34f + Vector3.Up * ((index % 2 == 0 ? 1f : -1f) * 0.06f), 0.56f);
+            tween.TweenProperty(mote, "scale", baseScale * 0.01f, 0.18f);
+        }
 
-        var completed = new Godot.Timer { OneShot = true, WaitTime = 1.05 };
+        var completed = new Godot.Timer { OneShot = true, WaitTime = 1.28 };
         AddChild(completed);
         completed.Timeout += () => SweepCompleted = true;
         completed.Start();
-        var cleanup = new Godot.Timer { OneShot = true, WaitTime = 1.34 };
+        var cleanup = new Godot.Timer { OneShot = true, WaitTime = 1.58 };
         AddChild(cleanup);
         cleanup.Timeout += QueueFree;
         cleanup.Start();
