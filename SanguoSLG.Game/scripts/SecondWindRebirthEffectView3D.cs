@@ -3,7 +3,7 @@ using Godot;
 
 namespace SanguoSLG.Game;
 
-/// <summary>황금 혼백이 생명핵으로 복귀하고 심장이 다시 뛰는 불사 GLB 효과.</summary>
+/// <summary>황금 혼백이 귀환한 뒤 갑주 전사의 형상이 다시 일어서는 불사 GLB 효과.</summary>
 public sealed partial class SecondWindRebirthEffectView3D : Node3D
 {
     private const string AssetPath = "res://assets/models/effect-second-wind.glb";
@@ -12,7 +12,7 @@ public sealed partial class SecondWindRebirthEffectView3D : Node3D
     public bool LoadedFromGlb { get; private set; }
     public int SoulCount { get; private set; }
     public int ReturnedSoulCount { get; private set; }
-    public int CompletedHeartBeats { get; private set; }
+    public bool WarriorRiseCompleted { get; private set; }
     public int RingCount { get; private set; }
     public int CompletedRingPulses { get; private set; }
     public bool IsScreenAligned { get; private set; }
@@ -38,21 +38,23 @@ public sealed partial class SecondWindRebirthEffectView3D : Node3D
         visual.Scale = Vector3.One * 0.62f;
         LoadedFromGlb = true;
 
-        var heart = visual.FindChild("SecondWind_HeartGroup", true, false) as Node3D;
+        var warrior = visual.FindChild("SecondWind_WarriorGroup", true, false) as Node3D;
         var souls = visual.FindChildren("SecondWind_SoulGroup_*", "", true, false)
             .OfType<Node3D>().OrderBy(node => node.Name.ToString()).ToList();
         var rings = visual.FindChildren("SecondWind_RebirthRing_*", "", true, false)
             .OfType<Node3D>().OrderBy(node => node.Name.ToString()).ToList();
         SoulCount = souls.Count;
         RingCount = rings.Count;
-        if (heart is null || souls.Count == 0 || rings.Count == 0)
+        if (warrior is null || souls.Count == 0 || rings.Count == 0)
         {
-            GD.PushError("불사 효과의 생명핵·혼백·부활 고리 노드를 찾지 못했습니다.");
+            GD.PushError("불사 효과의 갑주 전사·혼백·부활 고리 노드를 찾지 못했습니다.");
             QueueFree();
             return;
         }
 
-        heart.Scale = Vector3.One * 0.05f;
+        var warriorDestination = warrior.Position;
+        warrior.Position = warriorDestination + Vector3.Down * 0.48f;
+        warrior.Scale = Vector3.One * 0.05f;
         foreach (var ring in rings) ring.Scale = Vector3.One * 0.01f;
         for (var index = 0; index < souls.Count; index++)
         {
@@ -65,16 +67,13 @@ public sealed partial class SecondWindRebirthEffectView3D : Node3D
             tween.TweenCallback(Callable.From(() => ReturnedSoulCount++));
         }
 
-        var heartbeat = CreateTween();
-        heartbeat.TweenInterval(0.42f);
-        for (var beat = 0; beat < 3; beat++)
-        {
-            heartbeat.TweenProperty(heart, "scale", Vector3.One * 1.12f, 0.10f)
-                .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
-            heartbeat.TweenProperty(heart, "scale", Vector3.One * 0.88f, 0.10f);
-            heartbeat.TweenCallback(Callable.From(() => CompletedHeartBeats++));
-        }
-        heartbeat.TweenProperty(heart, "scale", Vector3.One, 0.08f);
+        var rise = CreateTween();
+        rise.TweenInterval(0.42f);
+        rise.TweenProperty(warrior, "position", warriorDestination, 0.48f)
+            .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+        rise.Parallel().TweenProperty(warrior, "scale", Vector3.One * 1.08f, 0.48f);
+        rise.TweenProperty(warrior, "scale", Vector3.One, 0.12f);
+        rise.TweenCallback(Callable.From(() => WarriorRiseCompleted = true));
 
         for (var index = 0; index < rings.Count; index++)
         {

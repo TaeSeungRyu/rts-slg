@@ -1190,12 +1190,12 @@ public partial class ActiveEffectTestScene3D : Node3D
         timer.Timeout += () =>
         {
             var animated = IsInstanceValid(effect) && effect!.ReturnedSoulCount == 6
-                && effect.CompletedHeartBeats == 3 && effect.CompletedRingPulses == 3 && effect.IsScreenAligned;
+                && effect.WarriorRiseCompleted && effect.CompletedRingPulses == 3 && effect.IsScreenAligned;
             var cleanup = GetTree().CreateTimer(0.32);
             cleanup.Timeout += () =>
             {
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
-                GD.Print($"[secondwindqa] spawned={spawned} souls=6 returned=6 beats=3 rings=3 pulses=3 screenAligned={animated} removed={removed}");
+                GD.Print($"[secondwindqa] spawned={spawned} souls=6 returned=6 warriorRise=True rings=3 pulses=3 screenAligned={animated} removed={removed}");
                 GetTree().Quit(spawned && animated && removed ? 0 : 1);
             };
         };

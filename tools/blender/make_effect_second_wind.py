@@ -1,4 +1,4 @@
-"""Create Second Wind: a crimson life-heart, returning golden souls, and rebirth rings."""
+"""Create Second Wind: returning golden souls and a spectral armored warrior rising again."""
 import math
 import os
 
@@ -30,33 +30,49 @@ def material(name, color, metallic=0.0, roughness=0.3, emission=0.0):
     return mat
 
 
-crimson = material("SecondWindCrimsonLife", (0.70, 0.006, 0.018), metallic=0.22, roughness=0.20, emission=1.8)
 gold = material("SecondWindSoulGold", (0.98, 0.62, 0.07), metallic=0.42, roughness=0.14, emission=2.3)
 white = material("SecondWindSoulWhite", (0.93, 0.88, 0.64), metallic=0.12, roughness=0.18, emission=2.6)
+armor = material("SecondWindSpectralArmor", (0.32, 0.68, 0.82), metallic=0.68, roughness=0.16, emission=2.0)
+deep = material("SecondWindArmorShadow", (0.035, 0.12, 0.18), metallic=0.45, roughness=0.24, emission=0.65)
 
 root = bpy.data.objects.new("SecondWindRoot", None)
 bpy.context.collection.objects.link(root)
-heart = bpy.data.objects.new("SecondWind_HeartGroup", None)
-bpy.context.collection.objects.link(heart)
-heart.parent = root
+warrior = bpy.data.objects.new("SecondWind_WarriorGroup", None)
+bpy.context.collection.objects.link(warrior)
+warrior.parent = root
 
-# Stylized heart silhouette: two rounded lobes and one tapered lower point.
-for index, x in enumerate((-0.12, 0.12), start=1):
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.18, location=(x, -0.02, 0.13))
-    lobe = bpy.context.object
-    lobe.name = f"SecondWind_HeartLobe_{index}"
-    lobe.scale = (1.0, 0.48, 0.88)
-    lobe.data.materials.append(crimson)
-    lobe.parent = heart
-bpy.ops.mesh.primitive_cone_add(vertices=28, radius1=0.285, radius2=0.025, depth=0.46,
-                                location=(0.0, -0.02, -0.10), rotation=(math.pi, 0, 0))
-point = bpy.context.object
-point.name = "SecondWind_HeartPoint"
-point.scale = (1.0, 0.48, 1.0)
-point.data.materials.append(crimson)
-point.parent = heart
+# A compact East-Asian armored warrior silhouette, designed to read at map scale.
+bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.115, location=(0.0, -0.02, 0.32))
+helmet = bpy.context.object
+helmet.name = "SecondWind_WarriorHelmet"
+helmet.scale = (1.0, 0.56, 0.82)
+helmet.data.materials.append(armor)
+helmet.parent = warrior
+bpy.ops.mesh.primitive_cone_add(vertices=20, radius1=0.055, radius2=0.0, depth=0.17, location=(0.0, -0.02, 0.49))
+crest = bpy.context.object
+crest.name = "SecondWind_HelmetCrest"
+crest.data.materials.append(gold)
+crest.parent = warrior
+bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=0.25, radius2=0.17, depth=0.40, location=(0.0, 0.0, 0.04))
+chest = bpy.context.object
+chest.name = "SecondWind_WarriorLamellar"
+chest.data.materials.append(deep)
+chest.parent = warrior
+for index, x in enumerate((-0.25, 0.25), start=1):
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=8, radius=0.115, location=(x, 0.0, 0.18))
+    shoulder = bpy.context.object
+    shoulder.name = f"SecondWind_ShoulderGuard_{index}"
+    shoulder.scale = (1.25, 0.55, 0.65)
+    shoulder.data.materials.append(armor)
+    shoulder.parent = warrior
+for index, x in enumerate((-0.11, 0.11), start=1):
+    bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=0.09, radius2=0.065, depth=0.34, location=(x, 0.0, -0.30))
+    leg = bpy.context.object
+    leg.name = f"SecondWind_WarriorLeg_{index}"
+    leg.data.materials.append(armor)
+    leg.parent = warrior
 
-# Returning soul sparks begin around the heart and converge at runtime.
+# Returning soul sparks begin around the fallen warrior and converge at runtime.
 for index in range(6):
     angle = index * math.tau / 6.0
     group = bpy.data.objects.new(f"SecondWind_SoulGroup_{index + 1}", None)
