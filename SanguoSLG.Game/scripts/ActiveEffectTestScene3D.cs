@@ -116,6 +116,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunHoldTheLineQa);
         }
+        else if (args.Contains("--activeeffecttestfieldmedicqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "field_medic");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunFieldMedicQa);
+        }
         else if (args.Contains("--activeeffecttestbraceqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -611,7 +619,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         }
 
         var count = 0;
-        if (fired.Type == ActiveType.Defense && _tokens.TryGetValue(AllyId, out var defensiveCaster))
+        if (fired.Type is ActiveType.Defense or ActiveType.Heal && _tokens.TryGetValue(AllyId, out var defensiveCaster))
         {
             var enemy = _units.Where(x => x.Field.Owner.Value == 2)
                 .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
@@ -1046,6 +1054,28 @@ public partial class ActiveEffectTestScene3D : Node3D
             {
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
                 GD.Print($"[holdthelineqa] spawned={spawned} arrows=7 completed=7 screenAligned={displayed} removed={removed}");
+                GetTree().Quit(spawned && displayed && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunFieldMedicQa()
+    {
+        AdvanceSevenDays();
+        var effect = _tokens[AllyId].FindChildren("*", "", true, false)
+            .OfType<FieldMedicCrossEffectView3D>().FirstOrDefault();
+        var spawned = effect is not null && effect.LoadedFromGlb && effect.CrossCount == 7
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(1.66);
+        timer.Timeout += () =>
+        {
+            var displayed = IsInstanceValid(effect) && effect!.DisplayCompleted && effect.IsScreenAligned
+                && effect.CompletedCrossCount == 7;
+            var cleanup = GetTree().CreateTimer(0.32);
+            cleanup.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+                GD.Print($"[fieldmedicqa] spawned={spawned} crosses=7 completed=7 screenAligned={displayed} removed={removed}");
                 GetTree().Quit(spawned && displayed && removed ? 0 : 1);
             };
         };

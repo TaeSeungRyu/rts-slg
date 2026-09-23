@@ -2519,6 +2519,10 @@ public sealed partial class CampaignMapScene : Node3D
                         .ThenBy(x => x.Id.Value).FirstOrDefault();
                     _animSkillEffects.Add((activeTime + 0.14, casterId.Value, target?.Id.Value ?? casterId.Value, skill));
                 }
+                else if (caster is not null && skill.Type == ActiveType.Heal)
+                {
+                    _animSkillEffects.Add((activeTime + 0.14, casterId.Value, casterId.Value, skill));
+                }
                 else if (caster is not null && skill.Type == ActiveType.Strike && turn.Combat is { } activeCombat)
                 {
                     var target = turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
@@ -3906,7 +3910,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var effect = _animSkillEffects[_animSkillEffectIdx];
                 if (_armyTokens.TryGetValue(effect.TargetUnitId, out var target) && target.Visible)
                 {
-                    if (effect.Skill.Type == ActiveType.Defense
+                    if (effect.Skill.Type is ActiveType.Defense or ActiveType.Heal
                         && _armyTokens.TryGetValue(effect.CasterUnitId, out var defenseCaster) && defenseCaster.Visible)
                         ActiveSkillPresentation.AttachEffect(defenseCaster, effect.Skill, target.GlobalPosition);
                     else if (effect.Skill.Code == "breakthrough"

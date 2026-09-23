@@ -120,6 +120,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new BraceArmorEffectView3D());
             return true;
         }
+        if (skill.Code == "field_medic")
+        {
+            target.AddChild(new FieldMedicCrossEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();
