@@ -113,6 +113,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId, ActiveSkill Skill)> _animActives = new();
     private int _animSkillEffectIdx;
     private readonly List<(double Time, int CasterUnitId, int TargetUnitId, ActiveSkill Skill)> _animSkillEffects = new();
+    private int _animGaugeIdx;
+    private readonly List<(double Time, int UnitId, ActiveSkill? Skill, ActiveGauge Gauge)> _animGaugeUpdates = new();
 
     // 병력 → 편대원 수(design-ui §3): 9천↑=9, 7천↑=7, 5천↑=5, 3천↑=3, 그 밑=1.
     private static int FormationFor(int troops) =>
@@ -495,6 +497,7 @@ public sealed partial class CampaignMapScene : Node3D
         Redraw("자기 성(파란색)을 클릭해 명령을 내리세요. 적(촉)은 AI입니다.");
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
         if (args.Contains("--maptestgaugelifetimeqa")) CallDeferred(nameof(RunActiveGaugeLifetimeQa));
+        if (args.Contains("--maptestgaugeprogressqa")) CallDeferred(nameof(RunActiveGaugeProgressQa));
     }
 
     public override void _ExitTree()
@@ -1158,6 +1161,16 @@ public sealed partial class CampaignMapScene : Node3D
         return gauge.IsReady
             ? $"{skill.Name} 준비"
             : $"{skill.Name} {gauge.ElapsedDays}/{ActiveGauge.ReadyDays}일";
+    }
+
+    private static (ActiveSkill? Skill, ActiveGauge Gauge) DisplayActiveGauge(UnitCombatState state)
+    {
+        if (state.VanguardActive is null) return (state.AdjutantActive, state.AdjutantGauge);
+        if (state.AdjutantActive is null) return (state.VanguardActive, state.VanguardGauge);
+        // 선봉이 발동해 초기화되고 준비된 부관이 남은 경우 부관 진행도를 우선 보여준다.
+        return state.AdjutantGauge.ElapsedDays > state.VanguardGauge.ElapsedDays
+            ? (state.AdjutantActive, state.AdjutantGauge)
+            : (state.VanguardActive, state.VanguardGauge);
     }
 
     // 메뉴를 지정 헥사의 화면좌표 우측에 배치(화면 밖 clamp).
@@ -2445,6 +2458,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animCaptureIdx = 0;
         _animActiveIdx = 0;
         _animSkillEffectIdx = 0;
+        _animGaugeIdx = 0;
         _advanceBtn.Busy = true;
         _advanceBtn.Progress = 0f;
         _dayLabel.Visible = true;
@@ -2478,6 +2492,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animCaptures.Clear();
         _animActives.Clear();
         _animSkillEffects.Clear();
+        _animGaugeUpdates.Clear();
         for (var d = 0; d <= AnimDays; d++) { _dayKind[d] = "이동"; } // 기본 이동턴, 아래서 교전·공성 있는 날만 공격턴
         var alive = new HashSet<int>(startHex.Keys);
         var deathEffectUnitIds = new HashSet<int>();
@@ -2593,6 +2608,8 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 survivors.Add(u.Id.Value);
                 _animUpdates.Add((settleTime, u.Id.Value, u.Pool.Active));
+                var (displaySkill, displayGauge) = DisplayActiveGauge(u.State);
+                _animGaugeUpdates.Add((settleTime, u.Id.Value, displaySkill, displayGauge));
 
                 // 교란 강제 후퇴(PushAway) 등 이동 틱에 안 잡히는 위치 변화 동기화.
                 if (prev.TryGetValue(u.Id.Value, out var lastPos) && lastPos != u.Field.Position)
@@ -2707,6 +2724,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animCaptures.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animActives.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animGaugeUpdates.Sort((a, b) => a.Time.CompareTo(b.Time));
     }
 
     private void BuildEgressAnimationStartOverrides(GameState preMove, IReadOnlyList<(double Time, int UnitId, HexCoord To)> moves)
@@ -3928,6 +3946,8 @@ public sealed partial class CampaignMapScene : Node3D
                 if (_armyTokens.TryGetValue(d.UnitId, out var tok)) SpawnSkillDamagePopup(tok.Position, d.Damage);
                 _animSkillDmgIdx++;
             }
+
+            ApplyGaugePlaybackUpdates(_animT);
 
             while (_animActiveIdx < _animActives.Count && _animActives[_animActiveIdx].Time <= _animT)
             {
@@ -11725,10 +11745,7 @@ public sealed partial class CampaignMapScene : Node3D
             lblNode.Visible = army.Field.Owner == Player; // 병력 수는 아군만 표시(적은 편대 규모로 가늠)
             if (_activeGauges.TryGetValue(army.Id.Value, out var activeGauge))
             {
-                var gauge = army.State.VanguardActive is not null
-                    ? army.State.VanguardGauge
-                    : army.State.AdjutantGauge;
-                var skill = army.State.VanguardActive ?? army.State.AdjutantActive;
+                var (skill, gauge) = DisplayActiveGauge(army.State);
                 activeGauge.SetSkill(skill, gauge);
                 activeGauge.Visible = (army.State.VanguardActive is not null || army.State.AdjutantActive is not null)
                     && (_advancing || (_unitMenu.Visible && _selectedUnitId == army.Id.Value));
@@ -11820,6 +11837,50 @@ public sealed partial class CampaignMapScene : Node3D
             GD.Print($"[maptestgaugelifetimeqa] passed={passed} gaugeRemoved={!_activeGauges.ContainsKey(qaUnitId)}");
             GetTree().Quit(passed ? 0 : 1);
         };
+    }
+
+    /// <summary>전투 재생 시간에 맞춰 월드 위 액티브 게이지를 당일 상태로 갱신한다.</summary>
+    private void ApplyGaugePlaybackUpdates(double playbackTime)
+    {
+        while (_animGaugeIdx < _animGaugeUpdates.Count && _animGaugeUpdates[_animGaugeIdx].Time <= playbackTime)
+        {
+            var update = _animGaugeUpdates[_animGaugeIdx];
+            if (_activeGauges.TryGetValue(update.UnitId, out var gauge)
+                && GodotObject.IsInstanceValid(gauge) && !gauge.IsQueuedForDeletion())
+                gauge.SetSkill(update.Skill, update.Gauge);
+            _animGaugeIdx++;
+        }
+    }
+
+    /// <summary>맵 전투 재생 중 스킬원이 1일마다 1칸씩 실제 화면 객체에 반영되는 회귀 QA.</summary>
+    private void RunActiveGaugeProgressQa()
+    {
+        const int qaUnitId = -987655;
+        var skill = _activeSkills.FirstOrDefault();
+        var token = new Node3D { Name = "GaugeProgressQaToken" };
+        AddChild(token);
+        var gauge = new ActiveSkillGaugeView3D { Visible = false };
+        token.AddChild(gauge);
+        _activeGauges[qaUnitId] = gauge;
+        _animGaugeUpdates.Clear();
+        _animGaugeIdx = 0;
+        for (var day = 1; day <= ActiveGauge.ReadyDays; day++)
+            _animGaugeUpdates.Add((day * 0.1, qaUnitId, skill, new ActiveGauge(day)));
+
+        var observed = new List<int>();
+        for (var day = 1; day <= ActiveGauge.ReadyDays; day++)
+        {
+            ApplyGaugePlaybackUpdates(day * 0.1 + 0.001);
+            observed.Add(gauge.FilledSegments);
+        }
+
+        var passed = skill is not null
+            && observed.SequenceEqual(Enumerable.Range(1, ActiveGauge.ReadyDays))
+            && gauge.SkillCode == skill.Code;
+        GD.Print($"[maptestgaugeprogressqa] passed={passed} observed={string.Join(',', observed)} skill={gauge.SkillCode}");
+        _activeGauges.Remove(qaUnitId);
+        token.QueueFree();
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     private void BuildHud()
