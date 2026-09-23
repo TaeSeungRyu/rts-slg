@@ -3,7 +3,7 @@ using Godot;
 
 namespace SanguoSLG.Game;
 
-/// <summary>황금 혼백이 귀환한 뒤 갑주 전사의 형상이 다시 일어서는 불사 GLB 효과.</summary>
+/// <summary>불씨가 귀환한 뒤 붉은 봉황이 솟아 날개를 펼치는 불사 GLB 효과.</summary>
 public sealed partial class SecondWindRebirthEffectView3D : Node3D
 {
     private const string AssetPath = "res://assets/models/effect-second-wind.glb";
@@ -12,7 +12,8 @@ public sealed partial class SecondWindRebirthEffectView3D : Node3D
     public bool LoadedFromGlb { get; private set; }
     public int SoulCount { get; private set; }
     public int ReturnedSoulCount { get; private set; }
-    public bool WarriorRiseCompleted { get; private set; }
+    public bool PhoenixRiseCompleted { get; private set; }
+    public bool WingsSpreadCompleted { get; private set; }
     public int RingCount { get; private set; }
     public int CompletedRingPulses { get; private set; }
     public bool IsScreenAligned { get; private set; }
@@ -38,23 +39,27 @@ public sealed partial class SecondWindRebirthEffectView3D : Node3D
         visual.Scale = Vector3.One * 0.62f;
         LoadedFromGlb = true;
 
-        var warrior = visual.FindChild("SecondWind_WarriorGroup", true, false) as Node3D;
+        var phoenix = visual.FindChild("SecondWind_PhoenixGroup", true, false) as Node3D;
+        var leftWing = visual.FindChild("SecondWind_WingGroup_Left", true, false) as Node3D;
+        var rightWing = visual.FindChild("SecondWind_WingGroup_Right", true, false) as Node3D;
         var souls = visual.FindChildren("SecondWind_SoulGroup_*", "", true, false)
             .OfType<Node3D>().OrderBy(node => node.Name.ToString()).ToList();
         var rings = visual.FindChildren("SecondWind_RebirthRing_*", "", true, false)
             .OfType<Node3D>().OrderBy(node => node.Name.ToString()).ToList();
         SoulCount = souls.Count;
         RingCount = rings.Count;
-        if (warrior is null || souls.Count == 0 || rings.Count == 0)
+        if (phoenix is null || leftWing is null || rightWing is null || souls.Count == 0 || rings.Count == 0)
         {
-            GD.PushError("불사 효과의 갑주 전사·혼백·부활 고리 노드를 찾지 못했습니다.");
+            GD.PushError("불사 효과의 봉황·날개·불씨·부활 고리 노드를 찾지 못했습니다.");
             QueueFree();
             return;
         }
 
-        var warriorDestination = warrior.Position;
-        warrior.Position = warriorDestination + Vector3.Down * 0.48f;
-        warrior.Scale = Vector3.One * 0.05f;
+        var phoenixDestination = phoenix.Position;
+        phoenix.Position = phoenixDestination + Vector3.Down * 0.52f;
+        phoenix.Scale = Vector3.One * 0.05f;
+        leftWing.Scale = new Vector3(0.12f, 1f, 0.35f);
+        rightWing.Scale = new Vector3(0.12f, 1f, 0.35f);
         foreach (var ring in rings) ring.Scale = Vector3.One * 0.01f;
         for (var index = 0; index < souls.Count; index++)
         {
@@ -69,11 +74,14 @@ public sealed partial class SecondWindRebirthEffectView3D : Node3D
 
         var rise = CreateTween();
         rise.TweenInterval(0.42f);
-        rise.TweenProperty(warrior, "position", warriorDestination, 0.48f)
+        rise.TweenProperty(phoenix, "position", phoenixDestination, 0.48f)
             .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
-        rise.Parallel().TweenProperty(warrior, "scale", Vector3.One * 1.08f, 0.48f);
-        rise.TweenProperty(warrior, "scale", Vector3.One, 0.12f);
-        rise.TweenCallback(Callable.From(() => WarriorRiseCompleted = true));
+        rise.Parallel().TweenProperty(phoenix, "scale", Vector3.One * 1.08f, 0.48f);
+        rise.TweenProperty(phoenix, "scale", Vector3.One, 0.12f);
+        rise.TweenCallback(Callable.From(() => PhoenixRiseCompleted = true));
+        rise.TweenProperty(leftWing, "scale", Vector3.One, 0.25f).SetTrans(Tween.TransitionType.Back);
+        rise.Parallel().TweenProperty(rightWing, "scale", Vector3.One, 0.25f).SetTrans(Tween.TransitionType.Back);
+        rise.TweenCallback(Callable.From(() => WingsSpreadCompleted = true));
 
         for (var index = 0; index < rings.Count; index++)
         {
