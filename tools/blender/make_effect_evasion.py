@@ -30,8 +30,8 @@ def material(name, color, emission):
     return mat
 
 
-grey = material("EvasionWindGrey", (0.24, 0.27, 0.30), 0.45)
-light = material("EvasionWindEdge", (0.46, 0.49, 0.52), 0.70)
+grey = material("EvasionWindGrey", (0.48, 0.52, 0.56), 0.62)
+light = material("EvasionWindEdge", (0.70, 0.74, 0.78), 0.88)
 root = bpy.data.objects.new("EvasionRoot", None)
 bpy.context.collection.objects.link(root)
 
