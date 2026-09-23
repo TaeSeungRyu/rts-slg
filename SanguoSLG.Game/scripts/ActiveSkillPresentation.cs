@@ -145,6 +145,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new SecondWindRebirthEffectView3D());
             return true;
         }
+        if (skill.Code == "patch")
+        {
+            target.AddChild(new PatchCrossEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();

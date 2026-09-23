@@ -156,6 +156,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunSecondWindQa);
         }
+        else if (args.Contains("--activeeffecttestpatchqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "patch");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunPatchQa);
+        }
         else if (args.Contains("--activeeffecttestbraceqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -1196,6 +1204,27 @@ public partial class ActiveEffectTestScene3D : Node3D
             {
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
                 GD.Print($"[secondwindqa] spawned={spawned} souls=6 returned=6 warriorRise=True rings=3 pulses=3 screenAligned={animated} removed={removed}");
+                GetTree().Quit(spawned && animated && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunPatchQa()
+    {
+        AdvanceSevenDays();
+        var effect = _tokens[AllyId].FindChildren("*", "", true, false)
+            .OfType<PatchCrossEffectView3D>().FirstOrDefault();
+        var spawned = effect is not null && effect.LoadedFromGlb
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(1.05);
+        timer.Timeout += () =>
+        {
+            var animated = IsInstanceValid(effect) && effect!.RiseCompleted && effect.IsScreenAligned;
+            var cleanup = GetTree().CreateTimer(0.20);
+            cleanup.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+                GD.Print($"[patchqa] spawned={spawned} crosses=1 riseCompleted={animated} screenAligned={animated} removed={removed}");
                 GetTree().Quit(spawned && animated && removed ? 0 : 1);
             };
         };
