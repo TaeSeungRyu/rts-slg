@@ -41,28 +41,45 @@ phoenix = bpy.data.objects.new("SecondWind_PhoenixGroup", None)
 bpy.context.collection.objects.link(phoenix)
 phoenix.parent = root
 
-# Front-facing phoenix silhouette: body, crowned head, gold beak, spread feathered wings and long tails.
+# Front-facing heraldic phoenix silhouette.  The camera looks along +Y, so every identifying
+# feature is deliberately laid out in the X/Z plane (the old beak pointed into the camera and
+# read as a faceless blob).
 bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.18, location=(0.0, -0.02, 0.05))
 body = bpy.context.object
 body.name = "SecondWind_PhoenixBody"
 body.scale = (0.72, 0.42, 1.32)
 body.data.materials.append(crimson)
 body.parent = phoenix
-bpy.ops.mesh.primitive_uv_sphere_add(segments=20, ring_count=10, radius=0.105, location=(0.0, -0.02, 0.31))
+# S-curved neck and side-profile head, facing screen-left like the reference silhouette.
+for index, (x, z, sx, sz) in enumerate(((0.02, 0.24, 0.08, 0.14), (-0.015, 0.32, 0.075, 0.13),
+                                        (-0.065, 0.39, 0.08, 0.11)), start=1):
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=20, ring_count=10, radius=1.0, location=(x, -0.02, z))
+    neck = bpy.context.object
+    neck.name = f"SecondWind_PhoenixNeck_{index}"
+    neck.scale = (sx, 0.045, sz)
+    neck.data.materials.append(crimson)
+    neck.parent = phoenix
+bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.105, location=(-0.11, -0.02, 0.455))
 head = bpy.context.object
 head.name = "SecondWind_PhoenixHead"
-head.scale = (0.85, 0.52, 1.0)
+head.scale = (1.05, 0.48, 0.78)
 head.data.materials.append(crimson)
 head.parent = phoenix
-bpy.ops.mesh.primitive_cone_add(vertices=12, radius1=0.065, radius2=0.0, depth=0.16,
-                                location=(0.0, -0.13, 0.31), rotation=(math.pi / 2, 0, 0))
+# Beak points left across the screen, with a bright eye so the face remains readable in-game.
+bpy.ops.mesh.primitive_cone_add(vertices=12, radius1=0.055, radius2=0.0, depth=0.18,
+                                location=(-0.245, -0.02, 0.455), rotation=(0, -math.pi / 2, 0))
 beak = bpy.context.object
 beak.name = "SecondWind_PhoenixBeak"
 beak.data.materials.append(gold)
 beak.parent = phoenix
-for index, x in enumerate((-0.055, 0.0, 0.055), start=1):
-    bpy.ops.mesh.primitive_cone_add(vertices=10, radius1=0.035, radius2=0.0, depth=0.16,
-                                    location=(x, 0.0, 0.47))
+bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=0.022, location=(-0.145, -0.068, 0.48))
+eye = bpy.context.object
+eye.name = "SecondWind_PhoenixEye"
+eye.data.materials.append(white)
+eye.parent = phoenix
+for index, (x, tilt) in enumerate(((-0.16, -0.22), (-0.10, 0.0), (-0.04, 0.22)), start=1):
+    bpy.ops.mesh.primitive_cone_add(vertices=10, radius1=0.032, radius2=0.0, depth=0.18,
+                                    location=(x, -0.01, 0.565), rotation=(0, tilt, 0))
     crest = bpy.context.object
     crest.name = f"SecondWind_PhoenixCrest_{index}"
     crest.data.materials.append(gold if index == 2 else crimson)
@@ -72,14 +89,16 @@ for side, sign in (("Left", -1), ("Right", 1)):
     wing = bpy.data.objects.new(f"SecondWind_WingGroup_{side}", None)
     bpy.context.collection.objects.link(wing)
     wing.parent = phoenix
-    for index in range(5):
-        x = sign * (0.18 + index * 0.105)
-        z = 0.18 - index * 0.055
-        bpy.ops.mesh.primitive_cone_add(vertices=12, radius1=0.085, radius2=0.015, depth=0.38,
-                                        location=(x, 0.0, z), rotation=(0, sign * math.radians(66), 0))
+    for index in range(6):
+        angle = math.radians(26 + index * 9)
+        length = 0.34 + index * 0.055
+        x = sign * (0.19 + math.cos(angle) * length * 0.48)
+        z = 0.13 + math.sin(angle) * length * 0.48
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=20, ring_count=10, radius=1.0,
+                                             location=(x, 0.0, z), rotation=(0, sign * -angle, 0))
         feather = bpy.context.object
         feather.name = f"SecondWind_{side}WingFeather_{index + 1}"
-        feather.scale = (1.0, 0.48, 1.0 + index * 0.08)
+        feather.scale = (length * 0.58, 0.035, 0.055 + index * 0.005)
         feather.data.materials.append(crimson if index < 3 else deep_red)
         feather.parent = wing
 
