@@ -9,6 +9,7 @@ public sealed partial class LightningGlbEffectView3D : Node3D
     public bool LoadedFromGlb { get; private set; }
     public bool AnimationStarted { get; private set; }
     public bool AnimationCompleted { get; private set; }
+    public int WhiteZigzagCount { get; private set; }
 
     public override void _Ready()
     {
@@ -17,7 +18,8 @@ public sealed partial class LightningGlbEffectView3D : Node3D
         var visual = packed.Instantiate<Node3D>();
         visual.Name = "LightningGlbVisual";
         AddChild(visual);
-        visual.Scale = Vector3.One * 1.35f;
+        visual.Scale = Vector3.One * 1.65f;
+        WhiteZigzagCount = visual.FindChildren("white_zigzag_*", "", true, false).Count;
         LoadedFromGlb = true;
         var flashes = new[] { "flash_1", "flash_2", "flash_3" };
         for (var index = 0; index < flashes.Length; index++)
@@ -31,10 +33,10 @@ public sealed partial class LightningGlbEffectView3D : Node3D
             var tween = CreateTween();
             tween.TweenInterval(index * 0.34f);
             tween.TweenCallback(Callable.From(() => flash.Visible = true));
-            tween.TweenProperty(flash, "position", destination, 0.18f)
+            tween.TweenProperty(flash, "position", destination, 0.24f)
                 .SetTrans(Tween.TransitionType.Expo).SetEase(Tween.EaseType.In);
-            tween.Parallel().TweenProperty(flash, "scale", Vector3.One, 0.18f);
-            tween.TweenInterval(0.15f);
+            tween.Parallel().TweenProperty(flash, "scale", Vector3.One, 0.24f);
+            tween.TweenInterval(0.22f);
             tween.TweenProperty(flash, "scale", new Vector3(0.7f, 0.05f, 0.7f), 0.10f);
             tween.TweenCallback(Callable.From(() => flash.Visible = false));
             AnimationStarted = true;

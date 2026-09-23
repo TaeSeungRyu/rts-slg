@@ -132,6 +132,33 @@ def create_bolt(name, points, radius, material, parent, verts=6):
     return group
 
 
+def create_lightning_ribbon(name, points, start_width, end_width, material, parent):
+    """Broad tapered zigzag silhouette; reads as lightning instead of a straight cylinder."""
+    verts = []
+    count = len(points)
+    for index, point in enumerate(points):
+        x, y, z = point
+        if index == 0:
+            dx, dz = points[1][0] - x, points[1][2] - z
+        elif index == count - 1:
+            dx, dz = x - points[index - 1][0], z - points[index - 1][2]
+        else:
+            dx, dz = points[index + 1][0] - points[index - 1][0], points[index + 1][2] - points[index - 1][2]
+        length = max(math.sqrt(dx * dx + dz * dz), 0.0001)
+        px, pz = -dz / length, dx / length
+        width = start_width + (end_width - start_width) * index / (count - 1)
+        verts.extend([(x + px * width, y - 0.018, z + pz * width),
+                      (x - px * width, y - 0.018, z - pz * width)])
+    faces = [(i * 2, i * 2 + 1, i * 2 + 3, i * 2 + 2) for i in range(count - 1)]
+    mesh = bpy.data.meshes.new(name + "Mesh")
+    mesh.from_pydata(verts, [], faces)
+    mesh.materials.append(material)
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.parent = parent
+    return obj
+
+
 def create_ground_ring(name, radius, tube_radius, material, parent):
     bpy.ops.mesh.primitive_torus_add(
         major_radius=radius,
@@ -192,6 +219,7 @@ main_points_1 = [
 
 create_bolt("main_glow_1", main_points_1, MAIN_THICKNESS * 1.85, MAT_GLOW, flash_1)
 create_bolt("main_bolt_1", main_points_1, MAIN_THICKNESS, MAT_CORE, flash_1)
+create_lightning_ribbon("white_zigzag_1", main_points_1, 0.036, 0.015, MAT_CORE, flash_1)
 
 create_bolt(
     "branch_1",
@@ -241,8 +269,10 @@ main_points_2 = [
     (0.010, 0.004, 0.175),
     (0.000, 0.000, BOLT_BOTTOM_Z),
 ]
+main_points_2 = [(x - 0.15, y, z) for x, y, z in main_points_2]
 
 create_bolt("main_bolt_2", main_points_2, MAIN_THICKNESS * 0.88, MAT_CORE, flash_2)
+create_lightning_ribbon("white_zigzag_2", main_points_2, 0.032, 0.013, MAT_CORE, flash_2)
 
 create_bolt(
     "branch_2a",
@@ -274,6 +304,7 @@ main_points_3 = [(0.16, 0.015, BOLT_TOP_Z), (0.11, -0.008, 0.700), (0.18, 0.012,
                  (0.15, 0.000, BOLT_BOTTOM_Z)]
 create_bolt("main_bolt_3", main_points_3, MAIN_THICKNESS * 0.95, MAT_CORE, flash_3)
 create_bolt("main_glow_3", main_points_3, MAIN_THICKNESS * 1.65, MAT_GLOW, flash_3)
+create_lightning_ribbon("white_zigzag_3", main_points_3, 0.034, 0.014, MAT_CORE, flash_3)
 create_bolt("branch_3a", [(0.11, -0.008, 0.700), (0.02, 0.035, 0.605), (-0.02, 0.02, 0.54)],
             BRANCH_THICKNESS * 0.8, MAT_CORE, flash_3, verts=5)
 
