@@ -71,6 +71,7 @@
 | 27 | 귀갑진 낙하 방패 | `TurtleFormation` | Blender GLB·노드 | 유닛 | O | `effect-turtle-formation.glb`의 비취색 육각 방패 7장이 게임 카메라와 평행한 화면 정면 진형면 위로 시간차 낙하해 아군을 덮은 뒤 함께 소멸한다. 직전 대비 80%(2026-09-23) |
 | 28 | 회피술 회색 바람 | `EvasionWind` | Blender GLB·노드 | 유닛 | O | `effect-evasion.glb`의 회색 바람줄기 5개와 바람 파편 8개가 게임 화면 정면에서 아군 진형을 가로질러 불어온 뒤 사라진다(2026-09-23) |
 | 29 | 사수 화살 진형 | `HoldTheLineArrow` | Blender GLB·노드 | 유닛 | O | `effect-hold-the-line.glb`의 가로로 누운 화살 7개가 게임 화면 정면에서 아군 진형 위에 펼쳐졌다 사라진다(2026-09-23) |
+| 30 | 방비 경량 두정갑 | `BraceArmor` | Blender GLB 재사용·노드 | 유닛 | O | 철벽의 `effect-iron-wall.glb`를 72% 크기로 재사용하고 모든 갑옷 재질을 밝게 보정한다. 게임 화면 정면에서 짧게 나타났다 사라진다(2026-09-23) |
 
 ### 적용 대상 제약
 

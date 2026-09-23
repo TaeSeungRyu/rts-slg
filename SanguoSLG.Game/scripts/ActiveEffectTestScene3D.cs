@@ -116,6 +116,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunHoldTheLineQa);
         }
+        else if (args.Contains("--activeeffecttestbraceqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "brace");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunBraceQa);
+        }
         else if (args.Contains("--activeeffecttestdoublehitqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -1036,6 +1044,29 @@ public partial class ActiveEffectTestScene3D : Node3D
             {
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
                 GD.Print($"[holdthelineqa] spawned={spawned} arrows=7 screenAligned={displayed} removed={removed}");
+                GetTree().Quit(spawned && displayed && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunBraceQa()
+    {
+        AdvanceSevenDays();
+        var effect = _tokens[AllyId].FindChildren("*", "", true, false)
+            .OfType<BraceArmorEffectView3D>().FirstOrDefault();
+        var spawned = effect is not null && effect.LoadedFromIronWallGlb && effect.ChestPlateCount == 5
+            && effect.LightenedSurfaceCount > 0 && _allyActiveFireDay == 6 && _allyActiveFireCount == 1
+            && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(0.92);
+        timer.Timeout += () =>
+        {
+            var displayed = IsInstanceValid(effect) && effect!.DisplayCompleted && effect.IsScreenAligned;
+            var lightenedCount = effect?.LightenedSurfaceCount ?? 0;
+            var cleanup = GetTree().CreateTimer(0.30);
+            cleanup.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+                GD.Print($"[braceqa] spawned={spawned} plates=5 lightened={lightenedCount} screenAligned={displayed} removed={removed}");
                 GetTree().Quit(spawned && displayed && removed ? 0 : 1);
             };
         };

@@ -115,6 +115,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new HoldTheLineArrowEffectView3D());
             return true;
         }
+        if (skill.Code == "brace")
+        {
+            target.AddChild(new BraceArmorEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();
