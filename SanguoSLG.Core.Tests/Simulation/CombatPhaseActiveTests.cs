@@ -87,6 +87,17 @@ public class CombatPhaseActiveTests
     }
 
     [Fact]
+    public void 회복_활성병력이_부족해도_부상병이_없으면_병력을_만들지_않는다()
+    {
+        var r = Run(Sword(troops: 8000, wounded: 0, intellect: 100, heal: A["second_wind"]), Sword());
+
+        // 불사 회복량 자체는 충분하지만 부상 풀이 0이므로, 공격 전 활성 병력은 8,000 그대로다.
+        Assert.Equal(608, r.DamageTaken[new UnitId(2)]);
+        Assert.Equal(7240, r.Pools[new UnitId(1)].Active);
+        Assert.Equal(532, r.Pools[new UnitId(1)].Wounded);
+    }
+
+    [Fact]
     public void 액티브없으면_4c2와_동일한_평타()
     {
         var r = Run(Sword(), Sword());
