@@ -19,8 +19,7 @@ public partial class ActiveEffectTestScene3D : Node3D
     // 보병 공격 최장 1회는 편대 산개(0.55)+전진(0.16)+타격(0.07)+멈춤(0.08)+복귀(0.28)=1.14초다.
     // 이보다 짧으면 다음 날 게이지만 오르고 PlayAttackMotion이 무시되므로 프레임 여유를 둔다.
     private const double NormalDayPresentationSeconds = 1.30;
-    // 가장 긴 단발 효과(무쌍 1.55초)와 배너 전환을 잘리지 않고 확인할 최소 시간.
-    private const double ActiveDayPresentationSeconds = 1.85;
+    // 액티브 효과 수명은 공격 진행 시간을 늘리지 않는다. 긴 효과는 다음 공격과 겹쳐 독립 재생한다.
     private const double AdjutantChainDelaySeconds = 0.20;
     private static readonly Color AllyColor = new("#3e78c4");
     private static readonly Color EnemyColor = new("#b8423c");
@@ -374,6 +373,17 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunAdjutantQa);
         }
+        else if (args.Contains("--activeeffecttestsecondwindnonblockingqa"))
+        {
+            var vanguardIndex = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "second_wind");
+            var adjutantIndex = Enumerable.Range(0, _adjutantSkillSelect.ItemCount)
+                .First(i => _adjutantSkillSelect.GetItemMetadata(i).AsString() == "peerless");
+            _skillSelect.Select(vanguardIndex);
+            _adjutantSkillSelect.Select(adjutantIndex);
+            ResetScenario();
+            CallDeferred(MethodName.RunSecondWindNonBlockingQa);
+        }
         else if (args.Contains("--activeeffecttestonemanarmyqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -630,9 +640,9 @@ public partial class ActiveEffectTestScene3D : Node3D
             // 바로 다음 전투 일차의 1칸 충전으로 확정 발동하는 경우도 0.2초 연계한다.
             && (ally.State.AdjutantGauge.IsReady || ally.State.AdjutantGauge.Tick(1).IsReady);
         if (chainAdjutant) _compressedAdjutantChains++;
-        var delay = chainAdjutant
-            ? AdjutantChainDelaySeconds
-            : hasActivePresentation ? ActiveDayPresentationSeconds : NormalDayPresentationSeconds;
+        // 이펙트는 표현 전용이다. 불사처럼 1.7초 이상 재생되는 효과도 다음 공격일을
+        // 기다리게 하지 않으며, 기존 공격 모션에 필요한 최소 시간만 사용한다.
+        var delay = chainAdjutant ? AdjutantChainDelaySeconds : NormalDayPresentationSeconds;
         var timer = GetTree().CreateTimer(delay);
         timer.Timeout += () => RunPresentedDay(day + 1, generation);
     }
@@ -1443,10 +1453,10 @@ public partial class ActiveEffectTestScene3D : Node3D
                 && _chargeAppearedDay == 5 && _allyActiveFireCount == 1 && _gauges[AllyId].FilledSegments == 1
                 && !_gauges[AllyId].Visible && _chargeView is null
                 && _tokens[AllyId].FindChild("Effect_Burst", true, false) is null
-                && _extendedActiveTurns == 1 && ActiveDayPresentationSeconds >= 1.55
+                && _extendedActiveTurns == 1 && NormalDayPresentationSeconds == 1.30
                 // 액티브 발동일은 일반 공격을 대체한다: 일반 공격 6회 + 액티브 1회 = 7일의 가시 행동.
                 && _tokens[AllyId].AttackMotionStartCount + _allyActiveFireCount == 7;
-            GD.Print($"[activeeffecttestpresentqa] passed={passed} days={_round} attacks={_tokens[AllyId].AttackMotionStartCount} actives={_allyActiveFireCount} fireDay={_allyActiveFireDay} activeTurns={_extendedActiveTurns} activeSeconds={ActiveDayPresentationSeconds:F2} gauge={_gauges[AllyId].FilledSegments} visible={_gauges[AllyId].Visible} burstAlive={_tokens[AllyId].FindChild("Effect_Burst", true, false) is not null}");
+            GD.Print($"[activeeffecttestpresentqa] passed={passed} days={_round} attacks={_tokens[AllyId].AttackMotionStartCount} actives={_allyActiveFireCount} fireDay={_allyActiveFireDay} activeTurns={_extendedActiveTurns} daySeconds={NormalDayPresentationSeconds:F2} gauge={_gauges[AllyId].FilledSegments} visible={_gauges[AllyId].Visible} burstAlive={_tokens[AllyId].FindChild("Effect_Burst", true, false) is not null}");
             GetTree().Quit(passed ? 0 : 1);
         };
     }
@@ -1479,8 +1489,27 @@ public partial class ActiveEffectTestScene3D : Node3D
                 && _allyFiredSkillCodes.SequenceEqual(new[] { expectedVanguard, expectedAdjutant })
                 && _allyActiveFireCount == 2 && _chargeView is null
                 && _compressedAdjutantChains == 1 && AdjutantChainDelaySeconds == 0.20
-                && ActiveDayPresentationSeconds >= 1.85;
+                && NormalDayPresentationSeconds == 1.30;
             GD.Print($"[activeeffecttestadjutantpresentqa] passed={passed} fired={string.Join(",", _allyFiredSkillCodes)} activeTurns={_extendedActiveTurns} chains={_compressedAdjutantChains} chainDelay={AdjutantChainDelaySeconds:F2}");
+            GetTree().Quit(passed ? 0 : 1);
+        };
+    }
+
+    private void RunSecondWindNonBlockingQa()
+    {
+        BeginSevenDayPresentation();
+        // 1~5일 6.5초 뒤 불사 발동, 0.2초 뒤 부관 액티브가 이어진다. 불사 수명(1.72초)이
+        // 끝나기 훨씬 전인 6.95초에 두 발동이 모두 기록되고 봉황도 살아 있어야 한다.
+        var timer = GetTree().CreateTimer(6.95);
+        timer.Timeout += () =>
+        {
+            var phoenixAlive = FindChildren("*", "", true, false)
+                .OfType<SecondWindRebirthEffectView3D>()
+                .Any(effect => IsInstanceValid(effect) && !effect.IsQueuedForDeletion());
+            var passed = phoenixAlive
+                && _allyFiredSkillCodes.TakeLast(2).SequenceEqual(new[] { "second_wind", "peerless" })
+                && _compressedAdjutantChains == 1 && _round >= 7;
+            GD.Print($"[secondwindnonblockingqa] passed={passed} phoenixAlive={phoenixAlive} round={_round} fired={string.Join(",", _allyFiredSkillCodes.TakeLast(2))} chains={_compressedAdjutantChains}");
             GetTree().Quit(passed ? 0 : 1);
         };
     }
