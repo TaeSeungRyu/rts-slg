@@ -158,6 +158,60 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 계략형_주장과_불사_부관은_서로_덮어쓰지_않고_다음_공격턴에_이어진다()
+    {
+        var ready = UnitCombatState.Create(90, A["fire_plot"], A["second_wind"]).AdvanceField(6);
+        var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.Advance, ready) with
+        {
+            Pool = new TroopPool(9000, 1000),
+        };
+        var target = Sword(2, 2, new HexCoord(1, 0), UnitMode.Advance);
+
+        var first = MakeOrchestrator().Run([caster, target], maxDays: 1);
+        var afterFirst = first.Units.Single(u => u.Id.Value == 1);
+        Assert.Equal("fire_plot", first.FiredActives[new UnitId(1)].Code);
+        Assert.False(afterFirst.State.VanguardGauge.IsReady);
+        Assert.True(afterFirst.State.AdjutantGauge.IsReady);
+
+        var second = MakeOrchestrator().Run(first.Units, maxDays: 1);
+        var afterSecond = second.Units.Single(u => u.Id.Value == 1);
+        Assert.Equal("second_wind", second.FiredActives[new UnitId(1)].Code);
+        Assert.False(afterSecond.State.AdjutantGauge.IsReady);
+    }
+
+    [Theory]
+    [InlineData("peerless", "iron_wall")]
+    [InlineData("peerless", "second_wind")]
+    [InlineData("peerless", "fire_plot")]
+    [InlineData("iron_wall", "peerless")]
+    [InlineData("iron_wall", "second_wind")]
+    [InlineData("iron_wall", "fire_plot")]
+    [InlineData("second_wind", "peerless")]
+    [InlineData("second_wind", "iron_wall")]
+    [InlineData("second_wind", "fire_plot")]
+    [InlineData("fire_plot", "peerless")]
+    [InlineData("fire_plot", "iron_wall")]
+    [InlineData("fire_plot", "second_wind")]
+    public void 액티브_유형_전체조합은_하루한개씩_주장후_부관순으로_발동한다(
+        string vanguardCode, string adjutantCode)
+    {
+        var ready = UnitCombatState.Create(90, A[vanguardCode], A[adjutantCode]).AdvanceField(6);
+        var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.Advance, ready) with
+        {
+            Pool = new TroopPool(9000, 1000),
+        };
+        var target = Sword(2, 2, new HexCoord(1, 0), UnitMode.Advance);
+
+        var first = MakeOrchestrator().Run([caster, target], maxDays: 1);
+        Assert.Single(first.FiredActives, pair => pair.Key.Value == 1);
+        Assert.Equal(vanguardCode, first.FiredActives[new UnitId(1)].Code);
+
+        var second = MakeOrchestrator().Run(first.Units, maxDays: 1);
+        Assert.Single(second.FiredActives, pair => pair.Key.Value == 1);
+        Assert.Equal(adjutantCode, second.FiredActives[new UnitId(1)].Code);
+    }
+
+    [Fact]
     public void 방어액티브는_공격액티브보다_먼저_확정되어_피해를_줄인다()
     {
         var attackerState = UnitCombatState.Create(80, A["peerless"]).AdvanceField(6);

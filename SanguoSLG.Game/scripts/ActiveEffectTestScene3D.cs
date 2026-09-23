@@ -352,6 +352,28 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunAdjutantQa);
         }
+        else if (args.Contains("--activeeffecttestsecondwindchainqa"))
+        {
+            var vanguardIndex = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "fire_plot");
+            var adjutantIndex = Enumerable.Range(0, _adjutantSkillSelect.ItemCount)
+                .First(i => _adjutantSkillSelect.GetItemMetadata(i).AsString() == "second_wind");
+            _skillSelect.Select(vanguardIndex);
+            _adjutantSkillSelect.Select(adjutantIndex);
+            ResetScenario();
+            CallDeferred(MethodName.RunAdjutantQa);
+        }
+        else if (args.Contains("--activeeffecttestsecondwindleadqa"))
+        {
+            var vanguardIndex = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "second_wind");
+            var adjutantIndex = Enumerable.Range(0, _adjutantSkillSelect.ItemCount)
+                .First(i => _adjutantSkillSelect.GetItemMetadata(i).AsString() == "peerless");
+            _skillSelect.Select(vanguardIndex);
+            _adjutantSkillSelect.Select(adjutantIndex);
+            ResetScenario();
+            CallDeferred(MethodName.RunAdjutantQa);
+        }
         else if (args.Contains("--activeeffecttestonemanarmyqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)

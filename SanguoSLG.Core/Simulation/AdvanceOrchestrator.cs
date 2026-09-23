@@ -195,7 +195,10 @@ public sealed class AdvanceOrchestrator
         foreach (var id in participating.OrderBy(id => state[id].Field.CommandOrder).ThenBy(id => id.Value))
         {
             var u = state[id];
-            if (u.IsArmyGroup || dazedAtStart.Contains(id) || IsDazed(u)) continue;
+            // 같은 부대가 앞선 3.5단계에서 계략형을 이미 발동했다면 방어/회복/타격형을
+            // 같은 날 또 소비하지 않는다. FiredActives는 부대당 1개이므로 뒤 스킬이 앞 연출을
+            // 덮어쓰는 것을 막고, 준비된 나머지 슬롯은 다음 교전일에 이어서 발동한다.
+            if (firedActives.ContainsKey(id) || u.IsArmyGroup || dazedAtStart.Contains(id) || IsDazed(u)) continue;
             var (defense, defendedState) = u.State.FiringDefenseActive();
             if (defense is null) continue;
             defenseSkills[id] = defense;
@@ -212,7 +215,7 @@ public sealed class AdvanceOrchestrator
         {
             var u = state[id];
             // 행동불가(혼란)면 액티브도 못 쓴다(피격·방어는 정상).
-            var (skill, newState) = u.IsArmyGroup || dazedAtStart.Contains(id) || IsDazed(u)
+            var (skill, newState) = firedActives.ContainsKey(id) || u.IsArmyGroup || dazedAtStart.Contains(id) || IsDazed(u)
                 ? ((ActiveSkill?)null, u.State)
                 : defenseSkills.ContainsKey(id) ? ((ActiveSkill?)null, u.State) : u.State.FiringActive();
 
