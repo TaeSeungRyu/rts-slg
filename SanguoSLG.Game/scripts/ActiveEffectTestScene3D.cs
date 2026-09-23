@@ -196,6 +196,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunDiscordQa);
         }
+        else if (args.Contains("--activeeffecttestcleanseqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "cleanse");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunCleanseQa);
+        }
         else if (args.Contains("--activeeffecttestbraceqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -691,7 +699,8 @@ public partial class ActiveEffectTestScene3D : Node3D
         }
 
         var count = 0;
-        if (fired.Type is ActiveType.Defense or ActiveType.Heal && _tokens.TryGetValue(AllyId, out var defensiveCaster))
+        if ((fired.Type is ActiveType.Defense or ActiveType.Heal || fired.Code == "cleanse")
+            && _tokens.TryGetValue(AllyId, out var defensiveCaster))
         {
             var enemy = _units.Where(x => x.Field.Owner.Value == 2)
                 .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
@@ -1347,6 +1356,26 @@ public partial class ActiveEffectTestScene3D : Node3D
         {
             var removed = !IsInstanceValid(haze) || haze!.IsQueuedForDeletion();
             GD.Print($"[discordqa] spawned={spawned} haze=True fires={_allyActiveFireCount} fireDay={_allyActiveFireDay} removed={removed}");
+            GetTree().Quit(spawned && removed ? 0 : 1);
+        };
+    }
+
+    private void RunCleanseQa()
+    {
+        // 상태 이상이 하나도 없는 초기 배치에서도 진정은 즉시 발동하고 연출을 낸다.
+        var hadPurgeableStatus = _units.Any(x => x.Field.Owner.Value == 1
+            && x.State.Statuses.Any(s => s.Kind != StatusKind.Evasion));
+        AdvanceSevenDays();
+        var effect = _tokens[AllyId].FindChildren("*", "", true, false)
+            .OfType<CleanseCrossEffectView3D>().FirstOrDefault();
+        var spawned = !hadPurgeableStatus && effect is not null && effect.CrossCount == 7
+            && effect.UsesGreenMaterial && _allyActiveFireDay == 6 && _allyActiveFireCount == 1
+            && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(1.98);
+        timer.Timeout += () =>
+        {
+            var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+            GD.Print($"[cleanseqa] spawned={spawned} noStatus=True crosses={effect?.CrossCount ?? 0} green=True fires={_allyActiveFireCount} removed={removed}");
             GetTree().Quit(spawned && removed ? 0 : 1);
         };
     }

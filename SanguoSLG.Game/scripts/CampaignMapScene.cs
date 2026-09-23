@@ -2523,6 +2523,10 @@ public sealed partial class CampaignMapScene : Node3D
                 {
                     _animSkillEffects.Add((activeTime + 0.14, casterId.Value, casterId.Value, skill));
                 }
+                else if (caster is not null && skill.Code == "cleanse")
+                {
+                    _animSkillEffects.Add((activeTime + 0.14, casterId.Value, casterId.Value, skill));
+                }
                 else if (caster is not null && skill.Code == "lightning")
                 {
                     foreach (var target in turn.Units.Where(x => x.Field.Owner != caster.Field.Owner

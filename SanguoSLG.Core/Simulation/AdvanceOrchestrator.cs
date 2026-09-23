@@ -392,10 +392,6 @@ public sealed class AdvanceOrchestrator
                 var allies = state.Values.Where(u => u.Field.Owner == caster.Field.Owner
                     && u.Field.Position.Distance(caster.Field.Position) <= 2
                     && HasPurgeable(u.State)).OrderBy(u => u.Id.Value).ToList();
-                if (allies.Count == 0)
-                {
-                    continue;
-                }
                 foreach (var ally in allies)
                 {
                     state[ally.Id] = ally with
