@@ -105,6 +105,11 @@ public static class ActiveSkillPresentation
             target.AddChild(effect);
             return true;
         }
+        if (skill.Code == "evasion")
+        {
+            target.AddChild(new EvasionWindEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();

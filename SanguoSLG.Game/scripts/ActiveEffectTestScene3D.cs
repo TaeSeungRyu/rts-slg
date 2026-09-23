@@ -100,6 +100,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunTurtleFormationQa);
         }
+        else if (args.Contains("--activeeffecttestevasionqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "evasion");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunEvasionQa);
+        }
         else if (args.Contains("--activeeffecttestdoublehitqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -978,6 +986,28 @@ public partial class ActiveEffectTestScene3D : Node3D
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
                 GD.Print($"[turtleformationqa] spawned={spawned} landed=7 displayed={displayed} frontFacing={frontFacing} removed={removed}");
                 GetTree().Quit(spawned && displayed && frontFacing && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunEvasionQa()
+    {
+        AdvanceSevenDays();
+        var effect = _tokens[AllyId].FindChildren("*", "", true, false)
+            .OfType<EvasionWindEffectView3D>().FirstOrDefault();
+        var spawned = effect is not null && effect.LoadedFromGlb && effect.WindStreakCount == 5
+            && effect.WindMoteCount == 8 && _allyActiveFireDay == 6 && _allyActiveFireCount == 1
+            && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(1.08);
+        timer.Timeout += () =>
+        {
+            var displayed = IsInstanceValid(effect) && effect!.SweepCompleted && effect.IsScreenAligned;
+            var cleanup = GetTree().CreateTimer(0.32);
+            cleanup.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+                GD.Print($"[evasionqa] spawned={spawned} streaks=5 motes=8 screenAligned={displayed} removed={removed}");
+                GetTree().Quit(spawned && displayed && removed ? 0 : 1);
             };
         };
     }
