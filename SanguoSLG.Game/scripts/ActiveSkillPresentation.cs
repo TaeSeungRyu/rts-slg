@@ -125,6 +125,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new FieldMedicCrossEffectView3D());
             return true;
         }
+        if (skill.Code == "regroup")
+        {
+            target.AddChild(new RegroupSyringeEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();

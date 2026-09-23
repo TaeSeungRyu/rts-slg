@@ -124,6 +124,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunFieldMedicQa);
         }
+        else if (args.Contains("--activeeffecttestregroupqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "regroup");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunRegroupQa);
+        }
         else if (args.Contains("--activeeffecttestbraceqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -1077,6 +1085,28 @@ public partial class ActiveEffectTestScene3D : Node3D
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
                 GD.Print($"[fieldmedicqa] spawned={spawned} crosses=7 completed=7 screenAligned={displayed} removed={removed}");
                 GetTree().Quit(spawned && displayed && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunRegroupQa()
+    {
+        AdvanceSevenDays();
+        var effect = _tokens[AllyId].FindChildren("*", "", true, false)
+            .OfType<RegroupSyringeEffectView3D>().FirstOrDefault();
+        var spawned = effect is not null && effect.LoadedFromGlb
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(1.18);
+        timer.Timeout += () =>
+        {
+            var animated = IsInstanceValid(effect) && effect!.PlungerPressed && effect.LiquidEmptied
+                && effect.IsScreenAligned;
+            var cleanup = GetTree().CreateTimer(0.46);
+            cleanup.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+                GD.Print($"[regroupqa] spawned={spawned} plungerPressed={animated} liquidEmptied={animated} screenAligned={animated} removed={removed}");
+                GetTree().Quit(spawned && animated && removed ? 0 : 1);
             };
         };
     }
