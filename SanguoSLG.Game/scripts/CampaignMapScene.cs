@@ -2539,6 +2539,16 @@ public sealed partial class CampaignMapScene : Node3D
                         .ThenBy(x => x.Id.Value).FirstOrDefault();
                     if (target is not null) _animSkillEffects.Add((activeTime + 0.14, casterId.Value, target.Id.Value, skill));
                 }
+                else if (caster is not null && skill.Code == "rout")
+                {
+                    var target = turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
+                            && unitSnapshot.TryGetValue(x.Id.Value, out var before)
+                            && before.Field.Position != x.Field.Position)
+                        .OrderByDescending(x => unitSnapshot[x.Id.Value].Field.Position.Distance(caster.Field.Position)
+                            - x.Field.Position.Distance(caster.Field.Position))
+                        .ThenBy(x => x.Id.Value).FirstOrDefault();
+                    if (target is not null) _animSkillEffects.Add((activeTime + 0.14, casterId.Value, target.Id.Value, skill));
+                }
                 else if (caster is not null && skill.Type == ActiveType.Strike && turn.Combat is { } activeCombat)
                 {
                     var target = turn.Units.Where(x => x.Field.Owner != caster.Field.Owner

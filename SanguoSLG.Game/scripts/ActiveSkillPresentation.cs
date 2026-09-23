@@ -160,6 +160,11 @@ public static class ActiveSkillPresentation
             AttachTimedBuiltIn(target, EffectKind.Daze, 1.35f, 0.82f);
             return true;
         }
+        if (skill.Code == "rout")
+        {
+            AttachTimedBuiltIn(target, EffectKind.Confusion, 1.35f, 0.82f);
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();

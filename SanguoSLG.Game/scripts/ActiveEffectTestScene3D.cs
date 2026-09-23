@@ -180,6 +180,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunConfoundQa);
         }
+        else if (args.Contains("--activeeffecttestroutqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "rout");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunRoutQa);
+        }
         else if (args.Contains("--activeeffecttestbraceqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -696,6 +704,11 @@ public partial class ActiveEffectTestScene3D : Node3D
             : fired.Code == "confound"
                 ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsDaze))
                     .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
+                    .Take(1).ToList()
+            : fired.Code == "rout"
+                ? beforeUnits.Values.Where(before => before.Field.Owner.Value == 2
+                        && _units.FirstOrDefault(after => after.Id == before.Id)?.Field.Position != before.Field.Position)
+                    .OrderBy(before => before.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
                     .Take(1).ToList()
             : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage" or "reap"
                 or "breakthrough" or "tiger_strike" or "chain_strike" or "armor_break" or "heavy_blow" or "double_hit" or "crush"
@@ -1288,6 +1301,24 @@ public partial class ActiveEffectTestScene3D : Node3D
             var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
             GD.Print($"[confoundqa] spawned={spawned} targetAutoRecovered={targetRecovered} dazeEffect={effect is not null} fires={_allyActiveFireCount} fireDay={_allyActiveFireDay} effects={_lastEffectCount} removed={removed}");
             GetTree().Quit(spawned && targetRecovered && removed ? 0 : 1);
+        };
+    }
+
+    private void RunRoutQa()
+    {
+        var before = _units.Where(x => x.Field.Owner.Value == 2).ToDictionary(x => x.Id, x => x.Field.Position);
+        AdvanceSevenDays();
+        var effect = FindChildren("*", "", true, false).OfType<ConfusionEffect>().FirstOrDefault();
+        var pushed = _units.Any(x => x.Field.Owner.Value == 2
+            && before.TryGetValue(x.Id, out var origin) && x.Field.Position != origin);
+        var spawned = effect is not null && pushed
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(1.42);
+        timer.Timeout += () =>
+        {
+            var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+            GD.Print($"[routqa] spawned={spawned} targetPushed={pushed} confusionEffect={effect is not null} fires={_allyActiveFireCount} removed={removed}");
+            GetTree().Quit(spawned && removed ? 0 : 1);
         };
     }
 
