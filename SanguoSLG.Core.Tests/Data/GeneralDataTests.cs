@@ -70,7 +70,7 @@ public class GeneralDataTests
         var actives = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())
             .ToDictionary(a => a.Code);
 
-        foreach (var code in new[] { "fire_plot", "lightning", "confound", "rout", "discord", "douse", "cleanse" })
+        foreach (var code in new[] { "fire_plot", "lightning", "confound", "rout", "discord", "cleanse" })
         {
             Assert.True(actives.TryGetValue(code, out var skill), $"{code} 누락");
             Assert.Equal(ActiveType.Tactic, skill.Type);

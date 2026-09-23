@@ -32,13 +32,13 @@ public class ActiveSkillTests
         => Assert.Equal(expected, StatScale.Percent(stat));
 
     [Fact]
-    public void 로드_액티브_31종()
-        => Assert.Equal(31, A.Count);
+    public void 로드_액티브_30종()
+        => Assert.Equal(30, A.Count);
 
     [Fact]
-    public void 계략전환_액티브_7종은_책략형이다()
+    public void 계략전환_액티브_6종은_책략형이다()
     {
-        var tacticCodes = new[] { "fire_plot", "lightning", "confound", "rout", "discord", "douse", "cleanse" };
+        var tacticCodes = new[] { "fire_plot", "lightning", "confound", "rout", "discord", "cleanse" };
         Assert.All(tacticCodes, code => Assert.Equal(ActiveType.Tactic, A[code].Type));
     }
 

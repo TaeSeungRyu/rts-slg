@@ -171,7 +171,7 @@ public sealed class AdvanceOrchestrator
         var engagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList())
             .Where(e => !firedStratagems.ContainsKey(e.Attacker)
                 && (!firedActives.TryGetValue(e.Attacker, out var tactic)
-                    || tactic.Code is "douse" or "cleanse")
+                    || tactic.Code == "cleanse")
                 && state[e.Attacker].CanInitiateCombat
                 && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker])))
             .ToList();
@@ -387,19 +387,21 @@ public sealed class AdvanceOrchestrator
                 continue;
             }
 
-            if (skill.Code is "douse" or "cleanse")
+            if (skill.Code == "cleanse")
             {
-                var scope = skill.Code == "douse" ? PurgeScope.Fire : PurgeScope.NonFire;
                 var allies = state.Values.Where(u => u.Field.Owner == caster.Field.Owner
                     && u.Field.Position.Distance(caster.Field.Position) <= 2
-                    && HasPurgeable(u.State, scope)).OrderBy(u => u.Id.Value).ToList();
+                    && HasPurgeable(u.State)).OrderBy(u => u.Id.Value).ToList();
                 if (allies.Count == 0)
                 {
                     continue;
                 }
                 foreach (var ally in allies)
                 {
-                    state[ally.Id] = ally with { State = ally.State.Purge(scope) };
+                    state[ally.Id] = ally with
+                    {
+                        State = ally.State.Purge(PurgeScope.Fire).Purge(PurgeScope.NonFire)
+                    };
                 }
                 ConsumeTactic(state, casterId, skill, fired);
                 continue;
@@ -462,8 +464,8 @@ public sealed class AdvanceOrchestrator
         fired[casterId] = skill;
     }
 
-    private static bool HasPurgeable(UnitCombatState state, PurgeScope scope)
-        => scope == PurgeScope.Fire ? state.Statuses.Any(s => s.IsFire) : state.Statuses.Any(s => !s.IsFire);
+    private static bool HasPurgeable(UnitCombatState state)
+        => state.Statuses.Any(s => s.Kind != StatusKind.Evasion);
 
     private static void ApplyBurn(Dictionary<UnitId, CombatUnit> state, CombatUnit caster, CombatUnit target)
     {

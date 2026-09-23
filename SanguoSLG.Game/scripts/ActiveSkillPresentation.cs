@@ -155,6 +155,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new LightningGlbEffectView3D());
             return true;
         }
+        if (skill.Code == "cleanse")
+        {
+            target.AddChild(new CleanseCrossEffectView3D());
+            return true;
+        }
         if (skill.Code == "confound")
         {
             AttachTimedBuiltIn(target, EffectKind.Daze, 1.35f, 0.82f);

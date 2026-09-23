@@ -208,17 +208,10 @@
     "description": "기존 이간 효과를 유지합니다. 대상의 적성과 전투 패시브를 2진행 동안 무효화합니다."
   },
   {
-    "code": "douse",
-    "name": "소화",
-    "type": "tactic",
-    "grade": "low",
-    "description": "자신 중심 2칸 이내 모든 아군의 화계 계열 지속 피해 상태를 제거합니다."
-  },
-  {
     "code": "cleanse",
     "name": "진정",
     "type": "tactic",
     "grade": "low",
-    "description": "자신 중심 2칸 이내 모든 아군의 화계 이외 해로운 지속 상태를 제거합니다."
+    "description": "자신 중심 2칸 이내 모든 아군의 화계 계열과 그 밖의 해로운 지속 상태를 함께 제거합니다."
   }
 ]

@@ -60,7 +60,7 @@ public sealed record UnitCombatState(
     public UnitCombatState TickStatuses()
         => this with { Statuses = Statuses.Select(s => s.Tick()).Where(s => !s.IsExpired).ToList() };
 
-    /// <summary>정화: 범위에 해당하는 지속 상태를 제거한다(소화=화계, 진정=화계 외).</summary>
+    /// <summary>정화: 범위에 해당하는 지속 상태를 제거한다. 진정은 화계와 그 밖의 해로운 상태를 연속 정화한다.</summary>
     public UnitCombatState Purge(PurgeScope scope) => scope switch
     {
         PurgeScope.Fire => this with { Statuses = Statuses.Where(s => !s.IsFire).ToList() },
