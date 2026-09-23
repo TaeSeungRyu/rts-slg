@@ -150,6 +150,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new PatchCrossEffectView3D());
             return true;
         }
+        if (skill.Code == "lightning")
+        {
+            target.AddChild(new LightningGlbEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();

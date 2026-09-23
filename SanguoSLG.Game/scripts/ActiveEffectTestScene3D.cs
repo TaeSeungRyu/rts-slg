@@ -164,6 +164,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunPatchQa);
         }
+        else if (args.Contains("--activeeffecttestlightningqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "lightning");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunLightningQa);
+        }
         else if (args.Contains("--activeeffecttestbraceqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -672,6 +680,11 @@ public partial class ActiveEffectTestScene3D : Node3D
         }
         var targets = fired.Code == "fire_plot"
             ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsFire)).ToList()
+            : fired.Code == "lightning"
+                ? beforeUnits.Values.Where(x => x.Field.Owner.Value == 2
+                        && turn.StratagemDamage.GetValueOrDefault(x.Id) > 0)
+                    .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
+                    .Take(1).ToList()
             : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage" or "reap"
                 or "breakthrough" or "tiger_strike" or "chain_strike" or "armor_break" or "heavy_blow" or "double_hit" or "crush"
                 ? beforeUnits.Values.Where(x => x.Field.Owner.Value == 2
@@ -1225,6 +1238,26 @@ public partial class ActiveEffectTestScene3D : Node3D
             {
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
                 GD.Print($"[patchqa] spawned={spawned} crosses=1 riseCompleted={animated} screenAligned={animated} removed={removed}");
+                GetTree().Quit(spawned && animated && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunLightningQa()
+    {
+        AdvanceSevenDays();
+        var effect = FindChildren("*", "", true, false).OfType<LightningGlbEffectView3D>().FirstOrDefault();
+        var spawned = effect is not null && effect.LoadedFromGlb && effect.AnimationStarted
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(0.86);
+        timer.Timeout += () =>
+        {
+            var animated = IsInstanceValid(effect) && effect!.AnimationCompleted;
+            var cleanup = GetTree().CreateTimer(0.26);
+            cleanup.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+                GD.Print($"[lightningqa] spawned={spawned} glb=True animationStarted=True animationCompleted={animated} removed={removed}");
                 GetTree().Quit(spawned && animated && removed ? 0 : 1);
             };
         };
