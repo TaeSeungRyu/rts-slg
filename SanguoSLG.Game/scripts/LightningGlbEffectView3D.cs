@@ -33,8 +33,9 @@ public sealed partial class LightningGlbEffectView3D : Node3D
         AlignToCamera();
         var white = new StandardMaterial3D
         {
-            AlbedoColor = new Color(1f, 1f, 1f), EmissionEnabled = true,
-            Emission = new Color(0.78f, 0.90f, 1f), EmissionEnergyMultiplier = 5.5f,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            AlbedoColor = new Color(1f, 1f, 1f, 0.62f), EmissionEnabled = true,
+            Emission = new Color(0.78f, 0.90f, 1f, 0.62f), EmissionEnergyMultiplier = 4.2f,
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
         };
         var paths = new[]
@@ -44,14 +45,14 @@ public sealed partial class LightningGlbEffectView3D : Node3D
             new[] { new Vector2(.30f,.74f), new(.22f,.56f), new(.35f,.40f), new(.24f,.25f), new(.34f,.06f), new(.27f,-.16f) },
         };
         for (var boltIndex = 0; boltIndex < paths.Length; boltIndex++)
-            BuildRuntimeBolt(paths[boltIndex], boltIndex * 0.28, white);
+            BuildRuntimeBolt(paths[boltIndex], boltIndex * 0.196, white);
         AnimationStarted = RuntimeSegmentCount == 15;
         if (!AnimationStarted) { GD.PushError("낙뢰 GLB에서 flash_1~3 노드를 찾지 못했습니다."); QueueFree(); return; }
-        var completed = new Godot.Timer { OneShot = true, WaitTime = 1.30 };
+        var completed = new Godot.Timer { OneShot = true, WaitTime = 0.91 };
         AddChild(completed);
         completed.Timeout += () => AnimationCompleted = true;
         completed.Start();
-        var cleanup = new Godot.Timer { OneShot = true, WaitTime = 2.05 };
+        var cleanup = new Godot.Timer { OneShot = true, WaitTime = 1.45 };
         AddChild(cleanup);
         cleanup.Timeout += QueueFree;
         cleanup.Start();
@@ -87,9 +88,9 @@ public sealed partial class LightningGlbEffectView3D : Node3D
         foreach (var segment in segments)
         {
             tween.TweenCallback(Callable.From(() => segment.Visible = true));
-            tween.TweenInterval(0.045f);
+            tween.TweenInterval(0.0315f);
         }
-        tween.TweenInterval(0.38f);
+        tween.TweenInterval(0.266f);
         tween.TweenCallback(Callable.From(() => segments.ForEach(segment => segment.Visible = false)));
     }
 

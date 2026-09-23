@@ -1298,18 +1298,18 @@ public partial class ActiveEffectTestScene3D : Node3D
         var spawned = effects.Count >= 2 && effects.All(effect => effect.LoadedFromGlb
                 && effect.AnimationStarted && effect.WhiteZigzagCount == 3 && effect.RuntimeSegmentCount == 15)
             && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == effects.Count;
-        var capture = GetTree().CreateTimer(0.52);
+        var capture = GetTree().CreateTimer(0.40);
         capture.Timeout += () =>
         {
             var path = ProjectSettings.GlobalizePath("user://lightning-visible-qa.png");
             GetViewport().GetTexture().GetImage().SavePng(path);
             GD.Print($"[lightningqa] capture={path}");
         };
-        var timer = GetTree().CreateTimer(1.84);
+        var timer = GetTree().CreateTimer(1.12);
         timer.Timeout += () =>
         {
             var animated = effects.All(effect => IsInstanceValid(effect) && effect.AnimationCompleted);
-            var cleanup = GetTree().CreateTimer(0.28);
+            var cleanup = GetTree().CreateTimer(0.38);
             cleanup.Timeout += () =>
             {
                 var removed = effects.All(effect => !IsInstanceValid(effect) || effect.IsQueuedForDeletion());
