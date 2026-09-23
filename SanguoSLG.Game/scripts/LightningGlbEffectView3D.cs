@@ -45,14 +45,14 @@ public sealed partial class LightningGlbEffectView3D : Node3D
             new[] { new Vector2(.30f,.74f), new(.22f,.56f), new(.35f,.40f), new(.24f,.25f), new(.34f,.06f), new(.27f,-.16f) },
         };
         for (var boltIndex = 0; boltIndex < paths.Length; boltIndex++)
-            BuildRuntimeBolt(paths[boltIndex], boltIndex * 0.196, white);
+            BuildRuntimeBolt(paths[boltIndex], boltIndex * 0.125, white);
         AnimationStarted = RuntimeSegmentCount == 15;
         if (!AnimationStarted) { GD.PushError("낙뢰 GLB에서 flash_1~3 노드를 찾지 못했습니다."); QueueFree(); return; }
-        var completed = new Godot.Timer { OneShot = true, WaitTime = 0.91 };
+        var completed = new Godot.Timer { OneShot = true, WaitTime = 0.64 };
         AddChild(completed);
         completed.Timeout += () => AnimationCompleted = true;
         completed.Start();
-        var cleanup = new Godot.Timer { OneShot = true, WaitTime = 1.45 };
+        var cleanup = new Godot.Timer { OneShot = true, WaitTime = 1.05 };
         AddChild(cleanup);
         cleanup.Timeout += QueueFree;
         cleanup.Start();
@@ -88,9 +88,9 @@ public sealed partial class LightningGlbEffectView3D : Node3D
         foreach (var segment in segments)
         {
             tween.TweenCallback(Callable.From(() => segment.Visible = true));
-            tween.TweenInterval(0.0315f);
+            tween.TweenInterval(0.020f);
         }
-        tween.TweenInterval(0.266f);
+        tween.TweenInterval(0.17f);
         tween.TweenCallback(Callable.From(() => segments.ForEach(segment => segment.Visible = false)));
     }
 
