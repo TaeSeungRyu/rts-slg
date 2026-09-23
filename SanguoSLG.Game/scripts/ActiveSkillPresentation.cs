@@ -130,6 +130,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new RegroupSyringeEffectView3D());
             return true;
         }
+        if (skill.Code == "rally")
+        {
+            target.AddChild(new RallyWarDrumEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();

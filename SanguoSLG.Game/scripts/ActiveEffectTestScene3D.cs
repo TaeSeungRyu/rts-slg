@@ -132,6 +132,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunRegroupQa);
         }
+        else if (args.Contains("--activeeffecttestrallyqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "rally");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunRallyQa);
+        }
         else if (args.Contains("--activeeffecttestbraceqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -1106,6 +1114,28 @@ public partial class ActiveEffectTestScene3D : Node3D
             {
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
                 GD.Print($"[regroupqa] spawned={spawned} plungerPressed={animated} liquidEmptied={animated} screenAligned={animated} removed={removed}");
+                GetTree().Quit(spawned && animated && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunRallyQa()
+    {
+        AdvanceSevenDays();
+        var effect = _tokens[AllyId].FindChildren("*", "", true, false)
+            .OfType<RallyWarDrumEffectView3D>().FirstOrDefault();
+        var spawned = effect is not null && effect.LoadedFromGlb && effect.MalletCount == 2 && effect.RingCount == 3
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(1.34);
+        timer.Timeout += () =>
+        {
+            var animated = IsInstanceValid(effect) && effect!.CompletedDrumHits == 4
+                && effect.CompletedRingPulses == 3 && effect.IsScreenAligned;
+            var cleanup = GetTree().CreateTimer(0.30);
+            cleanup.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+                GD.Print($"[rallyqa] spawned={spawned} mallets=2 hits=4 rings=3 pulses=3 screenAligned={animated} removed={removed}");
                 GetTree().Quit(spawned && animated && removed ? 0 : 1);
             };
         };
