@@ -1296,8 +1296,15 @@ public partial class ActiveEffectTestScene3D : Node3D
         AdvanceSevenDays();
         var effects = FindChildren("*", "", true, false).OfType<LightningGlbEffectView3D>().ToList();
         var spawned = effects.Count >= 2 && effects.All(effect => effect.LoadedFromGlb
-                && effect.AnimationStarted && effect.WhiteZigzagCount == 3)
+                && effect.AnimationStarted && effect.WhiteZigzagCount == 3 && effect.RuntimeSegmentCount == 15)
             && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == effects.Count;
+        var capture = GetTree().CreateTimer(0.52);
+        capture.Timeout += () =>
+        {
+            var path = ProjectSettings.GlobalizePath("user://lightning-visible-qa.png");
+            GetViewport().GetTexture().GetImage().SavePng(path);
+            GD.Print($"[lightningqa] capture={path}");
+        };
         var timer = GetTree().CreateTimer(1.84);
         timer.Timeout += () =>
         {
@@ -1306,7 +1313,7 @@ public partial class ActiveEffectTestScene3D : Node3D
             cleanup.Timeout += () =>
             {
                 var removed = effects.All(effect => !IsInstanceValid(effect) || effect.IsQueuedForDeletion());
-                GD.Print($"[lightningqa] spawned={spawned} targets={effects.Count} adjacent=True whiteZigzags={effects.FirstOrDefault()?.WhiteZigzagCount ?? 0} strikes=3 topDown=True animationCompleted={animated} removed={removed}");
+                GD.Print($"[lightningqa] spawned={spawned} targets={effects.Count} adjacent=True whiteZigzags={effects.FirstOrDefault()?.WhiteZigzagCount ?? 0} visibleSegments={effects.FirstOrDefault()?.RuntimeSegmentCount ?? 0} strikes=3 topDown=True animationCompleted={animated} removed={removed}");
                 GetTree().Quit(spawned && animated && removed ? 0 : 1);
             };
         };

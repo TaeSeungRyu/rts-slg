@@ -10,46 +10,42 @@ public sealed partial class LightningGlbEffectView3D : Node3D
     public bool AnimationStarted { get; private set; }
     public bool AnimationCompleted { get; private set; }
     public int WhiteZigzagCount { get; private set; }
+    public int RuntimeSegmentCount { get; private set; }
+    private Node3D? _anchor;
+    private Node3D? _billboard;
 
     public override void _Ready()
     {
+        _anchor = GetParentOrNull<Node3D>();
+        var anchorPosition = _anchor?.GlobalPosition ?? GlobalPosition;
+        TopLevel = true;
+        GlobalPosition = anchorPosition + Vector3.Up * 0.44f;
         var packed = GD.Load<PackedScene>(AssetPath);
         if (packed is null) { GD.PushError($"낙뢰 GLB를 불러오지 못했습니다: {AssetPath}"); QueueFree(); return; }
         var visual = packed.Instantiate<Node3D>();
         visual.Name = "LightningGlbVisual";
         AddChild(visual);
-        visual.Scale = Vector3.One * 1.65f;
+        visual.Visible = false; // GLB는 형상 원본. 실기기 표시는 카메라 정면 런타임 메시에 맡긴다.
         WhiteZigzagCount = visual.FindChildren("white_zigzag_*", "", true, false).Count;
         LoadedFromGlb = true;
-        var flashes = new[] { "flash_1", "flash_2", "flash_3" };
-        for (var index = 0; index < flashes.Length; index++)
+        _billboard = new Node3D { Name = "LightningVisibleBillboard" };
+        AddChild(_billboard);
+        AlignToCamera();
+        var white = new StandardMaterial3D
         {
-            var flash = visual.FindChild(flashes[index], true, false) as Node3D;
-            if (flash is null) continue;
-            var destination = flash.Position;
-            flash.Position = destination + Vector3.Up * 0.72f;
-            flash.Scale = new Vector3(1f, 0.03f, 1f);
-            flash.Visible = false;
-            var tween = CreateTween();
-            tween.TweenInterval(index * 0.34f);
-            tween.TweenCallback(Callable.From(() => flash.Visible = true));
-            tween.TweenProperty(flash, "position", destination, 0.24f)
-                .SetTrans(Tween.TransitionType.Expo).SetEase(Tween.EaseType.In);
-            tween.Parallel().TweenProperty(flash, "scale", Vector3.One, 0.24f);
-            tween.TweenInterval(0.22f);
-            tween.TweenProperty(flash, "scale", new Vector3(0.7f, 0.05f, 0.7f), 0.10f);
-            tween.TweenCallback(Callable.From(() => flash.Visible = false));
-            AnimationStarted = true;
-        }
-        var impact = visual.FindChild("impact", true, false) as Node3D;
-        if (impact is not null)
+            AlbedoColor = new Color(1f, 1f, 1f), EmissionEnabled = true,
+            Emission = new Color(0.78f, 0.90f, 1f), EmissionEnergyMultiplier = 5.5f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+        };
+        var paths = new[]
         {
-            impact.Scale = Vector3.One * 0.02f;
-            var impactTween = CreateTween();
-            impactTween.TweenInterval(0.18f);
-            impactTween.TweenProperty(impact, "scale", Vector3.One * 1.2f, 0.85f);
-            impactTween.TweenProperty(impact, "scale", Vector3.One * 0.02f, 0.35f);
-        }
+            new[] { new Vector2(-.30f,.72f), new(-.36f,.53f), new(-.25f,.39f), new(-.34f,.23f), new(-.23f,.08f), new(-.30f,-.15f) },
+            new[] { new Vector2(.00f,.82f), new(.08f,.60f), new(-.05f,.44f), new(.07f,.27f), new(-.04f,.09f), new(.02f,-.18f) },
+            new[] { new Vector2(.30f,.74f), new(.22f,.56f), new(.35f,.40f), new(.24f,.25f), new(.34f,.06f), new(.27f,-.16f) },
+        };
+        for (var boltIndex = 0; boltIndex < paths.Length; boltIndex++)
+            BuildRuntimeBolt(paths[boltIndex], boltIndex * 0.28, white);
+        AnimationStarted = RuntimeSegmentCount == 15;
         if (!AnimationStarted) { GD.PushError("낙뢰 GLB에서 flash_1~3 노드를 찾지 못했습니다."); QueueFree(); return; }
         var completed = new Godot.Timer { OneShot = true, WaitTime = 1.30 };
         AddChild(completed);
@@ -59,5 +55,48 @@ public sealed partial class LightningGlbEffectView3D : Node3D
         AddChild(cleanup);
         cleanup.Timeout += QueueFree;
         cleanup.Start();
+    }
+
+    public override void _Process(double delta)
+    {
+        if (IsInstanceValid(_anchor)) GlobalPosition = _anchor!.GlobalPosition + Vector3.Up * 0.44f;
+        AlignToCamera();
+    }
+
+    private void BuildRuntimeBolt(Vector2[] points, double delay, Material material)
+    {
+        if (_billboard is null) return;
+        var segments = new System.Collections.Generic.List<MeshInstance3D>();
+        for (var i = 0; i < points.Length - 1; i++)
+        {
+            var delta = points[i + 1] - points[i];
+            var segment = new MeshInstance3D
+            {
+                Name = $"WhiteLightningSegment_{RuntimeSegmentCount + 1}",
+                Mesh = new BoxMesh { Size = new Vector3(delta.Length(), 0.045f - i * 0.004f, 0.018f), Material = material },
+                Position = new Vector3((points[i].X + points[i + 1].X) * 0.5f, (points[i].Y + points[i + 1].Y) * 0.5f, 0f),
+                Rotation = new Vector3(0f, 0f, Mathf.Atan2(delta.Y, delta.X)),
+                Visible = false,
+            };
+            _billboard.AddChild(segment);
+            segments.Add(segment);
+            RuntimeSegmentCount++;
+        }
+        var tween = CreateTween();
+        tween.TweenInterval(delay);
+        foreach (var segment in segments)
+        {
+            tween.TweenCallback(Callable.From(() => segment.Visible = true));
+            tween.TweenInterval(0.045f);
+        }
+        tween.TweenInterval(0.38f);
+        tween.TweenCallback(Callable.From(() => segments.ForEach(segment => segment.Visible = false)));
+    }
+
+    private void AlignToCamera()
+    {
+        var camera = GetViewport()?.GetCamera3D();
+        if (camera is not null && IsInstanceValid(_billboard))
+            _billboard!.GlobalBasis = camera.GlobalBasis.Orthonormalized();
     }
 }
