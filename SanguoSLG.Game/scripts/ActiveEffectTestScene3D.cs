@@ -188,6 +188,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunRoutQa);
         }
+        else if (args.Contains("--activeeffecttestdiscordqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "discord");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunDiscordQa);
+        }
         else if (args.Contains("--activeeffecttestbraceqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -709,6 +717,11 @@ public partial class ActiveEffectTestScene3D : Node3D
                 ? beforeUnits.Values.Where(before => before.Field.Owner.Value == 2
                         && _units.FirstOrDefault(after => after.Id == before.Id)?.Field.Position != before.Field.Position)
                     .OrderBy(before => before.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
+                    .Take(1).ToList()
+            : fired.Code == "discord"
+                ? _units.Where(x => x.Field.Owner.Value == 2
+                        && x.State.Statuses.Any(s => s.Kind == StatusKind.Nullify))
+                    .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
                     .Take(1).ToList()
             : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage" or "reap"
                 or "breakthrough" or "tiger_strike" or "chain_strike" or "armor_break" or "heavy_blow" or "double_hit" or "crush"
@@ -1319,6 +1332,21 @@ public partial class ActiveEffectTestScene3D : Node3D
         {
             var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
             GD.Print($"[routqa] spawned={spawned} targetPushed={pushed} confusionEffect={effect is not null} fires={_allyActiveFireCount} removed={removed}");
+            GetTree().Quit(spawned && removed ? 0 : 1);
+        };
+    }
+
+    private void RunDiscordQa()
+    {
+        AdvanceSevenDays();
+        var haze = FindChild("Effect_Haze", true, false) as Node3D;
+        var spawned = haze is not null && haze.GetChildCount() > 0
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(1.72);
+        timer.Timeout += () =>
+        {
+            var removed = !IsInstanceValid(haze) || haze!.IsQueuedForDeletion();
+            GD.Print($"[discordqa] spawned={spawned} haze=True fires={_allyActiveFireCount} fireDay={_allyActiveFireDay} removed={removed}");
             GetTree().Quit(spawned && removed ? 0 : 1);
         };
     }

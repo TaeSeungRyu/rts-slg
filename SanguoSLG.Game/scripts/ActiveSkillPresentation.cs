@@ -170,6 +170,11 @@ public static class ActiveSkillPresentation
             AttachTimedBuiltIn(target, EffectKind.Confusion, 1.35f, 0.82f);
             return true;
         }
+        if (skill.Code == "discord")
+        {
+            AttachTimedBuiltIn(target, EffectKind.Haze, 1.65f, 0.95f);
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();

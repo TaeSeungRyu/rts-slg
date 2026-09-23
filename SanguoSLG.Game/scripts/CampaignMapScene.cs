@@ -2548,6 +2548,14 @@ public sealed partial class CampaignMapScene : Node3D
                         .ThenBy(x => x.Id.Value).FirstOrDefault();
                     if (target is not null) _animSkillEffects.Add((activeTime + 0.14, casterId.Value, target.Id.Value, skill));
                 }
+                else if (caster is not null && skill.Code == "discord")
+                {
+                    var target = turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
+                            && x.State.Statuses.Any(status => status.Kind == StatusKind.Nullify))
+                        .OrderBy(x => x.Field.Position.Distance(caster.Field.Position))
+                        .ThenBy(x => x.Id.Value).FirstOrDefault();
+                    if (target is not null) _animSkillEffects.Add((activeTime + 0.14, casterId.Value, target.Id.Value, skill));
+                }
                 else if (caster is not null && skill.Type == ActiveType.Strike && turn.Combat is { } activeCombat)
                 {
                     var target = turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
