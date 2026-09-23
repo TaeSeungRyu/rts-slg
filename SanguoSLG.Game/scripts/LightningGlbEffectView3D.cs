@@ -11,6 +11,7 @@ public sealed partial class LightningGlbEffectView3D : Node3D
     public bool AnimationCompleted { get; private set; }
     public int WhiteZigzagCount { get; private set; }
     public int RuntimeSegmentCount { get; private set; }
+    public bool FallsTopToBottom { get; private set; }
     private Node3D? _anchor;
     private Node3D? _billboard;
 
@@ -44,6 +45,8 @@ public sealed partial class LightningGlbEffectView3D : Node3D
             new[] { new Vector2(.00f,.82f), new(.08f,.60f), new(-.05f,.44f), new(.07f,.27f), new(-.04f,.09f), new(.02f,-.18f) },
             new[] { new Vector2(.30f,.74f), new(.22f,.56f), new(.35f,.40f), new(.24f,.25f), new(.34f,.06f), new(.27f,-.16f) },
         };
+        FallsTopToBottom = System.Array.TrueForAll(paths, path => System.Linq.Enumerable.All(
+            System.Linq.Enumerable.Zip(path, path[1..], (upper, lower) => upper.Y > lower.Y), value => value));
         for (var boltIndex = 0; boltIndex < paths.Length; boltIndex++)
             BuildRuntimeBolt(paths[boltIndex], boltIndex * 0.060, white);
         AnimationStarted = RuntimeSegmentCount == 15;

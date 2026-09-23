@@ -1328,11 +1328,13 @@ public partial class ActiveEffectTestScene3D : Node3D
         AdvanceSevenDays();
         var effects = FindChildren("*", "", true, false).OfType<LightningGlbEffectView3D>().ToList();
         var spawned = effects.Count >= 2 && effects.All(effect => effect.LoadedFromGlb
-                && effect.AnimationStarted && effect.WhiteZigzagCount == 3 && effect.RuntimeSegmentCount == 15)
+                && effect.AnimationStarted && effect.WhiteZigzagCount == 3 && effect.RuntimeSegmentCount == 15
+                && effect.FallsTopToBottom)
             && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == effects.Count;
         var capture = GetTree().CreateTimer(0.18);
         capture.Timeout += () =>
         {
+            if (DisplayServer.GetName().Contains("headless", System.StringComparison.OrdinalIgnoreCase)) return;
             var path = ProjectSettings.GlobalizePath("user://lightning-visible-qa.png");
             GetViewport().GetTexture().GetImage().SavePng(path);
             GD.Print($"[lightningqa] capture={path}");
