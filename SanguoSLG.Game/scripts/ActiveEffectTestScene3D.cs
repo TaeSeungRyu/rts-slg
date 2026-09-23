@@ -918,18 +918,18 @@ public partial class ActiveEffectTestScene3D : Node3D
         var displayTimer = GetTree().CreateTimer(1.52);
         displayTimer.Timeout += () =>
         {
-            var frontFacing = IsInstanceValid(effect) && effect!.TopLevel && effect.IsUpright
+            var frontFacing = IsInstanceValid(effect) && effect!.TopLevel && effect.IsScreenAligned
                 && effect.CameraFacingDot > 0.999f;
             var displayed = IsInstanceValid(effect) && effect!.ArmorAppeared && effect.DisplayCompleted;
             var plateCount = effect?.ChestPlateCount ?? 0;
             var hasRing = effect?.HasProtectionRing ?? false;
             var facingDot = effect?.CameraFacingDot ?? 0f;
-            var upright = effect?.IsUpright ?? false;
+            var screenAligned = effect?.IsScreenAligned ?? false;
             var cleanupTimer = GetTree().CreateTimer(0.18);
             cleanupTimer.Timeout += () =>
             {
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
-                GD.Print($"[ironwallqa] spawned={spawned} plates={plateCount} ring={hasRing} frontFacing={frontFacing} facingDot={facingDot:F3} upright={upright} displayed={displayed} removed={removed}");
+                GD.Print($"[ironwallqa] spawned={spawned} plates={plateCount} ring={hasRing} frontFacing={frontFacing} facingDot={facingDot:F3} screenAligned={screenAligned} displayed={displayed} removed={removed}");
                 GetTree().Quit(spawned && frontFacing && displayed && removed ? 0 : 1);
             };
         };
@@ -947,7 +947,8 @@ public partial class ActiveEffectTestScene3D : Node3D
         timer.Timeout += () =>
         {
             var displayed = IsInstanceValid(effect) && effect!.DisplayCompleted;
-            var frontFacing = IsInstanceValid(effect) && effect!.TopLevel && effect.CameraFacingDot > 0.999f;
+            var frontFacing = IsInstanceValid(effect) && effect!.TopLevel && effect.IsScreenAligned
+                && effect.CameraFacingDot > 0.999f;
             var cleanup = GetTree().CreateTimer(0.36);
             cleanup.Timeout += () =>
             {
@@ -969,7 +970,8 @@ public partial class ActiveEffectTestScene3D : Node3D
         timer.Timeout += () =>
         {
             var displayed = IsInstanceValid(effect) && effect!.DisplayCompleted && effect.LandedCount == 7;
-            var frontFacing = IsInstanceValid(effect) && effect!.TopLevel && effect.CameraFacingDot > 0.999f;
+            var frontFacing = IsInstanceValid(effect) && effect!.TopLevel && effect.IsScreenAligned
+                && effect.CameraFacingDot > 0.999f;
             var cleanup = GetTree().CreateTimer(0.42);
             cleanup.Timeout += () =>
             {

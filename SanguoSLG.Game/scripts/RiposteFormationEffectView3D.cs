@@ -13,6 +13,7 @@ public sealed partial class RiposteFormationEffectView3D : Node3D
     public int CounterSpikeCount { get; private set; }
     public bool DisplayCompleted { get; private set; }
     public float CameraFacingDot { get; private set; }
+    public bool IsScreenAligned { get; private set; }
 
     public override void _Ready()
     {
@@ -67,11 +68,11 @@ public sealed partial class RiposteFormationEffectView3D : Node3D
     {
         var camera = GetViewport()?.GetCamera3D();
         if (camera is null) return;
-        var front = camera.GlobalPosition - GlobalPosition;
-        front.Y = 0f;
-        if (front.LengthSquared() < 0.000001f) return;
-        front = front.Normalized();
-        GlobalBasis = new Basis(Vector3.Up.Cross(front).Normalized(), Vector3.Up, front).Orthonormalized();
-        CameraFacingDot = GlobalBasis.Z.Dot(front);
+        var cameraBasis = camera.GlobalBasis.Orthonormalized();
+        GlobalBasis = cameraBasis;
+        CameraFacingDot = GlobalBasis.Z.Dot(cameraBasis.Z);
+        IsScreenAligned = Mathf.Abs(GlobalBasis.X.Dot(cameraBasis.X)) > 0.999f
+            && Mathf.Abs(GlobalBasis.Y.Dot(cameraBasis.Y)) > 0.999f
+            && CameraFacingDot > 0.999f;
     }
 }

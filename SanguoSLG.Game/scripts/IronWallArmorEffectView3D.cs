@@ -14,7 +14,7 @@ public sealed partial class IronWallArmorEffectView3D : Node3D
     public bool ArmorAppeared { get; private set; }
     public bool DisplayCompleted { get; private set; }
     public float CameraFacingDot { get; private set; }
-    public bool IsUpright => Mathf.Abs(GlobalBasis.Y.Dot(Vector3.Up)) > 0.999f;
+    public bool IsScreenAligned { get; private set; }
 
     public override void _Ready()
     {
@@ -83,13 +83,13 @@ public sealed partial class IronWallArmorEffectView3D : Node3D
     {
         var camera = GetViewport()?.GetCamera3D();
         if (camera is null) return;
-        var towardCamera = camera.GlobalPosition - GlobalPosition;
-        towardCamera.Y = 0f;
-        if (towardCamera.LengthSquared() < 0.000001f) return;
-
-        var front = towardCamera.Normalized();
-        var right = Vector3.Up.Cross(front).Normalized();
-        GlobalBasis = new Basis(right, Vector3.Up, front).Orthonormalized();
-        CameraFacingDot = GlobalBasis.Z.Dot(front);
+        // 게임 카메라의 상하 기울기까지 그대로 사용한다. 월드 수직을 강제하면 탑다운 화면에서
+        // 정면 면이 눕거나 얇은 측면처럼 보이므로, GLB 면을 화면 평면과 정확히 평행하게 둔다.
+        var cameraBasis = camera.GlobalBasis.Orthonormalized();
+        GlobalBasis = cameraBasis;
+        CameraFacingDot = GlobalBasis.Z.Dot(cameraBasis.Z);
+        IsScreenAligned = Mathf.Abs(GlobalBasis.X.Dot(cameraBasis.X)) > 0.999f
+            && Mathf.Abs(GlobalBasis.Y.Dot(cameraBasis.Y)) > 0.999f
+            && CameraFacingDot > 0.999f;
     }
 }
