@@ -30,8 +30,8 @@ def material(name, color, emission):
     return mat
 
 
-grey = material("EvasionWindGrey", (0.48, 0.52, 0.56), 0.62)
-light = material("EvasionWindEdge", (0.70, 0.74, 0.78), 0.88)
+grey = material("EvasionWindGrey", (0.66, 0.70, 0.74), 0.74)
+light = material("EvasionWindEdge", (0.82, 0.85, 0.88), 0.96)
 root = bpy.data.objects.new("EvasionRoot", None)
 bpy.context.collection.objects.link(root)
 
@@ -58,7 +58,7 @@ def wind_curve(name, z, width, phase, mat, thickness):
 
 for index, (z, width) in enumerate(((0.22, 0.86), (0.11, 1.02), (0.0, 0.92), (-0.11, 1.06), (-0.22, 0.80))):
     wind_curve(f"Evasion_WindStreak_{index + 1}", z, width, index * 0.72,
-               light if index % 2 == 0 else grey, 0.012 if index % 2 == 0 else 0.009)
+               light if index % 2 == 0 else grey, 0.0084 if index % 2 == 0 else 0.0063)
 
 # 바람에 휘날리는 작은 회색 파편.
 for index in range(8):
