@@ -148,6 +148,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunResupplyQa);
         }
+        else if (args.Contains("--activeeffecttestsecondwindqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "second_wind");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunSecondWindQa);
+        }
         else if (args.Contains("--activeeffecttestbraceqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -1166,6 +1174,28 @@ public partial class ActiveEffectTestScene3D : Node3D
             {
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
                 GD.Print($"[resupplyqa] spawned={spawned} lidOpened={animated} bundles=5 delivered=5 screenAligned={animated} removed={removed}");
+                GetTree().Quit(spawned && animated && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunSecondWindQa()
+    {
+        AdvanceSevenDays();
+        var effect = _tokens[AllyId].FindChildren("*", "", true, false)
+            .OfType<SecondWindRebirthEffectView3D>().FirstOrDefault();
+        var spawned = effect is not null && effect.LoadedFromGlb && effect.SoulCount == 6 && effect.RingCount == 3
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(1.46);
+        timer.Timeout += () =>
+        {
+            var animated = IsInstanceValid(effect) && effect!.ReturnedSoulCount == 6
+                && effect.CompletedHeartBeats == 3 && effect.CompletedRingPulses == 3 && effect.IsScreenAligned;
+            var cleanup = GetTree().CreateTimer(0.32);
+            cleanup.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+                GD.Print($"[secondwindqa] spawned={spawned} souls=6 returned=6 beats=3 rings=3 pulses=3 screenAligned={animated} removed={removed}");
                 GetTree().Quit(spawned && animated && removed ? 0 : 1);
             };
         };

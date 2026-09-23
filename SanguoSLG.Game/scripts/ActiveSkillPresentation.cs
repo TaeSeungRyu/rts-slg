@@ -140,6 +140,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new ResupplyCrateEffectView3D());
             return true;
         }
+        if (skill.Code == "second_wind")
+        {
+            target.AddChild(new SecondWindRebirthEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();
