@@ -69,6 +69,10 @@ public sealed class CombatPhaseResolver
 
                 raw = raw * attacker.OutgoingDamagePercent / 100; // 수공·연막 디버프(공격자 준 피해 감소)
                 raw = raw * takenPercent[targetId] / 100; // 방어 액티브 감소
+                if (attacker.AttackRange >= 2)
+                {
+                    raw = raw * target.RangedDamageTakenPercent / 100; // 회피술: 원거리 피해만 3진행 감소
+                }
                 if (i == 0 && attacker.StrikeActive?.ExecutePercent > 0)
                 {
                     permanentDamage[targetId] = permanentDamage.GetValueOrDefault(targetId) + raw;

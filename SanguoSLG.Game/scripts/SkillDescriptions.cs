@@ -31,8 +31,16 @@ internal static class SkillDescriptions
                 effects.Add("표시 수치는 무력 60 기준이며 부대 선봉의 무력에 따라 위력이 달라집니다.");
                 break;
             case ActiveType.Defense:
-                effects.Add($"방어형 · 일반 공격을 유지하며 이번 교전에서 받는 피해를 {skill.DamageReductionPercent}% 줄입니다.");
-                effects.Add("무력 60 기준이며 선봉 무력에 따라 달라집니다. 피해 감소 상한은 75%입니다.");
+                if (skill.Code == "evasion")
+                {
+                    effects.Add("방어형 · 일반 공격을 유지하며 발동한 진행부터 3진행 동안 원거리(사거리 2 이상) 피해를 30% 줄입니다.");
+                    effects.Add("근접 피해에는 적용되지 않으며, 감소율은 무력과 관계없이 30%로 고정됩니다.");
+                }
+                else
+                {
+                    effects.Add($"방어형 · 일반 공격을 유지하며 이번 교전에서 받는 피해를 {skill.DamageReductionPercent}% 줄입니다.");
+                    effects.Add("무력 60 기준이며 선봉 무력에 따라 달라집니다. 피해 감소 상한은 75%입니다.");
+                }
                 break;
             case ActiveType.Heal:
                 effects.Add("회복형 · 일반 공격을 유지합니다.");
@@ -52,7 +60,7 @@ internal static class SkillDescriptions
         }
         effects.Add($"야전 {ActiveGauge.ReadyDays}일 충전 후 유효한 교전에서 자동 발동합니다. 부대당 교전 1회 발동하며 선봉이 우선합니다. 사용하거나 성으로 복귀하면 충전이 초기화됩니다.");
         if (skill.Code is "armor_break" or "tiger_strike" or "chain_strike" or "breakthrough"
-            or "one_man_army" or "barrage" or "riposte" or "turtle_formation" or "evasion"
+            or "one_man_army" or "barrage" or "riposte" or "turtle_formation"
             or "hold_the_line" or "resupply" or "second_wind")
         {
             effects.Add("현재 적용되는 기본 효과입니다. 추가 지속 효과·조건부 강화 등은 후속 스킬 확장 단계에서 반영됩니다.");

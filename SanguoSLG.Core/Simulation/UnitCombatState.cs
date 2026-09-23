@@ -64,7 +64,7 @@ public sealed record UnitCombatState(
     public UnitCombatState Purge(PurgeScope scope) => scope switch
     {
         PurgeScope.Fire => this with { Statuses = Statuses.Where(s => !s.IsFire).ToList() },
-        PurgeScope.NonFire => this with { Statuses = Statuses.Where(s => s.IsFire).ToList() },
+        PurgeScope.NonFire => this with { Statuses = Statuses.Where(s => s.IsFire || s.Kind == StatusKind.Evasion).ToList() },
         _ => this,
     };
 

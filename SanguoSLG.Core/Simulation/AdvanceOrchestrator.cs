@@ -200,6 +200,11 @@ public sealed class AdvanceOrchestrator
             if (defense is null) continue;
             defenseSkills[id] = defense;
             firedActives[id] = defense;
+            if (defense.Code == "evasion")
+            {
+                defendedState = defendedState.AddStatus(new StatusEffect(
+                    StatusKind.Evasion, TickBasisPoints: 0, Remaining: 3, IsFire: false));
+            }
             state[id] = u with { State = defendedState };
         }
 
@@ -233,10 +238,13 @@ public sealed class AdvanceOrchestrator
                 u.Intellect,
                 u.MaxTroops,
                 StrikeActive: skill?.Type == ActiveType.Strike ? skill : null,
-                DefenseActive: defenseSkills.GetValueOrDefault(id),
+                // 회피술은 원거리 한정 지속 상태로 별도 적용한다. 일반 방어 배수와 중복하지 않는다.
+                DefenseActive: defenseSkills.GetValueOrDefault(id) is { Code: not "evasion" } defense ? defense : null,
                 HealActive: skill?.Type == ActiveType.Heal ? skill : null,
                 OutgoingDamagePercent: outgoing,
-                Class: u.Class);
+                Class: u.Class,
+                AttackRange: u.Field.AttackRange,
+                RangedDamageTakenPercent: u.State.Statuses.Any(s => s.Kind == StatusKind.Evasion) ? 70 : 100);
         }
 
         // 5) 동시 정산 → 병력 반영.

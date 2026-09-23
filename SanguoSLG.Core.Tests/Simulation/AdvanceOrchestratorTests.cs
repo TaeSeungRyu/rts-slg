@@ -173,6 +173,45 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 회피술은_원거리피해만_삼진행동안_삼십퍼센트_줄인다()
+    {
+        var ready = UnitCombatState.Create(80, A["evasion"]).AdvanceField(6);
+        var defender = Sword(1, 1, new HexCoord(0, 0), UnitMode.Attack, ready) with { Might = 80 };
+        var ranged = Sword(2, 2, new HexCoord(1, 0)) with
+        {
+            Field = Sword(2, 2, new HexCoord(1, 0)).Field with { AttackRange = 2 },
+        };
+        var orchestrator = MakeOrchestrator();
+
+        var first = orchestrator.Run([defender, ranged], maxDays: 1);
+        Assert.Equal(532, first.Combat!.DamageTaken[new UnitId(1)]); // 평타 760 × 70%
+        Assert.Equal(3, first.Units.Single(u => u.Id.Value == 1).State.Statuses
+            .Single(s => s.Kind == StatusKind.Evasion).Remaining);
+
+        var second = orchestrator.Run(first.Units, maxDays: 1);
+        Assert.Equal(2, second.Units.Single(u => u.Id.Value == 1).State.Statuses
+            .Single(s => s.Kind == StatusKind.Evasion).Remaining);
+        var third = orchestrator.Run(second.Units, maxDays: 1);
+        Assert.Equal(1, third.Units.Single(u => u.Id.Value == 1).State.Statuses
+            .Single(s => s.Kind == StatusKind.Evasion).Remaining);
+        var fourth = orchestrator.Run(third.Units, maxDays: 1);
+        Assert.DoesNotContain(fourth.Units.Single(u => u.Id.Value == 1).State.Statuses,
+            s => s.Kind == StatusKind.Evasion);
+    }
+
+    [Fact]
+    public void 회피술은_근접피해를_줄이지_않는다()
+    {
+        var ready = UnitCombatState.Create(80, A["evasion"]).AdvanceField(6);
+        var defender = Sword(1, 1, new HexCoord(0, 0), UnitMode.Attack, ready) with { Might = 80 };
+        var melee = Sword(2, 2, new HexCoord(1, 0));
+
+        var turn = MakeOrchestrator().Run([defender, melee], maxDays: 1);
+
+        Assert.Equal(760, turn.Combat!.DamageTaken[new UnitId(1)]);
+    }
+
+    [Fact]
     public void 교란은_경로의_부대를_무시하고_빈_사칸_목적지로_후퇴시킨다()
     {
         var ready = UnitCombatState.Create(90, A["rout"]).AdvanceField(6);

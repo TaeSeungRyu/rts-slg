@@ -23,4 +23,7 @@ public enum StatusKind
 
     /// <summary>행동불가(혼란). 지속 동안 이동·공격·액티브를 못 한다(피격·방어는 정상).</summary>
     Daze,
+
+    /// <summary>회피술. 원거리(사거리 2 이상)로 받는 피해를 30% 줄인다.</summary>
+    Evasion,
 }
