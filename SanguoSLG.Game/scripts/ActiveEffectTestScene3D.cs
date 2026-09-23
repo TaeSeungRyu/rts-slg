@@ -1036,15 +1036,16 @@ public partial class ActiveEffectTestScene3D : Node3D
             .OfType<HoldTheLineArrowEffectView3D>().FirstOrDefault();
         var spawned = effect is not null && effect.LoadedFromGlb && effect.ArrowCount == 7
             && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
-        var timer = GetTree().CreateTimer(1.12);
+        var timer = GetTree().CreateTimer(1.72);
         timer.Timeout += () =>
         {
-            var displayed = IsInstanceValid(effect) && effect!.DisplayCompleted && effect.IsScreenAligned;
+            var displayed = IsInstanceValid(effect) && effect!.DisplayCompleted && effect.IsScreenAligned
+                && effect.CompletedArrowCount == 7;
             var cleanup = GetTree().CreateTimer(0.32);
             cleanup.Timeout += () =>
             {
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
-                GD.Print($"[holdthelineqa] spawned={spawned} arrows=7 screenAligned={displayed} removed={removed}");
+                GD.Print($"[holdthelineqa] spawned={spawned} arrows=7 completed=7 screenAligned={displayed} removed={removed}");
                 GetTree().Quit(spawned && displayed && removed ? 0 : 1);
             };
         };

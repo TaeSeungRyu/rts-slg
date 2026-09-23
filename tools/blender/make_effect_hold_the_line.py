@@ -35,9 +35,13 @@ steel_mat = material("HoldArrowSteel", (0.58, 0.66, 0.72), 0.88, 1.25)
 feather_mat = material("HoldArrowRedFeather", (0.54, 0.025, 0.018), 0.18, 0.85)
 root = bpy.data.objects.new("HoldTheLineRoot", None)
 bpy.context.collection.objects.link(root)
+root.scale = (0.8, 0.8, 0.8)
 
 
 def make_arrow(index, x, z, direction):
+    arrow_root = bpy.data.objects.new(f"HoldLine_Group_{index}", None)
+    bpy.context.collection.objects.link(arrow_root)
+    arrow_root.parent = root
     length = 0.34
     # shaft: local cylinder Z -> world X
     bpy.ops.mesh.primitive_cylinder_add(vertices=10, radius=0.012, depth=length,
@@ -45,7 +49,7 @@ def make_arrow(index, x, z, direction):
     shaft = bpy.context.object
     shaft.name = f"HoldLine_ArrowShaft_{index}"
     shaft.data.materials.append(shaft_mat)
-    shaft.parent = root
+    shaft.parent = arrow_root
 
     tip_x = x + direction * (length * 0.5 + 0.055)
     bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=0.047, radius2=0.0, depth=0.12,
@@ -54,7 +58,7 @@ def make_arrow(index, x, z, direction):
     tip = bpy.context.object
     tip.name = f"HoldLine_ArrowTip_{index}"
     tip.data.materials.append(steel_mat)
-    tip.parent = root
+    tip.parent = arrow_root
 
     tail_x = x - direction * (length * 0.5 + 0.025)
     for sign in (-1, 1):
@@ -63,7 +67,7 @@ def make_arrow(index, x, z, direction):
         feather.name = f"HoldLine_ArrowFeather_{index}_{sign + 2}"
         feather.scale = (0.052, 0.010, 0.014)
         feather.data.materials.append(feather_mat)
-        feather.parent = root
+        feather.parent = arrow_root
 
 
 layout = ((-0.18, 0.27, 1), (0.18, 0.18, 1), (-0.20, 0.09, 1), (0.18, 0.00, 1),

@@ -1,3 +1,4 @@
+using System.Linq;
 using Godot;
 
 namespace SanguoSLG.Game;
@@ -12,6 +13,7 @@ public sealed partial class HoldTheLineArrowEffectView3D : Node3D
     public int ArrowCount { get; private set; }
     public bool DisplayCompleted { get; private set; }
     public bool IsScreenAligned { get; private set; }
+    public int CompletedArrowCount { get; private set; }
 
     public override void _Ready()
     {
@@ -32,22 +34,32 @@ public sealed partial class HoldTheLineArrowEffectView3D : Node3D
         visual.Name = "HoldTheLineGlbVisual";
         AddChild(visual);
         LoadedFromGlb = true;
-        ArrowCount = visual.FindChildren("HoldLine_ArrowShaft_*", "", true, false).Count;
+        var arrows = visual.FindChildren("HoldLine_Group_*", "", true, false)
+            .OfType<Node3D>().OrderBy(node => node.Name.ToString()).ToList();
+        ArrowCount = arrows.Count;
+        for (var index = 0; index < arrows.Count; index++)
+        {
+            var arrow = arrows[index];
+            var destination = arrow.Position + Vector3.Right * 0.10f;
+            var baseScale = arrow.Scale;
+            arrow.Position -= Vector3.Right * (0.62f + index % 2 * 0.06f);
+            arrow.Scale = baseScale * 0.03f;
+            var tween = CreateTween();
+            tween.TweenInterval(index * 0.09f);
+            tween.TweenProperty(arrow, "scale", baseScale, 0.12f);
+            tween.Parallel().TweenProperty(arrow, "position", destination, 0.38f)
+                .SetTrans(Tween.TransitionType.Expo).SetEase(Tween.EaseType.Out);
+            tween.TweenInterval(0.42f);
+            tween.TweenProperty(arrow, "position", destination + Vector3.Right * 0.18f, 0.18f);
+            tween.Parallel().TweenProperty(arrow, "scale", baseScale * 0.01f, 0.20f);
+            tween.TweenCallback(Callable.From(() => CompletedArrowCount++));
+        }
 
-        var baseScale = visual.Scale;
-        visual.Scale = new Vector3(baseScale.X * 0.04f, baseScale.Y, baseScale.Z);
-        var tween = CreateTween();
-        tween.TweenProperty(visual, "scale", baseScale * 1.05f, 0.24f)
-            .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
-        tween.TweenProperty(visual, "scale", baseScale, 0.10f);
-        tween.TweenInterval(0.72f);
-        tween.TweenProperty(visual, "scale", new Vector3(baseScale.X * 0.02f, baseScale.Y, baseScale.Z), 0.25f);
-
-        var completed = new Godot.Timer { OneShot = true, WaitTime = 1.08 };
+        var completed = new Godot.Timer { OneShot = true, WaitTime = 1.68 };
         AddChild(completed);
         completed.Timeout += () => DisplayCompleted = true;
         completed.Start();
-        var cleanup = new Godot.Timer { OneShot = true, WaitTime = 1.38 };
+        var cleanup = new Godot.Timer { OneShot = true, WaitTime = 1.94 };
         AddChild(cleanup);
         cleanup.Timeout += QueueFree;
         cleanup.Start();
