@@ -172,6 +172,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunLightningQa);
         }
+        else if (args.Contains("--activeeffecttestconfoundqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "confound");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunConfoundQa);
+        }
         else if (args.Contains("--activeeffecttestbraceqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -683,6 +691,10 @@ public partial class ActiveEffectTestScene3D : Node3D
             : fired.Code == "lightning"
                 ? beforeUnits.Values.Where(x => x.Field.Owner.Value == 2
                         && turn.StratagemDamage.GetValueOrDefault(x.Id) > 0)
+                    .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
+                    .Take(1).ToList()
+            : fired.Code == "confound"
+                ? _units.Where(x => x.Field.Owner.Value == 2 && x.State.Statuses.Any(s => s.IsDaze))
                     .OrderBy(x => x.Field.Position.Distance(beforeUnits[new UnitId(AllyId)].Field.Position))
                     .Take(1).ToList()
             : fired.Code is "peerless" or "one_man_army" or "flash" or "barrage" or "reap"
@@ -1260,6 +1272,22 @@ public partial class ActiveEffectTestScene3D : Node3D
                 GD.Print($"[lightningqa] spawned={spawned} glb=True animationStarted=True animationCompleted={animated} removed={removed}");
                 GetTree().Quit(spawned && animated && removed ? 0 : 1);
             };
+        };
+    }
+
+    private void RunConfoundQa()
+    {
+        AdvanceSevenDays();
+        var effect = FindChildren("*", "", true, false).OfType<DazeEffect>().FirstOrDefault();
+        var targetRecovered = _units.All(x => x.Field.Owner.Value != 2 || x.State.Statuses.All(s => !s.IsDaze));
+        var spawned = effect is not null
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(1.42);
+        timer.Timeout += () =>
+        {
+            var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+            GD.Print($"[confoundqa] spawned={spawned} targetAutoRecovered={targetRecovered} dazeEffect={effect is not null} fires={_allyActiveFireCount} fireDay={_allyActiveFireDay} effects={_lastEffectCount} removed={removed}");
+            GetTree().Quit(spawned && targetRecovered && removed ? 0 : 1);
         };
     }
 

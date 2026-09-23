@@ -155,6 +155,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new LightningGlbEffectView3D());
             return true;
         }
+        if (skill.Code == "confound")
+        {
+            AttachTimedBuiltIn(target, EffectKind.Daze, 1.35f, 0.82f);
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();
@@ -165,6 +170,15 @@ public static class ActiveSkillPresentation
             return true;
         }
         return false;
+    }
+
+    private static void AttachTimedBuiltIn(Node3D target, EffectKind kind, double lifetime, float scale)
+    {
+        var root = EffectView.Attach(target, kind, scale);
+        var timer = new Godot.Timer { OneShot = true, WaitTime = lifetime };
+        root.AddChild(timer);
+        timer.Timeout += root.QueueFree;
+        timer.Start();
     }
 
     public static void ShowBanner(Node owner, string generalName, ActiveSkill skill, Texture2D? portrait = null)
