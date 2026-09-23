@@ -140,6 +140,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunRallyQa);
         }
+        else if (args.Contains("--activeeffecttestresupplyqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "resupply");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunResupplyQa);
+        }
         else if (args.Contains("--activeeffecttestbraceqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -1136,6 +1144,28 @@ public partial class ActiveEffectTestScene3D : Node3D
             {
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
                 GD.Print($"[rallyqa] spawned={spawned} mallets=2 hits=4 rings=3 pulses=3 screenAligned={animated} removed={removed}");
+                GetTree().Quit(spawned && animated && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunResupplyQa()
+    {
+        AdvanceSevenDays();
+        var effect = _tokens[AllyId].FindChildren("*", "", true, false)
+            .OfType<ResupplyCrateEffectView3D>().FirstOrDefault();
+        var spawned = effect is not null && effect.LoadedFromGlb && effect.BundleCount == 5
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(1.23);
+        timer.Timeout += () =>
+        {
+            var animated = IsInstanceValid(effect) && effect!.LidOpened && effect.DeliveredBundleCount == 5
+                && effect.IsScreenAligned;
+            var cleanup = GetTree().CreateTimer(0.38);
+            cleanup.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+                GD.Print($"[resupplyqa] spawned={spawned} lidOpened={animated} bundles=5 delivered=5 screenAligned={animated} removed={removed}");
                 GetTree().Quit(spawned && animated && removed ? 0 : 1);
             };
         };

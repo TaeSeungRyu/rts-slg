@@ -135,6 +135,11 @@ public static class ActiveSkillPresentation
             target.AddChild(new RallyWarDrumEffectView3D());
             return true;
         }
+        if (skill.Code == "resupply")
+        {
+            target.AddChild(new ResupplyCrateEffectView3D());
+            return true;
+        }
         if (skill.Code == "crush")
         {
             var parent = target.GetParent();
