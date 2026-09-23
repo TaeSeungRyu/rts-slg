@@ -108,6 +108,14 @@ public partial class ActiveEffectTestScene3D : Node3D
             ResetScenario();
             CallDeferred(MethodName.RunEvasionQa);
         }
+        else if (args.Contains("--activeeffecttestholdthelineqa"))
+        {
+            var index = Enumerable.Range(0, _skillSelect.ItemCount)
+                .First(i => _skillSelect.GetItemMetadata(i).AsString() == "hold_the_line");
+            _skillSelect.Select(index);
+            ResetScenario();
+            CallDeferred(MethodName.RunHoldTheLineQa);
+        }
         else if (args.Contains("--activeeffecttestdoublehitqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
@@ -1007,6 +1015,27 @@ public partial class ActiveEffectTestScene3D : Node3D
             {
                 var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
                 GD.Print($"[evasionqa] spawned={spawned} streaks=5 motes=8 screenAligned={displayed} removed={removed}");
+                GetTree().Quit(spawned && displayed && removed ? 0 : 1);
+            };
+        };
+    }
+
+    private void RunHoldTheLineQa()
+    {
+        AdvanceSevenDays();
+        var effect = _tokens[AllyId].FindChildren("*", "", true, false)
+            .OfType<HoldTheLineArrowEffectView3D>().FirstOrDefault();
+        var spawned = effect is not null && effect.LoadedFromGlb && effect.ArrowCount == 7
+            && _allyActiveFireDay == 6 && _allyActiveFireCount == 1 && _lastEffectCount == 1;
+        var timer = GetTree().CreateTimer(1.12);
+        timer.Timeout += () =>
+        {
+            var displayed = IsInstanceValid(effect) && effect!.DisplayCompleted && effect.IsScreenAligned;
+            var cleanup = GetTree().CreateTimer(0.32);
+            cleanup.Timeout += () =>
+            {
+                var removed = !IsInstanceValid(effect) || effect!.IsQueuedForDeletion();
+                GD.Print($"[holdthelineqa] spawned={spawned} arrows=7 screenAligned={displayed} removed={removed}");
                 GetTree().Quit(spawned && displayed && removed ? 0 : 1);
             };
         };
