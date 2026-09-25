@@ -510,6 +510,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
         if (args.Contains("--maptestexplorationmodalqa")) CallDeferred(nameof(RunExplorationModalQa));
         if (args.Contains("--maptestexplorationcardqa")) CallDeferred(nameof(RunExplorationCardQa));
+        if (args.Contains("--maptesttreasureinventoryqa")) CallDeferred(nameof(RunTreasureInventoryQa));
     }
 
     public override void _ExitTree()
@@ -5923,7 +5924,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         Item("전체 장수 목록", OpenGeneralRoster);
         Item("전체 도시 목록", OpenCityRoster);
-        Item("보물 목록", OpenTreasureList);
+        Item("단서·보물 보관함", OpenTreasureList);
         box.AddChild(GoldRule());
         Item("게임 저장", () => ShowConfirm("게임 저장", "현재 상태를 저장합니다(같은 슬롯 덮어쓰기).", SaveGame));
         Item("게임 불러오기", () =>
@@ -6248,15 +6249,53 @@ public sealed partial class CampaignMapScene : Node3D
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
-    // 보물 목록 — 탐색(design-general-lifecycle §8) 미구현이라 안내만.
+    // 탐색 단서·보물 보관함 — 실제 탐색 이력을 종류별로 묶어 보여준다.
     private void OpenTreasureList()
     {
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.34f, 340f, 460f);
-        var mh = Mathf.Clamp(vp.Y * 0.5f, 220f, 420f);
-        var box = SystemView("보물 목록", mw, out var scroll, out var panel, out var titleRow);
-        box.AddChild(MakeLabel("보물 시스템은 준비 중입니다.\n탐색으로 얻은 보물을 여기서 확인하고,\n능력 강화에 사용하게 됩니다.", 13, Parchment));
+        var mw = Mathf.Clamp(vp.X * 0.5f, 480f, 720f);
+        var mh = Mathf.Clamp(vp.Y * 0.8f, 360f, 720f);
+        var box = SystemView("단서·보물 보관함", mw, out var scroll, out var panel, out var titleRow);
+        var clues = _state.Discoveries
+            .Where(x => x.Faction == Player)
+            .Select(x => (Discovery: x, View: ExplorationRewardPresentation.From(x,
+                _state.Cities.FirstOrDefault(c => c.Id == x.City)?.Name ?? $"도시 {x.City.Value}",
+                _state.Generals.FirstOrDefault(g => g.Id == x.Explorer)?.Name ?? $"장수 {x.Explorer.Value}")))
+            .Where(x => x.View.IsClue)
+            .GroupBy(x => x.Discovery.Code)
+            .OrderByDescending(x => x.Max(v => v.Discovery.Day))
+            .ToList();
+
+        box.AddChild(MakeLabel($"보유 단서  {clues.Count}종 · 총 {clues.Sum(x => x.Count())}개", 14, GoldBright));
+        box.AddChild(MakeLabel("탐색에서 발견한 단서는 후속 이벤트의 입구입니다. 같은 단서도 발견 이력으로 누적됩니다.", 11, new Color(Parchment, 0.75f)));
+        box.AddChild(GoldRule());
+        if (clues.Count == 0)
+        {
+            box.AddChild(MakeLabel("아직 발견한 단서가 없습니다. 도시에서 탐색을 진행해 보세요.", 13, Parchment));
+        }
+        else
+        {
+            foreach (var group in clues)
+            {
+                var latest = group.OrderByDescending(x => x.Discovery.Day).First().Discovery;
+                var count = MakeLabel($"보유 {group.Count()}개 · 최근 발견 {_state.StartYear + (latest.Day - 1) / 360}년 {((latest.Day - 1) % 360) / 30 + 1}월", 11, new Color(Gold, 0.82f));
+                box.AddChild(count);
+                var card = BuildExplorationRewardCard(latest);
+                card.SetMeta("inventory_count", group.Count());
+                box.AddChild(card);
+            }
+        }
+
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("획득 보물", 15, Gold));
+        var emptyItem = new PanelContainer();
+        emptyItem.AddThemeStyleboxOverride("panel", Frame(new Color(0.045f, 0.04f, 0.035f, 0.88f), new Color(0.32f, 0.3f, 0.28f), 1, 8, 9));
+        var emptyText = MakeLabel("등록된 보물이 없습니다.\n고대유물·신수 후속 이벤트에서 실제 보물을 획득하면 이곳에 등록됩니다.", 12, new Color(Parchment, 0.68f));
+        emptyText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        emptyItem.AddChild(emptyText);
+        emptyItem.SetMeta("treasure_slot", "empty");
+        box.AddChild(emptyItem);
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
@@ -12360,6 +12399,38 @@ public sealed partial class CampaignMapScene : Node3D
         GD.Print($"[maptestexplorationcardqa] passed={passed} chips={chips.Count} clueAnimation={clue.GetMeta("reward_animation").AsString()} resourceAnimation={resource.GetMeta("reward_animation").AsString()}");
         clue.QueueFree();
         resource.QueueFree();
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>탐색 단서가 코드별로 누적되고 실제 보물 슬롯과 구분되어 표시되는지 확인한다.</summary>
+    private void RunTreasureInventoryQa()
+    {
+        var original = _state;
+        var city = _state.Cities.First();
+        var general = _state.Generals.First();
+        _state = _state with
+        {
+            ExplorationDiscoveries = new[]
+            {
+                new ExplorationDiscovery(10, Player, city.Id, general.Id, ExplorationResultKind.AncientRelic, "ancient_relic_clue"),
+                new ExplorationDiscovery(20, Player, city.Id, general.Id, ExplorationResultKind.AncientRelic, "ancient_relic_clue"),
+                new ExplorationDiscovery(30, Player, city.Id, general.Id, ExplorationResultKind.DivineBeast, "divine_beast_trace"),
+            },
+        };
+        OpenTreasureList();
+        var clueCards = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
+            .Where(x => x.HasMeta("inventory_count")).ToList() ?? [];
+        var emptySlot = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
+            .FirstOrDefault(x => x.HasMeta("treasure_slot"));
+        var passed = clueCards.Count == 2
+            && clueCards.Any(x => x.GetMeta("exploration_code").AsString() == "ancient_relic_clue"
+                && x.GetMeta("inventory_count").AsInt32() == 2)
+            && clueCards.Any(x => x.GetMeta("exploration_code").AsString() == "divine_beast_trace"
+                && x.GetMeta("inventory_count").AsInt32() == 1)
+            && emptySlot?.GetMeta("treasure_slot").AsString() == "empty";
+        GD.Print($"[maptesttreasureinventoryqa] passed={passed} clueKinds={clueCards.Count} relicCount={clueCards.FirstOrDefault(x => x.GetMeta("exploration_code").AsString() == "ancient_relic_clue")?.GetMeta("inventory_count").AsInt32() ?? 0} emptySlot={emptySlot is not null}");
+        CloseModal();
+        _state = original;
         GetTree().Quit(passed ? 0 : 1);
     }
 
