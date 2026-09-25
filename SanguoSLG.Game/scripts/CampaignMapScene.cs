@@ -502,6 +502,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestunitstatusqa")) CallDeferred(nameof(RunUnitStatusDisplayQa));
         if (args.Contains("--maptestunitcardqa")) CallDeferred(nameof(RunUnitCardQa));
         if (args.Contains("--maptestportraitqa")) CallDeferred(nameof(RunPortraitLoaderQa));
+        if (args.Contains("--maptestportraittreeqa")) CallDeferred(nameof(RunPortraitTreeQa));
     }
 
     public override void _ExitTree()
@@ -5284,6 +5285,7 @@ public sealed partial class CampaignMapScene : Node3D
             var role = isGov && isStra ? "태수·군사" : isGov ? "태수" : isStra ? "군사" : null;
             var it = gt.CreateItem(groot);
             it.SetText(0, (role is not null ? "◆ " : "") + gen.Name);
+            ApplyGeneralTreePortrait(it, 0, gen.Id);
             it.SetText(1, gen.Might.ToString());
             it.SetText(2, gen.Intellect.ToString());
             it.SetText(3, gen.Politics.ToString());
@@ -6073,6 +6075,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var it = tree.CreateItem(root);
             it.SetText(0, g.Name);
+            ApplyGeneralTreePortrait(it, 0, g.Id);
             it.SetText(1, g.Might.ToString());
             it.SetText(2, g.Intellect.ToString());
             it.SetText(3, g.Politics.ToString());
@@ -6292,6 +6295,13 @@ public sealed partial class CampaignMapScene : Node3D
         var texture = ImageTexture.CreateFromImage(BuildCircularPortraitImage(image, portrait));
         _circularPortraits[id.Value] = texture;
         return texture;
+    }
+
+    /// <summary>장수 선택 표에서 이름과 원형 초상을 같은 칸에 일관되게 표시한다.</summary>
+    private void ApplyGeneralTreePortrait(TreeItem item, int column, GeneralId id, int maxWidth = 30)
+    {
+        item.SetIcon(column, CircularPortraitFor(id));
+        item.SetIconMaxWidth(column, maxWidth);
     }
 
     private GeneralPortraitRecord? LoadPortraitMetadata(GeneralId id)
@@ -6772,6 +6782,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var item = tree.CreateItem(root);
                 item.SetText(0, general.Id == selectedGeneral ? "◆" : "◇");
                 item.SetText(1, general.Name);
+                ApplyGeneralTreePortrait(item, 1, general.Id);
                 item.SetText(2, general.Might.ToString());
                 item.SetText(3, general.Intellect.ToString());
                 item.SetText(4, general.Politics.ToString());
@@ -7414,6 +7425,7 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetEditable(0, true);
             item.SetChecked(0, general.Id == selectedGeneral);
             item.SetText(1, general.Name);
+            ApplyGeneralTreePortrait(item, 1, general.Id);
             item.SetText(2, GradeText(general.AptitudeFor(TroopClass.Naval)));
             item.SetText(3, general.Might.ToString());
             item.SetCellMode(4, TreeItem.TreeCellMode.Check);
@@ -7636,6 +7648,7 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetCellMode(0, TreeItem.TreeCellMode.Check);
             item.SetChecked(0, g.Id == selectedTransportGeneral);
             item.SetText(1, g.Name);
+            ApplyGeneralTreePortrait(item, 1, g.Id);
             item.SetText(2, GradeText(g.AptitudeFor(TroopClass.Supply)));
             item.SetText(3, g.Politics.ToString());
             item.SetText(4, CurrentDuty(g.Id));
@@ -8175,6 +8188,7 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetChecked(1, g.Id == _depAdj);
             item.SetMetadata(0, g.Id.Value);
             item.SetText(2, g.Name);
+            ApplyGeneralTreePortrait(item, 2, g.Id);
             item.SetText(3, GradeText(ArmyGroupAptitude(g)));
             item.SetText(4, g.Might.ToString());
             item.SetText(5, g.Intellect.ToString());
@@ -8661,6 +8675,7 @@ public sealed partial class CampaignMapScene : Node3D
             var item = _vanTree.CreateItem(root);
             item.SetText(0, general.Id == _depVan ? "◆" : "◇");
             item.SetText(1, general.Name);
+            ApplyGeneralTreePortrait(item, 1, general.Id);
             item.SetText(2, general.Might.ToString());
             item.SetText(3, general.Intellect.ToString());
             item.SetText(4, general.Politics.ToString());
@@ -9196,6 +9211,7 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetEditable(1, true);
             item.SetChecked(1, _depAdj is { } a && a == g.Id);
             item.SetText(2, g.Name);
+            ApplyGeneralTreePortrait(item, 2, g.Id);
             item.SetText(3, g.Might.ToString());
             item.SetText(4, g.Intellect.ToString());
             item.SetText(5, g.Politics.ToString());
@@ -10204,6 +10220,7 @@ public sealed partial class CampaignMapScene : Node3D
                 _ => "",
             };
             item.SetText(0, g.Name + home + roleMark);
+            ApplyGeneralTreePortrait(item, 0, g.Id);
             item.SetText(1, g.Might.ToString());
             item.SetText(2, g.Intellect.ToString());
             item.SetText(3, g.Politics.ToString());
@@ -11063,6 +11080,7 @@ public sealed partial class CampaignMapScene : Node3D
             var item = tree.CreateItem(root);
             var home = g.Region.Length > 0 && g.Region == city.Region ? " 🏠" : "";
             item.SetText(0, g.Name + home);
+            ApplyGeneralTreePortrait(item, 0, g.Id);
             item.SetText(1, g.Might.ToString());
             item.SetText(2, g.Intellect.ToString());
             item.SetText(3, g.Politics.ToString());
@@ -12031,10 +12049,32 @@ public sealed partial class CampaignMapScene : Node3D
         var fallbackId = new GeneralId(-987654);
         var fallback = OfficerPortrait(fallbackId);
         var fallbackCached = ReferenceEquals(fallback, OfficerPortrait(fallbackId));
+        var fallbackWidth = fallback?.GetWidth() ?? 0;
+        var fallbackHeight = fallback?.GetHeight() ?? 0;
         var passed = sample is not null && circularSize && cached
-            && fallback is not null && fallback.GetWidth() > 0 && fallback.GetHeight() > 0 && fallbackCached;
+            && fallbackWidth > 0 && fallbackHeight > 0 && fallbackCached;
         var sampleId = sample is null ? "-" : sample.Id.Value.ToString();
-        GD.Print($"[maptestportraitqa] passed={passed} sample={sampleId} circular={sampleCircular?.GetWidth()}x{sampleCircular?.GetHeight()} cached={cached} fallback={fallback.GetWidth()}x{fallback.GetHeight()} fallbackCached={fallbackCached}");
+        GD.Print($"[maptestportraitqa] passed={passed} sample={sampleId} circular={sampleCircular?.GetWidth()}x{sampleCircular?.GetHeight()} cached={cached} fallback={fallbackWidth}x{fallbackHeight} fallbackCached={fallbackCached}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>장수 선택 표에 원형 초상이 실제로 결합되는지 확인한다.</summary>
+    private void RunPortraitTreeQa()
+    {
+        var sample = _state.Generals.FirstOrDefault();
+        var tree = new Tree { Columns = 1 };
+        AddChild(tree);
+        var root = tree.CreateItem();
+        var item = tree.CreateItem(root);
+        if (sample is not null)
+        {
+            item.SetText(0, sample.Name);
+            ApplyGeneralTreePortrait(item, 0, sample.Id);
+        }
+
+        var passed = sample is not null && item.GetIcon(0) is not null;
+        GD.Print($"[maptestportraittreeqa] passed={passed} general={sample?.Id.Value.ToString() ?? "-"} icon={item.GetIcon(0)?.GetWidth()}x{item.GetIcon(0)?.GetHeight()}");
+        tree.QueueFree();
         GetTree().Quit(passed ? 0 : 1);
     }
 
