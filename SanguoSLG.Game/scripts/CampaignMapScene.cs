@@ -61,6 +61,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly Dictionary<int, UnitController3D> _armyTokens = new();
     private readonly Dictionary<int, Label3D> _armyLabels = new();
     private readonly Dictionary<int, ActiveSkillGaugeView3D> _activeGauges = new();
+    private readonly Dictionary<int, CommanderPortraitView3D> _commanderPortraits = new();
     private readonly Dictionary<int, UnitController3D> _productionTokens = new();
     private readonly Dictionary<int, Label3D> _productionLabels = new();
     private Label _status = null!;
@@ -503,6 +504,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestunitcardqa")) CallDeferred(nameof(RunUnitCardQa));
         if (args.Contains("--maptestportraitqa")) CallDeferred(nameof(RunPortraitLoaderQa));
         if (args.Contains("--maptestportraittreeqa")) CallDeferred(nameof(RunPortraitTreeQa));
+        if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
     }
 
     public override void _ExitTree()
@@ -514,6 +516,7 @@ public sealed partial class CampaignMapScene : Node3D
         _unitCardTextures.Clear();
         _portraits.Clear();
         _circularPortraits.Clear();
+        _commanderPortraits.Clear();
         _armyGroupIcon = null;
         _blankIcon = null!;
         _dotIcon = null!;
@@ -3933,6 +3936,16 @@ public sealed partial class CampaignMapScene : Node3D
             gauge.Visible = unit is not null
                 && (unit.State.VanguardActive is not null || unit.State.AdjutantActive is not null)
                 && (_advancing || (_unitMenu.Visible && _selectedUnitId == unitId));
+        }
+
+        foreach (var (unitId, portrait) in _commanderPortraits.ToList())
+        {
+            if (!GodotObject.IsInstanceValid(portrait) || portrait.IsQueuedForDeletion())
+            {
+                _commanderPortraits.Remove(unitId);
+                continue;
+            }
+            portrait.Visible = _unitMenu.Visible && _selectedUnitId == unitId;
         }
 
         if (_advancing)
@@ -11805,6 +11818,7 @@ public sealed partial class CampaignMapScene : Node3D
             _armyTokens.Remove(id);
             _armyLabels.Remove(id);
             _activeGauges.Remove(id);
+            _commanderPortraits.Remove(id);
         }
 
         foreach (var army in _state.Armies)
@@ -11835,6 +11849,11 @@ public sealed partial class CampaignMapScene : Node3D
                 var gauge = new ActiveSkillGaugeView3D { Visible = false };
                 token.AddChild(gauge);
                 _activeGauges[army.Id.Value] = gauge;
+                var commanderPortrait = new CommanderPortraitView3D { Visible = false };
+                token.AddChild(commanderPortrait);
+                if (army.VanguardId is { } commanderId)
+                    commanderPortrait.SetPortrait(CircularPortraitFor(commanderId));
+                _commanderPortraits[army.Id.Value] = commanderPortrait;
             }
 
             token.SetFormationSize(army.IsSupply || army.IsArmyGroup ? 1 : FormationFor(army.Pool.Active)); // 보급부대·집단군은 규모와 무관하게 단일 전용 모델
@@ -11850,6 +11869,8 @@ public sealed partial class CampaignMapScene : Node3D
                 activeGauge.Visible = (army.State.VanguardActive is not null || army.State.AdjutantActive is not null)
                     && (_advancing || (_unitMenu.Visible && _selectedUnitId == army.Id.Value));
             }
+            if (_commanderPortraits.TryGetValue(army.Id.Value, out var portrait))
+                portrait.Visible = _unitMenu.Visible && _selectedUnitId == army.Id.Value;
         }
 
         var activeProduction = _state.ProductionOps
@@ -12075,6 +12096,22 @@ public sealed partial class CampaignMapScene : Node3D
         var passed = sample is not null && item.GetIcon(0) is not null;
         GD.Print($"[maptestportraittreeqa] passed={passed} general={sample?.Id.Value.ToString() ?? "-"} icon={item.GetIcon(0)?.GetWidth()}x{item.GetIcon(0)?.GetHeight()}");
         tree.QueueFree();
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>월드 주장 초상이 스킬 충전원 위에 배치되고 원형 텍스처를 받는지 확인한다.</summary>
+    private void RunCommanderPortraitQa()
+    {
+        var sample = _state.Generals.FirstOrDefault();
+        var token = new Node3D { Name = "CommanderPortraitQaToken" };
+        AddChild(token);
+        var portrait = new CommanderPortraitView3D();
+        token.AddChild(portrait);
+        if (sample is not null) portrait.SetPortrait(CircularPortraitFor(sample.Id));
+        var passed = sample is not null && portrait.HasPortrait && portrait.IsAboveSkillGauge
+            && CommanderPortraitView3D.HeightOffset > CommanderPortraitView3D.SkillGaugeHeight;
+        GD.Print($"[maptestcommanderportraitqa] passed={passed} general={sample?.Id.Value.ToString() ?? "-"} hasPortrait={portrait.HasPortrait} height={CommanderPortraitView3D.HeightOffset:0.00} gaugeHeight={CommanderPortraitView3D.SkillGaugeHeight:0.00}");
+        token.QueueFree();
         GetTree().Quit(passed ? 0 : 1);
     }
 
