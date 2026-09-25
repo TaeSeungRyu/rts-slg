@@ -506,6 +506,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestportraittreeqa")) CallDeferred(nameof(RunPortraitTreeQa));
         if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
         if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
+        if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
     }
 
     public override void _ExitTree()
@@ -12133,6 +12134,31 @@ public sealed partial class CampaignMapScene : Node3D
         var passed = sample is not null && row is HBoxContainer && portrait?.Texture is not null
             && portrait.CustomMinimumSize == new Vector2(30, 30);
         GD.Print($"[maptestgrowthportraitqa] passed={passed} general={sample?.Id.Value.ToString() ?? "-"} row={row?.GetType().Name ?? "-"} portrait={portrait?.Texture?.GetWidth()}x{portrait?.Texture?.GetHeight()}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>모든 탐색 결과 코드가 보상 카드 표시 데이터와 조건 문구로 변환되는지 확인한다.</summary>
+    private void RunExplorationPresentationQa()
+    {
+        var codes = new[]
+        {
+            ("divine_beast_trace", ExplorationRewardTone.DivineBeast),
+            ("ancient_relic_clue", ExplorationRewardTone.Relic),
+            ("local_clan_support", ExplorationRewardTone.Resource),
+            ("rumor_clue", ExplorationRewardTone.Rumor),
+            ("nothing", ExplorationRewardTone.Empty),
+        };
+        var cards = codes.Select((entry, index) => ExplorationRewardPresentation.From(
+            new ExplorationDiscovery(index, Player, new CityId(1), new GeneralId(1),
+                ExplorationResultKind.None, entry.Item1, Gold: entry.Item1 == "local_clan_support" ? 200 : 0,
+                Provisions: entry.Item1 == "local_clan_support" ? 600 : 0),
+            "장안", "제갈량")).ToList();
+        var passed = cards.Count == codes.Length
+            && cards.Zip(codes).All(pair => pair.First.Tone == pair.Second.Item2
+                && pair.First.Title.Length > 0 && pair.First.RegistrationCondition.Length > 0)
+            && cards.Single(x => x.Tone == ExplorationRewardTone.Resource) is { Gold: 200, Provisions: 600, HasResources: true }
+            && cards.Where(x => x.IsClue).Count() == 3;
+        GD.Print($"[maptestexplorationpresentationqa] passed={passed} cards={cards.Count} clues={cards.Count(x => x.IsClue)} resources={cards.Count(x => x.HasResources)}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
