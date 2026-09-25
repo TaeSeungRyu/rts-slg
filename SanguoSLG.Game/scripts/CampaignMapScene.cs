@@ -509,6 +509,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
         if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
         if (args.Contains("--maptestexplorationmodalqa")) CallDeferred(nameof(RunExplorationModalQa));
+        if (args.Contains("--maptestexplorationcardqa")) CallDeferred(nameof(RunExplorationCardQa));
     }
 
     public override void _ExitTree()
@@ -7290,8 +7291,13 @@ public sealed partial class CampaignMapScene : Node3D
         titleRow.AddChild(close);
         box.AddChild(GoldRule());
         box.AddChild(MakeLabel("이번 진행에서 발견한 보상과 단서입니다.", 12, new Color(Parchment, 0.78f)));
+        var cardIndex = 0;
         foreach (var result in results.OrderBy(x => x.Day).ThenBy(x => x.City.Value).ThenBy(x => x.Explorer.Value))
-            box.AddChild(BuildExplorationRewardCard(result));
+        {
+            var card = BuildExplorationRewardCard(result);
+            box.AddChild(card);
+            AnimateExplorationRewardCard(card, cardIndex++);
+        }
         var ok = MakeButton("확인", accent: true);
         ok.CustomMinimumSize = new Vector2(0, 38);
         ok.Pressed += CloseModal;
@@ -7320,6 +7326,18 @@ public sealed partial class CampaignMapScene : Node3D
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 12);
         card.AddChild(row);
+        var seal = MakeLabel(reward.Tone switch
+        {
+            ExplorationRewardTone.DivineBeast => "龍",
+            ExplorationRewardTone.Relic => "古",
+            ExplorationRewardTone.Rumor => "聞",
+            ExplorationRewardTone.Resource => "財",
+            _ => "·",
+        }, 22, accent);
+        seal.CustomMinimumSize = new Vector2(30, 58);
+        seal.HorizontalAlignment = HorizontalAlignment.Center;
+        seal.VerticalAlignment = VerticalAlignment.Center;
+        row.AddChild(seal);
         if (explorer is not null)
         {
             row.AddChild(new TextureRect
@@ -7347,13 +7365,51 @@ public sealed partial class CampaignMapScene : Node3D
         detail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         body.AddChild(detail);
         if (reward.HasResources)
-            body.AddChild(MakeLabel($"금 +{reward.Gold:N0}    군량 +{reward.Provisions:N0}", 14, GoldBright));
+        {
+            var resources = new HBoxContainer();
+            resources.AddThemeConstantOverride("separation", 8);
+            resources.AddChild(BuildExplorationResourceChip("금", reward.Gold, Sym.Coin));
+            resources.AddChild(BuildExplorationResourceChip("군량", reward.Provisions, Sym.Grain));
+            body.AddChild(resources);
+        }
         var condition = MakeLabel(reward.RegistrationCondition, 11, new Color(accent, 0.92f));
         condition.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         body.AddChild(condition);
         card.SetMeta("exploration_code", discovery.Code);
         card.SetMeta("exploration_tone", (int)reward.Tone);
+        card.SetMeta("reward_animation", reward.HasResources ? "resource_reveal" : reward.IsClue ? "clue_reveal" : "result_reveal");
         return card;
+    }
+
+    private PanelContainer BuildExplorationResourceChip(string label, int amount, Sym symbol)
+    {
+        var chip = new PanelContainer();
+        chip.AddThemeStyleboxOverride("panel", Frame(new Color(0.16f, 0.12f, 0.045f, 0.94f), new Color(Gold, 0.72f), 1, 7, 7));
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 5);
+        row.AddChild(new TextureRect
+        {
+            Texture = Icon(symbol), CustomMinimumSize = new Vector2(18, 18),
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        });
+        row.AddChild(MakeLabel($"{label}  +{amount:N0}", 13, GoldBright));
+        chip.AddChild(row);
+        chip.SetMeta("resource_kind", label);
+        chip.SetMeta("resource_amount", amount);
+        return chip;
+    }
+
+    private void AnimateExplorationRewardCard(Control card, int index)
+    {
+        var finalPosition = card.Position;
+        card.Modulate = new Color(1f, 1f, 1f, 0f);
+        card.Position = finalPosition + new Vector2(0f, 12f);
+        var tween = CreateTween();
+        if (index > 0) tween.TweenInterval(index * 0.08f);
+        tween.SetParallel(true);
+        tween.TweenProperty(card, "modulate", Colors.White, 0.22f).SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(card, "position", finalPosition, 0.22f).SetEase(Tween.EaseType.Out).SetTrans(Tween.TransitionType.Cubic);
     }
 
     private void OpenNavalCompose(CityId city)
@@ -12276,9 +12332,34 @@ public sealed partial class CampaignMapScene : Node3D
         var passed = cards.Count == 2
             && cards.Any(x => x.GetMeta("exploration_code").AsString() == "divine_beast_trace")
             && cards.Any(x => x.GetMeta("exploration_code").AsString() == "local_clan_support")
-            && labels.Any(x => x.Contains("금 +200") && x.Contains("군량 +600"));
-        GD.Print($"[maptestexplorationmodalqa] passed={passed} cards={cards.Count} resourceLine={labels.Any(x => x.Contains("금 +200"))}");
+            && labels.Any(x => x.Contains("금") && x.Contains("+200"))
+            && labels.Any(x => x.Contains("군량") && x.Contains("+600"));
+        GD.Print($"[maptestexplorationmodalqa] passed={passed} cards={cards.Count} resourceLine={labels.Any(x => x.Contains("금") && x.Contains("+200"))}");
         CloseModal();
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>단서별 표식과 금·군량 보상 칩이 카드에 구분되어 생성되는지 확인한다.</summary>
+    private void RunExplorationCardQa()
+    {
+        var city = _state.Cities.First();
+        var general = _state.Generals.First();
+        var clue = BuildExplorationRewardCard(new ExplorationDiscovery(
+            _state.Day, Player, city.Id, general.Id, ExplorationResultKind.AncientRelic, "ancient_relic_clue"));
+        var resource = BuildExplorationRewardCard(new ExplorationDiscovery(
+            _state.Day, Player, city.Id, general.Id, ExplorationResultKind.LocalClan, "local_clan_support", 200, 600));
+        AddChild(clue);
+        AddChild(resource);
+        var chips = resource.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
+            .Where(x => x.HasMeta("resource_kind")).ToList();
+        var passed = clue.GetMeta("reward_animation").AsString() == "clue_reveal"
+            && resource.GetMeta("reward_animation").AsString() == "resource_reveal"
+            && chips.Count == 2
+            && chips.Any(x => x.GetMeta("resource_kind").AsString() == "금" && x.GetMeta("resource_amount").AsInt32() == 200)
+            && chips.Any(x => x.GetMeta("resource_kind").AsString() == "군량" && x.GetMeta("resource_amount").AsInt32() == 600);
+        GD.Print($"[maptestexplorationcardqa] passed={passed} chips={chips.Count} clueAnimation={clue.GetMeta("reward_animation").AsString()} resourceAnimation={resource.GetMeta("reward_animation").AsString()}");
+        clue.QueueFree();
+        resource.QueueFree();
         GetTree().Quit(passed ? 0 : 1);
     }
 
