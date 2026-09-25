@@ -74,7 +74,7 @@ public sealed partial class CampaignMapScene : Node3D
     private VBoxContainer _reportBox = null!;
     private const int ReportBoxMax = 80;           // 좌하단 스크롤 박스에 유지하는 최근 줄 수(전체는 [전체] 모달)
     private const int ReportHistoryMax = 300;      // 전체 로그 보관 상한(오래된 것부터 버림)
-    private readonly List<(string Text, Color Color)> _pendingReport = new(); // 이번 진행 결과(재생 끝나면 flush)
+    private readonly List<(string Text, Color Color, GeneralId? Portrait)> _pendingReport = new(); // 이번 진행 결과(재생 끝나면 flush)
     private readonly List<(string Text, Color Color)> _reportHistory = new(); // 전체 로그(스크롤 열람용)
     private Label _log = null!;
 
@@ -505,6 +505,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestportraitqa")) CallDeferred(nameof(RunPortraitLoaderQa));
         if (args.Contains("--maptestportraittreeqa")) CallDeferred(nameof(RunPortraitTreeQa));
         if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
+        if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
     }
 
     public override void _ExitTree()
@@ -2353,11 +2354,11 @@ public sealed partial class CampaignMapScene : Node3D
 
         var note = new List<string>();
         _pendingReport.Clear();
-        void Ev(string t, Color c) { note.Add(t); _pendingReport.Add((t, c)); }
+        void Ev(string t, Color c, GeneralId? portrait = null) { note.Add(t); _pendingReport.Add((t, c, portrait)); }
 
         var siegeCol = new Color(0.9f, 0.6f, 0.4f);
         foreach (var dn in deployNote) { Ev(dn, dn.Contains("실패") ? AccentFill : Parchment); }
-        AddCombatReport(turns, Ev); // 교전·특기·계략·지속 피해(내 세력만)
+        AddCombatReport(turns, (t, c) => Ev(t, c)); // 교전·특기·계략·지속 피해(내 세력만)
         foreach (var bandit in preMove.Armies.Where(a => a.Field.Owner == WorldEngine.BanditFaction))
         {
             var targetCity = preMove.Cities.FirstOrDefault(c => c.Position == bandit.Field.Target);
@@ -2456,9 +2457,15 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.AptitudeGrowth => ($"[숙련] {gName}의 {(System.Enum.TryParse<TroopClass>(we.Code, out var aptitudeClass) ? ClassName(aptitudeClass) : we.Code)} 적성이 {GradeText((AptitudeGrade)we.Amount)}로 상승했습니다!", GoldBright),
                 _ => ("", Parchment),
             };
-            if (text.Length > 0) { Ev(text, col); }
+            if (text.Length > 0)
+            {
+                var growthPortrait = we.Kind is WorldEventKind.GeneralGrowth
+                    or WorldEventKind.AdministrationGrowth or WorldEventKind.AptitudeGrowth
+                    ? we.General : null;
+                Ev(text, col, growthPortrait);
+            }
         }
-        AddAutoOfficerReport(preMove, after, Ev);
+        AddAutoOfficerReport(preMove, after, (t, c) => Ev(t, c));
 
         _pendingState = after;
         _pendingNote = note.Count > 0 ? string.Join(" · ", note) : "—";
@@ -2994,7 +3001,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_pendingReport.Count > 0)
         {
             Report($"── {_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일 ──", Gold);
-            foreach (var (t, c) in _pendingReport) { Report(t, c); }
+            foreach (var (t, c, portrait) in _pendingReport) { Report(t, c, portrait); }
             _pendingReport.Clear();
             ScrollReportToBottomDeferred();
         }
@@ -12115,6 +12122,20 @@ public sealed partial class CampaignMapScene : Node3D
         GetTree().Quit(passed ? 0 : 1);
     }
 
+    /// <summary>훈련·레벨업 등 성장 보고가 장수 원형 초상을 포함하는지 확인한다.</summary>
+    private void RunGrowthPortraitQa()
+    {
+        var sample = _state.Generals.FirstOrDefault();
+        var before = _reportBox.GetChildCount();
+        if (sample is not null) Report("[성장 QA] 장수 경험치 +10", GoldBright, sample.Id);
+        var row = _reportBox.GetChildCount() > before ? _reportBox.GetChild(_reportBox.GetChildCount() - 1) : null;
+        var portrait = row?.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>().FirstOrDefault();
+        var passed = sample is not null && row is HBoxContainer && portrait?.Texture is not null
+            && portrait.CustomMinimumSize == new Vector2(30, 30);
+        GD.Print($"[maptestgrowthportraitqa] passed={passed} general={sample?.Id.Value.ToString() ?? "-"} row={row?.GetType().Name ?? "-"} portrait={portrait?.Texture?.GetWidth()}x{portrait?.Texture?.GetHeight()}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private void BuildHud()
     {
         var layer = new CanvasLayer();
@@ -12383,17 +12404,38 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 보고 한 줄 추가 — 전체 히스토리(캡 300)에 쌓고, 좌하단엔 최근 ReportMax줄만 보인다. color로 사건 성격 구분.
-    private void Report(string text, Color? color = null)
+    private void Report(string text, Color? color = null, GeneralId? portrait = null)
     {
         if (_reportBox is null) { return; }
         var c = color ?? Parchment;
         _reportHistory.Add((text, c));
         while (_reportHistory.Count > ReportHistoryMax) { _reportHistory.RemoveAt(0); }
 
+        Control reportRow;
         var l = MakeLabel(text, 12, c);
         l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         l.CustomMinimumSize = new Vector2(300, 0);
-        _reportBox.AddChild(l);
+        if (portrait is { } generalId)
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 7);
+            row.AddChild(new TextureRect
+            {
+                Texture = CircularPortraitFor(generalId),
+                CustomMinimumSize = new Vector2(30, 30),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+            });
+            l.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(l);
+            reportRow = row;
+        }
+        else
+        {
+            reportRow = l;
+        }
+        _reportBox.AddChild(reportRow);
         while (_reportBox.GetChildCount() > ReportBoxMax)
         {
             var old = _reportBox.GetChild(0);
@@ -12403,7 +12445,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         _reportPanel.Visible = true;
         // 새 줄이 추가되면 맨 아래(최신)로 스크롤 — 레이아웃이 갱신된 뒤 실행한다.
-        _reportScroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, l);
+        _reportScroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, reportRow);
         ScrollReportToBottomDeferred();
     }
 
