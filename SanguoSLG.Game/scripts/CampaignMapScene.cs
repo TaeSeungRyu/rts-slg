@@ -1092,6 +1092,7 @@ public sealed partial class CampaignMapScene : Node3D
         Clear(_infoRows);
         _infoRows.AddChild(MakeLabel($"《 {tmpl?.Name ?? u.TroopCode} 》 {faction?.Name}", 15, GoldBright));
         _infoRows.AddChild(MakeLabel($"시야 {_vision.UnitRadius(u)}칸", 13, Parchment));
+        _infoRows.AddChild(UnitCardPanel(UnitCardCode(u), u.Class));
         if (u.VanguardId is { } vanguardId)
         {
             var faceRow = new HBoxContainer();
@@ -1194,6 +1195,12 @@ public sealed partial class CampaignMapScene : Node3D
             StatusKind.Rally => $"고무 · 공격/방어 +{status.AtkBonusPercent}% · {status.Remaining}진행",
             _ => $"{status.Kind} · {status.Remaining}진행",
         }).ToList();
+
+    private static string UnitCardCode(CombatUnit unit)
+        => unit.IsArmyGroup ? "army_group"
+            : unit.IsTransport ? "transport"
+            : unit.IsSupply ? "supply"
+            : unit.TroopCode;
 
     // 메뉴를 지정 헥사의 화면좌표 우측에 배치(화면 밖 clamp).
     private void PlaceMenu(PanelContainer menu, HexCoord at, float offsetX)
@@ -10344,6 +10351,27 @@ public sealed partial class CampaignMapScene : Node3D
         return fallbackClass is { } troopClass ? ClassEmblem(troopClass) : Icon(Sym.Sword);
     }
 
+    private PanelContainer UnitCardPanel(string code, TroopClass? fallbackClass = null)
+    {
+        var panel = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(260, 156),
+            ClipContents = true,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        panel.AddThemeStyleboxOverride("panel", Frame(new Color(0.045f, 0.035f, 0.03f), new Color(Gold, 0.6f), 1, 7, 4));
+        panel.AddChild(new TextureRect
+        {
+            Texture = UnitCard(code, fallbackClass),
+            CustomMinimumSize = new Vector2(260, 156),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        });
+        return panel;
+    }
+
     private ImageTexture ClassEmblem(TroopClass c)
     {
         if (_emblems.TryGetValue(c, out var cached)) { return cached; }
@@ -11965,9 +11993,18 @@ public sealed partial class CampaignMapScene : Node3D
         var layoutFixed = sample.CustomMinimumSize == new Vector2(128, 112)
             && sample.FindChildren("*", "TextureRect", true, false)
                 .OfType<TextureRect>().Any(x => x.CustomMinimumSize == new Vector2(46, 46));
+        var detail = UnitCardPanel("swordsman", TroopClass.Infantry);
+        var detailFixed = detail.CustomMinimumSize == new Vector2(260, 156)
+            && detail.ClipContents
+            && detail.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>()
+                .Any(x => x.CustomMinimumSize == new Vector2(260, 156)
+                    && x.StretchMode == TextureRect.StretchModeEnum.KeepAspectCentered);
+        var fallbackWorks = UnitCard("__missing_card_qa__", TroopClass.Infantry) is not null;
         sample.QueueFree();
-        var passed = missing.Count == 0 && wrongSize.Count == 0 && _unitCardTextures.Count == UnitCardCodes.Length && layoutFixed;
-        GD.Print($"[maptestunitcardqa] passed={passed} loaded={_unitCardTextures.Count}/{UnitCardCodes.Length} missing={string.Join(',', missing)} wrongSize={string.Join(',', wrongSize)} layoutFixed={layoutFixed}");
+        detail.QueueFree();
+        var passed = missing.Count == 0 && wrongSize.Count == 0 && _unitCardTextures.Count == UnitCardCodes.Length
+            && layoutFixed && detailFixed && fallbackWorks;
+        GD.Print($"[maptestunitcardqa] passed={passed} loaded={_unitCardTextures.Count}/{UnitCardCodes.Length} missing={string.Join(',', missing)} wrongSize={string.Join(',', wrongSize)} layoutFixed={layoutFixed} detailFixed={detailFixed} fallback={fallbackWorks}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
