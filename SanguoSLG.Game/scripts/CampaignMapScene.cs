@@ -208,6 +208,7 @@ public sealed partial class CampaignMapScene : Node3D
     private Label? _researchFundingPreview;
     private readonly Dictionary<TroopClass, ImageTexture> _emblems = new();
     private readonly Dictionary<TroopClass, ImageTexture> _aptitudeCardTextures = new();
+    private readonly Dictionary<string, ImageTexture> _unitCardTextures = new(System.StringComparer.Ordinal);
     private ImageTexture? _armyGroupIcon;
 
     // 출전 모달 선택 상태.
@@ -499,6 +500,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestgaugelifetimeqa")) CallDeferred(nameof(RunActiveGaugeLifetimeQa));
         if (args.Contains("--maptestgaugeprogressqa")) CallDeferred(nameof(RunActiveGaugeProgressQa));
         if (args.Contains("--maptestunitstatusqa")) CallDeferred(nameof(RunUnitStatusDisplayQa));
+        if (args.Contains("--maptestunitcardqa")) CallDeferred(nameof(RunUnitCardQa));
     }
 
     public override void _ExitTree()
@@ -507,6 +509,7 @@ public sealed partial class CampaignMapScene : Node3D
         _optionalTextures.Clear();
         _emblems.Clear();
         _aptitudeCardTextures.Clear();
+        _unitCardTextures.Clear();
         _armyGroupIcon = null;
         _blankIcon = null!;
         _dotIcon = null!;
@@ -4515,7 +4518,7 @@ public sealed partial class CampaignMapScene : Node3D
             tile.AddChild(tv);
             tv.AddChild(new TextureRect
             {
-                Texture = Icon(Sym.Grain),
+                Texture = UnitCard("supply", TroopClass.Supply),
                 CustomMinimumSize = new Vector2(46, 46),
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
@@ -4651,7 +4654,7 @@ public sealed partial class CampaignMapScene : Node3D
             row.AddThemeConstantOverride("separation", 8);
             row.AddChild(new TextureRect
             {
-                Texture = template is not null ? ClassEmblem(template.Class) : Icon(Sym.People),
+                Texture = UnitCard(gar.TroopCode, template?.Class),
                 CustomMinimumSize = new Vector2(34, 34),
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
@@ -5414,7 +5417,7 @@ public sealed partial class CampaignMapScene : Node3D
         card.AddChild(v);
         v.AddChild(new TextureRect
         {
-            Texture = tmpl is not null ? ClassEmblem(tmpl.Class) : Icon(Sym.Sword),
+            Texture = UnitCard(g.TroopCode, tmpl?.Class),
             CustomMinimumSize = new Vector2(34, 34),
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
@@ -6942,7 +6945,7 @@ public sealed partial class CampaignMapScene : Node3D
             var idx = gi;
             var rq = _pendingDeploys[gi].Req;
             var tmpl = _troops.FirstOrDefault(t => t.Code == rq.TroopCode);
-            var emblem = tmpl is not null ? ClassEmblem(tmpl.Class) : Icon(Sym.Sword);
+            var emblem = UnitCard(rq.TroopCode, tmpl?.Class);
             var tname = tmpl?.Name ?? rq.TroopCode;
             var vname = _state.Generals.First(g => g.Id == rq.Vanguard).Name;
 
@@ -7136,7 +7139,7 @@ public sealed partial class CampaignMapScene : Node3D
             tile.AddChild(tv);
             tv.AddChild(new TextureRect
             {
-                Texture = ClassEmblem(TroopClass.Naval),
+                Texture = UnitCard(req.ShipCode, TroopClass.Naval),
                 CustomMinimumSize = new Vector2(46, 46),
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
@@ -7653,7 +7656,7 @@ public sealed partial class CampaignMapScene : Node3D
             row.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             row.AddChild(new TextureRect
             {
-                Texture = template is not null ? ClassEmblem(template.Class) : Icon(Sym.People),
+                Texture = UnitCard(gar.TroopCode, template?.Class),
                 CustomMinimumSize = new Vector2(34, 34),
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
@@ -7815,7 +7818,7 @@ public sealed partial class CampaignMapScene : Node3D
             tile.AddChild(tv);
             tv.AddChild(new TextureRect
             {
-                Texture = Icon(Sym.Grain),
+                Texture = UnitCard("transport"),
                 CustomMinimumSize = new Vector2(46, 46),
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
@@ -8356,7 +8359,7 @@ public sealed partial class CampaignMapScene : Node3D
             var template = _troops.FirstOrDefault(t => t.Code == code);
             var name = template?.Name ?? code;
             var warn = gar.TrainingLevel < 50 ? "  ⚠훈련부족" : "";
-            var emblem = template is not null ? ClassEmblem(template.Class) : Icon(Sym.Sword);
+            var emblem = UnitCard(code, template?.Class);
             var card = DeployCard(emblem, name, $"{remaining}명 · 훈{gar.TrainingLevel}{warn}");
             var cap = System.Math.Min(remaining, DeployMaxTroopsFor(city));
             _depTroopCards.Add((card, code));
@@ -9305,7 +9308,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var costPer100 = _cb.AutoRecruitGoldCostPer100(t.Code);
                 var tickCost = _cb.AutoRecruitGoldCost(t.Code, previewTroops);
-                list.Add((t.Name, ClassEmblem(t.Class), $"{ClassName(t.Class)} · 100명당 {costPer100}금\n7일 기본 비용 {tickCost}금"));
+                list.Add((t.Name, UnitCard(t.Code, t.Class), $"{ClassName(t.Class)} · 100명당 {costPer100}금\n7일 기본 비용 {tickCost}금"));
             }
 
             return list;
@@ -9322,7 +9325,7 @@ public sealed partial class CampaignMapScene : Node3D
                     ? "이미 주력병종"
                     : selected.Count >= 2 ? "선택 불가"
                     : "Lv.10 연구 가능";
-                list.Add((t.Name, ClassEmblem(t.Class), detail));
+                list.Add((t.Name, UnitCard(t.Code, t.Class), detail));
             }
 
             return list;
@@ -9369,7 +9372,7 @@ public sealed partial class CampaignMapScene : Node3D
                         detail = lack ?? cost;
                     }
 
-                    list.Add((t.Name, ClassEmblem(t.Class), detail));
+                    list.Add((t.Name, UnitCard(t.Code, t.Class), detail));
                 }
 
                 break;
@@ -9382,7 +9385,7 @@ public sealed partial class CampaignMapScene : Node3D
                 {
                     var t = _troops.FirstOrDefault(x => x.Code == g.TroopCode);
                     var name = (t?.Name ?? g.TroopCode) + (g.Trainee ? " (신병)" : "");
-                    list.Add((name, t is null ? Icon(Sym.Sword) : ClassEmblem(t.Class),
+                    list.Add((name, UnitCard(g.TroopCode, t?.Class),
                         $"{g.Troops}명 · 훈련 {g.TrainingLevel}"));
                 }
 
@@ -9398,7 +9401,7 @@ public sealed partial class CampaignMapScene : Node3D
                 {
                     var stock = PortShipStock(city.Id, t.Code);
                     var days = CommandService.ShipBuildBaseDays(t.Code);
-                    list.Add((t.Name, ClassEmblem(t.Class), $"저장 {stock}척\n기본 {days}일 · 지력 100이면 -7일\n1척당 병력 10,000명 탑승"));
+                    list.Add((t.Name, UnitCard(t.Code, t.Class), $"저장 {stock}척\n기본 {days}일 · 지력 100이면 -7일\n1척당 병력 10,000명 탑승"));
                 }
 
                 break;
@@ -10313,6 +10316,34 @@ public sealed partial class CampaignMapScene : Node3D
         [TroopClass.Naval] = "res://assets/icons/troop_naval.png",
     };
 
+    private static readonly string[] UnitCardCodes =
+    {
+        "swordsman", "archer", "cavalry", "war_elephant", "thunder_cart", "catapult", "siege_tower",
+        "small_boat", "medium_ship", "large_ship", "geukbyeong", "namman", "deunggap", "mudang",
+        "cataphract", "horse_archer", "hwarang", "turtleship", "waeseon", "bandit", "great_tiger",
+        "wild_elephant", "eastern_dragon", "giant_squid", "phoenix", "supply", "army_group", "transport",
+    };
+
+    /// <summary>실제 유닛 코드별 고유 카드를 우선하고, 누락 시 기존 병종 분류 아이콘을 사용한다.</summary>
+    private ImageTexture UnitCard(string code, TroopClass? fallbackClass = null)
+    {
+        if (_unitCardTextures.TryGetValue(code, out var cached)) return cached;
+        var path = $"res://assets/ui/troops/{code}.png";
+        if (Godot.FileAccess.FileExists(path))
+        {
+            var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
+            if (!image.IsEmpty())
+            {
+                image.GenerateMipmaps();
+                var texture = ImageTexture.CreateFromImage(image);
+                _unitCardTextures[code] = texture;
+                return texture;
+            }
+        }
+
+        return fallbackClass is { } troopClass ? ClassEmblem(troopClass) : Icon(Sym.Sword);
+    }
+
     private ImageTexture ClassEmblem(TroopClass c)
     {
         if (_emblems.TryGetValue(c, out var cached)) { return cached; }
@@ -10371,16 +10402,8 @@ public sealed partial class CampaignMapScene : Node3D
 
     private ImageTexture ArmyGroupIcon()
     {
-        if (_armyGroupIcon is { } cached) { return cached; }
-
-        const string path = "res://assets/ui/cards/troop_army_group.png";
-        if (Godot.FileAccess.FileExists(path))
-        {
-            _armyGroupIcon = CircularImageIcon(path);
-            return _armyGroupIcon;
-        }
-
-        _armyGroupIcon = Icon(Sym.Shield);
+        if (_armyGroupIcon is { } cached) return cached;
+        _armyGroupIcon = UnitCard("army_group");
         return _armyGroupIcon;
     }
 
@@ -11917,6 +11940,34 @@ public sealed partial class CampaignMapScene : Node3D
             && afterOne.Any(x => x.Contains("파갑") && x.Contains("1진행"))
             && afterTwo.Count == 0;
         GD.Print($"[maptestunitstatusqa] passed={passed} initial={string.Join('|', visible)} after1={string.Join('|', afterOne)} after2={afterTwo.Count}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>28종 고유 유닛 카드 로딩과 고정 크기 편성 카드 레이아웃 회귀 QA.</summary>
+    private void RunUnitCardQa()
+    {
+        var missing = new List<string>();
+        var wrongSize = new List<string>();
+        foreach (var code in UnitCardCodes)
+        {
+            var path = $"res://assets/ui/troops/{code}.png";
+            if (!Godot.FileAccess.FileExists(path))
+            {
+                missing.Add(code);
+                continue;
+            }
+
+            var texture = UnitCard(code);
+            if (texture.GetWidth() != 1024 || texture.GetHeight() != 1024) wrongSize.Add(code);
+        }
+
+        var sample = DeployCard(UnitCard("swordsman", TroopClass.Infantry), "도검병", "10,000명");
+        var layoutFixed = sample.CustomMinimumSize == new Vector2(128, 112)
+            && sample.FindChildren("*", "TextureRect", true, false)
+                .OfType<TextureRect>().Any(x => x.CustomMinimumSize == new Vector2(46, 46));
+        sample.QueueFree();
+        var passed = missing.Count == 0 && wrongSize.Count == 0 && _unitCardTextures.Count == UnitCardCodes.Length && layoutFixed;
+        GD.Print($"[maptestunitcardqa] passed={passed} loaded={_unitCardTextures.Count}/{UnitCardCodes.Length} missing={string.Join(',', missing)} wrongSize={string.Join(',', wrongSize)} layoutFixed={layoutFixed}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
