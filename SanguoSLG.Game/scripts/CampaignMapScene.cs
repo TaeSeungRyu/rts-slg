@@ -76,6 +76,7 @@ public sealed partial class CampaignMapScene : Node3D
     private const int ReportHistoryMax = 300;      // 전체 로그 보관 상한(오래된 것부터 버림)
     private readonly List<(string Text, Color Color, GeneralId? Portrait)> _pendingReport = new(); // 이번 진행 결과(재생 끝나면 flush)
     private readonly List<(string Text, Color Color)> _reportHistory = new(); // 전체 로그(스크롤 열람용)
+    private readonly List<ExplorationDiscovery> _pendingExplorationResults = new();
     private Label _log = null!;
 
     // 진행 애니메이션(2.5초=하루 = 이동 1.5초 + 공격 1초, 한 칸 0.5초, 최대 3칸/일). StepSeconds를 키우면 이동이 느려진다.
@@ -507,6 +508,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
         if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
         if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
+        if (args.Contains("--maptestexplorationmodalqa")) CallDeferred(nameof(RunExplorationModalQa));
     }
 
     public override void _ExitTree()
@@ -2349,6 +2351,8 @@ public sealed partial class CampaignMapScene : Node3D
         var preMove = _state; // 이동 전(편성·AI 반영) — 애니메이션 시작 위치
         var startHex = preMove.Armies.ToDictionary(u => u.Id.Value, u => u.Field.Position);
         var after = _engine.AdvanceWeek(preMove, out var turns, out var sieges, out var captures, out var plunders, out var casualties);
+        _pendingExplorationResults.Clear();
+        _pendingExplorationResults.AddRange(after.Discoveries.Skip(preMove.Discoveries.Count).Where(d => d.Faction == Player));
         _week++;
         Dbg($"  afterAdvance armies={after.Armies.Count} sieges={sieges.Count} caps={captures.Count} turns={turns.Count}");
         LogAdvanceDetail(startHex, turns, sieges, captures, plunders, after);
@@ -3024,6 +3028,13 @@ public sealed partial class CampaignMapScene : Node3D
             _openCityDetailCity = null;
             _selected = null;
             HidePanels();
+        }
+
+        if (_pendingExplorationResults.Count > 0)
+        {
+            var results = _pendingExplorationResults.ToList();
+            _pendingExplorationResults.Clear();
+            OpenExplorationResults(results);
         }
     }
 
@@ -7257,6 +7268,92 @@ public sealed partial class CampaignMapScene : Node3D
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    /// <summary>이번 진행에서 완료된 탐색 결과를 누락 없이 한 화면에 표시한다.</summary>
+    private void OpenExplorationResults(IReadOnlyList<ExplorationDiscovery> results)
+    {
+        if (results.Count == 0) { return; }
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.46f, 440f, 680f);
+        var mh = Mathf.Clamp(vp.Y * 0.78f, 360f, 720f);
+        var box = DeployScaffold(mw, out var scroll, out var panel);
+        var titleRow = new HBoxContainer();
+        box.AddChild(titleRow);
+        var title = MakeLabel($"탐색 결과  {results.Count}건", 19, Gold);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        titleRow.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(40, 30);
+        close.Pressed += CloseModal;
+        titleRow.AddChild(close);
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("이번 진행에서 발견한 보상과 단서입니다.", 12, new Color(Parchment, 0.78f)));
+        foreach (var result in results.OrderBy(x => x.Day).ThenBy(x => x.City.Value).ThenBy(x => x.Explorer.Value))
+            box.AddChild(BuildExplorationRewardCard(result));
+        var ok = MakeButton("확인", accent: true);
+        ok.CustomMinimumSize = new Vector2(0, 38);
+        ok.Pressed += CloseModal;
+        box.AddChild(ok);
+        var contentH = box.GetCombinedMinimumSize().Y;
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    private PanelContainer BuildExplorationRewardCard(ExplorationDiscovery discovery)
+    {
+        var cityName = _state.Cities.FirstOrDefault(c => c.Id == discovery.City)?.Name ?? $"도시 {discovery.City.Value}";
+        var explorer = _state.Generals.FirstOrDefault(g => g.Id == discovery.Explorer);
+        var explorerName = explorer?.Name ?? $"장수 {discovery.Explorer.Value}";
+        var reward = ExplorationRewardPresentation.From(discovery, cityName, explorerName);
+        var accent = reward.Tone switch
+        {
+            ExplorationRewardTone.DivineBeast => new Color(0.88f, 0.42f, 0.32f),
+            ExplorationRewardTone.Relic => new Color(0.72f, 0.54f, 0.94f),
+            ExplorationRewardTone.Rumor => new Color(0.42f, 0.72f, 0.92f),
+            ExplorationRewardTone.Resource => GoldBright,
+            _ => new Color(0.48f, 0.46f, 0.42f),
+        };
+        var card = new PanelContainer();
+        card.AddThemeStyleboxOverride("panel", Frame(new Color(0.055f, 0.045f, 0.038f, 0.96f), new Color(accent, 0.72f), 1, 9, 10));
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 12);
+        card.AddChild(row);
+        if (explorer is not null)
+        {
+            row.AddChild(new TextureRect
+            {
+                Texture = CircularPortraitFor(explorer.Id),
+                CustomMinimumSize = new Vector2(58, 58),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+            });
+        }
+        var body = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        body.AddThemeConstantOverride("separation", 3);
+        row.AddChild(body);
+        var heading = new HBoxContainer();
+        var name = MakeLabel(reward.Title, 16, accent);
+        name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        heading.AddChild(name);
+        heading.AddChild(MakeLabel(reward.Badge, 11, new Color(accent, 0.82f)));
+        body.AddChild(heading);
+        var summary = MakeLabel(reward.Summary, 12, Parchment);
+        summary.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        body.AddChild(summary);
+        var detail = MakeLabel(reward.Detail, 11, new Color(Parchment, 0.78f));
+        detail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        body.AddChild(detail);
+        if (reward.HasResources)
+            body.AddChild(MakeLabel($"금 +{reward.Gold:N0}    군량 +{reward.Provisions:N0}", 14, GoldBright));
+        var condition = MakeLabel(reward.RegistrationCondition, 11, new Color(accent, 0.92f));
+        condition.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        body.AddChild(condition);
+        card.SetMeta("exploration_code", discovery.Code);
+        card.SetMeta("exploration_tone", (int)reward.Tone);
+        return card;
     }
 
     private void OpenNavalCompose(CityId city)
@@ -12159,6 +12256,29 @@ public sealed partial class CampaignMapScene : Node3D
             && cards.Single(x => x.Tone == ExplorationRewardTone.Resource) is { Gold: 200, Provisions: 600, HasResources: true }
             && cards.Where(x => x.IsClue).Count() == 3;
         GD.Print($"[maptestexplorationpresentationqa] passed={passed} cards={cards.Count} clues={cards.Count(x => x.IsClue)} resources={cards.Count(x => x.HasResources)}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>여러 탐색 완료 결과가 하나의 보상 모달에 카드로 모두 표시되는지 확인한다.</summary>
+    private void RunExplorationModalQa()
+    {
+        var city = _state.Cities.First();
+        var general = _state.Generals.First();
+        var results = new[]
+        {
+            new ExplorationDiscovery(_state.Day, Player, city.Id, general.Id, ExplorationResultKind.DivineBeast, "divine_beast_trace"),
+            new ExplorationDiscovery(_state.Day, Player, city.Id, general.Id, ExplorationResultKind.LocalClan, "local_clan_support", 200, 600),
+        };
+        OpenExplorationResults(results);
+        var cards = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
+            .Where(x => x.HasMeta("exploration_code")).ToList() ?? [];
+        var labels = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>().Select(x => x.Text).ToList() ?? [];
+        var passed = cards.Count == 2
+            && cards.Any(x => x.GetMeta("exploration_code").AsString() == "divine_beast_trace")
+            && cards.Any(x => x.GetMeta("exploration_code").AsString() == "local_clan_support")
+            && labels.Any(x => x.Contains("금 +200") && x.Contains("군량 +600"));
+        GD.Print($"[maptestexplorationmodalqa] passed={passed} cards={cards.Count} resourceLine={labels.Any(x => x.Contains("금 +200"))}");
+        CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }
 
