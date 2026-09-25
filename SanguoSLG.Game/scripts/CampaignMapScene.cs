@@ -501,6 +501,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestgaugeprogressqa")) CallDeferred(nameof(RunActiveGaugeProgressQa));
         if (args.Contains("--maptestunitstatusqa")) CallDeferred(nameof(RunUnitStatusDisplayQa));
         if (args.Contains("--maptestunitcardqa")) CallDeferred(nameof(RunUnitCardQa));
+        if (args.Contains("--maptestportraitqa")) CallDeferred(nameof(RunPortraitLoaderQa));
     }
 
     public override void _ExitTree()
@@ -510,6 +511,8 @@ public sealed partial class CampaignMapScene : Node3D
         _emblems.Clear();
         _aptitudeCardTextures.Clear();
         _unitCardTextures.Clear();
+        _portraits.Clear();
+        _circularPortraits.Clear();
         _armyGroupIcon = null;
         _blankIcon = null!;
         _dotIcon = null!;
@@ -6261,31 +6264,34 @@ public sealed partial class CampaignMapScene : Node3D
         return path is not null ? GD.Load<Texture2D>(path) : null;
     }
 
-    private Texture2D? CircularPortraitFor(GeneralId id)
+    private ImageTexture CircularPortraitFor(GeneralId id)
     {
+        if (_circularPortraits.TryGetValue(id.Value, out var cached)) return cached;
         var portrait = LoadPortraitMetadata(id);
         var path = portrait is not null
             ? "res://" + portrait.PortraitPath.Replace('\\', '/').Replace("SanguoSLG.Game/", "")
             : PortraitPathFor(id);
         if (path is null)
         {
-            return null;
+            return OfficerPortrait(id);
         }
 
         var globalPath = ProjectSettings.GlobalizePath(path);
         if (!File.Exists(globalPath))
         {
-            return PortraitFor(id);
+            return OfficerPortrait(id);
         }
 
         var image = Image.LoadFromFile(globalPath);
         if (image is null || image.IsEmpty())
         {
-            return PortraitFor(id);
+            return OfficerPortrait(id);
         }
 
         portrait ??= new GeneralPortraitRecord(id.Value, $"SanguoSLG.Game/assets/portraits/{id.Value}.png", 0.5, 0.35, 1);
-        return ImageTexture.CreateFromImage(BuildCircularPortraitImage(image, portrait));
+        var texture = ImageTexture.CreateFromImage(BuildCircularPortraitImage(image, portrait));
+        _circularPortraits[id.Value] = texture;
+        return texture;
     }
 
     private GeneralPortraitRecord? LoadPortraitMetadata(GeneralId id)
@@ -9111,6 +9117,7 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     private readonly Dictionary<int, ImageTexture> _portraits = new();
+    private readonly Dictionary<int, ImageTexture> _circularPortraits = new();
 
     // 장수 초상: assets/portraits/{id}.png 있으면 그것, 없으면 공용 장수 흉상(icon_officer) 폴백.
     private ImageTexture OfficerPortrait(GeneralId id)
@@ -9120,13 +9127,18 @@ public sealed partial class CampaignMapScene : Node3D
         if (PortraitPathFor(id) is { } path)
         {
             var img = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
-            img.GenerateMipmaps();
-            var t = ImageTexture.CreateFromImage(img);
-            _portraits[id.Value] = t;
-            return t;
+            if (img is not null && !img.IsEmpty())
+            {
+                img.GenerateMipmaps();
+                var t = ImageTexture.CreateFromImage(img);
+                _portraits[id.Value] = t;
+                return t;
+            }
         }
 
-        return Icon(Sym.Officer);
+        var fallback = Icon(Sym.Officer);
+        _portraits[id.Value] = fallback;
+        return fallback;
     }
 
     private PanelContainer DeployCard(ImageTexture icon, string title, string sub)
@@ -12005,6 +12017,24 @@ public sealed partial class CampaignMapScene : Node3D
         var passed = missing.Count == 0 && wrongSize.Count == 0 && _unitCardTextures.Count == UnitCardCodes.Length
             && layoutFixed && detailFixed && fallbackWorks;
         GD.Print($"[maptestunitcardqa] passed={passed} loaded={_unitCardTextures.Count}/{UnitCardCodes.Length} missing={string.Join(',', missing)} wrongSize={string.Join(',', wrongSize)} layoutFixed={layoutFixed} detailFixed={detailFixed} fallback={fallbackWorks}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>장수 원본·원형 초상 로더, 메타데이터 크롭, 누락 폴백과 캐시 회귀 QA.</summary>
+    private void RunPortraitLoaderQa()
+    {
+        var sample = _state.Generals.FirstOrDefault(g => PortraitPathFor(g.Id) is not null);
+        var sampleCircular = sample is null ? null : CircularPortraitFor(sample.Id);
+        var cached = sample is not null && ReferenceEquals(sampleCircular, CircularPortraitFor(sample.Id));
+        var circularSize = sampleCircular is not null
+            && sampleCircular.GetWidth() == 192 && sampleCircular.GetHeight() == 192;
+        var fallbackId = new GeneralId(-987654);
+        var fallback = OfficerPortrait(fallbackId);
+        var fallbackCached = ReferenceEquals(fallback, OfficerPortrait(fallbackId));
+        var passed = sample is not null && circularSize && cached
+            && fallback is not null && fallback.GetWidth() > 0 && fallback.GetHeight() > 0 && fallbackCached;
+        var sampleId = sample is null ? "-" : sample.Id.Value.ToString();
+        GD.Print($"[maptestportraitqa] passed={passed} sample={sampleId} circular={sampleCircular?.GetWidth()}x{sampleCircular?.GetHeight()} cached={cached} fallback={fallback.GetWidth()}x{fallback.GetHeight()} fallbackCached={fallbackCached}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
