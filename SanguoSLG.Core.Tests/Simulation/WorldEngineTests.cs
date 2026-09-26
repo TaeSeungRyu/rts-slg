@@ -698,7 +698,7 @@ public class WorldEngineTests
     }
 
     [Fact]
-    public void v2_병력담당은_다중병종을_싼순서로_나눠_생산한다()
+    public void v2_병력담당은_잠긴병종을_제외하고_싼순서로_나눠_생산한다()
     {
         var city = new City(new CityId(1), "복합성", new HexCoord(0, 0), new FactionId(1), 1000,
             Gold: 100, Population: 0, Security: 80,
@@ -712,11 +712,11 @@ public class WorldEngineTests
             .AdvanceDays(state, 7);
 
         var produced = after.Garrisons.OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ToList();
-        Assert.Equal(3, produced.Count);
-        Assert.Contains(produced, g => g.TroopCode == "swordsman" && g.Troops == 167);
-        Assert.Contains(produced, g => g.TroopCode == "cavalry" && g.Troops == 167);
-        Assert.Contains(produced, g => g.TroopCode == "war_elephant" && g.Troops == 166);
-        Assert.Equal(81, after.Cities.Single().Gold);
+        Assert.Equal(2, produced.Count);
+        Assert.Contains(produced, g => g.TroopCode == "swordsman" && g.Troops == 250);
+        Assert.Contains(produced, g => g.TroopCode == "cavalry" && g.Troops == 250);
+        Assert.DoesNotContain(produced, g => g.TroopCode == "war_elephant");
+        Assert.Equal(87, after.Cities.Single().Gold);
     }
 
     [Fact]

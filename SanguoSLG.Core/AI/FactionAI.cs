@@ -28,6 +28,7 @@ public sealed class FactionAI
     public GameState PlanWeek(GameState state, FactionId faction)
     {
         state = Retarget(state, faction);
+        state = TargetUnlockRuins(state, faction);
         state = RecruitUnlockedHeroes(state, faction);
         state = PlanSupplyDeploys(state, faction);
         state = PlanArmyGroupDeploys(state, faction);
@@ -67,6 +68,30 @@ public sealed class FactionAI
 
         state = ExploreWithIdleOfficers(state, faction);
         return state;
+    }
+
+    private static GameState TargetUnlockRuins(GameState state, FactionId faction)
+    {
+        if (state.Ruins.Count == 0) return state;
+        var armies = state.Armies.ToList();
+        foreach (var ruin in state.Ruins.OrderBy(r => r.Id, StringComparer.Ordinal))
+        {
+            var status = state.RuinStatus.FirstOrDefault(s => s.RuinId == ruin.Id);
+            if (status is null) continue;
+            var candidates = armies.Where(a => a.Field.Owner == faction && a.CanInitiateCombat
+                    && (ruin.Naval ? a.Field.Domain == MovementDomain.DeepWater : a.Field.Domain != MovementDomain.DeepWater))
+                .OrderBy(a => a.Field.Position.Distance(ruin.Position)).ThenBy(a => a.Id.Value).ToList();
+            if (!RuinAiPolicy.ShouldAttack(ruin, status, faction, state.Day, candidates.Sum(a => a.Pool.Active))) continue;
+            var committed = 0;
+            foreach (var army in candidates)
+            {
+                var index = armies.FindIndex(a => a.Id == army.Id);
+                armies[index] = army with { Field = army.Field with { Mode = UnitMode.Attack, Target = ruin.Position } };
+                committed += army.Pool.Active;
+                if (committed >= status.Defenders) break;
+            }
+        }
+        return state with { FieldArmies = armies };
     }
 
     private GameState PlanGeneralResearch(GameState state, FactionId faction)
