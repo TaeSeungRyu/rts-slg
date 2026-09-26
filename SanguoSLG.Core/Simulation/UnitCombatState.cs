@@ -122,15 +122,26 @@ public sealed record UnitCombatState(
         return (null, this);
     }
 
-    /// <summary>성·항구 공격에서 준비된 건물 전용 타격 액티브만 소비한다.</summary>
+    /// <summary>
+    /// 성·항구 공격에서 준비된 타격 액티브를 소비한다. 분쇄뿐 아니라 무쌍·포화 등 일반 타격형도
+    /// 공성 공격을 대체한다. 병력 비례 처형인 참은 건물 대상에서 발동하지 않고 준비 상태를 유지한다.
+    /// 선봉의 준비된 스킬이 현재 대상에 부적합하면 부관을 건너뛰어 발동하지 않는다.
+    /// </summary>
     public (ActiveSkill? Skill, UnitCombatState State) FiringBuildingActive()
     {
-        if (VanguardActive is { Type: ActiveType.Strike, BuildingOnly: true } && VanguardGauge.IsReady)
-            return (VanguardActive, this with { VanguardGauge = VanguardGauge.Fire() });
-        if (AdjutantActive is { Type: ActiveType.Strike, BuildingOnly: true } && AdjutantGauge.IsReady)
-            return (AdjutantActive, this with { AdjutantGauge = AdjutantGauge.Fire() });
+        if (VanguardActive is { } vanguard && VanguardGauge.IsReady)
+            return CanStrikeBuilding(vanguard)
+                ? (vanguard, this with { VanguardGauge = VanguardGauge.Fire() })
+                : (null, this);
+        if (AdjutantActive is { } adjutant && AdjutantGauge.IsReady)
+            return CanStrikeBuilding(adjutant)
+                ? (adjutant, this with { AdjutantGauge = AdjutantGauge.Fire() })
+                : (null, this);
         return (null, this);
     }
+
+    private static bool CanStrikeBuilding(ActiveSkill skill)
+        => skill.Type == ActiveType.Strike && skill.ExecutePercent == 0;
 
     /// <summary>5일 충전된 책략형 액티브만 선봉 우선으로 소비한다. 유효 대상이 없을 때는 호출하지 않는다.</summary>
     public (ActiveSkill? Skill, UnitCombatState State) FiringTactic()

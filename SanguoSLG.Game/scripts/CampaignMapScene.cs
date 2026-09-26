@@ -115,6 +115,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId, GeneralId? GeneralId, ActiveSkill Skill)> _animActives = new();
     private int _animSkillEffectIdx;
     private readonly List<(double Time, int CasterUnitId, int TargetUnitId, ActiveSkill Skill)> _animSkillEffects = new();
+    private int _animSiegeSkillEffectIdx;
+    private readonly List<(double Time, int CasterUnitId, Vector3 Target, ActiveSkill Skill)> _animSiegeSkillEffects = new();
     private int _animGaugeIdx;
     private readonly List<(double Time, int UnitId, ActiveSkill? Skill, ActiveGauge Gauge)> _animGaugeUpdates = new();
 
@@ -502,6 +504,7 @@ public sealed partial class CampaignMapScene : Node3D
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
         if (args.Contains("--maptestgaugelifetimeqa")) CallDeferred(nameof(RunActiveGaugeLifetimeQa));
         if (args.Contains("--maptestgaugeprogressqa")) CallDeferred(nameof(RunActiveGaugeProgressQa));
+        if (args.Contains("--maptestsiegeactivepresentationqa")) CallDeferred(nameof(RunSiegeActivePresentationQa));
         if (args.Contains("--maptestactivecasterqa")) CallDeferred(nameof(RunActiveCasterPortraitQa));
         if (args.Contains("--maptestbatchdeployqa")) CallDeferred(nameof(RunBatchDeployQa));
         if (args.Contains("--maptestdeploytargetreturnqa")) CallDeferred(nameof(RunDeployTargetReturnQa));
@@ -2550,6 +2553,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animCaptureIdx = 0;
         _animActiveIdx = 0;
         _animSkillEffectIdx = 0;
+        _animSiegeSkillEffectIdx = 0;
         _animGaugeIdx = 0;
         _advanceBtn.Busy = true;
         _advanceBtn.Progress = 0f;
@@ -2584,6 +2588,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animCaptures.Clear();
         _animActives.Clear();
         _animSkillEffects.Clear();
+        _animSiegeSkillEffects.Clear();
         _animGaugeUpdates.Clear();
         for (var d = 0; d <= AnimDays; d++) { _dayKind[d] = "이동"; } // 기본 이동턴, 아래서 교전·공성 있는 날만 공격턴
         var alive = new HashSet<int>(startHex.Keys);
@@ -2668,14 +2673,28 @@ public sealed partial class CampaignMapScene : Node3D
                         .ThenBy(x => x.Id.Value).FirstOrDefault();
                     if (target is not null) _animSkillEffects.Add((activeTime + 0.14, casterId.Value, target.Id.Value, skill));
                 }
-                else if (caster is not null && skill.Type == ActiveType.Strike && turn.Combat is { } activeCombat)
+                else if (caster is not null && skill.Type == ActiveType.Strike)
                 {
-                    var target = turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
-                            && activeCombat.DamageTaken.GetValueOrDefault(x.Id) > 0)
-                        .OrderBy(x => x.Field.Position.Distance(caster.Field.Position))
-                        .ThenBy(x => x.Id.Value)
-                        .FirstOrDefault();
-                    if (target is not null) _animSkillEffects.Add((activeTime + 0.14, casterId.Value, target.Id.Value, skill));
+                    if (turn.Combat is { } activeCombat)
+                    {
+                        var target = turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
+                                && activeCombat.DamageTaken.GetValueOrDefault(x.Id) > 0)
+                            .OrderBy(x => x.Field.Position.Distance(caster.Field.Position))
+                            .ThenBy(x => x.Id.Value)
+                            .FirstOrDefault();
+                        if (target is not null) _animSkillEffects.Add((activeTime + 0.14, casterId.Value, target.Id.Value, skill));
+                    }
+                    else
+                    {
+                        var siege = sieges.FirstOrDefault(exchange => exchange.TurnIndex == ti
+                            && exchange.Besiegers.Contains(casterId));
+                        var city = siege is null ? null : _cities.FirstOrDefault(candidate => candidate.Id == siege.City);
+                        if (city is not null)
+                        {
+                            var target = _view.HexToWorld(city.Position) + new Vector3(0f, _view.TileTopY + 0.25f, 0f);
+                            _animSiegeSkillEffects.Add((activeTime + 0.14, casterId.Value, target, skill));
+                        }
+                    }
                 }
             }
 
@@ -4109,6 +4128,28 @@ public sealed partial class CampaignMapScene : Node3D
                         ActiveSkillPresentation.AttachEffect(target, effect.Skill);
                 }
                 _animSkillEffectIdx++;
+            }
+
+            while (_animSiegeSkillEffectIdx < _animSiegeSkillEffects.Count
+                && _animSiegeSkillEffects[_animSiegeSkillEffectIdx].Time <= _animT)
+            {
+                var effect = _animSiegeSkillEffects[_animSiegeSkillEffectIdx];
+                var anchor = new Node3D { Name = $"SiegeActiveEffect_{effect.Skill.Code}" };
+                AddChild(anchor);
+                anchor.GlobalPosition = effect.Target;
+                if (effect.Skill.Code == "breakthrough"
+                    && _armyTokens.TryGetValue(effect.CasterUnitId, out var breakthroughCaster)
+                    && breakthroughCaster.Visible)
+                    ActiveSkillPresentation.ShowBreakthrough(breakthroughCaster, anchor);
+                else if (effect.Skill.Code == "tiger_strike"
+                    && _armyTokens.TryGetValue(effect.CasterUnitId, out var tigerCaster)
+                    && tigerCaster.Visible)
+                    ActiveSkillPresentation.ShowTigerStrike(tigerCaster, anchor);
+                else
+                    ActiveSkillPresentation.AttachEffect(anchor, effect.Skill);
+                var cleanup = GetTree().CreateTimer(4.0);
+                cleanup.Timeout += anchor.QueueFree;
+                _animSiegeSkillEffectIdx++;
             }
 
             while (_animSiegeDmgIdx < _animSiegeDmg.Count && _animSiegeDmg[_animSiegeDmgIdx].Time <= _animT)
@@ -12381,6 +12422,20 @@ public sealed partial class CampaignMapScene : Node3D
         GD.Print($"[maptestgaugeprogressqa] passed={passed} observed={string.Join(',', observed)} skill={gauge.SkillCode}");
         _activeGauges.Remove(qaUnitId);
         token.QueueFree();
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>공성 타격 액티브가 성 위치용 독립 앵커에도 실제 효과 노드를 붙이는지 검증한다.</summary>
+    private void RunSiegeActivePresentationQa()
+    {
+        var skill = _activeSkills.FirstOrDefault(active => active.Code == "peerless");
+        var anchor = new Node3D { Name = "SiegeActivePresentationQaAnchor" };
+        AddChild(anchor);
+        var attached = skill is not null && ActiveSkillPresentation.AttachEffect(anchor, skill);
+        var visualChildren = anchor.GetChildCount();
+        var passed = attached && visualChildren > 0;
+        GD.Print($"[maptestsiegeactivepresentationqa] passed={passed} skill={skill?.Code ?? "-"} attached={attached} visualChildren={visualChildren}");
+        anchor.QueueFree();
         GetTree().Quit(passed ? 0 : 1);
     }
 

@@ -111,6 +111,82 @@ public class CampaignSiegeTests
         Assert.Equal(0, firedTurn.Units.Single(u => u.Id == attacker.Id).State.VanguardGauge.ElapsedDays);
     }
 
+    [Fact]
+    public void 조조_투석기_무쌍은_공성_공격턴에_발동하고_재생상태도_0칸이_된다()
+    {
+        var peerless = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())
+            .Single(x => x.Code == "peerless");
+        var attacker = Army(1, 1, new HexCoord(3, 0), new HexCoord(5, 0), code: "catapult") with
+        {
+            State = UnitCombatState.Create(91, peerless) with { VanguardGauge = new ActiveGauge(5) },
+            Might = 72,
+            Intellect = 91,
+            VanguardId = new GeneralId(1),
+        };
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 100_000);
+        var state = new GameState(1, 190, [], [city], [],
+            GarrisonForces: [new GarrisonForce(city.Id, "swordsman", 100_000, 60)],
+            FieldArmies: [attacker]);
+
+        Engine().AdvanceWeek(state, out var turns, out _);
+
+        var firedTurn = turns.First(turn => turn.FiredActives.ContainsKey(attacker.Id));
+        Assert.Equal("peerless", firedTurn.FiredActives[attacker.Id].Code);
+        Assert.Equal(0, firedTurn.Units.Single(u => u.Id == attacker.Id).State.VanguardGauge.ElapsedDays);
+    }
+
+    public static IEnumerable<object[]> AllTroopAndBuildingStrikeCodes()
+    {
+        var strikeCodes = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())
+            .Where(active => active.Type == ActiveType.Strike && active.ExecutePercent == 0)
+            .Select(active => active.Code)
+            .OrderBy(code => code, System.StringComparer.Ordinal);
+        return T.Keys.OrderBy(code => code, System.StringComparer.Ordinal)
+            .SelectMany(troopCode => strikeCodes.Select(activeCode => new object[] { troopCode, activeCode }));
+    }
+
+    [Theory]
+    [MemberData(nameof(AllTroopAndBuildingStrikeCodes))]
+    public void 모든_병종은_공성에서_모든_건물유효_타격액티브를_발동하고_게이지를_소비한다(
+        string troopCode, string activeCode)
+    {
+        var active = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())
+            .Single(x => x.Code == activeCode);
+        var normal = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0), code: troopCode);
+        var ready = normal with
+        {
+            State = UnitCombatState.Create(72, active) with { VanguardGauge = new ActiveGauge(5) },
+            Might = 72,
+        };
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 100_000);
+        var garrison = new List<GarrisonForce> { new(city.Id, "swordsman", 100_000, 60) };
+
+        var baseline = Siege().Resolve([normal], [city], garrison);
+        var result = Siege().Resolve([ready], [city], garrison);
+
+        Assert.Equal(activeCode, Assert.Single(result.FiredActives).Value.Code);
+        Assert.Equal(0, result.Armies.Single().State.VanguardGauge.ElapsedDays);
+        Assert.True(result.Exchanges.Single().WallDamage > baseline.Exchanges.Single().WallDamage,
+            $"{troopCode}/{activeCode} 액티브 피해가 평타보다 커야 한다");
+    }
+
+    [Fact]
+    public void 참은_건물에_발동하지_않고_게이지를_유지한다()
+    {
+        var reap = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).Single(x => x.Code == "reap");
+        var attacker = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0)) with
+        {
+            State = UnitCombatState.Create(80, reap) with { VanguardGauge = new ActiveGauge(6) },
+        };
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 100_000);
+
+        var result = Siege().Resolve([attacker], [city],
+            [new GarrisonForce(city.Id, "swordsman", 100_000, 60)]);
+
+        Assert.Empty(result.FiredActives);
+        Assert.Equal(7, result.Armies.Single().State.VanguardGauge.ElapsedDays);
+    }
+
     [Theory]
     [InlineData(CastleSize.Medium, 5, 1, 6, 1)]
     [InlineData(CastleSize.Large, 6, 1, 7, 1)]

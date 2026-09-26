@@ -185,7 +185,7 @@ public sealed class CampaignSiege
     private SiegeAttacker BuildAttacker(CombatUnit u, City city, ActiveSkill? active = null)
     {
         var inCounterRange = CastleFootprint.TilesFor(city).Min(tile => tile.Distance(u.Field.Position)) <= 1;
-        var activeDamagePercent = active is { BuildingOnly: true } ? active.DamageMultPercent : 100;
+        var activeDamagePercent = SiegeActiveDamagePercent(u, active);
         if (u.IsSupply)
         {
             var minBuildingAttack = Math.Max(1, _troops.Values.Min(t => t.AtkBuilding));
@@ -228,5 +228,14 @@ public sealed class CampaignSiege
             u.Stats.DfBonusPercent,
             inCounterRange,
             activeDamagePercent);
+    }
+
+    private static int SiegeActiveDamagePercent(CombatUnit unit, ActiveSkill? active)
+    {
+        if (active is null) return 100;
+        var basePercent = unit.Class == TroopClass.Cavalry && active.CavalryDamageMultPercent > 0
+            ? active.CavalryDamageMultPercent
+            : active.DamageMultPercent;
+        return basePercent * StatScale.Percent(unit.Might) / 100;
     }
 }
