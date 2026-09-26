@@ -164,6 +164,7 @@ public sealed partial class CampaignMapScene
         box.AddChild(summary);
         apply = MakeButton("▶ 편성 초안 적용", accent: true);
         apply.CustomMinimumSize = new Vector2(0, 36);
+        apply.Pressed += () => ApplyBatchDeployDrafts(city, drafts);
         box.AddChild(apply);
         Validate();
         var contentH = box.GetCombinedMinimumSize().Y;
@@ -173,4 +174,56 @@ public sealed partial class CampaignMapScene
 
     private void ReopenBatchDeployCompose(int cityId, List<BatchDeployDraft> drafts)
         => OpenBatchDeployCompose(new CityId(cityId), drafts);
+
+    private void ApplyBatchDeployDrafts(CityId city, IReadOnlyList<BatchDeployDraft> drafts)
+    {
+        var planner = new BatchDeployPlanner();
+        var reservedTroops = ReservedTroopsByCode(city, -1, editingSupply: false);
+        var reservedGenerals = ReservedDeployGenerals(-1, editingSupply: false);
+        var availableIds = _state.GeneralsAt(city)
+            .Where(id => !_state.IsGeneralBusy(id) && !reservedGenerals.Contains(id))
+            .ToList();
+        var validation = planner.Validate(drafts, city, _state.Garrisons, availableIds,
+            DeployMaxTroopsFor(city), reservedTroops, reservedGenerals);
+        if (!validation.Ok)
+        {
+            OpenBatchDeployCompose(city, drafts.ToList());
+            return;
+        }
+
+        var ids = drafts.SelectMany(draft => new[] { (GeneralId?)draft.Vanguard, draft.Adjutant })
+            .OfType<GeneralId>().Distinct().ToArray();
+        var lines = drafts.Select((draft, index) =>
+        {
+            var troop = _troops.First(t => t.Code == draft.TroopCode);
+            var vanguard = _state.Generals.First(g => g.Id == draft.Vanguard).Name;
+            var adjutant = draft.Adjutant is { } aid ? " + " + _state.Generals.First(g => g.Id == aid).Name : "";
+            return $"{index + 1}. {troop.Name} {draft.Troops:N0}명 · {vanguard}{adjutant}";
+        }).ToList();
+        ShowConfirm("일괄전투편성 확인",
+            $"{string.Join("\n", lines)}\n\n확인 후 전투편성 목록에서 부대별 목표와 이동 모드를 지정하세요.{DutyReleaseNotice(ids)}",
+            () =>
+            {
+                var currentReserved = ReservedDeployGenerals(-1, editingSupply: false);
+                if (_advancing || ids.Any(id => _state.IsGeneralBusy(id)) || currentReserved.Overlaps(ids))
+                {
+                    ShowNotice("일괄편성 불가", "선택한 장수가 다른 업무 또는 출전 예약에 사용 중입니다.");
+                    return;
+                }
+
+                _state = _state.ReleaseOfficerDuties(ids);
+                foreach (var draft in drafts)
+                {
+                    var troop = _troops.First(t => t.Code == draft.TroopCode);
+                    var vanguard = _state.Generals.First(g => g.Id == draft.Vanguard).Name;
+                    var adjutant = draft.Adjutant is { } aid ? "+" + _state.Generals.First(g => g.Id == aid).Name : "";
+                    var request = new DeployRequest(city, draft.TroopCode, draft.Troops,
+                        draft.Vanguard, draft.Adjutant, UnitMode.Advance, Provisions: -1);
+                    _pendingDeploys.Add((request, $"{troop.Name} {draft.Troops}({vanguard}{adjutant}) · 전진 · 군량 자동"));
+                }
+                _depSelectedUnit = -1;
+                SelectCity(city);
+                OpenDeployHub();
+            });
+    }
 }

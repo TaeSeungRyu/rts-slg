@@ -3917,6 +3917,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         Add("전투편성", () => { if (_selected is { } c) { OpenDeployModal(c); } });
+        Add("일괄전투편성", () => { if (_selected is { } c) { OpenBatchDeployCompose(c); } });
         Add("보급편성", () => { if (_selected is { } c) { OpenSupplyHub(c); } });
         Add("수송편성", () => { if (_selected is { } c) { OpenTransportHub(c); } });
         if (_selected is { } selectedCity && _state.Cities.FirstOrDefault(c => c.Id == selectedCity) is { IsPort: true })
