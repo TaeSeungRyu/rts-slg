@@ -76,7 +76,7 @@ public class SupplyUnitTests
     // ── 편성 ──
 
     [Fact]
-    public void 편성_혼합병종_최하스탯_속도1_적재가중()
+    public void 편성_혼합병종_최하스탯_속도2_적재가중()
     {
         var city = new City(new CityId(1), "성", new HexCoord(2, 0), new FactionId(1), 10000, CastleSize.Medium);
         var s0 = new GameState(1, 1, new List<Faction>(), [city], [Gen(1)],
@@ -88,13 +88,14 @@ public class SupplyUnitTests
             ]);
 
         var r = Service().DeploySupply(s0, new SupplyDeployRequest(new CityId(1),
-            [new SupplyLine("swordsman", 12000), new SupplyLine("cavalry", 6000)], new GeneralId(1)));
+            [new SupplyLine("swordsman", 12000), new SupplyLine("cavalry", 6000)], new GeneralId(1),
+            Target: new HexCoord(6, 0)));
 
         Assert.True(r.Ok, r.Error);
         var u = r.State.Armies.Single();
         Assert.True(u.IsSupply);
         Assert.Equal(18000, u.Pool.Active);
-        Assert.Equal(1, u.Field.Speed);
+        Assert.Equal(2, u.Field.Speed);
         Assert.Equal(1, u.Field.RangeCastle);
         Assert.Equal(Troops.Min(t => t.AtkUnit), u.Stats.AtkStat);
         Assert.Equal(Troops.Min(t => t.Df), u.Stats.DfStat);
@@ -106,6 +107,10 @@ public class SupplyUnitTests
         Assert.Equal(2545, u.Provisions);
         Assert.Empty(r.State.Garrisons);
         Assert.Null(r.State.PostingOf(new GeneralId(1))!.Location);
+
+        var movement = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, -2, 2), [], []))
+            .Advance([u.Field], maxDays: 1);
+        Assert.Equal(new HexCoord(4, 0), movement.Units.Single().Position);
     }
 
     [Fact]

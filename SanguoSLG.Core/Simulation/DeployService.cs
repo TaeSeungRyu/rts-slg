@@ -210,7 +210,7 @@ public sealed class DeployService
     }
 
     /// <summary>
-    /// 보급부대 출전(design-unit-state 1단계-보급). 혼합 병종 편성 — 총원 2만 상한, 이동속도 1,
+    /// 보급부대 출전(design-unit-state 1단계-보급). 혼합 병종 편성 — 총원 2만 상한, 이동속도 2,
     /// 공/방 = 게임 전체 병종 최하 기본치, 적재·보급·보충 효율은 선봉의 보급 적성에 따른다.
     /// 탐지·사거리도 최저 전투 가능치, 성 공성/점령은 불가. 훈련 게이트는 일반 출전과 같다(징병 투입 방지).
     /// </summary>
@@ -297,7 +297,7 @@ public sealed class DeployService
 
         var unitId = new UnitId(state.Armies.Count == 0 ? 1 : state.Armies.Max(u => u.Id.Value) + 1);
         var field = new FieldUnit(unitId, city.Owner, city.Position,
-            Speed: 1, templates.Min(t => t.Detection), minRange,
+            Speed: 2, templates.Min(t => t.Detection), minRange,
             MovementDomain.Land, req.Mode, req.Target, unitId.Value, RangeCastle: 1);
         var unit = new CombatUnit(field, stats, new TroopPool(total, 0), UnitCombatState.Create(
                 vanguard.Intellect,
