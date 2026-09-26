@@ -50,6 +50,40 @@ public sealed class BatchDeployPlannerTests
         Assert.Equal(new GeneralId(9), result.Single().Adjutant);
     }
 
+    [Fact]
+    public void 기존예약을_제외하고_최대5개까지만_추천한다()
+    {
+        var generals = Enumerable.Range(1, 12)
+            .Select(id => General(id, AptitudeGrade.A, 60 + id, AptitudeGrade.A, 50)).ToArray();
+        var result = new BatchDeployPlanner().Recommend(City,
+            [new(City, "swordsman", 70_000, 60)], generals,
+            generals.Select(g => g.Id).ToArray(), Troops, 10_000,
+            reservedTroops: new Dictionary<string, int> { ["swordsman"] = 10_000 });
+
+        Assert.Equal(5, result.Count);
+        Assert.All(result, draft => Assert.Equal(10_000, draft.Troops));
+    }
+
+    [Fact]
+    public void 검증은_병력과_장수의_중복예약을_행별로_거부한다()
+    {
+        var generals = new[]
+        {
+            General(1, AptitudeGrade.A, 80, AptitudeGrade.A, 50),
+            General(2, AptitudeGrade.A, 70, AptitudeGrade.A, 50),
+        };
+        var drafts = new[]
+        {
+            new BatchDeployDraft("swordsman", 10_000, new GeneralId(1)),
+            new BatchDeployDraft("swordsman", 10_000, new GeneralId(1), new GeneralId(2)),
+        };
+        var result = new BatchDeployPlanner().Validate(drafts, City,
+            [new(City, "swordsman", 15_000, 60)], generals.Select(g => g.Id).ToArray(), 10_000);
+
+        Assert.False(result.Ok);
+        Assert.Contains(1, result.RowErrors.Keys);
+    }
+
     private static General General(int id, AptitudeGrade infantry, int might, AptitudeGrade archer, int politics)
         => new(new GeneralId(id), $"장수{id}", new Dictionary<TroopClass, AptitudeGrade>
         {
