@@ -506,6 +506,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestunitcardqa")) CallDeferred(nameof(RunUnitCardQa));
         if (args.Contains("--maptestportraitqa")) CallDeferred(nameof(RunPortraitLoaderQa));
         if (args.Contains("--maptestportraittreeqa")) CallDeferred(nameof(RunPortraitTreeQa));
+        if (args.Contains("--maptestgeneralrosterqa")) CallDeferred(nameof(RunGeneralRosterPerformanceQa));
         if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
         if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
         if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
@@ -524,6 +525,8 @@ public sealed partial class CampaignMapScene : Node3D
         _unitCardTextures.Clear();
         _portraits.Clear();
         _circularPortraits.Clear();
+        _rosterPortraits.Clear();
+        _portraitMetadata = null;
         _commanderPortraits.Clear();
         _armyGroupIcon = null;
         _blankIcon = null!;
@@ -6039,12 +6042,21 @@ public sealed partial class CampaignMapScene : Node3D
     // 전체 장수 목록 — 소속·위치·능력. 행 클릭 = 장수 상세(포로/재야/야전 포함).
     private void OpenGeneralRoster()
     {
+        var perfQa = OS.GetCmdlineUserArgs().Contains("--maptestgeneralrosterqa");
+        var perfWatch = perfQa ? System.Diagnostics.Stopwatch.StartNew() : null;
+        void TraceRoster(string stage)
+        {
+            if (perfQa) GD.Print($"[maptestgeneralrosterqa:trace] stage={stage} ms={perfWatch!.ElapsedMilliseconds}");
+        }
+
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         _state = new HeroUnlockService().Evaluate(_state);
+        TraceRoster("evaluate");
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.92f, 980f, 1500f);
         var mh = Mathf.Clamp(vp.Y * 0.85f, 380f, 760f);
         var box = SystemView("전체 장수 목록", mw, out var scroll, out var panel, out var titleRow);
+        TraceRoster("scaffold");
 
         string FactionName(FactionId f) => _state.Factions.FirstOrDefault(x => x.Id == f)?.Name ?? "?";
         string Where(General g)
@@ -6129,6 +6141,7 @@ public sealed partial class CampaignMapScene : Node3D
         tree.SetColumnTitle(14, SortTitle(14, "상태")); tree.SetColumnExpand(14, false); tree.SetColumnCustomMinimumWidth(14, 64);
 
         var root = tree.CreateItem();
+        var rosterRowCount = 0;
         foreach (var g in OrderedGenerals())
         {
             var it = tree.CreateItem(root);
@@ -6151,7 +6164,10 @@ public sealed partial class CampaignMapScene : Node3D
             it.SetMetadata(0, g.Id.Value);
             for (var col = 1; col <= 3; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
             it.SetTextAlignment(14, HorizontalAlignment.Center);
+            rosterRowCount++;
+            if (perfQa && rosterRowCount % 25 == 0) TraceRoster($"rows-{rosterRowCount}");
         }
+        TraceRoster("rows-complete");
 
         tree.ItemSelected += () =>
         {
@@ -6166,7 +6182,9 @@ public sealed partial class CampaignMapScene : Node3D
             OpenGeneralRoster();
         };
         box.AddChild(tree);
+        TraceRoster("tree-added");
         var contentH = box.GetCombinedMinimumSize().Y;
+        TraceRoster("minimum-size");
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
@@ -6396,24 +6414,59 @@ public sealed partial class CampaignMapScene : Node3D
     /// <summary>장수 선택 표에서 이름과 원형 초상을 같은 칸에 일관되게 표시한다.</summary>
     private void ApplyGeneralTreePortrait(TreeItem item, int column, GeneralId id, int maxWidth = 30)
     {
-        item.SetIcon(column, CircularPortraitFor(id));
+        item.SetIcon(column, RosterPortraitFor(id));
         item.SetIconMaxWidth(column, maxWidth);
+    }
+
+    /// <summary>
+    /// 전체 장수 목록은 2~3MB 원본 131장을 즉석에서 디코딩하지 않고 64px 전용 썸네일만 읽는다.
+    /// 상세 카드와 월드 UI는 기존 192px 원형 초상을 계속 사용한다.
+    /// </summary>
+    private ImageTexture RosterPortraitFor(GeneralId id)
+    {
+        if (_rosterPortraits.TryGetValue(id.Value, out var cached)) return cached;
+
+        var path = ProjectSettings.GlobalizePath($"res://assets/portraits/thumbnails/{id.Value}.png");
+        if (File.Exists(path))
+        {
+            var image = Image.LoadFromFile(path);
+            if (image is not null && !image.IsEmpty())
+            {
+                var texture = ImageTexture.CreateFromImage(image);
+                _rosterPortraits[id.Value] = texture;
+                return texture;
+            }
+        }
+
+        // 신규 장수의 썸네일이 아직 생성되지 않았을 때만 기존 고해상도 경로로 안전하게 폴백한다.
+        var fallback = CircularPortraitFor(id);
+        _rosterPortraits[id.Value] = fallback;
+        return fallback;
     }
 
     private GeneralPortraitRecord? LoadPortraitMetadata(GeneralId id)
     {
+        if (_portraitMetadata is not null)
+        {
+            return _portraitMetadata.GetValueOrDefault(id.Value);
+        }
+
         try
         {
             var path = Path.Combine(_dataDirectory, "general-portraits.json");
             if (!File.Exists(path))
             {
+                _portraitMetadata = new Dictionary<int, GeneralPortraitRecord>();
                 return null;
             }
 
-            return GeneralEditorStore.LoadPortraits(File.ReadAllText(path)).FirstOrDefault(p => p.GeneralId == id.Value);
+            _portraitMetadata = GeneralEditorStore.LoadPortraits(File.ReadAllText(path))
+                .ToDictionary(p => p.GeneralId);
+            return _portraitMetadata.GetValueOrDefault(id.Value);
         }
         catch
         {
+            _portraitMetadata = new Dictionary<int, GeneralPortraitRecord>();
             return null;
         }
     }
@@ -9372,6 +9425,8 @@ public sealed partial class CampaignMapScene : Node3D
 
     private readonly Dictionary<int, ImageTexture> _portraits = new();
     private readonly Dictionary<int, ImageTexture> _circularPortraits = new();
+    private readonly Dictionary<int, ImageTexture> _rosterPortraits = new();
+    private Dictionary<int, GeneralPortraitRecord>? _portraitMetadata;
 
     // 장수 초상: assets/portraits/{id}.png 있으면 그것, 없으면 공용 장수 흉상(icon_officer) 폴백.
     private ImageTexture OfficerPortrait(GeneralId id)
@@ -12378,6 +12433,38 @@ public sealed partial class CampaignMapScene : Node3D
         var passed = sample is not null && item.GetIcon(0) is not null;
         GD.Print($"[maptestportraittreeqa] passed={passed} general={sample?.Id.Value.ToString() ?? "-"} icon={item.GetIcon(0)?.GetWidth()}x{item.GetIcon(0)?.GetHeight()}");
         tree.QueueFree();
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>전체 장수 목록이 전용 저해상도 초상을 사용해 최초 실행도 짧게 끝나는지 검증한다.</summary>
+    private void RunGeneralRosterPerformanceQa()
+    {
+        _rosterPortraits.Clear();
+        var first = System.Diagnostics.Stopwatch.StartNew();
+        OpenGeneralRoster();
+        first.Stop();
+
+        var tree = _modalLayer?.FindChildren("*", "Tree", true, false).OfType<Tree>().FirstOrDefault();
+        var rows = tree?.GetRoot()?.GetChildCount() ?? 0;
+        var thumbnailsReady = _state.Generals.All(g =>
+        {
+            var path = ProjectSettings.GlobalizePath($"res://assets/portraits/thumbnails/{g.Id.Value}.png");
+            return File.Exists(path);
+        });
+        var compactTextures = _rosterPortraits.Count == _state.Generals.Count
+            && _rosterPortraits.Values.All(texture => texture.GetWidth() == 64 && texture.GetHeight() == 64);
+
+        var second = System.Diagnostics.Stopwatch.StartNew();
+        OpenGeneralRoster();
+        second.Stop();
+
+        const long coldLimitMilliseconds = 2000;
+        var passed = rows == _state.Generals.Count
+            && thumbnailsReady
+            && compactTextures
+            && first.ElapsedMilliseconds < coldLimitMilliseconds
+            && second.ElapsedMilliseconds <= first.ElapsedMilliseconds;
+        GD.Print($"[maptestgeneralrosterqa] passed={passed} rows={rows}/{_state.Generals.Count} thumbnails={_rosterPortraits.Count} compact={compactTextures} coldMs={first.ElapsedMilliseconds} warmMs={second.ElapsedMilliseconds} limitMs={coldLimitMilliseconds}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

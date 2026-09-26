@@ -688,7 +688,27 @@ public partial class GeneralEditorScene : Control
         var path = Path.Combine(_dataDirectory, "general-portraits.json");
         var original = File.Exists(path) ? File.ReadAllText(path) : "[]";
         File.WriteAllText(path, GeneralEditorStore.ReplacePortrait(original, edited));
+        SaveRosterPortraitThumbnail(edited);
         _portraitsByGeneralId[generalId] = edited;
+    }
+
+    private void SaveRosterPortraitThumbnail(GeneralPortraitRecord portrait)
+    {
+        var sourcePath = Path.Combine(RepositoryRoot(), portrait.PortraitPath);
+        var source = Image.LoadFromFile(sourcePath);
+        if (source is null || source.IsEmpty())
+        {
+            throw new InvalidDataException($"초상 썸네일 원본을 읽을 수 없습니다: {portrait.PortraitPath}");
+        }
+
+        var thumbnailDirectory = Path.Combine(RepositoryRoot(), "SanguoSLG.Game", "assets", "portraits", "thumbnails");
+        Directory.CreateDirectory(thumbnailDirectory);
+        var result = BuildFaceImage(source, portrait, 64)
+            .SavePng(Path.Combine(thumbnailDirectory, $"{portrait.GeneralId}.png"));
+        if (result != Error.Ok)
+        {
+            throw new IOException($"장수 목록용 초상 썸네일 저장 실패: {result}");
+        }
     }
 
     private void UpdateChangePreview()
@@ -1067,9 +1087,8 @@ public partial class GeneralEditorScene : Control
         _faceLabel.Text = $"X {portrait.FaceCenterX:0.00} / Y {portrait.FaceCenterY:0.00} / 확대 {portrait.FaceZoom:0.00}";
     }
 
-    private static Image BuildFaceImage(Image source, GeneralPortraitRecord portrait)
+    private static Image BuildFaceImage(Image source, GeneralPortraitRecord portrait, int previewSize = 192)
     {
-        const int previewSize = 192;
         var side = Math.Max(1, Math.Min(source.GetWidth(), source.GetHeight()) / portrait.FaceZoom);
         var centerX = source.GetWidth() * portrait.FaceCenterX;
         var centerY = source.GetHeight() * portrait.FaceCenterY;
