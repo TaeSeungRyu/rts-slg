@@ -226,4 +226,27 @@ public sealed partial class CampaignMapScene
                 OpenDeployHub();
             });
     }
+
+    private void RunBatchDeployQa()
+    {
+        var city = _state.Cities.First(c => c.Owner == Player && !c.IsPort
+            && _state.Garrisons.Any(g => g.City == c.Id && g.Troops > 0));
+        var beforeState = _state;
+        var beforePending = _pendingDeploys.Count;
+        OpenBatchDeployCompose(city.Id);
+        var labels = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>().ToList() ?? [];
+        var options = _modalLayer?.FindChildren("*", "OptionButton", true, false).OfType<OptionButton>().ToList() ?? [];
+        var amounts = _modalLayer?.FindChildren("*", "SpinBox", true, false).OfType<SpinBox>().ToList() ?? [];
+        var cards = _modalLayer?.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>().ToList() ?? [];
+        var unitCards = cards.Count(card => card.CustomMinimumSize == new Vector2(44, 44));
+        var passed = ReferenceEquals(beforeState, _state)
+            && beforePending == _pendingDeploys.Count
+            && labels.Any(label => label.Text.Contains("일괄전투편성"))
+            && options.Count > 0
+            && amounts.Count is > 0 and <= BatchDeployPlanner.MaxUnits
+            && unitCards == amounts.Count;
+        GD.Print($"[maptestbatchdeployqa] passed={passed} rows={amounts.Count} options={options.Count} unitCards={unitCards} stateUnchanged={ReferenceEquals(beforeState, _state)} pending={beforePending}/{_pendingDeploys.Count}");
+        CloseModal();
+        GetTree().Quit(passed ? 0 : 1);
+    }
 }
