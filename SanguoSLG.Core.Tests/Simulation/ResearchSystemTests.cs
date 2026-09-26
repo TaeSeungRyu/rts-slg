@@ -230,27 +230,51 @@ public class ResearchSystemTests
     }
 
     [Fact]
-    public void 발행_세력은_동시에_하나의_연구만_할수있다()
+    public void 발행_전투연구와_일반연구는_병행하고_같은_연구선은_중복할수없다()
     {
         // 같은 세력의 도시 2개. 하나 연구 걸면 다른 도시에서 두 번째 연구 불가.
         var s = State(
-            new[] { Town(1, workshop: true), Town(2, workshop: true) },
-            new[] { Wit(1, 60), Wit(2, 60) })
+            new[] { Town(1, workshop: true), Town(2, workshop: true), Town(3, workshop: true) },
+            new[] { Wit(1, 60), Wit(2, 60), Wit(3, 60) })
             with
             {
                 Postings = new List<GeneralPosting>
                 {
                     new(new GeneralId(1), new FactionId(1), new CityId(1)),
                     new(new GeneralId(2), new FactionId(1), new CityId(2)),
+                    new(new GeneralId(3), new FactionId(1), new CityId(3)),
                 },
             };
 
         var first = Service().Issue(s, new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1), TroopCode: "swordsman"));
         Assert.True(first.Ok, first.Error);
 
-        var second = Service().Issue(first.State, new CommandRequest(new CityId(2), CommandKind.Research, new GeneralId(2), TroopCode: "archer"));
-        Assert.False(second.Ok);
-        Assert.Contains("하나의 연구", second.Error);
+        var sameLane = Service().Issue(first.State, new CommandRequest(new CityId(2), CommandKind.Research, new GeneralId(2), TroopCode: "archer"));
+        Assert.False(sameLane.Ok);
+        Assert.Contains("전투 연구", sameLane.Error);
+
+        var general = Service().Issue(first.State, new CommandRequest(new CityId(2), CommandKind.Research, new GeneralId(2),
+            TroopCode: FactionResearch.PublicOrderCode));
+        Assert.True(general.Ok, general.Error);
+        Assert.Equal(2, general.State.Commands.Count);
+
+        var thirdGeneral = Service().Issue(general.State, new CommandRequest(new CityId(3), CommandKind.Research, new GeneralId(3),
+            TroopCode: FactionResearch.AgricultureCode));
+        Assert.False(thirdGeneral.Ok);
+        Assert.Contains("일반연구", thirdGeneral.Error);
+    }
+
+    [Fact]
+    public void 민심안정_홀수는_저치안_페널티_기준을_완화하고_짝수는_주간치안을_올린다()
+    {
+        Assert.Equal(70, GeneralResearchRules.LowSecurityThreshold(0));
+        Assert.Equal(68, GeneralResearchRules.LowSecurityThreshold(1));
+        Assert.Equal(68, GeneralResearchRules.LowSecurityThreshold(2));
+        Assert.Equal(66, GeneralResearchRules.LowSecurityThreshold(3));
+        Assert.Equal(60, GeneralResearchRules.LowSecurityThreshold(10));
+        Assert.Equal(0, GeneralResearchRules.SecurityWeeklyBonus(1));
+        Assert.Equal(1, GeneralResearchRules.SecurityWeeklyBonus(2));
+        Assert.Equal(5, GeneralResearchRules.SecurityWeeklyBonus(10));
     }
 
     [Fact]

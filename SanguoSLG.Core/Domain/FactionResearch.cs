@@ -14,4 +14,23 @@ public sealed record FactionResearch(FactionId Faction, string TroopCode, int Le
 
     /// <summary>집단군 편성 상한 연구 트랙의 예약 코드 — 일반 통솔 병력 연구와 별도다.</summary>
     public const string ArmyGroupCode = "__army_group__";
+
+    public const string PublicOrderCode = "__general_public_order__";
+    public const string AgricultureCode = "__general_agriculture__";
+    public const string CommerceCode = "__general_commerce__";
+    public const string ConscriptionCode = "__general_conscription__";
+    public const string TrainingCode = "__general_training__";
+    public const string MedicineCode = "__general_medicine__";
+
+    public static readonly IReadOnlyList<string> GeneralResearchCodes =
+    [
+        PublicOrderCode,
+        AgricultureCode,
+        CommerceCode,
+        ConscriptionCode,
+        TrainingCode,
+        MedicineCode,
+    ];
+
+    public static bool IsGeneralResearch(string code) => GeneralResearchCodes.Contains(code);
 }

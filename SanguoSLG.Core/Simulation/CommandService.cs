@@ -522,26 +522,30 @@ public sealed class CommandService
 
     private CommandResult IssueResearch(GameState state, City city, CommandRequest req, General? assist, General main)
     {
-        // 세력당 동시 1개 연구만(전투 교리·성벽 강화 공통 — 2026-08-17 확정).
         var faction = city.Owner;
+        var isGeneralResearch = FactionResearch.IsGeneralResearch(req.TroopCode);
+        // 전투 연구선과 일반연구 연구선은 병행 가능하지만, 같은 연구선은 세력당 하나만 진행한다.
         if (state.Commands.Any(c => c.Kind == CommandKind.Research
-            && state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == faction))
+            && state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == faction
+            && FactionResearch.IsGeneralResearch(c.TroopCode) == isGeneralResearch))
         {
-            return CommandResult.Fail("세력은 한 번에 하나의 연구만 할 수 있다.", state);
+            return CommandResult.Fail(isGeneralResearch
+                ? "세력은 일반연구를 한 번에 하나만 진행할 수 있다."
+                : "세력은 전투 연구를 한 번에 하나만 진행할 수 있다.", state);
         }
 
         // 병종 연구 vs 성벽 연구(TroopCode == WallCode) — 단계 캡·비용 곡선이 다르다.
         var isWall = req.TroopCode == FactionResearch.WallCode;
         var isCommandTroops = req.TroopCode == FactionResearch.CommandTroopsCode;
         var isArmyGroup = req.TroopCode == FactionResearch.ArmyGroupCode;
-        if (!isWall && !isCommandTroops && !isArmyGroup && !_troops.ContainsKey(req.TroopCode))
+        if (!isWall && !isCommandTroops && !isArmyGroup && !isGeneralResearch && !_troops.ContainsKey(req.TroopCode))
         {
             return CommandResult.Fail("연구할 병종을 지정해야 한다.", state);
         }
 
         var level = isWall ? city.WallLevel : state.ResearchOf(city.Owner, req.TroopCode);
         var maxLevel = isWall ? _b.WallResearchMaxLevel
-            : isCommandTroops || isArmyGroup ? 10
+            : isCommandTroops || isArmyGroup || isGeneralResearch ? GeneralResearchRules.MaxLevel
             : ResearchMaxLevelFor(state, city.Owner, req.TroopCode);
         if (level >= maxLevel)
         {
