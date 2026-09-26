@@ -34,12 +34,14 @@ public sealed class CampaignEngine
     private readonly int _cityResupplyRadius;
     private readonly int _buildSiteHp;
     private readonly int _buildSiteDamagePerTurn;
+    private readonly RuinCombat? _ruinCombat;
 
     public CampaignEngine(AdvanceOrchestrator field, WorldEngine world,
         CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null,
         CityPlunder? plunder = null, int cityResupplyRadius = 0,
         int buildSiteHp = 0, int buildSiteDamagePerTurn = 0,
-        IReadOnlyList<PassiveSkill>? passives = null, IReadOnlyList<ActiveSkill>? actives = null)
+        IReadOnlyList<PassiveSkill>? passives = null, IReadOnlyList<ActiveSkill>? actives = null,
+        RuinCombat? ruinCombat = null)
     {
         _field = field;
         _world = world;
@@ -52,6 +54,7 @@ public sealed class CampaignEngine
         _cityResupplyRadius = cityResupplyRadius;
         _buildSiteHp = buildSiteHp;
         _buildSiteDamagePerTurn = buildSiteDamagePerTurn;
+        _ruinCombat = ruinCombat;
     }
 
     /// <summary>7일을 진행한 새 상태를 반환한다. 야전 진행 보고 목록은 <paramref name="turns"/>로.</summary>
@@ -119,6 +122,12 @@ public sealed class CampaignEngine
             // 이동 → 공격 → 점령을 하루 단위로 확정한다. 주간 전체를 한 번에
             // 계산하면 공격턴에서 수비가 전멸해도 다음 진행까지 함락이 지연된다.
             var turn = _field.Run(turnInput, maxDays: 1, castles);
+            if (_ruinCombat is not null && work.Ruins.Count > 0)
+            {
+                var ruinResult = _ruinCombat.Resolve(work, turn.Units);
+                work = ruinResult.State;
+                turn = turn with { Units = ruinResult.Armies };
+            }
             // 생산 대상은 저장용 야전 부대에서 제거해도 공격 모션의 목표 위치는 보존한다.
             var attackedProduction = productionUnits.Where(u =>
                 turn.Combat?.DamageTaken.GetValueOrDefault(u.Id) > 0).ToList();
