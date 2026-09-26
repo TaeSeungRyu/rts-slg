@@ -437,7 +437,7 @@ public sealed partial class CampaignMapScene : Node3D
         _dataDirectory = dataDirectory;
         _font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
 
-        _troops = new TroopTypeLoader().LoadFromDirectory(dataDirectory);
+        _troops = new TroopCatalogLoader().LoadFromDirectory(dataDirectory);
         _cb = new CommandBalanceLoader().LoadFromDirectory(dataDirectory);
         var actives = new ActiveSkillLoader().LoadFromDirectory(dataDirectory);
         var passives = new PassiveSkillLoader().LoadFromDirectory(dataDirectory);
@@ -4467,6 +4467,15 @@ public sealed partial class CampaignMapScene : Node3D
                     _disabledOptions.Add(i);
             }
         }
+        if (cmd.Kind == CommandKind.BuildShip)
+        {
+            var shipOptions = PortShipOptions();
+            for (var i = 0; i < shipOptions.Count; i++)
+            {
+                if (!FactionTroopUnlock.Check(_state, cityData.Owner, shipOptions[i].Code).Allowed)
+                    _disabledOptions.Add(i);
+            }
+        }
         if (options.Count > 0)
         {
             if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
@@ -5014,7 +5023,7 @@ public sealed partial class CampaignMapScene : Node3D
         : FactionResearch.IsGeneralResearch(code) ? GeneralResearchRules.Name(code)
         : _troops.FirstOrDefault(t => t.Code == code)?.Name ?? code;
 
-    private static readonly string[] PortShipCodes = { "small_boat", "medium_ship", "large_ship" };
+    private static readonly string[] PortShipCodes = { "small_boat", "medium_ship", "large_ship", "turtleship", "waeseon" };
 
     private List<TroopTemplate> PortShipOptions()
     {
@@ -9888,7 +9897,11 @@ public sealed partial class CampaignMapScene : Node3D
                 {
                     var stock = PortShipStock(city.Id, t.Code);
                     var days = CommandService.ShipBuildBaseDays(t.Code);
-                    list.Add((t.Name, UnitCard(t.Code, t.Class), $"저장 {stock}척\n기본 {days}일 · 지력 100이면 -7일\n1척당 병력 10,000명 탑승"));
+                    var access = FactionTroopUnlock.Check(_state, city.Owner, t.Code);
+                    var detail = access.Allowed
+                        ? $"저장 {stock}척\n기본 {days}일 · 지력 100이면 -7일\n1척당 병력 10,000명 탑승"
+                        : access.Reason;
+                    list.Add((t.Name, UnitCard(t.Code, t.Class), detail));
                 }
 
                 break;

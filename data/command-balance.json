@@ -54,7 +54,14 @@
     "catapult": 3,
     "siege_tower": 3,
     "cavalry": 4,
-    "war_elephant": 6
+    "war_elephant": 6,
+    "geukbyeong": 1,
+    "namman": 1,
+    "deunggap": 1,
+    "mudang": 1,
+    "cataphract": 4,
+    "horse_archer": 4,
+    "hwarang": 1
   },
   "deploy_min_training": 50,
   "deploy_max_troops": 10000,

@@ -32,4 +32,16 @@ public sealed class FactionTroopUnlockTests
         Assert.False(result.Allowed);
         Assert.Contains("극병 유적", result.Reason);
     }
+
+    [Fact]
+    public void RegisteredFactionCanProduceSpecialTroop()
+    {
+        var state = State() with
+        {
+            RuinDefinitions = [new("r1", "극병 유적", new(1, 1), "geukbyeong", 30_000)],
+            RuinStates = [new("r1", 0, Faction, 1, 31, [Faction])],
+        };
+        Assert.True(FactionTroopUnlock.Check(state, Faction, "geukbyeong").Allowed);
+        Assert.False(FactionTroopUnlock.Check(state, new FactionId(2), "geukbyeong").Allowed);
+    }
 }

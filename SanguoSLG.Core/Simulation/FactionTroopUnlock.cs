@@ -30,6 +30,10 @@ public static class FactionTroopUnlock
             return level >= SiegeResearchLevel ? TroopProductionAccess.Granted
                 : new(false, $"충차 연구 Lv.{SiegeResearchLevel} 필요 · 현재 Lv.{level}");
         }
+        if (RuinNames.ContainsKey(troopCode)
+            && state.RuinStatus.Any(r => r.Registrations.Contains(faction)
+                && state.Ruins.Any(d => d.Id == r.RuinId && d.TroopCode == troopCode)))
+            return TroopProductionAccess.Granted;
         return RuinNames.TryGetValue(troopCode, out var ruin)
             ? new(false, $"{ruin} 점령 필요") : new(false, "생산 해금 조건을 충족하지 못했다.");
     }

@@ -576,6 +576,8 @@ public sealed class CommandService
         "small_boat" => 14,
         "medium_ship" => 30,
         "large_ship" => 60,
+        "turtleship" => 60,
+        "waeseon" => 14,
         _ => 0,
     };
 
@@ -598,6 +600,7 @@ public sealed class CommandService
         "medium_ship" => 400,
         "large_ship" => 600,
         "turtleship" => 1200,
+        "waeseon" => 200,
         _ => 0,
     };
 
