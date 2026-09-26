@@ -7338,11 +7338,17 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenExplorationResults(IReadOnlyList<ExplorationDiscovery> results)
     {
         if (results.Count == 0) { return; }
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null)
+        {
+            _modalLayer.Visible = false;
+            _modalLayer.QueueFree();
+            _modalLayer = null;
+        }
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.46f, 440f, 680f);
         var mh = Mathf.Clamp(vp.Y * 0.78f, 360f, 720f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
+        if (_modalLayer is not null) { _modalLayer.Name = "ExplorationResultsModal"; }
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
         var title = MakeLabel($"탐색 결과  {results.Count}건", 19, Gold);
@@ -7465,14 +7471,10 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void AnimateExplorationRewardCard(Control card, int index)
     {
-        var finalPosition = card.Position;
         card.Modulate = new Color(1f, 1f, 1f, 0f);
-        card.Position = finalPosition + new Vector2(0f, 12f);
         var tween = CreateTween();
         if (index > 0) tween.TweenInterval(index * 0.08f);
-        tween.SetParallel(true);
         tween.TweenProperty(card, "modulate", Colors.White, 0.22f).SetEase(Tween.EaseType.Out);
-        tween.TweenProperty(card, "position", finalPosition, 0.22f).SetEase(Tween.EaseType.Out).SetTrans(Tween.TransitionType.Cubic);
     }
 
     private void OpenNavalCompose(CityId city)
@@ -12435,25 +12437,34 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     /// <summary>여러 탐색 완료 결과가 하나의 보상 모달에 카드로 모두 표시되는지 확인한다.</summary>
-    private void RunExplorationModalQa()
+    private async void RunExplorationModalQa()
     {
-        var city = _state.Cities.First();
-        var general = _state.Generals.First();
-        var results = new[]
-        {
-            new ExplorationDiscovery(_state.Day, Player, city.Id, general.Id, ExplorationResultKind.DivineBeast, "divine_beast_trace"),
-            new ExplorationDiscovery(_state.Day, Player, city.Id, general.Id, ExplorationResultKind.LocalClan, "local_clan_support", 200, 600),
-        };
+        var cities = _state.Cities.Where(c => c.Owner == Player).Take(4).ToList();
+        var generals = _state.Generals.Take(4).ToList();
+        var codes = new[] { "divine_beast_trace", "local_clan_support", "ancient_relic_clue", "rumor_clue" };
+        var results = Enumerable.Range(0, 8).Select(i => new ExplorationDiscovery(
+            _state.Day + i, Player, cities[i % cities.Count].Id, generals[i % generals.Count].Id,
+            i % 4 == 0 ? ExplorationResultKind.DivineBeast : i % 4 == 1 ? ExplorationResultKind.LocalClan
+                : i % 4 == 2 ? ExplorationResultKind.AncientRelic : ExplorationResultKind.Rumor,
+            codes[i % codes.Length], i % 4 == 1 ? 200 : 0, i % 4 == 1 ? 600 : 0)).ToList();
+        OpenExplorationResults([results[0]]);
         OpenExplorationResults(results);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var cards = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
             .Where(x => x.HasMeta("exploration_code")).ToList() ?? [];
         var labels = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>().Select(x => x.Text).ToList() ?? [];
-        var passed = cards.Count == 2
+        var orderedCards = cards.OrderBy(c => c.GlobalPosition.Y).ToList();
+        var nonOverlapping = orderedCards.Zip(orderedCards.Skip(1))
+            .All(pair => pair.Second.GlobalPosition.Y + 0.5f >= pair.First.GlobalPosition.Y + pair.First.Size.Y);
+        var visibleResultLayers = GetChildren().OfType<CanvasLayer>()
+            .Count(x => x.Name.ToString().StartsWith("ExplorationResultsModal", System.StringComparison.Ordinal) && x.Visible);
+        var passed = cards.Count == results.Count && nonOverlapping && visibleResultLayers == 1
             && cards.Any(x => x.GetMeta("exploration_code").AsString() == "divine_beast_trace")
             && cards.Any(x => x.GetMeta("exploration_code").AsString() == "local_clan_support")
             && labels.Any(x => x.Contains("금") && x.Contains("+200"))
             && labels.Any(x => x.Contains("군량") && x.Contains("+600"));
-        GD.Print($"[maptestexplorationmodalqa] passed={passed} cards={cards.Count} resourceLine={labels.Any(x => x.Contains("금") && x.Contains("+200"))}");
+        GD.Print($"[maptestexplorationmodalqa] passed={passed} cards={cards.Count}/{results.Count} nonOverlap={nonOverlapping} visibleLayers={visibleResultLayers} resourceLine={labels.Any(x => x.Contains("금") && x.Contains("+200"))}");
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }
