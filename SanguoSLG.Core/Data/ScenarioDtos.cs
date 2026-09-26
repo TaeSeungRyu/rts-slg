@@ -100,6 +100,17 @@ internal sealed class HeroUnlockConditionDto
     public string? Region { get; init; }
 }
 
+internal sealed class RuinDto
+{
+    public string Id { get; init; } = "";
+    public string Name { get; init; } = "";
+    public int Q { get; init; }
+    public int R { get; init; }
+    public string TroopCode { get; init; } = "";
+    public int MaxDefenders { get; init; }
+    public bool Naval { get; init; }
+}
+
 internal sealed class BalanceDto
 {
     public int MonthlyTaxPerCity { get; init; }

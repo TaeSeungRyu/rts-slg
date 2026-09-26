@@ -32,7 +32,9 @@ public sealed record GameState(
     IReadOnlyList<ProductionOperation>? ProductionOperations = null,
     IReadOnlyList<CityDefenseCharge>? DefenseCharges = null,
     IReadOnlyList<CityWoundedForce>? CityWoundedForces = null,
-    IReadOnlyList<PortShipStock>? PortShipStocks = null)
+    IReadOnlyList<PortShipStock>? PortShipStocks = null,
+    IReadOnlyList<RuinDefinition>? RuinDefinitions = null,
+    IReadOnlyList<RuinState>? RuinStates = null)
 {
     /// <summary>건설한 시설이 놓인 성 주변 타일(표현 계층이 모델을 얹는다). 건설 완료 시 append.</summary>
     public IReadOnlyList<FacilityPlacement> Placements => FacilityPlacements ?? [];
@@ -56,6 +58,8 @@ public sealed record GameState(
     public IReadOnlyList<CityWoundedForce> CityWounded => CityWoundedForces ?? [];
 
     public IReadOnlyList<PortShipStock> PortShips => PortShipStocks ?? [];
+    public IReadOnlyList<RuinDefinition> Ruins => RuinDefinitions ?? [];
+    public IReadOnlyList<RuinState> RuinStatus => RuinStates ?? [];
 
     /// <summary>도시 대기 병력(병종별) — 모집 정산이 쌓고, 출전 편성이 꺼내 쓴다.</summary>
     public IReadOnlyList<GarrisonForce> Garrisons => GarrisonForces ?? [];
@@ -167,7 +171,9 @@ public sealed record GameState(
             HeroUnlockDefinitions: heroUnlocks,
             HeroUnlockStates: heroUnlocks
                 .Select(h => new HeroUnlockState(h.General, HeroUnlockStatus.Locked))
-                .ToList());
+                .ToList(),
+            RuinDefinitions: scenario.RuinList,
+            RuinStates: scenario.RuinList.Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList());
     }
 
     private static IReadOnlyList<FacilityPlacement> BuildInitialFacilityPlacements(Scenario scenario)

@@ -56,7 +56,9 @@ public class SaveServiceTests
             {
                 new(45, new FactionId(1), new CityId(1), new GeneralId(1), ExplorationResultKind.Rumor,
                     "wolong_rumor", Text: "와룡의 소문")
-            });
+            },
+            RuinDefinitions: [new("pikeman_ruin", "극병 유적", new HexCoord(7, 7), "geukbyeong", 30_000)],
+            RuinStates: [new("pikeman_ruin", 12_000, new FactionId(1), 20, 50, [new FactionId(1)])]);
 
         var round = SaveService.Deserialize(SaveService.Serialize(state));
 
@@ -97,5 +99,8 @@ public class SaveServiceTests
         var discovery = Assert.Single(round.Discoveries);
         Assert.Equal(ExplorationResultKind.Rumor, discovery.Kind);
         Assert.Equal("wolong_rumor", discovery.Code);
+        Assert.Equal("geukbyeong", round.Ruins.Single().TroopCode);
+        Assert.Equal(12_000, round.RuinStatus.Single().Defenders);
+        Assert.Equal(new FactionId(1), round.RuinStatus.Single().Registrations.Single());
     }
 }

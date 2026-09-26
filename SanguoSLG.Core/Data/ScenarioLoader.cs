@@ -34,12 +34,13 @@ public sealed class ScenarioLoader
             Read("balance.json"),
             Read("map.json"),
             ReadOptional("postings.json"),
-            ReadOptional("hero_unlocks.json"));
+            ReadOptional("hero_unlocks.json"),
+            ReadOptional("ruins.json"));
     }
 
     /// <summary>JSON 문자열에서 직접 로드한다(테스트·임베딩용).</summary>
     public Scenario LoadFromJson(string factionsJson, string citiesJson, string generalsJson, string balanceJson,
-        string mapJson, string postingsJson = "[]", string heroUnlocksJson = "[]")
+        string mapJson, string postingsJson = "[]", string heroUnlocksJson = "[]", string ruinsJson = "[]")
     {
         var factions = Deserialize<List<FactionDto>>(factionsJson, "factions")
             .Select(d => new Faction(new FactionId(d.Id), d.Name, new GeneralId(d.Ruler), d.Gold, d.Color))
@@ -97,8 +98,11 @@ public sealed class ScenarioLoader
         var heroUnlocks = Deserialize<List<HeroUnlockDto>>(heroUnlocksJson, "hero_unlocks")
             .Select(ToHeroUnlock)
             .ToList();
+        var ruins = Deserialize<List<RuinDto>>(ruinsJson, "ruins")
+            .Select(r => new RuinDefinition(r.Id, r.Name, new HexCoord(r.Q, r.R), r.TroopCode,
+                r.MaxDefenders, r.Naval)).ToList();
 
-        return new Scenario(factions, cities, generals, balance, map, features, conditions, postings, heroUnlocks);
+        return new Scenario(factions, cities, generals, balance, map, features, conditions, postings, heroUnlocks, ruins);
     }
 
     private static HeroUnlockDefinition ToHeroUnlock(HeroUnlockDto dto)

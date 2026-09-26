@@ -17,9 +17,11 @@ public sealed record Scenario(
     IReadOnlyList<MapFeature> Features,
     TileConditionMap Conditions,
     IReadOnlyList<GeneralPosting>? Postings = null,
-    IReadOnlyList<HeroUnlockDefinition>? HeroUnlocks = null)
+    IReadOnlyList<HeroUnlockDefinition>? HeroUnlocks = null,
+    IReadOnlyList<RuinDefinition>? Ruins = null)
 {
     public IReadOnlyList<GeneralPosting> PostingList => Postings ?? [];
 
     public IReadOnlyList<HeroUnlockDefinition> HeroUnlockList => HeroUnlocks ?? [];
+    public IReadOnlyList<RuinDefinition> RuinList => Ruins ?? [];
 }
