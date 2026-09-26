@@ -504,6 +504,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestgaugeprogressqa")) CallDeferred(nameof(RunActiveGaugeProgressQa));
         if (args.Contains("--maptestactivecasterqa")) CallDeferred(nameof(RunActiveCasterPortraitQa));
         if (args.Contains("--maptestbatchdeployqa")) CallDeferred(nameof(RunBatchDeployQa));
+        if (args.Contains("--maptestdeploytargetreturnqa")) CallDeferred(nameof(RunDeployTargetReturnQa));
         if (args.Contains("--maptestunitstatusqa")) CallDeferred(nameof(RunUnitStatusDisplayQa));
         if (args.Contains("--maptestunitcardqa")) CallDeferred(nameof(RunUnitCardQa));
         if (args.Contains("--maptestportraitqa")) CallDeferred(nameof(RunPortraitLoaderQa));
@@ -1688,6 +1689,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void ApplyTarget(HexCoord h, IReadOnlyList<HexCoord>? waypoints)
     {
         var idx = _depTargetIndex;
+        var reopenCombatDeployHub = false;
         if (_targetingSupplyDeploy && idx >= 0 && idx < _pendingSupplyDeploys.Count)
         {
             if (!IsLandDeployTarget(h))
@@ -1766,17 +1768,26 @@ public sealed partial class CampaignMapScene : Node3D
             var enemyCity = CityAtHex(h, c => c.Owner != Player);
             var mode = enemyCity is not null ? UnitMode.Attack : req.Mode;
             _pendingDeploys[idx] = (req with { Target = h, Mode = mode, Waypoints = waypoints }, label);
+            reopenCombatDeployHub = true;
             Dbg($"TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode} wps={waypoints?.Count ?? 0}");
             var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
             var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
             _log.Text = $"목표 → {tName}{(enemyCity is not null ? " (공격모드)" : "")}{wpNote} · 목표 확정";
         }
 
-        // 목표를 정하면 지도 뷰로 돌아가 경로를 바로 보여준다(허브 모달로 가리지 않는다).
-        // 이어서 편성하려면 성 팔레트의 '출전'을 다시 누른다.
         FinishTargeting();
-        SelectCity(_depModalCity);
-        Redraw(_log.Text);
+        if (reopenCombatDeployHub)
+        {
+            // 전투편성은 여러 예약의 목표를 연속으로 지정할 수 있도록 예약 목록으로 돌아간다.
+            // 선택했던 부대를 유지해 확정 결과와 다음 조작 버튼을 즉시 확인하게 한다.
+            Redraw(_log.Text);
+            OpenDeployHub();
+        }
+        else
+        {
+            SelectCity(_depModalCity);
+            Redraw(_log.Text);
+        }
     }
 
     private bool IsLandDeployTarget(HexCoord h)

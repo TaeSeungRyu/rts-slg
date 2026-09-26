@@ -249,4 +249,33 @@ public sealed partial class CampaignMapScene
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }
+
+    private void RunDeployTargetReturnQa()
+    {
+        var city = _state.Cities.First(c => c.Owner == Player && !c.IsPort);
+        var garrison = _state.Garrisons.First(g => g.City == city.Id && g.Troops > 0);
+        var general = (_state.Postings ?? []).First(p => p.Faction == Player && p.Location == city.Id).General;
+        var request = new DeployRequest(city.Id, garrison.TroopCode, System.Math.Min(500, garrison.Troops),
+            general, null, UnitMode.Advance, Provisions: -1);
+        var pendingIndex = _pendingDeploys.Count;
+        _pendingDeploys.Add((request, "목표 복귀 QA"));
+        _depModalCity = city.Id;
+        _depSelectedUnit = pendingIndex;
+
+        BeginTargeting(pendingIndex);
+        ApplyTarget(city.Position, null);
+
+        var labels = _modalLayer?.FindChildren("*", "Label", true, false)
+            .OfType<Label>().Select(label => label.Text).ToList() ?? [];
+        var targetSaved = _pendingDeploys[pendingIndex].Req.Target == city.Position;
+        var hubReopened = _modalLayer is not null && labels.Any(text => text.Contains("출전 예약"));
+        var selectionKept = _depSelectedUnit == pendingIndex;
+        var commandPaletteHidden = !_cmdMenu.Visible;
+        var passed = targetSaved && hubReopened && selectionKept && commandPaletteHidden && !_depTargeting;
+        GD.Print($"[maptestdeploytargetreturnqa] passed={passed} targetSaved={targetSaved} hubReopened={hubReopened} selectionKept={selectionKept} commandPaletteHidden={commandPaletteHidden} targeting={_depTargeting}");
+
+        _pendingDeploys.RemoveAt(pendingIndex);
+        CloseModal();
+        GetTree().Quit(passed ? 0 : 1);
+    }
 }
