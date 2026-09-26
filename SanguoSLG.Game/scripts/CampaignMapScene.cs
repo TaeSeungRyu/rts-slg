@@ -3816,9 +3816,10 @@ public sealed partial class CampaignMapScene : Node3D
             btn.CustomMinimumSize = new Vector2(84, 21);
 
             // 모병·징병은 같은 종류가 이 성에서 진행 중이면 중복 발행 금지(2026-08-23).
-            var busy = Cmds[i].Kind is CommandKind.Recruit or CommandKind.Conscript
-                && _selected is { } selCity
-                && _state.Commands.Any(c => c.City == selCity && c.Kind == Cmds[i].Kind);
+            var busy = (Cmds[i].Kind is CommandKind.Recruit or CommandKind.Conscript
+                    && _selected is { } selCity
+                    && _state.Commands.Any(c => c.City == selCity && c.Kind == Cmds[i].Kind))
+                || IsResearchLaneBusy(i);
             if (busy)
             {
                 btn.Text = Cmds[i].Label + " (진행중)";
@@ -3846,6 +3847,22 @@ public sealed partial class CampaignMapScene : Node3D
 
         PlaceGroupMenu();
         _cmdSubMenu.Visible = true;
+    }
+
+    private bool IsResearchLaneBusy(int commandIndex)
+    {
+        if (commandIndex < 0 || commandIndex >= Cmds.Length
+            || Cmds[commandIndex].Kind != CommandKind.Research
+            || _selected is not { } cityId
+            || _state.Cities.FirstOrDefault(c => c.Id == cityId) is not { } city)
+        {
+            return false;
+        }
+
+        var generalLane = Cmds[commandIndex].Param == "general";
+        return _state.Commands.Any(c => c.Kind == CommandKind.Research
+            && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == city.Owner
+            && FactionResearch.IsGeneralResearch(c.TroopCode) == generalLane);
     }
 
     private void ToggleDeployGroup()
@@ -4216,7 +4233,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "general")
         {
-            box.AddChild(MakeLabel("일반연구는 전투교리와 동시에 진행할 수 있습니다. 6개 연구는 각각 Lv.10까지 성장하며 세력의 모든 도시에 적용됩니다.", 15, Parchment));
+            box.AddChild(MakeLabel("세력 전체에 적용되는 6개 분야를 Lv.10까지 연구합니다. 전투교리와 병행할 수 있습니다.", 15, Parchment));
         }
         else if (cmd.Kind == CommandKind.SelectMajorTroop)
         {
@@ -9652,10 +9669,10 @@ public sealed partial class CampaignMapScene : Node3D
                     var cost = level >= GeneralResearchRules.MaxLevel
                         ? 0
                         : GeneralResearchRules.Cost(level + 1, _cb);
-                    var detail = $"Lv.{level}/{GeneralResearchRules.MaxLevel}\n{definition.Description}"
+                    var detail = $"Lv.{level}/{GeneralResearchRules.MaxLevel}"
                         + (level >= GeneralResearchRules.MaxLevel
                             ? "\n연구 완료"
-                            : $"\n다음: {GeneralResearchRules.NextEffectText(definition.Code, level)}\n비용 {cost}금");
+                            : $"\n{GeneralResearchRules.NextEffectText(definition.Code, level)}\n{cost}금");
                     list.Add((definition.Name, Icon(Sym.Scroll), detail));
                 }
                 break;
@@ -10001,9 +10018,11 @@ public sealed partial class CampaignMapScene : Node3D
     private PanelContainer OptionCard((string Name, ImageTexture Icon, string Detail) o, bool disabled = false)
     {
         var starDetail = o.Detail.Contains("[color=", System.StringComparison.Ordinal);
+        var generalResearchCard = _cmdIndex >= 0 && _cmdIndex < Cmds.Length
+            && Cmds[_cmdIndex].Kind == CommandKind.Research && Cmds[_cmdIndex].Param == "general";
         var card = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(starDetail ? 186 : 148, o.Detail.Contains('\n') ? 138 : 121),
+            CustomMinimumSize = new Vector2(starDetail || generalResearchCard ? 186 : 148, o.Detail.Contains('\n') ? 138 : 121),
             MouseFilter = Control.MouseFilterEnum.Stop,
             MouseDefaultCursorShape = disabled ? Control.CursorShape.Forbidden : Control.CursorShape.PointingHand,
             Modulate = disabled ? new Color(1f, 1f, 1f, 0.42f) : Colors.White,
@@ -12496,7 +12515,7 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     /// <summary>일반연구 6종 카드·도시별 연구비 분담 표가 실제 모달에 생성되는지 확인한다.</summary>
-    private void RunGeneralResearchUiQa()
+    private async void RunGeneralResearchUiQa()
     {
         var city = _state.Cities.FirstOrDefault(c => c.Owner == Player);
         var commandIndex = System.Array.FindIndex(Cmds,
@@ -12510,6 +12529,9 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _selected = city.Id;
+        var originalWindowSize = GetWindow().Size;
+        GetWindow().Size = new Vector2I(960, 540);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         ToggleGroup(researchGroupIndex);
         var submenuLabels = _cmdSubList.GetChildren().OfType<Button>().Select(b => b.Text).ToList();
         var expectedSubmenu = new[] { "주력병종", "전투교리", "일반연구" };
@@ -12529,15 +12551,40 @@ public sealed partial class CampaignMapScene : Node3D
         var allGroupsOk = CmdGroups.All(g => expectedGroups.TryGetValue(g.Group, out var expected)
             && expected.SequenceEqual(g.Indices.Select(i => Cmds[i].Label)));
         CloseGroupMenu();
+
+        var originalState = _state;
+        var actor = _state.GeneralsAt(city.Id).First();
+        var runningGeneral = new CityCommand(city.Id, CommandKind.Research, actor, null,
+            _state.Day, _state.Day + 10, 0, TroopCode: FactionResearch.CommerceCode);
+        _state = _state with { PendingCommands = _state.Commands.Append(runningGeneral).ToList() };
+        ToggleGroup(researchGroupIndex);
+        var generalBusyButtons = _cmdSubList.GetChildren().OfType<Button>()
+            .Where(b => !b.IsQueuedForDeletion())
+            .ToDictionary(b => b.Text.Replace(" (진행중)", ""));
+        var generalBusyOk = generalBusyButtons["일반연구"].Disabled && !generalBusyButtons["전투교리"].Disabled;
+        CloseGroupMenu();
+        _state = originalState;
+
         OpenModal(commandIndex);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var ownedCityCount = _state.Cities.Count(c => c.Owner == city.Owner);
         var names = OptionList(Cmds[commandIndex], city).Select(o => o.Name).ToList();
-        var ok = submenuOk && allGroupsOk
+        var viewportSize = GetViewport().GetVisibleRect().Size;
+        var mainPanel = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
+            .OrderByDescending(p => p.Size.X * p.Size.Y).FirstOrDefault();
+        var layoutOk = mainPanel is not null
+            && mainPanel.Size.X <= viewportSize.X - 16f && mainPanel.Size.Y <= viewportSize.Y - 16f
+            && _optionCards.All(c => c.GetCombinedMinimumSize().X <= 190f && c.GetCombinedMinimumSize().Y <= 156f);
+        var maxCardSize = _optionCards.Aggregate(Vector2.Zero, (max, card) => new Vector2(
+            Mathf.Max(max.X, card.GetCombinedMinimumSize().X), Mathf.Max(max.Y, card.GetCombinedMinimumSize().Y)));
+        var ok = submenuOk && allGroupsOk && generalBusyOk && layoutOk
             && _optionCards.Count == GeneralResearchRules.Definitions.Count
             && _researchFundingRatios.Count == ownedCityCount
             && GeneralResearchRules.Definitions.All(d => names.Contains(d.Name));
-        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} cards={_optionCards.Count} fundingRows={_researchFundingRatios.Count}/{ownedCityCount} names={string.Join(',', names)} ok={ok}");
+        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} fundingRows={_researchFundingRatios.Count}/{ownedCityCount} names={string.Join(',', names)} ok={ok}");
         CloseModal();
+        GetWindow().Size = originalWindowSize;
         GetTree().Quit(ok ? 0 : 1);
     }
 

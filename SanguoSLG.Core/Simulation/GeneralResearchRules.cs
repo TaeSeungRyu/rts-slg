@@ -53,14 +53,14 @@ public static class GeneralResearchRules
         return code switch
         {
             FactionResearch.PublicOrderCode when next % 2 == 1
-                => $"저치안 페널티 기준 {LowSecurityThreshold(next)} 미만",
+                => $"페널티 기준 < {LowSecurityThreshold(next)}",
             FactionResearch.PublicOrderCode => $"주간 치안 +{SecurityWeeklyBonus(next)}",
             FactionResearch.AgricultureCode => $"군량 생산 +{next * 2}%",
             FactionResearch.CommerceCode => $"금 생산 +{next * 2}%",
             FactionResearch.ConscriptionCode => $"병력 생산 +{next * 2}%",
             FactionResearch.TrainingCode => next % 2 == 0
                 ? $"주간 훈련도 +{TrainingWeeklyBonus(next)}"
-                : "다음 짝수 단계의 훈련 보너스를 준비",
+                : "짝수 단계 보너스 준비",
             FactionResearch.MedicineCode => $"부상병 회복 +{next * 10}%",
             _ => string.Empty,
         };
