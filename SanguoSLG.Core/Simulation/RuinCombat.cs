@@ -39,7 +39,10 @@ public sealed class RuinCombat
             for (var i = 0; i < armies.Count && defenders > 0; i++)
             {
                 var attacker = armies[i];
-                if (!attacker.CanInitiateCombat || attacker.Pool.Active <= 0 || attacker.Field.Target != ruin.Position) continue;
+                // 일반 빈 타일 목적지는 도착 즉시 AdvanceOrchestrator가 Target을 null로 정리한다.
+                // 유적도 맵 이동 관점에서는 빈 타일이므로, 도착 위치 자체를 공격 의도로 함께 인정한다.
+                var targetsRuin = attacker.Field.Target == ruin.Position || attacker.Field.Position == ruin.Position;
+                if (!attacker.CanInitiateCombat || attacker.Pool.Active <= 0 || !targetsRuin) continue;
                 if (status.Owner == attacker.Field.Owner) continue;
                 if (attacker.Field.Position.Distance(ruin.Position) > attacker.Field.AttackRange) continue;
 

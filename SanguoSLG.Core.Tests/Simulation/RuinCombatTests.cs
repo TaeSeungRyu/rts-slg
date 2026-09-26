@@ -35,6 +35,18 @@ public sealed class RuinCombatTests
     }
 
     [Fact]
+    public void UnitThatArrivedOnRuinAttacksEvenWhenMovementClearedTarget()
+    {
+        var arrived = Attacker() with
+        {
+            Field = Attacker().Field with { Position = new HexCoord(2, 1), Target = null },
+        };
+        var result = new RuinCombat(new BattleResolver(60)).Resolve(State(), [arrived]);
+        Assert.Single(result.Exchanges);
+        Assert.True(result.State.RuinStatus.Single().Defenders < 30_000);
+    }
+
+    [Fact]
     public void LastDamagingFactionCapturesAndGetsThirtyDayProtection()
     {
         var result = new RuinCombat(new BattleResolver(60)).Resolve(State(1), [Attacker()]);
