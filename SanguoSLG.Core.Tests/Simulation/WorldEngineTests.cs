@@ -601,6 +601,45 @@ public class WorldEngineTests
     }
 
     [Fact]
+    public void 일반연구_6종은_주간_도시정산에_적용된다()
+    {
+        var officers = new[]
+        {
+            V2Officer(1, might: 100),
+            V2Officer(2, politics: 100),
+            V2Officer(3, might: 100),
+            V2Officer(4, might: 100),
+        };
+        var city = new City(new CityId(1), "연구성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Population: 0, Security: 69,
+            SecurityOfficer: officers[0].Id, DomesticOfficer: officers[1].Id,
+            RecruitmentOfficer: officers[2].Id, TrainingOfficer: officers[3].Id,
+            AutoRecruitTroopCodes: "swordsman");
+        var research = new[]
+        {
+            new FactionResearch(city.Owner, FactionResearch.PublicOrderCode, 2),
+            new FactionResearch(city.Owner, FactionResearch.AgricultureCode, 10),
+            new FactionResearch(city.Owner, FactionResearch.CommerceCode, 10),
+            new FactionResearch(city.Owner, FactionResearch.ConscriptionCode, 10),
+            new FactionResearch(city.Owner, FactionResearch.TrainingCode, 10),
+            new FactionResearch(city.Owner, FactionResearch.MedicineCode, 10),
+        };
+        var state = new GameState(1, 1, [], [city], officers,
+            Postings: officers.Select(g => new GeneralPosting(g.Id, city.Owner, city.Id)).ToList(),
+            GarrisonForces: [new GarrisonForce(city.Id, "archer", 1000, 40)],
+            ResearchTracks: research);
+
+        var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
+            .AdvanceDays(state, 7);
+
+        Assert.Equal(70, after.Cities.Single().Security);
+        Assert.Equal(600, after.Garrisons.Single(g => g.TroopCode == "swordsman").Troops);
+        Assert.Equal(49, after.Garrisons.Single(g => g.TroopCode == "archer").TrainingLevel);
+        Assert.True(after.Cities.Single().Gold > 1000);
+        Assert.True(after.Cities.Single().Provisions > 1000);
+    }
+
+    [Fact]
     public void v2_병력담당은_도시금이_부족하면_병력을_생산하지_않는다()
     {
         var city = new City(new CityId(1), "빈성", new HexCoord(0, 0), new FactionId(1), 1000,

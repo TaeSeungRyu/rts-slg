@@ -523,7 +523,13 @@ public sealed class CampaignEngine
                 continue;
             }
 
+            var owner = state.Cities.FirstOrDefault(c => c.Id == w.City)?.Owner;
+            var medicineLevel = owner is { } faction
+                ? state.ResearchOf(faction, FactionResearch.MedicineCode)
+                : 0;
             var recover = System.Math.Max(1, w.Troops / 10);
+            recover = GeneralResearchRules.ApplyPercent(recover,
+                GeneralResearchRules.WoundedRecoveryPercent(medicineLevel));
             recover = System.Math.Min(recover, w.Troops);
             var idx = garrisons.FindIndex(g => g.City == w.City && g.TroopCode == w.TroopCode && g.Trainee == w.Trainee);
             if (idx >= 0)

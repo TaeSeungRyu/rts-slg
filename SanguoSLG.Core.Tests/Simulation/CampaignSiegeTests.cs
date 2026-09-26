@@ -387,4 +387,26 @@ public class CampaignSiegeTests
             "공격이 끊긴 진행부터 도시 부상병 회복이 재개되어야 한다.");
     }
 
+    [Fact]
+    public void 의술연구_10레벨은_비수성_도시의_부상병_회복량을_두배로_높인다()
+    {
+        var city = Town(9, 1, new HexCoord(5, 0), wall: 0);
+        var farBase = Army(1, 2, new HexCoord(0, 0), new HexCoord(1, 0), troops: 1000);
+        var far = farBase with { Field = farBase.Field with { Mode = UnitMode.March } };
+        var baseline = new GameState(1, 190, [], [city], [],
+            CityWoundedForces: [new CityWoundedForce(city.Id, "swordsman", 1000, 60)],
+            FieldArmies: [far]);
+        var state = baseline with
+        {
+            ResearchTracks = [new FactionResearch(city.Owner, FactionResearch.MedicineCode, 10)],
+        };
+
+        var after = Engine().AdvanceWeek(state, out _, out var sieges);
+        var withoutResearch = Engine().AdvanceWeek(baseline, out _, out _);
+
+        Assert.Empty(sieges);
+        Assert.True(after.CityWounded.Single().Troops < withoutResearch.CityWounded.Single().Troops);
+        Assert.True(after.Garrisons.Single().Troops > withoutResearch.Garrisons.Single().Troops);
+    }
+
 }

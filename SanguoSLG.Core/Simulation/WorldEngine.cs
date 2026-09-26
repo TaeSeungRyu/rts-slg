@@ -137,7 +137,8 @@ public sealed class WorldEngine
             {
                 var gold = _commands.AutoDomesticGoldBase
                     + AdministrationGrowth.EffectivePoliticsRounded(domestic) * _commands.AutoDomesticGoldPoliticsMultiplier;
-                gold = ApplyLowSecurityOutputPenalty(gold, next.Security);
+                gold = ApplyLowSecurityOutputPenalty(state, city.Owner, gold, next.Security);
+                gold = ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.CommerceCode, gold);
                 next = next with
                 {
                     Gold = next.Gold + SplitMonthlyAmount(gold, WeeklyIncomeTick(state.Day)),
@@ -166,7 +167,8 @@ public sealed class WorldEngine
             {
                 var domesticMonthly = _commands.AutoDomesticProvisionsBase
                     + AdministrationGrowth.EffectivePoliticsRounded(domestic) * _commands.AutoDomesticProvisionsPoliticsMultiplier;
-                monthly += ApplyLowSecurityOutputPenalty(domesticMonthly, city.Security);
+                domesticMonthly = ApplyLowSecurityOutputPenalty(state, city.Owner, domesticMonthly, city.Security);
+                monthly += ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.AgricultureCode, domesticMonthly);
             }
 
             return city with { Provisions = city.Provisions + SplitMonthlyAmount(monthly, tick) };
@@ -184,12 +186,16 @@ public sealed class WorldEngine
                 PortSize.Small => 1,
                 _ => 0,
             };
+            var gold = GeneralResearchRules.ApplyPercent(PortSmallWeeklyGold * multiplier,
+                GeneralResearchRules.OutputPercent(state.ResearchOf(city.Owner, FactionResearch.CommerceCode)));
+            var provisions = GeneralResearchRules.ApplyPercent(PortSmallWeeklyProvisions * multiplier,
+                GeneralResearchRules.OutputPercent(state.ResearchOf(city.Owner, FactionResearch.AgricultureCode)));
             return multiplier == 0
                 ? city
                 : city with
                 {
-                    Gold = city.Gold + PortSmallWeeklyGold * multiplier,
-                    Provisions = city.Provisions + PortSmallWeeklyProvisions * multiplier,
+                    Gold = city.Gold + gold,
+                    Provisions = city.Provisions + provisions,
                 };
         }).ToList();
         return state with { Cities = cities };
@@ -210,6 +216,14 @@ public sealed class WorldEngine
                 delta += recruitDelta;
                 _events.Add(new WorldEvent(WorldEventKind.SecurityFactor, city.Owner, recruiter.Id, city.Id,
                     Amount: recruitDelta, Code: "recruitment"));
+            }
+            var researchBonus = GeneralResearchRules.SecurityWeeklyBonus(
+                state.ResearchOf(city.Owner, FactionResearch.PublicOrderCode));
+            delta += researchBonus;
+            if (researchBonus > 0)
+            {
+                _events.Add(new WorldEvent(WorldEventKind.SecurityFactor, city.Owner, null, city.Id,
+                    Amount: researchBonus, Code: "general_research"));
             }
             return city with { Security = System.Math.Clamp(city.Security + delta, 0, 100) };
         }).ToList();
@@ -254,7 +268,8 @@ public sealed class WorldEngine
                     .ThenBy(c => c, System.StringComparer.Ordinal).ToList();
                 var rate = CommandBalance.AutoRecruitRate(next.AutoRecruitRate);
                 var totalTroops = (_commands.AutoRecruitTroopsBase + recruiter.Might * _commands.AutoRecruitTroopsMightMultiplier) * rate;
-                totalTroops = ApplyLowSecurityOutputPenalty(totalTroops, next.Security);
+                totalTroops = ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.ConscriptionCode, totalTroops);
+                totalTroops = ApplyLowSecurityOutputPenalty(state, city.Owner, totalTroops, next.Security);
                 for (var i = 0; i < troopCodes.Count; i++)
                 {
                     var code = troopCodes[i];
@@ -285,8 +300,9 @@ public sealed class WorldEngine
             var trainer = ValidOfficer(state, city, city.TrainingOfficer, byId);
             if (trainer is null) { continue; }
 
-            var gain = System.Math.Max(1, MightTier(trainer.Might) + 1);
-            gain = ApplyLowSecurityOutputPenalty(gain, city.Security);
+            var gain = System.Math.Max(1, MightTier(trainer.Might) + 1)
+                + GeneralResearchRules.TrainingWeeklyBonus(state.ResearchOf(city.Owner, FactionResearch.TrainingCode));
+            gain = ApplyLowSecurityOutputPenalty(state, city.Owner, gain, city.Security);
             garrisons = garrisons.Select(g => g.City == city.Id
                 ? g with { TrainingLevel = System.Math.Min(_commands.TrainCap, g.TrainingLevel + gain) }
                 : g).ToList();
@@ -309,8 +325,16 @@ public sealed class WorldEngine
             : [city.AutoRecruitTroopCode];
     }
 
-    private int ApplyLowSecurityOutputPenalty(int amount, int security)
-        => amount * _commands.LowSecurityOutputPercent(security) / 100;
+    private int ApplyLowSecurityOutputPenalty(GameState state, FactionId faction, int amount, int security)
+    {
+        var effectiveSecurity = GeneralResearchRules.EffectiveSecurityForOutputPenalty(security,
+            state.ResearchOf(faction, FactionResearch.PublicOrderCode));
+        return amount * _commands.LowSecurityOutputPercent(effectiveSecurity) / 100;
+    }
+
+    private static int ApplyGeneralOutputBonus(GameState state, FactionId faction, string researchCode, int amount)
+        => GeneralResearchRules.ApplyPercent(amount,
+            GeneralResearchRules.OutputPercent(state.ResearchOf(faction, researchCode)));
 
     private GameState SpawnLowSecurityBandits(GameState state)
     {
@@ -1117,7 +1141,8 @@ public sealed class WorldEngine
         // 내정 스킬 버킷(상재→금)은 유효 담당관일 때만.
         var goldBucket = effective ? GovernorBucket(governor, "tax") : 0;
 
-        var gold = Scale(goldBase, city, effective, governor, goldBucket);
+        var gold = Scale(state, goldBase, city, effective, governor, goldBucket);
+        gold = ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.CommerceCode, gold);
         return city with { Gold = city.Gold + gold };
     }
 
@@ -1129,7 +1154,8 @@ public sealed class WorldEngine
         var effective = governor is not null
             && AdministrationGrowth.EffectivePolitics(governor) >= _balance.GovernorMinPolitics;
         var provBucket = effective ? GovernorBucket(governor, "harvest") : 0;
-        return Scale(provBase, city, effective, governor, provBucket);
+        var provisions = Scale(state, provBase, city, effective, governor, provBucket);
+        return ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.AgricultureCode, provisions);
     }
 
     private static int FacilityOutput(GameState state, City city, string code, int intactCount, int baseOutput)
@@ -1147,7 +1173,7 @@ public sealed class WorldEngine
     // 수입 = base × (스킬 버킷) × 세율배율 × 인구 충원율 × 저치안. 세율배율은 담당관에 따라 갈린다:
     //  · 유효 담당관: 정치가 세율을 증폭(정치 100 → 세율 효과 2배 — 10% 세율이 20%처럼, 치안은 실세율 기준).
     //  · 없거나 정치 미달: 세율배율에 무거운 페널티(no_governor_income_percent) — 경제가 무척 낮아진다.
-    private int Scale(int baseAmount, City city, bool effectiveGovernor, Domain.General? governor, int bucketPercent)
+    private int Scale(GameState state, int baseAmount, City city, bool effectiveGovernor, Domain.General? governor, int bucketPercent)
     {
         var amount = baseAmount * (100 + bucketPercent) / 100;                 // 내정 스킬
         var rate = System.Math.Clamp(city.TaxRate, 0, _balance.TaxRateMax);
@@ -1165,7 +1191,9 @@ public sealed class WorldEngine
         }
 
         amount = amount * PopulationFillPercent(city) / 100;                   // ② 인구 충원율
-        if (city.Security < _balance.SecurityLowThreshold)                     // ③ 저치안 페널티
+        var effectiveSecurity = GeneralResearchRules.EffectiveSecurityForOutputPenalty(city.Security,
+            state.ResearchOf(city.Owner, FactionResearch.PublicOrderCode));
+        if (effectiveSecurity < _balance.SecurityLowThreshold)                 // ③ 저치안 페널티
         {
             amount = amount * _balance.SecurityLowIncomePercent / 100;
         }

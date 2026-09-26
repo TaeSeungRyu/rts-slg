@@ -23,5 +23,11 @@ public static class GeneralResearchRules
     public static int TrainingWeeklyBonus(int level) => ClampLevel(level) / 2;
     public static int WoundedRecoveryPercent(int level) => 100 + 10 * ClampLevel(level);
 
+    public static int EffectiveSecurityForOutputPenalty(int security, int publicOrderLevel)
+        => security + DefaultLowSecurityThreshold - LowSecurityThreshold(publicOrderLevel);
+
+    public static int ApplyPercent(int amount, int percent)
+        => amount <= 0 ? amount : amount * percent / 100;
+
     private static int ClampLevel(int level) => System.Math.Clamp(level, 0, MaxLevel);
 }
