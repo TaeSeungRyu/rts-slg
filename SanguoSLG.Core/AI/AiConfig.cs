@@ -13,6 +13,7 @@ namespace SanguoSLG.Core.AI;
 /// <param name="ArmyGroupMinFreeGenerals">집단군 편성에 필요한 최소 자유 장수 수.</param>
 /// <param name="MinOre">광석이 이 이상일 때만 모집한다.</param>
 /// <param name="KeepGeneralsHome">출전하려면 도시에 남는 자유 장수가 이 수 이상이어야 한다(모집용 확보).</param>
+/// <param name="GeneralResearchReserveGold">일반연구 비용을 내고도 세력 도시에 남겨 둘 최소 금. 0 미만이면 AI 일반연구를 끈다.</param>
 public sealed record AiConfig(
     string Troop = "swordsman",
     int DeployTarget = 8000,
@@ -22,4 +23,5 @@ public sealed record AiConfig(
     int ArmyGroupDeployTarget = 40000,
     int ArmyGroupMinFreeGenerals = 4,
     int MinOre = 300,
-    int KeepGeneralsHome = 1);
+    int KeepGeneralsHome = 1,
+    int GeneralResearchReserveGold = 3000);

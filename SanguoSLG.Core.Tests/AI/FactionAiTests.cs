@@ -131,6 +131,25 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI는_금과_장수_여유가_있으면_일반연구를_결정론적으로_시작한다()
+    {
+        var rich = Town(1, 1, new HexCoord(0, 0)) with { Gold = 5000, Security = 60 };
+        var s = new GameState(1, 1,
+            [new Faction(new FactionId(1), "위", new GeneralId(1), 1000, "#2d5fd0")],
+            [rich, Town(9, 2, new HexCoord(12, 0))],
+            [Gen(1), Gen(2)],
+            Postings: [At(1, 1, 1), At(2, 1, 1)]);
+
+        var after = Ai().PlanWeek(s, new FactionId(1));
+
+        var research = Assert.Single(after.Commands);
+        Assert.Equal(CommandKind.Research, research.Kind);
+        Assert.Equal(FactionResearch.PublicOrderCode, research.TroopCode);
+        Assert.Equal(new GeneralId(1), research.Main);
+        Assert.Equal(4800, after.Cities.Single(c => c.Id == rich.Id).Gold);
+    }
+
+    [Fact]
     public void 출전_대기병력이_문턱이상이고_장수가_남으면_최근접_적성으로_출전한다()
     {
         var enemy = Town(9, 2, new HexCoord(10, 0));

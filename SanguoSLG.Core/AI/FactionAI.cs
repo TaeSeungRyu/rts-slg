@@ -31,6 +31,7 @@ public sealed class FactionAI
         state = RecruitUnlockedHeroes(state, faction);
         state = PlanSupplyDeploys(state, faction);
         state = PlanArmyGroupDeploys(state, faction);
+        state = PlanGeneralResearch(state, faction);
 
         foreach (var city in state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).ToList())
         {
@@ -66,6 +67,86 @@ public sealed class FactionAI
 
         state = ExploreWithIdleOfficers(state, faction);
         return state;
+    }
+
+    private GameState PlanGeneralResearch(GameState state, FactionId faction)
+    {
+        if (_config.GeneralResearchReserveGold < 0
+            || state.Commands.Any(c => c.Kind == CommandKind.Research
+                && FactionResearch.IsGeneralResearch(c.TroopCode)
+                && state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == faction))
+        {
+            return state;
+        }
+
+        var cities = state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).ToList();
+        if (cities.Count == 0)
+        {
+            return state;
+        }
+
+        var priority = new List<string>();
+        if (cities.Average(c => c.Security) <= GeneralResearchRules.DefaultLowSecurityThreshold)
+        {
+            priority.Add(FactionResearch.PublicOrderCode);
+        }
+        if (state.CityWounded.Any(w => cities.Any(c => c.Id == w.City) && w.Troops > 0))
+        {
+            priority.Add(FactionResearch.MedicineCode);
+        }
+        priority.AddRange(
+        [
+            FactionResearch.CommerceCode,
+            FactionResearch.AgricultureCode,
+            FactionResearch.ConscriptionCode,
+            FactionResearch.TrainingCode,
+            FactionResearch.PublicOrderCode,
+            FactionResearch.MedicineCode,
+        ]);
+        var code = priority.Distinct()
+            .Where(c => state.ResearchOf(faction, c) < GeneralResearchRules.MaxLevel)
+            .OrderBy(c => state.ResearchOf(faction, c))
+            .ThenBy(c => priority.IndexOf(c))
+            .FirstOrDefault();
+        if (code is null)
+        {
+            return state;
+        }
+
+        var level = state.ResearchOf(faction, code);
+        var cost = GeneralResearchRules.Cost(level + 1, _commands.Balance);
+        if (cities.Sum(c => c.Gold) < cost + _config.GeneralResearchReserveGold)
+        {
+            return state;
+        }
+
+        var candidates = cities
+            .Select(c => new
+            {
+                City = c,
+                Officers = state.GeneralsAt(c.Id)
+                    .Where(g => !state.IsGeneralBusy(g))
+                    .Select(id => state.Generals.First(g => g.Id == id))
+                    .OrderByDescending(g => g.Intellect)
+                    .ThenBy(g => g.Id.Value)
+                    .ToList(),
+            })
+            .Where(x => x.Officers.Count > _config.KeepGeneralsHome)
+            .OrderByDescending(x => x.Officers[0].Intellect)
+            .ThenBy(x => x.City.Id.Value)
+            .ToList();
+        if (candidates.Count == 0)
+        {
+            return state;
+        }
+
+        var funding = cities.Where(c => c.Gold > 0)
+            .Select(c => new ResearchFundingShare(c.Id, c.Gold))
+            .ToList();
+        var selected = candidates[0];
+        var result = _commands.Issue(state, new CommandRequest(selected.City.Id, CommandKind.Research,
+            selected.Officers[0].Id, TroopCode: code, ResearchFunding: funding));
+        return result.Ok ? result.State : state;
     }
 
     private GameState PlanArmyGroupDeploys(GameState state, FactionId faction)

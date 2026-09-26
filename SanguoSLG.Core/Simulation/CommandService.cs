@@ -47,6 +47,8 @@ public sealed class CommandService
     private readonly IReadOnlyDictionary<string, AdminSkill> _adminSkills;
     private readonly IRandomSource _random;
 
+    public CommandBalance Balance => _b;
+
     public CommandService(CommandBalance balance, IReadOnlyList<TroopTemplate>? troops = null,
         BalanceConfig? economy = null, IReadOnlyList<AdminSkill>? adminSkills = null, IRandomSource? random = null)
     {
@@ -530,8 +532,8 @@ public sealed class CommandService
             && FactionResearch.IsGeneralResearch(c.TroopCode) == isGeneralResearch))
         {
             return CommandResult.Fail(isGeneralResearch
-                ? "세력은 일반연구를 한 번에 하나만 진행할 수 있다."
-                : "세력은 전투 연구를 한 번에 하나만 진행할 수 있다.", state);
+                ? "세력은 일반연구 연구선에서 한 번에 하나의 연구만 진행할 수 있다."
+                : "세력은 전투 연구선에서 한 번에 하나의 연구만 진행할 수 있다.", state);
         }
 
         // 병종 연구 vs 성벽 연구(TroopCode == WallCode) — 단계 캡·비용 곡선이 다르다.
