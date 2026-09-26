@@ -524,6 +524,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestexplorationcardqa")) CallDeferred(nameof(RunExplorationCardQa));
         if (args.Contains("--maptesttreasureinventoryqa")) CallDeferred(nameof(RunTreasureInventoryQa));
         if (args.Contains("--maptestgeneralresearchqa")) CallDeferred(nameof(RunGeneralResearchUiQa));
+        if (args.Contains("--maptestsiegeplaybackqa")) CallDeferred(nameof(RunSiegePlaybackQa));
     }
 
     public override void _ExitTree()
@@ -2810,7 +2811,10 @@ public sealed partial class CampaignMapScene : Node3D
                     _animDmg.Add((atkTime + 0.35, uid, counters[i]));
                     var unit = turn.Units.FirstOrDefault(x => x.Id.Value == uid);
                     if (unit is null) { continue; }
-                    var remain = unit.Pool.Active - counters[i]; // 근사 표시(부상 회수 제외)
+                    // CampaignEngine이 SiegeExchange와 함께 넘긴 turn.Units는 이미 성 반격 피해가
+                    // 적용된 스냅샷이다. 여기서 counters[i]를 다시 빼면 10,000→2,400인 부대가
+                    // 2,400-7,600으로 오판되어 해골/제거가 한 교환 일찍 재생된다.
+                    var remain = SiegePlaybackRemaining(unit.Pool);
                     if (remain <= 0)
                     {
                         if (deathEffectUnitIds.Add(uid))
@@ -12432,6 +12436,18 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     /// <summary>토큰의 자식 게이지가 토큰과 함께 해제된 직후 사전의 폐기 참조를 안전하게 정리하는 회귀 QA.</summary>
+    private static int SiegePlaybackRemaining(TroopPool postSiegePool) => postSiegePool.Active;
+
+    private void RunSiegePlaybackQa()
+    {
+        var survived = new TroopPool(2_400, 0);
+        var destroyed = new TroopPool(0, 0);
+        var ok = SiegePlaybackRemaining(survived) == 2_400
+            && SiegePlaybackRemaining(destroyed) == 0;
+        GD.Print($"[siege-playback-qa] survived={SiegePlaybackRemaining(survived)} destroyed={SiegePlaybackRemaining(destroyed)} ok={ok}");
+        GetTree().Quit(ok ? 0 : 1);
+    }
+
     private void RunActiveGaugeLifetimeQa()
     {
         const int qaUnitId = -987654;
