@@ -4404,6 +4404,15 @@ public sealed partial class CampaignMapScene : Node3D
                 }
             }
         }
+        if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
+        {
+            var autoOptions = AutoRecruitTroopOptions();
+            for (var i = 0; i < autoOptions.Count; i++)
+            {
+                if (!FactionTroopUnlock.Check(_state, cityData.Owner, autoOptions[i].Code).Allowed)
+                    _disabledOptions.Add(i);
+            }
+        }
         if (options.Count > 0)
         {
             if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
@@ -4412,7 +4421,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var autoOptions = AutoRecruitTroopOptions();
                 for (var i = 0; i < autoOptions.Count; i++)
                 {
-                    if (current.Contains(autoOptions[i].Code)) { _modalMultiParams.Add(i); }
+                    if (current.Contains(autoOptions[i].Code) && !_disabledOptions.Contains(i)) { _modalMultiParams.Add(i); }
                 }
 
                 if (_modalMultiParams.Count == 0) { _modalMultiParams.Add(0); }
@@ -9714,7 +9723,11 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var costPer100 = _cb.AutoRecruitGoldCostPer100(t.Code);
                 var tickCost = _cb.AutoRecruitGoldCost(t.Code, previewTroops);
-                list.Add((t.Name, UnitCard(t.Code, t.Class), $"{ClassName(t.Class)} · 100명당 {costPer100}금\n7일 기본 비용 {tickCost}금"));
+                var access = FactionTroopUnlock.Check(_state, city.Owner, t.Code);
+                var detail = access.Allowed
+                    ? $"{ClassName(t.Class)} · 100명당 {costPer100}금\n7일 기본 비용 {tickCost}금"
+                    : access.Reason;
+                list.Add((t.Name, UnitCard(t.Code, t.Class), detail));
             }
 
             return list;

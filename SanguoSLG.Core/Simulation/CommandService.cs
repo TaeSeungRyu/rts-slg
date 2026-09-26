@@ -361,6 +361,8 @@ public sealed class CommandService
         {
             return CommandResult.Fail("모집할 병종을 지정해야 한다.", state);
         }
+        var production = FactionTroopUnlock.Check(state, city.Owner, req.TroopCode);
+        if (!production.Allowed) return CommandResult.Fail(production.Reason, state);
 
         // 병력 = 인구 × 상한% × 동원율(유효 정치/100). 광석 1/명이 하드 캡.
         var capPercent = kind == CommandKind.Recruit ? _b.RecruitPopCapPercent : _b.ConscriptPopCapPercent;
@@ -605,6 +607,8 @@ public sealed class CommandService
         {
             return CommandResult.Fail("항구에서만 선박을 생산할 수 있다.", state);
         }
+        var production = FactionTroopUnlock.Check(state, city.Owner, req.TroopCode);
+        if (!production.Allowed) return CommandResult.Fail(production.Reason, state);
 
         var builder = state.Generals.FirstOrDefault(g => g.Id == req.Main);
         var days = ShipBuildDays(req.TroopCode,
@@ -990,6 +994,8 @@ public sealed class CommandService
                 {
                     return CommandResult.Fail("해상 병종은 자동 생산할 수 없다.", state);
                 }
+                var production = FactionTroopUnlock.Check(state, city.Owner, code);
+                if (!production.Allowed) return CommandResult.Fail(production.Reason, state);
             }
 
             autoRecruitTroopCode = selectedTroops[0];

@@ -264,7 +264,9 @@ public sealed class WorldEngine
             var recruiter = ValidOfficer(state, city, city.RecruitmentOfficer, byId);
             if (recruiter is not null)
             {
-                var troopCodes = SelectedAutoRecruitTroopCodes(next).OrderBy(_commands.AutoRecruitGoldCostPer100)
+                var troopCodes = SelectedAutoRecruitTroopCodes(next)
+                    .Where(code => FactionTroopUnlock.Check(state, next.Owner, code).Allowed)
+                    .OrderBy(_commands.AutoRecruitGoldCostPer100)
                     .ThenBy(c => c, System.StringComparer.Ordinal).ToList();
                 var rate = CommandBalance.AutoRecruitRate(next.AutoRecruitRate);
                 var totalTroops = (_commands.AutoRecruitTroopsBase + recruiter.Might * _commands.AutoRecruitTroopsMightMultiplier) * rate;
