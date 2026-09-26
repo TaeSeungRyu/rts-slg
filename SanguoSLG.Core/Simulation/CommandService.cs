@@ -554,6 +554,7 @@ public sealed class CommandService
 
         var cost = isWall ? _b.WallResearchCostPerLevel * (level + 1)
             : isCommandTroops || isArmyGroup ? CommandEfficiency.CommandTroopResearchCost(level + 1)
+            : isGeneralResearch ? GeneralResearchRules.Cost(level + 1, _b)
             : CommandEfficiency.ResearchCost(level + 1, _b);
         var funding = ReserveResearchCost(state, city, req, faction, cost);
         if (!funding.Ok)

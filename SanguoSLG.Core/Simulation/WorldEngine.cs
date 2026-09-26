@@ -563,6 +563,7 @@ public sealed class WorldEngine
                 continue; // 도시가 사라졌으면(함락 등) 산출은 증발한다.
             }
 
+            var completionAmount = cmd.Amount;
             switch (cmd.Kind)
             {
                 case CommandKind.Recruit:
@@ -640,12 +641,12 @@ public sealed class WorldEngine
                     else if (cmd.TroopCode is FactionResearch.CommandTroopsCode or FactionResearch.ArmyGroupCode
                         || FactionResearch.IsGeneralResearch(cmd.TroopCode))
                     {
-                        ResearchUp(research, city.Owner, cmd.TroopCode, GeneralResearchRules.MaxLevel);
+                        completionAmount = ResearchUp(research, city.Owner, cmd.TroopCode, GeneralResearchRules.MaxLevel);
                     }
                     else
                     {
                         var maxLevel = state.IsMajorTroop(city.Owner, cmd.TroopCode) ? _commands.ResearchMaxLevel : 7;
-                        ResearchUp(research, city.Owner, cmd.TroopCode, maxLevel);
+                        completionAmount = ResearchUp(research, city.Owner, cmd.TroopCode, maxLevel);
                     }
 
                     break;
@@ -693,7 +694,7 @@ public sealed class WorldEngine
             };
             if (evKind is { } ek)
             {
-                _events.Add(new WorldEvent(ek, city.Owner, cmd.Main, cmd.City, cmd.Amount,
+                _events.Add(new WorldEvent(ek, city.Owner, cmd.Main, cmd.City, completionAmount,
                     cmd.TroopCode.Length > 0 ? cmd.TroopCode : cmd.Facility));
             }
         }

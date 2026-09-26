@@ -278,6 +278,42 @@ public class ResearchSystemTests
     }
 
     [Fact]
+    public void 일반연구_비용분담_담당잠금_완료보고가_정상동작한다()
+    {
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), B);
+        var s = State(
+            new[] { Town(1, workshop: false, gold: 100), Town(2, workshop: false, gold: 100) },
+            new[] { Wit(1, 100), Wit(2, 100) }) with
+        {
+            Postings =
+            [
+                new GeneralPosting(new GeneralId(1), new FactionId(1), new CityId(1)),
+                new GeneralPosting(new GeneralId(2), new FactionId(1), new CityId(2)),
+            ],
+        };
+        var request = new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(1),
+            TroopCode: FactionResearch.CommerceCode,
+            ResearchFunding:
+            [
+                new ResearchFundingShare(new CityId(1), 1),
+                new ResearchFundingShare(new CityId(2), 1),
+            ]);
+
+        var issued = Service().Issue(s, request);
+        Assert.True(issued.Ok, issued.Error);
+        Assert.Equal(0, issued.State.Cities.Sum(c => c.Gold));
+        Assert.True(issued.State.IsGeneralBusy(new GeneralId(1)));
+
+        var done = world.AdvanceDays(issued.State, 20);
+        Assert.Equal(1, done.ResearchOf(new FactionId(1), FactionResearch.CommerceCode));
+        Assert.False(done.IsGeneralBusy(new GeneralId(1)));
+        Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.Research
+            && e.Code == FactionResearch.CommerceCode && e.Amount == 1);
+        Assert.Equal("상업 진흥", GeneralResearchRules.Name(FactionResearch.CommerceCode));
+        Assert.Equal("금 생산 +2%", GeneralResearchRules.NextEffectText(FactionResearch.CommerceCode, 0));
+    }
+
+    [Fact]
     public void 발행_연구는_기존담당을_해제하고_태수군사_겸임은_유지한다()
     {
         var city = Town(1, workshop: true, gold: 5000) with
