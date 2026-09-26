@@ -33,4 +33,29 @@ public sealed class RuinCombatTests
         Assert.Empty(result.Exchanges);
         Assert.Equal(10_000, result.Armies.Single().Pool.Active);
     }
+
+    [Fact]
+    public void LastDamagingFactionCapturesAndGetsThirtyDayProtection()
+    {
+        var result = new RuinCombat(new BattleResolver(60)).Resolve(State(1), [Attacker()]);
+        var ruin = Assert.Single(result.State.RuinStatus);
+        Assert.Equal(new FactionId(1), ruin.Owner);
+        Assert.Equal(31, ruin.ProtectedUntilDay);
+        Assert.Equal(new FactionId(1), ruin.Registrations.Single());
+    }
+
+    [Fact]
+    public void DefenderRegeneratesOnProtectionBoundary()
+    {
+        var state = State() with
+        {
+            Day = 31,
+            RuinStates = [new("r1", 0, new FactionId(1), 1, 31, [new FactionId(1)])],
+        };
+        var result = new RuinCombat(new BattleResolver(60)).Resolve(state, []);
+        var ruin = Assert.Single(result.State.RuinStatus);
+        Assert.Equal(30_000, ruin.Defenders);
+        Assert.Null(ruin.ProtectedUntilDay);
+        Assert.Equal(new FactionId(1), ruin.Owner);
+    }
 }

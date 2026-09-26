@@ -27,7 +27,14 @@ public sealed class RuinCombat
 
         foreach (var ruin in state.Ruins.OrderBy(r => r.Id, StringComparer.Ordinal))
         {
-            if (!statuses.TryGetValue(ruin.Id, out var status) || status.Defenders <= 0 || status.IsProtected(state.Day)) continue;
+            if (!statuses.TryGetValue(ruin.Id, out var status)) continue;
+            if (status.Defenders <= 0 && status.Owner is not null
+                && status.ProtectedUntilDay is { } until && state.Day >= until)
+            {
+                status = status with { Defenders = ruin.MaxDefenders, ProtectedUntilDay = null };
+                statuses[ruin.Id] = status;
+            }
+            if (status.Defenders <= 0 || status.IsProtected(state.Day)) continue;
             var defenders = status.Defenders;
             for (var i = 0; i < armies.Count && defenders > 0; i++)
             {
@@ -47,7 +54,19 @@ public sealed class RuinCombat
                 exchanges.Add(new(ruin.Id, attacker.Id, damage, counter));
                 if (damage > 0) last[ruin.Id] = attacker.Field.Owner;
             }
-            statuses[ruin.Id] = status with { Defenders = defenders };
+            if (defenders <= 0 && last.TryGetValue(ruin.Id, out var captor))
+            {
+                var registrations = status.Registrations.Append(captor).Distinct().ToList();
+                statuses[ruin.Id] = status with
+                {
+                    Defenders = 0,
+                    Owner = captor,
+                    CapturedDay = state.Day,
+                    ProtectedUntilDay = state.Day + 30,
+                    RegisteredFactions = registrations,
+                };
+            }
+            else statuses[ruin.Id] = status with { Defenders = defenders };
         }
 
         var ordered = state.RuinStatus.Select(s => statuses.GetValueOrDefault(s.RuinId, s)).ToList();
