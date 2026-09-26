@@ -377,6 +377,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("선박 생산", CommandKind.BuildShip, "ship"),
         ("주력병종", CommandKind.SelectMajorTroop, "major"),
         ("전투교리", CommandKind.Research, "troop"),
+        ("일반연구", CommandKind.Research, "general"),
         ("성벽 강화", CommandKind.Research, "wall"),
         ("성벽 수리", CommandKind.Repair, "wall"),
         ("시설 수리", CommandKind.Repair, "repairable"),
@@ -511,6 +512,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestexplorationmodalqa")) CallDeferred(nameof(RunExplorationModalQa));
         if (args.Contains("--maptestexplorationcardqa")) CallDeferred(nameof(RunExplorationCardQa));
         if (args.Contains("--maptesttreasureinventoryqa")) CallDeferred(nameof(RunTreasureInventoryQa));
+        if (args.Contains("--maptestgeneralresearchqa")) CallDeferred(nameof(RunGeneralResearchUiQa));
     }
 
     public override void _ExitTree()
@@ -2446,7 +2448,7 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.Train => ($"[내정] {cName}의 {troop} 훈련도가 올랐습니다(+{we.Amount}).", Parchment),
                 WorldEventKind.Build => ($"[내정] {cName}에 {FacilityLabel(we.Code)} 건설을 마쳤습니다.", Parchment),
                 WorldEventKind.ShipBuild => ($"[항구] {cName}에서 {troop} 생산을 마쳤습니다.", GoldBright),
-                WorldEventKind.Research => ($"[군비] {cName}에서 연구를 마쳤습니다.", Parchment),
+                WorldEventKind.Research => ($"[군비] {cName}에서 {troop} Lv.{we.Amount} 연구를 마쳤습니다.", Parchment),
                 WorldEventKind.Repair => ($"[내정] {cName} 수리를 마쳤습니다.", Parchment),
                 WorldEventKind.EnlistSuccess => ($"[인사] 등용 성공! {gName} 장수가 우리 세력에 합류했습니다.", GoldBright),
                 WorldEventKind.EnlistFail => ($"[인사] {gName} 장수 등용에 실패했습니다.", Parchment),
@@ -4173,7 +4175,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         // 창 크기에 맞춘 반응형 모달(작은 화면에서도 넘치지 않게 상·하한 캡).
         var vp = GetViewport().GetVisibleRect().Size;
-        var wideDoctrineModal = cmd.Kind == CommandKind.Research && cmd.Param == "troop";
+        var wideDoctrineModal = cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general";
         var mw = wideDoctrineModal
             ? Mathf.Clamp(vp.X * 0.82f, 620f, 980f)
             : Mathf.Clamp(vp.X * 0.66f, 460f, 778f);
@@ -4211,6 +4213,10 @@ public sealed partial class CampaignMapScene : Node3D
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
         {
             box.AddChild(MakeLabel("전투교리는 세력 병종의 공격과 방어 보정을 올립니다. 일반 병종은 Lv.7, 주력병종은 Lv.10까지 연구할 수 있습니다.", 15, Parchment));
+        }
+        else if (cmd.Kind == CommandKind.Research && cmd.Param == "general")
+        {
+            box.AddChild(MakeLabel("일반연구는 전투교리와 동시에 진행할 수 있습니다. 6개 연구는 각각 Lv.10까지 성장하며 세력의 모든 도시에 적용됩니다.", 15, Parchment));
         }
         else if (cmd.Kind == CommandKind.SelectMajorTroop)
         {
@@ -4845,6 +4851,7 @@ public sealed partial class CampaignMapScene : Node3D
     private string TroopName(string code) => code == FactionResearch.WallCode ? "성벽"
         : code == FactionResearch.CommandTroopsCode ? "통솔 병력"
         : code == FactionResearch.ArmyGroupCode ? "집단군"
+        : FactionResearch.IsGeneralResearch(code) ? GeneralResearchRules.Name(code)
         : _troops.FirstOrDefault(t => t.Code == code)?.Name ?? code;
 
     private static readonly string[] PortShipCodes = { "small_boat", "medium_ship", "large_ship" };
@@ -9638,6 +9645,20 @@ public sealed partial class CampaignMapScene : Node3D
                 }
 
                 break;
+            case "general":
+                foreach (var definition in GeneralResearchRules.Definitions)
+                {
+                    var level = _state.ResearchOf(city.Owner, definition.Code);
+                    var cost = level >= GeneralResearchRules.MaxLevel
+                        ? 0
+                        : GeneralResearchRules.Cost(level + 1, _cb);
+                    var detail = $"Lv.{level}/{GeneralResearchRules.MaxLevel}\n{definition.Description}"
+                        + (level >= GeneralResearchRules.MaxLevel
+                            ? "\n연구 완료"
+                            : $"\n다음: {GeneralResearchRules.NextEffectText(definition.Code, level)}\n비용 {cost}금");
+                    list.Add((definition.Name, Icon(Sym.Scroll), detail));
+                }
+                break;
             case "ship":
                 if (!city.IsPort)
                 {
@@ -10157,6 +10178,18 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var armyGroupLevel = _state.ResearchOf(city.Owner, FactionResearch.ArmyGroupCode);
             return armyGroupLevel >= _cb.ArmyGroupResearchMaxLevel ? 0 : CommandEfficiency.CommandTroopResearchCost(armyGroupLevel + 1);
+        }
+
+        if (cmd.Param == "general")
+        {
+            if (_modalParam < 0 || _modalParam >= GeneralResearchRules.Definitions.Count)
+            {
+                return 0;
+            }
+
+            var code = GeneralResearchRules.Definitions[_modalParam].Code;
+            var generalLevel = _state.ResearchOf(city.Owner, code);
+            return generalLevel >= GeneralResearchRules.MaxLevel ? 0 : GeneralResearchRules.Cost(generalLevel + 1, _cb);
         }
 
         var troopIndex = cmd.Kind == CommandKind.Research ? _modalParam - 2 : _modalParam;
@@ -10784,6 +10817,9 @@ public sealed partial class CampaignMapScene : Node3D
             "troop" when cmd.Kind == CommandKind.Research && p == 1 => FactionResearch.ArmyGroupCode,
             "troop" when cmd.Kind == CommandKind.Research => _troops[p - 2].Code,
             "troop" => _troops[p].Code,
+            "general" => p >= 0 && p < GeneralResearchRules.Definitions.Count
+                ? GeneralResearchRules.Definitions[p].Code
+                : "",
             "ship" => PortShipOptionAt(p)?.Code ?? "",
             "wall" => FactionResearch.WallCode,
             "garrison" => GarrisonAt(city, p)?.TroopCode ?? "",
@@ -11018,6 +11054,30 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
+        if (cmd.Kind == CommandKind.Research && cmd.Param == "general")
+        {
+            var cityData = _state.Cities.First(c => c.Id == city);
+            var caster = _state.Generals.First(g => g.Id == general);
+            var level = _state.ResearchOf(cityData.Owner, troopCode);
+            var next = System.Math.Min(level + 1, GeneralResearchRules.MaxLevel);
+            var cost = level >= GeneralResearchRules.MaxLevel ? 0 : GeneralResearchRules.Cost(next, _cb);
+            var days = System.Math.Max(_cb.ResearchBaseDays - System.Math.Clamp((caster.Intellect - 50) / 5, 0, 10), 1);
+            var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
+                && FactionResearch.IsGeneralResearch(c.TroopCode)
+                && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
+            var definition = GeneralResearchRules.Definitions.First(d => d.Code == troopCode);
+            extra = $"\n{definition.Name}"
+                + $"\nLv.{level} → Lv.{next}/{GeneralResearchRules.MaxLevel}"
+                + $"\n{definition.Description}"
+                + (level >= GeneralResearchRules.MaxLevel
+                    ? "\n※ 이미 최대 단계입니다"
+                    : $"\n다음 효과: {GeneralResearchRules.NextEffectText(troopCode, level)}"
+                        + $"\n비용 {cost}금"
+                        + $"\n[소요 {days}일]")
+                + (active is null ? "" : $"\n※ 일반연구 진행 중: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
+                + (level < GeneralResearchRules.MaxLevel && !ResearchFundingCanCover(cityData, cost) ? "\n※ 연구비 분담 도시의 금이 부족합니다" : "");
+        }
+
         if (cmd.Kind == CommandKind.BuildShip)
         {
             var c = _state.Cities.First(x => x.Id == city);
@@ -11085,6 +11145,7 @@ public sealed partial class CampaignMapScene : Node3D
             "troop" when troopCode == FactionResearch.CommandTroopsCode => " · 통솔 병력",
             "troop" when troopCode == FactionResearch.ArmyGroupCode => " · 집단군",
             "troop" => $" · {_troops.FirstOrDefault(t => t.Code == troopCode)?.Name ?? troopCode}",
+            "general" => $" · {GeneralResearchRules.Name(troopCode)}",
             "garrison" => $" · {(_troops.FirstOrDefault(t => t.Code == troopCode)?.Name ?? troopCode)}{(traineePool ? "(신병)" : "")}",
             "tax" => $" · {value}%",
             "facility" => $" · {Facilities[p].Label}",
@@ -12432,6 +12493,31 @@ public sealed partial class CampaignMapScene : Node3D
         CloseModal();
         _state = original;
         GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>일반연구 6종 카드·도시별 연구비 분담 표가 실제 모달에 생성되는지 확인한다.</summary>
+    private void RunGeneralResearchUiQa()
+    {
+        var city = _state.Cities.FirstOrDefault(c => c.Owner == Player);
+        var commandIndex = System.Array.FindIndex(Cmds,
+            c => c.Kind == CommandKind.Research && c.Param == "general");
+        if (city is null || commandIndex < 0)
+        {
+            GD.PrintErr("[general-research-qa] FAIL missing city or command");
+            GetTree().Quit(1);
+            return;
+        }
+
+        _selected = city.Id;
+        OpenModal(commandIndex);
+        var ownedCityCount = _state.Cities.Count(c => c.Owner == city.Owner);
+        var names = OptionList(Cmds[commandIndex], city).Select(o => o.Name).ToList();
+        var ok = _optionCards.Count == GeneralResearchRules.Definitions.Count
+            && _researchFundingRatios.Count == ownedCityCount
+            && GeneralResearchRules.Definitions.All(d => names.Contains(d.Name));
+        GD.Print($"[general-research-qa] cards={_optionCards.Count} fundingRows={_researchFundingRatios.Count}/{ownedCityCount} names={string.Join(',', names)} ok={ok}");
+        CloseModal();
+        GetTree().Quit(ok ? 0 : 1);
     }
 
     private void BuildHud()
