@@ -112,7 +112,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _animCaptureIdx;
     private readonly List<(double Time, CityId City)> _animCaptures = new();
     private int _animActiveIdx;
-    private readonly List<(double Time, int UnitId, ActiveSkill Skill)> _animActives = new();
+    private readonly List<(double Time, int UnitId, GeneralId? GeneralId, ActiveSkill Skill)> _animActives = new();
     private int _animSkillEffectIdx;
     private readonly List<(double Time, int CasterUnitId, int TargetUnitId, ActiveSkill Skill)> _animSkillEffects = new();
     private int _animGaugeIdx;
@@ -502,6 +502,7 @@ public sealed partial class CampaignMapScene : Node3D
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
         if (args.Contains("--maptestgaugelifetimeqa")) CallDeferred(nameof(RunActiveGaugeLifetimeQa));
         if (args.Contains("--maptestgaugeprogressqa")) CallDeferred(nameof(RunActiveGaugeProgressQa));
+        if (args.Contains("--maptestactivecasterqa")) CallDeferred(nameof(RunActiveCasterPortraitQa));
         if (args.Contains("--maptestunitstatusqa")) CallDeferred(nameof(RunUnitStatusDisplayQa));
         if (args.Contains("--maptestunitcardqa")) CallDeferred(nameof(RunUnitCardQa));
         if (args.Contains("--maptestportraitqa")) CallDeferred(nameof(RunPortraitLoaderQa));
@@ -1197,6 +1198,30 @@ public sealed partial class CampaignMapScene : Node3D
         return state.AdjutantGauge.ElapsedDays > state.VanguardGauge.ElapsedDays
             ? (state.AdjutantActive, state.AdjutantGauge)
             : (state.VanguardActive, state.VanguardGauge);
+    }
+
+    /// <summary>
+    /// 발동 정산 뒤의 게이지로 실제 발동 장수를 찾는다. 서로 다른 스킬이면 코드로 구분하고,
+    /// 두 장수가 같은 스킬을 가진 경우에는 이번 정산에서 0으로 소비된 슬롯을 사용한다.
+    /// 선봉 다음 교전일에 부관이 발동해도 배너가 선봉 초상을 재사용하지 않게 하는 표현 계층 판정이다.
+    /// </summary>
+    private static GeneralId? ResolveActiveGeneral(CombatUnit unit, ActiveSkill fired)
+        => ResolveActiveGeneral(unit.VanguardId, unit.AdjutantId, unit.State, fired);
+
+    private static GeneralId? ResolveActiveGeneral(GeneralId? vanguardId, GeneralId? adjutantId,
+        UnitCombatState state, ActiveSkill fired)
+    {
+        var vanguardMatches = state.VanguardActive?.Code == fired.Code;
+        var adjutantMatches = state.AdjutantActive?.Code == fired.Code;
+
+        if (adjutantMatches && !vanguardMatches) return adjutantId;
+        if (vanguardMatches && !adjutantMatches) return vanguardId;
+        if (vanguardMatches && adjutantMatches
+            && state.AdjutantGauge.ElapsedDays == 0
+            && state.VanguardGauge.ElapsedDays > 0)
+            return adjutantId;
+
+        return vanguardId ?? adjutantId;
     }
 
     private static IReadOnlyList<string> ActiveStatusLines(UnitCombatState state)
@@ -2573,9 +2598,10 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var (casterId, skill) = orderedActives[activeIndex];
                 var activeTime = atkTime + 0.02 + activeIndex * 0.2;
-                _animActives.Add((activeTime, casterId.Value, skill));
                 var caster = turn.Units.FirstOrDefault(x => x.Id == casterId)
                     ?? (unitSnapshot.TryGetValue(casterId.Value, out var previousCaster) ? previousCaster : null);
+                var activeGeneralId = caster is null ? null : ResolveActiveGeneral(caster, skill);
+                _animActives.Add((activeTime, casterId.Value, activeGeneralId, skill));
                 if (caster is not null && skill.Code == "fire_plot")
                 {
                     foreach (var target in turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
@@ -4041,9 +4067,10 @@ public sealed partial class CampaignMapScene : Node3D
             while (_animActiveIdx < _animActives.Count && _animActives[_animActiveIdx].Time <= _animT)
             {
                 var active = _animActives[_animActiveIdx];
-                var army = _pendingState.Armies.FirstOrDefault(x => x.Id.Value == active.UnitId)
-                    ?? _state.Armies.FirstOrDefault(x => x.Id.Value == active.UnitId);
-                var general = army?.VanguardId is { } gid ? _pendingState.Generals.FirstOrDefault(x => x.Id == gid) : null;
+                var general = active.GeneralId is { } gid
+                    ? _pendingState.Generals.FirstOrDefault(x => x.Id == gid)
+                        ?? _state.Generals.FirstOrDefault(x => x.Id == gid)
+                    : null;
                 ActiveSkillPresentation.ShowBanner(this, general?.Name ?? $"부대 {active.UnitId}", active.Skill,
                     general is null ? null : CircularPortraitFor(general.Id));
                 if (_armyTokens.TryGetValue(active.UnitId, out var caster) && caster.Visible)
@@ -12341,6 +12368,48 @@ public sealed partial class CampaignMapScene : Node3D
         GD.Print($"[maptestgaugeprogressqa] passed={passed} observed={string.Join(',', observed)} skill={gauge.SkillCode}");
         _activeGauges.Remove(qaUnitId);
         token.QueueFree();
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>선봉 다음 교전일에 부관이 발동할 때 배너가 실제 발동 장수의 초상을 고르는 회귀 QA.</summary>
+    private void RunActiveCasterPortraitQa()
+    {
+        var skills = _activeSkills.Where(skill => skill.Type != ActiveType.Tactic).Take(2).ToList();
+        var vanguardId = new GeneralId(900001);
+        var adjutantId = new GeneralId(900002);
+        var vanguardSkill = skills.FirstOrDefault();
+        var adjutantSkill = skills.Skip(1).FirstOrDefault() ?? vanguardSkill;
+        if (vanguardSkill is null || adjutantSkill is null)
+        {
+            GD.Print("[maptestactivecasterqa] passed=False reason=no-active-skills");
+            GetTree().Quit(1);
+            return;
+        }
+
+        var baseState = UnitCombatState.Create(60, vanguardSkill, adjutantSkill);
+        var afterVanguard = baseState with
+        {
+            VanguardGauge = new ActiveGauge(0),
+            AdjutantGauge = new ActiveGauge(ActiveGauge.ReadyDays + 1),
+        };
+        var afterAdjutant = baseState with
+        {
+            VanguardGauge = new ActiveGauge(1),
+            AdjutantGauge = new ActiveGauge(0),
+        };
+        var sameSkillAfterAdjutant = UnitCombatState.Create(60, vanguardSkill, vanguardSkill) with
+        {
+            VanguardGauge = new ActiveGauge(1),
+            AdjutantGauge = new ActiveGauge(0),
+        };
+
+        var resolvedVanguard = ResolveActiveGeneral(vanguardId, adjutantId, afterVanguard, vanguardSkill);
+        var resolvedAdjutant = ResolveActiveGeneral(vanguardId, adjutantId, afterAdjutant, adjutantSkill);
+        var resolvedSameSkillAdjutant = ResolveActiveGeneral(vanguardId, adjutantId, sameSkillAfterAdjutant, vanguardSkill);
+        var passed = resolvedVanguard == vanguardId
+            && resolvedAdjutant == adjutantId
+            && resolvedSameSkillAdjutant == adjutantId;
+        GD.Print($"[maptestactivecasterqa] passed={passed} vanguard={resolvedVanguard?.Value} adjutant={resolvedAdjutant?.Value} sameSkillAdjutant={resolvedSameSkillAdjutant?.Value}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
