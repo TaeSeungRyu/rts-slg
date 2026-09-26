@@ -12310,7 +12310,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
-    /// <summary>맵 전투 재생 중 스킬원이 1일마다 1칸씩 실제 화면 객체에 반영되는 회귀 QA.</summary>
+    /// <summary>맵 전투 재생 중 스킬원이 차오르고 발동 직후 0으로 초기화되는 회귀 QA.</summary>
     private void RunActiveGaugeProgressQa()
     {
         const int qaUnitId = -987655;
@@ -12324,6 +12324,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animGaugeIdx = 0;
         for (var day = 1; day <= ActiveGauge.ReadyDays; day++)
             _animGaugeUpdates.Add((day * 0.1, qaUnitId, skill, new ActiveGauge(day)));
+        _animGaugeUpdates.Add(((ActiveGauge.ReadyDays + 1) * 0.1, qaUnitId, skill, new ActiveGauge()));
 
         var observed = new List<int>();
         for (var day = 1; day <= ActiveGauge.ReadyDays; day++)
@@ -12331,9 +12332,11 @@ public sealed partial class CampaignMapScene : Node3D
             ApplyGaugePlaybackUpdates(day * 0.1 + 0.001);
             observed.Add(gauge.FilledSegments);
         }
+        ApplyGaugePlaybackUpdates((ActiveGauge.ReadyDays + 1) * 0.1 + 0.001);
+        observed.Add(gauge.FilledSegments);
 
         var passed = skill is not null
-            && observed.SequenceEqual(Enumerable.Range(1, ActiveGauge.ReadyDays))
+            && observed.SequenceEqual(Enumerable.Range(1, ActiveGauge.ReadyDays).Append(0))
             && gauge.SkillCode == skill.Code;
         GD.Print($"[maptestgaugeprogressqa] passed={passed} observed={string.Join(',', observed)} skill={gauge.SkillCode}");
         _activeGauges.Remove(qaUnitId);

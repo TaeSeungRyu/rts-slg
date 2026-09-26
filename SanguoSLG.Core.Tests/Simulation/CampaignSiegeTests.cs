@@ -91,6 +91,26 @@ public class CampaignSiegeTests
         Assert.Equal(0, result.Armies.Single().State.VanguardGauge.ElapsedDays);
     }
 
+    [Fact]
+    public void 공성에서_발동한_액티브의_초기화상태가_공격턴_재생데이터에도_반영된다()
+    {
+        var crush = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).Single(x => x.Code == "crush");
+        var attacker = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0)) with
+        {
+            State = UnitCombatState.Create(60, crush) with { VanguardGauge = new ActiveGauge(5) },
+        };
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 100_000);
+        var state = new GameState(1, 190, [], [city], [],
+            GarrisonForces: [new GarrisonForce(city.Id, "swordsman", 100_000, 60)],
+            FieldArmies: [attacker]);
+
+        Engine().AdvanceWeek(state, out var turns, out _);
+
+        var firedTurn = turns.First(turn => turn.FiredActives.ContainsKey(attacker.Id));
+        Assert.Equal("crush", firedTurn.FiredActives[attacker.Id].Code);
+        Assert.Equal(0, firedTurn.Units.Single(u => u.Id == attacker.Id).State.VanguardGauge.ElapsedDays);
+    }
+
     [Theory]
     [InlineData(CastleSize.Medium, 5, 1, 6, 1)]
     [InlineData(CastleSize.Large, 6, 1, 7, 1)]

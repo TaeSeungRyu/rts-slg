@@ -194,14 +194,17 @@ public sealed class CampaignEngine
                 const int activeChargeDays = 1;
                 var result = _siege.Resolve(armies, siegeState.Cities, siegeState.Garrisons, CounterAptitude, DefenseBonus, siegeState.CityWounded);
 
-                if (result.FiredActives.Count > 0)
+                var mergedActives = reports[^1].FiredActives
+                    .Concat(result.FiredActives)
+                    .GroupBy(x => x.Key)
+                    .ToDictionary(x => x.Key, x => x.Last().Value);
+                // 공성에서 충전·발동한 액티브 상태도 그 공격턴의 재생 데이터에 즉시 반영한다.
+                // 이전에는 최종 GameState만 갱신되어, 화면의 스킬원이 공성 발동 뒤에도 꽉 찬 상태로 남았다.
+                reports[^1] = reports[^1] with
                 {
-                    var mergedActives = reports[^1].FiredActives
-                        .Concat(result.FiredActives)
-                        .GroupBy(x => x.Key)
-                        .ToDictionary(x => x.Key, x => x.Last().Value);
-                    reports[^1] = reports[^1] with { FiredActives = mergedActives };
-                }
+                    Units = result.Armies,
+                    FiredActives = mergedActives,
+                };
 
                 // 성 반격/방어 보정 = 태수 또는 대리 수성 지휘관 1명의 적성·스킬만 반영한다.
                 int CounterAptitude(CityId cid)
