@@ -415,14 +415,14 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly (string Group, int[] Indices)[] CmdGroups =
     {
         ("항구", new[] { 5 }),
-        ("연구", new[] { 6, 7 }),
-        ("성벽", new[] { 8, 9 }),
-        ("계략", new[] { 11 }),
-        ("외교", new[] { 12, 13 }),
-        ("임명", new[] { 14, 15 }),
-        ("담당자", new[] { 16, 17, 18, 19 }),
-        ("인재", new[] { 20 }),
-        ("탐색", new[] { 21 }),
+        ("연구", new[] { 6, 7, 8 }),
+        ("성벽", new[] { 9, 10 }),
+        ("계략", new[] { 12 }),
+        ("외교", new[] { 13, 14 }),
+        ("임명", new[] { 15, 16 }),
+        ("담당자", new[] { 17, 18, 19, 20 }),
+        ("인재", new[] { 21 }),
+        ("탐색", new[] { 22 }),
     };
 
     private static readonly Sym[] CmdIcons = { Sym.Sword, Sym.Coin, Sym.Book, Sym.Wall, Sym.Scroll };
@@ -12501,21 +12501,42 @@ public sealed partial class CampaignMapScene : Node3D
         var city = _state.Cities.FirstOrDefault(c => c.Owner == Player);
         var commandIndex = System.Array.FindIndex(Cmds,
             c => c.Kind == CommandKind.Research && c.Param == "general");
-        if (city is null || commandIndex < 0)
+        var researchGroupIndex = System.Array.FindIndex(CmdGroups, g => g.Group == "연구");
+        if (city is null || commandIndex < 0 || researchGroupIndex < 0)
         {
-            GD.PrintErr("[general-research-qa] FAIL missing city or command");
+            GD.PrintErr("[general-research-qa] FAIL missing city, command or group");
             GetTree().Quit(1);
             return;
         }
 
         _selected = city.Id;
+        ToggleGroup(researchGroupIndex);
+        var submenuLabels = _cmdSubList.GetChildren().OfType<Button>().Select(b => b.Text).ToList();
+        var expectedSubmenu = new[] { "주력병종", "전투교리", "일반연구" };
+        var submenuOk = expectedSubmenu.SequenceEqual(submenuLabels);
+        var expectedGroups = new Dictionary<string, string[]>
+        {
+            ["항구"] = ["선박 생산"],
+            ["연구"] = expectedSubmenu,
+            ["성벽"] = ["성벽 강화", "성벽 수리"],
+            ["계략"] = ["도시 계략"],
+            ["외교"] = ["동맹", "동맹파기"],
+            ["임명"] = ["태수 임명", "군사 임명"],
+            ["담당자"] = ["치안 담당", "내정 담당", "병력 담당", "훈련 담당"],
+            ["인재"] = ["위인 영입"],
+            ["탐색"] = ["탐색"],
+        };
+        var allGroupsOk = CmdGroups.All(g => expectedGroups.TryGetValue(g.Group, out var expected)
+            && expected.SequenceEqual(g.Indices.Select(i => Cmds[i].Label)));
+        CloseGroupMenu();
         OpenModal(commandIndex);
         var ownedCityCount = _state.Cities.Count(c => c.Owner == city.Owner);
         var names = OptionList(Cmds[commandIndex], city).Select(o => o.Name).ToList();
-        var ok = _optionCards.Count == GeneralResearchRules.Definitions.Count
+        var ok = submenuOk && allGroupsOk
+            && _optionCards.Count == GeneralResearchRules.Definitions.Count
             && _researchFundingRatios.Count == ownedCityCount
             && GeneralResearchRules.Definitions.All(d => names.Contains(d.Name));
-        GD.Print($"[general-research-qa] cards={_optionCards.Count} fundingRows={_researchFundingRatios.Count}/{ownedCityCount} names={string.Join(',', names)} ok={ok}");
+        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} cards={_optionCards.Count} fundingRows={_researchFundingRatios.Count}/{ownedCityCount} names={string.Join(',', names)} ok={ok}");
         CloseModal();
         GetTree().Quit(ok ? 0 : 1);
     }
