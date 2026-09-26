@@ -50,6 +50,20 @@ public class AdvanceOrchestratorTests
             ]);
     }
 
+    public static IEnumerable<object[]> RegisteredTroopCodes()
+        => T.Keys.OrderBy(code => code, StringComparer.Ordinal).Select(code => new object[] { code });
+
+    private static CombatUnit Troop(string code, int id, int owner, HexCoord pos, UnitCombatState state)
+    {
+        var template = T[code];
+        var field = new FieldUnit(new UnitId(id), new FactionId(owner), pos,
+            template.MovementPerDay, template.Detection, template.RangeUnit,
+            MovementDomain.Land, UnitMode.Attack, null, id, template.RangeCastle);
+        var stats = CombatStatsBuilder.BuildField(template, AptitudeGrade.A, 0, TerrainType.River, 10000);
+        return new CombatUnit(field, stats, new TroopPool(10000, 0), state,
+            Might: 80, Intellect: 80, MaxTroops: 10000, template.Class, TroopCode: code);
+    }
+
     [Fact]
     public void 경유지_통과분은_결과_부대에서_제거된다()
     {
@@ -157,6 +171,21 @@ public class AdvanceOrchestratorTests
         Assert.True(turn.Units.Single(u => u.Id.Value == 2).Pool.Active < 10000, "액티브 없이도 일반 공격은 해야 한다");
     }
 
+    [Theory]
+    [MemberData(nameof(RegisteredTroopCodes))]
+    public void 등록된_모든_일반병종은_교전시_액티브를_발동한다(string troopCode)
+    {
+        var charging = UnitCombatState.Create(80, A["peerless"]).AdvanceCombat()
+            .AdvanceCombat().AdvanceCombat().AdvanceCombat().AdvanceCombat();
+        var attacker = Troop(troopCode, 1, 1, new HexCoord(0, 0), charging);
+        var defender = Sword(2, 2, new HexCoord(1, 0), UnitMode.Advance);
+
+        var turn = MakeOrchestrator().Run([attacker, defender], maxDays: 1);
+
+        Assert.Equal("peerless", turn.FiredActives[new UnitId(1)].Code);
+        Assert.Equal(0, turn.Units.Single(u => u.Id.Value == 1).State.SharedActiveGauge.ElapsedDays);
+    }
+
     [Fact]
     public void 오일충전된_화계는_부대액티브로_발동한다()
     {
@@ -173,7 +202,7 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
-    public void 주장과_부관이_동시에_준비되면_주장_완료후_다음_공격턴에_부관이_발동한다()
+    public void 공용게이지를_다시채운뒤_선봉과_부관이_교대로_발동한다()
     {
         var ready = UnitCombatState.Create(90, A["peerless"], A["fire_plot"]).AdvanceField(6);
         var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.Advance, ready);
@@ -182,17 +211,21 @@ public class AdvanceOrchestratorTests
         var first = MakeOrchestrator().Run([caster, target], maxDays: 1);
         var afterFirst = first.Units.Single(u => u.Id.Value == 1);
         Assert.Equal("peerless", first.FiredActives[new UnitId(1)].Code);
-        Assert.False(afterFirst.State.VanguardGauge.IsReady);
-        Assert.True(afterFirst.State.AdjutantGauge.IsReady);
+        Assert.Equal(0, afterFirst.State.SharedActiveGauge.ElapsedDays);
+        Assert.Equal(ActiveCommanderSlot.Adjutant, afterFirst.State.ScheduledActiveSlot);
 
-        var second = MakeOrchestrator().Run(first.Units, maxDays: 1);
+        var recharged = first.Units.Select(u => u.Id.Value == 1
+            ? u with { State = u.State.AdvanceCombat().AdvanceCombat().AdvanceCombat().AdvanceCombat().AdvanceCombat() }
+            : u).ToList();
+        var second = MakeOrchestrator().Run(recharged, maxDays: 1);
         var afterSecond = second.Units.Single(u => u.Id.Value == 1);
         Assert.Equal("fire_plot", second.FiredActives[new UnitId(1)].Code);
-        Assert.False(afterSecond.State.AdjutantGauge.IsReady);
+        Assert.Equal(0, afterSecond.State.SharedActiveGauge.ElapsedDays);
+        Assert.Equal(ActiveCommanderSlot.Vanguard, afterSecond.State.ScheduledActiveSlot);
     }
 
     [Fact]
-    public void 계략형_주장과_불사_부관은_서로_덮어쓰지_않고_다음_공격턴에_이어진다()
+    public void 계략형_주장과_회복형_부관도_공용게이지를_각각채운뒤_교대한다()
     {
         var ready = UnitCombatState.Create(90, A["fire_plot"], A["second_wind"]).AdvanceField(6);
         var caster = Sword(1, 1, new HexCoord(0, 0), UnitMode.Advance, ready) with
@@ -204,13 +237,16 @@ public class AdvanceOrchestratorTests
         var first = MakeOrchestrator().Run([caster, target], maxDays: 1);
         var afterFirst = first.Units.Single(u => u.Id.Value == 1);
         Assert.Equal("fire_plot", first.FiredActives[new UnitId(1)].Code);
-        Assert.False(afterFirst.State.VanguardGauge.IsReady);
-        Assert.True(afterFirst.State.AdjutantGauge.IsReady);
+        Assert.Equal(0, afterFirst.State.SharedActiveGauge.ElapsedDays);
+        Assert.Equal(ActiveCommanderSlot.Adjutant, afterFirst.State.ScheduledActiveSlot);
 
-        var second = MakeOrchestrator().Run(first.Units, maxDays: 1);
+        var recharged = first.Units.Select(u => u.Id.Value == 1
+            ? u with { State = u.State.AdvanceCombat().AdvanceCombat().AdvanceCombat().AdvanceCombat().AdvanceCombat() }
+            : u).ToList();
+        var second = MakeOrchestrator().Run(recharged, maxDays: 1);
         var afterSecond = second.Units.Single(u => u.Id.Value == 1);
         Assert.Equal("second_wind", second.FiredActives[new UnitId(1)].Code);
-        Assert.False(afterSecond.State.AdjutantGauge.IsReady);
+        Assert.Equal(0, afterSecond.State.SharedActiveGauge.ElapsedDays);
     }
 
     [Theory]
@@ -226,7 +262,7 @@ public class AdvanceOrchestratorTests
     [InlineData("fire_plot", "peerless")]
     [InlineData("fire_plot", "iron_wall")]
     [InlineData("fire_plot", "second_wind")]
-    public void 액티브_유형_전체조합은_하루한개씩_주장후_부관순으로_발동한다(
+    public void 액티브_유형_전체조합은_공용게이지를_채울때마다_선봉부관순으로_발동한다(
         string vanguardCode, string adjutantCode)
     {
         var ready = UnitCombatState.Create(90, A[vanguardCode], A[adjutantCode]).AdvanceField(6);
@@ -240,7 +276,10 @@ public class AdvanceOrchestratorTests
         Assert.Single(first.FiredActives, pair => pair.Key.Value == 1);
         Assert.Equal(vanguardCode, first.FiredActives[new UnitId(1)].Code);
 
-        var second = MakeOrchestrator().Run(first.Units, maxDays: 1);
+        var recharged = first.Units.Select(u => u.Id.Value == 1
+            ? u with { State = u.State.AdvanceCombat().AdvanceCombat().AdvanceCombat().AdvanceCombat().AdvanceCombat() }
+            : u).ToList();
+        var second = MakeOrchestrator().Run(recharged, maxDays: 1);
         Assert.Single(second.FiredActives, pair => pair.Key.Value == 1);
         Assert.Equal(adjutantCode, second.FiredActives[new UnitId(1)].Code);
     }

@@ -6,7 +6,7 @@ using SanguoSLG.Core.Spatial;
 /// <summary>
 /// 한 "진행"을 이동 → 계략 발동 → 전투 페이즈 → 정산으로 묶는다(design-combat.md "전투 페이즈 발동"
 /// 순환). 이동 시뮬을 돌려 정지시킨 뒤, 경과일만큼 발동 상태를 진행하고, 예약된 계략을 발동하며
-/// (발동일엔 시전 부대 공격 불가), 사거리 전수검사로 교전을 만들어 액티브 발동(선봉 우선)을 얹어
+/// (발동일엔 시전 부대 공격 불가), 사거리 전수검사로 교전을 만들어 액티브 발동(선봉·부관 교대)을 얹어
 /// 동시 정산한다. 결과로 위치·병력·발동 상태가 갱신된 부대를 돌려준다. 지속 상태(DoT·능력치
 /// 디버프·행동불가), 정화, 강제 후퇴(교란)까지 반영하고, 병력 0(전멸) 부대는 결과에서 뺀다(소멸 —
 /// Game이 영혼 상승 연출로 처리). 아군 성 입성은 이동 단계에서 확정되어 성 복귀 초기화 후
@@ -204,7 +204,7 @@ public sealed class AdvanceOrchestrator
             .SelectMany(e => e.Targets.Append(e.Attacker))
             .ToHashSet();
 
-        // 4) 교전 참가 부대마다 액티브 발동(선봉 우선)을 정하고 BattleParticipant를 만든다.
+        // 4) 교전 참가 부대마다 공용 게이지의 다음 액티브를 정하고 BattleParticipant를 만든다.
         var participants = new Dictionary<UnitId, BattleParticipant>();
         // 방어형은 공격·계략형보다 먼저 확정한다. 이후 공격형은 최초 공격 명령 순서대로 고른다.
         var defenseSkills = new Dictionary<UnitId, ActiveSkill>();
@@ -214,7 +214,7 @@ public sealed class AdvanceOrchestrator
             var u = state[id];
             // 같은 부대가 앞선 3.5단계에서 계략형을 이미 발동했다면 방어/회복/타격형을
             // 같은 날 또 소비하지 않는다. FiredActives는 부대당 1개이므로 뒤 스킬이 앞 연출을
-            // 덮어쓰는 것을 막고, 준비된 나머지 슬롯은 다음 교전일에 이어서 발동한다.
+            // 덮어쓰는 것을 막는다. 다음 장수는 공용 게이지를 다시 채운 뒤 발동한다.
             if (firedActives.ContainsKey(id) || u.IsArmyGroup || dazedAtStart.Contains(id) || IsDazed(u)) continue;
             var (defense, defendedState) = u.State.FiringDefenseActive();
             if (defense is null) continue;
@@ -480,13 +480,8 @@ public sealed class AdvanceOrchestrator
 
     private static ActiveSkill? ReadyTactic(UnitCombatState state)
     {
-        // 주장과 부관이 동시에 준비되면 스킬 유형과 무관하게 주장을 먼저 처리한다.
-        // 그렇지 않으면 부관 계략형이 3.5단계에서 먼저 발동하고 주장 전투형이 4단계에서
-        // 같은 공격턴에 덮어써져 한쪽 연출이 사라진다.
-        if (state.VanguardActive is { } v && state.VanguardGauge.IsReady)
-            return v.Type == ActiveType.Tactic ? v : null;
-        if (state.AdjutantActive is { Type: ActiveType.Tactic } a && state.AdjutantGauge.IsReady) return a;
-        return null;
+        var skill = state.ScheduledActive;
+        return state.SharedActiveGauge.IsReady && skill?.Type == ActiveType.Tactic ? skill : null;
     }
 
     private static void ConsumeTactic(Dictionary<UnitId, CombatUnit> state, UnitId casterId,

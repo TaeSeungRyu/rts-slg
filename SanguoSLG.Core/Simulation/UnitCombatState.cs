@@ -3,9 +3,9 @@ namespace SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Domain;
 
 /// <summary>
-/// 한 부대의 전투 지속 상태(design-skill.md·design-stratagem.md). 선봉·부관의 액티브 게이지 두 개,
+/// 한 부대의 전투 지속 상태(design-skill.md·design-stratagem.md). 선봉·부관이 공유하는 액티브 게이지,
 /// 모략력, 계략 숙달 포인트, 진행 중인 계략 예약을 묶는다. 하루-진행마다 갱신하고, 전투 시점에
-/// "무엇이 발동하는가"(선봉 우선 액티브 1개·계략 발동/캔슬)를 정한다. 불변 값.
+/// "무엇이 발동하는가"(선봉·부관 교대 액티브 1개·계략 발동/캔슬)를 정한다. 불변 값.
 /// 발동한 액티브를 유형별(타격/방어/회복)로 BattleParticipant에 넣는 것은 상위(오케스트레이터)가 한다.
 /// </summary>
 public sealed record UnitCombatState(
@@ -16,7 +16,8 @@ public sealed record UnitCombatState(
     StratagemResource Resource,
     int MasteryPoints,
     StratagemReservation? Reservation,
-    IReadOnlyList<StatusEffect> Statuses)
+    IReadOnlyList<StatusEffect> Statuses,
+    ActiveCommanderSlot NextActiveSlot = ActiveCommanderSlot.Vanguard)
 {
     /// <summary>출전 상태로 생성한다(게이지 0, 모략력 가득, 예약 없음, 상태 없음).</summary>
     public static UnitCombatState Create(int intellect, ActiveSkill? vanguardActive = null,
@@ -27,13 +28,37 @@ public sealed record UnitCombatState(
     /// <summary>계략 숙달 레벨(1~10).</summary>
     public int MasteryLevel => StratagemMastery.LevelFromPoints(MasteryPoints);
 
-    /// <summary>야전 하루-진행 경과: 게이지·계략 예약을 <paramref name="days"/>만큼 진행한다.</summary>
-    public UnitCombatState AdvanceField(int days) => this with
+    public ActiveGauge SharedActiveGauge
+        => new(System.Math.Max(VanguardGauge.ElapsedDays, AdjutantGauge.ElapsedDays));
+
+    public ActiveCommanderSlot ScheduledActiveSlot
     {
-        VanguardGauge = VanguardGauge.Tick(days),
-        AdjutantGauge = AdjutantGauge.Tick(days),
-        Reservation = Reservation?.Tick(days),
-    };
+        get
+        {
+            if (VanguardActive is null) return ActiveCommanderSlot.Adjutant;
+            if (AdjutantActive is null) return ActiveCommanderSlot.Vanguard;
+            if (VanguardGauge.ElapsedDays > AdjutantGauge.ElapsedDays) return ActiveCommanderSlot.Vanguard;
+            if (AdjutantGauge.ElapsedDays > VanguardGauge.ElapsedDays) return ActiveCommanderSlot.Adjutant;
+            return NextActiveSlot;
+        }
+    }
+
+    public ActiveSkill? ScheduledActive
+        => ScheduledActiveSlot == ActiveCommanderSlot.Vanguard ? VanguardActive : AdjutantActive;
+
+    /// <summary>야전 하루-진행 경과: 게이지·계략 예약을 <paramref name="days"/>만큼 진행한다.</summary>
+    public UnitCombatState AdvanceField(int days)
+    {
+        var slot = ScheduledActiveSlot;
+        var gauge = SharedActiveGauge.Tick(days);
+        return this with
+        {
+            VanguardGauge = gauge,
+            AdjutantGauge = gauge,
+            NextActiveSlot = slot,
+            Reservation = Reservation?.Tick(days),
+        };
+    }
 
     /// <summary>이동 경과: 도시/부대 계략 예약만 진행하고 액티브 게이지는 충전하지 않는다.</summary>
     public UnitCombatState AdvanceTravel(int days) => this with
@@ -42,17 +67,24 @@ public sealed record UnitCombatState(
     };
 
     /// <summary>실제 교전 참여: 공격 또는 피격에 참여한 진행마다 액티브 게이지를 1칸 충전한다.</summary>
-    public UnitCombatState AdvanceCombat() => this with
+    public UnitCombatState AdvanceCombat()
     {
-        VanguardGauge = VanguardGauge.Tick(1),
-        AdjutantGauge = AdjutantGauge.Tick(1),
-    };
+        var slot = ScheduledActiveSlot;
+        var gauge = SharedActiveGauge.Tick(1);
+        return this with
+        {
+            VanguardGauge = gauge,
+            AdjutantGauge = gauge,
+            NextActiveSlot = slot,
+        };
+    }
 
     /// <summary>성 복귀: 게이지 0, 모략력 충전, 계략 예약 취소, 걸린 지속 상태 해제.</summary>
     public UnitCombatState ReturnToCastle() => this with
     {
         VanguardGauge = new ActiveGauge(),
         AdjutantGauge = new ActiveGauge(),
+        NextActiveSlot = ActiveCommanderSlot.Vanguard,
         Resource = Resource.Refill(),
         Reservation = null,
         Statuses = [],
@@ -86,23 +118,12 @@ public sealed record UnitCombatState(
         => this with { Reservation = StratagemReservation.Reserve(stratagem, targetId) };
 
     /// <summary>
-    /// 이 교전에서 발동할 액티브(선봉 우선, 준비된 것 1개)와 그 게이지를 소비한 새 상태.
+    /// 이 교전에서 발동할 액티브(선봉·부관 교대, 준비된 것 1개)와 공용 게이지를 소비한 새 상태.
     /// 없으면 (null, 그대로). 유형 분기는 호출자가 한다.
     /// </summary>
     public (ActiveSkill? Skill, UnitCombatState State) FiringActive()
     {
-        // Phase 14A 준비 단계: 책략형 액티브는 사용자가 확정 효과를 다시 정의하기 전까지
-        // 게이지를 소비하거나 "발동"으로 보고하지 않는다. 기존 저장/장수 배정은 보존한다.
-        if (VanguardActive is { Type: not ActiveType.Tactic } && VanguardGauge.IsReady)
-        {
-            return (VanguardActive, this with { VanguardGauge = VanguardGauge.Fire() });
-        }
-        if (AdjutantActive is { Type: not ActiveType.Tactic } && AdjutantGauge.IsReady)
-        {
-            return (AdjutantActive, this with { AdjutantGauge = AdjutantGauge.Fire() });
-        }
-
-        return (null, this);
+        return ConsumeScheduled(skill => skill.Type != ActiveType.Tactic);
     }
 
     /// <summary>
@@ -111,15 +132,7 @@ public sealed record UnitCombatState(
     /// </summary>
     public (ActiveSkill? Skill, UnitCombatState State) FiringDefenseActive()
     {
-        if (VanguardActive is { } v && VanguardGauge.IsReady)
-            return v.Type == ActiveType.Defense
-                ? (v, this with { VanguardGauge = VanguardGauge.Fire() })
-                : (null, this);
-        if (AdjutantActive is { } a && AdjutantGauge.IsReady)
-            return a.Type == ActiveType.Defense
-                ? (a, this with { AdjutantGauge = AdjutantGauge.Fire() })
-                : (null, this);
-        return (null, this);
+        return ConsumeScheduled(skill => skill.Type == ActiveType.Defense);
     }
 
     /// <summary>
@@ -129,33 +142,35 @@ public sealed record UnitCombatState(
     /// </summary>
     public (ActiveSkill? Skill, UnitCombatState State) FiringBuildingActive()
     {
-        if (VanguardActive is { } vanguard && VanguardGauge.IsReady)
-            return CanStrikeBuilding(vanguard)
-                ? (vanguard, this with { VanguardGauge = VanguardGauge.Fire() })
-                : (null, this);
-        if (AdjutantActive is { } adjutant && AdjutantGauge.IsReady)
-            return CanStrikeBuilding(adjutant)
-                ? (adjutant, this with { AdjutantGauge = AdjutantGauge.Fire() })
-                : (null, this);
-        return (null, this);
+        return ConsumeScheduled(CanStrikeBuilding);
     }
 
     private static bool CanStrikeBuilding(ActiveSkill skill)
         => skill.Type == ActiveType.Strike && skill.ExecutePercent == 0;
 
-    /// <summary>5일 충전된 책략형 액티브만 선봉 우선으로 소비한다. 유효 대상이 없을 때는 호출하지 않는다.</summary>
+    /// <summary>5일 충전된 다음 차례의 책략형 액티브를 소비한다. 유효 대상이 없을 때는 호출하지 않는다.</summary>
     public (ActiveSkill? Skill, UnitCombatState State) FiringTactic()
     {
-        if (VanguardActive is { Type: ActiveType.Tactic } && VanguardGauge.IsReady)
-        {
-            return (VanguardActive, this with { VanguardGauge = VanguardGauge.Fire() });
-        }
-        if (AdjutantActive is { Type: ActiveType.Tactic } && AdjutantGauge.IsReady)
-        {
-            return (AdjutantActive, this with { AdjutantGauge = AdjutantGauge.Fire() });
-        }
+        return ConsumeScheduled(skill => skill.Type == ActiveType.Tactic);
+    }
 
-        return (null, this);
+    private (ActiveSkill? Skill, UnitCombatState State) ConsumeScheduled(Func<ActiveSkill, bool> accepts)
+    {
+        var gauge = SharedActiveGauge;
+        var slot = ScheduledActiveSlot;
+        var skill = slot == ActiveCommanderSlot.Vanguard ? VanguardActive : AdjutantActive;
+        if (!gauge.IsReady || skill is null || !accepts(skill)) return (null, this);
+
+        var next = VanguardActive is not null && AdjutantActive is not null
+            ? slot == ActiveCommanderSlot.Vanguard ? ActiveCommanderSlot.Adjutant : ActiveCommanderSlot.Vanguard
+            : slot;
+        var reset = gauge.Fire();
+        return (skill, this with
+        {
+            VanguardGauge = reset,
+            AdjutantGauge = reset,
+            NextActiveSlot = next,
+        });
     }
 
     /// <summary>진행 중인 계략의 이 시점 발동 판정(예약 없으면 Pending).</summary>

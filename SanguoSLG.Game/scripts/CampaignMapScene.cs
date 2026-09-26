@@ -1166,8 +1166,10 @@ public sealed partial class CampaignMapScene : Node3D
             Row("보급범위", $"{FieldSupplyRadius}칸");
             Row("전투규칙", "공격 가능 · 스킬/적성 미적용 · 공방 최하");
         }
-        Row("선봉 액티브", ActiveSlotText(u.State.VanguardActive, u.State.VanguardGauge));
-        Row("부관 액티브", ActiveSlotText(u.State.AdjutantActive, u.State.AdjutantGauge));
+        Row("공용 스킬원", ActiveGaugeText(u.State.SharedActiveGauge));
+        Row("다음 발동", u.State.ScheduledActive is { } scheduled
+            ? $"{(u.State.ScheduledActiveSlot == ActiveCommanderSlot.Vanguard ? "선봉" : "부관")} · {scheduled.Name}"
+            : "없음");
         var activeStatuses = ActiveStatusLines(u.State);
         if (activeStatuses.Count > 0)
             Row("현재 상태", string.Join("\n", activeStatuses));
@@ -1195,20 +1197,16 @@ public sealed partial class CampaignMapScene : Node3D
             : $"{skill.Name} {gauge.ElapsedDays}/{ActiveGauge.ReadyDays}일";
     }
 
+    private static string ActiveGaugeText(ActiveGauge gauge)
+        => gauge.IsReady ? "발동 준비" : $"{gauge.ElapsedDays}/{ActiveGauge.ReadyDays}";
+
     private static (ActiveSkill? Skill, ActiveGauge Gauge) DisplayActiveGauge(UnitCombatState state)
-    {
-        if (state.VanguardActive is null) return (state.AdjutantActive, state.AdjutantGauge);
-        if (state.AdjutantActive is null) return (state.VanguardActive, state.VanguardGauge);
-        // 선봉이 발동해 초기화되고 준비된 부관이 남은 경우 부관 진행도를 우선 보여준다.
-        return state.AdjutantGauge.ElapsedDays > state.VanguardGauge.ElapsedDays
-            ? (state.AdjutantActive, state.AdjutantGauge)
-            : (state.VanguardActive, state.VanguardGauge);
-    }
+        => (state.ScheduledActive, state.SharedActiveGauge);
 
     /// <summary>
     /// 발동 정산 뒤의 게이지로 실제 발동 장수를 찾는다. 서로 다른 스킬이면 코드로 구분하고,
     /// 두 장수가 같은 스킬을 가진 경우에는 이번 정산에서 0으로 소비된 슬롯을 사용한다.
-    /// 선봉 다음 교전일에 부관이 발동해도 배너가 선봉 초상을 재사용하지 않게 하는 표현 계층 판정이다.
+    /// 선봉·부관이 교대로 발동할 때 배너가 실제 발동 장수의 초상을 고르는 표현 계층 판정이다.
     /// </summary>
     private static GeneralId? ResolveActiveGeneral(CombatUnit unit, ActiveSkill fired)
         => ResolveActiveGeneral(unit.VanguardId, unit.AdjutantId, unit.State, fired);
@@ -1221,10 +1219,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (adjutantMatches && !vanguardMatches) return adjutantId;
         if (vanguardMatches && !adjutantMatches) return vanguardId;
-        if (vanguardMatches && adjutantMatches
-            && state.AdjutantGauge.ElapsedDays == 0
-            && state.VanguardGauge.ElapsedDays > 0)
-            return adjutantId;
+        if (vanguardMatches && adjutantMatches)
+            return state.ScheduledActiveSlot == ActiveCommanderSlot.Vanguard ? adjutantId : vanguardId;
 
         return vanguardId ?? adjutantId;
     }
@@ -12439,7 +12435,7 @@ public sealed partial class CampaignMapScene : Node3D
         GetTree().Quit(passed ? 0 : 1);
     }
 
-    /// <summary>선봉 다음 교전일에 부관이 발동할 때 배너가 실제 발동 장수의 초상을 고르는 회귀 QA.</summary>
+    /// <summary>선봉·부관 교대 발동 시 배너가 실제 발동 장수의 초상을 고르는 회귀 QA.</summary>
     private void RunActiveCasterPortraitQa()
     {
         var skills = _activeSkills.Where(skill => skill.Type != ActiveType.Tactic).Take(2).ToList();
@@ -12455,21 +12451,10 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         var baseState = UnitCombatState.Create(60, vanguardSkill, adjutantSkill);
-        var afterVanguard = baseState with
-        {
-            VanguardGauge = new ActiveGauge(0),
-            AdjutantGauge = new ActiveGauge(ActiveGauge.ReadyDays + 1),
-        };
-        var afterAdjutant = baseState with
-        {
-            VanguardGauge = new ActiveGauge(1),
-            AdjutantGauge = new ActiveGauge(0),
-        };
+        var afterVanguard = baseState with { NextActiveSlot = ActiveCommanderSlot.Adjutant };
+        var afterAdjutant = baseState with { NextActiveSlot = ActiveCommanderSlot.Vanguard };
         var sameSkillAfterAdjutant = UnitCombatState.Create(60, vanguardSkill, vanguardSkill) with
-        {
-            VanguardGauge = new ActiveGauge(1),
-            AdjutantGauge = new ActiveGauge(0),
-        };
+        { NextActiveSlot = ActiveCommanderSlot.Vanguard };
 
         var resolvedVanguard = ResolveActiveGeneral(vanguardId, adjutantId, afterVanguard, vanguardSkill);
         var resolvedAdjutant = ResolveActiveGeneral(vanguardId, adjutantId, afterAdjutant, adjutantSkill);

@@ -631,18 +631,9 @@ public partial class ActiveEffectTestScene3D : Node3D
         RefreshSummary(null);
         var hasActivePresentation = turn.FiredActives.Count > 0;
         if (hasActivePresentation) _extendedActiveTurns++;
-        var ally = _units.FirstOrDefault(x => x.Id.Value == AllyId);
-        var chainAdjutant = hasActivePresentation
-            && turn.FiredActives.ContainsKey(new UnitId(AllyId))
-            && _batchAllyActiveFireCount == 1
-            && ally?.State.AdjutantActive is not null
-            // 첫 진행 뒤 주장=1칸·부관=0칸으로 한 칸 어긋난다. 현재 준비 완료뿐 아니라
-            // 바로 다음 전투 일차의 1칸 충전으로 확정 발동하는 경우도 0.2초 연계한다.
-            && (ally.State.AdjutantGauge.IsReady || ally.State.AdjutantGauge.Tick(1).IsReady);
-        if (chainAdjutant) _compressedAdjutantChains++;
         // 이펙트는 표현 전용이다. 불사처럼 1.7초 이상 재생되는 효과도 다음 공격일을
         // 기다리게 하지 않으며, 기존 공격 모션에 필요한 최소 시간만 사용한다.
-        var delay = chainAdjutant ? AdjutantChainDelaySeconds : NormalDayPresentationSeconds;
+        var delay = NormalDayPresentationSeconds;
         var timer = GetTree().CreateTimer(delay);
         timer.Timeout += () => RunPresentedDay(day + 1, generation);
     }
@@ -680,7 +671,10 @@ public partial class ActiveEffectTestScene3D : Node3D
         }
         if (turn.FiredActives.TryGetValue(new UnitId(AllyId), out var fired))
         {
-            var casterName = _batchAllyActiveFireCount == 0 ? "제갈량" : _adjutant.Name;
+            var allyAfterFire = _units.First(unit => unit.Id.Value == AllyId);
+            var casterName = allyAfterFire.State.NextActiveSlot == ActiveCommanderSlot.Adjutant
+                ? "제갈량"
+                : _adjutant.Name;
             _allyActiveFireCount++;
             _batchAllyActiveFireCount++;
             _allyActiveFireDay = day;
@@ -719,7 +713,7 @@ public partial class ActiveEffectTestScene3D : Node3D
                 continue;
             }
             _troopLabels[id].Text = unit.Pool.Active.ToString("N0");
-            if (_gauges.TryGetValue(id, out var gauge)) gauge.SetSkill(unit.State.VanguardActive, unit.State.VanguardGauge);
+            if (_gauges.TryGetValue(id, out var gauge)) gauge.SetSkill(unit.State.ScheduledActive, unit.State.SharedActiveGauge);
         }
     }
 
@@ -821,7 +815,7 @@ public partial class ActiveEffectTestScene3D : Node3D
         _troopLabels[unit.Id.Value] = troops;
         var gauge = new ActiveSkillGaugeView3D { Visible = false };
         token.AddChild(gauge);
-        gauge.SetSkill(unit.State.VanguardActive, unit.State.VanguardGauge);
+        gauge.SetSkill(unit.State.ScheduledActive, unit.State.SharedActiveGauge);
         _gauges[unit.Id.Value] = gauge;
     }
 
@@ -1468,13 +1462,14 @@ public partial class ActiveEffectTestScene3D : Node3D
         var expectedVanguard = SelectedSkill().Code;
         var expectedAdjutant = SelectedAdjutantSkill()?.Code;
         AdvanceSevenDays();
+        AdvanceSevenDays();
         var ally = _units.Single(x => x.Id.Value == AllyId);
         var passed = expectedAdjutant is not null
             && ally.AdjutantId == _adjutant.Id
             && ally.State.VanguardActive?.Code == expectedVanguard
             && ally.State.AdjutantActive?.Code == expectedAdjutant
             && _allyFiredSkillCodes.SequenceEqual(new[] { expectedVanguard, expectedAdjutant })
-            && _allyActiveFireCount == 2 && _round == 7;
+            && _allyActiveFireCount == 2 && _round == 14;
         GD.Print($"[activeeffecttestadjutantqa] passed={passed} adjutant={_adjutant.Name} vanguard={expectedVanguard} adjutantSkill={expectedAdjutant} fired={string.Join(",", _allyFiredSkillCodes)}");
         GetTree().Quit(passed ? 0 : 1);
     }
@@ -1487,13 +1482,17 @@ public partial class ActiveEffectTestScene3D : Node3D
         var timer = GetTree().CreateTimer(9.2);
         timer.Timeout += () =>
         {
-            var passed = !_presentationRunning && _round == 7 && _extendedActiveTurns == 2
-                && _allyFiredSkillCodes.SequenceEqual(new[] { expectedVanguard, expectedAdjutant })
-                && _allyActiveFireCount == 2 && _chargeView is null
-                && _compressedAdjutantChains == 1 && AdjutantChainDelaySeconds == 0.20
-                && NormalDayPresentationSeconds == 1.30;
-            GD.Print($"[activeeffecttestadjutantpresentqa] passed={passed} fired={string.Join(",", _allyFiredSkillCodes)} activeTurns={_extendedActiveTurns} chains={_compressedAdjutantChains} chainDelay={AdjutantChainDelaySeconds:F2}");
-            GetTree().Quit(passed ? 0 : 1);
+            BeginSevenDayPresentation();
+            var second = GetTree().CreateTimer(9.2);
+            second.Timeout += () =>
+            {
+                var passed = !_presentationRunning && _round == 14 && _extendedActiveTurns == 2
+                    && _allyFiredSkillCodes.SequenceEqual(new[] { expectedVanguard, expectedAdjutant })
+                    && _allyActiveFireCount == 2 && _chargeView is null
+                    && NormalDayPresentationSeconds == 1.30;
+                GD.Print($"[activeeffecttestadjutantpresentqa] passed={passed} fired={string.Join(",", _allyFiredSkillCodes)} activeTurns={_extendedActiveTurns}");
+                GetTree().Quit(passed ? 0 : 1);
+            };
         };
     }
 
@@ -1544,7 +1543,7 @@ public partial class ActiveEffectTestScene3D : Node3D
 
     private void RunSecondAdvanceLethalQa()
     {
-        // 1회차 종료 시 두 게이지가 1칸 남는 실제 재현 조건.
+        // 1회차 종료 시 공용 게이지가 1칸 남는 실제 재현 조건.
         AdvanceSevenDays();
         BeginAdvanceBatch();
         for (var day = 1; day <= 4; day++)
@@ -1590,8 +1589,8 @@ public partial class ActiveEffectTestScene3D : Node3D
         first.Timeout += () =>
         {
             var firstPassed = !_presentationRunning && _advanceCount == 1
-                && _compressedAdjutantChains == 1 && _batchAllyActiveFireCount == 2
-                && _allyFiredSkillCodes.TakeLast(2).SequenceEqual(new[] { "one_man_army", "peerless" });
+                && _batchAllyActiveFireCount == 1
+                && _allyFiredSkillCodes.TakeLast(1).SequenceEqual(new[] { "one_man_army" });
             if (!firstPassed)
             {
                 GD.Print($"[activeeffecttesttwopresentationqa] passed=False stage=first chains={_compressedAdjutantChains} batchFires={_batchAllyActiveFireCount}");
@@ -1603,11 +1602,11 @@ public partial class ActiveEffectTestScene3D : Node3D
             var second = GetTree().CreateTimer(9.1);
             second.Timeout += () =>
             {
-                var expected = new[] { "one_man_army", "peerless", "one_man_army", "peerless" };
+                var expected = new[] { "one_man_army", "peerless" };
                 var passed = !_presentationRunning && _advanceCount == 2
-                    && _compressedAdjutantChains == 2 && _batchAllyActiveFireCount == 2
-                    && _allyFiredSkillCodes.TakeLast(4).SequenceEqual(expected);
-                GD.Print($"[activeeffecttesttwopresentationqa] passed={passed} advances={_advanceCount} chains={_compressedAdjutantChains} batchFires={_batchAllyActiveFireCount} fired={string.Join(",", _allyFiredSkillCodes.TakeLast(4))}");
+                    && _batchAllyActiveFireCount == 1
+                    && _allyFiredSkillCodes.TakeLast(2).SequenceEqual(expected);
+                GD.Print($"[activeeffecttesttwopresentationqa] passed={passed} advances={_advanceCount} batchFires={_batchAllyActiveFireCount} fired={string.Join(",", _allyFiredSkillCodes.TakeLast(2))}");
                 GetTree().Quit(passed ? 0 : 1);
             };
         };
