@@ -179,6 +179,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     // 시설 배치(건설) — 반투명 고스트가 커서를 따라다니고, 평지·숲 유효 칸에서만 설치 컨펌이 뜬다.
     private Node3D _facilityLayer = null!;   // 완성 시설 + 공사중 모델을 담는 컨테이너(Redraw마다 재구성)
+    private Node3D _ruinLayer = null!;
     private bool _placing;
     private string _placeCode = "";
     private CityId _placeCity;
@@ -478,6 +479,8 @@ public sealed partial class CampaignMapScene : Node3D
             HeroUnlockStates = scenario.HeroUnlockList
                 .Select(h => new HeroUnlockState(h.General, HeroUnlockStatus.Locked))
                 .ToList(),
+            RuinDefinitions = scenario.RuinList,
+            RuinStates = scenario.RuinList.Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
         };
 
         _dbgLog = ProjectSettings.GlobalizePath("res://deploy-debug.log");
@@ -569,6 +572,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         _facilityLayer = new Node3D();
         AddChild(_facilityLayer);
+        _ruinLayer = new Node3D();
+        AddChild(_ruinLayer);
     }
 
     // 단색 아이콘 텍스처 생성(라디오 대체용) — (x,y)→색 함수로 채운다.
@@ -1056,6 +1061,13 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
+        var ruin = _state.Ruins.FirstOrDefault(r => r.Position == hex);
+        if (ruin is not null)
+        {
+            ShowRuinDetail(ruin);
+            return;
+        }
+
         // 빈 바닥 클릭 → 맵(지형) 정보. 같은 타일 재클릭 = 닫기.
         if (_terrainCard.Visible && _terrainHex == hex) { HidePanels(); return; }
         ShowMapInfo(hex);
@@ -1088,6 +1100,47 @@ public sealed partial class CampaignMapScene : Node3D
     private City? CityAtHex(HexCoord hex, System.Func<City, bool>? predicate = null) =>
         _state.Cities.FirstOrDefault(c => CastleFootprint.TilesFor(c).Contains(hex)
             && (predicate is null || predicate(c)));
+
+    private void ShowRuinDetail(RuinDefinition ruin)
+    {
+        var status = _state.RuinStatus.FirstOrDefault(r => r.RuinId == ruin.Id)
+            ?? new RuinState(ruin.Id, ruin.MaxDefenders);
+        var owner = status.Owner is { } oid
+            ? _state.Factions.FirstOrDefault(f => f.Id == oid)?.Name ?? $"세력 {oid.Value}" : "중립";
+        var registered = status.Registrations.Count == 0 ? "없음" : string.Join(", ", status.Registrations
+            .Select(id => _state.Factions.FirstOrDefault(f => f.Id == id)?.Name ?? $"세력 {id.Value}"));
+        var protection = status.IsProtected(_state.Day)
+            ? $"보호 중 · {status.ProtectedUntilDay!.Value - _state.Day}일 남음" : "점유·수비 가능";
+        ShowNotice(ruin.Name,
+            $"해금 병종: {TroopName(ruin.TroopCode)} ({(ruin.Naval ? "항구" : "도시")} 생산)\n" +
+            $"수비 병력: {status.Defenders:N0} / {ruin.MaxDefenders:N0} · 적성 A\n" +
+            "선제공격 없음 · 피격 시 거리 무시 반격 · 스킬 없음\n" +
+            $"점유: {owner} · {protection}\n등록 세력: {registered}");
+    }
+
+    private void RedrawRuins()
+    {
+        foreach (var child in _ruinLayer.GetChildren()) child.QueueFree();
+        var scene = GD.Load<PackedScene>("res://assets/models/ruin-common.glb");
+        foreach (var ruin in _state.Ruins)
+        {
+            var node = scene.Instantiate<Node3D>();
+            node.Name = $"Ruin_{ruin.Id}";
+            node.Position = _view.HexToWorld(ruin.Position) + new Vector3(0f, _view.TileTopY, 0f);
+            node.Scale = Vector3.One * 0.72f;
+            _ruinLayer.AddChild(node);
+            _fog.Register(node, ruin.Position);
+            var label = new Label3D
+            {
+                Text = ruin.Name, Font = _font, FontSize = 24,
+                Position = node.Position + new Vector3(0f, 1.15f, 0f),
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                Modulate = GoldBright, OutlineSize = 5,
+            };
+            _ruinLayer.AddChild(label);
+            _fog.Register(label, ruin.Position);
+        }
+    }
 
     // 시작 → (경유지들) → 목표를 구간별로 이어 금색 점 경로를 그린다.
     private void AddRouteDots(HexCoord start, IReadOnlyList<HexCoord>? waypoints, HexCoord target, List<MeshInstance3D> into, bool naval = false)
@@ -12222,6 +12275,7 @@ public sealed partial class CampaignMapScene : Node3D
         DrawSupplyZones();
         DrawDeployPaths();
         RedrawFacilities();
+        RedrawRuins();
         foreach (var child in _facilityLayer.GetChildren().OfType<Node3D>())
             _fog.Register(child, _view.WorldToHex(child.Position));
 

@@ -18,6 +18,8 @@ public class ScenarioLoaderTests
         Assert.NotEmpty(scenario.Cities);
         Assert.NotEmpty(scenario.Generals);
         Assert.NotEmpty(scenario.HeroUnlockList);
+        Assert.Equal(10, scenario.RuinList.Count);
+        Assert.Contains(scenario.RuinList, r => r.TroopCode == "turtleship" && r.Naval);
         Assert.True(scenario.Balance.MonthlyTaxPerCity > 0);
 
         // 참조 무결성: 모든 도시의 소유 세력이 실제 존재한다.
