@@ -525,6 +525,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptesttreasureinventoryqa")) CallDeferred(nameof(RunTreasureInventoryQa));
         if (args.Contains("--maptestgeneralresearchqa")) CallDeferred(nameof(RunGeneralResearchUiQa));
         if (args.Contains("--maptestsiegeplaybackqa")) CallDeferred(nameof(RunSiegePlaybackQa));
+        if (args.Contains("--maptestruinuiqa")) CallDeferred(nameof(RunRuinUiQa));
     }
 
     public override void _ExitTree()
@@ -1066,7 +1067,7 @@ public sealed partial class CampaignMapScene : Node3D
         var ruin = _state.Ruins.FirstOrDefault(r => r.Position == hex);
         if (ruin is not null)
         {
-            ShowRuinDetail(ruin);
+            ShowRuinInfo(ruin);
             return;
         }
 
@@ -1103,21 +1104,84 @@ public sealed partial class CampaignMapScene : Node3D
         _state.Cities.FirstOrDefault(c => CastleFootprint.TilesFor(c).Contains(hex)
             && (predicate is null || predicate(c)));
 
-    private void ShowRuinDetail(RuinDefinition ruin)
+    private void ShowRuinInfo(RuinDefinition ruin)
     {
+        if (!_visibleTiles.Contains(ruin.Position))
+        {
+            HidePanels();
+            ShowNotice("시야 밖", "아군 성·부대를 가까이 이동시키면 유적 정보를 확인할 수 있습니다.");
+            return;
+        }
+        _selected = null;
+        _cmdMenu.Visible = false;
+        _unitMenu.Visible = false;
+        _selectedUnitId = -1;
+        _infoCard.Visible = false;
+        ClearPathMarkers();
+        ClearSupplyZoneMarkers();
+
         var status = _state.RuinStatus.FirstOrDefault(r => r.RuinId == ruin.Id)
             ?? new RuinState(ruin.Id, ruin.MaxDefenders);
         var owner = status.Owner is { } oid
             ? _state.Factions.FirstOrDefault(f => f.Id == oid)?.Name ?? $"세력 {oid.Value}" : "중립";
-        var registered = status.Registrations.Count == 0 ? "없음" : string.Join(", ", status.Registrations
-            .Select(id => _state.Factions.FirstOrDefault(f => f.Id == id)?.Name ?? $"세력 {id.Value}"));
         var protection = status.IsProtected(_state.Day)
             ? $"보호 중 · {status.ProtectedUntilDay!.Value - _state.Day}일 남음" : "점유·수비 가능";
-        ShowNotice(ruin.Name,
-            $"해금 병종: {TroopName(ruin.TroopCode)} ({(ruin.Naval ? "항구" : "도시")} 생산)\n" +
-            $"수비 병력: {status.Defenders:N0} / {ruin.MaxDefenders:N0} · 적성 A\n" +
-            "선제공격 없음 · 피격 시 거리 무시 반격 · 스킬 없음\n" +
-            $"점유: {owner} · {protection}\n등록 세력: {registered}");
+
+        foreach (var child in _terrainHolder.GetChildren()) child.QueueFree();
+        _terrainHolder.Rotation = Vector3.Zero;
+        var preview = GD.Load<PackedScene>("res://assets/models/ruin-common.glb").Instantiate<Node3D>();
+        preview.Position = Vector3.Zero;
+        _terrainHolder.AddChild(preview);
+        FrameTerrainCamera(preview);
+        _terrainName.Text = ruin.Name;
+
+        Clear(_terrainInfo);
+        void Row(string key, string value, Color? valueColor = null)
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            var keyLabel = MakeLabel(key, 11, Parchment);
+            keyLabel.CustomMinimumSize = new Vector2(58, 0);
+            row.AddChild(keyLabel);
+            var valueLabel = MakeLabel(value, 11, valueColor ?? GoldBright);
+            valueLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            valueLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            row.AddChild(valueLabel);
+            _terrainInfo.AddChild(row);
+        }
+
+        Row("좌표", $"({ruin.Position.Q}, {ruin.Position.R})");
+        Row("해금 병종", $"{TroopName(ruin.TroopCode)} · {(ruin.Naval ? "항구" : "도시")} 생산");
+        Row("수비 병력", $"{status.Defenders:N0} / {ruin.MaxDefenders:N0} · 적성 A");
+        Row("현재 점유", owner);
+        Row("상태", protection, status.IsProtected(_state.Day) ? new Color(0.98f, 0.78f, 0.42f) : GoldBright);
+        Row("전투 규칙", "선제공격 없음 · 피격 시 거리 무시 반격 · 스킬 없음");
+        var playerRegistered = status.Registrations.Contains(Player);
+        Row("우리 세력", playerRegistered ? "등록 완료 · 생산 가능" : "미등록 · 점령 필요",
+            playerRegistered ? new Color(0.45f, 0.85f, 0.52f) : AccentFill);
+
+        var history = MakeButton("점령현황", accent: true);
+        history.CustomMinimumSize = new Vector2(0, 32);
+        history.Pressed += () => ShowRuinOccupancyHistory(ruin, status);
+        _terrainInfo.AddChild(history);
+
+        _terrainHex = ruin.Position;
+        PlaceTerrainCard(ruin.Position);
+        _terrainCard.Visible = true;
+        MoveRing(ruin.Position);
+    }
+
+    private void ShowRuinOccupancyHistory(RuinDefinition ruin, RuinState status)
+    {
+        var lines = status.Registrations.Select((id, index) =>
+        {
+            var faction = _state.Factions.FirstOrDefault(f => f.Id == id)?.Name ?? $"세력 {id.Value}";
+            var current = status.Owner == id ? " · 현재 점유" : "";
+            return $"{index + 1}. {faction}{current}";
+        }).ToList();
+        ShowNotice($"{ruin.Name} 점령현황", lines.Count == 0
+            ? "아직 이 유적을 점령한 세력이 없습니다."
+            : string.Join("\n", lines));
     }
 
     private void RedrawRuins()
@@ -12437,6 +12501,31 @@ public sealed partial class CampaignMapScene : Node3D
 
     /// <summary>토큰의 자식 게이지가 토큰과 함께 해제된 직후 사전의 폐기 참조를 안전하게 정리하는 회귀 QA.</summary>
     private static int SiegePlaybackRemaining(TroopPool postSiegePool) => postSiegePool.Active;
+
+    private async void RunRuinUiQa()
+    {
+        var ruin = _state.Ruins.FirstOrDefault();
+        if (ruin is null)
+        {
+            GD.PushError("[ruin-ui-qa] ruin sample missing");
+            GetTree().Quit(1);
+            return;
+        }
+        _visibleTiles = _visibleTiles.Append(ruin.Position).ToHashSet();
+        ShowRuinInfo(ruin);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var history = _terrainInfo.GetChildren().OfType<Button>().FirstOrDefault(b => b.Text == "점령현황");
+        var cardOk = _terrainCard.Visible && _terrainHex == ruin.Position
+            && _terrainName.Text == ruin.Name && history is not null;
+        history?.EmitSignal(Button.SignalName.Pressed);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var historyOk = _confirmLayer is not null;
+        var ok = cardOk && historyOk;
+        GD.Print($"[ruin-ui-qa] card={cardOk} history={historyOk} ok={ok}");
+        CloseAnyModalOrPanel();
+        GetTree().Quit(ok ? 0 : 1);
+    }
 
     private void RunSiegePlaybackQa()
     {
