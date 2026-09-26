@@ -74,7 +74,8 @@ public sealed class AdvanceOrchestrator
             .Select(u => u with { State = u.State.ReturnToCastle() })
             .ToList();
 
-        // 2) 위치만 갱신(임시 이동 스탯은 버림) + 경과일만큼 발동 상태 진행(야전 가정).
+        // 2) 위치만 갱신(임시 이동 스탯은 버림) + 이동 경과만 반영한다.
+        // 액티브 게이지는 이동일이 아니라 아래 3단계에서 실제 교전 참가자만 1칸 충전한다.
         var state = new Dictionary<UnitId, CombatUnit>();
         foreach (var u in units.Where(u => !enteredIds.Contains(u.Id)))
         {
@@ -95,7 +96,7 @@ public sealed class AdvanceOrchestrator
                     Target = field.Target,
                     Waypoints = field.Waypoints,
                 },
-                State = u.State.AdvanceField(move.Days),
+                State = u.State.AdvanceTravel(move.Days),
             };
         }
 
@@ -153,6 +154,21 @@ public sealed class AdvanceOrchestrator
             {
                 starvation[id] = lost;
             }
+        }
+
+        // 2.9) 이동 종료 위치에서 실제 교전이 성립할 부대를 먼저 찾고, 공격자와 피격자만 1칸 충전한다.
+        // 이동에 7일을 썼더라도 교전 1회는 1칸이며, 적을 만나지 않은 이동은 전혀 충전하지 않는다.
+        var chargeEngagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList())
+            .Where(e => state[e.Attacker].CanInitiateCombat
+                && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker])))
+            .ToList();
+        var combatChargeParticipants = chargeEngagements
+            .SelectMany(e => e.Targets.Append(e.Attacker))
+            .ToHashSet();
+        foreach (var id in combatChargeParticipants)
+        {
+            var unit = state[id];
+            state[id] = unit with { State = unit.State.AdvanceCombat() };
         }
 
         // 3) 계략 발동 — 예약이 발동일에 도달하면 대상 유효성으로 발동/캔슬. 즉발·지속 피해, 디버프,

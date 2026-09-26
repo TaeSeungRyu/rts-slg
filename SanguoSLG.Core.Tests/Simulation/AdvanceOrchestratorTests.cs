@@ -110,6 +110,40 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 액티브게이지는_이동일이_아니라_실제교전마다_한칸만_충전된다()
+    {
+        var skill = A["iron_wall"];
+        var mover = Sword(1, 1, new HexCoord(0, 0), UnitMode.March,
+            UnitCombatState.Create(70, skill)) with
+        {
+            Field = Sword(1, 1, new HexCoord(0, 0)).Field with
+            {
+                Mode = UnitMode.March,
+                Target = new HexCoord(4, 0),
+            },
+        };
+
+        var moved = MakeOrchestrator().Run([mover], maxDays: 5).Units.Single();
+        Assert.Equal(0, moved.State.VanguardGauge.ElapsedDays);
+
+        var ally = Sword(1, 1, new HexCoord(0, 0), UnitMode.Advance, UnitCombatState.Create(70, skill));
+        var enemy = Sword(2, 2, new HexCoord(1, 0), UnitMode.Advance);
+        IReadOnlyList<CombatUnit> units = [ally, enemy];
+        for (var exchange = 1; exchange <= 5; exchange++)
+        {
+            var turn = MakeOrchestrator().Run(units, maxDays: 7);
+            Assert.NotNull(turn.Combat);
+            Assert.Empty(turn.FiredActives);
+            Assert.Equal(exchange, turn.Units.Single(u => u.Id.Value == 1).State.VanguardGauge.ElapsedDays);
+            units = turn.Units;
+        }
+
+        var sixth = MakeOrchestrator().Run(units, maxDays: 7);
+        Assert.Equal("iron_wall", sixth.FiredActives[new UnitId(1)].Code);
+        Assert.Equal(0, sixth.Units.Single(u => u.Id.Value == 1).State.VanguardGauge.ElapsedDays);
+    }
+
+    [Fact]
     public void 집단군은_액티브가_준비되어도_발동하지_않는다()
     {
         var ready = UnitCombatState.Create(80, A["peerless"]).AdvanceField(6);

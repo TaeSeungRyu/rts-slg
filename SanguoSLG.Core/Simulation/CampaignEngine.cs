@@ -190,7 +190,8 @@ public sealed class CampaignEngine
             if (_siege is not null)
             {
                 var siegeState = work;
-                var activeChargeDays = System.Math.Max(1, turn.Movement.Days);
+                // 수성 액티브도 이동 경과일이 아니라 실제 공성 교환 1회당 1칸 충전한다.
+                const int activeChargeDays = 1;
                 var result = _siege.Resolve(armies, siegeState.Cities, siegeState.Garrisons, CounterAptitude, DefenseBonus, siegeState.CityWounded);
 
                 if (result.FiredActives.Count > 0)

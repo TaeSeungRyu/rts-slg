@@ -35,6 +35,19 @@ public sealed record UnitCombatState(
         Reservation = Reservation?.Tick(days),
     };
 
+    /// <summary>이동 경과: 도시/부대 계략 예약만 진행하고 액티브 게이지는 충전하지 않는다.</summary>
+    public UnitCombatState AdvanceTravel(int days) => this with
+    {
+        Reservation = Reservation?.Tick(days),
+    };
+
+    /// <summary>실제 교전 참여: 공격 또는 피격에 참여한 진행마다 액티브 게이지를 1칸 충전한다.</summary>
+    public UnitCombatState AdvanceCombat() => this with
+    {
+        VanguardGauge = VanguardGauge.Tick(1),
+        AdjutantGauge = AdjutantGauge.Tick(1),
+    };
+
     /// <summary>성 복귀: 게이지 0, 모략력 충전, 계략 예약 취소, 걸린 지속 상태 해제.</summary>
     public UnitCombatState ReturnToCastle() => this with
     {

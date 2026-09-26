@@ -100,13 +100,11 @@ public sealed class CampaignSiege
             foreach (var besieger in besiegers)
             {
                 var current = byUnit[besieger.Id];
-                var (active, nextState) = current.State.FiringBuildingActive();
+                var chargedState = current.State.AdvanceCombat();
+                var (active, nextState) = chargedState.FiringBuildingActive();
                 activeByUnit[current.Id] = active;
-                if (active is not null)
-                {
-                    byUnit[current.Id] = current with { State = nextState };
-                    firedActives[current.Id] = active;
-                }
+                byUnit[current.Id] = current with { State = nextState };
+                if (active is not null) firedActives[current.Id] = active;
             }
             var attackers = besiegers.Select(u => BuildAttacker(byUnit[u.Id], city, activeByUnit[u.Id])).ToList();
             var outcome = _resolver.ResolveSiege(attackers, castle);
