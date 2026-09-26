@@ -2284,6 +2284,8 @@ UI:
 
 ### 유적 UI
 
+공용 월드맵 에셋은 `SanguoSLG.Game/assets/models/ruin-common.glb`를 사용한다. 병종별 유적은 동일한 모델을 재사용하고, 유적 이름·해금 병종 카드·표식만 데이터와 UI에서 구분한다. 재생성 원본은 `tools/blender/make_ruin_common.py`에 둔다.
+
 유적 타일을 클릭하면 아래 정보를 하나의 상세 모달에 표시한다.
 
 - 유적 이름과 해금 병종 카드
