@@ -4886,6 +4886,10 @@ public sealed partial class CampaignMapScene : Node3D
         {
             AddSectionDivider(box, "GeneralResearchOfficerDivider");
         }
+        else if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
+        {
+            AddSectionDivider(box, "DoctrineResearchOfficerDivider");
+        }
         var officerSectionTitle = MakeLabel("수행 장수", 19, GoldBright);
         officerSectionTitle.Name = "CommandOfficerSectionTitle";
         box.AddChild(officerSectionTitle);

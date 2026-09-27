@@ -103,6 +103,8 @@ public sealed partial class CampaignMapScene
         var fundingPanel = _modalLayer?.FindChild("ResearchFundingPanel", true, false) as PanelContainer;
         var fundingTitle = _modalLayer?.FindChild("ResearchFundingTitle", true, false) as Label;
         var fundingDivider = _modalLayer?.FindChild("DoctrineFundingDivider", true, false) as VBoxContainer;
+        var officerDivider = _modalLayer?.FindChild("DoctrineResearchOfficerDivider", true, false) as VBoxContainer;
+        var officerTitle = _modalLayer?.FindChild("CommandOfficerSectionTitle", true, false) as Label;
         var doctrineDetailPlacement = detailPanel?.HasMeta("doctrine_research_detail") == true
             && fundingPanel is not null
             && detailPanel.GetGlobalRect().End.Y <= fundingPanel.GetGlobalRect().Position.Y + 1f;
@@ -111,6 +113,10 @@ public sealed partial class CampaignMapScene
             && fundingDivider.GetGlobalRect().Position.Y >= detailPanel.GetGlobalRect().End.Y - 1f
             && fundingDivider.GetGlobalRect().End.Y <= fundingTitle.GetGlobalRect().Position.Y + 1f
             && fundingDivider.CustomMinimumSize.Y <= fundingDivider.GetCombinedMinimumSize().Y;
+        var officerDividerPlacement = fundingPanel is not null && officerTitle is not null
+            && officerDivider?.HasMeta("section_divider") == true
+            && officerDivider.GetGlobalRect().Position.Y >= fundingPanel.GetGlobalRect().End.Y - 1f
+            && officerDivider.GetGlobalRect().End.Y <= officerTitle.GetGlobalRect().Position.Y + 1f;
         var specialResearchUsesStars = doctrineOptions
             .Where(option => option.Name is "통솔 병력" or "집단군")
             .All(option => option.Detail.Contains('★') || option.Detail.Contains('☆'))
@@ -129,8 +135,9 @@ public sealed partial class CampaignMapScene
                 .All(option => option.Detail.Count(c => c == '★') == _cb.ArmyGroupResearchMaxLevel);
         var passed = thumbnailTextures && withinLimit && _optionCards.Count >= 7
             && doctrineDetailPlacement && fundingDividerPlacement
+            && officerDividerPlacement
             && specialResearchUsesStars && exactStarRules && specialStarCounts;
-        GD.Print($"[doctrine-performance-qa] passed={passed} elapsedMs={watch.ElapsedMilliseconds}/750 cards={_optionCards.Count} textures={_unitCardTextures.Count} thumbnails={thumbnailTextures} detailAboveFunding={doctrineDetailPlacement} fundingDivider={fundingDividerPlacement} specialStars={specialResearchUsesStars} exactStars={exactStarRules} specialCounts={specialStarCounts}");
+        GD.Print($"[doctrine-performance-qa] passed={passed} elapsedMs={watch.ElapsedMilliseconds}/750 cards={_optionCards.Count} textures={_unitCardTextures.Count} thumbnails={thumbnailTextures} detailAboveFunding={doctrineDetailPlacement} fundingDivider={fundingDividerPlacement} officerDivider={officerDividerPlacement} specialStars={specialResearchUsesStars} exactStars={exactStarRules} specialCounts={specialStarCounts}");
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }
