@@ -39,6 +39,14 @@ public sealed partial class CampaignMapScene : Node3D
         "오늘의 결단이 내일의 승세가 될 것입니다.",
         "명만 내려 주십시오.",
     };
+    private static readonly string[] UnitReturnOfficerLineTemplates =
+    {
+        "{0}성으로 복귀하겠습니다!",
+        "부대를 수습하여 {0}성으로 돌아가겠습니다!",
+        "즉시 {0}성으로 귀환하겠습니다!",
+        "명에 따라 {0}성으로 복귀하겠습니다!",
+        "대오를 정비해 {0}성으로 돌아가겠습니다!",
+    };
 
     private Font _font = null!;
     private readonly System.Random _confirmRandom = new();
@@ -536,6 +544,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestruinprotectionqa")) CallDeferred(nameof(RunRuinProtectionQa));
         if (args.Contains("--maptestruintoastqa")) CallDeferred(nameof(RunRuinToastQa));
         if (args.Contains("--maptestruinburstqa")) CallDeferred(nameof(RunRuinBurstQa));
+        if (args.Contains("--maptestunitreturnconfirmqa")) CallDeferred(nameof(RunUnitReturnConfirmQa));
     }
 
     public override void _ExitTree()
@@ -3789,6 +3798,35 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
+        var leader = unit.VanguardId is { } vanguardId
+            ? _state.Generals.FirstOrDefault(g => g.Id == vanguardId)
+            : null;
+        var message = $"{leader?.Name ?? "부대"} 부대를 {city.Name}(으)로 복귀시킵니다.\n복귀 명령을 내리시겠습니까?";
+        var officerLine = UnitReturnOfficerLine(city.Name);
+        if (leader is not null)
+        {
+            ShowOfficerConfirm("복귀 확인", message, leader.Id,
+                () => ApplyUnitReturn(uid, city.Id), officerLine);
+        }
+        else
+        {
+            ShowConfirm("복귀 확인", message, () => ApplyUnitReturn(uid, city.Id));
+        }
+    }
+
+    private string UnitReturnOfficerLine(string cityName)
+        => $"“{string.Format(UnitReturnOfficerLineTemplates[_confirmRandom.Next(UnitReturnOfficerLineTemplates.Length)], cityName)}”";
+
+    private void ApplyUnitReturn(int uid, CityId cityId)
+    {
+        var city = _state.Cities.FirstOrDefault(c => c.Id == cityId && c.Owner == Player);
+        var unit = _state.Armies.FirstOrDefault(a => a.Id.Value == uid && a.Field.Owner == Player);
+        if (city is null || unit is null)
+        {
+            ShowNotice("명령 실패", "복귀할 부대 또는 아군 성을 찾을 수 없습니다.");
+            return;
+        }
+
         var result = _unitCommander.ReturnToCity(_state, Player, unit.Id, city.Id);
         if (!result.Ok)
         {
@@ -3799,9 +3837,11 @@ public sealed partial class CampaignMapScene : Node3D
         _state = result.State;
         Dbg($"UI unit-return u{uid} city={city.Id.Value}");
         _log.Text = $"부대가 {city.Name}(으)로 복귀합니다.";
+        _selectedUnitId = -1;
+        _unitMenu.Visible = false;
+        ClearPathMarkers();
+        ClearSupplyZoneMarkers();
         Redraw(_log.Text);
-        var changed = _state.Armies.FirstOrDefault(a => a.Id.Value == uid);
-        if (changed is not null) { OpenUnitMenu(changed); }
     }
 
     // 재지정 확정 — 적 성이면 공격모드로 전환, 자기 성이면 복귀(입성은 이동 규칙이 처리).
@@ -12721,6 +12761,42 @@ public sealed partial class CampaignMapScene : Node3D
         var ok = effect is Node3D && burst is not null && noWorldAnchor;
         GD.Print($"[ruin-burst-qa] onAttacker={effect is not null} burst={burst is not null} noWorldAnchor={noWorldAnchor} ok={ok}");
         GetTree().Quit(ok ? 0 : 1);
+    }
+
+    private async void RunUnitReturnConfirmQa()
+    {
+        var general = _state.Generals.First();
+        var city = _state.Cities.First(c => c.Owner == Player);
+        var linesOk = UnitReturnOfficerLineTemplates.Length == 5
+            && UnitReturnOfficerLineTemplates
+                .Select(template => string.Format(template, city.Name))
+                .All(line => line.Contains(city.Name, System.StringComparison.Ordinal)
+                    && (line.Contains("복귀", System.StringComparison.Ordinal)
+                        || line.Contains("귀환", System.StringComparison.Ordinal)
+                        || line.Contains("돌아가", System.StringComparison.Ordinal)));
+        var accepted = false;
+        _unitMenu.Visible = true;
+        ShowOfficerConfirm("복귀 확인", $"{general.Name} 부대를 {city.Name}(으)로 복귀시킵니다.", general.Id,
+            () =>
+            {
+                accepted = true;
+                _unitMenu.Visible = false;
+            }, $"“{string.Format(UnitReturnOfficerLineTemplates[0], city.Name)}”");
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        var labels = _confirmLayer?.FindChildren("*", "Label", true, false).OfType<Label>().ToList() ?? [];
+        var hasReturnLine = labels.Any(label => label.Text.Contains($"{city.Name}성으로 복귀하겠습니다!", System.StringComparison.Ordinal));
+        var hasPortrait = _confirmLayer?.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>()
+            .Any(texture => texture.Texture is not null) == true;
+        var confirm = _confirmLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+            .FirstOrDefault(button => button.Text == "확인");
+        confirm?.EmitSignal(Button.SignalName.Pressed);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        var passed = linesOk && hasReturnLine && hasPortrait && accepted && !_unitMenu.Visible && _confirmLayer is null;
+        GD.Print($"[unit-return-confirm-qa] lines={linesOk} text={hasReturnLine} portrait={hasPortrait} accepted={accepted} menuClosed={!_unitMenu.Visible} modalClosed={_confirmLayer is null} passed={passed}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     private void RunSiegePlaybackQa()
