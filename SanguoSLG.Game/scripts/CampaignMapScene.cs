@@ -10119,7 +10119,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var access = FactionTroopUnlock.Check(_state, city.Owner, t.Code);
                 var detail = access.Allowed
                     ? $"{ClassName(t.Class)} · 100명당 {costPer100}금\n7일 기본 비용 {tickCost}금"
-                    : access.Reason;
+                    : access.Reason.Replace(" · 현재", "\n현재", System.StringComparison.Ordinal);
                 list.Add((t.Name, UnitCard(t.Code, t.Class), detail));
             }
 

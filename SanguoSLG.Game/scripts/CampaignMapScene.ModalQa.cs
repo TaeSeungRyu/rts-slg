@@ -70,6 +70,18 @@ public sealed partial class CampaignMapScene
         results.Add($"일반연구:휠격리:{wheelIsolated}");
         CloseModal();
 
+        var recruitmentIndex = System.Array.FindIndex(Cmds,
+            command => command.Kind == SanguoSLG.Core.Domain.CommandKind.AppointRecruitmentOfficer);
+        var recruitmentOptions = OptionList(Cmds[recruitmentIndex], city);
+        var lockedSiegeDetails = recruitmentOptions
+            .Where(option => option.Name is "투석기" or "공성탑")
+            .Select(option => option.Detail)
+            .ToList();
+        var lockedSiegeLineBreak = lockedSiegeDetails.Count == 2
+            && lockedSiegeDetails.All(detail => detail.Contains("\n현재 Lv.", System.StringComparison.Ordinal));
+        passed &= lockedSiegeLineBreak;
+        results.Add($"병력담당:공성잠금개행:{lockedSiegeLineBreak}");
+
         GD.Print($"[officer-table-qa] passed={passed} results={string.Join('|', results)}");
         GetTree().Quit(passed ? 0 : 1);
     }
