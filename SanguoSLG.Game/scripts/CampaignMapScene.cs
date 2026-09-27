@@ -10759,7 +10759,9 @@ public sealed partial class CampaignMapScene : Node3D
             var extraSecurity = r == 1 ? 0 : r;
             var detail = r == 1 ? "기본 생산\n치안 추가 부담 없음" : $"기본×{r}\n비용×{r} · 치안 추가 -{extraSecurity}";
             var card = OptionCard(($"{r}배", Icon(Sym.People), detail));
-            card.CustomMinimumSize = new Vector2(168, 126);
+            card.SetMeta("auto_recruit_rate_card", true);
+            card.CustomMinimumSize = new Vector2(168, 138);
+            card.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
             card.GuiInput += e =>
             {
                 if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })

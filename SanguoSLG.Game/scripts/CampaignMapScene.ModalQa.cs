@@ -92,8 +92,13 @@ public sealed partial class CampaignMapScene
         var framedTroopArt = troopCards.All(card => card.FindChildren("*", "PanelContainer", true, false)
             .OfType<PanelContainer>().Any(frame => frame.GetMeta("rounded_option_art").AsBool()
                 && frame.GetMeta("option_art_size").AsInt32() == 54));
-        passed &= uniformTroopCards && framedTroopArt;
-        results.Add($"병력담당:동일카드:{uniformTroopCards}:둥근사진{framedTroopArt}:{troopCards.FirstOrDefault()?.Size.ToString() ?? "-"}");
+        var rateCards = _autoRecruitRateCards.ToList();
+        var uniformRateCards = rateCards.Count == 3
+            && rateCards.All(card => card.GetMeta("auto_recruit_rate_card").AsBool()
+                && card.CustomMinimumSize == new Vector2(168, 138))
+            && rateCards.Select(card => card.Size).Distinct().Count() == 1;
+        passed &= uniformTroopCards && framedTroopArt && uniformRateCards;
+        results.Add($"병력담당:동일카드:{uniformTroopCards}:둥근사진{framedTroopArt}:생산비율{uniformRateCards}:{troopCards.FirstOrDefault()?.Size.ToString() ?? "-"}/{rateCards.FirstOrDefault()?.Size.ToString() ?? "-"}");
         CloseModal();
 
         GD.Print($"[officer-table-qa] passed={passed} results={string.Join('|', results)}");
