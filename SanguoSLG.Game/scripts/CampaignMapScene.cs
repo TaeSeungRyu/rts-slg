@@ -558,6 +558,7 @@ public sealed partial class CampaignMapScene : Node3D
         _emblems.Clear();
         _aptitudeCardTextures.Clear();
         _unitCardTextures.Clear();
+        _roundedOptionTextures.Clear();
         _portraits.Clear();
         _circularPortraits.Clear();
         _rosterPortraits.Clear();
@@ -10564,6 +10565,9 @@ public sealed partial class CampaignMapScene : Node3D
         var starDetail = o.Detail.Contains("[color=", System.StringComparison.Ordinal);
         var generalResearchCard = _cmdIndex >= 0 && _cmdIndex < Cmds.Length
             && Cmds[_cmdIndex].Kind == CommandKind.Research && Cmds[_cmdIndex].Param == "general";
+        var illustratedCard = _cmdIndex >= 0 && _cmdIndex < Cmds.Length
+            && (Cmds[_cmdIndex].Kind is CommandKind.AppointRecruitmentOfficer or CommandKind.SelectMajorTroop
+                || Cmds[_cmdIndex].Kind == CommandKind.Research && Cmds[_cmdIndex].Param is "troop" or "general");
         var card = new PanelContainer
         {
             CustomMinimumSize = new Vector2(starDetail || generalResearchCard ? 186 : 148, o.Detail.Contains('\n') ? 138 : 121),
@@ -10576,7 +10580,7 @@ public sealed partial class CampaignMapScene : Node3D
         var v = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         v.AddThemeConstantOverride("separation", 4);
         card.AddChild(v);
-        v.AddChild(FixedIcon(o.Icon, 49));
+        v.AddChild(illustratedCard ? FramedOptionIcon(o.Icon) : FixedIcon(o.Icon, 49));
         var name = MakeLabel(o.Name, 19, GoldBright);
         name.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(name);
@@ -10611,6 +10615,51 @@ public sealed partial class CampaignMapScene : Node3D
             }
         };
         return card;
+    }
+
+    private readonly Dictionary<Texture2D, ImageTexture> _roundedOptionTextures = new();
+
+    private Control FramedOptionIcon(Texture2D icon)
+    {
+        const int imageSize = 54; // 기존 49px 대비 약 10% 확대
+        var frame = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(60, 60),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        frame.SetMeta("rounded_option_art", true);
+        frame.SetMeta("option_art_size", imageSize);
+        frame.AddThemeStyleboxOverride("panel", Frame(new Color(0.045f, 0.038f, 0.032f, 0.96f), new Color(Gold, 0.82f), 1, 9, 3));
+        frame.AddChild(FixedIcon(RoundedOptionTexture(icon, imageSize), imageSize));
+        return frame;
+    }
+
+    private ImageTexture RoundedOptionTexture(Texture2D icon, int size)
+    {
+        if (_roundedOptionTextures.TryGetValue(icon, out var cached)) return cached;
+        var source = icon.GetImage();
+        source.Resize(size, size, Image.Interpolation.Lanczos);
+        var output = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
+        const float radius = 7f;
+        for (var y = 0; y < size; y++)
+        {
+            for (var x = 0; x < size; x++)
+            {
+                var nearestX = Mathf.Clamp(x + 0.5f, radius, size - radius);
+                var nearestY = Mathf.Clamp(y + 0.5f, radius, size - radius);
+                var dx = x + 0.5f - nearestX;
+                var dy = y + 0.5f - nearestY;
+                var color = source.GetPixel(x, y);
+                var distance = Mathf.Sqrt(dx * dx + dy * dy);
+                color.A *= Mathf.Clamp(radius + 0.75f - distance, 0f, 1f);
+                output.SetPixel(x, y, color);
+            }
+        }
+
+        var texture = ImageTexture.CreateFromImage(output);
+        _roundedOptionTextures[icon] = texture;
+        return texture;
     }
 
     private void PickOption(int idx, (string Name, ImageTexture Icon, string Detail) o)
@@ -13514,12 +13563,15 @@ public sealed partial class CampaignMapScene : Node3D
             option.Detail.Count(c => c == '★') == GeneralResearchRules.MaxLevel
             && option.Detail.Contains("#777777", System.StringComparison.Ordinal)
             && !option.Detail.Contains("Lv.", System.StringComparison.Ordinal));
+        var framedGeneralResearchArt = _optionCards.All(card => card.FindChildren("*", "PanelContainer", true, false)
+            .OfType<PanelContainer>().Any(frame => frame.GetMeta("rounded_option_art").AsBool()
+                && frame.GetMeta("option_art_size").AsInt32() == 54));
         var viewportSize = GetViewport().GetVisibleRect().Size;
         var mainPanel = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
             .OrderByDescending(p => p.Size.X * p.Size.Y).FirstOrDefault();
         var layoutOk = mainPanel is not null
             && mainPanel.Size.X <= viewportSize.X - 16f && mainPanel.Size.Y <= viewportSize.Y - 16f
-            && _optionCards.All(c => c.GetCombinedMinimumSize().X <= 190f && c.GetCombinedMinimumSize().Y <= 156f);
+            && _optionCards.All(c => c.GetCombinedMinimumSize().X <= 190f && c.GetCombinedMinimumSize().Y <= 164f);
         var maxCardSize = _optionCards.Aggregate(Vector2.Zero, (max, card) => new Vector2(
             Mathf.Max(max.X, card.GetCombinedMinimumSize().X), Mathf.Max(max.Y, card.GetCombinedMinimumSize().Y)));
         var fundingPanel = _modalLayer?.FindChild("ResearchFundingPanel", true, false) as PanelContainer;
@@ -13561,8 +13613,9 @@ public sealed partial class CampaignMapScene : Node3D
             && fundingDividerOk
             && officerDividerOk
             && generalResearchUsesStars
+            && framedGeneralResearchArt
             && GeneralResearchRules.Definitions.All(d => names.Contains(d.Name));
-        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 detail={detailPlacementOk} fundingDivider={fundingDividerOk} officerDivider={officerDividerOk} fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} stars={generalResearchUsesStars} names={string.Join(',', names)} ok={ok}");
+        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 framedArt={framedGeneralResearchArt} detail={detailPlacementOk} fundingDivider={fundingDividerOk} officerDivider={officerDividerOk} fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} stars={generalResearchUsesStars} names={string.Join(',', names)} ok={ok}");
         CloseModal();
         GetWindow().Size = originalWindowSize;
         GetTree().Quit(ok ? 0 : 1);

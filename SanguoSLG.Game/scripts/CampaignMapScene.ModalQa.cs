@@ -89,8 +89,11 @@ public sealed partial class CampaignMapScene
         var uniformTroopCards = troopCards.Count == recruitmentOptions.Count
             && troopCards.All(card => card.CustomMinimumSize == new Vector2(186, 160))
             && troopCards.Select(card => card.Size).Distinct().Count() == 1;
-        passed &= uniformTroopCards;
-        results.Add($"병력담당:동일카드:{uniformTroopCards}:{troopCards.FirstOrDefault()?.Size.ToString() ?? "-"}");
+        var framedTroopArt = troopCards.All(card => card.FindChildren("*", "PanelContainer", true, false)
+            .OfType<PanelContainer>().Any(frame => frame.GetMeta("rounded_option_art").AsBool()
+                && frame.GetMeta("option_art_size").AsInt32() == 54));
+        passed &= uniformTroopCards && framedTroopArt;
+        results.Add($"병력담당:동일카드:{uniformTroopCards}:둥근사진{framedTroopArt}:{troopCards.FirstOrDefault()?.Size.ToString() ?? "-"}");
         CloseModal();
 
         GD.Print($"[officer-table-qa] passed={passed} results={string.Join('|', results)}");
@@ -122,6 +125,9 @@ public sealed partial class CampaignMapScene
             && _unitCardTextures.Values.All(texture => texture.GetWidth() == 256 && texture.GetHeight() == 256);
         var withinLimit = watch.ElapsedMilliseconds <= 750;
         var doctrineOptions = OptionList(Cmds[commandIndex], city);
+        var framedDoctrineArt = _optionCards.All(card => card.FindChildren("*", "PanelContainer", true, false)
+            .OfType<PanelContainer>().Any(frame => frame.GetMeta("rounded_option_art").AsBool()
+                && frame.GetMeta("option_art_size").AsInt32() == 54));
         var detailPanel = _modalLayer?.FindChild("DoctrineResearchSelectionDetail", true, false) as PanelContainer;
         var fundingPanel = _modalLayer?.FindChild("ResearchFundingPanel", true, false) as PanelContainer;
         var fundingTitle = _modalLayer?.FindChild("ResearchFundingTitle", true, false) as Label;
@@ -156,11 +162,11 @@ public sealed partial class CampaignMapScene
             .All(option => option.Detail.Count(c => c == '★') == 10)
             && doctrineOptions.Where(option => option.Name == "집단군")
                 .All(option => option.Detail.Count(c => c == '★') == _cb.ArmyGroupResearchMaxLevel);
-        var passed = thumbnailTextures && withinLimit && _optionCards.Count >= 7
+        var passed = thumbnailTextures && withinLimit && _optionCards.Count >= 7 && framedDoctrineArt
             && doctrineDetailPlacement && fundingDividerPlacement
             && officerDividerPlacement
             && specialResearchUsesStars && exactStarRules && specialStarCounts;
-        GD.Print($"[doctrine-performance-qa] passed={passed} elapsedMs={watch.ElapsedMilliseconds}/750 cards={_optionCards.Count} textures={_unitCardTextures.Count} thumbnails={thumbnailTextures} detailAboveFunding={doctrineDetailPlacement} fundingDivider={fundingDividerPlacement} officerDivider={officerDividerPlacement} specialStars={specialResearchUsesStars} exactStars={exactStarRules} specialCounts={specialStarCounts}");
+        GD.Print($"[doctrine-performance-qa] passed={passed} elapsedMs={watch.ElapsedMilliseconds}/750 cards={_optionCards.Count} textures={_unitCardTextures.Count} thumbnails={thumbnailTextures} framedArt={framedDoctrineArt} detailAboveFunding={doctrineDetailPlacement} fundingDivider={fundingDividerPlacement} officerDivider={officerDividerPlacement} specialStars={specialResearchUsesStars} exactStars={exactStarRules} specialCounts={specialStarCounts}");
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }
