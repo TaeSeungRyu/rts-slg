@@ -23,6 +23,9 @@ public sealed class RuinCombatTests
         Assert.True(exchange.DamageToRuin > 0);
         Assert.True(exchange.CounterDamage > 0);
         Assert.True(result.Armies.Single().Pool.Active < 10_000);
+        var actualLoss = 10_000 - result.Armies.Single().Pool.Active;
+        Assert.Equal(actualLoss * RuinCombat.DefaultWoundedPercent / 100,
+            result.Armies.Single().Pool.Wounded);
     }
 
     [Fact]
@@ -77,13 +80,16 @@ public sealed class RuinCombatTests
     {
         var fragile = Attacker() with
         {
-            Pool = new TroopPool(1, 0),
-            Stats = Attacker().Stats with { Troops = 1 },
+            Pool = new TroopPool(100, 0),
+            Stats = Attacker().Stats with { Troops = 100 },
+            OriginCity = new CityId(1),
+            TroopCode = "swordsman",
         };
 
         var result = new RuinCombat(new BattleResolver(60)).Resolve(State(), [fragile]);
 
         Assert.True(Assert.Single(result.Exchanges).CounterDamage > 0);
         Assert.Empty(result.Armies);
+        Assert.Equal(70, Assert.Single(result.State.CityWounded).Troops);
     }
 }

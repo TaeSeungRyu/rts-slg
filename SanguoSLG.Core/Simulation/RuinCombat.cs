@@ -10,10 +10,11 @@ public sealed record RuinCombatResult(GameState State, IReadOnlyList<CombatUnit>
 /// <summary>유적은 움직이거나 선공하지 않고, 자신을 공격한 부대에 사거리와 무관하게 반격한다.</summary>
 public sealed class RuinCombat
 {
+    public const int DefaultWoundedPercent = 70;
     private readonly BattleResolver _battle;
     private readonly int _woundedPercent;
 
-    public RuinCombat(BattleResolver battle, int woundedPercent = 70)
+    public RuinCombat(BattleResolver battle, int woundedPercent = DefaultWoundedPercent)
     {
         _battle = battle;
         _woundedPercent = woundedPercent;
@@ -74,9 +75,21 @@ public sealed class RuinCombat
         }
 
         var ordered = state.RuinStatus.Select(s => statuses.GetValueOrDefault(s.RuinId, s)).ToList();
+        var cityWounded = state.CityWounded.ToList();
+        foreach (var wiped in armies.Where(a => a.Pool.Active <= 0 && a.Pool.Wounded > 0
+            && a.OriginCity is not null))
+        {
+            var city = wiped.OriginCity!.Value;
+            var index = cityWounded.FindIndex(w => w.City == city && w.TroopCode == wiped.TroopCode
+                && w.TrainingLevel == wiped.Training && !w.Trainee);
+            if (index >= 0)
+                cityWounded[index] = cityWounded[index].Merge(wiped.Pool.Wounded, wiped.Training);
+            else
+                cityWounded.Add(new CityWoundedForce(city, wiped.TroopCode, wiped.Pool.Wounded, wiped.Training));
+        }
         // 유적 반격으로 전멸한 부대는 같은 공격 처리에서 즉시 야전 목록에서 제거한다.
         // 0명 토큰이 다음 진행까지 남지 않으며 표현 계층도 이 턴의 전멸/해골 연출을 예약한다.
         var survivors = armies.Where(a => a.Pool.Active > 0).ToList();
-        return new(state with { RuinStates = ordered }, survivors, exchanges, last);
+        return new(state with { RuinStates = ordered, CityWoundedForces = cityWounded }, survivors, exchanges, last);
     }
 }
