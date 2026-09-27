@@ -4882,7 +4882,13 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
-        box.AddChild(MakeLabel("수행 장수 (행 클릭 = 실행 · 상단 눌러 정렬)", 19, GoldBright));
+        if (cmd.Kind == CommandKind.Research && cmd.Param == "general")
+        {
+            AddSectionDivider(box, "GeneralResearchOfficerDivider");
+        }
+        var officerSectionTitle = MakeLabel("수행 장수 (행 클릭 = 실행 · 상단 눌러 정렬)", 19, GoldBright);
+        officerSectionTitle.Name = "CommandOfficerSectionTitle";
+        box.AddChild(officerSectionTitle);
         _offSortCol = -1;
         _offSortAsc = false;
         _modalOfficers = new VBoxContainer();
@@ -13519,7 +13525,9 @@ public sealed partial class CampaignMapScene : Node3D
         var researchDetailPanel = _modalLayer?.FindChild("GeneralResearchSelectionDetail", true, false) as PanelContainer;
         var researchDetailText = _modalLayer?.FindChild("GeneralResearchDetailText", true, false) as Label;
         var generalFundingDivider = _modalLayer?.FindChild("GeneralResearchFundingDivider", true, false) as VBoxContainer;
+        var generalOfficerDivider = _modalLayer?.FindChild("GeneralResearchOfficerDivider", true, false) as VBoxContainer;
         var fundingTitle = _modalLayer?.FindChild("ResearchFundingTitle", true, false) as Label;
+        var officerTitle = _modalLayer?.FindChild("CommandOfficerSectionTitle", true, false) as Label;
         var detailPlacementOk = researchDetailPanel?.HasMeta("general_research_detail") == true
             && researchDetailText?.Text.Contains(GeneralResearchRules.Definitions[0].Description, System.StringComparison.Ordinal) == true
             && optionGrid is not null && fundingPanel is not null
@@ -13529,6 +13537,10 @@ public sealed partial class CampaignMapScene : Node3D
             && generalFundingDivider?.HasMeta("section_divider") == true
             && generalFundingDivider.GetGlobalRect().Position.Y >= researchDetailPanel.GetGlobalRect().End.Y - 1f
             && generalFundingDivider.GetGlobalRect().End.Y <= fundingTitle.GetGlobalRect().Position.Y + 1f;
+        var officerDividerOk = fundingPanel is not null && officerTitle is not null
+            && generalOfficerDivider?.HasMeta("section_divider") == true
+            && generalOfficerDivider.GetGlobalRect().Position.Y >= fundingPanel.GetGlobalRect().End.Y - 1f
+            && generalOfficerDivider.GetGlobalRect().End.Y <= officerTitle.GetGlobalRect().Position.Y + 1f;
         var ok = submenuOk && allGroupsOk && generalBusyOk && layoutOk
             && _optionCards.Count == GeneralResearchRules.Definitions.Count
             && _researchFundingRatios.Count == ownedCityCount
@@ -13537,9 +13549,10 @@ public sealed partial class CampaignMapScene : Node3D
             && optionColumnsOk
             && detailPlacementOk
             && fundingDividerOk
+            && officerDividerOk
             && generalResearchUsesStars
             && GeneralResearchRules.Definitions.All(d => names.Contains(d.Name));
-        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 detail={detailPlacementOk} fundingDivider={fundingDividerOk} fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} stars={generalResearchUsesStars} names={string.Join(',', names)} ok={ok}");
+        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 detail={detailPlacementOk} fundingDivider={fundingDividerOk} officerDivider={officerDividerOk} fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} stars={generalResearchUsesStars} names={string.Join(',', names)} ok={ok}");
         CloseModal();
         GetWindow().Size = originalWindowSize;
         GetTree().Quit(ok ? 0 : 1);
