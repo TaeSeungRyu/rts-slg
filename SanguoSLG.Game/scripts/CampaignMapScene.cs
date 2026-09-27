@@ -561,6 +561,7 @@ public sealed partial class CampaignMapScene : Node3D
         _portraits.Clear();
         _circularPortraits.Clear();
         _rosterPortraits.Clear();
+        _officerTablePortraits.Clear();
         _portraitMetadata = null;
         _commanderPortraits.Clear();
         _armyGroupIcon = null;
@@ -6823,10 +6824,52 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     /// <summary>장수 선택 표에서 이름과 원형 초상을 같은 칸에 일관되게 표시한다.</summary>
-    private void ApplyGeneralTreePortrait(TreeItem item, int column, GeneralId id, int maxWidth = 30)
+    private void ApplyGeneralTreePortrait(TreeItem item, int column, GeneralId id, int maxWidth = 30, bool goldBorder = false)
     {
-        item.SetIcon(column, RosterPortraitFor(id));
+        item.SetIcon(column, goldBorder ? OfficerTablePortraitFor(id) : RosterPortraitFor(id));
         item.SetIconMaxWidth(column, maxWidth);
+    }
+
+    /// <summary>수행 장수 표 전용 초상. 원형 사진 가장자리에 얇은 금색 테두리를 합성한다.</summary>
+    private ImageTexture OfficerTablePortraitFor(GeneralId id)
+    {
+        if (_officerTablePortraits.TryGetValue(id.Value, out var cached)) return cached;
+
+        const int size = 64;
+        var source = RosterPortraitFor(id).GetImage();
+        if (source.GetWidth() != size || source.GetHeight() != size)
+        {
+            source.Resize(size, size, Image.Interpolation.Lanczos);
+        }
+
+        var output = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
+        var center = size / 2.0;
+        const double ringRadius = 29.5;
+        const double ringHalfWidth = 1.35;
+        for (var y = 0; y < size; y++)
+        {
+            for (var x = 0; x < size; x++)
+            {
+                var dx = x + 0.5 - center;
+                var dy = y + 0.5 - center;
+                var distance = Math.Sqrt(dx * dx + dy * dy);
+                var color = source.GetPixel(x, y);
+                var ringCoverage = Mathf.Clamp((float)(ringHalfWidth + 0.75 - Math.Abs(distance - ringRadius)), 0f, 1f);
+                if (ringCoverage > 0f)
+                {
+                    var gold = GoldBright;
+                    gold.A = Math.Max(color.A, ringCoverage);
+                    color = color.Lerp(gold, ringCoverage);
+                }
+
+                if (distance > ringRadius + ringHalfWidth + 0.75) color.A = 0f;
+                output.SetPixel(x, y, color);
+            }
+        }
+
+        var texture = ImageTexture.CreateFromImage(output);
+        _officerTablePortraits[id.Value] = texture;
+        return texture;
     }
 
     /// <summary>
@@ -9837,6 +9880,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly Dictionary<int, ImageTexture> _portraits = new();
     private readonly Dictionary<int, ImageTexture> _circularPortraits = new();
     private readonly Dictionary<int, ImageTexture> _rosterPortraits = new();
+    private readonly Dictionary<int, ImageTexture> _officerTablePortraits = new();
     private Dictionary<int, GeneralPortraitRecord>? _portraitMetadata;
 
     // 장수 초상: assets/portraits/{id}.png 있으면 그것, 없으면 공용 장수 흉상(icon_officer) 폴백.
@@ -11068,7 +11112,7 @@ public sealed partial class CampaignMapScene : Node3D
                 CommandKind.AppointStrategist when cityData.Strategist == g.Id => " ◆현군사",
                 _ => "",
             };
-            ApplyGeneralTreePortrait(item, 0, g.Id, 40);
+            ApplyGeneralTreePortrait(item, 0, g.Id, 40, goldBorder: true);
             item.SetTooltipText(0, g.Name);
             item.SetText(1, g.Name + home + roleMark);
             item.SetCustomColor(1, GoldBright);

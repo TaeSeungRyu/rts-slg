@@ -32,16 +32,24 @@ public sealed partial class CampaignMapScene
             var rows = table?.GetRoot()?.GetChildCount() ?? 0;
             var expectedHeight = 48 + rows * 46;
             var firstRow = table?.GetRoot()?.GetFirstChild();
-            var portraitLayout = firstRow?.GetIcon(0) is not null
+            var portrait = firstRow?.GetIcon(0);
+            var portraitImage = portrait?.GetImage();
+            var ringPixel = portraitImage is not null && portraitImage.GetWidth() >= 64
+                ? portraitImage.GetPixel(32, 2)
+                : Colors.Transparent;
+            var goldRing = ringPixel.A > 0.7f && ringPixel.R > 0.7f && ringPixel.G > 0.5f;
+            var portraitLayout = firstRow is not null
+                && portrait is not null
                 && string.IsNullOrEmpty(firstRow.GetText(0))
-                && !string.IsNullOrWhiteSpace(firstRow.GetText(1));
+                && !string.IsNullOrWhiteSpace(firstRow.GetText(1))
+                && goldRing;
             var ok = table?.GetMeta("all_officer_rows").AsBool() == true
                 && table.ScrollVerticalEnabled == false
                 && table.MouseForcePassScrollEvents == false
                 && table.CustomMinimumSize.Y >= expectedHeight
                 && portraitLayout;
             passed &= ok;
-            results.Add($"{Cmds[commandIndex].Label}:{rows}:{table?.CustomMinimumSize.Y ?? 0}:초상{portraitLayout}:{ok}");
+            results.Add($"{Cmds[commandIndex].Label}:{rows}:{table?.CustomMinimumSize.Y ?? 0}:금테두리{goldRing}:초상{portraitLayout}:{ok}");
             CloseModal();
         }
 
