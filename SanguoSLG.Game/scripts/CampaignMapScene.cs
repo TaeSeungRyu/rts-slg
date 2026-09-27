@@ -4603,7 +4603,7 @@ public sealed partial class CampaignMapScene : Node3D
         center.AddChild(scaffold);
 
         var mw = scaffold.LayoutSize.X - 28f;
-        var colOpt = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / (wideDoctrineModal ? 186f : 146f)), 3, 5);
+        var colOpt = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / (wideDoctrineModal ? 186f : 146f)), 3, wideDoctrineModal ? 7 : 5);
         var colOff = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 169f), 2, 4);
         var cityName = _state.Cities.First(x => x.Id == city).Name;
         var title = MakeLabel($"◈  {cmd.Label}   《 {cityName} 》", 26, Gold);
@@ -4747,7 +4747,11 @@ public sealed partial class CampaignMapScene : Node3D
                 : cmd.Kind == CommandKind.SelectMajorTroop ? "주력병종을 선택하세요 (1~2개 선택 후 적용)"
                 : cmd.Param == "stratagem" ? "계략을 선택하세요" : "대상을 선택하세요";
             box.AddChild(MakeLabel(optionTitle, 19, GoldBright));
-            var grid = new GridContainer { Columns = System.Math.Min(colOpt, options.Count) };
+            var grid = new GridContainer
+            {
+                Name = "CommandOptionGrid",
+                Columns = System.Math.Min(colOpt, options.Count),
+            };
             grid.AddThemeConstantOverride("h_separation", 10);
             grid.AddThemeConstantOverride("v_separation", 10);
             box.AddChild(grid);
@@ -13309,12 +13313,15 @@ public sealed partial class CampaignMapScene : Node3D
             .OfType<PanelContainer>().Count(x => x.HasMeta("research_funding_row")) ?? 0;
         var fundingLayoutOk = fundingPanel?.HasMeta("research_funding_table") == true
             && fundingRowCount == ownedCityCount;
+        var optionGrid = _modalLayer?.FindChild("CommandOptionGrid", true, false) as GridContainer;
+        var optionColumnsOk = optionGrid?.Columns == System.Math.Min(7, GeneralResearchRules.Definitions.Count);
         var ok = submenuOk && allGroupsOk && generalBusyOk && layoutOk
             && _optionCards.Count == GeneralResearchRules.Definitions.Count
             && _researchFundingRatios.Count == ownedCityCount
             && fundingLayoutOk
+            && optionColumnsOk
             && GeneralResearchRules.Definitions.All(d => names.Contains(d.Name));
-        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} names={string.Join(',', names)} ok={ok}");
+        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} names={string.Join(',', names)} ok={ok}");
         CloseModal();
         GetWindow().Size = originalWindowSize;
         GetTree().Quit(ok ? 0 : 1);
