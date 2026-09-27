@@ -65,6 +65,19 @@ public class PassabilityMapTests
         Assert.False(passability.CanEnter(MovementDomain.Land, new HexCoord(-1, 0)));
     }
 
+    [Theory]
+    [InlineData(MovementDomain.Land)]
+    [InlineData(MovementDomain.LandMountain)]
+    [InlineData(MovementDomain.DeepWater)]
+    public void CanEnter_유적고정타일이면_모든병종거짓(MovementDomain domain)
+    {
+        var ruin = new HexCoord(4, 4);
+        var passability = new PassabilityMap(new HexMap(0, 9, 0, 9), [], [], [ruin]);
+
+        Assert.True(passability.IsBlockedForAll(ruin));
+        Assert.False(passability.CanEnter(domain, ruin));
+    }
+
     [Fact]
     public void FindPath_성발자국을_우회한다()
     {

@@ -39,8 +39,8 @@ public sealed class RuinCombat
             for (var i = 0; i < armies.Count && defenders > 0; i++)
             {
                 var attacker = armies[i];
-                // 일반 빈 타일 목적지는 도착 즉시 AdvanceOrchestrator가 Target을 null로 정리한다.
-                // 유적도 맵 이동 관점에서는 빈 타일이므로, 도착 위치 자체를 공격 의도로 함께 인정한다.
+                // 현재 규칙에서는 유적 타일에 진입할 수 없고 Target을 유지한 채 사거리에서 공격한다.
+                // Position 일치는 이전 저장 데이터에 이미 유적 위에 선 부대가 있을 때의 호환 처리다.
                 var targetsRuin = attacker.Field.Target == ruin.Position || attacker.Field.Position == ruin.Position;
                 if (!attacker.CanInitiateCombat || attacker.Pool.Active <= 0 || !targetsRuin) continue;
                 if (status.Owner == attacker.Field.Owner) continue;

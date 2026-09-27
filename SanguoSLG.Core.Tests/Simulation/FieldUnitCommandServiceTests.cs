@@ -61,6 +61,25 @@ public class FieldUnitCommandServiceTests
     }
 
     [Fact]
+    public void 유적은_통행불가여도_공격목표로_지정된다()
+    {
+        var ruinPosition = new HexCoord(5, 0);
+        var unit = Unit(1, Player, default);
+        var state = new GameState(1, 190, [], [], [], FieldArmies: [unit],
+            RuinDefinitions: [new("r1", "극병 유적", ruinPosition, "geukbyeong", 30_000)],
+            RuinStates: [new("r1", 30_000)]);
+        var service = new FieldUnitCommandService((_, _) => false,
+            (s, h) => s.Ruins.Any(r => r.Position == h));
+
+        var result = service.Reassign(state, Player,
+            new FieldUnitCommandRequest(unit.Id, UnitMode.March, ruinPosition));
+
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(UnitMode.Attack, result.State.Armies.Single().Field.Mode);
+        Assert.Equal(ruinPosition, result.State.Armies.Single().Field.Target);
+    }
+
+    [Fact]
     public void 중형항구_발자국_타일도_아군_목표로_지정할수있다()
     {
         var port = new City(new CityId(2), "항구", new HexCoord(5, 0), Player, 1000,

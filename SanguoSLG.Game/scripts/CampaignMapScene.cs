@@ -453,8 +453,11 @@ public sealed partial class CampaignMapScene : Node3D
         _commander = new CommandService(_cb, _troops, _balance, _adminSkills);
         _deployer = new DeployService(_cb, _troops, actives, passives, _adminSkills);
         _ai = new FactionAI(_commander, _deployer);
-        _passability = new PassabilityMap(_map, [], _cities);
-        _unitCommander = new FieldUnitCommandService((domain, hex) => _passability.CanEnter(domain, hex));
+        var scenario = new ScenarioLoader().LoadFromDirectory(dataDirectory);
+        _passability = new PassabilityMap(_map, [], _cities, scenario.RuinList.Select(r => r.Position));
+        _unitCommander = new FieldUnitCommandService(
+            (domain, hex) => _passability.CanEnter(domain, hex),
+            (state, hex) => state.Ruins.Any(r => r.Position == hex));
         _producer = new ProductionService(_troops, h => _passability.CanEnter(MovementDomain.Land, h));
         var movement = new MovementSimulator(_passability);
         // 플레이 세션에서는 탐색·외교 결과가 매 실행 같은 초반 난수열에 묶이지 않도록 세션 시드를 쓴다.
@@ -469,7 +472,6 @@ public sealed partial class CampaignMapScene : Node3D
             new CityPlunder(_cb), _cb.CityResupplyRadius,
             _cb.BuildSiteHp, _cb.BuildSiteDamagePerTurn, passives, actives,
             new RuinCombat(new BattleResolver(60), 70));
-        var scenario = new ScenarioLoader().LoadFromDirectory(dataDirectory);
         _vision = new BattlefieldVision(scenario.Balance, _troops);
         _fog = new BattlefieldFogView(_view);
         _fog.RegisterMap();

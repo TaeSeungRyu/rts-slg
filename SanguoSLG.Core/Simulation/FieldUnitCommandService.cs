@@ -11,7 +11,8 @@ public sealed record FieldUnitCommandRequest(
     IReadOnlySet<HexCoord>? VisibleTiles = null,
     CityId? ReturnCity = null);
 
-public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool> canEnter)
+public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool> canEnter,
+    Func<GameState, HexCoord, bool>? isStaticAttackTarget = null)
 {
     public CommandResult Reassign(GameState state, FactionId faction, FieldUnitCommandRequest req)
     {
@@ -32,6 +33,7 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
         }
 
         var mode = state.Cities.Any(c => CastleFootprint.TilesFor(c).Contains(req.Target) && c.Owner != faction)
+            || (isStaticAttackTarget?.Invoke(state, req.Target) ?? false)
             ? UnitMode.Attack
             : req.Mode;
         var armies = state.Armies
@@ -76,6 +78,12 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
             // 해상 부대는 항구만 출입·공격 목표로 삼을 수 있다. 일반 성을 허용하면
             // UI에서 항구가 아닌 육지 성을 클릭했을 때도 선박 경로가 성벽으로 끝난다.
             return unit.Class != TroopClass.Naval || city.IsPort;
+        }
+
+        // 유적 등 점유 불가 고정 전투 목표는 타일에 들어가는 대신 사거리 밖에서 공격한다.
+        if (isStaticAttackTarget?.Invoke(state, target) ?? false)
+        {
+            return true;
         }
 
         return canEnter(unit.Field.Domain, target);

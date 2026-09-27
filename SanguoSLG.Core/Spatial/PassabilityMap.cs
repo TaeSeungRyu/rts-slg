@@ -15,9 +15,18 @@ public sealed class PassabilityMap
     private readonly HashSet<HexCoord> _mountainOnly = new();
     private readonly Dictionary<HexCoord, HexCoord> _castleAnchors = new();
 
-    public PassabilityMap(HexMap map, IEnumerable<MapFeature> features, IEnumerable<City> cities)
+    public PassabilityMap(HexMap map, IEnumerable<MapFeature> features, IEnumerable<City> cities,
+        IEnumerable<HexCoord>? blockedTiles = null)
     {
         _map = map;
+
+        if (blockedTiles is not null)
+        {
+            foreach (var tile in blockedTiles)
+            {
+                _blockedForAll.Add(tile);
+            }
+        }
 
         foreach (var city in cities)
         {
@@ -47,6 +56,9 @@ public sealed class PassabilityMap
 
     public HexCoord? CastleAnchorAt(HexCoord coord) =>
         _castleAnchors.TryGetValue(coord, out var anchor) ? anchor : null;
+
+    /// <summary>성 발자국·항구·유적처럼 어떤 병종도 점유할 수 없는 고정 타일인가.</summary>
+    public bool IsBlockedForAll(HexCoord coord) => _blockedForAll.Contains(coord);
 
     public IEnumerable<HexCoord> CastleTilesForAnchor(HexCoord anchor) =>
         _castleAnchors.Where(kv => kv.Value == anchor).Select(kv => kv.Key);

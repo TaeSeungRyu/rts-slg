@@ -1021,4 +1021,22 @@ public class MovementSimulatorTests
 
         Assert.Equal(StopReason.AllArrived, result.Reason);
     }
+
+    [Fact]
+    public void 유적공격부대는_유적타일에들어가지않고_사거리에서멈춘다()
+    {
+        var ruin = new HexCoord(5, 0);
+        var passability = new PassabilityMap(new HexMap(0, 10, -2, 2), [], [], [ruin]);
+        var simulator = new MovementSimulator(passability);
+        var attacker = Unit(1, owner: 1, new HexCoord(1, 0), UnitMode.Attack, ruin,
+            speed: 3, attackRange: 1);
+
+        var result = simulator.Advance([attacker], maxDays: 7);
+        var moved = Assert.Single(result.Units);
+
+        Assert.Equal(new HexCoord(4, 0), moved.Position);
+        Assert.Equal(1, moved.Position.Distance(ruin));
+        Assert.Equal(ruin, moved.Target);
+        Assert.DoesNotContain(result.Ticks.SelectMany(t => t.Units), u => u.Position == ruin);
+    }
 }

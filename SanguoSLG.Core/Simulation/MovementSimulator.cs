@@ -253,6 +253,18 @@ public sealed class MovementSimulator
                         continue;
                     }
 
+                    // 유적 같은 점유 불가 고정 목표에는 들어가지 않는다. 공격 사거리까지 접근한
+                    // 위치를 도착으로 간주하고, 상위 전투 계층이 목표 좌표를 기준으로 공격을 처리한다.
+                    if (w.Unit.Mode == UnitMode.Attack && goalTile is { } blockedGoal
+                        && _passability.CastleAnchorAt(blockedGoal) is null
+                        && _passability.IsBlockedForAll(blockedGoal)
+                        && w.Unit.Position.Distance(blockedGoal) <= w.Unit.AttackRange)
+                    {
+                        w.BlockedAtGoal = true;
+                        w.Path = null;
+                        continue;
+                    }
+
                     if (w.Path is { Count: > 0 })
                     {
                         // 입성 = 이동의 마지막 한 스텝. 다음 칸이 자기 성이면 이동 예산을 쓰고
