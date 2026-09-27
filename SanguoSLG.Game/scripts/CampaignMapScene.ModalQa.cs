@@ -99,8 +99,15 @@ public sealed partial class CampaignMapScene
             && rateCards.All(card => card.GetMeta("auto_recruit_rate_card").AsBool()
                 && card.CustomMinimumSize == new Vector2(168, 138))
             && rateCards.Select(card => card.Size).Distinct().Count() == 1;
-        passed &= uniformTroopCards && framedTroopArt && uniformRateCards;
-        results.Add($"병력담당:동일카드:{uniformTroopCards}:둥근사진{framedTroopArt}:생산비율{uniformRateCards}:{troopCards.FirstOrDefault()?.Size.ToString() ?? "-"}/{rateCards.FirstOrDefault()?.Size.ToString() ?? "-"}");
+        _autoRecruitRateParam = 2;
+        RefreshAutoRecruitRateCards(recruitmentOptions);
+        rateCards[1].EmitSignal(Control.SignalName.MouseExited);
+        var selectedRateStyle = rateCards[1].GetThemeStylebox("panel") as StyleBoxFlat;
+        var rateSelectionPersists = selectedRateStyle?.BorderWidthLeft == 4
+            && rateCards.Where((_, index) => index != 1)
+                .All(card => (card.GetThemeStylebox("panel") as StyleBoxFlat)?.BorderWidthLeft == 1);
+        passed &= uniformTroopCards && framedTroopArt && uniformRateCards && rateSelectionPersists;
+        results.Add($"병력담당:동일카드:{uniformTroopCards}:둥근사진{framedTroopArt}:생산비율{uniformRateCards}:선택유지{rateSelectionPersists}:{troopCards.FirstOrDefault()?.Size.ToString() ?? "-"}/{rateCards.FirstOrDefault()?.Size.ToString() ?? "-"}");
         CloseModal();
 
         GD.Print($"[officer-table-qa] passed={passed} results={string.Join('|', results)}");

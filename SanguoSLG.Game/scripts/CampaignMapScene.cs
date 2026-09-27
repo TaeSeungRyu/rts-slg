@@ -10601,7 +10601,7 @@ public sealed partial class CampaignMapScene : Node3D
         card.MouseEntered += () =>
         {
             if (disabled) { return; }
-            if (!_optionCards.Contains(card) || !IsOptionSelected(_optionCards.IndexOf(card)))
+            if (!OptionCardIsSelected(card))
             {
                 card.AddThemeStyleboxOverride("panel", CardBox(false, hover: true));
             }
@@ -10609,12 +10609,17 @@ public sealed partial class CampaignMapScene : Node3D
         card.MouseExited += () =>
         {
             if (disabled) { return; }
-            if (!_optionCards.Contains(card) || !IsOptionSelected(_optionCards.IndexOf(card)))
-            {
-                card.AddThemeStyleboxOverride("panel", CardBox(false));
-            }
+            card.AddThemeStyleboxOverride("panel", CardBox(OptionCardIsSelected(card)));
         };
         return card;
+    }
+
+    private bool OptionCardIsSelected(PanelContainer card)
+    {
+        var optionIndex = _optionCards.IndexOf(card);
+        if (optionIndex >= 0) return IsOptionSelected(optionIndex);
+        var rateIndex = _autoRecruitRateCards.IndexOf(card);
+        return rateIndex >= 0 && rateIndex + 1 == _autoRecruitRateParam;
     }
 
     private readonly Dictionary<Texture2D, ImageTexture> _roundedOptionTextures = new();
