@@ -49,7 +49,8 @@ public sealed partial class CampaignMapScene
                 && goldRing;
             var ok = table?.GetMeta("all_officer_rows").AsBool() == true
                 && table.ScrollVerticalEnabled == false
-                && table.MouseForcePassScrollEvents == false
+                && table.MouseForcePassScrollEvents
+                && table.GetMeta("passes_wheel_to_modal").AsBool()
                 && table.CustomMinimumSize.Y >= expectedHeight
                 && portraitLayout
                 && !hasObsoleteHints;
@@ -65,7 +66,8 @@ public sealed partial class CampaignMapScene
         var researchTable = _modalLayer?.FindChild("CommandOfficerTable", true, false) as Tree;
         var wheelIsolated = researchTable?.GetMeta("isolated_wheel_scroll").AsBool() == true
             && researchTable.MouseFilter == Control.MouseFilterEnum.Stop
-            && researchTable.MouseForcePassScrollEvents == false;
+            && researchTable.MouseForcePassScrollEvents
+            && researchTable.GetMeta("passes_wheel_to_modal").AsBool();
         passed &= wheelIsolated;
         results.Add($"일반연구:휠격리:{wheelIsolated}");
         CloseModal();

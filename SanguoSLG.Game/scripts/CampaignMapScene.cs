@@ -11186,11 +11186,14 @@ public sealed partial class CampaignMapScene : Node3D
                 : Mathf.Min(48 + free.Count * officerRowHeight, 470)),
             ScrollVerticalEnabled = !showAllOfficerRows,
             MouseFilter = Control.MouseFilterEnum.Stop,
-            MouseForcePassScrollEvents = false,
+            // 내부 스크롤이 없는 짧은 표에서는 휠을 바깥 모달 스크롤로 전달한다.
+            // 9명 이상인 긴 표만 자체 스크롤을 소비한다.
+            MouseForcePassScrollEvents = showAllOfficerRows,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         tree.SetMeta("all_officer_rows", showAllOfficerRows);
         tree.SetMeta("isolated_wheel_scroll", true);
+        tree.SetMeta("passes_wheel_to_modal", showAllOfficerRows);
         tree.AddThemeFontOverride("font", _font);
         tree.AddThemeFontSizeOverride("font_size", 15);
         tree.AddThemeFontOverride("title_button_font", _font);
