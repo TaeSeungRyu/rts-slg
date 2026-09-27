@@ -71,4 +71,19 @@ public sealed class RuinCombatTests
         Assert.Null(ruin.ProtectedUntilDay);
         Assert.Equal(new FactionId(1), ruin.Owner);
     }
+
+    [Fact]
+    public void CounterattackDestroyedAttackerIsRemovedImmediately()
+    {
+        var fragile = Attacker() with
+        {
+            Pool = new TroopPool(1, 0),
+            Stats = Attacker().Stats with { Troops = 1 },
+        };
+
+        var result = new RuinCombat(new BattleResolver(60)).Resolve(State(), [fragile]);
+
+        Assert.True(Assert.Single(result.Exchanges).CounterDamage > 0);
+        Assert.Empty(result.Armies);
+    }
 }

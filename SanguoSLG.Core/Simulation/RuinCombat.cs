@@ -74,6 +74,9 @@ public sealed class RuinCombat
         }
 
         var ordered = state.RuinStatus.Select(s => statuses.GetValueOrDefault(s.RuinId, s)).ToList();
-        return new(state with { RuinStates = ordered }, armies, exchanges, last);
+        // 유적 반격으로 전멸한 부대는 같은 공격 처리에서 즉시 야전 목록에서 제거한다.
+        // 0명 토큰이 다음 진행까지 남지 않으며 표현 계층도 이 턴의 전멸/해골 연출을 예약한다.
+        var survivors = armies.Where(a => a.Pool.Active > 0).ToList();
+        return new(state with { RuinStates = ordered }, survivors, exchanges, last);
     }
 }
