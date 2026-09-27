@@ -2,6 +2,19 @@
 
 이 디렉토리는 설계 원본, v2 전환 로드맵, 구현 이력, QA 체크리스트가 함께 들어 있다. 새 작업자는 아래 순서로 읽는다.
 
+> **문서 전수 점검: 2026-09-27.** 저장소의 Markdown 44개를 분류하고 로컬 링크를 검사했다(깨진 링크 0개).
+> Phase 0~18A는 구현·자동 QA 완료이며, 기능 로드맵의 다음 미완료 단계는 **Phase 19 이벤트 유닛 1차: 대호**다.
+> 사용자가 요청한 UI 우선 개선은 기능 Phase와 분리한 별도 실행 문서로 관리한다.
+
+## 충돌 시 우선순위
+
+1. 사용자가 마지막으로 확정한 요구사항과 [v2 구현 로드맵](./plan-v2-implementation-roadmap.md)의 해당 Phase
+2. 각 분야의 `design-*` 및 `spec-*` 문서 상단에 적힌 현행 기준
+3. [상위 로드맵](./plan-roadmap.md)의 요약
+4. `plan-01`~`plan-06`, 전투 중심 전환 초기안, 설계 문서의 명시된 과거 기록
+
+과거 규칙은 결정 배경과 회귀 이력을 위해 삭제하지 않는다. 현행 기준과 충돌하면 구현 근거로 사용하지 않는다.
+
 ## 최우선 기준
 
 1. [ai-working-notes.md](./ai-working-notes.md)
@@ -11,8 +24,8 @@
    - 현재 진행 기준인 전투 중심 v2 작업 보드.
    - 단계 상태, 완료 기준, 후속 Phase 배치가 여기서 결정된다.
 3. [plan-roadmap.md](./plan-roadmap.md)
-   - 전체 프로젝트의 살아있는 상위 로드맵.
-   - v2 전환 이후에는 `plan-v2-implementation-roadmap.md`를 우선하고, 이 문서는 큰 흐름과 과거 맥락 확인용으로 본다.
+   - 전체 프로젝트의 상위 요약과 이전 구현 이력.
+   - 현재 단계와 완료 판정은 `plan-v2-implementation-roadmap.md`를 우선한다.
 
 ## 핵심 설계 문서
 
@@ -69,3 +82,18 @@
 - 구현이 완료되면 `plan-v2-implementation-roadmap.md`의 체크표와 해당 설계 문서의 상태 문구를 갱신한다.
 - 과거 구현 이력은 삭제하지 않되, 현재 기준과 충돌하면 “현재 기준” 문구를 문서 상단에 추가한다.
 - 문서만 수정한 경우에도 링크 무결성 또는 핵심 키워드 검색으로 QA를 남긴다.
+
+## 전체 문서 인벤토리
+
+| 분류 | 문서 | 현재 용도 |
+|---|---|---|
+| 저장소 규칙 | [../CLAUDE.md](../CLAUDE.md), [ai-working-notes.md](./ai-working-notes.md) | 아키텍처·작업 방식·QA·머신 경로 |
+| 진입점 | [../README.md](../README.md), [../ONBOARDING.md](../ONBOARDING.md), 이 문서 | 프로젝트 소개와 읽는 순서 |
+| 실행 로드맵 | [plan-v2-implementation-roadmap.md](./plan-v2-implementation-roadmap.md) | 현재 기능 Phase와 완료 기준 |
+| 상위/방향 기록 | [plan-roadmap.md](./plan-roadmap.md), [plan-combat-redesign-v2.md](./plan-combat-redesign-v2.md), [review-game-direction-2026-09.md](./review-game-direction-2026-09.md) | 전체 맥락·방향성·의사결정 기록 |
+| 현행 설계 | [design-administration.md](./design-administration.md), [design-combat.md](./design-combat.md), [design-diplomacy-ruler-relations.md](./design-diplomacy-ruler-relations.md), [design-general-lifecycle.md](./design-general-lifecycle.md), [design-movement.md](./design-movement.md), [design-stratagem.md](./design-stratagem.md), [design-terrain.md](./design-terrain.md), [design-ui.md](./design-ui.md), [design-unit-state.md](./design-unit-state.md), [design-water.md](./design-water.md) | 분야별 확정 규칙. 각 문서 상단의 v2 기준을 우선 |
+| 스킬/효과 | [design-skill.md](./design-skill.md), [design-skill-actives.md](./design-skill-actives.md), [design-skill-passives.md](./design-skill-passives.md), [design-skill-admin.md](./design-skill-admin.md), [design-effect.md](./design-effect.md) | 액티브·패시브·내정 패시브와 3D 효과 |
+| 확정 사양 | [spec-city.md](./spec-city.md), [spec-general.md](./spec-general.md), [spec-unit.md](./spec-unit.md) | 저장 구조·병종·도시·장수 사양 |
+| 에셋/콘텐츠 | [asset-general-portraits.md](./asset-general-portraits.md), [asset-general-faction-groups.md](./asset-general-faction-groups.md), [asset-icon-generation.md](./asset-icon-generation.md), [previews/README.md](./previews/README.md) | 초상·그룹·아이콘·검수 이미지 규칙 |
+| QA | [test/qa-checklist.md](./test/qa-checklist.md), [test/castle-entry-regression.md](./test/castle-entry-regression.md), [test/combat-movement-cases.md](./test/combat-movement-cases.md), [test/movement-cases.md](./test/movement-cases.md), [test/port-regression-qa.md](./test/port-regression-qa.md), [test/vision-cases.md](./test/vision-cases.md) | 수동·자동 회귀 시나리오 |
+| 역사 계획 | [plan-01-walking-skeleton.md](./plan-01-walking-skeleton.md), [plan-02-map-units.md](./plan-02-map-units.md), [plan-03-administration.md](./plan-03-administration.md), [plan-04-visual-polish.md](./plan-04-visual-polish.md), [plan-05-ui-shell.md](./plan-05-ui-shell.md), [plan-06-3d.md](./plan-06-3d.md), [plan-combat-focused-refactor.md](./plan-combat-focused-refactor.md) | 완료된 초기 단계와 폐기·전환 전 계획. 신규 구현 기준으로 사용하지 않음 |

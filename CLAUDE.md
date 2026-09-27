@@ -166,15 +166,16 @@ dotnet test
 | 문서                                                               | 이럴 때 참고                                                                                      |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
 | [ai-working-notes.md](doc/ai-working-notes.md)                     | **AI 작업 방식(상시 규칙)·검증 함정·머신 의존 경로** — 새 세션/새 환경에서 작업 시작 전 필독      |
-| [plan-roadmap.md](doc/plan-roadmap.md)                             | **전체 현황·단계 계획(살아있는 문서)** — 다음 작업은 항상 여기서 확인, 단계 완료 시 갱신          |
+| [plan-v2-implementation-roadmap.md](doc/plan-v2-implementation-roadmap.md) | **현재 기능 단계·완료 기준** — 다음 기능 작업과 Phase 상태의 원본                              |
+| [plan-roadmap.md](doc/plan-roadmap.md)                             | 전체 프로젝트 상위 요약·과거 구현 이력                                                         |
 | [design-movement.md](doc/design-movement.md)                       | 이동·탐지·추격·정지·우회·성 입성/출격·지형 이동 패널티                                            |
 | [design-combat.md](doc/design-combat.md)                           | 피해 공식·병종 공/방·지형 전투 보정·성 전투(성벽/붕괴/반격/함락)                                  |
-| [design-stratagem.md](doc/design-stratagem.md)                     | 계략 11종 수치·시전 사거리·지속 상태·정화                                                         |
+| [design-stratagem.md](doc/design-stratagem.md)                     | 도시 계략 5종 유지와 부대 계략의 5일 충전형 전투 액티브 전환                                     |
 | [design-skill.md](doc/design-skill.md) + skill-actives/passives    | 특기 체계, 액티브 게이지·발동, 패시브 버킷                                                        |
 | [design-skill-admin.md](doc/design-skill-admin.md)                 | 내정 스킬 13종(상재·둔전·진무 등) — 효과 배선은 내정 구현과 함께                                  |
-| [design-general-lifecycle.md](doc/design-general-lifecycle.md)     | 장수 충성도(숨김·급여·배신)·포로·함락 시 장수 처리·정찰·등용·외교(포로교환)·세력 소멸             |
+| [design-general-lifecycle.md](doc/design-general-lifecycle.md)     | 위인 해금·등용·함락/멸망 장수 처리. 충성·급여·배신·포로교환은 제거                               |
 | [design-unit-state.md](doc/design-unit-state.md)                   | 훈련도·군량·보급부대·병력보충(사기·패주는 2026-08-21 폐지) — 남은 ❓는 문서 끝 "미확정 질문 요약" |
-| [design-administration.md](doc/design-administration.md)           | 내정 — 도시 속성·시간 축·수입·명령·세율·시설·약탈 규칙·출전/입성/함락 훅                          |
+| [design-administration.md](doc/design-administration.md)           | v2 담당자 4슬롯·주 단위 금/군량/병력/훈련·생산·저치안 규칙. 과거 수동 내정은 이력                  |
 | [design-terrain.md](doc/design-terrain.md)                         | 지형 종류·타일 배치                                                                               |
 | [design-effect.md](doc/design-effect.md)                           | 시각 효과 계획(구현 O/X 표 포함)                                                                  |
 | [design-ui.md](doc/design-ui.md)                                   | 게임 UI 상호작용 5건 — 현황은 문서 상단 요약(구현/부분/미구현) 참조                               |

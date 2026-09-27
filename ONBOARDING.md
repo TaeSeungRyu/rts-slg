@@ -10,7 +10,7 @@
 ## 1. 클론 직후 준비
 
 - 설치: **.NET 9 SDK 이상**, **Godot 4.7.2 mono(.NET) 빌드**(일반 빌드는 C# 실행 불가).
-- **`run-*.bat`의 `GODOT` 경로**를 자기 PC 설치 위치로 수정한다(기본값은 이 개발 PC의 `D:\godot\...`).
+- **`run-*.bat`의 `GODOT` 경로**를 자기 PC 설치 위치로 수정한다. 현재 개발 PC 기준은 `D:\LOCAL-WORK-STATION\Godot_v4.7.2-stable_win64\`이다.
   머신 의존 경로 전체는 [doc/ai-working-notes.md](doc/ai-working-notes.md) §5.
 - Blender·Fooocus·Kenney 에셋 팩은 **새 아트를 만들 때만** 필요. 이미 쓰는 에셋은 저장소에 커밋돼 있어
   **게임 실행에는 불필요**하다.
@@ -19,7 +19,7 @@
 
 ```bash
 dotnet build                                              # Core·Tests·Sandbox  (⚠ Game 미포함)
-dotnet test                                               # xUnit (현재 536개)
+dotnet test                                               # 전체 xUnit 회귀 검증
 dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검증 — 루트 build가 빼먹으므로 필수
 "<godot-mono>" --headless --path SanguoSLG.Game --build-solutions --quit   # 씬/솔루션 컴파일 검증
 ```
@@ -34,7 +34,7 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검�
 |---|---|---|
 | 1 | [CLAUDE.md](CLAUDE.md) | **절대 규칙**(Core 순수성·테스트 동반·데이터화·결정론)·용어집·설계 문서 인덱스 |
 | 2 | [doc/ai-working-notes.md](doc/ai-working-notes.md) | 작업 방식(상시 규칙)·조용히 통과하는 **검증 함정**·머신 의존 경로 |
-| 3 | [doc/plan-roadmap.md](doc/plan-roadmap.md) | **전체 현황·단계 계획·다음 작업**(살아있는 문서) |
+| 3 | [doc/plan-v2-implementation-roadmap.md](doc/plan-v2-implementation-roadmap.md) | **현재 기능 Phase·완료 기준·다음 기능 작업** |
 | 4 | [doc/test/qa-checklist.md](doc/test/qa-checklist.md) | 최근 배치 수동 QA 체크리스트 |
 | — | `doc/design-*.md` · `doc/spec-*.md` | 영역별 설계 논의·확정 사양 |
 
@@ -43,14 +43,14 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검�
 - 현재 개발 기준은 [doc/plan-v2-implementation-roadmap.md](doc/plan-v2-implementation-roadmap.md)의 **v2 전투 중심 전환**이다.
 - 유지 축: 이동·전투·공성·함락·약탈·보급·병종 연구·도시 계략·탐색·임명·저장/불러오기·HUD/보고 패널.
 - 단순화/제거 축: 인구, 세율, 시장, 모병/징병 분리, 충성, 급여, 배신, 포로교환, 반복 시설 건설/업그레이드.
-- 구현 완료 축: 자동 담당자 4슬롯, 자동 병력 생산, 주력병종/전투 교리, 최소 외교, 위인 해금/영입, 탐색 이벤트.
+- 구현 완료 축: 자동 담당자, 병력 생산·연구·최소 외교·위인/탐색, 생산·보급·수송·집단군·항구, 장수 성장, 액티브 연출, 유적 점령/병종 해금.
 - 표현: `run-maptest`(캠페인 3D)·`run-admin`(내정) 씬. 최근 배치 수동 QA는 [doc/test/qa-checklist.md](doc/test/qa-checklist.md).
 
 ## 5. 다음 작업
 
-- **[doc/plan-roadmap.md](doc/plan-roadmap.md) 최상단 미완료 단계**부터 잡는다.
-- 크게 남은 것: **생산 작전**, **보급부대 UI**, **집단군**, **장수 레벨/숙련도/스킬 성장**, **유닛·장수 카드 UI**,
-  **탐색 보상/아이템 UI**, **이벤트 유닛**, **AI 개선**, **실지역 맵·시나리오**.
+- 기능은 **[doc/plan-v2-implementation-roadmap.md](doc/plan-v2-implementation-roadmap.md)의 최상단 미완료 단계**부터 잡는다.
+- 2026-09-27 기준 다음 기능은 **Phase 19 이벤트 유닛 대호**, 이후 용·봉황, v2 AI, 통합 QA다.
+- UI 우선 작업은 기능 Phase와 분리한 실행 문서의 우선순위와 화면별 QA를 따른다.
 - 원칙: 끼어드는 아이디어는 해당 `design-*` 문서에 `❓`로 기록만 하고 로드맵 순서를 따른다.
   게임 밸런스·규칙(전투 공식·성장·AI 우선순위)은 **설계자(사용자) 확정**이 필요 — 임의로 정하지 않는다.
 
