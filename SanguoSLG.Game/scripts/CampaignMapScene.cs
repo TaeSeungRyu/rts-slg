@@ -4797,6 +4797,10 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (cmd.Kind == CommandKind.Research)
         {
+            if (cmd.Param == "troop")
+            {
+                AddSectionDivider(box, "DoctrineFundingDivider");
+            }
             AddResearchFundingPicker(box, cityData);
         }
 
@@ -10710,7 +10714,9 @@ public sealed partial class CampaignMapScene : Node3D
             .OrderBy(c => c.Id.Value)
             .ToList();
 
-        box.AddChild(MakeLabel("연구비 분담 도시", 19, GoldBright));
+        var fundingTitle = MakeLabel("연구비 분담 도시", 19, GoldBright);
+        fundingTitle.Name = "ResearchFundingTitle";
+        box.AddChild(fundingTitle);
         box.AddChild(MakeLabel("보유 성별 연구비 부담 비율입니다. 비율을 0으로 두면 해당 성은 이번 연구비를 부담하지 않습니다.", 13, Parchment));
         var fundingPanel = new PanelContainer
         {
@@ -10802,6 +10808,21 @@ public sealed partial class CampaignMapScene : Node3D
             if (expand) { label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; }
             parent.AddChild(label);
         }
+    }
+
+    private void AddSectionDivider(VBoxContainer box, string name)
+    {
+        var divider = new VBoxContainer
+        {
+            Name = name,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        divider.SetMeta("section_divider", true);
+        divider.AddThemeConstantOverride("separation", 0);
+        divider.AddChild(new Control { CustomMinimumSize = new Vector2(0, 8) });
+        divider.AddChild(GoldRule());
+        divider.AddChild(new Control { CustomMinimumSize = new Vector2(0, 8) });
+        box.AddChild(divider);
     }
 
     private void ApplyCompactFundingInputStyle(SpinBox spin)
