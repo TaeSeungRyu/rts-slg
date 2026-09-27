@@ -4785,9 +4785,14 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         var hasGeneralResearchDetail = cmd.Kind == CommandKind.Research && cmd.Param == "general";
+        var hasDoctrineResearchDetail = cmd.Kind == CommandKind.Research && cmd.Param == "troop";
         if (hasGeneralResearchDetail)
         {
             AddGeneralResearchSelectionDetail(box);
+        }
+        else if (hasDoctrineResearchDetail)
+        {
+            AddDoctrineResearchSelectionDetail(box);
         }
 
         if (cmd.Kind == CommandKind.Research)
@@ -4795,7 +4800,7 @@ public sealed partial class CampaignMapScene : Node3D
             AddResearchFundingPicker(box, cityData);
         }
 
-        if (!hasGeneralResearchDetail)
+        if (!hasGeneralResearchDetail && !hasDoctrineResearchDetail)
         {
             _modalDetail = MakeLabel("", 17, Parchment);
             box.AddChild(_modalDetail);
@@ -10621,6 +10626,27 @@ public sealed partial class CampaignMapScene : Node3D
         content.AddChild(MakeLabel("◈ 선택 연구 상세", 16, GoldBright));
         _modalDetail = MakeLabel(GeneralResearchSelectionDetail(_modalParam), 14, Parchment);
         _modalDetail.Name = "GeneralResearchDetailText";
+        _modalDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        content.AddChild(_modalDetail);
+    }
+
+    private void AddDoctrineResearchSelectionDetail(VBoxContainer box)
+    {
+        var panel = new PanelContainer
+        {
+            Name = "DoctrineResearchSelectionDetail",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        panel.SetMeta("doctrine_research_detail", true);
+        panel.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.045f, 0.96f), new Color(GoldBright, 0.68f), 1, 8, 10));
+        box.AddChild(panel);
+
+        var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        content.AddThemeConstantOverride("separation", 5);
+        panel.AddChild(content);
+        content.AddChild(MakeLabel("◈ 선택 교리 상세", 16, GoldBright));
+        _modalDetail = MakeLabel("전투교리 대상을 선택하세요.", 14, Parchment);
+        _modalDetail.Name = "DoctrineResearchDetailText";
         _modalDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         content.AddChild(_modalDetail);
     }

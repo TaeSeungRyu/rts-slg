@@ -95,6 +95,11 @@ public sealed partial class CampaignMapScene
             && _unitCardTextures.Values.All(texture => texture.GetWidth() == 256 && texture.GetHeight() == 256);
         var withinLimit = watch.ElapsedMilliseconds <= 750;
         var doctrineOptions = OptionList(Cmds[commandIndex], city);
+        var detailPanel = _modalLayer?.FindChild("DoctrineResearchSelectionDetail", true, false) as PanelContainer;
+        var fundingPanel = _modalLayer?.FindChild("ResearchFundingPanel", true, false) as PanelContainer;
+        var doctrineDetailPlacement = detailPanel?.HasMeta("doctrine_research_detail") == true
+            && fundingPanel is not null
+            && detailPanel.GetGlobalRect().End.Y <= fundingPanel.GetGlobalRect().Position.Y + 1f;
         var specialResearchUsesStars = doctrineOptions
             .Where(option => option.Name is "통솔 병력" or "집단군")
             .All(option => option.Detail.Contains('★') || option.Detail.Contains('☆'))
@@ -111,9 +116,9 @@ public sealed partial class CampaignMapScene
             .All(option => option.Detail.Count(c => c == '★') == 10)
             && doctrineOptions.Where(option => option.Name == "집단군")
                 .All(option => option.Detail.Count(c => c == '★') == _cb.ArmyGroupResearchMaxLevel);
-        var passed = thumbnailTextures && withinLimit && _optionCards.Count >= 7
+        var passed = thumbnailTextures && withinLimit && _optionCards.Count >= 7 && doctrineDetailPlacement
             && specialResearchUsesStars && exactStarRules && specialStarCounts;
-        GD.Print($"[doctrine-performance-qa] passed={passed} elapsedMs={watch.ElapsedMilliseconds}/750 cards={_optionCards.Count} textures={_unitCardTextures.Count} thumbnails={thumbnailTextures} specialStars={specialResearchUsesStars} exactStars={exactStarRules} specialCounts={specialStarCounts}");
+        GD.Print($"[doctrine-performance-qa] passed={passed} elapsedMs={watch.ElapsedMilliseconds}/750 cards={_optionCards.Count} textures={_unitCardTextures.Count} thumbnails={thumbnailTextures} detailAboveFunding={doctrineDetailPlacement} specialStars={specialResearchUsesStars} exactStars={exactStarRules} specialCounts={specialStarCounts}");
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }
