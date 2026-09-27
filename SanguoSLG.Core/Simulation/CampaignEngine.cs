@@ -126,7 +126,11 @@ public sealed class CampaignEngine
             {
                 var ruinResult = _ruinCombat.Resolve(work, turn.Units);
                 work = ruinResult.State;
-                turn = turn with { Units = ruinResult.Armies };
+                turn = turn with
+                {
+                    Units = ruinResult.Armies,
+                    RuinCombatExchanges = ruinResult.Exchanges,
+                };
             }
             // 생산 대상은 저장용 야전 부대에서 제거해도 공격 모션의 목표 위치는 보존한다.
             var attackedProduction = productionUnits.Where(u =>

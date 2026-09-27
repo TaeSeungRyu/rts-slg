@@ -117,6 +117,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int CasterUnitId, int TargetUnitId, ActiveSkill Skill)> _animSkillEffects = new();
     private int _animSiegeSkillEffectIdx;
     private readonly List<(double Time, int CasterUnitId, Vector3 Target, ActiveSkill Skill)> _animSiegeSkillEffects = new();
+    private int _animRuinCounterIdx;
+    private readonly List<(double Time, Vector3 RuinPos)> _animRuinCounters = new();
     private int _animGaugeIdx;
     private readonly List<(double Time, int UnitId, ActiveSkill? Skill, ActiveGauge Gauge)> _animGaugeUpdates = new();
 
@@ -2669,6 +2671,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animActiveIdx = 0;
         _animSkillEffectIdx = 0;
         _animSiegeSkillEffectIdx = 0;
+        _animRuinCounterIdx = 0;
         _animGaugeIdx = 0;
         _advanceBtn.Busy = true;
         _advanceBtn.Progress = 0f;
@@ -2704,6 +2707,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animActives.Clear();
         _animSkillEffects.Clear();
         _animSiegeSkillEffects.Clear();
+        _animRuinCounters.Clear();
         _animGaugeUpdates.Clear();
         for (var d = 0; d <= AnimDays; d++) { _dayKind[d] = "이동"; } // 기본 이동턴, 아래서 교전·공성 있는 날만 공격턴
         var alive = new HashSet<int>(startHex.Keys);
@@ -2892,6 +2896,24 @@ public sealed partial class CampaignMapScene : Node3D
                     else { _animUpdates.Add((settleTime + 0.05, uid, remain)); }
                 }
             }
+
+            // 유적은 별도 고정 전투 대상이므로 일반 Combat에는 들어가지 않는다. Core가 전달한
+            // 교환 보고로 공격 모션과 Burst 강제 반격, 양측 피해 숫자를 같은 공격 슬롯에 재생한다.
+            foreach (var exchange in turn.RuinExchanges.OrderBy(x => x.Attacker.Value))
+            {
+                var ruin = _pendingState.Ruins.FirstOrDefault(x => x.Id == exchange.RuinId);
+                var attacker = turn.Units.FirstOrDefault(x => x.Id == exchange.Attacker)
+                    ?? (unitSnapshot.TryGetValue(exchange.Attacker.Value, out var beforeAttacker)
+                        ? beforeAttacker : null);
+                if (ruin is null || attacker is null) continue;
+                var ruinPos = _view.HexToWorld(ruin.Position) + new Vector3(0f, _view.TileTopY, 0f);
+                _animAttacks.Add((atkTime, exchange.Attacker.Value, ruinPos));
+                _animRuinCounters.Add((atkTime + 0.16, ruinPos));
+                if (exchange.DamageToRuin > 0)
+                    _animSiegeDmg.Add((atkTime + 0.35, ruinPos, exchange.DamageToRuin));
+                if (exchange.CounterDamage > 0)
+                    _animDmg.Add((atkTime + 0.35, exchange.Attacker.Value, exchange.CounterDamage));
+            }
             foreach (var (uid, damage) in turn.StatusDamage.Concat(turn.StratagemDamage)
                 .GroupBy(x => x.Key).Select(g => (g.Key, g.Sum(x => x.Value))))
             {
@@ -2954,6 +2976,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animCaptures.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animActives.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animRuinCounters.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animGaugeUpdates.Sort((a, b) => a.Time.CompareTo(b.Time));
     }
 
@@ -4268,6 +4291,18 @@ public sealed partial class CampaignMapScene : Node3D
                 var cleanup = GetTree().CreateTimer(4.0);
                 cleanup.Timeout += anchor.QueueFree;
                 _animSiegeSkillEffectIdx++;
+            }
+
+            while (_animRuinCounterIdx < _animRuinCounters.Count
+                && _animRuinCounters[_animRuinCounterIdx].Time <= _animT)
+            {
+                var counter = _animRuinCounters[_animRuinCounterIdx];
+                var anchor = new Node3D { Name = "RuinCounterBurst", GlobalPosition = counter.RuinPos };
+                AddChild(anchor);
+                EffectView.Attach(anchor, EffectKind.Burst, 0.72f, loop: false);
+                var cleanup = GetTree().CreateTimer(1.2);
+                cleanup.Timeout += anchor.QueueFree;
+                _animRuinCounterIdx++;
             }
 
             while (_animSiegeDmgIdx < _animSiegeDmg.Count && _animSiegeDmg[_animSiegeDmgIdx].Time <= _animT)
