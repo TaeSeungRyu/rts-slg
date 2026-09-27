@@ -4782,14 +4782,23 @@ public sealed partial class CampaignMapScene : Node3D
             AddAutoRecruitRatePicker(box, options);
         }
 
+        var hasGeneralResearchDetail = cmd.Kind == CommandKind.Research && cmd.Param == "general";
+        if (hasGeneralResearchDetail)
+        {
+            AddGeneralResearchSelectionDetail(box);
+        }
+
         if (cmd.Kind == CommandKind.Research)
         {
             AddResearchFundingPicker(box, cityData);
         }
 
-        _modalDetail = MakeLabel("", 17, Parchment);
-        box.AddChild(_modalDetail);
-        box.AddChild(GoldRule());
+        if (!hasGeneralResearchDetail)
+        {
+            _modalDetail = MakeLabel("", 17, Parchment);
+            box.AddChild(_modalDetail);
+            box.AddChild(GoldRule());
+        }
 
         if (cmd.Kind == CommandKind.SelectMajorTroop)
         {
@@ -10546,10 +10555,54 @@ public sealed partial class CampaignMapScene : Node3D
         var detail = PlainUiText(o.Detail);
         if (GodotObject.IsInstanceValid(_modalDetail))
         {
-            _modalDetail!.Text = detail.Length > 0 ? $"▶  {o.Name}  —  {detail}" : $"▶  {o.Name}";
+            var cmd = Cmds[_cmdIndex];
+            _modalDetail!.Text = cmd.Kind == CommandKind.Research && cmd.Param == "general"
+                ? GeneralResearchSelectionDetail(idx)
+                : detail.Length > 0 ? $"▶  {o.Name}  —  {detail}" : $"▶  {o.Name}";
         }
 
         RefreshResearchFundingPreview();
+    }
+
+    private void AddGeneralResearchSelectionDetail(VBoxContainer box)
+    {
+        var panel = new PanelContainer
+        {
+            Name = "GeneralResearchSelectionDetail",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        panel.SetMeta("general_research_detail", true);
+        panel.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.045f, 0.96f), new Color(GoldBright, 0.68f), 1, 8, 10));
+        box.AddChild(panel);
+
+        var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        content.AddThemeConstantOverride("separation", 5);
+        panel.AddChild(content);
+        content.AddChild(MakeLabel("◈ 선택 연구 상세", 16, GoldBright));
+        _modalDetail = MakeLabel(GeneralResearchSelectionDetail(_modalParam), 14, Parchment);
+        _modalDetail.Name = "GeneralResearchDetailText";
+        _modalDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        content.AddChild(_modalDetail);
+    }
+
+    private string GeneralResearchSelectionDetail(int index)
+    {
+        if (_selected is not { } cityId || index < 0 || index >= GeneralResearchRules.Definitions.Count)
+        {
+            return "연구 대상을 선택하세요.";
+        }
+
+        var city = _state.Cities.First(c => c.Id == cityId);
+        var definition = GeneralResearchRules.Definitions[index];
+        var level = _state.ResearchOf(city.Owner, definition.Code);
+        if (level >= GeneralResearchRules.MaxLevel)
+        {
+            return $"{definition.Name}  ·  Lv.{level}/{GeneralResearchRules.MaxLevel}\n{definition.Description}\n연구가 완료된 분야입니다.";
+        }
+
+        var next = level + 1;
+        var cost = GeneralResearchRules.Cost(next, _cb);
+        return $"{definition.Name}  ·  Lv.{level} → Lv.{next}\n{definition.Description}\n다음 효과: {GeneralResearchRules.NextEffectText(definition.Code, level)}  ·  연구비 {cost:N0}금";
     }
 
     private bool IsOptionSelected(int idx)
@@ -13320,13 +13373,21 @@ public sealed partial class CampaignMapScene : Node3D
             && fundingRowCount == ownedCityCount;
         var optionGrid = _modalLayer?.FindChild("CommandOptionGrid", true, false) as GridContainer;
         var optionColumnsOk = optionGrid?.Columns == System.Math.Min(7, GeneralResearchRules.Definitions.Count);
+        var researchDetailPanel = _modalLayer?.FindChild("GeneralResearchSelectionDetail", true, false) as PanelContainer;
+        var researchDetailText = _modalLayer?.FindChild("GeneralResearchDetailText", true, false) as Label;
+        var detailPlacementOk = researchDetailPanel?.HasMeta("general_research_detail") == true
+            && researchDetailText?.Text.Contains(GeneralResearchRules.Definitions[0].Description, System.StringComparison.Ordinal) == true
+            && optionGrid is not null && fundingPanel is not null
+            && optionGrid.GetGlobalRect().End.Y <= researchDetailPanel.GetGlobalRect().Position.Y + 1f
+            && researchDetailPanel.GetGlobalRect().End.Y <= fundingPanel.GetGlobalRect().Position.Y + 1f;
         var ok = submenuOk && allGroupsOk && generalBusyOk && layoutOk
             && _optionCards.Count == GeneralResearchRules.Definitions.Count
             && _researchFundingRatios.Count == ownedCityCount
             && fundingLayoutOk
             && optionColumnsOk
+            && detailPlacementOk
             && GeneralResearchRules.Definitions.All(d => names.Contains(d.Name));
-        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} names={string.Join(',', names)} ok={ok}");
+        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 detail={detailPlacementOk} fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} names={string.Join(',', names)} ok={ok}");
         CloseModal();
         GetWindow().Size = originalWindowSize;
         GetTree().Quit(ok ? 0 : 1);
