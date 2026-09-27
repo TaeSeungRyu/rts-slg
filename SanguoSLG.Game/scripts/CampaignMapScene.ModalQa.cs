@@ -4,16 +4,17 @@ namespace SanguoSLG.Game;
 
 public sealed partial class CampaignMapScene
 {
-    /// <summary>탐색·외교의 수행 장수 표는 행 전체를 보이고 내부 세로 스크롤을 쓰지 않는다.</summary>
+    /// <summary>탐색·외교 및 8명 이하 수행 장수 표는 행 전체를 보이고 내부 세로 스크롤을 쓰지 않는다.</summary>
     private async void RunOfficerTableLayoutQa()
     {
         var city = _state.Cities.FirstOrDefault(c => c.Owner == Player);
         var commandIndices = Cmds.Select((command, index) => (command, index))
             .Where(x => x.command.Kind is SanguoSLG.Core.Domain.CommandKind.Explore
-                or SanguoSLG.Core.Domain.CommandKind.FormAlliance)
+                or SanguoSLG.Core.Domain.CommandKind.FormAlliance
+                or SanguoSLG.Core.Domain.CommandKind.AppointSecurityOfficer)
             .Select(x => x.index)
             .ToList();
-        if (city is null || commandIndices.Count != 2)
+        if (city is null || commandIndices.Count != 3)
         {
             GD.PrintErr("[officer-table-qa] passed=False reason=missing-city-or-command");
             GetTree().Quit(1);

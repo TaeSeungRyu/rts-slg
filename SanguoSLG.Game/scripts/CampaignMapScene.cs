@@ -11041,7 +11041,9 @@ public sealed partial class CampaignMapScene : Node3D
             : cmd.Kind is CommandKind.Train or CommandKind.AppointSecurityOfficer
                 or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer ? 1 : 3;
 
-        var showAllOfficerRows = cmd.Kind is CommandKind.Explore or CommandKind.FormAlliance or CommandKind.BreakAlliance;
+        const int compactOfficerRowLimit = 8;
+        var showAllOfficerRows = free.Count <= compactOfficerRowLimit
+            || cmd.Kind is CommandKind.Explore or CommandKind.FormAlliance or CommandKind.BreakAlliance;
         const int officerRowHeight = 46;
         var tree = new Tree
         {
@@ -11050,7 +11052,7 @@ public sealed partial class CampaignMapScene : Node3D
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            // 탐색·외교는 행 전체를 보이고, 대량 명령만 표 내부 스크롤을 쓴다.
+            // 소규모 목록과 탐색·외교는 행 전체를 보이고, 9명 이상인 목록만 표 내부 스크롤을 쓴다.
             CustomMinimumSize = new Vector2(0, showAllOfficerRows
                 ? 48 + free.Count * officerRowHeight
                 : Mathf.Min(48 + free.Count * officerRowHeight, 470)),
