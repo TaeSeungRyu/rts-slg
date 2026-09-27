@@ -547,6 +547,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestruinburstqa")) CallDeferred(nameof(RunRuinBurstQa));
         if (args.Contains("--maptestunitreturnconfirmqa")) CallDeferred(nameof(RunUnitReturnConfirmQa));
         if (args.Contains("--maptestmodalframeworkqa")) CallDeferred(nameof(RunAdaptiveModalFrameworkQa));
+        if (args.Contains("--maptestdoctrineperformanceqa")) CallDeferred(nameof(RunDoctrineModalPerformanceQa));
     }
 
     public override void _ExitTree()
@@ -11143,7 +11144,10 @@ public sealed partial class CampaignMapScene : Node3D
     private ImageTexture UnitCard(string code, TroopClass? fallbackClass = null)
     {
         if (_unitCardTextures.TryGetValue(code, out var cached)) return cached;
-        var path = $"res://assets/ui/troops/{code}.png";
+        var thumbnailPath = $"res://assets/ui/troops/thumbnails/{code}.png";
+        var path = Godot.FileAccess.FileExists(thumbnailPath)
+            ? thumbnailPath
+            : $"res://assets/ui/troops/{code}.png";
         if (Godot.FileAccess.FileExists(path))
         {
             var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
@@ -12991,22 +12995,23 @@ public sealed partial class CampaignMapScene : Node3D
         GetTree().Quit(passed ? 0 : 1);
     }
 
-    /// <summary>28종 고유 유닛 카드 로딩과 고정 크기 편성 카드 레이아웃 회귀 QA.</summary>
+    /// <summary>28종 고유 유닛 원본·256px 썸네일 로딩과 고정 크기 편성 카드 레이아웃 회귀 QA.</summary>
     private void RunUnitCardQa()
     {
         var missing = new List<string>();
         var wrongSize = new List<string>();
         foreach (var code in UnitCardCodes)
         {
-            var path = $"res://assets/ui/troops/{code}.png";
-            if (!Godot.FileAccess.FileExists(path))
+            var sourcePath = $"res://assets/ui/troops/{code}.png";
+            var thumbnailPath = $"res://assets/ui/troops/thumbnails/{code}.png";
+            if (!Godot.FileAccess.FileExists(sourcePath) || !Godot.FileAccess.FileExists(thumbnailPath))
             {
                 missing.Add(code);
                 continue;
             }
 
             var texture = UnitCard(code);
-            if (texture.GetWidth() != 1024 || texture.GetHeight() != 1024) wrongSize.Add(code);
+            if (texture.GetWidth() != 256 || texture.GetHeight() != 256) wrongSize.Add(code);
         }
 
         var sample = DeployCard(UnitCard("swordsman", TroopClass.Infantry), "도검병", "10,000명");

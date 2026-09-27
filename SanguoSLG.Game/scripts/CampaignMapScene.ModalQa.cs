@@ -4,6 +4,36 @@ namespace SanguoSLG.Game;
 
 public sealed partial class CampaignMapScene
 {
+    /// <summary>전투교리 최초 실행이 축소 카드 캐시를 사용해 지연 없이 열리는지 확인한다.</summary>
+    private async void RunDoctrineModalPerformanceQa()
+    {
+        var city = _state.Cities.FirstOrDefault(c => c.Owner == Player);
+        var commandIndex = System.Array.FindIndex(Cmds,
+            c => c.Kind == SanguoSLG.Core.Domain.CommandKind.Research && c.Param == "troop");
+        if (city is null || commandIndex < 0)
+        {
+            GD.PrintErr("[doctrine-performance-qa] passed=False reason=missing-city-or-command");
+            GetTree().Quit(1);
+            return;
+        }
+
+        _unitCardTextures.Clear();
+        _selected = city.Id;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        OpenModal(commandIndex);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        watch.Stop();
+
+        var thumbnailTextures = _unitCardTextures.Count > 0
+            && _unitCardTextures.Values.All(texture => texture.GetWidth() == 256 && texture.GetHeight() == 256);
+        var withinLimit = watch.ElapsedMilliseconds <= 750;
+        var passed = thumbnailTextures && withinLimit && _optionCards.Count >= 7;
+        GD.Print($"[doctrine-performance-qa] passed={passed} elapsedMs={watch.ElapsedMilliseconds}/750 cards={_optionCards.Count} textures={_unitCardTextures.Count} thumbnails={thumbnailTextures}");
+        CloseModal();
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     /// <summary>UI-01: 3개 해상도×3개 폭 프로필에서 공용 모달의 경계와 고정 영역을 검증한다.</summary>
     private async void RunAdaptiveModalFrameworkQa()
     {
