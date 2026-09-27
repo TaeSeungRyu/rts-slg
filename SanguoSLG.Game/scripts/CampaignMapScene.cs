@@ -10734,7 +10734,7 @@ public sealed partial class CampaignMapScene : Node3D
 
             var row = new HBoxContainer
             {
-                CustomMinimumSize = new Vector2(0, 38),
+                CustomMinimumSize = new Vector2(0, 32),
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             };
             row.AddThemeConstantOverride("separation", 10);
@@ -10747,13 +10747,16 @@ public sealed partial class CampaignMapScene : Node3D
             AddFundingCell(row, $"{c.Gold:N0}금", 126, color: GoldBright);
             var ratio = ApplyNumberInputStyle(new SpinBox
             {
+                Name = $"ResearchFundingRatio{c.Id.Value}",
                 MinValue = 0,
                 MaxValue = 10,
                 Step = 1,
                 Value = 1,
-                CustomMinimumSize = new Vector2(116, 32),
+                CustomMinimumSize = new Vector2(108, 26),
                 SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             });
+            ApplyCompactFundingInputStyle(ratio);
             ratio.ValueChanged += _ => RefreshResearchFundingPreview();
             _researchFundingRatios[c.Id.Value] = ratio;
             row.AddChild(ratio);
@@ -10778,6 +10781,18 @@ public sealed partial class CampaignMapScene : Node3D
             if (expand) { label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; }
             parent.AddChild(label);
         }
+    }
+
+    private void ApplyCompactFundingInputStyle(SpinBox spin)
+    {
+        spin.AddThemeStyleboxOverride("normal", Frame(new Color(0.82f, 0.80f, 0.72f), Gold, 1, 4, 2));
+        spin.AddThemeStyleboxOverride("focus", Frame(new Color(0.90f, 0.87f, 0.75f), GoldBright, 2, 4, 2));
+        spin.AddThemeStyleboxOverride("hover", Frame(new Color(0.88f, 0.85f, 0.76f), GoldBright, 1, 4, 2));
+        if (spin.GetLineEdit() is not { } line) return;
+        line.CustomMinimumSize = new Vector2(0, 24);
+        line.AddThemeStyleboxOverride("normal", Frame(new Color(0.82f, 0.80f, 0.72f), Gold, 1, 4, 2));
+        line.AddThemeStyleboxOverride("focus", Frame(new Color(0.90f, 0.87f, 0.75f), GoldBright, 2, 4, 2));
+        line.AddThemeStyleboxOverride("read_only", Frame(new Color(0.70f, 0.68f, 0.62f), new Color(Gold, 0.55f), 1, 4, 2));
     }
 
     private List<ResearchFundingShare> CurrentResearchFundingShares()
@@ -13445,6 +13460,9 @@ public sealed partial class CampaignMapScene : Node3D
             .OfType<PanelContainer>().Count(x => x.HasMeta("research_funding_row")) ?? 0;
         var fundingLayoutOk = fundingPanel?.HasMeta("research_funding_table") == true
             && fundingRowCount == ownedCityCount;
+        var compactFundingInputs = _researchFundingRatios.Count == ownedCityCount
+            && _researchFundingRatios.Values.All(spin => spin.CustomMinimumSize.Y <= 26f
+                && spin.GetLineEdit().CustomMinimumSize.Y <= 24f);
         var optionGrid = _modalLayer?.FindChild("CommandOptionGrid", true, false) as GridContainer;
         var optionColumnsOk = optionGrid?.Columns == System.Math.Min(7, GeneralResearchRules.Definitions.Count);
         var researchDetailPanel = _modalLayer?.FindChild("GeneralResearchSelectionDetail", true, false) as PanelContainer;
@@ -13458,10 +13476,11 @@ public sealed partial class CampaignMapScene : Node3D
             && _optionCards.Count == GeneralResearchRules.Definitions.Count
             && _researchFundingRatios.Count == ownedCityCount
             && fundingLayoutOk
+            && compactFundingInputs
             && optionColumnsOk
             && detailPlacementOk
             && GeneralResearchRules.Definitions.All(d => names.Contains(d.Name));
-        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 detail={detailPlacementOk} fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} names={string.Join(',', names)} ok={ok}");
+        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 detail={detailPlacementOk} fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} names={string.Join(',', names)} ok={ok}");
         CloseModal();
         GetWindow().Size = originalWindowSize;
         GetTree().Quit(ok ? 0 : 1);
