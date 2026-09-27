@@ -118,7 +118,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _animSiegeSkillEffectIdx;
     private readonly List<(double Time, int CasterUnitId, Vector3 Target, ActiveSkill Skill)> _animSiegeSkillEffects = new();
     private int _animRuinCounterIdx;
-    private readonly List<(double Time, Vector3 RuinPos)> _animRuinCounters = new();
+    private readonly List<(double Time, int TargetUnitId)> _animRuinCounters = new();
     private int _animRuinCaptureIdx;
     private readonly List<(double Time, string RuinId, FactionId Owner)> _animRuinCaptures = new();
     private int _animGaugeIdx;
@@ -535,6 +535,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestruinuiqa")) CallDeferred(nameof(RunRuinUiQa));
         if (args.Contains("--maptestruinprotectionqa")) CallDeferred(nameof(RunRuinProtectionQa));
         if (args.Contains("--maptestruintoastqa")) CallDeferred(nameof(RunRuinToastQa));
+        if (args.Contains("--maptestruinburstqa")) CallDeferred(nameof(RunRuinBurstQa));
     }
 
     public override void _ExitTree()
@@ -2936,7 +2937,7 @@ public sealed partial class CampaignMapScene : Node3D
                 if (ruin is null || attacker is null) continue;
                 var ruinPos = _view.HexToWorld(ruin.Position) + new Vector3(0f, _view.TileTopY, 0f);
                 _animAttacks.Add((atkTime, exchange.Attacker.Value, ruinPos));
-                _animRuinCounters.Add((atkTime + 0.16, ruinPos));
+                _animRuinCounters.Add((atkTime + 0.16, exchange.Attacker.Value));
                 if (exchange.DamageToRuin > 0)
                     _animSiegeDmg.Add((atkTime + 0.35, ruinPos, exchange.DamageToRuin));
                 if (exchange.CounterDamage > 0)
@@ -3152,6 +3153,17 @@ public sealed partial class CampaignMapScene : Node3D
         var cleanup = CreateTween();
         cleanup.TweenInterval(2.3f);
         cleanup.Finished += spot.QueueFree;
+    }
+
+    private void PlayRuinCounterBurst(Node3D target)
+    {
+        var effect = EffectView.Attach(target, EffectKind.Burst, 0.72f, loop: false);
+        effect.Name = "RuinCounterBurst";
+        var cleanup = GetTree().CreateTimer(1.2);
+        cleanup.Timeout += () =>
+        {
+            if (GodotObject.IsInstanceValid(effect)) effect.QueueFree();
+        };
     }
 
     // 이 진행 조각에서 공격한 부대의 모션 예약: 야전 교전(피해를 준 부대 → 최근접 적 방향)
@@ -4375,11 +4387,8 @@ public sealed partial class CampaignMapScene : Node3D
                 && _animRuinCounters[_animRuinCounterIdx].Time <= _animT)
             {
                 var counter = _animRuinCounters[_animRuinCounterIdx];
-                var anchor = new Node3D { Name = "RuinCounterBurst", GlobalPosition = counter.RuinPos };
-                AddChild(anchor);
-                EffectView.Attach(anchor, EffectKind.Burst, 0.72f, loop: false);
-                var cleanup = GetTree().CreateTimer(1.2);
-                cleanup.Timeout += anchor.QueueFree;
+                if (_armyTokens.TryGetValue(counter.TargetUnitId, out var target) && target.Visible)
+                    PlayRuinCounterBurst(target);
                 _animRuinCounterIdx++;
             }
 
@@ -4390,6 +4399,19 @@ public sealed partial class CampaignMapScene : Node3D
                 var ruinName = _pendingState.Ruins.FirstOrDefault(r => r.Id == capture.RuinId)?.Name ?? "유적";
                 var factionName = _pendingState.Factions.FirstOrDefault(f => f.Id == capture.Owner)?.Name ?? "세력";
                 ShowToast("점령되었습니다!", $"{factionName}이(가) {ruinName}을 점령했습니다.");
+                if (_pendingState.Ruins.FirstOrDefault(r => r.Id == capture.RuinId) is { } capturedRuin
+                    && _ruinLayer.FindChild($"RuinProtection_{capture.RuinId}", false, false) is null)
+                {
+                    var barrier = new RuinProtectionEffect3D
+                    {
+                        Name = $"RuinProtection_{capture.RuinId}",
+                        Position = _view.HexToWorld(capturedRuin.Position)
+                            + new Vector3(0f, _view.TileTopY + 0.04f, 0f),
+                        Scale = Vector3.One * 0.92f,
+                    };
+                    _ruinLayer.AddChild(barrier);
+                    _fog.Register(barrier, capturedRuin.Position);
+                }
                 _animRuinCaptureIdx++;
             }
 
@@ -12684,6 +12706,20 @@ public sealed partial class CampaignMapScene : Node3D
         var panel = toast?.FindChild("ToastPanel", true, false);
         var ok = toast is CanvasLayer && panel is PanelContainer;
         GD.Print($"[ruin-toast-qa] toast={toast is not null} panel={panel is not null} ok={ok}");
+        GetTree().Quit(ok ? 0 : 1);
+    }
+
+    private async void RunRuinBurstQa()
+    {
+        var target = new Node3D { Name = "RuinBurstQaAttacker" };
+        AddChild(target);
+        PlayRuinCounterBurst(target);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var effect = target.FindChild("RuinCounterBurst", false, false);
+        var burst = effect?.FindChildren("*", "", true, false).OfType<BurstEffect>().FirstOrDefault();
+        var noWorldAnchor = FindChild("RuinCounterBurst", false, false) is null;
+        var ok = effect is Node3D && burst is not null && noWorldAnchor;
+        GD.Print($"[ruin-burst-qa] onAttacker={effect is not null} burst={burst is not null} noWorldAnchor={noWorldAnchor} ok={ok}");
         GetTree().Quit(ok ? 0 : 1);
     }
 
