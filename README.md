@@ -15,7 +15,7 @@
 - 제거/축소 방향: 인구, 세율, 시장, 모병/징병 분리, 충성, 급여, 배신, 포로교환, 과도한 시설 건설/업그레이드.
 - 구현 축: 자동 담당자·병력 생산·연구·최소 외교·위인/탐색, 생산 작전·보급·수송·집단군·항구, 장수 성장, 액티브 연출, 유적 점령/병종 해금.
 - 다음 기능 단계는 이벤트 유닛이며, UI는 확인창·가로형 모달·스크롤 구조를 QA와 함께 우선 개선한다.
-- **상세 현황·다음 작업은 [ONBOARDING.md](ONBOARDING.md) · [v2 구현 로드맵](./doc/plan-v2-implementation-roadmap.md)** 참조
+- **상세 현황·다음 작업은 [ONBOARDING.md](ONBOARDING.md) · [v2 구현 로드맵](./doc/plan-v2-implementation-roadmap.md) · [UI 개선 목록](./doc/plan-ui-improvement.md)** 참조
 
 ## 설계 문서
 

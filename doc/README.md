@@ -2,9 +2,9 @@
 
 이 디렉토리는 설계 원본, v2 전환 로드맵, 구현 이력, QA 체크리스트가 함께 들어 있다. 새 작업자는 아래 순서로 읽는다.
 
-> **문서 전수 점검: 2026-09-27.** 저장소의 Markdown 44개를 분류하고 로컬 링크를 검사했다(깨진 링크 0개).
+> **문서 전수 점검: 2026-09-27.** 저장소의 Markdown 45개를 분류하고 로컬 링크를 검사했다(깨진 링크 0개).
 > Phase 0~18A는 구현·자동 QA 완료이며, 기능 로드맵의 다음 미완료 단계는 **Phase 19 이벤트 유닛 1차: 대호**다.
-> 사용자가 요청한 UI 우선 개선은 기능 Phase와 분리한 별도 실행 문서로 관리한다.
+> 사용자가 요청한 UI 우선 개선은 기능 Phase와 분리해 [UI 개선 작업 목록](./plan-ui-improvement.md)으로 관리한다.
 
 ## 충돌 시 우선순위
 
@@ -39,6 +39,7 @@
 | 장수 라이프사이클 | [design-general-lifecycle.md](./design-general-lifecycle.md) | 위인 해금, 탐색, 등용, 함락/멸망 획득 |
 | 내정 | [design-administration.md](./design-administration.md) | v2 담당자 4슬롯, 생산, 항구 경제 |
 | UI | [design-ui.md](./design-ui.md) | 명령 팔레트, 장수/부대/스킬 표시 |
+| UI 개선 실행 | [plan-ui-improvement.md](./plan-ui-improvement.md) | 확인창·가로형 모달·스크롤·공통 컴포넌트·UI QA 우선순위 |
 | 스킬 | [design-skill.md](./design-skill.md), [design-skill-actives.md](./design-skill-actives.md), [design-skill-passives.md](./design-skill-passives.md), [design-skill-admin.md](./design-skill-admin.md) | 액티브/패시브/내정 패시브 |
 | 계략 전환 | [design-stratagem.md](./design-stratagem.md) | 독립 계략 폐기, 전투 액티브 전환 기준 |
 | 외교 | [design-diplomacy-ruler-relations.md](./design-diplomacy-ruler-relations.md) | 동맹/동맹파기와 군주 관계도 |
@@ -89,7 +90,7 @@
 |---|---|---|
 | 저장소 규칙 | [../CLAUDE.md](../CLAUDE.md), [ai-working-notes.md](./ai-working-notes.md) | 아키텍처·작업 방식·QA·머신 경로 |
 | 진입점 | [../README.md](../README.md), [../ONBOARDING.md](../ONBOARDING.md), 이 문서 | 프로젝트 소개와 읽는 순서 |
-| 실행 로드맵 | [plan-v2-implementation-roadmap.md](./plan-v2-implementation-roadmap.md) | 현재 기능 Phase와 완료 기준 |
+| 실행 로드맵 | [plan-v2-implementation-roadmap.md](./plan-v2-implementation-roadmap.md), [plan-ui-improvement.md](./plan-ui-improvement.md) | 현재 기능 Phase와 UI 우선 작업 보드 |
 | 상위/방향 기록 | [plan-roadmap.md](./plan-roadmap.md), [plan-combat-redesign-v2.md](./plan-combat-redesign-v2.md), [review-game-direction-2026-09.md](./review-game-direction-2026-09.md) | 전체 맥락·방향성·의사결정 기록 |
 | 현행 설계 | [design-administration.md](./design-administration.md), [design-combat.md](./design-combat.md), [design-diplomacy-ruler-relations.md](./design-diplomacy-ruler-relations.md), [design-general-lifecycle.md](./design-general-lifecycle.md), [design-movement.md](./design-movement.md), [design-stratagem.md](./design-stratagem.md), [design-terrain.md](./design-terrain.md), [design-ui.md](./design-ui.md), [design-unit-state.md](./design-unit-state.md), [design-water.md](./design-water.md) | 분야별 확정 규칙. 각 문서 상단의 v2 기준을 우선 |
 | 스킬/효과 | [design-skill.md](./design-skill.md), [design-skill-actives.md](./design-skill-actives.md), [design-skill-passives.md](./design-skill-passives.md), [design-skill-admin.md](./design-skill-admin.md), [design-effect.md](./design-effect.md) | 액티브·패시브·내정 패시브와 3D 효과 |

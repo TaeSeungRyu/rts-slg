@@ -1,6 +1,6 @@
 # 로드맵 — 전체 현황과 구현 이력 (2026-08-15 작성 · 2026-09-27 정리)
 
-> **현재 실행 기준:** [v2 구현 로드맵](./plan-v2-implementation-roadmap.md). Phase 0~18A는 구현·자동 QA 완료이고 다음 기능 단계는 **Phase 19**다. UI 우선 개선은 기능 Phase와 분리해 관리한다.
+> **현재 실행 기준:** [v2 구현 로드맵](./plan-v2-implementation-roadmap.md). Phase 0~18A는 구현·자동 QA 완료이고 다음 기능 단계는 **Phase 19**다. UI 우선 개선은 [UI 개선 작업 목록](./plan-ui-improvement.md)에서 별도로 관리한다.
 
 > 이 문서는 초기 구현과 v2 전환의 큰 흐름을 보존하는 상위 요약이다. 현재 단계·완료 판정이 충돌하면 v2 구현 로드맵을 우선한다. 규칙 원본은 각 design/spec 문서다.
 

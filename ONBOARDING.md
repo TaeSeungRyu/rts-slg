@@ -35,7 +35,8 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검�
 | 1 | [CLAUDE.md](CLAUDE.md) | **절대 규칙**(Core 순수성·테스트 동반·데이터화·결정론)·용어집·설계 문서 인덱스 |
 | 2 | [doc/ai-working-notes.md](doc/ai-working-notes.md) | 작업 방식(상시 규칙)·조용히 통과하는 **검증 함정**·머신 의존 경로 |
 | 3 | [doc/plan-v2-implementation-roadmap.md](doc/plan-v2-implementation-roadmap.md) | **현재 기능 Phase·완료 기준·다음 기능 작업** |
-| 4 | [doc/test/qa-checklist.md](doc/test/qa-checklist.md) | 최근 배치 수동 QA 체크리스트 |
+| 4 | [doc/plan-ui-improvement.md](doc/plan-ui-improvement.md) | UI 우선 개선 작업과 화면별 QA |
+| 5 | [doc/test/qa-checklist.md](doc/test/qa-checklist.md) | 최근 배치 수동 QA 체크리스트 |
 | — | `doc/design-*.md` · `doc/spec-*.md` | 영역별 설계 논의·확정 사양 |
 
 ## 4. 현재 상태
@@ -50,7 +51,7 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검�
 
 - 기능은 **[doc/plan-v2-implementation-roadmap.md](doc/plan-v2-implementation-roadmap.md)의 최상단 미완료 단계**부터 잡는다.
 - 2026-09-27 기준 다음 기능은 **Phase 19 이벤트 유닛 대호**, 이후 용·봉황, v2 AI, 통합 QA다.
-- UI 우선 작업은 기능 Phase와 분리한 실행 문서의 우선순위와 화면별 QA를 따른다.
+- UI 우선 작업은 [doc/plan-ui-improvement.md](doc/plan-ui-improvement.md)의 우선순위와 화면별 QA를 따른다.
 - 원칙: 끼어드는 아이디어는 해당 `design-*` 문서에 `❓`로 기록만 하고 로드맵 순서를 따른다.
   게임 밸런스·규칙(전투 공식·성장·AI 우선순위)은 **설계자(사용자) 확정**이 필요 — 임의로 정하지 않는다.
 

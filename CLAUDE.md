@@ -167,6 +167,7 @@ dotnet test
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
 | [ai-working-notes.md](doc/ai-working-notes.md)                     | **AI 작업 방식(상시 규칙)·검증 함정·머신 의존 경로** — 새 세션/새 환경에서 작업 시작 전 필독      |
 | [plan-v2-implementation-roadmap.md](doc/plan-v2-implementation-roadmap.md) | **현재 기능 단계·완료 기준** — 다음 기능 작업과 Phase 상태의 원본                              |
+| [plan-ui-improvement.md](doc/plan-ui-improvement.md)               | **UI 우선 개선 목록** — 확인창·가로형 모달·스크롤·공통 컴포넌트와 UI QA                         |
 | [plan-roadmap.md](doc/plan-roadmap.md)                             | 전체 프로젝트 상위 요약·과거 구현 이력                                                         |
 | [design-movement.md](doc/design-movement.md)                       | 이동·탐지·추격·정지·우회·성 입성/출격·지형 이동 패널티                                            |
 | [design-combat.md](doc/design-combat.md)                           | 피해 공식·병종 공/방·지형 전투 보정·성 전투(성벽/붕괴/반격/함락)                                  |
