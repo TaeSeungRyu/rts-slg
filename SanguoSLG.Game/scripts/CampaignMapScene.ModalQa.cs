@@ -33,11 +33,24 @@ public sealed partial class CampaignMapScene
             var expectedHeight = 46 + rows * 34;
             var ok = table?.GetMeta("all_officer_rows").AsBool() == true
                 && table.ScrollVerticalEnabled == false
+                && table.MouseForcePassScrollEvents == false
                 && table.CustomMinimumSize.Y >= expectedHeight;
             passed &= ok;
             results.Add($"{Cmds[commandIndex].Label}:{rows}:{table?.CustomMinimumSize.Y ?? 0}:{ok}");
             CloseModal();
         }
+
+        var researchIndex = System.Array.FindIndex(Cmds,
+            command => command.Kind == SanguoSLG.Core.Domain.CommandKind.Research && command.Param == "general");
+        OpenModal(researchIndex);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var researchTable = _modalLayer?.FindChild("CommandOfficerTable", true, false) as Tree;
+        var wheelIsolated = researchTable?.GetMeta("isolated_wheel_scroll").AsBool() == true
+            && researchTable.MouseFilter == Control.MouseFilterEnum.Stop
+            && researchTable.MouseForcePassScrollEvents == false;
+        passed &= wheelIsolated;
+        results.Add($"일반연구:휠격리:{wheelIsolated}");
+        CloseModal();
 
         GD.Print($"[officer-table-qa] passed={passed} results={string.Join('|', results)}");
         GetTree().Quit(passed ? 0 : 1);

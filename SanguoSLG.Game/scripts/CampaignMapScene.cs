@@ -11010,9 +11010,12 @@ public sealed partial class CampaignMapScene : Node3D
                 ? 46 + free.Count * 34
                 : Mathf.Min(46 + free.Count * 34, 420)),
             ScrollVerticalEnabled = !showAllOfficerRows,
+            MouseFilter = Control.MouseFilterEnum.Stop,
+            MouseForcePassScrollEvents = false,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         tree.SetMeta("all_officer_rows", showAllOfficerRows);
+        tree.SetMeta("isolated_wheel_scroll", true);
         tree.AddThemeFontOverride("font", _font);
         tree.AddThemeFontSizeOverride("font_size", 15);
         tree.AddThemeFontOverride("title_button_font", _font);
