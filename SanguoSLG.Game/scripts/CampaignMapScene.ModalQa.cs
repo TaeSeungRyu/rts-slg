@@ -4,6 +4,45 @@ namespace SanguoSLG.Game;
 
 public sealed partial class CampaignMapScene
 {
+    /// <summary>탐색·외교의 수행 장수 표는 행 전체를 보이고 내부 세로 스크롤을 쓰지 않는다.</summary>
+    private async void RunOfficerTableLayoutQa()
+    {
+        var city = _state.Cities.FirstOrDefault(c => c.Owner == Player);
+        var commandIndices = Cmds.Select((command, index) => (command, index))
+            .Where(x => x.command.Kind is SanguoSLG.Core.Domain.CommandKind.Explore
+                or SanguoSLG.Core.Domain.CommandKind.FormAlliance)
+            .Select(x => x.index)
+            .ToList();
+        if (city is null || commandIndices.Count != 2)
+        {
+            GD.PrintErr("[officer-table-qa] passed=False reason=missing-city-or-command");
+            GetTree().Quit(1);
+            return;
+        }
+
+        var passed = true;
+        var results = new List<string>();
+        _selected = city.Id;
+        foreach (var commandIndex in commandIndices)
+        {
+            OpenModal(commandIndex);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var table = _modalLayer?.FindChild("CommandOfficerTable", true, false) as Tree;
+            var rows = table?.GetRoot()?.GetChildCount() ?? 0;
+            var expectedHeight = 46 + rows * 34;
+            var ok = table?.GetMeta("all_officer_rows").AsBool() == true
+                && table.ScrollVerticalEnabled == false
+                && table.CustomMinimumSize.Y >= expectedHeight;
+            passed &= ok;
+            results.Add($"{Cmds[commandIndex].Label}:{rows}:{table?.CustomMinimumSize.Y ?? 0}:{ok}");
+            CloseModal();
+        }
+
+        GD.Print($"[officer-table-qa] passed={passed} results={string.Join('|', results)}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     /// <summary>전투교리 최초 실행이 축소 카드 캐시를 사용해 지연 없이 열리는지 확인한다.</summary>
     private async void RunDoctrineModalPerformanceQa()
     {

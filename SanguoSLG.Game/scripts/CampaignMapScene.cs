@@ -548,6 +548,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestunitreturnconfirmqa")) CallDeferred(nameof(RunUnitReturnConfirmQa));
         if (args.Contains("--maptestmodalframeworkqa")) CallDeferred(nameof(RunAdaptiveModalFrameworkQa));
         if (args.Contains("--maptestdoctrineperformanceqa")) CallDeferred(nameof(RunDoctrineModalPerformanceQa));
+        if (args.Contains("--maptestofficertableqa")) CallDeferred(nameof(RunOfficerTableLayoutQa));
     }
 
     public override void _ExitTree()
@@ -10996,16 +10997,22 @@ public sealed partial class CampaignMapScene : Node3D
             : cmd.Kind is CommandKind.Train or CommandKind.AppointSecurityOfficer
                 or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer ? 1 : 3;
 
+        var showAllOfficerRows = cmd.Kind is CommandKind.Explore or CommandKind.FormAlliance or CommandKind.BreakAlliance;
         var tree = new Tree
         {
+            Name = "CommandOfficerTable",
             Columns = IsAutoOfficerCommand(cmd.Kind) ? 6 : 5,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            // 행 수만큼 키워 내부 스크롤을 없앤다(상한 초과 시에만 내부 스크롤).
-            CustomMinimumSize = new Vector2(0, Mathf.Min(46 + free.Count * 34, 420)),
+            // 탐색·외교는 행 전체를 보이고, 대량 명령만 표 내부 스크롤을 쓴다.
+            CustomMinimumSize = new Vector2(0, showAllOfficerRows
+                ? 46 + free.Count * 34
+                : Mathf.Min(46 + free.Count * 34, 420)),
+            ScrollVerticalEnabled = !showAllOfficerRows,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
+        tree.SetMeta("all_officer_rows", showAllOfficerRows);
         tree.AddThemeFontOverride("font", _font);
         tree.AddThemeFontSizeOverride("font_size", 15);
         tree.AddThemeFontOverride("title_button_font", _font);
