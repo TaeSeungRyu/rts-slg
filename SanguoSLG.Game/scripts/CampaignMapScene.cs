@@ -1822,7 +1822,8 @@ public sealed partial class CampaignMapScene : Node3D
             var (req, label) = _pendingSupplyDeploys[idx];
             var enemyCity = CityAtHex(h, c => c.Owner != Player);
             var enemyUnit = DisplayedArmies.FirstOrDefault(u => u.Field.Position == h && u.Field.Owner != Player && CanSeeUnit(u));
-            var mode = enemyCity is not null || enemyUnit is not null ? UnitMode.Attack : UnitMode.March;
+            var mode = enemyCity is not null || enemyUnit is not null || RuinAt(h) is not null
+                ? UnitMode.Attack : UnitMode.March;
             _pendingSupplyDeploys[idx] = (req with { Target = h, Mode = mode }, label);
             Dbg($"SUPPLY TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode}");
             var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
@@ -1848,7 +1849,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (_targetingNavalDeploy && idx >= 0 && idx < _pendingNavalDeploys.Count)
         {
-            if (!_passability.CanEnter(MovementDomain.DeepWater, h))
+            if (!_passability.CanEnter(MovementDomain.DeepWater, h) && RuinAt(h) is not { Naval: true })
             {
                 RejectTarget("출항 목표 불가", "출항 목표는 바다/대하 타일만 선택할 수 있습니다.");
                 return;
@@ -1856,7 +1857,8 @@ public sealed partial class CampaignMapScene : Node3D
             var (req, label) = _pendingNavalDeploys[idx];
             var enemyPort = CityAtHex(h, c => c.Owner != Player && c.IsPort);
             var enemyShip = DisplayedArmies.FirstOrDefault(u => u.Field.Position == h && u.Field.Owner != Player && CanSeeUnit(u));
-            var navalMode = enemyPort is not null || enemyShip is not null ? UnitMode.Attack : UnitMode.March;
+            var navalMode = enemyPort is not null || enemyShip is not null || RuinAt(h) is { Naval: true }
+                ? UnitMode.Attack : UnitMode.March;
             _pendingNavalDeploys[idx] = (req with { Target = h, Mode = navalMode, Waypoints = waypoints }, label);
             Dbg($"NAVAL TARGET idx={idx} -> ({h.Q},{h.R}) mode={navalMode} wps={waypoints?.Count ?? 0}");
             var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
@@ -1872,7 +1874,8 @@ public sealed partial class CampaignMapScene : Node3D
             var (req, label) = _pendingArmyGroupDeploys[idx];
             var enemyCity = CityAtHex(h, c => c.Owner != Player);
             var enemyUnit = DisplayedArmies.FirstOrDefault(u => u.Field.Position == h && u.Field.Owner != Player && CanSeeUnit(u));
-            var mode = enemyCity is not null || enemyUnit is not null ? UnitMode.Attack : req.Mode;
+            var mode = enemyCity is not null || enemyUnit is not null || RuinAt(h) is not null
+                ? UnitMode.Attack : req.Mode;
             _pendingArmyGroupDeploys[idx] = (req with { Target = h, Mode = mode, Waypoints = waypoints }, label);
             Dbg($"ARMYGROUP TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode} wps={waypoints?.Count ?? 0}");
             var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
@@ -1888,7 +1891,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
             var (req, label) = _pendingDeploys[idx];
             var enemyCity = CityAtHex(h, c => c.Owner != Player);
-            var mode = enemyCity is not null ? UnitMode.Attack : req.Mode;
+            var mode = enemyCity is not null || RuinAt(h) is not null ? UnitMode.Attack : req.Mode;
             _pendingDeploys[idx] = (req with { Target = h, Mode = mode, Waypoints = waypoints }, label);
             reopenCombatDeployHub = true;
             Dbg($"TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode} wps={waypoints?.Count ?? 0}");
@@ -1913,7 +1916,10 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     private bool IsLandDeployTarget(HexCoord h)
-        => CityAtHex(h) is not null || _passability.CanEnter(MovementDomain.Land, h);
+        => CityAtHex(h) is not null || RuinAt(h) is { Naval: false }
+            || _passability.CanEnter(MovementDomain.Land, h);
+
+    private RuinDefinition? RuinAt(HexCoord h) => _state.Ruins.FirstOrDefault(r => r.Position == h);
 
     private void RejectTarget(string title, string message)
     {
@@ -2820,7 +2826,8 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             // 그 턴에 교전/공성이 있었으면 정지일(stopDay)을 '공격턴'으로 표기.
-            if (stopDay >= 1 && stopDay <= AnimDays && (turn.Combat is not null || sieges.Any(s => s.TurnIndex == ti)))
+            if (stopDay >= 1 && stopDay <= AnimDays && (turn.Combat is not null
+                || turn.RuinExchanges.Count > 0 || sieges.Any(s => s.TurnIndex == ti)))
             {
                 _dayKind[stopDay] = "공격";
             }
@@ -3729,13 +3736,14 @@ public sealed partial class CampaignMapScene : Node3D
 
         var enemyCity = CityAtHex(h, c => c.Owner != Player);
         var ownCity = CityAtHex(h, c => c.Owner == Player);
-        if (navalUnit && !_passability.CanEnter(MovementDomain.DeepWater, h) && CityAtHex(h) is null)
+        if (navalUnit && !_passability.CanEnter(MovementDomain.DeepWater, h)
+            && CityAtHex(h) is null && RuinAt(h) is not { Naval: true })
         {
             RejectTarget("해상 목표 불가", "해상 부대는 바다·대하 또는 항구만 목표로 지정할 수 있습니다.");
             return;
         }
         var enemyUnit = DisplayedArmies.FirstOrDefault(a => a.Field.Position == h && a.Field.Owner != Player && CanSeeUnit(a));
-        if (enemyCity is not null || enemyUnit is not null) { mode = UnitMode.Attack; }
+        if (enemyCity is not null || enemyUnit is not null || RuinAt(h) is not null) { mode = UnitMode.Attack; }
         var result = _unitCommander.Reassign(_state, Player,
             new FieldUnitCommandRequest(new UnitId(uid), mode, h, waypoints, _visibleTiles, ReturnCity: ownCity?.Id));
         if (!result.Ok)
