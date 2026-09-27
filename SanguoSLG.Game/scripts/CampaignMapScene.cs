@@ -66,6 +66,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _week;
 
     private readonly Dictionary<int, Label3D> _cityLabels = new();
+    private readonly Dictionary<string, Label3D> _ruinLabels = new(System.StringComparer.Ordinal);
     private readonly Dictionary<int, UnitController3D> _armyTokens = new();
     private readonly Dictionary<int, Label3D> _armyLabels = new();
     private readonly Dictionary<int, ActiveSkillGaugeView3D> _activeGauges = new();
@@ -1206,6 +1207,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void RedrawRuins()
     {
         foreach (var child in _ruinLayer.GetChildren()) child.QueueFree();
+        _ruinLabels.Clear();
         var scene = GD.Load<PackedScene>("res://assets/models/ruin-common.glb");
         foreach (var ruin in _state.Ruins)
         {
@@ -1229,14 +1231,24 @@ public sealed partial class CampaignMapScene : Node3D
             }
             var label = new Label3D
             {
-                Text = ruin.Name, Font = _font, FontSize = 24,
+                Name = $"RuinLabel_{ruin.Id}",
+                Text = RuinWorldLabelText(ruin, status, _state.Day), Font = _font, FontSize = 24,
                 Position = node.Position + new Vector3(0f, 1.15f, 0f),
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                 Modulate = GoldBright, OutlineSize = 5,
+                NoDepthTest = true,
             };
             _ruinLayer.AddChild(label);
+            _ruinLabels[ruin.Id] = label;
             _fog.Register(label, ruin.Position);
         }
+    }
+
+    private static string RuinWorldLabelText(RuinDefinition ruin, RuinState? status, int day)
+    {
+        if (status?.IsProtected(day) != true) { return ruin.Name; }
+        var remaining = System.Math.Max(1, status.ProtectedUntilDay!.Value - day);
+        return $"{ruin.Name}\n보호 {remaining}일";
     }
 
     // 시작 → (경유지들) → 목표를 구간별로 이어 금색 점 경로를 그린다.
@@ -4451,6 +4463,13 @@ public sealed partial class CampaignMapScene : Node3D
                     };
                     _ruinLayer.AddChild(barrier);
                     _fog.Register(barrier, capturedRuin.Position);
+                }
+                if (_pendingState.Ruins.FirstOrDefault(r => r.Id == capture.RuinId) is { } labelRuin
+                    && _pendingState.RuinStatus.FirstOrDefault(r => r.RuinId == capture.RuinId) is { } labelStatus
+                    && _ruinLabels.TryGetValue(capture.RuinId, out var ruinLabel)
+                    && GodotObject.IsInstanceValid(ruinLabel) && !ruinLabel.IsQueuedForDeletion())
+                {
+                    ruinLabel.Text = RuinWorldLabelText(labelRuin, labelStatus, _pendingState.Day);
                 }
                 _animRuinCaptureIdx++;
             }
@@ -12733,8 +12752,10 @@ public sealed partial class CampaignMapScene : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var barrier = _ruinLayer.FindChild($"RuinProtection_{ruin.Id}", true, false);
         var model = barrier?.FindChild("ProtectionBarrierModel", true, false);
-        var ok = barrier is RuinProtectionEffect3D && model is Node3D;
-        GD.Print($"[ruin-protection-qa] barrier={barrier is not null} model={model is not null} ok={ok}");
+        _ruinLabels.TryGetValue(ruin.Id, out var label);
+        var remainingDaysShown = label?.Text.Contains("보호 30일", System.StringComparison.Ordinal) == true;
+        var ok = barrier is RuinProtectionEffect3D && model is Node3D && remainingDaysShown;
+        GD.Print($"[ruin-protection-qa] barrier={barrier is not null} model={model is not null} days={label?.Text.Replace('\n', '/')} remainingDaysShown={remainingDaysShown} ok={ok}");
         GetTree().Quit(ok ? 0 : 1);
     }
 
