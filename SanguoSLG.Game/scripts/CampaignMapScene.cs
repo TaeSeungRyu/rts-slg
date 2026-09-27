@@ -6845,7 +6845,8 @@ public sealed partial class CampaignMapScene : Node3D
         var output = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
         var center = size / 2.0;
         const double ringRadius = 29.5;
-        const double ringHalfWidth = 1.35;
+        const double ringHalfWidth = 0.45;
+        const double ringFeather = 0.45;
         for (var y = 0; y < size; y++)
         {
             for (var x = 0; x < size; x++)
@@ -6854,7 +6855,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var dy = y + 0.5 - center;
                 var distance = Math.Sqrt(dx * dx + dy * dy);
                 var color = source.GetPixel(x, y);
-                var ringCoverage = Mathf.Clamp((float)(ringHalfWidth + 0.75 - Math.Abs(distance - ringRadius)), 0f, 1f);
+                var ringCoverage = Mathf.Clamp((float)(ringHalfWidth + ringFeather - Math.Abs(distance - ringRadius)), 0f, 1f);
                 if (ringCoverage > 0f)
                 {
                     var gold = GoldBright;
@@ -6862,7 +6863,7 @@ public sealed partial class CampaignMapScene : Node3D
                     color = color.Lerp(gold, ringCoverage);
                 }
 
-                if (distance > ringRadius + ringHalfWidth + 0.75) color.A = 0f;
+                if (distance > ringRadius + ringHalfWidth + ringFeather) color.A = 0f;
                 output.SetPixel(x, y, color);
             }
         }
