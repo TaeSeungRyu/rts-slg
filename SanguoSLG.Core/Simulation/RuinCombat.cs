@@ -2,7 +2,8 @@ namespace SanguoSLG.Core.Simulation;
 
 using SanguoSLG.Core.Domain;
 
-public sealed record RuinCombatExchange(string RuinId, UnitId Attacker, int DamageToRuin, int CounterDamage);
+public sealed record RuinCombatExchange(string RuinId, UnitId Attacker, int DamageToRuin, int CounterDamage,
+    bool Captured = false);
 public sealed record RuinCombatResult(GameState State, IReadOnlyList<CombatUnit> Armies,
     IReadOnlyList<RuinCombatExchange> Exchanges, IReadOnlyDictionary<string, FactionId> LastAttackers);
 
@@ -54,7 +55,7 @@ public sealed class RuinCombat
                 defenders = Math.Max(0, defenders - damage);
                 var pool = attacker.Pool.TakeDamage(counter, _woundedPercent);
                 armies[i] = attacker with { Pool = pool, Stats = attacker.Stats with { Troops = pool.Active } };
-                exchanges.Add(new(ruin.Id, attacker.Id, damage, counter));
+                exchanges.Add(new(ruin.Id, attacker.Id, damage, counter, Captured: defenders <= 0 && damage > 0));
                 if (damage > 0) last[ruin.Id] = attacker.Field.Owner;
             }
             if (defenders <= 0 && last.TryGetValue(ruin.Id, out var captor))

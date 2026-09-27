@@ -119,6 +119,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int CasterUnitId, Vector3 Target, ActiveSkill Skill)> _animSiegeSkillEffects = new();
     private int _animRuinCounterIdx;
     private readonly List<(double Time, Vector3 RuinPos)> _animRuinCounters = new();
+    private int _animRuinCaptureIdx;
+    private readonly List<(double Time, string RuinId, FactionId Owner)> _animRuinCaptures = new();
     private int _animGaugeIdx;
     private readonly List<(double Time, int UnitId, ActiveSkill? Skill, ActiveGauge Gauge)> _animGaugeUpdates = new();
 
@@ -174,6 +176,7 @@ public sealed partial class CampaignMapScene : Node3D
     private HexCoord? _terrainHex;
     private OptionButton? _paramSel;
     private CanvasLayer? _confirmLayer; // 커스텀 컨펌창(시스템 다이얼로그 대체 — 게임 스타일·한글 버튼)
+    private CanvasLayer? _toastLayer;
     private MeshInstance3D? _ring;
     private MeshInstance3D _hover = null!;
     private ImageTexture _blankIcon = null!;
@@ -531,6 +534,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestsiegeplaybackqa")) CallDeferred(nameof(RunSiegePlaybackQa));
         if (args.Contains("--maptestruinuiqa")) CallDeferred(nameof(RunRuinUiQa));
         if (args.Contains("--maptestruinprotectionqa")) CallDeferred(nameof(RunRuinProtectionQa));
+        if (args.Contains("--maptestruintoastqa")) CallDeferred(nameof(RunRuinToastQa));
     }
 
     public override void _ExitTree()
@@ -2693,6 +2697,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animSkillEffectIdx = 0;
         _animSiegeSkillEffectIdx = 0;
         _animRuinCounterIdx = 0;
+        _animRuinCaptureIdx = 0;
         _animGaugeIdx = 0;
         _advanceBtn.Busy = true;
         _advanceBtn.Progress = 0f;
@@ -2729,6 +2734,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animSkillEffects.Clear();
         _animSiegeSkillEffects.Clear();
         _animRuinCounters.Clear();
+        _animRuinCaptures.Clear();
         _animGaugeUpdates.Clear();
         for (var d = 0; d <= AnimDays; d++) { _dayKind[d] = "이동"; } // 기본 이동턴, 아래서 교전·공성 있는 날만 공격턴
         var alive = new HashSet<int>(startHex.Keys);
@@ -2935,6 +2941,8 @@ public sealed partial class CampaignMapScene : Node3D
                     _animSiegeDmg.Add((atkTime + 0.35, ruinPos, exchange.DamageToRuin));
                 if (exchange.CounterDamage > 0)
                     _animDmg.Add((atkTime + 0.35, exchange.Attacker.Value, exchange.CounterDamage));
+                if (exchange.Captured)
+                    _animRuinCaptures.Add((settleTime + 0.08, exchange.RuinId, attacker.Field.Owner));
             }
             foreach (var (uid, damage) in turn.StatusDamage.Concat(turn.StratagemDamage)
                 .GroupBy(x => x.Key).Select(g => (g.Key, g.Sum(x => x.Value))))
@@ -2999,6 +3007,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animActives.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animRuinCounters.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animRuinCaptures.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animGaugeUpdates.Sort((a, b) => a.Time.CompareTo(b.Time));
     }
 
@@ -3542,6 +3551,52 @@ public sealed partial class CampaignMapScene : Node3D
         ok.CustomMinimumSize = new Vector2(110, 34);
         ok.Pressed += Close;
         okRow.AddChild(ok);
+    }
+
+    private void ShowToast(string title, string message)
+    {
+        if (_toastLayer is not null && GodotObject.IsInstanceValid(_toastLayer))
+            _toastLayer.QueueFree();
+        var layer = new CanvasLayer { Name = "RuinCaptureToast", Layer = 48 };
+        AddChild(layer);
+        _toastLayer = layer;
+
+        var margin = new MarginContainer
+        {
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            OffsetTop = 70,
+        };
+        margin.SetAnchorsPreset(Control.LayoutPreset.TopWide);
+        layer.AddChild(margin);
+        var center = new CenterContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        margin.AddChild(center);
+        var panel = new PanelContainer
+        {
+            Name = "ToastPanel",
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            Modulate = new Color(1f, 1f, 1f, 0f),
+        };
+        panel.AddThemeStyleboxOverride("panel", Frame(new Color(0.12f, 0.07f, 0.04f, 0.96f), GoldBright, 2, 10, 14));
+        center.AddChild(panel);
+        var box = new VBoxContainer { CustomMinimumSize = new Vector2(360, 0) };
+        box.AddThemeConstantOverride("separation", 3);
+        panel.AddChild(box);
+        var titleLabel = MakeLabel(title, 20, GoldBright);
+        titleLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        box.AddChild(titleLabel);
+        var messageLabel = MakeLabel(message, 13, Parchment);
+        messageLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        box.AddChild(messageLabel);
+
+        var tween = CreateTween();
+        tween.TweenProperty(panel, "modulate:a", 1f, 0.18f);
+        tween.TweenInterval(2.2f);
+        tween.TweenProperty(panel, "modulate:a", 0f, 0.35f);
+        tween.Finished += () =>
+        {
+            if (GodotObject.IsInstanceValid(layer)) layer.QueueFree();
+            if (_toastLayer == layer) _toastLayer = null;
+        };
     }
 
     // 지형 정보 카드: 상단 = 지형 3D 에셋 미리보기 + 한글 이름, 하단 = 이동·전투 보정.
@@ -4326,6 +4381,16 @@ public sealed partial class CampaignMapScene : Node3D
                 var cleanup = GetTree().CreateTimer(1.2);
                 cleanup.Timeout += anchor.QueueFree;
                 _animRuinCounterIdx++;
+            }
+
+            while (_animRuinCaptureIdx < _animRuinCaptures.Count
+                && _animRuinCaptures[_animRuinCaptureIdx].Time <= _animT)
+            {
+                var capture = _animRuinCaptures[_animRuinCaptureIdx];
+                var ruinName = _pendingState.Ruins.FirstOrDefault(r => r.Id == capture.RuinId)?.Name ?? "유적";
+                var factionName = _pendingState.Factions.FirstOrDefault(f => f.Id == capture.Owner)?.Name ?? "세력";
+                ShowToast("점령되었습니다!", $"{factionName}이(가) {ruinName}을 점령했습니다.");
+                _animRuinCaptureIdx++;
             }
 
             while (_animSiegeDmgIdx < _animSiegeDmg.Count && _animSiegeDmg[_animSiegeDmgIdx].Time <= _animT)
@@ -12608,6 +12673,17 @@ public sealed partial class CampaignMapScene : Node3D
         var model = barrier?.FindChild("ProtectionBarrierModel", true, false);
         var ok = barrier is RuinProtectionEffect3D && model is Node3D;
         GD.Print($"[ruin-protection-qa] barrier={barrier is not null} model={model is not null} ok={ok}");
+        GetTree().Quit(ok ? 0 : 1);
+    }
+
+    private async void RunRuinToastQa()
+    {
+        ShowToast("점령되었습니다!", "위 세력이 극병 유적을 점령했습니다.");
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var toast = FindChild("RuinCaptureToast", true, false);
+        var panel = toast?.FindChild("ToastPanel", true, false);
+        var ok = toast is CanvasLayer && panel is PanelContainer;
+        GD.Print($"[ruin-toast-qa] toast={toast is not null} panel={panel is not null} ok={ok}");
         GetTree().Quit(ok ? 0 : 1);
     }
 

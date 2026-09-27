@@ -51,6 +51,7 @@ public sealed class RuinCombatTests
     {
         var result = new RuinCombat(new BattleResolver(60)).Resolve(State(1), [Attacker()]);
         var ruin = Assert.Single(result.State.RuinStatus);
+        Assert.True(Assert.Single(result.Exchanges).Captured);
         Assert.Equal(new FactionId(1), ruin.Owner);
         Assert.Equal(31, ruin.ProtectedUntilDay);
         Assert.Equal(new FactionId(1), ruin.Registrations.Single());
