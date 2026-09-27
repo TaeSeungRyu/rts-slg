@@ -530,6 +530,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestgeneralresearchqa")) CallDeferred(nameof(RunGeneralResearchUiQa));
         if (args.Contains("--maptestsiegeplaybackqa")) CallDeferred(nameof(RunSiegePlaybackQa));
         if (args.Contains("--maptestruinuiqa")) CallDeferred(nameof(RunRuinUiQa));
+        if (args.Contains("--maptestruinprotectionqa")) CallDeferred(nameof(RunRuinProtectionQa));
     }
 
     public override void _ExitTree()
@@ -1200,6 +1201,18 @@ public sealed partial class CampaignMapScene : Node3D
             node.Scale = Vector3.One * 0.72f;
             _ruinLayer.AddChild(node);
             _fog.Register(node, ruin.Position);
+            var status = _state.RuinStatus.FirstOrDefault(s => s.RuinId == ruin.Id);
+            if (status?.IsProtected(_state.Day) == true)
+            {
+                var barrier = new RuinProtectionEffect3D
+                {
+                    Name = $"RuinProtection_{ruin.Id}",
+                    Position = node.Position + new Vector3(0f, 0.04f, 0f),
+                    Scale = Vector3.One * 0.92f,
+                };
+                _ruinLayer.AddChild(barrier);
+                _fog.Register(barrier, ruin.Position);
+            }
             var label = new Label3D
             {
                 Text = ruin.Name, Font = _font, FontSize = 24,
@@ -12569,6 +12582,32 @@ public sealed partial class CampaignMapScene : Node3D
         var ok = cardOk && historyOk;
         GD.Print($"[ruin-ui-qa] card={cardOk} history={historyOk} ok={ok}");
         CloseAnyModalOrPanel();
+        GetTree().Quit(ok ? 0 : 1);
+    }
+
+    private async void RunRuinProtectionQa()
+    {
+        var ruin = _state.Ruins.FirstOrDefault();
+        if (ruin is null)
+        {
+            GD.PushError("[ruin-protection-qa] ruin sample missing");
+            GetTree().Quit(1);
+            return;
+        }
+        _state = _state with
+        {
+            RuinStates = _state.RuinStatus.Select(s => s.RuinId == ruin.Id
+                ? s with { Defenders = 0, Owner = Player, CapturedDay = _state.Day,
+                    ProtectedUntilDay = _state.Day + 30 }
+                : s).ToList(),
+        };
+        RedrawRuins();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var barrier = _ruinLayer.FindChild($"RuinProtection_{ruin.Id}", true, false);
+        var model = barrier?.FindChild("ProtectionBarrierModel", true, false);
+        var ok = barrier is RuinProtectionEffect3D && model is Node3D;
+        GD.Print($"[ruin-protection-qa] barrier={barrier is not null} model={model is not null} ok={ok}");
         GetTree().Quit(ok ? 0 : 1);
     }
 
