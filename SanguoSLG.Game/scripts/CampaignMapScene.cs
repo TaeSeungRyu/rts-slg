@@ -10998,17 +10998,18 @@ public sealed partial class CampaignMapScene : Node3D
                 or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer ? 1 : 3;
 
         var showAllOfficerRows = cmd.Kind is CommandKind.Explore or CommandKind.FormAlliance or CommandKind.BreakAlliance;
+        const int officerRowHeight = 46;
         var tree = new Tree
         {
             Name = "CommandOfficerTable",
-            Columns = IsAutoOfficerCommand(cmd.Kind) ? 6 : 5,
+            Columns = IsAutoOfficerCommand(cmd.Kind) ? 7 : 6,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
             // 탐색·외교는 행 전체를 보이고, 대량 명령만 표 내부 스크롤을 쓴다.
             CustomMinimumSize = new Vector2(0, showAllOfficerRows
-                ? 46 + free.Count * 34
-                : Mathf.Min(46 + free.Count * 34, 420)),
+                ? 48 + free.Count * officerRowHeight
+                : Mathf.Min(48 + free.Count * officerRowHeight, 470)),
             ScrollVerticalEnabled = !showAllOfficerRows,
             MouseFilter = Control.MouseFilterEnum.Stop,
             MouseForcePassScrollEvents = false,
@@ -11020,40 +11021,45 @@ public sealed partial class CampaignMapScene : Node3D
         tree.AddThemeFontSizeOverride("font_size", 15);
         tree.AddThemeFontOverride("title_button_font", _font);
         tree.AddThemeFontSizeOverride("title_button_font_size", 14);
-        tree.SetColumnTitle(0, "이름");
-        tree.SetColumnExpand(0, true);
-        tree.SetColumnExpandRatio(0, 3);
-        foreach (var (col, t) in new[] { (1, "무"), (2, "지"), (3, "정") })
+        tree.AddThemeConstantOverride("item_margin", 6);
+        tree.SetColumnTitle(0, "");
+        tree.SetColumnExpand(0, false);
+        tree.SetColumnCustomMinimumWidth(0, 54);
+        tree.SetColumnTitle(1, "이름");
+        tree.SetColumnExpand(1, true);
+        tree.SetColumnExpandRatio(1, 3);
+        foreach (var (col, t, stat) in new[] { (2, "무", 1), (3, "지", 2), (4, "정", 3) })
         {
-            tree.SetColumnTitle(col, col == relevant ? t + "★" : t);
+            tree.SetColumnTitle(col, stat == relevant ? t + "★" : t);
             tree.SetColumnExpand(col, false);
             tree.SetColumnCustomMinimumWidth(col, 52);
         }
-        tree.SetColumnTitle(4, "현재 담당업무");
-        tree.SetColumnExpand(4, true);
-        tree.SetColumnExpandRatio(4, 3);
+        tree.SetColumnTitle(5, "현재 담당업무");
+        tree.SetColumnExpand(5, true);
+        tree.SetColumnExpandRatio(5, 3);
         if (IsAutoOfficerCommand(cmd.Kind))
         {
-            tree.SetColumnTitle(5, "주 예상 효과");
-            tree.SetColumnExpand(5, true);
-            tree.SetColumnExpandRatio(5, 3);
+            tree.SetColumnTitle(6, "주 예상 효과");
+            tree.SetColumnExpand(6, true);
+            tree.SetColumnExpandRatio(6, 3);
         }
 
         var gens = free.Select(id => _state.Generals.First(g => g.Id == id)).ToList();
         System.Comparison<General> cmp = _offSortCol switch
         {
-            0 => (a, b) => string.Compare(a.Name, b.Name, System.StringComparison.Ordinal),
-            1 => (a, b) => a.Might.CompareTo(b.Might),
-            2 => (a, b) => a.Intellect.CompareTo(b.Intellect),
-            3 => (a, b) => a.Politics.CompareTo(b.Politics),
+            1 => (a, b) => string.Compare(a.Name, b.Name, System.StringComparison.Ordinal),
+            2 => (a, b) => a.Might.CompareTo(b.Might),
+            3 => (a, b) => a.Intellect.CompareTo(b.Intellect),
+            4 => (a, b) => a.Politics.CompareTo(b.Politics),
             _ => (a, b) => StatFor(b).CompareTo(StatFor(a)), // 기본: 효율 능력치 내림차순
         };
         gens.Sort(cmp);
         if (_offSortCol >= 0 && !_offSortAsc) { gens.Reverse(); }
 
         var root = tree.CreateItem();
-        foreach (var g in gens)
+        for (var rowIndex = 0; rowIndex < gens.Count; rowIndex++)
         {
+            var g = gens[rowIndex];
             var item = tree.CreateItem(root);
             var home = g.Region.Length > 0 && g.Region == cityData.Region ? " 🏠" : "";
             var roleMark = IsAutoOfficerCommand(cmd.Kind) ? "" : cmd.Kind switch
@@ -11062,17 +11068,26 @@ public sealed partial class CampaignMapScene : Node3D
                 CommandKind.AppointStrategist when cityData.Strategist == g.Id => " ◆현군사",
                 _ => "",
             };
-            item.SetText(0, g.Name + home + roleMark);
-            ApplyGeneralTreePortrait(item, 0, g.Id);
-            item.SetText(1, g.Might.ToString());
-            item.SetText(2, g.Intellect.ToString());
-            item.SetText(3, g.Politics.ToString());
+            ApplyGeneralTreePortrait(item, 0, g.Id, 40);
+            item.SetTooltipText(0, g.Name);
+            item.SetText(1, g.Name + home + roleMark);
+            item.SetCustomColor(1, GoldBright);
+            item.SetText(2, g.Might.ToString());
+            item.SetText(3, g.Intellect.ToString());
+            item.SetText(4, g.Politics.ToString());
             if (IsAutoOfficerCommand(cmd.Kind))
             {
-                item.SetText(5, OfficerWeeklyEffect(cmd.Kind, g, cityData));
+                item.SetText(6, OfficerWeeklyEffect(cmd.Kind, g, cityData));
             }
-            item.SetText(4, CurrentDuty(g.Id));
-            item.SetTooltipText(4, CurrentDuty(g.Id));
+            item.SetText(5, CurrentDuty(g.Id));
+            item.SetTooltipText(5, CurrentDuty(g.Id));
+            if (rowIndex % 2 == 1)
+            {
+                for (var column = 0; column < tree.Columns; column++)
+                {
+                    item.SetCustomBgColor(column, new Color(Gold, 0.055f));
+                }
+            }
             if (cmd.Kind is not (CommandKind.AppointGovernor or CommandKind.AppointStrategist)
                 && OfficerUnavailable(g.Id))
             {
@@ -11084,10 +11099,12 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             item.SetMetadata(0, g.Id.Value);
-            for (var col = 1; col <= 3; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
+            item.SetTextAlignment(0, HorizontalAlignment.Center);
+            for (var col = 2; col <= 4; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
             if (IsAutoOfficerCommand(cmd.Kind))
             {
-                item.SetTextAlignment(4, HorizontalAlignment.Center);
+                item.SetTextAlignment(5, HorizontalAlignment.Center);
+                item.SetTextAlignment(6, HorizontalAlignment.Center);
             }
         }
 
@@ -11102,8 +11119,9 @@ public sealed partial class CampaignMapScene : Node3D
         tree.ColumnTitleClicked += (col, _) =>
         {
             var c = (int)col;
+            if (c == 0) { return; }
             if (_offSortCol == c) { _offSortAsc = !_offSortAsc; }
-            else { _offSortCol = c; _offSortAsc = c == 0; } // 이름은 오름차순, 능력치는 내림차순부터
+            else { _offSortCol = c; _offSortAsc = c == 1; } // 이름은 오름차순, 능력치는 내림차순부터
             BuildOfficerCards(city, cmdIndex);
         };
         _modalOfficers.AddChild(tree);

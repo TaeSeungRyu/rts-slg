@@ -30,13 +30,18 @@ public sealed partial class CampaignMapScene
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var table = _modalLayer?.FindChild("CommandOfficerTable", true, false) as Tree;
             var rows = table?.GetRoot()?.GetChildCount() ?? 0;
-            var expectedHeight = 46 + rows * 34;
+            var expectedHeight = 48 + rows * 46;
+            var firstRow = table?.GetRoot()?.GetFirstChild();
+            var portraitLayout = firstRow?.GetIcon(0) is not null
+                && string.IsNullOrEmpty(firstRow.GetText(0))
+                && !string.IsNullOrWhiteSpace(firstRow.GetText(1));
             var ok = table?.GetMeta("all_officer_rows").AsBool() == true
                 && table.ScrollVerticalEnabled == false
                 && table.MouseForcePassScrollEvents == false
-                && table.CustomMinimumSize.Y >= expectedHeight;
+                && table.CustomMinimumSize.Y >= expectedHeight
+                && portraitLayout;
             passed &= ok;
-            results.Add($"{Cmds[commandIndex].Label}:{rows}:{table?.CustomMinimumSize.Y ?? 0}:{ok}");
+            results.Add($"{Cmds[commandIndex].Label}:{rows}:{table?.CustomMinimumSize.Y ?? 0}:초상{portraitLayout}:{ok}");
             CloseModal();
         }
 
