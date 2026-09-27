@@ -10185,7 +10185,7 @@ public sealed partial class CampaignMapScene : Node3D
                     var cost = level >= GeneralResearchRules.MaxLevel
                         ? 0
                         : GeneralResearchRules.Cost(level + 1, _cb);
-                    var detail = ResearchStars(level, major: true)
+                    var detail = ResearchStars(level, GeneralResearchRules.MaxLevel)
                         + (level >= GeneralResearchRules.MaxLevel
                             ? "\n연구 완료"
                             : $"\n{GeneralResearchRules.NextEffectText(definition.Code, level)}\n{cost}금");
@@ -10257,11 +10257,11 @@ public sealed partial class CampaignMapScene : Node3D
         var current = CommandEfficiency.CommandTroopDeployLimit(level, _cb);
         if (level >= 10)
         {
-            return $"{ResearchStars(level, major: true)}\n최대 편성 {current}명";
+            return $"{ResearchStars(level, 10)}\n최대 편성 {current}명";
         }
 
         var next = level + 1;
-        return $"{ResearchStars(level, major: true)}\n편성 {current} → {CommandEfficiency.CommandTroopDeployLimit(next, _cb)}명\n비용 {CommandEfficiency.CommandTroopResearchCost(next)}금";
+        return $"{ResearchStars(level, 10)}\n편성 {current} → {CommandEfficiency.CommandTroopDeployLimit(next, _cb)}명\n비용 {CommandEfficiency.CommandTroopResearchCost(next)}금";
     }
 
     private string ArmyGroupResearchOptionDetail(City city)
@@ -10270,11 +10270,11 @@ public sealed partial class CampaignMapScene : Node3D
         var current = CommandEfficiency.ArmyGroupDeployLimit(level, _cb);
         if (level >= _cb.ArmyGroupResearchMaxLevel)
         {
-            return $"{ResearchStars(level, major: true)}\n최대 편성 {current:N0}명";
+            return $"{ResearchStars(level, _cb.ArmyGroupResearchMaxLevel)}\n최대 편성 {current:N0}명";
         }
 
         var next = level + 1;
-        return $"{ResearchStars(level, major: true)}\n편성 {current:N0} → {CommandEfficiency.ArmyGroupDeployLimit(next, _cb):N0}명\n비용 {CommandEfficiency.CommandTroopResearchCost(next)}금";
+        return $"{ResearchStars(level, _cb.ArmyGroupResearchMaxLevel)}\n편성 {current:N0} → {CommandEfficiency.ArmyGroupDeployLimit(next, _cb):N0}명\n비용 {CommandEfficiency.CommandTroopResearchCost(next)}금";
     }
 
     private void BuildHeroRecruitCards(VBoxContainer box, City city)
@@ -10426,10 +10426,9 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var level = _state.ResearchOf(city.Owner, troopCode);
         var maxLevel = ResearchMaxLevelFor(city.Owner, troopCode);
-        var major = _state.IsMajorTroop(city.Owner, troopCode);
         if (level >= maxLevel)
         {
-            return $"{ResearchStars(level, major)}\n최대 · 공·방 +{ResearchCurve.Bonus(level)}";
+            return $"{ResearchStars(level, maxLevel)}\n최대 · 공·방 +{ResearchCurve.Bonus(level)}";
         }
 
         var next = level + 1;
@@ -10440,31 +10439,26 @@ public sealed partial class CampaignMapScene : Node3D
             : city.Gold < cost ? "금 부족"
             : $"비용 {cost}금";
         var inc = ResearchCurve.Bonus(next) - ResearchCurve.Bonus(level);
-        return $"{ResearchStars(level, major)}\n공·방 +{inc}\n{gate}";
+        return $"{ResearchStars(level, maxLevel)}\n공·방 +{inc}\n{gate}";
     }
 
     private int ResearchMaxLevelFor(FactionId faction, string troopCode)
         => _state.IsMajorTroop(faction, troopCode) ? _cb.ResearchMaxLevel : 7;
 
-    private static string ResearchStars(int level, bool major)
+    private static string ResearchStars(int level, int maxLevel)
     {
         var gold = "#" + GoldBright.ToHtml(false);
-        var empty = "#" + Parchment.ToHtml(false);
-        var locked = "#777777";
+        const string undeveloped = "#777777";
         var s = "";
-        for (var i = 1; i <= 10; i++)
+        for (var i = 1; i <= maxLevel; i++)
         {
-            if (!major && i > 7)
-            {
-                s += $"[color={locked}]☆[/color]";
-            }
-            else if (i <= level)
+            if (i <= level)
             {
                 s += $"[color={gold}]★[/color]";
             }
             else
             {
-                s += $"[color={empty}]☆[/color]";
+                s += $"[color={undeveloped}]★[/color]";
             }
         }
 
@@ -13449,7 +13443,8 @@ public sealed partial class CampaignMapScene : Node3D
         var generalOptions = OptionList(Cmds[commandIndex], city);
         var names = generalOptions.Select(o => o.Name).ToList();
         var generalResearchUsesStars = generalOptions.All(option =>
-            (option.Detail.Contains('★') || option.Detail.Contains('☆'))
+            option.Detail.Count(c => c == '★') == GeneralResearchRules.MaxLevel
+            && option.Detail.Contains("#777777", System.StringComparison.Ordinal)
             && !option.Detail.Contains("Lv.", System.StringComparison.Ordinal));
         var viewportSize = GetViewport().GetVisibleRect().Size;
         var mainPanel = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()

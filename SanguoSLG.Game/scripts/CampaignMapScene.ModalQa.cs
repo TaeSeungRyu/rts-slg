@@ -100,8 +100,20 @@ public sealed partial class CampaignMapScene
             .All(option => option.Detail.Contains('★') || option.Detail.Contains('☆'))
             && doctrineOptions.Where(option => option.Name is "통솔 병력" or "집단군")
                 .All(option => !option.Detail.Contains("Lv.", System.StringComparison.Ordinal));
-        var passed = thumbnailTextures && withinLimit && _optionCards.Count >= 7 && specialResearchUsesStars;
-        GD.Print($"[doctrine-performance-qa] passed={passed} elapsedMs={watch.ElapsedMilliseconds}/750 cards={_optionCards.Count} textures={_unitCardTextures.Count} thumbnails={thumbnailTextures} specialStars={specialResearchUsesStars}");
+        var sevenStars = ResearchStars(3, 7);
+        var tenStars = ResearchStars(4, 10);
+        var exactStarRules = sevenStars.Count(c => c == '★') == 7
+            && tenStars.Count(c => c == '★') == 10
+            && sevenStars.Contains("#777777", System.StringComparison.Ordinal)
+            && sevenStars.Count(c => c == '☆') == 0;
+        var specialStarCounts = doctrineOptions
+            .Where(option => option.Name == "통솔 병력")
+            .All(option => option.Detail.Count(c => c == '★') == 10)
+            && doctrineOptions.Where(option => option.Name == "집단군")
+                .All(option => option.Detail.Count(c => c == '★') == _cb.ArmyGroupResearchMaxLevel);
+        var passed = thumbnailTextures && withinLimit && _optionCards.Count >= 7
+            && specialResearchUsesStars && exactStarRules && specialStarCounts;
+        GD.Print($"[doctrine-performance-qa] passed={passed} elapsedMs={watch.ElapsedMilliseconds}/750 cards={_optionCards.Count} textures={_unitCardTextures.Count} thumbnails={thumbnailTextures} specialStars={specialResearchUsesStars} exactStars={exactStarRules} specialCounts={specialStarCounts}");
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }
