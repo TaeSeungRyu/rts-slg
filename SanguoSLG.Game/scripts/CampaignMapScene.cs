@@ -4801,6 +4801,10 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 AddSectionDivider(box, "DoctrineFundingDivider");
             }
+            else if (cmd.Param == "general")
+            {
+                AddSectionDivider(box, "GeneralResearchFundingDivider");
+            }
             AddResearchFundingPicker(box, cityData);
         }
 
@@ -13514,11 +13518,17 @@ public sealed partial class CampaignMapScene : Node3D
         var optionColumnsOk = optionGrid?.Columns == System.Math.Min(7, GeneralResearchRules.Definitions.Count);
         var researchDetailPanel = _modalLayer?.FindChild("GeneralResearchSelectionDetail", true, false) as PanelContainer;
         var researchDetailText = _modalLayer?.FindChild("GeneralResearchDetailText", true, false) as Label;
+        var generalFundingDivider = _modalLayer?.FindChild("GeneralResearchFundingDivider", true, false) as VBoxContainer;
+        var fundingTitle = _modalLayer?.FindChild("ResearchFundingTitle", true, false) as Label;
         var detailPlacementOk = researchDetailPanel?.HasMeta("general_research_detail") == true
             && researchDetailText?.Text.Contains(GeneralResearchRules.Definitions[0].Description, System.StringComparison.Ordinal) == true
             && optionGrid is not null && fundingPanel is not null
             && optionGrid.GetGlobalRect().End.Y <= researchDetailPanel.GetGlobalRect().Position.Y + 1f
             && researchDetailPanel.GetGlobalRect().End.Y <= fundingPanel.GetGlobalRect().Position.Y + 1f;
+        var fundingDividerOk = researchDetailPanel is not null && fundingTitle is not null
+            && generalFundingDivider?.HasMeta("section_divider") == true
+            && generalFundingDivider.GetGlobalRect().Position.Y >= researchDetailPanel.GetGlobalRect().End.Y - 1f
+            && generalFundingDivider.GetGlobalRect().End.Y <= fundingTitle.GetGlobalRect().Position.Y + 1f;
         var ok = submenuOk && allGroupsOk && generalBusyOk && layoutOk
             && _optionCards.Count == GeneralResearchRules.Definitions.Count
             && _researchFundingRatios.Count == ownedCityCount
@@ -13526,9 +13536,10 @@ public sealed partial class CampaignMapScene : Node3D
             && compactFundingInputs
             && optionColumnsOk
             && detailPlacementOk
+            && fundingDividerOk
             && generalResearchUsesStars
             && GeneralResearchRules.Definitions.All(d => names.Contains(d.Name));
-        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 detail={detailPlacementOk} fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} stars={generalResearchUsesStars} names={string.Join(',', names)} ok={ok}");
+        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 detail={detailPlacementOk} fundingDivider={fundingDividerOk} fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} stars={generalResearchUsesStars} names={string.Join(',', names)} ok={ok}");
         CloseModal();
         GetWindow().Size = originalWindowSize;
         GetTree().Quit(ok ? 0 : 1);
