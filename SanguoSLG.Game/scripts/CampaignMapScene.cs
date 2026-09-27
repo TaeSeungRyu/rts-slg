@@ -546,6 +546,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestruintoastqa")) CallDeferred(nameof(RunRuinToastQa));
         if (args.Contains("--maptestruinburstqa")) CallDeferred(nameof(RunRuinBurstQa));
         if (args.Contains("--maptestunitreturnconfirmqa")) CallDeferred(nameof(RunUnitReturnConfirmQa));
+        if (args.Contains("--maptestmodalframeworkqa")) CallDeferred(nameof(RunAdaptiveModalFrameworkQa));
     }
 
     public override void _ExitTree()
@@ -4590,41 +4591,26 @@ public sealed partial class CampaignMapScene : Node3D
         center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         layer.AddChild(center);
 
-        var panel = new PanelContainer();
-        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
-        panel.MouseFilter = Control.MouseFilterEnum.Stop;
-        panel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps; // 고해상 아이콘 축소 시 선명
-        center.AddChild(panel);
-
-        // 창 크기에 맞춘 반응형 모달(작은 화면에서도 넘치지 않게 상·하한 캡).
         var vp = GetViewport().GetVisibleRect().Size;
         var wideDoctrineModal = cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general";
-        var mw = wideDoctrineModal
-            ? Mathf.Clamp(vp.X * 0.82f, 620f, 980f)
-            : Mathf.Clamp(vp.X * 0.66f, 460f, 778f);
-        // 모달을 세로로 길게 — 장수 표 내부 스크롤과 겹치는 2중 스크롤 방지.
-        var mh = Mathf.Clamp(vp.Y * 0.92f, 374f, 940f);
+        var modalProfile = wideDoctrineModal
+            ? AdaptiveModalScaffold.WidthProfile.Wide
+            : AdaptiveModalScaffold.WidthProfile.Standard;
+        var scaffold = new AdaptiveModalScaffold();
+        scaffold.Configure(vp, modalProfile);
+        scaffold.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
+        scaffold.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps; // 고해상 아이콘 축소 시 선명
+        center.AddChild(scaffold);
+
+        var mw = scaffold.LayoutSize.X - 28f;
         var colOpt = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / (wideDoctrineModal ? 186f : 146f)), 3, 5);
         var colOff = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 169f), 2, 4);
-
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(mw, 0) };
-        scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
-        panel.AddChild(scroll);
-
-        var box = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        box.AddThemeConstantOverride("separation", 12);
-        scroll.AddChild(box);
-
-        var titleRow = new HBoxContainer();
-        box.AddChild(titleRow);
         var cityName = _state.Cities.First(x => x.Id == city).Name;
         var title = MakeLabel($"◈  {cmd.Label}   《 {cityName} 》", 26, Gold);
-        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        titleRow.AddChild(title);
         var close = MakeButton("✕");
-        close.CustomMinimumSize = new Vector2(46, 43);
         close.Pressed += CloseModal;
-        titleRow.AddChild(close);
+        scaffold.SetHeader(title, close, GoldRule());
+        var box = scaffold.Body;
         if (IsAutoOfficerCommand(cmd.Kind))
         {
             box.AddChild(MakeLabel(OfficerRoleDescription(cmd.Kind), 15, Parchment));
@@ -4662,8 +4648,6 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(MakeLabel("탐색은 인재 등용을 제외하고 신수, 고대유물, 지방호족, 소문/단서를 찾습니다. 실패해도 손실은 없습니다.", 15, Parchment));
         }
 
-        box.AddChild(GoldRule());
-
         var cityData = _state.Cities.First(x => x.Id == city);
         if (IsAutoOfficerCommand(cmd.Kind))
         {
@@ -4674,8 +4658,6 @@ public sealed partial class CampaignMapScene : Node3D
         {
             box.AddChild(MakeLabel("조건을 달성해 해금된 세력형/도시형/유랑 위인을 금을 내고 영입합니다.", 15, Parchment));
             BuildHeroRecruitCards(box, cityData);
-            var contentHeroH = box.GetCombinedMinimumSize().Y;
-            scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentHeroH, mh));
             return;
         }
 
@@ -4696,8 +4678,6 @@ public sealed partial class CampaignMapScene : Node3D
                     ? "파기할 동맹 세력이 없습니다."
                     : "선택할 대상 세력이 없습니다.";
             box.AddChild(MakeLabel(empty, 17, Parchment));
-            var emptyContentH = box.GetCombinedMinimumSize().Y;
-            scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(emptyContentH, mh));
             return;
         }
 
@@ -4813,8 +4793,6 @@ public sealed partial class CampaignMapScene : Node3D
             apply.Pressed += () => ConfirmMajorTroops(cityData.Id);
             box.AddChild(apply);
             RefreshMultiOptionCards(options);
-            var contentMajorH = box.GetCombinedMinimumSize().Y;
-            scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentMajorH, mh));
             return;
         }
 
@@ -4888,9 +4866,6 @@ public sealed partial class CampaignMapScene : Node3D
             else { PickOption(_modalParam, options[_modalParam]); }
         }
 
-        // 스크롤 높이를 내용에 맞추되 mh로 상한 → 짧은 명령은 아래 여백 없음, 긴 건 스크롤.
-        var contentH = box.GetCombinedMinimumSize().Y;
-        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
     }
 
     private void CloseModal()
