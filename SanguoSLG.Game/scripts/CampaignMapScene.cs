@@ -4834,7 +4834,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (enemies.Count > 0)
             {
                 _stratTarget = enemies[0].Id;
-                box.AddChild(MakeLabel("대상 도시 (행 클릭 = 선택)", 19, GoldBright));
+                box.AddChild(MakeLabel("대상 도시", 19, GoldBright));
                 var from = _state.Cities.First(x => x.Id == city).Position;
                 var cityTree = new Tree
                 {
@@ -4886,7 +4886,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             AddSectionDivider(box, "GeneralResearchOfficerDivider");
         }
-        var officerSectionTitle = MakeLabel("수행 장수 (행 클릭 = 실행 · 상단 눌러 정렬)", 19, GoldBright);
+        var officerSectionTitle = MakeLabel("수행 장수", 19, GoldBright);
         officerSectionTitle.Name = "CommandOfficerSectionTitle";
         box.AddChild(officerSectionTitle);
         _offSortCol = -1;
@@ -5232,7 +5232,7 @@ public sealed partial class CampaignMapScene : Node3D
         SyncSupplyProvisionSlider();
 
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("주장 선택 (보급부대는 부관 없음 · 상단 눌러 정렬)", 13, GoldBright));
+        box.AddChild(MakeLabel("주장 선택 (보급부대는 부관 없음)", 13, GoldBright));
         _composeFree = _state.GeneralsAt(city)
             .Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g))
             .OrderBy(g => g.Value)
@@ -5740,7 +5740,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void BuildStationedTab(VBoxContainer box, CityId city, List<General> stationed)
     {
         var c = _state.Cities.First(x => x.Id == city);
-        box.AddChild(MakeLabel("주둔 장수 (행 클릭 = 상세)", 14, GoldBright));
+        box.AddChild(MakeLabel("주둔 장수", 14, GoldBright));
         if (stationed.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); return; }
 
         var gt = new Tree
@@ -6221,7 +6221,7 @@ public sealed partial class CampaignMapScene : Node3D
         close.Pressed += CloseModal;
         titleRow.AddChild(close);
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("수행 장수 (정치 높을수록 유리 · 행 클릭)", 13, GoldBright));
+        box.AddChild(MakeLabel("수행 장수 (정치 높을수록 유리)", 13, GoldBright));
 
         var free = _state.GeneralsAt(cityId).Where(g => !OfficerUnavailable(g))
             .Select(id => _state.Generals.First(g => g.Id == id)).OrderByDescending(g => g.Politics).ToList();
@@ -9235,7 +9235,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 3) 장수 편성 표 — 선봉·부관 체크 컬럼 + 정렬(고정 높이·내부 스크롤).
         _composeFree = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value).ToList();
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("장수 편성 (선봉 필수 · 부관 선택 · 상단 눌러 정렬)", 13, GoldBright));
+        box.AddChild(MakeLabel("장수 편성 (선봉 필수 · 부관 선택)", 13, GoldBright));
         _vanTree = new Tree
         {
             Columns = 8,
@@ -12033,7 +12033,7 @@ public sealed partial class CampaignMapScene : Node3D
         var infoLabel = MakeLabel(info, 15, Parchment);
         infoLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(infoLabel);
-        box.AddChild(MakeLabel("수행 장수 (행 클릭 = 실행 · 상단 눌러 정렬)", 17, GoldBright));
+        box.AddChild(MakeLabel("수행 장수", 17, GoldBright));
 
         var holder = new VBoxContainer();
         box.AddChild(holder);

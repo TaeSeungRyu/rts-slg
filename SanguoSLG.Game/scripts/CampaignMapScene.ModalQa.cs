@@ -33,6 +33,9 @@ public sealed partial class CampaignMapScene
             var rows = table?.GetRoot()?.GetChildCount() ?? 0;
             var expectedHeight = 48 + rows * 46;
             var firstRow = table?.GetRoot()?.GetFirstChild();
+            var hasObsoleteHints = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
+                .Any(label => label.Text.Contains("행 클릭", System.StringComparison.Ordinal)
+                    || label.Text.Contains("상단 눌러 정렬", System.StringComparison.Ordinal)) == true;
             var portrait = firstRow?.GetIcon(0);
             var portraitImage = portrait?.GetImage();
             var ringPixel = portraitImage is not null && portraitImage.GetWidth() >= 64
@@ -48,9 +51,10 @@ public sealed partial class CampaignMapScene
                 && table.ScrollVerticalEnabled == false
                 && table.MouseForcePassScrollEvents == false
                 && table.CustomMinimumSize.Y >= expectedHeight
-                && portraitLayout;
+                && portraitLayout
+                && !hasObsoleteHints;
             passed &= ok;
-            results.Add($"{Cmds[commandIndex].Label}:{rows}:{table?.CustomMinimumSize.Y ?? 0}:금테두리{goldRing}:초상{portraitLayout}:{ok}");
+            results.Add($"{Cmds[commandIndex].Label}:{rows}:{table?.CustomMinimumSize.Y ?? 0}:금테두리{goldRing}:초상{portraitLayout}:안내문구{!hasObsoleteHints}:{ok}");
             CloseModal();
         }
 
