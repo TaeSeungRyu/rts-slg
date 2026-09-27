@@ -4763,6 +4763,12 @@ public sealed partial class CampaignMapScene : Node3D
                 var idx = i;
                 var disabled = _disabledOptions.Contains(idx);
                 var card = OptionCard(options[i], disabled);
+                if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
+                {
+                    card.SetMeta("auto_recruit_troop_card", true);
+                    card.CustomMinimumSize = new Vector2(186, 160);
+                    card.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+                }
                 _optionCards.Add(card);
                 if (!disabled)
                 {

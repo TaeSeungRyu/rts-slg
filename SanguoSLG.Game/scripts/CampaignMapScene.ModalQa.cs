@@ -82,6 +82,17 @@ public sealed partial class CampaignMapScene
         passed &= lockedSiegeLineBreak;
         results.Add($"병력담당:공성잠금개행:{lockedSiegeLineBreak}");
 
+        OpenModal(recruitmentIndex);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var troopCards = _optionCards.Where(card => card.GetMeta("auto_recruit_troop_card").AsBool()).ToList();
+        var uniformTroopCards = troopCards.Count == recruitmentOptions.Count
+            && troopCards.All(card => card.CustomMinimumSize == new Vector2(186, 160))
+            && troopCards.Select(card => card.Size).Distinct().Count() == 1;
+        passed &= uniformTroopCards;
+        results.Add($"병력담당:동일카드:{uniformTroopCards}:{troopCards.FirstOrDefault()?.Size.ToString() ?? "-"}");
+        CloseModal();
+
         GD.Print($"[officer-table-qa] passed={passed} results={string.Join('|', results)}");
         GetTree().Quit(passed ? 0 : 1);
     }
