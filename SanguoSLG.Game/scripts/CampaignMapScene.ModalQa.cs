@@ -94,8 +94,14 @@ public sealed partial class CampaignMapScene
         var thumbnailTextures = _unitCardTextures.Count > 0
             && _unitCardTextures.Values.All(texture => texture.GetWidth() == 256 && texture.GetHeight() == 256);
         var withinLimit = watch.ElapsedMilliseconds <= 750;
-        var passed = thumbnailTextures && withinLimit && _optionCards.Count >= 7;
-        GD.Print($"[doctrine-performance-qa] passed={passed} elapsedMs={watch.ElapsedMilliseconds}/750 cards={_optionCards.Count} textures={_unitCardTextures.Count} thumbnails={thumbnailTextures}");
+        var doctrineOptions = OptionList(Cmds[commandIndex], city);
+        var specialResearchUsesStars = doctrineOptions
+            .Where(option => option.Name is "통솔 병력" or "집단군")
+            .All(option => option.Detail.Contains('★') || option.Detail.Contains('☆'))
+            && doctrineOptions.Where(option => option.Name is "통솔 병력" or "집단군")
+                .All(option => !option.Detail.Contains("Lv.", System.StringComparison.Ordinal));
+        var passed = thumbnailTextures && withinLimit && _optionCards.Count >= 7 && specialResearchUsesStars;
+        GD.Print($"[doctrine-performance-qa] passed={passed} elapsedMs={watch.ElapsedMilliseconds}/750 cards={_optionCards.Count} textures={_unitCardTextures.Count} thumbnails={thumbnailTextures} specialStars={specialResearchUsesStars}");
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }

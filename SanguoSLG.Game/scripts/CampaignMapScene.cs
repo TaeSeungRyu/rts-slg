@@ -10185,7 +10185,7 @@ public sealed partial class CampaignMapScene : Node3D
                     var cost = level >= GeneralResearchRules.MaxLevel
                         ? 0
                         : GeneralResearchRules.Cost(level + 1, _cb);
-                    var detail = $"Lv.{level}/{GeneralResearchRules.MaxLevel}"
+                    var detail = ResearchStars(level, major: true)
                         + (level >= GeneralResearchRules.MaxLevel
                             ? "\n연구 완료"
                             : $"\n{GeneralResearchRules.NextEffectText(definition.Code, level)}\n{cost}금");
@@ -10257,11 +10257,11 @@ public sealed partial class CampaignMapScene : Node3D
         var current = CommandEfficiency.CommandTroopDeployLimit(level, _cb);
         if (level >= 10)
         {
-            return $"Lv.{level}/10\n최대 편성 {current}명";
+            return $"{ResearchStars(level, major: true)}\n최대 편성 {current}명";
         }
 
         var next = level + 1;
-        return $"Lv.{level} → Lv.{next}/10\n편성 {current} → {CommandEfficiency.CommandTroopDeployLimit(next, _cb)}명\n비용 {CommandEfficiency.CommandTroopResearchCost(next)}금";
+        return $"{ResearchStars(level, major: true)}\n편성 {current} → {CommandEfficiency.CommandTroopDeployLimit(next, _cb)}명\n비용 {CommandEfficiency.CommandTroopResearchCost(next)}금";
     }
 
     private string ArmyGroupResearchOptionDetail(City city)
@@ -10270,11 +10270,11 @@ public sealed partial class CampaignMapScene : Node3D
         var current = CommandEfficiency.ArmyGroupDeployLimit(level, _cb);
         if (level >= _cb.ArmyGroupResearchMaxLevel)
         {
-            return $"Lv.{level}/{_cb.ArmyGroupResearchMaxLevel}\n최대 편성 {current:N0}명";
+            return $"{ResearchStars(level, major: true)}\n최대 편성 {current:N0}명";
         }
 
         var next = level + 1;
-        return $"Lv.{level} → Lv.{next}/{_cb.ArmyGroupResearchMaxLevel}\n편성 {current:N0} → {CommandEfficiency.ArmyGroupDeployLimit(next, _cb):N0}명\n비용 {CommandEfficiency.CommandTroopResearchCost(next)}금";
+        return $"{ResearchStars(level, major: true)}\n편성 {current:N0} → {CommandEfficiency.ArmyGroupDeployLimit(next, _cb):N0}명\n비용 {CommandEfficiency.CommandTroopResearchCost(next)}금";
     }
 
     private void BuildHeroRecruitCards(VBoxContainer box, City city)
@@ -13446,7 +13446,11 @@ public sealed partial class CampaignMapScene : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var ownedCityCount = _state.Cities.Count(c => c.Owner == city.Owner);
-        var names = OptionList(Cmds[commandIndex], city).Select(o => o.Name).ToList();
+        var generalOptions = OptionList(Cmds[commandIndex], city);
+        var names = generalOptions.Select(o => o.Name).ToList();
+        var generalResearchUsesStars = generalOptions.All(option =>
+            (option.Detail.Contains('★') || option.Detail.Contains('☆'))
+            && !option.Detail.Contains("Lv.", System.StringComparison.Ordinal));
         var viewportSize = GetViewport().GetVisibleRect().Size;
         var mainPanel = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
             .OrderByDescending(p => p.Size.X * p.Size.Y).FirstOrDefault();
@@ -13479,8 +13483,9 @@ public sealed partial class CampaignMapScene : Node3D
             && compactFundingInputs
             && optionColumnsOk
             && detailPlacementOk
+            && generalResearchUsesStars
             && GeneralResearchRules.Definitions.All(d => names.Contains(d.Name));
-        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 detail={detailPlacementOk} fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} names={string.Join(',', names)} ok={ok}");
+        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 detail={detailPlacementOk} fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} stars={generalResearchUsesStars} names={string.Join(',', names)} ok={ok}");
         CloseModal();
         GetWindow().Size = originalWindowSize;
         GetTree().Quit(ok ? 0 : 1);
