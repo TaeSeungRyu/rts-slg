@@ -10819,7 +10819,7 @@ public sealed partial class CampaignMapScene : Node3D
         var fundingScroll = new ScrollContainer
         {
             Name = "ResearchFundingScroll",
-            CustomMinimumSize = new Vector2(0, Mathf.Min(220, rows * 108 + 8)),
+            CustomMinimumSize = new Vector2(0, Mathf.Min(196, rows * 96)),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = rows > 2 ? ScrollContainer.ScrollMode.Auto : ScrollContainer.ScrollMode.Disabled,
@@ -10846,7 +10846,7 @@ public sealed partial class CampaignMapScene : Node3D
             var cityCard = new PanelContainer
             {
                 Name = $"ResearchFundingCard{c.Id.Value}",
-                CustomMinimumSize = new Vector2(214, 100),
+                CustomMinimumSize = new Vector2(214, 88),
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             };
             cityCard.SetMeta("research_funding_row", c.Id.Value);
@@ -10858,7 +10858,7 @@ public sealed partial class CampaignMapScene : Node3D
             fundingGrid.AddChild(cityCard);
 
             var cardBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-            cardBox.AddThemeConstantOverride("separation", 4);
+            cardBox.AddThemeConstantOverride("separation", 3);
             cityCard.AddChild(cardBox);
 
             var headline = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -13643,9 +13643,9 @@ public sealed partial class CampaignMapScene : Node3D
         var fundingLayoutOk = fundingPanel?.HasMeta("research_funding_cards") == true
             && fundingRowCount == ownedCityCount
             && fundingCards.Count == ownedCityCount
-            && fundingCards.All(card => card.CustomMinimumSize == new Vector2(214, 100))
+            && fundingCards.All(card => card.CustomMinimumSize == new Vector2(214, 88))
             && fundingScroll?.GetMeta("funding_city_capacity").AsInt32() == 30
-            && fundingScroll.CustomMinimumSize.Y <= 220f
+            && fundingScroll.CustomMinimumSize.Y <= 196f
             && fundingScroll.HorizontalScrollMode == ScrollContainer.ScrollMode.Disabled
             && fundingGrid?.Columns == ResearchFundingColumnCount(ownedCityCount, viewportSize.X)
             && ResearchFundingColumnCount(30, 960) == 3
