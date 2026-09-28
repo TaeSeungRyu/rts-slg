@@ -66,6 +66,8 @@ public sealed partial class CampaignMapScene : Node3D
     private int _week;
 
     private readonly Dictionary<int, Label3D> _cityLabels = new();
+    private readonly Dictionary<int, Node3D> _cityModels = new();
+    private readonly Dictionary<int, bool> _cityBrokenVisuals = new();
     private readonly Dictionary<string, Label3D> _ruinLabels = new(System.StringComparer.Ordinal);
     private readonly Dictionary<int, UnitController3D> _armyTokens = new();
     private readonly Dictionary<int, Label3D> _armyLabels = new();
@@ -551,6 +553,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestofficertableqa")) CallDeferred(nameof(RunOfficerTableLayoutQa));
         if (args.Contains("--maptestcitydetailqa")) CallDeferred(nameof(RunCityDetailUiQa));
         if (args.Contains("--maptestcityambienceqa")) CallDeferred(nameof(RunCityAmbienceQa));
+        if (args.Contains("--maptestcastledamageqa")) CallDeferred(nameof(RunCastleDamageQa));
     }
 
     public override void _ExitTree()
@@ -2373,32 +2376,11 @@ public sealed partial class CampaignMapScene : Node3D
     {
         foreach (var city in _cities)
         {
-            var node = GD.Load<PackedScene>(CastleModelPath(city)).Instantiate<Node3D>();
-            node.Position = CastleVisualCenter(city) + new Vector3(0f, _view.TileTopY, 0f);
-            if (city.IsPort)
-            {
-                node.Rotation = new Vector3(0f, PortFacingYaw(city), 0f);
-            }
-            node.Scale *= CastleModelScale(city);
-            if (city.IsPort)
-            {
-                var ambience = new VillagerAmbience
-                {
-                    Name = $"CityVillagers{city.Id.Value}_0",
-                    GroundY = 0.10f,
-                    WanderRadius = 0.24f,
-                    Seed = unchecked((ulong)(city.Position.Q * 92821L + city.Position.R * 68917L + 4241L)),
-                    MaxVillagers = city.Port == PortSize.Medium ? 5 : 4,
-                };
-                ambience.SetMeta("city_id", city.Id.Value);
-                ambience.AddToGroup("city_villager_ambience");
-                node.AddChild(ambience);
-            }
-            else
-            {
-                GameRoot3D.AddCastleAmbience(node, city, TileCondition.Normal);
-            }
+            var stateCity = _state.Cities.FirstOrDefault(current => current.Id == city.Id) ?? city;
+            var node = CreateCityModel(stateCity, stateCity.Wall <= 0);
             AddChild(node);
+            _cityModels[city.Id.Value] = node;
+            _cityBrokenVisuals[city.Id.Value] = stateCity.Wall <= 0;
 
             var label = new Label3D
             {
@@ -2411,6 +2393,60 @@ public sealed partial class CampaignMapScene : Node3D
             AddChild(label);
             _cityLabels[city.Id.Value] = label;
             _fog.Register(node, city.Position);
+        }
+    }
+
+    private Node3D CreateCityModel(City city, bool broken)
+    {
+            var node = GD.Load<PackedScene>(CastleModelPath(city)).Instantiate<Node3D>();
+            node.Position = CastleVisualCenter(city) + new Vector3(0f, _view.TileTopY, 0f);
+            if (city.IsPort)
+            {
+                node.Rotation = new Vector3(0f, PortFacingYaw(city), 0f);
+            }
+            node.Scale *= CastleModelScale(city);
+            node.SetMeta("city_id", city.Id.Value);
+            node.SetMeta("broken_city_visual", broken);
+            if (broken)
+            {
+                DamageView.Apply(node, TileCondition.Damaged,
+                    city.IsPort ? DamageView.Kind.Port : DamageView.Kind.Castle,
+                    unchecked((ulong)(city.Id.Value * 7919L + 311L)));
+            }
+            if (city.IsPort)
+            {
+                var ambience = new VillagerAmbience
+                {
+                    Name = $"CityVillagers{city.Id.Value}_0",
+                    GroundY = 0.10f,
+                    WanderRadius = 0.24f,
+                    Seed = unchecked((ulong)(city.Position.Q * 92821L + city.Position.R * 68917L + 4241L)),
+                    MaxVillagers = city.Port == PortSize.Medium ? 5 : 4,
+                    SpawnEnabled = !broken,
+                };
+                ambience.SetMeta("city_id", city.Id.Value);
+                ambience.AddToGroup("city_villager_ambience");
+                node.AddChild(ambience);
+            }
+            else
+            {
+                GameRoot3D.AddCastleAmbience(node, city, broken ? TileCondition.Damaged : TileCondition.Normal);
+            }
+            return node;
+    }
+
+    private void RefreshCastleDamageVisuals()
+    {
+        foreach (var city in _state.Cities)
+        {
+            var broken = city.Wall <= 0;
+            if (_cityBrokenVisuals.GetValueOrDefault(city.Id.Value) == broken) { continue; }
+            if (_cityModels.Remove(city.Id.Value, out var previous)) { previous.QueueFree(); }
+            var replacement = CreateCityModel(city, broken);
+            AddChild(replacement);
+            _cityModels[city.Id.Value] = replacement;
+            _cityBrokenVisuals[city.Id.Value] = broken;
+            _fog.Register(replacement, city.Position);
         }
     }
 
@@ -12981,6 +13017,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void Redraw(string note)
     {
+        RefreshCastleDamageVisuals();
         RefreshScoutLabels();
         DrawSupplyZones();
         DrawDeployPaths();

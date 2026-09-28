@@ -20,6 +20,28 @@ public sealed partial class CampaignMapScene
         GetTree().Quit(passed ? 0 : 1);
     }
 
+    private void RunCastleDamageQa()
+    {
+        var city = _state.Cities.First(current => !current.IsPort);
+        var original = _state;
+        _state = _state with
+        {
+            Cities = _state.Cities.Select(current => current.Id == city.Id ? current with { Wall = 0 } : current).ToList(),
+        };
+        Redraw("성벽 파괴 QA");
+        var brokenNode = _cityModels[city.Id.Value];
+        var brokenApplied = _cityBrokenVisuals[city.Id.Value]
+            && brokenNode.GetMeta("broken_city_visual").AsBool();
+        _state = original;
+        Redraw("성벽 복구 QA");
+        var restoredNode = _cityModels[city.Id.Value];
+        var restored = !_cityBrokenVisuals[city.Id.Value]
+            && !restoredNode.GetMeta("broken_city_visual").AsBool();
+        var passed = brokenApplied && restored && brokenNode != restoredNode;
+        GD.Print($"[castle-damage-qa] passed={passed} brokenApplied={brokenApplied} restored={restored} replaced={brokenNode != restoredNode}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private async void RunCityDetailUiQa()
     {
         var city = _state.Cities.FirstOrDefault(c => c.Owner == Player);
