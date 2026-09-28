@@ -12037,7 +12037,7 @@ public sealed partial class CampaignMapScene : Node3D
             Redraw(_log.Text);
         }
 
-        if ((cmd.Kind == CommandKind.Research && cmd.Param == "troop")
+        if ((cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general")
             || cmd.Kind == CommandKind.CityStratagem
             || cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance
             || cmd.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist
@@ -13674,6 +13674,12 @@ public sealed partial class CampaignMapScene : Node3D
             && generalOfficerDivider?.HasMeta("section_divider") == true
             && generalOfficerDivider.GetGlobalRect().Position.Y >= fundingPanel.GetGlobalRect().End.Y - 1f
             && generalOfficerDivider.GetGlobalRect().End.Y <= officerTitle.GetGlobalRect().Position.Y + 1f;
+        AskExecute(city.Id, commandIndex, actor, 0);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var officerConfirmPortrait = _confirmLayer?.FindChildren("*", "TextureRect", true, false)
+            .OfType<TextureRect>().Any(texture => texture.Texture is not null) == true;
+        _confirmLayer?.QueueFree();
+        _confirmLayer = null;
         var ok = submenuOk && allGroupsOk && generalBusyOk && layoutOk
             && _optionCards.Count == GeneralResearchRules.Definitions.Count
             && _researchFundingRatios.Count == ownedCityCount
@@ -13683,10 +13689,11 @@ public sealed partial class CampaignMapScene : Node3D
             && detailPlacementOk
             && fundingDividerOk
             && officerDividerOk
+            && officerConfirmPortrait
             && generalResearchUsesStars
             && framedGeneralResearchArt
             && GeneralResearchRules.Definitions.All(d => names.Contains(d.Name));
-        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 framedArt={framedGeneralResearchArt} detail={detailPlacementOk} fundingDivider={fundingDividerOk} officerDivider={officerDividerOk} fundingCards={fundingRowCount}/{ownedCityCount} fundingColumns={fundingGrid?.Columns ?? 0} fundingHeight={fundingScroll?.CustomMinimumSize.Y ?? 0} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} stars={generalResearchUsesStars} names={string.Join(',', names)} ok={ok}");
+        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 framedArt={framedGeneralResearchArt} detail={detailPlacementOk} fundingDivider={fundingDividerOk} officerDivider={officerDividerOk} officerConfirm={officerConfirmPortrait} fundingCards={fundingRowCount}/{ownedCityCount} fundingColumns={fundingGrid?.Columns ?? 0} fundingHeight={fundingScroll?.CustomMinimumSize.Y ?? 0} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} stars={generalResearchUsesStars} names={string.Join(',', names)} ok={ok}");
         CloseModal();
         GetWindow().Size = originalWindowSize;
         GetTree().Quit(ok ? 0 : 1);
