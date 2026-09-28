@@ -11475,6 +11475,7 @@ public sealed partial class CampaignMapScene : Node3D
                 or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer ? 1 : 3;
 
         const int compactOfficerRowLimit = 8;
+        const int scrollableOfficerTableHeight = 330;
         var showAllOfficerRows = free.Count <= compactOfficerRowLimit
             || cmd.Kind is CommandKind.Explore or CommandKind.FormAlliance or CommandKind.BreakAlliance;
         const int officerRowHeight = 46;
@@ -11488,7 +11489,7 @@ public sealed partial class CampaignMapScene : Node3D
             // 소규모 목록과 탐색·외교는 행 전체를 보이고, 9명 이상인 목록만 표 내부 스크롤을 쓴다.
             CustomMinimumSize = new Vector2(0, showAllOfficerRows
                 ? 48 + free.Count * officerRowHeight
-                : Mathf.Min(48 + free.Count * officerRowHeight, 470)),
+                : Mathf.Min(48 + free.Count * officerRowHeight, scrollableOfficerTableHeight)),
             ScrollVerticalEnabled = !showAllOfficerRows,
             MouseFilter = Control.MouseFilterEnum.Stop,
             // 내부 스크롤이 없는 짧은 표에서는 휠을 바깥 모달 스크롤로 전달한다.
@@ -11501,8 +11502,10 @@ public sealed partial class CampaignMapScene : Node3D
         tree.SetMeta("passes_wheel_to_modal", showAllOfficerRows);
         tree.SetMeta("passes_wheel_at_boundary", !showAllOfficerRows);
         tree.SetMeta("wheel_scroll_priority", "modal_then_table");
+        tree.SetMeta("explicit_internal_wheel_scroll", !showAllOfficerRows);
         if (!showAllOfficerRows)
         {
+            var officerScrollIndex = 0;
             tree.GuiInput += input =>
             {
                 if (input is not InputEventMouseButton { Pressed: true } wheel
@@ -11522,7 +11525,15 @@ public sealed partial class CampaignMapScene : Node3D
                 {
                     modalScroll.ScrollVertical += direction * 64;
                     tree.AcceptEvent();
+                    return;
                 }
+
+                var root = tree.GetRoot();
+                var rowCount = root?.GetChildCount() ?? 0;
+                if (rowCount <= 0) { return; }
+                officerScrollIndex = Mathf.Clamp(officerScrollIndex + direction, 0, rowCount - 1);
+                tree.ScrollToItem(root!.GetChild(officerScrollIndex), true);
+                tree.AcceptEvent();
             };
         }
         tree.AddThemeFontOverride("font", _font);

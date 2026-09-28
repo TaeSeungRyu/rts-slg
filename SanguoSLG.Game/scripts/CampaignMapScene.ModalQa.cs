@@ -155,7 +155,7 @@ public sealed partial class CampaignMapScene
             var showAllRows = Cmds[commandIndex].Kind is SanguoSLG.Core.Domain.CommandKind.Explore
                 or SanguoSLG.Core.Domain.CommandKind.FormAlliance
                 or SanguoSLG.Core.Domain.CommandKind.BreakAlliance;
-            var expectedHeight = showAllRows ? 48 + rows * 46 : Mathf.Min(48 + rows * 46, 470);
+            var expectedHeight = showAllRows ? 48 + rows * 46 : Mathf.Min(48 + rows * 46, 330);
             var firstRow = table?.GetRoot()?.GetFirstChild();
             var hasObsoleteHints = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
                 .Any(label => label.Text.Contains("행 클릭", System.StringComparison.Ordinal)
@@ -188,15 +188,20 @@ public sealed partial class CampaignMapScene
         OpenModal(researchIndex);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var researchTable = _modalLayer?.FindChild("CommandOfficerTable", true, false) as Tree;
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var tableHasScrollRange = (researchTable?.GetRoot()?.GetChildCount() ?? 0) > 8
+            && researchTable?.CustomMinimumSize.Y <= 330;
         var wheelIsolated = researchTable?.GetMeta("isolated_wheel_scroll").AsBool() == true
             && researchTable.MouseFilter == Control.MouseFilterEnum.Stop
             && researchTable.ScrollVerticalEnabled
             && researchTable.MouseForcePassScrollEvents == false
             && researchTable.GetMeta("passes_wheel_to_modal").AsBool() == false
             && researchTable.GetMeta("passes_wheel_at_boundary").AsBool()
-            && researchTable.GetMeta("wheel_scroll_priority").AsString() == "modal_then_table";
+            && researchTable.GetMeta("wheel_scroll_priority").AsString() == "modal_then_table"
+            && researchTable.GetMeta("explicit_internal_wheel_scroll").AsBool()
+            && tableHasScrollRange;
         passed &= wheelIsolated;
-        results.Add($"일반연구:모달우선·경계표전환:{wheelIsolated}");
+        results.Add($"일반연구:모달우선·표스크롤범위{tableHasScrollRange}:{wheelIsolated}:행{researchTable?.GetRoot()?.GetChildCount() ?? 0}");
         CloseModal();
 
         var changanCount = _state.GeneralsAt(new SanguoSLG.Core.Domain.CityId(1)).Distinct().Count();
