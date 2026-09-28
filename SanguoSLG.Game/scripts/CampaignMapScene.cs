@@ -7203,20 +7203,21 @@ public sealed partial class CampaignMapScene : Node3D
         if (_officerTablePortraits.TryGetValue(id.Value, out var cached)) return cached;
 
         const int size = 64;
+        const int renderSize = size * 4;
         var source = RosterPortraitFor(id).GetImage();
-        if (source.GetWidth() != size || source.GetHeight() != size)
+        if (source.GetWidth() != renderSize || source.GetHeight() != renderSize)
         {
-            source.Resize(size, size, Image.Interpolation.Lanczos);
+            source.Resize(renderSize, renderSize, Image.Interpolation.Lanczos);
         }
 
-        var output = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
-        var center = size / 2.0;
-        const double ringRadius = 29.5;
-        const double ringHalfWidth = 0.45;
-        const double ringFeather = 0.45;
-        for (var y = 0; y < size; y++)
+        var output = Image.CreateEmpty(renderSize, renderSize, false, Image.Format.Rgba8);
+        var center = renderSize / 2.0;
+        const double ringRadius = 118.0;
+        const double ringHalfWidth = 1.8;
+        const double ringFeather = 1.8;
+        for (var y = 0; y < renderSize; y++)
         {
-            for (var x = 0; x < size; x++)
+            for (var x = 0; x < renderSize; x++)
             {
                 var dx = x + 0.5 - center;
                 var dy = y + 0.5 - center;
@@ -7235,6 +7236,8 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
+        output.Resize(size, size, Image.Interpolation.Lanczos);
+        output.GenerateMipmaps();
         var texture = ImageTexture.CreateFromImage(output);
         _officerTablePortraits[id.Value] = texture;
         return texture;
@@ -14077,6 +14080,7 @@ public sealed partial class CampaignMapScene : Node3D
             ? firstPortrait.GetPixel(32, 2)
             : Colors.Transparent;
         var thinGoldRing = ringPixel.A > 0.7f && ringPixel.R > 0.7f && ringPixel.G > 0.5f;
+        var smoothGoldRing = firstPortrait?.HasMipmaps() == true;
         var portraitNameGap = tree?.GetMeta("portrait_name_gap").AsInt32() == 7
             && tree.GetThemeConstant("h_separation") == 7;
         var thumbnailsReady = _state.Generals.All(g =>
@@ -14106,10 +14110,11 @@ public sealed partial class CampaignMapScene : Node3D
             && warmHydrated
             && deferredLoading
             && thinGoldRing
+            && smoothGoldRing
             && portraitNameGap
             && first.ElapsedMilliseconds < initialModalLimitMilliseconds
             && second.ElapsedMilliseconds <= first.ElapsedMilliseconds;
-        GD.Print($"[maptestgeneralrosterqa] passed={passed} rows={rows}/{_state.Generals.Count} thumbnails={_rosterPortraits.Count} deferred={coldHydrated} compact={compactTextures} goldRing={thinGoldRing} nameGap={portraitNameGap} initialColdMs={first.ElapsedMilliseconds} initialWarmMs={second.ElapsedMilliseconds} limitMs={initialModalLimitMilliseconds}");
+        GD.Print($"[maptestgeneralrosterqa] passed={passed} rows={rows}/{_state.Generals.Count} thumbnails={_rosterPortraits.Count} deferred={coldHydrated} compact={compactTextures} goldRing={thinGoldRing}/{smoothGoldRing} nameGap={portraitNameGap} initialColdMs={first.ElapsedMilliseconds} initialWarmMs={second.ElapsedMilliseconds} limitMs={initialModalLimitMilliseconds}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -14124,6 +14129,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (sample is not null) portrait.SetPortrait(CircularPortraitFor(sample.Id));
         var passed = sample is not null && portrait.HasPortrait && portrait.IsAboveSkillGauge
             && portrait.HasThinGoldBorder
+            && portrait.HasMipmappedBorder
             && Mathf.Abs(CommanderPortraitView3D.PortraitScaleRatio - 0.8f) < 0.01f
             && Mathf.Abs(CommanderPortraitView3D.EstimatedGapPixels - 5f) < 0.01f
             && CommanderPortraitView3D.HeightOffset > CommanderPortraitView3D.SkillGaugeHeight;

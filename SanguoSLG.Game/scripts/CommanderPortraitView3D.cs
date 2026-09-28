@@ -18,6 +18,7 @@ public sealed partial class CommanderPortraitView3D : Node3D
     public bool HasPortrait => _portrait is not null && _portrait.Texture is not null;
     public bool IsAboveSkillGauge => HeightOffset > SkillGaugeHeight;
     public bool HasThinGoldBorder { get; private set; }
+    public bool HasMipmappedBorder => _portrait?.Texture?.GetImage().HasMipmaps() == true;
     public static float EstimatedGapPixels
         => (HeightOffset - PortraitHalfHeight - TroopLabelHeightOffset - EstimatedLabelHalfHeight) / LabelPixelSize;
 
@@ -54,13 +55,29 @@ public sealed partial class CommanderPortraitView3D : Node3D
         var center = new Vector2((width - 1) * 0.5f, (height - 1) * 0.5f);
         var radius = System.Math.Min(width, height) * 0.485f;
         var thickness = System.Math.Max(1.0f, System.Math.Min(width, height) * 0.012f);
+        const float feather = 0.85f;
         var gold = new Color(0.93f, 0.72f, 0.30f, 0.96f);
         for (var y = 0; y < height; y++)
         for (var x = 0; x < width; x++)
         {
             var distance = new Vector2(x, y).DistanceTo(center);
-            if (distance >= radius - thickness && distance <= radius) image.SetPixel(x, y, gold);
+            var outerCoverage = Mathf.Clamp((float)(radius + feather - distance), 0f, 1f);
+            var innerCoverage = Mathf.Clamp((float)(distance - (radius - thickness - feather)), 0f, 1f);
+            var ringCoverage = Mathf.Min(outerCoverage, innerCoverage);
+            if (ringCoverage > 0f)
+            {
+                var source = image.GetPixel(x, y);
+                gold.A = Mathf.Max(source.A, ringCoverage * 0.96f);
+                image.SetPixel(x, y, source.Lerp(gold, ringCoverage));
+            }
+            if (distance > radius + feather)
+            {
+                var outside = image.GetPixel(x, y);
+                outside.A = 0f;
+                image.SetPixel(x, y, outside);
+            }
         }
+        image.GenerateMipmaps();
         return ImageTexture.CreateFromImage(image);
     }
 
