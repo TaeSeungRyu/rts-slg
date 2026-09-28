@@ -561,6 +561,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestdeploygoldqa")) CallDeferred(nameof(RunDeployGoldUiQa));
         if (args.Contains("--maptestdeployimageqa")) CallDeferred(nameof(RunDeployImageStyleQa));
         if (args.Contains("--maptestmodalcamerablockqa")) CallDeferred(nameof(RunModalCameraBlockQa));
+        if (args.Contains("--maptestunitmenuqa")) CallDeferred(nameof(RunUnitMenuQa));
     }
 
     public override void _ExitTree()
@@ -3831,11 +3832,17 @@ public sealed partial class CampaignMapScene : Node3D
         ret.Pressed += ReturnSelectedUnit;
         _unitCmdBox.AddChild(ret);
 
-        _unitCmdBox.AddChild(MakeLabel("· 액티브", 10, GoldBright));
-        var active = Item("슬롯 보기");
-        active.TooltipText = "선봉·부관 액티브 스킬의 충전 상태를 정보 카드에서 확인한다.";
-        active.Pressed += () => { if (_selectedUnitId >= 0) { ShowUnitInfo(_selectedUnitId); } };
-        _unitCmdBox.AddChild(active);
+    }
+
+    private void RunUnitMenuQa()
+    {
+        var labels = _unitCmdBox.FindChildren("*", "Label", true, false).OfType<Label>().Select(label => label.Text).ToList();
+        var buttons = _unitCmdBox.FindChildren("*", "Button", true, false).OfType<Button>().Select(button => button.Text).ToList();
+        var passed = !labels.Contains("· 액티브") && !buttons.Contains("슬롯 보기")
+            && buttons.Contains("행군") && buttons.Contains("전진") && buttons.Contains("공격")
+            && buttons.Contains("정지") && buttons.Contains("복귀");
+        GD.Print($"[unit-menu-qa] passed={passed} buttons={string.Join(',', buttons)}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     // 야전 부대 이동 재지정 — 모드를 고르고 목적지를 클릭, '확인'으로 확정(출전 목표 지정과 동일 UX).
