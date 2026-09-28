@@ -1344,16 +1344,28 @@ public sealed partial class CampaignMapScene : Node3D
         if (activeStatuses.Count > 0)
             Row("현재 상태", string.Join("\n", activeStatuses));
 
-        foreach (var (role, skill) in new[] { ("선봉", u.State.VanguardActive), ("부관", u.State.AdjutantActive) })
+        var activeSkills = new[] { (Role: "선봉", Skill: u.State.VanguardActive), (Role: "부관", Skill: u.State.AdjutantActive) }
+            .Where(entry => entry.Skill is not null)
+            .ToList();
+        if (activeSkills.Count > 0)
         {
-            if (skill is null) { continue; }
-            var button = MakeButton($"{role} · {skill.Name}   ›");
-            button.Alignment = HorizontalAlignment.Left;
-            button.ClipText = true;
-            button.TooltipText = SkillDescriptions.Active(skill);
-            ActiveSkillIcons.Apply(button, skill.Code, 32);
-            button.Pressed += () => ShowSkillDescription(skill.Name, "액티브", SkillDescriptions.Active(skill), skill.Code);
-            _infoRows.AddChild(button);
+            var margin = new MarginContainer { Name = "UnitActiveSkillsTopMargin", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            margin.AddThemeConstantOverride("margin_top", 10);
+            margin.SetMeta("active_skill_top_margin", 10);
+            var skillRows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            skillRows.AddThemeConstantOverride("separation", 5);
+            margin.AddChild(skillRows);
+            _infoRows.AddChild(margin);
+            foreach (var (role, skill) in activeSkills)
+            {
+                var button = MakeButton($"{role} · {skill!.Name}   ›");
+                button.Alignment = HorizontalAlignment.Left;
+                button.ClipText = true;
+                button.TooltipText = SkillDescriptions.Active(skill);
+                ActiveSkillIcons.Apply(button, skill.Code, 32);
+                button.Pressed += () => ShowSkillDescription(skill.Name, "액티브", SkillDescriptions.Active(skill), skill.Code);
+                skillRows.AddChild(button);
+            }
         }
 
         _infoCard.Visible = true;
@@ -13844,6 +13856,10 @@ public sealed partial class CampaignMapScene : Node3D
                 new TroopPool(10000, 0), UnitCombatState.Create(70),
                 Class: troop.Class, TroopCode: troop.Code,
                 VanguardId: generals[0].Id, AdjutantId: generals[1].Id);
+        if (_activeSkills.FirstOrDefault() is { } qaActive)
+        {
+            sample = sample with { State = UnitCombatState.Create(70, qaActive) };
+        }
 
         _state = _state with
         {
@@ -13864,6 +13880,7 @@ public sealed partial class CampaignMapScene : Node3D
         var adjutantRoleCard = _infoRows.FindChild("UnitAdjutantRoleCard", true, false) as PanelContainer;
         var vanguardLink = _infoRows.FindChild("UnitVanguardGeneralLink", true, false) as Button;
         var adjutantLink = _infoRows.FindChild("UnitAdjutantGeneralLink", true, false) as Button;
+        var activeSkillMargin = _infoRows.FindChild("UnitActiveSkillsTopMargin", true, false) as MarginContainer;
         var layoutOk = visual?.GetMeta("commander_replaces_unit_art").AsBool() == true
             && visual.CustomMinimumSize.Y >= 210f
             && visual.GetMeta("portrait_display_height").AsInt32() == 210
@@ -13883,7 +13900,9 @@ public sealed partial class CampaignMapScene : Node3D
             && vanguardRoleCard.GetMeta("vertical_content_alignment").AsString() == "center"
             && adjutantRoleCard.GetMeta("vertical_content_alignment").AsString() == "center"
             && vanguardLink?.GetMeta("hover_underline").AsBool() == true
-            && adjutantLink?.GetMeta("hover_underline").AsBool() == true;
+            && adjutantLink?.GetMeta("hover_underline").AsBool() == true
+            && activeSkillMargin?.GetMeta("active_skill_top_margin").AsInt32() == 10
+            && activeSkillMargin.GetThemeConstant("margin_top") == 10;
 
         vanguardLink?.EmitSignal(BaseButton.SignalName.Pressed);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
