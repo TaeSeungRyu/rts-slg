@@ -5,7 +5,12 @@ namespace SanguoSLG.Game;
 /// <summary>선택한 부대의 주장 원형 초상을 스킬 충전원보다 위에 표시한다.</summary>
 public sealed partial class CommanderPortraitView3D : Node3D
 {
-    public const float HeightOffset = 1.48f;
+    public const float TroopLabelHeightOffset = 1.10f;
+    public const float LabelPixelSize = 0.005f;
+    public const float PortraitPixelSize = 0.00165f * PortraitScaleRatio;
+    private const float EstimatedLabelHalfHeight = 0.14f;
+    private const float PortraitHalfHeight = 192f * PortraitPixelSize * 0.5f;
+    public const float HeightOffset = TroopLabelHeightOffset + EstimatedLabelHalfHeight + 5f * LabelPixelSize + PortraitHalfHeight;
     public const float SkillGaugeHeight = 1.08f;
     public const float PortraitScaleRatio = 0.8f;
     private Sprite3D _portrait = null!;
@@ -13,13 +18,15 @@ public sealed partial class CommanderPortraitView3D : Node3D
     public bool HasPortrait => _portrait is not null && _portrait.Texture is not null;
     public bool IsAboveSkillGauge => HeightOffset > SkillGaugeHeight;
     public bool HasThinGoldBorder { get; private set; }
+    public static float EstimatedGapPixels
+        => (HeightOffset - PortraitHalfHeight - TroopLabelHeightOffset - EstimatedLabelHalfHeight) / LabelPixelSize;
 
     public override void _Ready()
     {
         TopLevel = true;
         _portrait = new Sprite3D
         {
-            PixelSize = 0.00165f * PortraitScaleRatio,
+            PixelSize = PortraitPixelSize,
             Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
             NoDepthTest = true,
             Modulate = Colors.White,

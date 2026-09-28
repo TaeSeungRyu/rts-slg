@@ -13496,6 +13496,7 @@ public sealed partial class CampaignMapScene : Node3D
                     Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                     FontSize = 36,
                     OutlineSize = 10,
+                    PixelSize = CommanderPortraitView3D.LabelPixelSize,
                     NoDepthTest = true,
                     Modulate = color,
                 };
@@ -13515,7 +13516,8 @@ public sealed partial class CampaignMapScene : Node3D
             token.SetFormationSize(army.IsSupply || army.IsArmyGroup ? 1 : FormationFor(army.Pool.Active)); // 보급부대·집단군은 규모와 무관하게 단일 전용 모델
             token.DisplaySyncTo(army.Field.Position, 0.3f); // 제자리면 스냅 — 보정 트윈이 방향을 뒤집지 않게
             var lblNode = _armyLabels[army.Id.Value];
-            lblNode.Position = _view.HexToWorld(army.Field.Position) + new Vector3(0f, _view.TileTopY + 1.1f, 0f);
+            lblNode.Position = _view.HexToWorld(army.Field.Position)
+                + new Vector3(0f, _view.TileTopY + CommanderPortraitView3D.TroopLabelHeightOffset, 0f);
             lblNode.Text = $"{army.Pool.Active}";
             lblNode.Visible = army.Field.Owner == Player; // 병력 수는 아군만 표시(적은 편대 규모로 가늠)
             if (_activeGauges.TryGetValue(army.Id.Value, out var activeGauge))
@@ -14066,9 +14068,10 @@ public sealed partial class CampaignMapScene : Node3D
         if (sample is not null) portrait.SetPortrait(CircularPortraitFor(sample.Id));
         var passed = sample is not null && portrait.HasPortrait && portrait.IsAboveSkillGauge
             && portrait.HasThinGoldBorder
-            && Mathf.IsEqualApprox(CommanderPortraitView3D.PortraitScaleRatio, 0.8f)
+            && Mathf.Abs(CommanderPortraitView3D.PortraitScaleRatio - 0.8f) < 0.01f
+            && Mathf.Abs(CommanderPortraitView3D.EstimatedGapPixels - 5f) < 0.01f
             && CommanderPortraitView3D.HeightOffset > CommanderPortraitView3D.SkillGaugeHeight;
-        GD.Print($"[maptestcommanderportraitqa] passed={passed} general={sample?.Id.Value.ToString() ?? "-"} hasPortrait={portrait.HasPortrait} goldBorder={portrait.HasThinGoldBorder} scale={CommanderPortraitView3D.PortraitScaleRatio:0.0} height={CommanderPortraitView3D.HeightOffset:0.00} gaugeHeight={CommanderPortraitView3D.SkillGaugeHeight:0.00}");
+        GD.Print($"[maptestcommanderportraitqa] passed={passed} general={sample?.Id.Value.ToString() ?? "-"} hasPortrait={portrait.HasPortrait} goldBorder={portrait.HasThinGoldBorder} scale={CommanderPortraitView3D.PortraitScaleRatio:0.0} height={CommanderPortraitView3D.HeightOffset:0.00} gapPx={CommanderPortraitView3D.EstimatedGapPixels:0.0} gaugeHeight={CommanderPortraitView3D.SkillGaugeHeight:0.00}");
         token.QueueFree();
         GetTree().Quit(passed ? 0 : 1);
     }
