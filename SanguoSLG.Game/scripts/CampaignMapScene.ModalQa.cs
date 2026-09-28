@@ -4,6 +4,22 @@ namespace SanguoSLG.Game;
 
 public sealed partial class CampaignMapScene
 {
+    private async void RunModalCameraBlockQa()
+    {
+        var city = _state.Cities.First(c => c.Owner == Player);
+        _selected = city.Id;
+        var commandIndex = System.Array.FindIndex(Cmds, command => command.Kind == SanguoSLG.Core.Domain.CommandKind.Research);
+        OpenModal(commandIndex);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var blockedWhileOpen = _camera.IsNavigationInputBlocked;
+        CloseModal();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var releasedAfterClose = !_camera.IsNavigationInputBlocked;
+        var passed = blockedWhileOpen && releasedAfterClose;
+        GD.Print($"[modal-camera-block-qa] passed={passed} open={blockedWhileOpen} closed={releasedAfterClose}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private void RunCityAmbienceQa()
     {
         var ambience = GetTree().GetNodesInGroup("city_villager_ambience")

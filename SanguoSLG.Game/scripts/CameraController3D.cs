@@ -8,6 +8,9 @@ namespace SanguoSLG.Game;
 /// </summary>
 public partial class CameraController3D : Camera3D
 {
+    public System.Func<bool>? InputBlocked { get; set; }
+    public bool IsNavigationInputBlocked => InputBlocked?.Invoke() == true;
+
     [Export] public float MinDistance = 2.2f;
     [Export] public float MaxDistance = 50f;
     [Export] public float RotateSpeedDeg = 100f;
@@ -94,6 +97,7 @@ public partial class CameraController3D : Camera3D
 
     public override void _UnhandledInput(InputEvent @event)
     {
+        if (IsNavigationInputBlocked) { return; }
         if (@event is InputEventMouseButton { Pressed: true } button)
         {
             if (button.ButtonIndex == MouseButton.WheelUp)

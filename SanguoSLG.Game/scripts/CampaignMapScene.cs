@@ -452,6 +452,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         _view = view;
         _camera = camera;
+        _camera.InputBlocked = IsModalBlockingMapNavigation;
         _dataDirectory = dataDirectory;
         _font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
 
@@ -559,6 +560,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestdeploylayoutqa")) CallDeferred(nameof(RunDeployComposeLayoutQa));
         if (args.Contains("--maptestdeploygoldqa")) CallDeferred(nameof(RunDeployGoldUiQa));
         if (args.Contains("--maptestdeployimageqa")) CallDeferred(nameof(RunDeployImageStyleQa));
+        if (args.Contains("--maptestmodalcamerablockqa")) CallDeferred(nameof(RunModalCameraBlockQa));
     }
 
     public override void _ExitTree()
@@ -3383,6 +3385,11 @@ public sealed partial class CampaignMapScene : Node3D
             OpenExplorationResults(results);
         }
     }
+
+    private bool IsModalBlockingMapNavigation()
+        => (_modalLayer is not null && GodotObject.IsInstanceValid(_modalLayer) && _modalLayer.Visible)
+            || (_confirmLayer is not null && GodotObject.IsInstanceValid(_confirmLayer) && _confirmLayer.Visible)
+            || (_placeDim is not null && GodotObject.IsInstanceValid(_placeDim) && _placeDim.Visible);
 
     // ── 명령 UX(성 클릭) — 삼국지풍: 정보 카드 + 명령 목록 → 파라미터·장수 목록 ──
     private void BuildPanel()
