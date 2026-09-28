@@ -9630,6 +9630,16 @@ public sealed partial class CampaignMapScene : Node3D
             if (GodotObject.IsInstanceValid(node) && node.GetParent() == root) { root.RemoveChild(node); rightPane.AddChild(node); }
         }
 
+        rightPane.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        var expandedOfficerHeight = columns.CustomMinimumSize.Y * 0.9f;
+        foreach (var officerTable in rightPane.FindChildren("*", "Tree", true, false).OfType<Tree>()
+                     .Where(candidate => candidate.GetMeta("compose_officer_table_expanded").AsBool()))
+        {
+            officerTable.CustomMinimumSize = new Vector2(officerTable.CustomMinimumSize.X,
+                Mathf.Max(officerTable.CustomMinimumSize.Y, expandedOfficerHeight));
+            officerTable.SetMeta("compose_officer_fill_ratio", 0.9f);
+        }
+
         outerScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
         outerScroll.CustomMinimumSize = new Vector2(width, Mathf.Clamp(height, 520f, 760f));
         outerScroll.SetMeta("compose_outer_scroll_disabled", true);
@@ -11529,6 +11539,10 @@ public sealed partial class CampaignMapScene : Node3D
 
         const int compactOfficerRowLimit = 8;
         const int scrollableOfficerTableHeight = 330;
+        var isTrainingOfficer = cmd.Kind == CommandKind.AppointTrainingOfficer;
+        var officerTableHeight = isTrainingOfficer
+            ? Mathf.Clamp(GetViewport().GetVisibleRect().Size.Y * 0.68f, 420f, 760f)
+            : scrollableOfficerTableHeight;
         var showAllOfficerRows = free.Count <= compactOfficerRowLimit
             || cmd.Kind is CommandKind.Explore or CommandKind.FormAlliance or CommandKind.BreakAlliance;
         const int officerRowHeight = 46;
@@ -11542,13 +11556,14 @@ public sealed partial class CampaignMapScene : Node3D
             // 소규모 목록과 탐색·외교는 행 전체를 보이고, 9명 이상인 목록만 표 내부 스크롤을 쓴다.
             CustomMinimumSize = new Vector2(0, showAllOfficerRows
                 ? 48 + free.Count * officerRowHeight
-                : Mathf.Min(48 + free.Count * officerRowHeight, scrollableOfficerTableHeight)),
+                : Mathf.Min(48 + free.Count * officerRowHeight, officerTableHeight)),
             ScrollVerticalEnabled = !showAllOfficerRows,
             MouseFilter = Control.MouseFilterEnum.Stop,
             // 내부 스크롤이 없는 짧은 표에서는 휠을 바깥 모달 스크롤로 전달한다.
             // 9명 이상인 긴 표만 자체 스크롤을 소비한다.
             MouseForcePassScrollEvents = showAllOfficerRows,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
         tree.SetMeta("all_officer_rows", showAllOfficerRows);
         tree.SetMeta("isolated_wheel_scroll", true);
@@ -11556,6 +11571,7 @@ public sealed partial class CampaignMapScene : Node3D
         tree.SetMeta("passes_wheel_at_boundary", !showAllOfficerRows);
         tree.SetMeta("wheel_scroll_priority", "down_modal_then_table_up_table_then_modal");
         tree.SetMeta("explicit_internal_wheel_scroll", !showAllOfficerRows);
+        tree.SetMeta("officer_table_fill_ratio", isTrainingOfficer ? 0.9f : 0f);
         if (!showAllOfficerRows)
         {
             var officerScrollIndex = 0;

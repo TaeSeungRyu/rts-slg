@@ -225,6 +225,20 @@ public sealed partial class CampaignMapScene
         results.Add($"일반연구:모달우선·표스크롤범위{tableHasScrollRange}:{wheelIsolated}:행{researchTable?.GetRoot()?.GetChildCount() ?? 0}");
         CloseModal();
 
+        var trainingIndex = System.Array.FindIndex(Cmds,
+            command => command.Kind == SanguoSLG.Core.Domain.CommandKind.AppointTrainingOfficer);
+        OpenModal(trainingIndex);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var trainingTable = _modalLayer?.FindChild("CommandOfficerTable", true, false) as Tree;
+        var expectedTrainingHeight = Mathf.Clamp(GetViewport().GetVisibleRect().Size.Y * 0.68f, 420f, 760f);
+        var trainingFillOk = trainingTable?.GetMeta("officer_table_fill_ratio").AsSingle() >= 0.9f
+            && trainingTable.CustomMinimumSize.Y >= expectedTrainingHeight - 1f
+            && trainingTable.SizeFlagsVertical == Control.SizeFlags.ExpandFill
+            && trainingTable.ScrollVerticalEnabled;
+        passed &= trainingFillOk;
+        results.Add($"훈련담당:표90%:{trainingFillOk}:{trainingTable?.CustomMinimumSize.Y ?? 0:0}");
+        CloseModal();
+
         var changanCount = _state.GeneralsAt(new SanguoSLG.Core.Domain.CityId(1)).Distinct().Count();
         var changanRosterOk = changanCount == 17;
         passed &= changanRosterOk;
@@ -473,7 +487,8 @@ public sealed partial class CampaignMapScene
                 && officers?.VerticalScrollMode == ScrollContainer.ScrollMode.Auto
                 && officerFrame?.SizeFlagsStretchRatio >= 1.35f
                 && officerTable?.GetMeta("compose_officer_table_expanded").AsBool() == true
-                && officerTable.CustomMinimumSize.Y >= 360
+                && officerTable.GetMeta("compose_officer_fill_ratio").AsSingle() >= 0.9f
+                && officerTable.CustomMinimumSize.Y >= columns.CustomMinimumSize.Y * 0.9f - 1f
                 && officerTable.SizeFlagsVertical == Control.SizeFlags.ExpandFill
                 && officerTable.ScrollVerticalEnabled
                 && outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled;
