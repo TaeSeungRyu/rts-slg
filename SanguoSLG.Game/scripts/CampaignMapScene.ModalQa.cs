@@ -443,7 +443,10 @@ public sealed partial class CampaignMapScene
                 .FirstOrDefault(s => s.HasMeta("compose_outer_scroll_disabled"));
             var casePassed = columns is not null
                 && columns.GetMeta("horizontal_compose_layout").AsBool()
-                && resources?.VerticalScrollMode == ScrollContainer.ScrollMode.Auto
+                && resources?.VerticalScrollMode == (qa.Name == "combat"
+                    ? ScrollContainer.ScrollMode.Disabled
+                    : ScrollContainer.ScrollMode.Auto)
+                && (qa.Name != "combat" || resources.GetMeta("compose_left_scroll_disabled").AsBool())
                 && officers?.VerticalScrollMode == ScrollContainer.ScrollMode.Auto
                 && outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled;
             passed &= casePassed;

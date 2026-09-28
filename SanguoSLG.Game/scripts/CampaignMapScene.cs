@@ -9452,7 +9452,7 @@ public sealed partial class CampaignMapScene : Node3D
         RestyleModes();
         UpdateProvLabel();
         UpdateDepPreview();
-        ApplyHorizontalComposeLayout(box, deployTroopTitle, deployRosterRule, deployFooterRule, scroll, mw, mh);
+        ApplyHorizontalComposeLayout(box, deployTroopTitle, deployRosterRule, deployFooterRule, scroll, mw, mh, disableLeftScroll: true);
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
@@ -9491,7 +9491,8 @@ public sealed partial class CampaignMapScene : Node3D
         Control footerStart,
         ScrollContainer outerScroll,
         float width,
-        float height)
+        float height,
+        bool disableLeftScroll = false)
     {
         var children = root.GetChildren().OfType<Control>().ToList();
         var leftIndex = children.IndexOf(leftStart);
@@ -9501,7 +9502,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var left = children.Skip(leftIndex).Take(rightIndex - leftIndex).ToList();
         var right = children.Skip(rightIndex).Take(footerIndex - rightIndex).ToList();
-        InsertHorizontalComposeColumns(root, leftIndex, left, right, outerScroll, width, height);
+        InsertHorizontalComposeColumns(root, leftIndex, left, right, outerScroll, width, height, disableLeftScroll);
     }
 
     private void ApplyTransportHorizontalComposeLayout(
@@ -9514,7 +9515,8 @@ public sealed partial class CampaignMapScene : Node3D
         Control preview,
         ScrollContainer outerScroll,
         float width,
-        float height)
+        float height,
+        bool disableLeftScroll = false)
     {
         var children = root.GetChildren().OfType<Control>().ToList();
         var troopIndex = children.IndexOf(troopStart);
@@ -9530,7 +9532,7 @@ public sealed partial class CampaignMapScene : Node3D
         var right = rosterIndex >= 0 && treeIndex >= rosterIndex
             ? children.Skip(rosterIndex).Take(treeIndex - rosterIndex + 1).ToList()
             : new List<Control>();
-        InsertHorizontalComposeColumns(root, children.IndexOf(description), left, right, outerScroll, width, height);
+        InsertHorizontalComposeColumns(root, children.IndexOf(description), left, right, outerScroll, width, height, disableLeftScroll);
     }
 
     private void InsertHorizontalComposeColumns(
@@ -9540,7 +9542,8 @@ public sealed partial class CampaignMapScene : Node3D
         IReadOnlyList<Control> rightNodes,
         ScrollContainer outerScroll,
         float width,
-        float height)
+        float height,
+        bool disableLeftScroll)
     {
         var columns = new HBoxContainer
         {
@@ -9581,6 +9584,11 @@ public sealed partial class CampaignMapScene : Node3D
 
         var leftPane = AddPane("ComposeResources", 1.0f);
         var rightPane = AddPane("ComposeOfficers", 1.15f);
+        if (disableLeftScroll && leftPane.GetParent() is ScrollContainer leftScroll)
+        {
+            leftScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
+            leftScroll.SetMeta("compose_left_scroll_disabled", true);
+        }
         root.AddChild(columns);
         root.MoveChild(columns, System.Math.Max(0, insertIndex));
         foreach (var node in leftNodes)
