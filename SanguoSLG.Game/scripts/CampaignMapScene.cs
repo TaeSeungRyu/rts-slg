@@ -5427,6 +5427,22 @@ public sealed partial class CampaignMapScene : Node3D
         var mw = Mathf.Clamp(vp.X * 0.52f, 460f, 680f);
         var mh = Mathf.Clamp(vp.Y * 0.88f, 420f, 820f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
+        panel.SetMeta("blocks_map_wheel", true);
+        panel.GuiInput += input =>
+        {
+            if (input is InputEventMouseButton { ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown })
+            {
+                GetViewport().SetInputAsHandled();
+            }
+        };
+        scroll.SetMeta("blocks_map_wheel", true);
+        scroll.GuiInput += input =>
+        {
+            if (input is InputEventMouseButton { ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown })
+            {
+                GetViewport().SetInputAsHandled();
+            }
+        };
         var c = _state.Cities.First(x => x.Id == city);
 
         var titleRow = new HBoxContainer();

@@ -28,8 +28,11 @@ public sealed partial class CampaignMapScene
             var style = frame.GetThemeStylebox("panel") as StyleBoxFlat;
             return style is not null && style.CornerRadiusTopLeft == 7 && style.BorderWidthLeft == 1;
         });
-        var passed = expected > 0 && roundedGarrisons;
-        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons}");
+        var wheelBlockers = _modalLayer?.FindChildren("*", "Control", true, false).OfType<Control>()
+            .Count(control => control.HasMeta("blocks_map_wheel") && control.GetMeta("blocks_map_wheel").AsBool()) ?? 0;
+        var mapWheelBlocked = wheelBlockers >= 2;
+        var passed = expected > 0 && roundedGarrisons && mapWheelBlocked;
+        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers}");
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }
