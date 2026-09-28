@@ -114,6 +114,23 @@ public class SupplyUnitTests
     }
 
     [Fact]
+    public void 보급부대는_선택한_금을_휴대하고_도시에서_차감한다()
+    {
+        var city = new City(new CityId(1), "성", new HexCoord(2, 0), new FactionId(1), 10000,
+            CastleSize.Medium, Gold: 1000);
+        var state = new GameState(1, 1, new List<Faction>(), [city], [Gen(1)],
+            Postings: [new GeneralPosting(new GeneralId(1), new FactionId(1), city.Id)],
+            GarrisonForces: [new GarrisonForce(city.Id, "swordsman", 10000, 60)]);
+
+        var result = Service().DeploySupply(state, new SupplyDeployRequest(city.Id,
+            [new SupplyLine("swordsman", 10000)], new GeneralId(1), Gold: 300));
+
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(300, result.State.Armies.Single().CargoGold);
+        Assert.Equal(700, result.State.Cities.Single().Gold);
+    }
+
+    [Fact]
     public void 편성_보급적성은_공방이_아닌_병참효율에만_적용된다()
     {
         var city = new City(new CityId(1), "성", new HexCoord(2, 0), new FactionId(1), 10000, CastleSize.Medium);

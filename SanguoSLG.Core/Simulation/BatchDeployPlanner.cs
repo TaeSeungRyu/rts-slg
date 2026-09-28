@@ -6,7 +6,8 @@ public sealed record BatchDeployDraft(
     string TroopCode,
     int Troops,
     GeneralId Vanguard,
-    GeneralId? Adjutant = null);
+    GeneralId? Adjutant = null,
+    int Gold = 0);
 
 public sealed record BatchDeployValidation(bool Ok, IReadOnlyDictionary<int, string> RowErrors)
 {

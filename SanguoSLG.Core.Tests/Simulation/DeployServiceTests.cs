@@ -350,6 +350,35 @@ public class DeployServiceTests
     }
 
     [Fact]
+    public void 전투부대는_선택한_금을_휴대하고_도시에서_차감한다()
+    {
+        var city = Town(1, new HexCoord(2, 0), provisions: 5000);
+        var state = State([city], [Gen(1)],
+            garrisons: [new GarrisonForce(city.Id, "swordsman", 10000, 60)], postings: [At(1, 1)]);
+
+        var result = Service().Deploy(state, new DeployRequest(city.Id, "swordsman", 10000,
+            new GeneralId(1), Gold: 400));
+
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(400, result.State.Armies.Single().CargoGold);
+        Assert.Equal(600, result.State.Cities.Single().Gold);
+    }
+
+    [Fact]
+    public void 전투부대는_도시보다_많은_금을_휴대할수없다()
+    {
+        var city = Town(1, new HexCoord(2, 0), provisions: 5000);
+        var state = State([city], [Gen(1)],
+            garrisons: [new GarrisonForce(city.Id, "swordsman", 10000, 60)], postings: [At(1, 1)]);
+
+        var result = Service().Deploy(state, new DeployRequest(city.Id, "swordsman", 10000,
+            new GeneralId(1), Gold: 1100));
+
+        Assert.False(result.Ok);
+        Assert.Contains("보유 금", result.Error);
+    }
+
+    [Fact]
     public void 수송_병력은_최대_오만명까지만_편성된다()
     {
         var source = Town(1, new HexCoord(0, 0), provisions: 3000) with { Gold = 900 };
@@ -485,11 +514,13 @@ public class DeployServiceTests
             ],
             new GeneralId(1),
             new GeneralId(2),
-            Target: new HexCoord(5, 0)));
+            Target: new HexCoord(5, 0), Gold: 400));
 
         Assert.True(r.Ok, r.Error);
         var unit = r.State.Armies.Single();
         Assert.True(unit.IsArmyGroup);
+        Assert.Equal(400, unit.CargoGold);
+        Assert.Equal(600, r.State.Cities.Single().Gold);
         Assert.True(unit.CanInitiateCombat);
         Assert.Equal(new CityId(1), unit.OriginCity);
         Assert.Equal("army_group", unit.TroopCode);

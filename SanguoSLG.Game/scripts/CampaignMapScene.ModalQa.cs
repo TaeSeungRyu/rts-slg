@@ -449,4 +449,36 @@ public sealed partial class CampaignMapScene
         GD.Print($"[deploy-layout-qa] passed={passed} cases={cases.Length}");
         GetTree().Quit(passed ? 0 : 1);
     }
+
+    private async void RunDeployGoldUiQa()
+    {
+        var city = _state.Cities.First(c => c.Owner == Player && !c.IsPort);
+        _depModalCity = city.Id;
+        var cases = new (string Name, System.Action Open)[]
+        {
+            ("combat", () => OpenDeployCompose(-1)),
+            ("supply", () => OpenSupplyCompose(-1)),
+            ("batch", () => OpenBatchDeployCompose(city.Id)),
+            ("army-group", () => OpenArmyGroupCompose(-1)),
+        };
+        var passed = true;
+        foreach (var qa in cases)
+        {
+            qa.Open();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var selectors = _modalLayer?.FindChildren("*", "Control", true, false)
+                .OfType<Control>()
+                .Count(control => control.HasMeta("deploy_gold_selector")) ?? 0;
+            var labels = _modalLayer?.FindChildren("*", "Label", true, false)
+                .OfType<Label>().Select(label => label.Text).ToList() ?? [];
+            var casePassed = selectors > 0 && labels.Any(label => label.Contains("금"));
+            passed &= casePassed;
+            GD.Print($"[deploy-gold-qa] type={qa.Name} passed={casePassed} selectors={selectors}");
+            CloseModal();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
+        GD.Print($"[deploy-gold-qa] passed={passed} cases={cases.Length}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
 }

@@ -14,7 +14,8 @@ public sealed record DeployRequest(
     UnitMode Mode = UnitMode.March,
     HexCoord? Target = null,
     int Provisions = -1,
-    IReadOnlyList<HexCoord>? Waypoints = null);
+    IReadOnlyList<HexCoord>? Waypoints = null,
+    int Gold = 0);
 
 /// <summary>보급부대 편성 한 줄 — 병종과 데려갈 병력(0 이하면 그 병종 전량).</summary>
 public sealed record SupplyLine(string TroopCode, int Troops);
@@ -26,7 +27,8 @@ public sealed record SupplyDeployRequest(
     GeneralId Vanguard,
     UnitMode Mode = UnitMode.March,
     HexCoord? Target = null,
-    int Provisions = -1);
+    int Provisions = -1,
+    int Gold = 0);
 
 /// <summary>집단군 출전 요청 — 보병·궁병·공성 병기를 묶어 성 원점 기준 1개만 편성한다.</summary>
 public sealed record ArmyGroupDeployRequest(
@@ -37,7 +39,8 @@ public sealed record ArmyGroupDeployRequest(
     UnitMode Mode = UnitMode.March,
     HexCoord? Target = null,
     int Provisions = -1,
-    IReadOnlyList<HexCoord>? Waypoints = null);
+    IReadOnlyList<HexCoord>? Waypoints = null,
+    int Gold = 0);
 
 /// <summary>수송부대 편성 한 줄 — 병종과 이동시킬 병력(0 이하면 그 병종 전량).</summary>
 public sealed record TransportLine(string TroopCode, int Troops);
@@ -104,6 +107,11 @@ public sealed class DeployService
         if (city is null)
         {
             return CommandResult.Fail("도시를 찾을 수 없다.", state);
+        }
+
+        if (req.Gold < 0 || req.Gold > city.Gold)
+        {
+            return CommandResult.Fail("도시의 보유 금을 초과해 적재할 수 없다.", state);
         }
 
         if (!_troops.TryGetValue(req.TroopCode, out var template))
@@ -182,7 +190,7 @@ public sealed class DeployService
         var unit = UnitAssembler.Assemble(unitId, city.Owner, city.Position, req.Mode, req.Target,
             unitId.Value, vanguard, adjutant, template, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
-        unit = unit with { Provisions = carried, Training = garrison.TrainingLevel };
+        unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, CargoGold = req.Gold };
 
         var garrisons = state.Garrisons
             .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)
@@ -191,7 +199,7 @@ public sealed class DeployService
         var deployingGenerals = new HashSet<GeneralId>(
             new[] { req.Vanguard, req.Adjutant }.OfType<GeneralId>());
         var cities = state.Cities
-            .Select(c => c.Id == city.Id ? c with { Provisions = c.Provisions - carried } : c)
+            .Select(c => c.Id == city.Id ? c with { Provisions = c.Provisions - carried, Gold = c.Gold - req.Gold } : c)
             .Select(c => ClearOfficerRoles(c, deployingGenerals))
             .ToList();
         var postings = state.Assignments
@@ -220,6 +228,11 @@ public sealed class DeployService
         if (city is null)
         {
             return CommandResult.Fail("도시를 찾을 수 없다.", state);
+        }
+
+        if (req.Gold < 0 || req.Gold > city.Gold)
+        {
+            return CommandResult.Fail("도시의 보유 금을 초과해 적재할 수 없다.", state);
         }
 
         if (req.Lines.Count == 0)
@@ -307,7 +320,7 @@ public sealed class DeployService
             VanguardId: vanguard.Id, SupplyCargo: components, SupplyEfficiencyPercent: supplyEfficiency);
         var wanted = req.Provisions < 0 ? unit.MaxProvisions() : System.Math.Min(req.Provisions, unit.MaxProvisions());
         var carried = System.Math.Min(wanted, city.Provisions);
-        unit = unit with { Provisions = carried };
+        unit = unit with { Provisions = carried, CargoGold = req.Gold };
 
         var taken = components.ToDictionary(c => c.TroopCode, c => c.Troops);
         var garrisons = state.Garrisons
@@ -318,7 +331,7 @@ public sealed class DeployService
             .ToList();
         var deployingGenerals = new HashSet<GeneralId> { req.Vanguard };
         var cities = state.Cities
-            .Select(c => c.Id == city.Id ? c with { Provisions = c.Provisions - carried } : c)
+            .Select(c => c.Id == city.Id ? c with { Provisions = c.Provisions - carried, Gold = c.Gold - req.Gold } : c)
             .Select(c => ClearOfficerRoles(c, deployingGenerals))
             .ToList();
         var postings = state.Assignments
@@ -344,6 +357,11 @@ public sealed class DeployService
         if (city is null)
         {
             return CommandResult.Fail("도시를 찾을 수 없다.", state);
+        }
+
+        if (req.Gold < 0 || req.Gold > city.Gold)
+        {
+            return CommandResult.Fail("도시의 보유 금을 초과해 적재할 수 없다.", state);
         }
 
         if (state.Armies.Any(u => u.IsArmyGroup && u.OriginCity == city.Id))
@@ -466,7 +484,7 @@ public sealed class DeployService
 
         var wanted = req.Provisions < 0 ? unit.MaxProvisions() : System.Math.Min(req.Provisions, unit.MaxProvisions());
         var carried = System.Math.Min(wanted, city.Provisions);
-        unit = unit with { Provisions = carried };
+        unit = unit with { Provisions = carried, CargoGold = req.Gold };
 
         var taken = components.ToDictionary(c => c.TroopCode, c => c.Troops);
         var garrisons = state.Garrisons
@@ -478,7 +496,7 @@ public sealed class DeployService
         var deployingGenerals = new HashSet<GeneralId>(
             new[] { req.Vanguard, req.Adjutant }.OfType<GeneralId>());
         var cities = state.Cities
-            .Select(c => c.Id == city.Id ? c with { Provisions = c.Provisions - carried } : c)
+            .Select(c => c.Id == city.Id ? c with { Provisions = c.Provisions - carried, Gold = c.Gold - req.Gold } : c)
             .Select(c => ClearOfficerRoles(c, deployingGenerals))
             .ToList();
         var postings = state.Assignments

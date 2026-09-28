@@ -37,10 +37,10 @@ public sealed partial class CampaignMapScene
         box.AddChild(GoldRule());
         box.AddChild(MakeLabel("병종별 10,000명을 우선 추천합니다. 선봉을 먼저 배치한 뒤 남은 장수를 부관으로 배치합니다.", 12, Parchment));
 
-        var table = new GridContainer { Columns = 6, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        var table = new GridContainer { Columns = 7, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         table.AddThemeConstantOverride("h_separation", 7);
         table.AddThemeConstantOverride("v_separation", 6);
-        foreach (var header in new[] { "부대", "장수 1 (선봉)", "장수 2 (부관)", "병종", "병력수", "" })
+        foreach (var header in new[] { "부대", "장수 1 (선봉)", "장수 2 (부관)", "병종", "병력수", "휴대 금", "" })
         {
             var label = MakeLabel(header, 12, GoldBright);
             label.HorizontalAlignment = HorizontalAlignment.Center;
@@ -55,13 +55,15 @@ public sealed partial class CampaignMapScene
         {
             var validation = planner.Validate(drafts, city, _state.Garrisons, availableIds,
                 DeployMaxTroopsFor(city), reservedTroops, reservedGenerals);
+            var goldValid = drafts.Sum(draft => draft.Gold) <= _state.Cities.First(c => c.Id == city).Gold;
             for (var i = 0; i < rowErrors.Count; i++)
                 rowErrors[i].Text = validation.RowErrors.GetValueOrDefault(i, "");
             summary.Text = drafts.Count == 0
                 ? "⚠ 편성 가능한 병력과 장수가 없습니다."
-                : validation.Ok ? $"{drafts.Count}개 부대 초안 · 확인 후 기존 전투편성 목록에서 목표를 지정합니다."
+                : validation.Ok && goldValid ? $"{drafts.Count}개 부대 초안 · 확인 후 기존 전투편성 목록에서 목표를 지정합니다."
+                : !goldValid ? "⚠ 부대에 나눈 휴대 금의 합계가 도시 보유 금을 초과했습니다."
                 : "⚠ 표시된 행의 편성을 수정하세요.";
-            if (apply is not null) apply.Disabled = !validation.Ok;
+            if (apply is not null) apply.Disabled = !validation.Ok || !goldValid;
         }
 
         for (var rowIndex = 0; rowIndex < drafts.Count; rowIndex++)
@@ -145,6 +147,18 @@ public sealed partial class CampaignMapScene
             });
             amount.ValueChanged += value => { drafts[index] = drafts[index] with { Troops = (int)value }; Validate(); };
             table.AddChild(amount);
+            var gold = ApplyNumberInputStyle(new SpinBox
+            {
+                Name = $"BatchDeployGold{index}",
+                MinValue = 0,
+                MaxValue = _state.Cities.First(c => c.Id == city).Gold,
+                Step = 100,
+                Value = draft.Gold,
+                CustomMinimumSize = new Vector2(105, 34),
+            });
+            gold.SetMeta("deploy_gold_selector", true);
+            gold.ValueChanged += value => { drafts[index] = drafts[index] with { Gold = (int)value }; Validate(); };
+            table.AddChild(gold);
             var remove = MakeButton("삭제");
             remove.Pressed += () => { drafts.RemoveAt(index); ReopenBatchDeployCompose(city.Value, drafts); };
             table.AddChild(remove);
@@ -154,6 +168,7 @@ public sealed partial class CampaignMapScene
             rowErrors.Add(error);
             table.AddChild(new Control());
             table.AddChild(error);
+            table.AddChild(new Control());
             table.AddChild(new Control());
             table.AddChild(new Control());
             table.AddChild(new Control());
@@ -198,7 +213,7 @@ public sealed partial class CampaignMapScene
             var troop = _troops.First(t => t.Code == draft.TroopCode);
             var vanguard = _state.Generals.First(g => g.Id == draft.Vanguard).Name;
             var adjutant = draft.Adjutant is { } aid ? " + " + _state.Generals.First(g => g.Id == aid).Name : "";
-            return $"{index + 1}. {troop.Name} {draft.Troops:N0}명 · {vanguard}{adjutant}";
+            return $"{index + 1}. {troop.Name} {draft.Troops:N0}명 · {vanguard}{adjutant} · 금 {draft.Gold:N0}";
         }).ToList();
         ShowConfirm("일괄전투편성 확인",
             $"{string.Join("\n", lines)}\n\n확인 후 전투편성 목록에서 부대별 목표와 이동 모드를 지정하세요.{DutyReleaseNotice(ids)}",
@@ -218,8 +233,8 @@ public sealed partial class CampaignMapScene
                     var vanguard = _state.Generals.First(g => g.Id == draft.Vanguard).Name;
                     var adjutant = draft.Adjutant is { } aid ? "+" + _state.Generals.First(g => g.Id == aid).Name : "";
                     var request = new DeployRequest(city, draft.TroopCode, draft.Troops,
-                        draft.Vanguard, draft.Adjutant, UnitMode.Advance, Provisions: -1);
-                    _pendingDeploys.Add((request, $"{troop.Name} {draft.Troops}({vanguard}{adjutant}) · 전진 · 군량 자동"));
+                        draft.Vanguard, draft.Adjutant, UnitMode.Advance, Provisions: -1, Gold: draft.Gold);
+                    _pendingDeploys.Add((request, $"{troop.Name} {draft.Troops}({vanguard}{adjutant}) · 전진 · 군량 자동 · 금 {draft.Gold:N0}"));
                 }
                 _depSelectedUnit = -1;
                 SelectCity(city);
