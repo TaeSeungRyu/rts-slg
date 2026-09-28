@@ -193,9 +193,10 @@ public sealed partial class CampaignMapScene
             && researchTable.ScrollVerticalEnabled
             && researchTable.MouseForcePassScrollEvents == false
             && researchTable.GetMeta("passes_wheel_to_modal").AsBool() == false
-            && researchTable.GetMeta("passes_wheel_at_boundary").AsBool();
+            && researchTable.GetMeta("passes_wheel_at_boundary").AsBool()
+            && researchTable.GetMeta("wheel_scroll_priority").AsString() == "modal_then_table";
         passed &= wheelIsolated;
-        results.Add($"일반연구:내부우선·경계모달전환:{wheelIsolated}");
+        results.Add($"일반연구:모달우선·경계표전환:{wheelIsolated}");
         CloseModal();
 
         var changanCount = _state.GeneralsAt(new SanguoSLG.Core.Domain.CityId(1)).Distinct().Count();
