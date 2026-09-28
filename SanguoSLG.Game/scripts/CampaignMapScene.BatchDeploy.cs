@@ -113,7 +113,10 @@ public sealed partial class CampaignMapScene
             };
             table.AddChild(adjutant);
 
-            var troopOption = MakeOption(150);
+            var troopOption = MakeOption(112);
+            troopOption.Name = $"BatchDeployTroopType{index}";
+            troopOption.FitToLongestItem = false;
+            troopOption.SetMeta("batch_compact_column", true);
             foreach (var garrison in _state.Garrisons.Where(g => g.City == city && !g.Trainee && g.Troops > 0)
                          .OrderBy(g => g.TroopCode, StringComparer.Ordinal))
             {
@@ -132,12 +135,14 @@ public sealed partial class CampaignMapScene
 
             var amount = ApplyNumberInputStyle(new SpinBox
             {
+                Name = $"BatchDeployTroops{index}",
                 MinValue = 1,
                 MaxValue = DeployMaxTroopsFor(city),
                 Step = 100,
                 Value = draft.Troops,
-                CustomMinimumSize = new Vector2(120, 34),
+                CustomMinimumSize = new Vector2(92, 34),
             });
+            amount.SetMeta("batch_compact_column", true);
             amount.ValueChanged += value => { drafts[index] = drafts[index] with { Troops = (int)value }; Validate(); };
             table.AddChild(amount);
             var gold = ApplyNumberInputStyle(new SpinBox
@@ -147,12 +152,16 @@ public sealed partial class CampaignMapScene
                 MaxValue = _state.Cities.First(c => c.Id == city).Gold,
                 Step = 100,
                 Value = draft.Gold,
-                CustomMinimumSize = new Vector2(105, 34),
+                CustomMinimumSize = new Vector2(92, 34),
             });
             gold.SetMeta("deploy_gold_selector", true);
+            gold.SetMeta("batch_compact_column", true);
             gold.ValueChanged += value => { drafts[index] = drafts[index] with { Gold = (int)value }; Validate(); };
             table.AddChild(gold);
             var remove = MakeButton("삭제");
+            remove.Name = $"BatchDeployRemove{index}";
+            remove.CustomMinimumSize = new Vector2(56, 34);
+            remove.SetMeta("batch_compact_column", true);
             remove.Pressed += () => { drafts.RemoveAt(index); ReopenBatchDeployCompose(city.Value, drafts); };
             table.AddChild(remove);
 
@@ -244,16 +253,27 @@ public sealed partial class CampaignMapScene
         OpenBatchDeployCompose(city.Id);
         var labels = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>().ToList() ?? [];
         var options = _modalLayer?.FindChildren("*", "OptionButton", true, false).OfType<OptionButton>().ToList() ?? [];
-        var amounts = _modalLayer?.FindChildren("*", "SpinBox", true, false).OfType<SpinBox>().ToList() ?? [];
-        var cards = _modalLayer?.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>().ToList() ?? [];
-        var unitCards = cards.Count(card => card.CustomMinimumSize == new Vector2(44, 44));
+        var troopOptions = options.Where(option => option.Name.ToString().StartsWith("BatchDeployTroopType", System.StringComparison.Ordinal)).ToList();
+        var troopAmounts = _modalLayer?.FindChildren("BatchDeployTroops*", "SpinBox", true, false).OfType<SpinBox>().ToList() ?? [];
+        var goldAmounts = _modalLayer?.FindChildren("BatchDeployGold*", "SpinBox", true, false).OfType<SpinBox>().ToList() ?? [];
+        var removes = _modalLayer?.FindChildren("BatchDeployRemove*", "Button", true, false).OfType<Button>().ToList() ?? [];
+        var unitCards = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
+            .Count(panel => panel.HasMeta("deploy_unit_art")) ?? 0;
+        var compactColumns = troopOptions.All(option => option.CustomMinimumSize.X <= 112 && !option.FitToLongestItem)
+            && troopAmounts.All(amount => amount.CustomMinimumSize.X <= 92)
+            && goldAmounts.All(gold => gold.CustomMinimumSize.X <= 92)
+            && removes.All(remove => remove.CustomMinimumSize.X <= 56);
         var passed = ReferenceEquals(beforeState, _state)
             && beforePending == _pendingDeploys.Count
             && labels.Any(label => label.Text.Contains("일괄전투편성"))
             && options.Count > 0
-            && amounts.Count is > 0 and <= BatchDeployPlanner.MaxUnits
-            && unitCards == amounts.Count;
-        GD.Print($"[maptestbatchdeployqa] passed={passed} rows={amounts.Count} options={options.Count} unitCards={unitCards} stateUnchanged={ReferenceEquals(beforeState, _state)} pending={beforePending}/{_pendingDeploys.Count}");
+            && troopAmounts.Count is > 0 and <= BatchDeployPlanner.MaxUnits
+            && troopOptions.Count == troopAmounts.Count
+            && goldAmounts.Count == troopAmounts.Count
+            && removes.Count == troopAmounts.Count
+            && unitCards == troopAmounts.Count
+            && compactColumns;
+        GD.Print($"[maptestbatchdeployqa] passed={passed} rows={troopAmounts.Count} troopOptions={troopOptions.Count} gold={goldAmounts.Count} remove={removes.Count} unitCards={unitCards} compact={compactColumns} stateUnchanged={ReferenceEquals(beforeState, _state)} pending={beforePending}/{_pendingDeploys.Count}");
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }
