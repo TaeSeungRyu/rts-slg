@@ -31,7 +31,10 @@ public sealed partial class CampaignMapScene
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var table = _modalLayer?.FindChild("CommandOfficerTable", true, false) as Tree;
             var rows = table?.GetRoot()?.GetChildCount() ?? 0;
-            var expectedHeight = 48 + rows * 46;
+            var showAllRows = Cmds[commandIndex].Kind is SanguoSLG.Core.Domain.CommandKind.Explore
+                or SanguoSLG.Core.Domain.CommandKind.FormAlliance
+                or SanguoSLG.Core.Domain.CommandKind.BreakAlliance;
+            var expectedHeight = showAllRows ? 48 + rows * 46 : Mathf.Min(48 + rows * 46, 470);
             var firstRow = table?.GetRoot()?.GetFirstChild();
             var hasObsoleteHints = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
                 .Any(label => label.Text.Contains("행 클릭", System.StringComparison.Ordinal)
@@ -47,10 +50,10 @@ public sealed partial class CampaignMapScene
                 && string.IsNullOrEmpty(firstRow.GetText(0))
                 && !string.IsNullOrWhiteSpace(firstRow.GetText(1))
                 && goldRing;
-            var ok = table?.GetMeta("all_officer_rows").AsBool() == true
-                && table.ScrollVerticalEnabled == false
-                && table.MouseForcePassScrollEvents
-                && table.GetMeta("passes_wheel_to_modal").AsBool()
+            var ok = table?.GetMeta("all_officer_rows").AsBool() == showAllRows
+                && table.ScrollVerticalEnabled == !showAllRows
+                && table.MouseForcePassScrollEvents == showAllRows
+                && table.GetMeta("passes_wheel_to_modal").AsBool() == showAllRows
                 && table.CustomMinimumSize.Y >= expectedHeight
                 && portraitLayout
                 && !hasObsoleteHints;
@@ -66,11 +69,17 @@ public sealed partial class CampaignMapScene
         var researchTable = _modalLayer?.FindChild("CommandOfficerTable", true, false) as Tree;
         var wheelIsolated = researchTable?.GetMeta("isolated_wheel_scroll").AsBool() == true
             && researchTable.MouseFilter == Control.MouseFilterEnum.Stop
-            && researchTable.MouseForcePassScrollEvents
-            && researchTable.GetMeta("passes_wheel_to_modal").AsBool();
+            && researchTable.ScrollVerticalEnabled
+            && researchTable.MouseForcePassScrollEvents == false
+            && researchTable.GetMeta("passes_wheel_to_modal").AsBool() == false;
         passed &= wheelIsolated;
         results.Add($"일반연구:휠격리:{wheelIsolated}");
         CloseModal();
+
+        var changanCount = _state.GeneralsAt(new SanguoSLG.Core.Domain.CityId(1)).Distinct().Count();
+        var changanRosterOk = changanCount == 17;
+        passed &= changanRosterOk;
+        results.Add($"장안장수:{changanCount}/17:{changanRosterOk}");
 
         var recruitmentIndex = System.Array.FindIndex(Cmds,
             command => command.Kind == SanguoSLG.Core.Domain.CommandKind.AppointRecruitmentOfficer);

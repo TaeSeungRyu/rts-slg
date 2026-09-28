@@ -2288,13 +2288,14 @@ public sealed partial class CampaignMapScene : Node3D
             new(new FactionId(2), "촉", new GeneralId(11), 0, "#d23830"),
         },
         _cities.ToList(),
-        // 테스트: 플레이어 성(장안·업·좌중성·좌대성·좌소성) 장수 18명, 적 성(성도·한중) 4명.
+        // 테스트: 장안에 장수 17명을 집중 배치해 대규모 수행 장수 목록도 검증한다.
         new List<General>
         {
             Officer(1), Officer(2), Officer(3), Officer(4), Officer(5),
             Officer(6), Officer(7), Officer(8), Officer(9), Officer(10),
             Officer(15), Officer(16), Officer(17), Officer(18), Officer(19), Officer(20),
-            Officer(21), Officer(22),
+            Officer(21), Officer(22), Officer(23), Officer(24), Officer(25), Officer(26), Officer(27),
+            Officer(28), Officer(29), Officer(30), Officer(31), Officer(32),
             Officer(11), Officer(12), Officer(13), Officer(14),
         },
         Postings: new List<GeneralPosting>
@@ -2306,6 +2307,16 @@ public sealed partial class CampaignMapScene : Node3D
             new(new GeneralId(5), new FactionId(1), new CityId(1)),
             new(new GeneralId(6), new FactionId(1), new CityId(1)),
             new(new GeneralId(7), new FactionId(1), new CityId(1)),
+            new(new GeneralId(23), new FactionId(1), new CityId(1)),
+            new(new GeneralId(24), new FactionId(1), new CityId(1)),
+            new(new GeneralId(25), new FactionId(1), new CityId(1)),
+            new(new GeneralId(26), new FactionId(1), new CityId(1)),
+            new(new GeneralId(27), new FactionId(1), new CityId(1)),
+            new(new GeneralId(28), new FactionId(1), new CityId(1)),
+            new(new GeneralId(29), new FactionId(1), new CityId(1)),
+            new(new GeneralId(30), new FactionId(1), new CityId(1)),
+            new(new GeneralId(31), new FactionId(1), new CityId(1)),
+            new(new GeneralId(32), new FactionId(1), new CityId(1)),
             new(new GeneralId(8), new FactionId(1), new CityId(4)),
             new(new GeneralId(9), new FactionId(1), new CityId(4)),
             new(new GeneralId(10), new FactionId(1), new CityId(4)),
