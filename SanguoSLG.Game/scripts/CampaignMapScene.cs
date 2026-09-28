@@ -1381,6 +1381,7 @@ public sealed partial class CampaignMapScene : Node3D
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         main.SetMeta("portrait_fit_without_crop", true);
+        main.SetMeta("portrait_alignment", "center");
         main.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         overlay.AddChild(main);
 
@@ -1389,12 +1390,12 @@ public sealed partial class CampaignMapScene : Node3D
             Name = "UnitTroopBadge",
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        troopBadge.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
-        troopBadge.OffsetLeft = -56;
-        troopBadge.OffsetTop = -56;
-        troopBadge.OffsetRight = -8;
-        troopBadge.OffsetBottom = -8;
-        troopBadge.SetMeta("recommended_troop_badge", "bottom_right_absolute");
+        troopBadge.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+        troopBadge.OffsetLeft = 8;
+        troopBadge.OffsetTop = 8;
+        troopBadge.OffsetRight = 56;
+        troopBadge.OffsetBottom = 56;
+        troopBadge.SetMeta("recommended_troop_badge", "top_left_absolute");
         troopBadge.AddChild(DeployUnitArtwork(UnitCard(UnitCardCode(unit), unit.Class), 40));
         overlay.AddChild(troopBadge);
 
@@ -1406,12 +1407,12 @@ public sealed partial class CampaignMapScene : Node3D
                 CustomMinimumSize = new Vector2(56, 56),
                 MouseFilter = Control.MouseFilterEnum.Ignore,
             };
-            adjutantFrame.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
-            adjutantFrame.OffsetLeft = 8;
-            adjutantFrame.OffsetTop = 8;
-            adjutantFrame.OffsetRight = 64;
-            adjutantFrame.OffsetBottom = 64;
-            adjutantFrame.SetMeta("adjutant_overlay", "top_left_absolute_circle");
+            adjutantFrame.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
+            adjutantFrame.OffsetLeft = -64;
+            adjutantFrame.OffsetTop = -64;
+            adjutantFrame.OffsetRight = -8;
+            adjutantFrame.OffsetBottom = -8;
+            adjutantFrame.SetMeta("adjutant_overlay", "bottom_right_absolute_circle");
             adjutantFrame.AddThemeStyleboxOverride("panel", Frame(new Color(0.06f, 0.05f, 0.04f), GoldBright, 1, 28, 2));
             adjutantFrame.AddChild(new TextureRect
             {
@@ -13854,10 +13855,11 @@ public sealed partial class CampaignMapScene : Node3D
             && vanguardPortrait?.Texture is not null
             && vanguardPortrait.StretchMode == TextureRect.StretchModeEnum.KeepAspectCentered
             && vanguardPortrait.GetMeta("portrait_fit_without_crop").AsBool()
-            && adjutantPortrait?.GetMeta("adjutant_overlay").AsString() == "top_left_absolute_circle"
-            && adjutantPortrait.AnchorLeft == 0f && adjutantPortrait.AnchorTop == 0f
-            && troopBadge?.GetMeta("recommended_troop_badge").AsString() == "bottom_right_absolute"
-            && troopBadge.AnchorLeft == 1f && troopBadge.AnchorTop == 1f
+            && vanguardPortrait.GetMeta("portrait_alignment").AsString() == "center"
+            && adjutantPortrait?.GetMeta("adjutant_overlay").AsString() == "bottom_right_absolute_circle"
+            && adjutantPortrait.AnchorLeft == 1f && adjutantPortrait.AnchorTop == 1f
+            && troopBadge?.GetMeta("recommended_troop_badge").AsString() == "top_left_absolute"
+            && troopBadge.AnchorLeft == 0f && troopBadge.AnchorTop == 0f
             && roleCards?.GetMeta("role_card_layout").AsString() == "side_by_side"
             && vanguardRoleCard?.GetMeta("general_role").AsString() == "선봉"
             && adjutantRoleCard?.GetMeta("general_role").AsString() == "부관"
