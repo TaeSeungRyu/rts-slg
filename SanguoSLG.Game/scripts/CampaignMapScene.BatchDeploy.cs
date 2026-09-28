@@ -23,7 +23,6 @@ public sealed partial class CampaignMapScene
 
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.84f, 760f, 1080f);
-        var mh = Mathf.Clamp(vp.Y * 0.92f, 560f, 820f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
@@ -39,7 +38,7 @@ public sealed partial class CampaignMapScene
 
         var table = new GridContainer { Columns = 7, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         table.AddThemeConstantOverride("h_separation", 7);
-        table.AddThemeConstantOverride("v_separation", 6);
+        table.AddThemeConstantOverride("v_separation", 4);
         foreach (var header in new[] { "부대", "장수 1 (선봉)", "장수 2 (부관)", "병종", "병력수", "휴대 금", "" })
         {
             var label = MakeLabel(header, 12, GoldBright);
@@ -62,7 +61,8 @@ public sealed partial class CampaignMapScene
                 ? "⚠ 편성 가능한 병력과 장수가 없습니다."
                 : validation.Ok && goldValid ? $"{drafts.Count}개 부대 초안 · 확인 후 기존 전투편성 목록에서 목표를 지정합니다."
                 : !goldValid ? "⚠ 부대에 나눈 휴대 금의 합계가 도시 보유 금을 초과했습니다."
-                : "⚠ 표시된 행의 편성을 수정하세요.";
+                : "⚠ " + string.Join("  /  ", validation.RowErrors.OrderBy(pair => pair.Key)
+                    .Select(pair => $"부대 {pair.Key + 1}: {pair.Value}"));
             if (apply is not null) apply.Disabled = !validation.Ok || !goldValid;
         }
 
@@ -71,9 +71,9 @@ public sealed partial class CampaignMapScene
             var index = rowIndex;
             var draft = drafts[index];
             var troop = _troops.First(t => t.Code == draft.TroopCode);
-            var unitCell = new VBoxContainer { CustomMinimumSize = new Vector2(62, 64) };
-            unitCell.AddChild(DeployUnitArtwork(UnitCard(troop.Code, troop.Class), 44));
-            var number = MakeLabel($"{index + 1}", 12, GoldBright);
+            var unitCell = new VBoxContainer { CustomMinimumSize = new Vector2(54, 52) };
+            unitCell.AddChild(DeployUnitArtwork(UnitCard(troop.Code, troop.Class), 34));
+            var number = MakeLabel($"{index + 1}", 11, GoldBright);
             number.HorizontalAlignment = HorizontalAlignment.Center;
             unitCell.AddChild(number);
             table.AddChild(unitCell);
@@ -166,15 +166,8 @@ public sealed partial class CampaignMapScene
             table.AddChild(remove);
 
             var error = MakeLabel("", 11, new Color(0.95f, 0.48f, 0.42f));
-            error.CustomMinimumSize = new Vector2(0, 20);
+            error.CustomMinimumSize = Vector2.Zero;
             rowErrors.Add(error);
-            table.AddChild(new Control());
-            table.AddChild(error);
-            table.AddChild(new Control());
-            table.AddChild(new Control());
-            table.AddChild(new Control());
-            table.AddChild(new Control());
-            table.AddChild(new Control());
         }
 
         box.AddChild(GoldRule());
@@ -185,10 +178,11 @@ public sealed partial class CampaignMapScene
         box.AddChild(apply);
         Validate();
         var contentH = box.GetCombinedMinimumSize().Y;
-        var fittedHeight = Mathf.Min(Mathf.Max(mh, contentH + 4f), vp.Y - 24f);
+        var fittedHeight = Mathf.Clamp(contentH + 8f, 420f, vp.Y - 24f);
         scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
         scroll.CustomMinimumSize = new Vector2(mw, fittedHeight);
         scroll.SetMeta("batch_modal_scroll_disabled", true);
+        scroll.SetMeta("batch_content_fitted_height", contentH);
         CenterAndDrag(panel, titleRow, mw, fittedHeight, box);
     }
 
@@ -272,6 +266,10 @@ public sealed partial class CampaignMapScene
             .FirstOrDefault(scroll => scroll.GetMeta("batch_modal_scroll_disabled").AsBool());
         var noModalScroll = batchScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
             && batchScroll.GetVScrollBar().MaxValue - batchScroll.GetVScrollBar().Page <= batchScroll.GetVScrollBar().MinValue + 0.5;
+        var contentHeight = batchScroll?.GetMeta("batch_content_fitted_height").AsSingle() ?? 0f;
+        var compactHeight = batchScroll is not null
+            && batchScroll.CustomMinimumSize.Y >= contentHeight
+            && batchScroll.CustomMinimumSize.Y - contentHeight <= 12f;
         var passed = ReferenceEquals(beforeState, _state)
             && beforePending == _pendingDeploys.Count
             && labels.Any(label => label.Text.Contains("일괄전투편성"))
@@ -282,8 +280,9 @@ public sealed partial class CampaignMapScene
             && removes.Count == troopAmounts.Count
             && unitCards == troopAmounts.Count
             && compactColumns
-            && noModalScroll;
-        GD.Print($"[maptestbatchdeployqa] passed={passed} rows={troopAmounts.Count} troopOptions={troopOptions.Count} gold={goldAmounts.Count} remove={removes.Count} unitCards={unitCards} compact={compactColumns} noScroll={noModalScroll} stateUnchanged={ReferenceEquals(beforeState, _state)} pending={beforePending}/{_pendingDeploys.Count}");
+            && noModalScroll
+            && compactHeight;
+        GD.Print($"[maptestbatchdeployqa] passed={passed} rows={troopAmounts.Count} troopOptions={troopOptions.Count} gold={goldAmounts.Count} remove={removes.Count} unitCards={unitCards} compact={compactColumns} noScroll={noModalScroll} compactHeight={compactHeight}:{batchScroll?.CustomMinimumSize.Y ?? 0:0}/{contentHeight:0} stateUnchanged={ReferenceEquals(beforeState, _state)} pending={beforePending}/{_pendingDeploys.Count}");
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }
