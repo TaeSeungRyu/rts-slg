@@ -210,6 +210,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     // 명령 모달(명령 클릭 → 큰 창 + 아이콘 카드 그리드 → 카드 선택 → 장수 클릭 = 실행).
     private CanvasLayer? _modalLayer;
+    private System.Action? _modalDismissAction;
     private int _modalParam;
     private VBoxContainer _modalOfficers = null!; // 수행 장수 표 홀더
     private int _cityDetailTab; // 성 상세 활성 탭(0=주둔·1=명령·2=예약)
@@ -1493,7 +1494,11 @@ public sealed partial class CampaignMapScene : Node3D
         link.Pressed += () =>
         {
             _infoCard.Visible = false;
-            OpenGeneralDetail(generalId, new CityId(0), () => { CloseModal(); ShowUnitInfo(unitId); });
+            OpenGeneralDetail(
+                generalId,
+                new CityId(0),
+                () => { CloseModal(); ShowUnitInfo(unitId); },
+                () => _infoCard.Visible = true);
         };
         return link;
     }
@@ -5142,6 +5147,8 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void CloseModal()
     {
+        var dismissAction = _modalDismissAction;
+        _modalDismissAction = null;
         _openCityDetailCity = null;
         if (_modalLayer is not null)
         {
@@ -5165,6 +5172,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depTarget = null;
         _stratTarget = null;
         ClearPathMarkers(); // 편성이 닫히면 예약 경로도 지도에서 지운다
+        dismissAction?.Invoke();
     }
 
     private bool CloseAnyModalOrPanel()
@@ -7020,6 +7028,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 탐색 단서·보물 보관함 — 실제 탐색 이력을 종류별로 묶어 보여준다.
     private void OpenTreasureList()
     {
+        _modalDismissAction = null;
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.5f, 480f, 720f);
@@ -7272,7 +7281,11 @@ public sealed partial class CampaignMapScene : Node3D
         return output;
     }
 
-    private void OpenGeneralDetail(GeneralId gid, CityId backCity, System.Action? backAction = null)
+    private void OpenGeneralDetail(
+        GeneralId gid,
+        CityId backCity,
+        System.Action? backAction = null,
+        System.Action? dismissAction = null)
     {
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
@@ -7284,6 +7297,7 @@ public sealed partial class CampaignMapScene : Node3D
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var rootBox = box;
         var g = _state.Generals.First(x => x.Id == gid);
+        _modalDismissAction = dismissAction;
 
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
@@ -7291,6 +7305,7 @@ public sealed partial class CampaignMapScene : Node3D
         back.CustomMinimumSize = new Vector2(40, 30);
         back.Pressed += () =>
         {
+            _modalDismissAction = null;
             if (backAction is not null) { backAction(); }
             else { OpenCityDetail(backCity); }
         };
@@ -13874,9 +13889,14 @@ public sealed partial class CampaignMapScene : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var detailOpened = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
             .Any(label => label.Text.Contains(generals[0].Name, System.StringComparison.Ordinal)) == true;
-        var passed = layoutOk && detailOpened;
-        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} detail={detailOpened} badge={troopBadge is not null} adjutant={adjutantPortrait is not null} roleCards={roleCards?.GetChildCount() ?? 0}");
+        var roleCardCount = roleCards?.GetChildCount() ?? 0;
         CloseModal();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var restoredAfterDismiss = _infoCard.Visible
+            && _infoRows.FindChild("UnitCommanderVisual", true, false) is PanelContainer;
+        var passed = layoutOk && detailOpened && restoredAfterDismiss;
+        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} detail={detailOpened} restored={restoredAfterDismiss} badge={troopBadge is not null} adjutant={adjutantPortrait is not null} roleCards={roleCardCount}");
         _state = original;
         _infoCard.Visible = false;
         GetTree().Quit(passed ? 0 : 1);
