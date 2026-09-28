@@ -213,9 +213,14 @@ public sealed partial class CampaignMapScene
             && researchTable.MouseForcePassScrollEvents == false
             && researchTable.GetMeta("passes_wheel_to_modal").AsBool() == false
             && researchTable.GetMeta("passes_wheel_at_boundary").AsBool()
-            && researchTable.GetMeta("wheel_scroll_priority").AsString() == "modal_then_table"
+            && researchTable.GetMeta("wheel_scroll_priority").AsString() == "down_modal_then_table_up_table_then_modal"
             && researchTable.GetMeta("explicit_internal_wheel_scroll").AsBool()
             && tableHasScrollRange;
+        var directionalPriority = ResolveOfficerWheelTarget(1, true, 0, 17) == OfficerWheelTarget.Modal
+            && ResolveOfficerWheelTarget(1, false, 0, 17) == OfficerWheelTarget.Table
+            && ResolveOfficerWheelTarget(-1, true, 16, 17) == OfficerWheelTarget.Table
+            && ResolveOfficerWheelTarget(-1, true, 0, 17) == OfficerWheelTarget.Modal;
+        wheelIsolated &= directionalPriority;
         passed &= wheelIsolated;
         results.Add($"일반연구:모달우선·표스크롤범위{tableHasScrollRange}:{wheelIsolated}:행{researchTable?.GetRoot()?.GetChildCount() ?? 0}");
         CloseModal();

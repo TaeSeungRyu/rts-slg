@@ -11491,6 +11491,17 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
+    private enum OfficerWheelTarget { None, Modal, Table }
+
+    private static OfficerWheelTarget ResolveOfficerWheelTarget(int direction, bool modalCanScroll, int tableIndex, int rowCount)
+    {
+        if (direction > 0) return modalCanScroll ? OfficerWheelTarget.Modal
+            : tableIndex < rowCount - 1 ? OfficerWheelTarget.Table : OfficerWheelTarget.None;
+        if (direction < 0) return tableIndex > 0 ? OfficerWheelTarget.Table
+            : modalCanScroll ? OfficerWheelTarget.Modal : OfficerWheelTarget.None;
+        return OfficerWheelTarget.None;
+    }
+
     // 수행 장수 표(정렬·내부 스크롤) — 행 클릭 = 실행(컨펌창). ★ = 이 명령의 효율 능력치.
     private void BuildOfficerCards(CityId city, int cmdIndex)
     {
@@ -11543,7 +11554,7 @@ public sealed partial class CampaignMapScene : Node3D
         tree.SetMeta("isolated_wheel_scroll", true);
         tree.SetMeta("passes_wheel_to_modal", showAllOfficerRows);
         tree.SetMeta("passes_wheel_at_boundary", !showAllOfficerRows);
-        tree.SetMeta("wheel_scroll_priority", "modal_then_table");
+        tree.SetMeta("wheel_scroll_priority", "down_modal_then_table_up_table_then_modal");
         tree.SetMeta("explicit_internal_wheel_scroll", !showAllOfficerRows);
         if (!showAllOfficerRows)
         {
@@ -11563,16 +11574,17 @@ public sealed partial class CampaignMapScene : Node3D
                 var modalCanScroll = direction < 0
                     ? modalBar.Value > modalBar.MinValue + 0.5
                     : modalBar.Value < modalBar.MaxValue - modalBar.Page - 0.5;
-                if (modalCanScroll)
+                var root = tree.GetRoot();
+                var rowCount = root?.GetChildCount() ?? 0;
+                var target = ResolveOfficerWheelTarget(direction, modalCanScroll, officerScrollIndex, rowCount);
+                if (target == OfficerWheelTarget.Modal)
                 {
                     modalScroll.ScrollVertical += direction * 64;
                     tree.AcceptEvent();
                     return;
                 }
 
-                var root = tree.GetRoot();
-                var rowCount = root?.GetChildCount() ?? 0;
-                if (rowCount <= 0) { return; }
+                if (target != OfficerWheelTarget.Table || rowCount <= 0) { return; }
                 officerScrollIndex = Mathf.Clamp(officerScrollIndex + direction, 0, rowCount - 1);
                 tree.ScrollToItem(root!.GetChild(officerScrollIndex), true);
                 tree.AcceptEvent();
