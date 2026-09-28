@@ -72,14 +72,7 @@ public sealed partial class CampaignMapScene
             var draft = drafts[index];
             var troop = _troops.First(t => t.Code == draft.TroopCode);
             var unitCell = new VBoxContainer { CustomMinimumSize = new Vector2(62, 64) };
-            unitCell.AddChild(new TextureRect
-            {
-                Texture = UnitCard(troop.Code, troop.Class),
-                CustomMinimumSize = new Vector2(44, 44),
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
-            });
+            unitCell.AddChild(DeployUnitArtwork(UnitCard(troop.Code, troop.Class), 44));
             var number = MakeLabel($"{index + 1}", 12, GoldBright);
             number.HorizontalAlignment = HorizontalAlignment.Center;
             unitCell.AddChild(number);
@@ -96,7 +89,7 @@ public sealed partial class CampaignMapScene
                 foreach (var id in availableIds)
                 {
                     var general = _state.Generals.First(g => g.Id == id);
-                    option.AddItem($"{general.Name} · {CurrentDuty(id)} · {GradeText(general.AptitudeFor(troop.Class))} · 무{general.Might}");
+                    option.AddIconItem(OfficerTablePortraitFor(id), $"{general.Name} · {CurrentDuty(id)} · {GradeText(general.AptitudeFor(troop.Class))} · 무{general.Might}");
                     option.SetItemMetadata(option.ItemCount - 1, id.Value);
                 }
                 for (var item = 0; item < option.ItemCount; item++)

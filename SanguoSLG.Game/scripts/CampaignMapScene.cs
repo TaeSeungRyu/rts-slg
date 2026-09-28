@@ -558,6 +558,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestcastledamageqa")) CallDeferred(nameof(RunCastleDamageQa));
         if (args.Contains("--maptestdeploylayoutqa")) CallDeferred(nameof(RunDeployComposeLayoutQa));
         if (args.Contains("--maptestdeploygoldqa")) CallDeferred(nameof(RunDeployGoldUiQa));
+        if (args.Contains("--maptestdeployimageqa")) CallDeferred(nameof(RunDeployImageStyleQa));
     }
 
     public override void _ExitTree()
@@ -5100,14 +5101,7 @@ public sealed partial class CampaignMapScene : Node3D
             var tv = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
             tv.AddThemeConstantOverride("separation", 2);
             tile.AddChild(tv);
-            tv.AddChild(new TextureRect
-            {
-                Texture = UnitCard("supply", TroopClass.Supply),
-                CustomMinimumSize = new Vector2(46, 46),
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
-            });
+            tv.AddChild(DeployUnitArtwork(UnitCard("supply", TroopClass.Supply), 46));
             var l1 = MakeLabel($"보급 {total}명", 11, GoldBright);
             l1.HorizontalAlignment = HorizontalAlignment.Center;
             tv.AddChild(l1);
@@ -5240,13 +5234,7 @@ public sealed partial class CampaignMapScene : Node3D
             var available = System.Math.Max(0, gar.Troops - usedTroops.GetValueOrDefault(gar.TroopCode, 0));
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 8);
-            row.AddChild(new TextureRect
-            {
-                Texture = UnitCard(gar.TroopCode, template?.Class),
-                CustomMinimumSize = new Vector2(34, 34),
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            });
+            row.AddChild(DeployUnitArtwork(UnitCard(gar.TroopCode, template?.Class), 34));
             var name = MakeLabel($"{template?.Name ?? gar.TroopCode} · 가능 {available} · 훈{gar.TrainingLevel}", 12, Parchment);
             name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             row.AddChild(name);
@@ -7757,14 +7745,7 @@ public sealed partial class CampaignMapScene : Node3D
             var tv = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
             tv.AddThemeConstantOverride("separation", 2);
             tile.AddChild(tv);
-            tv.AddChild(new TextureRect
-            {
-                Texture = emblem,
-                CustomMinimumSize = new Vector2(46, 46),
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
-            });
+            tv.AddChild(DeployUnitArtwork(emblem, 46));
             var n1 = MakeLabel($"{tname} {rq.Troops}", 12, GoldBright);
             n1.HorizontalAlignment = HorizontalAlignment.Center;
             tv.AddChild(n1);
@@ -7933,14 +7914,7 @@ public sealed partial class CampaignMapScene : Node3D
             var tv = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
             tv.AddThemeConstantOverride("separation", 2);
             tile.AddChild(tv);
-            tv.AddChild(new TextureRect
-            {
-                Texture = UnitCard(req.ShipCode, TroopClass.Naval),
-                CustomMinimumSize = new Vector2(46, 46),
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
-            });
+            tv.AddChild(DeployUnitArtwork(UnitCard(req.ShipCode, TroopClass.Naval), 46));
             var l1 = MakeLabel($"{ship?.Name ?? req.ShipCode}", 11, GoldBright);
             l1.HorizontalAlignment = HorizontalAlignment.Center;
             tv.AddChild(l1);
@@ -8340,7 +8314,7 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetEditable(0, true);
             item.SetChecked(0, general.Id == selectedGeneral);
             item.SetText(1, general.Name);
-            ApplyGeneralTreePortrait(item, 1, general.Id);
+            ApplyGeneralTreePortrait(item, 1, general.Id, goldBorder: true);
             item.SetText(2, GradeText(general.AptitudeFor(TroopClass.Naval)));
             item.SetText(3, general.Might.ToString());
             item.SetCellMode(4, TreeItem.TreeCellMode.Check);
@@ -8565,7 +8539,7 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetCellMode(0, TreeItem.TreeCellMode.Check);
             item.SetChecked(0, g.Id == selectedTransportGeneral);
             item.SetText(1, g.Name);
-            ApplyGeneralTreePortrait(item, 1, g.Id);
+            ApplyGeneralTreePortrait(item, 1, g.Id, goldBorder: true);
             item.SetText(2, GradeText(g.AptitudeFor(TroopClass.Supply)));
             item.SetText(3, g.Politics.ToString());
             item.SetText(4, CurrentDuty(g.Id));
@@ -8598,13 +8572,7 @@ public sealed partial class CampaignMapScene : Node3D
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 8);
             row.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            row.AddChild(new TextureRect
-            {
-                Texture = UnitCard(gar.TroopCode, template?.Class),
-                CustomMinimumSize = new Vector2(34, 34),
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            });
+            row.AddChild(DeployUnitArtwork(UnitCard(gar.TroopCode, template?.Class), 34));
             var name = MakeLabel($"{template?.Name ?? code} · 가능 {remaining} · 훈{gar.TrainingLevel}", 12, Parchment);
             name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             row.AddChild(name);
@@ -8761,14 +8729,7 @@ public sealed partial class CampaignMapScene : Node3D
             var tv = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
             tv.AddThemeConstantOverride("separation", 2);
             tile.AddChild(tv);
-            tv.AddChild(new TextureRect
-            {
-                Texture = UnitCard("transport"),
-                CustomMinimumSize = new Vector2(46, 46),
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
-            });
+            tv.AddChild(DeployUnitArtwork(UnitCard("transport"), 46));
             var total = req.Lines.Sum(l => l.Troops);
             var l1 = MakeLabel($"→ {dest}", 11, GoldBright);
             l1.HorizontalAlignment = HorizontalAlignment.Center;
@@ -8905,7 +8866,7 @@ public sealed partial class CampaignMapScene : Node3D
             tv.AddThemeConstantOverride("separation", 2);
             tv.MouseFilter = Control.MouseFilterEnum.Ignore;
             tile.AddChild(tv);
-            tv.AddChild(FixedIcon(ArmyGroupIcon(), 46));
+            tv.AddChild(DeployUnitArtwork(ArmyGroupIcon(), 46));
             var n1 = MakeLabel($"집단군 {total:N0}", 12, GoldBright);
             n1.HorizontalAlignment = HorizontalAlignment.Center;
             n1.MouseFilter = Control.MouseFilterEnum.Ignore;
@@ -9033,6 +8994,7 @@ public sealed partial class CampaignMapScene : Node3D
         var maxTroops = CommandEfficiency.ArmyGroupDeployLimit(_state.ResearchOf(cityData.Owner, FactionResearch.ArmyGroupCode), _cb);
         var armyGroupTroopTitle = MakeLabel($"편성 상한 {maxTroops:N0}명 · 필수 최소 {_cb.ArmyGroupMinClassTroops:N0}명: 보병 / 궁병 / 공성", 13, GoldBright);
         box.AddChild(armyGroupTroopTitle);
+        box.AddChild(DeployUnitArtwork(ArmyGroupIcon(), 52));
         box.AddChild(MakeLabel("집단군 병종 특성은 선봉의 보병·궁병·공성 적성을 평균낸 뒤 반내림합니다. 예: S/A/S = A+, S/A/A = A", 12, Parchment));
 
         var usedTroops = ReservedTroopsByCode(city, editIndex, editingSupply: false);
@@ -9113,7 +9075,7 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetChecked(1, g.Id == _depAdj);
             item.SetMetadata(0, g.Id.Value);
             item.SetText(2, g.Name);
-            ApplyGeneralTreePortrait(item, 2, g.Id);
+            ApplyGeneralTreePortrait(item, 2, g.Id, goldBorder: true);
             item.SetText(3, GradeText(ArmyGroupAptitude(g)));
             item.SetText(4, g.Might.ToString());
             item.SetText(5, g.Intellect.ToString());
@@ -9763,7 +9725,7 @@ public sealed partial class CampaignMapScene : Node3D
             var item = _vanTree.CreateItem(root);
             item.SetText(0, general.Id == _depVan ? "◆" : "◇");
             item.SetText(1, general.Name);
-            ApplyGeneralTreePortrait(item, 1, general.Id);
+            ApplyGeneralTreePortrait(item, 1, general.Id, goldBorder: true);
             item.SetText(2, general.Might.ToString());
             item.SetText(3, general.Intellect.ToString());
             item.SetText(4, general.Politics.ToString());
@@ -10259,7 +10221,7 @@ public sealed partial class CampaignMapScene : Node3D
         var v = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         v.AddThemeConstantOverride("separation", 3);
         card.AddChild(v);
-        v.AddChild(FixedIcon(icon, 46));
+        v.AddChild(DeployUnitArtwork(icon, 46));
         var t = MakeLabel(title, 15, GoldBright);
         t.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(t);
@@ -10302,7 +10264,7 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetEditable(1, true);
             item.SetChecked(1, _depAdj is { } a && a == g.Id);
             item.SetText(2, g.Name);
-            ApplyGeneralTreePortrait(item, 2, g.Id);
+            ApplyGeneralTreePortrait(item, 2, g.Id, goldBorder: true);
             item.SetText(3, g.Might.ToString());
             item.SetText(4, g.Intellect.ToString());
             item.SetText(5, g.Politics.ToString());
@@ -10923,6 +10885,21 @@ public sealed partial class CampaignMapScene : Node3D
             card.AddThemeStyleboxOverride("panel", CardBox(OptionCardIsSelected(card)));
         };
         return card;
+    }
+
+    private Control DeployUnitArtwork(Texture2D icon, int size)
+    {
+        var frame = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(size + 6, size + 6),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        frame.SetMeta("deploy_unit_art", true);
+        frame.SetMeta("rounded_unit_art", true);
+        frame.AddThemeStyleboxOverride("panel", Frame(new Color(0.04f, 0.035f, 0.03f, 0.96f), new Color(Gold, 0.72f), 1, 7, 3));
+        frame.AddChild(FixedIcon(RoundedOptionTexture(icon, size), size));
+        return frame;
     }
 
     private bool OptionCardIsSelected(PanelContainer card)

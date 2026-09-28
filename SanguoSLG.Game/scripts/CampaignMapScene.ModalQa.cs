@@ -481,4 +481,51 @@ public sealed partial class CampaignMapScene
         GD.Print($"[deploy-gold-qa] passed={passed} cases={cases.Length}");
         GetTree().Quit(passed ? 0 : 1);
     }
+
+    private async void RunDeployImageStyleQa()
+    {
+        var city = _state.Cities.First(c => c.Owner == Player && !c.IsPort);
+        _depModalCity = city.Id;
+        var cases = new (string Name, System.Action Open)[]
+        {
+            ("combat", () => OpenDeployCompose(-1)),
+            ("supply", () => OpenSupplyCompose(-1)),
+            ("transport", () => OpenTransportCompose(city.Id)),
+            ("batch", () => OpenBatchDeployCompose(city.Id)),
+            ("army-group", () => OpenArmyGroupCompose(-1)),
+        };
+        var passed = true;
+        foreach (var qa in cases)
+        {
+            qa.Open();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var art = _modalLayer?.FindChildren("*", "PanelContainer", true, false)
+                .OfType<PanelContainer>().Count(panel => panel.HasMeta("deploy_unit_art")) ?? 0;
+            var treePortraits = _modalLayer?.FindChildren("*", "Tree", true, false)
+                .OfType<Tree>()
+                .SelectMany(tree =>
+                {
+                    var icons = new List<Texture2D?>();
+                    var item = tree.GetRoot()?.GetFirstChild();
+                    while (item is not null)
+                    {
+                        for (var column = 0; column < tree.Columns; column++) icons.Add(item.GetIcon(column));
+                        item = item.GetNext();
+                    }
+                    return icons;
+                })
+                .Count(icon => icon is not null && _officerTablePortraits.Values.Any(texture => ReferenceEquals(texture, icon))) ?? 0;
+            var optionPortraits = _modalLayer?.FindChildren("*", "OptionButton", true, false)
+                .OfType<OptionButton>()
+                .Sum(option => Enumerable.Range(0, option.ItemCount).Count(index => option.GetItemIcon(index) is not null)) ?? 0;
+            var casePassed = art > 0 && (treePortraits > 0 || optionPortraits > 0);
+            passed &= casePassed;
+            GD.Print($"[deploy-image-qa] type={qa.Name} passed={casePassed} roundedUnitArt={art} circularPortraits={treePortraits + optionPortraits}");
+            CloseModal();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
+        GD.Print($"[deploy-image-qa] passed={passed} cases={cases.Length}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
 }
