@@ -550,6 +550,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestdoctrineperformanceqa")) CallDeferred(nameof(RunDoctrineModalPerformanceQa));
         if (args.Contains("--maptestofficertableqa")) CallDeferred(nameof(RunOfficerTableLayoutQa));
         if (args.Contains("--maptestcitydetailqa")) CallDeferred(nameof(RunCityDetailUiQa));
+        if (args.Contains("--maptestcityambienceqa")) CallDeferred(nameof(RunCityAmbienceQa));
     }
 
     public override void _ExitTree()
@@ -2379,6 +2380,24 @@ public sealed partial class CampaignMapScene : Node3D
                 node.Rotation = new Vector3(0f, PortFacingYaw(city), 0f);
             }
             node.Scale *= CastleModelScale(city);
+            if (city.IsPort)
+            {
+                var ambience = new VillagerAmbience
+                {
+                    Name = $"CityVillagers{city.Id.Value}_0",
+                    GroundY = 0.10f,
+                    WanderRadius = 0.24f,
+                    Seed = unchecked((ulong)(city.Position.Q * 92821L + city.Position.R * 68917L + 4241L)),
+                    MaxVillagers = city.Port == PortSize.Medium ? 5 : 4,
+                };
+                ambience.SetMeta("city_id", city.Id.Value);
+                ambience.AddToGroup("city_villager_ambience");
+                node.AddChild(ambience);
+            }
+            else
+            {
+                GameRoot3D.AddCastleAmbience(node, city, TileCondition.Normal);
+            }
             AddChild(node);
 
             var label = new Label3D

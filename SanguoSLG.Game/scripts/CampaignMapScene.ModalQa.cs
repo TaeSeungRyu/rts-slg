@@ -4,6 +4,22 @@ namespace SanguoSLG.Game;
 
 public sealed partial class CampaignMapScene
 {
+    private void RunCityAmbienceQa()
+    {
+        var ambience = GetTree().GetNodesInGroup("city_villager_ambience")
+            .OfType<VillagerAmbience>()
+            .Where(node => node.HasMeta("city_id"))
+            .ToList();
+        var coveredCities = ambience.Select(node => node.GetMeta("city_id").AsInt32()).Distinct().ToHashSet();
+        var cityCoverage = _cities.All(city => coveredCities.Contains(city.Id.Value));
+        var portCoverage = _cities.Where(city => city.IsPort)
+            .All(city => ambience.Any(node => node.GetMeta("city_id").AsInt32() == city.Id.Value
+                && node.MaxVillagers >= 4));
+        var passed = cityCoverage && portCoverage && ambience.All(node => node.SpawnEnabled);
+        GD.Print($"[city-ambience-qa] passed={passed} cityCoverage={coveredCities.Count}/{_cities.Count} portCoverage={portCoverage} ambience={ambience.Count}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private async void RunCityDetailUiQa()
     {
         var city = _state.Cities.FirstOrDefault(c => c.Owner == Player);

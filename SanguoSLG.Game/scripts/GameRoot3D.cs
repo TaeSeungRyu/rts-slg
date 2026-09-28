@@ -650,7 +650,7 @@ public partial class GameRoot3D : Node3D
     // Blender +Y=북 → Godot -Z). 기단 윗면 높이 = PLATFORM_H 0.12 × K_Z 0.72 = 0.0864.
     private const float CastleGroundY = 0.0864f;
 
-    private static void AddCastleAmbience(Node3D root, City city, TileCondition condition)
+    internal static void AddCastleAmbience(Node3D root, City city, TileCondition condition)
     {
         var tiles = CastleTileOffsets(city.Castle);
         var buildings = CastleBuildingObstacles(city.Castle);
@@ -663,15 +663,19 @@ public partial class GameRoot3D : Node3D
                 obstacles[j] = new Vector3(buildings[j].X - tx, buildings[j].Y - tz, buildings[j].Z);
             }
 
-            root.AddChild(new VillagerAmbience
+            var ambience = new VillagerAmbience
             {
+                Name = $"CityVillagers{city.Id.Value}_{i}",
                 Position = new Vector3(tx, 0f, tz),
                 GroundY = CastleGroundY,
                 Seed = unchecked((ulong)(city.Position.Q * 92821L + city.Position.R * 68917L + i * 5077L + 31L)),
                 MaxVillagers = 4 + i % 2,
                 Obstacles = obstacles,
                 SpawnEnabled = condition == TileCondition.Normal,
-            });
+            };
+            ambience.SetMeta("city_id", city.Id.Value);
+            ambience.AddToGroup("city_villager_ambience");
+            root.AddChild(ambience);
         }
     }
 
