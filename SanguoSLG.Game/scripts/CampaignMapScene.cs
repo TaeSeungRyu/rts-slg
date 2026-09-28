@@ -13749,8 +13749,10 @@ public sealed partial class CampaignMapScene : Node3D
         token.AddChild(portrait);
         if (sample is not null) portrait.SetPortrait(CircularPortraitFor(sample.Id));
         var passed = sample is not null && portrait.HasPortrait && portrait.IsAboveSkillGauge
+            && portrait.HasThinGoldBorder
+            && Mathf.IsEqualApprox(CommanderPortraitView3D.PortraitScaleRatio, 0.8f)
             && CommanderPortraitView3D.HeightOffset > CommanderPortraitView3D.SkillGaugeHeight;
-        GD.Print($"[maptestcommanderportraitqa] passed={passed} general={sample?.Id.Value.ToString() ?? "-"} hasPortrait={portrait.HasPortrait} height={CommanderPortraitView3D.HeightOffset:0.00} gaugeHeight={CommanderPortraitView3D.SkillGaugeHeight:0.00}");
+        GD.Print($"[maptestcommanderportraitqa] passed={passed} general={sample?.Id.Value.ToString() ?? "-"} hasPortrait={portrait.HasPortrait} goldBorder={portrait.HasThinGoldBorder} scale={CommanderPortraitView3D.PortraitScaleRatio:0.0} height={CommanderPortraitView3D.HeightOffset:0.00} gaugeHeight={CommanderPortraitView3D.SkillGaugeHeight:0.00}");
         token.QueueFree();
         GetTree().Quit(passed ? 0 : 1);
     }
