@@ -11139,9 +11139,10 @@ public sealed partial class CampaignMapScene : Node3D
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             VerticalScrollMode = rows > 2 ? ScrollContainer.ScrollMode.Auto : ScrollContainer.ScrollMode.Disabled,
             MouseFilter = Control.MouseFilterEnum.Stop,
-            MouseForcePassScrollEvents = false,
+            MouseForcePassScrollEvents = true,
         };
         fundingScroll.SetMeta("funding_city_capacity", 30);
+        fundingScroll.SetMeta("passes_wheel_to_modal", true);
         fundingPanel.AddChild(fundingScroll);
 
         var fundingGrid = new GridContainer
@@ -11166,6 +11167,7 @@ public sealed partial class CampaignMapScene : Node3D
             };
             cityCard.SetMeta("research_funding_row", c.Id.Value);
             cityCard.SetMeta("research_funding_card", true);
+            cityCard.MouseForcePassScrollEvents = true;
             var rowColor = cityIndex % 2 == 0
                 ? new Color(0.10f, 0.08f, 0.065f, 0.92f)
                 : new Color(0.075f, 0.062f, 0.052f, 0.92f);
@@ -11205,6 +11207,8 @@ public sealed partial class CampaignMapScene : Node3D
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             });
             ApplyCompactFundingInputStyle(ratio);
+            ratio.MouseForcePassScrollEvents = true;
+            ratio.GetLineEdit().MouseForcePassScrollEvents = true;
             ratio.ValueChanged += _ => RefreshResearchFundingPreview();
             _researchFundingRatios[c.Id.Value] = ratio;
             ratioRow.AddChild(ratio);
@@ -13979,6 +13983,11 @@ public sealed partial class CampaignMapScene : Node3D
             && fundingScroll?.GetMeta("funding_city_capacity").AsInt32() == 30
             && fundingScroll.CustomMinimumSize.Y <= 196f
             && fundingScroll.HorizontalScrollMode == ScrollContainer.ScrollMode.Disabled
+            && fundingScroll.MouseForcePassScrollEvents
+            && fundingScroll.GetMeta("passes_wheel_to_modal").AsBool()
+            && fundingCards.All(card => card.MouseForcePassScrollEvents)
+            && _researchFundingRatios.Values.All(spin => spin.MouseForcePassScrollEvents
+                && spin.GetLineEdit().MouseForcePassScrollEvents)
             && fundingGrid?.Columns == ResearchFundingColumnCount(ownedCityCount, viewportSize.X)
             && ResearchFundingColumnCount(30, 960) == 3
             && ResearchFundingColumnCount(30, 1600) == 5;
