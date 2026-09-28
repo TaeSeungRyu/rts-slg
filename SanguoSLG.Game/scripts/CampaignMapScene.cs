@@ -1363,10 +1363,11 @@ public sealed partial class CampaignMapScene : Node3D
         var frame = new PanelContainer
         {
             Name = "UnitCommanderVisual",
-            CustomMinimumSize = new Vector2(260, 156),
+            CustomMinimumSize = new Vector2(260, 210),
             ClipContents = true,
         };
         frame.SetMeta("commander_replaces_unit_art", true);
+        frame.SetMeta("portrait_display_height", 210);
         frame.AddThemeStyleboxOverride("panel", Frame(new Color(0.055f, 0.045f, 0.038f), Gold, 1, 9, 3));
         var overlay = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
         frame.AddChild(overlay);
@@ -1386,13 +1387,14 @@ public sealed partial class CampaignMapScene : Node3D
         var troopBadge = new MarginContainer
         {
             Name = "UnitTroopBadge",
-            OffsetLeft = 8,
-            OffsetTop = 8,
-            OffsetRight = 56,
-            OffsetBottom = 56,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        troopBadge.SetMeta("recommended_troop_badge", "top_left");
+        troopBadge.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
+        troopBadge.OffsetLeft = -56;
+        troopBadge.OffsetTop = -56;
+        troopBadge.OffsetRight = -8;
+        troopBadge.OffsetBottom = -8;
+        troopBadge.SetMeta("recommended_troop_badge", "bottom_right_absolute");
         troopBadge.AddChild(DeployUnitArtwork(UnitCard(UnitCardCode(unit), unit.Class), 40));
         overlay.AddChild(troopBadge);
 
@@ -1404,12 +1406,12 @@ public sealed partial class CampaignMapScene : Node3D
                 CustomMinimumSize = new Vector2(56, 56),
                 MouseFilter = Control.MouseFilterEnum.Ignore,
             };
-            adjutantFrame.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
-            adjutantFrame.OffsetLeft = -64;
-            adjutantFrame.OffsetTop = -64;
-            adjutantFrame.OffsetRight = -8;
-            adjutantFrame.OffsetBottom = -8;
-            adjutantFrame.SetMeta("adjutant_overlay", "bottom_right_circle");
+            adjutantFrame.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+            adjutantFrame.OffsetLeft = 8;
+            adjutantFrame.OffsetTop = 8;
+            adjutantFrame.OffsetRight = 64;
+            adjutantFrame.OffsetBottom = 64;
+            adjutantFrame.SetMeta("adjutant_overlay", "top_left_absolute_circle");
             adjutantFrame.AddThemeStyleboxOverride("panel", Frame(new Color(0.06f, 0.05f, 0.04f), GoldBright, 1, 28, 2));
             adjutantFrame.AddChild(new TextureRect
             {
@@ -13847,11 +13849,15 @@ public sealed partial class CampaignMapScene : Node3D
         var vanguardLink = _infoRows.FindChild("UnitVanguardGeneralLink", true, false) as Button;
         var adjutantLink = _infoRows.FindChild("UnitAdjutantGeneralLink", true, false) as Button;
         var layoutOk = visual?.GetMeta("commander_replaces_unit_art").AsBool() == true
+            && visual.CustomMinimumSize.Y >= 210f
+            && visual.GetMeta("portrait_display_height").AsInt32() == 210
             && vanguardPortrait?.Texture is not null
             && vanguardPortrait.StretchMode == TextureRect.StretchModeEnum.KeepAspectCentered
             && vanguardPortrait.GetMeta("portrait_fit_without_crop").AsBool()
-            && adjutantPortrait?.GetMeta("adjutant_overlay").AsString() == "bottom_right_circle"
-            && troopBadge?.GetMeta("recommended_troop_badge").AsString() == "top_left"
+            && adjutantPortrait?.GetMeta("adjutant_overlay").AsString() == "top_left_absolute_circle"
+            && adjutantPortrait.AnchorLeft == 0f && adjutantPortrait.AnchorTop == 0f
+            && troopBadge?.GetMeta("recommended_troop_badge").AsString() == "bottom_right_absolute"
+            && troopBadge.AnchorLeft == 1f && troopBadge.AnchorTop == 1f
             && roleCards?.GetMeta("role_card_layout").AsString() == "side_by_side"
             && vanguardRoleCard?.GetMeta("general_role").AsString() == "선봉"
             && adjutantRoleCard?.GetMeta("general_role").AsString() == "부관"
