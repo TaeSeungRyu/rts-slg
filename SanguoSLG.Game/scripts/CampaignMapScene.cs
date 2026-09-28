@@ -220,6 +220,7 @@ public sealed partial class CampaignMapScene : Node3D
     private bool _offSortAsc;
     private int _generalRosterSortCol;
     private bool _generalRosterSortAsc = true;
+    private int _generalRosterGeneration;
     private Label? _modalDetail;
     private readonly List<PanelContainer> _optionCards = new();
     private readonly List<PanelContainer> _autoRecruitRateCards = new();
@@ -6789,8 +6790,9 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 전체 장수 목록 — 소속·위치·능력. 행 클릭 = 장수 상세(포로/재야/야전 포함).
-    private void OpenGeneralRoster()
+    private async void OpenGeneralRoster()
     {
+        var rosterGeneration = ++_generalRosterGeneration;
         var perfQa = OS.GetCmdlineUserArgs().Contains("--maptestgeneralrosterqa");
         var perfWatch = perfQa ? System.Diagnostics.Stopwatch.StartNew() : null;
         void TraceRoster(string stage)
@@ -6805,6 +6807,7 @@ public sealed partial class CampaignMapScene : Node3D
         var mw = Mathf.Clamp(vp.X * 0.92f, 980f, 1500f);
         var mh = Mathf.Clamp(vp.Y * 0.85f, 380f, 760f);
         var box = SystemView("전체 장수 목록", mw, out var scroll, out var panel, out var titleRow);
+        var rosterLayer = _modalLayer;
         TraceRoster("scaffold");
 
         string FactionName(FactionId f) => _state.Factions.FirstOrDefault(x => x.Id == f)?.Name ?? "?";
@@ -6891,11 +6894,12 @@ public sealed partial class CampaignMapScene : Node3D
 
         var root = tree.CreateItem();
         var rosterRowCount = 0;
+        var portraitRows = new List<(TreeItem Item, GeneralId General)>();
         foreach (var g in OrderedGenerals())
         {
             var it = tree.CreateItem(root);
             it.SetText(0, g.Name);
-            ApplyGeneralTreePortrait(it, 0, g.Id);
+            portraitRows.Add((it, g.Id));
             it.SetText(1, g.Might.ToString());
             it.SetText(2, g.Intellect.ToString());
             it.SetText(3, g.Politics.ToString());
@@ -6936,6 +6940,29 @@ public sealed partial class CampaignMapScene : Node3D
         TraceRoster("minimum-size");
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
+        tree.SetMeta("portraits_loaded_deferred", true);
+
+        // 먼저 텍스트 목록을 화면에 그린 뒤 64px 초상을 작은 묶음으로 채운다.
+        // 디스크 캐시가 차가운 최초 실행에서도 모달 자체가 초상 디코딩을 기다리지 않는다.
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        const int portraitBatchSize = 20;
+        for (var i = 0; i < portraitRows.Count; i++)
+        {
+            if (rosterGeneration != _generalRosterGeneration
+                || rosterLayer is null || !GodotObject.IsInstanceValid(rosterLayer)
+                || !ReferenceEquals(_modalLayer, rosterLayer))
+            {
+                return;
+            }
+
+            var (item, general) = portraitRows[i];
+            ApplyGeneralTreePortrait(item, 0, general);
+            if ((i + 1) % portraitBatchSize == 0)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            }
+        }
+        tree.SetMeta("portraits_loaded", portraitRows.Count);
     }
 
     // 장수 상세를 시스템 목록에서 열 때 — 성이 없는(재야·포로·야전) 장수도 안전하게(◀는 상세 카드 자체 닫기).
@@ -14026,7 +14053,7 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     /// <summary>전체 장수 목록이 전용 저해상도 초상을 사용해 최초 실행도 짧게 끝나는지 검증한다.</summary>
-    private void RunGeneralRosterPerformanceQa()
+    private async void RunGeneralRosterPerformanceQa()
     {
         _rosterPortraits.Clear();
         var first = System.Diagnostics.Stopwatch.StartNew();
@@ -14035,6 +14062,13 @@ public sealed partial class CampaignMapScene : Node3D
 
         var tree = _modalLayer?.FindChildren("*", "Tree", true, false).OfType<Tree>().FirstOrDefault();
         var rows = tree?.GetRoot()?.GetChildCount() ?? 0;
+        for (var frame = 0; frame < 60 && tree?.HasMeta("portraits_loaded") != true; frame++)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        var coldHydrated = tree?.HasMeta("portraits_loaded") == true
+            && tree.GetMeta("portraits_loaded").AsInt32() == _state.Generals.Count;
+        var deferredLoading = tree?.GetMeta("portraits_loaded_deferred", false).AsBool() == true;
         var thumbnailsReady = _state.Generals.All(g =>
         {
             var path = ProjectSettings.GlobalizePath($"res://assets/portraits/thumbnails/{g.Id.Value}.png");
@@ -14046,14 +14080,24 @@ public sealed partial class CampaignMapScene : Node3D
         var second = System.Diagnostics.Stopwatch.StartNew();
         OpenGeneralRoster();
         second.Stop();
+        var warmTree = _modalLayer?.FindChildren("*", "Tree", true, false).OfType<Tree>().FirstOrDefault();
+        for (var frame = 0; frame < 60 && warmTree?.HasMeta("portraits_loaded") != true; frame++)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        var warmHydrated = warmTree?.HasMeta("portraits_loaded") == true
+            && warmTree.GetMeta("portraits_loaded").AsInt32() == _state.Generals.Count;
 
-        const long coldLimitMilliseconds = 2000;
+        const long initialModalLimitMilliseconds = 500;
         var passed = rows == _state.Generals.Count
             && thumbnailsReady
             && compactTextures
-            && first.ElapsedMilliseconds < coldLimitMilliseconds
+            && coldHydrated
+            && warmHydrated
+            && deferredLoading
+            && first.ElapsedMilliseconds < initialModalLimitMilliseconds
             && second.ElapsedMilliseconds <= first.ElapsedMilliseconds;
-        GD.Print($"[maptestgeneralrosterqa] passed={passed} rows={rows}/{_state.Generals.Count} thumbnails={_rosterPortraits.Count} compact={compactTextures} coldMs={first.ElapsedMilliseconds} warmMs={second.ElapsedMilliseconds} limitMs={coldLimitMilliseconds}");
+        GD.Print($"[maptestgeneralrosterqa] passed={passed} rows={rows}/{_state.Generals.Count} thumbnails={_rosterPortraits.Count} deferred={coldHydrated} compact={compactTextures} initialColdMs={first.ElapsedMilliseconds} initialWarmMs={second.ElapsedMilliseconds} limitMs={initialModalLimitMilliseconds}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
