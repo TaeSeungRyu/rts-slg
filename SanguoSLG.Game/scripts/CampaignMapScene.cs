@@ -562,6 +562,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestdeployimageqa")) CallDeferred(nameof(RunDeployImageStyleQa));
         if (args.Contains("--maptestmodalcamerablockqa")) CallDeferred(nameof(RunModalCameraBlockQa));
         if (args.Contains("--maptestunitmenuqa")) CallDeferred(nameof(RunUnitMenuQa));
+        if (args.Contains("--maptestunitinfouiqa")) CallDeferred(nameof(RunUnitInfoUiQa));
     }
 
     public override void _ExitTree()
@@ -1296,30 +1297,19 @@ public sealed partial class CampaignMapScene : Node3D
         Clear(_infoRows);
         _infoRows.AddChild(MakeLabel($"《 {tmpl?.Name ?? u.TroopCode} 》 {faction?.Name}", 15, GoldBright));
         _infoRows.AddChild(MakeLabel($"시야 {_vision.UnitRadius(u)}칸", 13, Parchment));
-        _infoRows.AddChild(UnitCardPanel(UnitCardCode(u), u.Class));
         if (u.VanguardId is { } vanguardId)
         {
-            var faceRow = new HBoxContainer();
-            faceRow.AddThemeConstantOverride("separation", 8);
-            _infoRows.AddChild(faceRow);
-            if (CircularPortraitFor(vanguardId) is { } face)
-            {
-                var frame = new PanelContainer { CustomMinimumSize = new Vector2(74, 74) };
-                frame.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.05f), Gold, 1, 37, 0));
-                frame.AddChild(new TextureRect
-                {
-                    Texture = face,
-                    CustomMinimumSize = new Vector2(70, 70),
-                    ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                    StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                });
-                faceRow.AddChild(frame);
-            }
-
-            var names = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-            names.AddChild(MakeLabel($"선봉 {van ?? "—"}", 13, GoldBright));
-            names.AddChild(MakeLabel($"부관 {adj ?? "—"}", 12, Parchment));
-            faceRow.AddChild(names);
+            _infoRows.AddChild(UnitCommanderVisual(u, vanguardId));
+            var names = new VBoxContainer { Name = "UnitGeneralLinks", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            names.AddThemeConstantOverride("separation", 3);
+            names.AddChild(UnitGeneralLink("선봉", vanguardId, van ?? "—", unitId));
+            if (u.AdjutantId is { } adjutantId)
+                names.AddChild(UnitGeneralLink("부관", adjutantId, adj ?? "—", unitId));
+            _infoRows.AddChild(names);
+        }
+        else
+        {
+            _infoRows.AddChild(UnitCardPanel(UnitCardCode(u), u.Class));
         }
 
         var g = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -1335,8 +1325,6 @@ public sealed partial class CampaignMapScene : Node3D
 
         Row("병력", $"{u.Pool.Active}");
         Row("부상병", u.Pool.Wounded > 0 ? $"{u.Pool.Wounded}" : "없음");
-        Row("선봉", van ?? "—");
-        Row("부관", adj ?? "—");
         Row("훈련", $"{u.Training}");
         Row("모드", ModeName(u.Field.Mode));
         Row("목표", u.Field.Target is { } t ? $"({t.Q}, {t.R})" : "없음");
@@ -1368,6 +1356,109 @@ public sealed partial class CampaignMapScene : Node3D
 
         _infoCard.Visible = true;
     }
+
+    private Control UnitCommanderVisual(CombatUnit unit, GeneralId vanguardId)
+    {
+        var frame = new PanelContainer
+        {
+            Name = "UnitCommanderVisual",
+            CustomMinimumSize = new Vector2(260, 156),
+            ClipContents = true,
+        };
+        frame.SetMeta("commander_replaces_unit_art", true);
+        frame.AddThemeStyleboxOverride("panel", Frame(new Color(0.055f, 0.045f, 0.038f), Gold, 1, 9, 3));
+        var overlay = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
+        frame.AddChild(overlay);
+
+        var main = new TextureRect
+        {
+            Name = "UnitVanguardPortrait",
+            Texture = PortraitFor(vanguardId) ?? CircularPortraitFor(vanguardId),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        main.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        overlay.AddChild(main);
+
+        var troopBadge = new MarginContainer
+        {
+            Name = "UnitTroopBadge",
+            OffsetLeft = 8,
+            OffsetTop = 8,
+            OffsetRight = 56,
+            OffsetBottom = 56,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        troopBadge.SetMeta("recommended_troop_badge", "top_left");
+        troopBadge.AddChild(DeployUnitArtwork(UnitCard(UnitCardCode(unit), unit.Class), 40));
+        overlay.AddChild(troopBadge);
+
+        if (unit.AdjutantId is { } adjutantId)
+        {
+            var adjutantFrame = new PanelContainer
+            {
+                Name = "UnitAdjutantPortrait",
+                CustomMinimumSize = new Vector2(56, 56),
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+            };
+            adjutantFrame.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
+            adjutantFrame.OffsetLeft = -64;
+            adjutantFrame.OffsetTop = -64;
+            adjutantFrame.OffsetRight = -8;
+            adjutantFrame.OffsetBottom = -8;
+            adjutantFrame.SetMeta("adjutant_overlay", "bottom_right_circle");
+            adjutantFrame.AddThemeStyleboxOverride("panel", Frame(new Color(0.06f, 0.05f, 0.04f), GoldBright, 1, 28, 2));
+            adjutantFrame.AddChild(new TextureRect
+            {
+                Texture = CircularPortraitFor(adjutantId),
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+            });
+            overlay.AddChild(adjutantFrame);
+        }
+        return frame;
+    }
+
+    private Button UnitGeneralLink(string role, GeneralId generalId, string name, int unitId)
+    {
+        var link = new Button
+        {
+            Name = role == "선봉" ? "UnitVanguardGeneralLink" : "UnitAdjutantGeneralLink",
+            Text = $"{role} · {name}",
+            Flat = true,
+            Alignment = HorizontalAlignment.Left,
+            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+            TooltipText = $"{name} 장수 정보 보기",
+            CustomMinimumSize = new Vector2(0, 25),
+        };
+        link.SetMeta("general_detail_link", generalId.Value);
+        link.SetMeta("hover_underline", true);
+        link.AddThemeFontOverride("font", _font);
+        link.AddThemeFontSizeOverride("font_size", role == "선봉" ? 13 : 12);
+        link.AddThemeColorOverride("font_color", role == "선봉" ? GoldBright : Parchment);
+        link.AddThemeColorOverride("font_hover_color", Colors.White);
+        link.AddThemeStyleboxOverride("normal", LinkUnderline(new Color(Gold, 0.48f), 1));
+        link.AddThemeStyleboxOverride("hover", LinkUnderline(GoldBright, 2));
+        link.Pressed += () =>
+        {
+            _infoCard.Visible = false;
+            OpenGeneralDetail(generalId, new CityId(0), () => { CloseModal(); ShowUnitInfo(unitId); });
+        };
+        return link;
+    }
+
+    private static StyleBoxFlat LinkUnderline(Color color, int width) => new()
+    {
+        BgColor = Colors.Transparent,
+        BorderColor = color,
+        BorderWidthBottom = width,
+        ContentMarginLeft = 2,
+        ContentMarginRight = 2,
+        ContentMarginTop = 1,
+        ContentMarginBottom = 2,
+    };
 
     private static string ActiveSlotText(ActiveSkill? skill, ActiveGauge gauge)
     {
@@ -13664,6 +13755,64 @@ public sealed partial class CampaignMapScene : Node3D
             && resolvedAdjutant == adjutantId
             && resolvedSameSkillAdjutant == adjutantId;
         GD.Print($"[maptestactivecasterqa] passed={passed} vanguard={resolvedVanguard?.Value} adjutant={resolvedAdjutant?.Value} sameSkillAdjutant={resolvedSameSkillAdjutant?.Value}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    /// <summary>부대 정보의 장수 중심 비주얼·부관 오버레이·장수 상세 링크 회귀 QA.</summary>
+    private async void RunUnitInfoUiQa()
+    {
+        var original = _state;
+        var generals = _state.Generals.Take(2).ToList();
+        var troop = _troops.FirstOrDefault(template => template.Class == TroopClass.Infantry) ?? _troops.FirstOrDefault();
+        var city = _state.Cities.FirstOrDefault(candidate => candidate.Owner == Player);
+        if (generals.Count < 2 || troop is null || city is null)
+        {
+            GD.Print("[unit-info-ui-qa] passed=False reason=missing-sample");
+            GetTree().Quit(1);
+            return;
+        }
+
+        var sample = _state.Armies.FirstOrDefault(unit => unit.Field.Owner == Player)
+            ?? new CombatUnit(
+                new FieldUnit(new UnitId(-778899), Player, city.Position, 1, 2, 1,
+                    MovementDomain.Land, UnitMode.March, null, 0),
+                new CombatStats(10000, troop.AtkUnit, troop.Df),
+                new TroopPool(10000, 0), UnitCombatState.Create(70),
+                Class: troop.Class, TroopCode: troop.Code,
+                VanguardId: generals[0].Id, AdjutantId: generals[1].Id);
+
+        _state = _state with
+        {
+            FieldArmies = _state.Armies.Any(unit => unit.Id == sample.Id)
+                ? _state.Armies.Select(unit => unit.Id == sample.Id
+                    ? unit with { VanguardId = generals[0].Id, AdjutantId = generals[1].Id }
+                    : unit).ToList()
+                : _state.Armies.Append(sample).ToList(),
+        };
+        ShowUnitInfo(sample.Id.Value);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var visual = _infoRows.FindChild("UnitCommanderVisual", true, false) as PanelContainer;
+        var vanguardPortrait = _infoRows.FindChild("UnitVanguardPortrait", true, false) as TextureRect;
+        var adjutantPortrait = _infoRows.FindChild("UnitAdjutantPortrait", true, false) as PanelContainer;
+        var troopBadge = _infoRows.FindChild("UnitTroopBadge", true, false) as MarginContainer;
+        var vanguardLink = _infoRows.FindChild("UnitVanguardGeneralLink", true, false) as Button;
+        var adjutantLink = _infoRows.FindChild("UnitAdjutantGeneralLink", true, false) as Button;
+        var layoutOk = visual?.GetMeta("commander_replaces_unit_art").AsBool() == true
+            && vanguardPortrait?.Texture is not null
+            && adjutantPortrait?.GetMeta("adjutant_overlay").AsString() == "bottom_right_circle"
+            && troopBadge?.GetMeta("recommended_troop_badge").AsString() == "top_left"
+            && vanguardLink?.GetMeta("hover_underline").AsBool() == true
+            && adjutantLink?.GetMeta("hover_underline").AsBool() == true;
+
+        vanguardLink?.EmitSignal(BaseButton.SignalName.Pressed);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var detailOpened = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
+            .Any(label => label.Text.Contains(generals[0].Name, System.StringComparison.Ordinal)) == true;
+        var passed = layoutOk && detailOpened;
+        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} detail={detailOpened} badge={troopBadge is not null} adjutant={adjutantPortrait is not null}");
+        CloseModal();
+        _state = original;
+        _infoCard.Visible = false;
         GetTree().Quit(passed ? 0 : 1);
     }
 
