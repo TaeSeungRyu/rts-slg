@@ -13557,8 +13557,10 @@ public sealed partial class CampaignMapScene : Node3D
 
         var passed = skill is not null
             && observed.SequenceEqual(Enumerable.Range(1, ActiveGauge.ReadyDays).Append(0))
-            && gauge.SkillCode == skill.Code;
-        GD.Print($"[maptestgaugeprogressqa] passed={passed} observed={string.Join(',', observed)} skill={gauge.SkillCode}");
+            && gauge.SkillCode == skill.Code
+            && !gauge.ShowsSkillIcon
+            && !gauge.ShowsProgressText;
+        GD.Print($"[maptestgaugeprogressqa] passed={passed} observed={string.Join(',', observed)} skill={gauge.SkillCode} icon={gauge.ShowsSkillIcon} text={gauge.ShowsProgressText}");
         _activeGauges.Remove(qaUnitId);
         token.QueueFree();
         GetTree().Quit(passed ? 0 : 1);

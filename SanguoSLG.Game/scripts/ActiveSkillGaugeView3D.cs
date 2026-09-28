@@ -17,35 +17,13 @@ public sealed partial class ActiveSkillGaugeView3D : Node3D
         new(-0.16f, -0.17f, 0f), new(-0.08f, -0.17f, 0f), new(0f, -0.17f, 0f),
         new(0.08f, -0.17f, 0f), new(0.16f, -0.17f, 0f),
     };
-    private Sprite3D _icon = null!;
-    private Label3D _progress = null!;
+    public bool ShowsSkillIcon => false;
+    public bool ShowsProgressText => false;
 
     public override void _Ready()
     {
         TopLevel = true;
         AlignAboveParent();
-        _icon = new Sprite3D
-        {
-            PixelSize = 0.00062f,
-            Position = Vector3.Zero,
-            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-            NoDepthTest = true,
-            Modulate = new Color(1f, 1f, 1f, 0.94f),
-        };
-        AddChild(_icon);
-        _progress = new Label3D
-        {
-            Text = "0/5",
-            FontSize = 32,
-            PixelSize = 0.002f,
-            OutlineSize = 10,
-            Position = new Vector3(0f, -0.27f, 0f),
-            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-            NoDepthTest = true,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Modulate = new Color(1f, 0.88f, 0.54f),
-        };
-        AddChild(_progress);
         for (var i = 0; i < _segments.Length; i++)
         {
             var segment = new MeshInstance3D
@@ -82,14 +60,11 @@ public sealed partial class ActiveSkillGaugeView3D : Node3D
         FilledSegments = filled;
         for (var i = 0; i < _segments.Length; i++)
             _segments[i].MaterialOverride = Material(i < filled ? Filled : Empty);
-        _progress.Text = gauge.IsReady ? "발동!" : $"{filled}/{ActiveGauge.ReadyDays}";
     }
 
     public void SetSkill(ActiveSkill? skill, ActiveGauge gauge)
     {
         SkillCode = skill?.Code;
-        _icon.Texture = ActiveSkillIcons.Load(skill?.Code);
-        _icon.Visible = _icon.Texture is not null;
         SetGauge(gauge);
     }
 
