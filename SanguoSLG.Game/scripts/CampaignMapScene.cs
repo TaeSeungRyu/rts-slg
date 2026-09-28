@@ -554,6 +554,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestcitydetailqa")) CallDeferred(nameof(RunCityDetailUiQa));
         if (args.Contains("--maptestcityambienceqa")) CallDeferred(nameof(RunCityAmbienceQa));
         if (args.Contains("--maptestcastledamageqa")) CallDeferred(nameof(RunCastleDamageQa));
+        if (args.Contains("--maptestdeploylayoutqa")) CallDeferred(nameof(RunDeployComposeLayoutQa));
     }
 
     public override void _ExitTree()
@@ -5209,8 +5210,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.55f, 460f, 720f);
-        var mh = Mathf.Clamp(vp.Y * 0.88f, 370f, 760f);
+        var mw = Mathf.Clamp(vp.X * 0.88f, 820f, 1120f);
+        var mh = Mathf.Clamp(vp.Y * 0.86f, 560f, 760f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var cityName = _state.Cities.First(x => x.Id == city).Name;
         var titleRow = new HBoxContainer();
@@ -5225,7 +5226,8 @@ public sealed partial class CampaignMapScene : Node3D
         titleRow.AddChild(back);
         box.AddChild(GoldRule());
 
-        box.AddChild(MakeLabel($"보급 병력 선택 (총원 최대 {_cb.SupplyMaxTroops}명)", 13, GoldBright));
+        var supplyTroopTitle = MakeLabel($"보급 병력 선택 (총원 최대 {_cb.SupplyMaxTroops}명)", 13, GoldBright);
+        box.AddChild(supplyTroopTitle);
         foreach (var gar in _state.Garrisons.Where(g => g.City == city && g.Troops > 0 && !g.Trainee).OrderBy(g => g.TroopCode))
         {
             var template = _troops.FirstOrDefault(t => t.Code == gar.TroopCode);
@@ -5309,7 +5311,8 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(provRow);
         SyncSupplyProvisionSlider();
 
-        box.AddChild(GoldRule());
+        var supplyRosterRule = GoldRule();
+        box.AddChild(supplyRosterRule);
         box.AddChild(MakeLabel("주장 선택 (보급부대는 부관 없음)", 13, GoldBright));
         _composeFree = _state.GeneralsAt(city)
             .Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g))
@@ -5361,7 +5364,8 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(_vanTree);
         PopulateSupplyGeneralTree();
 
-        box.AddChild(GoldRule());
+        var supplyFooterRule = GoldRule();
+        box.AddChild(supplyFooterRule);
         _depPreview = MakeLabel("", 12, Parchment);
         _depPreview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(_depPreview);
@@ -5371,8 +5375,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(save);
         UpdateSupplyPreview();
 
-        var contentH = box.GetCombinedMinimumSize().Y;
-        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        ApplyHorizontalComposeLayout(box, supplyTroopTitle, supplyRosterRule, supplyFooterRule, scroll, mw, mh);
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
@@ -8470,8 +8473,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.46f, 420f, 620f);
-        var mh = Mathf.Clamp(vp.Y * 0.72f, 360f, 620f);
+        var mw = Mathf.Clamp(vp.X * 0.88f, 820f, 1120f);
+        var mh = Mathf.Clamp(vp.Y * 0.84f, 540f, 740f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
@@ -8484,7 +8487,8 @@ public sealed partial class CampaignMapScene : Node3D
         back.Pressed += () => OpenTransportHub(city);
         titleRow.AddChild(back);
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("주둔 병력과 금·군량을 다른 아군 성으로 이동합니다.\n수송부대는 장수를 배치하지만 행군 전용이며 공격·방어·점령을 할 수 없고, 속도 2·군량 소모 50%로 이동합니다.\n예약 후 목록에서 '목표 지정'을 눌러 지도에서 도착 성을 선택하세요.", 12, Parchment));
+        var transportDescription = MakeLabel("주둔 병력과 금·군량을 다른 아군 성으로 이동합니다.\n수송부대는 장수를 배치하지만 행군 전용이며 공격·방어·점령을 할 수 없고, 속도 2·군량 소모 50%로 이동합니다.\n예약 후 목록에서 '목표 지정'을 눌러 지도에서 도착 성을 선택하세요.", 12, Parchment);
+        box.AddChild(transportDescription);
 
         var form = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         form.AddThemeConstantOverride("h_separation", 10);
@@ -8525,7 +8529,8 @@ public sealed partial class CampaignMapScene : Node3D
         preview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 
         var selectedTransportGeneral = generals[0].Id;
-        box.AddChild(GoldRule());
+        var transportRosterRule = GoldRule();
+        box.AddChild(transportRosterRule);
         box.AddChild(MakeLabel("수송 장수 선택 (표에서 1명 선택)", 13, GoldBright));
         var generalTree = new Tree
         {
@@ -8575,7 +8580,8 @@ public sealed partial class CampaignMapScene : Node3D
         };
         box.AddChild(generalTree);
 
-        box.AddChild(MakeLabel("수송 병력 선택 (여러 개 선택 가능)", 13, GoldBright));
+        var transportTroopTitle = MakeLabel("수송 병력 선택 (여러 개 선택 가능)", 13, GoldBright);
+        box.AddChild(transportTroopTitle);
         foreach (var gar in garrisons)
         {
             var code = gar.TroopCode;
@@ -8691,8 +8697,9 @@ public sealed partial class CampaignMapScene : Node3D
         };
         box.AddChild(save);
 
-        var contentH = box.GetCombinedMinimumSize().Y;
-        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        ApplyTransportHorizontalComposeLayout(
+            box, transportDescription, form, transportRosterRule, generalTree,
+            transportTroopTitle, preview, scroll, mw, mh);
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
@@ -8997,7 +9004,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.62f, 560f, 860f);
+        var mw = Mathf.Clamp(vp.X * 0.9f, 900f, 1180f);
         var mh = Mathf.Clamp(vp.Y * 0.9f, 420f, 820f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var cityData = _state.Cities.First(c => c.Id == city);
@@ -9014,7 +9021,8 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(GoldRule());
 
         var maxTroops = CommandEfficiency.ArmyGroupDeployLimit(_state.ResearchOf(cityData.Owner, FactionResearch.ArmyGroupCode), _cb);
-        box.AddChild(MakeLabel($"편성 상한 {maxTroops:N0}명 · 필수 최소 {_cb.ArmyGroupMinClassTroops:N0}명: 보병 / 궁병 / 공성", 13, GoldBright));
+        var armyGroupTroopTitle = MakeLabel($"편성 상한 {maxTroops:N0}명 · 필수 최소 {_cb.ArmyGroupMinClassTroops:N0}명: 보병 / 궁병 / 공성", 13, GoldBright);
+        box.AddChild(armyGroupTroopTitle);
         box.AddChild(MakeLabel("집단군 병종 특성은 선봉의 보병·궁병·공성 적성을 평균낸 뒤 반내림합니다. 예: S/A/S = A+, S/A/A = A", 12, Parchment));
 
         var usedTroops = ReservedTroopsByCode(city, editIndex, editingSupply: false);
@@ -9054,7 +9062,8 @@ public sealed partial class CampaignMapScene : Node3D
             table.AddChild(MakeLabel($"{gar.TrainingLevel}", 12, gar.TrainingLevel < 50 ? AccentFill : Parchment));
         }
 
-        box.AddChild(MakeLabel("장수 편성 (선봉 필수 · 부관 선택 · 전투편성과 동일하게 체크)", 13, GoldBright));
+        var armyGroupRosterTitle = MakeLabel("장수 편성 (선봉 필수 · 부관 선택 · 전투편성과 동일하게 체크)", 13, GoldBright);
+        box.AddChild(armyGroupRosterTitle);
         var tree = new Tree
         {
             Columns = 8,
@@ -9112,7 +9121,8 @@ public sealed partial class CampaignMapScene : Node3D
         };
         box.AddChild(tree);
 
-        box.AddChild(GoldRule());
+        var armyGroupFooterRule = GoldRule();
+        box.AddChild(armyGroupFooterRule);
         _depPreview = MakeLabel("", 12, Parchment);
         _depPreview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(_depPreview);
@@ -9122,8 +9132,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(save);
         UpdateArmyGroupPreview();
 
-        var contentH = box.GetCombinedMinimumSize().Y;
-        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        ApplyHorizontalComposeLayout(box, armyGroupTroopTitle, armyGroupRosterTitle, armyGroupFooterRule, scroll, mw, mh);
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
@@ -9254,7 +9263,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depProvLabel = null;
 
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.52f, 400f, 660f);
+        var mw = Mathf.Clamp(vp.X * 0.9f, 900f, 1180f);
         var mh = Mathf.Clamp(vp.Y * 0.9f, 360f, 820f); // 표가 고정 높이라, 모달은 내용에 맞춰 스크롤 없이 담기게
         var box = DeployScaffold(mw, out var scroll, out var panel);
 
@@ -9278,7 +9287,8 @@ public sealed partial class CampaignMapScene : Node3D
         var usedGens = ReservedDeployGenerals(editIndex, editingSupply: false);
 
         // 1) 병종
-        box.AddChild(MakeLabel("병종 (대기 병력)", 13, GoldBright));
+        var deployTroopTitle = MakeLabel("병종 (대기 병력)", 13, GoldBright);
+        box.AddChild(deployTroopTitle);
         var tg = new GridContainer { Columns = cols };
         tg.AddThemeConstantOverride("h_separation", 8);
         tg.AddThemeConstantOverride("v_separation", 8);
@@ -9368,12 +9378,13 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(modeRow);
         _depModeDesc = MakeLabel("", 11, Parchment);
         _depModeDesc.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _depModeDesc.CustomMinimumSize = new Vector2(mw - 60f, 0); // autowrap 최소높이 과대 추정 → 하단 여백 방지
+        _depModeDesc.CustomMinimumSize = new Vector2(Mathf.Min(460f, mw * 0.42f), 0);
         box.AddChild(_depModeDesc);
 
         // 3) 장수 편성 표 — 선봉·부관 체크 컬럼 + 정렬(고정 높이·내부 스크롤).
         _composeFree = _state.GeneralsAt(city).Where(g => !_state.IsGeneralBusy(g) && !usedGens.Contains(g)).OrderBy(g => g.Value).ToList();
-        box.AddChild(GoldRule());
+        var deployRosterRule = GoldRule();
+        box.AddChild(deployRosterRule);
         box.AddChild(MakeLabel("장수 편성 (선봉 필수 · 부관 선택)", 13, GoldBright));
         _vanTree = new Tree
         {
@@ -9423,7 +9434,8 @@ public sealed partial class CampaignMapScene : Node3D
         PopulateVanTree();
 
         // 5) 미리보기 + 확인
-        box.AddChild(GoldRule());
+        var deployFooterRule = GoldRule();
+        box.AddChild(deployFooterRule);
         _depPreview = MakeLabel("", 12, Parchment);
         _depPreview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _depPreview.CustomMinimumSize = new Vector2(mw - 60f, 0);
@@ -9462,8 +9474,7 @@ public sealed partial class CampaignMapScene : Node3D
         RestyleModes();
         UpdateProvLabel();
         UpdateDepPreview();
-        var contentH = box.GetCombinedMinimumSize().Y;
-        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        ApplyHorizontalComposeLayout(box, deployTroopTitle, deployRosterRule, deployFooterRule, scroll, mw, mh);
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
@@ -9493,6 +9504,119 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddThemeConstantOverride("separation", 8);
         scroll.AddChild(box);
         return box;
+    }
+
+    private void ApplyHorizontalComposeLayout(
+        VBoxContainer root,
+        Control leftStart,
+        Control rightStart,
+        Control footerStart,
+        ScrollContainer outerScroll,
+        float width,
+        float height)
+    {
+        var children = root.GetChildren().OfType<Control>().ToList();
+        var leftIndex = children.IndexOf(leftStart);
+        var rightIndex = children.IndexOf(rightStart);
+        var footerIndex = children.IndexOf(footerStart);
+        if (leftIndex < 0 || rightIndex <= leftIndex || footerIndex <= rightIndex) { return; }
+
+        var left = children.Skip(leftIndex).Take(rightIndex - leftIndex).ToList();
+        var right = children.Skip(rightIndex).Take(footerIndex - rightIndex).ToList();
+        InsertHorizontalComposeColumns(root, leftIndex, left, right, outerScroll, width, height);
+    }
+
+    private void ApplyTransportHorizontalComposeLayout(
+        VBoxContainer root,
+        Control description,
+        Control resourceForm,
+        Control rosterRule,
+        Control rosterTree,
+        Control troopStart,
+        Control preview,
+        ScrollContainer outerScroll,
+        float width,
+        float height)
+    {
+        var children = root.GetChildren().OfType<Control>().ToList();
+        var troopIndex = children.IndexOf(troopStart);
+        var previewIndex = children.IndexOf(preview);
+        var left = new List<Control> { description, resourceForm };
+        if (troopIndex >= 0 && previewIndex > troopIndex)
+        {
+            left.AddRange(children.Skip(troopIndex).Take(previewIndex - troopIndex));
+        }
+
+        var rosterIndex = children.IndexOf(rosterRule);
+        var treeIndex = children.IndexOf(rosterTree);
+        var right = rosterIndex >= 0 && treeIndex >= rosterIndex
+            ? children.Skip(rosterIndex).Take(treeIndex - rosterIndex + 1).ToList()
+            : new List<Control>();
+        InsertHorizontalComposeColumns(root, children.IndexOf(description), left, right, outerScroll, width, height);
+    }
+
+    private void InsertHorizontalComposeColumns(
+        VBoxContainer root,
+        int insertIndex,
+        IReadOnlyList<Control> leftNodes,
+        IReadOnlyList<Control> rightNodes,
+        ScrollContainer outerScroll,
+        float width,
+        float height)
+    {
+        var columns = new HBoxContainer
+        {
+            Name = "DeployComposeColumns",
+            CustomMinimumSize = new Vector2(0, Mathf.Clamp(height - 190f, 360f, 540f)),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        columns.SetMeta("horizontal_compose_layout", true);
+        columns.AddThemeConstantOverride("separation", 12);
+
+        VBoxContainer AddPane(string name, float ratio)
+        {
+            var frame = new PanelContainer
+            {
+                Name = name + "Frame",
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                SizeFlagsStretchRatio = ratio,
+                SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            };
+            frame.AddThemeStyleboxOverride("panel", Frame(new Color("16120e"), new Color("685735"), 1, 6, 8));
+            var paneScroll = new ScrollContainer
+            {
+                Name = name + "Scroll",
+                HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+                VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            };
+            paneScroll.SetMeta("compose_internal_scroll", true);
+            var pane = new VBoxContainer { Name = name, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            pane.AddThemeConstantOverride("separation", 8);
+            paneScroll.AddChild(pane);
+            frame.AddChild(paneScroll);
+            columns.AddChild(frame);
+            return pane;
+        }
+
+        var leftPane = AddPane("ComposeResources", 1.0f);
+        var rightPane = AddPane("ComposeOfficers", 1.15f);
+        root.AddChild(columns);
+        root.MoveChild(columns, System.Math.Max(0, insertIndex));
+        foreach (var node in leftNodes)
+        {
+            if (GodotObject.IsInstanceValid(node) && node.GetParent() == root) { root.RemoveChild(node); leftPane.AddChild(node); }
+        }
+        foreach (var node in rightNodes)
+        {
+            if (GodotObject.IsInstanceValid(node) && node.GetParent() == root) { root.RemoveChild(node); rightPane.AddChild(node); }
+        }
+
+        outerScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
+        outerScroll.CustomMinimumSize = new Vector2(width, Mathf.Clamp(height, 520f, 760f));
+        outerScroll.SetMeta("compose_outer_scroll_disabled", true);
     }
 
     // 패널을 화면 중앙에 두고, 핸들(제목줄)을 잡아 드래그할 수 있게 한다.

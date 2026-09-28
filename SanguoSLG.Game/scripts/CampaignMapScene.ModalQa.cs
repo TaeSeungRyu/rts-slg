@@ -410,4 +410,43 @@ public sealed partial class CampaignMapScene
         GD.Print($"[modal-framework-qa] cases={checkedCases}/9 passed={passed}");
         GetTree().Quit(passed ? 0 : 1);
     }
+
+    /// <summary>전투·보급·수송·집단군 편성창이 좌우형이며 전체 스크롤을 사용하지 않는지 검증한다.</summary>
+    private async void RunDeployComposeLayoutQa()
+    {
+        var city = _state.Cities.First(c => c.Owner == Player);
+        _depModalCity = city.Id;
+        var cases = new (string Name, System.Action Open)[]
+        {
+            ("combat", () => OpenDeployCompose(-1)),
+            ("supply", () => OpenSupplyCompose(-1)),
+            ("transport", () => OpenTransportCompose(city.Id)),
+            ("army-group", () => OpenArmyGroupCompose(-1)),
+        };
+        var passed = true;
+        foreach (var qa in cases)
+        {
+            qa.Open();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var columns = FindChild("DeployComposeColumns", true, false) as HBoxContainer;
+            var resources = FindChild("ComposeResourcesScroll", true, false) as ScrollContainer;
+            var officers = FindChild("ComposeOfficersScroll", true, false) as ScrollContainer;
+            var outer = _modalLayer?.FindChildren("*", "ScrollContainer", true, false)
+                .OfType<ScrollContainer>()
+                .FirstOrDefault(s => s.HasMeta("compose_outer_scroll_disabled"));
+            var casePassed = columns is not null
+                && columns.GetMeta("horizontal_compose_layout").AsBool()
+                && resources?.VerticalScrollMode == ScrollContainer.ScrollMode.Auto
+                && officers?.VerticalScrollMode == ScrollContainer.ScrollMode.Auto
+                && outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled;
+            passed &= casePassed;
+            GD.Print($"[deploy-layout-qa] type={qa.Name} passed={casePassed} columns={columns is not null} outerDisabled={outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled} internalScrolls={(resources is not null ? 1 : 0) + (officers is not null ? 1 : 0)}");
+            CloseModal();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
+        GD.Print($"[deploy-layout-qa] passed={passed} cases={cases.Length}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
 }
