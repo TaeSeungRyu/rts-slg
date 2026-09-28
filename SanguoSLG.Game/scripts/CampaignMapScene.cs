@@ -11222,6 +11222,31 @@ public sealed partial class CampaignMapScene : Node3D
         tree.SetMeta("all_officer_rows", showAllOfficerRows);
         tree.SetMeta("isolated_wheel_scroll", true);
         tree.SetMeta("passes_wheel_to_modal", showAllOfficerRows);
+        tree.SetMeta("passes_wheel_at_boundary", !showAllOfficerRows);
+        if (!showAllOfficerRows)
+        {
+            tree.GuiInput += input =>
+            {
+                if (input is not InputEventMouseButton { Pressed: true } wheel
+                    || wheel.ButtonIndex is not (MouseButton.WheelUp or MouseButton.WheelDown))
+                {
+                    return;
+                }
+
+                var innerBar = tree.FindChildren("*", "VScrollBar", true, false).OfType<VScrollBar>().FirstOrDefault();
+                if (innerBar is null) { return; }
+                var atTop = innerBar.Value <= innerBar.MinValue + 0.5;
+                var atBottom = innerBar.Value >= innerBar.MaxValue - innerBar.Page - 0.5;
+                var towardBoundary = wheel.ButtonIndex == MouseButton.WheelUp ? atTop : atBottom;
+                if (!towardBoundary) { return; }
+
+                var modalScroll = tree.FindParent("ModalBodyScroll") as ScrollContainer;
+                if (modalScroll is null) { return; }
+                var direction = wheel.ButtonIndex == MouseButton.WheelUp ? -1 : 1;
+                modalScroll.ScrollVertical += direction * 64;
+                tree.AcceptEvent();
+            };
+        }
         tree.AddThemeFontOverride("font", _font);
         tree.AddThemeFontSizeOverride("font_size", 15);
         tree.AddThemeFontOverride("title_button_font", _font);
