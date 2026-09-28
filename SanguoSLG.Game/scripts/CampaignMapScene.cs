@@ -6876,6 +6876,8 @@ public sealed partial class CampaignMapScene : Node3D
         tree.AddThemeFontSizeOverride("font_size", 13);
         tree.AddThemeFontOverride("title_button_font", _font);
         tree.AddThemeFontSizeOverride("title_button_font_size", 12);
+        tree.AddThemeConstantOverride("h_separation", 7);
+        tree.SetMeta("portrait_name_gap", 7);
         tree.SetColumnTitle(0, SortTitle(0, "이름")); tree.SetColumnExpand(0, true); tree.SetColumnExpandRatio(0, 2); tree.SetColumnCustomMinimumWidth(0, 96);
         foreach (var (col, t) in new[] { (1, "무"), (2, "지"), (3, "정") })
         {
@@ -6956,7 +6958,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             var (item, general) = portraitRows[i];
-            ApplyGeneralTreePortrait(item, 0, general);
+            ApplyGeneralTreePortrait(item, 0, general, goldBorder: true);
             if ((i + 1) % portraitBatchSize == 0)
             {
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -14056,6 +14058,7 @@ public sealed partial class CampaignMapScene : Node3D
     private async void RunGeneralRosterPerformanceQa()
     {
         _rosterPortraits.Clear();
+        _officerTablePortraits.Clear();
         var first = System.Diagnostics.Stopwatch.StartNew();
         OpenGeneralRoster();
         first.Stop();
@@ -14069,6 +14072,13 @@ public sealed partial class CampaignMapScene : Node3D
         var coldHydrated = tree?.HasMeta("portraits_loaded") == true
             && tree.GetMeta("portraits_loaded").AsInt32() == _state.Generals.Count;
         var deferredLoading = tree?.GetMeta("portraits_loaded_deferred", false).AsBool() == true;
+        var firstPortrait = tree?.GetRoot()?.GetFirstChild()?.GetIcon(0)?.GetImage();
+        var ringPixel = firstPortrait is not null && firstPortrait.GetWidth() >= 64
+            ? firstPortrait.GetPixel(32, 2)
+            : Colors.Transparent;
+        var thinGoldRing = ringPixel.A > 0.7f && ringPixel.R > 0.7f && ringPixel.G > 0.5f;
+        var portraitNameGap = tree?.GetMeta("portrait_name_gap").AsInt32() == 7
+            && tree.GetThemeConstant("h_separation") == 7;
         var thumbnailsReady = _state.Generals.All(g =>
         {
             var path = ProjectSettings.GlobalizePath($"res://assets/portraits/thumbnails/{g.Id.Value}.png");
@@ -14095,9 +14105,11 @@ public sealed partial class CampaignMapScene : Node3D
             && coldHydrated
             && warmHydrated
             && deferredLoading
+            && thinGoldRing
+            && portraitNameGap
             && first.ElapsedMilliseconds < initialModalLimitMilliseconds
             && second.ElapsedMilliseconds <= first.ElapsedMilliseconds;
-        GD.Print($"[maptestgeneralrosterqa] passed={passed} rows={rows}/{_state.Generals.Count} thumbnails={_rosterPortraits.Count} deferred={coldHydrated} compact={compactTextures} initialColdMs={first.ElapsedMilliseconds} initialWarmMs={second.ElapsedMilliseconds} limitMs={initialModalLimitMilliseconds}");
+        GD.Print($"[maptestgeneralrosterqa] passed={passed} rows={rows}/{_state.Generals.Count} thumbnails={_rosterPortraits.Count} deferred={coldHydrated} compact={compactTextures} goldRing={thinGoldRing} nameGap={portraitNameGap} initialColdMs={first.ElapsedMilliseconds} initialWarmMs={second.ElapsedMilliseconds} limitMs={initialModalLimitMilliseconds}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
