@@ -1375,9 +1375,10 @@ public sealed partial class CampaignMapScene : Node3D
             Name = "UnitVanguardPortrait",
             Texture = PortraitFor(vanguardId) ?? CircularPortraitFor(vanguardId),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
+        main.SetMeta("portrait_fit_without_crop", true);
         main.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         overlay.AddChild(main);
 
@@ -13799,6 +13800,8 @@ public sealed partial class CampaignMapScene : Node3D
         var adjutantLink = _infoRows.FindChild("UnitAdjutantGeneralLink", true, false) as Button;
         var layoutOk = visual?.GetMeta("commander_replaces_unit_art").AsBool() == true
             && vanguardPortrait?.Texture is not null
+            && vanguardPortrait.StretchMode == TextureRect.StretchModeEnum.KeepAspectCentered
+            && vanguardPortrait.GetMeta("portrait_fit_without_crop").AsBool()
             && adjutantPortrait?.GetMeta("adjutant_overlay").AsString() == "bottom_right_circle"
             && troopBadge?.GetMeta("recommended_troop_badge").AsString() == "top_left"
             && vanguardLink?.GetMeta("hover_underline").AsBool() == true
