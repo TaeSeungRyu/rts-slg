@@ -23,7 +23,7 @@ public sealed partial class CampaignMapScene
 
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.84f, 760f, 1080f);
-        var mh = Mathf.Clamp(vp.Y * 0.82f, 440f, 700f);
+        var mh = Mathf.Clamp(vp.Y * 0.92f, 560f, 820f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
@@ -185,8 +185,11 @@ public sealed partial class CampaignMapScene
         box.AddChild(apply);
         Validate();
         var contentH = box.GetCombinedMinimumSize().Y;
-        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
-        CenterAndDrag(panel, titleRow, mw, mh, box);
+        var fittedHeight = Mathf.Min(Mathf.Max(mh, contentH + 4f), vp.Y - 24f);
+        scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
+        scroll.CustomMinimumSize = new Vector2(mw, fittedHeight);
+        scroll.SetMeta("batch_modal_scroll_disabled", true);
+        CenterAndDrag(panel, titleRow, mw, fittedHeight, box);
     }
 
     private void ReopenBatchDeployCompose(int cityId, List<BatchDeployDraft> drafts)
@@ -244,13 +247,15 @@ public sealed partial class CampaignMapScene
             });
     }
 
-    private void RunBatchDeployQa()
+    private async void RunBatchDeployQa()
     {
         var city = _state.Cities.First(c => c.Owner == Player && !c.IsPort
             && _state.Garrisons.Any(g => g.City == c.Id && g.Troops > 0));
         var beforeState = _state;
         var beforePending = _pendingDeploys.Count;
         OpenBatchDeployCompose(city.Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var labels = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>().ToList() ?? [];
         var options = _modalLayer?.FindChildren("*", "OptionButton", true, false).OfType<OptionButton>().ToList() ?? [];
         var troopOptions = options.Where(option => option.Name.ToString().StartsWith("BatchDeployTroopType", System.StringComparison.Ordinal)).ToList();
@@ -263,6 +268,10 @@ public sealed partial class CampaignMapScene
             && troopAmounts.All(amount => amount.CustomMinimumSize.X <= 92)
             && goldAmounts.All(gold => gold.CustomMinimumSize.X <= 92)
             && removes.All(remove => remove.CustomMinimumSize.X <= 56);
+        var batchScroll = _modalLayer?.FindChildren("*", "ScrollContainer", true, false).OfType<ScrollContainer>()
+            .FirstOrDefault(scroll => scroll.GetMeta("batch_modal_scroll_disabled").AsBool());
+        var noModalScroll = batchScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
+            && batchScroll.GetVScrollBar().MaxValue - batchScroll.GetVScrollBar().Page <= batchScroll.GetVScrollBar().MinValue + 0.5;
         var passed = ReferenceEquals(beforeState, _state)
             && beforePending == _pendingDeploys.Count
             && labels.Any(label => label.Text.Contains("일괄전투편성"))
@@ -272,8 +281,9 @@ public sealed partial class CampaignMapScene
             && goldAmounts.Count == troopAmounts.Count
             && removes.Count == troopAmounts.Count
             && unitCards == troopAmounts.Count
-            && compactColumns;
-        GD.Print($"[maptestbatchdeployqa] passed={passed} rows={troopAmounts.Count} troopOptions={troopOptions.Count} gold={goldAmounts.Count} remove={removes.Count} unitCards={unitCards} compact={compactColumns} stateUnchanged={ReferenceEquals(beforeState, _state)} pending={beforePending}/{_pendingDeploys.Count}");
+            && compactColumns
+            && noModalScroll;
+        GD.Print($"[maptestbatchdeployqa] passed={passed} rows={troopAmounts.Count} troopOptions={troopOptions.Count} gold={goldAmounts.Count} remove={removes.Count} unitCards={unitCards} compact={compactColumns} noScroll={noModalScroll} stateUnchanged={ReferenceEquals(beforeState, _state)} pending={beforePending}/{_pendingDeploys.Count}");
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }
