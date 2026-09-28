@@ -1300,12 +1300,13 @@ public sealed partial class CampaignMapScene : Node3D
         if (u.VanguardId is { } vanguardId)
         {
             _infoRows.AddChild(UnitCommanderVisual(u, vanguardId));
-            var names = new VBoxContainer { Name = "UnitGeneralLinks", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-            names.AddThemeConstantOverride("separation", 3);
-            names.AddChild(UnitGeneralLink("선봉", vanguardId, van ?? "—", unitId));
+            var roles = new HBoxContainer { Name = "UnitGeneralRoleCards", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            roles.SetMeta("role_card_layout", "side_by_side");
+            roles.AddThemeConstantOverride("separation", 7);
+            roles.AddChild(UnitGeneralRoleCard("선봉", vanguardId, van ?? "—", unitId));
             if (u.AdjutantId is { } adjutantId)
-                names.AddChild(UnitGeneralLink("부관", adjutantId, adj ?? "—", unitId));
-            _infoRows.AddChild(names);
+                roles.AddChild(UnitGeneralRoleCard("부관", adjutantId, adj ?? "—", unitId));
+            _infoRows.AddChild(roles);
         }
         else
         {
@@ -1422,12 +1423,46 @@ public sealed partial class CampaignMapScene : Node3D
         return frame;
     }
 
+    private Control UnitGeneralRoleCard(string role, GeneralId generalId, string name, int unitId)
+    {
+        var primary = role == "선봉";
+        var accent = primary ? GoldBright : new Color(0.62f, 0.76f, 0.88f);
+        var card = new PanelContainer
+        {
+            Name = primary ? "UnitVanguardRoleCard" : "UnitAdjutantRoleCard",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 58),
+        };
+        card.SetMeta("unit_general_role_card", true);
+        card.SetMeta("general_role", role);
+        card.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.064f, 0.055f), new Color(accent, 0.75f), 1, 7, 6));
+
+        var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", 7);
+        card.AddChild(row);
+
+        var badge = new PanelContainer { CustomMinimumSize = new Vector2(34, 34), MouseFilter = Control.MouseFilterEnum.Ignore };
+        badge.AddThemeStyleboxOverride("panel", Frame(new Color(accent, 0.14f), accent, 1, 17, 1));
+        var badgeText = MakeLabel(primary ? "先" : "副", 13, accent);
+        badgeText.HorizontalAlignment = HorizontalAlignment.Center;
+        badgeText.VerticalAlignment = VerticalAlignment.Center;
+        badge.AddChild(badgeText);
+        row.AddChild(badge);
+
+        var copy = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
+        copy.AddThemeConstantOverride("separation", 0);
+        copy.AddChild(MakeLabel(primary ? "선봉장 · 부대 지휘" : "부관 · 전투 보좌", 10, new Color(accent, 0.86f)));
+        copy.AddChild(UnitGeneralLink(role, generalId, name, unitId));
+        row.AddChild(copy);
+        return card;
+    }
+
     private Button UnitGeneralLink(string role, GeneralId generalId, string name, int unitId)
     {
         var link = new Button
         {
             Name = role == "선봉" ? "UnitVanguardGeneralLink" : "UnitAdjutantGeneralLink",
-            Text = $"{role} · {name}",
+            Text = name,
             Flat = true,
             Alignment = HorizontalAlignment.Left,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand,
@@ -13796,6 +13831,9 @@ public sealed partial class CampaignMapScene : Node3D
         var vanguardPortrait = _infoRows.FindChild("UnitVanguardPortrait", true, false) as TextureRect;
         var adjutantPortrait = _infoRows.FindChild("UnitAdjutantPortrait", true, false) as PanelContainer;
         var troopBadge = _infoRows.FindChild("UnitTroopBadge", true, false) as MarginContainer;
+        var roleCards = _infoRows.FindChild("UnitGeneralRoleCards", true, false) as HBoxContainer;
+        var vanguardRoleCard = _infoRows.FindChild("UnitVanguardRoleCard", true, false) as PanelContainer;
+        var adjutantRoleCard = _infoRows.FindChild("UnitAdjutantRoleCard", true, false) as PanelContainer;
         var vanguardLink = _infoRows.FindChild("UnitVanguardGeneralLink", true, false) as Button;
         var adjutantLink = _infoRows.FindChild("UnitAdjutantGeneralLink", true, false) as Button;
         var layoutOk = visual?.GetMeta("commander_replaces_unit_art").AsBool() == true
@@ -13804,6 +13842,9 @@ public sealed partial class CampaignMapScene : Node3D
             && vanguardPortrait.GetMeta("portrait_fit_without_crop").AsBool()
             && adjutantPortrait?.GetMeta("adjutant_overlay").AsString() == "bottom_right_circle"
             && troopBadge?.GetMeta("recommended_troop_badge").AsString() == "top_left"
+            && roleCards?.GetMeta("role_card_layout").AsString() == "side_by_side"
+            && vanguardRoleCard?.GetMeta("general_role").AsString() == "선봉"
+            && adjutantRoleCard?.GetMeta("general_role").AsString() == "부관"
             && vanguardLink?.GetMeta("hover_underline").AsBool() == true
             && adjutantLink?.GetMeta("hover_underline").AsBool() == true;
 
@@ -13812,7 +13853,7 @@ public sealed partial class CampaignMapScene : Node3D
         var detailOpened = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
             .Any(label => label.Text.Contains(generals[0].Name, System.StringComparison.Ordinal)) == true;
         var passed = layoutOk && detailOpened;
-        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} detail={detailOpened} badge={troopBadge is not null} adjutant={adjutantPortrait is not null}");
+        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} detail={detailOpened} badge={troopBadge is not null} adjutant={adjutantPortrait is not null} roleCards={roleCards?.GetChildCount() ?? 0}");
         CloseModal();
         _state = original;
         _infoCard.Visible = false;
