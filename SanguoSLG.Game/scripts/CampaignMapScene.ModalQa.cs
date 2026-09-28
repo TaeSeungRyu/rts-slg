@@ -39,9 +39,41 @@ public sealed partial class CampaignMapScene
             && stationedTable?.ScrollVerticalEnabled == true
             && stationedTable.MouseForcePassScrollEvents == false
             && stationedTable.SizeFlagsVertical.HasFlag(Control.SizeFlags.ExpandFill);
-        var passed = expected > 0 && roundedGarrisons && mapWheelBlocked && stationedInternalScroll;
-        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} modalHeight={outerScroll?.CustomMinimumSize.Y ?? 0} tabHeight={tabPanel?.CustomMinimumSize.Y ?? 0}");
+        var modalHeight = outerScroll?.CustomMinimumSize.Y ?? 0;
+        var tabHeight = tabPanel?.CustomMinimumSize.Y ?? 0;
         CloseModal();
+
+        var originalState = _state;
+        var originalTab = _cityDetailTab;
+        var actor = _state.GeneralsAt(city.Id).First();
+        var sampleCommand = new SanguoSLG.Core.Simulation.CityCommand(city.Id,
+            SanguoSLG.Core.Domain.CommandKind.Explore, actor, null, _state.Day, _state.Day + 7, 0);
+        _state = _state with { PendingCommands = _state.Commands.Append(sampleCommand).ToList() };
+        _cityDetailTab = 1;
+        OpenCityDetail(city.Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var commandRows = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
+            .Count(panel => panel.HasMeta("city_detail_officer_row")) ?? 0;
+        var commandPortraits = _modalLayer?.FindChildren("CityDetailOfficerPortrait", "TextureRect", true, false).Count ?? 0;
+        var commandTableLayout = commandRows >= 1 && commandPortraits >= 1;
+        CloseModal();
+
+        _state = originalState;
+        var garrison = _state.Garrisons.First(g => g.City == city.Id);
+        _pendingDeploys.Add((new SanguoSLG.Core.Simulation.DeployRequest(city.Id, garrison.TroopCode,
+            Math.Min(1000, garrison.Troops), actor), "QA 전투편성 예약"));
+        _cityDetailTab = 2;
+        OpenCityDetail(city.Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var deployRows = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
+            .Count(panel => panel.HasMeta("city_detail_officer_row")) ?? 0;
+        var deployPortraits = _modalLayer?.FindChildren("CityDetailOfficerPortrait", "TextureRect", true, false).Count ?? 0;
+        var deployTableLayout = deployRows >= 1 && deployPortraits >= 1;
+        _pendingDeploys.RemoveAt(_pendingDeploys.Count - 1);
+        _cityDetailTab = originalTab;
+        var passed = expected > 0 && roundedGarrisons && mapWheelBlocked && stationedInternalScroll
+            && commandTableLayout && deployTableLayout;
+        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} modalHeight={modalHeight} tabHeight={tabHeight} commandRows={commandRows}:{commandTableLayout} deployRows={deployRows}:{deployTableLayout}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

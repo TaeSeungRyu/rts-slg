@@ -5854,24 +5854,14 @@ public sealed partial class CampaignMapScene : Node3D
     {
         box.AddChild(MakeLabel("진행 중 명령 (시작 전만 취소 가능 · 환불 없음)", 14, GoldBright));
         if (cmds.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); return; }
+        box.AddChild(CityDetailListHeader("명령", "상태"));
         foreach (var pending in cmds)
         {
             var cmd = pending;
-            var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 8);
             // 재생 중엔 _state가 진행 전 스냅숏이라 StartDay 가드가 통과함 — _advancing도 차단
             var started = _advancing || _state.Day != cmd.StartDay;
-            var lbl = MakeLabel("· " + CmdText(cmd) + (started ? "  (진행중)" : ""), 12, Parchment);
-            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            lbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            lbl.CustomMinimumSize = new Vector2(1, 0);
-            row.AddChild(lbl);
-            if (started) { box.AddChild(row); continue; }
-            var cancel = MakeButton("취소");
-            cancel.CustomMinimumSize = new Vector2(56, 24);
-            cancel.Pressed += () => ShowConfirm("명령 취소",
-                $"{CmdText(cmd)}\n\n취소하면 예약된 자원·비용은 돌려받지 못합니다. 장수는 즉시 해제됩니다.",
-                () =>
+            System.Action? cancel = started ? null : () => ShowConfirm("명령 취소",
+                $"{CmdText(cmd)}\n\n취소하면 예약된 자원·비용은 돌려받지 못합니다. 장수는 즉시 해제됩니다.", () =>
                 {
                     _state = CommandService.Cancel(_state, cmd);
                     Dbg($"UI cancel-cmd city={city.Value} {KindName(cmd.Kind)} gen={cmd.Main.Value}");
@@ -5879,8 +5869,7 @@ public sealed partial class CampaignMapScene : Node3D
                     SelectCity(city);
                     OpenCityDetail(city);
                 });
-            row.AddChild(cancel);
-            box.AddChild(row);
+            box.AddChild(CityDetailOfficerRow(cmd.Main, CmdText(cmd), started ? "진행중" : "대기", cancel));
         }
     }
 
@@ -5889,78 +5878,116 @@ public sealed partial class CampaignMapScene : Node3D
     {
         box.AddChild(MakeLabel("출전 예약 (진행 시 편성 — 취소 시 소모 없음)", 14, GoldBright));
         if (deploys.Count == 0 && supplyDeploys.Count == 0 && transportDeploys.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
+        else { box.AddChild(CityDetailListHeader("예약 내용", "상태")); }
         foreach (var di in deploys)
         {
             var idx = di;
-            var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 8);
-            var lbl = MakeLabel("· " + _pendingDeploys[idx].Label, 12, Parchment);
-            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            lbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            lbl.CustomMinimumSize = new Vector2(1, 0);
-            row.AddChild(lbl);
-            if (_advancing) { box.AddChild(row); continue; }
-            var cancel = MakeButton("취소");
-            cancel.CustomMinimumSize = new Vector2(56, 24);
-            cancel.Pressed += () =>
+            System.Action? cancel = _advancing ? null : () =>
             {
                 Dbg($"UI cancel-deploy pending[{idx}] '{_pendingDeploys[idx].Label}'");
                 _pendingDeploys.RemoveAt(idx);
                 SelectCity(city);
                 OpenCityDetail(city);
             };
-            row.AddChild(cancel);
-            box.AddChild(row);
+            box.AddChild(CityDetailOfficerRow(_pendingDeploys[idx].Req.Vanguard,
+                _pendingDeploys[idx].Label, "예약", cancel));
         }
 
         foreach (var si in supplyDeploys)
         {
             var idx = si;
-            var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 8);
-            var lbl = MakeLabel("· [보급] " + _pendingSupplyDeploys[idx].Label, 12, Parchment);
-            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            lbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            lbl.CustomMinimumSize = new Vector2(1, 0);
-            row.AddChild(lbl);
-            if (_advancing) { box.AddChild(row); continue; }
-            var cancel = MakeButton("취소");
-            cancel.CustomMinimumSize = new Vector2(56, 24);
-            cancel.Pressed += () =>
+            System.Action? cancel = _advancing ? null : () =>
             {
                 Dbg($"UI cancel-supply pending[{idx}] '{_pendingSupplyDeploys[idx].Label}'");
                 _pendingSupplyDeploys.RemoveAt(idx);
                 SelectCity(city);
                 OpenCityDetail(city);
             };
-            row.AddChild(cancel);
-            box.AddChild(row);
+            box.AddChild(CityDetailOfficerRow(_pendingSupplyDeploys[idx].Req.Vanguard,
+                "[보급] " + _pendingSupplyDeploys[idx].Label, "예약", cancel));
         }
 
         foreach (var ti in transportDeploys)
         {
             var idx = ti;
-            var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 8);
-            var lbl = MakeLabel("· [수송] " + _pendingTransportDeploys[idx].Label, 12, Parchment);
-            lbl.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            lbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            lbl.CustomMinimumSize = new Vector2(1, 0);
-            row.AddChild(lbl);
-            if (_advancing) { box.AddChild(row); continue; }
-            var cancel = MakeButton("취소");
-            cancel.CustomMinimumSize = new Vector2(56, 24);
-            cancel.Pressed += () =>
+            System.Action? cancel = _advancing ? null : () =>
             {
                 Dbg($"UI cancel-transport pending[{idx}] '{_pendingTransportDeploys[idx].Label}'");
                 _pendingTransportDeploys.RemoveAt(idx);
                 SelectCity(city);
                 OpenCityDetail(city);
             };
-            row.AddChild(cancel);
-            box.AddChild(row);
+            box.AddChild(CityDetailOfficerRow(_pendingTransportDeploys[idx].Req.Vanguard,
+                "[수송] " + _pendingTransportDeploys[idx].Label, "예약", cancel));
         }
 
+    }
+
+    private Control CityDetailListHeader(string contentTitle, string statusTitle)
+    {
+        var header = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        header.AddThemeConstantOverride("separation", 8);
+        var officer = MakeLabel("장수", 12, new Color(Parchment, 0.72f));
+        officer.CustomMinimumSize = new Vector2(132, 0);
+        header.AddChild(officer);
+        var content = MakeLabel(contentTitle, 12, new Color(Parchment, 0.72f));
+        content.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        header.AddChild(content);
+        var status = MakeLabel(statusTitle, 12, new Color(Parchment, 0.72f));
+        status.CustomMinimumSize = new Vector2(54, 0);
+        status.HorizontalAlignment = HorizontalAlignment.Center;
+        header.AddChild(status);
+        header.AddChild(new Control { CustomMinimumSize = new Vector2(56, 0) });
+        return header;
+    }
+
+    private PanelContainer CityDetailOfficerRow(GeneralId officerId, string contentText, string statusText, System.Action? onCancel)
+    {
+        var rowPanel = new PanelContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        rowPanel.SetMeta("city_detail_officer_row", true);
+        rowPanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.05f, 0.92f), new Color(Gold, 0.38f), 1, 6, 5));
+        var row = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        row.AddThemeConstantOverride("separation", 8);
+        rowPanel.AddChild(row);
+
+        var officerCell = new HBoxContainer { CustomMinimumSize = new Vector2(132, 42) };
+        officerCell.AddThemeConstantOverride("separation", 6);
+        var portrait = new TextureRect
+        {
+            Name = "CityDetailOfficerPortrait",
+            Texture = RosterPortraitFor(officerId),
+            CustomMinimumSize = new Vector2(36, 36),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        };
+        officerCell.AddChild(portrait);
+        var officerName = MakeLabel(_state.Generals.FirstOrDefault(g => g.Id == officerId)?.Name ?? "-", 13, GoldBright);
+        officerName.VerticalAlignment = VerticalAlignment.Center;
+        officerCell.AddChild(officerName);
+        row.AddChild(officerCell);
+
+        var content = MakeLabel(contentText, 12, Parchment);
+        content.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        content.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        content.VerticalAlignment = VerticalAlignment.Center;
+        row.AddChild(content);
+        var status = MakeLabel(statusText, 12, GoldBright);
+        status.CustomMinimumSize = new Vector2(54, 0);
+        status.HorizontalAlignment = HorizontalAlignment.Center;
+        status.VerticalAlignment = VerticalAlignment.Center;
+        row.AddChild(status);
+        if (onCancel is null)
+        {
+            row.AddChild(new Control { CustomMinimumSize = new Vector2(56, 0) });
+        }
+        else
+        {
+            var cancel = MakeButton("취소");
+            cancel.CustomMinimumSize = new Vector2(56, 26);
+            cancel.Pressed += onCancel;
+            row.AddChild(cancel);
+        }
+        return rowPanel;
     }
 
     // 대기 병력 카드 — 병종 엠블럼 + 이름(신병) + 병력·훈련도.
