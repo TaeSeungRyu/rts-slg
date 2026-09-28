@@ -262,6 +262,7 @@ public sealed partial class CampaignMapScene : Node3D
     private IReadOnlyList<PassiveSkill> _passiveSkills = [];
     private IReadOnlyList<AdminSkill> _adminSkills = [];
     private IReadOnlyDictionary<string, AdminSkill> _adminSkillMap = new Dictionary<string, AdminSkill>();
+    private IReadOnlyDictionary<string, string> _regionNames = new Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase);
     private Tree? _vanTree;              // 장수 편성 표(선봉·부관 체크 + 정렬·내부 스크롤)
     private List<GeneralId> _composeFree = new();
     private int _vanSortCol = 2;         // 2 이름 / 3 무 / 4 지 / 5 정 / 6 적성·특성
@@ -465,6 +466,8 @@ public sealed partial class CampaignMapScene : Node3D
         _passiveSkills = passives;
         _adminSkills = new AdminSkillLoader().LoadFromDirectory(dataDirectory);
         _adminSkillMap = _adminSkills.ToDictionary(s => s.Code, System.StringComparer.Ordinal);
+        _regionNames = new RegionLoader().LoadFromDirectory(dataDirectory)
+            .ToDictionary(region => region.Code, region => region.Name, System.StringComparer.OrdinalIgnoreCase);
         _balance = new BalanceConfig(MonthlyTaxPerCity: 100);
         _provPer10kPerDay = _balance.ProvisionsPer10kPerDay;
 
@@ -7447,7 +7450,10 @@ public sealed partial class CampaignMapScene : Node3D
 
         var meta = new List<string> { $"상태 {GeneralStatus(gid)}" };
         if (g.Birth != 0) { meta.Add(g.Birth < 0 ? $"기원전 {-g.Birth}년생" : $"{g.Birth}년생"); }
-        if (g.Region.Length > 0) { meta.Add($"출신 {g.Region}"); }
+        if (g.Region.Length > 0)
+        {
+            meta.Add($"출신 {(_regionNames.TryGetValue(g.Region, out var regionName) ? regionName : g.Region)}");
+        }
         var metaLbl = MakeLabel(string.Join(" · ", meta), 12, Parchment);
         metaLbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         metaLbl.HorizontalAlignment = HorizontalAlignment.Center;
@@ -13908,14 +13914,18 @@ public sealed partial class CampaignMapScene : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var detailOpened = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
             .Any(label => label.Text.Contains(generals[0].Name, System.StringComparison.Ordinal)) == true;
+        var expectedRegion = _regionNames.GetValueOrDefault(generals[0].Region, generals[0].Region);
+        var regionTranslated = string.IsNullOrWhiteSpace(generals[0].Region)
+            || _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
+                .Any(label => label.Text.Contains($"출신 {expectedRegion}", System.StringComparison.Ordinal)) == true;
         var roleCardCount = roleCards?.GetChildCount() ?? 0;
         CloseModal();
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var restoredAfterDismiss = _infoCard.Visible
             && _infoRows.FindChild("UnitCommanderVisual", true, false) is PanelContainer;
-        var passed = layoutOk && detailOpened && restoredAfterDismiss;
-        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} detail={detailOpened} restored={restoredAfterDismiss} badge={troopBadge is not null} adjutant={adjutantPortrait is not null} roleCards={roleCardCount}");
+        var passed = layoutOk && detailOpened && regionTranslated && restoredAfterDismiss;
+        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} detail={detailOpened} regionKo={regionTranslated}:{expectedRegion} restored={restoredAfterDismiss} badge={troopBadge is not null} adjutant={adjutantPortrait is not null} roleCards={roleCardCount}");
         _state = original;
         _infoCard.Visible = false;
         GetTree().Quit(passed ? 0 : 1);
