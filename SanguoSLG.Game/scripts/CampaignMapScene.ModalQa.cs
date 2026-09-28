@@ -438,6 +438,8 @@ public sealed partial class CampaignMapScene
             var columns = FindChild("DeployComposeColumns", true, false) as HBoxContainer;
             var resources = FindChild("ComposeResourcesScroll", true, false) as ScrollContainer;
             var officers = FindChild("ComposeOfficersScroll", true, false) as ScrollContainer;
+            var officerFrame = FindChild("ComposeOfficersFrame", true, false) as PanelContainer;
+            var officerTable = FindChild("ComposeOfficerTable", true, false) as Tree;
             var outer = _modalLayer?.FindChildren("*", "ScrollContainer", true, false)
                 .OfType<ScrollContainer>()
                 .FirstOrDefault(s => s.HasMeta("compose_outer_scroll_disabled"));
@@ -448,6 +450,11 @@ public sealed partial class CampaignMapScene
                     : ScrollContainer.ScrollMode.Auto)
                 && (qa.Name != "combat" || resources.GetMeta("compose_left_scroll_disabled").AsBool())
                 && officers?.VerticalScrollMode == ScrollContainer.ScrollMode.Auto
+                && officerFrame?.SizeFlagsStretchRatio >= 1.35f
+                && officerTable?.GetMeta("compose_officer_table_expanded").AsBool() == true
+                && officerTable.CustomMinimumSize.Y >= 360
+                && officerTable.SizeFlagsVertical == Control.SizeFlags.ExpandFill
+                && officerTable.ScrollVerticalEnabled
                 && outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled;
             passed &= casePassed;
             GD.Print($"[deploy-layout-qa] type={qa.Name} passed={casePassed} columns={columns is not null} outerDisabled={outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled} internalScrolls={(resources is not null ? 1 : 0) + (officers is not null ? 1 : 0)}");

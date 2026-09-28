@@ -5315,13 +5315,17 @@ public sealed partial class CampaignMapScene : Node3D
             .ToList();
         _vanTree = new Tree
         {
+            Name = "ComposeOfficerTable",
             Columns = 7,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, 190),
+            CustomMinimumSize = new Vector2(0, 360),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            ScrollVerticalEnabled = true,
         };
+        _vanTree.SetMeta("compose_officer_table_expanded", true);
         _vanTree.AddThemeFontOverride("font", _font);
         _vanTree.AddThemeFontSizeOverride("font_size", 13);
         _vanTree.AddThemeFontOverride("title_button_font", _font);
@@ -8515,13 +8519,17 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(MakeLabel("수송 장수 선택 (표에서 1명 선택)", 13, GoldBright));
         var generalTree = new Tree
         {
+            Name = "ComposeOfficerTable",
             Columns = 5,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, 180),
+            CustomMinimumSize = new Vector2(0, 360),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            ScrollVerticalEnabled = true,
         };
+        generalTree.SetMeta("compose_officer_table_expanded", true);
         generalTree.AddThemeFontOverride("font", _font);
         generalTree.AddThemeFontSizeOverride("font_size", 13);
         generalTree.AddThemeFontOverride("title_button_font", _font);
@@ -9039,13 +9047,17 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(armyGroupRosterTitle);
         var tree = new Tree
         {
+            Name = "ComposeOfficerTable",
             Columns = 8,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, 180),
+            CustomMinimumSize = new Vector2(0, 360),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            ScrollVerticalEnabled = true,
         };
+        tree.SetMeta("compose_officer_table_expanded", true);
         tree.AddThemeFontOverride("font", _font);
         tree.AddThemeFontSizeOverride("font_size", 12);
         tree.AddThemeFontOverride("title_button_font", _font);
@@ -9364,13 +9376,17 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(MakeLabel("장수 편성 (선봉 필수 · 부관 선택)", 13, GoldBright));
         _vanTree = new Tree
         {
+            Name = "ComposeOfficerTable",
             Columns = 8,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, 200),
+            CustomMinimumSize = new Vector2(0, 360),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            ScrollVerticalEnabled = true,
         };
+        _vanTree.SetMeta("compose_officer_table_expanded", true);
         _vanTree.AddThemeFontOverride("font", _font);
         _vanTree.AddThemeFontSizeOverride("font_size", 13);
         _vanTree.AddThemeFontOverride("title_button_font", _font);
@@ -9583,7 +9599,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         var leftPane = AddPane("ComposeResources", 1.0f);
-        var rightPane = AddPane("ComposeOfficers", 1.15f);
+        var rightPane = AddPane("ComposeOfficers", 1.35f);
         if (disableLeftScroll && leftPane.GetParent() is ScrollContainer leftScroll)
         {
             leftScroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
