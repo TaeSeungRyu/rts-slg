@@ -34,6 +34,7 @@ public sealed partial class CampaignMapScene
         var outerScroll = _modalLayer?.FindChild("CityDetailOuterScroll", true, false) as ScrollContainer;
         var tabPanel = _modalLayer?.FindChild("CityDetailTabPanel", true, false) as PanelContainer;
         var stationedTable = _modalLayer?.FindChild("CityDetailStationedTable", true, false) as Tree;
+        var stationedGoldPortraits = stationedTable?.GetMeta("thin_gold_portraits").AsBool() == true;
         var stationedInternalScroll = outerScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
             && tabPanel?.CustomMinimumSize.Y >= 250f
             && stationedTable?.ScrollVerticalEnabled == true
@@ -54,7 +55,11 @@ public sealed partial class CampaignMapScene
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var commandRows = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
             .Count(panel => panel.HasMeta("city_detail_officer_row")) ?? 0;
-        var commandPortraits = _modalLayer?.FindChildren("CityDetailOfficerPortrait", "TextureRect", true, false).Count ?? 0;
+        var commandPortraitNodes = _modalLayer?.FindChildren("CityDetailOfficerPortrait", "TextureRect", true, false)
+            .OfType<TextureRect>().ToList() ?? [];
+        var commandPortraits = commandPortraitNodes.Count;
+        var commandGoldPortraits = commandPortraitNodes.Count > 0
+            && commandPortraitNodes.All(portrait => portrait.GetMeta("thin_gold_border").AsBool());
         var commandTableLayout = commandRows >= 1 && commandPortraits >= 1;
         CloseModal();
 
@@ -67,13 +72,18 @@ public sealed partial class CampaignMapScene
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var deployRows = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
             .Count(panel => panel.HasMeta("city_detail_officer_row")) ?? 0;
-        var deployPortraits = _modalLayer?.FindChildren("CityDetailOfficerPortrait", "TextureRect", true, false).Count ?? 0;
+        var deployPortraitNodes = _modalLayer?.FindChildren("CityDetailOfficerPortrait", "TextureRect", true, false)
+            .OfType<TextureRect>().ToList() ?? [];
+        var deployPortraits = deployPortraitNodes.Count;
+        var deployGoldPortraits = deployPortraitNodes.Count > 0
+            && deployPortraitNodes.All(portrait => portrait.GetMeta("thin_gold_border").AsBool());
         var deployTableLayout = deployRows >= 1 && deployPortraits >= 1;
         _pendingDeploys.RemoveAt(_pendingDeploys.Count - 1);
         _cityDetailTab = originalTab;
         var passed = expected > 0 && roundedGarrisons && mapWheelBlocked && stationedInternalScroll
-            && commandTableLayout && deployTableLayout;
-        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} modalHeight={modalHeight} tabHeight={tabHeight} commandRows={commandRows}:{commandTableLayout} deployRows={deployRows}:{deployTableLayout}");
+            && commandTableLayout && deployTableLayout
+            && stationedGoldPortraits && commandGoldPortraits && deployGoldPortraits;
+        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} modalHeight={modalHeight} tabHeight={tabHeight} commandRows={commandRows}:{commandTableLayout} deployRows={deployRows}:{deployTableLayout} goldPortraits={stationedGoldPortraits}/{commandGoldPortraits}/{deployGoldPortraits}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

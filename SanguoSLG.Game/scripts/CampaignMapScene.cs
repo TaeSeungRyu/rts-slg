@@ -5805,6 +5805,7 @@ public sealed partial class CampaignMapScene : Node3D
             ScrollVerticalEnabled = true,
             MouseForcePassScrollEvents = false,
         };
+        gt.SetMeta("thin_gold_portraits", true);
         gt.AddThemeFontOverride("font", _font);
         gt.AddThemeFontSizeOverride("font_size", 14);
         gt.AddThemeFontOverride("title_button_font", _font);
@@ -5830,7 +5831,7 @@ public sealed partial class CampaignMapScene : Node3D
             var role = isGov && isStra ? "태수·군사" : isGov ? "태수" : isStra ? "군사" : null;
             var it = gt.CreateItem(groot);
             it.SetText(0, (role is not null ? "◆ " : "") + gen.Name);
-            ApplyGeneralTreePortrait(it, 0, gen.Id);
+            ApplyGeneralTreePortrait(it, 0, gen.Id, goldBorder: true);
             it.SetText(1, gen.Might.ToString());
             it.SetText(2, gen.Intellect.ToString());
             it.SetText(3, gen.Politics.ToString());
@@ -5955,11 +5956,12 @@ public sealed partial class CampaignMapScene : Node3D
         var portrait = new TextureRect
         {
             Name = "CityDetailOfficerPortrait",
-            Texture = RosterPortraitFor(officerId),
+            Texture = OfficerTablePortraitFor(officerId),
             CustomMinimumSize = new Vector2(36, 36),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
         };
+        portrait.SetMeta("thin_gold_border", true);
         officerCell.AddChild(portrait);
         var officerName = MakeLabel(_state.Generals.FirstOrDefault(g => g.Id == officerId)?.Name ?? "-", 13, GoldBright);
         officerName.VerticalAlignment = VerticalAlignment.Center;
