@@ -31,8 +31,16 @@ public sealed partial class CampaignMapScene
         var wheelBlockers = _modalLayer?.FindChildren("*", "Control", true, false).OfType<Control>()
             .Count(control => control.HasMeta("blocks_map_wheel") && control.GetMeta("blocks_map_wheel").AsBool()) ?? 0;
         var mapWheelBlocked = wheelBlockers >= 2;
-        var passed = expected > 0 && roundedGarrisons && mapWheelBlocked;
-        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers}");
+        var outerScroll = _modalLayer?.FindChild("CityDetailOuterScroll", true, false) as ScrollContainer;
+        var tabPanel = _modalLayer?.FindChild("CityDetailTabPanel", true, false) as PanelContainer;
+        var stationedTable = _modalLayer?.FindChild("CityDetailStationedTable", true, false) as Tree;
+        var stationedInternalScroll = outerScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
+            && tabPanel?.CustomMinimumSize.Y >= 250f
+            && stationedTable?.ScrollVerticalEnabled == true
+            && stationedTable.MouseForcePassScrollEvents == false
+            && stationedTable.SizeFlagsVertical.HasFlag(Control.SizeFlags.ExpandFill);
+        var passed = expected > 0 && roundedGarrisons && mapWheelBlocked && stationedInternalScroll;
+        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} modalHeight={outerScroll?.CustomMinimumSize.Y ?? 0} tabHeight={tabPanel?.CustomMinimumSize.Y ?? 0}");
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }

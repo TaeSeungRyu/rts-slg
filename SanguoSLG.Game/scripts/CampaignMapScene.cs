@@ -5425,8 +5425,12 @@ public sealed partial class CampaignMapScene : Node3D
         _openCityDetailCity = city;
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.52f, 460f, 680f);
-        var mh = Mathf.Clamp(vp.Y * 0.88f, 420f, 820f);
+        var mh = Mathf.Clamp(vp.Y * 0.94f, 460f, 900f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
+        scroll.Name = "CityDetailOuterScroll";
+        scroll.VerticalScrollMode = vp.Y >= 760f
+            ? ScrollContainer.ScrollMode.Disabled
+            : ScrollContainer.ScrollMode.Auto;
         panel.SetMeta("blocks_map_wheel", true);
         panel.GuiInput += input =>
         {
@@ -5554,7 +5558,13 @@ public sealed partial class CampaignMapScene : Node3D
         tabBar.AddThemeConstantOverride("separation", 3);
         tabWrap.AddChild(tabBar);
 
-        var contentPanel = new PanelContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        var contentPanel = new PanelContainer
+        {
+            Name = "CityDetailTabPanel",
+            CustomMinimumSize = new Vector2(0, Mathf.Clamp(vp.Y * 0.34f, 250f, 340f)),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
         contentPanel.AddThemeStyleboxOverride("panel", TabContentStyle());
         tabWrap.AddChild(contentPanel);
         var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -5784,12 +5794,16 @@ public sealed partial class CampaignMapScene : Node3D
 
         var gt = new Tree
         {
+            Name = "CityDetailStationedTable",
             Columns = 5,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, Mathf.Min(44 + stationed.Count * 29, 320)),
+            CustomMinimumSize = new Vector2(0, 0),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            ScrollVerticalEnabled = true,
+            MouseForcePassScrollEvents = false,
         };
         gt.AddThemeFontOverride("font", _font);
         gt.AddThemeFontSizeOverride("font_size", 14);
