@@ -499,6 +499,13 @@ public sealed partial class CampaignMapScene
             var outer = _modalLayer?.FindChildren("*", "ScrollContainer", true, false)
                 .OfType<ScrollContainer>()
                 .FirstOrDefault(s => s.HasMeta("compose_outer_scroll_disabled"));
+            var aptitudeHeader = qa.Name != "combat" || officerTable?.GetColumnTitle(6) == "적성";
+            var aptitudeGradesOnly = true;
+            if (qa.Name == "combat" && officerTable?.GetRoot()?.GetFirstChild() is { } officerRow)
+            {
+                var grade = officerRow.GetText(6);
+                aptitudeGradesOnly = grade == "—" || System.Text.RegularExpressions.Regex.IsMatch(grade, "^(F|D|C|B|A|A\\+|S|SS|SSS)$");
+            }
             var casePassed = columns is not null
                 && columns.GetMeta("horizontal_compose_layout").AsBool()
                 && resources?.VerticalScrollMode == (qa.Name == "combat"
@@ -512,9 +519,11 @@ public sealed partial class CampaignMapScene
                 && officerTable.CustomMinimumSize.Y >= columns.CustomMinimumSize.Y * 0.9f - 1f
                 && officerTable.SizeFlagsVertical == Control.SizeFlags.ExpandFill
                 && officerTable.ScrollVerticalEnabled
-                && outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled;
+                && outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
+                && aptitudeHeader
+                && aptitudeGradesOnly;
             passed &= casePassed;
-            GD.Print($"[deploy-layout-qa] type={qa.Name} passed={casePassed} columns={columns is not null} outerDisabled={outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled} internalScrolls={(resources is not null ? 1 : 0) + (officers is not null ? 1 : 0)}");
+            GD.Print($"[deploy-layout-qa] type={qa.Name} passed={casePassed} columns={columns is not null} outerDisabled={outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled} internalScrolls={(resources is not null ? 1 : 0) + (officers is not null ? 1 : 0)} aptitude={aptitudeHeader}/{aptitudeGradesOnly}");
             CloseModal();
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }

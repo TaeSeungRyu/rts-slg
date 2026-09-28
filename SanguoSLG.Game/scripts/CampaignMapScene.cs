@@ -265,7 +265,7 @@ public sealed partial class CampaignMapScene : Node3D
     private IReadOnlyDictionary<string, string> _regionNames = new Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase);
     private Tree? _vanTree;              // 장수 편성 표(선봉·부관 체크 + 정렬·내부 스크롤)
     private List<GeneralId> _composeFree = new();
-    private int _vanSortCol = 2;         // 2 이름 / 3 무 / 4 지 / 5 정 / 6 적성·특성
+    private int _vanSortCol = 2;         // 2 이름 / 3 무 / 4 지 / 5 정 / 6 적성
     private bool _vanSortAsc = true;
     private int _depProvDays; // 출전 시 휴대할 군량 일수(슬라이더). 0이면 군량 없이 나감
     private int _depGold;
@@ -9595,7 +9595,7 @@ public sealed partial class CampaignMapScene : Node3D
             _vanTree.SetColumnCustomMinimumWidth(col, 36);
         }
 
-        _vanTree.SetColumnTitle(6, "적성·특성");
+        _vanTree.SetColumnTitle(6, "적성");
         _vanTree.SetColumnExpand(6, true);
         _vanTree.SetColumnExpandRatio(6, 2);
         _vanTree.SetColumnTitle(7, "현재 담당업무");
@@ -10548,18 +10548,14 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
-    // 적성·특성 표기: 선택한 병종에 대한 적성 등급 + 전투 특기(있으면). 병종 미선택이면 등급 생략.
+    // 선택한 병종에 대한 영문 적성 등급만 표시한다.
     private string AptTraitText(General g)
     {
-        var parts = new List<string>();
         if (_depTroop is { } code && _troops.FirstOrDefault(t => t.Code == code) is { } tmpl)
         {
-            parts.Add($"적성 {g.AptitudeFor(tmpl.Class)}");
+            return g.AptitudeFor(tmpl.Class).ToString();
         }
-
-        if (!string.IsNullOrEmpty(g.BattleActive)) { parts.Add(g.BattleActive!); }
-        if (g.Passives.Count > 0) { parts.Add($"특기 {g.Passives.Count}"); }
-        return parts.Count > 0 ? string.Join(" · ", parts) : "—";
+        return "—";
     }
 
     private void RestyleModes()
