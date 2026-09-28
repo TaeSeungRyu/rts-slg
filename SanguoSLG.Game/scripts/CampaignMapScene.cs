@@ -1431,27 +1431,37 @@ public sealed partial class CampaignMapScene : Node3D
         {
             Name = primary ? "UnitVanguardRoleCard" : "UnitAdjutantRoleCard",
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(0, 58),
+            CustomMinimumSize = new Vector2(0, 46),
         };
         card.SetMeta("unit_general_role_card", true);
         card.SetMeta("general_role", role);
-        card.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.064f, 0.055f), new Color(accent, 0.75f), 1, 7, 6));
+        card.SetMeta("vertical_content_alignment", "center");
+        card.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.064f, 0.055f), new Color(accent, 0.75f), 1, 7, 4));
 
-        var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        row.AddThemeConstantOverride("separation", 7);
+        var row = new HBoxContainer
+        {
+            Alignment = BoxContainer.AlignmentMode.Center,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        row.AddThemeConstantOverride("separation", 6);
         card.AddChild(row);
 
-        var badge = new PanelContainer { CustomMinimumSize = new Vector2(34, 34), MouseFilter = Control.MouseFilterEnum.Ignore };
-        badge.AddThemeStyleboxOverride("panel", Frame(new Color(accent, 0.14f), accent, 1, 17, 1));
-        var badgeText = MakeLabel(primary ? "先" : "副", 13, accent);
+        var badge = new PanelContainer { CustomMinimumSize = new Vector2(28, 28), MouseFilter = Control.MouseFilterEnum.Ignore };
+        badge.AddThemeStyleboxOverride("panel", Frame(new Color(accent, 0.14f), accent, 1, 14, 1));
+        var badgeText = MakeLabel(primary ? "先" : "副", 12, accent);
         badgeText.HorizontalAlignment = HorizontalAlignment.Center;
         badgeText.VerticalAlignment = VerticalAlignment.Center;
         badge.AddChild(badgeText);
         row.AddChild(badge);
 
-        var copy = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
+        var copy = new VBoxContainer
+        {
+            Alignment = BoxContainer.AlignmentMode.Center,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
         copy.AddThemeConstantOverride("separation", 0);
-        copy.AddChild(MakeLabel(primary ? "선봉장 · 부대 지휘" : "부관 · 전투 보좌", 10, new Color(accent, 0.86f)));
+        copy.AddChild(MakeLabel(primary ? "선봉장 · 부대 지휘" : "부관 · 전투 보좌", 9, new Color(accent, 0.86f)));
         copy.AddChild(UnitGeneralLink(role, generalId, name, unitId));
         row.AddChild(copy);
         return card;
@@ -1467,7 +1477,7 @@ public sealed partial class CampaignMapScene : Node3D
             Alignment = HorizontalAlignment.Left,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand,
             TooltipText = $"{name} 장수 정보 보기",
-            CustomMinimumSize = new Vector2(0, 25),
+            CustomMinimumSize = new Vector2(0, 20),
         };
         link.SetMeta("general_detail_link", generalId.Value);
         link.SetMeta("hover_underline", true);
@@ -13845,6 +13855,10 @@ public sealed partial class CampaignMapScene : Node3D
             && roleCards?.GetMeta("role_card_layout").AsString() == "side_by_side"
             && vanguardRoleCard?.GetMeta("general_role").AsString() == "선봉"
             && adjutantRoleCard?.GetMeta("general_role").AsString() == "부관"
+            && vanguardRoleCard.CustomMinimumSize.Y <= 46f
+            && adjutantRoleCard.CustomMinimumSize.Y <= 46f
+            && vanguardRoleCard.GetMeta("vertical_content_alignment").AsString() == "center"
+            && adjutantRoleCard.GetMeta("vertical_content_alignment").AsString() == "center"
             && vanguardLink?.GetMeta("hover_underline").AsBool() == true
             && adjutantLink?.GetMeta("hover_underline").AsBool() == true;
 
