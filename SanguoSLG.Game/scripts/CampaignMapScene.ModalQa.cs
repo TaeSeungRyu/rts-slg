@@ -4,6 +4,36 @@ namespace SanguoSLG.Game;
 
 public sealed partial class CampaignMapScene
 {
+    private async void RunCityDetailUiQa()
+    {
+        var city = _state.Cities.FirstOrDefault(c => c.Owner == Player);
+        if (city is null)
+        {
+            GD.PrintErr("[city-detail-qa] passed=False reason=missing-city");
+            GetTree().Quit(1);
+            return;
+        }
+
+        OpenCityDetail(city.Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var garrisonFrames = _modalLayer?.FindChildren("*", "PanelContainer", true, false)
+            .OfType<PanelContainer>()
+            .Where(panel => panel.HasMeta("rounded_garrison_art")
+                && panel.GetMeta("rounded_garrison_art").AsBool())
+            .ToList() ?? [];
+        var expected = _state.Garrisons.Count(g => g.City == city.Id);
+        var roundedGarrisons = garrisonFrames.Count == expected && garrisonFrames.All(frame =>
+        {
+            var style = frame.GetThemeStylebox("panel") as StyleBoxFlat;
+            return style is not null && style.CornerRadiusTopLeft == 7 && style.BorderWidthLeft == 1;
+        });
+        var passed = expected > 0 && roundedGarrisons;
+        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons}");
+        CloseModal();
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     /// <summary>탐색·외교 및 8명 이하 수행 장수 표는 행 전체를 보이고 내부 세로 스크롤을 쓰지 않는다.</summary>
     private async void RunOfficerTableLayoutQa()
     {

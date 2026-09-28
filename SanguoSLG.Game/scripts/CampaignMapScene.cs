@@ -549,6 +549,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestmodalframeworkqa")) CallDeferred(nameof(RunAdaptiveModalFrameworkQa));
         if (args.Contains("--maptestdoctrineperformanceqa")) CallDeferred(nameof(RunDoctrineModalPerformanceQa));
         if (args.Contains("--maptestofficertableqa")) CallDeferred(nameof(RunOfficerTableLayoutQa));
+        if (args.Contains("--maptestcitydetailqa")) CallDeferred(nameof(RunCityDetailUiQa));
     }
 
     public override void _ExitTree()
@@ -5941,14 +5942,16 @@ public sealed partial class CampaignMapScene : Node3D
         var v = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         v.AddThemeConstantOverride("separation", 2);
         card.AddChild(v);
-        v.AddChild(new TextureRect
+        var iconFrame = new PanelContainer
         {
-            Texture = UnitCard(g.TroopCode, tmpl?.Class),
-            CustomMinimumSize = new Vector2(34, 34),
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            CustomMinimumSize = new Vector2(40, 40),
             SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
-        });
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        iconFrame.SetMeta("rounded_garrison_art", true);
+        iconFrame.AddThemeStyleboxOverride("panel", Frame(new Color(0.045f, 0.038f, 0.032f, 0.96f), new Color(Gold, 0.82f), 1, 7, 2));
+        iconFrame.AddChild(FixedIcon(RoundedOptionTexture(UnitCard(g.TroopCode, tmpl?.Class), 36), 36));
+        v.AddChild(iconFrame);
         var name = MakeLabel(TroopName(g.TroopCode) + (g.Trainee ? " (신병)" : ""), 11, GoldBright);
         name.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(name);
@@ -10633,7 +10636,7 @@ public sealed partial class CampaignMapScene : Node3D
         return rateIndex >= 0 && rateIndex + 1 == _autoRecruitRateParam;
     }
 
-    private readonly Dictionary<Texture2D, ImageTexture> _roundedOptionTextures = new();
+    private readonly Dictionary<(Texture2D Icon, int Size), ImageTexture> _roundedOptionTextures = new();
 
     private Control FramedOptionIcon(Texture2D icon)
     {
@@ -10653,7 +10656,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private ImageTexture RoundedOptionTexture(Texture2D icon, int size)
     {
-        if (_roundedOptionTextures.TryGetValue(icon, out var cached)) return cached;
+        if (_roundedOptionTextures.TryGetValue((icon, size), out var cached)) return cached;
         var source = icon.GetImage();
         source.Resize(size, size, Image.Interpolation.Lanczos);
         var output = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
@@ -10674,7 +10677,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         var texture = ImageTexture.CreateFromImage(output);
-        _roundedOptionTextures[icon] = texture;
+        _roundedOptionTextures[(icon, size)] = texture;
         return texture;
     }
 
