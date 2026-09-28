@@ -10793,61 +10793,80 @@ public sealed partial class CampaignMapScene : Node3D
         var fundingTitle = MakeLabel("연구비 분담 도시", 19, GoldBright);
         fundingTitle.Name = "ResearchFundingTitle";
         box.AddChild(fundingTitle);
-        box.AddChild(MakeLabel("보유 성별 연구비 부담 비율입니다. 비율을 0으로 두면 해당 성은 이번 연구비를 부담하지 않습니다.", 13, Parchment));
+        box.AddChild(MakeLabel("도시별 비율을 정합니다. 0인 도시는 이번 연구비를 부담하지 않습니다.", 13, Parchment));
         var fundingPanel = new PanelContainer
         {
             Name = "ResearchFundingPanel",
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
-        fundingPanel.SetMeta("research_funding_table", true);
+        fundingPanel.SetMeta("research_funding_cards", true);
         fundingPanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.055f, 0.045f, 0.038f, 0.96f), new Color(Gold, 0.78f), 1, 8, 8));
         box.AddChild(fundingPanel);
 
-        var fundingRows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        fundingRows.AddThemeConstantOverride("separation", 5);
-        fundingPanel.AddChild(fundingRows);
-
-        var header = new HBoxContainer
+        var columns = ResearchFundingColumnCount(cities.Count, GetViewport().GetVisibleRect().Size.X);
+        var rows = (int)Math.Ceiling(cities.Count / (double)columns);
+        var fundingScroll = new ScrollContainer
         {
-            Name = "ResearchFundingHeader",
-            CustomMinimumSize = new Vector2(0, 34),
+            Name = "ResearchFundingScroll",
+            CustomMinimumSize = new Vector2(0, Mathf.Min(220, rows * 108 + 8)),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = rows > 2 ? ScrollContainer.ScrollMode.Auto : ScrollContainer.ScrollMode.Disabled,
+            MouseFilter = Control.MouseFilterEnum.Stop,
+            MouseForcePassScrollEvents = false,
+        };
+        fundingScroll.SetMeta("funding_city_capacity", 30);
+        fundingPanel.AddChild(fundingScroll);
+
+        var fundingGrid = new GridContainer
+        {
+            Name = "ResearchFundingCardGrid",
+            Columns = columns,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
-        header.AddThemeConstantOverride("separation", 10);
-        fundingRows.AddChild(header);
-        AddFundingCell(header, "도시", 0, expand: true, GoldBright);
-        AddFundingCell(header, "보유 금", 126, color: Gold);
-        AddFundingCell(header, "분담 비율", 116, color: Gold);
-        AddFundingCell(header, "예상 분담", 136, color: Gold);
+        fundingGrid.SetMeta("funding_card_columns", columns);
+        fundingGrid.AddThemeConstantOverride("h_separation", 8);
+        fundingGrid.AddThemeConstantOverride("v_separation", 8);
+        fundingScroll.AddChild(fundingGrid);
 
         for (var cityIndex = 0; cityIndex < cities.Count; cityIndex++)
         {
             var c = cities[cityIndex];
-            var rowPanel = new PanelContainer
+            var cityCard = new PanelContainer
             {
-                Name = $"ResearchFundingRow{c.Id.Value}",
+                Name = $"ResearchFundingCard{c.Id.Value}",
+                CustomMinimumSize = new Vector2(214, 100),
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             };
-            rowPanel.SetMeta("research_funding_row", c.Id.Value);
+            cityCard.SetMeta("research_funding_row", c.Id.Value);
+            cityCard.SetMeta("research_funding_card", true);
             var rowColor = cityIndex % 2 == 0
                 ? new Color(0.10f, 0.08f, 0.065f, 0.92f)
                 : new Color(0.075f, 0.062f, 0.052f, 0.92f);
-            rowPanel.AddThemeStyleboxOverride("panel", Frame(rowColor, new Color(Gold, 0.24f), 1, 5, 5));
-            fundingRows.AddChild(rowPanel);
+            cityCard.AddThemeStyleboxOverride("panel", Frame(rowColor, new Color(Gold, 0.46f), 1, 7, 7));
+            fundingGrid.AddChild(cityCard);
 
-            var row = new HBoxContainer
-            {
-                CustomMinimumSize = new Vector2(0, 32),
-                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            };
-            row.AddThemeConstantOverride("separation", 10);
-            rowPanel.AddChild(row);
+            var cardBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            cardBox.AddThemeConstantOverride("separation", 4);
+            cityCard.AddChild(cardBox);
 
-            var cityLabel = MakeLabel($"◆  {c.Name}", 15, Parchment);
+            var headline = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            cardBox.AddChild(headline);
+            var cityLabel = MakeLabel($"◆ {c.Name}", 15, Parchment);
             cityLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             cityLabel.VerticalAlignment = VerticalAlignment.Center;
-            row.AddChild(cityLabel);
-            AddFundingCell(row, $"{c.Gold:N0}금", 126, color: GoldBright);
+            headline.AddChild(cityLabel);
+            var goldLabel = MakeLabel($"{c.Gold:N0}금", 13, GoldBright);
+            goldLabel.HorizontalAlignment = HorizontalAlignment.Right;
+            headline.AddChild(goldLabel);
+
+            var ratioRow = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            ratioRow.AddThemeConstantOverride("separation", 6);
+            cardBox.AddChild(ratioRow);
+            var ratioLabel = MakeLabel("분담 비율", 12, new Color(Parchment, 0.78f));
+            ratioLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            ratioLabel.VerticalAlignment = VerticalAlignment.Center;
+            ratioRow.AddChild(ratioLabel);
             var ratio = ApplyNumberInputStyle(new SpinBox
             {
                 Name = $"ResearchFundingRatio{c.Id.Value}",
@@ -10855,36 +10874,29 @@ public sealed partial class CampaignMapScene : Node3D
                 MaxValue = 10,
                 Step = 1,
                 Value = 1,
-                CustomMinimumSize = new Vector2(108, 26),
+                CustomMinimumSize = new Vector2(78, 26),
                 SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             });
             ApplyCompactFundingInputStyle(ratio);
             ratio.ValueChanged += _ => RefreshResearchFundingPreview();
             _researchFundingRatios[c.Id.Value] = ratio;
-            row.AddChild(ratio);
+            ratioRow.AddChild(ratio);
             var amount = MakeLabel("", 14, Parchment);
             amount.Name = $"ResearchFundingAmount{c.Id.Value}";
-            amount.HorizontalAlignment = HorizontalAlignment.Center;
+            amount.HorizontalAlignment = HorizontalAlignment.Right;
             amount.VerticalAlignment = VerticalAlignment.Center;
-            amount.CustomMinimumSize = new Vector2(136, 0);
-            row.AddChild(amount);
+            cardBox.AddChild(amount);
         }
 
         _researchFundingPreview = MakeLabel("", 14, Parchment);
         box.AddChild(_researchFundingPreview);
         RefreshResearchFundingPreview();
 
-        void AddFundingCell(HBoxContainer parent, string text, float width, bool expand = false, Color? color = null)
-        {
-            var label = MakeLabel(text, 14, color ?? Parchment);
-            label.HorizontalAlignment = HorizontalAlignment.Center;
-            label.VerticalAlignment = VerticalAlignment.Center;
-            label.CustomMinimumSize = new Vector2(width, 0);
-            if (expand) { label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; }
-            parent.AddChild(label);
-        }
     }
+
+    private static int ResearchFundingColumnCount(int cityCount, float viewportWidth)
+        => System.Math.Min(System.Math.Max(1, cityCount), viewportWidth >= 1450f ? 5 : viewportWidth >= 1050f ? 4 : 3);
 
     private void AddSectionDivider(VBoxContainer box, string name)
     {
@@ -13587,8 +13599,21 @@ public sealed partial class CampaignMapScene : Node3D
         var fundingPanel = _modalLayer?.FindChild("ResearchFundingPanel", true, false) as PanelContainer;
         var fundingRowCount = fundingPanel?.FindChildren("*", "PanelContainer", true, false)
             .OfType<PanelContainer>().Count(x => x.HasMeta("research_funding_row")) ?? 0;
-        var fundingLayoutOk = fundingPanel?.HasMeta("research_funding_table") == true
-            && fundingRowCount == ownedCityCount;
+        var fundingScroll = _modalLayer?.FindChild("ResearchFundingScroll", true, false) as ScrollContainer;
+        var fundingGrid = _modalLayer?.FindChild("ResearchFundingCardGrid", true, false) as GridContainer;
+        var fundingCards = fundingPanel?.FindChildren("*", "PanelContainer", true, false)
+            .OfType<PanelContainer>().Where(x => x.HasMeta("research_funding_card")
+                && x.GetMeta("research_funding_card").AsBool()).ToList() ?? [];
+        var fundingLayoutOk = fundingPanel?.HasMeta("research_funding_cards") == true
+            && fundingRowCount == ownedCityCount
+            && fundingCards.Count == ownedCityCount
+            && fundingCards.All(card => card.CustomMinimumSize == new Vector2(214, 100))
+            && fundingScroll?.GetMeta("funding_city_capacity").AsInt32() == 30
+            && fundingScroll.CustomMinimumSize.Y <= 220f
+            && fundingScroll.HorizontalScrollMode == ScrollContainer.ScrollMode.Disabled
+            && fundingGrid?.Columns == ResearchFundingColumnCount(ownedCityCount, viewportSize.X)
+            && ResearchFundingColumnCount(30, 960) == 3
+            && ResearchFundingColumnCount(30, 1600) == 5;
         var compactFundingInputs = _researchFundingRatios.Count == ownedCityCount
             && _researchFundingRatios.Values.All(spin => spin.CustomMinimumSize.Y <= 26f
                 && spin.GetLineEdit().CustomMinimumSize.Y <= 24f);
@@ -13625,7 +13650,7 @@ public sealed partial class CampaignMapScene : Node3D
             && generalResearchUsesStars
             && framedGeneralResearchArt
             && GeneralResearchRules.Definitions.All(d => names.Contains(d.Name));
-        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 framedArt={framedGeneralResearchArt} detail={detailPlacementOk} fundingDivider={fundingDividerOk} officerDivider={officerDividerOk} fundingRows={fundingRowCount}/{ownedCityCount} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} stars={generalResearchUsesStars} names={string.Join(',', names)} ok={ok}");
+        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 framedArt={framedGeneralResearchArt} detail={detailPlacementOk} fundingDivider={fundingDividerOk} officerDivider={officerDividerOk} fundingCards={fundingRowCount}/{ownedCityCount} fundingColumns={fundingGrid?.Columns ?? 0} fundingHeight={fundingScroll?.CustomMinimumSize.Y ?? 0} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} stars={generalResearchUsesStars} names={string.Join(',', names)} ok={ok}");
         CloseModal();
         GetWindow().Size = originalWindowSize;
         GetTree().Quit(ok ? 0 : 1);
