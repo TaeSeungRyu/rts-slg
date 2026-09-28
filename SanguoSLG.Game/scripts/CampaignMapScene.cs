@@ -11540,10 +11540,9 @@ public sealed partial class CampaignMapScene : Node3D
         const int compactOfficerRowLimit = 8;
         const int scrollableOfficerTableHeight = 330;
         var isTrainingOfficer = cmd.Kind == CommandKind.AppointTrainingOfficer;
-        var fillsModalBottom = cmd.Kind is CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer;
-        var officerTableHeight = isTrainingOfficer
-            ? Mathf.Clamp(GetViewport().GetVisibleRect().Size.Y * 0.68f, 420f, 760f)
-            : fillsModalBottom ? 220f : scrollableOfficerTableHeight;
+        var fillsModalBottom = cmd.Kind is CommandKind.AppointSecurityOfficer
+            or CommandKind.AppointDomesticOfficer or CommandKind.AppointTrainingOfficer;
+        var officerTableHeight = fillsModalBottom ? 220f : scrollableOfficerTableHeight;
         var showAllOfficerRows = free.Count <= compactOfficerRowLimit
             || cmd.Kind is CommandKind.Explore or CommandKind.FormAlliance or CommandKind.BreakAlliance;
         const int officerRowHeight = 46;

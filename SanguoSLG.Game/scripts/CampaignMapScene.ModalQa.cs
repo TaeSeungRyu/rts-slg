@@ -240,14 +240,24 @@ public sealed partial class CampaignMapScene
             command => command.Kind == SanguoSLG.Core.Domain.CommandKind.AppointTrainingOfficer);
         OpenModal(trainingIndex);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var trainingTable = _modalLayer?.FindChild("CommandOfficerTable", true, false) as Tree;
-        var expectedTrainingHeight = Mathf.Clamp(GetViewport().GetVisibleRect().Size.Y * 0.68f, 420f, 760f);
+        var trainingModalScroll = _modalLayer?.FindChild("ModalBodyScroll", true, false) as ScrollContainer;
+        var trainingBottomGap = trainingTable is not null && trainingModalScroll is not null
+            ? trainingModalScroll.GetGlobalRect().End.Y - trainingTable.GetGlobalRect().End.Y
+            : -1f;
+        var trainingModalBar = trainingModalScroll?.GetVScrollBar();
+        var noOuterScroll = trainingModalBar is not null
+            && trainingModalBar.MaxValue - trainingModalBar.Page <= trainingModalBar.MinValue + 0.5;
         var trainingFillOk = trainingTable?.GetMeta("officer_table_fill_ratio").AsSingle() >= 0.9f
-            && trainingTable.CustomMinimumSize.Y >= expectedTrainingHeight - 1f
+            && trainingTable.GetMeta("fills_modal_bottom").AsBool()
+            && trainingTable.GetMeta("modal_bottom_reserve_ratio").AsSingle() == 0.05f
+            && trainingBottomGap >= -1f && trainingBottomGap <= trainingModalScroll!.Size.Y * 0.08f
             && trainingTable.SizeFlagsVertical == Control.SizeFlags.ExpandFill
-            && trainingTable.ScrollVerticalEnabled;
+            && trainingTable.ScrollVerticalEnabled
+            && noOuterScroll;
         passed &= trainingFillOk;
-        results.Add($"훈련담당:표90%:{trainingFillOk}:{trainingTable?.CustomMinimumSize.Y ?? 0:0}");
+        results.Add($"훈련담당:하단5%·외부스크롤없음:{trainingFillOk}:{trainingTable?.CustomMinimumSize.Y ?? 0:0}/{trainingBottomGap:0}/{noOuterScroll}");
         CloseModal();
 
         var changanCount = _state.GeneralsAt(new SanguoSLG.Core.Domain.CityId(1)).Distinct().Count();
