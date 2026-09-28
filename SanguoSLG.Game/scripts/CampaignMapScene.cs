@@ -11540,9 +11540,10 @@ public sealed partial class CampaignMapScene : Node3D
         const int compactOfficerRowLimit = 8;
         const int scrollableOfficerTableHeight = 330;
         var isTrainingOfficer = cmd.Kind == CommandKind.AppointTrainingOfficer;
+        var fillsModalBottom = cmd.Kind is CommandKind.AppointSecurityOfficer or CommandKind.AppointDomesticOfficer;
         var officerTableHeight = isTrainingOfficer
             ? Mathf.Clamp(GetViewport().GetVisibleRect().Size.Y * 0.68f, 420f, 760f)
-            : scrollableOfficerTableHeight;
+            : fillsModalBottom ? 220f : scrollableOfficerTableHeight;
         var showAllOfficerRows = free.Count <= compactOfficerRowLimit
             || cmd.Kind is CommandKind.Explore or CommandKind.FormAlliance or CommandKind.BreakAlliance;
         const int officerRowHeight = 46;
@@ -11572,6 +11573,7 @@ public sealed partial class CampaignMapScene : Node3D
         tree.SetMeta("wheel_scroll_priority", "down_modal_then_table_up_table_then_modal");
         tree.SetMeta("explicit_internal_wheel_scroll", !showAllOfficerRows);
         tree.SetMeta("officer_table_fill_ratio", isTrainingOfficer ? 0.9f : 0f);
+        tree.SetMeta("fills_modal_bottom", fillsModalBottom);
         if (!showAllOfficerRows)
         {
             var officerScrollIndex = 0;
@@ -11714,9 +11716,25 @@ public sealed partial class CampaignMapScene : Node3D
             BuildOfficerCards(city, cmdIndex);
         };
         _modalOfficers.AddChild(tree);
+        if (fillsModalBottom)
+        {
+            Callable.From(() => FitOfficerTableToModalBottom(tree)).CallDeferred();
+        }
         return;
 
         int StatFor(General g) => relevant switch { 1 => g.Might, 2 => g.Intellect, _ => g.Politics };
+    }
+
+    private static void FitOfficerTableToModalBottom(Tree tree)
+    {
+        if (!GodotObject.IsInstanceValid(tree) || tree.IsQueuedForDeletion()) return;
+        var modalScroll = tree.FindParent("ModalBodyScroll") as ScrollContainer;
+        if (modalScroll is null || modalScroll.Size.Y <= 0f) return;
+        var reserve = modalScroll.Size.Y * 0.05f;
+        var available = modalScroll.GetGlobalRect().End.Y - tree.GetGlobalRect().Position.Y - reserve;
+        tree.CustomMinimumSize = new Vector2(tree.CustomMinimumSize.X,
+            Mathf.Clamp(available, 220f, modalScroll.Size.Y * 0.95f));
+        tree.SetMeta("modal_bottom_reserve_ratio", 0.05f);
     }
 
     private StyleBoxFlat CardBox(bool selected, bool hover = false) => selected

@@ -148,10 +148,11 @@ public sealed partial class CampaignMapScene
         var commandIndices = Cmds.Select((command, index) => (command, index))
             .Where(x => x.command.Kind is SanguoSLG.Core.Domain.CommandKind.Explore
                 or SanguoSLG.Core.Domain.CommandKind.FormAlliance
-                or SanguoSLG.Core.Domain.CommandKind.AppointSecurityOfficer)
+                or SanguoSLG.Core.Domain.CommandKind.AppointSecurityOfficer
+                or SanguoSLG.Core.Domain.CommandKind.AppointDomesticOfficer)
             .Select(x => x.index)
             .ToList();
-        if (city is null || commandIndices.Count != 3)
+        if (city is null || commandIndices.Count != 4)
         {
             GD.PrintErr("[officer-table-qa] passed=False reason=missing-city-or-command");
             GetTree().Quit(1);
@@ -171,7 +172,16 @@ public sealed partial class CampaignMapScene
             var showAllRows = Cmds[commandIndex].Kind is SanguoSLG.Core.Domain.CommandKind.Explore
                 or SanguoSLG.Core.Domain.CommandKind.FormAlliance
                 or SanguoSLG.Core.Domain.CommandKind.BreakAlliance;
+            var fillsBottom = Cmds[commandIndex].Kind is SanguoSLG.Core.Domain.CommandKind.AppointSecurityOfficer
+                or SanguoSLG.Core.Domain.CommandKind.AppointDomesticOfficer;
             var expectedHeight = showAllRows ? 48 + rows * 46 : Mathf.Min(48 + rows * 46, 330);
+            var modalScroll = _modalLayer?.FindChild("ModalBodyScroll", true, false) as ScrollContainer;
+            var bottomGap = table is not null && modalScroll is not null
+                ? modalScroll.GetGlobalRect().End.Y - table.GetGlobalRect().End.Y
+                : -1f;
+            var bottomFillOk = !fillsBottom || (table?.GetMeta("fills_modal_bottom").AsBool() == true
+                && table.GetMeta("modal_bottom_reserve_ratio").AsSingle() == 0.05f
+                && bottomGap >= -1f && bottomGap <= modalScroll!.Size.Y * 0.08f);
             var firstRow = table?.GetRoot()?.GetFirstChild();
             var hasObsoleteHints = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
                 .Any(label => label.Text.Contains("행 클릭", System.StringComparison.Ordinal)
@@ -192,10 +202,11 @@ public sealed partial class CampaignMapScene
                 && table.MouseForcePassScrollEvents == showAllRows
                 && table.GetMeta("passes_wheel_to_modal").AsBool() == showAllRows
                 && table.CustomMinimumSize.Y >= expectedHeight
+                && bottomFillOk
                 && portraitLayout
                 && !hasObsoleteHints;
             passed &= ok;
-            results.Add($"{Cmds[commandIndex].Label}:{rows}:{table?.CustomMinimumSize.Y ?? 0}:금테두리{goldRing}:초상{portraitLayout}:안내문구{!hasObsoleteHints}:{ok}");
+            results.Add($"{Cmds[commandIndex].Label}:{rows}:{table?.CustomMinimumSize.Y ?? 0}:하단{bottomGap:0}:금테두리{goldRing}:초상{portraitLayout}:안내문구{!hasObsoleteHints}:{ok}");
             CloseModal();
         }
 
