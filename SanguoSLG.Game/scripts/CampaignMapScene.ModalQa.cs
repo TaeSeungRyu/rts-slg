@@ -125,6 +125,7 @@ public sealed partial class CampaignMapScene
     private void RunPaletteChevronQa()
     {
         var checkedPalettes = 0;
+        var checkedCityCommandPalettes = 0;
         var passed = true;
         foreach (var city in _state.Cities.GroupBy(city => city.IsPort).Select(group => group.First()))
         {
@@ -132,6 +133,15 @@ public sealed partial class CampaignMapScene
             var texts = _infoRows.FindChildren("*", "Label", true, false).OfType<Label>().Select(label => label.Text).ToList();
             passed &= texts.All(text => !text.Contains('《') && !text.Contains('》'));
             checkedPalettes++;
+        }
+
+        foreach (var city in _state.Cities.Where(city => city.Owner == Player)
+                     .GroupBy(city => city.IsPort).Select(group => group.First()))
+        {
+            SelectCity(city.Id);
+            var commands = _cmdList.GetChildren().OfType<Button>().Select(button => button.Text).ToList();
+            passed &= !commands.Contains("재편성") && !commands.Contains("보충");
+            checkedCityCommandPalettes++;
         }
 
         var unit = DisplayedArmies.FirstOrDefault(CanSeeUnit);
@@ -143,8 +153,8 @@ public sealed partial class CampaignMapScene
             checkedPalettes++;
         }
 
-        GD.Print($"[palette-chevron-qa] passed={passed} palettes={checkedPalettes}");
-        GetTree().Quit(passed && checkedPalettes >= 2 ? 0 : 1);
+        GD.Print($"[palette-chevron-qa] passed={passed} palettes={checkedPalettes} cityCommands={checkedCityCommandPalettes} unusedCommandsRemoved={passed}");
+        GetTree().Quit(passed && checkedPalettes >= 2 && checkedCityCommandPalettes >= 2 ? 0 : 1);
     }
 
     private async void RunTerrainPaletteWidthQa()

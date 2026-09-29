@@ -3700,8 +3700,6 @@ public sealed partial class CampaignMapScene : Node3D
         productionBtn.Pressed += () => { CloseGroupMenu(); if (_selected is { } c) { OpenProductionModal(c); } };
         _productionCommandButton = productionBtn;
         _cmdList.AddChild(productionBtn);
-        AddV2PendingButton(_cmdList, "재편성", "부대 재편성 전용 UI는 v2 전환 후속 단계에서 구현합니다.\n현재는 출전 예약과 입성으로 병력을 정리하세요.");
-        AddV2PendingButton(_cmdList, "보충", "자동 담당자 병력 생산과 연계한 보충 명령은 Phase 2~4 이후 구현합니다.");
 
         // 그룹 플라이아웃(팔레트 우측에 붙는 작은 패널).
         _cmdSubMenu = new PanelContainer { Visible = false, ZIndex = 51 };
@@ -3726,20 +3724,6 @@ public sealed partial class CampaignMapScene : Node3D
         confirmLayer.AddChild(_targetConfirmBtn);
 
         HidePanels();
-    }
-
-    private void AddV2PendingButton(VBoxContainer list, string label, string message)
-    {
-        var btn = MakeButton(label);
-        btn.AddThemeFontSizeOverride("font_size", 12);
-        btn.Alignment = HorizontalAlignment.Center;
-        btn.CustomMinimumSize = new Vector2(74, 24);
-        btn.Pressed += () =>
-        {
-            CloseGroupMenu();
-            ShowNotice($"{label} 준비 중", message);
-        };
-        list.AddChild(btn);
     }
 
     // 게임 스타일 컨펌창(금테·잉크 + 한글 확인/취소). 배경 클릭·취소 = 닫기만.
