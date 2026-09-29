@@ -591,6 +591,35 @@ public sealed partial class CampaignMapScene
         GetTree().Quit(passed ? 0 : 1);
     }
 
+    private async void RunReportModalQa()
+    {
+        var originalAdvancing = _advancing;
+        _advancing = true;
+        OpenFullLog();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        var layout = _modalLayer?.FindChild("FullReportLayout", true, false) as VBoxContainer;
+        var header = _modalLayer?.FindChild("FullReportHeader", true, false) as HBoxContainer;
+        var bodyScroll = _modalLayer?.FindChild("FullReportBodyScroll", true, false) as ScrollContainer;
+        var opensDuringAdvance = _modalLayer is not null && IsInstanceValid(_modalLayer);
+        var fixedHeader = layout is not null
+            && header is not null
+            && bodyScroll is not null
+            && ReferenceEquals(header.GetParent(), layout)
+            && ReferenceEquals(bodyScroll.GetParent(), layout)
+            && header.GetMeta("fixed_report_header").AsBool()
+            && bodyScroll.GetMeta("header_outside_scroll").AsBool()
+            && header.FindParent("FullReportBodyScroll") is null;
+        var passed = opensDuringAdvance && fixedHeader;
+
+        GD.Print($"[report-modal-qa] passed={passed} opensDuringAdvance={opensDuringAdvance} fixedHeader={fixedHeader}");
+        CloseModal();
+        _advancing = originalAdvancing;
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private async void RunDeployImageStyleQa()
     {
         var city = _state.Cities.First(c => c.Owner == Player && !c.IsPort);

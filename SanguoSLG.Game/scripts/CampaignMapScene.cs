@@ -543,6 +543,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestportraitqa")) CallDeferred(nameof(RunPortraitLoaderQa));
         if (args.Contains("--maptestportraittreeqa")) CallDeferred(nameof(RunPortraitTreeQa));
         if (args.Contains("--maptestgeneralrosterqa")) CallDeferred(nameof(RunGeneralRosterPerformanceQa));
+        if (args.Contains("--maptestreportmodalqa")) CallDeferred(nameof(RunReportModalQa));
         if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
         if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
         if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
@@ -14781,7 +14782,6 @@ public sealed partial class CampaignMapScene : Node3D
     // 전체 로그 열람(스크롤) — 보고 패널의 "전체" 버튼. 최근이 아래, 오래된 것 위.
     private void OpenFullLog()
     {
-        if (_advancing) { return; }
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         // 전체 보고는 화면 전체창으로 — 좌우·상하 여백만 남기고 최대한 넓게.
         var vp = GetViewport().GetVisibleRect().Size;
@@ -14789,13 +14789,20 @@ public sealed partial class CampaignMapScene : Node3D
         var mw = Mathf.Max(480f, vp.X - margin * 2f - 28f);
         var mh = Mathf.Max(360f, vp.Y - margin * 2f - 28f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
+        scroll.RemoveChild(box);
+        panel.RemoveChild(scroll);
+        scroll.QueueFree();
+        box.Name = "FullReportLayout";
+        box.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        panel.AddChild(box);
         panel.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         panel.OffsetLeft = margin;
         panel.OffsetTop = margin;
         panel.OffsetRight = -margin;
         panel.OffsetBottom = -margin;
 
-        var titleRow = new HBoxContainer();
+        var titleRow = new HBoxContainer { Name = "FullReportHeader" };
+        titleRow.SetMeta("fixed_report_header", true);
         box.AddChild(titleRow);
         var title = MakeLabel($"◈ 전체 보고 ({_reportHistory.Count})", 17, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -14807,17 +14814,29 @@ public sealed partial class CampaignMapScene : Node3D
         titleRow.AddChild(close);
         box.AddChild(GoldRule());
 
-        if (_reportHistory.Count == 0) { box.AddChild(MakeLabel("(기록 없음)", 12, Parchment)); }
+        var bodyScroll = new ScrollContainer
+        {
+            Name = "FullReportBodyScroll",
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        bodyScroll.SetMeta("header_outside_scroll", true);
+        box.AddChild(bodyScroll);
+        var body = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        body.AddThemeConstantOverride("separation", 4);
+        bodyScroll.AddChild(body);
+
+        if (_reportHistory.Count == 0) { body.AddChild(MakeLabel("(기록 없음)", 12, Parchment)); }
         foreach (var (text, color) in _reportHistory)
         {
             var l = MakeLabel(text, 12, color);
             l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             l.CustomMinimumSize = new Vector2(mw - 40, 0);
-            box.AddChild(l);
+            body.AddChild(l);
         }
 
-        scroll.CustomMinimumSize = new Vector2(mw, mh);
-        scroll.SetDeferred("scroll_vertical", 100000); // 최신(아래)으로
+        bodyScroll.SetDeferred("scroll_vertical", 100000); // 최신(아래)으로
     }
 
     // 진행 버튼(화면 우측 하단, 100×100 원형 아이콘) + 진행 중 "N일차" 텍스트(버튼 20px 위).
