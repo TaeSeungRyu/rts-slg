@@ -548,6 +548,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestsaveslotuiqa")) CallDeferred(nameof(RunSaveSlotUiQa));
         if (args.Contains("--maptestloadslotuiqa")) CallDeferred(nameof(RunLoadSlotUiQa));
         if (args.Contains("--maptestpalettechevronqa")) CallDeferred(nameof(RunPaletteChevronQa));
+        if (args.Contains("--maptestterrainpalettewidthqa")) CallDeferred(nameof(RunTerrainPaletteWidthQa));
         if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
         if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
         if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
@@ -3933,12 +3934,13 @@ public sealed partial class CampaignMapScene : Node3D
     // 지형 정보 카드: 상단 = 지형 3D 에셋 미리보기 + 한글 이름, 하단 = 이동·전투 보정.
     private void BuildTerrainCard(CanvasLayer layer)
     {
-        _terrainCard = new PanelContainer { Visible = false, ZIndex = 60 };
+        _terrainCard = new PanelContainer { Name = "TerrainInfoPalette", Visible = false, ZIndex = 60 };
         _terrainCard.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 8, 10));
         _terrainCard.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
         layer.AddChild(_terrainCard);
 
-        var box = new VBoxContainer { CustomMinimumSize = new Vector2(132, 0) };
+        var box = new VBoxContainer { CustomMinimumSize = new Vector2(160, 0) };
+        box.SetMeta("expanded_info_palette_width", 160);
         box.AddThemeConstantOverride("separation", 4);
         _terrainCard.AddChild(box);
 
@@ -3956,11 +3958,11 @@ public sealed partial class CampaignMapScene : Node3D
         closeRow.AddChild(close);
 
         // 상단: 지형 에셋 3D 미리보기(자체 월드 SubViewport). 영역을 작게.
-        var svc = new SubViewportContainer { Stretch = true, CustomMinimumSize = new Vector2(112, 84), MouseFilter = Control.MouseFilterEnum.Ignore, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
+        var svc = new SubViewportContainer { Stretch = true, CustomMinimumSize = new Vector2(136, 84), MouseFilter = Control.MouseFilterEnum.Ignore, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
         box.AddChild(svc);
         _terrainViewport = new SubViewport
         {
-            Size = new Vector2I(112, 84),
+            Size = new Vector2I(136, 84),
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
             OwnWorld3D = true, // 자체 3D 월드 — 없으면 메인 씬 월드를 봐 빈 화면이 된다
         };

@@ -65,6 +65,36 @@ public sealed partial class CampaignMapScene
         GetTree().Quit(passed && checkedPalettes >= 2 ? 0 : 1);
     }
 
+    private async void RunTerrainPaletteWidthQa()
+    {
+        bool WidthOk() => _terrainCard.FindChildren("*", "VBoxContainer", true, false)
+            .OfType<VBoxContainer>().Any(box => box.HasMeta("expanded_info_palette_width")
+                && box.GetMeta("expanded_info_palette_width").AsInt32() == 160
+                && box.CustomMinimumSize.X >= 158f);
+
+        var occupied = _state.Cities.SelectMany(SanguoSLG.Core.Domain.CastleFootprint.TilesFor).ToHashSet();
+        var facilities = _state.FacilityPlacements ?? [];
+        var facility = facilities.First();
+        var ruin = _state.Ruins.First();
+        var terrain = _map.Tiles().First(hex => !occupied.Contains(hex)
+            && !facilities.Any(placement => placement.Plot == hex)
+            && _state.Ruins.All(candidate => candidate.Position != hex));
+        _visibleTiles = _visibleTiles.Append(terrain).Append(facility.Plot).Append(ruin.Position).ToHashSet();
+
+        ShowMapInfo(terrain);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var terrainOk = WidthOk();
+        ShowMapInfo(facility.Plot);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var facilityOk = WidthOk();
+        ShowRuinInfo(ruin);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var ruinOk = WidthOk();
+        var passed = terrainOk && facilityOk && ruinOk;
+        GD.Print($"[terrain-palette-width-qa] passed={passed} terrain={terrainOk} facility={facilityOk} ruin={ruinOk} width={_terrainCard.GetCombinedMinimumSize().X}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private async void RunModalCameraBlockQa()
     {
         var city = _state.Cities.First(c => c.Owner == Player);
