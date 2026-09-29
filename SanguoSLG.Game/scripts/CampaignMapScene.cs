@@ -123,7 +123,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _animCaptureIdx;
     private readonly List<(double Time, CityId City)> _animCaptures = new();
     private int _animActiveIdx;
-    private readonly List<(double Time, int UnitId, GeneralId? GeneralId, ActiveSkill Skill)> _animActives = new();
+    private readonly List<(double Time, int UnitId, FactionId Owner, GeneralId? GeneralId, ActiveSkill Skill)> _animActives = new();
     private int _animSkillEffectIdx;
     private readonly List<(double Time, int CasterUnitId, int TargetUnitId, ActiveSkill Skill)> _animSkillEffects = new();
     private int _animSiegeSkillEffectIdx;
@@ -1639,6 +1639,18 @@ public sealed partial class CampaignMapScene : Node3D
         return vanguardId ?? adjutantId;
     }
 
+    private bool TryShowActiveSkillBanner(FactionId owner, int unitId, GeneralId? generalId, ActiveSkill skill)
+    {
+        if (owner != Player) { return false; }
+        var general = generalId is { } gid
+            ? _pendingState.Generals.FirstOrDefault(x => x.Id == gid)
+                ?? _state.Generals.FirstOrDefault(x => x.Id == gid)
+            : null;
+        ActiveSkillPresentation.ShowBanner(this, general?.Name ?? $"부대 {unitId}", skill,
+            general is null ? null : CircularPortraitFor(general.Id));
+        return true;
+    }
+
     private static IReadOnlyList<string> ActiveStatusLines(UnitCombatState state)
         => state.Statuses.Where(status => !status.IsExpired).Select(status => status.Kind switch
         {
@@ -3100,7 +3112,7 @@ public sealed partial class CampaignMapScene : Node3D
                 var caster = turn.Units.FirstOrDefault(x => x.Id == casterId)
                     ?? (unitSnapshot.TryGetValue(casterId.Value, out var previousCaster) ? previousCaster : null);
                 var activeGeneralId = caster is null ? null : ResolveActiveGeneral(caster, skill);
-                _animActives.Add((activeTime, casterId.Value, activeGeneralId, skill));
+                _animActives.Add((activeTime, casterId.Value, caster?.Field.Owner ?? new FactionId(-1), activeGeneralId, skill));
                 if (caster is not null && skill.Code == "fire_plot")
                 {
                     foreach (var target in turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
@@ -4692,12 +4704,7 @@ public sealed partial class CampaignMapScene : Node3D
             while (_animActiveIdx < _animActives.Count && _animActives[_animActiveIdx].Time <= _animT)
             {
                 var active = _animActives[_animActiveIdx];
-                var general = active.GeneralId is { } gid
-                    ? _pendingState.Generals.FirstOrDefault(x => x.Id == gid)
-                        ?? _state.Generals.FirstOrDefault(x => x.Id == gid)
-                    : null;
-                ActiveSkillPresentation.ShowBanner(this, general?.Name ?? $"부대 {active.UnitId}", active.Skill,
-                    general is null ? null : CircularPortraitFor(general.Id));
+                TryShowActiveSkillBanner(active.Owner, active.UnitId, active.GeneralId, active.Skill);
                 if (_armyTokens.TryGetValue(active.UnitId, out var caster) && caster.Visible)
                     ActiveSkillPresentation.ShowCasterActivation(caster);
                 _animActiveIdx++;
@@ -14033,10 +14040,20 @@ public sealed partial class CampaignMapScene : Node3D
         var resolvedVanguard = ResolveActiveGeneral(vanguardId, adjutantId, afterVanguard, vanguardSkill);
         var resolvedAdjutant = ResolveActiveGeneral(vanguardId, adjutantId, afterAdjutant, adjutantSkill);
         var resolvedSameSkillAdjutant = ResolveActiveGeneral(vanguardId, adjutantId, sameSkillAfterAdjutant, vanguardSkill);
+        var initialBanners = GetChildren().OfType<CanvasLayer>().Where(layer => layer.Layer == 90).ToHashSet();
+        var enemyBannerShown = TryShowActiveSkillBanner(new FactionId(Player.Value + 1000), -900001, null, vanguardSkill);
+        var enemyBannerCount = GetChildren().OfType<CanvasLayer>().Count(layer => layer.Layer == 90);
+        var playerBannerShown = TryShowActiveSkillBanner(Player, -900002, null, vanguardSkill);
+        var playerBannerCount = GetChildren().OfType<CanvasLayer>().Count(layer => layer.Layer == 90);
+        var bannerVisibilityOk = !enemyBannerShown && enemyBannerCount == initialBanners.Count
+            && playerBannerShown && playerBannerCount == initialBanners.Count + 1;
         var passed = resolvedVanguard == vanguardId
             && resolvedAdjutant == adjutantId
-            && resolvedSameSkillAdjutant == adjutantId;
-        GD.Print($"[maptestactivecasterqa] passed={passed} vanguard={resolvedVanguard?.Value} adjutant={resolvedAdjutant?.Value} sameSkillAdjutant={resolvedSameSkillAdjutant?.Value}");
+            && resolvedSameSkillAdjutant == adjutantId
+            && bannerVisibilityOk;
+        foreach (var banner in GetChildren().OfType<CanvasLayer>().Where(layer => layer.Layer == 90 && !initialBanners.Contains(layer)))
+            banner.QueueFree();
+        GD.Print($"[maptestactivecasterqa] passed={passed} vanguard={resolvedVanguard?.Value} adjutant={resolvedAdjutant?.Value} sameSkillAdjutant={resolvedSameSkillAdjutant?.Value} enemyBanner={!enemyBannerShown && enemyBannerCount == initialBanners.Count} playerBanner={playerBannerShown && playerBannerCount == initialBanners.Count + 1}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
