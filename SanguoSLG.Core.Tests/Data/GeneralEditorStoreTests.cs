@@ -7,6 +7,22 @@ using Xunit;
 public class GeneralEditorStoreTests
 {
     [Fact]
+    public void 폐기된_내정패시브는_에디터_로드에서_제거된다()
+    {
+        const string json = """
+            [{"id":1,"name":"관리","might":50,"intellect":50,"politics":50,
+              "aptitudes":{},"battle_passives":[],"admin_passives":[
+                {"code":"miner","tier":3},{"code":"recruiter","tier":1}],
+              "birth":1,"unlock_year":1,"region":"","desc":""}]
+            """;
+
+        var record = GeneralEditorStore.LoadGenerals(json).Single();
+
+        Assert.Single(record.AdminPassives);
+        Assert.Equal("recruiter", record.AdminPassives[0].Code);
+    }
+
+    [Fact]
     public void ReplaceGeneral_편집대상밖의필드를_보존한다()
     {
         const string json = """

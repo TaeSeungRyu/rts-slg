@@ -600,6 +600,102 @@ public class WorldEngineTests
         Assert.Equal(500, after.Garrisons.Single().Troops);
     }
 
+    [Theory]
+    [InlineData(1, 510)]
+    [InlineData(2, 520)]
+    [InlineData(3, 525)]
+    public void 모병관은_모든_병종의_주간생산량을_증가시킨다(int tier, int expected)
+    {
+        var officer = V2Officer(1, might: 100) with
+        {
+            AdminPassives = [new GeneralSkill("recruiter", tier)]
+        };
+        var city = new City(new CityId(1), "모병성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Security: 100, RecruitmentOfficer: officer.Id,
+            AutoRecruitTroopCodes: "swordsman");
+        var state = new GameState(1, 1, [], [city], [officer],
+            Postings: [new(officer.Id, city.Owner, city.Id)]);
+        var skills = new[] { new AdminSkill("recruiter", "모병관", "recruit_amount", [2, 4, 5]) };
+
+        var after = new WorldEngine(V2OnlyBalance,
+            new CommandBalance { AutoOfficerSystemEnabled = true }, skills).AdvanceDays(state, 7);
+
+        Assert.Equal(expected, after.Garrisons.Single().Troops);
+    }
+
+    [Theory]
+    [InlineData("cavalry", "rancher", "cavalry_output", 575)]
+    [InlineData("swordsman", "rancher", "cavalry_output", 500)]
+    [InlineData("war_elephant", "mahout", "elephant_output", 575)]
+    [InlineData("archer", "mahout", "elephant_output", 500)]
+    public void 목마와_상사는_지정_병종에만_적용된다(
+        string troopCode, string skillCode, string bucket, int expected)
+    {
+        var officer = V2Officer(1, might: 100) with
+        {
+            AdminPassives = [new GeneralSkill(skillCode, 3)]
+        };
+        var city = new City(new CityId(1), "특화성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Security: 100, RecruitmentOfficer: officer.Id,
+            AutoRecruitTroopCodes: troopCode);
+        var state = new GameState(1, 1, [], [city], [officer],
+            Postings: [new(officer.Id, city.Owner, city.Id)]);
+        if (troopCode == "war_elephant")
+        {
+            state = state with
+            {
+                RuinDefinitions = [new("qa", "상병 유적", new HexCoord(5, 5), troopCode, 1)],
+                RuinStates = [new("qa", 0, city.Owner, 1, 31, [city.Owner])],
+            };
+        }
+        var skills = new[] { new AdminSkill(skillCode, skillCode, bucket, [5, 10, 15]) };
+
+        var after = new WorldEngine(V2OnlyBalance,
+            new CommandBalance { AutoOfficerSystemEnabled = true }, skills).AdvanceDays(state, 7);
+
+        Assert.Equal(expected, after.Garrisons.Single().Troops);
+    }
+
+    [Fact]
+    public void 제거된_내정패시브는_장수에게_남아있어도_효과가_없다()
+    {
+        var officer = V2Officer(1, might: 100) with
+        {
+            AdminPassives = [new GeneralSkill("miner", 3), new GeneralSkill("popularity", 3), new GeneralSkill("trader", 3)]
+        };
+        var city = new City(new CityId(1), "정리성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Security: 100, RecruitmentOfficer: officer.Id,
+            AutoRecruitTroopCodes: "swordsman");
+        var state = new GameState(1, 1, [], [city], [officer],
+            Postings: [new(officer.Id, city.Owner, city.Id)]);
+
+        var after = new WorldEngine(V2OnlyBalance,
+            new CommandBalance { AutoOfficerSystemEnabled = true }, []).AdvanceDays(state, 7);
+
+        Assert.Equal(500, after.Garrisons.Single().Troops);
+    }
+
+    [Fact]
+    public void 패시브_증산량까지_금이_부족하면_해당병종을_생산하지_않는다()
+    {
+        var officer = V2Officer(1, might: 100) with
+        {
+            AdminPassives = [new GeneralSkill("recruiter", 3)]
+        };
+        var city = new City(new CityId(1), "빈금고", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 5, Security: 100, RecruitmentOfficer: officer.Id,
+            AutoRecruitTroopCodes: "swordsman");
+        var state = new GameState(1, 1, [], [city], [officer],
+            Postings: [new(officer.Id, city.Owner, city.Id)]);
+        var skills = new[] { new AdminSkill("recruiter", "모병관", "recruit_amount", [2, 4, 5]) };
+
+        var after = new WorldEngine(V2OnlyBalance,
+            new CommandBalance { AutoOfficerSystemEnabled = true }, skills).AdvanceDays(state, 7);
+
+        Assert.Empty(after.Garrisons);
+        Assert.Equal(5, after.Cities.Single().Gold);
+    }
+
     [Fact]
     public void 일반연구_6종은_주간_도시정산에_적용된다()
     {
@@ -901,18 +997,18 @@ public class WorldEngineTests
     }
 
     [Fact]
-    public void 담당관_채광스킬이_광석산출을_올린다_비산출도시엔무효()
+    public void 제거된_채광스킬은_정의목록에_없으면_광석산출에_영향을_주지않는다()
     {
         // 채광(ore_output) 티어2 = +20%. 기본 산출(BalanceConfig 기본 500) × 1.2 = 600. 비산출 도시는 0.
         var miner = new AdminSkill("miner", "채광", Bucket: "ore_output", Tiers: new[] { 10, 20, 30 });
         var officer = Officer(60, new List<GeneralSkill> { new("miner", 2) });
-        var engine = new WorldEngine(Balance, adminSkills: new[] { miner });
+        var engine = new WorldEngine(Balance, adminSkills: []);
 
         var producing = Base() with { ProducesOre = true, Ore = 0 };
         var barren = Base() with { ProducesOre = false, Ore = 0 };
 
         var a = engine.AdvanceDays(WithGovernor(producing, officer), 30);
-        Assert.Equal(600, a.Cities.Single().Ore); // 500 × 1.2
+        Assert.Equal(500, a.Cities.Single().Ore);
 
         var b = engine.AdvanceDays(WithGovernor(barren, officer), 30);
         Assert.Equal(0, b.Cities.Single().Ore);   // 안 나는 도시엔 무효

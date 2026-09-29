@@ -116,7 +116,7 @@ public class GeneralDataTests
         var passives = new AdminSkillLoader().LoadFromDirectory(TestData.DataDirectory())
             .Select(a => a.Code).ToHashSet();
 
-        Assert.True(passives.Count >= 12);
+        Assert.Equal(9, passives.Count);
         foreach (var g in All)
         {
             var held = g.AdminPassives ?? [];

@@ -144,13 +144,13 @@ public class CommandSystemTests
         var city = Town(1, ore: 1_000_000); // 광석 하드 캡에 걸리지 않게 넉넉히
         var req = new CommandRequest(new CityId(1), CommandKind.Recruit, new GeneralId(1), TroopCode: "swordsman");
 
-        var withGov = svc.Issue(WithGovernor(city, GovWith(1, "recruiter", 3)), req);      // 모병관 T3 = +30%
+        var withGov = svc.Issue(WithGovernor(city, GovWith(1, "recruiter", 3)), req);      // 모병관 T3 = +5%
         var without = svc.Issue(WithGovernor(city, GovWith(1, "merchant", 3)), req);       // 무관 스킬 = +0%
         Assert.True(withGov.Ok, withGov.Error);
 
         var boosted = withGov.State.Commands.Single().Amount;
         var baseline = without.State.Commands.Single().Amount;
-        Assert.Equal(baseline * 130 / 100, boosted); // 정확히 +30%
+        Assert.Equal(baseline * 105 / 100, boosted); // 정확히 +5%
     }
 
     [Fact]
@@ -167,7 +167,7 @@ public class CommandSystemTests
     }
 
     [Fact]
-    public void 인망_태수면_모집_인구감소가_줄고_병력은_그대로다()
+    public void 제거된_인망은_모집에_영향을_주지않는다()
     {
         var svc = new CommandService(B, Troops, adminSkills: AdminSkills);
         var city = Town(1, ore: 1_000_000, population: 1_000_000);
@@ -180,10 +180,10 @@ public class CommandSystemTests
         // 병력 수는 동일(인망은 병력을 늘리지 않는다).
         Assert.Equal(without.State.Commands.Single().Amount, withGov.State.Commands.Single().Amount);
 
-        // 인구 감소만 25% 줄었다.
+        // 폐기된 인망은 인구 감소에도 영향을 주지 않는다.
         var popNoSkill = 1_000_000 - without.State.Cities.Single().Population;
         var popWithGov = 1_000_000 - withGov.State.Cities.Single().Population;
-        Assert.Equal(popNoSkill - (popNoSkill * 25 / 100), popWithGov);
+        Assert.Equal(popNoSkill, popWithGov);
     }
 
     [Fact]
@@ -235,7 +235,7 @@ public class CommandSystemTests
     }
 
     [Fact]
-    public void 교역_태수면_매입가가_싸진다()
+    public void 제거된_교역은_매입가에_영향을_주지않는다()
     {
         var svc = MarketSvc();
         var city = Town(1, gold: 100_000, ore: 0);
@@ -244,7 +244,7 @@ public class CommandSystemTests
 
         var basePrice = svc.MarketUnitPricePer100(plain, city, MarketResource.Ore);
         var govPrice = svc.MarketUnitPricePer100(withGov, withGov.Cities.Single(), MarketResource.Ore);
-        Assert.Equal(basePrice * 80 / 100, govPrice);
+        Assert.Equal(basePrice, govPrice);
     }
 
     [Fact]

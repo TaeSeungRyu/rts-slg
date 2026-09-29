@@ -20,23 +20,13 @@
     ]
   },
   {
-    "code": "popularity",
-    "name": "인망",
-    "bucket": "recruit_cost",
-    "tiers": [
-      8,
-      15,
-      25
-    ]
-  },
-  {
     "code": "recruiter",
     "name": "모병관",
     "bucket": "recruit_amount",
     "tiers": [
-      10,
-      20,
-      30
+      2,
+      4,
+      5
     ]
   },
   {
@@ -80,33 +70,13 @@
     ]
   },
   {
-    "code": "trader",
-    "name": "교역",
-    "bucket": "market_discount",
+    "code": "rancher",
+    "name": "목마",
+    "bucket": "cavalry_output",
     "tiers": [
       5,
       10,
-      20
-    ]
-  },
-  {
-    "code": "miner",
-    "name": "채광",
-    "bucket": "ore_output",
-    "tiers": [
-      10,
-      20,
-      30
-    ]
-  },
-  {
-    "code": "rancher",
-    "name": "목마",
-    "bucket": "horse_output",
-    "tiers": [
-      10,
-      20,
-      30
+      15
     ]
   },
   {
@@ -114,9 +84,9 @@
     "name": "상사",
     "bucket": "elephant_output",
     "tiers": [
+      5,
       10,
-      20,
-      30
+      15
     ]
   }
 ]

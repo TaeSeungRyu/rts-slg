@@ -264,7 +264,7 @@ public sealed class GeneralEditorStore
         {
             Aptitudes = record.Aptitudes ?? new Dictionary<string, string>(),
             BattlePassives = record.BattlePassives ?? [],
-            AdminPassives = record.AdminPassives ?? [],
+            AdminPassives = AdminSkillMigration.Filter(record.AdminPassives ?? []),
             Region = record.Region ?? "",
             Desc = record.Desc ?? "",
         };

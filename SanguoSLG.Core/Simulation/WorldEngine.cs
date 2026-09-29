@@ -276,6 +276,16 @@ public sealed class WorldEngine
                 {
                     var code = troopCodes[i];
                     var troops = totalTroops / troopCodes.Count + (i < totalTroops % troopCodes.Count ? 1 : 0);
+                    var passivePercent = AdminBonus.Bucket(recruiter, _adminSkills, "recruit_amount");
+                    if (IsCavalryTroop(code))
+                    {
+                        passivePercent += AdminBonus.Bucket(recruiter, _adminSkills, "cavalry_output");
+                    }
+                    if (IsElephantTroop(code))
+                    {
+                        passivePercent += AdminBonus.Bucket(recruiter, _adminSkills, "elephant_output");
+                    }
+                    troops = troops * (100 + passivePercent) / 100;
                     var cost = _commands.AutoRecruitGoldCost(code, troops);
                     if (cost <= 0 || next.Gold < cost)
                     {
@@ -292,6 +302,12 @@ public sealed class WorldEngine
 
         return state with { Cities = cities, GarrisonForces = garrisons };
     }
+
+    private static bool IsCavalryTroop(string code) => code is
+        "cavalry" or "cataphract" or "horse_archer";
+
+    private static bool IsElephantTroop(string code) => code is
+        "elephant" or "wild_elephant" or "war_elephant";
 
     private GameState ApplyAutoTraining(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId)
     {
