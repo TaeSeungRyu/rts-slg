@@ -550,6 +550,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestpalettechevronqa")) CallDeferred(nameof(RunPaletteChevronQa));
         if (args.Contains("--maptestterrainpalettewidthqa")) CallDeferred(nameof(RunTerrainPaletteWidthQa));
         if (args.Contains("--maptestexplorationlayoutqa")) CallDeferred(nameof(RunExplorationLayoutQa));
+        if (args.Contains("--maptestsystempalettecloseqa")) CallDeferred(nameof(RunSystemPaletteCloseQa));
         if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
         if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
         if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
@@ -6745,6 +6746,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenSystemPalette()
     {
         if (_advancing) { return; }
+        _modalDismissAction = null;
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.3f, 300f, 420f);
@@ -6758,6 +6760,7 @@ public sealed partial class CampaignMapScene : Node3D
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
         var close = MakeButton("✕");
+        close.Name = "SystemPaletteClose";
         close.CustomMinimumSize = new Vector2(40, 30);
         close.Pressed += CloseModal;
         titleRow.AddChild(close);
@@ -9824,7 +9827,7 @@ public sealed partial class CampaignMapScene : Node3D
         var layer = new CanvasLayer { Layer = 20 };
         AddChild(layer);
         _modalLayer = layer;
-        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.62f) };
+        var backdrop = new ColorRect { Name = "ModalBackdrop", Color = new Color(0, 0, 0, 0.62f) };
         backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         backdrop.MouseFilter = Control.MouseFilterEnum.Stop;
         backdrop.GuiInput += e =>
