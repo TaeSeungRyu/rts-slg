@@ -11015,6 +11015,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void BuildHeroRecruitCards(VBoxContainer box, City city)
     {
+        const int pageSize = 4;
         _state = new HeroUnlockService().Evaluate(_state);
         var states = _state.HeroUnlocks
             .Select(h => (_state.HeroStates.FirstOrDefault(s => s.General == h.General)
@@ -11028,55 +11029,108 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
-        var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        grid.AddThemeConstantOverride("h_separation", 10);
-        grid.AddThemeConstantOverride("v_separation", 10);
-        box.AddChild(grid);
+        var currentPoints = RecruitmentPointBank.Balance(_state, city.Owner);
+        var guide = new PanelContainer { Name = "HeroRecruitPointGuide", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        guide.AddThemeStyleboxOverride("panel", Frame(new Color(0.12f, 0.08f, 0.04f, 0.9f), new Color(Gold, 0.55f), 1, 8, 10));
+        guide.AddChild(MakeLabel(
+            $"보유 영입 포인트  {currentPoints:N0}점\n" +
+            $"획득 방법  · 유적 최초 등록 +{RecruitmentPointBank.RuinRegistrationPoints}  · 탐색 완료 +{RecruitmentPointBank.ExplorationPoints}  " +
+            $"· 담당자 7일 수행 +{RecruitmentPointBank.DutyPoints}  · 생산 투입 +{RecruitmentPointBank.ProductionPoints}  " +
+            $"· 도시 계략 수행 +{RecruitmentPointBank.StratagemPoints}", 13, Parchment));
+        box.AddChild(guide);
 
-        foreach (var (state, hero) in states)
+        var pageHost = new VBoxContainer { Name = "HeroRecruitPageHost", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        box.AddChild(pageHost);
+        var navigation = new HBoxContainer { Name = "HeroRecruitPagination", Alignment = BoxContainer.AlignmentMode.Center };
+        navigation.AddThemeConstantOverride("separation", 12);
+        var previous = MakeButton("이전");
+        previous.Name = "HeroRecruitPrevious";
+        previous.CustomMinimumSize = new Vector2(90, 38);
+        navigation.AddChild(previous);
+        var pageLabel = MakeLabel("", 14, Gold);
+        pageLabel.Name = "HeroRecruitPageLabel";
+        pageLabel.CustomMinimumSize = new Vector2(170, 0);
+        pageLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        navigation.AddChild(pageLabel);
+        var next = MakeButton("다음");
+        next.Name = "HeroRecruitNext";
+        next.CustomMinimumSize = new Vector2(90, 38);
+        navigation.AddChild(next);
+        box.AddChild(navigation);
+
+        var page = 0;
+        var totalPages = System.Math.Max(1, (states.Count + pageSize - 1) / pageSize);
+        void RenderPage()
         {
-            var general = _state.Generals.FirstOrDefault(g => g.Id == state.General);
-            var name = general?.Name ?? $"장수 {state.General.Value}";
-            var type = HeroTypeName(hero.Type, state.Status);
-            var points = RecruitmentPointBank.Balance(_state, city.Owner);
-            var hasPoints = points >= hero.RecruitPointCost;
-            var hasGold = city.Gold >= hero.RecruitGold;
-            var canRecruit = state.CanRecruit && state.EligibleFaction == city.Owner && hasGold && hasPoints;
-            var status = HeroStatusText(state, city.Owner);
-            var card = new PanelContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-            card.AddThemeStyleboxOverride("panel", Frame(new Color(0.12f, 0.08f, 0.04f, state.CanRecruit ? 0.94f : 0.72f),
-                state.CanRecruit ? Gold : new Color(Parchment, 0.35f), 1, 8, 10));
-            grid.AddChild(card);
-
-            var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 10);
-            card.AddChild(row);
-
-            var portrait = new TextureRect
+            page = System.Math.Clamp(page, 0, totalPages - 1);
+            foreach (var child in pageHost.GetChildren())
             {
-                Texture = OfficerPortrait(state.General),
-                CustomMinimumSize = new Vector2(62, 78),
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            };
-            row.AddChild(portrait);
+                pageHost.RemoveChild(child);
+                child.QueueFree();
+            }
 
-            var text = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-            row.AddChild(text);
-            text.AddChild(MakeLabel($"{name} · {type}", 17, state.CanRecruit ? Gold : new Color(Gold, 0.65f)));
-            text.AddChild(MakeLabel($"{status}\n{HeroRequirementText(hero, general)}\n영입 포인트 {hero.RecruitPointCost}점 (보유 {points}점)\n비용 {hero.RecruitGold}금", 13, Parchment));
+            var grid = new GridContainer { Name = "HeroRecruitGrid", Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            grid.AddThemeConstantOverride("h_separation", 10);
+            grid.AddThemeConstantOverride("v_separation", 10);
+            pageHost.AddChild(grid);
+            foreach (var (state, hero) in states.Skip(page * pageSize).Take(pageSize))
+            {
+                AddHeroRecruitCard(grid, city, state, hero, currentPoints);
+            }
 
-            var unavailable = !state.CanRecruit || state.EligibleFaction != city.Owner
-                ? "잠김"
-                : !hasPoints ? $"포인트 {hero.RecruitPointCost - points} 부족"
-                : !hasGold ? $"금 {hero.RecruitGold - city.Gold} 부족"
-                : "영입";
-            var recruit = MakeButton(canRecruit ? "영입" : unavailable, accent: canRecruit);
-            recruit.Disabled = !canRecruit;
-            recruit.CustomMinimumSize = new Vector2(72, 54);
-            recruit.Pressed += () => ConfirmRecruitHero(city, hero, name, type);
-            row.AddChild(recruit);
+            pageLabel.Text = $"{page + 1} / {totalPages}  ·  전체 {states.Count}명";
+            previous.Disabled = page == 0;
+            next.Disabled = page >= totalPages - 1;
         }
+
+        previous.Pressed += () => { page--; RenderPage(); };
+        next.Pressed += () => { page++; RenderPage(); };
+        RenderPage();
+    }
+
+    private void AddHeroRecruitCard(GridContainer grid, City city, HeroUnlockState state,
+        HeroUnlockDefinition hero, int points)
+    {
+        var general = _state.Generals.FirstOrDefault(g => g.Id == state.General);
+        var name = general?.Name ?? $"장수 {state.General.Value}";
+        var type = HeroTypeName(hero.Type, state.Status);
+        var hasPoints = points >= hero.RecruitPointCost;
+        var hasGold = city.Gold >= hero.RecruitGold;
+        var canRecruit = state.CanRecruit && state.EligibleFaction == city.Owner && hasGold && hasPoints;
+        var status = HeroStatusText(state, city.Owner);
+        var card = new PanelContainer { Name = "HeroRecruitCard", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        card.AddThemeStyleboxOverride("panel", Frame(new Color(0.12f, 0.08f, 0.04f, state.CanRecruit ? 0.94f : 0.72f),
+            state.CanRecruit ? Gold : new Color(Parchment, 0.35f), 1, 8, 10));
+        grid.AddChild(card);
+
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 10);
+        card.AddChild(row);
+
+        var portrait = new TextureRect
+        {
+            Texture = OfficerPortrait(state.General),
+            CustomMinimumSize = new Vector2(62, 78),
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        };
+        row.AddChild(portrait);
+
+        var text = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        row.AddChild(text);
+        text.AddChild(MakeLabel($"{name} · {type}", 17, state.CanRecruit ? Gold : new Color(Gold, 0.65f)));
+        text.AddChild(MakeLabel($"{status}\n{HeroRequirementText(hero, general)}\n영입 포인트 {hero.RecruitPointCost}점 (보유 {points}점)\n비용 {hero.RecruitGold}금", 13, Parchment));
+
+        var unavailable = !state.CanRecruit || state.EligibleFaction != city.Owner
+            ? "잠김"
+            : !hasPoints ? $"포인트 {hero.RecruitPointCost - points} 부족"
+            : !hasGold ? $"금 {hero.RecruitGold - city.Gold} 부족"
+            : "영입";
+        var recruit = MakeButton(canRecruit ? "영입" : unavailable, accent: canRecruit);
+        recruit.Disabled = !canRecruit;
+        recruit.CustomMinimumSize = new Vector2(72, 54);
+        recruit.Pressed += () => ConfirmRecruitHero(city, hero, name, type);
+        row.AddChild(recruit);
     }
 
     private void ConfirmRecruitHero(City city, HeroUnlockDefinition hero, string name, string type)
@@ -15052,10 +15106,26 @@ public sealed partial class CampaignMapScene : Node3D
             .Select(x => x.Text).ToList();
         var buttons = host.FindChildren("*", "Button", true, false).OfType<Button>().ToList();
         var hasPointCost = labels.Any(x => x.Contains("영입 포인트", StringComparison.Ordinal));
+        var hasPointGuide = labels.Any(x => x.Contains("유적 최초 등록 +100", StringComparison.Ordinal)
+            && x.Contains("탐색 완료 +3", StringComparison.Ordinal)
+            && x.Contains("담당자 7일 수행 +5", StringComparison.Ordinal)
+            && x.Contains("생산 투입 +5", StringComparison.Ordinal)
+            && x.Contains("도시 계략 수행 +5", StringComparison.Ordinal));
         var noLegacyConditions = labels.All(x => !x.Contains("조건:", StringComparison.Ordinal));
         var shortageVisible = buttons.Any(x => x.Text.Contains("포인트", StringComparison.Ordinal) && x.Disabled);
-        var passed = city is not null && hasPointCost && noLegacyConditions && shortageVisible;
-        GD.Print($"[maptestherorecruitqa] passed={passed} city={city?.Name ?? "-"} pointCost={hasPointCost} legacy={noLegacyConditions} shortage={shortageVisible}");
+        var previous = host.FindChild("HeroRecruitPrevious", true, false) as Button;
+        var next = host.FindChild("HeroRecruitNext", true, false) as Button;
+        var pageLabel = host.FindChild("HeroRecruitPageLabel", true, false) as Label;
+        var firstPageCards = (host.FindChild("HeroRecruitGrid", true, false) as GridContainer)?.GetChildCount() ?? 0;
+        var firstPageOk = previous?.Disabled == true && next?.Disabled == false
+            && pageLabel?.Text.StartsWith("1 / 2", StringComparison.Ordinal) == true && firstPageCards == 4;
+        next?.EmitSignal(Button.SignalName.Pressed);
+        var secondPageCards = (host.FindChild("HeroRecruitGrid", true, false) as GridContainer)?.GetChildCount() ?? 0;
+        var secondPageOk = previous?.Disabled == false && next?.Disabled == true
+            && pageLabel?.Text.StartsWith("2 / 2", StringComparison.Ordinal) == true && secondPageCards == 2;
+        var passed = city is not null && hasPointCost && hasPointGuide && noLegacyConditions && shortageVisible
+            && firstPageOk && secondPageOk;
+        GD.Print($"[maptestherorecruitqa] passed={passed} city={city?.Name ?? "-"} pointCost={hasPointCost} guide={hasPointGuide} legacy={noLegacyConditions} shortage={shortageVisible} firstPage={firstPageOk} secondPage={secondPageOk}");
         host.QueueFree();
         GetTree().Quit(passed ? 0 : 1);
     }
