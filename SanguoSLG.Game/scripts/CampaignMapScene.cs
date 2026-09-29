@@ -6789,14 +6789,17 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void OpenSaveSlotList()
     {
-        const float mw = 640f;
-        const float mh = 620f;
+        const float mw = 920f;
+        const float mh = 430f;
         var box = SystemView("게임 저장", mw, out var scroll, out var panel, out var titleRow);
+        scroll.Name = "SaveSlotOuterScroll";
+        scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
         var guide = MakeLabel("저장할 슬롯을 선택하세요.", 13, Parchment);
         guide.HorizontalAlignment = HorizontalAlignment.Center;
         box.AddChild(guide);
 
-        var grid = new GridContainer { Name = "SaveSlotGrid", Columns = 2 };
+        var grid = new GridContainer { Name = "SaveSlotGrid", Columns = 4 };
+        grid.SetMeta("slot_rows", 5);
         grid.AddThemeConstantOverride("h_separation", 10);
         grid.AddThemeConstantOverride("v_separation", 8);
         box.AddChild(grid);
@@ -6808,7 +6811,7 @@ public sealed partial class CampaignMapScene : Node3D
             var button = MakeButton($"슬롯 {slot:00}    {status}");
             button.Name = $"SaveSlot{slot:00}";
             button.SetMeta("save_slot_index", slot);
-            button.CustomMinimumSize = new Vector2(285, 48);
+            button.CustomMinimumSize = new Vector2(210, 48);
             button.Alignment = HorizontalAlignment.Left;
             button.Pressed += () => ShowConfirm("게임 저장 확인",
                 $"슬롯 {selectedSlot:00}에 현재 진행 상황을 저장하시겠습니까?", () => { });
@@ -6821,14 +6824,17 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void OpenLoadSlotList()
     {
-        const float mw = 640f;
-        const float mh = 620f;
+        const float mw = 920f;
+        const float mh = 430f;
         var box = SystemView("게임 불러오기", mw, out var scroll, out var panel, out var titleRow);
+        scroll.Name = "LoadSlotOuterScroll";
+        scroll.VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
         var guide = MakeLabel("불러올 슬롯을 선택하세요.", 13, Parchment);
         guide.HorizontalAlignment = HorizontalAlignment.Center;
         box.AddChild(guide);
 
-        var grid = new GridContainer { Name = "LoadSlotGrid", Columns = 2 };
+        var grid = new GridContainer { Name = "LoadSlotGrid", Columns = 4 };
+        grid.SetMeta("slot_rows", 5);
         grid.AddThemeConstantOverride("h_separation", 10);
         grid.AddThemeConstantOverride("v_separation", 8);
         box.AddChild(grid);
@@ -6840,7 +6846,7 @@ public sealed partial class CampaignMapScene : Node3D
             var button = MakeButton($"슬롯 {slot:00}    {status}");
             button.Name = $"LoadSlot{slot:00}";
             button.SetMeta("load_slot_index", slot);
-            button.CustomMinimumSize = new Vector2(285, 48);
+            button.CustomMinimumSize = new Vector2(210, 48);
             button.Alignment = HorizontalAlignment.Left;
             button.Pressed += () => ShowConfirm("게임 불러오기 확인",
                 $"현재 진행을 종료하고 슬롯 {selectedSlot:00}의 게임을 불러오시겠습니까?", () => { });

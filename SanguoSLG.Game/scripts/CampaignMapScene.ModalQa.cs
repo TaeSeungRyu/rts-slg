@@ -34,17 +34,23 @@ public sealed partial class CampaignMapScene
     {
         OpenSaveSlotList();
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var slots = _modalLayer?.FindChildren("SaveSlot*", "Button", true, false)
             .OfType<Button>().OrderBy(button => button.GetMeta("save_slot_index").AsInt32()).ToList() ?? [];
         var slotCount = slots.Count == 20
             && slots.Select(button => button.GetMeta("save_slot_index").AsInt32()).SequenceEqual(Enumerable.Range(1, 20));
+        var grid = _modalLayer?.FindChild("SaveSlotGrid", true, false) as GridContainer;
+        var scroll = _modalLayer?.FindChild("SaveSlotOuterScroll", true, false) as ScrollContainer;
+        var layout = grid?.Columns == 4 && grid.GetMeta("slot_rows").AsInt32() == 5
+            && scroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
+            && scroll.GetVScrollBar().Visible == false;
         slots.FirstOrDefault()?.EmitSignal(Button.SignalName.Pressed);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var confirmation = _confirmLayer is not null
             && _confirmLayer.FindChildren("*", "Label", true, false).OfType<Label>()
                 .Any(label => label.Text.Contains("슬롯 01") && label.Text.Contains("저장"));
-        var passed = slotCount && confirmation;
-        GD.Print($"[save-slot-ui-qa] passed={passed} slots={slots.Count} confirmation={confirmation}");
+        var passed = slotCount && layout && confirmation;
+        GD.Print($"[save-slot-ui-qa] passed={passed} slots={slots.Count} layout={layout} confirmation={confirmation}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -52,17 +58,23 @@ public sealed partial class CampaignMapScene
     {
         OpenLoadSlotList();
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var slots = _modalLayer?.FindChildren("LoadSlot*", "Button", true, false)
             .OfType<Button>().OrderBy(button => button.GetMeta("load_slot_index").AsInt32()).ToList() ?? [];
         var slotCount = slots.Count == 20
             && slots.Select(button => button.GetMeta("load_slot_index").AsInt32()).SequenceEqual(Enumerable.Range(1, 20));
+        var grid = _modalLayer?.FindChild("LoadSlotGrid", true, false) as GridContainer;
+        var scroll = _modalLayer?.FindChild("LoadSlotOuterScroll", true, false) as ScrollContainer;
+        var layout = grid?.Columns == 4 && grid.GetMeta("slot_rows").AsInt32() == 5
+            && scroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
+            && scroll.GetVScrollBar().Visible == false;
         slots.FirstOrDefault()?.EmitSignal(Button.SignalName.Pressed);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var confirmation = _confirmLayer is not null
             && _confirmLayer.FindChildren("*", "Label", true, false).OfType<Label>()
                 .Any(label => label.Text.Contains("슬롯 01") && label.Text.Contains("불러오"));
-        var passed = slotCount && confirmation;
-        GD.Print($"[load-slot-ui-qa] passed={passed} slots={slots.Count} confirmation={confirmation}");
+        var passed = slotCount && layout && confirmation;
+        GD.Print($"[load-slot-ui-qa] passed={passed} slots={slots.Count} layout={layout} confirmation={confirmation}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
