@@ -34,6 +34,16 @@ public partial class ShatterEffect : Node3D
 
     public override void _Process(double delta)
     {
+        // 전멸 처리로 대상 부대가 먼저 제거되는 프레임에는 원본 메시 래퍼도 이미
+        // dispose되어 있을 수 있다. 그 상태에서 Visible/Transform을 만지면 매 프레임
+        // ObjectDisposedException이 발생하므로 효과 갱신을 즉시 끝낸다.
+        if (!IsInstanceValid(Target))
+        {
+            SetProcess(false);
+            QueueFree();
+            return;
+        }
+
         if (_fragments.Count == 0)
         {
             return;
@@ -45,11 +55,11 @@ public partial class ShatterEffect : Node3D
         var rest = cycle >= ExplodeEnd;
         foreach (var o in _originals)
         {
-            o.Visible = rest;
+            if (IsInstanceValid(o)) o.Visible = rest;
         }
         foreach (var f in _fragments)
         {
-            f.Node.Visible = !rest;
+            if (IsInstanceValid(f.Node)) f.Node.Visible = !rest;
         }
         if (rest)
         {
@@ -61,6 +71,7 @@ public partial class ShatterEffect : Node3D
         var tt = Mathf.Clamp((cycle - ExplodeStart) / (ExplodeEnd - ExplodeStart), 0f, 1f);
         foreach (var f in _fragments)
         {
+            if (!IsInstanceValid(f.Node)) continue;
             var dir = (f.Dir + Vector3.Up * 0.4f).Normalized();
             var dist = (0.20f + (f.Seed % 4) * 0.10f) * tt * S;
             var drop = tt * tt * 0.7f * S;

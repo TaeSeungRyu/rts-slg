@@ -75,7 +75,11 @@ public partial class ActiveEffectTestScene3D : Node3D
         _camera.Setup(_view.HexToWorld(new HexCoord(5, 3)), 9f);
 
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
-        if (args.Contains("--activeeffecttestironwallqa"))
+        if (args.Contains("--activeeffecttestfracturedisposalqa"))
+        {
+            CallDeferred(MethodName.RunFractureDisposalQa);
+        }
+        else if (args.Contains("--activeeffecttestironwallqa"))
         {
             var index = Enumerable.Range(0, _skillSelect.ItemCount)
                 .First(i => _skillSelect.GetItemMetadata(i).AsString() == "iron_wall");
@@ -866,6 +870,41 @@ public partial class ActiveEffectTestScene3D : Node3D
         ActiveType.Tactic => "계략형",
         _ => type.ToString(),
     };
+
+    /// <summary>
+    /// 참/무쌍 효과가 참조하던 원본 메시가 편대 갱신이나 전멸 처리로 먼저 제거되어도
+    /// 다음 프레임에 disposed 노드를 만지지 않는지 검증한다.
+    /// </summary>
+    private void RunFractureDisposalQa()
+    {
+        static (Node3D Target, MeshInstance3D Original) BuildTarget(Node parent, string name)
+        {
+            var target = new Node3D { Name = name };
+            parent.AddChild(target);
+            var original = new MeshInstance3D { Mesh = new BoxMesh() };
+            target.AddChild(original);
+            return (target, original);
+        }
+
+        var (shatterTarget, shatterOriginal) = BuildTarget(this, "ShatterDisposalQaTarget");
+        var shatterRoot = EffectView.Attach(shatterTarget, EffectKind.Shatter, loop: false);
+        var shatter = shatterRoot.FindChildren("*", "", true, false).OfType<ShatterEffect>().Single();
+        shatterOriginal.Free();
+        shatter._Process(0.1);
+
+        var (tearTarget, tearOriginal) = BuildTarget(this, "TearDisposalQaTarget");
+        var tearRoot = EffectView.Attach(tearTarget, EffectKind.Tear, loop: false);
+        var tear = tearRoot.FindChildren("*", "", true, false).OfType<TearEffect>().Single();
+        tearOriginal.Free();
+        tear._Process(0.1);
+
+        var passed = IsInstanceValid(shatter) && IsInstanceValid(tear)
+            && shatter.FragmentCount > 0 && tear.FragmentCount > 0;
+        GD.Print($"[activeeffecttestfracturedisposalqa] passed={passed} shatterFragments={shatter.FragmentCount} tearFragments={tear.FragmentCount}");
+        shatterTarget.QueueFree();
+        tearTarget.QueueFree();
+        GetTree().Quit(passed ? 0 : 1);
+    }
 
     private void RunAutoQa()
     {

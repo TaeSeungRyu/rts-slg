@@ -35,6 +35,15 @@ public partial class TearEffect : Node3D
 
     public override void _Process(double delta)
     {
+        // 대상 부대가 전멸하여 먼저 제거된 프레임에는 원본 메시를 더 이상
+        // 갱신하지 않는다. ShatterEffect와 같은 disposed-node 경쟁을 막는다.
+        if (!IsInstanceValid(Target))
+        {
+            SetProcess(false);
+            QueueFree();
+            return;
+        }
+
         if (_fragments.Count == 0)
         {
             return;
@@ -46,11 +55,11 @@ public partial class TearEffect : Node3D
         var rest = cycle >= TearEnd;
         foreach (var o in _originals)
         {
-            o.Visible = rest;
+            if (IsInstanceValid(o)) o.Visible = rest;
         }
         foreach (var f in _fragments)
         {
-            f.Node.Visible = !rest;
+            if (IsInstanceValid(f.Node)) f.Node.Visible = !rest;
         }
         if (rest)
         {
@@ -62,6 +71,7 @@ public partial class TearEffect : Node3D
         var tt = Mathf.Clamp((cycle - TearStart) / (TearEnd - TearStart), 0f, 1f);
         foreach (var f in _fragments)
         {
+            if (!IsInstanceValid(f.Node)) continue;
             var dist = (0.10f + (f.Seed % 4) * 0.04f) * tt * S; // 잘게 안 터지고 천천히 벌어짐
             var drop = tt * tt * 0.35f * S;
             f.Node.Position = f.Rest + f.Dir * dist - Vector3.Up * drop;
