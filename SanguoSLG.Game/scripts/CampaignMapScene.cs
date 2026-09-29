@@ -10093,19 +10093,30 @@ public sealed partial class CampaignMapScene : Node3D
 
         var imageWrap = new PanelContainer
         {
+            Name = "GeneralAptitudeImageFrame",
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             CustomMinimumSize = new Vector2(0, 76),
+            ClipContents = true,
         };
+        imageWrap.SetMeta("image_inset_inside_border", 3);
         imageWrap.AddThemeStyleboxOverride("panel", Frame(new Color(0.045f, 0.035f, 0.03f), new Color(ClassColor(troopClass), 0.55f), 1, 5, 2));
         v.AddChild(imageWrap);
 
         if (AptitudeCardTexture(troopClass) is { } tex)
         {
-            imageWrap.AddChild(new TextureRect
+            var inset = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+            inset.AddThemeConstantOverride("margin_left", 3);
+            inset.AddThemeConstantOverride("margin_top", 3);
+            inset.AddThemeConstantOverride("margin_right", 3);
+            inset.AddThemeConstantOverride("margin_bottom", 3);
+            imageWrap.AddChild(inset);
+            inset.AddChild(new TextureRect
             {
+                Name = "GeneralAptitudeImage",
                 Texture = tex,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+                MouseFilter = Control.MouseFilterEnum.Ignore,
             });
         }
         else
@@ -13964,6 +13975,12 @@ public sealed partial class CampaignMapScene : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var detailOpened = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
             .Any(label => label.Text.Contains(generals[0].Name, System.StringComparison.Ordinal)) == true;
+        var aptitudeFrames = _modalLayer?.FindChildren("GeneralAptitudeImageFrame", "PanelContainer", true, false)
+            .OfType<PanelContainer>().ToList() ?? [];
+        var aptitudeImagesInsideBorder = aptitudeFrames.Count == GeneralRosterAptitudes.Length
+            && aptitudeFrames.All(frame => frame.ClipContents
+                && frame.GetMeta("image_inset_inside_border").AsInt32() == 3
+                && frame.FindChild("GeneralAptitudeImage", true, false) is TextureRect);
         var expectedRegion = _regionNames.GetValueOrDefault(generals[0].Region, generals[0].Region);
         var regionTranslated = string.IsNullOrWhiteSpace(generals[0].Region)
             || _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
@@ -13974,8 +13991,8 @@ public sealed partial class CampaignMapScene : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var restoredAfterDismiss = _infoCard.Visible
             && _infoRows.FindChild("UnitCommanderVisual", true, false) is PanelContainer;
-        var passed = layoutOk && detailOpened && regionTranslated && restoredAfterDismiss;
-        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} detail={detailOpened} regionKo={regionTranslated}:{expectedRegion} restored={restoredAfterDismiss} badge={troopBadge is not null} adjutant={adjutantPortrait is not null} roleCards={roleCardCount}");
+        var passed = layoutOk && detailOpened && aptitudeImagesInsideBorder && regionTranslated && restoredAfterDismiss;
+        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} detail={detailOpened} aptitudeInsets={aptitudeImagesInsideBorder}:{aptitudeFrames.Count} regionKo={regionTranslated}:{expectedRegion} restored={restoredAfterDismiss} badge={troopBadge is not null} adjutant={adjutantPortrait is not null} roleCards={roleCardCount}");
         _state = original;
         _infoCard.Visible = false;
         GetTree().Quit(passed ? 0 : 1);
