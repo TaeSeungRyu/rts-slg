@@ -4,6 +4,23 @@ namespace SanguoSLG.Game;
 
 public sealed partial class CampaignMapScene
 {
+    private static void SendQaPointerClick(Vector2 position)
+    {
+        Input.ParseInputEvent(new InputEventMouseMotion { Position = position });
+        Input.ParseInputEvent(new InputEventMouseButton
+        {
+            Position = position,
+            Pressed = true,
+            ButtonIndex = MouseButton.Left,
+        });
+        Input.ParseInputEvent(new InputEventMouseButton
+        {
+            Position = position,
+            Pressed = false,
+            ButtonIndex = MouseButton.Left,
+        });
+    }
+
     private async void RunSystemPaletteCloseQa()
     {
         _modalDismissAction = OpenSystemPalette;
@@ -13,20 +30,7 @@ public sealed partial class CampaignMapScene
         var close = _modalLayer?.FindChild("SystemPaletteClose", true, false) as Button;
         if (close is not null)
         {
-            var click = close.GetGlobalRect().GetCenter();
-            Input.ParseInputEvent(new InputEventMouseMotion { Position = click });
-            Input.ParseInputEvent(new InputEventMouseButton
-            {
-                Position = click,
-                Pressed = true,
-                ButtonIndex = MouseButton.Left,
-            });
-            Input.ParseInputEvent(new InputEventMouseButton
-            {
-                Position = click,
-                Pressed = false,
-                ButtonIndex = MouseButton.Left,
-            });
+            SendQaPointerClick(close.GetGlobalRect().GetCenter());
         }
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var closeButtonWorked = _modalLayer is null;
@@ -37,23 +41,36 @@ public sealed partial class CampaignMapScene
         var backdropPoint = panel is null
             ? new Vector2(8f, 8f)
             : new Vector2(Mathf.Max(4f, panel.GetGlobalRect().Position.X - 20f), panel.GetGlobalRect().GetCenter().Y);
-        Input.ParseInputEvent(new InputEventMouseMotion { Position = backdropPoint });
-        Input.ParseInputEvent(new InputEventMouseButton
-        {
-            Position = backdropPoint,
-            Pressed = true,
-            ButtonIndex = MouseButton.Left,
-        });
-        Input.ParseInputEvent(new InputEventMouseButton
-        {
-            Position = backdropPoint,
-            Pressed = false,
-            ButtonIndex = MouseButton.Left,
-        });
+        SendQaPointerClick(backdropPoint);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var backdropWorked = _modalLayer is null;
-        var passed = staleDismissCleared && closeButtonWorked && backdropWorked;
-        GD.Print($"[system-palette-close-qa] passed={passed} staleCleared={staleDismissCleared} close={closeButtonWorked} backdrop={backdropWorked}");
+
+        // 저장 슬롯 화면으로 전환된 뒤 X 닫기. 진입 버튼 자체는 별도 슬롯 UI QA에서 검증한다.
+        OpenSaveSlotList();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var saveOpened = _modalLayer?.FindChild("SaveSlotGrid", true, false) is GridContainer;
+        var saveClose = _modalLayer?.FindChild("SystemViewClose", true, false) as Button;
+        if (saveClose is not null) { SendQaPointerClick(saveClose.GetGlobalRect().GetCenter()); }
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var saveCloseWorked = saveOpened && _modalLayer is null;
+
+        // 불러오기 슬롯 화면으로 전환된 뒤 바깥 배경 닫기.
+        OpenLoadSlotList();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var loadOpened = _modalLayer?.FindChild("LoadSlotGrid", true, false) is GridContainer;
+        var loadPanel = _modalLayer?.GetChildren().OfType<PanelContainer>()
+            .FirstOrDefault(candidate => candidate.HasMeta("modal_root") && candidate.GetMeta("modal_root").AsBool());
+        var loadBackdropPoint = loadPanel is null
+            ? new Vector2(8f, 8f)
+            : new Vector2(Mathf.Max(4f, loadPanel.GetGlobalRect().Position.X - 20f), loadPanel.GetGlobalRect().GetCenter().Y);
+        SendQaPointerClick(loadBackdropPoint);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var loadBackdropWorked = loadOpened && _modalLayer is null;
+
+        var passed = staleDismissCleared && closeButtonWorked && backdropWorked && saveCloseWorked && loadBackdropWorked;
+        GD.Print($"[system-palette-close-qa] passed={passed} staleCleared={staleDismissCleared} close={closeButtonWorked} backdrop={backdropWorked} saveOpened={saveOpened} saveCloseFound={saveClose is not null} saveClose={saveCloseWorked} loadOpened={loadOpened} loadPanel={loadPanel is not null} loadBackdrop={loadBackdropWorked}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

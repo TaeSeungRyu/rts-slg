@@ -1015,8 +1015,9 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
-        var systemPanel = _modalLayer.FindChild("SystemPalettePanel", true, false) as PanelContainer;
-        if (systemPanel is null || systemPanel.GetGlobalRect().HasPoint(mouse.Position)) { return; }
+        var modalPanel = _modalLayer.GetChildren().OfType<PanelContainer>()
+            .FirstOrDefault(panel => panel.HasMeta("modal_root") && panel.GetMeta("modal_root").AsBool());
+        if (modalPanel is null || modalPanel.GetGlobalRect().HasPoint(mouse.Position)) { return; }
         CloseModal();
         GetViewport().SetInputAsHandled();
     }
@@ -6929,16 +6930,18 @@ public sealed partial class CampaignMapScene : Node3D
         titleRow = new HBoxContainer();
         box.AddChild(titleRow);
         var back = MakeButton("◀");
+        back.Name = "SystemViewBack";
         back.CustomMinimumSize = new Vector2(40, 30);
-        back.Pressed += OpenSystemPalette;
+        back.ButtonDown += OpenSystemPalette;
         titleRow.AddChild(back);
         var title = MakeLabel(titleText, 17, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
         var close = MakeButton("✕");
+        close.Name = "SystemViewClose";
         close.CustomMinimumSize = new Vector2(40, 30);
-        close.Pressed += CloseModal;
+        close.ButtonDown += CloseModal;
         titleRow.AddChild(close);
         box.AddChild(GoldRule());
         return box;
@@ -9861,6 +9864,7 @@ public sealed partial class CampaignMapScene : Node3D
         };
         layer.AddChild(backdrop);
         panel = new PanelContainer();
+        panel.SetMeta("modal_root", true);
         panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
         panel.MouseFilter = Control.MouseFilterEnum.Stop;
         panel.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
