@@ -95,6 +95,34 @@ public sealed partial class CampaignMapScene
         GetTree().Quit(passed ? 0 : 1);
     }
 
+    private async void RunExplorationLayoutQa()
+    {
+        var city = _state.Cities.First(candidate => candidate.Owner == Player && !candidate.IsPort);
+        _selected = city.Id;
+        var commandIndex = System.Array.FindIndex(Cmds, command => command.Kind == SanguoSLG.Core.Domain.CommandKind.Explore);
+        OpenModal(commandIndex);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var modalLabels = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>().ToList() ?? [];
+        var location = _modalLayer?.FindChild("ExplorationLocationValue", true, false) as Label;
+        var duration = _modalLayer?.FindChild("ExplorationDurationValue", true, false) as Label;
+        var officerTitle = _modalLayer?.FindChild("CommandOfficerSectionTitle", true, false) as Label;
+        var modalClean = location?.Text == city.Name
+            && duration?.Text == $"{_cb.CommandDays}일"
+            && officerTitle?.Text == "수행 장수"
+            && modalLabels.All(label => !label.Text.Contains("확률") && !label.Text.Contains('%'));
+
+        var officer = _state.GeneralsAt(city.Id).First(general => !OfficerUnavailable(general) && !_state.IsGeneralInField(general));
+        AskExecute(city.Id, commandIndex, officer, 0);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var confirmLabels = _confirmLayer?.FindChildren("*", "Label", true, false).OfType<Label>().ToList() ?? [];
+        var confirmationClean = confirmLabels.Any(label => label.Text.Contains("탐색 장소:")
+                && label.Text.Contains("소요 일수:") && label.Text.Contains("수행 장수:"))
+            && confirmLabels.All(label => !label.Text.Contains("확률") && !label.Text.Contains('%'));
+        var passed = modalClean && confirmationClean;
+        GD.Print($"[exploration-layout-qa] passed={passed} modal={modalClean} confirmation={confirmationClean}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private async void RunModalCameraBlockQa()
     {
         var city = _state.Cities.First(c => c.Owner == Player);

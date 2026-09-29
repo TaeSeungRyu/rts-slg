@@ -549,6 +549,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestloadslotuiqa")) CallDeferred(nameof(RunLoadSlotUiQa));
         if (args.Contains("--maptestpalettechevronqa")) CallDeferred(nameof(RunPaletteChevronQa));
         if (args.Contains("--maptestterrainpalettewidthqa")) CallDeferred(nameof(RunTerrainPaletteWidthQa));
+        if (args.Contains("--maptestexplorationlayoutqa")) CallDeferred(nameof(RunExplorationLayoutQa));
         if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
         if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
         if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
@@ -4948,12 +4949,30 @@ public sealed partial class CampaignMapScene : Node3D
         {
             box.AddChild(MakeLabel("대상 세력과의 동맹을 즉시 파기합니다. 파기 후에는 다시 공격 대상이 될 수 있습니다.", 15, Parchment));
         }
-        else if (cmd.Kind == CommandKind.Explore)
-        {
-            box.AddChild(MakeLabel("탐색은 인재 등용을 제외하고 신수, 고대유물, 지방호족, 소문/단서를 찾습니다. 실패해도 손실은 없습니다.", 15, Parchment));
-        }
-
         var cityData = _state.Cities.First(x => x.Id == city);
+        if (cmd.Kind == CommandKind.Explore)
+        {
+            var summary = new GridContainer { Name = "ExplorationSummary", Columns = 2 };
+            summary.AddThemeConstantOverride("h_separation", 18);
+            summary.AddThemeConstantOverride("v_separation", 8);
+            void SummaryRow(string key, string value, string valueName)
+            {
+                var keyLabel = MakeLabel(key, 15, Gold);
+                keyLabel.CustomMinimumSize = new Vector2(110, 0);
+                keyLabel.HorizontalAlignment = HorizontalAlignment.Right;
+                summary.AddChild(keyLabel);
+                var valueLabel = MakeLabel(value, 15, Parchment);
+                valueLabel.Name = valueName;
+                valueLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+                valueLabel.HorizontalAlignment = HorizontalAlignment.Left;
+                summary.AddChild(valueLabel);
+            }
+
+            SummaryRow("탐색 장소", cityData.Name, "ExplorationLocationValue");
+            SummaryRow("소요 일수", $"{_cb.CommandDays}일", "ExplorationDurationValue");
+            box.AddChild(summary);
+            box.AddChild(GoldRule());
+        }
         if (IsAutoOfficerCommand(cmd.Kind))
         {
             AddClearOfficerButton(box, cityData, cmd.Kind);
@@ -5116,7 +5135,7 @@ public sealed partial class CampaignMapScene : Node3D
             AddResearchFundingPicker(box, cityData);
         }
 
-        if (!hasGeneralResearchDetail && !hasDoctrineResearchDetail)
+        if (!hasGeneralResearchDetail && !hasDoctrineResearchDetail && cmd.Kind != CommandKind.Explore)
         {
             _modalDetail = MakeLabel("", 17, Parchment);
             box.AddChild(_modalDetail);
@@ -12582,12 +12601,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (cmd.Kind == CommandKind.Explore)
         {
-            var actor = _state.Generals.First(g => g.Id == general);
-            var localClanOdds = 10 + System.Math.Clamp(actor.Politics, 0, 100) / 10;
-            var noneOdds = 100 - 1 - 1 - localClanOdds - 5;
-            extra = $"\n소요 {_cb.CommandDays}일"
-                + $"\n정치 {actor.Politics} 기준 확률"
-                + $"\n신수 1% · 고대유물 1% · 지방호족 {localClanOdds}% · 소문/단서 5% · 없음 {noneOdds}%";
+            extra = $"\n탐색 장소: {_state.Cities.First(c => c.Id == city).Name}"
+                + $"\n소요 일수: {_cb.CommandDays}일";
         }
 
         if (cmd.Kind == CommandKind.Build)
