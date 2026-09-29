@@ -544,6 +544,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestportraittreeqa")) CallDeferred(nameof(RunPortraitTreeQa));
         if (args.Contains("--maptestgeneralrosterqa")) CallDeferred(nameof(RunGeneralRosterPerformanceQa));
         if (args.Contains("--maptestreportmodalqa")) CallDeferred(nameof(RunReportModalQa));
+        if (args.Contains("--maptestshutdownresourceqa")) CallDeferred(nameof(RunShutdownResourceQa));
         if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
         if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
         if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
@@ -573,6 +574,47 @@ public sealed partial class CampaignMapScene : Node3D
 
     public override void _ExitTree()
     {
+        ReleaseRuntimeUiResources();
+    }
+
+    private bool _runtimeUiResourcesReleased;
+
+    private int ReleaseRuntimeUiResources()
+    {
+        if (_runtimeUiResourcesReleased) return 0;
+        _runtimeUiResourcesReleased = true;
+
+        // ImageTexture.CreateFromImage()로 만든 리소스는 C# 참조만 Clear하면 엔진 종료보다
+        // finalizer가 늦게 실행될 수 있다. UI가 잡은 네이티브 참조를 먼저 떼고, 캐시가 소유한
+        // wrapper를 명시적으로 Dispose하여 Vulkan Texture RID가 종료 뒤까지 남지 않게 한다.
+        if (_hudFace is not null && GodotObject.IsInstanceValid(_hudFace)) _hudFace.Texture = null;
+        if (_advanceBtn is not null && GodotObject.IsInstanceValid(_advanceBtn)) _advanceBtn.Icon = null;
+
+        var textures = new Dictionary<ulong, ImageTexture>();
+        void Track(ImageTexture? texture)
+        {
+            if (texture is not null && GodotObject.IsInstanceValid(texture))
+            {
+                textures.TryAdd(texture.GetInstanceId(), texture);
+            }
+        }
+
+        foreach (var texture in _icons.Values) Track(texture);
+        foreach (var texture in _optionalTextures.Values) Track(texture);
+        foreach (var texture in _emblems.Values) Track(texture);
+        foreach (var texture in _aptitudeCardTextures.Values) Track(texture);
+        foreach (var texture in _unitCardTextures.Values) Track(texture);
+        foreach (var texture in _roundedOptionTextures.Values) Track(texture);
+        foreach (var texture in _portraits.Values) Track(texture);
+        foreach (var texture in _circularPortraits.Values) Track(texture);
+        foreach (var texture in _rosterPortraits.Values) Track(texture);
+        foreach (var texture in _officerTablePortraits.Values) Track(texture);
+        foreach (var texture in _stratIcons.Values) Track(texture);
+        Track(_armyGroupIcon);
+        Track(_blankIcon);
+        Track(_dotIcon);
+        Track(_sliderGrabberIcon);
+
         _icons.Clear();
         _optionalTextures.Clear();
         _emblems.Clear();
@@ -583,14 +625,20 @@ public sealed partial class CampaignMapScene : Node3D
         _circularPortraits.Clear();
         _rosterPortraits.Clear();
         _officerTablePortraits.Clear();
+        _stratIcons.Clear();
         _portraitMetadata = null;
         _commanderPortraits.Clear();
         _armyGroupIcon = null;
         _blankIcon = null!;
         _dotIcon = null!;
         _sliderGrabberIcon = null!;
+        _pathDotMesh = null;
+        _pathDotMat = null;
         _font = null!;
         ActiveSkillIcons.ClearCache();
+
+        foreach (var texture in textures.Values) texture.Dispose();
+        return textures.Count;
     }
 
     // 마우스 밑 타일에 금색 반투명 육각(이동/전투 씬의 호버 육각과 같은 표현).

@@ -620,6 +620,33 @@ public sealed partial class CampaignMapScene
         GetTree().Quit(passed ? 0 : 1);
     }
 
+    private async void RunShutdownResourceQa()
+    {
+        // 종료 직전에 실제 UI 생성 경로의 동적 텍스처가 존재하는 상황을 재현한다.
+        var trackedIcon = Icon(Sym.Coin);
+        _ = ClassEmblem(SanguoSLG.Core.Domain.TroopClass.Infantry);
+        _ = CircularPortraitFor(_state.Generals.First().Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        var released = ReleaseRuntimeUiResources();
+        var cachesEmpty = _icons.Count == 0
+            && _optionalTextures.Count == 0
+            && _emblems.Count == 0
+            && _aptitudeCardTextures.Count == 0
+            && _unitCardTextures.Count == 0
+            && _roundedOptionTextures.Count == 0
+            && _portraits.Count == 0
+            && _circularPortraits.Count == 0
+            && _rosterPortraits.Count == 0
+            && _officerTablePortraits.Count == 0
+            && _stratIcons.Count == 0;
+        var wrapperReleased = !GodotObject.IsInstanceValid(trackedIcon);
+        var passed = released > 0 && cachesEmpty && wrapperReleased;
+
+        GD.Print($"[shutdown-resource-qa] passed={passed} released={released} cachesEmpty={cachesEmpty} wrapperReleased={wrapperReleased}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private async void RunDeployImageStyleQa()
     {
         var city = _state.Cities.First(c => c.Owner == Player && !c.IsPort);
