@@ -46,6 +46,7 @@ public class ExplorationCommandTests
         Assert.Equal(ExplorationResultKind.LocalClan, discovery.Kind);
         Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.Explore
             && e.Code == "local_clan_support" && e.Amount == 200 && e.ExtraAmount == 600);
+        Assert.Equal(3, RecruitmentPointBank.Balance(after, city.Owner));
     }
 
     [Fact]
@@ -63,6 +64,7 @@ public class ExplorationCommandTests
         Assert.Equal(219, after.Cities.Single().Provisions);
         Assert.Equal(ExplorationResultKind.None, Assert.Single(after.Discoveries).Kind);
         Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.Explore && e.Code == "nothing");
+        Assert.Equal(3, RecruitmentPointBank.Balance(after, new FactionId(1)));
     }
 
     [Fact]

@@ -182,6 +182,7 @@ public class ProductionServiceTests
         var gathering = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0))
             .AdvanceDays(started, 1);
         Assert.Equal(ProductionPhase.Gathering, gathering.ProductionOps.Single().Phase);
+        Assert.Equal(5, RecruitmentPointBank.Balance(gathering, new FactionId(1)));
 
         var attacked = gathering with { FieldArmies = new List<CombatUnit> { EnemyAttacker() } };
         var after = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0))

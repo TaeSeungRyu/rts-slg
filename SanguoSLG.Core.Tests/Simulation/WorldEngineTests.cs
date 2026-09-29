@@ -431,6 +431,7 @@ public class WorldEngineTests
         Assert.Equal(1420, resultCity.Provisions);
         Assert.Equal(1840, garrison.Troops);
         Assert.Equal(51, garrison.TrainingLevel);
+        Assert.Equal(80, RecruitmentPointBank.Balance(after, city.Owner)); // 4명 × 4주 × 5
     }
 
     [Fact]

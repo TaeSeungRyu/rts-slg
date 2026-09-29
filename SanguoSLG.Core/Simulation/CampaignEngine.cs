@@ -126,6 +126,15 @@ public sealed class CampaignEngine
             {
                 var ruinResult = _ruinCombat.Resolve(work, turn.Units);
                 work = ruinResult.State;
+                foreach (var capture in ruinResult.Exchanges.Where(x => x.Captured)
+                    .Select(x => x.RuinId).Distinct(StringComparer.Ordinal))
+                {
+                    if (ruinResult.LastAttackers.TryGetValue(capture, out var captor))
+                    {
+                        work = RecruitmentPointBank.Grant(work, captor,
+                            RecruitmentPointBank.RuinRegistrationPoints, $"ruin:{capture}", out _);
+                    }
+                }
                 turn = turn with
                 {
                     Units = ruinResult.Armies,

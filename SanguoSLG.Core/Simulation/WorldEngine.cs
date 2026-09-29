@@ -464,6 +464,11 @@ public sealed class WorldEngine
             }
 
             var next = AdvanceProductionOperation(state, op);
+            if (op.Phase == ProductionPhase.Outbound && next.Phase == ProductionPhase.Gathering)
+            {
+                state = GrantRecruitmentPoints(state, next.Owner, RecruitmentPointBank.ProductionPoints,
+                    $"production:{next.Id}", next.General, next.City, "production");
+            }
             if (next.Phase == ProductionPhase.Returning && next.Position == next.Origin)
             {
                 var reward = ProductionRules.Reward(next.Facility,
@@ -684,13 +689,21 @@ public sealed class WorldEngine
                     break;
 
                 case CommandKind.CityStratagem:
-                    ResolveCityStratagem(state, cmd, city, cities, generals, intel);
+                    if (ResolveCityStratagem(state, cmd, city, cities, generals, intel))
+                    {
+                        state = GrantRecruitmentPoints(state, city.Owner, RecruitmentPointBank.StratagemPoints,
+                            CommandPointKey("stratagem", cmd), cmd.Main, cmd.City, "stratagem");
+                    }
                     break;
                 case CommandKind.Enlist:
                     ResolveEnlist(cmd, city, generals, postings, armies);
                     break;
                 case CommandKind.Explore:
-                    ResolveExplore(state, cmd, city, cities, generals, discoveries);
+                    if (ResolveExplore(state, cmd, city, cities, generals, discoveries))
+                    {
+                        state = GrantRecruitmentPoints(state, city.Owner, RecruitmentPointBank.ExplorationPoints,
+                            CommandPointKey("explore", cmd), cmd.Main, cmd.City, "explore");
+                    }
                     break;
                 case CommandKind.FormAlliance:
                     ResolveFormAlliance(state, cmd, city, generals, alliances);
@@ -775,13 +788,13 @@ public sealed class WorldEngine
         _ => 0,
     };
 
-    private void ResolveExplore(GameState state, CityCommand cmd, City city,
+    private bool ResolveExplore(GameState state, CityCommand cmd, City city,
         Dictionary<CityId, City> cities, List<General> generals, List<ExplorationDiscovery> discoveries)
     {
         var explorer = generals.FirstOrDefault(g => g.Id == cmd.Main);
         if (explorer is null)
         {
-            return;
+            return false;
         }
 
         var discovery = new ExplorationService().Explore(state, city, explorer, _random);
@@ -797,6 +810,7 @@ public sealed class WorldEngine
 
         _events.Add(new WorldEvent(WorldEventKind.Explore, discovery.Faction, discovery.Explorer, discovery.City,
             discovery.Gold, discovery.Code, discovery.Provisions));
+        return true;
     }
 
     private void ApplyTrainingGrowth(List<General> generals, GeneralId generalId, FactionId faction, CityId city)
@@ -897,6 +911,8 @@ public sealed class WorldEngine
                 awarded.Add(generalId);
                 ApplyAdministrationGrowth(generals, generalId, city.Owner, city.Id,
                     AdministrationGrowth.DutyExperience, "admin_duty");
+                state = GrantRecruitmentPoints(state, city.Owner, RecruitmentPointBank.DutyPoints,
+                    $"duty:{state.Day}:{generalId.Value}", generalId, city.Id, "duty");
             }
         }
 
@@ -1014,13 +1030,13 @@ public sealed class WorldEngine
 
     // 도시 계략 정산(design-stratagem "수행 규칙"): 지력 확률 성공 판정(시드 난수) → 실패 = 무효.
     // 대상이 그 사이 아군이 됐으면(함락 등) 캔슬. 효과는 종류별(성벽·치안·정찰·군량·금).
-    private void ResolveCityStratagem(GameState state, CityCommand cmd, City casterCity,
+    private bool ResolveCityStratagem(GameState state, CityCommand cmd, City casterCity,
         Dictionary<CityId, City> cities, List<Domain.General> generals, List<Domain.CityIntel> intel)
     {
         if (cmd.TargetCity is not { } targetId || !cities.TryGetValue(targetId, out var target)
             || target.Owner == casterCity.Owner)
         {
-            return;
+            return false;
         }
 
         var casterIntellect = generals.FirstOrDefault(g => g.Id == cmd.Main) is { } caster
@@ -1037,7 +1053,7 @@ public sealed class WorldEngine
             ApplyAdministrationGrowth(generals, cmd.Main, casterCity.Owner, casterCity.Id,
                 AdministrationGrowth.StratagemFailureExperience, "stratagem");
             _events.Add(new WorldEvent(WorldEventKind.StratagemFail, casterCity.Owner, cmd.Main, targetId, Code: cmd.Facility));
-            return; // 실패 = 무효(소요 기간·장수 잠금이 이미 비용)
+            return true; // 실패도 정상 수행 완료이므로 포인트 지급
         }
 
         ApplyAdministrationGrowth(generals, cmd.Main, casterCity.Owner, casterCity.Id,
@@ -1072,6 +1088,21 @@ public sealed class WorldEngine
                 break;
 
         }
+        return true;
+    }
+
+    private static string CommandPointKey(string kind, CityCommand cmd)
+        => $"{kind}:{cmd.City.Value}:{cmd.Main.Value}:{cmd.StartDay}:{cmd.CompletionDay}";
+
+    private GameState GrantRecruitmentPoints(GameState state, FactionId faction, int amount, string key,
+        GeneralId? general, CityId? city, string code)
+    {
+        var next = RecruitmentPointBank.Grant(state, faction, amount, key, out var awarded);
+        if (awarded)
+        {
+            _events.Add(new WorldEvent(WorldEventKind.RecruitmentPoints, faction, general, city, amount, code));
+        }
+        return next;
     }
 
     // 시설 수리 완료 — 잔해를 시설로 되돌리거나(일반), 파괴 플래그를 해제한다(자원 시설).

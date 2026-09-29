@@ -58,7 +58,9 @@ public class SaveServiceTests
                     "wolong_rumor", Text: "와룡의 소문")
             },
             RuinDefinitions: [new("pikeman_ruin", "극병 유적", new HexCoord(7, 7), "geukbyeong", 30_000)],
-            RuinStates: [new("pikeman_ruin", 12_000, new FactionId(1), 20, 50, [new FactionId(1)])]);
+            RuinStates: [new("pikeman_ruin", 12_000, new FactionId(1), 20, 50, [new FactionId(1)])],
+            RecruitmentPoints: [new(new FactionId(1), 113)],
+            RecruitmentPointGrants: [new(new FactionId(1), "ruin:pikeman_ruin", 100)]);
 
         var round = SaveService.Deserialize(SaveService.Serialize(state));
 
@@ -102,5 +104,7 @@ public class SaveServiceTests
         Assert.Equal("geukbyeong", round.Ruins.Single().TroopCode);
         Assert.Equal(12_000, round.RuinStatus.Single().Defenders);
         Assert.Equal(new FactionId(1), round.RuinStatus.Single().Registrations.Single());
+        Assert.Equal(113, RecruitmentPointBank.Balance(round, new FactionId(1)));
+        Assert.Equal("ruin:pikeman_ruin", round.RecruitmentPointHistory.Single().Key);
     }
 }

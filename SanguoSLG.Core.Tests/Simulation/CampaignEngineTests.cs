@@ -22,6 +22,14 @@ public class CampaignEngineTests
         return new CampaignEngine(field, world);
     }
 
+    private static CampaignEngine EngineWithRuins()
+    {
+        var movement = new MovementSimulator(new PassabilityMap(new HexMap(0, 30, -5, 8), [], []));
+        var field = new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70));
+        return new CampaignEngine(field, new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)),
+            ruinCombat: new RuinCombat(new BattleResolver(60)));
+    }
+
     private static CombatUnit Army(int id, int owner, HexCoord pos, UnitMode mode, HexCoord? target,
         int troops = 10000, string code = "swordsman", int training = 50)
     {
@@ -35,6 +43,23 @@ public class CampaignEngineTests
 
     private static GameState World(params CombatUnit[] armies) =>
         new(1, 1, new List<Faction>(), new List<City>(), new List<General>(), FieldArmies: armies.ToList());
+
+    [Fact]
+    public void 유적_최초점령은_세력영입포인트를_백점_지급한다()
+    {
+        var ruinPos = new HexCoord(4, 0);
+        var attacker = Army(1, 1, new HexCoord(3, 0), UnitMode.Attack, ruinPos);
+        var state = World(attacker) with
+        {
+            RuinDefinitions = [new("r1", "극병 유적", ruinPos, "geukbyeong", 1)],
+            RuinStates = [new("r1", 1)],
+        };
+
+        var after = EngineWithRuins().AdvanceWeek(state, out _);
+
+        Assert.Equal(100, RecruitmentPointBank.Balance(after, new FactionId(1)));
+        Assert.Equal(new FactionId(1), after.RuinStatus.Single().Owner);
+    }
 
     [Fact]
     public void 실제교전에_참가한_장수는_사용병종_숙련경험치를_얻는다()

@@ -34,7 +34,9 @@ public sealed record GameState(
     IReadOnlyList<CityWoundedForce>? CityWoundedForces = null,
     IReadOnlyList<PortShipStock>? PortShipStocks = null,
     IReadOnlyList<RuinDefinition>? RuinDefinitions = null,
-    IReadOnlyList<RuinState>? RuinStates = null)
+    IReadOnlyList<RuinState>? RuinStates = null,
+    IReadOnlyList<FactionRecruitmentPoints>? RecruitmentPoints = null,
+    IReadOnlyList<RecruitmentPointGrant>? RecruitmentPointGrants = null)
 {
     /// <summary>건설한 시설이 놓인 성 주변 타일(표현 계층이 모델을 얹는다). 건설 완료 시 append.</summary>
     public IReadOnlyList<FacilityPlacement> Placements => FacilityPlacements ?? [];
@@ -60,6 +62,8 @@ public sealed record GameState(
     public IReadOnlyList<PortShipStock> PortShips => PortShipStocks ?? [];
     public IReadOnlyList<RuinDefinition> Ruins => RuinDefinitions ?? [];
     public IReadOnlyList<RuinState> RuinStatus => RuinStates ?? [];
+    public IReadOnlyList<FactionRecruitmentPoints> RecruitmentPointBalances => RecruitmentPoints ?? [];
+    public IReadOnlyList<RecruitmentPointGrant> RecruitmentPointHistory => RecruitmentPointGrants ?? [];
 
     /// <summary>도시 대기 병력(병종별) — 모집 정산이 쌓고, 출전 편성이 꺼내 쓴다.</summary>
     public IReadOnlyList<GarrisonForce> Garrisons => GarrisonForces ?? [];

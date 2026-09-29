@@ -133,6 +133,7 @@ public class CityStratagemTests
         Assert.Equal(3038, done.Cities.First(c => c.Id == new CityId(2)).Provisions); // 무효 + 7일 군량 생산
         Assert.Equal(AdministrationGrowth.StratagemFailureExperience,
             done.Generals.Single(g => g.Id == new GeneralId(1)).AdminExperience);
+        Assert.Equal(5, RecruitmentPointBank.Balance(done, new FactionId(1)));
     }
 
     [Fact]
@@ -145,6 +146,7 @@ public class CityStratagemTests
         Assert.Equal(2431, done.Cities.First(c => c.Id == new CityId(2)).Provisions); // 7일 군량 생산 후 −20%
         Assert.Equal(AdministrationGrowth.StratagemSuccessExperience,
             done.Generals.Single(g => g.Id == new GeneralId(1)).AdminExperience);
+        Assert.Equal(5, RecruitmentPointBank.Balance(done, new FactionId(1)));
     }
 
     [Fact]
