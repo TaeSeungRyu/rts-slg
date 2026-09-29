@@ -131,4 +131,39 @@ public class GeneralEditorStoreTests
         Assert.Empty(general.BattlePassives);
         Assert.Empty(general.AdminPassives);
     }
+
+    [Fact]
+    public void 위인_영입포인트를_읽고_편집대상밖의필드를_보존한다()
+    {
+        const string json = """
+        [
+          { "general": 6, "type": "faction", "recruit_point_cost": 250, "recruit_gold": 1500, "future": "keep" },
+          { "general": 9, "type": "region", "recruit_point_cost": 160, "recruit_gold": 1000 }
+        ]
+        """;
+
+        var costs = GeneralEditorStore.LoadHeroRecruitPointCosts(json);
+        var saved = GeneralEditorStore.ReplaceHeroRecruitPointCost(json, 6, 1000);
+        var root = JsonNode.Parse(saved)!.AsArray();
+
+        Assert.Equal(250, costs[6]);
+        Assert.Equal(160, costs[9]);
+        Assert.Equal(1000, root[0]!["recruit_point_cost"]!.GetValue<int>());
+        Assert.Equal(1500, root[0]!["recruit_gold"]!.GetValue<int>());
+        Assert.Equal("keep", root[0]!["future"]!.GetValue<string>());
+        Assert.Equal(160, root[1]!["recruit_point_cost"]!.GetValue<int>());
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(1001)]
+    public void 위인_영입포인트는_0부터_1000까지만_허용한다(int value)
+    {
+        const string json = "[{\"general\":6,\"recruit_point_cost\":250}]";
+
+        var error = Assert.Throws<InvalidDataException>(
+            () => GeneralEditorStore.ReplaceHeroRecruitPointCost(json, 6, value));
+
+        Assert.Contains("0~1,000", error.Message);
+    }
 }

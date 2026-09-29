@@ -18,6 +18,7 @@ public partial class GeneralEditorScene : Control
     private readonly Dictionary<string, PassiveSkill> _passiveSkills = new();
     private readonly Dictionary<string, AdminSkill> _adminSkills = new();
     private readonly Dictionary<int, GeneralPortraitRecord> _portraitsByGeneralId = new();
+    private readonly Dictionary<int, int> _heroRecruitPointCosts = new();
     private readonly List<GeneralEditorRecord> _generals = [];
     private readonly Dictionary<string, OptionButton> _aptitudeInputs = new();
     private readonly List<GeneralEditorSkill> _selectedBattlePassives = [];
@@ -30,6 +31,7 @@ public partial class GeneralEditorScene : Control
     private SpinBox _mightInput = null!;
     private SpinBox _intellectInput = null!;
     private SpinBox _politicsInput = null!;
+    private SpinBox _recruitPointInput = null!;
     private OptionButton _activeInput = null!;
     private Label _activeDescription = null!;
     private TextureRect _activeIcon = null!;
@@ -52,11 +54,16 @@ public partial class GeneralEditorScene : Control
     private string _dataDirectory = "";
     private DateTime _generalsLoadedAt;
     private DateTime _portraitsLoadedAt;
+    private DateTime _heroUnlocksLoadedAt;
 
     public override void _Ready()
     {
         BuildUi();
         Reload();
+        if (OS.GetCmdlineUserArgs().Contains("--generaleditorqa"))
+        {
+            CallDeferred(nameof(RunGeneralEditorQa));
+        }
     }
 
     public override void _ExitTree()
@@ -174,6 +181,19 @@ public partial class GeneralEditorScene : Control
         _mightInput = AddStat(statRow, "무력");
         _intellectInput = AddStat(statRow, "지력");
         _politicsInput = AddStat(statRow, "정치");
+        var recruitPointBox = new VBoxContainer { CustomMinimumSize = new Vector2(150, 0) };
+        recruitPointBox.AddChild(new Label { Text = "요구 영입 포인트", HorizontalAlignment = HorizontalAlignment.Center });
+        _recruitPointInput = new SpinBox
+        {
+            MinValue = 0,
+            MaxValue = 1000,
+            Step = 1,
+            Rounded = true,
+            TooltipText = "위인 영입에 필요한 포인트입니다. 위인 정의가 있는 장수만 수정할 수 있습니다.",
+        };
+        _recruitPointInput.ValueChanged += _ => UpdateChangePreview();
+        recruitPointBox.AddChild(_recruitPointInput);
+        statRow.AddChild(recruitPointBox);
 
         var aptitudeSection = AddSection(editor, "병종 적성");
         var aptitudeGrid = new GridContainer { Columns = 3 };
@@ -313,6 +333,7 @@ public partial class GeneralEditorScene : Control
             _generals.Clear();
             _generalsById.Clear();
             _portraitsByGeneralId.Clear();
+            _heroRecruitPointCosts.Clear();
             _activeNames.Clear();
             _passiveNames.Clear();
             _adminNames.Clear();
@@ -353,6 +374,16 @@ public partial class GeneralEditorScene : Control
                 }
             }
             _portraitsLoadedAt = File.Exists(portraitPath) ? File.GetLastWriteTimeUtc(portraitPath) : DateTime.MinValue;
+
+            var heroUnlocksPath = Path.Combine(_dataDirectory, "hero_unlocks.json");
+            if (File.Exists(heroUnlocksPath))
+            {
+                foreach (var (generalId, cost) in GeneralEditorStore.LoadHeroRecruitPointCosts(File.ReadAllText(heroUnlocksPath)))
+                {
+                    _heroRecruitPointCosts[generalId] = cost;
+                }
+            }
+            _heroUnlocksLoadedAt = File.Exists(heroUnlocksPath) ? File.GetLastWriteTimeUtc(heroUnlocksPath) : DateTime.MinValue;
 
             RebuildSkillOptions();
             RebuildRegions();
@@ -444,6 +475,9 @@ public partial class GeneralEditorScene : Control
         var battleActive = string.IsNullOrWhiteSpace(general.BattleActive) ? "없음" : general.BattleActive;
         var battlePassives = general.BattlePassives.Count == 0 ? "없음" : string.Join(", ", general.BattlePassives.Select(s => $"{s.Code} Lv{s.Tier}"));
         var adminPassives = general.AdminPassives.Count == 0 ? "없음" : string.Join(", ", general.AdminPassives.Select(s => $"{s.Code} Lv{s.Tier}"));
+        var recruitPointText = _heroRecruitPointCosts.TryGetValue(general.Id, out var recruitPointCost)
+            ? $"{recruitPointCost}점"
+            : "위인 정의 없음";
 
         _summary.Text =
             $"ID {general.Id}  {general.Name}\n" +
@@ -453,11 +487,14 @@ public partial class GeneralEditorScene : Control
             $"현재 전투 액티브: {battleActive}\n" +
             $"현재 전투 패시브: {battlePassives}\n" +
             $"현재 내정 패시브: {adminPassives}\n\n" +
+            $"요구 영입 포인트: {recruitPointText}\n\n" +
             general.Desc;
 
         _mightInput.Value = general.Might;
         _intellectInput.Value = general.Intellect;
         _politicsInput.Value = general.Politics;
+        _recruitPointInput.Editable = _heroRecruitPointCosts.ContainsKey(general.Id);
+        _recruitPointInput.Value = _heroRecruitPointCosts.GetValueOrDefault(general.Id, 0);
         foreach (var key in TroopKeys)
         {
             SelectOption(_aptitudeInputs[key], general.Aptitudes.GetValueOrDefault(key, "F"));
@@ -620,12 +657,29 @@ public partial class GeneralEditorScene : Control
                 return;
             }
 
+            var heroUnlocksPath = Path.Combine(_dataDirectory, "hero_unlocks.json");
+            var heroUnlocksWriteTime = File.Exists(heroUnlocksPath) ? File.GetLastWriteTimeUtc(heroUnlocksPath) : DateTime.MinValue;
+            if (heroUnlocksWriteTime != _heroUnlocksLoadedAt)
+            {
+                _status.Text = "hero_unlocks.json이 외부에서 변경되었습니다. 재로드 후 다시 저장하세요.";
+                return;
+            }
+
             BackupDataFiles();
             var saved = GeneralEditorStore.ReplaceGeneral(File.ReadAllText(path), edited);
             File.WriteAllText(path, saved);
             SavePortraitMetadata(edited.Id);
+            if (_heroRecruitPointCosts.ContainsKey(edited.Id))
+            {
+                var recruitPointCost = (int)_recruitPointInput.Value;
+                var heroUnlocks = GeneralEditorStore.ReplaceHeroRecruitPointCost(
+                    File.ReadAllText(heroUnlocksPath), edited.Id, recruitPointCost);
+                File.WriteAllText(heroUnlocksPath, heroUnlocks);
+                _heroRecruitPointCosts[edited.Id] = recruitPointCost;
+            }
             _generalsLoadedAt = File.GetLastWriteTimeUtc(path);
             _portraitsLoadedAt = File.GetLastWriteTimeUtc(portraitPath);
+            _heroUnlocksLoadedAt = File.Exists(heroUnlocksPath) ? File.GetLastWriteTimeUtc(heroUnlocksPath) : DateTime.MinValue;
             var index = _generals.FindIndex(g => g.Id == edited.Id);
             if (index >= 0)
             {
@@ -672,6 +726,11 @@ public partial class GeneralEditorScene : Control
         if (File.Exists(portraitsPath))
         {
             File.Copy(portraitsPath, Path.Combine(backupDir, "general-portraits.json"), overwrite: true);
+        }
+        var heroUnlocksPath = Path.Combine(_dataDirectory, "hero_unlocks.json");
+        if (File.Exists(heroUnlocksPath))
+        {
+            File.Copy(heroUnlocksPath, Path.Combine(backupDir, "hero_unlocks.json"), overwrite: true);
         }
     }
 
@@ -725,6 +784,10 @@ public partial class GeneralEditorScene : Control
             AddChange(changes, "무력", _selected.Might, edited.Might);
             AddChange(changes, "지력", _selected.Intellect, edited.Intellect);
             AddChange(changes, "정치", _selected.Politics, edited.Politics);
+            if (_heroRecruitPointCosts.TryGetValue(_selected.Id, out var recruitPointCost))
+            {
+                AddChange(changes, "요구 영입 포인트", recruitPointCost, (int)_recruitPointInput.Value);
+            }
             foreach (var key in TroopKeys)
             {
                 AddChange(changes, TroopLabel(key), _selected.Aptitudes.GetValueOrDefault(key, "F"), edited.Aptitudes[key]);
@@ -752,6 +815,31 @@ public partial class GeneralEditorScene : Control
         {
             changes.Add($"{label}: {before} -> {after}");
         }
+    }
+
+    private void RunGeneralEditorQa()
+    {
+        var hero = _generals.FirstOrDefault(g => _heroRecruitPointCosts.ContainsKey(g.Id));
+        var regular = _generals.FirstOrDefault(g => !_heroRecruitPointCosts.ContainsKey(g.Id));
+        var heroOk = hero is not null;
+        var regularOk = regular is not null;
+        if (hero is not null)
+        {
+            ShowGeneral(hero);
+            heroOk = _recruitPointInput.Editable
+                && _recruitPointInput.MinValue == 0
+                && _recruitPointInput.MaxValue == 1000
+                && (int)_recruitPointInput.Value == _heroRecruitPointCosts[hero.Id];
+        }
+        if (regular is not null)
+        {
+            ShowGeneral(regular);
+            regularOk = !_recruitPointInput.Editable;
+        }
+
+        var passed = heroOk && regularOk;
+        GD.Print($"[generaleditorqa] passed={passed} hero={heroOk} regular={regularOk} range={_recruitPointInput.MinValue}-{_recruitPointInput.MaxValue}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     private static void SelectOption(OptionButton input, string value)

@@ -44,6 +44,26 @@ public sealed class GeneralEditorStore
         => JsonSerializer.Deserialize<List<GeneralPortraitRecord>>(json, ReadOptions)
             ?? throw new InvalidDataException("장수 초상 메타데이터를 읽을 수 없습니다.");
 
+    public static IReadOnlyDictionary<int, int> LoadHeroRecruitPointCosts(string json)
+    {
+        var root = JsonNode.Parse(json) as JsonArray
+            ?? throw new InvalidDataException("hero_unlocks.json 루트는 배열이어야 합니다.");
+        var costs = new Dictionary<int, int>();
+        foreach (var node in root.OfType<JsonObject>())
+        {
+            var generalId = node["general"]?.GetValue<int>()
+                ?? throw new InvalidDataException("위인 정의에 general ID가 없습니다.");
+            var cost = node["recruit_point_cost"]?.GetValue<int>() ?? 0;
+            ValidateRecruitPointCost(generalId, cost);
+            if (!costs.TryAdd(generalId, cost))
+            {
+                throw new InvalidDataException($"중복 위인 장수 ID: {generalId}");
+            }
+        }
+
+        return costs;
+    }
+
     public static GeneralEditorValidationResult Validate(
         IReadOnlyList<GeneralEditorRecord> generals,
         IReadOnlySet<string> activeSkillCodes,
@@ -193,6 +213,19 @@ public sealed class GeneralEditorStore
         return root.ToJsonString(WriteOptions);
     }
 
+    public static string ReplaceHeroRecruitPointCost(string originalJson, int generalId, int recruitPointCost)
+    {
+        ValidateRecruitPointCost(generalId, recruitPointCost);
+        var root = JsonNode.Parse(originalJson) as JsonArray
+            ?? throw new InvalidDataException("hero_unlocks.json 루트는 배열이어야 합니다.");
+
+        var target = root.OfType<JsonObject>()
+            .FirstOrDefault(node => node["general"]?.GetValue<int>() == generalId)
+            ?? throw new InvalidDataException($"위인 정의에서 장수 ID {generalId}를 찾을 수 없습니다.");
+        target["recruit_point_cost"] = recruitPointCost;
+        return root.ToJsonString(WriteOptions);
+    }
+
     public static void SaveValidated(
         string generalsPath,
         string portraitsPath,
@@ -283,6 +316,14 @@ public sealed class GeneralEditorStore
         if (value is < 1 or > 100)
         {
             errors.Add($"{id}: {label}은 1~100이어야 합니다.");
+        }
+    }
+
+    private static void ValidateRecruitPointCost(int generalId, int value)
+    {
+        if (value is < 0 or > 1000)
+        {
+            throw new InvalidDataException($"{generalId}: 요구 영입 포인트는 0~1,000이어야 합니다.");
         }
     }
 
