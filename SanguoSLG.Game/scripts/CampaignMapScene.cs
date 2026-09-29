@@ -1004,6 +1004,23 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 좌클릭 → 지면 헥사 → 그 칸의 성. 내 성이면 명령 패널, 아니면 닫는다.
+    public override void _Input(InputEvent @event)
+    {
+        // 시스템 팔레트의 바깥 클릭은 GUI 자식의 MouseFilter 상태와 무관하게 가장 먼저 처리한다.
+        // 제목줄 드래그/스크롤 컨테이너가 입력을 소비해도 팔레트 바깥은 항상 닫혀야 한다.
+        if (@event is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mouse
+            || _modalLayer is null
+            || !GodotObject.IsInstanceValid(_modalLayer))
+        {
+            return;
+        }
+
+        var systemPanel = _modalLayer.FindChild("SystemPalettePanel", true, false) as PanelContainer;
+        if (systemPanel is null || systemPanel.GetGlobalRect().HasPoint(mouse.Position)) { return; }
+        CloseModal();
+        GetViewport().SetInputAsHandled();
+    }
+
     public override void _UnhandledInput(InputEvent @event)
     {
         // 마우스 오버: 밑 타일에 호버 육각.
@@ -6752,6 +6769,7 @@ public sealed partial class CampaignMapScene : Node3D
         var mw = Mathf.Clamp(vp.X * 0.3f, 300f, 420f);
         var mh = Mathf.Clamp(vp.Y * 0.6f, 260f, 520f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
+        panel.Name = "SystemPalettePanel";
 
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
@@ -6762,7 +6780,8 @@ public sealed partial class CampaignMapScene : Node3D
         var close = MakeButton("✕");
         close.Name = "SystemPaletteClose";
         close.CustomMinimumSize = new Vector2(40, 30);
-        close.Pressed += CloseModal;
+        // 제목줄은 패널 드래그 핸들이기도 하므로 release 기반 Pressed 대신 down에서 즉시 닫는다.
+        close.ButtonDown += CloseModal;
         titleRow.AddChild(close);
         box.AddChild(GoldRule());
 

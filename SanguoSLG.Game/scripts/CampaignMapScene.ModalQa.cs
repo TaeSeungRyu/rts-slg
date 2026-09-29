@@ -11,16 +11,43 @@ public sealed partial class CampaignMapScene
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var staleDismissCleared = _modalDismissAction is null;
         var close = _modalLayer?.FindChild("SystemPaletteClose", true, false) as Button;
-        close?.EmitSignal(Button.SignalName.Pressed);
+        if (close is not null)
+        {
+            var click = close.GetGlobalRect().GetCenter();
+            Input.ParseInputEvent(new InputEventMouseMotion { Position = click });
+            Input.ParseInputEvent(new InputEventMouseButton
+            {
+                Position = click,
+                Pressed = true,
+                ButtonIndex = MouseButton.Left,
+            });
+            Input.ParseInputEvent(new InputEventMouseButton
+            {
+                Position = click,
+                Pressed = false,
+                ButtonIndex = MouseButton.Left,
+            });
+        }
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var closeButtonWorked = _modalLayer is null;
 
         OpenSystemPalette();
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        var backdrop = _modalLayer?.FindChild("ModalBackdrop", true, false) as ColorRect;
-        backdrop?.EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton
+        var panel = _modalLayer?.FindChild("SystemPalettePanel", true, false) as PanelContainer;
+        var backdropPoint = panel is null
+            ? new Vector2(8f, 8f)
+            : new Vector2(Mathf.Max(4f, panel.GetGlobalRect().Position.X - 20f), panel.GetGlobalRect().GetCenter().Y);
+        Input.ParseInputEvent(new InputEventMouseMotion { Position = backdropPoint });
+        Input.ParseInputEvent(new InputEventMouseButton
         {
+            Position = backdropPoint,
             Pressed = true,
+            ButtonIndex = MouseButton.Left,
+        });
+        Input.ParseInputEvent(new InputEventMouseButton
+        {
+            Position = backdropPoint,
+            Pressed = false,
             ButtonIndex = MouseButton.Left,
         });
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
