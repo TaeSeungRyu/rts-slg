@@ -547,6 +547,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestshutdownresourceqa")) CallDeferred(nameof(RunShutdownResourceQa));
         if (args.Contains("--maptestsaveslotuiqa")) CallDeferred(nameof(RunSaveSlotUiQa));
         if (args.Contains("--maptestloadslotuiqa")) CallDeferred(nameof(RunLoadSlotUiQa));
+        if (args.Contains("--maptestpalettechevronqa")) CallDeferred(nameof(RunPaletteChevronQa));
         if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
         if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
         if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
@@ -1351,7 +1352,7 @@ public sealed partial class CampaignMapScene : Node3D
         var adj = u.AdjutantId is { } aid ? _state.Generals.FirstOrDefault(g => g.Id == aid)?.Name : null;
 
         Clear(_infoRows);
-        _infoRows.AddChild(MakeLabel($"《 {tmpl?.Name ?? u.TroopCode} 》 {faction?.Name}", 15, GoldBright));
+        _infoRows.AddChild(MakeLabel($"{tmpl?.Name ?? u.TroopCode} · {faction?.Name}", 15, GoldBright));
         _infoRows.AddChild(MakeLabel($"시야 {_vision.UnitRadius(u)}칸", 13, Parchment));
         if (u.VanguardId is { } vanguardId)
         {
@@ -4293,7 +4294,7 @@ public sealed partial class CampaignMapScene : Node3D
         var facilities = $"논{c.Paddies} 밭{c.Farms} 마을{c.Villages}{(c.Workshop ? " 공방" : "")}";
 
         Clear(_infoRows);
-        _infoRows.AddChild(MakeLabel($"《 {c.Name} 》", 15, GoldBright));
+        _infoRows.AddChild(MakeLabel(c.Name, 15, GoldBright));
         _infoRows.AddChild(MakeLabel($"성 시야 {_vision.CityRadius(c.Castle)}칸", 13, Parchment));
         if (!owned && _state.IsScouted(Player, id))
             _infoRows.AddChild(MakeLabel($"정찰 남은 일수: {ScoutDaysLeft(id)}일", 13, GoldBright));

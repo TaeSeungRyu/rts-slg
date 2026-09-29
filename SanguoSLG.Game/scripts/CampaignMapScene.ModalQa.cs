@@ -40,6 +40,31 @@ public sealed partial class CampaignMapScene
         GetTree().Quit(passed ? 0 : 1);
     }
 
+    private void RunPaletteChevronQa()
+    {
+        var checkedPalettes = 0;
+        var passed = true;
+        foreach (var city in _state.Cities.GroupBy(city => city.IsPort).Select(group => group.First()))
+        {
+            SelectCity(city.Id);
+            var texts = _infoRows.FindChildren("*", "Label", true, false).OfType<Label>().Select(label => label.Text).ToList();
+            passed &= texts.All(text => !text.Contains('《') && !text.Contains('》'));
+            checkedPalettes++;
+        }
+
+        var unit = DisplayedArmies.FirstOrDefault(CanSeeUnit);
+        if (unit is not null)
+        {
+            ShowUnitInfo(unit.Id.Value);
+            var texts = _infoRows.FindChildren("*", "Label", true, false).OfType<Label>().Select(label => label.Text).ToList();
+            passed &= texts.All(text => !text.Contains('《') && !text.Contains('》'));
+            checkedPalettes++;
+        }
+
+        GD.Print($"[palette-chevron-qa] passed={passed} palettes={checkedPalettes}");
+        GetTree().Quit(passed && checkedPalettes >= 2 ? 0 : 1);
+    }
+
     private async void RunModalCameraBlockQa()
     {
         var city = _state.Cities.First(c => c.Owner == Player);
