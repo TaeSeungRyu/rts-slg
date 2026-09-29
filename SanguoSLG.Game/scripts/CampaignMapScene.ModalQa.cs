@@ -22,6 +22,24 @@ public sealed partial class CampaignMapScene
         GetTree().Quit(passed ? 0 : 1);
     }
 
+    private async void RunLoadSlotUiQa()
+    {
+        OpenLoadSlotList();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var slots = _modalLayer?.FindChildren("LoadSlot*", "Button", true, false)
+            .OfType<Button>().OrderBy(button => button.GetMeta("load_slot_index").AsInt32()).ToList() ?? [];
+        var slotCount = slots.Count == 20
+            && slots.Select(button => button.GetMeta("load_slot_index").AsInt32()).SequenceEqual(Enumerable.Range(1, 20));
+        slots.FirstOrDefault()?.EmitSignal(Button.SignalName.Pressed);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var confirmation = _confirmLayer is not null
+            && _confirmLayer.FindChildren("*", "Label", true, false).OfType<Label>()
+                .Any(label => label.Text.Contains("슬롯 01") && label.Text.Contains("불러오"));
+        var passed = slotCount && confirmation;
+        GD.Print($"[load-slot-ui-qa] passed={passed} slots={slots.Count} confirmation={confirmation}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private async void RunModalCameraBlockQa()
     {
         var city = _state.Cities.First(c => c.Owner == Player);

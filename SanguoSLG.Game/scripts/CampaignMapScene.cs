@@ -546,6 +546,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestreportmodalqa")) CallDeferred(nameof(RunReportModalQa));
         if (args.Contains("--maptestshutdownresourceqa")) CallDeferred(nameof(RunShutdownResourceQa));
         if (args.Contains("--maptestsaveslotuiqa")) CallDeferred(nameof(RunSaveSlotUiQa));
+        if (args.Contains("--maptestloadslotuiqa")) CallDeferred(nameof(RunLoadSlotUiQa));
         if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
         if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
         if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
@@ -6754,17 +6755,7 @@ public sealed partial class CampaignMapScene : Node3D
         Item("단서·보물 보관함", OpenTreasureList);
         box.AddChild(GoldRule());
         Item("게임 저장", OpenSaveSlotList);
-        Item("게임 불러오기", () =>
-        {
-            if (!System.IO.File.Exists(SavePath))
-            {
-                _log.Text = "세이브가 없습니다.";
-                CloseModal();
-                return;
-            }
-
-            ShowConfirm("게임 불러오기", "현재 진행을 버리고 저장된 게임을 불러옵니다.", LoadGame);
-        });
+        Item("게임 불러오기", OpenLoadSlotList);
 
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
@@ -6796,6 +6787,38 @@ public sealed partial class CampaignMapScene : Node3D
             button.Alignment = HorizontalAlignment.Left;
             button.Pressed += () => ShowConfirm("게임 저장 확인",
                 $"슬롯 {selectedSlot:00}에 현재 진행 상황을 저장하시겠습니까?", () => { });
+            grid.AddChild(button);
+        }
+
+        scroll.CustomMinimumSize = new Vector2(mw, mh);
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    private void OpenLoadSlotList()
+    {
+        const float mw = 640f;
+        const float mh = 620f;
+        var box = SystemView("게임 불러오기", mw, out var scroll, out var panel, out var titleRow);
+        var guide = MakeLabel("불러올 슬롯을 선택하세요.", 13, Parchment);
+        guide.HorizontalAlignment = HorizontalAlignment.Center;
+        box.AddChild(guide);
+
+        var grid = new GridContainer { Name = "LoadSlotGrid", Columns = 2 };
+        grid.AddThemeConstantOverride("h_separation", 10);
+        grid.AddThemeConstantOverride("v_separation", 8);
+        box.AddChild(grid);
+        var legacySaveExists = System.IO.File.Exists(SavePath);
+        for (var slot = 1; slot <= 20; slot++)
+        {
+            var selectedSlot = slot;
+            var status = slot == 1 && legacySaveExists ? "저장 데이터 있음" : "저장 정보 없음";
+            var button = MakeButton($"슬롯 {slot:00}    {status}");
+            button.Name = $"LoadSlot{slot:00}";
+            button.SetMeta("load_slot_index", slot);
+            button.CustomMinimumSize = new Vector2(285, 48);
+            button.Alignment = HorizontalAlignment.Left;
+            button.Pressed += () => ShowConfirm("게임 불러오기 확인",
+                $"현재 진행을 종료하고 슬롯 {selectedSlot:00}의 게임을 불러오시겠습니까?", () => { });
             grid.AddChild(button);
         }
 
