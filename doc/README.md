@@ -38,6 +38,7 @@
 | 장수 | [spec-general.md](./spec-general.md) | 능력치, 적성, 스킬 슬롯, 성장 |
 | 장수 라이프사이클 | [design-general-lifecycle.md](./design-general-lifecycle.md) | 위인 해금, 탐색, 등용, 함락/멸망 획득 |
 | 내정 | [design-administration.md](./design-administration.md) | v2 담당자 4슬롯, 생산, 항구 경제 |
+| 저장·장수 데이터 | [design-save-data.md](./design-save-data.md) | 20개 저장 슬롯, 오리진/프리셋/캠페인 상태 분리 |
 | UI | [design-ui.md](./design-ui.md) | 명령 팔레트, 장수/부대/스킬 표시 |
 | UI 개선 실행 | [plan-ui-improvement.md](./plan-ui-improvement.md) | 확인창·가로형 모달·스크롤·공통 컴포넌트·UI QA 우선순위 |
 | 스킬 | [design-skill.md](./design-skill.md), [design-skill-actives.md](./design-skill-actives.md), [design-skill-passives.md](./design-skill-passives.md), [design-skill-admin.md](./design-skill-admin.md) | 액티브/패시브/내정 패시브 |
