@@ -10495,17 +10495,10 @@ public sealed partial class CampaignMapScene : Node3D
         if (_vanTree is null) { return; }
         _vanTree.Clear();
         var root = _vanTree.CreateItem();
-        var gens = _composeFree.Select(id => _state.Generals.First(g => g.Id == id)).ToList();
-        System.Comparison<General> cmp = _vanSortCol switch
-        {
-            3 => (a, b) => a.Might.CompareTo(b.Might),
-            4 => (a, b) => a.Intellect.CompareTo(b.Intellect),
-            5 => (a, b) => a.Politics.CompareTo(b.Politics),
-            6 => (a, b) => string.Compare(AptTraitText(a), AptTraitText(b), System.StringComparison.Ordinal),
-            _ => (a, b) => string.Compare(a.Name, b.Name, System.StringComparison.Ordinal),
-        };
-        gens.Sort(cmp);
-        if (!_vanSortAsc) { gens.Reverse(); }
+        var gens = SortVanGenerals(
+            _composeFree.Select(id => _state.Generals.First(g => g.Id == id)),
+            _vanSortCol,
+            _vanSortAsc);
 
         foreach (var g in gens)
         {
@@ -10525,9 +10518,36 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetText(7, CurrentDuty(g.Id));
             item.SetTooltipText(7, CurrentDuty(g.Id));
             item.SetMetadata(0, g.Id.Value);
-            for (var col = 3; col <= 5; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
+            for (var col = 3; col <= 6; col++) { item.SetTextAlignment(col, HorizontalAlignment.Center); }
         }
     }
+
+    private List<General> SortVanGenerals(IEnumerable<General> source, int column, bool ascending)
+    {
+        var generals = source.ToList();
+        System.Comparison<General> comparison = column switch
+        {
+            2 => (a, b) => string.Compare(a.Name, b.Name, System.StringComparison.Ordinal),
+            3 => (a, b) => a.Might.CompareTo(b.Might),
+            4 => (a, b) => a.Intellect.CompareTo(b.Intellect),
+            5 => (a, b) => a.Politics.CompareTo(b.Politics),
+            6 => (a, b) => AptitudeSortValue(SelectedDeployAptitude(a)).CompareTo(AptitudeSortValue(SelectedDeployAptitude(b))),
+            7 => (a, b) => string.Compare(CurrentDuty(a.Id), CurrentDuty(b.Id), System.StringComparison.Ordinal),
+            _ => (a, b) => string.Compare(a.Name, b.Name, System.StringComparison.Ordinal),
+        };
+        generals.Sort((a, b) =>
+        {
+            var result = comparison(a, b);
+            if (result == 0) result = a.Id.Value.CompareTo(b.Id.Value);
+            return ascending ? result : -result;
+        });
+        return generals;
+    }
+
+    private AptitudeGrade SelectedDeployAptitude(General general)
+        => _depTroop is { } code && _troops.FirstOrDefault(t => t.Code == code) is { } template
+            ? general.AptitudeFor(template.Class)
+            : AptitudeGrade.F;
 
     // 선봉/부관 체크 토글 처리 — 선봉은 1명(라디오처럼), 부관은 선택·선봉과 달라야 한다.
     private void OnRosterEdited()
@@ -10585,7 +10605,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (_depTroop is { } code && _troops.FirstOrDefault(t => t.Code == code) is { } tmpl)
         {
-            return g.AptitudeFor(tmpl.Class).ToString();
+            return GradeText(g.AptitudeFor(tmpl.Class));
         }
         return "—";
     }

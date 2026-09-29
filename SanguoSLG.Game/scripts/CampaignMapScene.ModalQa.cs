@@ -501,10 +501,36 @@ public sealed partial class CampaignMapScene
                 .FirstOrDefault(s => s.HasMeta("compose_outer_scroll_disabled"));
             var aptitudeHeader = qa.Name != "combat" || officerTable?.GetColumnTitle(6) == "적성";
             var aptitudeGradesOnly = true;
+            var allHeadersSort = true;
             if (qa.Name == "combat" && officerTable?.GetRoot()?.GetFirstChild() is { } officerRow)
             {
                 var grade = officerRow.GetText(6);
                 aptitudeGradesOnly = grade == "—" || System.Text.RegularExpressions.Regex.IsMatch(grade, "^(F|D|C|B|A|A\\+|S|SS|SSS)$");
+                var originalColumn = _vanSortCol;
+                var originalAscending = _vanSortAsc;
+                var source = _composeFree.Select(id => _state.Generals.First(g => g.Id == id)).ToList();
+                foreach (var column in Enumerable.Range(2, 6))
+                {
+                    _vanSortCol = column;
+                    _vanSortAsc = true;
+                    PopulateVanTree();
+                    var actualAscending = new List<int>();
+                    for (var row = officerTable.GetRoot()?.GetFirstChild(); row is not null; row = row.GetNext())
+                        actualAscending.Add(row.GetMetadata(0).AsInt32());
+                    var expectedAscending = SortVanGenerals(source, column, true).Select(g => g.Id.Value).ToList();
+
+                    _vanSortAsc = false;
+                    PopulateVanTree();
+                    var actualDescending = new List<int>();
+                    for (var row = officerTable.GetRoot()?.GetFirstChild(); row is not null; row = row.GetNext())
+                        actualDescending.Add(row.GetMetadata(0).AsInt32());
+                    var expectedDescending = SortVanGenerals(source, column, false).Select(g => g.Id.Value).ToList();
+                    allHeadersSort &= actualAscending.SequenceEqual(expectedAscending)
+                        && actualDescending.SequenceEqual(expectedDescending);
+                }
+                _vanSortCol = originalColumn;
+                _vanSortAsc = originalAscending;
+                PopulateVanTree();
             }
             var casePassed = columns is not null
                 && columns.GetMeta("horizontal_compose_layout").AsBool()
@@ -521,9 +547,10 @@ public sealed partial class CampaignMapScene
                 && officerTable.ScrollVerticalEnabled
                 && outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
                 && aptitudeHeader
-                && aptitudeGradesOnly;
+                && aptitudeGradesOnly
+                && allHeadersSort;
             passed &= casePassed;
-            GD.Print($"[deploy-layout-qa] type={qa.Name} passed={casePassed} columns={columns is not null} outerDisabled={outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled} internalScrolls={(resources is not null ? 1 : 0) + (officers is not null ? 1 : 0)} aptitude={aptitudeHeader}/{aptitudeGradesOnly}");
+            GD.Print($"[deploy-layout-qa] type={qa.Name} passed={casePassed} columns={columns is not null} outerDisabled={outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled} internalScrolls={(resources is not null ? 1 : 0) + (officers is not null ? 1 : 0)} aptitude={aptitudeHeader}/{aptitudeGradesOnly} sorting={allHeadersSort}");
             CloseModal();
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
