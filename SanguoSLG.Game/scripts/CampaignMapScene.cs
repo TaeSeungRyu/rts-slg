@@ -577,6 +577,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestunitmenuqa")) CallDeferred(nameof(RunUnitMenuQa));
         if (args.Contains("--maptestunitinfouiqa")) CallDeferred(nameof(RunUnitInfoUiQa));
         if (args.Contains("--maptestherorecruitqa")) CallDeferred(nameof(RunHeroRecruitUiQa));
+        if (args.Contains("--maptestspecialresearchqa")) CallDeferred(nameof(RunSpecialResearchLockQa));
     }
 
     public override void _ExitTree()
@@ -5062,6 +5063,16 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 if (!FactionTroopUnlock.Check(_state, cityData.Owner, shipOptions[i].Code).Allowed)
                     _disabledOptions.Add(i);
+            }
+        }
+        if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
+        {
+            for (var i = 0; i < _troops.Count; i++)
+            {
+                if (!FactionTroopUnlock.CheckResearch(_state, cityData.Owner, _troops[i].Code).Allowed)
+                {
+                    _disabledOptions.Add(i + 2); // 통솔 병력·집단군 카드 다음부터 병종 카드다.
+                }
             }
         }
         if (options.Count > 0)
@@ -11221,6 +11232,11 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var level = _state.ResearchOf(city.Owner, troopCode);
         var maxLevel = ResearchMaxLevelFor(city.Owner, troopCode);
+        var access = FactionTroopUnlock.CheckResearch(_state, city.Owner, troopCode);
+        if (!access.Allowed)
+        {
+            return $"{ResearchStars(level, maxLevel)}\n{access.Reason}\n연구 불가";
+        }
         if (level >= maxLevel)
         {
             return $"{ResearchStars(level, maxLevel)}\n최대 · 공·방 +{ResearchCurve.Bonus(level)}";
@@ -15091,6 +15107,46 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         bodyScroll.SetDeferred("scroll_vertical", 100000); // 최신(아래)으로
+    }
+
+    private void RunSpecialResearchLockQa()
+    {
+        var original = _state;
+        var city = _state.Cities.FirstOrDefault(c => c.Owner == Player);
+        var ruin = _state.Ruins.FirstOrDefault(r => FactionTroopUnlock.RequiresRuin(r.TroopCode)
+            && _troops.Any(t => t.Code == r.TroopCode));
+        var commandIndex = System.Array.FindIndex(Cmds, c => c.Kind == CommandKind.Research && c.Param == "troop");
+        if (city is null || ruin is null || commandIndex < 0)
+        {
+            GD.PrintErr("[special-research-qa] missing city, ruin or command");
+            GetTree().Quit(1);
+            return;
+        }
+
+        var troopIndex = _troops.ToList().FindIndex(t => t.Code == ruin.TroopCode);
+        var cardIndex = troopIndex + 2;
+        _selected = city.Id;
+        var lockedRuinStates = _state.RuinStatus
+            .Select(r => r.RuinId == ruin.Id ? r with { RegisteredFactions = [] } : r).ToList();
+        _state = _state with { RuinStates = lockedRuinStates };
+        OpenModal(commandIndex);
+        var locked = _disabledOptions.Contains(cardIndex)
+            && OptionList(Cmds[commandIndex], city)[cardIndex].Detail.Contains("연구 불가", System.StringComparison.Ordinal)
+            && OptionList(Cmds[commandIndex], city)[cardIndex].Detail.Contains("유적 점령 필요", System.StringComparison.Ordinal);
+        CloseModal();
+
+        var registeredRuinStates = lockedRuinStates
+            .Select(r => r.RuinId == ruin.Id ? r with { RegisteredFactions = [city.Owner] } : r).ToList();
+        _state = _state with { RuinStates = registeredRuinStates };
+        OpenModal(commandIndex);
+        var unlocked = !_disabledOptions.Contains(cardIndex)
+            && !OptionList(Cmds[commandIndex], city)[cardIndex].Detail.Contains("연구 불가", System.StringComparison.Ordinal);
+        CloseModal();
+        _state = original;
+
+        var passed = locked && unlocked;
+        GD.Print($"[special-research-qa] passed={passed} troop={ruin.TroopCode} locked={locked} unlocked={unlocked}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     private void RunHeroRecruitUiQa()

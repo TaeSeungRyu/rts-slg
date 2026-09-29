@@ -38,6 +38,13 @@ public static class FactionTroopUnlock
             ? new(false, $"{ruin} 점령 필요") : new(false, "생산 해금 조건을 충족하지 못했다.");
     }
 
+    /// <summary>유적 등록이 전투교리 연구의 전제인 특수병과인가.</summary>
+    public static bool RequiresRuin(string troopCode) => RuinNames.ContainsKey(troopCode);
+
+    /// <summary>일반 병종은 허용하고, 특수병과만 대응 유적의 세력 등록 여부를 검사한다.</summary>
+    public static TroopProductionAccess CheckResearch(GameState state, FactionId faction, string troopCode)
+        => RequiresRuin(troopCode) ? Check(state, faction, troopCode) : TroopProductionAccess.Granted;
+
     public static string RuinName(string troopCode)
         => RuinNames.TryGetValue(troopCode, out var name) ? name : troopCode;
 }

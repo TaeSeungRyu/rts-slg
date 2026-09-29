@@ -36,6 +36,17 @@ public class ScenarioLoaderTests
         var cityIds = scenario.Cities.Select(c => c.Id).ToHashSet();
         Assert.All(scenario.HeroUnlockList.SelectMany(h => h.CityList), c => Assert.Contains(c, cityIds));
         Assert.All(scenario.HeroUnlockList, h => Assert.True(h.RecruitPointCost > 0));
+        var defenders = scenario.RuinList.ToDictionary(r => r.TroopCode, r => r.MaxDefenders);
+        Assert.Equal(15_000, defenders["geukbyeong"]);
+        Assert.Equal(50_000, defenders["war_elephant"]);
+        Assert.Equal(20_000, defenders["namman"]);
+        Assert.Equal(20_000, defenders["deunggap"]);
+        Assert.Equal(20_000, defenders["mudang"]);
+        Assert.Equal(30_000, defenders["cataphract"]);
+        Assert.Equal(30_000, defenders["horse_archer"]);
+        Assert.Equal(30_000, defenders["hwarang"]);
+        Assert.Equal(50_000, defenders["turtleship"]);
+        Assert.Equal(5_000, defenders["waeseon"]);
 
         // 참조 무결성: 모든 도시가 맵 경계 안에 있다.
         Assert.All(scenario.Cities, c => Assert.True(scenario.Map.Contains(c.Position), $"{c.Name}이 맵 밖에 있다."));

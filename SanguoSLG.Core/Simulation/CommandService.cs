@@ -556,6 +556,12 @@ public sealed class CommandService
             return CommandResult.Fail("연구할 병종을 지정해야 한다.", state);
         }
 
+        if (!isWall && !isCommandTroops && !isArmyGroup && !isGeneralResearch
+            && FactionTroopUnlock.CheckResearch(state, faction, req.TroopCode) is { Allowed: false } access)
+        {
+            return CommandResult.Fail($"전투교리 연구 불가: {access.Reason}", state);
+        }
+
         var level = isWall ? city.WallLevel : state.ResearchOf(city.Owner, req.TroopCode);
         var maxLevel = isWall ? _b.WallResearchMaxLevel
             : isCommandTroops || isArmyGroup || isGeneralResearch ? GeneralResearchRules.MaxLevel

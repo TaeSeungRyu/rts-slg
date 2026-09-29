@@ -564,8 +564,13 @@ public sealed class WorldEngine
     // 목록에서 뺀다. 도시 id 순으로 결정론. 발행 시 자원·금은 이미 예약(차감)됐으므로 여기선 산출만 반영.
     private GameState ResolveCommands(GameState state)
     {
-        var due = state.Commands.Where(c => c.CompletionDay == state.Day)
+        var dueToday = state.Commands.Where(c => c.CompletionDay == state.Day)
             .OrderBy(c => c.City.Value).ThenBy(c => c.Main.Value).ToList();
+        // 이전 세이브나 규칙 변경 전에 시작한 특수병과 연구도 유적 등록 전에는 완료시키지 않는다.
+        // 비용은 이미 예약됐으므로 환불·재차감 없이 하루씩 보류하다 등록 직후 정상 완료한다.
+        var deferredResearch = dueToday.Where(c => IsLockedSpecialResearch(state, c))
+            .Select(c => c with { CompletionDay = state.Day + 1 }).ToList();
+        var due = dueToday.Where(c => !IsLockedSpecialResearch(state, c)).ToList();
         var cities = state.Cities.ToDictionary(c => c.Id);
         var garrisons = state.Garrisons.ToList();
         var research = state.Research.ToList();
@@ -750,7 +755,10 @@ public sealed class WorldEngine
             Postings = postings,
             Captives = prisoners,
             FieldArmies = armies,
-            PendingCommands = state.Commands.Where(c => c.CompletionDay != state.Day).ToList(),
+            PendingCommands = state.Commands.Where(c => c.CompletionDay != state.Day)
+                .Concat(deferredResearch)
+                .OrderBy(c => c.CompletionDay).ThenBy(c => c.City.Value).ThenBy(c => c.Main.Value)
+                .ToList(),
             FacilityPlacements = placements,
             ExplorationDiscoveries = discoveries
                 .OrderBy(d => d.Day).ThenBy(d => d.City.Value).ThenBy(d => d.Explorer.Value)
@@ -760,6 +768,18 @@ public sealed class WorldEngine
                 .OrderBy(s => s.City.Value).ThenBy(s => s.ShipCode, System.StringComparer.Ordinal)
                 .ToList(),
         };
+    }
+
+    private static bool IsLockedSpecialResearch(GameState state, CityCommand command)
+    {
+        if (command.Kind != CommandKind.Research || !FactionTroopUnlock.RequiresRuin(command.TroopCode))
+        {
+            return false;
+        }
+
+        var city = state.Cities.FirstOrDefault(c => c.Id == command.City);
+        return city is not null
+            && !FactionTroopUnlock.CheckResearch(state, city.Owner, command.TroopCode).Allowed;
     }
 
     private static void AddPortShip(List<PortShipStock> stocks, CityId city, string shipCode, int count)

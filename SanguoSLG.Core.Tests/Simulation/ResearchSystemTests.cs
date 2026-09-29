@@ -14,7 +14,7 @@ public class ResearchSystemTests
     private static readonly CommandBalance B = new();
 
     private static readonly IReadOnlyList<TroopTemplate> Troops =
-        new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory());
+        new TroopCatalogLoader().LoadFromDirectory(TestData.DataDirectory());
 
     private static CommandService Service() => new(B, Troops);
 
@@ -70,6 +70,69 @@ public class ResearchSystemTests
         Assert.Equal(450, r.State.Cities.Single(c => c.Id == new CityId(1)).Gold);
         Assert.Equal(350, r.State.Cities.Single(c => c.Id == new CityId(2)).Gold);
         Assert.Single(r.State.Commands);
+    }
+
+    [Fact]
+    public void 특수병과는_대응유적에_등록되기전에는_전투교리를_연구할수없다()
+    {
+        var city = Town(1, workshop: false);
+        var state = State([city], [Wit(1, 80)]) with
+        {
+            RuinDefinitions = [new("r1", "극병 유적", new HexCoord(5, 5), "geukbyeong", 15_000)],
+            RuinStates = [new("r1", 15_000)],
+        };
+
+        var result = Service().Issue(state, new CommandRequest(city.Id, CommandKind.Research,
+            new GeneralId(1), TroopCode: "geukbyeong"));
+
+        Assert.False(result.Ok);
+        Assert.Contains("극병 유적 점령 필요", result.Error);
+        Assert.Empty(result.State.Commands);
+        Assert.Equal(city.Gold, result.State.Cities.Single().Gold);
+    }
+
+    [Fact]
+    public void 유적에_세력명이_등록되면_특수병과_전투교리를_연구할수있다()
+    {
+        var city = Town(1, workshop: false);
+        var state = State([city], [Wit(1, 100)]) with
+        {
+            RuinDefinitions = [new("r1", "극병 유적", new HexCoord(5, 5), "geukbyeong", 15_000)],
+            RuinStates = [new("r1", 0, city.Owner, 1, 31, [city.Owner])],
+        };
+
+        var result = Service().Issue(state, new CommandRequest(city.Id, CommandKind.Research,
+            new GeneralId(1), TroopCode: "geukbyeong"));
+
+        Assert.True(result.Ok, result.Error);
+        Assert.Single(result.State.Commands);
+    }
+
+    [Fact]
+    public void 이전세이브의_잠긴_특수병과_연구는_등록전까지_보류되고_등록후_완료된다()
+    {
+        var city = Town(1, workshop: false);
+        var command = new CityCommand(city.Id, CommandKind.Research, new GeneralId(1), null,
+            StartDay: 1, CompletionDay: 2, Amount: 0, TroopCode: "geukbyeong");
+        var state = State([city], [Wit(1, 100)]) with
+        {
+            PendingCommands = [command],
+            RuinDefinitions = [new("r1", "극병 유적", new HexCoord(5, 5), "geukbyeong", 15_000)],
+            RuinStates = [new("r1", 15_000)],
+        };
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), B);
+
+        var deferred = world.AdvanceDays(state, 1);
+        Assert.Equal(0, deferred.ResearchOf(city.Owner, "geukbyeong"));
+        Assert.Equal(3, deferred.Commands.Single().CompletionDay);
+
+        var registered = deferred with
+        {
+            RuinStates = [new("r1", 0, city.Owner, 2, 32, [city.Owner])],
+        };
+        var completed = world.AdvanceDays(registered, 1);
+        Assert.Equal(1, completed.ResearchOf(city.Owner, "geukbyeong"));
+        Assert.Empty(completed.Commands);
     }
 
     [Fact]
