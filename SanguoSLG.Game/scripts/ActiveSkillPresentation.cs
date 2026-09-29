@@ -7,8 +7,9 @@ namespace SanguoSLG.Game;
 public static class ActiveSkillPresentation
 {
     public const float UnitToastHeight = 1.48f;
-    public const int UnitToastFontSize = 22;
-    public const float UnitToastPixelSize = 0.005f;
+    public const int UnitToastFontSize = 14;
+    public const float UnitToastPixelSize = 0.0032f;
+    public static readonly Vector2I UnitToastViewportSize = new(196, 46);
 
     public static bool ShowBreakthrough(Node3D caster, Node3D target)
     {
@@ -201,29 +202,77 @@ public static class ActiveSkillPresentation
     }
 
     /// <summary>캠페인 전투에서 화면을 가리지 않도록 발동 부대 위에 작게 표시하는 월드 토스트.</summary>
-    public static Label3D ShowUnitToast(Node3D caster, string generalName, ActiveSkill skill)
+    public static Node3D ShowUnitToast(Node3D caster, string generalName, ActiveSkill skill, Texture2D? portrait)
     {
-        var toast = new Label3D
+        var toast = new Node3D
         {
             Name = "ActiveSkillUnitToast",
-            Text = $"{generalName} · {skill.Name}",
             Position = Vector3.Up * UnitToastHeight,
-            FontSize = UnitToastFontSize,
-            PixelSize = UnitToastPixelSize,
-            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-            NoDepthTest = true,
-            Modulate = new Color(1f, 0.82f, 0.34f, 0f),
-            OutlineSize = 6,
-            OutlineModulate = new Color(0.055f, 0.035f, 0.025f, 0.96f),
-            RenderPriority = 8,
         };
         caster.AddChild(toast);
 
+        var viewport = new SubViewport
+        {
+            Name = "ActiveSkillToastViewport",
+            Size = UnitToastViewportSize,
+            TransparentBg = true,
+            Disable3D = true,
+            RenderTargetUpdateMode = SubViewport.UpdateMode.Once,
+        };
+        toast.AddChild(viewport);
+        var panel = new PanelContainer { Name = "ActiveSkillToastCard" };
+        panel.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color(0.055f, 0.035f, 0.025f, 0.92f),
+            BorderColor = new Color(0.92f, 0.70f, 0.28f, 0.92f),
+            BorderWidthLeft = 1, BorderWidthTop = 1, BorderWidthRight = 1, BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 10, CornerRadiusTopRight = 10,
+            CornerRadiusBottomLeft = 10, CornerRadiusBottomRight = 10,
+            ContentMarginLeft = 5, ContentMarginTop = 4, ContentMarginRight = 7, ContentMarginBottom = 4,
+        });
+        viewport.AddChild(panel);
+        var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        row.AddThemeConstantOverride("separation", 6);
+        panel.AddChild(row);
+        var face = new TextureRect
+        {
+            Name = "ActiveSkillToastPortrait",
+            Texture = portrait,
+            CustomMinimumSize = new Vector2(34, 34),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        };
+        row.AddChild(face);
+        var text = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        text.AddThemeConstantOverride("separation", -2);
+        row.AddChild(text);
+        var generalLabel = new Label { Name = "ActiveSkillToastGeneral", Text = generalName };
+        generalLabel.AddThemeFontSizeOverride("font_size", 10);
+        generalLabel.AddThemeColorOverride("font_color", new Color(0.90f, 0.83f, 0.70f));
+        text.AddChild(generalLabel);
+        var skillLabel = new Label { Name = "ActiveSkillToastSkill", Text = skill.Name };
+        skillLabel.AddThemeFontSizeOverride("font_size", UnitToastFontSize);
+        skillLabel.AddThemeColorOverride("font_color", new Color(1f, 0.78f, 0.26f));
+        text.AddChild(skillLabel);
+
+        var sprite = new Sprite3D
+        {
+            Name = "ActiveSkillToastSprite",
+            Texture = viewport.GetTexture(),
+            PixelSize = UnitToastPixelSize,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            NoDepthTest = true,
+            RenderPriority = 8,
+            Modulate = new Color(1f, 1f, 1f, 0f),
+        };
+        toast.AddChild(sprite);
+
         var tween = toast.CreateTween().SetParallel(true);
-        tween.TweenProperty(toast, "modulate:a", 1f, 0.12f);
+        tween.TweenProperty(sprite, "modulate:a", 1f, 0.12f);
         tween.TweenProperty(toast, "position:y", UnitToastHeight + 0.18f, 1.05f)
             .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
-        tween.TweenProperty(toast, "modulate:a", 0f, 0.28f).SetDelay(0.82f);
+        tween.TweenProperty(sprite, "modulate:a", 0f, 0.28f).SetDelay(0.82f);
         tween.Finished += toast.QueueFree;
         return toast;
     }
