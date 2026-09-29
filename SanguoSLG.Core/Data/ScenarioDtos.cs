@@ -84,6 +84,7 @@ internal sealed class HeroUnlockDto
     public List<HeroUnlockConditionDto> WandererConditions { get; init; } = new();
     public int UnlockYear { get; init; }
     public int RecruitGold { get; init; }
+    public int RecruitPointCost { get; init; }
     public bool AiCanRecruit { get; init; } = true;
     public string Title { get; init; } = "";
     public string Desc { get; init; } = "";

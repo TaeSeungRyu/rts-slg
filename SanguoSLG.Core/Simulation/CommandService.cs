@@ -183,6 +183,7 @@ public sealed class CommandService
 
     private static CommandResult RecruitHero(GameState state, City city, CommandRequest req)
     {
+        state = new HeroUnlockService().Evaluate(state);
         if (req.TargetGeneral is not { } generalId)
         {
             return CommandResult.Fail("영입할 위인을 지정해야 한다.", state);
@@ -214,6 +215,14 @@ public sealed class CommandService
         {
             return CommandResult.Fail($"위인 영입 비용 {hero.RecruitGold}금이 필요하다.", state);
         }
+
+        var points = RecruitmentPointBank.Balance(state, city.Owner);
+        if (points < hero.RecruitPointCost)
+        {
+            return CommandResult.Fail($"영입 포인트 {hero.RecruitPointCost}점이 필요하다. (보유 {points}점)", state);
+        }
+
+        state = RecruitmentPointBank.Spend(state, city.Owner, hero.RecruitPointCost);
 
         var cities = state.Cities
             .Select(c => c.Id == city.Id ? c with { Gold = c.Gold - hero.RecruitGold } : c)

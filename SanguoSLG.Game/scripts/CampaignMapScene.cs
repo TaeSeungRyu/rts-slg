@@ -576,6 +576,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestmodalcamerablockqa")) CallDeferred(nameof(RunModalCameraBlockQa));
         if (args.Contains("--maptestunitmenuqa")) CallDeferred(nameof(RunUnitMenuQa));
         if (args.Contains("--maptestunitinfouiqa")) CallDeferred(nameof(RunUnitInfoUiQa));
+        if (args.Contains("--maptestherorecruitqa")) CallDeferred(nameof(RunHeroRecruitUiQa));
     }
 
     public override void _ExitTree()
@@ -11037,7 +11038,10 @@ public sealed partial class CampaignMapScene : Node3D
             var general = _state.Generals.FirstOrDefault(g => g.Id == state.General);
             var name = general?.Name ?? $"장수 {state.General.Value}";
             var type = HeroTypeName(hero.Type, state.Status);
-            var canRecruit = state.CanRecruit && state.EligibleFaction == city.Owner && city.Gold >= hero.RecruitGold;
+            var points = RecruitmentPointBank.Balance(_state, city.Owner);
+            var hasPoints = points >= hero.RecruitPointCost;
+            var hasGold = city.Gold >= hero.RecruitGold;
+            var canRecruit = state.CanRecruit && state.EligibleFaction == city.Owner && hasGold && hasPoints;
             var status = HeroStatusText(state, city.Owner);
             var card = new PanelContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             card.AddThemeStyleboxOverride("panel", Frame(new Color(0.12f, 0.08f, 0.04f, state.CanRecruit ? 0.94f : 0.72f),
@@ -11060,9 +11064,14 @@ public sealed partial class CampaignMapScene : Node3D
             var text = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             row.AddChild(text);
             text.AddChild(MakeLabel($"{name} · {type}", 17, state.CanRecruit ? Gold : new Color(Gold, 0.65f)));
-            text.AddChild(MakeLabel($"{status}\n{HeroRequirementText(hero, general)}\n비용 {hero.RecruitGold}금", 13, Parchment));
+            text.AddChild(MakeLabel($"{status}\n{HeroRequirementText(hero, general)}\n영입 포인트 {hero.RecruitPointCost}점 (보유 {points}점)\n비용 {hero.RecruitGold}금", 13, Parchment));
 
-            var recruit = MakeButton(canRecruit ? "영입" : state.CanRecruit ? "금 부족" : "잠김", accent: canRecruit);
+            var unavailable = !state.CanRecruit || state.EligibleFaction != city.Owner
+                ? "잠김"
+                : !hasPoints ? $"포인트 {hero.RecruitPointCost - points} 부족"
+                : !hasGold ? $"금 {hero.RecruitGold - city.Gold} 부족"
+                : "영입";
+            var recruit = MakeButton(canRecruit ? "영입" : unavailable, accent: canRecruit);
             recruit.Disabled = !canRecruit;
             recruit.CustomMinimumSize = new Vector2(72, 54);
             recruit.Pressed += () => ConfirmRecruitHero(city, hero, name, type);
@@ -11077,7 +11086,7 @@ public sealed partial class CampaignMapScene : Node3D
             ?? _state.Factions.FirstOrDefault(f => f.Id == city.Owner)?.Ruler
             ?? hero.General;
         ShowConfirm("위인 영입",
-            $"{city.Name}에서 {name}을(를) 영입합니다.\n유형: {type}\n비용: {hero.RecruitGold}금\n\n진행하시겠습니까?",
+            $"{city.Name}에서 {name}을(를) 영입합니다.\n유형: {type}\n영입 포인트: {hero.RecruitPointCost}점\n비용: {hero.RecruitGold}금\n\n진행하시겠습니까?",
             () =>
             {
                 var request = new CommandRequest(city.Id, CommandKind.RecruitHero, actor, TargetGeneral: hero.General);
@@ -11123,10 +11132,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var requiredYear = hero.UnlockYear > 0 ? hero.UnlockYear : general?.UnlockYear ?? 0;
         var year = requiredYear > 0 ? $"해금 가능 {requiredYear}년" : "해금 가능 년도 제한 없음";
-        var conditions = hero.ConditionList.Count == 0
-            ? "조건 없음"
-            : string.Join(", ", hero.ConditionList.Select(c => c.Text ?? HeroConditionLabel(c)));
-        return $"{year}\n조건: {conditions}";
+        return year;
     }
 
     private string HeroConditionLabel(HeroUnlockCondition c) => c.Code switch
@@ -15031,6 +15037,27 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         bodyScroll.SetDeferred("scroll_vertical", 100000); // 최신(아래)으로
+    }
+
+    private void RunHeroRecruitUiQa()
+    {
+        var city = _state.Cities.FirstOrDefault(c => c.Owner == Player);
+        var host = new VBoxContainer();
+        AddChild(host);
+        if (city is not null)
+        {
+            BuildHeroRecruitCards(host, city);
+        }
+        var labels = host.FindChildren("*", "Label", true, false).OfType<Label>()
+            .Select(x => x.Text).ToList();
+        var buttons = host.FindChildren("*", "Button", true, false).OfType<Button>().ToList();
+        var hasPointCost = labels.Any(x => x.Contains("영입 포인트", StringComparison.Ordinal));
+        var noLegacyConditions = labels.All(x => !x.Contains("조건:", StringComparison.Ordinal));
+        var shortageVisible = buttons.Any(x => x.Text.Contains("포인트", StringComparison.Ordinal) && x.Disabled);
+        var passed = city is not null && hasPointCost && noLegacyConditions && shortageVisible;
+        GD.Print($"[maptestherorecruitqa] passed={passed} city={city?.Name ?? "-"} pointCost={hasPointCost} legacy={noLegacyConditions} shortage={shortageVisible}");
+        host.QueueFree();
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     // 진행 버튼(화면 우측 하단, 100×100 원형 아이콘) + 진행 중 "N일차" 텍스트(버튼 20px 위).

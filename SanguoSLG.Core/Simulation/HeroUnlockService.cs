@@ -93,21 +93,19 @@ public sealed class HeroUnlockService
     }
 
     public bool IsSatisfied(GameState state, HeroUnlockDefinition hero, FactionId faction)
-        => hero.ConditionList.All(c => IsSatisfied(state, c, faction));
+        => CandidateMatches(state, hero, faction);
 
     public bool IsWandererSatisfied(GameState state, HeroUnlockDefinition hero, FactionId faction)
-        => hero.WandererConditionList.Count > 0 && hero.WandererConditionList.All(c => IsSatisfied(state, c, faction));
+        => state.CityCount(faction) > 0;
 
     private FactionId? EligibleFaction(GameState state, HeroUnlockDefinition hero, HeroUnlockState current)
     {
         if (current.Status == HeroUnlockStatus.Wanderer)
         {
-            foreach (var candidate in state.Factions.Select(f => f.Id).Where(f => state.CityCount(f) > 0))
+            foreach (var candidate in state.Factions.Select(f => f.Id).Where(f => state.CityCount(f) > 0)
+                .OrderBy(f => f.Value))
             {
-                if (IsWandererSatisfied(state, hero, candidate))
-                {
-                    return candidate;
-                }
+                return candidate;
             }
 
             return null;
@@ -115,14 +113,15 @@ public sealed class HeroUnlockService
 
         if (hero.Type == HeroUnlockType.Faction && hero.Faction is { } faction)
         {
-            return state.CityCount(faction) > 0 && IsSatisfied(state, hero, faction) ? faction : null;
+            return state.CityCount(faction) > 0 ? faction : null;
         }
 
         if (hero.Type == HeroUnlockType.Region)
         {
-            foreach (var candidate in state.Factions.Select(f => f.Id).Where(f => state.CityCount(f) > 0))
+            foreach (var candidate in state.Factions.Select(f => f.Id).Where(f => state.CityCount(f) > 0)
+                .OrderBy(f => f.Value))
             {
-                if (IsSatisfied(state, hero, candidate))
+                if (CandidateMatches(state, hero, candidate))
                 {
                     return candidate;
                 }
@@ -142,17 +141,24 @@ public sealed class HeroUnlockService
         return requiredYear <= 0 || state.Year >= requiredYear;
     }
 
-    private static bool IsSatisfied(GameState state, HeroUnlockCondition condition, FactionId faction)
-        => condition.Code switch
+    private static bool CandidateMatches(GameState state, HeroUnlockDefinition hero, FactionId faction)
+    {
+        if (state.CityCount(faction) <= 0)
         {
-            "owned_cities" => state.CityCount(faction) >= condition.Value,
-            "owned_region_cities" => state.Cities.Count(c => c.Owner == faction && c.Region == condition.Region) >= condition.Value,
-            "city_security_at_least" => state.Cities.Any(c => c.Owner == faction && c.Security >= condition.Value),
-            "research_level" => !string.IsNullOrWhiteSpace(condition.TroopCode)
-                && state.ResearchOf(faction, condition.TroopCode) >= condition.Value,
-            "major_troop" => !string.IsNullOrWhiteSpace(condition.TroopCode)
-                && state.IsMajorTroop(faction, condition.TroopCode),
-            "gold_at_least" or "monthly_gold_at_least" => state.Factions.FirstOrDefault(f => f.Id == faction)?.Gold >= condition.Value,
-            _ => false,
-        };
+            return false;
+        }
+        if (hero.Type == HeroUnlockType.Faction)
+        {
+            return hero.Faction == faction;
+        }
+        if (hero.CityList.Count > 0 && state.Cities.Any(c => c.Owner == faction && hero.CityList.Contains(c.Id)))
+        {
+            return true;
+        }
+        if (hero.RegionList.Count > 0 && state.Cities.Any(c => c.Owner == faction && hero.RegionList.Contains(c.Region)))
+        {
+            return true;
+        }
+        return hero.CityList.Count == 0 && hero.RegionList.Count == 0;
+    }
 }

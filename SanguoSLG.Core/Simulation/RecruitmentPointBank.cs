@@ -42,4 +42,22 @@ public static class RecruitmentPointBank
                 .OrderBy(x => x.Faction.Value).ThenBy(x => x.Key, StringComparer.Ordinal).ToList(),
         };
     }
+
+    public static GameState Spend(GameState state, FactionId faction, int amount)
+    {
+        if (amount <= 0)
+        {
+            return state;
+        }
+
+        var balances = state.RecruitmentPointBalances.ToList();
+        var index = balances.FindIndex(x => x.Faction == faction);
+        if (index < 0 || balances[index].Points < amount)
+        {
+            throw new InvalidOperationException("영입 포인트 잔액이 부족하다.");
+        }
+
+        balances[index] = balances[index] with { Points = balances[index].Points - amount };
+        return state with { RecruitmentPoints = balances };
+    }
 }

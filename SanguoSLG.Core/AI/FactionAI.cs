@@ -343,6 +343,10 @@ public sealed class FactionAI
             {
                 continue;
             }
+            if (RecruitmentPointBank.Balance(state, faction) < hero.RecruitPointCost)
+            {
+                continue;
+            }
 
             var city = state.Cities
                 .Where(c => c.Owner == faction && c.Gold >= hero.RecruitGold)

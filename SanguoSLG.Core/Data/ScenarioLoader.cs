@@ -118,7 +118,8 @@ public sealed class ScenarioLoader
             dto.RecruitGold,
             dto.AiCanRecruit,
             dto.Title,
-            dto.Desc);
+            dto.Desc,
+            dto.RecruitPointCost);
 
     private static HeroUnlockCondition ToHeroUnlockCondition(HeroUnlockConditionDto dto)
         => new(

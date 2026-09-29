@@ -13,7 +13,8 @@ public sealed record HeroUnlockDefinition(
     int RecruitGold = 0,
     bool AiCanRecruit = true,
     string Title = "",
-    string Desc = "")
+    string Desc = "",
+    int RecruitPointCost = 0)
 {
     public IReadOnlyList<string> RegionList => HomeRegions ?? [];
 

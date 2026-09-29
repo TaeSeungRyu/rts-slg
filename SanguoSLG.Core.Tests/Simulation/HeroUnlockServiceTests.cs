@@ -8,6 +8,20 @@ using Xunit;
 public class HeroUnlockServiceTests
 {
     [Fact]
+    public void 기존_동적조건은_무시하고_해금년도와_후보분류만_사용한다()
+    {
+        var faction = new FactionId(1);
+        var hero = new HeroUnlockDefinition(new GeneralId(9), HeroUnlockType.Faction, faction,
+            Conditions: [new HeroUnlockCondition("impossible_legacy_condition", 999)], UnlockYear: 190);
+        var state = State([hero], [City(1, faction, "jingzhou", 1)]) with { StartYear = 190 };
+
+        var next = new HeroUnlockService().Evaluate(state);
+
+        Assert.Equal(HeroUnlockStatus.Unlocked, Assert.Single(next.HeroStates).Status);
+        Assert.Equal(faction, Assert.Single(next.HeroStates).EligibleFaction);
+    }
+
+    [Fact]
     public void 세력형_위인은_소속_세력의_조건이_맞으면_해금된다()
     {
         var hero = new HeroUnlockDefinition(
