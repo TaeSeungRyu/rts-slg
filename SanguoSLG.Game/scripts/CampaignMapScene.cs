@@ -1641,13 +1641,13 @@ public sealed partial class CampaignMapScene : Node3D
 
     private bool TryShowActiveSkillBanner(FactionId owner, int unitId, GeneralId? generalId, ActiveSkill skill)
     {
-        if (owner != Player) { return false; }
+        if (owner != Player || !_armyTokens.TryGetValue(unitId, out var caster)
+            || !GodotObject.IsInstanceValid(caster) || !caster.Visible) { return false; }
         var general = generalId is { } gid
             ? _pendingState.Generals.FirstOrDefault(x => x.Id == gid)
                 ?? _state.Generals.FirstOrDefault(x => x.Id == gid)
             : null;
-        ActiveSkillPresentation.ShowBanner(this, general?.Name ?? $"부대 {unitId}", skill,
-            general is null ? null : CircularPortraitFor(general.Id));
+        ActiveSkillPresentation.ShowUnitToast(caster, general?.Name ?? $"부대 {unitId}", skill);
         return true;
     }
 
@@ -14040,20 +14040,28 @@ public sealed partial class CampaignMapScene : Node3D
         var resolvedVanguard = ResolveActiveGeneral(vanguardId, adjutantId, afterVanguard, vanguardSkill);
         var resolvedAdjutant = ResolveActiveGeneral(vanguardId, adjutantId, afterAdjutant, adjutantSkill);
         var resolvedSameSkillAdjutant = ResolveActiveGeneral(vanguardId, adjutantId, sameSkillAfterAdjutant, vanguardSkill);
-        var initialBanners = GetChildren().OfType<CanvasLayer>().Where(layer => layer.Layer == 90).ToHashSet();
-        var enemyBannerShown = TryShowActiveSkillBanner(new FactionId(Player.Value + 1000), -900001, null, vanguardSkill);
-        var enemyBannerCount = GetChildren().OfType<CanvasLayer>().Count(layer => layer.Layer == 90);
-        var playerBannerShown = TryShowActiveSkillBanner(Player, -900002, null, vanguardSkill);
-        var playerBannerCount = GetChildren().OfType<CanvasLayer>().Count(layer => layer.Layer == 90);
-        var bannerVisibilityOk = !enemyBannerShown && enemyBannerCount == initialBanners.Count
-            && playerBannerShown && playerBannerCount == initialBanners.Count + 1;
+        const int qaUnitId = -900002;
+        var qaToken = new UnitController3D { Name = "ActiveSkillToastQaToken" };
+        AddChild(qaToken);
+        _armyTokens[qaUnitId] = qaToken;
+        var initialToasts = qaToken.GetChildren().OfType<Label3D>().Count(label => label.Name == "ActiveSkillUnitToast");
+        var enemyBannerShown = TryShowActiveSkillBanner(new FactionId(Player.Value + 1000), qaUnitId, null, vanguardSkill);
+        var enemyToastCount = qaToken.GetChildren().OfType<Label3D>().Count(label => label.Name == "ActiveSkillUnitToast");
+        var playerBannerShown = TryShowActiveSkillBanner(Player, qaUnitId, null, vanguardSkill);
+        var playerToast = qaToken.GetChildren().OfType<Label3D>().FirstOrDefault(label => label.Name == "ActiveSkillUnitToast");
+        var bannerVisibilityOk = !enemyBannerShown && enemyToastCount == initialToasts
+            && playerBannerShown && playerToast is not null
+            && playerToast.FontSize == ActiveSkillPresentation.UnitToastFontSize
+            && Mathf.IsEqualApprox(playerToast.PixelSize, ActiveSkillPresentation.UnitToastPixelSize)
+            && Mathf.IsEqualApprox(playerToast.Position.Y, ActiveSkillPresentation.UnitToastHeight);
         var passed = resolvedVanguard == vanguardId
             && resolvedAdjutant == adjutantId
             && resolvedSameSkillAdjutant == adjutantId
             && bannerVisibilityOk;
-        foreach (var banner in GetChildren().OfType<CanvasLayer>().Where(layer => layer.Layer == 90 && !initialBanners.Contains(layer)))
-            banner.QueueFree();
-        GD.Print($"[maptestactivecasterqa] passed={passed} vanguard={resolvedVanguard?.Value} adjutant={resolvedAdjutant?.Value} sameSkillAdjutant={resolvedSameSkillAdjutant?.Value} enemyBanner={!enemyBannerShown && enemyBannerCount == initialBanners.Count} playerBanner={playerBannerShown && playerBannerCount == initialBanners.Count + 1}");
+        _armyTokens.Remove(qaUnitId);
+        playerToast?.QueueFree();
+        qaToken.QueueFree();
+        GD.Print($"[maptestactivecasterqa] passed={passed} vanguard={resolvedVanguard?.Value} adjutant={resolvedAdjutant?.Value} sameSkillAdjutant={resolvedSameSkillAdjutant?.Value} enemyToast={!enemyBannerShown && enemyToastCount == initialToasts} playerWorldToast={playerBannerShown && playerToast is not null} compact={playerToast?.FontSize == ActiveSkillPresentation.UnitToastFontSize && Mathf.IsEqualApprox(playerToast.PixelSize, ActiveSkillPresentation.UnitToastPixelSize)}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

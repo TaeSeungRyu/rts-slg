@@ -6,6 +6,10 @@ namespace SanguoSLG.Game;
 /// <summary>검수장과 캠페인이 함께 쓰는 액티브 발동 표현 진입점.</summary>
 public static class ActiveSkillPresentation
 {
+    public const float UnitToastHeight = 1.48f;
+    public const int UnitToastFontSize = 22;
+    public const float UnitToastPixelSize = 0.005f;
+
     public static bool ShowBreakthrough(Node3D caster, Node3D target)
     {
         if (caster is not UnitController3D unit) return false;
@@ -194,6 +198,34 @@ public static class ActiveSkillPresentation
         root.AddChild(timer);
         timer.Timeout += root.QueueFree;
         timer.Start();
+    }
+
+    /// <summary>캠페인 전투에서 화면을 가리지 않도록 발동 부대 위에 작게 표시하는 월드 토스트.</summary>
+    public static Label3D ShowUnitToast(Node3D caster, string generalName, ActiveSkill skill)
+    {
+        var toast = new Label3D
+        {
+            Name = "ActiveSkillUnitToast",
+            Text = $"{generalName} · {skill.Name}",
+            Position = Vector3.Up * UnitToastHeight,
+            FontSize = UnitToastFontSize,
+            PixelSize = UnitToastPixelSize,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            NoDepthTest = true,
+            Modulate = new Color(1f, 0.82f, 0.34f, 0f),
+            OutlineSize = 6,
+            OutlineModulate = new Color(0.055f, 0.035f, 0.025f, 0.96f),
+            RenderPriority = 8,
+        };
+        caster.AddChild(toast);
+
+        var tween = toast.CreateTween().SetParallel(true);
+        tween.TweenProperty(toast, "modulate:a", 1f, 0.12f);
+        tween.TweenProperty(toast, "position:y", UnitToastHeight + 0.18f, 1.05f)
+            .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(toast, "modulate:a", 0f, 0.28f).SetDelay(0.82f);
+        tween.Finished += toast.QueueFree;
+        return toast;
     }
 
     public static void ShowBanner(Node owner, string generalName, ActiveSkill skill, Texture2D? portrait = null)
