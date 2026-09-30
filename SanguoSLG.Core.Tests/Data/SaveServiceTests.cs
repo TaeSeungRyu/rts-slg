@@ -24,7 +24,8 @@ public class SaveServiceTests
                 new[] { new HexCoord(3, 1) }),
             CombatStatsBuilder.BuildField(t, AptitudeGrade.A, 0, TerrainType.River, 5000),
             new TroopPool(5000, 200), UnitCombatState.Create(60), 70, 60, 5000, t.Class,
-            TroopCode: "swordsman", VanguardId: new GeneralId(1), DeploymentDelayDays: 4);
+            TroopCode: "swordsman", VanguardId: new GeneralId(1), DeploymentDelayDays: 4,
+            EgressDirection: DeploymentDirection.SouthEast, AwaitingEgress: true);
 
         var g = new General(new GeneralId(1), "관우",
             new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Cavalry] = AptitudeGrade.S, [TroopClass.Infantry] = AptitudeGrade.A },
@@ -87,6 +88,8 @@ public class SaveServiceTests
         Assert.Equal(new HexCoord(5, 0), ru.Field.Target);
         Assert.Equal(new HexCoord(3, 1), ru.Field.Waypoints!.Single());
         Assert.Equal(4, ru.DeploymentDelayDays);
+        Assert.Equal(DeploymentDirection.SouthEast, ru.EgressDirection);
+        Assert.True(ru.IsWaitingEgress);
         Assert.True(round.AreAllied(new FactionId(1), new FactionId(2)));
         // 시설 배치 타일(건설 위치)도 왕복 보존.
         var rp = Assert.Single(round.Placements);

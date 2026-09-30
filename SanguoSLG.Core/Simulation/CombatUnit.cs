@@ -34,12 +34,17 @@ public sealed record CombatUnit(
     int CargoGold = 0,
     bool IsArmyGroup = false,
     CityId? OriginCity = null,
-    int DeploymentDelayDays = 0)
+    int DeploymentDelayDays = 0,
+    DeploymentDirection? EgressDirection = null,
+    bool AwaitingEgress = false)
 {
     public UnitId Id => Field.Id;
 
     /// <summary>출전 예약 뒤 성·항구 내부에서 기다릴 남은 일수. 0이면 즉시 지도에 출격한다.</summary>
     public bool IsWaitingDeployment => DeploymentDelayDays > 0;
+
+    /// <summary>날짜 지연을 마친 뒤에도 지정 출구의 첫 외곽 칸을 기다리는 관제 대기 상태.</summary>
+    public bool IsWaitingEgress => AwaitingEgress;
 
     /// <summary>보급부대의 병종별 구성(일반 부대는 빈 목록). design-unit-state 1단계-보급.</summary>
     public IReadOnlyList<SupplyComponent> Cargo => SupplyCargo ?? [];

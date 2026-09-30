@@ -65,11 +65,14 @@ public class DeployServiceTests
             postings: [At(1, 1)]);
 
         var result = Service().Deploy(s0, new DeployRequest(city.Id, "swordsman", 5_000,
-            new GeneralId(1), Provisions: 100, Gold: 200, DelayDays: delayDays));
+            new GeneralId(1), Provisions: 100, Gold: 200, DelayDays: delayDays,
+            EgressDirection: DeploymentDirection.NorthEast));
 
         Assert.True(result.Ok, result.Error);
         var unit = Assert.Single(result.State.Armies);
         Assert.Equal(delayDays, unit.DeploymentDelayDays);
+        Assert.Equal(DeploymentDirection.NorthEast, unit.EgressDirection);
+        Assert.False(unit.IsWaitingEgress);
         Assert.Equal(5_000, result.State.Garrisons.Single().Troops);
         Assert.Equal(800, result.State.Cities.Single().Gold);
         Assert.Null(result.State.PostingOf(new GeneralId(1))!.Location);
