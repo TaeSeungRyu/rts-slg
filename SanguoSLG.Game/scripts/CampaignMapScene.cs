@@ -497,11 +497,19 @@ public sealed partial class CampaignMapScene : Node3D
         _vision = new BattlefieldVision(scenario.Balance, _troops);
         _fog = new BattlefieldFogView(_view);
         _fog.RegisterMap();
+        IReadOnlyList<GeneralPresetOverride>? generalPreset = null;
+        var generalPresetPath = ProjectSettings.GlobalizePath("user://general-preset.json");
+        if (System.IO.File.Exists(generalPresetPath))
+        {
+            try { generalPreset = GeneralPresetStore.Load(System.IO.File.ReadAllText(generalPresetPath)); }
+            catch (System.Exception error) { GD.PushWarning($"장수 프리셋을 적용하지 못했습니다: {error.Message}"); }
+        }
+        var campaignGenerals = GeneralDataLayers.CreateCampaign(scenario.Generals, generalPreset);
         _state = _initial with
         {
             StartYear = 190,
             Factions = scenario.Factions,
-            Generals = scenario.Generals,
+            Generals = campaignGenerals,
             HeroUnlockDefinitions = scenario.HeroUnlockList,
             HeroUnlockStates = scenario.HeroUnlockList
                 .Select(h => new HeroUnlockState(h.General, HeroUnlockStatus.Locked))
