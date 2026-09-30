@@ -209,7 +209,7 @@ public sealed class DeployService
             req.Waypoints, _adminSkills);
         unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, CargoGold = req.Gold,
             OriginCity = city.Id, DeploymentDelayDays = req.DelayDays, EgressDirection = req.EgressDirection,
-            EgressExit = req.EgressExit };
+            EgressExit = req.EgressExit, AwaitingEgress = req.EgressExit.HasValue };
 
         var garrisons = state.Garrisons
             .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)
@@ -339,7 +339,7 @@ public sealed class DeployService
             ProvisionsCapacity: capacity, IsSupply: true, Training: training,
             VanguardId: vanguard.Id, SupplyCargo: components, SupplyEfficiencyPercent: supplyEfficiency,
             OriginCity: city.Id, DeploymentDelayDays: req.DelayDays, EgressDirection: req.EgressDirection,
-            EgressExit: req.EgressExit);
+            EgressExit: req.EgressExit, AwaitingEgress: req.EgressExit.HasValue);
         var wanted = req.Provisions < 0 ? unit.MaxProvisions() : System.Math.Min(req.Provisions, unit.MaxProvisions());
         var carried = System.Math.Min(wanted, city.Provisions);
         unit = unit with { Provisions = carried, CargoGold = req.Gold };
@@ -504,7 +504,8 @@ public sealed class DeployService
             ProvisionsCapacity: _b.ArmyGroupProvisionsCapacity, Training: training,
             TroopCode: "army_group", VanguardId: vanguard.Id, AdjutantId: adjutant?.Id,
             SupplyCargo: components, IsArmyGroup: true, OriginCity: city.Id,
-            DeploymentDelayDays: req.DelayDays, EgressDirection: req.EgressDirection, EgressExit: req.EgressExit);
+            DeploymentDelayDays: req.DelayDays, EgressDirection: req.EgressDirection, EgressExit: req.EgressExit,
+            AwaitingEgress: req.EgressExit.HasValue);
 
         var wanted = req.Provisions < 0 ? unit.MaxProvisions() : System.Math.Min(req.Provisions, unit.MaxProvisions());
         var carried = System.Math.Min(wanted, city.Provisions);
@@ -623,7 +624,8 @@ public sealed class DeployService
             unitId.Value, vanguard, adjutant, ship, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
         unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, OriginCity = city.Id,
-            DeploymentDelayDays = req.DelayDays, EgressDirection = req.EgressDirection, EgressExit = req.EgressExit };
+            DeploymentDelayDays = req.DelayDays, EgressDirection = req.EgressDirection, EgressExit = req.EgressExit,
+            AwaitingEgress = req.EgressExit.HasValue };
 
         var garrisons = state.Garrisons
             .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)
@@ -775,7 +777,8 @@ public sealed class DeployService
             Provisions: req.Provisions, ProvisionsCapacity: capacity, IsSupply: false, Training: training,
             TroopCode: "transport", VanguardId: vanguard.Id, SupplyCargo: components, CargoGold: req.Gold,
             IsTransport: true, OriginCity: city.Id, DeploymentDelayDays: req.DelayDays,
-            EgressDirection: req.EgressDirection, EgressExit: req.EgressExit);
+            EgressDirection: req.EgressDirection, EgressExit: req.EgressExit,
+            AwaitingEgress: req.EgressExit.HasValue);
 
         var taken = components.ToDictionary(c => c.TroopCode, c => c.Troops);
         var garrisons = state.Garrisons

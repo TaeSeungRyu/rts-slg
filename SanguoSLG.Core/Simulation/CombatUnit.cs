@@ -42,8 +42,11 @@ public sealed record CombatUnit(
 {
     public UnitId Id => Field.Id;
 
-    /// <summary>출전 예약 뒤 성·항구 내부에서 기다릴 남은 일수. 0이면 즉시 지도에 출격한다.</summary>
-    public bool IsWaitingDeployment => DeploymentDelayDays > 0;
+    /// <summary>날짜 지연 또는 출구 점유 때문에 아직 지도에 배치되지 않은 부대.</summary>
+    public bool IsWaitingDeployment => DeploymentDelayDays > 0 || AwaitingEgress;
+
+    /// <summary>출전 예약 뒤 성·항구 내부에서 기다릴 남은 날짜가 있는가.</summary>
+    public bool IsWaitingDate => DeploymentDelayDays > 0;
 
     /// <summary>날짜 지연을 마친 뒤에도 지정 출구의 첫 외곽 칸을 기다리는 관제 대기 상태.</summary>
     public bool IsWaitingEgress => AwaitingEgress;

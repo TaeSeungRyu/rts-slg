@@ -95,6 +95,28 @@ public class DeployServiceTests
     }
 
     [Fact]
+    public void 대표출구가_지정된_부대는_날짜지연과_별개로_출격관제에서_대기한다()
+    {
+        var city = Town(1, new HexCoord(2, 0), provisions: 5000);
+        var exit = new HexCoord(3, 0);
+        var state = State([city], [Gen(1)],
+            garrisons: [new GarrisonForce(city.Id, "swordsman", 10_000, 60)],
+            postings: [At(1, 1)]);
+
+        var result = Service().Deploy(state, new DeployRequest(city.Id, "swordsman", 5_000,
+            new GeneralId(1), Target: new HexCoord(8, 0),
+            EgressDirection: DeploymentDirection.East, EgressExit: exit));
+
+        Assert.True(result.Ok, result.Error);
+        var unit = Assert.Single(result.State.Armies);
+        Assert.True(unit.IsWaitingDeployment);
+        Assert.False(unit.IsWaitingDate);
+        Assert.True(unit.IsWaitingEgress);
+        Assert.Equal(exit, unit.EgressExit);
+        Assert.Equal(city.Position, unit.Field.Position);
+    }
+
+    [Fact]
     public void 병참_선봉이면_부대_군량소모_계수가_줄어든다()
     {
         var city = Town(1, new HexCoord(2, 0), provisions: 5000);

@@ -90,7 +90,11 @@ public sealed class CampaignEngine
         _campaignEvents.Clear();
         var work = state;
         var waitingArmies = state.Armies
-            .Where(u => u.Pool.Active > 0 && u.IsWaitingDeployment)
+            .Where(u => u.Pool.Active > 0 && u.IsWaitingDate)
+            .OrderBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value)
+            .ToList();
+        var egressArmies = state.Armies
+            .Where(u => u.Pool.Active > 0 && !u.IsWaitingDate && u.IsWaitingEgress)
             .OrderBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value)
             .ToList();
         var armies = state.Armies
@@ -98,8 +102,14 @@ public sealed class CampaignEngine
             .ToList();
 
         var remaining = WeekDays;
-        while (remaining > 0 && (armies.Count > 0 || waitingArmies.Count > 0))
+        while (remaining > 0 && (armies.Count > 0 || waitingArmies.Count > 0 || egressArmies.Count > 0))
         {
+            // 최초 출격 관제는 하루 시작에 한 번만 실행한다. 출구 밖 첫 칸에 배치된 부대는
+            // 즉시 일반 야전 목록으로 넘어가며, 두 번째 칸부터는 기존 이동기만 관여한다.
+            var egress = DeploymentEgressController.Release(egressArmies, armies, work.Cities);
+            armies.AddRange(egress.Released);
+            egressArmies = egress.Waiting.ToList();
+
             // 성 접적 정지용 장애물 — 매 진행마다 현재 소유로 갱신(함락으로 주인이 바뀌므로).
             var castles = work.Cities
                 .OrderBy(c => c.Id.Value)
@@ -294,18 +304,20 @@ public sealed class CampaignEngine
                 .ToList();
             // 재생 보고에는 아직 성 내부에서 대기 중인 예약 부대도 생존 상태로 보존한다.
             // 그렇지 않으면 표현 계층이 첫날에 이들을 전멸한 부대로 오인한다.
+            var newlyReadyForEgress = countdown.Where(u => !u.IsWaitingDate && u.IsWaitingEgress).ToList();
             reports[^1] = reports[^1] with
             {
-                Units = reports[^1].Units.Concat(countdown)
+                Units = reports[^1].Units.Concat(countdown).Concat(egressArmies)
                     .OrderBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value).ToList(),
             };
             armies.AddRange(countdown.Where(u => !u.IsWaitingDeployment));
-            waitingArmies = countdown.Where(u => u.IsWaitingDeployment).ToList();
+            egressArmies.AddRange(newlyReadyForEgress);
+            waitingArmies = countdown.Where(u => u.IsWaitingDate).ToList();
         }
 
         var afterField = work with
         {
-            FieldArmies = armies.Concat(waitingArmies)
+            FieldArmies = armies.Concat(waitingArmies).Concat(egressArmies)
                 .OrderBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value).ToList(),
             GarrisonForces = work.Garrisons
                 .Where(g => g.Troops > 0)
