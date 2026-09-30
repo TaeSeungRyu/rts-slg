@@ -163,6 +163,8 @@ public class DeployServiceTests
         Assert.Equal(60, u.Training);
         Assert.Equal(new GeneralId(1), u.VanguardId);
         Assert.Equal(city.Position, u.Field.Position);
+        Assert.True(u.IsWaitingEgress);
+        Assert.True(u.EgressExit.HasValue);
         Assert.Equal(300, u.Provisions);
         Assert.Equal(4700, r.State.Cities.Single().Provisions);
         Assert.Empty(r.State.Garrisons);
@@ -409,6 +411,9 @@ public class DeployServiceTests
         Assert.Equal(800, unit.Provisions);
         Assert.Equal("transport", unit.TroopCode);
         Assert.Equal(3, unit.DeploymentDelayDays);
+        Assert.True(unit.IsWaitingEgress);
+        Assert.True(unit.EgressDirection.HasValue);
+        Assert.True(unit.EgressExit.HasValue);
         Assert.Equal(500, r.State.Cities.Single(c => c.Id == source.Id).Gold);
         Assert.Equal(2200, r.State.Cities.Single(c => c.Id == source.Id).Provisions);
         Assert.Equal(8000, r.State.Garrisons.Single(g => g.TroopCode == "swordsman").Troops);
@@ -594,6 +599,9 @@ public class DeployServiceTests
         Assert.Equal(30000, unit.Pool.Active);
         Assert.Equal(30000, unit.MaxTroops);
         Assert.Equal(5, unit.DeploymentDelayDays);
+        Assert.True(unit.IsWaitingEgress);
+        Assert.True(unit.EgressDirection.HasValue);
+        Assert.True(unit.EgressExit.HasValue);
         Assert.Equal(1, unit.Field.Speed);
         Assert.Equal(1, unit.Field.AttackRange);
         Assert.Equal(1, unit.Field.RangeCastle);

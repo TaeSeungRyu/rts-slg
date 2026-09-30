@@ -94,6 +94,9 @@ public class SupplyUnitTests
         Assert.True(r.Ok, r.Error);
         var u = r.State.Armies.Single();
         Assert.True(u.IsSupply);
+        Assert.True(u.IsWaitingEgress);
+        Assert.True(u.EgressDirection.HasValue);
+        Assert.True(u.EgressExit.HasValue);
         Assert.Equal(18000, u.Pool.Active);
         Assert.Equal(2, u.Field.Speed);
         Assert.Equal(1, u.Field.RangeCastle);

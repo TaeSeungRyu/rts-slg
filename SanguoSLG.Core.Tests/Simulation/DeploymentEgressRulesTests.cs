@@ -58,4 +58,17 @@ public class DeploymentEgressRulesTests
         Assert.NotNull(manual);
         Assert.Contains(manual!.Value, DeploymentEgressRules.ExitGroup(city, DeploymentDirection.West));
     }
+
+    [Fact]
+    public void 항구처럼_일부_해수면만_통행가능하면_그_출구만_추천한다()
+    {
+        var port = CityOf(CastleSize.Small) with { Port = PortSize.Small };
+        var waterExit = port.Position + DeploymentEgressRules.Offset(DeploymentDirection.SouthEast);
+
+        var direction = DeploymentEgressRules.Recommend(port, new HexCoord(30, 10), tile => tile == waterExit);
+        var exit = DeploymentEgressRules.RepresentativeExit(port, direction, new HexCoord(30, 10), tile => tile == waterExit);
+
+        Assert.Equal(DeploymentDirection.SouthEast, direction);
+        Assert.Equal(waterExit, exit);
+    }
 }

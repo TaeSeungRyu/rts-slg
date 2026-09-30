@@ -167,6 +167,9 @@ public class FactionAiTests
         Assert.Equal(new FactionId(1), army.Field.Owner);
         Assert.Equal(UnitMode.Attack, army.Field.Mode);
         Assert.Equal(enemy.Position, army.Field.Target);
+        Assert.Equal(DeploymentDirection.East, army.EgressDirection);
+        Assert.True(army.EgressExit.HasValue);
+        Assert.True(army.IsWaitingEgress);
     }
 
     [Fact]
@@ -201,6 +204,8 @@ public class FactionAiTests
         Assert.Equal(new GeneralId(2), supply.VanguardId);
         Assert.Equal(145, supply.SupplyEfficiencyPercent);
         Assert.Equal(enemy.Position, supply.Field.Target);
+        Assert.Equal(DeploymentDirection.East, supply.EgressDirection);
+        Assert.True(supply.IsWaitingEgress);
     }
 
     [Fact]
@@ -225,6 +230,8 @@ public class FactionAiTests
         Assert.True(group.IsArmyGroup);
         Assert.Equal(30000, group.Pool.Active);
         Assert.Equal(enemy.Position, group.Field.Target);
+        Assert.Equal(DeploymentDirection.East, group.EgressDirection);
+        Assert.True(group.IsWaitingEgress);
         Assert.Equal(new GeneralId(1), group.VanguardId);
         Assert.Equal(new GeneralId(2), group.AdjutantId);
         Assert.Equal(10000, group.Cargo.Single(c => c.TroopCode == "swordsman").Troops);

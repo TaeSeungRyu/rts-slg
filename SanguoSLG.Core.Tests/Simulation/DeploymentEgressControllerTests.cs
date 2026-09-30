@@ -26,16 +26,19 @@ public class DeploymentEgressControllerTests
         var city = CityOf(size);
         foreach (var direction in DeploymentEgressRules.Directions)
         {
-            var exit = DeploymentEgressRules.RepresentativeExit(city, direction)!.Value;
-            var queue = Enumerable.Range(1, 5).Select(id => Unit(id, city, direction, exit, order: id)).ToArray();
+            for (var count = 1; count <= 5; count++)
+            {
+                var exit = DeploymentEgressRules.RepresentativeExit(city, direction)!.Value;
+                var queue = Enumerable.Range(1, count).Select(id => Unit(id, city, direction, exit, order: id)).ToArray();
 
-            var result = DeploymentEgressController.Release(queue, [], [city]);
+                var result = DeploymentEgressController.Release(queue, [], [city]);
 
-            Assert.Equal(new UnitId(1), Assert.Single(result.Released).Id);
-            Assert.Equal(exit, result.Released[0].Field.Position);
-            Assert.False(result.Released[0].AwaitingEgress);
-            Assert.Equal(4, result.Waiting.Count);
-            Assert.All(result.Waiting, unit => Assert.True(unit.IsWaitingEgress));
+                Assert.Equal(new UnitId(1), Assert.Single(result.Released).Id);
+                Assert.Equal(exit, result.Released[0].Field.Position);
+                Assert.False(result.Released[0].AwaitingEgress);
+                Assert.Equal(count - 1, result.Waiting.Count);
+                Assert.All(result.Waiting, unit => Assert.True(unit.IsWaitingEgress));
+            }
         }
     }
 

@@ -181,6 +181,40 @@ public class CampaignEngineTests
         Assert.True(deployed.Provisions < delayed.Provisions);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(6)]
+    public void 출전지연이_끝나면_대표출구를_거쳐_기존야전이동으로_넘어간다(int delayDays)
+    {
+        var city = new City(new CityId(1), "출격성", new HexCoord(0, 0), new FactionId(1), 1000);
+        var exit = new HexCoord(1, 0);
+        var staged = Army(1, 1, city.Position, UnitMode.March, new HexCoord(20, 0)) with
+        {
+            OriginCity = city.Id,
+            DeploymentDelayDays = delayDays,
+            EgressDirection = DeploymentDirection.East,
+            EgressExit = exit,
+            AwaitingEgress = true,
+        };
+        var state = new GameState(1, 1, [], [city], [], FieldArmies: [staged]);
+
+        var after = Engine().AdvanceWeek(state, out var turns);
+
+        Assert.All(turns.Take(delayDays), turn =>
+        {
+            var waiting = Assert.Single(turn.Units, unit => unit.Id == staged.Id);
+            Assert.True(waiting.IsWaitingDeployment);
+            Assert.Equal(city.Position, waiting.Field.Position);
+        });
+        Assert.Contains(turns.Skip(delayDays), turn => turn.Units.Any(unit => unit.Id == staged.Id
+            && !unit.IsWaitingDeployment && unit.Field.Position != city.Position));
+        var deployed = Assert.Single(after.Armies);
+        Assert.False(deployed.IsWaitingDeployment);
+        Assert.NotEqual(city.Position, deployed.Field.Position);
+    }
+
     [Fact]
     public void 승급된_병종적성은_이미_출전한_부대의_다음_전투일부터_반영된다()
     {

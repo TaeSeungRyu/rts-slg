@@ -125,6 +125,8 @@ public sealed class DeployService
         {
             return CommandResult.Fail("도시를 찾을 수 없다.", state);
         }
+        var (egressDirection, egressExit) = ResolveLandEgress(city, req.Target,
+            req.EgressDirection, req.EgressExit);
 
         if (req.Gold < 0 || req.Gold > city.Gold)
         {
@@ -208,8 +210,8 @@ public sealed class DeployService
             unitId.Value, vanguard, adjutant, template, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
         unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, CargoGold = req.Gold,
-            OriginCity = city.Id, DeploymentDelayDays = req.DelayDays, EgressDirection = req.EgressDirection,
-            EgressExit = req.EgressExit, AwaitingEgress = req.EgressExit.HasValue };
+            OriginCity = city.Id, DeploymentDelayDays = req.DelayDays, EgressDirection = egressDirection,
+            EgressExit = egressExit, AwaitingEgress = egressExit.HasValue };
 
         var garrisons = state.Garrisons
             .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)
@@ -249,6 +251,8 @@ public sealed class DeployService
         {
             return CommandResult.Fail("도시를 찾을 수 없다.", state);
         }
+        var (egressDirection, egressExit) = ResolveLandEgress(city, req.Target,
+            req.EgressDirection, req.EgressExit);
 
         if (req.Gold < 0 || req.Gold > city.Gold)
         {
@@ -338,8 +342,8 @@ public sealed class DeployService
             vanguard.Might, vanguard.Intellect, total, TroopClass.Infantry,
             ProvisionsCapacity: capacity, IsSupply: true, Training: training,
             VanguardId: vanguard.Id, SupplyCargo: components, SupplyEfficiencyPercent: supplyEfficiency,
-            OriginCity: city.Id, DeploymentDelayDays: req.DelayDays, EgressDirection: req.EgressDirection,
-            EgressExit: req.EgressExit, AwaitingEgress: req.EgressExit.HasValue);
+            OriginCity: city.Id, DeploymentDelayDays: req.DelayDays, EgressDirection: egressDirection,
+            EgressExit: egressExit, AwaitingEgress: egressExit.HasValue);
         var wanted = req.Provisions < 0 ? unit.MaxProvisions() : System.Math.Min(req.Provisions, unit.MaxProvisions());
         var carried = System.Math.Min(wanted, city.Provisions);
         unit = unit with { Provisions = carried, CargoGold = req.Gold };
@@ -381,6 +385,8 @@ public sealed class DeployService
         {
             return CommandResult.Fail("도시를 찾을 수 없다.", state);
         }
+        var (egressDirection, egressExit) = ResolveLandEgress(city, req.Target,
+            req.EgressDirection, req.EgressExit);
 
         if (req.Gold < 0 || req.Gold > city.Gold)
         {
@@ -504,8 +510,8 @@ public sealed class DeployService
             ProvisionsCapacity: _b.ArmyGroupProvisionsCapacity, Training: training,
             TroopCode: "army_group", VanguardId: vanguard.Id, AdjutantId: adjutant?.Id,
             SupplyCargo: components, IsArmyGroup: true, OriginCity: city.Id,
-            DeploymentDelayDays: req.DelayDays, EgressDirection: req.EgressDirection, EgressExit: req.EgressExit,
-            AwaitingEgress: req.EgressExit.HasValue);
+            DeploymentDelayDays: req.DelayDays, EgressDirection: egressDirection, EgressExit: egressExit,
+            AwaitingEgress: egressExit.HasValue);
 
         var wanted = req.Provisions < 0 ? unit.MaxProvisions() : System.Math.Min(req.Provisions, unit.MaxProvisions());
         var carried = System.Math.Min(wanted, city.Provisions);
@@ -690,6 +696,8 @@ public sealed class DeployService
         {
             return CommandResult.Fail("같은 성으로는 수송할 수 없다.", state);
         }
+        var (egressDirection, egressExit) = ResolveLandEgress(city, destination.Position,
+            req.EgressDirection, req.EgressExit);
 
         if (req.Gold < 0 || req.Provisions < 0)
         {
@@ -777,8 +785,8 @@ public sealed class DeployService
             Provisions: req.Provisions, ProvisionsCapacity: capacity, IsSupply: false, Training: training,
             TroopCode: "transport", VanguardId: vanguard.Id, SupplyCargo: components, CargoGold: req.Gold,
             IsTransport: true, OriginCity: city.Id, DeploymentDelayDays: req.DelayDays,
-            EgressDirection: req.EgressDirection, EgressExit: req.EgressExit,
-            AwaitingEgress: req.EgressExit.HasValue);
+            EgressDirection: egressDirection, EgressExit: egressExit,
+            AwaitingEgress: egressExit.HasValue);
 
         var taken = components.ToDictionary(c => c.TroopCode, c => c.Troops);
         var garrisons = state.Garrisons
@@ -805,6 +813,25 @@ public sealed class DeployService
     }
 
     private static bool ValidDelay(int days) => days is >= 0 and <= MaxDeploymentDelayDays;
+
+    private static (DeploymentDirection? Direction, HexCoord? Exit) ResolveLandEgress(
+        City city,
+        HexCoord? target,
+        DeploymentDirection? requestedDirection,
+        HexCoord? requestedExit)
+    {
+        if (requestedExit.HasValue)
+        {
+            return (requestedDirection, requestedExit);
+        }
+        if (target is not { } goal)
+        {
+            return (requestedDirection, null);
+        }
+
+        var direction = requestedDirection ?? DeploymentEgressRules.Recommend(city, goal);
+        return (direction, DeploymentEgressRules.RepresentativeExit(city, direction, goal));
+    }
 
     private ActiveSkill? ResolveSupplyActive(string? code)
     {
