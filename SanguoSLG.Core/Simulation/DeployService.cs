@@ -190,7 +190,8 @@ public sealed class DeployService
         var unit = UnitAssembler.Assemble(unitId, city.Owner, city.Position, req.Mode, req.Target,
             unitId.Value, vanguard, adjutant, template, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
-        unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, CargoGold = req.Gold };
+        unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, CargoGold = req.Gold,
+            OriginCity = city.Id };
 
         var garrisons = state.Garrisons
             .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)
@@ -317,7 +318,8 @@ public sealed class DeployService
                 vanguardActive: ResolveSupplyActive(vanguard.BattleActive)),
             vanguard.Might, vanguard.Intellect, total, TroopClass.Infantry,
             ProvisionsCapacity: capacity, IsSupply: true, Training: training,
-            VanguardId: vanguard.Id, SupplyCargo: components, SupplyEfficiencyPercent: supplyEfficiency);
+            VanguardId: vanguard.Id, SupplyCargo: components, SupplyEfficiencyPercent: supplyEfficiency,
+            OriginCity: city.Id);
         var wanted = req.Provisions < 0 ? unit.MaxProvisions() : System.Math.Min(req.Provisions, unit.MaxProvisions());
         var carried = System.Math.Min(wanted, city.Provisions);
         unit = unit with { Provisions = carried, CargoGold = req.Gold };
@@ -597,7 +599,7 @@ public sealed class DeployService
         var unit = UnitAssembler.Assemble(unitId, city.Owner, city.Position, req.Mode, req.Target,
             unitId.Value, vanguard, adjutant, ship, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
-        unit = unit with { Provisions = carried, Training = garrison.TrainingLevel };
+        unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, OriginCity = city.Id };
 
         var garrisons = state.Garrisons
             .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)
@@ -746,7 +748,8 @@ public sealed class DeployService
         var unit = new CombatUnit(field, new CombatStats(total, minAttack, minDefense), new TroopPool(total, 0),
             UnitCombatState.Create(vanguard.Intellect), vanguard.Might, vanguard.Intellect, total, TroopClass.Infantry,
             Provisions: req.Provisions, ProvisionsCapacity: capacity, IsSupply: false, Training: training,
-            TroopCode: "transport", VanguardId: vanguard.Id, SupplyCargo: components, CargoGold: req.Gold, IsTransport: true);
+            TroopCode: "transport", VanguardId: vanguard.Id, SupplyCargo: components, CargoGold: req.Gold,
+            IsTransport: true, OriginCity: city.Id);
 
         var taken = components.ToDictionary(c => c.TroopCode, c => c.Troops);
         var garrisons = state.Garrisons

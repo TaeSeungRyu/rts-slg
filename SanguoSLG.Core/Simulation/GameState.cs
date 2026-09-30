@@ -19,7 +19,6 @@ public sealed record GameState(
     IReadOnlyList<GeneralPosting>? Postings = null,
     IReadOnlyList<GarrisonForce>? GarrisonForces = null,
     IReadOnlyList<CombatUnit>? FieldArmies = null,
-    IReadOnlyList<Prisoner>? Captives = null,
     IReadOnlyList<FactionResearch>? ResearchTracks = null,
     IReadOnlyList<FactionMajorTroop>? MajorTroopSelections = null,
     IReadOnlyList<FactionAlliance>? FactionAlliances = null,
@@ -76,17 +75,6 @@ public sealed record GameState(
 
     /// <summary>장수 배속(소속 세력·주둔 도시).</summary>
     public IReadOnlyList<GeneralPosting> Assignments => Postings ?? [];
-
-    /// <summary>포로 목록(억류 세력·원 세력). 함락 정산에서 쓰는 임시 상태.</summary>
-    public IReadOnlyList<Prisoner> Prisoners => Captives ?? [];
-
-    /// <summary>이 장수가 어느 세력의 포로인가(아니면 null).</summary>
-    public Prisoner? PrisonerOf(GeneralId general)
-        => Prisoners.FirstOrDefault(p => p.General == general);
-
-    /// <summary>이 세력이 억류 중인 포로 목록.</summary>
-    public IEnumerable<Prisoner> PrisonersHeldBy(FactionId holder)
-        => Prisoners.Where(p => p.Holder == holder);
 
     /// <summary>이 세력이 소유한 도시 수(0이면 세력 소멸 대상 — design-general-lifecycle §3).</summary>
     public int CityCount(FactionId faction) => Cities.Count(c => c.Owner == faction);

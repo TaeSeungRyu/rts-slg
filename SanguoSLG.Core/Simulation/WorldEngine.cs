@@ -578,7 +578,6 @@ public sealed class WorldEngine
         var generals = state.Generals.ToList();
         var intel = state.Intel.ToList();
         var postings = state.Assignments.ToList();
-        var prisoners = state.Prisoners.ToList();
         var armies = state.Armies.ToList();
         var placements = state.Placements.ToList();
         var discoveries = state.Discoveries.ToList();
@@ -753,7 +752,6 @@ public sealed class WorldEngine
                 .OrderBy(i => i.Faction.Value).ThenBy(i => i.City.Value)
                 .ToList(),
             Postings = postings,
-            Captives = prisoners,
             FieldArmies = armies,
             PendingCommands = state.Commands.Where(c => c.CompletionDay != state.Day)
                 .Concat(deferredResearch)

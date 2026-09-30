@@ -214,8 +214,7 @@ public sealed class CityCapture
             }
         }
 
-        var captives = state.Prisoners.Where(p => p.Holder != oldOwner && p.Origin != oldOwner).ToList();
-        var next = state with { Postings = postings, Captives = captives };
+        var next = state with { Postings = postings };
         return new HeroUnlockService().MarkFactionEliminated(next, oldOwner);
     }
 

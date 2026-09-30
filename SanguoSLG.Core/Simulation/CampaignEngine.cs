@@ -186,8 +186,8 @@ public sealed class CampaignEngine
             reports.Add(turn);
             remaining -= System.Math.Max(1, turn.Movement.Days);
 
-            // 야전 전멸 장수 처리(§4b): 이 조각에서 사라진 부대(입성 제외)의 선봉·부관 판정.
-            // 교전 사망(피해 기록 있음)이면 최근접 적 부대의 세력이 포획 후보, 아니면 100% 탈출.
+            // 야전 전멸 장수 처리: 이 조각에서 사라진 부대(입성 제외)의 선봉·부관을
+            // 편성 원점 또는 최근접 아군 성으로 귀환시킨다. 포로 상태는 만들지 않는다.
             var survivors = turn.Units.Select(u => u.Id).ToHashSet();
             var enteredNow = turn.EnteredCastle.Select(u => u.Id).ToHashSet();
             var movedPos = turn.Movement.Units.ToDictionary(f => f.Id, f => f.Position);
@@ -196,17 +196,7 @@ public sealed class CampaignEngine
                 .OrderBy(u => u.Id.Value))
             {
                 var at = movedPos.TryGetValue(dead.Id, out var mp) ? mp : dead.Field.Position;
-                FactionId? captor = null;
-                if (turn.Combat is { } cbt && cbt.DamageTaken.ContainsKey(dead.Id))
-                {
-                    captor = turn.Units
-                        .Where(o => o.Field.Owner != dead.Field.Owner)
-                        .OrderBy(o => o.Field.Position.Distance(at)).ThenBy(o => o.Id.Value)
-                        .Select(o => (FactionId?)o.Field.Owner)
-                        .FirstOrDefault();
-                }
-
-                work = FieldCasualties.ResolveUnit(work, dead, captor, at, _random, casualtyReports);
+                work = FieldCasualties.ResolveUnit(work, dead, at, casualtyReports);
             }
 
             work = ApplyEntered(work, turn.EnteredCastle, cityAt);
@@ -242,7 +232,7 @@ public sealed class CampaignEngine
                     return ApplyDefenseActiveBonus(siegeState, cid, percents.DefensePercent, activeChargeDays);
                 }
 
-                // 성 반격으로 전멸한 공성 부대의 장수 판정(§4b) — 포획 후보 = 그 성의 소유 세력.
+                // 성 반격으로 전멸한 공성 부대의 장수도 같은 귀환 규칙을 적용한다.
                 var siegeCities = result.Cities.ToList();
                 if (result.Exchanges.Count > 0)
                 {
@@ -256,12 +246,11 @@ public sealed class CampaignEngine
                 foreach (var dead in result.Armies.Where(u => u.Pool.Active <= 0).OrderBy(u => u.Id.Value))
                 {
                     var ex = result.Exchanges.FirstOrDefault(e => e.Besiegers.Contains(dead.Id));
-                    FactionId? captor = ex is null ? null : work.Cities.First(c => c.Id == ex.City).Owner;
                     if (ex is not null)
                     {
                         DepositSiegeSpoils(siegeCities, ex.City, dead);
                     }
-                    work = FieldCasualties.ResolveUnit(work, dead, captor, dead.Field.Position, _random, casualtyReports);
+                    work = FieldCasualties.ResolveUnit(work, dead, dead.Field.Position, casualtyReports);
                 }
 
                 armies = result.Armies.Where(u => u.Pool.Active > 0).ToList();
@@ -703,13 +692,10 @@ public sealed class CampaignEngine
                 }
             }
 
-            foreach (var generalId in new[] { unit.VanguardId, unit.AdjutantId }.OfType<GeneralId>())
+            foreach (var generalId in new[] { unit.VanguardId, unit.AdjutantId }.OfType<GeneralId>().Distinct())
             {
-                var pIdx = postings.FindIndex(p => p.General == generalId);
-                if (pIdx >= 0)
-                {
-                    postings[pIdx] = postings[pIdx] with { Location = cityId };
-                }
+                postings.RemoveAll(p => p.General == generalId);
+                postings.Add(new GeneralPosting(generalId, unit.Field.Owner, cityId));
             }
         }
 

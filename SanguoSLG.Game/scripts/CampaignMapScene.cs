@@ -2922,12 +2922,10 @@ public sealed partial class CampaignMapScene : Node3D
         {
             if (!preMove.Armies.Any(u => u.Id == cas.Unit && u.Field.Owner == Player)) { continue; } // 내 부대만
             var gName = _state.Generals.FirstOrDefault(g => g.Id == cas.General)?.Name ?? $"G{cas.General.Value}";
-            var text = cas.Captured
-                ? $"[손실] {gName} 장수, 부대가 전멸하여 포로가 되었습니다."
-                : cas.Refuge is { } rf ? $"[손실] {gName} 장수, 부대가 전멸하여 {_cities.First(c => c.Id == rf).Name}(으)로 귀환했습니다."
+            var text = cas.Refuge is { } rf ? $"[손실] {gName} 장수, 부대가 전멸하여 {_cities.First(c => c.Id == rf).Name}(으)로 귀환했습니다."
                 : $"[손실] {gName} 장수, 부대가 전멸하여 재야가 되었습니다.";
             Ev(text, AccentFill);
-            Dbg($"  casualty u{cas.Unit.Value} {gName} {(cas.Captured ? $"captured-by f{cas.Holder!.Value.Value}" : cas.Refuge is { } r2 ? $"fled-to city{r2.Value}" : "wanderer")}");
+            Dbg($"  casualty u{cas.Unit.Value} {gName} {(cas.Refuge is { } r2 ? $"returned-to city{r2.Value}" : "wanderer")}");
         }
 
         var reportedActingDefenders = new HashSet<CityId>();
@@ -6995,7 +6993,6 @@ public sealed partial class CampaignMapScene : Node3D
         string FactionName(FactionId f) => _state.Factions.FirstOrDefault(x => x.Id == f)?.Name ?? "?";
         string Where(General g)
         {
-            if (_state.PrisonerOf(g.Id) is { } p) { return $"{FactionName(p.Holder)} 포로"; }
             if (_state.PostingOf(g.Id) is { } post)
             {
                 var loc = post.Location is { } c ? _state.Cities.FirstOrDefault(x => x.Id == c)?.Name ?? "성" : "야전";

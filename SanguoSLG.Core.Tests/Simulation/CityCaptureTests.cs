@@ -216,7 +216,6 @@ public class CityCaptureTests
         Assert.Equal((new FactionId(1), new CityId(1)), (joined!.Faction, joined.Location));
         // 후퇴: 원 세력 최근접 보유 도시(9)로 주둔 이동.
         Assert.Equal(new CityId(9), after.PostingOf(new GeneralId(11))!.Location);
-        Assert.Empty(after.Prisoners);
     }
 
     [Fact]
@@ -277,7 +276,6 @@ public class CityCaptureTests
         Assert.Empty(r.Fled);
         Assert.Equal((new FactionId(1), new CityId(1)), (after.PostingOf(new GeneralId(10))!.Faction, after.PostingOf(new GeneralId(10))!.Location));
         Assert.Null(after.PostingOf(new GeneralId(11)));   // 획득 실패 + 타 세력 없음 → 재야
-        Assert.Empty(after.Prisoners);
     }
 
     [Fact]

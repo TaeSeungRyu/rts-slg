@@ -8,14 +8,9 @@ using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
-/// <summary>야전 전멸 시 장수 처리(design-general-lifecycle §4b) — 50% 포로/50% 탈출, 무교전 100% 탈출.</summary>
+/// <summary>야전 전멸 시 장수 처리 — 포로 없이 원 성 우선, 불가능하면 최근접 아군 성 귀환.</summary>
 public class FieldCasualtiesTests
 {
-    private sealed class StubRandom(int value) : IRandomSource
-    {
-        public int Next(int minInclusive, int maxExclusive) => value;
-    }
-
     private static readonly IReadOnlyDictionary<string, TroopTemplate> T =
         new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory()).ToDictionary(x => x.Code);
 
@@ -48,49 +43,47 @@ public class FieldCasualtiesTests
         new(new CityId(id), $"c{id}", pos, new FactionId(owner), 0);
 
     [Fact]
-    public void 교전전멸_난수0이면_선봉과_부관이_포로가된다()
+    public void 교전전멸해도_선봉과_부관은_포로없이_원성으로_귀환한다()
     {
-        var s0 = State(Town(1, 1, new HexCoord(0, 0)));
+        var s0 = State(Town(1, 1, new HexCoord(0, 0)), Town(2, 1, new HexCoord(6, 0)));
         var dead = DeadUnit(9, owner: 1, new HexCoord(5, 0), vanguard: 1, adjutant: 2);
         var reports = new List<CasualtyReport>();
 
-        var s1 = FieldCasualties.ResolveUnit(s0, dead, captor: new FactionId(2), new HexCoord(5, 0),
-            new StubRandom(0), reports);
+        dead = dead with { OriginCity = new CityId(1) };
+        var s1 = FieldCasualties.ResolveUnit(s0, dead, new HexCoord(5, 0), reports);
 
         Assert.Equal(2, reports.Count);
-        Assert.All(reports, r => Assert.True(r.Captured));
-        Assert.Equal(2, s1.Prisoners.Count);
-        Assert.All(s1.Prisoners, p => Assert.Equal(new FactionId(2), p.Holder));
-        Assert.Empty(s1.Assignments); // 포로는 배속 해제
+        // 전멸 지점에는 2번 성이 더 가깝지만 편성 원점 1번 성을 우선한다.
+        Assert.All(reports, r => Assert.Equal(new CityId(1), r.Refuge));
+        Assert.All(new[] { new GeneralId(1), new GeneralId(2) }, id =>
+            Assert.Equal(new CityId(1), s1.PostingOf(id)!.Location));
+        Assert.Equal(2, s1.Assignments.Select(p => p.General).Distinct().Count());
     }
 
     [Fact]
-    public void 교전전멸_난수1이면_최근접_아군도시로_귀환한다()
+    public void 원성이_적에게_점령됐으면_최근접_아군도시로_귀환한다()
     {
         var s0 = State(Town(1, 1, new HexCoord(0, 0)), Town(2, 1, new HexCoord(9, 0)));
         var dead = DeadUnit(9, owner: 1, new HexCoord(7, 0), vanguard: 1);
         var reports = new List<CasualtyReport>();
 
-        var s1 = FieldCasualties.ResolveUnit(s0, dead, captor: new FactionId(2), new HexCoord(7, 0),
-            new StubRandom(1), reports);
+        dead = dead with { OriginCity = new CityId(99) };
+        var s1 = FieldCasualties.ResolveUnit(s0, dead, new HexCoord(7, 0), reports);
 
-        Assert.False(reports.Single().Captured);
         Assert.Equal(new CityId(2), reports.Single().Refuge); // (9,0)이 (7,0)에서 최근접
         Assert.Equal(new CityId(2), s1.PostingOf(new GeneralId(1))!.Location);
-        Assert.Empty(s1.Prisoners);
     }
 
     [Fact]
-    public void 무교전전멸은_난수와_무관하게_귀환한다()
+    public void 기존배속이_없어도_전멸장수는_아군도시로_복구된다()
     {
         var s0 = State(Town(1, 1, new HexCoord(0, 0)));
         var dead = DeadUnit(9, owner: 1, new HexCoord(5, 0), vanguard: 1);
         var reports = new List<CasualtyReport>();
 
-        var s1 = FieldCasualties.ResolveUnit(s0, dead, captor: null, new HexCoord(5, 0),
-            new StubRandom(0), reports); // 난수 0이라도 포획 주체가 없으면 탈출
+        var withoutPosting = s0 with { Postings = [] };
+        var s1 = FieldCasualties.ResolveUnit(withoutPosting, dead, new HexCoord(5, 0), reports);
 
-        Assert.False(reports.Single().Captured);
         Assert.Equal(new CityId(1), s1.PostingOf(new GeneralId(1))!.Location);
     }
 
@@ -101,10 +94,8 @@ public class FieldCasualtiesTests
         var dead = DeadUnit(9, owner: 1, new HexCoord(5, 0), vanguard: 1);
         var reports = new List<CasualtyReport>();
 
-        var s1 = FieldCasualties.ResolveUnit(s0, dead, captor: null, new HexCoord(5, 0),
-            new StubRandom(1), reports);
+        var s1 = FieldCasualties.ResolveUnit(s0, dead, new HexCoord(5, 0), reports);
 
-        Assert.False(reports.Single().Captured);
         Assert.Null(reports.Single().Refuge);
         Assert.Null(s1.PostingOf(new GeneralId(1))); // 배속 해제 = 재야
     }
@@ -112,7 +103,7 @@ public class FieldCasualtiesTests
     [Fact]
     public void 캠페인_교전전멸이_장수판정으로_이어진다()
     {
-        // 병력 1 부대가 적 대군에 한 주 안에 전멸 → 선봉이 포로 또는 아군 도시 귀환으로 보고된다.
+        // 병력 1 부대가 적 대군에 한 주 안에 전멸 → 선봉이 반드시 아군 도시로 귀환한다.
         var movement = new MovementSimulator(new PassabilityMap(new HexMap(0, 20, -5, 5), [], []));
         var field = new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70));
         var engine = new CampaignEngine(field, new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)),
@@ -136,10 +127,11 @@ public class FieldCasualtiesTests
             Postings: new List<GeneralPosting> { new(new GeneralId(1), new FactionId(1), Location: null) },
             FieldArmies: new List<CombatUnit> { weak, strong });
 
-        engine.AdvanceWeek(state, out _, out _, out _, out _, out var casualties);
+        var after = engine.AdvanceWeek(state, out _, out _, out _, out _, out var casualties);
 
         var report = casualties.Single();
         Assert.Equal(new GeneralId(1), report.General);
-        Assert.True(report.Captured || report.Refuge == new CityId(1)); // 포로 또는 귀환 — 방치 없음
+        Assert.Equal(new CityId(1), report.Refuge);
+        Assert.Equal(new CityId(1), after.PostingOf(new GeneralId(1))!.Location);
     }
 }

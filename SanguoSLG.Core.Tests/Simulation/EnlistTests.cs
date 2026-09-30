@@ -44,21 +44,6 @@ public class EnlistTests
         new(new CityId(city), CommandKind.Enlist, new GeneralId(recruiter), TargetGeneral: new GeneralId(target));
 
     [Fact]
-    public void 등용_포로는_대상이_아니다()
-    {
-        var s = new GameState(1, 1, new List<Faction>(),
-            new List<City> { City(1, owner: 1) },
-            new List<General> { Gen(1, 1, politics: 100), Gen(9, 2) },
-            Postings: new List<GeneralPosting> { At(1, 1, 1) },
-            Captives: new List<Prisoner> { new(new GeneralId(9), new FactionId(1), new FactionId(2)) });
-
-        var issued = Svc().Issue(s, EnlistReq(1, 1, 9));
-
-        Assert.False(issued.Ok);
-        Assert.Contains("정찰된", issued.Error);
-    }
-
-    [Fact]
     public void 등용_정찰된_적성_장수를_영입하면_장수만_넘어온다()
     {
         var s = new GameState(1, 1, new List<Faction>(),
@@ -125,7 +110,6 @@ public class EnlistTests
         for (var seed = 0; seed < 10; seed++)
         {
             var done = RunToDone(World(seed), Svc(), s, EnlistReq(1, 1, 9), out _);
-            Assert.Empty(done.Prisoners);
             Assert.Equal(new FactionId(1), done.PostingOf(new GeneralId(1))!.Faction); // 수행 장수 건재
         }
     }
