@@ -17,7 +17,8 @@ public sealed record DeployRequest(
     IReadOnlyList<HexCoord>? Waypoints = null,
     int Gold = 0,
     int DelayDays = 0,
-    DeploymentDirection? EgressDirection = null);
+    DeploymentDirection? EgressDirection = null,
+    HexCoord? EgressExit = null);
 
 /// <summary>보급부대 편성 한 줄 — 병종과 데려갈 병력(0 이하면 그 병종 전량).</summary>
 public sealed record SupplyLine(string TroopCode, int Troops);
@@ -32,7 +33,8 @@ public sealed record SupplyDeployRequest(
     int Provisions = -1,
     int Gold = 0,
     int DelayDays = 0,
-    DeploymentDirection? EgressDirection = null);
+    DeploymentDirection? EgressDirection = null,
+    HexCoord? EgressExit = null);
 
 /// <summary>집단군 출전 요청 — 보병·궁병·공성 병기를 묶어 성 원점 기준 1개만 편성한다.</summary>
 public sealed record ArmyGroupDeployRequest(
@@ -46,7 +48,8 @@ public sealed record ArmyGroupDeployRequest(
     IReadOnlyList<HexCoord>? Waypoints = null,
     int Gold = 0,
     int DelayDays = 0,
-    DeploymentDirection? EgressDirection = null);
+    DeploymentDirection? EgressDirection = null,
+    HexCoord? EgressExit = null);
 
 /// <summary>수송부대 편성 한 줄 — 병종과 이동시킬 병력(0 이하면 그 병종 전량).</summary>
 public sealed record TransportLine(string TroopCode, int Troops);
@@ -61,7 +64,8 @@ public sealed record TransportDeployRequest(
     int Provisions = 0,
     IReadOnlyList<HexCoord>? Waypoints = null,
     int DelayDays = 0,
-    DeploymentDirection? EgressDirection = null);
+    DeploymentDirection? EgressDirection = null,
+    HexCoord? EgressExit = null);
 
 public sealed record NavalDeployRequest(
     CityId City,
@@ -75,7 +79,8 @@ public sealed record NavalDeployRequest(
     int Provisions = -1,
     IReadOnlyList<HexCoord>? Waypoints = null,
     int DelayDays = 0,
-    DeploymentDirection? EgressDirection = null);
+    DeploymentDirection? EgressDirection = null,
+    HexCoord? EgressExit = null);
 
 /// <summary>
 /// 출전(design-administration "부대와의 연결"·design-unit-state). 대기 병력 + 장수 → 야전 부대:
@@ -203,7 +208,8 @@ public sealed class DeployService
             unitId.Value, vanguard, adjutant, template, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
         unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, CargoGold = req.Gold,
-            OriginCity = city.Id, DeploymentDelayDays = req.DelayDays, EgressDirection = req.EgressDirection };
+            OriginCity = city.Id, DeploymentDelayDays = req.DelayDays, EgressDirection = req.EgressDirection,
+            EgressExit = req.EgressExit };
 
         var garrisons = state.Garrisons
             .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)
@@ -332,7 +338,8 @@ public sealed class DeployService
             vanguard.Might, vanguard.Intellect, total, TroopClass.Infantry,
             ProvisionsCapacity: capacity, IsSupply: true, Training: training,
             VanguardId: vanguard.Id, SupplyCargo: components, SupplyEfficiencyPercent: supplyEfficiency,
-            OriginCity: city.Id, DeploymentDelayDays: req.DelayDays, EgressDirection: req.EgressDirection);
+            OriginCity: city.Id, DeploymentDelayDays: req.DelayDays, EgressDirection: req.EgressDirection,
+            EgressExit: req.EgressExit);
         var wanted = req.Provisions < 0 ? unit.MaxProvisions() : System.Math.Min(req.Provisions, unit.MaxProvisions());
         var carried = System.Math.Min(wanted, city.Provisions);
         unit = unit with { Provisions = carried, CargoGold = req.Gold };
@@ -497,7 +504,7 @@ public sealed class DeployService
             ProvisionsCapacity: _b.ArmyGroupProvisionsCapacity, Training: training,
             TroopCode: "army_group", VanguardId: vanguard.Id, AdjutantId: adjutant?.Id,
             SupplyCargo: components, IsArmyGroup: true, OriginCity: city.Id,
-            DeploymentDelayDays: req.DelayDays, EgressDirection: req.EgressDirection);
+            DeploymentDelayDays: req.DelayDays, EgressDirection: req.EgressDirection, EgressExit: req.EgressExit);
 
         var wanted = req.Provisions < 0 ? unit.MaxProvisions() : System.Math.Min(req.Provisions, unit.MaxProvisions());
         var carried = System.Math.Min(wanted, city.Provisions);
@@ -616,7 +623,7 @@ public sealed class DeployService
             unitId.Value, vanguard, adjutant, ship, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
         unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, OriginCity = city.Id,
-            DeploymentDelayDays = req.DelayDays, EgressDirection = req.EgressDirection };
+            DeploymentDelayDays = req.DelayDays, EgressDirection = req.EgressDirection, EgressExit = req.EgressExit };
 
         var garrisons = state.Garrisons
             .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)
@@ -768,7 +775,7 @@ public sealed class DeployService
             Provisions: req.Provisions, ProvisionsCapacity: capacity, IsSupply: false, Training: training,
             TroopCode: "transport", VanguardId: vanguard.Id, SupplyCargo: components, CargoGold: req.Gold,
             IsTransport: true, OriginCity: city.Id, DeploymentDelayDays: req.DelayDays,
-            EgressDirection: req.EgressDirection);
+            EgressDirection: req.EgressDirection, EgressExit: req.EgressExit);
 
         var taken = components.ToDictionary(c => c.TroopCode, c => c.Troops);
         var garrisons = state.Garrisons

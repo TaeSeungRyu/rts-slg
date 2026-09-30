@@ -1,6 +1,7 @@
 namespace SanguoSLG.Core.Simulation;
 
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Spatial;
 
 /// <summary>
 /// 진행 루프가 다루는 한 부대의 전체 상태(이동 + 전투). 이동은 <see cref="Field"/>, 산출된 유효
@@ -36,6 +37,7 @@ public sealed record CombatUnit(
     CityId? OriginCity = null,
     int DeploymentDelayDays = 0,
     DeploymentDirection? EgressDirection = null,
+    HexCoord? EgressExit = null,
     bool AwaitingEgress = false)
 {
     public UnitId Id => Field.Id;
