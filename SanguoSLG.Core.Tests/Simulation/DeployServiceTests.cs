@@ -53,6 +53,44 @@ public class DeployServiceTests
         AdminPassives = new[] { new GeneralSkill("quartermaster", tier) },
     };
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(3)]
+    [InlineData(6)]
+    public void 출전지연은_당일부터_육일까지_예약자원을_즉시_선점한다(int delayDays)
+    {
+        var city = Town(1, new HexCoord(2, 0), provisions: 5000);
+        var s0 = State([city], [Gen(1)],
+            garrisons: [new GarrisonForce(city.Id, "swordsman", 10_000, 60)],
+            postings: [At(1, 1)]);
+
+        var result = Service().Deploy(s0, new DeployRequest(city.Id, "swordsman", 5_000,
+            new GeneralId(1), Provisions: 100, Gold: 200, DelayDays: delayDays));
+
+        Assert.True(result.Ok, result.Error);
+        var unit = Assert.Single(result.State.Armies);
+        Assert.Equal(delayDays, unit.DeploymentDelayDays);
+        Assert.Equal(5_000, result.State.Garrisons.Single().Troops);
+        Assert.Equal(800, result.State.Cities.Single().Gold);
+        Assert.Null(result.State.PostingOf(new GeneralId(1))!.Location);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(7)]
+    public void 출전지연_범위를_벗어나면_원자적으로_거부한다(int delayDays)
+    {
+        var city = Town(1, new HexCoord(2, 0));
+        var s0 = State([city], [Gen(1)],
+            garrisons: [new GarrisonForce(city.Id, "swordsman", 10_000, 60)], postings: [At(1, 1)]);
+
+        var result = Service().Deploy(s0, new DeployRequest(city.Id, "swordsman", 5_000,
+            new GeneralId(1), DelayDays: delayDays));
+
+        Assert.False(result.Ok);
+        Assert.Same(s0, result.State);
+    }
+
     [Fact]
     public void 병참_선봉이면_부대_군량소모_계수가_줄어든다()
     {
@@ -179,9 +217,10 @@ public class DeployServiceTests
             postings: [At(1, 1)]);
 
         var r = Service().DeploySupply(s0, new SupplyDeployRequest(
-            new CityId(1), [new SupplyLine("swordsman", 5000)], new GeneralId(1)));
+            new CityId(1), [new SupplyLine("swordsman", 5000)], new GeneralId(1), DelayDays: 2));
 
         Assert.True(r.Ok, r.Error);
+        Assert.Equal(2, r.State.Armies.Single().DeploymentDelayDays);
         Assert.Null(r.State.Cities.Single().SecurityOfficer);
     }
 
@@ -222,13 +261,14 @@ public class DeployServiceTests
             with { PortShipStocks = [new PortShipStock(port.Id, "small_boat", 2)] };
 
         var r = Service().DeployNaval(s0, new NavalDeployRequest(
-            port.Id, "small_boat", "swordsman", 10000, new GeneralId(1), Target: new HexCoord(4, 0)));
+            port.Id, "small_boat", "swordsman", 10000, new GeneralId(1), Target: new HexCoord(4, 0), DelayDays: 4));
 
         Assert.True(r.Ok, r.Error);
         var unit = r.State.Armies.Single();
         Assert.Equal("small_boat", unit.TroopCode);
         Assert.Equal(TroopClass.Naval, unit.Class);
         Assert.Equal(10000, unit.Pool.Active);
+        Assert.Equal(4, unit.DeploymentDelayDays);
         Assert.Equal(2000, r.State.Garrisons.Single().Troops);
         Assert.Equal(1, r.State.PortShips.Single().Count);
     }
@@ -327,7 +367,8 @@ public class DeployServiceTests
             new CityId(2),
             new GeneralId(1),
             Gold: 400,
-            Provisions: 800));
+            Provisions: 800,
+            DelayDays: 3));
 
         Assert.True(r.Ok, r.Error);
         var unit = r.State.Armies.Single();
@@ -342,6 +383,7 @@ public class DeployServiceTests
         Assert.Equal(400, unit.CargoGold);
         Assert.Equal(800, unit.Provisions);
         Assert.Equal("transport", unit.TroopCode);
+        Assert.Equal(3, unit.DeploymentDelayDays);
         Assert.Equal(500, r.State.Cities.Single(c => c.Id == source.Id).Gold);
         Assert.Equal(2200, r.State.Cities.Single(c => c.Id == source.Id).Provisions);
         Assert.Equal(8000, r.State.Garrisons.Single(g => g.TroopCode == "swordsman").Troops);
@@ -514,7 +556,7 @@ public class DeployServiceTests
             ],
             new GeneralId(1),
             new GeneralId(2),
-            Target: new HexCoord(5, 0), Gold: 400));
+            Target: new HexCoord(5, 0), Gold: 400, DelayDays: 5));
 
         Assert.True(r.Ok, r.Error);
         var unit = r.State.Armies.Single();
@@ -526,6 +568,7 @@ public class DeployServiceTests
         Assert.Equal("army_group", unit.TroopCode);
         Assert.Equal(30000, unit.Pool.Active);
         Assert.Equal(30000, unit.MaxTroops);
+        Assert.Equal(5, unit.DeploymentDelayDays);
         Assert.Equal(1, unit.Field.Speed);
         Assert.Equal(1, unit.Field.AttackRange);
         Assert.Equal(1, unit.Field.RangeCastle);

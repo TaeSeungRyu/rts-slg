@@ -33,9 +33,13 @@ public sealed record CombatUnit(
     bool IsTransport = false,
     int CargoGold = 0,
     bool IsArmyGroup = false,
-    CityId? OriginCity = null)
+    CityId? OriginCity = null,
+    int DeploymentDelayDays = 0)
 {
     public UnitId Id => Field.Id;
+
+    /// <summary>출전 예약 뒤 성·항구 내부에서 기다릴 남은 일수. 0이면 즉시 지도에 출격한다.</summary>
+    public bool IsWaitingDeployment => DeploymentDelayDays > 0;
 
     /// <summary>보급부대의 병종별 구성(일반 부대는 빈 목록). design-unit-state 1단계-보급.</summary>
     public IReadOnlyList<SupplyComponent> Cargo => SupplyCargo ?? [];

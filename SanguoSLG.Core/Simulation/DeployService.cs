@@ -15,7 +15,8 @@ public sealed record DeployRequest(
     HexCoord? Target = null,
     int Provisions = -1,
     IReadOnlyList<HexCoord>? Waypoints = null,
-    int Gold = 0);
+    int Gold = 0,
+    int DelayDays = 0);
 
 /// <summary>보급부대 편성 한 줄 — 병종과 데려갈 병력(0 이하면 그 병종 전량).</summary>
 public sealed record SupplyLine(string TroopCode, int Troops);
@@ -28,7 +29,8 @@ public sealed record SupplyDeployRequest(
     UnitMode Mode = UnitMode.March,
     HexCoord? Target = null,
     int Provisions = -1,
-    int Gold = 0);
+    int Gold = 0,
+    int DelayDays = 0);
 
 /// <summary>집단군 출전 요청 — 보병·궁병·공성 병기를 묶어 성 원점 기준 1개만 편성한다.</summary>
 public sealed record ArmyGroupDeployRequest(
@@ -40,7 +42,8 @@ public sealed record ArmyGroupDeployRequest(
     HexCoord? Target = null,
     int Provisions = -1,
     IReadOnlyList<HexCoord>? Waypoints = null,
-    int Gold = 0);
+    int Gold = 0,
+    int DelayDays = 0);
 
 /// <summary>수송부대 편성 한 줄 — 병종과 이동시킬 병력(0 이하면 그 병종 전량).</summary>
 public sealed record TransportLine(string TroopCode, int Troops);
@@ -53,7 +56,8 @@ public sealed record TransportDeployRequest(
     GeneralId Vanguard,
     int Gold = 0,
     int Provisions = 0,
-    IReadOnlyList<HexCoord>? Waypoints = null);
+    IReadOnlyList<HexCoord>? Waypoints = null,
+    int DelayDays = 0);
 
 public sealed record NavalDeployRequest(
     CityId City,
@@ -65,7 +69,8 @@ public sealed record NavalDeployRequest(
     UnitMode Mode = UnitMode.March,
     HexCoord? Target = null,
     int Provisions = -1,
-    IReadOnlyList<HexCoord>? Waypoints = null);
+    IReadOnlyList<HexCoord>? Waypoints = null,
+    int DelayDays = 0);
 
 /// <summary>
 /// 출전(design-administration "부대와의 연결"·design-unit-state). 대기 병력 + 장수 → 야전 부대:
@@ -75,6 +80,7 @@ public sealed record NavalDeployRequest(
 /// </summary>
 public sealed class DeployService
 {
+    public const int MaxDeploymentDelayDays = 6;
     public const int TransportMaxTroops = 50_000;
     public const int ShipTroopCapacity = 10_000;
 
@@ -103,6 +109,7 @@ public sealed class DeployService
 
     public CommandResult Deploy(GameState state, DeployRequest req)
     {
+        if (!ValidDelay(req.DelayDays)) return CommandResult.Fail("출전 지연은 당일부터 6일까지 선택할 수 있다.", state);
         var city = state.Cities.FirstOrDefault(c => c.Id == req.City);
         if (city is null)
         {
@@ -191,7 +198,7 @@ public sealed class DeployService
             unitId.Value, vanguard, adjutant, template, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
         unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, CargoGold = req.Gold,
-            OriginCity = city.Id };
+            OriginCity = city.Id, DeploymentDelayDays = req.DelayDays };
 
         var garrisons = state.Garrisons
             .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)
@@ -225,6 +232,7 @@ public sealed class DeployService
     /// </summary>
     public CommandResult DeploySupply(GameState state, SupplyDeployRequest req)
     {
+        if (!ValidDelay(req.DelayDays)) return CommandResult.Fail("출전 지연은 당일부터 6일까지 선택할 수 있다.", state);
         var city = state.Cities.FirstOrDefault(c => c.Id == req.City);
         if (city is null)
         {
@@ -319,7 +327,7 @@ public sealed class DeployService
             vanguard.Might, vanguard.Intellect, total, TroopClass.Infantry,
             ProvisionsCapacity: capacity, IsSupply: true, Training: training,
             VanguardId: vanguard.Id, SupplyCargo: components, SupplyEfficiencyPercent: supplyEfficiency,
-            OriginCity: city.Id);
+            OriginCity: city.Id, DeploymentDelayDays: req.DelayDays);
         var wanted = req.Provisions < 0 ? unit.MaxProvisions() : System.Math.Min(req.Provisions, unit.MaxProvisions());
         var carried = System.Math.Min(wanted, city.Provisions);
         unit = unit with { Provisions = carried, CargoGold = req.Gold };
@@ -355,6 +363,7 @@ public sealed class DeployService
     /// </summary>
     public CommandResult DeployArmyGroup(GameState state, ArmyGroupDeployRequest req)
     {
+        if (!ValidDelay(req.DelayDays)) return CommandResult.Fail("출전 지연은 당일부터 6일까지 선택할 수 있다.", state);
         var city = state.Cities.FirstOrDefault(c => c.Id == req.City);
         if (city is null)
         {
@@ -482,7 +491,8 @@ public sealed class DeployService
             vanguard.Might, vanguard.Intellect, total, TroopClass.Siege,
             ProvisionsCapacity: _b.ArmyGroupProvisionsCapacity, Training: training,
             TroopCode: "army_group", VanguardId: vanguard.Id, AdjutantId: adjutant?.Id,
-            SupplyCargo: components, IsArmyGroup: true, OriginCity: city.Id);
+            SupplyCargo: components, IsArmyGroup: true, OriginCity: city.Id,
+            DeploymentDelayDays: req.DelayDays);
 
         var wanted = req.Provisions < 0 ? unit.MaxProvisions() : System.Math.Min(req.Provisions, unit.MaxProvisions());
         var carried = System.Math.Min(wanted, city.Provisions);
@@ -516,6 +526,7 @@ public sealed class DeployService
 
     public CommandResult DeployNaval(GameState state, NavalDeployRequest req)
     {
+        if (!ValidDelay(req.DelayDays)) return CommandResult.Fail("출전 지연은 당일부터 6일까지 선택할 수 있다.", state);
         var city = state.Cities.FirstOrDefault(c => c.Id == req.City);
         if (city is null)
         {
@@ -599,7 +610,8 @@ public sealed class DeployService
         var unit = UnitAssembler.Assemble(unitId, city.Owner, city.Position, req.Mode, req.Target,
             unitId.Value, vanguard, adjutant, ship, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
-        unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, OriginCity = city.Id };
+        unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, OriginCity = city.Id,
+            DeploymentDelayDays = req.DelayDays };
 
         var garrisons = state.Garrisons
             .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)
@@ -637,6 +649,7 @@ public sealed class DeployService
     /// </summary>
     public CommandResult DeployTransport(GameState state, TransportDeployRequest req)
     {
+        if (!ValidDelay(req.DelayDays)) return CommandResult.Fail("출전 지연은 당일부터 6일까지 선택할 수 있다.", state);
         var city = state.Cities.FirstOrDefault(c => c.Id == req.City);
         if (city is null)
         {
@@ -749,7 +762,7 @@ public sealed class DeployService
             UnitCombatState.Create(vanguard.Intellect), vanguard.Might, vanguard.Intellect, total, TroopClass.Infantry,
             Provisions: req.Provisions, ProvisionsCapacity: capacity, IsSupply: false, Training: training,
             TroopCode: "transport", VanguardId: vanguard.Id, SupplyCargo: components, CargoGold: req.Gold,
-            IsTransport: true, OriginCity: city.Id);
+            IsTransport: true, OriginCity: city.Id, DeploymentDelayDays: req.DelayDays);
 
         var taken = components.ToDictionary(c => c.TroopCode, c => c.Troops);
         var garrisons = state.Garrisons
@@ -774,6 +787,8 @@ public sealed class DeployService
             FieldArmies = state.Armies.Append(unit).ToList(),
         });
     }
+
+    private static bool ValidDelay(int days) => days is >= 0 and <= MaxDeploymentDelayDays;
 
     private ActiveSkill? ResolveSupplyActive(string? code)
     {

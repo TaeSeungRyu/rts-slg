@@ -27,7 +27,7 @@ public sealed class BattlefieldVision(BalanceConfig balance, IReadOnlyList<Troop
         var visible = new HashSet<HexCoord>();
         foreach (var city in state.Cities.Where(c => c.Owner == viewer || state.IsScouted(viewer, c.Id)))
             Reveal(city.Position, CityRadius(city.Castle));
-        foreach (var unit in state.Armies.Where(u => u.Field.Owner == viewer && u.Pool.Active > 0))
+        foreach (var unit in state.Armies.Where(u => u.Field.Owner == viewer && u.Pool.Active > 0 && !u.IsWaitingDeployment))
             Reveal(unit.Field.Position, UnitRadius(unit));
         foreach (var op in state.ProductionOps.Where(o => o.Owner == viewer && o.Troops > 0))
             Reveal(op.Position, TroopRadius(op.TroopCode));
@@ -48,5 +48,6 @@ public sealed class BattlefieldVision(BalanceConfig balance, IReadOnlyList<Troop
         => city.Owner == viewer || state.IsScouted(viewer, city.Id);
 
     public static bool CanSeeUnit(FactionId viewer, CombatUnit unit, IReadOnlySet<HexCoord> visible)
-        => unit.Pool.Active > 0 && (unit.Field.Owner == viewer || visible.Contains(unit.Field.Position));
+        => unit.Pool.Active > 0 && !unit.IsWaitingDeployment
+            && (unit.Field.Owner == viewer || visible.Contains(unit.Field.Position));
 }

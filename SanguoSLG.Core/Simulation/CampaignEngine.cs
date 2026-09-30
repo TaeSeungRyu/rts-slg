@@ -89,10 +89,16 @@ public sealed class CampaignEngine
         var casualtyReports = new List<CasualtyReport>();
         _campaignEvents.Clear();
         var work = state;
-        var armies = state.Armies.Where(u => u.Pool.Active > 0).ToList();
+        var waitingArmies = state.Armies
+            .Where(u => u.Pool.Active > 0 && u.IsWaitingDeployment)
+            .OrderBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value)
+            .ToList();
+        var armies = state.Armies
+            .Where(u => u.Pool.Active > 0 && !u.IsWaitingDeployment)
+            .ToList();
 
         var remaining = WeekDays;
-        while (remaining > 0 && armies.Count > 0)
+        while (remaining > 0 && (armies.Count > 0 || waitingArmies.Count > 0))
         {
             // 성 접적 정지용 장애물 — 매 진행마다 현재 소유로 갱신(함락으로 주인이 바뀌므로).
             var castles = work.Cities
@@ -280,11 +286,27 @@ public sealed class CampaignEngine
                 armies = work.Armies.Where(u => u.Pool.Active > 0).ToList();
                 captureReports.AddRange(caps.Select(c => c with { TurnIndex = reports.Count - 1 }));
             }
+
+            // 오늘의 이동·공격·점령 정산이 모두 끝난 뒤 예약 대기일을 하루 차감한다.
+            // 1일 지연은 첫날 내내 성 내부에 머물고 다음 날부터 같은 출구 대기열에 참가한다.
+            var countdown = waitingArmies
+                .Select(u => u with { DeploymentDelayDays = System.Math.Max(0, u.DeploymentDelayDays - 1) })
+                .ToList();
+            // 재생 보고에는 아직 성 내부에서 대기 중인 예약 부대도 생존 상태로 보존한다.
+            // 그렇지 않으면 표현 계층이 첫날에 이들을 전멸한 부대로 오인한다.
+            reports[^1] = reports[^1] with
+            {
+                Units = reports[^1].Units.Concat(countdown)
+                    .OrderBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value).ToList(),
+            };
+            armies.AddRange(countdown.Where(u => !u.IsWaitingDeployment));
+            waitingArmies = countdown.Where(u => u.IsWaitingDeployment).ToList();
         }
 
         var afterField = work with
         {
-            FieldArmies = armies,
+            FieldArmies = armies.Concat(waitingArmies)
+                .OrderBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value).ToList(),
             GarrisonForces = work.Garrisons
                 .Where(g => g.Troops > 0)
                 .OrderBy(g => g.City.Value).ThenBy(g => g.TroopCode, System.StringComparer.Ordinal).ThenBy(g => g.Trainee)

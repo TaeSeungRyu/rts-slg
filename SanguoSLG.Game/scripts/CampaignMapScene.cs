@@ -99,6 +99,8 @@ public sealed partial class CampaignMapScene : Node3D
     private double _animT;
     private int _animStepIdx;
     private readonly List<(double Time, int UnitId, HexCoord To)> _animSteps = new();
+    private int _animDeploymentIdx;
+    private readonly List<(double Time, int UnitId)> _animDeployments = new();
     private readonly Dictionary<int, HexCoord> _animStartOverrides = new();
     private int _animAtkIdx;
     private readonly List<(double Time, int UnitId, Vector3 FaceTo)> _animAttacks = new(); // 교전·공성 공격 모션
@@ -270,6 +272,7 @@ public sealed partial class CampaignMapScene : Node3D
     private bool _vanSortAsc = true;
     private int _depProvDays; // 출전 시 휴대할 군량 일수(슬라이더). 0이면 군량 없이 나감
     private int _depGold;
+    private int _depDelayDays;
     private SpinBox? _depGoldSpin;
     private HSlider? _depProvSlider;
     private Label? _depProvLabel;
@@ -3040,6 +3043,7 @@ public sealed partial class CampaignMapScene : Node3D
         _advancing = true;
         _animT = 0;
         _animStepIdx = 0;
+        _animDeploymentIdx = 0;
         _animAtkIdx = 0;
         _animUpdIdx = 0;
         _animKillIdx = 0;
@@ -3076,6 +3080,7 @@ public sealed partial class CampaignMapScene : Node3D
         _productionVisionLosses.Clear();
         foreach (var op in preMove.ProductionOps) _animationProductionPositions[op.Id] = op.Position;
         _animSteps.Clear();
+        _animDeployments.Clear();
         _animStartOverrides.Clear();
         _animAttacks.Clear();
         _animUpdates.Clear();
@@ -3100,6 +3105,10 @@ public sealed partial class CampaignMapScene : Node3D
         var playback = new MovementPlayback(startHex);
         var prev = playback.Positions;
         var unitSnapshot = preMove.Armies.ToDictionary(u => u.Id.Value);
+        _animDeployments.AddRange(preMove.Armies
+            .Where(u => u.DeploymentDelayDays > 0)
+            .Select(u => (u.DeploymentDelayDays * DaySeconds, u.Id.Value))
+            .OrderBy(x => x.Item1).ThenBy(x => x.Item2));
         var dayOffset = 0;
         for (var ti = 0; ti < turns.Count; ti++)
         {
@@ -3351,6 +3360,7 @@ public sealed partial class CampaignMapScene : Node3D
         ScheduleProductionAnimations(preMove);
 
         _animSteps.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animDeployments.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animAttacks.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animUpdates.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animKills.Sort((a, b) => a.Time.CompareTo(b.Time));
@@ -4689,6 +4699,15 @@ public sealed partial class CampaignMapScene : Node3D
         {
             _animT += delta;
             RefreshPlaybackVision(delta);
+            while (_animDeploymentIdx < _animDeployments.Count
+                && _animDeployments[_animDeploymentIdx].Time <= _animT)
+            {
+                var deployment = _animDeployments[_animDeploymentIdx];
+                if (_armyTokens.TryGetValue(deployment.UnitId, out var deployToken)) deployToken.Visible = true;
+                if (_armyLabels.TryGetValue(deployment.UnitId, out var deployLabel))
+                    deployLabel.Visible = _state.Armies.FirstOrDefault(u => u.Id.Value == deployment.UnitId)?.Field.Owner == Player;
+                _animDeploymentIdx++;
+            }
             while (_animStepIdx < _animSteps.Count && _animSteps[_animStepIdx].Time <= _animT)
             {
                 var s = _animSteps[_animStepIdx];
@@ -5494,6 +5513,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depPreview = null;
         _depProvDays = 0;
         _depGold = 0;
+        _depDelayDays = 0;
         _depGoldSpin = null;
         _depProvSlider = null;
         _depProvLabel = null;
@@ -5509,6 +5529,7 @@ public sealed partial class CampaignMapScene : Node3D
             foreach (var line in req.Lines) { _supplyDraft[line.TroopCode] = line.Troops; }
             _depProvDays = SupplyProvisionDaysFromAmount(req.Provisions);
             _depGold = req.Gold;
+            _depDelayDays = req.DelayDays;
         }
 
         var vp = GetViewport().GetVisibleRect().Size;
@@ -5607,6 +5628,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(provRow);
         SyncSupplyProvisionSlider();
         _depGoldSpin = AddGoldCargoSelector(box, city, _depGold, value => { _depGold = value; UpdateSupplyPreview(); });
+        AddDeploymentDelaySelector(box, _depDelayDays, value => _depDelayDays = value);
 
         var supplyRosterRule = GoldRule();
         box.AddChild(supplyRosterRule);
@@ -8571,6 +8593,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenNavalCompose(CityId city)
     {
         _depModalCity = city;
+        _depDelayDays = 0;
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var port = _state.Cities.First(c => c.Id == city);
         var ships = PortShipOptions().Where(s => PortShipStock(city, s.Code) > 0).ToList();
@@ -8809,13 +8832,15 @@ public sealed partial class CampaignMapScene : Node3D
         };
         box.AddChild(generalTree);
         box.AddChild(preview);
+        AddDeploymentDelaySelector(box, _depDelayDays, value => { _depDelayDays = value; Refresh(); });
         Refresh();
 
         var save = MakeButton("출항 예약", accent: true);
         save.CustomMinimumSize = new Vector2(0, 36);
         save.Pressed += () =>
         {
-            var req = new NavalDeployRequest(city, selectedShip, selectedTroop, amount, selectedGeneral, selectedAdjutant);
+            var req = new NavalDeployRequest(city, selectedShip, selectedTroop, amount, selectedGeneral, selectedAdjutant,
+                DelayDays: _depDelayDays);
             var label = NavalLabel(req);
             var ids = selectedAdjutant is { } adj ? new[] { selectedGeneral, adj } : new[] { selectedGeneral };
             ShowConfirm("출항 예약 확인", $"{label}\n\n예약 후 목록에서 '목표 지정'을 눌러 바다/대하 타일을 선택하세요.{DutyReleaseNotice(ids)}", () =>
@@ -8845,12 +8870,13 @@ public sealed partial class CampaignMapScene : Node3D
         var source = _troops.FirstOrDefault(t => t.Code == req.SourceTroopCode)?.Name ?? req.SourceTroopCode;
         var leader = _state.Generals.FirstOrDefault(g => g.Id == req.Vanguard)?.Name ?? "-";
         var adjutant = req.Adjutant is { } adj ? _state.Generals.FirstOrDefault(g => g.Id == adj)?.Name ?? "-" : "없음";
-        return $"{ship} · {source} {req.Troops:N0}명 승선 · 주장수 {leader} · 부장수 {adjutant}";
+        return $"{ship} · {source} {req.Troops:N0}명 승선 · 주장수 {leader} · 부장수 {adjutant} · {DelayLabel(req.DelayDays)}";
     }
 
     private void OpenTransportCompose(CityId city)
     {
         _depModalCity = city;
+        _depDelayDays = 0;
         _transportDraft.Clear();
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var source = _state.Cities.First(c => c.Id == city);
@@ -9059,6 +9085,7 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(row);
         }
         box.AddChild(preview);
+        AddDeploymentDelaySelector(box, _depDelayDays, value => { _depDelayDays = value; Refresh(); });
 
         void Refresh()
         {
@@ -9098,7 +9125,8 @@ public sealed partial class CampaignMapScene : Node3D
             if (lines.Count == 0) { ShowNotice("수송 불가", "수송할 병종과 병력을 선택하세요."); return; }
             if (troops > DeployService.TransportMaxTroops) { ShowNotice("수송 불가", $"수송 병력은 최대 {DeployService.TransportMaxTroops}명입니다."); return; }
             var lineText = string.Join(", ", lines.Select(l => $"{_troops.FirstOrDefault(t => t.Code == l.TroopCode)?.Name ?? l.TroopCode} {l.Troops}명"));
-            var label = TransportLabel(new TransportDeployRequest(city, lines, null, leader.Id, gold, provisions));
+            var label = TransportLabel(new TransportDeployRequest(city, lines, null, leader.Id, gold, provisions,
+                DelayDays: _depDelayDays));
             var ids = new GeneralId[] { leader.Id };
             ShowConfirm("수송 예약 확인", $"{label}{DutyReleaseNotice(ids)}", () =>
             {
@@ -9109,7 +9137,8 @@ public sealed partial class CampaignMapScene : Node3D
                 }
 
                 _state = _state.ReleaseOfficerDuties(ids);
-                _pendingTransportDeploys.Add((new TransportDeployRequest(city, lines, null, leader.Id, gold, provisions), label));
+                _pendingTransportDeploys.Add((new TransportDeployRequest(city, lines, null, leader.Id, gold, provisions,
+                    DelayDays: _depDelayDays), label));
                 _log.Text = $"수송 예약: {label}";
                 SelectCity(city);
                 OpenTransportHub(city);
@@ -9260,7 +9289,7 @@ public sealed partial class CampaignMapScene : Node3D
         var lineText = req.Lines.Count == 0
             ? "병력 없음"
             : string.Join(", ", req.Lines.Select(l => $"{_troops.FirstOrDefault(t => t.Code == l.TroopCode)?.Name ?? l.TroopCode} {l.Troops}명"));
-        return $"{source}→{dest} · {leader} · {lineText} · 금 {req.Gold} · 군량 {req.Provisions}";
+        return $"{source}→{dest} · {leader} · {lineText} · 금 {req.Gold} · 군량 {req.Provisions} · {DelayLabel(req.DelayDays)}";
     }
 
     private void OpenArmyGroupHub(CityId city)
@@ -9401,6 +9430,7 @@ public sealed partial class CampaignMapScene : Node3D
         _armyGroupEditIndex = editIndex;
         _armyGroupDraft.Clear();
         _depGold = 0;
+        _depDelayDays = 0;
         _depGoldSpin = null;
         _armyGroupAmountSpins.Clear();
         _depVan = null;
@@ -9417,6 +9447,7 @@ public sealed partial class CampaignMapScene : Node3D
             _depVan = _pendingArmyGroupDeploys[editIndex].Req.Vanguard;
             _depAdj = _pendingArmyGroupDeploys[editIndex].Req.Adjutant;
             _depGold = _pendingArmyGroupDeploys[editIndex].Req.Gold;
+            _depDelayDays = _pendingArmyGroupDeploys[editIndex].Req.DelayDays;
         }
 
         var vp = GetViewport().GetVisibleRect().Size;
@@ -9479,6 +9510,7 @@ public sealed partial class CampaignMapScene : Node3D
             table.AddChild(MakeLabel($"{gar.TrainingLevel}", 12, gar.TrainingLevel < 50 ? AccentFill : Parchment));
         }
         _depGoldSpin = AddGoldCargoSelector(box, city, _depGold, value => { _depGold = value; UpdateArmyGroupPreview(); });
+        AddDeploymentDelaySelector(box, _depDelayDays, value => _depDelayDays = value);
 
         var armyGroupRosterTitle = MakeLabel("장수 편성 (선봉 필수 · 부관 선택 · 전투편성과 동일하게 체크)", 13, GoldBright);
         box.AddChild(armyGroupRosterTitle);
@@ -9569,13 +9601,14 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depVan is not { } van) { Err("집단군 선봉 장수를 선택하세요."); return; }
         if (_depAdj == van) { Err("부관은 선봉과 다른 장수여야 합니다."); return; }
         var ids = _depAdj is { } adj ? new[] { van, adj } : new[] { van };
-        var req = new ArmyGroupDeployRequest(_depModalCity, lines, van, _depAdj, UnitMode.Advance, Provisions: -1, Gold: _depGold);
+        var req = new ArmyGroupDeployRequest(_depModalCity, lines, van, _depAdj, UnitMode.Advance,
+            Provisions: -1, Gold: _depGold, DelayDays: _depDelayDays);
         var preview = _deployer.DeployArmyGroup(_state, req);
         if (!preview.Ok) { Err(preview.Error ?? "집단군을 편성할 수 없습니다."); return; }
 
         var leader = _state.Generals.First(g => g.Id == van).Name;
         var total = lines.Sum(l => l.Troops);
-        var label = $"집단군 {total:N0}({leader}) · 금 {_depGold:N0} · {ArmyGroupLineText(lines)}";
+        var label = $"집단군 {total:N0}({leader}) · 금 {_depGold:N0} · {ArmyGroupLineText(lines)} · {DelayLabel(_depDelayDays)}";
         ShowConfirm("집단군 예약 확인", $"{label}\n액티브 스킬은 발동하지 않습니다.{DutyReleaseNotice(ids)}", () =>
         {
             if (_advancing || ids.Any(id => _state.IsGeneralBusy(id)) || ReservedDeployGenerals(_armyGroupEditIndex, editingSupply: false).Overlaps(ids))
@@ -9682,6 +9715,7 @@ public sealed partial class CampaignMapScene : Node3D
         _vanSortAsc = true;
         _depProvDays = 0;
         _depGold = 0;
+        _depDelayDays = 0;
         _depGoldSpin = null;
         _depProvSlider = null;
         _depProvLabel = null;
@@ -9785,6 +9819,7 @@ public sealed partial class CampaignMapScene : Node3D
         provRow.AddChild(_depProvLabel);
         box.AddChild(provRow);
         _depGoldSpin = AddGoldCargoSelector(box, city, _depGold, value => { _depGold = value; UpdateDepPreview(); });
+        var deployDelayOption = AddDeploymentDelaySelector(box, _depDelayDays, value => _depDelayDays = value);
 
         // 2-b) 이동 모드(행군/전진/공격)
         box.AddChild(MakeLabel("이동 모드", 13, GoldBright));
@@ -9889,6 +9924,8 @@ public sealed partial class CampaignMapScene : Node3D
             _depMode = rq.Mode;
             _depTarget = rq.Target;
             _depGold = rq.Gold;
+            _depDelayDays = rq.DelayDays;
+            deployDelayOption.Select(_depDelayDays);
             _depGoldSpin?.SetValueNoSignal(_depGold);
 
             var tmpl = _troops.FirstOrDefault(t => t.Code == rq.TroopCode);
@@ -10111,6 +10148,25 @@ public sealed partial class CampaignMapScene : Node3D
         return spin;
     }
 
+    private OptionButton AddDeploymentDelaySelector(Control parent, int initialValue, System.Action<int> changed)
+    {
+        parent.AddChild(MakeLabel("출전 지연", 13, GoldBright));
+        var option = MakeOption(220);
+        option.Name = "DeploymentDelaySelector";
+        option.SetMeta("deployment_delay_selector", true);
+        for (var days = 0; days <= DeployService.MaxDeploymentDelayDays; days++)
+        {
+            option.AddItem(days == 0 ? "당일 출격" : $"{days}일 뒤 출격");
+            option.SetItemMetadata(option.ItemCount - 1, days);
+        }
+        option.Select(System.Math.Clamp(initialValue, 0, DeployService.MaxDeploymentDelayDays));
+        option.ItemSelected += index => changed(option.GetItemMetadata((int)index).AsInt32());
+        parent.AddChild(option);
+        return option;
+    }
+
+    private static string DelayLabel(int days) => days <= 0 ? "당일 출격" : $"{days}일 뒤 출격";
+
     // 패널을 화면 중앙에 두고, 핸들(제목줄)을 잡아 드래그할 수 있게 한다.
     private void CenterAndDrag(PanelContainer panel, Control handle, float mw, float mh, VBoxContainer box)
     {
@@ -10141,6 +10197,7 @@ public sealed partial class CampaignMapScene : Node3D
         parts.Add(ModeName(_depMode) + "모드");
         parts.Add(_depTarget is { } tg2 ? "목표 " + (_state.Cities.FirstOrDefault(c => c.Position == tg2)?.Name ?? $"({tg2.Q},{tg2.R})") : "목표 미지정");
         parts.Add($"휴대 금 {_depGold:N0}");
+        parts.Add(_depDelayDays == 0 ? "당일 출격" : $"{_depDelayDays}일 뒤 출격");
         _depPreview.Text = "현재 편성:  " + (parts.Count > 0 ? string.Join(" · ", parts) : "(병종·수량·장수 선택)");
     }
 
@@ -10557,8 +10614,9 @@ public sealed partial class CampaignMapScene : Node3D
         var vName = general.Name;
         var lineText = string.Join(", ", lines.Select(l => $"{_troops.FirstOrDefault(t => t.Code == l.TroopCode)?.Name ?? l.TroopCode} {l.Troops}"));
         var provisions = SupplyProvisionsToCarry();
-        var req = new SupplyDeployRequest(_depModalCity, lines, van, UnitMode.March, Provisions: provisions, Gold: _depGold);
-        var entry = (req, $"보급 {total}({vName}) · 군량{_depProvDays}일 · 금 {_depGold:N0} · {lineText}");
+        var req = new SupplyDeployRequest(_depModalCity, lines, van, UnitMode.March,
+            Provisions: provisions, Gold: _depGold, DelayDays: _depDelayDays);
+        var entry = (req, $"보급 {total}({vName}) · 군량{_depProvDays}일 · 금 {_depGold:N0} · {lineText} · {DelayLabel(_depDelayDays)}");
         var (gradeText, efficiency, skills) = SupplyLeaderPreview(general);
         ShowConfirm("보급부대 예약 확인",
             $"{entry.Item2}\n보급 적성 {gradeText} · 병참 효율 {efficiency}%\n적용 스킬: {skills}\n휴대 군량 {provisions} · 1만 병력 기준 약 {(_provPer10kPerDay <= 0 ? 0 : provisions / _provPer10kPerDay)}일 보급 가능\n\n기본 공방은 게임 최하 수치입니다.{DutyReleaseNotice(ids)}",
@@ -10618,8 +10676,9 @@ public sealed partial class CampaignMapScene : Node3D
         var vName = _state.Generals.First(g => g.Id == van).Name;
         var aName = _depAdj is { } a ? "+" + _state.Generals.First(g => g.Id == a).Name : "";
         var provisions = _depProvDays * _depAmount * _provPer10kPerDay / 10000;
-        var req = new DeployRequest(_depModalCity, _depTroop, _depAmount, van, _depAdj, _depMode, _depTarget, provisions, Gold: _depGold);
-        var entry = (req, $"{tName} {_depAmount}({vName}{aName}) · {ModeName(_depMode)} · 군량{_depProvDays}일 · 금 {_depGold:N0}");
+        var req = new DeployRequest(_depModalCity, _depTroop, _depAmount, van, _depAdj, _depMode,
+            _depTarget, provisions, Gold: _depGold, DelayDays: _depDelayDays);
+        var entry = (req, $"{tName} {_depAmount}({vName}{aName}) · {ModeName(_depMode)} · 군량{_depProvDays}일 · 금 {_depGold:N0} · {DelayLabel(_depDelayDays)}");
         var ids = req.Adjutant is { } adjId ? new[] { van, adjId } : new[] { van };
         ShowConfirm("출전 예약 확인", $"{entry.Item2}{DutyReleaseNotice(ids)}", () =>
         {
@@ -13876,12 +13935,13 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             token.SetFormationSize(army.IsSupply || army.IsArmyGroup ? 1 : FormationFor(army.Pool.Active)); // 보급부대·집단군은 규모와 무관하게 단일 전용 모델
+            token.Visible = !army.IsWaitingDeployment;
             token.DisplaySyncTo(army.Field.Position, 0.3f); // 제자리면 스냅 — 보정 트윈이 방향을 뒤집지 않게
             var lblNode = _armyLabels[army.Id.Value];
             lblNode.Position = _view.HexToWorld(army.Field.Position)
                 + new Vector3(0f, _view.TileTopY + CommanderPortraitView3D.TroopLabelHeightOffset, 0f);
             lblNode.Text = $"{army.Pool.Active}";
-            lblNode.Visible = army.Field.Owner == Player; // 병력 수는 아군만 표시(적은 편대 규모로 가늠)
+            lblNode.Visible = !army.IsWaitingDeployment && army.Field.Owner == Player; // 병력 수는 아군만 표시(적은 편대 규모로 가늠)
             if (_activeGauges.TryGetValue(army.Id.Value, out var activeGauge))
             {
                 var (skill, gauge) = DisplayActiveGauge(army.State);

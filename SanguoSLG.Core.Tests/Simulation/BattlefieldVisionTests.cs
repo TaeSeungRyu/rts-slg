@@ -52,6 +52,17 @@ public class BattlefieldVisionTests
         => Assert.Equal(2, Vision.UnitRadius(Unit("cavalry", Player, supply: true)));
 
     [Fact]
+    public void 출전대기중인_부대는_아군시야도_적탐지도_제공하지않는다()
+    {
+        var waiting = Unit("cavalry", Player, 15) with { DeploymentDelayDays = 3 };
+        var state = new GameState(1, 190, [], [], [], FieldArmies: [waiting]);
+        var visible = Vision.VisibleTiles(state, Player, Map);
+
+        Assert.Empty(visible);
+        Assert.False(BattlefieldVision.CanSeeUnit(Player, waiting, new HashSet<HexCoord> { waiting.Field.Position }));
+    }
+
+    [Fact]
     public void 정찰_60일만료와_다른세력정보_제외()
     {
         var city = City(2, 20, Enemy);

@@ -23,7 +23,8 @@ public sealed partial class CampaignMapScene
     private PanelContainer? _intelPanel;
     private CityId? _intelPanelCity;
 
-    private IReadOnlyList<CombatUnit> DisplayedArmies => _advancing ? _displayArmies : _state.Armies;
+    private IReadOnlyList<CombatUnit> DisplayedArmies => (_advancing ? _displayArmies : _state.Armies)
+        .Where(u => !u.IsWaitingDeployment).ToList();
 
     private bool CanInspectCity(City city)
         => BattlefieldVision.CanInspectCity(_state, Player, city, _visibleTiles);
@@ -45,7 +46,11 @@ public sealed partial class CampaignMapScene
             display = display with
             {
                 FieldArmies = display.Armies.Where(u => _armyTokens.ContainsKey(u.Id.Value))
-                    .Select(u => u with { Field = u.Field.MoveTo(_view.WorldToHex(_armyTokens[u.Id.Value].Position)) }).ToList(),
+                    .Select(u => u with
+                    {
+                        Field = u.Field.MoveTo(_view.WorldToHex(_armyTokens[u.Id.Value].Position)),
+                        DeploymentDelayDays = _animT >= u.DeploymentDelayDays * DaySeconds ? 0 : u.DeploymentDelayDays,
+                    }).ToList(),
                 ProductionOperations = display.ProductionOps.Where(o => !_lostProductionVision.Contains(o.Id))
                     .Select(o => o with { Position = _animationProductionPositions.GetValueOrDefault(o.Id, o.Position) }).ToList(),
             };
@@ -58,7 +63,8 @@ public sealed partial class CampaignMapScene
         foreach (var army in display.Armies)
         {
             if (_armyTokens.TryGetValue(army.Id.Value, out var token)) token.Visible = CanSeeUnit(army);
-            if (_armyLabels.TryGetValue(army.Id.Value, out var label)) label.Visible = army.Field.Owner == Player;
+            if (_armyLabels.TryGetValue(army.Id.Value, out var label))
+                label.Visible = !army.IsWaitingDeployment && army.Field.Owner == Player;
         }
         foreach (var (id, token) in _productionTokens)
         {

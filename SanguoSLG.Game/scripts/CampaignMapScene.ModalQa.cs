@@ -1,5 +1,6 @@
 using Godot;
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Simulation;
 
 namespace SanguoSLG.Game;
 
@@ -770,6 +771,11 @@ public sealed partial class CampaignMapScene
             var officers = FindChild("ComposeOfficersScroll", true, false) as ScrollContainer;
             var officerFrame = FindChild("ComposeOfficersFrame", true, false) as PanelContainer;
             var officerTable = FindChild("ComposeOfficerTable", true, false) as Tree;
+            var delay = _modalLayer?.FindChildren("DeploymentDelaySelector", "OptionButton", true, false)
+                .OfType<OptionButton>().FirstOrDefault();
+            var delayOptionsValid = delay?.ItemCount == DeployService.MaxDeploymentDelayDays + 1
+                && delay.GetItemMetadata(0).AsInt32() == 0
+                && delay.GetItemMetadata(delay.ItemCount - 1).AsInt32() == DeployService.MaxDeploymentDelayDays;
             var outer = _modalLayer?.FindChildren("*", "ScrollContainer", true, false)
                 .OfType<ScrollContainer>()
                 .FirstOrDefault(s => s.HasMeta("compose_outer_scroll_disabled"));
@@ -822,9 +828,10 @@ public sealed partial class CampaignMapScene
                 && outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
                 && aptitudeHeader
                 && aptitudeGradesOnly
-                && allHeadersSort;
+                && allHeadersSort
+                && delayOptionsValid;
             passed &= casePassed;
-            GD.Print($"[deploy-layout-qa] type={qa.Name} passed={casePassed} columns={columns is not null} outerDisabled={outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled} internalScrolls={(resources is not null ? 1 : 0) + (officers is not null ? 1 : 0)} aptitude={aptitudeHeader}/{aptitudeGradesOnly} sorting={allHeadersSort}");
+            GD.Print($"[deploy-layout-qa] type={qa.Name} passed={casePassed} columns={columns is not null} outerDisabled={outer?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled} internalScrolls={(resources is not null ? 1 : 0) + (officers is not null ? 1 : 0)} aptitude={aptitudeHeader}/{aptitudeGradesOnly} sorting={allHeadersSort} delay={delayOptionsValid}");
             CloseModal();
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }

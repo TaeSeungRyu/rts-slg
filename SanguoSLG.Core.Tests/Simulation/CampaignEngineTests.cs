@@ -149,6 +149,38 @@ public class CampaignEngineTests
             after.Generals.Single().AptitudeExperienceFor(TroopClass.Infantry));
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(6)]
+    public void 출전지연은_선택일수동안_이동교전소모없이_대기한뒤_출격한다(int delayDays)
+    {
+        var origin = new HexCoord(0, 0);
+        var delayed = Army(1, 1, origin, UnitMode.March, new HexCoord(6, 0), troops: 10_000) with
+        {
+            Provisions = 500,
+            DeploymentDelayDays = delayDays,
+        };
+        var state = World(delayed);
+
+        var after = Engine().AdvanceWeek(state, out var turns);
+
+        Assert.True(turns.Count >= delayDays + 1);
+        Assert.All(turns.Take(delayDays), turn =>
+        {
+            var waiting = Assert.Single(turn.Units, u => u.Id == delayed.Id);
+            Assert.Equal(origin, waiting.Field.Position);
+            Assert.Equal(delayed.Provisions, waiting.Provisions);
+            Assert.Null(turn.Combat);
+        });
+        Assert.Contains(turns.Skip(delayDays), turn =>
+            turn.Units.Any(u => u.Id == delayed.Id && u.Field.Position != origin));
+        var deployed = Assert.Single(after.Armies);
+        Assert.Equal(0, deployed.DeploymentDelayDays);
+        Assert.True(deployed.Provisions < delayed.Provisions);
+    }
+
     [Fact]
     public void 승급된_병종적성은_이미_출전한_부대의_다음_전투일부터_반영된다()
     {

@@ -9,6 +9,7 @@ public sealed partial class CampaignMapScene
     private void OpenBatchDeployCompose(CityId city, List<BatchDeployDraft>? existing = null)
     {
         _depModalCity = city;
+        if (existing is null) _depDelayDays = 0;
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
 
         var reservedTroops = ReservedTroopsByCode(city, -1, editingSupply: false);
@@ -171,6 +172,7 @@ public sealed partial class CampaignMapScene
         }
 
         box.AddChild(GoldRule());
+        AddDeploymentDelaySelector(box, _depDelayDays, value => _depDelayDays = value);
         box.AddChild(summary);
         apply = MakeButton("▶ 편성 초안 적용", accent: true);
         apply.CustomMinimumSize = new Vector2(0, 36);
@@ -232,8 +234,9 @@ public sealed partial class CampaignMapScene
                     var vanguard = _state.Generals.First(g => g.Id == draft.Vanguard).Name;
                     var adjutant = draft.Adjutant is { } aid ? "+" + _state.Generals.First(g => g.Id == aid).Name : "";
                     var request = new DeployRequest(city, draft.TroopCode, draft.Troops,
-                        draft.Vanguard, draft.Adjutant, UnitMode.Advance, Provisions: -1, Gold: draft.Gold);
-                    _pendingDeploys.Add((request, $"{troop.Name} {draft.Troops}({vanguard}{adjutant}) · 전진 · 군량 자동 · 금 {draft.Gold:N0}"));
+                        draft.Vanguard, draft.Adjutant, UnitMode.Advance, Provisions: -1,
+                        Gold: draft.Gold, DelayDays: _depDelayDays);
+                    _pendingDeploys.Add((request, $"{troop.Name} {draft.Troops}({vanguard}{adjutant}) · 전진 · 군량 자동 · 금 {draft.Gold:N0} · {DelayLabel(_depDelayDays)}"));
                 }
                 _depSelectedUnit = -1;
                 SelectCity(city);
@@ -256,6 +259,9 @@ public sealed partial class CampaignMapScene
         var troopAmounts = _modalLayer?.FindChildren("BatchDeployTroops*", "SpinBox", true, false).OfType<SpinBox>().ToList() ?? [];
         var goldAmounts = _modalLayer?.FindChildren("BatchDeployGold*", "SpinBox", true, false).OfType<SpinBox>().ToList() ?? [];
         var removes = _modalLayer?.FindChildren("BatchDeployRemove*", "Button", true, false).OfType<Button>().ToList() ?? [];
+        var delay = _modalLayer?.FindChildren("DeploymentDelaySelector", "OptionButton", true, false)
+            .OfType<OptionButton>().FirstOrDefault();
+        var delayValid = delay?.ItemCount == DeployService.MaxDeploymentDelayDays + 1;
         var unitCards = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
             .Count(panel => panel.HasMeta("deploy_unit_art")) ?? 0;
         var compactColumns = troopOptions.All(option => option.CustomMinimumSize.X <= 112 && !option.FitToLongestItem)
@@ -278,12 +284,14 @@ public sealed partial class CampaignMapScene
             && troopOptions.Count == troopAmounts.Count
             && goldAmounts.Count == troopAmounts.Count
             && removes.Count == troopAmounts.Count
+            && delayValid
             && unitCards == troopAmounts.Count
             && compactColumns
             && noModalScroll
             && compactHeight;
-        GD.Print($"[maptestbatchdeployqa] passed={passed} rows={troopAmounts.Count} troopOptions={troopOptions.Count} gold={goldAmounts.Count} remove={removes.Count} unitCards={unitCards} compact={compactColumns} noScroll={noModalScroll} compactHeight={compactHeight}:{batchScroll?.CustomMinimumSize.Y ?? 0:0}/{contentHeight:0} stateUnchanged={ReferenceEquals(beforeState, _state)} pending={beforePending}/{_pendingDeploys.Count}");
+        GD.Print($"[maptestbatchdeployqa] passed={passed} rows={troopAmounts.Count} troopOptions={troopOptions.Count} gold={goldAmounts.Count} remove={removes.Count} delay={delayValid} unitCards={unitCards} compact={compactColumns} noScroll={noModalScroll} compactHeight={compactHeight}:{batchScroll?.CustomMinimumSize.Y ?? 0:0}/{contentHeight:0} stateUnchanged={ReferenceEquals(beforeState, _state)} pending={beforePending}/{_pendingDeploys.Count}");
         CloseModal();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         GetTree().Quit(passed ? 0 : 1);
     }
 
