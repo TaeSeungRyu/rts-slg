@@ -87,9 +87,6 @@ public sealed class CampaignEngine
         var captureReports = new List<CaptureReport>();
         var plunderReports = new List<PlunderReport>();
         var casualtyReports = new List<CasualtyReport>();
-        // 하루 단위 야전·공성이 여러 번 발생해도 한 번의 7일 진행에서는
-        // 장수/병종 조합마다 병종 숙련을 정확히 한 번만 지급한다.
-        var aptitudeAwards = new HashSet<(GeneralId General, TroopClass TroopClass)>();
         _campaignEvents.Clear();
         var work = state;
         var armies = state.Armies.Where(u => u.Pool.Active > 0).ToList();
@@ -180,8 +177,7 @@ public sealed class CampaignEngine
                     .GroupBy(u => u.Id)
                     .Select(g => g.First())
                     .ToList();
-                work = AwardCombatGrowth(work, participants, CombatGeneralExperience, CombatPassiveExperience,
-                    aptitudeAwards);
+                work = AwardCombatGrowth(work, participants, CombatGeneralExperience, CombatPassiveExperience);
             }
             reports.Add(turn);
             remaining -= System.Math.Max(1, turn.Movement.Days);
@@ -240,8 +236,7 @@ public sealed class CampaignEngine
                     var siegeParticipants = armies
                         .Where(u => siegeParticipantIds.Contains(u.Id))
                         .ToList();
-                    work = AwardCombatGrowth(work, siegeParticipants, CombatGeneralExperience, CombatPassiveExperience,
-                        aptitudeAwards);
+                    work = AwardCombatGrowth(work, siegeParticipants, CombatGeneralExperience, CombatPassiveExperience);
                 }
                 foreach (var dead in result.Armies.Where(u => u.Pool.Active <= 0).OrderBy(u => u.Id.Value))
                 {
@@ -725,8 +720,7 @@ public sealed class CampaignEngine
         };
     }
 
-    private GameState AwardCombatGrowth(GameState state, IReadOnlyList<CombatUnit> units, int generalExp, int passiveExp,
-        HashSet<(GeneralId General, TroopClass TroopClass)> aptitudeAwards)
+    private GameState AwardCombatGrowth(GameState state, IReadOnlyList<CombatUnit> units, int generalExp, int passiveExp)
     {
         if (units.Count == 0)
         {
@@ -734,7 +728,10 @@ public sealed class CampaignEngine
         }
 
         var generals = state.Generals.ToList();
+        // 이 호출은 하루의 야전 또는 공성 교환 한 번을 나타낸다. 같은 교환에서
+        // 여러 부대가 한 장수를 협공하거나 광역 피해가 겹쳐도 장수별 한 번만 성장한다.
         var awarded = new HashSet<GeneralId>();
+        var aptitudeAwards = new HashSet<(GeneralId General, TroopClass TroopClass)>();
 
         foreach (var unit in units.OrderBy(u => u.Id.Value))
         {

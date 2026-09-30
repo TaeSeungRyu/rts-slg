@@ -93,7 +93,7 @@ public class CampaignEngineTests
     }
 
     [Fact]
-    public void 여러날_공방해도_진행한번당_장수병종숙련은_일만_오른다()
+    public void 여러날_교전하면_교전일마다_장수병종숙련이_일씩_오른다()
     {
         var attacker = Army(1, 1, new HexCoord(3, 0), UnitMode.Attack, new HexCoord(4, 0), troops: 100_000) with
         {
@@ -117,10 +117,36 @@ public class CampaignEngineTests
 
         var after = Engine().AdvanceWeek(state, out var turns);
 
-        Assert.True(turns.Count(t => t.Combat is not null) > 1);
+        var combatDays = turns.Count(t => t.Combat is not null);
+        Assert.True(combatDays > 1);
         Assert.All(after.Generals, general =>
-            Assert.Equal(AptitudeGrowth.ExperiencePerCombat,
+            Assert.Equal(combatDays * AptitudeGrowth.ExperiencePerCombat,
                 general.AptitudeExperienceFor(TroopClass.Infantry)));
+    }
+
+    [Fact]
+    public void 같은날_여러부대의_협공을_받아도_병종숙련은_일만_오른다()
+    {
+        var target = Army(1, 1, new HexCoord(3, 0), UnitMode.Advance, null, troops: 100_000) with
+        {
+            VanguardId = new GeneralId(1),
+        };
+        var enemies = new[]
+        {
+            Army(2, 2, new HexCoord(4, 0), UnitMode.Attack, target.Field.Position, troops: 100_000),
+            Army(3, 2, new HexCoord(3, 1), UnitMode.Attack, target.Field.Position, troops: 100_000),
+            Army(4, 2, new HexCoord(2, 1), UnitMode.Attack, target.Field.Position, troops: 100_000),
+        };
+        var general = new General(new GeneralId(1), "협공 방어장",
+            new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Infantry] = AptitudeGrade.D }, 70, 60, 50);
+        var state = new GameState(1, 1, [], [], [general], FieldArmies: [target, .. enemies]);
+
+        var after = Engine().AdvanceWeek(state, out var turns);
+        var combatDays = turns.Count(t => t.Combat is not null);
+
+        Assert.True(combatDays > 0);
+        Assert.Equal(combatDays * AptitudeGrowth.ExperiencePerCombat,
+            after.Generals.Single().AptitudeExperienceFor(TroopClass.Infantry));
     }
 
     [Fact]
