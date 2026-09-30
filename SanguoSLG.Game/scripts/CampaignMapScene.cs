@@ -6845,18 +6845,18 @@ public sealed partial class CampaignMapScene : Node3D
         grid.AddThemeConstantOverride("h_separation", 10);
         grid.AddThemeConstantOverride("v_separation", 8);
         box.AddChild(grid);
-        var legacySaveExists = System.IO.File.Exists(SavePath);
-        for (var slot = 1; slot <= 20; slot++)
+        foreach (var info in SaveSlots.InspectAll())
         {
-            var selectedSlot = slot;
-            var status = slot == 1 && legacySaveExists ? "저장 데이터 있음" : "빈 슬롯";
-            var button = MakeButton($"슬롯 {slot:00}    {status}");
-            button.Name = $"SaveSlot{slot:00}";
-            button.SetMeta("save_slot_index", slot);
+            var selectedSlot = info.Slot;
+            var status = SlotStatus(info, emptyText: "빈 슬롯");
+            var button = MakeButton($"슬롯 {info.Slot:00}    {status}");
+            button.Name = $"SaveSlot{info.Slot:00}";
+            button.SetMeta("save_slot_index", info.Slot);
             button.CustomMinimumSize = new Vector2(210, 48);
             button.Alignment = HorizontalAlignment.Left;
+            var action = info.Exists ? "저장 데이터를 덮어쓰시겠습니까?" : "저장하시겠습니까?";
             button.Pressed += () => ShowConfirm("게임 저장 확인",
-                $"슬롯 {selectedSlot:00}에 현재 진행 상황을 저장하시겠습니까?", () => { });
+                $"슬롯 {selectedSlot:00}에 현재 진행 상황을 {action}", () => SaveGame(selectedSlot));
             grid.AddChild(button);
         }
 
@@ -6880,18 +6880,20 @@ public sealed partial class CampaignMapScene : Node3D
         grid.AddThemeConstantOverride("h_separation", 10);
         grid.AddThemeConstantOverride("v_separation", 8);
         box.AddChild(grid);
-        var legacySaveExists = System.IO.File.Exists(SavePath);
-        for (var slot = 1; slot <= 20; slot++)
+        foreach (var info in SaveSlots.InspectAll())
         {
-            var selectedSlot = slot;
-            var status = slot == 1 && legacySaveExists ? "저장 데이터 있음" : "저장 정보 없음";
-            var button = MakeButton($"슬롯 {slot:00}    {status}");
-            button.Name = $"LoadSlot{slot:00}";
-            button.SetMeta("load_slot_index", slot);
+            var selectedSlot = info.Slot;
+            var status = SlotStatus(info, emptyText: "저장 정보 없음");
+            var button = MakeButton($"슬롯 {info.Slot:00}    {status}");
+            button.Name = $"LoadSlot{info.Slot:00}";
+            button.SetMeta("load_slot_index", info.Slot);
             button.CustomMinimumSize = new Vector2(210, 48);
             button.Alignment = HorizontalAlignment.Left;
+            button.Disabled = !info.Exists || info.Corrupt;
+            button.TooltipText = info.Corrupt ? "손상된 저장 파일은 불러올 수 없습니다."
+                : !info.Exists ? "빈 슬롯입니다." : "";
             button.Pressed += () => ShowConfirm("게임 불러오기 확인",
-                $"현재 진행을 종료하고 슬롯 {selectedSlot:00}의 게임을 불러오시겠습니까?", () => { });
+                $"현재 진행을 종료하고 슬롯 {selectedSlot:00}의 게임을 불러오시겠습니까?", () => LoadGame(selectedSlot));
             grid.AddChild(button);
         }
 
@@ -6900,14 +6902,25 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 세이브 슬롯 경로(user:// — Godot 사용자 데이터 폴더의 실제 경로).
-    private static string SavePath => ProjectSettings.GlobalizePath("user://sanguo-save.json");
+    private static string LegacySavePath => ProjectSettings.GlobalizePath("user://sanguo-save.json");
+    private static string SaveSlotDirectory => ProjectSettings.GlobalizePath("user://saves");
+    private static SaveSlotStore SaveSlots => new(SaveSlotDirectory, LegacySavePath);
 
-    private void SaveGame()
+    private static string SlotStatus(SaveSlotInfo info, string emptyText)
+    {
+        if (!info.Exists) { return emptyText; }
+        if (info.Corrupt) { return "손상된 데이터"; }
+        return info.Year is { } year && info.Month is { } month
+            ? $"{year}년 {month}월"
+            : "저장 데이터 있음";
+    }
+
+    private void SaveGame(int slot)
     {
         try
         {
-            SaveService.Save(_state, SavePath);
-            _log.Text = $"저장했습니다. ({_state.Year}년 {_state.Month}월)";
+            SaveSlots.Save(slot, _state);
+            _log.Text = $"슬롯 {slot:00}에 저장했습니다. ({_state.Year}년 {_state.Month}월)";
         }
         catch (System.Exception e)
         {
@@ -6918,10 +6931,10 @@ public sealed partial class CampaignMapScene : Node3D
         Redraw(_log.Text);
     }
 
-    private void LoadGame()
+    private void LoadGame(int slot)
     {
         GameState loaded;
-        try { loaded = SaveService.Load(SavePath); }
+        try { loaded = SaveSlots.Load(slot); }
         catch (System.Exception e) { _log.Text = "불러오기 실패: " + e.Message; CloseModal(); return; }
 
         _state = loaded;
@@ -6942,7 +6955,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         CloseModal();
         HidePanels();
-        Redraw($"게임을 불러왔습니다. ({_state.Year}년 {_state.Month}월)");
+        Redraw($"슬롯 {slot:00}의 게임을 불러왔습니다. ({_state.Year}년 {_state.Month}월)");
     }
 
     // 시스템 모달 공통 헤더(◀ 시스템으로 복귀 · ✕ 닫기).
