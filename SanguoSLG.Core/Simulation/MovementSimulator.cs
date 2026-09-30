@@ -229,15 +229,15 @@ public sealed class MovementSimulator
                         }
                     }
 
-                    // 출격 게이트 스텝: 성 타일 위 유닛은 빈·통행 이웃으로 내려선다. 목표가 있으면 그
-                    // 방향(목표에 더 가까운 이웃)으로, 여러 부대는 서로 다른 이웃(claimed)으로 흩어져 나와
-                    // 한 칸에 몰리지 않는다 — 6방향 중 목표 쪽 칸들을 먼저 편성 순서대로 나눠 갖는다.
+                    // 출격 게이트 스텝: 목표가 있는 부대는 목표 방향의 대표 출구 하나를 공유한다.
+                    // 같은 방향 다중 출격은 다른 출구로 흩어지지 않고 명령 순서대로 해당 출구가 비기를
+                    // 기다린다. 목표 없는 수비대만 기존처럼 빈 출구로 분산한다.
                     // 목표가 없으면 빈 이웃에 하나씩 흩어져 성 앞에 대기한다. 적 점유 칸으로는 가지 않아
                     // 성문 위 교전을 열지 않고, 나갈 칸이 없으면(포위·혼잡) 이날은 성에서 대기한다.
                     if (onCastle)
                     {
                         var exit = goalTile is { } sg
-                            ? GateStep(w, sg, occupied, claimed)
+                            ? GateStep(w, sg, occupied)
                             : GateStepAny(w, occupied, claimed);
                         if (exit is { } e)
                         {
@@ -473,24 +473,21 @@ public sealed class MovementSimulator
         => castles is not null && castles.Any(c => c.Contains(w.Unit.Position)
             || c.Position == _passability.CastleAnchorAt(w.Unit.Position));
 
-    // 출격 게이트 스텝: 목표 방향으로 흩어져 나오도록 한다. 후보는 빈·통행이며 이번 스텝에 다른
-    // 출격 부대가 찜하지 않은(claimed) 이웃. 적 점유 칸은 후보에서 뺀다(성문 위 교전 금지).
-    // ① 목표에서 성 타일보다 멀어지지 않는(dist ≤ 성→목표) 후보 중 가장 가까운 칸 — 여러 부대가
-    //    6방향 중 목표 쪽 칸들을 나눠 갖고, 뒤로 돌아 나가지는 않는다. ② 그런 칸이 없고 아직 아무도
-    //    나가지 않았으면(이 스텝 첫 출격 부대·포위 등) 뒤 칸이라도 가장 가까운 빈 칸으로 내려선다
-    //    — 성 위에 갇히지 않도록. ③ 둘 다 없으면 null(대기).
-    private HexCoord? GateStep(Working w, HexCoord goal, HashSet<HexCoord> occupied, HashSet<HexCoord> claimed)
+    // 목표 방향의 대표 출구는 점유 상태와 무관하게 결정한다. 그 출구가 차 있으면 다른 방향으로
+    // 우회 배치하지 않고 기다린다. 따라서 동일 목표 부대는 CommandOrder/UnitId 순서의 한 대기열로
+    // 같은 출구를 통과하며, 성 뒤나 반대편에 임시 생성되지 않는다.
+    private HexCoord? GateStep(Working w, HexCoord goal, HashSet<HexCoord> occupied)
     {
         var here = w.Unit.Position;
-        if (CastleExteriorExitCandidates(w, goal, occupied, claimed) is { Count: > 0 } exits)
+        if (CastleExteriorExitCandidates(w, goal) is { Count: > 0 } exits)
         {
-            return exits[0];
+            return occupied.Contains(exits[0]) ? null : exits[0];
         }
 
         var hereDist = here.Distance(goal);
 
         var candidates = RotatedNeighbors(here, w.Unit.CommandOrder)
-            .Where(n => !occupied.Contains(n) && !claimed.Contains(n) && _passability.CanExitThrough(w.Unit.Domain, here, n)
+            .Where(n => _passability.CanExitThrough(w.Unit.Domain, here, n)
                 && n.Distance(goal) <= hereDist)
             .OrderBy(n => n.Distance(goal))
             .ThenByDescending(n => AxisAgreement(here, n, goal))
@@ -498,31 +495,25 @@ public sealed class MovementSimulator
             .ToList();
         if (candidates.Count > 0)
         {
-            return candidates[0];
+            return occupied.Contains(candidates[0]) ? null : candidates[0];
         }
 
-        if (claimed.Count > 0)
-        {
-            return null; // 뒤 부대는 목표 쪽 빈 칸이 없으면 대기(뒤로 돌아 나가지 않는다)
-        }
-
-        // 이 스텝 첫 출격 부대: 목표 쪽 칸이 없어도(완전 포위 근처 등) 가장 가까운 빈 칸으로 내려선다.
+        // 통행 가능한 목표 방향 출구 자체가 없는 특수 맵에서만 가장 가까운 통행 출구를 대표로 삼는다.
         HexCoord? fallback = null;
         var bestDist = int.MaxValue;
         foreach (var n in RotatedNeighbors(here, w.Unit.CommandOrder))
         {
-            if (!occupied.Contains(n) && _passability.CanEnter(w.Unit.Domain, n) && n.Distance(goal) < bestDist)
+            if (_passability.CanEnter(w.Unit.Domain, n) && n.Distance(goal) < bestDist)
             {
                 fallback = n;
                 bestDist = n.Distance(goal);
             }
         }
 
-        return fallback;
+        return fallback is { } exit && !occupied.Contains(exit) ? exit : null;
     }
 
-    private List<HexCoord>? CastleExteriorExitCandidates(Working w, HexCoord goal, HashSet<HexCoord> occupied,
-        HashSet<HexCoord> claimed)
+    private List<HexCoord>? CastleExteriorExitCandidates(Working w, HexCoord goal)
     {
         if (_passability.CastleAnchorAt(w.Unit.Position) is not { } anchor)
         {
@@ -533,8 +524,6 @@ public sealed class MovementSimulator
         var exits = footprint
             .SelectMany(tile => tile.Neighbors())
             .Where(n => !footprint.Contains(n)
-                && !occupied.Contains(n)
-                && !claimed.Contains(n)
                 && _passability.CanEnter(w.Unit.Domain, n))
             .Distinct()
             .OrderBy(n => n == goal ? 0 : 1)

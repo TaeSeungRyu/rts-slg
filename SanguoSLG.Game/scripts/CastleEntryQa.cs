@@ -34,6 +34,15 @@ public partial class CastleEntryQa : Node
                 exits++;
             }
             GD.Print($"CASTLE_EXIT_QA PASS: {exits} campaign/animation cases");
+            var queues = 0;
+            foreach (var size in new[] { CastleSize.Small, CastleSize.Medium, CastleSize.Large })
+            foreach (var direction in new HexCoord(0, 0).Neighbors())
+            foreach (var unitCount in Enumerable.Range(2, 4))
+            {
+                CheckQueuedExit(size, direction, unitCount);
+                queues++;
+            }
+            GD.Print($"CASTLE_EXIT_QUEUE_QA PASS: {queues} campaign/animation cases");
             GetTree().Quit();
         }
         catch (Exception error)
@@ -60,7 +69,8 @@ public partial class CastleEntryQa : Node
         try
         {
             typeof(CampaignMapScene).GetMethod("BuildAnimation", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .Invoke(scene, [new Dictionary<int, HexCoord> { [1] = field.Position }, turns, Array.Empty<SiegeExchange>(), state]);
+                .Invoke(scene, [new Dictionary<int, HexCoord> { [1] = field.Position }, turns,
+                    Array.Empty<SiegeExchange>(), Array.Empty<CaptureReport>(), state]);
             var moves = Read<List<(double Time, int UnitId, HexCoord To)>>(scene, "_animSteps");
             var kills = Read<List<(double Time, int UnitId)>>(scene, "_animKills");
             var effects = Read<List<(double Time, Vector3 Position)>>(scene, "_animDeathEffects");
@@ -103,7 +113,8 @@ public partial class CastleEntryQa : Node
         try
         {
             typeof(CampaignMapScene).GetMethod("BuildAnimation", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .Invoke(scene, [new Dictionary<int, HexCoord> { [1] = city.Position }, turns, Array.Empty<SiegeExchange>(), state]);
+                .Invoke(scene, [new Dictionary<int, HexCoord> { [1] = city.Position }, turns,
+                    Array.Empty<SiegeExchange>(), Array.Empty<CaptureReport>(), state]);
             var moves = Read<List<(double Time, int UnitId, HexCoord To)>>(scene, "_animSteps");
             var starts = Read<Dictionary<int, HexCoord>>(scene, "_animStartOverrides");
             if (moves.Count != 1 || moves[0].To != target
@@ -112,6 +123,46 @@ public partial class CastleEntryQa : Node
             var visualStart = starts.GetValueOrDefault(1, city.Position);
             if (visualStart.Distance(target) != 1)
                 throw new InvalidOperationException($"{size}/{direction}/{kind}/{speed}: visual egress starts too far {visualStart} -> {target}");
+        }
+        finally { scene.Free(); }
+    }
+
+    private static void CheckQueuedExit(CastleSize size, HexCoord direction, int count)
+    {
+        var city = new City(new CityId(1), "장안", new HexCoord(1, 2), new FactionId(1), 3000, size);
+        var footprint = CastleFootprint.TilesFor(city).ToHashSet();
+        var site = new SiegeSite(city.Position, city.Owner, footprint.ToArray(), city.Id);
+        var target = city.Position;
+        for (var i = 0; i < 10; i++) target += direction;
+        var passability = new PassabilityMap(new HexMap(-15, 18, -15, 18), [], [city]);
+        var simulator = new MovementSimulator(passability);
+        var scout = new FieldUnit(new UnitId(999), city.Owner, city.Position, 1, 0, 1,
+            MovementDomain.Land, UnitMode.March, target, 999);
+        var expectedExit = simulator.Advance([scout], 1, [site]).Units.Single().Position;
+        var units = Enumerable.Range(1, count).Select(id =>
+        {
+            var field = new FieldUnit(new UnitId(id), city.Owner, city.Position, 2, 0, 1,
+                MovementDomain.Land, UnitMode.March, target, id);
+            return new CombatUnit(field, new CombatStats(1000, 1, 1), new TroopPool(1000, 0),
+                UnitCombatState.Create(0), TroopCode: "swordsman");
+        }).ToArray();
+        var state = new GameState(1, 1, [], [city], [], FieldArmies: units);
+        var engine = new CampaignEngine(new AdvanceOrchestrator(simulator,
+            new CombatPhaseResolver(new BattleResolver(60), 70)), new WorldEngine(new BalanceConfig(100)));
+        engine.AdvanceWeek(state, out var turns);
+        var scene = new CampaignMapScene();
+        try
+        {
+            typeof(CampaignMapScene).GetMethod("BuildAnimation", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(scene, [units.ToDictionary(u => u.Id.Value, _ => city.Position), turns,
+                    Array.Empty<SiegeExchange>(), Array.Empty<CaptureReport>(), state]);
+            var moves = Read<List<(double Time, int UnitId, HexCoord To)>>(scene, "_animSteps");
+            var firstMoves = moves.GroupBy(m => m.UnitId).ToDictionary(g => g.Key, g => g.OrderBy(m => m.Time).First());
+            if (firstMoves.Count != count || firstMoves.Any(pair => pair.Value.To != expectedExit))
+                throw new InvalidOperationException($"{size}/{direction}/{count}: queue used another exit");
+            var orderedTimes = firstMoves.OrderBy(pair => pair.Key).Select(pair => pair.Value.Time).ToArray();
+            if (!orderedTimes.Zip(orderedTimes.Skip(1), (a, b) => a < b).All(value => value))
+                throw new InvalidOperationException($"{size}/{direction}/{count}: queue order was not preserved");
         }
         finally { scene.Free(); }
     }

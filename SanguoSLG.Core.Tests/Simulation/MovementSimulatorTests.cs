@@ -861,22 +861,26 @@ public class MovementSimulatorTests
     }
 
     [Fact]
-    public void 성출격_수비대_둘이_성타일에_겹쳐있어도_같은날_성밖으로_빠져나온다()
+    public void 성출격_같은목표_수비대_둘은_같은출구에서_순서대로_빠져나온다()
     {
-        // 출격 대기 수비대는 성 타일에 겹쳐 설 수 있다. 같은 날 둘 다 나오되 겹치지 않는다.
+        // 같은 목표 출격 대기 수비대는 성 타일에 겹쳐 설 수 있고, 첫 부대가 출구를 비운 뒤
+        // 다음 부대가 같은 출구로 나온다.
         var city = new City(new CityId(9), "성", new HexCoord(2, 0), new FactionId(1), 0);
         var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, -2, 2), [], [city]));
         var site = new SiegeSite(new HexCoord(2, 0), new FactionId(1));
         var a = Unit(1, owner: 1, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(5, 0), speed: 2);
         var b = Unit(2, owner: 1, new HexCoord(2, 0), UnitMode.March, target: new HexCoord(5, 0), speed: 2);
 
-        var result = sim.Advance(new[] { a, b }, maxDays: 1, castles: new[] { site });
+        var first = sim.Advance(new[] { a, b }, maxDays: 1, castles: new[] { site });
 
-        var pa = result.Units.Single(x => x.Id.Value == 1).Position;
-        var pb = result.Units.Single(x => x.Id.Value == 2).Position;
+        var pa = first.Units.Single(x => x.Id.Value == 1).Position;
+        var pb = first.Units.Single(x => x.Id.Value == 2).Position;
         Assert.NotEqual(pa, pb);
         Assert.NotEqual(new HexCoord(2, 0), pa);
-        Assert.NotEqual(new HexCoord(2, 0), pb);
+        Assert.Equal(new HexCoord(2, 0), pb);
+
+        var second = sim.Advance(first.Units, maxDays: 1, castles: new[] { site });
+        Assert.NotEqual(new HexCoord(2, 0), second.Units.Single(x => x.Id.Value == 2).Position);
     }
 
     [Fact]
@@ -896,6 +900,87 @@ public class MovementSimulatorTests
         var positions = result.Units.Select(u => u.Position).ToList();
         Assert.All(positions, p => Assert.NotEqual(new HexCoord(2, 0), p)); // 셋 다 성을 나왔다
         Assert.Equal(3, positions.Distinct().Count());                     // 서로 다른 칸(겹치지 않음)
+    }
+
+    [Theory]
+    [InlineData(CastleSize.Small)]
+    [InlineData(CastleSize.Medium)]
+    [InlineData(CastleSize.Large)]
+    public void 동일방향_다중출격은_육방향_모두_같은출구의_결정론적대기열을_따른다(CastleSize size)
+    {
+        var city = new City(new CityId(90), "성", new HexCoord(0, 0), new FactionId(1), 0, size);
+        var footprint = CastleFootprint.TilesFor(city).ToHashSet();
+        var site = new SiegeSite(city.Position, city.Owner, footprint.ToArray(), city.Id);
+        var directions = new HexCoord(0, 0).Neighbors().ToArray();
+
+        foreach (var direction in directions)
+        foreach (var count in Enumerable.Range(2, 4))
+        {
+            var target = city.Position;
+            for (var i = 0; i < 10; i++) target += direction;
+            var passability = new PassabilityMap(new HexMap(-15, 15, -15, 15), [], [city]);
+            var sim = new MovementSimulator(passability);
+
+            var scout = Unit(100, 1, city.Position, UnitMode.March, target, speed: 1);
+            var expectedExit = sim.Advance([scout], maxDays: 1, castles: [site]).Units.Single().Position;
+            Assert.DoesNotContain(expectedExit, footprint);
+
+            var units = Enumerable.Range(1, count)
+                .Select(id => Unit(id, 1, city.Position, UnitMode.March, target, speed: 2, commandOrder: id))
+                .ToArray();
+            var first = sim.Advance(units, maxDays: count, castles: [site]);
+            var second = sim.Advance(units, maxDays: count, castles: [site]);
+
+            Assert.Equal(first.Units.Select(u => (u.Id, u.Position)), second.Units.Select(u => (u.Id, u.Position)));
+            Assert.All(first.Units, u => Assert.Equal(target, u.Target));
+            Assert.All(units, original =>
+            {
+                var firstOutside = first.Ticks.SelectMany(t => t.Units)
+                    .Where(u => u.Id == original.Id && !footprint.Contains(u.Position))
+                    .Select(u => (HexCoord?)u.Position)
+                    .FirstOrDefault();
+                Assert.Equal(expectedExit, firstOutside);
+            });
+
+            var orderedDistance = first.Units.OrderBy(u => u.CommandOrder)
+                .Select(u => u.Position.Distance(city.Position)).ToArray();
+            Assert.True(orderedDistance.Zip(orderedDistance.Skip(1), (a, b) => a >= b).All(x => x));
+        }
+    }
+
+    [Theory]
+    [InlineData(CastleSize.Small)]
+    [InlineData(CastleSize.Medium)]
+    [InlineData(CastleSize.Large)]
+    public void 동일방향_출구가_막히면_반대편으로_우회하지않고_해제후_순차출격한다(CastleSize size)
+    {
+        var city = new City(new CityId(91), "성", new HexCoord(0, 0), new FactionId(1), 0, size);
+        var footprint = CastleFootprint.TilesFor(city).ToHashSet();
+        var site = new SiegeSite(city.Position, city.Owner, footprint.ToArray(), city.Id);
+        var target = new HexCoord(10, 0);
+        var passability = new PassabilityMap(new HexMap(-15, 15, -15, 15), [], [city]);
+        var sim = new MovementSimulator(passability);
+        var expectedExit = sim.Advance([Unit(100, 1, city.Position, UnitMode.March, target, speed: 1)],
+            maxDays: 1, castles: [site]).Units.Single().Position;
+        var queued = Enumerable.Range(1, 5)
+            .Select(id => Unit(id, 1, city.Position, UnitMode.March, target, speed: 2, commandOrder: id))
+            .ToArray();
+        var blocker = Unit(999, 1, expectedExit, UnitMode.March, expectedExit, speed: 0);
+
+        var blocked = sim.Advance(queued.Append(blocker).ToArray(), maxDays: 1, castles: [site]);
+        Assert.All(blocked.Units.Where(u => u.Id.Value < 999), u => Assert.Contains(u.Position, footprint));
+
+        var released = sim.Advance(blocked.Units.Where(u => u.Id.Value < 999).ToArray(),
+            maxDays: 5, castles: [site]);
+        Assert.All(released.Units, u => Assert.DoesNotContain(u.Position, footprint));
+        Assert.All(queued, original =>
+        {
+            var firstOutside = released.Ticks.SelectMany(t => t.Units)
+                .Where(u => u.Id == original.Id && !footprint.Contains(u.Position))
+                .Select(u => (HexCoord?)u.Position)
+                .FirstOrDefault();
+            Assert.Equal(expectedExit, firstOutside);
+        });
     }
 
     [Fact]
@@ -920,9 +1005,9 @@ public class MovementSimulatorTests
     }
 
     [Fact]
-    public void 성출격_정면이_적에막혀도_다른이웃으로_내려서고_성문위에서_교전하지않는다()
+    public void 성출격_정면이_적에막히면_다른출구로_우회하지않고_성에서_대기한다()
     {
-        // 직진 출구(3,0)를 적이 막아도 다른 빈 이웃으로 내려선다 — 성 타일 위에서 교전을 열지 않는다.
+        // 같은 방향 출격 대기열은 직진 출구(3,0)가 막히면 다른 빈 이웃으로 우회하지 않는다.
         var city = new City(new CityId(9), "성", new HexCoord(2, 0), new FactionId(1), 0);
         var sim = new MovementSimulator(new PassabilityMap(new HexMap(0, 10, -2, 2), [], [city]));
         var site = new SiegeSite(new HexCoord(2, 0), new FactionId(1));
@@ -932,7 +1017,7 @@ public class MovementSimulatorTests
         var result = sim.Advance(new[] { d, e }, maxDays: 1, castles: new[] { site });
 
         var pd = result.Units.Single(x => x.Id.Value == 1).Position;
-        Assert.NotEqual(new HexCoord(2, 0), pd);
+        Assert.Equal(new HexCoord(2, 0), pd);
         Assert.DoesNotContain(result.Ticks.SelectMany(t => t.Events), ev => ev.Kind == TickEventKind.Engaged);
     }
 
