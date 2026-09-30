@@ -14,6 +14,18 @@ internal sealed class MovementPlayback
 
     public MovementPlayback(Dictionary<int, HexCoord> positions) => Positions = new(positions);
 
+    /// <summary>
+    /// 거점 관제에서 야전으로 처음 나온 한 칸을 재생 목록에 넣는다. 같은 날의 실제 야전 이동은
+    /// 두 번째 스텝부터 배치되어 출격 애니메이션과 겹치지 않는다.
+    /// </summary>
+    public void AppendDeployment(int unitId, int day, HexCoord exit, double daySeconds, double stepSeconds)
+    {
+        var time = (day - 1) * daySeconds;
+        Moves.Add((time, unitId, exit));
+        Positions[unitId] = exit;
+        _steps[(unitId, day)] = Math.Max(1, _steps.GetValueOrDefault((unitId, day)));
+    }
+
     public void Append(AdvanceResult movement, int dayOffset, double daySeconds, double stepSeconds)
     {
         foreach (var tick in movement.Ticks)

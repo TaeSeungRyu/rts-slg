@@ -100,4 +100,23 @@ public class CastleEntryPlaybackTests
         Assert.Empty(Simulator().Advance([a], 1, castles).EnteredCastle);
         Assert.Empty(Simulator().Advance([a with { Waypoints = null, Speed = 0 }], 1, castles).EnteredCastle);
     }
+
+    [Fact]
+    public void 관제출격_첫칸은_같은날_야전이동보다_먼저_재생된다()
+    {
+        var exit = new HexCoord(1, 0);
+        var field = Unit(1, 4, 2) with { Position = exit };
+        var movement = Simulator().Advance([field], 1);
+        var playback = new MovementPlayback(new() { [1] = new HexCoord(0, 0) });
+
+        playback.AppendDeployment(1, day: 1, exit, daySeconds: 2.5, stepSeconds: 0.5);
+        playback.Append(movement, dayOffset: 0, daySeconds: 2.5, stepSeconds: 0.5);
+
+        var moves = playback.Moves.Where(move => move.UnitId == 1).OrderBy(move => move.Time).ToArray();
+        Assert.True(moves.Length >= 2);
+        Assert.Equal(exit, moves[0].To);
+        Assert.Equal(0, moves[0].Time);
+        Assert.True(moves[1].Time >= 0.5);
+        Assert.Equal(1, moves[0].To.Distance(moves[1].To));
+    }
 }

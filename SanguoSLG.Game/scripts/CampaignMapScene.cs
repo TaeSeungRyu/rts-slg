@@ -3249,14 +3249,26 @@ public sealed partial class CampaignMapScene : Node3D
         var playback = new MovementPlayback(startHex);
         var prev = playback.Positions;
         var unitSnapshot = preMove.Armies.ToDictionary(u => u.Id.Value);
-        _animDeployments.AddRange(preMove.Armies
-            .Where(u => u.DeploymentDelayDays > 0)
-            .Select(u => (u.DeploymentDelayDays * DaySeconds, u.Id.Value))
-            .OrderBy(x => x.Item1).ThenBy(x => x.Item2));
+        var waitingForEgressPlayback = preMove.Armies
+            .Where(u => u.IsWaitingDeployment && u.EgressExit.HasValue)
+            .ToDictionary(u => u.Id.Value);
         var dayOffset = 0;
         for (var ti = 0; ti < turns.Count; ti++)
         {
             var turn = turns[ti];
+            // 관제 대기 부대는 Core 이동 입력에 처음 등장한 날이 실제 출격일이다. 성 앵커에서
+            // 첫 야전 위치로 순간이동시키지 않고, 성 경계→대표 출구 한 칸을 별도 스텝으로 재생한다.
+            foreach (var released in waitingForEgressPlayback.Values
+                .Where(waiting => turn.Movement.Units.Any(unit => unit.Id == waiting.Id))
+                .OrderBy(waiting => waiting.Field.CommandOrder).ThenBy(waiting => waiting.Id.Value).ToList())
+            {
+                var day = dayOffset + 1;
+                var exit = released.EgressExit!.Value;
+                playback.AppendDeployment(released.Id.Value, day, exit, DaySeconds, StepSeconds);
+                _animDeployments.Add(((day - 1) * DaySeconds, released.Id.Value));
+                SetControlledEgressStartOverride(preMove, released);
+                waitingForEgressPlayback.Remove(released.Id.Value);
+            }
             playback.Append(turn.Movement, dayOffset, DaySeconds, StepSeconds);
 
             var stopDay = dayOffset + System.Math.Max(1, turn.Movement.Days);
@@ -3550,6 +3562,20 @@ public sealed partial class CampaignMapScene : Node3D
                 _animStartOverrides[firstMove.UnitId] = start;
             }
         }
+    }
+
+    private void SetControlledEgressStartOverride(GameState preMove, CombatUnit unit)
+    {
+        if (unit.OriginCity is not { } cityId || unit.EgressExit is not { } exit) { return; }
+        var city = preMove.Cities.FirstOrDefault(candidate => candidate.Id == cityId);
+        if (city is null) { return; }
+        var edge = CastleFootprint.TilesFor(city)
+            .Where(tile => tile.Distance(exit) == 1)
+            .OrderBy(tile => tile.Distance(city.Position))
+            .ThenBy(tile => tile.Q)
+            .ThenBy(tile => tile.R)
+            .Cast<HexCoord?>().FirstOrDefault();
+        if (edge is { } start) _animStartOverrides[unit.Id.Value] = start;
     }
 
     private void ApplyAnimationStartOverrides()
