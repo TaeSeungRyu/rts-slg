@@ -21,9 +21,12 @@ public partial class GameRoot3D : Node3D
     private int _frames;
     private Godot.Environment _environment = null!;
     private DirectionalLight3D _sun = null!;
+    private bool _shuttingDown;
 
     public override void _Ready()
     {
+        GetTree().AutoAcceptQuit = false;
+
         if (OS.GetCmdlineArgs().Contains("--riverdebug"))
         {
             BuildShowcaseScene(new[] { "river-straight", "river-corner", "river-corner-sharp", "river-end", "bridge" }, topDown: true);
@@ -84,6 +87,10 @@ public partial class GameRoot3D : Node3D
         if (OS.GetCmdlineArgs().Contains("--maptest") || OS.GetCmdlineUserArgs().Contains("--maptest"))
         {
             BuildCampaignMap();
+            if (OS.GetCmdlineArgs().Contains("--gracefulshutdownqa"))
+            {
+                CallDeferred(nameof(RequestGracefulShutdown));
+            }
             return;
         }
 
@@ -146,6 +153,50 @@ public partial class GameRoot3D : Node3D
         _hud.SetState(_state);
 
         _capture = OS.GetCmdlineArgs().Contains("--shot");
+    }
+
+    public override void _Notification(int what)
+    {
+        if (what == NotificationWMCloseRequest)
+        {
+            RequestGracefulShutdown();
+        }
+    }
+
+    private async void RequestGracefulShutdown()
+    {
+        if (_shuttingDown) return;
+        _shuttingDown = true;
+
+        var tree = GetTree();
+        if (OS.GetCmdlineArgs().Contains("--gracefulshutdownqa"))
+        {
+            foreach (var campaign in GetChildren().OfType<CampaignMapScene>())
+            {
+                campaign.PopulateGracefulShutdownQa();
+            }
+            await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+            await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+        }
+
+        var children = GetChildren().Count;
+        foreach (var child in GetChildren())
+        {
+            child.QueueFree();
+        }
+
+        await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+        await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+
+        _environment = null!;
+        _sun = null!;
+        _hud = null!;
+        System.GC.Collect();
+        System.GC.WaitForPendingFinalizers();
+        await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+
+        GD.Print($"[graceful-shutdown] releasedChildren={children}");
+        tree.Quit();
     }
 
     public override void _UnhandledInput(InputEvent @event)

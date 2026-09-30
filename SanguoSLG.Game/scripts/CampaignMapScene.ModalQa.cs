@@ -921,6 +921,18 @@ public sealed partial class CampaignMapScene
         GetTree().Quit(passed ? 0 : 1);
     }
 
+    internal void PopulateGracefulShutdownQa()
+    {
+        foreach (var symbol in System.Enum.GetValues<Sym>()) _ = Icon(symbol);
+        foreach (var troopClass in System.Enum.GetValues<SanguoSLG.Core.Domain.TroopClass>())
+        {
+            _ = ClassEmblem(troopClass);
+        }
+        foreach (var general in _state.Generals.Take(20)) _ = CircularPortraitFor(general.Id);
+        OpenSystemPalette();
+        GD.Print($"[graceful-shutdown-qa] icons={_icons.Count} emblems={_emblems.Count} portraits={_circularPortraits.Count} modal={_modalLayer is not null}");
+    }
+
     private async void RunDeployImageStyleQa()
     {
         var city = _state.Cities.First(c => c.Owner == Player && !c.IsPort);
