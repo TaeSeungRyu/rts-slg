@@ -43,6 +43,8 @@ public partial class CastleEntryQa : Node
                 queues++;
             }
             GD.Print($"CASTLE_EXIT_QUEUE_QA PASS: {queues} campaign/animation cases");
+            CheckPlaybackDeploymentVisibility();
+            GD.Print("CASTLE_EXIT_VISIBILITY_QA PASS: released deployment remains visible during first playback");
             GetTree().Quit();
         }
         catch (Exception error)
@@ -163,6 +165,30 @@ public partial class CastleEntryQa : Node
             var orderedTimes = firstMoves.OrderBy(pair => pair.Key).Select(pair => pair.Value.Time).ToArray();
             if (!orderedTimes.Zip(orderedTimes.Skip(1), (a, b) => a < b).All(value => value))
                 throw new InvalidOperationException($"{size}/{direction}/{count}: queue order was not preserved");
+        }
+        finally { scene.Free(); }
+    }
+
+    private static void CheckPlaybackDeploymentVisibility()
+    {
+        var field = new FieldUnit(new UnitId(1), new FactionId(1), new HexCoord(0, 0),
+            2, 0, 1, MovementDomain.Land, UnitMode.March, new HexCoord(4, 0), 0);
+        var waiting = new CombatUnit(field, new CombatStats(1000, 1, 1), new TroopPool(1000, 0),
+            UnitCombatState.Create(0), TroopCode: "swordsman", OriginCity: new CityId(1),
+            EgressDirection: DeploymentDirection.East, EgressExit: new HexCoord(1, 0), AwaitingEgress: true);
+        var scene = new CampaignMapScene();
+        try
+        {
+            var released = Read<HashSet<int>>(scene, "_playbackReleasedDeployments");
+            var prepare = typeof(CampaignMapScene).GetMethod("PlaybackDeploymentState",
+                BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var before = (CombatUnit)prepare.Invoke(scene, [waiting])!;
+            if (!before.IsWaitingDeployment)
+                throw new InvalidOperationException("Pending deployment became visible before its release event");
+            released.Add(waiting.Id.Value);
+            var after = (CombatUnit)prepare.Invoke(scene, [waiting])!;
+            if (after.IsWaitingDeployment || after.AwaitingEgress)
+                throw new InvalidOperationException("Released deployment was hidden again by playback vision");
         }
         finally { scene.Free(); }
     }

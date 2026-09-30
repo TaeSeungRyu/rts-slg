@@ -101,6 +101,9 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId, HexCoord To)> _animSteps = new();
     private int _animDeploymentIdx;
     private readonly List<(double Time, int UnitId)> _animDeployments = new();
+    // 진행 재생 중 실제 출격 시각을 지난 부대. 원본(preMove) 상태에는 AwaitingEgress가
+    // 남아 있으므로, 시야 재생에서 다시 숨겨지는 깜빡임을 막기 위해 별도로 추적한다.
+    private readonly HashSet<int> _playbackReleasedDeployments = new();
     private readonly Dictionary<int, HexCoord> _animStartOverrides = new();
     private int _animAtkIdx;
     private readonly List<(double Time, int UnitId, Vector3 FaceTo)> _animAttacks = new(); // 교전·공성 공격 모션
@@ -3225,6 +3228,7 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var op in preMove.ProductionOps) _animationProductionPositions[op.Id] = op.Position;
         _animSteps.Clear();
         _animDeployments.Clear();
+        _playbackReleasedDeployments.Clear();
         _animStartOverrides.Clear();
         _animAttacks.Clear();
         _animUpdates.Clear();
@@ -4868,11 +4872,11 @@ public sealed partial class CampaignMapScene : Node3D
         if (_advancing)
         {
             _animT += delta;
-            RefreshPlaybackVision(delta);
             while (_animDeploymentIdx < _animDeployments.Count
                 && _animDeployments[_animDeploymentIdx].Time <= _animT)
             {
                 var deployment = _animDeployments[_animDeploymentIdx];
+                _playbackReleasedDeployments.Add(deployment.UnitId);
                 if (_armyTokens.TryGetValue(deployment.UnitId, out var deployToken)) deployToken.Visible = true;
                 if (_armyLabels.TryGetValue(deployment.UnitId, out var deployLabel))
                     deployLabel.Visible = _state.Armies.FirstOrDefault(u => u.Id.Value == deployment.UnitId)?.Field.Owner == Player;
@@ -4888,6 +4892,10 @@ public sealed partial class CampaignMapScene : Node3D
                 else if (_armyTokens.TryGetValue(s.UnitId, out var tok)) { tok.DisplayStepTo(s.To, (float)StepSeconds); }
                 _animStepIdx++;
             }
+
+            // 출격 해제와 해당 프레임의 이동 위치를 먼저 반영한 뒤 시야를 갱신한다.
+            // 반대 순서면 첫 진행 동안 시야 갱신이 출격 토큰을 다시 숨겨 깜빡인다.
+            RefreshPlaybackVision(delta);
 
             while (_animAtkIdx < _animAttacks.Count && _animAttacks[_animAtkIdx].Time <= _animT)
             {

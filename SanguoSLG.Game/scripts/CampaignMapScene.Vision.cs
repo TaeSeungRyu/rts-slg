@@ -34,6 +34,12 @@ public sealed partial class CampaignMapScene
 
     private bool IsVisibleAt(Vector3 position) => _visibleTiles.Contains(_view.WorldToHex(position));
 
+    private CombatUnit PlaybackDeploymentState(CombatUnit unit) => unit with
+    {
+        DeploymentDelayDays = _animT >= unit.DeploymentDelayDays * DaySeconds ? 0 : unit.DeploymentDelayDays,
+        AwaitingEgress = unit.AwaitingEgress && !_playbackReleasedDeployments.Contains(unit.Id.Value),
+    };
+
     private void RefreshBattlefieldVision(bool playback = false)
     {
         var display = _state;
@@ -46,11 +52,8 @@ public sealed partial class CampaignMapScene
             display = display with
             {
                 FieldArmies = display.Armies.Where(u => _armyTokens.ContainsKey(u.Id.Value))
-                    .Select(u => u with
-                    {
-                        Field = u.Field.MoveTo(_view.WorldToHex(_armyTokens[u.Id.Value].Position)),
-                        DeploymentDelayDays = _animT >= u.DeploymentDelayDays * DaySeconds ? 0 : u.DeploymentDelayDays,
-                    }).ToList(),
+                    .Select(u => PlaybackDeploymentState(u) with
+                    { Field = u.Field.MoveTo(_view.WorldToHex(_armyTokens[u.Id.Value].Position)) }).ToList(),
                 ProductionOperations = display.ProductionOps.Where(o => !_lostProductionVision.Contains(o.Id))
                     .Select(o => o with { Position = _animationProductionPositions.GetValueOrDefault(o.Id, o.Position) }).ToList(),
             };
