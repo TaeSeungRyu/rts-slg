@@ -93,6 +93,37 @@ public class CampaignEngineTests
     }
 
     [Fact]
+    public void 여러날_공방해도_진행한번당_장수병종숙련은_일만_오른다()
+    {
+        var attacker = Army(1, 1, new HexCoord(3, 0), UnitMode.Attack, new HexCoord(4, 0), troops: 100_000) with
+        {
+            VanguardId = new GeneralId(1),
+            AdjutantId = new GeneralId(3),
+        };
+        var defender = Army(2, 2, new HexCoord(4, 0), UnitMode.Attack, new HexCoord(3, 0), troops: 100_000) with
+        {
+            VanguardId = new GeneralId(2),
+        };
+        var generals = new[]
+        {
+            new General(new GeneralId(1), "선봉", new Dictionary<TroopClass, AptitudeGrade>
+                { [TroopClass.Infantry] = AptitudeGrade.D }, 70, 60, 50),
+            new General(new GeneralId(2), "적장", new Dictionary<TroopClass, AptitudeGrade>
+                { [TroopClass.Infantry] = AptitudeGrade.D }, 70, 60, 50),
+            new General(new GeneralId(3), "부관", new Dictionary<TroopClass, AptitudeGrade>
+                { [TroopClass.Infantry] = AptitudeGrade.D }, 70, 60, 50),
+        };
+        var state = new GameState(1, 1, [], [], generals, FieldArmies: [attacker, defender]);
+
+        var after = Engine().AdvanceWeek(state, out var turns);
+
+        Assert.True(turns.Count(t => t.Combat is not null) > 1);
+        Assert.All(after.Generals, general =>
+            Assert.Equal(AptitudeGrowth.ExperiencePerCombat,
+                general.AptitudeExperienceFor(TroopClass.Infantry)));
+    }
+
+    [Fact]
     public void 승급된_병종적성은_이미_출전한_부대의_다음_전투일부터_반영된다()
     {
         var general = new General(new GeneralId(1), "성장한 선봉",

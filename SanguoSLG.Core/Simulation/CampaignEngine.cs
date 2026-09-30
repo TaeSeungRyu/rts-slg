@@ -87,6 +87,9 @@ public sealed class CampaignEngine
         var captureReports = new List<CaptureReport>();
         var plunderReports = new List<PlunderReport>();
         var casualtyReports = new List<CasualtyReport>();
+        // 하루 단위 야전·공성이 여러 번 발생해도 한 번의 7일 진행에서는
+        // 장수/병종 조합마다 병종 숙련을 정확히 한 번만 지급한다.
+        var aptitudeAwards = new HashSet<(GeneralId General, TroopClass TroopClass)>();
         _campaignEvents.Clear();
         var work = state;
         var armies = state.Armies.Where(u => u.Pool.Active > 0).ToList();
@@ -177,7 +180,8 @@ public sealed class CampaignEngine
                     .GroupBy(u => u.Id)
                     .Select(g => g.First())
                     .ToList();
-                work = AwardCombatGrowth(work, participants, CombatGeneralExperience, CombatPassiveExperience);
+                work = AwardCombatGrowth(work, participants, CombatGeneralExperience, CombatPassiveExperience,
+                    aptitudeAwards);
             }
             reports.Add(turn);
             remaining -= System.Math.Max(1, turn.Movement.Days);
@@ -246,7 +250,8 @@ public sealed class CampaignEngine
                     var siegeParticipants = armies
                         .Where(u => siegeParticipantIds.Contains(u.Id))
                         .ToList();
-                    work = AwardCombatGrowth(work, siegeParticipants, CombatGeneralExperience, CombatPassiveExperience);
+                    work = AwardCombatGrowth(work, siegeParticipants, CombatGeneralExperience, CombatPassiveExperience,
+                        aptitudeAwards);
                 }
                 foreach (var dead in result.Armies.Where(u => u.Pool.Active <= 0).OrderBy(u => u.Id.Value))
                 {
@@ -734,7 +739,8 @@ public sealed class CampaignEngine
         };
     }
 
-    private GameState AwardCombatGrowth(GameState state, IReadOnlyList<CombatUnit> units, int generalExp, int passiveExp)
+    private GameState AwardCombatGrowth(GameState state, IReadOnlyList<CombatUnit> units, int generalExp, int passiveExp,
+        HashSet<(GeneralId General, TroopClass TroopClass)> aptitudeAwards)
     {
         if (units.Count == 0)
         {
@@ -793,6 +799,11 @@ public sealed class CampaignEngine
                 var aptitudeUps = new List<TroopClass>();
                 foreach (var troopClass in AptitudeClassesFor(unit))
                 {
+                    if (!aptitudeAwards.Add((generalId, troopClass)))
+                    {
+                        continue;
+                    }
+
                     grown = AptitudeGrowth.AddExperience(grown, troopClass,
                         AptitudeGrowth.ExperiencePerCombat, out var aptitudeUp);
                     if (aptitudeUp)

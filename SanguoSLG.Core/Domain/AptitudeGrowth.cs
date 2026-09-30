@@ -3,7 +3,8 @@ namespace SanguoSLG.Core.Domain;
 /// <summary>Phase 13 병종 숙련 성장. 일반 전투만으로는 최초 적성에서 한 단계까지만 상승한다.</summary>
 public static class AptitudeGrowth
 {
-    public const int ExperiencePerCombat = 10;
+    /// <summary>진행 1회에서 실제 교전에 참여한 장수·병종 조합이 받는 숙련 경험치.</summary>
+    public const int ExperiencePerCombat = 1;
     public const int RequiredExperience = 500;
 
     public static AptitudeGrade NormalCap(AptitudeGrade baseGrade) => baseGrade switch
