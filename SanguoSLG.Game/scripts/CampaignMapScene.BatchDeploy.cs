@@ -3,6 +3,7 @@ namespace SanguoSLG.Game;
 using Godot;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Spatial;
 
 public sealed partial class CampaignMapScene
 {
@@ -308,16 +309,24 @@ public sealed partial class CampaignMapScene
         _depSelectedUnit = pendingIndex;
 
         BeginTargeting(pendingIndex);
+        _targetWaypoints.Add(new HexCoord(city.Position.Q + 4, city.Position.R));
+        RebuildTargetEdit();
+        var directionControls = _targetEgressButtons.Count == 6
+            && _targetEgressButtons.Values.Count(button => !button.Disabled) > 0;
+        _targetWaypoints.Clear();
         ApplyTarget(city.Position, null);
 
         var labels = _modalLayer?.FindChildren("*", "Label", true, false)
             .OfType<Label>().Select(label => label.Text).ToList() ?? [];
         var targetSaved = _pendingDeploys[pendingIndex].Req.Target == city.Position;
+        var egressSaved = _pendingDeploys[pendingIndex].Req.EgressDirection.HasValue
+            && _pendingDeploys[pendingIndex].Req.EgressExit.HasValue;
         var hubReopened = _modalLayer is not null && labels.Any(text => text.Contains("출전 예약"));
         var selectionKept = _depSelectedUnit == pendingIndex;
         var commandPaletteHidden = !_cmdMenu.Visible;
-        var passed = targetSaved && hubReopened && selectionKept && commandPaletteHidden && !_depTargeting;
-        GD.Print($"[maptestdeploytargetreturnqa] passed={passed} targetSaved={targetSaved} hubReopened={hubReopened} selectionKept={selectionKept} commandPaletteHidden={commandPaletteHidden} targeting={_depTargeting}");
+        var passed = targetSaved && egressSaved && directionControls && hubReopened && selectionKept
+            && commandPaletteHidden && !_depTargeting;
+        GD.Print($"[maptestdeploytargetreturnqa] passed={passed} targetSaved={targetSaved} egressSaved={egressSaved} directionControls={directionControls} hubReopened={hubReopened} selectionKept={selectionKept} commandPaletteHidden={commandPaletteHidden} targeting={_depTargeting}");
 
         _pendingDeploys.RemoveAt(pendingIndex);
         CloseModal();

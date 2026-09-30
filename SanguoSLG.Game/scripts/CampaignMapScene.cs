@@ -381,6 +381,9 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<HexCoord> _targetWaypoints = new();  // 클릭 순서대로 찍은 경유지(마지막 = 최종 목표)
     private readonly List<Button> _targetCancelBtns = new();   // 경유지별 취소 버튼(각 지점 위에 추종)
     private HexCoord _targetStart;                             // 경로 시작점(성/부대 위치)
+    private readonly Dictionary<DeploymentDirection, Button> _targetEgressButtons = new();
+    private DeploymentDirection? _targetEgressDirection;
+    private bool _targetEgressManual;
 
     // 모달 드래그.
     private bool _dragging;
@@ -1997,9 +2000,15 @@ public sealed partial class CampaignMapScene : Node3D
             : naval ? _pendingNavalDeploys[idx].Req.City
             : supply ? _pendingSupplyDeploys[idx].Req.City
             : _pendingDeploys[idx].Req.City;
+        _targetEgressDirection = transport ? _pendingTransportDeploys[idx].Req.EgressDirection
+            : armyGroup ? _pendingArmyGroupDeploys[idx].Req.EgressDirection
+            : naval ? _pendingNavalDeploys[idx].Req.EgressDirection
+            : supply ? _pendingSupplyDeploys[idx].Req.EgressDirection
+            : _pendingDeploys[idx].Req.EgressDirection;
+        _targetEgressManual = _targetEgressDirection.HasValue;
         _targetStart = _state.Cities.FirstOrDefault(c => c.Id == reqCity)?.Position ?? default;
         RebuildTargetEdit();
-        ShowTargetHint(transport
+        ShowTargetHint((transport
             ? "수송부대 목표 지정 · 도착할 아군 성을 클릭 · '확인'으로 확정 · 우클릭 취소"
             : naval
             ? "출항 목표 지정 · 바다/대하 타일만 클릭 · '확인'으로 확정 · 우클릭 취소"
@@ -2007,7 +2016,8 @@ public sealed partial class CampaignMapScene : Node3D
             ? "집단군 목표 지정 · 지점을 순서대로 클릭 · '확인'으로 확정 · 적 성 = 공격 · 우클릭 취소"
             : supply
             ? "보급부대 목표 지정 · 지점을 순서대로 클릭 · '확인'으로 확정 · 출전 후 공격 명령 가능 · 우클릭 취소"
-            : "지점을 순서대로 클릭 = 경유지 추가  ·  각 지점 위 취소로 삭제  ·  '확인'으로 확정  ·  적 성 = 공격  ·  우클릭 취소");
+            : "지점을 순서대로 클릭 = 경유지 추가  ·  각 지점 위 취소로 삭제  ·  '확인'으로 확정  ·  적 성 = 공격  ·  우클릭 취소")
+            + " · 거점 주변 화살표 = 최초 출격 방향");
     }
 
     // 경로의 마지막 확정 지점(경유지가 없으면 시작점).
@@ -2054,13 +2064,127 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _targetConfirmBtn.Visible = _targetWaypoints.Count > 0;
+        UpdateTargetEgressRecommendation();
+        RefreshTargetEgressButtons();
         PlaceTargetEdit();
+    }
+
+    private static string EgressDirectionName(DeploymentDirection direction) => direction switch
+    {
+        DeploymentDirection.East => "동",
+        DeploymentDirection.NorthEast => "북동",
+        DeploymentDirection.NorthWest => "북서",
+        DeploymentDirection.West => "서",
+        DeploymentDirection.SouthWest => "남서",
+        DeploymentDirection.SouthEast => "남동",
+        _ => "-",
+    };
+
+    private static string EgressDirectionArrow(DeploymentDirection direction) => direction switch
+    {
+        DeploymentDirection.East => "→",
+        DeploymentDirection.NorthEast => "↗",
+        DeploymentDirection.NorthWest => "↖",
+        DeploymentDirection.West => "←",
+        DeploymentDirection.SouthWest => "↙",
+        DeploymentDirection.SouthEast => "↘",
+        _ => "·",
+    };
+
+    private City? TargetOriginCity()
+    {
+        var idx = _depTargetIndex;
+        if (idx < 0) { return null; }
+        CityId? city = _targetingSupplyDeploy && idx < _pendingSupplyDeploys.Count ? _pendingSupplyDeploys[idx].Req.City
+            : _targetingTransportDeploy && idx < _pendingTransportDeploys.Count ? _pendingTransportDeploys[idx].Req.City
+            : _targetingArmyGroupDeploy && idx < _pendingArmyGroupDeploys.Count ? _pendingArmyGroupDeploys[idx].Req.City
+            : _targetingNavalDeploy && idx < _pendingNavalDeploys.Count ? _pendingNavalDeploys[idx].Req.City
+            : idx < _pendingDeploys.Count ? _pendingDeploys[idx].Req.City
+            : null;
+        return city is { } id ? _state.Cities.FirstOrDefault(c => c.Id == id) : null;
+    }
+
+    private MovementDomain TargetDeploymentDomain()
+        => _targetingNavalDeploy ? MovementDomain.DeepWater : MovementDomain.Land;
+
+    private HexCoord? TargetEgressExit(City city, DeploymentDirection direction, HexCoord? target = null)
+        => DeploymentEgressRules.RepresentativeExit(city, direction, target,
+            tile => _passability.CanEnter(TargetDeploymentDomain(), tile));
+
+    private void UpdateTargetEgressRecommendation()
+    {
+        if (_retargetUnitId >= 0 || _targetEgressManual || TargetOriginCity() is not { } city
+            || _targetWaypoints.Count == 0)
+        {
+            return;
+        }
+
+        var target = _targetWaypoints[^1];
+        _targetEgressDirection = DeploymentEgressRules.Recommend(city, target,
+            tile => _passability.CanEnter(TargetDeploymentDomain(), tile));
+    }
+
+    private void RefreshTargetEgressButtons()
+    {
+        if (_retargetUnitId >= 0 || TargetOriginCity() is not { } city)
+        {
+            foreach (var button in _targetEgressButtons.Values) { button.Visible = false; }
+            return;
+        }
+
+        foreach (var direction in DeploymentEgressRules.Directions)
+        {
+            if (!_targetEgressButtons.TryGetValue(direction, out var button))
+            {
+                button = MakeButton(EgressDirectionArrow(direction));
+                button.TooltipText = $"{EgressDirectionName(direction)}쪽 출격";
+                button.AddThemeFontSizeOverride("font_size", 17);
+                button.CustomMinimumSize = new Vector2(34, 30);
+                var selectedDirection = direction;
+                button.Pressed += () =>
+                {
+                    _targetEgressDirection = selectedDirection;
+                    _targetEgressManual = true;
+                    RefreshTargetEgressButtons();
+                    PlaceTargetEdit();
+                };
+                _targetEditLayer.AddChild(button);
+                _targetEgressButtons[direction] = button;
+            }
+
+            var exit = TargetEgressExit(city, direction,
+                _targetWaypoints.Count > 0 ? _targetWaypoints[^1] : null);
+            button.Visible = true;
+            button.Disabled = !exit.HasValue;
+            button.Modulate = !exit.HasValue ? new Color(0.45f, 0.45f, 0.45f, 0.7f)
+                : _targetEgressDirection == direction ? GoldBright : Colors.White;
+        }
+
+        _targetConfirmBtn.Text = _targetEgressDirection is { } selected
+            ? $"✓ 확인 · {EgressDirectionName(selected)} 출격"
+            : "✓ 확인";
     }
 
     // 취소 버튼(각 경유지 위)·확인 버튼(마지막 경유지 오른쪽)을 월드→화면 투영으로 배치. _Process가 매 프레임 호출.
     private void PlaceTargetEdit()
     {
         var vp = GetViewport().GetVisibleRect().Size;
+        if (TargetOriginCity() is { } origin)
+        {
+            foreach (var (direction, button) in _targetEgressButtons)
+            {
+                if (!button.Visible) { continue; }
+                var exit = TargetEgressExit(origin, direction,
+                    _targetWaypoints.Count > 0 ? _targetWaypoints[^1] : null);
+                if (exit is not { } tile) { continue; }
+                var world = _view.HexToWorld(tile) + new Vector3(0f, _view.TileTopY + 0.35f, 0f);
+                var screen = _camera.UnprojectPosition(world);
+                var size = button.GetCombinedMinimumSize();
+                button.Position = new Vector2(
+                    Mathf.Clamp(screen.X - size.X * 0.5f, 4f, vp.X - size.X - 4f),
+                    Mathf.Clamp(screen.Y - size.Y * 0.5f, 4f, vp.Y - size.Y - 4f));
+            }
+        }
         for (var i = 0; i < _targetCancelBtns.Count && i < _targetWaypoints.Count; i++)
         {
             var world = _view.HexToWorld(_targetWaypoints[i]) + new Vector3(0f, _view.TileTopY + 0.2f, 0f);
@@ -2106,11 +2230,16 @@ public sealed partial class CampaignMapScene : Node3D
         _targetingNavalUnit = false;
         _retargetUnitId = -1;
         _targetConfirmBtn.Visible = false;
+        _targetConfirmBtn.Text = "✓ 확인";
+        _targetEgressDirection = null;
+        _targetEgressManual = false;
         _targetWaypoints.Clear();
         foreach (var b in _targetCancelBtns) { b.QueueFree(); }
         _targetCancelBtns.Clear();
         foreach (var m in _previewMarkers) { m.QueueFree(); }
         _previewMarkers.Clear();
+        foreach (var button in _targetEgressButtons.Values) { button.QueueFree(); }
+        _targetEgressButtons.Clear();
         if (_targetHintLayer is not null) { _targetHintLayer.QueueFree(); _targetHintLayer = null; }
     }
 
@@ -2130,6 +2259,16 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var idx = _depTargetIndex;
         var reopenCombatDeployHub = false;
+        var origin = TargetOriginCity();
+        var egressDirection = _targetEgressDirection
+            ?? (origin is not null ? DeploymentEgressRules.Recommend(origin, h,
+                tile => _passability.CanEnter(TargetDeploymentDomain(), tile)) : DeploymentDirection.East);
+        var egressExit = origin is not null ? TargetEgressExit(origin, egressDirection, h) : null;
+        if (origin is not null && egressExit is null)
+        {
+            RejectTarget("출격 방향 불가", $"{EgressDirectionName(egressDirection)}쪽에는 출격 가능한 외곽 칸이 없습니다.");
+            return;
+        }
         if (_targetingSupplyDeploy && idx >= 0 && idx < _pendingSupplyDeploys.Count)
         {
             if (!IsLandDeployTarget(h))
@@ -2142,7 +2281,8 @@ public sealed partial class CampaignMapScene : Node3D
             var enemyUnit = DisplayedArmies.FirstOrDefault(u => u.Field.Position == h && u.Field.Owner != Player && CanSeeUnit(u));
             var mode = enemyCity is not null || enemyUnit is not null || RuinAt(h) is not null
                 ? UnitMode.Attack : UnitMode.March;
-            _pendingSupplyDeploys[idx] = (req with { Target = h, Mode = mode }, label);
+            _pendingSupplyDeploys[idx] = (req with { Target = h, Mode = mode,
+                EgressDirection = egressDirection, EgressExit = egressExit }, label);
             Dbg($"SUPPLY TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode}");
             var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
             _log.Text = $"보급부대 목표 → {tName}{(mode == UnitMode.Attack ? " (공격모드)" : "")} · 목표 확정";
@@ -2161,7 +2301,8 @@ public sealed partial class CampaignMapScene : Node3D
                 return;
             }
             var newLabel = TransportLabel(req with { Destination = dest.Id });
-            _pendingTransportDeploys[idx] = (req with { Destination = dest.Id }, newLabel);
+            _pendingTransportDeploys[idx] = (req with { Destination = dest.Id,
+                EgressDirection = egressDirection, EgressExit = egressExit }, newLabel);
             Dbg($"TRANSPORT TARGET idx={idx} -> city={dest.Id.Value} ({h.Q},{h.R})");
             _log.Text = $"수송부대 목표 → {dest.Name} · 목표 확정";
         }
@@ -2177,7 +2318,8 @@ public sealed partial class CampaignMapScene : Node3D
             var enemyShip = DisplayedArmies.FirstOrDefault(u => u.Field.Position == h && u.Field.Owner != Player && CanSeeUnit(u));
             var navalMode = enemyPort is not null || enemyShip is not null || RuinAt(h) is { Naval: true }
                 ? UnitMode.Attack : UnitMode.March;
-            _pendingNavalDeploys[idx] = (req with { Target = h, Mode = navalMode, Waypoints = waypoints }, label);
+            _pendingNavalDeploys[idx] = (req with { Target = h, Mode = navalMode, Waypoints = waypoints,
+                EgressDirection = egressDirection, EgressExit = egressExit }, label);
             Dbg($"NAVAL TARGET idx={idx} -> ({h.Q},{h.R}) mode={navalMode} wps={waypoints?.Count ?? 0}");
             var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
             _log.Text = $"출항 목표 → ({h.Q},{h.R}){(navalMode == UnitMode.Attack ? " (공격모드)" : "")}{wpNote} · 목표 확정";
@@ -2194,7 +2336,8 @@ public sealed partial class CampaignMapScene : Node3D
             var enemyUnit = DisplayedArmies.FirstOrDefault(u => u.Field.Position == h && u.Field.Owner != Player && CanSeeUnit(u));
             var mode = enemyCity is not null || enemyUnit is not null || RuinAt(h) is not null
                 ? UnitMode.Attack : req.Mode;
-            _pendingArmyGroupDeploys[idx] = (req with { Target = h, Mode = mode, Waypoints = waypoints }, label);
+            _pendingArmyGroupDeploys[idx] = (req with { Target = h, Mode = mode, Waypoints = waypoints,
+                EgressDirection = egressDirection, EgressExit = egressExit }, label);
             Dbg($"ARMYGROUP TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode} wps={waypoints?.Count ?? 0}");
             var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
             var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
@@ -2210,7 +2353,8 @@ public sealed partial class CampaignMapScene : Node3D
             var (req, label) = _pendingDeploys[idx];
             var enemyCity = CityAtHex(h, c => c.Owner != Player);
             var mode = enemyCity is not null || RuinAt(h) is not null ? UnitMode.Attack : req.Mode;
-            _pendingDeploys[idx] = (req with { Target = h, Mode = mode, Waypoints = waypoints }, label);
+            _pendingDeploys[idx] = (req with { Target = h, Mode = mode, Waypoints = waypoints,
+                EgressDirection = egressDirection, EgressExit = egressExit }, label);
             reopenCombatDeployHub = true;
             Dbg($"TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode} wps={waypoints?.Count ?? 0}");
             var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
