@@ -4502,7 +4502,21 @@ public sealed partial class CampaignMapScene : Node3D
                     && _selected is { } selCity
                     && _state.Commands.Any(c => c.City == selCity && c.Kind == Cmds[i].Kind))
                 || IsResearchLaneBusy(i);
-            if (busy)
+            var selectedCity = _selected is { } selectedCityId
+                ? _state.Cities.FirstOrDefault(c => c.Id == selectedCityId) : null;
+            var blockedAtPort = selectedCity?.IsPort == true
+                && (CmdGroups[groupIdx].Group == "연구"
+                    || Cmds[i].Kind == CommandKind.Research
+                    || Cmds[i].Kind == CommandKind.Repair && Cmds[i].Param != "wall");
+            if (blockedAtPort)
+            {
+                btn.Text = Cmds[i].Label + " (항구 불가)";
+                btn.TooltipText = Cmds[i].Kind == CommandKind.Repair
+                    ? "항구에서는 성벽 수리만 가능합니다."
+                    : "항구에서는 연구를 진행할 수 없습니다.";
+                btn.Disabled = true;
+            }
+            else if (busy)
             {
                 btn.Text = Cmds[i].Label + " (진행중)";
                 btn.Disabled = true;
@@ -6011,10 +6025,10 @@ public sealed partial class CampaignMapScene : Node3D
                 : null;
             return domestic is null
                 ? (0, 0)
-                : (WeeklyIncomeAmount(ApplyLowSecurityOutputPenalty(
-                        _cb.AutoDomesticGoldBase + domestic.Politics * _cb.AutoDomesticGoldPoliticsMultiplier, city.Security)),
-                    WeeklyIncomeAmount(ApplyLowSecurityOutputPenalty(
-                        _cb.AutoDomesticProvisionsBase + domestic.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier, city.Security)));
+                : (WeeklyIncomeAmount(PortAdministration.Scale(city, ApplyLowSecurityOutputPenalty(
+                        _cb.AutoDomesticGoldBase + domestic.Politics * _cb.AutoDomesticGoldPoliticsMultiplier, city.Security))),
+                    WeeklyIncomeAmount(PortAdministration.Scale(city, ApplyLowSecurityOutputPenalty(
+                        _cb.AutoDomesticProvisionsBase + domestic.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier, city.Security))));
         }
 
         var governor = city.Governor is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
@@ -6063,8 +6077,8 @@ public sealed partial class CampaignMapScene : Node3D
         var officer = city.TrainingOfficer is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
         return officer is null
             ? 0
-            : ApplyLowSecurityOutputPenalty(System.Math.Max(1, OfficerMightTier(officer.Might) + 1),
-                city.Security);
+            : PortAdministration.Scale(city, ApplyLowSecurityOutputPenalty(
+                System.Math.Max(1, OfficerMightTier(officer.Might) + 1), city.Security));
     }
 
     private int FacilityOutput(City city, string code, int intactCount, int baseOutput)
@@ -12835,17 +12849,18 @@ public sealed partial class CampaignMapScene : Node3D
             or CommandKind.AppointRecruitmentOfficer or CommandKind.AppointTrainingOfficer)
         {
             var officer = _state.Generals.First(g => g.Id == general);
+            var officerCity = _state.Cities.First(c => c.Id == city);
             extra = cmd.Kind switch
             {
-                CommandKind.AppointSecurityOfficer => $"\n무력 {officer.Might} → 주 치안 {(officer.Might < 60 ? "+0" : officer.Might < 80 ? "+1" : officer.Might < 100 ? "+2" : "+3")}",
-                CommandKind.AppointDomesticOfficer => $"\n정치 {officer.Politics} → 주 금 +{WeeklyIncomeAmount(ApplyLowSecurityOutputPenalty(_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier, _state.Cities.First(c => c.Id == city).Security))}"
-                    + $"\n주 군량 +{WeeklyIncomeAmount(ApplyLowSecurityOutputPenalty(_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier, _state.Cities.First(c => c.Id == city).Security))}",
-                CommandKind.AppointRecruitmentOfficer => $"\n무력 {officer.Might} → 주 병력 +{AutoRecruitWeeklyTroopsFor(officer, _state.Cities.First(c => c.Id == city), _autoRecruitRateParam)}"
+                CommandKind.AppointSecurityOfficer => $"\n무력 {officer.Might} → 주 치안 +{PortAdministration.Scale(officerCity, OfficerMightTier(officer.Might))}",
+                CommandKind.AppointDomesticOfficer => $"\n정치 {officer.Politics} → 주 금 +{WeeklyIncomeAmount(PortAdministration.Scale(officerCity, ApplyLowSecurityOutputPenalty(_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier, officerCity.Security)))}"
+                    + $"\n주 군량 +{WeeklyIncomeAmount(PortAdministration.Scale(officerCity, ApplyLowSecurityOutputPenalty(_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier, officerCity.Security)))}",
+                CommandKind.AppointRecruitmentOfficer => $"\n무력 {officer.Might} → 주 병력 +{AutoRecruitWeeklyTroopsFor(officer, officerCity, _autoRecruitRateParam)}"
                     + $"\n선택 병종 {AutoRecruitTroopNames(troopCode)}"
                     + $"\n생산 비율 {_autoRecruitRateParam}배"
-                    + $"\n주 예상 비용 {AutoRecruitWeeklyCostFor(officer, troopCode, _state.Cities.First(c => c.Id == city), _autoRecruitRateParam)}금 · 치안 {_cb.AutoRecruitSecurityDeltaForRate(_autoRecruitRateParam)}"
+                    + $"\n주 예상 비용 {AutoRecruitWeeklyCostFor(officer, troopCode, officerCity, _autoRecruitRateParam)}금 · 치안 {PortAdministration.Scale(officerCity, _cb.AutoRecruitSecurityDeltaForRate(_autoRecruitRateParam))}"
                     + "\n도시 금 부족 시 생산 없음",
-                CommandKind.AppointTrainingOfficer => $"\n무력 {officer.Might} → 7일 훈련도 +{ApplyLowSecurityOutputPenalty(System.Math.Max(1, OfficerMightTier(officer.Might) + 1), _state.Cities.First(c => c.Id == city).Security)}",
+                CommandKind.AppointTrainingOfficer => $"\n무력 {officer.Might} → 7일 훈련도 +{PortAdministration.Scale(officerCity, ApplyLowSecurityOutputPenalty(System.Math.Max(1, OfficerMightTier(officer.Might) + 1), officerCity.Security))}",
                 _ => "",
             };
         }
@@ -13198,10 +13213,10 @@ public sealed partial class CampaignMapScene : Node3D
 
     private string OfficerWeeklyEffect(CommandKind kind, General officer, City city) => kind switch
     {
-        CommandKind.AppointSecurityOfficer => $"치안 +{OfficerMightTier(officer.Might)}",
-        CommandKind.AppointDomesticOfficer => $"금 +{WeeklyIncomeAmount(ApplyLowSecurityOutputPenalty(_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier, city.Security))} / 군량 +{WeeklyIncomeAmount(ApplyLowSecurityOutputPenalty(_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier, city.Security))}",
-        CommandKind.AppointRecruitmentOfficer => $"병력 +{AutoRecruitWeeklyTroopsFor(officer, city)} / 치안 {_cb.AutoRecruitSecurityDeltaForRate(city.AutoRecruitRate)}",
-        CommandKind.AppointTrainingOfficer => $"7일 훈련도 +{ApplyLowSecurityOutputPenalty(System.Math.Max(1, OfficerMightTier(officer.Might) + 1), city.Security)}",
+        CommandKind.AppointSecurityOfficer => $"치안 +{PortAdministration.Scale(city, OfficerMightTier(officer.Might))}",
+        CommandKind.AppointDomesticOfficer => $"금 +{WeeklyIncomeAmount(PortAdministration.Scale(city, ApplyLowSecurityOutputPenalty(_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier, city.Security)))} / 군량 +{WeeklyIncomeAmount(PortAdministration.Scale(city, ApplyLowSecurityOutputPenalty(_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier, city.Security)))}",
+        CommandKind.AppointRecruitmentOfficer => $"병력 +{AutoRecruitWeeklyTroopsFor(officer, city)} / 치안 {PortAdministration.Scale(city, _cb.AutoRecruitSecurityDeltaForRate(city.AutoRecruitRate))}",
+        CommandKind.AppointTrainingOfficer => $"7일 훈련도 +{PortAdministration.Scale(city, ApplyLowSecurityOutputPenalty(System.Math.Max(1, OfficerMightTier(officer.Might) + 1), city.Security))}",
         _ => "",
     };
 
@@ -13213,8 +13228,10 @@ public sealed partial class CampaignMapScene : Node3D
                 ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
         var security = Officer(city.SecurityOfficer);
         var recruiter = Officer(city.RecruitmentOfficer);
-        var recovery = security is null ? _cb.AutoSecurityNoOfficerDelta : OfficerMightTier(security.Might);
-        var burden = recruiter is null ? 0 : _cb.AutoRecruitSecurityDeltaForRate(city.AutoRecruitRate);
+        var recovery = security is null ? _cb.AutoSecurityNoOfficerDelta
+            : PortAdministration.Scale(city, OfficerMightTier(security.Might));
+        var burden = recruiter is null ? 0
+            : PortAdministration.Scale(city, _cb.AutoRecruitSecurityDeltaForRate(city.AutoRecruitRate));
         return $"주 치안 {recovery + burden:+0;-0;0} = {(security is null ? "공석" : security.Name)} {recovery:+0;-0;0}"
             + (recruiter is null ? "" : $" / 병력 담당 {recruiter.Name} {burden:+0;-0;0}");
     }
@@ -13227,8 +13244,10 @@ public sealed partial class CampaignMapScene : Node3D
                 ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
         var security = Officer(city.SecurityOfficer);
         var recruiter = Officer(city.RecruitmentOfficer);
-        var recovery = security is null ? _cb.AutoSecurityNoOfficerDelta : OfficerMightTier(security.Might);
-        var burden = recruiter is null ? 0 : _cb.AutoRecruitSecurityDeltaForRate(city.AutoRecruitRate);
+        var recovery = security is null ? _cb.AutoSecurityNoOfficerDelta
+            : PortAdministration.Scale(city, OfficerMightTier(security.Might));
+        var burden = recruiter is null ? 0
+            : PortAdministration.Scale(city, _cb.AutoRecruitSecurityDeltaForRate(city.AutoRecruitRate));
         return recovery + burden;
     }
 
@@ -13241,6 +13260,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (city is not null)
         {
             total = ApplyLowSecurityOutputPenalty(total, city.Security);
+            total = PortAdministration.Scale(city, total);
         }
         var sum = 0;
         for (var i = 0; i < codes.Length; i++)
@@ -13259,6 +13279,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (city is not null)
         {
             weekly = ApplyLowSecurityOutputPenalty(weekly, city.Security);
+            weekly = PortAdministration.Scale(city, weekly);
         }
 
         return weekly;

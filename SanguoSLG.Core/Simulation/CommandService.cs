@@ -109,6 +109,10 @@ public sealed class CommandService
 
         if (req.Kind == CommandKind.SelectMajorTroop)
         {
+            if (city.IsPort)
+            {
+                return CommandResult.Fail("항구에서는 주력병종을 선택하거나 연구할 수 없다.", state);
+            }
             return SelectMajorTroop(state, city, req);
         }
 
@@ -535,6 +539,11 @@ public sealed class CommandService
 
     private CommandResult IssueResearch(GameState state, City city, CommandRequest req, General? assist, General main)
     {
+        if (city.IsPort)
+        {
+            return CommandResult.Fail("항구에서는 전투교리·일반연구·성벽강화를 진행할 수 없다.", state);
+        }
+
         var faction = city.Owner;
         var isGeneralResearch = FactionResearch.IsGeneralResearch(req.TroopCode);
         // 전투 연구선과 일반연구 연구선은 병행 가능하지만, 같은 연구선은 세력당 하나만 진행한다.
@@ -751,6 +760,11 @@ public sealed class CommandService
         if (req.TroopCode == FactionResearch.WallCode)
         {
             return IssueWallRepair(state, city, req, assist);
+        }
+
+        if (city.IsPort)
+        {
+            return CommandResult.Fail("항구에서는 성벽 수리만 가능하다.", state);
         }
 
         var (ruined, cost) = req.Facility switch

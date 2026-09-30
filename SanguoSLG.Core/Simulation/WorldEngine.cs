@@ -129,7 +129,8 @@ public sealed class WorldEngine
         foreach (var city in state.Cities)
         {
             var governor = ValidGovernor(state, city, byId);
-            var baseGold = Income(state, city, governor).Gold - city.Gold;
+            // 항구는 성 규모 기본 수입 대신 ApplyPortWeeklyIncome의 전용 소량 수입만 받는다.
+            var baseGold = city.IsPort ? 0 : Income(state, city, governor).Gold - city.Gold;
             var next = city with { Gold = city.Gold + SplitMonthlyAmount(baseGold, WeeklyIncomeTick(state.Day)) };
             var domestic = ValidOfficer(state, city, city.DomesticOfficer, byId);
 
@@ -139,6 +140,7 @@ public sealed class WorldEngine
                     + AdministrationGrowth.EffectivePoliticsRounded(domestic) * _commands.AutoDomesticGoldPoliticsMultiplier;
                 gold = ApplyLowSecurityOutputPenalty(state, city.Owner, gold, next.Security);
                 gold = ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.CommerceCode, gold);
+                gold = PortAdministration.Scale(city, gold);
                 next = next with
                 {
                     Gold = next.Gold + SplitMonthlyAmount(gold, WeeklyIncomeTick(state.Day)),
@@ -162,13 +164,14 @@ public sealed class WorldEngine
         {
             var governor = ValidGovernor(state, city, byId);
             var domestic = ValidOfficer(state, city, city.DomesticOfficer, byId);
-            var monthly = MonthlyProvisionsIncome(state, city, governor);
+            var monthly = city.IsPort ? 0 : MonthlyProvisionsIncome(state, city, governor);
             if (includeDomesticOfficer && domestic is not null)
             {
                 var domesticMonthly = _commands.AutoDomesticProvisionsBase
                     + AdministrationGrowth.EffectivePoliticsRounded(domestic) * _commands.AutoDomesticProvisionsPoliticsMultiplier;
                 domesticMonthly = ApplyLowSecurityOutputPenalty(state, city.Owner, domesticMonthly, city.Security);
-                monthly += ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.AgricultureCode, domesticMonthly);
+                domesticMonthly = ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.AgricultureCode, domesticMonthly);
+                monthly += PortAdministration.Scale(city, domesticMonthly);
             }
 
             return city with { Provisions = city.Provisions + SplitMonthlyAmount(monthly, tick) };
@@ -207,12 +210,14 @@ public sealed class WorldEngine
         {
             var security = ValidOfficer(state, city, city.SecurityOfficer, byId);
             var recruiter = ValidOfficer(state, city, city.RecruitmentOfficer, byId);
-            var delta = security is null ? _commands.AutoSecurityNoOfficerDelta : MightTier(security.Might);
+            var delta = security is null ? _commands.AutoSecurityNoOfficerDelta
+                : PortAdministration.Scale(city, MightTier(security.Might));
             _events.Add(new WorldEvent(WorldEventKind.SecurityFactor, city.Owner, security?.Id, city.Id,
                 Amount: delta, Code: security is null ? "vacancy" : "security"));
             if (recruiter is not null)
             {
-                var recruitDelta = _commands.AutoRecruitSecurityDeltaForRate(city.AutoRecruitRate);
+                var recruitDelta = PortAdministration.Scale(city,
+                    _commands.AutoRecruitSecurityDeltaForRate(city.AutoRecruitRate));
                 delta += recruitDelta;
                 _events.Add(new WorldEvent(WorldEventKind.SecurityFactor, city.Owner, recruiter.Id, city.Id,
                     Amount: recruitDelta, Code: "recruitment"));
@@ -272,6 +277,7 @@ public sealed class WorldEngine
                 var totalTroops = (_commands.AutoRecruitTroopsBase + recruiter.Might * _commands.AutoRecruitTroopsMightMultiplier) * rate;
                 totalTroops = ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.ConscriptionCode, totalTroops);
                 totalTroops = ApplyLowSecurityOutputPenalty(state, city.Owner, totalTroops, next.Security);
+                totalTroops = PortAdministration.Scale(city, totalTroops);
                 for (var i = 0; i < troopCodes.Count; i++)
                 {
                     var code = troopCodes[i];
@@ -321,6 +327,7 @@ public sealed class WorldEngine
             var gain = System.Math.Max(1, MightTier(trainer.Might) + 1)
                 + GeneralResearchRules.TrainingWeeklyBonus(state.ResearchOf(city.Owner, FactionResearch.TrainingCode));
             gain = ApplyLowSecurityOutputPenalty(state, city.Owner, gain, city.Security);
+            gain = PortAdministration.Scale(city, gain);
             garrisons = garrisons.Select(g => g.City == city.Id
                 ? g with { TrainingLevel = System.Math.Min(_commands.TrainCap, g.TrainingLevel + gain) }
                 : g).ToList();
