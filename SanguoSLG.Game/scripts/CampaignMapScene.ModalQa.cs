@@ -1,4 +1,5 @@
 using Godot;
+using SanguoSLG.Core.Domain;
 
 namespace SanguoSLG.Game;
 
@@ -349,6 +350,65 @@ public sealed partial class CampaignMapScene
             && commandTableLayout && deployTableLayout
             && stationedGoldPortraits && commandGoldPortraits && deployGoldPortraits;
         GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} modalHeight={modalHeight} tabHeight={tabHeight} commandRows={commandRows}:{commandTableLayout} deployRows={deployRows}:{deployTableLayout} goldPortraits={stationedGoldPortraits}/{commandGoldPortraits}/{deployGoldPortraits}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    private async void RunScoutedCityDetailQa()
+    {
+        var original = _state;
+        var enemies = _state.Cities.Where(c => c.Owner != Player).OrderBy(c => c.Id.Value).Take(2).ToList();
+        if (enemies.Count < 2)
+        {
+            GD.PrintErr("[scout-detail-qa] passed=False reason=missing-enemy-cities");
+            GetTree().Quit(1);
+            return;
+        }
+
+        var scouted = enemies[0];
+        var unscouted = enemies[1];
+        var expiresDay = _state.Day + 60;
+        _state = _state with
+        {
+            ScoutedCities = _state.Intel
+                .Where(i => i.Faction != Player || i.City != scouted.Id && i.City != unscouted.Id)
+                .Append(new CityIntel(Player, scouted.Id, expiresDay))
+                .ToList(),
+        };
+
+        OpenCityDetail(scouted.Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var labels = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>().Select(l => l.Text).ToList() ?? [];
+        var buttons = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>().Select(b => b.Text).ToList() ?? [];
+        var panel = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
+            .FirstOrDefault(p => p.HasMeta("scouted_city_read_only"));
+        var fullIntel = panel?.GetMeta("scouted_city_read_only").AsBool() == true
+            && labels.Any(x => x.Contains("정찰 정보", StringComparison.Ordinal))
+            && labels.Any(x => x.Contains("대기 병력", StringComparison.Ordinal))
+            && _modalLayer?.FindChild("CityDetailStationedTable", true, false) is Tree;
+        var sensitiveHidden = labels.All(x => !x.Contains("담당자:", StringComparison.Ordinal))
+            && buttons.All(x => !x.StartsWith("진행 명령", StringComparison.Ordinal)
+                && !x.StartsWith("예약", StringComparison.Ordinal));
+        CloseModal();
+
+        OpenCityDetail(unscouted.Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var isolated = _modalLayer?.FindChild("CityDetailStationedTable", true, false) is null
+            && _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
+                .Any(x => x.Text.Contains("정보를 볼 수 없습니다", StringComparison.Ordinal)) == true;
+        CloseModal();
+
+        _state = _state with { Day = expiresDay };
+        OpenCityDetail(scouted.Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var expired = _modalLayer?.FindChild("CityDetailStationedTable", true, false) is null
+            && _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
+                .Any(x => x.Text.Contains("정보를 볼 수 없습니다", StringComparison.Ordinal)) == true;
+        CloseModal();
+        _state = original;
+
+        var passed = fullIntel && sensitiveHidden && isolated && expired;
+        GD.Print($"[scout-detail-qa] passed={passed} full={fullIntel} hidden={sensitiveHidden} isolated={isolated} expired={expired} city={scouted.Name}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

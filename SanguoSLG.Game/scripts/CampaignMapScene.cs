@@ -568,6 +568,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestdoctrineperformanceqa")) CallDeferred(nameof(RunDoctrineModalPerformanceQa));
         if (args.Contains("--maptestofficertableqa")) CallDeferred(nameof(RunOfficerTableLayoutQa));
         if (args.Contains("--maptestcitydetailqa")) CallDeferred(nameof(RunCityDetailUiQa));
+        if (args.Contains("--maptestscoutdetailqa")) CallDeferred(nameof(RunScoutedCityDetailQa));
         if (args.Contains("--maptestcityambienceqa")) CallDeferred(nameof(RunCityAmbienceQa));
         if (args.Contains("--maptestcastledamageqa")) CallDeferred(nameof(RunCastleDamageQa));
         if (args.Contains("--maptestdeploylayoutqa")) CallDeferred(nameof(RunDeployComposeLayoutQa));
@@ -4358,16 +4359,19 @@ public sealed partial class CampaignMapScene : Node3D
         AddCell(g2, Sym.Book, "시설", facilities);
         AddCell(g2, Sym.Sword, "대기", totalTroops > 0 ? $"{totalTroops}명" : "없음");
         AddCell(g2, Sym.Shield, "부상병", WoundedForFaction(c.Owner));
-        AddCell(g2, Sym.Officer, "태수", govName ?? "없음");
-        AddCell(g2, Sym.Officer, "군사", straName ?? "없음");
-        AddCell(g2, Sym.Shield, "치안담당", securityName ?? "없음");
-        var securityBreakdown = MakeLabel(SecurityWeeklySummary(c), 12, Parchment);
+        if (owned)
+        {
+            AddCell(g2, Sym.Officer, "태수", govName ?? "없음");
+            AddCell(g2, Sym.Officer, "군사", straName ?? "없음");
+            AddCell(g2, Sym.Shield, "치안담당", securityName ?? "없음");
+            AddCell(g2, Sym.Coin, "내정담당", domesticName ?? "없음");
+            AddCell(g2, Sym.Sword, "병력담당", recruitmentName ?? "없음");
+            AddCell(g2, Sym.Book, "훈련담당", trainingName ?? "없음");
+        }
+        var securityBreakdown = MakeLabel(owned ? SecurityWeeklySummary(c) : $"주 치안 변화 {SecurityWeeklyDelta(c):+0;-0;0}", 12, Parchment);
         securityBreakdown.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _infoRows.AddChild(securityBreakdown);
-        AddCell(g2, Sym.Coin, "내정담당", domesticName ?? "없음");
-        AddCell(g2, Sym.Sword, "병력담당", recruitmentName ?? "없음");
-        AddCell(g2, Sym.Book, "훈련담당", trainingName ?? "없음");
-        if (pending.Any())
+        if (owned && pending.Any())
         {
             AddCell(g2, Sym.Scroll, "진행", string.Join(",", pending));
         }
@@ -4377,7 +4381,7 @@ public sealed partial class CampaignMapScene : Node3D
             .Concat(_pendingTransportDeploys.Where(p => p.Req.City == id).Select(p => p.Label))
             .Concat(_pendingArmyGroupDeploys.Where(p => p.Req.City == id).Select(p => p.Label))
             .ToList();
-        if (depQueue.Count > 0)
+        if (owned && depQueue.Count > 0)
         {
             AddCell(g2, Sym.Flag, "출전대기", string.Join(",", depQueue));
         }
@@ -4385,7 +4389,11 @@ public sealed partial class CampaignMapScene : Node3D
         var detailBtn = MakeButton("▶ 상세 · 진행 목록");
         detailBtn.AddThemeFontSizeOverride("font_size", 12);
         detailBtn.CustomMinimumSize = new Vector2(0, 26);
-        detailBtn.Pressed += () => { if (owned) { OpenCityDetail(id); } else { OpenCityInfoReadonly(id); } };
+        detailBtn.Pressed += () =>
+        {
+            if (owned || _state.IsScouted(Player, id)) { OpenCityDetail(id); }
+            else { OpenCityInfoReadonly(id); }
+        };
         _infoRows.AddChild(detailBtn);
 
         PlacePalette(c.Position);
@@ -5747,17 +5755,20 @@ public sealed partial class CampaignMapScene : Node3D
     // ── 성 상세 모달: 도시 수치 + 진행 중 명령(취소) + 출전 예약(취소) ──
     private void OpenCityDetail(CityId city)
     {
-        if (_state.Cities.FirstOrDefault(c => c.Id == city)?.Owner != Player)
+        var inspectedCity = _state.Cities.FirstOrDefault(c => c.Id == city);
+        var readOnlyIntel = inspectedCity?.Owner != Player;
+        if (inspectedCity is null || readOnlyIntel && !_state.IsScouted(Player, city))
         {
             OpenCityInfoReadonly(city);
             return;
         }
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
-        _openCityDetailCity = city;
+        _openCityDetailCity = readOnlyIntel ? null : city;
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.52f, 460f, 680f);
         var mh = Mathf.Clamp(vp.Y * 0.94f, 460f, 900f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
+        panel.SetMeta("scouted_city_read_only", readOnlyIntel);
         scroll.Name = "CityDetailOuterScroll";
         scroll.VerticalScrollMode = vp.Y >= 760f
             ? ScrollContainer.ScrollMode.Disabled
@@ -5778,13 +5789,16 @@ public sealed partial class CampaignMapScene : Node3D
                 GetViewport().SetInputAsHandled();
             }
         };
-        var c = _state.Cities.First(x => x.Id == city);
+        var c = inspectedCity;
 
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
         var detailGov = OfficerName(c.Governor);
         var detailStra = OfficerName(c.Strategist);
-        var title = MakeLabel($"《 {c.Name} 》 · 태수 {detailGov ?? "없음"} · 군사 {detailStra ?? "없음"}", 16, Gold);
+        var titleText = readOnlyIntel
+            ? $"《 {c.Name} 》 · 정찰 정보 · 남은 {ScoutDaysLeft(c.Id)}일"
+            : $"《 {c.Name} 》 · 태수 {detailGov ?? "없음"} · 군사 {detailStra ?? "없음"}";
+        var title = MakeLabel(titleText, 16, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -5823,14 +5837,18 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(portInfo);
         }
 
-        var officers = $"치안 {OfficerName(c.SecurityOfficer) ?? "없음"} · 내정 {OfficerName(c.DomesticOfficer) ?? "없음"}\n"
-            + $"병력 {OfficerName(c.RecruitmentOfficer) ?? "없음"} · 훈련 {OfficerName(c.TrainingOfficer) ?? "없음"}";
-        box.AddChild(MakeLabel($"담당자: {officers}", 13, GoldBright));
+        if (!readOnlyIntel)
+        {
+            var officers = $"치안 {OfficerName(c.SecurityOfficer) ?? "없음"} · 내정 {OfficerName(c.DomesticOfficer) ?? "없음"}\n"
+                + $"병력 {OfficerName(c.RecruitmentOfficer) ?? "없음"} · 훈련 {OfficerName(c.TrainingOfficer) ?? "없음"}";
+            box.AddChild(MakeLabel($"담당자: {officers}", 13, GoldBright));
+        }
         var outputPercent = _cb.LowSecurityOutputPercent(c.Security);
         var raid = _cb.BanditRaidChance(c.Security);
         var existingRaid = _state.Armies.Any(a => a.Field.Owner == WorldEngine.BanditFaction
             && a.Pool.Active > 0 && a.Field.Target == c.Position);
-        var securityDetails = MakeLabel(SecurityWeeklySummary(c)
+        var securitySummary = readOnlyIntel ? $"주 치안 변화 {SecurityWeeklyDelta(c):+0;-0;0}" : SecurityWeeklySummary(c);
+        var securityDetails = MakeLabel(securitySummary
             + $"\n치안 {c.Security} · 금/군량/병력/훈련 산출 {outputPercent}% (감소 {100 - outputPercent}%)"
             + (existingRaid ? "\n도적 습격 중 · 같은 성에 추가 출현 없음"
                 : raid.Percent > 0 ? $"\n진행 종료 시 도적 출현 확률 {raid.Percent}% · 병력 {raid.Troops:N0}명"
@@ -5864,7 +5882,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 폴더 탭처럼 — 활성 탭은 내용 패널과 같은 색·아래 테두리 없이 이어지고, 비활성은 어둡게 물러난다.
         var stationed = _state.GeneralsAt(city).OrderBy(x => x.Value)
             .Select(id => _state.Generals.First(x => x.Id == id)).ToList();
-        var cmds = _state.Commands.Where(x => x.City == city).OrderBy(x => x.CompletionDay).ToList();
+        var cmds = readOnlyIntel ? [] : _state.Commands.Where(x => x.City == city).OrderBy(x => x.CompletionDay).ToList();
         var deploys = new List<int>();
         for (var i = 0; i < _pendingDeploys.Count; i++)
         {
@@ -5902,12 +5920,14 @@ public sealed partial class CampaignMapScene : Node3D
         content.AddThemeConstantOverride("separation", 6);
         contentPanel.AddChild(content);
 
-        var labels = new[] { $"주둔 장수 {stationed.Count}", $"진행 명령 {cmds.Count}", $"예약 {deploys.Count + supplyDeploys.Count + transportDeploys.Count}" };
-        var tabBtns = new Button[3];
+        var labels = readOnlyIntel
+            ? new[] { $"주둔 장수 {stationed.Count}" }
+            : new[] { $"주둔 장수 {stationed.Count}", $"진행 명령 {cmds.Count}", $"예약 {deploys.Count + supplyDeploys.Count + transportDeploys.Count}" };
+        var tabBtns = new Button[labels.Length];
         void ShowTab(int t)
         {
             _cityDetailTab = t;
-            for (var i = 0; i < 3; i++)
+            for (var i = 0; i < labels.Length; i++)
             {
                 var on = i == t;
                 tabBtns[i].AddThemeColorOverride("font_color", on ? GoldBright : new Color(Parchment, 0.6f));
@@ -5920,7 +5940,7 @@ public sealed partial class CampaignMapScene : Node3D
             Clear(content);
             switch (t)
             {
-                case 0: BuildStationedTab(content, city, stationed); break;
+                case 0: BuildStationedTab(content, city, stationed, readOnlyIntel); break;
                 case 1: BuildCommandsTab(content, city, cmds); break;
                 default: BuildDeployTab(content, city, deploys, supplyDeploys, transportDeploys); break;
             }
@@ -5929,7 +5949,7 @@ public sealed partial class CampaignMapScene : Node3D
             scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(h, mh));
         }
 
-        for (var i = 0; i < 3; i++)
+        for (var i = 0; i < labels.Length; i++)
         {
             var t = i;
             var b = new Button { Text = labels[i], SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -5943,7 +5963,7 @@ public sealed partial class CampaignMapScene : Node3D
             tabBar.AddChild(b);
         }
 
-        ShowTab(Mathf.Clamp(_cityDetailTab, 0, 2));
+        ShowTab(readOnlyIntel ? 0 : Mathf.Clamp(_cityDetailTab, 0, 2));
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
@@ -6117,7 +6137,7 @@ public sealed partial class CampaignMapScene : Node3D
     };
 
     // ── 상세 탭 ①: 주둔 장수 표(태수 ◆·금색, 행 클릭 = 장수 상세) ──
-    private void BuildStationedTab(VBoxContainer box, CityId city, List<General> stationed)
+    private void BuildStationedTab(VBoxContainer box, CityId city, List<General> stationed, bool readOnlyIntel = false)
     {
         var c = _state.Cities.First(x => x.Id == city);
         box.AddChild(MakeLabel("주둔 장수", 14, GoldBright));
@@ -6157,8 +6177,8 @@ public sealed partial class CampaignMapScene : Node3D
         var groot = gt.CreateItem();
         foreach (var gen in stationed)
         {
-            var isGov = c.Governor == gen.Id;
-            var isStra = c.Strategist == gen.Id;
+            var isGov = !readOnlyIntel && c.Governor == gen.Id;
+            var isStra = !readOnlyIntel && c.Strategist == gen.Id;
             var role = isGov && isStra ? "태수·군사" : isGov ? "태수" : isStra ? "군사" : null;
             var it = gt.CreateItem(groot);
             it.SetText(0, (role is not null ? "◆ " : "") + gen.Name);
@@ -6166,7 +6186,7 @@ public sealed partial class CampaignMapScene : Node3D
             it.SetText(1, gen.Might.ToString());
             it.SetText(2, gen.Intellect.ToString());
             it.SetText(3, gen.Politics.ToString());
-            it.SetText(4, role ?? GeneralStatus(gen.Id));
+            it.SetText(4, readOnlyIntel ? "주둔" : role ?? GeneralStatus(gen.Id));
             if (role is not null) { it.SetCustomColor(0, GoldBright); it.SetCustomColor(4, GoldBright); }
             it.SetMetadata(0, gen.Id.Value);
             for (var col = 1; col <= 4; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
@@ -7158,7 +7178,11 @@ public sealed partial class CampaignMapScene : Node3D
             row.AddChild(lbl);
             var view = MakeButton("보기");
             view.CustomMinimumSize = new Vector2(60, 26);
-            view.Pressed += () => OpenCityInfoReadonly(city.Id);
+            view.Pressed += () =>
+            {
+                if (city.Owner == Player || _state.IsScouted(Player, city.Id)) { OpenCityDetail(city.Id); }
+                else { OpenCityInfoReadonly(city.Id); }
+            };
             row.AddChild(view);
             box.AddChild(row);
         }
@@ -13175,6 +13199,19 @@ public sealed partial class CampaignMapScene : Node3D
         var burden = recruiter is null ? 0 : _cb.AutoRecruitSecurityDeltaForRate(city.AutoRecruitRate);
         return $"주 치안 {recovery + burden:+0;-0;0} = {(security is null ? "공석" : security.Name)} {recovery:+0;-0;0}"
             + (recruiter is null ? "" : $" / 병력 담당 {recruiter.Name} {burden:+0;-0;0}");
+    }
+
+    private int SecurityWeeklyDelta(City city)
+    {
+        General? Officer(GeneralId? id) => id is { } gid
+            && (_state.Assignments.Count == 0 || _state.PostingOf(gid) is { } posting
+                && posting.Location == city.Id && posting.Faction == city.Owner)
+                ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
+        var security = Officer(city.SecurityOfficer);
+        var recruiter = Officer(city.RecruitmentOfficer);
+        var recovery = security is null ? _cb.AutoSecurityNoOfficerDelta : OfficerMightTier(security.Might);
+        var burden = recruiter is null ? 0 : _cb.AutoRecruitSecurityDeltaForRate(city.AutoRecruitRate);
+        return recovery + burden;
     }
 
     private int AutoRecruitWeeklyCostFor(General officer, string troopCodes, City? city = null, int? rateOverride = null)
