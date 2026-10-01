@@ -328,6 +328,65 @@ public class ResearchSystemTests
     }
 
     [Fact]
+    public void 계략연구_5종은_독립연구선에서_비용과_25일기본기간을_사용한다()
+    {
+        Assert.Equal(5, StratagemResearchRules.Definitions.Count);
+        Assert.Equal(2000, StratagemResearchRules.Cost(1));
+        Assert.Equal(20000, StratagemResearchRules.Cost(10));
+        Assert.Equal("scout", StratagemResearchRules.StratagemCode(FactionResearch.ScoutStratagemCode));
+
+        var state = State(
+            [Town(1, workshop: false, gold: 30_000), Town(2, workshop: false, gold: 30_000),
+                Town(3, workshop: false, gold: 30_000), Town(4, workshop: false, gold: 30_000)],
+            [Wit(1, 100), Wit(2, 100), Wit(3, 100), Wit(4, 100)]) with
+        {
+            Postings =
+            [
+                new GeneralPosting(new GeneralId(1), new FactionId(1), new CityId(1)),
+                new GeneralPosting(new GeneralId(2), new FactionId(1), new CityId(2)),
+                new GeneralPosting(new GeneralId(3), new FactionId(1), new CityId(3)),
+                new GeneralPosting(new GeneralId(4), new FactionId(1), new CityId(4)),
+            ],
+        };
+
+        var stratagem = Service().Issue(state, new CommandRequest(new CityId(1), CommandKind.Research,
+            new GeneralId(1), TroopCode: FactionResearch.ScoutStratagemCode));
+        Assert.True(stratagem.Ok, stratagem.Error);
+        Assert.Equal(118_000, stratagem.State.Cities.Sum(x => x.Gold));
+        Assert.Equal(15, stratagem.State.Commands.Single().CompletionDay - stratagem.State.Commands.Single().StartDay);
+
+        var combat = Service().Issue(stratagem.State, new CommandRequest(new CityId(2), CommandKind.Research,
+            new GeneralId(2), TroopCode: "swordsman"));
+        Assert.True(combat.Ok, combat.Error);
+
+        var general = Service().Issue(combat.State, new CommandRequest(new CityId(3), CommandKind.Research,
+            new GeneralId(3), TroopCode: FactionResearch.PublicOrderCode));
+        Assert.True(general.Ok, general.Error);
+
+        var duplicate = Service().Issue(general.State, new CommandRequest(new CityId(4), CommandKind.Research,
+            new GeneralId(4), TroopCode: FactionResearch.ArsonStratagemCode));
+        Assert.False(duplicate.Ok);
+        Assert.Contains("계략 연구", duplicate.Error);
+    }
+
+    [Fact]
+    public void 계략연구가_완료되면_해당세력의_선택트랙만_상승한다()
+    {
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), B);
+        var state = State([Town(1, workshop: false, gold: 30_000)], [Wit(1, 100)]);
+        var issued = Service().Issue(state, new CommandRequest(new CityId(1), CommandKind.Research,
+            new GeneralId(1), TroopCode: FactionResearch.WallBreakStratagemCode));
+
+        Assert.True(issued.Ok, issued.Error);
+        var completed = world.AdvanceDays(issued.State, 15);
+
+        Assert.Equal(1, completed.ResearchOf(new FactionId(1), FactionResearch.WallBreakStratagemCode));
+        Assert.Equal(0, completed.ResearchOf(new FactionId(1), FactionResearch.ScoutStratagemCode));
+        Assert.Contains(world.LastEvents, x => x.Kind == WorldEventKind.Research
+            && x.Code == FactionResearch.WallBreakStratagemCode && x.Amount == 1);
+    }
+
+    [Fact]
     public void 민심안정_홀수는_저치안_페널티_기준을_완화하고_짝수는_주간치안을_올린다()
     {
         Assert.Equal(70, GeneralResearchRules.LowSecurityThreshold(0));

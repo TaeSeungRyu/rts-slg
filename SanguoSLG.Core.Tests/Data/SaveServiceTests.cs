@@ -59,6 +59,11 @@ public class SaveServiceTests
             },
             RuinDefinitions: [new("pikeman_ruin", "극병 유적", new HexCoord(7, 7), "geukbyeong", 30_000)],
             RuinStates: [new("pikeman_ruin", 12_000, new FactionId(1), 20, 50, [new FactionId(1)])],
+            ResearchTracks:
+            [
+                new FactionResearch(new FactionId(1), FactionResearch.ScoutStratagemCode, 4),
+                new FactionResearch(new FactionId(1), FactionResearch.ArsonStratagemCode, 2),
+            ],
             RecruitmentPoints: [new(new FactionId(1), 113)],
             RecruitmentPointGrants: [new(new FactionId(1), "ruin:pikeman_ruin", 100)]);
 
@@ -109,5 +114,7 @@ public class SaveServiceTests
         Assert.Equal(new FactionId(1), round.RuinStatus.Single().Registrations.Single());
         Assert.Equal(113, RecruitmentPointBank.Balance(round, new FactionId(1)));
         Assert.Equal("ruin:pikeman_ruin", round.RecruitmentPointHistory.Single().Key);
+        Assert.Equal(4, round.ResearchOf(new FactionId(1), FactionResearch.ScoutStratagemCode));
+        Assert.Equal(2, round.ResearchOf(new FactionId(1), FactionResearch.ArsonStratagemCode));
     }
 }

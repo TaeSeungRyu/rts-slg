@@ -673,7 +673,8 @@ public sealed class WorldEngine
                         };
                     }
                     else if (cmd.TroopCode is FactionResearch.CommandTroopsCode or FactionResearch.ArmyGroupCode
-                        || FactionResearch.IsGeneralResearch(cmd.TroopCode))
+                        || FactionResearch.IsGeneralResearch(cmd.TroopCode)
+                        || FactionResearch.IsStratagemResearch(cmd.TroopCode))
                     {
                         completionAmount = ResearchUp(research, city.Owner, cmd.TroopCode, GeneralResearchRules.MaxLevel);
                     }

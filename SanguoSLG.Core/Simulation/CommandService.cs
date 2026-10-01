@@ -546,26 +546,32 @@ public sealed class CommandService
 
         var faction = city.Owner;
         var isGeneralResearch = FactionResearch.IsGeneralResearch(req.TroopCode);
-        // 전투 연구선과 일반연구 연구선은 병행 가능하지만, 같은 연구선은 세력당 하나만 진행한다.
+        var isStratagemResearch = FactionResearch.IsStratagemResearch(req.TroopCode);
+        var researchLane = FactionResearch.LaneOf(req.TroopCode);
         if (state.Commands.Any(c => c.Kind == CommandKind.Research
             && state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == faction
-            && FactionResearch.IsGeneralResearch(c.TroopCode) == isGeneralResearch))
+            && FactionResearch.LaneOf(c.TroopCode) == researchLane))
         {
-            return CommandResult.Fail(isGeneralResearch
-                ? "세력은 일반연구 연구선에서 한 번에 하나의 연구만 진행할 수 있다."
-                : "세력은 전투 연구선에서 한 번에 하나의 연구만 진행할 수 있다.", state);
+            var laneName = researchLane switch
+            {
+                ResearchLane.General => "일반연구",
+                ResearchLane.Stratagem => "계략 연구",
+                _ => "전투 연구",
+            };
+            return CommandResult.Fail($"세력은 {laneName} 연구선에서 한 번에 하나의 연구만 진행할 수 있다.", state);
         }
 
         // 병종 연구 vs 성벽 연구(TroopCode == WallCode) — 단계 캡·비용 곡선이 다르다.
         var isWall = req.TroopCode == FactionResearch.WallCode;
         var isCommandTroops = req.TroopCode == FactionResearch.CommandTroopsCode;
         var isArmyGroup = req.TroopCode == FactionResearch.ArmyGroupCode;
-        if (!isWall && !isCommandTroops && !isArmyGroup && !isGeneralResearch && !_troops.ContainsKey(req.TroopCode))
+        if (!isWall && !isCommandTroops && !isArmyGroup && !isGeneralResearch && !isStratagemResearch
+            && !_troops.ContainsKey(req.TroopCode))
         {
             return CommandResult.Fail("연구할 병종을 지정해야 한다.", state);
         }
 
-        if (!isWall && !isCommandTroops && !isArmyGroup && !isGeneralResearch
+        if (!isWall && !isCommandTroops && !isArmyGroup && !isGeneralResearch && !isStratagemResearch
             && FactionTroopUnlock.CheckResearch(state, faction, req.TroopCode) is { Allowed: false } access)
         {
             return CommandResult.Fail($"전투교리 연구 불가: {access.Reason}", state);
@@ -573,6 +579,7 @@ public sealed class CommandService
 
         var level = isWall ? city.WallLevel : state.ResearchOf(city.Owner, req.TroopCode);
         var maxLevel = isWall ? _b.WallResearchMaxLevel
+            : isStratagemResearch ? StratagemResearchRules.MaxLevel
             : isCommandTroops || isArmyGroup || isGeneralResearch ? GeneralResearchRules.MaxLevel
             : ResearchMaxLevelFor(state, city.Owner, req.TroopCode);
         if (level >= maxLevel)
@@ -582,6 +589,7 @@ public sealed class CommandService
 
         var cost = isWall ? _b.WallResearchCostPerLevel * (level + 1)
             : isCommandTroops || isArmyGroup ? CommandEfficiency.CommandTroopResearchCost(level + 1)
+            : isStratagemResearch ? StratagemResearchRules.Cost(level + 1)
             : isGeneralResearch ? GeneralResearchRules.Cost(level + 1, _b)
             : CommandEfficiency.ResearchCost(level + 1, _b);
         var funding = isWall
@@ -592,7 +600,8 @@ public sealed class CommandService
             return CommandResult.Fail(funding.Error ?? "금이 부족하다.", state);
         }
 
-        var days = System.Math.Max(_b.ResearchBaseDays - System.Math.Clamp(
+        var baseDays = isStratagemResearch ? StratagemResearchRules.BaseDays : _b.ResearchBaseDays;
+        var days = System.Math.Max(baseDays - System.Math.Clamp(
             (AdministrationGrowth.EffectiveIntellectRounded(main) - 50) / 5, 0, 10), 1);
         return Register(funding.State, req, assist, amount: isWall ? level + 1 : 0, days, CommandKind.Research, "", req.TroopCode);
     }

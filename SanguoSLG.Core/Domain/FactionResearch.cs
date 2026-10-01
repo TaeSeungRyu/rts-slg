@@ -1,5 +1,12 @@
 namespace SanguoSLG.Core.Domain;
 
+public enum ResearchLane
+{
+    Combat,
+    General,
+    Stratagem,
+}
+
 /// <summary>
 /// 세력 단위 병종 연구 트랙(design-combat "병종 연구"·11단계 확정 2026-08-17). 세력이 병종별로
 /// 독립 트랙 하나(0~10단계)를 올리며, 그 세력의 그 병종 부대 공/방에 flat 보정(ResearchCurve)이
@@ -22,6 +29,12 @@ public sealed record FactionResearch(FactionId Faction, string TroopCode, int Le
     public const string TrainingCode = "__general_training__";
     public const string MedicineCode = "__general_medicine__";
 
+    public const string ScoutStratagemCode = "__stratagem_scout__";
+    public const string WallBreakStratagemCode = "__stratagem_wall_break__";
+    public const string InciteStratagemCode = "__stratagem_incite__";
+    public const string ArsonStratagemCode = "__stratagem_arson__";
+    public const string StealStratagemCode = "__stratagem_steal__";
+
     public static readonly IReadOnlyList<string> GeneralResearchCodes =
     [
         PublicOrderCode,
@@ -32,5 +45,20 @@ public sealed record FactionResearch(FactionId Faction, string TroopCode, int Le
         MedicineCode,
     ];
 
+    public static readonly IReadOnlyList<string> StratagemResearchCodes =
+    [
+        ScoutStratagemCode,
+        WallBreakStratagemCode,
+        InciteStratagemCode,
+        ArsonStratagemCode,
+        StealStratagemCode,
+    ];
+
     public static bool IsGeneralResearch(string code) => GeneralResearchCodes.Contains(code);
+
+    public static bool IsStratagemResearch(string code) => StratagemResearchCodes.Contains(code);
+
+    public static ResearchLane LaneOf(string code) => IsGeneralResearch(code)
+        ? ResearchLane.General
+        : IsStratagemResearch(code) ? ResearchLane.Stratagem : ResearchLane.Combat;
 }
