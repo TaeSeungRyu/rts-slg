@@ -18,6 +18,7 @@ public static class GeneralResearchRules
         new(FactionResearch.ConscriptionCode, "군역 정비", "병력 담당자의 주간 병력 생산량이 단계마다 2% 증가합니다."),
         new(FactionResearch.TrainingCode, "훈련 교범", "짝수 단계마다 훈련 담당자의 주간 훈련도 증가량이 1 오릅니다."),
         new(FactionResearch.MedicineCode, "의술 연구", "수성 중이 아닌 도시의 부상병 회복 속도가 단계마다 10% 증가합니다."),
+        new(FactionResearch.ResearchDurationCode, "연구 혁신", "완료한 단계에 따라 이후 모든 연구의 소요일이 단축됩니다."),
     ];
 
     public static bool IsGeneralLane(string researchCode)
@@ -35,6 +36,12 @@ public static class GeneralResearchRules
     public static int TrainingWeeklyBonus(int level) => ClampLevel(level) / 2;
     public static int WoundedRecoveryPercent(int level) => 100 + 10 * ClampLevel(level);
 
+    public static int ResearchDurationReduction(int level)
+    {
+        int[] increments = [1, 2, 1, 2, 1, 2, 1, 3, 4, 5];
+        return increments.Take(ClampLevel(level)).Sum();
+    }
+
     public static int EffectiveSecurityForOutputPenalty(int security, int publicOrderLevel)
         => security + DefaultLowSecurityThreshold - LowSecurityThreshold(publicOrderLevel);
 
@@ -43,6 +50,11 @@ public static class GeneralResearchRules
 
     public static int Cost(int nextLevel, CommandBalance balance)
         => CommandEfficiency.ResearchCost(System.Math.Clamp(nextLevel, 1, MaxLevel), balance);
+
+    public static int Cost(string code, int nextLevel, CommandBalance balance)
+        => code == FactionResearch.ResearchDurationCode
+            ? System.Math.Clamp(nextLevel, 1, MaxLevel) * 2000
+            : Cost(nextLevel, balance);
 
     public static string Name(string code)
         => Definitions.FirstOrDefault(x => x.Code == code)?.Name ?? code;
@@ -62,6 +74,8 @@ public static class GeneralResearchRules
                 ? $"주간 훈련도 +{TrainingWeeklyBonus(next)}"
                 : "짝수 단계 보너스 준비",
             FactionResearch.MedicineCode => $"부상병 회복 +{next * 10}%",
+            FactionResearch.ResearchDurationCode
+                => $"연구 기간 -{ResearchDurationReduction(next) - ResearchDurationReduction(currentLevel)}일 · 누적 -{ResearchDurationReduction(next)}일",
             _ => string.Empty,
         };
     }

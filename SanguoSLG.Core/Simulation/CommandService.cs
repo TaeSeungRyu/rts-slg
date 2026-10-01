@@ -590,7 +590,7 @@ public sealed class CommandService
         var cost = isWall ? _b.WallResearchCostPerLevel * (level + 1)
             : isCommandTroops || isArmyGroup ? CommandEfficiency.CommandTroopResearchCost(level + 1)
             : isStratagemResearch ? StratagemResearchRules.Cost(level + 1)
-            : isGeneralResearch ? GeneralResearchRules.Cost(level + 1, _b)
+            : isGeneralResearch ? GeneralResearchRules.Cost(req.TroopCode, level + 1, _b)
             : CommandEfficiency.ResearchCost(level + 1, _b);
         var funding = isWall
             ? ReserveCityResearchCost(state, city, cost)
@@ -600,9 +600,9 @@ public sealed class CommandService
             return CommandResult.Fail(funding.Error ?? "금이 부족하다.", state);
         }
 
-        var baseDays = isStratagemResearch ? StratagemResearchRules.BaseDays : _b.ResearchBaseDays;
-        var days = System.Math.Max(baseDays - System.Math.Clamp(
-            (AdministrationGrowth.EffectiveIntellectRounded(main) - 50) / 5, 0, 10), 1);
+        var durationLevel = state.ResearchOf(faction, FactionResearch.ResearchDurationCode);
+        var days = ResearchDurationRules.Days(req.TroopCode,
+            AdministrationGrowth.EffectiveIntellectRounded(main), durationLevel, _b);
         return Register(funding.State, req, assist, amount: isWall ? level + 1 : 0, days, CommandKind.Research, "", req.TroopCode);
     }
 

@@ -139,7 +139,7 @@ public sealed class FactionAI
         }
 
         var level = state.ResearchOf(faction, code);
-        var cost = GeneralResearchRules.Cost(level + 1, _commands.Balance);
+        var cost = GeneralResearchRules.Cost(code, level + 1, _commands.Balance);
         if (cities.Sum(c => c.Gold) < cost + _config.GeneralResearchReserveGold)
         {
             return state;

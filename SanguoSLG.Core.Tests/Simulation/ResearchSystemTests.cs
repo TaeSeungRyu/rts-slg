@@ -400,6 +400,36 @@ public class ResearchSystemTests
     }
 
     [Fact]
+    public void 연구혁신은_단계별_누적단축과_전용비용을_사용한다()
+    {
+        Assert.Equal(1, GeneralResearchRules.ResearchDurationReduction(1));
+        Assert.Equal(3, GeneralResearchRules.ResearchDurationReduction(2));
+        Assert.Equal(13, GeneralResearchRules.ResearchDurationReduction(8));
+        Assert.Equal(22, GeneralResearchRules.ResearchDurationReduction(10));
+        Assert.Equal(2000, GeneralResearchRules.Cost(FactionResearch.ResearchDurationCode, 1, B));
+        Assert.Equal(20000, GeneralResearchRules.Cost(FactionResearch.ResearchDurationCode, 10, B));
+        Assert.Equal(7, ResearchDurationRules.Days("swordsman", 100, 8, B));
+        Assert.Equal(2, ResearchDurationRules.Days(FactionResearch.ScoutStratagemCode, 100, 8, B));
+        Assert.Equal(1, ResearchDurationRules.Days(FactionResearch.WallCode, 100, 10, B));
+    }
+
+    [Fact]
+    public void 연구혁신_명령은_현재완료단계만_기간에_적용하고_완료되면_상승한다()
+    {
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), B);
+        var state = State([Town(1, workshop: false, gold: 5000)], [Wit(1, 100)]);
+        var issued = Service().Issue(state, new CommandRequest(new CityId(1), CommandKind.Research,
+            new GeneralId(1), TroopCode: FactionResearch.ResearchDurationCode));
+
+        Assert.True(issued.Ok, issued.Error);
+        Assert.Equal(3000, issued.State.Cities.Single().Gold);
+        Assert.Equal(15, issued.State.Commands.Single().CompletionDay - issued.State.Commands.Single().StartDay);
+
+        var completed = world.AdvanceDays(issued.State, 15);
+        Assert.Equal(1, completed.ResearchOf(new FactionId(1), FactionResearch.ResearchDurationCode));
+    }
+
+    [Fact]
     public void 일반연구_비용분담_담당잠금_완료보고가_정상동작한다()
     {
         var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), B);

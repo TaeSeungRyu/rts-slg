@@ -11314,7 +11314,7 @@ public sealed partial class CampaignMapScene : Node3D
                     var level = _state.ResearchOf(city.Owner, definition.Code);
                     var cost = level >= GeneralResearchRules.MaxLevel
                         ? 0
-                        : GeneralResearchRules.Cost(level + 1, _cb);
+                        : GeneralResearchRules.Cost(definition.Code, level + 1, _cb);
                     var detail = ResearchStars(level, GeneralResearchRules.MaxLevel)
                         + (level >= GeneralResearchRules.MaxLevel
                             ? "\n연구 완료"
@@ -11923,7 +11923,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         var next = level + 1;
-        var cost = GeneralResearchRules.Cost(next, _cb);
+        var cost = GeneralResearchRules.Cost(definition.Code, next, _cb);
         return $"{definition.Name}  ·  Lv.{level} → Lv.{next}\n{definition.Description}\n다음 효과: {GeneralResearchRules.NextEffectText(definition.Code, level)}  ·  연구비 {cost:N0}금";
     }
 
@@ -12148,7 +12148,7 @@ public sealed partial class CampaignMapScene : Node3D
 
             var code = GeneralResearchRules.Definitions[_modalParam].Code;
             var generalLevel = _state.ResearchOf(city.Owner, code);
-            return generalLevel >= GeneralResearchRules.MaxLevel ? 0 : GeneralResearchRules.Cost(generalLevel + 1, _cb);
+            return generalLevel >= GeneralResearchRules.MaxLevel ? 0 : GeneralResearchRules.Cost(code, generalLevel + 1, _cb);
         }
 
         var troopIndex = cmd.Kind == CommandKind.Research ? _modalParam - 2 : _modalParam;
@@ -12954,7 +12954,8 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var cityData = _state.Cities.First(c => c.Id == city);
             var caster = _state.Generals.First(g => g.Id == general);
-            var days = System.Math.Max(_cb.ResearchBaseDays - System.Math.Clamp((caster.Intellect - 50) / 5, 0, 10), 1);
+            var days = ResearchDurationRules.Days(troopCode, AdministrationGrowth.EffectiveIntellectRounded(caster),
+                _state.ResearchOf(cityData.Owner, FactionResearch.ResearchDurationCode), _cb);
             var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
                 && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
             if (troopCode == FactionResearch.CommandTroopsCode)
@@ -13013,7 +13014,8 @@ public sealed partial class CampaignMapScene : Node3D
             var level = cityData.WallLevel;
             var next = System.Math.Min(level + 1, _cb.WallResearchMaxLevel);
             var cost = level >= _cb.WallResearchMaxLevel ? 0 : _cb.WallResearchCostPerLevel * next;
-            var days = System.Math.Max(_cb.ResearchBaseDays - System.Math.Clamp((caster.Intellect - 50) / 5, 0, 10), 1);
+            var days = ResearchDurationRules.Days(FactionResearch.WallCode, AdministrationGrowth.EffectiveIntellectRounded(caster),
+                _state.ResearchOf(cityData.Owner, FactionResearch.ResearchDurationCode), _cb);
             var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
                 && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
             var currentMax = CastleWall.Max(cityData.Castle, _balance, level);
@@ -13127,8 +13129,9 @@ public sealed partial class CampaignMapScene : Node3D
             var caster = _state.Generals.First(g => g.Id == general);
             var level = _state.ResearchOf(cityData.Owner, troopCode);
             var next = System.Math.Min(level + 1, GeneralResearchRules.MaxLevel);
-            var cost = level >= GeneralResearchRules.MaxLevel ? 0 : GeneralResearchRules.Cost(next, _cb);
-            var days = System.Math.Max(_cb.ResearchBaseDays - System.Math.Clamp((caster.Intellect - 50) / 5, 0, 10), 1);
+            var cost = level >= GeneralResearchRules.MaxLevel ? 0 : GeneralResearchRules.Cost(troopCode, next, _cb);
+            var days = ResearchDurationRules.Days(troopCode, AdministrationGrowth.EffectiveIntellectRounded(caster),
+                _state.ResearchOf(cityData.Owner, FactionResearch.ResearchDurationCode), _cb);
             var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
                 && FactionResearch.IsGeneralResearch(c.TroopCode)
                 && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
