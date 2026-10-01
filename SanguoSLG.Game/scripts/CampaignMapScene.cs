@@ -579,6 +579,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestgeneralresearchqa")) CallDeferred(nameof(RunGeneralResearchUiQa));
         if (args.Contains("--mapteststratagemresearchqa")) CallDeferred(nameof(RunStratagemResearchUiQa));
         if (args.Contains("--maptestwallresearchconfirmqa")) CallDeferred(nameof(RunWallResearchConfirmQa));
+        if (args.Contains("--maptestportfixtureqa")) CallDeferred(nameof(RunPortFixtureQa));
         if (args.Contains("--maptestsiegeplaybackqa")) CallDeferred(nameof(RunSiegePlaybackQa));
         if (args.Contains("--maptestruinuiqa")) CallDeferred(nameof(RunRuinUiQa));
         if (args.Contains("--maptestruinprotectionqa")) CallDeferred(nameof(RunRuinProtectionQa));
@@ -2736,7 +2737,7 @@ public sealed partial class CampaignMapScene : Node3D
             new(new FactionId(2), "촉", new GeneralId(11), 0, "#d23830"),
         },
         _cities.ToList(),
-        // 테스트: 장안에 장수 17명을 집중 배치해 대규모 수행 장수 목록도 검증한다.
+        // 테스트 장수 풀. 아군 소·중형 항구에는 각 10명을 배치해 출항·수송 편성을 반복 검증한다.
         new List<General>
         {
             Officer(1), Officer(2), Officer(3), Officer(4), Officer(5),
@@ -2755,26 +2756,26 @@ public sealed partial class CampaignMapScene : Node3D
             new(new GeneralId(5), new FactionId(1), new CityId(1)),
             new(new GeneralId(6), new FactionId(1), new CityId(1)),
             new(new GeneralId(7), new FactionId(1), new CityId(1)),
-            new(new GeneralId(23), new FactionId(1), new CityId(1)),
-            new(new GeneralId(24), new FactionId(1), new CityId(1)),
-            new(new GeneralId(25), new FactionId(1), new CityId(1)),
-            new(new GeneralId(26), new FactionId(1), new CityId(1)),
-            new(new GeneralId(27), new FactionId(1), new CityId(1)),
-            new(new GeneralId(28), new FactionId(1), new CityId(1)),
-            new(new GeneralId(29), new FactionId(1), new CityId(1)),
-            new(new GeneralId(30), new FactionId(1), new CityId(1)),
-            new(new GeneralId(31), new FactionId(1), new CityId(1)),
-            new(new GeneralId(32), new FactionId(1), new CityId(1)),
-            new(new GeneralId(8), new FactionId(1), new CityId(4)),
-            new(new GeneralId(9), new FactionId(1), new CityId(4)),
-            new(new GeneralId(10), new FactionId(1), new CityId(4)),
-            new(new GeneralId(15), new FactionId(1), new CityId(5)),
-            new(new GeneralId(16), new FactionId(1), new CityId(5)),
-            new(new GeneralId(17), new FactionId(1), new CityId(5)),
-            new(new GeneralId(18), new FactionId(1), new CityId(6)),
-            new(new GeneralId(19), new FactionId(1), new CityId(6)),
-            new(new GeneralId(20), new FactionId(1), new CityId(6)),
-            new(new GeneralId(21), new FactionId(1), new CityId(7)),
+            new(new GeneralId(23), new FactionId(1), new CityId(8)),
+            new(new GeneralId(24), new FactionId(1), new CityId(8)),
+            new(new GeneralId(25), new FactionId(1), new CityId(8)),
+            new(new GeneralId(26), new FactionId(1), new CityId(8)),
+            new(new GeneralId(27), new FactionId(1), new CityId(8)),
+            new(new GeneralId(28), new FactionId(1), new CityId(8)),
+            new(new GeneralId(29), new FactionId(1), new CityId(8)),
+            new(new GeneralId(30), new FactionId(1), new CityId(8)),
+            new(new GeneralId(31), new FactionId(1), new CityId(8)),
+            new(new GeneralId(32), new FactionId(1), new CityId(8)),
+            new(new GeneralId(8), new FactionId(1), new CityId(9)),
+            new(new GeneralId(9), new FactionId(1), new CityId(9)),
+            new(new GeneralId(10), new FactionId(1), new CityId(9)),
+            new(new GeneralId(15), new FactionId(1), new CityId(9)),
+            new(new GeneralId(16), new FactionId(1), new CityId(9)),
+            new(new GeneralId(17), new FactionId(1), new CityId(9)),
+            new(new GeneralId(18), new FactionId(1), new CityId(9)),
+            new(new GeneralId(19), new FactionId(1), new CityId(9)),
+            new(new GeneralId(20), new FactionId(1), new CityId(9)),
+            new(new GeneralId(21), new FactionId(1), new CityId(9)),
             new(new GeneralId(22), new FactionId(1), new CityId(7)),
             new(new GeneralId(11), new FactionId(2), new CityId(2)),
             new(new GeneralId(12), new FactionId(2), new CityId(2)),
@@ -2803,12 +2804,26 @@ public sealed partial class CampaignMapScene : Node3D
             new(new CityId(6), "catapult", 12000, 60),
             new(new CityId(7), "swordsman", 20000, 60),
             new(new CityId(7), "archer", 10000, 60),
+            new(new CityId(8), "swordsman", 20000, 60),
+            new(new CityId(8), "archer", 10000, 60),
+            new(new CityId(8), "cavalry", 10000, 60),
+            new(new CityId(9), "swordsman", 30000, 60),
+            new(new CityId(9), "archer", 20000, 60),
+            new(new CityId(9), "cavalry", 10000, 60),
             new(new CityId(2), "swordsman", 100000, 60),
             new(new CityId(2), "catapult", 10000, 60),
             new(new CityId(3), "swordsman", 30000, 60),
             new(new CityId(3), "siege_tower", 8000, 60),
         },
-        FacilityPlacements: _initialFacilityPlacements);
+        FacilityPlacements: _initialFacilityPlacements,
+        PortShipStocks:
+        [
+            new PortShipStock(new CityId(8), "small_boat", 3),
+            new PortShipStock(new CityId(8), "medium_ship", 1),
+            new PortShipStock(new CityId(9), "small_boat", 4),
+            new PortShipStock(new CityId(9), "medium_ship", 3),
+            new PortShipStock(new CityId(9), "large_ship", 2),
+        ]);
 
     private static General Officer(int id) => new(
         new GeneralId(id), $"장수{id}",
@@ -15343,6 +15358,22 @@ public sealed partial class CampaignMapScene : Node3D
         _confirmLayer?.QueueFree();
         _confirmLayer = null;
         CloseModal();
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    private void RunPortFixtureQa()
+    {
+        var alliedPorts = _state.Cities.Where(city => city.Owner == Player && city.IsPort)
+            .OrderBy(city => city.Id.Value).ToList();
+        var passed = alliedPorts.Count == 2
+            && alliedPorts.Any(city => city.Port == PortSize.Small)
+            && alliedPorts.Any(city => city.Port == PortSize.Medium)
+            && alliedPorts.All(city => _state.GeneralsAt(city.Id).Count() >= 10)
+            && alliedPorts.All(city => _state.Garrisons.Any(force => force.City == city.Id && force.Troops > 0))
+            && alliedPorts.All(city => _state.PortShips.Any(stock => stock.City == city.Id && stock.Count > 0));
+        var summary = string.Join(",", alliedPorts.Select(city =>
+            $"{city.Name}:generals={_state.GeneralsAt(city.Id).Count()},troops={_state.Garrisons.Where(force => force.City == city.Id).Sum(force => force.Troops)},ships={_state.PortShips.Where(stock => stock.City == city.Id).Sum(stock => stock.Count)}"));
+        GD.Print($"[port-fixture-qa] {summary} passed={passed}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
