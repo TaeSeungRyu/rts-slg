@@ -47,7 +47,7 @@ public class ResearchSystemTests
         Assert.True(r.Ok, r.Error);
         Assert.Equal(5000 - 200, r.State.Cities.Single().Gold); // 1단계 비용 = 200×1
         var cmd = r.State.Commands.Single();
-        Assert.Equal(20, cmd.CompletionDay - cmd.StartDay); // 지력 100 → 30 − 10 = 20일
+        Assert.Equal(11, cmd.CompletionDay - cmd.StartDay); // Lv.1 기본 21일, 지력 100 → 21 − 10 = 11일
     }
 
     [Fact]
@@ -328,7 +328,7 @@ public class ResearchSystemTests
     }
 
     [Fact]
-    public void 계략연구_5종은_독립연구선에서_비용과_25일기본기간을_사용한다()
+    public void 계략연구_5종은_독립연구선에서_비용과_레벨기간곡선을_사용한다()
     {
         Assert.Equal(5, StratagemResearchRules.Definitions.Count);
         Assert.Equal(2000, StratagemResearchRules.Cost(1));
@@ -353,7 +353,7 @@ public class ResearchSystemTests
             new GeneralId(1), TroopCode: FactionResearch.ScoutStratagemCode));
         Assert.True(stratagem.Ok, stratagem.Error);
         Assert.Equal(118_000, stratagem.State.Cities.Sum(x => x.Gold));
-        Assert.Equal(15, stratagem.State.Commands.Single().CompletionDay - stratagem.State.Commands.Single().StartDay);
+        Assert.Equal(11, stratagem.State.Commands.Single().CompletionDay - stratagem.State.Commands.Single().StartDay);
 
         var combat = Service().Issue(stratagem.State, new CommandRequest(new CityId(2), CommandKind.Research,
             new GeneralId(2), TroopCode: "swordsman"));
@@ -408,9 +408,50 @@ public class ResearchSystemTests
         Assert.Equal(22, GeneralResearchRules.ResearchDurationReduction(10));
         Assert.Equal(2000, GeneralResearchRules.Cost(FactionResearch.ResearchDurationCode, 1, B));
         Assert.Equal(20000, GeneralResearchRules.Cost(FactionResearch.ResearchDurationCode, 10, B));
-        Assert.Equal(7, ResearchDurationRules.Days("swordsman", 100, 8, B));
-        Assert.Equal(2, ResearchDurationRules.Days(FactionResearch.ScoutStratagemCode, 100, 8, B));
-        Assert.Equal(1, ResearchDurationRules.Days(FactionResearch.WallCode, 100, 10, B));
+        Assert.Equal(7, ResearchDurationRules.Days("swordsman", 1, 100, 8, B));
+        Assert.Equal(7, ResearchDurationRules.Days(FactionResearch.ScoutStratagemCode, 1, 100, 8, B));
+        Assert.Equal(7, ResearchDurationRules.Days(FactionResearch.WallCode, 1, 100, 10, B));
+    }
+
+    [Fact]
+    public void 전투교리와_계략연구는_목표레벨별_기간곡선과_최소7일을_사용한다()
+    {
+        Assert.Equal(21, ResearchDurationRules.DoctrineBaseDays(1));
+        Assert.Equal(28, ResearchDurationRules.DoctrineBaseDays(2));
+        Assert.Equal(35, ResearchDurationRules.DoctrineBaseDays(3));
+        Assert.Equal(63, ResearchDurationRules.DoctrineBaseDays(7));
+        Assert.Equal(80, ResearchDurationRules.DoctrineBaseDays(8));
+        Assert.Equal(100, ResearchDurationRules.DoctrineBaseDays(9));
+        Assert.Equal(120, ResearchDurationRules.DoctrineBaseDays(10));
+
+        Assert.Equal(98, ResearchDurationRules.Days("swordsman", 10, 50, 10, B));
+        Assert.Equal(88, ResearchDurationRules.Days(FactionResearch.ScoutStratagemCode, 10, 100, 10, B));
+        Assert.Equal(7, ResearchDurationRules.Days("swordsman", 1, 100, 10, B));
+    }
+
+    [Fact]
+    public void 실제연구명령은_현재단계가_아닌_도달단계의_기간을_사용한다()
+    {
+        var state = State([Town(1, workshop: false, gold: 100_000)], [Wit(1, 100)]) with
+        {
+            ResearchTracks =
+            [
+                new FactionResearch(new FactionId(1), FactionResearch.ScoutStratagemCode, 8),
+            ],
+        };
+
+        var issued = Service().Issue(state, new CommandRequest(new CityId(1), CommandKind.Research,
+            new GeneralId(1), TroopCode: FactionResearch.ScoutStratagemCode));
+
+        Assert.True(issued.Ok, issued.Error);
+        Assert.Equal(90, issued.State.Commands.Single().CompletionDay - issued.State.Commands.Single().StartDay);
+    }
+
+    [Fact]
+    public void 연구혁신은_자기단축을_받지않고_지력단축만_받는다()
+    {
+        Assert.Equal(25, ResearchDurationRules.Days(FactionResearch.ResearchDurationCode, 1, 50, 10, B));
+        Assert.Equal(15, ResearchDurationRules.Days(FactionResearch.ResearchDurationCode, 10, 100, 10, B));
     }
 
     [Fact]

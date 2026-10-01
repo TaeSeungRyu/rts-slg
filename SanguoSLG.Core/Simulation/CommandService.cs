@@ -601,7 +601,7 @@ public sealed class CommandService
         }
 
         var durationLevel = state.ResearchOf(faction, FactionResearch.ResearchDurationCode);
-        var days = ResearchDurationRules.Days(req.TroopCode,
+        var days = ResearchDurationRules.Days(req.TroopCode, level + 1,
             AdministrationGrowth.EffectiveIntellectRounded(main), durationLevel, _b);
         return Register(funding.State, req, assist, amount: isWall ? level + 1 : 0, days, CommandKind.Research, "", req.TroopCode);
     }

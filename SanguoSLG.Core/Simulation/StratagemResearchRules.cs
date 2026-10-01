@@ -5,7 +5,6 @@ using SanguoSLG.Core.Domain;
 public static class StratagemResearchRules
 {
     public const int MaxLevel = 10;
-    public const int BaseDays = 25;
     public const int SuccessBonusPerLevel = 2;
     public const int SuccessPercentCap = 95;
 
