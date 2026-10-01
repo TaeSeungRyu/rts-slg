@@ -106,7 +106,7 @@ public sealed class CampaignEngine
         {
             // 최초 출격 관제는 하루 시작에 한 번만 실행한다. 출구 밖 첫 칸에 배치된 부대는
             // 즉시 일반 야전 목록으로 넘어가며, 두 번째 칸부터는 기존 이동기만 관여한다.
-            var egress = DeploymentEgressController.Release(egressArmies, armies, work.Cities);
+            var egress = DeploymentEgressController.Release(egressArmies, armies, work.Cities, _field.CanEnter);
             armies.AddRange(egress.Released);
             egressArmies = egress.Waiting.ToList();
 
@@ -137,7 +137,11 @@ public sealed class CampaignEngine
 
             // 이동 → 공격 → 점령을 하루 단위로 확정한다. 주간 전체를 한 번에
             // 계산하면 공격턴에서 수비가 전멸해도 다음 진행까지 함락이 지연된다.
-            var turn = _field.Run(turnInput, maxDays: 1, castles);
+            var turn = _field.Run(turnInput, maxDays: 1, castles,
+                egress.Released.Select(u => u.Id).ToHashSet()) with
+            {
+                ReleasedDeployments = egress.Released,
+            };
             if (_ruinCombat is not null && work.Ruins.Count > 0)
             {
                 var ruinResult = _ruinCombat.Resolve(work, turn.Units);

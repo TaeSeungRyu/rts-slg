@@ -6,6 +6,71 @@ namespace SanguoSLG.Game;
 
 public sealed partial class CampaignMapScene
 {
+    private async void RunDeployTargetQa()
+    {
+        void Click(Vector2 position)
+        {
+            GetViewport().PushInput(new InputEventMouseMotion { Position = position }, true);
+            GetViewport().PushInput(new InputEventMouseButton { Position = position, Pressed = true, ButtonIndex = MouseButton.Left }, true);
+            GetViewport().PushInput(new InputEventMouseButton { Position = position, Pressed = false, ButtonIndex = MouseButton.Left }, true);
+        }
+        try
+        {
+            var city = _state.Cities.First(c => c.Owner == Player && !c.IsPort);
+            _depModalCity = city.Id;
+            var generals = _state.Generals.Take(2).ToArray();
+            _pendingDeploys.Clear();
+            for (var index = 0; index < 2; index++)
+            {
+                StoreCombatDeployment((new DeployRequest(city.Id, "cavalry", 1000, generals[index].Id), $"QA {index}"), -1);
+                if (_depSelectedUnit != index) throw new System.InvalidOperationException("New deployment was not selected");
+                OpenDeployHub();
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                var layer = _modalLayer ?? throw new System.InvalidOperationException("Deployment hub did not open");
+                var button = layer.FindChildren("*", "Button", true, false).OfType<Button>().Single(b => b.Text == "목표 지정");
+                GD.Print($"DEPLOY_TARGET_QA index={index} viewport={GetViewport().GetVisibleRect()} button={button.GetGlobalRect()} visible={button.IsVisibleInTree()}");
+                Click(button.GetGlobalRect().GetCenter());
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (!_depTargeting || _depTargetIndex != index) throw new System.InvalidOperationException("Target button opened wrong deployment");
+                var direction = index == 0 ? DeploymentDirection.SouthWest : DeploymentDirection.SouthEast;
+                var origin = TargetOriginCity() ?? throw new System.InvalidOperationException("Target origin missing");
+                var exit = TargetEgressExit(origin, direction) ?? throw new System.InvalidOperationException("Target exit missing");
+                _targetEgressDirection = direction == DeploymentDirection.SouthWest
+                    ? DeploymentDirection.SouthEast : DeploymentDirection.SouthWest;
+                _targetEgressManual = true;
+                if (!TrySelectTargetEgressAt(exit) || _targetEgressDirection != direction || _targetWaypoints.Count != 0)
+                    throw new System.InvalidOperationException("Leaked exit-tile click was not recovered as direction selection");
+                Click(_targetEgressButtons[direction].GetGlobalRect().GetCenter());
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (_targetEgressDirection != direction || _targetWaypoints.Count != 0)
+                    throw new System.InvalidOperationException("Direction click leaked into map waypoints");
+                var target = new SanguoSLG.Core.Spatial.HexCoord(0, 4);
+                Click(_camera.UnprojectPosition(_view.HexToWorld(target)));
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (_targetWaypoints.Count != 1 || _targetWaypoints[0] != target)
+                    throw new System.InvalidOperationException($"Map click selected incorrect target: {string.Join(",", _targetWaypoints)}");
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                Click(_targetConfirmBtn.GetGlobalRect().GetCenter());
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (_depTargeting || _pendingDeploys[index].Req.Target != new SanguoSLG.Core.Spatial.HexCoord(0, 4)
+                    || _pendingDeploys[index].Req.Waypoints is { Count: > 0 })
+                    throw new System.InvalidOperationException("Single confirmation failed or leaked a waypoint");
+            }
+            if (_pendingDeploys[0].Req.EgressDirection != DeploymentDirection.SouthWest
+                || _pendingDeploys[1].Req.EgressDirection != DeploymentDirection.SouthEast)
+                throw new System.InvalidOperationException("Second confirmation overwrote first deployment");
+            GD.Print("DEPLOY_TARGET_QA PASS: new selection, two pointer confirmations, independent targets, no leaked waypoints");
+            GetTree().Quit();
+        }
+        catch (System.Exception error)
+        {
+            GD.PushError(error.ToString());
+            GetTree().Quit(1);
+        }
+    }
+
     private static void SendQaPointerClick(Vector2 position)
     {
         Input.ParseInputEvent(new InputEventMouseMotion { Position = position });

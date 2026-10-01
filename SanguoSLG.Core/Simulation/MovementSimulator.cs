@@ -115,7 +115,7 @@ public sealed class MovementSimulator
 
     /// <summary>한 번의 "진행"을 끝까지 계산한다(최대 <paramref name="maxDays"/>일).</summary>
     public AdvanceResult Advance(IReadOnlyList<FieldUnit> units, int maxDays = 7,
-        IReadOnlyList<SiegeSite>? castles = null)
+        IReadOnlyList<SiegeSite>? castles = null, IReadOnlySet<UnitId>? deployedToday = null)
     {
         var work = units.OrderBy(u => u.Id.Value).Select(u => new Working(u, _passability)).ToList();
         var ticks = new List<MovementTick>();
@@ -128,7 +128,7 @@ public sealed class MovementSimulator
             daysElapsed = day;
             foreach (var w in work)
             {
-                w.MovedToday = 0;
+                w.MovedToday = day == 1 && deployedToday?.Contains(w.Unit.Id) == true ? 1 : 0;
             }
 
             var movedThisDay = new HashSet<int>();
@@ -142,6 +142,13 @@ public sealed class MovementSimulator
                 // 도착 판정보다 먼저 — 목표 없이 서 있어도 적이 탐지에 들면 추격해야 한다.
                 foreach (var w in work.Where(w => w.Unit.Mode == UnitMode.Attack))
                 {
+                    if (AtFixedAttackTarget(w))
+                    {
+                        w.Pursuing = false;
+                        w.Path = null;
+                        w.BlockedAtGoal = true;
+                        continue;
+                    }
                     var seen = NearestEnemyWithin(w, work, w.Unit.Detection);
                     if (seen is not null && !w.Pursuing)
                     {
@@ -252,6 +259,8 @@ public sealed class MovementSimulator
 
                         continue;
                     }
+
+                    if (AtFixedAttackTarget(w)) { continue; }
 
                     // 유적 같은 점유 불가 고정 목표에는 들어가지 않는다. 공격 사거리까지 접근한
                     // 위치를 도착으로 간주하고, 상위 전투 계층이 목표 좌표를 기준으로 공격을 처리한다.
@@ -672,6 +681,8 @@ public sealed class MovementSimulator
         // 공격/추격(성·적을 '점유'가 아니라 '사거리 안에서 친다')은 같은 거리 아무 빈 칸으로라도 흩어져
         // 다른 접근로를 찾는다(포위). 안 그러면 여러 부대가 한 칸이 빌 때까지 줄서서 대기한다.
         // 행군/전진(목표 칸을 직접 점유)은 제자리 대기(도착 간주 — 목표 둘레가 꽉 차면 우왕좌왕 방지).
+        if (IsFixedAttackTarget(w)) { return here; }
+
         if (w.Unit.Mode == UnitMode.Attack || w.Pursuing)
         {
             foreach (var n in here.Neighbors())
@@ -690,6 +701,14 @@ public sealed class MovementSimulator
     }
 
     // 현재 위치에서 goal까지의 남은 경로(시작 칸 제외)를 큐로 만든다.
+    private bool IsFixedAttackTarget(Working w) => w.Unit.Mode == UnitMode.Attack
+        && w.Unit.Target is { } target && _passability.CastleAnchorAt(target) is null
+        && _passability.IsBlockedForAll(target);
+
+    private bool AtFixedAttackTarget(Working w) => IsFixedAttackTarget(w)
+        && w.GoalIdx >= w.Goals.Count - 1
+        && w.Unit.Position.Distance(w.Unit.Target!.Value) <= w.Unit.AttackRange;
+
     // 지형 통행만 본다 — 유닛 점유는 스텝 해석에서 다룬다. 재계산해도 결정적(A*).
     private Queue<HexCoord> BuildPath(Working w, HexCoord goal)
     {

@@ -270,6 +270,8 @@ public class CampaignEngineTests
         for (var q = 0; q <= 8; q++)
         for (var r = -2; r <= 0; r++)
             terrain[new HexCoord(q, r)] = TerrainType.WaterShallow;
+        for (var q = 0; q <= 8; q++)
+            terrain[new HexCoord(q, 0)] = TerrainType.Plains;
         terrain[source.Position] = TerrainType.Plains;
         terrain[port.Position] = TerrainType.PortSmall;
         var map = new HexMap(0, 8, -2, 3, terrain);

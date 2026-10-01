@@ -44,6 +44,8 @@ public partial class CastleEntryQa : Node
             }
             GD.Print($"CASTLE_EXIT_QUEUE_QA PASS: {queues} campaign/animation cases");
             CheckPlaybackDeploymentVisibility();
+            CheckControlledDeployment();
+            GD.Print("CONTROLLED_DEPLOYMENT_QA PASS: Changan SW/SE replay, adjacent steps, movement budget");
             GD.Print("CASTLE_EXIT_VISIBILITY_QA PASS: released deployment remains visible during first playback");
             GetTree().Quit();
         }
@@ -91,6 +93,56 @@ public partial class CastleEntryQa : Node
             if (entered && (previous.Distance(city.Position) != 1
                 || Math.Abs(kills[0].Time - (moves[^1].Time + 0.55)) > 0.00001))
                 throw new InvalidOperationException("Entry removal is not synchronized with final movement");
+        }
+        finally { scene.Free(); }
+    }
+
+    private static void CheckControlledDeployment()
+    {
+        var city = new City(new CityId(1), "장안", new HexCoord(1, 2), new FactionId(1), 3000, CastleSize.Medium);
+        var ruin = new HexCoord(0, 4);
+        var map = (HexMap)typeof(CampaignMapScene).GetMethod("BuildTestMap", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null)!;
+        var passability = new PassabilityMap(map, [], [city], [ruin]);
+        var units = new[] { DeploymentDirection.SouthWest, DeploymentDirection.SouthEast }.Select((direction, index) =>
+        {
+            var exit = DeploymentEgressRules.RepresentativeExit(city, direction, ruin,
+                tile => passability.CanEnter(MovementDomain.Land, tile))!.Value;
+            return new CombatUnit(new FieldUnit(new UnitId(index + 1), city.Owner, city.Position, index == 0 ? 3 : 2,
+                0, 1, MovementDomain.Land, UnitMode.Attack, ruin, index), new CombatStats(10000, 1, 1),
+                new TroopPool(10000, 0), UnitCombatState.Create(0), OriginCity: city.Id,
+                EgressDirection: direction, EgressExit: exit, AwaitingEgress: true);
+        }).ToArray();
+        var state = new GameState(1, 1, [], [city], [], FieldArmies: units);
+        var engine = new CampaignEngine(new AdvanceOrchestrator(new MovementSimulator(passability),
+            new CombatPhaseResolver(new BattleResolver(60), 70), provisionsPer10kPerDay: 0), new WorldEngine(new BalanceConfig(100)));
+        var after = engine.AdvanceWeek(state, out var turns);
+        var scene = new CampaignMapScene();
+        try
+        {
+            typeof(CampaignMapScene).GetField("_pendingState", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(scene, after);
+            typeof(CampaignMapScene).GetMethod("BuildAnimation", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(scene, [units.ToDictionary(u => u.Id.Value, _ => city.Position), turns,
+                    Array.Empty<SiegeExchange>(), Array.Empty<CaptureReport>(), state]);
+            var moves = Read<List<(double Time, int UnitId, HexCoord To)>>(scene, "_animSteps");
+            var starts = Read<Dictionary<int, HexCoord>>(scene, "_animStartOverrides");
+            var deployments = Read<List<(double Time, int UnitId)>>(scene, "_animDeployments");
+            if (deployments.Count != 2 || deployments.Any(d => d.Time != 0))
+                throw new InvalidOperationException("Controlled release missing or duplicated");
+            foreach (var unit in units)
+            {
+                var path = moves.Where(m => m.UnitId == unit.Id.Value).OrderBy(m => m.Time).ToArray();
+                if (path.Length == 0 || path[0].To != unit.EgressExit)
+                    throw new InvalidOperationException("Selected exit differs from first animation step");
+                var previous = starts[unit.Id.Value];
+                foreach (var step in path)
+                {
+                    if (previous.Distance(step.To) != 1)
+                        throw new InvalidOperationException($"Non-adjacent controlled step {previous} -> {step.To}");
+                    previous = step.To;
+                }
+                if (path.Count(m => m.Time < 2.5) > unit.Field.Speed)
+                    throw new InvalidOperationException("Release exceeded first-day movement budget");
+            }
         }
         finally { scene.Free(); }
     }

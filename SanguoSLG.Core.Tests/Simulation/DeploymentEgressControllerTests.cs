@@ -82,4 +82,61 @@ public class DeploymentEgressControllerTests
         Assert.Equal(new[] { new UnitId(1), new UnitId(3) }, result.Released.Select(unit => unit.Id));
         Assert.Equal(new UnitId(2), Assert.Single(result.Waiting).Id);
     }
+
+    [Fact]
+    public void 항구와성의_각각막힌출구는_독립대기하고_빈출구만출격한다()
+    {
+        var city = CityOf(CastleSize.Medium);
+        var port = CityOf(CastleSize.Small) with
+        {
+            Id = new CityId(2), Position = new HexCoord(30, 10), Port = PortSize.Small,
+        };
+        var cityExit = DeploymentEgressRules.RepresentativeExit(city, DeploymentDirection.East)!.Value;
+        var portExit = DeploymentEgressRules.RepresentativeExit(port, DeploymentDirection.West)!.Value;
+        var portNorth = DeploymentEgressRules.RepresentativeExit(port, DeploymentDirection.NorthEast)!.Value;
+        var cityHead = Unit(1, city, DeploymentDirection.East, cityExit, 1);
+        var portHead = Unit(2, port, DeploymentDirection.West, portExit, 2);
+        var portOther = Unit(3, port, DeploymentDirection.NorthEast, portNorth, 3);
+        var blocker = Unit(99, port, DeploymentDirection.West, portExit, 99) with
+        {
+            Field = Unit(99, port, DeploymentDirection.West, portExit, 99).Field with { Position = portExit },
+            AwaitingEgress = false,
+        };
+
+        var result = DeploymentEgressController.Release([cityHead, portHead, portOther], [blocker], [city, port]);
+        Assert.Equal(new[] { cityHead.Id, portOther.Id }, result.Released.Select(unit => unit.Id));
+        Assert.Equal(portHead.Id, Assert.Single(result.Waiting).Id);
+        Assert.Equal(port.Position, result.Waiting[0].Field.Position);
+    }
+
+    [Fact]
+    public void 잘못된출구와_함락된원점의부대는_임의위치에서출격하지않는다()
+    {
+        var city = CityOf(CastleSize.Medium);
+        var east = DeploymentEgressRules.RepresentativeExit(city, DeploymentDirection.East)!.Value;
+        var west = DeploymentEgressRules.RepresentativeExit(city, DeploymentDirection.West)!.Value;
+        var invalid = Unit(1, city, DeploymentDirection.East, west, 1);
+        var captured = Unit(2, city, DeploymentDirection.East, east, 2);
+        var result = DeploymentEgressController.Release([invalid, captured], [],
+            [city with { Owner = new FactionId(2) }]);
+        Assert.Empty(result.Released);
+        Assert.Equal(new[] { invalid.Id, captured.Id }, result.Waiting.Select(unit => unit.Id));
+    }
+
+    [Fact]
+    public void 항구출구가_해상병종에통행불가하면_빈칸이어도대기열에남는다()
+    {
+        var port = CityOf(CastleSize.Small) with { Port = PortSize.Small };
+        var exit = DeploymentEgressRules.RepresentativeExit(port, DeploymentDirection.East)!.Value;
+        var ship = Unit(1, port, DeploymentDirection.East, exit, 1) with
+        {
+            Field = Unit(1, port, DeploymentDirection.East, exit, 1).Field with { Domain = MovementDomain.DeepWater },
+        };
+        var blocked = DeploymentEgressController.Release([ship], [], [port], (_, _) => false);
+        Assert.Empty(blocked.Released);
+        Assert.Equal(ship, Assert.Single(blocked.Waiting));
+
+        var released = DeploymentEgressController.Release(blocked.Waiting, [], [port], (_, _) => true);
+        Assert.Equal(exit, Assert.Single(released.Released).Field.Position);
+    }
 }

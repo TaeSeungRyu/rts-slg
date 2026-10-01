@@ -48,8 +48,10 @@ public sealed class AdvanceOrchestrator
 
     private readonly int _reinforcePercent;
 
+    public bool CanEnter(MovementDomain domain, HexCoord coord) => _movement.CanEnter(domain, coord);
+
     public AdvanceTurn Run(IReadOnlyList<CombatUnit> units, int maxDays = 7,
-        IReadOnlyList<SiegeSite>? castles = null)
+        IReadOnlyList<SiegeSite>? castles = null, IReadOnlySet<UnitId>? deployedToday = null)
     {
         // 병력 0(전멸) 부대는 진행에서 빠진다 — 이동·전투·점유·표적에서 모두 제외한다.
         units = units.Where(u => u.Pool.Active > 0).ToList();
@@ -63,7 +65,7 @@ public sealed class AdvanceOrchestrator
         var dazedAtStart = units.Where(IsDazed).Select(u => u.Id).ToHashSet();
 
         // 1) 이동 — 진행 정지까지. 걸린 상태(혼란=행동불가, 수공=이동−1)를 이동 입력에 반영한다.
-        var move = _movement.Advance(units.Select(MovementField).ToList(), maxDays, castles);
+        var move = _movement.Advance(units.Select(MovementField).ToList(), maxDays, castles, deployedToday);
         var moved = move.Units.ToDictionary(f => f.Id);
 
         // 1.5) 아군 성 입성(이동 단계에서 확정) — 야전에서 빠지고 성 복귀 초기화(게이지 0·모략력

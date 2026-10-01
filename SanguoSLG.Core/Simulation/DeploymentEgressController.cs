@@ -16,9 +16,10 @@ public static class DeploymentEgressController
     public static DeploymentEgressResult Release(
         IReadOnlyList<CombatUnit> waiting,
         IReadOnlyList<CombatUnit> fieldArmies,
-        IReadOnlyList<City> cities)
+        IReadOnlyList<City> cities,
+        Func<MovementDomain, HexCoord, bool>? canEnter = null)
     {
-        var cityIds = cities.Select(city => city.Id).ToHashSet();
+        var citiesById = cities.ToDictionary(city => city.Id);
         var occupied = fieldArmies.Where(unit => unit.Pool.Active > 0)
             .Select(unit => unit.Field.Position).ToHashSet();
         var released = new List<CombatUnit>();
@@ -34,7 +35,13 @@ public static class DeploymentEgressController
             var queue = group.OrderBy(unit => unit.Field.CommandOrder).ThenBy(unit => unit.Id.Value).ToList();
             var head = queue[0];
             var exit = head.EgressExit!.Value;
-            if (cityIds.Contains(group.Key.Origin) && !occupied.Contains(exit))
+            // 저장된 출구가 다른 방향/성의 타일로 오염되거나 원점이 함락되어도
+            // 대기 병력이 엉뚱한 위치 또는 적 성에서 출격하지 않도록 한다.
+            if (citiesById.TryGetValue(group.Key.Origin, out var origin)
+                && origin.Owner == head.Field.Owner
+                && DeploymentEgressRules.ExitGroup(origin, group.Key.Direction).Contains(exit)
+                && (canEnter?.Invoke(head.Field.Domain, exit) ?? true)
+                && !occupied.Contains(exit))
             {
                 released.Add(head with
                 {

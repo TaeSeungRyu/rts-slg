@@ -631,7 +631,9 @@ public sealed class DeployService
             req.Waypoints, _adminSkills);
         unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, OriginCity = city.Id,
             DeploymentDelayDays = req.DelayDays, EgressDirection = req.EgressDirection, EgressExit = req.EgressExit,
-            AwaitingEgress = req.EgressExit.HasValue };
+            // 출항 방향을 아직 지정하지 않았으면 항구 내부 대기열에 남긴다.
+            // 출구 메타데이터 없이 날짜만 만료된 부대가 기존 이동기로 튀어나오면 안 된다.
+            AwaitingEgress = true };
 
         var garrisons = state.Garrisons
             .Select(g => g == garrison ? g with { Troops = g.Troops - troops } : g)
@@ -822,15 +824,18 @@ public sealed class DeployService
     {
         if (requestedExit.HasValue)
         {
-            return (requestedDirection, requestedExit);
-        }
-        if (target is not { } goal)
-        {
-            return (requestedDirection, null);
+            var direction = requestedDirection ?? DeploymentEgressRules.Directions
+                .Where(candidate => DeploymentEgressRules.ExitGroup(city, candidate).Contains(requestedExit.Value))
+                .Cast<DeploymentDirection?>().FirstOrDefault();
+            return (direction, requestedExit);
         }
 
-        var direction = requestedDirection ?? DeploymentEgressRules.Recommend(city, goal);
-        return (direction, DeploymentEgressRules.RepresentativeExit(city, direction, goal));
+        // 목표를 나중에 지정하는 출전도 출격 관제를 우회해서는 안 된다.
+        // 방향 미지정 구형 요청은 동쪽 출구군에 넣어 결정론적으로 대기시킨다.
+        var selected = requestedDirection ?? (target is { } goal
+            ? DeploymentEgressRules.Recommend(city, goal)
+            : DeploymentDirection.East);
+        return (selected, DeploymentEgressRules.RepresentativeExit(city, selected, target));
     }
 
     private ActiveSkill? ResolveSupplyActive(string? code)

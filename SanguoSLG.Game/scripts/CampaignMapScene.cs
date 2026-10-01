@@ -568,6 +568,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestterrainpalettewidthqa")) CallDeferred(nameof(RunTerrainPaletteWidthQa));
         if (args.Contains("--maptestexplorationlayoutqa")) CallDeferred(nameof(RunExplorationLayoutQa));
         if (args.Contains("--maptestsystempalettecloseqa")) CallDeferred(nameof(RunSystemPaletteCloseQa));
+        if (args.Contains("--maptestdeploytargetqa")) CallDeferred(nameof(RunDeployTargetQa));
         if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
         if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
         if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
@@ -1159,6 +1160,9 @@ public sealed partial class CampaignMapScene : Node3D
             // 클릭할 때마다 경유지를 이어 붙인다(직전 지점에서 A* 경로가 있어야 추가).
             if (RayToGround(mb.Position) is { } th && th != LastTargetPoint())
             {
+                // 출격 방향 버튼은 성 외곽 대표 칸 위에 떠 있다. 해상도·레이아웃 타이밍에 따라
+                // 버튼 입력이 지도까지 전달되어도 해당 칸을 경유지로 넣지 않고 방향 선택으로 복구한다.
+                if (TrySelectTargetEgressAt(th)) { return; }
                 var from = LastTargetPoint();
                 if (HasPath(from, th))
                 {
@@ -1992,6 +1996,8 @@ public sealed partial class CampaignMapScene : Node3D
         CloseModal();
         HidePanels(); // 목표 지정 중에는 성 명령 팔레트·정보 카드가 가려선 안 된다.
         _depTargetIndex = idx;
+        _depSelectedUnit = idx;
+        _leftDown = false;
         _targetingSupplyDeploy = supply;
         _targetingTransportDeploy = transport;
         _targetingArmyGroupDeploy = armyGroup;
@@ -2043,7 +2049,11 @@ public sealed partial class CampaignMapScene : Node3D
         _previewMarkers.Clear();
 
         // 프리뷰: 시작점 → 경유지들을 구간별로 이어 그린다.
-        var prev = _targetStart;
+        UpdateTargetEgressRecommendation();
+        var prev = TargetOriginCity() is { } previewCity && _targetEgressDirection is { } previewDirection
+            ? TargetEgressExit(previewCity, previewDirection,
+                _targetWaypoints.Count > 0 ? _targetWaypoints[^1] : null) ?? _targetStart
+            : _targetStart;
         foreach (var wp in _targetWaypoints)
         {
             AddPathDots(prev, wp, _previewMarkers);
@@ -2114,6 +2124,20 @@ public sealed partial class CampaignMapScene : Node3D
         => DeploymentEgressRules.RepresentativeExit(city, direction, target,
             tile => _passability.CanEnter(TargetDeploymentDomain(), tile));
 
+    private bool TrySelectTargetEgressAt(HexCoord tile)
+    {
+        if (_retargetUnitId >= 0 || TargetOriginCity() is not { } city) { return false; }
+        HexCoord? target = _targetWaypoints.Count > 0 ? _targetWaypoints[^1] : null;
+        var direction = DeploymentEgressRules.Directions.FirstOrDefault(candidate =>
+            TargetEgressExit(city, candidate, target) == tile);
+        if (TargetEgressExit(city, direction, target) != tile) { return false; }
+        _targetEgressDirection = direction;
+        _targetEgressManual = true;
+        Dbg($"UI egress-direction direction={direction} tile=({tile.Q},{tile.R}) source=map-guard");
+        RebuildTargetEdit();
+        return true;
+    }
+
     private void UpdateTargetEgressRecommendation()
     {
         if (_retargetUnitId >= 0 || _targetEgressManual || TargetOriginCity() is not { } city
@@ -2148,8 +2172,7 @@ public sealed partial class CampaignMapScene : Node3D
                 {
                     _targetEgressDirection = selectedDirection;
                     _targetEgressManual = true;
-                    RefreshTargetEgressButtons();
-                    PlaceTargetEdit();
+                    RebuildTargetEdit();
                 };
                 _targetEditLayer.AddChild(button);
                 _targetEgressButtons[direction] = button;
@@ -2249,7 +2272,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 목적지 '확인' — 여기서만 목표가 확정된다. 마지막 경유지 = 최종 목표, 나머지 = 경유지.
     private void ConfirmTarget()
     {
-        if (_targetWaypoints.Count == 0) { return; }
+        if (!_depTargeting || _targetWaypoints.Count == 0) { return; }
         var target = _targetWaypoints[^1];
         var mid = _targetWaypoints.Count > 1
             ? _targetWaypoints.Take(_targetWaypoints.Count - 1).ToList()
@@ -2267,6 +2290,7 @@ public sealed partial class CampaignMapScene : Node3D
             ?? (origin is not null ? DeploymentEgressRules.Recommend(origin, h,
                 tile => _passability.CanEnter(TargetDeploymentDomain(), tile)) : DeploymentDirection.East);
         var egressExit = origin is not null ? TargetEgressExit(origin, egressDirection, h) : null;
+        Dbg($"EGRESS TARGET city={origin?.Id.Value} direction={egressDirection} exit={egressExit} goal={h} waypoints={string.Join(";", waypoints ?? [])}");
         if (origin is not null && egressExit is null)
         {
             RejectTarget("출격 방향 불가", $"{EgressDirectionName(egressDirection)}쪽에는 출격 가능한 외곽 칸이 없습니다.");
@@ -2514,7 +2538,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (req.Target is not { } goal) { continue; }
             var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
             if (city is null) { continue; }
-            AddRouteDots(city.Position, req.Waypoints, goal, _pathMarkers);
+            AddRouteDots(req.EgressExit ?? city.Position, req.Waypoints, goal, _pathMarkers);
         }
 
         foreach (var (req, _) in _pendingSupplyDeploys)
@@ -2522,7 +2546,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (req.Target is not { } goal) { continue; }
             var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
             if (city is null) { continue; }
-            AddPathDots(city.Position, goal, _pathMarkers);
+            AddPathDots(req.EgressExit ?? city.Position, goal, _pathMarkers);
         }
 
         foreach (var (req, _) in _pendingNavalDeploys)
@@ -2530,7 +2554,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (req.Target is not { } goal) { continue; }
             var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
             if (city is null) { continue; }
-            AddRouteDots(city.Position, req.Waypoints, goal, _pathMarkers, naval: true);
+            AddRouteDots(req.EgressExit ?? city.Position, req.Waypoints, goal, _pathMarkers, naval: true);
         }
     }
 
@@ -2950,7 +2974,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (deploys > 0)
         {
             msg += $"\n출전 예약 {deploys}부대가 일괄 편성됩니다.";
-            if (untargeted > 0) { msg += $"\n⚠ 목표 미지정 {untargeted}부대는 성 앞에 나와 대기합니다."; }
+            if (untargeted > 0) { msg += $"\n⚠ 목표 미지정 {untargeted}부대는 출구가 비면 성 앞에 나와 대기합니다."; }
         }
 
         ShowConfirm("진행 확인", msg + "\n\n진행하시겠습니까?", StartAdvance);
@@ -3253,25 +3277,19 @@ public sealed partial class CampaignMapScene : Node3D
         var playback = new MovementPlayback(startHex);
         var prev = playback.Positions;
         var unitSnapshot = preMove.Armies.ToDictionary(u => u.Id.Value);
-        var waitingForEgressPlayback = preMove.Armies
-            .Where(u => u.IsWaitingDeployment && u.EgressExit.HasValue)
-            .ToDictionary(u => u.Id.Value);
         var dayOffset = 0;
         for (var ti = 0; ti < turns.Count; ti++)
         {
             var turn = turns[ti];
-            // 관제 대기 부대는 Core 이동 입력에 처음 등장한 날이 실제 출격일이다. 성 앵커에서
-            // 첫 야전 위치로 순간이동시키지 않고, 성 경계→대표 출구 한 칸을 별도 스텝으로 재생한다.
-            foreach (var released in waitingForEgressPlayback.Values
-                .Where(waiting => turn.Movement.Units.Any(unit => unit.Id == waiting.Id))
+            foreach (var released in turn.Deployments
                 .OrderBy(waiting => waiting.Field.CommandOrder).ThenBy(waiting => waiting.Id.Value).ToList())
             {
                 var day = dayOffset + 1;
                 var exit = released.EgressExit!.Value;
+                Dbg($"EGRESS RELEASE day={day} unit={released.Id.Value} direction={released.EgressDirection} exit={exit} target={released.Field.Target}");
                 playback.AppendDeployment(released.Id.Value, day, exit, DaySeconds, StepSeconds);
                 _animDeployments.Add(((day - 1) * DaySeconds, released.Id.Value));
                 SetControlledEgressStartOverride(preMove, released);
-                waitingForEgressPlayback.Remove(released.Id.Value);
             }
             playback.Append(turn.Movement, dayOffset, DaySeconds, StepSeconds);
 
@@ -5597,7 +5615,7 @@ public sealed partial class CampaignMapScene : Node3D
             tile.SetAnchorsPreset(Control.LayoutPreset.FullRect);
             tile.AddThemeStyleboxOverride("panel", CardBox(idx == _depSelectedUnit));
             cell.AddChild(tile);
-            var tv = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+            var tv = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = Control.MouseFilterEnum.Ignore };
             tv.AddThemeConstantOverride("separation", 2);
             tile.AddChild(tv);
             tv.AddChild(DeployUnitArtwork(UnitCard("supply", TroopClass.Supply), 46));
@@ -6118,6 +6136,10 @@ public sealed partial class CampaignMapScene : Node3D
         {
             if (_pendingTransportDeploys[i].Req.City == city) { transportDeploys.Add(i); }
         }
+        var armyGroupDeploys = Enumerable.Range(0, _pendingArmyGroupDeploys.Count)
+            .Where(i => _pendingArmyGroupDeploys[i].Req.City == city).ToList();
+        var navalDeploys = Enumerable.Range(0, _pendingNavalDeploys.Count)
+            .Where(i => _pendingNavalDeploys[i].Req.City == city).ToList();
 
         var tabWrap = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         tabWrap.AddThemeConstantOverride("separation", 0);
@@ -6142,7 +6164,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         var labels = readOnlyIntel
             ? new[] { $"주둔 장수 {stationed.Count}" }
-            : new[] { $"주둔 장수 {stationed.Count}", $"진행 명령 {cmds.Count}", $"예약 {deploys.Count + supplyDeploys.Count + transportDeploys.Count}" };
+            : new[] { $"주둔 장수 {stationed.Count}", $"진행 명령 {cmds.Count}",
+                $"예약 {deploys.Count + supplyDeploys.Count + transportDeploys.Count + armyGroupDeploys.Count + navalDeploys.Count + _state.Armies.Count(u => u.OriginCity == city && u.IsWaitingDeployment)}" };
         var tabBtns = new Button[labels.Length];
         void ShowTab(int t)
         {
@@ -6162,7 +6185,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 case 0: BuildStationedTab(content, city, stationed, readOnlyIntel); break;
                 case 1: BuildCommandsTab(content, city, cmds); break;
-                default: BuildDeployTab(content, city, deploys, supplyDeploys, transportDeploys); break;
+                default: BuildDeployTab(content, city, deploys, supplyDeploys, transportDeploys, armyGroupDeploys, navalDeploys); break;
             }
 
             var h = box.GetCombinedMinimumSize().Y;
@@ -6446,10 +6469,14 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // ── 상세 탭 ③: 예약(출전 — 진행 시 수행, 그 전까진 취소) ──
-    private void BuildDeployTab(VBoxContainer box, CityId city, List<int> deploys, List<int> supplyDeploys, List<int> transportDeploys)
+    private void BuildDeployTab(VBoxContainer box, CityId city, List<int> deploys, List<int> supplyDeploys,
+        List<int> transportDeploys, List<int> armyGroupDeploys, List<int> navalDeploys)
     {
+        var waitingUnits = _state.Armies.Where(unit => unit.OriginCity == city && unit.IsWaitingDeployment)
+            .OrderBy(unit => unit.Field.CommandOrder).ThenBy(unit => unit.Id.Value).ToList();
         box.AddChild(MakeLabel("출전 예약 (진행 시 편성 — 취소 시 소모 없음)", 14, GoldBright));
-        if (deploys.Count == 0 && supplyDeploys.Count == 0 && transportDeploys.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
+        if (deploys.Count == 0 && supplyDeploys.Count == 0 && transportDeploys.Count == 0
+            && armyGroupDeploys.Count == 0 && navalDeploys.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
         else { box.AddChild(CityDetailListHeader("예약 내용", "상태")); }
         foreach (var di in deploys)
         {
@@ -6491,6 +6518,48 @@ public sealed partial class CampaignMapScene : Node3D
             };
             box.AddChild(CityDetailOfficerRow(_pendingTransportDeploys[idx].Req.Vanguard,
                 "[수송] " + _pendingTransportDeploys[idx].Label, "예약", cancel));
+        }
+        foreach (var ai in armyGroupDeploys)
+        {
+            System.Action? cancel = _advancing ? null : () =>
+            {
+                _pendingArmyGroupDeploys.RemoveAt(ai);
+                SelectCity(city);
+                OpenCityDetail(city);
+            };
+            box.AddChild(CityDetailOfficerRow(_pendingArmyGroupDeploys[ai].Req.Vanguard,
+                "[집단군] " + _pendingArmyGroupDeploys[ai].Label, "예약", cancel));
+        }
+        foreach (var ni in navalDeploys)
+        {
+            System.Action? cancel = _advancing ? null : () =>
+            {
+                _pendingNavalDeploys.RemoveAt(ni);
+                SelectCity(city);
+                OpenCityDetail(city);
+            };
+            box.AddChild(CityDetailOfficerRow(_pendingNavalDeploys[ni].Req.Vanguard,
+                "[출항] " + _pendingNavalDeploys[ni].Label, "예약", cancel));
+        }
+
+        box.AddChild(MakeLabel($"출격 대기열 {waitingUnits.Count} (출구가 막히면 날짜 제한 없이 대기)", 14, GoldBright));
+        if (waitingUnits.Count == 0) { box.AddChild(MakeLabel("(없음)", 12, Parchment)); }
+        else { box.AddChild(CityDetailListHeader("부대 · 지정 방향", "상태")); }
+        foreach (var unit in waitingUnits)
+        {
+            var kind = unit.IsTransport ? "수송" : unit.IsSupply ? "보급" : unit.IsArmyGroup ? "집단군"
+                : unit.Class == TroopClass.Naval ? "출항" : "전투";
+            var direction = unit.EgressDirection is { } chosen ? EgressDirectionName(chosen) : "방향 미지정";
+            var status = unit.DeploymentDelayDays > 0 ? $"{unit.DeploymentDelayDays}일" : "출구 대기";
+            if (unit.VanguardId is { } officer)
+            {
+                box.AddChild(CityDetailOfficerRow(officer,
+                    $"[{kind}] {TroopName(unit.TroopCode)} {unit.Pool.Active:N0} · {direction}", status, null));
+            }
+            else
+            {
+                box.AddChild(MakeLabel($"[{kind}] {TroopName(unit.TroopCode)} {unit.Pool.Active:N0} · {direction} · {status}", 12, Parchment));
+            }
         }
 
     }
@@ -8386,6 +8455,8 @@ public sealed partial class CampaignMapScene : Node3D
             var tv = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
             tv.AddThemeConstantOverride("separation", 2);
             tile.AddChild(tv);
+            tile.Name = $"CombatDeploymentCard{idx}";
+            tv.MouseFilter = Control.MouseFilterEnum.Ignore;
             tv.AddChild(DeployUnitArtwork(emblem, 46));
             var n1 = MakeLabel($"{tname} {rq.Troops}", 12, GoldBright);
             n1.HorizontalAlignment = HorizontalAlignment.Center;
@@ -9030,6 +9101,7 @@ public sealed partial class CampaignMapScene : Node3D
                 }
                 _state = _state.ReleaseOfficerDuties(ids);
                 _pendingNavalDeploys.Add((req, label));
+                _depSelectedUnit = _pendingNavalDeploys.Count - 1;
                 _log.Text = $"출항 예약: {label}";
                 SelectCity(city);
                 OpenNavalHub(city);
@@ -9317,6 +9389,7 @@ public sealed partial class CampaignMapScene : Node3D
                 _state = _state.ReleaseOfficerDuties(ids);
                 _pendingTransportDeploys.Add((new TransportDeployRequest(city, lines, null, leader.Id, gold, provisions,
                     DelayDays: _depDelayDays), label));
+                _depSelectedUnit = _pendingTransportDeploys.Count - 1;
                 _log.Text = $"수송 예약: {label}";
                 SelectCity(city);
                 OpenTransportHub(city);
@@ -9799,6 +9872,7 @@ public sealed partial class CampaignMapScene : Node3D
             var entry = (req, label);
             if (_armyGroupEditIndex >= 0 && _armyGroupEditIndex < _pendingArmyGroupDeploys.Count) { _pendingArmyGroupDeploys[_armyGroupEditIndex] = entry; }
             else { _pendingArmyGroupDeploys.Add(entry); }
+            _depSelectedUnit = _armyGroupEditIndex >= 0 ? _armyGroupEditIndex : _pendingArmyGroupDeploys.Count - 1;
             _log.Text = $"집단군 예약: {label}";
             SelectCity(_depModalCity);
             OpenArmyGroupHub(_depModalCity);
@@ -10811,6 +10885,7 @@ public sealed partial class CampaignMapScene : Node3D
                 _state = _state.ReleaseOfficerDuties(ids);
                 if (_supplyEditIndex >= 0 && _supplyEditIndex < _pendingSupplyDeploys.Count) { _pendingSupplyDeploys[_supplyEditIndex] = entry; }
                 else { _pendingSupplyDeploys.Add(entry); }
+                _depSelectedUnit = _supplyEditIndex >= 0 ? _supplyEditIndex : _pendingSupplyDeploys.Count - 1;
                 Dbg($"SUPPLY SAVE city={req.City.Value} total={total} van={van.Value} lines={lines.Count}");
                 SelectCity(_depModalCity);
                 OpenSupplyHub(_depModalCity);
@@ -10866,14 +10941,28 @@ public sealed partial class CampaignMapScene : Node3D
             || _pendingSupplyDeploys.Any(p => ids.Contains(p.Req.Vanguard)))
         { ShowNotice("출전 불가", "선택한 장수가 다른 업무를 수행 중입니다."); return; }
         _state = _state.ReleaseOfficerDuties(ids);
-        if (_depEditIndex >= 0 && _depEditIndex < _pendingDeploys.Count) { _pendingDeploys[_depEditIndex] = entry; }
-        else { _pendingDeploys.Add(entry); }
+        StoreCombatDeployment(entry, _depEditIndex);
 
         Dbg($"SAVE {(_depEditIndex >= 0 ? $"edit#{_depEditIndex}" : "add")} city={req.City.Value} troop={req.TroopCode} amt={req.Troops} van={req.Vanguard.Value} adj={(req.Adjutant?.Value.ToString() ?? "-")} mode={req.Mode} tgt={(req.Target is { } t ? $"{t.Q},{t.R}" : "none")} prov={req.Provisions} -> pending={_pendingDeploys.Count}");
 
         SelectCity(_depModalCity);
         OpenDeployHub();
         });
+    }
+
+    private void StoreCombatDeployment((DeployRequest Req, string Label) entry, int editIndex)
+    {
+        if (editIndex >= 0 && editIndex < _pendingDeploys.Count)
+        {
+            _pendingDeploys[editIndex] = entry;
+            _depSelectedUnit = editIndex;
+        }
+        else
+        {
+            _pendingDeploys.Add(entry);
+            _depSelectedUnit = _pendingDeploys.Count - 1;
+        }
+
     }
 
     private int DeployMaxTroopsFor(CityId city)
