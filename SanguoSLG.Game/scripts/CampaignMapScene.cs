@@ -425,6 +425,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("훈련 담당", CommandKind.AppointTrainingOfficer, ""),
         ("위인 영입", CommandKind.RecruitHero, "hero"),
         ("탐색", CommandKind.Explore, ""),
+        ("계략 연구", CommandKind.Research, "stratagem_research"),
     };
 
     private static readonly (string Label, string Code)[] Facilities =
@@ -448,7 +449,7 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly (string Group, int[] Indices)[] CmdGroups =
     {
         ("항구", new[] { 5 }),
-        ("연구", new[] { 6, 7, 8 }),
+        ("연구", new[] { 6, 7, 8, 23 }),
         ("성벽", new[] { 9, 10 }),
         ("계략", new[] { 12 }),
         ("외교", new[] { 13, 14 }),
@@ -576,6 +577,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestexplorationcardqa")) CallDeferred(nameof(RunExplorationCardQa));
         if (args.Contains("--maptesttreasureinventoryqa")) CallDeferred(nameof(RunTreasureInventoryQa));
         if (args.Contains("--maptestgeneralresearchqa")) CallDeferred(nameof(RunGeneralResearchUiQa));
+        if (args.Contains("--mapteststratagemresearchqa")) CallDeferred(nameof(RunStratagemResearchUiQa));
         if (args.Contains("--maptestwallresearchconfirmqa")) CallDeferred(nameof(RunWallResearchConfirmQa));
         if (args.Contains("--maptestsiegeplaybackqa")) CallDeferred(nameof(RunSiegePlaybackQa));
         if (args.Contains("--maptestruinuiqa")) CallDeferred(nameof(RunRuinUiQa));
@@ -4758,10 +4760,15 @@ public sealed partial class CampaignMapScene : Node3D
             return false;
         }
 
-        var generalLane = Cmds[commandIndex].Param == "general";
+        var lane = Cmds[commandIndex].Param switch
+        {
+            "general" => ResearchLane.General,
+            "stratagem_research" => ResearchLane.Stratagem,
+            _ => ResearchLane.Combat,
+        };
         return _state.Commands.Any(c => c.Kind == CommandKind.Research
             && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == city.Owner
-            && FactionResearch.IsGeneralResearch(c.TroopCode) == generalLane);
+            && FactionResearch.LaneOf(c.TroopCode) == lane);
     }
 
     private void ToggleDeployGroup()
@@ -5155,7 +5162,8 @@ public sealed partial class CampaignMapScene : Node3D
         layer.AddChild(center);
 
         var vp = GetViewport().GetVisibleRect().Size;
-        var wideDoctrineModal = cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general";
+        var wideDoctrineModal = cmd.Kind == CommandKind.Research
+            && cmd.Param is "troop" or "general" or "stratagem_research";
         var modalProfile = wideDoctrineModal
             ? AdaptiveModalScaffold.WidthProfile.Wide
             : AdaptiveModalScaffold.WidthProfile.Standard;
@@ -5188,7 +5196,11 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "general")
         {
-            box.AddChild(MakeLabel("세력 전체에 적용되는 6개 분야를 Lv.10까지 연구합니다. 전투교리와 병행할 수 있습니다.", 15, Parchment));
+            box.AddChild(MakeLabel("세력 전체에 적용되는 7개 분야를 Lv.10까지 연구합니다. 전투교리와 병행할 수 있습니다.", 15, Parchment));
+        }
+        else if (cmd.Kind == CommandKind.Research && cmd.Param == "stratagem_research")
+        {
+            box.AddChild(MakeLabel("도시 계략 5종의 성공률을 연구합니다. 레벨마다 +2%p, 최대 Lv.10까지 적용됩니다.", 15, Parchment));
         }
         else if (cmd.Kind == CommandKind.SelectMajorTroop)
         {
@@ -5336,6 +5348,7 @@ public sealed partial class CampaignMapScene : Node3D
             var optionTitle = cmd.Kind == CommandKind.AppointRecruitmentOfficer
                 ? "자동 생산 병종을 선택하세요 (여러 개 선택 가능)"
                 : cmd.Kind == CommandKind.SelectMajorTroop ? "주력병종을 선택하세요 (1~2개 선택 후 적용)"
+                : cmd.Param == "stratagem_research" ? "계략 연구 대상을 선택하세요"
                 : cmd.Param == "stratagem" ? "계략을 선택하세요" : "대상을 선택하세요";
             box.AddChild(MakeLabel(optionTitle, 19, GoldBright));
             var grid = new GridContainer
@@ -5380,6 +5393,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var hasGeneralResearchDetail = cmd.Kind == CommandKind.Research && cmd.Param == "general";
         var hasDoctrineResearchDetail = cmd.Kind == CommandKind.Research && cmd.Param == "troop";
+        var hasStratagemResearchDetail = cmd.Kind == CommandKind.Research && cmd.Param == "stratagem_research";
         if (hasGeneralResearchDetail)
         {
             AddGeneralResearchSelectionDetail(box);
@@ -5388,8 +5402,12 @@ public sealed partial class CampaignMapScene : Node3D
         {
             AddDoctrineResearchSelectionDetail(box);
         }
+        else if (hasStratagemResearchDetail)
+        {
+            AddStratagemResearchSelectionDetail(box);
+        }
 
-        if (cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general")
+        if (cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general" or "stratagem_research")
         {
             if (cmd.Param == "troop")
             {
@@ -5399,10 +5417,15 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 AddSectionDivider(box, "GeneralResearchFundingDivider");
             }
+            else
+            {
+                AddSectionDivider(box, "StratagemResearchFundingDivider");
+            }
             AddResearchFundingPicker(box, cityData);
         }
 
-        if (!hasGeneralResearchDetail && !hasDoctrineResearchDetail && cmd.Kind != CommandKind.Explore)
+        if (!hasGeneralResearchDetail && !hasDoctrineResearchDetail && !hasStratagemResearchDetail
+            && cmd.Kind != CommandKind.Explore)
         {
             _modalDetail = MakeLabel("", 17, Parchment);
             box.AddChild(_modalDetail);
@@ -5483,6 +5506,10 @@ public sealed partial class CampaignMapScene : Node3D
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
         {
             AddSectionDivider(box, "DoctrineResearchOfficerDivider");
+        }
+        else if (cmd.Kind == CommandKind.Research && cmd.Param == "stratagem_research")
+        {
+            AddSectionDivider(box, "StratagemResearchOfficerDivider");
         }
         var officerSectionTitle = MakeLabel("수행 장수", 19, GoldBright);
         officerSectionTitle.Name = "CommandOfficerSectionTitle";
@@ -5904,6 +5931,7 @@ public sealed partial class CampaignMapScene : Node3D
         : code == FactionResearch.CommandTroopsCode ? "통솔 병력"
         : code == FactionResearch.ArmyGroupCode ? "집단군"
         : FactionResearch.IsGeneralResearch(code) ? GeneralResearchRules.Name(code)
+        : FactionResearch.IsStratagemResearch(code) ? StratagemResearchRules.Name(code)
         : _troops.FirstOrDefault(t => t.Code == code)?.Name ?? code;
 
     private static readonly string[] PortShipCodes = { "small_boat", "medium_ship", "large_ship", "turtleship", "waeseon" };
@@ -11322,6 +11350,20 @@ public sealed partial class CampaignMapScene : Node3D
                     list.Add((definition.Name, Icon(Sym.Scroll), detail));
                 }
                 break;
+            case "stratagem_research":
+                foreach (var definition in StratagemResearchRules.Definitions)
+                {
+                    var level = _state.ResearchOf(city.Owner, definition.ResearchCode);
+                    var cost = level >= StratagemResearchRules.MaxLevel
+                        ? 0
+                        : StratagemResearchRules.Cost(level + 1);
+                    var detail = ResearchStars(level, StratagemResearchRules.MaxLevel)
+                        + (level >= StratagemResearchRules.MaxLevel
+                            ? "\n연구 완료"
+                            : $"\n성공률 +{StratagemResearchRules.SuccessBonus(level)}%p → +{StratagemResearchRules.SuccessBonus(level + 1)}%p\n{cost:N0}금");
+                    list.Add((definition.Name, StratIcon(definition.StratagemCode), detail));
+                }
+                break;
             case "ship":
                 if (!city.IsPort)
                 {
@@ -11727,10 +11769,12 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var starDetail = o.Detail.Contains("[color=", System.StringComparison.Ordinal);
         var generalResearchCard = _cmdIndex >= 0 && _cmdIndex < Cmds.Length
-            && Cmds[_cmdIndex].Kind == CommandKind.Research && Cmds[_cmdIndex].Param == "general";
+            && Cmds[_cmdIndex].Kind == CommandKind.Research
+            && Cmds[_cmdIndex].Param is "general" or "stratagem_research";
         var illustratedCard = _cmdIndex >= 0 && _cmdIndex < Cmds.Length
             && (Cmds[_cmdIndex].Kind is CommandKind.AppointRecruitmentOfficer or CommandKind.SelectMajorTroop
-                || Cmds[_cmdIndex].Kind == CommandKind.Research && Cmds[_cmdIndex].Param is "troop" or "general");
+                || Cmds[_cmdIndex].Kind == CommandKind.Research
+                    && Cmds[_cmdIndex].Param is "troop" or "general" or "stratagem_research");
         var card = new PanelContainer
         {
             CustomMinimumSize = new Vector2(starDetail || generalResearchCard ? 186 : 148, o.Detail.Contains('\n') ? 138 : 121),
@@ -11859,6 +11903,8 @@ public sealed partial class CampaignMapScene : Node3D
             var cmd = Cmds[_cmdIndex];
             _modalDetail!.Text = cmd.Kind == CommandKind.Research && cmd.Param == "general"
                 ? GeneralResearchSelectionDetail(idx)
+                : cmd.Kind == CommandKind.Research && cmd.Param == "stratagem_research"
+                    ? StratagemResearchSelectionDetail(idx)
                 : detail.Length > 0 ? $"▶  {o.Name}  —  {detail}" : $"▶  {o.Name}";
         }
 
@@ -11907,6 +11953,26 @@ public sealed partial class CampaignMapScene : Node3D
         content.AddChild(_modalDetail);
     }
 
+    private void AddStratagemResearchSelectionDetail(VBoxContainer box)
+    {
+        var panel = new PanelContainer
+        {
+            Name = "StratagemResearchSelectionDetail",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        panel.AddThemeStyleboxOverride("panel", Frame(new Color(0.075f, 0.06f, 0.045f, 0.96f), new Color(GoldBright, 0.68f), 1, 8, 10));
+        box.AddChild(panel);
+
+        var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        content.AddThemeConstantOverride("separation", 5);
+        panel.AddChild(content);
+        content.AddChild(MakeLabel("◈ 선택 계략 연구 상세", 16, GoldBright));
+        _modalDetail = MakeLabel(StratagemResearchSelectionDetail(_modalParam), 14, Parchment);
+        _modalDetail.Name = "StratagemResearchDetailText";
+        _modalDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        content.AddChild(_modalDetail);
+    }
+
     private string GeneralResearchSelectionDetail(int index)
     {
         if (_selected is not { } cityId || index < 0 || index >= GeneralResearchRules.Definitions.Count)
@@ -11925,6 +11991,25 @@ public sealed partial class CampaignMapScene : Node3D
         var next = level + 1;
         var cost = GeneralResearchRules.Cost(definition.Code, next, _cb);
         return $"{definition.Name}  ·  Lv.{level} → Lv.{next}\n{definition.Description}\n다음 효과: {GeneralResearchRules.NextEffectText(definition.Code, level)}  ·  연구비 {cost:N0}금";
+    }
+
+    private string StratagemResearchSelectionDetail(int index)
+    {
+        if (_selected is not { } cityId || index < 0 || index >= StratagemResearchRules.Definitions.Count)
+        {
+            return "계략 연구 대상을 선택하세요.";
+        }
+
+        var city = _state.Cities.First(c => c.Id == cityId);
+        var definition = StratagemResearchRules.Definitions[index];
+        var level = _state.ResearchOf(city.Owner, definition.ResearchCode);
+        if (level >= StratagemResearchRules.MaxLevel)
+        {
+            return $"{definition.Name}  ·  Lv.{level}/{StratagemResearchRules.MaxLevel}\n최종 성공률 보정 +{StratagemResearchRules.SuccessBonus(level)}%p\n연구가 완료된 분야입니다.";
+        }
+
+        var next = level + 1;
+        return $"{definition.Name}  ·  Lv.{level} → Lv.{next}\n성공률 보정 +{StratagemResearchRules.SuccessBonus(level)}%p → +{StratagemResearchRules.SuccessBonus(next)}%p\n연구비 {StratagemResearchRules.Cost(next):N0}금 · 기본 25일";
     }
 
     private bool IsOptionSelected(int idx)
@@ -12149,6 +12234,20 @@ public sealed partial class CampaignMapScene : Node3D
             var code = GeneralResearchRules.Definitions[_modalParam].Code;
             var generalLevel = _state.ResearchOf(city.Owner, code);
             return generalLevel >= GeneralResearchRules.MaxLevel ? 0 : GeneralResearchRules.Cost(code, generalLevel + 1, _cb);
+        }
+
+        if (cmd.Param == "stratagem_research")
+        {
+            if (_modalParam < 0 || _modalParam >= StratagemResearchRules.Definitions.Count)
+            {
+                return 0;
+            }
+
+            var code = StratagemResearchRules.Definitions[_modalParam].ResearchCode;
+            var stratagemLevel = _state.ResearchOf(city.Owner, code);
+            return stratagemLevel >= StratagemResearchRules.MaxLevel
+                ? 0
+                : StratagemResearchRules.Cost(stratagemLevel + 1);
         }
 
         var troopIndex = cmd.Kind == CommandKind.Research ? _modalParam - 2 : _modalParam;
@@ -12886,6 +12985,9 @@ public sealed partial class CampaignMapScene : Node3D
             "general" => p >= 0 && p < GeneralResearchRules.Definitions.Count
                 ? GeneralResearchRules.Definitions[p].Code
                 : "",
+            "stratagem_research" => p >= 0 && p < StratagemResearchRules.Definitions.Count
+                ? StratagemResearchRules.Definitions[p].ResearchCode
+                : "",
             "ship" => PortShipOptionAt(p)?.Code ?? "",
             "wall" => FactionResearch.WallCode,
             "garrison" => GarrisonAt(city, p)?.TroopCode ?? "",
@@ -13148,6 +13250,31 @@ public sealed partial class CampaignMapScene : Node3D
                 + (level < GeneralResearchRules.MaxLevel && !ResearchFundingCanCover(cityData, cost) ? "\n※ 연구비 분담 도시의 금이 부족합니다" : "");
         }
 
+        if (cmd.Kind == CommandKind.Research && cmd.Param == "stratagem_research")
+        {
+            var cityData = _state.Cities.First(c => c.Id == city);
+            var caster = _state.Generals.First(g => g.Id == general);
+            var definition = StratagemResearchRules.Definitions.First(d => d.ResearchCode == troopCode);
+            var level = _state.ResearchOf(cityData.Owner, troopCode);
+            var next = System.Math.Min(level + 1, StratagemResearchRules.MaxLevel);
+            var cost = level >= StratagemResearchRules.MaxLevel ? 0 : StratagemResearchRules.Cost(next);
+            var days = ResearchDurationRules.Days(troopCode, AdministrationGrowth.EffectiveIntellectRounded(caster),
+                _state.ResearchOf(cityData.Owner, FactionResearch.ResearchDurationCode), _cb);
+            var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
+                && FactionResearch.IsStratagemResearch(c.TroopCode)
+                && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
+            extra = $"\n{definition.Name} 계략 연구"
+                + $"\nLv.{level} → Lv.{next}/{StratagemResearchRules.MaxLevel}"
+                + (level >= StratagemResearchRules.MaxLevel
+                    ? "\n※ 이미 최대 단계입니다"
+                    : $"\n성공률 보정 +{StratagemResearchRules.SuccessBonus(level)}%p → +{StratagemResearchRules.SuccessBonus(next)}%p"
+                        + $"\n비용 {cost:N0}금"
+                        + $"\n[소요 {days}일]")
+                + (active is null ? "" : $"\n※ 계략 연구 진행 중: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
+                + (level < StratagemResearchRules.MaxLevel && !ResearchFundingCanCover(cityData, cost)
+                    ? "\n※ 연구비 분담 도시의 금이 부족합니다" : "");
+        }
+
         if (cmd.Kind == CommandKind.BuildShip)
         {
             var c = _state.Cities.First(x => x.Id == city);
@@ -13204,7 +13331,8 @@ public sealed partial class CampaignMapScene : Node3D
             ? CurrentOfficerAssignment(general) is { } current
                 && (current.City != city || current.Kind != cmd.Kind)
             : false;
-        var researchFunding = cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general"
+        var researchFunding = cmd.Kind == CommandKind.Research
+            && cmd.Param is "troop" or "general" or "stratagem_research"
             && _researchFundingRatios.Count > 0
             ? CurrentResearchFundingShares()
             : null;
@@ -13218,6 +13346,7 @@ public sealed partial class CampaignMapScene : Node3D
             "troop" when troopCode == FactionResearch.ArmyGroupCode => " · 집단군",
             "troop" => $" · {_troops.FirstOrDefault(t => t.Code == troopCode)?.Name ?? troopCode}",
             "general" => $" · {GeneralResearchRules.Name(troopCode)}",
+            "stratagem_research" => $" · {StratagemResearchRules.Name(troopCode)}",
             "garrison" => $" · {(_troops.FirstOrDefault(t => t.Code == troopCode)?.Name ?? troopCode)}{(traineePool ? "(신병)" : "")}",
             "tax" => $" · {value}%",
             "facility" => $" · {Facilities[p].Label}",
@@ -15007,7 +15136,7 @@ public sealed partial class CampaignMapScene : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         ToggleGroup(researchGroupIndex);
         var submenuLabels = _cmdSubList.GetChildren().OfType<Button>().Select(b => b.Text).ToList();
-        var expectedSubmenu = new[] { "주력병종", "전투교리", "일반연구" };
+        var expectedSubmenu = new[] { "주력병종", "전투교리", "일반연구", "계략 연구" };
         var submenuOk = expectedSubmenu.SequenceEqual(submenuLabels);
         var expectedGroups = new Dictionary<string, string[]>
         {
@@ -15034,7 +15163,9 @@ public sealed partial class CampaignMapScene : Node3D
         var generalBusyButtons = _cmdSubList.GetChildren().OfType<Button>()
             .Where(b => !b.IsQueuedForDeletion())
             .ToDictionary(b => b.Text.Replace(" (진행중)", ""));
-        var generalBusyOk = generalBusyButtons["일반연구"].Disabled && !generalBusyButtons["전투교리"].Disabled;
+        var generalBusyOk = generalBusyButtons["일반연구"].Disabled
+            && !generalBusyButtons["전투교리"].Disabled
+            && !generalBusyButtons["계략 연구"].Disabled;
         CloseGroupMenu();
         _state = originalState;
 
@@ -15125,9 +15256,58 @@ public sealed partial class CampaignMapScene : Node3D
             && generalResearchUsesStars
             && framedGeneralResearchArt
             && GeneralResearchRules.Definitions.All(d => names.Contains(d.Name));
-        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/6 framedArt={framedGeneralResearchArt} detail={detailPlacementOk} fundingDivider={fundingDividerOk} officerDivider={officerDividerOk} officerConfirm={officerConfirmPortrait} fundingCards={fundingRowCount}/{ownedCityCount} fundingColumns={fundingGrid?.Columns ?? 0} fundingHeight={fundingScroll?.CustomMinimumSize.Y ?? 0} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} stars={generalResearchUsesStars} names={string.Join(',', names)} ok={ok}");
+        GD.Print($"[general-research-qa] submenu={string.Join(',', submenuLabels)} allGroups={allGroupsOk} laneBusy={generalBusyOk} layout={layoutOk} panel={mainPanel?.Size.ToString() ?? "-"}/{viewportSize} maxCard={maxCardSize} cards={_optionCards.Count} columns={optionGrid?.Columns ?? 0}/7 framedArt={framedGeneralResearchArt} detail={detailPlacementOk} fundingDivider={fundingDividerOk} officerDivider={officerDividerOk} officerConfirm={officerConfirmPortrait} fundingCards={fundingRowCount}/{ownedCityCount} fundingColumns={fundingGrid?.Columns ?? 0} fundingHeight={fundingScroll?.CustomMinimumSize.Y ?? 0} fundingStyle={fundingLayoutOk} compactInputs={compactFundingInputs} stars={generalResearchUsesStars} names={string.Join(',', names)} ok={ok}");
         CloseModal();
         GetWindow().Size = originalWindowSize;
+        GetTree().Quit(ok ? 0 : 1);
+    }
+
+    private async void RunStratagemResearchUiQa()
+    {
+        var city = _state.Cities.FirstOrDefault(candidate => candidate.Owner == Player && !candidate.IsPort);
+        var commandIndex = System.Array.FindIndex(Cmds,
+            command => command.Kind == CommandKind.Research && command.Param == "stratagem_research");
+        if (city is null || commandIndex < 0)
+        {
+            GD.PrintErr("[stratagem-research-qa] FAIL missing city or command");
+            GetTree().Quit(1);
+            return;
+        }
+
+        _selected = city.Id;
+        OpenModal(commandIndex);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        var options = OptionList(Cmds[commandIndex], city);
+        var grid = _modalLayer?.FindChild("CommandOptionGrid", true, false) as GridContainer;
+        var detail = _modalLayer?.FindChild("StratagemResearchDetailText", true, false) as Label;
+        var funding = _modalLayer?.FindChild("ResearchFundingPanel", true, false) as PanelContainer;
+        var officerTitle = _modalLayer?.FindChild("CommandOfficerSectionTitle", true, false) as Label;
+        var cardsOk = options.Count == StratagemResearchRules.Definitions.Count
+            && options.All(option => option.Detail.Count(character => character == '★') == StratagemResearchRules.MaxLevel)
+            && StratagemResearchRules.Definitions.All(definition => options.Any(option => option.Name == definition.Name));
+        var layoutOk = grid?.Columns == StratagemResearchRules.Definitions.Count
+            && detail?.Text.Contains("성공률 보정", System.StringComparison.Ordinal) == true
+            && funding is not null
+            && officerTitle is not null
+            && _researchFundingRatios.Count == _state.Cities.Count(candidate => candidate.Owner == city.Owner);
+
+        var actor = _state.GeneralsAt(city.Id).FirstOrDefault();
+        var confirmOk = false;
+        if (actor.Value != 0)
+        {
+            AskExecute(city.Id, commandIndex, actor, 0);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            confirmOk = _confirmLayer?.FindChildren("*", "TextureRect", true, false)
+                .OfType<TextureRect>().Any(texture => texture.Texture is not null) == true;
+            _confirmLayer?.QueueFree();
+            _confirmLayer = null;
+        }
+
+        var ok = cardsOk && layoutOk && confirmOk;
+        GD.Print($"[stratagem-research-qa] cards={cardsOk} layout={layoutOk} confirm={confirmOk} funding={_researchFundingRatios.Count} ok={ok}");
+        CloseModal();
         GetTree().Quit(ok ? 0 : 1);
     }
 
