@@ -80,7 +80,8 @@ public sealed record NavalDeployRequest(
     IReadOnlyList<HexCoord>? Waypoints = null,
     int DelayDays = 0,
     DeploymentDirection? EgressDirection = null,
-    HexCoord? EgressExit = null);
+    HexCoord? EgressExit = null,
+    int Gold = 0);
 
 /// <summary>
 /// 출전(design-administration "부대와의 연결"·design-unit-state). 대기 병력 + 장수 → 야전 부대:
@@ -557,6 +558,11 @@ public sealed class DeployService
             return CommandResult.Fail("항구에서만 해상 출전할 수 있다.", state);
         }
 
+        if (req.Gold < 0 || req.Gold > city.Gold)
+        {
+            return CommandResult.Fail("휴대 금은 항구 보유 금 이내여야 한다.", state);
+        }
+
         if (!_troops.TryGetValue(req.ShipCode, out var ship) || ship.Class != TroopClass.Naval)
         {
             return CommandResult.Fail("사용할 선박을 지정해야 한다.", state);
@@ -629,7 +635,7 @@ public sealed class DeployService
         var unit = UnitAssembler.Assemble(unitId, city.Owner, city.Position, req.Mode, req.Target,
             unitId.Value, vanguard, adjutant, ship, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
-        unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, OriginCity = city.Id,
+        unit = unit with { Provisions = carried, LootGold = req.Gold, Training = garrison.TrainingLevel, OriginCity = city.Id,
             DeploymentDelayDays = req.DelayDays, EgressDirection = req.EgressDirection, EgressExit = req.EgressExit,
             // 출항 방향을 아직 지정하지 않았으면 항구 내부 대기열에 남긴다.
             // 출구 메타데이터 없이 날짜만 만료된 부대가 기존 이동기로 튀어나오면 안 된다.
@@ -646,7 +652,7 @@ public sealed class DeployService
         var deployingGenerals = new HashSet<GeneralId>(
             new[] { req.Vanguard, req.Adjutant }.OfType<GeneralId>());
         var cities = state.Cities
-            .Select(c => c.Id == city.Id ? c with { Provisions = c.Provisions - carried } : c)
+            .Select(c => c.Id == city.Id ? c with { Provisions = c.Provisions - carried, Gold = c.Gold - req.Gold } : c)
             .Select(c => ClearOfficerRoles(c, deployingGenerals))
             .ToList();
         var postings = state.Assignments

@@ -562,6 +562,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestportraittreeqa")) CallDeferred(nameof(RunPortraitTreeQa));
         if (args.Contains("--maptestgeneralrosterqa")) CallDeferred(nameof(RunGeneralRosterPerformanceQa));
         if (args.Contains("--maptestreportmodalqa")) CallDeferred(nameof(RunReportModalQa));
+        if (args.Contains("--maptestnavalcomposeqa")) CallDeferred(nameof(RunNavalComposeQa));
         if (args.Contains("--maptestshutdownresourceqa")) CallDeferred(nameof(RunShutdownResourceQa));
         if (args.Contains("--maptestsaveslotuiqa")) CallDeferred(nameof(RunSaveSlotUiQa));
         if (args.Contains("--maptestloadslotuiqa")) CallDeferred(nameof(RunLoadSlotUiQa));
@@ -8914,10 +8915,14 @@ public sealed partial class CampaignMapScene : Node3D
         var selectedGeneral = generals[0].Id;
         GeneralId? selectedAdjutant = null;
         var amount = Math.Min(DeployService.ShipTroopCapacity, garrisons[0].Available);
+        var carriedGold = 0;
+        var carriedFood = 0;
+        SpinBox? foodSpin = null;
+        HSlider? foodSlider = null;
 
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.50f, 450f, 660f);
-        var mh = Mathf.Clamp(vp.Y * 0.74f, 360f, 630f);
+        var mw = Mathf.Clamp(vp.X * 0.90f, 900f, 1280f);
+        var mh = Mathf.Clamp(vp.Y * 0.88f, 600f, 760f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
@@ -8940,17 +8945,26 @@ public sealed partial class CampaignMapScene : Node3D
             var ship = ships.FirstOrDefault(s => s.Code == selectedShip);
             var leader = generals.FirstOrDefault(g => g.Id == selectedGeneral);
             var adjutant = selectedAdjutant is { } adj ? generals.FirstOrDefault(g => g.Id == adj)?.Name ?? "-" : "없음";
-            preview.Text = $"예약 미리보기: {ship?.Name ?? selectedShip} 1척 · {gar.Troop?.Name ?? selectedTroop} {amount:N0}명 · 주장수 {leader?.Name ?? "-"} · 부장수 {adjutant}\n※ 목표는 예약 후 지도에서 바다/대하 타일로 지정합니다.";
+            var foodCap = Math.Min(port.Provisions, (ship?.ProvisionsCapacity ?? 0) * amount / 10000);
+            carriedFood = Math.Clamp(carriedFood, 0, foodCap);
+            if (foodSpin is not null && foodSlider is not null)
+            {
+                foodSpin.MaxValue = foodSlider.MaxValue = foodCap;
+                foodSpin.SetValueNoSignal(carriedFood);
+                foodSlider.SetValueNoSignal(carriedFood);
+            }
+            preview.Text = $"{ship?.Name ?? selectedShip} · {amount:N0}명 · 선봉 {leader?.Name ?? "-"} · 부관 {adjutant}\n군량 {carriedFood:N0} · 금 {carriedGold:N0} · 예약 후 지도에서 목표 지정";
         }
 
-        box.AddChild(MakeLabel("1. 선박 선택", 14, GoldBright));
+        var navalResourceTitle = MakeLabel("선박 · 병력 · 물자", 14, GoldBright);
+        box.AddChild(navalResourceTitle);
         var shipTree = new Tree
         {
             Columns = 5,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, Mathf.Min(140, 34 + ships.Count * 28)),
+            CustomMinimumSize = new Vector2(0, 94),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         shipTree.AddThemeFontOverride("font", _font);
@@ -8991,7 +9005,7 @@ public sealed partial class CampaignMapScene : Node3D
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, Mathf.Min(170, 34 + garrisons.Count * 28)),
+            CustomMinimumSize = new Vector2(0, 94),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         troopTree.AddThemeFontOverride("font", _font);
@@ -9041,18 +9055,33 @@ public sealed partial class CampaignMapScene : Node3D
         }
         amountSlider.ValueChanged += v => SyncAmount(v, true);
         amountSpin.ValueChanged += v => SyncAmount(v, false);
+        troopTree.ItemSelected += () => SyncAmount(amount, false);
         box.AddChild(MakeLabel("승선 인원", 12, Parchment));
-        box.AddChild(amountSlider);
-        box.AddChild(amountSpin);
+        var amountRow = new HBoxContainer();
+        amountRow.AddChild(amountSlider);
+        amountRow.AddChild(amountSpin);
+        box.AddChild(amountRow);
+        box.AddChild(MakeLabel("휴대 군량", 13, GoldBright));
+        var foodRow = new HBoxContainer();
+        foodSlider = ApplySliderStyle(new HSlider { MinValue = 0, MaxValue = port.Provisions, Step = 1, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
+        foodSpin = ApplyNumberInputStyle(new SpinBox { MinValue = 0, MaxValue = port.Provisions, Step = 1, CustomMinimumSize = new Vector2(130, 30) });
+        foodSlider.ValueChanged += value => { carriedFood = (int)value; Refresh(); };
+        foodSpin.ValueChanged += value => { carriedFood = (int)value; Refresh(); };
+        foodRow.AddChild(foodSlider);
+        foodRow.AddChild(foodSpin);
+        box.AddChild(foodRow);
+        carriedFood = Math.Min(port.Provisions, ships[0].ProvisionsCapacity * amount / 10000);
+        AddGoldCargoSelector(box, city, 0, value => { carriedGold = value; Refresh(); });
 
-        box.AddChild(MakeLabel("3. 지휘 장수 (주장수 필수 · 부장수 선택)", 14, GoldBright));
+        var navalRosterTitle = MakeLabel("장수 편성 · 선봉 필수 / 부관 선택", 14, GoldBright);
+        box.AddChild(navalRosterTitle);
         var generalTree = new Tree
         {
             Columns = 6,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, Mathf.Min(180, 34 + generals.Count * 28)),
+            CustomMinimumSize = new Vector2(0, 390),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         generalTree.AddThemeFontOverride("font", _font);
@@ -9124,6 +9153,8 @@ public sealed partial class CampaignMapScene : Node3D
             Refresh();
         };
         box.AddChild(generalTree);
+        var navalFooter = GoldRule();
+        box.AddChild(navalFooter);
         box.AddChild(preview);
         AddDeploymentDelaySelector(box, _depDelayDays, value => { _depDelayDays = value; Refresh(); });
         Refresh();
@@ -9133,10 +9164,10 @@ public sealed partial class CampaignMapScene : Node3D
         save.Pressed += () =>
         {
             var req = new NavalDeployRequest(city, selectedShip, selectedTroop, amount, selectedGeneral, selectedAdjutant,
-                DelayDays: _depDelayDays);
+                Provisions: carriedFood, DelayDays: _depDelayDays, Gold: carriedGold);
             var label = NavalLabel(req);
             var ids = selectedAdjutant is { } adj ? new[] { selectedGeneral, adj } : new[] { selectedGeneral };
-            ShowConfirm("출항 예약 확인", $"{label}\n\n예약 후 목록에서 '목표 지정'을 눌러 바다/대하 타일을 선택하세요.{DutyReleaseNotice(ids)}", () =>
+            ShowConfirmWithOfficer("출항 예약 확인", $"{label}\n군량 {carriedFood:N0} · 금 {carriedGold:N0}\n\n예약 후 목록에서 '목표 지정'을 눌러 바다/대하 타일을 선택하세요.{DutyReleaseNotice(ids)}", selectedGeneral, () =>
             {
                 if (_advancing || ids.Any(OfficerUnavailable) || ReservedDeployGenerals(-1, editingSupply: false).Overlaps(ids))
                 {
@@ -9153,8 +9184,7 @@ public sealed partial class CampaignMapScene : Node3D
         };
         box.AddChild(save);
 
-        var contentH = box.GetCombinedMinimumSize().Y;
-        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        ApplyHorizontalComposeLayout(box, navalResourceTitle, navalRosterTitle, navalFooter, scroll, mw, mh, disableLeftScroll: true);
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
@@ -10390,7 +10420,7 @@ public sealed partial class CampaignMapScene : Node3D
         rightPane.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
         var expandedOfficerHeight = columns.CustomMinimumSize.Y * 0.9f;
         foreach (var officerTable in rightPane.FindChildren("*", "Tree", true, false).OfType<Tree>()
-                     .Where(candidate => candidate.GetMeta("compose_officer_table_expanded").AsBool()))
+                     .Where(candidate => candidate.GetMeta("compose_officer_table_expanded", false).AsBool()))
         {
             officerTable.CustomMinimumSize = new Vector2(officerTable.CustomMinimumSize.X,
                 Mathf.Max(officerTable.CustomMinimumSize.Y, expandedOfficerHeight));
