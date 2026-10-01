@@ -576,6 +576,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestexplorationcardqa")) CallDeferred(nameof(RunExplorationCardQa));
         if (args.Contains("--maptesttreasureinventoryqa")) CallDeferred(nameof(RunTreasureInventoryQa));
         if (args.Contains("--maptestgeneralresearchqa")) CallDeferred(nameof(RunGeneralResearchUiQa));
+        if (args.Contains("--maptestwallresearchconfirmqa")) CallDeferred(nameof(RunWallResearchConfirmQa));
         if (args.Contains("--maptestsiegeplaybackqa")) CallDeferred(nameof(RunSiegePlaybackQa));
         if (args.Contains("--maptestruinuiqa")) CallDeferred(nameof(RunRuinUiQa));
         if (args.Contains("--maptestruinprotectionqa")) CallDeferred(nameof(RunRuinProtectionQa));
@@ -5388,7 +5389,7 @@ public sealed partial class CampaignMapScene : Node3D
             AddDoctrineResearchSelectionDetail(box);
         }
 
-        if (cmd.Kind == CommandKind.Research)
+        if (cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general")
         {
             if (cmd.Param == "troop")
             {
@@ -13017,7 +13018,7 @@ public sealed partial class CampaignMapScene : Node3D
                 && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
             var currentMax = CastleWall.Max(cityData.Castle, _balance, level);
             var nextMax = CastleWall.Max(cityData.Castle, _balance, next);
-            extra = $"\n세력 성벽 강화"
+            extra = $"\n{cityData.Name} 성벽 강화"
                 + $"\n현재 성벽 최대 {currentMax} → {nextMax}"
                 + (level >= _cb.WallResearchMaxLevel
                     ? "\n※ 이미 최대 단계입니다"
@@ -13025,7 +13026,8 @@ public sealed partial class CampaignMapScene : Node3D
                         + $"\n[소요 {days}일]")
                 + "\n완료 시 이 도시의 최대 성벽만 상승합니다."
                 + (active is null ? "" : $"\n※ 이미 연구가 진행 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
-                + (level < _cb.WallResearchMaxLevel && !ResearchFundingCanCover(cityData, cost) ? "\n※ 연구비 분담 도시의 금이 부족합니다" : "");
+                + (level < _cb.WallResearchMaxLevel && cityData.Gold < cost
+                    ? $"\n※ {cityData.Name} 금이 부족합니다 (보유 {cityData.Gold} / 필요 {cost})" : "");
         }
 
         if (cmd.Param == "stratagem")
@@ -13195,7 +13197,8 @@ public sealed partial class CampaignMapScene : Node3D
             ? CurrentOfficerAssignment(general) is { } current
                 && (current.City != city || current.Kind != cmd.Kind)
             : false;
-        var researchFunding = cmd.Kind == CommandKind.Research && _researchFundingRatios.Count > 0
+        var researchFunding = cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general"
+            && _researchFundingRatios.Count > 0
             ? CurrentResearchFundingShares()
             : null;
         var request = new CommandRequest(city, cmd.Kind, general, Value: value, Facility: facility,
@@ -13251,7 +13254,7 @@ public sealed partial class CampaignMapScene : Node3D
             Redraw(_log.Text);
         }
 
-        if ((cmd.Kind == CommandKind.Research && cmd.Param is "troop" or "general")
+        if (cmd.Kind == CommandKind.Research
             || cmd.Kind == CommandKind.CityStratagem
             || cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance
             || cmd.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist
@@ -15119,6 +15122,41 @@ public sealed partial class CampaignMapScene : Node3D
         CloseModal();
         GetWindow().Size = originalWindowSize;
         GetTree().Quit(ok ? 0 : 1);
+    }
+
+    private async void RunWallResearchConfirmQa()
+    {
+        var city = _state.Cities.FirstOrDefault(candidate => candidate.Owner == Player && !candidate.IsPort);
+        var commandIndex = System.Array.FindIndex(Cmds,
+            command => command.Kind == CommandKind.Research && command.Param == "wall");
+        var actor = city is null ? default : _state.GeneralsAt(city.Id).FirstOrDefault();
+        if (city is null || commandIndex < 0 || actor.Value == 0)
+        {
+            GD.PrintErr("[wall-research-confirm-qa] FAIL missing city, command or officer");
+            GetTree().Quit(1);
+            return;
+        }
+
+        _selected = city.Id;
+        OpenModal(commandIndex);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var fundingHidden = _modalLayer?.FindChild("ResearchFundingPanel", true, false) is null;
+        AskExecute(city.Id, commandIndex, actor, 0);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var portrait = _confirmLayer?.FindChildren("*", "TextureRect", true, false)
+            .OfType<TextureRect>().Any(texture => texture.Texture is not null) == true;
+        var text = string.Join("\n", _confirmLayer?.FindChildren("*", "Label", true, false)
+            .OfType<Label>().Select(label => label.Text) ?? []);
+        var contentOk = text.Contains(city.Name, System.StringComparison.Ordinal)
+            && text.Contains("성벽 강화", System.StringComparison.Ordinal)
+            && text.Contains("비용", System.StringComparison.Ordinal)
+            && text.Contains("소요", System.StringComparison.Ordinal);
+        var passed = fundingHidden && portrait && contentOk;
+        GD.Print($"[wall-research-confirm-qa] fundingHidden={fundingHidden} portrait={portrait} content={contentOk} passed={passed}");
+        _confirmLayer?.QueueFree();
+        _confirmLayer = null;
+        CloseModal();
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     private void BuildHud()
