@@ -584,7 +584,9 @@ public sealed class CommandService
             : isCommandTroops || isArmyGroup ? CommandEfficiency.CommandTroopResearchCost(level + 1)
             : isGeneralResearch ? GeneralResearchRules.Cost(level + 1, _b)
             : CommandEfficiency.ResearchCost(level + 1, _b);
-        var funding = ReserveResearchCost(state, city, req, faction, cost);
+        var funding = isWall
+            ? ReserveCityResearchCost(state, city, cost)
+            : ReserveResearchCost(state, city, req, faction, cost);
         if (!funding.Ok)
         {
             return CommandResult.Fail(funding.Error ?? "금이 부족하다.", state);
@@ -726,6 +728,17 @@ public sealed class CommandService
         var cities = state.Cities
             .Select(c => byCity.TryGetValue(c.Id, out var amount) ? c.AddGold(-amount) : c)
             .ToList();
+        return CommandResult.Success(state with { Cities = cities });
+    }
+
+    private static CommandResult ReserveCityResearchCost(GameState state, City city, int cost)
+    {
+        if (city.Gold < cost)
+        {
+            return CommandResult.Fail($"{city.Name} 금이 부족하다({cost}금 필요).", state);
+        }
+
+        var cities = state.Cities.Select(candidate => candidate.Id == city.Id ? city.AddGold(-cost) : candidate).ToList();
         return CommandResult.Success(state with { Cities = cities });
     }
 

@@ -51,6 +51,45 @@ public class WallResearchTests
     }
 
     [Fact]
+    public void 성벽강화는_연구비분담을무시하고_대상성의금만소비한다()
+    {
+        var target = Town(1, CastleSize.Medium, workshop: false, wall: 1200, gold: 1500);
+        var other = Town(2, CastleSize.Small, workshop: false, wall: 600, gold: 9000);
+        var state = new GameState(1, 1, new List<Faction>(), [target, other], [Wit(1)]);
+        var request = Req() with
+        {
+            ResearchFunding = [new ResearchFundingShare(other.Id, 100)],
+        };
+
+        var result = Service().Issue(state, request);
+
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(500, result.State.Cities.Single(city => city.Id == target.Id).Gold);
+        Assert.Equal(9000, result.State.Cities.Single(city => city.Id == other.Id).Gold);
+    }
+
+    [Fact]
+    public void 대상성의금이부족하면_다른성의금이많아도_명령과장수잠금없이실패한다()
+    {
+        var target = Town(1, CastleSize.Medium, workshop: false, wall: 1200, gold: 999);
+        var other = Town(2, CastleSize.Small, workshop: false, wall: 600, gold: 9000);
+        var general = Wit(1);
+        var state = new GameState(1, 1, new List<Faction>(), [target, other], [general],
+            Postings: [new GeneralPosting(general.Id, target.Owner, target.Id)]);
+        var request = Req() with
+        {
+            ResearchFunding = [new ResearchFundingShare(other.Id, 100)],
+        };
+
+        var result = Service().Issue(state, request);
+
+        Assert.False(result.Ok);
+        Assert.Same(state, result.State);
+        Assert.Empty(result.State.Commands);
+        Assert.Equal(target.Id, result.State.PostingOf(general.Id)!.Location);
+    }
+
+    [Fact]
     public void 루프_성벽연구_완료시_해당_도시_성벽만_증축된다()
     {
         var world = new WorldEngine(Bal, B);
