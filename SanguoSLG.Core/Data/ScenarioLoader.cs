@@ -66,7 +66,8 @@ public sealed class ScenarioLoader
             MarketElephantPrice: balanceDto.MarketElephantPrice, MarketGrainPricePer100: balanceDto.MarketGrainPricePer100,
             MarketJitterPercent: balanceDto.MarketJitterPercent, MarketSeasonalPercent: balanceDto.MarketSeasonalPercent,
             VisionCastleSmall: balanceDto.VisionCastleSmall, VisionCastleMedium: balanceDto.VisionCastleMedium,
-            VisionCastleLarge: balanceDto.VisionCastleLarge, VisionSupply: balanceDto.VisionSupply);
+            VisionCastleLarge: balanceDto.VisionCastleLarge, VisionSupply: balanceDto.VisionSupply,
+            NavalProvisionsPercent: balanceDto.NavalProvisionsPercent);
 
         var cities = Deserialize<List<CityDto>>(citiesJson, "cities")
             .Select(d =>

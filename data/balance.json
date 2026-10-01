@@ -32,6 +32,7 @@
   "vision_castle_medium": 4,
   "vision_castle_large": 5,
   "vision_supply": 2,
+  "naval_provisions_percent": 20,
   "wall_max_small": 3000,
   "wall_max_medium": 6000,
   "wall_max_large": 10000,

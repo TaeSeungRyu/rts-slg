@@ -156,6 +156,7 @@ internal sealed class BalanceDto
     public int VisionCastleMedium { get; init; } = 5;
     public int VisionCastleLarge { get; init; } = 6;
     public int VisionSupply { get; init; } = 2;
+    public int NavalProvisionsPercent { get; init; } = 20;
 }
 
 internal sealed class MapDto

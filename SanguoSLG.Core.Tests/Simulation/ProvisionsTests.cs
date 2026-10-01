@@ -33,6 +33,18 @@ public class ProvisionsTests
     }
 
     [Fact]
+    public void 해상부대는_일반군량의_20퍼센트만_소모하고_병참도_적용한다()
+    {
+        var unit = March(1, new HexCoord(0, 0), new HexCoord(20, 0), provisions: 300);
+        var normal = Orchestrator().Run([unit]).Units.Single();
+        var naval = Orchestrator().Run([unit with { Class = TroopClass.Naval }]).Units.Single();
+        var skilled = Orchestrator().Run([unit with { Class = TroopClass.Naval, SupplyUpkeepPercent = 50 }]).Units.Single();
+        Assert.Equal(70, 300 - normal.Provisions);
+        Assert.Equal(14, 300 - naval.Provisions);
+        Assert.Equal(7, 300 - skilled.Provisions);
+    }
+
+    [Fact]
     public void 군량은_경과일과_병력에_비례해_소모된다()
     {
         // 1만 병력, 7일 행군(먼 목표) → 10×7 = 70 소모. 300 → 230.

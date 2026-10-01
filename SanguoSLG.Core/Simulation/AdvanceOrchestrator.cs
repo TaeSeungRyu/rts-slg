@@ -23,6 +23,7 @@ public sealed class AdvanceOrchestrator
     private readonly int _starvationLossPercentPerDay;
     private readonly int _resupplyRadius;
     private readonly TrainingConfig _training;
+    private readonly int _navalProvisionsPercent;
 
     public AdvanceOrchestrator(
         MovementSimulator movement,
@@ -33,7 +34,8 @@ public sealed class AdvanceOrchestrator
         int starvationLossPercentPerDay = 5,
         int resupplyRadius = DefaultResupplyRadius,
         TrainingConfig? training = null,
-        int reinforcePercent = 20)
+        int reinforcePercent = 20,
+        int navalProvisionsPercent = 20)
     {
         _movement = movement;
         _combat = combat;
@@ -44,6 +46,7 @@ public sealed class AdvanceOrchestrator
         _resupplyRadius = resupplyRadius;
         _training = training ?? new TrainingConfig();
         _reinforcePercent = reinforcePercent;
+        _navalProvisionsPercent = System.Math.Clamp(navalProvisionsPercent, 0, 100);
     }
 
     private readonly int _reinforcePercent;
@@ -140,7 +143,8 @@ public sealed class AdvanceOrchestrator
             }
 
             // 병참(선봉·부관 provisions 스킬 — 편성 시 SupplyUpkeepPercent에 확정)이 휴대 군량 소모를 줄인다.
-            var eaten = (int)((long)u.Pool.Active * _provisionsPer10kPerDay * move.Days * u.ProvisionsUpkeepPercent / 1_000_000);
+            var navalPercent = u.Class == TroopClass.Naval ? _navalProvisionsPercent : 100;
+            var eaten = (int)((long)u.Pool.Active * _provisionsPer10kPerDay * move.Days * u.ProvisionsUpkeepPercent * navalPercent / 100_000_000);
             var remaining = u.Provisions - eaten;
             if (remaining >= 0)
             {

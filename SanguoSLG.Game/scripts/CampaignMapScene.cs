@@ -497,7 +497,8 @@ public sealed partial class CampaignMapScene : Node3D
         var sessionSeed = unchecked((int)(System.DateTime.UtcNow.Ticks ^ System.Environment.TickCount64));
         var world = new WorldEngine(_balance, _cb, random: new SeededRandomSource(sessionSeed));
         _engine = new CampaignEngine(
-            new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70)),
+            new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70),
+                navalProvisionsPercent: _balance.NavalProvisionsPercent),
             world,
             new CampaignSiege(new BattleResolver(60), _troops),
             new CityCapture(), new SeededRandomSource(42),
@@ -9061,7 +9062,7 @@ public sealed partial class CampaignMapScene : Node3D
         amountRow.AddChild(amountSlider);
         amountRow.AddChild(amountSpin);
         box.AddChild(amountRow);
-        box.AddChild(MakeLabel("휴대 군량", 13, GoldBright));
+        box.AddChild(MakeLabel($"휴대 군량 · 일반 대비 {100 - _balance.NavalProvisionsPercent}% 적게 소비", 13, GoldBright));
         var foodRow = new HBoxContainer();
         foodSlider = ApplySliderStyle(new HSlider { MinValue = 0, MaxValue = port.Provisions, Step = 1, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
         foodSpin = ApplyNumberInputStyle(new SpinBox { MinValue = 0, MaxValue = port.Provisions, Step = 1, CustomMinimumSize = new Vector2(130, 30) });
