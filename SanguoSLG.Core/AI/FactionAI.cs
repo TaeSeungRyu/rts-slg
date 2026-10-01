@@ -33,6 +33,7 @@ public sealed class FactionAI
         state = PlanSupplyDeploys(state, faction);
         state = PlanArmyGroupDeploys(state, faction);
         state = PlanGeneralResearch(state, faction);
+        state = PlanStratagemResearch(state, faction);
 
         foreach (var city in state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).ToList())
         {
@@ -171,6 +172,60 @@ public sealed class FactionAI
         var selected = candidates[0];
         var result = _commands.Issue(state, new CommandRequest(selected.City.Id, CommandKind.Research,
             selected.Officers[0].Id, TroopCode: code, ResearchFunding: funding));
+        return result.Ok ? result.State : state;
+    }
+
+    private GameState PlanStratagemResearch(GameState state, FactionId faction)
+    {
+        if (_config.GeneralResearchReserveGold < 0
+            || state.Commands.Any(c => c.Kind == CommandKind.Research
+                && FactionResearch.IsStratagemResearch(c.TroopCode)
+                && state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == faction))
+        {
+            return state;
+        }
+
+        var cities = state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).ToList();
+        var definition = StratagemResearchRules.Definitions
+            .Where(item => state.ResearchOf(faction, item.ResearchCode) < StratagemResearchRules.MaxLevel)
+            .OrderBy(item => state.ResearchOf(faction, item.ResearchCode))
+            .FirstOrDefault();
+        if (cities.Count == 0 || definition is null)
+        {
+            return state;
+        }
+
+        var cost = StratagemResearchRules.Cost(state.ResearchOf(faction, definition.ResearchCode) + 1);
+        if (cities.Sum(c => c.Gold) < cost + _config.GeneralResearchReserveGold)
+        {
+            return state;
+        }
+
+        var candidate = cities
+            .Select(city => new
+            {
+                City = city,
+                Officers = state.GeneralsAt(city.Id)
+                    .Where(id => !state.IsGeneralBusy(id))
+                    .Select(id => state.Generals.First(general => general.Id == id))
+                    .OrderByDescending(general => general.Intellect)
+                    .ThenBy(general => general.Id.Value)
+                    .ToList(),
+            })
+            .Where(item => item.Officers.Count > _config.KeepGeneralsHome)
+            .OrderByDescending(item => item.Officers[0].Intellect)
+            .ThenBy(item => item.City.Id.Value)
+            .FirstOrDefault();
+        if (candidate is null)
+        {
+            return state;
+        }
+
+        var funding = cities.Where(city => city.Gold > 0)
+            .Select(city => new ResearchFundingShare(city.Id, city.Gold))
+            .ToList();
+        var result = _commands.Issue(state, new CommandRequest(candidate.City.Id, CommandKind.Research,
+            candidate.Officers[0].Id, TroopCode: definition.ResearchCode, ResearchFunding: funding));
         return result.Ok ? result.State : state;
     }
 

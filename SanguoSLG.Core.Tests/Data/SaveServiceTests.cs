@@ -117,4 +117,16 @@ public class SaveServiceTests
         Assert.Equal(4, round.ResearchOf(new FactionId(1), FactionResearch.ScoutStratagemCode));
         Assert.Equal(2, round.ResearchOf(new FactionId(1), FactionResearch.ArsonStratagemCode));
     }
+
+    [Fact]
+    public void 계략연구가_없는_구버전_원시상태는_모든계략연구를_0으로_읽는다()
+    {
+        var legacy = System.Text.Json.JsonSerializer.Serialize(new GameState(1, 190, [], [], []));
+
+        var loaded = SaveService.Deserialize(legacy);
+
+        Assert.All(FactionResearch.StratagemResearchCodes,
+            code => Assert.Equal(0, loaded.ResearchOf(new FactionId(1), code)));
+        Assert.Equal(0, loaded.ResearchOf(new FactionId(1), FactionResearch.ResearchDurationCode));
+    }
 }

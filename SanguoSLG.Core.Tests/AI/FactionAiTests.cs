@@ -152,6 +152,26 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI는_별도연구선에서_가장낮은_계략연구를_결정론적으로_시작한다()
+    {
+        var rich = Town(1, 1, new HexCoord(0, 0)) with { Gold = 10_000, Security = 60 };
+        var state = new GameState(1, 1,
+            [new Faction(new FactionId(1), "위", new GeneralId(1), 1000, "#2d5fd0")],
+            [rich, Town(9, 2, new HexCoord(12, 0))],
+            [Gen(1), Gen(2), Gen(3)],
+            Postings: [At(1, 1, 1), At(2, 1, 1), At(3, 1, 1)]);
+
+        var after = Ai().PlanWeek(state, new FactionId(1));
+
+        Assert.Equal(2, after.Commands.Count);
+        Assert.Contains(after.Commands, command => FactionResearch.IsGeneralResearch(command.TroopCode));
+        var stratagem = Assert.Single(after.Commands, command => FactionResearch.IsStratagemResearch(command.TroopCode));
+        Assert.Equal(FactionResearch.ScoutStratagemCode, stratagem.TroopCode);
+        Assert.Equal(new GeneralId(2), stratagem.Main);
+        Assert.Equal(7800, after.Cities.Single(city => city.Id == rich.Id).Gold);
+    }
+
+    [Fact]
     public void 출전_대기병력이_문턱이상이고_장수가_남으면_최근접_적성으로_출전한다()
     {
         var enemy = Town(9, 2, new HexCoord(10, 0));
