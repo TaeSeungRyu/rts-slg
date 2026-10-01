@@ -1073,7 +1073,12 @@ public sealed class WorldEngine
                 ? AdministrationGrowth.EffectiveIntellectRounded(defender)
                 : null
             : null;
-        var success = _random.Next(0, 100) < CityStratagems.SuccessPercent(casterIntellect, defenderIntellect);
+        var researchCode = StratagemResearchRules.ResearchCode(cmd.Facility);
+        var researchLevel = string.IsNullOrEmpty(researchCode)
+            ? 0
+            : state.ResearchOf(casterCity.Owner, researchCode);
+        var success = _random.Next(0, 100) < CityStratagems.SuccessPercent(
+            casterIntellect, defenderIntellect, researchLevel);
         if (!success)
         {
             ApplyAdministrationGrowth(generals, cmd.Main, casterCity.Owner, casterCity.Id,

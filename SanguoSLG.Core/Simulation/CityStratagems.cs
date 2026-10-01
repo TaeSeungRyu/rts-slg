@@ -31,8 +31,13 @@ public static class CityStratagems
     }
 
     /// <summary>
-    /// 성공률(%) = clamp(50 + 수행 지력 − 대상 태수 지력, 10, 90). 태수가 없으면 지력 40으로 간주.
+    /// 기본 성공률(%) = clamp(50 + 수행 지력 − 대상 태수 지력, 10, 90). 태수가 없으면 지력 40으로 간주.
+    /// 계략별 연구 보정은 레벨당 +2%p이며 최종 성공률은 95%를 넘지 않는다.
     /// </summary>
-    public static int SuccessPercent(int casterIntellect, int? defenderIntellect)
-        => System.Math.Clamp(50 + casterIntellect - (defenderIntellect ?? 40), 10, 90);
+    public static int SuccessPercent(int casterIntellect, int? defenderIntellect, int researchLevel = 0)
+    {
+        var basePercent = System.Math.Clamp(50 + casterIntellect - (defenderIntellect ?? 40), 10, 90);
+        return System.Math.Min(StratagemResearchRules.SuccessPercentCap,
+            basePercent + StratagemResearchRules.SuccessBonus(researchLevel));
+    }
 }

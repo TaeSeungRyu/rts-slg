@@ -13039,10 +13039,14 @@ public sealed partial class CampaignMapScene : Node3D
             if (enemy is null) { return; }
             target = enemy.Id;
             var caster = _state.Generals.First(g => g.Id == general);
-            var days = CityStratagems.Days(_state.Cities.First(c => c.Id == city).Position, enemy.Position, _cb);
-            var defInt = enemy.Governor is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid)?.Intellect : null;
-            var odds = CityStratagems.SuccessPercent(caster.Intellect, defInt);
             var origin = _state.Cities.First(c => c.Id == city);
+            var days = CityStratagems.Days(origin.Position, enemy.Position, _cb);
+            var defInt = enemy.Governor is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid)?.Intellect : null;
+            var researchCode = StratagemResearchRules.ResearchCode(facility);
+            var researchLevel = string.IsNullOrEmpty(researchCode)
+                ? 0
+                : _state.ResearchOf(origin.Owner, researchCode);
+            var odds = CityStratagems.SuccessPercent(caster.Intellect, defInt, researchLevel);
             var strategist = origin.Strategist is { } sid ? _state.Generals.FirstOrDefault(g => g.Id == sid) : null;
             if (strategist is not null)
             {

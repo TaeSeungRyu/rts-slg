@@ -6,6 +6,8 @@ public static class StratagemResearchRules
 {
     public const int MaxLevel = 10;
     public const int BaseDays = 25;
+    public const int SuccessBonusPerLevel = 2;
+    public const int SuccessPercentCap = 95;
 
     public sealed record Definition(string ResearchCode, string StratagemCode, string Name);
 
@@ -25,4 +27,10 @@ public static class StratagemResearchRules
 
     public static string StratagemCode(string researchCode)
         => Definitions.FirstOrDefault(x => x.ResearchCode == researchCode)?.StratagemCode ?? string.Empty;
+
+    public static string ResearchCode(string stratagemCode)
+        => Definitions.FirstOrDefault(x => x.StratagemCode == stratagemCode)?.ResearchCode ?? string.Empty;
+
+    public static int SuccessBonus(int level)
+        => System.Math.Clamp(level, 0, MaxLevel) * SuccessBonusPerLevel;
 }

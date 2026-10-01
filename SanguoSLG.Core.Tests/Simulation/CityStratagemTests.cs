@@ -68,6 +68,33 @@ public class CityStratagemTests
         Assert.Equal(90, CityStratagems.SuccessPercent(100, null)); // 태수 없음 = 40
     }
 
+    [Fact]
+    public void 계략연구는_레벨당_성공률을_2퍼센트포인트_올리고_95에서_멈춘다()
+    {
+        Assert.Equal(50, CityStratagems.SuccessPercent(80, 80, researchLevel: 0));
+        Assert.Equal(52, CityStratagems.SuccessPercent(80, 80, researchLevel: 1));
+        Assert.Equal(70, CityStratagems.SuccessPercent(80, 80, researchLevel: 10));
+        Assert.Equal(95, CityStratagems.SuccessPercent(100, 40, researchLevel: 10));
+    }
+
+    [Fact]
+    public void 계략연구_레벨은_실제_정산_성공판정에_적용된다()
+    {
+        var baseState = State([Mine(), Enemy(governor: 9)], [Gen(1, 80), Gen(9, 80)], intel: [Scouted()]);
+        var researchedState = baseState with
+        {
+            ResearchTracks = [new FactionResearch(new FactionId(1), FactionResearch.ArsonStratagemCode, 1)],
+        };
+        var withoutResearch = Service().Issue(baseState, Req("arson"));
+        var withResearch = Service().Issue(researchedState, Req("arson"));
+
+        var failed = Advance(withoutResearch.State, 11, roll: 50);
+        var succeeded = Advance(withResearch.State, 11, roll: 50);
+
+        Assert.Equal(3038, failed.Cities.Single(x => x.Id == new CityId(2)).Provisions);
+        Assert.Equal(2431, succeeded.Cities.Single(x => x.Id == new CityId(2)).Provisions);
+    }
+
     // ── 발행 검증 ──
 
     [Fact]
