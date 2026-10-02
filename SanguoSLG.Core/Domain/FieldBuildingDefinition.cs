@@ -11,6 +11,7 @@ public sealed record FieldBuildingDefinition(
     int Defense,
     int BuildDays,
     int EffectRadius,
+    int LifetimeDays,
     string ModelCode,
     bool CanBeTargeted,
     bool CanGarrison);

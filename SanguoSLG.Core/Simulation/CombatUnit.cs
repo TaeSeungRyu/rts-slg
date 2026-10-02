@@ -38,7 +38,8 @@ public sealed record CombatUnit(
     int DeploymentDelayDays = 0,
     DeploymentDirection? EgressDirection = null,
     HexCoord? EgressExit = null,
-    bool AwaitingEgress = false)
+    bool AwaitingEgress = false,
+    bool IsConstructing = false)
 {
     public UnitId Id => Field.Id;
 
@@ -58,7 +59,7 @@ public sealed record CombatUnit(
     public bool TracksProvisions => Provisions >= 0;
 
     /// <summary>수송부대는 물자 운반 전용이라 공격·반격·공성·점령을 할 수 없다. 집단군은 전투 가능하다.</summary>
-    public bool CanInitiateCombat => !IsTransport;
+    public bool CanInitiateCombat => !IsTransport && !IsConstructing;
 
     /// <summary>수송부대는 적에게 잡히면 노획 대상이 되는 금과 군량을 갖는다.</summary>
     public int CarryingGold => LootGold + CargoGold;

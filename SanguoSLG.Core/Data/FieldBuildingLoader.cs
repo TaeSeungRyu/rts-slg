@@ -47,7 +47,7 @@ public sealed class FieldBuildingLoader
         };
         if (string.IsNullOrWhiteSpace(dto.Name) || dto.GoldCost < 0 || dto.TroopCost < 0
             || dto.ProvisionsCost < 0 || dto.MaxHitPoints < 0 || dto.Defense < 0
-            || dto.BuildDays <= 0 || dto.EffectRadius is < 1 or > 2
+            || dto.BuildDays <= 0 || dto.EffectRadius is < 1 or > 2 || dto.LifetimeDays < 0
             || string.IsNullOrWhiteSpace(dto.ModelCode))
         {
             throw new InvalidDataException($"야전 건축물 정의 값이 올바르지 않습니다: {dto.Code}");
@@ -62,7 +62,7 @@ public sealed class FieldBuildingLoader
         }
 
         return new FieldBuildingDefinition(dto.Code, dto.Name, kind, dto.GoldCost, dto.TroopCost,
-            dto.ProvisionsCost, dto.MaxHitPoints, dto.Defense, dto.BuildDays, dto.EffectRadius,
+            dto.ProvisionsCost, dto.MaxHitPoints, dto.Defense, dto.BuildDays, dto.EffectRadius, dto.LifetimeDays,
             dto.ModelCode, dto.CanBeTargeted, dto.CanGarrison);
     }
 
@@ -77,6 +77,7 @@ public sealed class FieldBuildingLoader
         public int Defense { get; init; }
         public int BuildDays { get; init; }
         public int EffectRadius { get; init; }
+        public int LifetimeDays { get; init; }
         public string ModelCode { get; init; } = "";
         public bool CanBeTargeted { get; init; } = true;
         public bool CanGarrison { get; init; }

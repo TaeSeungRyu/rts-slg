@@ -9,6 +9,7 @@
     "defense": 4,
     "build_days": 7,
     "effect_radius": 1,
+    "lifetime_days": 0,
     "model_code": "field-palisade",
     "can_be_targeted": true,
     "can_garrison": false
@@ -23,6 +24,7 @@
     "defense": 0,
     "build_days": 7,
     "effect_radius": 2,
+    "lifetime_days": 60,
     "model_code": "field-scout",
     "can_be_targeted": false,
     "can_garrison": false
@@ -37,6 +39,7 @@
     "defense": 4,
     "build_days": 7,
     "effect_radius": 2,
+    "lifetime_days": 0,
     "model_code": "field-watchtower",
     "can_be_targeted": true,
     "can_garrison": false
@@ -51,6 +54,7 @@
     "defense": 4,
     "build_days": 14,
     "effect_radius": 2,
+    "lifetime_days": 0,
     "model_code": "field-fort",
     "can_be_targeted": true,
     "can_garrison": true
@@ -65,6 +69,7 @@
     "defense": 4,
     "build_days": 14,
     "effect_radius": 1,
+    "lifetime_days": 0,
     "model_code": "field-formation",
     "can_be_targeted": true,
     "can_garrison": true

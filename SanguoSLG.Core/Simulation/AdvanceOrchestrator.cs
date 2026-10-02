@@ -54,21 +54,23 @@ public sealed class AdvanceOrchestrator
     public bool CanEnter(MovementDomain domain, HexCoord coord) => _movement.CanEnter(domain, coord);
 
     public AdvanceTurn Run(IReadOnlyList<CombatUnit> units, int maxDays = 7,
-        IReadOnlyList<SiegeSite>? castles = null, IReadOnlySet<UnitId>? deployedToday = null)
+        IReadOnlyList<SiegeSite>? castles = null, IReadOnlySet<UnitId>? deployedToday = null,
+        IReadOnlySet<UnitId>? constructionUnits = null)
     {
+        constructionUnits ??= new HashSet<UnitId>();
         // 병력 0(전멸) 부대는 진행에서 빠진다 — 이동·전투·점유·표적에서 모두 제외한다.
         units = units.Where(u => u.Pool.Active > 0).ToList();
 
         // 0.9) 보급부대 자동 보충(이동 선행 — design-unit-state 1단계-보급): 보급부대가 반경 내 아군
         //      저(低)군량 부대에 하루치씩 채워준다(보급부대 재고 한도). 이동·소모보다 먼저 일어난다.
-        units = Resupply(units);
+        units = Resupply(units, constructionUnits);
 
         // 진행 시작 시점에 행동불가(혼란)인 부대 — 이동·전투 모두 이 스냅샷으로 판정한다
         // (상태 tick이 진행 중간에 남은 진행을 줄여도, 그 진행의 효과는 온전히 적용).
         var dazedAtStart = units.Where(IsDazed).Select(u => u.Id).ToHashSet();
 
         // 1) 이동 — 진행 정지까지. 걸린 상태(혼란=행동불가, 수공=이동−1)를 이동 입력에 반영한다.
-        var move = _movement.Advance(units.Select(MovementField).ToList(), maxDays, castles, deployedToday);
+        var move = _movement.Advance(units.Select(u => MovementField(u, constructionUnits.Contains(u.Id))).ToList(), maxDays, castles, deployedToday);
         var moved = move.Units.ToDictionary(f => f.Id);
 
         // 1.5) 아군 성 입성(이동 단계에서 확정) — 야전에서 빠지고 성 복귀 초기화(게이지 0·모략력
@@ -101,7 +103,7 @@ public sealed class AdvanceOrchestrator
                     Target = field.Target,
                     Waypoints = field.Waypoints,
                 },
-                State = u.State.AdvanceTravel(move.Days),
+                State = constructionUnits.Contains(u.Id) ? u.State : u.State.AdvanceTravel(move.Days),
             };
         }
 
@@ -165,11 +167,13 @@ public sealed class AdvanceOrchestrator
         // 2.9) 이동 종료 위치에서 실제 교전이 성립할 부대를 먼저 찾고, 공격자와 피격자만 1칸 충전한다.
         // 이동에 7일을 썼더라도 교전 1회는 1칸이며, 적을 만나지 않은 이동은 전혀 충전하지 않는다.
         var chargeEngagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList())
-            .Where(e => state[e.Attacker].CanInitiateCombat
+            .Where(e => !constructionUnits.Contains(e.Attacker)
+                && state[e.Attacker].CanInitiateCombat
                 && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker])))
             .ToList();
         var combatChargeParticipants = chargeEngagements
             .SelectMany(e => e.Targets.Append(e.Attacker))
+            .Where(id => !constructionUnits.Contains(id))
             .ToHashSet();
         foreach (var id in combatChargeParticipants)
         {
@@ -181,17 +185,18 @@ public sealed class AdvanceOrchestrator
         //    정화, 강제 후퇴(교란)를 여기서 적용한다. 발동 부대는 이번 교전 공격을 하지 않는다.
         //    후퇴가 위치를 바꾸므로 교전 탐지보다 먼저 발동한다.
         var stratagemDamage = new Dictionary<UnitId, int>();
-        var firedStratagems = FireStratagems(state, stratagemDamage);
+        var firedStratagems = FireStratagems(state, stratagemDamage, constructionUnits);
 
         // 3.5) 5일 충전형 책략 액티브. 도시 계략과 무관한 부대 액티브 7종만 여기서 자동 발동한다.
         // 교란 위치 변경은 교전 탐지보다 먼저 확정되어 이후 이동/교전의 시작 위치가 된다.
         var firedActives = new Dictionary<UnitId, ActiveSkill>();
-        FireTacticActives(state, firedActives, stratagemDamage);
+        FireTacticActives(state, firedActives, stratagemDamage, constructionUnits);
 
         // 4) 전투 페이즈 발동 — 정지·후퇴가 반영된 위치로 사거리 전수검사. 발동 부대와 행동불가(혼란)
         //    부대는 공격자에서 뺀다(피격·방어는 정상).
         var engagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList())
-            .Where(e => !firedStratagems.ContainsKey(e.Attacker)
+            .Where(e => !constructionUnits.Contains(e.Attacker)
+                && !firedStratagems.ContainsKey(e.Attacker)
                 && (!firedActives.TryGetValue(e.Attacker, out var tactic)
                     || tactic.Code == "cleanse")
                 && state[e.Attacker].CanInitiateCombat
@@ -221,7 +226,7 @@ public sealed class AdvanceOrchestrator
             // 같은 부대가 앞선 3.5단계에서 계략형을 이미 발동했다면 방어/회복/타격형을
             // 같은 날 또 소비하지 않는다. FiredActives는 부대당 1개이므로 뒤 스킬이 앞 연출을
             // 덮어쓰는 것을 막는다. 다음 장수는 공용 게이지를 다시 채운 뒤 발동한다.
-            if (firedActives.ContainsKey(id) || u.IsArmyGroup || dazedAtStart.Contains(id) || IsDazed(u)) continue;
+            if (constructionUnits.Contains(id) || firedActives.ContainsKey(id) || u.IsArmyGroup || dazedAtStart.Contains(id) || IsDazed(u)) continue;
             var (defense, defendedState) = u.State.FiringDefenseActive();
             if (defense is null) continue;
             defenseSkills[id] = defense;
@@ -238,7 +243,7 @@ public sealed class AdvanceOrchestrator
         {
             var u = state[id];
             // 행동불가(혼란)면 액티브도 못 쓴다(피격·방어는 정상).
-            var (skill, newState) = firedActives.ContainsKey(id) || u.IsArmyGroup || dazedAtStart.Contains(id) || IsDazed(u)
+            var (skill, newState) = constructionUnits.Contains(id) || firedActives.ContainsKey(id) || u.IsArmyGroup || dazedAtStart.Contains(id) || IsDazed(u)
                 ? ((ActiveSkill?)null, u.State)
                 : defenseSkills.ContainsKey(id) ? ((ActiveSkill?)null, u.State) : u.State.FiringActive();
 
@@ -413,7 +418,8 @@ public sealed class AdvanceOrchestrator
     }
 
     private void FireTacticActives(Dictionary<UnitId, CombatUnit> state,
-        Dictionary<UnitId, ActiveSkill> fired, Dictionary<UnitId, int> damage)
+        Dictionary<UnitId, ActiveSkill> fired, Dictionary<UnitId, int> damage,
+        IReadOnlySet<UnitId> constructionUnits)
     {
         // 공격형과 같은 우선순위: 먼저 내려진 공격 명령 순서, 동률이면 UnitId 순서.
         foreach (var casterId in state.Keys
@@ -421,7 +427,7 @@ public sealed class AdvanceOrchestrator
                      .ThenBy(id => id.Value).ToList())
         {
             var caster = state[casterId];
-            if (caster.IsArmyGroup || IsDazed(caster))
+            if (constructionUnits.Contains(casterId) || caster.IsArmyGroup || IsDazed(caster))
             {
                 continue;
             }
@@ -530,8 +536,12 @@ public sealed class AdvanceOrchestrator
 
     // 이동 시뮬에 넣을 임시 FieldUnit. 혼란(행동불가)은 제자리에 묶고(속도 0·목표·모드 중립),
     // 수공(이동−1)은 속도를 깎는다(최소 1). 실제 Field는 위치만 되받아 보존한다.
-    private static FieldUnit MovementField(CombatUnit u)
+    private static FieldUnit MovementField(CombatUnit u, bool constructing)
     {
+        if (constructing)
+        {
+            return u.Field with { Mode = UnitMode.Advance, Target = null, Waypoints = null, Speed = 0 };
+        }
         // 행동불가(혼란)는 목표를 향한 전진을 멈춘다.
         if (IsDazed(u))
         {
@@ -546,15 +556,15 @@ public sealed class AdvanceOrchestrator
 
     // 보급부대 자동 보충: 각 보급부대가 반경 내 아군(자신 제외·군량 추적) 중 최대치 미만인 부대에
     // 하루치(병력 비례)씩 재고 한도 안에서 채워준다. 결정론: 보급부대·수혜 부대 모두 id 오름차순.
-    private IReadOnlyList<CombatUnit> Resupply(IReadOnlyList<CombatUnit> units)
+    private IReadOnlyList<CombatUnit> Resupply(IReadOnlyList<CombatUnit> units, IReadOnlySet<UnitId> constructionUnits)
     {
-        if (!units.Any(u => u.IsSupply && u.Provisions > 0))
+        if (!units.Any(u => u.IsSupply && u.Provisions > 0 && !constructionUnits.Contains(u.Id)))
         {
             return units;
         }
 
         var byId = units.ToDictionary(u => u.Id);
-        foreach (var supply in units.Where(u => u.IsSupply && u.Provisions > 0).OrderBy(u => u.Id.Value))
+        foreach (var supply in units.Where(u => u.IsSupply && u.Provisions > 0 && !constructionUnits.Contains(u.Id)).OrderBy(u => u.Id.Value))
         {
             var stock = byId[supply.Id].Provisions;
             foreach (var ally in units
@@ -735,11 +745,16 @@ public sealed class AdvanceOrchestrator
 
     // 예약된 계략을 발동/캔슬한다. 발동한 시전 부대 → 그 계략의 사전을 돌려주고(그 교전 공격 불가),
     // 계략 즉발 피해를 <paramref name="stratagemDamage"/>에 대상별로 누적한다.
-    private Dictionary<UnitId, Stratagem> FireStratagems(Dictionary<UnitId, CombatUnit> state, Dictionary<UnitId, int> stratagemDamage)
+    private Dictionary<UnitId, Stratagem> FireStratagems(Dictionary<UnitId, CombatUnit> state,
+        Dictionary<UnitId, int> stratagemDamage, IReadOnlySet<UnitId> constructionUnits)
     {
         var casters = new Dictionary<UnitId, Stratagem>();
         foreach (var id in state.Keys.ToList())
         {
+            if (constructionUnits.Contains(id))
+            {
+                continue;
+            }
             var caster = state[id];
             var reservation = caster.State.Reservation;
             if (reservation is null)

@@ -21,6 +21,10 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
         {
             return CommandResult.Fail("명령할 수 있는 아군 부대가 없습니다.", state);
         }
+        if (FieldConstructionService.IsConstructing(state, unit.Id))
+        {
+            return CommandResult.Fail("건축 중인 부대에는 다른 명령을 내릴 수 없습니다.", state);
+        }
 
         if (!CanTarget(state, faction, unit, req.Target, req.VisibleTiles))
         {
@@ -50,6 +54,10 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
         if (unit is null || unit.Pool.Active <= 0)
         {
             return CommandResult.Fail("정지할 수 있는 아군 부대가 없습니다.", state);
+        }
+        if (FieldConstructionService.IsConstructing(state, unit.Id))
+        {
+            return CommandResult.Fail("건축 중인 부대에는 다른 명령을 내릴 수 없습니다.", state);
         }
 
         var armies = state.Armies

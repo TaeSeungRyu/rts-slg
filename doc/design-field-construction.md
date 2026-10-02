@@ -1,6 +1,6 @@
 # 야전 건축 설계 — 출전 육상 부대
 
-작성일: 2026-10-01. 상태: Phase 18C 1단계 데이터·저장 스키마 구현 완료, 명령·에셋 미구현.
+작성일: 2026-10-01. 상태: Phase 18C 2단계 착공·자원 결제·행동 잠금까지 구현, UI·에셋 미구현.
 실행 단계는 [Phase 18C](./plan-v2-implementation-roadmap.md#phase-18c-야전-건축)에 기록한다.
 기준: [지형](./design-terrain.md), [이동](./design-movement.md), [전투](./design-combat.md),
 [부대 군량](./design-unit-state.md), [효과](./design-effect.md).

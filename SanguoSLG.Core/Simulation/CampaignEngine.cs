@@ -104,6 +104,22 @@ public sealed class CampaignEngine
         var remaining = WeekDays;
         while (remaining > 0 && (armies.Count > 0 || waitingArmies.Count > 0 || egressArmies.Count > 0))
         {
+            var simulationDay = state.Day + (WeekDays - remaining);
+            var completedBuilders = work.Buildings
+                .Where(x => x.BuilderUnit is not null && x.IsCompleted(simulationDay))
+                .Select(x => x.BuilderUnit!.Value)
+                .ToHashSet();
+            if (completedBuilders.Count > 0)
+            {
+                armies = FieldConstructionService.ReleaseCompleted(armies, work.Buildings, simulationDay).ToList();
+                work = work with
+                {
+                    FieldBuildings = work.Buildings.Select(x => x.BuilderUnit is { } builder
+                        && completedBuilders.Contains(builder) ? x with { BuilderUnit = null } : x).ToList(),
+                };
+            }
+            var constructionUnits = FieldConstructionService.ConstructionUnits(work, simulationDay);
+
             // 최초 출격 관제는 하루 시작에 한 번만 실행한다. 출구 밖 첫 칸에 배치된 부대는
             // 즉시 일반 야전 목록으로 넘어가며, 두 번째 칸부터는 기존 이동기만 관여한다.
             var egress = DeploymentEgressController.Release(egressArmies, armies, work.Cities, _field.CanEnter);
@@ -138,7 +154,7 @@ public sealed class CampaignEngine
             // 이동 → 공격 → 점령을 하루 단위로 확정한다. 주간 전체를 한 번에
             // 계산하면 공격턴에서 수비가 전멸해도 다음 진행까지 함락이 지연된다.
             var turn = _field.Run(turnInput, maxDays: 1, castles,
-                egress.Released.Select(u => u.Id).ToHashSet()) with
+                egress.Released.Select(u => u.Id).ToHashSet(), constructionUnits) with
             {
                 ReleasedDeployments = egress.Released,
             };
@@ -334,7 +350,22 @@ public sealed class CampaignEngine
         captures = captureReports;
         plunders = plunderReports;
         casualties = casualtyReports;
-        return _world.AdvanceDays(afterField, WeekDays);
+        var advanced = _world.AdvanceDays(afterField, WeekDays);
+        var completedAtEnd = advanced.Buildings
+            .Where(x => x.BuilderUnit is not null && x.IsCompleted(advanced.Day))
+            .Select(x => x.BuilderUnit!.Value)
+            .ToHashSet();
+        if (completedAtEnd.Count == 0)
+        {
+            return advanced;
+        }
+
+        return advanced with
+        {
+            FieldArmies = FieldConstructionService.ReleaseCompleted(advanced.Armies, advanced.Buildings, advanced.Day),
+            FieldBuildings = advanced.Buildings.Select(x => x.BuilderUnit is { } builder
+                && completedAtEnd.Contains(builder) ? x with { BuilderUnit = null } : x).ToList(),
+        };
     }
 
     private static List<CombatUnit> ProductionCombatUnits(GameState work)
