@@ -1414,10 +1414,31 @@ public sealed partial class CampaignMapScene : Node3D
         Row("내구", definition.CanBeTargeted ? $"{building.HitPoints:N0} / {definition.MaxHitPoints:N0}" : "공격 대상 아님");
         Row("방어", definition.Defense.ToString());
         Row("영향 범위", $"반경 {definition.EffectRadius}칸 · {FieldBuildingDescription(definition)}");
+        if (completed && definition.CanGarrison)
+        {
+            var garrison = building.GarrisonUnit is { } unitId
+                ? _state.Armies.FirstOrDefault(x => x.Id == unitId)
+                : null;
+            var commander = garrison?.VanguardId is { } generalId
+                ? _state.Generals.FirstOrDefault(x => x.Id == generalId)?.Name
+                : null;
+            Row("주둔", garrison is null
+                ? "비어 있음 · 아군 부대의 목표로 지정하면 입성"
+                : $"{commander ?? $"부대 {garrison.Id.Value}"} · 병력 {garrison.Pool.Active:N0}");
+            if (garrison is not null && building.Owner == Player)
+            {
+                var exit = MakeButton("출성", accent: true);
+                exit.TooltipText = "주둔을 해제합니다. 이동 목표는 다음에 지정할 수 있습니다.";
+                exit.Pressed += () => ExitFieldGarrison(building.Id);
+                _terrainInfo.AddChild(exit);
+            }
+        }
         if (building.Owner == Player)
         {
             var demolish = MakeButton("철거", accent: true);
             demolish.TooltipText = "철거한 건축물은 복구할 수 없습니다.";
+            demolish.Disabled = building.GarrisonUnit is not null;
+            if (demolish.Disabled) demolish.TooltipText = "주둔 부대가 먼저 출성해야 철거할 수 있습니다.";
             demolish.Pressed += () => ShowConfirm("야전 건축물 철거",
                 $"{definition.Name}을(를) 즉시 철거합니다.\n철거 후에는 복구할 수 없습니다.",
                 () => DemolishFieldBuilding(building.Id));
@@ -1437,6 +1458,15 @@ public sealed partial class CampaignMapScene : Node3D
         _state = result.State;
         HidePanels();
         Redraw("야전 건축물을 철거했습니다.");
+    }
+
+    private void ExitFieldGarrison(FieldBuildingId buildingId)
+    {
+        var result = _fieldConstruction.ExitGarrison(_state, Player, buildingId);
+        if (!result.Ok) { ShowNotice("출성 실패", result.Error ?? "출성할 수 없습니다."); return; }
+        _state = result.State;
+        HidePanels();
+        Redraw("주둔 부대가 건축물 밖으로 나왔습니다.");
     }
 
     private void ClearFieldBuildingRange()
@@ -14748,6 +14778,8 @@ public sealed partial class CampaignMapScene : Node3D
             _commanderPortraits.Remove(id);
         }
 
+        var fieldGarrisonIds = _state.Buildings.Where(x => x.GarrisonUnit is not null)
+            .Select(x => x.GarrisonUnit!.Value).ToHashSet();
         foreach (var army in _state.Armies)
         {
             var color = army.Field.Owner.Value == 1 ? Blue : Red;
@@ -14785,7 +14817,8 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             token.SetFormationSize(army.IsSupply || army.IsArmyGroup ? 1 : FormationFor(army.Pool.Active)); // 보급부대·집단군은 규모와 무관하게 단일 전용 모델
-            token.Visible = !army.IsWaitingDeployment;
+            var hiddenInFieldBuilding = fieldGarrisonIds.Contains(army.Id);
+            token.Visible = !army.IsWaitingDeployment && !hiddenInFieldBuilding;
             token.DisplaySyncTo(army.Field.Position, 0.3f); // 제자리면 스냅 — 보정 트윈이 방향을 뒤집지 않게
             var constructionIndicator = token.GetNodeOrNull<Node3D>("FieldConstructionIndicator");
             if (army.IsConstructing && constructionIndicator is null)
@@ -14807,16 +14840,17 @@ public sealed partial class CampaignMapScene : Node3D
             lblNode.Position = _view.HexToWorld(army.Field.Position)
                 + new Vector3(0f, _view.TileTopY + CommanderPortraitView3D.TroopLabelHeightOffset, 0f);
             lblNode.Text = $"{army.Pool.Active}";
-            lblNode.Visible = !army.IsWaitingDeployment && army.Field.Owner == Player; // 병력 수는 아군만 표시(적은 편대 규모로 가늠)
+            lblNode.Visible = !army.IsWaitingDeployment && !hiddenInFieldBuilding && army.Field.Owner == Player; // 병력 수는 아군만 표시(적은 편대 규모로 가늠)
             if (_activeGauges.TryGetValue(army.Id.Value, out var activeGauge))
             {
                 var (skill, gauge) = DisplayActiveGauge(army.State);
                 activeGauge.SetSkill(skill, gauge);
-                activeGauge.Visible = (army.State.VanguardActive is not null || army.State.AdjutantActive is not null)
+                activeGauge.Visible = !hiddenInFieldBuilding
+                    && (army.State.VanguardActive is not null || army.State.AdjutantActive is not null)
                     && (_advancing || (_unitMenu.Visible && _selectedUnitId == army.Id.Value));
             }
             if (_commanderPortraits.TryGetValue(army.Id.Value, out var portrait))
-                portrait.Visible = _unitMenu.Visible && _selectedUnitId == army.Id.Value;
+                portrait.Visible = !hiddenInFieldBuilding && _unitMenu.Visible && _selectedUnitId == army.Id.Value;
         }
 
         var activeProduction = _state.ProductionOps

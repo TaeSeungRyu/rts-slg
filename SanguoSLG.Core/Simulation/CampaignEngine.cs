@@ -190,6 +190,16 @@ public sealed class CampaignEngine
                     ExpiredScoutPostIds = expiredScoutPosts.Concat(scoutUpdate.Expired).Distinct().ToList(),
                 };
             }
+            if (turn.FieldGarrisons.Count > 0)
+            {
+                work = work with
+                {
+                    FieldBuildings = work.Buildings.Select(building =>
+                        turn.FieldGarrisons.TryGetValue(building.Id, out var unit)
+                            ? building with { GarrisonUnit = unit }
+                            : building).ToList(),
+                };
+            }
             if (_ruinCombat is not null && work.Ruins.Count > 0)
             {
                 var ruinResult = _ruinCombat.Resolve(work, turn.Units);
@@ -219,6 +229,13 @@ public sealed class CampaignEngine
                     FieldBuildingCombatExchanges = fieldBuildingResult.Exchanges,
                 };
             }
+            var livingFieldUnits = turn.Units.Where(x => x.Pool.Active > 0).Select(x => x.Id).ToHashSet();
+            work = work with
+            {
+                FieldBuildings = work.Buildings.Select(building => building.GarrisonUnit is { } unit
+                        && !livingFieldUnits.Contains(unit) ? building with { GarrisonUnit = null } : building)
+                    .ToList(),
+            };
             // 생산 대상은 저장용 야전 부대에서 제거해도 공격 모션의 목표 위치는 보존한다.
             var attackedProduction = productionUnits.Where(u =>
                 turn.Combat?.DamageTaken.GetValueOrDefault(u.Id) > 0).ToList();

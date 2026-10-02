@@ -27,7 +27,8 @@ public sealed record AdvanceTurn(
     IReadOnlyList<CombatUnit>? ReleasedDeployments = null,
     IReadOnlyList<FieldBuildingExchange>? FieldBuildingCombatExchanges = null,
     IReadOnlyList<Domain.FieldBuildingId>? RemovedScoutPostIds = null,
-    IReadOnlyList<Domain.FieldBuildingId>? ExpiredScoutPostIds = null)
+    IReadOnlyList<Domain.FieldBuildingId>? ExpiredScoutPostIds = null,
+    IReadOnlyDictionary<Domain.FieldBuildingId, Domain.UnitId>? FieldGarrisonAssignments = null)
 {
     public IReadOnlyList<CombatUnit> Deployments => ReleasedDeployments ?? [];
     public IReadOnlyList<CombatUnit> EnteredCastle => Entered ?? [];
@@ -45,8 +46,12 @@ public sealed record AdvanceTurn(
     public IReadOnlyList<FieldBuildingExchange> FieldBuildingExchanges => FieldBuildingCombatExchanges ?? [];
     public IReadOnlyList<Domain.FieldBuildingId> RemovedScoutPosts => RemovedScoutPostIds ?? [];
     public IReadOnlyList<Domain.FieldBuildingId> ExpiredScoutPosts => ExpiredScoutPostIds ?? [];
+    public IReadOnlyDictionary<Domain.FieldBuildingId, Domain.UnitId> FieldGarrisons
+        => FieldGarrisonAssignments ?? EmptyGarrisons;
 
     private static readonly IReadOnlyDictionary<Domain.UnitId, int> EmptyLoss = new Dictionary<Domain.UnitId, int>();
     private static readonly IReadOnlyDictionary<Domain.UnitId, Spatial.HexCoord> EmptyPositions =
         new Dictionary<Domain.UnitId, Spatial.HexCoord>();
+    private static readonly IReadOnlyDictionary<Domain.FieldBuildingId, Domain.UnitId> EmptyGarrisons =
+        new Dictionary<Domain.FieldBuildingId, Domain.UnitId>();
 }

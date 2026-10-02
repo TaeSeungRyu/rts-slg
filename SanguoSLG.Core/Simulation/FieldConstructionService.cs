@@ -107,6 +107,8 @@ public sealed class FieldConstructionService(
     {
         var building = state.Buildings.FirstOrDefault(x => x.Id == buildingId && x.Owner == faction);
         if (building is null) return CommandResult.Fail("철거할 아군 건축물이 없습니다.", state);
+        if (building.GarrisonUnit is not null)
+            return CommandResult.Fail("주둔 부대가 먼저 출성해야 철거할 수 있습니다.", state);
         var units = state.Armies.Select(unit => building.BuilderUnit == unit.Id
             ? unit with { IsConstructing = false, Field = unit.Field with { Target = null, Waypoints = null } }
             : unit).ToList();
@@ -114,6 +116,24 @@ public sealed class FieldConstructionService(
         {
             FieldArmies = units,
             FieldBuildings = state.Buildings.Where(x => x.Id != buildingId).ToList(),
+        });
+    }
+
+    public CommandResult ExitGarrison(GameState state, FactionId faction, FieldBuildingId buildingId)
+    {
+        var building = state.Buildings.FirstOrDefault(x => x.Id == buildingId && x.Owner == faction);
+        if (building?.GarrisonUnit is not { } unitId)
+            return CommandResult.Fail("출성할 주둔 부대가 없습니다.", state);
+        var unit = state.Armies.FirstOrDefault(x => x.Id == unitId && x.Pool.Active > 0);
+        if (unit is null)
+            return CommandResult.Fail("주둔 부대를 찾을 수 없습니다.", state);
+        return CommandResult.Success(state with
+        {
+            FieldBuildings = state.Buildings.Select(x => x.Id == buildingId
+                ? x with { GarrisonUnit = null } : x).ToList(),
+            FieldArmies = state.Armies.Select(x => x.Id == unitId
+                ? x with { Field = x.Field with { Mode = UnitMode.Advance, Target = null, Waypoints = null } }
+                : x).ToList(),
         });
     }
 

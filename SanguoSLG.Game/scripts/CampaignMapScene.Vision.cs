@@ -24,7 +24,13 @@ public sealed partial class CampaignMapScene
     private CityId? _intelPanelCity;
 
     private IReadOnlyList<CombatUnit> DisplayedArmies => (_advancing ? _displayArmies : _state.Armies)
-        .Where(u => !u.IsWaitingDeployment).ToList();
+        .Where(u => !u.IsWaitingDeployment && !IsFieldGarrison(u.Id)).ToList();
+
+    private bool IsFieldGarrison(UnitId unitId)
+    {
+        var buildings = _advancing && _pendingState is not null ? _pendingState.Buildings : _state.Buildings;
+        return buildings.Any(x => x.GarrisonUnit == unitId);
+    }
 
     private bool CanInspectCity(City city)
         => BattlefieldVision.CanInspectCity(_state, Player, city, _visibleTiles);

@@ -62,6 +62,13 @@ public sealed class AdvanceOrchestrator
         constructionUnits ??= new HashSet<UnitId>();
         // 병력 0(전멸) 부대는 진행에서 빠진다 — 이동·전투·점유·표적에서 모두 제외한다.
         units = units.Where(u => u.Pool.Active > 0).ToList();
+        var definitions = (fieldDefinitions ?? []).ToDictionary(x => x.Code, StringComparer.Ordinal);
+        var completedGarrisons = (fieldBuildings ?? []).Where(building => building.IsCompleted(fieldDay)
+            && !building.IsExpired(fieldDay)
+            && definitions.TryGetValue(building.DefinitionCode, out var definition)
+            && definition.CanGarrison).ToList();
+        var existingGarrisonIds = completedGarrisons.Where(x => x.GarrisonUnit is not null)
+            .Select(x => x.GarrisonUnit!.Value).ToHashSet();
 
         // 0.9) 보급부대 자동 보충(이동 선행 — design-unit-state 1단계-보급): 보급부대가 반경 내 아군
         //      저(低)군량 부대에 하루치씩 채워준다(보급부대 재고 한도). 이동·소모보다 먼저 일어난다.
@@ -72,9 +79,28 @@ public sealed class AdvanceOrchestrator
         var dazedAtStart = units.Where(IsDazed).Select(u => u.Id).ToHashSet();
 
         // 1) 이동 — 진행 정지까지. 걸린 상태(혼란=행동불가, 수공=이동−1)를 이동 입력에 반영한다.
-        var move = _movement.Advance(units.Select(u => MovementField(u, constructionUnits.Contains(u.Id))).ToList(),
+        var move = _movement.Advance(units.Select(u => MovementField(u,
+                constructionUnits.Contains(u.Id), existingGarrisonIds.Contains(u.Id))).ToList(),
             maxDays, castles, deployedToday, fieldBuildings, fieldDefinitions, fieldDay);
         var moved = move.Units.ToDictionary(f => f.Id);
+
+        // 완공된 보루·진법을 명시적으로 목표 삼아 도착한 첫 아군 부대만 주둔한다.
+        // 주둔 확정은 이동 직후라 같은 날 공격 단계부터 건물 HP가 부대를 가린다.
+        var fieldGarrisons = new Dictionary<FieldBuildingId, UnitId>();
+        var occupiedGarrisons = existingGarrisonIds.ToHashSet();
+        foreach (var building in completedGarrisons.Where(x => x.GarrisonUnit is null)
+            .OrderBy(x => x.Id.Value))
+        {
+            var candidate = units.Where(u => u.Field.Owner == building.Owner
+                    && u.Field.Target == building.Position
+                    && moved.TryGetValue(u.Id, out var field) && field.Position == building.Position
+                    && !occupiedGarrisons.Contains(u.Id))
+                .OrderBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value).FirstOrDefault();
+            if (candidate is null) continue;
+            fieldGarrisons[building.Id] = candidate.Id;
+            occupiedGarrisons.Add(candidate.Id);
+        }
+        var protectedGarrisons = existingGarrisonIds.Concat(fieldGarrisons.Values).ToHashSet();
 
         // 1.5) 아군 성 입성(이동 단계에서 확정) — 야전에서 빠지고 성 복귀 초기화(게이지 0·모략력
         //      충전·예약 취소·지속 상태 해제)를 적용한다. 이후 상태 틱·계략·전투에 끼지 않는다.
@@ -108,6 +134,13 @@ public sealed class AdvanceOrchestrator
                 },
                 State = constructionUnits.Contains(u.Id) ? u.State : u.State.AdvanceTravel(move.Days),
             };
+            if (protectedGarrisons.Contains(u.Id))
+            {
+                state[u.Id] = state[u.Id] with
+                {
+                    Field = state[u.Id].Field with { Mode = UnitMode.Advance, Target = null, Waypoints = null },
+                };
+            }
         }
 
         // 2.5) 지속 상태(DoT) 틱 — 진행당 1회. 서 있는 화상·독이 병력을 깎고 남은 진행이 준다.
@@ -149,7 +182,12 @@ public sealed class AdvanceOrchestrator
 
             // 병참(선봉·부관 provisions 스킬 — 편성 시 SupplyUpkeepPercent에 확정)이 휴대 군량 소모를 줄인다.
             var navalPercent = u.Class == TroopClass.Naval ? _navalProvisionsPercent : 100;
-            var eaten = (int)((long)u.Pool.Active * _provisionsPer10kPerDay * move.Days * u.ProvisionsUpkeepPercent * navalPercent / 100_000_000);
+            var fortPercent = completedGarrisons.Any(building => building.Owner == u.Field.Owner
+                    && definitions[building.DefinitionCode].Kind == FieldBuildingKind.Fort
+                    && building.Position.Distance(u.Field.Position) <= definitions[building.DefinitionCode].EffectRadius)
+                ? 60 : 100;
+            var eaten = (int)((long)u.Pool.Active * _provisionsPer10kPerDay * move.Days
+                * u.ProvisionsUpkeepPercent * navalPercent * fortPercent / 10_000_000_000L);
             var remaining = u.Provisions - eaten;
             if (remaining >= 0)
             {
@@ -170,6 +208,8 @@ public sealed class AdvanceOrchestrator
         // 2.9) 이동 종료 위치에서 실제 교전이 성립할 부대를 먼저 찾고, 공격자와 피격자만 1칸 충전한다.
         // 이동에 7일을 썼더라도 교전 1회는 1칸이며, 적을 만나지 않은 이동은 전혀 충전하지 않는다.
         var chargeEngagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList())
+            .Select(e => e with { Targets = e.Targets.Where(id => !protectedGarrisons.Contains(id)).ToList() })
+            .Where(e => e.Targets.Count > 0)
             .Where(e => !constructionUnits.Contains(e.Attacker)
                 && state[e.Attacker].CanInitiateCombat
                 && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker])))
@@ -198,6 +238,8 @@ public sealed class AdvanceOrchestrator
         // 4) 전투 페이즈 발동 — 정지·후퇴가 반영된 위치로 사거리 전수검사. 발동 부대와 행동불가(혼란)
         //    부대는 공격자에서 뺀다(피격·방어는 정상).
         var engagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList())
+            .Select(e => e with { Targets = e.Targets.Where(id => !protectedGarrisons.Contains(id)).ToList() })
+            .Where(e => e.Targets.Count > 0)
             .Where(e => !constructionUnits.Contains(e.Attacker)
                 && !firedStratagems.ContainsKey(e.Attacker)
                 && (!firedActives.TryGetValue(e.Attacker, out var tactic)
@@ -210,7 +252,9 @@ public sealed class AdvanceOrchestrator
         {
             SyncCargo(state);
             var reinforcedOnly = Reinforce(state);
-            return new AdvanceTurn(Ordered(state), move, null, firedActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, reinforcedOnly);
+            return new AdvanceTurn(Ordered(state), move, null, firedActives, firedStratagems, statusDamage,
+                stratagemDamage, enteredCastle, starvation, reinforcedOnly,
+                FieldGarrisonAssignments: fieldGarrisons);
         }
 
         var attackers = engagements.Select(e => e.Attacker).ToHashSet();
@@ -312,7 +356,9 @@ public sealed class AdvanceOrchestrator
         // 6) 병력보충(교전 정산이 끝난 뒤) — design-unit-state "병력보충 명령".
         var reinforced = Reinforce(state);
 
-        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage, stratagemDamage, enteredCastle, starvation, reinforced);
+        return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage,
+            stratagemDamage, enteredCastle, starvation, reinforced,
+            FieldGarrisonAssignments: fieldGarrisons);
     }
 
     // 보급부대 손실을 병종 구성에 균일(병력 비례)하게 분배한다 — 한 병종만 갈려나가지 않는다
@@ -539,11 +585,15 @@ public sealed class AdvanceOrchestrator
 
     // 이동 시뮬에 넣을 임시 FieldUnit. 혼란(행동불가)은 제자리에 묶고(속도 0·목표·모드 중립),
     // 수공(이동−1)은 속도를 깎는다(최소 1). 실제 Field는 위치만 되받아 보존한다.
-    private static FieldUnit MovementField(CombatUnit u, bool constructing)
+    private static FieldUnit MovementField(CombatUnit u, bool constructing, bool garrisoned)
     {
         if (constructing)
         {
             return u.Field with { Mode = UnitMode.Advance, Target = null, Waypoints = null, Speed = 0 };
+        }
+        if (garrisoned)
+        {
+            return u.Field with { Target = null, Waypoints = null, Speed = 0 };
         }
         // 행동불가(혼란)는 목표를 향한 전진을 멈춘다.
         if (IsDazed(u))
