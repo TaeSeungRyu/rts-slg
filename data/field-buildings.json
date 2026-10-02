@@ -1,0 +1,72 @@
+[
+  {
+    "code": "palisade",
+    "name": "목책",
+    "gold_cost": 100,
+    "troop_cost": 0,
+    "provisions_cost": 0,
+    "max_hit_points": 500,
+    "defense": 4,
+    "build_days": 7,
+    "effect_radius": 1,
+    "model_code": "field-palisade",
+    "can_be_targeted": true,
+    "can_garrison": false
+  },
+  {
+    "code": "scout_post",
+    "name": "정찰대",
+    "gold_cost": 10,
+    "troop_cost": 10,
+    "provisions_cost": 5,
+    "max_hit_points": 0,
+    "defense": 0,
+    "build_days": 7,
+    "effect_radius": 2,
+    "model_code": "field-scout",
+    "can_be_targeted": false,
+    "can_garrison": false
+  },
+  {
+    "code": "watchtower",
+    "name": "감시탑",
+    "gold_cost": 150,
+    "troop_cost": 0,
+    "provisions_cost": 0,
+    "max_hit_points": 500,
+    "defense": 4,
+    "build_days": 7,
+    "effect_radius": 2,
+    "model_code": "field-watchtower",
+    "can_be_targeted": true,
+    "can_garrison": false
+  },
+  {
+    "code": "fort",
+    "name": "보루",
+    "gold_cost": 300,
+    "troop_cost": 0,
+    "provisions_cost": 0,
+    "max_hit_points": 1000,
+    "defense": 4,
+    "build_days": 14,
+    "effect_radius": 2,
+    "model_code": "field-fort",
+    "can_be_targeted": true,
+    "can_garrison": true
+  },
+  {
+    "code": "formation",
+    "name": "진법",
+    "gold_cost": 300,
+    "troop_cost": 0,
+    "provisions_cost": 0,
+    "max_hit_points": 500,
+    "defense": 4,
+    "build_days": 14,
+    "effect_radius": 1,
+    "model_code": "field-formation",
+    "can_be_targeted": true,
+    "can_garrison": true
+  }
+]

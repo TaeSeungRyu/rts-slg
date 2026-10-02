@@ -65,7 +65,16 @@ public class SaveServiceTests
                 new FactionResearch(new FactionId(1), FactionResearch.ArsonStratagemCode, 2),
             ],
             RecruitmentPoints: [new(new FactionId(1), 113)],
-            RecruitmentPointGrants: [new(new FactionId(1), "ruin:pikeman_ruin", 100)]);
+            RecruitmentPointGrants: [new(new FactionId(1), "ruin:pikeman_ruin", 100)],
+            FieldBuildings:
+            [
+                new(new FieldBuildingId(1), "watchtower", new FactionId(1), new HexCoord(4, 2), 250,
+                    42, 49, BuilderUnit: new UnitId(1)),
+                new(new FieldBuildingId(2), "fort", new FactionId(1), new HexCoord(5, 2), 1000,
+                    20, 34, GarrisonUnit: new UnitId(1)),
+                new(new FieldBuildingId(3), "scout_post", new FactionId(1), new HexCoord(6, 2), 0,
+                    30, 37, 97, new UnitId(1)),
+            ]);
 
         var round = SaveService.Deserialize(SaveService.Serialize(state));
 
@@ -116,6 +125,18 @@ public class SaveServiceTests
         Assert.Equal("ruin:pikeman_ruin", round.RecruitmentPointHistory.Single().Key);
         Assert.Equal(4, round.ResearchOf(new FactionId(1), FactionResearch.ScoutStratagemCode));
         Assert.Equal(2, round.ResearchOf(new FactionId(1), FactionResearch.ArsonStratagemCode));
+        Assert.Equal(3, round.Buildings.Count);
+        var watchtower = round.Buildings.Single(x => x.Id == new FieldBuildingId(1));
+        Assert.Equal(new FactionId(1), watchtower.Owner);
+        Assert.Equal(new HexCoord(4, 2), watchtower.Position);
+        Assert.Equal(new UnitId(1), watchtower.BuilderUnit);
+        Assert.False(watchtower.IsCompleted(48));
+        Assert.True(watchtower.IsCompleted(49));
+        var fort = round.Buildings.Single(x => x.Id == new FieldBuildingId(2));
+        Assert.Equal(new UnitId(1), fort.GarrisonUnit);
+        var scout = round.Buildings.Single(x => x.Id == new FieldBuildingId(3));
+        Assert.False(scout.IsExpired(96));
+        Assert.True(scout.IsExpired(97));
     }
 
     [Fact]
@@ -128,5 +149,18 @@ public class SaveServiceTests
         Assert.All(FactionResearch.StratagemResearchCodes,
             code => Assert.Equal(0, loaded.ResearchOf(new FactionId(1), code)));
         Assert.Equal(0, loaded.ResearchOf(new FactionId(1), FactionResearch.ResearchDurationCode));
+        Assert.Empty(loaded.Buildings);
+    }
+
+    [Fact]
+    public void 스키마2_저장은_야전건축물_빈목록으로_읽는다()
+    {
+        var stateJson = System.Text.Json.JsonSerializer.Serialize(new GameState(8, 190, [], [], []));
+        var legacy = $$"""{"SchemaVersion":2,"State":{{stateJson}}}""";
+
+        var loaded = SaveService.Deserialize(legacy);
+
+        Assert.Equal(8, loaded.Day);
+        Assert.Empty(loaded.Buildings);
     }
 }
