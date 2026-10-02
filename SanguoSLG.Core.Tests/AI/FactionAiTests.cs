@@ -328,6 +328,29 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI는_가까운_적_야전건축물을_표적으로_삼고_정찰대는_무시한다()
+    {
+        var t = Troops.First(x => x.Code == "swordsman");
+        var field = new FieldUnit(new UnitId(1), new FactionId(1), default,
+            t.MovementPerDay, t.Detection, t.RangeUnit, MovementDomain.Land, UnitMode.Attack,
+            new HexCoord(99, 99), 1, t.RangeCastle);
+        var army = new CombatUnit(field,
+            CombatStatsBuilder.BuildField(t, AptitudeGrade.A, 0, TerrainType.Plains, 8000),
+            new TroopPool(8000, 0), UnitCombatState.Create(60), 70, 60, 8000,
+            t.Class, TroopCode: t.Code);
+        var scout = new FieldBuilding(new FieldBuildingId(1), "scout_post", new FactionId(2),
+            new HexCoord(1, 0), 0, 0, 1, 61);
+        var watchtower = new FieldBuilding(new FieldBuildingId(2), "watchtower", new FactionId(2),
+            new HexCoord(3, 0), 500, 0, 1);
+        var state = new GameState(1, 190, [], [Town(9, 2, new HexCoord(10, 0))], [],
+            FieldArmies: [army], FieldBuildings: [scout, watchtower]);
+
+        var after = Ai().PlanWeek(state, new FactionId(1));
+
+        Assert.Equal(watchtower.Position, after.Armies.Single().Field.Target);
+    }
+
+    [Fact]
     public void 결정론_같은_상태는_같은_결정을_낸다()
     {
         var s = new GameState(1, 1, new List<Faction>(),

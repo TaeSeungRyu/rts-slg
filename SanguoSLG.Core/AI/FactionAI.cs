@@ -432,7 +432,8 @@ public sealed class FactionAI
         return state;
     }
 
-    // 야전 공격 부대를 가장 가까운 적 성으로 재조준(멈춘 부대·무효 목표 복구).
+    // 야전 공격 부대를 가장 가까운 적 성 또는 표적 가능한 야전 건축물로 재조준한다.
+    // 정찰대는 통행형 비전 시설이므로 AI가 공격 대상으로 삼지 않는다.
     private static GameState Retarget(GameState state, FactionId faction)
     {
         var armies = state.Armies.Select(u =>
@@ -442,7 +443,7 @@ public sealed class FactionAI
                 return u;
             }
 
-            var target = NearestEnemyCity(state, faction, u.Field.Position);
+            var target = NearestEnemyObjective(state, faction, u.Field.Position);
             return target is { } dest ? u with { Field = u.Field with { Target = dest } } : u;
         }).ToList();
         return state with { FieldArmies = armies };
@@ -466,6 +467,21 @@ public sealed class FactionAI
         }
 
         return (city, state.Garrisons.Where(g => g.City == city.Id).Sum(g => g.Troops));
+    }
+
+    private static HexCoord? NearestEnemyObjective(GameState state, FactionId self, HexCoord from)
+    {
+        var cityTargets = state.Cities
+            .Where(city => city.Owner != self && !state.AreAllied(self, city.Owner))
+            .Select(city => (Position: city.Position, Kind: 0, Id: city.Id.Value));
+        var buildingTargets = state.Buildings
+            .Where(building => building.Owner != self && !state.AreAllied(self, building.Owner)
+                && !building.IsExpired(state.Day)
+                && !string.Equals(building.DefinitionCode, "scout_post", StringComparison.Ordinal))
+            .Select(building => (Position: building.Position, Kind: 1, Id: building.Id.Value));
+        return cityTargets.Concat(buildingTargets)
+            .OrderBy(x => x.Position.Distance(from)).ThenBy(x => x.Kind).ThenBy(x => x.Id)
+            .Select(x => (HexCoord?)x.Position).FirstOrDefault();
     }
 
     private static AptitudeGrade ArmyGroupAptitude(General general)

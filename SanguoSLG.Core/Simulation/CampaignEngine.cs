@@ -232,7 +232,10 @@ public sealed class CampaignEngine
             var livingFieldUnits = turn.Units.Where(x => x.Pool.Active > 0).Select(x => x.Id).ToHashSet();
             work = work with
             {
-                FieldBuildings = work.Buildings.Select(building => building.GarrisonUnit is { } unit
+                FieldBuildings = work.Buildings
+                    .Where(building => !(building.BuilderUnit is { } builder
+                        && !building.IsCompleted(simulationDay) && !livingFieldUnits.Contains(builder)))
+                    .Select(building => building.GarrisonUnit is { } unit
                         && !livingFieldUnits.Contains(unit) ? building with { GarrisonUnit = null } : building)
                     .ToList(),
             };

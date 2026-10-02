@@ -118,6 +118,20 @@ public sealed class FieldConstructionServiceTests
         Assert.Equal(UnitMode.Advance, next.Armies.Single().Field.Mode);
     }
 
+    [Fact]
+    public void 건축부대가_괴멸해_사라졌으면_미완성_공사장도_제거된다()
+    {
+        var survivor = Unit() with { Field = Unit().Field with { Id = new UnitId(2), Target = null } };
+        var orphan = new FieldBuilding(new FieldBuildingId(1), "palisade", Player, new HexCoord(3, 2),
+            250, 1, 20, BuilderUnit: new UnitId(99));
+        var state = State(survivor) with { FieldBuildings = [orphan] };
+
+        var next = Campaign().AdvanceWeek(state, out _);
+
+        Assert.Empty(next.Buildings);
+        Assert.Single(next.Armies);
+    }
+
     private static GameState State(CombatUnit unit)
         => new(1, 190, [], [], [], FieldArmies: [unit]);
 

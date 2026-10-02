@@ -547,6 +547,8 @@ public sealed partial class CampaignMapScene : Node3D
             RuinDefinitions = scenario.RuinList,
             RuinStates = scenario.RuinList.Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
         };
+        var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
+        if (args.Contains("--maptest")) SeedFieldBuildingSamples();
 
         _dbgLog = ProjectSettings.GlobalizePath("res://deploy-debug.log");
         try { System.IO.File.WriteAllText(_dbgLog, "=== maptest deploy debug ===\n"); } catch { }
@@ -569,7 +571,6 @@ public sealed partial class CampaignMapScene : Node3D
         BuildPanel();
         camera.Setup(_view.HexToWorld(new HexCoord(4, 2)), 14f);
         Redraw("자기 성(파란색)을 클릭해 명령을 내리세요. 적(촉)은 AI입니다.");
-        var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
         if (args.Contains("--maptestgaugelifetimeqa")) CallDeferred(nameof(RunActiveGaugeLifetimeQa));
         if (args.Contains("--maptestgaugeprogressqa")) CallDeferred(nameof(RunActiveGaugeProgressQa));
         if (args.Contains("--maptestsiegeactivepresentationqa")) CallDeferred(nameof(RunSiegeActivePresentationQa));
@@ -623,6 +624,28 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestunitinfouiqa")) CallDeferred(nameof(RunUnitInfoUiQa));
         if (args.Contains("--maptestherorecruitqa")) CallDeferred(nameof(RunHeroRecruitUiQa));
         if (args.Contains("--maptestspecialresearchqa")) CallDeferred(nameof(RunSpecialResearchLockQa));
+    }
+
+    private void SeedFieldBuildingSamples()
+    {
+        if (_state.Buildings.Count > 0) return;
+        var positions = new Dictionary<string, HexCoord>(System.StringComparer.Ordinal)
+        {
+            ["palisade"] = new(-4, 9),
+            ["scout_post"] = new(-3, 7),
+            ["watchtower"] = new(-2, 9),
+            ["fort"] = new(0, 9),
+            ["formation"] = new(2, 9),
+        };
+        var samples = _fieldBuildingDefinitions
+            .Where(definition => positions.ContainsKey(definition.Code))
+            .OrderBy(definition => definition.Code, System.StringComparer.Ordinal)
+            .Select((definition, index) => new FieldBuilding(
+                new FieldBuildingId(800001 + index), definition.Code, Player, positions[definition.Code],
+                definition.MaxHitPoints, _state.Day - definition.BuildDays, _state.Day,
+                definition.LifetimeDays > 0 ? _state.Day + definition.LifetimeDays : null))
+            .ToList();
+        _state = _state with { FieldBuildings = samples };
     }
 
     public override void _ExitTree()
@@ -16392,6 +16415,8 @@ public sealed partial class CampaignMapScene : Node3D
         formationScene?.Free();
         var menuHasCommand = _unitCmdBox.FindChildren("*", "Button", true, false)
             .OfType<Button>().Any(x => x.Text == "건축");
+        var sampleCodes = _state.Buildings.Select(x => x.DefinitionCode).ToHashSet(System.StringComparer.Ordinal);
+        var fiveSamplesOk = _fieldBuildingDefinitions.All(x => sampleCodes.Contains(x.Code));
         var definition = _fieldBuildingDefinitions.First(x => x.Code == "watchtower");
         var fallback = _state.Cities.First().Position;
         var position = _state.Armies.FirstOrDefault()?.Field.Position
@@ -16414,8 +16439,9 @@ public sealed partial class CampaignMapScene : Node3D
         _state = original;
         RedrawFieldBuildings();
         var passed = _fieldBuildingDefinitions.Count == 5 && modelsOk && formationAnimationOk && menuHasCommand
+            && fiveSamplesOk
             && radiusTwoOk && radiusOneOk && worldNodeOk;
-        GD.Print($"[field-construction-ui-qa] passed={passed} definitions={_fieldBuildingDefinitions.Count} models={modelsOk} formationAnimation={formationAnimationOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
+        GD.Print($"[field-construction-ui-qa] passed={passed} definitions={_fieldBuildingDefinitions.Count} samples={fiveSamplesOk} models={modelsOk} formationAnimation={formationAnimationOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
