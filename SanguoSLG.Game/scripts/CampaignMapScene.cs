@@ -342,6 +342,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (t.StratagemDamage.Count > 0) { Dbg("    stratDmg: " + string.Join(" ", t.StratagemDamage.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:-{kv.Value}"))); }
             if (t.Starvation.Count > 0) { Dbg("    starve: " + string.Join(" ", t.Starvation.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:-{kv.Value}"))); }
             if (t.Reinforced.Count > 0) { Dbg("    reinforced: " + string.Join(" ", t.Reinforced.OrderBy(k => k.Key.Value).Select(kv => $"u{kv.Key.Value}:+{kv.Value}"))); }
+            if (t.FormationTriggers.Count > 0) { Dbg("    formations: " + string.Join(" ", t.FormationTriggers.Select(x => $"u{x.Unit.Value}@b{x.Building.Value}:{(x.Activated ? $"wounded+{x.WoundedConverted}" : "miss")}"))); }
             if (t.EnteredCastle.Count > 0) { Dbg("    entered: " + string.Join(" ", t.EnteredCastle.Select(u => $"u{u.Id.Value}(troops {u.Pool.Active})"))); }
 
             var ids = t.Units.Select(x => x.Id.Value).ToHashSet();
@@ -15979,6 +15980,11 @@ public sealed partial class CampaignMapScene : Node3D
         var skilled = new HashSet<int>();
         foreach (var t in turns)
         {
+            foreach (var trigger in t.FormationTriggers.Where(x => x.Activated && x.WoundedConverted > 0))
+            {
+                if (meta.TryGetValue(trigger.Unit.Value, out var m) && m.Player)
+                    ev($"[진법] {m.Desc}의 현역 {trigger.WoundedConverted:N0}명이 부상병으로 전환되었습니다.", combatCol);
+            }
             foreach (var (uid, sk) in t.FiredActives.OrderBy(k => k.Key.Value))
             {
                 if (meta.TryGetValue(uid.Value, out var m) && m.Player) { skilled.Add(uid.Value); ev($"[특기] {m.Desc}이(가) 특기 「{sk.Name}」을(를) 발동했습니다.", skillCol); }

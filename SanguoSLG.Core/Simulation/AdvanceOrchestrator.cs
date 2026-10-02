@@ -24,6 +24,7 @@ public sealed class AdvanceOrchestrator
     private readonly int _resupplyRadius;
     private readonly TrainingConfig _training;
     private readonly int _navalProvisionsPercent;
+    private readonly IRandomSource _random;
 
     public AdvanceOrchestrator(
         MovementSimulator movement,
@@ -35,7 +36,8 @@ public sealed class AdvanceOrchestrator
         int resupplyRadius = DefaultResupplyRadius,
         TrainingConfig? training = null,
         int reinforcePercent = 20,
-        int navalProvisionsPercent = 20)
+        int navalProvisionsPercent = 20,
+        IRandomSource? random = null)
     {
         _movement = movement;
         _combat = combat;
@@ -47,6 +49,7 @@ public sealed class AdvanceOrchestrator
         _training = training ?? new TrainingConfig();
         _reinforcePercent = reinforcePercent;
         _navalProvisionsPercent = System.Math.Clamp(navalProvisionsPercent, 0, 100);
+        _random = random ?? new SeededRandomSource(0);
     }
 
     private readonly int _reinforcePercent;
@@ -141,6 +144,35 @@ public sealed class AdvanceOrchestrator
                     Field = state[u.Id].Field with { Mode = UnitMode.Advance, Target = null, Waypoints = null },
                 };
             }
+        }
+
+        // 이동 경로가 진법 범위 밖에서 안으로 실제 진입한 부대만 한 번 판정한다. 같은 이동 중
+        // 여러 진법에 들어가도 첫 진법 하나만 사용하며, 공격보다 먼저 현역을 부상병으로 전환한다.
+        var formationTriggers = new List<FormationTrigger>();
+        var completedFormations = (fieldBuildings ?? []).Where(building => building.IsCompleted(fieldDay)
+                && !building.IsExpired(fieldDay)
+                && definitions.TryGetValue(building.DefinitionCode, out var definition)
+                && definition.Kind == FieldBuildingKind.Formation)
+            .OrderBy(building => building.Id.Value).ToList();
+        foreach (var entry in FormationEntries(units, move, completedFormations, definitions))
+        {
+            if (!state.TryGetValue(entry.Unit, out var unit)) continue;
+            var activated = _random.Next(0, 100) < 30;
+            var converted = activated
+                ? System.Math.Max(unit.Pool.Active >= 100 ? 1 : 0, unit.Pool.Active / 100)
+                : 0;
+            if (converted > 0)
+            {
+                state[entry.Unit] = unit with
+                {
+                    Pool = unit.Pool with
+                    {
+                        Active = unit.Pool.Active - converted,
+                        Wounded = unit.Pool.Wounded + converted,
+                    },
+                };
+            }
+            formationTriggers.Add(new(entry.Building.Id, entry.Unit, activated, converted));
         }
 
         // 2.5) 지속 상태(DoT) 틱 — 진행당 1회. 서 있는 화상·독이 병력을 깎고 남은 진행이 준다.
@@ -254,7 +286,7 @@ public sealed class AdvanceOrchestrator
             var reinforcedOnly = Reinforce(state);
             return new AdvanceTurn(Ordered(state), move, null, firedActives, firedStratagems, statusDamage,
                 stratagemDamage, enteredCastle, starvation, reinforcedOnly,
-                FieldGarrisonAssignments: fieldGarrisons);
+                FieldGarrisonAssignments: fieldGarrisons, FormationResults: formationTriggers);
         }
 
         var attackers = engagements.Select(e => e.Attacker).ToHashSet();
@@ -358,7 +390,36 @@ public sealed class AdvanceOrchestrator
 
         return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage,
             stratagemDamage, enteredCastle, starvation, reinforced,
-            FieldGarrisonAssignments: fieldGarrisons);
+            FieldGarrisonAssignments: fieldGarrisons, FormationResults: formationTriggers);
+    }
+
+    private static IReadOnlyList<(UnitId Unit, FieldBuilding Building)> FormationEntries(
+        IReadOnlyList<CombatUnit> startingUnits,
+        AdvanceResult movement,
+        IReadOnlyList<FieldBuilding> formations,
+        IReadOnlyDictionary<string, FieldBuildingDefinition> definitions)
+    {
+        var result = new List<(UnitId, FieldBuilding)>();
+        foreach (var unit in startingUnits.OrderBy(x => x.Id.Value))
+        {
+            var previous = unit.Field.Position;
+            foreach (var tick in movement.Ticks)
+            {
+                var snapshot = tick.Units.FirstOrDefault(x => x.Id == unit.Id);
+                if (snapshot is null) continue;
+                var current = snapshot.Position;
+                var entered = formations.FirstOrDefault(building => building.Owner != unit.Field.Owner
+                    && previous.Distance(building.Position) > definitions[building.DefinitionCode].EffectRadius
+                    && current.Distance(building.Position) <= definitions[building.DefinitionCode].EffectRadius);
+                if (entered is not null)
+                {
+                    result.Add((unit.Id, entered));
+                    break;
+                }
+                previous = current;
+            }
+        }
+        return result;
     }
 
     // 보급부대 손실을 병종 구성에 균일(병력 비례)하게 분배한다 — 한 병종만 갈려나가지 않는다

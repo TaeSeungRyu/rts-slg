@@ -517,6 +517,7 @@ public sealed class CampaignEngine
                 .ToDictionary(kv => kv.Key, kv => kv.Value),
             ReinforcedTroops = turn.Reinforced.Where(kv => !productionUnitIds.Contains(kv.Key))
                 .ToDictionary(kv => kv.Key, kv => kv.Value),
+            FormationResults = turn.FormationTriggers.Where(x => !productionUnitIds.Contains(x.Unit)).ToList(),
         };
     }
 
