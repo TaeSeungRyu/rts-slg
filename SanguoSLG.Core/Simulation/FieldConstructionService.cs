@@ -103,6 +103,20 @@ public sealed class FieldConstructionService(
             : x).ToList();
     }
 
+    public CommandResult Demolish(GameState state, FactionId faction, FieldBuildingId buildingId)
+    {
+        var building = state.Buildings.FirstOrDefault(x => x.Id == buildingId && x.Owner == faction);
+        if (building is null) return CommandResult.Fail("철거할 아군 건축물이 없습니다.", state);
+        var units = state.Armies.Select(unit => building.BuilderUnit == unit.Id
+            ? unit with { IsConstructing = false, Field = unit.Field with { Target = null, Waypoints = null } }
+            : unit).ToList();
+        return CommandResult.Success(state with
+        {
+            FieldArmies = units,
+            FieldBuildings = state.Buildings.Where(x => x.Id != buildingId).ToList(),
+        });
+    }
+
     private static bool CanBuildOn(FieldBuildingKind kind, TerrainType terrain)
         => kind == FieldBuildingKind.ScoutPost
             ? terrain is TerrainType.Forest or TerrainType.Mountain

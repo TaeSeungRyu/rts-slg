@@ -3,9 +3,12 @@ namespace SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Spatial;
 
-public sealed class BattlefieldVision(BalanceConfig balance, IReadOnlyList<TroopTemplate> troops)
+public sealed class BattlefieldVision(BalanceConfig balance, IReadOnlyList<TroopTemplate> troops,
+    IReadOnlyList<FieldBuildingDefinition>? fieldBuildings = null)
 {
     private readonly IReadOnlyDictionary<string, TroopTemplate> _troops = troops.ToDictionary(t => t.Code);
+    private readonly IReadOnlyDictionary<string, FieldBuildingDefinition> _fieldBuildings =
+        (fieldBuildings ?? []).ToDictionary(x => x.Code, StringComparer.Ordinal);
 
     public int CityRadius(CastleSize size) => size switch
     {
@@ -27,8 +30,15 @@ public sealed class BattlefieldVision(BalanceConfig balance, IReadOnlyList<Troop
         var visible = new HashSet<HexCoord>();
         foreach (var city in state.Cities.Where(c => c.Owner == viewer || state.IsScouted(viewer, c.Id)))
             Reveal(city.Position, CityRadius(city.Castle));
+        var watchtowers = state.Buildings.Where(x => x.Owner == viewer && x.IsCompleted(state.Day)
+            && _fieldBuildings.TryGetValue(x.DefinitionCode, out var definition)
+            && definition.Kind == FieldBuildingKind.Watchtower).ToList();
         foreach (var unit in state.Armies.Where(u => u.Field.Owner == viewer && u.Pool.Active > 0 && !u.IsWaitingDeployment))
-            Reveal(unit.Field.Position, UnitRadius(unit));
+        {
+            var bonus = watchtowers.Any(tower => tower.Position.Distance(unit.Field.Position)
+                <= _fieldBuildings[tower.DefinitionCode].EffectRadius) ? 1 : 0;
+            Reveal(unit.Field.Position, UnitRadius(unit) + bonus); // 감시탑 중첩 없음
+        }
         foreach (var op in state.ProductionOps.Where(o => o.Owner == viewer && o.Troops > 0))
             Reveal(op.Position, TroopRadius(op.TroopCode));
         return visible;

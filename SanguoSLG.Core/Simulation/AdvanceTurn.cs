@@ -24,7 +24,8 @@ public sealed record AdvanceTurn(
     IReadOnlyDictionary<Domain.UnitId, Spatial.HexCoord>? ProductionAttackTargets = null,
     IReadOnlyDictionary<Domain.UnitId, Spatial.HexCoord>? LostProductionPositions = null,
     IReadOnlyList<RuinCombatExchange>? RuinCombatExchanges = null,
-    IReadOnlyList<CombatUnit>? ReleasedDeployments = null)
+    IReadOnlyList<CombatUnit>? ReleasedDeployments = null,
+    IReadOnlyList<FieldBuildingExchange>? FieldBuildingCombatExchanges = null)
 {
     public IReadOnlyList<CombatUnit> Deployments => ReleasedDeployments ?? [];
     public IReadOnlyList<CombatUnit> EnteredCastle => Entered ?? [];
@@ -39,6 +40,7 @@ public sealed record AdvanceTurn(
 
     /// <summary>이 진행에 발생한 유적 공격·강제 반격 교환(표현 계층 공격/Burst 연출용).</summary>
     public IReadOnlyList<RuinCombatExchange> RuinExchanges => RuinCombatExchanges ?? [];
+    public IReadOnlyList<FieldBuildingExchange> FieldBuildingExchanges => FieldBuildingCombatExchanges ?? [];
 
     private static readonly IReadOnlyDictionary<Domain.UnitId, int> EmptyLoss = new Dictionary<Domain.UnitId, int>();
     private static readonly IReadOnlyDictionary<Domain.UnitId, Spatial.HexCoord> EmptyPositions =

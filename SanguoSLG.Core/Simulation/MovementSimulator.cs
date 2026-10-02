@@ -14,6 +14,10 @@ using SanguoSLG.Core.Spatial;
 public sealed class MovementSimulator
 {
     private readonly PassabilityMap _passability;
+    private IReadOnlyList<FieldBuilding> _fieldBuildings = [];
+    private IReadOnlyDictionary<string, FieldBuildingDefinition> _fieldDefinitions =
+        new Dictionary<string, FieldBuildingDefinition>();
+    private int _fieldDay;
 
     public MovementSimulator(PassabilityMap passability) => _passability = passability;
 
@@ -115,8 +119,13 @@ public sealed class MovementSimulator
 
     /// <summary>한 번의 "진행"을 끝까지 계산한다(최대 <paramref name="maxDays"/>일).</summary>
     public AdvanceResult Advance(IReadOnlyList<FieldUnit> units, int maxDays = 7,
-        IReadOnlyList<SiegeSite>? castles = null, IReadOnlySet<UnitId>? deployedToday = null)
+        IReadOnlyList<SiegeSite>? castles = null, IReadOnlySet<UnitId>? deployedToday = null,
+        IReadOnlyList<FieldBuilding>? fieldBuildings = null,
+        IReadOnlyList<FieldBuildingDefinition>? fieldDefinitions = null, int fieldDay = 0)
     {
+        _fieldBuildings = fieldBuildings ?? [];
+        _fieldDefinitions = (fieldDefinitions ?? []).ToDictionary(x => x.Code, StringComparer.Ordinal);
+        _fieldDay = fieldDay;
         var work = units.OrderBy(u => u.Id.Value).Select(u => new Working(u, _passability)).ToList();
         var ticks = new List<MovementTick>();
         var entered = new List<UnitId>();
@@ -335,7 +344,7 @@ public sealed class MovementSimulator
                     {
                         w.LastPos = w.Unit.Position; // 되돌아가기 방지용
                         w.Unit = w.Unit.MoveTo(tile);
-                        w.MovedToday += TerrainCost(tile); // 진입 지형만큼 이동 예산 차감
+                        w.MovedToday += TerrainCost(w, tile); // 진입 지형·목책만큼 이동 예산 차감
                         movedThisDay.Add(w.Unit.Id.Value);
                         // 이번에 밟은 칸은 경로에서 소비한다. 막혀서 못 가면 그대로 둬 다음 스텝에 다시 노린다
                         if (w.Path is { Count: > 0 } && w.Path.Peek() == tile)
@@ -466,11 +475,26 @@ public sealed class MovementSimulator
     // 지형 이동 패널티(design-movement "지형 이동 보정"): 소형산·늪·소하천 칸에 들어가는 이동은
     // 그날 이동 예산을 1 더 쓴다(전 병종). 진입 칸 기준이라, 이미 그 칸에 서 있다 나가는 건 정상이다.
     // 최소 1칸은 늘 들어갈 수 있어(예산은 이동 후 차감) 속도 1 병종이 묶이지 않는다.
-    private int TerrainCost(HexCoord entered) => _passability.TerrainAt(entered) switch
+    private int TerrainCost(Working unit, HexCoord entered)
     {
-        TerrainType.Mountain or TerrainType.Swamp or TerrainType.River => 2,
-        _ => 1,
-    };
+        var cost = _passability.TerrainAt(entered) is TerrainType.Mountain or TerrainType.Swamp or TerrainType.River ? 2 : 1;
+        var slowedByPalisade = _fieldBuildings.Any(building => building.IsCompleted(_fieldDay)
+            && building.Position.Distance(entered) <= 1
+            && _fieldDefinitions.TryGetValue(building.DefinitionCode, out var definition)
+            && definition.Kind == FieldBuildingKind.Palisade);
+        return cost + (slowedByPalisade ? 1 : 0); // 여러 목책이 겹쳐도 +1 한 번만 적용
+    }
+
+    private bool CanEnter(Working unit, HexCoord coord)
+        => _passability.CanEnter(unit.Unit.Domain, coord)
+            && !_fieldBuildings.Any(building => building.Position == coord
+                && building.Owner != unit.Unit.Owner
+                && _fieldDefinitions.TryGetValue(building.DefinitionCode, out var definition)
+                && definition.CanBeTargeted);
+
+    private bool IsEnemyFieldBuilding(Working unit, HexCoord coord)
+        => _fieldBuildings.Any(building => building.Position == coord && building.Owner != unit.Unit.Owner
+            && _fieldDefinitions.TryGetValue(building.DefinitionCode, out var definition) && definition.CanBeTargeted);
 
     // 자신의 공성 사거리 안에 있는 적 성(고정 목록 순서 — 결정론)
     private static SiegeSite? CastleWithin(Working w, IReadOnlyList<SiegeSite>? castles) => castles?
@@ -497,6 +521,7 @@ public sealed class MovementSimulator
 
         var candidates = RotatedNeighbors(here, w.Unit.CommandOrder)
             .Where(n => _passability.CanExitThrough(w.Unit.Domain, here, n)
+                && !IsEnemyFieldBuilding(w, n)
                 && n.Distance(goal) <= hereDist)
             .OrderBy(n => n.Distance(goal))
             .ThenByDescending(n => AxisAgreement(here, n, goal))
@@ -512,7 +537,7 @@ public sealed class MovementSimulator
         var bestDist = int.MaxValue;
         foreach (var n in RotatedNeighbors(here, w.Unit.CommandOrder))
         {
-            if (_passability.CanEnter(w.Unit.Domain, n) && n.Distance(goal) < bestDist)
+            if (CanEnter(w, n) && n.Distance(goal) < bestDist)
             {
                 fallback = n;
                 bestDist = n.Distance(goal);
@@ -533,7 +558,7 @@ public sealed class MovementSimulator
         var exits = footprint
             .SelectMany(tile => tile.Neighbors())
             .Where(n => !footprint.Contains(n)
-                && _passability.CanEnter(w.Unit.Domain, n))
+                && CanEnter(w, n))
             .Distinct()
             .OrderBy(n => n == goal ? 0 : 1)
             .ThenBy(n => n.Distance(goal))
@@ -550,7 +575,7 @@ public sealed class MovementSimulator
     {
         foreach (var n in RotatedNeighbors(w.Unit.Position, w.Unit.CommandOrder))
         {
-            if (!occupied.Contains(n) && !claimed.Contains(n) && _passability.CanEnter(w.Unit.Domain, n))
+            if (!occupied.Contains(n) && !claimed.Contains(n) && CanEnter(w, n))
             {
                 return n;
             }
@@ -650,7 +675,7 @@ public sealed class MovementSimulator
         // ① 직진 우회 — 목표에 더 가까운 빈 칸(항상 허용)
         foreach (var n in here.Neighbors())
         {
-            if (!occupied.Contains(n) && n.Distance(g) < hereDist && _passability.CanEnter(w.Unit.Domain, n))
+            if (!occupied.Contains(n) && n.Distance(g) < hereDist && CanEnter(w, n))
             {
                 return n;
             }
@@ -664,13 +689,13 @@ public sealed class MovementSimulator
         foreach (var n in here.Neighbors())
         {
             if (occupied.Contains(n) || n.Distance(g) != hereDist || n == w.LastPos
-                || !_passability.CanEnter(w.Unit.Domain, n))
+                || !CanEnter(w, n))
             {
                 continue;
             }
 
             var opensUp = n.Neighbors().Any(m =>
-                !occupied.Contains(m) && m.Distance(g) < hereDist && _passability.CanEnter(w.Unit.Domain, m));
+                !occupied.Contains(m) && m.Distance(g) < hereDist && CanEnter(w, m));
             if (opensUp)
             {
                 return n;
@@ -688,7 +713,7 @@ public sealed class MovementSimulator
             foreach (var n in here.Neighbors())
             {
                 if (!occupied.Contains(n) && n.Distance(g) == hereDist && n != w.LastPos
-                    && _passability.CanEnter(w.Unit.Domain, n))
+                    && CanEnter(w, n))
                 {
                     return n;
                 }
@@ -703,7 +728,7 @@ public sealed class MovementSimulator
     // 현재 위치에서 goal까지의 남은 경로(시작 칸 제외)를 큐로 만든다.
     private bool IsFixedAttackTarget(Working w) => w.Unit.Mode == UnitMode.Attack
         && w.Unit.Target is { } target && _passability.CastleAnchorAt(target) is null
-        && _passability.IsBlockedForAll(target);
+        && (_passability.IsBlockedForAll(target) || IsEnemyFieldBuilding(w, target));
 
     private bool AtFixedAttackTarget(Working w) => IsFixedAttackTarget(w)
         && w.GoalIdx >= w.Goals.Count - 1
@@ -716,7 +741,7 @@ public sealed class MovementSimulator
         var start = w.Unit.Position;
         var destinationAnchor = _passability.CastleAnchorAt(goal);
         var pathfinder = new HexPathfinder(c =>
-            c == start || c == goal || _passability.CanEnter(domain, c)
+            c == start || c == goal || CanEnter(w, c)
             || (destinationAnchor is not null && _passability.CastleAnchorAt(c) == destinationAnchor));
         var path = pathfinder.FindPath(start, goal);
         var queue = new Queue<HexCoord>();

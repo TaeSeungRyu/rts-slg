@@ -35,13 +35,16 @@ public sealed class CampaignEngine
     private readonly int _buildSiteHp;
     private readonly int _buildSiteDamagePerTurn;
     private readonly RuinCombat? _ruinCombat;
+    private readonly FieldBuildingCombat? _fieldBuildingCombat;
+    private readonly IReadOnlyList<FieldBuildingDefinition> _fieldBuildingDefinitions;
 
     public CampaignEngine(AdvanceOrchestrator field, WorldEngine world,
         CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null,
         CityPlunder? plunder = null, int cityResupplyRadius = 0,
         int buildSiteHp = 0, int buildSiteDamagePerTurn = 0,
         IReadOnlyList<PassiveSkill>? passives = null, IReadOnlyList<ActiveSkill>? actives = null,
-        RuinCombat? ruinCombat = null)
+        RuinCombat? ruinCombat = null, FieldBuildingCombat? fieldBuildingCombat = null,
+        IReadOnlyList<FieldBuildingDefinition>? fieldBuildingDefinitions = null)
     {
         _field = field;
         _world = world;
@@ -55,6 +58,8 @@ public sealed class CampaignEngine
         _buildSiteHp = buildSiteHp;
         _buildSiteDamagePerTurn = buildSiteDamagePerTurn;
         _ruinCombat = ruinCombat;
+        _fieldBuildingCombat = fieldBuildingCombat;
+        _fieldBuildingDefinitions = fieldBuildingDefinitions ?? [];
     }
 
     /// <summary>7일을 진행한 새 상태를 반환한다. 야전 진행 보고 목록은 <paramref name="turns"/>로.</summary>
@@ -154,7 +159,8 @@ public sealed class CampaignEngine
             // 이동 → 공격 → 점령을 하루 단위로 확정한다. 주간 전체를 한 번에
             // 계산하면 공격턴에서 수비가 전멸해도 다음 진행까지 함락이 지연된다.
             var turn = _field.Run(turnInput, maxDays: 1, castles,
-                egress.Released.Select(u => u.Id).ToHashSet(), constructionUnits) with
+                egress.Released.Select(u => u.Id).ToHashSet(), constructionUnits,
+                work.Buildings, _fieldBuildingDefinitions, simulationDay) with
             {
                 ReleasedDeployments = egress.Released,
             };
@@ -175,6 +181,16 @@ public sealed class CampaignEngine
                 {
                     Units = ruinResult.Armies,
                     RuinCombatExchanges = ruinResult.Exchanges,
+                };
+            }
+            if (_fieldBuildingCombat is not null && work.Buildings.Count > 0)
+            {
+                var fieldBuildingResult = _fieldBuildingCombat.Resolve(work, turn.Units);
+                work = fieldBuildingResult.State;
+                turn = turn with
+                {
+                    Units = fieldBuildingResult.Armies,
+                    FieldBuildingCombatExchanges = fieldBuildingResult.Exchanges,
                 };
             }
             // 생산 대상은 저장용 야전 부대에서 제거해도 공격 모션의 목표 위치는 보존한다.

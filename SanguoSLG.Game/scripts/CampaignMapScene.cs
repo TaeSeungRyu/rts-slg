@@ -520,8 +520,10 @@ public sealed partial class CampaignMapScene : Node3D
             new CityCapture(), new SeededRandomSource(42),
             new CityPlunder(_cb), _cb.CityResupplyRadius,
             _cb.BuildSiteHp, _cb.BuildSiteDamagePerTurn, passives, actives,
-            new RuinCombat(new BattleResolver(60), 70));
-        _vision = new BattlefieldVision(scenario.Balance, _troops);
+            new RuinCombat(new BattleResolver(60), 70),
+            new FieldBuildingCombat(new BattleResolver(60), _fieldBuildingDefinitions),
+            _fieldBuildingDefinitions);
+        _vision = new BattlefieldVision(scenario.Balance, _troops, _fieldBuildingDefinitions);
         _fog = new BattlefieldFogView(_view);
         _fog.RegisterMap();
         IReadOnlyList<GeneralPresetOverride>? generalPreset = null;
@@ -1405,11 +1407,29 @@ public sealed partial class CampaignMapScene : Node3D
         Row("내구", definition.CanBeTargeted ? $"{building.HitPoints:N0} / {definition.MaxHitPoints:N0}" : "공격 대상 아님");
         Row("방어", definition.Defense.ToString());
         Row("영향 범위", $"반경 {definition.EffectRadius}칸 · {FieldBuildingDescription(definition)}");
+        if (building.Owner == Player)
+        {
+            var demolish = MakeButton("철거", accent: true);
+            demolish.TooltipText = "철거한 건축물은 복구할 수 없습니다.";
+            demolish.Pressed += () => ShowConfirm("야전 건축물 철거",
+                $"{definition.Name}을(를) 즉시 철거합니다.\n철거 후에는 복구할 수 없습니다.",
+                () => DemolishFieldBuilding(building.Id));
+            _terrainInfo.AddChild(demolish);
+        }
         _terrainHex = building.Position;
         PlaceTerrainCard(building.Position);
         _terrainCard.Visible = true;
         MoveRing(building.Position);
         if (completed) DrawFieldBuildingRange(building, definition);
+    }
+
+    private void DemolishFieldBuilding(FieldBuildingId buildingId)
+    {
+        var result = _fieldConstruction.Demolish(_state, Player, buildingId);
+        if (!result.Ok) { ShowNotice("철거 실패", result.Error ?? "철거할 수 없습니다."); return; }
+        _state = result.State;
+        HidePanels();
+        Redraw("야전 건축물을 철거했습니다.");
     }
 
     private void ClearFieldBuildingRange()
@@ -4771,7 +4791,9 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
         var enemyUnit = DisplayedArmies.FirstOrDefault(a => a.Field.Position == h && a.Field.Owner != Player && CanSeeUnit(a));
-        if (enemyCity is not null || enemyUnit is not null || RuinAt(h) is not null) { mode = UnitMode.Attack; }
+        var enemyFieldBuilding = _state.Buildings.FirstOrDefault(b => b.Position == h && b.Owner != Player);
+        if (enemyCity is not null || enemyUnit is not null || RuinAt(h) is not null || enemyFieldBuilding is not null)
+        { mode = UnitMode.Attack; }
         var result = _unitCommander.Reassign(_state, Player,
             new FieldUnitCommandRequest(new UnitId(uid), mode, h, waypoints, _visibleTiles, ReturnCity: ownCity?.Id));
         if (!result.Ok)
@@ -4782,7 +4804,11 @@ public sealed partial class CampaignMapScene : Node3D
 
         _state = result.State;
 
-        var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
+        var tName = CityAtHex(h)?.Name
+            ?? (enemyFieldBuilding is not null
+                ? _fieldBuildingDefinitions.FirstOrDefault(x => x.Code == enemyFieldBuilding.DefinitionCode)?.Name
+                : null)
+            ?? $"({h.Q},{h.R})";
         var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
         Dbg($"UI unit-retarget u{uid} -> ({h.Q},{h.R}) mode={mode} wps={waypoints?.Count ?? 0}");
         _log.Text = $"부대 → {tName} ({ModeName(mode)}모드){wpNote}";
