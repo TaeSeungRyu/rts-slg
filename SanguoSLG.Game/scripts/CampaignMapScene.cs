@@ -56,6 +56,8 @@ public sealed partial class CampaignMapScene : Node3D
     private FactionAI _ai = null!;
     private DeployService _deployer = null!;
     private FieldUnitCommandService _unitCommander = null!;
+    private FieldConstructionService _fieldConstruction = null!;
+    private IReadOnlyList<FieldBuildingDefinition> _fieldBuildingDefinitions = [];
     private ProductionService _producer = null!;
     private CampaignEngine _engine = null!;
     private CommandService _commander = null!;
@@ -201,6 +203,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 시설 배치(건설) — 반투명 고스트가 커서를 따라다니고, 평지·숲 유효 칸에서만 설치 컨펌이 뜬다.
     private Node3D _facilityLayer = null!;   // 완성 시설 + 공사중 모델을 담는 컨테이너(Redraw마다 재구성)
     private Node3D _ruinLayer = null!;
+    private Node3D _fieldBuildingLayer = null!;
     private bool _placing;
     private string _placeCode = "";
     private CityId _placeCity;
@@ -212,6 +215,17 @@ public sealed partial class CampaignMapScene : Node3D
     private HexCoord? _placeValidHex;
     private CanvasLayer? _placeDim;   // 배치 중 화면 전체를 살짝 어둡게
     private ImageTexture _dotIcon = null!;
+
+    // 야전 건축 배치 — 도시 시설 배치와 독립적으로 유지한다.
+    private bool _fieldBuildPlacing;
+    private int _fieldBuildUnitId = -1;
+    private string _fieldBuildCode = "";
+    private Node3D? _fieldBuildGhost;
+    private MeshInstance3D? _fieldBuildMarker;
+    private HexCoord? _fieldBuildValidHex;
+    private CanvasLayer? _fieldBuildDim;
+    private int _selectedFieldBuildingId = -1;
+    private readonly List<MeshInstance3D> _fieldBuildingRangeMarkers = new();
 
     // 명령 모달(명령 클릭 → 큰 창 + 아이콘 카드 그리드 → 카드 선택 → 장수 클릭 = 실행).
     private CanvasLayer? _modalLayer;
@@ -487,6 +501,8 @@ public sealed partial class CampaignMapScene : Node3D
         _ai = new FactionAI(_commander, _deployer);
         var scenario = new ScenarioLoader().LoadFromDirectory(dataDirectory);
         _passability = new PassabilityMap(_map, [], _cities, scenario.RuinList.Select(r => r.Position));
+        _fieldBuildingDefinitions = new FieldBuildingLoader().LoadFromDirectory(dataDirectory);
+        _fieldConstruction = new FieldConstructionService(_fieldBuildingDefinitions, _passability.TerrainAt);
         _unitCommander = new FieldUnitCommandService(
             (domain, hex) => _passability.CanEnter(domain, hex),
             (state, hex) => state.Ruins.Any(r => r.Position == hex));
@@ -592,6 +608,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestdoctrineperformanceqa")) CallDeferred(nameof(RunDoctrineModalPerformanceQa));
         if (args.Contains("--maptestofficertableqa")) CallDeferred(nameof(RunOfficerTableLayoutQa));
         if (args.Contains("--maptestcitydetailqa")) CallDeferred(nameof(RunCityDetailUiQa));
+        if (args.Contains("--maptestfieldconstructionuiqa")) CallDeferred(nameof(RunFieldConstructionUiQa));
         if (args.Contains("--maptestscoutdetailqa")) CallDeferred(nameof(RunScoutedCityDetailQa));
         if (args.Contains("--maptestcityambienceqa")) CallDeferred(nameof(RunCityAmbienceQa));
         if (args.Contains("--maptestcastledamageqa")) CallDeferred(nameof(RunCastleDamageQa));
@@ -703,6 +720,8 @@ public sealed partial class CampaignMapScene : Node3D
         AddChild(_facilityLayer);
         _ruinLayer = new Node3D();
         AddChild(_ruinLayer);
+        _fieldBuildingLayer = new Node3D();
+        AddChild(_fieldBuildingLayer);
     }
 
     // 단색 아이콘 텍스처 생성(라디오 대체용) — (x,y)→색 함수로 채운다.
@@ -1054,6 +1073,13 @@ public sealed partial class CampaignMapScene : Node3D
         // 마우스 오버: 밑 타일에 호버 육각.
         if (@event is InputEventMouseMotion motion)
         {
+            if (_fieldBuildPlacing)
+            {
+                _hover.Visible = false;
+                UpdateFieldBuildingPlacementHover(motion.Position);
+                return;
+            }
+
             // 시설 배치 중: 고스트가 커서를 따라다니며 유효/무효 색을 바꾼다(일반 호버는 숨긴다).
             if (_placing)
             {
@@ -1077,6 +1103,13 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
         {
+            if (_fieldBuildPlacing)
+            {
+                FinishFieldBuildingPlacement();
+                _log.Text = "야전 건축 배치를 취소했습니다.";
+                return;
+            }
+
             if (_placing)
             {
                 FinishPlacement();
@@ -1104,6 +1137,13 @@ public sealed partial class CampaignMapScene : Node3D
         // 우클릭: 목표 지정/시설 배치 취소.
         if (mb.ButtonIndex == MouseButton.Right && mb.Pressed)
         {
+            if (_fieldBuildPlacing)
+            {
+                FinishFieldBuildingPlacement();
+                _log.Text = "야전 건축 배치를 취소했습니다.";
+                return;
+            }
+
             if (_placing)
             {
                 FinishPlacement();
@@ -1141,6 +1181,19 @@ public sealed partial class CampaignMapScene : Node3D
         if ((mb.Position - _leftDownPos).Length() >= 6f) { return; } // 드래그 = 카메라 팬(선택 아님)
 
         // 시설 배치 중: 유효 칸(평지·숲)이면 설치 컨펌으로, 무효 칸이면 아무것도 하지 않는다.
+        if (_fieldBuildPlacing)
+        {
+            if (_fieldBuildValidHex is { } fieldPlot)
+            {
+                ConfirmFieldBuildingPlacement(fieldPlot);
+            }
+            else
+            {
+                ShowNotice("건축 불가", "현재 위치 또는 인접한 건축 가능 지형을 선택해 주세요.");
+            }
+            return;
+        }
+
         if (_placing)
         {
             if (_placeValidHex is { } plot)
@@ -1211,6 +1264,13 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
+        var fieldBuilding = _state.Buildings.FirstOrDefault(b => b.Position == hex);
+        if (fieldBuilding is not null)
+        {
+            ShowFieldBuildingInfo(fieldBuilding);
+            return;
+        }
+
         var ruin = _state.Ruins.FirstOrDefault(r => r.Position == hex);
         if (ruin is not null)
         {
@@ -1227,6 +1287,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenUnitMenu(CombatUnit u)
     {
         if (!CanSeeUnit(u)) return;
+        ClearFieldBuildingRange();
         _selectedUnitId = u.Id.Value;
         _selected = null;
         _infoCard.Visible = false;
@@ -1318,6 +1379,77 @@ public sealed partial class CampaignMapScene : Node3D
         MoveRing(ruin.Position);
     }
 
+    private void ShowFieldBuildingInfo(FieldBuilding building)
+    {
+        if (building.Owner != Player && !_visibleTiles.Contains(building.Position))
+        { ShowNotice("시야 밖", "아군 시야 안의 야전 건축물만 확인할 수 있습니다."); return; }
+        HidePanels();
+        var definition = _fieldBuildingDefinitions.FirstOrDefault(x => x.Code == building.DefinitionCode);
+        if (definition is null) return;
+        _selectedFieldBuildingId = building.Id.Value;
+        foreach (var child in _terrainHolder.GetChildren()) child.QueueFree();
+        _terrainHolder.Rotation = Vector3.Zero;
+        var preview = GD.Load<PackedScene>($"res://assets/models/{definition.ModelCode}.glb")?.Instantiate<Node3D>();
+        if (preview is not null) { _terrainHolder.AddChild(preview); FrameTerrainCamera(preview); }
+        _terrainName.Text = definition.Name;
+        Clear(_terrainInfo);
+        void Row(string key, string value)
+        {
+            var row = new HBoxContainer();
+            var k = MakeLabel(key, 11, Parchment); k.CustomMinimumSize = new Vector2(64, 0); row.AddChild(k);
+            var v = MakeLabel(value, 11, GoldBright); v.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            v.AutowrapMode = TextServer.AutowrapMode.WordSmart; row.AddChild(v); _terrainInfo.AddChild(row);
+        }
+        var completed = building.IsCompleted(_state.Day);
+        Row("상태", completed ? "완공" : $"건축 중 · {System.Math.Max(0, building.CompletionDay - _state.Day)}일 남음");
+        Row("내구", definition.CanBeTargeted ? $"{building.HitPoints:N0} / {definition.MaxHitPoints:N0}" : "공격 대상 아님");
+        Row("방어", definition.Defense.ToString());
+        Row("영향 범위", $"반경 {definition.EffectRadius}칸 · {FieldBuildingDescription(definition)}");
+        _terrainHex = building.Position;
+        PlaceTerrainCard(building.Position);
+        _terrainCard.Visible = true;
+        MoveRing(building.Position);
+        if (completed) DrawFieldBuildingRange(building, definition);
+    }
+
+    private void ClearFieldBuildingRange()
+    {
+        foreach (var marker in _fieldBuildingRangeMarkers) marker.QueueFree();
+        _fieldBuildingRangeMarkers.Clear();
+        _selectedFieldBuildingId = -1;
+    }
+
+    private void DrawFieldBuildingRange(FieldBuilding building, FieldBuildingDefinition definition)
+    {
+        foreach (var marker in _fieldBuildingRangeMarkers) marker.QueueFree();
+        _fieldBuildingRangeMarkers.Clear();
+        var mesh = new CylinderMesh
+        {
+            TopRadius = _view.HexWorldSize * 0.84f, BottomRadius = _view.HexWorldSize * 0.84f,
+            Height = 0.018f, RadialSegments = 6,
+        };
+        var material = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(1.0f, 0.64f, 0.16f, 0.38f),
+            EmissionEnabled = true, Emission = new Color(0.85f, 0.42f, 0.08f),
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha, RenderPriority = -1,
+        };
+        var radius = definition.EffectRadius;
+        for (var dq = -radius; dq <= radius; dq++)
+        for (var dr = System.Math.Max(-radius, -dq - radius); dr <= System.Math.Min(radius, -dq + radius); dr++)
+        {
+            var hex = new HexCoord(building.Position.Q + dq, building.Position.R + dr);
+            if (!_map.Contains(hex)) continue;
+            var marker = new MeshInstance3D
+            {
+                Mesh = mesh, MaterialOverride = material, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                Position = _view.HexToWorld(hex) + new Vector3(0, _view.TileTopY + 0.035f, 0),
+            };
+            AddChild(marker);
+            _fieldBuildingRangeMarkers.Add(marker);
+        }
+    }
+
     private void ShowRuinOccupancyHistory(RuinDefinition ruin, RuinState status)
     {
         var lines = status.Registrations.Select((id, index) =>
@@ -1368,6 +1500,46 @@ public sealed partial class CampaignMapScene : Node3D
             _ruinLayer.AddChild(label);
             _ruinLabels[ruin.Id] = label;
             _fog.Register(label, ruin.Position);
+        }
+    }
+
+    private void RedrawFieldBuildings()
+    {
+        if (_fieldBuildingLayer is null) return;
+        foreach (var child in _fieldBuildingLayer.GetChildren()) child.QueueFree();
+        foreach (var building in _state.Buildings.Where(x => !x.IsExpired(_state.Day)))
+        {
+            var definition = _fieldBuildingDefinitions.FirstOrDefault(x => x.Code == building.DefinitionCode);
+            if (definition is null) continue;
+            var origin = _view.HexToWorld(building.Position) + new Vector3(0, _view.TileTopY, 0);
+            var node = GD.Load<PackedScene>($"res://assets/models/{definition.ModelCode}.glb")?.Instantiate<Node3D>();
+            if (node is not null)
+            {
+                node.Name = $"FieldBuilding_{building.Id.Value}";
+                node.Position = origin;
+                if (!building.IsCompleted(_state.Day)) SetTransparency(node, 0.35f);
+                _fieldBuildingLayer.AddChild(node);
+                _fog.Register(node, building.Position);
+            }
+            if (!building.IsCompleted(_state.Day))
+            {
+                var tools = GD.Load<PackedScene>("res://assets/models/field-construction-tools.glb")?.Instantiate<Node3D>();
+                if (tools is not null)
+                {
+                    tools.Position = origin + new Vector3(0, 0.70f, 0);
+                    tools.Scale = Vector3.One * 0.68f;
+                    _fieldBuildingLayer.AddChild(tools);
+                    _fog.Register(tools, building.Position);
+                }
+                var label = new Label3D
+                {
+                    Text = $"건축 {System.Math.Max(0, building.CompletionDay - _state.Day)}일",
+                    Position = origin + new Vector3(0, 1.05f, 0), Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                    Font = _font, FontSize = 24, OutlineSize = 7, NoDepthTest = true, Modulate = GoldBright,
+                };
+                _fieldBuildingLayer.AddChild(label);
+                _fog.Register(label, building.Position);
+            }
         }
     }
 
@@ -4295,6 +4467,12 @@ public sealed partial class CampaignMapScene : Node3D
         ret.Pressed += ReturnSelectedUnit;
         _unitCmdBox.AddChild(ret);
 
+        _unitCmdBox.AddChild(MakeLabel("· 야전", 10, GoldBright));
+        var construction = Item("건축", accent: true);
+        construction.TooltipText = "휴대 금과 군량을 사용해 현재 또는 인접 타일에 야전 건축물을 설치한다.";
+        construction.Pressed += () => OpenFieldConstructionModal(_selectedUnitId);
+        _unitCmdBox.AddChild(construction);
+
     }
 
     private void RunUnitMenuQa()
@@ -4306,6 +4484,170 @@ public sealed partial class CampaignMapScene : Node3D
             && buttons.Contains("정지") && buttons.Contains("복귀");
         GD.Print($"[unit-menu-qa] passed={passed} buttons={string.Join(',', buttons)}");
         GetTree().Quit(passed ? 0 : 1);
+    }
+
+    private void OpenFieldConstructionModal(int unitId)
+    {
+        if (_advancing) { ShowNotice("건축 불가", "진행 중에는 건축 명령을 내릴 수 없습니다."); return; }
+        var unit = _state.Armies.FirstOrDefault(x => x.Id.Value == unitId && x.Field.Owner == Player);
+        if (unit is null) { ShowNotice("건축 불가", "건축할 아군 부대를 찾을 수 없습니다."); return; }
+        if (unit.Class == TroopClass.Naval) { ShowNotice("건축 불가", "해상 부대는 야전 건축을 할 수 없습니다."); return; }
+        if (unit.Pool.Active < FieldConstructionService.MinimumTroops)
+        { ShowNotice("건축 불가", "건축에는 병력 1,000명 이상이 필요합니다."); return; }
+        if (unit.IsConstructing) { ShowNotice("건축 불가", "이미 건축 중인 부대입니다."); return; }
+
+        CloseModal();
+        var layer = new CanvasLayer { Layer = 35 };
+        AddChild(layer);
+        _modalLayer = layer;
+
+        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.56f), MouseFilter = Control.MouseFilterEnum.Stop };
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        backdrop.GuiInput += e =>
+        {
+            if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) CloseModal();
+        };
+        layer.AddChild(backdrop);
+        var center = new CenterContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        layer.AddChild(center);
+        var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop, CustomMinimumSize = new Vector2(720, 0) };
+        panel.SetMeta("modal_root", true);
+        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
+        center.AddChild(panel);
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 10);
+        panel.AddChild(box);
+        var title = new HBoxContainer();
+        box.AddChild(title);
+        var titleLabel = MakeLabel("◈  야전 건축", 19, GoldBright);
+        titleLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.AddChild(titleLabel);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(34, 30);
+        close.Pressed += CloseModal;
+        title.AddChild(close);
+        box.AddChild(MakeLabel($"병력 {unit.Pool.Active:N0} · 휴대 금 {unit.CarryingGold:N0} · 군량 {unit.Provisions:N0}\n건축물을 선택한 뒤 현재 또는 인접 타일에 배치합니다.", 13, Parchment));
+        box.AddChild(GoldRule());
+
+        var grid = new GridContainer { Columns = 5, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        grid.AddThemeConstantOverride("h_separation", 8);
+        box.AddChild(grid);
+        foreach (var definition in _fieldBuildingDefinitions)
+        {
+            var selected = definition;
+            var card = MakeButton($"{definition.Name}\n금 {definition.GoldCost:N0}\n{definition.BuildDays}일");
+            card.CustomMinimumSize = new Vector2(128, 96);
+            card.TooltipText = FieldBuildingDescription(definition);
+            card.Disabled = unit.CarryingGold < definition.GoldCost
+                || unit.Provisions < definition.ProvisionsCost
+                || unit.Pool.Active - definition.TroopCost <= 0;
+            card.Pressed += () => BeginFieldBuildingPlacement(unit.Id.Value, selected.Code);
+            grid.AddChild(card);
+        }
+    }
+
+    private static string FieldBuildingDescription(FieldBuildingDefinition definition) => definition.Kind switch
+    {
+        FieldBuildingKind.Palisade => "주변 1칸의 이동력을 1 낮추는 목책입니다.",
+        FieldBuildingKind.ScoutPost => "숲·산악에 설치해 완공 후 60일 동안 반경 2칸 시야를 제공합니다.",
+        FieldBuildingKind.Watchtower => "반경 2칸 아군 시야를 1 늘리는 감시탑입니다.",
+        FieldBuildingKind.Fort => "반경 2칸 군량 소모를 줄이고 아군 1부대를 보호하는 보루입니다.",
+        FieldBuildingKind.Formation => "반경 1칸 적의 일부 병력을 부상으로 바꾸는 진법입니다.",
+        _ => definition.Name,
+    };
+
+    private void BeginFieldBuildingPlacement(int unitId, string code)
+    {
+        CloseModal();
+        HidePanels();
+        _fieldBuildPlacing = true;
+        _fieldBuildUnitId = unitId;
+        _fieldBuildCode = code;
+        _fieldBuildValidHex = null;
+        var definition = _fieldBuildingDefinitions.First(x => x.Code == code);
+        var scene = GD.Load<PackedScene>($"res://assets/models/{definition.ModelCode}.glb");
+        _fieldBuildGhost = scene?.Instantiate<Node3D>();
+        if (_fieldBuildGhost is not null)
+        {
+            SetTransparency(_fieldBuildGhost, 0.48f);
+            _fieldBuildGhost.Visible = false;
+            AddChild(_fieldBuildGhost);
+        }
+        _fieldBuildMarker = new MeshInstance3D
+        {
+            Mesh = new CylinderMesh { TopRadius = _view.HexWorldSize * 0.92f, BottomRadius = _view.HexWorldSize * 0.92f, Height = 0.025f, RadialSegments = 6 },
+            Visible = false,
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            MaterialOverride = new StandardMaterial3D { Transparency = BaseMaterial3D.TransparencyEnum.Alpha, EmissionEnabled = true, NoDepthTest = true },
+        };
+        AddChild(_fieldBuildMarker);
+        _fieldBuildDim = new CanvasLayer { Layer = 24 };
+        var dim = new ColorRect { Color = new Color(0, 0, 0, 0.25f), MouseFilter = Control.MouseFilterEnum.Ignore };
+        dim.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _fieldBuildDim.AddChild(dim);
+        AddChild(_fieldBuildDim);
+        _log.Text = $"{definition.Name} 배치 위치를 선택하세요. 현재 또는 인접 타일 · 우클릭 취소";
+    }
+
+    private void UpdateFieldBuildingPlacementHover(Vector2 screen)
+    {
+        if (RayToGround(screen) is not { } hex)
+        {
+            if (_fieldBuildGhost is not null) _fieldBuildGhost.Visible = false;
+            if (_fieldBuildMarker is not null) _fieldBuildMarker.Visible = false;
+            _fieldBuildValidHex = null;
+            return;
+        }
+        var probe = _fieldConstruction.Start(_state, Player,
+            new FieldConstructionRequest(new UnitId(_fieldBuildUnitId), _fieldBuildCode, hex));
+        _fieldBuildValidHex = probe.Ok ? hex : null;
+        var position = _view.HexToWorld(hex) + new Vector3(0, _view.TileTopY, 0);
+        if (_fieldBuildGhost is not null) { _fieldBuildGhost.Visible = true; _fieldBuildGhost.Position = position; }
+        if (_fieldBuildMarker is not null)
+        {
+            _fieldBuildMarker.Visible = true;
+            _fieldBuildMarker.Position = position + new Vector3(0, 0.025f, 0);
+            var material = (StandardMaterial3D)_fieldBuildMarker.MaterialOverride;
+            var color = probe.Ok ? new Color(0.30f, 0.88f, 0.38f, 0.45f) : new Color(0.92f, 0.20f, 0.18f, 0.45f);
+            material.AlbedoColor = color;
+            material.Emission = new Color(color.R * 0.7f, color.G * 0.7f, color.B * 0.7f);
+        }
+    }
+
+    private void ConfirmFieldBuildingPlacement(HexCoord plot)
+    {
+        var unitId = _fieldBuildUnitId;
+        var code = _fieldBuildCode;
+        FinishFieldBuildingPlacement();
+        var unit = _state.Armies.FirstOrDefault(x => x.Id.Value == unitId);
+        var definition = _fieldBuildingDefinitions.First(x => x.Code == code);
+        var message = $"{definition.Name} 건축을 시작합니다.\n금 {definition.GoldCost:N0} · 군량 {definition.ProvisionsCost:N0} · {definition.BuildDays}일\n착공 후에는 취소할 수 없습니다.";
+        void Execute() => ExecuteFieldBuildingConstruction(unitId, code, plot);
+        if (unit?.VanguardId is { } officer)
+            ShowOfficerConfirm("야전 건축 확인", message, officer, Execute, $"“{definition.Name} 건축을 맡겨 주십시오.”");
+        else ShowConfirm("야전 건축 확인", message, Execute);
+    }
+
+    private void ExecuteFieldBuildingConstruction(int unitId, string code, HexCoord plot)
+    {
+        var result = _fieldConstruction.Start(_state, Player,
+            new FieldConstructionRequest(new UnitId(unitId), code, plot));
+        if (!result.Ok) { ShowNotice("건축 실패", result.Error ?? "건축을 시작할 수 없습니다."); return; }
+        _state = result.State;
+        var name = _fieldBuildingDefinitions.First(x => x.Code == code).Name;
+        Redraw($"{name} 건축을 시작했습니다.");
+    }
+
+    private void FinishFieldBuildingPlacement()
+    {
+        _fieldBuildPlacing = false;
+        _fieldBuildUnitId = -1;
+        _fieldBuildCode = "";
+        _fieldBuildValidHex = null;
+        _fieldBuildGhost?.QueueFree(); _fieldBuildGhost = null;
+        _fieldBuildMarker?.QueueFree(); _fieldBuildMarker = null;
+        _fieldBuildDim?.QueueFree(); _fieldBuildDim = null;
     }
 
     // 야전 부대 이동 재지정 — 모드를 고르고 목적지를 클릭, '확인'으로 확정(출전 목표 지정과 동일 UX).
@@ -4513,6 +4855,7 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainHex = null;
         ClearPathMarkers();
         ClearSupplyZoneMarkers();
+        ClearFieldBuildingRange();
         if (_ring is not null) { _ring.Visible = false; }
     }
 
@@ -14325,6 +14668,7 @@ public sealed partial class CampaignMapScene : Node3D
         DrawDeployPaths();
         RedrawFacilities();
         RedrawRuins();
+        RedrawFieldBuildings();
         foreach (var child in _facilityLayer.GetChildren().OfType<Node3D>())
             _fog.Register(child, _view.WorldToHex(child.Position));
 
@@ -14390,6 +14734,22 @@ public sealed partial class CampaignMapScene : Node3D
             token.SetFormationSize(army.IsSupply || army.IsArmyGroup ? 1 : FormationFor(army.Pool.Active)); // 보급부대·집단군은 규모와 무관하게 단일 전용 모델
             token.Visible = !army.IsWaitingDeployment;
             token.DisplaySyncTo(army.Field.Position, 0.3f); // 제자리면 스냅 — 보정 트윈이 방향을 뒤집지 않게
+            var constructionIndicator = token.GetNodeOrNull<Node3D>("FieldConstructionIndicator");
+            if (army.IsConstructing && constructionIndicator is null)
+            {
+                constructionIndicator = GD.Load<PackedScene>("res://assets/models/field-construction-tools.glb")?.Instantiate<Node3D>();
+                if (constructionIndicator is not null)
+                {
+                    constructionIndicator.Name = "FieldConstructionIndicator";
+                    constructionIndicator.Position = new Vector3(0, 1.0f, 0);
+                    constructionIndicator.Scale = Vector3.One * 0.62f;
+                    token.AddChild(constructionIndicator);
+                }
+            }
+            else if (!army.IsConstructing && constructionIndicator is not null)
+            {
+                constructionIndicator.QueueFree();
+            }
             var lblNode = _armyLabels[army.Id.Value];
             lblNode.Position = _view.HexToWorld(army.Field.Position)
                 + new Vector3(0f, _view.TileTopY + CommanderPortraitView3D.TroopLabelHeightOffset, 0f);
@@ -15916,6 +16276,43 @@ public sealed partial class CampaignMapScene : Node3D
         };
         _advanceBtn.Pressed = OnAdvance;
         vb.AddChild(_advanceBtn);
+    }
+
+    private async void RunFieldConstructionUiQa()
+    {
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var modelFiles = _fieldBuildingDefinitions
+            .Select(x => $"res://assets/models/{x.ModelCode}.glb")
+            .Append("res://assets/models/field-construction-tools.glb")
+            .ToList();
+        var modelsOk = modelFiles.All(path => ResourceLoader.Exists(path));
+        var menuHasCommand = _unitCmdBox.FindChildren("*", "Button", true, false)
+            .OfType<Button>().Any(x => x.Text == "건축");
+        var definition = _fieldBuildingDefinitions.First(x => x.Code == "watchtower");
+        var fallback = _state.Cities.First().Position;
+        var position = _state.Armies.FirstOrDefault()?.Field.Position
+            ?? new HexCoord(fallback.Q + 2, fallback.R);
+        var building = new FieldBuilding(new FieldBuildingId(900001), definition.Code, Player, position,
+            definition.MaxHitPoints, _state.Day - definition.BuildDays, _state.Day);
+        DrawFieldBuildingRange(building, definition);
+        var radiusTwoOk = _fieldBuildingRangeMarkers.Count == 19;
+        ClearFieldBuildingRange();
+        var radiusOneDefinition = _fieldBuildingDefinitions.First(x => x.Code == "palisade");
+        var radiusOneBuilding = building with { DefinitionCode = radiusOneDefinition.Code };
+        DrawFieldBuildingRange(radiusOneBuilding, radiusOneDefinition);
+        var radiusOneOk = _fieldBuildingRangeMarkers.Count == 7;
+        ClearFieldBuildingRange();
+        var original = _state;
+        _state = _state with { FieldBuildings = _state.Buildings.Append(building).ToList() };
+        RedrawFieldBuildings();
+        var worldNodeOk = _fieldBuildingLayer.GetChildren().OfType<Node3D>()
+            .Any(x => x.Name == $"FieldBuilding_{building.Id.Value}");
+        _state = original;
+        RedrawFieldBuildings();
+        var passed = _fieldBuildingDefinitions.Count == 5 && modelsOk && menuHasCommand
+            && radiusTwoOk && radiusOneOk && worldNodeOk;
+        GD.Print($"[field-construction-ui-qa] passed={passed} definitions={_fieldBuildingDefinitions.Count} models={modelsOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     // 진행 버튼 아이콘 로드(교체용). 파일 없으면 null → 버튼이 금색 ▶ 폴백을 그린다.

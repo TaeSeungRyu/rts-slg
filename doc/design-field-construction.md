@@ -1,6 +1,6 @@
 # 야전 건축 설계 — 출전 육상 부대
 
-작성일: 2026-10-01. 상태: Phase 18C 2단계 착공·자원 결제·행동 잠금까지 구현, UI·에셋 미구현.
+작성일: 2026-10-01. 상태: Phase 18C 3단계 설치·선택 UI·장수 확인·작업 표시·GLB까지 구현.
 실행 단계는 [Phase 18C](./plan-v2-implementation-roadmap.md#phase-18c-야전-건축)에 기록한다.
 기준: [지형](./design-terrain.md), [이동](./design-movement.md), [전투](./design-combat.md),
 [부대 군량](./design-unit-state.md), [효과](./design-effect.md).
@@ -156,3 +156,7 @@ Blender는 `--background --python-exit-code 1`로 생성 검증하고 `design-ef
 
 Phase 18C 1단계에서 `data/field-buildings.json`, `FieldBuildingDefinition`, 독립 `FieldBuilding` 상태와
 세이브 스키마 v3를 구현했다. 이전 v1/v2 봉투 및 봉투 없는 원시 저장은 건축물 빈 목록으로 호환한다.
+
+Phase 18C 3단계에서 부대 팔레트의 `건축` 명령, 5종 선택 카드, 현재/인접 타일 배치 미리보기,
+선봉 장수 확인창과 착공 연결을 구현했다. 5종 건축물과 망치·곡괭이 작업 표시는 Blender 생성 스크립트와
+GLB를 함께 보관하며, 공사 중 잔여 일수와 완공 건축물의 실제 영향 범위를 지도에 표시한다.
