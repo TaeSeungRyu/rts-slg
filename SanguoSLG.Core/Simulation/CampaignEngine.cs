@@ -37,6 +37,7 @@ public sealed class CampaignEngine
     private readonly RuinCombat? _ruinCombat;
     private readonly FieldBuildingCombat? _fieldBuildingCombat;
     private readonly IReadOnlyList<FieldBuildingDefinition> _fieldBuildingDefinitions;
+    private readonly FieldScoutPostService? _fieldScoutPosts;
 
     public CampaignEngine(AdvanceOrchestrator field, WorldEngine world,
         CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null,
@@ -60,6 +61,9 @@ public sealed class CampaignEngine
         _ruinCombat = ruinCombat;
         _fieldBuildingCombat = fieldBuildingCombat;
         _fieldBuildingDefinitions = fieldBuildingDefinitions ?? [];
+        _fieldScoutPosts = _fieldBuildingDefinitions.Count > 0
+            ? new FieldScoutPostService(_fieldBuildingDefinitions)
+            : null;
     }
 
     /// <summary>7일을 진행한 새 상태를 반환한다. 야전 진행 보고 목록은 <paramref name="turns"/>로.</summary>
@@ -110,6 +114,15 @@ public sealed class CampaignEngine
         while (remaining > 0 && (armies.Count > 0 || waitingArmies.Count > 0 || egressArmies.Count > 0))
         {
             var simulationDay = state.Day + (WeekDays - remaining);
+            IReadOnlyList<FieldBuildingId> expiredScoutPosts = [];
+            if (_fieldScoutPosts is not null)
+            {
+                var expiry = _fieldScoutPosts.Resolve(work, armies,
+                    new Dictionary<FactionId, IReadOnlySet<HexCoord>>(), simulationDay);
+                work = expiry.State;
+                armies = expiry.Armies.ToList();
+                expiredScoutPosts = expiry.Expired;
+            }
             var completedBuilders = work.Buildings
                 .Where(x => x.BuilderUnit is not null && x.IsCompleted(simulationDay))
                 .Select(x => x.BuilderUnit!.Value)
@@ -163,7 +176,20 @@ public sealed class CampaignEngine
                 work.Buildings, _fieldBuildingDefinitions, simulationDay) with
             {
                 ReleasedDeployments = egress.Released,
+                ExpiredScoutPostIds = expiredScoutPosts,
             };
+            if (_fieldScoutPosts is not null && work.Buildings.Count > 0)
+            {
+                var visited = VisitedTiles(armies, turn.Movement, productionUnitIds);
+                var scoutUpdate = _fieldScoutPosts.Resolve(work, turn.Units, visited, simulationDay);
+                work = scoutUpdate.State;
+                turn = turn with
+                {
+                    Units = scoutUpdate.Armies,
+                    RemovedScoutPostIds = scoutUpdate.Removed,
+                    ExpiredScoutPostIds = expiredScoutPosts.Concat(scoutUpdate.Expired).Distinct().ToList(),
+                };
+            }
             if (_ruinCombat is not null && work.Ruins.Count > 0)
             {
                 var ruinResult = _ruinCombat.Resolve(work, turn.Units);
@@ -367,6 +393,12 @@ public sealed class CampaignEngine
         plunders = plunderReports;
         casualties = casualtyReports;
         var advanced = _world.AdvanceDays(afterField, WeekDays);
+        if (_fieldScoutPosts is not null)
+        {
+            var expiry = _fieldScoutPosts.Resolve(advanced, advanced.Armies,
+                new Dictionary<FactionId, IReadOnlySet<HexCoord>>(), advanced.Day);
+            advanced = expiry.State;
+        }
         var completedAtEnd = advanced.Buildings
             .Where(x => x.BuilderUnit is not null && x.IsCompleted(advanced.Day))
             .Select(x => x.BuilderUnit!.Value)
@@ -803,6 +835,28 @@ public sealed class CampaignEngine
             Gold = city.Gold + gold,
             Provisions = city.Provisions + provisions,
         };
+    }
+
+    private static IReadOnlyDictionary<FactionId, IReadOnlySet<HexCoord>> VisitedTiles(
+        IReadOnlyList<CombatUnit> startingArmies, AdvanceResult movement, IReadOnlySet<UnitId> excluded)
+    {
+        var visited = new Dictionary<FactionId, HashSet<HexCoord>>();
+        void Add(FieldUnit unit)
+        {
+            if (excluded.Contains(unit.Id)) return;
+            if (!visited.TryGetValue(unit.Owner, out var tiles))
+            {
+                tiles = [];
+                visited[unit.Owner] = tiles;
+            }
+            tiles.Add(unit.Position);
+        }
+
+        foreach (var unit in startingArmies) Add(unit.Field);
+        foreach (var tick in movement.Ticks)
+        foreach (var unit in tick.Units) Add(unit);
+        foreach (var unit in movement.Units) Add(unit);
+        return visited.ToDictionary(x => x.Key, x => (IReadOnlySet<HexCoord>)x.Value);
     }
 
     private GameState AwardCombatGrowth(GameState state, IReadOnlyList<CombatUnit> units, int generalExp, int passiveExp)

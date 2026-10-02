@@ -1404,6 +1404,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
         var completed = building.IsCompleted(_state.Day);
         Row("상태", completed ? "완공" : $"건축 중 · {System.Math.Max(0, building.CompletionDay - _state.Day)}일 남음");
+        if (completed && definition.Kind == FieldBuildingKind.ScoutPost)
+            Row("정찰 유지", $"{System.Math.Max(0, (building.ExpiresDay ?? _state.Day) - _state.Day)}일 남음");
         Row("내구", definition.CanBeTargeted ? $"{building.HitPoints:N0} / {definition.MaxHitPoints:N0}" : "공격 대상 아님");
         Row("방어", definition.Defense.ToString());
         Row("영향 범위", $"반경 {definition.EffectRadius}칸 · {FieldBuildingDescription(definition)}");
@@ -4791,7 +4793,8 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
         var enemyUnit = DisplayedArmies.FirstOrDefault(a => a.Field.Position == h && a.Field.Owner != Player && CanSeeUnit(a));
-        var enemyFieldBuilding = _state.Buildings.FirstOrDefault(b => b.Position == h && b.Owner != Player);
+        var enemyFieldBuilding = _state.Buildings.FirstOrDefault(b => b.Position == h && b.Owner != Player
+            && _fieldBuildingDefinitions.FirstOrDefault(x => x.Code == b.DefinitionCode)?.CanBeTargeted == true);
         if (enemyCity is not null || enemyUnit is not null || RuinAt(h) is not null || enemyFieldBuilding is not null)
         { mode = UnitMode.Attack; }
         var result = _unitCommander.Reassign(_state, Player,

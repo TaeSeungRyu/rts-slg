@@ -30,9 +30,17 @@ public sealed class BattlefieldVision(BalanceConfig balance, IReadOnlyList<Troop
         var visible = new HashSet<HexCoord>();
         foreach (var city in state.Cities.Where(c => c.Owner == viewer || state.IsScouted(viewer, c.Id)))
             Reveal(city.Position, CityRadius(city.Castle));
-        var watchtowers = state.Buildings.Where(x => x.Owner == viewer && x.IsCompleted(state.Day)
-            && _fieldBuildings.TryGetValue(x.DefinitionCode, out var definition)
+        var completedBuildings = state.Buildings.Where(x => x.Owner == viewer && x.IsCompleted(state.Day)
+            && !x.IsExpired(state.Day)).ToList();
+        var watchtowers = completedBuildings.Where(x =>
+            _fieldBuildings.TryGetValue(x.DefinitionCode, out var definition)
             && definition.Kind == FieldBuildingKind.Watchtower).ToList();
+        foreach (var scout in completedBuildings.Where(x =>
+            _fieldBuildings.TryGetValue(x.DefinitionCode, out var definition)
+            && definition.Kind == FieldBuildingKind.ScoutPost))
+        {
+            Reveal(scout.Position, _fieldBuildings[scout.DefinitionCode].EffectRadius);
+        }
         foreach (var unit in state.Armies.Where(u => u.Field.Owner == viewer && u.Pool.Active > 0 && !u.IsWaitingDeployment))
         {
             var bonus = watchtowers.Any(tower => tower.Position.Distance(unit.Field.Position)
