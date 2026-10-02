@@ -1392,7 +1392,12 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var child in _terrainHolder.GetChildren()) child.QueueFree();
         _terrainHolder.Rotation = Vector3.Zero;
         var preview = GD.Load<PackedScene>($"res://assets/models/{definition.ModelCode}.glb")?.Instantiate<Node3D>();
-        if (preview is not null) { _terrainHolder.AddChild(preview); FrameTerrainCamera(preview); }
+        if (preview is not null)
+        {
+            _terrainHolder.AddChild(preview);
+            PlayLoopingModelAnimations(preview);
+            FrameTerrainCamera(preview);
+        }
         _terrainName.Text = definition.Name;
         Clear(_terrainInfo);
         void Row(string key, string value)
@@ -1541,6 +1546,7 @@ public sealed partial class CampaignMapScene : Node3D
                 node.Position = origin;
                 if (!building.IsCompleted(_state.Day)) SetTransparency(node, 0.35f);
                 _fieldBuildingLayer.AddChild(node);
+                PlayLoopingModelAnimations(node);
                 _fog.Register(node, building.Position);
             }
             if (!building.IsCompleted(_state.Day))
@@ -1562,6 +1568,24 @@ public sealed partial class CampaignMapScene : Node3D
                 _fieldBuildingLayer.AddChild(label);
                 _fog.Register(label, building.Position);
             }
+        }
+    }
+
+    private static void PlayLoopingModelAnimations(Node root)
+    {
+        foreach (var child in root.GetChildren())
+        {
+            if (child is AnimationPlayer player)
+            {
+                var animationName = player.GetAnimationList().FirstOrDefault(x => x != "RESET");
+                if (animationName is not null)
+                {
+                    var animation = player.GetAnimation(animationName);
+                    if (animation is not null) animation.LoopMode = Animation.LoopModeEnum.Linear;
+                    player.Play(animationName);
+                }
+            }
+            PlayLoopingModelAnimations(child);
         }
     }
 
@@ -16315,6 +16339,17 @@ public sealed partial class CampaignMapScene : Node3D
             .Append("res://assets/models/field-construction-tools.glb")
             .ToList();
         var modelsOk = modelFiles.All(path => ResourceLoader.Exists(path));
+        var formationScene = GD.Load<PackedScene>("res://assets/models/field-formation.glb")?.Instantiate<Node3D>();
+        if (formationScene is not null)
+        {
+            _fieldBuildingLayer.AddChild(formationScene);
+            PlayLoopingModelAnimations(formationScene);
+        }
+        var formationAnimationOk = formationScene?.FindChildren("*", "AnimationPlayer", true, false)
+            .OfType<AnimationPlayer>()
+            .Any(player => player.IsPlaying() && player.GetAnimationList().Where(name => name != "RESET")
+                .Any(name => player.GetAnimation(name)?.LoopMode == Animation.LoopModeEnum.Linear)) == true;
+        formationScene?.Free();
         var menuHasCommand = _unitCmdBox.FindChildren("*", "Button", true, false)
             .OfType<Button>().Any(x => x.Text == "건축");
         var definition = _fieldBuildingDefinitions.First(x => x.Code == "watchtower");
@@ -16338,9 +16373,9 @@ public sealed partial class CampaignMapScene : Node3D
             .Any(x => x.Name == $"FieldBuilding_{building.Id.Value}");
         _state = original;
         RedrawFieldBuildings();
-        var passed = _fieldBuildingDefinitions.Count == 5 && modelsOk && menuHasCommand
+        var passed = _fieldBuildingDefinitions.Count == 5 && modelsOk && formationAnimationOk && menuHasCommand
             && radiusTwoOk && radiusOneOk && worldNodeOk;
-        GD.Print($"[field-construction-ui-qa] passed={passed} definitions={_fieldBuildingDefinitions.Count} models={modelsOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
+        GD.Print($"[field-construction-ui-qa] passed={passed} definitions={_fieldBuildingDefinitions.Count} models={modelsOk} formationAnimation={formationAnimationOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

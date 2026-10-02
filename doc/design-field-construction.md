@@ -130,13 +130,14 @@
 | 목책 | 헥사 1칸 안 낮은 목재 말뚝·차단 울타리 | `make_field_palisade.py` / `field-palisade.glb` |
 | 정찰대 | 소수 정찰병·작은 위장 초소 | `make_field_scout.py` / `field-scout.glb` |
 | 감시탑 | 목조 고상 망루 | `make_field_watchtower.py` / `field-watchtower.glb` |
-| 보루 | 낮은 토루·성책과 주둔 공간 | `make_field_fort.py` / `field-fort.glb` |
-| 진법 | 낮은 진형 표식·깃발·방호 기둥 | `make_field_formation.py` / `field-formation.glb` |
+| 보루 | 네 귀퉁이 망루·성벽·성문·중앙 내성을 갖춘 작은 동양식 석성 | `make_field_fort.py` / `field-fort.glb` |
+| 진법 | 거대한 석주 4개·중앙 돌무더기·석주 사이를 반복 통과하는 구름 띠 | `make_field_formation.py` / `field-formation.glb` (`FormationCloudDrift`) |
 
 스크립트는 `tools/blender/`, GLB는 `SanguoSLG.Game/assets/models/`에 저장한다.
 작업 도구 표시도 작은 망치/곡괭이 모양으로 제작하고 부대 머리 위 UI와 겹치지 않게 배치한다.
 노말·면 컬링·1타일 크기·모델 높이·입출성 시 숨김·파괴/철거 후 잔존 노드를 QA한다.
 Blender는 `--background --python-exit-code 1`로 생성 검증하고 `design-effect.md`에 사용처를 등록한다.
+진법 GLB의 구름 애니메이션은 건축물 지도 모델과 정보 카드 미리보기에서 자동 반복 재생한다.
 
 ## 6. 완료 전 필수 QA
 

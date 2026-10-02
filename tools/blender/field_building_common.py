@@ -24,10 +24,11 @@ STONE = None
 EARTH = None
 RED = None
 GOLD = None
+CLOUD = None
 
 
 def reset():
-    global WOOD, DARK, ROPE, STONE, EARTH, RED, GOLD
+    global WOOD, DARK, ROPE, STONE, EARTH, RED, GOLD, CLOUD
     bpy.ops.wm.read_factory_settings(use_empty=True)
     WOOD = mat("wood", (0.34, 0.18, 0.07))
     DARK = mat("dark_wood", (0.16, 0.075, 0.03))
@@ -36,6 +37,7 @@ def reset():
     EARTH = mat("earth", (0.30, 0.20, 0.10))
     RED = mat("banner_red", (0.55, 0.06, 0.035))
     GOLD = mat("iron_gold", (0.56, 0.39, 0.12), 0.35)
+    CLOUD = mat("cloud_mist", (0.72, 0.76, 0.75))
 
 
 def box(name, scale, location, material, rotation=(0, 0, 0)):
@@ -52,6 +54,15 @@ def pole(name, radius, depth, location, material, rotation=(0, 0, 0), vertices=1
                                        location=location, rotation=rotation)
     obj = bpy.context.object
     obj.name = name
+    obj.data.materials.append(material)
+    return obj
+
+
+def stone(name, scale, location, material=STONE, rotation=(0, 0, 0)):
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=1, location=location, rotation=rotation)
+    obj = bpy.context.object
+    obj.name = name
+    obj.scale = scale
     obj.data.materials.append(material)
     return obj
 
@@ -93,31 +104,93 @@ def watchtower():
 
 
 def fort():
-    pole("earth_base", 0.43, 0.10, (0, 0, 0.05), EARTH, vertices=8)
-    for side in (-1, 1):
-        for i in range(5):
-            x = -0.28 + i * 0.14
-            pole("fort_stake", 0.026, 0.34, (x, side * 0.31, 0.22), WOOD)
-    for x in (-0.34, 0.34):
-        for i in range(4):
-            y = -0.23 + i * 0.15
-            pole("fort_stake", 0.026, 0.34, (x, y, 0.22), WOOD)
-    box("fort_gate", (0.11, 0.025, 0.20), (0, -0.32, 0.20), DARK)
-    pole("fort_flag", 0.015, 0.72, (0.20, 0.16, 0.45), WOOD)
-    box("fort_banner", (0.11, 0.012, 0.09), (0.10, 0.16, 0.66), RED)
+    # 한 타일 안에 들어오는 작은 동양식 석성. 낮은 성벽과 네 귀퉁이 망루가
+    # 중앙 성채를 둘러싸므로 기존 목책과 실루엣부터 명확히 구분된다.
+    pole("fort_stone_foundation", 0.43, 0.09, (0, 0, 0.045), STONE, vertices=8)
+    box("fort_wall_north", (0.28, 0.045, 0.13), (0, 0.29, 0.17), STONE)
+    box("fort_wall_south_left", (0.095, 0.045, 0.13), (-0.19, -0.29, 0.17), STONE)
+    box("fort_wall_south_right", (0.095, 0.045, 0.13), (0.19, -0.29, 0.17), STONE)
+    box("fort_wall_west", (0.045, 0.24, 0.13), (-0.31, 0, 0.17), STONE)
+    box("fort_wall_east", (0.045, 0.24, 0.13), (0.31, 0, 0.17), STONE)
+
+    for index, (x, y) in enumerate(((-0.29, -0.27), (0.29, -0.27),
+                                     (-0.29, 0.27), (0.29, 0.27))):
+        pole(f"fort_corner_tower_{index}", 0.105, 0.36, (x, y, 0.22), STONE, vertices=8)
+        bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=0.155, radius2=0.035, depth=0.11,
+                                        location=(x, y, 0.455), rotation=(0, 0, math.radians(45)))
+        roof = bpy.context.object
+        roof.name = f"fort_corner_roof_{index}"
+        roof.data.materials.append(RED)
+
+    # 중앙 내성 및 중층 지붕.
+    box("fort_keep", (0.19, 0.17, 0.22), (0, 0.02, 0.29), STONE)
+    box("fort_keep_band", (0.205, 0.185, 0.025), (0, 0.02, 0.41), DARK)
+    bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=0.29, radius2=0.06, depth=0.14,
+                                    location=(0, 0.02, 0.57), rotation=(0, 0, math.radians(45)))
+    keep_roof = bpy.context.object
+    keep_roof.name = "fort_keep_roof"
+    keep_roof.data.materials.append(RED)
+
+    # 남쪽 성문과 금색 문장.
+    box("fort_gate", (0.075, 0.052, 0.105), (0, -0.305, 0.115), DARK)
+    box("fort_gate_lintel", (0.105, 0.057, 0.025), (0, -0.305, 0.235), GOLD)
+    box("fort_gate_emblem", (0.026, 0.059, 0.026), (0, -0.307, 0.17), GOLD,
+        (0, 0, math.radians(45)))
+
+    # 성가퀴가 성곽 실루엣을 만든다.
+    for x in (-0.22, -0.08, 0.08, 0.22):
+        box("fort_crenel_north", (0.035, 0.035, 0.04), (x, 0.30, 0.32), STONE)
+    for x in (-0.24, 0.24):
+        box("fort_crenel_south", (0.035, 0.035, 0.04), (x, -0.30, 0.32), STONE)
 
 
 def formation():
-    pole("formation_base", 0.40, 0.045, (0, 0, 0.023), EARTH, vertices=6)
-    for index, angle in enumerate(range(0, 360, 60)):
-        rad = math.radians(angle)
-        x, y = math.cos(rad) * 0.29, math.sin(rad) * 0.29
-        pole(f"formation_marker_{index}", 0.025, 0.34, (x, y, 0.20), DARK)
-        box(f"formation_flag_{index}", (0.07, 0.012, 0.055),
-            (x - math.sin(rad) * 0.055, y + math.cos(rad) * 0.055, 0.31), RED,
-            (0, 0, rad))
-    pole("command_flag", 0.018, 0.62, (0, 0, 0.34), WOOD)
-    box("command_banner", (0.11, 0.014, 0.10), (-0.11, 0, 0.54), GOLD)
+    pole("formation_base", 0.41, 0.055, (0, 0, 0.028), EARTH, vertices=8)
+
+    # 네 개의 거대한 석주. 기둥마다 받침과 머릿돌을 두어 멀리서도 진법으로 읽힌다.
+    for index, (x, y) in enumerate(((-0.25, -0.22), (0.25, -0.22),
+                                     (-0.25, 0.22), (0.25, 0.22))):
+        box(f"formation_pillar_base_{index}", (0.09, 0.09, 0.035), (x, y, 0.075), STONE)
+        pole(f"formation_pillar_{index}", 0.057, 0.70, (x, y, 0.445), STONE, vertices=8)
+        box(f"formation_pillar_cap_{index}", (0.085, 0.085, 0.035), (x, y, 0.80), GOLD)
+        pole(f"formation_pillar_ring_{index}", 0.068, 0.035, (x, y, 0.68), GOLD, vertices=8)
+
+    # 중앙과 기둥 사이의 작은 돌무더기.
+    rock_specs = (
+        (-0.10, -0.02, 0.075, 0.075), (0.02, 0.03, 0.095, 0.085),
+        (0.13, -0.04, 0.065, 0.060), (-0.02, -0.12, 0.055, 0.050),
+        (-0.14, 0.12, 0.050, 0.045), (0.15, 0.13, 0.045, 0.040),
+    )
+    for index, (x, y, sx, sz) in enumerate(rock_specs):
+        stone(f"formation_rock_{index}", (sx, sx * 0.82, sz), (x, y, 0.055), STONE,
+              (0, math.radians(index * 17), math.radians(index * 29)))
+
+    # 낮은 구름 띠가 석주 사이를 천천히 통과한다. 이 Empty의 Action은 GLB에
+    # FormationCloudDrift 클립으로 수출되고 게임에서 반복 재생한다.
+    bpy.ops.object.empty_add(type="PLAIN_AXES", location=(-0.30, 0, 0.36))
+    cloud_root = bpy.context.object
+    cloud_root.name = "formation_cloud_root"
+    for index, (x, y, z, sx) in enumerate((
+        (-0.18, -0.03, 0.00, 0.12), (-0.08, 0.00, 0.02, 0.15),
+        (0.04, -0.02, 0.00, 0.11), (0.17, 0.02, 0.01, 0.13),
+        (0.27, -0.01, 0.00, 0.09),
+    )):
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=6, radius=1,
+                                             location=(x - 0.30, y, z + 0.36))
+        cloud = bpy.context.object
+        cloud.name = f"formation_cloud_{index}"
+        cloud.scale = (sx, sx * 0.48, sx * 0.30)
+        cloud.data.materials.append(CLOUD)
+        cloud.parent = cloud_root
+        cloud.matrix_parent_inverse = cloud_root.matrix_world.inverted()
+
+    bpy.context.scene.render.fps = 30
+    cloud_root.location = (-0.30, 0, 0.36)
+    cloud_root.keyframe_insert(data_path="location", frame=1)
+    cloud_root.location = (0.30, 0, 0.36)
+    cloud_root.keyframe_insert(data_path="location", frame=120)
+    if cloud_root.animation_data and cloud_root.animation_data.action:
+        cloud_root.animation_data.action.name = "FormationCloudDrift"
 
 
 def tools():
@@ -147,5 +220,6 @@ def build(kind):
     callback()
     bpy.ops.object.select_all(action="SELECT")
     path = OUT / filename
-    bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLB", use_selection=True)
+    bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLB", use_selection=True,
+                              export_animations=(kind == "formation"))
     print(f"EXPORTED: {path}")
