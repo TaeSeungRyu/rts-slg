@@ -208,16 +208,17 @@ def formation():
 
     # 낮은 구름 띠가 석주 사이를 천천히 통과한다. 이 Empty의 Action은 GLB에
     # FormationCloudDrift 클립으로 수출되고 게임에서 반복 재생한다.
-    bpy.ops.object.empty_add(type="PLAIN_AXES", location=(-0.30, 0, 0.36))
+    bpy.ops.object.empty_add(type="PLAIN_AXES", location=(-0.30, 0, 0.94))
     cloud_root = bpy.context.object
     cloud_root.name = "formation_cloud_root"
     for index, (x, y, z, sx) in enumerate((
         (-0.18, -0.03, 0.00, 0.12), (-0.08, 0.00, 0.02, 0.15),
         (0.04, -0.02, 0.00, 0.11), (0.17, 0.02, 0.01, 0.13),
-        (0.27, -0.01, 0.00, 0.09),
+        (0.27, -0.01, 0.00, 0.09), (0.01, 0.09, 0.05, 0.13),
+        (0.16, -0.09, 0.04, 0.12),
     )):
         bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=6, radius=1,
-                                             location=(x - 0.30, y, z + 0.36))
+                                             location=(x - 0.30, y, z + 0.94))
         cloud = bpy.context.object
         cloud.name = f"formation_cloud_{index}"
         cloud.scale = (sx, sx * 0.48, sx * 0.30)
@@ -226,9 +227,9 @@ def formation():
         cloud.matrix_parent_inverse = cloud_root.matrix_world.inverted()
 
     bpy.context.scene.render.fps = 30
-    cloud_root.location = (-0.30, 0, 0.36)
+    cloud_root.location = (-0.30, 0, 0.94)
     cloud_root.keyframe_insert(data_path="location", frame=1)
-    cloud_root.location = (0.30, 0, 0.36)
+    cloud_root.location = (0.30, 0, 0.94)
     cloud_root.keyframe_insert(data_path="location", frame=120)
     if cloud_root.animation_data and cloud_root.animation_data.action:
         cloud_root.animation_data.action.name = "FormationCloudDrift"

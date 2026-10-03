@@ -1627,6 +1627,10 @@ public sealed partial class CampaignMapScene : Node3D
 
     private static void PlayLoopingModelAnimations(Node root)
     {
+        if (root.FindChild("formation_cloud_root", true, false) is not null
+            && root.GetNodeOrNull("FieldCloudFade") is null
+            && root.GetChildren().OfType<AnimationPlayer>().Any())
+            root.AddChild(new FieldCloudFade3D { Name = "FieldCloudFade" });
         foreach (var child in root.GetChildren())
         {
             if (child is AnimationPlayer player)
@@ -16412,6 +16416,21 @@ public sealed partial class CampaignMapScene : Node3D
             .OfType<AnimationPlayer>()
             .Any(player => player.IsPlaying() && player.GetAnimationList().Where(name => name != "RESET")
                 .Any(name => player.GetAnimation(name)?.LoopMode == Animation.LoopModeEnum.Linear)) == true;
+        var cloudMeshes = formationScene?.FindChildren("formation_cloud_*", "MeshInstance3D", true, false)
+            .OfType<MeshInstance3D>().ToArray() ?? [];
+        var cloudFade = formationScene?.FindChild("FieldCloudFade", true, false) as FieldCloudFade3D;
+        var cloudPlayer = formationScene?.FindChildren("*", "AnimationPlayer", true, false)
+            .OfType<AnimationPlayer>().FirstOrDefault();
+        var cloudFadeOk = cloudMeshes.Length == 7 && cloudFade is not null && cloudPlayer is not null;
+        if (cloudFadeOk)
+        {
+            cloudPlayer!.Seek(cloudPlayer.CurrentAnimationLength * 0.5, true);
+            cloudFade!._Process(0);
+            cloudFadeOk &= cloudMeshes.All(x => x.Transparency < 0.4f && x.Position.Y > -0.5f);
+            cloudPlayer.Seek(0, true);
+            cloudFade._Process(0);
+            cloudFadeOk &= cloudMeshes.All(x => x.Transparency > 0.99f);
+        }
         formationScene?.Free();
         var menuHasCommand = _unitCmdBox.FindChildren("*", "Button", true, false)
             .OfType<Button>().Any(x => x.Text == "건축");
@@ -16439,9 +16458,9 @@ public sealed partial class CampaignMapScene : Node3D
         _state = original;
         RedrawFieldBuildings();
         var passed = _fieldBuildingDefinitions.Count == 5 && modelsOk && formationAnimationOk && menuHasCommand
-            && fiveSamplesOk
+            && fiveSamplesOk && cloudFadeOk
             && radiusTwoOk && radiusOneOk && worldNodeOk;
-        GD.Print($"[field-construction-ui-qa] passed={passed} definitions={_fieldBuildingDefinitions.Count} samples={fiveSamplesOk} models={modelsOk} formationAnimation={formationAnimationOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
+        GD.Print($"[field-construction-ui-qa] passed={passed} definitions={_fieldBuildingDefinitions.Count} samples={fiveSamplesOk} models={modelsOk} cloudFade={cloudFadeOk} formationAnimation={formationAnimationOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
