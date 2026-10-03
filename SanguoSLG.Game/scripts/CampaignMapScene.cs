@@ -630,21 +630,28 @@ public sealed partial class CampaignMapScene : Node3D
     private void SeedFieldBuildingSamples()
     {
         if (_state.Buildings.Count > 0) return;
-        var positions = new Dictionary<string, HexCoord>(System.StringComparer.Ordinal)
+        var placements = new (string Code, FactionId Owner, HexCoord Position)[]
         {
-            ["palisade"] = new(-4, 9),
-            ["scout_post"] = new(-3, 7),
-            ["watchtower"] = new(-2, 9),
-            ["fort"] = new(0, 9),
-            ["formation"] = new(2, 9),
+            ("palisade", Player, new(-4, 9)),
+            ("scout_post", Player, new(-3, 7)),
+            ("watchtower", Player, new(-2, 9)),
+            ("fort", Player, new(0, 9)),
+            ("formation", Player, new(2, 9)),
+            ("scout_post", new FactionId(2), new(1, 5)),
+            ("palisade", new FactionId(2), new(1, 6)),
+            ("watchtower", new FactionId(2), new(2, 6)),
+            ("fort", new FactionId(2), new(1, 7)),
+            ("formation", new FactionId(2), new(2, 7)),
         };
-        var samples = _fieldBuildingDefinitions
-            .Where(definition => positions.ContainsKey(definition.Code))
-            .OrderBy(definition => definition.Code, System.StringComparer.Ordinal)
-            .Select((definition, index) => new FieldBuilding(
-                new FieldBuildingId(800001 + index), definition.Code, Player, positions[definition.Code],
+        var definitions = _fieldBuildingDefinitions.ToDictionary(x => x.Code, System.StringComparer.Ordinal);
+        var samples = placements.Select((placement, index) =>
+            {
+                var definition = definitions[placement.Code];
+                return new FieldBuilding(
+                new FieldBuildingId(800001 + index), definition.Code, placement.Owner, placement.Position,
                 definition.MaxHitPoints, _state.Day - definition.BuildDays, _state.Day,
-                definition.LifetimeDays > 0 ? _state.Day + definition.LifetimeDays : null))
+                definition.LifetimeDays > 0 ? _state.Day + definition.LifetimeDays : null);
+            })
             .ToList();
         _state = _state with { FieldBuildings = samples };
     }
@@ -16478,6 +16485,15 @@ public sealed partial class CampaignMapScene : Node3D
             .OfType<Button>().Any(x => x.Text == "건축");
         var sampleCodes = _state.Buildings.Select(x => x.DefinitionCode).ToHashSet(System.StringComparer.Ordinal);
         var fiveSamplesOk = _fieldBuildingDefinitions.All(x => sampleCodes.Contains(x.Code));
+        var enemySamples = _state.Buildings.Where(x => x.Owner == new FactionId(2)).ToList();
+        var occupiedFixtureTiles = _state.Cities.SelectMany(CastleFootprint.TilesFor)
+            .Concat(_initialFacilityPlacements.Select(x => x.Plot))
+            .Concat(_state.Ruins.Select(x => x.Position)).ToHashSet();
+        var enemySamplesOk = enemySamples.Count == 5
+            && enemySamples.Select(x => x.DefinitionCode).Distinct(System.StringComparer.Ordinal).Count() == 5
+            && enemySamples.Select(x => x.Position).Distinct().Count() == enemySamples.Count
+            && enemySamples.All(x => !occupiedFixtureTiles.Contains(x.Position))
+            && enemySamples.Count(x => _fieldBuildingDefinitions.First(d => d.Code == x.DefinitionCode).CanBeTargeted) == 4;
         var definition = _fieldBuildingDefinitions.First(x => x.Code == "watchtower");
         var fallback = _state.Cities.First().Position;
         var position = _state.Armies.FirstOrDefault()?.Field.Position
@@ -16511,9 +16527,9 @@ public sealed partial class CampaignMapScene : Node3D
         _state = original;
         RedrawFieldBuildings();
         var passed = _fieldBuildingDefinitions.Count == 5 && modelsOk && formationAnimationOk && menuHasCommand
-            && fiveSamplesOk && cloudFadeOk && toolsAnimationOk && scoutDaysOk
+            && fiveSamplesOk && enemySamplesOk && cloudFadeOk && toolsAnimationOk && scoutDaysOk
             && radiusTwoOk && radiusOneOk && worldNodeOk;
-        GD.Print($"[field-construction-ui-qa] passed={passed} scoutDays={scoutDaysOk} toolsAnimation={toolsAnimationOk} definitions={_fieldBuildingDefinitions.Count} samples={fiveSamplesOk} models={modelsOk} cloudFade={cloudFadeOk} formationAnimation={formationAnimationOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
+        GD.Print($"[field-construction-ui-qa] passed={passed} enemySamples={enemySamplesOk}:{enemySamples.Count} scoutDays={scoutDaysOk} toolsAnimation={toolsAnimationOk} definitions={_fieldBuildingDefinitions.Count} samples={fiveSamplesOk} models={modelsOk} cloudFade={cloudFadeOk} formationAnimation={formationAnimationOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
