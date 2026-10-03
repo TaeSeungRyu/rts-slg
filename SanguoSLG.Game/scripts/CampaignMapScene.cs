@@ -1562,7 +1562,7 @@ public sealed partial class CampaignMapScene : Node3D
             var node = scene.Instantiate<Node3D>();
             node.Name = $"Ruin_{ruin.Id}";
             node.Position = _view.HexToWorld(ruin.Position) + new Vector3(0f, _view.TileTopY, 0f);
-            node.Scale = Vector3.One * 0.72f;
+            node.Scale = Vector3.One * 0.504f;
             _ruinLayer.AddChild(node);
             _fog.Register(node, ruin.Position);
             var status = _state.RuinStatus.FirstOrDefault(s => s.RuinId == ruin.Id);
@@ -1607,6 +1607,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 node.Name = $"FieldBuilding_{building.Id.Value}";
                 node.Position = origin;
+                node.Scale = Vector3.One * FieldBuildingModelScale(definition.Kind);
                 if (!building.IsCompleted(_state.Day)) SetTransparency(node, 0.35f);
                 _fieldBuildingLayer.AddChild(node);
                 PlayLoopingModelAnimations(node);
@@ -1647,6 +1648,9 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
     }
+
+    private static float FieldBuildingModelScale(FieldBuildingKind kind)
+        => kind is FieldBuildingKind.ScoutPost or FieldBuildingKind.Fort or FieldBuildingKind.Watchtower ? 0.7f : 1f;
 
     private static string ScoutDayText(FieldBuilding building, int day)
         => !building.IsCompleted(day) ? $"건축 {building.CompletionDay - day}일"
@@ -16524,6 +16528,17 @@ public sealed partial class CampaignMapScene : Node3D
         scoutDaysOk &= ScoutDayText(scout with { CompletionDay = _state.Day + 7 }, _state.Day) == "건축 7일";
         var worldNodeOk = _fieldBuildingLayer.GetChildren().OfType<Node3D>()
             .Any(x => x.Name == $"FieldBuilding_{building.Id.Value}");
+        worldNodeOk &= _fieldBuildingLayer.GetChildren().OfType<Node3D>()
+            .Where(x => x.Name.ToString().StartsWith("FieldBuilding_"))
+            .All(x => {
+                var id = int.Parse(x.Name.ToString()["FieldBuilding_".Length..]);
+                var b = _state.Buildings.First(b => b.Id.Value == id);
+                var d = _fieldBuildingDefinitions.First(d => d.Code == b.DefinitionCode);
+                return x.Scale.IsEqualApprox(Vector3.One * FieldBuildingModelScale(d.Kind));
+            });
+        worldNodeOk &= _ruinLayer.GetChildren().OfType<Node3D>()
+            .Where(x => x.Name.ToString().StartsWith("Ruin_"))
+            .All(x => x.Scale.IsEqualApprox(Vector3.One * 0.504f));
         _state = original;
         RedrawFieldBuildings();
         var passed = _fieldBuildingDefinitions.Count == 5 && modelsOk && formationAnimationOk && menuHasCommand
