@@ -37,4 +37,11 @@ if kind == 'fort':
             direction = Vector((math.cos(i*math.pi/4)*0.6, math.sin(i*math.pi/4)*0.6, 1)).normalized()
             hit, position, normal, face = roof.ray_cast(center + direction*2, -direction)
             assert hit and normal.dot(direction) > 0, (roof.name, i)
+if kind == 'scout':
+    names = [obj.name for obj in meshes]
+    assert not any('eye' in name or 'pupil' in name for name in names)
+    assert sum(name.startswith('lantern_light') for name in names) == 1
+    assert sum(name.startswith('camouflage_blind') for name in names) == 5
+    assert any(name.startswith('scout_supply_crate') for name in names)
+    assert max(p.z for p in points) < 0.60
 print(f'FIELD GEOMETRY QA PASS {kind}: meshes={len(meshes)}')

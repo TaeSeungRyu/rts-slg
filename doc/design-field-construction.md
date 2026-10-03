@@ -133,7 +133,7 @@
 | 모델 | 표현 | 생성 스크립트/파일 예정 |
 |---|---|---|
 | 목책 | 기존 대비 38% 크기의 X자 통나무 방벽 3개를 지그재그 배치 | `make_field_palisade.py` / `field-palisade.glb` |
-| 정찰대 | 암석 아치 동굴·어두운 입구·빛나는 눈 | `make_field_scout.py` / `field-scout.glb` |
+| 정찰대 | 암석 아치 동굴·입구 한쪽의 작은 등불·올리브색 위장막·보급 상자 (눈 표현 제거) | `make_field_scout.py` / `field-scout.glb` |
 | 감시탑 | 기단·기둥·가새·연결 계단·난간을 갖춘 목조 망루 | `make_field_watchtower.py` / `field-watchtower.glb` |
 | 보루 | 네 귀퉁이 망루·성벽·성문·중앙 내성을 갖춘 작은 동양식 석성 | `make_field_fort.py` / `field-fort.glb` |
 | 진법 | 석주 4개·중앙 돌무더기·기둥 위 구름 7개·이동 주기별 페이드 인/아웃 | `make_field_formation.py` / `field-formation.glb` (`FormationCloudDrift`) |
