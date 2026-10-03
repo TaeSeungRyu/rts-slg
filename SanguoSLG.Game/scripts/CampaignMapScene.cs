@@ -9493,9 +9493,12 @@ public sealed partial class CampaignMapScene : Node3D
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, 72 + Math.Max(1, ships.Count) * 30),
+            // 선박 수에 따라 표 높이가 재계산되면 첫 레이아웃 프레임에서 좌측 칸이
+            // 커졌다 줄어드는 현상이 생긴다. 최대 5종 기준의 고정 영역을 사용한다.
+            CustomMinimumSize = new Vector2(0, 188),
             ScrollVerticalEnabled = false,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
         };
         shipTree.AddThemeFontOverride("font", _font);
         shipTree.AddThemeFontSizeOverride("font_size", 13);
@@ -9538,8 +9541,9 @@ public sealed partial class CampaignMapScene : Node3D
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, 72 + Math.Clamp(garrisons.Count, 3, 5) * 30),
+            CustomMinimumSize = new Vector2(0, 188),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
         };
         troopTree.AddThemeFontOverride("font", _font);
         troopTree.AddThemeFontSizeOverride("font_size", 13);
