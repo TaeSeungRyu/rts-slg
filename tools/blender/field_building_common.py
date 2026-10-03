@@ -98,18 +98,29 @@ def scout():
 
 
 def watchtower():
-    for x in (-0.20, 0.20):
-        for y in (-0.20, 0.20):
-            pole("tower_leg", 0.035, 0.64, (x, y, 0.32), WOOD)
-    box("tower_deck", (0.29, 0.29, 0.035), (0, 0, 0.54), DARK)
-    for z in (0.22, 0.38):
-        box("brace_x", (0.24, 0.022, 0.018), (0, -0.21, z), ROPE,
-            (0, 0, math.radians(35)))
-        box("brace_y", (0.022, 0.24, 0.018), (-0.21, 0, z), ROPE,
-            (math.radians(35), 0, 0))
-    for x, y in ((-0.25,-0.25),(-0.25,0.25),(0.25,-0.25),(0.25,0.25)):
-        pole("railing", 0.018, 0.22, (x, y, 0.66), WOOD)
-    box("roof", (0.34, 0.34, 0.035), (0, 0, 0.79), RED, (0, 0, math.radians(45)))
+    for x in (-0.19, 0.19):
+        for y in (-0.16, 0.22):
+            box("stone_foot", (0.11, 0.11, 0.07), (x, y, 0.035), STONE)
+            beam("tower_leg", (x,y,0.035), (x,y,0.88), 0.028, WOOD)
+    for x in (-0.19, 0.19):
+        beam("side_diagonal", (x,-0.16,0.07), (x,0.22,0.54), 0.019, DARK)
+        beam("side_diagonal", (x,0.22,0.07), (x,-0.16,0.54), 0.019, DARK)
+        beam("side_rail", (x,-0.16,0.73), (x,0.22,0.73), 0.018, WOOD)
+    beam("back_brace", (-0.19,0.22,0.08), (0.19,0.22,0.54), 0.021, DARK)
+    beam("back_rail", (-0.19,0.22,0.73), (0.19,0.22,0.73), 0.018, WOOD)
+    for i in range(7):
+        box("deck_plank", (0.46,0.066,0.035), (0,-0.17+i*0.066,0.56), WOOD)
+    for x in (-0.085, 0.085):
+        beam("stair_stringer", (x,-0.43,0.02), (x,-0.16,0.57), 0.018, DARK)
+        beam("stair_handrail", (x,-0.43,0.20), (x,-0.16,0.75), 0.013, WOOD)
+    for i in range(9):
+        t = i/8
+        box("stair_tread", (0.19,0.055,0.023), (0,-0.43+0.27*t,0.035+0.52*t), WOOD)
+    box("roof_beam", (0.45,0.045,0.04), (0,0.03,0.86), DARK)
+    for side in (-1, 1):
+        beam("roof_rafter", (0,0.03,1.00), (side*0.27,0.03,0.86), 0.016, DARK)
+        roof = box("sloped_roof", (0.30,0.48,0.025), (side*0.135,0.03,0.93), RED)
+        roof.rotation_euler.y = side*math.atan2(0.14,0.27)
 
 
 def fort():
