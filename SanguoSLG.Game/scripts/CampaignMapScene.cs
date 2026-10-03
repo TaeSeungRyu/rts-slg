@@ -9619,7 +9619,7 @@ public sealed partial class CampaignMapScene : Node3D
         var generalTree = new Tree
         {
             Name = "NavalOfficerTable",
-            Columns = 6,
+            Columns = 8,
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
@@ -9629,12 +9629,17 @@ public sealed partial class CampaignMapScene : Node3D
         };
         generalTree.AddThemeFontOverride("font", _font);
         generalTree.AddThemeFontSizeOverride("font_size", 13);
-        generalTree.SetColumnTitle(0, "선봉"); generalTree.SetColumnExpand(0, false); generalTree.SetColumnCustomMinimumWidth(0, 52);
-        generalTree.SetColumnTitle(1, "이름"); generalTree.SetColumnExpand(1, true);
-        generalTree.SetColumnTitle(2, "해상"); generalTree.SetColumnExpand(2, false); generalTree.SetColumnCustomMinimumWidth(2, 54);
-        generalTree.SetColumnTitle(3, "무력"); generalTree.SetColumnExpand(3, false); generalTree.SetColumnCustomMinimumWidth(3, 54);
-        generalTree.SetColumnTitle(4, "부관"); generalTree.SetColumnExpand(4, false); generalTree.SetColumnCustomMinimumWidth(4, 52);
-        generalTree.SetColumnTitle(5, "현재 담당업무"); generalTree.SetColumnExpand(5, true);
+        generalTree.SetColumnTitle(0, "선봉"); generalTree.SetColumnExpand(0, false); generalTree.SetColumnCustomMinimumWidth(0, 46);
+        generalTree.SetColumnTitle(1, "부관"); generalTree.SetColumnExpand(1, false); generalTree.SetColumnCustomMinimumWidth(1, 46);
+        generalTree.SetColumnTitle(2, "이름"); generalTree.SetColumnExpand(2, true); generalTree.SetColumnExpandRatio(2, 3);
+        foreach (var (col, heading) in new[] { (3, "무"), (4, "지"), (5, "정") })
+        {
+            generalTree.SetColumnTitle(col, heading);
+            generalTree.SetColumnExpand(col, false);
+            generalTree.SetColumnCustomMinimumWidth(col, 36);
+        }
+        generalTree.SetColumnTitle(6, "적성"); generalTree.SetColumnExpand(6, true); generalTree.SetColumnExpandRatio(6, 2);
+        generalTree.SetColumnTitle(7, "현재 담당업무"); generalTree.SetColumnExpand(7, true);
         var generalRoot = generalTree.CreateItem();
         foreach (var general in generals)
         {
@@ -9642,14 +9647,16 @@ public sealed partial class CampaignMapScene : Node3D
             item.SetCellMode(0, TreeItem.TreeCellMode.Check);
             item.SetEditable(0, true);
             item.SetChecked(0, general.Id == selectedGeneral);
-            item.SetText(1, general.Name);
-            ApplyGeneralTreePortrait(item, 1, general.Id, goldBorder: true);
-            item.SetText(2, GradeText(general.AptitudeFor(TroopClass.Naval)));
+            item.SetCellMode(1, TreeItem.TreeCellMode.Check);
+            item.SetEditable(1, true);
+            item.SetChecked(1, general.Id == selectedAdjutant);
+            item.SetText(2, general.Name);
+            ApplyGeneralTreePortrait(item, 2, general.Id, goldBorder: true);
             item.SetText(3, general.Might.ToString());
-            item.SetCellMode(4, TreeItem.TreeCellMode.Check);
-            item.SetEditable(4, true);
-            item.SetChecked(4, general.Id == selectedAdjutant);
-            item.SetText(5, CurrentDuty(general.Id));
+            item.SetText(4, general.Intellect.ToString());
+            item.SetText(5, general.Politics.ToString());
+            item.SetText(6, GradeText(general.AptitudeFor(TroopClass.Naval)));
+            item.SetText(7, CurrentDuty(general.Id));
             item.SetMetadata(0, general.Id.Value);
         }
         void SyncGeneralChecks()
@@ -9658,7 +9665,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var id = new GeneralId(row.GetMetadata(0).AsInt32());
                 row.SetChecked(0, id == selectedGeneral);
-                row.SetChecked(4, id == selectedAdjutant);
+                row.SetChecked(1, id == selectedAdjutant);
             }
         }
         generalTree.ItemEdited += () =>
@@ -9675,13 +9682,13 @@ public sealed partial class CampaignMapScene : Node3D
                     if (selectedAdjutant == id) { selectedAdjutant = null; }
                 }
             }
-            else if (col == 4)
+            else if (col == 1)
             {
-                if (item.IsChecked(4))
+                if (item.IsChecked(1))
                 {
                     if (id == selectedGeneral)
                     {
-                        item.SetChecked(4, false);
+                        item.SetChecked(1, false);
                         preview.Text = "부관은 선봉과 다른 장수여야 합니다.";
                         return;
                     }
