@@ -1613,6 +1613,17 @@ public sealed partial class CampaignMapScene : Node3D
                 PlayLoopingModelAnimations(node);
                 _fog.Register(node, building.Position);
             }
+            var allegiance = new Label3D
+            {
+                Name = $"FieldAllegiance_{building.Id.Value}",
+                Text = building.Owner == Player ? "아군" : "적군",
+                Position = origin + new Vector3(0, 1.25f, 0),
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                Font = _font, FontSize = 24, OutlineSize = 5, NoDepthTest = true,
+                Modulate = building.Owner == Player ? new Color(0.55f, 0.85f, 1f) : new Color(1f, 0.45f, 0.4f),
+            };
+            _fieldBuildingLayer.AddChild(allegiance);
+            _fog.Register(allegiance, building.Position);
             if (!building.IsCompleted(_state.Day))
             {
                 var tools = GD.Load<PackedScene>("res://assets/models/field-construction-tools.glb")?.Instantiate<Node3D>();
@@ -16489,6 +16500,8 @@ public sealed partial class CampaignMapScene : Node3D
             .OfType<Button>().Any(x => x.Text == "건축");
         var sampleCodes = _state.Buildings.Select(x => x.DefinitionCode).ToHashSet(System.StringComparer.Ordinal);
         var fiveSamplesOk = _fieldBuildingDefinitions.All(x => sampleCodes.Contains(x.Code));
+        fiveSamplesOk &= _state.Buildings.All(b => _fieldBuildingLayer.GetNodeOrNull<Label3D>($"FieldAllegiance_{b.Id.Value}")?.Text
+            == (b.Owner == Player ? "아군" : "적군"));
         var enemySamples = _state.Buildings.Where(x => x.Owner == new FactionId(2)).ToList();
         var occupiedFixtureTiles = _state.Cities.SelectMany(CastleFootprint.TilesFor)
             .Concat(_initialFacilityPlacements.Select(x => x.Plot))
