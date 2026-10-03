@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 import bpy
+import bmesh
+import math
 from mathutils import Vector
 
 kind = sys.argv[sys.argv.index('--') + 1]
@@ -20,4 +22,19 @@ if kind == 'palisade':
     assert sections[0].location.x < sections[1].location.x < sections[2].location.x
     assert all(len(section.children) == 16 for section in sections)
     assert max(p.z for p in points) < 0.20
+if kind == 'fort':
+    roofs = [obj for obj in meshes if obj.name.startswith(('fort_corner_roof_', 'fort_keep_roof', 'fort_gate_roof'))]
+    assert len(roofs) == 12
+    for roof in roofs:
+        mesh = bmesh.new()
+        mesh.from_mesh(roof.data)
+        bmesh.ops.remove_doubles(mesh, verts=list(mesh.verts), dist=0.00001)
+        assert all(edge.is_manifold for edge in mesh.edges), roof.name
+        assert mesh.calc_volume(signed=True) > 0, roof.name
+        mesh.free()
+        center = sum((Vector(p) for p in roof.bound_box), Vector()) / 8
+        for i in range(8):
+            direction = Vector((math.cos(i*math.pi/4)*0.6, math.sin(i*math.pi/4)*0.6, 1)).normalized()
+            hit, position, normal, face = roof.ray_cast(center + direction*2, -direction)
+            assert hit and normal.dot(direction) > 0, (roof.name, i)
 print(f'FIELD GEOMETRY QA PASS {kind}: meshes={len(meshes)}')

@@ -195,7 +195,7 @@ def curved_roof(name, x, y, z, width, depth, height):
             for front in (-1, 1):
                 vertices.append((x+side*t*width/2, y+front*depth/2, z+h*height))
         faces = [(i*2,i*2+1,i*2+3,i*2+2) for i in range(4)]
-        if side < 0:
+        if side > 0:
             faces = [tuple(reversed(f)) for f in faces]
         mesh = bpy.data.meshes.new(name)
         mesh.from_pydata(vertices, [], faces)
@@ -205,6 +205,8 @@ def curved_roof(name, x, y, z, width, depth, height):
         obj.data.materials.append(tile)
         shell = obj.modifiers.new("roof_thickness", 'SOLIDIFY')
         shell.thickness = 0.013
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.modifier_apply(modifier=shell.name)
         for front in (-1, 1):
             for i in range(4):
                 beam("curved_eave", vertices[2*i+(front==1)], vertices[2*(i+1)+(front==1)], 0.009, DARK)
