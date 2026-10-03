@@ -1,5 +1,6 @@
 import bpy
 import math
+from mathutils import Vector
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -10,6 +11,7 @@ def mat(name, color, metallic=0.0):
     value = bpy.data.materials.new(name)
     value.diffuse_color = (*color, 1.0)
     value.use_nodes = True
+    value.use_backface_culling = True
     shader = value.node_tree.nodes.get("Principled BSDF")
     shader.inputs["Base Color"].default_value = (*color, 1.0)
     shader.inputs["Roughness"].default_value = 0.82
@@ -68,13 +70,20 @@ def stone(name, scale, location, material=STONE, rotation=(0, 0, 0)):
 
 
 def palisade():
-    for side in (-1, 1):
-        y = side * 0.22
-        for index, x in enumerate((-0.30, -0.18, -0.06, 0.06, 0.18, 0.30)):
-            pole(f"stake_{side}_{index}", 0.035, 0.42, (x, y, 0.21), WOOD)
-        box(f"rail_{side}", (0.36, 0.025, 0.035), (0, y, 0.20), DARK)
-    for x in (-0.32, 0.32):
-        box("side_rail", (0.025, 0.22, 0.03), (x, 0, 0.18), DARK)
+    for i, x in enumerate((-0.24, 0, 0.24)):
+        for side in (-1, 1):
+            beam(f"cross_log_{i}_{side}", (x-0.12*side, -0.17, 0.035),
+                 (x+0.12*side, 0.17, 0.44), 0.038, WOOD)
+        for z in (0.215, 0.24, 0.265):
+            pole(f"binding_{i}", 0.058, 0.012, (x, 0, z), ROPE)
+    beam("continuous_spine", (-0.39, 0, 0.24), (0.39, 0, 0.24), 0.031, DARK)
+
+
+def beam(name, start, end, radius, material):
+    a, b = Vector(start), Vector(end)
+    obj = pole(name, radius, (b-a).length, (a+b)/2, material)
+    obj.rotation_euler = (b-a).to_track_quat('Z', 'Y').to_euler()
+    return obj
 
 
 def scout():
