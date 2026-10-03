@@ -127,32 +127,28 @@ def fort():
     # 한 타일 안에 들어오는 작은 동양식 석성. 낮은 성벽과 네 귀퉁이 망루가
     # 중앙 성채를 둘러싸므로 기존 목책과 실루엣부터 명확히 구분된다.
     pole("fort_stone_foundation", 0.43, 0.09, (0, 0, 0.045), STONE, vertices=8)
-    box("fort_wall_north", (0.28, 0.045, 0.13), (0, 0.29, 0.17), STONE)
-    box("fort_wall_south_left", (0.095, 0.045, 0.13), (-0.19, -0.29, 0.17), STONE)
-    box("fort_wall_south_right", (0.095, 0.045, 0.13), (0.19, -0.29, 0.17), STONE)
-    box("fort_wall_west", (0.045, 0.24, 0.13), (-0.31, 0, 0.17), STONE)
-    box("fort_wall_east", (0.045, 0.24, 0.13), (0.31, 0, 0.17), STONE)
+    box("fort_wall_north", (0.62, 0.065, 0.26), (0, 0.29, 0.20), STONE)
+    box("fort_wall_south_left", (0.22, 0.065, 0.26), (-0.21, -0.29, 0.20), STONE)
+    box("fort_wall_south_right", (0.22, 0.065, 0.26), (0.21, -0.29, 0.20), STONE)
+    box("fort_wall_west", (0.065, 0.58, 0.26), (-0.31, 0, 0.20), STONE)
+    box("fort_wall_east", (0.065, 0.58, 0.26), (0.31, 0, 0.20), STONE)
 
     for index, (x, y) in enumerate(((-0.29, -0.27), (0.29, -0.27),
                                      (-0.29, 0.27), (0.29, 0.27))):
         pole(f"fort_corner_tower_{index}", 0.105, 0.36, (x, y, 0.22), STONE, vertices=8)
-        bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=0.155, radius2=0.035, depth=0.11,
-                                        location=(x, y, 0.455), rotation=(0, 0, math.radians(45)))
-        roof = bpy.context.object
-        roof.name = f"fort_corner_roof_{index}"
-        roof.data.materials.append(RED)
+        curved_roof(f"fort_corner_roof_{index}", x, y, 0.39, 0.26, 0.27, 0.09)
 
     # 중앙 내성 및 중층 지붕.
-    box("fort_keep", (0.19, 0.17, 0.22), (0, 0.02, 0.29), STONE)
-    box("fort_keep_band", (0.205, 0.185, 0.025), (0, 0.02, 0.41), DARK)
-    bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=0.29, radius2=0.06, depth=0.14,
-                                    location=(0, 0.02, 0.57), rotation=(0, 0, math.radians(45)))
-    keep_roof = bpy.context.object
-    keep_roof.name = "fort_keep_roof"
-    keep_roof.data.materials.append(RED)
+    box("fort_keep", (0.27, 0.25, 0.30), (0, 0.02, 0.23), STONE)
+    box("fort_keep_band", (0.30, 0.28, 0.025), (0, 0.02, 0.39), DARK)
+    for x in (-0.12, 0.12):
+        for y in (-0.09, 0.13):
+            beam("red_timber_column", (x,y,0.38), (x,y,0.53), 0.018, RED)
+    curved_roof("fort_keep_roof", 0, 0.02, 0.52, 0.42, 0.40, 0.13)
+    curved_roof("fort_gate_roof", 0, -0.29, 0.31, 0.25, 0.20, 0.085)
 
     # 남쪽 성문과 금색 문장.
-    box("fort_gate", (0.075, 0.052, 0.105), (0, -0.305, 0.115), DARK)
+    box("fort_gate", (0.18, 0.052, 0.22), (0, -0.305, 0.17), DARK)
     box("fort_gate_lintel", (0.105, 0.057, 0.025), (0, -0.305, 0.235), GOLD)
     box("fort_gate_emblem", (0.026, 0.059, 0.026), (0, -0.307, 0.17), GOLD,
         (0, 0, math.radians(45)))
@@ -162,6 +158,31 @@ def fort():
         box("fort_crenel_north", (0.035, 0.035, 0.04), (x, 0.30, 0.32), STONE)
     for x in (-0.24, 0.24):
         box("fort_crenel_south", (0.035, 0.035, 0.04), (x, -0.30, 0.32), STONE)
+
+
+def curved_roof(name, x, y, z, width, depth, height):
+    tile = bpy.data.materials.get("blue_grey_tiles") or mat("blue_grey_tiles", (0.17,0.23,0.25))
+    profile = ((0,1), (0.25,0.67), (0.50,0.38), (0.75,0.17), (1,0.32))
+    for side in (-1, 1):
+        vertices = []
+        for t, h in profile:
+            for front in (-1, 1):
+                vertices.append((x+side*t*width/2, y+front*depth/2, z+h*height))
+        faces = [(i*2,i*2+1,i*2+3,i*2+2) for i in range(4)]
+        if side < 0:
+            faces = [tuple(reversed(f)) for f in faces]
+        mesh = bpy.data.meshes.new(name)
+        mesh.from_pydata(vertices, [], faces)
+        mesh.update()
+        obj = bpy.data.objects.new(name, mesh)
+        bpy.context.collection.objects.link(obj)
+        obj.data.materials.append(tile)
+        shell = obj.modifiers.new("roof_thickness", 'SOLIDIFY')
+        shell.thickness = 0.013
+        for front in (-1, 1):
+            for i in range(4):
+                beam("curved_eave", vertices[2*i+(front==1)], vertices[2*(i+1)+(front==1)], 0.009, DARK)
+    beam("roof_ridge", (x,y-depth/2-0.015,z+height), (x,y+depth/2+0.015,z+height), 0.015, tile)
 
 
 def formation():
