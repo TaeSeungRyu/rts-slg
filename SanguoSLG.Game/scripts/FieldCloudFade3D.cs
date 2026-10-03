@@ -36,7 +36,8 @@ public partial class FieldCloudFade3D : Node
             var cloud = _clouds[i];
             if (!GodotObject.IsInstanceValid(cloud)) continue;
             var phase = progress * _clouds.Length - i;
-            cloud.Transparency = 1f - (visible && phase >= 0 && phase < 1.6 ? Opacity(phase / 1.6) : 0f);
+            var duration = System.Math.Min(1.6, _clouds.Length - i);
+            cloud.Transparency = 1f - (visible && phase >= 0 && phase < duration ? Opacity(phase / duration) : 0f);
         }
     }
 }

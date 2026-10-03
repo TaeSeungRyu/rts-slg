@@ -16537,6 +16537,9 @@ public sealed partial class CampaignMapScene : Node3D
             cloudFade!._Process(0);
             cloudFadeOk &= cloudMeshes.All(x => x.Transparency > 0.99f);
             formationScene.Visible = true;
+            cloudPlayer!.Seek(cloudPlayer.CurrentAnimationLength * 0.999, true);
+            cloudFade._Process(0);
+            cloudFadeOk &= cloudMeshes.All(x => x.Transparency > 0.99f);
             cloudPlayer!.Seek(0, true);
             cloudFade._Process(0);
             cloudFadeOk &= cloudMeshes.All(x => x.Transparency > 0.99f);
