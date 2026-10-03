@@ -12,6 +12,25 @@ public sealed class FieldBuildingStage4Tests
     private static readonly IReadOnlyList<FieldBuildingDefinition> Definitions =
         new FieldBuildingLoader().LoadFromDirectory(TestData.DataDirectory());
 
+    [Theory]
+    [InlineData("palisade", 7)]
+    [InlineData("watchtower", 7)]
+    [InlineData("fort", 7)]
+    [InlineData("formation", 7)]
+    [InlineData("scout_post", 19)]
+    public void 완공건물은_부대없이도_자체시야를_제공한다(string code, int count)
+    {
+        var vision = new BattlefieldVision(new BalanceConfig(0), [], Definitions);
+        var building = Building(code, Player, default);
+        var state = new GameState(1, 190, [], [], [], FieldBuildings: [building]);
+        var map = new HexMap(-5, 5, -5, 5);
+        Assert.Equal(count, vision.VisibleTiles(state, Player, map).Count);
+        Assert.Empty(vision.VisibleTiles(state, Enemy, map));
+        Assert.Empty(vision.VisibleTiles(state with { FieldBuildings = [building with { CompletionDay = 2 }] }, Player, map));
+        Assert.Empty(vision.VisibleTiles(state with { FieldBuildings = [building with { ExpiresDay = 1 }] }, Player, map));
+        Assert.Empty(vision.VisibleTiles(state with { FieldBuildings = [] }, Player, map));
+    }
+
     private static FieldBuilding Building(string code, FactionId owner, HexCoord at, int day = 1)
     {
         var definition = Definitions.First(x => x.Code == code);
