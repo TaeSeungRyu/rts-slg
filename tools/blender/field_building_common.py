@@ -72,6 +72,19 @@ def stone(name, scale, location, material=STONE, rotation=(0, 0, 0)):
 
 
 def palisade():
+    for index, (x, y) in enumerate(((-0.24, -0.14), (0, 0.16), (0.24, -0.14))):
+        before = set(bpy.data.objects)
+        palisade_section()
+        parts = set(bpy.data.objects) - before
+        bpy.ops.object.empty_add(location=(x, y, 0))
+        root = bpy.context.object
+        root.name = f"palisade_section_{index}"
+        root.scale = (0.38, 0.38, 0.38)
+        for part in parts:
+            part.parent = root
+
+
+def palisade_section():
     for i, x in enumerate((-0.24, 0, 0.24)):
         for side in (-1, 1):
             beam(f"cross_log_{i}_{side}", (x-0.12*side, -0.17, 0.035),
