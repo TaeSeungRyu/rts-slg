@@ -69,6 +69,7 @@ public sealed partial class CampaignMapScene
         _visibleTiles = visible;
         _displayArmies = display.Armies;
         if (!playback || changed) _fog.Apply(_visibleTiles);
+        RefreshFieldBuildingVisibility();
         foreach (var army in display.Armies)
         {
             if (_armyTokens.TryGetValue(army.Id.Value, out var token)) token.Visible = CanSeeUnit(army);
@@ -114,6 +115,12 @@ public sealed partial class CampaignMapScene
         if (_visionRefreshTime < 0.08) return;
         _visionRefreshTime = 0;
         RefreshBattlefieldVision(playback: true);
+    }
+
+    private void RefreshFieldBuildingVisibility()
+    {
+        foreach (var node in _fieldBuildingLayer.GetChildren().OfType<Node3D>())
+            if (!node.IsQueuedForDeletion()) node.Visible = IsVisibleAt(node.Position);
     }
 
     private int ScoutDaysLeft(CityId city)

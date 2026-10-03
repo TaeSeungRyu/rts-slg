@@ -12,7 +12,7 @@ public partial class FieldCloudFade3D : Node
     {
         var model = GetParent();
         _clouds = model.FindChildren("formation_cloud_*", "MeshInstance3D", true, false)
-            .OfType<MeshInstance3D>().ToArray();
+            .OfType<MeshInstance3D>().OrderBy(x => x.Name.ToString(), System.StringComparer.Ordinal).ToArray();
         _player = model.FindChildren("*", "AnimationPlayer", true, false)
             .OfType<AnimationPlayer>().FirstOrDefault();
         foreach (var cloud in _clouds) cloud.Transparency = 1f;
@@ -29,8 +29,14 @@ public partial class FieldCloudFade3D : Node
         if (_player is null || !GodotObject.IsInstanceValid(_player) || !_player.IsPlaying()) return;
         var length = _player.CurrentAnimationLength;
         if (length <= 0) return;
-        var transparency = 1f - Opacity(_player.CurrentAnimationPosition / length);
-        foreach (var cloud in _clouds)
-            if (GodotObject.IsInstanceValid(cloud)) cloud.Transparency = transparency;
+        var progress = _player.CurrentAnimationPosition / length;
+        var visible = GetParent() is Node3D model && model.IsVisibleInTree();
+        for (var i = 0; i < _clouds.Length; i++)
+        {
+            var cloud = _clouds[i];
+            if (!GodotObject.IsInstanceValid(cloud)) continue;
+            var phase = progress * _clouds.Length - i;
+            cloud.Transparency = 1f - (visible && phase >= 0 && phase < 1.6 ? Opacity(phase / 1.6) : 0f);
+        }
     }
 }

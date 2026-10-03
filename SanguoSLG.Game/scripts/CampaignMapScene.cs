@@ -16491,10 +16491,18 @@ public sealed partial class CampaignMapScene : Node3D
         var cloudFadeOk = cloudMeshes.Length == 7 && cloudFade is not null && cloudPlayer is not null;
         if (cloudFadeOk)
         {
-            cloudPlayer!.Seek(cloudPlayer.CurrentAnimationLength * 0.5, true);
+            for (var i = 0; i < 7; i++)
+            {
+                cloudPlayer!.Seek(cloudPlayer.CurrentAnimationLength * (i + 0.5) / 7, true);
+                cloudFade!._Process(0);
+                var visibleClouds = cloudMeshes.Count(x => x.Transparency < 0.99f);
+                cloudFadeOk &= visibleClouds >= 1 && visibleClouds <= 2;
+            }
+            formationScene!.Visible = false;
             cloudFade!._Process(0);
-            cloudFadeOk &= cloudMeshes.All(x => x.Transparency < 0.4f && x.Position.Y > -0.5f);
-            cloudPlayer.Seek(0, true);
+            cloudFadeOk &= cloudMeshes.All(x => x.Transparency > 0.99f);
+            formationScene.Visible = true;
+            cloudPlayer!.Seek(0, true);
             cloudFade._Process(0);
             cloudFadeOk &= cloudMeshes.All(x => x.Transparency > 0.99f);
         }
@@ -16556,6 +16564,13 @@ public sealed partial class CampaignMapScene : Node3D
         scoutDaysOk &= ScoutDayText(scout with { CompletionDay = _state.Day + 7 }, _state.Day) == "건축 7일";
         var worldNodeOk = _fieldBuildingLayer.GetChildren().OfType<Node3D>()
             .Any(x => x.Name == $"FieldBuilding_{building.Id.Value}");
+        var savedVisibility = _visibleTiles;
+        _visibleTiles = new System.Collections.Generic.HashSet<HexCoord>();
+        RefreshFieldBuildingVisibility();
+        worldNodeOk &= _fieldBuildingLayer.GetChildren().OfType<Node3D>()
+            .Where(x => !x.IsQueuedForDeletion()).All(x => !x.Visible);
+        _visibleTiles = savedVisibility;
+        RefreshFieldBuildingVisibility();
         worldNodeOk &= _fieldBuildingLayer.GetChildren().OfType<Node3D>()
             .Where(x => x.Name.ToString().StartsWith("FieldBuilding_"))
             .All(x => {
