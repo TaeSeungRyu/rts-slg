@@ -15038,13 +15038,13 @@ public sealed partial class CampaignMapScene : Node3D
             label.Visible = false;
         }
 
-        // 좌상단 HUD: 텍스트는 년도, 군주명, 점령 도시 수만 표시한다.
+        // 좌상단 HUD: 현재 날짜, 군주명, 점령 도시 수만 표시한다.
         var ruler = _state.Factions.FirstOrDefault(f => f.Id == Player) is { } pf
             ? _state.Generals.FirstOrDefault(g => g.Id == pf.Ruler)
             : null;
         var rulerName = ruler?.Name ?? "미지정";
         var myCities = _state.CityCount(Player);
-        _hudRuler.Text = $"{_state.Year}년\n군주 {rulerName}\n점령 도시 {myCities}";
+        _hudRuler.Text = $"{_state.Year}년 {_state.Month}월 {_state.DayOfMonth}일\n군주 {rulerName}\n점령 도시 {myCities}";
         _hudFace.Texture = ruler is not null ? CircularPortraitFor(ruler.Id) : null;
         _hudFacePanel.Visible = _hudFace.Texture is not null;
         _hudDate.Text = "";
