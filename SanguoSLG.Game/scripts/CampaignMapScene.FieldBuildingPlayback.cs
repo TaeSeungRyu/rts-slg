@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Spatial;
 
 namespace SanguoSLG.Game;
 
@@ -15,6 +16,8 @@ public sealed partial class CampaignMapScene
             var building = _state.Buildings.FirstOrDefault(b => b.Id == exchange.Building);
             if (building is null) continue;
             var position = _view.HexToWorld(building.Position) + new Vector3(0, _view.TileTopY, 0);
+            Dbg($"FIELD_BUILDING attack u{exchange.Attacker.Value} -> b{building.Id.Value} "
+                + $"({building.DefinitionCode}) damage={exchange.Damage} destroyed={exchange.Destroyed} at={attackTime:F2}s");
             _animAttacks.Add((attackTime, exchange.Attacker.Value, position));
             _animSiegeDmg.Add((attackTime + 0.35, position, exchange.Damage));
             if (turn.Units.Any(u => u.Id == exchange.Attacker && u.IsSupply))
@@ -41,6 +44,41 @@ public sealed partial class CampaignMapScene
     {
         try
         {
+            // 다음 이동이 기병/상병/선박의 공격 복귀보다 먼저 시작되는 실제 재생 경합.
+            foreach (var model in new[] { 1, 6, 7 })
+            {
+                var token = new UnitController3D();
+                AddChild(token);
+                token.InitDisplay(_view, Colors.Blue, model, new HexCoord(1, 5));
+                token.DisplayStepTo(new HexCoord(1, 6), 0.10f);
+                token.PlayAttackMotionToward(_view.HexToWorld(new HexCoord(1, 7)));
+                await ToSignal(GetTree().CreateTimer(0.30), SceneTreeTimer.SignalName.Timeout);
+                if (token.AttackMotionStartCount != 1) throw new Exception("도착 후 공격 누락");
+                token.DisplayStepTo(new HexCoord(2, 6), 0.10f);
+                await ToSignal(GetTree().CreateTimer(0.20), SceneTreeTimer.SignalName.Timeout);
+                var expected = token.Position;
+                var destination = _view.HexToWorld(new HexCoord(2, 6));
+                if (new Vector2(expected.X - destination.X, expected.Z - destination.Z).Length() > 0.01f)
+                    throw new Exception($"model={model}: 다음 이동 도착 실패");
+                for (var frame = 0; frame < 150; frame++)
+                {
+                    await ToSignal(GetTree().CreateTimer(0.02), SceneTreeTimer.SignalName.Timeout);
+                    if (token.Position.DistanceTo(expected) > 0.001f)
+                        throw new Exception($"model={model}: 공격 복귀가 이동 좌표를 덮어씀");
+                }
+                token.QueueFree();
+            }
+            var sample = UnitAssembler.Assemble(new UnitId(99990), Player, new HexCoord(1, 7),
+                UnitMode.Advance, null, 0, _state.Generals.First(g => g.Id.Value == 5),
+                _state.Generals.First(g => g.Id.Value == 3), _troops.First(t => t.Code == "cavalry"),
+                10000, _activeSkills.ToDictionary(s => s.Code), _passiveSkills.ToDictionary(s => s.Code),
+                new CombatContext(MeleeEngagement: true, IncomingMelee: true, InField: true));
+            foreach (var definition in _fieldBuildingDefinitions.Where(d => d.CanBeTargeted))
+            {
+                var damage = new BattleResolver(60).Damage(sample.Stats,
+                    new CombatStats(1000, 0, definition.Defense, AptitudeGrade.C.Percent()));
+                GD.Print($"FIELD_DAMAGE_QA {definition.Code}: stats={sample.Stats} raw={damage}");
+            }
             var building = _state.Buildings.First(b => b.Owner != Player && b.DefinitionCode != "scout_post");
             var attacker = new UnitId(99991);
             var turn = new AdvanceTurn([], new AdvanceResult([], [], StopReason.AllArrived, 1), null,
@@ -60,7 +98,7 @@ public sealed partial class CampaignMapScene
             if (_fieldBuildingLayer.GetNodeOrNull($"FieldBuilding_{building.Id.Value}") is not null
                 || _fieldBuildingLayer.GetNodeOrNull($"FieldAllegiance_{building.Id.Value}") is not null)
                 throw new Exception("파괴 후 건축물/소속 표시 잔존");
-            GD.Print("FIELD_BUILDING_PLAYBACK_QA PASS: attack, damage, same-turn destruction");
+            GD.Print("FIELD_BUILDING_PLAYBACK_QA PASS: cavalry/elephant/ship movement overlaps attack recovery without position rollback; attack, damage, same-turn destruction");
             GetTree().Quit();
         }
         catch (Exception e) { GD.PushError(e.ToString()); GetTree().Quit(1); }

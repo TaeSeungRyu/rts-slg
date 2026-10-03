@@ -168,6 +168,9 @@ public partial class UnitController3D : Node3D
     private readonly List<Member> _members = new();
     private MotionKind _motion;
     private Node3D _tokenRoot = null!;
+    // 공격 돌진은 표시 전용 자식에서 수행한다. 이동 좌표를 옛 공격 원점으로 되돌리지 않는다.
+    private Node3D _attackMotionRoot = null!;
+    private Vector3 _lastAttackOffset;
     private CpuParticles3D? _dust;
     private float _marchTime;
     private Vector3 _lastPosition;
@@ -463,6 +466,11 @@ public partial class UnitController3D : Node3D
     {
         var moved = Position - _lastPosition;
         _lastPosition = Position;
+        if (Alive(_attackMotionRoot))
+        {
+            moved += Basis * (_attackMotionRoot.Position - _lastAttackOffset);
+            _lastAttackOffset = _attackMotionRoot.Position;
+        }
 
         var cavalry = _motion == MotionKind.Cavalry;
         var siege = _motion == MotionKind.Siege;
@@ -778,8 +786,8 @@ public partial class UnitController3D : Node3D
     // ② 멈춘 말 위에서 기수들이 제각각 친다 — 말은 움직이지 않는다 ③ 물러 돌아온다.
     private void PlayCavalryCharge()
     {
-        var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
-        var origin = Position;
+        var forward = Vector3.Back;
+        var origin = _attackMotionRoot.Position;
         var lastDelay = 0f;
 
         // 기수 공격 — 전진이 끝난 뒤 제각각 시작한다. 말(Body)은 건드리지 않는다
@@ -962,7 +970,7 @@ public partial class UnitController3D : Node3D
         // _chargeMoving이 켜진 동안 AnimateMarch가 이동 거리에 맞춰 다리를 굴린다.
         _chargeMoving = true;
         var surge = CreateTween();
-        surge.TweenProperty(this, "position", origin + forward * ChargeDistance, ChargeOutSeconds)
+        surge.TweenProperty(_attackMotionRoot, "position", origin + forward * ChargeDistance, ChargeOutSeconds)
             .SetTrans(Tween.TransitionType.Sine);
         surge.TweenCallback(Callable.From(() =>
         {
@@ -971,7 +979,7 @@ public partial class UnitController3D : Node3D
         }));
         surge.TweenInterval(attackWindow);
         surge.Chain().TweenCallback(Callable.From(() => _chargeMoving = true));
-        surge.Chain().TweenProperty(this, "position", origin, ChargeBackSeconds)
+        surge.Chain().TweenProperty(_attackMotionRoot, "position", origin, ChargeBackSeconds)
             .SetTrans(Tween.TransitionType.Sine);
         surge.Finished += () =>
         {
@@ -1365,8 +1373,8 @@ public partial class UnitController3D : Node3D
     // (몸이 앞으로 쏠린다) → 물러 돌아옴. 좌우 병사는 아무것도 하지 않는다.
     private void PlayElephantRam()
     {
-        var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
-        var origin = Position;
+        var forward = Vector3.Back;
+        var origin = _attackMotionRoot.Position;
         var lastDelay = 0f;
 
         foreach (var member in _members)
@@ -1401,7 +1409,7 @@ public partial class UnitController3D : Node3D
 
         _chargeMoving = true;
         var surge = CreateTween();
-        surge.TweenProperty(this, "position", origin + forward * ElephantDistance, ElephantOutSeconds)
+        surge.TweenProperty(_attackMotionRoot, "position", origin + forward * ElephantDistance, ElephantOutSeconds)
             .SetTrans(Tween.TransitionType.Sine);
         surge.TweenCallback(Callable.From(() =>
         {
@@ -1410,7 +1418,7 @@ public partial class UnitController3D : Node3D
         }));
         surge.TweenInterval(slamWindow);
         surge.Chain().TweenCallback(Callable.From(() => _chargeMoving = true));
-        surge.Chain().TweenProperty(this, "position", origin, ElephantBackSeconds)
+        surge.Chain().TweenProperty(_attackMotionRoot, "position", origin, ElephantBackSeconds)
             .SetTrans(Tween.TransitionType.Sine);
         surge.Finished += () =>
         {
@@ -1432,8 +1440,8 @@ public partial class UnitController3D : Node3D
     // → 물러 돌아온다.
     private void PlayShipRam()
     {
-        var forward = new Vector3(Mathf.Sin(Rotation.Y), 0f, Mathf.Cos(Rotation.Y));
-        var origin = Position;
+        var forward = Vector3.Back;
+        var origin = _attackMotionRoot.Position;
         var lastDelay = 0f;
 
         for (var i = 0; i < _members.Count; i++)
@@ -1475,7 +1483,7 @@ public partial class UnitController3D : Node3D
 
         _chargeMoving = true;
         var surge = CreateTween();
-        surge.TweenProperty(this, "position", origin + forward * ShipDistance, ShipOutSeconds)
+        surge.TweenProperty(_attackMotionRoot, "position", origin + forward * ShipDistance, ShipOutSeconds)
             .SetTrans(Tween.TransitionType.Sine);
         surge.TweenCallback(Callable.From(() =>
         {
@@ -1484,7 +1492,7 @@ public partial class UnitController3D : Node3D
         }));
         surge.TweenInterval(slamWindow);
         surge.Chain().TweenCallback(Callable.From(() => _chargeMoving = true));
-        surge.Chain().TweenProperty(this, "position", origin, ShipBackSeconds)
+        surge.Chain().TweenProperty(_attackMotionRoot, "position", origin, ShipBackSeconds)
             .SetTrans(Tween.TransitionType.Sine);
         surge.Finished += () =>
         {
@@ -1929,7 +1937,12 @@ public partial class UnitController3D : Node3D
         _tokenRoot?.QueueFree();
 
         _tokenRoot = new Node3D();
-        AddChild(_tokenRoot);
+        if (!Alive(_attackMotionRoot))
+        {
+            _attackMotionRoot = new Node3D { Name = "AttackMotionOffset" };
+            AddChild(_attackMotionRoot);
+        }
+        _attackMotionRoot.AddChild(_tokenRoot);
         var (modelFile, solo, _) = TroopModels[_troopIndex];
         if (UsesNativeStateMotion(modelFile))
         {
