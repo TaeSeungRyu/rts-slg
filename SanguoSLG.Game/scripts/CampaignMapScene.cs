@@ -140,6 +140,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int TargetUnitId)> _animRuinCounters = new();
     private int _animRuinCaptureIdx;
     private readonly List<(double Time, string RuinId, FactionId Owner)> _animRuinCaptures = new();
+    private readonly List<(double Time, FieldBuildingId Building)> _animBuildingRemovals = new();
+    private int _animBuildingRemovalIdx;
     private int _animGaugeIdx;
     private readonly List<(double Time, int UnitId, ActiveSkill? Skill, ActiveGauge Gauge)> _animGaugeUpdates = new();
 
@@ -614,6 +616,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestofficertableqa")) CallDeferred(nameof(RunOfficerTableLayoutQa));
         if (args.Contains("--maptestcitydetailqa")) CallDeferred(nameof(RunCityDetailUiQa));
         if (args.Contains("--maptestfieldconstructionuiqa")) CallDeferred(nameof(RunFieldConstructionUiQa));
+        if (args.Contains("--maptestfieldbuildingplaybackqa")) CallDeferred(nameof(RunFieldBuildingPlaybackQa));
         if (args.Contains("--maptestscoutdetailqa")) CallDeferred(nameof(RunScoutedCityDetailQa));
         if (args.Contains("--maptestcityambienceqa")) CallDeferred(nameof(RunCityAmbienceQa));
         if (args.Contains("--maptestcastledamageqa")) CallDeferred(nameof(RunCastleDamageQa));
@@ -1630,6 +1633,7 @@ public sealed partial class CampaignMapScene : Node3D
                 if (tools is not null)
                 {
                     tools.Position = origin + new Vector3(0, 0.70f, 0);
+                    tools.Name = $"FieldTools_{building.Id.Value}";
                     tools.Scale = Vector3.One * 0.68f;
                     _fieldBuildingLayer.AddChild(tools);
                     PlayLoopingModelAnimations(tools);
@@ -1637,6 +1641,7 @@ public sealed partial class CampaignMapScene : Node3D
                 }
                 var label = new Label3D
                 {
+                    Name = $"FieldConstructionDays_{building.Id.Value}",
                     Text = $"건축 {System.Math.Max(0, building.CompletionDay - _state.Day)}일",
                     Position = origin + new Vector3(0, 1.05f, 0), Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                     Font = _font, FontSize = 24, OutlineSize = 7, NoDepthTest = true, Modulate = GoldBright,
@@ -3577,6 +3582,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animSiegeSkillEffectIdx = 0;
         _animRuinCounterIdx = 0;
         _animRuinCaptureIdx = 0;
+        _animBuildingRemovalIdx = 0;
         _animGaugeIdx = 0;
         _advanceBtn.Busy = true;
         _advanceBtn.Progress = 0f;
@@ -3616,6 +3622,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animSiegeSkillEffects.Clear();
         _animRuinCounters.Clear();
         _animRuinCaptures.Clear();
+        _animBuildingRemovals.Clear();
         _animGaugeUpdates.Clear();
         for (var d = 0; d <= AnimDays; d++) { _dayKind[d] = "이동"; } // 기본 이동턴, 아래서 교전·공성 있는 날만 공격턴
         var alive = new HashSet<int>(startHex.Keys);
@@ -3737,7 +3744,7 @@ public sealed partial class CampaignMapScene : Node3D
 
             // 그 턴에 교전/공성이 있었으면 정지일(stopDay)을 '공격턴'으로 표기.
             if (stopDay >= 1 && stopDay <= AnimDays && (turn.Combat is not null
-                || turn.RuinExchanges.Count > 0 || sieges.Any(s => s.TurnIndex == ti)))
+                || turn.RuinExchanges.Count > 0 || turn.FieldBuildingExchanges.Count > 0 || sieges.Any(s => s.TurnIndex == ti)))
             {
                 _dayKind[stopDay] = "공격";
             }
@@ -3753,6 +3760,7 @@ public sealed partial class CampaignMapScene : Node3D
 
             // 이 조각의 정산 반영: 병력 갱신(라벨·편대 규모) + 전멸/입성 부대 즉시 제거.
             var settleTime = atkTime + 0.55; // 공격 모션이 보인 뒤
+            ScheduleFieldBuildingCombat(turn, atkTime, settleTime);
             var survivors = new HashSet<int>();
             foreach (var u in turn.Units)
             {
@@ -3900,6 +3908,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animRuinCounters.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animRuinCaptures.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animBuildingRemovals.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animGaugeUpdates.Sort((a, b) => a.Time.CompareTo(b.Time));
     }
 
@@ -5564,6 +5573,12 @@ public sealed partial class CampaignMapScene : Node3D
                     ruinLabel.Text = RuinWorldLabelText(labelRuin, labelStatus, _pendingState.Day);
                 }
                 _animRuinCaptureIdx++;
+            }
+
+            while (_animBuildingRemovalIdx < _animBuildingRemovals.Count
+                && _animBuildingRemovals[_animBuildingRemovalIdx].Time <= _animT)
+            {
+                HideDestroyedFieldBuilding(_animBuildingRemovals[_animBuildingRemovalIdx++].Building);
             }
 
             while (_animSiegeDmgIdx < _animSiegeDmg.Count && _animSiegeDmg[_animSiegeDmgIdx].Time <= _animT)

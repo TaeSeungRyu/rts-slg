@@ -113,4 +113,51 @@ public sealed class FieldBuildingStage4Tests
         Assert.Empty(result.State.Buildings);
         Assert.False(result.State.Armies.Single().IsConstructing);
     }
+
+    [Theory]
+    [InlineData(UnitMode.Advance, 1)]
+    [InlineData(UnitMode.Attack, 1)]
+    [InlineData(UnitMode.Advance, 2)]
+    [InlineData(UnitMode.Attack, 2)]
+    public void 양측_전진과_공격은_사거리에서_건물을_발견해_한개만_공격한다(UnitMode mode, int faction)
+    {
+        var owner = new FactionId(faction);
+        var opponent = faction == 1 ? Enemy : Player;
+        var building = Building("watchtower", opponent, new HexCoord(2, 0));
+        var other = building with { Id = new FieldBuildingId(2), Position = new HexCoord(2, -1) };
+        var unit = Combat(1, owner, default, new HexCoord(6, 0));
+        unit = unit with { Field = unit.Field with { Mode = mode } };
+        var sim = new MovementSimulator(new PassabilityMap(new HexMap(-3, 8, -3, 3), [], []));
+        var move = sim.Advance([unit.Field], 1, fieldBuildings: [building, other], fieldDefinitions: Definitions, fieldDay: 1);
+        unit = unit with { Field = move.Units.Single() };
+        Assert.Equal(1, unit.Field.Position.Distance(building.Position));
+        var state = new GameState(1, 190, [], [], [], FieldBuildings: [building, other]);
+        var result = new FieldBuildingCombat(new BattleResolver(60), Definitions).Resolve(state, [unit]);
+        Assert.Single(result.Exchanges);
+        Assert.True(result.Exchanges[0].Damage > 0);
+    }
+
+    [Theory]
+    [InlineData("march")]
+    [InlineData("transport")]
+    [InlineData("construction")]
+    [InlineData("waiting")]
+    [InlineData("ally")]
+    [InlineData("scout")]
+    public void 공격불가_조건에서는_건축물을_공격하지_않는다(string condition)
+    {
+        var target = new HexCoord(1, 0);
+        var building = Building(condition == "scout" ? "scout_post" : "fort", condition == "ally" ? Player : Enemy, target);
+        var unit = Combat(1, Player, default, target);
+        unit = condition switch
+        {
+            "march" => unit with { Field = unit.Field with { Mode = UnitMode.March } },
+            "transport" => unit with { IsTransport = true },
+            "construction" => unit with { IsConstructing = true },
+            "waiting" => unit with { AwaitingEgress = true },
+            _ => unit,
+        };
+        var state = new GameState(1, 190, [], [], [], FieldBuildings: [building]);
+        Assert.Empty(new FieldBuildingCombat(new BattleResolver(60), Definitions).Resolve(state, [unit]).Exchanges);
+    }
 }

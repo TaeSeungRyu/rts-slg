@@ -212,6 +212,9 @@ public sealed class MovementSimulator
                     // 사거리 정지를 무시하고 반드시 내려서는 게이트 스텝을 먼저 밟는다(아래).
                     var onCastle = OnCastle(w, castles);
 
+                    if (!onCastle && w.Unit.Mode != UnitMode.March && FieldBuildingWithin(w))
+                        continue;
+
                     // 사거리 안에 적이 있으면 더 다가가지 않고 멈춰 싸운다(궁병 등은 사거리를 유지).
                     // 정지는 이 날 이동을 다 끝낸 뒤 판정한다 — 다른 부대는 계속 이동/재시도한다.
                     if (!onCastle && w.Unit.Mode == UnitMode.Attack && NearestEnemyWithin(w, work, w.Unit.AttackRange) is not null)
@@ -491,6 +494,11 @@ public sealed class MovementSimulator
                 && building.Owner != unit.Unit.Owner
                 && _fieldDefinitions.TryGetValue(building.DefinitionCode, out var definition)
                 && definition.CanBeTargeted);
+
+    private bool FieldBuildingWithin(Working unit)
+        => _fieldBuildings.Any(building => building.Owner != unit.Unit.Owner
+            && unit.Unit.Position.Distance(building.Position) <= unit.Unit.RangeCastle
+            && _fieldDefinitions.TryGetValue(building.DefinitionCode, out var definition) && definition.CanBeTargeted);
 
     private bool IsEnemyFieldBuilding(Working unit, HexCoord coord)
         => _fieldBuildings.Any(building => building.Position == coord && building.Owner != unit.Unit.Owner
