@@ -71,6 +71,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly Dictionary<int, Node3D> _cityModels = new();
     private readonly Dictionary<int, bool> _cityBrokenVisuals = new();
     private readonly Dictionary<string, Label3D> _ruinLabels = new(System.StringComparer.Ordinal);
+    private readonly Dictionary<FieldBuildingId, (FieldBuilding Building, Label3D Label)> _scoutDayLabels = new();
     private readonly Dictionary<int, UnitController3D> _armyTokens = new();
     private readonly Dictionary<int, Label3D> _armyLabels = new();
     private readonly Dictionary<int, ActiveSkillGaugeView3D> _activeGauges = new();
@@ -1587,6 +1588,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void RedrawFieldBuildings()
     {
         if (_fieldBuildingLayer is null) return;
+        _scoutDayLabels.Clear();
         foreach (var child in _fieldBuildingLayer.GetChildren()) child.QueueFree();
         foreach (var building in _state.Buildings.Where(x => !x.IsExpired(_state.Day)))
         {
@@ -1622,8 +1624,33 @@ public sealed partial class CampaignMapScene : Node3D
                 };
                 _fieldBuildingLayer.AddChild(label);
                 _fog.Register(label, building.Position);
+                if (definition.Kind == FieldBuildingKind.ScoutPost) _scoutDayLabels[building.Id] = (building, label);
+            }
+            else if (definition.Kind == FieldBuildingKind.ScoutPost)
+            {
+                var label = new Label3D
+                {
+                    Name = $"ScoutDays_{building.Id.Value}", Text = ScoutDayText(building, _state.Day),
+                    Position = origin + new Vector3(0, 0.85f, 0), Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                    Font = _font, FontSize = 24, OutlineSize = 7, NoDepthTest = true, Modulate = GoldBright,
+                };
+                _fieldBuildingLayer.AddChild(label);
+                _fog.Register(label, building.Position);
+                _scoutDayLabels[building.Id] = (building, label);
             }
         }
+    }
+
+    private static string ScoutDayText(FieldBuilding building, int day)
+        => !building.IsCompleted(day) ? $"건축 {building.CompletionDay - day}일"
+            : building.IsExpired(day) ? ""
+            : $"정찰 {System.Math.Max(0, (building.ExpiresDay ?? day) - day)}일";
+
+    private void UpdateScoutDayLabels(int day)
+    {
+        foreach (var (building, label) in _scoutDayLabels.Values)
+            if (GodotObject.IsInstanceValid(label) && label.IsInsideTree() && !label.IsQueuedForDeletion())
+                label.Text = ScoutDayText(building, day);
     }
 
     private static void PlayLoopingModelAnimations(Node root)
@@ -5590,6 +5617,7 @@ public sealed partial class CampaignMapScene : Node3D
 
             var day = System.Math.Min(AnimDays, (int)(_animT / DaySeconds) + 1);
             _dayLabel.Text = $"{day}일차";
+            UpdateScoutDayLabels(_state.Day + System.Math.Min(AnimDays, (int)(_animT / DaySeconds)));
             // 하루는 이동 연출 뒤 공격 판정 슬롯으로 고정 분리한다.
             // 실제 교전이 없어도 플레이어가 진행 구조를 읽을 수 있게 "공격턴"은 항상 표시한다.
             var dayElapsed = _animT - (day - 1) * DaySeconds;
@@ -16465,16 +16493,27 @@ public sealed partial class CampaignMapScene : Node3D
         var radiusOneOk = _fieldBuildingRangeMarkers.Count == 7;
         ClearFieldBuildingRange();
         var original = _state;
-        _state = _state with { FieldBuildings = _state.Buildings.Append(building).ToList() };
+        var scout = building with { Id = new FieldBuildingId(900002), DefinitionCode = "scout_post",
+            ExpiresDay = _state.Day + 60 };
+        _state = _state with { FieldBuildings = _state.Buildings.Append(building).Append(scout).ToList() };
         RedrawFieldBuildings();
+        var scoutLabel = _scoutDayLabels[scout.Id].Label;
+        var scoutDaysOk = scoutLabel.Text == "정찰 60일";
+        UpdateScoutDayLabels(_state.Day + 1);
+        scoutDaysOk &= scoutLabel.Text == "정찰 59일";
+        UpdateScoutDayLabels(_state.Day + 59);
+        scoutDaysOk &= scoutLabel.Text == "정찰 1일";
+        UpdateScoutDayLabels(_state.Day + 60);
+        scoutDaysOk &= scoutLabel.Text == "";
+        scoutDaysOk &= ScoutDayText(scout with { CompletionDay = _state.Day + 7 }, _state.Day) == "건축 7일";
         var worldNodeOk = _fieldBuildingLayer.GetChildren().OfType<Node3D>()
             .Any(x => x.Name == $"FieldBuilding_{building.Id.Value}");
         _state = original;
         RedrawFieldBuildings();
         var passed = _fieldBuildingDefinitions.Count == 5 && modelsOk && formationAnimationOk && menuHasCommand
-            && fiveSamplesOk && cloudFadeOk && toolsAnimationOk
+            && fiveSamplesOk && cloudFadeOk && toolsAnimationOk && scoutDaysOk
             && radiusTwoOk && radiusOneOk && worldNodeOk;
-        GD.Print($"[field-construction-ui-qa] passed={passed} toolsAnimation={toolsAnimationOk} definitions={_fieldBuildingDefinitions.Count} samples={fiveSamplesOk} models={modelsOk} cloudFade={cloudFadeOk} formationAnimation={formationAnimationOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
+        GD.Print($"[field-construction-ui-qa] passed={passed} scoutDays={scoutDaysOk} toolsAnimation={toolsAnimationOk} definitions={_fieldBuildingDefinitions.Count} samples={fiveSamplesOk} models={modelsOk} cloudFade={cloudFadeOk} formationAnimation={formationAnimationOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

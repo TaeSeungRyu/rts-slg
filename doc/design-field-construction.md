@@ -23,6 +23,8 @@
 
 완공된 목책·감시탑·보루·진법은 주둔 부대 없이도 소유 세력에 자체 시야 반경 1칸을 제공한다.
 정찰대는 기존 반경 2칸을 유지한다. 공사 중·철거·파괴·만료된 건축물은 시야를 제공하지 않는다.
+정찰대 지도 표시는 공사 중 `건축 N일`, 완공 후 `정찰 N일`이며 진행 중에도 하루마다 갱신한다.
+남은 정찰 기간은 완공일부터 60일이며 만료 시 표시를 제거한다. 지도 안개 가시성 규칙을 따른다.
 
 | 건축물 | 휴대 금 | 추가 비용 | HP | 기간 | 효과 |
 |---|---:|---|---:|---:|---|
@@ -130,14 +132,15 @@
 
 | 모델 | 표현 | 생성 스크립트/파일 예정 |
 |---|---|---|
-| 목책 | 헥사 1칸 안 낮은 목재 말뚝·차단 울타리 | `make_field_palisade.py` / `field-palisade.glb` |
-| 정찰대 | 소수 정찰병·작은 위장 초소 | `make_field_scout.py` / `field-scout.glb` |
-| 감시탑 | 목조 고상 망루 | `make_field_watchtower.py` / `field-watchtower.glb` |
+| 목책 | 결속된 X자 통나무와 가로 지지대 | `make_field_palisade.py` / `field-palisade.glb` |
+| 정찰대 | 암석 아치 동굴·어두운 입구·빛나는 눈 | `make_field_scout.py` / `field-scout.glb` |
+| 감시탑 | 기단·기둥·가새·연결 계단·난간을 갖춘 목조 망루 | `make_field_watchtower.py` / `field-watchtower.glb` |
 | 보루 | 네 귀퉁이 망루·성벽·성문·중앙 내성을 갖춘 작은 동양식 석성 | `make_field_fort.py` / `field-fort.glb` |
-| 진법 | 거대한 석주 4개·중앙 돌무더기·석주 사이를 반복 통과하는 구름 띠 | `make_field_formation.py` / `field-formation.glb` (`FormationCloudDrift`) |
+| 진법 | 석주 4개·중앙 돌무더기·기둥 위 구름 7개·이동 주기별 페이드 인/아웃 | `make_field_formation.py` / `field-formation.glb` (`FormationCloudDrift`) |
 
 스크립트는 `tools/blender/`, GLB는 `SanguoSLG.Game/assets/models/`에 저장한다.
 작업 도구 표시도 작은 망치/곡괭이 모양으로 제작하고 부대 머리 위 UI와 겹치지 않게 배치한다.
+손잡이와 머리는 연결되어 있으며 단일 `ConstructionWork` 애니메이션에서 망치·곡괭이가 함께 반복 작업한다.
 노말·면 컬링·1타일 크기·모델 높이·입출성 시 숨김·파괴/철거 후 잔존 노드를 QA한다.
 Blender는 `--background --python-exit-code 1`로 생성 검증하고 `design-effect.md`에 사용처를 등록한다.
 진법 GLB의 구름 애니메이션은 건축물 지도 모델과 정보 카드 미리보기에서 자동 반복 재생한다.
