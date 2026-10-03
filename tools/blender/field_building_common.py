@@ -87,14 +87,25 @@ def beam(name, start, end, radius, material):
 
 
 def scout():
-    box("camouflage_floor", (0.27, 0.22, 0.025), (0, 0, 0.025), EARTH)
-    for x in (-0.22, 0.22):
-        pole("scout_post", 0.022, 0.42, (x, 0, 0.23), WOOD)
-    box("lean_to", (0.31, 0.23, 0.025), (0, 0, 0.43), DARK,
-        (0, math.radians(12), 0))
-    box("map_table", (0.12, 0.08, 0.025), (0, -0.02, 0.18), WOOD)
-    pole("signal_flag", 0.014, 0.55, (0.20, 0.04, 0.33), WOOD)
-    box("signal_cloth", (0.10, 0.012, 0.07), (0.11, 0.04, 0.53), RED)
+    shadow = mat("cave_shadow", (0.025,0.030,0.024))
+    moss = mat("cave_moss", (0.27,0.35,0.19))
+    eye = mat("watchful_eyes", (0.94,0.83,0.40))
+    shader = eye.node_tree.nodes.get("Principled BSDF")
+    shader.inputs['Emission Color'].default_value = (0.94,0.65,0.12,1)
+    shader.inputs['Emission Strength'].default_value = 0.7
+    stone("cave_back", (0.35,0.22,0.26), (0,0.10,0.22), STONE)
+    box("cave_dark_interior", (0.40,0.025,0.28), (0,-0.145,0.19), shadow)
+    for side in (-1, 1):
+        stone("cave_jamb", (0.14,0.21,0.24), (side*0.24,-0.10,0.20), STONE)
+    for i in range(7):
+        angle = math.pi*i/6
+        stone("cave_arch", (0.115,0.22,0.11),
+              (math.cos(angle)*0.24,-0.10,0.23+math.sin(angle)*0.20), STONE)
+    for x in (-0.075, 0.075):
+        stone("watchful_eye", (0.048,0.018,0.027), (x,-0.177,0.235), eye)
+        stone("eye_pupil", (0.012,0.009,0.021), (x,-0.195,0.235), shadow)
+    for x in (-0.25, 0.06, 0.23):
+        stone("moss_cover", (0.12,0.09,0.035), (x,0.015,0.45-abs(x)*0.3), moss)
 
 
 def watchtower():
