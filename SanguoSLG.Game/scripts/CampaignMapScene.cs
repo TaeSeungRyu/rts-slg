@@ -1611,6 +1611,7 @@ public sealed partial class CampaignMapScene : Node3D
                     tools.Position = origin + new Vector3(0, 0.70f, 0);
                     tools.Scale = Vector3.One * 0.68f;
                     _fieldBuildingLayer.AddChild(tools);
+                    PlayLoopingModelAnimations(tools);
                     _fog.Register(tools, building.Position);
                 }
                 var label = new Label3D
@@ -14858,6 +14859,7 @@ public sealed partial class CampaignMapScene : Node3D
                     constructionIndicator.Position = new Vector3(0, 1.0f, 0);
                     constructionIndicator.Scale = Vector3.One * 0.62f;
                     token.AddChild(constructionIndicator);
+                    PlayLoopingModelAnimations(constructionIndicator);
                 }
             }
             else if (!army.IsConstructing && constructionIndicator is not null)
@@ -16432,6 +16434,18 @@ public sealed partial class CampaignMapScene : Node3D
             cloudFadeOk &= cloudMeshes.All(x => x.Transparency > 0.99f);
         }
         formationScene?.Free();
+        var toolsScene = GD.Load<PackedScene>("res://assets/models/field-construction-tools.glb").Instantiate<Node3D>();
+        _fieldBuildingLayer.AddChild(toolsScene);
+        PlayLoopingModelAnimations(toolsScene);
+        var toolPlayer = toolsScene.FindChildren("*", "AnimationPlayer", true, false).OfType<AnimationPlayer>().First();
+        var pivots = new[] { "hammer_work_pivot", "pick_work_pivot" }
+            .Select(name => (Node3D)toolsScene.FindChild(name, true, false)).ToArray();
+        toolPlayer.Seek(0, true);
+        var initialRotations = pivots.Select(x => x.Quaternion).ToArray();
+        toolPlayer.Seek(0.4, true);
+        var toolsAnimationOk = toolPlayer.IsPlaying() && pivots.Select((x, i) =>
+            x.Quaternion.AngleTo(initialRotations[i]) > 0.1f).All(x => x);
+        toolsScene.Free();
         var menuHasCommand = _unitCmdBox.FindChildren("*", "Button", true, false)
             .OfType<Button>().Any(x => x.Text == "건축");
         var sampleCodes = _state.Buildings.Select(x => x.DefinitionCode).ToHashSet(System.StringComparer.Ordinal);
@@ -16458,9 +16472,9 @@ public sealed partial class CampaignMapScene : Node3D
         _state = original;
         RedrawFieldBuildings();
         var passed = _fieldBuildingDefinitions.Count == 5 && modelsOk && formationAnimationOk && menuHasCommand
-            && fiveSamplesOk && cloudFadeOk
+            && fiveSamplesOk && cloudFadeOk && toolsAnimationOk
             && radiusTwoOk && radiusOneOk && worldNodeOk;
-        GD.Print($"[field-construction-ui-qa] passed={passed} definitions={_fieldBuildingDefinitions.Count} samples={fiveSamplesOk} models={modelsOk} cloudFade={cloudFadeOk} formationAnimation={formationAnimationOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
+        GD.Print($"[field-construction-ui-qa] passed={passed} toolsAnimation={toolsAnimationOk} definitions={_fieldBuildingDefinitions.Count} samples={fiveSamplesOk} models={modelsOk} cloudFade={cloudFadeOk} formationAnimation={formationAnimationOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

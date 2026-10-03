@@ -1,5 +1,7 @@
 import bpy
 import math
+import json
+import struct
 from mathutils import Vector
 from pathlib import Path
 
@@ -247,14 +249,32 @@ def formation():
 
 
 def tools():
-    box("hammer_handle", (0.025, 0.025, 0.23), (-0.07, 0, 0.23), WOOD,
-        (0, math.radians(25), math.radians(-30)))
-    box("hammer_head", (0.13, 0.045, 0.045), (-0.17, 0, 0.40), GOLD,
-        (0, math.radians(25), math.radians(-30)))
-    box("pick_handle", (0.022, 0.022, 0.24), (0.09, 0, 0.23), WOOD,
-        (0, math.radians(-25), math.radians(30)))
-    box("pick_head", (0.15, 0.03, 0.03), (0.20, 0, 0.40), STONE,
-        (0, math.radians(-25), math.radians(30)))
+    for kind, side in (("hammer", -1), ("pick", 1)):
+        bpy.ops.object.empty_add(location=(side*0.13,0,0.08))
+        pivot = bpy.context.object
+        pivot.name = kind + "_work_pivot"
+        parts = [beam(kind+"_handle", (0,0,0), (0,0,0.29), 0.019, WOOD)]
+        for z in (0.015,0.04,0.065):
+            parts.append(pole(kind+"_grip", 0.023, 0.014, (0,0,z), ROPE))
+        if kind == "hammer":
+            parts.append(box("hammer_head", (0.19,0.065,0.065), (0,0,0.29), GOLD))
+            for x in (-0.095,0.095):
+                parts.append(box("hammer_face", (0.018,0.078,0.078), (x,0,0.29), STONE))
+        else:
+            parts.append(box("pick_socket", (0.07,0.065,0.075), (0,0,0.29), GOLD))
+            for direction in (-1,1):
+                parts.append(beam("pick_blade", (0,0,0.31), (direction*0.11,0,0.29), 0.021, STONE))
+                parts.append(beam("pick_tip", (direction*0.11,0,0.29), (direction*0.17,0,0.24), 0.013, STONE))
+        for part in parts:
+            part.parent = pivot
+        for frame, angle in ((1,-20),(12,30),(18,-45),(25,-20),(36,30),(42,-45),(49,-20)):
+            pivot.rotation_euler.y = math.radians(side*angle)
+            pivot.keyframe_insert(data_path="rotation_euler", frame=frame)
+        pivot.animation_data.action.name = kind + "_work"
+    bpy.context.scene.frame_start = 1
+    bpy.context.scene.frame_end = 49
+    bpy.context.scene.render.fps = 30
+    bpy.context.scene.frame_set(1)
 
 
 BUILDERS = {
@@ -273,6 +293,25 @@ def build(kind):
     callback()
     bpy.ops.object.select_all(action="SELECT")
     path = OUT / filename
+    options = {"export_animation_mode": "SCENE", "export_frame_range": True} if kind == "tools" else {}
     bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLB", use_selection=True,
-                              export_animations=(kind == "formation"))
+                              export_animations=(kind in ("formation", "tools")), **options)
+    if kind == "tools":
+        # Godot plays one clip at a time: keep both tools in a single work cycle.
+        raw = path.read_bytes()
+        length = struct.unpack_from('<I', raw, 12)[0]
+        document = json.loads(raw[20:20+length])
+        merged = {"name": "ConstructionWork", "channels": [], "samplers": []}
+        for animation in document.get("animations", []):
+            offset = len(merged["samplers"])
+            merged["samplers"].extend(animation["samplers"])
+            for channel in animation["channels"]:
+                channel["sampler"] += offset
+                merged["channels"].append(channel)
+        document["animations"] = [merged]
+        payload = json.dumps(document).encode()
+        payload += b' ' * (-len(payload) % 4)
+        tail = raw[20+length:]
+        path.write_bytes(struct.pack('<III', 0x46546C67, 2, 20+len(payload)+len(tail))
+                         + struct.pack('<II', len(payload), 0x4E4F534A) + payload + tail)
     print(f"EXPORTED: {path}")
