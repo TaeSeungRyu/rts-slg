@@ -9484,7 +9484,7 @@ public sealed partial class CampaignMapScene : Node3D
             preview.Text = $"{ship?.Name ?? selectedShip} · {amount:N0}명 · 선봉 {leader?.Name ?? "-"} · 부관 {adjutant}\n군량 {carriedFood:N0} · 금 {carriedGold:N0} · 예약 후 지도에서 목표 지정";
         }
 
-        var navalResourceTitle = MakeLabel("선박 · 병력 · 물자", 14, GoldBright);
+        var navalResourceTitle = MakeLabel("1. 선박", 14, GoldBright);
         box.AddChild(navalResourceTitle);
         var shipTree = new Tree
         {
@@ -9580,6 +9580,7 @@ public sealed partial class CampaignMapScene : Node3D
         };
         box.AddChild(troopTree);
 
+        box.AddChild(MakeLabel("3. 병력 물자", 14, GoldBright));
         var amountSlider = ApplySliderStyle(new HSlider { MinValue = 1, MaxValue = Math.Min(DeployService.ShipTroopCapacity, garrisons[0].Available), Step = 100, Value = amount, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
         var amountSpin = ApplyNumberInputStyle(new SpinBox { MinValue = 1, MaxValue = amountSlider.MaxValue, Step = 100, Value = amount, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
         void SyncAmount(double value, bool fromSlider)
