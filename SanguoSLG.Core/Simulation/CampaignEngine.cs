@@ -17,6 +17,8 @@ public sealed class CampaignEngine
     private const int ProductionUnitIdBase = -1_000_000;
     private const int CombatGeneralExperience = 20;
     private const int CombatPassiveExperience = 10;
+    // 격퇴 직후 이어지는 7일 내정 틱의 무담당 치안 하락(-2)을 감안해도 출현선(60)을 넘긴다.
+    private const int BanditSuppressionSecurity = 70;
 
     private readonly AdvanceOrchestrator _field;
     private readonly WorldEngine _world;
@@ -290,6 +292,7 @@ public sealed class CampaignEngine
                 .OrderBy(u => u.Id.Value))
             {
                 var at = movedPos.TryGetValue(dead.Id, out var mp) ? mp : dead.Field.Position;
+                work = SuppressDefeatedBandit(work, dead);
                 work = FieldCasualties.ResolveUnit(work, dead, at, casualtyReports);
             }
 
@@ -343,6 +346,7 @@ public sealed class CampaignEngine
                     {
                         DepositSiegeSpoils(siegeCities, ex.City, dead);
                     }
+                    SuppressDefeatedBandit(siegeCities, dead);
                     work = FieldCasualties.ResolveUnit(work, dead, dead.Field.Position, casualtyReports);
                 }
 
@@ -459,6 +463,23 @@ public sealed class CampaignEngine
             .ToList();
 
     private static UnitId ProductionUnitId(int operationId) => new(ProductionUnitIdBase + operationId);
+
+    private static GameState SuppressDefeatedBandit(GameState state, CombatUnit defeated)
+    {
+        if (defeated.Field.Owner != WorldEngine.BanditFaction) return state;
+        var cities = state.Cities.ToList();
+        SuppressDefeatedBandit(cities, defeated);
+        return state with { Cities = cities };
+    }
+
+    private static void SuppressDefeatedBandit(List<City> cities, CombatUnit defeated)
+    {
+        if (defeated.Field.Owner != WorldEngine.BanditFaction || defeated.Field.Target is not { } target) return;
+        var index = cities.FindIndex(city => CastleFootprint.TilesFor(city).Contains(target));
+        if (index < 0) return;
+        var city = cities[index];
+        cities[index] = city with { Security = System.Math.Max(city.Security, BanditSuppressionSecurity) };
+    }
 
     private static int ProductionOperationId(UnitId unitId) => unitId.Value - ProductionUnitIdBase;
 

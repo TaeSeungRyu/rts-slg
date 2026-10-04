@@ -84,7 +84,7 @@ public sealed class CampaignSiege
                 .Where(u => u.Pool.Active > 0 && u.Field.Owner != city.Owner
                     && u.Field.Mode == UnitMode.Attack
                     && u.CanInitiateCombat
-                    && (u.IsSupply || u.IsArmyGroup || (u.TroopCode.Length > 0 && _troops.ContainsKey(u.TroopCode)))
+                    && (u.IsSupply || u.IsArmyGroup || EffectiveTroop(u) is not null)
                     && CastleFootprint.TilesFor(city).Min(tile => tile.Distance(u.Field.Position)) <= u.Field.RangeCastle)
                 .OrderBy(u => u.Id.Value)
                 .ToList();
@@ -216,7 +216,8 @@ public sealed class CampaignSiege
                 activeDamagePercent);
         }
 
-        var template = _troops[u.TroopCode];
+        var template = EffectiveTroop(u)
+            ?? throw new InvalidOperationException($"공성 병종을 찾을 수 없습니다: {u.TroopCode}");
         var (terrainAtk, _) = TerrainCombatBonus.For(template.Class, _terrainAt(u.Field.Position));
         return new SiegeAttacker(
             u.Pool.Active,
@@ -228,6 +229,15 @@ public sealed class CampaignSiege
             u.Stats.DfBonusPercent,
             inCounterRange,
             activeDamagePercent);
+    }
+
+    private TroopTemplate? EffectiveTroop(CombatUnit unit)
+    {
+        if (_troops.TryGetValue(unit.TroopCode, out var troop)) return troop;
+        // 도적은 생산 병종 JSON에 없는 이벤트 부대지만, 전투 규칙상 도검병과 같은 공성 수치를 쓴다.
+        return unit.Field.Owner == WorldEngine.BanditFaction && unit.TroopCode == WorldEngine.BanditTroopCode
+            ? _troops.GetValueOrDefault("swordsman")
+            : null;
     }
 
     private static int SiegeActiveDamagePercent(CombatUnit unit, ActiveSkill? active)

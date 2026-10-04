@@ -11,6 +11,11 @@ using Xunit;
 /// <summary>캠페인 공성(10b) — 성벽 타격·수비 손실·반격. 소유 전환·함락은 다음 단계.</summary>
 public class CampaignSiegeTests
 {
+    private sealed class FixedRandom(int value) : IRandomSource
+    {
+        public int Next(int minInclusive, int maxExclusive) => value;
+    }
+
     private static readonly IReadOnlyDictionary<string, TroopTemplate> T =
         new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory()).ToDictionary(x => x.Code);
 
@@ -71,6 +76,39 @@ public class CampaignSiegeTests
         Assert.Equal(6000 - ex.WallDamage, r.Cities.Single().Wall);
         Assert.Equal(10000, r.Garrisons.Single().Troops); // 성벽이 버텨 수비 무손실
         Assert.True(r.Armies.Single().Pool.Active < 10000, "인접 공격 부대는 반격을 받는다");
+    }
+
+    [Fact]
+    public void 도적은_성반격으로_전멸하고_같은_진행_끝에_즉시_재출현하지_않는다()
+    {
+        var city = new City(new CityId(9), "불안성", new HexCoord(5, 0), new FactionId(1), 0,
+            CastleSize.Small, Wall: 1000, Security: 40);
+        var field = new FieldUnit(new UnitId(77), WorldEngine.BanditFaction, new HexCoord(4, 0),
+            Speed: 2, Detection: 2, AttackRange: 1, MovementDomain.Land, UnitMode.Attack,
+            Target: city.Position, CommandOrder: 77, RangeCastle: 1);
+        var bandit = new CombatUnit(field, new CombatStats(2400, 3, 1, 80), new TroopPool(2400, 0),
+            UnitCombatState.Create(30), Might: 50, Intellect: 30, MaxTroops: 2400,
+            Class: TroopClass.Infantry, Provisions: -1, Training: 40,
+            TroopCode: WorldEngine.BanditTroopCode);
+        var movement = new MovementSimulator(new PassabilityMap(new HexMap(0, 30, -8, 8), [], [city]));
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100),
+            new CommandBalance { AutoOfficerSystemEnabled = true }, random: new FixedRandom(0));
+        var engine = new CampaignEngine(
+            new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70)),
+            world, Siege());
+        var state = new GameState(1, 190, [], [city], [], FieldArmies: [bandit],
+            GarrisonForces: [new GarrisonForce(city.Id, "swordsman", 10_000, 60)]);
+
+        var after = engine.AdvanceWeek(state, out var turns, out var exchanges);
+
+        var turnSummary = string.Join(" | ", turns.Select(turn =>
+            $"units={turn.Units.Count} entered={turn.EnteredCastle.Count} stop={turn.Movement.Reason}"));
+        Assert.True(exchanges.Count > 0, $"turns={turns.Count}; {turnSummary}");
+        Assert.Contains(exchanges, exchange => exchange.Besiegers.Contains(bandit.Id)
+            && exchange.BesiegerDamage is { } damage && damage.Sum() >= bandit.Pool.Active);
+        Assert.DoesNotContain(after.Armies, unit => unit.Field.Owner == WorldEngine.BanditFaction);
+        Assert.True(after.Cities.Single().Security > 60);
+        Assert.DoesNotContain(world.LastEvents, worldEvent => worldEvent.Kind == WorldEventKind.BanditRaid);
     }
 
     [Fact]
