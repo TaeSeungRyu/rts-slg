@@ -144,7 +144,7 @@
 | 정찰대 | 암석 아치 동굴·입구 한쪽의 작은 등불·올리브색 위장막·보급 상자 (눈 표현 제거) | `make_field_scout.py` / `field-scout.glb` |
 | 감시탑 | 기단·기둥·가새·연결 계단·난간을 갖춘 목조 망루 | `make_field_watchtower.py` / `field-watchtower.glb` |
 | 보루 | 네 귀퉁이 망루·성벽·성문·중앙 내성을 갖춘 작은 동양식 석성 | `make_field_fort.py` / `field-fort.glb` |
-| 진법 | 석주 4개·중앙 돌무더기·기둥 위 구름 7개·이동 주기별 페이드 인/아웃 | `make_field_formation.py` / `field-formation.glb` (`FormationCloudDrift`) |
+| 진법 | 석주 4개·중앙 돌무더기·기둥 위 구름 7개·개별 무작위 위상/속도의 페이드 인/아웃 | `make_field_formation.py` / `field-formation.glb` (`FormationCloudDrift`) |
 
 스크립트는 `tools/blender/`, GLB는 `SanguoSLG.Game/assets/models/`에 저장한다.
 작업 도구 표시도 작은 망치/곡괭이 모양으로 제작하고 부대 머리 위 UI와 겹치지 않게 배치한다.
@@ -154,7 +154,8 @@
 12개 지붕 조각의 면 연결·양의 체적·8방향 상부 광선의 앞면 충돌을 검사한다.
 Blender는 `--background --python-exit-code 1`로 생성 검증하고 `design-effect.md`에 사용처를 등록한다.
 진법 GLB의 구름 애니메이션은 건축물 지도 모델과 정보 카드 미리보기에서 자동 반복 재생한다.
-구름 7개는 각각 시간차를 두고 페이드 인/아웃하며 동시에 최대 2개만 겹친다. 시야 밖에서는 건축물·구름·소속/일수 표시를 함께 숨겨 안개 오버레이와 투명 구름의 깜빡임을 방지한다.
+구름 7개는 지도에 생성될 때 각각 무작위 시작 위상과 주기 속도를 받아 페이드 인/아웃한다.
+시야 밖에서는 건축물·구름·소속/일수 표시를 함께 숨겨 안개 오버레이와 투명 구름의 깜빡임을 방지한다.
 
 `run-maptest.bat`은 아군과 적군에 건축물 5종을 각각 하나씩 완공 상태로 배치한다. 적 표적형 건축물
 4종과 통과 시 철수하는 정찰대를 한 화면에서 공격·이동·시야 회귀 테스트에 사용할 수 있어야 한다.

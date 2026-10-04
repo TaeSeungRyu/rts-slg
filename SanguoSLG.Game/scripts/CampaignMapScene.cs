@@ -16555,27 +16555,19 @@ public sealed partial class CampaignMapScene : Node3D
         var cloudMeshes = formationScene?.FindChildren("formation_cloud_*", "MeshInstance3D", true, false)
             .OfType<MeshInstance3D>().ToArray() ?? [];
         var cloudFade = formationScene?.FindChild("FieldCloudFade", true, false) as FieldCloudFade3D;
-        var cloudPlayer = formationScene?.FindChildren("*", "AnimationPlayer", true, false)
-            .OfType<AnimationPlayer>().FirstOrDefault();
-        var cloudFadeOk = cloudMeshes.Length == 7 && cloudFade is not null && cloudPlayer is not null;
+        var cloudFadeOk = cloudMeshes.Length == 7 && cloudFade is not null
+            && cloudFade.ConfiguredCloudCount == 7 && cloudFade.HasVariedTimings;
         if (cloudFadeOk)
         {
-            for (var i = 0; i < 7; i++)
+            var visibleSamples = new HashSet<int>();
+            for (var i = 0; i < 120; i++)
             {
-                cloudPlayer!.Seek(cloudPlayer.CurrentAnimationLength * (i + 0.5) / 7, true);
-                cloudFade!._Process(0);
-                var visibleClouds = cloudMeshes.Count(x => x.Transparency < 0.99f);
-                cloudFadeOk &= visibleClouds >= 1 && visibleClouds <= 2;
+                cloudFade!._Process(0.05);
+                visibleSamples.Add(cloudMeshes.Count(x => x.Transparency < 0.99f));
             }
+            cloudFadeOk &= visibleSamples.Any(count => count > 0) && visibleSamples.Count > 1;
             formationScene!.Visible = false;
             cloudFade!._Process(0);
-            cloudFadeOk &= cloudMeshes.All(x => x.Transparency > 0.99f);
-            formationScene.Visible = true;
-            cloudPlayer!.Seek(cloudPlayer.CurrentAnimationLength * 0.999, true);
-            cloudFade._Process(0);
-            cloudFadeOk &= cloudMeshes.All(x => x.Transparency > 0.99f);
-            cloudPlayer!.Seek(0, true);
-            cloudFade._Process(0);
             cloudFadeOk &= cloudMeshes.All(x => x.Transparency > 0.99f);
         }
         formationScene?.Free();
