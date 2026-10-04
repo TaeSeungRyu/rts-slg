@@ -17,6 +17,8 @@
 
 ## 최우선 기준
 
+새 에이전트는 루트 [AGENTS.md](../AGENTS.md)에서 시작한다. Phase 18D의 구현 인계는 [상세 계획 §15](./plan-renewal-movement.md#15-단계별-구현-인계-지침)를 따른다. 모델이 바뀌어도 확정 규칙·미정 결정·QA와 단계별 커밋 기준은 같다.
+
 1. [ai-working-notes.md](./ai-working-notes.md)
    - 이 저장소에서 작업할 때의 QA, 커밋, Godot 실행, 사용자 선호 규칙.
    - 기능 구현·버그 수정·UI 변경은 요구사항별 QA 후 커밋·푸시한다.

@@ -58,8 +58,9 @@
 해당 문서의 체크표를 따른다.
 
 ### 커밋
-완료 단위마다 커밋·푸시한다. Conventional Commits, 본문 한국어, 트레일러:
-`Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
+완료 단위마다 커밋·푸시한다. Conventional Commits, 본문 한국어. 공동 작성자 트레일러는 실제 기여를 반영하며 특정 모델명을 다른 모델 작업에 그대로 복사하지 않는다.
+
+MD만 변경한 작업은 문서 링크·규칙 정합성·체크표·`git diff --check`로 QA한다. 코드·리소스를 변경한 작업은 위 요구사항별 빌드·테스트 규칙을 따른다. 문서 검증을 게임 실행 QA로 보고하지 않는다.
 
 ---
 
