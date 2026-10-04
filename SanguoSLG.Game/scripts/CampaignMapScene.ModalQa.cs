@@ -329,13 +329,16 @@ public sealed partial class CampaignMapScene
         var brokenNode = _cityModels[city.Id.Value];
         var brokenApplied = _cityBrokenVisuals[city.Id.Value]
             && brokenNode.GetMeta("broken_city_visual").AsBool();
+        var smoke = brokenNode.GetNodeOrNull<CastleRuinSmokeView3D>("CastleRuinSmoke");
+        var smokeApplied = smoke is { EmitterCount: 3 };
         _state = original;
         Redraw("성벽 복구 QA");
         var restoredNode = _cityModels[city.Id.Value];
         var restored = !_cityBrokenVisuals[city.Id.Value]
-            && !restoredNode.GetMeta("broken_city_visual").AsBool();
-        var passed = brokenApplied && restored && brokenNode != restoredNode;
-        GD.Print($"[castle-damage-qa] passed={passed} brokenApplied={brokenApplied} restored={restored} replaced={brokenNode != restoredNode}");
+            && !restoredNode.GetMeta("broken_city_visual").AsBool()
+            && restoredNode.GetNodeOrNull("CastleRuinSmoke") is null;
+        var passed = brokenApplied && smokeApplied && restored && brokenNode != restoredNode;
+        GD.Print($"[castle-damage-qa] passed={passed} brokenApplied={brokenApplied} smoke={smokeApplied} restored={restored} replaced={brokenNode != restoredNode}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
