@@ -23,7 +23,21 @@ public sealed partial class CampaignMapScene
             if (turn.Units.Any(u => u.Id == exchange.Attacker && u.IsSupply))
                 _animSupplyArrows.Add((attackTime + 0.08, exchange.Attacker.Value, position));
             if (exchange.Destroyed)
-                _animBuildingRemovals.Add((settleTime, building.Id));
+                // 피해 팝업 직후 제거한다. 그날 정산(settle)이나 7일 재생 종료를 기다리지 않는다.
+                _animBuildingRemovals.Add((attackTime + 0.40, building.Id));
+        }
+    }
+
+    private void ScheduleScoutPostRemovals(AdvanceTurn turn, double movementEndTime)
+    {
+        foreach (var id in turn.RemovedScoutPosts.Distinct())
+        {
+            var scout = _state.Buildings.FirstOrDefault(building => building.Id == id);
+            if (scout is null) continue;
+            var position = _view.HexToWorld(scout.Position) + new Vector3(0f, _view.TileTopY, 0f);
+            _animDeathEffects.Add((movementEndTime, position));
+            _animBuildingRemovals.Add((movementEndTime + 0.05, id));
+            Dbg($"FIELD_SCOUT removed b{id.Value} at={movementEndTime:F2}s");
         }
     }
 
@@ -90,7 +104,7 @@ public sealed partial class CampaignMapScene
             ScheduleFieldBuildingCombat(turn, 2, 2.55);
             if (!_animAttacks.Any(x => x.Time == 2 && x.UnitId == attacker.Value)
                 || !_animSiegeDmg.Any(x => x.Time == 2.35 && x.Damage == 500)
-                || !_animBuildingRemovals.Any(x => x.Time == 2.55 && x.Building == building.Id))
+                || !_animBuildingRemovals.Any(x => x.Time == 2.40 && x.Building == building.Id))
                 throw new Exception("건축물 공격/피해/파괴 재생 예약 누락");
             HideDestroyedFieldBuilding(building.Id);
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);

@@ -21,8 +21,10 @@ public sealed class FieldScoutPostService
         IReadOnlyDictionary<FactionId, IReadOnlySet<HexCoord>> visitedByFaction, int day)
     {
         var expired = state.Buildings.Where(x => IsScout(x) && x.IsExpired(day)).Select(x => x.Id).ToHashSet();
+        // 정찰대는 매복 관측소라 소속을 불문하고 어떤 부대든 해당 타일을 통과하면
+        // 노출되어 즉시 철수한다. 건설 중 부대는 visited 경로에 포함되지 않는다.
         var intruded = state.Buildings.Where(x => IsScout(x) && !expired.Contains(x.Id)
-            && visitedByFaction.Any(entry => entry.Key != x.Owner && entry.Value.Contains(x.Position)))
+            && visitedByFaction.Values.Any(visited => visited.Contains(x.Position)))
             .Select(x => x.Id).ToHashSet();
         var removed = expired.Concat(intruded).ToHashSet();
         if (removed.Count == 0)

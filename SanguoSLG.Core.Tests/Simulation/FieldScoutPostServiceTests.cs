@@ -55,7 +55,7 @@ public sealed class FieldScoutPostServiceTests
     }
 
     [Fact]
-    public void 적이_정찰대_타일을_지나면_즉시_철수하고_아군통과는_유지한다()
+    public void 아군이나_적군이_정찰대_타일을_지나면_즉시_철수한다()
     {
         var at = new HexCoord(2, 0);
         var building = Building(Player, at);
@@ -63,7 +63,9 @@ public sealed class FieldScoutPostServiceTests
         var service = new FieldScoutPostService(Definitions);
         IReadOnlyDictionary<FactionId, IReadOnlySet<HexCoord>> allyVisited =
             new Dictionary<FactionId, IReadOnlySet<HexCoord>> { [Player] = new HashSet<HexCoord> { at } };
-        Assert.Single(service.Resolve(state, [], allyVisited, 10).State.Buildings);
+        var allyRemoved = service.Resolve(state, [], allyVisited, 10);
+        Assert.Empty(allyRemoved.State.Buildings);
+        Assert.Equal(building.Id, Assert.Single(allyRemoved.Removed));
 
         IReadOnlyDictionary<FactionId, IReadOnlySet<HexCoord>> enemyVisited =
             new Dictionary<FactionId, IReadOnlySet<HexCoord>> { [Enemy] = new HashSet<HexCoord> { at } };

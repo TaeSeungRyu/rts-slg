@@ -3761,6 +3761,7 @@ public sealed partial class CampaignMapScene : Node3D
             // 이 조각의 정산 반영: 병력 갱신(라벨·편대 규모) + 전멸/입성 부대 즉시 제거.
             var settleTime = atkTime + 0.55; // 공격 모션이 보인 뒤
             ScheduleFieldBuildingCombat(turn, atkTime, settleTime);
+            ScheduleScoutPostRemovals(turn, ((stopDay - 1) * DaySeconds) + MoveSeconds);
             var survivors = new HashSet<int>();
             foreach (var u in turn.Units)
             {
