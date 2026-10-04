@@ -37,6 +37,8 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
         }
 
         var mode = state.Cities.Any(c => CastleFootprint.TilesFor(c).Contains(req.Target) && c.Owner != faction)
+            || state.Armies.Any(army => army.Field.Owner != faction && army.Pool.Active > 0
+                && !army.IsWaitingDeployment && army.Field.Position == req.Target)
             || (isStaticAttackTarget?.Invoke(state, req.Target) ?? false)
             ? UnitMode.Attack
             : req.Mode;

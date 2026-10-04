@@ -5044,6 +5044,9 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _state = result.State;
+        // Core가 목표 칸의 적 부대를 감지해 행군→공격으로 승격할 수 있으므로,
+        // 로그와 팔레트도 요청값이 아닌 실제 적용 모드를 표시한다.
+        mode = _state.Armies.First(a => a.Id.Value == uid).Field.Mode;
 
         var tName = CityAtHex(h)?.Name
             ?? (enemyFieldBuilding is not null

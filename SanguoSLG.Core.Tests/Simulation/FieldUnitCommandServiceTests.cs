@@ -61,6 +61,28 @@ public class FieldUnitCommandServiceTests
     }
 
     [Fact]
+    public void 적부대가_점유한_칸을_행군목표로_찍어도_공격모드로_전환해_교전한다()
+    {
+        var player = Unit(1, Player, default);
+        var enemy = Unit(2, Enemy, new HexCoord(1, 0));
+        var state = new GameState(1, 190, [], [], [], FieldArmies: [player, enemy]);
+
+        var command = Service().Reassign(state, Player,
+            new FieldUnitCommandRequest(player.Id, UnitMode.March, enemy.Field.Position));
+
+        Assert.True(command.Ok, command.Error);
+        Assert.Equal(UnitMode.Attack, command.State.Armies.Single(unit => unit.Id == player.Id).Field.Mode);
+
+        var movement = new MovementSimulator(new PassabilityMap(new HexMap(-3, 3, -3, 3), [], []));
+        var turn = new AdvanceOrchestrator(movement,
+                new CombatPhaseResolver(new BattleResolver(60), woundedPercent: 70))
+            .Run(command.State.Armies, maxDays: 1);
+
+        Assert.NotNull(turn.Combat);
+        Assert.True(turn.Combat.DamageDealt.GetValueOrDefault(player.Id) > 0);
+    }
+
+    [Fact]
     public void 유적은_통행불가여도_공격목표로_지정된다()
     {
         var ruinPosition = new HexCoord(5, 0);
