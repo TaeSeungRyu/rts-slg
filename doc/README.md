@@ -33,7 +33,7 @@
 |---|---|---|
 | 전투 계산 | [design-combat.md](./design-combat.md) | 공방 산출, 피해, 성/집단군/수성 규칙 |
 | 이동·입성 | [design-movement.md](./design-movement.md) | 이동 → 입성 → 공격 순서와 경로 규칙 |
-| 이동·교전 개편 계획 | [plan-renewal-movement.md](./plan-renewal-movement.md) | Phase 18D, 아군 중첩·연속 이동·이동턴/공격턴·통과 피격·신규 검수장·12단계 QA |
+| 이동·교전 개편 계획 | [plan-renewal-movement.md](./plan-renewal-movement.md) | Phase 18D, 아군 중첩·연속 이동·이동턴/공격턴·공격턴 시작 위치 판정·신규 검수장·12단계 QA |
 | 부대 상태·보급·수송 | [design-unit-state.md](./design-unit-state.md) | 군량, 보급부대, 수송, 괴멸 전리품 |
 | 병종/유닛 | [spec-unit.md](./spec-unit.md) | 병종 분류, 시야, 집단군, 해상/항구 연계 |
 | 장수 | [spec-general.md](./spec-general.md) | 능력치, 적성, 스킬 슬롯, 성장 |
