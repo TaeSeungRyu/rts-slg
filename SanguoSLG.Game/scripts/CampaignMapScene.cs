@@ -525,7 +525,7 @@ public sealed partial class CampaignMapScene : Node3D
             new CityPlunder(_cb), _cb.CityResupplyRadius,
             _cb.BuildSiteHp, _cb.BuildSiteDamagePerTurn, passives, actives,
             new RuinCombat(new BattleResolver(60), 70),
-            new FieldBuildingCombat(new BattleResolver(60), _fieldBuildingDefinitions),
+            new FieldBuildingCombat(new BattleResolver(60), _fieldBuildingDefinitions, _troops),
             _fieldBuildingDefinitions);
         _vision = new BattlefieldVision(scenario.Balance, _troops, _fieldBuildingDefinitions);
         _fog = new BattlefieldFogView(_view);

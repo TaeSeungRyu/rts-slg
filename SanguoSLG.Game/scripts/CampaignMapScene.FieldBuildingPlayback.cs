@@ -106,9 +106,15 @@ public sealed partial class CampaignMapScene
                 new CombatContext(MeleeEngagement: true, IncomingMelee: true, InField: true));
             foreach (var definition in _fieldBuildingDefinitions.Where(d => d.CanBeTargeted))
             {
-                var damage = new BattleResolver(60).Damage(sample.Stats,
-                    new CombatStats(1000, 0, definition.Defense, AptitudeGrade.C.Percent()));
-                GD.Print($"FIELD_DAMAGE_QA {definition.Code}: stats={sample.Stats} raw={damage}");
+                var target = new FieldBuilding(new FieldBuildingId(99000 + definition.Kind.GetHashCode()),
+                    definition.Code, new FactionId(2), new HexCoord(1, 8), definition.MaxHitPoints, 0, 0);
+                var qaState = _state with { FieldArmies = [sample], FieldBuildings = [target] };
+                var exchange = AssertSingleFieldBuildingExchange(
+                    new FieldBuildingCombat(new BattleResolver(60), _fieldBuildingDefinitions, _troops)
+                        .Resolve(qaState, [sample]), definition.Code);
+                if (exchange.Damage != 537 || exchange.Destroyed)
+                    throw new Exception($"{definition.Code}: 여포/관우 기병 건물 피해 불일치 damage={exchange.Damage} destroyed={exchange.Destroyed}");
+                GD.Print($"FIELD_DAMAGE_QA {definition.Code}: stats={sample.Stats} buildingDamage={exchange.Damage} hp={definition.MaxHitPoints}");
             }
             var building = _state.Buildings.First(b => b.Owner != Player && b.DefinitionCode == "fort");
             var attacker = new UnitId(99991);
@@ -140,4 +146,9 @@ public sealed partial class CampaignMapScene
         }
         catch (Exception e) { GD.PushError(e.ToString()); GetTree().Quit(1); }
     }
+
+    private static FieldBuildingExchange AssertSingleFieldBuildingExchange(FieldBuildingCombatResult result, string code)
+        => result.Exchanges.Count == 1
+            ? result.Exchanges[0]
+            : throw new Exception($"{code}: 건축물 교환 수 불일치 count={result.Exchanges.Count}");
 }

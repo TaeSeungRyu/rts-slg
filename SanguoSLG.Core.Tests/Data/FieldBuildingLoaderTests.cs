@@ -13,7 +13,7 @@ public sealed class FieldBuildingLoaderTests
 
         Assert.Equal(5, definitions.Count);
         var palisade = Assert.Single(definitions, x => x.Kind == FieldBuildingKind.Palisade);
-        Assert.Equal((100, 1500, 4, 7, 1),
+        Assert.Equal((100, 1000, 12, 7, 1),
             (palisade.GoldCost, palisade.MaxHitPoints, palisade.Defense, palisade.BuildDays, palisade.EffectRadius));
 
         var scout = Assert.Single(definitions, x => x.Kind == FieldBuildingKind.ScoutPost);
@@ -22,18 +22,18 @@ public sealed class FieldBuildingLoaderTests
         Assert.False(scout.CanBeTargeted);
 
         var watchtower = Assert.Single(definitions, x => x.Kind == FieldBuildingKind.Watchtower);
-        Assert.Equal((150, 2500, 4, 7, 2),
+        Assert.Equal((150, 1500, 12, 7, 2),
             (watchtower.GoldCost, watchtower.MaxHitPoints, watchtower.Defense,
                 watchtower.BuildDays, watchtower.EffectRadius));
 
         var fort = Assert.Single(definitions, x => x.Kind == FieldBuildingKind.Fort);
-        Assert.Equal((300, 4000, 14, 2),
-            (fort.GoldCost, fort.MaxHitPoints, fort.BuildDays, fort.EffectRadius));
+        Assert.Equal((300, 2500, 12, 14, 2),
+            (fort.GoldCost, fort.MaxHitPoints, fort.Defense, fort.BuildDays, fort.EffectRadius));
         Assert.True(fort.CanGarrison);
 
         var formation = Assert.Single(definitions, x => x.Kind == FieldBuildingKind.Formation);
-        Assert.Equal((300, 3000, 14, 1),
-            (formation.GoldCost, formation.MaxHitPoints, formation.BuildDays, formation.EffectRadius));
+        Assert.Equal((300, 2000, 12, 14, 1),
+            (formation.GoldCost, formation.MaxHitPoints, formation.Defense, formation.BuildDays, formation.EffectRadius));
         Assert.True(formation.CanGarrison);
     }
 

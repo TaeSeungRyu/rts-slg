@@ -11,6 +11,8 @@ public sealed class FieldBuildingStage4Tests
     private static readonly FactionId Enemy = new(2);
     private static readonly IReadOnlyList<FieldBuildingDefinition> Definitions =
         new FieldBuildingLoader().LoadFromDirectory(TestData.DataDirectory());
+    private static readonly IReadOnlyList<TroopTemplate> Troops =
+        new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory());
 
     [Theory]
     [InlineData("palisade", 7)]
@@ -99,6 +101,59 @@ public sealed class FieldBuildingStage4Tests
         Assert.True(exchange.Damage > 0);
         Assert.Equal(attacker.Pool, result.Armies.Single().Pool);
         Assert.True(exchange.Destroyed || result.State.Buildings.Single().HitPoints < building.HitPoints);
+    }
+
+    [Fact]
+    public void 야전건축물은_대유닛이_아닌_병종별_건물공격력과_성벽방어를_사용한다()
+    {
+        var target = new HexCoord(2, 0);
+        var building = Building("palisade", Enemy, target);
+        var attacker = Combat(1, Player, new HexCoord(1, 0), target) with
+        {
+            TroopCode = "cavalry",
+            Stats = new CombatStats(10_000, 12, 12, 130, 124),
+        };
+        var state = new GameState(1, 190, [], [], [], FieldArmies: [attacker], FieldBuildings: [building]);
+
+        var result = new FieldBuildingCombat(new BattleResolver(60), Definitions, Troops).Resolve(state, [attacker]);
+        var exchange = Assert.Single(result.Exchanges);
+
+        Assert.Equal(537, exchange.Damage);
+        Assert.False(exchange.Destroyed);
+        Assert.Equal(463, Assert.Single(result.State.Buildings).HitPoints);
+    }
+
+    [Fact]
+    public void 보루와_진법의_주둔장은_수성적성과_방어배수로_피해를_줄인다()
+    {
+        var target = new HexCoord(2, 0);
+        var general = new General(new GeneralId(10), "수비장", new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Defense] = AptitudeGrade.S,
+        }, 80, 70, 60);
+        var garrison = Combat(2, Enemy, target, target) with
+        {
+            VanguardId = general.Id,
+            Stats = new CombatStats(10_000, 8, 10, DfBonusPercent: 120),
+        };
+        var attacker = Combat(1, Player, new HexCoord(1, 0), target) with
+        {
+            TroopCode = "cavalry",
+            Stats = new CombatStats(10_000, 12, 12, 130, 124),
+        };
+        var empty = Building("fort", Enemy, target);
+        var occupied = empty with { GarrisonUnit = garrison.Id };
+        var service = new FieldBuildingCombat(new BattleResolver(60), Definitions, Troops);
+
+        var emptyResult = service.Resolve(
+            new GameState(1, 190, [], [], [general], FieldArmies: [attacker], FieldBuildings: [empty]),
+            [attacker]);
+        var occupiedResult = service.Resolve(
+            new GameState(1, 190, [], [], [general], FieldArmies: [attacker, garrison], FieldBuildings: [occupied]),
+            [attacker, garrison]);
+
+        Assert.Equal(537, Assert.Single(emptyResult.Exchanges).Damage);
+        Assert.Equal(407, Assert.Single(occupiedResult.Exchanges).Damage);
     }
 
     [Fact]
