@@ -635,6 +635,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestspecialresearchqa")) CallDeferred(nameof(RunSpecialResearchLockQa));
         if (args.Contains("--maptestpathvisualqa")) CallDeferred(nameof(RunPathVisualQa));
         if (args.Contains("--maptestbanditdisplayqa")) CallDeferred(nameof(RunBanditDisplayQa));
+        if (args.Contains("--maptestfortfixtureqa")) CallDeferred(nameof(RunFieldFortFixtureQa));
     }
 
     private void SeedFieldBuildingSamples()
@@ -652,6 +653,8 @@ public sealed partial class CampaignMapScene : Node3D
             ("watchtower", new FactionId(2), new(2, 6)),
             ("fort", new FactionId(2), new(1, 7)),
             ("formation", new FactionId(2), new(2, 7)),
+            // 한중↔업 전선의 보루 주둔·파괴 전환을 즉시 검증하는 아군 완공 샘플.
+            ("fort", Player, new(2, 5)),
         };
         var definitions = _fieldBuildingDefinitions.ToDictionary(x => x.Code, System.StringComparer.Ordinal);
         var samples = placements.Select((placement, index) =>
@@ -664,6 +667,21 @@ public sealed partial class CampaignMapScene : Node3D
             })
             .ToList();
         _state = _state with { FieldBuildings = samples };
+    }
+
+    private void RunFieldFortFixtureQa()
+    {
+        var expected = new HexCoord(2, 5);
+        var fort = _state.Buildings.SingleOrDefault(building => building.DefinitionCode == "fort"
+            && building.Owner == Player && building.Position == expected);
+        var up = _state.Cities.Single(city => city.Name == "업");
+        var hanzhong = _state.Cities.Single(city => city.Name == "한중");
+        var between = fort is not null
+            && fort.Position.Distance(up.Position) < hanzhong.Position.Distance(up.Position)
+            && fort.Position.Distance(hanzhong.Position) < hanzhong.Position.Distance(up.Position);
+        var passed = fort is not null && fort.IsCompleted(_state.Day) && between;
+        GD.Print($"[maptestfortfixtureqa] passed={passed} fort={fort?.Id.Value ?? -1}@{expected} completed={fort?.IsCompleted(_state.Day) ?? false} between={between}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     public override void _ExitTree()
