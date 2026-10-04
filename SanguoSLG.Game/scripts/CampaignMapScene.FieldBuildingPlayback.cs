@@ -43,12 +43,29 @@ public sealed partial class CampaignMapScene
 
     private void HideDestroyedFieldBuilding(FieldBuildingId id)
     {
-        foreach (var prefix in new[] { "FieldBuilding", "FieldAllegiance", "FieldTools", "FieldConstructionDays", "ScoutDays" })
+        // 진행 시작 Redraw에서 QueueFree 대기 중인 이전 노드와 이름이 충돌하면 Godot이
+        // 새 노드 이름을 자동 변경한다. 이름 한 개만 찾지 말고 건축물 id 메타로 전부 제거한다.
+        foreach (var node in _fieldBuildingLayer.GetChildren().OfType<Node3D>().Where(node =>
+                     node.HasMeta("field_building_id") && node.GetMeta("field_building_id").AsInt32() == id.Value).ToList())
         {
-            var node = _fieldBuildingLayer.GetNodeOrNull<Node3D>($"{prefix}_{id.Value}");
-            if (node is null) continue;
             node.Visible = false;
             node.QueueFree();
+        }
+        // 구버전/테스트 노드는 메타가 없을 수 있어 정확한 기존 이름도 정리한다.
+        foreach (var prefix in new[] { "FieldBuilding", "FieldAllegiance", "FieldTools", "FieldConstructionDays", "ScoutDays" })
+        {
+            var legacy = _fieldBuildingLayer.GetNodeOrNull<Node3D>($"{prefix}_{id.Value}");
+            if (legacy is null || legacy.IsQueuedForDeletion()) continue;
+            legacy.Visible = false;
+            legacy.QueueFree();
+        }
+        // 보루·진법 안에 있던 부대는 건축물 파괴와 동시에 지도에 다시 나타난다.
+        var garrison = _state.Buildings.FirstOrDefault(building => building.Id == id)?.GarrisonUnit;
+        if (garrison is { } unitId && _armyTokens.TryGetValue(unitId.Value, out var token))
+        {
+            token.Visible = true;
+            if (_armyLabels.TryGetValue(unitId.Value, out var label))
+                label.Visible = _state.Armies.FirstOrDefault(unit => unit.Id == unitId)?.Field.Owner == Player;
         }
         _scoutDayLabels.Remove(id);
         if (_selectedFieldBuildingId == id.Value) ClearFieldBuildingRange();
@@ -93,7 +110,7 @@ public sealed partial class CampaignMapScene
                     new CombatStats(1000, 0, definition.Defense, AptitudeGrade.C.Percent()));
                 GD.Print($"FIELD_DAMAGE_QA {definition.Code}: stats={sample.Stats} raw={damage}");
             }
-            var building = _state.Buildings.First(b => b.Owner != Player && b.DefinitionCode != "scout_post");
+            var building = _state.Buildings.First(b => b.Owner != Player && b.DefinitionCode == "fort");
             var attacker = new UnitId(99991);
             var turn = new AdvanceTurn([], new AdvanceResult([], [], StopReason.AllArrived, 1), null,
                 new System.Collections.Generic.Dictionary<UnitId, ActiveSkill>(),
@@ -106,10 +123,16 @@ public sealed partial class CampaignMapScene
                 || !_animSiegeDmg.Any(x => x.Time == 2.35 && x.Damage == 500)
                 || !_animBuildingRemovals.Any(x => x.Time == 2.40 && x.Building == building.Id))
                 throw new Exception("건축물 공격/피해/파괴 재생 예약 누락");
+            // QueueFree 대기 이름 충돌을 재현: 이름이 달라도 같은 id 메타를 가진 현재 모델은 제거돼야 한다.
+            var renamed = new Node3D { Name = $"FieldBuilding_{building.Id.Value}_renamed" };
+            renamed.SetMeta("field_building_id", building.Id.Value);
+            _fieldBuildingLayer.AddChild(renamed);
             HideDestroyedFieldBuilding(building.Id);
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            if (_fieldBuildingLayer.GetNodeOrNull($"FieldBuilding_{building.Id.Value}") is not null
+            if (_fieldBuildingLayer.GetChildren().OfType<Node3D>().Any(node =>
+                    node.HasMeta("field_building_id") && node.GetMeta("field_building_id").AsInt32() == building.Id.Value)
+                || _fieldBuildingLayer.GetNodeOrNull($"FieldBuilding_{building.Id.Value}") is not null
                 || _fieldBuildingLayer.GetNodeOrNull($"FieldAllegiance_{building.Id.Value}") is not null)
                 throw new Exception("파괴 후 건축물/소속 표시 잔존");
             GD.Print("FIELD_BUILDING_PLAYBACK_QA PASS: cavalry/elephant/ship movement overlaps attack recovery without position rollback; attack, damage, same-turn destruction");

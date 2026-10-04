@@ -1609,6 +1609,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (node is not null)
             {
                 node.Name = $"FieldBuilding_{building.Id.Value}";
+                node.SetMeta("field_building_id", building.Id.Value);
                 node.Position = origin;
                 node.Scale = Vector3.One * FieldBuildingModelScale(definition.Kind);
                 if (!building.IsCompleted(_state.Day)) SetTransparency(node, 0.35f);
@@ -1625,6 +1626,7 @@ public sealed partial class CampaignMapScene : Node3D
                 Font = _font, FontSize = 24, OutlineSize = 5, NoDepthTest = true,
                 Modulate = building.Owner == Player ? new Color(0.55f, 0.85f, 1f) : new Color(1f, 0.45f, 0.4f),
             };
+            allegiance.SetMeta("field_building_id", building.Id.Value);
             _fieldBuildingLayer.AddChild(allegiance);
             _fog.Register(allegiance, building.Position);
             if (!building.IsCompleted(_state.Day))
@@ -1634,6 +1636,7 @@ public sealed partial class CampaignMapScene : Node3D
                 {
                     tools.Position = origin + new Vector3(0, 0.70f, 0);
                     tools.Name = $"FieldTools_{building.Id.Value}";
+                    tools.SetMeta("field_building_id", building.Id.Value);
                     tools.Scale = Vector3.One * 0.68f;
                     _fieldBuildingLayer.AddChild(tools);
                     PlayLoopingModelAnimations(tools);
@@ -1646,6 +1649,7 @@ public sealed partial class CampaignMapScene : Node3D
                     Position = origin + new Vector3(0, 1.05f, 0), Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                     Font = _font, FontSize = 24, OutlineSize = 7, NoDepthTest = true, Modulate = GoldBright,
                 };
+                label.SetMeta("field_building_id", building.Id.Value);
                 _fieldBuildingLayer.AddChild(label);
                 _fog.Register(label, building.Position);
                 if (definition.Kind == FieldBuildingKind.ScoutPost) _scoutDayLabels[building.Id] = (building, label);
@@ -1658,6 +1662,7 @@ public sealed partial class CampaignMapScene : Node3D
                     Position = origin + new Vector3(0, 0.85f, 0), Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                     Font = _font, FontSize = 24, OutlineSize = 7, NoDepthTest = true, Modulate = GoldBright,
                 };
+                label.SetMeta("field_building_id", building.Id.Value);
                 _fieldBuildingLayer.AddChild(label);
                 _fog.Register(label, building.Position);
                 _scoutDayLabels[building.Id] = (building, label);
