@@ -23,8 +23,23 @@ public sealed partial class CampaignMapScene
             if (turn.Units.Any(u => u.Id == exchange.Attacker && u.IsSupply))
                 _animSupplyArrows.Add((attackTime + 0.08, exchange.Attacker.Value, position));
             if (exchange.Destroyed)
+            {
                 // 피해 팝업 직후 제거한다. 그날 정산(settle)이나 7일 재생 종료를 기다리지 않는다.
                 _animBuildingRemovals.Add((attackTime + 0.40, building.Id));
+                if (exchange.ExposedGarrison is { } garrisonId)
+                {
+                    if (exchange.DamageToGarrison > 0)
+                        _animDmg.Add((attackTime + 0.48, garrisonId.Value, exchange.DamageToGarrison));
+                    if (exchange.DamageToAttacker > 0)
+                    {
+                        var attackerPosition = _state.Armies.FirstOrDefault(unit => unit.Id == exchange.Attacker)?.Field.Position;
+                        if (attackerPosition is { } at)
+                            _animAttacks.Add((attackTime + 0.46, garrisonId.Value,
+                                _view.HexToWorld(at) + new Vector3(0, _view.TileTopY, 0)));
+                        _animDmg.Add((attackTime + 0.82, exchange.Attacker.Value, exchange.DamageToAttacker));
+                    }
+                }
+            }
         }
     }
 

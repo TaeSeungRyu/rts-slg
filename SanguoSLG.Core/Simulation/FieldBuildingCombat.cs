@@ -2,7 +2,14 @@ namespace SanguoSLG.Core.Simulation;
 
 using SanguoSLG.Core.Domain;
 
-public sealed record FieldBuildingExchange(FieldBuildingId Building, UnitId Attacker, int Damage, bool Destroyed);
+public sealed record FieldBuildingExchange(
+    FieldBuildingId Building,
+    UnitId Attacker,
+    int Damage,
+    bool Destroyed,
+    UnitId? ExposedGarrison = null,
+    int DamageToGarrison = 0,
+    int DamageToAttacker = 0);
 
 public sealed record FieldBuildingCombatResult(GameState State, IReadOnlyList<CombatUnit> Armies,
     IReadOnlyList<FieldBuildingExchange> Exchanges);
@@ -10,6 +17,7 @@ public sealed record FieldBuildingCombatResult(GameState State, IReadOnlyList<Co
 /// <summary>적 야전 건축물을 도시형 고정 표적으로 공격한다. 건축물은 반격하지 않는다.</summary>
 public sealed class FieldBuildingCombat
 {
+    private const int WoundedPercent = 70;
     private readonly BattleResolver _battle;
     private readonly IReadOnlyDictionary<string, FieldBuildingDefinition> _definitions;
     private readonly IReadOnlyDictionary<string, TroopTemplate> _troops;
@@ -58,8 +66,40 @@ public sealed class FieldBuildingCombat
                 if (damage <= 0) continue;
                 attacked.Add(attacker.Id);
                 var hp = building.HitPoints - damage;
-                exchanges.Add(new(building.Id, attacker.Id, damage, hp <= 0));
-                if (hp <= 0) { buildings.Remove(building.Id); break; }
+                if (hp <= 0)
+                {
+                    var exposed = building.GarrisonUnit is { } garrisonId
+                        ? armies.FirstOrDefault(unit => unit.Id == garrisonId && unit.Pool.Active > 0)
+                        : null;
+                    var damageToGarrison = 0;
+                    var damageToAttacker = 0;
+                    if (exposed is not null)
+                    {
+                        // 보루·진법은 성벽처럼 먼저 모든 피해를 흡수한다. 파괴된 그 공격턴부터
+                        // 내부 부대가 즉시 노출되어 일반 부대 공방(패시브가 반영된 Stats)으로 전환된다.
+                        damageToGarrison = System.Math.Min(exposed.Pool.Active,
+                            _battle.Damage(attacker.Stats with { Troops = attacker.Pool.Active },
+                                exposed.Stats with { Troops = exposed.Pool.Active }));
+                        if (attacker.Field.Position.Distance(exposed.Field.Position) <= exposed.Field.AttackRange)
+                        {
+                            damageToAttacker = System.Math.Min(attacker.Pool.Active,
+                                _battle.Damage(exposed.Stats with { Troops = exposed.Pool.Active },
+                                    attacker.Stats with { Troops = attacker.Pool.Active }));
+                        }
+
+                        armies = armies.Select(unit => unit.Id == attacker.Id
+                                ? unit with { Pool = unit.Pool.TakeDamage(damageToAttacker, WoundedPercent) }
+                                : unit.Id == exposed.Id
+                                    ? unit with { Pool = unit.Pool.TakeDamage(damageToGarrison, WoundedPercent) }
+                                    : unit)
+                            .ToList();
+                    }
+                    exchanges.Add(new(building.Id, attacker.Id, damage, true,
+                        exposed?.Id, damageToGarrison, damageToAttacker));
+                    buildings.Remove(building.Id);
+                    break;
+                }
+                exchanges.Add(new(building.Id, attacker.Id, damage, false));
                 building = building with { HitPoints = hp };
                 buildings[building.Id] = building;
             }

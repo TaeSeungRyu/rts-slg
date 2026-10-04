@@ -156,6 +156,39 @@ public sealed class FieldBuildingStage4Tests
         Assert.Equal(407, Assert.Single(occupiedResult.Exchanges).Damage);
     }
 
+    [Theory]
+    [InlineData("fort")]
+    [InlineData("formation")]
+    public void 보루와_진법이_파괴되면_내부부대가_즉시_노출되어_공방한다(string code)
+    {
+        var target = new HexCoord(1, 0);
+        var attacker = Combat(1, Player, default, target) with
+        {
+            Stats = new CombatStats(10_000, 80, 12, 130, 120),
+        };
+        var garrison = Combat(2, Enemy, target, target) with
+        {
+            Stats = new CombatStats(10_000, 20, 16, 120, 130),
+        };
+        var building = Building(code, Enemy, target) with
+        {
+            HitPoints = 1,
+            GarrisonUnit = garrison.Id,
+        };
+        var state = new GameState(1, 190, [], [], [], FieldArmies: [attacker, garrison], FieldBuildings: [building]);
+
+        var result = new FieldBuildingCombat(new BattleResolver(60), Definitions).Resolve(state, [attacker, garrison]);
+        var exchange = Assert.Single(result.Exchanges);
+
+        Assert.True(exchange.Destroyed);
+        Assert.Equal(garrison.Id, exchange.ExposedGarrison);
+        Assert.True(exchange.DamageToGarrison > 0);
+        Assert.True(exchange.DamageToAttacker > 0);
+        Assert.Empty(result.State.Buildings);
+        Assert.True(result.Armies.Single(unit => unit.Id == garrison.Id).Pool.Active < garrison.Pool.Active);
+        Assert.True(result.Armies.Single(unit => unit.Id == attacker.Id).Pool.Active < attacker.Pool.Active);
+    }
+
     [Fact]
     public void 철거는_즉시_제거하고_건축중_부대를_해제한다()
     {
