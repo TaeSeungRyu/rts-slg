@@ -3,7 +3,7 @@
 이 디렉토리는 설계 원본, v2 전환 로드맵, 구현 이력, QA 체크리스트가 함께 들어 있다. 새 작업자는 아래 순서로 읽는다.
 
 > **문서 전수 점검: 2026-09-27.** 저장소의 Markdown 45개를 분류하고 로컬 링크를 검사했다(깨진 링크 0개).
-> **2026-10-04 우선순위 갱신:** Phase 18B·18C 이후, 다음 계획은 **Phase 18D 연속 이동·초 단위 교전 개편**이다. [상세 계획](./plan-renewal-movement.md)을 신규 검수장에서 검증한 뒤 Phase 19 이벤트 유닛으로 이어간다. Phase 18D는 문서만 작성되었고 아직 구현되지 않았다.
+> **2026-10-04 우선순위 갱신:** Phase 18B·18C 이후, 다음 계획은 **Phase 18D 연속 이동·이동턴/공격턴 개편**이다. 아군 중첩과 연속 이동을 도입하고 하루 이동→공격, 진행 7일 구조는 유지한다. [상세 계획](./plan-renewal-movement.md)을 신규 검수장에서 검증한 뒤 Phase 19 이벤트 유닛으로 이어간다. Phase 18D는 문서만 작성되었고 아직 구현되지 않았다.
 > 사용자가 요청한 UI 우선 개선은 기능 Phase와 분리해 [UI 개선 작업 목록](./plan-ui-improvement.md)으로 관리한다.
 
 ## 충돌 시 우선순위
@@ -33,7 +33,7 @@
 |---|---|---|
 | 전투 계산 | [design-combat.md](./design-combat.md) | 공방 산출, 피해, 성/집단군/수성 규칙 |
 | 이동·입성 | [design-movement.md](./design-movement.md) | 이동 → 입성 → 공격 순서와 경로 규칙 |
-| 이동·교전 개편 계획 | [plan-renewal-movement.md](./plan-renewal-movement.md) | Phase 18D, 아군 중첩·연속 이동·초 단위 판정·신규 검수장·12단계 QA |
+| 이동·교전 개편 계획 | [plan-renewal-movement.md](./plan-renewal-movement.md) | Phase 18D, 아군 중첩·연속 이동·이동턴/공격턴·통과 피격·신규 검수장·12단계 QA |
 | 부대 상태·보급·수송 | [design-unit-state.md](./design-unit-state.md) | 군량, 보급부대, 수송, 괴멸 전리품 |
 | 병종/유닛 | [spec-unit.md](./spec-unit.md) | 병종 분류, 시야, 집단군, 해상/항구 연계 |
 | 장수 | [spec-general.md](./spec-general.md) | 능력치, 적성, 스킬 슬롯, 성장 |
