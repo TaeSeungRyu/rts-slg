@@ -138,6 +138,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int CasterUnitId, Vector3 Target, ActiveSkill Skill)> _animSiegeSkillEffects = new();
     private int _animRuinCounterIdx;
     private readonly List<(double Time, int TargetUnitId)> _animRuinCounters = new();
+    private int _animFormationEffectIdx;
+    private readonly List<(double Time, int TargetUnitId)> _animFormationEffects = new();
     private int _animRuinCaptureIdx;
     private readonly List<(double Time, string RuinId, FactionId Owner)> _animRuinCaptures = new();
     private readonly List<(double Time, FieldBuildingId Building)> _animBuildingRemovals = new();
@@ -3587,6 +3589,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animSkillEffectIdx = 0;
         _animSiegeSkillEffectIdx = 0;
         _animRuinCounterIdx = 0;
+        _animFormationEffectIdx = 0;
         _animRuinCaptureIdx = 0;
         _animBuildingRemovalIdx = 0;
         _animGaugeIdx = 0;
@@ -3627,6 +3630,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animSkillEffects.Clear();
         _animSiegeSkillEffects.Clear();
         _animRuinCounters.Clear();
+        _animFormationEffects.Clear();
         _animRuinCaptures.Clear();
         _animBuildingRemovals.Clear();
         _animGaugeUpdates.Clear();
@@ -3655,6 +3659,8 @@ public sealed partial class CampaignMapScene : Node3D
             var stopDay = dayOffset + System.Math.Max(1, turn.Movement.Days);
             var atkTime = ((stopDay - 1) * DaySeconds) + MoveSeconds + 0.15; // 그날 이동(≤1.5초)이 끝난 뒤
             ScheduleAttackMotions(turn, atkTime, unitSnapshot);
+            foreach (var trigger in turn.FormationTriggers.Where(trigger => trigger.Activated && trigger.WoundedConverted > 0))
+                _animFormationEffects.Add((atkTime - 0.10, trigger.Unit.Value));
 
             var orderedActives = turn.FiredActives
                 .OrderBy(x => x.Value.Type == ActiveType.Defense ? 0 : 1)
@@ -5550,6 +5556,15 @@ public sealed partial class CampaignMapScene : Node3D
                 if (_armyTokens.TryGetValue(counter.TargetUnitId, out var target) && target.Visible)
                     PlayRuinCounterBurst(target);
                 _animRuinCounterIdx++;
+            }
+
+            while (_animFormationEffectIdx < _animFormationEffects.Count
+                && _animFormationEffects[_animFormationEffectIdx].Time <= _animT)
+            {
+                var formation = _animFormationEffects[_animFormationEffectIdx];
+                if (_armyTokens.TryGetValue(formation.TargetUnitId, out var target) && target.Visible)
+                    PlayFormationBubbles(target.GlobalPosition);
+                _animFormationEffectIdx++;
             }
 
             while (_animRuinCaptureIdx < _animRuinCaptures.Count

@@ -38,7 +38,7 @@ public sealed class FieldFormationTests
     }
 
     [Fact]
-    public void 진법_범위에_도착하면_공격전에_현역_1퍼센트가_부상으로_전환된다()
+    public void 이동턴_종료시_진법_범위안이면_공격전에_현역_1퍼센트가_부상으로_전환된다()
     {
         var random = new FixedRandom(0);
         var formation = Formation(1, new HexCoord(2, 0));
@@ -53,7 +53,7 @@ public sealed class FieldFormationTests
     }
 
     [Fact]
-    public void 실패하거나_이미_범위안에_멈춰있으면_병력이_변하지않는다()
+    public void 실패하면_병력이_변하지않고_범위안에_멈춰있어도_매_이동턴_판정한다()
     {
         var formation = Formation(1, new HexCoord(2, 0));
         var failed = Orchestrator(new FixedRandom(99)).Run([Unit(default, new HexCoord(4, 0))], maxDays: 1,
@@ -64,8 +64,9 @@ public sealed class FieldFormationTests
         var stationaryRandom = new FixedRandom(0);
         var stationary = Orchestrator(stationaryRandom).Run([Unit(new HexCoord(1, 0), null)], maxDays: 1,
             fieldBuildings: [formation], fieldDefinitions: Definitions, fieldDay: 1);
-        Assert.Empty(stationary.FormationTriggers);
-        Assert.Equal(0, stationaryRandom.Calls);
+        Assert.True(Assert.Single(stationary.FormationTriggers).Activated);
+        Assert.Equal(1, stationaryRandom.Calls);
+        Assert.Equal(9_900, stationary.Units.Single().Pool.Active);
     }
 
     [Fact]

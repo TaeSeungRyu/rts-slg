@@ -41,6 +41,18 @@ public sealed partial class CampaignMapScene
         }
     }
 
+    private void PlayFormationBubbles(Vector3 position)
+    {
+        var anchor = new Node3D { Name = "FormationBubbles" };
+        AddChild(anchor);
+        anchor.GlobalPosition = position;
+        EffectView.Attach(anchor, EffectKind.Bubbles, 0.72f);
+        GetTree().CreateTimer(2.5).Timeout += () =>
+        {
+            if (GodotObject.IsInstanceValid(anchor) && !anchor.IsQueuedForDeletion()) anchor.QueueFree();
+        };
+    }
+
     private void HideDestroyedFieldBuilding(FieldBuildingId id)
     {
         // 진행 시작 Redraw에서 QueueFree 대기 중인 이전 노드와 이름이 충돌하면 Godot이

@@ -146,15 +146,15 @@ public sealed class AdvanceOrchestrator
             }
         }
 
-        // 이동 경로가 진법 범위 밖에서 안으로 실제 진입한 부대만 한 번 판정한다. 같은 이동 중
-        // 여러 진법에 들어가도 첫 진법 하나만 사용하며, 공격보다 먼저 현역을 부상병으로 전환한다.
+        // 매 이동턴이 끝날 때 진법 범위 안의 적 부대마다 한 번 판정한다. 여러 진법 범위가
+        // 겹쳐도 ID가 가장 빠른 진법 하나만 사용하며, 공격보다 먼저 현역을 부상병으로 전환한다.
         var formationTriggers = new List<FormationTrigger>();
         var completedFormations = (fieldBuildings ?? []).Where(building => building.IsCompleted(fieldDay)
                 && !building.IsExpired(fieldDay)
                 && definitions.TryGetValue(building.DefinitionCode, out var definition)
                 && definition.Kind == FieldBuildingKind.Formation)
             .OrderBy(building => building.Id.Value).ToList();
-        foreach (var entry in FormationEntries(units, move, completedFormations, definitions))
+        foreach (var entry in FormationTargetsForMovementTurn(units, move, completedFormations, definitions))
         {
             if (!state.TryGetValue(entry.Unit, out var unit)) continue;
             var activated = _random.Next(0, 100) < 30;
@@ -393,31 +393,20 @@ public sealed class AdvanceOrchestrator
             FieldGarrisonAssignments: fieldGarrisons, FormationResults: formationTriggers);
     }
 
-    private static IReadOnlyList<(UnitId Unit, FieldBuilding Building)> FormationEntries(
+    private static IReadOnlyList<(UnitId Unit, FieldBuilding Building)> FormationTargetsForMovementTurn(
         IReadOnlyList<CombatUnit> startingUnits,
         AdvanceResult movement,
         IReadOnlyList<FieldBuilding> formations,
         IReadOnlyDictionary<string, FieldBuildingDefinition> definitions)
     {
         var result = new List<(UnitId, FieldBuilding)>();
+        var moved = movement.Units.ToDictionary(unit => unit.Id);
         foreach (var unit in startingUnits.OrderBy(x => x.Id.Value))
         {
-            var previous = unit.Field.Position;
-            foreach (var tick in movement.Ticks)
-            {
-                var snapshot = tick.Units.FirstOrDefault(x => x.Id == unit.Id);
-                if (snapshot is null) continue;
-                var current = snapshot.Position;
-                var entered = formations.FirstOrDefault(building => building.Owner != unit.Field.Owner
-                    && previous.Distance(building.Position) > definitions[building.DefinitionCode].EffectRadius
-                    && current.Distance(building.Position) <= definitions[building.DefinitionCode].EffectRadius);
-                if (entered is not null)
-                {
-                    result.Add((unit.Id, entered));
-                    break;
-                }
-                previous = current;
-            }
+            if (!moved.TryGetValue(unit.Id, out var current)) continue;
+            var affected = formations.FirstOrDefault(building => building.Owner != unit.Field.Owner
+                && current.Position.Distance(building.Position) <= definitions[building.DefinitionCode].EffectRadius);
+            if (affected is not null) result.Add((unit.Id, affected));
         }
         return result;
     }
