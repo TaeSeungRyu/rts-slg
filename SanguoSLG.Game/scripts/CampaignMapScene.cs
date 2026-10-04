@@ -3210,7 +3210,16 @@ public sealed partial class CampaignMapScene : Node3D
                 DamageView.Apply(node, TileCondition.Damaged,
                     city.IsPort ? DamageView.Kind.Port : DamageView.Kind.Castle,
                     unchecked((ulong)(city.Id.Value * 7919L + 311L)));
-                node.AddChild(new CastleRuinSmokeView3D { Name = "CastleRuinSmoke" });
+                node.AddChild(new CastleRuinSmokeView3D
+                {
+                    Name = "CastleRuinSmoke",
+                    RequestedEmitterCount = city.Castle switch
+                    {
+                        CastleSize.Large => 9,
+                        CastleSize.Medium => 4,
+                        _ => 1,
+                    },
+                });
             }
             if (city.IsPort)
             {

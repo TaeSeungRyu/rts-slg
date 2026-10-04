@@ -330,15 +330,29 @@ public sealed partial class CampaignMapScene
         var brokenApplied = _cityBrokenVisuals[city.Id.Value]
             && brokenNode.GetMeta("broken_city_visual").AsBool();
         var smoke = brokenNode.GetNodeOrNull<CastleRuinSmokeView3D>("CastleRuinSmoke");
-        var smokeApplied = smoke is { EmitterCount: 3 };
+        var expectedSmoke = city.Castle switch
+        {
+            CastleSize.Large => 9,
+            CastleSize.Medium => 4,
+            _ => 1,
+        };
+        var smokeApplied = smoke?.EmitterCount == expectedSmoke;
+        var allSizesApplied = new[] { CastleSize.Small, CastleSize.Medium, CastleSize.Large }.Select(size =>
+        {
+            var model = CreateCityModel(city with { Castle = size, Wall = 0 }, true);
+            AddChild(model);
+            var count = model.GetNode<CastleRuinSmokeView3D>("CastleRuinSmoke").EmitterCount;
+            model.QueueFree();
+            return count == (size == CastleSize.Large ? 9 : size == CastleSize.Medium ? 4 : 1);
+        }).All(ok => ok);
         _state = original;
         Redraw("성벽 복구 QA");
         var restoredNode = _cityModels[city.Id.Value];
         var restored = !_cityBrokenVisuals[city.Id.Value]
             && !restoredNode.GetMeta("broken_city_visual").AsBool()
             && restoredNode.GetNodeOrNull("CastleRuinSmoke") is null;
-        var passed = brokenApplied && smokeApplied && restored && brokenNode != restoredNode;
-        GD.Print($"[castle-damage-qa] passed={passed} brokenApplied={brokenApplied} smoke={smokeApplied} restored={restored} replaced={brokenNode != restoredNode}");
+        var passed = brokenApplied && smokeApplied && allSizesApplied && restored && brokenNode != restoredNode;
+        GD.Print($"[castle-damage-qa] passed={passed} brokenApplied={brokenApplied} smoke={smokeApplied}:{expectedSmoke} allSizes={allSizesApplied} restored={restored} replaced={brokenNode != restoredNode}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

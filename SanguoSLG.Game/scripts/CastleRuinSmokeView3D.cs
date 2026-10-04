@@ -5,22 +5,30 @@ namespace SanguoSLG.Game;
 /// <summary>성벽이 무너진 성에서 낮게 피어오르는 소규모 회색 연기.</summary>
 public sealed partial class CastleRuinSmokeView3D : Node3D
 {
+    public int RequestedEmitterCount { get; set; } = 1;
     public int EmitterCount { get; private set; }
 
     public override void _Ready()
     {
-        AddPlume(new Vector3(-0.20f, 0.20f, 0.03f), 0.032f, 0.00f);
-        AddPlume(new Vector3(0.04f, 0.16f, -0.12f), 0.038f, 0.55f);
-        AddPlume(new Vector3(0.22f, 0.18f, 0.10f), 0.030f, 1.05f);
+        var count = RequestedEmitterCount switch { >= 9 => 9, >= 4 => 4, _ => 1 };
+        var side = count == 9 ? 3 : count == 4 ? 2 : 1;
+        var spacing = count == 9 ? 0.18f : count == 4 ? 0.22f : 0f;
+        for (var index = 0; index < count; index++)
+        {
+            var x = side == 1 ? 0f : (index % side - (side - 1) / 2f) * spacing;
+            var z = side == 1 ? 0f : (index / side - (side - 1) / 2f) * spacing;
+            var radius = 0.030f + (index % 3) * 0.003f;
+            AddPlume(new Vector3(x, 0.16f + (index % 2) * 0.025f, z), radius, index * 0.27f);
+        }
     }
 
     private void AddPlume(Vector3 position, float radius, float phase)
     {
         var gradient = new Gradient();
-        gradient.SetColor(0, new Color(0.40f, 0.41f, 0.42f, 0.06f));
-        gradient.AddPoint(0.20f, new Color(0.48f, 0.49f, 0.50f, 0.42f));
-        gradient.AddPoint(0.72f, new Color(0.34f, 0.35f, 0.36f, 0.25f));
-        gradient.SetColor(1, new Color(0.30f, 0.31f, 0.32f, 0f));
+        gradient.SetColor(0, new Color(0.18f, 0.19f, 0.20f, 0.08f));
+        gradient.AddPoint(0.20f, new Color(0.25f, 0.26f, 0.27f, 0.48f));
+        gradient.AddPoint(0.72f, new Color(0.16f, 0.17f, 0.18f, 0.30f));
+        gradient.SetColor(1, new Color(0.12f, 0.13f, 0.14f, 0f));
         var material = new StandardMaterial3D
         {
             VertexColorUseAsAlbedo = true,
