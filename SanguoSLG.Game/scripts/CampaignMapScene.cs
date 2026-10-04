@@ -9496,7 +9496,7 @@ public sealed partial class CampaignMapScene : Node3D
             SelectMode = Tree.SelectModeEnum.Row,
             // 선박 수에 따라 표 높이가 재계산되면 첫 레이아웃 프레임에서 좌측 칸이
             // 커졌다 줄어드는 현상이 생긴다. 최대 5종 기준의 고정 영역을 사용한다.
-            CustomMinimumSize = new Vector2(0, 188),
+            CustomMinimumSize = new Vector2(0, 230),
             ScrollVerticalEnabled = false,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
@@ -9542,7 +9542,7 @@ public sealed partial class CampaignMapScene : Node3D
             ColumnTitlesVisible = true,
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, 188),
+            CustomMinimumSize = new Vector2(0, 230),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
         };

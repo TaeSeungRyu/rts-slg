@@ -21,11 +21,21 @@ public sealed partial class CampaignMapScene
             var officers = columns.FindChildren("ComposeOfficers", "VBoxContainer", true, false).OfType<VBoxContainer>().Single();
             var table = officers.FindChildren("*", "Tree", true, false).OfType<Tree>().Single();
             var first = table.GetRoot().GetFirstChild();
-            if (first is null || !first.IsEditable(0) || !first.IsEditable(4)) throw new Exception("선봉/부관 선택 셀 누락");
-            if (table.GetColumnTitle(0) != "선봉" || table.GetColumnTitle(4) != "부관") throw new Exception("장수 역할 표기 불일치");
+            if (first is null || !first.IsEditable(0) || !first.IsEditable(1)) throw new Exception("선봉/부관 선택 셀 누락");
+            if (table.GetColumnTitle(0) != "선봉" || table.GetColumnTitle(1) != "부관") throw new Exception("장수 역할 표기 불일치");
+            if (table.Columns != 8 || table.GetColumnTitle(2) != "이름" || table.GetColumnTitle(6) != "적성")
+                throw new Exception("전투편성형 장수 표 구조 불일치");
             if (table.Size.Y < officers.Size.Y * 0.9f) throw new Exception($"장수 표 높이 부족 {table.Size.Y}/{officers.Size.Y}");
             var ships = resources.GetNode<Tree>("NavalShipTable");
             var troops = resources.GetNode<Tree>("NavalTroopTable");
+            var initialShipSize = ships.Size;
+            var initialTroopSize = troops.Size;
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            if (!ships.Size.IsEqualApprox(initialShipSize) || !troops.Size.IsEqualApprox(initialTroopSize))
+                throw new Exception($"좌측 표 레이아웃 변동 ship={initialShipSize}->{ships.Size}, troop={initialTroopSize}->{troops.Size}");
+            var headings = resources.GetChildren().OfType<Label>().Select(label => label.Text).ToHashSet();
+            if (!headings.Contains("1. 선박") || !headings.Contains("2. 승선 병력") || !headings.Contains("3. 병력 물자"))
+                throw new Exception("출항 편성 단계 제목 누락");
             if (ships.GetRoot().GetChildCount() != 5) throw new Exception("5종 선박 QA 데이터 누락");
             foreach (var list in new[] { ships, troops })
             {
@@ -45,7 +55,7 @@ public sealed partial class CampaignMapScene
             if (resources.FindChildren("*", "HSlider", true, false).Count != 3) throw new Exception("병력/군량/금 슬라이더 누락");
             foreach (var pane in new[] { resources, officers })
                 if (pane.GetCombinedMinimumSize().Y > columns.Size.Y + 2) throw new Exception($"편성 영역 세로 넘침: {pane.Name} {pane.GetCombinedMinimumSize().Y}/{columns.Size.Y}");
-            GD.Print("NAVAL_COMPOSE_QA PASS: 5 ships without scroll, troop rows, officers >=90%, food duration, screen bounds");
+            GD.Print("NAVAL_COMPOSE_QA PASS: stable tables, numbered sections, combat-style officer checks, 5 ships without scroll, food duration, screen bounds");
             GetTree().Quit();
         }
         catch (Exception e)
