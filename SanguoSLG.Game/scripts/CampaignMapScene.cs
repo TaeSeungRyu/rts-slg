@@ -159,6 +159,7 @@ public sealed partial class CampaignMapScene : Node3D
         ["medium_ship"] = 8, ["large_ship"] = 9, ["geukbyeong"] = 10, ["namman"] = 11,
         ["deunggap"] = 12, ["mudang"] = 13, ["cataphract"] = 14, ["hwarang"] = 15,
         ["horse_archer"] = 16, ["turtleship"] = 17, ["waeseon"] = 18,
+        ["bandit"] = 19,
         ["army_group"] = 25,
     };
     private GameState _pendingState = null!;
@@ -633,6 +634,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestherorecruitqa")) CallDeferred(nameof(RunHeroRecruitUiQa));
         if (args.Contains("--maptestspecialresearchqa")) CallDeferred(nameof(RunSpecialResearchLockQa));
         if (args.Contains("--maptestpathvisualqa")) CallDeferred(nameof(RunPathVisualQa));
+        if (args.Contains("--maptestbanditdisplayqa")) CallDeferred(nameof(RunBanditDisplayQa));
     }
 
     private void SeedFieldBuildingSamples()
@@ -6553,9 +6555,22 @@ public sealed partial class CampaignMapScene : Node3D
     private string TroopName(string code) => code == FactionResearch.WallCode ? "성벽"
         : code == FactionResearch.CommandTroopsCode ? "통솔 병력"
         : code == FactionResearch.ArmyGroupCode ? "집단군"
+        : code == WorldEngine.BanditTroopCode ? "도적"
         : FactionResearch.IsGeneralResearch(code) ? GeneralResearchRules.Name(code)
         : FactionResearch.IsStratagemResearch(code) ? StratagemResearchRules.Name(code)
         : _troops.FirstOrDefault(t => t.Code == code)?.Name ?? code;
+
+    private void RunBanditDisplayQa()
+    {
+        var modelIndex = TroopModelIndex.GetValueOrDefault(WorldEngine.BanditTroopCode, -1);
+        var modelPath = UnitController3D.ModelFileAt(modelIndex);
+        var passed = TroopName(WorldEngine.BanditTroopCode) == "도적"
+            && modelIndex == 19
+            && modelPath == "res://assets/models/troop-bandit.glb"
+            && ResourceLoader.Exists(modelPath);
+        GD.Print($"[maptestbanditdisplayqa] passed={passed} name={TroopName(WorldEngine.BanditTroopCode)} index={modelIndex} model={modelPath}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
 
     private static readonly string[] PortShipCodes = { "small_boat", "medium_ship", "large_ship", "turtleship", "waeseon" };
 

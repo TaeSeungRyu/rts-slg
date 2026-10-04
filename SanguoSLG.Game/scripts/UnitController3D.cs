@@ -82,6 +82,9 @@ public partial class UnitController3D : Node3D
 
     public static int SupplyModelIndex => TroopModels.Length - 2;
     public static int ArmyGroupModelIndex => TroopModels.Length - 1;
+    public static string ModelFileAt(int index) => index >= 0 && index < TroopModels.Length
+        ? TroopModels[index].File
+        : string.Empty;
 
     private const int TroopCount = 7;
 
