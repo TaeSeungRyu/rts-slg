@@ -45,8 +45,8 @@ public sealed partial class CampaignMapScene
     {
         var anchor = new Node3D { Name = "FormationBubbles" };
         AddChild(anchor);
-        anchor.GlobalPosition = position;
-        EffectView.Attach(anchor, EffectKind.Bubbles, 0.72f);
+        anchor.GlobalPosition = position + new Vector3(0f, 0.10f, 0f);
+        EffectView.Attach(anchor, EffectKind.Bubbles, 1.05f);
         GetTree().CreateTimer(2.5).Timeout += () =>
         {
             if (GodotObject.IsInstanceValid(anchor) && !anchor.IsQueuedForDeletion()) anchor.QueueFree();

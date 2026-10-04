@@ -3678,7 +3678,10 @@ public sealed partial class CampaignMapScene : Node3D
             var atkTime = ((stopDay - 1) * DaySeconds) + MoveSeconds + 0.15; // 그날 이동(≤1.5초)이 끝난 뒤
             ScheduleAttackMotions(turn, atkTime, unitSnapshot);
             foreach (var trigger in turn.FormationTriggers.Where(trigger => trigger.Activated && trigger.WoundedConverted > 0))
+            {
                 _animFormationEffects.Add((atkTime - 0.10, trigger.Unit.Value));
+                _animSkillDmg.Add((atkTime + 0.12, trigger.Unit.Value, trigger.WoundedConverted));
+            }
 
             var orderedActives = turn.FiredActives
                 .OrderBy(x => x.Value.Type == ActiveType.Defense ? 0 : 1)

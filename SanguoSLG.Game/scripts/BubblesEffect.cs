@@ -23,17 +23,20 @@ public partial class BubblesEffect : Node3D
     {
         var mesh = new SphereMesh
         {
-            Radius = 0.055f * S,  // 기존 0.05에서 10%만 키움
-            Height = 0.11f * S,
+            Radius = 0.072f * S,
+            Height = 0.144f * S,
             RadialSegments = 10,
             Rings = 6,
             Material = new StandardMaterial3D
             {
-                AlbedoColor = new Color(0.06f, 0.42f, 0.10f, 0.62f), // 진한 초록
+                AlbedoColor = new Color(0.20f, 0.95f, 0.30f, 0.86f),
                 Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-                Roughness = 0.1f,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                BlendMode = BaseMaterial3D.BlendModeEnum.Add,
+                Roughness = 0.05f,
                 EmissionEnabled = true,
-                Emission = new Color(0.05f, 0.24f, 0.08f),
+                Emission = new Color(0.12f, 0.72f, 0.18f),
+                EmissionEnergyMultiplier = 1.8f,
             },
         };
 
@@ -82,7 +85,7 @@ public partial class BubblesEffect : Node3D
             }
 
             bubble.Visible = size > 0.02f;
-            bubble.Position = new Vector3(_pos[i].X, 0.03f * S + cycle * 0.15f * S, _pos[i].Y);
+            bubble.Position = new Vector3(_pos[i].X, 0.05f * S + cycle * 0.28f * S, _pos[i].Y);
             bubble.Scale = new Vector3(size, size, size);
         }
     }
