@@ -1303,7 +1303,7 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
-        var fieldBuilding = _state.Buildings.FirstOrDefault(b => b.Position == hex);
+        var fieldBuilding = _state.Buildings.FirstOrDefault(b => b.Position == hex && CanPlayerSeeFieldBuilding(b));
         if (fieldBuilding is not null)
         {
             ShowFieldBuildingInfo(fieldBuilding);
@@ -1420,6 +1420,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void ShowFieldBuildingInfo(FieldBuilding building)
     {
+        if (!CanPlayerSeeFieldBuilding(building)) return;
         if (building.Owner != Player && !_visibleTiles.Contains(building.Position))
         { ShowNotice("시야 밖", "아군 시야 안의 야전 건축물만 확인할 수 있습니다."); return; }
         HidePanels();
@@ -1606,6 +1607,8 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var definition = _fieldBuildingDefinitions.FirstOrDefault(x => x.Code == building.DefinitionCode);
             if (definition is null) continue;
+            // 적 정찰대는 은폐 건축물이다. 테스트 데이터에 존재해도 모델·표시·클릭 정보를 만들지 않는다.
+            if (!CanPlayerSeeFieldBuilding(building)) continue;
             var origin = _view.HexToWorld(building.Position) + new Vector3(0, _view.TileTopY, 0);
             var node = GD.Load<PackedScene>($"res://assets/models/{definition.ModelCode}.glb")?.Instantiate<Node3D>();
             if (node is not null)
@@ -1674,6 +1677,12 @@ public sealed partial class CampaignMapScene : Node3D
 
     private static float FieldBuildingModelScale(FieldBuildingKind kind)
         => kind is FieldBuildingKind.ScoutPost or FieldBuildingKind.Fort or FieldBuildingKind.Watchtower ? 0.7f : 1f;
+
+    private bool CanPlayerSeeFieldBuilding(FieldBuilding building)
+    {
+        var kind = _fieldBuildingDefinitions.FirstOrDefault(x => x.Code == building.DefinitionCode)?.Kind;
+        return building.Owner == Player || kind != FieldBuildingKind.ScoutPost;
+    }
 
     private static string ScoutDayText(FieldBuilding building, int day)
         => !building.IsCompleted(day) ? $"건축 {building.CompletionDay - day}일"
@@ -16596,7 +16605,8 @@ public sealed partial class CampaignMapScene : Node3D
             .OfType<Button>().Any(x => x.Text == "건축");
         var sampleCodes = _state.Buildings.Select(x => x.DefinitionCode).ToHashSet(System.StringComparer.Ordinal);
         var fiveSamplesOk = _fieldBuildingDefinitions.All(x => sampleCodes.Contains(x.Code));
-        fiveSamplesOk &= _state.Buildings.All(b => _fieldBuildingLayer.GetNodeOrNull<Label3D>($"FieldAllegiance_{b.Id.Value}")?.Text
+        fiveSamplesOk &= _state.Buildings.Where(CanPlayerSeeFieldBuilding)
+            .All(b => _fieldBuildingLayer.GetNodeOrNull<Label3D>($"FieldAllegiance_{b.Id.Value}")?.Text
             == (b.Owner == Player ? "아군" : "적군"));
         var enemySamples = _state.Buildings.Where(x => x.Owner == new FactionId(2)).ToList();
         var occupiedFixtureTiles = _state.Cities.SelectMany(CastleFootprint.TilesFor)
@@ -16607,6 +16617,11 @@ public sealed partial class CampaignMapScene : Node3D
             && enemySamples.Select(x => x.Position).Distinct().Count() == enemySamples.Count
             && enemySamples.All(x => !occupiedFixtureTiles.Contains(x.Position))
             && enemySamples.Count(x => _fieldBuildingDefinitions.First(d => d.Code == x.DefinitionCode).CanBeTargeted) == 4;
+        var enemyScout = enemySamples.Single(x => x.DefinitionCode == "scout_post");
+        RedrawFieldBuildings();
+        var enemyScoutHidden = _fieldBuildingLayer.FindChild($"FieldBuilding_{enemyScout.Id.Value}", false, false) is null
+            && _fieldBuildingLayer.FindChild($"FieldAllegiance_{enemyScout.Id.Value}", false, false) is null
+            && _fieldBuildingLayer.FindChild($"ScoutDays_{enemyScout.Id.Value}", false, false) is null;
         var definition = _fieldBuildingDefinitions.First(x => x.Code == "watchtower");
         var fallback = _state.Cities.First().Position;
         var position = _state.Armies.FirstOrDefault()?.Field.Position
@@ -16658,9 +16673,9 @@ public sealed partial class CampaignMapScene : Node3D
         _state = original;
         RedrawFieldBuildings();
         var passed = _fieldBuildingDefinitions.Count == 5 && modelsOk && formationAnimationOk && menuHasCommand
-            && fiveSamplesOk && enemySamplesOk && cloudFadeOk && toolsAnimationOk && scoutDaysOk
+            && fiveSamplesOk && enemySamplesOk && enemyScoutHidden && cloudFadeOk && toolsAnimationOk && scoutDaysOk
             && radiusTwoOk && radiusOneOk && worldNodeOk;
-        GD.Print($"[field-construction-ui-qa] passed={passed} enemySamples={enemySamplesOk}:{enemySamples.Count} scoutDays={scoutDaysOk} toolsAnimation={toolsAnimationOk} definitions={_fieldBuildingDefinitions.Count} samples={fiveSamplesOk} models={modelsOk} cloudFade={cloudFadeOk} formationAnimation={formationAnimationOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
+        GD.Print($"[field-construction-ui-qa] passed={passed} enemySamples={enemySamplesOk}:{enemySamples.Count} enemyScoutHidden={enemyScoutHidden} scoutDays={scoutDaysOk} toolsAnimation={toolsAnimationOk} definitions={_fieldBuildingDefinitions.Count} samples={fiveSamplesOk} models={modelsOk} cloudFade={cloudFadeOk} formationAnimation={formationAnimationOk} command={menuHasCommand} radius1={radiusOneOk} radius2={radiusTwoOk} world={worldNodeOk}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
