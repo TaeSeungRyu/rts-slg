@@ -11,6 +11,13 @@ using SanguoSLG.Core.Spatial;
 /// </summary>
 public partial class RenewalMovementTestScene3D : Node3D
 {
+    private enum QaScenario
+    {
+        TerrainPath,
+        MovementSpeed,
+        Collision,
+    }
+
     private static readonly HexCoord StartHex = new(1, 3);
     private static readonly HexCoord DestinationHex = new(7, 3);
     private const double PhasePresentationSeconds = 0.35;
@@ -21,13 +28,15 @@ public partial class RenewalMovementTestScene3D : Node3D
     private RenewalFixedStepClock _clock;
     private RenewalUnitState[] _initialUnits = [];
     private MapView3D _map = null!;
-    private readonly Dictionary<long, UnitController3D> _tokens = [];
-    private readonly Dictionary<long, Vector3> _visualTargets = [];
+    private readonly Dictionary<int, UnitController3D> _tokens = [];
+    private readonly Dictionary<int, Vector3> _visualTargets = [];
     private Label _status = null!;
     private Label _log = null!;
     private Button _playButton = null!;
+    private OptionButton _scenarioSelector = null!;
     private bool _playing;
     private double _phaseElapsed;
+    private QaScenario _scenario;
 
     public override void _Ready()
     {
@@ -174,7 +183,7 @@ public partial class RenewalMovementTestScene3D : Node3D
             OffsetLeft = 18,
             OffsetTop = 18,
             OffsetRight = 520,
-            OffsetBottom = 390,
+            OffsetBottom = 430,
         };
         panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
         {
@@ -202,6 +211,18 @@ public partial class RenewalMovementTestScene3D : Node3D
             new Color(0.92f, 0.73f, 0.34f)));
         box.AddChild(MakeLabel("3단계 · 늪 감속 / 건물 우회 / 아군 중첩 이동 후 목적지 분산", 13,
             new Color(0.72f, 0.76f, 0.82f)));
+
+        _scenarioSelector = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        _scenarioSelector.AddThemeFontOverride("font", GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf"));
+        _scenarioSelector.AddItem("1. 지형 경로·건물 우회");
+        _scenarioSelector.AddItem("2. 이동속도 1·2·3 비교");
+        _scenarioSelector.AddItem("3. 아군 중첩·적군 충돌");
+        _scenarioSelector.ItemSelected += index =>
+        {
+            _scenario = (QaScenario)index;
+            ResetSimulation();
+        };
+        box.AddChild(_scenarioSelector);
 
         _status = MakeLabel(string.Empty, 15, new Color(0.94f, 0.95f, 0.98f));
         box.AddChild(_status);
@@ -257,20 +278,14 @@ public partial class RenewalMovementTestScene3D : Node3D
         _playing = false;
         _phaseElapsed = 0;
         _clock = new RenewalFixedStepClock();
-        _initialUnits =
-        [
-            RenewalUnitState.Create(new UnitId(1), new ContinuousPosition(0, 0),
-                RenewalHexSpace.Center(DestinationHex), movementPerDay: 2),
-            RenewalUnitState.Create(new UnitId(2), new ContinuousPosition(0, 0),
-                RenewalHexSpace.Center(DestinationHex), movementPerDay: 3),
-        ];
-        _initialUnits = _initialUnits.Select(x => x with
-        {
-            Position = RenewalHexSpace.Center(StartHex),
-            Owner = new FactionId(1),
-        }).ToArray();
+        _initialUnits = BuildScenarioUnits(_scenario);
         _state = _simulator.Start(_initialUnits);
         EnsureTokens();
+        var activeIds = _state.Units.Select(x => x.Id.Value).ToHashSet();
+        foreach (var (id, token) in _tokens)
+        {
+            token.Visible = activeIds.Contains(id);
+        }
         foreach (var unit in _state.Units)
         {
             var world = ContinuousToWorld(unit.Position) + new Vector3(0f, _map.TileTopY, 0f);
@@ -278,7 +293,7 @@ public partial class RenewalMovementTestScene3D : Node3D
             _tokens[unit.Id.Value].DisplayContinuousAt(world, false);
         }
         _logs.Clear();
-        AppendLog("초기화 완료 — 한 틱·한 단계·하루 또는 자동 재생을 선택하세요.");
+        AppendLog($"{ScenarioName(_scenario)} 초기화 — 자동 재생 또는 단계 실행을 선택하세요.");
         Refresh();
     }
 
@@ -330,10 +345,10 @@ public partial class RenewalMovementTestScene3D : Node3D
                 + new Vector3(0f, _map.TileTopY, 0f);
             _visualTargets[unit.Id.Value] = world;
         }
-        var primary = _state.Units[0];
         _status.Text = $"날짜  {_state.Day}/7    단계  {PhaseName(_state.Phase)}\n"
-            + $"이동 틱  {_state.MovementTick}/50    1번 {primary.Position.X},{primary.Position.Y}\n"
-            + $"2번 {_state.Units[1].Position.X},{_state.Units[1].Position.Y}";
+            + $"이동 틱  {_state.MovementTick}/50    {ScenarioName(_scenario)}\n"
+            + string.Join("  ", _state.Units.Select(x =>
+                $"{x.Id}:{x.StopReason}{(x.Arrived ? "·도착" : string.Empty)}"));
         _playButton.Text = _playing ? "일시정지" : _state.IsCompleted ? "다시 시작" : "자동 재생";
         _log.Text = string.Join('\n', _logs.TakeLast(9));
     }
@@ -348,16 +363,57 @@ public partial class RenewalMovementTestScene3D : Node3D
             }
             var token = new UnitController3D { Name = $"RenewalUnit{unit.Id.Value}" };
             AddChild(token);
-            var troopIndex = unit.Id.Value == 1 ? 0 : 1;
-            var color = unit.Id.Value == 1
-                ? new Color(0.18f, 0.43f, 0.90f)
-                : new Color(0.18f, 0.75f, 0.48f);
+            var troopIndex = unit.Id.Value switch
+            {
+                1 => 0,
+                2 => 2,
+                _ => 1,
+            };
+            var color = unit.Owner.Value == 2
+                ? new Color(0.86f, 0.22f, 0.18f)
+                : new Color(0.18f, 0.43f, 0.90f);
             token.InitDisplay(_map, color, troopIndex, StartHex);
             token.TintFormation(color, 0.40f);
             _tokens[unit.Id.Value] = token;
             _visualTargets[unit.Id.Value] = token.Position;
         }
     }
+
+    private static RenewalUnitState[] BuildScenarioUnits(QaScenario scenario)
+    {
+        static RenewalUnitState Make(int id, int faction, HexCoord start, HexCoord destination,
+            int speed) => RenewalUnitState.Create(new UnitId(id), RenewalHexSpace.Center(start),
+                RenewalHexSpace.Center(destination), speed) with { Owner = new FactionId(faction) };
+
+        return scenario switch
+        {
+            QaScenario.TerrainPath =>
+            [
+                Make(1, 1, new HexCoord(1, 3), new HexCoord(7, 3), 2),
+            ],
+            QaScenario.MovementSpeed =>
+            [
+                Make(1, 1, new HexCoord(1, 0), new HexCoord(7, 0), 1),
+                Make(2, 1, new HexCoord(1, 4), new HexCoord(7, 4), 2),
+                Make(3, 1, new HexCoord(1, 6), new HexCoord(7, 6), 3),
+            ],
+            QaScenario.Collision =>
+            [
+                Make(1, 1, new HexCoord(1, 5), new HexCoord(7, 5), 3),
+                Make(2, 1, new HexCoord(1, 5), new HexCoord(7, 5), 3),
+                Make(4, 2, new HexCoord(4, 5), new HexCoord(4, 5), 0),
+            ],
+            _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
+        };
+    }
+
+    private static string ScenarioName(QaScenario scenario) => scenario switch
+    {
+        QaScenario.TerrainPath => "지형 경로·건물 우회",
+        QaScenario.MovementSpeed => "이동속도 비교",
+        QaScenario.Collision => "아군 중첩·적군 충돌",
+        _ => scenario.ToString(),
+    };
 
     private void AnimateTokens(float delta)
     {
@@ -405,18 +461,36 @@ public partial class RenewalMovementTestScene3D : Node3D
 
     private void RunAutoQa()
     {
-        var resetStart = _simulator.Start(_initialUnits);
-        var result = _simulator.RunToCompletion(resetStart);
-        var attackPhases = result.Events.Count(x => x.Kind == RenewalAdvanceEventKind.PhaseChanged
+        foreach (var scenario in Enum.GetValues<QaScenario>())
+        {
+            _scenario = scenario;
+            ResetSimulation();
+        }
+
+        var terrain = _simulator.RunToCompletion(
+            _simulator.Start(BuildScenarioUnits(QaScenario.TerrainPath)));
+        var attackPhases = terrain.Events.Count(x => x.Kind == RenewalAdvanceEventKind.PhaseChanged
             && x.Phase == RenewalAdvancePhase.Attack);
-        var completedDays = result.Events.Count(x => x.Kind == RenewalAdvanceEventKind.DayCompleted);
-        var positions = result.State.Units.Select(x => x.Position).Distinct().Count();
-        var passed = result.State.IsCompleted && result.State.Day == 7
+        var completedDays = terrain.Events.Count(x => x.Kind == RenewalAdvanceEventKind.DayCompleted);
+
+        var speedStart = _simulator.Start(BuildScenarioUnits(QaScenario.MovementSpeed));
+        var speedDay = _simulator.StepDay(speedStart);
+        var distances = speedDay.State.Units.OrderBy(x => x.Id.Value)
+            .Select((x, i) => BuildScenarioUnits(QaScenario.MovementSpeed)[i].Position.DistanceTo(x.Position))
+            .ToArray();
+
+        var collision = _simulator.StepDay(
+            _simulator.Start(BuildScenarioUnits(QaScenario.Collision)));
+        var blocked = collision.State.Units.Count(x => x.Owner.Value == 1
+            && x.StopReason == RenewalStopReason.EnemyBlocked);
+
+        var passed = terrain.State.IsCompleted && terrain.State.Units.All(x => x.Arrived)
             && attackPhases == 7 && completedDays == 7
-            && result.State.Units.All(x => x.Arrived) && positions == 2;
-        GD.Print($"[renewal-movement-auto] passed={passed} days={completedDays} attacks={attackPhases} "
-            + $"phase={result.State.Phase} arrived={result.State.Units.Count(x => x.Arrived)} "
-            + $"distinct={positions}");
+            && distances[0] < distances[1] && distances[1] < distances[2]
+            && blocked == 2 && _tokens.Count == 4;
+        GD.Print($"[renewal-movement-auto] passed={passed} cases=3 terrain_arrived="
+            + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
+            + $"enemy_blocked={blocked}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }
