@@ -606,6 +606,30 @@ public partial class RenewalMovementTestScene3D : Node3D
 
     private void RunAutoQa()
     {
+        var archerProbe = new UnitController3D { ProcessMode = ProcessModeEnum.Disabled };
+        AddChild(archerProbe);
+        archerProbe.InitDisplay(_map, Colors.Blue, 2, StartHex);
+        var bowArms = archerProbe.FindChildren("arm_l", "Node3D", true, false)
+            .OfType<Node3D>().ToArray();
+        var bowArmRotations = bowArms.Select(x => x.Rotation).ToArray();
+        var archerPoseOk = bowArms.Length > 0
+            && bowArmRotations.All(x => Mathf.Abs(x.X) > 0.5f);
+        for (var frame = 0; frame < 120; frame++)
+        {
+            archerProbe.DisplayContinuousAt(archerProbe.Position + new Vector3(0.002f, 0f, 0f), true);
+            archerProbe._Process(1d / 60d);
+            for (var arm = 0; arm < bowArms.Length; arm++)
+            {
+                archerPoseOk &= Mathf.Abs(bowArms[arm].Rotation.X - bowArmRotations[arm].X) <= 0.341f;
+            }
+        }
+        archerProbe.DisplayContinuousAt(archerProbe.Position, false);
+        archerProbe._Process(1d / 60d);
+        for (var arm = 0; arm < bowArms.Length; arm++)
+        {
+            archerPoseOk &= bowArms[arm].Rotation.IsEqualApprox(bowArmRotations[arm]);
+        }
+        archerProbe.QueueFree();
         var scaledRoot = new Node3D { Scale = Vector3.One * 0.1f };
         var rotatedParent = new Node3D { RotationDegrees = new Vector3(0f, 40f, 0f) };
         var smallPart = new MeshInstance3D
@@ -674,13 +698,13 @@ public partial class RenewalMovementTestScene3D : Node3D
             && distances[0] < distances[1] && distances[1] < distances[2]
             && blocked == 2 && _tokens.Count == 5
             && entry.Transfers.Count == 2 && entry.FieldUnits.Count == 0
-            && interpolationOk && shadowStable && marchPoseStable && scaledCasterCheck
+            && interpolationOk && shadowStable && marchPoseStable && scaledCasterCheck && archerPoseOk
             && _tokens.Values.All(x => Mathf.IsEqualApprox(
                 x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
         GD.Print($"[renewal-movement-auto] passed={passed} cases=4 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
             + $"enemy_blocked={blocked} entries={entry.Transfers.Count} interpolation={interpolationOk} "
-            + $"scaled_casters={scaledCasterCheck} shadow_settings_valid={shadowStable} march_pose_contract={marchPoseStable} "
+            + $"archer_pose={archerPoseOk} scaled_casters={scaledCasterCheck} shadow_settings_valid={shadowStable} march_pose_contract={marchPoseStable} "
             + $"march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);
     }

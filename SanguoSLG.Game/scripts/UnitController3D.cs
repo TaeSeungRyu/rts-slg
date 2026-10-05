@@ -119,6 +119,7 @@ public partial class UnitController3D : Node3D
 
         /// <summary>다리와 반대로, 더 작게 흔들리는 부위(보병 왼팔).</summary>
         public Node3D? CounterSwing;
+        public Vector3 CounterSwingBaseRotation;
 
         /// <summary>몸통 위에서 한 박자 늦게 흔들리는 상체(기병 기수).</summary>
         public Node3D? Rider;
@@ -597,7 +598,8 @@ public partial class UnitController3D : Node3D
                 // 보병 왼팔은 다리와 반대로. 오른팔은 무기를 들고 있으니 덜 흔든다
                 if (member.CounterSwing is not null)
                 {
-                    member.CounterSwing.Rotation = new Vector3(-swing * 0.34f, 0f, 0f);
+                    member.CounterSwing.Rotation = member.CounterSwingBaseRotation
+                        + new Vector3(-swing * 0.34f, 0f, 0f);
                 }
 
                 member.AttackArm.Rotation =
@@ -630,7 +632,7 @@ public partial class UnitController3D : Node3D
 
                 if (member.CounterSwing is not null)
                 {
-                    member.CounterSwing.Rotation = Vector3.Zero;
+                    member.CounterSwing.Rotation = member.CounterSwingBaseRotation;
                 }
 
                 if (member.Rider is not null)
@@ -1743,6 +1745,11 @@ public partial class UnitController3D : Node3D
                 }
             }
 
+            if (member.CounterSwing is not null)
+            {
+                member.CounterSwing.Rotation = member.CounterSwingBaseRotation;
+            }
+
             for (var k = 0; k < member.Sails.Length; k++)
             {
                 member.Sails[k].Rotation = member.SailBaseRotations[k];
@@ -2132,6 +2139,7 @@ public partial class UnitController3D : Node3D
                 TwistSign = index % 2 == 0 ? 1f : -1f,
             };
 
+            member.CounterSwingBaseRotation = member.CounterSwing?.Rotation ?? Vector3.Zero;
             member.SailBaseRotations = member.Sails.Select(n => n.Rotation).ToArray();
             if (serpent)
             {
