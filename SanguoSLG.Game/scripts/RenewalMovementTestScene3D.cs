@@ -36,6 +36,7 @@ public partial class RenewalMovementTestScene3D : Node3D
     private RenewalFixedStepClock _clock;
     private RenewalUnitState[] _initialUnits = [];
     private MapView3D _map = null!;
+    private DirectionalLight3D _sun = null!;
     private readonly Dictionary<int, UnitController3D> _tokens = [];
     private readonly Dictionary<int, Vector3> _visualStarts = [];
     private readonly Dictionary<int, Vector3> _visualTargets = [];
@@ -97,12 +98,20 @@ public partial class RenewalMovementTestScene3D : Node3D
             AmbientLightEnergy = 0.75f,
         };
         AddChild(new WorldEnvironment { Environment = environment });
-        AddChild(new DirectionalLight3D
+        _sun = new DirectionalLight3D
         {
             RotationDegrees = new Vector3(-58f, -35f, 0f),
             LightEnergy = 1.1f,
             ShadowEnabled = true,
-        });
+            // 기본 그림자 범위·normal bias는 이 게임의 작은 타일/병사 축척에 비해 너무 크다.
+            // 카메라 캐스케이드 재샘플링 때 발·무기 그림자가 흔들리지 않도록 캠페인 광원과
+            // 같은 축척 규칙을 사용하고, 검수장 크기에 맞춰 최대 거리만 더 좁힌다.
+            DirectionalShadowMaxDistance = 18f,
+            ShadowBias = 0.03f,
+            ShadowNormalBias = 0.05f,
+            DirectionalShadowBlendSplits = true,
+        };
+        AddChild(_sun);
 
         var terrain = new Dictionary<HexCoord, TerrainType>
         {
@@ -610,18 +619,23 @@ public partial class RenewalMovementTestScene3D : Node3D
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds / 2d), 0.5f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds), 1f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds * 2d), 1f);
+        var shadowStable = _sun.ShadowEnabled
+            && Mathf.IsEqualApprox(_sun.DirectionalShadowMaxDistance, 18f)
+            && Mathf.IsEqualApprox(_sun.ShadowBias, 0.03f)
+            && Mathf.IsEqualApprox(_sun.ShadowNormalBias, 0.05f)
+            && _sun.DirectionalShadowBlendSplits;
         var passed = terrain.State.IsCompleted && terrain.State.Units.All(x => x.Arrived)
             && attackPhases == 7 && completedDays == 7
             && distances[0] < distances[1] && distances[1] < distances[2]
             && blocked == 2 && _tokens.Count == 5
             && entry.Transfers.Count == 2 && entry.FieldUnits.Count == 0
-            && interpolationOk
+            && interpolationOk && shadowStable
             && _tokens.Values.All(x => Mathf.IsEqualApprox(
                 x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
         GD.Print($"[renewal-movement-auto] passed={passed} cases=4 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
             + $"enemy_blocked={blocked} entries={entry.Transfers.Count} interpolation={interpolationOk} "
-            + $"march_scale={RenewalMarchSpeedScale:0.00}");
+            + $"shadow_stable={shadowStable} march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }
