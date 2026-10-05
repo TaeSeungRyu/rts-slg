@@ -2173,6 +2173,10 @@ public partial class UnitController3D : Node3D
         _lastPosition = Position;
         FactionColorView.Apply(_tokenRoot, _factionColor);
         MapView3D.TuneImportedMeshes(_tokenRoot);
+        if (_dust is not null)
+        {
+            _dust.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+        }
     }
 
     private static IEnumerable<AnimationPlayer> FindAnimationPlayers(Node node)

@@ -401,7 +401,18 @@ public partial class MapView3D : Node3D
     {
         if (node is MeshInstance3D instance && instance.Mesh is not null)
         {
-            var size = instance.Mesh.GetAabb().Size * instance.Scale;
+            // 부모의 편대 축소 배율까지 반영해야 작은 부품이 그림자 캐스터로 남지 않는다.
+            var basis = instance.Transform.Basis;
+            for (var parent = instance.GetParent(); parent is not null; parent = parent.GetParent())
+            {
+                if (parent is Node3D ancestor)
+                {
+                    basis = ancestor.Transform.Basis * basis;
+                }
+            }
+            var localSize = instance.Mesh.GetAabb().Size;
+            var size = new Vector3(localSize.X * basis.X.Length(),
+                localSize.Y * basis.Y.Length(), localSize.Z * basis.Z.Length());
             if (Mathf.Min(size.X, Mathf.Min(size.Y, size.Z)) < TinyCasterThickness)
             {
                 instance.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;

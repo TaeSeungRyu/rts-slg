@@ -280,6 +280,12 @@ public partial class RenewalMovementTestScene3D : Node3D
         };
         box.AddChild(_scenarioSelector);
 
+        var shadowMode = new OptionButton();
+        shadowMode.AddItem("그림자 비교: 켜기");
+        shadowMode.AddItem("그림자 비교: 끄기 (원인 확인용)");
+        shadowMode.ItemSelected += index => _sun.ShadowEnabled = index == 0;
+        box.AddChild(shadowMode);
+
         _status = MakeLabel(string.Empty, 15, new Color(0.94f, 0.95f, 0.98f));
         box.AddChild(_status);
 
@@ -600,6 +606,24 @@ public partial class RenewalMovementTestScene3D : Node3D
 
     private void RunAutoQa()
     {
+        var scaledRoot = new Node3D { Scale = Vector3.One * 0.1f };
+        var rotatedParent = new Node3D { RotationDegrees = new Vector3(0f, 40f, 0f) };
+        var smallPart = new MeshInstance3D
+        {
+            Mesh = new BoxMesh { Size = Vector3.One * 0.2f },
+        };
+        var largePart = new MeshInstance3D
+        {
+            Mesh = new BoxMesh { Size = Vector3.One * 2f },
+        };
+        AddChild(scaledRoot);
+        scaledRoot.AddChild(rotatedParent);
+        rotatedParent.AddChild(smallPart);
+        rotatedParent.AddChild(largePart);
+        MapView3D.TuneImportedMeshes(scaledRoot);
+        var scaledCasterCheck = smallPart.CastShadow == GeometryInstance3D.ShadowCastingSetting.Off
+            && largePart.CastShadow == GeometryInstance3D.ShadowCastingSetting.On;
+        scaledRoot.QueueFree();
         foreach (var scenario in Enum.GetValues<QaScenario>())
         {
             _scenario = scenario;
@@ -650,13 +674,13 @@ public partial class RenewalMovementTestScene3D : Node3D
             && distances[0] < distances[1] && distances[1] < distances[2]
             && blocked == 2 && _tokens.Count == 5
             && entry.Transfers.Count == 2 && entry.FieldUnits.Count == 0
-            && interpolationOk && shadowStable && marchPoseStable
+            && interpolationOk && shadowStable && marchPoseStable && scaledCasterCheck
             && _tokens.Values.All(x => Mathf.IsEqualApprox(
                 x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
         GD.Print($"[renewal-movement-auto] passed={passed} cases=4 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
             + $"enemy_blocked={blocked} entries={entry.Transfers.Count} interpolation={interpolationOk} "
-            + $"shadow_stable={shadowStable} march_pose={marchPoseStable} "
+            + $"scaled_casters={scaledCasterCheck} shadow_settings_valid={shadowStable} march_pose_contract={marchPoseStable} "
             + $"march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);
     }
