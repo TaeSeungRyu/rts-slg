@@ -22,6 +22,8 @@ public partial class RenewalMovementTestScene3D : Node3D
     private static readonly HexCoord DestinationHex = new(7, 3);
     private const double PhasePresentationSeconds = 0.35;
     private const float RenewalMarchSpeedScale = 0.42f;
+    private const double MovementSnapshotSeconds =
+        RenewalFixedStepClock.TickMicroseconds / 1_000_000d;
 
     private RenewalAdvanceSimulator _simulator = null!;
     private readonly List<string> _logs = [];
@@ -30,7 +32,9 @@ public partial class RenewalMovementTestScene3D : Node3D
     private RenewalUnitState[] _initialUnits = [];
     private MapView3D _map = null!;
     private readonly Dictionary<int, UnitController3D> _tokens = [];
+    private readonly Dictionary<int, Vector3> _visualStarts = [];
     private readonly Dictionary<int, Vector3> _visualTargets = [];
+    private readonly Dictionary<int, double> _visualElapsed = [];
     private Label _status = null!;
     private Label _log = null!;
     private Button _playButton = null!;
@@ -290,7 +294,9 @@ public partial class RenewalMovementTestScene3D : Node3D
         foreach (var unit in _state.Units)
         {
             var world = ContinuousToWorld(unit.Position) + new Vector3(0f, _map.TileTopY, 0f);
+            _visualStarts[unit.Id.Value] = world;
             _visualTargets[unit.Id.Value] = world;
+            _visualElapsed[unit.Id.Value] = MovementSnapshotSeconds;
             _tokens[unit.Id.Value].DisplayContinuousAt(world, false);
         }
         _logs.Clear();
@@ -344,6 +350,12 @@ public partial class RenewalMovementTestScene3D : Node3D
         {
             var world = ContinuousToWorld(unit.Position)
                 + new Vector3(0f, _map.TileTopY, 0f);
+            if (!_visualTargets.TryGetValue(unit.Id.Value, out var previous)
+                || !previous.IsEqualApprox(world))
+            {
+                _visualStarts[unit.Id.Value] = _tokens[unit.Id.Value].Position;
+                _visualElapsed[unit.Id.Value] = 0d;
+            }
             _visualTargets[unit.Id.Value] = world;
         }
         _status.Text = $"날짜  {_state.Day}/7    단계  {PhaseName(_state.Phase)}\n"
@@ -377,7 +389,9 @@ public partial class RenewalMovementTestScene3D : Node3D
             token.SetDisplayMarchSpeedScale(RenewalMarchSpeedScale);
             token.TintFormation(color, 0.40f);
             _tokens[unit.Id.Value] = token;
+            _visualStarts[unit.Id.Value] = token.Position;
             _visualTargets[unit.Id.Value] = token.Position;
+            _visualElapsed[unit.Id.Value] = MovementSnapshotSeconds;
         }
     }
 
@@ -425,11 +439,24 @@ public partial class RenewalMovementTestScene3D : Node3D
             {
                 continue;
             }
-            var moving = token.Position.DistanceSquaredTo(target) > 0.000001f;
-            var next = token.Position.MoveToward(target, 2.2f * delta);
+            Vector3 next;
+            if (_playing && _visualStarts.TryGetValue(id, out var start))
+            {
+                var elapsed = _visualElapsed.GetValueOrDefault(id) + delta;
+                _visualElapsed[id] = elapsed;
+                next = start.Lerp(target, VisualInterpolationAlpha(elapsed));
+            }
+            else
+            {
+                next = token.Position.MoveToward(target, 2.2f * delta);
+            }
+            var moving = !token.Position.IsEqualApprox(next);
             token.DisplayContinuousAt(next, moving);
         }
     }
+
+    private static float VisualInterpolationAlpha(double elapsedSeconds) =>
+        Mathf.Clamp((float)(elapsedSeconds / MovementSnapshotSeconds), 0f, 1f);
 
     private Vector3 ContinuousToWorld(ContinuousPosition position)
     {
@@ -486,15 +513,21 @@ public partial class RenewalMovementTestScene3D : Node3D
         var blocked = collision.State.Units.Count(x => x.Owner.Value == 1
             && x.StopReason == RenewalStopReason.EnemyBlocked);
 
+        var interpolationOk = Mathf.IsEqualApprox(VisualInterpolationAlpha(0d), 0f)
+            && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds / 2d), 0.5f)
+            && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds), 1f)
+            && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds * 2d), 1f);
         var passed = terrain.State.IsCompleted && terrain.State.Units.All(x => x.Arrived)
             && attackPhases == 7 && completedDays == 7
             && distances[0] < distances[1] && distances[1] < distances[2]
             && blocked == 2 && _tokens.Count == 4
+            && interpolationOk
             && _tokens.Values.All(x => Mathf.IsEqualApprox(
                 x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
         GD.Print($"[renewal-movement-auto] passed={passed} cases=3 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
-            + $"enemy_blocked={blocked} march_scale={RenewalMarchSpeedScale:0.00}");
+            + $"enemy_blocked={blocked} interpolation={interpolationOk} "
+            + $"march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }
