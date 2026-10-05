@@ -16,6 +16,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         TerrainPath,
         MovementSpeed,
         Collision,
+        EgressAndEntry,
     }
 
     private static readonly HexCoord StartHex = new(1, 3);
@@ -26,6 +27,10 @@ public partial class RenewalMovementTestScene3D : Node3D
         RenewalFixedStepClock.TickMicroseconds / 1_000_000d;
 
     private RenewalAdvanceSimulator _simulator = null!;
+    private RenewalDeploymentService _deployment = null!;
+    private RenewalMovementMap _movementMap = null!;
+    private City[] _sites = [];
+    private IReadOnlyList<RenewalEntryOrder> _entryOrders = [];
     private readonly List<string> _logs = [];
     private RenewalAdvanceState _state = null!;
     private RenewalFixedStepClock _clock;
@@ -106,9 +111,25 @@ public partial class RenewalMovementTestScene3D : Node3D
             [new HexCoord(5, 1)] = TerrainType.WaterDeep,
             [new HexCoord(6, 1)] = TerrainType.WaterDeep,
         };
-        var hexMap = new HexMap(0, 8, 0, 6, terrain);
+        for (var q = 0; q <= 10; q++)
+        {
+            terrain[new HexCoord(q, 8)] = TerrainType.WaterDeep;
+        }
+        _sites =
+        [
+            new City(new CityId(101), "출격성", new HexCoord(0, 0), new FactionId(1), 1_000),
+            new City(new CityId(102), "복귀성", new HexCoord(10, 0), new FactionId(1), 1_000),
+            new City(new CityId(201), "출항항", new HexCoord(0, 8), new FactionId(1), 1_000,
+                Port: PortSize.Small),
+            new City(new CityId(202), "입항항", new HexCoord(10, 8), new FactionId(1), 1_000,
+                Port: PortSize.Small),
+        ];
+        var hexMap = new HexMap(0, 10, 0, 8, terrain);
         var blockedTile = new HexCoord(4, 3);
-        _simulator = new RenewalAdvanceSimulator(new RenewalMovementMap(hexMap, [blockedTile]));
+        var buildingTiles = _sites.SelectMany(CastleFootprint.TilesFor).Append(blockedTile);
+        _movementMap = new RenewalMovementMap(hexMap, buildingTiles);
+        _simulator = new RenewalAdvanceSimulator(_movementMap);
+        _deployment = new RenewalDeploymentService(_movementMap);
 
         _map = new MapView3D();
         AddChild(_map);
@@ -116,8 +137,13 @@ public partial class RenewalMovementTestScene3D : Node3D
 
         var camera = new CameraController3D { Fov = 52f };
         AddChild(camera);
-        camera.Setup(_map.HexToWorld(new HexCoord(4, 3)), 8.5f);
+        camera.Setup(_map.HexToWorld(new HexCoord(5, 4)), 10.5f);
         camera.Current = true;
+
+        foreach (var site in _sites)
+        {
+            AddSiteModel(site);
+        }
 
         var blocker = new MeshInstance3D
         {
@@ -145,6 +171,21 @@ public partial class RenewalMovementTestScene3D : Node3D
 
         AddMarker(StartHex, "시작", new Color(0.30f, 0.60f, 1f));
         AddMarker(DestinationHex, "목적지", new Color(0.95f, 0.62f, 0.20f));
+    }
+
+    private void AddSiteModel(City site)
+    {
+        var file = site.IsPort
+            ? "res://assets/models/port-small.glb"
+            : "res://assets/models/castle-small.glb";
+        var scene = GD.Load<PackedScene>(file);
+        if (scene?.Instantiate<Node3D>() is not { } model)
+        {
+            return;
+        }
+        model.Position = _map.HexToWorld(site.Position) + new Vector3(0f, _map.TileTopY, 0f);
+        model.Scale = Vector3.One * (site.IsPort ? 0.42f : 0.48f);
+        AddChild(model);
     }
 
     private void AddMarker(HexCoord coord, string text, Color color)
@@ -214,7 +255,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         panel.AddChild(box);
         box.AddChild(MakeLabel("Phase 18D — 연속 이동 검수장", 20,
             new Color(0.92f, 0.73f, 0.34f)));
-        box.AddChild(MakeLabel("3단계 · 늪 감속 / 건물 우회 / 아군 중첩 이동 후 목적지 분산", 13,
+        box.AddChild(MakeLabel("4단계 · 연속 이동 / 충돌 / 성·항구 출격·입성", 13,
             new Color(0.72f, 0.76f, 0.82f)));
 
         _scenarioSelector = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -222,6 +263,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         _scenarioSelector.AddItem("1. 지형 경로·건물 우회");
         _scenarioSelector.AddItem("2. 이동속도 1·2·3 비교");
         _scenarioSelector.AddItem("3. 아군 중첩·적군 충돌");
+        _scenarioSelector.AddItem("4. 성·항구 출격·입성·복귀");
         _scenarioSelector.ItemSelected += index =>
         {
             _scenario = (QaScenario)index;
@@ -336,6 +378,19 @@ public partial class RenewalMovementTestScene3D : Node3D
                 _ => entry.Kind.ToString(),
             });
         }
+        if (_scenario == QaScenario.EgressAndEntry && _entryOrders.Count > 0)
+        {
+            var entry = _deployment.ResolveEntries(_state.Units, _entryOrders, _sites);
+            if (entry.Transfers.Count > 0)
+            {
+                _state = _state with { Units = entry.FieldUnits };
+                _entryOrders = entry.PendingOrders;
+                foreach (var transfer in entry.Transfers)
+                {
+                    AppendLog($"{transfer.Unit} → {SiteName(transfer.Site)} 입성 완료");
+                }
+            }
+        }
         if (_state.IsCompleted)
         {
             _playing = false;
@@ -346,6 +401,11 @@ public partial class RenewalMovementTestScene3D : Node3D
     private void Refresh()
     {
         EnsureTokens();
+        var activeIds = _state.Units.Select(x => x.Id.Value).ToHashSet();
+        foreach (var (id, token) in _tokens)
+        {
+            token.Visible = activeIds.Contains(id);
+        }
         foreach (var unit in _state.Units)
         {
             var world = ContinuousToWorld(unit.Position)
@@ -376,7 +436,9 @@ public partial class RenewalMovementTestScene3D : Node3D
             }
             var token = new UnitController3D { Name = $"RenewalUnit{unit.Id.Value}" };
             AddChild(token);
-            var troopIndex = unit.Id.Value switch
+            var troopIndex = unit.Domain == MovementDomain.DeepWater
+                ? 7
+                : unit.Id.Value switch
             {
                 1 => 0,
                 2 => 2,
@@ -395,11 +457,34 @@ public partial class RenewalMovementTestScene3D : Node3D
         }
     }
 
-    private static RenewalUnitState[] BuildScenarioUnits(QaScenario scenario)
+    private RenewalUnitState[] BuildScenarioUnits(QaScenario scenario)
     {
         static RenewalUnitState Make(int id, int faction, HexCoord start, HexCoord destination,
             int speed) => RenewalUnitState.Create(new UnitId(id), RenewalHexSpace.Center(start),
                 RenewalHexSpace.Center(destination), speed) with { Owner = new FactionId(faction) };
+
+        _entryOrders = [];
+        if (scenario == QaScenario.EgressAndEntry)
+        {
+            var castleOrigin = _sites.Single(x => x.Id.Value == 101);
+            var castleTarget = _sites.Single(x => x.Id.Value == 102);
+            var portOrigin = _sites.Single(x => x.Id.Value == 201);
+            var portTarget = _sites.Single(x => x.Id.Value == 202);
+            var land = Make(1, 1, castleOrigin.Position, castleTarget.Position, 3);
+            var ship = Make(5, 1, portOrigin.Position, portTarget.Position, 2) with
+            {
+                Domain = MovementDomain.DeepWater,
+            };
+            var release = _deployment.Release(1,
+            [
+                new RenewalDeploymentReservation(1, land, castleOrigin.Id,
+                    DestinationSite: castleTarget.Id),
+                new RenewalDeploymentReservation(2, ship, portOrigin.Id,
+                    DestinationSite: portTarget.Id),
+            ], [], _sites);
+            _entryOrders = release.EntryOrders;
+            return release.Released.ToArray();
+        }
 
         return scenario switch
         {
@@ -428,8 +513,12 @@ public partial class RenewalMovementTestScene3D : Node3D
         QaScenario.TerrainPath => "지형 경로·건물 우회",
         QaScenario.MovementSpeed => "이동속도 비교",
         QaScenario.Collision => "아군 중첩·적군 충돌",
+        QaScenario.EgressAndEntry => "성·항구 출격·입성·복귀",
         _ => scenario.ToString(),
     };
+
+    private string SiteName(CityId id) =>
+        _sites.FirstOrDefault(x => x.Id == id)?.Name ?? id.ToString();
 
     private void AnimateTokens(float delta)
     {
@@ -513,6 +602,10 @@ public partial class RenewalMovementTestScene3D : Node3D
         var blocked = collision.State.Units.Count(x => x.Owner.Value == 1
             && x.StopReason == RenewalStopReason.EnemyBlocked);
 
+        var entryStart = _simulator.Start(BuildScenarioUnits(QaScenario.EgressAndEntry));
+        var entryRun = _simulator.RunToCompletion(entryStart);
+        var entry = _deployment.ResolveEntries(entryRun.State.Units, _entryOrders, _sites);
+
         var interpolationOk = Mathf.IsEqualApprox(VisualInterpolationAlpha(0d), 0f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds / 2d), 0.5f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds), 1f)
@@ -520,13 +613,14 @@ public partial class RenewalMovementTestScene3D : Node3D
         var passed = terrain.State.IsCompleted && terrain.State.Units.All(x => x.Arrived)
             && attackPhases == 7 && completedDays == 7
             && distances[0] < distances[1] && distances[1] < distances[2]
-            && blocked == 2 && _tokens.Count == 4
+            && blocked == 2 && _tokens.Count == 5
+            && entry.Transfers.Count == 2 && entry.FieldUnits.Count == 0
             && interpolationOk
             && _tokens.Values.All(x => Mathf.IsEqualApprox(
                 x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
-        GD.Print($"[renewal-movement-auto] passed={passed} cases=3 terrain_arrived="
+        GD.Print($"[renewal-movement-auto] passed={passed} cases=4 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
-            + $"enemy_blocked={blocked} interpolation={interpolationOk} "
+            + $"enemy_blocked={blocked} entries={entry.Transfers.Count} interpolation={interpolationOk} "
             + $"march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);
     }
