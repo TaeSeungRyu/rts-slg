@@ -7,7 +7,7 @@ using SanguoSLG.Core.Spatial;
 
 /// <summary>
 /// Phase 18D 독립 검수장. 캠페인과 분리하여 고정 틱 이동과 하루 단계 전이를 확인한다.
-/// 3단계까지 지형 경로·아군 분산·적/건물 연속 충돌을 연결했다.
+/// 5단계까지 지형·거점 이동과 행군/전진/공격 목표 생명주기를 연결했다.
 /// </summary>
 public partial class RenewalMovementTestScene3D : Node3D
 {
@@ -17,6 +17,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         MovementSpeed,
         Collision,
         EgressAndEntry,
+        OrderLifecycle,
     }
 
     private static readonly HexCoord StartHex = new(1, 3);
@@ -264,7 +265,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         panel.AddChild(box);
         box.AddChild(MakeLabel("Phase 18D — 연속 이동 검수장", 20,
             new Color(0.92f, 0.73f, 0.34f)));
-        box.AddChild(MakeLabel("4단계 · 연속 이동 / 충돌 / 성·항구 출격·입성", 13,
+        box.AddChild(MakeLabel("5단계 · 이동 / 거점 / 행군·전진·공격 목표", 13,
             new Color(0.72f, 0.76f, 0.82f)));
 
         _scenarioSelector = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -273,6 +274,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         _scenarioSelector.AddItem("2. 이동속도 1·2·3 비교");
         _scenarioSelector.AddItem("3. 아군 중첩·적군 충돌");
         _scenarioSelector.AddItem("4. 성·항구 출격·입성·복귀");
+        _scenarioSelector.AddItem("5. 행군·전진·공격 목표 생명주기");
         _scenarioSelector.ItemSelected += index =>
         {
             _scenario = (QaScenario)index;
@@ -390,6 +392,9 @@ public partial class RenewalMovementTestScene3D : Node3D
                 RenewalAdvanceEventKind.UnitArrived => $"{entry.Unit} 목적지 도착",
                 RenewalAdvanceEventKind.UnitDispersed => $"{entry.Unit} 목적지 근처 분산 완료",
                 RenewalAdvanceEventKind.UnitBlocked => $"{entry.Unit} 이동 대기: {entry.StopReason}",
+                RenewalAdvanceEventKind.TargetAcquired => $"{entry.Unit} → {entry.Target} 추격 시작",
+                RenewalAdvanceEventKind.TargetLost => $"{entry.Unit} → {entry.Target} 목표 상실",
+                RenewalAdvanceEventKind.OrderCompleted => $"{entry.Unit} 명령 완료 · 대기",
                 _ => entry.Kind.ToString(),
             });
         }
@@ -436,7 +441,9 @@ public partial class RenewalMovementTestScene3D : Node3D
         _status.Text = $"날짜  {_state.Day}/7    단계  {PhaseName(_state.Phase)}\n"
             + $"이동 틱  {_state.MovementTick}/50    {ScenarioName(_scenario)}\n"
             + string.Join("  ", _state.Units.Select(x =>
-                $"{x.Id}:{x.StopReason}{(x.Arrived ? "·도착" : string.Empty)}"));
+                $"{x.Id}:{ModeName(x.Mode)}:{x.StopReason}"
+                + $"{(x.PursuitTarget is { } pursuit ? $"→{pursuit}" : string.Empty)}"
+                + $"{(x.AssignedTarget is { } assigned ? $"◎{assigned}" : string.Empty)}"));
         _playButton.Text = _playing ? "일시정지" : _state.IsCompleted ? "다시 시작" : "자동 재생";
         _log.Text = string.Join('\n', _logs.TakeLast(9));
     }
@@ -519,6 +526,28 @@ public partial class RenewalMovementTestScene3D : Node3D
                 Make(2, 1, new HexCoord(1, 5), new HexCoord(7, 5), 3),
                 Make(4, 2, new HexCoord(4, 5), new HexCoord(4, 5), 0),
             ],
+            QaScenario.OrderLifecycle =>
+            [
+                Make(1, 1, new HexCoord(1, 1), new HexCoord(8, 1), 2) with
+                    { Mode = RenewalOrderMode.March },
+                Make(2, 1, new HexCoord(1, 4), new HexCoord(8, 4), 2) with
+                {
+                    Mode = RenewalOrderMode.Advance,
+                    OriginalDestination = RenewalHexSpace.Center(new HexCoord(8, 4)),
+                },
+                Make(3, 1, new HexCoord(1, 7), new HexCoord(7, 7), 2) with
+                {
+                    Mode = RenewalOrderMode.Attack,
+                    AssignedTarget = RenewalTargetId.ForUnit(new UnitId(6)),
+                    LastKnownTargetPosition = RenewalHexSpace.Center(new HexCoord(6, 7)),
+                },
+                Make(6, 2, new HexCoord(6, 7), new HexCoord(6, 7), 0) with
+                    { Mode = RenewalOrderMode.Standby },
+                Make(7, 2, new HexCoord(3, 4), new HexCoord(3, 4), 0) with
+                    { Mode = RenewalOrderMode.Standby },
+                Make(8, 2, new HexCoord(3, 2), new HexCoord(3, 2), 0) with
+                    { Mode = RenewalOrderMode.Standby },
+            ],
             _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
         };
     }
@@ -529,6 +558,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         QaScenario.MovementSpeed => "이동속도 비교",
         QaScenario.Collision => "아군 중첩·적군 충돌",
         QaScenario.EgressAndEntry => "성·항구 출격·입성·복귀",
+        QaScenario.OrderLifecycle => "행군·전진·공격 목표 생명주기",
         _ => scenario.ToString(),
     };
 
@@ -604,6 +634,15 @@ public partial class RenewalMovementTestScene3D : Node3D
         _ => phase.ToString(),
     };
 
+    private static string ModeName(RenewalOrderMode mode) => mode switch
+    {
+        RenewalOrderMode.Standby => "대기",
+        RenewalOrderMode.March => "행군",
+        RenewalOrderMode.Advance => "전진",
+        RenewalOrderMode.Attack => "공격",
+        _ => mode.ToString(),
+    };
+
     private void RunAutoQa()
     {
         var archerProbe = new UnitController3D { ProcessMode = ProcessModeEnum.Disabled };
@@ -675,6 +714,16 @@ public partial class RenewalMovementTestScene3D : Node3D
         var entryRun = _simulator.RunToCompletion(entryStart);
         var entry = _deployment.ResolveEntries(entryRun.State.Units, _entryOrders, _sites);
 
+        var modeTick = _simulator.StepMovementTick(
+            _simulator.Start(BuildScenarioUnits(QaScenario.OrderLifecycle)));
+        var march = modeTick.State.Units.Single(x => x.Id.Value == 1);
+        var advance = modeTick.State.Units.Single(x => x.Id.Value == 2);
+        var attack = modeTick.State.Units.Single(x => x.Id.Value == 3);
+        var modeLifecycle = march.PursuitTarget is null
+            && advance.PursuitTarget == RenewalTargetId.ForUnit(new UnitId(7))
+            && attack.AssignedTarget == RenewalTargetId.ForUnit(new UnitId(6))
+            && attack.PursuitTarget is null;
+
         var interpolationOk = Mathf.IsEqualApprox(VisualInterpolationAlpha(0d), 0f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds / 2d), 0.5f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds), 1f)
@@ -696,14 +745,15 @@ public partial class RenewalMovementTestScene3D : Node3D
         var passed = terrain.State.IsCompleted && terrain.State.Units.All(x => x.Arrived)
             && attackPhases == 7 && completedDays == 7
             && distances[0] < distances[1] && distances[1] < distances[2]
-            && blocked == 2 && _tokens.Count == 5
+            && blocked == 2 && _tokens.Count >= 8
             && entry.Transfers.Count == 2 && entry.FieldUnits.Count == 0
+            && modeLifecycle
             && interpolationOk && shadowStable && marchPoseStable && scaledCasterCheck && archerPoseOk
             && _tokens.Values.All(x => Mathf.IsEqualApprox(
                 x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
-        GD.Print($"[renewal-movement-auto] passed={passed} cases=4 terrain_arrived="
+        GD.Print($"[renewal-movement-auto] passed={passed} cases=5 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
-            + $"enemy_blocked={blocked} entries={entry.Transfers.Count} interpolation={interpolationOk} "
+            + $"enemy_blocked={blocked} entries={entry.Transfers.Count} modes={modeLifecycle} interpolation={interpolationOk} "
             + $"archer_pose={archerPoseOk} scaled_casters={scaledCasterCheck} shadow_settings_valid={shadowStable} march_pose_contract={marchPoseStable} "
             + $"march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);

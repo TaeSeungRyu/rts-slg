@@ -16,7 +16,19 @@ public sealed record RenewalUnitState(
     int PathIndex = 0,
     int MovementRemainder = 0,
     RenewalStopReason StopReason = RenewalStopReason.None,
-    ContinuousPosition? ArrivalPosition = null)
+    ContinuousPosition? ArrivalPosition = null,
+    RenewalOrderMode Mode = RenewalOrderMode.March,
+    ContinuousPosition? OriginalDestination = null,
+    IReadOnlyList<ContinuousPosition>? OriginalWaypoints = null,
+    int OriginalWaypointIndex = 0,
+    RenewalTargetId? AssignedTarget = null,
+    RenewalTargetId? PursuitTarget = null,
+    ContinuousPosition? LastKnownTargetPosition = null,
+    int DetectionRange = 3,
+    int AttackRange = 1,
+    bool IsActive = true,
+    bool IsVisible = true,
+    long CommandId = 0)
 {
     public static RenewalUnitState Create(UnitId id, ContinuousPosition position,
         ContinuousPosition destination, int movementPerDay)

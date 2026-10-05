@@ -19,7 +19,8 @@ public sealed class RenewalAdvanceSimulator
     public RenewalAdvanceSimulator(RenewalMovementMap? movementMap = null) =>
         _movementMap = movementMap;
 
-    public RenewalAdvanceState Start(IEnumerable<RenewalUnitState> units)
+    public RenewalAdvanceState Start(IEnumerable<RenewalUnitState> units,
+        IEnumerable<RenewalTargetState>? externalTargets = null)
     {
         var ordered = AssignArrivalPositions(units.OrderBy(unit => unit.Id.Value).ToList())
             .Select(PreparePath)
@@ -29,7 +30,8 @@ public sealed class RenewalAdvanceSimulator
             throw new ArgumentException("부대 ID는 중복될 수 없습니다.", nameof(units));
         }
 
-        return new RenewalAdvanceState(1, RenewalAdvancePhase.Movement, 0, ordered);
+        return new RenewalAdvanceState(1, RenewalAdvancePhase.Movement, 0, ordered,
+            externalTargets?.OrderBy(x => x.Id.Kind).ThenBy(x => x.Id.Value).ToList());
     }
 
     public RenewalStepResult StepMovementTick(RenewalAdvanceState state)
@@ -40,12 +42,14 @@ public sealed class RenewalAdvanceSimulator
         }
 
         var events = new List<RenewalAdvanceEvent>();
+        var reconciled = ReconcileOrders(state.Units, state.ExternalTargets,
+            state.Day, state.MovementTick + 1, events);
         var nextUnits = new List<RenewalUnitState>(state.Units.Count);
         var nextTick = state.MovementTick + 1;
-        foreach (var unit in state.Units.OrderBy(unit => unit.Id.Value))
+        foreach (var unit in reconciled.OrderBy(unit => unit.Id.Value))
         {
             var resolved = nextUnits.ToDictionary(x => x.Id);
-            var collisionSnapshot = state.Units
+            var collisionSnapshot = reconciled
                 .Select(x => resolved.TryGetValue(x.Id, out var updated) ? updated : x)
                 .ToList();
             var moved = MoveOneTick(unit, collisionSnapshot);
@@ -62,6 +66,9 @@ public sealed class RenewalAdvanceSimulator
                     ? RenewalAdvanceEventKind.UnitArrived
                     : RenewalAdvanceEventKind.UnitDispersed;
                 events.Add(new RenewalAdvanceEvent(kind,
+                    state.Day, RenewalAdvancePhase.Movement, nextTick, unit.Id,
+                    unit.Position, moved.Position));
+                events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.OrderCompleted,
                     state.Day, RenewalAdvancePhase.Movement, nextTick, unit.Id,
                     unit.Position, moved.Position));
             }
@@ -231,7 +238,9 @@ public sealed class RenewalAdvanceSimulator
     private RenewalUnitState MoveOneTick(RenewalUnitState unit,
         IReadOnlyList<RenewalUnitState> allUnits)
     {
-        if (unit.Arrived || unit.MovementPerDay == 0 || unit.StopReason == RenewalStopReason.NoPath)
+        if (!unit.IsActive || unit.Mode == RenewalOrderMode.Standby || unit.Arrived
+            || unit.MovementPerDay == 0
+            || unit.StopReason is RenewalStopReason.NoPath or RenewalStopReason.TargetInRange)
         {
             return unit;
         }
@@ -318,14 +327,217 @@ public sealed class RenewalAdvanceSimulator
         return RenewalStopReason.None;
     }
 
-    private static RenewalUnitState ReachWaypoint(RenewalUnitState unit, ContinuousPosition target)
+    private RenewalUnitState ReachWaypoint(RenewalUnitState unit, ContinuousPosition target)
     {
         if (unit.Path is { Count: > 0 } && unit.PathIndex + 1 < unit.Path.Count)
         {
             return unit with { Position = target, PathIndex = unit.PathIndex + 1 };
         }
-        return unit with { Position = unit.ArrivalPosition ?? unit.Destination, Arrived = true };
+        if (unit.Mode is RenewalOrderMode.March or RenewalOrderMode.Advance
+            && unit.PursuitTarget is null
+            && unit.OriginalWaypoints is { Count: > 0 } waypoints
+            && unit.OriginalWaypointIndex < waypoints.Count
+            && unit.Destination == waypoints[unit.OriginalWaypointIndex])
+        {
+            var nextIndex = unit.OriginalWaypointIndex + 1;
+            var nextDestination = nextIndex < waypoints.Count
+                ? waypoints[nextIndex]
+                : unit.OriginalDestination ?? unit.Destination;
+            return Retarget(unit with
+            {
+                Position = target,
+                OriginalWaypointIndex = nextIndex,
+                Path = null,
+                PathIndex = 0,
+            }, nextDestination);
+        }
+
+        return unit with
+        {
+            Position = unit.ArrivalPosition ?? unit.Destination,
+            Arrived = true,
+            Mode = RenewalOrderMode.Standby,
+            PursuitTarget = null,
+            StopReason = unit.StopReason == RenewalStopReason.TargetLost
+                ? RenewalStopReason.TargetLost
+                : RenewalStopReason.None,
+        };
     }
+
+    private IReadOnlyList<RenewalUnitState> ReconcileOrders(
+        IReadOnlyList<RenewalUnitState> units,
+        IReadOnlyList<RenewalTargetState>? externalTargets, int day, int movementTick,
+        ICollection<RenewalAdvanceEvent> events)
+    {
+        var snapshot = units.OrderBy(x => x.Id.Value).ToList();
+        var targets = snapshot.Select(ToTarget)
+            .Concat(externalTargets ?? Array.Empty<RenewalTargetState>())
+            .OrderBy(x => x.Id.Kind).ThenBy(x => x.Id.Value).ToList();
+        return snapshot.Select(unit => ReconcileOrder(unit, targets, day, movementTick, events))
+            .ToList();
+    }
+
+    private RenewalUnitState ReconcileOrder(RenewalUnitState unit,
+        IReadOnlyList<RenewalTargetState> targets, int day, int movementTick,
+        ICollection<RenewalAdvanceEvent> events)
+    {
+        if (!unit.IsActive || unit.Mode is RenewalOrderMode.Standby or RenewalOrderMode.March)
+        {
+            return unit;
+        }
+
+        if (unit.Mode == RenewalOrderMode.Advance)
+        {
+            var current = FindHostile(targets, unit, unit.PursuitTarget);
+            if (current is not null && IsVisibleTo(unit, current))
+            {
+                return FollowTarget(unit, current);
+            }
+
+            if (unit.PursuitTarget is not null)
+            {
+                events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.TargetLost,
+                    day, RenewalAdvancePhase.Movement, movementTick, unit.Id,
+                    unit.Position, NextOriginalDestination(unit),
+                    RenewalStopReason.TargetLost, unit.PursuitTarget));
+                return Retarget(unit with
+                {
+                    PursuitTarget = null,
+                    LastKnownTargetPosition = null,
+                    StopReason = RenewalStopReason.None,
+                }, NextOriginalDestination(unit));
+            }
+
+            var acquired = targets
+                .Where(candidate => IsHostile(unit, candidate) && IsVisibleTo(unit, candidate))
+                .OrderBy(candidate => unit.Position.DistanceSquaredTo(candidate.Position))
+                .ThenBy(candidate => candidate.SelectionOrder)
+                .ThenBy(candidate => candidate.Id.Kind)
+                .ThenBy(candidate => candidate.Id.Value)
+                .FirstOrDefault();
+            if (acquired is not null)
+            {
+                events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.TargetAcquired,
+                    day, RenewalAdvancePhase.Movement, movementTick, unit.Id,
+                    unit.Position, acquired.Position, Target: acquired.Id));
+                return FollowTarget(unit with { PursuitTarget = acquired.Id }, acquired);
+            }
+
+            return Retarget(unit with
+            {
+                PursuitTarget = null,
+                LastKnownTargetPosition = null,
+                StopReason = RenewalStopReason.None,
+            }, NextOriginalDestination(unit));
+        }
+
+        var assigned = FindHostile(targets, unit, unit.AssignedTarget);
+        if (assigned is not null && IsVisibleTo(unit, assigned))
+        {
+            return FollowTarget(unit, assigned);
+        }
+
+        if (assigned is null)
+        {
+            if (unit.AssignedTarget is not null)
+            {
+                events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.TargetLost,
+                    day, RenewalAdvancePhase.Movement, movementTick, unit.Id,
+                    unit.Position, unit.Position, RenewalStopReason.TargetLost,
+                    unit.AssignedTarget));
+            }
+            return ToStandby(unit, RenewalStopReason.TargetLost);
+        }
+
+        if (unit.LastKnownTargetPosition is not { } lastKnown)
+        {
+            return ToStandby(unit, RenewalStopReason.TargetLost);
+        }
+        var lastKnownReached = unit.Position.DistanceTo(lastKnown) <= ArrivalTolerance
+            || unit.StopReason == RenewalStopReason.EnemyBlocked;
+        if (lastKnownReached)
+        {
+            events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.TargetLost,
+                day, RenewalAdvancePhase.Movement, movementTick, unit.Id,
+                unit.Position, lastKnown, RenewalStopReason.TargetLost, unit.AssignedTarget));
+            return ToStandby(unit, RenewalStopReason.TargetLost);
+        }
+        return Retarget(unit with { StopReason = RenewalStopReason.TargetLost }, lastKnown);
+    }
+
+    private RenewalUnitState FollowTarget(RenewalUnitState unit, RenewalTargetState target)
+    {
+        var range = Math.Max(0, unit.AttackRange) * ContinuousPosition.UnitsPerTile;
+        if (unit.Position.DistanceTo(target.Position) <= range)
+        {
+            return unit with
+            {
+                Destination = target.Position,
+                LastKnownTargetPosition = target.Position,
+                Arrived = false,
+                StopReason = RenewalStopReason.TargetInRange,
+            };
+        }
+        return Retarget(unit with
+        {
+            LastKnownTargetPosition = target.Position,
+            StopReason = RenewalStopReason.None,
+        }, target.Position);
+    }
+
+    private RenewalUnitState Retarget(RenewalUnitState unit, ContinuousPosition destination)
+    {
+        if (unit.Destination == destination && unit.Path is not null && !unit.Arrived)
+        {
+            return unit;
+        }
+        return PreparePath(unit with
+        {
+            Destination = destination,
+            ArrivalPosition = null,
+            Arrived = false,
+            Path = null,
+            PathIndex = 0,
+        });
+    }
+
+    private static ContinuousPosition NextOriginalDestination(RenewalUnitState unit)
+    {
+        if (unit.OriginalWaypoints is { Count: > 0 } waypoints
+            && unit.OriginalWaypointIndex < waypoints.Count)
+        {
+            return waypoints[unit.OriginalWaypointIndex];
+        }
+        return unit.OriginalDestination ?? unit.Destination;
+    }
+
+    private static RenewalUnitState ToStandby(RenewalUnitState unit, RenewalStopReason reason) =>
+        unit with
+        {
+            Mode = RenewalOrderMode.Standby,
+            PursuitTarget = null,
+            Arrived = true,
+            StopReason = reason,
+            Path = null,
+            PathIndex = 0,
+        };
+
+    private static RenewalTargetState? FindHostile(IReadOnlyList<RenewalTargetState> targets,
+        RenewalUnitState observer, RenewalTargetId? target) => target is not { } targetId
+        ? null
+        : targets.FirstOrDefault(candidate => candidate.Id == targetId && IsHostile(observer, candidate));
+
+    private static bool IsHostile(RenewalUnitState observer, RenewalTargetState candidate) =>
+        candidate.Id != RenewalTargetId.ForUnit(observer.Id)
+        && candidate.IsActive && candidate.Owner != observer.Owner;
+
+    private static bool IsVisibleTo(RenewalUnitState observer, RenewalTargetState candidate) =>
+        candidate.IsVisible && observer.Position.DistanceTo(candidate.Position)
+            <= Math.Max(0, observer.DetectionRange) * ContinuousPosition.UnitsPerTile;
+
+    private static RenewalTargetState ToTarget(RenewalUnitState unit) => new(
+        RenewalTargetId.ForUnit(unit.Id), unit.Owner, unit.Position, unit.IsActive,
+        unit.IsVisible, unit.CommandId);
 
     private IReadOnlyList<RenewalUnitState> AssignArrivalPositions(IReadOnlyList<RenewalUnitState> units)
     {

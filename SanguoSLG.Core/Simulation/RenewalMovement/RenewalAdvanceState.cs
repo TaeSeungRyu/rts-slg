@@ -5,7 +5,8 @@ public sealed record RenewalAdvanceState(
     int Day,
     RenewalAdvancePhase Phase,
     int MovementTick,
-    IReadOnlyList<RenewalUnitState> Units)
+    IReadOnlyList<RenewalUnitState> Units,
+    IReadOnlyList<RenewalTargetState>? ExternalTargets = null)
 {
     public bool IsCompleted => Phase == RenewalAdvancePhase.Completed;
 }

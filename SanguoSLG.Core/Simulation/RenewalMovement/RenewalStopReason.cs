@@ -7,4 +7,6 @@ public enum RenewalStopReason
     TerrainBlocked,
     BuildingBlocked,
     EnemyBlocked,
+    TargetInRange,
+    TargetLost,
 }
