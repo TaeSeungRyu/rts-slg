@@ -21,6 +21,7 @@ public partial class RenewalMovementTestScene3D : Node3D
     private static readonly HexCoord StartHex = new(1, 3);
     private static readonly HexCoord DestinationHex = new(7, 3);
     private const double PhasePresentationSeconds = 0.35;
+    private const float RenewalMarchSpeedScale = 0.42f;
 
     private RenewalAdvanceSimulator _simulator = null!;
     private readonly List<string> _logs = [];
@@ -373,6 +374,7 @@ public partial class RenewalMovementTestScene3D : Node3D
                 ? new Color(0.86f, 0.22f, 0.18f)
                 : new Color(0.18f, 0.43f, 0.90f);
             token.InitDisplay(_map, color, troopIndex, StartHex);
+            token.SetDisplayMarchSpeedScale(RenewalMarchSpeedScale);
             token.TintFormation(color, 0.40f);
             _tokens[unit.Id.Value] = token;
             _visualTargets[unit.Id.Value] = token.Position;
@@ -487,10 +489,12 @@ public partial class RenewalMovementTestScene3D : Node3D
         var passed = terrain.State.IsCompleted && terrain.State.Units.All(x => x.Arrived)
             && attackPhases == 7 && completedDays == 7
             && distances[0] < distances[1] && distances[1] < distances[2]
-            && blocked == 2 && _tokens.Count == 4;
+            && blocked == 2 && _tokens.Count == 4
+            && _tokens.Values.All(x => Mathf.IsEqualApprox(
+                x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
         GD.Print($"[renewal-movement-auto] passed={passed} cases=3 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
-            + $"enemy_blocked={blocked}");
+            + $"enemy_blocked={blocked} march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }

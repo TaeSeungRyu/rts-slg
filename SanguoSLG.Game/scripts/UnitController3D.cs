@@ -37,6 +37,7 @@ public partial class UnitController3D : Node3D
     // 표시 모드: 입력·길찾기 없이 외부(이동 시뮬 하베스트)가 위치·공격만 구동한다.
     // 정규 조작 유닛은 false — 이 플래그가 켜진 쪽만 입력/호버를 끈다.
     private bool _display;
+    private float _displayMarchSpeedScale = 1f;
     private bool _nativeSupply;
     private readonly List<AnimationPlayer> _nativeAnimations = new();
     private Node3D? _nativeSupplyCamp;
@@ -322,6 +323,17 @@ public partial class UnitController3D : Node3D
         PlayNativeSupplyAnimation(moving ? "state_move" : "state_camp");
     }
 
+    /// <summary>
+    /// 독립 검수장처럼 외부가 연속 위치를 공급하는 표시 모드의 보행 주기만 조절한다.
+    /// 정규 캠페인 유닛과 실제 이동속도에는 영향을 주지 않는다.
+    /// </summary>
+    public void SetDisplayMarchSpeedScale(float scale)
+    {
+        _displayMarchSpeedScale = Mathf.Clamp(scale, 0.1f, 2f);
+    }
+
+    public float DisplayMarchSpeedScale => _displayMarchSpeedScale;
+
     /// <summary>표시 모드: 한 칸을 실제 행군 모션과 함께 이동한다.</summary>
     public void DisplayStepTo(HexCoord to, float seconds)
     {
@@ -503,6 +515,10 @@ public partial class UnitController3D : Node3D
         var elephant = _motion == MotionKind.Elephant;
         var ship = _motion == MotionKind.Ship;
         var stride = cavalry ? 16f : elephant ? 9f : ship ? 6f : MarchRadiansPerUnit;
+        if (_display)
+        {
+            stride *= _displayMarchSpeedScale;
+        }
         var bob = cavalry ? 0.022f : elephant ? 0.010f : siege ? 0.003f : ship ? 0.004f : 0.012f;
         var pitch = cavalry ? 0.09f : elephant ? 0.045f : ship ? 0.030f : 0f;
 

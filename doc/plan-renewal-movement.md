@@ -393,6 +393,7 @@ git diff --check
 | 3단계 / 2026-10-05 | `RenewalHexSpace`, `RenewalMovementMap`, 경로·감속·쓸기 충돌·도착 분산, 검수장 2부대 우회/분산 표시 | Core 평면 원본과 파생 Hex 분리, 아군 비장애물·적/건물 차단, 육해상 분리, 빠른 상호 접근 순서 고정 | Phase 18D 관련 xUnit 22/22, Game 빌드 경고·오류 0, Godot 자동 QA `passed=True days=7 attacks=7 arrived=2 distinct=2`; 전체 Core 1196 통과·2단계와 같은 기존 5건 실패 | 4단계 성/항구 출격·입성 어댑터. 캠페인/전투는 미연결 | 이 단계 커밋 참조 |
 | 3단계 시각 검수 보강 / 2026-10-05 | `UnitController3D.DisplayContinuousAt`, 검수장 도검병·기병 실제 에셋 | Core 위치를 화면에서만 보간하고 기존 행군 자세·세력색 재사용, 초기화 시 즉시 원위치 | Game 빌드 경고·오류 0, Godot verbose에서 `troop-swordsman.glb`·`troop-cavalry.glb` 로드 및 자동 QA 통과 | 실제 이동 손맛은 `run-renewal-movement.bat`으로 사용자 확인 | 이 단계 보강 커밋 참조 |
 | 3단계 검수 사례 분리 / 2026-10-05 | 검수장 시나리오 선택기와 `지형 경로·건물 우회`/`이동속도 1·2·3`/`아군 중첩·적군 충돌` | 한 혼합 장면이 아니라 요구사항별 실제 에셋 동작을 독립 재현 | Game 빌드 경고·오류 0, Godot 자동 QA `passed=True cases=3 terrain_arrived=1 speed=999/2013/3004 enemy_blocked=2` | 사용자가 시나리오별 이동 모습 확인 | 이 단계 검수 보강 커밋 참조 |
+| 3단계 보행 연출 보정 / 2026-10-05 | `UnitController3D.SetDisplayMarchSpeedScale`, 검수장 보행 배율 0.42 | 실제 이동속도·Core 결과는 유지하고 독립 검수장 에셋의 발동작 주기만 42%로 완화 | Game 빌드, Godot 자동 QA의 `march_scale=0.42` 검증 | 사용자 육안으로 느린 이동과 보폭 조화 확인 | 이 단계 보강 커밋 참조 |
 
 실제 단계 기록에는 '성공' 한 단어만 적지 말고 검증한 시나리오/테스트 수와 미실시 항목을 적는다. 커밋 후 해시는 다음 문서 갱신에서 보완하거나 커밋 메시지로 연결한다. 실패한 명령은 해결 후 재실행하고, 푸시 실패는 완료로 숨기지 않는다. 기존 변경을 파괴하는 초기화로 재개하지 않는다.
 
