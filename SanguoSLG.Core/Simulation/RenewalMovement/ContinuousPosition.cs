@@ -14,4 +14,6 @@ public readonly record struct ContinuousPosition(long X, long Y)
         var dy = other.Y - Y;
         return checked(dx * dx + dy * dy);
     }
+
+    public long DistanceTo(ContinuousPosition other) => IntegerMath.SquareRoot(DistanceSquaredTo(other));
 }

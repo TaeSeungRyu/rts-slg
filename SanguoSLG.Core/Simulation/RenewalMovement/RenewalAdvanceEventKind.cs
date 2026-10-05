@@ -4,6 +4,9 @@ namespace SanguoSLG.Core.Simulation.RenewalMovement;
 public enum RenewalAdvanceEventKind
 {
     UnitMoved,
+    UnitArrived,
+    UnitBlocked,
+    UnitDispersed,
     PhaseChanged,
     DayCompleted,
     AdvanceCompleted,

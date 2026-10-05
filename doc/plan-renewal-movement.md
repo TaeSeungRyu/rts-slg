@@ -1,7 +1,7 @@
 # 연속 이동·이동턴/공격턴 개편 계획
 
 작성일: 2026-10-04. 소속: [v2 로드맵 Phase 18D](./plan-v2-implementation-roadmap.md).
-상태: **Phase 18D 2/12단계 완료. 계약과 독립 진행기·검수장 골격 구현, 캠페인 미연결.**
+상태: **Phase 18D 3/12단계 완료. Core 연속 경로·지형·충돌과 검수장 표시 구현, 캠페인 미연결.**
 
 새 작업자는 [에이전트 시작 안내](../AGENTS.md)를 읽고, 이 문서 §14의 결정 목록과 §15의 단계별 실행 인계를 확인한다. §3의 확정 계약과 제안 API는 구현 완료를 의미하지 않는다. 5.6 sol을 포함한 다른 모델에 인계할 때도 같은 기준을 사용한다.
 
@@ -336,7 +336,7 @@ D01~D07은 §14에서 모두 확정되었다. 후속 단계는 해당 결정을 
 |---:|---|---|
 | 1 | §3·§14·이 표, `Simulation/FieldUnit.cs`, `AdvanceOrchestrator.cs`, `UnitCombatState.cs` 조사 | 좌표 원본·사거리 단위·날짜/단계 순서·미정 결정의 근거가 남음 |
 | 2 | `Simulation/RenewalMovement/*`, `RenewalMovementTest.tscn`, `run-renewal-movement.bat` | 초기화→이동→공격→하루 종료, 적 없어도 단계 유지, 7일 후 정지, 30/60/144FPS 동일 결과 — **완료** |
-| 3 | Core 경로/충돌/지형 조회, 공간 좌표 어댑터 | 아군 겹침·분산, 적/건물 관통 금지, 빠른 이동 구간 전체 검사 |
+| 3 | `RenewalHexSpace`, `RenewalMovementMap`, 연속 경로/충돌/지형 조회 | 아군 겹침·분산, 적/건물 관통 금지, 빠른 이동 구간 전체 검사 — **완료** |
 | 4 | `DeploymentEgressController`/`DeploymentEgressRules` 참조, 신규 출격/입성 어댑터 | 성 3규모·6방향, 항구 육해상, 예약/지연/입성 중복 없음 |
 | 5 | `FieldUnitCommandService` 참조, 신규 모드별 목표 상태 | 행군 사거리 무시, 전진 추격/복귀, 공격 대상 ID 고정, 두 번째 예약 1회 적용 |
 | 6 | `CombatPhaseResolver`/`CombatPhase` 참조, 공격턴 묶음/공성 참여권 | 사거리 이탈 무피해, 잔류 유효 교전, 반격 중복 없음, 공격 후 즉시 점령 |
@@ -390,6 +390,7 @@ git diff --check
 | 문서 인계 점검 / 2026-10-04 | 코드 구현 없음 | 결정 관리·산출물·QA·재개 기준 보강 | 문서 검증만 수행 | Phase 18D 0/12 유지 | 해당 docs 커밋 참조 |
 | 1단계 / 2026-10-05 | 코드 구현 없음, §3·§6·§14 및 로드맵 갱신 | D01~D07 확정, 현행 코드 진입점 조사 | 로컬 링크·15개 요구·12단계 번호·모순·`git diff --check` 검사 | 2단계 Core 단계 진행기와 독립 검수장 골격 | 이 단계 커밋 참조 |
 | 2단계 / 2026-10-05 | `ContinuousPosition`, `RenewalAdvanceSimulator`, `RenewalFixedStepClock`, 독립 TSCN/BAT | 하루 50틱·5단계·7일 상태기계, 화면 프레임과 논리 틱 분리 | 신규 xUnit 8/8, Game 빌드, Godot 자동 QA `passed=True days=7 attacks=7`; 전체 Core 1182 통과·기존 데이터/테스트 5 실패, 솔루션은 기존 Sandbox 포로 API 3건 실패 | 3단계 지형 경로·속도·충돌. 캠페인/전투는 미연결 | 이 단계 커밋 참조 |
+| 3단계 / 2026-10-05 | `RenewalHexSpace`, `RenewalMovementMap`, 경로·감속·쓸기 충돌·도착 분산, 검수장 2부대 우회/분산 표시 | Core 평면 원본과 파생 Hex 분리, 아군 비장애물·적/건물 차단, 육해상 분리, 빠른 상호 접근 순서 고정 | Phase 18D 관련 xUnit 22/22, Game 빌드 경고·오류 0, Godot 자동 QA `passed=True days=7 attacks=7 arrived=2 distinct=2`; 전체 Core 1196 통과·2단계와 같은 기존 5건 실패 | 4단계 성/항구 출격·입성 어댑터. 캠페인/전투는 미연결 | 이 단계 커밋 참조 |
 
 실제 단계 기록에는 '성공' 한 단어만 적지 말고 검증한 시나리오/테스트 수와 미실시 항목을 적는다. 커밋 후 해시는 다음 문서 갱신에서 보완하거나 커밋 메시지로 연결한다. 실패한 명령은 해결 후 재실행하고, 푸시 실패는 완료로 숨기지 않는다. 기존 변경을 파괴하는 초기화로 재개하지 않는다.
 

@@ -10,4 +10,5 @@ public sealed record RenewalAdvanceEvent(
     int MovementTick,
     UnitId? Unit = null,
     ContinuousPosition? From = null,
-    ContinuousPosition? To = null);
+    ContinuousPosition? To = null,
+    RenewalStopReason StopReason = RenewalStopReason.None);

@@ -11,10 +11,19 @@ public sealed class RenewalAdvanceSimulator
     public const int MovementTicksPerDay = 50;
     public const int DaysPerAdvance = 7;
     public const long ArrivalTolerance = 50;
+    public const long UnitCollisionRadius = 180;
+    public const long ArrivalDispersionLimit = 500;
+
+    private readonly RenewalMovementMap? _movementMap;
+
+    public RenewalAdvanceSimulator(RenewalMovementMap? movementMap = null) =>
+        _movementMap = movementMap;
 
     public RenewalAdvanceState Start(IEnumerable<RenewalUnitState> units)
     {
-        var ordered = units.OrderBy(unit => unit.Id.Value).ToList();
+        var ordered = AssignArrivalPositions(units.OrderBy(unit => unit.Id.Value).ToList())
+            .Select(PreparePath)
+            .ToList();
         if (ordered.Select(unit => unit.Id).Distinct().Count() != ordered.Count)
         {
             throw new ArgumentException("부대 ID는 중복될 수 없습니다.", nameof(units));
@@ -35,13 +44,33 @@ public sealed class RenewalAdvanceSimulator
         var nextTick = state.MovementTick + 1;
         foreach (var unit in state.Units.OrderBy(unit => unit.Id.Value))
         {
-            var moved = MoveOneTick(unit);
+            var resolved = nextUnits.ToDictionary(x => x.Id);
+            var collisionSnapshot = state.Units
+                .Select(x => resolved.TryGetValue(x.Id, out var updated) ? updated : x)
+                .ToList();
+            var moved = MoveOneTick(unit, collisionSnapshot);
             nextUnits.Add(moved);
             if (moved.Position != unit.Position)
             {
                 events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.UnitMoved,
                     state.Day, RenewalAdvancePhase.Movement, nextTick, unit.Id,
                     unit.Position, moved.Position));
+            }
+            if (!unit.Arrived && moved.Arrived)
+            {
+                var kind = moved.Position == moved.Destination
+                    ? RenewalAdvanceEventKind.UnitArrived
+                    : RenewalAdvanceEventKind.UnitDispersed;
+                events.Add(new RenewalAdvanceEvent(kind,
+                    state.Day, RenewalAdvancePhase.Movement, nextTick, unit.Id,
+                    unit.Position, moved.Position));
+            }
+            else if (unit.StopReason == RenewalStopReason.None
+                && moved.StopReason != RenewalStopReason.None)
+            {
+                events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.UnitBlocked,
+                    state.Day, RenewalAdvancePhase.Movement, nextTick, unit.Id,
+                    unit.Position, moved.Position, moved.StopReason));
             }
         }
 
@@ -186,63 +215,161 @@ public sealed class RenewalAdvanceSimulator
         return new RenewalStepResult(next, events);
     }
 
-    private static RenewalUnitState MoveOneTick(RenewalUnitState unit)
+    private RenewalUnitState PreparePath(RenewalUnitState unit)
     {
-        if (unit.Arrived || unit.MovementPerDay == 0)
+        if (_movementMap is null || unit.Arrived)
+        {
+            return unit;
+        }
+        var path = _movementMap.FindPath(unit.Domain, unit.Position,
+            unit.ArrivalPosition ?? unit.Destination);
+        return path.Count == 0
+            ? unit with { Path = path, StopReason = RenewalStopReason.NoPath }
+            : unit with { Path = path, PathIndex = 0, StopReason = RenewalStopReason.None };
+    }
+
+    private RenewalUnitState MoveOneTick(RenewalUnitState unit,
+        IReadOnlyList<RenewalUnitState> allUnits)
+    {
+        if (unit.Arrived || unit.MovementPerDay == 0 || unit.StopReason == RenewalStopReason.NoPath)
         {
             return unit;
         }
 
-        var dx = unit.Destination.X - unit.Position.X;
-        var dy = unit.Destination.Y - unit.Position.Y;
-        var distanceSquared = checked(dx * dx + dy * dy);
-        if (distanceSquared <= ArrivalTolerance * ArrivalTolerance)
+        var speedPercent = _movementMap?.SpeedPercentAt(unit.Position, UnitCollisionRadius) ?? 100;
+        var numerator = checked(unit.MovementPerDay * (int)ContinuousPosition.UnitsPerTile
+            * speedPercent + unit.MovementRemainder);
+        var divisor = MovementTicksPerDay * 100;
+        var remaining = (long)(numerator / divisor);
+        var remainder = numerator % divisor;
+        var current = unit with { MovementRemainder = remainder, StopReason = RenewalStopReason.None };
+        while (remaining > 0 && !current.Arrived)
         {
-            return unit with { Position = unit.Destination, Arrived = true };
+            var target = current.Path is { Count: > 0 } && current.PathIndex < current.Path.Count
+                ? current.Path[current.PathIndex]
+                : current.ArrivalPosition ?? current.Destination;
+            var dx = target.X - current.Position.X;
+            var dy = target.Y - current.Position.Y;
+            var distanceSquared = checked(dx * dx + dy * dy);
+            var distance = IntegerMath.SquareRoot(distanceSquared);
+            var finalWaypoint = current.Path is not { Count: > 0 }
+                || current.PathIndex >= current.Path.Count - 1;
+            if (finalWaypoint && distance <= ArrivalTolerance)
+            {
+                current = ReachWaypoint(current, target);
+                continue;
+            }
+
+            var reachesTarget = distance <= remaining;
+            var used = reachesTarget ? distance : remaining;
+            var moveX = reachesTarget ? dx : DivideRounded(checked(dx * used), distance);
+            var moveY = reachesTarget ? dy : DivideRounded(checked(dy * used), distance);
+            if (moveX == 0 && dx != 0)
+            {
+                moveX = Math.Sign(dx);
+            }
+            if (moveY == 0 && dy != 0)
+            {
+                moveY = Math.Sign(dy);
+            }
+
+            var candidate = new ContinuousPosition(current.Position.X + moveX,
+                current.Position.Y + moveY);
+            var collision = _movementMap?.FirstStaticCollision(current.Position, candidate,
+                UnitCollisionRadius, current.Domain) ?? RenewalStopReason.None;
+            if (collision == RenewalStopReason.None)
+            {
+                collision = FirstEnemyCollision(current, candidate, allUnits);
+            }
+            if (collision != RenewalStopReason.None)
+            {
+                return current with { StopReason = collision };
+            }
+
+            current = reachesTarget
+                ? ReachWaypoint(current, target)
+                : current with { Position = candidate };
+            remaining -= used;
         }
 
-        var distance = IntegerSquareRoot(distanceSquared);
-        var step = checked((long)unit.MovementPerDay * ContinuousPosition.UnitsPerTile
-            / MovementTicksPerDay);
-        if (distance <= step)
-        {
-            return unit with { Position = unit.Destination, Arrived = true };
-        }
-
-        var moveX = dx * step / distance;
-        var moveY = dy * step / distance;
-        if (moveX == 0 && dx != 0)
-        {
-            moveX = Math.Sign(dx);
-        }
-        if (moveY == 0 && dy != 0)
-        {
-            moveY = Math.Sign(dy);
-        }
-
-        return unit with
-        {
-            Position = new ContinuousPosition(unit.Position.X + moveX, unit.Position.Y + moveY),
-        };
+        return current;
     }
 
-    private static long IntegerSquareRoot(long value)
+    private static long DivideRounded(long value, long divisor) => value >= 0
+        ? (value + divisor / 2) / divisor
+        : (value - divisor / 2) / divisor;
+
+    private static RenewalStopReason FirstEnemyCollision(RenewalUnitState unit,
+        ContinuousPosition candidate, IReadOnlyList<RenewalUnitState> allUnits)
     {
-        if (value <= 0)
+        foreach (var other in allUnits.OrderBy(x => x.Id.Value))
         {
-            return 0;
+            if (other.Id == unit.Id || other.Owner == unit.Owner)
+            {
+                continue;
+            }
+            if (candidate.DistanceSquaredTo(other.Position) < unit.Position.DistanceSquaredTo(other.Position)
+                && RenewalMovementMap.SegmentTouchesCircle(unit.Position, candidate, other.Position,
+                    UnitCollisionRadius * 2))
+            {
+                return RenewalStopReason.EnemyBlocked;
+            }
+        }
+        return RenewalStopReason.None;
+    }
+
+    private static RenewalUnitState ReachWaypoint(RenewalUnitState unit, ContinuousPosition target)
+    {
+        if (unit.Path is { Count: > 0 } && unit.PathIndex + 1 < unit.Path.Count)
+        {
+            return unit with { Position = target, PathIndex = unit.PathIndex + 1 };
+        }
+        return unit with { Position = unit.ArrivalPosition ?? unit.Destination, Arrived = true };
+    }
+
+    private IReadOnlyList<RenewalUnitState> AssignArrivalPositions(IReadOnlyList<RenewalUnitState> units)
+    {
+        if (_movementMap is null)
+        {
+            return units;
         }
 
-        var root = (long)Math.Sqrt(value);
-        while (checked((root + 1) * (root + 1)) <= value)
+        var result = new List<RenewalUnitState>(units.Count);
+        foreach (var group in units.GroupBy(x => x.Destination))
         {
-            root++;
+            var occupied = new List<ContinuousPosition>();
+            foreach (var unit in group.OrderBy(x => x.Id.Value))
+            {
+                var arrival = unit.Destination;
+                if (_movementMap.CanStand(unit.Domain, unit.Destination, UnitCollisionRadius))
+                {
+                    foreach (var candidate in DispersionCandidates(unit.Destination))
+                    {
+                        if (_movementMap.CanStand(unit.Domain, candidate, UnitCollisionRadius)
+                            && occupied.All(existing => existing.DistanceSquaredTo(candidate)
+                                >= checked(UnitCollisionRadius * 2 * UnitCollisionRadius * 2)))
+                        {
+                            arrival = candidate;
+                            break;
+                        }
+                    }
+                }
+                occupied.Add(arrival);
+                result.Add(unit with { ArrivalPosition = arrival });
+            }
         }
-        while (root * root > value)
-        {
-            root--;
-        }
-        return root;
+        return result.OrderBy(x => x.Id.Value).ToList();
+    }
+
+    private static IEnumerable<ContinuousPosition> DispersionCandidates(ContinuousPosition origin)
+    {
+        yield return origin;
+        yield return new ContinuousPosition(origin.X + 433, origin.Y + 250);
+        yield return new ContinuousPosition(origin.X, origin.Y + ArrivalDispersionLimit);
+        yield return new ContinuousPosition(origin.X - 433, origin.Y + 250);
+        yield return new ContinuousPosition(origin.X - 433, origin.Y - 250);
+        yield return new ContinuousPosition(origin.X, origin.Y - ArrivalDispersionLimit);
+        yield return new ContinuousPosition(origin.X + 433, origin.Y - 250);
     }
 
     private static RenewalAdvanceEvent PhaseEvent(RenewalAdvanceState state)
