@@ -21,7 +21,8 @@ public partial class RenewalMovementTestScene3D : Node3D
     private RenewalFixedStepClock _clock;
     private RenewalUnitState[] _initialUnits = [];
     private MapView3D _map = null!;
-    private readonly Dictionary<long, Node3D> _tokens = [];
+    private readonly Dictionary<long, UnitController3D> _tokens = [];
+    private readonly Dictionary<long, Vector3> _visualTargets = [];
     private Label _status = null!;
     private Label _log = null!;
     private Button _playButton = null!;
@@ -43,29 +44,27 @@ public partial class RenewalMovementTestScene3D : Node3D
 
     public override void _Process(double delta)
     {
-        if (!_playing || _state.IsCompleted)
+        if (_playing && !_state.IsCompleted)
         {
-            return;
+            if (_state.Phase == RenewalAdvancePhase.Movement)
+            {
+                var elapsed = Math.Max(0L, (long)Math.Round(delta * 1_000_000d));
+                var result = _simulator.AdvanceElapsed(_state, _clock, elapsed);
+                _state = result.State;
+                _clock = result.Clock;
+                Consume(result.Events);
+            }
+            else
+            {
+                _phaseElapsed += delta;
+                if (_phaseElapsed >= PhasePresentationSeconds)
+                {
+                    _phaseElapsed = 0;
+                    Apply(_simulator.StepPhase(_state));
+                }
+            }
         }
-
-        if (_state.Phase == RenewalAdvancePhase.Movement)
-        {
-            var elapsed = Math.Max(0L, (long)Math.Round(delta * 1_000_000d));
-            var result = _simulator.AdvanceElapsed(_state, _clock, elapsed);
-            _state = result.State;
-            _clock = result.Clock;
-            Consume(result.Events);
-            return;
-        }
-
-        _phaseElapsed += delta;
-        if (_phaseElapsed < PhasePresentationSeconds)
-        {
-            return;
-        }
-
-        _phaseElapsed = 0;
-        Apply(_simulator.StepPhase(_state));
+        AnimateTokens((float)delta);
     }
 
     private void BuildWorld()
@@ -272,6 +271,12 @@ public partial class RenewalMovementTestScene3D : Node3D
         }).ToArray();
         _state = _simulator.Start(_initialUnits);
         EnsureTokens();
+        foreach (var unit in _state.Units)
+        {
+            var world = ContinuousToWorld(unit.Position) + new Vector3(0f, _map.TileTopY, 0f);
+            _visualTargets[unit.Id.Value] = world;
+            _tokens[unit.Id.Value].DisplayContinuousAt(world, false);
+        }
         _logs.Clear();
         AppendLog("초기화 완료 — 한 틱·한 단계·하루 또는 자동 재생을 선택하세요.");
         Refresh();
@@ -321,8 +326,9 @@ public partial class RenewalMovementTestScene3D : Node3D
         EnsureTokens();
         foreach (var unit in _state.Units)
         {
-            _tokens[unit.Id.Value].Position = ContinuousToWorld(unit.Position)
-                + new Vector3(0f, _map.TileTopY + 0.20f, 0f);
+            var world = ContinuousToWorld(unit.Position)
+                + new Vector3(0f, _map.TileTopY, 0f);
+            _visualTargets[unit.Id.Value] = world;
         }
         var primary = _state.Units[0];
         _status.Text = $"날짜  {_state.Day}/7    단계  {PhaseName(_state.Phase)}\n"
@@ -340,32 +346,30 @@ public partial class RenewalMovementTestScene3D : Node3D
             {
                 continue;
             }
-            var token = new Node3D();
+            var token = new UnitController3D { Name = $"RenewalUnit{unit.Id.Value}" };
             AddChild(token);
-            token.AddChild(new MeshInstance3D
-            {
-                Mesh = new CylinderMesh { TopRadius = 0.13f, BottomRadius = 0.18f, Height = 0.38f },
-                MaterialOverride = new StandardMaterial3D
-                {
-                    AlbedoColor = unit.Id.Value == 1
-                        ? new Color(0.18f, 0.43f, 0.90f)
-                        : new Color(0.18f, 0.75f, 0.48f),
-                    Roughness = 0.55f,
-                },
-            });
-            token.AddChild(new Label3D
-            {
-                Text = $"아군 {unit.Id.Value}",
-                Font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf"),
-                FontSize = 72,
-                PixelSize = 0.0022f,
-                Position = new Vector3(0f, 0.44f, 0f),
-                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-                NoDepthTest = true,
-                OutlineSize = 18,
-                OutlineModulate = new Color(0f, 0f, 0f, 0.85f),
-            });
+            var troopIndex = unit.Id.Value == 1 ? 0 : 1;
+            var color = unit.Id.Value == 1
+                ? new Color(0.18f, 0.43f, 0.90f)
+                : new Color(0.18f, 0.75f, 0.48f);
+            token.InitDisplay(_map, color, troopIndex, StartHex);
+            token.TintFormation(color, 0.40f);
             _tokens[unit.Id.Value] = token;
+            _visualTargets[unit.Id.Value] = token.Position;
+        }
+    }
+
+    private void AnimateTokens(float delta)
+    {
+        foreach (var (id, token) in _tokens)
+        {
+            if (!_visualTargets.TryGetValue(id, out var target))
+            {
+                continue;
+            }
+            var moving = token.Position.DistanceSquaredTo(target) > 0.000001f;
+            var next = token.Position.MoveToward(target, 2.2f * delta);
+            token.DisplayContinuousAt(next, moving);
         }
     }
 

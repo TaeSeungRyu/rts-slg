@@ -391,6 +391,7 @@ git diff --check
 | 1단계 / 2026-10-05 | 코드 구현 없음, §3·§6·§14 및 로드맵 갱신 | D01~D07 확정, 현행 코드 진입점 조사 | 로컬 링크·15개 요구·12단계 번호·모순·`git diff --check` 검사 | 2단계 Core 단계 진행기와 독립 검수장 골격 | 이 단계 커밋 참조 |
 | 2단계 / 2026-10-05 | `ContinuousPosition`, `RenewalAdvanceSimulator`, `RenewalFixedStepClock`, 독립 TSCN/BAT | 하루 50틱·5단계·7일 상태기계, 화면 프레임과 논리 틱 분리 | 신규 xUnit 8/8, Game 빌드, Godot 자동 QA `passed=True days=7 attacks=7`; 전체 Core 1182 통과·기존 데이터/테스트 5 실패, 솔루션은 기존 Sandbox 포로 API 3건 실패 | 3단계 지형 경로·속도·충돌. 캠페인/전투는 미연결 | 이 단계 커밋 참조 |
 | 3단계 / 2026-10-05 | `RenewalHexSpace`, `RenewalMovementMap`, 경로·감속·쓸기 충돌·도착 분산, 검수장 2부대 우회/분산 표시 | Core 평면 원본과 파생 Hex 분리, 아군 비장애물·적/건물 차단, 육해상 분리, 빠른 상호 접근 순서 고정 | Phase 18D 관련 xUnit 22/22, Game 빌드 경고·오류 0, Godot 자동 QA `passed=True days=7 attacks=7 arrived=2 distinct=2`; 전체 Core 1196 통과·2단계와 같은 기존 5건 실패 | 4단계 성/항구 출격·입성 어댑터. 캠페인/전투는 미연결 | 이 단계 커밋 참조 |
+| 3단계 시각 검수 보강 / 2026-10-05 | `UnitController3D.DisplayContinuousAt`, 검수장 도검병·기병 실제 에셋 | Core 위치를 화면에서만 보간하고 기존 행군 자세·세력색 재사용, 초기화 시 즉시 원위치 | Game 빌드 경고·오류 0, Godot verbose에서 `troop-swordsman.glb`·`troop-cavalry.glb` 로드 및 자동 QA 통과 | 실제 이동 손맛은 `run-renewal-movement.bat`으로 사용자 확인 | 이 단계 보강 커밋 참조 |
 
 실제 단계 기록에는 '성공' 한 단어만 적지 말고 검증한 시나리오/테스트 수와 미실시 항목을 적는다. 커밋 후 해시는 다음 문서 갱신에서 보완하거나 커밋 메시지로 연결한다. 실패한 명령은 해결 후 재실행하고, 푸시 실패는 완료로 숨기지 않는다. 기존 변경을 파괴하는 초기화로 재개하지 않는다.
 

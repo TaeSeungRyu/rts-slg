@@ -299,6 +299,29 @@ public partial class UnitController3D : Node3D
         _chargeMoving = false;
     }
 
+    /// <summary>
+    /// 연속 이동 검수/신규 모드 표시용. Core가 계산한 월드 위치를 그대로 표시하고,
+    /// 실제 병종 에셋의 기존 행군 모션만 재생한다. 위치를 다시 Core로 보내지 않는다.
+    /// </summary>
+    public void DisplayContinuousAt(Vector3 worldPosition, bool moving)
+    {
+        if (!_display)
+        {
+            throw new InvalidOperationException("연속 위치 표시는 InitDisplay 이후에만 사용할 수 있습니다.");
+        }
+
+        var direction = worldPosition - Position;
+        if (moving && direction.LengthSquared() > 0.000001f)
+        {
+            _stepYaw = Mathf.Atan2(direction.X, direction.Z);
+            _hasStepYaw = true;
+        }
+
+        Position = worldPosition;
+        _moving = moving;
+        PlayNativeSupplyAnimation(moving ? "state_move" : "state_camp");
+    }
+
     /// <summary>표시 모드: 한 칸을 실제 행군 모션과 함께 이동한다.</summary>
     public void DisplayStepTo(HexCoord to, float seconds)
     {
