@@ -548,10 +548,22 @@ public partial class RenewalMovementTestScene3D : Node3D
             {
                 next = token.Position.MoveToward(target, 2.2f * delta);
             }
-            var moving = !token.Position.IsEqualApprox(next);
+            var moving = !token.Position.IsEqualApprox(next)
+                || ShouldHoldMarchPose(_state.Units.FirstOrDefault(x => x.Id.Value == id),
+                    _playing, _state.Phase);
             token.DisplayContinuousAt(next, moving);
         }
     }
+
+    /// <summary>
+    /// 자동 재생은 Core 위치가 0.1초마다 갱신되므로 스냅샷 사이 한두 프레임의 위치 델타가 0일 수 있다.
+    /// 그때 행군 자세를 정지 자세로 초기화하면 전 편대의 발·몸통과 그림자가 함께 튄다.
+    /// 실제 이동 가능 상태인 동안에는 현재 보행 위상을 보존하고, 도착/봉쇄 때만 정지 자세로 복귀한다.
+    /// </summary>
+    private static bool ShouldHoldMarchPose(RenewalUnitState? unit, bool playing,
+        RenewalAdvancePhase phase) => playing
+        && phase == RenewalAdvancePhase.Movement
+        && unit is { Arrived: false, MovementPerDay: > 0, StopReason: RenewalStopReason.None };
 
     private static float VisualInterpolationAlpha(double elapsedSeconds) =>
         Mathf.Clamp((float)(elapsedSeconds / MovementSnapshotSeconds), 0f, 1f);
@@ -624,18 +636,28 @@ public partial class RenewalMovementTestScene3D : Node3D
             && Mathf.IsEqualApprox(_sun.ShadowBias, 0.03f)
             && Mathf.IsEqualApprox(_sun.ShadowNormalBias, 0.05f)
             && _sun.DirectionalShadowBlendSplits;
+        var movingSample = BuildScenarioUnits(QaScenario.TerrainPath)[0];
+        var marchPoseStable = ShouldHoldMarchPose(movingSample, true,
+                RenewalAdvancePhase.Movement)
+            && !ShouldHoldMarchPose(movingSample with { Arrived = true }, true,
+                RenewalAdvancePhase.Movement)
+            && !ShouldHoldMarchPose(movingSample, true,
+                RenewalAdvancePhase.Attack)
+            && !ShouldHoldMarchPose(movingSample, false,
+                RenewalAdvancePhase.Movement);
         var passed = terrain.State.IsCompleted && terrain.State.Units.All(x => x.Arrived)
             && attackPhases == 7 && completedDays == 7
             && distances[0] < distances[1] && distances[1] < distances[2]
             && blocked == 2 && _tokens.Count == 5
             && entry.Transfers.Count == 2 && entry.FieldUnits.Count == 0
-            && interpolationOk && shadowStable
+            && interpolationOk && shadowStable && marchPoseStable
             && _tokens.Values.All(x => Mathf.IsEqualApprox(
                 x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
         GD.Print($"[renewal-movement-auto] passed={passed} cases=4 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
             + $"enemy_blocked={blocked} entries={entry.Transfers.Count} interpolation={interpolationOk} "
-            + $"shadow_stable={shadowStable} march_scale={RenewalMarchSpeedScale:0.00}");
+            + $"shadow_stable={shadowStable} march_pose={marchPoseStable} "
+            + $"march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }
