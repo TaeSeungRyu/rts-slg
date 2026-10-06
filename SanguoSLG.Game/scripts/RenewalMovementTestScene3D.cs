@@ -404,6 +404,12 @@ public partial class RenewalMovementTestScene3D : Node3D
                 RenewalAdvanceEventKind.AttackResolved => $"{entry.Target} 병력 피해 {entry.Amount}",
                 RenewalAdvanceEventKind.CombatParticipationRecorded =>
                     $"{entry.Unit} 교전 참여 · 성장 판정 {entry.Amount}회",
+                RenewalAdvanceEventKind.ActiveSkillFired =>
+                    $"{entry.Unit} 액티브 발동 · {entry.Detail}",
+                RenewalAdvanceEventKind.StatusTicked =>
+                    $"{entry.Unit} 상태 피해 {entry.Amount} · {entry.Detail}",
+                RenewalAdvanceEventKind.StatusApplied =>
+                    $"{entry.Unit} 상태 적용 · {entry.Detail}",
                 RenewalAdvanceEventKind.UnitDefeated => $"{entry.Unit} 전멸",
                 RenewalAdvanceEventKind.LootTransferred => $"{entry.Unit} 전리품 회수 {entry.Amount}",
                 RenewalAdvanceEventKind.StructureDamaged => $"{entry.Target} 건축물 피해 {entry.Amount}",

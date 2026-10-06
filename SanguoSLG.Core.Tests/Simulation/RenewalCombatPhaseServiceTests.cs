@@ -218,6 +218,108 @@ public sealed class RenewalCombatPhaseServiceTests
     }
 
     [Fact]
+    public void 충전완료된_타격과_방어액티브는_방어우선으로_각각한번_발동한다()
+    {
+        var attacker = Unit(1, 1, 0, 0, RenewalOrderMode.Attack,
+            target: RenewalTargetId.ForUnit(new UnitId(2)));
+        var defender = Unit(2, 2, 500, 0, RenewalOrderMode.Standby);
+        var strike = new ActiveSkill("peerless", "무쌍", ActiveType.Strike, "high",
+            DamageMultPercent: 160);
+        var defense = new ActiveSkill("iron_wall", "철벽", ActiveType.Defense, "high",
+            DamageReductionPercent: 30);
+        var profiles = new Dictionary<UnitId, RenewalCombatProfile>
+        {
+            [attacker.Id] = Profile(attacker) with
+            {
+                CombatState = UnitCombatState.Create(60, strike) with
+                {
+                    VanguardGauge = new ActiveGauge(5),
+                    AdjutantGauge = new ActiveGauge(5),
+                },
+            },
+            [defender.Id] = Profile(defender) with
+            {
+                CombatState = UnitCombatState.Create(60, defense) with
+                {
+                    VanguardGauge = new ActiveGauge(5),
+                    AdjutantGauge = new ActiveGauge(5),
+                },
+            },
+        };
+
+        var result = AttackPhase([attacker, defender], profiles: profiles);
+
+        Assert.Equal(2, result.Events.Count(x =>
+            x.Kind == RenewalAdvanceEventKind.ActiveSkillFired));
+        Assert.Contains(result.Events, x => x.Detail == "iron_wall");
+        Assert.Contains(result.Events, x => x.Detail == "peerless");
+        Assert.Equal(0, result.State.CombatProfiles![attacker.Id]
+            .CombatState!.SharedActiveGauge.ElapsedDays);
+        Assert.Equal(0, result.State.CombatProfiles[defender.Id]
+            .CombatState!.SharedActiveGauge.ElapsedDays);
+    }
+
+    [Fact]
+    public void 기존지속상태는_공격턴시작에_적용후감소하고_신규상태는_그날감소하지않는다()
+    {
+        var attacker = Unit(1, 1, 0, 0, RenewalOrderMode.Attack,
+            target: RenewalTargetId.ForUnit(new UnitId(2)));
+        var defender = Unit(2, 2, 500, 0, RenewalOrderMode.Standby);
+        var armorBreak = new ActiveSkill("armor_break", "파갑", ActiveType.Strike, "high",
+            DamageMultPercent: 110, DefenderDfReductionPercent: 20);
+        var attackerState = UnitCombatState.Create(60, armorBreak) with
+        {
+            VanguardGauge = new ActiveGauge(5),
+            AdjutantGauge = new ActiveGauge(5),
+        };
+        var defenderState = UnitCombatState.Create(60).AddStatus(
+            new StatusEffect(StatusKind.Burn, 200, 1, true, PermanentLoss: true));
+        var profiles = new Dictionary<UnitId, RenewalCombatProfile>
+        {
+            [attacker.Id] = Profile(attacker) with { CombatState = attackerState },
+            [defender.Id] = Profile(defender) with { CombatState = defenderState },
+        };
+
+        var result = AttackPhase([attacker, defender], profiles: profiles);
+        var statuses = result.State.CombatProfiles![defender.Id].CombatState!.Statuses;
+
+        Assert.Contains(result.Events, x => x.Kind == RenewalAdvanceEventKind.StatusTicked
+            && x.Detail == StatusKind.Burn.ToString());
+        Assert.DoesNotContain(statuses, x => x.Kind == StatusKind.Burn);
+        Assert.Equal(3, Assert.Single(statuses,
+            x => x.Kind == StatusKind.ArmorBreak).Remaining);
+    }
+
+    [Fact]
+    public void 혼란은_해당공격턴의_공격과반격과액티브를_막고_이후만료된다()
+    {
+        var attacker = Unit(1, 1, 0, 0, RenewalOrderMode.Attack,
+            target: RenewalTargetId.ForUnit(new UnitId(2)));
+        var defender = Unit(2, 2, 500, 0, RenewalOrderMode.Attack,
+            target: RenewalTargetId.ForUnit(attacker.Id));
+        var skill = new ActiveSkill("peerless", "무쌍", ActiveType.Strike, "high", 160);
+        var dazed = UnitCombatState.Create(60, skill) with
+        {
+            VanguardGauge = new ActiveGauge(5),
+            AdjutantGauge = new ActiveGauge(5),
+        };
+        dazed = dazed.AddStatus(new StatusEffect(StatusKind.Daze, 0, 1, false));
+        var profiles = new Dictionary<UnitId, RenewalCombatProfile>
+        {
+            [attacker.Id] = Profile(attacker),
+            [defender.Id] = Profile(defender) with { CombatState = dazed },
+        };
+
+        var result = AttackPhase([attacker, defender], profiles: profiles);
+
+        Assert.Equal(10_000, result.State.CombatProfiles![attacker.Id].Participant.Pool.Active);
+        Assert.DoesNotContain(result.Events, x => x.Kind == RenewalAdvanceEventKind.ActiveSkillFired
+            && x.Unit == defender.Id);
+        Assert.DoesNotContain(result.State.CombatProfiles[defender.Id].CombatState!.Statuses,
+            x => x.Kind == StatusKind.Daze);
+    }
+
+    [Fact]
     public void 공성참여자가_이탈하면_다음_공격턴에_대기부대가_승계한다()
     {
         var siteId = new RenewalTargetId(RenewalTargetKind.Site, 20);

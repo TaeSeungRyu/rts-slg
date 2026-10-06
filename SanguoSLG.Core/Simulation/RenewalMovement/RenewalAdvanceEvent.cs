@@ -13,4 +13,5 @@ public sealed record RenewalAdvanceEvent(
     ContinuousPosition? To = null,
     RenewalStopReason StopReason = RenewalStopReason.None,
     RenewalTargetId? Target = null,
-    int Amount = 0);
+    int Amount = 0,
+    string? Detail = null);
