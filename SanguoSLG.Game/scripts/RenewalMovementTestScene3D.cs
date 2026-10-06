@@ -34,6 +34,8 @@ public partial class RenewalMovementTestScene3D : Node3D
     private RenewalAdvanceSimulator _simulator = null!;
     private RenewalDeploymentService _deployment = null!;
     private RenewalMovementMap _movementMap = null!;
+    private readonly RenewalSelectionService _selection = new();
+    private RenewalCommandService _commands = null!;
     private City[] _sites = [];
     private IReadOnlyList<RenewalEntryOrder> _entryOrders = [];
     private readonly List<string> _logs = [];
@@ -41,6 +43,7 @@ public partial class RenewalMovementTestScene3D : Node3D
     private RenewalFixedStepClock _clock;
     private RenewalUnitState[] _initialUnits = [];
     private MapView3D _map = null!;
+    private Camera3D _camera = null!;
     private DirectionalLight3D _sun = null!;
     private readonly Dictionary<int, UnitController3D> _tokens = [];
     private readonly Dictionary<int, Vector3> _visualStarts = [];
@@ -50,6 +53,10 @@ public partial class RenewalMovementTestScene3D : Node3D
     private Label _log = null!;
     private Button _playButton = null!;
     private OptionButton _scenarioSelector = null!;
+    private PanelContainer _selectionPanel = null!;
+    private VBoxContainer _selectionRows = null!;
+    private Label _selectionDetail = null!;
+    private UnitId? _selectedUnit;
     private bool _playing;
     private double _phaseElapsed;
     private QaScenario _scenario;
@@ -90,6 +97,28 @@ public partial class RenewalMovementTestScene3D : Node3D
             }
         }
         AnimateTokens((float)delta);
+    }
+
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event is not InputEventMouseButton
+            { Pressed: true, ButtonIndex: MouseButton.Left } click
+            || GetViewport().GuiGetHoveredControl() is not null)
+        {
+            return;
+        }
+        var origin = _camera.ProjectRayOrigin(click.Position);
+        var direction = _camera.ProjectRayNormal(click.Position);
+        if (Mathf.Abs(direction.Y) < 0.0001f)
+        {
+            return;
+        }
+        var distance = (_map.TileTopY - origin.Y) / direction.Y;
+        if (distance <= 0f)
+        {
+            return;
+        }
+        ShowUnitsAt(ContinuousFromWorld(origin + direction * distance));
     }
 
     private void BuildWorld()
@@ -146,15 +175,16 @@ public partial class RenewalMovementTestScene3D : Node3D
             new RenewalCombatPhaseService(new BalanceConfig(0), _movementMap),
             new RenewalIntegrationService(new AlwaysTriggerRandom()));
         _deployment = new RenewalDeploymentService(_movementMap);
+        _commands = new RenewalCommandService(_movementMap);
 
         _map = new MapView3D();
         AddChild(_map);
         _map.Build(hexMap, new HashSet<HexCoord>(), new TileConditionMap());
 
-        var camera = new CameraController3D { Fov = 52f };
-        AddChild(camera);
-        camera.Setup(_map.HexToWorld(new HexCoord(5, 4)), 10.5f);
-        camera.Current = true;
+        _camera = new CameraController3D { Fov = 52f };
+        AddChild(_camera);
+        ((CameraController3D)_camera).Setup(_map.HexToWorld(new HexCoord(5, 4)), 10.5f);
+        _camera.Current = true;
 
         foreach (var site in _sites)
         {
@@ -265,6 +295,7 @@ public partial class RenewalMovementTestScene3D : Node3D
             ContentMarginBottom = 14,
         });
         layer.AddChild(panel);
+        BuildSelectionHud(layer);
 
         var box = new VBoxContainer();
         box.AddThemeConstantOverride("separation", 9);
@@ -320,6 +351,149 @@ public partial class RenewalMovementTestScene3D : Node3D
         box.AddChild(_log);
     }
 
+    private void BuildSelectionHud(CanvasLayer layer)
+    {
+        _selectionPanel = new PanelContainer
+        {
+            AnchorLeft = 1f,
+            AnchorRight = 1f,
+            AnchorBottom = 1f,
+            OffsetLeft = -390f,
+            OffsetTop = 18f,
+            OffsetRight = -18f,
+            OffsetBottom = -18f,
+            Visible = false,
+        };
+        _selectionPanel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color(0.07f, 0.08f, 0.10f, 0.96f),
+            BorderColor = new Color(0.72f, 0.55f, 0.24f),
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 10,
+            CornerRadiusTopRight = 10,
+            CornerRadiusBottomLeft = 10,
+            CornerRadiusBottomRight = 10,
+            ContentMarginLeft = 14,
+            ContentMarginRight = 14,
+            ContentMarginTop = 14,
+            ContentMarginBottom = 14,
+        });
+        layer.AddChild(_selectionPanel);
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 8);
+        _selectionPanel.AddChild(box);
+        var title = new HBoxContainer();
+        box.AddChild(title);
+        title.AddChild(MakeLabel("겹친 부대 목록", 19, new Color(0.92f, 0.73f, 0.34f)));
+        var spacer = new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        title.AddChild(spacer);
+        AddButton(title, "닫기", () => _selectionPanel.Visible = false);
+        var scroll = new ScrollContainer
+        {
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+        };
+        box.AddChild(scroll);
+        _selectionRows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        _selectionRows.AddThemeConstantOverride("separation", 5);
+        scroll.AddChild(_selectionRows);
+        _selectionDetail = MakeLabel("부대를 선택하세요.", 14, new Color(0.82f, 0.86f, 0.92f));
+        _selectionDetail.CustomMinimumSize = new Vector2(0, 62);
+        box.AddChild(_selectionDetail);
+        var actions = new HBoxContainer();
+        actions.AddThemeConstantOverride("separation", 6);
+        box.AddChild(actions);
+        AddButton(actions, "행군", () => ReissueOrder(RenewalOrderMode.March));
+        AddButton(actions, "전진", () => ReissueOrder(RenewalOrderMode.Advance));
+        AddButton(actions, "공격", () => ReissueOrder(RenewalOrderMode.Attack));
+    }
+
+    private void ShowUnitsAt(ContinuousPosition position)
+    {
+        var entries = _selection.UnitsAt(_state, position, new FactionId(1), 360);
+        foreach (var child in _selectionRows.GetChildren())
+        {
+            child.QueueFree();
+        }
+        _selectedUnit = null;
+        if (entries.Count == 0)
+        {
+            _selectionPanel.Visible = false;
+            return;
+        }
+        foreach (var entry in entries)
+        {
+            var captured = entry;
+            var button = new Button
+            {
+                Text = $"부대 {entry.Unit.Value}  ·  {ModeName(entry.Mode)}  ·  {WaitReason(entry.StopReason)}",
+                Alignment = HorizontalAlignment.Left,
+                Disabled = !entry.CanCommand,
+                CustomMinimumSize = new Vector2(0, 42),
+            };
+            button.Pressed += () => SelectUnit(captured);
+            _selectionRows.AddChild(button);
+        }
+        _selectionPanel.Visible = true;
+        SelectUnit(entries[0]);
+    }
+
+    private void SelectUnit(RenewalUnitSelectionEntry entry)
+    {
+        _selectedUnit = entry.Unit;
+        _selectionDetail.Text = $"부대 {entry.Unit.Value}\n명령 {ModeName(entry.Mode)}  ·  "
+            + $"사거리 {entry.AttackRange}칸  ·  상태 {WaitReason(entry.StopReason)}";
+    }
+
+    private void ReissueOrder(RenewalOrderMode mode)
+    {
+        if (_selectedUnit is not { } selected || _playing)
+        {
+            _selectionDetail.Text = _playing ? "진행 중에는 재명령할 수 없습니다." : "부대를 선택하세요.";
+            return;
+        }
+        var unit = _state.Units.Single(x => x.Id == selected);
+        RenewalTargetId? assigned = null;
+        var destination = unit.OriginalDestination ?? unit.Destination;
+        if (mode == RenewalOrderMode.Attack)
+        {
+            var target = _state.Units.Where(x => x.IsActive && x.Owner != unit.Owner)
+                .OrderBy(x => x.Position.DistanceSquaredTo(unit.Position)).ThenBy(x => x.Id.Value)
+                .FirstOrDefault();
+            if (target is null)
+            {
+                _selectionDetail.Text = "공격할 적 부대가 없습니다.";
+                return;
+            }
+            assigned = RenewalTargetId.ForUnit(target.Id);
+            destination = target.Position;
+        }
+        var commandId = _state.Units.Max(x => x.CommandId) + 1;
+        _state = _commands.Apply(_state,
+            new RenewalUnitCommand(commandId, selected, mode, destination, assigned));
+        var changed = _state.Units.Single(x => x.Id == selected);
+        SelectUnit(new RenewalUnitSelectionEntry(changed.Id, changed.Owner, changed.Mode,
+            changed.StopReason, changed.AttackRange, changed.Position, true));
+        AppendLog($"{changed.Id} 재명령 · {ModeName(mode)}");
+        Refresh();
+    }
+
+    private static string WaitReason(RenewalStopReason reason) => reason switch
+    {
+        RenewalStopReason.None => "이동 가능",
+        RenewalStopReason.EnemyBlocked => "적군에 막힘",
+        RenewalStopReason.BuildingBlocked => "건물에 막힘",
+        RenewalStopReason.TerrainBlocked => "지형에 막힘",
+        RenewalStopReason.TargetInRange => "공격 사거리 도달",
+        RenewalStopReason.TargetLost => "목표 상실",
+        RenewalStopReason.NoPath => "이동 경로 없음",
+        RenewalStopReason.SiegeCapacity => "공성 참여 대기",
+        _ => reason.ToString(),
+    };
+
     private static Label MakeLabel(string text, int size, Color color)
     {
         var label = new Label
@@ -370,6 +544,8 @@ public partial class RenewalMovementTestScene3D : Node3D
             _tokens[unit.Id.Value].DisplayContinuousAt(world, false);
         }
         _logs.Clear();
+        _selectionPanel.Visible = false;
+        _selectedUnit = null;
         AppendLog($"{ScenarioName(_scenario)} 초기화 — 자동 재생 또는 단계 실행을 선택하세요.");
         Refresh();
     }
@@ -843,6 +1019,20 @@ public partial class RenewalMovementTestScene3D : Node3D
         return origin + qAxis * q + rAxis * r;
     }
 
+    private ContinuousPosition ContinuousFromWorld(Vector3 world)
+    {
+        var origin = _map.HexToWorld(new HexCoord(0, 0));
+        var qAxis = _map.HexToWorld(new HexCoord(1, 0)) - origin;
+        var rAxis = _map.HexToWorld(new HexCoord(0, 1)) - origin;
+        var delta = world - origin;
+        var determinant = qAxis.X * rAxis.Z - qAxis.Z * rAxis.X;
+        var q = (delta.X * rAxis.Z - delta.Z * rAxis.X) / determinant;
+        var r = (qAxis.X * delta.Z - qAxis.Z * delta.X) / determinant;
+        return new ContinuousPosition(
+            (long)Math.Round(q * 867d),
+            (long)Math.Round((r + q * 0.5d) * ContinuousPosition.UnitsPerTile));
+    }
+
     private void AppendLog(string text)
     {
         _logs.Add(text);
@@ -938,6 +1128,13 @@ public partial class RenewalMovementTestScene3D : Node3D
             _simulator.Start(BuildScenarioUnits(QaScenario.Collision)));
         var blocked = collision.State.Units.Count(x => x.Owner.Value == 1
             && x.StopReason == RenewalStopReason.EnemyBlocked);
+        var collisionOrigin = BuildScenarioUnits(QaScenario.Collision)[0].Position;
+        var selectedOverlap = _selection.UnitsAt(
+            _simulator.Start(BuildScenarioUnits(QaScenario.Collision)), collisionOrigin,
+            new FactionId(1), 360);
+        var selectionOk = selectedOverlap.Count == 2
+            && selectedOverlap.All(x => x.CanCommand)
+            && selectedOverlap.Select(x => x.Unit.Value).SequenceEqual([1, 2]);
 
         var entryStart = _simulator.Start(BuildScenarioUnits(QaScenario.EgressAndEntry));
         var entryRun = _simulator.RunToCompletion(entryStart);
@@ -1023,7 +1220,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         var passed = terrain.State.IsCompleted && terrain.State.Units.All(x => x.Arrived)
             && attackPhases == 7 && completedDays == 7
             && distances[0] < distances[1] && distances[1] < distances[2]
-            && blocked == 2 && _tokens.Count >= 16
+            && blocked == 2 && selectionOk && _tokens.Count >= 16
             && entry.Transfers.Count == 2 && entry.FieldUnits.Count == 0
             && modeLifecycle && siegeLimit && skillRange && integrationPassed
             && interpolationOk && shadowStable && marchPoseStable && scaledCasterCheck && archerPoseOk
@@ -1031,7 +1228,7 @@ public partial class RenewalMovementTestScene3D : Node3D
                 x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
         GD.Print($"[renewal-movement-auto] passed={passed} cases=8 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
-            + $"enemy_blocked={blocked} entries={entry.Transfers.Count} modes={modeLifecycle} siege_limit={siegeLimit} skill_range={skillRange} integration={integrationPassed} interpolation={interpolationOk} "
+            + $"enemy_blocked={blocked} selection={selectionOk} entries={entry.Transfers.Count} modes={modeLifecycle} siege_limit={siegeLimit} skill_range={skillRange} integration={integrationPassed} interpolation={interpolationOk} "
             + $"archer_pose={archerPoseOk} scaled_casters={scaledCasterCheck} shadow_settings_valid={shadowStable} march_pose_contract={marchPoseStable} "
             + $"march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);
