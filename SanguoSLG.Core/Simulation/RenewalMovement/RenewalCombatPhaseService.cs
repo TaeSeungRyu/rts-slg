@@ -27,7 +27,11 @@ public sealed class RenewalCombatPhaseService
         var intents = CollectUnitIntents(units, profiles);
         var engagements = BuildEngagements(intents, units, profiles);
         var participants = profiles.ToDictionary(x => x.Key,
-            x => x.Value.Participant with { Mode = ToLegacyMode(units[x.Key].Mode) });
+            x => x.Value.Participant with
+            {
+                Mode = ToLegacyMode(units[x.Key].Mode),
+                AttackRange = units[x.Key].AttackRange,
+            });
         var field = _unitResolver.Resolve(engagements, participants);
         var pools = field.Pools.ToDictionary(x => x.Key, x => x.Value);
 
@@ -169,7 +173,8 @@ public sealed class RenewalCombatPhaseService
         foreach (var structure in state.Structures ?? Array.Empty<RenewalStructureCombatState>())
         {
             var hp = structure.HitPoints;
-            foreach (var attacker in AttackersFor(structure.Id, structure.Owner, structure.Position, units, profiles))
+            foreach (var attacker in AttackersFor(structure.Id, structure.Owner,
+                structure.Position, units, profiles, x => x.BuildingAttackRange))
             {
                 var profile = profiles[attacker.Id];
                 var attackStats = profile.Participant.Stats with
@@ -211,7 +216,8 @@ public sealed class RenewalCombatPhaseService
         var result = new List<RenewalSiteCombatState>();
         foreach (var site in state.Sites ?? Array.Empty<RenewalSiteCombatState>())
         {
-            var candidates = AttackersFor(site.Id, site.Owner, site.Position, units, profiles)
+            var candidates = AttackersFor(site.Id, site.Owner, site.Position, units, profiles,
+                    x => x.CastleAttackRange)
                 .OrderBy(x => x.AttackRangeReachedTick
                     ?? checked((state.Day - 1) * RenewalAdvanceSimulator.MovementTicksPerDay
                         + state.MovementTick))
@@ -274,11 +280,12 @@ public sealed class RenewalCombatPhaseService
     private static IEnumerable<RenewalUnitState> AttackersFor(RenewalTargetId target,
         FactionId owner, ContinuousPosition position,
         IReadOnlyDictionary<UnitId, RenewalUnitState> units,
-        IReadOnlyDictionary<UnitId, RenewalCombatProfile> profiles) => units.Values
+        IReadOnlyDictionary<UnitId, RenewalCombatProfile> profiles,
+        Func<RenewalUnitState, int> range) => units.Values
         .Where(unit => profiles.ContainsKey(unit.Id)
             && unit.Owner != owner
             && SelectedTarget(unit) == target
-            && InRange(unit, position));
+            && InRange(unit, position, range(unit)));
 
     private static RenewalUnitState ApplyUnitOutcome(RenewalUnitState unit,
         IReadOnlyDictionary<UnitId, TroopPool> pools, IReadOnlySet<UnitId> waiting,
@@ -316,8 +323,11 @@ public sealed class RenewalCombatPhaseService
     };
 
     private static bool InRange(RenewalUnitState unit, ContinuousPosition target) =>
+        InRange(unit, target, unit.AttackRange);
+
+    private static bool InRange(RenewalUnitState unit, ContinuousPosition target, int range) =>
         unit.Position.DistanceTo(target)
-            <= Math.Max(0, unit.AttackRange) * ContinuousPosition.UnitsPerTile;
+            <= Math.Max(0, range) * ContinuousPosition.UnitsPerTile;
 
     private static UnitMode ToLegacyMode(RenewalOrderMode mode) => mode switch
     {

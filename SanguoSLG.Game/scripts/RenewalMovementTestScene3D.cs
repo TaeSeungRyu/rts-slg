@@ -609,6 +609,7 @@ public partial class RenewalMovementTestScene3D : Node3D
                 Make(3, 1, new HexCoord(1, 7), new HexCoord(7, 7), 2) with
                 {
                     Mode = RenewalOrderMode.Attack,
+                    AttackRange = 2,
                     AssignedTarget = RenewalTargetId.ForUnit(new UnitId(6)),
                     LastKnownTargetPosition = RenewalHexSpace.Center(new HexCoord(6, 7)),
                 },

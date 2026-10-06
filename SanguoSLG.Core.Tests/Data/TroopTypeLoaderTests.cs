@@ -47,6 +47,20 @@ public class TroopTypeLoaderTests
     }
 
     [Fact]
+    public void Load_11개병종의_대인_건축물_성_사거리계약을_전수검사한다()
+    {
+        var ranged = new[] { "archer", "catapult", "siege_tower" };
+        foreach (var troop in Templates)
+        {
+            Assert.Equal(ranged.Contains(troop.Code) ? 2 : 1, troop.RangeUnit);
+            Assert.Equal(troop.Code is "catapult" or "siege_tower" ? 2 : 1,
+                troop.RangeBuilding);
+            Assert.Equal(troop.Code is "catapult" or "siege_tower" ? 2 : 1,
+                troop.RangeCastle);
+        }
+    }
+
+    [Fact]
     public void Load_알수없는분류면_예외()
     {
         Assert.Throws<System.IO.InvalidDataException>(

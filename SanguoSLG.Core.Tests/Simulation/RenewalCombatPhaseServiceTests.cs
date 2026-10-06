@@ -70,6 +70,23 @@ public sealed class RenewalCombatPhaseServiceTests
     }
 
     [Fact]
+    public void 대인_건축물_성_사거리는_각대상별_병종값을_사용한다()
+    {
+        var targetId = new RenewalTargetId(RenewalTargetKind.Building, 50);
+        var archer = Unit(1, 1, 0, 0, RenewalOrderMode.Attack, range: 2,
+            target: targetId) with { BuildingAttackRange = 1, CastleAttackRange = 1 };
+        var building = new RenewalStructureCombatState(targetId, new FactionId(2),
+            new ContinuousPosition(1_500, 0), 10_000, 10);
+
+        var archerResult = AttackPhase([archer], structures: [building]);
+        Assert.Equal(10_000, archerResult.State.Structures!.Single().HitPoints);
+
+        var catapult = archer with { BuildingAttackRange = 2, CastleAttackRange = 2 };
+        var catapultResult = AttackPhase([catapult], structures: [building]);
+        Assert.True(catapultResult.State.Structures!.Single().HitPoints < 10_000);
+    }
+
+    [Fact]
     public void 서로_공격하는_한쌍은_능동공격과_반격을_중복계산하지않는다()
     {
         var a = Unit(1, 1, 0, 0, RenewalOrderMode.Attack,

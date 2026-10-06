@@ -29,7 +29,9 @@ public sealed record RenewalUnitState(
     bool IsActive = true,
     bool IsVisible = true,
     long CommandId = 0,
-    int? AttackRangeReachedTick = null)
+    int? AttackRangeReachedTick = null,
+    int BuildingAttackRange = 1,
+    int CastleAttackRange = 1)
 {
     public static RenewalUnitState Create(UnitId id, ContinuousPosition position,
         ContinuousPosition destination, int movementPerDay)

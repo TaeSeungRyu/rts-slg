@@ -481,7 +481,7 @@ public sealed class RenewalAdvanceSimulator
     private RenewalUnitState FollowTarget(RenewalUnitState unit, RenewalTargetState target,
         int day, int movementTick)
     {
-        var range = Math.Max(0, unit.AttackRange) * ContinuousPosition.UnitsPerTile;
+        var range = Math.Max(0, RangeFor(unit, target.Id)) * ContinuousPosition.UnitsPerTile;
         if (unit.Position.DistanceTo(target.Position) <= range)
         {
             return unit with
@@ -556,6 +556,13 @@ public sealed class RenewalAdvanceSimulator
     private static RenewalTargetState ToTarget(RenewalUnitState unit) => new(
         RenewalTargetId.ForUnit(unit.Id), unit.Owner, unit.Position, unit.IsActive,
         unit.IsVisible, unit.CommandId);
+
+    private static int RangeFor(RenewalUnitState unit, RenewalTargetId target) => target.Kind switch
+    {
+        RenewalTargetKind.Building => unit.BuildingAttackRange,
+        RenewalTargetKind.Site => unit.CastleAttackRange,
+        _ => unit.AttackRange,
+    };
 
     private static IReadOnlyList<RenewalTargetState> Targets(RenewalAdvanceState state) =>
         state.Units.Select(ToTarget)
