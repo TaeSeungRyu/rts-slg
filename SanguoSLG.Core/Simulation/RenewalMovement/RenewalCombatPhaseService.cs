@@ -26,7 +26,22 @@ public sealed class RenewalCombatPhaseService
         var events = new List<RenewalAdvanceEvent>();
         var intents = CollectUnitIntents(units, profiles);
         var engagements = BuildEngagements(intents, units, profiles);
-        var participants = profiles.ToDictionary(x => x.Key,
+        var combatParticipants = CollectCombatParticipants(state, engagements, units, profiles);
+        var chargedProfiles = profiles.ToDictionary(x => x.Key, x => combatParticipants.Contains(x.Key)
+            ? x.Value with
+            {
+                CombatState = x.Value.CombatState?.AdvanceCombat(),
+                CombatGrowthAwards = x.Value.CombatGrowthAwards + 1,
+            }
+            : x.Value);
+        foreach (var id in combatParticipants.OrderBy(x => x.Value))
+        {
+            events.Add(new RenewalAdvanceEvent(
+                RenewalAdvanceEventKind.CombatParticipationRecorded,
+                state.Day, RenewalAdvancePhase.Attack, state.MovementTick, id,
+                Amount: chargedProfiles[id].CombatGrowthAwards));
+        }
+        var participants = chargedProfiles.ToDictionary(x => x.Key,
             x => x.Value.Participant with
             {
                 Mode = ToLegacyMode(units[x.Key].Mode),
@@ -42,11 +57,16 @@ public sealed class RenewalCombatPhaseService
                 Target: RenewalTargetId.ForUnit(target), Amount: amount));
         }
 
-        var structures = ResolveStructures(state, units, profiles, events);
-        var sites = ResolveSites(state, units, profiles, pools, events, out var waiting);
+        var structures = ResolveStructures(state, units, chargedProfiles, events);
+        var sites = ResolveSites(state, units, chargedProfiles, pools, events, out var waiting);
         var nextProfiles = allProfiles.ToDictionary(x => x.Key, x =>
-            pools.TryGetValue(x.Key, out var pool)
-                ? x.Value with { Participant = x.Value.Participant with { Pool = pool } }
+            chargedProfiles.TryGetValue(x.Key, out var charged)
+                ? charged with
+                {
+                    Participant = pools.TryGetValue(x.Key, out var pool)
+                        ? charged.Participant with { Pool = pool }
+                        : charged.Participant,
+                }
                 : x.Value);
         TransferDefeatedLoot(engagements, units, nextProfiles, events, state);
         var nextUnits = state.Units.Select(unit => ApplyUnitOutcome(unit, pools, waiting, state, events))
@@ -59,6 +79,31 @@ public sealed class RenewalCombatPhaseService
             Structures = structures,
             Sites = sites,
         }, events);
+    }
+
+    private static HashSet<UnitId> CollectCombatParticipants(RenewalAdvanceState state,
+        IReadOnlyList<UnitEngagement> engagements,
+        IReadOnlyDictionary<UnitId, RenewalUnitState> units,
+        IReadOnlyDictionary<UnitId, RenewalCombatProfile> profiles)
+    {
+        var result = engagements.SelectMany(x => x.Targets.Append(x.Attacker)).ToHashSet();
+        foreach (var structure in state.Structures ?? Array.Empty<RenewalStructureCombatState>())
+        {
+            result.UnionWith(AttackersFor(structure.Id, structure.Owner, structure.Position,
+                units, profiles, x => x.BuildingAttackRange).Select(x => x.Id));
+        }
+        foreach (var site in state.Sites ?? Array.Empty<RenewalSiteCombatState>())
+        {
+            var participating = AttackersFor(site.Id, site.Owner, site.Position, units, profiles,
+                    x => x.CastleAttackRange)
+                .OrderBy(x => x.AttackRangeReachedTick
+                    ?? checked((state.Day - 1) * RenewalAdvanceSimulator.MovementTicksPerDay
+                        + state.MovementTick))
+                .ThenBy(x => x.CommandId).ThenBy(x => x.Id.Value)
+                .Take(site.ParticipationLimit).Select(x => x.Id);
+            result.UnionWith(participating);
+        }
+        return result;
     }
 
     private static void TransferDefeatedLoot(IReadOnlyList<UnitEngagement> engagements,

@@ -128,6 +128,10 @@ public sealed class RenewalCombatPhaseServiceTests
         Assert.True(losses[0] > losses[1]);
         Assert.Equal(losses[1], losses[2]);
         Assert.Equal(4, result.Events.Count(x => x.Kind == RenewalAdvanceEventKind.AttackResolved));
+        Assert.All(result.State.CombatProfiles!.Values,
+            x => Assert.Equal(1, x.CombatGrowthAwards));
+        Assert.Equal(4, result.Events.Count(
+            x => x.Kind == RenewalAdvanceEventKind.CombatParticipationRecorded));
     }
 
     [Fact]
@@ -188,6 +192,29 @@ public sealed class RenewalCombatPhaseServiceTests
 
         Assert.Equal(new UnitId(1), Assert.Single(result.Events,
             x => x.Kind == RenewalAdvanceEventKind.SiegeWaiting).Unit);
+        Assert.Equal(0, result.State.CombatProfiles![new UnitId(1)].CombatGrowthAwards);
+        Assert.All(result.State.CombatProfiles.Where(x => x.Key.Value != 1),
+            x => Assert.Equal(1, x.Value.CombatGrowthAwards));
+    }
+
+    [Fact]
+    public void 실제교전은_공격턴마다_공용게이지와_성장판정을_한번만_올린다()
+    {
+        var defender = Unit(1, 1, 0, 0, RenewalOrderMode.Standby);
+        var attackers = Enumerable.Range(2, 3).Select(id =>
+            Unit(id, 2, 500, 0, RenewalOrderMode.Attack,
+                target: RenewalTargetId.ForUnit(defender.Id))).ToList();
+        var profiles = new[] { defender }.Concat(attackers).ToDictionary(x => x.Id, x =>
+            Profile(x) with { CombatState = UnitCombatState.Create(60) });
+
+        var result = AttackPhase([defender, .. attackers], profiles: profiles);
+        var defended = result.State.CombatProfiles![defender.Id];
+
+        Assert.Equal(1, defended.CombatGrowthAwards);
+        Assert.Equal(1, defended.CombatState!.SharedActiveGauge.ElapsedDays);
+        Assert.Single(result.Events, x =>
+            x.Kind == RenewalAdvanceEventKind.CombatParticipationRecorded
+            && x.Unit == defender.Id);
     }
 
     [Fact]

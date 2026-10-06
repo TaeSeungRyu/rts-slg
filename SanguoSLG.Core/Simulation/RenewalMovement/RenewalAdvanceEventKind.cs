@@ -11,6 +11,7 @@ public enum RenewalAdvanceEventKind
     TargetLost,
     OrderCompleted,
     AttackResolved,
+    CombatParticipationRecorded,
     UnitDefeated,
     LootTransferred,
     StructureDamaged,

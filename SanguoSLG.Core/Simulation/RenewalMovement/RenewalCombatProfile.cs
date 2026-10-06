@@ -7,4 +7,6 @@ public sealed record RenewalCombatProfile(
     BattleParticipant Participant,
     int? BuildingAttack = null,
     int CarryingGold = 0,
-    int Provisions = 0);
+    int Provisions = 0,
+    UnitCombatState? CombatState = null,
+    int CombatGrowthAwards = 0);
