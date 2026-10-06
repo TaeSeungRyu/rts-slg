@@ -1,6 +1,7 @@
 namespace SanguoSLG.Core.Tests.Simulation;
 
 using SanguoSLG.Core.Simulation.RenewalMovement;
+using SanguoSLG.Core.Domain;
 
 public sealed class RenewalIntegrationServiceTests
 {
@@ -50,5 +51,53 @@ public sealed class RenewalIntegrationServiceTests
 
         Assert.Same(state, result.State);
         Assert.Empty(result.Events);
+    }
+
+    [Fact]
+    public void 보급부대는_같은세력_범위안의_부족한군량만_보충한다()
+    {
+        var target = RenewalUnitState.Create(new UnitId(1), new ContinuousPosition(0, 0),
+            new ContinuousPosition(0, 0), 0) with { Owner = new FactionId(1) };
+        var supply = RenewalUnitState.Create(new UnitId(2), new ContinuousPosition(2_000, 0),
+            new ContinuousPosition(2_000, 0), 0) with { Owner = new FactionId(1) };
+        var logistics = new Dictionary<UnitId, RenewalUnitLogistics>
+        {
+            [target.Id] = new(target.Id, 5, 10),
+            [supply.Id] = new(supply.Id, 0, 0, true, 4, 20),
+        };
+        var state = new RenewalAdvanceState(1, RenewalAdvancePhase.DaySettlement, 50,
+            [target, supply], Integration: new RenewalIntegrationState(1, 0,
+                UnitLogistics: logistics));
+
+        var result = new RenewalIntegrationService().ResolveDay(state);
+
+        Assert.Equal(5, result.State.Integration!.Logistics[target.Id].Provisions);
+        Assert.Equal(15, result.State.Integration.Logistics[supply.Id].SupplyStock);
+        Assert.Contains(result.Events, x => x.Kind == RenewalAdvanceEventKind.SupplyTransferred
+            && x.Amount == 5);
+    }
+
+    [Fact]
+    public void 보루범위안에서는_일일군량소비가_40퍼센트_감소한다()
+    {
+        var unit = RenewalUnitState.Create(new UnitId(1), new ContinuousPosition(0, 0),
+            new ContinuousPosition(0, 0), 0) with { Owner = new FactionId(1) };
+        var fort = new RenewalStructureCombatState(
+            new RenewalTargetId(RenewalTargetKind.Building, 10), new FactionId(1),
+            new ContinuousPosition(1_000, 0), 2_500, 12, Kind: FieldBuildingKind.Fort,
+            EffectRadius: 2);
+        var logistics = new Dictionary<UnitId, RenewalUnitLogistics>
+        {
+            [unit.Id] = new(unit.Id, 100, 10),
+        };
+        var state = new RenewalAdvanceState(1, RenewalAdvancePhase.DaySettlement, 50, [unit],
+            Structures: [fort], Integration: new RenewalIntegrationState(1, 0,
+                UnitLogistics: logistics));
+
+        var result = new RenewalIntegrationService().ResolveDay(state);
+
+        Assert.Equal(94, result.State.Integration!.Logistics[unit.Id].Provisions);
+        Assert.Contains(result.Events, x => x.Kind == RenewalAdvanceEventKind.ProvisionsConsumed
+            && x.Amount == 6);
     }
 }

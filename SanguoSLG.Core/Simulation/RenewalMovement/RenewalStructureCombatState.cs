@@ -8,7 +8,10 @@ public sealed record RenewalStructureCombatState(
     ContinuousPosition Position,
     int HitPoints,
     int Defense,
-    bool IsVisible = true)
+    bool IsVisible = true,
+    FieldBuildingKind? Kind = null,
+    int EffectRadius = 0,
+    UnitId? GarrisonUnit = null)
 {
     public bool IsActive => HitPoints > 0;
 }

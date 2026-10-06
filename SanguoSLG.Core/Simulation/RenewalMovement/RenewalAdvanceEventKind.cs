@@ -25,6 +25,8 @@ public enum RenewalAdvanceEventKind
     DailySettlementApplied,
     WeeklySettlementApplied,
     ScheduledWorkCompleted,
+    ProvisionsConsumed,
+    SupplyTransferred,
     PhaseChanged,
     DayCompleted,
     AdvanceCompleted,
