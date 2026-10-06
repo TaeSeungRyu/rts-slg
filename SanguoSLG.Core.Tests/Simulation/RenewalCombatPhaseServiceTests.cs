@@ -3,6 +3,7 @@ namespace SanguoSLG.Core.Tests.Simulation;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Simulation.RenewalMovement;
+using SanguoSLG.Core.Spatial;
 
 public sealed class RenewalCombatPhaseServiceTests
 {
@@ -291,6 +292,23 @@ public sealed class RenewalCombatPhaseServiceTests
     }
 
     [Fact]
+    public void 지속피해로_병력이0이되면_같은공격턴에_즉시괴멸한다()
+    {
+        var victim = Unit(1, 1, 0, 0, RenewalOrderMode.Standby);
+        var burning = UnitCombatState.Create(60).AddStatus(
+            new StatusEffect(StatusKind.Burn, 10_000, 1, true, PermanentLoss: true));
+
+        var result = AttackPhase([victim], profiles:
+            new Dictionary<UnitId, RenewalCombatProfile>
+            {
+                [victim.Id] = Profile(victim) with { CombatState = burning },
+            });
+
+        Assert.False(result.State.Units.Single().IsActive);
+        Assert.Contains(result.Events, x => x.Kind == RenewalAdvanceEventKind.UnitDefeated);
+    }
+
+    [Fact]
     public void 혼란은_해당공격턴의_공격과반격과액티브를_막고_이후만료된다()
     {
         var attacker = Unit(1, 1, 0, 0, RenewalOrderMode.Attack,
@@ -317,6 +335,156 @@ public sealed class RenewalCombatPhaseServiceTests
             && x.Unit == defender.Id);
         Assert.DoesNotContain(result.State.CombatProfiles[defender.Id].CombatState!.Statuses,
             x => x.Kind == StatusKind.Daze);
+    }
+
+    [Fact]
+    public void 패시브가반영된_전투보너스는_유지하고_이간중에는_중립값으로계산한다()
+    {
+        var attacker = Unit(1, 1, 0, 0, RenewalOrderMode.Attack,
+            target: RenewalTargetId.ForUnit(new UnitId(2)));
+        var defender = Unit(2, 2, 500, 0, RenewalOrderMode.March);
+        var enhanced = Profile(attacker) with
+        {
+            Participant = Profile(attacker).Participant with
+            {
+                Stats = Profile(attacker).Participant.Stats with
+                    { AptitudePercent = 150, AtkBonusPercent = 150 },
+            },
+            CombatState = UnitCombatState.Create(60),
+        };
+        var normalProfiles = new Dictionary<UnitId, RenewalCombatProfile>
+        {
+            [attacker.Id] = enhanced,
+            [defender.Id] = Profile(defender),
+        };
+        var normal = AttackPhase([attacker, defender], profiles: normalProfiles);
+
+        var nullifiedState = UnitCombatState.Create(60).AddStatus(
+            new StatusEffect(StatusKind.Nullify, 0, 2, false, NullifyAptPassive: true));
+        var nullifiedProfiles = normalProfiles.ToDictionary(x => x.Key, x => x.Value);
+        nullifiedProfiles[attacker.Id] = enhanced with { CombatState = nullifiedState };
+        var nullified = AttackPhase([attacker, defender], profiles: nullifiedProfiles);
+
+        Assert.True(normal.State.CombatProfiles![defender.Id].Participant.Pool.Active
+            < nullified.State.CombatProfiles![defender.Id].Participant.Pool.Active);
+    }
+
+    [Fact]
+    public void 낙뢰는_중심과_인접타일의_적에게_각각정의된_피해를_한번만준다()
+    {
+        var lightning = new ActiveSkill("lightning", "낙뢰", ActiveType.Tactic, "high");
+        var caster = Unit(1, 1, RenewalHexSpace.Center(new HexCoord(0, 0)).X,
+            RenewalHexSpace.Center(new HexCoord(0, 0)).Y, RenewalOrderMode.Standby);
+        var center = Unit(2, 2, RenewalHexSpace.Center(new HexCoord(2, 0)).X,
+            RenewalHexSpace.Center(new HexCoord(2, 0)).Y, RenewalOrderMode.Standby);
+        var adjacent = Unit(3, 2, RenewalHexSpace.Center(new HexCoord(2, 1)).X,
+            RenewalHexSpace.Center(new HexCoord(2, 1)).Y, RenewalOrderMode.Standby);
+        var far = Unit(4, 2, RenewalHexSpace.Center(new HexCoord(4, 0)).X,
+            RenewalHexSpace.Center(new HexCoord(4, 0)).Y, RenewalOrderMode.Standby);
+        var ready = UnitCombatState.Create(100, lightning) with
+        {
+            VanguardGauge = new ActiveGauge(6),
+            AdjutantGauge = new ActiveGauge(6),
+        };
+        var profiles = new[] { caster, center, adjacent, far }
+            .ToDictionary(x => x.Id, x => Profile(x) with
+            {
+                CombatState = x.Id == caster.Id ? ready : UnitCombatState.Create(60),
+            });
+
+        var result = AttackPhase([caster, center, adjacent, far], profiles: profiles);
+
+        Assert.Equal(8_500, result.State.CombatProfiles![center.Id].Participant.Pool.Active);
+        Assert.Equal(9_500, result.State.CombatProfiles[adjacent.Id].Participant.Pool.Active);
+        Assert.Equal(10_000, result.State.CombatProfiles[far.Id].Participant.Pool.Active);
+        Assert.Equal(2, result.Events.Count(x => x.Detail == "lightning"
+            && x.Kind == RenewalAdvanceEventKind.AttackResolved));
+    }
+
+    [Fact]
+    public void 진정은_정화할상태가없어도_즉시발동하고_공용게이지를소비한다()
+    {
+        var cleanse = new ActiveSkill("cleanse", "진정", ActiveType.Tactic, "low");
+        var caster = Unit(1, 1, 0, 0, RenewalOrderMode.Standby);
+        var ready = UnitCombatState.Create(100, cleanse) with
+        {
+            VanguardGauge = new ActiveGauge(6),
+            AdjutantGauge = new ActiveGauge(6),
+        };
+
+        var result = AttackPhase([caster], profiles:
+            new Dictionary<UnitId, RenewalCombatProfile>
+            {
+                [caster.Id] = Profile(caster) with { CombatState = ready },
+            });
+
+        Assert.Contains(result.Events, x => x.Kind == RenewalAdvanceEventKind.ActiveSkillFired
+            && x.Detail == "cleanse");
+        Assert.Equal(0, result.State.CombatProfiles![caster.Id]
+            .CombatState!.SharedActiveGauge.ElapsedDays);
+    }
+
+    [Theory]
+    [InlineData("fire_plot", StatusKind.Burn, 4)]
+    [InlineData("confound", StatusKind.Daze, 1)]
+    [InlineData("discord", StatusKind.Nullify, 2)]
+    public void 계략형액티브는_대상에게_정의된상태를_다음턴부터적용하도록건다(
+        string code, StatusKind expected, int duration)
+    {
+        var tactic = new ActiveSkill(code, code, ActiveType.Tactic, "high");
+        var caster = Unit(1, 1, 0, 0, RenewalOrderMode.Standby);
+        var target = Unit(2, 2, RenewalHexSpace.Center(new HexCoord(1, 0)).X,
+            RenewalHexSpace.Center(new HexCoord(1, 0)).Y, RenewalOrderMode.Standby);
+        var ready = UnitCombatState.Create(100, tactic) with
+        {
+            VanguardGauge = new ActiveGauge(6),
+            AdjutantGauge = new ActiveGauge(6),
+        };
+        var profiles = new Dictionary<UnitId, RenewalCombatProfile>
+        {
+            [caster.Id] = Profile(caster) with
+            {
+                Participant = Profile(caster).Participant with { Intellect = 100 },
+                CombatState = ready,
+            },
+            [target.Id] = Profile(target) with { CombatState = UnitCombatState.Create(60) },
+        };
+
+        var result = AttackPhase([caster, target], profiles: profiles);
+        var status = Assert.Single(result.State.CombatProfiles![target.Id]
+            .CombatState!.Statuses, x => x.Kind == expected);
+
+        Assert.Equal(duration, status.Remaining);
+        Assert.Contains(result.Events, x => x.Kind == RenewalAdvanceEventKind.ActiveSkillFired
+            && x.Detail == code);
+    }
+
+    [Fact]
+    public void 교란은_중간부대를무시하고_대상을_최대4칸_즉시후퇴시킨다()
+    {
+        var rout = new ActiveSkill("rout", "교란", ActiveType.Tactic, "high");
+        var caster = Unit(1, 1, 0, 0, RenewalOrderMode.Standby);
+        var target = Unit(2, 2, 1_000, 0, RenewalOrderMode.Standby);
+        var intermediate = Unit(3, 1, 2_000, 0, RenewalOrderMode.Standby);
+        var ready = UnitCombatState.Create(100, rout) with
+        {
+            VanguardGauge = new ActiveGauge(6),
+            AdjutantGauge = new ActiveGauge(6),
+        };
+        var profiles = new[] { caster, target, intermediate }
+            .ToDictionary(x => x.Id, x => Profile(x) with
+            {
+                Participant = x.Id == caster.Id
+                    ? Profile(x).Participant with { Intellect = 100 }
+                    : Profile(x).Participant,
+                CombatState = x.Id == caster.Id ? ready : UnitCombatState.Create(60),
+            });
+
+        var result = AttackPhase([caster, target, intermediate], profiles: profiles);
+
+        Assert.True(result.State.Units.Single(x => x.Id == target.Id).Position.X >= 4_900);
+        Assert.Contains(result.Events, x => x.Kind == RenewalAdvanceEventKind.ActiveSkillFired
+            && x.Detail == "rout");
     }
 
     [Fact]

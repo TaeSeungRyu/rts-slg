@@ -1,18 +1,21 @@
 namespace SanguoSLG.Core.Simulation.RenewalMovement;
 
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Spatial;
 
 public sealed class RenewalCombatPhaseService
 {
     private readonly CombatPhaseResolver _unitResolver;
     private readonly BattleResolver _battle;
     private readonly int _woundedPercent;
+    private readonly RenewalMovementMap? _movementMap;
 
-    public RenewalCombatPhaseService(BalanceConfig balance)
+    public RenewalCombatPhaseService(BalanceConfig balance, RenewalMovementMap? movementMap = null)
     {
         _battle = new BattleResolver(balance.MultiTargetSecondaryPercent);
         _unitResolver = new CombatPhaseResolver(_battle, balance.WoundedPercent);
         _woundedPercent = balance.WoundedPercent;
+        _movementMap = movementMap;
     }
 
     public RenewalCombatResolution Resolve(RenewalAdvanceState state)
@@ -42,16 +45,23 @@ public sealed class RenewalCombatPhaseService
                 state.Day, RenewalAdvancePhase.Attack, state.MovementTick, id,
                 Amount: chargedProfiles[id].CombatGrowthAwards));
         }
+        var tacticPrepared = PrepareTacticActives(chargedProfiles, chargedProfiles.Keys.ToHashSet(),
+            units, state, events, out var tacticFired);
+        intents = CollectUnitIntents(units, tacticPrepared);
+        foreach (var casterId in tacticFired.Keys) intents.Remove(casterId);
+        engagements = BuildEngagements(intents, units, tacticPrepared)
+            .ToList();
         var attackers = engagements.Select(x => x.Attacker).ToHashSet();
-        attackers.UnionWith(CollectStructureAndSiteAttackers(state, units, chargedProfiles));
-        var prepared = PrepareActives(chargedProfiles, combatParticipants, attackers,
+        attackers.UnionWith(CollectStructureAndSiteAttackers(state, units, tacticPrepared));
+        var prepared = PrepareActives(tacticPrepared, combatParticipants, attackers,
             engagements, units, state, events, out var fired, out var defenseSkills,
-            out var armorBreakTargets);
+            out var armorBreakTargets, tacticFired);
         var participants = prepared.ToDictionary(x => x.Key,
             x => BuildParticipant(prepared[x.Key], units[x.Key],
                 fired.GetValueOrDefault(x.Key), defenseSkills.GetValueOrDefault(x.Key)));
         var field = _unitResolver.Resolve(engagements, participants);
-        var pools = field.Pools.ToDictionary(x => x.Key, x => x.Value);
+        var pools = allProfiles.ToDictionary(x => x.Key, x => x.Value.Participant.Pool);
+        foreach (var (id, pool) in field.Pools) pools[id] = pool;
 
         foreach (var (target, amount) in field.DamageTaken.OrderBy(x => x.Key.Value))
         {
@@ -88,7 +98,8 @@ public sealed class RenewalCombatPhaseService
                 : x.Value);
         TickStatusesPresentAtAttackStart(state.CombatProfiles, nextProfiles);
         TransferDefeatedLoot(engagements, units, nextProfiles, events, state);
-        var nextUnits = state.Units.Select(unit => ApplyUnitOutcome(unit, pools, waiting, state, events))
+        var nextUnits = state.Units.Select(unit => ApplyUnitOutcome(
+                units.GetValueOrDefault(unit.Id, unit), pools, waiting, state, events))
             .ToList();
 
         return new RenewalCombatResolution(state with
@@ -98,6 +109,181 @@ public sealed class RenewalCombatPhaseService
             Structures = structures,
             Sites = sites,
         }, events);
+    }
+
+    private Dictionary<UnitId, RenewalCombatProfile> PrepareTacticActives(
+        IReadOnlyDictionary<UnitId, RenewalCombatProfile> profiles,
+        IReadOnlySet<UnitId> participants,
+        IDictionary<UnitId, RenewalUnitState> units,
+        RenewalAdvanceState state, ICollection<RenewalAdvanceEvent> events,
+        out Dictionary<UnitId, ActiveSkill> fired)
+    {
+        var result = profiles.ToDictionary(x => x.Key, x => x.Value);
+        fired = [];
+        foreach (var id in participants.OrderBy(x => units[x].CommandId).ThenBy(x => x.Value))
+        {
+            var caster = result[id];
+            if (caster.CombatState is not { } combatState || IsDazed(combatState)
+                || combatState.ScheduledActive is not { Type: ActiveType.Tactic } skill
+                || !combatState.SharedActiveGauge.IsReady)
+            {
+                continue;
+            }
+
+            if (skill.Code == "cleanse")
+            {
+                foreach (var ally in units.Values.Where(x => x.Owner == units[id].Owner
+                    && InHexRange(x.Position, units[id].Position, 2)).OrderBy(x => x.Id.Value))
+                {
+                    if (result[ally.Id].CombatState is { } allyState)
+                    {
+                        result[ally.Id] = result[ally.Id] with
+                        {
+                            CombatState = allyState.Purge(PurgeScope.Fire).Purge(PurgeScope.NonFire),
+                        };
+                    }
+                }
+                ConsumeTactic(result, id, skill, state, events, fired);
+                continue;
+            }
+
+            var range = skill.Code == "lightning" ? 3 : skill.Code == "rout" ? 2 : 1;
+            var target = units.Values.Where(x => x.Owner != units[id].Owner
+                    && result.TryGetValue(x.Id, out var targetProfile)
+                    && targetProfile.Participant.Pool.Active > 0
+                    && InHexRange(x.Position, units[id].Position, range))
+                .Where(x => skill.Code is not ("confound" or "rout")
+                    || caster.Participant.Intellect > result[x.Id].Participant.Intellect)
+                .OrderBy(x => x.Position.DistanceTo(units[id].Position))
+                .ThenBy(x => x.Id.Value).FirstOrDefault();
+            if (target is null) continue;
+
+            switch (skill.Code)
+            {
+                case "fire_plot":
+                    foreach (var enemy in AreaEnemies(target.Position, units[id].Owner, 1,
+                                 units, result))
+                    {
+                        AddStatus(result, enemy.Id,
+                            new StatusEffect(StatusKind.Burn, 200, 4, true,
+                                PermanentLoss: true), state, events);
+                    }
+                    break;
+                case "lightning":
+                    foreach (var enemy in AreaEnemies(target.Position, units[id].Owner, 1,
+                                 units, result))
+                    {
+                        var profile = result[enemy.Id];
+                        var center = enemy.Id == target.Id;
+                        var normal = center ? profile.Participant.Pool.Active * 5 / 100 : 0;
+                        var permanent = profile.Participant.Pool.Active * (center ? 10 : 5) / 100;
+                        var pool = normal > 0
+                            ? profile.Participant.Pool.TakeDamage(normal, _woundedPercent)
+                            : profile.Participant.Pool;
+                        if (permanent > 0) pool = pool.TakeDamage(permanent, 0);
+                        result[enemy.Id] = profile with
+                        {
+                            Participant = profile.Participant with { Pool = pool },
+                        };
+                        events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.AttackResolved,
+                            state.Day, RenewalAdvancePhase.Attack, state.MovementTick, id,
+                            Target: RenewalTargetId.ForUnit(enemy.Id),
+                            Amount: normal + permanent, Detail: skill.Code));
+                    }
+                    break;
+                case "confound":
+                    AddStatus(result, target.Id,
+                        new StatusEffect(StatusKind.Daze, 0, 1, false), state, events);
+                    break;
+                case "rout":
+                    PushAway(units, target.Id, units[id].Position, state);
+                    break;
+                case "discord":
+                    AddStatus(result, target.Id,
+                        new StatusEffect(StatusKind.Nullify, 0, 2, false,
+                            NullifyAptPassive: true), state, events);
+                    break;
+                default:
+                    continue;
+            }
+            ConsumeTactic(result, id, skill, state, events, fired);
+        }
+        return result;
+    }
+
+    private static void ConsumeTactic(IDictionary<UnitId, RenewalCombatProfile> profiles,
+        UnitId id, ActiveSkill skill, RenewalAdvanceState state,
+        ICollection<RenewalAdvanceEvent> events, IDictionary<UnitId, ActiveSkill> fired)
+    {
+        var profile = profiles[id];
+        var (_, consumed) = profile.CombatState!.FiringTactic();
+        profiles[id] = profile with { CombatState = consumed };
+        fired[id] = skill;
+        events.Add(SkillEvent(state, id, skill));
+    }
+
+    private static void AddStatus(IDictionary<UnitId, RenewalCombatProfile> profiles,
+        UnitId id, StatusEffect status, RenewalAdvanceState state,
+        ICollection<RenewalAdvanceEvent> events)
+    {
+        var profile = profiles[id];
+        if (profile.CombatState is null) return;
+        profiles[id] = profile with { CombatState = profile.CombatState.AddStatus(status) };
+        events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.StatusApplied,
+            state.Day, RenewalAdvancePhase.AttackAftermath, state.MovementTick, id,
+            Detail: status.Kind.ToString()));
+    }
+
+    private static IEnumerable<RenewalUnitState> AreaEnemies(ContinuousPosition center,
+        FactionId owner, int range, IDictionary<UnitId, RenewalUnitState> units,
+        IReadOnlyDictionary<UnitId, RenewalCombatProfile> profiles) => units.Values
+        .Where(x => x.Owner != owner && profiles.TryGetValue(x.Id, out var profile)
+            && profile.Participant.Pool.Active > 0
+            && InHexRange(x.Position, center, range));
+
+    private static bool InHexRange(ContinuousPosition left, ContinuousPosition right, int range) =>
+        RenewalHexSpace.NearestHex(left).Distance(RenewalHexSpace.NearestHex(right)) <= range;
+
+    private void PushAway(IDictionary<UnitId, RenewalUnitState> units, UnitId targetId,
+        ContinuousPosition casterPosition, RenewalAdvanceState state)
+    {
+        var target = units[targetId];
+        var dx = target.Position.X - casterPosition.X;
+        var dy = target.Position.Y - casterPosition.Y;
+        var length = Math.Max(1L, target.Position.DistanceTo(casterPosition));
+        for (var tiles = 4; tiles >= 1; tiles--)
+        {
+            var distance = tiles * ContinuousPosition.UnitsPerTile;
+            var destination = new ContinuousPosition(
+                target.Position.X + dx * distance / length,
+                target.Position.Y + dy * distance / length);
+            if (_movementMap is not null
+                && (!_movementMap.CanStand(target.Domain, destination,
+                        RenewalAdvanceSimulator.UnitCollisionRadius)
+                    || _movementMap.FirstStaticCollision(target.Position, destination,
+                        RenewalAdvanceSimulator.UnitCollisionRadius,
+                        target.Domain) != RenewalStopReason.None))
+            {
+                continue;
+            }
+            var blocked = units.Values.Any(x => x.Id != targetId && x.Owner != target.Owner
+                && x.IsActive && x.Position.DistanceTo(destination)
+                    < RenewalAdvanceSimulator.UnitCollisionRadius * 2)
+                || (state.Structures ?? []).Any(x => x.IsActive
+                    && x.Position.DistanceTo(destination)
+                        < RenewalAdvanceSimulator.UnitCollisionRadius)
+                || (state.Sites ?? []).Any(x =>
+                    x.Position.DistanceTo(destination)
+                        < RenewalAdvanceSimulator.UnitCollisionRadius);
+            if (blocked) continue;
+            units[targetId] = target with
+            {
+                Position = destination,
+                Destination = destination,
+                StopReason = RenewalStopReason.None,
+            };
+            return;
+        }
     }
 
     private Dictionary<UnitId, RenewalCombatProfile> ApplyExistingStatuses(
@@ -186,10 +372,11 @@ public sealed class RenewalCombatPhaseService
         RenewalAdvanceState state, ICollection<RenewalAdvanceEvent> events,
         out Dictionary<UnitId, ActiveSkill> fired,
         out Dictionary<UnitId, ActiveSkill> defenseSkills,
-        out HashSet<UnitId> armorBreakTargets)
+        out HashSet<UnitId> armorBreakTargets,
+        IReadOnlyDictionary<UnitId, ActiveSkill>? alreadyFired = null)
     {
         var result = profiles.ToDictionary(x => x.Key, x => x.Value);
-        fired = [];
+        fired = alreadyFired?.ToDictionary(x => x.Key, x => x.Value) ?? [];
         defenseSkills = [];
         armorBreakTargets = [];
         var ordered = participants.OrderBy(x => units[x].CommandId).ThenBy(x => x.Value).ToList();

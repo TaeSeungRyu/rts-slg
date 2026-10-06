@@ -20,6 +20,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         EgressAndEntry,
         OrderLifecycle,
         CombatAndSiege,
+        ActiveSkills,
     }
 
     private static readonly HexCoord StartHex = new(1, 3);
@@ -141,7 +142,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         var buildingTiles = _sites.SelectMany(CastleFootprint.TilesFor).Append(blockedTile);
         _movementMap = new RenewalMovementMap(hexMap, buildingTiles);
         _simulator = new RenewalAdvanceSimulator(_movementMap,
-            new RenewalCombatPhaseService(new BalanceConfig(0)));
+            new RenewalCombatPhaseService(new BalanceConfig(0), _movementMap));
         _deployment = new RenewalDeploymentService(_movementMap);
 
         _map = new MapView3D();
@@ -279,6 +280,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         _scenarioSelector.AddItem("4. 성·항구 출격·입성·복귀");
         _scenarioSelector.AddItem("5. 행군·전진·공격 목표 생명주기");
         _scenarioSelector.AddItem("6. 공격턴 교전·공성 참여 제한");
+        _scenarioSelector.AddItem("7. 액티브·범위·지속 상태");
         _scenarioSelector.ItemSelected += index =>
         {
             _scenario = (QaScenario)index;
@@ -468,8 +470,34 @@ public partial class RenewalMovementTestScene3D : Node3D
                 SpawnCombatText(waiting.Position + Vector3.Up * 0.55f, "공성 대기",
                     new Color(0.72f, 0.76f, 0.82f));
             }
+            else if (entry.Kind == RenewalAdvanceEventKind.ActiveSkillFired
+                && entry.Unit is { } casterId
+                && _tokens.TryGetValue(casterId.Value, out var caster)
+                && entry.Detail is { } firedCode
+                && SkillForPresentation(firedCode) is { } firedSkill)
+            {
+                ActiveSkillPresentation.ShowCasterActivation(caster);
+                SpawnCombatText(caster.Position + Vector3.Up * 0.6f, firedSkill.Name,
+                    new Color(1f, 0.82f, 0.28f));
+            }
+            else if (entry.Kind == RenewalAdvanceEventKind.AttackResolved
+                && entry.Detail is { } skillCode && entry.Target is
+                    { Kind: RenewalTargetKind.Unit } targetId
+                && _tokens.TryGetValue(checked((int)targetId.Value), out var targetToken)
+                && SkillForPresentation(skillCode) is { } skill)
+            {
+                ActiveSkillPresentation.AttachEffect(targetToken, skill);
+                SpawnCombatText(targetToken.Position + Vector3.Up * 0.55f,
+                    $"{skill.Name} -{entry.Amount}", new Color(0.72f, 0.88f, 1f));
+            }
         }
     }
+
+    private static ActiveSkill? SkillForPresentation(string code) => code switch
+    {
+        "lightning" => new ActiveSkill("lightning", "낙뢰", ActiveType.Tactic, "high"),
+        _ => null,
+    };
 
     private void SpawnCombatText(Vector3 at, string text, Color color)
     {
@@ -639,6 +667,17 @@ public partial class RenewalMovementTestScene3D : Node3D
                     StopReason = RenewalStopReason.TargetInRange,
                     AttackRangeReachedTick = index + 1,
                 }).ToArray(),
+            QaScenario.ActiveSkills =>
+            [
+                Make(21, 1, new HexCoord(5, 3), new HexCoord(5, 3), 0) with
+                    { Mode = RenewalOrderMode.Standby },
+                Make(22, 2, new HexCoord(7, 3), new HexCoord(7, 3), 0) with
+                    { Mode = RenewalOrderMode.Standby },
+                Make(23, 2, new HexCoord(7, 4), new HexCoord(7, 4), 0) with
+                    { Mode = RenewalOrderMode.Standby },
+                Make(24, 2, new HexCoord(9, 3), new HexCoord(9, 3), 0) with
+                    { Mode = RenewalOrderMode.Standby },
+            ],
             _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
         };
     }
@@ -646,6 +685,22 @@ public partial class RenewalMovementTestScene3D : Node3D
     private static RenewalAdvanceState AttachScenarioCombatState(
         RenewalAdvanceState state, QaScenario scenario)
     {
+        if (scenario == QaScenario.ActiveSkills)
+        {
+            var lightning = new ActiveSkill("lightning", "낙뢰", ActiveType.Tactic, "high");
+            var skillProfiles = state.Units.ToDictionary(x => x.Id, x =>
+                new RenewalCombatProfile(x.Id,
+                    new BattleParticipant(new CombatStats(10_000, 10, 10), UnitMode.Attack,
+                        new TroopPool(10_000, 0), Intellect: x.Id.Value == 21 ? 100 : 60),
+                    CombatState: x.Id.Value == 21
+                        ? UnitCombatState.Create(100, lightning) with
+                        {
+                            VanguardGauge = new ActiveGauge(6),
+                            AdjutantGauge = new ActiveGauge(6),
+                        }
+                        : UnitCombatState.Create(60)));
+            return state with { CombatProfiles = skillProfiles };
+        }
         if (scenario != QaScenario.CombatAndSiege)
         {
             return state;
@@ -669,6 +724,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         QaScenario.EgressAndEntry => "성·항구 출격·입성·복귀",
         QaScenario.OrderLifecycle => "행군·전진·공격 목표 생명주기",
         QaScenario.CombatAndSiege => "공격턴 교전·공성 참여 제한",
+        QaScenario.ActiveSkills => "액티브·범위·지속 상태",
         _ => scenario.ToString(),
     };
 
@@ -848,6 +904,20 @@ public partial class RenewalMovementTestScene3D : Node3D
             && siege.Events.Any(x => x.Kind == RenewalAdvanceEventKind.SiteDamaged)
             && siege.State.Sites![0].Castle.WallCurrent < siegeStart.Sites![0].Castle.WallCurrent;
 
+        var skillStart = AttachScenarioCombatState(
+            _simulator.Start(BuildScenarioUnits(QaScenario.ActiveSkills)),
+            QaScenario.ActiveSkills) with
+        {
+            Phase = RenewalAdvancePhase.Attack,
+            MovementTick = RenewalAdvanceSimulator.MovementTicksPerDay,
+        };
+        var skill = _simulator.StepPhase(skillStart);
+        var skillRange = skill.Events.Count(x => x.Kind == RenewalAdvanceEventKind.AttackResolved
+                && x.Detail == "lightning") == 2
+            && skill.Events.Any(x => x.Kind == RenewalAdvanceEventKind.ActiveSkillFired
+                && x.Detail == "lightning")
+            && skill.State.CombatProfiles![new UnitId(24)].Participant.Pool.Active == 10_000;
+
         var interpolationOk = Mathf.IsEqualApprox(VisualInterpolationAlpha(0d), 0f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds / 2d), 0.5f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds), 1f)
@@ -869,15 +939,15 @@ public partial class RenewalMovementTestScene3D : Node3D
         var passed = terrain.State.IsCompleted && terrain.State.Units.All(x => x.Arrived)
             && attackPhases == 7 && completedDays == 7
             && distances[0] < distances[1] && distances[1] < distances[2]
-            && blocked == 2 && _tokens.Count >= 12
+            && blocked == 2 && _tokens.Count >= 16
             && entry.Transfers.Count == 2 && entry.FieldUnits.Count == 0
-            && modeLifecycle && siegeLimit
+            && modeLifecycle && siegeLimit && skillRange
             && interpolationOk && shadowStable && marchPoseStable && scaledCasterCheck && archerPoseOk
             && _tokens.Values.All(x => Mathf.IsEqualApprox(
                 x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
-        GD.Print($"[renewal-movement-auto] passed={passed} cases=6 terrain_arrived="
+        GD.Print($"[renewal-movement-auto] passed={passed} cases=7 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
-            + $"enemy_blocked={blocked} entries={entry.Transfers.Count} modes={modeLifecycle} siege_limit={siegeLimit} interpolation={interpolationOk} "
+            + $"enemy_blocked={blocked} entries={entry.Transfers.Count} modes={modeLifecycle} siege_limit={siegeLimit} skill_range={skillRange} interpolation={interpolationOk} "
             + $"archer_pose={archerPoseOk} scaled_casters={scaledCasterCheck} shadow_settings_valid={shadowStable} march_pose_contract={marchPoseStable} "
             + $"march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);
