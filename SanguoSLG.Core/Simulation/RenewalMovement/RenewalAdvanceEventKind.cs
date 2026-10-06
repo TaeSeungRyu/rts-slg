@@ -30,6 +30,7 @@ public enum RenewalAdvanceEventKind
     FormationTriggered,
     ScoutPostRemoved,
     GarrisonReleased,
+    ProductionCompleted,
     PhaseChanged,
     DayCompleted,
     AdvanceCompleted,

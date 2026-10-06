@@ -104,6 +104,20 @@ public sealed class RenewalIntegrationService(IRandomSource? random = null)
                 RenewalAdvancePhase.DaySettlement, state.MovementTick, Amount: calendarDay),
         };
         var logistics = ResolveLogistics(state, integration.Logistics, events);
+        var completedProductionUnits = new HashSet<UnitId>();
+        var productions = integration.Productions.Select(operation =>
+        {
+            if (operation.Completed || operation.CompletionDay > calendarDay)
+            {
+                return operation;
+            }
+            completedProductionUnits.Add(operation.Unit);
+            events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.ProductionCompleted,
+                state.Day, state.Phase, state.MovementTick, operation.Unit,
+                Amount: checked((int)operation.Id),
+                Detail: $"gold={operation.RewardGold};provisions={operation.RewardProvisions}"));
+            return operation with { Completed = true };
+        }).ToList();
         var structures = (state.Structures ?? []).Where(structure =>
         {
             var expired = structure.Kind == FieldBuildingKind.ScoutPost
@@ -135,14 +149,19 @@ public sealed class RenewalIntegrationService(IRandomSource? random = null)
                 Amount: weeklyCount));
         }
 
+        var units = state.Units.Select(unit => completedProductionUnits.Contains(unit.Id)
+            ? unit with { IsActive = true, ProductionOperationId = null }
+            : unit).ToList();
         return new RenewalStepResult(state with
         {
+            Units = units,
             Structures = structures,
             Integration = integration with
             {
                 LastSettledDay = calendarDay,
                 ScheduledWorks = works,
                 UnitLogistics = logistics,
+                ProductionOperations = productions,
                 WeeklySettlementCount = weeklyCount,
             },
         }, events);

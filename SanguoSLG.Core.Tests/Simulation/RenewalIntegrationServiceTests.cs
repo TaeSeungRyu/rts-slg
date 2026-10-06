@@ -170,4 +170,54 @@ public sealed class RenewalIntegrationServiceTests
         Assert.Equal(destroyed.Position, released.Position);
         Assert.Single(result.Events, x => x.Kind == RenewalAdvanceEventKind.GarrisonReleased);
     }
+
+    [Fact]
+    public void 생산작전은_500명을고정투입하고_완료일까지_야전에서숨긴뒤_복귀한다()
+    {
+        var operation = new RenewalProductionOperation(7, new UnitId(1), 14,
+            RewardGold: 300, RewardProvisions: 600);
+        var unit = RenewalUnitState.Create(operation.Unit, new ContinuousPosition(0, 0),
+            new ContinuousPosition(0, 0), 0) with
+        {
+            IsActive = false,
+            ProductionOperationId = operation.Id,
+        };
+        var integration = new RenewalIntegrationState(13, 0,
+            ProductionOperations: [operation]);
+        var state = new RenewalAdvanceState(2, RenewalAdvancePhase.DaySettlement, 50, [unit],
+            Integration: integration);
+
+        var result = new RenewalIntegrationService().ResolveDay(state);
+        var completed = Assert.Single(result.State.Integration!.Productions);
+        var returned = Assert.Single(result.State.Units);
+
+        Assert.Equal(500, completed.CommittedTroops);
+        Assert.True(completed.Completed);
+        Assert.True(returned.IsActive);
+        Assert.Null(returned.ProductionOperationId);
+        Assert.Contains(result.Events, x => x.Kind == RenewalAdvanceEventKind.ProductionCompleted
+            && x.Unit == unit.Id && x.Detail == "gold=300;provisions=600");
+    }
+
+    [Fact]
+    public void 생산작전은_완료일전에는_야전복귀와보상을발생시키지않는다()
+    {
+        var operation = new RenewalProductionOperation(7, new UnitId(1), 15);
+        var unit = RenewalUnitState.Create(operation.Unit, new ContinuousPosition(0, 0),
+            new ContinuousPosition(0, 0), 0) with
+        {
+            IsActive = false,
+            ProductionOperationId = operation.Id,
+        };
+        var state = new RenewalAdvanceState(1, RenewalAdvancePhase.DaySettlement, 50, [unit],
+            Integration: new RenewalIntegrationState(14, 0,
+                ProductionOperations: [operation]));
+
+        var result = new RenewalIntegrationService().ResolveDay(state);
+
+        Assert.False(result.State.Units.Single().IsActive);
+        Assert.False(result.State.Integration!.Productions.Single().Completed);
+        Assert.DoesNotContain(result.Events,
+            x => x.Kind == RenewalAdvanceEventKind.ProductionCompleted);
+    }
 }
