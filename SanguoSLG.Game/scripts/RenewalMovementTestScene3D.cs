@@ -387,6 +387,7 @@ public partial class RenewalMovementTestScene3D : Node3D
 
     private void Consume(IReadOnlyList<RenewalAdvanceEvent> events)
     {
+        PresentCombatEvents(events);
         foreach (var entry in events.Where(x => x.Kind != RenewalAdvanceEventKind.UnitMoved))
         {
             AppendLog(entry.Kind switch
@@ -431,6 +432,59 @@ public partial class RenewalMovementTestScene3D : Node3D
         Refresh();
     }
 
+    private void PresentCombatEvents(IReadOnlyList<RenewalAdvanceEvent> events)
+    {
+        foreach (var entry in events)
+        {
+            if (entry.Kind == RenewalAdvanceEventKind.SiteDamaged && entry.Target is { } siteId
+                && _state.Sites?.FirstOrDefault(x => x.Id == siteId) is { } site)
+            {
+                var targetWorld = ContinuousToWorld(site.Position)
+                    + new Vector3(0f, _map.TileTopY + 0.3f, 0f);
+                foreach (var attacker in _state.Units.Where(x => x.IsActive
+                    && x.AssignedTarget == siteId
+                    && x.StopReason != RenewalStopReason.SiegeCapacity))
+                {
+                    if (_tokens.TryGetValue(attacker.Id.Value, out var token))
+                    {
+                        token.PlayAttackMotionToward(targetWorld);
+                    }
+                }
+                SpawnCombatText(targetWorld, $"성벽 -{entry.Amount}",
+                    new Color(1f, 0.46f, 0.24f));
+            }
+            else if (entry.Kind == RenewalAdvanceEventKind.SiegeWaiting
+                && entry.Unit is { } waitingId
+                && _tokens.TryGetValue(waitingId.Value, out var waiting))
+            {
+                SpawnCombatText(waiting.Position + Vector3.Up * 0.55f, "공성 대기",
+                    new Color(0.72f, 0.76f, 0.82f));
+            }
+        }
+    }
+
+    private void SpawnCombatText(Vector3 at, string text, Color color)
+    {
+        var label = new Label3D
+        {
+            Text = text,
+            Font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf"),
+            FontSize = 54,
+            PixelSize = 0.002f,
+            Position = at,
+            Modulate = color,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            NoDepthTest = true,
+            OutlineSize = 14,
+            OutlineModulate = new Color(0f, 0f, 0f, 0.9f),
+        };
+        AddChild(label);
+        var tween = CreateTween().SetParallel();
+        tween.TweenProperty(label, "position", at + Vector3.Up * 0.5f, 1.0d);
+        tween.TweenProperty(label, "modulate:a", 0f, 1.0d);
+        tween.Finished += label.QueueFree;
+    }
+
     private void Refresh()
     {
         EnsureTokens();
@@ -456,7 +510,11 @@ public partial class RenewalMovementTestScene3D : Node3D
             + string.Join("  ", _state.Units.Select(x =>
                 $"{x.Id}:{ModeName(x.Mode)}:{x.StopReason}"
                 + $"{(x.PursuitTarget is { } pursuit ? $"→{pursuit}" : string.Empty)}"
-                + $"{(x.AssignedTarget is { } assigned ? $"◎{assigned}" : string.Empty)}"));
+                + $"{(x.AssignedTarget is { } assigned ? $"◎{assigned}" : string.Empty)}"))
+            + (_scenario == QaScenario.CombatAndSiege && _state.Sites is { Count: > 0 }
+                ? $"\n소형성 성벽 {_state.Sites[0].Castle.WallCurrent:N0} · 공성 참여 "
+                    + $"{_state.Units.Count(x => x.IsActive && x.StopReason != RenewalStopReason.SiegeCapacity)}/3"
+                : string.Empty);
         _playButton.Text = _playing ? "일시정지" : _state.IsCompleted ? "다시 시작" : "자동 재생";
         _log.Text = string.Join('\n', _logs.TakeLast(9));
     }
