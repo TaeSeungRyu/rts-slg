@@ -15,9 +15,14 @@ public sealed class RenewalAdvanceSimulator
     public const long ArrivalDispersionLimit = 500;
 
     private readonly RenewalMovementMap? _movementMap;
+    private readonly RenewalCombatPhaseService? _combat;
 
-    public RenewalAdvanceSimulator(RenewalMovementMap? movementMap = null) =>
+    public RenewalAdvanceSimulator(RenewalMovementMap? movementMap = null,
+        RenewalCombatPhaseService? combat = null)
+    {
         _movementMap = movementMap;
+        _combat = combat;
+    }
 
     public RenewalAdvanceState Start(IEnumerable<RenewalUnitState> units,
         IEnumerable<RenewalTargetState>? externalTargets = null)
@@ -42,7 +47,7 @@ public sealed class RenewalAdvanceSimulator
         }
 
         var events = new List<RenewalAdvanceEvent>();
-        var reconciled = ReconcileOrders(state.Units, state.ExternalTargets,
+        var reconciled = ReconcileOrders(state.Units, Targets(state),
             state.Day, state.MovementTick + 1, events);
         var nextUnits = new List<RenewalUnitState>(state.Units.Count);
         var nextTick = state.MovementTick + 1;
@@ -117,6 +122,14 @@ public sealed class RenewalAdvanceSimulator
         if (state.Phase == RenewalAdvancePhase.DaySettlement)
         {
             return CompleteDay(state);
+        }
+
+        if (state.Phase == RenewalAdvancePhase.Attack && _combat is not null)
+        {
+            var resolved = _combat.Resolve(state);
+            var attackNext = resolved.State with { Phase = RenewalAdvancePhase.AttackAftermath };
+            return new RenewalStepResult(attackNext,
+                resolved.Events.Append(PhaseEvent(attackNext)).ToList());
         }
 
         var nextPhase = state.Phase switch
@@ -366,13 +379,10 @@ public sealed class RenewalAdvanceSimulator
 
     private IReadOnlyList<RenewalUnitState> ReconcileOrders(
         IReadOnlyList<RenewalUnitState> units,
-        IReadOnlyList<RenewalTargetState>? externalTargets, int day, int movementTick,
+        IReadOnlyList<RenewalTargetState> targets, int day, int movementTick,
         ICollection<RenewalAdvanceEvent> events)
     {
         var snapshot = units.OrderBy(x => x.Id.Value).ToList();
-        var targets = snapshot.Select(ToTarget)
-            .Concat(externalTargets ?? Array.Empty<RenewalTargetState>())
-            .OrderBy(x => x.Id.Kind).ThenBy(x => x.Id.Value).ToList();
         return snapshot.Select(unit => ReconcileOrder(unit, targets, day, movementTick, events))
             .ToList();
     }
@@ -391,7 +401,7 @@ public sealed class RenewalAdvanceSimulator
             var current = FindHostile(targets, unit, unit.PursuitTarget);
             if (current is not null && IsVisibleTo(unit, current))
             {
-                return FollowTarget(unit, current);
+                return FollowTarget(unit, current, day, movementTick);
             }
 
             if (unit.PursuitTarget is not null)
@@ -405,6 +415,7 @@ public sealed class RenewalAdvanceSimulator
                     PursuitTarget = null,
                     LastKnownTargetPosition = null,
                     StopReason = RenewalStopReason.None,
+                    AttackRangeReachedTick = null,
                 }, NextOriginalDestination(unit));
             }
 
@@ -420,7 +431,8 @@ public sealed class RenewalAdvanceSimulator
                 events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.TargetAcquired,
                     day, RenewalAdvancePhase.Movement, movementTick, unit.Id,
                     unit.Position, acquired.Position, Target: acquired.Id));
-                return FollowTarget(unit with { PursuitTarget = acquired.Id }, acquired);
+                return FollowTarget(unit with { PursuitTarget = acquired.Id }, acquired,
+                    day, movementTick);
             }
 
             return Retarget(unit with
@@ -428,13 +440,14 @@ public sealed class RenewalAdvanceSimulator
                 PursuitTarget = null,
                 LastKnownTargetPosition = null,
                 StopReason = RenewalStopReason.None,
+                AttackRangeReachedTick = null,
             }, NextOriginalDestination(unit));
         }
 
         var assigned = FindHostile(targets, unit, unit.AssignedTarget);
         if (assigned is not null && IsVisibleTo(unit, assigned))
         {
-            return FollowTarget(unit, assigned);
+            return FollowTarget(unit, assigned, day, movementTick);
         }
 
         if (assigned is null)
@@ -465,7 +478,8 @@ public sealed class RenewalAdvanceSimulator
         return Retarget(unit with { StopReason = RenewalStopReason.TargetLost }, lastKnown);
     }
 
-    private RenewalUnitState FollowTarget(RenewalUnitState unit, RenewalTargetState target)
+    private RenewalUnitState FollowTarget(RenewalUnitState unit, RenewalTargetState target,
+        int day, int movementTick)
     {
         var range = Math.Max(0, unit.AttackRange) * ContinuousPosition.UnitsPerTile;
         if (unit.Position.DistanceTo(target.Position) <= range)
@@ -476,12 +490,15 @@ public sealed class RenewalAdvanceSimulator
                 LastKnownTargetPosition = target.Position,
                 Arrived = false,
                 StopReason = RenewalStopReason.TargetInRange,
+                AttackRangeReachedTick = unit.AttackRangeReachedTick
+                    ?? checked((day - 1) * MovementTicksPerDay + movementTick),
             };
         }
         return Retarget(unit with
         {
             LastKnownTargetPosition = target.Position,
             StopReason = RenewalStopReason.None,
+            AttackRangeReachedTick = null,
         }, target.Position);
     }
 
@@ -518,6 +535,7 @@ public sealed class RenewalAdvanceSimulator
             PursuitTarget = null,
             Arrived = true,
             StopReason = reason,
+            AttackRangeReachedTick = null,
             Path = null,
             PathIndex = 0,
         };
@@ -538,6 +556,15 @@ public sealed class RenewalAdvanceSimulator
     private static RenewalTargetState ToTarget(RenewalUnitState unit) => new(
         RenewalTargetId.ForUnit(unit.Id), unit.Owner, unit.Position, unit.IsActive,
         unit.IsVisible, unit.CommandId);
+
+    private static IReadOnlyList<RenewalTargetState> Targets(RenewalAdvanceState state) =>
+        state.Units.Select(ToTarget)
+            .Concat(state.ExternalTargets ?? Array.Empty<RenewalTargetState>())
+            .Concat((state.Structures ?? Array.Empty<RenewalStructureCombatState>()).Select(x =>
+                new RenewalTargetState(x.Id, x.Owner, x.Position, x.IsActive, x.IsVisible)))
+            .Concat((state.Sites ?? Array.Empty<RenewalSiteCombatState>()).Select(x =>
+                new RenewalTargetState(x.Id, x.Owner, x.Position, true, x.IsVisible)))
+            .OrderBy(x => x.Id.Kind).ThenBy(x => x.Id.Value).ToList();
 
     private IReadOnlyList<RenewalUnitState> AssignArrivalPositions(IReadOnlyList<RenewalUnitState> units)
     {

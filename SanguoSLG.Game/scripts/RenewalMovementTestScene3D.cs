@@ -2,12 +2,13 @@ namespace SanguoSLG.Game;
 
 using Godot;
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Simulation.RenewalMovement;
 using SanguoSLG.Core.Spatial;
 
 /// <summary>
 /// Phase 18D 독립 검수장. 캠페인과 분리하여 고정 틱 이동과 하루 단계 전이를 확인한다.
-/// 5단계까지 지형·거점 이동과 행군/전진/공격 목표 생명주기를 연결했다.
+/// 6단계까지 이동 명령과 공격턴 교전·공성 참여 제한을 연결했다.
 /// </summary>
 public partial class RenewalMovementTestScene3D : Node3D
 {
@@ -18,6 +19,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         Collision,
         EgressAndEntry,
         OrderLifecycle,
+        CombatAndSiege,
     }
 
     private static readonly HexCoord StartHex = new(1, 3);
@@ -138,7 +140,8 @@ public partial class RenewalMovementTestScene3D : Node3D
         var blockedTile = new HexCoord(4, 3);
         var buildingTiles = _sites.SelectMany(CastleFootprint.TilesFor).Append(blockedTile);
         _movementMap = new RenewalMovementMap(hexMap, buildingTiles);
-        _simulator = new RenewalAdvanceSimulator(_movementMap);
+        _simulator = new RenewalAdvanceSimulator(_movementMap,
+            new RenewalCombatPhaseService(new BalanceConfig(0)));
         _deployment = new RenewalDeploymentService(_movementMap);
 
         _map = new MapView3D();
@@ -275,6 +278,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         _scenarioSelector.AddItem("3. 아군 중첩·적군 충돌");
         _scenarioSelector.AddItem("4. 성·항구 출격·입성·복귀");
         _scenarioSelector.AddItem("5. 행군·전진·공격 목표 생명주기");
+        _scenarioSelector.AddItem("6. 공격턴 교전·공성 참여 제한");
         _scenarioSelector.ItemSelected += index =>
         {
             _scenario = (QaScenario)index;
@@ -344,8 +348,9 @@ public partial class RenewalMovementTestScene3D : Node3D
         _clock = new RenewalFixedStepClock();
         _initialUnits = BuildScenarioUnits(_scenario);
         _state = _simulator.Start(_initialUnits);
+        _state = AttachScenarioCombatState(_state, _scenario);
         EnsureTokens();
-        var activeIds = _state.Units.Select(x => x.Id.Value).ToHashSet();
+        var activeIds = _state.Units.Where(x => x.IsActive).Select(x => x.Id.Value).ToHashSet();
         foreach (var (id, token) in _tokens)
         {
             token.Visible = activeIds.Contains(id);
@@ -395,6 +400,14 @@ public partial class RenewalMovementTestScene3D : Node3D
                 RenewalAdvanceEventKind.TargetAcquired => $"{entry.Unit} → {entry.Target} 추격 시작",
                 RenewalAdvanceEventKind.TargetLost => $"{entry.Unit} → {entry.Target} 목표 상실",
                 RenewalAdvanceEventKind.OrderCompleted => $"{entry.Unit} 명령 완료 · 대기",
+                RenewalAdvanceEventKind.AttackResolved => $"{entry.Target} 병력 피해 {entry.Amount}",
+                RenewalAdvanceEventKind.UnitDefeated => $"{entry.Unit} 전멸",
+                RenewalAdvanceEventKind.LootTransferred => $"{entry.Unit} 전리품 회수 {entry.Amount}",
+                RenewalAdvanceEventKind.StructureDamaged => $"{entry.Target} 건축물 피해 {entry.Amount}",
+                RenewalAdvanceEventKind.StructureDestroyed => $"{entry.Target} 건축물 파괴",
+                RenewalAdvanceEventKind.SiteDamaged => $"{entry.Target} 공성 피해 {entry.Amount}",
+                RenewalAdvanceEventKind.SiteCaptured => $"{entry.Unit} → {entry.Target} 점령",
+                RenewalAdvanceEventKind.SiegeWaiting => $"{entry.Unit} 공성 대기 · 참여 상한 {entry.Amount}",
                 _ => entry.Kind.ToString(),
             });
         }
@@ -421,7 +434,7 @@ public partial class RenewalMovementTestScene3D : Node3D
     private void Refresh()
     {
         EnsureTokens();
-        var activeIds = _state.Units.Select(x => x.Id.Value).ToHashSet();
+        var activeIds = _state.Units.Where(x => x.IsActive).Select(x => x.Id.Value).ToHashSet();
         foreach (var (id, token) in _tokens)
         {
             token.Visible = activeIds.Contains(id);
@@ -548,8 +561,37 @@ public partial class RenewalMovementTestScene3D : Node3D
                 Make(8, 2, new HexCoord(3, 2), new HexCoord(3, 2), 0) with
                     { Mode = RenewalOrderMode.Standby },
             ],
+            QaScenario.CombatAndSiege => Enumerable.Range(11, 4).Select((id, index) =>
+                Make(id, 2, new HexCoord(9, 0), new HexCoord(10, 0), 0) with
+                {
+                    Position = new ContinuousPosition(
+                        RenewalHexSpace.Center(new HexCoord(9, 0)).X,
+                        RenewalHexSpace.Center(new HexCoord(9, 0)).Y + index * 80L),
+                    Mode = RenewalOrderMode.Attack,
+                    AssignedTarget = new RenewalTargetId(RenewalTargetKind.Site, 102),
+                    StopReason = RenewalStopReason.TargetInRange,
+                    AttackRangeReachedTick = index + 1,
+                }).ToArray(),
             _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
         };
+    }
+
+    private static RenewalAdvanceState AttachScenarioCombatState(
+        RenewalAdvanceState state, QaScenario scenario)
+    {
+        if (scenario != QaScenario.CombatAndSiege)
+        {
+            return state;
+        }
+        var profiles = state.Units.ToDictionary(x => x.Id, x =>
+            new RenewalCombatProfile(x.Id,
+                new BattleParticipant(new CombatStats(10_000, 10, 10), UnitMode.Attack,
+                    new TroopPool(10_000, 0)), BuildingAttack: 10));
+        var target = new RenewalTargetId(RenewalTargetKind.Site, 102);
+        var site = new RenewalSiteCombatState(target, new FactionId(1),
+            RenewalHexSpace.Center(new HexCoord(10, 0)),
+            new CastleState(30_000, 10_000), CastleSize.Small);
+        return state with { CombatProfiles = profiles, Sites = [site] };
     }
 
     private static string ScenarioName(QaScenario scenario) => scenario switch
@@ -559,6 +601,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         QaScenario.Collision => "아군 중첩·적군 충돌",
         QaScenario.EgressAndEntry => "성·항구 출격·입성·복귀",
         QaScenario.OrderLifecycle => "행군·전진·공격 목표 생명주기",
+        QaScenario.CombatAndSiege => "공격턴 교전·공성 참여 제한",
         _ => scenario.ToString(),
     };
 
@@ -724,6 +767,20 @@ public partial class RenewalMovementTestScene3D : Node3D
             && attack.AssignedTarget == RenewalTargetId.ForUnit(new UnitId(6))
             && attack.PursuitTarget is null;
 
+        var siegeStart = AttachScenarioCombatState(
+            _simulator.Start(BuildScenarioUnits(QaScenario.CombatAndSiege)),
+            QaScenario.CombatAndSiege) with
+        {
+            Phase = RenewalAdvancePhase.Attack,
+            MovementTick = RenewalAdvanceSimulator.MovementTicksPerDay,
+        };
+        var siege = _simulator.StepPhase(siegeStart);
+        var siegeLimit = siege.State.Phase == RenewalAdvancePhase.AttackAftermath
+            && siege.Events.Count(x => x.Kind == RenewalAdvanceEventKind.SiegeWaiting) == 1
+            && siege.State.Units.Count(x => x.StopReason == RenewalStopReason.SiegeCapacity) == 1
+            && siege.Events.Any(x => x.Kind == RenewalAdvanceEventKind.SiteDamaged)
+            && siege.State.Sites![0].Castle.WallCurrent < siegeStart.Sites![0].Castle.WallCurrent;
+
         var interpolationOk = Mathf.IsEqualApprox(VisualInterpolationAlpha(0d), 0f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds / 2d), 0.5f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds), 1f)
@@ -745,15 +802,15 @@ public partial class RenewalMovementTestScene3D : Node3D
         var passed = terrain.State.IsCompleted && terrain.State.Units.All(x => x.Arrived)
             && attackPhases == 7 && completedDays == 7
             && distances[0] < distances[1] && distances[1] < distances[2]
-            && blocked == 2 && _tokens.Count >= 8
+            && blocked == 2 && _tokens.Count >= 12
             && entry.Transfers.Count == 2 && entry.FieldUnits.Count == 0
-            && modeLifecycle
+            && modeLifecycle && siegeLimit
             && interpolationOk && shadowStable && marchPoseStable && scaledCasterCheck && archerPoseOk
             && _tokens.Values.All(x => Mathf.IsEqualApprox(
                 x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
-        GD.Print($"[renewal-movement-auto] passed={passed} cases=5 terrain_arrived="
+        GD.Print($"[renewal-movement-auto] passed={passed} cases=6 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
-            + $"enemy_blocked={blocked} entries={entry.Transfers.Count} modes={modeLifecycle} interpolation={interpolationOk} "
+            + $"enemy_blocked={blocked} entries={entry.Transfers.Count} modes={modeLifecycle} siege_limit={siegeLimit} interpolation={interpolationOk} "
             + $"archer_pose={archerPoseOk} scaled_casters={scaledCasterCheck} shadow_settings_valid={shadowStable} march_pose_contract={marchPoseStable} "
             + $"march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);

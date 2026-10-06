@@ -9,4 +9,5 @@ public enum RenewalStopReason
     EnemyBlocked,
     TargetInRange,
     TargetLost,
+    SiegeCapacity,
 }

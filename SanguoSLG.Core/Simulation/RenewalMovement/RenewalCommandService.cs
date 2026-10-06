@@ -48,6 +48,7 @@ public sealed class RenewalCommandService
             StopReason = _map is not null && path is { Count: 0 }
                 ? RenewalStopReason.NoPath
                 : RenewalStopReason.None,
+            AttackRangeReachedTick = null,
         };
         var units = state.Units.ToList();
         units[index] = updated;
@@ -57,5 +58,9 @@ public sealed class RenewalCommandService
     private static IEnumerable<RenewalTargetState> Targets(RenewalAdvanceState state) =>
         state.Units.Select(unit => new RenewalTargetState(
             RenewalTargetId.ForUnit(unit.Id), unit.Owner, unit.Position, unit.IsActive, unit.IsVisible))
-        .Concat(state.ExternalTargets ?? Array.Empty<RenewalTargetState>());
+        .Concat(state.ExternalTargets ?? Array.Empty<RenewalTargetState>())
+        .Concat((state.Structures ?? Array.Empty<RenewalStructureCombatState>()).Select(x =>
+            new RenewalTargetState(x.Id, x.Owner, x.Position, x.IsActive, x.IsVisible)))
+        .Concat((state.Sites ?? Array.Empty<RenewalSiteCombatState>()).Select(x =>
+            new RenewalTargetState(x.Id, x.Owner, x.Position, true, x.IsVisible)));
 }

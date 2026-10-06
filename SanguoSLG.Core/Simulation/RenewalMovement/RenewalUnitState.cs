@@ -28,7 +28,8 @@ public sealed record RenewalUnitState(
     int AttackRange = 1,
     bool IsActive = true,
     bool IsVisible = true,
-    long CommandId = 0)
+    long CommandId = 0,
+    int? AttackRangeReachedTick = null)
 {
     public static RenewalUnitState Create(UnitId id, ContinuousPosition position,
         ContinuousPosition destination, int movementPerDay)
