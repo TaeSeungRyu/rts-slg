@@ -640,12 +640,12 @@ public partial class RenewalMovementTestScene3D : Node3D
                 Make(2, 1, new HexCoord(1, 4), new HexCoord(8, 4), 2) with
                 {
                     Mode = RenewalOrderMode.Advance,
+                    AttackRange = 2,
                     OriginalDestination = RenewalHexSpace.Center(new HexCoord(8, 4)),
                 },
-                Make(3, 1, new HexCoord(1, 7), new HexCoord(7, 7), 2) with
+                Make(3, 1, new HexCoord(1, 7), new HexCoord(7, 7), 3) with
                 {
                     Mode = RenewalOrderMode.Attack,
-                    AttackRange = 2,
                     AssignedTarget = RenewalTargetId.ForUnit(new UnitId(6)),
                     LastKnownTargetPosition = RenewalHexSpace.Center(new HexCoord(6, 7)),
                 },
@@ -885,10 +885,20 @@ public partial class RenewalMovementTestScene3D : Node3D
         var march = modeTick.State.Units.Single(x => x.Id.Value == 1);
         var advance = modeTick.State.Units.Single(x => x.Id.Value == 2);
         var attack = modeTick.State.Units.Single(x => x.Id.Value == 3);
+        var modeRangeTick = _simulator.StepMovementTick(modeTick.State);
+        var rangedAdvance = modeRangeTick.State.Units.Single(x => x.Id.Value == 2);
+        var meleeAttack = modeRangeTick.State.Units.Single(x => x.Id.Value == 3);
+        var modeUnits = BuildScenarioUnits(QaScenario.OrderLifecycle);
+        var archerContract = modeUnits.Single(x => x.Id.Value == 2);
+        var cavalryContract = modeUnits.Single(x => x.Id.Value == 3);
         var modeLifecycle = march.PursuitTarget is null
             && advance.PursuitTarget == RenewalTargetId.ForUnit(new UnitId(7))
             && attack.AssignedTarget == RenewalTargetId.ForUnit(new UnitId(6))
-            && attack.PursuitTarget is null;
+            && attack.PursuitTarget is null
+            && archerContract.MovementPerDay == 2 && archerContract.AttackRange == 2
+            && cavalryContract.MovementPerDay == 3 && cavalryContract.AttackRange == 1
+            && rangedAdvance.StopReason == RenewalStopReason.TargetInRange
+            && meleeAttack.StopReason != RenewalStopReason.TargetInRange;
 
         var siegeStart = AttachScenarioCombatState(
             _simulator.Start(BuildScenarioUnits(QaScenario.CombatAndSiege)),
