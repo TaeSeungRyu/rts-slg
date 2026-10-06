@@ -2,9 +2,14 @@ namespace SanguoSLG.Core.Tests.Simulation;
 
 using SanguoSLG.Core.Simulation.RenewalMovement;
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Simulation;
 
 public sealed class RenewalIntegrationServiceTests
 {
+    private sealed class FixedRandom(int value) : IRandomSource
+    {
+        public int Next(int minInclusive, int maxExclusive) => value;
+    }
     private static RenewalAdvanceState Settlement(int day, RenewalIntegrationState integration) =>
         new(day, RenewalAdvancePhase.DaySettlement, 50, [], Integration: integration);
 
@@ -99,5 +104,70 @@ public sealed class RenewalIntegrationServiceTests
         Assert.Equal(94, result.State.Integration!.Logistics[unit.Id].Provisions);
         Assert.Contains(result.Events, x => x.Kind == RenewalAdvanceEventKind.ProvisionsConsumed
             && x.Amount == 6);
+    }
+
+    [Fact]
+    public void 이동후처리에서_진법은_범위안_적병력의_1퍼센트를_부상으로바꾼다()
+    {
+        var unit = RenewalUnitState.Create(new UnitId(1), new ContinuousPosition(1_000, 0),
+            new ContinuousPosition(1_000, 0), 0) with { Owner = new FactionId(2) };
+        var formation = new RenewalStructureCombatState(
+            new RenewalTargetId(RenewalTargetKind.Building, 10), new FactionId(1),
+            new ContinuousPosition(0, 0), 2_000, 12, Kind: FieldBuildingKind.Formation,
+            EffectRadius: 1);
+        var profile = new RenewalCombatProfile(unit.Id,
+            new BattleParticipant(new CombatStats(10_000, 10, 10), UnitMode.Attack,
+                new TroopPool(10_000, 0)));
+        var state = new RenewalAdvanceState(1, RenewalAdvancePhase.MovementAftermath, 50,
+            [unit], CombatProfiles: new Dictionary<UnitId, RenewalCombatProfile>
+            { [unit.Id] = profile }, Structures: [formation]);
+
+        var result = new RenewalIntegrationService(new FixedRandom(0))
+            .ResolveMovementAftermath(state);
+
+        Assert.Equal(new TroopPool(9_900, 100),
+            result.State.CombatProfiles![unit.Id].Participant.Pool);
+        Assert.Single(result.Events, x => x.Kind == RenewalAdvanceEventKind.FormationTriggered);
+    }
+
+    [Fact]
+    public void 정찰대는_적이같은타일에_도착하면_즉시제거된다()
+    {
+        var unit = RenewalUnitState.Create(new UnitId(1), new ContinuousPosition(0, 0),
+            new ContinuousPosition(0, 0), 0) with { Owner = new FactionId(2) };
+        var scout = new RenewalStructureCombatState(
+            new RenewalTargetId(RenewalTargetKind.Building, 10), new FactionId(1),
+            new ContinuousPosition(0, 0), 1, 0, Kind: FieldBuildingKind.ScoutPost);
+        var state = new RenewalAdvanceState(1, RenewalAdvancePhase.MovementAftermath, 50,
+            [unit], Structures: [scout]);
+
+        var result = new RenewalIntegrationService().ResolveMovementAftermath(state);
+
+        Assert.Empty(result.State.Structures!);
+        Assert.Single(result.Events, x => x.Kind == RenewalAdvanceEventKind.ScoutPostRemoved);
+    }
+
+    [Fact]
+    public void 보루와진법이_파괴되면_주둔부대가_그자리에서_복원된다()
+    {
+        var structureId = new RenewalTargetId(RenewalTargetKind.Building, 10);
+        var unit = RenewalUnitState.Create(new UnitId(1), new ContinuousPosition(0, 0),
+            new ContinuousPosition(0, 0), 0) with
+        {
+            Owner = new FactionId(1), IsActive = false, GarrisonStructure = structureId,
+        };
+        var destroyed = new RenewalStructureCombatState(structureId, new FactionId(1),
+            new ContinuousPosition(2_000, 0), 0, 12, Kind: FieldBuildingKind.Fort,
+            GarrisonUnit: unit.Id);
+        var state = new RenewalAdvanceState(1, RenewalAdvancePhase.AttackAftermath, 50,
+            [unit], Structures: [destroyed]);
+
+        var result = new RenewalIntegrationService().ResolveAttackAftermath(state);
+        var released = Assert.Single(result.State.Units);
+
+        Assert.True(released.IsActive);
+        Assert.Null(released.GarrisonStructure);
+        Assert.Equal(destroyed.Position, released.Position);
+        Assert.Single(result.Events, x => x.Kind == RenewalAdvanceEventKind.GarrisonReleased);
     }
 }

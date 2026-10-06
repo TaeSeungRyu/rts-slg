@@ -2,8 +2,88 @@ namespace SanguoSLG.Core.Simulation.RenewalMovement;
 
 using SanguoSLG.Core.Domain;
 
-public sealed class RenewalIntegrationService
+public sealed class RenewalIntegrationService(IRandomSource? random = null)
 {
+    private readonly IRandomSource _random = random ?? new SeededRandomSource(0);
+
+    public RenewalStepResult ResolveMovementAftermath(RenewalAdvanceState state)
+    {
+        if (state.Phase != RenewalAdvancePhase.MovementAftermath)
+        {
+            return new RenewalStepResult(state, []);
+        }
+        var structures = (state.Structures ?? []).ToList();
+        var profiles = state.CombatProfiles?.ToDictionary(x => x.Key, x => x.Value);
+        var events = new List<RenewalAdvanceEvent>();
+        foreach (var formation in structures.Where(x => x.IsActive
+                     && x.Kind == FieldBuildingKind.Formation).OrderBy(x => x.Id.Value))
+        {
+            foreach (var unit in state.Units.Where(x => x.IsActive && x.Owner != formation.Owner)
+                         .OrderBy(x => x.Id.Value))
+            {
+                if (RenewalHexSpace.NearestHex(formation.Position)
+                        .Distance(RenewalHexSpace.NearestHex(unit.Position)) > formation.EffectRadius
+                    || _random.Next(0, 100) >= 30 || profiles is null
+                    || !profiles.TryGetValue(unit.Id, out var profile))
+                {
+                    continue;
+                }
+                var pool = profile.Participant.Pool;
+                var wounded = Math.Max(1, pool.Active / 100);
+                profiles[unit.Id] = profile with
+                {
+                    Participant = profile.Participant with
+                    {
+                        Pool = pool with { Active = pool.Active - wounded,
+                            Wounded = pool.Wounded + wounded },
+                    },
+                };
+                events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.FormationTriggered,
+                    state.Day, state.Phase, state.MovementTick, unit.Id,
+                    formation.Position, unit.Position, Target: formation.Id, Amount: wounded));
+            }
+        }
+
+        var removedScouts = structures.Where(x => x.Kind == FieldBuildingKind.ScoutPost
+            && state.Units.Any(unit => unit.IsActive && unit.Owner != x.Owner
+                && RenewalHexSpace.NearestHex(unit.Position)
+                    == RenewalHexSpace.NearestHex(x.Position))).Select(x => x.Id).ToHashSet();
+        foreach (var id in removedScouts.OrderBy(x => x.Value))
+        {
+            events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.ScoutPostRemoved,
+                state.Day, state.Phase, state.MovementTick, Target: id));
+        }
+        return new RenewalStepResult(state with
+        {
+            CombatProfiles = profiles,
+            Structures = structures.Where(x => !removedScouts.Contains(x.Id)).ToList(),
+        }, events);
+    }
+
+    public RenewalStepResult ResolveAttackAftermath(RenewalAdvanceState state)
+    {
+        if (state.Phase != RenewalAdvancePhase.AttackAftermath)
+        {
+            return new RenewalStepResult(state, []);
+        }
+        var structures = (state.Structures ?? []).ToDictionary(x => x.Id);
+        var events = new List<RenewalAdvanceEvent>();
+        var units = state.Units.Select(unit =>
+        {
+            if (unit.GarrisonStructure is not { } id
+                || !structures.TryGetValue(id, out var structure) || structure.IsActive)
+            {
+                return unit;
+            }
+            events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.GarrisonReleased,
+                state.Day, state.Phase, state.MovementTick, unit.Id,
+                structure.Position, structure.Position, Target: id));
+            return unit with { IsActive = true, Position = structure.Position,
+                Destination = structure.Position, GarrisonStructure = null };
+        }).ToList();
+        return new RenewalStepResult(state with { Units = units }, events);
+    }
+
     public RenewalStepResult ResolveDay(RenewalAdvanceState state)
     {
         if (state.Phase != RenewalAdvancePhase.DaySettlement || state.Integration is null)
@@ -24,6 +104,17 @@ public sealed class RenewalIntegrationService
                 RenewalAdvancePhase.DaySettlement, state.MovementTick, Amount: calendarDay),
         };
         var logistics = ResolveLogistics(state, integration.Logistics, events);
+        var structures = (state.Structures ?? []).Where(structure =>
+        {
+            var expired = structure.Kind == FieldBuildingKind.ScoutPost
+                && structure.ExpiresDay is { } expires && calendarDay >= expires;
+            if (expired)
+            {
+                events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.ScoutPostRemoved,
+                    state.Day, state.Phase, state.MovementTick, Target: structure.Id));
+            }
+            return !expired;
+        }).ToList();
         var works = integration.Works.Select(work =>
         {
             if (work.Completed || work.CompletionDay > calendarDay)
@@ -46,6 +137,7 @@ public sealed class RenewalIntegrationService
 
         return new RenewalStepResult(state with
         {
+            Structures = structures,
             Integration = integration with
             {
                 LastSettledDay = calendarDay,

@@ -138,6 +138,22 @@ public sealed class RenewalAdvanceSimulator
                 resolved.Events.Append(PhaseEvent(attackNext)).ToList());
         }
 
+        if (state.Phase == RenewalAdvancePhase.MovementAftermath && _integration is not null)
+        {
+            var resolved = _integration.ResolveMovementAftermath(state);
+            var integrationNext = resolved.State with { Phase = RenewalAdvancePhase.Attack };
+            return new RenewalStepResult(integrationNext,
+                resolved.Events.Append(PhaseEvent(integrationNext)).ToList());
+        }
+
+        if (state.Phase == RenewalAdvancePhase.AttackAftermath && _integration is not null)
+        {
+            var resolved = _integration.ResolveAttackAftermath(state);
+            var integrationNext = resolved.State with { Phase = RenewalAdvancePhase.DaySettlement };
+            return new RenewalStepResult(integrationNext,
+                resolved.Events.Append(PhaseEvent(integrationNext)).ToList());
+        }
+
         var nextPhase = state.Phase switch
         {
             RenewalAdvancePhase.MovementAftermath => RenewalAdvancePhase.Attack,

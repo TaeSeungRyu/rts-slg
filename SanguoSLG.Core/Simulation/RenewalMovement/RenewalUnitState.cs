@@ -31,7 +31,8 @@ public sealed record RenewalUnitState(
     long CommandId = 0,
     int? AttackRangeReachedTick = null,
     int BuildingAttackRange = 1,
-    int CastleAttackRange = 1)
+    int CastleAttackRange = 1,
+    RenewalTargetId? GarrisonStructure = null)
 {
     public static RenewalUnitState Create(UnitId id, ContinuousPosition position,
         ContinuousPosition destination, int movementPerDay)
