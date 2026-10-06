@@ -16,12 +16,15 @@ public sealed class RenewalAdvanceSimulator
 
     private readonly RenewalMovementMap? _movementMap;
     private readonly RenewalCombatPhaseService? _combat;
+    private readonly RenewalIntegrationService? _integration;
 
     public RenewalAdvanceSimulator(RenewalMovementMap? movementMap = null,
-        RenewalCombatPhaseService? combat = null)
+        RenewalCombatPhaseService? combat = null,
+        RenewalIntegrationService? integration = null)
     {
         _movementMap = movementMap;
         _combat = combat;
+        _integration = integration;
     }
 
     public RenewalAdvanceState Start(IEnumerable<RenewalUnitState> units,
@@ -121,7 +124,10 @@ public sealed class RenewalAdvanceSimulator
 
         if (state.Phase == RenewalAdvancePhase.DaySettlement)
         {
-            return CompleteDay(state);
+            var settlement = _integration?.ResolveDay(state) ?? Empty(state);
+            var completed = CompleteDay(settlement.State);
+            return new RenewalStepResult(completed.State,
+                settlement.Events.Concat(completed.Events).ToList());
         }
 
         if (state.Phase == RenewalAdvancePhase.Attack && _combat is not null)
