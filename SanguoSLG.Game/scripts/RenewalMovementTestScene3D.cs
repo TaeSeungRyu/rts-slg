@@ -311,7 +311,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         panel.AddChild(box);
         box.AddChild(MakeLabel("Phase 18D — 연속 이동 검수장", 20,
             new Color(0.92f, 0.73f, 0.34f)));
-        box.AddChild(MakeLabel("10단계 · AI / 저장 복원 / 부하 검증", 13,
+        box.AddChild(MakeLabel("11단계 · 적대적 통합 QA / 사용자 검수", 13,
             new Color(0.72f, 0.76f, 0.82f)));
 
         _scenarioSelector = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -626,6 +626,14 @@ public partial class RenewalMovementTestScene3D : Node3D
         _state = _simulator.Start(_initialUnits);
         _state = AttachScenarioCombatState(_state, _scenario);
         _state = AttachScenarioIntegrationState(_state, _scenario);
+        if (_scenario == QaScenario.Operations)
+        {
+            var planner = new RenewalMovementAiPlanner(_commands);
+            _state = planner.Plan(_state, new FactionId(1));
+            _state = planner.Plan(_state, new FactionId(2));
+            _state = new RenewalMovementSaveService().Deserialize(
+                new RenewalMovementSaveService().Serialize(_state with { RandomState = 20261007 }));
+        }
         EnsureTokens();
         var activeIds = _state.Units.Where(x => x.IsActive).Select(x => x.Id.Value).ToHashSet();
         foreach (var (id, token) in _tokens)
@@ -645,6 +653,13 @@ public partial class RenewalMovementTestScene3D : Node3D
         _selectedUnit = null;
         RefreshSelectionOverlay();
         AppendLog($"{ScenarioName(_scenario)} 초기화 — 자동 재생 또는 단계 실행을 선택하세요.");
+        if (_scenario == QaScenario.Operations)
+        {
+            var metrics = new RenewalPerformanceProbe().MeasureStandardLoad(3);
+            AppendLog("양 세력 AI 명령 및 저장 복원 완료");
+            AppendLog("부하(ms/틱) " + string.Join(" / ", metrics.Select(x =>
+                $"{x.UnitCount}부대 {x.MillisecondsPerTick:0.###}")));
+        }
         Refresh();
     }
 
