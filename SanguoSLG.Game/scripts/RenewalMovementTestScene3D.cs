@@ -783,6 +783,22 @@ public partial class RenewalMovementTestScene3D : Node3D
                     new Color(1f, 0.82f, 0.28f));
             }
             else if (entry.Kind == RenewalAdvanceEventKind.AttackResolved
+                && entry.Detail is null
+                && entry.Target is { Kind: RenewalTargetKind.Unit } plainTargetId
+                && _tokens.TryGetValue(checked((int)plainTargetId.Value), out var plainTarget))
+            {
+                foreach (var attacker in _state.Units.Where(x => x.IsActive
+                    && (x.AssignedTarget == plainTargetId || x.PursuitTarget == plainTargetId)))
+                {
+                    if (_tokens.TryGetValue(attacker.Id.Value, out var attackerToken))
+                    {
+                        attackerToken.PlayAttackMotionToward(plainTarget.Position);
+                    }
+                }
+                SpawnCombatText(plainTarget.Position + Vector3.Up * 0.55f,
+                    $"-{entry.Amount}", new Color(1f, 0.46f, 0.24f));
+            }
+            else if (entry.Kind == RenewalAdvanceEventKind.AttackResolved
                 && entry.Detail is { } skillCode && entry.Target is
                     { Kind: RenewalTargetKind.Unit } targetId
                 && _tokens.TryGetValue(checked((int)targetId.Value), out var targetToken)
@@ -997,8 +1013,8 @@ public partial class RenewalMovementTestScene3D : Node3D
                 .ToArray(),
             QaScenario.Operations => Enumerable.Range(200, 20)
                 .Select(id => Make(id, id < 210 ? 1 : 2,
-                    new HexCoord(id < 210 ? 2 : 8, 6),
-                    new HexCoord(id < 210 ? 8 : 2, 6), 2) with
+                    new HexCoord(id < 210 ? 4 : 5, 6),
+                    new HexCoord(id < 210 ? 5 : 4, 6), 2) with
                 {
                     Mode = RenewalOrderMode.Standby,
                 }).ToArray(),
@@ -1024,6 +1040,14 @@ public partial class RenewalMovementTestScene3D : Node3D
                         }
                         : UnitCombatState.Create(60)));
             return state with { CombatProfiles = skillProfiles };
+        }
+        if (scenario == QaScenario.Operations)
+        {
+            var operationProfiles = state.Units.ToDictionary(x => x.Id, x =>
+                new RenewalCombatProfile(x.Id,
+                    new BattleParticipant(new CombatStats(10_000, 18, 14), UnitMode.Attack,
+                        new TroopPool(10_000, 0)), BuildingAttack: 18));
+            return state with { CombatProfiles = operationProfiles };
         }
         if (scenario != QaScenario.CombatAndSiege)
         {
@@ -1347,7 +1371,8 @@ public partial class RenewalMovementTestScene3D : Node3D
             && _selectionPanel.OffsetLeft < _selectionPanel.OffsetRight;
         CloseSelection();
 
-        var operationsStart = _simulator.Start(BuildScenarioUnits(QaScenario.Operations))
+        var operationsStart = AttachScenarioCombatState(
+            _simulator.Start(BuildScenarioUnits(QaScenario.Operations)), QaScenario.Operations)
             with { RandomState = 20261007 };
         var aiPlanned = new RenewalMovementAiPlanner(_commands)
             .Plan(operationsStart, new FactionId(1));
@@ -1356,6 +1381,11 @@ public partial class RenewalMovementTestScene3D : Node3D
         var aiSaveOk = restored.RandomState == operationsStart.RandomState
             && restored.Units.Take(10).All(x => x.Mode == RenewalOrderMode.Attack)
             && restored.Units.Take(10).All(x => x.AssignedTarget is not null);
+        var operationsRun = _simulator.RunToCompletion(restored);
+        var operationsCombat = operationsRun.Events.Any(
+                x => x.Kind == RenewalAdvanceEventKind.AttackResolved)
+            && operationsRun.State.CombatProfiles!.Values.Any(
+                x => x.Participant.Pool.Active < 10_000);
         var loadMetrics = new RenewalPerformanceProbe().MeasureStandardLoad(3);
         var loadOk = loadMetrics.Select(x => x.UnitCount).SequenceEqual([50, 100, 300])
             && loadMetrics.All(x => x.MillisecondsPerTick < 100);
@@ -1385,14 +1415,14 @@ public partial class RenewalMovementTestScene3D : Node3D
             && entry.Transfers.Count == 2 && entry.FieldUnits.Count == 0
             && modeLifecycle && siegeLimit && skillRange && integrationPassed && overlayOk
             && manySelectionOk
-            && aiSaveOk && loadOk
+            && aiSaveOk && operationsCombat && loadOk
             && interpolationOk && shadowStable && marchPoseStable && scaledCasterCheck && archerPoseOk
             && _tokens.Values.All(x => Mathf.IsEqualApprox(
                 x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
         GD.Print($"[renewal-movement-auto] passed={passed} cases=10 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
             + $"enemy_blocked={blocked} selection={selectionOk} overlay={overlayOk} many_list={manySelectionOk} entries={entry.Transfers.Count} modes={modeLifecycle} siege_limit={siegeLimit} skill_range={skillRange} integration={integrationPassed} interpolation={interpolationOk} "
-            + $"ai_save={aiSaveOk} load={loadOk} load_ms={string.Join('/', loadMetrics.Select(x => x.MillisecondsPerTick.ToString("0.###")))} "
+            + $"ai_save={aiSaveOk} operations_combat={operationsCombat} load={loadOk} load_ms={string.Join('/', loadMetrics.Select(x => x.MillisecondsPerTick.ToString("0.###")))} "
             + $"archer_pose={archerPoseOk} scaled_casters={scaledCasterCheck} shadow_settings_valid={shadowStable} march_pose_contract={marchPoseStable} "
             + $"march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);
