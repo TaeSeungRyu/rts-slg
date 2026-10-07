@@ -1,6 +1,8 @@
 namespace SanguoSLG.Game;
 
 using Godot;
+using SanguoSLG.Core.AI;
+using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Simulation.RenewalMovement;
@@ -23,6 +25,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         ActiveSkills,
         Integration,
         SelectionUi,
+        Operations,
     }
 
     private static readonly HexCoord StartHex = new(1, 3);
@@ -308,7 +311,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         panel.AddChild(box);
         box.AddChild(MakeLabel("Phase 18D — 연속 이동 검수장", 20,
             new Color(0.92f, 0.73f, 0.34f)));
-        box.AddChild(MakeLabel("9단계 · 중첩 선택 / 재명령 / 경로·범위", 13,
+        box.AddChild(MakeLabel("10단계 · AI / 저장 복원 / 부하 검증", 13,
             new Color(0.72f, 0.76f, 0.82f)));
 
         _scenarioSelector = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -322,6 +325,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         _scenarioSelector.AddItem("7. 액티브·범위·지속 상태");
         _scenarioSelector.AddItem("8. 보급·건축·생산·날짜 정산");
         _scenarioSelector.AddItem("9. 중첩 부대 선택·다수 목록");
+        _scenarioSelector.AddItem("10. AI·저장 복원·부하 검증");
         _scenarioSelector.ItemSelected += index =>
         {
             _scenario = (QaScenario)index;
@@ -976,6 +980,13 @@ public partial class RenewalMovementTestScene3D : Node3D
             QaScenario.SelectionUi => Enumerable.Range(100, 30)
                 .Select(id => Make(id, 1, new HexCoord(5, 4), new HexCoord(5, 4), 0))
                 .ToArray(),
+            QaScenario.Operations => Enumerable.Range(200, 20)
+                .Select(id => Make(id, id < 210 ? 1 : 2,
+                    new HexCoord(id < 210 ? 2 : 8, 6),
+                    new HexCoord(id < 210 ? 8 : 2, 6), 2) with
+                {
+                    Mode = RenewalOrderMode.Standby,
+                }).ToArray(),
             _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
         };
     }
@@ -1066,6 +1077,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         QaScenario.ActiveSkills => "액티브·범위·지속 상태",
         QaScenario.Integration => "보급·건축·생산·날짜 정산",
         QaScenario.SelectionUi => "중첩 부대 선택·다수 목록",
+        QaScenario.Operations => "AI·저장 복원·부하 검증",
         _ => scenario.ToString(),
     };
 
@@ -1320,6 +1332,19 @@ public partial class RenewalMovementTestScene3D : Node3D
             && _selectionPanel.OffsetLeft < _selectionPanel.OffsetRight;
         CloseSelection();
 
+        var operationsStart = _simulator.Start(BuildScenarioUnits(QaScenario.Operations))
+            with { RandomState = 20261007 };
+        var aiPlanned = new RenewalMovementAiPlanner(_commands)
+            .Plan(operationsStart, new FactionId(1));
+        var saveService = new RenewalMovementSaveService();
+        var restored = saveService.Deserialize(saveService.Serialize(aiPlanned));
+        var aiSaveOk = restored.RandomState == operationsStart.RandomState
+            && restored.Units.Take(10).All(x => x.Mode == RenewalOrderMode.Attack)
+            && restored.Units.Take(10).All(x => x.AssignedTarget is not null);
+        var loadMetrics = new RenewalPerformanceProbe().MeasureStandardLoad(3);
+        var loadOk = loadMetrics.Select(x => x.UnitCount).SequenceEqual([50, 100, 300])
+            && loadMetrics.All(x => x.MillisecondsPerTick < 100);
+
         var interpolationOk = Mathf.IsEqualApprox(VisualInterpolationAlpha(0d), 0f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds / 2d), 0.5f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds), 1f)
@@ -1345,12 +1370,14 @@ public partial class RenewalMovementTestScene3D : Node3D
             && entry.Transfers.Count == 2 && entry.FieldUnits.Count == 0
             && modeLifecycle && siegeLimit && skillRange && integrationPassed && overlayOk
             && manySelectionOk
+            && aiSaveOk && loadOk
             && interpolationOk && shadowStable && marchPoseStable && scaledCasterCheck && archerPoseOk
             && _tokens.Values.All(x => Mathf.IsEqualApprox(
                 x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
-        GD.Print($"[renewal-movement-auto] passed={passed} cases=9 terrain_arrived="
+        GD.Print($"[renewal-movement-auto] passed={passed} cases=10 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
             + $"enemy_blocked={blocked} selection={selectionOk} overlay={overlayOk} many_list={manySelectionOk} entries={entry.Transfers.Count} modes={modeLifecycle} siege_limit={siegeLimit} skill_range={skillRange} integration={integrationPassed} interpolation={interpolationOk} "
+            + $"ai_save={aiSaveOk} load={loadOk} load_ms={string.Join('/', loadMetrics.Select(x => x.MillisecondsPerTick.ToString("0.###")))} "
             + $"archer_pose={archerPoseOk} scaled_casters={scaledCasterCheck} shadow_settings_valid={shadowStable} march_pose_contract={marchPoseStable} "
             + $"march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);
