@@ -54,14 +54,12 @@ public sealed class RenewalAdvanceSimulator
             state.Day, state.MovementTick + 1, events);
         var nextUnits = new List<RenewalUnitState>(state.Units.Count);
         var nextTick = state.MovementTick + 1;
+        var spatialIndex = new RenewalSpatialIndex(reconciled);
         foreach (var unit in reconciled.OrderBy(unit => unit.Id.Value))
         {
-            var resolved = nextUnits.ToDictionary(x => x.Id);
-            var collisionSnapshot = reconciled
-                .Select(x => resolved.TryGetValue(x.Id, out var updated) ? updated : x)
-                .ToList();
-            var moved = MoveOneTick(unit, collisionSnapshot);
+            var moved = MoveOneTick(unit, spatialIndex);
             nextUnits.Add(moved);
+            spatialIndex.Update(moved);
             if (moved.Position != unit.Position)
             {
                 events.Add(new RenewalAdvanceEvent(RenewalAdvanceEventKind.UnitMoved,
@@ -271,7 +269,7 @@ public sealed class RenewalAdvanceSimulator
     }
 
     private RenewalUnitState MoveOneTick(RenewalUnitState unit,
-        IReadOnlyList<RenewalUnitState> allUnits)
+        RenewalSpatialIndex spatialIndex)
     {
         if (!unit.IsActive || unit.Mode == RenewalOrderMode.Standby || unit.Arrived
             || unit.MovementPerDay == 0
@@ -323,7 +321,8 @@ public sealed class RenewalAdvanceSimulator
                 UnitCollisionRadius, current.Domain) ?? RenewalStopReason.None;
             if (collision == RenewalStopReason.None)
             {
-                collision = FirstEnemyCollision(current, candidate, allUnits);
+                collision = FirstEnemyCollision(current, candidate,
+                    spatialIndex.QuerySegment(current.Position, candidate, UnitCollisionRadius * 2));
             }
             if (collision != RenewalStopReason.None)
             {
