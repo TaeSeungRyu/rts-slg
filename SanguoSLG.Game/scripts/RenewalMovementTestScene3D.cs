@@ -49,6 +49,9 @@ public partial class RenewalMovementTestScene3D : Node3D
     private readonly Dictionary<int, Vector3> _visualStarts = [];
     private readonly Dictionary<int, Vector3> _visualTargets = [];
     private readonly Dictionary<int, double> _visualElapsed = [];
+    private Node3D _selectionOverlay = null!;
+    private (UnitId Unit, ContinuousPosition Position, int PathIndex, int Range,
+        RenewalStopReason StopReason)? _overlayState;
     private Label _status = null!;
     private Label _log = null!;
     private Button _playButton = null!;
@@ -180,6 +183,8 @@ public partial class RenewalMovementTestScene3D : Node3D
         _map = new MapView3D();
         AddChild(_map);
         _map.Build(hexMap, new HashSet<HexCoord>(), new TileConditionMap());
+        _selectionOverlay = new Node3D { Name = "SelectionOverlay" };
+        AddChild(_selectionOverlay);
 
         _camera = new CameraController3D { Fov = 52f };
         AddChild(_camera);
@@ -390,7 +395,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         title.AddChild(MakeLabel("겹친 부대 목록", 19, new Color(0.92f, 0.73f, 0.34f)));
         var spacer = new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         title.AddChild(spacer);
-        AddButton(title, "닫기", () => _selectionPanel.Visible = false);
+        AddButton(title, "닫기", CloseSelection);
         var scroll = new ScrollContainer
         {
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
@@ -441,11 +446,19 @@ public partial class RenewalMovementTestScene3D : Node3D
         SelectUnit(entries[0]);
     }
 
+    private void CloseSelection()
+    {
+        _selectionPanel.Visible = false;
+        _selectedUnit = null;
+        ClearSelectionOverlay();
+    }
+
     private void SelectUnit(RenewalUnitSelectionEntry entry)
     {
         _selectedUnit = entry.Unit;
         _selectionDetail.Text = $"부대 {entry.Unit.Value}\n명령 {ModeName(entry.Mode)}  ·  "
             + $"사거리 {entry.AttackRange}칸  ·  상태 {WaitReason(entry.StopReason)}";
+        RefreshSelectionOverlay();
     }
 
     private void ReissueOrder(RenewalOrderMode mode)
@@ -478,7 +491,79 @@ public partial class RenewalMovementTestScene3D : Node3D
         SelectUnit(new RenewalUnitSelectionEntry(changed.Id, changed.Owner, changed.Mode,
             changed.StopReason, changed.AttackRange, changed.Position, true));
         AppendLog($"{changed.Id} 재명령 · {ModeName(mode)}");
+        RefreshSelectionOverlay();
         Refresh();
+    }
+
+    private void RefreshSelectionOverlay()
+    {
+        if (_selectedUnit is not { } selected
+            || _state.Units.FirstOrDefault(x => x.Id == selected) is not { } unit)
+        {
+            ClearSelectionOverlay();
+            return;
+        }
+        var signature = (unit.Id, unit.Position, unit.PathIndex, unit.AttackRange, unit.StopReason);
+        if (_overlayState == signature)
+        {
+            return;
+        }
+        ClearSelectionOverlay();
+        _overlayState = signature;
+        var pathColor = new Color(0.92f, 0.82f, 0.35f, 0.94f);
+        foreach (var point in (unit.Path ?? []).Skip(unit.PathIndex).Take(40))
+        {
+            _selectionOverlay.AddChild(new MeshInstance3D
+            {
+                Mesh = new SphereMesh { Radius = 0.055f, Height = 0.11f,
+                    RadialSegments = 12, Rings = 6 },
+                Position = ContinuousToWorld(point) + new Vector3(0f, _map.TileTopY + 0.045f, 0f),
+                MaterialOverride = new StandardMaterial3D
+                {
+                    AlbedoColor = pathColor,
+                    EmissionEnabled = true,
+                    Emission = pathColor,
+                    EmissionEnergyMultiplier = 0.65f,
+                    ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                    Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                    NoDepthTest = true,
+                },
+            });
+        }
+        if (unit.AttackRange <= 0)
+        {
+            return;
+        }
+        var center = ContinuousToWorld(unit.Position) + new Vector3(0f, _map.TileTopY + 0.03f, 0f);
+        var tileRadius = (_map.HexToWorld(new HexCoord(1, 0))
+            - _map.HexToWorld(new HexCoord(0, 0))).Length();
+        var radius = tileRadius * unit.AttackRange;
+        var mesh = new ImmediateMesh();
+        var material = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.95f, 0.34f, 0.24f, 0.90f),
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            NoDepthTest = true,
+        };
+        mesh.SurfaceBegin(Mesh.PrimitiveType.LineStrip, material);
+        for (var index = 0; index <= 48; index++)
+        {
+            var angle = Mathf.Tau * index / 48f;
+            mesh.SurfaceAddVertex(center + new Vector3(Mathf.Cos(angle) * radius, 0f,
+                Mathf.Sin(angle) * radius));
+        }
+        mesh.SurfaceEnd();
+        _selectionOverlay.AddChild(new MeshInstance3D { Mesh = mesh });
+    }
+
+    private void ClearSelectionOverlay()
+    {
+        _overlayState = null;
+        foreach (var child in _selectionOverlay.GetChildren())
+        {
+            child.QueueFree();
+        }
     }
 
     private static string WaitReason(RenewalStopReason reason) => reason switch
@@ -546,6 +631,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         _logs.Clear();
         _selectionPanel.Visible = false;
         _selectedUnit = null;
+        RefreshSelectionOverlay();
         AppendLog($"{ScenarioName(_scenario)} 초기화 — 자동 재생 또는 단계 실행을 선택하세요.");
         Refresh();
     }
@@ -729,6 +815,10 @@ public partial class RenewalMovementTestScene3D : Node3D
                 _visualElapsed[unit.Id.Value] = 0d;
             }
             _visualTargets[unit.Id.Value] = world;
+        }
+        if (_selectedUnit is not null)
+        {
+            RefreshSelectionOverlay();
         }
         _status.Text = $"날짜  {_state.Day}/7    단계  {PhaseName(_state.Phase)}\n"
             + $"이동 틱  {_state.MovementTick}/50    {ScenarioName(_scenario)}\n"
@@ -1198,6 +1288,14 @@ public partial class RenewalMovementTestScene3D : Node3D
             && integration.State.Units.Single(x => x.Id.Value == 33).IsActive
             && integrated.Logistics[new UnitId(31)].SupplyStock < 100
             && integration.Events.Any(x => x.Kind == RenewalAdvanceEventKind.FormationTriggered);
+        var overlayUnit = _state.Units.First(x => x.IsActive);
+        SelectUnit(new RenewalUnitSelectionEntry(overlayUnit.Id, overlayUnit.Owner,
+            overlayUnit.Mode, overlayUnit.StopReason, overlayUnit.AttackRange,
+            overlayUnit.Position, true));
+        var overlayOk = _selectionOverlay.GetChildCount() > 0
+            && _selectionDetail.Text.Contains("사거리", StringComparison.Ordinal)
+            && _selectionDetail.Text.Contains("상태", StringComparison.Ordinal);
+        CloseSelection();
 
         var interpolationOk = Mathf.IsEqualApprox(VisualInterpolationAlpha(0d), 0f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds / 2d), 0.5f)
@@ -1222,13 +1320,13 @@ public partial class RenewalMovementTestScene3D : Node3D
             && distances[0] < distances[1] && distances[1] < distances[2]
             && blocked == 2 && selectionOk && _tokens.Count >= 16
             && entry.Transfers.Count == 2 && entry.FieldUnits.Count == 0
-            && modeLifecycle && siegeLimit && skillRange && integrationPassed
+            && modeLifecycle && siegeLimit && skillRange && integrationPassed && overlayOk
             && interpolationOk && shadowStable && marchPoseStable && scaledCasterCheck && archerPoseOk
             && _tokens.Values.All(x => Mathf.IsEqualApprox(
                 x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
         GD.Print($"[renewal-movement-auto] passed={passed} cases=8 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
-            + $"enemy_blocked={blocked} selection={selectionOk} entries={entry.Transfers.Count} modes={modeLifecycle} siege_limit={siegeLimit} skill_range={skillRange} integration={integrationPassed} interpolation={interpolationOk} "
+            + $"enemy_blocked={blocked} selection={selectionOk} overlay={overlayOk} entries={entry.Transfers.Count} modes={modeLifecycle} siege_limit={siegeLimit} skill_range={skillRange} integration={integrationPassed} interpolation={interpolationOk} "
             + $"archer_pose={archerPoseOk} scaled_casters={scaledCasterCheck} shadow_settings_valid={shadowStable} march_pose_contract={marchPoseStable} "
             + $"march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);
