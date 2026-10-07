@@ -12,7 +12,8 @@ public sealed record RenewalAdvanceState(
     IReadOnlyDictionary<UnitId, RenewalCombatProfile>? CombatProfiles = null,
     IReadOnlyList<RenewalStructureCombatState>? Structures = null,
     IReadOnlyList<RenewalSiteCombatState>? Sites = null,
-    RenewalIntegrationState? Integration = null)
+    RenewalIntegrationState? Integration = null,
+    long RandomState = 0)
 {
     public bool IsCompleted => Phase == RenewalAdvancePhase.Completed;
 }
