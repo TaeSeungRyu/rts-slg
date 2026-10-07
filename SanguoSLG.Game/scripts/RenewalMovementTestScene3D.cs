@@ -22,6 +22,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         CombatAndSiege,
         ActiveSkills,
         Integration,
+        SelectionUi,
     }
 
     private static readonly HexCoord StartHex = new(1, 3);
@@ -307,7 +308,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         panel.AddChild(box);
         box.AddChild(MakeLabel("Phase 18D — 연속 이동 검수장", 20,
             new Color(0.92f, 0.73f, 0.34f)));
-        box.AddChild(MakeLabel("5단계 · 이동 / 거점 / 행군·전진·공격 목표", 13,
+        box.AddChild(MakeLabel("9단계 · 중첩 선택 / 재명령 / 경로·범위", 13,
             new Color(0.72f, 0.76f, 0.82f)));
 
         _scenarioSelector = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
@@ -320,6 +321,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         _scenarioSelector.AddItem("6. 공격턴 교전·공성 참여 제한");
         _scenarioSelector.AddItem("7. 액티브·범위·지속 상태");
         _scenarioSelector.AddItem("8. 보급·건축·생산·날짜 정산");
+        _scenarioSelector.AddItem("9. 중첩 부대 선택·다수 목록");
         _scenarioSelector.ItemSelected += index =>
         {
             _scenario = (QaScenario)index;
@@ -419,10 +421,7 @@ public partial class RenewalMovementTestScene3D : Node3D
     private void ShowUnitsAt(ContinuousPosition position)
     {
         var entries = _selection.UnitsAt(_state, position, new FactionId(1), 360);
-        foreach (var child in _selectionRows.GetChildren())
-        {
-            child.QueueFree();
-        }
+        ClearSelectionRows();
         _selectedUnit = null;
         if (entries.Count == 0)
         {
@@ -444,6 +443,15 @@ public partial class RenewalMovementTestScene3D : Node3D
         }
         _selectionPanel.Visible = true;
         SelectUnit(entries[0]);
+    }
+
+    private void ClearSelectionRows()
+    {
+        foreach (var child in _selectionRows.GetChildren())
+        {
+            _selectionRows.RemoveChild(child);
+            child.QueueFree();
+        }
     }
 
     private void CloseSelection()
@@ -965,6 +973,9 @@ public partial class RenewalMovementTestScene3D : Node3D
                     { IsActive = false, ProductionOperationId = 1 },
                 Make(34, 2, new HexCoord(6, 5), new HexCoord(6, 5), 0),
             ],
+            QaScenario.SelectionUi => Enumerable.Range(100, 30)
+                .Select(id => Make(id, 1, new HexCoord(5, 4), new HexCoord(5, 4), 0))
+                .ToArray(),
             _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
         };
     }
@@ -1054,6 +1065,7 @@ public partial class RenewalMovementTestScene3D : Node3D
         QaScenario.CombatAndSiege => "공격턴 교전·공성 참여 제한",
         QaScenario.ActiveSkills => "액티브·범위·지속 상태",
         QaScenario.Integration => "보급·건축·생산·날짜 정산",
+        QaScenario.SelectionUi => "중첩 부대 선택·다수 목록",
         _ => scenario.ToString(),
     };
 
@@ -1297,6 +1309,17 @@ public partial class RenewalMovementTestScene3D : Node3D
             && _selectionDetail.Text.Contains("상태", StringComparison.Ordinal);
         CloseSelection();
 
+        _scenario = QaScenario.SelectionUi;
+        ResetSimulation();
+        ShowUnitsAt(RenewalHexSpace.Center(new HexCoord(5, 4)));
+        var manySelectionOk = _selectionRows.GetChildCount() == 30
+            && _selectionRows.GetParent() is ScrollContainer
+            && Mathf.IsEqualApprox(_selectionPanel.AnchorLeft, 1f)
+            && Mathf.IsEqualApprox(_selectionPanel.AnchorRight, 1f)
+            && Mathf.IsEqualApprox(_selectionPanel.AnchorBottom, 1f)
+            && _selectionPanel.OffsetLeft < _selectionPanel.OffsetRight;
+        CloseSelection();
+
         var interpolationOk = Mathf.IsEqualApprox(VisualInterpolationAlpha(0d), 0f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds / 2d), 0.5f)
             && Mathf.IsEqualApprox(VisualInterpolationAlpha(MovementSnapshotSeconds), 1f)
@@ -1321,12 +1344,13 @@ public partial class RenewalMovementTestScene3D : Node3D
             && blocked == 2 && selectionOk && _tokens.Count >= 16
             && entry.Transfers.Count == 2 && entry.FieldUnits.Count == 0
             && modeLifecycle && siegeLimit && skillRange && integrationPassed && overlayOk
+            && manySelectionOk
             && interpolationOk && shadowStable && marchPoseStable && scaledCasterCheck && archerPoseOk
             && _tokens.Values.All(x => Mathf.IsEqualApprox(
                 x.DisplayMarchSpeedScale, RenewalMarchSpeedScale));
-        GD.Print($"[renewal-movement-auto] passed={passed} cases=8 terrain_arrived="
+        GD.Print($"[renewal-movement-auto] passed={passed} cases=9 terrain_arrived="
             + $"{terrain.State.Units.Count(x => x.Arrived)} speed={string.Join('/', distances)} "
-            + $"enemy_blocked={blocked} selection={selectionOk} overlay={overlayOk} entries={entry.Transfers.Count} modes={modeLifecycle} siege_limit={siegeLimit} skill_range={skillRange} integration={integrationPassed} interpolation={interpolationOk} "
+            + $"enemy_blocked={blocked} selection={selectionOk} overlay={overlayOk} many_list={manySelectionOk} entries={entry.Transfers.Count} modes={modeLifecycle} siege_limit={siegeLimit} skill_range={skillRange} integration={integrationPassed} interpolation={interpolationOk} "
             + $"archer_pose={archerPoseOk} scaled_casters={scaledCasterCheck} shadow_settings_valid={shadowStable} march_pose_contract={marchPoseStable} "
             + $"march_scale={RenewalMarchSpeedScale:0.00}");
         GetTree().Quit(passed ? 0 : 1);
