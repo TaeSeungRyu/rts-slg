@@ -45,6 +45,30 @@ public sealed class RenewalCampaignAdvanceRunnerTests
         Assert.Equal(RenewalHexSpace.Center(new HexCoord(1, 0)), unit.RenewalPosition);
     }
 
+    [Fact]
+    public void 전진_정지_추적은_원래목표와_적거점_추격을_구분한다()
+    {
+        var trace = new List<RenewalCampaignTraceEntry>();
+        var runner = new RenewalCampaignAdvanceRunner(new HexMap(-2, 10, -2, 10),
+            new CaptureRunner(), trace.Add);
+        var origin = new HexCoord(1, 2);
+        var goal = new HexCoord(1, 8);
+        var hostile = new HexCoord(4, 6);
+        var unit = Unit(1, origin, goal, speed: 2) with
+        {
+            Field = Unit(1, origin, goal, speed: 2).Field with { Mode = UnitMode.Advance },
+        };
+
+        runner.Run([unit], maxDays: 7,
+            castles: [new SiegeSite(hostile, new FactionId(2))]);
+
+        Assert.Contains(trace, entry => entry.PursuitTarget is not null
+            && entry.OriginalDestination == RenewalHexSpace.Center(goal)
+            && entry.EffectiveDestination == RenewalHexSpace.Center(hostile));
+        Assert.Contains(trace, entry => entry.StopReason == RenewalStopReason.TargetInRange
+            && entry.PursuitTarget is not null);
+    }
+
     private static CombatUnit Unit(int id, HexCoord position, HexCoord target, int speed)
     {
         var field = new FieldUnit(new UnitId(id), new FactionId(1), position, speed, 3, 1,

@@ -5,7 +5,8 @@ using SanguoSLG.Core.Spatial;
 
 public sealed class RenewalCampaignAdvanceRunner(
     HexMap map,
-    IFieldAdvanceRunner legacyRules) : IFieldAdvanceRunner
+    IFieldAdvanceRunner legacyRules,
+    Action<RenewalCampaignTraceEntry>? trace = null) : IFieldAdvanceRunner
 {
     public bool CanEnter(MovementDomain domain, HexCoord coord) =>
         legacyRules.CanEnter(domain, coord);
@@ -26,6 +27,7 @@ public sealed class RenewalCampaignAdvanceRunner(
         var renewalUnits = active.Select(unit => ToRenewal(unit, active, castles,
             constructionUnits?.Contains(unit.Id) == true)).ToList();
         var state = simulator.Start(renewalUnits, externalTargets);
+        Trace(state, trace);
         var ticks = new List<MovementTick>();
         var days = Math.Clamp(maxDays, 0, RenewalAdvanceSimulator.DaysPerAdvance);
         for (var day = 0; day < days && !state.IsCompleted; day++)
@@ -33,6 +35,7 @@ public sealed class RenewalCampaignAdvanceRunner(
             while (state.Phase == RenewalAdvancePhase.Movement)
             {
                 state = simulator.StepMovementTick(state).State;
+                Trace(state, trace);
                 ticks.Add(new MovementTick(day + 1,
                     state.Units.Where(unit => unit.IsActive).Select(ToField).ToList(), []));
             }
@@ -64,6 +67,22 @@ public sealed class RenewalCampaignAdvanceRunner(
         var movement = new AdvanceResult(ticks, synchronized.Select(unit => unit.Field).ToList(),
             StopReason.MaxDays, days, resolved.Movement.EnteredCastle);
         return resolved with { Units = synchronized, Entered = synchronizedEntered, Movement = movement };
+    }
+
+    private static void Trace(RenewalAdvanceState state,
+        Action<RenewalCampaignTraceEntry>? trace)
+    {
+        if (trace is null)
+        {
+            return;
+        }
+        foreach (var unit in state.Units.OrderBy(unit => unit.Id.Value))
+        {
+            trace(new RenewalCampaignTraceEntry(state.Day, state.MovementTick, unit.Id,
+                unit.Mode, unit.OriginalDestination ?? unit.Destination,
+                unit.Destination, unit.Position, unit.AssignedTarget, unit.PursuitTarget,
+                unit.StopReason, unit.PathIndex, unit.Path?.Count ?? 0));
+        }
     }
 
     private static RenewalUnitState ToRenewal(CombatUnit unit, IReadOnlyList<CombatUnit> units,

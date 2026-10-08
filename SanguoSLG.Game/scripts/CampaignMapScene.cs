@@ -526,9 +526,25 @@ public sealed partial class CampaignMapScene : Node3D
         var legacyField = new AdvanceOrchestrator(movement,
             new CombatPhaseResolver(new BattleResolver(60), 70),
             navalProvisionsPercent: _balance.NavalProvisionsPercent);
+        var movementTrace = new Dictionary<UnitId, (RenewalTargetId? Target, RenewalStopReason Reason)>();
         IFieldAdvanceRunner field = args.Contains("--legacy-movement")
             ? legacyField
-            : new RenewalCampaignAdvanceRunner(_map, legacyField);
+            : new RenewalCampaignAdvanceRunner(_map, legacyField, entry =>
+            {
+                var current = (entry.PursuitTarget, entry.StopReason);
+                var changed = !movementTrace.TryGetValue(entry.Unit, out var previous)
+                    || previous != current;
+                movementTrace[entry.Unit] = current;
+                if (!changed && entry.Tick != 50)
+                {
+                    return;
+                }
+                Dbg($"[renewal-trace] u{entry.Unit.Value} day={entry.Day} tick={entry.Tick} "
+                    + $"mode={entry.Mode} pos={entry.Position} original={entry.OriginalDestination} "
+                    + $"effective={entry.EffectiveDestination} assigned={entry.AssignedTarget} "
+                    + $"pursuit={entry.PursuitTarget} stop={entry.StopReason} "
+                    + $"path={entry.PathIndex}/{entry.PathLength}");
+            });
         GD.Print(args.Contains("--legacy-movement")
             ? "[movement-mode] legacy"
             : "[movement-mode] renewal-phase18d");
