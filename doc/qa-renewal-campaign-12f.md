@@ -1,7 +1,7 @@
 # Phase 18D 12F — 실제 캠페인 화면 검수
 
-상태: 자동 검증 완료, 사용자 화면 검수 대기. Phase 18D 전체를 완료로 표시하지 않는다.
-기준: [로드맵](plan-v2-implementation-roadmap.md), [상세 규칙·12E 결과](plan-renewal-movement.md#161-12e-자동-통합-검증-기록-2026-10-08).
+상태: 12E-A 실제 맵 정지·지점 클릭 수정 대기. 수정과 자동 QA가 끝난 다음 사용자 화면을 검수한다. Phase 18D 전체를 완료로 표시하지 않는다.
+기준: [로드맵](plan-v2-implementation-roadmap.md), [상세 규칙·12E-A 작업](plan-renewal-movement.md#164-12e-a--실제-맵-정지-및-지점-클릭-보완-12f-선행).
 
 ## 실행과 판정
 
