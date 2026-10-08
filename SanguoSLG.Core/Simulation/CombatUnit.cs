@@ -39,7 +39,8 @@ public sealed record CombatUnit(
     DeploymentDirection? EgressDirection = null,
     HexCoord? EgressExit = null,
     bool AwaitingEgress = false,
-    bool IsConstructing = false)
+    bool IsConstructing = false,
+    RenewalMovement.ContinuousPosition? RenewalPosition = null)
 {
     public UnitId Id => Field.Id;
 
