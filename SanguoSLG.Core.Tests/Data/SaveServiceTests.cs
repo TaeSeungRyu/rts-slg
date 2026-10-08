@@ -5,6 +5,7 @@ using System.Linq;
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Simulation.RenewalMovement;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
@@ -25,7 +26,8 @@ public class SaveServiceTests
             CombatStatsBuilder.BuildField(t, AptitudeGrade.A, 0, TerrainType.River, 5000),
             new TroopPool(5000, 200), UnitCombatState.Create(60), 70, 60, 5000, t.Class,
             TroopCode: "swordsman", VanguardId: new GeneralId(1), DeploymentDelayDays: 4,
-            EgressDirection: DeploymentDirection.SouthEast, EgressExit: new HexCoord(2, 4), AwaitingEgress: true);
+            EgressDirection: DeploymentDirection.SouthEast, EgressExit: new HexCoord(2, 4), AwaitingEgress: true,
+            RenewalPosition: new ContinuousPosition(2_111, 3_222));
 
         var g = new General(new GeneralId(1), "관우",
             new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Cavalry] = AptitudeGrade.S, [TroopClass.Infantry] = AptitudeGrade.A },
@@ -105,6 +107,7 @@ public class SaveServiceTests
         Assert.Equal(DeploymentDirection.SouthEast, ru.EgressDirection);
         Assert.Equal(new HexCoord(2, 4), ru.EgressExit);
         Assert.True(ru.IsWaitingEgress);
+        Assert.Equal(new ContinuousPosition(2_111, 3_222), ru.RenewalPosition);
         Assert.True(round.AreAllied(new FactionId(1), new FactionId(2)));
         // 시설 배치 타일(건설 위치)도 왕복 보존.
         var rp = Assert.Single(round.Placements);
@@ -162,5 +165,16 @@ public class SaveServiceTests
 
         Assert.Equal(8, loaded.Day);
         Assert.Empty(loaded.Buildings);
+    }
+
+    [Fact]
+    public void 구버전_부대는_연속좌표가_없으면_타일중심에서_재개할수있다()
+    {
+        var stateJson = System.Text.Json.JsonSerializer.Serialize(new GameState(8, 190, [], [], []));
+        var legacy = $$"""{"SchemaVersion":3,"State":{{stateJson}}}""";
+
+        var loaded = SaveService.Deserialize(legacy);
+
+        Assert.Empty(loaded.Armies);
     }
 }
