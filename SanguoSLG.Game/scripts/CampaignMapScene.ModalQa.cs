@@ -48,7 +48,7 @@ public sealed partial class CampaignMapScene
                 var target = new SanguoSLG.Core.Spatial.HexCoord(0, 4);
                 var clickedWorld = _view.HexToWorld(target)
                     + new Vector3(index == 0 ? -0.12f : 0.12f, 0f, 0f);
-                var clickedPoint = WorldToContinuous(clickedWorld);
+                 var clickedPoint = WorldToContinuous(clickedWorld);
                 Click(_camera.UnprojectPosition(clickedWorld));
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 if (_targetWaypoints.Count != 1 || _targetWaypoints[0] != target)
@@ -59,6 +59,10 @@ public sealed partial class CampaignMapScene
                     || _previewMarkers[^1].Position.DistanceTo(ContinuousToWorld(clickedPoint)
                         + new Vector3(0f, _view.TileTopY + 0.06f, 0f)) > .005f)
                     throw new System.InvalidOperationException("Point click or exact preview marker was snapped to tile center");
+                if (_hover.Visible || !_targetPointer.Visible
+                    || _targetPointer.Position.DistanceTo(ContinuousToWorld(clickedPoint)
+                        + new Vector3(0f, _view.TileTopY + .06f, 0f)) > .005f)
+                    throw new System.InvalidOperationException("Target pointer is not following the exact mouse coordinate");
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 Click(_targetConfirmBtn.GetGlobalRect().GetCenter());

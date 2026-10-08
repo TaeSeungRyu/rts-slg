@@ -209,6 +209,7 @@ public sealed partial class CampaignMapScene : Node3D
     private CanvasLayer? _toastLayer;
     private MeshInstance3D? _ring;
     private MeshInstance3D _hover = null!;
+    private MeshInstance3D _targetPointer = null!;
     private ImageTexture _blankIcon = null!;
     private ImageTexture _sliderGrabberIcon = null!;
 
@@ -813,6 +814,18 @@ public sealed partial class CampaignMapScene : Node3D
             },
         };
         AddChild(_hover);
+        _targetPointer = new MeshInstance3D
+        {
+            Mesh = new CylinderMesh { TopRadius = .10f, BottomRadius = .10f, Height = .035f, RadialSegments = 32 },
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            Visible = false,
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = Colors.White, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                NoDepthTest = true,
+            },
+        };
+        AddChild(_targetPointer);
 
         _facilityLayer = new Node3D();
         AddChild(_facilityLayer);
@@ -1186,6 +1199,17 @@ public sealed partial class CampaignMapScene : Node3D
                 return;
             }
 
+            if (_depTargeting)
+            {
+                _hover.Visible = false;
+                var point = RayToGroundPoint(motion.Position);
+                _targetPointer.Visible = point is not null;
+                if (point is { } ground)
+                    _targetPointer.Position = ContinuousToWorld(ground.Position)
+                        + new Vector3(0f, _view.TileTopY + .06f, 0f);
+                return;
+            }
+            _targetPointer.Visible = false;
             if (RayToGround(motion.Position) is { } hoverHex)
             {
                 _hover.Visible = true;
@@ -2711,6 +2735,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void FinishTargeting()
     {
         _depTargeting = false;
+        _targetPointer.Visible = false;
         _depTargetIndex = -1;
         _targetingSupplyDeploy = false;
         _targetingTransportDeploy = false;
