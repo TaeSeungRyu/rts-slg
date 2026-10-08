@@ -47,6 +47,18 @@ public sealed class RenewalMovementNavigationTests
     }
 
     [Fact]
+    public void 장애물이_없는_구간은_타일_중심을_경유하지_않고_클릭한_좌표로_직행한다()
+    {
+        var map = new RenewalMovementMap(new HexMap(-3, 8, -3, 8));
+        var start = new ContinuousPosition(115, 85);
+        var destination = new ContinuousPosition(1950, 1270);
+
+        var path = map.FindPath(MovementDomain.Land, start, destination);
+
+        Assert.Equal([destination], path);
+    }
+
+    [Fact]
     public void 육상과_선박은_서로의_통행영역에_들어갈_수_없다()
     {
         var terrain = new Dictionary<HexCoord, TerrainType>

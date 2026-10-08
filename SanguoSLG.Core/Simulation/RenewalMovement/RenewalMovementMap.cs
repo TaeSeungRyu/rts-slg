@@ -46,6 +46,12 @@ public sealed class RenewalMovementMap
     public IReadOnlyList<ContinuousPosition> FindPath(MovementDomain domain,
         ContinuousPosition start, ContinuousPosition destination)
     {
+        if (CanStand(domain, destination, RenewalAdvanceSimulator.UnitCollisionRadius)
+            && FirstStaticCollision(start, destination,
+                RenewalAdvanceSimulator.UnitCollisionRadius, domain) == RenewalStopReason.None)
+        {
+            return [destination];
+        }
         var startHex = RenewalHexSpace.NearestHex(start);
         var destinationHex = RenewalHexSpace.NearestHex(destination);
         var path = new HexPathfinder(hex => CanEnter(domain, hex)).FindPath(startHex, destinationHex);
