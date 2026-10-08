@@ -12,7 +12,7 @@ using SanguoSLG.Core.Spatial;
 /// Game이 영혼 상승 연출로 처리). 아군 성 입성은 이동 단계에서 확정되어 성 복귀 초기화 후
 /// EnteredCastle로 보고된다(수비 합류는 성 상태를 가진 상위 계층이 처리).
 /// </summary>
-public sealed class AdvanceOrchestrator
+public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
 {
     public const int DefaultResupplyRadius = 4;
     private readonly MovementSimulator _movement;

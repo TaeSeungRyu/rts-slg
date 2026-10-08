@@ -20,7 +20,7 @@ public sealed class CampaignEngine
     // 격퇴 직후 이어지는 7일 내정 틱의 무담당 치안 하락(-2)을 감안해도 출현선(60)을 넘긴다.
     private const int BanditSuppressionSecurity = 70;
 
-    private readonly AdvanceOrchestrator _field;
+    private readonly IFieldAdvanceRunner _field;
     private readonly WorldEngine _world;
 
     /// <summary>직전 <see cref="AdvanceWeek(GameState, out IReadOnlyList{AdvanceTurn})"/>의 내정/라이프사이클 사건(보고용).</summary>
@@ -41,7 +41,7 @@ public sealed class CampaignEngine
     private readonly IReadOnlyList<FieldBuildingDefinition> _fieldBuildingDefinitions;
     private readonly FieldScoutPostService? _fieldScoutPosts;
 
-    public CampaignEngine(AdvanceOrchestrator field, WorldEngine world,
+    public CampaignEngine(IFieldAdvanceRunner field, WorldEngine world,
         CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null,
         CityPlunder? plunder = null, int cityResupplyRadius = 0,
         int buildSiteHp = 0, int buildSiteDamagePerTurn = 0,
