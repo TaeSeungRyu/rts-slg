@@ -88,7 +88,53 @@ public sealed partial class CampaignMapScene
             .All(unit => unit.Field.ContinuousTarget is { } goal && expected.Contains(goal)),
             "Second advance changed the confirmed goal");
         GD.Print("RENEWAL_CAMPAIGN_QA PASS: pointer confirmations -> deployment -> 14 days -> 30/60/144FPS -> save/reload");
+        RunCombatPlaybackTargetQa();
         RunRenewalRealMapQa(initialState);
+    }
+
+    private void RunCombatPlaybackTargetQa()
+    {
+        CombatUnit Unit(int id, int owner, HexCoord tile, ContinuousPosition position) => new(
+            new FieldUnit(new UnitId(id), new FactionId(owner), tile, 1, 2, 2,
+                MovementDomain.Land, UnitMode.Advance, null, id),
+            new CombatStats(10000, 10, 10), new TroopPool(10000, 0),
+            UnitCombatState.Create(60), RenewalPosition: position);
+        var attacker = Unit(9101, 1, new HexCoord(0, 0), new ContinuousPosition(0, 0));
+        var primary = Unit(9102, 2, new HexCoord(2, 0), new ContinuousPosition(1500, 100));
+        var secondary = Unit(9103, 2, new HexCoord(1, 0), new ContinuousPosition(600, 0));
+        var combat = new CombatPhaseResult(
+            new Dictionary<UnitId, int> { [primary.Id] = 100, [secondary.Id] = 60 },
+            new Dictionary<UnitId, int> { [attacker.Id] = 160 },
+            new Dictionary<UnitId, TroopPool>
+            {
+                [attacker.Id] = attacker.Pool,
+                [primary.Id] = primary.Pool,
+                [secondary.Id] = secondary.Pool,
+            });
+        var movement = new AdvanceResult([], [attacker.Field, primary.Field, secondary.Field],
+            StopReason.MaxDays, 1);
+        var turn = new AdvanceTurn([attacker, primary, secondary], movement, combat,
+            new Dictionary<UnitId, ActiveSkill>(), new Dictionary<UnitId, Stratagem>(),
+            new Dictionary<UnitId, int>(), new Dictionary<UnitId, int>(),
+            FieldCombatExchangeResults:
+            [
+                new FieldCombatExchange(attacker.Id, primary.Id,
+                    attacker.RenewalPosition!.Value, primary.RenewalPosition!.Value, true),
+                new FieldCombatExchange(attacker.Id, secondary.Id,
+                    attacker.RenewalPosition!.Value, secondary.RenewalPosition!.Value, false),
+            ]);
+        _animAttacks.Clear();
+        ScheduleAttackMotions(turn, 1.0, new Dictionary<int, CombatUnit>
+        {
+            [attacker.Id.Value] = attacker,
+            [primary.Id.Value] = primary,
+            [secondary.Id.Value] = secondary,
+        });
+        var scheduled = _animAttacks.Single(value => value.UnitId == attacker.Id.Value);
+        var expected = ContinuousToWorld(primary.RenewalPosition.Value);
+        if (scheduled.FaceTo.DistanceTo(expected) > .001f)
+            throw new InvalidOperationException("Combat playback did not face the actual primary target");
+        GD.Print("RENEWAL_COMBAT_PLAYBACK_QA PASS: actual primary target -> facing position");
     }
 
     private void RunRenewalRealMapQa(GameState initialState)

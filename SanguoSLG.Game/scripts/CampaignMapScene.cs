@@ -3924,12 +3924,13 @@ public sealed partial class CampaignMapScene : Node3D
                 {
                     if (turn.Combat is { } activeCombat)
                     {
-                        var target = turn.Units.Where(x => x.Field.Owner != caster.Field.Owner
-                                && activeCombat.DamageTaken.GetValueOrDefault(x.Id) > 0)
-                            .OrderBy(x => x.Field.Position.Distance(caster.Field.Position))
-                            .ThenBy(x => x.Id.Value)
+                        var targetId = turn.FieldCombatExchanges
+                            .Where(value => value.Attacker == casterId && value.IsPrimaryTarget)
+                            .Select(value => (UnitId?)value.Target)
                             .FirstOrDefault();
-                        if (target is not null) _animSkillEffects.Add((activeTime + 0.14, casterId.Value, target.Id.Value, skill));
+                        if (targetId is { } actualTarget
+                            && activeCombat.DamageTaken.GetValueOrDefault(actualTarget) > 0)
+                            _animSkillEffects.Add((activeTime + 0.14, casterId.Value, actualTarget.Value, skill));
                     }
                     else
                     {
@@ -4310,25 +4311,17 @@ public sealed partial class CampaignMapScene : Node3D
         }
         if (turn.Combat is { } combat)
         {
-            foreach (var id in combat.DamageDealt.Keys.OrderBy(k => k.Value))
+            foreach (var exchange in turn.FieldCombatExchanges
+                .Where(value => value.IsPrimaryTarget)
+                .OrderBy(value => value.Attacker.Value))
             {
-                if (fieldAttackers.Contains(id.Value)) { continue; }
-                var me = turn.Units.FirstOrDefault(u => u.Id == id)
-                    ?? (beforeCombatUnits?.TryGetValue(id.Value, out var beforeMe) == true ? beforeMe : null);
-                var currentOrBefore = turn.Units
-                    .Concat(beforeCombatUnits?.Values ?? [])
-                    .GroupBy(u => u.Id)
-                    .ToDictionary(g => g.Key, g => g.First());
-                var foe = me is null ? null : combat.DamageTaken.Keys
-                    .Where(targetId => targetId != id)
-                    .Select(targetId => currentOrBefore.TryGetValue(targetId, out var target) ? target : null)
-                    .OfType<CombatUnit>()
-                    .Where(u => u.Field.Owner != me.Field.Owner)
-                    .OrderBy(u => u.Field.Position.Distance(me.Field.Position)).ThenBy(u => u.Id.Value)
-                    .FirstOrDefault();
-                if (me is null || foe is null) { continue; }
-                AddAttack(me, _view.HexToWorld(foe.Field.Position));
-                fieldAttackers.Add(id.Value);
+                if (fieldAttackers.Contains(exchange.Attacker.Value)) { continue; }
+                var me = turn.Units.FirstOrDefault(unit => unit.Id == exchange.Attacker)
+                    ?? (beforeCombatUnits?.TryGetValue(exchange.Attacker.Value, out var beforeMe) == true
+                        ? beforeMe : null);
+                if (me is null || combat.DamageDealt.GetValueOrDefault(exchange.Attacker) <= 0) continue;
+                AddAttack(me, ContinuousToWorld(exchange.TargetPosition));
+                fieldAttackers.Add(exchange.Attacker.Value);
             }
         }
 
