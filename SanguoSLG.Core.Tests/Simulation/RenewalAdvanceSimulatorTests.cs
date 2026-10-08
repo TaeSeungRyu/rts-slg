@@ -5,6 +5,27 @@ using SanguoSLG.Core.Simulation.RenewalMovement;
 
 public sealed class RenewalAdvanceSimulatorTests
 {
+    [Fact]
+    public void 시작위치가_겹친_적군은_결정론적으로_분리되고_아군은_중첩을_유지한다()
+    {
+        var origin = new ContinuousPosition(0, 0);
+        var destination = new ContinuousPosition(5000, 0);
+        var ally = RenewalUnitState.Create(new UnitId(2), origin, destination, 1) with
+            { Owner = new FactionId(1), CommandId = 2 };
+        var enemy = RenewalUnitState.Create(new UnitId(3), origin, destination, 1) with
+            { Owner = new FactionId(2), CommandId = 3 };
+        var simulator = new RenewalAdvanceSimulator();
+
+        var state = simulator.Start([Unit(), ally, enemy]);
+
+        Assert.Equal(origin, state.Units.Single(value => value.Id == new UnitId(1)).Position);
+        Assert.Equal(origin, state.Units.Single(value => value.Id == ally.Id).Position);
+        Assert.True(state.Units.Single(value => value.Id == enemy.Id).Position.DistanceTo(origin)
+            >= RenewalAdvanceSimulator.UnitCollisionRadius * 2);
+        var repeated = simulator.Start([Unit(), ally, enemy]);
+        Assert.Equal(state.Units, repeated.Units);
+    }
+
     private static RenewalUnitState Unit(long destinationX = 20_000, int speed = 1)
         => RenewalUnitState.Create(new UnitId(1), new ContinuousPosition(0, 0),
             new ContinuousPosition(destinationX, 0), speed);

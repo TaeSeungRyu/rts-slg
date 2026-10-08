@@ -30,7 +30,8 @@ public sealed class RenewalAdvanceSimulator
     public RenewalAdvanceState Start(IEnumerable<RenewalUnitState> units,
         IEnumerable<RenewalTargetState>? externalTargets = null)
     {
-        var ordered = AssignArrivalPositions(units.OrderBy(unit => unit.Id.Value).ToList())
+        var ordered = SeparateHostileStartingPositions(
+                AssignArrivalPositions(units.OrderBy(unit => unit.Id.Value).ToList()))
             .Select(PreparePath)
             .ToList();
         if (ordered.Select(unit => unit.Id).Distinct().Count() != ordered.Count)
@@ -40,6 +41,33 @@ public sealed class RenewalAdvanceSimulator
 
         return new RenewalAdvanceState(1, RenewalAdvancePhase.Movement, 0, ordered,
             externalTargets?.OrderBy(x => x.Id.Kind).ThenBy(x => x.Id.Value).ToList());
+    }
+
+    private IReadOnlyList<RenewalUnitState> SeparateHostileStartingPositions(
+        IReadOnlyList<RenewalUnitState> units)
+    {
+        var result = new List<RenewalUnitState>(units.Count);
+        var minimumDistanceSquared = checked(UnitCollisionRadius * 2 * UnitCollisionRadius * 2);
+        foreach (var unit in units.OrderBy(value => value.CommandId).ThenBy(value => value.Id.Value))
+        {
+            var position = unit.Position;
+            if (result.Any(other => other.Owner != unit.Owner
+                && other.Position.DistanceSquaredTo(position) < minimumDistanceSquared))
+            {
+                var separated = DispersionCandidates(position).Skip(1)
+                    .FirstOrDefault(candidate =>
+                        (_movementMap?.CanStand(unit.Domain, candidate, UnitCollisionRadius) ?? true)
+                        && result.Where(other => other.Owner != unit.Owner)
+                            .All(other => other.Position.DistanceSquaredTo(candidate)
+                                >= minimumDistanceSquared));
+                if (separated != default)
+                {
+                    position = separated;
+                }
+            }
+            result.Add(unit with { Position = position });
+        }
+        return result.OrderBy(value => value.Id.Value).ToList();
     }
 
     public RenewalStepResult StepMovementTick(RenewalAdvanceState state)
