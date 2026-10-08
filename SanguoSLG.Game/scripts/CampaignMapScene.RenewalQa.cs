@@ -156,7 +156,7 @@ public sealed partial class CampaignMapScene
             ContinuousTarget: goal), "실제 지도 정찰대/보루 QA"));
         StartAdvance();
         var tracks = _animContinuousTracks.Where(track => track.UnitId > 0).ToList();
-        if (tracks.Count == 0 || !tracks.Any(track => track.Points.Any(point => point.DistanceTo(start) > 2500)))
+        if (tracks.Count == 0 || !tracks.Any(track => track.Points.Any(point => point.Y >= start.Y + 1000)))
             throw new InvalidOperationException("Real-map cavalry did not pass the scout and advance toward the fort");
         var firstProgress = tracks.Max(track => track.Points.Max(point => point.DistanceTo(start)));
         FinishAdvance();
