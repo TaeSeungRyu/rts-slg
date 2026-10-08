@@ -69,6 +69,95 @@ public sealed class RenewalCampaignAdvanceRunnerTests
             && entry.PursuitTarget is not null);
     }
 
+    [Fact]
+    public void 적_건축물_공격은_점유타일에_진입하지_않고_사거리에서_멈춘다()
+    {
+        var buildingHex = new HexCoord(2, 0);
+        var building = new FieldBuilding(new FieldBuildingId(1), "palisade",
+            new FactionId(2), buildingHex, 1500, 0, 0);
+        var trace = new List<RenewalCampaignTraceEntry>();
+        var runner = new RenewalCampaignAdvanceRunner(new HexMap(-3, 4, -3, 3),
+            new CaptureRunner(), trace.Add);
+        var unit = Unit(1, new HexCoord(0, 0), buildingHex, speed: 2) with
+        {
+            Field = Unit(1, new HexCoord(0, 0), buildingHex, speed: 2).Field
+                with { Mode = UnitMode.Attack },
+        };
+
+        var result = runner.Run([unit], maxDays: 2, fieldBuildings: [building]);
+
+        Assert.Contains(trace, entry => entry.AssignedTarget
+            == new RenewalTargetId(RenewalTargetKind.Building, building.Id.Value)
+            && entry.StopReason == RenewalStopReason.TargetInRange);
+        Assert.DoesNotContain(trace, entry =>
+            RenewalHexSpace.NearestHex(entry.Position) == buildingHex);
+        Assert.NotEqual(buildingHex, Assert.Single(result.Units).Field.Position);
+    }
+
+    [Fact]
+    public void 적거점이_아군으로_바뀌면_다음진행에_원래목표로_복귀한다()
+    {
+        var map = new HexMap(-2, 10, -2, 10);
+        var runner = new RenewalCampaignAdvanceRunner(map, new CaptureRunner());
+        var goal = new HexCoord(1, 8);
+        var hostile = new HexCoord(4, 6);
+        var unit = Unit(1, new HexCoord(1, 2), goal, speed: 2) with
+        {
+            Field = Unit(1, new HexCoord(1, 2), goal, speed: 2).Field
+                with { Mode = UnitMode.Advance },
+        };
+        var first = runner.Run([unit], maxDays: 7,
+            castles: [new SiegeSite(hostile, new FactionId(2))]);
+        var paused = Assert.Single(first.Units);
+
+        var resumed = runner.Run([paused], maxDays: 7,
+            castles: [new SiegeSite(hostile, new FactionId(1))]);
+
+        Assert.NotEqual(paused.RenewalPosition, Assert.Single(resumed.Units).RenewalPosition);
+    }
+
+    [Fact]
+    public void 공격_명령은_지정한_대상이_우호화되면_다른_적을_추격하지_않는다()
+    {
+        var trace = new List<RenewalCampaignTraceEntry>();
+        var runner = new RenewalCampaignAdvanceRunner(new HexMap(-2, 6, -2, 6),
+            new CaptureRunner(), trace.Add);
+        var target = new HexCoord(2, 0);
+        var unit = Unit(1, new HexCoord(0, 0), target, speed: 2) with
+        {
+            Field = Unit(1, new HexCoord(0, 0), target, speed: 2).Field
+                with { Mode = UnitMode.Attack },
+        };
+
+        runner.Run([unit], maxDays: 1,
+            castles: [new SiegeSite(target, new FactionId(1)),
+                new SiegeSite(new HexCoord(1, 1), new FactionId(2))]);
+
+        Assert.All(trace, entry => Assert.Null(entry.PursuitTarget));
+        Assert.Contains(trace, entry => entry.StopReason == RenewalStopReason.TargetLost);
+    }
+
+    [Fact]
+    public void 다중타일_성은_중심이_아닌_가장_가까운_외곽에서_접적한다()
+    {
+        var trace = new List<RenewalCampaignTraceEntry>();
+        var runner = new RenewalCampaignAdvanceRunner(new HexMap(-2, 8, -2, 5),
+            new CaptureRunner(), trace.Add);
+        var center = new HexCoord(4, 0);
+        var edge = new HexCoord(2, 0);
+        var unit = Unit(1, new HexCoord(0, 0), edge, speed: 2) with
+        {
+            Field = Unit(1, new HexCoord(0, 0), edge, speed: 2).Field
+                with { Mode = UnitMode.Attack },
+        };
+
+        runner.Run([unit], maxDays: 2, castles:
+            [new SiegeSite(center, new FactionId(2), [edge, new HexCoord(3, 0), center])]);
+
+        Assert.Contains(trace, entry => entry.StopReason == RenewalStopReason.TargetInRange
+            && entry.EffectiveDestination == RenewalHexSpace.Center(edge));
+    }
+
     private static CombatUnit Unit(int id, HexCoord position, HexCoord target, int speed)
     {
         var field = new FieldUnit(new UnitId(id), new FactionId(1), position, speed, 3, 1,

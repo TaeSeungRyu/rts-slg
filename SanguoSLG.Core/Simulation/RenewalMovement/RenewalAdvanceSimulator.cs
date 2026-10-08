@@ -299,6 +299,10 @@ public sealed class RenewalAdvanceSimulator
             if (finalWaypoint && distance <= ArrivalTolerance)
             {
                 current = ReachWaypoint(current, target);
+                if (current.StopReason == RenewalStopReason.TargetInRange)
+                {
+                    return current;
+                }
                 continue;
             }
 
@@ -332,6 +336,10 @@ public sealed class RenewalAdvanceSimulator
             current = reachesTarget
                 ? ReachWaypoint(current, target)
                 : current with { Position = candidate };
+            if (current.StopReason == RenewalStopReason.TargetInRange)
+            {
+                return current;
+            }
             remaining -= used;
         }
 
@@ -384,6 +392,19 @@ public sealed class RenewalAdvanceSimulator
                 Path = null,
                 PathIndex = 0,
             }, nextDestination);
+        }
+
+        var followed = unit.PursuitTarget ?? unit.AssignedTarget;
+        if (followed is { } targetId && unit.LastKnownTargetPosition is { } targetPosition
+            && target.DistanceTo(targetPosition)
+                <= Math.Max(0, RangeFor(unit, targetId)) * ContinuousPosition.UnitsPerTile)
+        {
+            return unit with
+            {
+                Position = target,
+                Arrived = false,
+                StopReason = RenewalStopReason.TargetInRange,
+            };
         }
 
         return unit with
@@ -502,25 +523,53 @@ public sealed class RenewalAdvanceSimulator
     private RenewalUnitState FollowTarget(RenewalUnitState unit, RenewalTargetState target,
         int day, int movementTick)
     {
+        var targetPosition = TargetPositionFor(unit, target);
         var range = Math.Max(0, RangeFor(unit, target.Id)) * ContinuousPosition.UnitsPerTile;
-        if (unit.Position.DistanceTo(target.Position) <= range)
+        if (unit.Position.DistanceTo(targetPosition) <= range)
         {
             return unit with
             {
-                Destination = target.Position,
-                LastKnownTargetPosition = target.Position,
+                Destination = targetPosition,
+                LastKnownTargetPosition = targetPosition,
                 Arrived = false,
                 StopReason = RenewalStopReason.TargetInRange,
                 AttackRangeReachedTick = unit.AttackRangeReachedTick
                     ?? checked((day - 1) * MovementTicksPerDay + movementTick),
             };
         }
+        var destination = target.Id.Kind == RenewalTargetKind.Building
+            ? ApproachBuilding(unit, targetPosition, range)
+            : targetPosition;
         return Retarget(unit with
         {
-            LastKnownTargetPosition = target.Position,
+            LastKnownTargetPosition = targetPosition,
             StopReason = RenewalStopReason.None,
             AttackRangeReachedTick = null,
-        }, target.Position);
+        }, destination);
+    }
+
+    private static ContinuousPosition TargetPositionFor(RenewalUnitState unit,
+        RenewalTargetState target) => target.Footprint is { Count: > 0 } footprint
+        ? footprint.OrderBy(point => point.DistanceSquaredTo(unit.Position))
+            .ThenBy(point => point.X).ThenBy(point => point.Y).First()
+        : target.Position;
+
+    private ContinuousPosition ApproachBuilding(RenewalUnitState unit,
+        ContinuousPosition building, long range)
+    {
+        if (_movementMap is null)
+        {
+            return building;
+        }
+        var center = RenewalHexSpace.NearestHex(building);
+        return center.Neighbors()
+            .Select(RenewalHexSpace.Center)
+            .Where(candidate => candidate.DistanceTo(building) <= range
+                && _movementMap.CanStand(unit.Domain, candidate, UnitCollisionRadius)
+                && _movementMap.FindPath(unit.Domain, unit.Position, candidate).Count > 0)
+            .OrderBy(candidate => candidate.DistanceSquaredTo(unit.Position))
+            .ThenBy(candidate => candidate.X).ThenBy(candidate => candidate.Y)
+            .FirstOrDefault(building);
     }
 
     private RenewalUnitState Retarget(RenewalUnitState unit, ContinuousPosition destination)
@@ -571,7 +620,7 @@ public sealed class RenewalAdvanceSimulator
         && candidate.IsActive && candidate.Owner != observer.Owner;
 
     private static bool IsVisibleTo(RenewalUnitState observer, RenewalTargetState candidate) =>
-        candidate.IsVisible && observer.Position.DistanceTo(candidate.Position)
+        candidate.IsVisible && observer.Position.DistanceTo(TargetPositionFor(observer, candidate))
             <= Math.Max(0, observer.DetectionRange) * ContinuousPosition.UnitsPerTile;
 
     private static RenewalTargetState ToTarget(RenewalUnitState unit) => new(

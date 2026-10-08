@@ -258,6 +258,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly Dictionary<TroopClass, ImageTexture> _emblems = new();
     private readonly Dictionary<TroopClass, ImageTexture> _aptitudeCardTextures = new();
     private readonly Dictionary<string, ImageTexture> _unitCardTextures = new(System.StringComparer.Ordinal);
+    private readonly Dictionary<UnitId, RenewalCampaignTraceEntry> _movementStatus = new();
     private ImageTexture? _armyGroupIcon;
 
     // 출전 모달 선택 상태.
@@ -532,6 +533,7 @@ public sealed partial class CampaignMapScene : Node3D
             : new RenewalCampaignAdvanceRunner(_map, legacyField, entry =>
             {
                 var current = (entry.PursuitTarget, entry.StopReason);
+                _movementStatus[entry.Unit] = entry;
                 var changed = !movementTrace.TryGetValue(entry.Unit, out var previous)
                     || previous != current;
                 movementTrace[entry.Unit] = current;
@@ -1834,6 +1836,12 @@ public sealed partial class CampaignMapScene : Node3D
         Row("훈련", $"{u.Training}");
         Row("모드", ModeName(u.Field.Mode));
         Row("목표", u.Field.Target is { } t ? $"({t.Q}, {t.R})" : "없음");
+        if (u.Field.Mode == UnitMode.Advance
+            && _movementStatus.TryGetValue(u.Id, out var movement)
+            && movement.PursuitTarget is { } pursuit)
+        {
+            Row("현재 추격", $"{pursuit} · {movement.StopReason}");
+        }
         Row("군량", u.TracksProvisions ? $"{u.Provisions}" : "무한");
         if (u.IsSupply)
         {
@@ -11978,9 +11986,9 @@ public sealed partial class CampaignMapScene : Node3D
     // 이동 모드 설명(design-movement.md). 목표 지정·모드 선택 UI에 함께 노출.
     private static string ModeDesc(UnitMode m) => m switch
     {
-        UnitMode.March => "행군 — 전투를 피해 빠르게 재배치. 멈추지 않고 통과하지만, 사거리를 지나는 동안 반격 없이 큰 피해를 받는다.",
-        UnitMode.Advance => "전진 — 목표로 곧장 간다. 먼저 공격·추격은 하지 않되, 적이 막아서면 그 자리에서 멈춰 정상 쌍방 교전한다.",
-        UnitMode.Attack => "공격 — 탐지한 적을 추격·섬멸한다(원래 목표보다 우선). 적 성은 사거리에서 멈춰 공성한다.",
+        UnitMode.March => "행군 — 다른 대상을 추격하지 않고 지정한 목표로 이동한다.",
+        UnitMode.Advance => "전진 — 보이는 적을 발견하면 추격·교전한다. 대상이 사라지면 원래 목표로 복귀한다.",
+        UnitMode.Attack => "공격 — 지정한 적 부대·건축물·성만 추격한다. 다른 대상은 공격하지 않는다.",
         _ => "",
     };
 

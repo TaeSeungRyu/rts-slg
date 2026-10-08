@@ -23,8 +23,10 @@ public sealed class RenewalCampaignAdvanceRunner(
             .Select(building => building.Position)
             .ToHashSet();
         var simulator = new RenewalAdvanceSimulator(new RenewalMovementMap(map, blocked));
-        var externalTargets = BuildTargets(active, castles);
-        var renewalUnits = active.Select(unit => ToRenewal(unit, active, castles,
+        var liveBuildings = (fieldBuildings ?? [])
+            .Where(building => !building.IsExpired(fieldDay)).ToList();
+        var externalTargets = BuildTargets(castles, liveBuildings);
+        var renewalUnits = active.Select(unit => ToRenewal(unit, active, castles, liveBuildings,
             constructionUnits?.Contains(unit.Id) == true)).ToList();
         var state = simulator.Start(renewalUnits, externalTargets);
         Trace(state, trace);
@@ -86,11 +88,12 @@ public sealed class RenewalCampaignAdvanceRunner(
     }
 
     private static RenewalUnitState ToRenewal(CombatUnit unit, IReadOnlyList<CombatUnit> units,
-        IReadOnlyList<SiegeSite>? castles, bool constructing)
+        IReadOnlyList<SiegeSite>? castles, IReadOnlyList<FieldBuilding> buildings,
+        bool constructing)
     {
         var position = unit.RenewalPosition ?? RenewalHexSpace.Center(unit.Field.Position);
         var destination = RenewalHexSpace.Center(unit.Field.Target ?? unit.Field.Position);
-        var target = AssignedTarget(unit, units, castles);
+        var target = AssignedTarget(unit, units, castles, buildings);
         return new RenewalUnitState(unit.Id, position, destination,
             Math.Max(0, unit.Field.Speed), position == destination, unit.Field.Owner,
             unit.Field.Domain,
@@ -112,7 +115,8 @@ public sealed class RenewalCampaignAdvanceRunner(
     }
 
     private static RenewalTargetId? AssignedTarget(CombatUnit source,
-        IReadOnlyList<CombatUnit> units, IReadOnlyList<SiegeSite>? castles)
+        IReadOnlyList<CombatUnit> units, IReadOnlyList<SiegeSite>? castles,
+        IReadOnlyList<FieldBuilding> buildings)
     {
         if (source.Field.Mode != UnitMode.Attack || source.Field.Target is not { } target)
         {
@@ -124,19 +128,29 @@ public sealed class RenewalCampaignAdvanceRunner(
         {
             return RenewalTargetId.ForUnit(unit.Id);
         }
+        var building = buildings.FirstOrDefault(candidate => candidate.Owner != source.Field.Owner
+            && candidate.Position == target);
+        if (building is not null)
+        {
+            return new RenewalTargetId(RenewalTargetKind.Building, building.Id.Value);
+        }
         var site = (castles ?? []).Select((value, index) => (value, index))
-            .FirstOrDefault(entry => entry.value.Contains(target));
+            .FirstOrDefault(entry => entry.value.Owner != source.Field.Owner
+                && entry.value.Contains(target));
         return site.value is null ? null : new RenewalTargetId(RenewalTargetKind.Site, site.index + 1);
     }
 
-    private static IReadOnlyList<RenewalTargetState> BuildTargets(IReadOnlyList<CombatUnit> units,
-        IReadOnlyList<SiegeSite>? castles)
+    private static IReadOnlyList<RenewalTargetState> BuildTargets(
+        IReadOnlyList<SiegeSite>? castles, IReadOnlyList<FieldBuilding> buildings)
     {
-        var result = units.Select(unit => new RenewalTargetState(RenewalTargetId.ForUnit(unit.Id),
-            unit.Field.Owner, unit.RenewalPosition ?? RenewalHexSpace.Center(unit.Field.Position))).ToList();
+        var result = new List<RenewalTargetState>();
         result.AddRange((castles ?? []).Select((site, index) => new RenewalTargetState(
             new RenewalTargetId(RenewalTargetKind.Site, index + 1), site.Owner,
-            RenewalHexSpace.Center(site.Position))));
+            RenewalHexSpace.Center(site.Position), Footprint: site.Footprint
+                .Select(RenewalHexSpace.Center).ToList())));
+        result.AddRange(buildings.Select(building => new RenewalTargetState(
+            new RenewalTargetId(RenewalTargetKind.Building, building.Id.Value), building.Owner,
+            RenewalHexSpace.Center(building.Position))));
         return result;
     }
 
