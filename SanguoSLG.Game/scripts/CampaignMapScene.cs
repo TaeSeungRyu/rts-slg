@@ -186,6 +186,8 @@ public sealed partial class CampaignMapScene : Node3D
     private Button? _portCommandButton;
     private Button? _productionCommandButton;
     private PanelContainer _unitMenu = null!; // 유닛 명령 팔레트(정보·이동 재지정)
+    private PanelContainer _unitChoiceMenu = null!;
+    private VBoxContainer _unitChoiceRows = null!;
     private VBoxContainer _unitCmdBox = null!; // 이동·계략 섹션 — 아군·평시에만 표시
     private int _selectedUnitId = -1;
     private int _retargetUnitId = -1;  // ≥0이면 야전 부대 이동 재지정 목표 지정 중
@@ -1345,11 +1347,17 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         // 유닛 클릭 → 유닛 명령 팔레트(같은 칸에 겹치면 아군·id 우선). 같은 유닛 재클릭 = 닫기.
-        var unit = DisplayedArmies.Where(u => u.Field.Position == hex && CanSeeUnit(u))
+        var unitsAtPoint = DisplayedArmies.Where(u => u.Field.Position == hex && CanSeeUnit(u))
             .OrderBy(u => u.Field.Owner == Player ? 0 : 1).ThenBy(u => u.Id.Value)
-            .FirstOrDefault();
-        if (unit is not null)
+            .ToList();
+        if (unitsAtPoint.Count > 1)
         {
+            ShowUnitChoices(hex, unitsAtPoint);
+            return;
+        }
+        if (unitsAtPoint.Count == 1)
+        {
+            var unit = unitsAtPoint[0];
             if (_unitMenu.Visible && _selectedUnitId == unit.Id.Value) { HidePanels(); return; }
             OpenUnitMenu(unit);
             return;
@@ -1387,6 +1395,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenUnitMenu(CombatUnit u)
     {
         if (!CanSeeUnit(u)) return;
+        _unitChoiceMenu.Visible = false;
         ClearFieldBuildingRange();
         _selectedUnitId = u.Id.Value;
         _selected = null;
@@ -1407,6 +1416,30 @@ public sealed partial class CampaignMapScene : Node3D
             AddRouteDots(u.Field.Position, u.Field.Waypoints, tgt, _pathMarkers,
                 u.Class == TroopClass.Naval, u.Field.ContinuousWaypoints, u.Field.ContinuousTarget);
         }
+    }
+
+    private void ShowUnitChoices(HexCoord hex, IReadOnlyList<CombatUnit> units)
+    {
+        HidePanels();
+        foreach (var child in _unitChoiceRows.GetChildren())
+        {
+            _unitChoiceRows.RemoveChild(child);
+            child.QueueFree();
+        }
+        foreach (var unit in units)
+        {
+            var selected = unit;
+            var general = unit.VanguardId is { } generalId
+                ? _state.Generals.FirstOrDefault(value => value.Id == generalId)?.Name
+                : null;
+            var button = MakeButton($"{general ?? "부대"} · {unit.TroopCode} · {unit.Pool.Active:N0}");
+            button.CustomMinimumSize = new Vector2(190, 30);
+            button.Alignment = HorizontalAlignment.Left;
+            button.Pressed += () => OpenUnitMenu(selected);
+            _unitChoiceRows.AddChild(button);
+        }
+        PlaceMenu(_unitChoiceMenu, hex, 60f);
+        _unitChoiceMenu.Visible = true;
     }
 
     private City? CityAtHex(HexCoord hex, System.Func<City, bool>? predicate = null) =>
@@ -4786,6 +4819,16 @@ public sealed partial class CampaignMapScene : Node3D
     // 이동(행군/전진/공격)·계략은 모양만(기능 미배선).
     private void BuildUnitMenu(CanvasLayer layer)
     {
+        _unitChoiceMenu = new PanelContainer { Visible = false, ZIndex = 51 };
+        _unitChoiceMenu.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 5, 4));
+        layer.AddChild(_unitChoiceMenu);
+        var choiceBox = new VBoxContainer();
+        choiceBox.AddThemeConstantOverride("separation", 4);
+        _unitChoiceMenu.AddChild(choiceBox);
+        choiceBox.AddChild(MakeLabel("겹친 부대 선택", 13, GoldBright));
+        _unitChoiceRows = new VBoxContainer();
+        _unitChoiceRows.AddThemeConstantOverride("separation", 3);
+        choiceBox.AddChild(_unitChoiceRows);
         _unitMenu = new PanelContainer { Visible = false, ZIndex = 50 };
         _unitMenu.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 5, 4));
         layer.AddChild(_unitMenu);
@@ -5226,6 +5269,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void HidePanels()
     {
+        _unitChoiceMenu.Visible = false;
         _infoCard.Visible = false;
         _cmdMenu.Visible = false;
         CloseGroupMenu();
