@@ -103,6 +103,8 @@ public sealed partial class CampaignMapScene : Node3D
     private double _animT;
     private int _animStepIdx;
     private readonly List<(double Time, int UnitId, HexCoord To)> _animSteps = new();
+    private readonly List<(double Start, double End, int UnitId,
+        IReadOnlyList<ContinuousPosition> Points)> _animContinuousTracks = new();
     private int _animDeploymentIdx;
     private readonly List<(double Time, int UnitId)> _animDeployments = new();
     // 진행 재생 중 실제 출격 시각을 지난 부대. 원본(preMove) 상태에는 AwaitingEgress가
@@ -3771,6 +3773,7 @@ public sealed partial class CampaignMapScene : Node3D
         _productionVisionLosses.Clear();
         foreach (var op in preMove.ProductionOps) _animationProductionPositions[op.Id] = op.Position;
         _animSteps.Clear();
+        _animContinuousTracks.Clear();
         _animDeployments.Clear();
         _playbackReleasedDeployments.Clear();
         _animStartOverrides.Clear();
@@ -3796,7 +3799,9 @@ public sealed partial class CampaignMapScene : Node3D
         for (var d = 0; d <= AnimDays; d++) { _dayKind[d] = "이동"; } // 기본 이동턴, 아래서 교전·공성 있는 날만 공격턴
         var alive = new HashSet<int>(startHex.Keys);
         var deathEffectUnitIds = new HashSet<int>();
-        var playback = new MovementPlayback(startHex);
+        var startContinuous = preMove.Armies.ToDictionary(unit => unit.Id.Value,
+            unit => unit.RenewalPosition ?? RenewalHexSpace.Center(unit.Field.Position));
+        var playback = new MovementPlayback(startHex, startContinuous);
         var prev = playback.Positions;
         var unitSnapshot = preMove.Armies.ToDictionary(u => u.Id.Value);
         var dayOffset = 0;
@@ -3813,7 +3818,7 @@ public sealed partial class CampaignMapScene : Node3D
                 _animDeployments.Add(((day - 1) * DaySeconds, released.Id.Value));
                 SetControlledEgressStartOverride(preMove, released);
             }
-            playback.Append(turn.Movement, dayOffset, DaySeconds, StepSeconds);
+            playback.Append(turn.Movement, dayOffset, DaySeconds, MoveSeconds);
 
             var stopDay = dayOffset + System.Math.Max(1, turn.Movement.Days);
             var atkTime = ((stopDay - 1) * DaySeconds) + MoveSeconds + 0.15; // 그날 이동(≤1.5초)이 끝난 뒤
@@ -4063,6 +4068,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _animSteps.AddRange(playback.Moves);
+        _animContinuousTracks.AddRange(playback.ContinuousTracks);
         BuildEgressAnimationStartOverrides(preMove, playback.Moves);
         ScheduleProductionAnimations(preMove);
 
@@ -5630,6 +5636,7 @@ public sealed partial class CampaignMapScene : Node3D
                 else if (_armyTokens.TryGetValue(s.UnitId, out var tok)) { tok.DisplayStepTo(s.To, (float)StepSeconds); }
                 _animStepIdx++;
             }
+            ApplyContinuousMovementPlayback();
 
             // 출격 해제와 해당 프레임의 이동 위치를 먼저 반영한 뒤 시야를 갱신한다.
             // 반대 순서면 첫 진행 동안 시야 갱신이 출격 토큰을 다시 숨겨 깜빡인다.
@@ -6254,6 +6261,29 @@ public sealed partial class CampaignMapScene : Node3D
             else { PickOption(_modalParam, options[_modalParam]); }
         }
 
+    }
+
+    private void ApplyContinuousMovementPlayback()
+    {
+        foreach (var group in _animContinuousTracks
+            .Where(track => track.Start <= _animT)
+            .GroupBy(track => track.UnitId))
+        {
+            var track = group.OrderBy(item => item.Start).Last();
+            if (!_armyTokens.TryGetValue(track.UnitId, out var token)
+                || !GodotObject.IsInstanceValid(token) || track.Points.Count == 0)
+            {
+                continue;
+            }
+            var duration = Math.Max(0.001, track.End - track.Start);
+            var elapsed = Math.Clamp(_animT - track.Start, 0, duration);
+            var sampled = RenewalPlaybackSampler.Sample(track.Points,
+                (long)Math.Round(elapsed * 1_000_000),
+                (long)Math.Round(duration * 1_000_000));
+            var world = ContinuousToWorld(sampled) + new Vector3(0f, _view.TileTopY, 0f);
+            token.DisplayContinuousAt(world, elapsed < duration
+                && track.Points[0] != track.Points[^1]);
+        }
     }
 
     private void CloseModal()

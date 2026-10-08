@@ -38,8 +38,13 @@ public sealed class RenewalCampaignAdvanceRunner(
             {
                 state = simulator.StepMovementTick(state).State;
                 Trace(state, trace);
+                var activeUnits = state.Units.Where(unit => unit.IsActive).ToList();
                 ticks.Add(new MovementTick(day + 1,
-                    state.Units.Where(unit => unit.IsActive).Select(ToField).ToList(), []));
+                    activeUnits.Select(ToField).ToList(), [])
+                {
+                    ContinuousPositions = activeUnits.ToDictionary(unit => unit.Id,
+                        unit => unit.Position),
+                });
             }
             while (!state.IsCompleted && state.Phase != RenewalAdvancePhase.Movement)
             {

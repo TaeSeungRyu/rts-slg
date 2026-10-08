@@ -10,4 +10,7 @@ public sealed record MovementTick(
     IReadOnlyList<TickEvent> Events)
 {
     public IReadOnlyList<FieldUnit> EnteredUnits { get; init; } = [];
+    public IReadOnlyDictionary<SanguoSLG.Core.Domain.UnitId, RenewalMovement.ContinuousPosition>
+        ContinuousPositions { get; init; }
+        = new Dictionary<SanguoSLG.Core.Domain.UnitId, RenewalMovement.ContinuousPosition>();
 }

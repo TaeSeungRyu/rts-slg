@@ -21,6 +21,8 @@ public sealed class RenewalCampaignAdvanceRunnerTests
         Assert.Equal(new HexCoord(1, 0), Assert.Single(result.Units).Field.Position);
         Assert.NotNull(Assert.Single(result.Units).RenewalPosition);
         Assert.Equal(50, result.Movement.Ticks.Count);
+        Assert.All(result.Movement.Ticks, tick =>
+            Assert.True(tick.ContinuousPositions.ContainsKey(unit.Id)));
     }
 
     [Fact]
