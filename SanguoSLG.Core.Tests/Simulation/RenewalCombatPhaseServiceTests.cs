@@ -71,6 +71,21 @@ public sealed class RenewalCombatPhaseServiceTests
     }
 
     [Fact]
+    public void 대기부대는_사거리안의_적부대를_공격하지만_건축물은_자동공격하지않는다()
+    {
+        var standby = Unit(1, 1, 0, 0, RenewalOrderMode.Standby);
+        var enemy = Unit(2, 2, 900, 0, RenewalOrderMode.Standby);
+        var building = new RenewalStructureCombatState(
+            new(RenewalTargetKind.Building, 3), new FactionId(2),
+            new ContinuousPosition(500, 0), 1000, 10);
+
+        var result = AttackPhase([standby, enemy], structures: [building]);
+
+        Assert.True(result.State.CombatProfiles![enemy.Id].Participant.Pool.Active < 10_000);
+        Assert.Equal(1000, result.State.Structures!.Single().HitPoints);
+    }
+
+    [Fact]
     public void 대인_건축물_성_사거리는_각대상별_병종값을_사용한다()
     {
         var targetId = new RenewalTargetId(RenewalTargetKind.Building, 50);

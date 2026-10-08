@@ -537,7 +537,15 @@ public sealed class RenewalCombatPhaseService
             {
                 continue;
             }
-            var selected = SelectedTarget(attacker);
+            var selected = attacker.Mode == RenewalOrderMode.Standby
+                ? units.Values.Where(defender => defender.Id != attacker.Id
+                    && defender.Owner != attacker.Owner && profiles.ContainsKey(defender.Id)
+                    && InRange(attacker, defender.Position))
+                    .OrderBy(defender => attacker.Position.DistanceSquaredTo(defender.Position))
+                    .ThenBy(defender => defender.Id.Value)
+                    .Select(defender => (RenewalTargetId?)RenewalTargetId.ForUnit(defender.Id))
+                    .FirstOrDefault()
+                : SelectedTarget(attacker);
             if (selected is not { Kind: RenewalTargetKind.Unit } target
                 || !units.TryGetValue(new UnitId(checked((int)target.Value)), out var defender)
                 || defender.Owner == attacker.Owner
