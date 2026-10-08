@@ -6,6 +6,13 @@ public sealed record FormationTrigger(
     bool Activated,
     int WoundedConverted);
 
+public sealed record FieldCombatExchange(
+    Domain.UnitId Attacker,
+    Domain.UnitId Target,
+    RenewalMovement.ContinuousPosition AttackerPosition,
+    RenewalMovement.ContinuousPosition TargetPosition,
+    bool IsPrimaryTarget);
+
 /// <summary>한 "진행"(이동 + 전투 페이즈)의 결과.</summary>
 /// <param name="Units">갱신된 부대들(위치·병력·발동 상태 반영, UnitId 오름차순).</param>
 /// <param name="Movement">이동 시뮬 결과(틱·정지 사유·경과일).</param>
@@ -35,7 +42,8 @@ public sealed record AdvanceTurn(
     IReadOnlyList<Domain.FieldBuildingId>? RemovedScoutPostIds = null,
     IReadOnlyList<Domain.FieldBuildingId>? ExpiredScoutPostIds = null,
     IReadOnlyDictionary<Domain.FieldBuildingId, Domain.UnitId>? FieldGarrisonAssignments = null,
-    IReadOnlyList<FormationTrigger>? FormationResults = null)
+    IReadOnlyList<FormationTrigger>? FormationResults = null,
+    IReadOnlyList<FieldCombatExchange>? FieldCombatExchangeResults = null)
 {
     public IReadOnlyList<CombatUnit> Deployments => ReleasedDeployments ?? [];
     public IReadOnlyList<CombatUnit> EnteredCastle => Entered ?? [];
@@ -56,6 +64,7 @@ public sealed record AdvanceTurn(
     public IReadOnlyDictionary<Domain.FieldBuildingId, Domain.UnitId> FieldGarrisons
         => FieldGarrisonAssignments ?? EmptyGarrisons;
     public IReadOnlyList<FormationTrigger> FormationTriggers => FormationResults ?? [];
+    public IReadOnlyList<FieldCombatExchange> FieldCombatExchanges => FieldCombatExchangeResults ?? [];
 
     private static readonly IReadOnlyDictionary<Domain.UnitId, int> EmptyLoss = new Dictionary<Domain.UnitId, int>();
     private static readonly IReadOnlyDictionary<Domain.UnitId, Spatial.HexCoord> EmptyPositions =

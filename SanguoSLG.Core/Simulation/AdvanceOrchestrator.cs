@@ -279,6 +279,16 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
                 && state[e.Attacker].CanInitiateCombat
                 && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker])))
             .ToList();
+        var fieldCombatExchanges = engagements.SelectMany(engagement => engagement.Targets
+            .Select((target, index) => new FieldCombatExchange(
+                engagement.Attacker,
+                target,
+                state[engagement.Attacker].RenewalPosition
+                    ?? RenewalMovement.RenewalHexSpace.Center(state[engagement.Attacker].Field.Position),
+                state[target].RenewalPosition
+                    ?? RenewalMovement.RenewalHexSpace.Center(state[target].Field.Position),
+                index == 0)))
+            .ToList();
 
         if (engagements.Count == 0)
         {
@@ -390,7 +400,8 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
 
         return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage,
             stratagemDamage, enteredCastle, starvation, reinforced,
-            FieldGarrisonAssignments: fieldGarrisons, FormationResults: formationTriggers);
+            FieldGarrisonAssignments: fieldGarrisons, FormationResults: formationTriggers,
+            FieldCombatExchangeResults: fieldCombatExchanges);
     }
 
     private static IReadOnlyList<(UnitId Unit, FieldBuilding Building)> FormationTargetsForMovementTurn(

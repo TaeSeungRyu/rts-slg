@@ -9,6 +9,31 @@ using SanguoSLG.Game;
 
 public sealed class RenewalCampaignIntegrationTests
 {
+    [Fact]
+    public void 야전교전은_실제_공격자와_피격자의_연속좌표를_보존한다()
+    {
+        var map = new HexMap(-4, 10, -4, 10);
+        var attacker = Army(1, new(0, 0), new(0, 0)) with
+        {
+            Field = Army(1, new(0, 0), new(0, 0)).Field with { Mode = UnitMode.Advance },
+            RenewalPosition = new ContinuousPosition(100, 100),
+        };
+        var defender = Army(2, new(1, 0), new(1, 0)) with
+        {
+            Field = Army(2, new(1, 0), new(1, 0)).Field with
+                { Owner = new FactionId(2), Mode = UnitMode.Standby },
+            RenewalPosition = new ContinuousPosition(900, 100),
+        };
+
+        Engine(map).AdvanceWeek(World(attacker, defender), out var turns);
+
+        var exchange = Assert.Single(turns[0].FieldCombatExchanges,
+            value => value.Attacker == attacker.Id && value.Target == defender.Id);
+        Assert.Equal(attacker.RenewalPosition, exchange.AttackerPosition);
+        Assert.Equal(defender.RenewalPosition, exchange.TargetPosition);
+        Assert.True(exchange.IsPrimaryTarget);
+    }
+
     private static CampaignEngine Engine(HexMap map, bool legacy = false,
         Action<RenewalCampaignTraceEntry>? trace = null)
     {
