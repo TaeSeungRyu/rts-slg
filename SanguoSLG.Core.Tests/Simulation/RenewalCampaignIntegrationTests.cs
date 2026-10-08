@@ -34,6 +34,48 @@ public sealed class RenewalCampaignIntegrationTests
         Assert.True(exchange.IsPrimaryTarget);
     }
 
+    [Fact]
+    public void 전진부대가_발견한_적성에_접적하면_같은날_공성하고_영구정지하지않는다()
+    {
+        var map = new HexMap(-4, 12, -4, 12);
+        var city = new City(new CityId(3), "한중", new HexCoord(4, 6),
+            new FactionId(2), 0, CastleSize.Small, Wall: 1200);
+        var guanYu = Army(1, new HexCoord(3, 6), new HexCoord(5, 4), 3) with
+        {
+            Field = Army(1, new HexCoord(3, 6), new HexCoord(5, 4), 3).Field with
+                { Mode = UnitMode.Advance, RangeCastle = 1 },
+        };
+        var world = World(guanYu) with
+        {
+            Cities = [city],
+            GarrisonForces = [new GarrisonForce(city.Id, "swordsman", 10000, 60)],
+        };
+
+        var after = Engine(map).AdvanceWeek(world, out _, out var sieges);
+
+        Assert.Contains(sieges, exchange => exchange.City == city.Id);
+        Assert.True(after.Cities.Single().Wall < city.Wall);
+    }
+
+    [Fact]
+    public void 실제캠페인에서_같은위치의_적군은_첫이동전에_분리된다()
+    {
+        var map = new HexMap(-4, 12, -4, 12);
+        var first = Army(1, new HexCoord(2, 2), new HexCoord(6, 2), 2);
+        var second = Army(2, new HexCoord(2, 2), new HexCoord(0, 2), 2) with
+        {
+            Field = Army(2, new HexCoord(2, 2), new HexCoord(0, 2), 2).Field with
+                { Owner = new FactionId(2) },
+        };
+
+        var after = Engine(map).AdvanceWeek(World(first, second), out _);
+
+        var positions = after.Armies.OrderBy(unit => unit.Id.Value)
+            .Select(unit => unit.RenewalPosition!.Value).ToArray();
+        Assert.True(positions[0].DistanceTo(positions[1])
+            >= RenewalAdvanceSimulator.UnitCollisionRadius * 2);
+    }
+
     private static CampaignEngine Engine(HexMap map, bool legacy = false,
         Action<RenewalCampaignTraceEntry>? trace = null)
     {
