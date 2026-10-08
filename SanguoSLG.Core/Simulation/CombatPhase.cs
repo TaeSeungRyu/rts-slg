@@ -19,6 +19,10 @@ public static class CombatPhase
             (source.RenewalPosition ?? RenewalMovement.RenewalHexSpace.Center(source.Field.Position))
                 .DistanceTo(target.RenewalPosition ?? RenewalMovement.RenewalHexSpace.Center(target.Field.Position))
             <= source.Field.AttackRange * RenewalMovement.ContinuousPosition.UnitsPerTile;
+        long DistanceSquared(CombatUnit source, CombatUnit target) =>
+            (source.RenewalPosition ?? RenewalMovement.RenewalHexSpace.Center(source.Field.Position))
+                .DistanceSquaredTo(target.RenewalPosition
+                    ?? RenewalMovement.RenewalHexSpace.Center(target.Field.Position));
         foreach (var attacker in units.OrderBy(unit => unit.Field.CommandOrder).ThenBy(unit => unit.Id.Value))
         {
             if (attacker.Field.Mode is UnitMode.March or UnitMode.Standby || !attacker.CanInitiateCombat) continue;
@@ -26,7 +30,7 @@ public static class CombatPhase
                 && (attacker.Field.Mode != UnitMode.Attack
                     || (attacker.Field.AssignedUnitTarget is { } id ? target.Id == id
                         : target.Field.Position == attacker.Field.Target)))
-                .OrderBy(target => target.Field.Position.Distance(attacker.Field.Position))
+                .OrderBy(target => DistanceSquared(attacker, target))
                 .ThenBy(target => target.Field.CommandOrder).ThenBy(target => target.Id.Value)
                 .Select(target => target.Id).ToList();
             if (targets.Count > 0) intentions[attacker.Id] = targets;

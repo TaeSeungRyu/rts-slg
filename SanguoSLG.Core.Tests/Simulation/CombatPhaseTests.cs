@@ -3,12 +3,35 @@ namespace SanguoSLG.Core.Tests.Simulation;
 using System.Linq;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Simulation.RenewalMovement;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
 /// <summary>전투 페이즈 발동 — 사거리 전수검사·다대일 페어링(design-combat.md).</summary>
 public class CombatPhaseTests
 {
+    private static CombatUnit CombatUnitAt(int id, int owner, HexCoord tile,
+        ContinuousPosition position, int commandOrder = 0) => new(
+        Unit(id, owner, tile, UnitMode.Advance, attackRange: 2, commandOrder),
+        new CombatStats(10000, 10, 10), new TroopPool(10000, 0),
+        UnitCombatState.Create(60), RenewalPosition: position);
+
+    [Fact]
+    public void 연속위치가_있는_교전은_타일중심이_아닌_실제거리로_주대상을_정한다()
+    {
+        var attacker = CombatUnitAt(1, 1, new HexCoord(0, 0), new ContinuousPosition(0, 0));
+        var tileNearButPointFar = CombatUnitAt(2, 2, new HexCoord(1, 0),
+            new ContinuousPosition(1800, 0), commandOrder: 0);
+        var tileFarButPointNear = CombatUnitAt(3, 2, new HexCoord(2, 0),
+            new ContinuousPosition(700, 0), commandOrder: 1);
+
+        var engagement = CombatPhase.DetectEngagements(
+            [attacker, tileNearButPointFar, tileFarButPointNear])
+            .Single(value => value.Attacker == attacker.Id);
+
+        Assert.Equal([tileFarButPointNear.Id, tileNearButPointFar.Id], engagement.Targets);
+    }
+
     private static FieldUnit Unit(int id, int owner, HexCoord pos, UnitMode mode,
         int attackRange = 1, int commandOrder = 0) =>
         new(new UnitId(id), new FactionId(owner), pos, 2, 2, attackRange,

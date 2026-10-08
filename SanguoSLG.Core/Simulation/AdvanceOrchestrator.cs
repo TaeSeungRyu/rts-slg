@@ -239,7 +239,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
 
         // 2.9) 이동 종료 위치에서 실제 교전이 성립할 부대를 먼저 찾고, 공격자와 피격자만 1칸 충전한다.
         // 이동에 7일을 썼더라도 교전 1회는 1칸이며, 적을 만나지 않은 이동은 전혀 충전하지 않는다.
-        var chargeEngagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList())
+        var chargeEngagements = CombatPhase.DetectEngagements(state.Values.ToList())
             .Select(e => e with { Targets = e.Targets.Where(id => !protectedGarrisons.Contains(id)).ToList() })
             .Where(e => e.Targets.Count > 0)
             .Where(e => !constructionUnits.Contains(e.Attacker)
