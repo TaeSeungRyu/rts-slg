@@ -5,6 +5,7 @@ using SanguoSLG.Core.AI;
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Simulation.RenewalMovement;
 using SanguoSLG.Core.Spatial;
 
 namespace SanguoSLG.Game;
@@ -517,13 +518,22 @@ public sealed partial class CampaignMapScene : Node3D
             (state, hex) => state.Ruins.Any(r => r.Position == hex));
         _producer = new ProductionService(_troops, h => _passability.CanEnter(MovementDomain.Land, h));
         var movement = new MovementSimulator(_passability);
+        var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
         // 플레이 세션에서는 탐색·외교 결과가 매 실행 같은 초반 난수열에 묶이지 않도록 세션 시드를 쓴다.
         // Core 테스트는 WorldEngine에 고정 IRandomSource를 주입해 결정론을 유지한다.
         var sessionSeed = unchecked((int)(System.DateTime.UtcNow.Ticks ^ System.Environment.TickCount64));
         var world = new WorldEngine(_balance, _cb, random: new SeededRandomSource(sessionSeed));
+        var legacyField = new AdvanceOrchestrator(movement,
+            new CombatPhaseResolver(new BattleResolver(60), 70),
+            navalProvisionsPercent: _balance.NavalProvisionsPercent);
+        IFieldAdvanceRunner field = args.Contains("--legacy-movement")
+            ? legacyField
+            : new RenewalCampaignAdvanceRunner(_map, legacyField);
+        GD.Print(args.Contains("--legacy-movement")
+            ? "[movement-mode] legacy"
+            : "[movement-mode] renewal-phase18d");
         _engine = new CampaignEngine(
-            new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70),
-                navalProvisionsPercent: _balance.NavalProvisionsPercent),
+            field,
             world,
             new CampaignSiege(new BattleResolver(60), _troops),
             new CityCapture(), new SeededRandomSource(42),
@@ -555,7 +565,6 @@ public sealed partial class CampaignMapScene : Node3D
             RuinDefinitions = scenario.RuinList,
             RuinStates = scenario.RuinList.Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
         };
-        var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
         if (args.Contains("--maptest")) SeedFieldBuildingSamples();
 
         _dbgLog = ProjectSettings.GlobalizePath("res://deploy-debug.log");
