@@ -312,6 +312,10 @@ public partial class UnitController3D : Node3D
             throw new InvalidOperationException("연속 위치 표시는 InitDisplay 이후에만 사용할 수 있습니다.");
         }
 
+        _displayMoveTween?.Kill();
+        _displayMoveTween = null;
+        _displayMoveQueue.Clear();
+        var wasMoving = _moving;
         var direction = worldPosition - Position;
         if (moving && direction.LengthSquared() > 0.000001f)
         {
@@ -322,6 +326,7 @@ public partial class UnitController3D : Node3D
         Position = worldPosition;
         _moving = moving;
         PlayNativeSupplyAnimation(moving ? "state_move" : "state_camp");
+        if (wasMoving && !moving) { PlayQueuedAttackIfAny(); }
     }
 
     /// <summary>

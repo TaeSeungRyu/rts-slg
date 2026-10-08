@@ -8,6 +8,10 @@ public sealed class RenewalCampaignAdvanceRunner(
     IFieldAdvanceRunner legacyRules,
     Action<RenewalCampaignTraceEntry>? trace = null) : IFieldAdvanceRunner
 {
+    public bool UsesContinuousMovement => true;
+    private GameState? _campaign;
+    public void SetCampaignState(GameState state) => _campaign = state;
+
     public bool CanEnter(MovementDomain domain, HexCoord coord) =>
         legacyRules.CanEnter(domain, coord);
 
@@ -22,12 +26,46 @@ public sealed class RenewalCampaignAdvanceRunner(
             .Where(building => !building.IsExpired(fieldDay))
             .Select(building => building.Position)
             .ToHashSet();
-        var simulator = new RenewalAdvanceSimulator(new RenewalMovementMap(map, blocked));
+        blocked.UnionWith((castles ?? []).SelectMany(site => site.Footprint));
+        blocked.UnionWith(_campaign?.Ruins.Select(ruin => ruin.Position) ?? []);
+        var movementMap = new RenewalMovementMap(map, blocked);
+        var simulator = new RenewalAdvanceSimulator(movementMap);
         var liveBuildings = (fieldBuildings ?? [])
             .Where(building => !building.IsExpired(fieldDay)).ToList();
         var externalTargets = BuildTargets(castles, liveBuildings);
-        var renewalUnits = active.Select(unit => ToRenewal(unit, active, castles, liveBuildings,
-            constructionUnits?.Contains(unit.Id) == true)).ToList();
+        var ruins = (_campaign?.Ruins ?? []).OrderBy(ruin => ruin.Id, StringComparer.Ordinal).ToList();
+        foreach (var (ruin, index) in ruins.Select((ruin, index) => (ruin, index)))
+        {
+            var status = _campaign!.RuinStatus.FirstOrDefault(value => value.RuinId == ruin.Id);
+            if (status is null || status.Defenders <= 0 || status.IsProtected(fieldDay)) continue;
+            externalTargets.Add(new RenewalTargetState(new(RenewalTargetKind.Building, -index - 1),
+                status.Owner ?? new FactionId(-1), RenewalHexSpace.Center(ruin.Position)));
+        }
+        var renewalUnits = active.Select(unit =>
+        {
+            var renewal = ToRenewal(unit, active, castles, liveBuildings,
+                constructionUnits?.Contains(unit.Id) == true
+                    || unit.State.Statuses.Any(status => status.IsDaze && !status.IsExpired)
+                    || liveBuildings.Any(building => building.GarrisonUnit == unit.Id));
+            var ruinIndex = ruins.FindIndex(ruin => ruin.Position == unit.Field.Target);
+            if (unit.Field.Mode == UnitMode.Attack && ruinIndex >= 0)
+                renewal = renewal with { AssignedTarget = new(RenewalTargetKind.Building, -ruinIndex - 1) };
+            if (OwnDestination(unit, castles) is { } ownSite
+                && renewal.OriginalWaypoints is not { Count: > 0 })
+            {
+                var approach = ownSite.Footprint.SelectMany(tile => tile.Neighbors()).Distinct()
+                    .Where(tile => movementMap.CanStand(unit.Field.Domain, RenewalHexSpace.Center(tile),
+                        RenewalAdvanceSimulator.UnitCollisionRadius))
+                    .Where(tile => movementMap.FindPath(unit.Field.Domain, renewal.Position,
+                        RenewalHexSpace.Center(tile)).Count > 0)
+                    .OrderBy(tile => renewal.Position.DistanceSquaredTo(RenewalHexSpace.Center(tile)))
+                    .ThenBy(tile => tile.Q).ThenBy(tile => tile.R).Cast<HexCoord?>().FirstOrDefault();
+                if (approach is { } entry)
+                    renewal = renewal with { Destination = RenewalHexSpace.Center(entry),
+                        OriginalDestination = RenewalHexSpace.Center(entry), Arrived = false };
+            }
+            return renewal;
+        }).ToList();
         var state = simulator.Start(renewalUnits, externalTargets);
         Trace(state, trace);
         var ticks = new List<MovementTick>();
@@ -37,12 +75,26 @@ public sealed class RenewalCampaignAdvanceRunner(
             while (state.Phase == RenewalAdvancePhase.Movement)
             {
                 state = simulator.StepMovementTick(state).State;
+                var enteredNow = state.Units.Where(position => position.IsActive
+                    && active.First(unit => unit.Id == position.Id) is { } source
+                    && source.Field.Speed > 0 && constructionUnits?.Contains(source.Id) != true
+                    && !source.State.Statuses.Any(status => status.IsDaze && !status.IsExpired)
+                    && position.OriginalWaypointIndex >= (position.OriginalWaypoints?.Count ?? 0)
+                    && OwnDestination(source, castles) is { } ownSite
+                    && ownSite.Footprint.Any(tile => position.Position.DistanceTo(RenewalHexSpace.Center(tile))
+                        <= ContinuousPosition.UnitsPerTile)).ToList();
+                var enteringIds = enteredNow.Select(position => position.Id).ToHashSet();
+                state = state with { Units = state.Units.Select(position => enteringIds.Contains(position.Id)
+                    ? position with { IsActive = false } : position).ToList() };
                 Trace(state, trace);
                 var activeUnits = state.Units.Where(unit => unit.IsActive).ToList();
                 ticks.Add(new MovementTick(day + 1,
-                    activeUnits.Select(ToField).ToList(), [])
+                    activeUnits.Select(ToField).ToList(), enteredNow.Select(position =>
+                        new TickEvent(TickEventKind.EnteredCastle, position.Id, null)).ToList())
                 {
-                    ContinuousPositions = activeUnits.ToDictionary(unit => unit.Id,
+                    ContinuousTick = state.MovementTick,
+                    EnteredUnits = enteredNow.Select(ToField).ToList(),
+                    ContinuousPositions = state.Units.ToDictionary(unit => unit.Id,
                         unit => unit.Position),
                 });
             }
@@ -56,25 +108,53 @@ public sealed class RenewalCampaignAdvanceRunner(
         var moved = active.Select(unit => positions.TryGetValue(unit.Id, out var position)
             ? unit with
             {
-                Field = unit.Field with { Position = RenewalHexSpace.NearestHex(position.Position) },
+                Field = unit.Field with
+                {
+                    Position = RenewalHexSpace.NearestHex(position.Position),
+                    Waypoints = unit.Field.Waypoints?.Skip(position.OriginalWaypointIndex).ToList(),
+                    ContinuousWaypoints = unit.Field.ContinuousWaypoints?.Skip(position.OriginalWaypointIndex).ToList(),
+                    AssignedUnitTarget = position.AssignedTarget is { Kind: RenewalTargetKind.Unit } assigned
+                        ? new UnitId(checked((int)assigned.Value)) : unit.Field.AssignedUnitTarget,
+                    Mode = position.Mode == RenewalOrderMode.Standby
+                        && constructionUnits?.Contains(unit.Id) != true
+                        && !unit.State.Statuses.Any(status => status.IsDaze && !status.IsExpired)
+                        && !liveBuildings.Any(building => building.GarrisonUnit == unit.Id)
+                        ? UnitMode.Standby : unit.Field.Mode,
+                },
                 RenewalPosition = position.Position,
             }
             : unit).ToList();
         var movedById = moved.ToDictionary(unit => unit.Id);
-        var resolved = legacyRules.Run(moved, 0, castles, deployedToday, constructionUnits,
+        var entered = moved.Where(unit => !positions[unit.Id].IsActive)
+            .Select(unit => unit with { State = unit.State.ReturnToCastle() }).ToList();
+        var enteredIds = entered.Select(unit => unit.Id).ToHashSet();
+        var resolved = legacyRules.Run(moved.Where(unit => !enteredIds.Contains(unit.Id)).ToList(),
+            0, castles, deployedToday, constructionUnits,
             fieldBuildings, fieldDefinitions, fieldDay);
-        var synchronized = resolved.Units.Select(unit => movedById.TryGetValue(unit.Id, out var before)
-                && unit.Field.Position == before.Field.Position
-            ? unit
-            : unit with { RenewalPosition = RenewalHexSpace.Center(unit.Field.Position) }).ToList();
-        var synchronizedEntered = resolved.EnteredCastle.Select(unit => unit with
+        var synchronized = resolved.Units.Select(unit =>
+        {
+            if (!movedById.TryGetValue(unit.Id, out var before)) return unit;
+            var samePosition = unit.Field.Position == before.Field.Position;
+            return unit with
+            {
+                Field = before.Field with { Position = unit.Field.Position },
+                RenewalPosition = samePosition ? before.RenewalPosition
+                    : RenewalHexSpace.Center(unit.Field.Position),
+            };
+        }).ToList();
+        var synchronizedEntered = entered.Concat(resolved.EnteredCastle.Select(unit => unit with
         {
             RenewalPosition = RenewalHexSpace.Center(unit.Field.Position),
-        }).ToList();
+        })).ToList();
         var movement = new AdvanceResult(ticks, synchronized.Select(unit => unit.Field).ToList(),
-            StopReason.MaxDays, days, resolved.Movement.EnteredCastle);
+            StopReason.MaxDays, days, synchronizedEntered.Select(unit => unit.Id).ToList());
         return resolved with { Units = synchronized, Entered = synchronizedEntered, Movement = movement };
     }
+
+    private static SiegeSite? OwnDestination(CombatUnit unit, IReadOnlyList<SiegeSite>? castles) =>
+        unit.Field.Target is { } target ? (castles ?? []).FirstOrDefault(site =>
+            site.Owner == unit.Field.Owner && site.Contains(target)
+            && (unit.Field.ReturnCity is null || site.City == unit.Field.ReturnCity)) : null;
 
     private static void Trace(RenewalAdvanceState state,
         Action<RenewalCampaignTraceEntry>? trace)
@@ -99,9 +179,13 @@ public sealed class RenewalCampaignAdvanceRunner(
         var position = unit.RenewalPosition ?? RenewalHexSpace.Center(unit.Field.Position);
         var destination = unit.Field.ContinuousTarget
             ?? RenewalHexSpace.Center(unit.Field.Target ?? unit.Field.Position);
+        var waypoints = unit.Field.ContinuousWaypoints
+            ?? unit.Field.Waypoints?.Select(RenewalHexSpace.Center).ToList();
+        var firstDestination = waypoints is { Count: > 0 } ? waypoints[0] : destination;
         var target = AssignedTarget(unit, units, castles, buildings);
-        return new RenewalUnitState(unit.Id, position, destination,
-            Math.Max(0, unit.Field.Speed), position == destination, unit.Field.Owner,
+        return new RenewalUnitState(unit.Id, position, firstDestination,
+            Math.Max(0, unit.Field.Speed), position == firstDestination && firstDestination == destination,
+            unit.Field.Owner,
             unit.Field.Domain,
             Mode: constructing ? RenewalOrderMode.Standby : unit.Field.Mode switch
             {
@@ -111,9 +195,9 @@ public sealed class RenewalCampaignAdvanceRunner(
                 _ => RenewalOrderMode.Standby,
             },
             OriginalDestination: destination,
-            OriginalWaypoints: unit.Field.ContinuousWaypoints
-                ?? unit.Field.Waypoints?.Select(RenewalHexSpace.Center).ToList(),
+            OriginalWaypoints: waypoints,
             AssignedTarget: target,
+            LastKnownTargetPosition: target is null ? null : destination,
             DetectionRange: unit.Field.Detection,
             AttackRange: unit.Field.AttackRange,
             CommandId: unit.Field.CommandOrder,
@@ -129,8 +213,10 @@ public sealed class RenewalCampaignAdvanceRunner(
         {
             return null;
         }
+        if (source.Field.AssignedUnitTarget is { } assignedId)
+            return RenewalTargetId.ForUnit(assignedId);
         var unit = units.FirstOrDefault(candidate => candidate.Field.Owner != source.Field.Owner
-            && candidate.Field.Position == target);
+            && (source.Field.AssignedUnitTarget is { } id ? candidate.Id == id : candidate.Field.Position == target));
         if (unit is not null)
         {
             return RenewalTargetId.ForUnit(unit.Id);
@@ -147,7 +233,7 @@ public sealed class RenewalCampaignAdvanceRunner(
         return site.value is null ? null : new RenewalTargetId(RenewalTargetKind.Site, site.index + 1);
     }
 
-    private static IReadOnlyList<RenewalTargetState> BuildTargets(
+    private static List<RenewalTargetState> BuildTargets(
         IReadOnlyList<SiegeSite>? castles, IReadOnlyList<FieldBuilding> buildings)
     {
         var result = new List<RenewalTargetState>();
@@ -167,7 +253,8 @@ public sealed class RenewalCampaignAdvanceRunner(
         {
             RenewalOrderMode.March => UnitMode.March,
             RenewalOrderMode.Advance => UnitMode.Advance,
-            _ => UnitMode.Attack,
+            RenewalOrderMode.Attack => UnitMode.Attack,
+            _ => UnitMode.Standby,
         }, RenewalHexSpace.NearestHex(unit.Destination), checked((int)unit.CommandId),
         unit.CastleAttackRange);
 }

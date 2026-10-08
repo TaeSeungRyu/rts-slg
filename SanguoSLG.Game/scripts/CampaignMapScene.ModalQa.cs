@@ -62,6 +62,8 @@ public sealed partial class CampaignMapScene
                 || _pendingDeploys[1].Req.EgressDirection != DeploymentDirection.SouthEast)
                 throw new System.InvalidOperationException("Second confirmation overwrote first deployment");
             GD.Print("DEPLOY_TARGET_QA PASS: new selection, two pointer confirmations, independent targets, no leaked waypoints");
+            if (OS.GetCmdlineUserArgs().Contains("--maptestrenewalcampaignqa"))
+                await RunRenewalCampaignPipelineQa();
             GetTree().Quit();
         }
         catch (System.Exception error)

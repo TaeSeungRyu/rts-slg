@@ -1,0 +1,287 @@
+namespace SanguoSLG.Core.Tests.Simulation;
+
+using SanguoSLG.Core.Data;
+using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Simulation.RenewalMovement;
+using SanguoSLG.Core.Spatial;
+using SanguoSLG.Game;
+
+public sealed class RenewalCampaignIntegrationTests
+{
+    private static CampaignEngine Engine(HexMap map, bool legacy = false,
+        Action<RenewalCampaignTraceEntry>? trace = null)
+    {
+        var rules = new AdvanceOrchestrator(new MovementSimulator(new PassabilityMap(map, [], [])),
+            new CombatPhaseResolver(new BattleResolver(60), 70));
+        var troops = new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory());
+        var definitions = new FieldBuildingLoader().LoadFromDirectory(TestData.DataDirectory());
+        return new CampaignEngine(legacy ? rules : new RenewalCampaignAdvanceRunner(map, rules, trace),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0)),
+            new CampaignSiege(new BattleResolver(60), troops), new CityCapture(),
+            ruinCombat: new RuinCombat(new BattleResolver(60)),
+            fieldBuildingCombat: new FieldBuildingCombat(new BattleResolver(60), definitions, troops),
+            fieldBuildingDefinitions: definitions);
+    }
+
+    private static CombatUnit Army(int id, HexCoord start, HexCoord goal, int speed = 1) => new(
+        new FieldUnit(new UnitId(id), new FactionId(1), start, speed, 3, 1,
+            MovementDomain.Land, UnitMode.March, goal, id,
+            ContinuousTarget: RenewalHexSpace.Center(goal)),
+        new CombatStats(10000, 20, 20), new TroopPool(10000, 0), UnitCombatState.Create(60),
+        TroopCode: "swordsman", RenewalPosition: RenewalHexSpace.Center(start));
+
+    private static GameState World(params CombatUnit[] units) => new(1, 190, [], [], [], FieldArmies: units);
+
+    [Theory]
+    [InlineData("combat")]
+    [InlineData("supply")]
+    [InlineData("transport")]
+    [InlineData("group")]
+    [InlineData("ai")]
+    public void 실제_캠페인_14일과_저장재개에서_모든편성의_정확목표를_보존한다(string kind)
+    {
+        var map = new HexMap(-4, 30, -4, 12);
+        var unit = Army(1, new(0, 0), new(20, 0));
+        var center = RenewalHexSpace.Center(new(20, 0));
+        var exact = center with { Y = center.Y + 130 };
+        unit = unit with
+        {
+            Field = unit.Field with { ContinuousTarget = exact, Owner = new(kind == "ai" ? 2 : 1) },
+            IsSupply = kind == "supply", IsTransport = kind == "transport", IsArmyGroup = kind == "group",
+        };
+        var trace = new List<RenewalCampaignTraceEntry>();
+        var engine = Engine(map, trace: trace.Add);
+        var first = engine.AdvanceWeek(World(unit), out var turns);
+        Assert.Equal(8, first.Day);
+        Assert.Equal(7, turns.Count);
+        var saved = SaveService.Deserialize(SaveService.Serialize(first));
+        var second = engine.AdvanceWeek(first, out _);
+        var restored = Engine(map).AdvanceWeek(saved, out _);
+        Assert.Equal(15, second.Day);
+        Assert.Equal(Assert.Single(second.Armies).RenewalPosition, Assert.Single(restored.Armies).RenewalPosition);
+        Assert.Equal(exact, Assert.Single(restored.Armies).Field.ContinuousTarget);
+        Assert.True(Assert.Single(second.Armies).RenewalPosition!.Value.X > Assert.Single(first.Armies).RenewalPosition!.Value.X,
+            $"first={first.Armies[0].RenewalPosition} second={second.Armies[0].RenewalPosition} trace={trace[^1]}");
+    }
+
+    [Fact]
+    public void 경유지는_먼저도달하고_다음날_소비된경유지로_되돌아가지않는다()
+    {
+        var engine = Engine(new HexMap(-5, 20, -5, 15));
+        var unit = Army(1, new(0, 0), new(8, 0));
+        var waypoint = new HexCoord(0, 2);
+        unit = unit with { Field = unit.Field with { Waypoints = [waypoint],
+            ContinuousWaypoints = [RenewalHexSpace.Center(waypoint)] } };
+        var after = engine.AdvanceWeek(World(unit), out var turns);
+        var all = turns.SelectMany(turn => turn.Movement.Ticks).Select(tick => tick.ContinuousPositions[unit.Id]).ToList();
+        Assert.True(all.Any(position => position.DistanceTo(RenewalHexSpace.Center(waypoint)) <= 50),
+            $"last={all[^1]} remaining={string.Join(',', after.Armies[0].Field.ContinuousWaypoints ?? [])}");
+        Assert.Empty(Assert.Single(after.Armies).Field.ContinuousWaypoints!);
+        Assert.True(all[^1].X > RenewalHexSpace.Center(waypoint).X);
+    }
+
+    [Theory]
+    [InlineData(CastleSize.Small)]
+    [InlineData(CastleSize.Medium)]
+    [InlineData(CastleSize.Large)]
+    public void 같은방향_두부대는_같은날_출격하고_적봉쇄는_예약에남는다(CastleSize size)
+    {
+        var map = new HexMap(-8, 25, -8, 15);
+        var city = new City(new(1), "출격성", new(0, 0), new(1), 1000, size);
+        var exit = DeploymentEgressRules.RepresentativeExit(city, DeploymentDirection.East)!.Value;
+        var units = Enumerable.Range(1, 2).Select(id => Army(id, city.Position, new(20, 0), 2) with
+        { OriginCity = city.Id, EgressDirection = DeploymentDirection.East, EgressExit = exit, AwaitingEgress = true }).ToArray();
+        var state = World(units) with { Cities = [city] };
+        Engine(map).AdvanceWeek(state, out var turns);
+        Assert.Equal(2, turns[0].Deployments.Count);
+        Assert.All(turns[0].Deployments, unit => Assert.Equal(exit, unit.Field.Position));
+        var enemy = Army(99, exit, exit, 0) with { Field = Army(99, exit, exit, 0).Field with { Owner = new(2) } };
+        var blocked = Engine(map).AdvanceWeek(state with { FieldArmies = [.. units, enemy] }, out var blockedTurns);
+        Assert.All(blockedTurns, turn => Assert.Empty(turn.Deployments));
+        Assert.Equal(2, blocked.Armies.Count(unit => unit.IsWaitingEgress));
+        Engine(map, legacy: true).AdvanceWeek(state, out var legacyTurns);
+        Assert.Single(legacyTurns[0].Deployments);
+    }
+
+    [Theory]
+    [InlineData(CastleSize.Small, PortSize.None)]
+    [InlineData(CastleSize.Medium, PortSize.None)]
+    [InlineData(CastleSize.Small, PortSize.Small)]
+    [InlineData(CastleSize.Medium, PortSize.Medium)]
+    public void 지정성항구_입성은_이동후_공격전에_자원과병종을_한번만합산한다(CastleSize size, PortSize port)
+    {
+        var city = new City(new(1), "목적지", new(4, 0), new(1), 0, size, Port: port);
+        var transport = port != PortSize.None;
+        var unit = Army(1, new(0, 0), city.Position, 2) with
+        { IsTransport = transport, CargoGold = 123, IsArmyGroup = !transport,
+            SupplyCargo = [new("swordsman", 5000, 50), new("archer", 5000, 50)] };
+        var engine = Engine(new HexMap(-8, 15, -8, 10));
+        var after = engine.AdvanceWeek(World(unit) with { Cities = [city] }, out var turns);
+        Assert.Empty(after.Armies);
+        Assert.Single(turns.SelectMany(turn => turn.EnteredCastle));
+        var baseline = Engine(new HexMap(-8, 15, -8, 10)).AdvanceWeek(World() with { Cities = [city] }, out _);
+        Assert.Equal(baseline.Cities.Single().Gold + 123, after.Cities.Single().Gold);
+        Assert.Equal(10000, after.Garrisons.Sum(g => g.Troops));
+        Assert.DoesNotContain(after.Garrisons, g => g.TroopCode == "army_group");
+        Assert.Empty(engine.AdvanceWeek(after, out _).Armies);
+    }
+
+    [Fact]
+    public void 유적_지정공격은_실제캠페인에서_접근하여_교전하고_관통하지않는다()
+    {
+        var goal = new HexCoord(4, 0);
+        var unit = Army(1, new(0, 0), goal, 2);
+        unit = unit with { Field = unit.Field with { Mode = UnitMode.Attack } };
+        var state = World(unit) with { RuinDefinitions = [new("qa", "검수유적", goal, "swordsman", 100000)],
+            RuinStates = [new("qa", 100000)] };
+        var after = Engine(new HexMap(-6, 15, -6, 10)).AdvanceWeek(state, out var turns);
+        Assert.True(turns.Any(turn => turn.RuinExchanges.Count > 0),
+            $"positions={string.Join(';', turns.SelectMany(turn => turn.Units).Select(unit => unit.RenewalPosition))}");
+        Assert.DoesNotContain(turns.SelectMany(turn => turn.Movement.Ticks).SelectMany(tick => tick.Units),
+            field => field.Position == goal);
+        Assert.True(after.RuinStatus.Single().Defenders < 100000);
+    }
+
+    [Theory]
+    [InlineData(30)]
+    [InlineData(60)]
+    [InlineData(144)]
+    public void 실제캠페인_매일_연속재생종점이_공격시작좌표와_일치한다(int fps)
+    {
+        var unit = Army(1, new(0, 0), new(20, 0));
+        var after = Engine(new HexMap(-8, 25, -8, 10)).AdvanceWeek(World(unit), out var turns);
+        var playback = new MovementPlayback(new() { [1] = unit.Field.Position },
+            new() { [1] = unit.RenewalPosition!.Value });
+        for (var day = 0; day < turns.Count; day++) playback.Append(turns[day].Movement, day, 2.5, .5, 1.5);
+        Assert.Empty(playback.Moves);
+        Assert.Equal(7, playback.ContinuousTracks.Count);
+        for (var day = 0; day < 7; day++)
+        {
+            var track = playback.ContinuousTracks[day];
+            var endpoint = RenewalPlaybackSampler.Sample(track.Points, 1_500_000, 1_500_000);
+            for (var frame = 0; frame <= (int)(1.5 * fps); frame++)
+                RenewalPlaybackSampler.Sample(track.Points, frame * 1_000_000L / fps, 1_500_000);
+            Assert.Equal(turns[day].Units.Single().RenewalPosition, endpoint);
+        }
+        Assert.Equal(after.Armies.Single().RenewalPosition, playback.ContinuousTracks[^1].Points[^1]);
+    }
+
+    [Fact]
+    public void 해상부대는_14일_바다경로만따라_정확목표에도달한다()
+    {
+        var water = new HexMap(-5, 25, -5, 5).Tiles().ToDictionary(hex => hex, _ => TerrainType.WaterDeep);
+        var map = new HexMap(-5, 25, -5, 5, water);
+        var unit = Army(1, new(0, 0), new(20, 0), 2);
+        unit = unit with { Field = unit.Field with { Domain = MovementDomain.DeepWater }, Class = TroopClass.Naval };
+        var engine = Engine(map);
+        var first = engine.AdvanceWeek(World(unit), out _);
+        var after = engine.AdvanceWeek(first, out var turns);
+        Assert.Equal(unit.Field.ContinuousTarget, Assert.Single(after.Armies).RenewalPosition);
+        Assert.All(turns.SelectMany(turn => turn.Movement.Ticks).SelectMany(tick => tick.Units),
+            field => Assert.Equal(TerrainType.WaterDeep, map.TerrainAt(field.Position)));
+    }
+
+    [Fact]
+    public void 타일이_인접해도_연속사거리_밖이면_공격과충전이_발생하지않는다()
+    {
+        var attacker = Army(1, new(0, 0), new(1, 0), 0);
+        attacker = attacker with { Field = attacker.Field with { Mode = UnitMode.Attack } };
+        var enemy = Army(2, new(1, 0), new(1, 0), 0);
+        enemy = enemy with { Field = enemy.Field with { Owner = new(2), Mode = UnitMode.Standby },
+            RenewalPosition = new ContinuousPosition(1300, 500) };
+        var after = Engine(new HexMap(-4, 10, -4, 10)).AdvanceWeek(World(attacker, enemy), out var turns);
+        Assert.All(turns, turn => Assert.Null(turn.Combat));
+        Assert.All(after.Armies, unit => Assert.Equal(10000, unit.Pool.Active));
+    }
+
+    [Fact]
+    public void 이동중인_지정적군은_타일을바꿔도_ID로_추적한다()
+    {
+        var map = new HexMap(-5, 20, -5, 10);
+        var runner = new RenewalCampaignAdvanceRunner(map, new AdvanceOrchestrator(
+            new MovementSimulator(new PassabilityMap(map, [], [])),
+            new CombatPhaseResolver(new BattleResolver(60), 70)));
+        var attacker = Army(1, new(0, 0), new(3, 0), 2);
+        attacker = attacker with { Field = attacker.Field with { Mode = UnitMode.Attack } };
+        var enemy = Army(2, new(3, 0), new(15, 0), 1);
+        enemy = enemy with { Field = enemy.Field with { Owner = new(2) } };
+        var first = runner.Run([attacker, enemy], 1);
+        Assert.Equal(enemy.Id, first.Units.First(unit => unit.Id == attacker.Id).Field.AssignedUnitTarget);
+        var second = runner.Run(first.Units, 1);
+        Assert.Equal(enemy.Id, second.Units.First(unit => unit.Id == attacker.Id).Field.AssignedUnitTarget);
+        Assert.NotEqual(first.Units.First(unit => unit.Id == attacker.Id).RenewalPosition,
+            second.Units.First(unit => unit.Id == attacker.Id).RenewalPosition);
+    }
+
+    [Fact]
+    public void 혼란중에는_이동하지않고_만료뒤_원래명령으로_이동한다()
+    {
+        var unit = Army(1, new(0, 0), new(15, 0), 2);
+        unit = unit with { State = unit.State.AddStatus(new(StatusKind.Daze, 0, 1, false)) };
+        Engine(new HexMap(-5, 20, -5, 10)).AdvanceWeek(World(unit), out var turns);
+        Assert.Equal(unit.RenewalPosition, turns[0].Units.Single().RenewalPosition);
+        Assert.NotEqual(unit.RenewalPosition, turns[1].Units.Single().RenewalPosition);
+    }
+
+    [Fact]
+    public void 실제교전_괴멸은_그날_제거되고_다음날_재공격하지않는다()
+    {
+        var attacker = Army(1, new(0, 0), new(0, 1), 0);
+        attacker = attacker with { Field = attacker.Field with { Mode = UnitMode.Attack },
+            Stats = new CombatStats(10000, 500, 100) };
+        var defender = Army(2, new(0, 1), new(0, 1), 0);
+        defender = defender with { Field = defender.Field with { Owner = new(2), Mode = UnitMode.Standby },
+            Pool = new TroopPool(100, 0), Stats = new CombatStats(100, 1, 1) };
+        var after = Engine(new HexMap(-5, 20, -5, 10)).AdvanceWeek(World(attacker, defender), out var turns);
+        Assert.NotNull(turns[0].Combat);
+        Assert.DoesNotContain(turns[0].Units, unit => unit.Id == defender.Id);
+        Assert.All(turns.Skip(1), turn => Assert.Null(turn.Combat));
+        Assert.Single(after.Armies);
+    }
+
+    [Fact]
+    public void 건축물과_경로상다른성은_통과하거나_잘못입성하지않는다()
+    {
+        var city = new City(new(1), "경로중성", new(2, 0), new(1), 0);
+        var building = new FieldBuilding(new(1), "palisade", new(1), new(4, 0), 1500, 0, 0);
+        var unit = Army(1, new(0, 0), new(10, 0), 2);
+        Engine(new HexMap(-5, 20, -5, 10)).AdvanceWeek(World(unit) with
+            { Cities = [city], FieldBuildings = [building] }, out var turns);
+        Assert.All(turns, turn => Assert.Empty(turn.EnteredCastle));
+        Assert.DoesNotContain(turns.SelectMany(turn => turn.Movement.Ticks).SelectMany(tick => tick.Units),
+            field => field.Position == city.Position || field.Position == building.Position);
+    }
+
+    [Theory]
+    [InlineData(PortSize.None)]
+    [InlineData(PortSize.Small)]
+    public void 성항구_괴멸직후_점령입성과_집단군분해를_같은공격후처리에반영한다(PortSize port)
+    {
+        var city = new City(new(2), "적거점", new(4, 0), new(2), 0, Wall: 0, Port: port);
+        var unit = Army(1, new(0, 0), city.Position, 2);
+        unit = unit with { Field = unit.Field with { Mode = UnitMode.Attack },
+            IsArmyGroup = true, TroopCode = "army_group", SupplyCargo = [new("swordsman", 5000, 50), new("archer", 5000, 50)] };
+        var state = World(unit) with { Cities = [city], GarrisonForces = [new(city.Id, "swordsman", 1, 50)] };
+        var after = Engine(new HexMap(-5, 20, -5, 10)).AdvanceWeek(state, out var turns, out _, out var captures);
+        Assert.Single(captures);
+        Assert.Equal(unit.Field.Owner, after.Cities.Single().Owner);
+        Assert.Empty(after.Armies);
+        Assert.DoesNotContain(after.Garrisons, force => force.TroopCode == "army_group");
+        Assert.DoesNotContain(turns.Last().Units, survivor => survivor.Id == unit.Id);
+    }
+
+    [Fact]
+    public void 야전건축물_공격은_이동종점에서_피해를_계산한다()
+    {
+        var building = new FieldBuilding(new(1), "palisade", new(2), new(4, 0), 100, 0, 0);
+        var unit = Army(1, new(0, 0), building.Position, 2);
+        unit = unit with { Field = unit.Field with { Mode = UnitMode.Attack } };
+        var after = Engine(new HexMap(-5, 20, -5, 10)).AdvanceWeek(World(unit) with
+            { FieldBuildings = [building] }, out var turns);
+        Assert.Contains(turns.SelectMany(turn => turn.FieldBuildingExchanges), exchange => exchange.Destroyed);
+        Assert.Empty(after.Buildings);
+        Assert.DoesNotContain(turns.SelectMany(turn => turn.Movement.Ticks).SelectMany(tick => tick.Units),
+            field => field.Position == building.Position);
+    }
+}

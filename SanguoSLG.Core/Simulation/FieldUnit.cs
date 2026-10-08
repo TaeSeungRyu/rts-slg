@@ -23,7 +23,8 @@ public sealed record FieldUnit(
     IReadOnlyList<HexCoord>? Waypoints = null,
     CityId? ReturnCity = null,
     RenewalMovement.ContinuousPosition? ContinuousTarget = null,
-    IReadOnlyList<RenewalMovement.ContinuousPosition>? ContinuousWaypoints = null)
+    IReadOnlyList<RenewalMovement.ContinuousPosition>? ContinuousWaypoints = null,
+    UnitId? AssignedUnitTarget = null)
 {
     public FieldUnit MoveTo(HexCoord position) => this with { Position = position };
 }

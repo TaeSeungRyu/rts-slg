@@ -105,6 +105,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId, HexCoord To)> _animSteps = new();
     private readonly List<(double Start, double End, int UnitId,
         IReadOnlyList<ContinuousPosition> Points)> _animContinuousTracks = new();
+    private readonly HashSet<(int UnitId, double Start)> _completedContinuousTracks = new();
     private int _animDeploymentIdx;
     private readonly List<(double Time, int UnitId)> _animDeployments = new();
     // 진행 재생 중 실제 출격 시각을 지난 부대. 원본(preMove) 상태에는 AwaitingEgress가
@@ -630,6 +631,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestexplorationlayoutqa")) CallDeferred(nameof(RunExplorationLayoutQa));
         if (args.Contains("--maptestsystempalettecloseqa")) CallDeferred(nameof(RunSystemPaletteCloseQa));
         if (args.Contains("--maptestdeploytargetqa")) CallDeferred(nameof(RunDeployTargetQa));
+        if (args.Contains("--maptestrenewalcampaignqa")) CallDeferred(nameof(RunDeployTargetQa));
         if (args.Contains("--maptestcommanderportraitqa")) CallDeferred(nameof(RunCommanderPortraitQa));
         if (args.Contains("--maptestgrowthportraitqa")) CallDeferred(nameof(RunGrowthPortraitQa));
         if (args.Contains("--maptestexplorationpresentationqa")) CallDeferred(nameof(RunExplorationPresentationQa));
@@ -2456,7 +2458,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var domain = (_targetingNavalDeploy || _targetingNavalUnit) ? MovementDomain.DeepWater : MovementDomain.Land;
         var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanExitThrough(domain, start, c));
-        return pf.FindPath(start, goal).Count > 1;
+        return pf.FindPath(start, goal).Count > 0;
     }
 
     // 경유지 목록이 바뀔 때: 취소 버튼을 다시 만들고 경로 프리뷰를 다시 그린다.
@@ -3086,21 +3088,27 @@ public sealed partial class CampaignMapScene : Node3D
         var world = origin + dir * t;
         var coord = _view.WorldToHex(world);
         if (!_map.Contains(coord)) { return null; }
-        var size = _view.HexWorldSize;
-        var q = world.X / (size * 1.5f);
-        var r = world.Z / (size * Mathf.Sqrt(3f)) - q / 2f;
-        var logical = new ContinuousPosition(
-            (long)Mathf.Round(q * 867f),
-            (long)Mathf.Round(q * 500f + r * ContinuousPosition.UnitsPerTile));
+        var logical = WorldToContinuous(world);
         return (coord, logical);
+    }
+
+    private ContinuousPosition WorldToContinuous(Vector3 world)
+    {
+        var qAxis = _view.HexToWorld(new HexCoord(1, 0));
+        var rAxis = _view.HexToWorld(new HexCoord(0, 1));
+        var determinant = qAxis.X * rAxis.Z - qAxis.Z * rAxis.X;
+        var q = (world.X * rAxis.Z - world.Z * rAxis.X) / determinant;
+        var r = (qAxis.X * world.Z - qAxis.Z * world.X) / determinant;
+        return new ContinuousPosition((long)Mathf.Round(q * 867f),
+            (long)Mathf.Round(q * 500f + r * ContinuousPosition.UnitsPerTile));
     }
 
     private Vector3 ContinuousToWorld(ContinuousPosition position)
     {
         var q = position.X / 867f;
         var r = (position.Y - q * 500f) / ContinuousPosition.UnitsPerTile;
-        return new Vector3(_view.HexWorldSize * 1.5f * q, 0f,
-            _view.HexWorldSize * Mathf.Sqrt(3f) * (r + q / 2f));
+        return _view.HexToWorld(new HexCoord(1, 0)) * q
+            + _view.HexToWorld(new HexCoord(0, 1)) * r;
     }
 
     // ── 테스트 시나리오: 지형 다양 맵, 위(성 1) vs 촉(성 2 — 성도·한중) ──
@@ -3774,6 +3782,7 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var op in preMove.ProductionOps) _animationProductionPositions[op.Id] = op.Position;
         _animSteps.Clear();
         _animContinuousTracks.Clear();
+        _completedContinuousTracks.Clear();
         _animDeployments.Clear();
         _playbackReleasedDeployments.Clear();
         _animStartOverrides.Clear();
@@ -3814,11 +3823,12 @@ public sealed partial class CampaignMapScene : Node3D
                 var day = dayOffset + 1;
                 var exit = released.EgressExit!.Value;
                 Dbg($"EGRESS RELEASE day={day} unit={released.Id.Value} direction={released.EgressDirection} exit={exit} target={released.Field.Target}");
-                playback.AppendDeployment(released.Id.Value, day, exit, DaySeconds, StepSeconds);
+                playback.AppendDeployment(released.Id.Value, day, exit, DaySeconds, StepSeconds,
+                    continuous: turn.Movement.Ticks.Any(tick => tick.ContinuousPositions.Count > 0));
                 _animDeployments.Add(((day - 1) * DaySeconds, released.Id.Value));
                 SetControlledEgressStartOverride(preMove, released);
             }
-            playback.Append(turn.Movement, dayOffset, DaySeconds, MoveSeconds);
+            playback.Append(turn.Movement, dayOffset, DaySeconds, StepSeconds, MoveSeconds);
 
             var stopDay = dayOffset + System.Math.Max(1, turn.Movement.Days);
             var atkTime = ((stopDay - 1) * DaySeconds) + MoveSeconds + 0.15; // 그날 이동(≤1.5초)이 끝난 뒤
@@ -4341,7 +4351,11 @@ public sealed partial class CampaignMapScene : Node3D
         {
             if (_armyTokens.TryGetValue(unit.Id.Value, out var token))
             {
-                token.DisplaySnapTo(unit.Field.Position);
+                if (unit.RenewalPosition is { } continuous)
+                    token.DisplayContinuousAt(ContinuousToWorld(continuous)
+                        + new Vector3(0f, _view.TileTopY, 0f), false);
+                else
+                    token.DisplaySnapTo(unit.Field.Position);
             }
         }
 
@@ -5005,6 +5019,7 @@ public sealed partial class CampaignMapScene : Node3D
         _targetingNavalUnit = _state.Armies.FirstOrDefault(a => a.Id.Value == unitId)?.Class == TroopClass.Naval;
         _depTargeting = true;
         _targetWaypoints.Clear();
+        _targetContinuousWaypoints.Clear();
         _targetStart = _state.Armies.FirstOrDefault(a => a.Id.Value == unitId)?.Field.Position ?? default;
         RebuildTargetEdit();
         ShowTargetHint(_targetingNavalUnit
@@ -6270,6 +6285,7 @@ public sealed partial class CampaignMapScene : Node3D
             .GroupBy(track => track.UnitId))
         {
             var track = group.OrderBy(item => item.Start).Last();
+            if (_completedContinuousTracks.Contains((track.UnitId, track.Start))) continue;
             if (!_armyTokens.TryGetValue(track.UnitId, out var token)
                 || !GodotObject.IsInstanceValid(token) || track.Points.Count == 0)
             {
@@ -6283,6 +6299,7 @@ public sealed partial class CampaignMapScene : Node3D
             var world = ContinuousToWorld(sampled) + new Vector3(0f, _view.TileTopY, 0f);
             token.DisplayContinuousAt(world, elapsed < duration
                 && track.Points[0] != track.Points[^1]);
+            if (elapsed >= duration) _completedContinuousTracks.Add((track.UnitId, track.Start));
         }
     }
 
@@ -12059,6 +12076,7 @@ public sealed partial class CampaignMapScene : Node3D
         UnitMode.March => "행군",
         UnitMode.Advance => "전진",
         UnitMode.Attack => "공격",
+        UnitMode.Standby => "대기",
         _ => m.ToString(),
     };
 
@@ -15194,7 +15212,11 @@ public sealed partial class CampaignMapScene : Node3D
             token.SetFormationSize(army.IsSupply || army.IsArmyGroup ? 1 : FormationFor(army.Pool.Active)); // 보급부대·집단군은 규모와 무관하게 단일 전용 모델
             var hiddenInFieldBuilding = fieldGarrisonIds.Contains(army.Id);
             token.Visible = !army.IsWaitingDeployment && !hiddenInFieldBuilding;
-            token.DisplaySyncTo(army.Field.Position, 0.3f); // 제자리면 스냅 — 보정 트윈이 방향을 뒤집지 않게
+            if (army.RenewalPosition is { } continuousPosition)
+                token.DisplayContinuousAt(ContinuousToWorld(continuousPosition)
+                    + new Vector3(0f, _view.TileTopY, 0f), false);
+            else
+                token.DisplaySyncTo(army.Field.Position, 0.3f);
             var constructionIndicator = token.GetNodeOrNull<Node3D>("FieldConstructionIndicator");
             if (army.IsConstructing && constructionIndicator is null)
             {

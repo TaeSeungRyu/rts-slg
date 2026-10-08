@@ -269,7 +269,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
 
         // 4) 전투 페이즈 발동 — 정지·후퇴가 반영된 위치로 사거리 전수검사. 발동 부대와 행동불가(혼란)
         //    부대는 공격자에서 뺀다(피격·방어는 정상).
-        var engagements = CombatPhase.DetectEngagements(state.Values.Select(u => u.Field).ToList())
+        var engagements = CombatPhase.DetectEngagements(state.Values.ToList())
             .Select(e => e with { Targets = e.Targets.Where(id => !protectedGarrisons.Contains(id)).ToList() })
             .Where(e => e.Targets.Count > 0)
             .Where(e => !constructionUnits.Contains(e.Attacker)

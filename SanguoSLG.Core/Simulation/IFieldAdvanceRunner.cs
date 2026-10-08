@@ -5,6 +5,9 @@ using SanguoSLG.Core.Spatial;
 
 public interface IFieldAdvanceRunner
 {
+    bool UsesContinuousMovement => false;
+    void SetCampaignState(GameState state) { }
+
     bool CanEnter(MovementDomain domain, HexCoord coord);
 
     AdvanceTurn Run(IReadOnlyList<CombatUnit> units, int maxDays = 7,

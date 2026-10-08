@@ -487,7 +487,8 @@ public sealed class RenewalAdvanceSimulator
         }
 
         var assigned = FindHostile(targets, unit, unit.AssignedTarget);
-        if (assigned is not null && IsVisibleTo(unit, assigned))
+        if (assigned is not null && (IsVisibleTo(unit, assigned)
+            || (assigned.Id.Kind != RenewalTargetKind.Unit && assigned.IsVisible)))
         {
             return FollowTarget(unit, assigned, day, movementTick);
         }
@@ -537,7 +538,7 @@ public sealed class RenewalAdvanceSimulator
                     ?? checked((day - 1) * MovementTicksPerDay + movementTick),
             };
         }
-        var destination = target.Id.Kind == RenewalTargetKind.Building
+        var destination = target.Id.Kind is RenewalTargetKind.Building or RenewalTargetKind.Site
             ? ApproachBuilding(unit, targetPosition, range)
             : targetPosition;
         return Retarget(unit with

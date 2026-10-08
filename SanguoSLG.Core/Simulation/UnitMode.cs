@@ -16,4 +16,5 @@ public enum UnitMode
 
     /// <summary>공격모드 — 탐지하면 목표를 버리고 추격, 사거리에 닿으면 정지한다.</summary>
     Attack,
+    Standby,
 }

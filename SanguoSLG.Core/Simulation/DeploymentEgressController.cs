@@ -17,7 +17,8 @@ public static class DeploymentEgressController
         IReadOnlyList<CombatUnit> waiting,
         IReadOnlyList<CombatUnit> fieldArmies,
         IReadOnlyList<City> cities,
-        Func<MovementDomain, HexCoord, bool>? canEnter = null)
+        Func<MovementDomain, HexCoord, bool>? canEnter = null,
+        bool allowFriendlyOverlap = false)
     {
         var citiesById = cities.ToDictionary(city => city.Id);
         var occupied = fieldArmies.Where(unit => unit.Pool.Active > 0)
@@ -33,6 +34,28 @@ public static class DeploymentEgressController
         foreach (var group in valid)
         {
             var queue = group.OrderBy(unit => unit.Field.CommandOrder).ThenBy(unit => unit.Id.Value).ToList();
+            if (allowFriendlyOverlap)
+            {
+                foreach (var candidate in queue)
+                {
+                    var candidateExit = candidate.EgressExit!.Value;
+                    var validExit = citiesById.TryGetValue(group.Key.Origin, out var candidateOrigin)
+                        && candidateOrigin.Owner == candidate.Field.Owner
+                        && DeploymentEgressRules.ExitGroup(candidateOrigin, group.Key.Direction).Contains(candidateExit)
+                        && (canEnter?.Invoke(candidate.Field.Domain, candidateExit) ?? true)
+                        && !fieldArmies.Concat(released).Any(other => other.Pool.Active > 0
+                            && other.Field.Owner != candidate.Field.Owner
+                            && other.Field.Position == candidateExit);
+                    if (!validExit) { remain.Add(candidate); continue; }
+                    released.Add(candidate with
+                    {
+                        Field = candidate.Field with { Position = candidateExit },
+                        RenewalPosition = RenewalMovement.RenewalHexSpace.Center(candidateExit),
+                        AwaitingEgress = false,
+                    });
+                }
+                continue;
+            }
             var head = queue[0];
             var exit = head.EgressExit!.Value;
             // 저장된 출구가 다른 방향/성의 타일로 오염되거나 원점이 함락되어도

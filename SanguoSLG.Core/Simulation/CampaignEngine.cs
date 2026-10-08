@@ -142,7 +142,8 @@ public sealed class CampaignEngine
 
             // 최초 출격 관제는 하루 시작에 한 번만 실행한다. 출구 밖 첫 칸에 배치된 부대는
             // 즉시 일반 야전 목록으로 넘어가며, 두 번째 칸부터는 기존 이동기만 관여한다.
-            var egress = DeploymentEgressController.Release(egressArmies, armies, work.Cities, _field.CanEnter);
+            var egress = DeploymentEgressController.Release(egressArmies, armies, work.Cities,
+                _field.CanEnter, _field.UsesContinuousMovement);
             armies.AddRange(egress.Released);
             egressArmies = egress.Waiting.ToList();
 
@@ -173,6 +174,7 @@ public sealed class CampaignEngine
 
             // 이동 → 공격 → 점령을 하루 단위로 확정한다. 주간 전체를 한 번에
             // 계산하면 공격턴에서 수비가 전멸해도 다음 진행까지 함락이 지연된다.
+            _field.SetCampaignState(work);
             var turn = _field.Run(turnInput, maxDays: 1, castles,
                 egress.Released.Select(u => u.Id).ToHashSet(), constructionUnits,
                 work.Buildings, _fieldBuildingDefinitions, simulationDay) with
@@ -381,6 +383,9 @@ public sealed class CampaignEngine
                 work = _capture.ResolveAll(work with { FieldArmies = armies }, _random, out var caps);
                 armies = work.Armies.Where(u => u.Pool.Active > 0).ToList();
                 captureReports.AddRange(caps.Select(c => c with { TurnIndex = reports.Count - 1 }));
+                // 입성한 점령군은 같은 공격턴의 야전 생존 목록에서도 즉시 제거한다.
+                if (caps.Count > 0)
+                    reports[^1] = reports[^1] with { Units = armies.ToList() };
             }
 
             // 오늘의 이동·공격·점령 정산이 모두 끝난 뒤 예약 대기일을 하루 차감한다.
