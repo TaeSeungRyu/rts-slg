@@ -50,11 +50,20 @@ public sealed class RenewalCampaignAdvanceRunner(
                 RenewalPosition = position.Position,
             }
             : unit).ToList();
+        var movedById = moved.ToDictionary(unit => unit.Id);
         var resolved = legacyRules.Run(moved, 0, castles, deployedToday, constructionUnits,
             fieldBuildings, fieldDefinitions, fieldDay);
-        var movement = new AdvanceResult(ticks, resolved.Units.Select(unit => unit.Field).ToList(),
+        var synchronized = resolved.Units.Select(unit => movedById.TryGetValue(unit.Id, out var before)
+                && unit.Field.Position == before.Field.Position
+            ? unit
+            : unit with { RenewalPosition = RenewalHexSpace.Center(unit.Field.Position) }).ToList();
+        var synchronizedEntered = resolved.EnteredCastle.Select(unit => unit with
+        {
+            RenewalPosition = RenewalHexSpace.Center(unit.Field.Position),
+        }).ToList();
+        var movement = new AdvanceResult(ticks, synchronized.Select(unit => unit.Field).ToList(),
             StopReason.MaxDays, days, resolved.Movement.EnteredCastle);
-        return resolved with { Movement = movement };
+        return resolved with { Units = synchronized, Entered = synchronizedEntered, Movement = movement };
     }
 
     private static RenewalUnitState ToRenewal(CombatUnit unit, IReadOnlyList<CombatUnit> units,

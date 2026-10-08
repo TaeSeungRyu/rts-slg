@@ -32,6 +32,19 @@ public sealed class RenewalCampaignAdvanceRunnerTests
         Assert.False(runner.CanEnter(MovementDomain.Land, new HexCoord(0, 0)));
     }
 
+    [Fact]
+    public void 전투후_강제변위는_다음날_연속좌표의_새원점이된다()
+    {
+        var legacy = new CaptureRunner(displace: true);
+        var runner = new RenewalCampaignAdvanceRunner(new HexMap(-3, 3, -3, 3), legacy);
+
+        var result = runner.Run([Unit(1, new HexCoord(0, 0), new HexCoord(0, 0), 0)], 1);
+
+        var unit = Assert.Single(result.Units);
+        Assert.Equal(new HexCoord(1, 0), unit.Field.Position);
+        Assert.Equal(RenewalHexSpace.Center(new HexCoord(1, 0)), unit.RenewalPosition);
+    }
+
     private static CombatUnit Unit(int id, HexCoord position, HexCoord target, int speed)
     {
         var field = new FieldUnit(new UnitId(id), new FactionId(1), position, speed, 3, 1,
@@ -40,7 +53,7 @@ public sealed class RenewalCampaignAdvanceRunnerTests
             UnitCombatState.Create(60));
     }
 
-    private sealed class CaptureRunner(bool canEnter = true) : IFieldAdvanceRunner
+    private sealed class CaptureRunner(bool canEnter = true, bool displace = false) : IFieldAdvanceRunner
     {
         public int LastMaxDays { get; private set; } = -1;
 
@@ -53,9 +66,13 @@ public sealed class RenewalCampaignAdvanceRunnerTests
             IReadOnlyList<FieldBuildingDefinition>? fieldDefinitions = null, int fieldDay = 0)
         {
             LastMaxDays = maxDays;
-            var movement = new AdvanceResult([], units.Select(x => x.Field).ToList(),
+            var output = displace
+                ? units.Select(unit => unit with
+                    { Field = unit.Field with { Position = new HexCoord(1, 0) } }).ToList()
+                : units;
+            var movement = new AdvanceResult([], output.Select(x => x.Field).ToList(),
                 StopReason.MaxDays, maxDays);
-            return new AdvanceTurn(units, movement, null,
+            return new AdvanceTurn(output, movement, null,
                 new Dictionary<UnitId, ActiveSkill>(), new Dictionary<UnitId, Stratagem>(),
                 new Dictionary<UnitId, int>(), new Dictionary<UnitId, int>());
         }
