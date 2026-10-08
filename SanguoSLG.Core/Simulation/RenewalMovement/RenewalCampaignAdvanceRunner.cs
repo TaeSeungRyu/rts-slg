@@ -23,7 +23,11 @@ public sealed class RenewalCampaignAdvanceRunner(
     {
         var active = units.Where(unit => unit.Pool.Active > 0).OrderBy(unit => unit.Id.Value).ToList();
         var blocked = (fieldBuildings ?? [])
-            .Where(building => !building.IsExpired(fieldDay))
+            .Where(building => !building.IsExpired(fieldDay)
+                && (fieldDefinitions is null
+                    ? building.DefinitionCode != "scout_post"
+                    : fieldDefinitions.Any(definition => definition.Code == building.DefinitionCode
+                        && definition.Kind != FieldBuildingKind.ScoutPost)))
             .Select(building => building.Position)
             .ToHashSet();
         blocked.UnionWith((castles ?? []).SelectMany(site => site.Footprint));

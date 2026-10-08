@@ -392,10 +392,23 @@ public sealed class RenewalCampaignIntegrationTests
         { Field = Army(1, new(1, 4), new(1, 8), 2).Field with
             { Mode = UnitMode.Advance, ContinuousTarget = goal } };
         var first = Engine(new HexMap(-8, 20, -5, 16)).AdvanceWeek(World(unit) with
-            { FieldBuildings = [scout] }, out _);
+            { FieldBuildings = [scout] }, out var turns);
         Assert.True(Assert.Single(first.Armies).RenewalPosition!.Value.DistanceTo(goal)
             < unit.RenewalPosition!.Value.DistanceTo(goal));
         Assert.Equal(goal, Assert.Single(first.Armies).Field.ContinuousTarget);
+        var firstDayPositions = turns[0].Movement.Ticks
+            .Select(tick => tick.ContinuousPositions.TryGetValue(unit.Id, out var position)
+                ? position : (ContinuousPosition?)null)
+            .OfType<ContinuousPosition>().ToList();
+        Assert.NotEmpty(firstDayPositions);
+        Assert.All(firstDayPositions, position =>
+        {
+            Assert.True(position.Y >= unit.RenewalPosition!.Value.Y,
+                $"정찰대를 피해 북쪽으로 우회: {position}");
+            Assert.InRange(position.X, 800, 1000);
+        });
+        Assert.Contains(scout.Id, turns.SelectMany(turn => turn.RemovedScoutPostIds ?? []));
+        Assert.DoesNotContain(first.Buildings, building => building.Id == scout.Id);
     }
 
     [Fact]
