@@ -10,6 +10,22 @@ using SanguoSLG.Game;
 public sealed class RenewalCampaignIntegrationTests
 {
     [Fact]
+    public void 실제캠페인_대기부대는_성을향하던_적과_접촉하면_교전한다()
+    {
+        var map = new HexMap(-4, 12, -4, 12);
+        var ally = Army(1, new(0, 0), new(0, 0)) with
+        {
+            Field = Army(1, new(0, 0), new(0, 0)).Field with { Mode = UnitMode.Standby },
+        };
+        var enemy = Army(2, new(1, 0), new(8, 0)) with
+        {
+            Field = Army(2, new(1, 0), new(8, 0)).Field with { Owner = new(2), Mode = UnitMode.Attack },
+        };
+        Engine(map).AdvanceWeek(World(ally, enemy), out var turns);
+        Assert.Contains(turns[0].FieldCombatExchanges, x => x.Attacker == ally.Id && x.Target == enemy.Id);
+    }
+
+    [Fact]
     public void 야전교전은_실제_공격자와_피격자의_연속좌표를_보존한다()
     {
         var map = new HexMap(-4, 10, -4, 10);

@@ -25,14 +25,15 @@ public static class CombatPhase
                     ?? RenewalMovement.RenewalHexSpace.Center(target.Field.Position));
         foreach (var attacker in units.OrderBy(unit => unit.Field.CommandOrder).ThenBy(unit => unit.Id.Value))
         {
-            if (attacker.Field.Mode is UnitMode.March or UnitMode.Standby || !attacker.CanInitiateCombat) continue;
-            var targets = units.Where(target => target.Field.Owner != attacker.Field.Owner && InRange(attacker, target)
+            if (attacker.Field.Mode == UnitMode.March || !attacker.CanInitiateCombat || attacker.Pool.Active <= 0) continue;
+            var targets = units.Where(target => target.Pool.Active > 0 && target.Field.Owner != attacker.Field.Owner && InRange(attacker, target)
                 && (attacker.Field.Mode != UnitMode.Attack
                     || (attacker.Field.AssignedUnitTarget is { } id ? target.Id == id
                         : target.Field.Position == attacker.Field.Target)))
                 .OrderBy(target => DistanceSquared(attacker, target))
                 .ThenBy(target => target.Field.CommandOrder).ThenBy(target => target.Id.Value)
                 .Select(target => target.Id).ToList();
+            if (attacker.Field.Mode == UnitMode.Standby) targets = targets.Take(1).ToList();
             if (targets.Count > 0) intentions[attacker.Id] = targets;
         }
         foreach (var defender in units.Where(unit => unit.Field.Mode == UnitMode.Standby && unit.CanInitiateCombat))
@@ -41,7 +42,9 @@ public static class CombatPhase
                 && targets.Contains(defender.Id) && InRange(defender, attacker))
                 .OrderBy(unit => unit.Field.CommandOrder).ThenBy(unit => unit.Id.Value)
                 .Select(unit => unit.Id).ToList();
-            if (counters.Count > 0) intentions[defender.Id] = counters;
+            if (counters.Count > 0)
+                intentions[defender.Id] = intentions.GetValueOrDefault(defender.Id, [])
+                    .Concat(counters).Distinct().ToList();
         }
         return units.OrderBy(unit => unit.Field.CommandOrder).ThenBy(unit => unit.Id.Value)
             .Where(unit => intentions.ContainsKey(unit.Id))
