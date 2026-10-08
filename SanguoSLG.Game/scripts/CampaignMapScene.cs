@@ -1456,7 +1456,7 @@ public sealed partial class CampaignMapScene : Node3D
             var general = unit.VanguardId is { } generalId
                 ? _state.Generals.FirstOrDefault(value => value.Id == generalId)?.Name
                 : null;
-            var button = MakeButton($"{general ?? "부대"} · {unit.TroopCode} · {unit.Pool.Active:N0}");
+            var button = MakeButton($"{general ?? "부대"} · {TroopName(unit.TroopCode)} · {unit.Pool.Active:N0}명");
             button.CustomMinimumSize = new Vector2(190, 30);
             button.Alignment = HorizontalAlignment.Left;
             button.Pressed += () => OpenUnitMenu(selected);
@@ -6424,7 +6424,7 @@ public sealed partial class CampaignMapScene : Node3D
             return true;
         }
 
-        if (_terrainCard.Visible || _infoCard.Visible || _cmdMenu.Visible || _unitMenu.Visible || _cmdSubMenu.Visible)
+        if (_terrainCard.Visible || _infoCard.Visible || _cmdMenu.Visible || _unitMenu.Visible || _unitChoiceMenu.Visible || _cmdSubMenu.Visible)
         {
             _selected = null;
             HidePanels();

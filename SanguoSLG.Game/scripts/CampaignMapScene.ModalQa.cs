@@ -1,6 +1,7 @@
 using Godot;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Spatial;
 
 namespace SanguoSLG.Game;
 
@@ -77,6 +78,26 @@ public sealed partial class CampaignMapScene
                 || _pendingDeploys[1].Req.EgressDirection != DeploymentDirection.SouthEast
                 || _pendingDeploys[0].Req.ContinuousTarget == _pendingDeploys[1].Req.ContinuousTarget)
                 throw new System.InvalidOperationException("Second confirmation overwrote first deployment");
+            var pickerState = _state;
+            var pickerUnits = generals.Select((general, i) => new CombatUnit(
+                new FieldUnit(new UnitId(900001 + i), Player, city.Position, 1, 3, 1,
+                    MovementDomain.Land, UnitMode.Standby, city.Position, i),
+                new CombatStats(1000, 20, 20), new TroopPool(1000, 0), UnitCombatState.Create(60),
+                TroopCode: "cavalry", VanguardId: general.Id)).ToArray();
+            _state = _state with { FieldArmies = pickerUnits };
+            if (pickerUnits.Length == 2)
+            {
+                ShowUnitChoices(pickerUnits[0].Field.Position, pickerUnits);
+                var rows = _unitChoiceRows.GetChildren().OfType<Button>().ToArray();
+                if (rows.Length != 2 || rows.Where((row, i) => !row.Text.Contains(TroopName(pickerUnits[i].TroopCode))).Any())
+                    throw new System.InvalidOperationException("Overlap picker did not localize troop names");
+                rows[1].EmitSignal(Button.SignalName.Pressed);
+                if (!_unitMenu.Visible || _selectedUnitId != pickerUnits[1].Id.Value || _unitChoiceMenu.Visible)
+                    throw new System.InvalidOperationException("Overlap picker opened the wrong unit");
+                HidePanels();
+                GD.Print("OVERLAP_PICKER_QA PASS: localized rows -> second unit command palette");
+            }
+            _state = pickerState;
             GD.Print("DEPLOY_TARGET_QA PASS: new selection, two pointer confirmations, independent targets, no leaked waypoints");
             if (OS.GetCmdlineUserArgs().Contains("--maptestrenewalcampaignqa"))
                 await RunRenewalCampaignPipelineQa();
