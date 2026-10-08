@@ -173,7 +173,7 @@ public sealed class RenewalOrderLifecycleTests
             Mode = RenewalOrderMode.Standby,
             IsVisible = false,
         };
-        var ignored = Unit(3, 2, 500, 500, 0) with { Mode = RenewalOrderMode.Standby };
+        var ignored = Unit(3, 2, 500, 1500, 0) with { Mode = RenewalOrderMode.Standby };
         var state = simulator.Start([attacker, assigned, ignored]);
 
         RenewalUnitState actual = null!;
@@ -190,7 +190,7 @@ public sealed class RenewalOrderLifecycleTests
         Assert.Equal(RenewalOrderMode.Standby, actual.Mode);
         Assert.Equal(RenewalStopReason.TargetLost, actual.StopReason);
         Assert.True(actual.Position.DistanceTo(new ContinuousPosition(2_000, 0))
-            <= RenewalAdvanceSimulator.UnitCollisionRadius * 2 + 100);
+            <= RenewalAdvanceSimulator.HostileCollisionRadius * 2 + 100);
         Assert.NotEqual(ignored.Position, actual.Destination);
     }
 

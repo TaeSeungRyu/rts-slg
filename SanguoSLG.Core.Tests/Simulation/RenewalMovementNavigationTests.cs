@@ -191,6 +191,53 @@ public sealed class RenewalMovementNavigationTests
     }
 
     [Fact]
+    public void 한틱에_적을_완전히_지나쳐도_끝점이_멀어진다는_이유로_관통하지않는다()
+    {
+        var simulator = new RenewalAdvanceSimulator(new RenewalMovementMap(new HexMap(-5, 12, -5, 12)));
+        var mover = Unit(1, new(0, 0), new(8, 0), speed: 150);
+        var enemy = Unit(2, new(1, 0), new(1, 0), faction: 2);
+        var result = simulator.StepMovementTick(simulator.Start([mover, enemy]));
+
+        Assert.Equal(RenewalStopReason.EnemyBlocked, result.State.Units[0].StopReason);
+        Assert.Equal(mover.Position, result.State.Units[0].Position);
+    }
+
+    [Fact]
+    public void 도착허용오차_안의_마지막_위치확정도_적군을_침범하지않는다()
+    {
+        var simulator = new RenewalAdvanceSimulator(new RenewalMovementMap(new HexMap(-5, 12, -5, 12)));
+        var mover = Unit(1, new(0, 0), new(0, 0)) with
+        {
+            Position = new(0, 0), Destination = new(45, 0), Arrived = false,
+        };
+        var enemy = Unit(2, new(1, 0), new(1, 0), faction: 2) with
+        {
+            Position = new(910, 0), Destination = new(910, 0),
+        };
+        var result = simulator.StepMovementTick(simulator.Start([mover, enemy]));
+
+        Assert.Equal(RenewalStopReason.EnemyBlocked, result.State.Units[0].StopReason);
+        Assert.False(result.State.Units[0].Arrived);
+        Assert.Equal(mover.Position, result.State.Units[0].Position);
+    }
+
+    [Fact]
+    public void 기존저장의_작은_논리간격도_실제편대폭만큼_분리하고_아군중첩은_유지한다()
+    {
+        var simulator = new RenewalAdvanceSimulator(new RenewalMovementMap(new HexMap(-5, 12, -5, 12)));
+        var first = Unit(1, new(0, 0), new(0, 0));
+        var ally = first with { Id = new(2) };
+        var enemy = Unit(3, new(0, 0), new(0, 0), faction: 2) with
+        {
+            Position = new(155, 338),
+        };
+        var state = simulator.Start([first, ally, enemy]);
+
+        Assert.Equal(state.Units[0].Position, state.Units[1].Position);
+        Assert.True(state.Units[0].Position.DistanceTo(state.Units[2].Position) >= 900);
+    }
+
+    [Fact]
     public void 목적지가_막혔으면_경로없음으로_남고_순간이동하지_않는다()
     {
         var destination = new HexCoord(2, 0);

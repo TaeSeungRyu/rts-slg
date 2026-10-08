@@ -12,6 +12,7 @@ public sealed class RenewalAdvanceSimulator
     public const int DaysPerAdvance = 7;
     public const long ArrivalTolerance = 50;
     public const long UnitCollisionRadius = 180;
+    public const long HostileCollisionRadius = 450;
     public const long ArrivalDispersionLimit = 500;
 
     private readonly RenewalMovementMap? _movementMap;
@@ -47,17 +48,17 @@ public sealed class RenewalAdvanceSimulator
         IReadOnlyList<RenewalUnitState> units)
     {
         var result = new List<RenewalUnitState>(units.Count);
-        var minimumDistanceSquared = checked(UnitCollisionRadius * 2 * UnitCollisionRadius * 2);
+        var minimumDistanceSquared = checked(HostileCollisionRadius * 2 * HostileCollisionRadius * 2);
         foreach (var unit in units.OrderBy(value => value.CommandId).ThenBy(value => value.Id.Value))
         {
             var position = unit.Position;
-            if (result.Any(other => other.Owner != unit.Owner
+            if (unit.IsActive && result.Any(other => other.IsActive && other.Owner != unit.Owner
                 && other.Position.DistanceSquaredTo(position) < minimumDistanceSquared))
             {
-                var separated = DispersionCandidates(position).Skip(1)
+                var separated = HostileSeparationCandidates(position)
                     .FirstOrDefault(candidate =>
                         (_movementMap?.CanStand(unit.Domain, candidate, UnitCollisionRadius) ?? true)
-                        && result.Where(other => other.Owner != unit.Owner)
+                        && result.Where(other => other.IsActive && other.Owner != unit.Owner)
                             .All(other => other.Position.DistanceSquaredTo(candidate)
                                 >= minimumDistanceSquared));
                 if (separated != default)
@@ -68,6 +69,22 @@ public sealed class RenewalAdvanceSimulator
             result.Add(unit with { Position = position });
         }
         return result.OrderBy(value => value.Id.Value).ToList();
+    }
+
+    private static IEnumerable<ContinuousPosition> HostileSeparationCandidates(ContinuousPosition origin)
+    {
+        for (var ring = 1; ring <= 8; ring++)
+        {
+            var radius = ring * HostileCollisionRadius * 2;
+            yield return new(origin.X + radius, origin.Y);
+            yield return new(origin.X, origin.Y + radius);
+            yield return new(origin.X - radius, origin.Y);
+            yield return new(origin.X, origin.Y - radius);
+            yield return new(origin.X + radius, origin.Y + radius);
+            yield return new(origin.X - radius, origin.Y + radius);
+            yield return new(origin.X - radius, origin.Y - radius);
+            yield return new(origin.X + radius, origin.Y - radius);
+        }
     }
 
     public RenewalStepResult StepMovementTick(RenewalAdvanceState state)
@@ -326,6 +343,9 @@ public sealed class RenewalAdvanceSimulator
                 || current.PathIndex >= current.Path.Count - 1;
             if (finalWaypoint && distance <= ArrivalTolerance)
             {
+                var collisionAtArrival = CollisionAt(current, target, spatialIndex);
+                if (collisionAtArrival != RenewalStopReason.None)
+                    return current with { StopReason = collisionAtArrival };
                 current = ReachWaypoint(current, target);
                 if (current.StopReason == RenewalStopReason.TargetInRange)
                 {
@@ -349,13 +369,7 @@ public sealed class RenewalAdvanceSimulator
 
             var candidate = new ContinuousPosition(current.Position.X + moveX,
                 current.Position.Y + moveY);
-            var collision = _movementMap?.FirstStaticCollision(current.Position, candidate,
-                UnitCollisionRadius, current.Domain) ?? RenewalStopReason.None;
-            if (collision == RenewalStopReason.None)
-            {
-                collision = FirstEnemyCollision(current, candidate,
-                    spatialIndex.QuerySegment(current.Position, candidate, UnitCollisionRadius * 2));
-            }
+            var collision = CollisionAt(current, candidate, spatialIndex);
             if (collision != RenewalStopReason.None)
             {
                 return current with { StopReason = collision };
@@ -378,18 +392,34 @@ public sealed class RenewalAdvanceSimulator
         ? (value + divisor / 2) / divisor
         : (value - divisor / 2) / divisor;
 
+    private RenewalStopReason CollisionAt(RenewalUnitState unit, ContinuousPosition candidate,
+        RenewalSpatialIndex spatialIndex)
+    {
+        var collision = _movementMap?.FirstStaticCollision(unit.Position, candidate,
+            UnitCollisionRadius, unit.Domain) ?? RenewalStopReason.None;
+        return collision != RenewalStopReason.None ? collision
+            : FirstEnemyCollision(unit, candidate,
+                spatialIndex.QuerySegment(unit.Position, candidate, HostileCollisionRadius * 2));
+    }
+
     private static RenewalStopReason FirstEnemyCollision(RenewalUnitState unit,
         ContinuousPosition candidate, IReadOnlyList<RenewalUnitState> allUnits)
     {
         foreach (var other in allUnits.OrderBy(x => x.Id.Value))
         {
-            if (other.Id == unit.Id || other.Owner == unit.Owner)
+            if (!other.IsActive || other.Id == unit.Id || other.Owner == unit.Owner)
             {
                 continue;
             }
-            if (candidate.DistanceSquaredTo(other.Position) < unit.Position.DistanceSquaredTo(other.Position)
-                && RenewalMovementMap.SegmentTouchesCircle(unit.Position, candidate, other.Position,
-                    UnitCollisionRadius * 2))
+            var radius = HostileCollisionRadius * 2;
+            var dx = unit.Position.X - other.Position.X;
+            var dy = unit.Position.Y - other.Position.Y;
+            var movingAway = dx * (candidate.X - unit.Position.X)
+                + dy * (candidate.Y - unit.Position.Y) >= 0;
+            if (unit.Position.DistanceSquaredTo(other.Position) < radius * radius && movingAway)
+                continue;
+            if (RenewalMovementMap.SegmentTouchesCircle(unit.Position, candidate, other.Position,
+                    radius - 1))
             {
                 return RenewalStopReason.EnemyBlocked;
             }
@@ -437,7 +467,7 @@ public sealed class RenewalAdvanceSimulator
 
         return unit with
         {
-            Position = unit.ArrivalPosition ?? unit.Destination,
+            Position = target,
             Arrived = true,
             Mode = RenewalOrderMode.Standby,
             PursuitTarget = null,

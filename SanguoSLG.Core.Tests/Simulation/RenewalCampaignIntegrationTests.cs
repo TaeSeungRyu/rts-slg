@@ -15,14 +15,14 @@ public sealed class RenewalCampaignIntegrationTests
         var map = new HexMap(-4, 10, -4, 10);
         var attacker = Army(1, new(0, 0), new(0, 0)) with
         {
-            Field = Army(1, new(0, 0), new(0, 0)).Field with { Mode = UnitMode.Advance },
+            Field = Army(1, new(0, 0), new(0, 0)).Field with { Mode = UnitMode.Advance, ContinuousTarget = new(100, 100) },
             RenewalPosition = new ContinuousPosition(100, 100),
         };
         var defender = Army(2, new(1, 0), new(1, 0)) with
         {
             Field = Army(2, new(1, 0), new(1, 0)).Field with
                 { Owner = new FactionId(2), Mode = UnitMode.Standby },
-            RenewalPosition = new ContinuousPosition(900, 100),
+            RenewalPosition = new ContinuousPosition(1000, 100),
         };
 
         Engine(map).AdvanceWeek(World(attacker, defender), out var turns);
