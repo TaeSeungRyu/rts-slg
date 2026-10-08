@@ -3,6 +3,7 @@ using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Simulation.RenewalMovement;
+using SanguoSLG.Core.Spatial;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -19,6 +20,11 @@ public sealed partial class CampaignMapScene
         }
         var expected = _pendingDeploys.Select(entry => entry.Req.ContinuousTarget).ToArray();
         Require(expected.Length == 2 && expected.All(point => point.HasValue), "Exact pointer goals missing");
+        Require(expected[0] != expected[1]
+            && RenewalHexSpace.NearestHex(expected[0]!.Value)
+                == RenewalHexSpace.NearestHex(expected[1]!.Value),
+            "Two clicks in one tile did not preserve distinct point goals");
+        var initialState = _state;
         var cityId = _pendingDeploys[0].Req.City;
         var generals = _pendingDeploys.Select(entry => entry.Req.Vanguard).ToArray();
         _state = _state with
@@ -82,5 +88,36 @@ public sealed partial class CampaignMapScene
             .All(unit => unit.Field.ContinuousTarget is { } goal && expected.Contains(goal)),
             "Second advance changed the confirmed goal");
         GD.Print("RENEWAL_CAMPAIGN_QA PASS: pointer confirmations -> deployment -> 14 days -> 30/60/144FPS -> save/reload");
+        RunRenewalRealMapQa(initialState);
+    }
+
+    private void RunRenewalRealMapQa(GameState initialState)
+    {
+        _state = initialState;
+        _pendingDeploys.Clear();
+        _movementStatus.Clear();
+        var city = _state.Cities.Single(city => city.Id.Value == 1);
+        var general = _state.Assignments.First(posting => posting.Location == city.Id).General;
+        var scout = _state.Buildings.Single(building => building.Id.Value == 800006);
+        var fort = _state.Buildings.Single(building => building.Id.Value == 800009);
+        if (scout.DefinitionCode != "scout_post" || fort.DefinitionCode != "fort")
+            throw new InvalidOperationException("Real-map building fixture changed");
+        var start = RenewalHexSpace.Center(new HexCoord(1, 4));
+        var goal = RenewalHexSpace.Center(fort.Position);
+        _pendingDeploys.Add((new DeployRequest(city.Id, "cavalry", 10000, general,
+            Mode: UnitMode.Advance, Target: fort.Position, Provisions: 250,
+            EgressDirection: DeploymentDirection.SouthEast, EgressExit: new HexCoord(1, 4),
+            ContinuousTarget: goal), "실제 지도 정찰대/보루 QA"));
+        StartAdvance();
+        var tracks = _animContinuousTracks.Where(track => track.UnitId > 0).ToList();
+        if (tracks.Count == 0 || !tracks.Any(track => track.Points.Any(point => point.DistanceTo(start) > 2500)))
+            throw new InvalidOperationException("Real-map cavalry did not pass the scout and advance toward the fort");
+        var firstProgress = tracks.Max(track => track.Points.Max(point => point.DistanceTo(start)));
+        FinishAdvance();
+        StartAdvance();
+        FinishAdvance();
+        if (_state.Buildings.Any(building => building.Id == fort.Id && building.HitPoints >= fort.HitPoints))
+            throw new InvalidOperationException("Real-map cavalry never attacked the fort after 14 days");
+        GD.Print($"RENEWAL_REAL_MAP_QA PASS: scout=800006 fort=800009 progress={firstProgress} day={_state.Day}");
     }
 }

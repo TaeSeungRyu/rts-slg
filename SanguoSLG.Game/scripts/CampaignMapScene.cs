@@ -1404,7 +1404,8 @@ public sealed partial class CampaignMapScene : Node3D
         ClearPathMarkers();
         if (u.Field.Owner == Player && u.Field.Target is { } tgt && tgt != u.Field.Position)
         {
-            AddRouteDots(u.Field.Position, u.Field.Waypoints, tgt, _pathMarkers, u.Class == TroopClass.Naval);
+            AddRouteDots(u.Field.Position, u.Field.Waypoints, tgt, _pathMarkers,
+                u.Class == TroopClass.Naval, u.Field.ContinuousWaypoints, u.Field.ContinuousTarget);
         }
     }
 
@@ -1787,16 +1788,20 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 시작 → (경유지들) → 목표를 구간별로 이어 금색 점 경로를 그린다.
-    private void AddRouteDots(HexCoord start, IReadOnlyList<HexCoord>? waypoints, HexCoord target, List<MeshInstance3D> into, bool naval = false)
+    private void AddRouteDots(HexCoord start, IReadOnlyList<HexCoord>? waypoints, HexCoord target,
+        List<MeshInstance3D> into, bool naval = false,
+        IReadOnlyList<ContinuousPosition>? exactWaypoints = null, ContinuousPosition? exactTarget = null)
     {
         var prev = start;
-        foreach (var wp in waypoints ?? [])
+        var points = waypoints ?? [];
+        for (var index = 0; index < points.Count; index++)
         {
-            AddPathDots(prev, wp, into, naval);
-            prev = wp;
+            AddPathDots(prev, points[index], into, naval,
+                index < (exactWaypoints?.Count ?? 0) ? exactWaypoints![index] : null);
+            prev = points[index];
         }
 
-        AddPathDots(prev, target, into, naval);
+        AddPathDots(prev, target, into, naval, exactTarget);
     }
 
     // 유닛 상태를 정보 카드에 표시(팔레트 '정보').
@@ -2475,9 +2480,10 @@ public sealed partial class CampaignMapScene : Node3D
             ? TargetEgressExit(previewCity, previewDirection,
                 _targetWaypoints.Count > 0 ? _targetWaypoints[^1] : null) ?? _targetStart
             : _targetStart;
-        foreach (var wp in _targetWaypoints)
+        for (var index = 0; index < _targetWaypoints.Count; index++)
         {
-            AddPathDots(prev, wp, _previewMarkers);
+            var wp = _targetWaypoints[index];
+            AddPathDots(prev, wp, _previewMarkers, exactGoal: _targetContinuousWaypoints[index]);
             prev = wp;
         }
 
@@ -2979,7 +2985,8 @@ public sealed partial class CampaignMapScene : Node3D
             if (req.Target is not { } goal) { continue; }
             var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
             if (city is null) { continue; }
-            AddRouteDots(req.EgressExit ?? city.Position, req.Waypoints, goal, _pathMarkers);
+            AddRouteDots(req.EgressExit ?? city.Position, req.Waypoints, goal, _pathMarkers,
+                exactWaypoints: req.ContinuousWaypoints, exactTarget: req.ContinuousTarget);
         }
 
         foreach (var (req, _) in _pendingSupplyDeploys)
@@ -2987,7 +2994,8 @@ public sealed partial class CampaignMapScene : Node3D
             if (req.Target is not { } goal) { continue; }
             var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
             if (city is null) { continue; }
-            AddPathDots(req.EgressExit ?? city.Position, goal, _pathMarkers);
+            AddPathDots(req.EgressExit ?? city.Position, goal, _pathMarkers,
+                exactGoal: req.ContinuousTarget);
         }
 
         foreach (var (req, _) in _pendingNavalDeploys)
@@ -2995,13 +3003,15 @@ public sealed partial class CampaignMapScene : Node3D
             if (req.Target is not { } goal) { continue; }
             var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
             if (city is null) { continue; }
-            AddRouteDots(req.EgressExit ?? city.Position, req.Waypoints, goal, _pathMarkers, naval: true);
+            AddRouteDots(req.EgressExit ?? city.Position, req.Waypoints, goal, _pathMarkers,
+                naval: true, exactWaypoints: req.ContinuousWaypoints, exactTarget: req.ContinuousTarget);
         }
     }
 
     // start→goal A* 경로를 테두리+발광 중심의 금색 표식으로 그려 into에 담는다.
     // 밝은 지형에서도 사라지지 않도록 어두운 외곽과 밝은 중심을 겹치며, 목적지는 조금 더 크게 표시한다.
-    private void AddPathDots(HexCoord start, HexCoord goal, List<MeshInstance3D> into, bool naval = false)
+    private void AddPathDots(HexCoord start, HexCoord goal, List<MeshInstance3D> into,
+        bool naval = false, ContinuousPosition? exactGoal = null)
     {
         _pathDotMesh ??= new CylinderMesh { TopRadius = 0.19f, BottomRadius = 0.19f, Height = 0.045f, RadialSegments = 12 };
         _pathDotMat ??= new StandardMaterial3D
@@ -3026,14 +3036,16 @@ public sealed partial class CampaignMapScene : Node3D
         var domain = (naval || _targetingNavalDeploy || _targetingNavalUnit) ? MovementDomain.DeepWater : MovementDomain.Land;
         var pf = new HexPathfinder(c => c == start || c == goal || _passability.CanExitThrough(domain, start, c));
         var path = pf.FindPath(start, goal);
-        for (var i = 1; i < path.Count; i++)
+        for (var i = path.Count == 1 ? 0 : 1; i < path.Count; i++)
         {
             var dot = new MeshInstance3D
             {
                 Mesh = _pathDotMesh,
                 MaterialOverride = _pathDotMat,
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-                Position = _view.HexToWorld(path[i]) + new Vector3(0f, _view.TileTopY + 0.06f, 0f),
+                Position = (i == path.Count - 1 && exactGoal is { } point
+                    ? ContinuousToWorld(point) : _view.HexToWorld(path[i]))
+                    + new Vector3(0f, _view.TileTopY + 0.06f, 0f),
                 Scale = i == path.Count - 1 ? new Vector3(1.28f, 1f, 1.28f) : Vector3.One,
             };
             var core = new MeshInstance3D
@@ -3736,7 +3748,9 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var u in preMove.Armies.Where(u => u.Field.Owner == Player
             && u.Field.Target is { } t && t != u.Field.Position))
         {
-            AddRouteDots(u.Field.Position, u.Field.Waypoints, u.Field.Target!.Value, _pathMarkers);
+            AddRouteDots(u.Field.Position, u.Field.Waypoints, u.Field.Target!.Value,
+                _pathMarkers, u.Class == TroopClass.Naval,
+                u.Field.ContinuousWaypoints, u.Field.ContinuousTarget);
         }
 
         _advancing = true;

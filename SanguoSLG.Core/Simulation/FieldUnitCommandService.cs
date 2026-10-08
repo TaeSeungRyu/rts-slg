@@ -50,6 +50,7 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
                     Waypoints = req.Waypoints, ReturnCity = req.ReturnCity,
                     ContinuousTarget = req.ContinuousTarget,
                     ContinuousWaypoints = req.ContinuousWaypoints,
+                    PursuitTarget = null,
                     AssignedUnitTarget = mode == UnitMode.Attack
                         ? state.Armies.FirstOrDefault(target => target.Field.Owner != faction
                             && target.Field.Position == req.Target)?.Id : null } }
@@ -73,7 +74,7 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
         var armies = state.Armies
             .Select(a => a.Id == unitId ? a with { Field = a.Field with { Target = null,
                 Waypoints = null, ContinuousTarget = null, ContinuousWaypoints = null,
-                AssignedUnitTarget = null } } : a)
+                AssignedUnitTarget = null, PursuitTarget = null } } : a)
             .ToList();
         return CommandResult.Success(state with { FieldArmies = armies });
     }

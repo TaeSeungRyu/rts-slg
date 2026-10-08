@@ -284,4 +284,88 @@ public sealed class RenewalCampaignIntegrationTests
         Assert.DoesNotContain(turns.SelectMany(turn => turn.Movement.Ticks).SelectMany(tick => tick.Units),
             field => field.Position == building.Position);
     }
+
+    [Fact]
+    public void 실제맵_장안_남동출격은_공격불가정찰대에_14일간_멈추지않는다()
+    {
+        var map = new HexMap(-8, 20, -5, 16);
+        var scout = new FieldBuilding(new(800006), "scout_post", new(2), new(1, 5), 0, 0, 0);
+        var palisade = new FieldBuilding(new(800007), "palisade", new(2), new(1, 6), 1500, 0, 0);
+        var fort = new FieldBuilding(new(800009), "fort", new(2), new(1, 7), 4000, 0, 0);
+        var army = Army(1, new(1, 4), fort.Position, 3) with
+        {
+            Field = Army(1, new(1, 4), fort.Position, 3).Field with { Mode = UnitMode.Advance },
+        };
+        var traces = new List<RenewalCampaignTraceEntry>();
+        var engine = Engine(map, trace: traces.Add);
+        var first = engine.AdvanceWeek(World(army) with
+            { FieldBuildings = [scout, palisade, fort] }, out var firstTurns);
+        var second = engine.AdvanceWeek(first, out var secondTurns);
+        Assert.DoesNotContain(traces, entry => entry.PursuitTarget ==
+            new RenewalTargetId(RenewalTargetKind.Building, scout.Id.Value));
+        Assert.NotEqual(army.RenewalPosition,
+            Assert.Single(first.Armies).RenewalPosition);
+        Assert.DoesNotContain(traces, entry => entry.StopReason == RenewalStopReason.NoPath
+            && entry.PursuitTarget == new RenewalTargetId(RenewalTargetKind.Building, palisade.Id.Value));
+        Assert.True(firstTurns.Concat(secondTurns).SelectMany(turn => turn.FieldBuildingExchanges)
+            .Any(exchange => exchange.Building == palisade.Id || exchange.Building == fort.Id),
+            "건축물 추격이 시야 경계에서 반복되지 않고 실제 공격까지 이어져야 합니다.");
+        Assert.True(firstTurns.Concat(secondTurns).SelectMany(turn => turn.Movement.Ticks)
+            .Any(tick => tick.ContinuousPositions.TryGetValue(army.Id, out var position)
+                && position != army.RenewalPosition),
+            $"unit={second.Armies.FirstOrDefault()?.RenewalPosition} trace={traces.LastOrDefault()}");
+    }
+
+    [Fact]
+    public void 정찰대만_있어도_전진은_원래_지점으로_진행한다()
+    {
+        var scout = new FieldBuilding(new(800006), "scout_post", new(2), new(1, 5), 0, 0, 0);
+        var goal = RenewalHexSpace.Center(new HexCoord(1, 8)) with { X = 920 };
+        var unit = Army(1, new(1, 4), new(1, 8), 2) with
+        { Field = Army(1, new(1, 4), new(1, 8), 2).Field with
+            { Mode = UnitMode.Advance, ContinuousTarget = goal } };
+        var first = Engine(new HexMap(-8, 20, -5, 16)).AdvanceWeek(World(unit) with
+            { FieldBuildings = [scout] }, out _);
+        Assert.True(Assert.Single(first.Armies).RenewalPosition!.Value.DistanceTo(goal)
+            < unit.RenewalPosition!.Value.DistanceTo(goal));
+        Assert.Equal(goal, Assert.Single(first.Armies).Field.ContinuousTarget);
+    }
+
+    [Fact]
+    public void 중립유적은_전진의_자동추격대상이_아니지만_지정공격은_가능하다()
+    {
+        var ruin = new RuinDefinition("war_elephant_01", "상병 유적", new(2, 4),
+            "war_elephant", 50000);
+        var status = new RuinState(ruin.Id, 50000);
+        var advance = Army(1, new(1, 4), new(1, 8), 2) with
+        { Field = Army(1, new(1, 4), new(1, 8), 2).Field with
+            { Mode = UnitMode.Advance } };
+        var trace = new List<RenewalCampaignTraceEntry>();
+        var world = World(advance) with { RuinDefinitions = [ruin], RuinStates = [status] };
+        var after = Engine(new HexMap(-8, 20, -5, 16), trace: trace.Add)
+            .AdvanceWeek(world, out _);
+        Assert.DoesNotContain(trace, entry => entry.PursuitTarget is
+            { Kind: RenewalTargetKind.Building, Value: -1 });
+        Assert.NotEqual(advance.RenewalPosition, Assert.Single(after.Armies).RenewalPosition);
+        var attack = advance with { Field = advance.Field with
+            { Mode = UnitMode.Attack, Target = ruin.Position,
+                ContinuousTarget = RenewalHexSpace.Center(ruin.Position) } };
+        Engine(new HexMap(-8, 20, -5, 16)).AdvanceWeek(World(attack) with
+            { RuinDefinitions = [ruin], RuinStates = [status] }, out var turns);
+        Assert.Contains(turns, turn => turn.RuinExchanges.Count > 0);
+    }
+
+    [Fact]
+    public void 같은타일의_서로다른_지점은_각각의_목표에서_멈춘다()
+    {
+        var center = RenewalHexSpace.Center(new HexCoord(4, 0));
+        var goals = new[] { center with { X = center.X - 120 }, center with { X = center.X + 120 } };
+        var engine = Engine(new HexMap(-5, 12, -5, 10));
+        var units = goals.Select((goal, index) => Army(index + 1, new(0, 0), new(4, 0), 2) with
+        { Field = Army(index + 1, new(0, 0), new(4, 0), 2).Field with
+            { ContinuousTarget = goal } }).ToArray();
+        var after = engine.AdvanceWeek(World(units), out _);
+        Assert.Equal(goals[0], after.Armies.Single(unit => unit.Id.Value == 1).RenewalPosition);
+        Assert.Equal(goals[1], after.Armies.Single(unit => unit.Id.Value == 2).RenewalPosition);
+    }
 }

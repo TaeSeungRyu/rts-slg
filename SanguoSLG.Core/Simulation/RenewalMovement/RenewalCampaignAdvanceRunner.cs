@@ -32,24 +32,50 @@ public sealed class RenewalCampaignAdvanceRunner(
         var simulator = new RenewalAdvanceSimulator(movementMap);
         var liveBuildings = (fieldBuildings ?? [])
             .Where(building => !building.IsExpired(fieldDay)).ToList();
-        var externalTargets = BuildTargets(castles, liveBuildings);
+        var attackableCodes = (fieldDefinitions ?? [])
+            .Where(definition => definition.CanBeTargeted)
+            .Select(definition => definition.Code).ToHashSet(StringComparer.Ordinal);
+        // Standalone runner fixtures do not supply the catalogue. In that case keep
+        // ordinary structures targetable while retaining the scout-post exception.
+        var attackableBuildings = liveBuildings
+            .Where(building => fieldDefinitions is null
+                ? building.DefinitionCode != "scout_post"
+                : attackableCodes.Contains(building.DefinitionCode)).ToList();
+        var externalTargets = BuildTargets(castles, attackableBuildings);
         var ruins = (_campaign?.Ruins ?? []).OrderBy(ruin => ruin.Id, StringComparer.Ordinal).ToList();
         foreach (var (ruin, index) in ruins.Select((ruin, index) => (ruin, index)))
         {
             var status = _campaign!.RuinStatus.FirstOrDefault(value => value.RuinId == ruin.Id);
             if (status is null || status.Defenders <= 0 || status.IsProtected(fieldDay)) continue;
             externalTargets.Add(new RenewalTargetState(new(RenewalTargetKind.Building, -index - 1),
-                status.Owner ?? new FactionId(-1), RenewalHexSpace.Center(ruin.Position)));
+                status.Owner ?? new FactionId(-1), RenewalHexSpace.Center(ruin.Position),
+                AutoAcquirable: false));
         }
         var renewalUnits = active.Select(unit =>
         {
-            var renewal = ToRenewal(unit, active, castles, liveBuildings,
+            var renewal = ToRenewal(unit, active, castles, attackableBuildings,
                 constructionUnits?.Contains(unit.Id) == true
                     || unit.State.Statuses.Any(status => status.IsDaze && !status.IsExpired)
                     || liveBuildings.Any(building => building.GarrisonUnit == unit.Id));
             var ruinIndex = ruins.FindIndex(ruin => ruin.Position == unit.Field.Target);
             if (unit.Field.Mode == UnitMode.Attack && ruinIndex >= 0)
                 renewal = renewal with { AssignedTarget = new(RenewalTargetKind.Building, -ruinIndex - 1) };
+            if (renewal.OriginalWaypoints is not { Count: > 0 }
+                && blocked.Contains(RenewalHexSpace.NearestHex(renewal.Destination))
+                && OwnDestination(unit, castles) is null)
+            {
+                var approach = RenewalHexSpace.NearestHex(renewal.Destination).Neighbors()
+                    .Select(RenewalHexSpace.Center)
+                    .Where(candidate => movementMap.CanStand(unit.Field.Domain, candidate,
+                        RenewalAdvanceSimulator.UnitCollisionRadius))
+                    .Where(candidate => movementMap.FindPath(unit.Field.Domain,
+                        renewal.Position, candidate).Count > 0)
+                    .OrderBy(candidate => candidate.DistanceSquaredTo(renewal.Position))
+                    .ThenBy(candidate => candidate.X).ThenBy(candidate => candidate.Y)
+                    .FirstOrDefault();
+                if (approach != default)
+                    renewal = renewal with { Destination = approach, Arrived = false };
+            }
             if (OwnDestination(unit, castles) is { } ownSite
                 && renewal.OriginalWaypoints is not { Count: > 0 })
             {
@@ -113,6 +139,7 @@ public sealed class RenewalCampaignAdvanceRunner(
                     Position = RenewalHexSpace.NearestHex(position.Position),
                     Waypoints = unit.Field.Waypoints?.Skip(position.OriginalWaypointIndex).ToList(),
                     ContinuousWaypoints = unit.Field.ContinuousWaypoints?.Skip(position.OriginalWaypointIndex).ToList(),
+                    PursuitTarget = position.PursuitTarget,
                     AssignedUnitTarget = position.AssignedTarget is { Kind: RenewalTargetKind.Unit } assigned
                         ? new UnitId(checked((int)assigned.Value)) : unit.Field.AssignedUnitTarget,
                     Mode = position.Mode == RenewalOrderMode.Standby
@@ -197,6 +224,7 @@ public sealed class RenewalCampaignAdvanceRunner(
             OriginalDestination: destination,
             OriginalWaypoints: waypoints,
             AssignedTarget: target,
+            PursuitTarget: unit.Field.PursuitTarget,
             LastKnownTargetPosition: target is null ? null : destination,
             DetectionRange: unit.Field.Detection,
             AttackRange: unit.Field.AttackRange,

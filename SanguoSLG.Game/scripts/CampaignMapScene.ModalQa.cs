@@ -46,20 +46,32 @@ public sealed partial class CampaignMapScene
                 if (_targetEgressDirection != direction || _targetWaypoints.Count != 0)
                     throw new System.InvalidOperationException("Direction click leaked into map waypoints");
                 var target = new SanguoSLG.Core.Spatial.HexCoord(0, 4);
-                Click(_camera.UnprojectPosition(_view.HexToWorld(target)));
+                var clickedWorld = _view.HexToWorld(target)
+                    + new Vector3(index == 0 ? -0.12f : 0.12f, 0f, 0f);
+                var clickedPoint = WorldToContinuous(clickedWorld);
+                Click(_camera.UnprojectPosition(clickedWorld));
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 if (_targetWaypoints.Count != 1 || _targetWaypoints[0] != target)
                     throw new System.InvalidOperationException($"Map click selected incorrect target: {string.Join(",", _targetWaypoints)}");
+                if (_targetContinuousWaypoints.Count != 1
+                    || _targetContinuousWaypoints[0].DistanceTo(clickedPoint) > 3
+                    || _previewMarkers.Count == 0
+                    || _previewMarkers[^1].Position.DistanceTo(ContinuousToWorld(clickedPoint)
+                        + new Vector3(0f, _view.TileTopY + 0.06f, 0f)) > .005f)
+                    throw new System.InvalidOperationException("Point click or exact preview marker was snapped to tile center");
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 Click(_targetConfirmBtn.GetGlobalRect().GetCenter());
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 if (_depTargeting || _pendingDeploys[index].Req.Target != new SanguoSLG.Core.Spatial.HexCoord(0, 4)
-                    || _pendingDeploys[index].Req.Waypoints is { Count: > 0 })
+                    || _pendingDeploys[index].Req.Waypoints is { Count: > 0 }
+                    || _pendingDeploys[index].Req.ContinuousTarget is not { } confirmed
+                    || confirmed.DistanceTo(clickedPoint) > 3)
                     throw new System.InvalidOperationException("Single confirmation failed or leaked a waypoint");
             }
             if (_pendingDeploys[0].Req.EgressDirection != DeploymentDirection.SouthWest
-                || _pendingDeploys[1].Req.EgressDirection != DeploymentDirection.SouthEast)
+                || _pendingDeploys[1].Req.EgressDirection != DeploymentDirection.SouthEast
+                || _pendingDeploys[0].Req.ContinuousTarget == _pendingDeploys[1].Req.ContinuousTarget)
                 throw new System.InvalidOperationException("Second confirmation overwrote first deployment");
             GD.Print("DEPLOY_TARGET_QA PASS: new selection, two pointer confirmations, independent targets, no leaked waypoints");
             if (OS.GetCmdlineUserArgs().Contains("--maptestrenewalcampaignqa"))

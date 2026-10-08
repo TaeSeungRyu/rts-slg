@@ -9,4 +9,5 @@ public sealed record RenewalTargetState(
     bool IsActive = true,
     bool IsVisible = true,
     long SelectionOrder = 0,
-    IReadOnlyList<ContinuousPosition>? Footprint = null);
+    IReadOnlyList<ContinuousPosition>? Footprint = null,
+    bool AutoAcquirable = true);
