@@ -71,7 +71,8 @@ public sealed class CampaignSiege
         var exchanges = new List<SiegeExchange>();
         var firedActives = new Dictionary<UnitId, ActiveSkill>();
 
-        foreach (var city in cities.OrderBy(c => c.Id.Value))
+        foreach (var (city, siteIndex) in cities.OrderBy(c => c.Id.Value)
+            .Select((city, index) => (city, index: index + 1)))
         {
             var defenders = garr.Where(g => g.City == city.Id).OrderBy(g => g.TroopCode, StringComparer.Ordinal).ThenBy(g => g.Trainee).ToList();
             var defendTroops = defenders.Sum(g => g.Troops);
@@ -82,7 +83,10 @@ public sealed class CampaignSiege
 
             var besiegers = armies
                 .Where(u => u.Pool.Active > 0 && u.Field.Owner != city.Owner
-                    && u.Field.Mode == UnitMode.Attack
+                    && (u.Field.Mode == UnitMode.Attack
+                        || u.Field.Mode == UnitMode.Advance
+                        && u.Field.PursuitTarget == new RenewalMovement.RenewalTargetId(
+                            RenewalMovement.RenewalTargetKind.Site, siteIndex))
                     && u.CanInitiateCombat
                     && (u.IsSupply || u.IsArmyGroup || EffectiveTroop(u) is not null)
                     && CastleFootprint.TilesFor(city).Min(tile => tile.Distance(u.Field.Position)) <= u.Field.RangeCastle)

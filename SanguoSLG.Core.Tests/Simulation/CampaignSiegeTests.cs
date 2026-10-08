@@ -5,6 +5,7 @@ using System.Linq;
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Simulation.RenewalMovement;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
@@ -76,6 +77,26 @@ public class CampaignSiegeTests
         Assert.Equal(6000 - ex.WallDamage, r.Cities.Single().Wall);
         Assert.Equal(10000, r.Garrisons.Single().Troops); // 성벽이 버텨 수비 무손실
         Assert.True(r.Armies.Single().Pool.Active < 10000, "인접 공격 부대는 반격을 받는다");
+    }
+
+    [Fact]
+    public void 전진중_발견한_적성에_접적하면_공성하고_무행동으로_멈추지않는다()
+    {
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 6000);
+        var advance = Army(1, 1, new HexCoord(4, 0), new HexCoord(8, 0)) with
+        {
+            Field = Army(1, 1, new HexCoord(4, 0), new HexCoord(8, 0)).Field with
+            {
+                Mode = UnitMode.Advance,
+                PursuitTarget = new RenewalTargetId(RenewalTargetKind.Site, 1),
+            },
+        };
+
+        var result = Siege().Resolve([advance], [city],
+            [new GarrisonForce(city.Id, "swordsman", 10000, 60)]);
+
+        Assert.Single(result.Exchanges);
+        Assert.True(result.Cities.Single().Wall < city.Wall);
     }
 
     [Fact]
