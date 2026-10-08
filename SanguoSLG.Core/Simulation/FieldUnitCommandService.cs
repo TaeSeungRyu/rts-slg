@@ -9,7 +9,9 @@ public sealed record FieldUnitCommandRequest(
     HexCoord Target,
     IReadOnlyList<HexCoord>? Waypoints = null,
     IReadOnlySet<HexCoord>? VisibleTiles = null,
-    CityId? ReturnCity = null);
+    CityId? ReturnCity = null,
+    RenewalMovement.ContinuousPosition? ContinuousTarget = null,
+    IReadOnlyList<RenewalMovement.ContinuousPosition>? ContinuousWaypoints = null);
 
 public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool> canEnter,
     Func<GameState, HexCoord, bool>? isStaticAttackTarget = null)
@@ -44,7 +46,10 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
             : req.Mode;
         var armies = state.Armies
             .Select(a => a.Id == req.Unit
-                ? a with { Field = a.Field with { Mode = mode, Target = req.Target, Waypoints = req.Waypoints, ReturnCity = req.ReturnCity } }
+                ? a with { Field = a.Field with { Mode = mode, Target = req.Target,
+                    Waypoints = req.Waypoints, ReturnCity = req.ReturnCity,
+                    ContinuousTarget = req.ContinuousTarget,
+                    ContinuousWaypoints = req.ContinuousWaypoints } }
                 : a)
             .ToList();
         return CommandResult.Success(state with { FieldArmies = armies });
@@ -63,7 +68,8 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
         }
 
         var armies = state.Armies
-            .Select(a => a.Id == unitId ? a with { Field = a.Field with { Target = null, Waypoints = null } } : a)
+            .Select(a => a.Id == unitId ? a with { Field = a.Field with { Target = null,
+                Waypoints = null, ContinuousTarget = null, ContinuousWaypoints = null } } : a)
             .ToList();
         return CommandResult.Success(state with { FieldArmies = armies });
     }

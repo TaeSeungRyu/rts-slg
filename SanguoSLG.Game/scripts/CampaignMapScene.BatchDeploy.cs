@@ -3,6 +3,7 @@ namespace SanguoSLG.Game;
 using Godot;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Simulation.RenewalMovement;
 using SanguoSLG.Core.Spatial;
 
 public sealed partial class CampaignMapScene
@@ -310,11 +311,12 @@ public sealed partial class CampaignMapScene
 
         BeginTargeting(pendingIndex);
         _targetWaypoints.Add(new HexCoord(city.Position.Q + 4, city.Position.R));
+        _targetContinuousWaypoints.Add(RenewalHexSpace.Center(_targetWaypoints[^1]));
         RebuildTargetEdit();
         var directionControls = _targetEgressButtons.Count == 6
             && _targetEgressButtons.Values.Count(button => !button.Disabled) > 0;
         _targetWaypoints.Clear();
-        ApplyTarget(city.Position, null);
+        ApplyTarget(city.Position, null, RenewalHexSpace.Center(city.Position), null);
 
         var labels = _modalLayer?.FindChildren("*", "Label", true, false)
             .OfType<Label>().Select(label => label.Text).ToList() ?? [];

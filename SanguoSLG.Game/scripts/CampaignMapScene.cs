@@ -405,6 +405,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<MeshInstance3D> _previewMarkers = new(); // 미확정 목적지 경로 프리뷰
     private CanvasLayer _targetEditLayer = null!;              // 경유지 취소 버튼·확인 버튼 레이어
     private readonly List<HexCoord> _targetWaypoints = new();  // 클릭 순서대로 찍은 경유지(마지막 = 최종 목표)
+    private readonly List<ContinuousPosition> _targetContinuousWaypoints = new();
     private readonly List<Button> _targetCancelBtns = new();   // 경유지별 취소 버튼(각 지점 위에 추종)
     private HexCoord _targetStart;                             // 경로 시작점(성/부대 위치)
     private readonly Dictionary<DeploymentDirection, Button> _targetEgressButtons = new();
@@ -1308,8 +1309,11 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depTargeting)
         {
             // 클릭할 때마다 경유지를 이어 붙인다(직전 지점에서 A* 경로가 있어야 추가).
-            if (RayToGround(mb.Position) is { } th && th != LastTargetPoint())
+            if (RayToGroundPoint(mb.Position) is { } ground &&
+                (_targetContinuousWaypoints.Count == 0
+                    || ground.Position != _targetContinuousWaypoints[^1]))
             {
+                var th = ground.Hex;
                 // 출격 방향 버튼은 성 외곽 대표 칸 위에 떠 있다. 해상도·레이아웃 타이밍에 따라
                 // 버튼 입력이 지도까지 전달되어도 해당 칸을 경유지로 넣지 않고 방향 선택으로 복구한다.
                 if (TrySelectTargetEgressAt(th)) { return; }
@@ -1317,6 +1321,7 @@ public sealed partial class CampaignMapScene : Node3D
                 if (HasPath(from, th))
                 {
                     _targetWaypoints.Add(th);
+                    _targetContinuousWaypoints.Add(ground.Position);
                     RebuildTargetEdit();
                 }
                 else
@@ -2415,6 +2420,7 @@ public sealed partial class CampaignMapScene : Node3D
         _targetingNavalDeploy = naval;
         _depTargeting = true;
         _targetWaypoints.Clear();
+        _targetContinuousWaypoints.Clear();
         var reqCity = transport ? _pendingTransportDeploys[idx].Req.City
             : armyGroup ? _pendingArmyGroupDeploys[idx].Req.City
             : naval ? _pendingNavalDeploys[idx].Req.City
@@ -2480,6 +2486,7 @@ public sealed partial class CampaignMapScene : Node3D
             b.Pressed += () =>
             {
                 if (idx < _targetWaypoints.Count) { _targetWaypoints.RemoveAt(idx); }
+                if (idx < _targetContinuousWaypoints.Count) { _targetContinuousWaypoints.RemoveAt(idx); }
                 Dbg($"UI targeting-cancel-wp idx={idx} remain={_targetWaypoints.Count}");
                 RebuildTargetEdit(); // 중간 지점을 지우면 남은 지점으로 경로가 자동 재계산된다
             };
@@ -2624,7 +2631,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
         for (var i = 0; i < _targetCancelBtns.Count && i < _targetWaypoints.Count; i++)
         {
-            var world = _view.HexToWorld(_targetWaypoints[i]) + new Vector3(0f, _view.TileTopY + 0.2f, 0f);
+            var world = ContinuousToWorld(_targetContinuousWaypoints[i])
+                + new Vector3(0f, _view.TileTopY + 0.2f, 0f);
             var s = _camera.UnprojectPosition(world);
             var sz = _targetCancelBtns[i].GetCombinedMinimumSize();
             _targetCancelBtns[i].Position = new Vector2(
@@ -2634,7 +2642,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (_targetConfirmBtn.Visible && _targetWaypoints.Count > 0)
         {
-            var world = _view.HexToWorld(_targetWaypoints[^1]) + new Vector3(0f, _view.TileTopY + 0.2f, 0f);
+            var world = ContinuousToWorld(_targetContinuousWaypoints[^1])
+                + new Vector3(0f, _view.TileTopY + 0.2f, 0f);
             var s = _camera.UnprojectPosition(world);
             var sz = _targetConfirmBtn.GetCombinedMinimumSize();
             _targetConfirmBtn.Position = new Vector2(
@@ -2671,6 +2680,7 @@ public sealed partial class CampaignMapScene : Node3D
         _targetEgressDirection = null;
         _targetEgressManual = false;
         _targetWaypoints.Clear();
+        _targetContinuousWaypoints.Clear();
         foreach (var b in _targetCancelBtns) { b.QueueFree(); }
         _targetCancelBtns.Clear();
         foreach (var m in _previewMarkers) { m.QueueFree(); }
@@ -2688,11 +2698,17 @@ public sealed partial class CampaignMapScene : Node3D
         var mid = _targetWaypoints.Count > 1
             ? _targetWaypoints.Take(_targetWaypoints.Count - 1).ToList()
             : null;
-        if (_retargetUnitId >= 0) { ApplyUnitTarget(target, mid); }
-        else { ApplyTarget(target, mid); }
+        var continuousTarget = _targetContinuousWaypoints[^1];
+        var continuousMid = _targetContinuousWaypoints.Count > 1
+            ? _targetContinuousWaypoints.Take(_targetContinuousWaypoints.Count - 1).ToList()
+            : null;
+        if (_retargetUnitId >= 0) { ApplyUnitTarget(target, mid, continuousTarget, continuousMid); }
+        else { ApplyTarget(target, mid, continuousTarget, continuousMid); }
     }
 
-    private void ApplyTarget(HexCoord h, IReadOnlyList<HexCoord>? waypoints)
+    private void ApplyTarget(HexCoord h, IReadOnlyList<HexCoord>? waypoints,
+        ContinuousPosition continuousTarget,
+        IReadOnlyList<ContinuousPosition>? continuousWaypoints)
     {
         var idx = _depTargetIndex;
         var reopenCombatDeployHub = false;
@@ -2720,7 +2736,9 @@ public sealed partial class CampaignMapScene : Node3D
             var mode = enemyCity is not null || enemyUnit is not null || RuinAt(h) is not null
                 ? UnitMode.Attack : UnitMode.March;
             _pendingSupplyDeploys[idx] = (req with { Target = h, Mode = mode,
-                EgressDirection = egressDirection, EgressExit = egressExit }, label);
+                EgressDirection = egressDirection, EgressExit = egressExit,
+                ContinuousTarget = continuousTarget,
+                ContinuousWaypoints = continuousWaypoints }, label);
             Dbg($"SUPPLY TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode}");
             var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
             _log.Text = $"보급부대 목표 → {tName}{(mode == UnitMode.Attack ? " (공격모드)" : "")} · 목표 확정";
@@ -2740,7 +2758,9 @@ public sealed partial class CampaignMapScene : Node3D
             }
             var newLabel = TransportLabel(req with { Destination = dest.Id });
             _pendingTransportDeploys[idx] = (req with { Destination = dest.Id,
-                EgressDirection = egressDirection, EgressExit = egressExit }, newLabel);
+                EgressDirection = egressDirection, EgressExit = egressExit,
+                ContinuousTarget = RenewalHexSpace.Center(dest.Position),
+                ContinuousWaypoints = continuousWaypoints }, newLabel);
             Dbg($"TRANSPORT TARGET idx={idx} -> city={dest.Id.Value} ({h.Q},{h.R})");
             _log.Text = $"수송부대 목표 → {dest.Name} · 목표 확정";
         }
@@ -2757,7 +2777,9 @@ public sealed partial class CampaignMapScene : Node3D
             var navalMode = enemyPort is not null || enemyShip is not null || RuinAt(h) is { Naval: true }
                 ? UnitMode.Attack : UnitMode.March;
             _pendingNavalDeploys[idx] = (req with { Target = h, Mode = navalMode, Waypoints = waypoints,
-                EgressDirection = egressDirection, EgressExit = egressExit }, label);
+                EgressDirection = egressDirection, EgressExit = egressExit,
+                ContinuousTarget = continuousTarget,
+                ContinuousWaypoints = continuousWaypoints }, label);
             Dbg($"NAVAL TARGET idx={idx} -> ({h.Q},{h.R}) mode={navalMode} wps={waypoints?.Count ?? 0}");
             var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
             _log.Text = $"출항 목표 → ({h.Q},{h.R}){(navalMode == UnitMode.Attack ? " (공격모드)" : "")}{wpNote} · 목표 확정";
@@ -2775,7 +2797,9 @@ public sealed partial class CampaignMapScene : Node3D
             var mode = enemyCity is not null || enemyUnit is not null || RuinAt(h) is not null
                 ? UnitMode.Attack : req.Mode;
             _pendingArmyGroupDeploys[idx] = (req with { Target = h, Mode = mode, Waypoints = waypoints,
-                EgressDirection = egressDirection, EgressExit = egressExit }, label);
+                EgressDirection = egressDirection, EgressExit = egressExit,
+                ContinuousTarget = continuousTarget,
+                ContinuousWaypoints = continuousWaypoints }, label);
             Dbg($"ARMYGROUP TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode} wps={waypoints?.Count ?? 0}");
             var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
             var wpNote = waypoints is { Count: > 0 } ? $" · 경유 {waypoints.Count}" : "";
@@ -2792,7 +2816,9 @@ public sealed partial class CampaignMapScene : Node3D
             var enemyCity = CityAtHex(h, c => c.Owner != Player);
             var mode = enemyCity is not null || RuinAt(h) is not null ? UnitMode.Attack : req.Mode;
             _pendingDeploys[idx] = (req with { Target = h, Mode = mode, Waypoints = waypoints,
-                EgressDirection = egressDirection, EgressExit = egressExit }, label);
+                EgressDirection = egressDirection, EgressExit = egressExit,
+                ContinuousTarget = continuousTarget,
+                ContinuousWaypoints = continuousWaypoints }, label);
             reopenCombatDeployHub = true;
             Dbg($"TARGET idx={idx} -> ({h.Q},{h.R}) mode={mode} wps={waypoints?.Count ?? 0}");
             var tName = CityAtHex(h)?.Name ?? $"({h.Q},{h.R})";
@@ -3038,6 +3064,9 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     private HexCoord? RayToGround(Vector2 screen)
+        => RayToGroundPoint(screen)?.Hex;
+
+    private (HexCoord Hex, ContinuousPosition Position)? RayToGroundPoint(Vector2 screen)
     {
         var origin = _camera.ProjectRayOrigin(screen);
         var dir = _camera.ProjectRayNormal(screen);
@@ -3052,8 +3081,24 @@ public sealed partial class CampaignMapScene : Node3D
             return null;
         }
 
-        var coord = _view.WorldToHex(origin + dir * t);
-        return _map.Contains(coord) ? coord : null;
+        var world = origin + dir * t;
+        var coord = _view.WorldToHex(world);
+        if (!_map.Contains(coord)) { return null; }
+        var size = _view.HexWorldSize;
+        var q = world.X / (size * 1.5f);
+        var r = world.Z / (size * Mathf.Sqrt(3f)) - q / 2f;
+        var logical = new ContinuousPosition(
+            (long)Mathf.Round(q * 867f),
+            (long)Mathf.Round(q * 500f + r * ContinuousPosition.UnitsPerTile));
+        return (coord, logical);
+    }
+
+    private Vector3 ContinuousToWorld(ContinuousPosition position)
+    {
+        var q = position.X / 867f;
+        var r = (position.Y - q * 500f) / ContinuousPosition.UnitsPerTile;
+        return new Vector3(_view.HexWorldSize * 1.5f * q, 0f,
+            _view.HexWorldSize * Mathf.Sqrt(3f) * (r + q / 2f));
     }
 
     // ── 테스트 시나리오: 지형 다양 맵, 위(성 1) vs 촉(성 2 — 성도·한중) ──
@@ -5046,7 +5091,9 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 재지정 확정 — 적 성이면 공격모드로 전환, 자기 성이면 복귀(입성은 이동 규칙이 처리).
-    private void ApplyUnitTarget(HexCoord h, IReadOnlyList<HexCoord>? waypoints)
+    private void ApplyUnitTarget(HexCoord h, IReadOnlyList<HexCoord>? waypoints,
+        ContinuousPosition continuousTarget,
+        IReadOnlyList<ContinuousPosition>? continuousWaypoints)
     {
         var uid = _retargetUnitId;
         var mode = _retargetMode;
@@ -5069,7 +5116,9 @@ public sealed partial class CampaignMapScene : Node3D
         if (enemyCity is not null || enemyUnit is not null || RuinAt(h) is not null || enemyFieldBuilding is not null)
         { mode = UnitMode.Attack; }
         var result = _unitCommander.Reassign(_state, Player,
-            new FieldUnitCommandRequest(new UnitId(uid), mode, h, waypoints, _visibleTiles, ReturnCity: ownCity?.Id));
+            new FieldUnitCommandRequest(new UnitId(uid), mode, h, waypoints, _visibleTiles,
+                ReturnCity: ownCity?.Id, ContinuousTarget: continuousTarget,
+                ContinuousWaypoints: continuousWaypoints));
         if (!result.Ok)
         {
             ShowNotice("명령 실패", result.Error ?? "목표를 지정할 수 없습니다.");

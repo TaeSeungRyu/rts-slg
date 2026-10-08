@@ -18,7 +18,9 @@ public sealed record DeployRequest(
     int Gold = 0,
     int DelayDays = 0,
     DeploymentDirection? EgressDirection = null,
-    HexCoord? EgressExit = null);
+    HexCoord? EgressExit = null,
+    RenewalMovement.ContinuousPosition? ContinuousTarget = null,
+    IReadOnlyList<RenewalMovement.ContinuousPosition>? ContinuousWaypoints = null);
 
 /// <summary>보급부대 편성 한 줄 — 병종과 데려갈 병력(0 이하면 그 병종 전량).</summary>
 public sealed record SupplyLine(string TroopCode, int Troops);
@@ -34,7 +36,9 @@ public sealed record SupplyDeployRequest(
     int Gold = 0,
     int DelayDays = 0,
     DeploymentDirection? EgressDirection = null,
-    HexCoord? EgressExit = null);
+    HexCoord? EgressExit = null,
+    RenewalMovement.ContinuousPosition? ContinuousTarget = null,
+    IReadOnlyList<RenewalMovement.ContinuousPosition>? ContinuousWaypoints = null);
 
 /// <summary>집단군 출전 요청 — 보병·궁병·공성 병기를 묶어 성 원점 기준 1개만 편성한다.</summary>
 public sealed record ArmyGroupDeployRequest(
@@ -49,7 +53,9 @@ public sealed record ArmyGroupDeployRequest(
     int Gold = 0,
     int DelayDays = 0,
     DeploymentDirection? EgressDirection = null,
-    HexCoord? EgressExit = null);
+    HexCoord? EgressExit = null,
+    RenewalMovement.ContinuousPosition? ContinuousTarget = null,
+    IReadOnlyList<RenewalMovement.ContinuousPosition>? ContinuousWaypoints = null);
 
 /// <summary>수송부대 편성 한 줄 — 병종과 이동시킬 병력(0 이하면 그 병종 전량).</summary>
 public sealed record TransportLine(string TroopCode, int Troops);
@@ -65,7 +71,9 @@ public sealed record TransportDeployRequest(
     IReadOnlyList<HexCoord>? Waypoints = null,
     int DelayDays = 0,
     DeploymentDirection? EgressDirection = null,
-    HexCoord? EgressExit = null);
+    HexCoord? EgressExit = null,
+    RenewalMovement.ContinuousPosition? ContinuousTarget = null,
+    IReadOnlyList<RenewalMovement.ContinuousPosition>? ContinuousWaypoints = null);
 
 public sealed record NavalDeployRequest(
     CityId City,
@@ -81,7 +89,9 @@ public sealed record NavalDeployRequest(
     int DelayDays = 0,
     DeploymentDirection? EgressDirection = null,
     HexCoord? EgressExit = null,
-    int Gold = 0);
+    int Gold = 0,
+    RenewalMovement.ContinuousPosition? ContinuousTarget = null,
+    IReadOnlyList<RenewalMovement.ContinuousPosition>? ContinuousWaypoints = null);
 
 /// <summary>
 /// 출전(design-administration "부대와의 연결"·design-unit-state). 대기 병력 + 장수 → 야전 부대:
@@ -211,6 +221,8 @@ public sealed class DeployService
             unitId.Value, vanguard, adjutant, template, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
         unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, CargoGold = req.Gold,
+            Field = unit.Field with { ContinuousTarget = req.ContinuousTarget,
+                ContinuousWaypoints = req.ContinuousWaypoints },
             OriginCity = city.Id, DeploymentDelayDays = req.DelayDays, EgressDirection = egressDirection,
             EgressExit = egressExit, AwaitingEgress = egressExit.HasValue };
 
@@ -336,7 +348,8 @@ public sealed class DeployService
         var unitId = new UnitId(state.Armies.Count == 0 ? 1 : state.Armies.Max(u => u.Id.Value) + 1);
         var field = new FieldUnit(unitId, city.Owner, city.Position,
             Speed: 2, templates.Min(t => t.Detection), minRange,
-            MovementDomain.Land, req.Mode, req.Target, unitId.Value, RangeCastle: 1);
+            MovementDomain.Land, req.Mode, req.Target, unitId.Value, RangeCastle: 1,
+            ContinuousTarget: req.ContinuousTarget, ContinuousWaypoints: req.ContinuousWaypoints);
         var unit = new CombatUnit(field, stats, new TroopPool(total, 0), UnitCombatState.Create(
                 vanguard.Intellect,
                 vanguardActive: ResolveSupplyActive(vanguard.BattleActive)),
@@ -500,7 +513,8 @@ public sealed class DeployService
         var field = new FieldUnit(unitId, city.Owner, city.Position,
             _b.ArmyGroupSpeed, _b.ArmyGroupDetection, _b.ArmyGroupRange,
             MovementDomain.Land, req.Mode, req.Target, unitId.Value,
-            RangeCastle: _b.ArmyGroupRange, Waypoints: req.Waypoints);
+            RangeCastle: _b.ArmyGroupRange, Waypoints: req.Waypoints,
+            ContinuousTarget: req.ContinuousTarget, ContinuousWaypoints: req.ContinuousWaypoints);
         var armyGroupGrade = AptitudeGrades.AverageFloor(
             vanguard.AptitudeFor(TroopClass.Infantry),
             vanguard.AptitudeFor(TroopClass.Archer),
@@ -636,6 +650,8 @@ public sealed class DeployService
             unitId.Value, vanguard, adjutant, ship, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
         unit = unit with { Provisions = carried, LootGold = req.Gold, Training = garrison.TrainingLevel, OriginCity = city.Id,
+            Field = unit.Field with { ContinuousTarget = req.ContinuousTarget,
+                ContinuousWaypoints = req.ContinuousWaypoints },
             DeploymentDelayDays = req.DelayDays, EgressDirection = req.EgressDirection, EgressExit = req.EgressExit,
             // 출항 방향을 아직 지정하지 않았으면 항구 내부 대기열에 남긴다.
             // 출구 메타데이터 없이 날짜만 만료된 부대가 기존 이동기로 튀어나오면 안 된다.
@@ -787,7 +803,8 @@ public sealed class DeployService
         var field = new FieldUnit(unitId, city.Owner, city.Position,
             Speed: 2, Detection: 1, AttackRange: 0, MovementDomain.Land,
             UnitMode.March, destination.Position, unitId.Value, RangeCastle: 0, Waypoints: req.Waypoints,
-            ReturnCity: destination.Id);
+            ReturnCity: destination.Id, ContinuousTarget: req.ContinuousTarget,
+            ContinuousWaypoints: req.ContinuousWaypoints);
         var unit = new CombatUnit(field, new CombatStats(total, minAttack, minDefense), new TroopPool(total, 0),
             UnitCombatState.Create(vanguard.Intellect), vanguard.Might, vanguard.Intellect, total, TroopClass.Infantry,
             Provisions: req.Provisions, ProvisionsCapacity: capacity, IsSupply: false, Training: training,

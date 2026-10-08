@@ -21,7 +21,9 @@ public sealed record FieldUnit(
     int CommandOrder,
     int RangeCastle = 1,
     IReadOnlyList<HexCoord>? Waypoints = null,
-    CityId? ReturnCity = null)
+    CityId? ReturnCity = null,
+    RenewalMovement.ContinuousPosition? ContinuousTarget = null,
+    IReadOnlyList<RenewalMovement.ContinuousPosition>? ContinuousWaypoints = null)
 {
     public FieldUnit MoveTo(HexCoord position) => this with { Position = position };
 }

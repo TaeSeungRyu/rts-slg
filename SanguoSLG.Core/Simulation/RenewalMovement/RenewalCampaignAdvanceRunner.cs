@@ -92,7 +92,8 @@ public sealed class RenewalCampaignAdvanceRunner(
         bool constructing)
     {
         var position = unit.RenewalPosition ?? RenewalHexSpace.Center(unit.Field.Position);
-        var destination = RenewalHexSpace.Center(unit.Field.Target ?? unit.Field.Position);
+        var destination = unit.Field.ContinuousTarget
+            ?? RenewalHexSpace.Center(unit.Field.Target ?? unit.Field.Position);
         var target = AssignedTarget(unit, units, castles, buildings);
         return new RenewalUnitState(unit.Id, position, destination,
             Math.Max(0, unit.Field.Speed), position == destination, unit.Field.Owner,
@@ -105,7 +106,8 @@ public sealed class RenewalCampaignAdvanceRunner(
                 _ => RenewalOrderMode.Standby,
             },
             OriginalDestination: destination,
-            OriginalWaypoints: unit.Field.Waypoints?.Select(RenewalHexSpace.Center).ToList(),
+            OriginalWaypoints: unit.Field.ContinuousWaypoints
+                ?? unit.Field.Waypoints?.Select(RenewalHexSpace.Center).ToList(),
             AssignedTarget: target,
             DetectionRange: unit.Field.Detection,
             AttackRange: unit.Field.AttackRange,

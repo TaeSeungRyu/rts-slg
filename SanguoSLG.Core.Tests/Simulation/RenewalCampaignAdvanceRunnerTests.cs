@@ -158,6 +158,26 @@ public sealed class RenewalCampaignAdvanceRunnerTests
             && entry.EffectiveDestination == RenewalHexSpace.Center(edge));
     }
 
+    [Fact]
+    public void 같은_타일의_서로_다른_연속목표를_타일중심으로_덮어쓰지_않는다()
+    {
+        var trace = new List<RenewalCampaignTraceEntry>();
+        var runner = new RenewalCampaignAdvanceRunner(new HexMap(-2, 4, -2, 4),
+            new CaptureRunner(), trace.Add);
+        var targetHex = new HexCoord(1, 1);
+        var exact = RenewalHexSpace.Center(targetHex) with { X = RenewalHexSpace.Center(targetHex).X + 120 };
+        var unit = Unit(1, new HexCoord(0, 0), targetHex, speed: 1) with
+        {
+            Field = Unit(1, new HexCoord(0, 0), targetHex, speed: 1).Field
+                with { ContinuousTarget = exact },
+        };
+
+        runner.Run([unit], maxDays: 1);
+
+        Assert.All(trace, entry => Assert.Equal(exact, entry.OriginalDestination));
+        Assert.NotEqual(RenewalHexSpace.Center(targetHex), exact);
+    }
+
     private static CombatUnit Unit(int id, HexCoord position, HexCoord target, int speed)
     {
         var field = new FieldUnit(new UnitId(id), new FactionId(1), position, speed, 3, 1,
