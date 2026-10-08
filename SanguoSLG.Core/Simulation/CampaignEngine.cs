@@ -225,12 +225,15 @@ public sealed class CampaignEngine
             }
             if (_fieldBuildingCombat is not null && work.Buildings.Count > 0)
             {
-                var fieldBuildingResult = _fieldBuildingCombat.Resolve(work, turn.Units);
+                var engaged = turn.FieldCombatExchanges.SelectMany(exchange => new[] { exchange.Attacker, exchange.Target }).ToHashSet();
+                var fieldBuildingResult = _fieldBuildingCombat.Resolve(work, turn.Units, engaged);
                 work = fieldBuildingResult.State;
                 turn = turn with
                 {
                     Units = fieldBuildingResult.Armies,
                     FieldBuildingCombatExchanges = fieldBuildingResult.Exchanges,
+                    FiredActives = turn.FiredActives.Concat(fieldBuildingResult.FiredActives)
+                        .GroupBy(entry => entry.Key).ToDictionary(group => group.Key, group => group.First().Value),
                 };
             }
             var livingFieldUnits = turn.Units.Where(x => x.Pool.Active > 0).Select(x => x.Id).ToHashSet();

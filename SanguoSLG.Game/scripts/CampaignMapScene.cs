@@ -4170,6 +4170,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animCaptures.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animActives.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animSiegeSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animRuinCounters.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animRuinCaptures.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animBuildingRemovals.Sort((a, b) => a.Time.CompareTo(b.Time));

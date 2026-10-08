@@ -10,6 +10,30 @@ using SanguoSLG.Game;
 public sealed class RenewalCampaignIntegrationTests
 {
     [Fact]
+    public void 실제캠페인_건축물액티브는_공격턴보고와_게이지초기화에_반영된다()
+    {
+        var map = new HexMap(-4, 12, -4, 12);
+        var target = new HexCoord(1, 0);
+        var active = new ActiveSkill("crush", "분쇄", ActiveType.Strike, "high", 180, BuildingOnly: true);
+        var unit = Army(1, default, target) with
+        {
+            Field = Army(1, default, target).Field with { Mode = UnitMode.Attack, RangeCastle = 1 },
+            State = UnitCombatState.Create(60, active).AdvanceField(5),
+        };
+        var building = new FieldBuilding(new FieldBuildingId(9), "fort", new FactionId(2),
+            target, 1000000, 0, 0);
+        Engine(map).AdvanceWeek(World(unit) with { FieldBuildings = [building] }, out var turns);
+        var firing = turns.Where(turn => turn.FiredActives.ContainsKey(unit.Id)).ToArray();
+        Assert.Equal(2, firing.Length);
+        Assert.All(firing, turn =>
+        {
+            Assert.Equal(active, turn.FiredActives[unit.Id]);
+            Assert.NotEmpty(turn.FieldBuildingExchanges);
+            Assert.Equal(0, turn.Units.Single(x => x.Id == unit.Id).State.SharedActiveGauge.ElapsedDays);
+        });
+    }
+
+    [Fact]
     public void 실제캠페인_대기부대는_성을향하던_적과_접촉하면_교전한다()
     {
         var map = new HexMap(-4, 12, -4, 12);

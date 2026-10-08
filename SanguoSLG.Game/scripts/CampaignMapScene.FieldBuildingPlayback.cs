@@ -19,6 +19,9 @@ public sealed partial class CampaignMapScene
             Dbg($"FIELD_BUILDING attack u{exchange.Attacker.Value} -> b{building.Id.Value} "
                 + $"({building.DefinitionCode}) damage={exchange.Damage} destroyed={exchange.Destroyed} at={attackTime:F2}s");
             _animAttacks.Add((attackTime, exchange.Attacker.Value, position));
+            if (turn.FiredActives.TryGetValue(exchange.Attacker, out var active))
+                _animSiegeSkillEffects.Add((attackTime + .14, exchange.Attacker.Value,
+                    position + new Vector3(0f, .25f, 0f), active));
             _animSiegeDmg.Add((attackTime + 0.35, position, exchange.Damage));
             if (turn.Units.Any(u => u.Id == exchange.Attacker && u.IsSupply))
                 _animSupplyArrows.Add((attackTime + 0.08, exchange.Attacker.Value, position));

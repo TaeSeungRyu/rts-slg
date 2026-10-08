@@ -90,6 +90,7 @@ public sealed partial class CampaignMapScene
         GD.Print("RENEWAL_CAMPAIGN_QA PASS: pointer confirmations -> deployment -> 14 days -> 30/60/144FPS -> save/reload");
         RunCombatPlaybackTargetQa();
         RunRenewalRealMapQa(initialState);
+        RunFieldBuildingActivePlaybackQa(initialState);
     }
 
     private void RunCombatPlaybackTargetQa()
@@ -135,6 +136,35 @@ public sealed partial class CampaignMapScene
         if (scheduled.FaceTo.DistanceTo(expected) > .001f)
             throw new InvalidOperationException("Combat playback did not face the actual primary target");
         GD.Print("RENEWAL_COMBAT_PLAYBACK_QA PASS: actual primary target -> facing position");
+    }
+
+    private void RunFieldBuildingActivePlaybackQa(GameState initialState)
+    {
+        var fort = initialState.Buildings.Single(building => building.Id.Value == 800009)
+            with { HitPoints = 1000000 };
+        var start = fort.Position.Neighbors().First(hex => _map.Contains(hex)
+            && TerrainRules.CanEnter(MovementDomain.Land, _map.TerrainAt(hex)));
+        var active = new ActiveSkill("crush", "분쇄", ActiveType.Strike, "high", 180, BuildingOnly: true);
+        var unit = new CombatUnit(new FieldUnit(new UnitId(990001), Player, start, 1, 3, 1,
+            MovementDomain.Land, UnitMode.Attack, fort.Position, 1, RangeCastle: 1),
+            new CombatStats(10000, 20, 20), new TroopPool(10000, 0),
+            UnitCombatState.Create(60, active).AdvanceField(5), TroopCode: "cavalry",
+            RenewalPosition: RenewalHexSpace.Center(start));
+        var fixture = initialState with { FieldArmies = [unit], FieldBuildings = [fort],
+            PendingCommands = [], Cities = [], GarrisonForces = [], RuinDefinitions = [], RuinStates = [] };
+        _engine.AdvanceWeek(fixture, out var turns);
+        var turn = turns.First(value => value.FiredActives.ContainsKey(unit.Id));
+        var priorState = _state;
+        _state = fixture;
+        var before = _animSiegeSkillEffects.Count;
+        ScheduleFieldBuildingCombat(turn, 1, 2);
+        if (_animSiegeSkillEffects.Count != before + 1
+            || _animSiegeSkillEffects[^1].CasterUnitId != unit.Id.Value
+            || _animSiegeSkillEffects[^1].Target.DistanceTo(_view.HexToWorld(fort.Position)
+                + new Vector3(0f, _view.TileTopY + .25f, 0f)) > .001f)
+            throw new InvalidOperationException("Building active effect was not scheduled at its actual target");
+        _state = priorState;
+        GD.Print("FIELD_BUILDING_ACTIVE_QA PASS: campaign firing -> building effect target -> gauge reset");
     }
 
     private void RunRenewalRealMapQa(GameState initialState)

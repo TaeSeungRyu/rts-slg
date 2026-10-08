@@ -12,7 +12,8 @@ public sealed record FieldBuildingExchange(
     int DamageToAttacker = 0);
 
 public sealed record FieldBuildingCombatResult(GameState State, IReadOnlyList<CombatUnit> Armies,
-    IReadOnlyList<FieldBuildingExchange> Exchanges);
+    IReadOnlyList<FieldBuildingExchange> Exchanges,
+    IReadOnlyDictionary<UnitId, ActiveSkill> FiredActives);
 
 /// <summary>적 야전 건축물을 도시형 고정 표적으로 공격한다. 건축물은 반격하지 않는다.</summary>
 public sealed class FieldBuildingCombat
@@ -30,12 +31,14 @@ public sealed class FieldBuildingCombat
         _troops = (troops ?? []).ToDictionary(x => x.Code, StringComparer.Ordinal);
     }
 
-    public FieldBuildingCombatResult Resolve(GameState state, IReadOnlyList<CombatUnit> input)
+    public FieldBuildingCombatResult Resolve(GameState state, IReadOnlyList<CombatUnit> input,
+        IReadOnlySet<UnitId>? alreadyEngaged = null)
     {
         var armies = input.ToList();
         var buildings = state.Buildings.ToDictionary(x => x.Id);
         var exchanges = new List<FieldBuildingExchange>();
         var attacked = new HashSet<UnitId>();
+        var firedActives = new Dictionary<UnitId, ActiveSkill>();
         foreach (var original in state.Buildings.OrderBy(x => x.Id.Value))
         {
             if (!buildings.TryGetValue(original.Id, out var building)
@@ -43,7 +46,7 @@ public sealed class FieldBuildingCombat
                 || !definition.CanBeTargeted) continue;
             foreach (var attacker in armies.OrderBy(x => x.Field.CommandOrder).ThenBy(x => x.Id.Value))
             {
-                if (attacked.Contains(attacker.Id) || attacker.IsWaitingDeployment
+                if (attacked.Contains(attacker.Id) || alreadyEngaged?.Contains(attacker.Id) == true || attacker.IsWaitingDeployment
                     || attacker.Field.Mode == UnitMode.March || attacker.State.Statuses.Any(s => s.IsDaze)
                     || attacker.Field.Owner == building.Owner || !attacker.CanInitiateCombat || attacker.Pool.Active <= 0
                     || attacker.Field.Position.Distance(building.Position) > attacker.Field.RangeCastle) continue;
@@ -53,16 +56,24 @@ public sealed class FieldBuildingCombat
                     .OrderBy(b => b.Position == attacker.Field.Target ? 0 : 1)
                     .ThenBy(b => attacker.Field.Position.Distance(b.Position)).ThenBy(b => b.Id.Value).FirstOrDefault();
                 if (preferred?.Id != building.Id) continue;
+                var (active, nextState) = attacker.State.AdvanceCombat().FiringBuildingActive();
+                armies = armies.Select(unit => unit.Id == attacker.Id ? unit with { State = nextState } : unit).ToList();
+                if (active is not null) firedActives[attacker.Id] = active;
                 var defenseBonus = BuildingDefenseBonus(state, building, armies);
                 var target = new CombatStats(System.Math.Max(1, building.HitPoints), 0,
                     definition.Defense, AptitudeGrade.APlus.Percent(), DfBonusPercent: defenseBonus);
                 var buildingAttack = BuildingAttack(attacker);
-                var damage = System.Math.Min(building.HitPoints,
+                var baseDamage =
                     _battle.Damage(attacker.Stats with
                     {
                         Troops = attacker.Pool.Active,
                         AtkStat = buildingAttack,
-                    }, target));
+                    }, target);
+                var activePercent = active is null ? 100
+                    : (attacker.Class == TroopClass.Cavalry && active.CavalryDamageMultPercent > 0
+                        ? active.CavalryDamageMultPercent : active.DamageMultPercent)
+                        * StatScale.Percent(attacker.Might) / 100;
+                var damage = System.Math.Min(building.HitPoints, baseDamage * activePercent / 100);
                 if (damage <= 0) continue;
                 attacked.Add(attacker.Id);
                 var hp = building.HitPoints - damage;
@@ -109,7 +120,7 @@ public sealed class FieldBuildingCombat
             ? x with { IsConstructing = false, Field = x.Field with { Target = null, Waypoints = null } }
             : x).ToList();
         var ordered = state.Buildings.Where(x => buildings.ContainsKey(x.Id)).Select(x => buildings[x.Id]).ToList();
-        return new(state with { FieldBuildings = ordered, FieldArmies = released }, released, exchanges);
+        return new(state with { FieldBuildings = ordered, FieldArmies = released }, released, exchanges, firedActives);
     }
 
     private int BuildingAttack(CombatUnit attacker)

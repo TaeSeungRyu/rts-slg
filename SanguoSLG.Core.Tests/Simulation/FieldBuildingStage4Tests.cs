@@ -7,6 +7,53 @@ using SanguoSLG.Core.Spatial;
 
 public sealed class FieldBuildingStage4Tests
 {
+    [Theory]
+    [InlineData("palisade")]
+    [InlineData("watchtower")]
+    [InlineData("fort")]
+    [InlineData("formation")]
+    public void 건축물_교전도_5회충전후_6회째발동하고_다음은_부관차례다(string code)
+    {
+        var target = new HexCoord(1, 0);
+        var building = Building(code, Enemy, target) with { HitPoints = 1000000 };
+        var active = new ActiveSkill("crush", "분쇄", ActiveType.Strike, "high", 180, BuildingOnly: true);
+        var adjutant = active with { Code = "peerless", Name = "무쌍" };
+        var unit = Combat(1, Player, default, target) with { State = UnitCombatState.Create(60, active, adjutant) };
+        var state = new GameState(1, 190, [], [], [], FieldBuildings: [building]);
+        var service = new FieldBuildingCombat(new BattleResolver(60), Definitions);
+        for (var day = 1; day <= 12; day++)
+        {
+            var result = service.Resolve(state, [unit]);
+            if (day is 6 or 12)
+            {
+                Assert.Equal(day == 6 ? active : adjutant, result.FiredActives[unit.Id]);
+                Assert.Equal(0, result.Armies.Single().State.SharedActiveGauge.ElapsedDays);
+            }
+            else Assert.Empty(result.FiredActives);
+            unit = result.Armies.Single();
+            state = result.State;
+        }
+    }
+
+    [Fact]
+    public void 분쇄는_건축물피해도_1점8배로_대체하고_이미교전한부대는_추가충전하지않는다()
+    {
+        var target = new HexCoord(1, 0);
+        var building = Building("fort", Enemy, target) with { HitPoints = 1000000 };
+        var unit = Combat(1, Player, default, target);
+        var state = new GameState(1, 190, [], [], [], FieldBuildings: [building]);
+        var service = new FieldBuildingCombat(new BattleResolver(60), Definitions);
+        var baseline = service.Resolve(state, [unit]).Exchanges.Single().Damage;
+        var active = new ActiveSkill("crush", "분쇄", ActiveType.Strike, "high", 180, BuildingOnly: true);
+        var charged = unit with { State = UnitCombatState.Create(60, active).AdvanceField(5) };
+        var fired = service.Resolve(state, [charged]);
+        Assert.Equal(baseline * 180 / 100, fired.Exchanges.Single().Damage);
+        Assert.Single(fired.FiredActives);
+        var skipped = service.Resolve(state, [charged], new HashSet<UnitId> { unit.Id });
+        Assert.Empty(skipped.Exchanges);
+        Assert.Equal(5, skipped.Armies.Single().State.SharedActiveGauge.ElapsedDays);
+    }
+
     private static readonly FactionId Player = new(1);
     private static readonly FactionId Enemy = new(2);
     private static readonly IReadOnlyList<FieldBuildingDefinition> Definitions =
