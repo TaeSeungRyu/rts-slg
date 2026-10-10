@@ -14,7 +14,7 @@ public sealed class RenewalCampaignIntegrationTests
     [InlineData(UnitMode.March, UnitMode.Attack)]
     [InlineData(UnitMode.Attack, UnitMode.March)]
     [InlineData(UnitMode.Attack, UnitMode.Attack)]
-    public void 경로를_막은_적과는_모드와_세력에_관계없이_상호교전하고_원래명령을_보존한다(UnitMode firstMode, UnitMode secondMode)
+    public void 경로를_막은_적과는_상호교전하고_행군과_공격_명령은_취소한다(UnitMode firstMode, UnitMode secondMode)
     {
         var first = Army(1, new(0, 0), new(4, 0)) with
         { Field = Army(1, new(0, 0), new(4, 0)).Field with { Mode = firstMode } };
@@ -30,14 +30,14 @@ public sealed class RenewalCampaignIntegrationTests
         foreach (var original in new[] { first, second })
         {
             var actual = turns[0].Units.Single(x => x.Id == original.Id);
-            Assert.Equal(original.Field.Mode, actual.Field.Mode);
-            Assert.Equal(original.Field.Target, actual.Field.Target);
+            Assert.Equal(UnitMode.Standby, actual.Field.Mode);
+            Assert.Null(actual.Field.Target);
             Assert.True(turns[0].Combat!.DamageDealt[original.Id] > 0);
         }
     }
 
     [Fact]
-    public void 부대지정공격도_다른적이_경로를막으면_교전하되_지정대상은_변경하지않는다()
+    public void 부대지정공격도_다른적이_경로를막으면_교전후_명령을_취소한다()
     {
         var first = Army(1, new(0, 0), new(4, 0)) with
         { Field = Army(1, new(0, 0), new(4, 0)).Field with
@@ -50,9 +50,9 @@ public sealed class RenewalCampaignIntegrationTests
         Assert.Contains(turns[0].FieldCombatExchanges, x => x.Attacker == first.Id && x.Target == blocker.Id);
         Assert.Contains(turns[0].FieldCombatExchanges, x => x.Attacker == blocker.Id && x.Target == first.Id);
         var next = turns[0].Units.Single(x => x.Id == first.Id);
-        Assert.Equal(first.Field.AssignedUnitTarget, next.Field.AssignedUnitTarget);
-        Assert.Equal(first.Field.Target, next.Field.Target);
-        Assert.Equal(UnitMode.Attack, next.Field.Mode);
+        Assert.Null(next.Field.AssignedUnitTarget);
+        Assert.Null(next.Field.Target);
+        Assert.Equal(UnitMode.Standby, next.Field.Mode);
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public sealed class RenewalCampaignIntegrationTests
     }
 
     [Fact]
-    public void 성을_지정공격하던_적도_아군의_공격을_받으면_그날_응전한다()
+    public void 성을_지정공격하던_적은_경로가_막히지_않으면_비지정_부대를_공격하지_않는다()
     {
         var map = new HexMap(-4, 12, -4, 12);
         var ally = Army(1, new(0, 0), new(1, 0)) with
@@ -126,9 +126,7 @@ public sealed class RenewalCampaignIntegrationTests
         var firstFight = turns.FirstOrDefault(turn => turn.FieldCombatExchanges.Any(x =>
             x.Attacker == ally.Id && x.Target == enemy.Id));
         Assert.NotNull(firstFight);
-        Assert.Contains(firstFight.FieldCombatExchanges, x => x.Attacker == enemy.Id && x.Target == ally.Id);
-        Assert.True(firstFight.Combat?.DamageDealt.GetValueOrDefault(enemy.Id) > 0);
-        Assert.True(firstFight.Combat?.DamageTaken.GetValueOrDefault(ally.Id) > 0);
+        Assert.DoesNotContain(firstFight.FieldCombatExchanges, x => x.Attacker == enemy.Id && x.Target == ally.Id);
         Assert.DoesNotContain(firstFight.FieldBuildingExchanges, x => x.Attacker == enemy.Id);
         Assert.Equal(enemy.Field.Target, after.Armies.Single(x => x.Id == enemy.Id).Field.Target);
     }
@@ -158,8 +156,8 @@ public sealed class RenewalCampaignIntegrationTests
         Assert.Contains(turns[0].FieldCombatExchanges, exchange => exchange.Attacker == second.Id && exchange.Target == first.Id);
         Assert.True(turns[0].Combat?.DamageTaken.GetValueOrDefault(first.Id) > 0);
         Assert.True(turns[0].Combat?.DamageTaken.GetValueOrDefault(second.Id) > 0);
-        Assert.Equal(buildings[0].Position, after.Armies.Single(unit => unit.Id == first.Id).Field.Target);
-        Assert.Equal(buildings[1].Position, after.Armies.Single(unit => unit.Id == second.Id).Field.Target);
+        Assert.Null(after.Armies.Single(unit => unit.Id == first.Id).Field.Target);
+        Assert.Null(after.Armies.Single(unit => unit.Id == second.Id).Field.Target);
     }
 
     [Fact]

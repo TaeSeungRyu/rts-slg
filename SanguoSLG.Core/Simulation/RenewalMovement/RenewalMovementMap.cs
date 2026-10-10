@@ -73,7 +73,9 @@ public sealed class RenewalMovementMap
     {
         foreach (var obstacle in _obstacles)
         {
-            if (SegmentTouchesCircle(from, to, obstacle.Center, checked(unitRadius + obstacle.Radius)))
+            var reach = checked(unitRadius + obstacle.Radius);
+            if (SegmentTouchesCircle(from, to, obstacle.Center, reach)
+                && !EscapingBlockedCenter(from, to, obstacle.Center, reach))
             {
                 return RenewalStopReason.BuildingBlocked;
             }
@@ -85,7 +87,7 @@ public sealed class RenewalMovementMap
             var point = new ContinuousPosition(
                 from.X + (to.X - from.X) * index / samples,
                 from.Y + (to.Y - from.Y) * index / samples);
-            var blocked = BlockedReasonAt(point, unitRadius, domain);
+            var blocked = BlockedReasonAt(point, unitRadius, domain, from);
             if (blocked != RenewalStopReason.None)
             {
                 return blocked;
@@ -99,7 +101,7 @@ public sealed class RenewalMovementMap
         && FirstStaticCollision(position, position, unitRadius, domain) == RenewalStopReason.None;
 
     private RenewalStopReason BlockedReasonAt(ContinuousPosition position, long radius,
-        MovementDomain domain)
+        MovementDomain domain, ContinuousPosition from)
     {
         var center = RenewalHexSpace.NearestHex(position);
         foreach (var hex in center.Neighbors().Append(center))
@@ -112,15 +114,22 @@ public sealed class RenewalMovementMap
             }
             if (_buildingTiles.Contains(hex))
             {
+                if (EscapingBlockedCenter(from, position, RenewalHexSpace.Center(hex), reach)) continue;
                 return RenewalStopReason.BuildingBlocked;
             }
             if (!_map.Contains(hex) || !TerrainRules.CanEnter(domain, _map.TerrainAt(hex)))
             {
+                if (EscapingBlockedCenter(from, position, RenewalHexSpace.Center(hex), reach)) continue;
                 return RenewalStopReason.TerrainBlocked;
             }
         }
         return RenewalStopReason.None;
     }
+
+    private static bool EscapingBlockedCenter(ContinuousPosition from, ContinuousPosition to,
+        ContinuousPosition center, long reach) =>
+        from.DistanceSquaredTo(center) <= checked(reach * reach)
+        && to.DistanceSquaredTo(center) > from.DistanceSquaredTo(center);
 
     public static bool SegmentTouchesCircle(ContinuousPosition from, ContinuousPosition to,
         ContinuousPosition center, long radius)

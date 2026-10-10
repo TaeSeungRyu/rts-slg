@@ -27,6 +27,13 @@ public sealed class FactionAI
     /// <summary>이 세력의 한 주 명령·출전을 반영한 새 상태를 반환한다.</summary>
     public GameState PlanWeek(GameState state, FactionId faction)
     {
+        var existingArmyIds = state.Armies.Select(unit => unit.Id).ToHashSet();
+        state = state with { FieldArmies = state.Armies.Select(unit =>
+            unit.Field.Owner == faction && unit.AiOpeningAttack && !unit.IsWaitingDeployment
+                ? unit with { AiOpeningAttack = false,
+                    Field = unit.Field with { Mode = UnitMode.Advance,
+                        AssignedUnitTarget = null, PursuitTarget = null } }
+                : unit).ToList() };
         state = Retarget(state, faction);
         state = TargetUnlockRuins(state, faction);
         state = RecruitUnlockedHeroes(state, faction);
@@ -68,7 +75,10 @@ public sealed class FactionAI
         }
 
         state = ExploreWithIdleOfficers(state, faction);
-        return state;
+        return state with { FieldArmies = state.Armies.Select(unit =>
+            unit.Field.Owner == faction && !existingArmyIds.Contains(unit.Id)
+                && unit.Field.Mode == UnitMode.Attack
+                ? unit with { AiOpeningAttack = true } : unit).ToList() };
     }
 
     private static GameState TargetUnlockRuins(GameState state, FactionId faction)

@@ -157,7 +157,10 @@ public sealed class FieldFortTests
             fieldBuildings: [building], fieldDefinitions: Definitions, fieldDay: 1);
 
         Assert.Equal(unit.Id, turn.FieldGarrisons[building.Id]);
-        Assert.All(trace, entry => Assert.Equal(start, entry.Position));
+        Assert.Contains(trace, entry => entry.Position != start);
+        var center = RenewalHexSpace.Center(building.Position);
+        Assert.All(trace, entry => Assert.True(entry.Position.DistanceTo(center)
+            <= start.DistanceTo(center)));
     }
 
     [Fact]
@@ -213,5 +216,29 @@ public sealed class FieldFortTests
         Assert.True(exchange.Destroyed
             || buildingCombat.State.Buildings.Single().HitPoints < fort.HitPoints);
         Assert.Equal(10_000, buildingCombat.Armies.Single(x => x.Id == garrison.Id).Pool.Active);
+    }
+
+    [Fact]
+    public void 보루에_입성한_부대를_쫓던_적은_멈추지_않고_보루를_공격한다()
+    {
+        var garrison = Unit(1, new HexCoord(2, 0));
+        var enemyField = new FieldUnit(new UnitId(2), new FactionId(2),
+            new HexCoord(1, 0), 1, 3, 1, MovementDomain.Land, UnitMode.Attack,
+            garrison.Field.Position, 2, RangeCastle: 1, AssignedUnitTarget: garrison.Id);
+        var enemy = new CombatUnit(enemyField, new CombatStats(10_000, 20, 12),
+            new TroopPool(10_000, 0), UnitCombatState.Create(60), MaxTroops: 10_000);
+        var fort = Fort(1, garrison.Field.Position, garrison.Id);
+        var runner = new RenewalCampaignAdvanceRunner(new HexMap(-5, 10, -5, 5), Orchestrator());
+
+        var turn = runner.Run([garrison, enemy], 1, fieldBuildings: [fort],
+            fieldDefinitions: Definitions, fieldDay: 1);
+        var state = new GameState(1, 190, [], [], [], FieldArmies: turn.Units,
+            FieldBuildings: [fort]);
+        var result = new FieldBuildingCombat(new BattleResolver(60), Definitions)
+            .Resolve(state, turn.Units);
+
+        Assert.Contains(result.Exchanges, exchange => exchange.Attacker == enemy.Id
+            && exchange.Building == fort.Id && exchange.Damage > 0);
+        Assert.Equal(10_000, result.Armies.Single(unit => unit.Id == garrison.Id).Pool.Active);
     }
 }

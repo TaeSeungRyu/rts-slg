@@ -40,7 +40,8 @@ public sealed record CombatUnit(
     HexCoord? EgressExit = null,
     bool AwaitingEgress = false,
     bool IsConstructing = false,
-    RenewalMovement.ContinuousPosition? RenewalPosition = null)
+    RenewalMovement.ContinuousPosition? RenewalPosition = null,
+    bool AiOpeningAttack = false)
 {
     public UnitId Id => Field.Id;
 

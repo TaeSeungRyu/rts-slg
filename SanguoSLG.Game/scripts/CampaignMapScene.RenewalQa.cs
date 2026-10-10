@@ -94,8 +94,10 @@ public sealed partial class CampaignMapScene
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
         Require(_state.Armies.Where(unit => unit.Field.Owner == Player)
-            .All(unit => unit.Field.ContinuousTarget is { } goal && expected.Contains(goal)),
-            "Second advance changed the confirmed goal");
+            .All(unit => unit.Field.ContinuousTarget is { } goal && expected.Contains(goal)
+                || unit.Field.Mode == UnitMode.Standby && unit.Field.Target is null
+                    && unit.Field.ContinuousTarget is null),
+            "Second advance changed a live goal or retained a cancelled one");
         GD.Print("RENEWAL_CAMPAIGN_QA PASS: pointer confirmations -> deployment -> 14 days -> 30/60/144FPS -> save/reload");
         RunCombatPlaybackTargetQa();
         RunRenewalRealMapQa(initialState);
@@ -205,18 +207,17 @@ public sealed partial class CampaignMapScene
         _engine.AdvanceWeek(counterFixture, out var counterTurns);
         var responseTurn = counterTurns.FirstOrDefault(turn => turn.FieldCombatExchanges.Any(exchange =>
             exchange.Attacker == pursuing.Id && exchange.Target == assigned.Id));
-        if (responseTurn is null || !responseTurn.FieldCombatExchanges.Any(exchange =>
-                exchange.Attacker == assigned.Id && exchange.Target == pursuing.Id)
-            || responseTurn.Combat?.DamageDealt.GetValueOrDefault(assigned.Id) <= 0)
-            throw new InvalidOperationException("Site attack order did not respond to the pursuing enemy unit");
+        if (responseTurn is null || responseTurn.FieldCombatExchanges.Any(exchange =>
+                exchange.Attacker == assigned.Id && exchange.Target == pursuing.Id))
+            throw new InvalidOperationException("Site attack order improperly diverted to a non-blocking enemy");
         previousAttackCount = _animAttacks.Count;
         _pendingState = counterFixture;
         ScheduleAttackMotions(responseTurn, 1);
-        if (!_animAttacks.Skip(previousAttackCount).Any(attack => attack.UnitId == assigned.Id.Value))
-            throw new InvalidOperationException("Site attack defender did not schedule response animation");
+        if (_animAttacks.Skip(previousAttackCount).Any(attack => attack.UnitId == assigned.Id.Value))
+            throw new InvalidOperationException("Site attack order scheduled a non-blocking response animation");
         _animAttacks.RemoveRange(previousAttackCount, _animAttacks.Count - previousAttackCount);
         _pendingState = priorPendingState;
-        GD.Print("RENEWAL_ATTACK_RESPONSE_QA PASS: site assignee -> pursuit response -> damage -> animation");
+        GD.Print("RENEWAL_ATTACK_RESPONSE_QA PASS: site assignee ignored non-blocking pursuit attack");
     }
 
     private void RunEnemyAttackChoiceQa(GameState initialState)

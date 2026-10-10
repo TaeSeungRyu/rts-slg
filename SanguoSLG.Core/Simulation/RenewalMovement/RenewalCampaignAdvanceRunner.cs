@@ -61,6 +61,10 @@ public sealed class RenewalCampaignAdvanceRunner(
                 constructionUnits?.Contains(unit.Id) == true
                     || unit.State.Statuses.Any(status => status.IsDaze && !status.IsExpired)
                     || liveBuildings.Any(building => building.GarrisonUnit == unit.Id));
+            var occupiedBuilding = liveBuildings.FirstOrDefault(building => building.GarrisonUnit == unit.Id);
+            if (occupiedBuilding is not null)
+                renewal = renewal with { IsVisible = false,
+                    GarrisonStructure = new RenewalTargetId(RenewalTargetKind.Building, occupiedBuilding.Id.Value) };
             // A stale intermediate waypoint can be individually passable yet
             // unreachable from the current position (e.g. a city's wall). Do
             // not strand the unit for every subsequent day: continue toward
@@ -87,13 +91,18 @@ public sealed class RenewalCampaignAdvanceRunner(
                 && building.GarrisonUnit is null && building.IsCompleted(fieldDay)
                 && fieldDefinitions?.Any(definition => definition.Code == building.DefinitionCode
                     && definition.CanGarrison) == true);
-            if (ownGarrison is not null && renewal.OriginalWaypoints is not { Count: > 0 }
-                && renewal.Position.DistanceTo(RenewalHexSpace.Center(ownGarrison.Position))
-                    <= ContinuousPosition.UnitsPerTile)
+            if (ownGarrison is not null && renewal.OriginalWaypoints is not { Count: > 0 })
             {
-                renewal = renewal with { Destination = renewal.Position,
-                    OriginalDestination = renewal.Position, Arrived = true,
-                    Mode = RenewalOrderMode.Standby };
+                var center = RenewalHexSpace.Center(ownGarrison.Position);
+                var distance = renewal.Position.DistanceTo(center);
+                if (distance > 780)
+                {
+                    var approach = new ContinuousPosition(
+                        center.X + (renewal.Position.X - center.X) * 780 / distance,
+                        center.Y + (renewal.Position.Y - center.Y) * 780 / distance);
+                    renewal = renewal with { Destination = approach,
+                        OriginalDestination = approach, Arrived = false };
+                }
             }
             else if (blocked.Contains(RenewalHexSpace.NearestHex(renewal.OriginalDestination
                     ?? renewal.Destination))
@@ -189,11 +198,16 @@ public sealed class RenewalCampaignAdvanceRunner(
                         && !unit.State.Statuses.Any(status => status.IsDaze && !status.IsExpired)
                         && !liveBuildings.Any(building => building.GarrisonUnit == unit.Id)
                         ? UnitMode.Standby : unit.Field.Mode,
+                    Target = position.Mode == RenewalOrderMode.Standby
+                        && unit.Field.Mode == UnitMode.Attack ? null : unit.Field.Target,
+                    ContinuousTarget = position.Mode == RenewalOrderMode.Standby
+                        && unit.Field.Mode == UnitMode.Attack ? null : unit.Field.ContinuousTarget,
                 },
                 RenewalPosition = position.Position,
             }
             : unit).ToList();
         var temporaryBlockers = new HashSet<UnitId>();
+        var cancelledByBlocker = new HashSet<UnitId>();
         var movementOrders = moved.ToDictionary(unit => unit.Id, unit => unit.Field);
         var blockerTargets = new Dictionary<UnitId, UnitId>();
         foreach (var unit in moved)
@@ -211,6 +225,8 @@ public sealed class RenewalCampaignAdvanceRunner(
                 .OrderBy(candidate => stoppedUnit.Position.DistanceSquaredTo(positions[candidate.Id].Position))
                 .ThenBy(candidate => candidate.Id.Value).FirstOrDefault();
             if (blocker is null) continue;
+            if (unit.Field.Mode is UnitMode.March or UnitMode.Attack)
+                cancelledByBlocker.Add(unit.Id);
             blockerTargets.TryAdd(unit.Id, blocker.Id);
             // 통행을 막는 상대도 같은 교환에 대응한다. 원래 명령은 정산 후 복원한다.
             if (blocker.CanInitiateCombat && constructionUnits?.Contains(blocker.Id) != true
@@ -226,33 +242,6 @@ public sealed class RenewalCampaignAdvanceRunner(
             {
                 Field = unit.Field with { Mode = UnitMode.Attack, AssignedUnitTarget = blocker },
             };
-        }).ToList();
-        // 지정 대상과 싸울 수 없는 부대가 실제 공격을 받으면 공격한 부대에 대응한다.
-        // 임시 목표는 이번 공격턴에만 유지해 성/건물과 야전 부대를 동시에 치지 않게 한다.
-        var intentions = CombatPhase.DetectEngagements(moved);
-        var alreadyAttacking = intentions.Select(intent => intent.Attacker).ToHashSet();
-        var incoming = intentions.SelectMany(intent => intent.Targets.Select(target =>
-                (Target: target, Attacker: intent.Attacker)))
-            .GroupBy(hit => hit.Target).ToDictionary(group => group.Key, group => group
-                .Select(hit => hit.Attacker).ToHashSet());
-        moved = moved.Select(unit =>
-        {
-            if (unit.Field.Mode != UnitMode.Attack || alreadyAttacking.Contains(unit.Id)
-                || !unit.CanInitiateCombat || unit.Pool.Active <= 0
-                || constructionUnits?.Contains(unit.Id) == true
-                || unit.State.Statuses.Any(status => status.IsDaze && !status.IsExpired)
-                || liveBuildings.Any(building => building.GarrisonUnit == unit.Id)
-                || !incoming.TryGetValue(unit.Id, out var attackers)) return unit;
-            var response = moved.Where(candidate => attackers.Contains(candidate.Id)
-                    && candidate.Pool.Active > 0 && positions[candidate.Id].IsActive
-                    && positions[unit.Id].Position.DistanceTo(positions[candidate.Id].Position)
-                        <= (long)unit.Field.AttackRange * ContinuousPosition.UnitsPerTile)
-                .OrderBy(candidate => positions[unit.Id].Position.DistanceSquaredTo(positions[candidate.Id].Position))
-                .ThenBy(candidate => candidate.Field.CommandOrder).ThenBy(candidate => candidate.Id.Value)
-                .FirstOrDefault();
-            if (response is null) return unit;
-            temporaryBlockers.Add(unit.Id);
-            return unit with { Field = unit.Field with { AssignedUnitTarget = response.Id } };
         }).ToList();
         var movedById = moved.ToDictionary(unit => unit.Id);
         var entered = moved.Where(unit => !positions[unit.Id].IsActive)
@@ -279,6 +268,11 @@ public sealed class RenewalCampaignAdvanceRunner(
                     : RenewalHexSpace.Center(unit.Field.Position),
             };
         }).ToList();
+        synchronized = synchronized.Select(unit => cancelledByBlocker.Contains(unit.Id)
+            ? unit with { Field = unit.Field with { Mode = UnitMode.Standby,
+                Target = null, ContinuousTarget = null, Waypoints = null,
+                ContinuousWaypoints = null, AssignedUnitTarget = null, PursuitTarget = null } }
+            : unit).ToList();
         var synchronizedEntered = entered.Concat(resolved.EnteredCastle.Select(unit => unit with
         {
             RenewalPosition = RenewalHexSpace.Center(unit.Field.Position),
@@ -352,7 +346,12 @@ public sealed class RenewalCampaignAdvanceRunner(
             return null;
         }
         if (source.Field.AssignedUnitTarget is { } assignedId)
-            return RenewalTargetId.ForUnit(assignedId);
+        {
+            var shelter = buildings.FirstOrDefault(building => building.Owner != source.Field.Owner
+                && building.GarrisonUnit == assignedId);
+            return shelter is null ? RenewalTargetId.ForUnit(assignedId)
+                : new RenewalTargetId(RenewalTargetKind.Building, shelter.Id.Value);
+        }
         var unit = units.FirstOrDefault(candidate => candidate.Field.Owner != source.Field.Owner
             && (source.Field.AssignedUnitTarget is { } id ? candidate.Id == id : candidate.Field.Position == target));
         if (unit is not null)

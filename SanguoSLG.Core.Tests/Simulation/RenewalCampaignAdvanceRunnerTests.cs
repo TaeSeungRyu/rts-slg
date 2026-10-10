@@ -97,6 +97,50 @@ public sealed class RenewalCampaignAdvanceRunnerTests
     }
 
     [Fact]
+    public void 보루에_주둔한_지정부대는_보루를_공격대상으로_전환한다()
+    {
+        var buildingHex = new HexCoord(2, 0);
+        var garrison = Unit(2, buildingHex, buildingHex, 0) with
+        { Field = Unit(2, buildingHex, buildingHex, 0).Field with { Owner = new FactionId(2) } };
+        var building = new FieldBuilding(new FieldBuildingId(1), "fort",
+            new FactionId(2), buildingHex, 4000, 0, 0, GarrisonUnit: garrison.Id);
+        var attacker = Unit(1, default, buildingHex, 2) with
+        { Field = Unit(1, default, buildingHex, 2).Field with
+            { Mode = UnitMode.Attack, AssignedUnitTarget = garrison.Id } };
+        var trace = new List<RenewalCampaignTraceEntry>();
+        var runner = new RenewalCampaignAdvanceRunner(new HexMap(-3, 4, -3, 3),
+            new CaptureRunner(), trace.Add);
+
+        runner.Run([attacker, garrison], 1, fieldBuildings: [building]);
+
+        Assert.Contains(trace, entry => entry.Unit == attacker.Id
+            && entry.AssignedTarget == new RenewalTargetId(RenewalTargetKind.Building, building.Id.Value));
+    }
+
+    [Fact]
+    public void 전진부대는_숨은_주둔병력이_아니라_보루를_추격한다()
+    {
+        var hex = new HexCoord(2, 0);
+        var garrison = Unit(2, hex, hex, 0) with
+        { Field = Unit(2, hex, hex, 0).Field with { Owner = new FactionId(2) } };
+        var building = new FieldBuilding(new FieldBuildingId(1), "fort",
+            new FactionId(2), hex, 4000, 0, 0, GarrisonUnit: garrison.Id);
+        var attacker = Unit(1, default, new HexCoord(4, 0), 2) with
+        { Field = Unit(1, default, new HexCoord(4, 0), 2).Field with
+            { Mode = UnitMode.Advance, Detection = 3 } };
+        var trace = new List<RenewalCampaignTraceEntry>();
+        var runner = new RenewalCampaignAdvanceRunner(new HexMap(-3, 5, -3, 3),
+            new CaptureRunner(), trace.Add);
+
+        runner.Run([attacker, garrison], 1, fieldBuildings: [building]);
+
+        Assert.Contains(trace, entry => entry.Unit == attacker.Id
+            && entry.PursuitTarget == new RenewalTargetId(RenewalTargetKind.Building, building.Id.Value));
+        Assert.DoesNotContain(trace, entry => entry.Unit == attacker.Id
+            && entry.PursuitTarget == RenewalTargetId.ForUnit(garrison.Id));
+    }
+
+    [Fact]
     public void 경로가_없는_경유지는_제외하고_최종_목표로_계속_행군한다()
     {
         var trace = new List<RenewalCampaignTraceEntry>();
@@ -155,12 +199,14 @@ public sealed class RenewalCampaignAdvanceRunnerTests
                 with { Mode = UnitMode.Attack },
         };
 
-        runner.Run([unit], maxDays: 1,
+        var result = runner.Run([unit], maxDays: 1,
             castles: [new SiegeSite(target, new FactionId(1)),
                 new SiegeSite(new HexCoord(1, 1), new FactionId(2))]);
 
         Assert.All(trace, entry => Assert.Null(entry.PursuitTarget));
         Assert.Contains(trace, entry => entry.StopReason == RenewalStopReason.TargetLost);
+        Assert.Equal(UnitMode.Standby, Assert.Single(result.Units).Field.Mode);
+        Assert.Null(Assert.Single(result.Units).Field.Target);
     }
 
     [Fact]

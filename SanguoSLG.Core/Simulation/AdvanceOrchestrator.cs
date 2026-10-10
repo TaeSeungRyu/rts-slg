@@ -122,7 +122,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
         foreach (var u in units.Where(u => !enteredIds.Contains(u.Id)))
         {
             var field = moved[u.Id];
-            if (ReachedOpenDestination(field, castles))
+            if (field.Mode != UnitMode.Standby && ReachedOpenDestination(field, castles))
             {
                 field = field with { Mode = UnitMode.Advance, Target = null, Waypoints = null };
             }

@@ -13,6 +13,24 @@ using Xunit;
 /// <summary>세력 AI 최소판 — v2 기준 출전·재조준 판단이 결정론적으로 나오는지.</summary>
 public class FactionAiTests
 {
+    [Fact]
+    public void AI_첫출전_공격명령은_출격한_다음_주부터_전진으로_전환한다()
+    {
+        var field = new FieldUnit(new UnitId(91), new FactionId(1), default, 2, 3, 1,
+            MovementDomain.Land, UnitMode.Attack, new HexCoord(4, 0), 1);
+        var army = new CombatUnit(field, new CombatStats(1000, 10, 10),
+            new TroopPool(1000, 0), UnitCombatState.Create(60), AiOpeningAttack: true);
+        var waiting = army with { Field = field with { Id = new UnitId(92) }, AwaitingEgress = true };
+        var state = new GameState(1, 190, [], [], [], FieldArmies: [army, waiting]);
+
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(state, new FactionId(1));
+
+        Assert.Equal(UnitMode.Advance, after.Armies.Single(unit => unit.Id == army.Id).Field.Mode);
+        Assert.False(after.Armies.Single(unit => unit.Id == army.Id).AiOpeningAttack);
+        Assert.Equal(UnitMode.Attack, after.Armies.Single(unit => unit.Id == waiting.Id).Field.Mode);
+        Assert.True(after.Armies.Single(unit => unit.Id == waiting.Id).AiOpeningAttack);
+    }
+
     private static readonly CommandBalance B = new();
 
     private static readonly IReadOnlyList<TroopTemplate> Troops =
@@ -187,6 +205,7 @@ public class FactionAiTests
         var army = Assert.Single(after.Armies);
         Assert.Equal(new FactionId(1), army.Field.Owner);
         Assert.Equal(UnitMode.Attack, army.Field.Mode);
+        Assert.True(army.AiOpeningAttack);
         Assert.Equal(enemy.Position, army.Field.Target);
         Assert.Equal(DeploymentDirection.East, army.EgressDirection);
         Assert.True(army.EgressExit.HasValue);

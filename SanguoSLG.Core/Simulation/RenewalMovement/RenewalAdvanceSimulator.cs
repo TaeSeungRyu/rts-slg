@@ -502,11 +502,7 @@ public sealed class RenewalAdvanceSimulator
         if (unit.Mode == RenewalOrderMode.Advance)
         {
             var current = FindHostile(targets, unit, unit.PursuitTarget);
-            // A static structure already spotted remains a known pursuit target while
-            // the unit detours outside its detection radius. Moving units still need sight.
-            if (current is { AutoAcquirable: true }
-                && (current.Id.Kind != RenewalTargetKind.Unit
-                    ? current.IsVisible : IsVisibleTo(unit, current)))
+            if (current is { AutoAcquirable: true } && IsVisibleTo(unit, current))
             {
                 return FollowTarget(unit, current, day, movementTick);
             }
