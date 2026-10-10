@@ -181,6 +181,9 @@ public sealed partial class CampaignMapScene
         if (!_animAttacks.Skip(previousAttackCount).Any(attack => attack.UnitId == attacker.Id.Value
                 && attack.FaceTo.DistanceTo(ContinuousToWorld(hit.TargetPosition)) < .001f))
             throw new InvalidOperationException("Blocking unit combat did not schedule the attack animation");
+        if (combatTurn.Combat?.DamageDealt.GetValueOrDefault(blocker.Id) <= 0
+            || !_animAttacks.Skip(previousAttackCount).Any(attack => attack.UnitId == blocker.Id.Value))
+            throw new InvalidOperationException("Blocking enemy did not respond with damage and attack animation");
         _animAttacks.RemoveRange(previousAttackCount, _animAttacks.Count - previousAttackCount);
         _pendingState = priorPendingState;
         GD.Print("RENEWAL_BLOCKED_COMBAT_QA PASS: real-map combat -> damage -> attack animation on blocking unit");

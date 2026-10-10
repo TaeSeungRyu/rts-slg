@@ -329,7 +329,7 @@ public sealed class RenewalAdvanceSimulator
         var divisor = MovementTicksPerDay * 100;
         var remaining = (long)(numerator / divisor);
         var remainder = numerator % divisor;
-        var current = unit with { MovementRemainder = remainder, StopReason = RenewalStopReason.None };
+        var current = unit with { MovementRemainder = remainder, StopReason = RenewalStopReason.None, BlockingUnit = null };
         while (remaining > 0 && !current.Arrived)
         {
             var target = current.Path is { Count: > 0 } && current.PathIndex < current.Path.Count
@@ -343,9 +343,9 @@ public sealed class RenewalAdvanceSimulator
                 || current.PathIndex >= current.Path.Count - 1;
             if (finalWaypoint && distance <= ArrivalTolerance)
             {
-                var collisionAtArrival = CollisionAt(current, target, spatialIndex);
+                var collisionAtArrival = CollisionAt(current, target, spatialIndex, out var arrivalBlocker);
                 if (collisionAtArrival != RenewalStopReason.None)
-                    return current with { StopReason = collisionAtArrival };
+                    return current with { StopReason = collisionAtArrival, BlockingUnit = arrivalBlocker };
                 current = ReachWaypoint(current, target);
                 if (current.StopReason == RenewalStopReason.TargetInRange)
                 {
@@ -369,10 +369,10 @@ public sealed class RenewalAdvanceSimulator
 
             var candidate = new ContinuousPosition(current.Position.X + moveX,
                 current.Position.Y + moveY);
-            var collision = CollisionAt(current, candidate, spatialIndex);
+            var collision = CollisionAt(current, candidate, spatialIndex, out var blocker);
             if (collision != RenewalStopReason.None)
             {
-                return current with { StopReason = collision };
+                return current with { StopReason = collision, BlockingUnit = blocker };
             }
 
             current = reachesTarget
@@ -393,18 +393,20 @@ public sealed class RenewalAdvanceSimulator
         : (value - divisor / 2) / divisor;
 
     private RenewalStopReason CollisionAt(RenewalUnitState unit, ContinuousPosition candidate,
-        RenewalSpatialIndex spatialIndex)
+        RenewalSpatialIndex spatialIndex, out UnitId? blocker)
     {
+        blocker = null;
         var collision = _movementMap?.FirstStaticCollision(unit.Position, candidate,
             UnitCollisionRadius, unit.Domain) ?? RenewalStopReason.None;
         return collision != RenewalStopReason.None ? collision
             : FirstEnemyCollision(unit, candidate,
-                spatialIndex.QuerySegment(unit.Position, candidate, HostileCollisionRadius * 2));
+                spatialIndex.QuerySegment(unit.Position, candidate, HostileCollisionRadius * 2), out blocker);
     }
 
     private static RenewalStopReason FirstEnemyCollision(RenewalUnitState unit,
-        ContinuousPosition candidate, IReadOnlyList<RenewalUnitState> allUnits)
+        ContinuousPosition candidate, IReadOnlyList<RenewalUnitState> allUnits, out UnitId? blocker)
     {
+        blocker = null;
         foreach (var other in allUnits.OrderBy(x => x.Id.Value))
         {
             if (!other.IsActive || other.Id == unit.Id || other.Owner == unit.Owner)
@@ -421,6 +423,7 @@ public sealed class RenewalAdvanceSimulator
             if (RenewalMovementMap.SegmentTouchesCircle(unit.Position, candidate, other.Position,
                     radius - 1))
             {
+                blocker = other.Id;
                 return RenewalStopReason.EnemyBlocked;
             }
         }

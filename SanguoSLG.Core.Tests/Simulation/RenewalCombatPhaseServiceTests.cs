@@ -9,6 +9,19 @@ public sealed class RenewalCombatPhaseServiceTests
 {
     private static readonly BalanceConfig Balance = new(0);
 
+    [Fact]
+    public void 독립검수장에서도_행군경로_차단은_상호교전하고_명령은_보존한다()
+    {
+        var first = Unit(1, 1, 0, 0, RenewalOrderMode.March) with
+        { StopReason = RenewalStopReason.EnemyBlocked, BlockingUnit = new(2) };
+        var second = Unit(2, 2, 500, 0, RenewalOrderMode.Attack,
+            target: new(RenewalTargetKind.Site, 99));
+        var result = AttackPhase([first, second]);
+        Assert.All(result.State.CombatProfiles!.Values, profile => Assert.True(profile.Participant.Pool.Active < 10000));
+        Assert.Equal(first.Mode, result.State.Units.Single(x => x.Id == first.Id).Mode);
+        Assert.Equal(second.AssignedTarget, result.State.Units.Single(x => x.Id == second.Id).AssignedTarget);
+    }
+
     private static RenewalUnitState Unit(int id, int faction, long x, long y,
         RenewalOrderMode mode, int range = 1, long command = 0,
         RenewalTargetId? target = null, int? reachedTick = null) =>

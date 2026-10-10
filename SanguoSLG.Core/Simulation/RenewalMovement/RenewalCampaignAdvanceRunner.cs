@@ -157,28 +157,37 @@ public sealed class RenewalCampaignAdvanceRunner(
             }
             : unit).ToList();
         var temporaryBlockers = new HashSet<UnitId>();
+        var movementOrders = moved.ToDictionary(unit => unit.Id, unit => unit.Field);
+        var blockerTargets = new Dictionary<UnitId, UnitId>();
+        foreach (var unit in moved)
+        {
+            if (!unit.CanInitiateCombat || unit.Pool.Active <= 0 || constructionUnits?.Contains(unit.Id) == true
+                || unit.State.Statuses.Any(status => status.IsDaze && !status.IsExpired)
+                || liveBuildings.Any(building => building.GarrisonUnit == unit.Id)
+                || !positions.TryGetValue(unit.Id, out var stoppedUnit) || !stoppedUnit.IsActive
+                || stoppedUnit.StopReason != RenewalStopReason.EnemyBlocked) continue;
+            var radius = (long)unit.Field.AttackRange * ContinuousPosition.UnitsPerTile;
+            var blocker = moved.Where(candidate => candidate.Field.Owner != unit.Field.Owner
+                    && candidate.Id == stoppedUnit.BlockingUnit
+                    && candidate.Pool.Active > 0 && positions[candidate.Id].IsActive
+                    && stoppedUnit.Position.DistanceSquaredTo(positions[candidate.Id].Position) <= radius * radius)
+                .OrderBy(candidate => stoppedUnit.Position.DistanceSquaredTo(positions[candidate.Id].Position))
+                .ThenBy(candidate => candidate.Id.Value).FirstOrDefault();
+            if (blocker is null) continue;
+            blockerTargets.TryAdd(unit.Id, blocker.Id);
+            // 통행을 막는 상대도 같은 교환에 대응한다. 원래 명령은 정산 후 복원한다.
+            if (blocker.CanInitiateCombat && constructionUnits?.Contains(blocker.Id) != true
+                && !blocker.State.Statuses.Any(status => status.IsDaze && !status.IsExpired)
+                && !liveBuildings.Any(building => building.GarrisonUnit == blocker.Id))
+                blockerTargets.TryAdd(blocker.Id, unit.Id);
+        }
         moved = moved.Select(unit =>
         {
-            if (unit.Field.Mode != UnitMode.Attack
-                || unit.Field.AssignedUnitTarget is not null
-                || !positions.TryGetValue(unit.Id, out var movement)
-                || movement.StopReason != RenewalStopReason.EnemyBlocked
-                || movement.AssignedTarget?.Kind == RenewalTargetKind.Unit)
-                return unit;
-            var attackPosition = movement.Position;
-            var attackRadius = (long)unit.Field.AttackRange * ContinuousPosition.UnitsPerTile;
-            var blocker = moved.Where(candidate => candidate.Id != unit.Id
-                    && candidate.Field.Owner != unit.Field.Owner
-                    && candidate.Pool.Active > 0
-                    && positions.TryGetValue(candidate.Id, out var position) && position.IsActive
-                    && attackPosition.DistanceSquaredTo(position.Position) <= attackRadius * attackRadius)
-                .OrderBy(candidate => attackPosition.DistanceSquaredTo(positions[candidate.Id].Position))
-                .ThenBy(candidate => candidate.Id.Value)
-                .FirstOrDefault();
-            if (blocker is not null) temporaryBlockers.Add(unit.Id);
-            return blocker is null ? unit : unit with
+            if (!blockerTargets.TryGetValue(unit.Id, out var blocker)) return unit;
+            temporaryBlockers.Add(unit.Id);
+            return unit with
             {
-                Field = unit.Field with { AssignedUnitTarget = blocker.Id },
+                Field = unit.Field with { Mode = UnitMode.Attack, AssignedUnitTarget = blocker },
             };
         }).ToList();
         var movedById = moved.ToDictionary(unit => unit.Id);
@@ -197,6 +206,7 @@ public sealed class RenewalCampaignAdvanceRunner(
                 Field = before.Field with
                 {
                     Position = unit.Field.Position,
+                    Mode = temporaryBlockers.Contains(unit.Id) ? movementOrders[unit.Id].Mode : before.Field.Mode,
                     AssignedUnitTarget = temporaryBlockers.Contains(unit.Id)
                         ? originals[unit.Id].Field.AssignedUnitTarget
                         : before.Field.AssignedUnitTarget,

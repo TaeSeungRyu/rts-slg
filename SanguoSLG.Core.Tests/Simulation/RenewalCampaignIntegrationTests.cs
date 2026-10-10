@@ -9,6 +9,63 @@ using SanguoSLG.Game;
 
 public sealed class RenewalCampaignIntegrationTests
 {
+    [Theory]
+    [InlineData(UnitMode.March, UnitMode.March)]
+    [InlineData(UnitMode.March, UnitMode.Attack)]
+    [InlineData(UnitMode.Attack, UnitMode.March)]
+    [InlineData(UnitMode.Attack, UnitMode.Attack)]
+    public void 경로를_막은_적과는_모드와_세력에_관계없이_상호교전하고_원래명령을_보존한다(UnitMode firstMode, UnitMode secondMode)
+    {
+        var first = Army(1, new(0, 0), new(4, 0)) with
+        { Field = Army(1, new(0, 0), new(4, 0)).Field with { Mode = firstMode } };
+        var second = Army(2, new(1, 0), new(-4, 0)) with
+        { Field = Army(2, new(1, 0), new(-4, 0)).Field with { Mode = secondMode, Owner = new(2) } };
+        Engine(new HexMap(-6, 12, -4, 12)).AdvanceWeek(World(first, second) with
+        {
+            FieldBuildings = [new FieldBuilding(new(1), "fort", new(2), new(4, 0), 4000, 0, 0),
+                new FieldBuilding(new(2), "fort", new(1), new(-4, 0), 4000, 0, 0)],
+        }, out var turns);
+        Assert.Contains(turns[0].FieldCombatExchanges, x => x.Attacker == first.Id && x.Target == second.Id);
+        Assert.Contains(turns[0].FieldCombatExchanges, x => x.Attacker == second.Id && x.Target == first.Id);
+        foreach (var original in new[] { first, second })
+        {
+            var actual = turns[0].Units.Single(x => x.Id == original.Id);
+            Assert.Equal(original.Field.Mode, actual.Field.Mode);
+            Assert.Equal(original.Field.Target, actual.Field.Target);
+            Assert.True(turns[0].Combat!.DamageDealt[original.Id] > 0);
+        }
+    }
+
+    [Fact]
+    public void 부대지정공격도_다른적이_경로를막으면_교전하되_지정대상은_변경하지않는다()
+    {
+        var first = Army(1, new(0, 0), new(4, 0)) with
+        { Field = Army(1, new(0, 0), new(4, 0)).Field with
+            { Mode = UnitMode.Attack, AssignedUnitTarget = new(3), Detection = 10 } };
+        var blocker = Army(2, new(1, 0), new(-4, 0)) with
+        { Field = Army(2, new(1, 0), new(-4, 0)).Field with { Owner = new(2) } };
+        var target = Army(3, new(4, 0), new(4, 0)) with
+        { Field = Army(3, new(4, 0), new(4, 0)).Field with { Owner = new(2), Mode = UnitMode.Standby } };
+        Engine(new HexMap(-6, 12, -4, 12)).AdvanceWeek(World(first, blocker, target), out var turns);
+        Assert.Contains(turns[0].FieldCombatExchanges, x => x.Attacker == first.Id && x.Target == blocker.Id);
+        Assert.Contains(turns[0].FieldCombatExchanges, x => x.Attacker == blocker.Id && x.Target == first.Id);
+        var next = turns[0].Units.Single(x => x.Id == first.Id);
+        Assert.Equal(first.Field.AssignedUnitTarget, next.Field.AssignedUnitTarget);
+        Assert.Equal(first.Field.Target, next.Field.Target);
+        Assert.Equal(UnitMode.Attack, next.Field.Mode);
+    }
+
+    [Fact]
+    public void 행군은_경로를_막지않는_사거리내_적을_자동공격하지않는다()
+    {
+        var first = Army(1, new(0, 0), new(4, 0));
+        var second = Army(2, new(0, 2), new(4, 2)) with
+        { Field = Army(2, new(0, 2), new(4, 2)).Field with { Owner = new(2), AttackRange = 4 } };
+        Engine(new HexMap(-6, 12, -4, 12)).AdvanceWeek(World(first, second), out var turns);
+        Assert.Empty(turns[0].FieldCombatExchanges);
+        Assert.NotEqual(first.RenewalPosition, turns[0].Units.Single(x => x.Id == first.Id).RenewalPosition);
+    }
+
     [Fact]
     public void 실제캠페인_건축물액티브는_공격턴보고와_게이지초기화에_반영된다()
     {
@@ -96,7 +153,7 @@ public sealed class RenewalCampaignIntegrationTests
         Engine(map).AdvanceWeek(World(attacker, marcher) with { FieldBuildings = [building] }, out var turns);
 
         Assert.Contains(turns[0].FieldCombatExchanges, exchange => exchange.Attacker == attacker.Id && exchange.Target == marcher.Id);
-        Assert.DoesNotContain(turns[0].FieldCombatExchanges, exchange => exchange.Attacker == marcher.Id);
+        Assert.Contains(turns[0].FieldCombatExchanges, exchange => exchange.Attacker == marcher.Id && exchange.Target == attacker.Id);
     }
 
     [Fact]

@@ -28,6 +28,22 @@ public sealed class RenewalCombatPhaseService
         var profiles = allProfiles
             .Where(x => units.ContainsKey(x.Key) && x.Value.Participant.Pool.Active > 0)
             .ToDictionary(x => x.Key, x => x.Value);
+        var blockedOrders = new Dictionary<UnitId, RenewalUnitState>();
+        foreach (var source in state.Units.OrderBy(x => x.CommandId).ThenBy(x => x.Id.Value))
+        {
+            if (source.StopReason != RenewalStopReason.EnemyBlocked || source.BlockingUnit is not { } blockerId
+                || !units.TryGetValue(blockerId, out var blocker) || blocker.Owner == source.Owner
+                || !profiles.ContainsKey(source.Id) || !profiles.ContainsKey(blockerId)
+                || !InRange(source, blocker.Position)) continue;
+            foreach (var (unit, target) in new[] { (source, blocker), (blocker, source) })
+            {
+                if (blockedOrders.ContainsKey(unit.Id) || unit.GarrisonStructure is not null
+                    || profiles[unit.Id].CombatState is { } combatState && IsDazed(combatState)) continue;
+                blockedOrders[unit.Id] = unit;
+                units[unit.Id] = unit with { Mode = RenewalOrderMode.Attack,
+                    AssignedTarget = RenewalTargetId.ForUnit(target.Id) };
+            }
+        }
         var intents = CollectUnitIntents(units, profiles);
         var engagements = BuildEngagements(intents, units, profiles);
         var combatParticipants = CollectCombatParticipants(state, engagements, units, profiles);
@@ -98,6 +114,8 @@ public sealed class RenewalCombatPhaseService
                 : x.Value);
         TickStatusesPresentAtAttackStart(state.CombatProfiles, nextProfiles);
         TransferDefeatedLoot(engagements, units, nextProfiles, events, state);
+        foreach (var (id, original) in blockedOrders)
+            units[id] = units[id] with { Mode = original.Mode, AssignedTarget = original.AssignedTarget };
         var nextUnits = state.Units.Select(unit => ApplyUnitOutcome(
                 units.GetValueOrDefault(unit.Id, unit), pools, waiting, state, events))
             .ToList();
