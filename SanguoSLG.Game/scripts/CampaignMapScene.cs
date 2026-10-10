@@ -1370,13 +1370,21 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
-        // 유닛 클릭 → 유닛 명령 팔레트(같은 칸에 겹치면 아군·id 우선). 같은 유닛 재클릭 = 닫기.
-        var unitsAtPoint = DisplayedArmies.Where(u => u.Field.Position == hex && CanSeeUnit(u))
-            .OrderBy(u => u.Field.Owner == Player ? 0 : 1).ThenBy(u => u.Id.Value)
-            .ToList();
+        // 모델의 화면상 중심을 기준으로 고른다. 같은 타일의 빈 바닥은 부대 클릭으로 간주하지 않는다.
+        var candidates = DisplayedArmies.Where(u => CanSeeUnit(u)
+                && _armyTokens.TryGetValue(u.Id.Value, out var token) && IsInstanceValid(token) && token.Visible)
+            .Select(u => (Unit: u, Screen: _camera.UnprojectPosition(_armyTokens[u.Id.Value].GlobalPosition
+                + new Vector3(0f, 0.2f, 0f))))
+            .Select(entry => (entry.Unit, Distance: entry.Screen.DistanceTo(mb.Position), entry.Screen))
+            .Where(entry => entry.Distance <= 28f)
+            .OrderBy(entry => entry.Distance).ThenBy(entry => entry.Unit.Id.Value).ToList();
+        var unitsAtPoint = candidates.Count > 0
+            ? candidates.Where(entry => entry.Screen.DistanceTo(candidates[0].Screen) <= 16f)
+                .Select(entry => entry.Unit).ToList()
+            : [];
         if (unitsAtPoint.Count > 1)
         {
-            ShowUnitChoices(hex, unitsAtPoint);
+            ShowUnitChoices(unitsAtPoint[0].Field.Position, unitsAtPoint);
             return;
         }
         if (unitsAtPoint.Count == 1)
