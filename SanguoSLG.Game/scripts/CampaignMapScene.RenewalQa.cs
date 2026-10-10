@@ -158,10 +158,22 @@ public sealed partial class CampaignMapScene
             PendingCommands = [], Cities = [], GarrisonForces = [], RuinDefinitions = [], RuinStates = [],
         };
         _engine.AdvanceWeek(fixture, out var turns);
-        if (!turns.Any(turn => turn.FieldCombatExchanges.Any(exchange =>
-                exchange.Attacker == attacker.Id && exchange.Target == blocker.Id)))
+        var combatTurn = turns.FirstOrDefault(turn => turn.FieldCombatExchanges.Any(exchange =>
+            exchange.Attacker == attacker.Id && exchange.Target == blocker.Id));
+        if (combatTurn is null || combatTurn.Combat?.DamageDealt.GetValueOrDefault(attacker.Id) <= 0)
             throw new InvalidOperationException("Building order ignored the enemy unit blocking its path");
-        GD.Print("RENEWAL_BLOCKED_COMBAT_QA PASS: real-map building order -> blocking field unit combat");
+        var priorPendingState = _pendingState;
+        var previousAttackCount = _animAttacks.Count;
+        _pendingState = fixture;
+        ScheduleAttackMotions(combatTurn, 1);
+        var hit = combatTurn.FieldCombatExchanges.First(exchange =>
+            exchange.Attacker == attacker.Id && exchange.Target == blocker.Id);
+        if (!_animAttacks.Skip(previousAttackCount).Any(attack => attack.UnitId == attacker.Id.Value
+                && attack.FaceTo.DistanceTo(ContinuousToWorld(hit.TargetPosition)) < .001f))
+            throw new InvalidOperationException("Blocking unit combat did not schedule the attack animation");
+        _animAttacks.RemoveRange(previousAttackCount, _animAttacks.Count - previousAttackCount);
+        _pendingState = priorPendingState;
+        GD.Print("RENEWAL_BLOCKED_COMBAT_QA PASS: real-map combat -> damage -> attack animation on blocking unit");
     }
 
     private void RunFieldBuildingActivePlaybackQa(GameState initialState)
