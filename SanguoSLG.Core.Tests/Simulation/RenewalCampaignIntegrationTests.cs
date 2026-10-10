@@ -398,6 +398,33 @@ public sealed class RenewalCampaignIntegrationTests
     }
 
     [Fact]
+    public void 인접한_아군_두부대가_같은_적을_공격하면_둘다_교전한다()
+    {
+        var enemy = Army(3, new(0, 1), new(0, 1), 0) with
+        {
+            Field = Army(3, new(0, 1), new(0, 1), 0).Field with
+                { Owner = new(2), Mode = UnitMode.March },
+        };
+        var left = Army(1, new(0, 0), enemy.Field.Position, 0) with
+        {
+            Field = Army(1, new(0, 0), enemy.Field.Position, 0).Field with
+                { Mode = UnitMode.Attack, AssignedUnitTarget = enemy.Id },
+        };
+        var right = Army(2, new(1, 0), enemy.Field.Position, 0) with
+        {
+            Field = Army(2, new(1, 0), enemy.Field.Position, 0).Field with
+                { Mode = UnitMode.Attack, AssignedUnitTarget = enemy.Id },
+        };
+        Engine(new HexMap(-5, 20, -5, 10)).AdvanceWeek(World(left, right, enemy), out var turns);
+        var attackers = turns[0].FieldCombatExchanges.Where(exchange => exchange.Target == enemy.Id)
+            .Select(exchange => exchange.Attacker).ToHashSet();
+        Assert.Contains(left.Id, attackers);
+        Assert.Contains(right.Id, attackers);
+        Assert.True(turns[0].Combat?.DamageDealt.GetValueOrDefault(left.Id) > 0);
+        Assert.True(turns[0].Combat?.DamageDealt.GetValueOrDefault(right.Id) > 0);
+    }
+
+    [Fact]
     public void 건축물과_경로상다른성은_통과하거나_잘못입성하지않는다()
     {
         var city = new City(new(1), "경로중성", new(2, 0), new(1), 0);
