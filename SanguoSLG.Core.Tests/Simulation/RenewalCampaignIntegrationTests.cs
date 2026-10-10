@@ -37,6 +37,80 @@ public sealed class RenewalCampaignIntegrationTests
     }
 
     [Fact]
+    public void 산악_옆_아군보루로_행군하는_부대와_지정공격_적은_사거리까지_접근해_교전한다()
+    {
+        var map = new HexMap(-8, 20, -5, 16,
+            new Dictionary<HexCoord, TerrainType> { [new(2, 4)] = TerrainType.Mountain });
+        var fort = new FieldBuilding(new(800011), "fort", new(1), new(2, 5), 4000, 0, 0);
+        var ruin = new RuinDefinition("war_elephant_01", "상병 유적", new(2, 4),
+            "war_elephant", 50000);
+        var caoCao = Army(1, new(2, 3), fort.Position, 2);
+        var enemy = Army(2, new(1, 4), new(2, 3), 2) with
+        {
+            Field = Army(2, new(1, 4), new(2, 3), 2).Field with
+            { Owner = new(2), Mode = UnitMode.Attack, AssignedUnitTarget = caoCao.Id },
+        };
+        var traces = new List<RenewalCampaignTraceEntry>();
+        Engine(map, trace: traces.Add).AdvanceWeek(World(caoCao, enemy) with
+        { FieldBuildings = [fort], RuinDefinitions = [ruin],
+            RuinStates = [new RuinState(ruin.Id, 50000)] }, out var turns);
+        Assert.Contains(turns[0].FieldCombatExchanges, exchange =>
+            exchange.Attacker == caoCao.Id && exchange.Target == enemy.Id);
+        Assert.True(turns[0].FieldCombatExchanges.Any(exchange =>
+            exchange.Attacker == enemy.Id && exchange.Target == caoCao.Id),
+            string.Join(" | ", traces.Take(12)
+                .Select(entry => $"{entry.Unit} d{entry.Day} t{entry.Tick} {entry.Position} {entry.StopReason} {entry.EffectiveDestination}")));
+        Assert.All(turns[0].FieldCombatExchanges, exchange => Assert.True(
+            exchange.AttackerPosition.DistanceTo(exchange.TargetPosition)
+                <= ContinuousPosition.UnitsPerTile,
+            $"사거리 밖 교전: {exchange}"));
+        Assert.DoesNotContain(traces, entry => entry.Unit == caoCao.Id
+            && entry.StopReason == RenewalStopReason.NoPath);
+        Assert.DoesNotContain(traces, entry => entry.Unit == enemy.Id
+            && entry.StopReason == RenewalStopReason.BuildingBlocked);
+    }
+
+    [Fact]
+    public void 산악_너머_아군보루는_통행가능한_외곽으로_접근한다()
+    {
+        var map = new HexMap(-8, 20, -5, 16,
+            new Dictionary<HexCoord, TerrainType> { [new(2, 4)] = TerrainType.Mountain });
+        var fort = new FieldBuilding(new(800011), "fort", new(1), new(2, 5), 4000, 0, 0);
+        var ruin = new RuinDefinition("war_elephant_01", "상병 유적", new(2, 4),
+            "war_elephant", 50000);
+        var caoCao = Army(1, new(2, 3), fort.Position, 2);
+        var trace = new List<RenewalCampaignTraceEntry>();
+        Engine(map, trace: trace.Add).AdvanceWeek(World(caoCao) with
+        { FieldBuildings = [fort], RuinDefinitions = [ruin],
+            RuinStates = [new RuinState(ruin.Id, 50000)] }, out _);
+        Assert.DoesNotContain(trace, entry => entry.StopReason == RenewalStopReason.NoPath);
+        Assert.Contains(trace, entry => entry.Position != caoCao.RenewalPosition);
+    }
+
+    [Fact]
+    public void 유적_가장자리에서_지정한_적까지_우회해_공격사거리에_들어간다()
+    {
+        var map = new HexMap(-8, 20, -5, 16);
+        var ruin = new RuinDefinition("war_elephant_01", "상병 유적", new(2, 4),
+            "war_elephant", 50000);
+        var defender = Army(1, new(2, 3), new(2, 3)) with
+        { Field = Army(1, new(2, 3), new(2, 3)).Field with { Mode = UnitMode.Standby } };
+        var attacker = Army(2, new(3, 3), new(2, 3), 2) with
+        {
+            Field = Army(2, new(3, 3), new(2, 3), 2).Field with
+            { Owner = new(2), Mode = UnitMode.Attack, AssignedUnitTarget = defender.Id },
+            RenewalPosition = new ContinuousPosition(2484, 4865),
+        };
+        var traces = new List<RenewalCampaignTraceEntry>();
+        Engine(map, trace: traces.Add).AdvanceWeek(World(defender, attacker) with
+        { RuinDefinitions = [ruin], RuinStates = [new RuinState(ruin.Id, 50000)] }, out var turns);
+        Assert.Contains(turns[0].FieldCombatExchanges, exchange =>
+            exchange.Attacker == attacker.Id && exchange.Target == defender.Id);
+        Assert.DoesNotContain(traces, entry => entry.Unit == attacker.Id
+            && entry.StopReason is RenewalStopReason.BuildingBlocked or RenewalStopReason.NoPath);
+    }
+
+    [Fact]
     public void 부대지정공격도_다른적이_경로를막으면_교전후_명령을_취소한다()
     {
         var first = Army(1, new(0, 0), new(4, 0)) with

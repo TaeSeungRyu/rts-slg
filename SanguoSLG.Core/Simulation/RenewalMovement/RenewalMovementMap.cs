@@ -61,6 +61,16 @@ public sealed class RenewalMovementMap
         }
 
         var result = path.Skip(1).Select(RenewalHexSpace.Center).ToList();
+        if (result.Count > 0 && FirstStaticCollision(start, result[0],
+                RenewalAdvanceSimulator.UnitCollisionRadius, domain) != RenewalStopReason.None)
+        {
+            var startCenter = RenewalHexSpace.Center(startHex);
+            if (startCenter != start && CanStand(domain, startCenter,
+                    RenewalAdvanceSimulator.UnitCollisionRadius)
+                && FirstStaticCollision(start, startCenter,
+                    RenewalAdvanceSimulator.UnitCollisionRadius, domain) == RenewalStopReason.None)
+                result.Insert(0, startCenter);
+        }
         if (result.Count == 0 || result[^1] != destination)
         {
             result.Add(destination);

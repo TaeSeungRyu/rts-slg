@@ -97,11 +97,25 @@ public sealed class RenewalCampaignAdvanceRunner(
                 var distance = renewal.Position.DistanceTo(center);
                 if (distance > 780)
                 {
-                    var approach = new ContinuousPosition(
+                    var directApproach = new ContinuousPosition(
                         center.X + (renewal.Position.X - center.X) * 780 / distance,
                         center.Y + (renewal.Position.Y - center.Y) * 780 / distance);
-                    renewal = renewal with { Destination = approach,
-                        OriginalDestination = approach, Arrived = false };
+                    var approach = movementMap.CanStand(unit.Field.Domain, directApproach,
+                            RenewalAdvanceSimulator.UnitCollisionRadius)
+                        && movementMap.FindPath(unit.Field.Domain, renewal.Position,
+                            directApproach).Count > 0
+                        ? directApproach
+                        : ownGarrison.Position.Neighbors().Select(RenewalHexSpace.Center)
+                            .Where(candidate => movementMap.CanStand(unit.Field.Domain, candidate,
+                                RenewalAdvanceSimulator.UnitCollisionRadius)
+                                && movementMap.FindPath(unit.Field.Domain, renewal.Position,
+                                    candidate).Count > 0)
+                            .OrderBy(candidate => candidate.DistanceSquaredTo(renewal.Position))
+                            .ThenBy(candidate => candidate.X).ThenBy(candidate => candidate.Y)
+                            .Cast<ContinuousPosition?>().FirstOrDefault();
+                    if (approach is { } reachable)
+                        renewal = renewal with { Destination = reachable,
+                            OriginalDestination = reachable, Arrived = false };
                 }
             }
             else if (blocked.Contains(RenewalHexSpace.NearestHex(renewal.OriginalDestination
