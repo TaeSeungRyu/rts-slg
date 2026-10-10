@@ -82,21 +82,39 @@ public sealed class RenewalCampaignAdvanceRunner(
             var ruinIndex = ruins.FindIndex(ruin => ruin.Position == unit.Field.Target);
             if (unit.Field.Mode == UnitMode.Attack && ruinIndex >= 0)
                 renewal = renewal with { AssignedTarget = new(RenewalTargetKind.Building, -ruinIndex - 1) };
-            if (renewal.OriginalWaypoints is not { Count: > 0 }
-                && blocked.Contains(RenewalHexSpace.NearestHex(renewal.Destination))
+            var ownGarrison = liveBuildings.FirstOrDefault(building =>
+                building.Owner == unit.Field.Owner && building.Position == unit.Field.Target
+                && building.GarrisonUnit is null && building.IsCompleted(fieldDay)
+                && fieldDefinitions?.Any(definition => definition.Code == building.DefinitionCode
+                    && definition.CanGarrison) == true);
+            if (ownGarrison is not null && renewal.OriginalWaypoints is not { Count: > 0 }
+                && renewal.Position.DistanceTo(RenewalHexSpace.Center(ownGarrison.Position))
+                    <= ContinuousPosition.UnitsPerTile)
+            {
+                renewal = renewal with { Destination = renewal.Position,
+                    OriginalDestination = renewal.Position, Arrived = true,
+                    Mode = RenewalOrderMode.Standby };
+            }
+            else if (blocked.Contains(RenewalHexSpace.NearestHex(renewal.OriginalDestination
+                    ?? renewal.Destination))
                 && OwnDestination(unit, castles) is null)
             {
-                var approach = RenewalHexSpace.NearestHex(renewal.Destination).Neighbors()
+                var from = renewal.OriginalWaypoints is { Count: > 0 } waypoints
+                    ? waypoints[^1] : renewal.Position;
+                var approach = RenewalHexSpace.NearestHex(renewal.OriginalDestination
+                        ?? renewal.Destination).Neighbors()
                     .Select(RenewalHexSpace.Center)
                     .Where(candidate => movementMap.CanStand(unit.Field.Domain, candidate,
                         RenewalAdvanceSimulator.UnitCollisionRadius))
                     .Where(candidate => movementMap.FindPath(unit.Field.Domain,
-                        renewal.Position, candidate).Count > 0)
-                    .OrderBy(candidate => candidate.DistanceSquaredTo(renewal.Position))
+                        from, candidate).Count > 0)
+                    .OrderBy(candidate => candidate.DistanceSquaredTo(from))
                     .ThenBy(candidate => candidate.X).ThenBy(candidate => candidate.Y)
-                    .FirstOrDefault();
-                if (approach != default)
-                    renewal = renewal with { Destination = approach, Arrived = false };
+                    .Cast<ContinuousPosition?>().FirstOrDefault();
+                if (approach is { } entry)
+                    renewal = renewal with { Destination = renewal.OriginalWaypoints is { Count: > 0 }
+                            ? renewal.Destination : entry,
+                        OriginalDestination = entry, Arrived = false };
             }
             if (OwnDestination(unit, castles) is { } ownSite
                 && renewal.OriginalWaypoints is not { Count: > 0 })

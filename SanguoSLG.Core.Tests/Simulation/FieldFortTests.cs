@@ -19,6 +19,13 @@ public sealed class FieldFortTests
             StartedDay: 0, CompletionDay: 1, GarrisonUnit: garrison);
     }
 
+    private static FieldBuilding GarrisonBuilding(string code, HexCoord at)
+    {
+        var definition = Definitions.Single(x => x.Code == code);
+        return new(new FieldBuildingId(1), code, Player, at, definition.MaxHitPoints,
+            StartedDay: 0, CompletionDay: 1);
+    }
+
     private static CombatUnit Unit(int id, HexCoord at, HexCoord? target = null, int provisions = 100)
     {
         var field = new FieldUnit(new UnitId(id), Player, at, 2, 2, 1,
@@ -63,6 +70,94 @@ public sealed class FieldFortTests
 
         Assert.Equal(unit.Id, turn.FieldGarrisons[fort.Id]);
         Assert.Equal(fort.Position, Assert.Single(turn.Units).Field.Position);
+    }
+
+    [Theory]
+    [InlineData("fort")]
+    [InlineData("formation")]
+    public void 성에서_경유지를_거쳐_보루나_진법으로_출전하면_최종목적지에_입성한다(string code)
+    {
+        var city = new City(new CityId(1), "출발성", default, Player, 1000);
+        var building = GarrisonBuilding(code, new HexCoord(4, 0));
+        var target = building.Position;
+        var waypoint = new HexCoord(2, 0);
+        var waiting = Unit(1, city.Position, target) with
+        {
+            Field = Unit(1, city.Position, target).Field with
+            {
+                Mode = UnitMode.March, Waypoints = [waypoint],
+                ContinuousWaypoints = [RenewalHexSpace.Center(waypoint)],
+                ContinuousTarget = RenewalHexSpace.Center(target),
+            },
+            OriginCity = city.Id, EgressDirection = DeploymentDirection.East,
+            EgressExit = new HexCoord(1, 0), AwaitingEgress = true,
+        };
+        var release = DeploymentEgressController.Release([waiting], [], [city],
+            (_, _) => true, allowFriendlyOverlap: true);
+        var deployed = Assert.Single(release.Released);
+        var runner = new RenewalCampaignAdvanceRunner(new HexMap(-5, 10, -5, 5), Orchestrator());
+
+        var turn = runner.Run([deployed], maxDays: 3,
+            fieldBuildings: [building], fieldDefinitions: Definitions, fieldDay: 1);
+
+        Assert.Equal(deployed.Id, turn.FieldGarrisons[building.Id]);
+        Assert.Equal(target, Assert.Single(turn.Units).Field.Position);
+    }
+
+    [Theory]
+    [InlineData("fort", false)]
+    [InlineData("fort", true)]
+    [InlineData("formation", false)]
+    [InlineData("formation", true)]
+    public void 캠페인_출전_예약도_보루와_진법에_입성한다(string code, bool viaWaypoint)
+    {
+        var city = new City(new CityId(1), "출발성", default, Player, 1000);
+        var building = GarrisonBuilding(code, new HexCoord(4, 0));
+        var waypoint = new HexCoord(2, 0);
+        var unit = Unit(1, city.Position, building.Position) with
+        {
+            Field = Unit(1, city.Position, building.Position).Field with
+            {
+                Mode = UnitMode.March, Waypoints = viaWaypoint ? [waypoint] : null,
+                ContinuousWaypoints = viaWaypoint ? [RenewalHexSpace.Center(waypoint)] : null,
+                ContinuousTarget = RenewalHexSpace.Center(building.Position),
+            },
+            OriginCity = city.Id, EgressDirection = DeploymentDirection.East,
+            EgressExit = new HexCoord(1, 0), AwaitingEgress = true,
+        };
+        var state = new GameState(1, 190, [], [city], [], FieldArmies: [unit],
+            FieldBuildings: [building]);
+        var runner = new RenewalCampaignAdvanceRunner(new HexMap(-5, 10, -5, 5), Orchestrator());
+        var engine = new CampaignEngine(runner, new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0)),
+            fieldBuildingDefinitions: Definitions);
+
+        var after = engine.AdvanceWeek(state, out _);
+
+        Assert.Equal(unit.Id, Assert.Single(after.Buildings).GarrisonUnit);
+    }
+
+    [Theory]
+    [InlineData("fort")]
+    [InlineData("formation")]
+    public void 바로_앞의_부대는_뒤로_움직이지_않고_입성한다(string code)
+    {
+        var building = GarrisonBuilding(code, new HexCoord(2, 0));
+        var start = RenewalHexSpace.Center(new HexCoord(1, 0)) with { X = 1050 };
+        var unit = Unit(1, new HexCoord(1, 0), building.Position) with
+        {
+            Field = Unit(1, new HexCoord(1, 0), building.Position).Field
+                with { Mode = UnitMode.March },
+            RenewalPosition = start,
+        };
+        var trace = new List<RenewalCampaignTraceEntry>();
+        var runner = new RenewalCampaignAdvanceRunner(new HexMap(-5, 10, -5, 5),
+            Orchestrator(), trace.Add);
+
+        var turn = runner.Run([unit], maxDays: 1,
+            fieldBuildings: [building], fieldDefinitions: Definitions, fieldDay: 1);
+
+        Assert.Equal(unit.Id, turn.FieldGarrisons[building.Id]);
+        Assert.All(trace, entry => Assert.Equal(start, entry.Position));
     }
 
     [Fact]
