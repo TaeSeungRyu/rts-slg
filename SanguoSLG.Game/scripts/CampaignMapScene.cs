@@ -5212,6 +5212,21 @@ public sealed partial class CampaignMapScene : Node3D
             && _fieldBuildingDefinitions.FirstOrDefault(x => x.Code == b.DefinitionCode)?.CanBeTargeted == true);
         if (enemyCity is not null || enemyUnit is not null || RuinAt(h) is not null || enemyFieldBuilding is not null)
         { mode = UnitMode.Attack; }
+        var friendlyGarrison = _state.Buildings.FirstOrDefault(b => b.Position == h && b.Owner == Player
+            && b.IsCompleted(_state.Day) && b.GarrisonUnit is null
+            && _fieldBuildingDefinitions.FirstOrDefault(x => x.Code == b.DefinitionCode)?.CanGarrison == true);
+        if (mode == UnitMode.March && (ownCity is not null || friendlyGarrison is not null))
+        {
+            var destination = ownCity?.Name
+                ?? _fieldBuildingDefinitions.First(x => x.Code == friendlyGarrison!.DefinitionCode).Name;
+            ShowConfirmWithOfficer("입성 확인", $"{destination}에 들어가겠습니까?", u.VanguardId,
+                () => CommitUnitTarget(), $"{destination}(으)로 행군해 들어가겠습니다.");
+            return;
+        }
+        CommitUnitTarget();
+
+        void CommitUnitTarget()
+        {
         var result = _unitCommander.Reassign(_state, Player,
             new FieldUnitCommandRequest(new UnitId(uid), mode, h, waypoints, _visibleTiles,
                 ReturnCity: ownCity?.Id, ContinuousTarget: continuousTarget,
@@ -5237,6 +5252,7 @@ public sealed partial class CampaignMapScene : Node3D
         _log.Text = $"부대 → {tName} ({ModeName(mode)}모드){wpNote}";
         Redraw(_log.Text);
         OpenUnitMenu(_state.Armies.First(a => a.Id.Value == uid)); // 팔레트 복귀 + 새 경로 표시
+        }
     }
 
 
