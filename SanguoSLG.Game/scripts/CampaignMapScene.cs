@@ -3382,7 +3382,7 @@ public sealed partial class CampaignMapScene : Node3D
             new(new CityId(9), "cavalry", 10000, 60),
             new(new CityId(2), "swordsman", 100000, 60),
             new(new CityId(2), "catapult", 10000, 60),
-            new(new CityId(3), "swordsman", 30000, 60),
+            new(new CityId(3), "swordsman", 150000, 60),
             new(new CityId(3), "siege_tower", 8000, 60),
         },
         FacilityPlacements: _initialFacilityPlacements,
