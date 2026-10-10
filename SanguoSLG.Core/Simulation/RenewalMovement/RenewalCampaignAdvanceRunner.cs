@@ -61,6 +61,24 @@ public sealed class RenewalCampaignAdvanceRunner(
                 constructionUnits?.Contains(unit.Id) == true
                     || unit.State.Statuses.Any(status => status.IsDaze && !status.IsExpired)
                     || liveBuildings.Any(building => building.GarrisonUnit == unit.Id));
+            // A stale intermediate waypoint can be individually passable yet
+            // unreachable from the current position (e.g. a city's wall). Do
+            // not strand the unit for every subsequent day: continue toward
+            // the original destination through the reachable waypoints.
+            if (renewal.OriginalWaypoints is { Count: > 0 } originalWaypoints)
+            {
+                var reachable = new List<ContinuousPosition>();
+                var cursor = renewal.Position;
+                foreach (var waypoint in originalWaypoints)
+                {
+                    if (movementMap.FindPath(unit.Field.Domain, cursor, waypoint).Count == 0) continue;
+                    reachable.Add(waypoint);
+                    cursor = waypoint;
+                }
+                if (reachable.Count != originalWaypoints.Count)
+                    renewal = renewal with { OriginalWaypoints = reachable,
+                        Destination = reachable.Count > 0 ? reachable[0] : renewal.OriginalDestination!.Value };
+            }
             var ruinIndex = ruins.FindIndex(ruin => ruin.Position == unit.Field.Target);
             if (unit.Field.Mode == UnitMode.Attack && ruinIndex >= 0)
                 renewal = renewal with { AssignedTarget = new(RenewalTargetKind.Building, -ruinIndex - 1) };
@@ -142,8 +160,9 @@ public sealed class RenewalCampaignAdvanceRunner(
                 Field = unit.Field with
                 {
                     Position = RenewalHexSpace.NearestHex(position.Position),
-                    Waypoints = unit.Field.Waypoints?.Skip(position.OriginalWaypointIndex).ToList(),
-                    ContinuousWaypoints = unit.Field.ContinuousWaypoints?.Skip(position.OriginalWaypointIndex).ToList(),
+                    Waypoints = position.OriginalWaypoints?.Skip(position.OriginalWaypointIndex)
+                        .Select(RenewalHexSpace.NearestHex).ToList(),
+                    ContinuousWaypoints = position.OriginalWaypoints?.Skip(position.OriginalWaypointIndex).ToList(),
                     PursuitTarget = position.PursuitTarget,
                     AssignedUnitTarget = position.AssignedTarget is { Kind: RenewalTargetKind.Unit } assigned
                         ? new UnitId(checked((int)assigned.Value)) : unit.Field.AssignedUnitTarget,

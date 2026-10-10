@@ -47,7 +47,7 @@ public class FieldUnitCommandServiceTests
     }
 
     [Fact]
-    public void 적성_목표는_공격모드로_전환된다()
+    public void 적성_목표를_찍어도_행군명령은_유지된다()
     {
         var enemyCity = City(2, Enemy, new HexCoord(5, 0));
         var state = new GameState(1, 190, [], [enemyCity], [], FieldArmies: [Unit(1, Player, default)]);
@@ -57,11 +57,11 @@ public class FieldUnitCommandServiceTests
                 VisibleTiles: new HashSet<HexCoord> { enemyCity.Position }));
 
         Assert.True(result.Ok, result.Error);
-        Assert.Equal(UnitMode.Attack, result.State.Armies.Single().Field.Mode);
+        Assert.Equal(UnitMode.March, result.State.Armies.Single().Field.Mode);
     }
 
     [Fact]
-    public void 적부대가_점유한_칸을_행군목표로_찍어도_공격모드로_전환해_교전한다()
+    public void 적부대가_점유한_칸을_행군목표로_찍어도_접촉전까지는_행군을_유지한다()
     {
         var player = Unit(1, Player, default);
         var enemy = Unit(2, Enemy, new HexCoord(1, 0));
@@ -71,19 +71,18 @@ public class FieldUnitCommandServiceTests
             new FieldUnitCommandRequest(player.Id, UnitMode.March, enemy.Field.Position));
 
         Assert.True(command.Ok, command.Error);
-        Assert.Equal(UnitMode.Attack, command.State.Armies.Single(unit => unit.Id == player.Id).Field.Mode);
+        Assert.Equal(UnitMode.March, command.State.Armies.Single(unit => unit.Id == player.Id).Field.Mode);
 
         var movement = new MovementSimulator(new PassabilityMap(new HexMap(-3, 3, -3, 3), [], []));
         var turn = new AdvanceOrchestrator(movement,
                 new CombatPhaseResolver(new BattleResolver(60), woundedPercent: 70))
             .Run(command.State.Armies, maxDays: 1);
 
-        Assert.NotNull(turn.Combat);
-        Assert.True(turn.Combat.DamageDealt.GetValueOrDefault(player.Id) > 0);
+        Assert.Null(turn.Combat);
     }
 
     [Fact]
-    public void 유적은_통행불가여도_공격목표로_지정된다()
+    public void 유적은_통행불가여도_명시적_공격목표로_지정된다()
     {
         var ruinPosition = new HexCoord(5, 0);
         var unit = Unit(1, Player, default);
@@ -94,7 +93,7 @@ public class FieldUnitCommandServiceTests
             (s, h) => s.Ruins.Any(r => r.Position == h));
 
         var result = service.Reassign(state, Player,
-            new FieldUnitCommandRequest(unit.Id, UnitMode.March, ruinPosition));
+            new FieldUnitCommandRequest(unit.Id, UnitMode.Attack, ruinPosition));
 
         Assert.True(result.Ok, result.Error);
         Assert.Equal(UnitMode.Attack, result.State.Armies.Single().Field.Mode);
@@ -131,7 +130,7 @@ public class FieldUnitCommandServiceTests
     }
 
     [Fact]
-    public void 시야밖_적성_발자국_타일도_공격목표로_전환된다()
+    public void 시야밖_적성_발자국_타일에도_행군명령이_유지된다()
     {
         var enemyCity = new City(new CityId(2), "적항", new HexCoord(5, 0), Enemy, 1000,
             CastleSize.Medium, Port: PortSize.Medium);
@@ -143,7 +142,7 @@ public class FieldUnitCommandServiceTests
                 VisibleTiles: new HashSet<HexCoord>()));
 
         Assert.True(result.Ok, result.Error);
-        Assert.Equal(UnitMode.Attack, result.State.Armies.Single().Field.Mode);
+        Assert.Equal(UnitMode.March, result.State.Armies.Single().Field.Mode);
     }
 
     [Fact]

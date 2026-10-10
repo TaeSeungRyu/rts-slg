@@ -96,7 +96,10 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
         {
             var candidate = units.Where(u => u.Field.Owner == building.Owner
                     && u.Field.Target == building.Position
-                    && moved.TryGetValue(u.Id, out var field) && field.Position == building.Position
+                    && moved.TryGetValue(u.Id, out var field)
+                    && (field.Position == building.Position
+                        || (field.Mode == UnitMode.Standby && field.Waypoints is not { Count: > 0 }
+                            && field.Position.Distance(building.Position) <= 1))
                     && !occupiedGarrisons.Contains(u.Id))
                 .OrderBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value).FirstOrDefault();
             if (candidate is null) continue;
@@ -141,7 +144,10 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
             {
                 state[u.Id] = state[u.Id] with
                 {
-                    Field = state[u.Id].Field with { Mode = UnitMode.Advance, Target = null, Waypoints = null },
+                    Field = state[u.Id].Field with { Position = fieldGarrisons.ContainsValue(u.Id)
+                            ? completedGarrisons.First(building => fieldGarrisons.GetValueOrDefault(building.Id) == u.Id).Position
+                            : field.Position,
+                        Mode = UnitMode.Advance, Target = null, Waypoints = null },
                 };
             }
         }

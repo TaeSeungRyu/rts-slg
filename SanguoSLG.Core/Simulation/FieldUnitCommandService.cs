@@ -38,12 +38,9 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
             return CommandResult.Fail("경유지 중 이동할 수 없는 지점이 있습니다.", state);
         }
 
-        var mode = state.Cities.Any(c => CastleFootprint.TilesFor(c).Contains(req.Target) && c.Owner != faction)
-            || state.Armies.Any(army => army.Field.Owner != faction && army.Pool.Active > 0
-                && !army.IsWaitingDeployment && army.Field.Position == req.Target)
-            || (isStaticAttackTarget?.Invoke(state, req.Target) ?? false)
-            ? UnitMode.Attack
-            : req.Mode;
+        // A destination is not an attack order. March only fights when an enemy
+        // actually blocks its route; an explicit Attack order keeps its target.
+        var mode = req.Mode;
         var armies = state.Armies
             .Select(a => a.Id == req.Unit
                 ? a with { Field = a.Field with { Mode = mode, Target = req.Target,

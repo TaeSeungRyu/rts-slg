@@ -44,9 +44,13 @@ public sealed class RuinCombat
                 // 현재 규칙에서는 유적 타일에 진입할 수 없고 Target을 유지한 채 사거리에서 공격한다.
                 // Position 일치는 이전 저장 데이터에 이미 유적 위에 선 부대가 있을 때의 호환 처리다.
                 var targetsRuin = attacker.Field.Target == ruin.Position || attacker.Field.Position == ruin.Position;
-                if (!attacker.CanInitiateCombat || attacker.Pool.Active <= 0 || !targetsRuin) continue;
+                if (!attacker.CanInitiateCombat || attacker.Pool.Active <= 0 || !targetsRuin
+                    || attacker.Field.Mode != UnitMode.Attack) continue;
                 if (status.Owner == attacker.Field.Owner) continue;
-                if (attacker.Field.Position.Distance(ruin.Position) > attacker.Field.AttackRange) continue;
+                var continuousPosition = attacker.RenewalPosition
+                    ?? RenewalMovement.RenewalHexSpace.Center(attacker.Field.Position);
+                if (continuousPosition.DistanceTo(RenewalMovement.RenewalHexSpace.Center(ruin.Position))
+                    > (long)attacker.Field.AttackRange * RenewalMovement.ContinuousPosition.UnitsPerTile) continue;
 
                 var ruinStats = new CombatStats(defenders, AtkStat: 8, DfStat: 10,
                     AptitudePercent: AptitudeGrade.A.Percent());

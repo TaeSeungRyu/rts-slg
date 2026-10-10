@@ -3,6 +3,7 @@ namespace SanguoSLG.Core.Tests.Simulation;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
+using SanguoSLG.Core.Simulation.RenewalMovement;
 
 public sealed class RuinCombatTests
 {
@@ -35,6 +36,20 @@ public sealed class RuinCombatTests
         var result = new RuinCombat(new BattleResolver(60)).Resolve(State(), [idle]);
         Assert.Empty(result.Exchanges);
         Assert.Equal(10_000, result.Armies.Single().Pool.Active);
+    }
+
+    [Fact]
+    public void MarchingUnitDoesNotAttackRuinEvenWhenItIsItsDestination()
+    {
+        var marching = Attacker() with { Field = Attacker().Field with { Mode = UnitMode.March } };
+        Assert.Empty(new RuinCombat(new BattleResolver(60)).Resolve(State(), [marching]).Exchanges);
+    }
+
+    [Fact]
+    public void ContinuousPositionOutsideRangeDoesNotAttackRuinDespiteNearestHex()
+    {
+        var attacker = Attacker() with { RenewalPosition = new ContinuousPosition(500, 1000) };
+        Assert.Empty(new RuinCombat(new BattleResolver(60)).Resolve(State(), [attacker]).Exchanges);
     }
 
     [Fact]

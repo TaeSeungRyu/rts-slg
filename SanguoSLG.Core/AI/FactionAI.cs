@@ -80,6 +80,7 @@ public sealed class FactionAI
             var status = state.RuinStatus.FirstOrDefault(s => s.RuinId == ruin.Id);
             if (status is null) continue;
             var candidates = armies.Where(a => a.Field.Owner == faction && a.CanInitiateCombat
+                    && a.Field.Mode == UnitMode.Standby && a.Field.Target is null
                     && (ruin.Naval ? a.Field.Domain == MovementDomain.DeepWater : a.Field.Domain != MovementDomain.DeepWater))
                 .OrderBy(a => a.Field.Position.Distance(ruin.Position)).ThenBy(a => a.Id.Value).ToList();
             if (!RuinAiPolicy.ShouldAttack(ruin, status, faction, state.Day, candidates.Sum(a => a.Pool.Active))) continue;
@@ -87,7 +88,9 @@ public sealed class FactionAI
             foreach (var army in candidates)
             {
                 var index = armies.FindIndex(a => a.Id == army.Id);
-                armies[index] = army with { Field = army.Field with { Mode = UnitMode.Attack, Target = ruin.Position } };
+                armies[index] = army with { Field = army.Field with { Mode = UnitMode.Attack, Target = ruin.Position,
+                    Waypoints = null, ContinuousTarget = null, ContinuousWaypoints = null,
+                    AssignedUnitTarget = null, PursuitTarget = null } };
                 committed += army.Pool.Active;
                 if (committed >= status.Defenders) break;
             }
@@ -443,8 +446,23 @@ public sealed class FactionAI
                 return u;
             }
 
+            var current = u.Field.Target;
+            if (current is { } objective && (
+                state.Cities.Any(city => city.Owner != faction && !state.AreAllied(faction, city.Owner)
+                    && CastleFootprint.TilesFor(city).Contains(objective))
+                || state.Buildings.Any(building => building.Owner != faction
+                    && !building.IsExpired(state.Day) && building.Position == objective)
+                || state.Ruins.Any(ruin => ruin.Position == objective)
+                || state.Armies.Any(enemy => enemy.Field.Owner != faction && enemy.Pool.Active > 0
+                    && enemy.Field.Position == objective)))
+                return u;
+
             var target = NearestEnemyObjective(state, faction, u.Field.Position);
-            return target is { } dest ? u with { Field = u.Field with { Target = dest } } : u;
+            return target is { } dest ? u with { Field = u.Field with
+            {
+                Target = dest, Waypoints = null, ContinuousTarget = null,
+                ContinuousWaypoints = null, AssignedUnitTarget = null, PursuitTarget = null,
+            } } : u;
         }).ToList();
         return state with { FieldArmies = armies };
     }

@@ -4,6 +4,7 @@ using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
+using SanguoSLG.Core.Simulation.RenewalMovement;
 
 public sealed class FieldFortTests
 {
@@ -45,6 +46,23 @@ public sealed class FieldFortTests
         var garrison = Assert.Single(turn.Units);
         Assert.Equal(fort.Position, garrison.Field.Position);
         Assert.Null(garrison.Field.Target);
+    }
+
+    [Fact]
+    public void 연속이동에서_보루_타일에_진입하지_않아도_접근후_입성한다()
+    {
+        var fort = Fort(1, new HexCoord(2, 0));
+        var unit = Unit(1, default, fort.Position) with
+        {
+            Field = Unit(1, default, fort.Position).Field with { Mode = UnitMode.March },
+        };
+        var runner = new RenewalCampaignAdvanceRunner(new HexMap(-5, 10, -5, 5), Orchestrator());
+
+        var turn = runner.Run([unit], maxDays: 2,
+            fieldBuildings: [fort], fieldDefinitions: Definitions, fieldDay: 1);
+
+        Assert.Equal(unit.Id, turn.FieldGarrisons[fort.Id]);
+        Assert.Equal(fort.Position, Assert.Single(turn.Units).Field.Position);
     }
 
     [Fact]

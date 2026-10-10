@@ -6,6 +6,7 @@ using SanguoSLG.Core.AI;
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Simulation.RenewalMovement;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
@@ -325,6 +326,57 @@ public class FactionAiTests
         var after = Ai().PlanWeek(s, new FactionId(1));
 
         Assert.Equal(enemy.Position, after.Armies.Single().Field.Target);
+    }
+
+    [Fact]
+    public void AI는_유효한_공격목표와_연속좌표를_임의로_덮어쓰지_않는다()
+    {
+        var t = Troops.First(x => x.Code == "swordsman");
+        var objective = new HexCoord(8, 0);
+        var field = new FieldUnit(new UnitId(1), new FactionId(1), default,
+            t.MovementPerDay, t.Detection, t.RangeUnit, MovementDomain.Land, UnitMode.Attack,
+            objective, 1, t.RangeCastle) with
+        {
+            ContinuousTarget = RenewalHexSpace.Center(objective),
+        };
+        var army = new CombatUnit(field,
+            CombatStatsBuilder.BuildField(t, AptitudeGrade.A, 0, TerrainType.Plains, 8000),
+            new TroopPool(8000, 0), UnitCombatState.Create(60), 70, 60, 8000,
+            t.Class, TroopCode: t.Code);
+        var state = new GameState(1, 190, [],
+            [Town(9, 2, new HexCoord(2, 0)), Town(10, 2, objective)], [],
+            FieldArmies: [army]);
+
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(state, new FactionId(1));
+
+        Assert.Equal(objective, Assert.Single(after.Armies).Field.Target);
+        Assert.Equal(field.ContinuousTarget, Assert.Single(after.Armies).Field.ContinuousTarget);
+    }
+
+    [Fact]
+    public void AI는_유적을_노릴때_기존_공격명령을_탈취하지_않고_유휴부대만_배정한다()
+    {
+        var t = Troops.First(x => x.Code == "swordsman");
+        CombatUnit MakeArmy(int id, UnitMode mode, HexCoord? target, int troops) => new(
+            new FieldUnit(new UnitId(id), new FactionId(1), default,
+                t.MovementPerDay, t.Detection, t.RangeUnit, MovementDomain.Land,
+                mode, target, id, t.RangeCastle),
+            CombatStatsBuilder.BuildField(t, AptitudeGrade.A, 0, TerrainType.Plains, troops),
+            new TroopPool(troops, 0), UnitCombatState.Create(60), 70, 60, troops,
+            t.Class, TroopCode: t.Code);
+        var enemyCity = Town(9, 2, new HexCoord(8, 0));
+        var busy = MakeArmy(1, UnitMode.Attack, enemyCity.Position, 20_000);
+        var idle = MakeArmy(2, UnitMode.Standby, null, 20_000);
+        var ruin = new RuinDefinition("r1", "극병 유적", new HexCoord(3, 0),
+            "geukbyeong", 15_000);
+        var state = new GameState(1, 190, [], [enemyCity], [],
+            FieldArmies: [busy, idle], RuinDefinitions: [ruin],
+            RuinStates: [new RuinState("r1", 15_000)]);
+
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(state, new FactionId(1));
+
+        Assert.Equal(enemyCity.Position, after.Armies.Single(army => army.Id == busy.Id).Field.Target);
+        Assert.Equal(ruin.Position, after.Armies.Single(army => army.Id == idle.Id).Field.Target);
     }
 
     [Fact]

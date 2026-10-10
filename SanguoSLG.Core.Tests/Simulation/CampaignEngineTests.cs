@@ -48,7 +48,10 @@ public class CampaignEngineTests
     public void 유적_최초점령은_세력영입포인트를_백점_지급한다()
     {
         var ruinPos = new HexCoord(4, 0);
-        var attacker = Army(1, 1, new HexCoord(3, 0), UnitMode.Attack, ruinPos);
+        var attacker = Army(1, 1, new HexCoord(3, 0), UnitMode.Attack, ruinPos) with
+        {
+            Field = Army(1, 1, new HexCoord(3, 0), UnitMode.Attack, ruinPos).Field with { Speed = 0 },
+        };
         var state = World(attacker) with
         {
             RuinDefinitions = [new("r1", "극병 유적", ruinPos, "geukbyeong", 1)],

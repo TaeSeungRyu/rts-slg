@@ -97,6 +97,30 @@ public sealed class RenewalCampaignAdvanceRunnerTests
     }
 
     [Fact]
+    public void 경로가_없는_경유지는_제외하고_최종_목표로_계속_행군한다()
+    {
+        var trace = new List<RenewalCampaignTraceEntry>();
+        var runner = new RenewalCampaignAdvanceRunner(new HexMap(-3, 5, -3, 5),
+            new CaptureRunner(), trace.Add);
+        var start = new HexCoord(0, 0);
+        var blockedWaypoint = new HexCoord(1, 0);
+        var goal = new HexCoord(3, 0);
+        var unit = Unit(1, start, goal, speed: 2) with
+        {
+            Field = Unit(1, start, goal, speed: 2).Field with
+            { Waypoints = [blockedWaypoint] },
+        };
+        var fort = new FieldBuilding(new FieldBuildingId(1), "fort", new FactionId(1),
+            blockedWaypoint, 1000, 0, 0);
+
+        var result = runner.Run([unit], 2, fieldBuildings: [fort]);
+
+        Assert.DoesNotContain(trace, entry => entry.StopReason == RenewalStopReason.NoPath);
+        Assert.NotEqual(RenewalHexSpace.Center(start), Assert.Single(result.Units).RenewalPosition);
+        Assert.Empty(Assert.Single(result.Units).Field.Waypoints ?? []);
+    }
+
+    [Fact]
     public void 적거점이_아군으로_바뀌면_다음진행에_원래목표로_복귀한다()
     {
         var map = new HexMap(-2, 10, -2, 10);

@@ -5295,8 +5295,8 @@ public sealed partial class CampaignMapScene : Node3D
         var enemyUnit = DisplayedArmies.FirstOrDefault(a => a.Field.Position == h && a.Field.Owner != Player && CanSeeUnit(a));
         var enemyFieldBuilding = _state.Buildings.FirstOrDefault(b => b.Position == h && b.Owner != Player
             && _fieldBuildingDefinitions.FirstOrDefault(x => x.Code == b.DefinitionCode)?.CanBeTargeted == true);
-        if (enemyCity is not null || enemyUnit is not null || RuinAt(h) is not null || enemyFieldBuilding is not null)
-        { mode = UnitMode.Attack; }
+        // Keep the player's selected March/Advance/Attack mode. Contact combat
+        // against an actual blocker is resolved during movement, not on click.
         var friendlyGarrison = _state.Buildings.FirstOrDefault(b => b.Position == h && b.Owner == Player
             && b.IsCompleted(_state.Day) && b.GarrisonUnit is null
             && _fieldBuildingDefinitions.FirstOrDefault(x => x.Code == b.DefinitionCode)?.CanGarrison == true);
