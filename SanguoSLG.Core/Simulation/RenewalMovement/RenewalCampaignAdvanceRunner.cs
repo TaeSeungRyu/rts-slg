@@ -135,6 +135,7 @@ public sealed class RenewalCampaignAdvanceRunner(
         }
 
         var positions = state.Units.ToDictionary(unit => unit.Id);
+        var originals = active.ToDictionary(unit => unit.Id);
         var moved = active.Select(unit => positions.TryGetValue(unit.Id, out var position)
             ? unit with
             {
@@ -155,6 +156,31 @@ public sealed class RenewalCampaignAdvanceRunner(
                 RenewalPosition = position.Position,
             }
             : unit).ToList();
+        var temporaryBlockers = new HashSet<UnitId>();
+        moved = moved.Select(unit =>
+        {
+            if (unit.Field.Mode != UnitMode.Attack
+                || unit.Field.AssignedUnitTarget is not null
+                || !positions.TryGetValue(unit.Id, out var movement)
+                || movement.StopReason != RenewalStopReason.EnemyBlocked
+                || movement.AssignedTarget?.Kind == RenewalTargetKind.Unit)
+                return unit;
+            var attackPosition = movement.Position;
+            var attackRadius = (long)unit.Field.AttackRange * ContinuousPosition.UnitsPerTile;
+            var blocker = moved.Where(candidate => candidate.Id != unit.Id
+                    && candidate.Field.Owner != unit.Field.Owner
+                    && candidate.Pool.Active > 0
+                    && positions.TryGetValue(candidate.Id, out var position) && position.IsActive
+                    && attackPosition.DistanceSquaredTo(position.Position) <= attackRadius * attackRadius)
+                .OrderBy(candidate => attackPosition.DistanceSquaredTo(positions[candidate.Id].Position))
+                .ThenBy(candidate => candidate.Id.Value)
+                .FirstOrDefault();
+            if (blocker is not null) temporaryBlockers.Add(unit.Id);
+            return blocker is null ? unit : unit with
+            {
+                Field = unit.Field with { AssignedUnitTarget = blocker.Id },
+            };
+        }).ToList();
         var movedById = moved.ToDictionary(unit => unit.Id);
         var entered = moved.Where(unit => !positions[unit.Id].IsActive)
             .Select(unit => unit with { State = unit.State.ReturnToCastle() }).ToList();
@@ -168,7 +194,13 @@ public sealed class RenewalCampaignAdvanceRunner(
             var samePosition = unit.Field.Position == before.Field.Position;
             return unit with
             {
-                Field = before.Field with { Position = unit.Field.Position },
+                Field = before.Field with
+                {
+                    Position = unit.Field.Position,
+                    AssignedUnitTarget = temporaryBlockers.Contains(unit.Id)
+                        ? originals[unit.Id].Field.AssignedUnitTarget
+                        : before.Field.AssignedUnitTarget,
+                },
                 RenewalPosition = samePosition ? before.RenewalPosition
                     : RenewalHexSpace.Center(unit.Field.Position),
             };

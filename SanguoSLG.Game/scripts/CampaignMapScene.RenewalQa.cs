@@ -91,6 +91,7 @@ public sealed partial class CampaignMapScene
         RunCombatPlaybackTargetQa();
         RunRenewalRealMapQa(initialState);
         RunFieldBuildingActivePlaybackQa(initialState);
+        RunBlockedFieldCombatQa(initialState);
     }
 
     private void RunCombatPlaybackTargetQa()
@@ -136,6 +137,31 @@ public sealed partial class CampaignMapScene
         if (scheduled.FaceTo.DistanceTo(expected) > .001f)
             throw new InvalidOperationException("Combat playback did not face the actual primary target");
         GD.Print("RENEWAL_COMBAT_PLAYBACK_QA PASS: actual primary target -> facing position");
+    }
+
+    private void RunBlockedFieldCombatQa(GameState initialState)
+    {
+        var fort = initialState.Buildings.Single(building => building.Id.Value == 800009);
+        var attacker = new CombatUnit(new FieldUnit(new UnitId(990011), Player,
+                new HexCoord(1, 4), 1, 3, 1, MovementDomain.Land, UnitMode.Attack,
+                fort.Position, 1, RangeCastle: 1),
+            new CombatStats(10000, 20, 20), new TroopPool(10000, 0), UnitCombatState.Create(60),
+            TroopCode: "cavalry", RenewalPosition: RenewalHexSpace.Center(new HexCoord(1, 4)));
+        var blocker = new CombatUnit(new FieldUnit(new UnitId(990012), fort.Owner,
+                new HexCoord(1, 5), 1, 3, 1, MovementDomain.Land, UnitMode.March,
+                new HexCoord(1, 5), 2),
+            new CombatStats(10000, 20, 20), new TroopPool(10000, 0), UnitCombatState.Create(60),
+            TroopCode: "swordsman", RenewalPosition: RenewalHexSpace.Center(new HexCoord(1, 5)));
+        var fixture = initialState with
+        {
+            FieldArmies = [attacker, blocker], FieldBuildings = [fort],
+            PendingCommands = [], Cities = [], GarrisonForces = [], RuinDefinitions = [], RuinStates = [],
+        };
+        _engine.AdvanceWeek(fixture, out var turns);
+        if (!turns.Any(turn => turn.FieldCombatExchanges.Any(exchange =>
+                exchange.Attacker == attacker.Id && exchange.Target == blocker.Id)))
+            throw new InvalidOperationException("Building order ignored the enemy unit blocking its path");
+        GD.Print("RENEWAL_BLOCKED_COMBAT_QA PASS: real-map building order -> blocking field unit combat");
     }
 
     private void RunFieldBuildingActivePlaybackQa(GameState initialState)

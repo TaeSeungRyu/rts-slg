@@ -50,6 +50,56 @@ public sealed class RenewalCampaignIntegrationTests
     }
 
     [Fact]
+    public void 서로_건축물을_공격하러_가던_부대가_맞닥뜨리면_건축물보다_교전을_우선한다()
+    {
+        var map = new HexMap(-4, 12, -4, 12);
+        var first = Army(1, new(0, 0), new(4, 0)) with
+        {
+            Field = Army(1, new(0, 0), new(4, 0)).Field with { Mode = UnitMode.Attack, RangeCastle = 1 },
+        };
+        var second = Army(2, new(1, 0), new(-3, 0)) with
+        {
+            Field = Army(2, new(1, 0), new(-3, 0)).Field with
+                { Owner = new(2), Mode = UnitMode.Attack, RangeCastle = 1 },
+        };
+        var buildings = new[]
+        {
+            new FieldBuilding(new FieldBuildingId(1), "fort", new FactionId(2), new HexCoord(4, 0), 4000, 0, 0),
+            new FieldBuilding(new FieldBuildingId(2), "fort", new FactionId(1), new HexCoord(-3, 0), 4000, 0, 0),
+        };
+
+        var after = Engine(map).AdvanceWeek(World(first, second) with { FieldBuildings = buildings }, out var turns);
+
+        Assert.Contains(turns[0].FieldCombatExchanges, exchange => exchange.Attacker == first.Id && exchange.Target == second.Id);
+        Assert.Contains(turns[0].FieldCombatExchanges, exchange => exchange.Attacker == second.Id && exchange.Target == first.Id);
+        Assert.True(turns[0].Combat?.DamageTaken.GetValueOrDefault(first.Id) > 0);
+        Assert.True(turns[0].Combat?.DamageTaken.GetValueOrDefault(second.Id) > 0);
+        Assert.Equal(buildings[0].Position, after.Armies.Single(unit => unit.Id == first.Id).Field.Target);
+        Assert.Equal(buildings[1].Position, after.Armies.Single(unit => unit.Id == second.Id).Field.Target);
+    }
+
+    [Fact]
+    public void 건축물공격부대는_행군중인_적에게_막히면_행군병력을_공격한다()
+    {
+        var map = new HexMap(-4, 12, -4, 12);
+        var attacker = Army(1, new(0, 0), new(4, 0)) with
+        {
+            Field = Army(1, new(0, 0), new(4, 0)).Field with { Mode = UnitMode.Attack, RangeCastle = 1 },
+        };
+        var marcher = Army(2, new(1, 0), new(1, 0)) with
+        {
+            Field = Army(2, new(1, 0), new(1, 0)).Field with { Owner = new(2) },
+        };
+        var building = new FieldBuilding(new FieldBuildingId(1), "fort", new FactionId(2),
+            new HexCoord(4, 0), 4000, 0, 0);
+
+        Engine(map).AdvanceWeek(World(attacker, marcher) with { FieldBuildings = [building] }, out var turns);
+
+        Assert.Contains(turns[0].FieldCombatExchanges, exchange => exchange.Attacker == attacker.Id && exchange.Target == marcher.Id);
+        Assert.DoesNotContain(turns[0].FieldCombatExchanges, exchange => exchange.Attacker == marcher.Id);
+    }
+
+    [Fact]
     public void 야전교전은_실제_공격자와_피격자의_연속좌표를_보존한다()
     {
         var map = new HexMap(-4, 10, -4, 10);
