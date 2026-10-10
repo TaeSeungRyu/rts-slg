@@ -107,6 +107,33 @@ public sealed class RenewalCampaignIntegrationTests
     }
 
     [Fact]
+    public void 성을_지정공격하던_적도_아군의_공격을_받으면_그날_응전한다()
+    {
+        var map = new HexMap(-4, 12, -4, 12);
+        var ally = Army(1, new(0, 0), new(1, 0)) with
+        {
+            Field = Army(1, new(0, 0), new(1, 0)).Field with { Mode = UnitMode.Advance },
+        };
+        var enemy = Army(2, new(1, 0), new(3, 0)) with
+        {
+            Field = Army(2, new(1, 0), new(3, 0)).Field with
+                { Owner = new(2), Mode = UnitMode.Attack, RangeCastle = 1 },
+        };
+        var fort = new FieldBuilding(new(91), "fort", new(1), new(3, 0), 4000, 0, 0);
+
+        var after = Engine(map).AdvanceWeek(World(ally, enemy) with { FieldBuildings = [fort] }, out var turns);
+
+        var firstFight = turns.FirstOrDefault(turn => turn.FieldCombatExchanges.Any(x =>
+            x.Attacker == ally.Id && x.Target == enemy.Id));
+        Assert.NotNull(firstFight);
+        Assert.Contains(firstFight.FieldCombatExchanges, x => x.Attacker == enemy.Id && x.Target == ally.Id);
+        Assert.True(firstFight.Combat?.DamageDealt.GetValueOrDefault(enemy.Id) > 0);
+        Assert.True(firstFight.Combat?.DamageTaken.GetValueOrDefault(ally.Id) > 0);
+        Assert.DoesNotContain(firstFight.FieldBuildingExchanges, x => x.Attacker == enemy.Id);
+        Assert.Equal(enemy.Field.Target, after.Armies.Single(x => x.Id == enemy.Id).Field.Target);
+    }
+
+    [Fact]
     public void 서로_건축물을_공격하러_가던_부대가_맞닥뜨리면_건축물보다_교전을_우선한다()
     {
         var map = new HexMap(-4, 12, -4, 12);

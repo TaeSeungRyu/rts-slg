@@ -70,6 +70,22 @@ public sealed class RenewalCombatPhaseServiceTests
     }
 
     [Fact]
+    public void 거점을_지정공격하던_부대는_먼저_공격당하면_응전하고_원래목표를_유지한다()
+    {
+        var target = new RenewalTargetId(RenewalTargetKind.Site, 9);
+        var attacker = Unit(1, 1, 0, 0, RenewalOrderMode.Advance,
+            target: RenewalTargetId.ForUnit(new UnitId(2)));
+        var defender = Unit(2, 2, 900, 0, RenewalOrderMode.Attack, target: target)
+            with { StopReason = RenewalStopReason.BuildingBlocked };
+
+        var result = AttackPhase([attacker, defender]);
+
+        Assert.True(result.State.CombatProfiles![attacker.Id].Participant.Pool.Active < 10000);
+        Assert.True(result.State.CombatProfiles[defender.Id].Participant.Pool.Active < 10000);
+        Assert.Equal(target, result.State.Units.Single(x => x.Id == defender.Id).AssignedTarget);
+    }
+
+    [Fact]
     public void 공격턴_시작위치가_사거리안이면_행군부대는_피해만받고_반격하지않는다()
     {
         var defender = Unit(2, 2, 1_000, 0, RenewalOrderMode.March);

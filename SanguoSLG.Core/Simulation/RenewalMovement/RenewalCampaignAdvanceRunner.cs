@@ -190,6 +190,33 @@ public sealed class RenewalCampaignAdvanceRunner(
                 Field = unit.Field with { Mode = UnitMode.Attack, AssignedUnitTarget = blocker },
             };
         }).ToList();
+        // 지정 대상과 싸울 수 없는 부대가 실제 공격을 받으면 공격한 부대에 대응한다.
+        // 임시 목표는 이번 공격턴에만 유지해 성/건물과 야전 부대를 동시에 치지 않게 한다.
+        var intentions = CombatPhase.DetectEngagements(moved);
+        var alreadyAttacking = intentions.Select(intent => intent.Attacker).ToHashSet();
+        var incoming = intentions.SelectMany(intent => intent.Targets.Select(target =>
+                (Target: target, Attacker: intent.Attacker)))
+            .GroupBy(hit => hit.Target).ToDictionary(group => group.Key, group => group
+                .Select(hit => hit.Attacker).ToHashSet());
+        moved = moved.Select(unit =>
+        {
+            if (unit.Field.Mode != UnitMode.Attack || alreadyAttacking.Contains(unit.Id)
+                || !unit.CanInitiateCombat || unit.Pool.Active <= 0
+                || constructionUnits?.Contains(unit.Id) == true
+                || unit.State.Statuses.Any(status => status.IsDaze && !status.IsExpired)
+                || liveBuildings.Any(building => building.GarrisonUnit == unit.Id)
+                || !incoming.TryGetValue(unit.Id, out var attackers)) return unit;
+            var response = moved.Where(candidate => attackers.Contains(candidate.Id)
+                    && candidate.Pool.Active > 0 && positions[candidate.Id].IsActive
+                    && positions[unit.Id].Position.DistanceTo(positions[candidate.Id].Position)
+                        <= (long)unit.Field.AttackRange * ContinuousPosition.UnitsPerTile)
+                .OrderBy(candidate => positions[unit.Id].Position.DistanceSquaredTo(positions[candidate.Id].Position))
+                .ThenBy(candidate => candidate.Field.CommandOrder).ThenBy(candidate => candidate.Id.Value)
+                .FirstOrDefault();
+            if (response is null) return unit;
+            temporaryBlockers.Add(unit.Id);
+            return unit with { Field = unit.Field with { AssignedUnitTarget = response.Id } };
+        }).ToList();
         var movedById = moved.ToDictionary(unit => unit.Id);
         var entered = moved.Where(unit => !positions[unit.Id].IsActive)
             .Select(unit => unit with { State = unit.State.ReturnToCastle() }).ToList();

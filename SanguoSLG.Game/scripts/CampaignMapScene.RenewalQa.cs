@@ -187,6 +187,36 @@ public sealed partial class CampaignMapScene
         _animAttacks.RemoveRange(previousAttackCount, _animAttacks.Count - previousAttackCount);
         _pendingState = priorPendingState;
         GD.Print("RENEWAL_BLOCKED_COMBAT_QA PASS: real-map combat -> damage -> attack animation on blocking unit");
+
+        var ownFort = new FieldBuilding(new FieldBuildingId(990013), "fort", Player,
+            new HexCoord(1, 7), 4000, 0, 0);
+        var pursuing = attacker with
+        {
+            Field = attacker.Field with { Mode = UnitMode.Advance, Target = blocker.Field.Position },
+        };
+        var assigned = blocker with
+        {
+            Field = blocker.Field with { Mode = UnitMode.Attack, Target = ownFort.Position },
+        };
+        var counterFixture = fixture with
+        {
+            FieldArmies = [pursuing, assigned], FieldBuildings = [ownFort],
+        };
+        _engine.AdvanceWeek(counterFixture, out var counterTurns);
+        var responseTurn = counterTurns.FirstOrDefault(turn => turn.FieldCombatExchanges.Any(exchange =>
+            exchange.Attacker == pursuing.Id && exchange.Target == assigned.Id));
+        if (responseTurn is null || !responseTurn.FieldCombatExchanges.Any(exchange =>
+                exchange.Attacker == assigned.Id && exchange.Target == pursuing.Id)
+            || responseTurn.Combat?.DamageDealt.GetValueOrDefault(assigned.Id) <= 0)
+            throw new InvalidOperationException("Site attack order did not respond to the pursuing enemy unit");
+        previousAttackCount = _animAttacks.Count;
+        _pendingState = counterFixture;
+        ScheduleAttackMotions(responseTurn, 1);
+        if (!_animAttacks.Skip(previousAttackCount).Any(attack => attack.UnitId == assigned.Id.Value))
+            throw new InvalidOperationException("Site attack defender did not schedule response animation");
+        _animAttacks.RemoveRange(previousAttackCount, _animAttacks.Count - previousAttackCount);
+        _pendingState = priorPendingState;
+        GD.Print("RENEWAL_ATTACK_RESPONSE_QA PASS: site assignee -> pursuit response -> damage -> animation");
     }
 
     private void RunEnemyAttackChoiceQa(GameState initialState)

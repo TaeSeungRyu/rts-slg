@@ -45,6 +45,26 @@ public sealed class RenewalCombatPhaseService
             }
         }
         var intents = CollectUnitIntents(units, profiles);
+        var incoming = intents.GroupBy(intent => intent.Value)
+            .ToDictionary(group => group.Key, group => group.Select(intent => intent.Key).ToArray());
+        foreach (var defender in state.Units.OrderBy(x => x.CommandId).ThenBy(x => x.Id.Value))
+        {
+            if (defender.Mode != RenewalOrderMode.Attack || intents.ContainsKey(defender.Id)
+                || blockedOrders.ContainsKey(defender.Id) || !profiles.ContainsKey(defender.Id)
+                || defender.GarrisonStructure is not null
+                || profiles[defender.Id].CombatState is { } combatState && IsDazed(combatState)
+                || !incoming.TryGetValue(defender.Id, out var incomingAttackers)) continue;
+            var response = incomingAttackers.Select(id => units[id])
+                .Where(attacker => InRange(defender, attacker.Position))
+                .OrderBy(attacker => defender.Position.DistanceSquaredTo(attacker.Position))
+                .ThenBy(attacker => attacker.CommandId).ThenBy(attacker => attacker.Id.Value)
+                .FirstOrDefault();
+            if (response is null) continue;
+            blockedOrders[defender.Id] = defender;
+            units[defender.Id] = defender with
+            { AssignedTarget = RenewalTargetId.ForUnit(response.Id) };
+        }
+        intents = CollectUnitIntents(units, profiles);
         var engagements = BuildEngagements(intents, units, profiles);
         var combatParticipants = CollectCombatParticipants(state, engagements, units, profiles);
         var chargedProfiles = profiles.ToDictionary(x => x.Key, x => combatParticipants.Contains(x.Key)
