@@ -3388,6 +3388,7 @@ public sealed partial class CampaignMapScene : Node3D
             Officer(21), Officer(22), Officer(23), Officer(24), Officer(25), Officer(26), Officer(27),
             Officer(28), Officer(29), Officer(30), Officer(31), Officer(32),
             Officer(11), Officer(12), Officer(13), Officer(14),
+            Officer(33), Officer(34), Officer(35), Officer(36),
         },
         Postings: new List<GeneralPosting>
         {
@@ -3423,6 +3424,10 @@ public sealed partial class CampaignMapScene : Node3D
             new(new GeneralId(12), new FactionId(2), new CityId(2)),
             new(new GeneralId(13), new FactionId(2), new CityId(3)),
             new(new GeneralId(14), new FactionId(2), new CityId(3)),
+            new(new GeneralId(33), new FactionId(2), new CityId(3)),
+            new(new GeneralId(34), new FactionId(2), new CityId(3)),
+            new(new GeneralId(35), new FactionId(2), new CityId(3)),
+            new(new GeneralId(36), new FactionId(2), new CityId(3)),
         },
         // 테스트: 플레이어 2개 성 대기 병력, 적 2개 성 대기 병력.
         GarrisonForces: new List<GarrisonForce>

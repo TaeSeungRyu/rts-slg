@@ -25,6 +25,14 @@ public sealed partial class CampaignMapScene
                 == RenewalHexSpace.NearestHex(expected[1]!.Value),
             "Two clicks in one tile did not preserve distinct point goals");
         var initialState = _state;
+        var hanzhong = initialState.Cities.Single(city => city.Name == "한중");
+        Require(initialState.Garrisons.Where(force => force.City == hanzhong.Id
+                && force.TroopCode == "swordsman").Sum(force => force.Troops) == 150000,
+            "Hanzhong opening garrison is not five times the old fixture");
+        var enemyOpening = _ai.PlanWeek(initialState, hanzhong.Owner);
+        Require(enemyOpening.Armies.Any(unit => unit.OriginCity == hanzhong.Id
+                && unit.DeploymentDelayDays == 0),
+            "Hanzhong did not queue an army on the first advance");
         var cityId = _pendingDeploys[0].Req.City;
         var generals = _pendingDeploys.Select(entry => entry.Req.Vanguard).ToArray();
         _state = _state with
@@ -33,7 +41,8 @@ public sealed partial class CampaignMapScene
             RuinDefinitions = [], RuinStates = [],
             Postings = _state.Assignments.Where(posting => !generals.Contains(posting.General))
                 .Concat(generals.Select(id => new GeneralPosting(id, Player, cityId))).ToList(),
-            GarrisonForces = _state.Garrisons.Where(force => force.City != cityId || force.TroopCode != "cavalry")
+            GarrisonForces = _state.Garrisons.Where(force => force.City != hanzhong.Id
+                    && (force.City != cityId || force.TroopCode != "cavalry"))
                 .Append(new GarrisonForce(cityId, "cavalry", 10000, 70)).ToList(),
         };
         foreach (var hex in _map.Tiles())
