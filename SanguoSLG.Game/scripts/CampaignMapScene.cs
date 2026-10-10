@@ -187,8 +187,10 @@ public sealed partial class CampaignMapScene : Node3D
     private Button? _productionCommandButton;
     private PanelContainer _unitMenu = null!; // 유닛 명령 팔레트(정보·이동 재지정)
     private PanelContainer _unitChoiceMenu = null!;
+    private Label _unitChoiceTitle = null!;
     private VBoxContainer _unitChoiceRows = null!;
     private VBoxContainer _unitCmdBox = null!; // 이동·계략 섹션 — 아군·평시에만 표시
+    private Button _unitEnemyAttackButton = null!;
     private int _selectedUnitId = -1;
     private int _retargetUnitId = -1;  // ≥0이면 야전 부대 이동 재지정 목표 지정 중
     private UnitMode _retargetMode;
@@ -523,7 +525,10 @@ public sealed partial class CampaignMapScene : Node3D
         _fieldConstruction = new FieldConstructionService(_fieldBuildingDefinitions, _passability.TerrainAt);
         _unitCommander = new FieldUnitCommandService(
             (domain, hex) => _passability.CanEnter(domain, hex),
-            (state, hex) => state.Ruins.Any(r => r.Position == hex));
+            (state, hex) => state.Ruins.Any(r => r.Position == hex)
+                || state.Buildings.Any(building => building.Position == hex && building.Owner != Player
+                    && _fieldBuildingDefinitions.Any(definition => definition.Code == building.DefinitionCode
+                        && definition.CanBeTargeted)));
         _producer = new ProductionService(_troops, h => _passability.CanEnter(MovementDomain.Land, h));
         var movement = new MovementSimulator(_passability);
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
@@ -1436,6 +1441,7 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainCard.Visible = false;
         _terrainHex = null;
         _unitCmdBox.Visible = u.Field.Owner == Player && !_advancing; // 적·재생 중엔 정보만
+        _unitEnemyAttackButton.Visible = u.Field.Owner != Player && !_advancing;
         PlaceMenu(_unitMenu, u.Field.Position, 60f);
         _unitMenu.Visible = true;
         MoveRing(u.Field.Position);
@@ -1453,6 +1459,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void ShowUnitChoices(HexCoord hex, IReadOnlyList<CombatUnit> units)
     {
         HidePanels();
+        _unitChoiceTitle.Text = "겹친 부대 선택";
         foreach (var child in _unitChoiceRows.GetChildren())
         {
             _unitChoiceRows.RemoveChild(child);
@@ -1471,6 +1478,57 @@ public sealed partial class CampaignMapScene : Node3D
             _unitChoiceRows.AddChild(button);
         }
         PlaceMenu(_unitChoiceMenu, hex, 60f);
+        _unitChoiceMenu.Visible = true;
+    }
+
+    private void ShowAttackChoices(HexCoord target, string targetName, UnitId? enemyUnit = null)
+    {
+        if (_advancing) return;
+        var available = _state.Armies.Where(unit => unit.Field.Owner == Player
+                && unit.Pool.Active > 0 && !unit.IsWaitingDeployment && !unit.IsConstructing
+                && !_state.Buildings.Any(building => building.GarrisonUnit == unit.Id))
+            .OrderBy(unit => unit.Id.Value).ToList();
+        if (available.Count == 0)
+        {
+            ShowNotice("공격 불가", "명령 가능한 출전 부대가 없습니다.");
+            return;
+        }
+        HidePanels();
+        _unitChoiceTitle.Text = "공격 부대 선택";
+        Clear(_unitChoiceRows);
+        foreach (var unit in available)
+        {
+            var selected = unit;
+            var name = unit.VanguardId is { } generalId
+                ? _state.Generals.FirstOrDefault(general => general.Id == generalId)?.Name
+                : null;
+            var button = MakeButton($"{name ?? "부대"} · {TroopName(unit.TroopCode)} · {unit.Pool.Active:N0}명");
+            button.CustomMinimumSize = new Vector2(190, 30);
+            button.Alignment = HorizontalAlignment.Left;
+            button.Pressed += () =>
+            {
+                var result = _unitCommander.Reassign(_state, Player,
+                    new FieldUnitCommandRequest(selected.Id, UnitMode.Attack, target,
+                        VisibleTiles: _visibleTiles,
+                        ContinuousTarget: enemyUnit is { } id
+                            ? _state.Armies.FirstOrDefault(other => other.Id == id)?.RenewalPosition
+                            : RenewalHexSpace.Center(target)));
+                if (!result.Ok)
+                {
+                    ShowNotice("공격 불가", result.Error ?? "공격 목표를 지정할 수 없습니다.");
+                    return;
+                }
+                _state = result.State;
+                if (enemyUnit is { } marked)
+                    _state = _state with { FieldArmies = _state.Armies.Select(army => army.Id == selected.Id
+                        ? army with { Field = army.Field with { AssignedUnitTarget = marked } }
+                        : army).ToList() };
+                HidePanels();
+                Redraw($"{name ?? "부대"} → {targetName} 공격 명령");
+            };
+            _unitChoiceRows.AddChild(button);
+        }
+        PlaceMenu(_unitChoiceMenu, target, 60f);
         _unitChoiceMenu.Visible = true;
     }
 
@@ -1579,6 +1637,12 @@ public sealed partial class CampaignMapScene : Node3D
         Row("내구", definition.CanBeTargeted ? $"{building.HitPoints:N0} / {definition.MaxHitPoints:N0}" : "공격 대상 아님");
         Row("방어", definition.Defense.ToString());
         Row("영향 범위", $"반경 {definition.EffectRadius}칸 · {FieldBuildingDescription(definition)}");
+        if (building.Owner != Player && completed && definition.CanBeTargeted && !_advancing)
+        {
+            var attack = MakeButton("공격", accent: true);
+            attack.Pressed += () => ShowAttackChoices(building.Position, definition.Name);
+            _terrainInfo.AddChild(attack);
+        }
         if (completed && definition.CanGarrison)
         {
             var garrison = building.GarrisonUnit is { } unitId
@@ -4859,7 +4923,8 @@ public sealed partial class CampaignMapScene : Node3D
         var choiceBox = new VBoxContainer();
         choiceBox.AddThemeConstantOverride("separation", 4);
         _unitChoiceMenu.AddChild(choiceBox);
-        choiceBox.AddChild(MakeLabel("겹친 부대 선택", 13, GoldBright));
+        _unitChoiceTitle = MakeLabel("겹친 부대 선택", 13, GoldBright);
+        choiceBox.AddChild(_unitChoiceTitle);
         _unitChoiceRows = new VBoxContainer();
         _unitChoiceRows.AddThemeConstantOverride("separation", 3);
         choiceBox.AddChild(_unitChoiceRows);
@@ -4883,6 +4948,13 @@ public sealed partial class CampaignMapScene : Node3D
         var info = Item("정보", accent: true);
         info.Pressed += () => { if (_selectedUnitId >= 0) { ShowUnitInfo(_selectedUnitId); } };
         menu.AddChild(info);
+        _unitEnemyAttackButton = Item("공격", accent: true);
+        _unitEnemyAttackButton.Pressed += () =>
+        {
+            var enemy = DisplayedArmies.FirstOrDefault(a => a.Id.Value == _selectedUnitId);
+            if (enemy is not null) ShowAttackChoices(enemy.Field.Position, TroopName(enemy.TroopCode), enemy.Id);
+        };
+        menu.AddChild(_unitEnemyAttackButton);
 
         // 명령 섹션 — 아군 부대·진행 중이 아닐 때만 보인다(적/재생 중엔 정보만).
         _unitCmdBox = new VBoxContainer();
@@ -5373,6 +5445,12 @@ public sealed partial class CampaignMapScene : Node3D
             detailUnknown.CustomMinimumSize = new Vector2(0, 26);
             detailUnknown.Pressed += () => OpenCityInfoReadonly(id);
             _infoRows.AddChild(detailUnknown);
+            if (!_advancing)
+            {
+                var attack = MakeButton("공격", accent: true);
+                attack.Pressed += () => ShowAttackChoices(c.Position, c.Name);
+                _infoRows.AddChild(attack);
+            }
             PlacePalette(c.Position);
             _infoCard.Visible = true;
             _cmdMenu.Visible = false;
@@ -5440,6 +5518,12 @@ public sealed partial class CampaignMapScene : Node3D
             else { OpenCityInfoReadonly(id); }
         };
         _infoRows.AddChild(detailBtn);
+        if (!owned && !_advancing)
+        {
+            var attack = MakeButton("공격", accent: true);
+            attack.Pressed += () => ShowAttackChoices(c.Position, c.Name);
+            _infoRows.AddChild(attack);
+        }
 
         PlacePalette(c.Position);
         _infoCard.Visible = true;

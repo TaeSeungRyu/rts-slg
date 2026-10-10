@@ -92,6 +92,7 @@ public sealed partial class CampaignMapScene
         RunRenewalRealMapQa(initialState);
         RunFieldBuildingActivePlaybackQa(initialState);
         RunBlockedFieldCombatQa(initialState);
+        RunEnemyAttackChoiceQa(initialState);
     }
 
     private void RunCombatPlaybackTargetQa()
@@ -174,6 +175,34 @@ public sealed partial class CampaignMapScene
         _animAttacks.RemoveRange(previousAttackCount, _animAttacks.Count - previousAttackCount);
         _pendingState = priorPendingState;
         GD.Print("RENEWAL_BLOCKED_COMBAT_QA PASS: real-map combat -> damage -> attack animation on blocking unit");
+    }
+
+    private void RunEnemyAttackChoiceQa(GameState initialState)
+    {
+        var original = _state;
+        var fort = initialState.Buildings.Single(building => building.Id.Value == 800009);
+        var attacker = new CombatUnit(new FieldUnit(new UnitId(990021), Player,
+                new HexCoord(1, 4), 1, 3, 1, MovementDomain.Land, UnitMode.March, null, 1),
+            new CombatStats(10000, 20, 20), new TroopPool(10000, 0), UnitCombatState.Create(60),
+            TroopCode: "cavalry", RenewalPosition: RenewalHexSpace.Center(new HexCoord(1, 4)));
+        var enemy = new CombatUnit(new FieldUnit(new UnitId(990022), fort.Owner,
+                new HexCoord(1, 5), 1, 3, 1, MovementDomain.Land, UnitMode.March, null, 2),
+            new CombatStats(10000, 20, 20), new TroopPool(10000, 0), UnitCombatState.Create(60),
+            TroopCode: "swordsman", RenewalPosition: RenewalHexSpace.Center(new HexCoord(1, 5)));
+        _state = initialState with { FieldArmies = [attacker, enemy] };
+        ShowAttackChoices(fort.Position, "보루");
+        _unitChoiceRows.GetChildren().OfType<Button>().Last().EmitSignal(Button.SignalName.Pressed);
+        var buildingOrder = _state.Armies.Single(unit => unit.Id == attacker.Id);
+        if (buildingOrder.Field.Mode != UnitMode.Attack || buildingOrder.Field.Target != fort.Position)
+            throw new InvalidOperationException("Enemy building attack choice did not assign the selected unit");
+        ShowAttackChoices(enemy.Field.Position, "적 부대", enemy.Id);
+        _unitChoiceRows.GetChildren().OfType<Button>().Last().EmitSignal(Button.SignalName.Pressed);
+        var unitOrder = _state.Armies.Single(unit => unit.Id == attacker.Id);
+        if (unitOrder.Field.AssignedUnitTarget != enemy.Id || unitOrder.Field.Mode != UnitMode.Attack)
+            throw new InvalidOperationException("Enemy unit attack choice did not retain its selected unit id");
+        HidePanels();
+        _state = original;
+        GD.Print("ENEMY_ATTACK_CHOICE_QA PASS: building and unit palettes assign attack orders");
     }
 
     private void RunFieldBuildingActivePlaybackQa(GameState initialState)
