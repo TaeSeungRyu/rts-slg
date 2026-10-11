@@ -242,6 +242,7 @@ public sealed partial class CampaignMapScene : Node3D
     private CanvasLayer? _fieldBuildDim;
     private int _selectedFieldBuildingId = -1;
     private readonly List<MeshInstance3D> _fieldBuildingRangeMarkers = new();
+    private readonly List<MeshInstance3D> _unitAttackRangeMarkers = new();
 
     // 명령 모달(명령 클릭 → 큰 창 + 아이콘 카드 그리드 → 카드 선택 → 장수 클릭 = 실행).
     private CanvasLayer? _modalLayer;
@@ -1435,6 +1436,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (!CanSeeUnit(u)) return;
         _unitChoiceMenu.Visible = false;
         ClearFieldBuildingRange();
+        ClearUnitAttackRange();
         _selectedUnitId = u.Id.Value;
         _selected = null;
         _infoCard.Visible = false;
@@ -1443,9 +1445,11 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainHex = null;
         _unitCmdBox.Visible = u.Field.Owner == Player && !_advancing; // 적·재생 중엔 정보만
         _unitEnemyAttackButton.Visible = u.Field.Owner != Player && !_advancing;
+        _unitMenu.ResetSize();
         PlaceMenu(_unitMenu, u.Field.Position, 60f);
         _unitMenu.Visible = true;
-        MoveRing(u.Field.Position);
+        MoveRingForUnit(u);
+        DrawUnitAttackRange(u);
         DrawSupplyZones();
 
         // 아군 부대를 클릭했을 때만 그 부대의 이동 경로를 표시(경유지가 있으면 경유지까지 이어서).
@@ -1552,6 +1556,7 @@ public sealed partial class CampaignMapScene : Node3D
         _infoCard.Visible = false;
         ClearPathMarkers();
         ClearSupplyZoneMarkers();
+        ClearUnitAttackRange();
 
         var status = _state.RuinStatus.FirstOrDefault(r => r.RuinId == ruin.Id)
             ?? new RuinState(ruin.Id, ruin.MaxDefenders);
@@ -1704,6 +1709,44 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var marker in _fieldBuildingRangeMarkers) marker.QueueFree();
         _fieldBuildingRangeMarkers.Clear();
         _selectedFieldBuildingId = -1;
+    }
+
+    private void ClearUnitAttackRange()
+    {
+        foreach (var marker in _unitAttackRangeMarkers) marker.QueueFree();
+        _unitAttackRangeMarkers.Clear();
+    }
+
+    private void DrawUnitAttackRange(CombatUnit unit)
+    {
+        var origin = unit.RenewalPosition ?? RenewalHexSpace.Center(unit.Field.Position);
+        var radius = System.Math.Max(0, unit.Field.AttackRange) * ContinuousPosition.UnitsPerTile;
+        var mesh = new CylinderMesh
+        {
+            TopRadius = _view.HexWorldSize * 0.83f, BottomRadius = _view.HexWorldSize * 0.83f,
+            Height = 0.018f, RadialSegments = 6,
+        };
+        var material = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.93f, 0.25f, 0.18f, 0.34f),
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            NoDepthTest = true,
+            RenderPriority = -1,
+        };
+        foreach (var hex in _map.Tiles())
+        {
+            if (!_visibleTiles.Contains(hex) || origin.DistanceTo(RenewalHexSpace.Center(hex)) > radius)
+                continue;
+            var marker = new MeshInstance3D
+            {
+                Mesh = mesh, MaterialOverride = material,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                Position = _view.HexToWorld(hex) + new Vector3(0, _view.TileTopY + 0.025f, 0),
+            };
+            AddChild(marker);
+            _unitAttackRangeMarkers.Add(marker);
+        }
     }
 
     private void DrawFieldBuildingRange(FieldBuilding building, FieldBuildingDefinition definition)
@@ -2280,6 +2323,7 @@ public sealed partial class CampaignMapScene : Node3D
         _infoCard.Visible = false;
         ClearPathMarkers();
         ClearSupplyZoneMarkers();
+        ClearUnitAttackRange();
 
         var inMap = _map.Contains(h);
         var terrain = inMap ? _passability.TerrainAt(h) : TerrainType.Plains;
@@ -5010,10 +5054,48 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var labels = _unitCmdBox.FindChildren("*", "Label", true, false).OfType<Label>().Select(label => label.Text).ToList();
         var buttons = _unitCmdBox.FindChildren("*", "Button", true, false).OfType<Button>().Select(button => button.Text).ToList();
+        _unitCmdBox.Visible = true;
+        _unitEnemyAttackButton.Visible = false;
+        _unitMenu.ResetSize();
+        var friendlyHeight = _unitMenu.GetCombinedMinimumSize().Y;
+        _unitCmdBox.Visible = false;
+        _unitEnemyAttackButton.Visible = true;
+        _unitMenu.ResetSize();
+        var enemyHeight = _unitMenu.GetCombinedMinimumSize().Y;
+        var enemyActualHeight = _unitMenu.Size.Y;
+        // 초기 맵 테스트에는 야전 부대가 없으므로 별도 토큰을 배치한다.
+        var city = _state.Cities.FirstOrDefault(candidate => candidate.Owner == Player);
+        var rangeAndRingOk = city is not null;
+        if (city is not null)
+        {
+            const int qaUnitId = -987656;
+            var sample = new CombatUnit(
+                new FieldUnit(new UnitId(qaUnitId), Player, city.Position, 1, 1, 1,
+                    MovementDomain.Land, UnitMode.March, null, 0),
+                new CombatStats(1000, 10, 10), new TroopPool(1000, 0), UnitCombatState.Create(70));
+            var token = new UnitController3D();
+            AddChild(token);
+            token.Position = _view.HexToWorld(city.Position) + new Vector3(0.22f, 0, 0.18f);
+            _armyTokens[qaUnitId] = token;
+            OpenUnitMenu(sample);
+            var origin = sample.RenewalPosition ?? RenewalHexSpace.Center(sample.Field.Position);
+            var radius = sample.Field.AttackRange * ContinuousPosition.UnitsPerTile;
+            rangeAndRingOk = _ring is not null
+                && Mathf.Abs(_ring.Position.X - token.GlobalPosition.X) < 0.001f
+                && Mathf.Abs(_ring.Position.Z - token.GlobalPosition.Z) < 0.001f
+                && _unitAttackRangeMarkers.Count > 0
+                && _unitAttackRangeMarkers.All(marker =>
+                    origin.DistanceTo(RenewalHexSpace.Center(_view.WorldToHex(marker.Position))) <= radius);
+            HidePanels();
+            _armyTokens.Remove(qaUnitId);
+            token.QueueFree();
+        }
         var passed = !labels.Contains("· 액티브") && !buttons.Contains("슬롯 보기")
             && buttons.Contains("행군") && buttons.Contains("전진") && buttons.Contains("공격")
-            && buttons.Contains("정지") && buttons.Contains("복귀");
-        GD.Print($"[unit-menu-qa] passed={passed} buttons={string.Join(',', buttons)}");
+            && buttons.Contains("정지") && buttons.Contains("복귀")
+            && enemyHeight > 0 && enemyHeight < friendlyHeight
+            && Mathf.Abs(enemyActualHeight - enemyHeight) < 1f && rangeAndRingOk;
+        GD.Print($"[unit-menu-qa] passed={passed} friendlyHeight={friendlyHeight} enemyHeight={enemyHeight} enemyActualHeight={enemyActualHeight} rangeAndRing={rangeAndRingOk} buttons={string.Join(',', buttons)}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -5419,11 +5501,13 @@ public sealed partial class CampaignMapScene : Node3D
         ClearPathMarkers();
         ClearSupplyZoneMarkers();
         ClearFieldBuildingRange();
+        ClearUnitAttackRange();
         if (_ring is not null) { _ring.Visible = false; }
     }
 
     private void SelectCity(CityId id)
     {
+        ClearUnitAttackRange();
         _selected = id;
         _cmdIndex = -1;
         CloseGroupMenu();
@@ -5788,8 +5872,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (_unitMenu.Visible && _selectedUnitId >= 0)
         {
             var u = DisplayedArmies.FirstOrDefault(a => a.Id.Value == _selectedUnitId);
-            if (u is not null) { PlaceMenu(_unitMenu, u.Field.Position, 60f); }
-            else { _unitMenu.Visible = false; }
+            if (u is not null) { PlaceMenu(_unitMenu, u.Field.Position, 60f); MoveRingForUnit(u); }
+            else { _unitMenu.Visible = false; ClearUnitAttackRange(); }
         }
 
         if (_terrainCard.Visible && _terrainHex is { } th)
@@ -15170,6 +15254,14 @@ public sealed partial class CampaignMapScene : Node3D
 
         _ring.Visible = true;
         _ring.Position = _view.HexToWorld(at) + new Vector3(0f, _view.TileTopY + 0.06f, 0f);
+    }
+
+    private void MoveRingForUnit(CombatUnit unit)
+    {
+        MoveRing(unit.Field.Position);
+        if (_armyTokens.TryGetValue(unit.Id.Value, out var token) && IsInstanceValid(token))
+            _ring!.Position = new Vector3(token.GlobalPosition.X, _view.TileTopY + 0.06f,
+                token.GlobalPosition.Z);
     }
 
     private static void Clear(Node parent)
