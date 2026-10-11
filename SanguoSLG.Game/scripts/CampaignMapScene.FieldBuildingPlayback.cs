@@ -102,7 +102,7 @@ public sealed partial class CampaignMapScene
                 if (unit is null || unit.Pool.Active <= 0) return;
                 token = new UnitController3D();
                 AddChild(token);
-                token.InitDisplay(_view, unit.Field.Owner == Player ? Blue : Red,
+                token.InitDisplay(_view, ArmyFactionColor(unit.Field.Owner),
                     unit.IsArmyGroup ? UnitController3D.ArmyGroupModelIndex
                         : unit.IsSupply ? UnitController3D.SupplyModelIndex
                         : TroopModelIndex.GetValueOrDefault(unit.TroopCode, 0), unit.Field.Position);

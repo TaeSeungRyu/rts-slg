@@ -41,6 +41,7 @@ M_STRING = ic.make_mat("army_group_string", (0.85, 0.82, 0.72), roughness=0.6)
 M_FLETCH = ic.make_mat("army_group_fletch", (0.88, 0.88, 0.86))
 M_STONE = ic.make_mat("army_group_stone", (0.52, 0.52, 0.50))
 M_PENCIL = ic.make_mat("army_group_pencil", (0.72, 0.52, 0.22))
+M_CREST = ic.make_mat("army_group_crest", (0.92, 0.72, 0.28), roughness=0.45)
 
 
 def empty(name, parent=None):
@@ -357,19 +358,24 @@ def build_thunder_cart(prefix, x, y):
 def build_command_flag():
     x, y = 0.0, 0.095
     pole = ic.cylinder(
-        "army_group_command_flag_pole", 0.008, 0.335,
-        x, y, 0.1675, m.wood, verts=6,
+        "army_group_command_flag_pole", 0.009, 0.440,
+        x, y, 0.220, m.wood, verts=8,
     )
     flag = ic.box(
-        "army_group_command_flag", 0.105, 0.006, 0.060,
-        x + 0.050, y, 0.285, m.red,
+        "army_group_command_flag", 0.170, 0.008, 0.115,
+        x + 0.080, y, 0.345, m.red,
     )
     trim = ic.box(
-        "army_group_command_flag_trim", 0.112, 0.008, 0.010,
-        x + 0.050, y - 0.002, 0.255, m.steel,
+        "army_group_command_flag_trim", 0.176, 0.010, 0.012,
+        x + 0.080, y - 0.002, 0.404, m.steel,
+    )
+    crest = ic.box(
+        "army_group_command_flag_crest", 0.040, 0.011, 0.040,
+        x + 0.080, y - 0.009, 0.346, M_CREST, rot_y=math.radians(45),
     )
     ic.parent_to(flag, pole)
     ic.parent_to(trim, pole)
+    ic.parent_to(crest, pole)
     return pole
 
 

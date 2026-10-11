@@ -15411,6 +15411,12 @@ public sealed partial class CampaignMapScene : Node3D
                 token.GlobalPosition.Z);
     }
 
+    private Color ArmyFactionColor(FactionId owner)
+    {
+        var code = _state.Factions.FirstOrDefault(faction => faction.Id == owner)?.Color;
+        return string.IsNullOrWhiteSpace(code) ? (owner == Player ? Blue : Red) : new Color(code);
+    }
+
     private static void Clear(Node parent)
     {
         foreach (var child in parent.GetChildren())
@@ -15616,7 +15622,7 @@ public sealed partial class CampaignMapScene : Node3D
             .Select(x => x.GarrisonUnit!.Value).ToHashSet();
         foreach (var army in _state.Armies)
         {
-            var color = army.Field.Owner.Value == 1 ? Blue : Red;
+            var color = ArmyFactionColor(army.Field.Owner);
             if (!_armyTokens.TryGetValue(army.Id.Value, out var token))
             {
                 token = new UnitController3D();
