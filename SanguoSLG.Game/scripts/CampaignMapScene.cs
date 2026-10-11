@@ -2039,7 +2039,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             Row("현재 추격", $"{pursuit} · {movement.StopReason}");
         }
-        Row("군량", u.TracksProvisions ? $"{u.Provisions}" : "무한");
+        Row("군량", u.TracksProvisions ? $"{u.Provisions:N0} · 예상 {EstimateCarriedProvisionDays(u)}일" : "무한");
         if (u.IsSupply)
         {
             Row("보급범위", $"{FieldSupplyRadius}칸");
@@ -12211,6 +12211,15 @@ public sealed partial class CampaignMapScene : Node3D
         var wanted = _depProvDays * _depAmount * _provPer10kPerDay / 10000;
         var cityProv = _state.Cities.First(x => x.Id == _depModalCity).Provisions;
         return System.Math.Min(System.Math.Min(wanted, capacity), cityProv);
+    }
+
+    private int EstimateCarriedProvisionDays(CombatUnit unit)
+    {
+        if (!unit.TracksProvisions || unit.Pool.Active <= 0) return 0;
+        var navalPercent = unit.Class == TroopClass.Naval ? _balance.NavalProvisionsPercent : 100;
+        var daily = (long)unit.Pool.Active * _provPer10kPerDay
+            * unit.ProvisionsUpkeepPercent * navalPercent / 100_000_000L;
+        return daily <= 0 ? 0 : (int)(unit.Provisions / daily);
     }
 
     private void UpdateProvLabel()
