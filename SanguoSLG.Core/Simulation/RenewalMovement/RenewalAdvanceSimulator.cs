@@ -12,7 +12,7 @@ public sealed class RenewalAdvanceSimulator
     public const int DaysPerAdvance = 7;
     public const long ArrivalTolerance = 50;
     public const long UnitCollisionRadius = 180;
-    public const long HostileCollisionRadius = 450;
+    public const long HostileCollisionRadius = 400;
     public const long ArrivalDispersionLimit = 500;
 
     private readonly RenewalMovementMap? _movementMap;

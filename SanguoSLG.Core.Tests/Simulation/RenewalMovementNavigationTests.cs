@@ -212,7 +212,7 @@ public sealed class RenewalMovementNavigationTests
         };
         var enemy = Unit(2, new(1, 0), new(1, 0), faction: 2) with
         {
-            Position = new(910, 0), Destination = new(910, 0),
+            Position = new(810, 0), Destination = new(810, 0),
         };
         var result = simulator.StepMovementTick(simulator.Start([mover, enemy]));
 
@@ -234,7 +234,8 @@ public sealed class RenewalMovementNavigationTests
         var state = simulator.Start([first, ally, enemy]);
 
         Assert.Equal(state.Units[0].Position, state.Units[1].Position);
-        Assert.True(state.Units[0].Position.DistanceTo(state.Units[2].Position) >= 900);
+        Assert.True(state.Units[0].Position.DistanceTo(state.Units[2].Position)
+            >= RenewalAdvanceSimulator.HostileCollisionRadius * 2);
     }
 
     [Fact]

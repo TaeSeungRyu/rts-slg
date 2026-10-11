@@ -193,6 +193,20 @@ public sealed class RenewalCampaignIntegrationTests
     }
 
     [Fact]
+    public void 경로_옆_적에게_닿지_않는_행군은_목표까지_진행한다()
+    {
+        var marcher = Army(1, new(0, 0), new(4, 0), 2);
+        var nearby = Army(2, new(1, -1), new(1, -1), 0) with
+        { Field = Army(2, new(1, -1), new(1, -1), 0).Field with
+            { Owner = new(2), Mode = UnitMode.Standby } };
+        var after = Engine(new HexMap(-4, 10, -4, 10))
+            .AdvanceWeek(World(marcher, nearby), out var turns);
+        Assert.Equal(RenewalHexSpace.Center(new HexCoord(4, 0)),
+            after.Armies.Single(unit => unit.Id == marcher.Id).RenewalPosition);
+        Assert.Empty(turns.SelectMany(turn => turn.FieldCombatExchanges));
+    }
+
+    [Fact]
     public void 실제캠페인_건축물액티브는_공격턴보고와_게이지초기화에_반영된다()
     {
         var map = new HexMap(-4, 12, -4, 12);
