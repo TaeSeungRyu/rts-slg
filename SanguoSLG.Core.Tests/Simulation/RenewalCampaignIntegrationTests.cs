@@ -28,6 +28,39 @@ public sealed class RenewalCampaignIntegrationTests
         Assert.True(turns.SelectMany(turn => turn.FieldBuildingExchanges)
             .Where(exchange => exchange.Building == fort.Id).Sum(exchange => exchange.Damage) > 0);
     }
+
+    [Fact]
+    public void 동일_보루를_목표로_한_두부대_중_한부대만_입성하고_나머지는_밖에_멈춘다()
+    {
+        var fort = new FieldBuilding(new(81), "fort", new(1), new(2, 5), 4000, 0, 0);
+        var first = Army(1, new(2, 3), fort.Position, 2);
+        var second = Army(2, new(3, 4), fort.Position, 2);
+        var after = Engine(new HexMap(-5, 12, -5, 12))
+            .AdvanceWeek(World(first, second) with { FieldBuildings = [fort] }, out _);
+        var garrisonId = Assert.Single(after.Buildings).GarrisonUnit;
+        Assert.NotNull(garrisonId);
+        var outside = Assert.Single(after.Armies, unit => unit.Id != garrisonId);
+        Assert.NotEqual(fort.Position, outside.Field.Position);
+        Assert.Equal(UnitMode.Standby, outside.Field.Mode);
+        Assert.Null(outside.Field.Target);
+        Assert.True(outside.RenewalPosition!.Value.DistanceTo(RenewalHexSpace.Center(fort.Position))
+            > RenewalAdvanceSimulator.UnitCollisionRadius + 577);
+    }
+
+    [Fact]
+    public void 이미_주둔한_보루에는_다른_부대의_행군명령을_거절한다()
+    {
+        var fort = new FieldBuilding(new(81), "fort", new(1), new(2, 5), 4000, 0, 0,
+            GarrisonUnit: new UnitId(1));
+        var garrison = Army(1, fort.Position, fort.Position);
+        var other = Army(2, new(2, 3), new(2, 3));
+        var state = World(garrison, other) with { FieldBuildings = [fort] };
+        var command = new FieldUnitCommandService((_, _) => true);
+        var result = command.Reassign(state, new FactionId(1),
+            new FieldUnitCommandRequest(other.Id, UnitMode.March, fort.Position));
+        Assert.False(result.Ok);
+        Assert.Equal(state, result.State);
+    }
     [Theory]
     [InlineData(UnitMode.March, UnitMode.March)]
     [InlineData(UnitMode.March, UnitMode.Attack)]

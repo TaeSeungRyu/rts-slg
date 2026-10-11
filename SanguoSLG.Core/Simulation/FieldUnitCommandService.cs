@@ -27,6 +27,12 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
         {
             return CommandResult.Fail("건축 중인 부대에는 다른 명령을 내릴 수 없습니다.", state);
         }
+        if (state.Buildings.Any(building => building.Owner == faction
+            && building.Position == req.Target && building.GarrisonUnit is not null
+            && building.GarrisonUnit != unit.Id))
+        {
+            return CommandResult.Fail("이미 부대가 주둔 중인 보루에는 이동할 수 없습니다.", state);
+        }
 
         if (!CanTarget(state, faction, unit, req.Target, req.VisibleTiles))
         {

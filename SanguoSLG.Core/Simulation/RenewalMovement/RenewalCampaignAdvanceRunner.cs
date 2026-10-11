@@ -36,6 +36,25 @@ public sealed class RenewalCampaignAdvanceRunner(
         var simulator = new RenewalAdvanceSimulator(movementMap);
         var liveBuildings = (fieldBuildings ?? [])
             .Where(building => !building.IsExpired(fieldDay)).ToList();
+        var unavailableGarrisons = new HashSet<UnitId>();
+        foreach (var building in liveBuildings.Where(building => building.IsCompleted(fieldDay)
+            && fieldDefinitions?.Any(definition => definition.Code == building.DefinitionCode
+                && definition.CanGarrison) == true))
+        {
+            var entrants = active.Where(unit => unit.Field.Owner == building.Owner
+                    && unit.Field.Target == building.Position
+                    && unit.Field.Mode is UnitMode.March or UnitMode.Advance
+                    && unit.Id != building.GarrisonUnit)
+                .OrderBy(unit => unit.Field.CommandOrder).ThenBy(unit => unit.Id.Value);
+            foreach (var unit in building.GarrisonUnit is null ? entrants.Skip(1) : entrants)
+                unavailableGarrisons.Add(unit.Id);
+        }
+        active = active.Select(unit => unavailableGarrisons.Contains(unit.Id)
+            ? unit with { Field = unit.Field with { Mode = UnitMode.Standby,
+                Target = null, ContinuousTarget = null, Waypoints = null,
+                ContinuousWaypoints = null, PursuitTarget = null,
+                AssignedUnitTarget = null } }
+            : unit).ToList();
         var attackableCodes = (fieldDefinitions ?? [])
             .Where(definition => definition.CanBeTargeted)
             .Select(definition => definition.Code).ToHashSet(StringComparer.Ordinal);
