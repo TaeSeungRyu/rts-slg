@@ -248,7 +248,8 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
         var chargeEngagements = CombatPhase.DetectEngagements(state.Values.ToList())
             .Select(e => e with { Targets = e.Targets.Where(id => !protectedGarrisons.Contains(id)).ToList() })
             .Where(e => e.Targets.Count > 0)
-            .Where(e => !constructionUnits.Contains(e.Attacker)
+            .Where(e => !protectedGarrisons.Contains(e.Attacker)
+                && !constructionUnits.Contains(e.Attacker)
                 && state[e.Attacker].CanInitiateCombat
                 && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker])))
             .ToList();
@@ -278,7 +279,8 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
         var engagements = CombatPhase.DetectEngagements(state.Values.ToList())
             .Select(e => e with { Targets = e.Targets.Where(id => !protectedGarrisons.Contains(id)).ToList() })
             .Where(e => e.Targets.Count > 0)
-            .Where(e => !constructionUnits.Contains(e.Attacker)
+            .Where(e => !protectedGarrisons.Contains(e.Attacker)
+                && !constructionUnits.Contains(e.Attacker)
                 && !firedStratagems.ContainsKey(e.Attacker)
                 && (!firedActives.TryGetValue(e.Attacker, out var tactic)
                     || tactic.Code == "cleanse")

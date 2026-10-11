@@ -9,6 +9,25 @@ using SanguoSLG.Game;
 
 public sealed class RenewalCampaignIntegrationTests
 {
+    [Fact]
+    public void 보루에_주둔한_부대를_추격하던_적은_보루를_공격한다()
+    {
+        var fort = new FieldBuilding(new(81), "fort", new(1), new(2, 5), 4000, 0, 0,
+            GarrisonUnit: new UnitId(1));
+        var garrison = Army(1, fort.Position, fort.Position) with
+        { Field = Army(1, fort.Position, fort.Position).Field with { Mode = UnitMode.Advance } };
+        var enemy = Army(2, new(3, 4), fort.Position, 2) with
+        { Field = Army(2, new(3, 4), fort.Position, 2).Field with
+            { Owner = new(2), Mode = UnitMode.Attack, AssignedUnitTarget = garrison.Id } };
+        Engine(new HexMap(-5, 12, -5, 12))
+            .AdvanceWeek(World(garrison, enemy) with { FieldBuildings = [fort] }, out var turns);
+        Assert.Contains(turns.SelectMany(turn => turn.FieldBuildingExchanges), exchange =>
+            exchange.Building == fort.Id && exchange.Attacker == enemy.Id);
+        Assert.DoesNotContain(turns.SelectMany(turn => turn.FieldCombatExchanges), exchange =>
+            exchange.Attacker == garrison.Id || exchange.Target == garrison.Id);
+        Assert.True(turns.SelectMany(turn => turn.FieldBuildingExchanges)
+            .Where(exchange => exchange.Building == fort.Id).Sum(exchange => exchange.Damage) > 0);
+    }
     [Theory]
     [InlineData(UnitMode.March, UnitMode.March)]
     [InlineData(UnitMode.March, UnitMode.Attack)]
