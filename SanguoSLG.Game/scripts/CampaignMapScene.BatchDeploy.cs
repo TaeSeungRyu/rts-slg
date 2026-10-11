@@ -39,10 +39,10 @@ public sealed partial class CampaignMapScene
         box.AddChild(GoldRule());
         box.AddChild(MakeLabel("병종별 10,000명을 우선 추천합니다. 선봉을 먼저 배치한 뒤 남은 장수를 부관으로 배치합니다.", 12, Parchment));
 
-        var table = new GridContainer { Columns = 7, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        var table = new GridContainer { Columns = 8, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         table.AddThemeConstantOverride("h_separation", 7);
         table.AddThemeConstantOverride("v_separation", 4);
-        foreach (var header in new[] { "부대", "장수 1 (선봉)", "장수 2 (부관)", "병종", "병력수", "휴대 금", "" })
+        foreach (var header in new[] { "부대", "장수 1 (선봉)", "장수 2 (부관)", "병종", "병력수", "군량 · 예상일", "휴대 금", "" })
         {
             var label = MakeLabel(header, 12, GoldBright);
             label.HorizontalAlignment = HorizontalAlignment.Center;
@@ -57,16 +57,19 @@ public sealed partial class CampaignMapScene
         {
             var validation = planner.Validate(drafts, city, _state.Garrisons, availableIds,
                 DeployMaxTroopsFor(city), reservedTroops, reservedGenerals);
-            var goldValid = drafts.Sum(draft => draft.Gold) <= _state.Cities.First(c => c.Id == city).Gold;
+            var sourceCity = _state.Cities.First(c => c.Id == city);
+            var goldValid = drafts.Sum(draft => draft.Gold) <= sourceCity.Gold;
+            var provisionValid = drafts.Sum(BatchProvisionsToCarry) <= sourceCity.Provisions;
             for (var i = 0; i < rowErrors.Count; i++)
                 rowErrors[i].Text = validation.RowErrors.GetValueOrDefault(i, "");
             summary.Text = drafts.Count == 0
                 ? "⚠ 편성 가능한 병력과 장수가 없습니다."
-                : validation.Ok && goldValid ? $"{drafts.Count}개 부대 초안 · 확인 후 기존 전투편성 목록에서 목표를 지정합니다."
+                : validation.Ok && goldValid && provisionValid ? $"{drafts.Count}개 부대 초안 · 확인 후 기존 전투편성 목록에서 목표를 지정합니다."
                 : !goldValid ? "⚠ 부대에 나눈 휴대 금의 합계가 도시 보유 금을 초과했습니다."
+                : !provisionValid ? "⚠ 부대에 나눈 휴대 군량의 합계가 도시 보유 군량을 초과했습니다."
                 : "⚠ " + string.Join("  /  ", validation.RowErrors.OrderBy(pair => pair.Key)
                     .Select(pair => $"부대 {pair.Key + 1}: {pair.Value}"));
-            if (apply is not null) apply.Disabled = !validation.Ok || !goldValid;
+            if (apply is not null) apply.Disabled = !validation.Ok || !goldValid || !provisionValid;
         }
 
         for (var rowIndex = 0; rowIndex < drafts.Count; rowIndex++)
@@ -83,7 +86,7 @@ public sealed partial class CampaignMapScene
 
             OptionButton GeneralOption(GeneralId? selected, bool allowNone)
             {
-                var option = MakeOption(220);
+                var option = MakeOption(190);
                 if (allowNone)
                 {
                     option.AddItem("없음");
@@ -146,8 +149,39 @@ public sealed partial class CampaignMapScene
                 CustomMinimumSize = new Vector2(92, 34),
             });
             amount.SetMeta("batch_compact_column", true);
-            amount.ValueChanged += value => { drafts[index] = drafts[index] with { Troops = (int)value }; Validate(); };
             table.AddChild(amount);
+            var provisionCell = new VBoxContainer { CustomMinimumSize = new Vector2(92, 50) };
+            var provision = ApplyNumberInputStyle(new SpinBox
+            {
+                Name = $"BatchDeployProvisions{index}",
+                MinValue = 0,
+                MaxValue = BatchProvisionCapacity(draft),
+                Step = 10,
+                Value = BatchProvisionsToCarry(draft),
+                CustomMinimumSize = new Vector2(92, 30),
+            });
+            provision.SetMeta("batch_compact_column", true);
+            var provisionDays = MakeLabel(BatchProvisionDays(draft), 10, Parchment);
+            provision.ValueChanged += value =>
+            {
+                drafts[index] = drafts[index] with { Provisions = (int)value };
+                provisionDays.Text = BatchProvisionDays(drafts[index]);
+                Validate();
+            };
+            amount.ValueChanged += value =>
+            {
+                drafts[index] = drafts[index] with { Troops = (int)value };
+                var capacity = BatchProvisionCapacity(drafts[index]);
+                provision.MaxValue = capacity;
+                if (drafts[index].Provisions >= 0 && drafts[index].Provisions > capacity)
+                    drafts[index] = drafts[index] with { Provisions = capacity };
+                provision.SetValueNoSignal(BatchProvisionsToCarry(drafts[index]));
+                provisionDays.Text = BatchProvisionDays(drafts[index]);
+                Validate();
+            };
+            provisionCell.AddChild(provision);
+            provisionCell.AddChild(provisionDays);
+            table.AddChild(provisionCell);
             var gold = ApplyNumberInputStyle(new SpinBox
             {
                 Name = $"BatchDeployGold{index}",
@@ -193,6 +227,22 @@ public sealed partial class CampaignMapScene
     private void ReopenBatchDeployCompose(int cityId, List<BatchDeployDraft> drafts)
         => OpenBatchDeployCompose(new CityId(cityId), drafts);
 
+    private int BatchProvisionCapacity(BatchDeployDraft draft)
+    {
+        var template = _troops.FirstOrDefault(t => t.Code == draft.TroopCode);
+        return System.Math.Max(0, (template?.ProvisionsCapacity ?? 300) * draft.Troops / 10000);
+    }
+
+    private int BatchProvisionsToCarry(BatchDeployDraft draft)
+        => draft.Provisions < 0 ? BatchProvisionCapacity(draft)
+            : System.Math.Clamp(draft.Provisions, 0, BatchProvisionCapacity(draft));
+
+    private string BatchProvisionDays(BatchDeployDraft draft)
+    {
+        var daily = draft.Troops * _provPer10kPerDay / 10000;
+        return daily <= 0 ? "약 0일" : $"약 {BatchProvisionsToCarry(draft) / daily}일";
+    }
+
     private void ApplyBatchDeployDrafts(CityId city, IReadOnlyList<BatchDeployDraft> drafts)
     {
         var planner = new BatchDeployPlanner();
@@ -208,6 +258,14 @@ public sealed partial class CampaignMapScene
             OpenBatchDeployCompose(city, drafts.ToList());
             return;
         }
+        var sourceCity = _state.Cities.First(c => c.Id == city);
+        if (drafts.Sum(draft => draft.Gold) > sourceCity.Gold
+            || drafts.Sum(BatchProvisionsToCarry) > sourceCity.Provisions)
+        {
+            ShowNotice("일괄편성 불가", "도시의 금 또는 군량이 부족합니다.");
+            OpenBatchDeployCompose(city, drafts.ToList());
+            return;
+        }
 
         var ids = drafts.SelectMany(draft => new[] { (GeneralId?)draft.Vanguard, draft.Adjutant })
             .OfType<GeneralId>().Distinct().ToArray();
@@ -216,7 +274,7 @@ public sealed partial class CampaignMapScene
             var troop = _troops.First(t => t.Code == draft.TroopCode);
             var vanguard = _state.Generals.First(g => g.Id == draft.Vanguard).Name;
             var adjutant = draft.Adjutant is { } aid ? " + " + _state.Generals.First(g => g.Id == aid).Name : "";
-            return $"{index + 1}. {troop.Name} {draft.Troops:N0}명 · {vanguard}{adjutant} · 금 {draft.Gold:N0}";
+            return $"{index + 1}. {troop.Name} {draft.Troops:N0}명 · {vanguard}{adjutant} · 군량 {BatchProvisionsToCarry(draft):N0}({BatchProvisionDays(draft)}) · 금 {draft.Gold:N0}";
         }).ToList();
         ShowConfirm("일괄전투편성 확인",
             $"{string.Join("\n", lines)}\n\n확인 후 전투편성 목록에서 부대별 목표와 이동 모드를 지정하세요.{DutyReleaseNotice(ids)}",
@@ -236,9 +294,9 @@ public sealed partial class CampaignMapScene
                     var vanguard = _state.Generals.First(g => g.Id == draft.Vanguard).Name;
                     var adjutant = draft.Adjutant is { } aid ? "+" + _state.Generals.First(g => g.Id == aid).Name : "";
                     var request = new DeployRequest(city, draft.TroopCode, draft.Troops,
-                        draft.Vanguard, draft.Adjutant, UnitMode.Advance, Provisions: -1,
+                        draft.Vanguard, draft.Adjutant, UnitMode.Advance, Provisions: BatchProvisionsToCarry(draft),
                         Gold: draft.Gold, DelayDays: _depDelayDays);
-                    _pendingDeploys.Add((request, $"{troop.Name} {draft.Troops}({vanguard}{adjutant}) · 전진 · 군량 자동 · 금 {draft.Gold:N0} · {DelayLabel(_depDelayDays)}"));
+                    _pendingDeploys.Add((request, $"{troop.Name} {draft.Troops}({vanguard}{adjutant}) · 전진 · 군량 {BatchProvisionsToCarry(draft):N0} · 금 {draft.Gold:N0} · {DelayLabel(_depDelayDays)}"));
                 }
                 _depSelectedUnit = -1;
                 SelectCity(city);
@@ -259,6 +317,7 @@ public sealed partial class CampaignMapScene
         var options = _modalLayer?.FindChildren("*", "OptionButton", true, false).OfType<OptionButton>().ToList() ?? [];
         var troopOptions = options.Where(option => option.Name.ToString().StartsWith("BatchDeployTroopType", System.StringComparison.Ordinal)).ToList();
         var troopAmounts = _modalLayer?.FindChildren("BatchDeployTroops*", "SpinBox", true, false).OfType<SpinBox>().ToList() ?? [];
+        var provisionAmounts = _modalLayer?.FindChildren("BatchDeployProvisions*", "SpinBox", true, false).OfType<SpinBox>().ToList() ?? [];
         var goldAmounts = _modalLayer?.FindChildren("BatchDeployGold*", "SpinBox", true, false).OfType<SpinBox>().ToList() ?? [];
         var removes = _modalLayer?.FindChildren("BatchDeployRemove*", "Button", true, false).OfType<Button>().ToList() ?? [];
         var delay = _modalLayer?.FindChildren("DeploymentDelaySelector", "OptionButton", true, false)
@@ -268,6 +327,7 @@ public sealed partial class CampaignMapScene
             .Count(panel => panel.HasMeta("deploy_unit_art")) ?? 0;
         var compactColumns = troopOptions.All(option => option.CustomMinimumSize.X <= 112 && !option.FitToLongestItem)
             && troopAmounts.All(amount => amount.CustomMinimumSize.X <= 92)
+            && provisionAmounts.All(amount => amount.CustomMinimumSize.X <= 92)
             && goldAmounts.All(gold => gold.CustomMinimumSize.X <= 92)
             && removes.All(remove => remove.CustomMinimumSize.X <= 56);
         var batchScroll = _modalLayer?.FindChildren("*", "ScrollContainer", true, false).OfType<ScrollContainer>()
@@ -278,6 +338,14 @@ public sealed partial class CampaignMapScene
         var compactHeight = batchScroll is not null
             && batchScroll.CustomMinimumSize.Y >= contentHeight
             && batchScroll.CustomMinimumSize.Y - contentHeight <= 12f;
+        var provisionClamps = false;
+        if (troopAmounts.Count > 0 && provisionAmounts.Count == troopAmounts.Count)
+        {
+            var oldCapacity = provisionAmounts[0].MaxValue;
+            troopAmounts[0].Value = System.Math.Max(1, (int)troopAmounts[0].Value / 2);
+            provisionClamps = provisionAmounts[0].MaxValue <= oldCapacity
+                && provisionAmounts[0].Value <= provisionAmounts[0].MaxValue;
+        }
         var passed = ReferenceEquals(beforeState, _state)
             && beforePending == _pendingDeploys.Count
             && labels.Any(label => label.Text.Contains("일괄전투편성"))
@@ -285,13 +353,15 @@ public sealed partial class CampaignMapScene
             && troopAmounts.Count is > 0 and <= BatchDeployPlanner.MaxUnits
             && troopOptions.Count == troopAmounts.Count
             && goldAmounts.Count == troopAmounts.Count
+            && provisionAmounts.Count == troopAmounts.Count
+            && provisionClamps
             && removes.Count == troopAmounts.Count
             && delayValid
             && unitCards == troopAmounts.Count
             && compactColumns
             && noModalScroll
             && compactHeight;
-        GD.Print($"[maptestbatchdeployqa] passed={passed} rows={troopAmounts.Count} troopOptions={troopOptions.Count} gold={goldAmounts.Count} remove={removes.Count} delay={delayValid} unitCards={unitCards} compact={compactColumns} noScroll={noModalScroll} compactHeight={compactHeight}:{batchScroll?.CustomMinimumSize.Y ?? 0:0}/{contentHeight:0} stateUnchanged={ReferenceEquals(beforeState, _state)} pending={beforePending}/{_pendingDeploys.Count}");
+        GD.Print($"[maptestbatchdeployqa] passed={passed} rows={troopAmounts.Count} troopOptions={troopOptions.Count} provisions={provisionAmounts.Count} clamp={provisionClamps} gold={goldAmounts.Count} remove={removes.Count} delay={delayValid} unitCards={unitCards} compact={compactColumns} noScroll={noModalScroll} compactHeight={compactHeight}:{batchScroll?.CustomMinimumSize.Y ?? 0:0}/{contentHeight:0} stateUnchanged={ReferenceEquals(beforeState, _state)} pending={beforePending}/{_pendingDeploys.Count}");
         CloseModal();
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         GetTree().Quit(passed ? 0 : 1);
