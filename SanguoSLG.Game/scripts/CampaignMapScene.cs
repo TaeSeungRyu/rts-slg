@@ -11758,6 +11758,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depAdj is { } a) { parts.Add("부관 " + _state.Generals.First(g => g.Id == a).Name); }
         parts.Add(ModeName(_depMode) + "모드");
         parts.Add(_depTarget is { } tg2 ? "목표 " + (_state.Cities.FirstOrDefault(c => c.Position == tg2)?.Name ?? $"({tg2.Q},{tg2.R})") : "목표 미지정");
+        parts.Add($"휴대 군량 {ProvisionsToCarry():N0} · {_depProvDays}일");
         parts.Add($"휴대 금 {_depGold:N0}");
         parts.Add(_depDelayDays == 0 ? "당일 출격" : $"{_depDelayDays}일 뒤 출격");
         _depPreview.Text = "현재 편성:  " + (parts.Count > 0 ? string.Join(" · ", parts) : "(병종·수량·장수 선택)");
@@ -12227,7 +12228,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depProvLabel is null) { return; }
         if (_depTroop is null) { _depProvLabel.Text = "병종을 먼저 선택"; return; }
         var cityProv = _state.Cities.First(x => x.Id == _depModalCity).Provisions;
-        _depProvLabel.Text = $"{_depProvDays}일 · 휴대 {ProvisionsToCarry()} / 성 비축 {cityProv}";
+        _depProvLabel.Text = $"{_depProvDays}일 · 휴대 {ProvisionsToCarry():N0} / 최대 {System.Math.Min((_troops.FirstOrDefault(t => t.Code == _depTroop)?.ProvisionsCapacity ?? 300) * _depAmount / 10000, cityProv):N0}";
     }
 
     private void SaveCompose()
@@ -12247,7 +12248,7 @@ public sealed partial class CampaignMapScene : Node3D
         var tName = _troops.FirstOrDefault(t => t.Code == _depTroop)?.Name ?? _depTroop;
         var vName = _state.Generals.First(g => g.Id == van).Name;
         var aName = _depAdj is { } a ? "+" + _state.Generals.First(g => g.Id == a).Name : "";
-        var provisions = _depProvDays * _depAmount * _provPer10kPerDay / 10000;
+        var provisions = ProvisionsToCarry();
         var req = new DeployRequest(_depModalCity, _depTroop, _depAmount, van, _depAdj, _depMode,
             _depTarget, provisions, Gold: _depGold, DelayDays: _depDelayDays);
         var entry = (req, $"{tName} {_depAmount}({vName}{aName}) · {ModeName(_depMode)} · 군량{_depProvDays}일 · 금 {_depGold:N0} · {DelayLabel(_depDelayDays)}");
