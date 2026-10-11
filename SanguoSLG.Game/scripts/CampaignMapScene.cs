@@ -3980,6 +3980,12 @@ public sealed partial class CampaignMapScene : Node3D
             playback.Append(turn.Movement, dayOffset, DaySeconds, StepSeconds, MoveSeconds);
 
             var stopDay = dayOffset + System.Math.Max(1, turn.Movement.Days);
+            var fieldGarrisonIds = turn.FieldGarrisons.Values.Select(id => id.Value).ToHashSet();
+            foreach (var id in fieldGarrisonIds)
+            {
+                playback.AppendFieldGarrison(id, stopDay, DaySeconds, MoveSeconds);
+                _animKills.Add((playback.Entries[id], id));
+            }
             var atkTime = ((stopDay - 1) * DaySeconds) + MoveSeconds + 0.15; // 그날 이동(≤1.5초)이 끝난 뒤
             ScheduleAttackMotions(turn, atkTime, unitSnapshot);
             foreach (var trigger in turn.FormationTriggers.Where(trigger => trigger.Activated && trigger.WoundedConverted > 0))
@@ -4110,7 +4116,8 @@ public sealed partial class CampaignMapScene : Node3D
                 _animGaugeUpdates.Add((settleTime, u.Id.Value, displaySkill, displayGauge));
 
                 // 교란 강제 후퇴(PushAway) 등 이동 틱에 안 잡히는 위치 변화 동기화.
-                if (prev.TryGetValue(u.Id.Value, out var lastPos) && lastPos != u.Field.Position)
+                if (!fieldGarrisonIds.Contains(u.Id.Value)
+                    && prev.TryGetValue(u.Id.Value, out var lastPos) && lastPos != u.Field.Position)
                 {
                     _animSteps.Add((settleTime, u.Id.Value, u.Field.Position));
                     prev[u.Id.Value] = u.Field.Position;

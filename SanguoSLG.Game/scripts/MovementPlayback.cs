@@ -68,6 +68,13 @@ internal sealed class MovementPlayback
         }
     }
 
+    // 보루·진법 입성은 야전 이동이 끝난 지점에서 토큰을 숨긴다. 다음 날의
+    // 건물 중심 좌표 동기화를 화면에 재생하면 기병이 순간이동하는 것처럼 보인다.
+    public void AppendFieldGarrison(int unitId, int day, double daySeconds, double movementSeconds)
+    {
+        Entries.TryAdd(unitId, (day - 1) * daySeconds + movementSeconds + 0.05);
+    }
+
     private void AppendContinuous(AdvanceResult movement, int dayOffset,
         double daySeconds, double movementSeconds)
     {

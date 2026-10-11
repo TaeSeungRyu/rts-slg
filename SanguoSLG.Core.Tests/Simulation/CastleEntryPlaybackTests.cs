@@ -7,6 +7,16 @@ namespace SanguoSLG.Core.Tests.Simulation;
 
 public class CastleEntryPlaybackTests
 {
+    [Fact]
+    public void 보루입성은_이동연출직후_건물중심좌표로_순간이동하기전에_토큰을숨긴다()
+    {
+        var playback = new MovementPlayback(new() { [1] = new HexCoord(0, 0) });
+        playback.AppendFieldGarrison(1, day: 2, daySeconds: 4, movementSeconds: 1.5);
+        playback.AppendFieldGarrison(1, day: 3, daySeconds: 4, movementSeconds: 1.5);
+
+        Assert.Equal(5.55, playback.Entries[1], 8);
+    }
+
     private static MovementSimulator Simulator() => new(new PassabilityMap(new HexMap(-10, 30, -10, 10), [], []));
     private static FieldUnit Unit(int id, int distance, int speed, UnitMode mode = UnitMode.March) =>
         new(new UnitId(id), new FactionId(1), new HexCoord(0, 0), speed, 0, 1,
