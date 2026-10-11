@@ -88,16 +88,31 @@ public sealed partial class CampaignMapScene
             legacy.Visible = false;
             legacy.QueueFree();
         }
+        _scoutDayLabels.Remove(id);
+        if (_selectedFieldBuildingId == id.Value) ClearFieldBuildingRange();
         // 보루·진법 안에 있던 부대는 건축물 파괴와 동시에 지도에 다시 나타난다.
         var garrison = _state.Buildings.FirstOrDefault(building => building.Id == id)?.GarrisonUnit;
-        if (garrison is { } unitId && _armyTokens.TryGetValue(unitId.Value, out var token))
+        if (garrison is { } unitId)
         {
+            if (!_armyTokens.TryGetValue(unitId.Value, out var token)
+                || !GodotObject.IsInstanceValid(token) || token.IsQueuedForDeletion())
+            {
+                var unit = _state.Armies.FirstOrDefault(army => army.Id == unitId)
+                    ?? _pendingState.Armies.FirstOrDefault(army => army.Id == unitId);
+                if (unit is null || unit.Pool.Active <= 0) return;
+                token = new UnitController3D();
+                AddChild(token);
+                token.InitDisplay(_view, unit.Field.Owner == Player ? Blue : Red,
+                    unit.IsArmyGroup ? UnitController3D.ArmyGroupModelIndex
+                        : unit.IsSupply ? UnitController3D.SupplyModelIndex
+                        : TroopModelIndex.GetValueOrDefault(unit.TroopCode, 0), unit.Field.Position);
+                token.SetFormationSize(unit.IsSupply || unit.IsArmyGroup ? 1 : FormationFor(unit.Pool.Active));
+                _armyTokens[unitId.Value] = token;
+            }
             token.Visible = true;
             if (_armyLabels.TryGetValue(unitId.Value, out var label))
                 label.Visible = _state.Armies.FirstOrDefault(unit => unit.Id == unitId)?.Field.Owner == Player;
         }
-        _scoutDayLabels.Remove(id);
-        if (_selectedFieldBuildingId == id.Value) ClearFieldBuildingRange();
     }
 
     private async void RunFieldBuildingPlaybackQa()
@@ -170,6 +185,18 @@ public sealed partial class CampaignMapScene
                 || _fieldBuildingLayer.GetNodeOrNull($"FieldBuilding_{building.Id.Value}") is not null
                 || _fieldBuildingLayer.GetNodeOrNull($"FieldAllegiance_{building.Id.Value}") is not null)
                 throw new Exception("파괴 후 건축물/소속 표시 잔존");
+            var beforeState = _state;
+            var exposed = sample with { Field = sample.Field with { Position = building.Position } };
+            var occupied = building with { Id = new FieldBuildingId(99992), Owner = Player,
+                GarrisonUnit = exposed.Id };
+            _state = _state with { FieldArmies = _state.Armies.Append(exposed).ToList(),
+                FieldBuildings = _state.Buildings.Append(occupied).ToList() };
+            HideDestroyedFieldBuilding(occupied.Id);
+            if (!_armyTokens.TryGetValue(exposed.Id.Value, out var revealed) || !revealed.Visible)
+                throw new Exception("보루 파괴 직후 주둔 부대가 보이지 않음");
+            revealed.QueueFree();
+            _armyTokens.Remove(exposed.Id.Value);
+            _state = beforeState;
             GD.Print("FIELD_BUILDING_PLAYBACK_QA PASS: cavalry/elephant/ship movement overlaps attack recovery without position rollback; attack, damage, same-turn destruction");
             GetTree().Quit();
         }
