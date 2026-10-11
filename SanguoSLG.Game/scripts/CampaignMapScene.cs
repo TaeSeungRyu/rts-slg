@@ -1517,6 +1517,12 @@ public sealed partial class CampaignMapScene : Node3D
             var button = MakeButton($"{name ?? "부대"} · {TroopName(unit.TroopCode)} · {unit.Pool.Active:N0}명");
             button.CustomMinimumSize = new Vector2(190, 30);
             button.Alignment = HorizontalAlignment.Left;
+            button.MouseEntered += () =>
+            {
+                var current = DisplayedArmies.FirstOrDefault(army => army.Id == selected.Id);
+                if (current is not null && _unitChoiceMenu.Visible) MoveRingForUnit(current);
+            };
+            button.MouseExited += () => { if (_ring is not null) _ring.Visible = false; };
             button.Pressed += () =>
             {
                 var result = _unitCommander.Reassign(_state, Player,
