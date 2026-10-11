@@ -103,7 +103,7 @@ public sealed partial class CampaignMapScene
         {
             var label = _cityLabels[city.Id.Value];
             var factionName = _state.Factions.FirstOrDefault(f => f.Id == city.Owner)?.Name ?? "?";
-            var troops = _state.Garrisons.Where(g => g.City == city.Id).Sum(g => g.Troops);
+            var troops = CityTroopsForDisplay(city.Id);
             label.Text = $"{city.Name} [{factionName}]" + (CanInspectCity(city) ? $"\n성벽 {city.Wall}  병 {troops}" : "\n시야 밖");
             label.Modulate = new Color(city.Owner == Player ? Blue : Red, CanInspectCity(city) ? 1f : 0.5f);
         }

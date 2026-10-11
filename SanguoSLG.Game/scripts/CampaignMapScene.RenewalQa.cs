@@ -12,6 +12,51 @@ namespace SanguoSLG.Game;
 
 public sealed partial class CampaignMapScene
 {
+    private void RunPlaybackStateQa()
+    {
+        var original = _state;
+        var city = _state.Cities.First(candidate => candidate.Owner == Player && candidate.Wall > 0);
+        var initialTroops = _state.Garrisons.Where(force => force.City == city.Id).Sum(force => force.Troops);
+        var unit = new CombatUnit(
+            new FieldUnit(new UnitId(-987657), Player, city.Position, 1, 2, 1,
+                MovementDomain.Land, UnitMode.March, null, 0),
+            new CombatStats(1000, 10, 10), new TroopPool(1000, 0), UnitCombatState.Create(70));
+        _state = _state with { FieldArmies = _state.Armies.Append(unit).ToList() };
+        _animUnitSnapshots.Clear();
+        _animCityVitals.Clear();
+        _playbackCityTroops.Clear();
+        _animUnitSnapshotIdx = 0;
+        _animCityVitalIdx = 0;
+        _animUnitSnapshots.Add((1.0, [unit with { Pool = new TroopPool(700, 300) }]));
+        _animCityVitals.Add((1.0, city.Id, city.Wall, initialTroops + 700));
+        _animCityVitals.Add((1.5, city.Id, 0, initialTroops + 600));
+
+        _animT = 0.99;
+        ApplyDuePlaybackSnapshots();
+        ApplyDueCityVitals();
+        var unchangedBeforeEvent = _state.Armies.First(value => value.Id == unit.Id).Pool.Active == 1000
+            && _state.Cities.First(value => value.Id == city.Id).Wall == city.Wall;
+
+        _animT = 1.0;
+        ApplyDuePlaybackSnapshots();
+        ApplyDueCityVitals();
+        var entryUpdated = _state.Armies.First(value => value.Id == unit.Id).Pool.Active == 700
+            && _playbackCityTroops[city.Id] == initialTroops + 700;
+
+        _animT = 1.5;
+        ApplyDueCityVitals();
+        _advancing = true;
+        RefreshBattlefieldVision(playback: true);
+        var siegeUpdated = _state.Cities.First(value => value.Id == city.Id).Wall == 0
+            && _cityBrokenVisuals.GetValueOrDefault(city.Id.Value)
+            && _cityLabels[city.Id.Value].Text.Contains($"성벽 0  병 {initialTroops + 600}");
+        var passed = unchangedBeforeEvent && entryUpdated && siegeUpdated;
+        GD.Print($"[playback-state-qa] passed={passed} before={unchangedBeforeEvent} entry={entryUpdated} siege={siegeUpdated}");
+        _advancing = false;
+        _state = original;
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private async Task RunRenewalCampaignPipelineQa()
     {
         void Require(bool condition, string message)

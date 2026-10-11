@@ -116,6 +116,11 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId, Vector3 FaceTo)> _animAttacks = new(); // 교전·공성 공격 모션
     private int _animUpdIdx;
     private readonly List<(double Time, int UnitId, int Troops)> _animUpdates = new(); // 병력 갱신(라벨·편대 규모)
+    private readonly List<(double Time, IReadOnlyList<CombatUnit> Units)> _animUnitSnapshots = new();
+    private int _animUnitSnapshotIdx;
+    private readonly List<(double Time, CityId City, int Wall, int Troops)> _animCityVitals = new();
+    private int _animCityVitalIdx;
+    private readonly Dictionary<CityId, int> _playbackCityTroops = new();
     private int _animKillIdx;
     private readonly List<(double Time, int UnitId)> _animKills = new(); // 전멸·입성 — 토큰 즉시 제거
     private readonly Dictionary<int, (double Time, HexCoord Position)> _animFieldGarrisonEntries = new();
@@ -672,6 +677,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestdeployimageqa")) CallDeferred(nameof(RunDeployImageStyleQa));
         if (args.Contains("--maptestmodalcamerablockqa")) CallDeferred(nameof(RunModalCameraBlockQa));
         if (args.Contains("--maptestunitmenuqa")) CallDeferred(nameof(RunUnitMenuQa));
+        if (args.Contains("--maptestplaybackstateqa")) CallDeferred(nameof(RunPlaybackStateQa));
         if (args.Contains("--maptestunitinfouiqa")) CallDeferred(nameof(RunUnitInfoUiQa));
         if (args.Contains("--maptestherorecruitqa")) CallDeferred(nameof(RunHeroRecruitUiQa));
         if (args.Contains("--maptestspecialresearchqa")) CallDeferred(nameof(RunSpecialResearchLockQa));
@@ -3984,6 +3990,8 @@ public sealed partial class CampaignMapScene : Node3D
         _animDeploymentIdx = 0;
         _animAtkIdx = 0;
         _animUpdIdx = 0;
+        _animUnitSnapshotIdx = 0;
+        _animCityVitalIdx = 0;
         _animKillIdx = 0;
         _animProductionKillIdx = 0;
         _animEffectIdx = 0;
@@ -4027,6 +4035,9 @@ public sealed partial class CampaignMapScene : Node3D
         _animStartOverrides.Clear();
         _animAttacks.Clear();
         _animUpdates.Clear();
+        _animUnitSnapshots.Clear();
+        _animCityVitals.Clear();
+        _playbackCityTroops.Clear();
         _animKills.Clear();
         _animFieldGarrisonEntries.Clear();
         _animProductionKills.Clear();
@@ -4053,6 +4064,9 @@ public sealed partial class CampaignMapScene : Node3D
         var playback = new MovementPlayback(startHex, startContinuous);
         var prev = playback.Positions;
         var unitSnapshot = preMove.Armies.ToDictionary(u => u.Id.Value);
+        var cityTroops = preMove.Cities.ToDictionary(city => city.Id,
+            city => preMove.Garrisons.Where(force => force.City == city.Id).Sum(force => force.Troops));
+        var cityWalls = preMove.Cities.ToDictionary(city => city.Id, city => city.Wall);
         var dayOffset = 0;
         for (var ti = 0; ti < turns.Count; ti++)
         {
@@ -4069,6 +4083,20 @@ public sealed partial class CampaignMapScene : Node3D
                 SetControlledEgressStartOverride(preMove, released);
             }
             playback.Append(turn.Movement, dayOffset, DaySeconds, StepSeconds, MoveSeconds);
+
+            foreach (var entered in turn.EnteredCastle)
+            {
+                var entryCity = entered.Field.ReturnCity ?? preMove.Cities
+                    .FirstOrDefault(city => entered.Field.Target is { } target
+                        && CastleFootprint.TilesFor(city).Contains(target))?.Id;
+                if (entryCity is not { } cityId || !cityTroops.ContainsKey(cityId)) continue;
+                var incoming = (entered.IsSupply || entered.IsTransport || entered.IsArmyGroup)
+                    && entered.Cargo.Count > 0
+                    ? entered.Cargo.Sum(cargo => cargo.Troops) : entered.Pool.Active;
+                cityTroops[cityId] += incoming;
+                _animCityVitals.Add((playback.Entries.GetValueOrDefault(entered.Id.Value,
+                    (dayOffset * DaySeconds) + MoveSeconds), cityId, cityWalls[cityId], cityTroops[cityId]));
+            }
 
             var stopDay = dayOffset + System.Math.Max(1, turn.Movement.Days);
             var fieldGarrisonIds = turn.FieldGarrisons.Values.Select(id => id.Value).ToHashSet();
@@ -4199,6 +4227,8 @@ public sealed partial class CampaignMapScene : Node3D
 
             // 이 조각의 정산 반영: 병력 갱신(라벨·편대 규모) + 전멸/입성 부대 즉시 제거.
             var settleTime = atkTime + 0.55; // 공격 모션이 보인 뒤
+            _animUnitSnapshots.Add((captures.Any(capture => capture.TurnIndex == ti)
+                ? settleTime + 0.08 : settleTime, turn.Units));
             ScheduleFieldBuildingCombat(turn, atkTime, settleTime);
             ScheduleScoutPostRemovals(turn, ((stopDay - 1) * DaySeconds) + MoveSeconds);
             var survivors = new HashSet<int>();
@@ -4238,6 +4268,9 @@ public sealed partial class CampaignMapScene : Node3D
 
                 var cityDmg = ex.WallDamage + ex.TroopDamage;
                 if (cityDmg > 0) { _animSiegeDmg.Add((atkTime + 0.35, cityPos, cityDmg)); }
+                cityTroops[ex.City] = System.Math.Max(0, cityTroops[ex.City] - ex.TroopDamage);
+                cityWalls[ex.City] = ex.NewWall;
+                _animCityVitals.Add((settleTime, ex.City, ex.NewWall, cityTroops[ex.City]));
                 if (ex.BesiegerDamage is not { } counters) { continue; }
                 for (var i = 0; i < ex.Besiegers.Count && i < counters.Count; i++)
                 {
@@ -4294,6 +4327,10 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var captureTime = settleTime + 0.08;
                 _animCaptures.Add((captureTime, capture.City));
+                cityWalls[capture.City] = 0;
+                cityTroops[capture.City] = _pendingState.Garrisons
+                    .Where(force => force.City == capture.City).Sum(force => force.Troops);
+                _animCityVitals.Add((captureTime, capture.City, cityWalls[capture.City], cityTroops[capture.City]));
                 foreach (var occupier in capture.OccupyingUnits)
                 {
                     _animKills.Add((captureTime, occupier.Value));
@@ -4337,6 +4374,10 @@ public sealed partial class CampaignMapScene : Node3D
         _animDeployments.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animAttacks.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animUpdates.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animUnitSnapshots.Sort((a, b) => a.Time.CompareTo(b.Time));
+        var orderedCityVitals = _animCityVitals.OrderBy(update => update.Time).ToList();
+        _animCityVitals.Clear();
+        _animCityVitals.AddRange(orderedCityVitals);
         _animKills.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animProductionKills.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animDeathEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
@@ -4583,6 +4624,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void FinishAdvance()
     {
         _advancing = false;
+        _playbackCityTroops.Clear();
         _advanceBtn.Busy = false;
         _advanceBtn.Progress = 0f;
         _dayLabel.Visible = false;
@@ -5567,7 +5609,7 @@ public sealed partial class CampaignMapScene : Node3D
         var known = CanInspectCity(c);
         if (_portCommandButton is not null) { _portCommandButton.Visible = c.IsPort; }
         if (_productionCommandButton is not null) { _productionCommandButton.Visible = !c.IsPort; }
-        var totalTroops = _state.Garrisons.Where(g => g.City == id).Sum(g => g.Troops);
+        var totalTroops = CityTroopsForDisplay(id);
         var govName = c.Governor is { } ggid ? _state.Generals.FirstOrDefault(x => x.Id == ggid)?.Name : null;
         var straName = c.Strategist is { } gsid ? _state.Generals.FirstOrDefault(x => x.Id == gsid)?.Name : null;
         var securityName = OfficerNameWithMonthlyEffect(c.SecurityOfficer, CommandKind.AppointSecurityOfficer, c);
@@ -5962,6 +6004,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (_advancing)
         {
             _animT += delta;
+            ApplyDuePlaybackSnapshots();
+            ApplyDueCityVitals();
             while (_animDeploymentIdx < _animDeployments.Count
                 && _animDeployments[_animDeploymentIdx].Time <= _animT)
             {
@@ -6174,6 +6218,7 @@ public sealed partial class CampaignMapScene : Node3D
                         Cities = _state.Cities.Select(c => c.Id == capture.City ? capturedCity : c).ToList(),
                     };
                     var troops = _pendingState.Garrisons.Where(g => g.City == capture.City).Sum(g => g.Troops);
+                    _playbackCityTroops[capture.City] = troops;
                     var label = _cityLabels[capture.City.Value];
                     label.Text = $"{capturedCity.Name} [{_pendingState.Factions.First(f => f.Id == capturedCity.Owner).Name}]\n성벽 {capturedCity.Wall}  병 {troops}";
                     label.Modulate = capturedCity.Owner == Player ? Blue : Red;
@@ -6210,6 +6255,47 @@ public sealed partial class CampaignMapScene : Node3D
             if (_animT >= AnimDays * DaySeconds) { FinishAdvance(); }
         }
     }
+
+    private void ApplyDuePlaybackSnapshots()
+    {
+        while (_animUnitSnapshotIdx < _animUnitSnapshots.Count
+            && _animUnitSnapshots[_animUnitSnapshotIdx].Time <= _animT)
+        {
+            _state = _state with { FieldArmies = _animUnitSnapshots[_animUnitSnapshotIdx].Units };
+            _animUnitSnapshotIdx++;
+        }
+    }
+
+    private void ApplyDueCityVitals()
+    {
+        var wallChanged = false;
+        while (_animCityVitalIdx < _animCityVitals.Count
+            && _animCityVitals[_animCityVitalIdx].Time <= _animT)
+        {
+            var update = _animCityVitals[_animCityVitalIdx++];
+            _playbackCityTroops[update.City] = update.Troops;
+            if (_state.Cities.FirstOrDefault(city => city.Id == update.City) is not { } current) continue;
+            if (current.Wall != update.Wall)
+            {
+                _state = _state with
+                {
+                    Cities = _state.Cities.Select(city => city.Id == update.City
+                        ? city with { Wall = update.Wall } : city).ToList(),
+                };
+                wallChanged = true;
+            }
+            if (_cityLabels.TryGetValue(update.City.Value, out var label) && CanInspectCity(current))
+            {
+                var faction = _state.Factions.FirstOrDefault(value => value.Id == current.Owner)?.Name ?? "?";
+                label.Text = $"{current.Name} [{faction}]\n성벽 {update.Wall}  병 {update.Troops}";
+            }
+        }
+        if (wallChanged) RefreshCastleDamageVisuals();
+    }
+
+    private int CityTroopsForDisplay(CityId cityId)
+        => _advancing && _playbackCityTroops.TryGetValue(cityId, out var liveTroops)
+            ? liveTroops : _state.Garrisons.Where(force => force.City == cityId).Sum(force => force.Troops);
 
     // 명령 클릭 → 큰 모달(반투명 배경 + 아이콘 카드 그리드). 카드로 대상/계략/세율을 고르고,
     // 장수 카드를 클릭하면 컨펌 후 실행한다(삼국지14/콜오브드래곤즈풍 명령 창).
