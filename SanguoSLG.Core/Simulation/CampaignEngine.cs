@@ -230,7 +230,9 @@ public sealed class CampaignEngine
                 work = fieldBuildingResult.State;
                 turn = turn with
                 {
-                    Units = fieldBuildingResult.Armies,
+                    // 건축물 파괴와 같은 공격턴에 전멸한 주둔군·공격군을 생존 목록에서
+                    // 즉시 제외한다. 다음 이동턴까지 남겨두면 시야와 전멸 연출이 늦는다.
+                    Units = fieldBuildingResult.Armies.Where(unit => unit.Pool.Active > 0).ToList(),
                     FieldBuildingCombatExchanges = fieldBuildingResult.Exchanges,
                     FiredActives = turn.FiredActives.Concat(fieldBuildingResult.FiredActives)
                         .GroupBy(entry => entry.Key).ToDictionary(group => group.Key, group => group.First().Value),

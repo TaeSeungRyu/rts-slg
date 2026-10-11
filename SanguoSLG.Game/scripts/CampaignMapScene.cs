@@ -118,6 +118,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId, int Troops)> _animUpdates = new(); // 병력 갱신(라벨·편대 규모)
     private int _animKillIdx;
     private readonly List<(double Time, int UnitId)> _animKills = new(); // 전멸·입성 — 토큰 즉시 제거
+    private readonly Dictionary<int, (double Time, HexCoord Position)> _animFieldGarrisonEntries = new();
     private int _animProductionKillIdx;
     private readonly List<(double Time, int OperationId)> _animProductionKills = new(); // 생산 부대 시설 도착 — 토큰 제거
     private int _animEffectIdx;
@@ -3938,6 +3939,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animAttacks.Clear();
         _animUpdates.Clear();
         _animKills.Clear();
+        _animFieldGarrisonEntries.Clear();
         _animProductionKills.Clear();
         _animDeathEffects.Clear();
         _animDmg.Clear();
@@ -3981,9 +3983,12 @@ public sealed partial class CampaignMapScene : Node3D
 
             var stopDay = dayOffset + System.Math.Max(1, turn.Movement.Days);
             var fieldGarrisonIds = turn.FieldGarrisons.Values.Select(id => id.Value).ToHashSet();
-            foreach (var id in fieldGarrisonIds)
+            foreach (var (buildingId, unitId) in turn.FieldGarrisons)
             {
+                var id = unitId.Value;
                 playback.AppendFieldGarrison(id, stopDay, DaySeconds, MoveSeconds);
+                var building = preMove.Buildings.First(candidate => candidate.Id == buildingId);
+                _animFieldGarrisonEntries[id] = (playback.Entries[id], building.Position);
                 _animKills.Add((playback.Entries[id], id));
             }
             var atkTime = ((stopDay - 1) * DaySeconds) + MoveSeconds + 0.15; // 그날 이동(≤1.5초)이 끝난 뒤

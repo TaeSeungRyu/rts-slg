@@ -221,6 +221,33 @@ public sealed class FieldFortTests
     }
 
     [Fact]
+    public void 보루가_파괴되며_주둔군이_전멸하면_같은날_생존목록과_시야에서_제외한다()
+    {
+        var position = new HexCoord(2, 0);
+        var garrison = Unit(1, position) with { Pool = new TroopPool(1, 0) };
+        var enemy = Unit(2, new HexCoord(1, 0), position) with
+        {
+            Field = Unit(2, new HexCoord(1, 0), position).Field with
+            { Owner = new FactionId(2), Speed = 0, Mode = UnitMode.Attack },
+        };
+        var fort = Fort(1, position, garrison.Id) with { HitPoints = 1 };
+        var state = new GameState(1, 190, [], [], [], FieldArmies: [garrison, enemy],
+            FieldBuildings: [fort]);
+        var engine = new CampaignEngine(Orchestrator(), new WorldEngine(new BalanceConfig(0)),
+            fieldBuildingCombat: new FieldBuildingCombat(new BattleResolver(60), Definitions),
+            fieldBuildingDefinitions: Definitions);
+
+        var after = engine.AdvanceWeek(state, out var turns);
+
+        Assert.Contains(turns, turn => turn.FieldBuildingExchanges.Any(exchange => exchange.Destroyed));
+        Assert.DoesNotContain(turns[0].Units, unit => unit.Id == garrison.Id);
+        Assert.DoesNotContain(after.Armies, unit => unit.Id == garrison.Id);
+        var vision = new BattlefieldVision(new BalanceConfig(0), [], Definitions);
+        Assert.DoesNotContain(new HexCoord(3, 0), vision.VisibleTiles(after, Player,
+            new HexMap(-5, 10, -5, 5)));
+    }
+
+    [Fact]
     public void 보루에_입성한_부대를_쫓던_적은_멈추지_않고_보루를_공격한다()
     {
         var garrison = Unit(1, new HexCoord(2, 0));

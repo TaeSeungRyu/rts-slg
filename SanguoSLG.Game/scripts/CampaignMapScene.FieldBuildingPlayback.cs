@@ -30,7 +30,7 @@ public sealed partial class CampaignMapScene
                 // 주둔군은 토큰이 숨겨져 있으므로 건물 위치에서 반격 피드백을 재생한다.
                 _animArrows.Add((attackTime + 0.42, position + new Vector3(0f, 0.85f, 0f),
                     exchange.Attacker.Value));
-                _animDmg.Add((attackTime + 0.82, exchange.Attacker.Value, exchange.DamageToAttacker));
+                _animDmg.Add((attackTime + 0.52, exchange.Attacker.Value, exchange.DamageToAttacker));
             }
             if (exchange.Destroyed)
             {

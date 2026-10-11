@@ -55,11 +55,27 @@ public sealed partial class CampaignMapScene
                 _animationProductionPositions[id] = _view.WorldToHex(token.Position);
             foreach (var loss in _productionVisionLosses.Where(l => l.Time <= _animT))
                 _lostProductionVision.Add(loss.Id);
+            // 입성 연출에서 주둔군 토큰은 숨겨지거나 제거될 수 있다. 토큰 유무를
+            // 시야 판정으로 사용하면 보루 안의 살아있는 부대 시야가 사라졌다가
+            // 건물 파괴·진행 종료 후 갑자기 나타난다.
+            var garrisonIds = _state.Buildings.Where(building => building.Owner == Player
+                    && building.GarrisonUnit is not null)
+                .Select(building => building.GarrisonUnit!.Value).ToHashSet();
+            foreach (var (id, entry) in _animFieldGarrisonEntries)
+                if (entry.Time <= _animT) garrisonIds.Add(new UnitId(id));
             display = display with
             {
-                FieldArmies = display.Armies.Where(u => _armyTokens.ContainsKey(u.Id.Value))
+                FieldArmies = display.Armies.Where(u => (_armyTokens.ContainsKey(u.Id.Value)
+                        || garrisonIds.Contains(u.Id))
+                    && !_animKills.Any(kill => kill.UnitId == u.Id.Value && kill.Time <= _animT
+                        && (!_animFieldGarrisonEntries.TryGetValue(u.Id.Value, out var entry)
+                            || kill.Time > entry.Time + 0.001)))
                     .Select(u => PlaybackDeploymentState(u) with
-                    { Field = u.Field.MoveTo(_view.WorldToHex(_armyTokens[u.Id.Value].Position)) }).ToList(),
+                    { Field = u.Field.MoveTo(garrisonIds.Contains(u.Id)
+                        && _animFieldGarrisonEntries.TryGetValue(u.Id.Value, out var entry)
+                            ? entry.Position
+                            : _armyTokens.TryGetValue(u.Id.Value, out var token)
+                                ? _view.WorldToHex(token.Position) : u.Field.Position) }).ToList(),
                 ProductionOperations = display.ProductionOps.Where(o => !_lostProductionVision.Contains(o.Id))
                     .Select(o => o with { Position = _animationProductionPositions.GetValueOrDefault(o.Id, o.Position) }).ToList(),
             };
