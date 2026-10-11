@@ -25,6 +25,13 @@ public sealed partial class CampaignMapScene
             _animSiegeDmg.Add((attackTime + 0.35, position, exchange.Damage));
             if (turn.Units.Any(u => u.Id == exchange.Attacker && u.IsSupply))
                 _animSupplyArrows.Add((attackTime + 0.08, exchange.Attacker.Value, position));
+            if (exchange.DamageToAttacker > 0)
+            {
+                // 주둔군은 토큰이 숨겨져 있으므로 건물 위치에서 반격 피드백을 재생한다.
+                _animArrows.Add((attackTime + 0.42, position + new Vector3(0f, 0.85f, 0f),
+                    exchange.Attacker.Value));
+                _animDmg.Add((attackTime + 0.82, exchange.Attacker.Value, exchange.DamageToAttacker));
+            }
             if (exchange.Destroyed)
             {
                 // 피해 팝업 직후 제거한다. 그날 정산(settle)이나 7일 재생 종료를 기다리지 않는다.
@@ -33,14 +40,6 @@ public sealed partial class CampaignMapScene
                 {
                     if (exchange.DamageToGarrison > 0)
                         _animDmg.Add((attackTime + 0.48, garrisonId.Value, exchange.DamageToGarrison));
-                    if (exchange.DamageToAttacker > 0)
-                    {
-                        var attackerPosition = _state.Armies.FirstOrDefault(unit => unit.Id == exchange.Attacker)?.Field.Position;
-                        if (attackerPosition is { } at)
-                            _animAttacks.Add((attackTime + 0.46, garrisonId.Value,
-                                _view.HexToWorld(at) + new Vector3(0, _view.TileTopY, 0)));
-                        _animDmg.Add((attackTime + 0.82, exchange.Attacker.Value, exchange.DamageToAttacker));
-                    }
                 }
             }
         }

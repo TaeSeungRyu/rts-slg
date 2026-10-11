@@ -216,6 +216,8 @@ public sealed class FieldFortTests
         Assert.True(exchange.Destroyed
             || buildingCombat.State.Buildings.Single().HitPoints < fort.HitPoints);
         Assert.Equal(10_000, buildingCombat.Armies.Single(x => x.Id == garrison.Id).Pool.Active);
+        Assert.True(exchange.DamageToAttacker > 0);
+        Assert.True(buildingCombat.Armies.Single(x => x.Id == enemy.Id).Pool.Active < 10_000);
     }
 
     [Fact]

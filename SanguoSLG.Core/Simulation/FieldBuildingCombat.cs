@@ -77,13 +77,25 @@ public sealed class FieldBuildingCombat
                 if (damage <= 0) continue;
                 attacked.Add(attacker.Id);
                 var hp = building.HitPoints - damage;
+                // 보루·진법의 주둔군은 건물이 무너질 때까지 피해를 받지 않지만,
+                // 사거리 안에서 건물을 공격한 적에게는 매 공격마다 반격한다.
+                var garrison = building.GarrisonUnit is { } garrisonId
+                    ? armies.FirstOrDefault(unit => unit.Id == garrisonId && unit.Pool.Active > 0)
+                    : null;
+                var damageToAttacker = garrison is not null
+                    && attacker.Field.Position.Distance(garrison.Field.Position) <= garrison.Field.AttackRange
+                    ? System.Math.Min(attacker.Pool.Active,
+                        _battle.Damage(garrison.Stats with { Troops = garrison.Pool.Active },
+                            attacker.Stats with { Troops = attacker.Pool.Active }))
+                    : 0;
+                if (damageToAttacker > 0)
+                    armies = armies.Select(unit => unit.Id == attacker.Id
+                        ? unit with { Pool = unit.Pool.TakeDamage(damageToAttacker, WoundedPercent) }
+                        : unit).ToList();
                 if (hp <= 0)
                 {
-                    var exposed = building.GarrisonUnit is { } garrisonId
-                        ? armies.FirstOrDefault(unit => unit.Id == garrisonId && unit.Pool.Active > 0)
-                        : null;
+                    var exposed = garrison;
                     var damageToGarrison = 0;
-                    var damageToAttacker = 0;
                     if (exposed is not null)
                     {
                         // 보루·진법은 성벽처럼 먼저 모든 피해를 흡수한다. 파괴된 그 공격턴부터
@@ -91,16 +103,7 @@ public sealed class FieldBuildingCombat
                         damageToGarrison = System.Math.Min(exposed.Pool.Active,
                             _battle.Damage(attacker.Stats with { Troops = attacker.Pool.Active },
                                 exposed.Stats with { Troops = exposed.Pool.Active }));
-                        if (attacker.Field.Position.Distance(exposed.Field.Position) <= exposed.Field.AttackRange)
-                        {
-                            damageToAttacker = System.Math.Min(attacker.Pool.Active,
-                                _battle.Damage(exposed.Stats with { Troops = exposed.Pool.Active },
-                                    attacker.Stats with { Troops = attacker.Pool.Active }));
-                        }
-
-                        armies = armies.Select(unit => unit.Id == attacker.Id
-                                ? unit with { Pool = unit.Pool.TakeDamage(damageToAttacker, WoundedPercent) }
-                                : unit.Id == exposed.Id
+                        armies = armies.Select(unit => unit.Id == exposed.Id
                                     ? unit with { Pool = unit.Pool.TakeDamage(damageToGarrison, WoundedPercent) }
                                     : unit)
                             .ToList();
@@ -110,7 +113,8 @@ public sealed class FieldBuildingCombat
                     buildings.Remove(building.Id);
                     break;
                 }
-                exchanges.Add(new(building.Id, attacker.Id, damage, false));
+                exchanges.Add(new(building.Id, attacker.Id, damage, false,
+                    DamageToAttacker: damageToAttacker));
                 building = building with { HitPoints = hp };
                 buildings[building.Id] = building;
             }
