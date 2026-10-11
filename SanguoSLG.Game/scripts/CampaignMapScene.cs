@@ -199,6 +199,9 @@ public sealed partial class CampaignMapScene : Node3D
     private Button _unitEnemyAttackButton = null!;
     private int _selectedUnitId = -1;
     private int _retargetUnitId = -1;  // ≥0이면 야전 부대 이동 재지정 목표 지정 중
+    private int _supplyReplenishmentSourceId = -1;
+    private readonly SupplyReplenishmentService _supplyReplenishment = new();
+    private Button _supplyReplenishmentButton = null!;
     private UnitMode _retargetMode;
     private string _dataDirectory = "";
     private bool _leftDown;            // 좌클릭 vs 좌드래그(맵 이동) 구분용
@@ -630,6 +633,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestsiegeactivepresentationqa")) CallDeferred(nameof(RunSiegeActivePresentationQa));
         if (args.Contains("--maptestactivecasterqa")) CallDeferred(nameof(RunActiveCasterPortraitQa));
         if (args.Contains("--maptestbatchdeployqa")) CallDeferred(nameof(RunBatchDeployQa));
+        if (args.Contains("--maptestsupplyreplenishmentqa")) CallDeferred(nameof(RunSupplyReplenishmentQa));
         if (args.Contains("--maptestdeploytargetreturnqa")) CallDeferred(nameof(RunDeployTargetReturnQa));
         if (args.Contains("--maptestunitstatusqa")) CallDeferred(nameof(RunUnitStatusDisplayQa));
         if (args.Contains("--maptestunitcardqa")) CallDeferred(nameof(RunUnitCardQa));
@@ -1197,6 +1201,14 @@ public sealed partial class CampaignMapScene : Node3D
         // 마우스 오버: 밑 타일에 호버 육각.
         if (@event is InputEventMouseMotion motion)
         {
+            if (_supplyReplenishmentSourceId >= 0)
+            {
+                _hover.Visible = false;
+                var target = PickSupplyReplenishmentTarget(motion.Position);
+                if (target is not null) MoveRingForUnit(target);
+                else if (_ring is not null) _ring.Visible = false;
+                return;
+            }
             if (_fieldBuildPlacing)
             {
                 _hover.Visible = false;
@@ -1238,6 +1250,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
         {
+            if (_supplyReplenishmentSourceId >= 0) { StopSupplyReplenishmentTargeting(); return; }
             if (_fieldBuildPlacing)
             {
                 FinishFieldBuildingPlacement();
@@ -1272,6 +1285,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 우클릭: 목표 지정/시설 배치 취소.
         if (mb.ButtonIndex == MouseButton.Right && mb.Pressed)
         {
+            if (_supplyReplenishmentSourceId >= 0) { StopSupplyReplenishmentTargeting(); return; }
             if (_fieldBuildPlacing)
             {
                 FinishFieldBuildingPlacement();
@@ -1314,6 +1328,14 @@ public sealed partial class CampaignMapScene : Node3D
         if (!_leftDown) { return; }
         _leftDown = false;
         if ((mb.Position - _leftDownPos).Length() >= 6f) { return; } // 드래그 = 카메라 팬(선택 아님)
+
+        if (_supplyReplenishmentSourceId >= 0)
+        {
+            var target = PickSupplyReplenishmentTarget(mb.Position);
+            if (target is null) ShowNotice("보충 대상", "인접한 아군 출전 부대를 선택하세요.");
+            else OpenSupplyReplenishmentModal(target.Id);
+            return;
+        }
 
         // 시설 배치 중: 유효 칸(평지·숲)이면 설치 컨펌으로, 무효 칸이면 아무것도 하지 않는다.
         if (_fieldBuildPlacing)
@@ -1450,6 +1472,7 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainCard.Visible = false;
         _terrainHex = null;
         _unitCmdBox.Visible = u.Field.Owner == Player && !_advancing; // 적·재생 중엔 정보만
+        _supplyReplenishmentButton.Visible = u.Field.Owner == Player && u.IsSupply && !_advancing;
         _unitEnemyAttackButton.Visible = u.Field.Owner != Player && !_advancing;
         _unitMenu.ResetSize();
         PlaceMenu(_unitMenu, u.Field.Position, 60f);
@@ -3847,6 +3870,10 @@ public sealed partial class CampaignMapScene : Node3D
             _state = _ai.PlanWeek(_state, f.Id);
         }
 
+        var replenishment = _supplyReplenishment.Execute(_state);
+        _state = replenishment.State;
+        deployNote.AddRange(replenishment.Reports);
+
         Dbg($"  afterDeploy armies={_state.Armies.Count}");
         var preMove = _state; // 이동 전(편성·AI 반영) — 애니메이션 시작 위치
         var startHex = preMove.Armies.ToDictionary(u => u.Id.Value, u => u.Field.Position);
@@ -5140,6 +5167,11 @@ public sealed partial class CampaignMapScene : Node3D
         construction.TooltipText = "휴대 금과 군량을 사용해 현재 또는 인접 타일에 야전 건축물을 설치한다.";
         construction.Pressed += () => OpenFieldConstructionModal(_selectedUnitId);
         _unitCmdBox.AddChild(construction);
+        var replenish = Item("보충", accent: true);
+        replenish.TooltipText = "인접 아군 부대에 병력·금·군량을 예약하고 다음 진행에 전달한다.";
+        replenish.Pressed += () => BeginSupplyReplenishmentTargeting(_selectedUnitId);
+        _unitCmdBox.AddChild(replenish);
+        _supplyReplenishmentButton = replenish;
 
     }
 
