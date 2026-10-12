@@ -9,6 +9,22 @@ using SanguoSLG.Game;
 
 public sealed class RenewalCampaignIntegrationTests
 {
+    [Fact]
+    public void 같은_보루를_목표한_선행부대가_교전하면_후행_행군부대는_입성한다()
+    {
+        var fort = new FieldBuilding(new(81), "fort", new(1), new(2, 5), 4000, 0, 0);
+        var first = Army(1, new(2, 3), fort.Position) with
+        { Field = Army(1, new(2, 3), fort.Position).Field with { Mode = UnitMode.Advance } };
+        var second = Army(2, new(2, 3), fort.Position) with
+        { Field = Army(2, new(2, 3), fort.Position).Field with { Mode = UnitMode.March }, TroopCode = "cavalry" };
+        var enemy = Army(3, new(4, 3), new(4, 3), 0) with
+        { Field = Army(3, new(4, 3), new(4, 3), 0).Field with { Owner = new(2), Mode = UnitMode.Standby, Target = null } };
+        var after = Engine(new HexMap(-5, 12, -5, 12))
+            .AdvanceWeek(World(first, second, enemy) with { FieldBuildings = [fort] }, out _);
+        Assert.Equal(second.Id, Assert.Single(after.Buildings).GarrisonUnit);
+        Assert.Equal(fort.Position, after.Armies.Single(unit => unit.Id == second.Id).Field.Position);
+    }
+
     [Theory]
     [InlineData(false, 1)]
     [InlineData(true, 1)]
