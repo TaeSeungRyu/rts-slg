@@ -10,6 +10,36 @@ using SanguoSLG.Game;
 public sealed class RenewalCampaignIntegrationTests
 {
     [Fact]
+    public void 건물_충돌권의_경유지는_제외하고_여포_행군은_보루로_계속된다()
+    {
+        var fort = new FieldBuilding(new(81), "fort", new(1), new(0, 9), 4000, 0, 0);
+        var watchtower = new FieldBuilding(new(82), "watchtower", new(2), new(2, 6), 2500, 0, 0);
+        var ruin = new RuinDefinition("war_elephant_01", "상병 유적", new(2, 4), "war_elephant", 50000);
+        var cavalry = Army(1, new(1, 5), fort.Position, 2) with
+        {
+            TroopCode = "cavalry",
+            RenewalPosition = new(1005, 5359),
+            Field = Army(1, new(1, 5), fort.Position, 2).Field with
+            {
+                Mode = UnitMode.March,
+                ContinuousWaypoints = [new(1187, 5177)],
+                Waypoints = [new(1, 5)],
+            },
+        };
+        var trace = new List<RenewalCampaignTraceEntry>();
+        var after = Engine(new HexMap(-12, 14, -5, 11,
+            new Dictionary<HexCoord, TerrainType> { [new(2, 4)] = TerrainType.Mountain,
+                [new(0, 5)] = TerrainType.Cliff }), trace: trace.Add)
+            .AdvanceWeek(World(cavalry) with { FieldBuildings = [fort, watchtower],
+                RuinDefinitions = [ruin], RuinStates = [new RuinState(ruin.Id, 50000)] }, out _);
+        Assert.DoesNotContain(trace.Where(entry => entry.Unit == cavalry.Id), entry =>
+            entry.StopReason == RenewalStopReason.BuildingBlocked
+                && entry.Position == cavalry.RenewalPosition);
+        Assert.True(Assert.Single(after.Armies).RenewalPosition!.Value
+            .DistanceTo(cavalry.RenewalPosition!.Value) > 300);
+    }
+
+    [Fact]
     public void 같은_보루를_목표한_선행부대가_교전하면_후행_행군부대는_입성한다()
     {
         var fort = new FieldBuilding(new(81), "fort", new(1), new(2, 5), 4000, 0, 0);
