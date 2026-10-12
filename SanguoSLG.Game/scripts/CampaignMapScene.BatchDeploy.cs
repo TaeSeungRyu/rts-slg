@@ -41,7 +41,7 @@ public sealed partial class CampaignMapScene
 
         var table = new GridContainer { Columns = 8, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         table.AddThemeConstantOverride("h_separation", 7);
-        table.AddThemeConstantOverride("v_separation", 4);
+        table.AddThemeConstantOverride("v_separation", 14);
         foreach (var header in new[] { "부대", "장수 1 (선봉)", "장수 2 (부관)", "병종", "병력수", "군량 · 예상일", "휴대 금", "" })
         {
             var label = MakeLabel(header, 12, GoldBright);
@@ -370,6 +370,8 @@ public sealed partial class CampaignMapScene
                 && provisionAmounts[0].Value <= provisionAmounts[0].MaxValue;
         }
         var passed = ReferenceEquals(beforeState, _state)
+            && _modalLayer!.FindChildren("*", "GridContainer", true, false).OfType<GridContainer>()
+                .Any(grid => grid.Columns == 8 && grid.GetThemeConstant("v_separation") == 14)
             && beforePending == _pendingDeploys.Count
             && labels.Any(label => label.Text.Contains("일괄전투편성"))
             && options.Count > 0
@@ -388,7 +390,8 @@ public sealed partial class CampaignMapScene
         GD.Print($"[maptestbatchdeployqa] passed={passed && heightsAligned} rows={troopAmounts.Count} troopOptions={troopOptions.Count} provisions={provisionAmounts.Count} clamp={provisionClamps} gold={goldAmounts.Count} remove={removes.Count} delay={delayValid} unitCards={unitCards} compact={compactColumns} heights={heightsAligned}:{troopOptions.FirstOrDefault()?.Size.Y ?? 0:0}/{troopAmounts.FirstOrDefault()?.Size.Y ?? 0:0}/{removes.FirstOrDefault()?.Size.Y ?? 0:0} noScroll={noModalScroll} compactHeight={compactHeight}:{batchScroll?.CustomMinimumSize.Y ?? 0:0}/{contentHeight:0} stateUnchanged={ReferenceEquals(beforeState, _state)} pending={beforePending}/{_pendingDeploys.Count}");
         CloseModal();
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        GetTree().Quit(passed ? 0 : 1);
+        if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
+        else GetTree().Quit(1);
     }
 
     private void RunDeployTargetReturnQa()
