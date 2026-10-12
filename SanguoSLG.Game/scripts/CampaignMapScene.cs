@@ -4620,21 +4620,6 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
-        foreach (var u in turn.Units.Where(u => u.Field.Mode == UnitMode.Attack))
-        {
-            if (fieldAttackers.Contains(u.Id.Value)) { continue; }
-            var castle = _pendingState.Cities.FirstOrDefault(c => c.Owner != u.Field.Owner
-                && CastleFootprint.TilesFor(c).Min(tile => tile.Distance(u.Field.Position)) <= u.Field.RangeCastle);
-            if (castle is not null)
-            {
-                var targetTile = CastleFootprint.TilesFor(castle)
-                    .OrderBy(tile => tile.Distance(u.Field.Position))
-                    .ThenBy(tile => tile.Q)
-                    .ThenBy(tile => tile.R)
-                    .First();
-                AddAttack(u, _view.HexToWorld(targetTile));
-            }
-        }
     }
 
     // 애니메이션 종료 — 최종 상태를 반영하고 버튼·텍스트를 원복한다.
@@ -7182,6 +7167,13 @@ public sealed partial class CampaignMapScene : Node3D
             ? u with { BanditWaitDays = 7 } : u).ToList() };
         Redraw("");
         passed &= _armyLabels[99999].Text.Contains("대기 7일");
+        var waitingTurn = new AdvanceTurn([bandit],
+            new AdvanceResult([], [bandit.Field], StopReason.MaxDays, 1), null,
+            new Dictionary<UnitId, ActiveSkill>(), new Dictionary<UnitId, Stratagem>(),
+            new Dictionary<UnitId, int>(), new Dictionary<UnitId, int>());
+        var attackCount = _animAttacks.Count;
+        ScheduleAttackMotions(waitingTurn, 1);
+        passed &= _animAttacks.Count == attackCount;
         GD.Print($"[maptestbanditdisplayqa] passed={passed} countdown=14->7 index={modelIndex} model={modelPath}");
         if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
         else GetTree().Quit(1);
