@@ -11,6 +11,28 @@ public sealed partial class CampaignMapScene
 {
     private readonly System.Collections.Generic.HashSet<FieldBuildingId> _playbackDestroyedBuildings = [];
 
+    private void ShowEnteredFieldGarrisons()
+    {
+        var visibleIds = _state.Buildings.Where(building => building.GarrisonUnit is not null
+                && !_playbackDestroyedBuildings.Contains(building.Id))
+            .Select(building => building.GarrisonUnit!.Value.Value)
+            .Concat(_animFieldGarrisonEntries.Where(entry => entry.Value.Time <= _animT
+                && !_state.Buildings.Any(building => building.Position == entry.Value.Position
+                    && _playbackDestroyedBuildings.Contains(building.Id)))
+                .Select(entry => entry.Key))
+            .Distinct();
+        foreach (var id in visibleIds)
+        {
+            if (!_armyTokens.TryGetValue(id, out var token) || !GodotObject.IsInstanceValid(token)
+                || token.IsQueuedForDeletion()) continue;
+            token.Visible = true;
+            token.Position = new Vector3(token.Position.X, _view.TileTopY + 0.55f, token.Position.Z);
+            if (_armyLabels.TryGetValue(id, out var label))
+                label.Visible = (_state.Armies.FirstOrDefault(unit => unit.Id.Value == id)
+                    ?? _pendingState.Armies.FirstOrDefault(unit => unit.Id.Value == id))?.Field.Owner == Player;
+        }
+    }
+
     private void ScheduleFieldBuildingCombat(AdvanceTurn turn, double attackTime, double settleTime)
     {
         foreach (var exchange in turn.FieldBuildingExchanges)
@@ -202,6 +224,18 @@ public sealed partial class CampaignMapScene
             Redraw("fort garrison visibility QA");
             if (!_armyTokens.TryGetValue(exposed.Id.Value, out var enteredToken) || !enteredToken.Visible)
                 throw new Exception("보루 첫 입성 직후 주둔 부대가 보이지 않음");
+            _animFieldGarrisonEntries[exposed.Id.Value] = (0, occupied.Position);
+            enteredToken.Visible = false;
+            ShowEnteredFieldGarrisons();
+            if (!enteredToken.Visible || enteredToken.Position.Y < _view.TileTopY + 0.5f)
+                throw new Exception("보루 첫 입성 재생에서 부대가 건물에 가려짐");
+            _state = _state with { FieldBuildings = _state.Buildings.Select(item => item.Id == occupied.Id
+                ? item with { DefinitionCode = "formation" } : item).ToList() };
+            Redraw("formation garrison visibility QA");
+            if (!_armyTokens.TryGetValue(exposed.Id.Value, out var formationToken) || !formationToken.Visible
+                || formationToken.Position.Y < _view.TileTopY + 0.5f)
+                throw new Exception("진법 첫 입성 직후 주둔 부대가 보이지 않음");
+            _animFieldGarrisonEntries.Remove(exposed.Id.Value);
             HideDestroyedFieldBuilding(occupied.Id);
             if (!_armyTokens.TryGetValue(exposed.Id.Value, out var revealed) || !revealed.Visible)
                 throw new Exception("보루 파괴 직후 주둔 부대가 보이지 않음");

@@ -4120,10 +4120,6 @@ public sealed partial class CampaignMapScene : Node3D
                 playback.AppendFieldGarrison(id, stopDay, DaySeconds, MoveSeconds);
                 var building = preMove.Buildings.First(candidate => candidate.Id == buildingId);
                 _animFieldGarrisonEntries[id] = (playback.Entries[id], building.Position);
-                // 보루 주둔군은 첫 입성 시점부터 전장에 표시한다. 토큰을 제거하면
-                // 다음 진행의 Redraw까지 보이지 않다가 돌연 다시 나타난다.
-                if (building.DefinitionCode != "fort")
-                    _animKills.Add((playback.Entries[id], id));
             }
             var atkTime = ((stopDay - 1) * DaySeconds) + MoveSeconds + 0.15; // 그날 이동(≤1.5초)이 끝난 뒤
             ScheduleAttackMotions(turn, atkTime, unitSnapshot);
@@ -6054,6 +6050,7 @@ public sealed partial class CampaignMapScene : Node3D
             // 출격 해제와 해당 프레임의 이동 위치를 먼저 반영한 뒤 시야를 갱신한다.
             // 반대 순서면 첫 진행 동안 시야 갱신이 출격 토큰을 다시 숨겨 깜빡인다.
             RefreshPlaybackVision(delta);
+            ShowEnteredFieldGarrisons();
 
             while (_animAtkIdx < _animAttacks.Count && _animAttacks[_animAtkIdx].Time <= _animT)
             {
@@ -15642,7 +15639,7 @@ public sealed partial class CampaignMapScene : Node3D
             _commanderPortraits.Remove(id);
         }
 
-        var fieldGarrisonIds = _state.Buildings.Where(x => x.GarrisonUnit is not null && x.DefinitionCode != "fort")
+        var fieldGarrisonIds = _state.Buildings.Where(x => x.GarrisonUnit is not null)
             .Select(x => x.GarrisonUnit!.Value).ToHashSet();
         foreach (var army in _state.Armies)
         {
@@ -15681,13 +15678,15 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             token.SetFormationSize(army.IsSupply || army.IsArmyGroup ? 1 : FormationFor(army.Pool.Active)); // 보급부대·집단군은 규모와 무관하게 단일 전용 모델
-            var hiddenInFieldBuilding = fieldGarrisonIds.Contains(army.Id);
-            token.Visible = !army.IsWaitingDeployment && !hiddenInFieldBuilding;
+            var insideFieldBuilding = fieldGarrisonIds.Contains(army.Id);
+            token.Visible = !army.IsWaitingDeployment;
             if (army.RenewalPosition is { } continuousPosition)
                 token.DisplayContinuousAt(ContinuousToWorld(continuousPosition)
                     + new Vector3(0f, _view.TileTopY, 0f), false);
             else
                 token.DisplaySyncTo(army.Field.Position, 0.3f);
+            if (insideFieldBuilding)
+                token.Position = new Vector3(token.Position.X, _view.TileTopY + 0.55f, token.Position.Z);
             var constructionIndicator = token.GetNodeOrNull<Node3D>("FieldConstructionIndicator");
             if (army.IsConstructing && constructionIndicator is null)
             {
@@ -15709,17 +15708,16 @@ public sealed partial class CampaignMapScene : Node3D
             lblNode.Position = _view.HexToWorld(army.Field.Position)
                 + new Vector3(0f, _view.TileTopY + CommanderPortraitView3D.TroopLabelHeightOffset, 0f);
             lblNode.Text = $"{army.Pool.Active}";
-            lblNode.Visible = !army.IsWaitingDeployment && !hiddenInFieldBuilding && army.Field.Owner == Player; // 병력 수는 아군만 표시(적은 편대 규모로 가늠)
+            lblNode.Visible = !army.IsWaitingDeployment && army.Field.Owner == Player; // 병력 수는 아군만 표시(적은 편대 규모로 가늠)
             if (_activeGauges.TryGetValue(army.Id.Value, out var activeGauge))
             {
                 var (skill, gauge) = DisplayActiveGauge(army.State);
                 activeGauge.SetSkill(skill, gauge);
-                activeGauge.Visible = !hiddenInFieldBuilding
-                    && (army.State.VanguardActive is not null || army.State.AdjutantActive is not null)
+                activeGauge.Visible = (army.State.VanguardActive is not null || army.State.AdjutantActive is not null)
                     && (_advancing || (_unitMenu.Visible && _selectedUnitId == army.Id.Value));
             }
             if (_commanderPortraits.TryGetValue(army.Id.Value, out var portrait))
-                portrait.Visible = !hiddenInFieldBuilding && _unitMenu.Visible && _selectedUnitId == army.Id.Value;
+                portrait.Visible = _unitMenu.Visible && _selectedUnitId == army.Id.Value;
         }
 
         var activeProduction = _state.ProductionOps
