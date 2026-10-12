@@ -74,6 +74,23 @@ public sealed partial class CampaignMapScene
             var save = _modalLayer.FindChildren("*", "Button", true, false).OfType<Button>().Single(b => b.Text == "출항 예약");
             if (!panel.GetGlobalRect().Encloses(save.GetGlobalRect())) throw new Exception("출항 예약 버튼 모달 밖으로 넘침");
             if (save.GetGlobalRect().End.Y > GetViewport().GetVisibleRect().End.Y - 8) throw new Exception("출항 예약 버튼 화면 하단 넘침");
+            OpenNavalCompose(new SanguoSLG.Core.Domain.CityId(9));
+            for (var i = 0; i < 8; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var mediumTables = _modalLayer!.FindChildren("*", "Tree", true, false).OfType<Tree>().ToList();
+            var mediumTroops = mediumTables.Single(t => t.Name == "NavalTroopTable");
+            var mediumOfficers = mediumTables.Single(t => t.Name == "NavalOfficerTable");
+            if (mediumTroops.GetRoot().GetChildCount() != allLandTroops.Count)
+                throw new Exception("위중항 병종 표에 전체 지상 병종이 나오지 않음");
+            var troopHeight = mediumTroops.Size.Y;
+            var officerHeight = mediumOfficers.Size.Y;
+            foreach (var target in new[] { mediumTroops, mediumOfficers, mediumTroops, mediumOfficers })
+            {
+                GetViewport().PushInput(new InputEventMouseMotion { Position = target.GetGlobalRect().GetCenter() });
+                for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (!Mathf.IsEqualApprox(mediumTroops.Size.Y, troopHeight)
+                    || !Mathf.IsEqualApprox(mediumOfficers.Size.Y, officerHeight))
+                    throw new Exception("위중항 표가 마우스 오버 후 높이를 변경함");
+            }
             GD.Print("NAVAL_COMPOSE_QA PASS: stable tables, numbered sections, combat-style officer checks, 5 ships without scroll, food duration, screen bounds");
             GetParent().CallDeferred("RequestGracefulShutdown");
         }
