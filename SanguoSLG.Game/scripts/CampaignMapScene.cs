@@ -1953,6 +1953,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private bool CanPlayerSeeFieldBuilding(FieldBuilding building)
     {
+        if (_playbackDestroyedBuildings.Contains(building.Id)) return false;
         var kind = _fieldBuildingDefinitions.FirstOrDefault(x => x.Code == building.DefinitionCode)?.Kind;
         return building.Owner == Player || kind != FieldBuildingKind.ScoutPost;
     }
@@ -4090,6 +4091,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animFormationEffects.Clear();
         _animRuinCaptures.Clear();
         _animBuildingRemovals.Clear();
+        _playbackDestroyedBuildings.Clear();
         _animGaugeUpdates.Clear();
         for (var d = 0; d <= AnimDays; d++) { _dayKind[d] = "이동"; } // 기본 이동턴, 아래서 교전·공성 있는 날만 공격턴
         var alive = new HashSet<int>(startHex.Keys);
@@ -4669,6 +4671,7 @@ public sealed partial class CampaignMapScene : Node3D
         _dayTurnLabel.Visible = false;
 
         _state = _pendingState;
+        _playbackDestroyedBuildings.Clear();
         Redraw(_pendingNote);
         // 프레임 지연으로 이동 대기열이 남아도 진행 종료 후 뒤늦게 튀지 않도록 최종 칸에 확정한다.
         foreach (var unit in _state.Armies)

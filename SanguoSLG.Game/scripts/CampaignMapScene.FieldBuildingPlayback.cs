@@ -9,6 +9,8 @@ namespace SanguoSLG.Game;
 
 public sealed partial class CampaignMapScene
 {
+    private readonly System.Collections.Generic.HashSet<FieldBuildingId> _playbackDestroyedBuildings = [];
+
     private void ScheduleFieldBuildingCombat(AdvanceTurn turn, double attackTime, double settleTime)
     {
         foreach (var exchange in turn.FieldBuildingExchanges)
@@ -72,6 +74,9 @@ public sealed partial class CampaignMapScene
 
     private void HideDestroyedFieldBuilding(FieldBuildingId id)
     {
+        // The simulation snapshot is committed only at the end of playback. Keep a
+        // live tombstone so clicks and redraws cannot resurrect an already destroyed fort.
+        _playbackDestroyedBuildings.Add(id);
         // 진행 시작 Redraw에서 QueueFree 대기 중인 이전 노드와 이름이 충돌하면 Godot이
         // 새 노드 이름을 자동 변경한다. 이름 한 개만 찾지 말고 건축물 id 메타로 전부 제거한다.
         foreach (var node in _fieldBuildingLayer.GetChildren().OfType<Node3D>().Where(node =>
@@ -178,6 +183,9 @@ public sealed partial class CampaignMapScene
             renamed.SetMeta("field_building_id", building.Id.Value);
             _fieldBuildingLayer.AddChild(renamed);
             HideDestroyedFieldBuilding(building.Id);
+            if (CanPlayerSeeFieldBuilding(building)
+                || _state.Buildings.FirstOrDefault(b => b.Position == building.Position && CanPlayerSeeFieldBuilding(b))?.Id == building.Id)
+                throw new Exception("파괴 직후 보루 클릭 대상이 남아 있음");
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             if (_fieldBuildingLayer.GetChildren().OfType<Node3D>().Any(node =>
