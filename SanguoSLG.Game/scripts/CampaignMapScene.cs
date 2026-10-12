@@ -265,6 +265,9 @@ public sealed partial class CampaignMapScene : Node3D
     private int _generalRosterSortCol;
     private bool _generalRosterSortAsc = true;
     private int _generalRosterGeneration;
+    private int _generalRosterPage;
+    private string _generalRosterQuery = "";
+    private const int GeneralRosterPageSize = 20;
     private Label? _modalDetail;
     private readonly List<PanelContainer> _optionCards = new();
     private readonly List<PanelContainer> _autoRecruitRateCards = new();
@@ -8531,9 +8534,9 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 전체 장수 목록 — 소속·위치·능력. 행 클릭 = 장수 상세(포로/재야/야전 포함).
-    private async void OpenGeneralRoster()
+    private void OpenGeneralRoster()
     {
-        var rosterGeneration = ++_generalRosterGeneration;
+        ++_generalRosterGeneration;
         var perfQa = OS.GetCmdlineUserArgs().Contains("--maptestgeneralrosterqa");
         var perfWatch = perfQa ? System.Diagnostics.Stopwatch.StartNew() : null;
         void TraceRoster(string stage)
@@ -8588,7 +8591,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         IEnumerable<General> OrderedGenerals()
         {
-            var generals = _state.Generals.AsEnumerable();
+            var generals = _state.Generals.Where(g => string.IsNullOrWhiteSpace(_generalRosterQuery)
+                || g.Name.Contains(_generalRosterQuery.Trim(), System.StringComparison.OrdinalIgnoreCase));
             IOrderedEnumerable<General> ordered = _generalRosterSortCol switch
             {
                 0 => _generalRosterSortAsc ? generals.OrderBy(g => g.Name, System.StringComparer.Ordinal) : generals.OrderByDescending(g => g.Name, System.StringComparer.Ordinal),
@@ -8606,10 +8610,31 @@ public sealed partial class CampaignMapScene : Node3D
             return ordered.ThenBy(g => g.Id.Value);
         }
 
+        var searchRow = new HBoxContainer { Name = "GeneralRosterSearchRow" };
+        searchRow.AddThemeConstantOverride("separation", 10);
+        var search = new LineEdit
+        {
+            Name = "GeneralRosterSearch",
+            Text = _generalRosterQuery,
+            PlaceholderText = "장수 이름 검색",
+            CustomMinimumSize = new Vector2(230, 32),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        search.AddThemeFontOverride("font", _font);
+        search.AddThemeFontSizeOverride("font_size", 13);
+        search.AddThemeColorOverride("font_color", Parchment);
+        search.AddThemeStyleboxOverride("normal", Frame(InkSoft, Gold, 1, 5, 6));
+        search.AddThemeStyleboxOverride("focus", Frame(InkHover, GoldBright, 1, 5, 6));
+        searchRow.AddChild(search);
+        var resultCount = MakeLabel("", 12, Parchment);
+        searchRow.AddChild(resultCount);
+        box.AddChild(searchRow);
+
         var tree = new Tree
         {
             Columns = 15, ColumnTitlesVisible = true, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, Mathf.Min(mh - 60, 44 + _state.Generals.Count * 28)),
+            Name = "GeneralRosterPageTree",
+            CustomMinimumSize = new Vector2(0, Mathf.Min(mh - 130, 44 + GeneralRosterPageSize * 28)),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         tree.AddThemeFontOverride("font", _font);
@@ -8634,36 +8659,65 @@ public sealed partial class CampaignMapScene : Node3D
         tree.SetColumnTitle(13, SortTitle(13, "위인")); tree.SetColumnExpand(13, true); tree.SetColumnExpandRatio(13, 1); tree.SetColumnCustomMinimumWidth(13, 96);
         tree.SetColumnTitle(14, SortTitle(14, "상태")); tree.SetColumnExpand(14, false); tree.SetColumnCustomMinimumWidth(14, 64);
 
-        var root = tree.CreateItem();
-        var rosterRowCount = 0;
-        var portraitRows = new List<(TreeItem Item, GeneralId General)>();
-        foreach (var g in OrderedGenerals())
-        {
-            var it = tree.CreateItem(root);
-            it.SetText(0, g.Name);
-            portraitRows.Add((it, g.Id));
-            it.SetText(1, g.Might.ToString());
-            it.SetText(2, g.Intellect.ToString());
-            it.SetText(3, g.Politics.ToString());
-            it.SetText(4, Where(g));
-            for (var i = 0; i < GeneralRosterAptitudes.Length; i++)
-            {
-                var col = 5 + i;
-                var grade = g.AptitudeFor(GeneralRosterAptitudes[i].Class);
-                it.SetText(col, GradeText(grade));
-                it.SetTextAlignment(col, HorizontalAlignment.Center);
-                if (grade >= AptitudeGrade.A) { it.SetCustomColor(col, GoldBright); }
-            }
-            it.SetText(13, HeroType(g.Id));
-            it.SetText(14, HeroStatus(g.Id));
-            it.SetMetadata(0, g.Id.Value);
-            for (var col = 1; col <= 3; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
-            it.SetTextAlignment(14, HorizontalAlignment.Center);
-            rosterRowCount++;
-            if (perfQa && rosterRowCount % 25 == 0) TraceRoster($"rows-{rosterRowCount}");
-        }
-        TraceRoster("rows-complete");
+        var pager = new HBoxContainer { Name = "GeneralRosterPager" };
+        pager.AddThemeConstantOverride("separation", 12);
+        var prevPage = MakeButton("◀ 이전");
+        prevPage.Name = "GeneralRosterPreviousPage";
+        var pageLabel = MakeLabel("", 13, GoldBright);
+        pageLabel.Name = "GeneralRosterPageLabel";
+        pageLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        pageLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        var nextPage = MakeButton("다음 ▶");
+        nextPage.Name = "GeneralRosterNextPage";
+        pager.AddChild(prevPage);
+        pager.AddChild(pageLabel);
+        pager.AddChild(nextPage);
 
+        void RenderPage()
+        {
+            var generation = ++_generalRosterGeneration;
+            var filtered = OrderedGenerals().ToList();
+            var pageCount = System.Math.Max(1, (filtered.Count + GeneralRosterPageSize - 1) / GeneralRosterPageSize);
+            _generalRosterPage = System.Math.Clamp(_generalRosterPage, 0, pageCount - 1);
+            tree.Clear();
+            var root = tree.CreateItem();
+            var portraitRows = new List<(TreeItem Item, GeneralId General)>();
+            foreach (var g in filtered.Skip(_generalRosterPage * GeneralRosterPageSize).Take(GeneralRosterPageSize))
+            {
+                var it = tree.CreateItem(root);
+                it.SetText(0, g.Name);
+                portraitRows.Add((it, g.Id));
+                it.SetText(1, g.Might.ToString());
+                it.SetText(2, g.Intellect.ToString());
+                it.SetText(3, g.Politics.ToString());
+                it.SetText(4, Where(g));
+                for (var i = 0; i < GeneralRosterAptitudes.Length; i++)
+                {
+                    var col = 5 + i;
+                    var grade = g.AptitudeFor(GeneralRosterAptitudes[i].Class);
+                    it.SetText(col, GradeText(grade));
+                    it.SetTextAlignment(col, HorizontalAlignment.Center);
+                    if (grade >= AptitudeGrade.A) { it.SetCustomColor(col, GoldBright); }
+                }
+                it.SetText(13, HeroType(g.Id));
+                it.SetText(14, HeroStatus(g.Id));
+                it.SetMetadata(0, g.Id.Value);
+                for (var col = 1; col <= 3; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
+                it.SetTextAlignment(14, HorizontalAlignment.Center);
+            }
+            resultCount.Text = $"검색 결과 {filtered.Count}명";
+            pageLabel.Text = $"{_generalRosterPage + 1} / {pageCount}";
+            prevPage.Disabled = _generalRosterPage == 0;
+            nextPage.Disabled = _generalRosterPage + 1 >= pageCount;
+            tree.SetMeta("portraits_loaded_deferred", true);
+            tree.SetMeta("portraits_loaded", -1);
+            HydrateGeneralRosterPage(tree, portraitRows, rosterLayer, generation);
+            TraceRoster($"rows-{portraitRows.Count}");
+        }
+
+        search.TextChanged += text => { _generalRosterQuery = text; _generalRosterPage = 0; RenderPage(); };
+        prevPage.Pressed += () => { _generalRosterPage--; RenderPage(); };
+        nextPage.Pressed += () => { _generalRosterPage++; RenderPage(); };
         tree.ItemSelected += () =>
         {
             var it = tree.GetSelected();
@@ -8677,20 +8731,22 @@ public sealed partial class CampaignMapScene : Node3D
             OpenGeneralRoster();
         };
         box.AddChild(tree);
+        box.AddChild(pager);
+        RenderPage();
         TraceRoster("tree-added");
         var contentH = box.GetCombinedMinimumSize().Y;
         TraceRoster("minimum-size");
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
-        tree.SetMeta("portraits_loaded_deferred", true);
+    }
 
-        // 먼저 텍스트 목록을 화면에 그린 뒤 64px 초상을 작은 묶음으로 채운다.
-        // 디스크 캐시가 차가운 최초 실행에서도 모달 자체가 초상 디코딩을 기다리지 않는다.
+    private async void HydrateGeneralRosterPage(Tree tree,
+        IReadOnlyList<(TreeItem Item, GeneralId General)> portraitRows, CanvasLayer? rosterLayer, int generation)
+    {
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        const int portraitBatchSize = 20;
         for (var i = 0; i < portraitRows.Count; i++)
         {
-            if (rosterGeneration != _generalRosterGeneration
+            if (generation != _generalRosterGeneration
                 || rosterLayer is null || !GodotObject.IsInstanceValid(rosterLayer)
                 || !ReferenceEquals(_modalLayer, rosterLayer))
             {
@@ -8699,10 +8755,6 @@ public sealed partial class CampaignMapScene : Node3D
 
             var (item, general) = portraitRows[i];
             ApplyGeneralTreePortrait(item, 0, general, goldBorder: true);
-            if ((i + 1) % portraitBatchSize == 0)
-            {
-                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            }
         }
         tree.SetMeta("portraits_loaded", portraitRows.Count);
     }
@@ -16286,12 +16338,13 @@ public sealed partial class CampaignMapScene : Node3D
 
         var tree = _modalLayer?.FindChildren("*", "Tree", true, false).OfType<Tree>().FirstOrDefault();
         var rows = tree?.GetRoot()?.GetChildCount() ?? 0;
-        for (var frame = 0; frame < 60 && tree?.HasMeta("portraits_loaded") != true; frame++)
+        var expectedPageRows = System.Math.Min(GeneralRosterPageSize, _state.Generals.Count);
+        for (var frame = 0; frame < 60 && tree?.GetMeta("portraits_loaded", -1).AsInt32() != expectedPageRows; frame++)
         {
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
         var coldHydrated = tree?.HasMeta("portraits_loaded") == true
-            && tree.GetMeta("portraits_loaded").AsInt32() == _state.Generals.Count;
+            && tree.GetMeta("portraits_loaded").AsInt32() == expectedPageRows;
         var deferredLoading = tree?.GetMeta("portraits_loaded_deferred", false).AsBool() == true;
         var firstPortrait = tree?.GetRoot()?.GetFirstChild()?.GetIcon(0)?.GetImage();
         var ringPixel = firstPortrait is not null && firstPortrait.GetWidth() >= 64
@@ -16306,22 +16359,44 @@ public sealed partial class CampaignMapScene : Node3D
             var path = ProjectSettings.GlobalizePath($"res://assets/portraits/thumbnails/{g.Id.Value}.png");
             return File.Exists(path);
         });
-        var compactTextures = _rosterPortraits.Count == _state.Generals.Count
+        var compactTextures = _rosterPortraits.Count == expectedPageRows
             && _rosterPortraits.Values.All(texture => texture.GetWidth() == 64 && texture.GetHeight() == 64);
 
         var second = System.Diagnostics.Stopwatch.StartNew();
         OpenGeneralRoster();
         second.Stop();
         var warmTree = _modalLayer?.FindChildren("*", "Tree", true, false).OfType<Tree>().FirstOrDefault();
-        for (var frame = 0; frame < 60 && warmTree?.HasMeta("portraits_loaded") != true; frame++)
+        for (var frame = 0; frame < 60 && warmTree?.GetMeta("portraits_loaded", -1).AsInt32() != expectedPageRows; frame++)
         {
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
         var warmHydrated = warmTree?.HasMeta("portraits_loaded") == true
-            && warmTree.GetMeta("portraits_loaded").AsInt32() == _state.Generals.Count;
+            && warmTree.GetMeta("portraits_loaded").AsInt32() == expectedPageRows;
+
+        var nextPage = _modalLayer?.FindChildren("GeneralRosterNextPage", "Button", true, false)
+            .OfType<Button>().FirstOrDefault();
+        nextPage?.EmitSignal(BaseButton.SignalName.Pressed);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var pageTwoRows = warmTree?.GetRoot()?.GetChildCount() ?? 0;
+        var pageTwoOk = _state.Generals.Count <= GeneralRosterPageSize
+            ? nextPage?.Disabled == true
+            : pageTwoRows == System.Math.Min(GeneralRosterPageSize, _state.Generals.Count - GeneralRosterPageSize)
+                && _generalRosterPage == 1;
+        var search = _modalLayer?.FindChildren("GeneralRosterSearch", "LineEdit", true, false)
+            .OfType<LineEdit>().FirstOrDefault();
+        var query = _state.Generals[^1].Name;
+        if (search is not null)
+        {
+            search.Text = query;
+            search.EmitSignal(LineEdit.SignalName.TextChanged, query);
+        }
+        var filteredRows = warmTree?.GetRoot()?.GetChildren().OfType<TreeItem>().ToList() ?? [];
+        var searchOk = filteredRows.Count > 0 && filteredRows.Count <= GeneralRosterPageSize
+            && filteredRows.All(item => item.GetText(0).Contains(query, System.StringComparison.OrdinalIgnoreCase))
+            && _generalRosterPage == 0;
 
         const long initialModalLimitMilliseconds = 500;
-        var passed = rows == _state.Generals.Count
+        var passed = rows == expectedPageRows
             && thumbnailsReady
             && compactTextures
             && coldHydrated
@@ -16330,9 +16405,12 @@ public sealed partial class CampaignMapScene : Node3D
             && thinGoldRing
             && smoothGoldRing
             && portraitNameGap
+            && pageTwoOk && searchOk
             && first.ElapsedMilliseconds < initialModalLimitMilliseconds
             && second.ElapsedMilliseconds <= first.ElapsedMilliseconds;
-        GD.Print($"[maptestgeneralrosterqa] passed={passed} rows={rows}/{_state.Generals.Count} thumbnails={_rosterPortraits.Count} deferred={coldHydrated} compact={compactTextures} goldRing={thinGoldRing}/{smoothGoldRing} nameGap={portraitNameGap} initialColdMs={first.ElapsedMilliseconds} initialWarmMs={second.ElapsedMilliseconds} limitMs={initialModalLimitMilliseconds}");
+        GD.Print($"[maptestgeneralrosterqa] passed={passed} rows={rows}/{expectedPageRows} pageTwo={pageTwoOk}:{pageTwoRows} search={searchOk}:{filteredRows.Count} thumbnails={_rosterPortraits.Count} deferred={coldHydrated} compact={compactTextures} goldRing={thinGoldRing}/{smoothGoldRing} nameGap={portraitNameGap} initialColdMs={first.ElapsedMilliseconds} initialWarmMs={second.ElapsedMilliseconds} limitMs={initialModalLimitMilliseconds}");
+        _generalRosterQuery = "";
+        _generalRosterPage = 0;
         GetTree().Quit(passed ? 0 : 1);
     }
 
