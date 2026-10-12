@@ -314,6 +314,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _vanSortCol = 2;         // 2 이름 / 3 무 / 4 지 / 5 정 / 6 적성
     private bool _vanSortAsc = true;
     private int _depProvDays; // 출전 시 휴대할 군량 일수(슬라이더). 0이면 군량 없이 나감
+    private int _depProvAmount;
     private int _depGold;
     private int _depDelayDays;
     private SpinBox? _depGoldSpin;
@@ -634,6 +635,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestactivecasterqa")) CallDeferred(nameof(RunActiveCasterPortraitQa));
         if (args.Contains("--maptestbatchdeployqa")) CallDeferred(nameof(RunBatchDeployQa));
         if (args.Contains("--maptestsupplyreplenishmentqa")) CallDeferred(nameof(RunSupplyReplenishmentQa));
+        if (args.Contains("--maptestcombatprovisionqa")) CallDeferred(nameof(RunCombatProvisionQa));
         if (args.Contains("--maptestdeploytargetreturnqa")) CallDeferred(nameof(RunDeployTargetReturnQa));
         if (args.Contains("--maptestunitstatusqa")) CallDeferred(nameof(RunUnitStatusDisplayQa));
         if (args.Contains("--maptestunitcardqa")) CallDeferred(nameof(RunUnitCardQa));
@@ -6966,6 +6968,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depVan = null;
         _depPreview = null;
         _depProvDays = 0;
+        _depProvAmount = 0;
         _depGold = 0;
         _depDelayDays = 0;
         _depGoldSpin = null;
@@ -11314,6 +11317,7 @@ public sealed partial class CampaignMapScene : Node3D
         _vanSortCol = 2;
         _vanSortAsc = true;
         _depProvDays = 0;
+        _depProvAmount = 0;
         _depGold = 0;
         _depDelayDays = 0;
         _depGoldSpin = null;
@@ -11370,9 +11374,7 @@ public sealed partial class CampaignMapScene : Node3D
                     _depTroop = code;
                     if (_depAmountSpin is { } sp) { sp.MaxValue = cap; sp.Value = cap; }
                     _depAmount = cap;
-                    var capDays = System.Math.Max(1, (template?.ProvisionsCapacity ?? 300) / System.Math.Max(1, _provPer10kPerDay));
-                    if (_depProvSlider is { } ps) { ps.MaxValue = capDays; ps.Value = capDays; }
-                    _depProvDays = capDays;
+                    UpdateCombatProvisionCapacity(followMaximum: true);
                     RestyleDeploy();
                     PopulateVanTree(); // 적성 컬럼이 선택 병종 기준으로 갱신
                     UpdateProvLabel();
@@ -11389,7 +11391,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depAmountSpin = ApplyNumberInputStyle(new SpinBox { MinValue = 0, MaxValue = 0, Step = 100, Value = 0, CustomMinimumSize = new Vector2(130, 30) });
         _depAmountSpin.AddThemeFontOverride("font", _font);
         _depAmountSpin.AddThemeFontSizeOverride("font_size", 14);
-        _depAmountSpin.ValueChanged += v => { _depAmount = (int)v; UpdateProvLabel(); UpdateDepPreview(); };
+        _depAmountSpin.ValueChanged += v => { _depAmount = (int)v; UpdateCombatProvisionCapacity(); UpdateProvLabel(); UpdateDepPreview(); };
         amtRow.AddChild(_depAmountSpin);
         var maxButton = MakeButton("최대");
         maxButton.CustomMinimumSize = new Vector2(58, 28);
@@ -11398,21 +11400,21 @@ public sealed partial class CampaignMapScene : Node3D
 
         box.AddChild(amtRow);
 
-        // 2-a) 군량(일수) — 부대가 휴대할 군량을 일수로 조정(성 비축·적재 상한 안에서).
-        box.AddChild(MakeLabel("군량 (일수)", 13, GoldBright));
+        // 2-a) 군량 절대량 — 병력 변화에 따라 슬라이더 최대치도 같이 갱신한다.
+        box.AddChild(MakeLabel("휴대 군량", 13, GoldBright));
         var provRow = new HBoxContainer();
         provRow.AddThemeConstantOverride("separation", 10);
         _depProvSlider = ApplySliderStyle(new HSlider
         {
             MinValue = 0,
-            MaxValue = 50,
+            MaxValue = 0,
             Step = 1,
             Value = 0,
             CustomMinimumSize = new Vector2(240, 24),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
         });
-        _depProvSlider.ValueChanged += v => { _depProvDays = (int)v; UpdateProvLabel(); UpdateDepPreview(); };
+        _depProvSlider.ValueChanged += v => { _depProvAmount = (int)v; UpdateProvLabel(); UpdateDepPreview(); };
         provRow.AddChild(_depProvSlider);
         _depProvLabel = MakeLabel("병종을 먼저 선택", 12, Parchment);
         _depProvLabel.CustomMinimumSize = new Vector2(220, 0);
@@ -11528,12 +11530,8 @@ public sealed partial class CampaignMapScene : Node3D
             deployDelayOption.Select(_depDelayDays);
             _depGoldSpin?.SetValueNoSignal(_depGold);
 
-            var tmpl = _troops.FirstOrDefault(t => t.Code == rq.TroopCode);
-            var capDays = System.Math.Max(1, (tmpl?.ProvisionsCapacity ?? 300) / System.Math.Max(1, _provPer10kPerDay));
-            _depProvDays = rq.Provisions < 0
-                ? capDays
-                : System.Math.Clamp(rq.Provisions * 10000 / System.Math.Max(1, rq.Troops * _provPer10kPerDay), 0, capDays);
-            if (_depProvSlider is { } ps) { ps.MaxValue = capDays; ps.Value = _depProvDays; }
+            _depProvAmount = rq.Provisions;
+            UpdateCombatProvisionCapacity(followMaximum: rq.Provisions < 0);
 
             PopulateVanTree(); // 선봉·부관 체크 반영
         }
@@ -12241,15 +12239,24 @@ public sealed partial class CampaignMapScene : Node3D
             });
     }
 
-    // 슬라이더 일수 → 실제 휴대 군량(병력 비례 환산). 적재 상한·성 비축 안에서 자른다(미리보기용).
+    private void UpdateCombatProvisionCapacity(bool followMaximum = false)
+    {
+        if (_depProvSlider is null) return;
+        var previousMaximum = (int)_depProvSlider.MaxValue;
+        var wasMaximum = followMaximum || previousMaximum > 0 && _depProvAmount >= previousMaximum;
+        var cityProvisions = _state.Cities.First(city => city.Id == _depModalCity).Provisions;
+        var capacity = _depTroop is { } code
+            ? (_troops.FirstOrDefault(troop => troop.Code == code)?.ProvisionsCapacity ?? 300) * _depAmount / 10000
+            : 0;
+        var maximum = System.Math.Max(0, System.Math.Min(cityProvisions, capacity));
+        _depProvAmount = wasMaximum ? maximum : System.Math.Clamp(_depProvAmount, 0, maximum);
+        _depProvSlider.MaxValue = maximum;
+        _depProvSlider.SetValueNoSignal(_depProvAmount);
+    }
+
     private int ProvisionsToCarry()
     {
-        if (_depTroop is not { } code) { return 0; }
-        var tmpl = _troops.FirstOrDefault(t => t.Code == code);
-        var capacity = (tmpl?.ProvisionsCapacity ?? 300) * _depAmount / 10000;
-        var wanted = _depProvDays * _depAmount * _provPer10kPerDay / 10000;
-        var cityProv = _state.Cities.First(x => x.Id == _depModalCity).Provisions;
-        return System.Math.Min(System.Math.Min(wanted, capacity), cityProv);
+        return _depProvAmount;
     }
 
     private int EstimateCarriedProvisionDays(CombatUnit unit)
@@ -12265,8 +12272,9 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (_depProvLabel is null) { return; }
         if (_depTroop is null) { _depProvLabel.Text = "병종을 먼저 선택"; return; }
-        var cityProv = _state.Cities.First(x => x.Id == _depModalCity).Provisions;
-        _depProvLabel.Text = $"{_depProvDays}일 · 휴대 {ProvisionsToCarry():N0} / 최대 {System.Math.Min((_troops.FirstOrDefault(t => t.Code == _depTroop)?.ProvisionsCapacity ?? 300) * _depAmount / 10000, cityProv):N0}";
+        var daily = System.Math.Max(1, _depAmount * _provPer10kPerDay / 10000);
+        _depProvDays = ProvisionsToCarry() / daily;
+        _depProvLabel.Text = $"휴대 {ProvisionsToCarry():N0} / 최대 {_depProvSlider?.MaxValue ?? 0:N0} · 예상 {_depProvDays}일";
     }
 
     private void SaveCompose()
