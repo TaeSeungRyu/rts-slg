@@ -302,7 +302,7 @@ public sealed class RenewalAdvanceSimulator
 
     private RenewalUnitState PreparePath(RenewalUnitState unit)
     {
-        if (_movementMap is null || unit.Arrived)
+        if (_movementMap is null || unit.Arrived || unit.Mode == RenewalOrderMode.Standby)
         {
             return unit;
         }

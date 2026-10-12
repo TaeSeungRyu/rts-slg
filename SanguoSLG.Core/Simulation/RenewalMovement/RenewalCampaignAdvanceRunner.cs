@@ -174,6 +174,27 @@ public sealed class RenewalCampaignAdvanceRunner(
                     renewal = renewal with { Destination = RenewalHexSpace.Center(entry),
                         OriginalDestination = RenewalHexSpace.Center(entry), Arrived = false };
             }
+            if (unit.Field.Mode is UnitMode.March or UnitMode.Advance
+                && renewal.OriginalWaypoints is not { Count: > 0 }
+                && OwnDestination(unit, castles) is null
+                && !movementMap.CanStand(unit.Field.Domain, renewal.OriginalDestination ?? renewal.Destination,
+                    RenewalAdvanceSimulator.UnitCollisionRadius))
+            {
+                var goal = renewal.OriginalDestination ?? renewal.Destination;
+                var tile = RenewalHexSpace.NearestHex(goal);
+                var candidates = tile.Neighbors().Concat(tile.Neighbors().SelectMany(neighbor => neighbor.Neighbors()))
+                    .Distinct().Select(RenewalHexSpace.Center)
+                    .Where(candidate => movementMap.CanStand(unit.Field.Domain, candidate,
+                        RenewalAdvanceSimulator.UnitCollisionRadius))
+                    .Where(candidate => movementMap.FindPath(unit.Field.Domain, renewal.Position, candidate).Count > 0)
+                    .OrderBy(candidate => candidate.DistanceSquaredTo(goal))
+                    .ThenBy(candidate => candidate.DistanceSquaredTo(renewal.Position))
+                    .ThenBy(candidate => candidate.X).ThenBy(candidate => candidate.Y)
+                    .Cast<ContinuousPosition?>().FirstOrDefault();
+                if (candidates is { } reachable)
+                    renewal = renewal with { Destination = reachable, OriginalDestination = reachable,
+                        Arrived = false };
+            }
             return renewal;
         }).ToList();
         var state = simulator.Start(renewalUnits, externalTargets);
