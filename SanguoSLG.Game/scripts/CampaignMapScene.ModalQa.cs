@@ -1056,7 +1056,12 @@ public sealed partial class CampaignMapScene
         {
             _ = ClassEmblem(troopClass);
         }
-        foreach (var general in _state.Generals.Take(20)) _ = CircularPortraitFor(general.Id);
+        foreach (var general in _state.Generals)
+        {
+            _ = CircularPortraitFor(general.Id);
+            _ = OfficerPortrait(general.Id);
+        }
+        foreach (var troop in _troops) _ = UnitCard(troop.Code, troop.Class);
         OpenSystemPalette();
         GD.Print($"[graceful-shutdown-qa] icons={_icons.Count} emblems={_emblems.Count} portraits={_circularPortraits.Count} modal={_modalLayer is not null}");
     }

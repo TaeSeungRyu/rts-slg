@@ -87,7 +87,7 @@ public partial class GameRoot3D : Node3D
         if (OS.GetCmdlineArgs().Contains("--maptest") || OS.GetCmdlineUserArgs().Contains("--maptest"))
         {
             BuildCampaignMap();
-            if (OS.GetCmdlineArgs().Contains("--gracefulshutdownqa"))
+            if (OS.GetCmdlineArgs().Contains("--gracefulshutdownqa") || OS.GetCmdlineUserArgs().Contains("--gracefulshutdownqa"))
             {
                 CallDeferred(nameof(RequestGracefulShutdown));
             }
@@ -169,7 +169,7 @@ public partial class GameRoot3D : Node3D
         _shuttingDown = true;
 
         var tree = GetTree();
-        if (OS.GetCmdlineArgs().Contains("--gracefulshutdownqa"))
+        if (OS.GetCmdlineArgs().Contains("--gracefulshutdownqa") || OS.GetCmdlineUserArgs().Contains("--gracefulshutdownqa"))
         {
             foreach (var campaign in GetChildren().OfType<CampaignMapScene>())
             {
