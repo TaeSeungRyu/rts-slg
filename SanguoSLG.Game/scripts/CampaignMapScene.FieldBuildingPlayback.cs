@@ -191,6 +191,9 @@ public sealed partial class CampaignMapScene
                 GarrisonUnit = exposed.Id };
             _state = _state with { FieldArmies = _state.Armies.Append(exposed).ToList(),
                 FieldBuildings = _state.Buildings.Append(occupied).ToList() };
+            Redraw("fort garrison visibility QA");
+            if (!_armyTokens.TryGetValue(exposed.Id.Value, out var enteredToken) || !enteredToken.Visible)
+                throw new Exception("보루 첫 입성 직후 주둔 부대가 보이지 않음");
             HideDestroyedFieldBuilding(occupied.Id);
             if (!_armyTokens.TryGetValue(exposed.Id.Value, out var revealed) || !revealed.Visible)
                 throw new Exception("보루 파괴 직후 주둔 부대가 보이지 않음");

@@ -4141,7 +4141,10 @@ public sealed partial class CampaignMapScene : Node3D
                 playback.AppendFieldGarrison(id, stopDay, DaySeconds, MoveSeconds);
                 var building = preMove.Buildings.First(candidate => candidate.Id == buildingId);
                 _animFieldGarrisonEntries[id] = (playback.Entries[id], building.Position);
-                _animKills.Add((playback.Entries[id], id));
+                // 보루 주둔군은 첫 입성 시점부터 전장에 표시한다. 토큰을 제거하면
+                // 다음 진행의 Redraw까지 보이지 않다가 돌연 다시 나타난다.
+                if (building.DefinitionCode != "fort")
+                    _animKills.Add((playback.Entries[id], id));
             }
             var atkTime = ((stopDay - 1) * DaySeconds) + MoveSeconds + 0.15; // 그날 이동(≤1.5초)이 끝난 뒤
             ScheduleAttackMotions(turn, atkTime, unitSnapshot);
@@ -15658,7 +15661,7 @@ public sealed partial class CampaignMapScene : Node3D
             _commanderPortraits.Remove(id);
         }
 
-        var fieldGarrisonIds = _state.Buildings.Where(x => x.GarrisonUnit is not null)
+        var fieldGarrisonIds = _state.Buildings.Where(x => x.GarrisonUnit is not null && x.DefinitionCode != "fort")
             .Select(x => x.GarrisonUnit!.Value).ToHashSet();
         foreach (var army in _state.Armies)
         {
