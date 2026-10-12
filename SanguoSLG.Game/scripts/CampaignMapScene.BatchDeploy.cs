@@ -421,8 +421,7 @@ public sealed partial class CampaignMapScene
         _targetWaypoints.Add(new HexCoord(city.Position.Q + 4, city.Position.R));
         _targetContinuousWaypoints.Add(RenewalHexSpace.Center(_targetWaypoints[^1]));
         RebuildTargetEdit();
-        var directionControls = _targetEgressButtons.Count == 6
-            && _targetEgressButtons.Values.Count(button => !button.Disabled) > 0;
+        var directionControls = _targetEgressButtons.Values.All(button => !button.Visible);
         _targetWaypoints.Clear();
         ApplyTarget(city.Position, null, RenewalHexSpace.Center(city.Position), null);
 
@@ -440,6 +439,7 @@ public sealed partial class CampaignMapScene
 
         _pendingDeploys.RemoveAt(pendingIndex);
         CloseModal();
-        GetTree().Quit(passed ? 0 : 1);
+        if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
+        else GetTree().Quit(1);
     }
 }

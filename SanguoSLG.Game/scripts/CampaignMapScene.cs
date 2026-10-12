@@ -1383,7 +1383,6 @@ public sealed partial class CampaignMapScene : Node3D
                 var th = ground.Hex;
                 // 출격 방향 버튼은 성 외곽 대표 칸 위에 떠 있다. 해상도·레이아웃 타이밍에 따라
                 // 버튼 입력이 지도까지 전달되어도 해당 칸을 경유지로 넣지 않고 방향 선택으로 복구한다.
-                if (TrySelectTargetEgressAt(th)) { return; }
                 var from = LastTargetPoint();
                 if (HasPath(from, th))
                 {
@@ -2800,38 +2799,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void RefreshTargetEgressButtons()
     {
-        if (_retargetUnitId >= 0 || TargetOriginCity() is not { } city)
-        {
-            foreach (var button in _targetEgressButtons.Values) { button.Visible = false; }
-            return;
-        }
-
-        foreach (var direction in DeploymentEgressRules.Directions)
-        {
-            if (!_targetEgressButtons.TryGetValue(direction, out var button))
-            {
-                button = MakeButton(EgressDirectionArrow(direction));
-                button.TooltipText = $"{EgressDirectionName(direction)}쪽 출격";
-                button.AddThemeFontSizeOverride("font_size", 17);
-                button.CustomMinimumSize = new Vector2(34, 30);
-                var selectedDirection = direction;
-                button.Pressed += () =>
-                {
-                    _targetEgressDirection = selectedDirection;
-                    _targetEgressManual = true;
-                    RebuildTargetEdit();
-                };
-                _targetEditLayer.AddChild(button);
-                _targetEgressButtons[direction] = button;
-            }
-
-            var exit = TargetEgressExit(city, direction,
-                _targetWaypoints.Count > 0 ? _targetWaypoints[^1] : null);
-            button.Visible = true;
-            button.Disabled = !exit.HasValue;
-            button.Modulate = !exit.HasValue ? new Color(0.45f, 0.45f, 0.45f, 0.7f)
-                : _targetEgressDirection == direction ? GoldBright : Colors.White;
-        }
+        foreach (var button in _targetEgressButtons.Values) button.Visible = false;
 
         _targetConfirmBtn.Text = _targetEgressDirection is { } selected
             ? $"✓ 확인 · {EgressDirectionName(selected)} 출격"
