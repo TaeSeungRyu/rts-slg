@@ -2027,7 +2027,7 @@ public sealed partial class CampaignMapScene : Node3D
         var adj = u.AdjutantId is { } aid ? _state.Generals.FirstOrDefault(g => g.Id == aid)?.Name : null;
 
         Clear(_infoRows);
-        _infoRows.AddChild(MakeLabel($"{tmpl?.Name ?? u.TroopCode} · {faction?.Name}", 15, GoldBright));
+        _infoRows.AddChild(MakeLabel($"{TroopName(u.TroopCode)} · {faction?.Name}", 15, GoldBright));
         _infoRows.AddChild(MakeLabel($"시야 {_vision.UnitRadius(u)}칸", 13, Parchment));
         if (u.VanguardId is { } vanguardId)
         {
@@ -7143,7 +7143,8 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 병종 코드 → 한글 이름(성벽 연구 코드 포함).
-    private string TroopName(string code) => code == FactionResearch.WallCode ? "성벽"
+    private string TroopName(string code) => code == "army_group" ? "집단군"
+        : code == FactionResearch.WallCode ? "성벽"
         : code == FactionResearch.CommandTroopsCode ? "통솔 병력"
         : code == FactionResearch.ArmyGroupCode ? "집단군"
         : code == WorldEngine.BanditTroopCode ? "도적"
@@ -16166,8 +16167,14 @@ public sealed partial class CampaignMapScene : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var restoredAfterDismiss = _infoCard.Visible
             && _infoRows.FindChild("UnitCommanderVisual", true, false) is PanelContainer;
-        var passed = layoutOk && detailOpened && aptitudeImagesInsideBorder && regionTranslated && restoredAfterDismiss;
-        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} detail={detailOpened} aptitudeInsets={aptitudeImagesInsideBorder}:{aptitudeFrames.Count} regionKo={regionTranslated}:{expectedRegion} restored={restoredAfterDismiss} badge={troopBadge is not null} adjutant={adjutantPortrait is not null} roleCards={roleCardCount}");
+        _state = _state with { FieldArmies = _state.Armies.Select(unit => unit.Id == sample.Id
+            ? unit with { IsArmyGroup = true, TroopCode = "army_group" } : unit).ToList() };
+        ShowUnitInfo(sample.Id.Value);
+        var groupNameTranslated = _infoRows.GetChildren().OfType<Label>()
+            .Any(label => label.Text.StartsWith("집단군 ·", System.StringComparison.Ordinal));
+        var passed = layoutOk && detailOpened && aptitudeImagesInsideBorder && regionTranslated
+            && restoredAfterDismiss && groupNameTranslated;
+        GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} detail={detailOpened} aptitudeInsets={aptitudeImagesInsideBorder}:{aptitudeFrames.Count} regionKo={regionTranslated}:{expectedRegion} restored={restoredAfterDismiss} armyGroupKo={groupNameTranslated} badge={troopBadge is not null} adjutant={adjutantPortrait is not null} roleCards={roleCardCount}");
         _state = original;
         _infoCard.Visible = false;
         GetTree().Quit(passed ? 0 : 1);
