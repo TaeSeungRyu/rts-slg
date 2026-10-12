@@ -25,7 +25,7 @@ public sealed partial class CampaignMapScene
             availableIds, _troops, DeployMaxTroopsFor(city), reservedGenerals, reservedTroops).ToList();
 
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.84f, 760f, 1080f);
+        var mw = Mathf.Min(vp.X - 48f, 1180f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
@@ -157,7 +157,12 @@ public sealed partial class CampaignMapScene
             });
             amount.SetMeta("batch_compact_column", true);
             table.AddChild(amount);
-            var provisionCell = new VBoxContainer { CustomMinimumSize = new Vector2(92, 50) };
+            var provisionCell = new HBoxContainer
+            {
+                Name = $"BatchDeployProvisionRow{index}",
+                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            };
+            provisionCell.AddThemeConstantOverride("separation", 6);
             var provision = ApplyNumberInputStyle(new SpinBox
             {
                 Name = $"BatchDeployProvisions{index}",
@@ -170,6 +175,9 @@ public sealed partial class CampaignMapScene
             });
             provision.SetMeta("batch_compact_column", true);
             var provisionDays = MakeLabel(BatchProvisionDays(draft), 10, Parchment);
+            provisionDays.Name = $"BatchDeployProvisionDays{index}";
+            provisionDays.AutowrapMode = TextServer.AutowrapMode.Off;
+            provisionDays.VerticalAlignment = VerticalAlignment.Center;
             provision.ValueChanged += value =>
             {
                 drafts[index] = drafts[index] with { Provisions = (int)value };
@@ -362,6 +370,8 @@ public sealed partial class CampaignMapScene
             && batchScroll.CustomMinimumSize.Y >= contentHeight
             && batchScroll.CustomMinimumSize.Y - contentHeight <= 12f;
         var provisionClamps = false;
+        var inlineDays = provisionAmounts.All(input => input.GetParent() is HBoxContainer row
+            && row.GetChildren().OfType<Label>().Any(label => label.AutowrapMode == TextServer.AutowrapMode.Off));
         if (troopAmounts.Count > 0 && provisionAmounts.Count == troopAmounts.Count)
         {
             var oldCapacity = provisionAmounts[0].MaxValue;
@@ -380,6 +390,7 @@ public sealed partial class CampaignMapScene
             && goldAmounts.Count == troopAmounts.Count
             && provisionAmounts.Count == troopAmounts.Count
             && provisionClamps
+            && inlineDays
             && removes.Count == troopAmounts.Count
             && delayValid
             && unitCards == troopAmounts.Count
