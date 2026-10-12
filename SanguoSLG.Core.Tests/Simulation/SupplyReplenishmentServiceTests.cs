@@ -59,6 +59,19 @@ public sealed class SupplyReplenishmentServiceTests
     }
 
     [Fact]
+    public void 출전시_병력보다_휴대상한이_높으면_그_상한까지_보충한다()
+    {
+        var service = new SupplyReplenishmentService();
+        var state = State() with { FieldArmies = [Unit(1, 0, true), Unit(2, 1, false) with { MaxTroops = 5000 }] };
+        Assert.Equal(5000, service.Limits(state, new UnitId(1), new UnitId(2)).Troops);
+        var queued = service.Queue(state, new FactionId(1),
+            new SupplyReplenishmentOrder(new UnitId(1), new UnitId(2), 5000, 0, 0));
+        Assert.True(queued.Ok);
+        var (after, _) = service.Execute(queued.State);
+        Assert.Equal(10000, after.Armies[1].Pool.Active);
+    }
+
+    [Fact]
     public void 대상이_멀어지면_예약은_실패하고_자원은_유지된다()
     {
         var service = new SupplyReplenishmentService();

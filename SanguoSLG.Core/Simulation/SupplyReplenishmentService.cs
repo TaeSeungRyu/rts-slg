@@ -16,7 +16,16 @@ public sealed class SupplyReplenishmentService
 
         var cargo = source.Cargo.Where(component => component.TroopCode == target.TroopCode)
             .Sum(component => component.Troops);
-        return (Math.Max(0, Math.Min(Math.Min(cargo, source.Pool.Active), target.MaxTroops - target.Pool.Active)),
+        // MaxTroops records the troop count at departure (and the old healing ceiling),
+        // not the number this unit is allowed to carry after field replenishment.
+        var balance = new CommandBalance();
+        var carryingLimit = target.IsArmyGroup
+            ? CommandEfficiency.ArmyGroupDeployLimit(state.ResearchOf(target.Field.Owner, FactionResearch.ArmyGroupCode), balance)
+            : target.IsTransport ? DeployService.TransportMaxTroops
+            : target.IsSupply ? balance.SupplyMaxTroops
+            : CommandEfficiency.CommandTroopDeployLimit(state.ResearchOf(target.Field.Owner, FactionResearch.CommandTroopsCode), balance);
+        carryingLimit = Math.Max(carryingLimit, target.MaxTroops);
+        return (Math.Max(0, Math.Min(Math.Min(cargo, source.Pool.Active), carryingLimit - target.Pool.Active)),
             Math.Max(0, source.CarryingGold),
             source.TracksProvisions && target.TracksProvisions
                 ? Math.Max(0, Math.Min(source.Provisions, target.MaxProvisions() - target.Provisions)) : 0);
