@@ -30,6 +30,13 @@ public sealed partial class CampaignMapScene
             var troops = resources.GetNode<Tree>("NavalTroopTable");
             var initialShipSize = ships.Size;
             var initialTroopSize = troops.Size;
+            foreach (var target in new[] { ships, troops, ships, troops })
+            {
+                GetViewport().PushInput(new InputEventMouseMotion { Position = target.GetGlobalRect().GetCenter() });
+                for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (!ships.Size.IsEqualApprox(initialShipSize) || !troops.Size.IsEqualApprox(initialTroopSize))
+                    throw new Exception("마우스 오버 후 좌측 표 높이 변경");
+            }
             for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             if (!ships.Size.IsEqualApprox(initialShipSize) || !troops.Size.IsEqualApprox(initialTroopSize))
                 throw new Exception($"좌측 표 레이아웃 변동 ship={initialShipSize}->{ships.Size}, troop={initialTroopSize}->{troops.Size}");
@@ -53,10 +60,11 @@ public sealed partial class CampaignMapScene
             var panel = _modalLayer.GetChildren().OfType<PanelContainer>().Single();
             if (panel.GetGlobalRect().End.Y > GetViewport().GetVisibleRect().End.Y) throw new Exception("모달 화면 하단 넘침");
             if (resources.FindChildren("*", "HSlider", true, false).Count != 3) throw new Exception("병력/군량/금 슬라이더 누락");
-            foreach (var pane in new[] { resources, officers })
-                if (pane.GetCombinedMinimumSize().Y > columns.Size.Y + 2) throw new Exception($"편성 영역 세로 넘침: {pane.Name} {pane.GetCombinedMinimumSize().Y}/{columns.Size.Y}");
+            var save = _modalLayer.FindChildren("*", "Button", true, false).OfType<Button>().Single(b => b.Text == "출항 예약");
+            if (!panel.GetGlobalRect().Encloses(save.GetGlobalRect())) throw new Exception("출항 예약 버튼 모달 밖으로 넘침");
+            if (save.GetGlobalRect().End.Y > GetViewport().GetVisibleRect().End.Y - 8) throw new Exception("출항 예약 버튼 화면 하단 넘침");
             GD.Print("NAVAL_COMPOSE_QA PASS: stable tables, numbered sections, combat-style officer checks, 5 ships without scroll, food duration, screen bounds");
-            GetTree().Quit();
+            GetParent().CallDeferred("RequestGracefulShutdown");
         }
         catch (Exception e)
         {

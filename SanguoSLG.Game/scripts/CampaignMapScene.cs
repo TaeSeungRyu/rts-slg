@@ -10175,7 +10175,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.90f, 900f, 1280f);
-        var mh = Mathf.Min(vp.Y - 48f, 940f);
+        var mh = Mathf.Min(vp.Y - 80f, 760f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
@@ -10227,7 +10227,7 @@ public sealed partial class CampaignMapScene : Node3D
             CustomMinimumSize = new Vector2(0, 230),
             ScrollVerticalEnabled = false,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
+            SizeFlagsVertical = Control.SizeFlags.Fill,
         };
         shipTree.AddThemeFontOverride("font", _font);
         shipTree.AddThemeFontSizeOverride("font_size", 13);
@@ -10272,7 +10272,7 @@ public sealed partial class CampaignMapScene : Node3D
             SelectMode = Tree.SelectModeEnum.Row,
             CustomMinimumSize = new Vector2(0, 230),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
+            SizeFlagsVertical = Control.SizeFlags.Fill,
         };
         troopTree.AddThemeFontOverride("font", _font);
         troopTree.AddThemeFontSizeOverride("font_size", 13);
@@ -10463,9 +10463,10 @@ public sealed partial class CampaignMapScene : Node3D
         };
         box.AddChild(save);
 
-        ApplyHorizontalComposeLayout(box, navalResourceTitle, navalRosterTitle, navalFooter, scroll, mw, mh, disableLeftScroll: true);
+        ApplyHorizontalComposeLayout(box, navalResourceTitle, navalRosterTitle, navalFooter, scroll, mw, mh, disableLeftScroll: false);
         var columns = box.GetNode<HBoxContainer>("DeployComposeColumns");
-        columns.CustomMinimumSize = new Vector2(0, mh - 190f);
+        columns.CustomMinimumSize = new Vector2(0, Math.Max(240, mh - 230f));
+        scroll.SizeFlagsVertical = Control.SizeFlags.Fill;
         scroll.CustomMinimumSize = new Vector2(mw, mh);
         var resourcePane = columns.FindChild("ComposeResources", true, false) as VBoxContainer;
         resourcePane?.AddThemeConstantOverride("separation", 4);
@@ -10473,6 +10474,7 @@ public sealed partial class CampaignMapScene : Node3D
         ((ScrollContainer)officerPane.GetParent()).VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
         generalTree.SetMeta("compose_officer_fill_ratio", 0.9f);
         CenterAndDrag(panel, titleRow, mw, mh, box);
+        panel.Size = new Vector2(mw + 28, mh + 28);
     }
 
     private string NavalFoodEstimate(int troops, int food, int upkeepPercent)
