@@ -120,6 +120,12 @@ public sealed partial class CampaignMapScene
             table.AddChild(adjutant);
 
             var troopOption = MakeOption(92);
+            troopOption.CustomMinimumSize = new Vector2(92, 26);
+            troopOption.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+            troopOption.AddThemeFontSizeOverride("font_size", 12);
+            troopOption.AddThemeStyleboxOverride("normal", Frame(InkSoft, Gold, 1, 5, 3));
+            troopOption.AddThemeStyleboxOverride("hover", Frame(InkHover, GoldBright, 1, 5, 3));
+            troopOption.AddThemeStyleboxOverride("pressed", Frame(InkHover, Gold, 1, 5, 3));
             troopOption.Name = $"BatchDeployTroopType{index}";
             troopOption.FitToLongestItem = false;
             troopOption.SetMeta("batch_compact_column", true);
@@ -146,7 +152,8 @@ public sealed partial class CampaignMapScene
                 MaxValue = DeployMaxTroopsFor(city),
                 Step = 100,
                 Value = draft.Troops,
-                CustomMinimumSize = new Vector2(92, 30),
+                CustomMinimumSize = new Vector2(92, 26),
+                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             });
             amount.SetMeta("batch_compact_column", true);
             table.AddChild(amount);
@@ -158,7 +165,8 @@ public sealed partial class CampaignMapScene
                 MaxValue = BatchProvisionCapacity(draft),
                 Step = 10,
                 Value = BatchProvisionsToCarry(draft),
-                CustomMinimumSize = new Vector2(92, 30),
+                CustomMinimumSize = new Vector2(92, 26),
+                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             });
             provision.SetMeta("batch_compact_column", true);
             var provisionDays = MakeLabel(BatchProvisionDays(draft), 10, Parchment);
@@ -189,7 +197,8 @@ public sealed partial class CampaignMapScene
                 MaxValue = _state.Cities.First(c => c.Id == city).Gold,
                 Step = 100,
                 Value = draft.Gold,
-                CustomMinimumSize = new Vector2(92, 30),
+                CustomMinimumSize = new Vector2(92, 26),
+                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             });
             gold.SetMeta("deploy_gold_selector", true);
             gold.SetMeta("batch_compact_column", true);
@@ -197,7 +206,11 @@ public sealed partial class CampaignMapScene
             table.AddChild(gold);
             var remove = MakeButton("삭제");
             remove.Name = $"BatchDeployRemove{index}";
-            remove.CustomMinimumSize = new Vector2(92, 30);
+            remove.CustomMinimumSize = new Vector2(92, 26);
+            remove.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+            remove.AddThemeStyleboxOverride("normal", Frame(InkSoft, Gold, 1, 5, 3));
+            remove.AddThemeStyleboxOverride("hover", Frame(InkHover, GoldBright, 1, 5, 3));
+            remove.AddThemeStyleboxOverride("pressed", Frame(AccentFill, Gold, 1, 5, 3));
             remove.SetMeta("batch_compact_column", true);
             remove.Pressed += () => { drafts.RemoveAt(index); ReopenBatchDeployCompose(city.Value, drafts); };
             table.AddChild(remove);
@@ -325,11 +338,21 @@ public sealed partial class CampaignMapScene
         var delayValid = delay?.ItemCount == DeployService.MaxDeploymentDelayDays + 1;
         var unitCards = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
             .Count(panel => panel.HasMeta("deploy_unit_art")) ?? 0;
-        var compactColumns = troopOptions.All(option => option.CustomMinimumSize.X == 92 && !option.FitToLongestItem)
-            && troopAmounts.All(amount => amount.CustomMinimumSize == new Vector2(92, 30))
-            && provisionAmounts.All(amount => amount.CustomMinimumSize == new Vector2(92, 30))
-            && goldAmounts.All(gold => gold.CustomMinimumSize == new Vector2(92, 30))
-            && removes.All(remove => remove.CustomMinimumSize == new Vector2(92, 30));
+        var compactColumns = troopOptions.All(option => option.CustomMinimumSize == new Vector2(92, 26)
+                && option.SizeFlagsVertical == Control.SizeFlags.ShrinkCenter && !option.FitToLongestItem)
+            && troopAmounts.All(amount => amount.CustomMinimumSize == new Vector2(92, 26)
+                && amount.SizeFlagsVertical == Control.SizeFlags.ShrinkCenter)
+            && provisionAmounts.All(amount => amount.CustomMinimumSize == new Vector2(92, 26)
+                && amount.SizeFlagsVertical == Control.SizeFlags.ShrinkCenter)
+            && goldAmounts.All(gold => gold.CustomMinimumSize == new Vector2(92, 26)
+                && gold.SizeFlagsVertical == Control.SizeFlags.ShrinkCenter)
+            && removes.All(remove => remove.CustomMinimumSize == new Vector2(92, 26)
+                && remove.SizeFlagsVertical == Control.SizeFlags.ShrinkCenter);
+        var heightsAligned = troopOptions.Count > 0 && troopAmounts.Count > 0 && removes.Count > 0
+            && troopOptions.All(option => option.Size.Y <= 30)
+            && troopAmounts.All(amount => amount.Size.Y <= 30)
+            && goldAmounts.All(gold => gold.Size.Y <= 30)
+            && removes.All(remove => remove.Size.Y <= 30);
         var batchScroll = _modalLayer?.FindChildren("*", "ScrollContainer", true, false).OfType<ScrollContainer>()
             .FirstOrDefault(scroll => scroll.GetMeta("batch_modal_scroll_disabled").AsBool());
         var noModalScroll = batchScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
@@ -359,9 +382,10 @@ public sealed partial class CampaignMapScene
             && delayValid
             && unitCards == troopAmounts.Count
             && compactColumns
+            && heightsAligned
             && noModalScroll
             && compactHeight;
-        GD.Print($"[maptestbatchdeployqa] passed={passed} rows={troopAmounts.Count} troopOptions={troopOptions.Count} provisions={provisionAmounts.Count} clamp={provisionClamps} gold={goldAmounts.Count} remove={removes.Count} delay={delayValid} unitCards={unitCards} compact={compactColumns} noScroll={noModalScroll} compactHeight={compactHeight}:{batchScroll?.CustomMinimumSize.Y ?? 0:0}/{contentHeight:0} stateUnchanged={ReferenceEquals(beforeState, _state)} pending={beforePending}/{_pendingDeploys.Count}");
+        GD.Print($"[maptestbatchdeployqa] passed={passed && heightsAligned} rows={troopAmounts.Count} troopOptions={troopOptions.Count} provisions={provisionAmounts.Count} clamp={provisionClamps} gold={goldAmounts.Count} remove={removes.Count} delay={delayValid} unitCards={unitCards} compact={compactColumns} heights={heightsAligned}:{troopOptions.FirstOrDefault()?.Size.Y ?? 0:0}/{troopAmounts.FirstOrDefault()?.Size.Y ?? 0:0}/{removes.FirstOrDefault()?.Size.Y ?? 0:0} noScroll={noModalScroll} compactHeight={compactHeight}:{batchScroll?.CustomMinimumSize.Y ?? 0:0}/{contentHeight:0} stateUnchanged={ReferenceEquals(beforeState, _state)} pending={beforePending}/{_pendingDeploys.Count}");
         CloseModal();
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         GetTree().Quit(passed ? 0 : 1);
