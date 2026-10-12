@@ -32,7 +32,9 @@ public sealed class FieldBuildingCombat
     }
 
     public FieldBuildingCombatResult Resolve(GameState state, IReadOnlyList<CombatUnit> input,
-        IReadOnlySet<UnitId>? alreadyEngaged = null)
+        IReadOnlySet<UnitId>? alreadyEngaged = null,
+        IReadOnlySet<UnitId>? alreadyCharged = null,
+        IReadOnlySet<UnitId>? alreadyFired = null)
     {
         var armies = input.ToList();
         var buildings = state.Buildings.ToDictionary(x => x.Id);
@@ -56,7 +58,10 @@ public sealed class FieldBuildingCombat
                     .OrderBy(b => b.Position == attacker.Field.Target ? 0 : 1)
                     .ThenBy(b => attacker.Field.Position.Distance(b.Position)).ThenBy(b => b.Id.Value).FirstOrDefault();
                 if (preferred?.Id != building.Id) continue;
-                var (active, nextState) = attacker.State.AdvanceCombat().FiringBuildingActive();
+                var chargedState = alreadyCharged?.Contains(attacker.Id) == true
+                    ? attacker.State : attacker.State.AdvanceCombat();
+                var (active, nextState) = alreadyFired?.Contains(attacker.Id) == true || attacker.IsArmyGroup
+                    ? ((ActiveSkill?)null, chargedState) : chargedState.FiringBuildingActive();
                 armies = armies.Select(unit => unit.Id == attacker.Id ? unit with { State = nextState } : unit).ToList();
                 if (active is not null) firedActives[attacker.Id] = active;
                 var defenseBonus = BuildingDefenseBonus(state, building, armies);

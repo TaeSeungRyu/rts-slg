@@ -320,6 +320,37 @@ public sealed partial class CampaignMapScene
             throw new InvalidOperationException("Building active effect was not scheduled at its actual target");
         _state = priorState;
         GD.Print("FIELD_BUILDING_ACTIVE_QA PASS: campaign firing -> building effect target -> gauge reset");
+
+        var group = unit with
+        {
+            IsArmyGroup = true, TroopCode = "army_group", RenewalPosition = new(867, 6500),
+            Field = unit.Field with { Position = new(1, 6), Speed = 0 },
+            State = UnitCombatState.Create(60),
+        };
+        var enemy = unit with
+        {
+            Field = unit.Field with { Id = new(990002), Owner = fort.Owner, Position = new(2, 6),
+                Speed = 0, Mode = UnitMode.Standby, Target = null },
+            RenewalPosition = new(1586, 6920), Stats = new(10000, 1, 20),
+            State = UnitCombatState.Create(60),
+        };
+        fixture = fixture with { FieldArmies = [group, enemy] };
+        _engine.AdvanceWeek(fixture, out var groupTurns);
+        _state = fixture;
+        for (var day = 0; day < groupTurns.Count; day++)
+        {
+            var daily = groupTurns[day];
+            if (daily.Combat?.DamageTaken.GetValueOrDefault(group.Id) is not > 0
+                || !daily.FieldBuildingExchanges.Any(exchange => exchange.Attacker == group.Id && exchange.Damage > 0))
+                throw new InvalidOperationException("피격된 집단군의 지정 보루 공격 누락");
+            var time = 100 + day;
+            ScheduleFieldBuildingCombat(daily, time, time + .55);
+            if (!_animAttacks.Any(attack => attack.UnitId == group.Id.Value && attack.Time == time)
+                || !_animSiegeDmg.Any(damage => damage.Time == time + .35 && damage.Damage > 0))
+                throw new InvalidOperationException("집단군 보루 공격 모션 또는 피해 표시 예약 누락");
+        }
+        _state = priorState;
+        GD.Print("FIELD_BUILDING_RECEIVER_QA PASS: attacked army group still attacks fort on all seven days with attack and damage playback");
     }
 
     private void RunRenewalRealMapQa(GameState initialState)

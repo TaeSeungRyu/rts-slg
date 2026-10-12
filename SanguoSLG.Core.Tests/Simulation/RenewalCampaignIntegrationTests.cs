@@ -9,6 +9,44 @@ using SanguoSLG.Game;
 
 public sealed class RenewalCampaignIntegrationTests
 {
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(true, 3)]
+    public void 건물지정_공격부대는_적에게_맞기만해도_매일_건물을_공격한다(bool group, int enemies)
+    {
+        var fort = new FieldBuilding(new(81), "fort", new(2), new(1, 7), 100000, 0, 0);
+        var attacker = Army(1, new(1, 6), fort.Position, 0) with
+        {
+            Field = Army(1, new(1, 6), fort.Position, 0).Field with { Mode = UnitMode.Attack },
+            RenewalPosition = new(867, 6500),
+            TroopCode = group ? "army_group" : "swordsman", IsArmyGroup = group,
+            State = UnitCombatState.Create(60, new ActiveSkill("crush", "분쇄", ActiveType.Strike, "high", 180, BuildingOnly: true)),
+        };
+        var opponents = Enumerable.Range(2, enemies).Select(id => Army(id, new(2, 6), new(2, 6), 0) with
+        {
+            Field = Army(id, new(2, 6), new(2, 6), 0).Field with { Owner = new(2), Mode = UnitMode.Standby, Target = null },
+            RenewalPosition = new(1586 + (id - 2) * 5, 6920),
+            Stats = new CombatStats(10000, 1, 20),
+        }).ToArray();
+        var engine = Engine(new HexMap(-4, 12, -4, 12));
+        var state = World([attacker, .. opponents]) with { FieldBuildings = [fort] };
+        for (var week = 0; week < 2; week++)
+        {
+            state = engine.AdvanceWeek(state, out var turns);
+            Assert.Equal(7, turns.Count);
+            Assert.All(turns, turn =>
+            {
+                Assert.True(turn.Combat!.DamageTaken.GetValueOrDefault(attacker.Id) > 0);
+                Assert.Contains(turn.FieldBuildingExchanges, exchange => exchange.Attacker == attacker.Id && exchange.Damage > 0);
+                Assert.DoesNotContain(turn.FieldCombatExchanges, exchange => exchange.Attacker == attacker.Id);
+            });
+            var remaining = state.Armies.Single(unit => unit.Id == attacker.Id);
+            Assert.Equal(group ? (week + 1) * 7 : (week + 1) * 7 % 6, remaining.State.SharedActiveGauge.ElapsedDays);
+            Assert.All(turns, turn => Assert.True(turn.FiredActives.Count(entry => entry.Key == attacker.Id) <= 1));
+        }
+    }
+
     [Fact]
     public void 보루에_주둔한_부대를_추격하던_적은_보루를_공격한다()
     {
@@ -267,7 +305,7 @@ public sealed class RenewalCampaignIntegrationTests
             x.Attacker == ally.Id && x.Target == enemy.Id));
         Assert.NotNull(firstFight);
         Assert.DoesNotContain(firstFight.FieldCombatExchanges, x => x.Attacker == enemy.Id && x.Target == ally.Id);
-        Assert.DoesNotContain(firstFight.FieldBuildingExchanges, x => x.Attacker == enemy.Id);
+        Assert.Contains(firstFight.FieldBuildingExchanges, x => x.Attacker == enemy.Id && x.Building == fort.Id);
         Assert.Equal(enemy.Field.Target, after.Armies.Single(x => x.Id == enemy.Id).Field.Target);
     }
 

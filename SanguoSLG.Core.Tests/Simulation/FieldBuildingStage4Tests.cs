@@ -7,6 +7,20 @@ using SanguoSLG.Core.Spatial;
 
 public sealed class FieldBuildingStage4Tests
 {
+    [Fact]
+    public void 피격으로_이미충전한_부대는_건물공격시_충전과_발동을_중복하지않는다()
+    {
+        var target = new HexCoord(1, 0);
+        var unit = Combat(1, Player, default, target) with
+        { State = UnitCombatState.Create(60, new ActiveSkill("crush", "분쇄", ActiveType.Strike, "high", 180)).AdvanceField(6) };
+        var state = new GameState(1, 190, [], [], [], FieldBuildings: [Building("fort", Enemy, target)]);
+        var result = new FieldBuildingCombat(new BattleResolver(60), Definitions).Resolve(state, [unit],
+            alreadyCharged: new HashSet<UnitId> { unit.Id }, alreadyFired: new HashSet<UnitId> { unit.Id });
+        Assert.Single(result.Exchanges);
+        Assert.Empty(result.FiredActives);
+        Assert.Equal(6, result.Armies.Single().State.SharedActiveGauge.ElapsedDays);
+    }
+
     [Theory]
     [InlineData("palisade")]
     [InlineData("watchtower")]
