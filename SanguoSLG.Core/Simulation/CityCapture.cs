@@ -92,6 +92,14 @@ public sealed class CityCapture
         var newPopulation = city.Population - city.Population * _populationLossPercent / 100;
         var depositGold = entrants.Sum(u => u.CarryingGold);
         var depositProvisions = entrants.Where(u => u.TracksProvisions).Sum(u => u.Provisions);
+        var workingGenerals = state.Commands.Where(command => command.City == city.Id)
+            .SelectMany(command => new[] { (GeneralId?)command.Main, command.Assist })
+            .OfType<GeneralId>()
+            .Concat(state.ProductionOps.Where(op => op.City == city.Id && op.Owner == oldOwner)
+                .Select(op => op.General))
+            .Concat(new[] { city.SecurityOfficer, city.DomesticOfficer, city.RecruitmentOfficer,
+                city.TrainingOfficer }.OfType<GeneralId>())
+            .ToHashSet();
         var cities = state.Cities
             .Select(c => c.Id == city.Id
                 ? c with
@@ -152,11 +160,13 @@ public sealed class CityCapture
             GarrisonForces = garrisons,
             Postings = postings,
             PendingCommands = pending,
+            ProductionOperations = state.ProductionOps.Where(op => op.City != city.Id).ToList(),
         };
 
         // 4) 옛 세력 주둔 장수(태수 포함) 개별 판정. 옛 세력이 도시를 모두 잃으면 세력 소멸.
         var stationed = next.Assignments
-            .Where(p => p.Faction == oldOwner && p.Location == city.Id)
+            .Where(p => p.Faction == oldOwner && p.Location == city.Id
+                && !next.IsGeneralInField(p.General))
             .Select(p => p.General)
             .OrderBy(g => g.Value)
             .ToList();
@@ -172,7 +182,21 @@ public sealed class CityCapture
             return next;
         }
 
-        foreach (var gid in stationed)
+        var refuge = NearestOwnedCity(next, oldOwner, city.Position);
+        foreach (var gid in workingGenerals.OrderBy(id => id.Value))
+        {
+            var posting = next.PostingOf(gid);
+            if (posting is null || posting.Faction != oldOwner
+                || (posting.Location != city.Id && posting.Location is not null)) continue;
+            next = next with
+            {
+                Postings = next.Assignments.Select(p => p.General == gid
+                    ? p with { Location = refuge } : p).ToList(),
+            };
+            fled.Add(gid);
+        }
+
+        foreach (var gid in stationed.Where(id => !workingGenerals.Contains(id)))
         {
             if (random.Next(0, 100) < 30)
             {
@@ -184,9 +208,9 @@ public sealed class CityCapture
             }
             else
             {
-                var refuge = NearestOwnedCity(next, oldOwner, city.Position);
+                var fallbackCity = NearestOwnedCity(next, oldOwner, city.Position);
                 var idx = next.Assignments.ToList().FindIndex(p => p.General == gid);
-                if (refuge is { } dest && idx >= 0)
+                if (fallbackCity is { } dest && idx >= 0)
                 {
                     var postings2 = next.Assignments.Select(p => p.General == gid ? p with { Location = dest } : p).ToList();
                     next = next with { Postings = postings2 };

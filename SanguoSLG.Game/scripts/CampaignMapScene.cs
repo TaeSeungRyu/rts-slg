@@ -8936,7 +8936,10 @@ public sealed partial class CampaignMapScene : Node3D
     // 장수 현재 상태 한 줄: 내정 명령 잠금 > 출전 예약 > 대기.
     private string GeneralStatus(GeneralId id)
     {
-        var locking = _state.Commands.FirstOrDefault(x => x.Locks(id));
+        var posting = _state.PostingOf(id);
+        var locking = _state.Commands.FirstOrDefault(x => x.Locks(id)
+            && _state.Cities.Any(city => city.Id == x.City && posting?.Faction == city.Owner
+                && posting.Location == city.Id));
         if (locking is not null)
         {
             return KindName(locking.Kind) + " 중";

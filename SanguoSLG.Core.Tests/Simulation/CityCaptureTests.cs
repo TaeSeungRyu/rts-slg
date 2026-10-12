@@ -340,6 +340,68 @@ public class CityCaptureTests
         Assert.False(retaken.IsGeneralBusy(officer));
     }
 
+    [Theory]
+    [InlineData(CommandKind.Explore)]
+    [InlineData(CommandKind.Repair)]
+    [InlineData(CommandKind.Research)]
+    [InlineData(CommandKind.BuildShip)]
+    [InlineData(CommandKind.CityStratagem)]
+    public void 함락된_도시의_진행명령_장수와_보좌는_점령세력에_합류하지_않고_후퇴한다(CommandKind kind)
+    {
+        var port = Fallen(1, 1, new HexCoord(5, 0)) with { Port = PortSize.Small };
+        var refuge = Fallen(9, 1, new HexCoord(12, 0));
+        var enemyHome = Fallen(8, 2, new HexCoord(-5, 0));
+        var command = new CityCommand(port.Id, kind, new GeneralId(10), new GeneralId(11),
+            1, 15, 0);
+        var state = State([port, refuge, enemyHome],
+            [Attacker(1, 2, new HexCoord(4, 0), port.Position)],
+            [Gen(10), Gen(11)],
+            [new GeneralPosting(new GeneralId(10), new FactionId(1), port.Id),
+                new GeneralPosting(new GeneralId(11), new FactionId(1), port.Id)],
+            [command]);
+
+        var after = new CityCapture().ResolveAll(state, new FixedRandom(0), out var reports);
+
+        Assert.Empty(after.Commands);
+        Assert.Empty(Assert.Single(reports).Captured);
+        Assert.Equal([new GeneralId(10), new GeneralId(11)], Assert.Single(reports).Fled);
+        Assert.All(after.Assignments.Where(p => p.General.Value is 10 or 11), p =>
+        {
+            Assert.Equal(refuge.Id, p.Location);
+            Assert.Equal(new FactionId(1), p.Faction);
+        });
+    }
+
+    [Fact]
+    public void 함락된_도시의_담당자와_생산파견_장수는_작업이_취소되고_보유성으로_돌아간다()
+    {
+        var port = Fallen(1, 1, new HexCoord(5, 0)) with
+        {
+            Port = PortSize.Small,
+            SecurityOfficer = new GeneralId(10),
+        };
+        var refuge = Fallen(9, 1, new HexCoord(12, 0));
+        var enemyHome = Fallen(8, 2, new HexCoord(-5, 0));
+        var production = new ProductionOperation(1, port.Id, port.Owner, port.Position,
+            new HexCoord(6, 0), "village", "swordsman", 500, 50, 2,
+            new GeneralId(11), 1, 14, ProductionPhase.Gathering, 2, new HexCoord(6, 0));
+        var state = State([port, refuge, enemyHome],
+            [Attacker(1, 2, new HexCoord(4, 0), port.Position)],
+            [Gen(10), Gen(11)],
+            [new GeneralPosting(new GeneralId(10), new FactionId(1), port.Id),
+                new GeneralPosting(new GeneralId(11), new FactionId(1), null)])
+            with { ProductionOperations = [production] };
+
+        var after = new CityCapture().ResolveAll(state, new FixedRandom(0), out var reports);
+
+        Assert.Empty(after.ProductionOps);
+        Assert.Null(after.Cities.Single(c => c.Id == port.Id).SecurityOfficer);
+        Assert.Empty(Assert.Single(reports).Captured);
+        Assert.Equal([new GeneralId(10), new GeneralId(11)], Assert.Single(reports).Fled);
+        Assert.All(after.Assignments.Where(p => p.General.Value is 10 or 11), p =>
+            Assert.Equal(refuge.Id, p.Location));
+    }
+
     [Fact]
     public void 캠페인_공성부터_함락까지_한_흐름으로_점거된다()
     {
