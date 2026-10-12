@@ -7125,6 +7125,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     // 병종 코드 → 한글 이름(성벽 연구 코드 포함).
     private string TroopName(string code) => code == "army_group" ? "집단군"
+        : code == "transport" ? "수송부대"
         : code == FactionResearch.WallCode ? "성벽"
         : code == FactionResearch.CommandTroopsCode ? "통솔 병력"
         : code == FactionResearch.ArmyGroupCode ? "집단군"
@@ -16202,12 +16203,18 @@ public sealed partial class CampaignMapScene : Node3D
         ShowUnitInfo(sample.Id.Value);
         var groupNameTranslated = _infoRows.GetChildren().OfType<Label>()
             .Any(label => label.Text.StartsWith("집단군 ·", System.StringComparison.Ordinal));
+        _state = _state with { FieldArmies = _state.Armies.Select(unit => unit.Id == sample.Id
+            ? unit with { IsArmyGroup = false, TroopCode = "transport" } : unit).ToList() };
+        ShowUnitInfo(sample.Id.Value);
+        var transportNameTranslated = _infoRows.GetChildren().OfType<Label>()
+            .Any(label => label.Text.StartsWith("수송부대 ·", System.StringComparison.Ordinal));
         var passed = layoutOk && detailOpened && aptitudeImagesInsideBorder && regionTranslated
-            && restoredAfterDismiss && groupNameTranslated;
+            && restoredAfterDismiss && groupNameTranslated && transportNameTranslated;
         GD.Print($"[unit-info-ui-qa] passed={passed} layout={layoutOk} detail={detailOpened} aptitudeInsets={aptitudeImagesInsideBorder}:{aptitudeFrames.Count} regionKo={regionTranslated}:{expectedRegion} restored={restoredAfterDismiss} armyGroupKo={groupNameTranslated} badge={troopBadge is not null} adjutant={adjutantPortrait is not null} roleCards={roleCardCount}");
         _state = original;
         _infoCard.Visible = false;
-        GetTree().Quit(passed ? 0 : 1);
+        if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
+        else GetTree().Quit(1);
     }
 
     /// <summary>부대 상세 상태가 수치·남은 진행을 표시하고 만료 즉시 사라지는 회귀 QA.</summary>
