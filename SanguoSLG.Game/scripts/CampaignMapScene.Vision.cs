@@ -92,6 +92,7 @@ public sealed partial class CampaignMapScene
             if (_armyLabels.TryGetValue(army.Id.Value, out var label))
                 label.Visible = !army.IsWaitingDeployment && army.Field.Owner == Player;
         }
+        HideEnteredFieldGarrisons();
         foreach (var (id, token) in _productionTokens)
         {
             var op = display.ProductionOps.FirstOrDefault(o => o.Id == id);

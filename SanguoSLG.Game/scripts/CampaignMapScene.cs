@@ -4587,8 +4587,19 @@ public sealed partial class CampaignMapScene : Node3D
         IReadOnlyDictionary<int, CombatUnit>? beforeCombatUnits = null)
     {
         var fieldAttackers = new HashSet<int>();
-        void AddAttack(CombatUnit unit, Vector3 target)
+        void AddAttack(CombatUnit unit, Vector3 target, int? targetId = null)
         {
+            var fieldBuilding = _state.Buildings.FirstOrDefault(building => building.GarrisonUnit == unit.Id
+                && !_playbackDestroyedBuildings.Contains(building.Id))
+                ?? _state.Buildings.FirstOrDefault(building => turn.FieldGarrisons.GetValueOrDefault(building.Id) == unit.Id
+                    && !_playbackDestroyedBuildings.Contains(building.Id));
+            if (fieldBuilding is not null)
+            {
+                if (targetId is { } id)
+                    _animArrows.Add((atkTime + 0.08, _view.HexToWorld(fieldBuilding.Position)
+                        + new Vector3(0f, _view.TileTopY + 0.85f, 0f), id));
+                return;
+            }
             _animAttacks.Add((atkTime, unit.Id.Value, target));
             if (unit.IsSupply)
             {
@@ -4615,7 +4626,7 @@ public sealed partial class CampaignMapScene : Node3D
                     ?? (beforeCombatUnits?.TryGetValue(exchange.Attacker.Value, out var beforeMe) == true
                         ? beforeMe : null);
                 if (me is null || combat.DamageDealt.GetValueOrDefault(exchange.Attacker) <= 0) continue;
-                AddAttack(me, ContinuousToWorld(exchange.TargetPosition));
+                AddAttack(me, ContinuousToWorld(exchange.TargetPosition), exchange.Target.Value);
                 fieldAttackers.Add(exchange.Attacker.Value);
             }
         }
@@ -6054,7 +6065,7 @@ public sealed partial class CampaignMapScene : Node3D
             // 출격 해제와 해당 프레임의 이동 위치를 먼저 반영한 뒤 시야를 갱신한다.
             // 반대 순서면 첫 진행 동안 시야 갱신이 출격 토큰을 다시 숨겨 깜빡인다.
             RefreshPlaybackVision(delta);
-            ShowEnteredFieldGarrisons();
+            HideEnteredFieldGarrisons();
 
             while (_animAtkIdx < _animAttacks.Count && _animAttacks[_animAtkIdx].Time <= _animT)
             {
@@ -6275,6 +6286,7 @@ public sealed partial class CampaignMapScene : Node3D
             _dayTurnLabel.Text = attacking ? "⚔ 공격턴" : "▷ 이동턴";
             _dayTurnLabel.AddThemeColorOverride("font_color", attacking ? new Color(0.98f, 0.62f, 0.42f) : new Color(0.6f, 0.85f, 0.7f));
             _advanceBtn.Progress = (float)(_animT / (AnimDays * DaySeconds));
+            HideEnteredFieldGarrisons();
 
             if (_animT >= AnimDays * DaySeconds) { FinishAdvance(); }
         }
@@ -15733,14 +15745,12 @@ public sealed partial class CampaignMapScene : Node3D
 
             token.SetFormationSize(army.IsSupply || army.IsArmyGroup ? 1 : FormationFor(army.Pool.Active)); // 보급부대·집단군은 규모와 무관하게 단일 전용 모델
             var insideFieldBuilding = fieldGarrisonIds.Contains(army.Id);
-            token.Visible = !army.IsWaitingDeployment;
+            token.Visible = !army.IsWaitingDeployment && !insideFieldBuilding;
             if (army.RenewalPosition is { } continuousPosition)
                 token.DisplayContinuousAt(ContinuousToWorld(continuousPosition)
                     + new Vector3(0f, _view.TileTopY, 0f), false);
             else
                 token.DisplaySyncTo(army.Field.Position, 0.3f);
-            if (insideFieldBuilding)
-                token.Position = new Vector3(token.Position.X, _view.TileTopY + 0.55f, token.Position.Z);
             var constructionIndicator = token.GetNodeOrNull<Node3D>("FieldConstructionIndicator");
             if (army.IsConstructing && constructionIndicator is null)
             {
@@ -15762,7 +15772,7 @@ public sealed partial class CampaignMapScene : Node3D
             lblNode.Position = _view.HexToWorld(army.Field.Position)
                 + new Vector3(0f, _view.TileTopY + CommanderPortraitView3D.TroopLabelHeightOffset, 0f);
             lblNode.Text = $"{army.Pool.Active}";
-            lblNode.Visible = !army.IsWaitingDeployment && army.Field.Owner == Player; // 병력 수는 아군만 표시(적은 편대 규모로 가늠)
+            lblNode.Visible = !insideFieldBuilding && !army.IsWaitingDeployment && army.Field.Owner == Player;
             if (_activeGauges.TryGetValue(army.Id.Value, out var activeGauge))
             {
                 var (skill, gauge) = DisplayActiveGauge(army.State);
