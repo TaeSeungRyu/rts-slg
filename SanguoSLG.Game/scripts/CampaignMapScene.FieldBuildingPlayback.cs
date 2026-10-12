@@ -116,7 +116,12 @@ public sealed partial class CampaignMapScene
         _scoutDayLabels.Remove(id);
         if (_selectedFieldBuildingId == id.Value) ClearFieldBuildingRange();
         // 보루·진법 안에 있던 부대는 건축물 파괴와 동시에 지도에 다시 나타난다.
+        var buildingPosition = _state.Buildings.FirstOrDefault(building => building.Id == id)?.Position;
         var garrison = _state.Buildings.FirstOrDefault(building => building.Id == id)?.GarrisonUnit;
+        if (garrison is null && buildingPosition is { } position)
+            garrison = _animFieldGarrisonEntries.Where(entry => entry.Value.Position == position
+                    && entry.Value.Time <= _animT)
+                .Select(entry => (UnitId?)new UnitId(entry.Key)).FirstOrDefault();
         if (garrison is { } unitId)
         {
             if (!_armyTokens.TryGetValue(unitId.Value, out var token)
@@ -256,6 +261,14 @@ public sealed partial class CampaignMapScene
             HideDestroyedFieldBuilding(occupied.Id);
             if (!_armyTokens.TryGetValue(exposed.Id.Value, out var revealed) || !revealed.Visible)
                 throw new Exception("보루 파괴 직후 주둔 부대가 보이지 않음");
+            _playbackDestroyedBuildings.Remove(occupied.Id);
+            _state = _state with { FieldBuildings = _state.Buildings.Select(item => item.Id == occupied.Id
+                ? item with { GarrisonUnit = null } : item).ToList() };
+            _animFieldGarrisonEntries[exposed.Id.Value] = (0, occupied.Position);
+            revealed.Visible = false;
+            HideDestroyedFieldBuilding(occupied.Id);
+            if (!revealed.Visible)
+                throw new Exception("같은 진행에서 입성한 부대가 보루 파괴 직후 다시 보이지 않음");
             revealed.QueueFree();
             _armyTokens.Remove(exposed.Id.Value);
             _state = beforeState;
