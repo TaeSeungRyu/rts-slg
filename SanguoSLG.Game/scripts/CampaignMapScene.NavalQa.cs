@@ -11,6 +11,12 @@ public sealed partial class CampaignMapScene
     {
         try
         {
+            var allLandTroops = _troops.Where(t => t.Class != SanguoSLG.Core.Domain.TroopClass.Naval)
+                .Select(t => t.Code).ToHashSet();
+            var mediumPortTroops = _state.Garrisons.Where(g => g.City == new SanguoSLG.Core.Domain.CityId(9))
+                .Select(g => g.TroopCode).ToHashSet();
+            if (!allLandTroops.IsSubsetOf(mediumPortTroops))
+                throw new Exception("위중항에 빠진 병종: " + string.Join(", ", allLandTroops.Except(mediumPortTroops)));
             var port = _state.Cities.First(c => c.IsPort && c.Owner == Player);
             _state = _state with { PortShipStocks = _state.PortShips.Where(s => s.City != port.Id)
                 .Concat(PortShipOptions().Select(s => new PortShipStock(port.Id, s.Code, 1))).ToList() };
