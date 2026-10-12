@@ -441,8 +441,6 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<MeshInstance3D> _pathMarkers = new();
     private Mesh? _pathDotMesh;
     private Material? _pathDotMat;
-    private Mesh? _pathDotCoreMesh;
-    private Material? _pathDotCoreMat;
 
     // 1단계 지원 명령(전투 중심 v2 팔레트에서 노출할 기존 명령만 연결).
     private static readonly (string Label, CommandKind Kind, string Param)[] Cmds =
@@ -800,8 +798,6 @@ public sealed partial class CampaignMapScene : Node3D
         _sliderGrabberIcon = null!;
         _pathDotMesh = null;
         _pathDotMat = null;
-        _pathDotCoreMesh = null;
-        _pathDotCoreMat = null;
         _font = null!;
         ActiveSkillIcons.ClearCache();
 
@@ -3228,27 +3224,17 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
-    // start→goal A* 경로를 테두리+발광 중심의 금색 표식으로 그려 into에 담는다.
-    // 밝은 지형에서도 사라지지 않도록 어두운 외곽과 밝은 중심을 겹치며, 목적지는 조금 더 크게 표시한다.
+    // start→goal 경로를 단일 발광 점으로 표시한다. 지형색 원반을 깔지 않는다.
     private void AddPathDots(HexCoord start, HexCoord goal, List<MeshInstance3D> into,
         bool naval = false, ContinuousPosition? exactGoal = null, ContinuousPosition? exactStart = null)
     {
-        _pathDotMesh ??= new CylinderMesh { TopRadius = 0.19f, BottomRadius = 0.19f, Height = 0.045f, RadialSegments = 12 };
+        _pathDotMesh ??= new CylinderMesh { TopRadius = 0.11f, BottomRadius = 0.11f, Height = 0.045f, RadialSegments = 16 };
         _pathDotMat ??= new StandardMaterial3D
         {
-            AlbedoColor = new Color("3b2a0f"),
+            AlbedoColor = new Color("f7f5df"),
             EmissionEnabled = true,
-            Emission = new Color("6c4a14"),
-            EmissionEnergyMultiplier = 0.7f,
-            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-        };
-        _pathDotCoreMesh ??= new CylinderMesh { TopRadius = 0.125f, BottomRadius = 0.125f, Height = 0.065f, RadialSegments = 12 };
-        _pathDotCoreMat ??= new StandardMaterial3D
-        {
-            AlbedoColor = new Color("fff1ad"),
-            EmissionEnabled = true,
-            Emission = GoldBright,
-            EmissionEnergyMultiplier = 2.2f,
+            Emission = new Color("fff6cd"),
+            EmissionEnergyMultiplier = 1.8f,
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
         };
@@ -3304,15 +3290,6 @@ public sealed partial class CampaignMapScene : Node3D
                 Position = ContinuousToWorld(point) + new Vector3(0f, _view.TileTopY + 0.06f, 0f),
                 Scale = destination ? new Vector3(1.28f, 1f, 1.28f) : Vector3.One,
             };
-            var core = new MeshInstance3D
-            {
-                Name = "PathCore",
-                Mesh = _pathDotCoreMesh,
-                MaterialOverride = _pathDotCoreMat,
-                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-                Position = new Vector3(0f, 0.035f, 0f),
-            };
-            dot.AddChild(core);
             AddChild(dot);
             into.Add(dot);
     }
@@ -3323,16 +3300,16 @@ public sealed partial class CampaignMapScene : Node3D
         var start = new HexCoord(-4, 7);
         var goal = new HexCoord(-1, 7);
         AddPathDots(start, goal, markers);
-        var hasCore = markers.All(marker => marker.GetNodeOrNull<MeshInstance3D>("PathCore") is not null);
+        var singleDot = markers.All(marker => marker.GetNodeOrNull<MeshInstance3D>("PathCore") is null);
         var followsContinuousLine = markers.Any(marker =>
             marker.Position.DistanceTo(_view.HexToWorld(_view.WorldToHex(marker.Position))
                 + new Vector3(0f, _view.TileTopY + 0.06f, 0f)) > 0.03f);
         var passed = markers.Count > 0
-            && hasCore && followsContinuousLine
-            && markers.All(marker => marker.Mesh is CylinderMesh outer && outer.TopRadius >= 0.18f)
+            && singleDot && followsContinuousLine
+            && markers.All(marker => marker.Mesh is CylinderMesh dot && dot.TopRadius <= 0.11f)
             && markers[^1].Scale.X > 1.2f
             && markers[^1].Position.DistanceTo(_view.HexToWorld(goal) + new Vector3(0f, _view.TileTopY + 0.06f, 0f)) < 0.01f;
-        GD.Print($"[maptestpathvisualqa] passed={passed} markers={markers.Count} core={hasCore} continuous={followsContinuousLine} destinationScale={(markers.Count > 0 ? markers[^1].Scale.X : 0):0.00}");
+        GD.Print($"[maptestpathvisualqa] passed={passed} markers={markers.Count} singleDot={singleDot} continuous={followsContinuousLine} destinationScale={(markers.Count > 0 ? markers[^1].Scale.X : 0):0.00}");
         foreach (var marker in markers) marker.QueueFree();
         GetTree().Quit(passed ? 0 : 1);
     }
