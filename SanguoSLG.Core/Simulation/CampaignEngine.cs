@@ -171,6 +171,11 @@ public sealed class CampaignEngine
             var productionUnits = ProductionCombatUnits(work);
             var productionUnitIds = productionUnits.Select(u => u.Id).ToHashSet();
             var turnInput = productionUnits.Count == 0 ? armies : armies.Concat(productionUnits).ToList();
+            var waitingBanditOrders = turnInput.Where(u => u.BanditWaitDays > 0)
+                .ToDictionary(u => u.Id, u => u.Field);
+            turnInput = turnInput.Select(u => u.BanditWaitDays > 0
+                ? u with { Field = u.Field with { Speed = 0, Mode = UnitMode.March, Target = null,
+                    ContinuousTarget = null, PursuitTarget = null, AssignedUnitTarget = null } } : u).ToList();
 
             // 이동 → 공격 → 점령을 하루 단위로 확정한다. 주간 전체를 한 번에
             // 계산하면 공격턴에서 수비가 전멸해도 다음 진행까지 함락이 지연된다.
@@ -182,6 +187,8 @@ public sealed class CampaignEngine
                 ReleasedDeployments = egress.Released,
                 ExpiredScoutPostIds = expiredScoutPosts,
             };
+            turn = turn with { Units = turn.Units.Select(u => waitingBanditOrders.TryGetValue(u.Id, out var order)
+                ? u with { Field = order with { Position = u.Field.Position } } : u).ToList() };
             if (_fieldScoutPosts is not null && work.Buildings.Count > 0)
             {
                 var visited = VisitedTiles(armies, turn.Movement, productionUnitIds);
@@ -401,12 +408,14 @@ public sealed class CampaignEngine
             var countdown = waitingArmies
                 .Select(u => u with { DeploymentDelayDays = System.Math.Max(0, u.DeploymentDelayDays - 1) })
                 .ToList();
+            armies = armies.Select(u => u with { BanditWaitDays = System.Math.Max(0, u.BanditWaitDays - 1) }).ToList();
             // 재생 보고에는 아직 성 내부에서 대기 중인 예약 부대도 생존 상태로 보존한다.
             // 그렇지 않으면 표현 계층이 첫날에 이들을 전멸한 부대로 오인한다.
             var newlyReadyForEgress = countdown.Where(u => !u.IsWaitingDate && u.IsWaitingEgress).ToList();
             reports[^1] = reports[^1] with
             {
-                Units = reports[^1].Units.Concat(countdown).Concat(egressArmies)
+                Units = reports[^1].Units.Select(u => u with { BanditWaitDays = System.Math.Max(0, u.BanditWaitDays - 1) })
+                    .Concat(countdown).Concat(egressArmies)
                     .OrderBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value).ToList(),
             };
             armies.AddRange(countdown.Where(u => !u.IsWaitingDeployment));

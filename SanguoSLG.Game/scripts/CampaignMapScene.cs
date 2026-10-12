@@ -6270,6 +6270,8 @@ public sealed partial class CampaignMapScene : Node3D
             && _animUnitSnapshots[_animUnitSnapshotIdx].Time <= _animT)
         {
             _state = _state with { FieldArmies = _animUnitSnapshots[_animUnitSnapshotIdx].Units };
+            foreach (var bandit in _state.Armies.Where(u => u.Field.Owner == WorldEngine.BanditFaction))
+                if (_armyLabels.TryGetValue(bandit.Id.Value, out var label)) label.Text = ArmyTroopLabel(bandit);
             _animUnitSnapshotIdx++;
         }
     }
@@ -7146,8 +7148,22 @@ public sealed partial class CampaignMapScene : Node3D
             && modelIndex == 19
             && modelPath == "res://assets/models/troop-bandit.glb"
             && ResourceLoader.Exists(modelPath);
-        GD.Print($"[maptestbanditdisplayqa] passed={passed} name={TroopName(WorldEngine.BanditTroopCode)} index={modelIndex} model={modelPath}");
-        GetTree().Quit(passed ? 0 : 1);
+        var city = _state.Cities.First(c => c.Owner == Player);
+        var bandit = new CombatUnit(new FieldUnit(new UnitId(99999), WorldEngine.BanditFaction,
+            city.Position, 2, 2, 1, MovementDomain.Land, UnitMode.Attack, city.Position, 0),
+            new CombatStats(1800, 3, 1), new TroopPool(1800, 0), UnitCombatState.Create(30),
+            TroopCode: WorldEngine.BanditTroopCode, BanditWaitDays: 14);
+        _state = _state with { FieldArmies = _state.Armies.Append(bandit).ToList() };
+        Redraw("");
+        passed &= _armyTokens[99999].Visible && _armyLabels[99999].Visible
+            && _armyLabels[99999].Text.Contains("대기 14일");
+        _state = _state with { FieldArmies = _state.Armies.Select(u => u.Id == bandit.Id
+            ? u with { BanditWaitDays = 7 } : u).ToList() };
+        Redraw("");
+        passed &= _armyLabels[99999].Text.Contains("대기 7일");
+        GD.Print($"[maptestbanditdisplayqa] passed={passed} countdown=14->7 index={modelIndex} model={modelPath}");
+        if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
+        else GetTree().Quit(1);
     }
 
     private static readonly string[] PortShipCodes = { "small_boat", "medium_ship", "large_ship", "turtleship", "waeseon" };
@@ -15746,8 +15762,9 @@ public sealed partial class CampaignMapScene : Node3D
             var lblNode = _armyLabels[army.Id.Value];
             lblNode.Position = _view.HexToWorld(army.Field.Position)
                 + new Vector3(0f, _view.TileTopY + CommanderPortraitView3D.TroopLabelHeightOffset, 0f);
-            lblNode.Text = $"{army.Pool.Active}";
-            lblNode.Visible = !insideFieldBuilding && !army.IsWaitingDeployment && army.Field.Owner == Player;
+            lblNode.Text = ArmyTroopLabel(army);
+            lblNode.Visible = !insideFieldBuilding && !army.IsWaitingDeployment
+                && (army.Field.Owner == Player || army.Field.Owner == WorldEngine.BanditFaction && CanSeeUnit(army));
             if (_activeGauges.TryGetValue(army.Id.Value, out var activeGauge))
             {
                 var (skill, gauge) = DisplayActiveGauge(army.State);

@@ -180,6 +180,7 @@ public sealed record CommandBalance
     public int LowSecurityPenaltyThreshold4 { get; init; } = 20;
     public int LowSecurityPenaltyPercent4 { get; init; } = 20;
     public int BanditSpawnThreshold1 { get; init; } = 60;
+    public int BanditWaitDays { get; init; } = 14;
     public int BanditSpawnPercent1 { get; init; } = 20;
     public int BanditTroops1 { get; init; } = 1800;
     public int BanditSpawnThreshold2 { get; init; } = 40;

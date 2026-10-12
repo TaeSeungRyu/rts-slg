@@ -49,8 +49,10 @@ public class CampaignEngineTests
     private static GameState World(params CombatUnit[] armies) =>
         new(1, 1, new List<Faction>(), new List<City>(), new List<General>(), FieldArmies: armies.ToList());
 
-    [Fact]
-    public void 도적은_출현한_진행이_아닌_다음_진행부터_공격한다()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void 도적은_출현후_14일간_대기하고_15일차부터_행동한다(bool renewal)
     {
         var city = new City(new CityId(1), "불안성", new HexCoord(5, 0), new FactionId(1), 1000,
             Security: 50);
@@ -59,14 +61,32 @@ public class CampaignEngineTests
         var field = new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70));
         var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0),
             new CommandBalance { AutoOfficerSystemEnabled = true }, random: new AlwaysSpawnRandom());
-        var engine = new CampaignEngine(field, world);
+        IFieldAdvanceRunner runner = renewal
+            ? new SanguoSLG.Core.Simulation.RenewalMovement.RenewalCampaignAdvanceRunner(new HexMap(0, 12, -3, 3), field)
+            : field;
+        var engine = new CampaignEngine(runner, world, new CampaignSiege(new BattleResolver(60), T.Values.ToList()));
 
         var spawned = engine.AdvanceWeek(state, out var firstTurns);
         var bandit = Assert.Single(spawned.Armies, unit => unit.Field.Owner == WorldEngine.BanditFaction);
         Assert.All(firstTurns, turn => Assert.DoesNotContain(turn.Units, unit => unit.Id == bandit.Id));
 
-        engine.AdvanceWeek(spawned, out var nextTurns);
-        Assert.Contains(nextTurns, turn => turn.Units.Any(unit => unit.Id == bandit.Id));
+        Assert.Equal(14, bandit.BanditWaitDays);
+        Assert.False(bandit.CanInitiateCombat);
+        var afterSeven = engine.AdvanceWeek(spawned, out var nextTurns);
+        Assert.Equal(7, afterSeven.Armies.Single(u => u.Id == bandit.Id).BanditWaitDays);
+        Assert.All(nextTurns, turn => Assert.Equal(bandit.Field.Position,
+            turn.Units.Single(u => u.Id == bandit.Id).Field.Position));
+        var afterFourteen = engine.AdvanceWeek(afterSeven, out var waitingTurns);
+        Assert.Equal(0, afterFourteen.Armies.Single(u => u.Id == bandit.Id).BanditWaitDays);
+        Assert.All(waitingTurns, turn => Assert.Equal(bandit.Field.Position,
+            turn.Units.Single(u => u.Id == bandit.Id).Field.Position));
+        Assert.True(afterFourteen.Armies.Single(u => u.Id == bandit.Id).CanInitiateCombat);
+        engine.AdvanceWeek(afterFourteen, out _, out var activeSieges, out _);
+        Assert.NotEmpty(activeSieges);
+        var restored = System.Text.Json.JsonSerializer.Deserialize<CombatUnit>(
+            System.Text.Json.JsonSerializer.Serialize(afterSeven.Armies.Single(u => u.Id == bandit.Id)))!;
+        Assert.Equal(7, restored.BanditWaitDays);
+        Assert.False(restored.CanInitiateCombat);
     }
 
     [Fact]

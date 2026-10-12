@@ -90,7 +90,11 @@ public sealed partial class CampaignMapScene
         {
             if (_armyTokens.TryGetValue(army.Id.Value, out var token)) token.Visible = CanSeeUnit(army);
             if (_armyLabels.TryGetValue(army.Id.Value, out var label))
-                label.Visible = !army.IsWaitingDeployment && army.Field.Owner == Player;
+            {
+                if (army.Field.Owner == WorldEngine.BanditFaction) label.Text = ArmyTroopLabel(army);
+                label.Visible = !army.IsWaitingDeployment && (army.Field.Owner == Player
+                    || army.Field.Owner == WorldEngine.BanditFaction && CanSeeUnit(army));
+            }
         }
         HideEnteredFieldGarrisons();
         foreach (var (id, token) in _productionTokens)

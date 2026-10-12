@@ -406,7 +406,8 @@ public sealed class WorldEngine
             var stats = new CombatStats(chance.Troops, AtkStat: 3, DfStat: 1, AptitudePercent: 80);
             var unit = new CombatUnit(field, stats, new TroopPool(chance.Troops, 0),
                 UnitCombatState.Create(30), Might: 50, Intellect: 30, MaxTroops: chance.Troops,
-                Class: TroopClass.Infantry, Provisions: -1, Training: 40, TroopCode: BanditTroopCode);
+                Class: TroopClass.Infantry, Provisions: -1, Training: 40, TroopCode: BanditTroopCode,
+                BanditWaitDays: System.Math.Max(0, _commands.BanditWaitDays));
             armies.Add(unit);
             occupied.Add(spawnPosition);
             _events.Add(new WorldEvent(WorldEventKind.BanditRaid, city.Owner, City: city.Id,

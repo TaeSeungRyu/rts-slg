@@ -908,6 +908,7 @@ public class WorldEngineTests
         Assert.Equal(WorldEngine.BanditFaction, bandit.Field.Owner);
         Assert.Equal(WorldEngine.BanditTroopCode, bandit.TroopCode);
         Assert.Equal(1800, bandit.Pool.Active);
+        Assert.Equal(14, bandit.BanditWaitDays);
         Assert.Equal(UnitMode.Attack, bandit.Field.Mode);
         Assert.Equal(city.Position, bandit.Field.Target);
         Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.BanditRaid
