@@ -119,7 +119,7 @@ public sealed partial class CampaignMapScene
             };
             table.AddChild(adjutant);
 
-            var troopOption = MakeOption(112);
+            var troopOption = MakeOption(92);
             troopOption.Name = $"BatchDeployTroopType{index}";
             troopOption.FitToLongestItem = false;
             troopOption.SetMeta("batch_compact_column", true);
@@ -146,7 +146,7 @@ public sealed partial class CampaignMapScene
                 MaxValue = DeployMaxTroopsFor(city),
                 Step = 100,
                 Value = draft.Troops,
-                CustomMinimumSize = new Vector2(92, 34),
+                CustomMinimumSize = new Vector2(92, 30),
             });
             amount.SetMeta("batch_compact_column", true);
             table.AddChild(amount);
@@ -189,7 +189,7 @@ public sealed partial class CampaignMapScene
                 MaxValue = _state.Cities.First(c => c.Id == city).Gold,
                 Step = 100,
                 Value = draft.Gold,
-                CustomMinimumSize = new Vector2(92, 34),
+                CustomMinimumSize = new Vector2(92, 30),
             });
             gold.SetMeta("deploy_gold_selector", true);
             gold.SetMeta("batch_compact_column", true);
@@ -197,7 +197,7 @@ public sealed partial class CampaignMapScene
             table.AddChild(gold);
             var remove = MakeButton("삭제");
             remove.Name = $"BatchDeployRemove{index}";
-            remove.CustomMinimumSize = new Vector2(56, 34);
+            remove.CustomMinimumSize = new Vector2(92, 30);
             remove.SetMeta("batch_compact_column", true);
             remove.Pressed += () => { drafts.RemoveAt(index); ReopenBatchDeployCompose(city.Value, drafts); };
             table.AddChild(remove);
@@ -325,11 +325,11 @@ public sealed partial class CampaignMapScene
         var delayValid = delay?.ItemCount == DeployService.MaxDeploymentDelayDays + 1;
         var unitCards = _modalLayer?.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
             .Count(panel => panel.HasMeta("deploy_unit_art")) ?? 0;
-        var compactColumns = troopOptions.All(option => option.CustomMinimumSize.X <= 112 && !option.FitToLongestItem)
-            && troopAmounts.All(amount => amount.CustomMinimumSize.X <= 92)
-            && provisionAmounts.All(amount => amount.CustomMinimumSize.X <= 92)
-            && goldAmounts.All(gold => gold.CustomMinimumSize.X <= 92)
-            && removes.All(remove => remove.CustomMinimumSize.X <= 56);
+        var compactColumns = troopOptions.All(option => option.CustomMinimumSize.X == 92 && !option.FitToLongestItem)
+            && troopAmounts.All(amount => amount.CustomMinimumSize == new Vector2(92, 30))
+            && provisionAmounts.All(amount => amount.CustomMinimumSize == new Vector2(92, 30))
+            && goldAmounts.All(gold => gold.CustomMinimumSize == new Vector2(92, 30))
+            && removes.All(remove => remove.CustomMinimumSize == new Vector2(92, 30));
         var batchScroll = _modalLayer?.FindChildren("*", "ScrollContainer", true, false).OfType<ScrollContainer>()
             .FirstOrDefault(scroll => scroll.GetMeta("batch_modal_scroll_disabled").AsBool());
         var noModalScroll = batchScroll?.VerticalScrollMode == ScrollContainer.ScrollMode.Disabled
