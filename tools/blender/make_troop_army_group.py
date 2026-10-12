@@ -362,16 +362,16 @@ def build_command_flag():
         x, y, 0.220, m.wood, verts=8,
     )
     flag = ic.box(
-        "army_group_command_flag", 0.170, 0.008, 0.115,
-        x + 0.080, y, 0.345, m.red,
+        "army_group_command_flag", 0.2125, 0.008, 0.115,
+        x + 0.10125, y, 0.345, m.red,
     )
     trim = ic.box(
-        "army_group_command_flag_trim", 0.176, 0.010, 0.012,
-        x + 0.080, y - 0.002, 0.404, m.steel,
+        "army_group_command_flag_trim", 0.220, 0.010, 0.012,
+        x + 0.10125, y - 0.002, 0.404, m.steel,
     )
     crest = ic.box(
         "army_group_command_flag_crest", 0.040, 0.011, 0.040,
-        x + 0.080, y - 0.009, 0.346, M_CREST, rot_y=math.radians(45),
+        x + 0.10125, y - 0.009, 0.346, M_CREST, rot_y=math.radians(45),
     )
     ic.parent_to(flag, pole)
     ic.parent_to(trim, pole)
