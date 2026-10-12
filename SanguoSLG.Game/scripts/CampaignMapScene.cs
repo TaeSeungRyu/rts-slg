@@ -4558,9 +4558,13 @@ public sealed partial class CampaignMapScene : Node3D
         void AddAttack(CombatUnit unit, Vector3 target, int? targetId = null)
         {
             var fieldBuilding = _state.Buildings.FirstOrDefault(building => building.GarrisonUnit == unit.Id
-                && !_playbackDestroyedBuildings.Contains(building.Id))
+                && !_playbackDestroyedBuildings.Contains(building.Id)
+                && !_animBuildingRemovals.Any(removal => removal.Building == building.Id
+                    && removal.Time <= atkTime))
                 ?? _state.Buildings.FirstOrDefault(building => turn.FieldGarrisons.GetValueOrDefault(building.Id) == unit.Id
-                    && !_playbackDestroyedBuildings.Contains(building.Id));
+                    && !_playbackDestroyedBuildings.Contains(building.Id)
+                    && !_animBuildingRemovals.Any(removal => removal.Building == building.Id
+                        && removal.Time <= atkTime));
             if (fieldBuilding is not null)
             {
                 if (targetId is { } id)

@@ -247,6 +247,11 @@ public sealed partial class CampaignMapScene
             if (!_animArrows.Any(arrow => arrow.TargetUnitId == attacker.Value && arrow.Time == 4.08)
                 || _animAttacks.Any(attack => attack.UnitId == exposed.Id.Value && attack.Time == 4))
                 throw new Exception("주둔군 화살 공격 누락 또는 부대 돌진 예약");
+            _animBuildingRemovals.Add((4.40, occupied.Id));
+            ScheduleAttackMotions(combatTurn, 6);
+            if (!_animAttacks.Any(attack => attack.UnitId == exposed.Id.Value && attack.Time == 6)
+                || _animArrows.Any(arrow => arrow.TargetUnitId == attacker.Value && arrow.Time == 6.08))
+                throw new Exception("보루 파괴 후 노출된 부대의 일반 공격 모션 누락");
             _animFieldGarrisonEntries.Remove(exposed.Id.Value);
             HideDestroyedFieldBuilding(occupied.Id);
             if (!_armyTokens.TryGetValue(exposed.Id.Value, out var revealed) || !revealed.Visible)
