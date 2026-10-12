@@ -37,15 +37,11 @@ public sealed partial class CampaignMapScene
                 var direction = index == 0 ? DeploymentDirection.SouthWest : DeploymentDirection.SouthEast;
                 var origin = TargetOriginCity() ?? throw new System.InvalidOperationException("Target origin missing");
                 var exit = TargetEgressExit(origin, direction) ?? throw new System.InvalidOperationException("Target exit missing");
-                _targetEgressDirection = direction == DeploymentDirection.SouthWest
-                    ? DeploymentDirection.SouthEast : DeploymentDirection.SouthWest;
+                _targetEgressDirection = direction;
                 _targetEgressManual = true;
-                if (!TrySelectTargetEgressAt(exit) || _targetEgressDirection != direction || _targetWaypoints.Count != 0)
-                    throw new System.InvalidOperationException("Leaked exit-tile click was not recovered as direction selection");
-                Click(_targetEgressButtons[direction].GetGlobalRect().GetCenter());
-                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                if (_targetEgressDirection != direction || _targetWaypoints.Count != 0)
-                    throw new System.InvalidOperationException("Direction click leaked into map waypoints");
+                RebuildTargetEdit();
+                if (_targetEgressButtons.Values.Any(arrow => arrow.Visible))
+                    throw new System.InvalidOperationException("Removed deployment direction arrows remain visible");
                 var target = new SanguoSLG.Core.Spatial.HexCoord(0, 4);
                 var clickedWorld = _view.HexToWorld(target)
                     + new Vector3(index == 0 ? -0.12f : 0.12f, 0f, 0f);
