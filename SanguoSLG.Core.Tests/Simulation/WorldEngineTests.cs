@@ -915,6 +915,27 @@ public class WorldEngineTests
     }
 
     [Fact]
+    public void 도적은_바다가_아닌_육상_성_주변에만_출현한다()
+    {
+        var city = new City(new CityId(1), "해안성", new HexCoord(2, 2), new FactionId(1), 1000,
+            Security: 50);
+        var terrain = city.Position.Neighbors().ToDictionary(hex => hex, _ => TerrainType.WaterDeep);
+        var land = city.Position.Neighbors().OrderBy(hex => hex.Q).ThenBy(hex => hex.R).First();
+        terrain[land] = TerrainType.Plains;
+        var map = new HexMap(0, 4, 0, 4, terrain);
+        var passability = new PassabilityMap(map, [], [city]);
+        var state = new GameState(1, 190, [], [city], []);
+        var world = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true },
+            random: new FixedRandom(0),
+            banditLandSpawnAllowed: hex => passability.CanEnter(MovementDomain.Land, hex));
+
+        var after = world.AdvanceDays(state, 7);
+
+        Assert.Equal(land, Assert.Single(after.Armies).Field.Position);
+        Assert.True(passability.CanEnter(MovementDomain.Land, after.Armies[0].Field.Position));
+    }
+
+    [Fact]
     public void v2_해당성을_공격중인_도적이_있으면_추가_출현하지_않는다()
     {
         var city = new City(new CityId(1), "습격성", new HexCoord(0, 0), new FactionId(1), 1000,

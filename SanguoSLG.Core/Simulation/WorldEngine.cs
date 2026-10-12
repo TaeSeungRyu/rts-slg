@@ -18,14 +18,17 @@ public sealed class WorldEngine
     private readonly BalanceConfig _balance;
     private readonly CommandBalance _commands;
     private readonly IReadOnlyDictionary<string, Domain.AdminSkill> _adminSkills;
+    private readonly Func<HexCoord, bool>? _banditLandSpawnAllowed;
 
     public WorldEngine(BalanceConfig balance, CommandBalance? commands = null,
-        IReadOnlyList<Domain.AdminSkill>? adminSkills = null, IRandomSource? random = null)
+        IReadOnlyList<Domain.AdminSkill>? adminSkills = null, IRandomSource? random = null,
+        Func<HexCoord, bool>? banditLandSpawnAllowed = null)
     {
         _balance = balance;
         _commands = commands ?? new CommandBalance();
         _adminSkills = (adminSkills ?? []).ToDictionary(a => a.Code);
         _random = random ?? new SeededRandomSource(0); // 도시 계략 성공 판정용(시드 — 결정론)
+        _banditLandSpawnAllowed = banditLandSpawnAllowed;
     }
 
     private readonly IRandomSource _random;
@@ -364,7 +367,7 @@ public sealed class WorldEngine
     private GameState SpawnLowSecurityBandits(GameState state)
     {
         var armies = state.Armies.ToList();
-        var occupied = state.Cities.Select(c => c.Position)
+        var occupied = state.Cities.SelectMany(CastleFootprint.TilesFor)
             .Concat(armies.Select(a => a.Field.Position))
             .ToHashSet();
         var nextUnitId = armies.Count == 0 ? 1 : armies.Max(a => a.Id.Value) + 1;
@@ -387,7 +390,11 @@ public sealed class WorldEngine
                 continue;
             }
 
-            var spawn = city.Position.Neighbors().Cast<HexCoord?>().FirstOrDefault(p => p is { } h && !occupied.Contains(h));
+            var spawn = CastleFootprint.TilesFor(city).SelectMany(tile => tile.Neighbors())
+                .Distinct().Where(hex => !occupied.Contains(hex)
+                    && (_banditLandSpawnAllowed?.Invoke(hex) ?? true))
+                .OrderBy(hex => hex.Distance(city.Position)).ThenBy(hex => hex.Q).ThenBy(hex => hex.R)
+                .Cast<HexCoord?>().FirstOrDefault();
             if (spawn is not { } spawnPosition)
             {
                 continue;
