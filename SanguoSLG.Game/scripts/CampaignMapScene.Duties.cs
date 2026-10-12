@@ -14,13 +14,17 @@ public sealed partial class CampaignMapScene
     private string CurrentDuty(GeneralId id)
     {
         var duties = new List<string>();
+        var posting = _state.PostingOf(id);
         foreach (var c in _state.Cities)
         {
+            if (posting?.Location != c.Id || posting.Faction != c.Owner) { continue; }
             if (c.Governor == id) { duties.Add($"{c.Name} 태수(겸임)"); }
             if (c.Strategist == id) { duties.Add($"{c.Name} 군사(겸임)"); }
         }
         if (CurrentOfficerAssignment(id) is { } role) { duties.Add($"{role.CityName} {KindName(role.Kind)}"); }
-        foreach (var command in _state.Commands.Where(c => c.Locks(id))) { duties.Add(KindName(command.Kind)); }
+        foreach (var command in _state.Commands.Where(c => c.Locks(id)
+            && _state.Cities.Any(city => city.Id == c.City && posting?.Faction == city.Owner
+                && posting.Location == city.Id))) { duties.Add(KindName(command.Kind)); }
         if (_state.ProductionOps.Any(p => p.General == id)) { duties.Add("생산(이동·채집·복귀)"); }
         var unit = _state.Armies.FirstOrDefault(u => u.VanguardId == id || u.AdjutantId == id);
         if (unit is not null) { duties.Add(unit.IsSupply ? "보급부대 출전" : "출전"); }

@@ -101,6 +101,15 @@ public sealed class CityCapture
                     Security = _security,
                     Gold = c.Gold + depositGold,
                     Provisions = c.Provisions + depositProvisions,
+                    Governor = null,
+                    Strategist = null,
+                    SecurityOfficer = null,
+                    DomesticOfficer = null,
+                    RecruitmentOfficer = null,
+                    TrainingOfficer = null,
+                    AutoRecruitTroopCode = "",
+                    AutoRecruitTroopCodes = "",
+                    AutoRecruitRate = 1,
                 }
                 : c)
             .ToList();

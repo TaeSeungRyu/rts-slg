@@ -252,6 +252,95 @@ public class CityCaptureTests
     }
 
     [Fact]
+    public void 항구를_잃으면_옛_담당과_진행명령이_해제되고_재점령해도_복원되지_않는다()
+    {
+        var port = Fallen(1, 1, new HexCoord(5, 0)) with
+        {
+            Port = PortSize.Small,
+            Governor = new GeneralId(10),
+            Strategist = new GeneralId(11),
+            SecurityOfficer = new GeneralId(10),
+            DomesticOfficer = new GeneralId(11),
+            RecruitmentOfficer = new GeneralId(10),
+            TrainingOfficer = new GeneralId(11),
+            AutoRecruitTroopCode = "swordsman",
+            AutoRecruitTroopCodes = "swordsman,archer",
+            AutoRecruitRate = 3,
+        };
+        var refuge = Fallen(9, 1, new HexCoord(12, 0));
+        var enemyHome = Fallen(8, 2, new HexCoord(-5, 0));
+        var exploration = new CityCommand(port.Id, CommandKind.Explore, new GeneralId(11), null,
+            1, 8, 0, "", "");
+        var state = State([port, refuge, enemyHome],
+            [Attacker(1, 2, new HexCoord(4, 0), port.Position)],
+            [Gen(10), Gen(11)],
+            [new GeneralPosting(new GeneralId(10), new FactionId(1), port.Id),
+                new GeneralPosting(new GeneralId(11), new FactionId(1), port.Id)],
+            [exploration]);
+
+        var lost = new CityCapture().ResolveAll(state, new FixedRandom(99), out var lossReports);
+
+        Assert.Equal([new GeneralId(10), new GeneralId(11)], Assert.Single(lossReports).Fled);
+        Assert.All(new[] { new GeneralId(10), new GeneralId(11) }, id =>
+        {
+            Assert.Equal(refuge.Id, lost.PostingOf(id)!.Location);
+            Assert.False(lost.IsGeneralBusy(id));
+        });
+        Assert.Empty(lost.Commands);
+        AssertVacant(lost.Cities.Single(c => c.Id == port.Id));
+
+        var retaken = new CityCapture().ResolveAll(lost with
+        {
+            GarrisonForces = [],
+            FieldArmies = [Attacker(2, 1, new HexCoord(4, 0), port.Position)],
+        }, new FixedRandom(99), out _);
+
+        AssertVacant(retaken.Cities.Single(c => c.Id == port.Id));
+        Assert.Equal(refuge.Id, retaken.PostingOf(new GeneralId(11))!.Location);
+    }
+
+    private static void AssertVacant(City city)
+    {
+        Assert.Null(city.Governor);
+        Assert.Null(city.Strategist);
+        Assert.Null(city.SecurityOfficer);
+        Assert.Null(city.DomesticOfficer);
+        Assert.Null(city.RecruitmentOfficer);
+        Assert.Null(city.TrainingOfficer);
+        Assert.Equal("", city.AutoRecruitTroopCode);
+        Assert.Equal("", city.AutoRecruitTroopCodes);
+        Assert.Equal(1, city.AutoRecruitRate);
+    }
+
+    [Fact]
+    public void 항구_재점령_시_옛_주둔장수는_포로없이_확률에_따라_다시_합류한다()
+    {
+        var port = Fallen(1, 1, new HexCoord(5, 0)) with { Port = PortSize.Small };
+        var playerHome = Fallen(9, 1, new HexCoord(12, 0));
+        var enemyHome = Fallen(8, 2, new HexCoord(-5, 0));
+        var officer = new GeneralId(11);
+        var state = State([port, playerHome, enemyHome],
+            [Attacker(1, 2, new HexCoord(4, 0), port.Position)],
+            [Gen(11)], [new GeneralPosting(officer, new FactionId(1), port.Id)]);
+
+        var lost = new CityCapture().ResolveAll(state, new FixedRandom(0), out var first);
+        Assert.Equal([officer], Assert.Single(first).Captured);
+        Assert.Equal((new FactionId(2), port.Id),
+            (lost.PostingOf(officer)!.Faction, lost.PostingOf(officer)!.Location));
+
+        var retaken = new CityCapture().ResolveAll(lost with
+        {
+            GarrisonForces = [],
+            FieldArmies = [Attacker(2, 1, new HexCoord(4, 0), port.Position)],
+        }, new FixedRandom(0), out var second);
+
+        Assert.Equal([officer], Assert.Single(second).Captured);
+        Assert.Equal((new FactionId(1), port.Id),
+            (retaken.PostingOf(officer)!.Faction, retaken.PostingOf(officer)!.Location));
+        Assert.False(retaken.IsGeneralBusy(officer));
+    }
+
+    [Fact]
     public void 캠페인_공성부터_함락까지_한_흐름으로_점거된다()
     {
         // 얇은 소성(성벽 600·수비 800)에 도검 15000이 진격 — 여러 주에 걸쳐 성벽·수비를 깎고 점거.

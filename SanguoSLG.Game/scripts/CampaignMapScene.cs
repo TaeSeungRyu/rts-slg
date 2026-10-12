@@ -139,7 +139,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _animSupplyArrowIdx;
     private readonly List<(double Time, int UnitId, Vector3 Target)> _animSupplyArrows = new(); // 보급부대 공격 화살
     private int _animCaptureIdx;
-    private readonly List<(double Time, CityId City)> _animCaptures = new();
+    private readonly List<(double Time, CaptureReport Report)> _animCaptures = new();
     private int _animActiveIdx;
     private readonly List<(double Time, int UnitId, FactionId Owner, GeneralId? GeneralId, ActiveSkill Skill)> _animActives = new();
     private int _animSkillEffectIdx;
@@ -3903,6 +3903,12 @@ public sealed partial class CampaignMapScene : Node3D
                 ? $"[함락] {name}을(를) 점령했습니다!"
                 : $"[함락] 아군 {name}을(를) 빼앗겼습니다(→ {owner}){(c.FactionEliminated ? " · 세력 멸망" : "")}",
                 GoldBright);
+            var joined = string.Join(", ", c.Captured.Select(id => after.Generals.FirstOrDefault(g => g.Id == id)?.Name ?? $"장수 {id.Value}"));
+            var departed = string.Join(", ", c.Fled.Select(id => after.Generals.FirstOrDefault(g => g.Id == id)?.Name ?? $"장수 {id.Value}"));
+            if (joined.Length > 0)
+                Ev($"[함락] {name}: {joined} — 점령 세력에 합류했습니다.", GoldBright);
+            if (departed.Length > 0)
+                Ev($"[함락] {name}: {departed} — 점령 세력에 합류하지 않고 이동했습니다.", Parchment);
         }
 
         // 내정/라이프사이클 사건(Core WorldEvent) — 내 세력만. 명령 완료 수치.
@@ -4311,7 +4317,7 @@ public sealed partial class CampaignMapScene : Node3D
             foreach (var capture in captures.Where(c => c.TurnIndex == ti))
             {
                 var captureTime = settleTime + 0.08;
-                _animCaptures.Add((captureTime, capture.City));
+                _animCaptures.Add((captureTime, capture));
                 cityWalls[capture.City] = 0;
                 cityTroops[capture.City] = _pendingState.Garrisons
                     .Where(force => force.City == capture.City).Sum(force => force.Troops);
@@ -6217,16 +6223,20 @@ public sealed partial class CampaignMapScene : Node3D
             while (_animCaptureIdx < _animCaptures.Count && _animCaptures[_animCaptureIdx].Time <= _animT)
             {
                 var capture = _animCaptures[_animCaptureIdx];
-                var capturedCity = _pendingState.Cities.FirstOrDefault(c => c.Id == capture.City);
+                var capturedCity = _pendingState.Cities.FirstOrDefault(c => c.Id == capture.Report.City);
                 if (capturedCity is not null)
                 {
+                    var affected = capture.Report.Captured.Concat(capture.Report.Fled).ToHashSet();
                     _state = _state with
                     {
-                        Cities = _state.Cities.Select(c => c.Id == capture.City ? capturedCity : c).ToList(),
+                        Cities = _state.Cities.Select(c => c.Id == capture.Report.City ? capturedCity : c).ToList(),
+                        Postings = _state.Assignments.Where(p => !affected.Contains(p.General))
+                            .Concat(_pendingState.Assignments.Where(p => affected.Contains(p.General))).ToList(),
+                        PendingCommands = _state.Commands.Where(c => c.City != capture.Report.City).ToList(),
                     };
-                    var troops = _pendingState.Garrisons.Where(g => g.City == capture.City).Sum(g => g.Troops);
-                    _playbackCityTroops[capture.City] = troops;
-                    var label = _cityLabels[capture.City.Value];
+                    var troops = _pendingState.Garrisons.Where(g => g.City == capture.Report.City).Sum(g => g.Troops);
+                    _playbackCityTroops[capture.Report.City] = troops;
+                    var label = _cityLabels[capture.Report.City.Value];
                     label.Text = $"{capturedCity.Name} [{_pendingState.Factions.First(f => f.Id == capturedCity.Owner).Name}]\n성벽 {capturedCity.Wall}  병 {troops}";
                     label.Modulate = capturedCity.Owner == Player ? Blue : Red;
                 }
@@ -14981,8 +14991,10 @@ public sealed partial class CampaignMapScene : Node3D
 
     private (CityId City, string CityName, CommandKind Kind)? CurrentOfficerAssignment(GeneralId general)
     {
+        var posting = _state.PostingOf(general);
         foreach (var c in _state.Cities)
         {
+            if (posting?.Location != c.Id || posting.Faction != c.Owner) { continue; }
             if (c.SecurityOfficer == general) { return (c.Id, c.Name, CommandKind.AppointSecurityOfficer); }
             if (c.DomesticOfficer == general) { return (c.Id, c.Name, CommandKind.AppointDomesticOfficer); }
             if (c.RecruitmentOfficer == general) { return (c.Id, c.Name, CommandKind.AppointRecruitmentOfficer); }
