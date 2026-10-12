@@ -11,6 +11,11 @@ using Xunit;
 /// <summary>캠페인 진행 = 7일 고정, 이동+전투 자동 연속, 내정과 한 시계(2026-08-16 확정).</summary>
 public class CampaignEngineTests
 {
+    private sealed class AlwaysSpawnRandom : IRandomSource
+    {
+        public int Next(int minInclusive, int maxExclusive) => minInclusive;
+    }
+
     private static readonly IReadOnlyDictionary<string, TroopTemplate> T =
         new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory()).ToDictionary(x => x.Code);
 
@@ -43,6 +48,26 @@ public class CampaignEngineTests
 
     private static GameState World(params CombatUnit[] armies) =>
         new(1, 1, new List<Faction>(), new List<City>(), new List<General>(), FieldArmies: armies.ToList());
+
+    [Fact]
+    public void 도적은_출현한_진행이_아닌_다음_진행부터_공격한다()
+    {
+        var city = new City(new CityId(1), "불안성", new HexCoord(5, 0), new FactionId(1), 1000,
+            Security: 50);
+        var state = new GameState(1, 190, [], [city], []);
+        var movement = new MovementSimulator(new PassabilityMap(new HexMap(0, 12, -3, 3), [], []));
+        var field = new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70));
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0),
+            new CommandBalance { AutoOfficerSystemEnabled = true }, random: new AlwaysSpawnRandom());
+        var engine = new CampaignEngine(field, world);
+
+        var spawned = engine.AdvanceWeek(state, out var firstTurns);
+        var bandit = Assert.Single(spawned.Armies, unit => unit.Field.Owner == WorldEngine.BanditFaction);
+        Assert.All(firstTurns, turn => Assert.DoesNotContain(turn.Units, unit => unit.Id == bandit.Id));
+
+        engine.AdvanceWeek(spawned, out var nextTurns);
+        Assert.Contains(nextTurns, turn => turn.Units.Any(unit => unit.Id == bandit.Id));
+    }
 
     [Fact]
     public void 유적_최초점령은_세력영입포인트를_백점_지급한다()
