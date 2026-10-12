@@ -76,11 +76,6 @@ public sealed class CampaignSiege
         {
             var defenders = garr.Where(g => g.City == city.Id).OrderBy(g => g.TroopCode, StringComparer.Ordinal).ThenBy(g => g.Trainee).ToList();
             var defendTroops = defenders.Sum(g => g.Troops);
-            if (city.Wall <= 0 && defendTroops <= 0)
-            {
-                continue; // 이미 무너지고 빈 성 — 함락(점거)은 다음 단계
-            }
-
             var besiegers = armies
                 .Where(u => u.Pool.Active > 0 && u.Field.Owner != city.Owner
                     && (u.Field.Mode == UnitMode.Attack
@@ -94,6 +89,13 @@ public sealed class CampaignSiege
                 .ToList();
             if (besiegers.Count == 0)
             {
+                continue;
+            }
+            if (city.Wall <= 0 && defendTroops <= 0)
+            {
+                // 점령 판정 전에 빈 항구의 부상병이 회복되어 수비대를 재생성하지 않도록 포위를 유지한다.
+                exchanges.Add(new SiegeExchange(city.Id, false, 0, 0, 0,
+                    besiegers.Select(u => u.Id).ToList(), besiegers.Select(_ => 0).ToList()));
                 continue;
             }
 

@@ -40,7 +40,8 @@ public sealed class CityCapture
     public GameState ResolveAll(GameState state, IRandomSource random, out IReadOnlyList<CaptureReport> reports)
     {
         var list = new List<CaptureReport>();
-        foreach (var city in state.Cities.OrderBy(c => c.Id.Value).ToList())
+        foreach (var (city, siteIndex) in state.Cities.OrderBy(c => c.Id.Value)
+                     .Select((city, index) => (city, index + 1)).ToList())
         {
             var current = state.Cities.FirstOrDefault(c => c.Id == city.Id);
             if (current is null || current.Wall > 0)
@@ -56,7 +57,10 @@ public sealed class CityCapture
             var besiegers = state.Armies
                 .Where(u => u.Pool.Active > 0 && u.Field.Owner != current.Owner
                     && u.Field.Owner != WorldEngine.BanditFaction
-                    && u.Field.Mode == UnitMode.Attack && !u.IsSupply
+                    && (u.Field.Mode == UnitMode.Attack
+                        || u.Field.Mode == UnitMode.Advance
+                        && u.Field.PursuitTarget == new RenewalMovement.RenewalTargetId(
+                            RenewalMovement.RenewalTargetKind.Site, siteIndex)) && !u.IsSupply
                     && u.CanInitiateCombat
                     // 중형·대형 성과 항구는 기준점이 아닌 모든 발자국 칸으로 접근한다.
                     // 공성 판정과 동일한 기준을 써서 상단/측면 칸에서 공격을 끝낸 부대도

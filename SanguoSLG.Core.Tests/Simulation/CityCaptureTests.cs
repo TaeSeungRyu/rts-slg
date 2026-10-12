@@ -11,6 +11,39 @@ using Xunit;
 /// <summary>10d 함락 처리 — 자동 입성·소유 전환·인구 페널티·명령 드롭·주둔 장수 판정·세력 소멸.</summary>
 public class CityCaptureTests
 {
+    [Theory]
+    [InlineData(PortSize.Small)]
+    [InlineData(PortSize.Medium)]
+    [InlineData(PortSize.None)]
+    public void 전진중_발견한_거점은_수비전멸_즉시_점령하고_재점령할수있다(PortSize size)
+    {
+        var city = Fallen(1, 2, new HexCoord(5, 0)) with { Port = size };
+        var first = Attacker(1, 1, new HexCoord(4, 0), new HexCoord(8, 0));
+        first = first with { Field = first.Field with { Mode = UnitMode.Advance,
+            PursuitTarget = new SanguoSLG.Core.Simulation.RenewalMovement.RenewalTargetId(
+                SanguoSLG.Core.Simulation.RenewalMovement.RenewalTargetKind.Site, 1) } };
+        var captured = new CityCapture().ResolveAll(State([city], [first]), new FixedRandom(0), out var reports);
+        Assert.Single(reports);
+        Assert.Equal(new FactionId(1), captured.Cities.Single().Owner);
+        var second = first with { Field = first.Field with { Id = new UnitId(2), Owner = new FactionId(2) } };
+        var recaptured = new CityCapture().ResolveAll(captured with { GarrisonForces = [], FieldArmies = [second] },
+            new FixedRandom(0), out reports);
+        Assert.Single(reports);
+        Assert.Equal(new FactionId(2), recaptured.Cities.Single().Owner);
+        Assert.Empty(recaptured.Armies);
+    }
+
+    [Fact]
+    public void 다른거점을_추격중인_전진부대는_빈항구를_점령하지않는다()
+    {
+        var port = Fallen(1, 2, new HexCoord(5, 0)) with { Port = PortSize.Small };
+        var army = Attacker(1, 1, new HexCoord(4, 0), new HexCoord(8, 0));
+        army = army with { Field = army.Field with { Mode = UnitMode.Advance,
+            PursuitTarget = new SanguoSLG.Core.Simulation.RenewalMovement.RenewalTargetId(
+                SanguoSLG.Core.Simulation.RenewalMovement.RenewalTargetKind.Site, 2) } };
+        new CityCapture().ResolveAll(State([port], [army]), new FixedRandom(0), out var reports);
+        Assert.Empty(reports);
+    }
     private static readonly IReadOnlyDictionary<string, TroopTemplate> T =
         new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory()).ToDictionary(x => x.Code);
 

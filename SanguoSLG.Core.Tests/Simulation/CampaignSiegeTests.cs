@@ -12,6 +12,26 @@ using Xunit;
 /// <summary>캠페인 공성(10b) — 성벽 타격·수비 손실·반격. 소유 전환·함락은 다음 단계.</summary>
 public class CampaignSiegeTests
 {
+    [Theory]
+    [InlineData(PortSize.Small)]
+    [InlineData(PortSize.Medium)]
+    public void 빈항구의_부상병이_점령직전_회복해_무한수성하지않는다(PortSize size)
+    {
+        var port = Town(9, 1, new HexCoord(5, 0), 0) with { Port = size };
+        var army = Army(1, 2, new HexCoord(4, 0), port.Position) with
+        { Field = Army(1, 2, new HexCoord(4, 0), port.Position).Field with { Speed = 0 } };
+        var movement = new MovementSimulator(new PassabilityMap(new HexMap(0, 30, -8, 8), [], []));
+        var field = new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70));
+        var engine = new CampaignEngine(field, new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0)),
+            Siege(), new CityCapture(), new FixedRandom(0));
+        var state = new GameState(1, 190, [], [port], [], FieldArmies: [army],
+            CityWoundedForces: [new CityWoundedForce(port.Id, "swordsman", 10000, 50)]);
+        var after = engine.AdvanceWeek(state, out _, out var sieges, out var captures);
+        Assert.Equal(0, Assert.Single(captures).TurnIndex);
+        Assert.Equal(new FactionId(2), after.Cities.Single().Owner);
+        Assert.All(sieges, s => Assert.All(s.BesiegerDamage!, damage => Assert.Equal(0, damage)));
+        Assert.Empty(after.Armies);
+    }
     private sealed class FixedRandom(int value) : IRandomSource
     {
         public int Next(int minInclusive, int maxExclusive) => value;
@@ -334,14 +354,17 @@ public class CampaignSiegeTests
     }
 
     [Fact]
-    public void 공성_빈성_붕괴수비0은_교환이_없다()
+    public void 공성_빈성_붕괴수비0은_피해없이_포위만_유지한다()
     {
         var sword = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0));
         var city = Town(9, 2, new HexCoord(5, 0), wall: 0);
 
         var r = Siege().Resolve([sword], [city], []);
 
-        Assert.Empty(r.Exchanges); // 함락(점거)은 다음 단계
+        var exchange = Assert.Single(r.Exchanges);
+        Assert.Equal(0, exchange.TroopDamage);
+        Assert.Equal(0, Assert.Single(exchange.BesiegerDamage!));
+        Assert.Equal(sword.Pool, r.Armies.Single().Pool);
     }
 
     [Fact]
