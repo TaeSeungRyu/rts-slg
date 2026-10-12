@@ -8763,7 +8763,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenGeneralCard(GeneralId gid)
     {
         var loc = _state.PostingOf(gid)?.Location ?? _state.Cities.FirstOrDefault(c => c.Owner == Player)?.Id;
-        OpenGeneralDetail(gid, loc ?? new CityId(0), OpenGeneralRoster);
+        OpenGeneralDetail(gid, loc ?? new CityId(0), OpenGeneralRoster, OpenGeneralRoster);
     }
 
     // 전체 도시 목록 — 이름·세력·(정찰/소유 시)수치. 행 클릭 = 읽기 전용 상세(미정찰이면 정보 가림).
@@ -8792,6 +8792,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 if (city.Owner == Player || _state.IsScouted(Player, city.Id)) { OpenCityDetail(city.Id); }
                 else { OpenCityInfoReadonly(city.Id); }
+                _modalDismissAction = OpenCityRoster;
             };
             row.AddChild(view);
             box.AddChild(row);
@@ -16395,6 +16396,23 @@ public sealed partial class CampaignMapScene : Node3D
             && filteredRows.All(item => item.GetText(0).Contains(query, System.StringComparison.OrdinalIgnoreCase))
             && _generalRosterPage == 0;
 
+        OpenGeneralCard(_state.Generals[^1].Id);
+        var generalClose = _modalLayer!.FindChildren("*", "Button", true, false).OfType<Button>()
+            .First(button => button.Text == "✕");
+        generalClose.EmitSignal(BaseButton.SignalName.Pressed);
+        var generalReturned = _modalLayer!.FindChildren("GeneralRosterSearch", "LineEdit", true, false)
+            .OfType<LineEdit>().Any(input => input.Text == query);
+        OpenCityRoster();
+        var cityView = _modalLayer!.FindChildren("*", "Button", true, false).OfType<Button>()
+            .First(button => button.Text == "보기");
+        cityView.EmitSignal(BaseButton.SignalName.Pressed);
+        var cityClose = _modalLayer!.FindChildren("*", "Button", true, false).OfType<Button>()
+            .First(button => button.Text == "✕");
+        cityClose.EmitSignal(BaseButton.SignalName.Pressed);
+        var cityReturned = _modalLayer!.FindChildren("*", "Label", true, false).OfType<Label>()
+            .Any(label => label.Text.Contains("전체 도시 목록"));
+        CloseModal();
+
         const long initialModalLimitMilliseconds = 500;
         var passed = rows == expectedPageRows
             && thumbnailsReady
@@ -16406,12 +16424,14 @@ public sealed partial class CampaignMapScene : Node3D
             && smoothGoldRing
             && portraitNameGap
             && pageTwoOk && searchOk
+            && generalReturned && cityReturned
             && first.ElapsedMilliseconds < initialModalLimitMilliseconds
             && second.ElapsedMilliseconds <= first.ElapsedMilliseconds;
         GD.Print($"[maptestgeneralrosterqa] passed={passed} rows={rows}/{expectedPageRows} pageTwo={pageTwoOk}:{pageTwoRows} search={searchOk}:{filteredRows.Count} thumbnails={_rosterPortraits.Count} deferred={coldHydrated} compact={compactTextures} goldRing={thinGoldRing}/{smoothGoldRing} nameGap={portraitNameGap} initialColdMs={first.ElapsedMilliseconds} initialWarmMs={second.ElapsedMilliseconds} limitMs={initialModalLimitMilliseconds}");
         _generalRosterQuery = "";
         _generalRosterPage = 0;
-        GetTree().Quit(passed ? 0 : 1);
+        if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
+        else GetTree().Quit(1);
     }
 
     /// <summary>월드 주장 초상이 스킬 충전원 위에 배치되고 원형 텍스처를 받는지 확인한다.</summary>
