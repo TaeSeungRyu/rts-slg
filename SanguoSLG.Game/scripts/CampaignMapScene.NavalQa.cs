@@ -30,12 +30,17 @@ public sealed partial class CampaignMapScene
             var troops = resources.GetNode<Tree>("NavalTroopTable");
             var initialShipSize = ships.Size;
             var initialTroopSize = troops.Size;
-            foreach (var target in new[] { ships, troops, ships, troops })
+            var initialOfficerSize = table.Size;
+            foreach (var target in new[] { ships, troops, table, ships, troops, table })
             {
-                GetViewport().PushInput(new InputEventMouseMotion { Position = target.GetGlobalRect().GetCenter() });
+                var row = target.GetRoot().GetFirstChild();
+                var rowCenter = row is null ? target.GetGlobalRect().GetCenter()
+                    : target.GetGlobalPosition() + target.GetItemAreaRect(row).GetCenter();
+                GetViewport().PushInput(new InputEventMouseMotion { Position = rowCenter });
                 for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                if (!ships.Size.IsEqualApprox(initialShipSize) || !troops.Size.IsEqualApprox(initialTroopSize))
-                    throw new Exception("마우스 오버 후 좌측 표 높이 변경");
+                if (!ships.Size.IsEqualApprox(initialShipSize) || !troops.Size.IsEqualApprox(initialTroopSize)
+                    || !table.Size.IsEqualApprox(initialOfficerSize))
+                    throw new Exception($"마우스 오버 후 표 높이 변경: 선박 {ships.Size}, 병력 {troops.Size}, 장수 {table.Size}");
             }
             for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             if (!ships.Size.IsEqualApprox(initialShipSize) || !troops.Size.IsEqualApprox(initialTroopSize))

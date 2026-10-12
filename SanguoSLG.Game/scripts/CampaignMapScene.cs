@@ -10253,7 +10253,7 @@ public sealed partial class CampaignMapScene : Node3D
             CustomMinimumSize = new Vector2(0, 230),
             ScrollVerticalEnabled = false,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.Fill,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
         };
         shipTree.AddThemeFontOverride("font", _font);
         shipTree.AddThemeFontSizeOverride("font_size", 13);
@@ -10298,7 +10298,7 @@ public sealed partial class CampaignMapScene : Node3D
             SelectMode = Tree.SelectModeEnum.Row,
             CustomMinimumSize = new Vector2(0, 230),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.Fill,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
         };
         troopTree.AddThemeFontOverride("font", _font);
         troopTree.AddThemeFontSizeOverride("font_size", 13);
@@ -10498,7 +10498,8 @@ public sealed partial class CampaignMapScene : Node3D
         resourcePane?.AddThemeConstantOverride("separation", 4);
         var officerPane = (VBoxContainer)columns.FindChild("ComposeOfficers", true, false);
         ((ScrollContainer)officerPane.GetParent()).VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
-        generalTree.SetMeta("compose_officer_fill_ratio", 0.9f);
+        generalTree.CustomMinimumSize = new Vector2(0, columns.CustomMinimumSize.Y * 0.9f);
+        generalTree.SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
         CenterAndDrag(panel, titleRow, mw, mh, box);
         panel.Size = new Vector2(mw + 28, mh + 28);
     }
