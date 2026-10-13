@@ -9401,7 +9401,23 @@ public sealed partial class CampaignMapScene : Node3D
             var viewportCenter = GetViewport().GetVisibleRect().GetCenter();
             if (center.DistanceTo(viewportCenter) > 3f)
                 throw new Exception($"생산 모달이 중앙에 있지 않습니다: {center} / {viewportCenter}");
-            GD.Print("PRODUCTION_CENTER_QA PASS");
+            var columns = panel.FindChildren("DeployComposeColumns", "HBoxContainer", true, false)
+                .OfType<HBoxContainer>().Single();
+            var troop = columns.FindChildren("ProductionTroopTable", "Tree", true, false)
+                .OfType<Tree>().Single();
+            var general = columns.FindChildren("ProductionGeneralTable", "Tree", true, false)
+                .OfType<Tree>().Single();
+            if (troop.GetGlobalRect().GetCenter().X >= general.GetGlobalRect().GetCenter().X)
+                throw new Exception("투입 병종과 주최 장수의 좌우 배치가 반대입니다.");
+            var outerScroll = panel.FindChildren("*", "ScrollContainer", true, false)
+                .OfType<ScrollContainer>().First();
+            if (outerScroll.VerticalScrollMode != ScrollContainer.ScrollMode.Disabled)
+                throw new Exception("생산 모달 전체 세로 스크롤이 켜져 있습니다.");
+            var start = panel.FindChildren("*", "Button", true, false).OfType<Button>()
+                .Single(b => b.Text == "생산 시작");
+            if (!panel.GetGlobalRect().Encloses(start.GetGlobalRect()))
+                throw new Exception("생산 시작 버튼이 모달 밖으로 밀렸습니다.");
+            GD.Print("PRODUCTION_CENTER_QA PASS: centered, horizontal columns, visible action");
             GetParent().CallDeferred("RequestGracefulShutdown");
         }
         catch (Exception e)
@@ -9417,8 +9433,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var cityData = _state.Cities.First(c => c.Id == city);
         var vp = GetViewport().GetVisibleRect().Size;
-        var mw = Mathf.Clamp(vp.X * 0.54f, 520f, 760f);
-        var mh = Mathf.Clamp(vp.Y * 0.75f, 390f, 650f);
+        var mw = Mathf.Clamp(vp.X * 0.82f, 760f, 1120f);
+        var mh = Mathf.Clamp(vp.Y * 0.83f, 460f, 750f);
         var box = DeployScaffold(mw, out var scroll, out var panel);
 
         var titleRow = new HBoxContainer();
@@ -9568,7 +9584,8 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(tree);
         }
 
-        box.AddChild(MakeLabel("2. 주최 장수", 15, GoldBright));
+        var generalTitle = MakeLabel("주최 장수", 15, GoldBright);
+        box.AddChild(generalTitle);
         if (generals.Count == 0)
         {
             box.AddChild(MakeLabel("(투입 가능한 장수가 없습니다)", 13, Parchment));
@@ -9577,6 +9594,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var tree = new Tree
             {
+                Name = "ProductionGeneralTable",
                 Columns = 7,
                 ColumnTitlesVisible = true,
                 HideRoot = true,
@@ -9634,7 +9652,8 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(tree);
         }
 
-        box.AddChild(MakeLabel("3. 투입 병종 (500명 고정)", 15, GoldBright));
+        var troopTitle = MakeLabel("투입 병종 (500명 고정)", 15, GoldBright);
+        box.AddChild(troopTitle);
         if (garrisons.Count == 0)
         {
             box.AddChild(MakeLabel("(500명 이상 대기 중인 지상 병종이 없습니다)", 13, Parchment));
@@ -9643,6 +9662,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             var tree = new Tree
             {
+                Name = "ProductionTroopTable",
                 Columns = 5,
                 ColumnTitlesVisible = true,
                 HideRoot = true,
@@ -9727,6 +9747,30 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddChild(start);
         RefreshSummary();
 
+        var generalNodes = box.GetChildren().OfType<Control>().ToList();
+        var generalIndex = generalNodes.IndexOf(generalTitle);
+        var troopIndex = generalNodes.IndexOf(troopTitle);
+        InsertHorizontalComposeColumns(box, generalIndex,
+            generalNodes.Skip(troopIndex).Take(generalNodes.Count - troopIndex - 2).ToList(),
+            generalNodes.Skip(generalIndex).Take(troopIndex - generalIndex).ToList(),
+            scroll, mw, mh, disableLeftScroll: true);
+        var columns = box.GetNode<HBoxContainer>("DeployComposeColumns");
+        columns.CustomMinimumSize = new Vector2(0, Mathf.Max(230f, mh - 280f));
+        var officerPane = (VBoxContainer)columns.FindChild("ComposeOfficers", true, false);
+        ((ScrollContainer)officerPane.GetParent()).VerticalScrollMode = ScrollContainer.ScrollMode.Disabled;
+        var generalTable = officerPane.FindChild("ProductionGeneralTable", true, false) as Tree;
+        if (generalTable is not null)
+        {
+            generalTable.CustomMinimumSize = new Vector2(0, columns.CustomMinimumSize.Y - 40f);
+            generalTable.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        }
+        var troopPane = (VBoxContainer)columns.FindChild("ComposeResources", true, false);
+        var troopTable = troopPane.FindChild("ProductionTroopTable", true, false) as Tree;
+        if (troopTable is not null)
+        {
+            troopTable.CustomMinimumSize = new Vector2(0, columns.CustomMinimumSize.Y - 40f);
+            troopTable.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        }
         scroll.CustomMinimumSize = new Vector2(mw, mh);
         CenterAndDrag(panel, titleRow, mw, mh, box);
         panel.Size = new Vector2(mw + 28f, mh + 28f);
