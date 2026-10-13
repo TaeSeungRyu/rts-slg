@@ -10,6 +10,21 @@ using Xunit;
 
 public class ProductionServiceTests
 {
+    [Theory]
+    [InlineData(ProductionRules.Village, 50, 125, 0)]
+    [InlineData(ProductionRules.Village, 80, 175, 0)]
+    [InlineData(ProductionRules.Village, 100, 250, 0)]
+    [InlineData(ProductionRules.Paddy, 50, 0, 400)]
+    [InlineData(ProductionRules.Paddy, 80, 0, 550)]
+    [InlineData(ProductionRules.Paddy, 100, 0, 750)]
+    [InlineData(ProductionRules.Farm, 50, 0, 250)]
+    [InlineData(ProductionRules.Farm, 80, 0, 350)]
+    [InlineData(ProductionRules.Farm, 100, 0, 500)]
+    public void 생산_시설별_정치구간_보상은_조정된_수치를_적용한다(string facility, int politics, int gold, int provisions)
+    {
+        Assert.Equal((gold, provisions), ProductionRules.Reward(facility, politics));
+    }
+
     private static readonly IReadOnlyList<TroopTemplate> Troops =
         new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory());
 
@@ -125,7 +140,7 @@ public class ProductionServiceTests
         Assert.Empty(after.ProductionOps);
         Assert.Equal(1000, after.Garrisons.Single(g => g.TroopCode == "swordsman").Troops);
         Assert.Equal(new CityId(1), after.PostingOf(new GeneralId(1))!.Location);
-        Assert.Equal(500, after.Cities.Single().Gold);
+        Assert.Equal(250, after.Cities.Single().Gold);
     }
 
     [Fact]

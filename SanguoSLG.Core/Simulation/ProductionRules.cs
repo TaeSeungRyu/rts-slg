@@ -20,9 +20,9 @@ public static class ProductionRules
 
     public static (int Gold, int Provisions) Reward(string facility, int politics) => facility switch
     {
-        Village => (politics >= 100 ? 500 : politics >= 80 ? 350 : 250, 0),
-        Paddy => (0, politics >= 100 ? 1500 : politics >= 80 ? 1100 : 800),
-        Farm => (0, politics >= 100 ? 1000 : politics >= 80 ? 700 : 500),
+        Village => (politics >= 100 ? 250 : politics >= 80 ? 175 : 125, 0),
+        Paddy => (0, politics >= 100 ? 750 : politics >= 80 ? 550 : 400),
+        Farm => (0, politics >= 100 ? 500 : politics >= 80 ? 350 : 250),
         _ => (0, 0),
     };
 }
