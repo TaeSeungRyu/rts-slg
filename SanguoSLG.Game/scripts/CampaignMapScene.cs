@@ -61,6 +61,9 @@ public sealed partial class CampaignMapScene : Node3D
     private IReadOnlyList<FieldBuildingDefinition> _fieldBuildingDefinitions = [];
     private ProductionService _producer = null!;
     private CampaignEngine _engine = null!;
+    private SummonService _summons = null!;
+    private IReadOnlyList<EventTreasureDefinition> _treasureDefinitions = [];
+    private Button _summonUnitButton = null!;
     private CommandService _commander = null!;
     private IReadOnlyList<TroopTemplate> _troops = null!;
     private CommandBalance _cb = null!;
@@ -534,8 +537,11 @@ public sealed partial class CampaignMapScene : Node3D
         var scenario = new ScenarioLoader().LoadFromDirectory(dataDirectory);
         _passability = new PassabilityMap(_map, [], _cities, scenario.RuinList.Select(r => r.Position));
         _fieldBuildingDefinitions = new FieldBuildingLoader().LoadFromDirectory(dataDirectory);
+        _treasureDefinitions = new EventTreasureLoader().LoadFromDirectory(dataDirectory);
         _eventHunts = new EventHuntService(_map, new EventUnitLoader().LoadFromDirectory(dataDirectory),
-            new EventTreasureLoader().LoadFromDirectory(dataDirectory));
+            _treasureDefinitions);
+        _summons = new SummonService(_map, _treasureDefinitions,
+            new SummonedUnitLoader().LoadFromDirectory(dataDirectory));
         _fieldConstruction = new FieldConstructionService(_fieldBuildingDefinitions, _passability.TerrainAt);
         _unitCommander = new FieldUnitCommandService(
             (domain, hex) => _passability.CanEnter(domain, hex),
@@ -595,7 +601,7 @@ public sealed partial class CampaignMapScene : Node3D
             _cb.BuildSiteHp, _cb.BuildSiteDamagePerTurn, passives, actives,
             new RuinCombat(new BattleResolver(60), 70),
             new FieldBuildingCombat(new BattleResolver(60), _fieldBuildingDefinitions, _troops),
-            _fieldBuildingDefinitions, _eventHunts);
+            _fieldBuildingDefinitions, _eventHunts, _summons);
         _vision = new BattlefieldVision(scenario.Balance, _troops, _fieldBuildingDefinitions);
         _fog = new BattlefieldFogView(_view);
         _fog.RegisterMap();
@@ -1494,6 +1500,10 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainHex = null;
         _unitCmdBox.Visible = u.Field.Owner == Player && !_advancing; // 적·재생 중엔 정보만
         _supplyReplenishmentButton.Visible = u.Field.Owner == Player && u.IsSupply && !_advancing;
+        _summonUnitButton.Visible = u.Field.Owner == Player && !u.IsSummon && !_advancing
+            && _state.Treasures.Any(t => t.Faction == Player && (t.EquippedBy == u.VanguardId
+                || t.EquippedBy == u.AdjutantId) && t.EquippedBy is not null
+                && _treasureDefinitions.Any(d => d.Code == t.Code && d.Effect == "summon"));
         _unitEnemyAttackButton.Visible = u.Field.Owner != Player && !_advancing;
         _unitMenu.ResetSize();
         PlaceMenu(_unitMenu, u.Field.Position, 60f);
@@ -5210,6 +5220,10 @@ public sealed partial class CampaignMapScene : Node3D
         replenish.Pressed += () => BeginSupplyReplenishmentTargeting(_selectedUnitId);
         _unitCmdBox.AddChild(replenish);
         _supplyReplenishmentButton = replenish;
+        _summonUnitButton = Item("소환", accent: true);
+        _summonUnitButton.TooltipText = "장착한 신수 아이템으로 인접 지점에 소환수를 부릅니다.";
+        _summonUnitButton.Pressed += OpenSummonModal;
+        _unitCmdBox.AddChild(_summonUnitButton);
 
     }
 

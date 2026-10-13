@@ -41,6 +41,7 @@ public sealed class CampaignEngine
     private readonly IReadOnlyList<FieldBuildingDefinition> _fieldBuildingDefinitions;
     private readonly FieldScoutPostService? _fieldScoutPosts;
     private readonly EventHuntService? _eventHunts;
+    private readonly SummonService? _summons;
 
     public CampaignEngine(IFieldAdvanceRunner field, WorldEngine world,
         CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null,
@@ -49,7 +50,7 @@ public sealed class CampaignEngine
         IReadOnlyList<PassiveSkill>? passives = null, IReadOnlyList<ActiveSkill>? actives = null,
         RuinCombat? ruinCombat = null, FieldBuildingCombat? fieldBuildingCombat = null,
         IReadOnlyList<FieldBuildingDefinition>? fieldBuildingDefinitions = null,
-        EventHuntService? eventHunts = null)
+        EventHuntService? eventHunts = null, SummonService? summons = null)
     {
         _field = field;
         _world = world;
@@ -69,6 +70,7 @@ public sealed class CampaignEngine
             ? new FieldScoutPostService(_fieldBuildingDefinitions)
             : null;
         _eventHunts = eventHunts;
+        _summons = summons;
     }
 
     /// <summary>7일을 진행한 새 상태를 반환한다. 야전 진행 보고 목록은 <paramref name="turns"/>로.</summary>
@@ -117,7 +119,7 @@ public sealed class CampaignEngine
 
         var remaining = WeekDays;
         while (remaining > 0 && (armies.Count > 0 || waitingArmies.Count > 0 || egressArmies.Count > 0
-            || _eventHunts is not null))
+            || _eventHunts is not null || _summons is not null))
         {
             var simulationDay = state.Day + (WeekDays - remaining);
             IReadOnlyList<CombatUnit> eventSpawns = [];
@@ -130,6 +132,14 @@ public sealed class CampaignEngine
                 eventSpawns = work.Armies.Where(unit => unit.Field.Owner == EventHuntService.EventFaction
                     && !beforeIds.Contains(unit.Id)).ToList();
                 work = _eventHunts.PlanDaily(work);
+                armies = work.Armies.Where(unit => !unit.IsWaitingDeployment).ToList();
+            }
+            if (_summons is not null)
+            {
+                work = _summons.AdvanceDay(work with
+                    { FieldArmies = armies.Concat(waitingArmies).Concat(egressArmies).ToList() },
+                    simulationDay, out var summoned);
+                eventSpawns = eventSpawns.Concat(summoned).ToList();
                 armies = work.Armies.Where(unit => !unit.IsWaitingDeployment).ToList();
             }
             IReadOnlyList<FieldBuildingId> expiredScoutPosts = [];
@@ -311,7 +321,7 @@ public sealed class CampaignEngine
             {
                 var participantIds = combat.DamageTaken.Keys.Concat(combat.DamageDealt.Keys).ToHashSet();
                 var participants = armies.Concat(turn.Units)
-                    .Where(u => participantIds.Contains(u.Id))
+                    .Where(u => participantIds.Contains(u.Id) && !u.IsSummon)
                     .GroupBy(u => u.Id)
                     .Select(g => g.First())
                     .ToList();
@@ -326,7 +336,7 @@ public sealed class CampaignEngine
             var enteredNow = turn.EnteredCastle.Select(u => u.Id).ToHashSet();
             var movedPos = turn.Movement.Units.ToDictionary(f => f.Id, f => f.Position);
             foreach (var dead in armies
-                .Where(u => !survivors.Contains(u.Id) && !enteredNow.Contains(u.Id))
+                .Where(u => !u.IsSummon && !survivors.Contains(u.Id) && !enteredNow.Contains(u.Id))
                 .OrderBy(u => u.Id.Value))
             {
                 var at = movedPos.TryGetValue(dead.Id, out var mp) ? mp : dead.Field.Position;
@@ -1092,12 +1102,12 @@ public sealed class CampaignEngine
                 && !survivors.ContainsKey(u.Id)
                 && !entered.Contains(u.Id)
                 && turn.Combat.DamageTaken.ContainsKey(u.Id)
-                && (u.CarryingGold > 0 || (u.TracksProvisions && u.Provisions > 0)))
+                && !u.IsSummon && (u.CarryingGold > 0 || (u.TracksProvisions && u.Provisions > 0)))
             .OrderBy(u => u.Id.Value))
         {
             var at = movedPos.TryGetValue(dead.Id, out var pos) ? pos : dead.Field.Position;
             var receiver = survivors.Values
-                .Where(u => u.Pool.Active > 0 && u.Field.Owner != dead.Field.Owner)
+                .Where(u => u.Pool.Active > 0 && !u.IsSummon && u.Field.Owner != dead.Field.Owner)
                 .OrderBy(u => u.Field.Position.Distance(at))
                 .ThenBy(u => u.Id.Value)
                 .FirstOrDefault();

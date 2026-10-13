@@ -42,7 +42,8 @@ public sealed record CombatUnit(
     bool IsConstructing = false,
     RenewalMovement.ContinuousPosition? RenewalPosition = null,
     bool AiOpeningAttack = false,
-    int BanditWaitDays = 0)
+    int BanditWaitDays = 0,
+    bool IsSummon = false)
 {
     public UnitId Id => Field.Id;
 

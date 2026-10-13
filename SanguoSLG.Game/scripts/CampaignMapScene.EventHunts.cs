@@ -16,6 +16,59 @@ public sealed partial class CampaignMapScene
     private readonly Dictionary<int, CombatUnit> _eventSpawnPlayback = new();
     private readonly List<WorldEvent> _pendingHuntRewards = new();
 
+    private void OpenSummonModal()
+    {
+        var caller = _state.Armies.FirstOrDefault(u => u.Id.Value == _selectedUnitId);
+        if (caller is null) return;
+        var items = _state.Treasures.Where(t => t.Faction == Player && t.EquippedBy is not null
+            && (t.EquippedBy == caller.VanguardId || t.EquippedBy == caller.AdjutantId)
+            && _treasureDefinitions.Any(d => d.Code == t.Code && d.Effect == "summon")).ToList();
+        if (items.Count == 0) { ShowNotice("소환", "장착한 소환 아이템이 없습니다."); return; }
+        HidePanels();
+        var width = Mathf.Min(560, GetViewport().GetVisibleRect().Size.X * 0.85f);
+        var box = DeployScaffold(width, out var scroll, out var panel);
+        var heading = new HBoxContainer();
+        box.AddChild(heading);
+        var title = MakeLabel("소환 · 인접 위치 선택", 18, GoldBright);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        heading.AddChild(title);
+        var close = MakeButton("✕");
+        close.Pressed += CloseModal;
+        heading.AddChild(close);
+        box.AddChild(MakeLabel("21일 활동 · 종료 후 60일 재사용 대기 · 동일 신수는 세력당 1마리", 12, Parchment));
+        var origin = caller.RenewalPosition is { } continuous
+            ? RenewalHexSpace.NearestHex(continuous) : caller.Field.Position;
+        foreach (var item in items)
+        {
+            box.AddChild(GoldRule());
+            var ready = item.ReusableDay is null || _state.Day >= item.ReusableDay;
+            box.AddChild(MakeLabel($"{item.Name} · {(ready ? "소환 가능" : $"재사용까지 {item.ReusableDay - _state.Day}일")}", 14, GoldBright));
+            var row = new HBoxContainer();
+            box.AddChild(row);
+            foreach (var position in origin.Neighbors())
+            {
+                var target = position;
+                var button = MakeButton($"{position.Q},{position.R}");
+                button.Disabled = !ready;
+                button.Pressed += () =>
+                {
+                    var officer = item.EquippedBy;
+                    CloseModal();
+                    ShowConfirmWithOfficer("소환 확인", $"{item.Name}을(를) ({target.Q}, {target.R})에 소환합니다.\n다음 진행에 출현하여 21일 활동합니다.", officer, () =>
+                    {
+                        var result = _summons.Order(_state, caller.Id, item.Id, target);
+                        if (!result.Ok) { ShowNotice("소환 불가", result.Error ?? "소환할 수 없습니다."); return; }
+                        _state = result.State;
+                        Redraw("소환 명령을 예약했습니다.");
+                    });
+                };
+                row.AddChild(button);
+            }
+        }
+        scroll.CustomMinimumSize = new(width, Mathf.Min(340, box.GetCombinedMinimumSize().Y));
+        CenterAndDrag(panel, heading, width, 360, box);
+    }
+
     private string EventHuntStatus(EventEncounter encounter)
     {
         if (encounter.Unit is { } id && _state.Armies.FirstOrDefault(unit => unit.Id == id) is { } active)

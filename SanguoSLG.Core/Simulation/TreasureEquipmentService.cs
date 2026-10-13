@@ -10,6 +10,8 @@ public sealed class TreasureEquipmentService(IReadOnlyList<EventTreasureDefiniti
         var posting = state.Assignments.FirstOrDefault(x => x.General == generalId);
         if (treasure is null || !definitions.Any(x => x.Code == treasure.Code))
             return CommandResult.Fail("보물을 찾을 수 없습니다.", state);
+        if (state.Encounters.Any(x => x.Id == treasure.EncounterId && x.RewardChoicePending))
+            return CommandResult.Fail("신수 처치 보상을 먼저 선택해야 합니다.", state);
         if (posting is null || posting.Faction != treasure.Faction || posting.Location is null
             || state.IsGeneralBusy(generalId))
             return CommandResult.Fail("대기 중인 같은 세력 장수만 장착할 수 있습니다.", state);

@@ -1,0 +1,5 @@
+[
+  {"code":"great_tiger","name":"소환된 대호","troops":5000,"attack":12,"defense":9,"speed":3,"detection":2,"range":1,"active_days":21,"cooldown_days":60},
+  {"code":"dragon","name":"소환된 용","troops":8000,"attack":16,"defense":12,"speed":2,"detection":3,"range":2,"active_days":21,"cooldown_days":60},
+  {"code":"phoenix","name":"소환된 봉황","troops":6000,"attack":11,"defense":10,"speed":2,"detection":3,"range":2,"active_days":21,"cooldown_days":60}
+]
