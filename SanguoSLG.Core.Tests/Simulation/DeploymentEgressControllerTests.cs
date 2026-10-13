@@ -159,4 +159,33 @@ public class DeploymentEgressControllerTests
         Assert.NotEqual(east, released.Field.Position);
         Assert.Contains(released.Field.Position, DeploymentEgressRules.ExitGroup(city, released.EgressDirection!.Value));
     }
+
+    [Fact]
+    public void 소형성_여섯출구가_전부_막히면_대기열에_남고_빈뒤_출격한다()
+    {
+        var city = CityOf(CastleSize.Small);
+        var east = DeploymentEgressRules.RepresentativeExit(city, DeploymentDirection.East)!.Value;
+        var waiting = Unit(1, city, DeploymentDirection.East, east, 1);
+        var blockers = DeploymentEgressRules.Directions.Select((direction, index) =>
+        {
+            var exit = DeploymentEgressRules.RepresentativeExit(city, direction)!.Value;
+            return Unit(index + 2, city, direction, exit, index + 2) with
+            {
+                Field = waiting.Field with { Id = new UnitId(index + 2), Owner = new FactionId(2), Position = exit },
+                AwaitingEgress = false,
+            };
+        }).ToArray();
+
+        var blocked = DeploymentEgressController.Release([waiting], blockers, [city], allowFriendlyOverlap: true);
+        Assert.Empty(blocked.Released);
+        var queued = Assert.Single(blocked.Waiting);
+        Assert.True(queued.IsWaitingEgress);
+        Assert.Equal(city.Position, queued.Field.Position);
+        Assert.Equal(east, queued.EgressExit);
+
+        var opened = DeploymentEgressController.Release(blocked.Waiting, blockers.Skip(1).ToArray(),
+            [city], allowFriendlyOverlap: true);
+        Assert.Empty(opened.Waiting);
+        Assert.Equal(east, Assert.Single(opened.Released).Field.Position);
+    }
 }
