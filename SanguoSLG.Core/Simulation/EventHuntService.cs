@@ -32,25 +32,12 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
     {
         events = [];
         if (state.Armies.Any(unit => unit.Field.Owner == EventFaction && unit.Pool.Active > 0)) return state;
-        var occupied = state.Cities.SelectMany(CastleFootprint.TilesFor)
-            .Concat(state.Placements.Select(facility => facility.Plot))
-            .Concat(state.Buildings.Select(building => building.Position))
-            .Concat(state.Ruins.Select(ruin => ruin.Position))
-            .Concat(state.Armies.Select(unit => unit.RenewalPosition is { } position
-                ? RenewalHexSpace.NearestHex(position) : unit.Field.Position)).ToHashSet();
         foreach (var encounter in state.Encounters.Where(e => e.Unit is null && e.DefeatedDay is null
                 && e.ScheduledDay <= day).OrderBy(e => e.ScheduledDay).ThenBy(e => e.Id, StringComparer.Ordinal))
         {
             var definition = Definition(encounter.Code);
-            var city = state.Cities.FirstOrDefault(c => c.Id == encounter.DiscoveryCity);
-            if (definition is null || city is null) continue;
-            var position = map.Tiles().Where(tile => !occupied.Contains(tile)
-                    && definition.SpawnTerrains.Contains(map.TerrainAt(tile))
-                    && TerrainRules.CanEnter(MovementDomain.Land, map.TerrainAt(tile))
-                    && tile.Distance(city.Position) >= definition.SpawnMinDistance
-                    && tile.Distance(city.Position) <= definition.SpawnMaxDistance)
-                .OrderBy(tile => tile.Distance(city.Position)).ThenBy(tile => tile.Q).ThenBy(tile => tile.R)
-                .Select(tile => (HexCoord?)tile).FirstOrDefault();
+            if (definition is null) continue;
+            var position = FindSpawnPosition(state, encounter);
             if (position is null) continue;
             var id = new UnitId(state.Armies.Select(u => u.Id.Value)
                 .Concat(state.Encounters.Where(e => e.Unit is not null).Select(e => e.Unit!.Value.Value))
@@ -72,6 +59,27 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
             };
         }
         return state;
+    }
+
+    public HexCoord? FindSpawnPosition(GameState state, EventEncounter encounter)
+    {
+        var definition = Definition(encounter.Code);
+        var city = state.Cities.FirstOrDefault(city => city.Id == encounter.DiscoveryCity);
+        if (definition is null || city is null) return null;
+        var occupied = state.Cities.SelectMany(CastleFootprint.TilesFor)
+            .Concat(state.Placements.Select(facility => facility.Plot))
+            .Concat(state.Buildings.Select(building => building.Position))
+            .Concat(state.Ruins.Select(ruin => ruin.Position))
+            .Concat(state.Armies.Select(unit => unit.RenewalPosition is { } position
+                ? RenewalHexSpace.NearestHex(position) : unit.Field.Position)).ToHashSet();
+        var terrains = definition.SpawnTerrains.Concat(definition.FallbackSpawnTerrains ?? []).ToHashSet();
+        return map.Tiles().Where(tile => !occupied.Contains(tile) && terrains.Contains(map.TerrainAt(tile))
+                && TerrainRules.CanEnter(MovementDomain.Land, map.TerrainAt(tile))
+                && tile.Distance(city.Position) >= definition.SpawnMinDistance
+                && tile.Distance(city.Position) <= definition.SpawnMaxDistance)
+            .OrderBy(tile => definition.SpawnTerrains.Contains(map.TerrainAt(tile)) ? 0 : 1)
+            .ThenBy(tile => tile.Distance(city.Position)).ThenBy(tile => tile.Q).ThenBy(tile => tile.R)
+            .Select(tile => (HexCoord?)tile).FirstOrDefault();
     }
 
     public GameState PlanDaily(GameState state)

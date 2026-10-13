@@ -3879,6 +3879,7 @@ public sealed partial class CampaignMapScene : Node3D
         var preMove = _state; // 이동 전(편성·AI 반영) — 애니메이션 시작 위치
         var startHex = preMove.Armies.ToDictionary(u => u.Id.Value, u => u.Field.Position);
         var after = _engine.AdvanceWeek(preMove, out var turns, out var sieges, out var captures, out var plunders, out var casualties);
+        LogEventHuntState(after);
         _pendingExplorationResults.Clear();
         _pendingExplorationResults.AddRange(after.Discoveries.Skip(preMove.Discoveries.Count).Where(d => d.Faction == Player));
         _week++;
@@ -9004,8 +9005,7 @@ public sealed partial class CampaignMapScene : Node3D
             foreach (var treasure in treasures) box.AddChild(BuildTreasureCard(treasure));
         foreach (var encounter in _state.Encounters.Where(encounter => encounter.DiscoveringFaction == Player
             && encounter.DefeatedDay is null))
-            box.AddChild(MakeLabel($"대호 사냥 · {(encounter.Unit is null
-                ? $"출현 대기 (최소 {Math.Max(0, encounter.ScheduledDay - _state.Day)}일)" : "활동 중")}", 12, Gold));
+            box.AddChild(MakeLabel($"대호 사냥 · {EventHuntStatus(encounter)}", 12, Gold));
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);

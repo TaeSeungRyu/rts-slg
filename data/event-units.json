@@ -7,6 +7,7 @@
     "spawn_min_distance": 2,
     "spawn_max_distance": 6,
     "spawn_terrains": ["forest", "mountain"],
+    "fallback_spawn_terrains": ["plains"],
     "troops": 20000,
     "attack": 18,
     "defense": 12,

@@ -7,4 +7,5 @@ public sealed record EventUnitDefinition(
     int SpawnDelayDays, int SpawnMinDistance, int SpawnMaxDistance,
     IReadOnlyList<TerrainType> SpawnTerrains,
     int Troops, int Attack, int Defense, int Speed, int Detection, int Range,
-    int ExperienceReward, int AptitudeReward, string TreasureCode, string TreasureName);
+    int ExperienceReward, int AptitudeReward, string TreasureCode, string TreasureName,
+    IReadOnlyList<TerrainType>? FallbackSpawnTerrains = null);

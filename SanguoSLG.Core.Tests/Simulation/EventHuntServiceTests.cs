@@ -44,10 +44,69 @@ public class EventHuntServiceTests
         var blocked = Service.ScheduleDiscoveries(World) with
         { FacilityPlacements = [new(City.Id, new(2, 0), "farm", 1000)] };
         Assert.Equal(new HexCoord(3, 0), Assert.Single(Service.SpawnDue(blocked, 8, out _).Armies).Field.Position);
-        var noTerrain = new EventHuntService(new HexMap(-8, 8, -8, 8), [Tiger]);
+        var sea = new HexMap(-8, 8, -8, 8);
+        var noTerrain = new EventHuntService(new HexMap(-8, 8, -8, 8,
+            sea.Tiles().ToDictionary(tile => tile, _ => TerrainType.WaterShallow)), [Tiger]);
         var waiting = noTerrain.SpawnDue(blocked, 8, out _);
         Assert.Empty(waiting.Armies);
         Assert.Null(Assert.Single(waiting.Encounters).Unit);
+    }
+
+    [Fact]
+    public void 항구주변에_숲과산이_없어도_기존예약이_해안평지에_출현한다()
+    {
+        var port = City with { Position = new(-6, -2), Port = PortSize.Medium, Castle = CastleSize.Medium };
+        var sea = new HexMap(-12, 14, -5, 11);
+        var terrain = sea.Tiles().Where(tile => tile.R < 0)
+            .ToDictionary(tile => tile, _ => TerrainType.WaterShallow);
+        var map = new HexMap(-12, 14, -5, 11, terrain);
+        var service = new EventHuntService(map, [Tiger]);
+        var old = SaveService.Deserialize(SaveService.Serialize(service.ScheduleDiscoveries(World with { Cities = [port] })));
+        var spawned = service.SpawnDue(old, 36, out var events);
+        var tiger = Assert.Single(spawned.Armies);
+        Assert.Equal(TerrainType.Plains, map.TerrainAt(tiger.Field.Position));
+        Assert.InRange(tiger.Field.Position.Distance(port.Position), Tiger.SpawnMinDistance, Tiger.SpawnMaxDistance);
+        Assert.DoesNotContain(tiger.Field.Position, CastleFootprint.TilesFor(port));
+        Assert.Single(events);
+    }
+
+    [Fact]
+    public void 숲과산이_있으면_가까운평지보다_우선해서_출현한다()
+    {
+        var map = new HexMap(-8, 8, -8, 8,
+            new Dictionary<HexCoord, TerrainType> { [new(5, 0)] = TerrainType.Forest });
+        var service = new EventHuntService(map, [Tiger]);
+        var spawned = service.SpawnDue(service.ScheduleDiscoveries(World), 8, out _);
+        Assert.Equal(new HexCoord(5, 0), Assert.Single(spawned.Armies).Field.Position);
+    }
+
+    private sealed class TraceRandom : IRandomSource
+    {
+        public int Next(int minInclusive, int maxExclusive) => minInclusive;
+    }
+
+    [Fact]
+    public void 실제항구탐색명령은_발견후_7일이_지나면_대호를_출현시킨다()
+    {
+        var port = City with { Port = PortSize.Small, Gold = 1000 };
+        var general = new General(new(1), "탐색장", new Dictionary<TroopClass, AptitudeGrade>(), 70, 70, 70);
+        var initial = new GameState(1, 190, [], [port], [general], Postings: [new(general.Id, port.Owner, port.Id)]);
+        var command = new CommandService(new CommandBalance()).Issue(initial,
+            new(port.Id, CommandKind.Explore, general.Id));
+        Assert.True(command.Ok, command.Error);
+        var map = new HexMap(-8, 8, -8, 8);
+        var rules = new AdvanceOrchestrator(new MovementSimulator(new PassabilityMap(map, [], [])),
+            new CombatPhaseResolver(new BattleResolver(60), 70));
+        var engine = new CampaignEngine(new RenewalCampaignAdvanceRunner(map, rules),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), random: new TraceRandom()),
+            eventHunts: new(map, [Tiger]));
+        var discovered = engine.AdvanceWeek(command.State, out _);
+        Assert.Equal("divine_beast_trace", Assert.Single(discovered.Discoveries).Code);
+        Assert.Single(discovered.Encounters);
+        var waiting = engine.AdvanceWeek(discovered, out _);
+        var appeared = engine.AdvanceWeek(waiting, out _);
+        Assert.Single(appeared.Armies, unit => unit.Field.Owner == EventHuntService.EventFaction);
+        Assert.Contains(engine.LastWorldEvents, e => e.Kind == WorldEventKind.EventUnitAppeared);
     }
 
     [Fact]

@@ -16,6 +16,29 @@ public sealed partial class CampaignMapScene
     private readonly Dictionary<int, CombatUnit> _eventSpawnPlayback = new();
     private readonly List<WorldEvent> _pendingHuntRewards = new();
 
+    private string EventHuntStatus(EventEncounter encounter)
+    {
+        if (encounter.Unit is { } id && _state.Armies.FirstOrDefault(unit => unit.Id == id) is { } active)
+            return $"활동 중 · 위치 ({active.Field.Position.Q}, {active.Field.Position.R})";
+        var remaining = encounter.ScheduledDay - _state.Day;
+        if (remaining > 0) return $"출현까지 {remaining}일";
+        if (_state.Armies.Any(unit => unit.Field.Owner == EventHuntService.EventFaction && unit.Pool.Active > 0))
+            return "다른 대호가 활동 중 · 처치 후 출현";
+        if (_eventHunts.FindSpawnPosition(_state, encounter) is null) return "주변의 빈 육상 출현 장소 확보 대기";
+        return "출현 준비 완료 · 다음 진행에 출현";
+    }
+
+    private void LogEventHuntState(GameState state)
+    {
+        foreach (var encounter in state.Encounters)
+        {
+            var unit = state.Armies.FirstOrDefault(unit => unit.Id == encounter.Unit);
+            var candidate = encounter.Unit is null ? _eventHunts.FindSpawnPosition(state, encounter) : null;
+            Dbg($"[event-hunt] day={state.Day} city={encounter.DiscoveryCity.Value} scheduled={encounter.ScheduledDay} "
+                + $"unit={encounter.Unit?.Value} pos={unit?.Field.Position} candidate={candidate} defeated={encounter.DefeatedDay}");
+        }
+    }
+
     private void SeedEventHuntSample()
     {
         var city = _state.Cities.First(city => city.Owner == Player && !city.IsPort);
@@ -145,6 +168,20 @@ public sealed partial class CampaignMapScene
             _state = _state with { FieldArmies = [], ExplorationDiscoveries = [], EventEncounters = [], FactionTreasures = [] };
             SeedEventHuntSample();
             var initial = _state;
+            var allCitiesSpawned = true;
+            foreach (var city in initial.Cities.Where(city => city.Owner == Player))
+            {
+                var local = initial with { ExplorationDiscoveries = [new(initial.Day, Player, city.Id, new(1),
+                    ExplorationResultKind.DivineBeast, "divine_beast_trace")], EventEncounters = [], FieldArmies = [] };
+                local = _eventHunts.ScheduleDiscoveries(local);
+                var spawnDay = local.Encounters.Single().ScheduledDay;
+                local = _eventHunts.SpawnDue(local, spawnDay, out _);
+                var localTiger = local.Armies.FirstOrDefault(unit => unit.Field.Owner == EventHuntService.EventFaction);
+                var success = localTiger is not null
+                    && TerrainRules.CanEnter(MovementDomain.Land, _map.TerrainAt(localTiger.Field.Position));
+                allCitiesSpawned &= success;
+                GD.Print($"[event-spawn-location-qa] city={city.Name} port={city.IsPort} passed={success} position={localTiger?.Field.Position}");
+            }
             var appeared = _engine.AdvanceWeek(initial, out var spawnTurns, out var spawnSieges, out var spawnCaptures);
             var tiger = appeared.Armies.Single(unit => unit.Field.Owner == EventHuntService.EventFaction);
             var appearedReport = _engine.LastWorldEvents.Any(e => e.Kind == WorldEventKind.EventUnitAppeared);
@@ -188,10 +225,10 @@ public sealed partial class CampaignMapScene
             var inventory = _modalLayer!.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
                 .Any(card => card.HasMeta("treasure_slot") && card.GetMeta("treasure_slot").AsString() == "tiger_tally");
             var restored = SaveService.Deserialize(SaveService.Serialize(hunted));
-            var passed = appearedReport && visibleSpawn && combat && motions && modal && inventory
+            var passed = allCitiesSpawned && appearedReport && visibleSpawn && combat && motions && modal && inventory
                 && restored.Treasures.Count == 1 && TroopName("great_tiger") == "대호"
                 && UnitController3D.ModelFileAt(TroopModelIndex["great_tiger"]).EndsWith("troop-great-tiger.glb");
-            GD.Print($"[maptesteventhuntqa] passed={passed} report={appearedReport} spawn={visibleSpawn} combat={combat} motions={motions} modal={modal} inventory={inventory} save={restored.Treasures.Count} imageWidths={imageWidths}");
+            GD.Print($"[maptesteventhuntqa] passed={passed} allCities={allCitiesSpawned} report={appearedReport} spawn={visibleSpawn} combat={combat} motions={motions} modal={modal} inventory={inventory} save={restored.Treasures.Count} imageWidths={imageWidths}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (Exception error)
