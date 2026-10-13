@@ -75,8 +75,6 @@ public sealed partial class CampaignMapScene
             return $"활동 중 · 위치 ({active.Field.Position.Q}, {active.Field.Position.R})";
         var remaining = encounter.ScheduledDay - _state.Day;
         if (remaining > 0) return $"출현까지 {remaining}일";
-        if (_state.Armies.Any(unit => unit.Field.Owner == EventHuntService.EventFaction && unit.Pool.Active > 0))
-            return "다른 대호가 활동 중 · 처치 후 출현";
         if (_eventHunts.FindSpawnPosition(_state, encounter) is null) return "주변의 빈 육상 출현 장소 확보 대기";
         return "출현 준비 완료 · 다음 진행에 출현";
     }

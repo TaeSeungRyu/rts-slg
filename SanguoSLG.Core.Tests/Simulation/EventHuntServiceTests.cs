@@ -43,7 +43,9 @@ public class EventHuntServiceTests
     {
         var blocked = Service.ScheduleDiscoveries(World) with
         { FacilityPlacements = [new(City.Id, new(2, 0), "farm", 1000)] };
-        Assert.Equal(new HexCoord(3, 0), Assert.Single(Service.SpawnDue(blocked, 8, out _).Armies).Field.Position);
+        var alternative = Assert.Single(Service.SpawnDue(blocked, 8, out _).Armies).Field.Position;
+        Assert.NotEqual(new HexCoord(2, 0), alternative);
+        Assert.Equal(Tiger.SpawnMinDistance, alternative.Distance(City.Position));
         var sea = new HexMap(-8, 8, -8, 8);
         var noTerrain = new EventHuntService(new HexMap(-8, 8, -8, 8,
             sea.Tiles().ToDictionary(tile => tile, _ => TerrainType.WaterShallow)), [Tiger]);
@@ -71,13 +73,29 @@ public class EventHuntServiceTests
     }
 
     [Fact]
-    public void 숲과산이_있으면_가까운평지보다_우선해서_출현한다()
+    public void 먼숲보다_탐색한성_가까운_평지에_출현한다()
     {
         var map = new HexMap(-8, 8, -8, 8,
             new Dictionary<HexCoord, TerrainType> { [new(5, 0)] = TerrainType.Forest });
         var service = new EventHuntService(map, [Tiger]);
         var spawned = service.SpawnDue(service.ScheduleDiscoveries(World), 8, out _);
-        Assert.Equal(new HexCoord(5, 0), Assert.Single(spawned.Armies).Field.Position);
+        Assert.Equal(Tiger.SpawnMinDistance,
+            Assert.Single(spawned.Armies).Field.Position.Distance(City.Position));
+    }
+
+    [Fact]
+    public void 좌중성_탐색_대호는_장안이_아니라_좌중성_가까이에_출현한다()
+    {
+        var left = City with { Id = new(5), Name = "좌중성", Position = new(-5, 1) };
+        var jangAn = City with { Name = "장안", Position = new(1, 2) };
+        var discovery = new ExplorationDiscovery(1, left.Owner, left.Id, new(1),
+            ExplorationResultKind.DivineBeast, "divine_beast_trace");
+        var world = World with { Cities = [jangAn, left], ExplorationDiscoveries = [discovery] };
+
+        var tiger = Assert.Single(Service.SpawnDue(Service.ScheduleDiscoveries(world), 8, out _).Armies);
+        Assert.Equal(Tiger.SpawnMinDistance, tiger.Field.Position.Distance(left.Position));
+        Assert.True(tiger.Field.Position.Distance(jangAn.Position) > tiger.Field.Position.Distance(left.Position));
+        Assert.Equal(left.Id, Assert.Single(Service.ScheduleDiscoveries(world).Encounters).DiscoveryCity);
     }
 
     private sealed class TraceRandom : IRandomSource

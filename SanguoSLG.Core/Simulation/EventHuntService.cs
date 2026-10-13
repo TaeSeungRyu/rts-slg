@@ -144,8 +144,11 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
                 && TerrainRules.CanEnter(MovementDomain.Land, map.TerrainAt(tile))
                 && tile.Distance(city.Position) >= definition.SpawnMinDistance
                 && tile.Distance(city.Position) <= definition.SpawnMaxDistance)
-            .OrderBy(tile => definition.SpawnTerrains.Contains(map.TerrainAt(tile)) ? 0 : 1)
-            .ThenBy(tile => tile.Distance(city.Position)).ThenBy(tile => tile.Q).ThenBy(tile => tile.R)
+            .OrderBy(tile => tile.Distance(city.Position))
+            .ThenByDescending(tile => state.Cities.Where(other => other.Id != city.Id)
+                .Select(other => tile.Distance(other.Position)).DefaultIfEmpty(int.MaxValue).Min())
+            .ThenBy(tile => definition.SpawnTerrains.Contains(map.TerrainAt(tile)) ? 0 : 1)
+            .ThenBy(tile => tile.Q).ThenBy(tile => tile.R)
             .Select(tile => (HexCoord?)tile).FirstOrDefault();
     }
 
