@@ -9316,15 +9316,18 @@ public sealed partial class CampaignMapScene : Node3D
         portraitCard.AddThemeConstantOverride("separation", 7);
         portrait.AddChild(portraitCard);
         var imageHeight = Mathf.Max(180f, portraitHeight - 250f);
+        var imageSlot = new Control { CustomMinimumSize = new Vector2(portraitWidth - 18f, imageHeight) };
+        portraitCard.AddChild(imageSlot);
         if (PortraitFor(gid) is { } tex)
         {
-            portraitCard.AddChild(new TextureRect
+            var portraitImage = new TextureRect
             {
                 Texture = tex,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                CustomMinimumSize = new Vector2(portraitWidth - 18f, imageHeight),
-            });
+            };
+            portraitImage.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+            imageSlot.AddChild(portraitImage);
         }
         else
         {
@@ -9340,7 +9343,18 @@ public sealed partial class CampaignMapScene : Node3D
             var note = MakeLabel("초상 준비 중", 11, new Color(Parchment, 0.6f));
             note.HorizontalAlignment = HorizontalAlignment.Center;
             ph.AddChild(note);
-            portraitCard.AddChild(ph);
+            imageSlot.AddChild(ph);
+        }
+
+        if (_state.Assignments.Any(posting => posting.General == gid && posting.Faction == Player))
+        {
+            var equip = MakeButton("아이템 장착");
+            equip.Name = "GeneralTreasureEquip";
+            equip.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
+            equip.GrowHorizontal = Control.GrowDirection.Begin;
+            equip.GrowVertical = Control.GrowDirection.Begin;
+            equip.Pressed += () => OpenGeneralTreasureModal(gid, backCity, backAction, dismissAction);
+            imageSlot.AddChild(equip);
         }
 
         portraitCard.AddChild(GoldRule());

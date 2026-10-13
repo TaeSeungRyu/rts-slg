@@ -156,20 +156,7 @@ public sealed partial class CampaignMapScene
         var pending = _state.Encounters.Any(x => x.Id == treasure.EncounterId && x.RewardChoicePending);
         var equipped = treasure.EquippedBy is { } wearer
             ? _state.Generals.FirstOrDefault(g => g.Id == wearer)?.Name ?? $"장수 {wearer.Value}" : null;
-        var button = MakeButton(pending ? "보상 선택 대기" : equipped is null ? "장착" : $"{equipped} · 해제");
-        button.Disabled = pending;
-        button.Pressed += () =>
-        {
-            if (equipped is null) OpenTreasureEquipModal(treasure.Id);
-            else
-            {
-                var result = new TreasureEquipmentService(_treasureDefinitions).Unequip(_state, treasure.Id);
-                if (!result.Ok) { ShowNotice("해제 불가", result.Error ?? "해제할 수 없습니다."); return; }
-                _state = result.State;
-                OpenTreasureList();
-            }
-        };
-        row.AddChild(button);
+        row.AddChild(MakeLabel(pending ? "보상 선택 대기" : equipped is null ? "미장착" : $"장착 · {equipped}", 12, Parchment));
         return card;
     }
 
@@ -185,36 +172,52 @@ public sealed partial class CampaignMapScene
         _ => definition.Name,
     };
 
-    private void OpenTreasureEquipModal(string treasureId)
+    private void OpenGeneralTreasureModal(GeneralId generalId, CityId backCity,
+        Action? backAction, Action? dismissAction)
     {
-        var treasure = _state.Treasures.First(x => x.Id == treasureId);
         _modalDismissAction = null;
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
-        var width = Mathf.Min(500, GetViewport().GetVisibleRect().Size.X * 0.85f);
+        var general = _state.Generals.First(g => g.Id == generalId);
+        var width = Mathf.Min(580, GetViewport().GetVisibleRect().Size.X * 0.85f);
         var box = DeployScaffold(width, out var scroll, out var panel);
         var heading = new HBoxContainer();
         box.AddChild(heading);
-        var title = MakeLabel($"{treasure.Name} · 장착 장수", 17, GoldBright);
+        var title = MakeLabel($"{general.Name} · 획득 보물", 17, GoldBright);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         heading.AddChild(title);
+        void ReturnToGeneral() => OpenGeneralDetail(generalId, backCity, backAction, dismissAction);
         var close = MakeButton("✕");
-        close.Pressed += OpenTreasureList;
+        close.Pressed += ReturnToGeneral;
         heading.AddChild(close);
         var service = new TreasureEquipmentService(_treasureDefinitions);
-        foreach (var posting in _state.Assignments.Where(x => x.Faction == Player && x.Location is not null))
+        var treasures = _state.Treasures.Where(t => t.Faction == Player
+            && !_state.Encounters.Any(e => e.Id == t.EncounterId && e.RewardChoicePending))
+            .OrderByDescending(t => t.AcquiredDay).ThenBy(t => t.Id).ToList();
+        if (treasures.Count == 0) box.AddChild(MakeLabel("획득한 보물이 없습니다.", 13, Parchment));
+        foreach (var treasure in treasures)
         {
-            var general = _state.Generals.FirstOrDefault(x => x.Id == posting.General);
-            if (general is null) continue;
-            var button = MakeButton(general.Name);
-            var id = general.Id;
+            var equippedName = treasure.EquippedBy is { } wearer
+                ? _state.Generals.FirstOrDefault(g => g.Id == wearer)?.Name ?? $"장수 {wearer.Value}" : null;
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 10);
+            box.AddChild(row);
+            var info = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            row.AddChild(info);
+            info.AddChild(MakeLabel($"{treasure.Name} · {(equippedName is null ? "미장착" : $"{equippedName} 장착 중")}", 14, GoldBright));
+            var definition = _treasureDefinitions.FirstOrDefault(d => d.Code == treasure.Code);
+            if (definition is not null) info.AddChild(MakeLabel(TreasureEffectText(definition), 11, Parchment));
+            if (treasure.EquippedBy is not null && treasure.EquippedBy != generalId) continue;
+            var button = MakeButton(treasure.EquippedBy == generalId ? "장착해제" : "장착");
+            var id = treasure.Id;
             button.Pressed += () =>
             {
-                var result = service.Equip(_state, treasureId, id);
-                if (!result.Ok) { ShowNotice("장착 불가", result.Error ?? "장착할 수 없습니다."); return; }
+                var result = treasure.EquippedBy == generalId
+                    ? service.Unequip(_state, id) : service.Equip(_state, id, generalId);
+                if (!result.Ok) { ShowNotice("보물 변경 불가", result.Error ?? "보물을 변경할 수 없습니다."); return; }
                 _state = result.State;
-                OpenTreasureList();
+                ReturnToGeneral();
             };
-            box.AddChild(button);
+            row.AddChild(button);
         }
         scroll.CustomMinimumSize = new(width, Mathf.Min(480, box.GetCombinedMinimumSize().Y));
         CenterAndDrag(panel, heading, width, 500, box);
@@ -437,27 +440,33 @@ public sealed partial class CampaignMapScene
                 .EmitSignal(Button.SignalName.Pressed);
             var rewardClose = await ClickClose();
 
-            OpenTreasureList();
+            var equipment = new TreasureEquipmentService(_treasureDefinitions);
+            var general = _state.Generals.First(g => equipment.Equip(_state, "close-qa:reward", g.Id).Ok);
+            OpenGeneralDetail(general.Id, city.Id);
             await Settle();
-            _modalLayer!.FindChildren("*", "Button", true, false).OfType<Button>()
-                .Single(button => button.Text == "장착").EmitSignal(Button.SignalName.Pressed);
+            _modalLayer!.FindChild("GeneralTreasureEquip", true, false)!
+                .EmitSignal(Button.SignalName.Pressed);
             await Settle();
             var equipLayerCount = ModalCount();
             _modalLayer!.FindChildren("*", "Button", true, false).OfType<Button>()
                 .Single(button => button.Text == "✕").EmitSignal(Button.SignalName.Pressed);
-            var equipBackClose = await ClickClose();
+            await Settle();
+            var equipBackClose = _modalLayer?.FindChild("GeneralTreasureEquip", true, false) is not null
+                && ModalCount() == 1;
+            CloseModal();
 
-            OpenTreasureList();
+            OpenGeneralDetail(general.Id, city.Id);
+            await Settle();
+            _modalLayer!.FindChild("GeneralTreasureEquip", true, false)!
+                .EmitSignal(Button.SignalName.Pressed);
             await Settle();
             _modalLayer!.FindChildren("*", "Button", true, false).OfType<Button>()
                 .Single(button => button.Text == "장착").EmitSignal(Button.SignalName.Pressed);
             await Settle();
-            var equipment = new TreasureEquipmentService(_treasureDefinitions);
-            var general = _state.Generals.First(g => equipment.Equip(_state, "close-qa:reward", g.Id).Ok);
-            _modalLayer!.FindChildren("*", "Button", true, false).OfType<Button>()
-                .Single(button => button.Text == general.Name).EmitSignal(Button.SignalName.Pressed);
-            var equippedClose = await ClickClose();
-            var passed = rewardClose && equipLayerCount == 1 && equipBackClose && equippedClose;
+            var equippedClose = _state.Treasures.Single().EquippedBy == general.Id
+                && _modalLayer?.FindChild("GeneralTreasureEquip", true, false) is not null;
+            CloseModal();
+            var passed = rewardClose && equipLayerCount == 1 && equipBackClose && equippedClose && ModalCount() == 0;
             GD.Print($"[treasure-close-qa] passed={passed} rewardClose={rewardClose} equipLayers={equipLayerCount} equipBackClose={equipBackClose} equippedClose={equippedClose} remainingLayers={ModalCount()}");
             GetTree().Quit(passed ? 0 : 1);
         }
