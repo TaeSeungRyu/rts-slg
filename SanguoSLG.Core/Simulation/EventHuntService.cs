@@ -34,6 +34,35 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
         });
     }
 
+    /// <summary>AI도 플레이어와 같은 한 번의 3지선다 보상을 확정한다. 우선순위는 현재 세력의 편성 장수에 대한 효용이다.</summary>
+    public GameState ChooseAiRewards(GameState state, FactionId playerFaction)
+    {
+        foreach (var encounter in state.Encounters.Where(x => x.RewardChoicePending
+                     && x.RewardFaction is { } owner && owner != playerFaction).ToList())
+        {
+            var faction = encounter.RewardFaction!.Value;
+            var choices = RewardChoices(encounter.Code);
+            var activeGenerals = state.Assignments.Where(x => x.Faction == faction)
+                .Select(x => state.Generals.FirstOrDefault(g => g.Id == x.General))
+                .Where(g => g is not null).ToList();
+            var choice = choices.Select((item, index) => (Item: item, Index: index,
+                    Score: item.Effect switch
+                    {
+                        "might" => activeGenerals.Any(g => g!.Might <= 90) ? 100 : 0,
+                        "aptitude_floor" => activeGenerals.Any(g => g!.Aptitudes.Values.Any(a => a < AptitudeGrade.A)) ? 100 : 0,
+                        "melee_attack" => activeGenerals.Count > 0 ? 70 : 0,
+                        "normal_attack" or "damage_reduction" or "fatal_to_wounded" => 60,
+                        "summon" => 40,
+                        _ => 0,
+                    }))
+                .OrderByDescending(x => x.Score).ThenBy(x => x.Index).FirstOrDefault();
+            if (choice.Item is null) continue;
+            var result = ChooseReward(state, encounter.Id, faction, choice.Item.Code);
+            if (result.Ok) state = result.State;
+        }
+        return state;
+    }
+
     public GameState ScheduleDiscoveries(GameState state)
     {
         var encounters = state.Encounters.ToList();

@@ -315,6 +315,7 @@ public sealed class CampaignEngine
             if (_eventHunts is not null)
             {
                 work = _eventHunts.ResolveCombat(work, armies, turn, simulationDay, out var huntRewards);
+                work = _eventHunts.ChooseAiRewards(work, new FactionId(1));
                 _campaignEvents.AddRange(huntRewards);
             }
             if (turn.Combat is { } combat)

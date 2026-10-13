@@ -10,7 +10,7 @@ using Xunit;
 public class EventHuntServiceTests
 {
     private static readonly EventUnitDefinition Tiger = new EventUnitLoader()
-        .LoadFromDirectory(TestData.DataDirectory()).Single();
+        .LoadFromDirectory(TestData.DataDirectory()).Single(x => x.Code == "great_tiger");
     private static readonly City City = new(new(1), "발견성", new(0, 0), new(1), 1000);
     private static GameState World => new(1, 190, [], [City], [],
         ExplorationDiscoveries: [new(1, new(1), City.Id, new(1), ExplorationResultKind.DivineBeast,

@@ -18,5 +18,21 @@
     "aptitude_reward": 10,
     "treasure_code": "tiger_tally",
     "treasure_name": "호부"
+  },
+  {
+    "code": "dragon", "name": "용", "discovery_code": "dragon_trace",
+    "spawn_delay_days": 7, "spawn_min_distance": 2, "spawn_max_distance": 6,
+    "spawn_terrains": ["mountain", "forest"], "fallback_spawn_terrains": ["plains"],
+    "troops": 50000, "attack": 22, "defense": 18, "speed": 2, "detection": 3, "range": 2,
+    "experience_reward": 250, "aptitude_reward": 10,
+    "treasure_code": "dragon_scale", "treasure_name": "용린 갑옷"
+  },
+  {
+    "code": "phoenix", "name": "봉황", "discovery_code": "phoenix_trace",
+    "spawn_delay_days": 7, "spawn_min_distance": 2, "spawn_max_distance": 6,
+    "spawn_terrains": ["forest", "mountain"], "fallback_spawn_terrains": ["plains"],
+    "troops": 40000, "attack": 18, "defense": 17, "speed": 2, "detection": 3, "range": 2,
+    "experience_reward": 250, "aptitude_reward": 10,
+    "treasure_code": "phoenix_feather", "treasure_name": "봉황 깃"
   }
 ]
