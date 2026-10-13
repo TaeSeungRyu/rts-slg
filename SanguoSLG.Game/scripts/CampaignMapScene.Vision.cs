@@ -91,7 +91,11 @@ public sealed partial class CampaignMapScene
             if (_armyTokens.TryGetValue(army.Id.Value, out var token)) token.Visible = CanSeeUnit(army);
             if (_armyLabels.TryGetValue(army.Id.Value, out var label))
             {
-                if (army.Field.Owner == WorldEngine.BanditFaction) label.Text = ArmyTroopLabel(army);
+                if (army.Field.Owner == WorldEngine.BanditFaction)
+                {
+                    var text = ArmyTroopLabel(army);
+                    if (label.Text != text) label.Text = text;
+                }
                 label.Visible = !army.IsWaitingDeployment && (army.Field.Owner == Player
                     || army.Field.Owner == WorldEngine.BanditFaction && CanSeeUnit(army));
             }

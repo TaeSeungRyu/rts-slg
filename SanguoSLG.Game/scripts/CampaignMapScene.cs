@@ -6279,7 +6279,11 @@ public sealed partial class CampaignMapScene : Node3D
         {
             _state = _state with { FieldArmies = _animUnitSnapshots[_animUnitSnapshotIdx].Units };
             foreach (var bandit in _state.Armies.Where(u => u.Field.Owner == WorldEngine.BanditFaction))
-                if (_armyLabels.TryGetValue(bandit.Id.Value, out var label)) label.Text = ArmyTroopLabel(bandit);
+                if (_armyLabels.TryGetValue(bandit.Id.Value, out var label))
+                {
+                    var text = ArmyTroopLabel(bandit);
+                    if (label.Text != text) label.Text = text;
+                }
             _animUnitSnapshotIdx++;
         }
     }
@@ -15853,7 +15857,8 @@ public sealed partial class CampaignMapScene : Node3D
             var lblNode = _armyLabels[army.Id.Value];
             lblNode.Position = _view.HexToWorld(army.Field.Position)
                 + new Vector3(0f, _view.TileTopY + CommanderPortraitView3D.TroopLabelHeightOffset, 0f);
-            lblNode.Text = ArmyTroopLabel(army);
+            var troopLabel = ArmyTroopLabel(army);
+            if (lblNode.Text != troopLabel) lblNode.Text = troopLabel;
             lblNode.Visible = !insideFieldBuilding && !army.IsWaitingDeployment
                 && (army.Field.Owner == Player || army.Field.Owner == WorldEngine.BanditFaction && CanSeeUnit(army));
             if (_activeGauges.TryGetValue(army.Id.Value, out var activeGauge))
