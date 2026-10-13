@@ -1,0 +1,11 @@
+[
+  {"code":"tiger_tally","name":"호부","source":"great_tiger","effect":"normal_attack","value":5},
+  {"code":"tiger_fang","name":"호아","source":"great_tiger","effect":"melee_attack","value":8},
+  {"code":"tiger_cub","name":"대호의 새끼","source":"great_tiger","effect":"summon","value":0,"summon_code":"great_tiger"},
+  {"code":"dragon_scale","name":"용린 갑옷","source":"dragon","effect":"damage_reduction","value":8},
+  {"code":"dragon_horn","name":"용각","source":"dragon","effect":"might","value":10},
+  {"code":"dragon_egg","name":"용의 알","source":"dragon","effect":"summon","value":0,"summon_code":"dragon"},
+  {"code":"phoenix_feather","name":"봉황 깃","source":"phoenix","effect":"aptitude_floor","value":4},
+  {"code":"phoenix_jade","name":"봉황옥","source":"phoenix","effect":"fatal_to_wounded","value":10},
+  {"code":"phoenix_egg","name":"봉황의 알","source":"phoenix","effect":"summon","value":0,"summon_code":"phoenix"}
+]
