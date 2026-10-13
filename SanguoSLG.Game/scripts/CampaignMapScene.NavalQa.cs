@@ -3,6 +3,7 @@ namespace SanguoSLG.Game;
 using Godot;
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using SanguoSLG.Core.Simulation;
 
 public sealed partial class CampaignMapScene
@@ -11,6 +12,10 @@ public sealed partial class CampaignMapScene
     {
         try
         {
+            GetWindow().Size = new Vector2I(1600, 900);
+            GetWindow().ContentScaleSize = new Vector2I(1600, 900);
+            GetViewport().NotifyMouseEntered();
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var allLandTroops = _troops.Where(t => t.Class != SanguoSLG.Core.Domain.TroopClass.Naval)
                 .Select(t => t.Code).ToHashSet();
             var mediumPortTroops = _state.Garrisons.Where(g => g.City == new SanguoSLG.Core.Domain.CityId(9))
@@ -31,36 +36,23 @@ public sealed partial class CampaignMapScene
             if (table.GetColumnTitle(0) != "선봉" || table.GetColumnTitle(1) != "부관") throw new Exception("장수 역할 표기 불일치");
             if (table.Columns != 8 || table.GetColumnTitle(2) != "이름" || table.GetColumnTitle(6) != "적성")
                 throw new Exception("전투편성형 장수 표 구조 불일치");
-            if (table.Size.Y < officers.Size.Y * 0.9f) throw new Exception($"장수 표 높이 부족 {table.Size.Y}/{officers.Size.Y}");
-            var ships = resources.GetNode<Tree>("NavalShipTable");
-            var troops = resources.GetNode<Tree>("NavalTroopTable");
+            if (((Control)table.GetParent()).Size.Y < officers.Size.Y * 0.9f)
+                throw new Exception($"장수 목록 높이 부족 {((Control)table.GetParent()).Size.Y}/{officers.Size.Y}");
+            var ships = (Tree)resources.FindChild("NavalShipTable", true, false);
+            var troops = (Tree)resources.FindChild("NavalTroopTable", true, false);
             var initialShipSize = ships.Size;
             var initialTroopSize = troops.Size;
             var initialOfficerSize = table.Size;
             var initialShipPosition = ships.GetGlobalRect().Position;
             var initialTroopPosition = troops.GetGlobalRect().Position;
             var initialOfficerPosition = table.GetGlobalRect().Position;
-            foreach (var target in new[] { ships, troops, table })
-            {
-                var normal = target.GetThemeStylebox("title_button_normal");
-                var hover = target.GetThemeStylebox("title_button_hover");
-                var pressed = target.GetThemeStylebox("title_button_pressed");
-                if (!normal.GetMinimumSize().IsEqualApprox(hover.GetMinimumSize())
-                    || !normal.GetMinimumSize().IsEqualApprox(pressed.GetMinimumSize()))
-                    throw new Exception($"{target.Name} 헤더 상태별 최소 높이가 다름");
-                var headerPoint = target.GetGlobalRect().Position + new Vector2(20, 12);
-                GetViewport().PushInput(new InputEventMouseMotion { Position = headerPoint });
-                for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                if (!target.Size.IsEqualApprox(target == ships ? initialShipSize
-                    : target == troops ? initialTroopSize : initialOfficerSize))
-                    throw new Exception($"{target.Name} 헤더 오버 후 표 높이 변경");
-            }
+            await VerifyNavalHeaders([ships, troops, table]);
             foreach (var target in new[] { ships, troops, table, ships, troops, table })
             {
                 var row = target.GetRoot().GetFirstChild();
                 var rowCenter = row is null ? target.GetGlobalRect().GetCenter()
                     : target.GetGlobalPosition() + target.GetItemAreaRect(row).GetCenter();
-                GetViewport().PushInput(new InputEventMouseMotion { Position = rowCenter });
+                GetViewport().PushInput(new InputEventMouseMotion { Position = rowCenter }, true);
                 for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 if (!ships.Size.IsEqualApprox(initialShipSize) || !troops.Size.IsEqualApprox(initialTroopSize)
                     || !table.Size.IsEqualApprox(initialOfficerSize)
@@ -106,19 +98,70 @@ public sealed partial class CampaignMapScene
             var officerHeight = mediumOfficers.Size.Y;
             foreach (var target in new[] { mediumTroops, mediumOfficers, mediumTroops, mediumOfficers })
             {
-                GetViewport().PushInput(new InputEventMouseMotion { Position = target.GetGlobalRect().GetCenter() });
+                GetViewport().PushInput(new InputEventMouseMotion { Position = target.GetGlobalRect().GetCenter() }, true);
                 for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 if (!Mathf.IsEqualApprox(mediumTroops.Size.Y, troopHeight)
                     || !Mathf.IsEqualApprox(mediumOfficers.Size.Y, officerHeight))
                     throw new Exception("위중항 표가 마우스 오버 후 높이를 변경함");
             }
-            GD.Print("NAVAL_COMPOSE_QA PASS: stable tables, numbered sections, combat-style officer checks, 5 ships without scroll, food duration, screen bounds");
+            await VerifyNavalHeaders(mediumTables.ToArray());
+            foreach (var resolution in new[] { new Vector2I(1280, 720), new Vector2I(1920, 1080) })
+            {
+                GetWindow().Size = resolution;
+                GetWindow().ContentScaleSize = resolution;
+                for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                foreach (var city in new[] { port.Id, new SanguoSLG.Core.Domain.CityId(9) })
+                {
+                    OpenNavalCompose(city);
+                    for (var i = 0; i < 8; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    await VerifyNavalHeaders(_modalLayer!.FindChildren("*", "Tree", true, false).OfType<Tree>().ToArray());
+                }
+            }
+            GD.Print("NAVAL_COMPOSE_QA PASS: fixed borderless headers, stable header/label/first-row geometry, numbered sections, officer checks, ship rows, food duration, screen bounds");
             GetParent().CallDeferred("RequestGracefulShutdown");
         }
         catch (Exception e)
         {
             GD.PushError("NAVAL_COMPOSE_QA FAIL: " + e);
             GetTree().Quit(1);
+        }
+    }
+
+    private async Task VerifyNavalHeaders(Tree[] tables)
+    {
+        foreach (var target in tables)
+        {
+            var header = target.GetParent().GetNode<FixedTreeHeader>("ColumnHeader");
+            var initialHeaderRect = header.GetGlobalRect();
+            var firstRow = target.GetRoot().GetFirstChild();
+            var firstRowRect = target.GetItemAreaRect(firstRow);
+            var labels = header.GetChildren().OfType<Label>().ToArray();
+            var labelRects = labels.Select(label => label.GetGlobalRect()).ToArray();
+            if (target.ColumnTitlesVisible || labels.Length != target.Columns
+                || !Mathf.IsEqualApprox(header.Size.Y, FixedTreeHeader.HeaderHeight))
+                throw new Exception($"{target.Name} 고정 헤더 구조 불일치");
+            foreach (var label in labels.Concat(labels.Reverse()))
+            {
+                var point = header.GetGlobalRect().Intersection(label.GetGlobalRect()).GetCenter();
+                GetViewport().PushInput(new InputEventMouseMotion { Position = point }, true);
+                target.QueueRedraw();
+                for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (GetViewport().GuiGetHoveredControl() != header)
+                    throw new Exception($"{target.Name} 헤더에 마우스 입력이 전달되지 않음: point={point} header={header.GetGlobalRect()} hovered={GetViewport().GuiGetHoveredControl()?.GetPath()} viewport={GetViewport().GetVisibleRect()}");
+                if (!header.GetGlobalRect().IsEqualApprox(initialHeaderRect)
+                    || !target.GetItemAreaRect(firstRow).IsEqualApprox(firstRowRect)
+                    || labels.Where((item, index) => !item.GetGlobalRect().IsEqualApprox(labelRects[index])).Any())
+                    throw new Exception($"{target.Name} 헤더 오버 후 헤더·텍스트·첫 행 위치 변경");
+            }
+            var offset = target.GetThemeStylebox("panel").GetOffset().X - target.GetScroll().X;
+            for (var column = 0; column < labels.Length; column++)
+            {
+                if (!Mathf.IsEqualApprox(labels[column].Position.X, offset)
+                    || !Mathf.IsEqualApprox(labels[column].Size.X, target.GetColumnWidth(column)))
+                    throw new Exception($"{target.Name} {column}열의 헤더·본문 정렬 불일치");
+                offset += target.GetColumnWidth(column);
+            }
+            GD.Print($"NAVAL_HEADER {target.Name} viewport={GetViewport().GetVisibleRect().Size} height={header.Size.Y} columns={labels.Length} stable=True borders=False");
         }
     }
 }
