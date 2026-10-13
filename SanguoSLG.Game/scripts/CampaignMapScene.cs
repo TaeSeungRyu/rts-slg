@@ -652,6 +652,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestloadslotuiqa")) CallDeferred(nameof(RunLoadSlotUiQa));
         if (args.Contains("--maptestpalettechevronqa")) CallDeferred(nameof(RunPaletteChevronQa));
         if (args.Contains("--maptestterrainpalettewidthqa")) CallDeferred(nameof(RunTerrainPaletteWidthQa));
+        if (args.Contains("--maptestterrainmovementqa")) CallDeferred(nameof(RunTerrainMovementInfoQa));
         if (args.Contains("--maptestexplorationlayoutqa")) CallDeferred(nameof(RunExplorationLayoutQa));
         if (args.Contains("--maptestsystempalettecloseqa")) CallDeferred(nameof(RunSystemPaletteCloseQa));
         if (args.Contains("--maptestdeploytargetqa")) CallDeferred(nameof(RunDeployTargetQa));
@@ -2555,13 +2556,40 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainCard.Position = new Vector2(px, py);
     }
 
-    // 이동 비용 표기(design-movement 지형 패널티). 소형산·늪·소하천 = 2, 통행 불가 = 표시, 그 외 1.
+    private void RunTerrainMovementInfoQa()
+    {
+        var passed = TerrainMovementInfo(TerrainType.Plains, true, false) == "육상 속도 100%"
+            && TerrainMovementInfo(TerrainType.Forest, true, false) == "육상 속도 100%"
+            && TerrainMovementInfo(TerrainType.Mountain, true, false) == "육상 속도 50% (지형 접촉 중)"
+            && TerrainMovementInfo(TerrainType.Swamp, true, false) == "육상 속도 50% (지형 접촉 중)"
+            && TerrainMovementInfo(TerrainType.River, true, false) == "육상 속도 50% (지형 접촉 중)"
+            && TerrainMovementInfo(TerrainType.WaterDeep, false, true) == "선박 속도 100%"
+            && TerrainMovementInfo(TerrainType.Cliff, false, false) == "통행 불가";
+        if (!passed)
+        {
+            GD.PushError("TERRAIN_MOVEMENT_QA FAIL");
+            GetTree().Quit(1);
+            return;
+        }
+        GD.Print("TERRAIN_MOVEMENT_QA PASS");
+        GetParent().CallDeferred("RequestGracefulShutdown");
+    }
+
+    // 연속 이동은 칸 비용이 아니라 해당 지형에 걸친 동안의 속도 비율을 사용한다.
     private string MoveCostText(TerrainType t, HexCoord h)
     {
-        if (!_passability.CanEnter(MovementDomain.Land, h)) { return "통행 불가"; }
-        return t is TerrainType.Mountain or TerrainType.Swamp or TerrainType.River
-            ? "2칸 (지형 패널티)"
-            : "1칸";
+        return TerrainMovementInfo(t,
+            _passability.CanEnter(MovementDomain.Land, h),
+            _passability.CanEnter(MovementDomain.DeepWater, h));
+    }
+
+    private static string TerrainMovementInfo(TerrainType terrain, bool landPassable, bool shipPassable)
+    {
+        if (!landPassable && !shipPassable) return "통행 불가";
+        if (!landPassable) return "선박 속도 100%";
+        return terrain is TerrainType.Mountain or TerrainType.Swamp or TerrainType.River
+            ? "육상 속도 50% (지형 접촉 중)"
+            : "육상 속도 100%";
     }
 
     // 병종별 전투 보정(TerrainCombatBonus). 보정 있는 병종만 나열.
