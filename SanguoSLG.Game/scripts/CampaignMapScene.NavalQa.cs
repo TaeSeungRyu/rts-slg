@@ -37,6 +37,9 @@ public sealed partial class CampaignMapScene
             var initialShipSize = ships.Size;
             var initialTroopSize = troops.Size;
             var initialOfficerSize = table.Size;
+            var initialShipPosition = ships.GetGlobalRect().Position;
+            var initialTroopPosition = troops.GetGlobalRect().Position;
+            var initialOfficerPosition = table.GetGlobalRect().Position;
             foreach (var target in new[] { ships, troops, table, ships, troops, table })
             {
                 var row = target.GetRoot().GetFirstChild();
@@ -45,8 +48,11 @@ public sealed partial class CampaignMapScene
                 GetViewport().PushInput(new InputEventMouseMotion { Position = rowCenter });
                 for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 if (!ships.Size.IsEqualApprox(initialShipSize) || !troops.Size.IsEqualApprox(initialTroopSize)
-                    || !table.Size.IsEqualApprox(initialOfficerSize))
-                    throw new Exception($"마우스 오버 후 표 높이 변경: 선박 {ships.Size}, 병력 {troops.Size}, 장수 {table.Size}");
+                    || !table.Size.IsEqualApprox(initialOfficerSize)
+                    || !ships.GetGlobalRect().Position.IsEqualApprox(initialShipPosition)
+                    || !troops.GetGlobalRect().Position.IsEqualApprox(initialTroopPosition)
+                    || !table.GetGlobalRect().Position.IsEqualApprox(initialOfficerPosition))
+                    throw new Exception($"마우스 오버 후 표 위치·높이 변경: 선박 {ships.GetGlobalRect()}, 병력 {troops.GetGlobalRect()}, 장수 {table.GetGlobalRect()}");
             }
             for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             if (!ships.Size.IsEqualApprox(initialShipSize) || !troops.Size.IsEqualApprox(initialTroopSize))

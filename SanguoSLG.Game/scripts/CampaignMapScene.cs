@@ -10257,6 +10257,7 @@ public sealed partial class CampaignMapScene : Node3D
             SelectMode = Tree.SelectModeEnum.Row,
             CustomMinimumSize = new Vector2(0, Math.Min(230, 40 + ships.Count * 38)),
             ScrollVerticalEnabled = false,
+            FocusMode = Control.FocusModeEnum.None,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
         };
@@ -10302,6 +10303,7 @@ public sealed partial class CampaignMapScene : Node3D
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
             CustomMinimumSize = new Vector2(0, Math.Min(230, 40 + garrisons.Count * 38)),
+            FocusMode = Control.FocusModeEnum.None,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ShrinkBegin,
         };
@@ -10384,6 +10386,7 @@ public sealed partial class CampaignMapScene : Node3D
             HideRoot = true,
             SelectMode = Tree.SelectModeEnum.Row,
             CustomMinimumSize = new Vector2(0, 0),
+            FocusMode = Control.FocusModeEnum.None,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
