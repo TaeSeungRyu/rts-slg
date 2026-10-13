@@ -1,6 +1,6 @@
 [
   { "id": "geukbyeong_01", "name": "극병 유적", "q": 0, "r": 4, "troop_code": "geukbyeong", "max_defenders": 15000 },
-  { "id": "war_elephant_01", "name": "상병 유적", "q": 2, "r": 4, "troop_code": "war_elephant", "max_defenders": 50000 },
+  { "id": "war_elephant_01", "name": "상병 유적", "q": 2, "r": 8, "troop_code": "war_elephant", "max_defenders": 50000 },
   { "id": "namman_01", "name": "남만병 유적", "q": 4, "r": 4, "troop_code": "namman", "max_defenders": 20000 },
   { "id": "deunggap_01", "name": "등갑병 유적", "q": 6, "r": 4, "troop_code": "deunggap", "max_defenders": 20000 },
   { "id": "mudang_01", "name": "무당비군 유적", "q": 8, "r": 4, "troop_code": "mudang", "max_defenders": 20000 },
