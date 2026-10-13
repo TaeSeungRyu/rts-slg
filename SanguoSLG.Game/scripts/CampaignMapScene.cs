@@ -646,6 +646,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestgeneralrosterqa")) CallDeferred(nameof(RunGeneralRosterPerformanceQa));
         if (args.Contains("--maptestreportmodalqa")) CallDeferred(nameof(RunReportModalQa));
         if (args.Contains("--maptestnavalcomposeqa")) CallDeferred(nameof(RunNavalComposeQa));
+        if (args.Contains("--maptestproductioncenterqa")) CallDeferred(nameof(RunProductionCenterQa));
         if (args.Contains("--maptestshutdownresourceqa")) CallDeferred(nameof(RunShutdownResourceQa));
         if (args.Contains("--maptestsaveslotuiqa")) CallDeferred(nameof(RunSaveSlotUiQa));
         if (args.Contains("--maptestloadslotuiqa")) CallDeferred(nameof(RunLoadSlotUiQa));
@@ -9388,6 +9389,28 @@ public sealed partial class CampaignMapScene : Node3D
         CenterAndDrag(panel, titleRow, mw, mh, rootBox);
     }
 
+    private async void RunProductionCenterQa()
+    {
+        try
+        {
+            var city = _state.Cities.First(c => c.Owner == Player && ProductionTargets(c).Any());
+            OpenProductionModal(city.Id, ProductionTargets(city).First().Plot);
+            for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var panel = _modalLayer!.GetChildren().OfType<PanelContainer>().Single();
+            var center = panel.GetGlobalRect().GetCenter();
+            var viewportCenter = GetViewport().GetVisibleRect().GetCenter();
+            if (center.DistanceTo(viewportCenter) > 3f)
+                throw new Exception($"생산 모달이 중앙에 있지 않습니다: {center} / {viewportCenter}");
+            GD.Print("PRODUCTION_CENTER_QA PASS");
+            GetParent().CallDeferred("RequestGracefulShutdown");
+        }
+        catch (Exception e)
+        {
+            GD.PushError("PRODUCTION_CENTER_QA FAIL: " + e);
+            GetTree().Quit(1);
+        }
+    }
+
     private void OpenProductionModal(CityId city, HexCoord? fixedTarget = null)
     {
         if (_advancing) { return; }
@@ -9705,6 +9728,9 @@ public sealed partial class CampaignMapScene : Node3D
         RefreshSummary();
 
         scroll.CustomMinimumSize = new Vector2(mw, mh);
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+        panel.Size = new Vector2(mw + 28f, mh + 28f);
+        panel.Position = (vp - panel.Size) / 2f;
     }
 
     private IEnumerable<(HexCoord Plot, string Code)> ProductionTargets(City city)
