@@ -40,6 +40,7 @@ public sealed class CampaignEngine
     private readonly FieldBuildingCombat? _fieldBuildingCombat;
     private readonly IReadOnlyList<FieldBuildingDefinition> _fieldBuildingDefinitions;
     private readonly FieldScoutPostService? _fieldScoutPosts;
+    private readonly EventHuntService? _eventHunts;
 
     public CampaignEngine(IFieldAdvanceRunner field, WorldEngine world,
         CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null,
@@ -47,7 +48,8 @@ public sealed class CampaignEngine
         int buildSiteHp = 0, int buildSiteDamagePerTurn = 0,
         IReadOnlyList<PassiveSkill>? passives = null, IReadOnlyList<ActiveSkill>? actives = null,
         RuinCombat? ruinCombat = null, FieldBuildingCombat? fieldBuildingCombat = null,
-        IReadOnlyList<FieldBuildingDefinition>? fieldBuildingDefinitions = null)
+        IReadOnlyList<FieldBuildingDefinition>? fieldBuildingDefinitions = null,
+        EventHuntService? eventHunts = null)
     {
         _field = field;
         _world = world;
@@ -66,6 +68,7 @@ public sealed class CampaignEngine
         _fieldScoutPosts = _fieldBuildingDefinitions.Count > 0
             ? new FieldScoutPostService(_fieldBuildingDefinitions)
             : null;
+        _eventHunts = eventHunts;
     }
 
     /// <summary>7일을 진행한 새 상태를 반환한다. 야전 진행 보고 목록은 <paramref name="turns"/>로.</summary>
@@ -99,7 +102,7 @@ public sealed class CampaignEngine
         var plunderReports = new List<PlunderReport>();
         var casualtyReports = new List<CasualtyReport>();
         _campaignEvents.Clear();
-        var work = state;
+        var work = _eventHunts?.ScheduleDiscoveries(state) ?? state;
         var waitingArmies = state.Armies
             .Where(u => u.Pool.Active > 0 && u.IsWaitingDate)
             .OrderBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value)
@@ -113,9 +116,22 @@ public sealed class CampaignEngine
             .ToList();
 
         var remaining = WeekDays;
-        while (remaining > 0 && (armies.Count > 0 || waitingArmies.Count > 0 || egressArmies.Count > 0))
+        while (remaining > 0 && (armies.Count > 0 || waitingArmies.Count > 0 || egressArmies.Count > 0
+            || _eventHunts is not null))
         {
             var simulationDay = state.Day + (WeekDays - remaining);
+            IReadOnlyList<CombatUnit> eventSpawns = [];
+            if (_eventHunts is not null)
+            {
+                var beforeIds = armies.Select(unit => unit.Id).ToHashSet();
+                work = _eventHunts.SpawnDue(work with
+                    { FieldArmies = armies.Concat(waitingArmies).Concat(egressArmies).ToList() }, simulationDay, out var appeared);
+                _campaignEvents.AddRange(appeared);
+                eventSpawns = work.Armies.Where(unit => unit.Field.Owner == EventHuntService.EventFaction
+                    && !beforeIds.Contains(unit.Id)).ToList();
+                work = _eventHunts.PlanDaily(work);
+                armies = work.Armies.Where(unit => !unit.IsWaitingDeployment).ToList();
+            }
             IReadOnlyList<FieldBuildingId> expiredScoutPosts = [];
             if (_fieldScoutPosts is not null)
             {
@@ -184,7 +200,7 @@ public sealed class CampaignEngine
                 egress.Released.Select(u => u.Id).ToHashSet(), constructionUnits,
                 work.Buildings, _fieldBuildingDefinitions, simulationDay) with
             {
-                ReleasedDeployments = egress.Released,
+                ReleasedDeployments = egress.Released.Concat(eventSpawns).ToList(),
                 ExpiredScoutPostIds = expiredScoutPosts,
             };
             turn = turn with { Units = turn.Units.Select(u => waitingBanditOrders.TryGetValue(u.Id, out var order)
@@ -286,6 +302,11 @@ public sealed class CampaignEngine
 
             turn = StripProductionUnits(turn, productionUnitIds);
             turn = ApplyFieldSpoils(armies, turn);
+            if (_eventHunts is not null)
+            {
+                work = _eventHunts.ResolveCombat(work, armies, turn, simulationDay, out var huntRewards);
+                _campaignEvents.AddRange(huntRewards);
+            }
             if (turn.Combat is { } combat)
             {
                 var participantIds = combat.DamageTaken.Keys.Concat(combat.DamageDealt.Keys).ToHashSet();
@@ -439,6 +460,7 @@ public sealed class CampaignEngine
         plunders = plunderReports;
         casualties = casualtyReports;
         var advanced = _world.AdvanceDays(afterField, WeekDays);
+        advanced = _eventHunts?.ScheduleDiscoveries(advanced) ?? advanced;
         if (_fieldScoutPosts is not null)
         {
             var expiry = _fieldScoutPosts.Resolve(advanced, advanced.Armies,

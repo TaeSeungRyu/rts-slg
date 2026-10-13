@@ -81,4 +81,109 @@ public class EventHuntServiceTests
         Assert.Equal(UnitMode.Standby, idle.Field.Mode);
         Assert.Null(idle.Field.Target);
     }
+
+    private static (GameState State, CombatUnit Tiger, CombatUnit Attacker) CombatFixture()
+    {
+        var state = Spawn();
+        var tiger = state.Armies.Single();
+        var attacker = tiger with { Field = tiger.Field with { Id = new(2), Owner = new(1), CommandOrder = 2 },
+            TroopCode = "swordsman", VanguardId = new(1), AdjutantId = new(2), Class = TroopClass.Infantry };
+        var generals = new[] { 1, 2 }.Select(id => new General(new(id), $"사냥장수{id}",
+            new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Infantry] = AptitudeGrade.D }, 70, 70, 70)).ToList();
+        return (state with { FieldArmies = [tiger, attacker], Generals = generals }, tiger, attacker);
+    }
+
+    private static AdvanceTurn HuntTurn(CombatUnit tiger, CombatUnit attacker, bool killed, bool participated)
+        => new(killed ? [attacker] : [tiger, attacker],
+            new AdvanceResult([], [tiger.Field, attacker.Field], StopReason.MaxDays, 1),
+            participated ? new(new Dictionary<UnitId, int> { [tiger.Id] = tiger.Pool.Active },
+                new Dictionary<UnitId, int> { [attacker.Id] = tiger.Pool.Active },
+                new Dictionary<UnitId, TroopPool>()) : null,
+            new Dictionary<UnitId, ActiveSkill>(), new Dictionary<UnitId, Stratagem>(),
+            new Dictionary<UnitId, int>(), new Dictionary<UnitId, int>(),
+            FieldCombatExchangeResults: participated
+                ? [new(attacker.Id, tiger.Id, attacker.RenewalPosition!.Value, tiger.RenewalPosition!.Value, true)] : []);
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void 실제처치는_동시괴멸에서도_경험치와_호부를_한번만_지급한다(bool mutualDestruction)
+    {
+        var (state, tiger, attacker) = CombatFixture();
+        var turn = HuntTurn(tiger, attacker, true, true);
+        if (mutualDestruction) turn = turn with { Units = [] };
+        var rewarded = Service.ResolveCombat(state, state.Armies, turn, 10, out var events);
+        Assert.Equal(new FactionId(1), Assert.Single(rewarded.Treasures).Faction);
+        Assert.All(rewarded.Generals, general =>
+        {
+            Assert.Equal(2, general.Level);
+            Assert.Equal(125, general.Experience);
+            Assert.Equal(10, general.AptitudeExperienceFor(TroopClass.Infantry));
+        });
+        Assert.Single(events);
+        var restored = SaveService.Deserialize(SaveService.Serialize(rewarded));
+        Assert.Single(Service.ResolveCombat(restored, state.Armies, turn, 11, out var duplicate).Treasures);
+        Assert.Empty(duplicate);
+    }
+
+    [Fact]
+    public void 교전기여가_없는_주변부대는_처치보상을_받지않는다()
+    {
+        var (state, tiger, attacker) = CombatFixture();
+        var result = Service.ResolveCombat(state, state.Armies, HuntTurn(tiger, attacker, true, false), 10, out var events);
+        Assert.Empty(result.Treasures);
+        Assert.Empty(events);
+        Assert.Equal(10, Assert.Single(result.Encounters).DefeatedDay);
+    }
+
+    [Fact]
+    public void 낙뢰로_평타전에_괴멸하여도_실제시전자에게_처치보상을_준다()
+    {
+        var (state, tiger, attacker) = CombatFixture();
+        var lightning = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())
+            .Single(skill => skill.Code == "lightning");
+        var turn = HuntTurn(tiger, attacker, true, false) with
+        {
+            FiredActives = new Dictionary<UnitId, ActiveSkill> { [attacker.Id] = lightning },
+            StratagemDamage = new Dictionary<UnitId, int> { [tiger.Id] = tiger.Pool.Active },
+        };
+        Assert.Single(Service.ResolveCombat(state, state.Armies, turn, 10, out _).Treasures);
+    }
+
+    [Fact]
+    public void 저장이후_지속피해로_괴멸하면_이전_실제교전기여자에게_지급한다()
+    {
+        var (state, tiger, attacker) = CombatFixture();
+        var hit = Service.ResolveCombat(state, state.Armies, HuntTurn(tiger, attacker, false, true), 9, out _);
+        var restored = SaveService.Deserialize(SaveService.Serialize(hit));
+        var burned = HuntTurn(tiger, attacker, true, false) with
+        { StatusDamage = new Dictionary<UnitId, int> { [tiger.Id] = tiger.Pool.Active } };
+        Assert.Single(Service.ResolveCombat(restored, restored.Armies, burned, 10, out _).Treasures);
+    }
+
+    [Fact]
+    public void 캠페인은_빈야전에서도_대호를_출현시키고_실제전투처치를_정산한다()
+    {
+        var service = new EventHuntService(Map, [Tiger with { Troops = 50 }]);
+        var legacy = new AdvanceOrchestrator(new MovementSimulator(new PassabilityMap(Map, [], [])),
+            new CombatPhaseResolver(new BattleResolver(60), 70));
+        var engine = new CampaignEngine(new RenewalCampaignAdvanceRunner(Map, legacy),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0)), eventHunts: service);
+        var first = engine.AdvanceWeek(World, out _);
+        Assert.Empty(first.Armies);
+        var appeared = engine.AdvanceWeek(first, out var spawnTurns);
+        var tiger = Assert.Single(appeared.Armies);
+        Assert.Contains(spawnTurns.SelectMany(turn => turn.Deployments), unit => unit.Id == tiger.Id);
+        var attacker = tiger with { Field = tiger.Field with { Id = new(2), Owner = new(1),
+            Position = new(1, 0), Speed = 0, Mode = UnitMode.Attack, Target = tiger.Field.Position,
+            AssignedUnitTarget = tiger.Id }, RenewalPosition = RenewalHexSpace.Center(new(1, 0)),
+            Stats = new(10000, 100, 100), Pool = new(10000, 0), TroopCode = "swordsman", VanguardId = new(1) };
+        var hunted = engine.AdvanceWeek(appeared with { FieldArmies = [tiger, attacker],
+            Generals = [new(new(1), "사냥장수", new Dictionary<TroopClass, AptitudeGrade>
+                { [TroopClass.Cavalry] = AptitudeGrade.D }, 70, 70, 70)] }, out var fights);
+        Assert.DoesNotContain(hunted.Armies, unit => unit.Id == tiger.Id);
+        Assert.NotEmpty(fights.SelectMany(turn => turn.FieldCombatExchanges));
+        Assert.Single(hunted.Treasures);
+        Assert.Contains(engine.LastWorldEvents, e => e.Kind == WorldEventKind.EventUnitDefeated);
+    }
 }
