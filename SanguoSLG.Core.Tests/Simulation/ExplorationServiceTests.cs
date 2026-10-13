@@ -7,6 +7,19 @@ using Xunit;
 
 public class ExplorationServiceTests
 {
+    [Theory]
+    [InlineData(0)]
+    [InlineData(100)]
+    public void 임시_신수확률은_50퍼센트이며_다른보상을_유지한다(int politics)
+    {
+        var normal = Enumerable.Range(0, 100).Select(r => ExplorationService.KindForRoll(r, politics)).ToList();
+        var boosted = Enumerable.Range(0, 100).Select(r => ExplorationService.KindForRoll(r, politics, 50)).ToList();
+        Assert.Equal(1, normal.Count(k => k == ExplorationResultKind.DivineBeast));
+        Assert.Equal(50, boosted.Count(k => k == ExplorationResultKind.DivineBeast));
+        foreach (var kind in new[] { ExplorationResultKind.AncientRelic, ExplorationResultKind.LocalClan, ExplorationResultKind.Rumor })
+            Assert.Equal(normal.Count(k => k == kind), boosted.Count(k => k == kind));
+    }
+
     private sealed class FixedRandom(int value) : IRandomSource
     {
         public int Next(int minInclusive, int maxExclusive) => value;

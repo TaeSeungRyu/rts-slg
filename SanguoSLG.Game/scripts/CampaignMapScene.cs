@@ -548,8 +548,17 @@ public sealed partial class CampaignMapScene : Node3D
         // 플레이 세션에서는 탐색·외교 결과가 매 실행 같은 초반 난수열에 묶이지 않도록 세션 시드를 쓴다.
         // Core 테스트는 WorldEngine에 고정 IRandomSource를 주입해 결정론을 유지한다.
         var sessionSeed = unchecked((int)(System.DateTime.UtcNow.Ticks ^ System.Environment.TickCount64));
+        var divineBeastPercent = 1;
+        if (args.Contains("--maptest"))
+        {
+            using var explorationConfig = System.Text.Json.JsonDocument.Parse(
+                File.ReadAllText(Path.Combine(dataDirectory, "maptest-exploration.json")));
+            divineBeastPercent = explorationConfig.RootElement.GetProperty("divine_beast_percent").GetInt32();
+            Dbg($"[exploration-test] divineBeastPercent={divineBeastPercent}");
+        }
         var world = new WorldEngine(_balance, _cb, random: new SeededRandomSource(sessionSeed),
-            banditLandSpawnAllowed: hex => _passability.CanEnter(MovementDomain.Land, hex));
+            banditLandSpawnAllowed: hex => _passability.CanEnter(MovementDomain.Land, hex),
+            divineBeastPercent: divineBeastPercent);
         var legacyField = new AdvanceOrchestrator(movement,
             new CombatPhaseResolver(new BattleResolver(60), 70),
             navalProvisionsPercent: _balance.NavalProvisionsPercent);

@@ -5,15 +5,20 @@ using SanguoSLG.Core.Domain;
 /// <summary>Phase 10 탐색 보상 판정. 인재, 도적/반란, 재난은 포함하지 않는다.</summary>
 public sealed class ExplorationService
 {
-    public ExplorationDiscovery Explore(GameState state, City city, General explorer, IRandomSource random)
+    public ExplorationDiscovery Explore(GameState state, City city, General explorer, IRandomSource random,
+        int divineBeastPercent = 1)
     {
         var roll = random.Next(0, 100);
-        var kind = KindForRoll(roll, AdministrationGrowth.EffectivePoliticsRounded(explorer));
+        var kind = KindForRoll(roll, AdministrationGrowth.EffectivePoliticsRounded(explorer), divineBeastPercent);
         return BuildDiscovery(state.Day, city.Owner, city.Id, explorer.Id, kind);
     }
 
-    public static ExplorationResultKind KindForRoll(int roll, int politics = 0)
+    public static ExplorationResultKind KindForRoll(int roll, int politics = 0, int divineBeastPercent = 1)
     {
+        if (divineBeastPercent is < 1 or > 50)
+            throw new ArgumentOutOfRangeException(nameof(divineBeastPercent));
+        if (roll >= 101 - divineBeastPercent)
+            return ExplorationResultKind.DivineBeast;
         var localClanBonus = System.Math.Clamp(politics, 0, 100) / 10;
         return KindForRollWithLocalClanBonus(roll, localClanBonus);
     }

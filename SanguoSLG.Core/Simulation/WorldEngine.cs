@@ -19,16 +19,18 @@ public sealed class WorldEngine
     private readonly CommandBalance _commands;
     private readonly IReadOnlyDictionary<string, Domain.AdminSkill> _adminSkills;
     private readonly Func<HexCoord, bool>? _banditLandSpawnAllowed;
+    private readonly int _divineBeastPercent;
 
     public WorldEngine(BalanceConfig balance, CommandBalance? commands = null,
         IReadOnlyList<Domain.AdminSkill>? adminSkills = null, IRandomSource? random = null,
-        Func<HexCoord, bool>? banditLandSpawnAllowed = null)
+        Func<HexCoord, bool>? banditLandSpawnAllowed = null, int divineBeastPercent = 1)
     {
         _balance = balance;
         _commands = commands ?? new CommandBalance();
         _adminSkills = (adminSkills ?? []).ToDictionary(a => a.Code);
         _random = random ?? new SeededRandomSource(0); // 도시 계략 성공 판정용(시드 — 결정론)
         _banditLandSpawnAllowed = banditLandSpawnAllowed;
+        _divineBeastPercent = divineBeastPercent;
     }
 
     private readonly IRandomSource _random;
@@ -831,7 +833,7 @@ public sealed class WorldEngine
             return false;
         }
 
-        var discovery = new ExplorationService().Explore(state, city, explorer, _random);
+        var discovery = new ExplorationService().Explore(state, city, explorer, _random, _divineBeastPercent);
         discoveries.Add(discovery);
         if (discovery.Gold > 0 || discovery.Provisions > 0)
         {
