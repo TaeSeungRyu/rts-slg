@@ -127,7 +127,7 @@ public sealed class CampaignEngine
             {
                 var beforeIds = armies.Select(unit => unit.Id).ToHashSet();
                 work = _eventHunts.SpawnDue(work with
-                    { FieldArmies = armies.Concat(waitingArmies).Concat(egressArmies).ToList() }, simulationDay, out var appeared);
+                    { FieldArmies = armies.Concat(waitingArmies).Concat(egressArmies).ToList() }, simulationDay + 1, out var appeared);
                 _campaignEvents.AddRange(appeared);
                 eventSpawns = work.Armies.Where(unit => unit.Field.Owner == EventHuntService.EventFaction
                     && !beforeIds.Contains(unit.Id)).ToList();

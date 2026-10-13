@@ -103,8 +103,7 @@ public class EventHuntServiceTests
         var discovered = engine.AdvanceWeek(command.State, out _);
         Assert.Equal("divine_beast_trace", Assert.Single(discovered.Discoveries).Code);
         Assert.Single(discovered.Encounters);
-        var waiting = engine.AdvanceWeek(discovered, out _);
-        var appeared = engine.AdvanceWeek(waiting, out _);
+        var appeared = engine.AdvanceWeek(discovered, out _);
         Assert.Single(appeared.Armies, unit => unit.Field.Owner == EventHuntService.EventFaction);
         Assert.Contains(engine.LastWorldEvents, e => e.Kind == WorldEventKind.EventUnitAppeared);
     }
@@ -293,9 +292,7 @@ public class EventHuntServiceTests
             new CombatPhaseResolver(new BattleResolver(60), 70));
         var engine = new CampaignEngine(new RenewalCampaignAdvanceRunner(Map, legacy),
             new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0)), eventHunts: service);
-        var first = engine.AdvanceWeek(World, out _);
-        Assert.Empty(first.Armies);
-        var appeared = engine.AdvanceWeek(first, out var spawnTurns);
+        var appeared = engine.AdvanceWeek(World, out var spawnTurns);
         var tiger = Assert.Single(appeared.Armies);
         Assert.Contains(spawnTurns.SelectMany(turn => turn.Deployments), unit => unit.Id == tiger.Id);
         var attacker = tiger with { Field = tiger.Field with { Id = new(2), Owner = new(1),
