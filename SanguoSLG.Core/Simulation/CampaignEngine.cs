@@ -600,6 +600,8 @@ public sealed class CampaignEngine
                 .ToDictionary(kv => kv.Key, kv => kv.Value),
             Pools = combat.Pools.Where(kv => !productionUnitIds.Contains(kv.Key))
                 .ToDictionary(kv => kv.Key, kv => kv.Value),
+            Exchanges = combat.Exchanges?.Where(x => !productionUnitIds.Contains(x.Attacker)
+                && !productionUnitIds.Contains(x.Target)).ToList(),
         };
     }
 

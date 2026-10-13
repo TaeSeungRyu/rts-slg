@@ -9,4 +9,7 @@ using SanguoSLG.Core.Domain;
 public sealed record CombatPhaseResult(
     IReadOnlyDictionary<UnitId, int> DamageTaken,
     IReadOnlyDictionary<UnitId, int> DamageDealt,
-    IReadOnlyDictionary<UnitId, TroopPool> Pools);
+    IReadOnlyDictionary<UnitId, TroopPool> Pools,
+    IReadOnlyList<UnitDamage>? Exchanges = null);
+
+public sealed record UnitDamage(UnitId Attacker, UnitId Target, int Amount);

@@ -134,6 +134,52 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
                     new[] { attacker.VanguardId, attacker.AdjutantId }.OfType<GeneralId>().Distinct().ToList(),
                     attacker.IsArmyGroup ? [TroopClass.Infantry, TroopClass.Archer, TroopClass.Siege]
                         : [attacker.IsSupply ? TroopClass.Supply : attacker.Class]) };
+            var hits = turn.Combat?.Exchanges?.Where(x => x.Target == unitId && x.Amount > 0)
+                .GroupBy(x => x.Attacker).ToDictionary(x => x.Key, x => x.Sum(hit => hit.Amount))
+                ?? new Dictionary<UnitId, int>();
+            if (hits.Count == 0)
+            {
+                foreach (var exchange in turn.FieldCombatExchanges.Where(x => x.Target == unitId))
+                {
+                    var targetCount = turn.FieldCombatExchanges.Count(x => x.Attacker == exchange.Attacker);
+                    var amount = turn.Combat?.DamageDealt.GetValueOrDefault(exchange.Attacker) ?? 0;
+                    if (amount > 0) hits[exchange.Attacker] = amount / Math.Max(1, targetCount);
+                }
+            }
+            var tacticDamage = turn.StratagemDamage.GetValueOrDefault(unitId);
+            foreach (var casterId in tacticIds.Where(id => before.Any(unit => unit.Id == id)))
+                hits[casterId] = hits.GetValueOrDefault(casterId) + tacticDamage / Math.Max(1, tacticIds.Count);
+            var oldContributions = encounter.DamageContributions?.ToList() ?? [];
+            var remaining = before.First(unit => unit.Id == unitId).Pool.Active;
+            var rawTotal = hits.Values.Sum();
+            foreach (var (attackerId, raw) in hits.OrderBy(x => x.Key.Value))
+            {
+                var source = before.FirstOrDefault(unit => unit.Id == attackerId && unit.Field.Owner.Value > 0);
+                if (source is null || raw <= 0) continue;
+                var effective = Math.Min(remaining, rawTotal > remaining
+                    ? (int)Math.Ceiling((double)raw * remaining / rawTotal) : raw);
+                effective = Math.Max(0, effective);
+                remaining -= effective;
+                var old = oldContributions.FindIndex(x => x.Unit == attackerId);
+                var entry = new EventHuntDamageContribution(source.Id, source.Field.Owner,
+                    new[] { source.VanguardId, source.AdjutantId }.OfType<GeneralId>().Distinct().ToList(),
+                    source.IsArmyGroup ? [TroopClass.Infantry, TroopClass.Archer, TroopClass.Siege]
+                        : [source.IsSupply ? TroopClass.Supply : source.Class],
+                    effective + (old < 0 ? 0 : oldContributions[old].Damage));
+                if (old < 0) oldContributions.Add(entry);
+                else oldContributions[old] = entry;
+            }
+            if (hits.Count == 0 && turn.StatusDamage.GetValueOrDefault(unitId) > 0
+                && encounter.Contributor is { } lastContributor)
+            {
+                var old = oldContributions.FindIndex(x => x.Unit == lastContributor.Unit);
+                var amount = Math.Min(remaining, turn.StatusDamage[unitId]);
+                if (old >= 0) oldContributions[old] = oldContributions[old] with
+                { Damage = oldContributions[old].Damage + amount };
+                else oldContributions.Add(new(lastContributor.Unit, lastContributor.Faction,
+                    lastContributor.Generals, lastContributor.TroopClasses, amount));
+            }
+            encounter = encounter with { DamageContributions = oldContributions };
             if (turn.Units.Any(unit => unit.Id == unitId && unit.Pool.Active > 0))
             {
                 encounters[index] = encounter;
@@ -144,20 +190,29 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
             var contributor = damaged ? encounter.Contributor : null;
             encounters[index] = encounter with { DefeatedDay = day, RewardFaction = contributor?.Faction };
             if (contributor is null) continue;
+            var damageTotal = oldContributions.Sum(x => x.Damage);
+            if (damageTotal <= 0) continue;
             treasures.Add(new($"{encounter.Id}:reward", definition.TreasureCode, definition.TreasureName,
                 contributor.Faction, day, encounter.Id));
-            foreach (var generalId in contributor.Generals)
+            foreach (var contribution in oldContributions.Where(x => x.Damage > 0))
             {
-                var generalIndex = generals.FindIndex(general => general.Id == generalId);
-                if (generalIndex < 0) continue;
-                var general = GeneralGrowth.AddGeneralExperience(generals[generalIndex], definition.ExperienceReward, out _);
-                foreach (var troopClass in contributor.TroopClasses)
-                    general = AptitudeGrowth.AddExperience(general, troopClass, definition.AptitudeReward, out _);
-                generals[generalIndex] = general;
+                var p = (double)contribution.Damage / damageTotal;
+                var experience = 200 + (int)Math.Round(400 * p, MidpointRounding.AwayFromZero);
+                var aptitude = 10 + (int)Math.Round(40 * p, MidpointRounding.AwayFromZero);
+                foreach (var generalId in contribution.Generals)
+                {
+                    var generalIndex = generals.FindIndex(general => general.Id == generalId);
+                    if (generalIndex < 0) continue;
+                    var general = GeneralGrowth.AddGeneralExperience(generals[generalIndex], experience, out _);
+                    foreach (var troopClass in contribution.TroopClasses)
+                        general = AptitudeGrowth.AddExperience(general, troopClass, aptitude, out _);
+                    generals[generalIndex] = general;
+                }
             }
             reports.Add(new(WorldEventKind.EventUnitDefeated, contributor.Faction,
                 contributor.Generals.Select(id => (GeneralId?)id).FirstOrDefault(), encounter.DiscoveryCity,
-                definition.ExperienceReward, definition.Code, definition.AptitudeReward));
+                oldContributions.Count == 1 ? 600 : 0, definition.Code,
+                oldContributions.Count == 1 ? 50 : 0));
         }
         events = reports;
         return state with { EventEncounters = encounters, FactionTreasures = treasures, Generals = generals };

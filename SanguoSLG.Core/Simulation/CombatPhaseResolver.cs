@@ -48,6 +48,7 @@ public sealed class CombatPhaseResolver
         var damage = new Dictionary<UnitId, int>();
         var permanentDamage = new Dictionary<UnitId, int>();
         var dealt = new Dictionary<UnitId, int>();
+        var exchanges = new List<UnitDamage>();
         foreach (var engagement in engagements)
         {
             var attacker = participants[engagement.Attacker];
@@ -83,6 +84,7 @@ public sealed class CombatPhaseResolver
                 }
 
                 dealt[engagement.Attacker] = dealt.GetValueOrDefault(engagement.Attacker) + raw;
+                if (raw > 0) exchanges.Add(new(engagement.Attacker, targetId, raw));
             }
         }
 
@@ -110,6 +112,6 @@ public sealed class CombatPhaseResolver
             totalDamage[id] = totalDamage.GetValueOrDefault(id) + permanent;
         }
 
-        return new CombatPhaseResult(totalDamage, dealt, pools);
+        return new CombatPhaseResult(totalDamage, dealt, pools, exchanges);
     }
 }

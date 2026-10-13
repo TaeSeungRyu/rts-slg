@@ -175,14 +175,49 @@ public class EventHuntServiceTests
         Assert.Equal(new FactionId(1), Assert.Single(rewarded.Treasures).Faction);
         Assert.All(rewarded.Generals, general =>
         {
-            Assert.Equal(2, general.Level);
-            Assert.Equal(125, general.Experience);
-            Assert.Equal(10, general.AptitudeExperienceFor(TroopClass.Infantry));
+            Assert.Equal(4, general.Level);
+            Assert.Equal(150, general.Experience);
+            Assert.Equal(50, general.AptitudeExperienceFor(TroopClass.Infantry));
         });
         Assert.Single(events);
         var restored = SaveService.Deserialize(SaveService.Serialize(rewarded));
         Assert.Single(Service.ResolveCombat(restored, state.Armies, turn, 11, out var duplicate).Treasures);
         Assert.Empty(duplicate);
+    }
+
+    [Fact]
+    public void 여러부대_기여는_실제대호피해로_나누고_저장후에도_유지된다()
+    {
+        var (state, tiger, first) = CombatFixture();
+        tiger = tiger with { Pool = new(10000, 0) };
+        var second = first with { Field = first.Field with { Id = new(3), CommandOrder = 3 },
+            VanguardId = new(3), AdjutantId = null };
+        state = state with { FieldArmies = [tiger, first, second], Generals = state.Generals.Append(
+            new General(new(3), "추가장수", new Dictionary<TroopClass, AptitudeGrade>
+                { [TroopClass.Infantry] = AptitudeGrade.D }, 70, 70, 70)).ToList() };
+        var hit = HuntTurn(tiger, first, false, true) with
+        {
+            Units = [tiger, first, second],
+            Combat = new(new Dictionary<UnitId, int> { [tiger.Id] = 3000 },
+                new Dictionary<UnitId, int> { [first.Id] = 3000 }, new Dictionary<UnitId, TroopPool>(),
+                [new UnitDamage(first.Id, tiger.Id, 3000)]),
+        };
+        var persisted = SaveService.Deserialize(SaveService.Serialize(
+            Service.ResolveCombat(state, state.Armies, hit, 9, out _)));
+        var finish = hit with
+        {
+            Units = [first, second],
+            Combat = new(new Dictionary<UnitId, int> { [tiger.Id] = 7000 },
+                new Dictionary<UnitId, int> { [second.Id] = 7000 }, new Dictionary<UnitId, TroopPool>(),
+                [new UnitDamage(second.Id, tiger.Id, 7000)]),
+            FieldCombatExchangeResults = [new(second.Id, tiger.Id,
+                second.RenewalPosition!.Value, tiger.RenewalPosition!.Value, true)],
+        };
+        var rewarded = Service.ResolveCombat(persisted, persisted.Armies, finish, 10, out _);
+        Assert.Equal(3000, rewarded.Encounters.Single().DamageContributions!.Single(x => x.Unit == first.Id).Damage);
+        Assert.Equal(7000, rewarded.Encounters.Single().DamageContributions!.Single(x => x.Unit == second.Id).Damage);
+        Assert.Equal(22, rewarded.Generals.Single(x => x.Id == first.VanguardId).AptitudeExperienceFor(TroopClass.Infantry));
+        Assert.Equal(38, rewarded.Generals.Single(x => x.Id == second.VanguardId).AptitudeExperienceFor(TroopClass.Infantry));
     }
 
     [Fact]
