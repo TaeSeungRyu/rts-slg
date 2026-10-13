@@ -188,6 +188,8 @@ public sealed partial class CampaignMapScene
     private void OpenTreasureEquipModal(string treasureId)
     {
         var treasure = _state.Treasures.First(x => x.Id == treasureId);
+        _modalDismissAction = null;
+        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var width = Mathf.Min(500, GetViewport().GetVisibleRect().Size.X * 0.85f);
         var box = DeployScaffold(width, out var scroll, out var panel);
         var heading = new HBoxContainer();
@@ -385,6 +387,83 @@ public sealed partial class CampaignMapScene
         catch (Exception error)
         {
             GD.PushError($"[maptesteventhuntqa] {error}");
+            GetTree().Quit(1);
+        }
+    }
+
+    private async void RunTreasureCloseQa()
+    {
+        async System.Threading.Tasks.Task Settle()
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
+        int ModalCount() => GetChildren().OfType<CanvasLayer>()
+            .Count(layer => layer.Layer == 20 && !layer.IsQueuedForDeletion());
+
+        async System.Threading.Tasks.Task<bool> ClickClose()
+        {
+            await Settle();
+            var close = _modalLayer?.FindChild("SystemViewClose", true, false) as Button;
+            if (close is null) return false;
+            var viewport = GetViewport();
+            var point = close.GetGlobalRect().GetCenter();
+            viewport.PushInput(new InputEventMouseMotion { Position = point }, true);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            if (viewport.GuiGetHoveredControl() != close) return false;
+            viewport.PushInput(new InputEventMouseButton
+                { Position = point, ButtonIndex = MouseButton.Left, Pressed = true }, true);
+            viewport.PushInput(new InputEventMouseButton
+                { Position = point, ButtonIndex = MouseButton.Left, Pressed = false }, true);
+            await Settle();
+            return _modalLayer is null && ModalCount() == 0;
+        }
+
+        try
+        {
+            GetViewport().NotifyMouseEntered();
+            var city = _state.Cities.First(c => c.Owner == Player);
+            _state = _state with
+            {
+                EventEncounters = [new("close-qa", "great_tiger", Player, city.Id, _state.Day,
+                    DefeatedDay: _state.Day, RewardFaction: Player, RewardChoicePending: true)],
+                FactionTreasures = [new("close-qa:reward", "tiger_tally", "호부", Player, _state.Day, "close-qa")],
+            };
+            OpenHuntRewards([new(WorldEventKind.EventUnitDefeated, Player, Code: "great_tiger")]);
+            await Settle();
+            _modalLayer!.FindChildren("*", "Button", true, false).OfType<Button>()
+                .Single(button => button.Text.StartsWith("대호의 새끼"))
+                .EmitSignal(Button.SignalName.Pressed);
+            var rewardClose = await ClickClose();
+
+            OpenTreasureList();
+            await Settle();
+            _modalLayer!.FindChildren("*", "Button", true, false).OfType<Button>()
+                .Single(button => button.Text == "장착").EmitSignal(Button.SignalName.Pressed);
+            await Settle();
+            var equipLayerCount = ModalCount();
+            _modalLayer!.FindChildren("*", "Button", true, false).OfType<Button>()
+                .Single(button => button.Text == "✕").EmitSignal(Button.SignalName.Pressed);
+            var equipBackClose = await ClickClose();
+
+            OpenTreasureList();
+            await Settle();
+            _modalLayer!.FindChildren("*", "Button", true, false).OfType<Button>()
+                .Single(button => button.Text == "장착").EmitSignal(Button.SignalName.Pressed);
+            await Settle();
+            var equipment = new TreasureEquipmentService(_treasureDefinitions);
+            var general = _state.Generals.First(g => equipment.Equip(_state, "close-qa:reward", g.Id).Ok);
+            _modalLayer!.FindChildren("*", "Button", true, false).OfType<Button>()
+                .Single(button => button.Text == general.Name).EmitSignal(Button.SignalName.Pressed);
+            var equippedClose = await ClickClose();
+            var passed = rewardClose && equipLayerCount == 1 && equipBackClose && equippedClose;
+            GD.Print($"[treasure-close-qa] passed={passed} rewardClose={rewardClose} equipLayers={equipLayerCount} equipBackClose={equipBackClose} equippedClose={equippedClose} remainingLayers={ModalCount()}");
+            GetTree().Quit(passed ? 0 : 1);
+        }
+        catch (Exception error)
+        {
+            GD.PushError($"[treasure-close-qa] {error}");
             GetTree().Quit(1);
         }
     }
