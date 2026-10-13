@@ -6229,6 +6229,7 @@ public sealed partial class CampaignMapScene : Node3D
                         Postings = _state.Assignments.Where(p => !affected.Contains(p.General))
                             .Concat(_pendingState.Assignments.Where(p => affected.Contains(p.General))).ToList(),
                         PendingCommands = _state.Commands.Where(c => c.City != capture.Report.City).ToList(),
+                        ProductionOperations = _state.ProductionOps.Where(op => op.City != capture.Report.City).ToList(),
                     };
                     var troops = _pendingState.Garrisons.Where(g => g.City == capture.Report.City).Sum(g => g.Troops);
                     _playbackCityTroops[capture.Report.City] = troops;

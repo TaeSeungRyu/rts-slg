@@ -96,8 +96,8 @@ public sealed class CityCapture
             .OfType<GeneralId>()
             .Concat(state.ProductionOps.Where(op => op.City == city.Id && op.Owner == oldOwner)
                 .Select(op => op.General))
-            .Concat(new[] { city.SecurityOfficer, city.DomesticOfficer, city.RecruitmentOfficer,
-                city.TrainingOfficer }.OfType<GeneralId>())
+            .Concat(new[] { city.Governor, city.Strategist, city.SecurityOfficer,
+                city.DomesticOfficer, city.RecruitmentOfficer, city.TrainingOfficer }.OfType<GeneralId>())
             .ToHashSet();
         var cities = state.Cities
             .Select(c => c.Id == city.Id
@@ -185,7 +185,7 @@ public sealed class CityCapture
         foreach (var gid in workingGenerals.OrderBy(id => id.Value))
         {
             var posting = next.PostingOf(gid);
-            if (posting is null || posting.Faction != oldOwner
+            if (posting is null || posting.Faction != oldOwner || next.IsGeneralInField(gid)
                 || (posting.Location != city.Id && posting.Location is not null)) continue;
             next = next with
             {

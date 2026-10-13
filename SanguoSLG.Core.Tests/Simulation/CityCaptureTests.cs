@@ -55,6 +55,12 @@ public class CityCaptureTests
         public int Next(int minInclusive, int maxExclusive) => _v[_i++ % _v.Length];
     }
 
+    private sealed class NoRandom : IRandomSource
+    {
+        public int Next(int minInclusive, int maxExclusive)
+            => throw new Xunit.Sdk.XunitException("세력 존속 중 함락에는 장수 합류 난수를 쓰면 안 됩니다.");
+    }
+
     private static General Gen(int id) => new(
         new GeneralId(id), $"g{id}", new Dictionary<TroopClass, AptitudeGrade>(),
         Might: 60, Intellect: 60, Politics: 60);
@@ -397,6 +403,55 @@ public class CityCaptureTests
         Assert.Equal([new GeneralId(10), new GeneralId(11)], Assert.Single(reports).Fled);
         Assert.All(after.Assignments.Where(p => p.General.Value is 10 or 11), p =>
             Assert.Equal(refuge.Id, p.Location));
+    }
+
+    [Theory]
+    [InlineData(PortSize.None)]
+    [InlineData(PortSize.Small)]
+    public void 성과_항구_함락시_비출전_업무는_취소하고_야전_장수는_이동시키지_않는다(PortSize portSize)
+    {
+        var fallen = Fallen(1, 1, new HexCoord(5, 0)) with
+        {
+            Port = portSize,
+            Governor = new GeneralId(10),
+            Strategist = new GeneralId(11),
+            TrainingOfficer = new GeneralId(12),
+        };
+        var refuge = Fallen(9, 1, new HexCoord(12, 0));
+        var enemyHome = Fallen(8, 2, new HexCoord(-5, 0));
+        var command = new CityCommand(fallen.Id, CommandKind.FormAlliance,
+            new GeneralId(13), new GeneralId(14), 1, 15, 0);
+        var unrelated = new CityCommand(refuge.Id, CommandKind.Explore,
+            new GeneralId(16), null, 1, 15, 0);
+        var production = new ProductionOperation(1, fallen.Id, fallen.Owner, fallen.Position,
+            new HexCoord(6, 0), "village", "swordsman", 500, 50, 2,
+            new GeneralId(15), 1, 14, ProductionPhase.Gathering, 2, new HexCoord(6, 0));
+        var field = Attacker(3, 1, new HexCoord(20, 0), new HexCoord(21, 0), vanguard: 17);
+        var generals = Enumerable.Range(10, 8).Select(Gen).ToList();
+        var postings = generals.Select(g => new GeneralPosting(g.Id, new FactionId(1),
+            g.Id.Value is 13 or 14 or 15 ? null : fallen.Id)).ToList();
+        postings[6] = postings[6] with { Location = refuge.Id };
+        var state = State([fallen, refuge, enemyHome],
+            [Attacker(1, 2, new HexCoord(4, 0), fallen.Position), field],
+            generals, postings, [command, unrelated])
+            with { ProductionOperations = [production] };
+
+        var after = new CityCapture().ResolveAll(state, new NoRandom(), out var reports);
+
+        Assert.Empty(Assert.Single(reports).Captured);
+        Assert.Equal([new GeneralId(10), new GeneralId(11), new GeneralId(12),
+            new GeneralId(13), new GeneralId(14), new GeneralId(15)],
+            Assert.Single(reports).Fled);
+        Assert.All(Enumerable.Range(10, 6), id =>
+        {
+            Assert.Equal(refuge.Id, after.PostingOf(new GeneralId(id))!.Location);
+            Assert.False(after.IsGeneralBusy(new GeneralId(id)));
+        });
+        Assert.Equal(fallen.Id, after.PostingOf(new GeneralId(17))!.Location);
+        Assert.True(after.IsGeneralInField(new GeneralId(17)));
+        Assert.Equal([unrelated], after.Commands);
+        Assert.Empty(after.ProductionOps);
+        AssertVacant(after.Cities.Single(c => c.Id == fallen.Id));
     }
 
     [Fact]
