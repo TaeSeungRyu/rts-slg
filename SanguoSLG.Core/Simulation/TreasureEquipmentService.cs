@@ -4,6 +4,13 @@ using SanguoSLG.Core.Domain;
 
 public sealed class TreasureEquipmentService(IReadOnlyList<EventTreasureDefinition> definitions)
 {
+    /// <summary>장수 사망·타 세력 편입 시 원 세력 창고로 자동 회수한다. 아이템 소유 세력은 바뀌지 않는다.</summary>
+    public static GameState ReconcileOwners(GameState state)
+        => state with { FactionTreasures = state.Treasures.Select(item =>
+            item.EquippedBy is { } wearer && !state.Assignments.Any(posting =>
+                posting.General == wearer && posting.Faction == item.Faction)
+                ? item with { EquippedBy = null } : item).ToList() };
+
     public CommandResult Equip(GameState state, string treasureId, GeneralId generalId)
     {
         var treasure = state.Treasures.FirstOrDefault(x => x.Id == treasureId);

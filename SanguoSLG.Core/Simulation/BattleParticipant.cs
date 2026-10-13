@@ -31,4 +31,7 @@ public sealed record BattleParticipant(
     int OutgoingDamagePercent = 100,
     Domain.TroopClass Class = Domain.TroopClass.Infantry,
     int AttackRange = 1,
-    int RangedDamageTakenPercent = 100);
+    int RangedDamageTakenPercent = 100,
+    int TreasureNormalAttackPercent = 100,
+    int TreasureDamageTakenPercent = 100,
+    int TreasureFatalToWoundedPercent = 0);

@@ -30,8 +30,13 @@ public class SummonServiceTests
         var spawned = Service.AdvanceDay(sameDay, 11, out var appeared);
         Assert.Single(appeared);
         Assert.True(appeared[0].IsSummon);
+        Assert.False(appeared[0].CanInitiateCombat);
+        Assert.False(spawned.Armies.Single(x => x.Id == caller.Id).CanInitiateCombat);
+        var nextDay = Service.AdvanceDay(spawned, 12, out _);
+        Assert.True(nextDay.Armies.Single(x => x.Id == caller.Id).CanInitiateCombat);
+        Assert.True(nextDay.Armies.Single(x => x.IsSummon).CanInitiateCombat);
         Assert.Equal(1, appeared[0].Field.Position.Q);
-        var restored = SaveService.Deserialize(SaveService.Serialize(spawned));
+        var restored = SaveService.Deserialize(SaveService.Serialize(nextDay));
         Assert.Equal(92, restored.Treasures[0].ReusableDay);
         Assert.False(Service.Order(restored, caller.Id, "tiger:1", new HexCoord(0, 1)).Ok);
         var expired = Service.AdvanceDay(restored, 32, out _);
@@ -39,5 +44,21 @@ public class SummonServiceTests
         Assert.Single(expired.Armies);
         Assert.False(Service.Order(expired with { Day = 91 }, caller.Id, "tiger:1", new HexCoord(1, 0)).Ok);
         Assert.True(Service.Order(expired with { Day = 92 }, caller.Id, "tiger:1", new HexCoord(1, 0)).Ok);
+    }
+
+    [Fact]
+    public void AI도_장착한_알로_적을_발견하면_같은_명령_검사를_거쳐_소환한다()
+    {
+        var ai = new CombatUnit(new FieldUnit(new(2), new(2), new HexCoord(0, 0), 2, 3, 1,
+                MovementDomain.Land, UnitMode.Standby, null, 2),
+            new CombatStats(1000, 10, 10), new TroopPool(1000, 0), UnitCombatState.Create(0),
+            VanguardId: new(2));
+        var enemy = ai with { Field = ai.Field with
+            { Id = new(3), Owner = new(1), Position = new HexCoord(2, 0) }, VanguardId = new(3) };
+        var state = new GameState(10, 190, [], [], [], FieldArmies: [ai, enemy],
+            FactionTreasures: [new("egg", "dragon_egg", "용의 알", new(2), 9, "hunt", EquippedBy: new(2))]);
+        var planned = Service.PlanAiOrders(state, 10, new(1));
+        Assert.Single(planned.SummonOrders);
+        Assert.Equal(new HexCoord(1, 0), planned.SummonOrders[0].Position);
     }
 }

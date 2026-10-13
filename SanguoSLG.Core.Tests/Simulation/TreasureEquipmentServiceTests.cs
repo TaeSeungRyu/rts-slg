@@ -42,4 +42,14 @@ public class TreasureEquipmentServiceTests
         var foreign = State with { Postings = [new(new(1), new(2), new(1))] };
         Assert.False(Service.Equip(foreign, "hunt:1", new(1)).Ok);
     }
+
+    [Fact]
+    public void 장수가_다른_세력으로_이동하면_장착_보물은_원_세력_창고로_돌아온다()
+    {
+        var equipped = Service.Equip(State, "hunt:1", new(1)).State;
+        var moved = equipped with { Postings = [new(new(1), new(2), new(1))] };
+        var reconciled = TreasureEquipmentService.ReconcileOwners(moved);
+        Assert.Null(reconciled.Treasures.Single(x => x.Id == "hunt:1").EquippedBy);
+        Assert.Equal(new FactionId(1), reconciled.Treasures.Single(x => x.Id == "hunt:1").Faction);
+    }
 }

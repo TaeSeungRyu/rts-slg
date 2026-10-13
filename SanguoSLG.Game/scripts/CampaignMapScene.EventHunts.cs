@@ -145,14 +145,77 @@ public sealed partial class CampaignMapScene
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 12);
         card.AddChild(row);
-        row.AddChild(MakeLabel("虎", 26, GoldBright));
+        row.AddChild(MakeLabel(treasure.Code.StartsWith("dragon") ? "龍" : treasure.Code.StartsWith("phoenix") ? "鳳" : "虎", 26, GoldBright));
         var text = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         row.AddChild(text);
-        text.AddChild(MakeLabel($"{treasure.Name} · 사냥 증표", 15, GoldBright));
+        text.AddChild(MakeLabel(treasure.Name, 15, GoldBright));
         var date = treasure.AcquiredDay - 1;
         text.AddChild(MakeLabel($"{_state.StartYear + date / 360}년 {date % 360 / 30 + 1}월 {date % 30 + 1}일 획득", 11, Parchment));
-        text.AddChild(MakeLabel("세력 공용 보물 · 장착 효과는 후속 설계", 11, new Color(Parchment, 0.7f)));
+        var definition = _treasureDefinitions.FirstOrDefault(x => x.Code == treasure.Code);
+        text.AddChild(MakeLabel(definition is null ? "보물" : TreasureEffectText(definition), 11, new Color(Parchment, 0.7f)));
+        var pending = _state.Encounters.Any(x => x.Id == treasure.EncounterId && x.RewardChoicePending);
+        var equipped = treasure.EquippedBy is { } wearer
+            ? _state.Generals.FirstOrDefault(g => g.Id == wearer)?.Name ?? $"장수 {wearer.Value}" : null;
+        var button = MakeButton(pending ? "보상 선택 대기" : equipped is null ? "장착" : $"{equipped} · 해제");
+        button.Disabled = pending;
+        button.Pressed += () =>
+        {
+            if (equipped is null) OpenTreasureEquipModal(treasure.Id);
+            else
+            {
+                var result = new TreasureEquipmentService(_treasureDefinitions).Unequip(_state, treasure.Id);
+                if (!result.Ok) { ShowNotice("해제 불가", result.Error ?? "해제할 수 없습니다."); return; }
+                _state = result.State;
+                OpenTreasureList();
+            }
+        };
+        row.AddChild(button);
         return card;
+    }
+
+    private static string TreasureEffectText(EventTreasureDefinition definition) => definition.Effect switch
+    {
+        "normal_attack" => $"일반 공격 피해 +{definition.Value}%",
+        "melee_attack" => $"근접 일반 공격 피해 +{definition.Value}%",
+        "damage_reduction" => $"받는 전투 피해 -{definition.Value}%",
+        "might" => $"유효 무력 +{definition.Value} (최대 100)",
+        "aptitude_floor" => "A 미만 병종 적성을 A로 보정",
+        "fatal_to_wounded" => $"전투 사망자의 {definition.Value}%를 부상으로 전환",
+        "summon" => "장착 장수의 출전 부대에서 신수 소환 가능",
+        _ => definition.Name,
+    };
+
+    private void OpenTreasureEquipModal(string treasureId)
+    {
+        var treasure = _state.Treasures.First(x => x.Id == treasureId);
+        var width = Mathf.Min(500, GetViewport().GetVisibleRect().Size.X * 0.85f);
+        var box = DeployScaffold(width, out var scroll, out var panel);
+        var heading = new HBoxContainer();
+        box.AddChild(heading);
+        var title = MakeLabel($"{treasure.Name} · 장착 장수", 17, GoldBright);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        heading.AddChild(title);
+        var close = MakeButton("✕");
+        close.Pressed += OpenTreasureList;
+        heading.AddChild(close);
+        var service = new TreasureEquipmentService(_treasureDefinitions);
+        foreach (var posting in _state.Assignments.Where(x => x.Faction == Player && x.Location is not null))
+        {
+            var general = _state.Generals.FirstOrDefault(x => x.Id == posting.General);
+            if (general is null) continue;
+            var button = MakeButton(general.Name);
+            var id = general.Id;
+            button.Pressed += () =>
+            {
+                var result = service.Equip(_state, treasureId, id);
+                if (!result.Ok) { ShowNotice("장착 불가", result.Error ?? "장착할 수 없습니다."); return; }
+                _state = result.State;
+                OpenTreasureList();
+            };
+            box.AddChild(button);
+        }
+        scroll.CustomMinimumSize = new(width, Mathf.Min(480, box.GetCombinedMinimumSize().Y));
+        CenterAndDrag(panel, heading, width, 500, box);
     }
 
     private void ShowPendingHuntRewards()
@@ -174,7 +237,7 @@ public sealed partial class CampaignMapScene
         _modalLayer!.Name = "EventHuntRewardsModal";
         var heading = new HBoxContainer();
         box.AddChild(heading);
-        var title = MakeLabel("대호 사냥 성공", 19, Gold);
+        var title = MakeLabel("신수 사냥 보상", 19, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         heading.AddChild(title);
         var close = MakeButton("✕");
@@ -197,11 +260,43 @@ public sealed partial class CampaignMapScene
             var body = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             body.AddThemeConstantOverride("separation", 8);
             row.AddChild(body);
-            body.AddChild(MakeLabel("대호 처치 보상", 17, GoldBright));
-            body.AddChild(MakeLabel($"선봉·부관 각각 전투 경험치 +{reward.Amount}", 13, Parchment));
-            body.AddChild(MakeLabel($"사용 병종 숙련 +{reward.ExtraAmount}", 13, Parchment));
-            body.AddChild(MakeLabel("호부 1개 · 세력 보관함에 등록", 15, Gold));
-            var notice = MakeLabel("기존 숙련 상한 적용 · 호부 장착 효과는 후속 설계", 11, new Color(Parchment, 0.75f));
+            body.AddChild(MakeLabel($"{TroopName(reward.Code)} 처치 보상", 17, GoldBright));
+            var encounter = _state.Encounters.FirstOrDefault(x => x.DefeatedDay is not null
+                && x.RewardFaction == Player && x.Code == reward.Code && x.RewardChoicePending);
+            var contributionRows = encounter?.DamageContributions ?? [];
+            var totalDamage = contributionRows.Sum(x => x.Damage);
+            if (totalDamage > 0)
+                foreach (var contribution in contributionRows.Where(x => x.Damage > 0))
+                {
+                    var ratio = (double)contribution.Damage / totalDamage;
+                    var experience = 200 + (int)Math.Round(400 * ratio, MidpointRounding.AwayFromZero);
+                    var aptitude = 10 + (int)Math.Round(40 * ratio, MidpointRounding.AwayFromZero);
+                    var leaders = string.Join("·", contribution.Generals.Select(id =>
+                        _state.Generals.FirstOrDefault(g => g.Id == id)?.Name ?? $"장수 {id.Value}"));
+                    body.AddChild(MakeLabel($"{leaders} · 피해 {ratio:P0} · 경험 +{experience} / 숙련 +{aptitude}", 12, Parchment));
+                }
+            else
+            {
+                body.AddChild(MakeLabel($"선봉·부관 각각 전투 경험치 +{reward.Amount}", 13, Parchment));
+                body.AddChild(MakeLabel($"사용 병종 숙련 +{reward.ExtraAmount}", 13, Parchment));
+            }
+            body.AddChild(MakeLabel(encounter is null ? "획득 보상은 보물 창고에서 확인" : "보상 3종 중 1개 선택", 15, Gold));
+            if (encounter is not null)
+                foreach (var choice in _eventHunts.RewardChoices(encounter.Code))
+                {
+                    var selectedEncounter = encounter.Id;
+                    var selectedCode = choice.Code;
+                    var select = MakeButton($"{choice.Name} · {TreasureEffectText(choice)}", accent: true);
+                    select.Pressed += () =>
+                    {
+                        var result = _eventHunts.ChooseReward(_state, selectedEncounter, Player, selectedCode);
+                        if (!result.Ok) { ShowNotice("보상 선택 실패", result.Error ?? "선택할 수 없습니다."); return; }
+                        _state = result.State;
+                        OpenTreasureList();
+                    };
+                    body.AddChild(select);
+                }
+            var notice = MakeLabel("선택하지 않고 닫아도 보물 창고에서 다시 선택할 수 있습니다.", 11, new Color(Parchment, 0.75f));
             notice.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             body.AddChild(notice);
         }
@@ -268,20 +363,23 @@ public sealed partial class CampaignMapScene
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var labels = _modalLayer!.FindChildren("*", "Label", true, false).OfType<Label>().ToList();
+            var buttons = _modalLayer.FindChildren("*", "Button", true, false).OfType<Button>().ToList();
             var textures = _modalLayer.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>().ToList();
-            var modal = rewards.Count == 1 && labels.Any(label => label.Text.Contains("호부"))
-                && labels.Any(label => label.Text.Contains("250")) && textures.Any(texture => texture.Texture is not null)
+            var modal = rewards.Count == 1 && buttons.Any(button => button.Text.Contains("호부"))
+                && labels.Any(label => label.Text.Contains("600")) && textures.Any(texture => texture.Texture is not null)
                 && textures.All(texture => texture.Size.X <= 220);
             var imageWidths = string.Join(',', textures.Select(texture => texture.Size.X));
-            CloseModal();
-            OpenTreasureList();
+            buttons.First(button => button.Text.Contains("대호의 새끼")).EmitSignal(Button.SignalName.Pressed);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var chosen = _state.Treasures.Single().Code == "tiger_cub"
+                && !_state.Encounters.Single().RewardChoicePending;
             var inventory = _modalLayer!.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
-                .Any(card => card.HasMeta("treasure_slot") && card.GetMeta("treasure_slot").AsString() == "tiger_tally");
-            var restored = SaveService.Deserialize(SaveService.Serialize(hunted));
-            var passed = allCitiesSpawned && appearedReport && visibleSpawn && combat && motions && modal && inventory
-                && restored.Treasures.Count == 1 && TroopName("great_tiger") == "대호"
+                .Any(card => card.HasMeta("treasure_slot") && card.GetMeta("treasure_slot").AsString() == "tiger_cub");
+            var restored = SaveService.Deserialize(SaveService.Serialize(_state));
+            var passed = allCitiesSpawned && appearedReport && visibleSpawn && combat && motions && modal && chosen && inventory
+                && restored.Treasures.Single().Code == "tiger_cub" && TroopName("great_tiger") == "대호"
                 && UnitController3D.ModelFileAt(TroopModelIndex["great_tiger"]).EndsWith("troop-great-tiger.glb");
-            GD.Print($"[maptesteventhuntqa] passed={passed} allCities={allCitiesSpawned} report={appearedReport} spawn={visibleSpawn} combat={combat} motions={motions} modal={modal} inventory={inventory} save={restored.Treasures.Count} imageWidths={imageWidths}");
+            GD.Print($"[maptesteventhuntqa] passed={passed} allCities={allCitiesSpawned} report={appearedReport} spawn={visibleSpawn} combat={combat} motions={motions} modal={modal} chosen={chosen} inventory={inventory} save={restored.Treasures.Count} imageWidths={imageWidths}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (Exception error)

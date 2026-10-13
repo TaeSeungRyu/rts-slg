@@ -63,6 +63,9 @@ public sealed class CombatPhaseResolver
                         attacker.Might, attacker.TargetIsBuilding, attacker.Class)
                     : _resolver.Damage(attackStats[engagement.Attacker], attackStats[targetId], primaryTarget: i == 0);
 
+                if (attacker.StrikeActive is null)
+                    raw = raw * attacker.TreasureNormalAttackPercent / 100;
+
                 if (target.Mode == UnitMode.March)
                 {
                     raw = raw * _marchDamageTakenPercent / 100; // 행군 통과 피해
@@ -70,6 +73,7 @@ public sealed class CombatPhaseResolver
 
                 raw = raw * attacker.OutgoingDamagePercent / 100; // 수공·연막 디버프(공격자 준 피해 감소)
                 raw = raw * takenPercent[targetId] / 100; // 방어 액티브 감소
+                raw = raw * target.TreasureDamageTakenPercent / 100;
                 if (attacker.AttackRange >= 2)
                 {
                     raw = raw * target.RangedDamageTakenPercent / 100; // 회피술: 원거리 피해만 3진행 감소
@@ -97,7 +101,9 @@ public sealed class CombatPhaseResolver
             var permanent = permanentDamage.GetValueOrDefault(id);
             if (taken > 0)
             {
-                pool = pool.TakeDamage(taken, _woundedPercent);
+                var woundedPercent = _woundedPercent + (100 - _woundedPercent)
+                    * p.TreasureFatalToWoundedPercent / 100;
+                pool = pool.TakeDamage(taken, woundedPercent);
             }
             if (permanent > 0)
             {

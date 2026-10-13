@@ -7,6 +7,34 @@ using SanguoSLG.Core.Simulation.RenewalMovement;
 public sealed class SummonService(HexMap map, IReadOnlyList<EventTreasureDefinition> treasures,
     IReadOnlyList<SummonedUnitDefinition> units)
 {
+    /// <summary>AI도 장착·범위·재사용 제한을 같은 명령 검사에 통과시켜 자동 소환한다.</summary>
+    public GameState PlanAiOrders(GameState state, int day, FactionId playerFaction)
+    {
+        foreach (var caller in state.Armies.Where(x => x.Field.Owner != playerFaction
+                     && x.Field.Owner.Value > 0 && x.Pool.Active > 0 && !x.IsWaitingDeployment
+                     && x.Field.Domain is MovementDomain.Land or MovementDomain.LandMountain))
+        {
+            var item = state.Treasures.FirstOrDefault(x => x.Faction == caller.Field.Owner
+                && x.EquippedBy is not null
+                && (x.EquippedBy == caller.VanguardId || x.EquippedBy == caller.AdjutantId)
+                && treasures.Any(t => t.Code == x.Code && t.Effect == "summon"));
+            if (item is null) continue;
+            var origin = caller.RenewalPosition is { } continuous
+                ? RenewalHexSpace.NearestHex(continuous) : caller.Field.Position;
+            var target = state.Armies.Where(x => x.Field.Owner != caller.Field.Owner && x.Pool.Active > 0)
+                .OrderBy(x => origin.Distance(x.Field.Position)).FirstOrDefault();
+            if (target is null || origin.Distance(target.Field.Position) > caller.Field.Detection) continue;
+            foreach (var position in origin.Neighbors().OrderBy(x => x.Distance(target.Field.Position)))
+            {
+                var result = Order(state with { Day = day }, caller.Id, item.Id, position);
+                if (!result.Ok) continue;
+                state = result.State with { Day = state.Day };
+                break;
+            }
+        }
+        return state;
+    }
+
     public CommandResult Order(GameState state, UnitId callerId, string treasureId, HexCoord position)
     {
         var caller = state.Armies.FirstOrDefault(x => x.Id == callerId && x.Pool.Active > 0);
@@ -36,7 +64,9 @@ public sealed class SummonService(HexMap map, IReadOnlyList<EventTreasureDefinit
         var remaining = state.Summons.Where(x => x.EndDay > day && state.Armies.Any(u => u.Id == x.Unit
             && u.Pool.Active > 0)).ToList();
         var expired = state.Summons.Select(x => x.Unit).Except(remaining.Select(x => x.Unit)).ToHashSet();
-        var armies = state.Armies.Where(x => !expired.Contains(x.Id)).ToList();
+        var armies = state.Armies.Where(x => !expired.Contains(x.Id))
+            .Select(x => x.SummonLockDay is { } lockDay && lockDay < day
+                ? x with { SummonLockDay = null } : x).ToList();
         var items = state.Treasures.ToList();
         var pending = new List<SummonOrder>();
         var spawned = new List<CombatUnit>();
@@ -65,9 +95,12 @@ public sealed class SummonService(HexMap map, IReadOnlyList<EventTreasureDefinit
                 new CombatStats(summon.Troops, summon.Attack, summon.Defense, AptitudeGrade.A.Percent()),
                 new TroopPool(summon.Troops, 0), UnitCombatState.Create(0), MaxTroops: summon.Troops,
                 Class: TroopClass.Cavalry, Provisions: -1, TroopCode: summon.Code,
-                RenewalPosition: RenewalHexSpace.Center(order.Position), IsSummon: true);
+                RenewalPosition: RenewalHexSpace.Center(order.Position), IsSummon: true,
+                SummonLockDay: day);
             spawned.Add(unit);
             armies.Add(unit);
+            var callerIndex = armies.FindIndex(x => x.Id == caller.Id);
+            armies[callerIndex] = armies[callerIndex] with { SummonLockDay = day };
             remaining.Add(new(id, item.Id, item.Faction, summon.Code, day, day + summon.ActiveDays));
             items[itemIndex] = item with { SummonedDay = day, SummonEndDay = day + summon.ActiveDays,
                 ReusableDay = day + summon.ActiveDays + summon.CooldownDays };

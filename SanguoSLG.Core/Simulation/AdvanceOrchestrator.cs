@@ -372,7 +372,8 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
                 effStats with { Troops = u.Pool.Active },
                 u.Field.Mode,
                 u.Pool,
-                u.Might,
+                skill is not null && u.State.ScheduledActiveSlot == ActiveCommanderSlot.Adjutant
+                    && u.TreasureAdjutantMight > 0 ? u.TreasureAdjutantMight : u.Might,
                 u.Intellect,
                 u.MaxTroops,
                 StrikeActive: skill?.Type == ActiveType.Strike ? skill : null,
@@ -382,7 +383,10 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
                 OutgoingDamagePercent: outgoing,
                 Class: u.Class,
                 AttackRange: u.Field.AttackRange,
-                RangedDamageTakenPercent: u.State.Statuses.Any(s => s.Kind == StatusKind.Evasion) ? 70 : 100);
+                RangedDamageTakenPercent: u.State.Statuses.Any(s => s.Kind == StatusKind.Evasion) ? 70 : 100,
+                TreasureNormalAttackPercent: u.TreasureNormalAttackPercent,
+                TreasureDamageTakenPercent: u.TreasureDamageTakenPercent,
+                TreasureFatalToWoundedPercent: u.TreasureFatalToWoundedPercent);
         }
 
         // 5) 동시 정산 → 병력 반영.

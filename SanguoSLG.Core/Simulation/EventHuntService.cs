@@ -58,7 +58,17 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
                 .OrderByDescending(x => x.Score).ThenBy(x => x.Index).FirstOrDefault();
             if (choice.Item is null) continue;
             var result = ChooseReward(state, encounter.Id, faction, choice.Item.Code);
-            if (result.Ok) state = result.State;
+            if (!result.Ok) continue;
+            state = result.State;
+            var equipment = new TreasureEquipmentService(treasureDefinitions ?? []);
+            foreach (var general in activeGenerals.Where(g => g is not null)
+                         .OrderByDescending(g => g!.Might).ThenBy(g => g!.Id.Value))
+            {
+                var equipped = equipment.Equip(state, $"{encounter.Id}:reward", general!.Id);
+                if (!equipped.Ok) continue;
+                state = equipped.State;
+                break;
+            }
         }
         return state;
     }

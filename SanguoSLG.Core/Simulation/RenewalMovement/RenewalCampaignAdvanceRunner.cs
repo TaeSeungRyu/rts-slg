@@ -108,7 +108,7 @@ public sealed class RenewalCampaignAdvanceRunner(
             if (unit.Field.Mode == UnitMode.Attack && ruinIndex >= 0)
                 renewal = renewal with { AssignedTarget = new(RenewalTargetKind.Building, -ruinIndex - 1) };
             var ownGarrison = liveBuildings.FirstOrDefault(building =>
-                building.Owner == unit.Field.Owner && building.Position == unit.Field.Target
+                !unit.IsSummon && building.Owner == unit.Field.Owner && building.Position == unit.Field.Target
                 && building.GarrisonUnit is null && building.IsCompleted(fieldDay)
                 && fieldDefinitions?.Any(definition => definition.Code == building.DefinitionCode
                     && definition.CanGarrison) == true);
@@ -210,7 +210,7 @@ public sealed class RenewalCampaignAdvanceRunner(
                 state = simulator.StepMovementTick(state).State;
                 var enteredNow = state.Units.Where(position => position.IsActive
                     && active.First(unit => unit.Id == position.Id) is { } source
-                    && source.Field.Speed > 0 && constructionUnits?.Contains(source.Id) != true
+                    && source.Field.Speed > 0 && !source.IsSummon && constructionUnits?.Contains(source.Id) != true
                     && !source.State.Statuses.Any(status => status.IsDaze && !status.IsExpired)
                     && position.OriginalWaypointIndex >= (position.OriginalWaypoints?.Count ?? 0)
                     && OwnDestination(source, castles) is { } ownSite

@@ -172,7 +172,7 @@ public sealed partial class CampaignMapScene : Node3D
         ["medium_ship"] = 8, ["large_ship"] = 9, ["geukbyeong"] = 10, ["namman"] = 11,
         ["deunggap"] = 12, ["mudang"] = 13, ["cataphract"] = 14, ["hwarang"] = 15,
         ["horse_archer"] = 16, ["turtleship"] = 17, ["waeseon"] = 18,
-        ["bandit"] = 19, ["great_tiger"] = 20,
+        ["bandit"] = 19, ["great_tiger"] = 20, ["dragon"] = 22,
         ["army_group"] = 25,
     };
     private GameState _pendingState = null!;
@@ -2090,6 +2090,13 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         Row(u.Field.Owner == EventHuntService.EventFaction ? "체력" : "병력", $"{u.Pool.Active}");
+        if (u.IsSummon && _state.Summons.FirstOrDefault(x => x.Unit == u.Id) is { } summon)
+        {
+            Row("소환 활동", $"{System.Math.Max(0, summon.EndDay - _state.Day)}일 남음");
+            var treasure = _state.Treasures.FirstOrDefault(x => x.Id == summon.TreasureId);
+            if (treasure?.ReusableDay is { } ready)
+                Row("재사용", ready <= _state.Day ? "가능" : $"{ready - _state.Day}일 후");
+        }
         if (u.Field.Owner == EventHuntService.EventFaction && _eventHunts.Definition(u.TroopCode) is { } eventUnit)
         {
             Row("공격 / 방어", $"{u.Stats.AtkStat} / {u.Stats.DfStat}");
@@ -9032,9 +9039,16 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else
             foreach (var treasure in treasures) box.AddChild(BuildTreasureCard(treasure));
+        foreach (var encounter in _state.Encounters.Where(x => x.RewardFaction == Player && x.RewardChoicePending))
+        {
+            var claim = MakeButton($"{TroopName(encounter.Code)} 보상 선택", accent: true);
+            claim.Pressed += () => OpenHuntRewards([new WorldEvent(WorldEventKind.EventUnitDefeated,
+                Player, City: encounter.DiscoveryCity, Code: encounter.Code)]);
+            box.AddChild(claim);
+        }
         foreach (var encounter in _state.Encounters.Where(encounter => encounter.DiscoveringFaction == Player
             && encounter.DefeatedDay is null))
-            box.AddChild(MakeLabel($"대호 사냥 · {EventHuntStatus(encounter)}", 12, Gold));
+            box.AddChild(MakeLabel($"{TroopName(encounter.Code)} 사냥 · {EventHuntStatus(encounter)}", 12, Gold));
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
@@ -9402,6 +9416,8 @@ public sealed partial class CampaignMapScene : Node3D
         detailsScroll.AddChild(box);
 
         var meta = new List<string> { $"상태 {GeneralStatus(gid)}" };
+        if (_state.Treasures.FirstOrDefault(t => t.EquippedBy == gid) is { } equippedTreasure)
+            meta.Add($"장착 {equippedTreasure.Name}");
         if (g.Birth != 0) { meta.Add(g.Birth < 0 ? $"기원전 {-g.Birth}년생" : $"{g.Birth}년생"); }
         if (g.Region.Length > 0)
         {
@@ -9428,7 +9444,9 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var name in new[] { "무력", "지력", "정치" }) { stat.AddChild(Cell(name, 12, GoldBright)); }
         var adminBonus = AdministrationGrowth.AbilityBonus(g.ClampedAdminLevel);
         var bonusSuffix = adminBonus > 0 ? $" (+{adminBonus:0.0})" : "";
-        foreach (var value in new[] { g.Might.ToString(), $"{g.Intellect}{bonusSuffix}", $"{g.Politics}{bonusSuffix}" })
+        var equippedHorn = _state.Treasures.Any(t => t.EquippedBy == gid && t.Code == "dragon_horn");
+        var mightText = equippedHorn ? $"{g.Might} (+{System.Math.Min(10, 100 - g.Might)})" : g.Might.ToString();
+        foreach (var value in new[] { mightText, $"{g.Intellect}{bonusSuffix}", $"{g.Politics}{bonusSuffix}" })
         {
             stat.AddChild(Cell(value, 17, Parchment));
         }

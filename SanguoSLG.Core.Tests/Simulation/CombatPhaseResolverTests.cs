@@ -46,6 +46,25 @@ public class CombatPhaseResolverTests
     }
 
     [Fact]
+    public void 장착_보물의_평타증폭_피해감소_사망자부상전환은_한번씩_적용된다()
+    {
+        var a = new UnitId(1);
+        var b = new UnitId(2);
+        var result = Phase.Resolve([new UnitEngagement(a, [b])],
+            new Dictionary<UnitId, BattleParticipant>
+            {
+                [a] = SwordPart(UnitMode.Attack) with { TreasureNormalAttackPercent = 105 },
+                [b] = SwordPart(UnitMode.Attack) with
+                {
+                    TreasureDamageTakenPercent = 92,
+                    TreasureFatalToWoundedPercent = 10,
+                },
+            });
+        Assert.Equal(734, result.DamageTaken[b]); // 760×105%×92%, 각 단계 정수 내림
+        Assert.Equal(535, result.Pools[b].Wounded); // 사망분 30%의 10%를 부상으로 전환
+    }
+
+    [Fact]
     public void 포위_1대3_주는건220퍼센트_받는건300퍼센트()
     {
         // A를 셋이 인접 포위(전부 거리 1). A가 셋을 침(주760+부456+부456), 셋이 각자 A를 침(760×3)

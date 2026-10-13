@@ -136,6 +136,9 @@ public sealed class CampaignEngine
             }
             if (_summons is not null)
             {
+                work = _summons.PlanAiOrders(work with
+                    { FieldArmies = armies.Concat(waitingArmies).Concat(egressArmies).ToList() },
+                    simulationDay, new FactionId(1));
                 work = _summons.AdvanceDay(work with
                     { FieldArmies = armies.Concat(waitingArmies).Concat(egressArmies).ToList() },
                     simulationDay, out var summoned);
@@ -192,7 +195,7 @@ public sealed class CampaignEngine
             // 장수의 병종 숙련 승급은 이미 출전한 부대에도 다음 전투일부터 반영한다.
             // 편성 당시 캐시한 적성 배수를 그대로 두면 장기 원정 중에는 성장 효과가
             // 전혀 적용되지 않으므로, 하루 조각을 계산하기 전에 선봉의 현재 적성으로 갱신한다.
-            armies = RefreshAptitudePercents(armies, work.Generals);
+            armies = RefreshAptitudePercents(armies, work.Generals, work.Treasures);
 
             var productionUnits = ProductionCombatUnits(work);
             var productionUnitIds = productionUnits.Select(u => u.Id).ToHashSet();
@@ -471,6 +474,7 @@ public sealed class CampaignEngine
         plunders = plunderReports;
         casualties = casualtyReports;
         var advanced = _world.AdvanceDays(afterField, WeekDays);
+        advanced = TreasureEquipmentService.ReconcileOwners(advanced);
         advanced = _eventHunts?.ScheduleDiscoveries(advanced) ?? advanced;
         if (_fieldScoutPosts is not null)
         {
@@ -1066,7 +1070,8 @@ public sealed class CampaignEngine
     }
 
     private static List<CombatUnit> RefreshAptitudePercents(
-        IReadOnlyList<CombatUnit> armies, IReadOnlyList<General> generals)
+        IReadOnlyList<CombatUnit> armies, IReadOnlyList<General> generals,
+        IReadOnlyList<FactionTreasure> treasures)
     {
         var byId = generals.ToDictionary(g => g.Id);
         return armies.Select(unit =>
@@ -1076,13 +1081,38 @@ public sealed class CampaignEngine
                 return unit;
             }
 
+            var equipped = treasures.Where(t => t.Faction == unit.Field.Owner && t.EquippedBy is not null
+                && (t.EquippedBy == unit.VanguardId || t.EquippedBy == unit.AdjutantId)).ToList();
+            AptitudeGrade Adjust(TroopClass troopClass)
+            {
+                var grade = vanguard.AptitudeFor(troopClass);
+                return equipped.Any(t => t.Code == "phoenix_feather" && t.EquippedBy == vanguardId)
+                    && grade < AptitudeGrade.A ? AptitudeGrade.A : grade;
+            }
             var grade = unit.IsArmyGroup
                 ? AptitudeGrades.AverageFloor(
-                    vanguard.AptitudeFor(TroopClass.Infantry),
-                    vanguard.AptitudeFor(TroopClass.Archer),
-                    vanguard.AptitudeFor(TroopClass.Siege))
-                : vanguard.AptitudeFor(unit.IsSupply ? TroopClass.Supply : unit.Class);
-            return unit with { Stats = unit.Stats with { AptitudePercent = grade.Percent() } };
+                    Adjust(TroopClass.Infantry), Adjust(TroopClass.Archer), Adjust(TroopClass.Siege))
+                : Adjust(unit.IsSupply ? TroopClass.Supply : unit.Class);
+            var normalBonus = unit.Field.Domain is MovementDomain.Land or MovementDomain.LandMountain
+                ? Math.Max(equipped.Any(t => t.Code == "tiger_tally") ? 5 : 0,
+                    !unit.IsSupply && !unit.IsArmyGroup && unit.Field.AttackRange == 1
+                        && unit.Class is TroopClass.Infantry or TroopClass.Cavalry or TroopClass.Elephant
+                        && equipped.Any(t => t.Code == "tiger_fang") ? 8 : 0)
+                : 0;
+            return unit with
+            {
+                Stats = unit.Stats with { AptitudePercent = grade.Percent() },
+                Might = Math.Min(100, vanguard.Might
+                    + (equipped.Any(t => t.Code == "dragon_horn" && t.EquippedBy == vanguardId) ? 10 : 0)),
+                TreasureAdjutantMight = unit.AdjutantId is { } adjutantId
+                    && byId.TryGetValue(adjutantId, out var adjutant)
+                    ? Math.Min(100, adjutant.Might
+                        + (equipped.Any(t => t.Code == "dragon_horn" && t.EquippedBy == adjutantId) ? 10 : 0))
+                    : 0,
+                TreasureNormalAttackPercent = 100 + normalBonus,
+                TreasureDamageTakenPercent = equipped.Any(t => t.Code == "dragon_scale") ? 92 : 100,
+                TreasureFatalToWoundedPercent = equipped.Any(t => t.Code == "phoenix_jade") ? 10 : 0,
+            };
         }).ToList();
     }
 
