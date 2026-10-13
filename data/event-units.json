@@ -1,0 +1,21 @@
+[
+  {
+    "code": "great_tiger",
+    "name": "대호",
+    "discovery_code": "divine_beast_trace",
+    "spawn_delay_days": 7,
+    "spawn_min_distance": 2,
+    "spawn_max_distance": 6,
+    "spawn_terrains": ["forest", "mountain"],
+    "troops": 20000,
+    "attack": 18,
+    "defense": 12,
+    "speed": 3,
+    "detection": 2,
+    "range": 1,
+    "experience_reward": 250,
+    "aptitude_reward": 10,
+    "treasure_code": "tiger_tally",
+    "treasure_name": "호부"
+  }
+]
