@@ -56,6 +56,7 @@ public sealed class CityCapture
             var besiegers = state.Armies
                 .Where(u => u.Pool.Active > 0 && u.Field.Owner != current.Owner
                     && u.Field.Owner != WorldEngine.BanditFaction
+                    && u.Field.Owner != EventHuntService.EventFaction
                     && (u.Field.Mode == UnitMode.Attack
                         || u.Field.Mode == UnitMode.Advance
                         && u.Field.PursuitTarget == new RenewalMovement.RenewalTargetId(

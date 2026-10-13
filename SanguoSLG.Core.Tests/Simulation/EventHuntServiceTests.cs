@@ -186,4 +186,30 @@ public class EventHuntServiceTests
         Assert.Single(hunted.Treasures);
         Assert.Contains(engine.LastWorldEvents, e => e.Kind == WorldEventKind.EventUnitDefeated);
     }
+
+    [Fact]
+    public void 부대추격중인_대호가_빈성_옆에있어도_성을_점령하지않는다()
+    {
+        var spawned = Spawn();
+        var tiger = spawned.Armies.Single();
+        var empty = City with { Position = new(1, 0), Wall = 0 };
+        tiger = tiger with { Field = tiger.Field with { Mode = UnitMode.Attack, Target = new(3, 0) } };
+        var result = new CityCapture().ResolveAll(spawned with { Cities = [empty], FieldArmies = [tiger] },
+            new SeededRandomSource(1), out var captures);
+        Assert.Empty(captures);
+        Assert.Equal(City.Owner, result.Cities.Single().Owner);
+    }
+
+    [Fact]
+    public void 대호는_대기중_인접한_건축물을_자동공격하지않는다()
+    {
+        var spawned = Spawn();
+        var definitions = new FieldBuildingLoader().LoadFromDirectory(TestData.DataDirectory());
+        var fort = new FieldBuilding(new(1), "fort", new(1), new(3, 0), 4000, 0, 0);
+        var state = spawned with { FieldBuildings = [fort] };
+        var combat = new FieldBuildingCombat(new BattleResolver(60), definitions);
+        var result = combat.Resolve(state, state.Armies);
+        Assert.Empty(result.Exchanges);
+        Assert.Equal(fort.HitPoints, Assert.Single(result.State.Buildings).HitPoints);
+    }
 }

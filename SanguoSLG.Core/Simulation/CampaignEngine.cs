@@ -625,7 +625,8 @@ public sealed class CampaignEngine
                 continue;
             }
 
-            var attackers = armies.Count(u => u.Field.Owner != owner && u.Field.Position.Distance(plot) <= 1);
+            var attackers = armies.Count(u => u.Field.Owner != owner
+                && u.Field.Owner != EventHuntService.EventFaction && u.Field.Position.Distance(plot) <= 1);
             if (attackers == 0)
             {
                 continue;

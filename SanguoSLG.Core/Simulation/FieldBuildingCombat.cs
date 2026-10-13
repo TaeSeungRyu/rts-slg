@@ -48,7 +48,8 @@ public sealed class FieldBuildingCombat
                 || !definition.CanBeTargeted) continue;
             foreach (var attacker in armies.OrderBy(x => x.Field.CommandOrder).ThenBy(x => x.Id.Value))
             {
-                if (attacked.Contains(attacker.Id) || alreadyEngaged?.Contains(attacker.Id) == true || attacker.IsWaitingDeployment
+                if (attacker.Field.Owner == EventHuntService.EventFaction
+                    || attacked.Contains(attacker.Id) || alreadyEngaged?.Contains(attacker.Id) == true || attacker.IsWaitingDeployment
                     || attacker.Field.Mode == UnitMode.March || attacker.State.Statuses.Any(s => s.IsDaze)
                     || attacker.Field.Owner == building.Owner || !attacker.CanInitiateCombat || attacker.Pool.Active <= 0
                     || attacker.Field.Position.Distance(building.Position) > attacker.Field.RangeCastle) continue;
