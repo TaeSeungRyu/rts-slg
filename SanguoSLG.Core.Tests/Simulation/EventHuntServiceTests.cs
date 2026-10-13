@@ -221,6 +221,25 @@ public class EventHuntServiceTests
     }
 
     [Fact]
+    public void 대호_보상선택은_저장후에도_유지하고_한번만_확정한다()
+    {
+        var service = new EventHuntService(Map, [Tiger],
+            new EventTreasureLoader().LoadFromDirectory(TestData.DataDirectory()));
+        var (state, tiger, attacker) = CombatFixture();
+        var defeated = service.ResolveCombat(state, state.Armies,
+            HuntTurn(tiger, attacker, true, true), 10, out _);
+        var restored = SaveService.Deserialize(SaveService.Serialize(defeated));
+        Assert.True(restored.Encounters.Single().RewardChoicePending);
+        Assert.False(service.ChooseReward(restored, restored.Encounters.Single().Id, new(2), "tiger_cub").Ok);
+        var chosen = service.ChooseReward(restored, restored.Encounters.Single().Id, new(1), "tiger_cub");
+        Assert.True(chosen.Ok, chosen.Error);
+        Assert.Equal("tiger_cub", Assert.Single(chosen.State.Treasures).Code);
+        Assert.False(chosen.State.Encounters.Single().RewardChoicePending);
+        Assert.False(service.ChooseReward(chosen.State, restored.Encounters.Single().Id, new(1), "tiger_fang").Ok);
+        Assert.Single(SaveService.Deserialize(SaveService.Serialize(chosen.State)).Treasures);
+    }
+
+    [Fact]
     public void 교전기여가_없는_주변부대는_처치보상을_받지않는다()
     {
         var (state, tiger, attacker) = CombatFixture();

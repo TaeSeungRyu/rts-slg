@@ -534,7 +534,8 @@ public sealed partial class CampaignMapScene : Node3D
         var scenario = new ScenarioLoader().LoadFromDirectory(dataDirectory);
         _passability = new PassabilityMap(_map, [], _cities, scenario.RuinList.Select(r => r.Position));
         _fieldBuildingDefinitions = new FieldBuildingLoader().LoadFromDirectory(dataDirectory);
-        _eventHunts = new EventHuntService(_map, new EventUnitLoader().LoadFromDirectory(dataDirectory));
+        _eventHunts = new EventHuntService(_map, new EventUnitLoader().LoadFromDirectory(dataDirectory),
+            new EventTreasureLoader().LoadFromDirectory(dataDirectory));
         _fieldConstruction = new FieldConstructionService(_fieldBuildingDefinitions, _passability.TerrainAt);
         _unitCommander = new FieldUnitCommandService(
             (domain, hex) => _passability.CanEnter(domain, hex),

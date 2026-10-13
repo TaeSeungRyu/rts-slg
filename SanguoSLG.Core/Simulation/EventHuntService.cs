@@ -4,12 +4,35 @@ using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Spatial;
 using SanguoSLG.Core.Simulation.RenewalMovement;
 
-public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefinition> definitions)
+public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefinition> definitions,
+    IReadOnlyList<EventTreasureDefinition>? treasureDefinitions = null)
 {
     public static readonly FactionId EventFaction = new(-19);
 
     public EventUnitDefinition? Definition(string code)
         => definitions.FirstOrDefault(definition => definition.Code == code);
+
+    public IReadOnlyList<EventTreasureDefinition> RewardChoices(string eventCode)
+        => (treasureDefinitions ?? []).Where(item => item.Source == eventCode).ToList();
+
+    public CommandResult ChooseReward(GameState state, string encounterId, FactionId faction, string treasureCode)
+    {
+        var encounter = state.Encounters.FirstOrDefault(x => x.Id == encounterId);
+        var definition = RewardChoices(encounter?.Code ?? "").FirstOrDefault(x => x.Code == treasureCode);
+        if (encounter is not { RewardChoicePending: true } || encounter.RewardFaction != faction
+            || definition is null)
+            return CommandResult.Fail("선택할 수 없는 신수 보상입니다.", state);
+        var rewardId = $"{encounter.Id}:reward";
+        if (!state.Treasures.Any(x => x.Id == rewardId))
+            return CommandResult.Fail("처치 보상을 찾을 수 없습니다.", state);
+        return CommandResult.Success(state with
+        {
+            FactionTreasures = state.Treasures.Select(x => x.Id == rewardId
+                ? x with { Code = definition.Code, Name = definition.Name } : x).ToList(),
+            EventEncounters = state.Encounters.Select(x => x.Id == encounterId
+                ? x with { RewardChoicePending = false } : x).ToList(),
+        });
+    }
 
     public GameState ScheduleDiscoveries(GameState state)
     {
@@ -188,7 +211,8 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
             var damaged = turn.Combat?.DamageTaken.GetValueOrDefault(unitId) > 0
                 || turn.StatusDamage.GetValueOrDefault(unitId) > 0 || turn.StratagemDamage.GetValueOrDefault(unitId) > 0;
             var contributor = damaged ? encounter.Contributor : null;
-            encounters[index] = encounter with { DefeatedDay = day, RewardFaction = contributor?.Faction };
+            encounters[index] = encounter with { DefeatedDay = day, RewardFaction = contributor?.Faction,
+                RewardChoicePending = contributor is not null && RewardChoices(encounter.Code).Count > 1 };
             if (contributor is null) continue;
             var damageTotal = oldContributions.Sum(x => x.Damage);
             if (damageTotal <= 0) continue;
