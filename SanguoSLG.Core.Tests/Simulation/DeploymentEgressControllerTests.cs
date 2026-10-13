@@ -139,4 +139,24 @@ public class DeploymentEgressControllerTests
         var released = DeploymentEgressController.Release(blocked.Waiting, [], [port], (_, _) => true);
         Assert.Equal(exit, Assert.Single(released.Released).Field.Position);
     }
+
+    [Fact]
+    public void 소형성_동쪽이_적에게_막히면_다른_방향의_빈_출구로_출격한다()
+    {
+        var city = CityOf(CastleSize.Small);
+        var east = DeploymentEgressRules.RepresentativeExit(city, DeploymentDirection.East)!.Value;
+        var waiting = Unit(1, city, DeploymentDirection.East, east, 1);
+        var enemy = Unit(2, city, DeploymentDirection.East, east, 2) with
+        {
+            Field = waiting.Field with { Id = new UnitId(2), Owner = new FactionId(2), Position = east },
+            AwaitingEgress = false,
+        };
+
+        var result = DeploymentEgressController.Release([waiting], [enemy], [city], allowFriendlyOverlap: true);
+
+        var released = Assert.Single(result.Released);
+        Assert.Empty(result.Waiting);
+        Assert.NotEqual(east, released.Field.Position);
+        Assert.Contains(released.Field.Position, DeploymentEgressRules.ExitGroup(city, released.EgressDirection!.Value));
+    }
 }

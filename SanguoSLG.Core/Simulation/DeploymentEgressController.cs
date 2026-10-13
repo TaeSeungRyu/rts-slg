@@ -39,18 +39,40 @@ public static class DeploymentEgressController
                 foreach (var candidate in queue)
                 {
                     var candidateExit = candidate.EgressExit!.Value;
-                    var validExit = citiesById.TryGetValue(group.Key.Origin, out var candidateOrigin)
-                        && candidateOrigin.Owner == candidate.Field.Owner
-                        && DeploymentEgressRules.ExitGroup(candidateOrigin, group.Key.Direction).Contains(candidateExit)
-                        && (canEnter?.Invoke(candidate.Field.Domain, candidateExit) ?? true)
+                    if (!citiesById.TryGetValue(group.Key.Origin, out var candidateOrigin)
+                        || candidateOrigin.Owner != candidate.Field.Owner
+                        || !DeploymentEgressRules.ExitGroup(candidateOrigin, group.Key.Direction).Contains(candidateExit))
+                    {
+                        remain.Add(candidate);
+                        continue;
+                    }
+                    bool IsFree(HexCoord exit) => (canEnter?.Invoke(candidate.Field.Domain, exit) ?? true)
                         && !fieldArmies.Concat(released).Any(other => other.Pool.Active > 0
-                            && other.Field.Owner != candidate.Field.Owner
-                            && other.Field.Position == candidateExit);
-                    if (!validExit) { remain.Add(candidate); continue; }
+                            && other.Field.Owner != candidate.Field.Owner && other.Field.Position == exit);
+                    var direction = group.Key.Direction;
+                    if (!IsFree(candidateExit) && candidateOrigin.Castle == CastleSize.Small
+                        && candidate.Field.Domain is MovementDomain.Land or MovementDomain.LandMountain)
+                    {
+                        var goal = candidate.Field.Target ?? candidateOrigin.Position + DeploymentEgressRules.Offset(direction);
+                        foreach (var alternative in DeploymentEgressRules.Directions
+                            .Where(value => value != direction)
+                            .OrderBy(value => (candidateOrigin.Position + DeploymentEgressRules.Offset(value)).Distance(goal))
+                            .ThenBy(value => (int)value))
+                        {
+                            var otherExit = DeploymentEgressRules.RepresentativeExit(candidateOrigin, alternative, goal, IsFree);
+                            if (otherExit is not { } freeExit) continue;
+                            direction = alternative;
+                            candidateExit = freeExit;
+                            break;
+                        }
+                    }
+                    if (!IsFree(candidateExit)) { remain.Add(candidate); continue; }
                     released.Add(candidate with
                     {
                         Field = candidate.Field with { Position = candidateExit },
                         RenewalPosition = RenewalMovement.RenewalHexSpace.Center(candidateExit),
+                        EgressDirection = direction,
+                        EgressExit = candidateExit,
                         AwaitingEgress = false,
                     });
                 }
