@@ -718,6 +718,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestfortfixtureqa")) CallDeferred(nameof(RunFieldFortFixtureQa));
         if (args.Contains("--maptesteventhuntqa")) CallDeferred(nameof(RunEventHuntQa));
         if (args.Contains("--maptesttreasurecloseqa")) CallDeferred(nameof(RunTreasureCloseQa));
+        if (args.Contains("--maptestsummontargetqa")) CallDeferred(nameof(RunSummonTargetQa));
         if (args.Contains("--maptestofficerfixtureqa")) CallDeferred(nameof(RunMapTestOfficerFixtureQa));
     }
 
@@ -1279,6 +1280,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
         {
+            if (_summonTargetingUnitId >= 0) { StopSummonTargeting(); return; }
             if (_supplyReplenishmentSourceId >= 0) { StopSupplyReplenishmentTargeting(); return; }
             if (_fieldBuildPlacing)
             {
@@ -1314,6 +1316,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 우클릭: 목표 지정/시설 배치 취소.
         if (mb.ButtonIndex == MouseButton.Right && mb.Pressed)
         {
+            if (_summonTargetingUnitId >= 0) { StopSummonTargeting(); return; }
             if (_supplyReplenishmentSourceId >= 0) { StopSupplyReplenishmentTargeting(); return; }
             if (_fieldBuildPlacing)
             {
@@ -1357,6 +1360,12 @@ public sealed partial class CampaignMapScene : Node3D
         if (!_leftDown) { return; }
         _leftDown = false;
         if ((mb.Position - _leftDownPos).Length() >= 6f) { return; } // 드래그 = 카메라 팬(선택 아님)
+
+        if (_summonTargetingUnitId >= 0)
+        {
+            SelectSummonTarget(mb.Position);
+            return;
+        }
 
         if (_supplyReplenishmentSourceId >= 0)
         {

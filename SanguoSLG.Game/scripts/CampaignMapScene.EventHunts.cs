@@ -15,6 +15,8 @@ public sealed partial class CampaignMapScene
     private EventHuntService _eventHunts = null!;
     private readonly Dictionary<int, CombatUnit> _eventSpawnPlayback = new();
     private readonly List<WorldEvent> _pendingHuntRewards = new();
+    private int _summonTargetingUnitId = -1;
+    private string? _summonTargetingItemId;
 
     private void OpenSummonModal()
     {
@@ -36,37 +38,55 @@ public sealed partial class CampaignMapScene
         close.Pressed += CloseModal;
         heading.AddChild(close);
         box.AddChild(MakeLabel("21일 활동 · 종료 후 60일 재사용 대기 · 동일 신수는 세력당 1마리", 12, Parchment));
-        var origin = caller.RenewalPosition is { } continuous
-            ? RenewalHexSpace.NearestHex(continuous) : caller.Field.Position;
+        box.AddChild(MakeLabel("보물을 고른 뒤 지도에서 소환할 인접 빈 육상 칸을 클릭하세요.", 12, Parchment));
         foreach (var item in items)
         {
             box.AddChild(GoldRule());
             var ready = item.ReusableDay is null || _state.Day >= item.ReusableDay;
             box.AddChild(MakeLabel($"{item.Name} · {(ready ? "소환 가능" : $"재사용까지 {item.ReusableDay - _state.Day}일")}", 14, GoldBright));
-            var row = new HBoxContainer();
-            box.AddChild(row);
-            foreach (var position in origin.Neighbors())
+            var button = MakeButton(ready ? $"{item.Name} · 위치 선택" : "재사용 대기");
+            button.Disabled = !ready;
+            button.Pressed += () =>
             {
-                var target = position;
-                var button = MakeButton($"{position.Q},{position.R}");
-                button.Disabled = !ready;
-                button.Pressed += () =>
-                {
-                    var officer = item.EquippedBy;
-                    CloseModal();
-                    ShowConfirmWithOfficer("소환 확인", $"{item.Name}을(를) ({target.Q}, {target.R})에 소환합니다.\n다음 진행에 출현하여 21일 활동합니다.", officer, () =>
-                    {
-                        var result = _summons.Order(_state, caller.Id, item.Id, target);
-                        if (!result.Ok) { ShowNotice("소환 불가", result.Error ?? "소환할 수 없습니다."); return; }
-                        _state = result.State;
-                        Redraw("소환 명령을 예약했습니다.");
-                    });
-                };
-                row.AddChild(button);
-            }
+                CloseModal();
+                _summonTargetingUnitId = caller.Id.Value;
+                _summonTargetingItemId = item.Id;
+                _log.Text = $"{item.Name} · 지도에서 소환 위치 선택 (Esc/우클릭 취소)";
+            };
+            box.AddChild(button);
         }
         scroll.CustomMinimumSize = new(width, Mathf.Min(340, box.GetCombinedMinimumSize().Y));
         CenterAndDrag(panel, heading, width, 360, box);
+    }
+
+    private void StopSummonTargeting()
+    {
+        _summonTargetingUnitId = -1;
+        _summonTargetingItemId = null;
+        _hover.Visible = false;
+    }
+
+    private void SelectSummonTarget(Vector2 screen)
+    {
+        if (_summonTargetingUnitId < 0 || _summonTargetingItemId is not { } itemId) return;
+        if (RayToGround(screen) is not { } position) return;
+        var callerId = new UnitId(_summonTargetingUnitId);
+        var check = _summons.Order(_state, callerId, itemId, position);
+        if (!check.Ok)
+        {
+            _log.Text = check.Error ?? "인접한 빈 육상 위치를 선택하세요.";
+            return;
+        }
+        var item = _state.Treasures.First(x => x.Id == itemId);
+        StopSummonTargeting();
+        ShowConfirmWithOfficer("소환 확인", $"{item.Name}을(를) 선택한 위치에 소환합니다.\n다음 진행에 출현하여 21일 활동합니다.",
+            item.EquippedBy, () =>
+            {
+                var result = _summons.Order(_state, callerId, itemId, position);
+                if (!result.Ok) { ShowNotice("소환 불가", result.Error ?? "소환할 수 없습니다."); return; }
+                _state = result.State;
+                Redraw("소환 명령을 예약했습니다.");
+            });
     }
 
     private string EventHuntStatus(EventEncounter encounter)
@@ -481,6 +501,56 @@ public sealed partial class CampaignMapScene
         catch (Exception error)
         {
             GD.PushError($"[treasure-close-qa] {error}");
+            GetTree().Quit(1);
+        }
+    }
+
+    private async void RunSummonTargetQa()
+    {
+        try
+        {
+            var general = _state.Generals.First(g => _state.Assignments.Any(p => p.General == g.Id && p.Faction == Player));
+            var position = new HexCoord(-7, 0);
+            var unit = new CombatUnit(new FieldUnit(new(99998), Player, position, 2, 2, 1,
+                    MovementDomain.Land, UnitMode.Standby, null, 99998),
+                new CombatStats(10000, 10, 10), new TroopPool(10000, 0), UnitCombatState.Create(0),
+                TroopCode: "swordsman", VanguardId: general.Id,
+                RenewalPosition: RenewalHexSpace.Center(position));
+            _state = _state with
+            {
+                FieldArmies = [unit],
+                FactionTreasures = [new("summon-target-qa", "tiger_cub", "대호의 새끼", Player,
+                    _state.Day, "summon-target-qa", general.Id)],
+            };
+            var target = position.Neighbors().First(hex => _summons.Order(_state, unit.Id,
+                "summon-target-qa", hex).Ok);
+            _selectedUnitId = unit.Id.Value;
+            OpenSummonModal();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var choice = _modalLayer!.FindChildren("*", "Button", true, false).OfType<Button>()
+                .Single(button => button.Text.Contains("위치 선택"));
+            choice.EmitSignal(Button.SignalName.Pressed);
+            var mapTargeting = _summonTargetingUnitId == unit.Id.Value && _summonTargetingItemId == "summon-target-qa"
+                && _modalLayer is null;
+            var screen = _camera.UnprojectPosition(_view.HexToWorld(target)
+                + new Vector3(0f, _view.TileTopY, 0f));
+            GetViewport().NotifyMouseEntered();
+            GetViewport().PushInput(new InputEventMouseButton
+                { Position = screen, ButtonIndex = MouseButton.Left, Pressed = true }, true);
+            GetViewport().PushInput(new InputEventMouseButton
+                { Position = screen, ButtonIndex = MouseButton.Left, Pressed = false }, true);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var confirm = _confirmLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+                .SingleOrDefault(button => button.Text == "확인");
+            confirm?.EmitSignal(Button.SignalName.Pressed);
+            var passed = mapTargeting && confirm is not null && _state.SummonOrders.Count == 1
+                && _state.SummonOrders[0].Position == target && _summonTargetingUnitId < 0;
+            GD.Print($"[maptestsummontargetqa] passed={passed} map={mapTargeting} confirm={confirm is not null} orders={_state.SummonOrders.Count}");
+            GetTree().Quit(passed ? 0 : 1);
+        }
+        catch (Exception error)
+        {
+            GD.PushError($"[maptestsummontargetqa] {error}");
             GetTree().Quit(1);
         }
     }
