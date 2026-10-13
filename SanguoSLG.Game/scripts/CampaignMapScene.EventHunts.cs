@@ -196,49 +196,114 @@ public sealed partial class CampaignMapScene
         _modalDismissAction = null;
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         var general = _state.Generals.First(g => g.Id == generalId);
-        var width = Mathf.Min(580, GetViewport().GetVisibleRect().Size.X * 0.85f);
+        var viewport = GetViewport().GetVisibleRect().Size;
+        var width = Mathf.Min(760, viewport.X * 0.88f);
+        var height = Mathf.Min(650, viewport.Y * 0.82f);
         var box = DeployScaffold(width, out var scroll, out var panel);
         var heading = new HBoxContainer();
         box.AddChild(heading);
-        var title = MakeLabel($"{general.Name} · 획득 보물", 17, GoldBright);
+        var title = MakeLabel($"{general.Name} · 아이템 장착", 19, GoldBright);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         heading.AddChild(title);
         void ReturnToGeneral() => OpenGeneralDetail(generalId, backCity, backAction, dismissAction);
         var close = MakeButton("✕");
+        close.CustomMinimumSize = new(34, 30);
         close.Pressed += ReturnToGeneral;
         heading.AddChild(close);
         var service = new TreasureEquipmentService(_treasureDefinitions);
         var treasures = _state.Treasures.Where(t => t.Faction == Player
             && !_state.Encounters.Any(e => e.Id == t.EncounterId && e.RewardChoicePending))
             .OrderByDescending(t => t.AcquiredDay).ThenBy(t => t.Id).ToList();
-        if (treasures.Count == 0) box.AddChild(MakeLabel("획득한 보물이 없습니다.", 13, Parchment));
+        var current = treasures.FirstOrDefault(t => t.EquippedBy == generalId);
+        var summary = new PanelContainer { Name = "TreasureEquipSummary" };
+        summary.AddThemeStyleboxOverride("panel", Frame(new Color(0.12f, 0.085f, 0.045f), Gold, 1, 9, 12));
+        box.AddChild(summary);
+        var summaryRow = new HBoxContainer();
+        summaryRow.AddThemeConstantOverride("separation", 14);
+        summary.AddChild(summaryRow);
+        if (CircularPortraitFor(generalId) is { } portrait)
+        {
+            summaryRow.AddChild(new TextureRect
+            {
+                Texture = portrait,
+                CustomMinimumSize = new Vector2(72, 72),
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            });
+        }
+        var status = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        status.AddThemeConstantOverride("separation", 5);
+        summaryRow.AddChild(status);
+        status.AddChild(MakeLabel(current is null ? "현재 장착 · 없음" : $"현재 장착 · {current.Name}", 16, GoldBright));
+        status.AddChild(MakeLabel(current is null
+            ? "아래 보물 중 하나를 선택하세요. 장수당 하나만 장착할 수 있습니다."
+            : _treasureDefinitions.FirstOrDefault(d => d.Code == current.Code) is { } currentDefinition
+                ? TreasureEffectText(currentDefinition) : "보물 정보 확인 필요", 12, Parchment));
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel($"획득 보물  {treasures.Count}개", 15, GoldBright));
+        if (treasures.Count == 0) box.AddChild(MakeLabel("아직 획득한 보물이 없습니다.", 13, Parchment));
+        var cards = new GridContainer { Name = "TreasureEquipCards", Columns = width >= 660 ? 2 : 1 };
+        cards.AddThemeConstantOverride("h_separation", 10);
+        cards.AddThemeConstantOverride("v_separation", 10);
+        box.AddChild(cards);
         foreach (var treasure in treasures)
         {
             var equippedName = treasure.EquippedBy is { } wearer
                 ? _state.Generals.FirstOrDefault(g => g.Id == wearer)?.Name ?? $"장수 {wearer.Value}" : null;
-            var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 10);
-            box.AddChild(row);
-            var info = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-            row.AddChild(info);
-            info.AddChild(MakeLabel($"{treasure.Name} · {(equippedName is null ? "미장착" : $"{equippedName} 장착 중")}", 14, GoldBright));
+            var card = new PanelContainer
+            {
+                CustomMinimumSize = new Vector2(cards.Columns == 2 ? (width - 40) / 2 : width - 20, 132),
+            };
+            card.SetMeta("treasure_code", treasure.Code);
+            card.AddThemeStyleboxOverride("panel", Frame(new Color(0.09f, 0.065f, 0.035f),
+                treasure.EquippedBy == generalId ? GoldBright : new Color(Gold, 0.55f), 1, 8, 10));
+            cards.AddChild(card);
+            var content = new VBoxContainer();
+            content.AddThemeConstantOverride("separation", 5);
+            card.AddChild(content);
+            var top = new HBoxContainer();
+            top.AddThemeConstantOverride("separation", 9);
+            content.AddChild(top);
+            top.AddChild(MakeLabel(treasure.Code.StartsWith("dragon") ? "龍" :
+                treasure.Code.StartsWith("phoenix") ? "鳳" : "虎", 25, GoldBright));
+            var itemTitle = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            top.AddChild(itemTitle);
+            itemTitle.AddChild(MakeLabel(treasure.Name, 15, GoldBright));
+            itemTitle.AddChild(MakeLabel(equippedName is null ? "장착 가능"
+                : treasure.EquippedBy == generalId ? "현재 장착 중" : $"{equippedName} 사용 중", 11, Parchment));
             var definition = _treasureDefinitions.FirstOrDefault(d => d.Code == treasure.Code);
-            if (definition is not null) info.AddChild(MakeLabel(TreasureEffectText(definition), 11, Parchment));
-            if (treasure.EquippedBy is not null && treasure.EquippedBy != generalId) continue;
-            var button = MakeButton(treasure.EquippedBy == generalId ? "장착해제" : "장착");
+            if (definition is not null)
+            {
+                var effect = MakeLabel(TreasureEffectText(definition), 11, Parchment);
+                effect.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                content.AddChild(effect);
+            }
+            var button = MakeButton(treasure.EquippedBy == generalId ? "장착 해제"
+                : treasure.EquippedBy is not null ? "다른 장수 사용 중"
+                : current is null ? "장착" : "교체");
+            button.Name = "TreasureEquipAction";
+            button.Disabled = treasure.EquippedBy is not null && treasure.EquippedBy != generalId;
+            button.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
             var id = treasure.Id;
             button.Pressed += () =>
             {
+                var work = _state;
+                if (treasure.EquippedBy != generalId && current is not null)
+                {
+                    var removed = service.Unequip(work, current.Id);
+                    if (!removed.Ok) { ShowNotice("보물 변경 불가", removed.Error ?? "보물을 변경할 수 없습니다."); return; }
+                    work = removed.State;
+                }
                 var result = treasure.EquippedBy == generalId
-                    ? service.Unequip(_state, id) : service.Equip(_state, id, generalId);
+                    ? service.Unequip(work, id) : service.Equip(work, id, generalId);
                 if (!result.Ok) { ShowNotice("보물 변경 불가", result.Error ?? "보물을 변경할 수 없습니다."); return; }
                 _state = result.State;
                 ReturnToGeneral();
             };
-            row.AddChild(button);
+            content.AddChild(button);
         }
-        scroll.CustomMinimumSize = new(width, Mathf.Min(480, box.GetCombinedMinimumSize().Y));
-        CenterAndDrag(panel, heading, width, 500, box);
+        scroll.CustomMinimumSize = new(width, Mathf.Min(height, box.GetCombinedMinimumSize().Y));
+        CenterAndDrag(panel, heading, width, height, box);
     }
 
     private void ShowPendingHuntRewards()
@@ -484,6 +549,22 @@ public sealed partial class CampaignMapScene
             var equippedClose = _state.Treasures.Single().EquippedBy == general.Id
                 && _modalLayer?.FindChild("GeneralTreasureEquip", true, false) is not null;
             CloseModal();
+            _state = _state with { FactionTreasures = _state.Treasures.Append(
+                new FactionTreasure("close-qa:second", "tiger_fang", "호아", Player,
+                    _state.Day, "close-qa-second")).ToList() };
+            OpenGeneralDetail(general.Id, city.Id);
+            _modalLayer!.FindChild("GeneralTreasureEquip", true, false)!
+                .EmitSignal(Button.SignalName.Pressed);
+            await Settle();
+            var cards = _modalLayer?.FindChild("TreasureEquipCards", true, false) as GridContainer;
+            var summary = _modalLayer?.FindChild("TreasureEquipSummary", true, false);
+            var cardLayout = cards?.Columns == 2 && cards.GetChildCount() == 2 && summary is not null;
+            _modalLayer!.FindChildren("TreasureEquipAction", "Button", true, false).OfType<Button>()
+                .Single(button => button.Text == "교체").EmitSignal(Button.SignalName.Pressed);
+            await Settle();
+            var swapped = _state.Treasures.Single(t => t.Id == "close-qa:second").EquippedBy == general.Id
+                && _state.Treasures.Single(t => t.Id == "close-qa:reward").EquippedBy is null;
+            CloseModal();
             OpenTreasureList();
             await Settle();
             var heading = _modalLayer?.FindChild("TreasureInventoryHeading", true, false) as MarginContainer;
@@ -494,8 +575,8 @@ public sealed partial class CampaignMapScene
                     .Any(label => label.Text == $"장착 · {general.Name}");
             CloseModal();
             var passed = rewardClose && equipLayerCount == 1 && equipBackClose && equippedClose
-                && inventoryOnly && ModalCount() == 0;
-            GD.Print($"[treasure-close-qa] passed={passed} rewardClose={rewardClose} equipLayers={equipLayerCount} equipBackClose={equipBackClose} equippedClose={equippedClose} remainingLayers={ModalCount()}");
+                && cardLayout && swapped && inventoryOnly && ModalCount() == 0;
+            GD.Print($"[treasure-close-qa] passed={passed} rewardClose={rewardClose} equipLayers={equipLayerCount} equipBackClose={equipBackClose} equippedClose={equippedClose} cards={cardLayout} swapped={swapped} remainingLayers={ModalCount()}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (Exception error)
