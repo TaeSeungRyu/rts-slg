@@ -40,6 +40,21 @@ public sealed partial class CampaignMapScene
             var initialShipPosition = ships.GetGlobalRect().Position;
             var initialTroopPosition = troops.GetGlobalRect().Position;
             var initialOfficerPosition = table.GetGlobalRect().Position;
+            foreach (var target in new[] { ships, troops, table })
+            {
+                var normal = target.GetThemeStylebox("title_button_normal");
+                var hover = target.GetThemeStylebox("title_button_hover");
+                var pressed = target.GetThemeStylebox("title_button_pressed");
+                if (!normal.GetMinimumSize().IsEqualApprox(hover.GetMinimumSize())
+                    || !normal.GetMinimumSize().IsEqualApprox(pressed.GetMinimumSize()))
+                    throw new Exception($"{target.Name} 헤더 상태별 최소 높이가 다름");
+                var headerPoint = target.GetGlobalRect().Position + new Vector2(20, 12);
+                GetViewport().PushInput(new InputEventMouseMotion { Position = headerPoint });
+                for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (!target.Size.IsEqualApprox(target == ships ? initialShipSize
+                    : target == troops ? initialTroopSize : initialOfficerSize))
+                    throw new Exception($"{target.Name} 헤더 오버 후 표 높이 변경");
+            }
             foreach (var target in new[] { ships, troops, table, ships, troops, table })
             {
                 var row = target.GetRoot().GetFirstChild();

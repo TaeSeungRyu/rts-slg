@@ -10269,6 +10269,17 @@ public sealed partial class CampaignMapScene : Node3D
         tween.TweenProperty(card, "modulate", Colors.White, 0.22f).SetEase(Tween.EaseType.Out);
     }
 
+    private static void StabilizeNavalTableHeader(Tree table)
+    {
+        var normal = Frame(new Color(0.12f, 0.10f, 0.08f), new Color(Gold, 0.48f), 1, 2, 5);
+        var hover = Frame(new Color(0.18f, 0.14f, 0.09f), new Color(Gold, 0.72f), 1, 2, 5);
+        var pressed = Frame(new Color(0.18f, 0.14f, 0.09f), new Color(Gold, 0.72f), 1, 2, 5);
+        table.AddThemeStyleboxOverride("title_button_normal", normal);
+        table.AddThemeStyleboxOverride("title_button_hover", hover);
+        table.AddThemeStyleboxOverride("title_button_pressed", pressed);
+        table.AddThemeStyleboxOverride("title_button_focus", Frame(Colors.Transparent, Colors.Transparent, 0, 2, 5));
+    }
+
     private void OpenNavalCompose(CityId city)
     {
         _depModalCity = city;
@@ -10366,6 +10377,7 @@ public sealed partial class CampaignMapScene : Node3D
         shipTree.AddThemeFontOverride("font", _font);
         shipTree.AddThemeFontSizeOverride("font_size", 13);
         shipTree.AddThemeConstantOverride("v_separation", 2);
+        StabilizeNavalTableHeader(shipTree);
         shipTree.SetColumnTitle(0, "선택"); shipTree.SetColumnExpand(0, false); shipTree.SetColumnCustomMinimumWidth(0, 52);
         shipTree.SetColumnTitle(1, "선박"); shipTree.SetColumnExpand(1, true);
         shipTree.SetColumnTitle(2, "보유"); shipTree.SetColumnExpand(2, false); shipTree.SetColumnCustomMinimumWidth(2, 54);
@@ -10412,6 +10424,7 @@ public sealed partial class CampaignMapScene : Node3D
         troopTree.AddThemeFontOverride("font", _font);
         troopTree.AddThemeFontSizeOverride("font_size", 13);
         troopTree.AddThemeConstantOverride("v_separation", 2);
+        StabilizeNavalTableHeader(troopTree);
         troopTree.SetColumnTitle(0, "선택"); troopTree.SetColumnExpand(0, false); troopTree.SetColumnCustomMinimumWidth(0, 52);
         troopTree.SetColumnTitle(1, "병종"); troopTree.SetColumnExpand(1, true);
         troopTree.SetColumnTitle(2, "가능"); troopTree.SetColumnExpand(2, false); troopTree.SetColumnCustomMinimumWidth(2, 70);
@@ -10494,6 +10507,7 @@ public sealed partial class CampaignMapScene : Node3D
         };
         generalTree.AddThemeFontOverride("font", _font);
         generalTree.AddThemeFontSizeOverride("font_size", 13);
+        StabilizeNavalTableHeader(generalTree);
         generalTree.SetColumnTitle(0, "선봉"); generalTree.SetColumnExpand(0, false); generalTree.SetColumnCustomMinimumWidth(0, 46);
         generalTree.SetColumnTitle(1, "부관"); generalTree.SetColumnExpand(1, false); generalTree.SetColumnCustomMinimumWidth(1, 46);
         generalTree.SetColumnTitle(2, "이름"); generalTree.SetColumnExpand(2, true); generalTree.SetColumnExpandRatio(2, 3);
