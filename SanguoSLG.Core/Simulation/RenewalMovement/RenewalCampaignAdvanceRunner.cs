@@ -197,7 +197,9 @@ public sealed class RenewalCampaignAdvanceRunner(
             }
             return renewal;
         }).ToList();
-        var state = simulator.Start(renewalUnits, externalTargets);
+        var existingUnitIds = active.Where(unit => unit.RenewalPosition is not null)
+            .Select(unit => unit.Id).ToHashSet();
+        var state = simulator.Start(renewalUnits, externalTargets, existingUnitIds);
         Trace(state, trace);
         var ticks = new List<MovementTick>();
         var days = Math.Clamp(maxDays, 0, RenewalAdvanceSimulator.DaysPerAdvance);

@@ -29,10 +29,11 @@ public sealed class RenewalAdvanceSimulator
     }
 
     public RenewalAdvanceState Start(IEnumerable<RenewalUnitState> units,
-        IEnumerable<RenewalTargetState>? externalTargets = null)
+        IEnumerable<RenewalTargetState>? externalTargets = null,
+        IReadOnlySet<UnitId>? existingUnitIds = null)
     {
         var ordered = SeparateHostileStartingPositions(
-                AssignArrivalPositions(units.OrderBy(unit => unit.Id.Value).ToList()))
+                AssignArrivalPositions(units.OrderBy(unit => unit.Id.Value).ToList()), existingUnitIds)
             .Select(PreparePath)
             .ToList();
         if (ordered.Select(unit => unit.Id).Distinct().Count() != ordered.Count)
@@ -45,14 +46,18 @@ public sealed class RenewalAdvanceSimulator
     }
 
     private IReadOnlyList<RenewalUnitState> SeparateHostileStartingPositions(
-        IReadOnlyList<RenewalUnitState> units)
+        IReadOnlyList<RenewalUnitState> units, IReadOnlySet<UnitId>? existingUnitIds)
     {
         var result = new List<RenewalUnitState>(units.Count);
         var minimumDistanceSquared = checked(HostileCollisionRadius * 2 * HostileCollisionRadius * 2);
-        foreach (var unit in units.OrderBy(value => value.CommandId).ThenBy(value => value.Id.Value))
+        foreach (var unit in units.OrderBy(value => existingUnitIds?.Contains(value.Id) == true ? 0 : 1)
+            .ThenBy(value => value.CommandId).ThenBy(value => value.Id.Value))
         {
             var position = unit.Position;
-            if (unit.IsActive && result.Any(other => other.IsActive && other.Owner != unit.Owner
+            if (unit.IsActive && (existingUnitIds?.Contains(unit.Id) != true
+                    || result.Any(other => other.IsActive && other.Owner != unit.Owner
+                        && other.Position == position))
+                && result.Any(other => other.IsActive && other.Owner != unit.Owner
                 && other.Position.DistanceSquaredTo(position) < minimumDistanceSquared))
             {
                 var separated = HostileSeparationCandidates(position)

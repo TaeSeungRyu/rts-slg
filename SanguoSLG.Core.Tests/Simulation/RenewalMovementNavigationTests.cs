@@ -239,6 +239,39 @@ public sealed class RenewalMovementNavigationTests
     }
 
     [Fact]
+    public void 교전후_가까워진_기존_적군은_다음날_시작에_순간이동하지_않는다()
+    {
+        var simulator = new RenewalAdvanceSimulator(new RenewalMovementMap(new HexMap(-5, 12, -5, 12)));
+        var first = Unit(1, new(0, 0), new(0, 0)) with { Position = new(1734, 4000) };
+        var second = Unit(2, new(0, 0), new(0, 0), faction: 2) with
+        {
+            Position = new(2426, 4400),
+        };
+
+        var nextDay = simulator.Start([first, second], existingUnitIds: new HashSet<UnitId> { first.Id, second.Id });
+
+        Assert.Equal(first.Position, nextDay.Units.Single(unit => unit.Id == first.Id).Position);
+        Assert.Equal(second.Position, nextDay.Units.Single(unit => unit.Id == second.Id).Position);
+    }
+
+    [Fact]
+    public void 기존_적군_근처에_새로_출전한_부대만_초기_간격을_보정한다()
+    {
+        var simulator = new RenewalAdvanceSimulator(new RenewalMovementMap(new HexMap(-5, 12, -5, 12)));
+        var existing = Unit(1, new(0, 0), new(0, 0)) with { Position = new(1734, 4000) };
+        var deployed = Unit(2, new(0, 0), new(0, 0), faction: 2) with
+        {
+            Position = new(2426, 4400),
+        };
+
+        var state = simulator.Start([existing, deployed], existingUnitIds: new HashSet<UnitId> { existing.Id });
+
+        Assert.Equal(existing.Position, state.Units.Single(unit => unit.Id == existing.Id).Position);
+        Assert.True(existing.Position.DistanceTo(state.Units.Single(unit => unit.Id == deployed.Id).Position)
+            >= RenewalAdvanceSimulator.HostileCollisionRadius * 2);
+    }
+
+    [Fact]
     public void 목적지가_막혔으면_경로없음으로_남고_순간이동하지_않는다()
     {
         var destination = new HexCoord(2, 0);

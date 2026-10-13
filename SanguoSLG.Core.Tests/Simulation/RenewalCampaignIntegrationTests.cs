@@ -10,6 +10,32 @@ using SanguoSLG.Game;
 public sealed class RenewalCampaignIntegrationTests
 {
     [Fact]
+    public void 교전후_근접한_기존_부대는_여러_진행일_사이에_위치가_튀지_않는다()
+    {
+        var first = Army(1, new(2, 3), new(2, 3), 0) with
+        {
+            RenewalPosition = new(1734, 4000),
+            Field = Army(1, new(2, 3), new(2, 3), 0).Field with
+            { Mode = UnitMode.Standby, Target = null },
+        };
+        var second = Army(2, new(3, 3), new(3, 3), 0) with
+        {
+            RenewalPosition = new(2426, 4400),
+            Field = Army(2, new(3, 3), new(3, 3), 0).Field with
+            { Owner = new(2), Mode = UnitMode.Standby, Target = null },
+        };
+        var trace = new List<RenewalCampaignTraceEntry>();
+
+        Engine(new HexMap(-5, 12, -5, 12), trace: trace.Add)
+            .AdvanceWeek(World(first, second), out _);
+
+        Assert.All(trace.Where(entry => entry.Unit == first.Id), entry =>
+            Assert.Equal(first.RenewalPosition, entry.Position));
+        Assert.All(trace.Where(entry => entry.Unit == second.Id), entry =>
+            Assert.Equal(second.RenewalPosition, entry.Position));
+    }
+
+    [Fact]
     public void 파괴된_보루에서_성벽_가장자리로_행군해도_가까운_통행가능_지점까지_이동한다()
     {
         var city = new City(new(4), "업", new(-1, 5), new(1), 3000, CastleSize.Medium);
