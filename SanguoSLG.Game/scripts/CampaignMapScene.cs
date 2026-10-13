@@ -8735,6 +8735,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             Name = "GeneralRosterSearch",
             Text = _generalRosterQuery,
+            MaxLength = 10,
             PlaceholderText = "장수 이름 검색",
             CustomMinimumSize = new Vector2(230, 32),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
@@ -8834,7 +8835,13 @@ public sealed partial class CampaignMapScene : Node3D
             TraceRoster($"rows-{portraitRows.Count}");
         }
 
-        search.TextChanged += text => { _generalRosterQuery = text; _generalRosterPage = 0; RenderPage(); };
+        search.TextChanged += text =>
+        {
+            _generalRosterQuery = text;
+            _generalRosterPage = 0;
+            RenderPage();
+            if (!search.HasFocus()) search.GrabFocus();
+        };
         prevPage.Pressed += () => { _generalRosterPage--; RenderPage(); };
         nextPage.Pressed += () => { _generalRosterPage++; RenderPage(); };
         tree.ItemSelected += () =>
@@ -16621,6 +16628,16 @@ public sealed partial class CampaignMapScene : Node3D
                 && _generalRosterPage == 1;
         var search = _modalLayer?.FindChildren("GeneralRosterSearch", "LineEdit", true, false)
             .OfType<LineEdit>().FirstOrDefault();
+        var typedSearch = false;
+        if (search is not null)
+        {
+            search.GrabFocus();
+            foreach (var ch in "guanyuzhangbei")
+            {
+                GetViewport().PushInput(new InputEventKey { Keycode = (Key)char.ToUpperInvariant(ch), Unicode = ch, Pressed = true }, true);
+            }
+            typedSearch = search.Text == "guanyuzhan" && search.HasFocus() && search.MaxLength == 10;
+        }
         var query = _state.Generals[^1].Name;
         if (search is not null)
         {
@@ -16659,11 +16676,11 @@ public sealed partial class CampaignMapScene : Node3D
             && thinGoldRing
             && smoothGoldRing
             && portraitNameGap
-            && pageTwoOk && searchOk
+            && pageTwoOk && searchOk && typedSearch
             && generalReturned && cityReturned
             && first.ElapsedMilliseconds < initialModalLimitMilliseconds
             && second.ElapsedMilliseconds <= first.ElapsedMilliseconds;
-        GD.Print($"[maptestgeneralrosterqa] passed={passed} rows={rows}/{expectedPageRows} pageTwo={pageTwoOk}:{pageTwoRows} search={searchOk}:{filteredRows.Count} thumbnails={_rosterPortraits.Count} deferred={coldHydrated} compact={compactTextures} goldRing={thinGoldRing}/{smoothGoldRing} nameGap={portraitNameGap} initialColdMs={first.ElapsedMilliseconds} initialWarmMs={second.ElapsedMilliseconds} limitMs={initialModalLimitMilliseconds}");
+        GD.Print($"[maptestgeneralrosterqa] passed={passed} rows={rows}/{expectedPageRows} pageTwo={pageTwoOk}:{pageTwoRows} search={searchOk}:{filteredRows.Count} typed={typedSearch} thumbnails={_rosterPortraits.Count} deferred={coldHydrated} compact={compactTextures} goldRing={thinGoldRing}/{smoothGoldRing} nameGap={portraitNameGap} initialColdMs={first.ElapsedMilliseconds} initialWarmMs={second.ElapsedMilliseconds} limitMs={initialModalLimitMilliseconds}");
         _generalRosterQuery = "";
         _generalRosterPage = 0;
         if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
