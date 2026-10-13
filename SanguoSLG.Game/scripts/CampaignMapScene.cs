@@ -9025,7 +9025,10 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         box.AddChild(GoldRule());
-        box.AddChild(MakeLabel("획득 보물", 15, Gold));
+        var treasureHeading = new MarginContainer { Name = "TreasureInventoryHeading" };
+        treasureHeading.AddThemeConstantOverride("margin_top", 14);
+        treasureHeading.AddChild(MakeLabel("획득 보물", 15, Gold));
+        box.AddChild(treasureHeading);
         var treasures = _state.Treasures.Where(treasure => treasure.Faction == Player)
             .OrderByDescending(treasure => treasure.AcquiredDay).ThenBy(treasure => treasure.Id).ToList();
         if (treasures.Count == 0)

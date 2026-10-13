@@ -466,7 +466,17 @@ public sealed partial class CampaignMapScene
             var equippedClose = _state.Treasures.Single().EquippedBy == general.Id
                 && _modalLayer?.FindChild("GeneralTreasureEquip", true, false) is not null;
             CloseModal();
-            var passed = rewardClose && equipLayerCount == 1 && equipBackClose && equippedClose && ModalCount() == 0;
+            OpenTreasureList();
+            await Settle();
+            var heading = _modalLayer?.FindChild("TreasureInventoryHeading", true, false) as MarginContainer;
+            var inventoryOnly = heading?.GetThemeConstant("margin_top") == 14
+                && _modalLayer!.FindChildren("*", "Button", true, false).OfType<Button>()
+                    .All(button => button.Text is not ("장착" or "장착해제"))
+                && _modalLayer.FindChildren("*", "Label", true, false).OfType<Label>()
+                    .Any(label => label.Text == $"장착 · {general.Name}");
+            CloseModal();
+            var passed = rewardClose && equipLayerCount == 1 && equipBackClose && equippedClose
+                && inventoryOnly && ModalCount() == 0;
             GD.Print($"[treasure-close-qa] passed={passed} rewardClose={rewardClose} equipLayers={equipLayerCount} equipBackClose={equipBackClose} equippedClose={equippedClose} remainingLayers={ModalCount()}");
             GetTree().Quit(passed ? 0 : 1);
         }
