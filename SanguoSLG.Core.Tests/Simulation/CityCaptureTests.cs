@@ -222,7 +222,7 @@ public class CityCaptureTests
     }
 
     [Fact]
-    public void 함락_주둔장수는_30퍼센트_합류하고_나머지는_후퇴한다()
+    public void 함락_세력이_존속하면_주둔장수는_모두_후퇴한다()
     {
         // 옛 세력(2)은 다른 도시(9)도 보유 → 소멸 안 함. 주둔 장수 2명(태수 포함).
         var fallen = Fallen(1, 2, new HexCoord(5, 0));
@@ -236,18 +236,14 @@ public class CityCaptureTests
                 new GeneralPosting(new GeneralId(11), new FactionId(2), new CityId(1)),
             ]);
 
-        // Next(0,100): 첫 장수 29=합류, 둘째 30=후퇴.
         var after = new CityCapture().ResolveAll(s, new FixedRandom(29, 30), out var reports);
 
         var r = Assert.Single(reports);
         Assert.False(r.FactionEliminated);
-        Assert.Equal(new GeneralId(10), Assert.Single(r.Captured));
-        Assert.Equal(new GeneralId(11), Assert.Single(r.Fled));
-
-        // 합류: 점거 세력 소속으로 함락 도시 주둔.
-        var joined = after.PostingOf(new GeneralId(10));
-        Assert.Equal((new FactionId(1), new CityId(1)), (joined!.Faction, joined.Location));
-        // 후퇴: 원 세력 최근접 보유 도시(9)로 주둔 이동.
+        Assert.Empty(r.Captured);
+        Assert.Equal([new GeneralId(10), new GeneralId(11)], r.Fled);
+        Assert.Equal((new FactionId(2), new CityId(9)),
+            (after.PostingOf(new GeneralId(10))!.Faction, after.PostingOf(new GeneralId(10))!.Location));
         Assert.Equal(new CityId(9), after.PostingOf(new GeneralId(11))!.Location);
     }
 
@@ -313,7 +309,7 @@ public class CityCaptureTests
     }
 
     [Fact]
-    public void 항구_재점령_시_옛_주둔장수는_포로없이_확률에_따라_다시_합류한다()
+    public void 항구_재점령_시_양쪽_주둔장수는_각자_소속_거점으로_후퇴한다()
     {
         var port = Fallen(1, 1, new HexCoord(5, 0)) with { Port = PortSize.Small };
         var playerHome = Fallen(9, 1, new HexCoord(12, 0));
@@ -324,8 +320,9 @@ public class CityCaptureTests
             [Gen(11)], [new GeneralPosting(officer, new FactionId(1), port.Id)]);
 
         var lost = new CityCapture().ResolveAll(state, new FixedRandom(0), out var first);
-        Assert.Equal([officer], Assert.Single(first).Captured);
-        Assert.Equal((new FactionId(2), port.Id),
+        Assert.Empty(Assert.Single(first).Captured);
+        Assert.Equal([officer], Assert.Single(first).Fled);
+        Assert.Equal((new FactionId(1), playerHome.Id),
             (lost.PostingOf(officer)!.Faction, lost.PostingOf(officer)!.Location));
 
         var retaken = new CityCapture().ResolveAll(lost with
@@ -334,8 +331,8 @@ public class CityCaptureTests
             FieldArmies = [Attacker(2, 1, new HexCoord(4, 0), port.Position)],
         }, new FixedRandom(0), out var second);
 
-        Assert.Equal([officer], Assert.Single(second).Captured);
-        Assert.Equal((new FactionId(1), port.Id),
+        Assert.Empty(Assert.Single(second).Captured);
+        Assert.Equal((new FactionId(1), playerHome.Id),
             (retaken.PostingOf(officer)!.Faction, retaken.PostingOf(officer)!.Location));
         Assert.False(retaken.IsGeneralBusy(officer));
     }
@@ -463,7 +460,7 @@ public class CityCaptureTests
     }
 
     [Fact]
-    public void 세력멸망_미획득_장수는_70퍼센트_확률로_타세력에_편입된다()
+    public void 세력멸망_점령세력에_합류하지_않은_30퍼센트는_타세력에_편입된다()
     {
         var last = Fallen(1, 2, new HexCoord(5, 0));       // 세력 2의 유일한 도시
         var third = new City(new CityId(9), "제3성", new HexCoord(12, 0), new FactionId(3), 0);
@@ -472,8 +469,7 @@ public class CityCaptureTests
             generals: [Gen(10)],
             postings: [new GeneralPosting(new GeneralId(10), new FactionId(2), new CityId(1))]);
 
-        // 점거 세력 합류 실패(70), 타 세력 편입 성공(69).
-        var after = new CityCapture().ResolveAll(s, new FixedRandom(70, 69), out var reports);
+        var after = new CityCapture().ResolveAll(s, new FixedRandom(70), out var reports);
 
         var r = Assert.Single(reports);
         Assert.True(r.FactionEliminated);

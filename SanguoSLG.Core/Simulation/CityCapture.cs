@@ -21,9 +21,8 @@ public sealed record CaptureReport(
 /// <summary>
 /// 캠페인 함락 처리(design-general-lifecycle §4·design-combat "함락 처리"). 성벽 0 + 수비 0 도시에
 /// 근접(거리 1) 적 공격 부대가 있으면 자동 입성·점거한다. 소유 전환 + 자원 전부 승계(인구 −10%·
-/// 치안 30 리셋), 진행 중 명령 드롭, 주둔 장수 개별 판정(30% 점거 세력 합류 / 나머지 원 세력
-/// 최근접 도시 후퇴, 원 도시 0이면 세력 소멸). 멸망 시 남은 장수는 70% 점거 세력 합류, 실패자는
-/// 70% 타 세력 편입, 나머지는 재야화된다. 결정론: 도시·부대·장수 id 순, 확률 판정은 시드 난수만.
+/// 치안 30 리셋), 진행 중 명령 드롭, 비출전 장수는 원 세력 최근접 거점으로 후퇴한다.
+/// 원 세력 멸망 시에만 장수별로 70% 점거 세력 합류, 30% 타 세력 이동을 판정한다.
 /// </summary>
 public sealed class CityCapture
 {
@@ -163,7 +162,7 @@ public sealed class CityCapture
             ProductionOperations = state.ProductionOps.Where(op => op.City != city.Id).ToList(),
         };
 
-        // 4) 옛 세력 주둔 장수(태수 포함) 개별 판정. 옛 세력이 도시를 모두 잃으면 세력 소멸.
+        // 4) 옛 세력 주둔 장수(태수 포함) 후퇴. 옛 세력이 도시를 모두 잃으면 세력 소멸.
         var stationed = next.Assignments
             .Where(p => p.Faction == oldOwner && p.Location == city.Id
                 && !next.IsGeneralInField(p.General))
@@ -198,26 +197,12 @@ public sealed class CityCapture
 
         foreach (var gid in stationed.Where(id => !workingGenerals.Contains(id)))
         {
-            if (random.Next(0, 100) < 30)
+            next = next with
             {
-                var postings2 = next.Assignments.Select(p => p.General == gid
-                    ? p with { Faction = captor, Location = city.Id }
-                    : p).ToList();
-                next = next with { Postings = postings2 };
-                captured.Add(gid);
-            }
-            else
-            {
-                var fallbackCity = NearestOwnedCity(next, oldOwner, city.Position);
-                var idx = next.Assignments.ToList().FindIndex(p => p.General == gid);
-                if (fallbackCity is { } dest && idx >= 0)
-                {
-                    var postings2 = next.Assignments.Select(p => p.General == gid ? p with { Location = dest } : p).ToList();
-                    next = next with { Postings = postings2 };
-                }
-
-                fled.Add(gid);
-            }
+                Postings = next.Assignments.Select(p => p.General == gid
+                    ? p with { Location = refuge } : p).ToList(),
+            };
+            fled.Add(gid);
         }
 
         reports.Add(new CaptureReport(city.Id, captor, oldOwner, captured, fled, FactionEliminated: false,
@@ -244,7 +229,7 @@ public sealed class CityCapture
                 continue;
             }
 
-            if (random.Next(0, 100) < 70 && NearestOtherFactionCity(state, captor, capturedCity) is { } refuge)
+            if (NearestOtherFactionCity(state, captor, capturedCity) is { } refuge)
             {
                 postings.Add(new GeneralPosting(gid, refuge.Owner, refuge.Id));
                 reassigned.Add(gid);
