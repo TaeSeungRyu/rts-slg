@@ -895,6 +895,13 @@ public sealed class RenewalCampaignIntegrationTests
         Assert.DoesNotContain(trace, entry => entry.PursuitTarget is
             { Kind: RenewalTargetKind.Building, Value: -1 });
         Assert.NotEqual(advance.RenewalPosition, Assert.Single(after.Armies).RenewalPosition);
+        var advanceTowardRuin = advance with { Field = advance.Field with
+            { Mode = UnitMode.Advance, Target = ruin.Position,
+                ContinuousTarget = RenewalHexSpace.Center(ruin.Position) } };
+        var advanceResult = Engine(new HexMap(-8, 20, -5, 16)).AdvanceWeek(World(advanceTowardRuin) with
+            { RuinDefinitions = [ruin], RuinStates = [status] }, out var advanceTurns);
+        Assert.All(advanceTurns, turn => Assert.Empty(turn.RuinExchanges));
+        Assert.Equal(status.Defenders, Assert.Single(advanceResult.RuinStatus).Defenders);
         var attack = advance with { Field = advance.Field with
             { Mode = UnitMode.Attack, Target = ruin.Position,
                 ContinuousTarget = RenewalHexSpace.Center(ruin.Position) } };
