@@ -609,7 +609,11 @@ public sealed partial class CampaignMapScene : Node3D
             RuinDefinitions = scenario.RuinList,
             RuinStates = scenario.RuinList.Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
         };
-        if (args.Contains("--maptest")) SeedFieldBuildingSamples();
+        if (args.Contains("--maptest"))
+        {
+            SeedFieldBuildingSamples();
+            SeedMapTestOfficers();
+        }
         if (args.Contains("--event-hunt-sample")) SeedEventHuntSample();
 
         _dbgLog = ProjectSettings.GlobalizePath("res://deploy-debug.log");
@@ -697,6 +701,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestbanditdisplayqa")) CallDeferred(nameof(RunBanditDisplayQa));
         if (args.Contains("--maptestfortfixtureqa")) CallDeferred(nameof(RunFieldFortFixtureQa));
         if (args.Contains("--maptesteventhuntqa")) CallDeferred(nameof(RunEventHuntQa));
+        if (args.Contains("--maptestofficerfixtureqa")) CallDeferred(nameof(RunMapTestOfficerFixtureQa));
     }
 
     private void SeedFieldBuildingSamples()
