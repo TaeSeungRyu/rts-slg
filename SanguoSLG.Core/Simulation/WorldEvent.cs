@@ -27,6 +27,8 @@ public enum WorldEventKind
     AptitudeGrowth,     // 실제 사용 병종 숙련 상승
     ShipBuild,          // 항구 선박 생산 완료
     RecruitmentPoints, // 세력 공용 인재 영입 포인트 획득
+    EventUnitAppeared,
+    EventUnitDefeated,
 }
 
 /// <summary>
