@@ -110,14 +110,25 @@ public class EventHuntServiceTests
     }
 
     [Fact]
-    public void 두도시가_단서를_찾아도_활동중인_대호는_한마리다()
+    public void 도시별_탐색과_같은날_중복탐색도_서로_다른_위치에_각각_출현한다()
     {
-        var world = World with { ExplorationDiscoveries = World.Discoveries.Append(
-            new(2, new(2), City.Id, new(2), ExplorationResultKind.DivineBeast, "divine_beast_trace")).ToList() };
-        var spawned = Service.SpawnDue(Service.ScheduleDiscoveries(world), 9, out _);
-        var next = Service.SpawnDue(spawned, 30, out _);
-        Assert.Single(next.Armies);
-        Assert.Single(next.Encounters, e => e.Unit is null);
+        var otherCity = City with { Id = new(2), Name = "다른 성", Position = new(-5, 0) };
+        var discoveries = World.Discoveries.Concat([
+            World.Discoveries[0],
+            new ExplorationDiscovery(1, new(1), otherCity.Id, new(1), ExplorationResultKind.DivineBeast, "divine_beast_trace")]).ToList();
+        var world = World with { Cities = [City, otherCity], ExplorationDiscoveries = discoveries };
+        var scheduled = Service.ScheduleDiscoveries(world);
+        Assert.Equal(3, scheduled.Encounters.Count);
+        Assert.Equal(3, Service.ScheduleDiscoveries(scheduled).Encounters.Count);
+        var spawned = Service.SpawnDue(scheduled, 8, out var events);
+        Assert.Equal(3, spawned.Armies.Count);
+        Assert.Equal(3, spawned.Armies.Select(unit => unit.Field.Position).Distinct().Count());
+        Assert.Equal(3, events.Count);
+        Assert.All(spawned.Encounters, encounter => Assert.NotNull(encounter.Unit));
+        Assert.All(spawned.Encounters, encounter => Assert.InRange(
+            spawned.Armies.Single(unit => unit.Id == encounter.Unit).Field.Position.Distance(
+                world.Cities.Single(city => city.Id == encounter.DiscoveryCity).Position),
+            Tiger.SpawnMinDistance, Tiger.SpawnMaxDistance));
     }
 
     [Fact]

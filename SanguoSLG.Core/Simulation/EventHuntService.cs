@@ -77,12 +77,16 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
     {
         var encounters = state.Encounters.ToList();
         var known = encounters.Select(encounter => encounter.Id).ToHashSet(StringComparer.Ordinal);
+        var occurrences = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var discovery in state.Discoveries.OrderBy(d => d.Day)
             .ThenBy(d => d.Faction.Value).ThenBy(d => d.City.Value).ThenBy(d => d.Explorer.Value))
         {
             var definition = definitions.FirstOrDefault(d => d.DiscoveryCode == discovery.Code);
             if (definition is null) continue;
             var id = $"{discovery.Day}:{discovery.Faction.Value}:{discovery.City.Value}:{discovery.Explorer.Value}:{discovery.Code}";
+            occurrences.TryGetValue(id, out var occurrence);
+            occurrences[id] = occurrence + 1;
+            if (occurrence > 0) id = $"{id}:{occurrence + 1}";
             if (!known.Add(id)) continue;
             encounters.Add(new(id, definition.Code, discovery.Faction, discovery.City,
                 discovery.Day + definition.SpawnDelayDays));
@@ -93,7 +97,7 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
     public GameState SpawnDue(GameState state, int day, out IReadOnlyList<WorldEvent> events)
     {
         events = [];
-        if (state.Armies.Any(unit => unit.Field.Owner == EventFaction && unit.Pool.Active > 0)) return state;
+        var appeared = new List<WorldEvent>();
         foreach (var encounter in state.Encounters.Where(e => e.Unit is null && e.DefeatedDay is null
                 && e.ScheduledDay <= day).OrderBy(e => e.ScheduledDay).ThenBy(e => e.Id, StringComparer.Ordinal))
         {
@@ -111,15 +115,16 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
                 new TroopPool(definition.Troops, 0), UnitCombatState.Create(0),
                 MaxTroops: definition.Troops, Class: TroopClass.Cavalry, TroopCode: definition.Code,
                 RenewalPosition: RenewalHexSpace.Center(position.Value));
-            events = [new(WorldEventKind.EventUnitAppeared, encounter.DiscoveringFaction,
+            appeared.Add(new(WorldEventKind.EventUnitAppeared, encounter.DiscoveringFaction,
                 City: encounter.DiscoveryCity, Amount: definition.Troops, Code: definition.Code,
-                ExtraAmount: id.Value)];
-            return state with
+                ExtraAmount: id.Value));
+            state = state with
             {
                 FieldArmies = state.Armies.Append(unit).ToList(),
                 EventEncounters = state.Encounters.Select(e => e.Id == encounter.Id ? e with { Unit = id } : e).ToList(),
             };
         }
+        events = appeared;
         return state;
     }
 
