@@ -97,7 +97,8 @@ public sealed partial class CampaignMapScene
                     if (label.Text != text) label.Text = text;
                 }
                 label.Visible = !army.IsWaitingDeployment && (army.Field.Owner == Player
-                    || army.Field.Owner == WorldEngine.BanditFaction && CanSeeUnit(army));
+                    || (army.Field.Owner == WorldEngine.BanditFaction
+                        || army.Field.Owner == EventHuntService.EventFaction) && CanSeeUnit(army));
             }
         }
         HideEnteredFieldGarrisons();

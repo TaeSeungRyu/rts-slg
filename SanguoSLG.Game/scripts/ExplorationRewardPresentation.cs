@@ -32,8 +32,8 @@ public sealed record ExplorationRewardPresentation(
             "divine_beast_trace" => new(
                 "신수의 흔적", "희귀 이벤트 단서",
                 $"{explorerName} 장수가 {cityName}에서 신수의 흔적을 발견했습니다.",
-                "용·봉황 등 신수 이벤트로 이어지는 희귀 단서입니다.",
-                "등록 조건: 후속 신수 이벤트를 발견하고 전투 조건을 달성해야 합니다.",
+                "7일 후부터 도시 주변 숲·산지에 대호가 출현합니다. 활동 중인 대호가 있거나 장소가 없으면 기다립니다.",
+                "대호 처치: 장수 경험치·병종 숙련·호부 획득. 용·봉황은 후속 이벤트입니다.",
                 ExplorationRewardTone.DivineBeast, discovery.Gold, discovery.Provisions),
             "ancient_relic_clue" => new(
                 "고대유물의 단서", "아이템 단서",

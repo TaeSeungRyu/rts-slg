@@ -169,7 +169,7 @@ public sealed partial class CampaignMapScene : Node3D
         ["medium_ship"] = 8, ["large_ship"] = 9, ["geukbyeong"] = 10, ["namman"] = 11,
         ["deunggap"] = 12, ["mudang"] = 13, ["cataphract"] = 14, ["hwarang"] = 15,
         ["horse_archer"] = 16, ["turtleship"] = 17, ["waeseon"] = 18,
-        ["bandit"] = 19,
+        ["bandit"] = 19, ["great_tiger"] = 20,
         ["army_group"] = 25,
     };
     private GameState _pendingState = null!;
@@ -534,6 +534,7 @@ public sealed partial class CampaignMapScene : Node3D
         var scenario = new ScenarioLoader().LoadFromDirectory(dataDirectory);
         _passability = new PassabilityMap(_map, [], _cities, scenario.RuinList.Select(r => r.Position));
         _fieldBuildingDefinitions = new FieldBuildingLoader().LoadFromDirectory(dataDirectory);
+        _eventHunts = new EventHuntService(_map, new EventUnitLoader().LoadFromDirectory(dataDirectory));
         _fieldConstruction = new FieldConstructionService(_fieldBuildingDefinitions, _passability.TerrainAt);
         _unitCommander = new FieldUnitCommandService(
             (domain, hex) => _passability.CanEnter(domain, hex),
@@ -584,7 +585,7 @@ public sealed partial class CampaignMapScene : Node3D
             _cb.BuildSiteHp, _cb.BuildSiteDamagePerTurn, passives, actives,
             new RuinCombat(new BattleResolver(60), 70),
             new FieldBuildingCombat(new BattleResolver(60), _fieldBuildingDefinitions, _troops),
-            _fieldBuildingDefinitions);
+            _fieldBuildingDefinitions, _eventHunts);
         _vision = new BattlefieldVision(scenario.Balance, _troops, _fieldBuildingDefinitions);
         _fog = new BattlefieldFogView(_view);
         _fog.RegisterMap();
@@ -609,6 +610,7 @@ public sealed partial class CampaignMapScene : Node3D
             RuinStates = scenario.RuinList.Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
         };
         if (args.Contains("--maptest")) SeedFieldBuildingSamples();
+        if (args.Contains("--event-hunt-sample")) SeedEventHuntSample();
 
         _dbgLog = ProjectSettings.GlobalizePath("res://deploy-debug.log");
         try { System.IO.File.WriteAllText(_dbgLog, "=== maptest deploy debug ===\n"); } catch { }
@@ -694,6 +696,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestpathvisualqa")) CallDeferred(nameof(RunPathVisualQa));
         if (args.Contains("--maptestbanditdisplayqa")) CallDeferred(nameof(RunBanditDisplayQa));
         if (args.Contains("--maptestfortfixtureqa")) CallDeferred(nameof(RunFieldFortFixtureQa));
+        if (args.Contains("--maptesteventhuntqa")) CallDeferred(nameof(RunEventHuntQa));
     }
 
     private void SeedFieldBuildingSamples()
@@ -2032,7 +2035,7 @@ public sealed partial class CampaignMapScene : Node3D
         var adj = u.AdjutantId is { } aid ? _state.Generals.FirstOrDefault(g => g.Id == aid)?.Name : null;
 
         Clear(_infoRows);
-        _infoRows.AddChild(MakeLabel($"{TroopName(u.TroopCode)} · {faction?.Name}", 15, GoldBright));
+        _infoRows.AddChild(MakeLabel($"{TroopName(u.TroopCode)} · {(u.Field.Owner == EventHuntService.EventFaction ? "중립 강적" : faction?.Name)}", 15, GoldBright));
         _infoRows.AddChild(MakeLabel($"시야 {_vision.UnitRadius(u)}칸", 13, Parchment));
         if (u.VanguardId is { } vanguardId)
         {
@@ -2061,7 +2064,13 @@ public sealed partial class CampaignMapScene : Node3D
             g.AddChild(MakeLabel(v, 12, GoldBright));
         }
 
-        Row("병력", $"{u.Pool.Active}");
+        Row(u.Field.Owner == EventHuntService.EventFaction ? "체력" : "병력", $"{u.Pool.Active}");
+        if (u.Field.Owner == EventHuntService.EventFaction && _eventHunts.Definition(u.TroopCode) is { } eventUnit)
+        {
+            Row("공격 / 방어", $"{u.Stats.AtkStat} / {u.Stats.DfStat}");
+            Row("행동", "가까운 약한 육상 부대를 추격");
+            Row("처치 보상", $"장수 경험치 +{eventUnit.ExperienceReward}\n병종 숙련 +{eventUnit.AptitudeReward} · {eventUnit.TreasureName}");
+        }
         Row("부상병", u.Pool.Wounded > 0 ? $"{u.Pool.Wounded}" : "없음");
         Row("훈련", $"{u.Training}");
         Row("모드", ModeName(u.Field.Mode));
@@ -3952,6 +3961,9 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         // 내정/라이프사이클 사건(Core WorldEvent) — 내 세력만. 명령 완료 수치.
+        _pendingHuntRewards.Clear();
+        _pendingHuntRewards.AddRange(_engine.LastWorldEvents.Where(e => e.Faction == Player
+            && e.Kind == WorldEventKind.EventUnitDefeated));
         foreach (var we in _engine.LastWorldEvents.Where(e => e.Faction == Player))
         {
             var gName = we.General is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid)?.Name ?? "장수" : "";
@@ -3983,6 +3995,8 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.GeneralGrowth => ($"[성장] {gName}{(we.Amount > 0 ? $" 장수 경험치 +{we.Amount}" : "")}{(we.ExtraAmount > 0 ? $" · 패시브 경험치 +{we.ExtraAmount}" : "")}{(we.Code.Contains("level_up") ? " · 레벨 상승!" : "")}{(we.Code.Contains("passive_up") ? " · 패시브 성장!" : "")}", we.Code.Contains("level_up") || we.Code.Contains("passive_up") ? GoldBright : Parchment),
                 WorldEventKind.AdministrationGrowth => ($"[내정 성장] {gName} · {AdministrationGrowthSourceLabel(we.Code)} 경험치 +{we.Amount}{(we.Code.EndsWith("_level_up", System.StringComparison.Ordinal) ? $" · 내정LV {we.ExtraAmount} 상승!" : "")}", we.Code.EndsWith("_level_up", System.StringComparison.Ordinal) ? GoldBright : Parchment),
                 WorldEventKind.AptitudeGrowth => ($"[숙련] {gName}의 {(System.Enum.TryParse<TroopClass>(we.Code, out var aptitudeClass) ? ClassName(aptitudeClass) : we.Code)} 적성이 {GradeText((AptitudeGrade)we.Amount)}로 상승했습니다!", GoldBright),
+                WorldEventKind.EventUnitAppeared => ($"[신수] {cName} 주변에 {TroopName(we.Code)}가 출현했습니다. 체력 {we.Amount:N0} · 사냥 또는 회피를 선택하세요.", GoldBright),
+                WorldEventKind.EventUnitDefeated => ($"[사냥] {TroopName(we.Code)} 처치! 선봉·부관 경험치 +{we.Amount}, 병종 숙련 +{we.ExtraAmount} · 호부를 획득했습니다.", GoldBright),
                 _ => ("", Parchment),
             };
             if (text.Length > 0)
@@ -4054,6 +4068,7 @@ public sealed partial class CampaignMapScene : Node3D
         IReadOnlyList<SiegeExchange> sieges, IReadOnlyList<CaptureReport> captures, GameState preMove)
     {
         _animationProductionPositions.Clear();
+        _eventSpawnPlayback.Clear();
         _visionRefreshTime = 0;
         _lostProductionVision.Clear();
         _productionVisionLosses.Clear();
@@ -4107,7 +4122,13 @@ public sealed partial class CampaignMapScene : Node3D
                 .OrderBy(waiting => waiting.Field.CommandOrder).ThenBy(waiting => waiting.Id.Value).ToList())
             {
                 var day = dayOffset + 1;
-                var exit = released.EgressExit!.Value;
+                var exit = released.EgressExit ?? released.Field.Position;
+                if (released.Field.Owner == EventHuntService.EventFaction)
+                {
+                    _eventSpawnPlayback[released.Id.Value] = released;
+                    alive.Add(released.Id.Value);
+                    unitSnapshot[released.Id.Value] = released;
+                }
                 Dbg($"EGRESS RELEASE day={day} unit={released.Id.Value} direction={released.EgressDirection} exit={exit} target={released.Field.Target}");
                 playback.AppendDeployment(released.Id.Value, day, exit, DaySeconds, StepSeconds,
                     continuous: turn.Movement.Ticks.Any(tick => tick.ContinuousPositions.Count > 0));
@@ -4710,7 +4731,9 @@ public sealed partial class CampaignMapScene : Node3D
             var results = _pendingExplorationResults.ToList();
             _pendingExplorationResults.Clear();
             OpenExplorationResults(results);
+            if (_pendingHuntRewards.Count > 0) _modalDismissAction = ShowPendingHuntRewards;
         }
+        else ShowPendingHuntRewards();
     }
 
     private bool IsModalBlockingMapNavigation()
@@ -6044,10 +6067,20 @@ public sealed partial class CampaignMapScene : Node3D
                 && _animDeployments[_animDeploymentIdx].Time <= _animT)
             {
                 var deployment = _animDeployments[_animDeploymentIdx];
+                if (_eventSpawnPlayback.TryGetValue(deployment.UnitId, out var spawnedEvent))
+                {
+                    if (!_state.Armies.Any(unit => unit.Id == spawnedEvent.Id))
+                        _state = _state with { FieldArmies = _state.Armies.Append(spawnedEvent).ToList() };
+                    EnsureArmyToken(spawnedEvent);
+                }
                 _playbackReleasedDeployments.Add(deployment.UnitId);
                 if (_armyTokens.TryGetValue(deployment.UnitId, out var deployToken)) deployToken.Visible = true;
                 if (_armyLabels.TryGetValue(deployment.UnitId, out var deployLabel))
-                    deployLabel.Visible = _state.Armies.FirstOrDefault(u => u.Id.Value == deployment.UnitId)?.Field.Owner == Player;
+                {
+                    var deployed = _state.Armies.FirstOrDefault(u => u.Id.Value == deployment.UnitId);
+                    deployLabel.Visible = deployed is not null && (deployed.Field.Owner == Player
+                        || deployed.Field.Owner == EventHuntService.EventFaction && CanSeeUnit(deployed));
+                }
                 _animDeploymentIdx++;
             }
             while (_animStepIdx < _animSteps.Count && _animSteps[_animStepIdx].Time <= _animT)
@@ -6079,7 +6112,9 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var u = _animUpdates[_animUpdIdx];
                 if (_armyTokens.TryGetValue(u.UnitId, out var tok)) { tok.SetFormationSize(FormationFor(u.Troops)); }
-                if (_armyLabels.TryGetValue(u.UnitId, out var lbl)) { lbl.Text = $"{u.Troops}"; }
+                if (_armyLabels.TryGetValue(u.UnitId, out var lbl))
+                    lbl.Text = _state.Armies.FirstOrDefault(unit => unit.Id.Value == u.UnitId)?.Field.Owner == EventHuntService.EventFaction
+                        ? $"대호 · 체력 {u.Troops:N0}" : $"{u.Troops}";
                 _animUpdIdx++;
             }
 
@@ -7168,6 +7203,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     // 병종 코드 → 한글 이름(성벽 연구 코드 포함).
     private string TroopName(string code) => code == "army_group" ? "집단군"
+        : _eventHunts.Definition(code) is { } eventUnit ? eventUnit.Name
         : code == "transport" ? "수송부대"
         : code == FactionResearch.WallCode ? "성벽"
         : code == FactionResearch.CommandTroopsCode ? "통솔 병력"
@@ -8952,13 +8988,24 @@ public sealed partial class CampaignMapScene : Node3D
 
         box.AddChild(GoldRule());
         box.AddChild(MakeLabel("획득 보물", 15, Gold));
-        var emptyItem = new PanelContainer();
-        emptyItem.AddThemeStyleboxOverride("panel", Frame(new Color(0.045f, 0.04f, 0.035f, 0.88f), new Color(0.32f, 0.3f, 0.28f), 1, 8, 9));
-        var emptyText = MakeLabel("등록된 보물이 없습니다.\n고대유물·신수 후속 이벤트에서 실제 보물을 획득하면 이곳에 등록됩니다.", 12, new Color(Parchment, 0.68f));
-        emptyText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        emptyItem.AddChild(emptyText);
-        emptyItem.SetMeta("treasure_slot", "empty");
-        box.AddChild(emptyItem);
+        var treasures = _state.Treasures.Where(treasure => treasure.Faction == Player)
+            .OrderByDescending(treasure => treasure.AcquiredDay).ThenBy(treasure => treasure.Id).ToList();
+        if (treasures.Count == 0)
+        {
+            var emptyItem = new PanelContainer();
+            emptyItem.AddThemeStyleboxOverride("panel", Frame(new Color(0.045f, 0.04f, 0.035f, 0.88f), new Color(0.32f, 0.3f, 0.28f), 1, 8, 9));
+            var emptyText = MakeLabel("등록된 보물이 없습니다.\n대호 사냥을 완료하면 호부가 이곳에 등록됩니다.", 12, new Color(Parchment, 0.68f));
+            emptyText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            emptyItem.AddChild(emptyText);
+            emptyItem.SetMeta("treasure_slot", "empty");
+            box.AddChild(emptyItem);
+        }
+        else
+            foreach (var treasure in treasures) box.AddChild(BuildTreasureCard(treasure));
+        foreach (var encounter in _state.Encounters.Where(encounter => encounter.DiscoveringFaction == Player
+            && encounter.DefeatedDay is null))
+            box.AddChild(MakeLabel($"대호 사냥 · {(encounter.Unit is null
+                ? $"출현 대기 (최소 {Math.Max(0, encounter.ScheduledDay - _state.Day)}일)" : "활동 중")}", 12, Gold));
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
@@ -15634,6 +15681,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private Color ArmyFactionColor(FactionId owner)
     {
+        if (owner == EventHuntService.EventFaction) return new Color(0.95f, 0.66f, 0.3f);
         var code = _state.Factions.FirstOrDefault(faction => faction.Id == owner)?.Color;
         return string.IsNullOrWhiteSpace(code) ? (owner == Player ? Blue : Red) : new Color(code);
     }
@@ -15844,38 +15892,8 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var army in _state.Armies)
         {
             var color = ArmyFactionColor(army.Field.Owner);
-            if (!_armyTokens.TryGetValue(army.Id.Value, out var token))
-            {
-                token = new UnitController3D();
-                AddChild(token);
-                token.InitDisplay(_view, color,
-                    army.IsArmyGroup ? UnitController3D.ArmyGroupModelIndex
-                        : army.IsSupply ? UnitController3D.SupplyModelIndex
-                        : TroopModelIndex.GetValueOrDefault(army.TroopCode, 0),
-                    army.Field.Position);
-                token.SetFormationSize(army.IsSupply || army.IsArmyGroup ? 1 : FormationFor(army.Pool.Active));
-
-                var lbl = new Label3D
-                {
-                    Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-                    FontSize = 36,
-                    OutlineSize = 10,
-                    PixelSize = CommanderPortraitView3D.LabelPixelSize,
-                    NoDepthTest = true,
-                    Modulate = color,
-                };
-                AddChild(lbl);
-                _armyTokens[army.Id.Value] = token;
-                _armyLabels[army.Id.Value] = lbl;
-                var gauge = new ActiveSkillGaugeView3D { Visible = false };
-                token.AddChild(gauge);
-                _activeGauges[army.Id.Value] = gauge;
-                var commanderPortrait = new CommanderPortraitView3D { Visible = false };
-                token.AddChild(commanderPortrait);
-                if (army.VanguardId is { } commanderId)
-                    commanderPortrait.SetPortrait(CircularPortraitFor(commanderId));
-                _commanderPortraits[army.Id.Value] = commanderPortrait;
-            }
+            EnsureArmyToken(army);
+            var token = _armyTokens[army.Id.Value];
 
             token.SetFormationSize(army.IsSupply || army.IsArmyGroup ? 1 : FormationFor(army.Pool.Active)); // 보급부대·집단군은 규모와 무관하게 단일 전용 모델
             var insideFieldBuilding = fieldGarrisonIds.Contains(army.Id);
@@ -15908,7 +15926,8 @@ public sealed partial class CampaignMapScene : Node3D
             var troopLabel = ArmyTroopLabel(army);
             if (lblNode.Text != troopLabel) lblNode.Text = troopLabel;
             lblNode.Visible = !insideFieldBuilding && !army.IsWaitingDeployment
-                && (army.Field.Owner == Player || army.Field.Owner == WorldEngine.BanditFaction && CanSeeUnit(army));
+                && (army.Field.Owner == Player || (army.Field.Owner == WorldEngine.BanditFaction
+                    || army.Field.Owner == EventHuntService.EventFaction) && CanSeeUnit(army));
             if (_activeGauges.TryGetValue(army.Id.Value, out var activeGauge))
             {
                 var (skill, gauge) = DisplayActiveGauge(army.State);
