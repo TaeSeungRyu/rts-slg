@@ -221,4 +221,29 @@ public class FieldUnitCommandServiceTests
         Assert.Equal(UnitMode.March, changed.Field.Mode);
         Assert.Equal(home.Position, changed.Field.Target);
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void 선박복귀는_출항항구를_우선하고_함락시_아군항구만_선택한다(bool ownsOrigin)
+    {
+        var land = City(1, Player, new(1, 0));
+        var origin = City(2, ownsOrigin ? Player : Enemy, new(8, 0)) with { Port = PortSize.Small };
+        var otherPort = City(3, Player, new(3, 0)) with { Port = PortSize.Medium };
+        var unit = NavalUnit(1, Player, default) with { OriginCity = origin.Id };
+        var state = new GameState(1, 190, [], [land, origin, otherPort], [], FieldArmies: [unit]);
+
+        var destination = FieldUnitCommandService.ReturnDestination(state, unit);
+        Assert.Equal(ownsOrigin ? origin.Id : otherPort.Id, destination?.Id);
+        var command = Service().ReturnToCity(state, Player, unit.Id, destination!.Id);
+        Assert.True(command.Ok, command.Error);
+        Assert.Equal(destination.Id, Assert.Single(command.State.Armies).Field.ReturnCity);
+    }
+
+    [Fact]
+    public void 선박복귀는_아군성이_있어도_항구가_없으면_실패한다()
+    {
+        var state = new GameState(1, 190, [], [City(1, Player, new(1, 0))], []);
+        Assert.Null(FieldUnitCommandService.ReturnDestination(state, NavalUnit(1, Player, default)));
+    }
 }

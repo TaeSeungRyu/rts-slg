@@ -5433,14 +5433,11 @@ public sealed partial class CampaignMapScene : Node3D
         var unit = _state.Armies.FirstOrDefault(a => a.Id.Value == uid && a.Field.Owner == Player);
         if (unit is null) { return; }
 
-        var city = _state.Cities
-            .Where(c => c.Owner == Player)
-            .OrderBy(c => c.Position.Distance(unit.Field.Position))
-            .ThenBy(c => c.Id.Value)
-            .FirstOrDefault();
+        var city = FieldUnitCommandService.ReturnDestination(_state, unit);
         if (city is null)
         {
-            ShowNotice("명령 실패", "복귀할 아군 성이 없습니다.");
+            ShowNotice("명령 실패", unit.Class == TroopClass.Naval
+                ? "복귀할 아군 항구가 없습니다." : "복귀할 아군 성이 없습니다.");
             return;
         }
 

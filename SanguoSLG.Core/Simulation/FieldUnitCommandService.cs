@@ -93,6 +93,17 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
         return Reassign(state, faction, new FieldUnitCommandRequest(unitId, UnitMode.March, city.Position, ReturnCity: city.Id));
     }
 
+    public static City? ReturnDestination(GameState state, CombatUnit unit)
+    {
+        var candidates = state.Cities.Where(city => city.Owner == unit.Field.Owner
+            && (unit.Class != TroopClass.Naval || city.IsPort));
+        if (unit.Class == TroopClass.Naval && unit.OriginCity is { } origin
+            && candidates.FirstOrDefault(city => city.Id == origin) is { } port)
+            return port;
+        return candidates.OrderBy(city => city.Position.Distance(unit.Field.Position))
+            .ThenBy(city => city.Id.Value).FirstOrDefault();
+    }
+
     private bool CanTarget(GameState state, FactionId faction, CombatUnit unit, HexCoord target,
         IReadOnlySet<HexCoord>? visible)
     {
