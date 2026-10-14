@@ -80,6 +80,18 @@ public class CampaignSiegeTests
     private static City Town(int id, int owner, HexCoord pos, int wall, CastleSize size = CastleSize.Medium) =>
         new(new CityId(id), $"c{id}", pos, new FactionId(owner), 0, size, Wall: wall);
 
+    [Fact]
+    public void 야생_용도_적성의_성벽을_공격한다()
+    {
+        var city = Town(9, 1, new(5, 0), 6000);
+        var dragon = Army(1, 2, new(4, 0), city.Position) with
+        { Field = Army(1, 2, new(4, 0), city.Position).Field with
+            { Owner = EventHuntService.EventFaction }, TroopCode = "dragon" };
+        var result = Siege().Resolve([dragon], [city], []);
+        Assert.True(Assert.Single(result.Exchanges).WallDamage > 0);
+        Assert.True(result.Cities.Single().Wall < city.Wall);
+    }
+
     // ── 단위 정산(CampaignSiege) ──
 
     [Fact]

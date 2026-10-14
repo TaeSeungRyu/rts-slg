@@ -38,6 +38,40 @@ public class EventHuntServiceTests
         Assert.Equal(code, Assert.Single(SaveService.Deserialize(SaveService.Serialize(spawned)).Armies).TroopCode);
     }
 
+    [Fact]
+    public void 용의_주공격은_목표_주변_적에게만_부상_공식으로_광역피해를_준다()
+    {
+        var dragonDefinition = new EventUnitLoader().LoadFromDirectory(TestData.DataDirectory())
+            .Single(x => x.Code == "dragon");
+        var service = new EventHuntService(Map, [dragonDefinition]);
+        var dragon = Spawn().Armies.Single() with
+        { TroopCode = "dragon", Field = Spawn().Armies.Single().Field with { Id = new(10) } };
+        CombatUnit Enemy(int id, HexCoord position) => dragon with
+        { Field = dragon.Field with { Id = new(id), Owner = new(1), Position = position },
+            TroopCode = "swordsman", Pool = new(1000, 0) };
+        var primary = Enemy(11, new(3, 0));
+        var adjacent = Enemy(12, new(3, 1));
+        var distant = Enemy(13, new(6, 0));
+        var friendly = dragon with { Field = dragon.Field with { Id = new(14), Position = new(3, -1) } };
+        var exchange = new FieldCombatExchange(dragon.Id, primary.Id,
+            RenewalHexSpace.Center(dragon.Field.Position), RenewalHexSpace.Center(primary.Field.Position), true);
+        var combat = new CombatPhaseResult(new Dictionary<UnitId, int> { [primary.Id] = 100 },
+            new Dictionary<UnitId, int> { [dragon.Id] = 100 },
+            new Dictionary<UnitId, TroopPool> { [primary.Id] = primary.Pool.TakeDamage(100, 70) },
+            [new UnitDamage(dragon.Id, primary.Id, 100)]);
+        var turn = new AdvanceTurn([dragon, primary, adjacent, distant, friendly],
+            new AdvanceResult([], [], StopReason.MaxDays, 1), combat,
+            new Dictionary<UnitId, ActiveSkill>(), new Dictionary<UnitId, Stratagem>(),
+            new Dictionary<UnitId, int>(), new Dictionary<UnitId, int>(),
+            FieldCombatExchangeResults: [exchange]);
+        var result = service.ApplyDragonSplash([dragon, primary, adjacent, distant, friendly], turn);
+        Assert.Equal(980, result.Units.Single(x => x.Id == adjacent.Id).Pool.Active);
+        Assert.Equal(14, result.Units.Single(x => x.Id == adjacent.Id).Pool.Wounded);
+        Assert.Equal(1000, result.Units.Single(x => x.Id == distant.Id).Pool.Active);
+        Assert.Equal(friendly.Pool.Active, result.Units.Single(x => x.Id == friendly.Id).Pool.Active);
+        Assert.Equal(20, result.Combat!.Exchanges!.Single(x => x.Target == adjacent.Id).Amount);
+    }
+
     private static GameState Spawn()
         => Service.SpawnDue(Service.ScheduleDiscoveries(World), 8, out _);
 

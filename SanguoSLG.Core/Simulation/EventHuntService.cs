@@ -167,16 +167,63 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
                     && center.DistanceTo(candidate.RenewalPosition ?? RenewalHexSpace.Center(candidate.Field.Position))
                         <= (long)definition.Detection * ContinuousPosition.UnitsPerTile)
                 .OrderBy(candidate => candidate.Pool.Active).ThenBy(candidate => candidate.Id.Value).FirstOrDefault();
+            var cityTarget = target is null && unit.TroopCode == "dragon"
+                ? state.Cities.Where(city => city.Owner != EventFaction && city.Wall > 0
+                        && center.DistanceTo(RenewalHexSpace.Center(city.Position))
+                            <= (long)definition.Detection * ContinuousPosition.UnitsPerTile)
+                    .OrderBy(city => center.DistanceTo(RenewalHexSpace.Center(city.Position)))
+                    .ThenBy(city => city.Id.Value).FirstOrDefault()
+                : null;
             return unit with { Field = unit.Field with
             {
-                Mode = target is null ? UnitMode.Standby : UnitMode.Attack,
-                Target = target?.Field.Position,
-                ContinuousTarget = target is null ? null
+                Mode = target is null && cityTarget is null ? UnitMode.Standby : UnitMode.Attack,
+                Target = target?.Field.Position ?? cityTarget?.Position,
+                ContinuousTarget = target is null
+                    ? cityTarget is null ? null : RenewalHexSpace.Center(cityTarget.Position)
                     : target.RenewalPosition ?? RenewalHexSpace.Center(target.Field.Position),
                 AssignedUnitTarget = target?.Id, PursuitTarget = null, ReturnCity = null,
                 Waypoints = null, ContinuousWaypoints = null,
             } };
         }).ToList() };
+    }
+
+    /// <summary>용의 주 공격이 적중하면 목표 주변 1칸의 다른 적에게 주 피해의 20%를 준다.</summary>
+    public AdvanceTurn ApplyDragonSplash(IReadOnlyList<CombatUnit> before, AdvanceTurn turn)
+    {
+        if (turn.Combat is not { } combat || turn.FieldCombatExchanges.Count == 0) return turn;
+        var units = turn.Units.ToDictionary(unit => unit.Id);
+        var original = before.ToDictionary(unit => unit.Id);
+        var damageTaken = combat.DamageTaken.ToDictionary();
+        var damageDealt = combat.DamageDealt.ToDictionary();
+        var pools = combat.Pools.ToDictionary();
+        var exchanges = (combat.Exchanges ?? []).ToList();
+        foreach (var hit in turn.FieldCombatExchanges.Where(hit => hit.IsPrimaryTarget))
+        {
+            if (!original.TryGetValue(hit.Attacker, out var dragon) || dragon.TroopCode != "dragon"
+                || dragon.Field.Owner != EventFaction || !original.ContainsKey(hit.Target)) continue;
+            var primaryDamage = exchanges.Where(x => x.Attacker == dragon.Id && x.Target == hit.Target)
+                .Sum(x => x.Amount);
+            var splash = primaryDamage * 20 / 100;
+            if (splash <= 0) continue;
+            foreach (var victim in units.Values.Where(unit => unit.Id != hit.Target
+                         && unit.Field.Owner != EventFaction && unit.Pool.Active > 0
+                         && unit.Field.Position.Distance(RenewalHexSpace.NearestHex(hit.TargetPosition)) <= 1)
+                     .OrderBy(unit => unit.Id.Value).ToList())
+            {
+                var activeBefore = victim.Pool.Active;
+                var pool = victim.Pool.TakeDamage(splash, 70);
+                var dealt = activeBefore - pool.Active;
+                if (dealt <= 0) continue;
+                units[victim.Id] = victim with { Pool = pool };
+                pools[victim.Id] = pool;
+                damageTaken[victim.Id] = damageTaken.GetValueOrDefault(victim.Id) + dealt;
+                damageDealt[dragon.Id] = damageDealt.GetValueOrDefault(dragon.Id) + dealt;
+                exchanges.Add(new UnitDamage(dragon.Id, victim.Id, dealt));
+            }
+        }
+        return turn with { Units = turn.Units.Select(unit => units[unit.Id]).ToList(),
+            Combat = combat with { DamageTaken = damageTaken, DamageDealt = damageDealt,
+                Pools = pools, Exchanges = exchanges } };
     }
 
     public GameState ResolveCombat(GameState state, IReadOnlyList<CombatUnit> before,
