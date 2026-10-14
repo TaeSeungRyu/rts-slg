@@ -13,6 +13,28 @@ public class SummonServiceTests
         new EventTreasureLoader().LoadFromDirectory(TestData.DataDirectory()),
         new SummonedUnitLoader().LoadFromDirectory(TestData.DataDirectory()));
 
+    [Theory]
+    [InlineData("tiger_cub", "great_tiger", 7500)]
+    [InlineData("dragon_egg", "dragon", 12000)]
+    [InlineData("phoenix_egg", "phoenix", 9000)]
+    public void 소환수의_증가한_체력이_실제_병력과_최대치에_반영되고_저장된다(
+        string item, string code, int health)
+    {
+        var caller = new CombatUnit(new FieldUnit(new(1), new(1), new(0, 0), 2, 2, 1,
+            MovementDomain.Land, UnitMode.Standby, null, 1), new(1000, 10, 10),
+            new(1000, 0), UnitCombatState.Create(0), VanguardId: new(1));
+        var state = new GameState(10, 190, [], [], [], FieldArmies: [caller],
+            FactionTreasures: [new("test-egg", item, item, new(1), 9, "hunt", EquippedBy: new(1))]);
+        var result = Service.Order(state, caller.Id, "test-egg", new(1, 0));
+        Assert.True(result.Ok, result.Error);
+        var unit = Assert.Single(SaveService.Deserialize(SaveService.Serialize(result.State)).Armies,
+            unit => unit.IsSummon);
+        Assert.Equal(code, unit.TroopCode);
+        Assert.Equal(health, unit.Pool.Active);
+        Assert.Equal(health, unit.MaxTroops);
+        Assert.Equal(0, unit.Pool.Wounded);
+    }
+
     [Fact]
     public void 장착한_장수가_소환하면_즉시_출현하고_21일_종료_후_60일_대기한다()
     {
