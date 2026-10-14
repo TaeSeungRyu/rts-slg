@@ -14,9 +14,9 @@ public class SummonServiceTests
         new SummonedUnitLoader().LoadFromDirectory(TestData.DataDirectory()));
 
     [Theory]
-    [InlineData("tiger_cub", "great_tiger", 7500)]
-    [InlineData("dragon_egg", "dragon", 12000)]
-    [InlineData("phoenix_egg", "phoenix", 9000)]
+    [InlineData("tiger_cub", "great_tiger", 10000)]
+    [InlineData("dragon_egg", "dragon", 20000)]
+    [InlineData("phoenix_egg", "phoenix", 15000)]
     public void 소환수의_증가한_체력이_실제_병력과_최대치에_반영되고_저장된다(
         string item, string code, int health)
     {
