@@ -32,6 +32,7 @@ public class EventHuntServiceTests
         var beast = Assert.Single(spawned.Armies);
 
         Assert.Equal(code, beast.TroopCode);
+        Assert.Equal(1, beast.Field.AttackRange);
         Assert.Equal(City.Id, Assert.Single(spawned.Encounters).DiscoveryCity);
         Assert.InRange(beast.Field.Position.Distance(City.Position), 2, 6);
         Assert.Single(events);
