@@ -65,12 +65,10 @@ public sealed class SummonService(HexMap map, IReadOnlyList<EventTreasureDefinit
             new CombatStats(summon.Troops, summon.Attack, summon.Defense, AptitudeGrade.A.Percent()),
             new TroopPool(summon.Troops, 0), UnitCombatState.Create(0), MaxTroops: summon.Troops,
             Class: TroopClass.Cavalry, Provisions: -1, TroopCode: summon.Code,
-            RenewalPosition: RenewalHexSpace.Center(position), IsSummon: true,
-            SummonLockDay: state.Day);
+            RenewalPosition: RenewalHexSpace.Center(position), IsSummon: true);
         return CommandResult.Success(state with
         {
-            FieldArmies = state.Armies.Select(x => x.Id == callerId
-                ? x with { SummonLockDay = state.Day } : x).Append(unit).ToList(),
+            FieldArmies = state.Armies.Append(unit).ToList(),
             SummonedCreatures = state.Summons.Append(new(id, item.Id, item.Faction, summon.Code,
                 state.Day, state.Day + summon.ActiveDays)).ToList(),
             FactionTreasures = state.Treasures.Select(x => x.Id == item.Id

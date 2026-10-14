@@ -139,6 +139,8 @@ public sealed class CampaignEngine
                 work = _summons.PlanAiOrders(work with
                     { FieldArmies = armies.Concat(waitingArmies).Concat(egressArmies).ToList() },
                     simulationDay, new FactionId(1));
+                // AI가 방금 소환한 부대를 오래된 로컬 armies 목록으로 덮어쓰지 않는다.
+                armies = work.Armies.Where(unit => !unit.IsWaitingDeployment).ToList();
                 work = _summons.AdvanceDay(work with
                     { FieldArmies = armies.Concat(waitingArmies).Concat(egressArmies).ToList() },
                     simulationDay, out var summoned);
