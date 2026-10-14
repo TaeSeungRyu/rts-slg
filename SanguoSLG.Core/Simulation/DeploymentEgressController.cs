@@ -50,7 +50,8 @@ public static class DeploymentEgressController
                         && !fieldArmies.Concat(released).Any(other => other.Pool.Active > 0
                             && other.Field.Owner != candidate.Field.Owner && other.Field.Position == exit);
                     var direction = group.Key.Direction;
-                    if (!IsFree(candidateExit) && candidateOrigin.Castle == CastleSize.Small
+                    if (!IsFree(candidateExit) && candidate.Field.Target is null
+                        && candidateOrigin.Castle == CastleSize.Small
                         && candidate.Field.Domain is MovementDomain.Land or MovementDomain.LandMountain)
                     {
                         var goal = candidate.Field.Target ?? candidateOrigin.Position + DeploymentEgressRules.Offset(direction);

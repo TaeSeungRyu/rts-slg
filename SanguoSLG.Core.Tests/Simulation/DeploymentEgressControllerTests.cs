@@ -145,7 +145,8 @@ public class DeploymentEgressControllerTests
     {
         var city = CityOf(CastleSize.Small);
         var east = DeploymentEgressRules.RepresentativeExit(city, DeploymentDirection.East)!.Value;
-        var waiting = Unit(1, city, DeploymentDirection.East, east, 1);
+        var waiting = Unit(1, city, DeploymentDirection.East, east, 1) with
+        { Field = Unit(1, city, DeploymentDirection.East, east, 1).Field with { Target = null } };
         var enemy = Unit(2, city, DeploymentDirection.East, east, 2) with
         {
             Field = waiting.Field with { Id = new UnitId(2), Owner = new FactionId(2), Position = east },
@@ -158,6 +159,31 @@ public class DeploymentEgressControllerTests
         Assert.Empty(result.Waiting);
         Assert.NotEqual(east, released.Field.Position);
         Assert.Contains(released.Field.Position, DeploymentEgressRules.ExitGroup(city, released.EgressDirection!.Value));
+    }
+
+    [Fact]
+    public void 목표가_남서인_소형성은_남서_출구가_막혀도_동쪽으로_우회출격하지_않는다()
+    {
+        var city = CityOf(CastleSize.Small);
+        var southWest = DeploymentEgressRules.RepresentativeExit(city, DeploymentDirection.SouthWest)!.Value;
+        var waiting = Unit(1, city, DeploymentDirection.SouthWest, southWest, 1) with
+        {
+            Field = Unit(1, city, DeploymentDirection.SouthWest, southWest, 1).Field with
+            { Target = city.Position + new HexCoord(-4, 4) },
+        };
+        var enemy = Unit(2, city, DeploymentDirection.SouthWest, southWest, 2) with
+        {
+            Field = waiting.Field with { Id = new UnitId(2), Owner = new FactionId(2),
+                Position = southWest, Target = null },
+            AwaitingEgress = false,
+        };
+
+        var blocked = DeploymentEgressController.Release([waiting], [enemy], [city], allowFriendlyOverlap: true);
+        Assert.Empty(blocked.Released);
+        Assert.Equal(DeploymentDirection.SouthWest, Assert.Single(blocked.Waiting).EgressDirection);
+
+        var released = DeploymentEgressController.Release(blocked.Waiting, [], [city], allowFriendlyOverlap: true);
+        Assert.Equal(southWest, Assert.Single(released.Released).Field.Position);
     }
 
     [Fact]
