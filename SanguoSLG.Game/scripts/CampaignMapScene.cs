@@ -721,6 +721,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestfortfixtureqa")) CallDeferred(nameof(RunFieldFortFixtureQa));
         if (args.Contains("--maptesteventhuntqa")) CallDeferred(nameof(RunEventHuntQa));
         if (args.Contains("--maptestalltreasuresqa")) CallDeferred(nameof(RunAllTreasuresQa));
+        if (args.Contains("--maptestphoenixmotionqa")) CallDeferred(nameof(RunPhoenixMotionQa));
         if (args.Contains("--maptesttreasurecloseqa")) CallDeferred(nameof(RunTreasureCloseQa));
         if (args.Contains("--maptestsummontargetqa")) CallDeferred(nameof(RunSummonTargetQa));
         if (args.Contains("--maptestofficerfixtureqa")) CallDeferred(nameof(RunMapTestOfficerFixtureQa));

@@ -31,6 +31,10 @@ public partial class UnitController3D : Node3D
     private Camera3D _camera = null!;
     private bool _moving;
     private bool _attacking;
+    private bool _phoenix;
+    private float _phoenixTime;
+    private float _phoenixLift;
+    private Vector3? _attackWorldTarget;
     private bool _queuedAttack;
     private Vector3 _queuedAttackTarget;
 
@@ -408,6 +412,7 @@ public partial class UnitController3D : Node3D
         }
 
         FaceToward(worldTarget);
+        _attackWorldTarget = worldTarget;
         PlayAttackMotion();
     }
 
@@ -509,6 +514,11 @@ public partial class UnitController3D : Node3D
     // 편대원마다 위상을 어긋나게 줘 발이 한꺼번에 떨어지지 않게 한다.
     private void AnimateMarch(float dt)
     {
+        if (_phoenix)
+        {
+            AnimatePhoenix(dt);
+            return;
+        }
         var moved = Position - _lastPosition;
         _lastPosition = Position;
         if (Alive(_attackMotionRoot))
@@ -674,6 +684,11 @@ public partial class UnitController3D : Node3D
 
         _attacking = true;
         AttackMotionStartCount++;
+        if (_phoenix)
+        {
+            PlayPhoenixAttack();
+            return;
+        }
         if (_nativeSupply)
         {
             PlayNativeSupplyAnimation("state_camp");
@@ -1413,6 +1428,46 @@ public partial class UnitController3D : Node3D
         clock.Finished += () => _attacking = false;
     }
 
+    private void AnimatePhoenix(float dt)
+    {
+        _lastPosition = Position;
+        _phoenixTime = Mathf.Wrap(_phoenixTime + dt * (_moving || _attacking ? 5f : 2f), 0f, Mathf.Tau);
+        _phoenixLift = Mathf.Lerp(_phoenixLift, _moving || _attacking ? 0.40f : 0f,
+            1f - Mathf.Exp(-8f * dt));
+        if (_moving && _hasStepYaw)
+            Rotation = new Vector3(0f, Mathf.LerpAngle(Rotation.Y, _stepYaw,
+                1f - Mathf.Exp(-14f * dt)), 0f);
+        var flap = Mathf.Sin(_phoenixTime) * (_moving || _attacking ? 0.65f : 0.10f);
+        foreach (var member in _members)
+        {
+            member.Body.Position = member.BodyBasePosition + Vector3.Up
+                * (_phoenixLift + Mathf.Sin(_phoenixTime * 0.5f) * _phoenixLift * 0.08f);
+            member.AttackArm.Rotation = member.AttackArmBaseRotation + new Vector3(0f, 0f, flap);
+            if (Alive(member.CounterSwing))
+                member.CounterSwing.Rotation = member.CounterSwingBaseRotation + new Vector3(0f, 0f, -flap);
+        }
+    }
+
+    private void PlayPhoenixAttack()
+    {
+        var target = _attackWorldTarget ?? GlobalPosition + Basis.Z * 0.8f;
+        var anchor = new Node3D { Name = "PhoenixTargetFire" };
+        GetParent().AddChild(anchor);
+        anchor.GlobalPosition = target;
+        EffectView.Attach(anchor, EffectKind.Fire, 1f);
+        GetTree().CreateTimer(1.1).Timeout += () =>
+        {
+            if (Alive(anchor)) anchor.QueueFree();
+        };
+        var motion = CreateTween();
+        motion.TweenInterval(0.55f);
+        motion.Finished += () =>
+        {
+            _attacking = false;
+            PlayQueuedAttackIfAny();
+        };
+    }
+
     // 들이받기 타이밍. 무겁게 다가가서 코를 치켜들었다 내리찍는다.
     private const float ElephantOutSeconds = 0.50f;
     private const float ElephantBackSeconds = 0.55f;
@@ -1999,6 +2054,8 @@ public partial class UnitController3D : Node3D
         }
         _attackMotionRoot.AddChild(_tokenRoot);
         var (modelFile, solo, _) = TroopModels[_troopIndex];
+        _phoenix = modelFile.EndsWith("troop-phoenix.glb", System.StringComparison.Ordinal);
+        _phoenixLift = 0f;
         if (UsesNativeStateMotion(modelFile))
         {
             _nativeSupply = true;

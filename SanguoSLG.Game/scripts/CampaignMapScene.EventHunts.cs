@@ -57,6 +57,40 @@ public sealed partial class CampaignMapScene
         }
     }
 
+    private async void RunPhoenixMotionQa()
+    {
+        try
+        {
+            var token = new UnitController3D();
+            AddChild(token);
+            token.InitDisplay(_view, GoldBright, TroopModelIndex["phoenix"], new(0, 0));
+            var body = (Node3D)token.FindChild("body", true, false)!;
+            var wing = (Node3D)token.FindChild("arm_r", true, false)!;
+            var restY = body.Position.Y;
+            var restWing = wing.Rotation;
+            token.DisplayContinuousAt(token.Position + Vector3.Right * 0.1f, true);
+            for (var frame = 0; frame < 8; frame++) token._Process(0.10);
+            var flying = body.Position.Y > restY + 0.25f && wing.Rotation != restWing;
+            token.DisplayContinuousAt(token.Position, false);
+            var target = token.GlobalPosition + Vector3.Right;
+            token.PlayAttackMotionToward(target);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var fire = FindChild("PhoenixTargetFire", true, false) as Node3D;
+            var burning = fire is not null && fire.GlobalPosition.DistanceTo(target) < 0.01f
+                && fire.FindChild("Effect_Fire", true, false) is not null;
+            await ToSignal(GetTree().CreateTimer(1.3), SceneTreeTimer.SignalName.Timeout);
+            var cleaned = fire is not null && !GodotObject.IsInstanceValid(fire);
+            var passed = flying && burning && cleaned;
+            GD.Print($"[maptestphoenixmotionqa] passed={passed} flying={flying} targetFire={burning} cleanup={cleaned}");
+            GetTree().Quit(passed ? 0 : 1);
+        }
+        catch (Exception error)
+        {
+            GD.PushError($"[maptestphoenixmotionqa] {error}");
+            GetTree().Quit(1);
+        }
+    }
+
     private void OpenSummonModal()
     {
         var caller = _state.Armies.FirstOrDefault(u => u.Id.Value == _selectedUnitId);
