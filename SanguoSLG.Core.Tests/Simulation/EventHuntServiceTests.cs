@@ -92,6 +92,7 @@ public class EventHuntServiceTests
         var (revivedState, revivedTurn) = service.ApplyPhoenixRecovery(state, [beast],
             Turn(new TroopPool(0, 3700)));
         Assert.Equal(2000, Assert.Single(revivedTurn.Units).Pool.Active);
+        Assert.Equal(2000, revivedTurn.BeastRecoveries[beast.Id]);
         Assert.True(Assert.Single(revivedState.Encounters).RevivedOnce);
         var saved = SaveService.Deserialize(SaveService.Serialize(revivedState));
         var (_, secondTurn) = service.ApplyPhoenixRecovery(saved, [beast], Turn(new TroopPool(0, 3700)));

@@ -464,10 +464,17 @@ public sealed partial class CampaignMapScene
             var inventory = _modalLayer!.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
                 .Any(card => card.HasMeta("treasure_slot") && card.GetMeta("treasure_slot").AsString() == "tiger_cub");
             var restored = SaveService.Deserialize(SaveService.Serialize(_state));
+            var phoenixModel = GD.Load<PackedScene>(UnitController3D.ModelFileAt(TroopModelIndex["phoenix"]));
+            var phoenixInstance = phoenixModel?.Instantiate();
+            var phoenixAsset = phoenixInstance?.FindChild("body", true, false) is not null;
+            phoenixInstance?.Free();
+            var beastCards = Godot.FileAccess.FileExists("res://assets/ui/troops/thumbnails/eastern_dragon.png")
+                && Godot.FileAccess.FileExists("res://assets/ui/troops/thumbnails/phoenix.png");
             var passed = allCitiesSpawned && appearedReport && visibleSpawn && combat && motions && modal && chosen && inventory
+                && phoenixAsset && beastCards
                 && restored.Treasures.Single().Code == "tiger_cub" && TroopName("great_tiger") == "대호"
                 && UnitController3D.ModelFileAt(TroopModelIndex["great_tiger"]).EndsWith("troop-great-tiger.glb");
-            GD.Print($"[maptesteventhuntqa] passed={passed} allCities={allCitiesSpawned} report={appearedReport} spawn={visibleSpawn} combat={combat} motions={motions} modal={modal} chosen={chosen} inventory={inventory} save={restored.Treasures.Count} imageWidths={imageWidths}");
+            GD.Print($"[maptesteventhuntqa] passed={passed} allCities={allCitiesSpawned} report={appearedReport} spawn={visibleSpawn} combat={combat} motions={motions} modal={modal} chosen={chosen} inventory={inventory} phoenixModel={phoenixAsset} beastCards={beastCards} save={restored.Treasures.Count} imageWidths={imageWidths}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (Exception error)

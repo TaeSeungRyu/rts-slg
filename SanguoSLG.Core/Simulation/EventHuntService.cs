@@ -234,6 +234,7 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
         var units = turn.Units.ToDictionary(unit => unit.Id);
         var pools = combat.Pools.ToDictionary();
         var encounters = state.Encounters.ToList();
+        var recoveries = turn.BeastRecoveries.ToDictionary();
         foreach (var phoenix in before.Where(unit => unit.Field.Owner == EventFaction
                      && unit.TroopCode == "phoenix").OrderBy(unit => unit.Id.Value))
         {
@@ -245,6 +246,7 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
             if (defeated && encounters[index].RevivedOnce) continue;
             var recovered = pool.Heal(Math.Max(1, phoenix.MaxTroops * 5 / 100));
             if (recovered.Active <= pool.Active) continue;
+            recoveries[phoenix.Id] = recovered.Active - pool.Active;
             pools[phoenix.Id] = recovered;
             var unit = units.GetValueOrDefault(phoenix.Id) ?? phoenix;
             var moved = turn.Movement.Units.FirstOrDefault(field => field.Id == phoenix.Id);
@@ -258,6 +260,7 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
         {
             Units = units.Values.OrderBy(unit => unit.Id.Value).ToList(),
             Combat = combat with { Pools = pools },
+            EventBeastRecoveries = recoveries,
         });
     }
 

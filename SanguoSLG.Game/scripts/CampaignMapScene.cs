@@ -147,6 +147,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, int UnitId, FactionId Owner, GeneralId? GeneralId, ActiveSkill Skill)> _animActives = new();
     private int _animSkillEffectIdx;
     private readonly List<(double Time, int CasterUnitId, int TargetUnitId, ActiveSkill Skill)> _animSkillEffects = new();
+    private int _animBeastEffectIdx;
+    private readonly List<(double Time, int UnitId, EffectKind Kind)> _animBeastEffects = new();
     private int _animSiegeSkillEffectIdx;
     private readonly List<(double Time, int CasterUnitId, Vector3 Target, ActiveSkill Skill)> _animSiegeSkillEffects = new();
     private int _animRuinCounterIdx;
@@ -172,7 +174,7 @@ public sealed partial class CampaignMapScene : Node3D
         ["medium_ship"] = 8, ["large_ship"] = 9, ["geukbyeong"] = 10, ["namman"] = 11,
         ["deunggap"] = 12, ["mudang"] = 13, ["cataphract"] = 14, ["hwarang"] = 15,
         ["horse_archer"] = 16, ["turtleship"] = 17, ["waeseon"] = 18,
-        ["bandit"] = 19, ["great_tiger"] = 20, ["dragon"] = 22,
+        ["bandit"] = 19, ["great_tiger"] = 20, ["dragon"] = 22, ["phoenix"] = 26,
         ["army_group"] = 25,
     };
     private GameState _pendingState = null!;
@@ -4041,7 +4043,7 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.AdministrationGrowth => ($"[내정 성장] {gName} · {AdministrationGrowthSourceLabel(we.Code)} 경험치 +{we.Amount}{(we.Code.EndsWith("_level_up", System.StringComparison.Ordinal) ? $" · 내정LV {we.ExtraAmount} 상승!" : "")}", we.Code.EndsWith("_level_up", System.StringComparison.Ordinal) ? GoldBright : Parchment),
                 WorldEventKind.AptitudeGrowth => ($"[숙련] {gName}의 {(System.Enum.TryParse<TroopClass>(we.Code, out var aptitudeClass) ? ClassName(aptitudeClass) : we.Code)} 적성이 {GradeText((AptitudeGrade)we.Amount)}로 상승했습니다!", GoldBright),
                 WorldEventKind.EventUnitAppeared => ($"[신수] {cName} 주변에 {TroopName(we.Code)}가 출현했습니다. 체력 {we.Amount:N0} · 사냥 또는 회피를 선택하세요.", GoldBright),
-                WorldEventKind.EventUnitDefeated => ($"[사냥] {TroopName(we.Code)} 처치! 선봉·부관 경험치 +{we.Amount}, 병종 숙련 +{we.ExtraAmount} · 호부를 획득했습니다.", GoldBright),
+                WorldEventKind.EventUnitDefeated => ($"[사냥] {TroopName(we.Code)} 처치! 선봉·부관 경험치 +{we.Amount}, 병종 숙련 +{we.ExtraAmount} · 보상을 선택하세요.", GoldBright),
                 _ => ("", Parchment),
             };
             if (text.Length > 0)
@@ -4093,6 +4095,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animCaptureIdx = 0;
         _animActiveIdx = 0;
         _animSkillEffectIdx = 0;
+        _animBeastEffectIdx = 0;
         _animSiegeSkillEffectIdx = 0;
         _animRuinCounterIdx = 0;
         _animFormationEffectIdx = 0;
@@ -4141,6 +4144,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animCaptures.Clear();
         _animActives.Clear();
         _animSkillEffects.Clear();
+        _animBeastEffects.Clear();
         _animSiegeSkillEffects.Clear();
         _animRuinCounters.Clear();
         _animFormationEffects.Clear();
@@ -4207,6 +4211,21 @@ public sealed partial class CampaignMapScene : Node3D
             }
             var atkTime = ((stopDay - 1) * DaySeconds) + MoveSeconds + 0.15; // 그날 이동(≤1.5초)이 끝난 뒤
             ScheduleAttackMotions(turn, atkTime, unitSnapshot);
+            if (turn.Combat is { } beastCombat)
+            {
+                foreach (var exchange in beastCombat.Exchanges ?? [])
+                {
+                    if (!unitSnapshot.TryGetValue(exchange.Attacker.Value, out var attacker)
+                        || attacker.Field.Owner != EventHuntService.EventFaction
+                        || attacker.TroopCode != "dragon" || exchange.Amount <= 0) continue;
+                    var primary = turn.FieldCombatExchanges.Any(hit => hit.Attacker == exchange.Attacker
+                        && hit.Target == exchange.Target && hit.IsPrimaryTarget);
+                    _animBeastEffects.Add((atkTime + 0.16, exchange.Target.Value,
+                        primary ? EffectKind.Lightning : EffectKind.Burst));
+                }
+            }
+            foreach (var (unitId, amount) in turn.BeastRecoveries.Where(x => x.Value > 0))
+                _animBeastEffects.Add((atkTime + 0.20, unitId.Value, EffectKind.Bubbles));
             foreach (var trigger in turn.FormationTriggers.Where(trigger => trigger.Activated && trigger.WoundedConverted > 0))
             {
                 _animFormationEffects.Add((atkTime - 0.10, trigger.Unit.Value));
@@ -4486,6 +4505,7 @@ public sealed partial class CampaignMapScene : Node3D
         _animCaptures.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animActives.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
+        _animBeastEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSiegeSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animRuinCounters.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animRuinCaptures.Sort((a, b) => a.Time.CompareTo(b.Time));
@@ -6162,8 +6182,13 @@ public sealed partial class CampaignMapScene : Node3D
                 var u = _animUpdates[_animUpdIdx];
                 if (_armyTokens.TryGetValue(u.UnitId, out var tok)) { tok.SetFormationSize(FormationFor(u.Troops)); }
                 if (_armyLabels.TryGetValue(u.UnitId, out var lbl))
-                    lbl.Text = _state.Armies.FirstOrDefault(unit => unit.Id.Value == u.UnitId)?.Field.Owner == EventHuntService.EventFaction
-                        ? $"대호 · 체력 {u.Troops:N0}" : $"{u.Troops}";
+                {
+                    var eventUnit = _state.Armies.Concat(_pendingState.Armies)
+                        .FirstOrDefault(unit => unit.Id.Value == u.UnitId
+                            && unit.Field.Owner == EventHuntService.EventFaction);
+                    lbl.Text = eventUnit is null ? $"{u.Troops}"
+                        : $"{TroopName(eventUnit.TroopCode)} · 체력 {u.Troops:N0}";
+                }
                 _animUpdIdx++;
             }
 
@@ -6210,6 +6235,19 @@ public sealed partial class CampaignMapScene : Node3D
                         ActiveSkillPresentation.AttachEffect(target, effect.Skill);
                 }
                 _animSkillEffectIdx++;
+            }
+
+            while (_animBeastEffectIdx < _animBeastEffects.Count
+                && _animBeastEffects[_animBeastEffectIdx].Time <= _animT)
+            {
+                var effect = _animBeastEffects[_animBeastEffectIdx];
+                if (_armyTokens.TryGetValue(effect.UnitId, out var target) && target.Visible)
+                {
+                    var visual = EffectView.Attach(target, effect.Kind, 0.7f, loop: false);
+                    var cleanup = GetTree().CreateTimer(1.2);
+                    cleanup.Timeout += () => { if (GodotObject.IsInstanceValid(visual)) visual.QueueFree(); };
+                }
+                _animBeastEffectIdx++;
             }
 
             while (_animSiegeSkillEffectIdx < _animSiegeSkillEffects.Count
@@ -14419,10 +14457,11 @@ public sealed partial class CampaignMapScene : Node3D
     private ImageTexture UnitCard(string code, TroopClass? fallbackClass = null)
     {
         if (_unitCardTextures.TryGetValue(code, out var cached)) return cached;
-        var thumbnailPath = $"res://assets/ui/troops/thumbnails/{code}.png";
+        var assetCode = code == "dragon" ? "eastern_dragon" : code;
+        var thumbnailPath = $"res://assets/ui/troops/thumbnails/{assetCode}.png";
         var path = Godot.FileAccess.FileExists(thumbnailPath)
             ? thumbnailPath
-            : $"res://assets/ui/troops/{code}.png";
+            : $"res://assets/ui/troops/{assetCode}.png";
         if (Godot.FileAccess.FileExists(path))
         {
             var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));

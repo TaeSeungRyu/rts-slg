@@ -79,10 +79,11 @@ public partial class UnitController3D : Node3D
         ("res://assets/models/troop-giant-squid.glb", true, MovementDomain.DeepWater),
         ("res://assets/models/troop-supply.glb", true, MovementDomain.Land),
         ("res://assets/models/troop-army-group.glb", true, MovementDomain.Land),
+        ("res://assets/models/troop-phoenix.glb", true, MovementDomain.Land),
     };
 
-    public static int SupplyModelIndex => TroopModels.Length - 2;
-    public static int ArmyGroupModelIndex => TroopModels.Length - 1;
+    public static int SupplyModelIndex => TroopModels.Length - 3;
+    public static int ArmyGroupModelIndex => TroopModels.Length - 2;
     public static string ModelFileAt(int index) => index >= 0 && index < TroopModels.Length
         ? TroopModels[index].File
         : string.Empty;

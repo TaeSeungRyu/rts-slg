@@ -43,7 +43,8 @@ public sealed record AdvanceTurn(
     IReadOnlyList<Domain.FieldBuildingId>? ExpiredScoutPostIds = null,
     IReadOnlyDictionary<Domain.FieldBuildingId, Domain.UnitId>? FieldGarrisonAssignments = null,
     IReadOnlyList<FormationTrigger>? FormationResults = null,
-    IReadOnlyList<FieldCombatExchange>? FieldCombatExchangeResults = null)
+    IReadOnlyList<FieldCombatExchange>? FieldCombatExchangeResults = null,
+    IReadOnlyDictionary<Domain.UnitId, int>? EventBeastRecoveries = null)
 {
     public IReadOnlyList<CombatUnit> Deployments => ReleasedDeployments ?? [];
     public IReadOnlyList<CombatUnit> EnteredCastle => Entered ?? [];
@@ -65,6 +66,7 @@ public sealed record AdvanceTurn(
         => FieldGarrisonAssignments ?? EmptyGarrisons;
     public IReadOnlyList<FormationTrigger> FormationTriggers => FormationResults ?? [];
     public IReadOnlyList<FieldCombatExchange> FieldCombatExchanges => FieldCombatExchangeResults ?? [];
+    public IReadOnlyDictionary<Domain.UnitId, int> BeastRecoveries => EventBeastRecoveries ?? EmptyLoss;
 
     private static readonly IReadOnlyDictionary<Domain.UnitId, int> EmptyLoss = new Dictionary<Domain.UnitId, int>();
     private static readonly IReadOnlyDictionary<Domain.UnitId, Spatial.HexCoord> EmptyPositions =
