@@ -55,8 +55,28 @@ public sealed class SummonService(HexMap map, IReadOnlyList<EventTreasureDefinit
             ? RenewalHexSpace.NearestHex(continuous) : caller.Field.Position;
         if (current.Distance(position) != 1 || !Free(state, position))
             return CommandResult.Fail("인접한 빈 육상 위치를 선택해야 합니다.", state);
+        var summon = units.FirstOrDefault(x => x.Code == definition.SummonCode);
+        if (summon is null) return CommandResult.Fail("소환수 데이터를 찾을 수 없습니다.", state);
+        var id = new UnitId(state.Armies.Select(x => x.Id.Value)
+            .Concat(state.Summons.Select(x => x.Unit.Value)).Append(0).Max() + 1);
+        var field = new FieldUnit(id, item.Faction, position, summon.Speed, summon.Detection,
+            summon.Range, MovementDomain.Land, UnitMode.Standby, null, id.Value);
+        var unit = new CombatUnit(field,
+            new CombatStats(summon.Troops, summon.Attack, summon.Defense, AptitudeGrade.A.Percent()),
+            new TroopPool(summon.Troops, 0), UnitCombatState.Create(0), MaxTroops: summon.Troops,
+            Class: TroopClass.Cavalry, Provisions: -1, TroopCode: summon.Code,
+            RenewalPosition: RenewalHexSpace.Center(position), IsSummon: true,
+            SummonLockDay: state.Day);
         return CommandResult.Success(state with
-        { PendingSummons = state.SummonOrders.Append(new(treasureId, callerId, position, state.Day)).ToList() });
+        {
+            FieldArmies = state.Armies.Select(x => x.Id == callerId
+                ? x with { SummonLockDay = state.Day } : x).Append(unit).ToList(),
+            SummonedCreatures = state.Summons.Append(new(id, item.Id, item.Faction, summon.Code,
+                state.Day, state.Day + summon.ActiveDays)).ToList(),
+            FactionTreasures = state.Treasures.Select(x => x.Id == item.Id
+                ? x with { SummonedDay = state.Day, SummonEndDay = state.Day + summon.ActiveDays,
+                    ReusableDay = state.Day + summon.ActiveDays + summon.CooldownDays } : x).ToList(),
+        });
     }
 
     public GameState AdvanceDay(GameState state, int day, out IReadOnlyList<CombatUnit> appeared)

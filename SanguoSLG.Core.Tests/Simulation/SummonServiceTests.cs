@@ -13,7 +13,7 @@ public class SummonServiceTests
         new SummonedUnitLoader().LoadFromDirectory(TestData.DataDirectory()));
 
     [Fact]
-    public void 장착한_장수가_소환하면_다음날_출현하고_21일_종료_후_60일_대기한다()
+    public void 장착한_장수가_소환하면_즉시_출현하고_21일_종료_후_60일_대기한다()
     {
         var field = new FieldUnit(new(1), new(1), new HexCoord(0, 0), 2, 2, 1,
             MovementDomain.Land, UnitMode.Standby, null, 1);
@@ -25,25 +25,23 @@ public class SummonServiceTests
         var ordered = Service.Order(state, caller.Id, "tiger:1", new HexCoord(1, 0));
         Assert.True(ordered.Ok, ordered.Error);
         Assert.False(Service.Order(ordered.State, caller.Id, "tiger:1", new HexCoord(0, 1)).Ok);
+        Assert.Equal(new HexCoord(1, 0), Assert.Single(ordered.State.Armies, x => x.IsSummon).Field.Position);
+        Assert.Empty(ordered.State.SummonOrders);
         var sameDay = Service.AdvanceDay(ordered.State, 10, out var none);
         Assert.Empty(none);
-        var spawned = Service.AdvanceDay(sameDay, 11, out var appeared);
-        Assert.Single(appeared);
-        Assert.True(appeared[0].IsSummon);
-        Assert.False(appeared[0].CanInitiateCombat);
-        Assert.False(spawned.Armies.Single(x => x.Id == caller.Id).CanInitiateCombat);
-        var nextDay = Service.AdvanceDay(spawned, 12, out _);
+        Assert.False(sameDay.Armies.Single(x => x.IsSummon).CanInitiateCombat);
+        Assert.False(sameDay.Armies.Single(x => x.Id == caller.Id).CanInitiateCombat);
+        var nextDay = Service.AdvanceDay(sameDay, 11, out _);
         Assert.True(nextDay.Armies.Single(x => x.Id == caller.Id).CanInitiateCombat);
         Assert.True(nextDay.Armies.Single(x => x.IsSummon).CanInitiateCombat);
-        Assert.Equal(1, appeared[0].Field.Position.Q);
         var restored = SaveService.Deserialize(SaveService.Serialize(nextDay));
-        Assert.Equal(92, restored.Treasures[0].ReusableDay);
+        Assert.Equal(91, restored.Treasures[0].ReusableDay);
         Assert.False(Service.Order(restored, caller.Id, "tiger:1", new HexCoord(0, 1)).Ok);
-        var expired = Service.AdvanceDay(restored, 32, out _);
+        var expired = Service.AdvanceDay(restored, 31, out _);
         Assert.Empty(expired.Summons);
         Assert.Single(expired.Armies);
-        Assert.False(Service.Order(expired with { Day = 91 }, caller.Id, "tiger:1", new HexCoord(1, 0)).Ok);
-        Assert.True(Service.Order(expired with { Day = 92 }, caller.Id, "tiger:1", new HexCoord(1, 0)).Ok);
+        Assert.False(Service.Order(expired with { Day = 90 }, caller.Id, "tiger:1", new HexCoord(1, 0)).Ok);
+        Assert.True(Service.Order(expired with { Day = 91 }, caller.Id, "tiger:1", new HexCoord(1, 0)).Ok);
     }
 
     [Fact]
@@ -58,7 +56,7 @@ public class SummonServiceTests
         var state = new GameState(10, 190, [], [], [], FieldArmies: [ai, enemy],
             FactionTreasures: [new("egg", "dragon_egg", "용의 알", new(2), 9, "hunt", EquippedBy: new(2))]);
         var planned = Service.PlanAiOrders(state, 10, new(1));
-        Assert.Single(planned.SummonOrders);
-        Assert.Equal(new HexCoord(1, 0), planned.SummonOrders[0].Position);
+        Assert.Empty(planned.SummonOrders);
+        Assert.Equal(new HexCoord(1, 0), Assert.Single(planned.Armies, x => x.IsSummon).Field.Position);
     }
 }

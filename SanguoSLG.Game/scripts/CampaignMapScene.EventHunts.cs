@@ -79,13 +79,13 @@ public sealed partial class CampaignMapScene
         }
         var item = _state.Treasures.First(x => x.Id == itemId);
         StopSummonTargeting();
-        ShowConfirmWithOfficer("소환 확인", $"{item.Name}을(를) 선택한 위치에 소환합니다.\n다음 진행에 출현하여 21일 활동합니다.",
+        ShowConfirmWithOfficer("소환 확인", $"{item.Name}을(를) 선택한 위치에 즉시 소환합니다.\n21일 동안 활동합니다.",
             item.EquippedBy, () =>
             {
                 var result = _summons.Order(_state, callerId, itemId, position);
                 if (!result.Ok) { ShowNotice("소환 불가", result.Error ?? "소환할 수 없습니다."); return; }
                 _state = result.State;
-                Redraw("소환 명령을 예약했습니다.");
+                Redraw("소환수가 나타났습니다.");
             });
     }
 
@@ -624,9 +624,10 @@ public sealed partial class CampaignMapScene
             var confirm = _confirmLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
                 .SingleOrDefault(button => button.Text == "확인");
             confirm?.EmitSignal(Button.SignalName.Pressed);
-            var passed = mapTargeting && confirm is not null && _state.SummonOrders.Count == 1
-                && _state.SummonOrders[0].Position == target && _summonTargetingUnitId < 0;
-            GD.Print($"[maptestsummontargetqa] passed={passed} map={mapTargeting} confirm={confirm is not null} orders={_state.SummonOrders.Count}");
+            var summoned = _state.Armies.SingleOrDefault(army => army.IsSummon);
+            var passed = mapTargeting && confirm is not null && summoned?.Field.Position == target
+                && _state.SummonOrders.Count == 0 && _summonTargetingUnitId < 0;
+            GD.Print($"[maptestsummontargetqa] passed={passed} map={mapTargeting} confirm={confirm is not null} summoned={summoned?.Id.Value}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (Exception error)
