@@ -317,7 +317,10 @@ public sealed class CampaignEngine
 
             turn = StripProductionUnits(turn, productionUnitIds);
             if (_eventHunts is not null)
+            {
                 turn = _eventHunts.ApplyDragonSplash(armies, turn);
+                (work, turn) = _eventHunts.ApplyPhoenixRecovery(work, armies, turn);
+            }
             turn = ApplyFieldSpoils(armies, turn);
             if (_eventHunts is not null)
             {

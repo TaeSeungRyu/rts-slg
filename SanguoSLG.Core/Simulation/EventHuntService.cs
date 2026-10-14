@@ -226,6 +226,41 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
                 Pools = pools, Exchanges = exchanges } };
     }
 
+    /// <summary>교전에 참여한 봉황은 부상병을 최대 병력의 5%까지 회복한다. 전멸 시에는 1회만 부활한다.</summary>
+    public (GameState State, AdvanceTurn Turn) ApplyPhoenixRecovery(GameState state,
+        IReadOnlyList<CombatUnit> before, AdvanceTurn turn)
+    {
+        if (turn.Combat is not { } combat) return (state, turn);
+        var units = turn.Units.ToDictionary(unit => unit.Id);
+        var pools = combat.Pools.ToDictionary();
+        var encounters = state.Encounters.ToList();
+        foreach (var phoenix in before.Where(unit => unit.Field.Owner == EventFaction
+                     && unit.TroopCode == "phoenix").OrderBy(unit => unit.Id.Value))
+        {
+            if (combat.DamageTaken.GetValueOrDefault(phoenix.Id) <= 0
+                && combat.DamageDealt.GetValueOrDefault(phoenix.Id) <= 0) continue;
+            var index = encounters.FindIndex(encounter => encounter.Unit == phoenix.Id);
+            if (index < 0 || !pools.TryGetValue(phoenix.Id, out var pool)) continue;
+            var defeated = pool.Active <= 0;
+            if (defeated && encounters[index].RevivedOnce) continue;
+            var recovered = pool.Heal(Math.Max(1, phoenix.MaxTroops * 5 / 100));
+            if (recovered.Active <= pool.Active) continue;
+            pools[phoenix.Id] = recovered;
+            var unit = units.GetValueOrDefault(phoenix.Id) ?? phoenix;
+            var moved = turn.Movement.Units.FirstOrDefault(field => field.Id == phoenix.Id);
+            units[phoenix.Id] = unit with { Pool = recovered,
+                Field = moved ?? unit.Field,
+                RenewalPosition = moved is null ? unit.RenewalPosition
+                    : RenewalHexSpace.Center(moved.Position) };
+            if (defeated) encounters[index] = encounters[index] with { RevivedOnce = true };
+        }
+        return (state with { EventEncounters = encounters }, turn with
+        {
+            Units = units.Values.OrderBy(unit => unit.Id.Value).ToList(),
+            Combat = combat with { Pools = pools },
+        });
+    }
+
     public GameState ResolveCombat(GameState state, IReadOnlyList<CombatUnit> before,
         AdvanceTurn turn, int day, out IReadOnlyList<WorldEvent> events)
     {

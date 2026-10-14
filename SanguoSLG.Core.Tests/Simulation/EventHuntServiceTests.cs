@@ -72,6 +72,35 @@ public class EventHuntServiceTests
         Assert.Equal(20, result.Combat!.Exchanges!.Single(x => x.Target == adjacent.Id).Amount);
     }
 
+    [Fact]
+    public void 봉황은_교전_중_부상병을_회복하고_첫_전멸만_부활한다()
+    {
+        var definition = new EventUnitLoader().LoadFromDirectory(TestData.DataDirectory())
+            .Single(x => x.Code == "phoenix");
+        var service = new EventHuntService(Map, [definition]);
+        var encounter = new EventEncounter("phoenix-1", "phoenix", new(1), City.Id, 8,
+            Unit: new(8));
+        var beast = Spawn().Armies.Single() with
+        { Field = Spawn().Armies.Single().Field with { Id = new(8) },
+            TroopCode = "phoenix", MaxTroops = 40000, Pool = new(1000, 3000) };
+        var state = World with { EventEncounters = [encounter], FieldArmies = [beast] };
+        AdvanceTurn Turn(TroopPool pool) => new([], new AdvanceResult([], [beast.Field], StopReason.MaxDays, 1),
+            new CombatPhaseResult(new Dictionary<UnitId, int> { [beast.Id] = 1000 },
+                new Dictionary<UnitId, int>(), new Dictionary<UnitId, TroopPool> { [beast.Id] = pool }),
+            new Dictionary<UnitId, ActiveSkill>(), new Dictionary<UnitId, Stratagem>(),
+            new Dictionary<UnitId, int>(), new Dictionary<UnitId, int>());
+        var (revivedState, revivedTurn) = service.ApplyPhoenixRecovery(state, [beast],
+            Turn(new TroopPool(0, 3700)));
+        Assert.Equal(2000, Assert.Single(revivedTurn.Units).Pool.Active);
+        Assert.True(Assert.Single(revivedState.Encounters).RevivedOnce);
+        var saved = SaveService.Deserialize(SaveService.Serialize(revivedState));
+        var (_, secondTurn) = service.ApplyPhoenixRecovery(saved, [beast], Turn(new TroopPool(0, 3700)));
+        Assert.Empty(secondTurn.Units);
+        var (_, livingTurn) = service.ApplyPhoenixRecovery(saved, [beast],
+            Turn(new TroopPool(500, 3000)));
+        Assert.Equal(2500, Assert.Single(livingTurn.Units).Pool.Active);
+    }
+
     private static GameState Spawn()
         => Service.SpawnDue(Service.ScheduleDiscoveries(World), 8, out _);
 
