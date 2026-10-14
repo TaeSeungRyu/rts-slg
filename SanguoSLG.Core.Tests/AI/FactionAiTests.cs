@@ -136,7 +136,7 @@ public class FactionAiTests
     }
 
     [Fact]
-    public void AI는_남는_장수로_탐색을_발행한다()
+    public void AI는_남는_장수가_있어도_여러주_동안_탐색을_발행하지_않는다()
     {
         var s = new GameState(1, 1,
             new List<Faction> { new(new FactionId(1), "위", new GeneralId(1), 1000, "#2d5fd0") },
@@ -144,11 +144,31 @@ public class FactionAiTests
             new List<General> { Gen(1), Gen(2) },
             Postings: new List<GeneralPosting> { At(1, 1, 1), At(2, 1, 1) });
 
-        var after = Ai().PlanWeek(s, new FactionId(1));
+        for (var week = 0; week < 4; week++)
+        {
+            s = Ai().PlanWeek(s with { Day = 1 + week * 7 }, new FactionId(1));
+            Assert.DoesNotContain(s.Commands, command => command.Kind == CommandKind.Explore);
+        }
+        Assert.False(s.IsGeneralBusy(new GeneralId(1)));
+    }
 
-        var command = Assert.Single(after.Commands);
-        Assert.Equal(CommandKind.Explore, command.Kind);
-        Assert.True(after.IsGeneralBusy(new GeneralId(1)));
+    [Fact]
+    public void AI의_기존_탐색은_취소하지만_플레이어_탐색은_유지한다()
+    {
+        var state = new GameState(1, 190, [],
+            [Town(1, 1, default), Town(2, 2, new(6, 0))], [Gen(1), Gen(2)],
+            Postings: [At(1, 1, 1), At(2, 2, 2)]);
+        var commands = new CommandService(B, Troops);
+        var playerOrder = commands.Issue(state, new(new(1), CommandKind.Explore, new(1)));
+        Assert.True(playerOrder.Ok, playerOrder.Error);
+        var aiOrder = commands.Issue(playerOrder.State, new(new(2), CommandKind.Explore, new(2)));
+        Assert.True(aiOrder.Ok, aiOrder.Error);
+
+        var after = Ai().PlanWeek(aiOrder.State, new(2));
+
+        Assert.Equal(new CityId(1), Assert.Single(after.Commands).City);
+        Assert.True(after.IsGeneralBusy(new(1)));
+        Assert.False(after.IsGeneralBusy(new(2)));
     }
 
     [Fact]

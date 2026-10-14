@@ -27,6 +27,9 @@ public sealed class FactionAI
     /// <summary>이 세력의 한 주 명령·출전을 반영한 새 상태를 반환한다.</summary>
     public GameState PlanWeek(GameState state, FactionId faction)
     {
+        state = state with { PendingCommands = state.Commands.Where(command =>
+            command.Kind != CommandKind.Explore
+            || state.Cities.FirstOrDefault(city => city.Id == command.City)?.Owner != faction).ToList() };
         var existingArmyIds = state.Armies.Select(unit => unit.Id).ToHashSet();
         state = state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && unit.AiOpeningAttack && !unit.IsWaitingDeployment
@@ -74,7 +77,6 @@ public sealed class FactionAI
             }
         }
 
-        state = ExploreWithIdleOfficers(state, faction);
         return state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && !existingArmyIds.Contains(unit.Id)
                 && unit.Field.Mode == UnitMode.Attack
@@ -355,39 +357,6 @@ public sealed class FactionAI
                 vanguard.Id,
                 UnitMode.Attack,
                 dest));
-            if (result.Ok)
-            {
-                state = result.State;
-            }
-        }
-
-        return state;
-    }
-
-    private GameState ExploreWithIdleOfficers(GameState state, FactionId faction)
-    {
-        if (!state.Factions.Any(f => f.Id == faction))
-        {
-            return state;
-        }
-
-        foreach (var city in state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).ToList())
-        {
-            if (state.Commands.Any(c => c.City == city.Id && c.Kind == CommandKind.Explore))
-            {
-                continue;
-            }
-
-            var free = state.GeneralsAt(city.Id)
-                .Where(g => !state.IsGeneralBusy(g))
-                .OrderBy(g => g.Value)
-                .ToList();
-            if (free.Count <= _config.KeepGeneralsHome)
-            {
-                continue;
-            }
-
-            var result = _commands.Issue(state, new CommandRequest(city.Id, CommandKind.Explore, free[0]));
             if (result.Ok)
             {
                 state = result.State;
