@@ -608,7 +608,12 @@ public sealed class RenewalAdvanceSimulator
         var destination = target.Id.Kind is RenewalTargetKind.Building or RenewalTargetKind.Site
             ? ApproachBuilding(unit, targetPosition, range)
             : targetPosition;
-        return Retarget(unit with
+        var approaching = unit.ArrivalPosition is { } arrival
+            && target.Id.Kind is RenewalTargetKind.Building or RenewalTargetKind.Site
+            && arrival.DistanceTo(targetPosition) > range
+            ? unit with { ArrivalPosition = null, Path = null, PathIndex = 0 }
+            : unit;
+        return Retarget(approaching with
         {
             LastKnownTargetPosition = targetPosition,
             StopReason = RenewalStopReason.None,

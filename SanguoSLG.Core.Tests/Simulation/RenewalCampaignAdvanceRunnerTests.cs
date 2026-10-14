@@ -8,6 +8,39 @@ using SanguoSLG.Core.Spatial;
 public sealed class RenewalCampaignAdvanceRunnerTests
 {
     [Fact]
+    public void 같은_성을_공격하는_근접_소환수는_분산된_도착점_때문에_대기로_바뀌지_않는다()
+    {
+        var city = new HexCoord(4, 6);
+        var nearestFootprint = RenewalHexSpace.Center(new HexCoord(3, 7));
+        var approach = RenewalHexSpace.Center(new HexCoord(3, 8));
+        var dispersed = new ContinuousPosition(2601, 10000);
+        var start = new ContinuousPosition(2601, 10498);
+        var targetId = new RenewalTargetId(RenewalTargetKind.Site, 1);
+        var map = new RenewalMovementMap(new HexMap(-2, 8, 3, 13),
+            CastleFootprint.TilesFor(new City(new CityId(3), "한중", city,
+                new FactionId(2), 0, CastleSize.Medium)));
+        var simulator = new RenewalAdvanceSimulator(map);
+        var unit = new RenewalUnitState(new UnitId(6), start, approach, 3,
+            Owner: new FactionId(1), Mode: RenewalOrderMode.Attack,
+            OriginalDestination: approach, AssignedTarget: targetId, CastleAttackRange: 1);
+        var target = new RenewalTargetState(targetId, new FactionId(2),
+            RenewalHexSpace.Center(city), Footprint: [nearestFootprint]);
+        var state = simulator.Start([unit], [target]);
+        state = state with { Units = [state.Units.Single() with
+        {
+            ArrivalPosition = dispersed,
+            Path = map.FindPath(MovementDomain.Land, start, dispersed),
+            PathIndex = 0,
+        }] };
+
+        var result = simulator.StepDay(state).State.Units.Single();
+
+        Assert.Equal(RenewalOrderMode.Attack, result.Mode);
+        Assert.Equal(RenewalStopReason.TargetInRange, result.StopReason);
+        Assert.True(result.Position.DistanceTo(nearestFootprint) <= 1000);
+    }
+
+    [Fact]
     public void 캠페인_진행기는_연속이동_결과를_기존_전투규칙에_전달한다()
     {
         var map = new HexMap(-3, 3, -3, 3);
