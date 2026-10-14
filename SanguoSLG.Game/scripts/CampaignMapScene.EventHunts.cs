@@ -18,6 +18,45 @@ public sealed partial class CampaignMapScene
     private int _summonTargetingUnitId = -1;
     private string? _summonTargetingItemId;
 
+    private void SeedMapTestTreasures()
+    {
+        var owned = _state.Treasures.Where(item => item.Faction == Player)
+            .Select(item => item.Code).ToHashSet();
+        _state = _state with
+        {
+            FactionTreasures = _state.Treasures.Concat(_treasureDefinitions
+                .Where(definition => !owned.Contains(definition.Code))
+                .Select(definition => new FactionTreasure($"maptest:treasure:{definition.Code}",
+                    definition.Code, definition.Name, Player, _state.Day, "maptest:treasures"))).ToList(),
+        };
+    }
+
+    private void RunAllTreasuresQa()
+    {
+        try
+        {
+            var count = _state.Treasures.Count;
+            SeedMapTestTreasures();
+            var items = _state.Treasures.Where(item => item.Faction == Player).ToList();
+            var restored = SaveService.Deserialize(SaveService.Serialize(_state));
+            var general = _state.Assignments.First(posting => posting.Faction == Player
+                && posting.Location is not null && !_state.IsGeneralBusy(posting.General)).General;
+            var equipment = new TreasureEquipmentService(_treasureDefinitions);
+            var passed = count == _state.Treasures.Count && items.Count == _treasureDefinitions.Count
+                && items.Select(item => item.Code).Distinct().Count() == items.Count
+                && items.All(item => item.EquippedBy is null && item.ReusableDay is null
+                    && restored.Treasures.Any(saved => saved == item)
+                    && equipment.Equip(_state, item.Id, general).Ok);
+            GD.Print($"[maptestalltreasuresqa] passed={passed} items={items.Count} equipment=true save={restored.Treasures.Count}");
+            GetTree().Quit(passed ? 0 : 1);
+        }
+        catch (Exception error)
+        {
+            GD.PushError($"[maptestalltreasuresqa] {error}");
+            GetTree().Quit(1);
+        }
+    }
+
     private void OpenSummonModal()
     {
         var caller = _state.Armies.FirstOrDefault(u => u.Id.Value == _selectedUnitId);
