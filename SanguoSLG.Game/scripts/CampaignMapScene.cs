@@ -722,6 +722,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptesteventhuntqa")) CallDeferred(nameof(RunEventHuntQa));
         if (args.Contains("--maptestalltreasuresqa")) CallDeferred(nameof(RunAllTreasuresQa));
         if (args.Contains("--maptestphoenixmotionqa")) CallDeferred(nameof(RunPhoenixMotionQa));
+        if (args.Contains("--maptesttreasureimagesqa")) CallDeferred(nameof(RunTreasureImagesQa));
         if (args.Contains("--maptesttreasurecloseqa")) CallDeferred(nameof(RunTreasureCloseQa));
         if (args.Contains("--maptestsummontargetqa")) CallDeferred(nameof(RunSummonTargetQa));
         if (args.Contains("--maptestofficerfixtureqa")) CallDeferred(nameof(RunMapTestOfficerFixtureQa));
@@ -805,6 +806,7 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var texture in _emblems.Values) Track(texture);
         foreach (var texture in _aptitudeCardTextures.Values) Track(texture);
         foreach (var texture in _unitCardTextures.Values) Track(texture);
+        foreach (var texture in _treasureTextures.Values) Track(texture);
         foreach (var texture in _roundedOptionTextures.Values) Track(texture);
         foreach (var texture in _portraits.Values) Track(texture);
         foreach (var texture in _circularPortraits.Values) Track(texture);
@@ -821,6 +823,7 @@ public sealed partial class CampaignMapScene : Node3D
         _emblems.Clear();
         _aptitudeCardTextures.Clear();
         _unitCardTextures.Clear();
+        _treasureTextures.Clear();
         _roundedOptionTextures.Clear();
         _portraits.Clear();
         _circularPortraits.Clear();

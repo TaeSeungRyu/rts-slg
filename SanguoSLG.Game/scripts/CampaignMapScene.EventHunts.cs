@@ -17,6 +17,54 @@ public sealed partial class CampaignMapScene
     private readonly List<WorldEvent> _pendingHuntRewards = new();
     private int _summonTargetingUnitId = -1;
     private string? _summonTargetingItemId;
+    private readonly Dictionary<string, ImageTexture> _treasureTextures = new(StringComparer.Ordinal);
+
+    private ImageTexture? TreasureTexture(string code)
+    {
+        if (_treasureTextures.TryGetValue(code, out var cached)) return cached;
+        var path = $"res://assets/ui/items/{code}.png";
+        if (!Godot.FileAccess.FileExists(path)) return null;
+        using var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
+        if (image is null || image.IsEmpty()) return null;
+        image.GenerateMipmaps();
+        var texture = ImageTexture.CreateFromImage(image);
+        _treasureTextures[code] = texture;
+        return texture;
+    }
+
+    private PanelContainer TreasureImage(string code, int size = 64)
+    {
+        var panel = new PanelContainer
+        {
+            Name = $"TreasureImage_{code}", ClipContents = true,
+            CustomMinimumSize = new(size, size),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        panel.AddThemeStyleboxOverride("panel", Frame(new Color(0.055f, 0.04f, 0.025f),
+            new Color(Gold, 0.65f), 1, 7, 3));
+        panel.AddChild(new TextureRect
+        {
+            Name = "TreasureTexture", Texture = TreasureTexture(code),
+            CustomMinimumSize = new(size - 6, size - 6),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        });
+        return panel;
+    }
+
+    private void ApplyTreasureButtonIcon(Button button, string code)
+    {
+        button.Icon = TreasureTexture(code);
+        button.ExpandIcon = true;
+        button.IconAlignment = HorizontalAlignment.Left;
+        button.AddThemeConstantOverride("icon_max_width", 36);
+        button.AddThemeConstantOverride("h_separation", 10);
+        button.CustomMinimumSize = new(button.CustomMinimumSize.X, 44);
+    }
 
     private void SeedMapTestTreasures()
     {
@@ -91,6 +139,43 @@ public sealed partial class CampaignMapScene
         }
     }
 
+    private async void RunTreasureImagesQa()
+    {
+        try
+        {
+            async System.Threading.Tasks.Task Settle()
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            }
+            bool ImagesFit(int expected)
+            {
+                var images = _modalLayer!.FindChildren("TreasureTexture", "TextureRect", true, false)
+                    .OfType<TextureRect>().ToList();
+                return images.Count == expected && images.All(image => image.Texture is not null
+                    && image.Size.X > 0 && image.Size.Y > 0 && image.Size.X <= 64 && image.Size.Y <= 64);
+            }
+            var loaded = _treasureDefinitions.All(definition => TreasureTexture(definition.Code) is not null);
+            OpenTreasureList();
+            await Settle();
+            var inventory = ImagesFit(_treasureDefinitions.Count);
+            CloseModal();
+            var posting = _state.Assignments.First(posting => posting.Faction == Player
+                && posting.Location is not null && !_state.IsGeneralBusy(posting.General));
+            OpenGeneralTreasureModal(posting.General, posting.Location!.Value, null, null);
+            await Settle();
+            var equipment = ImagesFit(_treasureDefinitions.Count);
+            var passed = loaded && inventory && equipment;
+            GD.Print($"[maptesttreasureimagesqa] passed={passed} loaded={_treasureTextures.Count} inventory={inventory} equipment={equipment}");
+            GetTree().Quit(passed ? 0 : 1);
+        }
+        catch (Exception error)
+        {
+            GD.PushError($"[maptesttreasureimagesqa] {error}");
+            GetTree().Quit(1);
+        }
+    }
+
     private void OpenSummonModal()
     {
         var caller = _state.Armies.FirstOrDefault(u => u.Id.Value == _selectedUnitId);
@@ -118,6 +203,7 @@ public sealed partial class CampaignMapScene
             var ready = item.ReusableDay is null || _state.Day >= item.ReusableDay;
             box.AddChild(MakeLabel($"{item.Name} · {(ready ? "소환 가능" : $"재사용까지 {item.ReusableDay - _state.Day}일")}", 14, GoldBright));
             var button = MakeButton(ready ? $"{item.Name} · 위치 선택" : "재사용 대기");
+            ApplyTreasureButtonIcon(button, item.Code);
             button.Disabled = !ready;
             button.Pressed += () =>
             {
@@ -236,7 +322,7 @@ public sealed partial class CampaignMapScene
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 12);
         card.AddChild(row);
-        row.AddChild(MakeLabel(treasure.Code.StartsWith("dragon") ? "龍" : treasure.Code.StartsWith("phoenix") ? "鳳" : "虎", 26, GoldBright));
+        row.AddChild(TreasureImage(treasure.Code));
         var text = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         row.AddChild(text);
         text.AddChild(MakeLabel(treasure.Name, 15, GoldBright));
@@ -312,6 +398,7 @@ public sealed partial class CampaignMapScene
             ? "아래 보물 중 하나를 선택하세요. 장수당 하나만 장착할 수 있습니다."
             : _treasureDefinitions.FirstOrDefault(d => d.Code == current.Code) is { } currentDefinition
                 ? TreasureEffectText(currentDefinition) : "보물 정보 확인 필요", 12, Parchment));
+        if (current is not null) summaryRow.AddChild(TreasureImage(current.Code));
         box.AddChild(GoldRule());
         box.AddChild(MakeLabel($"획득 보물  {treasures.Count}개", 15, GoldBright));
         if (treasures.Count == 0) box.AddChild(MakeLabel("아직 획득한 보물이 없습니다.", 13, Parchment));
@@ -337,8 +424,7 @@ public sealed partial class CampaignMapScene
             var top = new HBoxContainer();
             top.AddThemeConstantOverride("separation", 9);
             content.AddChild(top);
-            top.AddChild(MakeLabel(treasure.Code.StartsWith("dragon") ? "龍" :
-                treasure.Code.StartsWith("phoenix") ? "鳳" : "虎", 25, GoldBright));
+            top.AddChild(TreasureImage(treasure.Code));
             var itemTitle = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             top.AddChild(itemTitle);
             itemTitle.AddChild(MakeLabel(treasure.Name, 15, GoldBright));
@@ -448,6 +534,7 @@ public sealed partial class CampaignMapScene
                     var selectedEncounter = encounter.Id;
                     var selectedCode = choice.Code;
                     var select = MakeButton($"{choice.Name} · {TreasureEffectText(choice)}", accent: true);
+                    ApplyTreasureButtonIcon(select, choice.Code);
                     select.Pressed += () =>
                     {
                         var result = _eventHunts.ChooseReward(_state, selectedEncounter, Player, selectedCode);
