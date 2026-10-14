@@ -3,14 +3,14 @@
 > 이 저장소를 **클론해 이어서 작업하는 사람**(사람·AI 모두)을 위한 진입점.
 > 처음이면 **이 문서 → [CLAUDE.md](CLAUDE.md) → [doc/ai-working-notes.md](doc/ai-working-notes.md)** 순으로 읽는다.
 
-삼국지 11 스타일 턴제 전략 SLG. 오프라인 싱글플레이. C#(.NET 9) + Godot 4.7(.NET/mono). Core는 엔진 비의존(순수 C#), Game이 표현.
+전투 중심 오프라인 싱글플레이 SLG. 7일 진행 안에서 하루마다 연속 좌표 이동턴→공격턴을 처리한다. C#(.NET 9) + Godot 4.7(.NET/mono). Core는 엔진 비의존(순수 C#), Game이 표현.
 
 ---
 
 ## 1. 클론 직후 준비
 
 - 설치: **.NET 9 SDK 이상**, **Godot 4.7.2 mono(.NET) 빌드**(일반 빌드는 C# 실행 불가).
-- **`run-*.bat`의 `GODOT` 경로**를 자기 PC 설치 위치로 수정한다. 현재 개발 PC 기준은 `D:\LOCAL-WORK-STATION\Godot_v4.7.2-stable_win64\`이다.
+- **`run-*.bat`의 `GODOT` 경로**를 자기 PC 설치 위치로 확인한다. `run-maptest.bat`의 현재 기본값은 `D:\LOCAL-WORK-STATION\Godot_v4.7.2-stable_win64\Godot_v4.7.2-stable_mono_win64.exe`다.
   머신 의존 경로 전체는 [doc/ai-working-notes.md](doc/ai-working-notes.md) §5.
 - Blender·Fooocus·Kenney 에셋 팩은 **새 아트를 만들 때만** 필요. 이미 쓰는 에셋은 저장소에 커밋돼 있어
   **게임 실행에는 불필요**하다.
@@ -18,8 +18,7 @@
 ## 2. 빌드 · 테스트 · 실행
 
 ```bash
-dotnet build                                              # Core·Tests·Sandbox  (⚠ Game 미포함)
-dotnet test                                               # 전체 xUnit 회귀 검증
+dotnet test SanguoSLG.Core.Tests/SanguoSLG.Core.Tests.csproj  # Core xUnit 회귀 검증
 dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검증 — 루트 build가 빼먹으므로 필수
 "<godot-mono>" --headless --path SanguoSLG.Game --build-solutions --quit   # 씬/솔루션 컴파일 검증
 ```
@@ -44,13 +43,13 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검�
 - 현재 개발 기준은 [doc/plan-v2-implementation-roadmap.md](doc/plan-v2-implementation-roadmap.md)의 **v2 전투 중심 전환**이다.
 - 유지 축: 이동·전투·공성·함락·약탈·보급·병종 연구·도시 계략·탐색·임명·저장/불러오기·HUD/보고 패널.
 - 단순화/제거 축: 인구, 세율, 시장, 모병/징병 분리, 충성, 급여, 배신, 포로교환, 반복 시설 건설/업그레이드.
-- 구현 완료 축: 자동 담당자, 병력 생산·연구·최소 외교·위인/탐색, 생산·보급·수송·집단군·항구, 장수 성장, 액티브 연출, 유적 점령/병종 해금.
+- 구현 완료 축: 자동 담당자, 병력 생산·연구·최소 외교·위인/탐색, 생산·보급·수송·집단군·항구, 장수 성장, 액티브 연출, 유적 점령/병종 해금, 야전 건축, 연속 좌표 이동, 대호·용·봉황 사냥과 장착·소환. 이동 개편의 실제 플레이 회귀 QA는 계속한다.
 - 표현: `run-maptest`(캠페인 3D)·`run-admin`(내정) 씬. 최근 배치 수동 QA는 [doc/test/qa-checklist.md](doc/test/qa-checklist.md).
 
 ## 5. 다음 작업
 
 - 기능은 **[doc/plan-v2-implementation-roadmap.md](doc/plan-v2-implementation-roadmap.md)의 최상단 미완료 단계**부터 잡는다.
-- 2026-09-27 기준 다음 기능은 **Phase 19 이벤트 유닛 대호**, 이후 용·봉황, v2 AI, 통합 QA다.
+- 2026-10-15 기준 **Phase 19·19A·20은 구현 완료**다. 다음 기능은 **Phase 21 v2 AI 조정**, 그다음 Phase 22 통합 QA다. 고대유물 단서 해석은 별도 후속 범위다.
 - UI 우선 작업은 [doc/plan-ui-improvement.md](doc/plan-ui-improvement.md)의 우선순위와 화면별 QA를 따른다.
 - 원칙: 끼어드는 아이디어는 해당 `design-*` 문서에 `❓`로 기록만 하고 로드맵 순서를 따른다.
   게임 밸런스·규칙(전투 공식·성장·AI 우선순위)은 **설계자(사용자) 확정**이 필요 — 임의로 정하지 않는다.
@@ -60,5 +59,5 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검�
 - 새 세션은 **CLAUDE.md + doc/ai-working-notes.md를 먼저 읽는다**(작업 방식·검증 함정이 거기 있다).
 - 작업 방식 요약: 스크린샷 안 찍음 · 게임 창 자동 실행 안 함 · 코드 주석 최소화 · claude.ai 아티팩트 금지 ·
   "다음 작업"은 항상 plan-roadmap에서.
-- 커밋: Conventional Commits, 본문 한국어, 트레일러 `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
-- 완료 보고 전 반드시 `dotnet build` + `dotnet test` (+ Game을 건드렸으면 Game 빌드/헤드리스)까지 실행한다.
+- 커밋: Conventional Commits, 본문 한국어. 공동 작성자 트레일러는 실제 기여에 맞게만 기재한다.
+- 코드 변경은 관련 xUnit·Game 빌드·필요한 headless QA를 수행한다. 문서만 변경하면 링크·규칙·체크표·`git diff --check`로 검증하고 코드 테스트를 실행했다고 표현하지 않는다.
