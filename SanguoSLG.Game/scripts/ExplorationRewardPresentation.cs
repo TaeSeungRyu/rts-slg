@@ -35,6 +35,18 @@ public sealed record ExplorationRewardPresentation(
                 "7일 후부터 주변 숲·산지에 대호가 출현합니다. 숲·산지가 없으면 빈 평지에 출현하며, 다른 대호가 활동 중이면 기다립니다.",
                 "대호 처치: 장수 경험치·병종 숙련·호부 획득. 용·봉황은 후속 이벤트입니다.",
                 ExplorationRewardTone.DivineBeast, discovery.Gold, discovery.Provisions),
+            "dragon_trace" => new(
+                "용의 흔적", "희귀 이벤트 단서",
+                $"{explorerName} 장수가 {cityName}에서 용의 흔적을 발견했습니다.",
+                "7일 후부터 발견 도시 주변에 용이 출현합니다.",
+                "용 처치: 장수 경험치·병종 숙련과 용린 갑옷·용각·용의 알 중 하나를 선택합니다.",
+                ExplorationRewardTone.DivineBeast, discovery.Gold, discovery.Provisions),
+            "phoenix_trace" => new(
+                "봉황의 흔적", "희귀 이벤트 단서",
+                $"{explorerName} 장수가 {cityName}에서 봉황의 흔적을 발견했습니다.",
+                "7일 후부터 발견 도시 주변에 봉황이 출현합니다.",
+                "봉황 처치: 장수 경험치·병종 숙련과 봉황 깃·봉황옥·봉황의 알 중 하나를 선택합니다.",
+                ExplorationRewardTone.DivineBeast, discovery.Gold, discovery.Provisions),
             "ancient_relic_clue" => new(
                 "고대유물의 단서", "아이템 단서",
                 $"{explorerName} 장수가 {cityName}에서 고대유물의 단서를 발견했습니다.",

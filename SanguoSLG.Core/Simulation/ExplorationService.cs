@@ -10,7 +10,8 @@ public sealed class ExplorationService
     {
         var roll = random.Next(0, 100);
         var kind = KindForRoll(roll, AdministrationGrowth.EffectivePoliticsRounded(explorer), divineBeastPercent);
-        return BuildDiscovery(state.Day, city.Owner, city.Id, explorer.Id, kind);
+        var beastIndex = kind == ExplorationResultKind.DivineBeast ? random.Next(0, 3) : 0;
+        return BuildDiscovery(state.Day, city.Owner, city.Id, explorer.Id, kind, beastIndex);
     }
 
     public static ExplorationResultKind KindForRoll(int roll, int politics = 0, int divineBeastPercent = 1)
@@ -34,9 +35,14 @@ public sealed class ExplorationService
         };
 
     private static ExplorationDiscovery BuildDiscovery(
-        int day, FactionId faction, CityId city, GeneralId explorer, ExplorationResultKind kind)
+        int day, FactionId faction, CityId city, GeneralId explorer, ExplorationResultKind kind,
+        int beastIndex)
         => kind switch
         {
+            ExplorationResultKind.DivineBeast when beastIndex == 1 => new(day, faction, city, explorer, kind,
+                "dragon_trace", Text: "용의 흔적을 발견했습니다."),
+            ExplorationResultKind.DivineBeast when beastIndex == 2 => new(day, faction, city, explorer, kind,
+                "phoenix_trace", Text: "봉황의 흔적을 발견했습니다."),
             ExplorationResultKind.DivineBeast => new(day, faction, city, explorer, kind,
                 "divine_beast_trace", Text: "신수의 흔적을 발견했습니다."),
             ExplorationResultKind.AncientRelic => new(day, faction, city, explorer, kind,

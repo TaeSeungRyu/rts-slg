@@ -19,6 +19,25 @@ public class EventHuntServiceTests
         new Dictionary<HexCoord, TerrainType> { [new(2, 0)] = TerrainType.Forest, [new(3, 0)] = TerrainType.Mountain });
     private static EventHuntService Service => new(Map, [Tiger]);
 
+    [Theory]
+    [InlineData("dragon_trace", "dragon")]
+    [InlineData("phoenix_trace", "phoenix")]
+    public void 용과_봉황_단서는_발견_도시_주변에_각각_출현하고_저장된다(string clue, string code)
+    {
+        var definitions = new EventUnitLoader().LoadFromDirectory(TestData.DataDirectory());
+        var service = new EventHuntService(Map, definitions);
+        var discovery = World.Discoveries[0] with { Code = clue };
+        var scheduled = service.ScheduleDiscoveries(World with { ExplorationDiscoveries = [discovery] });
+        var spawned = service.SpawnDue(scheduled, 8, out var events);
+        var beast = Assert.Single(spawned.Armies);
+
+        Assert.Equal(code, beast.TroopCode);
+        Assert.Equal(City.Id, Assert.Single(spawned.Encounters).DiscoveryCity);
+        Assert.InRange(beast.Field.Position.Distance(City.Position), 2, 6);
+        Assert.Single(events);
+        Assert.Equal(code, Assert.Single(SaveService.Deserialize(SaveService.Serialize(spawned)).Armies).TroopCode);
+    }
+
     private static GameState Spawn()
         => Service.SpawnDue(Service.ScheduleDiscoveries(World), 8, out _);
 

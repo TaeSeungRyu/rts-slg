@@ -25,6 +25,27 @@ public class ExplorationServiceTests
         public int Next(int minInclusive, int maxExclusive) => value;
     }
 
+    private sealed class BeastRandom(int beastIndex) : IRandomSource
+    {
+        public int Next(int minInclusive, int maxExclusive)
+            => maxExclusive == 3 ? beastIndex : minInclusive;
+    }
+
+    [Theory]
+    [InlineData(0, "divine_beast_trace")]
+    [InlineData(1, "dragon_trace")]
+    [InlineData(2, "phoenix_trace")]
+    public void 신수_발견은_종류별_단서를_만들되_발견_확률은_그대로다(int beastIndex, string code)
+    {
+        var city = new City(new(1), "장안", default, new(1), 1000);
+        var general = new General(new(1), "탐색장", new Dictionary<TroopClass, AptitudeGrade>(), 70, 70, 70);
+        var discovery = new ExplorationService().Explore(new GameState(10, 190, [], [city], [general]),
+            city, general, new BeastRandom(beastIndex));
+
+        Assert.Equal(ExplorationResultKind.DivineBeast, discovery.Kind);
+        Assert.Equal(code, discovery.Code);
+    }
+
     [Theory]
     [InlineData(0, ExplorationResultKind.DivineBeast)]
     [InlineData(1, ExplorationResultKind.AncientRelic)]
