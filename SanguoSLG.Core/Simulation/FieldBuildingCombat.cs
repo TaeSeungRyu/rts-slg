@@ -22,13 +22,15 @@ public sealed class FieldBuildingCombat
     private readonly BattleResolver _battle;
     private readonly IReadOnlyDictionary<string, FieldBuildingDefinition> _definitions;
     private readonly IReadOnlyDictionary<string, TroopTemplate> _troops;
+    private readonly IReadOnlyDictionary<string, SummonedUnitDefinition> _summons;
 
     public FieldBuildingCombat(BattleResolver battle, IReadOnlyList<FieldBuildingDefinition> definitions,
-        IReadOnlyList<TroopTemplate>? troops = null)
+        IReadOnlyList<TroopTemplate>? troops = null, IReadOnlyList<SummonedUnitDefinition>? summons = null)
     {
         _battle = battle;
         _definitions = definitions.ToDictionary(x => x.Code, StringComparer.Ordinal);
         _troops = (troops ?? []).ToDictionary(x => x.Code, StringComparer.Ordinal);
+        _summons = (summons ?? []).ToDictionary(x => x.Code, StringComparer.Ordinal);
     }
 
     public FieldBuildingCombatResult Resolve(GameState state, IReadOnlyList<CombatUnit> input,
@@ -138,6 +140,8 @@ public sealed class FieldBuildingCombat
         if (attacker.IsSupply)
             return System.Math.Max(1, _troops.Values.Select(t => t.AtkBuilding).DefaultIfEmpty(1).Min());
         if (attacker.IsArmyGroup) return 6;
+        if (attacker.IsSummon && _summons.TryGetValue(attacker.TroopCode, out var summon))
+            return summon.BuildingAttack;
         return _troops.TryGetValue(attacker.TroopCode, out var troop)
             ? troop.AtkBuilding
             : attacker.Stats.AtkStat; // 구형 저장/단위 테스트 호환

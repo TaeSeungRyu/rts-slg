@@ -542,8 +542,8 @@ public sealed partial class CampaignMapScene : Node3D
         _treasureDefinitions = new EventTreasureLoader().LoadFromDirectory(dataDirectory);
         _eventHunts = new EventHuntService(_map, new EventUnitLoader().LoadFromDirectory(dataDirectory),
             _treasureDefinitions);
-        _summons = new SummonService(_map, _treasureDefinitions,
-            new SummonedUnitLoader().LoadFromDirectory(dataDirectory));
+        var summonedUnitDefinitions = new SummonedUnitLoader().LoadFromDirectory(dataDirectory);
+        _summons = new SummonService(_map, _treasureDefinitions, summonedUnitDefinitions);
         _fieldConstruction = new FieldConstructionService(_fieldBuildingDefinitions, _passability.TerrainAt);
         _unitCommander = new FieldUnitCommandService(
             (domain, hex) => _passability.CanEnter(domain, hex),
@@ -597,12 +597,13 @@ public sealed partial class CampaignMapScene : Node3D
         _engine = new CampaignEngine(
             field,
             world,
-            new CampaignSiege(new BattleResolver(60), _troops),
+            new CampaignSiege(new BattleResolver(60), _troops, summons: summonedUnitDefinitions),
             new CityCapture(), new SeededRandomSource(42),
             new CityPlunder(_cb), _cb.CityResupplyRadius,
             _cb.BuildSiteHp, _cb.BuildSiteDamagePerTurn, passives, actives,
             new RuinCombat(new BattleResolver(60), 70),
-            new FieldBuildingCombat(new BattleResolver(60), _fieldBuildingDefinitions, _troops),
+            new FieldBuildingCombat(new BattleResolver(60), _fieldBuildingDefinitions, _troops,
+                summonedUnitDefinitions),
             _fieldBuildingDefinitions, _eventHunts, _summons);
         _vision = new BattlefieldVision(scenario.Balance, _troops, _fieldBuildingDefinitions);
         _fog = new BattlefieldFogView(_view);

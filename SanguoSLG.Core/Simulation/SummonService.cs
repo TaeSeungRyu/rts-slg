@@ -60,7 +60,8 @@ public sealed class SummonService(HexMap map, IReadOnlyList<EventTreasureDefinit
         var id = new UnitId(state.Armies.Select(x => x.Id.Value)
             .Concat(state.Summons.Select(x => x.Unit.Value)).Append(0).Max() + 1);
         var field = new FieldUnit(id, item.Faction, position, summon.Speed, summon.Detection,
-            summon.Range, MovementDomain.Land, UnitMode.Standby, null, id.Value);
+            summon.Range, MovementDomain.Land, UnitMode.Standby, null, id.Value,
+            RangeCastle: summon.Range);
         var unit = new CombatUnit(field,
             new CombatStats(summon.Troops, summon.Attack, summon.Defense, AptitudeGrade.A.Percent()),
             new TroopPool(summon.Troops, 0), UnitCombatState.Create(0), MaxTroops: summon.Troops,
@@ -108,7 +109,8 @@ public sealed class SummonService(HexMap map, IReadOnlyList<EventTreasureDefinit
             var id = new UnitId(armies.Select(x => x.Id.Value).Concat(state.Summons.Select(x => x.Unit.Value))
                 .Append(0).Max() + 1);
             var field = new FieldUnit(id, item.Faction, order.Position, summon.Speed, summon.Detection,
-                summon.Range, MovementDomain.Land, UnitMode.Standby, null, id.Value);
+                summon.Range, MovementDomain.Land, UnitMode.Standby, null, id.Value,
+                RangeCastle: summon.Range);
             var unit = new CombatUnit(field,
                 new CombatStats(summon.Troops, summon.Attack, summon.Defense, AptitudeGrade.A.Percent()),
                 new TroopPool(summon.Troops, 0), UnitCombatState.Create(0), MaxTroops: summon.Troops,

@@ -32,6 +32,7 @@ public sealed class CampaignSiege
 {
     private readonly BattleResolver _resolver;
     private readonly IReadOnlyDictionary<string, TroopTemplate> _troops;
+    private readonly IReadOnlyDictionary<string, SummonedUnitDefinition> _summons;
     private readonly int _woundedPercent;
     private readonly Func<HexCoord, TerrainType> _terrainAt;
 
@@ -41,10 +42,12 @@ public sealed class CampaignSiege
     private const int CollapsedDf = 6;
 
     public CampaignSiege(BattleResolver resolver, IReadOnlyList<TroopTemplate> troops,
-        int woundedPercent = 70, Func<HexCoord, TerrainType>? terrainAt = null)
+        int woundedPercent = 70, Func<HexCoord, TerrainType>? terrainAt = null,
+        IReadOnlyList<SummonedUnitDefinition>? summons = null)
     {
         _resolver = resolver;
         _troops = troops.ToDictionary(t => t.Code);
+        _summons = (summons ?? []).ToDictionary(s => s.Code);
         _woundedPercent = woundedPercent;
         _terrainAt = terrainAt ?? (_ => TerrainType.Plains);
     }
@@ -83,7 +86,8 @@ public sealed class CampaignSiege
                         && u.Field.PursuitTarget == new RenewalMovement.RenewalTargetId(
                             RenewalMovement.RenewalTargetKind.Site, siteIndex))
                     && u.CanInitiateCombat
-                    && (u.IsSupply || u.IsArmyGroup || EffectiveTroop(u) is not null
+                    && (u.IsSupply || u.IsArmyGroup || u.IsSummon && _summons.ContainsKey(u.TroopCode)
+                        || EffectiveTroop(u) is not null
                         || u.Field.Owner == EventHuntService.EventFaction && u.TroopCode == "dragon")
                     && CastleFootprint.TilesFor(city).Min(tile => tile.Distance(u.Field.Position)) <= u.Field.RangeCastle)
                 .OrderBy(u => u.Id.Value)
@@ -221,6 +225,12 @@ public sealed class CampaignSiege
                 100,
                 inCounterRange,
                 activeDamagePercent);
+        }
+
+        if (u.IsSummon && _summons.TryGetValue(u.TroopCode, out var summon))
+        {
+            return new SiegeAttacker(u.Pool.Active, summon.BuildingAttack, u.Stats.AtkStat,
+                u.Stats.DfStat, u.Stats.AptitudePercent, 100, 100, inCounterRange, 100);
         }
 
         if (u.Field.Owner == EventHuntService.EventFaction && u.TroopCode == "dragon")

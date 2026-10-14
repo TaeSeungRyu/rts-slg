@@ -32,6 +32,8 @@ public class SummonServiceTests
         Assert.Equal(code, unit.TroopCode);
         Assert.Equal(health, unit.Pool.Active);
         Assert.Equal(health, unit.MaxTroops);
+        Assert.Equal(new SummonedUnitLoader().LoadFromDirectory(TestData.DataDirectory())
+            .Single(definition => definition.Code == code).Range, unit.Field.RangeCastle);
         Assert.Equal(0, unit.Pool.Wounded);
     }
 
