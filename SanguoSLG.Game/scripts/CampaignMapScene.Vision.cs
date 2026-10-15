@@ -60,14 +60,18 @@ public sealed partial class CampaignMapScene
             new CommandRequest(origin.Id, CommandKind.DeclareWar, officer, TargetCity: target.Id));
         if (!result.Ok) { GD.PushError($"[war-declaration-qa] issue failed: {result.Error}"); GetTree().Quit(1); return; }
         _state = result.State;
+        var pending = _state.Commands.Single(c => c.Kind == CommandKind.DeclareWar && c.TargetCity == target.Id);
+        Redraw("war declaration pending QA");
+        var hiddenBeforeArrival = !_cityLabels[target.Id.Value].Text.Contains("선전 포고", StringComparison.Ordinal);
+        _state = new WorldEngine(_balance, _cb).AdvanceDays(_state, pending.CompletionDay - _state.Day);
         Redraw("war declaration QA");
         var marked = _cityLabels[target.Id.Value].Text.StartsWith("⚔ 선전 포고 · 100일\n", StringComparison.Ordinal);
         var remainsSecret = !CanInspectCity(target);
         _state = _state with { Day = _state.Day + CityWarDeclaration.DurationDays };
         Redraw("war declaration expiry QA");
         var expired = !_cityLabels[target.Id.Value].Text.Contains("선전 포고", StringComparison.Ordinal);
-        var passed = marked && remainsSecret && expired;
-        GD.Print($"[war-declaration-qa] marked={marked} secret={remainsSecret} expired={expired} passed={passed}");
+        var passed = hiddenBeforeArrival && marked && remainsSecret && expired;
+        GD.Print($"[war-declaration-qa] pendingHidden={hiddenBeforeArrival} marked={marked} secret={remainsSecret} expired={expired} passed={passed}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

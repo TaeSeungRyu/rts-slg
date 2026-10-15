@@ -181,12 +181,12 @@ public sealed class CommandService
             CommandKind.Explore => IssueExplore(state, city, req, assist),
             CommandKind.FormAlliance => IssueFormAlliance(state, city, req, assist),
             CommandKind.BreakAlliance => IssueBreakAlliance(state, city, req),
-            CommandKind.DeclareWar => IssueDeclareWar(state, city, req),
+            CommandKind.DeclareWar => IssueDeclareWar(state, city, req, assist),
             _ => CommandResult.Fail("알 수 없는 명령이다.", state),
         };
     }
 
-    private static CommandResult IssueDeclareWar(GameState state, City city, CommandRequest req)
+    private CommandResult IssueDeclareWar(GameState state, City city, CommandRequest req, General? assist)
     {
         if (req.TargetCity is not { } targetId || state.Cities.FirstOrDefault(c => c.Id == targetId) is not { } target)
             return CommandResult.Fail("선전 포고할 도시를 지정해야 한다.", state);
@@ -198,8 +198,12 @@ public sealed class CommandService
             return CommandResult.Fail($"{target.Name} 주변 {WarDeclarationRules.ExclusionRadius}칸 안에 아군 부대가 있어 선전 포고할 수 없습니다.", state);
         if (state.DeclaredWars.Any(w => w.ActiveOn(state.Day) && w.Attacker == city.Owner && w.City == target.Id && w.Defender == target.Owner))
             return CommandResult.Fail("이미 선전 포고한 도시다.", state);
-        return CommandResult.Success(state with { WarDeclarations = [.. state.DeclaredWars.Where(w => w.ActiveOn(state.Day)),
-            new CityWarDeclaration(city.Owner, target.Id, target.Owner, state.Day)] });
+        if (state.Commands.Any(c => c.Kind == CommandKind.DeclareWar && c.TargetCity == target.Id &&
+                                    state.Cities.Any(origin => origin.Id == c.City && origin.Owner == city.Owner)))
+            return CommandResult.Fail("이미 해당 도시에 선전 포고 사절을 보냈다.", state);
+        var days = CityStratagems.Days(city.Position, target.Position, _b);
+        return Register(state, city, req, assist, 0, days, CommandKind.DeclareWar, "",
+            targetCity: target.Id, targetFaction: target.Owner);
     }
 
     private static CommandResult RecruitHero(GameState state, City city, CommandRequest req)

@@ -596,6 +596,7 @@ public sealed class WorldEngine
         var garrisons = state.Garrisons.ToList();
         var research = state.Research.ToList();
         var alliances = state.Alliances.ToList();
+        var declarations = state.DeclaredWars.ToList();
         var generals = state.Generals.ToList();
         var intel = state.Intel.ToList();
         var postings = state.Assignments.ToList();
@@ -734,6 +735,16 @@ public sealed class WorldEngine
                 case CommandKind.FormAlliance:
                     ResolveFormAlliance(state, cmd, city, generals, alliances);
                     break;
+                case CommandKind.DeclareWar:
+                    if (cmd.TargetCity is { } declaredCity && cities.TryGetValue(declaredCity, out var defender)
+                        && defender.Owner != city.Owner && defender.Owner == cmd.TargetFaction
+                        && !alliances.Any(a => a.Matches(city.Owner, defender.Owner) && a.ActiveOn(state.Day))
+                        && !declarations.Any(w => w.ActiveOn(state.Day) && w.Attacker == city.Owner
+                            && w.City == declaredCity && w.Defender == defender.Owner))
+                    {
+                        declarations.Add(new CityWarDeclaration(city.Owner, declaredCity, defender.Owner, state.Day));
+                    }
+                    break;
             }
 
             // 명령 완료 사건(표현 계층 보고용) — 모병·징병·훈련·건설·연구·수리만.
@@ -769,6 +780,7 @@ public sealed class WorldEngine
             FactionAlliances = alliances
                 .OrderBy(a => a.A.Value).ThenBy(a => a.B.Value)
                 .ToList(),
+            WarDeclarations = declarations,
             Generals = generals,
             ScoutedCities = intel
                 .OrderBy(i => i.Faction.Value).ThenBy(i => i.City.Value)

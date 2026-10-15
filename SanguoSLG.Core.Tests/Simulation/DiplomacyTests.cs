@@ -11,7 +11,7 @@ using Xunit;
 public class DiplomacyTests
 {
     [Fact]
-    public void 선전포고는_적도시별로_즉시_저장되며_중복은_막는다()
+    public void 선전포고는_도착후_발효되며_이동중_중복을_막는다()
     {
         var state = new GameState(5, 190, [], [City(1, 1, 0), City(2, 2, 3)], [Gen(1)],
             Postings: [At(1, 1, 1)]);
@@ -22,10 +22,16 @@ public class DiplomacyTests
         var issued = service.Issue(state, request);
 
         Assert.True(issued.Ok, issued.Error);
-        Assert.Empty(issued.State.Commands);
-        Assert.Single(issued.State.DeclaredWars);
-        Assert.Single(SaveService.Deserialize(SaveService.Serialize(issued.State)).DeclaredWars);
+        Assert.Empty(issued.State.DeclaredWars);
+        var pending = Assert.Single(issued.State.Commands);
+        Assert.Equal(CommandKind.DeclareWar, pending.Kind);
+        Assert.Single(SaveService.Deserialize(SaveService.Serialize(issued.State)).Commands);
         Assert.False(service.Issue(issued.State, request).Ok);
+        var world = new WorldEngine(Bal, B);
+        var before = world.AdvanceDays(issued.State, pending.CompletionDay - issued.State.Day - 1);
+        Assert.Empty(before.DeclaredWars);
+        var arrived = world.AdvanceDays(before, 1);
+        Assert.Single(arrived.DeclaredWars);
     }
 
     [Fact]
@@ -37,11 +43,13 @@ public class DiplomacyTests
             TargetCity: new CityId(2));
         var service = new CommandService(B);
         var issued = service.Issue(state, request).State;
-        var declaration = Assert.Single(issued.DeclaredWars);
+        var pending = Assert.Single(issued.Commands);
+        var arrived = new WorldEngine(Bal, B).AdvanceDays(issued, pending.CompletionDay - issued.Day);
+        var declaration = Assert.Single(arrived.DeclaredWars);
 
-        Assert.True(declaration.ActiveOn(state.Day + 99));
-        Assert.False(declaration.ActiveOn(state.Day + 100));
-        var expired = issued with { Day = state.Day + 100 };
+        Assert.True(declaration.ActiveOn(arrived.Day + 99));
+        Assert.False(declaration.ActiveOn(arrived.Day + 100));
+        var expired = arrived with { Day = arrived.Day + 100 };
         Assert.True(service.Issue(expired, request).Ok);
     }
 

@@ -3947,14 +3947,15 @@ public sealed partial class CampaignMapScene : Node3D
         void Ev(string t, Color c, GeneralId? portrait = null) { note.Add(t); _pendingReport.Add((t, c, portrait)); }
 
         _incomingWarDeclarations.Clear();
-        foreach (var declaration in after.DeclaredWars.Where(w => w.Defender == Player
-                     && !existingWarDeclarations.Contains(w)).OrderBy(w => w.City.Value))
+        foreach (var declaration in after.DeclaredWars.Where(w => !existingWarDeclarations.Contains(w))
+                     .OrderBy(w => w.City.Value))
         {
             var cityName = after.Cities.FirstOrDefault(c => c.Id == declaration.City)?.Name ?? $"도시 {declaration.City.Value}";
             var factionName = after.Factions.FirstOrDefault(f => f.Id == declaration.Attacker)?.Name ?? $"세력 {declaration.Attacker.Value}";
             var message = $"{factionName} 세력이 {cityName}에 선전 포고했습니다. 100일간 유효합니다.";
-            _incomingWarDeclarations.Add(message);
-            Ev($"[외교] {message}", GoldBright);
+            if (declaration.Defender == Player) _incomingWarDeclarations.Add(message);
+            if (declaration.Defender == Player || declaration.Attacker == Player)
+                Ev($"[외교] {message}", GoldBright);
         }
 
         var siegeCol = new Color(0.9f, 0.6f, 0.4f);
@@ -14795,7 +14796,9 @@ public sealed partial class CampaignMapScene : Node3D
                 ShowNotice("선전 포고 불가", $"{targets[p].Name} 주변 4칸 안에 아군 부대가 있습니다.");
                 return;
             }
-            extra = $"\n대상: {targets[p].Name}\n선전 포고는 즉시 적용되고 100일간 유지됩니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃습니다.";
+            var origin = _state.Cities.First(c => c.Id == city);
+            var travelDays = CityStratagems.Days(origin.Position, targets[p].Position, _cb);
+            extra = $"\n대상: {targets[p].Name}\n사절 도착까지 {travelDays}일 · 도착 후 100일간 유효합니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃습니다.";
         }
         var confirmOfficer = general;
         string? confirmOfficerLine = null;
@@ -15167,7 +15170,10 @@ public sealed partial class CampaignMapScene : Node3D
                 if (cmd.Kind == CommandKind.DeclareWar && target is { } declaredCity)
                 {
                     var enemyName = _state.Cities.First(c => c.Id == declaredCity).Name;
-                    Report($"[외교] {gName} 장수가 {enemyName}에 선전 포고했습니다. 점령 시 치안 하락을 막습니다.", GoldBright, general);
+                    var pending = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.DeclareWar
+                        && c.Main == general && c.TargetCity == declaredCity);
+                    var days = pending is null ? 0 : pending.CompletionDay - _state.Day;
+                    Report($"[외교] {gName} 장수가 {enemyName}에 선전 포고 사절을 보냈습니다. 도착까지 {days}일.", GoldBright, general);
                 }
                 else
                 {
