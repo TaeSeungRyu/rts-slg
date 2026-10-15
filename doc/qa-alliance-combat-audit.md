@@ -1,23 +1,19 @@
 # 동맹 간 공격 금지 점검 (2026-10-15)
 
-## 결론
+## 캠페인 적용 결과
 
-동맹 간 공격이 전 경로에서 금지된 상태는 아니다. 선전 포고 발행·사절 도착 및 성에서의 일부 출전 예약은 동맹을 검사하지만, 전투 대상 탐색과 정산의 다수 경로는 단순히 `Owner !=`로 판정한다. 따라서 이미 출전한 부대가 동맹 체결 후 계속 교전하거나, 동맹의 야전 건축물·성·항구를 공격할 수 있다. 이번 요청의 6번은 점검이므로 여기서 전투 규칙을 부분적으로 바꾸지 않는다.
+동맹 관계는 `GameState.AreHostile`로 판정한다. 동맹 대상의 새 공격 명령은 거부하고, 동맹 체결 시 이미 예약·진행 중이던 공격 명령은 대기로 바꾼다. 동맹 파기 후에는 자동 복원하지 않는다.
 
-## 확인한 경로
-
-| 대상 | 현재 판정 | 판정 |
+| 대상 | 적용 경로 | 검증 |
 |---|---|---|
-| 선전 포고 | `CommandService.IssueDeclareWar`와 `WorldEngine.ResolveCommands`가 동맹을 검사 | 금지됨 |
-| 성 출전 예약 | `DeployService`가 동맹 도시 공격 지정을 검사 | 일부 금지됨 |
-| 야전 부대·보급·수송 | `FieldUnitCommandService`, `CombatPhase`, `AdvanceOrchestrator`, `RenewalCampaignAdvanceRunner`가 다른 소유 세력을 적으로 취급 | 금지 보장 안 됨 |
-| 야전 건축물(목책·정찰대·감시탑·보루·진법) | `FieldBuildingCombat`가 다른 소유 세력을 공격 대상으로 취급 | 금지 보장 안 됨 |
-| 성·항구 | `CampaignSiege`가 다른 소유 세력의 부대를 공성 대상으로 취급 | 금지 보장 안 됨 |
-| 경로 충돌·자동 추적 | `MovementSimulator`와 갱신 이동 경로가 다른 소유 세력을 방해물·적 대상으로 취급 | 금지 보장 안 됨 |
+| 공격 명령과 UI | `FieldUnitCommandService`, `CampaignMapScene` | 부대·야전 건축물·성 대상 명령 테스트, Game 빌드 |
+| 연속 이동 추격·충돌 | `RenewalAdvanceSimulator`, `RenewalCampaignAdvanceRunner` | 동맹 충돌 테스트 |
+| 기존 이동·야전 공격·반격·액티브 | `MovementSimulator`, `CombatPhase`, `AdvanceOrchestrator` | 동맹 교전·병력 무손실 테스트 |
+| 야전 건축물·정찰대 | `FieldBuildingCombat`, `FieldScoutPostService` | 보루 공격·정찰대 통과 테스트 |
+| 성·항구 공격·점령 | `CampaignSiege`, `CityCapture`, `CityPlunder` | 성·항구 공성·함락 방지 테스트 |
+| 생산·공사장 | `WorldEngine`, `CampaignEngine` | 동맹 부대의 생산 방해 방지 테스트 |
+| AI·계략·소환 | `FactionAI`, `FieldStratagemService`, `SummonService`, `CommandService` | 외교·도시 계략·야전 계략 테스트 |
 
-## 전면 수정 시 필요한 검증
+독립 이동 검수장(`RenewalCombatPhaseService`, `RenewalIntegrationService`, `RenewalMovementAiPlanner`)은 `GameState`의 동맹 목록을 사용하지 않는 테스트 전용 경로다. 이 경로의 임의 소유 세력은 기존처럼 서로 다른 세력이면 적으로 간주한다. 실제 캠페인 기본 경로는 `RenewalCampaignAdvanceRunner`와 `AdvanceOrchestrator`를 사용하므로 위 판정이 적용된다.
 
-1. 세력 간 공통 적대 판정(동맹·자신·중립 이벤트·도적 구분)을 한곳에서 정의한다.
-2. 명령 발행, 경로 충돌, 자동 표적, 야전 공격·반격, 건축물 공격, 공성·항구 공성, 액티브·광역 피해, AI 표적 선정에 동일 판정을 적용한다.
-3. 출전 후 동맹 체결·파기 시 이미 지정된 공격 명령이 어떻게 바뀌는지 명시한다. 동맹 체결 시 기존 동맹 대상 공격 명령을 대기로 전환하고 교전 중이라면 다음 안전한 판정 지점부터 피해를 중단하는 방안을 권장한다.
-4. 각 대상(부대·시설·성·항구·야전 건축물)과 각 명령(행군·전진·공격)에 대해 동맹 전/후 회귀 테스트를 추가한다.
+시각 검증은 자동 수행하지 않았다. `run-maptest.bat`에서 동맹 전·후의 부대 공격 버튼, 성·항구 공성, 보루 공격, 동맹 체결 직후 부대 대기 전환을 확인한다.
