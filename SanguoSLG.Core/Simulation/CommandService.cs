@@ -884,7 +884,7 @@ public sealed class CommandService
         }
 
         var target = state.Cities.FirstOrDefault(c => c.Id == targetId);
-        if (target is null || target.Owner == city.Owner)
+        if (target is null || !state.AreHostile(city.Owner, target.Owner))
         {
             return CommandResult.Fail("적 도시만 대상이 될 수 있다.", state);
         }

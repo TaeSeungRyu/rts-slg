@@ -26,6 +26,21 @@ public class CityStratagemTests
 
     private static CommandService Service() => new(B, Troops, Bal);
 
+    [Fact]
+    public void 동맹_도시에는_계략을_발행할_수_없고_이동중_동맹이_되면_효과가_취소된다()
+    {
+        var state = State([Mine(), Enemy()], [Gen(1)], intel: [Scouted()]);
+        var alliance = FactionAlliance.Create(new FactionId(1), new FactionId(2), state.Day);
+        var request = Req("arson");
+
+        Assert.False(Service().Issue(state with { FactionAlliances = [alliance] }, request).Ok);
+        var issued = Service().Issue(state, request);
+        Assert.True(issued.Ok, issued.Error);
+        var allied = issued.State with { FactionAlliances = [alliance] };
+        var after = Advance(allied, issued.State.Commands.Single().CompletionDay - state.Day, roll: 0);
+        Assert.Equal(Enemy().Security, after.Cities.Single(city => city.Id == new CityId(2)).Security);
+    }
+
     private static General Gen(int id, int intellect = 80) => new(
         new GeneralId(id), $"g{id}", new Dictionary<TroopClass, AptitudeGrade>(),
         Might: 50, Intellect: intellect, Politics: 50);

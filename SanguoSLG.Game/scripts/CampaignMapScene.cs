@@ -6831,7 +6831,8 @@ public sealed partial class CampaignMapScene : Node3D
         _stratTarget = null;
         if (cmd.Param == "stratagem")
         {
-            var enemies = _state.Cities.Where(c => c.Owner != Player).OrderBy(c => c.Id.Value).ToList();
+            var enemies = _state.Cities.Where(c => _state.AreHostile(Player, c.Owner))
+                .OrderBy(c => c.Id.Value).ToList();
             if (enemies.Count > 0)
             {
                 _stratTarget = enemies[0].Id;

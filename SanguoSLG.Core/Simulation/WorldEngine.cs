@@ -1086,7 +1086,7 @@ public sealed class WorldEngine
         Dictionary<CityId, City> cities, List<Domain.General> generals, List<Domain.CityIntel> intel)
     {
         if (cmd.TargetCity is not { } targetId || !cities.TryGetValue(targetId, out var target)
-            || target.Owner == casterCity.Owner)
+            || !state.AreHostile(casterCity.Owner, target.Owner))
         {
             return false;
         }
