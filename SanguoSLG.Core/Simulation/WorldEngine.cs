@@ -767,7 +767,7 @@ public sealed class WorldEngine
             }
         }
 
-        return state with
+        return (state with
         {
             Cities = cities.Values.OrderBy(c => c.Id.Value).ToList(),
             GarrisonForces = garrisons
@@ -799,7 +799,7 @@ public sealed class WorldEngine
                 .Where(s => s.Count > 0)
                 .OrderBy(s => s.City.Value).ThenBy(s => s.ShipCode, System.StringComparer.Ordinal)
                 .ToList(),
-        };
+        }).CancelAlliedAttackOrders();
     }
 
     private static bool IsLockedSpecialResearch(GameState state, CityCommand command)

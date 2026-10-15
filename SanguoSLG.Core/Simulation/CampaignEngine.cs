@@ -104,16 +104,16 @@ public sealed class CampaignEngine
         var plunderReports = new List<PlunderReport>();
         var casualtyReports = new List<CasualtyReport>();
         _campaignEvents.Clear();
-        var work = _eventHunts?.ScheduleDiscoveries(state) ?? state;
-        var waitingArmies = state.Armies
+        var work = (_eventHunts?.ScheduleDiscoveries(state) ?? state).CancelAlliedAttackOrders();
+        var waitingArmies = work.Armies
             .Where(u => u.Pool.Active > 0 && u.IsWaitingDate)
             .OrderBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value)
             .ToList();
-        var egressArmies = state.Armies
+        var egressArmies = work.Armies
             .Where(u => u.Pool.Active > 0 && !u.IsWaitingDate && u.IsWaitingEgress)
             .OrderBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value)
             .ToList();
-        var armies = state.Armies
+        var armies = work.Armies
             .Where(u => u.Pool.Active > 0 && !u.IsWaitingDeployment)
             .ToList();
 

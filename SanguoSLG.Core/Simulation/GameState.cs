@@ -108,6 +108,37 @@ public sealed record GameState(
     public bool AreHostile(FactionId left, FactionId right)
         => left != right && !AreAllied(left, right);
 
+    public GameState CancelAlliedAttackOrders()
+    {
+        bool TargetsAlly(CombatUnit unit)
+        {
+            if (unit.Field.Mode != UnitMode.Attack) return false;
+            var owner = unit.Field.Owner;
+            if (unit.Field.AssignedUnitTarget is { } id && Armies.Any(other => other.Id == id
+                && AreAllied(owner, other.Field.Owner))) return true;
+            if (unit.Field.Target is not { } target) return false;
+            return Cities.Any(city => AreAllied(owner, city.Owner)
+                    && CastleFootprint.TilesFor(city).Contains(target))
+                || Buildings.Any(building => AreAllied(owner, building.Owner)
+                    && building.Position == target)
+                || Armies.Any(other => AreAllied(owner, other.Field.Owner)
+                    && other.Field.Position == target);
+        }
+
+        return this with
+        {
+            FieldArmies = Armies.Select(unit => !TargetsAlly(unit) ? unit : unit with
+            {
+                Field = unit.Field with
+                {
+                    Mode = UnitMode.Standby, Target = null, Waypoints = null,
+                    ContinuousTarget = null, ContinuousWaypoints = null,
+                    AssignedUnitTarget = null, PursuitTarget = null,
+                },
+            }).ToList(),
+        };
+    }
+
     /// <summary>이 세력의 그 병종 연구 단계(없으면 0 = 미연구).</summary>
     public int ResearchOf(FactionId faction, string troopCode)
         => Research.FirstOrDefault(r => r.Faction == faction && r.TroopCode == troopCode)?.Level ?? 0;

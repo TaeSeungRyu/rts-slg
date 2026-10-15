@@ -158,6 +158,27 @@ public class DiplomacyTests
     }
 
     [Fact]
+    public void 동맹이_체결되면_기존_동맹_도시_공격명령은_대기로_전환된다()
+    {
+        var enemyCity = City(2, 2, 6);
+        var field = new FieldUnit(new UnitId(1), new FactionId(1), new HexCoord(1, 0),
+            2, 2, 1, MovementDomain.Land, UnitMode.Attack, enemyCity.Position, 1);
+        var army = new CombatUnit(field, new CombatStats(1000, 10, 10), new TroopPool(1000, 0),
+            UnitCombatState.Create(50));
+        var state = new GameState(1, 190, [], [City(1, 1, 0), enemyCity], [Gen(1, politics: 100)],
+            Postings: [At(1, 1, 1)], FieldArmies: [army]);
+        var issued = new CommandService(B).Issue(state,
+            new CommandRequest(new CityId(1), CommandKind.FormAlliance, new GeneralId(1),
+                TargetFaction: new FactionId(2)));
+        var arrived = new WorldEngine(Bal, B, random: new FixedRandom(0)).AdvanceDays(issued.State,
+            issued.State.Commands.Single().CompletionDay - state.Day);
+
+        Assert.True(arrived.AreAllied(new FactionId(1), new FactionId(2)));
+        Assert.Equal(UnitMode.Standby, arrived.Armies.Single().Field.Mode);
+        Assert.Null(arrived.Armies.Single().Field.Target);
+    }
+
+    [Fact]
     public void 동맹_성공률은_내정레벨의_유효정치를_반영한다()
     {
         var envoy = Gen(1, politics: 49) with { AdminLevel = 4 };
