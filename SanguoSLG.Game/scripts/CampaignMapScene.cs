@@ -5952,6 +5952,9 @@ public sealed partial class CampaignMapScene : Node3D
                 && (CmdGroups[groupIdx].Group == "연구"
                     || Cmds[i].Kind == CommandKind.Research
                     || Cmds[i].Kind == CommandKind.Repair && Cmds[i].Param != "wall");
+            var wallFull = Cmds[i].Kind == CommandKind.Repair && Cmds[i].Param == "wall"
+                && selectedCity is not null
+                && selectedCity.Wall >= CastleWall.Max(selectedCity.Castle, _balance, selectedCity.WallLevel);
             if (blockedAtPort)
             {
                 btn.Text = Cmds[i].Label + " (항구 불가)";
@@ -5963,6 +5966,12 @@ public sealed partial class CampaignMapScene : Node3D
             else if (busy)
             {
                 btn.Text = Cmds[i].Label + " (진행중)";
+                btn.Disabled = true;
+            }
+            else if (wallFull)
+            {
+                btn.Text = "성벽 수리 (내구도 100%)";
+                btn.TooltipText = "성벽 내구도가 최대치라 수리할 필요가 없습니다.";
                 btn.Disabled = true;
             }
             else
@@ -6484,6 +6493,13 @@ public sealed partial class CampaignMapScene : Node3D
 
         _cmdIndex = cmdIndex;
         var cmd = Cmds[cmdIndex];
+        if (cmd.Kind == CommandKind.Repair && cmd.Param == "wall"
+            && _state.Cities.FirstOrDefault(c => c.Id == city) is { } repairCity
+            && repairCity.Wall >= CastleWall.Max(repairCity.Castle, _balance, repairCity.WallLevel))
+        {
+            ShowNotice("성벽 수리 불필요", "성벽 내구도가 이미 100%입니다.");
+            return;
+        }
         CloseModal();
         _modalDetail = null;
 
@@ -6664,6 +6680,7 @@ public sealed partial class CampaignMapScene : Node3D
                     _disabledOptions.Add(i);
             }
         }
+
         if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
         {
             for (var i = 0; i < _troops.Count; i++)
@@ -14997,6 +15014,18 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
+        if (cmd.Kind == CommandKind.Repair && cmd.Param == "wall")
+        {
+            var repairCity = _state.Cities.First(c => c.Id == city);
+            var maxWall = CastleWall.Max(repairCity.Castle, _balance, repairCity.WallLevel);
+            var recovery = _cb.WallRepairPercent + (repairCity.Workshop ? _cb.WallRepairWorkshopBonus : 0)
+                + GovernorAdminBucket(repairCity, "wall");
+            var restore = System.Math.Min(maxWall - repairCity.Wall, maxWall * recovery / 100);
+            extra = $"\n성벽 내구도 {repairCity.Wall:N0} → {repairCity.Wall + restore:N0} / {maxWall:N0}"
+                + $"\n수리량 +{restore:N0} · 비용 {restore / _cb.WallRepairGoldDivisor:N0}금"
+                + $"\n[소요 {_cb.RepairDays}일]";
+        }
+
         if (cmd.Kind == CommandKind.AppointGovernor)
         {
             var gov = _state.Generals.First(g => g.Id == general);
@@ -15091,6 +15120,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (cmd.Kind == CommandKind.Research
             || cmd.Kind == CommandKind.CityStratagem
+            || cmd.Kind == CommandKind.Repair && cmd.Param == "wall"
             || cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance
             || cmd.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist
             || IsAutoOfficerCommand(cmd.Kind)
