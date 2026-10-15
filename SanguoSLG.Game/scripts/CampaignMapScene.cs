@@ -9414,8 +9414,10 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (_state.Assignments.Any(posting => posting.General == gid && posting.Faction == Player))
         {
-            var equip = MakeButton("아이템 장착");
+            var equippedItem = _state.Treasures.FirstOrDefault(t => t.EquippedBy == gid && t.Faction == Player);
+            var equip = MakeButton(equippedItem?.Name ?? "아이템 장착");
             equip.Name = "GeneralTreasureEquip";
+            equip.TooltipText = equippedItem is null ? "아이템을 장착합니다." : $"{equippedItem.Name} · 아이템 변경/해제";
             equip.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
             equip.GrowHorizontal = Control.GrowDirection.Begin;
             equip.GrowVertical = Control.GrowDirection.Begin;
