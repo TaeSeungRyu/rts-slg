@@ -65,7 +65,7 @@ public sealed partial class CampaignMapScene
         var box = DeployScaffold(width, out var scroll, out var panel);
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel("◈ 보급부대 보충", 18, Gold);
+        var title = MakeLabel("보급부대 보충", 18, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         titleRow.AddChild(title);
         var close = MakeButton("×");

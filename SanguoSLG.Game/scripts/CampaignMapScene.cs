@@ -4958,7 +4958,7 @@ public sealed partial class CampaignMapScene : Node3D
         box.AddThemeConstantOverride("separation", 8);
         panel.AddChild(box);
 
-        var titleLbl = MakeLabel($"◈  {title}", 17, Gold);
+        var titleLbl = MakeLabel(title, 17, Gold);
         titleLbl.HorizontalAlignment = HorizontalAlignment.Center;
         box.AddChild(titleLbl);
         box.AddChild(GoldRule());
@@ -5356,7 +5356,7 @@ public sealed partial class CampaignMapScene : Node3D
         panel.AddChild(box);
         var title = new HBoxContainer();
         box.AddChild(title);
-        var titleLabel = MakeLabel("◈  야전 건축", 19, GoldBright);
+        var titleLabel = MakeLabel("야전 건축", 19, GoldBright);
         titleLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.AddChild(titleLabel);
         var close = MakeButton("✕");
@@ -6520,7 +6520,7 @@ public sealed partial class CampaignMapScene : Node3D
         var colOpt = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / (wideDoctrineModal ? 186f : 146f)), 3, wideDoctrineModal ? 7 : 5);
         var colOff = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 169f), 2, 4);
         var cityName = _state.Cities.First(x => x.Id == city).Name;
-        var title = MakeLabel($"◈  {cmd.Label}   《 {cityName} 》", 26, Gold);
+        var title = MakeLabel($"{cmd.Label}   《 {cityName} 》", 26, Gold);
         var close = MakeButton("✕");
         close.Pressed += CloseModal;
         scaffold.SetHeader(title, close, GoldRule());
@@ -6971,7 +6971,7 @@ public sealed partial class CampaignMapScene : Node3D
         var cityName = _state.Cities.First(x => x.Id == city).Name;
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  보급부대 편성   《 {cityName} 》  ⠿", 19, Gold);
+        var title = MakeLabel($"보급부대 편성   《 {cityName} 》  ⠿", 19, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -7069,7 +7069,7 @@ public sealed partial class CampaignMapScene : Node3D
                 ? "→ " + (_state.Cities.FirstOrDefault(c => c.Position == tg)?.Name ?? $"({tg.Q},{tg.R})")
                 : "목표 미지정";
             box.AddChild(GoldRule());
-            box.AddChild(MakeLabel($"◈ 보급 {total}명 · 주장 {leader} · {target}", 13, GoldBright));
+            box.AddChild(MakeLabel($"보급 {total}명 · 주장 {leader} · {target}", 13, GoldBright));
             var actRow = new HBoxContainer();
             actRow.AddThemeConstantOverride("separation", 6);
             var targetBtn = MakeButton("목표 지정", accent: true);
@@ -7132,7 +7132,7 @@ public sealed partial class CampaignMapScene : Node3D
         var cityName = _state.Cities.First(x => x.Id == city).Name;
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  {(editIndex >= 0 ? "보급부대 수정" : "보급부대 추가")}   《 {cityName} 》  ⠿", 18, Gold);
+        var title = MakeLabel($"{(editIndex >= 0 ? "보급부대 수정" : "보급부대 추가")}   《 {cityName} 》  ⠿", 18, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -8452,7 +8452,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else
         {
-            var mark = MakeLabel("◈", 60, new Color(Gold, 0.45f));
+            var mark = MakeLabel("초상 없음", 15, new Color(Gold, 0.45f));
             mark.HorizontalAlignment = HorizontalAlignment.Center;
             mark.VerticalAlignment = VerticalAlignment.Center;
             facePanel.AddChild(mark);
@@ -9403,7 +9403,7 @@ public sealed partial class CampaignMapScene : Node3D
                 SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
             };
             ph.AddThemeConstantOverride("separation", 2);
-            var mark = MakeLabel("◈", 44, new Color(Gold, 0.45f));
+            var mark = MakeLabel("초상 없음", 15, new Color(Gold, 0.45f));
             mark.HorizontalAlignment = HorizontalAlignment.Center;
             ph.AddChild(mark);
             var note = MakeLabel("초상 준비 중", 11, new Color(Parchment, 0.6f));
@@ -9645,7 +9645,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  생산 작전   《 {cityData.Name} 》", 21, Gold);
+        var title = MakeLabel($"생산 작전   《 {cityData.Name} 》", 21, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         titleRow.AddChild(title);
         var close = MakeButton("✕");
@@ -10013,7 +10013,7 @@ public sealed partial class CampaignMapScene : Node3D
         var cityName = _state.Cities.First(x => x.Id == city).Name;
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  출전 예약   《 {cityName} 》  ⠿", 19, Gold);
+        var title = MakeLabel($"출전 예약   《 {cityName} 》  ⠿", 19, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -10125,7 +10125,7 @@ public sealed partial class CampaignMapScene : Node3D
             var strain = _state.Garrisons.FirstOrDefault(g => g.City == city && g.TroopCode == srq.TroopCode && !g.Trainee)?.TrainingLevel ?? 0;
             var stgt = srq.Target is { } tg ? "→ " + (_state.Cities.FirstOrDefault(c => c.Position == tg)?.Name ?? $"({tg.Q},{tg.R})") : "목표 미지정(성 앞 대기)";
             box.AddChild(GoldRule());
-            box.AddChild(MakeLabel($"◈ {stmpl?.Name ?? srq.TroopCode} {srq.Troops}명 · 선봉 {svan} · 훈련 {strain} · {stgt}", 13, GoldBright));
+            box.AddChild(MakeLabel($"{stmpl?.Name ?? srq.TroopCode} {srq.Troops}명 · 선봉 {svan} · 훈련 {strain} · {stgt}", 13, GoldBright));
 
             var modeRow = new HBoxContainer();
             modeRow.AddThemeConstantOverride("separation", 6);
@@ -10188,7 +10188,7 @@ public sealed partial class CampaignMapScene : Node3D
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  출항 예약   《 {port.Name} 》  ⠿", 19, Gold);
+        var title = MakeLabel($"출항 예약   《 {port.Name} 》  ⠿", 19, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -10281,7 +10281,7 @@ public sealed partial class CampaignMapScene : Node3D
             var req = _pendingNavalDeploys[sidx].Req;
             var target = req.Target is { } tg ? $"→ ({tg.Q},{tg.R})" : "목표 미지정";
             box.AddChild(GoldRule());
-            box.AddChild(MakeLabel($"◈ {NavalLabel(req)} · {target}", 13, GoldBright));
+            box.AddChild(MakeLabel($"{NavalLabel(req)} · {target}", 13, GoldBright));
             var actRow = new HBoxContainer();
             actRow.AddThemeConstantOverride("separation", 6);
             var targetBtn = MakeButton("목표 지정", accent: true);
@@ -10510,7 +10510,7 @@ public sealed partial class CampaignMapScene : Node3D
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  출항 편성   《 {port.Name} 》  ⠿", 18, Gold);
+        var title = MakeLabel($"출항 편성   《 {port.Name} 》  ⠿", 18, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -10883,7 +10883,7 @@ public sealed partial class CampaignMapScene : Node3D
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  수송 편성   《 {source.Name} 》  ⠿", 18, Gold);
+        var title = MakeLabel($"수송 편성   《 {source.Name} 》  ⠿", 18, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -11122,7 +11122,7 @@ public sealed partial class CampaignMapScene : Node3D
         var cityName = _state.Cities.First(x => x.Id == city).Name;
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  수송 예약   《 {cityName} 》  ⠿", 19, Gold);
+        var title = MakeLabel($"수송 예약   《 {cityName} 》  ⠿", 19, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -11215,7 +11215,7 @@ public sealed partial class CampaignMapScene : Node3D
             var leader = _state.Generals.FirstOrDefault(g => g.Id == req.Vanguard)?.Name ?? "-";
             var total = req.Lines.Sum(l => l.Troops);
             box.AddChild(GoldRule());
-            box.AddChild(MakeLabel($"◈ {dest}행 · 수송 {total}명 · 주장 {leader} · 금 {req.Gold} · 군량 {req.Provisions}", 13, GoldBright));
+            box.AddChild(MakeLabel($"{dest}행 · 수송 {total}명 · 주장 {leader} · 금 {req.Gold} · 군량 {req.Provisions}", 13, GoldBright));
             var actRow = new HBoxContainer();
             actRow.AddThemeConstantOverride("separation", 6);
             var targetBtn = MakeButton("목표 지정", accent: true);
@@ -11262,7 +11262,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  집단군 예약   《 {cityName} 》  ⠿", 19, Gold);
+        var title = MakeLabel($"집단군 예약   《 {cityName} 》  ⠿", 19, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -11358,7 +11358,7 @@ public sealed partial class CampaignMapScene : Node3D
             var leader = _state.Generals.FirstOrDefault(g => g.Id == req.Vanguard)?.Name ?? "-";
             var total = req.Lines.Sum(l => l.Troops);
             box.AddChild(GoldRule());
-            box.AddChild(MakeLabel($"◈ 집단군 {total}명 · 선봉 {leader} · {ArmyGroupLineText(req.Lines)}", 13, GoldBright));
+            box.AddChild(MakeLabel($"집단군 {total}명 · 선봉 {leader} · {ArmyGroupLineText(req.Lines)}", 13, GoldBright));
             var actRow = new HBoxContainer();
             actRow.AddThemeConstantOverride("separation", 6);
             var tgt = MakeButton("목표 지정", accent: true);
@@ -11415,7 +11415,7 @@ public sealed partial class CampaignMapScene : Node3D
         var cityData = _state.Cities.First(c => c.Id == city);
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  {(editIndex >= 0 ? "집단군 수정" : "집단군 편성")}   《 {cityData.Name} 》  ⠿", 18, Gold);
+        var title = MakeLabel($"{(editIndex >= 0 ? "집단군 수정" : "집단군 편성")}   《 {cityData.Name} 》  ⠿", 18, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -11688,7 +11688,7 @@ public sealed partial class CampaignMapScene : Node3D
         var cityName = _state.Cities.First(x => x.Id == city).Name;
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  {(editIndex >= 0 ? "부대 수정" : "부대 편성")}   《 {cityName} 》  ⠿", 18, Gold);
+        var title = MakeLabel($"{(editIndex >= 0 ? "부대 수정" : "부대 편성")}   《 {cityName} 》  ⠿", 18, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -13622,7 +13622,7 @@ public sealed partial class CampaignMapScene : Node3D
         var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         content.AddThemeConstantOverride("separation", 5);
         panel.AddChild(content);
-        content.AddChild(MakeLabel("◈ 선택 연구 상세", 16, GoldBright));
+        content.AddChild(MakeLabel("선택 연구 상세", 16, GoldBright));
         _modalDetail = MakeLabel(GeneralResearchSelectionDetail(_modalParam), 14, Parchment);
         _modalDetail.Name = "GeneralResearchDetailText";
         _modalDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -13643,7 +13643,7 @@ public sealed partial class CampaignMapScene : Node3D
         var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         content.AddThemeConstantOverride("separation", 5);
         panel.AddChild(content);
-        content.AddChild(MakeLabel("◈ 선택 교리 상세", 16, GoldBright));
+        content.AddChild(MakeLabel("선택 교리 상세", 16, GoldBright));
         _modalDetail = MakeLabel("전투교리 대상을 선택하세요.", 14, Parchment);
         _modalDetail.Name = "DoctrineResearchDetailText";
         _modalDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -13663,7 +13663,7 @@ public sealed partial class CampaignMapScene : Node3D
         var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         content.AddThemeConstantOverride("separation", 5);
         panel.AddChild(content);
-        content.AddChild(MakeLabel("◈ 선택 계략 연구 상세", 16, GoldBright));
+        content.AddChild(MakeLabel("선택 계략 연구 상세", 16, GoldBright));
         _modalDetail = MakeLabel(StratagemResearchSelectionDetail(_modalParam), 14, Parchment);
         _modalDetail.Name = "StratagemResearchDetailText";
         _modalDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -15184,7 +15184,7 @@ public sealed partial class CampaignMapScene : Node3D
         var box = DeployScaffold(mw, out var scroll, out var panel);
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈  {FacilityName(placement.Code)} 업그레이드   《 {city.Name} 》  ⠿", 22, Gold);
+        var title = MakeLabel($"{FacilityName(placement.Code)} 업그레이드   《 {city.Name} 》  ⠿", 22, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);
@@ -17394,7 +17394,7 @@ public sealed partial class CampaignMapScene : Node3D
         var headRow = new HBoxContainer();
         headRow.AddThemeConstantOverride("separation", 8);
         v.AddChild(headRow);
-        var head = MakeLabel("◈ 보고", 13, Gold);
+        var head = MakeLabel("보고", 13, Gold);
         head.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         headRow.AddChild(head);
         var full = MakeButton("전체");
@@ -17506,7 +17506,7 @@ public sealed partial class CampaignMapScene : Node3D
         var titleRow = new HBoxContainer { Name = "FullReportHeader" };
         titleRow.SetMeta("fixed_report_header", true);
         box.AddChild(titleRow);
-        var title = MakeLabel($"◈ 전체 보고 ({_reportHistory.Count})", 17, Gold);
+        var title = MakeLabel($"전체 보고 ({_reportHistory.Count})", 17, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         title.MouseFilter = Control.MouseFilterEnum.Ignore;
         titleRow.AddChild(title);

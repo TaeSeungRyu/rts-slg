@@ -30,7 +30,7 @@ public sealed partial class CampaignMapScene
         var titleRow = new HBoxContainer();
         box.AddChild(titleRow);
         var cityName = _state.Cities.First(c => c.Id == city).Name;
-        var title = MakeLabel($"◈  일괄전투편성   《 {cityName} 》  ⠿", 18, Gold);
+        var title = MakeLabel($"일괄전투편성   《 {cityName} 》  ⠿", 18, Gold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         titleRow.AddChild(title);
         var back = MakeButton("◀ 출전 목록");
