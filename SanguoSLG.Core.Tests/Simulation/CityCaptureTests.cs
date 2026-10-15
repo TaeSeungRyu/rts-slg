@@ -76,6 +76,21 @@ public class CityCaptureTests
         Assert.Empty(after.DeclaredWars);
     }
 
+    [Fact]
+    public void 만료된_선전포고는_치안_손실을_막지_못한다()
+    {
+        var city = Fallen(1, 2, new HexCoord(5, 0));
+        var state = State([city], [Attacker(1, 1, new HexCoord(4, 0), city.Position)]) with
+        {
+            Day = 32,
+            WarDeclarations = [new CityWarDeclaration(new FactionId(1), city.Id, city.Owner, 1)],
+        };
+
+        var after = new CityCapture().ResolveAll(state, new FixedRandom(50), out _);
+
+        Assert.Equal(40, after.Cities.Single().Security);
+    }
+
     [Theory]
     [InlineData(50, 40)]
     [InlineData(70, 24)]

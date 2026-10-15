@@ -28,6 +28,23 @@ public class DiplomacyTests
         Assert.False(service.Issue(issued.State, request).Ok);
     }
 
+    [Fact]
+    public void 선전포고는_31일간_유효하고_만료후_다시_가능하다()
+    {
+        var state = new GameState(5, 190, [], [City(1, 1, 0), City(2, 2, 3)], [Gen(1)],
+            Postings: [At(1, 1, 1)]);
+        var request = new CommandRequest(new CityId(1), CommandKind.DeclareWar, new GeneralId(1),
+            TargetCity: new CityId(2));
+        var service = new CommandService(B);
+        var issued = service.Issue(state, request).State;
+        var declaration = Assert.Single(issued.DeclaredWars);
+
+        Assert.True(declaration.ActiveOn(state.Day + 30));
+        Assert.False(declaration.ActiveOn(state.Day + 31));
+        var expired = issued with { Day = state.Day + 31 };
+        Assert.True(service.Issue(expired, request).Ok);
+    }
+
     private sealed class FixedRandom(params int[] values) : IRandomSource
     {
         private readonly int[] _values = values;

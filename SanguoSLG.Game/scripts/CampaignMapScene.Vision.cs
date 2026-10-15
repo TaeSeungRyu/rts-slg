@@ -35,6 +35,42 @@ public sealed partial class CampaignMapScene
     private bool CanInspectCity(City city)
         => BattlefieldVision.CanInspectCity(_state, Player, city, _visibleTiles);
 
+    private bool IsDeclaredCity(City city)
+        => _state.DeclaredWars.Any(w => w.ActiveOn(_state.Day) && w.Attacker == Player
+            && w.City == city.Id && w.Defender == city.Owner);
+
+    private string CityMapLabel(City city, int troops)
+    {
+        var factionName = _state.Factions.FirstOrDefault(f => f.Id == city.Owner)?.Name ?? "?";
+        var declaration = IsDeclaredCity(city) ? $"⚔ 선전 포고 · {WarDaysLeft(city.Id)}일\n" : "";
+        return declaration + $"{city.Name} [{factionName}]"
+            + (CanInspectCity(city) ? $"\n성벽 {city.Wall}  병 {troops}" : "\n시야 밖");
+    }
+
+    private int WarDaysLeft(CityId city)
+        => _state.DeclaredWars.Where(w => w.ActiveOn(_state.Day) && w.Attacker == Player && w.City == city)
+            .Select(w => w.ExpiresDay - _state.Day).DefaultIfEmpty(0).Max();
+
+    private void RunWarDeclarationQa()
+    {
+        var origin = _state.Cities.First(c => c.Owner == Player && !c.IsPort);
+        var target = _state.Cities.First(c => c.Name == "한중");
+        var officer = _state.GeneralsAt(origin.Id).First();
+        var result = _commander.Issue(_state,
+            new CommandRequest(origin.Id, CommandKind.DeclareWar, officer, TargetCity: target.Id));
+        if (!result.Ok) { GD.PushError($"[war-declaration-qa] issue failed: {result.Error}"); GetTree().Quit(1); return; }
+        _state = result.State;
+        Redraw("war declaration QA");
+        var marked = _cityLabels[target.Id.Value].Text.StartsWith("⚔ 선전 포고 · 31일\n", StringComparison.Ordinal);
+        var remainsSecret = !CanInspectCity(target);
+        _state = _state with { Day = _state.Day + CityWarDeclaration.DurationDays };
+        Redraw("war declaration expiry QA");
+        var expired = !_cityLabels[target.Id.Value].Text.Contains("선전 포고", StringComparison.Ordinal);
+        var passed = marked && remainsSecret && expired;
+        GD.Print($"[war-declaration-qa] marked={marked} secret={remainsSecret} expired={expired} passed={passed}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private bool CanSeeUnit(CombatUnit unit)
         => BattlefieldVision.CanSeeUnit(Player, unit, _visibleTiles);
 
@@ -84,7 +120,8 @@ public sealed partial class CampaignMapScene
         var changed = !_visibleTiles.SetEquals(visible);
         _visibleTiles = visible;
         _displayArmies = display.Armies;
-        if (!playback || changed) _fog.Apply(_visibleTiles);
+        if (!playback || changed) _fog.Apply(_visibleTiles, _state.Cities.Where(IsDeclaredCity)
+            .Select(city => city.Position).ToHashSet());
         RefreshFieldBuildingVisibility();
         foreach (var army in display.Armies)
         {
@@ -112,10 +149,10 @@ public sealed partial class CampaignMapScene
         foreach (var city in _state.Cities)
         {
             var label = _cityLabels[city.Id.Value];
-            var factionName = _state.Factions.FirstOrDefault(f => f.Id == city.Owner)?.Name ?? "?";
             var troops = CityTroopsForDisplay(city.Id);
-            label.Text = $"{city.Name} [{factionName}]" + (CanInspectCity(city) ? $"\n성벽 {city.Wall}  병 {troops}" : "\n시야 밖");
-            label.Modulate = new Color(city.Owner == Player ? Blue : Red, CanInspectCity(city) ? 1f : 0.5f);
+            label.Text = CityMapLabel(city, troops);
+            label.Modulate = new Color(city.Owner == Player ? Blue : Red,
+                CanInspectCity(city) ? 1f : IsDeclaredCity(city) ? 0.8f : 0.5f);
         }
         if (_selectedUnitId >= 0 && !display.Armies.Any(u => u.Id.Value == _selectedUnitId && CanSeeUnit(u)))
             HidePanels();

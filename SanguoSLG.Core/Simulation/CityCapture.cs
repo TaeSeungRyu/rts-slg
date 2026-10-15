@@ -83,7 +83,7 @@ public sealed class CityCapture
         IReadOnlyList<CombatUnit> entrants, IRandomSource random, List<CaptureReport> reports)
     {
         var oldOwner = city.Owner;
-        var declared = state.DeclaredWars.Any(w => w.Attacker == captor && w.City == city.Id && w.Defender == oldOwner);
+        var declared = state.DeclaredWars.Any(w => w.ActiveOn(state.Day) && w.Attacker == captor && w.City == city.Id && w.Defender == oldOwner);
         var securityLossPercent = declared ? 0 : System.Math.Clamp(random.Next(50, 71), 50, 70);
         var newSecurity = System.Math.Clamp(city.Security * (100 - securityLossPercent) / 100, 0, 100);
 

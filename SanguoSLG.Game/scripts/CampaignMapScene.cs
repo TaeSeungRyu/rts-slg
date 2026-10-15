@@ -728,6 +728,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptesttreasurecloseqa")) CallDeferred(nameof(RunTreasureCloseQa));
         if (args.Contains("--maptestsummontargetqa")) CallDeferred(nameof(RunSummonTargetQa));
         if (args.Contains("--maptestofficerfixtureqa")) CallDeferred(nameof(RunMapTestOfficerFixtureQa));
+        if (args.Contains("--maptestwardeclarationqa")) CallDeferred(nameof(RunWarDeclarationQa));
     }
 
     private void SeedFieldBuildingSamples()
@@ -6579,7 +6580,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (cmd.Kind == CommandKind.DeclareWar)
         {
-            box.AddChild(MakeLabel("적 도시를 지정해 즉시 선전 포고합니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃지만, 포고한 도시는 점령 시 치안을 유지합니다.", 15, Parchment));
+            box.AddChild(MakeLabel("적 도시에 31일간 선전 포고합니다. 시야 밖에서도 대상 성이 흐리게 보입니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃지만, 포고한 도시는 점령 시 치안을 유지합니다.", 15, Parchment));
         }
         var cityData = _state.Cities.First(x => x.Id == city);
         if (cmd.Kind == CommandKind.Explore)
@@ -12959,7 +12960,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private List<City> WarDeclarationTargets(City city) => _state.Cities
         .Where(c => c.Owner != city.Owner && !_state.AreAllied(city.Owner, c.Owner))
-        .Where(c => !_state.DeclaredWars.Any(w => w.Attacker == city.Owner && w.City == c.Id && w.Defender == c.Owner))
+        .Where(c => !_state.DeclaredWars.Any(w => w.ActiveOn(_state.Day) && w.Attacker == city.Owner && w.City == c.Id && w.Defender == c.Owner))
         .OrderBy(c => c.Id.Value).ToList();
 
     private List<(string Name, ImageTexture Icon, string Detail)> OptionList(
@@ -14764,7 +14765,7 @@ public sealed partial class CampaignMapScene : Node3D
             var targets = WarDeclarationTargets(_state.Cities.First(c => c.Id == city));
             if (p < 0 || p >= targets.Count) { ShowNotice("선전 포고 실패", "대상 도시를 선택해야 합니다."); return; }
             target = targets[p].Id;
-            extra = $"\n대상: {targets[p].Name}\n선전 포고는 즉시 적용됩니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃습니다.";
+            extra = $"\n대상: {targets[p].Name}\n선전 포고는 즉시 적용되고 31일간 유지됩니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃습니다.";
         }
         var confirmOfficer = general;
         string? confirmOfficerLine = null;
@@ -16068,7 +16069,7 @@ public sealed partial class CampaignMapScene : Node3D
             var color = city.Owner.Value == 1 ? Blue : Red;
             var troops = _state.Garrisons.Where(g => g.City == city.Id).Sum(g => g.Troops);
             var label = _cityLabels[city.Id.Value];
-            label.Text = $"{city.Name} [{_state.Factions.First(f => f.Id == city.Owner).Name}]\n성벽 {city.Wall}  병 {troops}";
+            label.Text = CityMapLabel(city, troops);
             label.Modulate = color;
         }
 

@@ -194,9 +194,9 @@ public sealed class CommandService
             return CommandResult.Fail("아군 도시에는 선전 포고할 수 없다.", state);
         if (state.AreAllied(city.Owner, target.Owner))
             return CommandResult.Fail("동맹을 먼저 파기해야 한다.", state);
-        if (state.DeclaredWars.Any(w => w.Attacker == city.Owner && w.City == target.Id && w.Defender == target.Owner))
+        if (state.DeclaredWars.Any(w => w.ActiveOn(state.Day) && w.Attacker == city.Owner && w.City == target.Id && w.Defender == target.Owner))
             return CommandResult.Fail("이미 선전 포고한 도시다.", state);
-        return CommandResult.Success(state with { WarDeclarations = [.. state.DeclaredWars,
+        return CommandResult.Success(state with { WarDeclarations = [.. state.DeclaredWars.Where(w => w.ActiveOn(state.Day)),
             new CityWarDeclaration(city.Owner, target.Id, target.Owner, state.Day)] });
     }
 

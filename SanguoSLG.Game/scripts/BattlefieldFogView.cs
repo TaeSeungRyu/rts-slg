@@ -14,6 +14,13 @@ public sealed class BattlefieldFogView(MapView3D map)
         AlbedoColor = new Color(0.02f, 0.025f, 0.045f, 0.72f),
         DepthDrawMode = BaseMaterial3D.DepthDrawModeEnum.Disabled,
     };
+    private readonly StandardMaterial3D _declaredShade = new()
+    {
+        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+        Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        AlbedoColor = new Color(0.035f, 0.04f, 0.06f, 0.42f),
+        DepthDrawMode = BaseMaterial3D.DepthDrawModeEnum.Disabled,
+    };
     private readonly Dictionary<ulong, (GeometryInstance3D Mesh, HexCoord Tile, Material? Original)> _meshes = new();
 
     public void Register(Node root, HexCoord tile)
@@ -33,7 +40,7 @@ public sealed class BattlefieldFogView(MapView3D map)
             Register(child, map.WorldToHex(child.GlobalPosition));
     }
 
-    public void Apply(IReadOnlySet<HexCoord> visible)
+    public void Apply(IReadOnlySet<HexCoord> visible, IReadOnlySet<HexCoord>? declaredCities = null)
     {
         foreach (var (id, entry) in _meshes.ToArray())
         {
@@ -42,7 +49,8 @@ public sealed class BattlefieldFogView(MapView3D map)
                 _meshes.Remove(id);
                 continue;
             }
-            entry.Mesh.MaterialOverlay = visible.Contains(entry.Tile) ? entry.Original : _shade;
+            entry.Mesh.MaterialOverlay = visible.Contains(entry.Tile) ? entry.Original
+                : declaredCities?.Contains(entry.Tile) == true ? _declaredShade : _shade;
         }
     }
 }

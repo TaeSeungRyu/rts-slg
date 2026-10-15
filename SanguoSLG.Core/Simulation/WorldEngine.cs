@@ -69,6 +69,10 @@ public sealed class WorldEngine
         {
             next = next with { ScoutedCities = next.Intel.Where(i => i.ExpiresDay > next.Day).ToList() };
         }
+        if (next.DeclaredWars.Count > 0)
+        {
+            next = next with { WarDeclarations = next.DeclaredWars.Where(w => w.ActiveOn(next.Day)).ToList() };
+        }
 
         // 명령 정산: 완료일에 도달한 명령의 효과를 적용하고 목록에서 뺀다(수행 장수 잠금 해제).
         if (next.Commands.Any(c => c.CompletionDay == next.Day))
