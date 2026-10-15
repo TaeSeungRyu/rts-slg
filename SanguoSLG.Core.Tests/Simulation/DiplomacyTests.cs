@@ -73,6 +73,28 @@ public class DiplomacyTests
         new(new GeneralId(general), new FactionId(faction), new CityId(city));
 
     [Fact]
+    public void 선전포고_대상_반경4칸에_아군이_있으면_거절하고_5칸이면_허용한다()
+    {
+        var target = City(2, 2, 20) with { Castle = CastleSize.Small };
+        var state = new GameState(1, 190, [], [City(1, 1, 0), target], [Gen(1)],
+            Postings: [At(1, 1, 1)]);
+        var request = new CommandRequest(new CityId(1), CommandKind.DeclareWar, new GeneralId(1),
+            TargetCity: target.Id);
+        CombatUnit Army(int q) => new(new FieldUnit(new UnitId(1), new FactionId(1),
+                new HexCoord(q, 0), 2, 2, 1, MovementDomain.Land, UnitMode.March, null, 1),
+            new CombatStats(1000, 10, 10), new TroopPool(1000, 0), UnitCombatState.Create(50));
+        var service = new CommandService(B);
+
+        var blocked = service.Issue(state with { FieldArmies = [Army(24)] }, request);
+        var allowed = service.Issue(state with { FieldArmies = [Army(25)] }, request);
+
+        Assert.False(blocked.Ok);
+        Assert.Contains("4칸", blocked.Error);
+        Assert.Empty(blocked.State.DeclaredWars);
+        Assert.True(allowed.Ok, allowed.Error);
+    }
+
+    [Fact]
     public void 동맹_발행은_금을_소비하고_거리비례_소요일로_예약된다()
     {
         var s = new GameState(1, 1, new List<Faction>(),

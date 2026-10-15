@@ -6598,7 +6598,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (cmd.Kind == CommandKind.DeclareWar)
         {
-            box.AddChild(MakeLabel("적 도시에 100일간 선전 포고합니다. 시야 밖에서도 대상 성이 흐리게 보입니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃지만, 포고한 도시는 점령 시 치안을 유지합니다.", 15, Parchment));
+            box.AddChild(MakeLabel("대상 성 주변 4칸에 아군 부대가 없어야 합니다. 포고는 100일간 유효하며 시야 밖에서도 대상 성이 흐리게 보입니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃습니다.", 15, Parchment));
         }
         var cityData = _state.Cities.First(x => x.Id == city);
         if (cmd.Kind == CommandKind.Explore)
@@ -14790,6 +14790,11 @@ public sealed partial class CampaignMapScene : Node3D
             var targets = WarDeclarationTargets(_state.Cities.First(c => c.Id == city));
             if (p < 0 || p >= targets.Count) { ShowNotice("선전 포고 실패", "대상 도시를 선택해야 합니다."); return; }
             target = targets[p].Id;
+            if (WarDeclarationRules.HasNearbyArmy(_state, _state.Cities.First(c => c.Id == city).Owner, targets[p]))
+            {
+                ShowNotice("선전 포고 불가", $"{targets[p].Name} 주변 4칸 안에 아군 부대가 있습니다.");
+                return;
+            }
             extra = $"\n대상: {targets[p].Name}\n선전 포고는 즉시 적용되고 100일간 유지됩니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃습니다.";
         }
         var confirmOfficer = general;
