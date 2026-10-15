@@ -1091,11 +1091,7 @@ public sealed class CampaignEngine
             var equipped = treasures.Where(t => t.Faction == unit.Field.Owner && t.EquippedBy is not null
                 && (t.EquippedBy == unit.VanguardId || t.EquippedBy == unit.AdjutantId)).ToList();
             AptitudeGrade Adjust(TroopClass troopClass)
-            {
-                var grade = vanguard.AptitudeFor(troopClass);
-                return equipped.Any(t => t.Code == "phoenix_feather" && t.EquippedBy == vanguardId)
-                    && grade < AptitudeGrade.A ? AptitudeGrade.A : grade;
-            }
+                => TreasureAptitude.Effective(vanguard, troopClass, equipped);
             var grade = unit.IsArmyGroup
                 ? AptitudeGrades.AverageFloor(
                     Adjust(TroopClass.Infantry), Adjust(TroopClass.Archer), Adjust(TroopClass.Siege))

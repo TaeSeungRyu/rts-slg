@@ -8776,8 +8776,8 @@ public sealed partial class CampaignMapScene : Node3D
                 3 => _generalRosterSortAsc ? generals.OrderBy(g => g.Politics) : generals.OrderByDescending(g => g.Politics),
                 4 => _generalRosterSortAsc ? generals.OrderBy(g => Where(g), System.StringComparer.Ordinal) : generals.OrderByDescending(g => Where(g), System.StringComparer.Ordinal),
                 >= 5 and <= 12 => _generalRosterSortAsc
-                    ? generals.OrderBy(g => AptitudeSortValue(g.AptitudeFor(GeneralRosterAptitudes[_generalRosterSortCol - 5].Class)))
-                    : generals.OrderByDescending(g => AptitudeSortValue(g.AptitudeFor(GeneralRosterAptitudes[_generalRosterSortCol - 5].Class))),
+                    ? generals.OrderBy(g => AptitudeSortValue(TreasureAptitude.Effective(g, GeneralRosterAptitudes[_generalRosterSortCol - 5].Class, _state.Treasures)))
+                    : generals.OrderByDescending(g => AptitudeSortValue(TreasureAptitude.Effective(g, GeneralRosterAptitudes[_generalRosterSortCol - 5].Class, _state.Treasures))),
                 13 => _generalRosterSortAsc ? generals.OrderBy(g => HeroType(g.Id), System.StringComparer.Ordinal) : generals.OrderByDescending(g => HeroType(g.Id), System.StringComparer.Ordinal),
                 14 => _generalRosterSortAsc ? generals.OrderBy(g => HeroStatus(g.Id), System.StringComparer.Ordinal) : generals.OrderByDescending(g => HeroStatus(g.Id), System.StringComparer.Ordinal),
                 _ => generals.OrderBy(g => g.Id.Value),
@@ -8870,7 +8870,7 @@ public sealed partial class CampaignMapScene : Node3D
                 for (var i = 0; i < GeneralRosterAptitudes.Length; i++)
                 {
                     var col = 5 + i;
-                    var grade = g.AptitudeFor(GeneralRosterAptitudes[i].Class);
+                    var grade = TreasureAptitude.Effective(g, GeneralRosterAptitudes[i].Class, _state.Treasures);
                     it.SetText(col, GradeText(grade));
                     it.SetTextAlignment(col, HorizontalAlignment.Center);
                     if (grade >= AptitudeGrade.A) { it.SetCustomColor(col, GoldBright); }
@@ -12304,7 +12304,8 @@ public sealed partial class CampaignMapScene : Node3D
 
     private PanelContainer GeneralAptitudeCard(General general, string label, TroopClass troopClass)
     {
-        var grade = general.AptitudeFor(troopClass);
+        var originalGrade = general.AptitudeFor(troopClass);
+        var grade = TreasureAptitude.Effective(general, troopClass, _state.Treasures);
         var card = new PanelContainer
         {
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
@@ -12360,7 +12361,9 @@ public sealed partial class CampaignMapScene : Node3D
         name.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(name);
 
-        var gradeText = MakeLabel(GradeText(grade), 15, grade >= AptitudeGrade.A ? GoldBright : Parchment);
+        var gradeText = MakeLabel(grade > originalGrade
+            ? $"{GradeText(grade)} (원래 {GradeText(originalGrade)})"
+            : GradeText(grade), 15, grade >= AptitudeGrade.A ? GoldBright : Parchment);
         gradeText.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(gradeText);
 
@@ -12371,7 +12374,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var cap = AptitudeGrowth.NormalCap(general.AptitudeBaseFor(troopClass));
         var experience = general.AptitudeExperienceFor(troopClass);
-        var growthText = grade >= cap
+        var growthText = originalGrade >= cap
             ? $"숙련 MAX · 상한 {GradeText(cap)}"
             : $"숙련 {experience}/{AptitudeGrowth.RequiredExperience} · 상한 {GradeText(cap)}";
         var growth = MakeLabel(growthText, 9, new Color(Parchment, 0.72f));

@@ -52,4 +52,19 @@ public class TreasureEquipmentServiceTests
         Assert.Null(reconciled.Treasures.Single(x => x.Id == "hunt:1").EquippedBy);
         Assert.Equal(new FactionId(1), reconciled.Treasures.Single(x => x.Id == "hunt:1").Faction);
     }
+
+    [Fact]
+    public void 봉황깃은_모든_적성의_A미만만_전투와_표시에서_A로_보정한다()
+    {
+        var general = State.Generals[0] with { Aptitudes = new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Infantry] = AptitudeGrade.D,
+            [TroopClass.Archer] = AptitudeGrade.APlus,
+        } };
+        var feather = new FactionTreasure("phoenix:1", "phoenix_feather", "봉황 깃", new(1), 10,
+            "phoenix", EquippedBy: general.Id);
+        Assert.Equal(AptitudeGrade.A, TreasureAptitude.Effective(general, TroopClass.Infantry, [feather]));
+        Assert.Equal(AptitudeGrade.APlus, TreasureAptitude.Effective(general, TroopClass.Archer, [feather]));
+        Assert.Equal(AptitudeGrade.D, TreasureAptitude.Effective(general, TroopClass.Infantry, []));
+    }
 }
