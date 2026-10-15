@@ -3504,8 +3504,8 @@ public sealed partial class CampaignMapScene : Node3D
             Gold: 2000, Security: 80, Population: 100_000, Ore: 8000,
             Paddies: 2, Farms: 2, Villages: 2, Wall: 1200),
         new(new CityId(3), "한중", new HexCoord(4, 6), new FactionId(2), 3000, CastleSize.Medium,
-            Gold: 2000, Security: 80, Population: 80_000, Ore: 6000,
-            Paddies: 2, Farms: 2, Villages: 2, Wall: 1200),
+            Gold: 2000, Security: 100, Population: 80_000, Ore: 6000,
+            Paddies: 2, Farms: 2, Villages: 2, Wall: 1200, SecurityOfficer: new GeneralId(13)),
         new(new CityId(10), "촉소항", new HexCoord(10, 8), new FactionId(2), 3000, CastleSize.Small,
             Gold: 1500, Security: 80, Population: 40_000, Wall: 400, Port: PortSize.Small),
     };
@@ -3639,8 +3639,7 @@ public sealed partial class CampaignMapScene : Node3D
             new(new CityId(9), "hwarang", 10000, 60),
             new(new CityId(2), "swordsman", 100000, 60),
             new(new CityId(2), "catapult", 10000, 60),
-            new(new CityId(3), "swordsman", 150000, 60),
-            new(new CityId(3), "siege_tower", 8000, 60),
+            new(new CityId(3), "swordsman", 20000, 60),
         },
         FacilityPlacements: _initialFacilityPlacements,
         PortShipStocks:

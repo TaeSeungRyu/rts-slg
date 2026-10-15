@@ -71,9 +71,9 @@ public sealed partial class CampaignMapScene
             "Two clicks in one tile did not preserve distinct point goals");
         var initialState = _state;
         var hanzhong = initialState.Cities.Single(city => city.Name == "한중");
-        Require(initialState.Garrisons.Where(force => force.City == hanzhong.Id
-                && force.TroopCode == "swordsman").Sum(force => force.Troops) == 150000,
-            "Hanzhong opening garrison is not five times the old fixture");
+        Require(hanzhong.Security == 100 && hanzhong.SecurityOfficer == new GeneralId(13)
+            && initialState.Garrisons.Where(force => force.City == hanzhong.Id).Sum(force => force.Troops) == 20000,
+            "Hanzhong war-declaration fixture must have 100 security, an officer, and 20000 troops");
         var enemyOpening = _ai.PlanWeek(initialState, hanzhong.Owner);
         Require(enemyOpening.Armies.Any(unit => unit.OriginCity == hanzhong.Id
                 && unit.DeploymentDelayDays == 0),
