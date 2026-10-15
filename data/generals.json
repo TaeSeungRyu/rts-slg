@@ -3947,5 +3947,62 @@
         "tier": 2
       }
     ]
+  },
+  {
+    "id": 113, "name": "초선", "birth": 176, "region": "sili", "affiliation": "동탁·여포", "desc": "왕윤의 연환계에 등장하는 연의 속 인물 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"D","archer":"C","cavalry":"D","elephant":"D","siege":"D","naval":"D","supply":"C","defense":"C"}, "might": 24, "intellect": 83, "politics": 76
+  },
+  {
+    "id": 114, "name": "손상향", "birth": 189, "region": "yangzhou", "affiliation": "오", "desc": "손권의 여동생, 유비의 아내 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"B","archer":"A","cavalry":"B","elephant":"D","siege":"D","naval":"B","supply":"C","defense":"C"}, "might": 73, "intellect": 63, "politics": 58
+  },
+  {
+    "id": 115, "name": "여령기", "birth": 188, "region": "bingzhou", "affiliation": "여포", "desc": "여포의 딸을 모티브로 한 창작 무장 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"A","archer":"B","cavalry":"A","elephant":"D","siege":"C","naval":"D","supply":"C","defense":"C"}, "might": 85, "intellect": 45, "politics": 32
+  },
+  {
+    "id": 116, "name": "관은병", "birth": 199, "region": "jingzhou", "affiliation": "촉", "desc": "관우의 딸을 모티브로 한 창작 무장 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"A","archer":"B","cavalry":"A","elephant":"D","siege":"C","naval":"D","supply":"C","defense":"B"}, "might": 82, "intellect": 51, "politics": 43
+  },
+  {
+    "id": 117, "name": "포삼랑", "birth": 202, "region": "jingzhou", "affiliation": "촉", "desc": "관색의 아내로 전해지는 여걸 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"B","archer":"A","cavalry":"B","elephant":"D","siege":"D","naval":"D","supply":"C","defense":"C"}, "might": 78, "intellect": 48, "politics": 39
+  },
+  {
+    "id": 118, "name": "왕이", "birth": 174, "region": "liangzhou", "affiliation": "위", "desc": "마초에 맞서 기성을 지킨 여성 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"B","archer":"B","cavalry":"B","elephant":"D","siege":"C","naval":"D","supply":"B","defense":"A"}, "might": 62, "intellect": 79, "politics": 76
+  },
+  {
+    "id": 119, "name": "신헌영", "birth": 191, "region": "yuzhou", "affiliation": "위·진", "desc": "정세를 읽는 판단력으로 알려진 신비의 딸", "aptitudes": {"infantry":"C","archer":"C","cavalry":"D","elephant":"D","siege":"C","naval":"D","supply":"B","defense":"B"}, "might": 28, "intellect": 90, "politics": 83
+  },
+  {
+    "id": 120, "name": "장춘화", "birth": 189, "region": "sili", "affiliation": "위·진", "desc": "사마의의 아내, 강인한 성품으로 전해지는 인물", "aptitudes": {"infantry":"C","archer":"C","cavalry":"D","elephant":"D","siege":"C","naval":"D","supply":"B","defense":"B"}, "might": 45, "intellect": 82, "politics": 78
+  },
+  {
+    "id": 121, "name": "하후씨", "birth": 187, "region": "yuzhou", "affiliation": "촉", "desc": "하후연의 친족이자 장비의 아내 — 출생연도는 기록을 바탕으로 한 추정치", "aptitudes": {"infantry":"C","archer":"C","cavalry":"C","elephant":"D","siege":"D","naval":"D","supply":"C","defense":"C"}, "might": 42, "intellect": 56, "politics": 61
+  },
+  {
+    "id": 122, "name": "대교", "birth": 175, "region": "yangzhou", "affiliation": "오", "desc": "손책의 아내, 강동의 교씨 자매 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"D","archer":"C","cavalry":"D","elephant":"D","siege":"D","naval":"C","supply":"C","defense":"C"}, "might": 25, "intellect": 62, "politics": 66
+  },
+  {
+    "id": 123, "name": "소교", "birth": 177, "region": "yangzhou", "affiliation": "오", "desc": "주유의 아내, 강동의 교씨 자매 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"D","archer":"C","cavalry":"D","elephant":"D","siege":"D","naval":"C","supply":"C","defense":"C"}, "might": 24, "intellect": 68, "politics": 63
+  },
+  {
+    "id": 124, "name": "견씨", "birth": 183, "region": "jizhou", "affiliation": "위", "desc": "조비의 아내이자 조예의 어머니", "aptitudes": {"infantry":"D","archer":"C","cavalry":"D","elephant":"D","siege":"D","naval":"D","supply":"C","defense":"C"}, "might": 24, "intellect": 67, "politics": 72
+  },
+  {
+    "id": 125, "name": "채문희", "birth": 177, "region": "yanzhou", "affiliation": "후한", "desc": "문학과 음악에 뛰어난 채옹의 딸 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"D","archer":"D","cavalry":"D","elephant":"D","siege":"D","naval":"D","supply":"C","defense":"C"}, "might": 18, "intellect": 86, "politics": 69
+  },
+  {
+    "id": 126, "name": "황월영", "birth": 179, "region": "jingzhou", "affiliation": "촉", "desc": "제갈량의 아내, 지략과 발명의 이미지 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"C","archer":"B","cavalry":"D","elephant":"D","siege":"A","naval":"C","supply":"B","defense":"B"}, "might": 37, "intellect": 89, "politics": 72
+  },
+  {
+    "id": 127, "name": "마운록", "birth": 189, "region": "liangzhou", "affiliation": "촉·서량", "desc": "마초의 여동생으로 등장하는 창작 무장 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"B","archer":"B","cavalry":"A","elephant":"D","siege":"D","naval":"D","supply":"C","defense":"C"}, "might": 80, "intellect": 49, "politics": 37
+  },
+  {
+    "id": 128, "name": "번씨", "birth": 177, "region": "jingzhou", "affiliation": "군웅", "desc": "조운과의 혼담으로 알려진 여성 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"D","archer":"C","cavalry":"D","elephant":"D","siege":"D","naval":"D","supply":"C","defense":"C"}, "might": 26, "intellect": 58, "politics": 64
+  },
+  {
+    "id": 129, "name": "오국태", "birth": 160, "region": "yangzhou", "affiliation": "오", "desc": "연의에서 손권의 어머니로 묘사되는 인물 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"D","archer":"D","cavalry":"D","elephant":"D","siege":"D","naval":"C","supply":"B","defense":"C"}, "might": 26, "intellect": 68, "politics": 78
+  },
+  {
+    "id": 130, "name": "보연사", "birth": 185, "region": "yangzhou", "affiliation": "오", "desc": "손권의 후궁, 손노반과 손노육의 어머니 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"D","archer":"D","cavalry":"D","elephant":"D","siege":"D","naval":"C","supply":"C","defense":"C"}, "might": 23, "intellect": 62, "politics": 70
+  },
+  {
+    "id": 131, "name": "추씨", "birth": 169, "region": "jingzhou", "affiliation": "군웅", "desc": "장제의 아내, 조조와 관련된 완성의 인물 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"D","archer":"D","cavalry":"D","elephant":"D","siege":"D","naval":"D","supply":"C","defense":"C"}, "might": 21, "intellect": 55, "politics": 58
   }
 ]

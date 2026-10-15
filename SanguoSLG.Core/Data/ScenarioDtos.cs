@@ -59,6 +59,7 @@ internal sealed class GeneralDto
     public int Birth { get; init; }
     public int UnlockYear { get; init; }
     public string Region { get; init; } = "";
+    public string Affiliation { get; init; } = "";
     public string Desc { get; init; } = "";
     public int Level { get; init; } = 1;
     public int Experience { get; init; }

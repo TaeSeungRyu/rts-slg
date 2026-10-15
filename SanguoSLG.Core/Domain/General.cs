@@ -26,7 +26,8 @@ public sealed record General(
     IReadOnlyDictionary<TroopClass, int>? AptitudeExperience = null,
     IReadOnlyDictionary<TroopClass, AptitudeGrade>? AptitudeBaseGrades = null,
     int AdminLevel = 1,
-    int AdminExperience = 0)
+    int AdminExperience = 0,
+    string Affiliation = "")
 {
     /// <summary>병종 분류의 통솔 등급. 정의가 없으면 F.</summary>
     public AptitudeGrade AptitudeFor(TroopClass troopClass)

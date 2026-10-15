@@ -9,6 +9,15 @@ using Xunit;
 /// <summary>data/generals.json 무결성 — 코드 참조·중복·스킬 규칙(spec-general)을 지킨다.</summary>
 public class GeneralDataTests
 {
+    [Fact]
+    public void 신규_여성장수_19명은_기존_축융과_별도이며_소속정보가_있다()
+    {
+        var names = new[] { "초선", "손상향", "여령기", "관은병", "포삼랑", "왕이", "신헌영", "장춘화", "하후씨", "대교", "소교", "견씨", "채문희", "황월영", "마운록", "번씨", "오국태", "보연사", "추씨" };
+        Assert.All(names, name => Assert.Single(All, general => general.Name == name && !string.IsNullOrWhiteSpace(general.Affiliation)));
+        Assert.Single(All, general => general.Name == "축융");
+        Assert.Equal(19, All.Count(general => general.Id.Value is >= 113 and <= 131));
+    }
+
     private static readonly System.Collections.Generic.IReadOnlyList<General> All =
         new GeneralLoader().LoadFromDirectory(TestData.DataDirectory());
 
