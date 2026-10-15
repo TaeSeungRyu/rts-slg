@@ -105,6 +105,9 @@ public sealed record GameState(
     public bool AreAllied(FactionId left, FactionId right)
         => left != right && Alliances.Any(a => a.Matches(left, right) && a.ActiveOn(Day));
 
+    public bool AreHostile(FactionId left, FactionId right)
+        => left != right && !AreAllied(left, right);
+
     /// <summary>이 세력의 그 병종 연구 단계(없으면 0 = 미연구).</summary>
     public int ResearchOf(FactionId faction, string troopCode)
         => Research.FirstOrDefault(r => r.Faction == faction && r.TroopCode == troopCode)?.Level ?? 0;

@@ -61,6 +61,28 @@ public class FieldUnitCommandServiceTests
     }
 
     [Fact]
+    public void 동맹_부대_건축물_성에는_공격명령을_낼_수_없다()
+    {
+        var ally = new FactionId(2);
+        var attacker = Unit(1, Player, default);
+        var alliedUnit = Unit(2, ally, new HexCoord(1, 0));
+        var alliedBuilding = new FieldBuilding(new FieldBuildingId(1), "fort", ally,
+            new HexCoord(2, 0), 4000, 0, 0);
+        var alliedCity = City(3, ally, new HexCoord(4, 0));
+        var state = new GameState(1, 190, [], [alliedCity], [],
+            FieldArmies: [attacker, alliedUnit], FieldBuildings: [alliedBuilding],
+            FactionAlliances: [FactionAlliance.Create(Player, ally, 1)]);
+
+        foreach (var target in new[] { alliedUnit.Field.Position, alliedBuilding.Position, alliedCity.Position })
+        {
+            var result = Service().Reassign(state, Player,
+                new FieldUnitCommandRequest(attacker.Id, UnitMode.Attack, target));
+            Assert.False(result.Ok);
+            Assert.Contains("동맹", result.Error);
+        }
+    }
+
+    [Fact]
     public void 적부대가_점유한_칸을_행군목표로_찍어도_접촉전까지는_행군을_유지한다()
     {
         var player = Unit(1, Player, default);

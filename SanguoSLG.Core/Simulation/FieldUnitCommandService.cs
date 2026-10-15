@@ -44,6 +44,16 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
             return CommandResult.Fail("경유지 중 이동할 수 없는 지점이 있습니다.", state);
         }
 
+        if (req.Mode == UnitMode.Attack && (state.Cities.Any(city => state.AreAllied(faction, city.Owner)
+                && CastleFootprint.TilesFor(city).Contains(req.Target))
+            || state.Buildings.Any(building => state.AreAllied(faction, building.Owner)
+                && building.Position == req.Target)
+            || state.Armies.Any(target => state.AreAllied(faction, target.Field.Owner)
+                && target.Field.Position == req.Target)))
+        {
+            return CommandResult.Fail("동맹 세력의 대상은 공격할 수 없습니다.", state);
+        }
+
         // A destination is not an attack order. March only fights when an enemy
         // actually blocks its route; an explicit Attack order keeps its target.
         var mode = req.Mode;
@@ -55,7 +65,7 @@ public sealed class FieldUnitCommandService(Func<MovementDomain, HexCoord, bool>
                     ContinuousWaypoints = req.ContinuousWaypoints,
                     PursuitTarget = null,
                     AssignedUnitTarget = mode == UnitMode.Attack
-                        ? state.Armies.FirstOrDefault(target => target.Field.Owner != faction
+                        ? state.Armies.FirstOrDefault(target => state.AreHostile(faction, target.Field.Owner)
                             && target.Field.Position == req.Target)?.Id : null } }
                 : a)
             .ToList();
