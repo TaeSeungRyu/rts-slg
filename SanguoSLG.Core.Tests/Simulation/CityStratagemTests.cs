@@ -92,7 +92,7 @@ public class CityStratagemTests
         var succeeded = Advance(withResearch.State, 11, roll: 50);
 
         Assert.Equal(3038, failed.Cities.Single(x => x.Id == new CityId(2)).Provisions);
-        Assert.Equal(2431, succeeded.Cities.Single(x => x.Id == new CityId(2)).Provisions);
+        Assert.Equal(2887, succeeded.Cities.Single(x => x.Id == new CityId(2)).Provisions);
     }
 
     // ── 발행 검증 ──
@@ -170,7 +170,7 @@ public class CityStratagemTests
         var issued = Service().Issue(s, Req("arson"));
         var done = Advance(issued.State, 11, roll: 0);
 
-        Assert.Equal(2431, done.Cities.First(c => c.Id == new CityId(2)).Provisions); // 7일 군량 생산 후 −20%
+        Assert.Equal(2887, done.Cities.First(c => c.Id == new CityId(2)).Provisions); // 7일 군량 생산 후 −5%
         Assert.Equal(AdministrationGrowth.StratagemSuccessExperience,
             done.Generals.Single(g => g.Id == new GeneralId(1)).AdminExperience);
         Assert.Equal(5, RecruitmentPointBank.Balance(done, new FactionId(1)));
@@ -185,7 +185,7 @@ public class CityStratagemTests
 
         var done = Advance(issued.State, 11, roll: 49);
 
-        Assert.Equal(2431, done.Cities.First(c => c.Id == new CityId(2)).Provisions);
+        Assert.Equal(2887, done.Cities.First(c => c.Id == new CityId(2)).Provisions);
     }
 
     [Fact]
@@ -212,8 +212,8 @@ public class CityStratagemTests
         var issued = Service().Issue(s, Req("steal"));
         var done = Advance(issued.State, 11, roll: 0);
 
-        Assert.Equal(800, done.Cities.First(c => c.Id == new CityId(2)).Gold);   // 1000 − 20%
-        Assert.Equal(2200, done.Cities.First(c => c.Id == new CityId(1)).Gold);  // 예치
+        Assert.Equal(950, done.Cities.First(c => c.Id == new CityId(2)).Gold);   // 1000 − 5%
+        Assert.Equal(2050, done.Cities.First(c => c.Id == new CityId(1)).Gold);  // 예치
     }
 
     [Fact]

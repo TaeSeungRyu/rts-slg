@@ -150,10 +150,10 @@ public sealed record CommandBalance
     public int StratagemInciteSecurity { get; init; } = 10;
 
     /// <summary>도시 계략 방화 — 군량 비축의 이 %를 태운다.</summary>
-    public int StratagemArsonPercent { get; init; } = 20;
+    public int StratagemArsonPercent { get; init; } = 5;
 
     /// <summary>도시 계략 절취 — 금고의 이 %를 훔쳐 수행 도시에 예치한다.</summary>
-    public int StratagemStealPercent { get; init; } = 20;
+    public int StratagemStealPercent { get; init; } = 5;
 
     /// <summary>시설 건설 비용(금).</summary>
     public int BuildCostPaddy { get; init; } = 300;

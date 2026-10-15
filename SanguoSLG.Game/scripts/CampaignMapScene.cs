@@ -14671,8 +14671,8 @@ public sealed partial class CampaignMapScene : Node3D
         "scout" => "적 도시 정보 획득 (전제)",
         "wall_break" => "성벽 −10%",
         "incite" => "치안 −10",
-        "arson" => "군량 −20%",
-        "steal" => "금 20% 절취",
+        "arson" => "군량 −5%",
+        "steal" => "금 5% 절취",
         _ => "",
     };
 
