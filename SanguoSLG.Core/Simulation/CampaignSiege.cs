@@ -65,8 +65,10 @@ public sealed class CampaignSiege
     /// <param name="defenseBonus">도시별 성벽/수비 방어 보너스 퍼센트(태수/수성 지휘관 연동). null이면 전부 100%.</param>
     public Result Resolve(IReadOnlyList<CombatUnit> armies, IReadOnlyList<City> cities,
         IReadOnlyList<GarrisonForce> garrisons, Func<CityId, int>? counterAptitude = null,
-        Func<CityId, int>? defenseBonus = null, IReadOnlyList<CityWoundedForce>? cityWounded = null)
+        Func<CityId, int>? defenseBonus = null, IReadOnlyList<CityWoundedForce>? cityWounded = null,
+        Func<FactionId, FactionId, bool>? areHostile = null)
     {
+        areHostile ??= (left, right) => left != right;
         var byUnit = armies.ToDictionary(u => u.Id);
         var cityById = cities.ToDictionary(c => c.Id);
         var garr = garrisons.ToList();
@@ -80,7 +82,7 @@ public sealed class CampaignSiege
             var defenders = garr.Where(g => g.City == city.Id).OrderBy(g => g.TroopCode, StringComparer.Ordinal).ThenBy(g => g.Trainee).ToList();
             var defendTroops = defenders.Sum(g => g.Troops);
             var besiegers = armies
-                .Where(u => u.Pool.Active > 0 && u.Field.Owner != city.Owner
+                .Where(u => u.Pool.Active > 0 && areHostile(u.Field.Owner, city.Owner)
                     && (u.Field.Mode == UnitMode.Attack
                         || u.Field.Mode == UnitMode.Advance
                         && u.Field.PursuitTarget == new RenewalMovement.RenewalTargetId(

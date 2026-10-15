@@ -12,6 +12,22 @@ using Xunit;
 /// <summary>캠페인 공성(10b) — 성벽 타격·수비 손실·반격. 소유 전환·함락은 다음 단계.</summary>
 public class CampaignSiegeTests
 {
+    [Fact]
+    public void 동맹_부대는_성이나_항구를_공격하지_않는다()
+    {
+        foreach (var port in new[] { PortSize.None, PortSize.Small })
+        {
+            var city = Town(1, 2, new HexCoord(5, 0), 1000) with { Port = port };
+            var ally = Army(1, 1, new HexCoord(4, 0), city.Position);
+            var state = new GameState(1, 190, [], [city], [], FieldArmies: [ally],
+                FactionAlliances: [FactionAlliance.Create(new FactionId(1), new FactionId(2), 1)]);
+
+            var result = Siege().Resolve([ally], [city], [], areHostile: state.AreHostile);
+
+            Assert.Empty(result.Exchanges);
+            Assert.Equal(city.Wall, Assert.Single(result.Cities).Wall);
+        }
+    }
     [Theory]
     [InlineData(PortSize.Small)]
     [InlineData(PortSize.Medium)]

@@ -11,6 +11,24 @@ using Xunit;
 /// <summary>10d 함락 처리 — 자동 입성·소유 전환·인구 페널티·명령 드롭·주둔 장수 판정·세력 소멸.</summary>
 public class CityCaptureTests
 {
+    [Fact]
+    public void 동맹_부대는_빈_성이나_항구를_점령하지_않는다()
+    {
+        foreach (var port in new[] { PortSize.None, PortSize.Small })
+        {
+            var city = Fallen(1, 2, new HexCoord(5, 0)) with { Port = port };
+            var ally = Attacker(1, 1, new HexCoord(4, 0), city.Position);
+            var state = State([city], [ally]) with
+            {
+                FactionAlliances = [FactionAlliance.Create(new FactionId(1), new FactionId(2), 1)],
+            };
+
+            var result = new CityCapture().ResolveAll(state, new FixedRandom(0), out var reports);
+
+            Assert.Empty(reports);
+            Assert.Equal(city.Owner, Assert.Single(result.Cities).Owner);
+        }
+    }
     [Theory]
     [InlineData(PortSize.Small)]
     [InlineData(PortSize.Medium)]

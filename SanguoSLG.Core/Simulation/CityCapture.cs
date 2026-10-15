@@ -51,7 +51,7 @@ public sealed class CityCapture
             }
 
             var besiegers = state.Armies
-                .Where(u => u.Pool.Active > 0 && u.Field.Owner != current.Owner
+                .Where(u => u.Pool.Active > 0 && state.AreHostile(u.Field.Owner, current.Owner)
                     && u.Field.Owner != WorldEngine.BanditFaction
                     && u.Field.Owner != EventHuntService.EventFaction
                     && (u.Field.Mode == UnitMode.Attack

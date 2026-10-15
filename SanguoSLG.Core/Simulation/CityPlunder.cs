@@ -28,8 +28,10 @@ public sealed class CityPlunder
         IReadOnlyList<PlunderReport> Reports);
 
     /// <summary>이번 진행의 약탈을 전부 정산한 새 상태를 반환한다(도시당 시설 1개).</summary>
-    public Result Resolve(IReadOnlyList<CombatUnit> armies, IReadOnlyList<City> cities)
+    public Result Resolve(IReadOnlyList<CombatUnit> armies, IReadOnlyList<City> cities,
+        Func<FactionId, FactionId, bool>? areHostile = null)
     {
+        areHostile ??= (left, right) => left != right;
         var byUnit = armies.ToDictionary(u => u.Id);
         var cityById = cities.ToDictionary(c => c.Id);
         var reports = new List<PlunderReport>();
@@ -38,7 +40,7 @@ public sealed class CityPlunder
         {
             var current = cityById[city.Id];
             var looter = armies
-                .Where(u => u.Pool.Active > 0 && u.Field.Owner != current.Owner
+                .Where(u => u.Pool.Active > 0 && areHostile(u.Field.Owner, current.Owner)
                     && u.Field.Mode == UnitMode.Attack && !u.IsSupply
                     && u.CanInitiateCombat
                     && u.Field.Position.Distance(current.Position) <= 1)

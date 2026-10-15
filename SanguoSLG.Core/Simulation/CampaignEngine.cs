@@ -364,7 +364,8 @@ public sealed class CampaignEngine
                 var siegeState = work;
                 // 수성 액티브도 이동 경과일이 아니라 실제 공성 교환 1회당 1칸 충전한다.
                 const int activeChargeDays = 1;
-                var result = _siege.Resolve(armies, siegeState.Cities, siegeState.Garrisons, CounterAptitude, DefenseBonus, siegeState.CityWounded);
+                var result = _siege.Resolve(armies, siegeState.Cities, siegeState.Garrisons,
+                    CounterAptitude, DefenseBonus, siegeState.CityWounded, siegeState.AreHostile);
 
                 var mergedActives = reports[^1].FiredActives
                     .Concat(result.FiredActives)
@@ -421,7 +422,7 @@ public sealed class CampaignEngine
             // 약탈(design-administration "시설 파괴·약탈") — 포위군이 진행마다 시설 1개 파괴·노획.
             if (_plunder is not null)
             {
-                var looted = _plunder.Resolve(armies, work.Cities);
+                var looted = _plunder.Resolve(armies, work.Cities, work.AreHostile);
                 armies = looted.Armies.ToList();
                 work = work with { Cities = looted.Cities };
                 plunderReports.AddRange(looted.Reports);
