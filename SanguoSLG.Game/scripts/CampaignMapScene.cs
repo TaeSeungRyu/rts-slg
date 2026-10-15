@@ -15133,8 +15133,16 @@ public sealed partial class CampaignMapScene : Node3D
             _log.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
             if (r.Ok)
             {
-                var category = cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance or CommandKind.DeclareWar ? "외교" : "내정";
-                Report($"[{category}] {_state.Cities.First(c => c.Id == city).Name}에서 {gName} 장수가 {cmd.Label}{pLabel}을(를) 맡았습니다.", Parchment);
+                if (cmd.Kind == CommandKind.DeclareWar && target is { } declaredCity)
+                {
+                    var enemyName = _state.Cities.First(c => c.Id == declaredCity).Name;
+                    Report($"[외교] {gName} 장수가 {enemyName}에 선전 포고했습니다. 점령 시 치안 하락을 막습니다.", GoldBright, general);
+                }
+                else
+                {
+                    var category = cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance ? "외교" : "내정";
+                    Report($"[{category}] {_state.Cities.First(c => c.Id == city).Name}에서 {gName} 장수가 {cmd.Label}{pLabel}을(를) 맡았습니다.", Parchment);
+                }
             }
             else { ShowNotice("명령 실패", r.Error ?? "조건에 맞지 않아 실행할 수 없습니다."); }
             CloseModal();
