@@ -41,7 +41,8 @@ public sealed record GameState(
     IReadOnlyList<EventEncounter>? EventEncounters = null,
     IReadOnlyList<FactionTreasure>? FactionTreasures = null,
     IReadOnlyList<SummonOrder>? PendingSummons = null,
-    IReadOnlyList<SummonedCreature>? SummonedCreatures = null)
+    IReadOnlyList<SummonedCreature>? SummonedCreatures = null,
+    IReadOnlyList<CityWarDeclaration>? WarDeclarations = null)
 {
     /// <summary>건설한 시설이 놓인 성 주변 타일(표현 계층이 모델을 얹는다). 건설 완료 시 append.</summary>
     public IReadOnlyList<FacilityPlacement> Placements => FacilityPlacements ?? [];
@@ -75,6 +76,7 @@ public sealed record GameState(
     public IReadOnlyList<FactionTreasure> Treasures => FactionTreasures ?? [];
     public IReadOnlyList<SummonOrder> SummonOrders => PendingSummons ?? [];
     public IReadOnlyList<SummonedCreature> Summons => SummonedCreatures ?? [];
+    public IReadOnlyList<CityWarDeclaration> DeclaredWars => WarDeclarations ?? [];
 
     /// <summary>도시 대기 병력(병종별) — 모집 정산이 쌓고, 출전 편성이 꺼내 쓴다.</summary>
     public IReadOnlyList<GarrisonForce> Garrisons => GarrisonForces ?? [];

@@ -58,7 +58,35 @@ public class CityCaptureTests
     private sealed class NoRandom : IRandomSource
     {
         public int Next(int minInclusive, int maxExclusive)
-            => throw new Xunit.Sdk.XunitException("세력 존속 중 함락에는 장수 합류 난수를 쓰면 안 됩니다.");
+            => minInclusive == 50 && maxExclusive == 71 ? 50
+                : throw new Xunit.Sdk.XunitException("세력 존속 중 함락에는 장수 합류 난수를 쓰면 안 됩니다.");
+    }
+
+    [Fact]
+    public void 선전포고한_도시는_치안을_유지하고_포고기록은_점령후_소진된다()
+    {
+        var city = Fallen(1, 2, new HexCoord(5, 0));
+        var baseState = State([city], [Attacker(1, 1, new HexCoord(4, 0), city.Position)]);
+        var declared = baseState with { WarDeclarations =
+            [new CityWarDeclaration(new FactionId(1), city.Id, city.Owner, baseState.Day)] };
+
+        var after = new CityCapture().ResolveAll(declared, new NoRandom(), out _);
+
+        Assert.Equal(80, after.Cities.Single().Security);
+        Assert.Empty(after.DeclaredWars);
+    }
+
+    [Theory]
+    [InlineData(50, 40)]
+    [InlineData(70, 24)]
+    public void 포고하지_않은_도시는_기존치안의_절반에서_칠십퍼센트를_잃는다(int roll, int expected)
+    {
+        var city = Fallen(1, 2, new HexCoord(5, 0));
+        var state = State([city], [Attacker(1, 1, new HexCoord(4, 0), city.Position)]);
+
+        var after = new CityCapture().ResolveAll(state, new FixedRandom(roll), out _);
+
+        Assert.Equal(expected, after.Cities.Single().Security);
     }
 
     private static General Gen(int id) => new(
@@ -119,7 +147,7 @@ public class CityCaptureTests
         Assert.Equal(5000, c.Gold);                        // 금 전부 승계
         Assert.Equal(3000, c.Provisions);                  // 군량 전부 승계
         Assert.Equal(180_000, c.Population);               // 인구 −10%
-        Assert.Equal(30, c.Security);                      // 치안 30 리셋
+        Assert.Equal(40, c.Security);                      // 포고 없이 점령: 기존 80의 50% 손실
         Assert.Empty(after.Armies);                        // 입성 부대는 야전에서 빠짐
         var g = after.Garrisons.Single(x => x.City == c.Id);
         Assert.Equal(("swordsman", 8000, 60), (g.TroopCode, g.Troops, g.TrainingLevel));
@@ -504,7 +532,7 @@ public class CityCaptureTests
                 new GeneralPosting(new GeneralId(11), new FactionId(2), null), // 출전 중
             ]);
 
-        var after = new CityCapture().ResolveAll(s, new FixedRandom(69, 70, 99), out var reports);
+        var after = new CityCapture().ResolveAll(s, new FixedRandom(50, 69, 70, 99), out var reports);
 
         var r = Assert.Single(reports);
         Assert.True(r.FactionEliminated);

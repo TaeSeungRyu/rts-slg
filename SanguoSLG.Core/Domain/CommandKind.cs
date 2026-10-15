@@ -71,4 +71,7 @@ public enum CommandKind
 
     /// <summary>동맹파기 — 대상 세력과의 동맹을 즉시 해제한다.</summary>
     BreakAlliance,
+
+    /// <summary>특정 적 도시에 대한 선전 포고 — 즉시 기록되며 해당 도시 점령 시 소진.</summary>
+    DeclareWar,
 }

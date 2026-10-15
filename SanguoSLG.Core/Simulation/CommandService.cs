@@ -181,8 +181,23 @@ public sealed class CommandService
             CommandKind.Explore => IssueExplore(state, city, req, assist),
             CommandKind.FormAlliance => IssueFormAlliance(state, city, req, assist),
             CommandKind.BreakAlliance => IssueBreakAlliance(state, city, req),
+            CommandKind.DeclareWar => IssueDeclareWar(state, city, req),
             _ => CommandResult.Fail("알 수 없는 명령이다.", state),
         };
+    }
+
+    private static CommandResult IssueDeclareWar(GameState state, City city, CommandRequest req)
+    {
+        if (req.TargetCity is not { } targetId || state.Cities.FirstOrDefault(c => c.Id == targetId) is not { } target)
+            return CommandResult.Fail("선전 포고할 도시를 지정해야 한다.", state);
+        if (target.Owner == city.Owner)
+            return CommandResult.Fail("아군 도시에는 선전 포고할 수 없다.", state);
+        if (state.AreAllied(city.Owner, target.Owner))
+            return CommandResult.Fail("동맹을 먼저 파기해야 한다.", state);
+        if (state.DeclaredWars.Any(w => w.Attacker == city.Owner && w.City == target.Id && w.Defender == target.Owner))
+            return CommandResult.Fail("이미 선전 포고한 도시다.", state);
+        return CommandResult.Success(state with { WarDeclarations = [.. state.DeclaredWars,
+            new CityWarDeclaration(city.Owner, target.Id, target.Owner, state.Day)] });
     }
 
     private static CommandResult RecruitHero(GameState state, City city, CommandRequest req)

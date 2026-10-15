@@ -78,5 +78,5 @@ public sealed class AdminSession
         => kind is CommandKind.Recruit or CommandKind.Conscript or CommandKind.Train
             or CommandKind.Build or CommandKind.BuildShip or CommandKind.Upgrade or CommandKind.SetTaxRate or CommandKind.Research
             or CommandKind.Repair or CommandKind.CityStratagem or CommandKind.Explore
-            or CommandKind.FormAlliance or CommandKind.BreakAlliance;
+            or CommandKind.FormAlliance or CommandKind.BreakAlliance or CommandKind.DeclareWar;
 }

@@ -468,6 +468,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("도시 계략", CommandKind.CityStratagem, "stratagem"),
         ("동맹", CommandKind.FormAlliance, "faction"),
         ("동맹파기", CommandKind.BreakAlliance, "faction"),
+        ("선전 포고", CommandKind.DeclareWar, "war_city"),
         ("태수 임명", CommandKind.AppointGovernor, ""),
         ("군사 임명", CommandKind.AppointStrategist, ""),
         ("치안 담당", CommandKind.AppointSecurityOfficer, ""),
@@ -503,7 +504,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("연구", new[] { 6, 7, 8, 23 }),
         ("성벽", new[] { 9, 10 }),
         ("계략", new[] { 12 }),
-        ("외교", new[] { 13, 14 }),
+        ("외교", new[] { 13, 14, 24 }),
         ("임명", new[] { 15, 16 }),
         ("담당자", new[] { 17, 18, 19, 20 }),
         ("인재", new[] { 21 }),
@@ -6577,6 +6578,10 @@ public sealed partial class CampaignMapScene : Node3D
         {
             box.AddChild(MakeLabel("대상 세력과의 동맹을 즉시 파기합니다. 파기 후에는 다시 공격 대상이 될 수 있습니다.", 15, Parchment));
         }
+        else if (cmd.Kind == CommandKind.DeclareWar)
+        {
+            box.AddChild(MakeLabel("적 도시를 지정해 즉시 선전 포고합니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃지만, 포고한 도시는 점령 시 치안을 유지합니다.", 15, Parchment));
+        }
         var cityData = _state.Cities.First(x => x.Id == city);
         if (cmd.Kind == CommandKind.Explore)
         {
@@ -6622,9 +6627,9 @@ public sealed partial class CampaignMapScene : Node3D
         _autoRecruitRateParam = cityData.RecruitmentOfficer is null
             ? 1
             : System.Math.Clamp(cityData.AutoRecruitRate <= 0 ? 1 : cityData.AutoRecruitRate, 1, 3);
-        if (cmd.Param == "faction" && options.Count == 0)
+        if (cmd.Param is "faction" or "war_city" && options.Count == 0)
         {
-            var empty = cmd.Kind == CommandKind.FormAlliance
+            var empty = cmd.Kind == CommandKind.DeclareWar ? "선전 포고할 도시가 없습니다." : cmd.Kind == CommandKind.FormAlliance
                 ? "동맹을 제안할 수 있는 세력이 없습니다."
                 : cmd.Kind == CommandKind.BreakAlliance
                     ? "파기할 동맹 세력이 없습니다."
@@ -12953,6 +12958,11 @@ public sealed partial class CampaignMapScene : Node3D
             .ToList();
     }
 
+    private List<City> WarDeclarationTargets(City city) => _state.Cities
+        .Where(c => c.Owner != city.Owner && !_state.AreAllied(city.Owner, c.Owner))
+        .Where(c => !_state.DeclaredWars.Any(w => w.Attacker == city.Owner && w.City == c.Id && w.Defender == c.Owner))
+        .OrderBy(c => c.Id.Value).ToList();
+
     private List<(string Name, ImageTexture Icon, string Detail)> OptionList(
         (string Label, CommandKind Kind, string Param) cmd, City city)
     {
@@ -12993,6 +13003,13 @@ public sealed partial class CampaignMapScene : Node3D
 
         switch (cmd.Param)
         {
+            case "war_city":
+                foreach (var targetCity in WarDeclarationTargets(city))
+                {
+                    var owner = _state.Factions.FirstOrDefault(f => f.Id == targetCity.Owner)?.Name ?? $"세력 {targetCity.Owner.Value}";
+                    list.Add((targetCity.Name, Icon(Sym.Scroll), $"{owner} · 점령 전 포고 시 치안 유지"));
+                }
+                break;
             case "faction":
                 foreach (var faction in DiplomacyTargets(cmd.Kind, city))
                 {
@@ -14199,7 +14216,7 @@ public sealed partial class CampaignMapScene : Node3D
             or CommandKind.AppointDomesticOfficer or CommandKind.AppointTrainingOfficer;
         var officerTableHeight = fillsModalBottom ? 220f : scrollableOfficerTableHeight;
         var showAllOfficerRows = free.Count <= compactOfficerRowLimit
-            || cmd.Kind is CommandKind.Explore or CommandKind.FormAlliance or CommandKind.BreakAlliance;
+            || cmd.Kind is CommandKind.Explore or CommandKind.FormAlliance or CommandKind.BreakAlliance or CommandKind.DeclareWar;
         const int officerRowHeight = 46;
         var tree = new Tree
         {
@@ -14743,6 +14760,13 @@ public sealed partial class CampaignMapScene : Node3D
 
         CityId? target = null;
         var extra = "";
+        if (cmd.Kind == CommandKind.DeclareWar)
+        {
+            var targets = WarDeclarationTargets(_state.Cities.First(c => c.Id == city));
+            if (p < 0 || p >= targets.Count) { ShowNotice("선전 포고 실패", "대상 도시를 선택해야 합니다."); return; }
+            target = targets[p].Id;
+            extra = $"\n대상: {targets[p].Name}\n선전 포고는 즉시 적용됩니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃습니다.";
+        }
         var confirmOfficer = general;
         string? confirmOfficerLine = null;
         if (cmd.Kind is CommandKind.Recruit or CommandKind.Conscript)
@@ -15082,6 +15106,7 @@ public sealed partial class CampaignMapScene : Node3D
             "repairable" => $" · {Repairables[p].Label}",
             "stratagem" => $" · {Strats[p].Label}",
             "faction" => targetFaction is { } diplomTarget ? $" · {_state.Factions.FirstOrDefault(f => f.Id == diplomTarget)?.Name ?? $"세력 {diplomTarget.Value}"}" : "",
+            "war_city" => target is { } warCity ? $" · {_state.Cities.First(c => c.Id == warCity).Name}" : "",
             _ => "",
         };
         if (cmd.Kind == CommandKind.AppointRecruitmentOfficer)
@@ -15109,7 +15134,7 @@ public sealed partial class CampaignMapScene : Node3D
             _log.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
             if (r.Ok)
             {
-                var category = cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance ? "외교" : "내정";
+                var category = cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance or CommandKind.DeclareWar ? "외교" : "내정";
                 Report($"[{category}] {_state.Cities.First(c => c.Id == city).Name}에서 {gName} 장수가 {cmd.Label}{pLabel}을(를) 맡았습니다.", Parchment);
             }
             else { ShowNotice("명령 실패", r.Error ?? "조건에 맞지 않아 실행할 수 없습니다."); }
@@ -15121,7 +15146,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (cmd.Kind == CommandKind.Research
             || cmd.Kind == CommandKind.CityStratagem
             || cmd.Kind == CommandKind.Repair && cmd.Param == "wall"
-            || cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance
+            || cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance or CommandKind.DeclareWar
             || cmd.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist
             || IsAutoOfficerCommand(cmd.Kind)
             || cmd.Kind == CommandKind.Explore)
@@ -16957,7 +16982,7 @@ public sealed partial class CampaignMapScene : Node3D
             ["연구"] = expectedSubmenu,
             ["성벽"] = ["성벽 강화", "성벽 수리"],
             ["계략"] = ["도시 계략"],
-            ["외교"] = ["동맹", "동맹파기"],
+            ["외교"] = ["동맹", "동맹파기", "선전 포고"],
             ["임명"] = ["태수 임명", "군사 임명"],
             ["담당자"] = ["치안 담당", "내정 담당", "병력 담당", "훈련 담당"],
             ["인재"] = ["위인 영입"],

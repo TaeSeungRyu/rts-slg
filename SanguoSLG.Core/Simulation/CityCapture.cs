@@ -21,18 +21,15 @@ public sealed record CaptureReport(
 /// <summary>
 /// 캠페인 함락 처리(design-general-lifecycle §4·design-combat "함락 처리"). 성벽 0 + 수비 0 도시에
 /// 근접(거리 1) 적 공격 부대가 있으면 자동 입성·점거한다. 소유 전환 + 자원 전부 승계(인구 −10%·
-/// 치안 30 리셋), 진행 중 명령 드롭, 비출전 장수는 원 세력 최근접 거점으로 후퇴한다.
+/// 포고 없이 점령하면 기존 치안의 50~70% 손실), 진행 중 명령 드롭, 비출전 장수는 원 세력 최근접 거점으로 후퇴한다.
 /// 원 세력 멸망 시에만 장수별로 70% 점거 세력 합류, 30% 타 세력 이동을 판정한다.
 /// </summary>
 public sealed class CityCapture
 {
     private readonly int _populationLossPercent;
-    private readonly int _security;
-
-    public CityCapture(int populationLossPercent = 10, int security = 30)
+    public CityCapture(int populationLossPercent = 10)
     {
         _populationLossPercent = populationLossPercent;
-        _security = security;
     }
 
     /// <summary>점거 가능한 도시를 전부 처리한 새 상태를 반환한다(id 순).</summary>
@@ -86,6 +83,9 @@ public sealed class CityCapture
         IReadOnlyList<CombatUnit> entrants, IRandomSource random, List<CaptureReport> reports)
     {
         var oldOwner = city.Owner;
+        var declared = state.DeclaredWars.Any(w => w.Attacker == captor && w.City == city.Id && w.Defender == oldOwner);
+        var securityLossPercent = declared ? 0 : System.Math.Clamp(random.Next(50, 71), 50, 70);
+        var newSecurity = System.Math.Clamp(city.Security * (100 - securityLossPercent) / 100, 0, 100);
 
         // 1) 소유 전환 + 자원 전부 승계(인구 −10%·치안 30 리셋, 성벽은 0 유지).
         //    입성 부대의 노획 금·잔여 휴대 군량도 점거한 도시에 예치된다.
@@ -106,7 +106,7 @@ public sealed class CityCapture
                 {
                     Owner = captor,
                     Population = newPopulation,
-                    Security = _security,
+                    Security = newSecurity,
                     Gold = c.Gold + depositGold,
                     Provisions = c.Provisions + depositProvisions,
                     Governor = null,
@@ -161,6 +161,7 @@ public sealed class CityCapture
             Postings = postings,
             PendingCommands = pending,
             ProductionOperations = state.ProductionOps.Where(op => op.City != city.Id).ToList(),
+            WarDeclarations = state.DeclaredWars.Where(w => w.City != city.Id).ToList(),
         };
 
         // 4) 옛 세력 주둔 장수(태수 포함) 후퇴. 옛 세력이 도시를 모두 잃으면 세력 소멸.

@@ -10,6 +10,24 @@ using Xunit;
 
 public class DiplomacyTests
 {
+    [Fact]
+    public void 선전포고는_적도시별로_즉시_저장되며_중복은_막는다()
+    {
+        var state = new GameState(5, 190, [], [City(1, 1, 0), City(2, 2, 3)], [Gen(1)],
+            Postings: [At(1, 1, 1)]);
+        var request = new CommandRequest(new CityId(1), CommandKind.DeclareWar, new GeneralId(1),
+            TargetCity: new CityId(2));
+        var service = new CommandService(B);
+
+        var issued = service.Issue(state, request);
+
+        Assert.True(issued.Ok, issued.Error);
+        Assert.Empty(issued.State.Commands);
+        Assert.Single(issued.State.DeclaredWars);
+        Assert.Single(SaveService.Deserialize(SaveService.Serialize(issued.State)).DeclaredWars);
+        Assert.False(service.Issue(issued.State, request).Ok);
+    }
+
     private sealed class FixedRandom(params int[] values) : IRandomSource
     {
         private readonly int[] _values = values;
