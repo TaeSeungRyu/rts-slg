@@ -297,7 +297,7 @@ public sealed class CampaignEngine
                 ProductionAttackTargets = turn.Units
                     .Where(u => turn.Combat?.DamageDealt.GetValueOrDefault(u.Id) > 0)
                     .Select(u => (Unit: u, Target: attackedProduction
-                        .Where(p => p.Field.Owner != u.Field.Owner
+                        .Where(p => work.AreHostile(u.Field.Owner, p.Field.Owner)
                             && p.Field.Position.Distance(u.Field.Position) <= u.Field.AttackRange)
                         .OrderBy(p => p.Field.Position.Distance(u.Field.Position)).FirstOrDefault()))
                     .Where(x => x.Target is not null)
@@ -321,7 +321,7 @@ public sealed class CampaignEngine
                 turn = _eventHunts.ApplyDragonSplash(armies, turn);
                 (work, turn) = _eventHunts.ApplyPhoenixRecovery(work, armies, turn);
             }
-            turn = ApplyFieldSpoils(armies, turn);
+            turn = ApplyFieldSpoils(work, armies, turn);
             if (_eventHunts is not null)
             {
                 work = _eventHunts.ResolveCombat(work, armies, turn, simulationDay, out var huntRewards);
@@ -650,7 +650,7 @@ public sealed class CampaignEngine
                 continue;
             }
 
-            var attackers = armies.Count(u => u.Field.Owner != owner
+            var attackers = armies.Count(u => work.AreHostile(u.Field.Owner, owner.Value)
                 && u.Field.Owner != EventHuntService.EventFaction && u.Field.Position.Distance(plot) <= 1);
             if (attackers == 0)
             {
@@ -1120,7 +1120,7 @@ public sealed class CampaignEngine
         }).ToList();
     }
 
-    private static AdvanceTurn ApplyFieldSpoils(IReadOnlyList<CombatUnit> before, AdvanceTurn turn)
+    private static AdvanceTurn ApplyFieldSpoils(GameState state, IReadOnlyList<CombatUnit> before, AdvanceTurn turn)
     {
         if (turn.Combat is null)
         {
@@ -1142,7 +1142,7 @@ public sealed class CampaignEngine
         {
             var at = movedPos.TryGetValue(dead.Id, out var pos) ? pos : dead.Field.Position;
             var receiver = survivors.Values
-                .Where(u => u.Pool.Active > 0 && !u.IsSummon && u.Field.Owner != dead.Field.Owner)
+                .Where(u => u.Pool.Active > 0 && !u.IsSummon && state.AreHostile(u.Field.Owner, dead.Field.Owner))
                 .OrderBy(u => u.Field.Position.Distance(at))
                 .ThenBy(u => u.Id.Value)
                 .FirstOrDefault();

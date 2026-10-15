@@ -207,4 +207,23 @@ public class ProductionServiceTests
         Assert.Equal(500, after.Garrisons.Single().Troops);
         Assert.Equal(1000, after.Armies.Single().Pool.Active);
     }
+
+    [Fact]
+    public void 동맹_부대가_생산시설_근처에_있어도_채집병은_공격받지_않는다()
+    {
+        var started = new ProductionService(Troops)
+            .Start(State(politics: 100), new CityId(1), new HexCoord(2, 0),
+                ProductionRules.Village, "swordsman", new GeneralId(1)).State;
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0));
+        var gathering = world.AdvanceDays(started, 1);
+        var allied = gathering with
+        {
+            FieldArmies = [EnemyAttacker()],
+            FactionAlliances = [FactionAlliance.Create(new FactionId(1), new FactionId(2), gathering.Day)],
+        };
+
+        var after = world.AdvanceDays(allied, 1);
+
+        Assert.Single(after.ProductionOps);
+    }
 }
