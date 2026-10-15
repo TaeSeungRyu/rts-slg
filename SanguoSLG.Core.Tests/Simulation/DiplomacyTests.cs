@@ -53,6 +53,25 @@ public class DiplomacyTests
         Assert.True(service.Issue(expired, request).Ok);
     }
 
+    [Fact]
+    public void 동맹에는_선전포고할_수_없고_사절_이동중_동맹이_맺어져도_발효되지_않는다()
+    {
+        var state = new GameState(5, 190, [], [City(1, 1, 0), City(2, 2, 3)], [Gen(1)],
+            Postings: [At(1, 1, 1)]);
+        var request = new CommandRequest(new CityId(1), CommandKind.DeclareWar, new GeneralId(1),
+            TargetCity: new CityId(2));
+        var alliance = FactionAlliance.Create(new FactionId(1), new FactionId(2), state.Day);
+        var service = new CommandService(B);
+
+        Assert.False(service.Issue(state with { FactionAlliances = [alliance] }, request).Ok);
+        var issued = service.Issue(state, request);
+        Assert.True(issued.Ok, issued.Error);
+        var inTransitAllied = issued.State with { FactionAlliances = [alliance] };
+        var arrived = new WorldEngine(Bal, B).AdvanceDays(inTransitAllied,
+            issued.State.Commands.Single().CompletionDay - state.Day);
+        Assert.Empty(arrived.DeclaredWars);
+    }
+
     private sealed class FixedRandom(params int[] values) : IRandomSource
     {
         private readonly int[] _values = values;
