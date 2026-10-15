@@ -93,6 +93,7 @@ public sealed partial class CampaignMapScene : Node3D
     private const int ReportBoxMax = 80;           // 좌하단 스크롤 박스에 유지하는 최근 줄 수(전체는 [전체] 모달)
     private const int ReportHistoryMax = 300;      // 전체 로그 보관 상한(오래된 것부터 버림)
     private readonly List<(string Text, Color Color, GeneralId? Portrait)> _pendingReport = new(); // 이번 진행 결과(재생 끝나면 flush)
+    private readonly List<string> _incomingWarDeclarations = new();
     private readonly List<(string Text, Color Color)> _reportHistory = new(); // 전체 로그(스크롤 열람용)
     private readonly List<ExplorationDiscovery> _pendingExplorationResults = new();
     private Label _log = null!;
@@ -3919,6 +3920,7 @@ public sealed partial class CampaignMapScene : Node3D
         _pendingTransportDeploys.Clear();
         _pendingTransportDeploys.AddRange(remainingTransportDeploys);
 
+        var existingWarDeclarations = _state.DeclaredWars.ToHashSet();
         // 플레이어 세력은 직접 조작 — AI는 나머지 세력만 굴린다.
         foreach (var f in _state.Factions.Where(f => f.Id != Player).OrderBy(f => f.Id.Value))
         {
@@ -3943,6 +3945,17 @@ public sealed partial class CampaignMapScene : Node3D
         var note = new List<string>();
         _pendingReport.Clear();
         void Ev(string t, Color c, GeneralId? portrait = null) { note.Add(t); _pendingReport.Add((t, c, portrait)); }
+
+        _incomingWarDeclarations.Clear();
+        foreach (var declaration in after.DeclaredWars.Where(w => w.Defender == Player
+                     && !existingWarDeclarations.Contains(w)).OrderBy(w => w.City.Value))
+        {
+            var cityName = after.Cities.FirstOrDefault(c => c.Id == declaration.City)?.Name ?? $"도시 {declaration.City.Value}";
+            var factionName = after.Factions.FirstOrDefault(f => f.Id == declaration.Attacker)?.Name ?? $"세력 {declaration.Attacker.Value}";
+            var message = $"{factionName} 세력이 {cityName}에 선전 포고했습니다. 100일간 유효합니다.";
+            _incomingWarDeclarations.Add(message);
+            Ev($"[외교] {message}", GoldBright);
+        }
 
         var siegeCol = new Color(0.9f, 0.6f, 0.4f);
         foreach (var dn in deployNote) { Ev(dn, dn.Contains("실패") ? AccentFill : Parchment); }
@@ -4807,6 +4820,11 @@ public sealed partial class CampaignMapScene : Node3D
             if (_pendingHuntRewards.Count > 0) _modalDismissAction = ShowPendingHuntRewards;
         }
         else ShowPendingHuntRewards();
+        if (_incomingWarDeclarations.Count > 0)
+        {
+            ShowNotice("선전 포고를 받았습니다", string.Join("\n", _incomingWarDeclarations));
+            _incomingWarDeclarations.Clear();
+        }
     }
 
     private bool IsModalBlockingMapNavigation()
@@ -6580,7 +6598,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (cmd.Kind == CommandKind.DeclareWar)
         {
-            box.AddChild(MakeLabel("적 도시에 31일간 선전 포고합니다. 시야 밖에서도 대상 성이 흐리게 보입니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃지만, 포고한 도시는 점령 시 치안을 유지합니다.", 15, Parchment));
+            box.AddChild(MakeLabel("적 도시에 100일간 선전 포고합니다. 시야 밖에서도 대상 성이 흐리게 보입니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃지만, 포고한 도시는 점령 시 치안을 유지합니다.", 15, Parchment));
         }
         var cityData = _state.Cities.First(x => x.Id == city);
         if (cmd.Kind == CommandKind.Explore)
@@ -14772,7 +14790,7 @@ public sealed partial class CampaignMapScene : Node3D
             var targets = WarDeclarationTargets(_state.Cities.First(c => c.Id == city));
             if (p < 0 || p >= targets.Count) { ShowNotice("선전 포고 실패", "대상 도시를 선택해야 합니다."); return; }
             target = targets[p].Id;
-            extra = $"\n대상: {targets[p].Name}\n선전 포고는 즉시 적용되고 31일간 유지됩니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃습니다.";
+            extra = $"\n대상: {targets[p].Name}\n선전 포고는 즉시 적용되고 100일간 유지됩니다. 포고 없이 점령하면 기존 치안의 50~70%를 잃습니다.";
         }
         var confirmOfficer = general;
         string? confirmOfficerLine = null;

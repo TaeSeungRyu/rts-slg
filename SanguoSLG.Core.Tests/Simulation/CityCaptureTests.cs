@@ -82,7 +82,7 @@ public class CityCaptureTests
         var city = Fallen(1, 2, new HexCoord(5, 0));
         var state = State([city], [Attacker(1, 1, new HexCoord(4, 0), city.Position)]) with
         {
-            Day = 32,
+            Day = 101,
             WarDeclarations = [new CityWarDeclaration(new FactionId(1), city.Id, city.Owner, 1)],
         };
 

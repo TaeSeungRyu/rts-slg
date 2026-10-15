@@ -29,7 +29,7 @@ public class DiplomacyTests
     }
 
     [Fact]
-    public void 선전포고는_31일간_유효하고_만료후_다시_가능하다()
+    public void 선전포고는_100일간_유효하고_만료후_다시_가능하다()
     {
         var state = new GameState(5, 190, [], [City(1, 1, 0), City(2, 2, 3)], [Gen(1)],
             Postings: [At(1, 1, 1)]);
@@ -39,9 +39,9 @@ public class DiplomacyTests
         var issued = service.Issue(state, request).State;
         var declaration = Assert.Single(issued.DeclaredWars);
 
-        Assert.True(declaration.ActiveOn(state.Day + 30));
-        Assert.False(declaration.ActiveOn(state.Day + 31));
-        var expired = issued with { Day = state.Day + 31 };
+        Assert.True(declaration.ActiveOn(state.Day + 99));
+        Assert.False(declaration.ActiveOn(state.Day + 100));
+        var expired = issued with { Day = state.Day + 100 };
         Assert.True(service.Issue(expired, request).Ok);
     }
 

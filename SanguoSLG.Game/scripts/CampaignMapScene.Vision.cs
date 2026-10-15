@@ -61,7 +61,7 @@ public sealed partial class CampaignMapScene
         if (!result.Ok) { GD.PushError($"[war-declaration-qa] issue failed: {result.Error}"); GetTree().Quit(1); return; }
         _state = result.State;
         Redraw("war declaration QA");
-        var marked = _cityLabels[target.Id.Value].Text.StartsWith("⚔ 선전 포고 · 31일\n", StringComparison.Ordinal);
+        var marked = _cityLabels[target.Id.Value].Text.StartsWith("⚔ 선전 포고 · 100일\n", StringComparison.Ordinal);
         var remainsSecret = !CanInspectCity(target);
         _state = _state with { Day = _state.Day + CityWarDeclaration.DurationDays };
         Redraw("war declaration expiry QA");
