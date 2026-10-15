@@ -55,7 +55,7 @@ public sealed class FieldScoutPostServiceTests
     }
 
     [Fact]
-    public void 아군이나_적군이_정찰대_타일을_지나면_즉시_철수한다()
+    public void 아군은_정찰대를_유지하고_적군이_지나면_즉시_철수한다()
     {
         var at = new HexCoord(2, 0);
         var building = Building(Player, at);
@@ -64,8 +64,8 @@ public sealed class FieldScoutPostServiceTests
         IReadOnlyDictionary<FactionId, IReadOnlySet<HexCoord>> allyVisited =
             new Dictionary<FactionId, IReadOnlySet<HexCoord>> { [Player] = new HashSet<HexCoord> { at } };
         var allyRemoved = service.Resolve(state, [], allyVisited, 10);
-        Assert.Empty(allyRemoved.State.Buildings);
-        Assert.Equal(building.Id, Assert.Single(allyRemoved.Removed));
+        Assert.Single(allyRemoved.State.Buildings);
+        Assert.Empty(allyRemoved.Removed);
 
         IReadOnlyDictionary<FactionId, IReadOnlySet<HexCoord>> enemyVisited =
             new Dictionary<FactionId, IReadOnlySet<HexCoord>> { [Enemy] = new HashSet<HexCoord> { at } };
@@ -126,6 +126,20 @@ public sealed class FieldScoutPostServiceTests
         var afterExpiry = Campaign().AdvanceWeek(beforeExpiry, out _);
         Assert.Equal(68, afterExpiry.Day);
         Assert.Empty(afterExpiry.Buildings);
+    }
+
+    [Fact]
+    public void 캠페인_아군이_정찰대_타일을_통과해도_남는다()
+    {
+        var at = new HexCoord(1, 0);
+        var scout = Building(Player, at);
+        var ally = Unit(1, Player, default, new HexCoord(3, 0));
+        var state = new GameState(10, 190, [], [], [], FieldArmies: [ally], FieldBuildings: [scout]);
+
+        var after = Campaign().AdvanceWeek(state, out var turns);
+
+        Assert.Single(after.Buildings);
+        Assert.DoesNotContain(turns, turn => turn.RemovedScoutPosts.Contains(scout.Id));
     }
 
     private static CampaignEngine Campaign()
