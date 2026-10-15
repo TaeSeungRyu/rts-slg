@@ -75,6 +75,22 @@ public sealed class FieldScoutPostServiceTests
     }
 
     [Fact]
+    public void 동맹_세력이_정찰대를_지나가도_철수하지_않는다()
+    {
+        var at = new HexCoord(2, 0);
+        var scout = Building(Player, at);
+        var state = new GameState(10, 190, [], [], [], FieldBuildings: [scout],
+            FactionAlliances: [FactionAlliance.Create(Player, Enemy, 1)]);
+        IReadOnlyDictionary<FactionId, IReadOnlySet<HexCoord>> visited =
+            new Dictionary<FactionId, IReadOnlySet<HexCoord>> { [Enemy] = new HashSet<HexCoord> { at } };
+
+        var result = new FieldScoutPostService(Definitions).Resolve(state, [], visited, 10);
+
+        Assert.Single(result.State.Buildings);
+        Assert.Empty(result.Removed);
+    }
+
+    [Fact]
     public void 공사중_정찰대가_철수하면_건축부대도_명령대기로_해제한다()
     {
         var at = new HexCoord(2, 0);

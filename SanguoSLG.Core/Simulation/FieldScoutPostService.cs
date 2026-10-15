@@ -22,7 +22,8 @@ public sealed class FieldScoutPostService
     {
         var expired = state.Buildings.Where(x => IsScout(x) && x.IsExpired(day)).Select(x => x.Id).ToHashSet();
         var intruded = state.Buildings.Where(x => IsScout(x) && !expired.Contains(x.Id)
-            && visitedByFaction.Any(entry => entry.Key != x.Owner && entry.Value.Contains(x.Position)))
+            && visitedByFaction.Any(entry => state.AreHostile(entry.Key, x.Owner)
+                && entry.Value.Contains(x.Position)))
             .Select(x => x.Id).ToHashSet();
         var removed = expired.Concat(intruded).ToHashSet();
         if (removed.Count == 0)

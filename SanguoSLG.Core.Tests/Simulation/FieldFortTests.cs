@@ -221,6 +221,28 @@ public sealed class FieldFortTests
     }
 
     [Fact]
+    public void 동맹_부대는_보루를_공격하거나_반격받지_않는다()
+    {
+        var fort = Fort(1, new HexCoord(2, 0));
+        var allied = Unit(2, new HexCoord(1, 0), fort.Position) with
+        {
+            Field = Unit(2, new HexCoord(1, 0)).Field with
+            {
+                Owner = new FactionId(2), Mode = UnitMode.Attack,
+                Target = fort.Position,
+            },
+        };
+        var state = new GameState(1, 190, [], [], [], FieldArmies: [allied],
+            FieldBuildings: [fort],
+            FactionAlliances: [FactionAlliance.Create(Player, new FactionId(2), 1)]);
+
+        var result = new FieldBuildingCombat(new BattleResolver(60), Definitions).Resolve(state, [allied]);
+
+        Assert.Empty(result.Exchanges);
+        Assert.Equal(fort.HitPoints, Assert.Single(result.State.Buildings).HitPoints);
+    }
+
+    [Fact]
     public void 보루가_파괴되며_주둔군이_전멸하면_같은날_생존목록과_시야에서_제외한다()
     {
         var position = new HexCoord(2, 0);

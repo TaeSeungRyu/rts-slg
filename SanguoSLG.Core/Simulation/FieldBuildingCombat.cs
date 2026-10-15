@@ -53,9 +53,9 @@ public sealed class FieldBuildingCombat
                 if (attacker.Field.Owner == EventHuntService.EventFaction
                     || attacked.Contains(attacker.Id) || alreadyEngaged?.Contains(attacker.Id) == true || attacker.IsWaitingDeployment
                     || attacker.Field.Mode == UnitMode.March || attacker.State.Statuses.Any(s => s.IsDaze)
-                    || attacker.Field.Owner == building.Owner || !attacker.CanInitiateCombat || attacker.Pool.Active <= 0
+                    || !state.AreHostile(attacker.Field.Owner, building.Owner) || !attacker.CanInitiateCombat || attacker.Pool.Active <= 0
                     || attacker.Field.Position.Distance(building.Position) > attacker.Field.RangeCastle) continue;
-                var preferred = state.Buildings.Where(b => buildings.ContainsKey(b.Id) && b.Owner != attacker.Field.Owner
+                var preferred = state.Buildings.Where(b => buildings.ContainsKey(b.Id) && state.AreHostile(attacker.Field.Owner, b.Owner)
                         && _definitions.TryGetValue(b.DefinitionCode, out var d) && d.CanBeTargeted
                         && attacker.Field.Position.Distance(b.Position) <= attacker.Field.RangeCastle)
                     .OrderBy(b => b.Position == attacker.Field.Target ? 0 : 1)
