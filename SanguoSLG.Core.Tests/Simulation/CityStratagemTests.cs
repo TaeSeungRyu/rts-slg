@@ -41,6 +41,24 @@ public class CityStratagemTests
         Assert.Equal(Enemy().Security, after.Cities.Single(city => city.Id == new CityId(2)).Security);
     }
 
+    [Fact]
+    public void 동맹과_도시계략이_같은날_완료되면_계략은_발동하지_않는다()
+    {
+        var alliance = new CityCommand(new CityId(1), CommandKind.FormAlliance,
+            new GeneralId(1), null, 1, 2, 0, "", TargetFaction: new FactionId(2));
+        var stratagem = new CityCommand(new CityId(1), CommandKind.CityStratagem,
+            new GeneralId(2), null, 1, 2, 0, "arson", TargetCity: new CityId(2));
+        var state = State([Mine(), Enemy()], [Gen(1, 100), Gen(2, 100)], intel: [Scouted()]) with
+        {
+            PendingCommands = [alliance, stratagem],
+        };
+
+        var result = Advance(state, 1, roll: 0);
+
+        Assert.True(result.AreAllied(new FactionId(1), new FactionId(2)));
+        Assert.Equal(Enemy().Security, result.Cities.Single(city => city.Id == new CityId(2)).Security);
+    }
+
     private static General Gen(int id, int intellect = 80) => new(
         new GeneralId(id), $"g{id}", new Dictionary<TroopClass, AptitudeGrade>(),
         Might: 50, Intellect: intellect, Politics: 50);

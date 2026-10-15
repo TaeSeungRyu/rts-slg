@@ -716,7 +716,8 @@ public sealed class WorldEngine
                     break;
 
                 case CommandKind.CityStratagem:
-                    if (ResolveCityStratagem(state, cmd, city, cities, generals, intel))
+                    if (ResolveCityStratagem(state with { FactionAlliances = alliances }, cmd, city,
+                            cities, generals, intel))
                     {
                         state = GrantRecruitmentPoints(state, city.Owner, RecruitmentPointBank.StratagemPoints,
                             CommandPointKey("stratagem", cmd), cmd.Main, cmd.City, "stratagem");
