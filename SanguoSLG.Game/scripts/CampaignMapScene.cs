@@ -1526,7 +1526,7 @@ public sealed partial class CampaignMapScene : Node3D
             && _state.Treasures.Any(t => t.Faction == Player && (t.EquippedBy == u.VanguardId
                 || t.EquippedBy == u.AdjutantId) && t.EquippedBy is not null
                 && _treasureDefinitions.Any(d => d.Code == t.Code && d.Effect == "summon"));
-        _unitEnemyAttackButton.Visible = u.Field.Owner != Player && !_advancing;
+        _unitEnemyAttackButton.Visible = _state.AreHostile(Player, u.Field.Owner) && !_advancing;
         _unitMenu.ResetSize();
         PlaceMenu(_unitMenu, u.Field.Position, 60f);
         _unitMenu.Visible = true;
@@ -1572,6 +1572,16 @@ public sealed partial class CampaignMapScene : Node3D
     private void ShowAttackChoices(HexCoord target, string targetName, UnitId? enemyUnit = null)
     {
         if (_advancing) return;
+        if (_state.Cities.Any(city => _state.AreAllied(Player, city.Owner)
+                && CastleFootprint.TilesFor(city).Contains(target))
+            || _state.Buildings.Any(building => _state.AreAllied(Player, building.Owner)
+                && building.Position == target)
+            || _state.Armies.Any(unit => _state.AreAllied(Player, unit.Field.Owner)
+                && unit.Field.Position == target))
+        {
+            ShowNotice("공격 불가", "동맹 세력의 대상은 공격할 수 없습니다.");
+            return;
+        }
         var available = _state.Armies.Where(unit => unit.Field.Owner == Player
                 && unit.Pool.Active > 0 && !unit.IsWaitingDeployment && !unit.IsConstructing
                 && !_state.Buildings.Any(building => building.GarrisonUnit == unit.Id))
