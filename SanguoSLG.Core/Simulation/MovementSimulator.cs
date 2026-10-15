@@ -18,6 +18,12 @@ public sealed class MovementSimulator
     private IReadOnlyDictionary<string, FieldBuildingDefinition> _fieldDefinitions =
         new Dictionary<string, FieldBuildingDefinition>();
     private int _fieldDay;
+    private GameState? _campaign;
+
+    public void SetCampaignState(GameState state) => _campaign = state;
+
+    private bool IsHostile(FactionId left, FactionId right)
+        => _campaign?.AreHostile(left, right) ?? left != right;
 
     public MovementSimulator(PassabilityMap passability) => _passability = passability;
 
@@ -491,22 +497,22 @@ public sealed class MovementSimulator
     private bool CanEnter(Working unit, HexCoord coord)
         => _passability.CanEnter(unit.Unit.Domain, coord)
             && !_fieldBuildings.Any(building => building.Position == coord
-                && building.Owner != unit.Unit.Owner
+                && IsHostile(unit.Unit.Owner, building.Owner)
                 && _fieldDefinitions.TryGetValue(building.DefinitionCode, out var definition)
                 && definition.CanBeTargeted);
 
     private bool FieldBuildingWithin(Working unit)
-        => _fieldBuildings.Any(building => building.Owner != unit.Unit.Owner
+        => _fieldBuildings.Any(building => IsHostile(unit.Unit.Owner, building.Owner)
             && unit.Unit.Position.Distance(building.Position) <= unit.Unit.RangeCastle
             && _fieldDefinitions.TryGetValue(building.DefinitionCode, out var definition) && definition.CanBeTargeted);
 
     private bool IsEnemyFieldBuilding(Working unit, HexCoord coord)
-        => _fieldBuildings.Any(building => building.Position == coord && building.Owner != unit.Unit.Owner
+        => _fieldBuildings.Any(building => building.Position == coord && IsHostile(unit.Unit.Owner, building.Owner)
             && _fieldDefinitions.TryGetValue(building.DefinitionCode, out var definition) && definition.CanBeTargeted);
 
     // 자신의 공성 사거리 안에 있는 적 성(고정 목록 순서 — 결정론)
-    private static SiegeSite? CastleWithin(Working w, IReadOnlyList<SiegeSite>? castles) => castles?
-        .FirstOrDefault(c => c.Owner != w.Unit.Owner
+    private SiegeSite? CastleWithin(Working w, IReadOnlyList<SiegeSite>? castles) => castles?
+        .FirstOrDefault(c => IsHostile(w.Unit.Owner, c.Owner)
             && c.DistanceTo(w.Unit.Position) <= w.Unit.RangeCastle);
 
     // 성 타일 위에 서 있는가(출격 대기) — 성은 이동 불가 지형이라 머무를 수 없다.
@@ -649,8 +655,8 @@ public sealed class MovementSimulator
                 && (w.Unit.ReturnCity is null || c.City == w.Unit.ReturnCity));
 
     // 사거리·탐지 안의 적 중 가장 가까운 하나(동률이면 명령 순번, 그다음 UnitId — 결정론)
-    private static Working? NearestEnemyWithin(Working self, List<Working> work, int range) => work
-        .Where(o => o.Unit.Owner != self.Unit.Owner
+    private Working? NearestEnemyWithin(Working self, List<Working> work, int range) => work
+        .Where(o => IsHostile(self.Unit.Owner, o.Unit.Owner)
             && o.Unit.Position.Distance(self.Unit.Position) <= range)
         .OrderBy(o => o.Unit.Position.Distance(self.Unit.Position))
         .ThenBy(o => o.Unit.CommandOrder)
@@ -797,7 +803,7 @@ public sealed class MovementSimulator
                         applied.Remove(a.Unit.Id.Value);
                         applied.Remove(b.Unit.Id.Value);
                         changed = true;
-                        if (a.Unit.Owner != b.Unit.Owner)
+                        if (IsHostile(a.Unit.Owner, b.Unit.Owner))
                         {
                             engaged = true;
                             events.Add(new TickEvent(TickEventKind.Engaged, a.Unit.Id, b.Unit.Id));
@@ -846,7 +852,7 @@ public sealed class MovementSimulator
 
                 applied.Remove(w.Unit.Id.Value);
                 changed = true;
-                if (occupant.Unit.Owner != w.Unit.Owner)
+                if (IsHostile(occupant.Unit.Owner, w.Unit.Owner))
                 {
                     engaged = true;
                     events.Add(new TickEvent(TickEventKind.Engaged, w.Unit.Id, occupant.Unit.Id));

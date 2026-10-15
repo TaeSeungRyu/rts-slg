@@ -10,7 +10,11 @@ public sealed class RenewalCampaignAdvanceRunner(
 {
     public bool UsesContinuousMovement => true;
     private GameState? _campaign;
-    public void SetCampaignState(GameState state) => _campaign = state;
+    public void SetCampaignState(GameState state)
+    {
+        _campaign = state;
+        legacyRules.SetCampaignState(state);
+    }
 
     public bool CanEnter(MovementDomain domain, HexCoord coord) =>
         legacyRules.CanEnter(domain, coord);

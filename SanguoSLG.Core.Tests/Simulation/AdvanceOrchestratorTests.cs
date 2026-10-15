@@ -34,6 +34,22 @@ public class AdvanceOrchestratorTests
             cs ?? UnitCombatState.Create(60), might, Intellect: 60, MaxTroops: 10000);
     }
 
+    [Fact]
+    public void 동맹_부대는_인접해도_교전하거나_스킬원을_충전하지_않는다()
+    {
+        var left = Sword(1, 1, new HexCoord(2, 0));
+        var right = Sword(2, 2, new HexCoord(3, 0));
+        var state = new GameState(1, 190, [], [], [], FieldArmies: [left, right],
+            FactionAlliances: [FactionAlliance.Create(new FactionId(1), new FactionId(2), 1)]);
+        var runner = MakeOrchestrator();
+        runner.SetCampaignState(state);
+
+        var turn = runner.Run([left, right], maxDays: 0);
+
+        Assert.Empty(turn.FieldCombatExchanges);
+        Assert.All(turn.Units, unit => Assert.Equal(10000, unit.Pool.Active));
+    }
+
     private static CombatUnit ArmyGroup(int id, int owner, HexCoord pos,
         UnitCombatState? cs = null, int active = 30000)
     {

@@ -25,6 +25,16 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
     private readonly TrainingConfig _training;
     private readonly int _navalProvisionsPercent;
     private readonly IRandomSource _random;
+    private GameState? _campaign;
+
+    public void SetCampaignState(GameState state)
+    {
+        _campaign = state;
+        _movement.SetCampaignState(state);
+    }
+
+    private bool IsHostile(FactionId left, FactionId right)
+        => _campaign?.AreHostile(left, right) ?? left != right;
 
     public AdvanceOrchestrator(
         MovementSimulator movement,
@@ -245,7 +255,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
 
         // 2.9) 이동 종료 위치에서 실제 교전이 성립할 부대를 먼저 찾고, 공격자와 피격자만 1칸 충전한다.
         // 이동에 7일을 썼더라도 교전 1회는 1칸이며, 적을 만나지 않은 이동은 전혀 충전하지 않는다.
-        var chargeEngagements = CombatPhase.DetectEngagements(state.Values.ToList())
+        var chargeEngagements = CombatPhase.DetectEngagements(state.Values.ToList(), IsHostile)
             .Select(e => e with { Targets = e.Targets.Where(id => !protectedGarrisons.Contains(id)).ToList() })
             .Where(e => e.Targets.Count > 0)
             .Where(e => !protectedGarrisons.Contains(e.Attacker)
@@ -276,7 +286,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
 
         // 4) 전투 페이즈 발동 — 정지·후퇴가 반영된 위치로 사거리 전수검사. 발동 부대와 행동불가(혼란)
         //    부대는 공격자에서 뺀다(피격·방어는 정상).
-        var engagements = CombatPhase.DetectEngagements(state.Values.ToList())
+        var engagements = CombatPhase.DetectEngagements(state.Values.ToList(), IsHostile)
             .Select(e => e with { Targets = e.Targets.Where(id => !protectedGarrisons.Contains(id)).ToList() })
             .Where(e => e.Targets.Count > 0)
             .Where(e => !protectedGarrisons.Contains(e.Attacker)
@@ -416,7 +426,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
             FieldCombatExchangeResults: fieldCombatExchanges);
     }
 
-    private static IReadOnlyList<(UnitId Unit, FieldBuilding Building)> FormationTargetsForMovementTurn(
+    private IReadOnlyList<(UnitId Unit, FieldBuilding Building)> FormationTargetsForMovementTurn(
         IReadOnlyList<CombatUnit> startingUnits,
         AdvanceResult movement,
         IReadOnlyList<FieldBuilding> formations,
@@ -427,7 +437,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
         foreach (var unit in startingUnits.OrderBy(x => x.Id.Value))
         {
             if (!moved.TryGetValue(unit.Id, out var current)) continue;
-            var affected = formations.FirstOrDefault(building => building.Owner != unit.Field.Owner
+            var affected = formations.FirstOrDefault(building => IsHostile(unit.Field.Owner, building.Owner)
                 && current.Position.Distance(building.Position) <= definitions[building.DefinitionCode].EffectRadius);
             if (affected is not null) result.Add((unit.Id, affected));
         }
@@ -576,7 +586,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
             }
 
             var range = skill.Code == "lightning" ? 3 : skill.Code == "rout" ? 2 : 1;
-            var target = state.Values.Where(u => u.Field.Owner != caster.Field.Owner && u.Pool.Active > 0
+            var target = state.Values.Where(u => IsHostile(caster.Field.Owner, u.Field.Owner) && u.Pool.Active > 0
                     && u.Field.Position.Distance(caster.Field.Position) <= range)
                 .Where(u => skill.Code is not ("confound" or "rout") || caster.Intellect > u.Intellect)
                 .OrderBy(u => u.Field.Position.Distance(caster.Field.Position)).ThenBy(u => u.Id.Value)
@@ -630,9 +640,9 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
     private static bool HasPurgeable(UnitCombatState state)
         => state.Statuses.Any(s => s.Kind != StatusKind.Evasion);
 
-    private static void ApplyBurn(Dictionary<UnitId, CombatUnit> state, CombatUnit caster, CombatUnit target)
+    private void ApplyBurn(Dictionary<UnitId, CombatUnit> state, CombatUnit caster, CombatUnit target)
     {
-        foreach (var enemy in state.Values.Where(u => u.Field.Owner != caster.Field.Owner
+        foreach (var enemy in state.Values.Where(u => IsHostile(caster.Field.Owner, u.Field.Owner)
                      && u.Field.Position.Distance(target.Field.Position) <= 1).ToList())
         {
             state[enemy.Id] = enemy with { State = enemy.State.AddStatus(
@@ -643,7 +653,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
     private void ApplyLightning(Dictionary<UnitId, CombatUnit> state, CombatUnit caster, CombatUnit target,
         Dictionary<UnitId, int> damage)
     {
-        foreach (var enemy in state.Values.Where(u => u.Field.Owner != caster.Field.Owner
+        foreach (var enemy in state.Values.Where(u => IsHostile(caster.Field.Owner, u.Field.Owner)
                      && u.Field.Position.Distance(target.Field.Position) <= 1).ToList())
         {
             var center = enemy.Id == target.Id;
@@ -742,7 +752,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
             }
 
             var u = state[id];
-            if (u.Field.Owner == caster.Field.Owner
+            if (!IsHostile(caster.Field.Owner, u.Field.Owner)
                 || u.Pool.Active <= 0
                 || u.Field.Position.Distance(center) > stratagem.AoeRadius)
             {
@@ -890,6 +900,9 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
 
             var hasTarget = state.TryGetValue(reservation.TargetId, out var target);
             var valid = hasTarget && target!.Pool.Active > 0
+                && (reservation.Stratagem.EffectKind == StratagemEffectKind.Purge
+                    ? target.Field.Owner == caster.Field.Owner
+                    : IsHostile(caster.Field.Owner, target.Field.Owner))
                 && caster.Field.Position.Distance(target.Field.Position) <= reservation.Stratagem.Range
                 && reservation.Stratagem.CanCastOn(_terrainAt(target.Field.Position));
 

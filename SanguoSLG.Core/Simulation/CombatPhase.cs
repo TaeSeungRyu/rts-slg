@@ -10,10 +10,12 @@ using SanguoSLG.Core.Domain;
 /// </summary>
 public static class CombatPhase
 {
-    public static IReadOnlyList<UnitEngagement> DetectEngagements(IReadOnlyList<CombatUnit> units)
+    public static IReadOnlyList<UnitEngagement> DetectEngagements(IReadOnlyList<CombatUnit> units,
+        Func<FactionId, FactionId, bool>? areHostile = null)
     {
         if (units.All(unit => unit.RenewalPosition is null))
-            return DetectEngagements(units.Select(unit => unit.Field).ToList());
+            return DetectEngagements(units.Select(unit => unit.Field).ToList(), areHostile);
+        areHostile ??= (left, right) => left != right;
         var intentions = new Dictionary<UnitId, List<UnitId>>();
         bool InRange(CombatUnit source, CombatUnit target) =>
             (source.RenewalPosition ?? RenewalMovement.RenewalHexSpace.Center(source.Field.Position))
@@ -26,7 +28,7 @@ public static class CombatPhase
         foreach (var attacker in units.OrderBy(unit => unit.Field.CommandOrder).ThenBy(unit => unit.Id.Value))
         {
             if (attacker.Field.Mode == UnitMode.March || !attacker.CanInitiateCombat || attacker.Pool.Active <= 0) continue;
-            var targets = units.Where(target => target.Pool.Active > 0 && target.Field.Owner != attacker.Field.Owner && InRange(attacker, target)
+            var targets = units.Where(target => target.Pool.Active > 0 && areHostile(attacker.Field.Owner, target.Field.Owner) && InRange(attacker, target)
                 && (attacker.Field.Mode != UnitMode.Attack
                     || (attacker.Field.AssignedUnitTarget is { } id ? target.Id == id
                         : target.Field.Position == attacker.Field.Target)))
@@ -52,8 +54,10 @@ public static class CombatPhase
     }
 
     /// <summary>정지 시점 위치에서 발동하는 교전 목록(공격 명령 순번, 동률이면 UnitId 오름차순).</summary>
-    public static IReadOnlyList<UnitEngagement> DetectEngagements(IReadOnlyList<FieldUnit> units)
+    public static IReadOnlyList<UnitEngagement> DetectEngagements(IReadOnlyList<FieldUnit> units,
+        Func<FactionId, FactionId, bool>? areHostile = null)
     {
+        areHostile ??= (left, right) => left != right;
         var result = new List<UnitEngagement>();
 
         foreach (var attacker in units.OrderBy(u => u.CommandOrder).ThenBy(u => u.Id.Value))
@@ -65,7 +69,7 @@ public static class CombatPhase
             }
 
             var targets = units
-                .Where(t => t.Owner != attacker.Owner
+                .Where(t => areHostile(attacker.Owner, t.Owner)
                     && t.Position.Distance(attacker.Position) <= attacker.AttackRange)
                 .OrderBy(t => t.Position.Distance(attacker.Position))
                 .ThenBy(t => t.CommandOrder)
