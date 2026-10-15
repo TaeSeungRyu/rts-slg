@@ -191,6 +191,19 @@ public sealed class RenewalMovementNavigationTests
     }
 
     [Fact]
+    public void 동맹_부대는_적군충돌로_정지하거나_서로를_추격하지_않는다()
+    {
+        var map = new RenewalMovementMap(new HexMap(-2, 6, -3, 3));
+        var simulator = new RenewalAdvanceSimulator(map, areHostile: (_, _) => false);
+        var left = Unit(1, new HexCoord(0, 0), new HexCoord(2, 0), speed: 25, faction: 1);
+        var right = Unit(2, new HexCoord(1, 0), new HexCoord(-1, 0), speed: 25, faction: 2);
+
+        var result = simulator.StepMovementTick(simulator.Start([left, right]));
+
+        Assert.All(result.State.Units, unit => Assert.NotEqual(RenewalStopReason.EnemyBlocked, unit.StopReason));
+    }
+
+    [Fact]
     public void 한틱에_적을_완전히_지나쳐도_끝점이_멀어진다는_이유로_관통하지않는다()
     {
         var simulator = new RenewalAdvanceSimulator(new RenewalMovementMap(new HexMap(-5, 12, -5, 12)));

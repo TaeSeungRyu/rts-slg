@@ -33,7 +33,8 @@ public sealed class RenewalCampaignAdvanceRunner(
         blocked.UnionWith((castles ?? []).SelectMany(site => site.Footprint));
         blocked.UnionWith(_campaign?.Ruins.Select(ruin => ruin.Position) ?? []);
         var movementMap = new RenewalMovementMap(map, blocked);
-        var simulator = new RenewalAdvanceSimulator(movementMap);
+        var simulator = new RenewalAdvanceSimulator(movementMap,
+            areHostile: _campaign is { } campaign ? campaign.AreHostile : null);
         var liveBuildings = (fieldBuildings ?? [])
             .Where(building => !building.IsExpired(fieldDay)).ToList();
         var unavailableGarrisons = new HashSet<UnitId>();
@@ -276,7 +277,8 @@ public sealed class RenewalCampaignAdvanceRunner(
                 || !positions.TryGetValue(unit.Id, out var stoppedUnit) || !stoppedUnit.IsActive
                 || stoppedUnit.StopReason != RenewalStopReason.EnemyBlocked) continue;
             var radius = (long)unit.Field.AttackRange * ContinuousPosition.UnitsPerTile;
-            var blocker = moved.Where(candidate => candidate.Field.Owner != unit.Field.Owner
+            var blocker = moved.Where(candidate => (_campaign?.AreHostile(candidate.Field.Owner, unit.Field.Owner)
+                    ?? candidate.Field.Owner != unit.Field.Owner)
                     && candidate.Id == stoppedUnit.BlockingUnit
                     && candidate.Pool.Active > 0 && positions[candidate.Id].IsActive
                     && stoppedUnit.Position.DistanceSquaredTo(positions[candidate.Id].Position) <= radius * radius)
@@ -361,7 +363,7 @@ public sealed class RenewalCampaignAdvanceRunner(
         }
     }
 
-    private static RenewalUnitState ToRenewal(CombatUnit unit, IReadOnlyList<CombatUnit> units,
+    private RenewalUnitState ToRenewal(CombatUnit unit, IReadOnlyList<CombatUnit> units,
         IReadOnlyList<SiegeSite>? castles, IReadOnlyList<FieldBuilding> buildings,
         bool constructing)
     {
@@ -395,7 +397,7 @@ public sealed class RenewalCampaignAdvanceRunner(
             CastleAttackRange: unit.Field.RangeCastle);
     }
 
-    private static RenewalTargetId? AssignedTarget(CombatUnit source,
+    private RenewalTargetId? AssignedTarget(CombatUnit source,
         IReadOnlyList<CombatUnit> units, IReadOnlyList<SiegeSite>? castles,
         IReadOnlyList<FieldBuilding> buildings)
     {
@@ -405,25 +407,29 @@ public sealed class RenewalCampaignAdvanceRunner(
         }
         if (source.Field.AssignedUnitTarget is { } assignedId)
         {
-            var shelter = buildings.FirstOrDefault(building => building.Owner != source.Field.Owner
+            var shelter = buildings.FirstOrDefault(building => (_campaign?.AreHostile(source.Field.Owner, building.Owner)
+                    ?? building.Owner != source.Field.Owner)
                 && building.GarrisonUnit == assignedId);
             return shelter is null ? RenewalTargetId.ForUnit(assignedId)
                 : new RenewalTargetId(RenewalTargetKind.Building, shelter.Id.Value);
         }
-        var unit = units.FirstOrDefault(candidate => candidate.Field.Owner != source.Field.Owner
+        var unit = units.FirstOrDefault(candidate => (_campaign?.AreHostile(source.Field.Owner, candidate.Field.Owner)
+                ?? candidate.Field.Owner != source.Field.Owner)
             && (source.Field.AssignedUnitTarget is { } id ? candidate.Id == id : candidate.Field.Position == target));
         if (unit is not null)
         {
             return RenewalTargetId.ForUnit(unit.Id);
         }
-        var building = buildings.FirstOrDefault(candidate => candidate.Owner != source.Field.Owner
+        var building = buildings.FirstOrDefault(candidate => (_campaign?.AreHostile(source.Field.Owner, candidate.Owner)
+                ?? candidate.Owner != source.Field.Owner)
             && candidate.Position == target);
         if (building is not null)
         {
             return new RenewalTargetId(RenewalTargetKind.Building, building.Id.Value);
         }
         var site = (castles ?? []).Select((value, index) => (value, index))
-            .FirstOrDefault(entry => entry.value.Owner != source.Field.Owner
+            .FirstOrDefault(entry => (_campaign?.AreHostile(source.Field.Owner, entry.value.Owner)
+                    ?? entry.value.Owner != source.Field.Owner)
                 && entry.value.Contains(target));
         return site.value is null ? null : new RenewalTargetId(RenewalTargetKind.Site, site.index + 1);
     }

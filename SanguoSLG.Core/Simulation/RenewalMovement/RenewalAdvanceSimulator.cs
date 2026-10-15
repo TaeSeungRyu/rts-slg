@@ -18,14 +18,17 @@ public sealed class RenewalAdvanceSimulator
     private readonly RenewalMovementMap? _movementMap;
     private readonly RenewalCombatPhaseService? _combat;
     private readonly RenewalIntegrationService? _integration;
+    private readonly Func<FactionId, FactionId, bool> _areHostile;
 
     public RenewalAdvanceSimulator(RenewalMovementMap? movementMap = null,
         RenewalCombatPhaseService? combat = null,
-        RenewalIntegrationService? integration = null)
+        RenewalIntegrationService? integration = null,
+        Func<FactionId, FactionId, bool>? areHostile = null)
     {
         _movementMap = movementMap;
         _combat = combat;
         _integration = integration;
+        _areHostile = areHostile ?? ((left, right) => left != right);
     }
 
     public RenewalAdvanceState Start(IEnumerable<RenewalUnitState> units,
@@ -55,15 +58,15 @@ public sealed class RenewalAdvanceSimulator
         {
             var position = unit.Position;
             if (unit.IsActive && (existingUnitIds?.Contains(unit.Id) != true
-                    || result.Any(other => other.IsActive && other.Owner != unit.Owner
+                    || result.Any(other => other.IsActive && _areHostile(other.Owner, unit.Owner)
                         && other.Position == position))
-                && result.Any(other => other.IsActive && other.Owner != unit.Owner
+                && result.Any(other => other.IsActive && _areHostile(other.Owner, unit.Owner)
                 && other.Position.DistanceSquaredTo(position) < minimumDistanceSquared))
             {
                 var separated = HostileSeparationCandidates(position)
                     .FirstOrDefault(candidate =>
                         (_movementMap?.CanStand(unit.Domain, candidate, UnitCollisionRadius) ?? true)
-                        && result.Where(other => other.IsActive && other.Owner != unit.Owner)
+                        && result.Where(other => other.IsActive && _areHostile(other.Owner, unit.Owner))
                             .All(other => other.Position.DistanceSquaredTo(candidate)
                                 >= minimumDistanceSquared));
                 if (separated != default)
@@ -408,13 +411,13 @@ public sealed class RenewalAdvanceSimulator
                 spatialIndex.QuerySegment(unit.Position, candidate, HostileCollisionRadius * 2), out blocker);
     }
 
-    private static RenewalStopReason FirstEnemyCollision(RenewalUnitState unit,
+    private RenewalStopReason FirstEnemyCollision(RenewalUnitState unit,
         ContinuousPosition candidate, IReadOnlyList<RenewalUnitState> allUnits, out UnitId? blocker)
     {
         blocker = null;
         foreach (var other in allUnits.OrderBy(x => x.Id.Value))
         {
-            if (!other.IsActive || other.Id == unit.Id || other.Owner == unit.Owner)
+            if (!other.IsActive || other.Id == unit.Id || !_areHostile(unit.Owner, other.Owner))
             {
                 continue;
             }
@@ -683,14 +686,14 @@ public sealed class RenewalAdvanceSimulator
             PathIndex = 0,
         };
 
-    private static RenewalTargetState? FindHostile(IReadOnlyList<RenewalTargetState> targets,
+    private RenewalTargetState? FindHostile(IReadOnlyList<RenewalTargetState> targets,
         RenewalUnitState observer, RenewalTargetId? target) => target is not { } targetId
         ? null
         : targets.FirstOrDefault(candidate => candidate.Id == targetId && IsHostile(observer, candidate));
 
-    private static bool IsHostile(RenewalUnitState observer, RenewalTargetState candidate) =>
+    private bool IsHostile(RenewalUnitState observer, RenewalTargetState candidate) =>
         candidate.Id != RenewalTargetId.ForUnit(observer.Id)
-        && candidate.IsActive && candidate.Owner != observer.Owner;
+        && candidate.IsActive && _areHostile(observer.Owner, candidate.Owner);
 
     private static bool IsVisibleTo(RenewalUnitState observer, RenewalTargetState candidate) =>
         candidate.IsVisible && observer.Position.DistanceTo(TargetPositionFor(observer, candidate))
