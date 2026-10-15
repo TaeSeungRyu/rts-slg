@@ -501,14 +501,14 @@ public sealed partial class CampaignMapScene : Node3D
     private static readonly (string Group, int[] Indices)[] CmdGroups =
     {
         ("항구", new[] { 5 }),
-        ("연구", new[] { 6, 7, 8, 23 }),
+        ("연구", new[] { 6, 7, 8, 24 }),
         ("성벽", new[] { 9, 10 }),
         ("계략", new[] { 12 }),
-        ("외교", new[] { 13, 14, 24 }),
-        ("임명", new[] { 15, 16 }),
-        ("담당자", new[] { 17, 18, 19, 20 }),
-        ("인재", new[] { 21 }),
-        ("탐색", new[] { 22 }),
+        ("외교", new[] { 13, 14, 15 }),
+        ("임명", new[] { 16, 17 }),
+        ("담당자", new[] { 18, 19, 20, 21 }),
+        ("인재", new[] { 22 }),
+        ("탐색", new[] { 23 }),
     };
 
     private static readonly Sym[] CmdIcons = { Sym.Sword, Sym.Coin, Sym.Book, Sym.Wall, Sym.Scroll };
