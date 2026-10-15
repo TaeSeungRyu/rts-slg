@@ -21,7 +21,7 @@ public sealed class SummonService(HexMap map, IReadOnlyList<EventTreasureDefinit
             if (item is null) continue;
             var origin = caller.RenewalPosition is { } continuous
                 ? RenewalHexSpace.NearestHex(continuous) : caller.Field.Position;
-            var target = state.Armies.Where(x => x.Field.Owner != caller.Field.Owner && x.Pool.Active > 0)
+            var target = state.Armies.Where(x => state.AreHostile(caller.Field.Owner, x.Field.Owner) && x.Pool.Active > 0)
                 .OrderBy(x => origin.Distance(x.Field.Position)).FirstOrDefault();
             if (target is null || origin.Distance(target.Field.Position) > caller.Field.Detection) continue;
             foreach (var position in origin.Neighbors().OrderBy(x => x.Distance(target.Field.Position)))

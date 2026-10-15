@@ -427,34 +427,45 @@ public sealed class FactionAI
 
             var current = u.Field.Target;
             if (current is { } objective && (
-                state.Cities.Any(city => city.Owner != faction && !state.AreAllied(faction, city.Owner)
+                state.Cities.Any(city => state.AreHostile(faction, city.Owner)
                     && CastleFootprint.TilesFor(city).Contains(objective))
-                || state.Buildings.Any(building => building.Owner != faction
+                || state.Buildings.Any(building => state.AreHostile(faction, building.Owner)
                     && !building.IsExpired(state.Day) && building.Position == objective)
                 || state.Ruins.Any(ruin => ruin.Position == objective)
-                || state.Armies.Any(enemy => enemy.Field.Owner != faction && enemy.Pool.Active > 0
+                || state.Armies.Any(enemy => state.AreHostile(faction, enemy.Field.Owner) && enemy.Pool.Active > 0
                     && enemy.Field.Position == objective)))
                 return u;
 
             var target = NearestEnemyObjective(state, faction, u.Field.Position);
+            var alliedObjective = current is { } goal && (state.Cities.Any(city => state.AreAllied(faction, city.Owner)
+                    && CastleFootprint.TilesFor(city).Contains(goal))
+                || state.Buildings.Any(building => state.AreAllied(faction, building.Owner)
+                    && building.Position == goal)
+                || state.Armies.Any(ally => state.AreAllied(faction, ally.Field.Owner)
+                    && ally.Field.Position == goal));
             return target is { } dest ? u with { Field = u.Field with
             {
                 Target = dest, Waypoints = null, ContinuousTarget = null,
                 ContinuousWaypoints = null, AssignedUnitTarget = null, PursuitTarget = null,
-            } } : u;
+            } } : !alliedObjective ? u : u with { Field = u.Field with
+            {
+                Mode = UnitMode.Standby, Target = null, Waypoints = null,
+                ContinuousTarget = null, ContinuousWaypoints = null,
+                AssignedUnitTarget = null, PursuitTarget = null,
+            } };
         }).ToList();
         return state with { FieldArmies = armies };
     }
 
     private static HexCoord? NearestEnemyCity(GameState state, FactionId self, HexCoord from)
-        => state.Cities.Where(c => c.Owner != self)
+        => state.Cities.Where(c => state.AreHostile(self, c.Owner))
             .OrderBy(c => c.Position.Distance(from)).ThenBy(c => c.Id.Value)
             .Select(c => (HexCoord?)c.Position)
             .FirstOrDefault();
 
     private static (City City, int GarrisonTroops)? NearestEnemyCityInfo(GameState state, FactionId self, HexCoord from)
     {
-        var city = state.Cities.Where(c => c.Owner != self)
+        var city = state.Cities.Where(c => state.AreHostile(self, c.Owner))
             .OrderBy(c => c.Position.Distance(from))
             .ThenBy(c => c.Id.Value)
             .FirstOrDefault();
@@ -469,10 +480,10 @@ public sealed class FactionAI
     private static HexCoord? NearestEnemyObjective(GameState state, FactionId self, HexCoord from)
     {
         var cityTargets = state.Cities
-            .Where(city => city.Owner != self && !state.AreAllied(self, city.Owner))
+            .Where(city => state.AreHostile(self, city.Owner))
             .Select(city => (Position: city.Position, Kind: 0, Id: city.Id.Value));
         var buildingTargets = state.Buildings
-            .Where(building => building.Owner != self && !state.AreAllied(self, building.Owner)
+            .Where(building => state.AreHostile(self, building.Owner)
                 && !building.IsExpired(state.Day)
                 && !string.Equals(building.DefinitionCode, "scout_post", StringComparison.Ordinal))
             .Select(building => (Position: building.Position, Kind: 1, Id: building.Id.Value));

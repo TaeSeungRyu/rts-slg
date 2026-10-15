@@ -84,6 +84,19 @@ public class FieldStratagemServiceTests
     }
 
     [Fact]
+    public void 동맹_부대는_공격계략의_대상이_되지_않는다()
+    {
+        var caster = Army(1, 1, default, masteryPoints: 10);
+        var ally = Army(2, 2, new HexCoord(1, 0));
+        var state = World(1, caster, ally) with
+        {
+            FactionAlliances = [FactionAlliance.Create(new FactionId(1), new FactionId(2), 1)],
+        };
+
+        Assert.Empty(Service().Targets(state, caster.Id, "smokescreen"));
+    }
+
+    [Fact]
     public void 정화계략은_사거리안의아군을_대상으로돌려준다()
     {
         var caster = Army(1, 1, new HexCoord(0, 0));

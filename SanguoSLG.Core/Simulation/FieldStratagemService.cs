@@ -66,7 +66,7 @@ public sealed class FieldStratagemService
             .Where(target => target.Pool.Active > 0
                 && (targetsAllies
                     ? target.Field.Owner == caster.Field.Owner
-                    : target.Field.Owner != caster.Field.Owner)
+                    : state.AreHostile(caster.Field.Owner, target.Field.Owner))
                 && caster.Field.Position.Distance(target.Field.Position) <= stratagem.Range
                 && stratagem.CanCastOn(_terrainAt(target.Field.Position)))
             .OrderBy(target => target.Id.Value)
