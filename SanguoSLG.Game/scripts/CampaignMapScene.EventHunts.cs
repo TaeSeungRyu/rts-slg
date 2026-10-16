@@ -630,11 +630,16 @@ public sealed partial class CampaignMapScene
             phoenixInstance?.Free();
             var beastCards = Godot.FileAccess.FileExists("res://assets/ui/troops/thumbnails/eastern_dragon.png")
                 && Godot.FileAccess.FileExists("res://assets/ui/troops/thumbnails/phoenix.png");
+            var phoenixLabel = ArmyTroopLabel(tiger with
+            {
+                TroopCode = "phoenix",
+                Pool = new TroopPool(40000, 0),
+            }) == "봉황 · 체력 40,000";
             var passed = allCitiesSpawned && appearedReport && visibleSpawn && combat && motions && modal && chosen && inventory
-                && phoenixAsset && beastCards
+                && phoenixAsset && beastCards && phoenixLabel
                 && restored.Treasures.Single().Code == "tiger_cub" && TroopName("great_tiger") == "대호"
                 && UnitController3D.ModelFileAt(TroopModelIndex["great_tiger"]).EndsWith("troop-great-tiger.glb");
-            GD.Print($"[maptesteventhuntqa] passed={passed} allCities={allCitiesSpawned} report={appearedReport} spawn={visibleSpawn} combat={combat} motions={motions} modal={modal} chosen={chosen} inventory={inventory} phoenixModel={phoenixAsset} beastCards={beastCards} save={restored.Treasures.Count} imageWidths={imageWidths}");
+            GD.Print($"[maptesteventhuntqa] passed={passed} allCities={allCitiesSpawned} report={appearedReport} spawn={visibleSpawn} combat={combat} motions={motions} modal={modal} chosen={chosen} inventory={inventory} phoenixModel={phoenixAsset} phoenixLabel={phoenixLabel} beastCards={beastCards} save={restored.Treasures.Count} imageWidths={imageWidths}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (Exception error)
