@@ -22,29 +22,6 @@ public static class GeneralStoryCollector
                 capture.NewOwner, speaker, occupier.AdjutantId, capture.City));
         }
 
-        for (var turnIndex = 0; turnIndex < turns.Count; turnIndex++)
-        {
-            var turn = turns[turnIndex];
-            if (turn.Combat is not { } combat) continue;
-            foreach (var exchange in (combat.Exchanges ?? []).OrderBy(x => x.Target.Value))
-            {
-                if (!armies.TryGetValue(exchange.Attacker, out var attacker)
-                    || !armies.TryGetValue(exchange.Target, out var target)
-                    || attacker.VanguardId is not { } speaker
-                    || attacker.AdjutantId is not { } adjutant
-                    || target.Pool.Active <= 0) continue;
-                if (turn.Units.Any(u => u.Id == target.Id && u.Pool.Active > 0)) continue;
-                candidates.Add(new($"victory:{turnIndex}:{attacker.Id.Value}:{target.Id.Value}",
-                    "victory", 3, attacker.Field.Owner, speaker, adjutant));
-            }
-            foreach (var unit in turn.Units.Where(u => u.Pool.Active > 0 && u.Pool.Wounded > 0
-                && combat.DamageTaken.GetValueOrDefault(u.Id) > 0 && u.VanguardId is not null)
-                .OrderBy(u => u.Id.Value))
-                candidates.Add(new($"wounded:{turnIndex}:{unit.Id.Value}", "wounded", 3,
-                    unit.Field.Owner, unit.VanguardId!.Value, unit.AdjutantId,
-                    Code: unit.Id.Value.ToString()));
-        }
-
         foreach (var siege in (sieges ?? []).Where(s => s.WallDamage > 0).GroupBy(s => s.City)
             .Select(g => g.First()).OrderBy(s => s.City.Value))
         {
