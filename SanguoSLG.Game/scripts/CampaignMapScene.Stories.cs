@@ -141,13 +141,27 @@ public sealed partial class CampaignMapScene
         line.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
         content.AddChild(line);
         var currentPage = 0;
-        var next = MakeButton(replay ? "다음" : "다음", accent: true);
+        var actions = new HBoxContainer();
+        actions.AddThemeConstantOverride("separation", 8);
+        content.AddChild(actions);
+        var next = MakeButton("다음", accent: true);
         next.Pressed += () =>
         {
             if (++currentPage < lines.Length) line.Text = lines[currentPage];
-            else CloseStoryModal();
+            if (currentPage >= lines.Length - 1)
+            {
+                next.Visible = false;
+                if (replay) { var done = MakeButton("닫기"); done.Pressed += CloseStoryModal; actions.AddChild(done); }
+                else AddStoryChoices(actions, story, line);
+            }
         };
-        content.AddChild(next);
+        actions.AddChild(next);
+        if (lines.Length == 1)
+        {
+            next.Visible = false;
+            if (replay) { var done = MakeButton("닫기"); done.Pressed += CloseStoryModal; actions.AddChild(done); }
+            else AddStoryChoices(actions, story, line);
+        }
     }
 
     private void CloseStoryModal()
@@ -158,6 +172,63 @@ public sealed partial class CampaignMapScene
         _storyOpenId = null;
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         if (IsInstanceValid(_reportPanel)) _reportPanel.Visible = _storyReportWasVisible;
+    }
+
+    private void AddStoryChoices(HBoxContainer actions, GeneralStoryEvent story, Label line)
+    {
+        var definition = _storyDefinitions.FirstOrDefault(d => d.Kind == story.Kind);
+        foreach (var (choice, label) in new[]
+            { ("a", definition?.OptionA ?? "확인"), ("b", definition?.OptionB ?? "넘어가기") })
+        {
+            var button = MakeButton(label, choice == "a");
+            button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            button.Pressed += () =>
+            {
+                var result = GeneralStoryChoices.Apply(_state, story.Id, choice, _balance);
+                if (!result.Ok) { line.Text = result.Message; return; }
+                _state = result.State;
+                Report($"[장수 대화] {StoryTitle(story)} · {result.Message}", Gold, story.Speaker);
+                line.Text = result.Message;
+                foreach (var child in actions.GetChildren()) child.QueueFree();
+                var done = MakeButton("확인", accent: true);
+                done.Pressed += () =>
+                {
+                    CloseStoryModal();
+                    Redraw(result.Message);
+                    if (choice == "a") OpenStoryRelatedScreen(story);
+                };
+                actions.AddChild(done);
+            };
+            actions.AddChild(button);
+        }
+    }
+
+    private void OpenStoryRelatedScreen(GeneralStoryEvent story)
+    {
+        switch (story.Kind)
+        {
+            case "beast_appeared":
+            case "beast_defeated":
+                OpenTreasureList();
+                break;
+            case "research":
+                if (story.City is { } city && _state.Cities.Any(c => c.Id == city && c.Owner == Player))
+                {
+                    SelectCity(city);
+                    var lane = FactionResearch.IsGeneralResearch(story.Code) ? "general"
+                        : FactionResearch.IsStratagemResearch(story.Code) ? "stratagem_research" : "troop";
+                    var index = System.Array.FindIndex(Cmds, c => c.Kind == CommandKind.Research && c.Param == lane);
+                    if (index >= 0) OpenModal(index);
+                }
+                break;
+            case "low_food":
+                if (int.TryParse(story.Code, out var id))
+                {
+                    var unit = _state.Armies.FirstOrDefault(u => u.Id.Value == id && u.Field.Owner == Player);
+                    if (unit is not null) { OpenUnitMenu(unit); ShowUnitInfo(id); }
+                }
+                break;
+        }
     }
 
     private void AddStoryReplayButtons(VBoxContainer body)
@@ -200,5 +271,55 @@ public sealed partial class CampaignMapScene
             && definition.VoiceLines.TryGetValue(story.Speaker.Value, out var voice)
             && result.Count < 4) result.Add($"{StorySpeakerName(story.Speaker)}: {voice}");
         return result.ToArray();
+    }
+
+    private async void RunGeneralStoryQa()
+    {
+        try
+        {
+            var speaker = _state.Generals.FirstOrDefault(g => _state.Assignments.Any(p => p.General == g.Id && p.Faction == Player));
+            var city = _state.Cities.FirstOrDefault(c => c.Owner == Player);
+            if (speaker is null || city is null) throw new System.InvalidOperationException("플레이어 장수/도시 없음");
+            var story = new GeneralStoryEvent("qa:story", "capture", _state.Day, 1,
+                Player, speaker.Id, null, city.Id, 0);
+            _state = _state with { PendingStoryEvents = _state.StoryPending.Append(story).ToArray() };
+            var reportWasVisible = _reportPanel.Visible;
+            ShowStoryModal(story, false);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var panel = _modalLayer?.GetChildren().OfType<PanelContainer>().FirstOrDefault();
+            var row = panel?.GetChildren().OfType<HBoxContainer>().FirstOrDefault();
+            var ratioOk = row is not null && row.GetChildCount() == 2
+                && row.GetChild<Control>(0).Size.X < row.GetChild<Control>(1).Size.X;
+            var hidden = !_reportPanel.Visible && _storyOpen;
+            CloseAnyModalOrPanel();
+            var restored = !_storyOpen && _modalLayer is null && _reportPanel.Visible == reportWasVisible
+                && _state.StoryPending.All(e => e.Id != story.Id)
+                && _state.StoryHistory.Any(e => e.Id == story.Id);
+            ShowStoryModal(story, true);
+            var replayReadOnly = _storyOpenId is null;
+            CloseStoryModal();
+            var choiceStory = story with { Id = "qa:choice" };
+            _state = _state with { PendingStoryEvents = _state.StoryPending.Append(choiceStory).ToArray() };
+            ShowStoryModal(choiceStory, false);
+            var next = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+                .FirstOrDefault(b => b.Text == "다음");
+            next?.EmitSignal(Button.SignalName.Pressed);
+            var choose = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+                .FirstOrDefault(b => b.Text == "재정 보존");
+            var choicesVisible = choose is not null && _storyOpen;
+            choose?.EmitSignal(Button.SignalName.Pressed);
+            var done = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+                .FirstOrDefault(b => b.Text == "확인");
+            done?.EmitSignal(Button.SignalName.Pressed);
+            var choiceResolved = !_storyOpen && _state.StoryHistory.Any(e => e.Id == choiceStory.Id && e.Choice == "b");
+            var passed = ratioOk && hidden && restored && replayReadOnly && choicesVisible && choiceResolved;
+            GD.Print($"[general-story-qa] passed={passed} ratio={ratioOk} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved}");
+            GetTree().Quit(passed ? 0 : 1);
+        }
+        catch (System.Exception error)
+        {
+            GD.PrintErr($"[general-story-qa] failed: {error}");
+            GetTree().Quit(1);
+        }
     }
 }

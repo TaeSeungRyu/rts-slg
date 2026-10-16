@@ -731,6 +731,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestsummontargetqa")) CallDeferred(nameof(RunSummonTargetQa));
         if (args.Contains("--maptestofficerfixtureqa")) CallDeferred(nameof(RunMapTestOfficerFixtureQa));
         if (args.Contains("--maptestwardeclarationqa")) CallDeferred(nameof(RunWarDeclarationQa));
+        if (args.Contains("--maptestgeneralstoryqa")) CallDeferred(nameof(RunGeneralStoryQa));
     }
 
     private void SeedFieldBuildingSamples()
@@ -8743,6 +8744,7 @@ public sealed partial class CampaignMapScene : Node3D
         CloseModal();
         HidePanels();
         Redraw($"슬롯 {slot:00}의 게임을 불러왔습니다. ({_state.Year}년 {_state.Month}월)");
+        _storyAwaitingCard = _state.StoryPending.Any(e => e.Faction == Player);
     }
 
     // 시스템 모달 공통 헤더(◀ 시스템으로 복귀 · ✕ 닫기).

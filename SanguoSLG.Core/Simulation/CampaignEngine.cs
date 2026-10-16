@@ -491,7 +491,7 @@ public sealed class CampaignEngine
             advanced = expiry.State;
         }
         var storyCandidates = GeneralStoryCollector.Collect(state, advanced, reports,
-            captureReports, LastWorldEvents);
+            captureReports, LastWorldEvents, siegeReports);
         foreach (var faction in storyCandidates.Select(c => c.Faction).Distinct().OrderBy(f => f.Value))
         {
             advanced = GeneralStorySelector.Queue(advanced, storyCandidates, faction);
