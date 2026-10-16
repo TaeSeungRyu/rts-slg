@@ -266,6 +266,7 @@ public sealed partial class CampaignMapScene
                     story.Speaker, story.Id);
                 line.Text = result.Message;
                 foreach (var child in actions.GetChildren()) child.QueueFree();
+                actions.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
                 var done = MakeButton("확인", accent: true);
                 done.Pressed += () =>
                 {
@@ -408,6 +409,11 @@ public sealed partial class CampaignMapScene
             choose?.EmitSignal(Button.SignalName.Pressed);
             var done = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
                 .FirstOrDefault(b => b.Text == "확인");
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var choicePanel = _modalLayer?.GetChildren().OfType<PanelContainer>().FirstOrDefault();
+            var doneAligned = done is not null && choicePanel is not null
+                && done.GlobalPosition.X > choicePanel.GlobalPosition.X + choicePanel.Size.X * 0.7f
+                && done.GlobalPosition.Y > choicePanel.GlobalPosition.Y + choicePanel.Size.Y * 0.5f;
             done?.EmitSignal(Button.SignalName.Pressed);
             var choiceResolved = !_storyOpen && _state.StoryHistory.Any(e => e.Id == choiceStory.Id && e.Choice == "b");
             OpenFullLog();
@@ -429,8 +435,8 @@ public sealed partial class CampaignMapScene
             _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
                 .FirstOrDefault(button => button.Text == "확인")?.EmitSignal(Button.SignalName.Pressed);
             warningOnly &= !_storyOpen && _state.StoryHistory.Any(e => e.Id == warningStory.Id);
-            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly;
-            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly}");
+            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly;
+            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} doneAligned={doneAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (System.Exception error)
