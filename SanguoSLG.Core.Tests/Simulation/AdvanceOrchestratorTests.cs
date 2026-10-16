@@ -125,6 +125,25 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 백명_부대의_소수_군량_소모도_누적되어_고갈후_이탈한다()
+    {
+        var runner = MakeOrchestrator();
+        var unit = Sword(1, 1, new HexCoord(0, 0), UnitMode.Standby) with
+        { Pool = new TroopPool(100, 0), Provisions = 2 };
+
+        for (var day = 1; day <= 21; day++)
+        {
+            var turn = runner.RunWithProvisionDays([unit], 0, null, null, null, null, null, 0, 1);
+            unit = Assert.Single(turn.Units);
+            if (day == 10) Assert.Equal(1, unit.Provisions);
+            if (day == 20) Assert.Equal(0, unit.Provisions);
+        }
+
+        Assert.Equal(95, unit.Pool.Active);
+        Assert.Equal(0, unit.Provisions);
+    }
+
+    [Fact]
     public void 적없으면_이동만_전투없음()
     {
         var a = Sword(1, 1, new HexCoord(0, 0)) with

@@ -243,19 +243,23 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
                     && definitions[building.DefinitionCode].Kind == FieldBuildingKind.Fort
                     && building.Position.Distance(u.Field.Position) <= definitions[building.DefinitionCode].EffectRadius)
                 ? 60 : 100;
-            var eaten = (int)((long)u.Pool.Active * _provisionsPer10kPerDay * elapsedProvisionDays
-                * u.ProvisionsUpkeepPercent * navalPercent * fortPercent / 10_000_000_000L);
+            var scaledConsumption = (long)u.Pool.Active * _provisionsPer10kPerDay * elapsedProvisionDays
+                * u.ProvisionsUpkeepPercent * navalPercent * fortPercent
+                + u.ProvisionsConsumptionRemainder;
+            var eaten = (int)(scaledConsumption / 10_000_000_000L);
+            var remainder = scaledConsumption % 10_000_000_000L;
             var remaining = u.Provisions - eaten;
-            if (remaining >= 0)
+            if (remaining >= 0 && (remaining > 0 || u.Provisions > 0 || scaledConsumption == 0))
             {
-                state[id] = u with { Provisions = remaining };
+                state[id] = u with { Provisions = remaining, ProvisionsConsumptionRemainder = remainder };
                 continue;
             }
 
             // 고갈 — 그 진행 굶주림: 병력의 (이탈률 × 경과일)%를 잃는다(이탈은 부상 없이 소실).
             var lossPercent = System.Math.Min(100, _starvationLossPercentPerDay * elapsedProvisionDays);
             var lost = u.Pool.Active * lossPercent / 100;
-            state[id] = u with { Provisions = 0, Pool = u.Pool.TakeDamage(lost, woundedPercent: 0) };
+            state[id] = u with { Provisions = 0, Pool = u.Pool.TakeDamage(lost, woundedPercent: 0),
+                ProvisionsConsumptionRemainder = remainder };
             if (lost > 0)
             {
                 starvation[id] = lost;

@@ -48,7 +48,8 @@ public sealed record CombatUnit(
     int TreasureDamageTakenPercent = 100,
     int TreasureFatalToWoundedPercent = 0,
     int? SummonLockDay = null,
-    int TreasureAdjutantMight = 0)
+    int TreasureAdjutantMight = 0,
+    long ProvisionsConsumptionRemainder = 0)
 {
     public UnitId Id => Field.Id;
 
