@@ -523,6 +523,33 @@ public class CampaignEngineTests
     }
 
     [Fact]
+    public void 성_자동보급은_겹친_보급권에서도_부대_적재상한을_넘지_않는다()
+    {
+        var map = new HexMap(0, 15, 0, 15);
+        var movement = new MovementSimulator(new PassabilityMap(map, [], []));
+        var field = new SanguoSLG.Core.Simulation.RenewalMovement.RenewalCampaignAdvanceRunner(map,
+            new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70)));
+        var engine = new CampaignEngine(field, new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)),
+            cityResupplyRadius: 3);
+        var cities = new[]
+        {
+            new City(new CityId(1), "성1", new HexCoord(5, 5), new FactionId(1), Provisions: 5000),
+            new City(new CityId(2), "성2", new HexCoord(7, 5), new FactionId(1), Provisions: 5000),
+        };
+        var unit = Army(1, 1, new HexCoord(6, 5), UnitMode.Standby, target: null) with
+        {
+            Pool = new TroopPool(1000, 0), Provisions = 29, ProvisionsCapacity = 300,
+        };
+
+        var after = engine.AdvanceWeek(new GameState(1, 1, [], cities, [], FieldArmies: [unit]), out _);
+
+        Assert.Equal(23, Assert.Single(after.Armies).Provisions);
+        Assert.True(Assert.Single(after.Armies).Provisions <= Assert.Single(after.Armies).MaxProvisions());
+        Assert.Equal(1, after.Cities.Single(city => city.Id.Value == 2).Provisions
+            - after.Cities.Single(city => city.Id.Value == 1).Provisions);
+    }
+
+    [Fact]
     public void 진행_1번은_야전이_있든_없든_정확히_7일이다()
     {
         var e = Engine();

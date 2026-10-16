@@ -111,6 +111,20 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 보급부대_자동보급은_휴대_군량_상한까지만_지급한다()
+    {
+        var supply = Sword(1, 1, new HexCoord(0, 0), UnitMode.Standby) with
+        { IsSupply = true, Provisions = 1000 };
+        var recipient = Sword(2, 1, new HexCoord(1, 0), UnitMode.Standby) with
+        { Pool = new TroopPool(1000, 0), Provisions = 29, ProvisionsCapacity = 300 };
+
+        var turn = MakeOrchestrator().Run([supply, recipient], maxDays: 0);
+
+        Assert.Equal(30, turn.Units.Single(unit => unit.Id == recipient.Id).Provisions);
+        Assert.Equal(999, turn.Units.Single(unit => unit.Id == supply.Id).Provisions);
+    }
+
+    [Fact]
     public void 적없으면_이동만_전투없음()
     {
         var a = Sword(1, 1, new HexCoord(0, 0)) with
