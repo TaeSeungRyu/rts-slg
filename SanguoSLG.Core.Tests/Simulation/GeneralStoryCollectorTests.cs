@@ -7,6 +7,22 @@ using Xunit;
 public sealed class GeneralStoryCollectorTests
 {
     [Fact]
+    public void 정찰_계략과_동맹은_서로_다른_대화로_분류한다()
+    {
+        var state = new GameState(7, 190, [], [],
+            [new General(new(1), "관우", new Dictionary<TroopClass, AptitudeGrade>(), 90, 60, 40)]);
+        var events = new WorldEvent[]
+        {
+            new(WorldEventKind.StratagemSuccess, new(1), new GeneralId(1)),
+            new(WorldEventKind.StratagemFail, new(1), new GeneralId(1)),
+            new(WorldEventKind.AllianceSuccess, new(1), new GeneralId(1)),
+        };
+
+        Assert.Equal(new[] { "stratagem", "stratagem", "diplomacy" },
+            GeneralStoryCollector.Collect(state, state, [], [], events).Select(candidate => candidate.Kind));
+    }
+
+    [Fact]
     public void 실제_세계사건만_후보로_만들고_높은_우선순위를_먼저_저장한다()
     {
         var state = new GameState(7, 190, [], [],
