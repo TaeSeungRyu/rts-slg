@@ -7561,6 +7561,7 @@ public sealed partial class CampaignMapScene : Node3D
         AddCell(g4, Sym.Ore, "광석", $"{c.Ore}");
         if (c.IsPort)
         {
+            AddCell(g4, Sym.Scroll, "보유 선박", $"{_state.PortShips.Where(stock => stock.City == c.Id).Sum(stock => stock.Count):N0}척");
             var portInfo = MakeLabel(
                 $"항구: {PortSizeName(c.Port)} · 항구 주 수입 금 +{PortWeeklyGold(c)}, 군량 +{PortWeeklyProvisions(c)}\n"
                 + $"저장 선박: {PortShipStockSummary(c.Id)}\n"

@@ -469,11 +469,25 @@ public sealed partial class CampaignMapScene
         var deployTableLayout = deployRows >= 1 && deployPortraits >= 1;
         _pendingDeploys.RemoveAt(_pendingDeploys.Count - 1);
         _cityDetailTab = originalTab;
+        var port = _state.Cities.FirstOrDefault(c => c.Owner == Player && c.IsPort);
+        var portShipsShown = false;
+        if (port is not null)
+        {
+            OpenCityDetail(port.Id);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var portLabels = _modalLayer?.FindChildren("*", "Label", true, false)
+                .OfType<Label>().Select(label => label.Text).ToArray() ?? [];
+            var shipCount = _state.PortShips.Where(stock => stock.City == port.Id).Sum(stock => stock.Count);
+            portShipsShown = portLabels.Contains("보유 선박")
+                && portLabels.Contains($"{shipCount:N0}척")
+                && portLabels.Any(text => text.Contains("저장 선박:", StringComparison.Ordinal));
+            CloseModal();
+        }
         var passed = expected > 0 && roundedGarrisons && mapWheelBlocked && stationedInternalScroll
-            && noObsoleteResources
+            && noObsoleteResources && portShipsShown
             && commandTableLayout && deployTableLayout
             && stationedGoldPortraits && commandGoldPortraits && deployGoldPortraits;
-        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} noObsoleteResources={noObsoleteResources} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} modalHeight={modalHeight} tabHeight={tabHeight} commandRows={commandRows}:{commandTableLayout} deployRows={deployRows}:{deployTableLayout} goldPortraits={stationedGoldPortraits}/{commandGoldPortraits}/{deployGoldPortraits}");
+        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} noObsoleteResources={noObsoleteResources} portShipsShown={portShipsShown} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} modalHeight={modalHeight} tabHeight={tabHeight} commandRows={commandRows}:{commandTableLayout} deployRows={deployRows}:{deployTableLayout} goldPortraits={stationedGoldPortraits}/{commandGoldPortraits}/{deployGoldPortraits}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
