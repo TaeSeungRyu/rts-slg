@@ -14,6 +14,8 @@ public sealed partial class CampaignMapScene
     private bool _storyReportWasVisible;
     private string? _storyOpenId;
     private CanvasLayer? _storySpeechLayer;
+    private PanelContainer? _storySpeechPanel;
+    private GeneralStoryEvent? _storySpeechAnchor;
     private double _storySpeechRemaining;
     private double _storySpeechClock;
     private int _storySpeechIndex;
@@ -36,11 +38,14 @@ public sealed partial class CampaignMapScene
     {
         if (_storySpeechLayer is not null)
         {
+            UpdateStorySpeechPosition();
             _storySpeechRemaining -= delta;
             if (_storySpeechRemaining <= 0)
             {
                 _storySpeechLayer.QueueFree();
                 _storySpeechLayer = null;
+                _storySpeechPanel = null;
+                _storySpeechAnchor = null;
             }
         }
         if (_advancing && _storySpeechIndex < _storySpeechEvents.Length)
@@ -64,6 +69,23 @@ public sealed partial class CampaignMapScene
         if (_storySpeechLayer is not null) { _storySpeechLayer.QueueFree(); _storySpeechLayer = null; }
         var camera = GetViewport().GetCamera3D();
         if (camera is null) return;
+        _storySpeechAnchor = story;
+        Vector3? world = StorySpeechWorldPosition(story);
+        if (world is null || camera.IsPositionBehind(world.Value)) return;
+        var layer = new CanvasLayer { Layer = 31 };
+        AddChild(layer);
+        var speech = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        speech.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 1, 9, 8));
+        layer.AddChild(speech);
+        speech.AddChild(MakeLabel($"{StorySpeakerName(story.Speaker)}: {StoryShortLine(story)}", 12, Parchment));
+        _storySpeechLayer = layer;
+        _storySpeechPanel = speech;
+        _storySpeechRemaining = 2.2;
+        UpdateStorySpeechPosition();
+    }
+
+    private Vector3? StorySpeechWorldPosition(GeneralStoryEvent story)
+    {
         Vector3? world = _state.Armies.FirstOrDefault(u => u.VanguardId == story.Speaker
             || u.AdjutantId == story.Speaker) is { } unit
                 && _armyTokens.TryGetValue(unit.Id.Value, out var token) && IsInstanceValid(token)
@@ -71,17 +93,19 @@ public sealed partial class CampaignMapScene
         if (world is null && story.City is { } cityId
             && _cityModels.TryGetValue(cityId.Value, out var cityModel) && IsInstanceValid(cityModel))
             world = cityModel.GlobalPosition;
-        if (world is null || camera.IsPositionBehind(world.Value)) return;
-        var point = camera.UnprojectPosition(world.Value + Vector3.Up * 1.1f);
-        var layer = new CanvasLayer { Layer = 31 };
-        AddChild(layer);
-        var speech = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        speech.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 1, 9, 8));
-        layer.AddChild(speech);
-        speech.AddChild(MakeLabel($"{StorySpeakerName(story.Speaker)}: {StoryShortLine(story)}", 12, Parchment));
-        speech.Position = point + new Vector2(-80, -36);
-        _storySpeechLayer = layer;
-        _storySpeechRemaining = 2.2;
+        return world;
+    }
+
+    private void UpdateStorySpeechPosition()
+    {
+        if (_storySpeechPanel is null || _storySpeechAnchor is null) return;
+        var camera = GetViewport().GetCamera3D();
+        var world = StorySpeechWorldPosition(_storySpeechAnchor);
+        _storySpeechPanel.Visible = camera is not null && world is not null
+            && !camera.IsPositionBehind(world.Value);
+        if (_storySpeechPanel.Visible)
+            _storySpeechPanel.Position = camera!.UnprojectPosition(world!.Value + Vector3.Up * 1.1f)
+                + new Vector2(-80, -36);
     }
 
     private void ShowStoryModal(GeneralStoryEvent story, bool replay)
@@ -283,6 +307,18 @@ public sealed partial class CampaignMapScene
             if (speaker is null || city is null) throw new System.InvalidOperationException("플레이어 장수/도시 없음");
             var story = new GeneralStoryEvent("qa:story", "capture", _state.Day, 1,
                 Player, speaker.Id, null, city.Id, 0);
+            ShowStorySpeech(story);
+            var speechTracksWorld = _storySpeechPanel is null;
+            if (_storySpeechPanel is not null)
+            {
+                _storySpeechPanel.Position = Vector2.Zero;
+                UpdateStorySpeechPosition();
+                speechTracksWorld = _storySpeechPanel.Position != Vector2.Zero;
+                _storySpeechLayer?.QueueFree();
+                _storySpeechLayer = null;
+                _storySpeechPanel = null;
+                _storySpeechAnchor = null;
+            }
             _state = _state with { PendingStoryEvents = _state.StoryPending.Append(story).ToArray() };
             var reportWasVisible = _reportPanel.Visible;
             ShowStoryModal(story, false);
@@ -317,8 +353,8 @@ public sealed partial class CampaignMapScene
                 .FirstOrDefault(b => b.Text == "확인");
             done?.EmitSignal(Button.SignalName.Pressed);
             var choiceResolved = !_storyOpen && _state.StoryHistory.Any(e => e.Id == choiceStory.Id && e.Choice == "b");
-            var passed = ratioOk && portraitFitOk && hidden && restored && replayReadOnly && choicesVisible && choiceResolved;
-            GD.Print($"[general-story-qa] passed={passed} ratio={ratioOk} portraitFit={portraitFitOk} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved}");
+            var passed = speechTracksWorld && ratioOk && portraitFitOk && hidden && restored && replayReadOnly && choicesVisible && choiceResolved;
+            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} ratio={ratioOk} portraitFit={portraitFitOk} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (System.Exception error)
