@@ -3945,6 +3945,10 @@ public sealed partial class CampaignMapScene : Node3D
         var preMove = _state; // 이동 전(편성·AI 반영) — 애니메이션 시작 위치
         var startHex = preMove.Armies.ToDictionary(u => u.Id.Value, u => u.Field.Position);
         var after = _engine.AdvanceWeek(preMove, out var turns, out var sieges, out var captures, out var plunders, out var casualties);
+        _storySpeechEvents = after.StoryPending.Where(e => e.Faction == Player)
+            .OrderBy(e => e.Priority).ThenBy(e => e.Id, System.StringComparer.Ordinal).Take(2).ToArray();
+        _storySpeechClock = 0;
+        _storySpeechIndex = 0;
         LogEventHuntState(after);
         _pendingExplorationResults.Clear();
         _pendingExplorationResults.AddRange(after.Discoveries.Skip(preMove.Discoveries.Count).Where(d => d.Faction == Player));
@@ -4836,6 +4840,7 @@ public sealed partial class CampaignMapScene : Node3D
             ShowNotice("선전 포고를 받았습니다", string.Join("\n", _incomingWarDeclarations));
             _incomingWarDeclarations.Clear();
         }
+        PrepareStoryAfterAdvance();
     }
 
     private bool IsModalBlockingMapNavigation()
@@ -6108,6 +6113,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 줌/이동 중에도 팔레트가 선택한 성을 따라가도록 갱신.
     public override void _Process(double delta)
     {
+        TickStoryPresentation(delta);
         foreach (var (marker, unitId, offset) in _movingSupplyMarkers)
         {
             if (!_armyTokens.TryGetValue(unitId, out var token) || !IsInstanceValid(token)) { continue; }
@@ -6950,6 +6956,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void CloseModal()
     {
+        if (_storyOpen) { CloseStoryModal(); return; }
         var dismissAction = _modalDismissAction;
         _modalDismissAction = null;
         _openCityDetailCity = null;
@@ -6980,6 +6987,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private bool CloseAnyModalOrPanel()
     {
+        if (_storyOpen) { CloseStoryModal(); return true; }
         if (_confirmLayer is not null)
         {
             _confirmLayer.QueueFree();
@@ -17653,6 +17661,7 @@ public sealed partial class CampaignMapScene : Node3D
             l.CustomMinimumSize = new Vector2(mw - 40, 0);
             body.AddChild(l);
         }
+        AddStoryReplayButtons(body);
 
         bodyScroll.SetDeferred("scroll_vertical", 100000); // 최신(아래)으로
     }
