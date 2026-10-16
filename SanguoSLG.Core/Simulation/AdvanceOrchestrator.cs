@@ -14,7 +14,7 @@ using SanguoSLG.Core.Spatial;
 /// </summary>
 public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
 {
-    public const int DefaultResupplyRadius = 4;
+    public const int DefaultResupplyRadius = 3;
     private readonly MovementSimulator _movement;
     private readonly CombatPhaseResolver _combat;
     private readonly int _woundedPercent;

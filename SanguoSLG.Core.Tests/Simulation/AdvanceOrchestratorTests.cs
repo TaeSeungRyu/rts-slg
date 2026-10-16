@@ -98,9 +98,9 @@ public class AdvanceOrchestratorTests
     }
 
     [Theory]
-    [InlineData(4, 10000)]
-    [InlineData(5, 9500)]
-    public void 보급은_기본_반경_4칸까지만_도달한다(int distance, int expectedTroops)
+    [InlineData(3, 10000)]
+    [InlineData(4, 9500)]
+    public void 보급은_기본_반경_3칸까지만_도달한다(int distance, int expectedTroops)
     {
         var supply = Sword(1, 1, new HexCoord(0, 0)) with
         { IsSupply = true, Provisions = 1000 };
