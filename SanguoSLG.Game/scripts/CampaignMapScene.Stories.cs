@@ -240,7 +240,7 @@ public sealed partial class CampaignMapScene
 
     private void AddStoryChoices(HBoxContainer actions, GeneralStoryEvent story, Label line)
     {
-        if (story.Kind == "low_food")
+        if (story.Kind is "low_food" or "beast_defeated")
         {
             var acknowledge = MakeButton("확인", accent: true);
             acknowledge.Pressed += () =>
@@ -285,7 +285,6 @@ public sealed partial class CampaignMapScene
         switch (story.Kind)
         {
             case "beast_appeared":
-            case "beast_defeated":
                 OpenTreasureList();
                 break;
             case "research":
@@ -435,8 +434,19 @@ public sealed partial class CampaignMapScene
             _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
                 .FirstOrDefault(button => button.Text == "확인")?.EmitSignal(Button.SignalName.Pressed);
             warningOnly &= !_storyOpen && _state.StoryHistory.Any(e => e.Id == warningStory.Id);
-            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly;
-            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} doneAligned={doneAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly}");
+            var defeatedStory = story with { Id = "qa:beast-defeated", Kind = "beast_defeated" };
+            _state = _state with { PendingStoryEvents = _state.StoryPending.Append(defeatedStory).ToArray() };
+            ShowStoryModal(defeatedStory, false);
+            _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+                .FirstOrDefault(button => button.Text == "다음 ▶")?.EmitSignal(Button.SignalName.Pressed);
+            var beastButtons = _modalLayer?.FindChildren("*", "Button", true, false)
+                .OfType<Button>().Select(button => button.Text).ToArray() ?? [];
+            var beastConfirmOnly = beastButtons.Contains("확인") && !beastButtons.Contains("보상 내역 보기");
+            _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+                .FirstOrDefault(button => button.Text == "확인")?.EmitSignal(Button.SignalName.Pressed);
+            beastConfirmOnly &= !_storyOpen && _state.StoryHistory.Any(e => e.Id == defeatedStory.Id);
+            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly && beastConfirmOnly;
+            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} doneAligned={doneAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly} beastConfirmOnly={beastConfirmOnly}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (System.Exception error)
