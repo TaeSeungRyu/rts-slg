@@ -7559,7 +7559,6 @@ public sealed partial class CampaignMapScene : Node3D
         AddCell(g4, Sym.Wall, "성벽", $"{c.Wall}");
         AddCell(g4, Sym.Shield, "부상병", WoundedForCity(c.Id));
         AddCell(g4, Sym.Ore, "광석", $"{c.Ore}");
-        AddCell(g4, Sym.Ore, "말/코끼리", $"{c.Horses}/{c.Elephants}");
         if (c.IsPort)
         {
             var portInfo = MakeLabel(

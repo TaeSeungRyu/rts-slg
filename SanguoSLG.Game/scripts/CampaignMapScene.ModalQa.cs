@@ -404,6 +404,8 @@ public sealed partial class CampaignMapScene
         OpenCityDetail(city.Id);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var noObsoleteResources = _modalLayer?.FindChildren("*", "Label", true, false)
+            .OfType<Label>().All(label => !label.Text.Contains("말/코끼리", StringComparison.Ordinal)) == true;
         var garrisonFrames = _modalLayer?.FindChildren("*", "PanelContainer", true, false)
             .OfType<PanelContainer>()
             .Where(panel => panel.HasMeta("rounded_garrison_art")
@@ -468,9 +470,10 @@ public sealed partial class CampaignMapScene
         _pendingDeploys.RemoveAt(_pendingDeploys.Count - 1);
         _cityDetailTab = originalTab;
         var passed = expected > 0 && roundedGarrisons && mapWheelBlocked && stationedInternalScroll
+            && noObsoleteResources
             && commandTableLayout && deployTableLayout
             && stationedGoldPortraits && commandGoldPortraits && deployGoldPortraits;
-        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} modalHeight={modalHeight} tabHeight={tabHeight} commandRows={commandRows}:{commandTableLayout} deployRows={deployRows}:{deployTableLayout} goldPortraits={stationedGoldPortraits}/{commandGoldPortraits}/{deployGoldPortraits}");
+        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} noObsoleteResources={noObsoleteResources} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} modalHeight={modalHeight} tabHeight={tabHeight} commandRows={commandRows}:{commandTableLayout} deployRows={deployRows}:{deployTableLayout} goldPortraits={stationedGoldPortraits}/{commandGoldPortraits}/{deployGoldPortraits}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
