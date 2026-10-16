@@ -1647,7 +1647,6 @@ public sealed partial class CampaignMapScene : Node3D
         if (!_visibleTiles.Contains(ruin.Position))
         {
             HidePanels();
-            ShowNotice("시야 밖", "아군 성·부대를 가까이 이동시키면 유적 정보를 확인할 수 있습니다.");
             return;
         }
         _selected = null;
@@ -1714,7 +1713,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (!CanPlayerSeeFieldBuilding(building)) return;
         if (building.Owner != Player && !_visibleTiles.Contains(building.Position))
-        { ShowNotice("시야 밖", "아군 시야 안의 야전 건축물만 확인할 수 있습니다."); return; }
+        { HidePanels(); return; }
         HidePanels();
         var definition = _fieldBuildingDefinitions.FirstOrDefault(x => x.Code == building.DefinitionCode);
         if (definition is null) return;
@@ -2431,7 +2430,6 @@ public sealed partial class CampaignMapScene : Node3D
         if (!_visibleTiles.Contains(h))
         {
             HidePanels();
-            ShowNotice("시야 밖", "아군 성·부대를 가까이 이동시키거나 적 성을 정찰하면 주변 정보를 볼 수 있습니다.");
             return;
         }
         _selected = null;
