@@ -88,7 +88,7 @@ public static class GeneralStoryChoices
                 {
                     "beast_appeared" or "beast_defeated" => "단서·보물 보관함을 엽니다.",
                     "research" => "후속 연구 화면을 확인합니다.",
-                    "low_food" => "해당 부대의 군량을 확인합니다.",
+                    "low_food" => "식량이 없으면 부대가 탈주합니다.",
                     _ => "대화를 기록했습니다. 추가 자원은 지급하지 않습니다.",
                 };
                 break;

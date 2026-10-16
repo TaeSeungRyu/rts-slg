@@ -70,6 +70,18 @@ public sealed class GeneralStoryChoicesTests
     }
 
     [Fact]
+    public void 군량_부족_알림은_탈주_위험만_알리고_자원을_변경하지_않는다()
+    {
+        var before = State("low_food");
+        var result = GeneralStoryChoices.Apply(before, "story:1", "a");
+
+        Assert.True(result.Ok);
+        Assert.Contains("식량이 없으면 부대가 탈주", result.Message);
+        Assert.Equal(before.Cities, result.State.Cities);
+        Assert.Empty(result.State.StoryPending);
+    }
+
+    [Fact]
     public void 부상병은_군량을_소비하고_실제_부상자만_회복한다()
     {
         var field = new FieldUnit(new(42), new(1), new HexCoord(1, 1), 1, 1, 1,

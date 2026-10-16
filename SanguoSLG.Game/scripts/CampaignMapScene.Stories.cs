@@ -240,6 +240,17 @@ public sealed partial class CampaignMapScene
 
     private void AddStoryChoices(HBoxContainer actions, GeneralStoryEvent story, Label line)
     {
+        if (story.Kind == "low_food")
+        {
+            var acknowledge = MakeButton("확인", accent: true);
+            acknowledge.Pressed += () =>
+            {
+                _state = GeneralStorySelector.Resolve(_state, story.Id, "acknowledged");
+                CloseStoryModal();
+            };
+            actions.AddChild(acknowledge);
+            return;
+        }
         var definition = _storyDefinitions.FirstOrDefault(d => d.Kind == story.Kind);
         foreach (var (choice, label) in new[]
             { ("a", definition?.OptionA ?? "확인"), ("b", definition?.OptionB ?? "넘어가기") })
@@ -284,13 +295,6 @@ public sealed partial class CampaignMapScene
                         : FactionResearch.IsStratagemResearch(story.Code) ? "stratagem_research" : "troop";
                     var index = System.Array.FindIndex(Cmds, c => c.Kind == CommandKind.Research && c.Param == lane);
                     if (index >= 0) OpenModal(index);
-                }
-                break;
-            case "low_food":
-                if (int.TryParse(story.Code, out var id))
-                {
-                    var unit = _state.Armies.FirstOrDefault(u => u.Id.Value == id && u.Field.Owner == Player);
-                    if (unit is not null) { OpenUnitMenu(unit); ShowUnitInfo(id); }
                 }
                 break;
         }
@@ -413,8 +417,20 @@ public sealed partial class CampaignMapScene
             OpenStoryReplay(choiceStory.Id);
             var reportReplay = _storyOpen && _storyOpenId is null;
             CloseStoryModal();
-            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay;
-            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay}");
+            var warningStory = story with { Id = "qa:low-food", Kind = "low_food" };
+            _state = _state with { PendingStoryEvents = _state.StoryPending.Append(warningStory).ToArray() };
+            ShowStoryModal(warningStory, false);
+            _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+                .FirstOrDefault(button => button.Text == "다음 ▶")?.EmitSignal(Button.SignalName.Pressed);
+            var warningButtons = _modalLayer?.FindChildren("*", "Button", true, false)
+                .OfType<Button>().Select(button => button.Text).ToArray() ?? [];
+            var warningOnly = warningButtons.Contains("확인") && !warningButtons.Contains("보급 준비")
+                && !warningButtons.Contains("행군 유지");
+            _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+                .FirstOrDefault(button => button.Text == "확인")?.EmitSignal(Button.SignalName.Pressed);
+            warningOnly &= !_storyOpen && _state.StoryHistory.Any(e => e.Id == warningStory.Id);
+            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly;
+            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (System.Exception error)
