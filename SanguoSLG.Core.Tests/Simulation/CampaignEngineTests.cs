@@ -502,6 +502,27 @@ public class CampaignEngineTests
     }
 
     [Fact]
+    public void 성_보급권의_천명_부대도_한_진행에_군량이_줄어든다()
+    {
+        var map = new HexMap(0, 15, 0, 15);
+        var movement = new MovementSimulator(new PassabilityMap(map, [], []));
+        var field = new SanguoSLG.Core.Simulation.RenewalMovement.RenewalCampaignAdvanceRunner(map,
+            new AdvanceOrchestrator(movement, new CombatPhaseResolver(new BattleResolver(60), 70)));
+        var engine = new CampaignEngine(field, new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)),
+            cityResupplyRadius: 3);
+        var city = new City(new CityId(1), "성", new HexCoord(5, 5), new FactionId(1), Provisions: 5000);
+        var unit = Army(1, 1, new HexCoord(6, 5), UnitMode.Standby, target: null) with
+        {
+            Pool = new TroopPool(1000, 0), Provisions = 125, ProvisionsCapacity = 1250,
+        };
+        var state = new GameState(1, 1, [], [city], [], FieldArmies: [unit]);
+
+        var after = engine.AdvanceWeek(state, out _);
+
+        Assert.Equal(118, Assert.Single(after.Armies).Provisions);
+    }
+
+    [Fact]
     public void 진행_1번은_야전이_있든_없든_정확히_7일이다()
     {
         var e = Engine();

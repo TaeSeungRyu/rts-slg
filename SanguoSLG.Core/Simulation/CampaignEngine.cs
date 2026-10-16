@@ -187,9 +187,9 @@ public sealed class CampaignEngine
                 .SelectMany(c => CastleFootprint.TilesFor(c).Select(tile => (tile, c.Id)))
                 .ToDictionary(x => x.tile, x => x.Id);
 
-            // 성 보급(2026-08-20): 이동 전, 아군 성 반경 안의 아군 야전 부대 군량을 성 비축에서 채운다
-            //  — 성문 앞 대기·수비 부대가 굶지 않도록(보급부대와 같은 원리, 성이 고정 보급원).
-            if (_cityResupplyRadius > 0)
+            // 성 보급은 '진행' 시작에 한 번만 한다. 하루 조각마다 최대치로 채우면
+            // 주간 소모가 매일 상쇄되어 출전 부대의 휴대 군량이 줄지 않는다.
+            if (_cityResupplyRadius > 0 && remaining == WeekDays)
             {
                 (work, armies) = ResupplyFromCities(work, armies);
             }
