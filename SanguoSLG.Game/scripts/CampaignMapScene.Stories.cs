@@ -27,7 +27,8 @@ public sealed partial class CampaignMapScene
             .OrderBy(e => e.Priority).ThenBy(e => e.Id, System.StringComparer.Ordinal).ToArray();
         if (stories.Length == 0) return;
         foreach (var story in stories)
-            Report($"[장수 대화] {StoryTitle(story)} · {StorySpeakerName(story.Speaker)}", Gold, story.Speaker);
+            Report($"[장수 대화] {StoryTitle(story)} · {StorySpeakerName(story.Speaker)}", Gold,
+                story.Speaker, story.Id);
         // 한 진행당 한 장면만 띄운다. 나머지는 전체 보고에서 다시 읽을 수 있다.
         foreach (var story in stories.Skip(1))
             _state = GeneralStorySelector.Resolve(_state, story.Id, "report_only");
@@ -214,7 +215,8 @@ public sealed partial class CampaignMapScene
                 var result = GeneralStoryChoices.Apply(_state, story.Id, choice, _balance);
                 if (!result.Ok) { line.Text = result.Message; return; }
                 _state = result.State;
-                Report($"[장수 대화] {StoryTitle(story)} · {result.Message}", Gold, story.Speaker);
+                Report($"[장수 대화] {StoryTitle(story)} · {result.Message}", Gold,
+                    story.Speaker, story.Id);
                 line.Text = result.Message;
                 foreach (var child in actions.GetChildren()) child.QueueFree();
                 var done = MakeButton("확인", accent: true);
@@ -258,20 +260,26 @@ public sealed partial class CampaignMapScene
         }
     }
 
-    private void AddStoryReplayButtons(VBoxContainer body)
+    private void ConnectStoryReportLabel(Label label, string storyId)
     {
-        var stories = _state.StoryHistory.Where(e => e.Faction == Player)
-            .OrderByDescending(e => e.Day).Take(30).ToArray();
-        if (stories.Length == 0) return;
-        body.AddChild(GoldRule());
-        body.AddChild(MakeLabel("지난 장수 대화", 16, GoldBright));
-        foreach (var story in stories)
+        label.SetMeta("story_replay_id", storyId);
+        label.MouseFilter = Control.MouseFilterEnum.Stop;
+        label.MouseDefaultCursorShape = Control.CursorShape.PointingHand;
+        label.MouseEntered += () => label.Modulate = GoldBright;
+        label.MouseExited += () => label.Modulate = Colors.White;
+        label.GuiInput += input =>
         {
-            var saved = story;
-            var button = MakeButton($"{story.Day}일 · {StoryTitle(story)} · {StorySpeakerName(story.Speaker)}");
-            button.Pressed += () => { CloseModal(); ShowStoryModal(saved, true); };
-            body.AddChild(button);
-        }
+            if (input is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) return;
+            OpenStoryReplay(storyId);
+        };
+    }
+
+    private void OpenStoryReplay(string storyId)
+    {
+        var saved = _state.StoryHistory.FirstOrDefault(story => story.Id == storyId && story.Faction == Player);
+        if (saved is null) return;
+        if (_modalLayer is not null) CloseModal();
+        ShowStoryModal(saved, true);
     }
 
     private string StorySpeakerName(GeneralId id)
@@ -360,8 +368,15 @@ public sealed partial class CampaignMapScene
                 .FirstOrDefault(b => b.Text == "확인");
             done?.EmitSignal(Button.SignalName.Pressed);
             var choiceResolved = !_storyOpen && _state.StoryHistory.Any(e => e.Id == choiceStory.Id && e.Choice == "b");
-            var passed = speechTracksWorld && ratioOk && portraitFitOk && nextAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved;
-            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved}");
+            OpenFullLog();
+            var logLink = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
+                .Any(label => label.HasMeta("story_replay_id")
+                    && label.GetMeta("story_replay_id").AsString() == choiceStory.Id) == true;
+            OpenStoryReplay(choiceStory.Id);
+            var reportReplay = _storyOpen && _storyOpenId is null;
+            CloseStoryModal();
+            var passed = speechTracksWorld && ratioOk && portraitFitOk && nextAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay;
+            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (System.Exception error)

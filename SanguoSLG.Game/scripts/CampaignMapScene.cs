@@ -94,7 +94,7 @@ public sealed partial class CampaignMapScene : Node3D
     private const int ReportHistoryMax = 300;      // 전체 로그 보관 상한(오래된 것부터 버림)
     private readonly List<(string Text, Color Color, GeneralId? Portrait)> _pendingReport = new(); // 이번 진행 결과(재생 끝나면 flush)
     private readonly List<string> _incomingWarDeclarations = new();
-    private readonly List<(string Text, Color Color)> _reportHistory = new(); // 전체 로그(스크롤 열람용)
+    private readonly List<(string Text, Color Color, string? StoryId)> _reportHistory = new(); // 전체 로그(스크롤 열람용)
     private readonly List<ExplorationDiscovery> _pendingExplorationResults = new();
     private Label _log = null!;
 
@@ -17545,17 +17545,18 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 보고 한 줄 추가 — 전체 히스토리(캡 300)에 쌓고, 좌하단엔 최근 ReportMax줄만 보인다. color로 사건 성격 구분.
-    private void Report(string text, Color? color = null, GeneralId? portrait = null)
+    private void Report(string text, Color? color = null, GeneralId? portrait = null, string? storyId = null)
     {
         if (_reportBox is null) { return; }
         var c = color ?? Parchment;
-        _reportHistory.Add((text, c));
+        _reportHistory.Add((text, c, storyId));
         while (_reportHistory.Count > ReportHistoryMax) { _reportHistory.RemoveAt(0); }
 
         Control reportRow;
         var l = MakeLabel(text, 12, c);
         l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         l.CustomMinimumSize = new Vector2(300, 0);
+        if (storyId is not null) ConnectStoryReportLabel(l, storyId);
         if (portrait is { } generalId)
         {
             var row = new HBoxContainer();
@@ -17657,14 +17658,14 @@ public sealed partial class CampaignMapScene : Node3D
         bodyScroll.AddChild(body);
 
         if (_reportHistory.Count == 0) { body.AddChild(MakeLabel("(기록 없음)", 12, Parchment)); }
-        foreach (var (text, color) in _reportHistory)
+        foreach (var (text, color, storyId) in _reportHistory)
         {
             var l = MakeLabel(text, 12, color);
             l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             l.CustomMinimumSize = new Vector2(mw - 40, 0);
+            if (storyId is not null) ConnectStoryReportLabel(l, storyId);
             body.AddChild(l);
         }
-        AddStoryReplayButtons(body);
 
         bodyScroll.SetDeferred("scroll_vertical", 100000); // 최신(아래)으로
     }
