@@ -490,6 +490,12 @@ public sealed class CampaignEngine
                 new Dictionary<FactionId, IReadOnlySet<HexCoord>>(), advanced.Day);
             advanced = expiry.State;
         }
+        var storyCandidates = GeneralStoryCollector.Collect(state, advanced, reports,
+            captureReports, LastWorldEvents);
+        foreach (var faction in storyCandidates.Select(c => c.Faction).Distinct().OrderBy(f => f.Value))
+        {
+            advanced = GeneralStorySelector.Queue(advanced, storyCandidates, faction);
+        }
         var completedAtEnd = advanced.Buildings
             .Where(x => x.BuilderUnit is not null && x.IsCompleted(advanced.Day))
             .Select(x => x.BuilderUnit!.Value)
