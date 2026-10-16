@@ -100,7 +100,21 @@ public sealed partial class CampaignMapScene
         var speech = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         speech.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 1, 9, 8));
         layer.AddChild(speech);
-        speech.AddChild(MakeLabel($"{StorySpeakerName(story.Speaker)}: {StoryShortLine(story)}", 12, Parchment));
+        var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", 7);
+        speech.AddChild(row);
+        row.AddChild(new TextureRect
+        {
+            Name = "StorySpeechPortrait",
+            Texture = CircularPortraitFor(story.Speaker),
+            CustomMinimumSize = new Vector2(30, 30),
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        });
+        var text = MakeLabel($"{StorySpeakerName(story.Speaker)}  {StoryShortLine(story)}", 12, Parchment);
+        text.MouseFilter = Control.MouseFilterEnum.Ignore;
+        row.AddChild(text);
         _storySpeechLayer = layer;
         _storySpeechPanel = speech;
         _storySpeechRemaining = 2.2;
@@ -341,6 +355,8 @@ public sealed partial class CampaignMapScene
                 Player, speaker.Id, null, city.Id, 0);
             ShowStorySpeech(story);
             var speechTracksWorld = _storySpeechPanel is null;
+            var speechPortrait = _storySpeechPanel?.FindChild("StorySpeechPortrait", true, false) is TextureRect speechImage
+                && speechImage.Texture is not null && speechImage.CustomMinimumSize.X == 30f;
             if (_storySpeechPanel is not null)
             {
                 _storySpeechPanel.Position = Vector2.Zero;
@@ -397,8 +413,8 @@ public sealed partial class CampaignMapScene
             OpenStoryReplay(choiceStory.Id);
             var reportReplay = _storyOpen && _storyOpenId is null;
             CloseStoryModal();
-            var passed = speechTracksWorld && ratioOk && portraitFitOk && nextAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay;
-            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay}");
+            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay;
+            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (System.Exception error)
