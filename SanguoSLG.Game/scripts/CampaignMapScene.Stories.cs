@@ -2,12 +2,14 @@ namespace SanguoSLG.Game;
 
 using System.Linq;
 using Godot;
+using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
 
 public sealed partial class CampaignMapScene
 {
     private bool _storyAwaitingCard;
+    private IReadOnlyList<GeneralStoryDefinition> _storyDefinitions = [];
     private bool _storyOpen;
     private bool _storyReportWasVisible;
     private string? _storyOpenId;
@@ -177,24 +179,26 @@ public sealed partial class CampaignMapScene
     private string StorySpeakerName(GeneralId id)
         => _state.Generals.FirstOrDefault(g => g.Id == id)?.Name ?? "장수";
 
-    private static string StoryTitle(GeneralStoryEvent story) => story.Kind switch
-    {
-        "capture" => "새 성의 첫날", "victory" => "승전 논공", "beast_defeated" => "신수 사냥 뒤의 대화",
-        "beast_appeared" => "신수의 흔적", "growth" => "장수 성장", "research" => "연구 완수 토론",
-        "production" => "생산 귀환", "diplomacy" => "외교 보고", _ => "전장 소식",
-    };
+    private string StoryTitle(GeneralStoryEvent story)
+        => _storyDefinitions.FirstOrDefault(d => d.Kind == story.Kind)?.Title ?? "전장 소식";
 
-    private static string StoryShortLine(GeneralStoryEvent story)
-        => story.Kind switch
-        {
-            "capture" => "새 성을 얻었습니다.", "victory" => "적을 물리쳤습니다!",
-            "beast_defeated" => "신수를 쓰러뜨렸습니다.", "growth" => "한층 성장했습니다.",
-            _ => "새로운 소식이 있습니다.",
-        };
+    private string StoryShortLine(GeneralStoryEvent story)
+        => StoryLines(story)[0].Replace($"{StorySpeakerName(story.Speaker)}: ", "");
 
     private string[] StoryLines(GeneralStoryEvent story)
-        => [$"{StorySpeakerName(story.Speaker)}: {StoryShortLine(story)}",
-            story.SecondSpeaker is { } second
-                ? $"{StorySpeakerName(second)}: 이 성과를 함께 기억하겠습니다."
-                : "이 결과를 보고에 남기겠습니다."];
+    {
+        var definition = _storyDefinitions.FirstOrDefault(d => d.Kind == story.Kind);
+        if (definition is null) return [$"{StorySpeakerName(story.Speaker)}: 새로운 소식이 있습니다.", "보고에 기록했습니다."];
+        var city = story.City is { } cityId
+            ? _state.Cities.FirstOrDefault(c => c.Id == cityId)?.Name ?? "도시" : "도시";
+        var second = story.SecondSpeaker is { } secondId ? StorySpeakerName(secondId) : StorySpeakerName(story.Speaker);
+        var result = definition.Variants[story.Variant % definition.Variants.Count]
+            .Select(line => line.Replace("{speaker}", StorySpeakerName(story.Speaker))
+                .Replace("{second}", second).Replace("{city}", city)
+                .Replace("{amount}", story.Amount.ToString("N0"))).ToList();
+        if (definition.VoiceLines is not null
+            && definition.VoiceLines.TryGetValue(story.Speaker.Value, out var voice)
+            && result.Count < 4) result.Add($"{StorySpeakerName(story.Speaker)}: {voice}");
+        return result.ToArray();
+    }
 }

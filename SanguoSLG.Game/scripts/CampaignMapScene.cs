@@ -520,6 +520,7 @@ public sealed partial class CampaignMapScene : Node3D
         _camera = camera;
         _camera.InputBlocked = IsModalBlockingMapNavigation;
         _dataDirectory = dataDirectory;
+        _storyDefinitions = new GeneralStoryLoader().LoadFromDirectory(dataDirectory);
         _font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
 
         _troops = new TroopCatalogLoader().LoadFromDirectory(dataDirectory);
