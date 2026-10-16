@@ -3948,7 +3948,7 @@ public sealed partial class CampaignMapScene : Node3D
         _storySpeechEvents = CombatSpeechEvents(preMove, turns)
             .Concat(after.StoryPending.Where(e => e.Faction == Player && e.Kind != "growth")
                 .OrderBy(e => e.Priority).ThenBy(e => e.Id, System.StringComparer.Ordinal))
-            .Take(2).ToArray();
+            .Take(3).ToArray();
         _storySpeechClock = 0;
         _storySpeechIndex = 0;
         LogEventHuntState(after);

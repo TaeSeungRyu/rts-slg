@@ -32,14 +32,14 @@ public sealed partial class CampaignMapScene
             .OrderBy(entry => entry.day).ThenBy(entry => entry.Attacker.Value)
             .Where(entry => units.TryGetValue(entry.Attacker, out var unit)
                 && unit.Field.Owner == Player && unit.VanguardId is not null
-                && ((long)before.Day * 31 + entry.day * 17 + entry.Attacker.Value) % 4 == 0)
-            .Take(2)
+                && ((long)before.Day * 31 + entry.day * 17 + entry.Attacker.Value) % 2 == 0)
+            .Take(3)
             .Select(entry =>
             {
                 var unit = units[entry.Attacker];
                 return new GeneralStoryEvent($"combat-bark:{before.Day}:{entry.day}:{entry.Attacker.Value}",
                     "combat_bark", before.Day + entry.day, 3, Player, unit.VanguardId!.Value,
-                    unit.AdjutantId, null, (before.Day + entry.day + entry.Attacker.Value) % 3);
+                    unit.AdjutantId, null, (before.Day + entry.day + entry.Attacker.Value) % 10);
             }).ToArray();
     }
 
@@ -74,7 +74,7 @@ public sealed partial class CampaignMapScene
         if (_advancing && _storySpeechIndex < _storySpeechEvents.Length)
         {
             _storySpeechClock += delta;
-            if (_storySpeechClock >= (_storySpeechIndex + 1) * 2.5)
+            if (_storySpeechClock >= (_storySpeechIndex + 1) * 1.8)
                 ShowStorySpeech(_storySpeechEvents[_storySpeechIndex++]);
         }
         if (_storyAwaitingCard && !_advancing && !_storyOpen
