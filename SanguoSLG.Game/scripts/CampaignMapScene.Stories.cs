@@ -21,6 +21,28 @@ public sealed partial class CampaignMapScene
     private int _storySpeechIndex;
     private GeneralStoryEvent[] _storySpeechEvents = [];
 
+    private GeneralStoryEvent[] CombatSpeechEvents(GameState before, IReadOnlyList<AdvanceTurn> turns)
+    {
+        var units = before.Armies.Concat(turns.SelectMany(turn => turn.Units))
+            .GroupBy(unit => unit.Id).ToDictionary(group => group.Key, group => group.First());
+        return turns.SelectMany((turn, day) => (turn.Combat?.Exchanges ?? [])
+                .Where(exchange => exchange.Amount > 0)
+                .Select(exchange => (exchange.Attacker, day)))
+            .Distinct()
+            .OrderBy(entry => entry.day).ThenBy(entry => entry.Attacker.Value)
+            .Where(entry => units.TryGetValue(entry.Attacker, out var unit)
+                && unit.Field.Owner == Player && unit.VanguardId is not null
+                && ((long)before.Day * 31 + entry.day * 17 + entry.Attacker.Value) % 4 == 0)
+            .Take(2)
+            .Select(entry =>
+            {
+                var unit = units[entry.Attacker];
+                return new GeneralStoryEvent($"combat-bark:{before.Day}:{entry.day}:{entry.Attacker.Value}",
+                    "combat_bark", before.Day + entry.day, 3, Player, unit.VanguardId!.Value,
+                    unit.AdjutantId, null, (before.Day + entry.day + entry.Attacker.Value) % 3);
+            }).ToArray();
+    }
+
     private void PrepareStoryAfterAdvance()
     {
         var stories = _state.StoryPending.Where(e => e.Faction == Player)

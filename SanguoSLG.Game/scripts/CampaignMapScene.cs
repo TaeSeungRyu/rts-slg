@@ -3947,8 +3947,10 @@ public sealed partial class CampaignMapScene : Node3D
         var preMove = _state; // 이동 전(편성·AI 반영) — 애니메이션 시작 위치
         var startHex = preMove.Armies.ToDictionary(u => u.Id.Value, u => u.Field.Position);
         var after = _engine.AdvanceWeek(preMove, out var turns, out var sieges, out var captures, out var plunders, out var casualties);
-        _storySpeechEvents = after.StoryPending.Where(e => e.Faction == Player)
-            .OrderBy(e => e.Priority).ThenBy(e => e.Id, System.StringComparer.Ordinal).Take(2).ToArray();
+        _storySpeechEvents = CombatSpeechEvents(preMove, turns)
+            .Concat(after.StoryPending.Where(e => e.Faction == Player && e.Kind != "growth")
+                .OrderBy(e => e.Priority).ThenBy(e => e.Id, System.StringComparer.Ordinal))
+            .Take(2).ToArray();
         _storySpeechClock = 0;
         _storySpeechIndex = 0;
         LogEventHuntState(after);

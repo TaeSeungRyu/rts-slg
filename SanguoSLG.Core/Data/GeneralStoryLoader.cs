@@ -21,14 +21,15 @@ public sealed class GeneralStoryLoader
     {
         var definitions = JsonSerializer.Deserialize<List<GeneralStoryDefinition>>(json, Options)
             ?? throw new InvalidDataException("장수 대화 데이터를 읽을 수 없습니다.");
-        if (definitions.Count < 10 || definitions.Select(d => d.Kind)
+        if (definitions.Count < 8 || definitions.Select(d => d.Kind)
                 .Distinct(StringComparer.Ordinal).Count() != definitions.Count
             || definitions.Any(d => string.IsNullOrWhiteSpace(d.Kind) || string.IsNullOrWhiteSpace(d.Title)
                 || string.IsNullOrWhiteSpace(d.OptionA) || string.IsNullOrWhiteSpace(d.OptionB)
                 || d.Variants is not { Count: >= 3 }
-                || d.Variants.Any(v => v is not { Count: >= 2 and <= 4 }
+                || d.Variants.Any(v => (d.Kind == "combat_bark" ? v is not { Count: 1 }
+                        : v is not { Count: >= 2 and <= 4 })
                     || v.Any(string.IsNullOrWhiteSpace))))
-            throw new InvalidDataException("장수 대화 최소 10종과 대사 변형(각 3종, 2~4줄)이 필요합니다.");
+            throw new InvalidDataException("장수 대화 최소 8종과 유형별 대사 변형 3종이 필요합니다.");
         return definitions;
     }
 }

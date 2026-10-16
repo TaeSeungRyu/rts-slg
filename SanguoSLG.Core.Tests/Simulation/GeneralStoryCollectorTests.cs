@@ -29,9 +29,24 @@ public sealed class GeneralStoryCollectorTests
         var state = new GameState(7, 190, [], [],
             [new General(new(1), "관우", new Dictionary<TroopClass, AptitudeGrade>(), 90, 60, 40)]);
         var candidates = GeneralStoryCollector.Collect(state, state, [], [],
-            [new(WorldEventKind.GeneralGrowth, new(1), new GeneralId(1), Amount: 20)]);
+            [new(WorldEventKind.Research, new(1), new GeneralId(1), Amount: 20)]);
         var queued = GeneralStorySelector.Queue(state, candidates, new(1));
         Assert.Equal(state.Generals, queued.Generals);
         Assert.Equal(20, Assert.Single(queued.StoryPending).Amount);
+    }
+
+    [Fact]
+    public void 성장_결과는_대화_이벤트를_생성하지_않는다()
+    {
+        var state = new GameState(7, 190, [], [],
+            [new General(new(1), "관우", new Dictionary<TroopClass, AptitudeGrade>(), 90, 60, 40)]);
+        var events = new WorldEvent[]
+        {
+            new(WorldEventKind.GeneralGrowth, new(1), new GeneralId(1)),
+            new(WorldEventKind.AdministrationGrowth, new(1), new GeneralId(1)),
+            new(WorldEventKind.AptitudeGrowth, new(1), new GeneralId(1)),
+        };
+
+        Assert.Empty(GeneralStoryCollector.Collect(state, state, [], [], events));
     }
 }

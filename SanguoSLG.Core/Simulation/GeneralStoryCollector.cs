@@ -69,8 +69,6 @@ public static class GeneralStoryCollector
             {
                 WorldEventKind.EventUnitDefeated => ("beast_defeated", 2),
                 WorldEventKind.EventUnitAppeared => ("beast_appeared", 2),
-                WorldEventKind.GeneralGrowth or WorldEventKind.AdministrationGrowth
-                    or WorldEventKind.AptitudeGrowth => ("growth", 4),
                 WorldEventKind.Research => ("research", 5),
                 WorldEventKind.ProductionComplete => ("production", 5),
                 WorldEventKind.AllianceSuccess or WorldEventKind.AllianceFail
