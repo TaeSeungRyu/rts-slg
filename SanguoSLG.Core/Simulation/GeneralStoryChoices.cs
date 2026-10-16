@@ -84,7 +84,13 @@ public static class GeneralStoryChoices
                 break;
             }
             default:
-                message = "관련 화면을 엽니다. 추가 자원은 지급하지 않습니다.";
+                message = story.Kind switch
+                {
+                    "beast_appeared" or "beast_defeated" => "단서·보물 보관함을 엽니다.",
+                    "research" => "후속 연구 화면을 확인합니다.",
+                    "low_food" => "해당 부대의 군량을 확인합니다.",
+                    _ => "대화를 기록했습니다. 추가 자원은 지급하지 않습니다.",
+                };
                 break;
         }
         return new(GeneralStorySelector.Resolve(changed, eventId, choice), true, message);

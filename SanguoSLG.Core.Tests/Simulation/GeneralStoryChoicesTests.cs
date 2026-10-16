@@ -8,6 +8,16 @@ using Xunit;
 
 public sealed class GeneralStoryChoicesTests
 {
+    [Theory]
+    [InlineData("growth")]
+    [InlineData("diplomacy")]
+    public void 연결_화면이_없는_대화는_화면을_연다고_안내하지_않는다(string kind)
+    {
+        var result = GeneralStoryChoices.Apply(State(kind), "story:1", "a");
+        Assert.True(result.Ok);
+        Assert.DoesNotContain("엽니다", result.Message);
+    }
+
     private static GameState State(string kind, int gold = 200, int security = 80, int wall = 400)
     {
         var story = new GeneralStoryEvent("story:1", kind, 7, 1, new(1), new(1), new GeneralId(2), new CityId(1), 0);
