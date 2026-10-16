@@ -311,9 +311,12 @@ public sealed class RenewalCampaignAdvanceRunner(
         var entered = moved.Where(unit => !positions[unit.Id].IsActive)
             .Select(unit => unit with { State = unit.State.ReturnToCastle() }).ToList();
         var enteredIds = entered.Select(unit => unit.Id).ToHashSet();
-        var resolved = legacyRules.Run(moved.Where(unit => !enteredIds.Contains(unit.Id)).ToList(),
-            0, castles, deployedToday, constructionUnits,
-            fieldBuildings, fieldDefinitions, fieldDay);
+        var combatUnits = moved.Where(unit => !enteredIds.Contains(unit.Id)).ToList();
+        var resolved = legacyRules is AdvanceOrchestrator orchestrator
+            ? orchestrator.RunWithProvisionDays(combatUnits, 0, castles, deployedToday,
+                constructionUnits, fieldBuildings, fieldDefinitions, fieldDay, days)
+            : legacyRules.Run(combatUnits, 0, castles, deployedToday, constructionUnits,
+                fieldBuildings, fieldDefinitions, fieldDay);
         var synchronized = resolved.Units.Select(unit =>
         {
             if (!movedById.TryGetValue(unit.Id, out var before)) return unit;

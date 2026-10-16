@@ -71,6 +71,14 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
         IReadOnlySet<UnitId>? constructionUnits = null,
         IReadOnlyList<FieldBuilding>? fieldBuildings = null,
         IReadOnlyList<FieldBuildingDefinition>? fieldDefinitions = null, int fieldDay = 0)
+        => RunWithProvisionDays(units, maxDays, castles, deployedToday, constructionUnits,
+            fieldBuildings, fieldDefinitions, fieldDay, null);
+
+    // 자유이동은 위치를 이미 확정한 뒤 전투만 0일로 실행한다. 군량은 실제 경과일로 별도 계산한다.
+    public AdvanceTurn RunWithProvisionDays(IReadOnlyList<CombatUnit> units, int maxDays,
+        IReadOnlyList<SiegeSite>? castles, IReadOnlySet<UnitId>? deployedToday,
+        IReadOnlySet<UnitId>? constructionUnits, IReadOnlyList<FieldBuilding>? fieldBuildings,
+        IReadOnlyList<FieldBuildingDefinition>? fieldDefinitions, int fieldDay, int? provisionDays)
     {
         constructionUnits ??= new HashSet<UnitId>();
         // 병력 0(전멸) 부대는 진행에서 빠진다 — 이동·전투·점유·표적에서 모두 제외한다.
@@ -220,10 +228,11 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
         // 2.6) 군량 소모(design-unit-state 1단계) — 추적 부대만. 경과일×병력 비례로 휴대 군량을 깎고,
         //      바닥나면 그 진행 동안 굶주려 이탈(병력 손실, 부상 없이 소실). 미추적(−1)은 무한 보급 가정.
         var starvation = new Dictionary<UnitId, int>();
+        var elapsedProvisionDays = provisionDays ?? move.Days;
         foreach (var id in state.Keys.ToList())
         {
             var u = state[id];
-            if (!u.TracksProvisions || move.Days <= 0)
+            if (!u.TracksProvisions || elapsedProvisionDays <= 0)
             {
                 continue;
             }
@@ -234,7 +243,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
                     && definitions[building.DefinitionCode].Kind == FieldBuildingKind.Fort
                     && building.Position.Distance(u.Field.Position) <= definitions[building.DefinitionCode].EffectRadius)
                 ? 60 : 100;
-            var eaten = (int)((long)u.Pool.Active * _provisionsPer10kPerDay * move.Days
+            var eaten = (int)((long)u.Pool.Active * _provisionsPer10kPerDay * elapsedProvisionDays
                 * u.ProvisionsUpkeepPercent * navalPercent * fortPercent / 10_000_000_000L);
             var remaining = u.Provisions - eaten;
             if (remaining >= 0)
@@ -244,7 +253,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
             }
 
             // 고갈 — 그 진행 굶주림: 병력의 (이탈률 × 경과일)%를 잃는다(이탈은 부상 없이 소실).
-            var lossPercent = System.Math.Min(100, _starvationLossPercentPerDay * move.Days);
+            var lossPercent = System.Math.Min(100, _starvationLossPercentPerDay * elapsedProvisionDays);
             var lost = u.Pool.Active * lossPercent / 100;
             state[id] = u with { Provisions = 0, Pool = u.Pool.TakeDamage(lost, woundedPercent: 0) };
             if (lost > 0)

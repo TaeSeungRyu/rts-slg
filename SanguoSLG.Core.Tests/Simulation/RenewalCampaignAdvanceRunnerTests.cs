@@ -8,6 +8,24 @@ using SanguoSLG.Core.Spatial;
 public sealed class RenewalCampaignAdvanceRunnerTests
 {
     [Fact]
+    public void 자유이동_교전계산은_0일이어도_실제_하루치_군량을_소비한다()
+    {
+        var map = new HexMap(-3, 3, -3, 3);
+        var movement = new MovementSimulator(new PassabilityMap(map, [], []));
+        var legacy = new AdvanceOrchestrator(movement,
+            new CombatPhaseResolver(new BattleResolver(60), 70));
+        var runner = new RenewalCampaignAdvanceRunner(map, legacy);
+        var unit = Unit(1, new HexCoord(0, 0), new HexCoord(0, 0), 0) with
+        {
+            Pool = new TroopPool(5000, 0), Provisions = 125,
+        };
+
+        var after = runner.Run([unit], maxDays: 1);
+
+        Assert.Equal(120, Assert.Single(after.Units).Provisions);
+    }
+
+    [Fact]
     public void 같은_성을_공격하는_근접_소환수는_분산된_도착점_때문에_대기로_바뀌지_않는다()
     {
         var city = new HexCoord(4, 6);
