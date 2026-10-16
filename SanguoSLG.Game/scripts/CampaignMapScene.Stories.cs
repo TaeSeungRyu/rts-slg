@@ -116,7 +116,8 @@ public sealed partial class CampaignMapScene
         {
             Texture = PortraitFor(story.Speaker) ?? CircularPortraitFor(story.Speaker),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            // 하단 카드의 높이는 짧다. Covered는 원본의 중앙을 잘라 얼굴/머리 장식을 가린다.
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             MouseFilter = Control.MouseFilterEnum.Ignore,
@@ -290,6 +291,10 @@ public sealed partial class CampaignMapScene
             var row = panel?.GetChildren().OfType<HBoxContainer>().FirstOrDefault();
             var ratioOk = row is not null && row.GetChildCount() == 2
                 && row.GetChild<Control>(0).Size.X < row.GetChild<Control>(1).Size.X;
+            var portrait = row?.GetChild<Control>(0).GetChildren().OfType<TextureRect>().FirstOrDefault();
+            var portraitFitOk = portrait is not null
+                && portrait.StretchMode == TextureRect.StretchModeEnum.KeepAspectCentered
+                && portrait.Size.Y > 0 && portrait.Size.X > 0;
             var hidden = !_reportPanel.Visible && _storyOpen;
             CloseAnyModalOrPanel();
             var restored = !_storyOpen && _modalLayer is null && _reportPanel.Visible == reportWasVisible
@@ -312,8 +317,8 @@ public sealed partial class CampaignMapScene
                 .FirstOrDefault(b => b.Text == "확인");
             done?.EmitSignal(Button.SignalName.Pressed);
             var choiceResolved = !_storyOpen && _state.StoryHistory.Any(e => e.Id == choiceStory.Id && e.Choice == "b");
-            var passed = ratioOk && hidden && restored && replayReadOnly && choicesVisible && choiceResolved;
-            GD.Print($"[general-story-qa] passed={passed} ratio={ratioOk} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved}");
+            var passed = ratioOk && portraitFitOk && hidden && restored && replayReadOnly && choicesVisible && choiceResolved;
+            GD.Print($"[general-story-qa] passed={passed} ratio={ratioOk} portraitFit={portraitFitOk} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (System.Exception error)
