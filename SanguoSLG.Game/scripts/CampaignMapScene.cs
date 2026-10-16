@@ -11818,6 +11818,14 @@ public sealed partial class CampaignMapScene : Node3D
         _depAmountSpin.AddThemeFontOverride("font", _font);
         _depAmountSpin.AddThemeFontSizeOverride("font_size", 14);
         _depAmountSpin.ValueChanged += v => { _depAmount = (int)v; UpdateCombatProvisionCapacity(); UpdateProvLabel(); UpdateDepPreview(); };
+        _depAmountSpin.GetLineEdit().TextChanged += text =>
+        {
+            if (!int.TryParse(text.Replace(",", "").Trim(), out var amount)) return;
+            _depAmount = System.Math.Clamp(amount, 0, (int)_depAmountSpin.MaxValue);
+            UpdateCombatProvisionCapacity();
+            UpdateProvLabel();
+            UpdateDepPreview();
+        };
         amtRow.AddChild(_depAmountSpin);
         var maxButton = MakeButton("최대");
         maxButton.CustomMinimumSize = new Vector2(58, 28);
