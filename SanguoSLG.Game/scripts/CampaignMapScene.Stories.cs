@@ -169,7 +169,9 @@ public sealed partial class CampaignMapScene
         var actions = new HBoxContainer();
         actions.AddThemeConstantOverride("separation", 8);
         content.AddChild(actions);
-        var next = MakeButton("다음", accent: true);
+        actions.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
+        var next = MakeButton("다음 ▶", accent: true);
+        next.CustomMinimumSize = new Vector2(86, 34);
         next.Pressed += () =>
         {
             if (++currentPage < lines.Length) line.Text = lines[currentPage];
@@ -331,6 +333,11 @@ public sealed partial class CampaignMapScene
             var portraitFitOk = portrait is not null
                 && portrait.StretchMode == TextureRect.StretchModeEnum.KeepAspectCentered
                 && portrait.Size.Y > 0 && portrait.Size.X > 0;
+            var nextButton = panel?.FindChildren("*", "Button", true, false).OfType<Button>()
+                .FirstOrDefault(b => b.Text == "다음 ▶");
+            var nextAligned = nextButton is not null && panel is not null
+                && nextButton.GlobalPosition.X > panel.GlobalPosition.X + panel.Size.X * 0.7f
+                && nextButton.GlobalPosition.Y > panel.GlobalPosition.Y + panel.Size.Y * 0.5f;
             var hidden = !_reportPanel.Visible && _storyOpen;
             CloseAnyModalOrPanel();
             var restored = !_storyOpen && _modalLayer is null && _reportPanel.Visible == reportWasVisible
@@ -343,7 +350,7 @@ public sealed partial class CampaignMapScene
             _state = _state with { PendingStoryEvents = _state.StoryPending.Append(choiceStory).ToArray() };
             ShowStoryModal(choiceStory, false);
             var next = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
-                .FirstOrDefault(b => b.Text == "다음");
+                .FirstOrDefault(b => b.Text == "다음 ▶");
             next?.EmitSignal(Button.SignalName.Pressed);
             var choose = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
                 .FirstOrDefault(b => b.Text == "재정 보존");
@@ -353,8 +360,8 @@ public sealed partial class CampaignMapScene
                 .FirstOrDefault(b => b.Text == "확인");
             done?.EmitSignal(Button.SignalName.Pressed);
             var choiceResolved = !_storyOpen && _state.StoryHistory.Any(e => e.Id == choiceStory.Id && e.Choice == "b");
-            var passed = speechTracksWorld && ratioOk && portraitFitOk && hidden && restored && replayReadOnly && choicesVisible && choiceResolved;
-            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} ratio={ratioOk} portraitFit={portraitFitOk} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved}");
+            var passed = speechTracksWorld && ratioOk && portraitFitOk && nextAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved;
+            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (System.Exception error)
