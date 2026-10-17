@@ -186,10 +186,24 @@ public sealed partial class CampaignMapScene
         panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 12));
         panel.AnchorLeft = 0.05f; panel.AnchorRight = 0.95f;
         panel.AnchorTop = 0.70f; panel.AnchorBottom = 0.98f;
+        panel.ClipContents = true;
         layer.AddChild(panel);
-        var row = new HBoxContainer();
+        var frame = new VBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        panel.AddChild(frame);
+        var heading = new HBoxContainer();
+        frame.AddChild(heading);
+        var title = MakeLabel(StoryTitle(story), 18, GoldBright);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        heading.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(34, 28);
+        close.Pressed += CloseStoryModal;
+        heading.AddChild(close);
+        frame.AddChild(GoldRule());
+        var row = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill, ClipContents = true };
+        row.Name = "StoryDialogueRow";
         row.AddThemeConstantOverride("separation", 16);
-        panel.AddChild(row);
+        frame.AddChild(row);
         var diplomacy = story.Kind.StartsWith("alliance_", System.StringComparison.Ordinal);
         var portraitColumn = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         portraitColumn.SizeFlagsStretchRatio = diplomacy ? 2 : 3;
@@ -225,7 +239,7 @@ public sealed partial class CampaignMapScene
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
                 SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-                Modulate = new Color(0.65f, 0.65f, 0.65f),
+                Modulate = Colors.White,
             };
             audienceColumn.AddChild(rulerPortrait);
             if (story.Kind.EndsWith("_advisor", System.StringComparison.Ordinal) && story.Amount > 0)
@@ -234,10 +248,12 @@ public sealed partial class CampaignMapScene
                 {
                     Name = "DiplomacyAdvisorPortrait",
                     Texture = CircularPortraitFor(new GeneralId(story.Amount)),
-                    CustomMinimumSize = new Vector2(40, 40),
+                    CustomMinimumSize = Vector2.Zero,
+                    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                    SizeFlagsVertical = Control.SizeFlags.ExpandFill,
                     StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                     ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                    Modulate = new Color(0.65f, 0.65f, 0.65f),
+                    Modulate = Colors.White,
                 };
                 audienceColumn.AddChild(advisorPortrait);
             }
@@ -248,16 +264,6 @@ public sealed partial class CampaignMapScene
         content.SizeFlagsStretchRatio = diplomacy ? 6 : 7;
         row.AddChild(content);
         if (diplomacy) row.MoveChild(content, 1); // 아군: 초상-대사, 상대: 대사-초상
-        var heading = new HBoxContainer();
-        content.AddChild(heading);
-        var title = MakeLabel(StoryTitle(story), 18, GoldBright);
-        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        heading.AddChild(title);
-        var close = MakeButton("✕");
-        close.CustomMinimumSize = new Vector2(34, 28);
-        close.Pressed += CloseStoryModal;
-        heading.AddChild(close);
-        content.AddChild(GoldRule());
         var lines = StoryLines(story);
         void HighlightSpeaker(string text)
         {
@@ -498,9 +504,12 @@ public sealed partial class CampaignMapScene
             ShowStoryModal(story, false);
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var panel = _modalLayer?.GetChildren().OfType<PanelContainer>().FirstOrDefault();
-            var row = panel?.GetChildren().OfType<HBoxContainer>().FirstOrDefault();
+            var row = panel?.FindChild("StoryDialogueRow", true, false) as HBoxContainer;
             var ratioOk = row is not null && row.GetChildCount() == 2
-                && row.GetChild<Control>(0).Size.X < row.GetChild<Control>(1).Size.X;
+                && row.GetChild<Control>(0).Size.X < row.GetChild<Control>(1).Size.X
+                && panel?.FindChildren("*", "Label", true, false).OfType<Label>()
+                    .Any(label => label.Text == StoryTitle(story)
+                        && label.GlobalPosition.Y + label.Size.Y <= row.GlobalPosition.Y) == true;
             var portrait = row?.GetChild<Control>(0).GetChildren().OfType<TextureRect>().FirstOrDefault();
             var portraitFitOk = portrait is not null
                 && portrait.StretchMode == TextureRect.StretchModeEnum.KeepAspectCentered
@@ -585,13 +594,18 @@ public sealed partial class CampaignMapScene
                 var ownPage = ownPortrait?.Visible == true;
                 _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
                     .FirstOrDefault(button => button.Text == "다음 ▶")?.EmitSignal(Button.SignalName.Pressed);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 var rulerImage = _modalLayer?.FindChild("DiplomacyRulerPortrait", true, false) as TextureRect;
                 var advisorImage = _modalLayer?.FindChild("DiplomacyAdvisorPortrait", true, false) as TextureRect;
+                var dialogueRow = _modalLayer?.FindChild("StoryDialogueRow", true, false) as HBoxContainer;
                 audienceShown = audienceLines.Length == 4
                     && audienceLines.Any(text => text.StartsWith($"{otherSpeakers[0].Name}:"))
                     && audienceLines.Any(text => text.StartsWith($"{otherSpeakers[1].Name}:"))
                     && rulerImage?.Texture is not null && advisorImage?.Texture is not null
-                    && ownPage && ownPortrait?.Visible == false && advisorImage.Visible;
+                    && ownPage && ownPortrait?.Visible == false && advisorImage.Visible
+                    && dialogueRow is not null
+                    && advisorImage.Size.Y >= dialogueRow.Size.Y * 0.55f
+                    && advisorImage.GlobalPosition.Y >= dialogueRow.GlobalPosition.Y;
                 CloseStoryModal();
             }
             var defeatedStory = story with { Id = "qa:beast-defeated", Kind = "beast_defeated" };
