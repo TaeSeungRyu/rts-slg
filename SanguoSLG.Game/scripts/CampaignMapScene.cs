@@ -3721,18 +3721,25 @@ public sealed partial class CampaignMapScene : Node3D
             }
             if (city.IsPort)
             {
-                var ambience = new VillagerAmbience
+                var positions = city.Port == PortSize.Medium
+                    ? new[] { new Vector3(-0.42f, 0f, -0.27f), new Vector3(0.42f, 0f, -0.27f) }
+                    : new[] { Vector3.Zero };
+                for (var i = 0; i < positions.Length; i++)
                 {
-                    Name = $"CityVillagers{city.Id.Value}_0",
-                    GroundY = 0.10f,
-                    WanderRadius = 0.24f,
-                    Seed = unchecked((ulong)(city.Position.Q * 92821L + city.Position.R * 68917L + 4241L)),
-                    MaxVillagers = city.Port == PortSize.Medium ? 5 : 4,
-                    SpawnEnabled = !broken,
-                };
-                ambience.SetMeta("city_id", city.Id.Value);
-                ambience.AddToGroup("city_villager_ambience");
-                node.AddChild(ambience);
+                    var ambience = new VillagerAmbience
+                    {
+                        Name = $"CityVillagers{city.Id.Value}_{i}",
+                        Position = positions[i],
+                        GroundY = city.Port == PortSize.Medium ? 0.23f : 0.205f,
+                        WanderRadius = city.Port == PortSize.Medium ? 0.14f : 0.24f,
+                        Seed = unchecked((ulong)(city.Position.Q * 92821L + city.Position.R * 68917L + 4241L + i * 5077L)),
+                        MaxVillagers = 4,
+                        SpawnEnabled = !broken,
+                    };
+                    ambience.SetMeta("city_id", city.Id.Value);
+                    ambience.AddToGroup("city_villager_ambience");
+                    node.AddChild(ambience);
+                }
             }
             else
             {

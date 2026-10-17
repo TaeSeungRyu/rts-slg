@@ -347,8 +347,11 @@ public sealed partial class CampaignMapScene
         var portCoverage = _cities.Where(city => city.IsPort)
             .All(city => ambience.Any(node => node.GetMeta("city_id").AsInt32() == city.Id.Value
                 && node.MaxVillagers >= 4));
-        var passed = cityCoverage && portCoverage && ambience.All(node => node.SpawnEnabled);
-        GD.Print($"[city-ambience-qa] passed={passed} cityCoverage={coveredCities.Count}/{_cities.Count} portCoverage={portCoverage} ambience={ambience.Count}");
+        var mediumPortVisible = _cities.Where(city => city.Port == PortSize.Medium)
+            .All(city => ambience.Count(node => node.GetMeta("city_id").AsInt32() == city.Id.Value
+                && node.GroundY >= 0.2f && node.Position.Z < 0f) == 2);
+        var passed = cityCoverage && portCoverage && mediumPortVisible && ambience.All(node => node.SpawnEnabled);
+        GD.Print($"[city-ambience-qa] passed={passed} cityCoverage={coveredCities.Count}/{_cities.Count} portCoverage={portCoverage} mediumPortVisible={mediumPortVisible} ambience={ambience.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
