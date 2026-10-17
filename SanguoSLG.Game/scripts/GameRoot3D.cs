@@ -720,7 +720,8 @@ public partial class GameRoot3D : Node3D
                 Position = new Vector3(tx, 0f, tz),
                 GroundY = CastleGroundY,
                 Seed = unchecked((ulong)(city.Position.Q * 92821L + city.Position.R * 68917L + i * 5077L + 31L)),
-                MaxVillagers = 4 + i % 2,
+                MaxVillagers = city.Castle == CastleSize.Small ? 4 + i % 2
+                    : i % 2 == 0 ? 6 : 8,
                 Obstacles = obstacles,
                 SpawnEnabled = condition == TileCondition.Normal,
             };

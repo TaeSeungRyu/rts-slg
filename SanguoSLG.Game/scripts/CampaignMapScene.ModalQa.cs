@@ -350,8 +350,11 @@ public sealed partial class CampaignMapScene
         var mediumPortVisible = _cities.Where(city => city.Port == PortSize.Medium)
             .All(city => ambience.Count(node => node.GetMeta("city_id").AsInt32() == city.Id.Value
                 && node.GroundY >= 0.2f && node.Position.Z < 0f) == 2);
-        var passed = cityCoverage && portCoverage && mediumPortVisible && ambience.All(node => node.SpawnEnabled);
-        GD.Print($"[city-ambience-qa] passed={passed} cityCoverage={coveredCities.Count}/{_cities.Count} portCoverage={portCoverage} mediumPortVisible={mediumPortVisible} ambience={ambience.Count}");
+        var largerCastles = _cities.Where(city => !city.IsPort && city.Castle is CastleSize.Medium or CastleSize.Large)
+            .All(city => ambience.Where(node => node.GetMeta("city_id").AsInt32() == city.Id.Value)
+                .All(node => node.MaxVillagers is 6 or 8));
+        var passed = cityCoverage && portCoverage && mediumPortVisible && largerCastles && ambience.All(node => node.SpawnEnabled);
+        GD.Print($"[city-ambience-qa] passed={passed} cityCoverage={coveredCities.Count}/{_cities.Count} portCoverage={portCoverage} mediumPortVisible={mediumPortVisible} largerCastles={largerCastles} ambience={ambience.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
