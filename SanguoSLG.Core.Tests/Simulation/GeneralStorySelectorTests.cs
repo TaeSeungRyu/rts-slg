@@ -44,4 +44,16 @@ public sealed class GeneralStorySelectorTests
              new("growth:1", "growth", 4, new(1), new(1))], new(1));
         Assert.Equal("growth", Assert.Single(result.StoryPending).Kind);
     }
+
+    [Fact]
+    public void 계략과_정찰의_확정_결과는_최근_대화가_있어도_매번_대기한다()
+    {
+        var previous = State() with { StoryEventHistory =
+            [new("old", "stratagem_success", 69, 6, new(1), new(1), null, null, 0),
+             new("scout-old", "scout_fail", 69, 6, new(1), new(1), null, null, 0)] };
+        var result = GeneralStorySelector.Queue(previous,
+            [new("stratagem:new", "stratagem_success", 6, new(1), new(1)),
+             new("scout:new", "scout_fail", 6, new(1), new(1))], new(1));
+        Assert.Equal(2, result.StoryPending.Count);
+    }
 }

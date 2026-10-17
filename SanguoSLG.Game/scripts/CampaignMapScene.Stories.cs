@@ -73,7 +73,9 @@ public sealed partial class CampaignMapScene
 
     private GeneralStoryEvent? NextPendingStory()
         => _state.StoryPending.Where(e => e.Faction == Player)
-            .OrderBy(e => e.Kind.StartsWith("alliance_", System.StringComparison.Ordinal) ? 0 : 1)
+            .OrderBy(e => e.Kind.StartsWith("alliance_", System.StringComparison.Ordinal) ? 0
+                : e.Kind.StartsWith("scout_", System.StringComparison.Ordinal)
+                    || e.Kind.StartsWith("stratagem_", System.StringComparison.Ordinal) ? 1 : 2)
             .ThenBy(e => e.Priority).ThenBy(e => e.Id, System.StringComparer.Ordinal).FirstOrDefault();
 
     private void TickStoryPresentation(double delta)
@@ -605,13 +607,17 @@ public sealed partial class CampaignMapScene
             beastConfirmOnly &= !_storyOpen && _state.StoryHistory.Any(e => e.Id == defeatedStory.Id);
             var unrelatedStory = story with { Id = "qa:other-result", Kind = "wall" };
             var priorityAlliance = story with { Id = "qa:priority-alliance", Kind = "alliance_success" };
-            _state = _state with { PendingStoryEvents = _state.StoryPending.Append(unrelatedStory).Append(priorityAlliance).ToArray() };
+            var priorityStratagem = story with { Id = "qa:priority-stratagem", Kind = "stratagem_success" };
+            _state = _state with { PendingStoryEvents = _state.StoryPending.Append(unrelatedStory)
+                .Append(priorityStratagem).Append(priorityAlliance).ToArray() };
             var alliancePriority = NextPendingStory()?.Id == priorityAlliance.Id;
             _state = GeneralStorySelector.Resolve(_state, priorityAlliance.Id, "acknowledged");
+            var stratagemPriority = NextPendingStory()?.Id == priorityStratagem.Id;
+            _state = GeneralStorySelector.Resolve(_state, priorityStratagem.Id, "acknowledged");
             var queuedNext = NextPendingStory()?.Id == unrelatedStory.Id;
             _state = GeneralStorySelector.Resolve(_state, unrelatedStory.Id, "acknowledged");
-            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly && beastConfirmOnly && allianceResultShown && audienceShown && alliancePriority && queuedNext;
-            GD.Print($"[general-story-qa] passed={passed} alliancePriority={alliancePriority} queuedNext={queuedNext} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} doneAligned={doneAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly} beastConfirmOnly={beastConfirmOnly} allianceResultShown={allianceResultShown} audienceShown={audienceShown}");
+            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly && beastConfirmOnly && allianceResultShown && audienceShown && alliancePriority && stratagemPriority && queuedNext;
+            GD.Print($"[general-story-qa] passed={passed} alliancePriority={alliancePriority} stratagemPriority={stratagemPriority} queuedNext={queuedNext} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} doneAligned={doneAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly} beastConfirmOnly={beastConfirmOnly} allianceResultShown={allianceResultShown} audienceShown={audienceShown}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (System.Exception error)

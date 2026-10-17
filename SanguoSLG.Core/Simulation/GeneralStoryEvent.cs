@@ -34,7 +34,9 @@ public static class GeneralStorySelector
             var id = $"{state.Day}:{candidate.TriggerId}";
             if (!known.Add(id)) continue;
             var cooldown = candidate.Kind is "low_food" or "security" or "research" or "production" ? 28 : 60;
-            if (recent.Any(e => e.Kind == candidate.Kind && e.Speaker == candidate.Speaker
+            var alwaysReport = candidate.Kind is "scout_success" or "scout_fail"
+                or "stratagem_success" or "stratagem_fail";
+            if (!alwaysReport && recent.Any(e => e.Kind == candidate.Kind && e.Speaker == candidate.Speaker
                 && e.SecondSpeaker == candidate.SecondSpeaker && state.Day - e.Day < cooldown)) continue;
             var hash = StableHash(id);
             pending.Add(new GeneralStoryEvent(id, candidate.Kind, state.Day, candidate.Priority,
