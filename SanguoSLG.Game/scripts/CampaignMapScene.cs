@@ -2092,6 +2092,7 @@ public sealed partial class CampaignMapScene : Node3D
             && (_state.Cities.Any(city => city.Owner != Player && _state.AreHostile(Player, city.Owner)
                     && CastleFootprint.TilesFor(city).Contains(target))
                 || _state.Buildings.Any(building => building.Position == target
+                    && building.DefinitionCode != "scout_post"
                     && !building.IsExpired(_state.Day) && _state.AreHostile(Player, building.Owner))
                 || DisplayedArmies.Any(unit => unit.Field.Position == target
                     && _state.AreHostile(Player, unit.Field.Owner) && CanSeeUnit(unit))
@@ -3468,6 +3469,9 @@ public sealed partial class CampaignMapScene : Node3D
                 && attackMarkers[^1].Position.DistanceTo(_view.HexToWorld(hostile.Position)
                     + new Vector3(0f, _view.TileTopY + 0.08f, 0f)) < 0.01f;
         }
+        passed &= _state.Buildings.Where(building => building.DefinitionCode == "scout_post"
+                && _state.AreHostile(Player, building.Owner))
+            .All(building => !IsHostileRouteEndpoint(building.Position, UnitMode.Attack));
         GD.Print($"[maptestpathvisualqa] passed={passed} markers={markers.Count} singleDot={singleDot} continuous={followsContinuousLine} hostileRing={attackMarkers.LastOrDefault()?.Name == "PathTargetRing"} destinationScale={(markers.Count > 0 ? markers[^1].Scale.X : 0):0.00}");
         foreach (var marker in markers) marker.QueueFree();
         foreach (var marker in attackMarkers) marker.QueueFree();
