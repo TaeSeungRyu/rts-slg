@@ -298,7 +298,7 @@ public sealed partial class CampaignMapScene
             Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
             FontSize = 36, OutlineSize = 10,
             PixelSize = CommanderPortraitView3D.LabelPixelSize,
-            NoDepthTest = true, Modulate = color, Text = ArmyTroopLabel(army),
+            NoDepthTest = true, Modulate = MapRelationTextColor(army.Field.Owner), Text = ArmyTroopLabel(army),
             Position = _view.HexToWorld(army.Field.Position)
                 + new Vector3(0f, _view.TileTopY + CommanderPortraitView3D.TroopLabelHeightOffset, 0f),
         };

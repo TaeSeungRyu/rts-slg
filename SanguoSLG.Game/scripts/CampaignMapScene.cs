@@ -723,6 +723,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestherorecruitqa")) CallDeferred(nameof(RunHeroRecruitUiQa));
         if (args.Contains("--maptestspecialresearchqa")) CallDeferred(nameof(RunSpecialResearchLockQa));
         if (args.Contains("--maptestpathvisualqa")) CallDeferred(nameof(RunPathVisualQa));
+        if (args.Contains("--maptestalliancelabelqa")) CallDeferred(nameof(RunAllianceLabelQa));
         if (args.Contains("--maptestbanditdisplayqa")) CallDeferred(nameof(RunBanditDisplayQa));
         if (args.Contains("--maptestfortfixtureqa")) CallDeferred(nameof(RunFieldFortFixtureQa));
         if (args.Contains("--maptesteventhuntqa")) CallDeferred(nameof(RunEventHuntQa));
@@ -1962,11 +1963,11 @@ public sealed partial class CampaignMapScene : Node3D
             var allegiance = new Label3D
             {
                 Name = $"FieldAllegiance_{building.Id.Value}",
-                Text = building.Owner == Player ? "아군" : "적군",
+                Text = building.Owner == Player ? "아군" : _state.AreAllied(Player, building.Owner) ? "동맹" : "적군",
                 Position = origin + new Vector3(0, 1.25f, 0),
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                 Font = _font, FontSize = 24, OutlineSize = 5, NoDepthTest = true,
-                Modulate = building.Owner == Player ? new Color(0.55f, 0.85f, 1f) : new Color(1f, 0.45f, 0.4f),
+                Modulate = MapRelationTextColor(building.Owner),
             };
             allegiance.SetMeta("field_building_id", building.Id.Value);
             _fieldBuildingLayer.AddChild(allegiance);
@@ -6507,7 +6508,7 @@ public sealed partial class CampaignMapScene : Node3D
                     _playbackCityTroops[capture.Report.City] = troops;
                     var label = _cityLabels[capture.Report.City.Value];
                     label.Text = $"{capturedCity.Name} [{_pendingState.Factions.First(f => f.Id == capturedCity.Owner).Name}]\n성벽 {capturedCity.Wall}  병 {troops}";
-                    label.Modulate = capturedCity.Owner == Player ? Blue : Red;
+                    label.Modulate = MapRelationTextColor(capturedCity.Owner);
                 }
                 _animCaptureIdx++;
             }
@@ -16019,6 +16020,39 @@ public sealed partial class CampaignMapScene : Node3D
         return string.IsNullOrWhiteSpace(code) ? (owner == Player ? Blue : Red) : new Color(code);
     }
 
+    private Color MapRelationTextColor(FactionId owner)
+        => owner == Player ? Blue
+            : _state.AreAllied(Player, owner) ? new Color(0.65f, 0.92f, 0.55f) : Red;
+
+    private void RunAllianceLabelQa()
+    {
+        var enemy = _state.Cities.First(city => city.Owner != Player).Owner;
+        var hostileRed = MapRelationTextColor(enemy) == Red;
+        _state = _state with { FactionAlliances =
+            [.._state.Alliances, FactionAlliance.Create(Player, enemy, _state.Day)] };
+        Redraw("alliance-label-qa");
+        var city = _state.Cities.First(c => c.Owner == enemy);
+        var alliedColor = MapRelationTextColor(enemy);
+        var cityColor = _cityLabels[city.Id.Value].Modulate;
+        var cityGreen = cityColor.R == alliedColor.R && cityColor.G == alliedColor.G
+            && cityColor.B == alliedColor.B;
+        var armyGreen = _state.Armies.Where(a => a.Field.Owner == enemy)
+            .All(a => _armyLabels.TryGetValue(a.Id.Value, out var label) && label.Modulate == alliedColor);
+        var buildingsGreen = _state.Buildings.Where(b => b.Owner == enemy && CanPlayerSeeFieldBuilding(b))
+            .All(b => _fieldBuildingLayer.GetChildren().OfType<Label3D>()
+                .LastOrDefault(label => !label.IsQueuedForDeletion()
+                    && label.HasMeta("field_building_id") && label.GetMeta("field_building_id").AsInt32() == b.Id.Value) is { } label
+                && label.Text == "동맹" && label.Modulate.R == alliedColor.R
+                && label.Modulate.G == alliedColor.G && label.Modulate.B == alliedColor.B);
+        var sampleBuilding = _state.Buildings.FirstOrDefault(b => b.Owner == enemy && CanPlayerSeeFieldBuilding(b));
+        var sampleLabel = sampleBuilding is null ? null : _fieldBuildingLayer.GetChildren().OfType<Label3D>()
+            .LastOrDefault(label => !label.IsQueuedForDeletion()
+                && label.HasMeta("field_building_id") && label.GetMeta("field_building_id").AsInt32() == sampleBuilding.Id.Value);
+        var passed = hostileRed && cityGreen && armyGreen && buildingsGreen;
+        GD.Print($"[maptestalliancelabelqa] passed={passed} hostileRed={hostileRed} cityGreen={cityGreen} cityColor={cityColor} armyGreen={armyGreen} buildingsGreen={buildingsGreen} enemyBuildings={_state.Buildings.Count(b => b.Owner == enemy)} sample={sampleLabel?.Text}/{sampleLabel?.Modulate}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private static void Clear(Node parent)
     {
         foreach (var child in parent.GetChildren())
@@ -16202,7 +16236,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 성 라벨·색 갱신.
         foreach (var city in _state.Cities)
         {
-            var color = city.Owner.Value == 1 ? Blue : Red;
+            var color = MapRelationTextColor(city.Owner);
             var troops = _state.Garrisons.Where(g => g.City == city.Id).Sum(g => g.Troops);
             var label = _cityLabels[city.Id.Value];
             label.Text = CityMapLabel(city, troops);
@@ -16260,8 +16294,10 @@ public sealed partial class CampaignMapScene : Node3D
                 + new Vector3(0f, _view.TileTopY + CommanderPortraitView3D.TroopLabelHeightOffset, 0f);
             var troopLabel = ArmyTroopLabel(army);
             if (lblNode.Text != troopLabel) lblNode.Text = troopLabel;
+            lblNode.Modulate = MapRelationTextColor(army.Field.Owner);
             lblNode.Visible = !insideFieldBuilding && !army.IsWaitingDeployment
-                && (army.Field.Owner == Player || (army.Field.Owner == WorldEngine.BanditFaction
+                && (army.Field.Owner == Player || (_state.AreAllied(Player, army.Field.Owner) && CanSeeUnit(army))
+                    || (army.Field.Owner == WorldEngine.BanditFaction
                     || army.Field.Owner == EventHuntService.EventFaction) && CanSeeUnit(army));
             if (_activeGauges.TryGetValue(army.Id.Value, out var activeGauge))
             {
@@ -16303,7 +16339,7 @@ public sealed partial class CampaignMapScene : Node3D
                     FontSize = 28,
                     OutlineSize = 8,
                     NoDepthTest = true,
-                    Modulate = op.Owner == Player ? Blue : Red,
+                    Modulate = MapRelationTextColor(op.Owner),
                 };
                 AddChild(lbl);
                 _productionTokens[op.Id] = token;
@@ -16311,6 +16347,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             token.DisplaySyncTo(op.Position, 0.3f);
+            _productionLabels[op.Id].Modulate = MapRelationTextColor(op.Owner);
             var label = _productionLabels[op.Id];
             label.Position = _view.HexToWorld(op.Position) + new Vector3(0f, _view.TileTopY + 0.82f, 0f);
             label.Text = "";

@@ -137,7 +137,9 @@ public sealed partial class CampaignMapScene
                     var text = ArmyTroopLabel(army);
                     if (label.Text != text) label.Text = text;
                 }
+                label.Modulate = MapRelationTextColor(army.Field.Owner);
                 label.Visible = !army.IsWaitingDeployment && (army.Field.Owner == Player
+                    || (_state.AreAllied(Player, army.Field.Owner) && CanSeeUnit(army))
                     || (army.Field.Owner == WorldEngine.BanditFaction
                         || army.Field.Owner == EventHuntService.EventFaction) && CanSeeUnit(army));
             }
@@ -155,7 +157,7 @@ public sealed partial class CampaignMapScene
             var label = _cityLabels[city.Id.Value];
             var troops = CityTroopsForDisplay(city.Id);
             label.Text = CityMapLabel(city, troops);
-            label.Modulate = new Color(city.Owner == Player ? Blue : Red,
+            label.Modulate = new Color(MapRelationTextColor(city.Owner),
                 CanInspectCity(city) ? 1f : IsDeclaredCity(city) ? 0.8f : 0.5f);
         }
         if (_selectedUnitId >= 0 && !display.Armies.Any(u => u.Id.Value == _selectedUnitId && CanSeeUnit(u)))
