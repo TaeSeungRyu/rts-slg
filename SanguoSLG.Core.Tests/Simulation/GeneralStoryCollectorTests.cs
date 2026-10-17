@@ -2,10 +2,46 @@ namespace SanguoSLG.Core.Tests.Simulation;
 
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Spatial;
 using Xunit;
 
 public sealed class GeneralStoryCollectorTests
 {
+    [Fact]
+    public void 동맹_대화는_상대_군주와_소재도시_참모를_선택한다()
+    {
+        var envoy = new General(new(1), "사절", new Dictionary<TroopClass, AptitudeGrade>(), 40, 50, 90);
+        var ruler = new General(new(2), "군주", new Dictionary<TroopClass, AptitudeGrade>(), 50, 70, 70);
+        var advisor = new General(new(3), "참모", new Dictionary<TroopClass, AptitudeGrade>(), 40, 95, 80);
+        var origin = new City(new(1), "출발", new HexCoord(0, 0), new(1), 100);
+        var near = new City(new(2), "가까운 성", new HexCoord(1, 0), new(2), 100);
+        var court = new City(new(3), "군주 성", new HexCoord(6, 0), new(2), 100,
+            Strategist: advisor.Id);
+        var state = new GameState(7, 190,
+            [new Faction(new(1), "아군", envoy.Id, 0, "red"), new Faction(new(2), "상대", ruler.Id, 0, "blue")],
+            [origin, near, court], [envoy, ruler, advisor],
+            Postings: [new(envoy.Id, new(1), origin.Id), new(ruler.Id, new(2), court.Id),
+                new(advisor.Id, new(2), court.Id)]);
+
+        var audience = DiplomacyAudience.Select(state, new(2), origin.Position);
+        Assert.Equal(court.Id, audience.City?.Id);
+        Assert.Equal(ruler.Id, audience.Ruler);
+        Assert.Equal(advisor.Id, audience.Advisor);
+
+        var success = Assert.Single(GeneralStoryCollector.Collect(state, state, [], [],
+            [new(WorldEventKind.AllianceSuccess, new(1), envoy.Id, origin.Id, Code: "2")]));
+        Assert.Equal("alliance_success_advisor", success.Kind);
+        Assert.Equal(ruler.Id, success.SecondSpeaker);
+        Assert.Equal(advisor.Id.Value, success.Amount);
+        Assert.Equal(court.Id, success.City);
+
+        var withoutAdvisor = state with { Postings = state.Assignments.Where(posting => posting.General != advisor.Id).ToArray() };
+        var failure = Assert.Single(GeneralStoryCollector.Collect(withoutAdvisor, withoutAdvisor, [], [],
+            [new(WorldEventKind.AllianceFail, new(1), envoy.Id, origin.Id, Code: "2")]));
+        Assert.Equal("alliance_fail", failure.Kind);
+        Assert.Equal(0, failure.Amount);
+    }
+
     [Fact]
     public void 정찰_계략과_동맹은_서로_다른_대화로_분류한다()
     {

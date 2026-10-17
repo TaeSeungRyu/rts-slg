@@ -173,7 +173,7 @@ public sealed partial class CampaignMapScene
         var portraitColumn = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         portraitColumn.SizeFlagsStretchRatio = 3;
         row.AddChild(portraitColumn);
-        portraitColumn.AddChild(new TextureRect
+        var portrait = new TextureRect
         {
             Texture = PortraitFor(story.Speaker) ?? CircularPortraitFor(story.Speaker),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
@@ -182,8 +182,11 @@ public sealed partial class CampaignMapScene
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             MouseFilter = Control.MouseFilterEnum.Ignore,
-        });
-        portraitColumn.AddChild(MakeLabel(StorySpeakerName(story.Speaker), 14, GoldBright));
+        };
+        portraitColumn.AddChild(portrait);
+        var portraitName = MakeLabel(StorySpeakerName(story.Speaker), 14, GoldBright);
+        portraitName.Name = "StoryCurrentSpeaker";
+        portraitColumn.AddChild(portraitName);
         var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         content.SizeFlagsStretchRatio = 7;
         row.AddChild(content);
@@ -211,7 +214,16 @@ public sealed partial class CampaignMapScene
         next.CustomMinimumSize = new Vector2(86, 34);
         next.Pressed += () =>
         {
-            if (++currentPage < lines.Length) line.Text = lines[currentPage];
+            if (++currentPage < lines.Length)
+            {
+                line.Text = lines[currentPage];
+                var pageSpeaker = StoryLineSpeaker(story, line.Text);
+                if (pageSpeaker is { } general)
+                {
+                    portrait.Texture = PortraitFor(general) ?? CircularPortraitFor(general);
+                    portraitName.Text = StorySpeakerName(general);
+                }
+            }
             if (currentPage >= lines.Length - 1)
             {
                 next.Visible = false;
@@ -240,7 +252,8 @@ public sealed partial class CampaignMapScene
 
     private void AddStoryChoices(HBoxContainer actions, GeneralStoryEvent story, Label line)
     {
-        if (story.Kind is "low_food" or "beast_defeated" or "alliance_success" or "alliance_fail")
+        if (story.Kind is "low_food" or "beast_defeated" or "alliance_success" or "alliance_fail"
+            or "alliance_success_advisor" or "alliance_fail_advisor")
         {
             var acknowledge = MakeButton("확인", accent: true);
             acknowledge.Pressed += () =>
@@ -331,6 +344,18 @@ public sealed partial class CampaignMapScene
     private string StoryShortLine(GeneralStoryEvent story)
         => StoryLines(story)[0].Replace($"{StorySpeakerName(story.Speaker)}: ", "");
 
+    private GeneralId? StoryLineSpeaker(GeneralStoryEvent story, string line)
+    {
+        if (story.SecondSpeaker is { } ruler && line.StartsWith($"{StorySpeakerName(ruler)}:", System.StringComparison.Ordinal))
+            return ruler;
+        if (story.Kind.EndsWith("_advisor", System.StringComparison.Ordinal)
+            && story.Amount > 0 && _state.Generals.Any(general => general.Id.Value == story.Amount)
+            && line.StartsWith($"{StorySpeakerName(new GeneralId(story.Amount))}:", System.StringComparison.Ordinal))
+            return new GeneralId(story.Amount);
+        return line.StartsWith($"{StorySpeakerName(story.Speaker)}:", System.StringComparison.Ordinal)
+            ? story.Speaker : null;
+    }
+
     private string[] StoryLines(GeneralStoryEvent story)
     {
         var definition = _storyDefinitions.FirstOrDefault(d => d.Kind == story.Kind);
@@ -338,9 +363,12 @@ public sealed partial class CampaignMapScene
         var city = story.City is { } cityId
             ? _state.Cities.FirstOrDefault(c => c.Id == cityId)?.Name ?? "도시" : "도시";
         var second = story.SecondSpeaker is { } secondId ? StorySpeakerName(secondId) : StorySpeakerName(story.Speaker);
+        var ruler = story.SecondSpeaker is { } rulerId ? StorySpeakerName(rulerId) : "상대 군주";
+        var advisor = story.Amount > 0 ? StorySpeakerName(new GeneralId(story.Amount)) : "상대 참모";
         var result = definition.Variants[story.Variant % definition.Variants.Count]
             .Select(line => line.Replace("{speaker}", StorySpeakerName(story.Speaker))
-                .Replace("{second}", second).Replace("{city}", city)
+                .Replace("{second}", second).Replace("{ruler}", ruler).Replace("{advisor}", advisor)
+                .Replace("{city}", city)
                 .Replace("{amount}", story.Amount.ToString("N0"))).ToList();
         if (definition.VoiceLines is not null
             && definition.VoiceLines.TryGetValue(story.Speaker.Value, out var voice)
@@ -437,8 +465,9 @@ public sealed partial class CampaignMapScene
             var allianceStory = story with { Id = "qa:alliance-result", Kind = "alliance_success" };
             _state = _state with { PendingStoryEvents = _state.StoryPending.Append(allianceStory).ToArray() };
             ShowStoryModal(allianceStory, false);
-            _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
-                .FirstOrDefault(button => button.Text == "다음 ▶")?.EmitSignal(Button.SignalName.Pressed);
+            for (var page = 1; page < StoryLines(allianceStory).Length; page++)
+                _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+                    .FirstOrDefault(button => button.Text == "다음 ▶")?.EmitSignal(Button.SignalName.Pressed);
             var allianceButtons = _modalLayer?.FindChildren("*", "Button", true, false)
                 .OfType<Button>().Select(button => button.Text).ToArray() ?? [];
             var allianceResultShown = allianceButtons.Contains("확인")
@@ -446,6 +475,27 @@ public sealed partial class CampaignMapScene
             _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
                 .FirstOrDefault(button => button.Text == "확인")?.EmitSignal(Button.SignalName.Pressed);
             allianceResultShown &= !_storyOpen && _state.StoryHistory.Any(e => e.Id == allianceStory.Id);
+            var otherSpeakers = _state.Generals.Where(general => general.Id != speaker.Id).Take(2).ToArray();
+            var audienceShown = false;
+            if (otherSpeakers.Length == 2)
+            {
+                var audienceStory = story with
+                {
+                    Id = "qa:alliance-audience", Kind = "alliance_success_advisor",
+                    SecondSpeaker = otherSpeakers[0].Id, Amount = otherSpeakers[1].Id.Value,
+                };
+                _state = _state with { PendingStoryEvents = _state.StoryPending.Append(audienceStory).ToArray() };
+                ShowStoryModal(audienceStory, false);
+                var audienceLines = StoryLines(audienceStory);
+                _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+                    .FirstOrDefault(button => button.Text == "다음 ▶")?.EmitSignal(Button.SignalName.Pressed);
+                var currentSpeaker = _modalLayer?.FindChild("StoryCurrentSpeaker", true, false) as Label;
+                audienceShown = audienceLines.Length == 4
+                    && audienceLines.Any(text => text.StartsWith($"{otherSpeakers[0].Name}:"))
+                    && audienceLines.Any(text => text.StartsWith($"{otherSpeakers[1].Name}:"))
+                    && currentSpeaker?.Text == otherSpeakers[1].Name;
+                CloseStoryModal();
+            }
             var defeatedStory = story with { Id = "qa:beast-defeated", Kind = "beast_defeated" };
             _state = _state with { PendingStoryEvents = _state.StoryPending.Append(defeatedStory).ToArray() };
             ShowStoryModal(defeatedStory, false);
@@ -457,8 +507,8 @@ public sealed partial class CampaignMapScene
             _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
                 .FirstOrDefault(button => button.Text == "확인")?.EmitSignal(Button.SignalName.Pressed);
             beastConfirmOnly &= !_storyOpen && _state.StoryHistory.Any(e => e.Id == defeatedStory.Id);
-            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly && beastConfirmOnly && allianceResultShown;
-            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} doneAligned={doneAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly} beastConfirmOnly={beastConfirmOnly} allianceResultShown={allianceResultShown}");
+            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly && beastConfirmOnly && allianceResultShown && audienceShown;
+            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} doneAligned={doneAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly} beastConfirmOnly={beastConfirmOnly} allianceResultShown={allianceResultShown} audienceShown={audienceShown}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (System.Exception error)

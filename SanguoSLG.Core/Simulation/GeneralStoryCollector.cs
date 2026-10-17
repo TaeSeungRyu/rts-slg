@@ -77,6 +77,20 @@ public static class GeneralStoryCollector
                 _ => ("", 0),
             };
             if (priority == 0) continue;
+            if (e.Kind is WorldEventKind.AllianceSuccess or WorldEventKind.AllianceFail
+                && int.TryParse(e.Code, out var targetFactionId) && e.City is { } originCityId)
+            {
+                var origin = after.Cities.FirstOrDefault(city => city.Id == originCityId);
+                if (origin is not null)
+                {
+                    var audience = DiplomacyAudience.Select(after, new FactionId(targetFactionId), origin.Position);
+                    if (audience.Advisor is not null) kind += "_advisor";
+                    candidates.Add(new($"world:{index}:{e.Kind}:{speaker.Value}", kind, priority,
+                        e.Faction, speaker, audience.Ruler, audience.City?.Id,
+                        audience.Advisor?.Value ?? 0, e.Code));
+                    continue;
+                }
+            }
             candidates.Add(new($"world:{index}:{e.Kind}:{speaker.Value}", kind, priority,
                 e.Faction, speaker, City: e.City, Amount: e.Amount, Code: e.Code));
         }

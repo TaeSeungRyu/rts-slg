@@ -11,6 +11,27 @@ using Xunit;
 public class DiplomacyTests
 {
     [Fact]
+    public void 동맹_사절은_가장_가까운_성이_아닌_상대_군주_소재지로_향한다()
+    {
+        var origin = City(1, 1, 0) with { Gold = 10000 };
+        var near = City(2, 2, 2);
+        var court = City(3, 2, 8);
+        var envoy = Gen(1, politics: 90);
+        var ruler = Gen(2);
+        var state = new GameState(7, 190,
+            [new Faction(new(1), "아군", envoy.Id, 0, "red"),
+             new Faction(new(2), "상대", ruler.Id, 0, "blue")],
+            [origin, near, court], [envoy, ruler],
+            Postings: [At(1, 1, 1), At(2, 2, 3)]);
+
+        var result = new CommandService(B).Issue(state,
+            new CommandRequest(origin.Id, CommandKind.FormAlliance, envoy.Id, TargetFaction: new(2)));
+
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(court.Id, Assert.Single(result.State.Commands).TargetCity);
+    }
+
+    [Fact]
     public void 선전포고는_도착후_발효되며_이동중_중복을_막는다()
     {
         var state = new GameState(5, 190, [], [City(1, 1, 0), City(2, 2, 3)], [Gen(1)],

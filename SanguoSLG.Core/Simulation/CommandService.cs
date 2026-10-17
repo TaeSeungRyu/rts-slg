@@ -305,11 +305,7 @@ public sealed class CommandService
             return CommandResult.Fail($"동맹 비용 {_b.AllianceGoldCost}금이 필요하다.", state);
         }
 
-        var targetCity = state.Cities
-            .Where(c => c.Owner == targetFaction)
-            .OrderBy(c => c.Position.Distance(city.Position))
-            .ThenBy(c => c.Id.Value)
-            .FirstOrDefault();
+        var targetCity = DiplomacyAudience.Select(state, targetFaction, city.Position).City;
         if (targetCity is null)
         {
             return CommandResult.Fail("대상 세력의 도시가 없다.", state);
