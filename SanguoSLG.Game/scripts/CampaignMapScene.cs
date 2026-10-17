@@ -450,6 +450,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<MeshInstance3D> _pathMarkers = new();
     private Mesh? _pathDotMesh;
     private Material? _pathDotMat;
+    private Mesh? _pathTargetRingMesh;
+    private Material? _pathTargetRingMat;
 
     // 1단계 지원 명령(전투 중심 v2 팔레트에서 노출할 기존 명령만 연결).
     private static readonly (string Label, CommandKind Kind, string Param)[] Cmds =
@@ -1542,7 +1544,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             AddRouteDots(u.Field.Position, u.Field.Waypoints, tgt, _pathMarkers,
                 u.Class == TroopClass.Naval, u.Field.ContinuousWaypoints, u.Field.ContinuousTarget,
-                u.RenewalPosition);
+                u.RenewalPosition, u.Field.Mode);
         }
     }
 
@@ -2065,7 +2067,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void AddRouteDots(HexCoord start, IReadOnlyList<HexCoord>? waypoints, HexCoord target,
         List<MeshInstance3D> into, bool naval = false,
         IReadOnlyList<ContinuousPosition>? exactWaypoints = null, ContinuousPosition? exactTarget = null,
-        ContinuousPosition? exactStart = null)
+        ContinuousPosition? exactStart = null, UnitMode mode = UnitMode.March)
     {
         var prev = start;
         var previousPoint = exactStart;
@@ -2078,8 +2080,19 @@ public sealed partial class CampaignMapScene : Node3D
             prev = points[index];
         }
 
-        AddPathDots(prev, target, into, naval, exactTarget, previousPoint);
+        AddPathDots(prev, target, into, naval, exactTarget, previousPoint,
+            IsHostileRouteEndpoint(target, mode));
     }
+
+    private bool IsHostileRouteEndpoint(HexCoord target, UnitMode mode)
+        => mode is UnitMode.Attack or UnitMode.Advance
+            && (_state.Cities.Any(city => city.Owner != Player && _state.AreHostile(Player, city.Owner)
+                    && CastleFootprint.TilesFor(city).Contains(target))
+                || _state.Buildings.Any(building => building.Position == target
+                    && !building.IsExpired(_state.Day) && _state.AreHostile(Player, building.Owner))
+                || DisplayedArmies.Any(unit => unit.Field.Position == target
+                    && _state.AreHostile(Player, unit.Field.Owner) && CanSeeUnit(unit))
+                || RuinAt(target) is not null);
 
     // 유닛 상태를 정보 카드에 표시(팔레트 '정보').
     private void ShowUnitInfo(int unitId)
@@ -2805,7 +2818,10 @@ public sealed partial class CampaignMapScene : Node3D
             AddPathDots(prev, wp, _previewMarkers,
                 naval: _targetingNavalDeploy || _targetingNavalUnit,
                 exactGoal: _targetContinuousWaypoints[index],
-                exactStart: index > 0 ? _targetContinuousWaypoints[index - 1] : null);
+                exactStart: index > 0 ? _targetContinuousWaypoints[index - 1] : null,
+                ringAtDestination: index == _targetWaypoints.Count - 1
+                    && !_targetingTransportDeploy
+                    && IsHostileRouteEndpoint(wp, _retargetUnitId >= 0 ? _retargetMode : UnitMode.Attack));
             prev = wp;
         }
 
@@ -3278,7 +3294,7 @@ public sealed partial class CampaignMapScene : Node3D
             var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
             if (city is null) { continue; }
             AddRouteDots(req.EgressExit ?? city.Position, req.Waypoints, goal, _pathMarkers,
-                exactWaypoints: req.ContinuousWaypoints, exactTarget: req.ContinuousTarget);
+                exactWaypoints: req.ContinuousWaypoints, exactTarget: req.ContinuousTarget, mode: req.Mode);
         }
 
         foreach (var (req, _) in _pendingSupplyDeploys)
@@ -3287,7 +3303,8 @@ public sealed partial class CampaignMapScene : Node3D
             var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
             if (city is null) { continue; }
             AddPathDots(req.EgressExit ?? city.Position, goal, _pathMarkers,
-                exactGoal: req.ContinuousTarget);
+                exactGoal: req.ContinuousTarget,
+                ringAtDestination: IsHostileRouteEndpoint(goal, req.Mode));
         }
 
         foreach (var (req, _) in _pendingNavalDeploys)
@@ -3296,13 +3313,23 @@ public sealed partial class CampaignMapScene : Node3D
             var city = _state.Cities.FirstOrDefault(c => c.Id == req.City);
             if (city is null) { continue; }
             AddRouteDots(req.EgressExit ?? city.Position, req.Waypoints, goal, _pathMarkers,
-                naval: true, exactWaypoints: req.ContinuousWaypoints, exactTarget: req.ContinuousTarget);
+                naval: true, exactWaypoints: req.ContinuousWaypoints, exactTarget: req.ContinuousTarget, mode: req.Mode);
+        }
+
+        foreach (var (req, _) in _pendingArmyGroupDeploys)
+        {
+            if (req.Target is not { } goal) continue;
+            var city = _state.Cities.FirstOrDefault(value => value.Id == req.City);
+            if (city is null) continue;
+            AddRouteDots(req.EgressExit ?? city.Position, req.Waypoints, goal, _pathMarkers,
+                exactWaypoints: req.ContinuousWaypoints, exactTarget: req.ContinuousTarget, mode: req.Mode);
         }
     }
 
     // start→goal 경로를 단일 발광 점으로 표시한다. 지형색 원반을 깔지 않는다.
     private void AddPathDots(HexCoord start, HexCoord goal, List<MeshInstance3D> into,
-        bool naval = false, ContinuousPosition? exactGoal = null, ContinuousPosition? exactStart = null)
+        bool naval = false, ContinuousPosition? exactGoal = null, ContinuousPosition? exactStart = null,
+        bool ringAtDestination = false)
     {
         _pathDotMesh ??= new CylinderMesh { TopRadius = 0.11f, BottomRadius = 0.11f, Height = 0.045f, RadialSegments = 16 };
         _pathDotMat ??= new StandardMaterial3D
@@ -3346,11 +3373,13 @@ public sealed partial class CampaignMapScene : Node3D
                 var point = new ContinuousPosition(
                     previous.X + (next.X - previous.X) * step / steps,
                     previous.Y + (next.Y - previous.Y) * step / steps);
-                AddPathDot(point, into, false);
+                if (!ringAtDestination || point != destination) AddPathDot(point, into, false);
             }
             previous = next;
         }
-        if (into.Count == 0 || route.Count == 0 || previous != destination)
+        if (ringAtDestination)
+            AddPathTargetRing(destination, into);
+        else if (into.Count == 0 || route.Count == 0 || previous != destination)
             AddPathDot(destination, into, true);
         else
             into[^1].Scale = new Vector3(1.28f, 1f, 1.28f);
@@ -3370,6 +3399,33 @@ public sealed partial class CampaignMapScene : Node3D
             into.Add(dot);
     }
 
+    private void AddPathTargetRing(ContinuousPosition point, List<MeshInstance3D> into)
+    {
+        _pathTargetRingMesh ??= new TorusMesh
+        {
+            InnerRadius = 0.18f,
+            OuterRadius = 0.24f,
+        };
+        _pathTargetRingMat ??= new StandardMaterial3D
+        {
+            AlbedoColor = new Color("ffd879"),
+            EmissionEnabled = true,
+            Emission = new Color("ffd879"),
+            EmissionEnergyMultiplier = 2f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+        };
+        var ring = new MeshInstance3D
+        {
+            Name = "PathTargetRing",
+            Mesh = _pathTargetRingMesh,
+            MaterialOverride = _pathTargetRingMat,
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            Position = ContinuousToWorld(point) + new Vector3(0f, _view.TileTopY + 0.08f, 0f),
+        };
+        AddChild(ring);
+        into.Add(ring);
+    }
+
     private void RunPathVisualQa()
     {
         var markers = new List<MeshInstance3D>();
@@ -3385,8 +3441,18 @@ public sealed partial class CampaignMapScene : Node3D
             && markers.All(marker => marker.Mesh is CylinderMesh dot && dot.TopRadius <= 0.11f)
             && markers[^1].Scale.X > 1.2f
             && markers[^1].Position.DistanceTo(_view.HexToWorld(goal) + new Vector3(0f, _view.TileTopY + 0.06f, 0f)) < 0.01f;
-        GD.Print($"[maptestpathvisualqa] passed={passed} markers={markers.Count} singleDot={singleDot} continuous={followsContinuousLine} destinationScale={(markers.Count > 0 ? markers[^1].Scale.X : 0):0.00}");
+        var attackMarkers = new List<MeshInstance3D>();
+        var hostile = _state.Cities.FirstOrDefault(city => _state.AreHostile(Player, city.Owner));
+        if (hostile is not null)
+        {
+            AddPathDots(start, hostile.Position, attackMarkers,
+                ringAtDestination: IsHostileRouteEndpoint(hostile.Position, UnitMode.Attack));
+            passed &= attackMarkers.LastOrDefault()?.Name == "PathTargetRing"
+                && attackMarkers[^1].Mesh is TorusMesh;
+        }
+        GD.Print($"[maptestpathvisualqa] passed={passed} markers={markers.Count} singleDot={singleDot} continuous={followsContinuousLine} hostileRing={attackMarkers.LastOrDefault()?.Name == "PathTargetRing"} destinationScale={(markers.Count > 0 ? markers[^1].Scale.X : 0):0.00}");
         foreach (var marker in markers) marker.QueueFree();
+        foreach (var marker in attackMarkers) marker.QueueFree();
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -4115,7 +4181,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             AddRouteDots(u.Field.Position, u.Field.Waypoints, u.Field.Target!.Value,
                 _pathMarkers, u.Class == TroopClass.Naval,
-                u.Field.ContinuousWaypoints, u.Field.ContinuousTarget, u.RenewalPosition);
+                u.Field.ContinuousWaypoints, u.Field.ContinuousTarget, u.RenewalPosition, u.Field.Mode);
         }
 
         _advancing = true;
