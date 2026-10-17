@@ -9799,6 +9799,17 @@ public sealed partial class CampaignMapScene : Node3D
                 .Single(b => b.Text == "생산 시작");
             if (!panel.GetGlobalRect().Encloses(start.GetGlobalRect()))
                 throw new Exception("생산 시작 버튼이 모달 밖으로 밀렸습니다.");
+            var fixedLocation = ProductionTargets(city).First().Plot;
+            var fixedTexts = panel.FindChildren("*", "Label", true, false).OfType<Label>()
+                .Select(label => label.Text);
+            if (fixedTexts.Any(text => text.Contains($"({fixedLocation.Q},{fixedLocation.R})", StringComparison.Ordinal)))
+                throw new Exception("고정 생산 대상에 좌표가 표시됩니다.");
+            OpenProductionModal(city.Id);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var targetTable = _modalLayer?.FindChild("ProductionTargetTable", true, false) as Tree;
+            if (targetTable is null || targetTable.Columns != 3
+                || Enumerable.Range(0, targetTable.Columns).Any(column => targetTable.GetColumnTitle(column) == "좌표"))
+                throw new Exception("생산 대상 표에 좌표 열이 남아 있습니다.");
             GD.Print("PRODUCTION_CENTER_QA PASS: centered, horizontal columns, visible action");
             GetParent().CallDeferred("RequestGracefulShutdown");
         }
@@ -9911,13 +9922,14 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (hasFixedTarget)
         {
-            box.AddChild(MakeLabel($"{FacilityName(selectedFacility)} ({selectedTarget!.Value.Q},{selectedTarget.Value.R})\n선택한 시설에서 생산을 진행합니다.", 13, GoldBright));
+            box.AddChild(MakeLabel($"{FacilityName(selectedFacility)}\n선택한 시설에서 생산을 진행합니다.", 13, GoldBright));
         }
         else
         {
             var tree = new Tree
             {
-                Columns = 4,
+                Name = "ProductionTargetTable",
+                Columns = 3,
                 ColumnTitlesVisible = true,
                 HideRoot = true,
                 SelectMode = Tree.SelectModeEnum.Row,
@@ -9930,18 +9942,16 @@ public sealed partial class CampaignMapScene : Node3D
             tree.AddThemeFontSizeOverride("title_button_font_size", 12);
             tree.SetColumnTitle(0, "선택"); tree.SetColumnExpand(0, false); tree.SetColumnCustomMinimumWidth(0, 52);
             tree.SetColumnTitle(1, "대상"); tree.SetColumnExpand(1, true);
-            tree.SetColumnTitle(2, "좌표"); tree.SetColumnExpand(2, false); tree.SetColumnCustomMinimumWidth(2, 72);
-            tree.SetColumnTitle(3, "예상 보상"); tree.SetColumnExpand(3, true);
+            tree.SetColumnTitle(2, "예상 보상"); tree.SetColumnExpand(2, true);
             var root = tree.CreateItem();
             foreach (var target in targets)
             {
                 var item = tree.CreateItem(root);
                 item.SetText(0, target.Plot == selectedTarget ? "◆" : "◇");
                 item.SetText(1, FacilityName(target.Code));
-                item.SetText(2, $"{target.Plot.Q},{target.Plot.R}");
                 var sample = selectedGeneral is { } sg ? _state.Generals.FirstOrDefault(g => g.Id == sg) : null;
                 var reward = sample is null ? (Gold: 0, Provisions: 0) : ProductionRules.Reward(target.Code, sample.Politics);
-                item.SetText(3, reward.Gold > 0 ? $"금 +{reward.Gold}" : reward.Provisions > 0 ? $"군량 +{reward.Provisions}" : "-");
+                item.SetText(2, reward.Gold > 0 ? $"금 +{reward.Gold}" : reward.Provisions > 0 ? $"군량 +{reward.Provisions}" : "-");
                 item.SetMetadata(0, Variant.From(target.Plot.Q));
                 item.SetMetadata(1, Variant.From(target.Plot.R));
                 item.SetMetadata(2, Variant.From(target.Code));
