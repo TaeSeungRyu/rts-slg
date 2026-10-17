@@ -9297,10 +9297,12 @@ public sealed partial class CampaignMapScene : Node3D
         return candidates.FirstOrDefault(path => ResourceLoader.Exists(path) || Godot.FileAccess.FileExists(path));
     }
 
-    private static Texture2D? PortraitFor(GeneralId id)
+    private Texture2D? PortraitFor(GeneralId id)
     {
         var path = PortraitPathFor(id);
-        return path is not null ? GD.Load<Texture2D>(path) : null;
+        // .import 캐시가 무효여도 원본 PNG가 정상일 수 있다. 대화 기록 재생에서도
+        // 다른 장수 화면과 같은 직접 이미지 로더를 사용해 GD.Load 오류를 피한다.
+        return path is not null ? OfficerPortrait(id) : null;
     }
 
     private ImageTexture CircularPortraitFor(GeneralId id)
@@ -16844,10 +16846,13 @@ public sealed partial class CampaignMapScene : Node3D
         var fallbackCached = ReferenceEquals(fallback, OfficerPortrait(fallbackId));
         var fallbackWidth = fallback?.GetWidth() ?? 0;
         var fallbackHeight = fallback?.GetHeight() ?? 0;
+        var replayPortrait = PortraitFor(new GeneralId(49));
+        var replayPortraitLoaded = replayPortrait is not null
+            && replayPortrait.GetWidth() == 1122 && replayPortrait.GetHeight() == 1402;
         var passed = sample is not null && circularSize && cached
-            && fallbackWidth > 0 && fallbackHeight > 0 && fallbackCached;
+            && fallbackWidth > 0 && fallbackHeight > 0 && fallbackCached && replayPortraitLoaded;
         var sampleId = sample is null ? "-" : sample.Id.Value.ToString();
-        GD.Print($"[maptestportraitqa] passed={passed} sample={sampleId} circular={sampleCircular?.GetWidth()}x{sampleCircular?.GetHeight()} cached={cached} fallback={fallbackWidth}x{fallbackHeight} fallbackCached={fallbackCached}");
+        GD.Print($"[maptestportraitqa] passed={passed} sample={sampleId} circular={sampleCircular?.GetWidth()}x{sampleCircular?.GetHeight()} cached={cached} fallback={fallbackWidth}x{fallbackHeight} fallbackCached={fallbackCached} replay49={replayPortrait?.GetWidth()}x{replayPortrait?.GetHeight()}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
