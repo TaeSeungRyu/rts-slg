@@ -42,6 +42,20 @@ public class CityStratagemTests
     }
 
     [Fact]
+    public void 동맹_도시는_정찰할_수_있지만_다른_계략은_안된다()
+    {
+        var state = State([Mine(), Enemy()], [Gen(1)]) with
+        {
+            FactionAlliances = [FactionAlliance.Create(new FactionId(1), new FactionId(2), 1)],
+        };
+        var issued = Service().Issue(state, Req("scout"));
+        Assert.True(issued.Ok, issued.Error);
+        Assert.False(Service().Issue(state, Req("arson")).Ok);
+        var after = Advance(issued.State, issued.State.Commands.Single().CompletionDay - state.Day, roll: 0);
+        Assert.True(after.IsScouted(new FactionId(1), new CityId(2)));
+    }
+
+    [Fact]
     public void 동맹과_도시계략이_같은날_완료되면_계략은_발동하지_않는다()
     {
         var alliance = new CityCommand(new CityId(1), CommandKind.FormAlliance,

@@ -6958,7 +6958,7 @@ public sealed partial class CampaignMapScene : Node3D
         _stratTarget = null;
         if (cmd.Param == "stratagem")
         {
-            var enemies = _state.Cities.Where(c => _state.AreHostile(Player, c.Owner))
+            var enemies = _state.Cities.Where(c => c.Owner != Player)
                 .OrderBy(c => c.Id.Value).ToList();
             if (enemies.Count > 0)
             {
@@ -6992,7 +6992,8 @@ public sealed partial class CampaignMapScene : Node3D
                 foreach (var enemyCity in enemies)
                 {
                     var item = cityTree.CreateItem(croot);
-                    item.SetText(0, enemyCity.Name);
+                    item.SetText(0, _state.AreAllied(Player, enemyCity.Owner)
+                        ? $"{enemyCity.Name} (동맹·정찰만)" : enemyCity.Name);
                     item.SetText(1, $"{from.Distance(enemyCity.Position)}칸");
                     item.SetText(2, $"{CityStratagems.Days(from, enemyCity.Position, _cb)}일");
                     item.SetMetadata(0, enemyCity.Id.Value);

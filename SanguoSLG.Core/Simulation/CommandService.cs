@@ -880,9 +880,10 @@ public sealed class CommandService
         }
 
         var target = state.Cities.FirstOrDefault(c => c.Id == targetId);
-        if (target is null || !state.AreHostile(city.Owner, target.Owner))
+        if (target is null || target.Owner == city.Owner
+            || req.Facility != "scout" && !state.AreHostile(city.Owner, target.Owner))
         {
-            return CommandResult.Fail("적 도시만 대상이 될 수 있다.", state);
+            return CommandResult.Fail("정찰은 다른 세력의 도시, 그 외 계략은 적 도시만 대상이 될 수 있다.", state);
         }
 
         if (CityStratagems.RequiresScout(req.Facility) && !state.IsScouted(city.Owner, targetId))
