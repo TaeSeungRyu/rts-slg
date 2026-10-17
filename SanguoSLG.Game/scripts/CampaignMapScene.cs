@@ -3379,7 +3379,7 @@ public sealed partial class CampaignMapScene : Node3D
             previous = next;
         }
         if (ringAtDestination)
-            AddPathTargetRing(destination, into);
+            AddPathTargetRing(RouteTargetCenter(goal, destination), into);
         else if (into.Count == 0 || route.Count == 0 || previous != destination)
             AddPathDot(destination, into, true);
         else
@@ -3404,16 +3404,15 @@ public sealed partial class CampaignMapScene : Node3D
     {
         _pathTargetRingMesh ??= new TorusMesh
         {
-            InnerRadius = 0.18f,
-            OuterRadius = 0.24f,
+            InnerRadius = 0.42f,
+            OuterRadius = 0.52f,
         };
         _pathTargetRingMat ??= new StandardMaterial3D
         {
-            AlbedoColor = new Color("ffd879"),
+            AlbedoColor = GoldBright,
             EmissionEnabled = true,
-            Emission = new Color("ffd879"),
-            EmissionEnergyMultiplier = 2f,
-            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Emission = Gold,
+            EmissionEnergyMultiplier = 1.6f,
         };
         var ring = new MeshInstance3D
         {
@@ -3425,6 +3424,18 @@ public sealed partial class CampaignMapScene : Node3D
         };
         AddChild(ring);
         into.Add(ring);
+    }
+
+    private ContinuousPosition RouteTargetCenter(HexCoord target, ContinuousPosition clicked)
+    {
+        var army = DisplayedArmies.Where(unit => unit.Field.Position == target
+                && _state.AreHostile(Player, unit.Field.Owner) && CanSeeUnit(unit))
+            .OrderBy(unit => (unit.RenewalPosition ?? RenewalHexSpace.Center(target)).DistanceTo(clicked))
+            .FirstOrDefault();
+        if (army is not null) return army.RenewalPosition ?? RenewalHexSpace.Center(target);
+        var city = _state.Cities.FirstOrDefault(value => _state.AreHostile(Player, value.Owner)
+            && CastleFootprint.TilesFor(value).Contains(target));
+        return city is null ? RenewalHexSpace.Center(target) : RenewalHexSpace.Center(city.Position);
     }
 
     private void RunPathVisualQa()
@@ -3449,7 +3460,11 @@ public sealed partial class CampaignMapScene : Node3D
             AddPathDots(start, hostile.Position, attackMarkers,
                 ringAtDestination: IsHostileRouteEndpoint(hostile.Position, UnitMode.Attack));
             passed &= attackMarkers.LastOrDefault()?.Name == "PathTargetRing"
-                && attackMarkers[^1].Mesh is TorusMesh;
+                && attackMarkers[^1].Mesh is TorusMesh ring
+                && Mathf.IsEqualApprox(ring.InnerRadius, 0.42f)
+                && Mathf.IsEqualApprox(ring.OuterRadius, 0.52f)
+                && attackMarkers[^1].Position.DistanceTo(_view.HexToWorld(hostile.Position)
+                    + new Vector3(0f, _view.TileTopY + 0.08f, 0f)) < 0.01f;
         }
         GD.Print($"[maptestpathvisualqa] passed={passed} markers={markers.Count} singleDot={singleDot} continuous={followsContinuousLine} hostileRing={attackMarkers.LastOrDefault()?.Name == "PathTargetRing"} destinationScale={(markers.Count > 0 ? markers[^1].Scale.X : 0):0.00}");
         foreach (var marker in markers) marker.QueueFree();
