@@ -32,6 +32,15 @@ public sealed class GeneralStoryLoaderTests
     }
 
     [Fact]
+    public void 성_일상_대사는_서로_다른_스무_가지다()
+    {
+        var definition = Assert.Single(new GeneralStoryLoader().LoadFromDirectory(TestData.DataDirectory()),
+            item => item.Kind == "city_bark");
+        Assert.Equal(20, definition.Variants.Count);
+        Assert.Equal(20, definition.Variants.Select(lines => Assert.Single(lines)).Distinct().Count());
+    }
+
+    [Fact]
     public void 중복_사건코드는_거부한다()
     {
         var loader = new GeneralStoryLoader();

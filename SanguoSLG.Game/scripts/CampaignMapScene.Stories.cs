@@ -56,7 +56,7 @@ public sealed partial class CampaignMapScene
         var selected = candidates[before.Day % candidates.Length];
         return [new GeneralStoryEvent($"city-bark:{before.Day}:{selected.General.Value}",
             "city_bark", before.Day, 8, Player, selected.General, null, selected.Location,
-            before.Day % 10)];
+            before.Day % 20)];
     }
 
     private void PrepareStoryAfterAdvance()
