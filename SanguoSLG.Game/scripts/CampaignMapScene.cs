@@ -13270,7 +13270,7 @@ public sealed partial class CampaignMapScene : Node3D
                     var days = CommandService.ShipBuildBaseDays(t.Code);
                     var access = FactionTroopUnlock.Check(_state, city.Owner, t.Code);
                     var detail = access.Allowed
-                        ? $"저장 {stock}척\n기본 {days}일 · 지력 100이면 -7일\n1척당 병력 10,000명 탑승"
+                        ? $"저장 {stock}척\n기본 {days}일\n1척당 병력 10,000명 탑승"
                         : access.Reason;
                     list.Add((t.Name, UnitCard(t.Code, t.Class), detail));
                 }
@@ -17430,6 +17430,8 @@ public sealed partial class CampaignMapScene : Node3D
         _selected = port.Id;
         OpenModal(commandIndex);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var noIntellectHint = _modalLayer?.FindChildren("*", "Label", true, false)
+            .OfType<Label>().All(label => !label.Text.Contains("지력 100이면", StringComparison.Ordinal)) == true;
         AskExecute(port.Id, commandIndex, officer, 0);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var labels = _confirmLayer?.FindChildren("*", "Label", true, false)
@@ -17439,7 +17441,7 @@ public sealed partial class CampaignMapScene : Node3D
         var ship = PortShipOptionAt(0);
         var days = ship is null ? 0 : CommandService.ShipBuildDays(ship.Code,
             _state.Generals.First(g => g.Id == officer).Intellect);
-        var passed = portrait && labels.Any(text => text.Contains($"{days}일 안에 완성하겠습니다", StringComparison.Ordinal))
+        var passed = noIntellectHint && portrait && labels.Any(text => text.Contains($"{days}일 안에 완성하겠습니다", StringComparison.Ordinal))
             && labels.Any(text => text.Contains($"소요 {days}일", StringComparison.Ordinal));
         GD.Print($"[ship-build-confirm-qa] passed={passed} portrait={portrait} days={days}");
         GetTree().Quit(passed ? 0 : 1);
