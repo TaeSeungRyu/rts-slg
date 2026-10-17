@@ -71,7 +71,8 @@ public static class GeneralStoryCollector
                 WorldEventKind.EventUnitAppeared => ("beast_appeared", 2),
                 WorldEventKind.Research => ("research", 5),
                 WorldEventKind.ProductionComplete => ("production", 5),
-                WorldEventKind.AllianceSuccess or WorldEventKind.AllianceFail => ("diplomacy", 6),
+                WorldEventKind.AllianceSuccess => ("alliance_success", 6),
+                WorldEventKind.AllianceFail => ("alliance_fail", 6),
                 WorldEventKind.StratagemSuccess or WorldEventKind.StratagemFail => ("stratagem", 6),
                 _ => ("", 0),
             };

@@ -18,7 +18,7 @@ public sealed class GeneralStoryCollectorTests
             new(WorldEventKind.AllianceSuccess, new(1), new GeneralId(1)),
         };
 
-        Assert.Equal(new[] { "stratagem", "stratagem", "diplomacy" },
+        Assert.Equal(new[] { "stratagem", "stratagem", "alliance_success" },
             GeneralStoryCollector.Collect(state, state, [], [], events).Select(candidate => candidate.Kind));
     }
 

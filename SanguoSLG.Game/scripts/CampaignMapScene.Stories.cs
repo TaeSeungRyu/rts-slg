@@ -240,7 +240,7 @@ public sealed partial class CampaignMapScene
 
     private void AddStoryChoices(HBoxContainer actions, GeneralStoryEvent story, Label line)
     {
-        if (story.Kind is "low_food" or "beast_defeated")
+        if (story.Kind is "low_food" or "beast_defeated" or "alliance_success" or "alliance_fail")
         {
             var acknowledge = MakeButton("확인", accent: true);
             acknowledge.Pressed += () =>
@@ -434,6 +434,18 @@ public sealed partial class CampaignMapScene
             _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
                 .FirstOrDefault(button => button.Text == "확인")?.EmitSignal(Button.SignalName.Pressed);
             warningOnly &= !_storyOpen && _state.StoryHistory.Any(e => e.Id == warningStory.Id);
+            var allianceStory = story with { Id = "qa:alliance-result", Kind = "alliance_success" };
+            _state = _state with { PendingStoryEvents = _state.StoryPending.Append(allianceStory).ToArray() };
+            ShowStoryModal(allianceStory, false);
+            _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+                .FirstOrDefault(button => button.Text == "다음 ▶")?.EmitSignal(Button.SignalName.Pressed);
+            var allianceButtons = _modalLayer?.FindChildren("*", "Button", true, false)
+                .OfType<Button>().Select(button => button.Text).ToArray() ?? [];
+            var allianceResultShown = allianceButtons.Contains("확인")
+                && !allianceButtons.Contains("결과 확인") && StoryLines(allianceStory).Any(text => text.Contains("동맹", System.StringComparison.Ordinal));
+            _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+                .FirstOrDefault(button => button.Text == "확인")?.EmitSignal(Button.SignalName.Pressed);
+            allianceResultShown &= !_storyOpen && _state.StoryHistory.Any(e => e.Id == allianceStory.Id);
             var defeatedStory = story with { Id = "qa:beast-defeated", Kind = "beast_defeated" };
             _state = _state with { PendingStoryEvents = _state.StoryPending.Append(defeatedStory).ToArray() };
             ShowStoryModal(defeatedStory, false);
@@ -445,8 +457,8 @@ public sealed partial class CampaignMapScene
             _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
                 .FirstOrDefault(button => button.Text == "확인")?.EmitSignal(Button.SignalName.Pressed);
             beastConfirmOnly &= !_storyOpen && _state.StoryHistory.Any(e => e.Id == defeatedStory.Id);
-            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly && beastConfirmOnly;
-            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} doneAligned={doneAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly} beastConfirmOnly={beastConfirmOnly}");
+            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly && beastConfirmOnly && allianceResultShown;
+            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} doneAligned={doneAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly} beastConfirmOnly={beastConfirmOnly} allianceResultShown={allianceResultShown}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (System.Exception error)
