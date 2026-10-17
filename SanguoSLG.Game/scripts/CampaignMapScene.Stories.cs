@@ -67,11 +67,14 @@ public sealed partial class CampaignMapScene
         foreach (var story in stories)
             Report($"[장수 대화] {StoryTitle(story)} · {StorySpeakerName(story.Speaker)}", Gold,
                 story.Speaker, story.Id);
-        // 한 진행당 한 장면만 띄운다. 나머지는 전체 보고에서 다시 읽을 수 있다.
-        foreach (var story in stories.Skip(1))
-            _state = GeneralStorySelector.Resolve(_state, story.Id, "report_only");
+        // 여러 사건이 같은 날 발생해도 결과 대화를 보고 전용으로 버리지 않는다.
         _storyAwaitingCard = true;
     }
+
+    private GeneralStoryEvent? NextPendingStory()
+        => _state.StoryPending.Where(e => e.Faction == Player)
+            .OrderBy(e => e.Kind.StartsWith("alliance_", System.StringComparison.Ordinal) ? 0 : 1)
+            .ThenBy(e => e.Priority).ThenBy(e => e.Id, System.StringComparer.Ordinal).FirstOrDefault();
 
     private void TickStoryPresentation(double delta)
     {
@@ -97,8 +100,7 @@ public sealed partial class CampaignMapScene
             && _modalLayer is null && _confirmLayer is null)
         {
             _storyAwaitingCard = false;
-            var next = _state.StoryPending.Where(e => e.Faction == Player)
-                .OrderBy(e => e.Priority).ThenBy(e => e.Id, System.StringComparer.Ordinal).FirstOrDefault();
+            var next = NextPendingStory();
             if (next is not null) ShowStoryModal(next, false);
         }
     }
@@ -317,6 +319,7 @@ public sealed partial class CampaignMapScene
         _storyOpenId = null;
         if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
         if (IsInstanceValid(_reportPanel)) _reportPanel.Visible = _storyReportWasVisible;
+        _storyAwaitingCard = NextPendingStory() is not null;
     }
 
     private void AddStoryChoices(HBoxContainer actions, GeneralStoryEvent story, Label line)
@@ -590,8 +593,15 @@ public sealed partial class CampaignMapScene
             _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
                 .FirstOrDefault(button => button.Text == "확인")?.EmitSignal(Button.SignalName.Pressed);
             beastConfirmOnly &= !_storyOpen && _state.StoryHistory.Any(e => e.Id == defeatedStory.Id);
-            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly && beastConfirmOnly && allianceResultShown && audienceShown;
-            GD.Print($"[general-story-qa] passed={passed} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} doneAligned={doneAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly} beastConfirmOnly={beastConfirmOnly} allianceResultShown={allianceResultShown} audienceShown={audienceShown}");
+            var unrelatedStory = story with { Id = "qa:other-result", Kind = "wall" };
+            var priorityAlliance = story with { Id = "qa:priority-alliance", Kind = "alliance_success" };
+            _state = _state with { PendingStoryEvents = _state.StoryPending.Append(unrelatedStory).Append(priorityAlliance).ToArray() };
+            var alliancePriority = NextPendingStory()?.Id == priorityAlliance.Id;
+            _state = GeneralStorySelector.Resolve(_state, priorityAlliance.Id, "acknowledged");
+            var queuedNext = NextPendingStory()?.Id == unrelatedStory.Id;
+            _state = GeneralStorySelector.Resolve(_state, unrelatedStory.Id, "acknowledged");
+            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly && beastConfirmOnly && allianceResultShown && audienceShown && alliancePriority && queuedNext;
+            GD.Print($"[general-story-qa] passed={passed} alliancePriority={alliancePriority} queuedNext={queuedNext} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} doneAligned={doneAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly} beastConfirmOnly={beastConfirmOnly} allianceResultShown={allianceResultShown} audienceShown={audienceShown}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (System.Exception error)
