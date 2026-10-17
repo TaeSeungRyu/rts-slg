@@ -186,8 +186,9 @@ public sealed partial class CampaignMapScene
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 16);
         panel.AddChild(row);
+        var diplomacy = story.Kind.StartsWith("alliance_", System.StringComparison.Ordinal);
         var portraitColumn = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        portraitColumn.SizeFlagsStretchRatio = 3;
+        portraitColumn.SizeFlagsStretchRatio = diplomacy ? 2 : 3;
         row.AddChild(portraitColumn);
         var portrait = new TextureRect
         {
@@ -203,8 +204,41 @@ public sealed partial class CampaignMapScene
         var portraitName = MakeLabel(StorySpeakerName(story.Speaker), 14, GoldBright);
         portraitName.Name = "StoryCurrentSpeaker";
         portraitColumn.AddChild(portraitName);
+        TextureRect? rulerPortrait = null;
+        TextureRect? advisorPortrait = null;
+        if (diplomacy && story.SecondSpeaker is { } rulerId)
+        {
+            var audienceColumn = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            audienceColumn.SizeFlagsStretchRatio = 2;
+            row.AddChild(audienceColumn);
+            rulerPortrait = new TextureRect
+            {
+                Name = "DiplomacyRulerPortrait",
+                Texture = PortraitFor(rulerId) ?? CircularPortraitFor(rulerId),
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+                Modulate = new Color(0.65f, 0.65f, 0.65f),
+            };
+            audienceColumn.AddChild(rulerPortrait);
+            if (story.Kind.EndsWith("_advisor", System.StringComparison.Ordinal) && story.Amount > 0)
+            {
+                advisorPortrait = new TextureRect
+                {
+                    Name = "DiplomacyAdvisorPortrait",
+                    Texture = CircularPortraitFor(new GeneralId(story.Amount)),
+                    CustomMinimumSize = new Vector2(40, 40),
+                    StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                    ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                    Modulate = new Color(0.65f, 0.65f, 0.65f),
+                };
+                audienceColumn.AddChild(advisorPortrait);
+            }
+            audienceColumn.AddChild(MakeLabel(StorySpeakerName(rulerId), 13, GoldBright));
+        }
         var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        content.SizeFlagsStretchRatio = 7;
+        content.SizeFlagsStretchRatio = diplomacy ? 6 : 7;
         row.AddChild(content);
         var heading = new HBoxContainer();
         content.AddChild(heading);
@@ -217,7 +251,25 @@ public sealed partial class CampaignMapScene
         heading.AddChild(close);
         content.AddChild(GoldRule());
         var lines = StoryLines(story);
+        void HighlightSpeaker(string text)
+        {
+            if (!diplomacy) return;
+            var current = StoryLineSpeaker(story, text);
+            foreach (var (image, speakerId) in new[]
+            {
+                (portrait, (GeneralId?)story.Speaker),
+                (rulerPortrait, story.SecondSpeaker),
+                (advisorPortrait, story.Amount > 0 ? new GeneralId(story.Amount) : (GeneralId?)null),
+            })
+            {
+                if (image is null || speakerId is null) continue;
+                var tone = current == speakerId ? Colors.White : new Color(0.65f, 0.65f, 0.65f);
+                var tween = CreateTween();
+                tween.TweenProperty(image, "modulate", tone, 0.15);
+            }
+        }
         var line = MakeLabel(lines[0], 15, Parchment);
+        HighlightSpeaker(lines[0]);
         line.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         line.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
         content.AddChild(line);
@@ -233,8 +285,9 @@ public sealed partial class CampaignMapScene
             if (++currentPage < lines.Length)
             {
                 line.Text = lines[currentPage];
+                HighlightSpeaker(line.Text);
                 var pageSpeaker = StoryLineSpeaker(story, line.Text);
-                if (pageSpeaker is { } general)
+                if (!diplomacy && pageSpeaker is { } general)
                 {
                     portrait.Texture = PortraitFor(general) ?? CircularPortraitFor(general);
                     portraitName.Text = StorySpeakerName(general);
@@ -269,7 +322,7 @@ public sealed partial class CampaignMapScene
     private void AddStoryChoices(HBoxContainer actions, GeneralStoryEvent story, Label line)
     {
         if (story.Kind is "low_food" or "beast_defeated" or "scout_success" or "scout_fail"
-            or "stratagem_success" or "stratagem_fail" or "alliance_success" or "alliance_fail"
+            or "stratagem_success" or "stratagem_fail" or "alliance_success" or "alliance_fail" or "alliance_break"
             or "alliance_success_advisor" or "alliance_fail_advisor")
         {
             var acknowledge = MakeButton("확인", accent: true);
@@ -518,11 +571,12 @@ public sealed partial class CampaignMapScene
                 var audienceLines = StoryLines(audienceStory);
                 _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
                     .FirstOrDefault(button => button.Text == "다음 ▶")?.EmitSignal(Button.SignalName.Pressed);
-                var currentSpeaker = _modalLayer?.FindChild("StoryCurrentSpeaker", true, false) as Label;
+                var rulerImage = _modalLayer?.FindChild("DiplomacyRulerPortrait", true, false) as TextureRect;
+                var advisorImage = _modalLayer?.FindChild("DiplomacyAdvisorPortrait", true, false) as TextureRect;
                 audienceShown = audienceLines.Length == 4
                     && audienceLines.Any(text => text.StartsWith($"{otherSpeakers[0].Name}:"))
                     && audienceLines.Any(text => text.StartsWith($"{otherSpeakers[1].Name}:"))
-                    && currentSpeaker?.Text == otherSpeakers[1].Name;
+                    && rulerImage?.Texture is not null && advisorImage?.Texture is not null;
                 CloseStoryModal();
             }
             var defeatedStory = story with { Id = "qa:beast-defeated", Kind = "beast_defeated" };

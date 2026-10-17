@@ -15319,6 +15319,16 @@ public sealed partial class CampaignMapScene : Node3D
             _log.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
             if (r.Ok)
             {
+                if (cmd.Kind == CommandKind.BreakAlliance && targetFaction is { } brokenFaction)
+                {
+                    var audience = DiplomacyAudience.Select(_state, brokenFaction,
+                        _state.Cities.First(c => c.Id == city).Position);
+                    var story = new GeneralStoryEvent($"alliance-break:{_state.Day}:{city.Value}:{brokenFaction.Value}",
+                        "alliance_break", _state.Day, 6, Player, general, audience.Ruler,
+                        audience.City?.Id, _state.Day % 3);
+                    _state = _state with { PendingStoryEvents = _state.StoryPending.Append(story).ToArray() };
+                    _storyAwaitingCard = true;
+                }
                 if (cmd.Kind == CommandKind.DeclareWar && target is { } declaredCity)
                 {
                     var enemyName = _state.Cities.First(c => c.Id == declaredCity).Name;
