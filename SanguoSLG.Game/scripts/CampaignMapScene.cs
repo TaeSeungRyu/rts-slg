@@ -697,6 +697,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestgeneralresearchqa")) CallDeferred(nameof(RunGeneralResearchUiQa));
         if (args.Contains("--mapteststratagemresearchqa")) CallDeferred(nameof(RunStratagemResearchUiQa));
         if (args.Contains("--maptestwallresearchconfirmqa")) CallDeferred(nameof(RunWallResearchConfirmQa));
+        if (args.Contains("--maptestshipbuildconfirmqa")) CallDeferred(nameof(RunShipBuildConfirmQa));
         if (args.Contains("--maptestportfixtureqa")) CallDeferred(nameof(RunPortFixtureQa));
         if (args.Contains("--maptestsiegeplaybackqa")) CallDeferred(nameof(RunSiegePlaybackQa));
         if (args.Contains("--maptestruinuiqa")) CallDeferred(nameof(RunRuinUiQa));
@@ -15203,6 +15204,7 @@ public sealed partial class CampaignMapScene : Node3D
                     + $"\n완료 시 {ship.Name} +1척 · 비용 {cost}금"
                     + $"\n[소요 {days}일] · 기본 {baseDays}일, 지력 {builder.Intellect} 반영"
                     + (active is null ? "" : $"\n※ 이미 선박 생산 중입니다: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일");
+                confirmOfficerLine = $"“{ship.Name} 한 척을 {days}일 안에 완성하겠습니다.”";
             }
         }
 
@@ -15328,7 +15330,8 @@ public sealed partial class CampaignMapScene : Node3D
             || cmd.Kind is CommandKind.FormAlliance or CommandKind.BreakAlliance or CommandKind.DeclareWar
             || cmd.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist
             || IsAutoOfficerCommand(cmd.Kind)
-            || cmd.Kind == CommandKind.Explore)
+            || cmd.Kind == CommandKind.Explore
+            || cmd.Kind == CommandKind.BuildShip)
         {
             ShowOfficerConfirm(confirmTitle, confirmMessage, confirmOfficer, ExecuteConfirmed, confirmOfficerLine);
         }
@@ -17408,6 +17411,37 @@ public sealed partial class CampaignMapScene : Node3D
         _confirmLayer?.QueueFree();
         _confirmLayer = null;
         CloseModal();
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    private async void RunShipBuildConfirmQa()
+    {
+        var port = _state.Cities.FirstOrDefault(city => city.Owner == Player && city.IsPort);
+        var commandIndex = System.Array.FindIndex(Cmds,
+            command => command.Kind == CommandKind.BuildShip);
+        var officer = port is null ? default : _state.GeneralsAt(port.Id).FirstOrDefault();
+        if (port is null || commandIndex < 0 || officer.Value == 0)
+        {
+            GD.PrintErr("[ship-build-confirm-qa] FAIL missing port, command or officer");
+            GetTree().Quit(1);
+            return;
+        }
+
+        _selected = port.Id;
+        OpenModal(commandIndex);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        AskExecute(port.Id, commandIndex, officer, 0);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var labels = _confirmLayer?.FindChildren("*", "Label", true, false)
+            .OfType<Label>().Select(label => label.Text).ToArray() ?? [];
+        var portrait = _confirmLayer?.FindChildren("*", "TextureRect", true, false)
+            .OfType<TextureRect>().Any(texture => texture.Texture is not null) == true;
+        var ship = PortShipOptionAt(0);
+        var days = ship is null ? 0 : CommandService.ShipBuildDays(ship.Code,
+            _state.Generals.First(g => g.Id == officer).Intellect);
+        var passed = portrait && labels.Any(text => text.Contains($"{days}일 안에 완성하겠습니다", StringComparison.Ordinal))
+            && labels.Any(text => text.Contains($"소요 {days}일", StringComparison.Ordinal));
+        GD.Print($"[ship-build-confirm-qa] passed={passed} portrait={portrait} days={days}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
