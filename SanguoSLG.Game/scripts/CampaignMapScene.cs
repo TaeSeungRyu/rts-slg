@@ -723,6 +723,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestherorecruitqa")) CallDeferred(nameof(RunHeroRecruitUiQa));
         if (args.Contains("--maptestspecialresearchqa")) CallDeferred(nameof(RunSpecialResearchLockQa));
         if (args.Contains("--maptestpathvisualqa")) CallDeferred(nameof(RunPathVisualQa));
+        if (args.Contains("--maptestadvancecitypaletteqa")) CallDeferred(nameof(RunAdvanceCityPaletteQa));
         if (args.Contains("--maptestalliancelabelqa")) CallDeferred(nameof(RunAllianceLabelQa));
         if (args.Contains("--maptestbanditdisplayqa")) CallDeferred(nameof(RunBanditDisplayQa));
         if (args.Contains("--maptestfortfixtureqa")) CallDeferred(nameof(RunFieldFortFixtureQa));
@@ -4201,6 +4202,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _advancing = true;
+        HidePanels();
         _animT = 0;
         _animStepIdx = 0;
         _animDeploymentIdx = 0;
@@ -5846,6 +5848,21 @@ public sealed partial class CampaignMapScene : Node3D
         ClearFieldBuildingRange();
         ClearUnitAttackRange();
         if (_ring is not null) { _ring.Visible = false; }
+    }
+
+    private void RunAdvanceCityPaletteQa()
+    {
+        var city = _state.Cities.First(c => c.Owner == Player);
+        SelectCity(city.Id);
+        var openedBeforeAdvance = _cmdMenu.Visible;
+        _advancing = true;
+        HidePanels();
+        var closedAtAdvanceStart = !_cmdMenu.Visible;
+        SelectCity(city.Id);
+        var infoWithoutCommands = _infoCard.Visible && !_cmdMenu.Visible;
+        var passed = openedBeforeAdvance && closedAtAdvanceStart && infoWithoutCommands;
+        GD.Print($"[maptestadvancecitypaletteqa] passed={passed} opened={openedBeforeAdvance} closed={closedAtAdvanceStart} infoOnly={infoWithoutCommands}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     private void SelectCity(CityId id)
