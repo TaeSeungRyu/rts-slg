@@ -73,7 +73,10 @@ public static class GeneralStoryCollector
                 WorldEventKind.ProductionComplete => ("production", 5),
                 WorldEventKind.AllianceSuccess => ("alliance_success", 6),
                 WorldEventKind.AllianceFail => ("alliance_fail", 6),
-                WorldEventKind.StratagemSuccess or WorldEventKind.StratagemFail => ("stratagem", 6),
+                WorldEventKind.StratagemSuccess when e.Code == "scout" => ("scout_success", 6),
+                WorldEventKind.StratagemFail when e.Code == "scout" => ("scout_fail", 6),
+                WorldEventKind.StratagemSuccess => ("stratagem_success", 6),
+                WorldEventKind.StratagemFail => ("stratagem_fail", 6),
                 _ => ("", 0),
             };
             if (priority == 0) continue;

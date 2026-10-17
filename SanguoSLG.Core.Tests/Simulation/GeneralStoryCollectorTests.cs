@@ -49,12 +49,12 @@ public sealed class GeneralStoryCollectorTests
             [new General(new(1), "관우", new Dictionary<TroopClass, AptitudeGrade>(), 90, 60, 40)]);
         var events = new WorldEvent[]
         {
-            new(WorldEventKind.StratagemSuccess, new(1), new GeneralId(1)),
-            new(WorldEventKind.StratagemFail, new(1), new GeneralId(1)),
+            new(WorldEventKind.StratagemSuccess, new(1), new GeneralId(1), Code: "scout"),
+            new(WorldEventKind.StratagemFail, new(1), new GeneralId(1), Code: "arson"),
             new(WorldEventKind.AllianceSuccess, new(1), new GeneralId(1)),
         };
 
-        Assert.Equal(new[] { "stratagem", "stratagem", "alliance_success" },
+        Assert.Equal(new[] { "scout_success", "stratagem_fail", "alliance_success" },
             GeneralStoryCollector.Collect(state, state, [], [], events).Select(candidate => candidate.Kind));
     }
 

@@ -1116,8 +1116,6 @@ public sealed class WorldEngine
 
         ApplyAdministrationGrowth(generals, cmd.Main, casterCity.Owner, casterCity.Id,
             AdministrationGrowth.StratagemSuccessExperience, "stratagem");
-        _events.Add(new WorldEvent(WorldEventKind.StratagemSuccess, casterCity.Owner, cmd.Main, targetId, Code: cmd.Facility));
-
         switch (cmd.Facility)
         {
             case "wall_break":
@@ -1146,6 +1144,15 @@ public sealed class WorldEngine
                 break;
 
         }
+        var amount = cmd.Facility switch
+        {
+            "wall_break" => target.Wall - cities[targetId].Wall,
+            "incite" => target.Security - cities[targetId].Security,
+            "arson" => target.Provisions - cities[targetId].Provisions,
+            "steal" => target.Gold - cities[targetId].Gold,
+            _ => 0,
+        };
+        _events.Add(new WorldEvent(WorldEventKind.StratagemSuccess, casterCity.Owner, cmd.Main, targetId, amount, cmd.Facility));
         return true;
     }
 

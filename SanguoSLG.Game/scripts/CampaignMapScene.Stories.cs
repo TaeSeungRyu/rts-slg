@@ -252,7 +252,8 @@ public sealed partial class CampaignMapScene
 
     private void AddStoryChoices(HBoxContainer actions, GeneralStoryEvent story, Label line)
     {
-        if (story.Kind is "low_food" or "beast_defeated" or "alliance_success" or "alliance_fail"
+        if (story.Kind is "low_food" or "beast_defeated" or "scout_success" or "scout_fail"
+            or "stratagem_success" or "stratagem_fail" or "alliance_success" or "alliance_fail"
             or "alliance_success_advisor" or "alliance_fail_advisor")
         {
             var acknowledge = MakeButton("확인", accent: true);
@@ -358,6 +359,18 @@ public sealed partial class CampaignMapScene
 
     private string[] StoryLines(GeneralStoryEvent story)
     {
+        if (story.Kind == "stratagem_success")
+        {
+            var effect = story.Code switch
+            {
+                "wall_break" => $"성벽 내구도 {story.Amount:N0} 감소",
+                "incite" => $"치안 {story.Amount:N0} 감소",
+                "arson" => $"군량 {story.Amount:N0} 피해",
+                "steal" => $"금 {story.Amount:N0} 탈취",
+                _ => "목표에 효과 적용",
+            };
+            return [$"{StorySpeakerName(story.Speaker)}: 계략에 성공했습니다. {effect}."];
+        }
         var definition = _storyDefinitions.FirstOrDefault(d => d.Kind == story.Kind);
         if (definition is null) return [$"{StorySpeakerName(story.Speaker)}: 새로운 소식이 있습니다.", "보고에 기록했습니다."];
         var city = story.City is { } cityId

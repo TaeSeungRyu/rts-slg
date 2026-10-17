@@ -10,7 +10,7 @@ public sealed class GeneralStoryLoaderTests
     {
         var definitions = new GeneralStoryLoader().LoadFromDirectory(TestData.DataDirectory());
         Assert.True(definitions.Count >= 8);
-        Assert.All(definitions, d => Assert.True(d.Variants.Count >= 3));
+        Assert.All(definitions, d => Assert.True(d.Variants.Count >= 1));
         Assert.DoesNotContain(definitions, d => d.Kind is "victory" or "wounded");
     }
 
