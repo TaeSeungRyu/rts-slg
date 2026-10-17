@@ -456,6 +456,8 @@ public sealed partial class CampaignMapScene
         var commandGoldPortraits = commandPortraitNodes.Count > 0
             && commandPortraitNodes.All(portrait => portrait.GetMeta("thin_gold_border").AsBool());
         var commandTableLayout = commandRows >= 1 && commandPortraits >= 1;
+        var diplomacyTranslated = KindName(SanguoSLG.Core.Domain.CommandKind.FormAlliance) == "동맹"
+            && KindName(SanguoSLG.Core.Domain.CommandKind.BreakAlliance) == "동맹 파기";
         CloseModal();
 
         _state = originalState;
@@ -491,7 +493,7 @@ public sealed partial class CampaignMapScene
         }
         var passed = expected > 0 && roundedGarrisons && mapWheelBlocked && stationedInternalScroll
             && noObsoleteResources && portShipsShown
-            && commandTableLayout && deployTableLayout
+            && commandTableLayout && deployTableLayout && diplomacyTranslated
             && stationedGoldPortraits && commandGoldPortraits && deployGoldPortraits;
         GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} noObsoleteResources={noObsoleteResources} portShipsShown={portShipsShown} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} modalHeight={modalHeight} tabHeight={tabHeight} commandRows={commandRows}:{commandTableLayout} deployRows={deployRows}:{deployTableLayout} goldPortraits={stationedGoldPortraits}/{commandGoldPortraits}/{deployGoldPortraits}");
         GetTree().Quit(passed ? 0 : 1);
