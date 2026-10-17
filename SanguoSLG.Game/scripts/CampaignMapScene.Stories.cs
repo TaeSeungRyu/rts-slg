@@ -206,11 +206,13 @@ public sealed partial class CampaignMapScene
         var portraitName = MakeLabel(StorySpeakerName(story.Speaker), 14, GoldBright);
         portraitName.Name = "StoryCurrentSpeaker";
         portraitColumn.AddChild(portraitName);
+        VBoxContainer? audienceColumn = null;
+        Label? audienceName = null;
         TextureRect? rulerPortrait = null;
         TextureRect? advisorPortrait = null;
         if (diplomacy && story.SecondSpeaker is { } rulerId)
         {
-            var audienceColumn = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            audienceColumn = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             audienceColumn.SizeFlagsStretchRatio = 2;
             row.AddChild(audienceColumn);
             rulerPortrait = new TextureRect
@@ -237,11 +239,13 @@ public sealed partial class CampaignMapScene
                 };
                 audienceColumn.AddChild(advisorPortrait);
             }
-            audienceColumn.AddChild(MakeLabel(StorySpeakerName(rulerId), 13, GoldBright));
+            audienceName = MakeLabel(StorySpeakerName(rulerId), 13, GoldBright);
+            audienceColumn.AddChild(audienceName);
         }
         var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         content.SizeFlagsStretchRatio = diplomacy ? 6 : 7;
         row.AddChild(content);
+        if (diplomacy) row.MoveChild(content, 1); // 아군: 초상-대사, 상대: 대사-초상
         var heading = new HBoxContainer();
         content.AddChild(heading);
         var title = MakeLabel(StoryTitle(story), 18, GoldBright);
@@ -257,17 +261,20 @@ public sealed partial class CampaignMapScene
         {
             if (!diplomacy) return;
             var current = StoryLineSpeaker(story, text);
-            foreach (var (image, speakerId) in new[]
+            var isOwn = current is null || current == story.Speaker;
+            portraitColumn.Visible = isOwn;
+            if (audienceColumn is not null) audienceColumn.Visible = !isOwn;
+            if (rulerPortrait is not null) rulerPortrait.Visible = !isOwn && current == story.SecondSpeaker;
+            if (advisorPortrait is not null)
+                advisorPortrait.Visible = !isOwn && current == new GeneralId(story.Amount);
+            if (audienceName is not null && current is { } generalId && !isOwn)
+                audienceName.Text = StorySpeakerName(generalId);
+            foreach (var image in new[] { portrait, rulerPortrait, advisorPortrait })
             {
-                (portrait, (GeneralId?)story.Speaker),
-                (rulerPortrait, story.SecondSpeaker),
-                (advisorPortrait, story.Amount > 0 ? new GeneralId(story.Amount) : (GeneralId?)null),
-            })
-            {
-                if (image is null || speakerId is null) continue;
-                var tone = current == speakerId ? Colors.White : new Color(0.65f, 0.65f, 0.65f);
+                if (image is null || !image.Visible) continue;
                 var tween = CreateTween();
-                tween.TweenProperty(image, "modulate", tone, 0.15);
+                image.Modulate = new Color(0.7f, 0.7f, 0.7f);
+                tween.TweenProperty(image, "modulate", Colors.White, 0.15);
             }
         }
         var line = MakeLabel(lines[0], 15, Parchment);
@@ -572,6 +579,8 @@ public sealed partial class CampaignMapScene
                 _state = _state with { PendingStoryEvents = _state.StoryPending.Append(audienceStory).ToArray() };
                 ShowStoryModal(audienceStory, false);
                 var audienceLines = StoryLines(audienceStory);
+                var ownPortrait = _modalLayer?.FindChild("StoryCurrentSpeaker", true, false)?.GetParent<Control>();
+                var ownPage = ownPortrait?.Visible == true;
                 _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
                     .FirstOrDefault(button => button.Text == "다음 ▶")?.EmitSignal(Button.SignalName.Pressed);
                 var rulerImage = _modalLayer?.FindChild("DiplomacyRulerPortrait", true, false) as TextureRect;
@@ -579,7 +588,8 @@ public sealed partial class CampaignMapScene
                 audienceShown = audienceLines.Length == 4
                     && audienceLines.Any(text => text.StartsWith($"{otherSpeakers[0].Name}:"))
                     && audienceLines.Any(text => text.StartsWith($"{otherSpeakers[1].Name}:"))
-                    && rulerImage?.Texture is not null && advisorImage?.Texture is not null;
+                    && rulerImage?.Texture is not null && advisorImage?.Texture is not null
+                    && ownPage && ownPortrait?.Visible == false && advisorImage.Visible;
                 CloseStoryModal();
             }
             var defeatedStory = story with { Id = "qa:beast-defeated", Kind = "beast_defeated" };
