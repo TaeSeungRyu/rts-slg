@@ -277,6 +277,9 @@ public sealed class CampaignEngine
                     FieldBuildingCombatExchanges = fieldBuildingResult.Exchanges,
                     FiredActives = turn.FiredActives.Concat(fieldBuildingResult.FiredActives)
                         .GroupBy(entry => entry.Key).ToDictionary(group => group.Key, group => group.First().Value),
+                    DefeatedUnits = turn.Defeated.Concat(fieldBuildingResult.Armies
+                        .Where(unit => unit.Pool.Active <= 0)).GroupBy(unit => unit.Id)
+                        .Select(group => group.Last()).ToList(),
                 };
             }
             var livingFieldUnits = turn.Units.Where(x => x.Pool.Active > 0).Select(x => x.Id).ToHashSet();
@@ -346,13 +349,19 @@ public sealed class CampaignEngine
             var survivors = turn.Units.Select(u => u.Id).ToHashSet();
             var enteredNow = turn.EnteredCastle.Select(u => u.Id).ToHashSet();
             var movedPos = turn.Movement.Units.ToDictionary(f => f.Id, f => f.Position);
+            var defeatedPools = turn.Defeated.ToDictionary(u => u.Id);
+            var ruinAttackerIds = turn.RuinExchanges.Select(exchange => exchange.Attacker).ToHashSet();
             foreach (var dead in armies
                 .Where(u => !u.IsSummon && !survivors.Contains(u.Id) && !enteredNow.Contains(u.Id))
                 .OrderBy(u => u.Id.Value))
             {
                 var at = movedPos.TryGetValue(dead.Id, out var mp) ? mp : dead.Field.Position;
                 work = SuppressDefeatedBandit(work, dead);
-                work = FieldCasualties.ResolveUnit(work, dead, at, casualtyReports);
+                var actual = defeatedPools.TryGetValue(dead.Id, out var defeated)
+                    ? defeated with { SupplyCargo = defeated.Cargo.Count > 0 ? defeated.Cargo : dead.Cargo }
+                    : dead;
+                work = FieldCasualties.ResolveUnit(work, actual, at, casualtyReports,
+                    transferWounded: !ruinAttackerIds.Contains(dead.Id));
             }
 
             work = ApplyEntered(work, turn.EnteredCastle, cityAt);

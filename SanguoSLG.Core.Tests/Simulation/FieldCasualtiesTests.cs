@@ -75,6 +75,51 @@ public class FieldCasualtiesTests
     }
 
     [Fact]
+    public void 괴멸_부상병은_원성의_회복_풀로_돌아간다()
+    {
+        var state = State(Town(1, 1, new HexCoord(0, 0)), Town(2, 1, new HexCoord(6, 0)));
+        var dead = DeadUnit(9, 1, new HexCoord(5, 0)) with
+        {
+            OriginCity = new CityId(1), TroopCode = "swordsman", Training = 65,
+            Pool = new TroopPool(0, 70),
+        };
+        var result = FieldCasualties.ResolveUnit(state, dead, dead.Field.Position, []);
+        var wounded = Assert.Single(result.CityWounded);
+        Assert.Equal(new CityId(1), wounded.City);
+        Assert.Equal("swordsman", wounded.TroopCode);
+        Assert.Equal(70, wounded.Troops);
+        Assert.Equal(65, wounded.TrainingLevel);
+    }
+
+    [Fact]
+    public void 원성이_점령됐으면_부상병도_귀환_장수와_함께_최근접_아군성으로_간다()
+    {
+        var state = State(Town(1, 2, new HexCoord(0, 0)), Town(2, 1, new HexCoord(6, 0)));
+        var dead = DeadUnit(9, 1, new HexCoord(5, 0)) with
+        {
+            OriginCity = new CityId(1), TroopCode = "swordsman", Pool = new TroopPool(0, 70),
+        };
+        var result = FieldCasualties.ResolveUnit(state, dead, dead.Field.Position, []);
+        Assert.Equal(new CityId(2), Assert.Single(result.CityWounded).City);
+        Assert.Equal(new CityId(2), result.PostingOf(new GeneralId(1))!.Location);
+    }
+
+    [Fact]
+    public void 적_부대는_장수가_없어도_괴멸_부상병을_원성에_남긴다()
+    {
+        var state = State(Town(3, 2, new HexCoord(6, 0)));
+        var dead = DeadUnit(10, 2, new HexCoord(5, 0), vanguard: null) with
+        {
+            OriginCity = new CityId(3), TroopCode = "swordsman", Pool = new TroopPool(0, 350),
+        };
+        var reports = new List<CasualtyReport>();
+        var result = FieldCasualties.ResolveUnit(state, dead, dead.Field.Position, reports);
+        Assert.Empty(reports);
+        Assert.Equal(350, Assert.Single(result.CityWounded).Troops);
+        Assert.Equal(new CityId(3), result.CityWounded[0].City);
+    }
+
+    [Fact]
     public void 기존배속이_없어도_전멸장수는_아군도시로_복구된다()
     {
         var s0 = State(Town(1, 1, new HexCoord(0, 0)));
@@ -116,10 +161,10 @@ public class FieldCasualtiesTests
             var stats = CombatStatsBuilder.BuildField(T["swordsman"], AptitudeGrade.A, 0, TerrainType.Plains, troops);
             return new CombatUnit(f, stats, new TroopPool(troops, 0), UnitCombatState.Create(60),
                 60, 60, troops, TroopClass.Infantry,
-                VanguardId: vanguard is { } v ? new GeneralId(v) : null);
+                TroopCode: "swordsman", VanguardId: vanguard is { } v ? new GeneralId(v) : null);
         }
 
-        var weak = Army(1, owner: 1, new HexCoord(5, 0), troops: 1, vanguard: 1);
+        var weak = Army(1, owner: 1, new HexCoord(5, 0), troops: 100, vanguard: 1);
         var strong = Army(2, owner: 2, new HexCoord(6, 0), troops: 10000, vanguard: null);
         var state = new GameState(1, 1, new List<Faction>(),
             new List<City> { Town(1, 1, new HexCoord(0, 0)) },
@@ -133,5 +178,7 @@ public class FieldCasualtiesTests
         Assert.Equal(new GeneralId(1), report.General);
         Assert.Equal(new CityId(1), report.Refuge);
         Assert.Equal(new CityId(1), after.PostingOf(new GeneralId(1))!.Location);
+        Assert.Equal(70, after.CityWounded.Where(w => w.City == new CityId(1)).Sum(w => w.Troops)
+            + after.Garrisons.Where(g => g.City == new CityId(1)).Sum(g => g.Troops));
     }
 }

@@ -327,7 +327,8 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
             var reinforcedOnly = Reinforce(state);
             return new AdvanceTurn(Ordered(state), move, null, firedActives, firedStratagems, statusDamage,
                 stratagemDamage, enteredCastle, starvation, reinforcedOnly,
-                FieldGarrisonAssignments: fieldGarrisons, FormationResults: formationTriggers);
+                FieldGarrisonAssignments: fieldGarrisons, FormationResults: formationTriggers,
+                DefeatedUnits: state.Values.Where(u => u.Pool.Active <= 0).ToList());
         }
 
         var attackers = engagements.Select(e => e.Attacker).ToHashSet();
@@ -436,7 +437,8 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
         return new AdvanceTurn(Ordered(state), move, combat, firedActives, firedStratagems, statusDamage,
             stratagemDamage, enteredCastle, starvation, reinforced,
             FieldGarrisonAssignments: fieldGarrisons, FormationResults: formationTriggers,
-            FieldCombatExchangeResults: fieldCombatExchanges);
+            FieldCombatExchangeResults: fieldCombatExchanges,
+            DefeatedUnits: state.Values.Where(u => u.Pool.Active <= 0).ToList());
     }
 
     private IReadOnlyList<(UnitId Unit, FieldBuilding Building)> FormationTargetsForMovementTurn(

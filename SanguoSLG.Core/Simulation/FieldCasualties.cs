@@ -14,16 +14,44 @@ public sealed record CasualtyReport(UnitId Unit, GeneralId General, CityId? Refu
 public static class FieldCasualties
 {
     public static GameState ResolveUnit(GameState state, CombatUnit dead, HexCoord at,
-        List<CasualtyReport> reports)
+        List<CasualtyReport> reports, bool transferWounded = true)
     {
+        var refuge = dead.OriginCity is { } origin
+            ? state.Cities.FirstOrDefault(c => c.Id == origin && c.Owner == dead.Field.Owner)
+            : null;
+        refuge ??= state.Cities.Where(c => c.Owner == dead.Field.Owner)
+            .OrderBy(c => c.Position.Distance(at)).ThenBy(c => c.Id.Value).FirstOrDefault();
+
+        if (transferWounded && refuge is not null && dead.Pool.Wounded > 0)
+        {
+            var wounded = state.CityWounded.ToList();
+            var cargo = dead.Cargo.Where(component => component.Troops > 0).ToList();
+            var components = dead.IsSupply || dead.IsTransport || dead.IsArmyGroup
+                ? cargo.Select(component => (component.TroopCode, component.Troops, component.TrainingLevel)).ToList()
+                : new List<(string TroopCode, int Troops, int TrainingLevel)>
+                    { (dead.TroopCode, 1, dead.Training) };
+            var total = components.Sum(component => component.Troops);
+            var allocated = 0;
+            for (var i = 0; i < components.Count && total > 0; i++)
+            {
+                var (code, troops, training) = components[i];
+                if (string.IsNullOrEmpty(code)) continue;
+                var count = i == components.Count - 1 ? dead.Pool.Wounded - allocated
+                    : (int)((long)dead.Pool.Wounded * troops / total);
+                allocated += count;
+                if (count <= 0) continue;
+                var trainee = training < 50;
+                var index = wounded.FindIndex(entry => entry.City == refuge.Id
+                    && entry.TroopCode == code && entry.Trainee == trainee);
+                if (index >= 0) wounded[index] = wounded[index].Merge(count, training);
+                else wounded.Add(new CityWoundedForce(refuge.Id, code, count, training, trainee));
+            }
+            state = state with { CityWoundedForces = wounded };
+        }
+
         foreach (var gid in new[] { dead.VanguardId, dead.AdjutantId }.OfType<GeneralId>().Distinct())
         {
             var general = gid;
-            var refuge = dead.OriginCity is { } origin
-                ? state.Cities.FirstOrDefault(c => c.Id == origin && c.Owner == dead.Field.Owner)
-                : null;
-            refuge ??= state.Cities.Where(c => c.Owner == dead.Field.Owner)
-                .OrderBy(c => c.Position.Distance(at)).ThenBy(c => c.Id.Value).FirstOrDefault();
             var postings = state.Assignments.Where(p => p.General != general).ToList();
             if (refuge is not null)
             {
