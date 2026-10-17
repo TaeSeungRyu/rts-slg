@@ -115,7 +115,9 @@ public sealed partial class CampaignMapScene
                         && _animFieldGarrisonEntries.TryGetValue(u.Id.Value, out var entry)
                             ? entry.Position
                             : _armyTokens.TryGetValue(u.Id.Value, out var token)
-                                ? _view.WorldToHex(token.Position) : u.Field.Position) }).ToList(),
+                                ? u.Field.Owner == WorldEngine.BanditFaction && u.BanditWaitDays > 0
+                                    ? u.Field.Position : _view.WorldToHex(token.Position)
+                                : u.Field.Position) }).ToList(),
                 ProductionOperations = display.ProductionOps.Where(o => !_lostProductionVision.Contains(o.Id))
                     .Select(o => o with { Position = _animationProductionPositions.GetValueOrDefault(o.Id, o.Position) }).ToList(),
             };
@@ -129,7 +131,11 @@ public sealed partial class CampaignMapScene
         RefreshFieldBuildingVisibility();
         foreach (var army in display.Armies)
         {
-            if (_armyTokens.TryGetValue(army.Id.Value, out var token)) token.Visible = CanSeeUnit(army);
+            if (_armyTokens.TryGetValue(army.Id.Value, out var token))
+            {
+                var unitVisible = CanSeeUnit(army);
+                if (token.Visible != unitVisible) token.Visible = unitVisible;
+            }
             if (_armyLabels.TryGetValue(army.Id.Value, out var label))
             {
                 if (army.Field.Owner == WorldEngine.BanditFaction)
@@ -137,11 +143,13 @@ public sealed partial class CampaignMapScene
                     var text = ArmyTroopLabel(army);
                     if (label.Text != text) label.Text = text;
                 }
-                label.Modulate = MapRelationTextColor(army.Field.Owner);
-                label.Visible = !army.IsWaitingDeployment && (army.Field.Owner == Player
+                var color = MapRelationTextColor(army.Field.Owner);
+                if (label.Modulate != color) label.Modulate = color;
+                var labelVisible = !army.IsWaitingDeployment && (army.Field.Owner == Player
                     || (_state.AreAllied(Player, army.Field.Owner) && CanSeeUnit(army))
                     || (army.Field.Owner == WorldEngine.BanditFaction
                         || army.Field.Owner == EventHuntService.EventFaction) && CanSeeUnit(army));
+                if (label.Visible != labelVisible) label.Visible = labelVisible;
             }
         }
         HideEnteredFieldGarrisons();
