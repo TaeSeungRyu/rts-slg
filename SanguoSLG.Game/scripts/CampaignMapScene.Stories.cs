@@ -43,6 +43,22 @@ public sealed partial class CampaignMapScene
             }).ToArray();
     }
 
+    private GeneralStoryEvent[] CitySpeechEvents(GameState before)
+    {
+        // 한 진행에 최대 한 도시의 장수만 말한다. 교전 대사와 섞여 화면을 덮지 않는다.
+        if (before.Day % 3 == 1) return [];
+        var candidates = before.Assignments
+            .Where(posting => posting.Faction == Player && posting.Location is not null
+                && before.Cities.Any(city => city.Id == posting.Location && city.Owner == Player))
+            .OrderBy(posting => posting.Location.GetValueOrDefault().Value)
+            .ThenBy(posting => posting.General.Value).ToArray();
+        if (candidates.Length == 0) return [];
+        var selected = candidates[before.Day % candidates.Length];
+        return [new GeneralStoryEvent($"city-bark:{before.Day}:{selected.General.Value}",
+            "city_bark", before.Day, 8, Player, selected.General, null, selected.Location,
+            before.Day % 10)];
+    }
+
     private void PrepareStoryAfterAdvance()
     {
         var stories = _state.StoryPending.Where(e => e.Faction == Player)
