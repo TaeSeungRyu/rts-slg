@@ -31,4 +31,28 @@ public sealed class CampaignScoreboardTests
         Assert.Equal(row, Assert.Single(restored.Scoreboard));
         Assert.Equal(600, Assert.Single(CampaignScoreboard.Apply(restored, [], [], [], 30).Scoreboard).ProducedTroops);
     }
+
+    [Fact]
+    public void 유적_점령은_수비병력에_비례하여_세력기록에_누적된다()
+    {
+        var faction = new FactionId(1);
+        var state = new GameState(7, 190,
+            [new Faction(faction, "위", new GeneralId(1), 0, "#aabbcc")], [], [],
+            RuinDefinitions:
+            [
+                new RuinDefinition("weak", "약한 유적", new(0, 0), "waeseon", 5000),
+                new RuinDefinition("strong", "강한 유적", new(1, 0), "turtleship", 50000),
+            ],
+            RuinStates:
+            [
+                new RuinState("weak", 0, faction, 4),
+                new RuinState("strong", 0, faction, 5),
+            ]);
+        var result = CampaignScoreboard.Apply(state, [], [], [], 30);
+        var row = Assert.Single(result.Scoreboard);
+        Assert.Equal(2, row.RuinsCaptured);
+        Assert.Equal(55000, row.RuinDefenderStrength);
+        Assert.Equal(500, 50000 / 100);
+        Assert.Equal(row, Assert.Single(CampaignScoreboard.Apply(result with { Day = 14 }, [], [], [], 30).Scoreboard));
+    }
 }

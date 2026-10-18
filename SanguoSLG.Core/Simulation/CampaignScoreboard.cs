@@ -18,6 +18,10 @@ public static class CampaignScoreboard
             var research = events.Count(item => item.Faction == id && item.Kind == WorldEventKind.Research);
             var stratagems = events.Count(item => item.Faction == id && item.Kind == WorldEventKind.StratagemSuccess);
             var captured = captures.Count(item => item.NewOwner == id);
+            var capturedRuins = state.RuinStatus.Where(status => status.Owner == id
+                && status.CapturedDay is { } day && day > state.Day - 7 && day <= state.Day)
+                .Select(status => state.Ruins.FirstOrDefault(ruin => ruin.Id == status.RuinId))
+                .Where(ruin => ruin is not null).ToArray();
             long fatalities = 0;
             foreach (var turn in turns)
             {
@@ -36,6 +40,8 @@ public static class CampaignScoreboard
                 BattleFatalitiesEstimated = row.BattleFatalitiesEstimated + fatalities,
                 CompletedResearch = row.CompletedResearch + research,
                 SuccessfulStratagems = row.SuccessfulStratagems + stratagems,
+                RuinsCaptured = row.RuinsCaptured + capturedRuins.Length,
+                RuinDefenderStrength = row.RuinDefenderStrength + capturedRuins.Sum(ruin => (long)ruin!.MaxDefenders),
             };
         }
         return state with { CampaignStats = rows.Values.OrderBy(row => row.Faction.Value).ToList() };
