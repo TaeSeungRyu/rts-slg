@@ -6120,7 +6120,19 @@ public sealed partial class CampaignMapScene : Node3D
             }
             else if (busy)
             {
-                btn.Text = Cmds[i].Label + " (진행중)";
+                if (Cmds[i].Kind == CommandKind.Research && Cmds[i].Param == "wall" && selectedCity is not null)
+                {
+                    var running = _state.Commands.FirstOrDefault(command => command.Kind == CommandKind.Research
+                        && _state.Cities.FirstOrDefault(city => city.Id == command.City)?.Owner == selectedCity.Owner
+                        && FactionResearch.LaneOf(command.TroopCode) == ResearchLane.Combat);
+                    if (running is not null && running.TroopCode != FactionResearch.WallCode)
+                    {
+                        btn.Text = "성벽 강화 (전투 연구 대기)";
+                        btn.TooltipText = "성벽 강화와 전투교리는 같은 연구선을 사용합니다. 진행 중인 전투 연구가 끝난 뒤 실행할 수 있습니다.";
+                    }
+                    else btn.Text = Cmds[i].Label + " (진행중)";
+                }
+                else btn.Text = Cmds[i].Label + " (진행중)";
                 btn.Disabled = true;
             }
             else if (wallFull)
@@ -17212,6 +17224,13 @@ public sealed partial class CampaignMapScene : Node3D
             && !generalBusyButtons["전투교리"].Disabled
             && !generalBusyButtons["계략 연구"].Disabled;
         CloseGroupMenu();
+        var wallGroupIndex = System.Array.FindIndex(CmdGroups, group => group.Group == "성벽");
+        _state = _state with { PendingCommands = originalState.Commands.Append(runningGeneral with
+            { TroopCode = _troops[0].Code }).ToList() };
+        ToggleGroup(wallGroupIndex);
+        var wallWaitsForCombat = _cmdSubList.GetChildren().OfType<Button>()
+            .Any(button => button.Text == "성벽 강화 (전투 연구 대기)" && button.Disabled);
+        CloseGroupMenu();
         _state = originalState;
 
         OpenModal(commandIndex);
@@ -17288,7 +17307,7 @@ public sealed partial class CampaignMapScene : Node3D
             .OfType<TextureRect>().Any(texture => texture.Texture is not null) == true;
         _confirmLayer?.QueueFree();
         _confirmLayer = null;
-        var ok = submenuOk && allGroupsOk && generalBusyOk && layoutOk
+        var ok = submenuOk && allGroupsOk && generalBusyOk && wallWaitsForCombat && layoutOk
             && _optionCards.Count == GeneralResearchRules.Definitions.Count
             && _researchFundingRatios.Count == ownedCityCount
             && fundingLayoutOk
