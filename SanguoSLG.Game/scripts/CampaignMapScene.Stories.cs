@@ -450,13 +450,13 @@ public sealed partial class CampaignMapScene
         {
             var effect = story.Code switch
             {
-                "wall_break" => $"성벽 내구도 {story.Amount:N0} 감소",
-                "incite" => $"치안 {story.Amount:N0} 감소",
-                "arson" => $"군량 {story.Amount:N0} 피해",
-                "steal" => $"금 {story.Amount:N0} 탈취",
-                _ => "목표에 효과 적용",
+                "wall_break" => $"성벽을 무너뜨릴 틈을 찾아냈습니다.\n성벽 내구도 {story.Amount:N0} 감소",
+                "incite" => $"성 안의 민심이 흔들리고 있습니다.\n치안 {story.Amount:N0} 감소",
+                "arson" => $"적의 군량 창고에 불을 놓았습니다.\n군량 {story.Amount:N0} 피해",
+                "steal" => $"적의 금고에서 자금을 빼냈습니다.\n금 {story.Amount:N0} 탈취",
+                _ => "계략이 계획대로 이루어졌습니다.\n목표에 효과 적용",
             };
-            return [$"{StorySpeakerName(story.Speaker)}: 계략에 성공했습니다. {effect}."];
+            return [$"{StorySpeakerName(story.Speaker)}: 계략에 성공했습니다. {effect}"];
         }
         var definition = _storyDefinitions.FirstOrDefault(d => d.Kind == story.Kind);
         if (definition is null) return [$"{StorySpeakerName(story.Speaker)}: 새로운 소식이 있습니다.", "보고에 기록했습니다."];
