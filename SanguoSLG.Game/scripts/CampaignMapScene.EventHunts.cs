@@ -18,6 +18,7 @@ public sealed partial class CampaignMapScene
     private int _summonTargetingUnitId = -1;
     private string? _summonTargetingItemId;
     private readonly Dictionary<string, ImageTexture> _treasureTextures = new(StringComparer.Ordinal);
+    private IReadOnlyList<AncientRelicDefinition> _ancientRelics = [];
 
     private ImageTexture? TreasureTexture(string code)
     {

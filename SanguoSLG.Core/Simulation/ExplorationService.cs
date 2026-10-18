@@ -5,13 +5,22 @@ using SanguoSLG.Core.Domain;
 /// <summary>Phase 10 탐색 보상 판정. 인재, 도적/반란, 재난은 포함하지 않는다.</summary>
 public sealed class ExplorationService
 {
+    private readonly IReadOnlyList<AncientRelicDefinition> _relics;
+
+    public ExplorationService(IReadOnlyList<AncientRelicDefinition>? relics = null)
+        => _relics = relics ?? [];
+
     public ExplorationDiscovery Explore(GameState state, City city, General explorer, IRandomSource random,
         int divineBeastPercent = 1)
     {
         var roll = random.Next(0, 100);
         var kind = KindForRoll(roll, AdministrationGrowth.EffectivePoliticsRounded(explorer), divineBeastPercent);
         var beastIndex = kind == ExplorationResultKind.DivineBeast ? random.Next(0, 3) : 0;
-        return BuildDiscovery(state.Day, city.Owner, city.Id, explorer.Id, kind, beastIndex);
+        var discovery = BuildDiscovery(state.Day, city.Owner, city.Id, explorer.Id, kind, beastIndex);
+        if (kind != ExplorationResultKind.AncientRelic || _relics.Count == 0) return discovery;
+        var relic = _relics[random.Next(0, _relics.Count)];
+        return discovery with { ClueCode = relic.ClueCode,
+            Text = $"{relic.ClueName} 단서를 발견했습니다." };
     }
 
     public static ExplorationResultKind KindForRoll(int roll, int politics = 0, int divineBeastPercent = 1)

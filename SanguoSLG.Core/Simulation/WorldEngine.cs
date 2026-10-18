@@ -20,10 +20,12 @@ public sealed class WorldEngine
     private readonly IReadOnlyDictionary<string, Domain.AdminSkill> _adminSkills;
     private readonly Func<HexCoord, bool>? _banditLandSpawnAllowed;
     private readonly int _divineBeastPercent;
+    private readonly IReadOnlyList<AncientRelicDefinition> _ancientRelics;
 
     public WorldEngine(BalanceConfig balance, CommandBalance? commands = null,
         IReadOnlyList<Domain.AdminSkill>? adminSkills = null, IRandomSource? random = null,
-        Func<HexCoord, bool>? banditLandSpawnAllowed = null, int divineBeastPercent = 1)
+        Func<HexCoord, bool>? banditLandSpawnAllowed = null, int divineBeastPercent = 1,
+        IReadOnlyList<AncientRelicDefinition>? ancientRelics = null)
     {
         _balance = balance;
         _commands = commands ?? new CommandBalance();
@@ -31,6 +33,7 @@ public sealed class WorldEngine
         _random = random ?? new SeededRandomSource(0); // 도시 계략 성공 판정용(시드 — 결정론)
         _banditLandSpawnAllowed = banditLandSpawnAllowed;
         _divineBeastPercent = divineBeastPercent;
+        _ancientRelics = ancientRelics ?? [];
     }
 
     private readonly IRandomSource _random;
@@ -863,7 +866,7 @@ public sealed class WorldEngine
             return false;
         }
 
-        var discovery = new ExplorationService().Explore(state, city, explorer, _random, _divineBeastPercent);
+        var discovery = new ExplorationService(_ancientRelics).Explore(state, city, explorer, _random, _divineBeastPercent);
         discoveries.Add(discovery);
         if (discovery.Gold > 0 || discovery.Provisions > 0)
         {

@@ -31,6 +31,21 @@ public class ExplorationServiceTests
             => maxExclusive == 3 ? beastIndex : minInclusive;
     }
 
+    [Fact]
+    public void 고대유물_당첨은_정의된_단서_종류를_선택한다()
+    {
+        var relics = new SanguoSLG.Core.Data.AncientRelicLoader().LoadFromDirectory(
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../data")));
+        var city = new City(new(1), "장안", default, new(1), 1000);
+        var general = new General(new(1), "탐색장", new Dictionary<TroopClass, AptitudeGrade>(), 70, 70, 70);
+        var discovery = new ExplorationService(relics).Explore(
+            new GameState(10, 190, [], [city], [general]), city, general, new FixedRandom(1));
+
+        Assert.Equal(ExplorationResultKind.AncientRelic, discovery.Kind);
+        Assert.Equal(relics[1].ClueCode, discovery.ClueCode);
+        Assert.Equal(10, relics.Count);
+    }
+
     [Theory]
     [InlineData(0, "divine_beast_trace")]
     [InlineData(1, "dragon_trace")]

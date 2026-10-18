@@ -546,6 +546,7 @@ public sealed partial class CampaignMapScene : Node3D
         _passability = new PassabilityMap(_map, [], _cities, scenario.RuinList.Select(r => r.Position));
         _fieldBuildingDefinitions = new FieldBuildingLoader().LoadFromDirectory(dataDirectory);
         _treasureDefinitions = new EventTreasureLoader().LoadFromDirectory(dataDirectory);
+        _ancientRelics = new AncientRelicLoader().LoadFromDirectory(dataDirectory);
         _eventHunts = new EventHuntService(_map, new EventUnitLoader().LoadFromDirectory(dataDirectory),
             _treasureDefinitions);
         var summonedUnitDefinitions = new SummonedUnitLoader().LoadFromDirectory(dataDirectory);
@@ -573,7 +574,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         var world = new WorldEngine(_balance, _cb, random: new SeededRandomSource(sessionSeed),
             banditLandSpawnAllowed: hex => _passability.CanEnter(MovementDomain.Land, hex),
-            divineBeastPercent: divineBeastPercent);
+            divineBeastPercent: divineBeastPercent, ancientRelics: _ancientRelics);
         var legacyField = new AdvanceOrchestrator(movement,
             new CombatPhaseResolver(new BattleResolver(60), 70),
             navalProvisionsPercent: _balance.NavalProvisionsPercent);

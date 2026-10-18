@@ -1,0 +1,12 @@
+[
+  {"code":"relic_overlord_blade","name":"패왕의 검편","clue_code":"relic_blade_fragment","clue_name":"검날 파편","effect":"attack_percent","value":5},
+  {"code":"relic_black_iron_armor","name":"현철 갑편","clue_code":"relic_armor_fragment","clue_name":"갑주 파편","effect":"defense_percent","value":5},
+  {"code":"relic_spear_manual","name":"파진 창결","clue_code":"relic_spear_inscription","clue_name":"창술 비문","effect":"aptitude_percent","value":5,"troop_class":"Infantry"},
+  {"code":"relic_bow_manual","name":"신궁 비결","clue_code":"relic_bow_inscription","clue_name":"궁술 비문","effect":"aptitude_percent","value":5,"troop_class":"Archer"},
+  {"code":"relic_tiger_harness","name":"비호 마구","clue_code":"relic_horse_gear","clue_name":"고대 마구","effect":"aptitude_percent","value":5,"troop_class":"Cavalry"},
+  {"code":"relic_siege_blueprint","name":"천공 도면","clue_code":"relic_siege_plan","clue_name":"공성 도면","effect":"aptitude_percent","value":5,"troop_class":"Siege"},
+  {"code":"relic_harvest_ledger","name":"풍년의 장부","clue_code":"relic_granary_record","clue_name":"곡창 장부","effect":"provisions_percent","value":5},
+  {"code":"relic_gold_ledger","name":"황금의 장부","clue_code":"relic_mint_record","clue_name":"주조 장부","effect":"gold_percent","value":5},
+  {"code":"relic_drill_book","name":"정예 조련서","clue_code":"relic_drill_manual","clue_name":"조련 비서","effect":"recruit_percent","value":5},
+  {"code":"relic_peace_seal","name":"태평 수호인","clue_code":"relic_guardian_seal","clue_name":"수호 인장","effect":"security_percent","value":5}
+]
