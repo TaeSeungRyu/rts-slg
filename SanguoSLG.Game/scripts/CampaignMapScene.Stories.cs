@@ -481,7 +481,24 @@ public sealed partial class CampaignMapScene
         if (definition.VoiceLines is not null
             && definition.VoiceLines.TryGetValue(story.Speaker.Value, out var voice)
             && result.Count < 4) result.Add($"{StorySpeakerName(story.Speaker)}: {voice}");
+        if (story.Kind.StartsWith("alliance_", System.StringComparison.Ordinal))
+            result = result.Select(FormatDiplomacyLine).ToList();
         return result.ToArray();
+    }
+
+    private static string FormatDiplomacyLine(string line)
+    {
+        var colon = line.IndexOf(':');
+        if (colon < 0 || line.IndexOf('\n', colon) >= 0) return line;
+        var speech = line[(colon + 1)..].Trim();
+        var middle = speech.Length / 2;
+        var breaks = speech.Select((character, index) => (character, index))
+            .Where(value => value.character == ' ' && value.index >= 2 && value.index < speech.Length - 2)
+            .OrderBy(value => System.Math.Abs(value.index - middle))
+            .ToArray();
+        if (breaks.Length == 0) return line[..(colon + 1)] + "\n" + speech;
+        var split = breaks[0].index;
+        return line[..(colon + 1)] + " " + speech[..split] + "\n" + speech[(split + 1)..];
     }
 
     private async void RunGeneralStoryQa()
@@ -574,6 +591,10 @@ public sealed partial class CampaignMapScene
                 .FirstOrDefault(button => button.Text == "확인")?.EmitSignal(Button.SignalName.Pressed);
             warningOnly &= !_storyOpen && _state.StoryHistory.Any(e => e.Id == warningStory.Id);
             var allianceStory = story with { Id = "qa:alliance-result", Kind = "alliance_success" };
+            var diplomacyTwoLines = _storyDefinitions.Where(definition => definition.Kind.StartsWith("alliance_", System.StringComparison.Ordinal))
+                .All(definition => Enumerable.Range(0, definition.Variants.Count)
+                    .All(variant => StoryLines(allianceStory with { Kind = definition.Kind, Variant = variant })
+                        .All(dialogue => dialogue.Contains('\n'))));
             _state = _state with { PendingStoryEvents = _state.StoryPending.Append(allianceStory).ToArray() };
             ShowStoryModal(allianceStory, false);
             for (var page = 1; page < StoryLines(allianceStory).Length; page++)
@@ -638,7 +659,7 @@ public sealed partial class CampaignMapScene
             _state = GeneralStorySelector.Resolve(_state, priorityStratagem.Id, "acknowledged");
             var queuedNext = NextPendingStory()?.Id == unrelatedStory.Id;
             _state = GeneralStorySelector.Resolve(_state, unrelatedStory.Id, "acknowledged");
-            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly && beastConfirmOnly && allianceResultShown && audienceShown && alliancePriority && stratagemPriority && queuedNext;
+            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly && beastConfirmOnly && allianceResultShown && audienceShown && alliancePriority && stratagemPriority && queuedNext && diplomacyTwoLines;
             GD.Print($"[general-story-qa] passed={passed} alliancePriority={alliancePriority} stratagemPriority={stratagemPriority} queuedNext={queuedNext} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} doneAligned={doneAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly} beastConfirmOnly={beastConfirmOnly} allianceResultShown={allianceResultShown} audienceShown={audienceShown}");
             GetTree().Quit(passed ? 0 : 1);
         }
