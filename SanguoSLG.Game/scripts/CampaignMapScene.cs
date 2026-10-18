@@ -17512,6 +17512,7 @@ public sealed partial class CampaignMapScene : Node3D
         tray.TooltipText = "시스템";
         tray.Pressed += OpenSystemPalette;
         top.AddChild(tray);
+        AddMiniMapButton(top);
 
         // 좌상단 캐릭터 HUD에는 추가 텍스트를 붙이지 않는다.
         // _status/_log는 기존 코드의 상태 전달용 라벨로만 유지하고 화면 레이아웃에는 추가하지 않는다.

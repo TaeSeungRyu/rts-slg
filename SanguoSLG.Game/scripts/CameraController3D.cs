@@ -25,6 +25,8 @@ public partial class CameraController3D : Camera3D
     private float _distance = 10f;
     private float _targetDistance = 10f;
 
+    public void FocusOn(Vector3 point) => _targetPivot = new Vector3(point.X, _targetPivot.Y, point.Z);
+
     /// <summary>주시점과 거리로 카메라를 초기화한다(트리에 추가된 뒤 호출).</summary>
     public void Setup(Vector3 pivot, float distance)
     {
