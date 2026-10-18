@@ -211,7 +211,7 @@ public sealed partial class CampaignMapScene
         var diplomacy = story.Kind.StartsWith("alliance_", System.StringComparison.Ordinal);
         var portraitColumn = new VBoxContainer
         {
-            CustomMinimumSize = new Vector2(185, 0),
+            CustomMinimumSize = new Vector2(diplomacy ? 175 : 185, 0),
             SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
         };
         row.AddChild(portraitColumn);
@@ -235,8 +235,11 @@ public sealed partial class CampaignMapScene
         TextureRect? advisorPortrait = null;
         if (diplomacy && story.SecondSpeaker is { } rulerId)
         {
-            audienceColumn = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-            audienceColumn.SizeFlagsStretchRatio = 2;
+            audienceColumn = new VBoxContainer
+            {
+                CustomMinimumSize = new Vector2(175, 0),
+                SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd,
+            };
             row.AddChild(audienceColumn);
             rulerPortrait = new TextureRect
             {
@@ -254,7 +257,7 @@ public sealed partial class CampaignMapScene
                 advisorPortrait = new TextureRect
                 {
                     Name = "DiplomacyAdvisorPortrait",
-                    Texture = CircularPortraitFor(new GeneralId(story.Amount)),
+                    Texture = PortraitFor(new GeneralId(story.Amount)) ?? CircularPortraitFor(new GeneralId(story.Amount)),
                     CustomMinimumSize = Vector2.Zero,
                     SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
                     SizeFlagsVertical = Control.SizeFlags.ExpandFill,
@@ -268,7 +271,7 @@ public sealed partial class CampaignMapScene
             audienceColumn.AddChild(audienceName);
         }
         var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        content.SizeFlagsStretchRatio = diplomacy ? 6 : 7;
+        content.SizeFlagsStretchRatio = 7;
         row.AddChild(content);
         if (diplomacy) row.MoveChild(content, 1); // 아군: 초상-대사, 상대: 대사-초상
         var lines = StoryLines(story);
