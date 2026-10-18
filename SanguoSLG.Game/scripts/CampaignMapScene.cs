@@ -2429,6 +2429,7 @@ public sealed partial class CampaignMapScene : Node3D
             StatusKind.Evasion => $"회피술 · 원거리 피해 -30% · {status.Remaining}진행",
             StatusKind.ArmorBreak => $"파갑 · 방어력 -{status.DfDownPercent}% · {status.Remaining}진행",
             StatusKind.Rally => $"고무 · 공격/방어 +{status.AtkBonusPercent}% · {status.Remaining}진행",
+            StatusKind.Resupply => $"보급 · 부상병 회복 · {status.Remaining}진행",
             _ => $"{status.Kind} · {status.Remaining}진행",
         }).ToList();
 

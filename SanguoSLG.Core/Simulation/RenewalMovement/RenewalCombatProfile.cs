@@ -9,4 +9,5 @@ public sealed record RenewalCombatProfile(
     int CarryingGold = 0,
     int Provisions = 0,
     UnitCombatState? CombatState = null,
-    int CombatGrowthAwards = 0);
+    int CombatGrowthAwards = 0,
+    int ProvisionCapacity = 0);

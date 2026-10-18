@@ -135,7 +135,8 @@
     "name": "보급",
     "type": "heal",
     "grade": "high",
-    "heal_percent": 5
+    "heal_percent": 5,
+    "provision_percent": 5
   },
   {
     "code": "second_wind",

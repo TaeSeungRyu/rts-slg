@@ -212,8 +212,10 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
 
             var tick = u.State.Statuses.Where(s => !s.PermanentLoss).Sum(s => s.TickDamage(u.Pool.Active));
             var permanentTick = u.State.Statuses.Where(s => s.PermanentLoss).Sum(s => s.TickDamage(u.Pool.Active));
+            var recovered = u.State.Statuses.Aggregate(u.Pool,
+                (pool, status) => status.Recover(pool, u.MaxTroops));
             var ticked = u.State.TickStatuses();
-            var pool = tick > 0 ? u.Pool.TakeDamage(tick, _woundedPercent) : u.Pool;
+            var pool = tick > 0 ? recovered.TakeDamage(tick, _woundedPercent) : recovered;
             if (permanentTick > 0)
             {
                 pool = pool.TakeDamage(permanentTick, woundedPercent: 0);
@@ -383,6 +385,11 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
                     newState = newState.AddStatus(new StatusEffect(
                         StatusKind.Rally, 0, 3, false, AtkBonusPercent: 10, DfBonusPercent: 10));
                 }
+                else if (skill.Code == "resupply")
+                {
+                    newState = newState.AddStatus(new StatusEffect(StatusKind.Resupply, 0, 3, false,
+                        TickHealAmount: BattleResolver.HealAmount(skill, u.Intellect, u.MaxTroops)));
+                }
                 else if (skill.Code == "armor_break")
                 {
                     var primaryTarget = engagements.FirstOrDefault(e => e.Attacker == id)?.Targets.FirstOrDefault();
@@ -390,7 +397,8 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
                 }
             }
 
-            state[id] = u with { State = newState };
+            state[id] = u with { State = newState,
+                Provisions = u.Provisions + skill?.ProvisionGain(u.Provisions, u.MaxProvisions()) ?? u.Provisions };
             var (effStats, outgoing) = ApplyDebuffs(u);
             participants[id] = new BattleParticipant(
                 effStats with { Troops = u.Pool.Active },

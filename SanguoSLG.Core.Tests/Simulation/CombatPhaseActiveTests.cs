@@ -47,13 +47,13 @@ public class CombatPhaseActiveTests
     }
 
     [Fact]
-    public void 참_처형은_부상없이_영구소실된다()
+    public void 참은_공격보너스와_피해배수를_적용하고_일반부상을_남긴다()
     {
         var r = Run(Sword(might: 80, strike: A["reap"]), Sword());
 
-        Assert.Equal(300, r.DamageTaken[new UnitId(2)]);
-        Assert.Equal(9700, r.Pools[new UnitId(2)].Active);
-        Assert.Equal(0, r.Pools[new UnitId(2)].Wounded);
+        Assert.Equal(1313, r.DamageTaken[new UnitId(2)]);
+        Assert.Equal(8687, r.Pools[new UnitId(2)].Active);
+        Assert.Equal(919, r.Pools[new UnitId(2)].Wounded);
     }
 
     [Fact]
@@ -68,14 +68,11 @@ public class CombatPhaseActiveTests
     [Fact]
     public void 회복_부상풀에서_병력늘려_딜증가하고_풀에서회복()
     {
-        // A 정비(지력80): 부상 2000 중 1800 회복 → 활성 11800으로 공격(896)
+        // A 정비(지력80): 부상 2000 중 1200 회복 → 활성 9200으로 공격.
         var r = Run(Sword(troops: 8000, wounded: 2000, intellect: 80, heal: A["regroup"]), Sword());
-        // 회복 데미지: 8000활성+1800회복=9800? 아니 — 정비 15%×1.2=18% of max1만=1800, 부상 2000이라 전액 1800 회복
-        // 활성 8000+1800=9800으로 공격: 9800·8·95÷(1000·10)=744.8 → 744
-        Assert.Equal(744, r.DamageTaken[new UnitId(2)]);
-        // A 풀: 회복 후 활성 9800, 부상 200 → B에게 760 맞음 → 활성 9040, 부상 200+532
-        Assert.Equal(9040, r.Pools[new UnitId(1)].Active);
-        Assert.Equal(732, r.Pools[new UnitId(1)].Wounded); // 200 + 760×70%
+        Assert.Equal(699, r.DamageTaken[new UnitId(2)]);
+        Assert.Equal(8440, r.Pools[new UnitId(1)].Active);
+        Assert.Equal(1332, r.Pools[new UnitId(1)].Wounded);
     }
 
     [Fact]

@@ -32,4 +32,6 @@ public enum StatusKind
 
     /// <summary>고무. 공격력과 방어력을 10% 높인다.</summary>
     Rally,
+
+    Resupply,
 }

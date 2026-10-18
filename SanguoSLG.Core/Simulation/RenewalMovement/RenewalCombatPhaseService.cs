@@ -338,6 +338,7 @@ public sealed class RenewalCombatPhaseService
             var pool = profile.Participant.Pool;
             foreach (var status in combatState.Statuses)
             {
+                pool = status.Recover(pool, profile.Participant.MaxTroops);
                 var damage = status.TickDamage(pool.Active);
                 if (damage > 0)
                 {
@@ -447,12 +448,20 @@ public sealed class RenewalCombatPhaseService
                 next = next.AddStatus(new StatusEffect(StatusKind.Rally, 0, 3, false,
                     AtkBonusPercent: 10, DfBonusPercent: 10));
             }
+            if (skill.Code == "resupply")
+            {
+                next = next.AddStatus(new StatusEffect(StatusKind.Resupply, 0, 3, false,
+                    TickHealAmount: BattleResolver.HealAmount(skill, profile.Participant.Intellect,
+                        profile.Participant.MaxTroops)));
+            }
             if (skill.Code == "armor_break")
             {
                 var target = engagements.FirstOrDefault(x => x.Attacker == id)?.Targets.FirstOrDefault();
                 if (target is { } targetId) armorBreakTargets.Add(targetId);
             }
-            result[id] = profile with { CombatState = next };
+            result[id] = profile with { CombatState = next,
+                Provisions = profile.Provisions + skill.ProvisionGain(profile.Provisions,
+                    profile.ProvisionCapacity) };
             fired[id] = skill;
             events.Add(SkillEvent(state, id, skill));
         }

@@ -56,7 +56,7 @@ internal static class SkillDescriptions
                     effects.Add($"최대 병력의 {skill.HealPercent}%를 부상병에서 즉시 회복합니다. 부상병 수를 초과해 회복하지 않습니다.");
                     effects.Add($"지력 60 기준이며 선봉 지력에 따라 달라집니다. 회복률 상한은 {skill.HealCapPercent}%입니다.");
                     if (skill.Code == "resupply")
-                        effects.Add("현재는 즉시 회복만 적용됩니다. 지속 회복과 군량 지급은 아직 구현되지 않았습니다.");
+                        effects.Add($"이후 3진행 동안 매 진행 같은 양을 부상병에서 회복합니다. 발동 시 휴대 군량을 최대 적재량의 {skill.ProvisionPercent}%만큼 보충합니다(적재 상한 적용).");
                 }
                 break;
             case ActiveType.Tactic:
@@ -71,7 +71,7 @@ internal static class SkillDescriptions
         effects.Add($"야전 {ActiveGauge.ReadyDays}일 충전 후 유효한 교전에서 자동 발동합니다. 부대당 교전 1회 발동하며 선봉이 우선합니다. 사용하거나 성으로 복귀하면 충전이 초기화됩니다.");
         if (skill.Code is "armor_break" or "tiger_strike" or "chain_strike" or "breakthrough"
             or "one_man_army" or "barrage" or "riposte" or "turtle_formation"
-            or "hold_the_line" or "resupply" or "second_wind")
+            or "hold_the_line" or "second_wind")
         {
             effects.Add("현재 적용되는 기본 효과입니다. 추가 지속 효과·조건부 강화 등은 후속 스킬 확장 단계에서 반영됩니다.");
         }

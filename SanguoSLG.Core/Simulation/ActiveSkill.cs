@@ -34,4 +34,10 @@ public sealed record ActiveSkill(
     int HealCapPercent = 40,
     string Description = "",
     int CavalryDamageMultPercent = 0,
-    int StrikeAtkBonusPercent = 0);
+    int StrikeAtkBonusPercent = 0,
+    int ProvisionPercent = 0)
+{
+    public int ProvisionGain(int current, int capacity)
+        => current < 0 || capacity <= current ? 0
+            : System.Math.Min(capacity - current, capacity * ProvisionPercent / 100);
+}

@@ -109,7 +109,8 @@ public sealed record UnitCombatState(
     public UnitCombatState Purge(PurgeScope scope) => scope switch
     {
         PurgeScope.Fire => this with { Statuses = Statuses.Where(s => !s.IsFire).ToList() },
-        PurgeScope.NonFire => this with { Statuses = Statuses.Where(s => s.IsFire || s.Kind == StatusKind.Evasion).ToList() },
+        PurgeScope.NonFire => this with { Statuses = Statuses.Where(s => s.IsFire
+            || s.Kind is StatusKind.Evasion or StatusKind.Rally or StatusKind.Resupply).ToList() },
         _ => this,
     };
 
@@ -137,7 +138,7 @@ public sealed record UnitCombatState(
 
     /// <summary>
     /// 성·항구 공격에서 준비된 타격 액티브를 소비한다. 분쇄뿐 아니라 무쌍·포화 등 일반 타격형도
-    /// 공성 공격을 대체한다. 병력 비례 처형인 참은 건물 대상에서 발동하지 않고 준비 상태를 유지한다.
+    /// 공성 공격을 대체한다. 참은 건물 대상에서 발동하지 않고 준비 상태를 유지한다.
     /// 선봉의 준비된 스킬이 현재 대상에 부적합하면 부관을 건너뛰어 발동하지 않는다.
     /// </summary>
     public (ActiveSkill? Skill, UnitCombatState State) FiringBuildingActive()
@@ -146,7 +147,7 @@ public sealed record UnitCombatState(
     }
 
     private static bool CanStrikeBuilding(ActiveSkill skill)
-        => skill.Type == ActiveType.Strike && skill.ExecutePercent == 0;
+        => skill.Type == ActiveType.Strike && skill.ExecutePercent == 0 && skill.Code != "reap";
 
     /// <summary>5일 충전된 다음 차례의 책략형 액티브를 소비한다. 유효 대상이 없을 때는 호출하지 않는다.</summary>
     public (ActiveSkill? Skill, UnitCombatState State) FiringTactic()

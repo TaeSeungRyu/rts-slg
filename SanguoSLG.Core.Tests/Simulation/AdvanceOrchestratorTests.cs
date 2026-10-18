@@ -393,6 +393,37 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 보급액티브는_군량상한을_지키고_이후_세진행동안_부상병을_회복한다()
+    {
+        var ready = UnitCombatState.Create(60, A["resupply"]).AdvanceField(6);
+        var caster = Sword(1, 1, new HexCoord(0, 0), cs: ready) with
+        {
+            Pool = new TroopPool(8500, 1500), Provisions = 100,
+        };
+        var target = Sword(2, 2, new HexCoord(1, 0));
+        var orchestrator = MakeOrchestrator();
+
+        var first = orchestrator.RunWithProvisionDays([caster, target], 0, null, null, null,
+            null, null, 0, 0);
+        var current = first.Units.Single(unit => unit.Id == caster.Id);
+        Assert.Equal("resupply", first.FiredActives[caster.Id].Code);
+        Assert.Equal(112, current.Provisions);
+        Assert.Equal(3, Assert.Single(current.State.Statuses,
+            status => status.Kind == StatusKind.Resupply).Remaining);
+
+        for (var remaining = 2; remaining >= 0; remaining--)
+        {
+            var before = current.Pool;
+            current = orchestrator.RunWithProvisionDays([current], 0, null, null, null,
+                null, null, 0, 0).Units.Single();
+            Assert.Equal(System.Math.Min(500, before.Wounded), before.Wounded - current.Pool.Wounded);
+            Assert.Equal(remaining, current.State.Statuses
+                .Where(status => status.Kind == StatusKind.Resupply)
+                .Select(status => status.Remaining).SingleOrDefault());
+        }
+    }
+
+    [Fact]
     public void 회피술은_근접피해를_줄이지_않는다()
     {
         var ready = UnitCombatState.Create(80, A["evasion"]).AdvanceField(6);

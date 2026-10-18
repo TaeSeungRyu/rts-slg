@@ -245,7 +245,8 @@ public class CampaignSiegeTests
     public static IEnumerable<object[]> AllTroopAndBuildingStrikeCodes()
     {
         var strikeCodes = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())
-            .Where(active => active.Type == ActiveType.Strike && active.ExecutePercent == 0)
+            .Where(active => active.Type == ActiveType.Strike && active.ExecutePercent == 0
+                && active.Code != "reap")
             .Select(active => active.Code)
             .OrderBy(code => code, System.StringComparer.Ordinal);
         return T.Keys.OrderBy(code => code, System.StringComparer.Ordinal)

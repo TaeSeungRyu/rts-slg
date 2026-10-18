@@ -68,11 +68,10 @@ public class ActiveSkillTests
     }
 
     [Fact]
-    public void 참_병력비례처형_atk무관()
+    public void 참_공격력과_피해배수를_적용한다()
     {
-        // 무력80: 3% × 1.2 = 3.6%이나 상한 3%. 2만 × 3% = 600
         var dmg = Resolver.StrikeDamage(SwordA(), SwordA(20000), A["reap"], might: 80);
-        Assert.Equal(600, dmg);
+        Assert.Equal(1313, dmg);
     }
 
     [Fact]
@@ -106,10 +105,9 @@ public class ActiveSkillTests
     }
 
     [Fact]
-    public void 정비_지력80_병력15퍼센트회복_스케일()
+    public void 정비_지력80_병력10퍼센트회복_스케일()
     {
-        // 15% × 1.2 = 18% of 1만 = 1800
-        Assert.Equal(1800, BattleResolver.HealAmount(A["regroup"], intellect: 80, maxTroops: 10000));
+        Assert.Equal(1200, BattleResolver.HealAmount(A["regroup"], intellect: 80, maxTroops: 10000));
     }
 
     [Fact]

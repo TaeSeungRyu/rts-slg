@@ -336,6 +336,44 @@ public sealed class RenewalCombatPhaseServiceTests
     }
 
     [Fact]
+    public void 독립검수장_보급액티브는_발동시_군량을채우고_다음공격턴에_부상병을회복한다()
+    {
+        var caster = Unit(1, 1, 0, 0, RenewalOrderMode.Attack,
+            target: RenewalTargetId.ForUnit(new UnitId(2)));
+        var target = Unit(2, 2, 500, 0, RenewalOrderMode.Standby);
+        var skill = new ActiveSkill("resupply", "보급", ActiveType.Heal, "high",
+            HealPercent: 5, ProvisionPercent: 5);
+        var ready = UnitCombatState.Create(60, skill) with
+        {
+            VanguardGauge = new ActiveGauge(5), AdjutantGauge = new ActiveGauge(5),
+        };
+        var profiles = new Dictionary<UnitId, RenewalCombatProfile>
+        {
+            [caster.Id] = Profile(caster) with
+            {
+                Participant = Profile(caster).Participant with
+                { Pool = new TroopPool(8500, 1500), MaxTroops = 10000 },
+                CombatState = ready, Provisions = 100, ProvisionCapacity = 300,
+            },
+            [target.Id] = Profile(target),
+        };
+
+        var first = AttackPhase([caster, target], profiles: profiles);
+        var active = first.State.CombatProfiles![caster.Id];
+        Assert.Equal(115, active.Provisions);
+        Assert.Equal(3, Assert.Single(active.CombatState!.Statuses,
+            status => status.Kind == StatusKind.Resupply).Remaining);
+
+        var before = active.Participant.Pool;
+        var second = AttackPhase([caster with { Mode = RenewalOrderMode.Standby }],
+            profiles: new Dictionary<UnitId, RenewalCombatProfile> { [caster.Id] = active });
+        var after = second.State.CombatProfiles![caster.Id];
+        Assert.Equal(System.Math.Min(500, before.Wounded), before.Wounded - after.Participant.Pool.Wounded);
+        Assert.Equal(2, Assert.Single(after.CombatState!.Statuses,
+            status => status.Kind == StatusKind.Resupply).Remaining);
+    }
+
+    [Fact]
     public void 지속피해로_병력이0이되면_같은공격턴에_즉시괴멸한다()
     {
         var victim = Unit(1, 1, 0, 0, RenewalOrderMode.Standby);

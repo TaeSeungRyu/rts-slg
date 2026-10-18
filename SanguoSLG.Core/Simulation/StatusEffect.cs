@@ -31,7 +31,8 @@ public sealed record StatusEffect(
     bool PermanentLoss = false,
     int DfDownPercent = 0,
     int AtkBonusPercent = 0,
-    int DfBonusPercent = 0)
+    int DfBonusPercent = 0,
+    int TickHealAmount = 0)
 {
     /// <summary>행동불가(혼란) — 이동·공격·액티브 금지.</summary>
     public bool IsDaze => Kind == StatusKind.Daze;
@@ -41,6 +42,9 @@ public sealed record StatusEffect(
 
     /// <summary>현재 병력 기준 이번 진행 피해(내림). 디버프는 0.</summary>
     public int TickDamage(int troops) => (int)((long)troops * TickBasisPoints / 10000);
+
+    public TroopPool Recover(TroopPool pool, int maxTroops)
+        => pool.Heal(System.Math.Min(TickHealAmount, System.Math.Max(0, maxTroops - pool.Active)));
 
     /// <summary>한 진행 경과: 남은 진행 −1.</summary>
     public StatusEffect Tick() => this with { Remaining = Remaining - 1 };
