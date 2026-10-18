@@ -65,6 +65,28 @@ public class CombatPhaseResolverTests
     }
 
     [Fact]
+    public void 고대유물_공격과_방어_보정은_교전_피해에_반영된다()
+    {
+        var a = new UnitId(1);
+        var b = new UnitId(2);
+        var attack = Phase.Resolve([new UnitEngagement(a, [b])],
+            new Dictionary<UnitId, BattleParticipant>
+            {
+                [a] = SwordPart(UnitMode.Attack) with { RelicAttackPercent = 105 },
+                [b] = SwordPart(UnitMode.Attack),
+            });
+        var defense = Phase.Resolve([new UnitEngagement(a, [b])],
+            new Dictionary<UnitId, BattleParticipant>
+            {
+                [a] = SwordPart(UnitMode.Attack),
+                [b] = SwordPart(UnitMode.Attack) with { RelicDefensePercent = 105 },
+            });
+
+        Assert.Equal(798, attack.DamageTaken[b]);
+        Assert.Equal(723, defense.DamageTaken[b]);
+    }
+
+    [Fact]
     public void 포위_1대3_주는건220퍼센트_받는건300퍼센트()
     {
         // A를 셋이 인접 포위(전부 거리 1). A가 셋을 침(주760+부456+부456), 셋이 각자 A를 침(760×3)

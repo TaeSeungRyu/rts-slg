@@ -62,4 +62,18 @@ public class AncientRelicServiceTests
         Assert.Equal(2, loaded.Discoveries.Count(x => x.RelicTreasureId == loaded.Treasures[0].Id));
         Assert.Single(new AncientRelicService(Definitions).Resolve(loaded).Treasures);
     }
+
+    [Fact]
+    public void 구형_미분류_단서_두개를_선택한_유물로_한번만_교환한다()
+    {
+        var old = Clue(1, "");
+        var state = new GameState(10, 190, [], [], [], ExplorationDiscoveries: [old, old]);
+        var service = new AncientRelicService(Definitions);
+
+        var result = service.ConvertLegacy(state, new(1), Definitions[2].Code);
+
+        Assert.True(result.Ok);
+        Assert.Equal(Definitions[2].Code, result.State.Treasures.Single().Code);
+        Assert.False(service.ConvertLegacy(result.State, new(1), Definitions[2].Code).Ok);
+    }
 }

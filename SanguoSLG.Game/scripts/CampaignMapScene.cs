@@ -9259,6 +9259,14 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
+        if (_state.Discoveries.Count(x => x.Faction == Player && x.Code == "ancient_relic_clue"
+                && x.ClueCode.Length == 0 && x.RelicTreasureId.Length == 0) >= 2)
+        {
+            var convertLegacy = MakeButton("이전 저장의 미분류 단서 2개로 유물 선택", accent: true);
+            convertLegacy.Pressed += OpenLegacyClueConversion;
+            box.AddChild(convertLegacy);
+        }
+
         box.AddChild(GoldRule());
         var treasureHeading = new MarginContainer { Name = "TreasureInventoryHeading" };
         treasureHeading.AddThemeConstantOverride("margin_top", 14);
@@ -9290,6 +9298,31 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(MakeLabel($"{TroopName(encounter.Code)} 사냥 · {EventHuntStatus(encounter)}", 12, Gold));
         var contentH = box.GetCombinedMinimumSize().Y;
         scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(contentH, mh));
+        CenterAndDrag(panel, titleRow, mw, mh, box);
+    }
+
+    private void OpenLegacyClueConversion()
+    {
+        _modalDismissAction = null;
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
+        var vp = GetViewport().GetVisibleRect().Size;
+        var mw = Mathf.Clamp(vp.X * 0.45f, 480f, 680f);
+        var mh = Mathf.Clamp(vp.Y * 0.72f, 340f, 650f);
+        var box = SystemView("미분류 단서 유물 선택", mw, out var scroll, out var panel, out var titleRow);
+        box.AddChild(MakeLabel("이전 저장의 미분류 단서 2개를 선택한 유물 1개로 교환합니다.", 12, Parchment));
+        foreach (var relic in _ancientRelics)
+        {
+            var option = MakeButton($"{relic.Name} · {relic.ClueName}");
+            option.Pressed += () =>
+            {
+                var result = new AncientRelicService(_ancientRelics).ConvertLegacy(_state, Player, relic.Code);
+                if (!result.Ok) { ShowNotice("유물 교환 불가", result.Error ?? "단서를 확인해 주세요."); return; }
+                _state = result.State;
+                OpenTreasureList();
+            };
+            box.AddChild(option);
+        }
+        scroll.CustomMinimumSize = new Vector2(mw, Mathf.Min(box.GetCombinedMinimumSize().Y, mh));
         CenterAndDrag(panel, titleRow, mw, mh, box);
     }
 
@@ -10595,6 +10628,9 @@ public sealed partial class CampaignMapScene : Node3D
         var condition = MakeLabel(reward.RegistrationCondition, 11, new Color(accent, 0.92f));
         condition.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         body.AddChild(condition);
+        if (discovery.RelicTreasureId.Length > 0
+            && _state.Treasures.FirstOrDefault(item => item.Id == discovery.RelicTreasureId) is { } relic)
+            body.AddChild(MakeLabel($"획득 유물 · {relic.Name}", 12, GoldBright));
         card.SetMeta("exploration_code", discovery.Code);
         card.SetMeta("exploration_tone", (int)reward.Tone);
         card.SetMeta("reward_animation", reward.HasResources ? "resource_reveal" : reward.IsClue ? "clue_reveal" : "result_reveal");
@@ -12556,9 +12592,12 @@ public sealed partial class CampaignMapScene : Node3D
         name.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(name);
 
-        var gradeText = MakeLabel(grade > originalGrade
+        var relicBonus = AncientRelicEffects.Bonus(_state, _ancientRelics, general.Id,
+            _state.PostingOf(general.Id)?.Faction ?? Player, "aptitude_percent", troopClass);
+        var gradeText = MakeLabel((grade > originalGrade
             ? $"{GradeText(grade)} (원래 {GradeText(originalGrade)})"
-            : GradeText(grade), 15, grade >= AptitudeGrade.A ? GoldBright : Parchment);
+            : GradeText(grade)) + (relicBonus > 0 ? $" · 유물 +{relicBonus}%" : ""),
+            15, grade >= AptitudeGrade.A ? GoldBright : Parchment);
         gradeText.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(gradeText);
 

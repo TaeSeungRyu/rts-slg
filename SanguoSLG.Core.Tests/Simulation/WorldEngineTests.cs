@@ -26,6 +26,24 @@ public class WorldEngineTests
         Assert.Equal(91, after.Cities.Single().Security);
         Assert.Equal(0, after.Cities.Single().RelicSecurityRemainder);
     }
+
+    [Fact]
+    public void 탐색_두건이_같은_단서를_발견하면_진행중_유물이_지급된다()
+    {
+        var city = new City(new(1), "탐색성", new HexCoord(0, 0), new(1), 1000);
+        var generals = new[] { V2Officer(1), V2Officer(2) };
+        var relic = new AncientRelicDefinition("blade", "검편", "blade_clue", "파편", "attack_percent", 5);
+        var state = new GameState(1, 190, [], [city], generals,
+            PendingCommands: [new(city.Id, CommandKind.Explore, generals[0].Id, null, 1, 2, 0),
+                new(city.Id, CommandKind.Explore, generals[1].Id, null, 1, 2, 0)]);
+
+        var result = new WorldEngine(V2OnlyBalance, random: new FixedRandom(1, 0, 1, 0),
+            ancientRelics: [relic]).AdvanceDays(state, 1);
+
+        Assert.Equal(2, result.Discoveries.Count);
+        Assert.Single(result.Treasures);
+        Assert.Equal("blade", result.Treasures[0].Code);
+    }
     [Fact]
     public void 이전상태의_진행명령과_담당_중복을_정리한다()
     {

@@ -4,6 +4,25 @@ using SanguoSLG.Core.Domain;
 
 public sealed class AncientRelicService(IReadOnlyList<AncientRelicDefinition> definitions)
 {
+    public CommandResult ConvertLegacy(GameState state, FactionId faction, string relicCode)
+    {
+        var relic = definitions.FirstOrDefault(x => x.Code == relicCode);
+        if (relic is null) return CommandResult.Fail("해당 유물을 찾을 수 없습니다.", state);
+        var available = state.Discoveries.Select((discovery, index) => (discovery, index))
+            .Where(x => x.discovery.Faction == faction && x.discovery.Code == "ancient_relic_clue"
+                && x.discovery.ClueCode.Length == 0 && x.discovery.RelicTreasureId.Length == 0)
+            .OrderBy(x => x.discovery.Day).ThenBy(x => x.index).Take(2).ToList();
+        if (available.Count < 2) return CommandResult.Fail("미분류 단서 2개가 필요합니다.", state);
+        var discoveries = state.Discoveries.ToList();
+        var id = $"legacy-relic:{faction.Value}:{relic.ClueCode}:{available[1].index}";
+        foreach (var entry in available)
+            discoveries[entry.index] = entry.discovery with
+            { ClueCode = relic.ClueCode, RelicTreasureId = id };
+        var treasures = state.Treasures.Append(new FactionTreasure(id, relic.Code, relic.Name, faction,
+            state.Day, "ancient_relic_clue")).ToList();
+        return CommandResult.Success(state with { ExplorationDiscoveries = discoveries, FactionTreasures = treasures });
+    }
+
     public GameState Resolve(GameState state)
     {
         var discoveries = state.Discoveries.ToList();

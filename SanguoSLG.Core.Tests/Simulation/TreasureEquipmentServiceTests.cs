@@ -20,6 +20,25 @@ public class TreasureEquipmentServiceTests
             new("hunt:2", "tiger_fang", "호아", new(1), 9, "hunt")]);
 
     [Fact]
+    public void 탐색_유물도_기존_한칸_장착과_저장_규칙을_따른다()
+    {
+        var relic = new AncientRelicLoader().LoadFromDirectory(TestData.DataDirectory())[0];
+        var definitions = new EventTreasureLoader().LoadFromDirectory(TestData.DataDirectory())
+            .Append(new EventTreasureDefinition(relic.Code, relic.Name, "ancient_relic", relic.Effect, relic.Value))
+            .ToList();
+        var service = new TreasureEquipmentService(definitions);
+        var state = State with { FactionTreasures = [new("relic:1", relic.Code, relic.Name,
+            new(1), 10, "ancient_relic_clue")] };
+
+        var equipped = service.Equip(state, "relic:1", new(1));
+
+        Assert.True(equipped.Ok, equipped.Error);
+        Assert.Equal(new GeneralId(1), SaveService.Deserialize(SaveService.Serialize(equipped.State))
+            .Treasures.Single().EquippedBy);
+        Assert.True(service.Unequip(equipped.State, "relic:1").Ok);
+    }
+
+    [Fact]
     public void 보물_9종과_장수당_한칸_장착_해제_저장을_검증한다()
     {
         Assert.Equal(9, new EventTreasureLoader().LoadFromDirectory(TestData.DataDirectory()).Count);
