@@ -47,6 +47,7 @@
 | 계략 전환 | [design-stratagem.md](./design-stratagem.md) | 독립 계략 폐기, 전투 액티브 전환 기준 |
 | 외교 | [design-diplomacy-ruler-relations.md](./design-diplomacy-ruler-relations.md) | 동맹/동맹파기와 군주 관계도 |
 | 지형·건물·항구 | [design-terrain.md](./design-terrain.md), [design-water.md](./design-water.md) | 지형 문자, 시설, 항구/물 규칙 |
+| 지역 기후 계획 | [design-climate.md](./design-climate.md) | Phase 21A 미구현: 6×6 비·눈, 일별 갱신, 이동·공격 보정과 적설 표현 |
 | 이펙트 | [design-effect.md](./design-effect.md) | 3D 효과 카탈로그 |
 | 신수 사냥·보물 | [design-event-hunts.md](./design-event-hunts.md) | Phase 19~20 대호·용·봉황, 장착·소환 규칙 |
 | 야전 건축 | [design-field-construction.md](./design-field-construction.md) | Phase 18C 목책·정찰대·감시탑·보루·진법 |
