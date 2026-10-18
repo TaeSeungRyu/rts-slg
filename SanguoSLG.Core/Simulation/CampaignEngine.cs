@@ -27,6 +27,8 @@ public sealed class CampaignEngine
     /// <summary>직전 <see cref="AdvanceWeek(GameState, out IReadOnlyList{AdvanceTurn})"/>의 내정/라이프사이클 사건(보고용).</summary>
     public IReadOnlyList<WorldEvent> LastWorldEvents => _campaignEvents.Concat(_world.LastEvents).ToList();
     private readonly List<WorldEvent> _campaignEvents = [];
+    private readonly List<ClimateState> _climateDays = [];
+    public IReadOnlyList<ClimateState> LastClimateDays => _climateDays;
 
     private readonly CampaignSiege? _siege;
     private readonly CityCapture? _capture;
@@ -111,6 +113,7 @@ public sealed class CampaignEngine
         var plunderReports = new List<PlunderReport>();
         var casualtyReports = new List<CasualtyReport>();
         _campaignEvents.Clear();
+        _climateDays.Clear();
         var work = (_eventHunts?.ScheduleDiscoveries(state) ?? state).CancelAlliedAttackOrders();
         var waitingArmies = work.Armies
             .Where(u => u.Pool.Active > 0 && u.IsWaitingDate)
@@ -126,7 +129,7 @@ public sealed class CampaignEngine
 
         var remaining = WeekDays;
         while (remaining > 0 && (armies.Count > 0 || waitingArmies.Count > 0 || egressArmies.Count > 0
-            || _eventHunts is not null || _summons is not null))
+            || _eventHunts is not null || _summons is not null || _climate is not null))
         {
             var simulationDay = state.Day + (WeekDays - remaining);
             if (_climate is not null)
@@ -134,6 +137,7 @@ public sealed class CampaignEngine
                 var climate = work.Climate ?? ClimateState.Initial(state.Day * 7919 + state.StartYear);
                 var month = (simulationDay - 1) % GameState.DaysPerYear / GameState.DaysPerMonth + 1;
                 work = work with { Climate = _climate.Advance(climate, simulationDay, month) };
+                _climateDays.Add(work.Climate);
             }
             IReadOnlyList<CombatUnit> eventSpawns = [];
             if (_eventHunts is not null)

@@ -616,7 +616,7 @@ public sealed partial class CampaignMapScene : Node3D
             new FieldBuildingCombat(new BattleResolver(60), _fieldBuildingDefinitions, _troops,
                 summonedUnitDefinitions),
             _fieldBuildingDefinitions, _eventHunts, _summons, _ancientRelics,
-            new SanguoSLG.Core.Simulation.Climate.ClimateController(_map,
+            _climateController = new SanguoSLG.Core.Simulation.Climate.ClimateController(_map,
                 scenario.Balance.ClimatePatchChancePercent,
                 scenario.Balance.ClimateMaxPatches,
                 moveEveryDays: scenario.Balance.ClimateMoveEveryDays));
@@ -751,6 +751,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestofficerfixtureqa")) CallDeferred(nameof(RunMapTestOfficerFixtureQa));
         if (args.Contains("--maptestwardeclarationqa")) CallDeferred(nameof(RunWarDeclarationQa));
         if (args.Contains("--maptestgeneralstoryqa")) CallDeferred(nameof(RunGeneralStoryQa));
+        if (args.Contains("--maptestclimateqa")) CallDeferred(nameof(RunClimateQa));
+        if (args.Contains("--maptestclimateadvanceqa")) CallDeferred(nameof(RunClimateAdvanceQa));
     }
 
     private void SeedFieldBuildingSamples()
@@ -2568,6 +2570,16 @@ public sealed partial class CampaignMapScene : Node3D
             Row("방어", $"최하 방어 {FacilityHealth.Defense} · 공격/반격 없음");
         }
         Row("이동", inMap ? MoveCostText(terrain, h) : "통행 불가");
+        if (inMap)
+        {
+            var weather = SanguoSLG.Core.Simulation.Climate.ClimateCombatRules.At(_state.Climate, h);
+            Row("기후", weather switch
+            {
+                SanguoSLG.Core.Simulation.Climate.ClimateKind.Rain => "비 · 이동 −30% · 궁병 공격 −20%",
+                SanguoSLG.Core.Simulation.Climate.ClimateKind.Snow => "눈 · 이동 −30% · 기병 공격 −20%",
+                _ => "일반",
+            });
+        }
         var combat = CombatBonusText(terrain);
         Row("전투", combat.Length > 0 ? combat : "병종 보정 없음");
 
@@ -4059,6 +4071,7 @@ public sealed partial class CampaignMapScene : Node3D
         var preMove = _state; // 이동 전(편성·AI 반영) — 애니메이션 시작 위치
         var startHex = preMove.Armies.ToDictionary(u => u.Id.Value, u => u.Field.Position);
         var after = _engine.AdvanceWeek(preMove, out var turns, out var sieges, out var captures, out var plunders, out var casualties);
+        _climatePlayback = _engine.LastClimateDays.ToArray();
         after = CampaignScoreboard.Apply(after, _engine.LastWorldEvents, turns, captures, _balance.WoundedPercent);
         _storySpeechEvents = CombatSpeechEvents(preMove, turns)
             .Concat(CitySpeechEvents(preMove)).ToArray();
@@ -6257,6 +6270,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 줌/이동 중에도 팔레트가 선택한 성을 따라가도록 갱신.
     public override void _Process(double delta)
     {
+        AnimateClimateVisuals(delta);
         TickModalTransitions();
         TickCampaignPlayTime(delta);
         TickStoryPresentation(delta);
@@ -6602,6 +6616,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             var day = System.Math.Min(AnimDays, (int)(_animT / DaySeconds) + 1);
+            if (_climatePlayback.Count >= day) RefreshClimateVisuals(_climatePlayback[day - 1]);
             _dayLabel.Text = $"{day}일차";
             UpdateScoutDayLabels(_state.Day + System.Math.Min(AnimDays, (int)(_animT / DaySeconds)));
             // 하루는 이동 연출 뒤 공격 판정 슬롯으로 고정 분리한다.
@@ -16538,6 +16553,7 @@ public sealed partial class CampaignMapScene : Node3D
         _status.Text = $"도시 {myCities} · 장수 {myGenerals} · 금 {myGold} · 병력 {myTroops}";
         _log.Text = note;
         RefreshBattlefieldVision();
+        RefreshClimateVisuals(_state.Climate);
     }
 
     /// <summary>토큰의 자식 게이지가 토큰과 함께 해제된 직후 사전의 폐기 참조를 안전하게 정리하는 회귀 QA.</summary>
@@ -17669,6 +17685,7 @@ public sealed partial class CampaignMapScene : Node3D
         tray.Pressed += OpenSystemPalette;
         top.AddChild(tray);
         AddMiniMapButton(top);
+        AddClimateTestButtons(layer);
 
         // 좌상단 캐릭터 HUD에는 추가 텍스트를 붙이지 않는다.
         // _status/_log는 기존 코드의 상태 전달용 라벨로만 유지하고 화면 레이아웃에는 추가하지 않는다.
