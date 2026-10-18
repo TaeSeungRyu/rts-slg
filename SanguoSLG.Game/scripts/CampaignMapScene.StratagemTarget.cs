@@ -25,7 +25,7 @@ public sealed partial class CampaignMapScene
         _stratOption = option;
         _stratMapTargeting = true;
         HidePanels();
-        foreach (var city in _state.Cities.Where(c => c.Owner != Player && IsKnownCityLocation(c)))
+        foreach (var city in _state.Cities.Where(c => c.Owner != Player && (_stratOption == 0 || IsKnownCityLocation(c))))
         {
             var marker = new MeshInstance3D
             {
@@ -45,7 +45,9 @@ public sealed partial class CampaignMapScene
         }
         _stratHintLayer = new CanvasLayer { Layer = 18 };
         AddChild(_stratHintLayer);
-        _stratHint = MakeLabel("금색 표시가 있는 적 성을 선택하세요. Esc 또는 우클릭으로 취소", 16, GoldBright);
+        _stratHint = MakeLabel(_stratOption == 0
+            ? "정찰할 적 성을 선택하세요. 시야 밖의 성도 지정할 수 있습니다."
+            : "금색 표시가 있는 적 성을 선택하세요. Esc 또는 우클릭으로 취소", 16, GoldBright);
         _stratHint.MouseFilter = Control.MouseFilterEnum.Ignore;
         _stratHint.Position = new Vector2(24, 105);
         _stratHintLayer.AddChild(_stratHint);
@@ -55,7 +57,7 @@ public sealed partial class CampaignMapScene
     {
         var hex = RayToGround(screenPosition);
         var city = hex is { } tile ? CityAtHex(tile) : null;
-        if (city is null || city.Owner == Player || !IsKnownCityLocation(city))
+        if (city is null || city.Owner == Player || (_stratOption != 0 && !IsKnownCityLocation(city)))
         {
             if (_stratHint is not null) _stratHint.Text = "대상 선택 불가 · 확인 가능한 적 성을 선택하세요.";
             return;
@@ -103,7 +105,7 @@ public sealed partial class CampaignMapScene
         var commandIndex = System.Array.FindIndex(Cmds,
             command => command.Kind == SanguoSLG.Core.Domain.CommandKind.CityStratagem);
         BeginStratagemMapTargeting(origin.Id, commandIndex, _state.GeneralsAt(origin.Id).First(), 0);
-        var eligible = _state.Cities.Count(city => city.Owner != Player && IsKnownCityLocation(city));
+        var eligible = _state.Cities.Count(city => city.Owner != Player);
         var passed = _stratMapTargeting && _stratTargetMarkers.Count == eligible && eligible > 0;
         FinishStratagemMapTargeting(false);
         passed &= !_stratMapTargeting && _stratTargetMarkers.Count == 0;
