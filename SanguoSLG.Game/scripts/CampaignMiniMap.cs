@@ -76,7 +76,10 @@ public partial class CampaignMiniMap : Control
         var bounds = CameraBounds();
         var a = Project(new Vector3(bounds.Position.X, 0, bounds.Position.Y));
         var b = Project(new Vector3(bounds.End.X, 0, bounds.End.Y));
-        DrawRect(new Rect2(a, b - a).Abs(), new Color(0.96f, 0.81f, 0.45f), false, 1.5f);
+        var mapBounds = new Rect2(new Vector2(8, 8), Size - new Vector2(16, 16));
+        var camera = new Rect2(a, b - a).Abs().Intersection(mapBounds);
+        if (camera.Size.X > 0 && camera.Size.Y > 0)
+            DrawRect(camera, new Color(0.96f, 0.81f, 0.45f), false, 1.5f);
     }
 
     public override void _GuiInput(InputEvent input)
