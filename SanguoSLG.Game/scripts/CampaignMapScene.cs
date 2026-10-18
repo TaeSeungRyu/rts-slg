@@ -1299,6 +1299,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
         {
+            if (_stratMapTargeting) { FinishStratagemMapTargeting(true); return; }
             if (_summonTargetingUnitId >= 0) { StopSummonTargeting(); return; }
             if (_supplyReplenishmentSourceId >= 0) { StopSupplyReplenishmentTargeting(); return; }
             if (_fieldBuildPlacing)
@@ -1335,6 +1336,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 우클릭: 목표 지정/시설 배치 취소.
         if (mb.ButtonIndex == MouseButton.Right && mb.Pressed)
         {
+            if (_stratMapTargeting) { FinishStratagemMapTargeting(true); return; }
             if (_summonTargetingUnitId >= 0) { StopSummonTargeting(); return; }
             if (_supplyReplenishmentSourceId >= 0) { StopSupplyReplenishmentTargeting(); return; }
             if (_fieldBuildPlacing)
@@ -1379,6 +1381,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (!_leftDown) { return; }
         _leftDown = false;
         if ((mb.Position - _leftDownPos).Length() >= 6f) { return; } // 드래그 = 카메라 팬(선택 아님)
+
+        if (_stratMapTargeting) { SelectStratagemMapTarget(mb.Position); return; }
 
         if (_summonTargetingUnitId >= 0)
         {
@@ -6953,63 +6957,11 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
-        // 도시 계략: 대상 도시 선택 — 수행 장수보다 먼저(계략 → 대상 → 장수 순).
-        // 성이 많아도 안전하게 고정 높이 표(내부 스크롤)로 목록을 담는다.
-        _stratTarget = null;
+        // 계략과 장수를 고른 다음 지도에서 대상 성을 지정한다.
         if (cmd.Param == "stratagem")
         {
-            var enemies = _state.Cities.Where(c => c.Owner != Player)
-                .OrderBy(c => c.Id.Value).ToList();
-            if (enemies.Count > 0)
-            {
-                _stratTarget = enemies[0].Id;
-                box.AddChild(MakeLabel("대상 도시", 19, GoldBright));
-                var from = _state.Cities.First(x => x.Id == city).Position;
-                var cityTree = new Tree
-                {
-                    Columns = 3,
-                    ColumnTitlesVisible = true,
-                    HideRoot = true,
-                    SelectMode = Tree.SelectModeEnum.Row,
-                    CustomMinimumSize = new Vector2(0, System.Math.Min(46 + (enemies.Count * 34), 150)),
-                    SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-                };
-                cityTree.AddThemeFontOverride("font", _font);
-                cityTree.AddThemeFontSizeOverride("font_size", 15);
-                cityTree.AddThemeFontOverride("title_button_font", _font);
-                cityTree.AddThemeFontSizeOverride("title_button_font_size", 14);
-                cityTree.SetColumnTitle(0, "도시");
-                cityTree.SetColumnExpand(0, true);
-                cityTree.SetColumnExpandRatio(0, 2);
-                foreach (var (col, t) in new[] { (1, "거리"), (2, "소요일") })
-                {
-                    cityTree.SetColumnTitle(col, t);
-                    cityTree.SetColumnExpand(col, false);
-                    cityTree.SetColumnCustomMinimumWidth(col, 76);
-                }
-
-                var croot = cityTree.CreateItem();
-                foreach (var enemyCity in enemies)
-                {
-                    var item = cityTree.CreateItem(croot);
-                    item.SetText(0, _state.AreAllied(Player, enemyCity.Owner)
-                        ? $"{enemyCity.Name} (동맹·정찰만)" : enemyCity.Name);
-                    item.SetText(1, $"{from.Distance(enemyCity.Position)}칸");
-                    item.SetText(2, $"{CityStratagems.Days(from, enemyCity.Position, _cb)}일");
-                    item.SetMetadata(0, enemyCity.Id.Value);
-                    item.SetTextAlignment(1, HorizontalAlignment.Center);
-                    item.SetTextAlignment(2, HorizontalAlignment.Center);
-                    if (enemyCity.Id == _stratTarget) { item.Select(0); }
-                }
-
-                cityTree.ItemSelected += () =>
-                {
-                    var it = cityTree.GetSelected();
-                    if (it is not null) { _stratTarget = new CityId(it.GetMetadata(0).AsInt32()); }
-                };
-                box.AddChild(cityTree);
-                box.AddChild(GoldRule());
-            }
+            box.AddChild(MakeLabel("계략과 수행 장수를 고른 뒤 지도에서 대상 성을 지정합니다.", 16, Parchment));
+            box.AddChild(GoldRule());
         }
 
         if (cmd.Kind == CommandKind.Research && cmd.Param == "general")
@@ -14555,7 +14507,8 @@ public sealed partial class CampaignMapScene : Node3D
             if (it is null) { return; }
             var gid = new GeneralId(it.GetMetadata(0).AsInt32());
             tree.CallDeferred(Tree.MethodName.DeselectAll); // 컨펌 취소 후 같은 행 재클릭 가능하게
-            AskExecute(city, cmdIndex, gid, _modalParam);
+            if (cmd.Param == "stratagem") BeginStratagemMapTargeting(city, cmdIndex, gid, _modalParam);
+            else AskExecute(city, cmdIndex, gid, _modalParam);
         };
         tree.ColumnTitleClicked += (col, _) =>
         {
@@ -15065,7 +15018,6 @@ public sealed partial class CampaignMapScene : Node3D
             var enemy = _stratTarget is { } tc
                 ? _state.Cities.FirstOrDefault(c => c.Id == tc && c.Owner != Player)
                 : null;
-            enemy ??= _state.Cities.FirstOrDefault(c => c.Owner != Player);
             if (enemy is null) { return; }
             target = enemy.Id;
             var caster = _state.Generals.First(g => g.Id == general);
