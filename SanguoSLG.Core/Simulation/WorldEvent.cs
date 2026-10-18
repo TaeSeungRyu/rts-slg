@@ -16,6 +16,7 @@ public enum WorldEventKind
     Explore,        // 탐색 완료
     AllianceSuccess, // 동맹 성공
     AllianceFail,    // 동맹 실패
+    AllianceBreak,   // 사절 도착 후 동맹 파기
     StratagemSuccess, // 도시 계략 성공
     StratagemFail,    // 도시 계략 실패
     ProductionComplete, // 생산 작전 복귀·보상 지급

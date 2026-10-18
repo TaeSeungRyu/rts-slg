@@ -737,6 +737,17 @@ public sealed class WorldEngine
                 case CommandKind.FormAlliance:
                     ResolveFormAlliance(state, cmd, city, generals, alliances);
                     break;
+                case CommandKind.BreakAlliance:
+                    if (cmd.TargetFaction is { } breakTarget && breakTarget != city.Owner
+                        && cities.TryGetValue(cmd.TargetCity ?? default, out var breakCity)
+                        && breakCity.Owner == breakTarget
+                        && alliances.Any(a => a.Matches(city.Owner, breakTarget) && a.ActiveOn(state.Day)))
+                    {
+                        alliances.RemoveAll(a => a.Matches(city.Owner, breakTarget));
+                        _events.Add(new WorldEvent(WorldEventKind.AllianceBreak, city.Owner, cmd.Main,
+                            city.Id, Code: breakTarget.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+                    }
+                    break;
                 case CommandKind.DeclareWar:
                     if (cmd.TargetCity is { } declaredCity && cities.TryGetValue(declaredCity, out var defender)
                         && defender.Owner != city.Owner && defender.Owner == cmd.TargetFaction

@@ -180,7 +180,7 @@ public sealed class CommandService
             CommandKind.RecruitHero => RecruitHero(state, city, req),
             CommandKind.Explore => IssueExplore(state, city, req, assist),
             CommandKind.FormAlliance => IssueFormAlliance(state, city, req, assist),
-            CommandKind.BreakAlliance => IssueBreakAlliance(state, city, req),
+            CommandKind.BreakAlliance => IssueBreakAlliance(state, city, req, assist),
             CommandKind.DeclareWar => IssueDeclareWar(state, city, req, assist),
             _ => CommandResult.Fail("알 수 없는 명령이다.", state),
         };
@@ -262,7 +262,7 @@ public sealed class CommandService
         return CommandResult.Success(state with { Cities = cities, Postings = postings, HeroUnlockStates = heroStates });
     }
 
-    private static CommandResult IssueBreakAlliance(GameState state, City city, CommandRequest req)
+    private CommandResult IssueBreakAlliance(GameState state, City city, CommandRequest req, General? assist)
     {
         if (req.TargetFaction is not { } targetFaction)
         {
@@ -279,8 +279,11 @@ public sealed class CommandService
             return CommandResult.Fail("동맹 중인 세력이 아니다.", state);
         }
 
-        var alliances = state.Alliances.Where(a => !a.Matches(city.Owner, targetFaction)).ToList();
-        return CommandResult.Success(state with { FactionAlliances = alliances });
+        var targetCity = DiplomacyAudience.Select(state, targetFaction, city.Position).City;
+        if (targetCity is null) return CommandResult.Fail("대상 세력의 도시가 없다.", state);
+        var days = CityStratagems.Days(city.Position, targetCity.Position, _b);
+        return Register(state, city, req, assist, 0, days, CommandKind.BreakAlliance, "",
+            targetCity: targetCity.Id, targetFaction: targetFaction);
     }
 
     private CommandResult IssueFormAlliance(GameState state, City city, CommandRequest req, General? assist)

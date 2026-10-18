@@ -4172,6 +4172,7 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.Explore => (ExplorationEventText(cName, gName, we.Code, we.Amount, we.ExtraAmount), we.Code is "divine_beast_trace" or "dragon_trace" or "phoenix_trace" or "ancient_relic_clue" ? GoldBright : Parchment),
                 WorldEventKind.AllianceSuccess => ($"[외교] {targetFaction} 세력과 동맹을 맺었습니다.", GoldBright),
                 WorldEventKind.AllianceFail => ($"[외교] {targetFaction} 세력과의 동맹 교섭에 실패했습니다.", Parchment),
+                WorldEventKind.AllianceBreak => ($"[외교] 사절이 도착하여 {targetFaction} 세력과의 동맹을 파기했습니다.", GoldBright),
                 WorldEventKind.StratagemSuccess => ($"[계략] {gName}의 {FacilityLabel(we.Code)} 성공 — {cName}에 효과가 적용되었습니다.", GoldBright),
                 WorldEventKind.StratagemFail => ($"[계략] {gName}의 {FacilityLabel(we.Code)} 실패 — {cName}에는 아무 효과가 없었습니다.", Parchment),
                 WorldEventKind.ProductionComplete => ($"[생산] {gName} 장수가 {cName}의 {FacilityLabel(we.Code)} 생산을 마쳤습니다. 금 +{we.Amount}, 군량 +{we.ExtraAmount}.", GoldBright),
@@ -15071,7 +15072,8 @@ public sealed partial class CampaignMapScene : Node3D
             }
             else
             {
-                extra = $"\n대상 {targetFactionName}\n즉시 동맹을 파기합니다.";
+                var days = targetCity is null ? _cb.CommandDays : CityStratagems.Days(cityData.Position, targetCity.Position, _cb);
+                extra = $"\n대상 {targetFactionName}\n사절 도착까지 {days}일 · 도착 시 동맹 파기";
             }
         }
 
@@ -15279,16 +15281,6 @@ public sealed partial class CampaignMapScene : Node3D
             _log.Text = r.Ok ? $"발행: {cmd.Label}{pLabel} — {gName}" : $"실패: {r.Error}";
             if (r.Ok)
             {
-                if (cmd.Kind == CommandKind.BreakAlliance && targetFaction is { } brokenFaction)
-                {
-                    var audience = DiplomacyAudience.Select(_state, brokenFaction,
-                        _state.Cities.First(c => c.Id == city).Position);
-                    var story = new GeneralStoryEvent($"alliance-break:{_state.Day}:{city.Value}:{brokenFaction.Value}",
-                        "alliance_break", _state.Day, 6, Player, general, audience.Ruler,
-                        audience.City?.Id, _state.Day % 3);
-                    _state = _state with { PendingStoryEvents = _state.StoryPending.Append(story).ToArray() };
-                    _storyAwaitingCard = true;
-                }
                 if (cmd.Kind == CommandKind.DeclareWar && target is { } declaredCity)
                 {
                     var enemyName = _state.Cities.First(c => c.Id == declaredCity).Name;

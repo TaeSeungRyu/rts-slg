@@ -232,7 +232,7 @@ public class DiplomacyTests
     }
 
     [Fact]
-    public void 동맹파기는_즉시_동맹을_해제하고_공격을_다시_허용한다()
+    public void 동맹파기는_사절이_도착한_뒤_공격을_다시_허용한다()
     {
         var s = new GameState(1, 1, new List<Faction>(),
             new List<City> { City(1, 1, 0), City(2, 2, 3) },
@@ -245,9 +245,17 @@ public class DiplomacyTests
             new CommandRequest(new CityId(1), CommandKind.BreakAlliance, new GeneralId(1), TargetFaction: new FactionId(2)));
 
         Assert.True(broken.Ok, broken.Error);
-        Assert.False(broken.State.AreAllied(new FactionId(1), new FactionId(2)));
+        Assert.True(broken.State.AreAllied(new FactionId(1), new FactionId(2)));
+        var command = Assert.Single(broken.State.Commands);
+        Assert.Equal(new CityId(2), command.TargetCity);
+        var world = new WorldEngine(Bal, B, random: new FixedRandom(0));
+        var beforeArrival = world.AdvanceDays(broken.State, command.CompletionDay - broken.State.Day - 1);
+        Assert.True(beforeArrival.AreAllied(new FactionId(1), new FactionId(2)));
+        var arrived = world.AdvanceDays(beforeArrival, 1);
+        Assert.False(arrived.AreAllied(new FactionId(1), new FactionId(2)));
+        Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.AllianceBreak);
 
-        var deploy = new DeployService(B, Troops, Actives, Passives).Deploy(broken.State,
+        var deploy = new DeployService(B, Troops, Actives, Passives).Deploy(arrived,
             new DeployRequest(new CityId(1), "swordsman", 5000, new GeneralId(1),
                 Mode: UnitMode.Attack, Target: new HexCoord(3, 0)));
         Assert.True(deploy.Ok, deploy.Error);
