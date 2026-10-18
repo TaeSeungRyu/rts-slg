@@ -58,7 +58,8 @@ public sealed class BattleResolver
 
     /// <summary>
     /// 타격형 액티브가 대체 공격으로 주는 피해(design-skill-actives.md). 정상 공격 피해에 배수와
-    /// 무력 스케일을 곱한다. 대상 df 감소(일섬·파갑)와 병력 비례 처형(참)을 반영한다.
+    /// 무력 스케일을 곱한다. 대상 df 감소(일섬·파갑), 이번 타격 공격 보너스(참),
+    /// 데이터에 정의된 병력 비례 처형을 반영한다.
     /// </summary>
     public int StrikeDamage(CombatStats attacker, CombatStats defender, ActiveSkill skill, int might,
         bool targetIsBuilding = false, Domain.TroopClass attackerClass = Domain.TroopClass.Infantry)

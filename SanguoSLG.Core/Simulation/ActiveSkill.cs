@@ -11,8 +11,8 @@ namespace SanguoSLG.Core.Simulation;
 /// <param name="Grade">"high"/"low".</param>
 /// <param name="DamageMultPercent">타격 배수(정상 공격 피해 대비, 무쌍 160).</param>
 /// <param name="DefenderDfReductionPercent">타격 시 대상 df 감소(일섬 30, 파갑 20).</param>
-/// <param name="ExecutePercent">병력 비례 처형 퍼센트(참 5, atk 무관). 0이면 배수형.</param>
-/// <param name="ExecuteCapPercent">처형 상한(참 10).</param>
+/// <param name="ExecutePercent">병력 비례 처형 퍼센트. 0이면 배수형.</param>
+/// <param name="ExecuteCapPercent">처형 상한.</param>
 /// <param name="BuildingOnly">건물 대상에만 배수 적용(분쇄). 유닛이면 평타.</param>
 /// <param name="DamageReductionPercent">방어형 피해 감소(철벽 30).</param>
 /// <param name="HealPercent">회복형 최대 병력 대비 회복(정비 10).</param>
