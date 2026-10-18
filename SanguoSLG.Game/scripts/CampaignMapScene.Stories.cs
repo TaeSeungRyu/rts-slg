@@ -232,6 +232,8 @@ public sealed partial class CampaignMapScene
         portraitColumn.AddChild(portrait);
         var portraitName = MakeLabel(StorySpeakerName(story.Speaker), 14, GoldBright);
         portraitName.Name = "StoryCurrentSpeaker";
+        portraitName.HorizontalAlignment = HorizontalAlignment.Center;
+        portraitName.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         portraitColumn.AddChild(portraitName);
         VBoxContainer? audienceColumn = null;
         Label? audienceName = null;
@@ -272,6 +274,8 @@ public sealed partial class CampaignMapScene
                 audienceColumn.AddChild(advisorPortrait);
             }
             audienceName = MakeLabel(StorySpeakerName(rulerId), 13, GoldBright);
+            audienceName.HorizontalAlignment = HorizontalAlignment.Center;
+            audienceName.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             audienceColumn.AddChild(audienceName);
         }
         var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
