@@ -8924,6 +8924,8 @@ public sealed partial class CampaignMapScene : Node3D
             };
         }
 
+        static string GenderName(General general) => general.Gender == "female" ? "여" : "남";
+
         IEnumerable<General> OrderedGenerals()
         {
             var generals = _state.Generals.Where(g => string.IsNullOrWhiteSpace(_generalRosterQuery)
@@ -8940,6 +8942,7 @@ public sealed partial class CampaignMapScene : Node3D
                     : generals.OrderByDescending(g => AptitudeSortValue(TreasureAptitude.Effective(g, GeneralRosterAptitudes[_generalRosterSortCol - 5].Class, _state.Treasures))),
                 13 => _generalRosterSortAsc ? generals.OrderBy(g => HeroType(g.Id), System.StringComparer.Ordinal) : generals.OrderByDescending(g => HeroType(g.Id), System.StringComparer.Ordinal),
                 14 => _generalRosterSortAsc ? generals.OrderBy(g => HeroStatus(g.Id), System.StringComparer.Ordinal) : generals.OrderByDescending(g => HeroStatus(g.Id), System.StringComparer.Ordinal),
+                15 => _generalRosterSortAsc ? generals.OrderBy(g => GenderName(g), System.StringComparer.Ordinal) : generals.OrderByDescending(g => GenderName(g), System.StringComparer.Ordinal),
                 _ => generals.OrderBy(g => g.Id.Value),
             };
             return ordered.ThenBy(g => g.Id.Value);
@@ -8968,7 +8971,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var tree = new Tree
         {
-            Columns = 15, ColumnTitlesVisible = true, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
+            Columns = 16, ColumnTitlesVisible = true, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
             Name = "GeneralRosterPageTree",
             CustomMinimumSize = new Vector2(0, Mathf.Min(mh - 130, 44 + GeneralRosterPageSize * 28)),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
@@ -8994,6 +8997,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         tree.SetColumnTitle(13, SortTitle(13, "위인")); tree.SetColumnExpand(13, true); tree.SetColumnExpandRatio(13, 1); tree.SetColumnCustomMinimumWidth(13, 96);
         tree.SetColumnTitle(14, SortTitle(14, "상태")); tree.SetColumnExpand(14, false); tree.SetColumnCustomMinimumWidth(14, 64);
+        tree.SetColumnTitle(15, SortTitle(15, "성별")); tree.SetColumnExpand(15, false); tree.SetColumnCustomMinimumWidth(15, 48);
 
         var pager = new HBoxContainer { Name = "GeneralRosterPager" };
         pager.AddThemeConstantOverride("separation", 12);
@@ -9037,9 +9041,11 @@ public sealed partial class CampaignMapScene : Node3D
                 }
                 it.SetText(13, HeroType(g.Id));
                 it.SetText(14, HeroStatus(g.Id));
+                it.SetText(15, GenderName(g));
                 it.SetMetadata(0, g.Id.Value);
                 for (var col = 1; col <= 3; col++) { it.SetTextAlignment(col, HorizontalAlignment.Center); }
                 it.SetTextAlignment(14, HorizontalAlignment.Center);
+                it.SetTextAlignment(15, HorizontalAlignment.Center);
             }
             resultCount.Text = $"검색 결과 {filtered.Count}명";
             pageLabel.Text = $"{_generalRosterPage + 1} / {pageCount}";
@@ -16995,6 +17001,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         var tree = _modalLayer?.FindChildren("*", "Tree", true, false).OfType<Tree>().FirstOrDefault();
         var rows = tree?.GetRoot()?.GetChildCount() ?? 0;
+        var genderColumn = tree?.Columns == 16 && tree.GetColumnTitle(15).Contains("성별")
+            && tree.GetRoot()?.GetFirstChild()?.GetText(15) is "남" or "여";
         var expectedPageRows = System.Math.Min(GeneralRosterPageSize, _state.Generals.Count);
         for (var frame = 0; frame < 60 && tree?.GetMeta("portraits_loaded", -1).AsInt32() != expectedPageRows; frame++)
         {
@@ -17086,7 +17094,7 @@ public sealed partial class CampaignMapScene : Node3D
         CloseModal();
 
         const long initialModalLimitMilliseconds = 500;
-        var passed = rows == expectedPageRows
+        var passed = genderColumn && rows == expectedPageRows
             && thumbnailsReady
             && compactTextures
             && coldHydrated
