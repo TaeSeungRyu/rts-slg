@@ -184,7 +184,7 @@ public sealed partial class CampaignMapScene
         layer.AddChild(backdrop);
         var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop };
         panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 12));
-        panel.AnchorLeft = 0.05f; panel.AnchorRight = 0.95f;
+        panel.AnchorLeft = 0.14f; panel.AnchorRight = 0.86f;
         panel.AnchorTop = 0.70f; panel.AnchorBottom = 0.98f;
         panel.ClipContents = true;
         layer.AddChild(panel);
