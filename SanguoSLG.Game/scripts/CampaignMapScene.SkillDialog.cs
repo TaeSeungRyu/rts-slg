@@ -6,7 +6,7 @@ public sealed partial class CampaignMapScene
 {
     private void ShowSkillDescription(string name, string category, string description, string? iconCode = null)
     {
-        _confirmLayer?.QueueFree();
+        FadeOutModal(_confirmLayer);
         var layer = new CanvasLayer { Layer = 42 };
         AddChild(layer);
         _confirmLayer = layer;

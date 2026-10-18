@@ -681,6 +681,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestshutdownresourceqa")) CallDeferred(nameof(RunShutdownResourceQa));
         if (args.Contains("--maptestsaveslotuiqa")) CallDeferred(nameof(RunSaveSlotUiQa));
         if (args.Contains("--maptestscoreboardqa")) CallDeferred(nameof(RunScoreboardUiQa));
+        if (args.Contains("--maptestmodaltransitionqa")) CallDeferred(nameof(RunModalTransitionQa));
         if (args.Contains("--mapteststrattargetqa")) CallDeferred(nameof(RunStratagemMapTargetQa));
         if (args.Contains("--maptestminimapqa")) CallDeferred(nameof(RunMiniMapUiQa));
         if (args.Contains("--maptestloadslotuiqa")) CallDeferred(nameof(RunLoadSlotUiQa));
@@ -5062,12 +5063,12 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void ShowConfirmWithOfficer(string title, string message, GeneralId? officer, System.Action onOk, string? officerLine = null)
     {
-        _confirmLayer?.QueueFree();
+        FadeOutModal(_confirmLayer);
         var layer = new CanvasLayer { Layer = 40 };
         AddChild(layer);
         _confirmLayer = layer;
 
-        void Close() { layer.QueueFree(); if (_confirmLayer == layer) { _confirmLayer = null; } }
+        void Close() { FadeOutModal(layer); if (_confirmLayer == layer) { _confirmLayer = null; } }
 
         var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.55f) };
         backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
@@ -5170,12 +5171,12 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void ShowNotice(string title, string message)
     {
-        _confirmLayer?.QueueFree();
+        FadeOutModal(_confirmLayer);
         var layer = new CanvasLayer { Layer = 42 };
         AddChild(layer);
         _confirmLayer = layer;
 
-        void Close() { layer.QueueFree(); if (_confirmLayer == layer) { _confirmLayer = null; } }
+        void Close() { FadeOutModal(layer); if (_confirmLayer == layer) { _confirmLayer = null; } }
 
         var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.32f) };
         backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
@@ -6245,6 +6246,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 줌/이동 중에도 팔레트가 선택한 성을 따라가도록 갱신.
     public override void _Process(double delta)
     {
+        TickModalTransitions();
         TickCampaignPlayTime(delta);
         TickStoryPresentation(delta);
         foreach (var (marker, unitId, offset) in _movingSupplyMarkers)
@@ -7044,7 +7046,7 @@ public sealed partial class CampaignMapScene : Node3D
         _openCityDetailCity = null;
         if (_modalLayer is not null)
         {
-            _modalLayer.QueueFree();
+            FadeOutModal(_modalLayer);
             _modalLayer = null;
         }
 
@@ -7072,7 +7074,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_storyOpen) { CloseStoryModal(); return true; }
         if (_confirmLayer is not null)
         {
-            _confirmLayer.QueueFree();
+            FadeOutModal(_confirmLayer);
             _confirmLayer = null;
             return true;
         }
@@ -7104,7 +7106,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenSupplyHub(CityId city)
     {
         _depModalCity = city;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
 
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.57f, 470f, 730f);
@@ -7253,7 +7255,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depProvSlider = null;
         _depProvLabel = null;
         _vanTree = null;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
 
         var usedTroops = ReservedTroopsByCode(city, editIndex, editingSupply: true);
         var usedGens = ReservedDeployGenerals(editIndex, editingSupply: true);
@@ -7577,7 +7579,7 @@ public sealed partial class CampaignMapScene : Node3D
             OpenCityInfoReadonly(city);
             return;
         }
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         _openCityDetailCity = readOnlyIntel ? null : city;
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.52f, 460f, 680f);
@@ -8241,7 +8243,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenMarketModal(CityId cityId)
     {
         if (_advancing) { return; }
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.44f, 440f, 640f);
         var mh = Mathf.Clamp(vp.Y * 0.85f, 360f, 720f);
@@ -8430,7 +8432,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenEnlistModal(CityId cityId)
     {
         if (_advancing) { return; }
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.46f, 460f, 680f);
         var mh = Mathf.Clamp(vp.Y * 0.85f, 380f, 760f);
@@ -8498,7 +8500,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 등용 수행 장수 선택(그 도시 주둔 자유 장수, 정치 기준) → 군사 예측·확인 → 발행.
     private void PickEnlistRecruiter(CityId cityId, GeneralId targetId)
     {
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.4f, 420f, 560f);
         var mh = Mathf.Clamp(vp.Y * 0.8f, 340f, 680f);
@@ -8550,7 +8552,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 등용 확인 창 — 군사 초상 + 예측 설명 + 확인/취소. 군사가 있으면 지력% 신뢰도로 성공/실패를 아뢴다.
     private void ConfirmEnlist(CityId cityId, GeneralId recruiterId, GeneralId targetId)
     {
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.38f, 380f, 520f);
         var mh = Mathf.Clamp(vp.Y * 0.8f, 320f, 640f);
@@ -8655,7 +8657,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (_advancing) { return; }
         _modalDismissAction = null;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.3f, 300f, 420f);
         var mh = Mathf.Clamp(vp.Y * 0.6f, 260f, 520f);
@@ -8870,7 +8872,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (perfQa) GD.Print($"[maptestgeneralrosterqa:trace] stage={stage} ms={perfWatch!.ElapsedMilliseconds}");
         }
 
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         _state = new HeroUnlockService().Evaluate(_state);
         TraceRoster("evaluate");
         var vp = GetViewport().GetVisibleRect().Size;
@@ -9102,7 +9104,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 전체 도시 목록 — 이름·세력·(정찰/소유 시)수치. 행 클릭 = 읽기 전용 상세(미정찰이면 정보 가림).
     private void OpenCityRoster()
     {
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.44f, 420f, 640f);
         var mh = Mathf.Clamp(vp.Y * 0.85f, 360f, 720f);
@@ -9139,7 +9141,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 읽기 전용 도시 정보 — 소유·정찰 시에만 수치 노출, 아니면 "정찰 필요"로 가린다.
     private void OpenCityInfoReadonly(CityId cityId)
     {
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.36f, 340f, 480f);
         var mh = Mathf.Clamp(vp.Y * 0.7f, 300f, 600f);
@@ -9203,7 +9205,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenTreasureList()
     {
         _modalDismissAction = null;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.5f, 480f, 720f);
         var mh = Mathf.Clamp(vp.Y * 0.8f, 360f, 720f);
@@ -9489,7 +9491,7 @@ public sealed partial class CampaignMapScene : Node3D
         System.Action? backAction = null,
         System.Action? dismissAction = null)
     {
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Min(960f, vp.X - 64f);
         var mh = Mathf.Min(vp.Y * 0.82f, mw * 0.78f);
@@ -9801,7 +9803,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenProductionModal(CityId city, HexCoord? fixedTarget = null)
     {
         if (_advancing) { return; }
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var cityData = _state.Cities.First(c => c.Id == city);
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.82f, 760f, 1120f);
@@ -10162,7 +10164,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenDeployHub()
     {
         var city = _depModalCity;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         _depTroopCards.Clear();
         _depVanCards.Clear();
         _depAdjCards.Clear();
@@ -10337,7 +10339,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenNavalHub(CityId city)
     {
         _depModalCity = city;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var port = _state.Cities.First(c => c.Id == city);
         if (!port.IsPort)
         {
@@ -10471,7 +10473,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_modalLayer is not null)
         {
             _modalLayer.Visible = false;
-            _modalLayer.QueueFree();
+            FadeOutModal(_modalLayer);
             _modalLayer = null;
         }
         var vp = GetViewport().GetVisibleRect().Size;
@@ -10633,7 +10635,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         _depModalCity = city;
         _depDelayDays = 0;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var port = _state.Cities.First(c => c.Id == city);
         var ships = PortShipOptions().Where(s => PortShipStock(city, s.Code) > 0).ToList();
         var usedTroops = ReservedTroopsByCode(city, editIndex: -1, editingSupply: false);
@@ -10999,7 +11001,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depModalCity = city;
         _depDelayDays = 0;
         _transportDraft.Clear();
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var source = _state.Cities.First(c => c.Id == city);
         var destinations = _state.Cities
             .Where(c => c.Owner == source.Owner && c.Id != source.Id)
@@ -11277,7 +11279,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenTransportHub(CityId city)
     {
         _depModalCity = city;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
 
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.57f, 470f, 730f);
@@ -11417,7 +11419,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void OpenArmyGroupHub(CityId city)
     {
         _depModalCity = city;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var vp = GetViewport().GetVisibleRect().Size;
         var mw = Mathf.Clamp(vp.X * 0.57f, 470f, 730f);
         var mh = Mathf.Clamp(vp.Y * 0.8f, 360f, 640f);
@@ -11558,7 +11560,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depVan = null;
         _depAdj = null;
         _depPreview = null;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
 
         if (editIndex >= 0 && editIndex < _pendingArmyGroupDeploys.Count)
         {
@@ -11819,7 +11821,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var city = _depModalCity;
         _depEditIndex = editIndex;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         _depTroopCards.Clear();
         _depVanCards.Clear();
         _depAdjCards.Clear();
@@ -17305,7 +17307,7 @@ public sealed partial class CampaignMapScene : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var officerConfirmPortrait = _confirmLayer?.FindChildren("*", "TextureRect", true, false)
             .OfType<TextureRect>().Any(texture => texture.Texture is not null) == true;
-        _confirmLayer?.QueueFree();
+        FadeOutModal(_confirmLayer);
         _confirmLayer = null;
         var ok = submenuOk && allGroupsOk && generalBusyOk && wallWaitsForCombat && layoutOk
             && _optionCards.Count == GeneralResearchRules.Definitions.Count
@@ -17365,7 +17367,7 @@ public sealed partial class CampaignMapScene : Node3D
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             confirmOk = _confirmLayer?.FindChildren("*", "TextureRect", true, false)
                 .OfType<TextureRect>().Any(texture => texture.Texture is not null) == true;
-            _confirmLayer?.QueueFree();
+            FadeOutModal(_confirmLayer);
             _confirmLayer = null;
         }
 
@@ -17404,7 +17406,7 @@ public sealed partial class CampaignMapScene : Node3D
             && text.Contains("소요", System.StringComparison.Ordinal);
         var passed = fundingHidden && portrait && contentOk;
         GD.Print($"[wall-research-confirm-qa] fundingHidden={fundingHidden} portrait={portrait} content={contentOk} passed={passed}");
-        _confirmLayer?.QueueFree();
+        FadeOutModal(_confirmLayer);
         _confirmLayer = null;
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
@@ -17800,7 +17802,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 전체 로그 열람(스크롤) — 보고 패널의 "전체" 버튼. 최근이 아래, 오래된 것 위.
     private void OpenFullLog()
     {
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         // 전체 보고는 화면 전체창으로 — 좌우·상하 여백만 남기고 최대한 넓게.
         var vp = GetViewport().GetVisibleRect().Size;
         var margin = 10f;

@@ -353,7 +353,7 @@ public sealed partial class CampaignMapScene
         Action? backAction, Action? dismissAction)
     {
         _modalDismissAction = null;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var general = _state.Generals.First(g => g.Id == generalId);
         var viewport = GetViewport().GetVisibleRect().Size;
         var width = Mathf.Min(760, viewport.X * 0.88f);
@@ -476,7 +476,7 @@ public sealed partial class CampaignMapScene
     private void OpenHuntRewards(IReadOnlyList<WorldEvent> rewards)
     {
         _modalDismissAction = null;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var viewport = GetViewport().GetVisibleRect().Size;
         var width = Mathf.Min(720, viewport.X * 0.82f);
         var height = Mathf.Min(560, viewport.Y * 0.8f);

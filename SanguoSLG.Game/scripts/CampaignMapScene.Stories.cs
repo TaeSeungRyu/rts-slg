@@ -350,7 +350,7 @@ public sealed partial class CampaignMapScene
         _storyOpen = false;
         if (_storyOpenId is { } id) _state = GeneralStorySelector.Resolve(_state, id, null);
         _storyOpenId = null;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         if (IsInstanceValid(_reportPanel)) _reportPanel.Visible = _storyReportWasVisible;
         _storyAwaitingCard = NextPendingStory() is not null;
     }

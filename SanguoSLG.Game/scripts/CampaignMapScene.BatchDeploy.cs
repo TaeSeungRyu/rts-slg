@@ -12,7 +12,7 @@ public sealed partial class CampaignMapScene
     {
         _depModalCity = city;
         if (existing is null) _depDelayDays = 0;
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
 
         var reservedTroops = ReservedTroopsByCode(city, -1, editingSupply: false);
         var reservedGenerals = ReservedDeployGenerals(-1, editingSupply: false);

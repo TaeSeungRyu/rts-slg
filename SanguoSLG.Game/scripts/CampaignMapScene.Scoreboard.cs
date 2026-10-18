@@ -22,7 +22,7 @@ public sealed partial class CampaignMapScene
 
     private void OpenFactionScoreboard()
     {
-        if (_modalLayer is not null) { _modalLayer.QueueFree(); _modalLayer = null; }
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         const float width = 660;
         const float height = 640;
         var box = SystemView("세력 기록", width, out var scroll, out var panel, out var titleRow);
