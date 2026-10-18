@@ -13427,17 +13427,21 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(MakeLabel("이 도시에서 해고할 수 있는 장수가 없습니다.", 15, Parchment));
             return;
         }
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 330), SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        var scroll = new ScrollContainer
+        {
+            CustomMinimumSize = new Vector2(0, Mathf.Clamp(GetViewport().GetVisibleRect().Size.Y * 0.60f, 330f, 590f)),
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
         box.AddChild(scroll);
         var list = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         scroll.AddChild(list);
         foreach (var general in candidates)
         {
             var officer = general!;
-            var row = new HBoxContainer();
+            var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 54) };
             row.AddThemeConstantOverride("separation", 12);
             list.AddChild(row);
-            row.AddChild(new TextureRect { Texture = CircularPortraitFor(officer.Id), CustomMinimumSize = new Vector2(40, 40),
+            row.AddChild(new TextureRect { Texture = CircularPortraitFor(officer.Id), CustomMinimumSize = new Vector2(48, 48),
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize });
             var label = MakeLabel(officer.Name, 16, Parchment);
             label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
