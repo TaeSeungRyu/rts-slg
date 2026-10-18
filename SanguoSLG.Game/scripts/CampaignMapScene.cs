@@ -13438,9 +13438,16 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var general in candidates)
         {
             var officer = general!;
+            var card = new PanelContainer { Name = $"DismissGeneral_{officer.Id.Value}", MouseFilter = Control.MouseFilterEnum.Pass };
+            var normal = Frame(InkSoft, new Color(Gold, 0.35f), 1, 6, 6);
+            var hovered = Frame(InkHover, GoldBright, 1, 6, 6);
+            card.AddThemeStyleboxOverride("panel", normal);
+            card.MouseEntered += () => card.AddThemeStyleboxOverride("panel", hovered);
+            card.MouseExited += () => card.AddThemeStyleboxOverride("panel", normal);
+            list.AddChild(card);
             var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 54) };
             row.AddThemeConstantOverride("separation", 12);
-            list.AddChild(row);
+            card.AddChild(row);
             row.AddChild(new TextureRect { Texture = CircularPortraitFor(officer.Id), CustomMinimumSize = new Vector2(48, 48),
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize });
             var label = MakeLabel(officer.Name, 16, Parchment);
