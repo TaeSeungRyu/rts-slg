@@ -4,7 +4,7 @@ using Godot;
 
 /// <summary>
 /// 진행 버튼(우하단). 원형 금테 프레임 + 교체 가능한 아이콘 + 리치 인터랙션(대기 숨쉬기·호버
-/// 글로우·누름 반동·진행 중 방사형 진행 링). 이미지는 <see cref="Icon"/>만 바꾸면 교체된다
+/// 호버 글로우·누름 반동·진행 중 방사형 진행 링). 이미지는 <see cref="Icon"/>만 바꾸면 교체된다
 /// (없으면 금색 ▶ 폴백). 게임 규칙은 없다 — 표현·입력만.
 /// </summary>
 public partial class AdvanceButton : Control
@@ -51,16 +51,16 @@ public partial class AdvanceButton : Control
     {
         _t += (float)delta;
 
-        // 목표 스케일: 누름 반동 → 호버 확대 → 대기 숨쉬기.
+        // 목표 스케일: 누름 반동 → 호버 확대 → 고정 대기.
         var target = _pressed ? 0.90f
             : _hover && !Busy ? 1.09f
             : Busy ? 1.0f
-            : 1.0f + 0.03f * Mathf.Sin(_t * 2.2f);
+            : 1.0f;
         _scale = Mathf.Lerp(_scale, target, Mathf.Min(1f, (float)delta * 14f));
 
         PivotOffset = Size / 2f;
         Scale = new Vector2(_scale, _scale);
-        QueueRedraw(); // 숨쉬기·글로우·진행 링 매 프레임 갱신
+        QueueRedraw();
     }
 
     public override void _Draw()
