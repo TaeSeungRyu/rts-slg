@@ -16,7 +16,17 @@ public sealed class GeneralLoader
     };
 
     public IReadOnlyList<General> LoadFromDirectory(string dataDirectory)
-        => LoadFromJson(File.ReadAllText(Path.Combine(dataDirectory, "generals.json")));
+    {
+        var generals = LoadFromJson(File.ReadAllText(Path.Combine(dataDirectory, "generals.json")));
+        var genderPath = Path.Combine(dataDirectory, "general-genders.json");
+        if (!File.Exists(genderPath)) return generals;
+        var genders = JsonSerializer.Deserialize<Dictionary<int, string>>(File.ReadAllText(genderPath))
+            ?? throw new InvalidDataException("장수 성별 데이터를 읽을 수 없습니다.");
+        var knownIds = generals.Select(g => g.Id.Value).ToHashSet();
+        if (genders.Any(entry => !knownIds.Contains(entry.Key) || entry.Value is not ("male" or "female")))
+            throw new InvalidDataException("장수 성별 데이터에 존재하지 않는 ID 또는 잘못된 값이 있습니다.");
+        return generals.Select(g => g with { Gender = genders.GetValueOrDefault(g.Id.Value, "male") }).ToList();
+    }
 
     public IReadOnlyList<General> LoadFromJson(string json)
     {

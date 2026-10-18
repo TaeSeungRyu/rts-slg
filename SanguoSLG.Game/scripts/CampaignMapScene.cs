@@ -9687,6 +9687,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (g.Region.Length > 0)
         {
             meta.Add($"출신 {(_regionNames.TryGetValue(g.Region, out var regionName) ? regionName : g.Region)}");
+            meta.Add($"성별 {(g.Gender == "female" ? "여성" : "남성")}");
         }
         var metaLbl = MakeLabel(string.Join(" · ", meta), 12, Parchment);
         metaLbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;

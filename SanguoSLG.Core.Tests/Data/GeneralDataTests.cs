@@ -22,6 +22,17 @@ public class GeneralDataTests
         new GeneralLoader().LoadFromDirectory(TestData.DataDirectory());
 
     [Fact]
+    public void 여성_장수_성별은_ID에_따라_로드되고_남성은_기본값이다()
+    {
+        Assert.Equal("female", Assert.Single(All, g => g.Name == "축융").Gender);
+        Assert.Equal("female", Assert.Single(All, g => g.Name == "선덕여왕").Gender);
+        Assert.All(All.Where(g => g.Id.Value is >= 113 and <= 131), g => Assert.Equal("female", g.Gender));
+        Assert.Equal("male", Assert.Single(All, g => g.Name == "조조").Gender);
+        var scenario = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
+        Assert.Equal("female", Assert.Single(scenario.Generals, g => g.Name == "축융").Gender);
+    }
+
+    [Fact]
     public void 장수_id와_이름은_중복이없다()
     {
         Assert.Equal(All.Count, All.Select(g => g.Id).Distinct().Count());

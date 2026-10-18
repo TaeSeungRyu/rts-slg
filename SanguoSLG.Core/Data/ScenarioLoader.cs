@@ -27,7 +27,7 @@ public sealed class ScenarioLoader
             return File.Exists(path) ? File.ReadAllText(path) : "[]";
         }
 
-        return LoadFromJson(
+        var scenario = LoadFromJson(
             Read("factions.json"),
             Read("cities.json"),
             Read("generals.json"),
@@ -36,6 +36,7 @@ public sealed class ScenarioLoader
             ReadOptional("postings.json"),
             ReadOptional("hero_unlocks.json"),
             ReadOptional("ruins.json"));
+        return scenario with { Generals = new GeneralLoader().LoadFromDirectory(dataDirectory) };
     }
 
     /// <summary>JSON 문자열에서 직접 로드한다(테스트·임베딩용).</summary>
