@@ -14,6 +14,7 @@ public sealed partial class CampaignMapScene
     private int _stratOption;
     private readonly List<MeshInstance3D> _stratTargetMarkers = new();
     private CanvasLayer? _stratHintLayer;
+    private CanvasLayer? _stratShadeLayer;
     private Label? _stratHint;
 
     private void BeginStratagemMapTargeting(CityId origin, int commandIndex, GeneralId officer, int option)
@@ -25,6 +26,15 @@ public sealed partial class CampaignMapScene
         _stratOption = option;
         _stratMapTargeting = true;
         HidePanels();
+        _stratShadeLayer = new CanvasLayer { Layer = 17 };
+        AddChild(_stratShadeLayer);
+        var shade = new ColorRect
+        {
+            Color = new Color(0.07f, 0.10f, 0.13f, 0.36f),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        shade.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _stratShadeLayer.AddChild(shade);
         foreach (var city in _state.Cities.Where(c => c.Owner != Player && (_stratOption == 0 || IsKnownCityLocation(c))))
         {
             var marker = new MeshInstance3D
@@ -88,7 +98,9 @@ public sealed partial class CampaignMapScene
         foreach (var marker in _stratTargetMarkers) if (IsInstanceValid(marker)) marker.QueueFree();
         _stratTargetMarkers.Clear();
         if (_stratHintLayer is not null) _stratHintLayer.QueueFree();
+        if (_stratShadeLayer is not null) _stratShadeLayer.QueueFree();
         _stratHintLayer = null;
+        _stratShadeLayer = null;
         _stratHint = null;
         if (cancelled)
         {
@@ -106,7 +118,8 @@ public sealed partial class CampaignMapScene
             command => command.Kind == SanguoSLG.Core.Domain.CommandKind.CityStratagem);
         BeginStratagemMapTargeting(origin.Id, commandIndex, _state.GeneralsAt(origin.Id).First(), 0);
         var eligible = _state.Cities.Count(city => city.Owner != Player);
-        var passed = _stratMapTargeting && _stratTargetMarkers.Count == eligible && eligible > 0;
+        var passed = _stratMapTargeting && _stratTargetMarkers.Count == eligible && eligible > 0
+            && _stratShadeLayer is not null;
         FinishStratagemMapTargeting(false);
         passed &= !_stratMapTargeting && _stratTargetMarkers.Count == 0;
         GD.Print($"[mapteststrattargetqa] eligible={eligible} passed={passed}");
