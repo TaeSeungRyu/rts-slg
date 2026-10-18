@@ -547,6 +547,9 @@ public sealed partial class CampaignMapScene : Node3D
         _fieldBuildingDefinitions = new FieldBuildingLoader().LoadFromDirectory(dataDirectory);
         _treasureDefinitions = new EventTreasureLoader().LoadFromDirectory(dataDirectory);
         _ancientRelics = new AncientRelicLoader().LoadFromDirectory(dataDirectory);
+        _treasureDefinitions = _treasureDefinitions.Concat(_ancientRelics.Select(relic =>
+            new EventTreasureDefinition(relic.Code, relic.Name, "ancient_relic", relic.Effect,
+                relic.Value))).ToList();
         _eventHunts = new EventHuntService(_map, new EventUnitLoader().LoadFromDirectory(dataDirectory),
             _treasureDefinitions);
         var summonedUnitDefinitions = new SummonedUnitLoader().LoadFromDirectory(dataDirectory);
@@ -9226,17 +9229,18 @@ public sealed partial class CampaignMapScene : Node3D
         var mh = Mathf.Clamp(vp.Y * 0.8f, 360f, 720f);
         var box = SystemView("단서·보물 보관함", mw, out var scroll, out var panel, out var titleRow);
         var clues = _state.Discoveries
-            .Where(x => x.Faction == Player)
+            .Where(x => x.Faction == Player && x.RelicTreasureId.Length == 0)
             .Select(x => (Discovery: x, View: ExplorationRewardPresentation.From(x,
                 _state.Cities.FirstOrDefault(c => c.Id == x.City)?.Name ?? $"도시 {x.City.Value}",
                 _state.Generals.FirstOrDefault(g => g.Id == x.Explorer)?.Name ?? $"장수 {x.Explorer.Value}")))
             .Where(x => x.View.IsClue)
-            .GroupBy(x => x.Discovery.Code)
+            .GroupBy(x => x.Discovery.Code == "ancient_relic_clue" && x.Discovery.ClueCode.Length > 0
+                ? x.Discovery.ClueCode : x.Discovery.Code)
             .OrderByDescending(x => x.Max(v => v.Discovery.Day))
             .ToList();
 
         box.AddChild(MakeLabel($"보유 단서  {clues.Count}종 · 총 {clues.Sum(x => x.Count())}개", 14, GoldBright));
-        box.AddChild(MakeLabel("탐색에서 발견한 단서는 후속 이벤트의 입구입니다. 같은 단서도 발견 이력으로 누적됩니다.", 11, new Color(Parchment, 0.75f)));
+        box.AddChild(MakeLabel("같은 종류의 고대유물 단서 2개가 모이면 유물 1개를 자동 획득합니다.", 11, new Color(Parchment, 0.75f)));
         box.AddChild(GoldRule());
         if (clues.Count == 0)
         {

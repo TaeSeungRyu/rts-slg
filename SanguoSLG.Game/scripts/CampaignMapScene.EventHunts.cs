@@ -45,15 +45,18 @@ public sealed partial class CampaignMapScene
         };
         panel.AddThemeStyleboxOverride("panel", Frame(new Color(0.055f, 0.04f, 0.025f),
             new Color(Gold, 0.65f), 1, 7, 3));
+        var texture = TreasureTexture(code);
         panel.AddChild(new TextureRect
         {
-            Name = "TreasureTexture", Texture = TreasureTexture(code),
+            Name = "TreasureTexture", Texture = texture,
             CustomMinimumSize = new(size - 6, size - 6),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         });
+        if (texture is null)
+            panel.AddChild(MakeLabel("古", 25, GoldBright));
         return panel;
     }
 
@@ -153,10 +156,11 @@ public sealed partial class CampaignMapScene
             {
                 var images = _modalLayer!.FindChildren("TreasureTexture", "TextureRect", true, false)
                     .OfType<TextureRect>().ToList();
-                return images.Count == expected && images.All(image => image.Texture is not null
-                    && image.Size.X > 0 && image.Size.Y > 0 && image.Size.X <= 64 && image.Size.Y <= 64);
+                return images.Count == expected && images.All(image => image.Size.X > 0
+                    && image.Size.Y > 0 && image.Size.X <= 64 && image.Size.Y <= 64);
             }
-            var loaded = _treasureDefinitions.All(definition => TreasureTexture(definition.Code) is not null);
+            var loaded = _treasureDefinitions.Where(definition => definition.Source != "ancient_relic")
+                .All(definition => TreasureTexture(definition.Code) is not null);
             OpenTreasureList();
             await Settle();
             var inventory = ImagesFit(_treasureDefinitions.Count);
@@ -330,6 +334,8 @@ public sealed partial class CampaignMapScene
         var date = treasure.AcquiredDay - 1;
         text.AddChild(MakeLabel($"{_state.StartYear + date / 360}년 {date % 360 / 30 + 1}월 {date % 30 + 1}일 획득", 11, Parchment));
         var definition = _treasureDefinitions.FirstOrDefault(x => x.Code == treasure.Code);
+        if (definition?.Source == "ancient_relic")
+            text.AddChild(MakeLabel("탐색 · 고대유물", 11, Gold));
         text.AddChild(MakeLabel(definition is null ? "보물" : TreasureEffectText(definition), 11, new Color(Parchment, 0.7f)));
         var pending = _state.Encounters.Any(x => x.Id == treasure.EncounterId && x.RewardChoicePending);
         var equipped = treasure.EquippedBy is { } wearer
@@ -338,7 +344,7 @@ public sealed partial class CampaignMapScene
         return card;
     }
 
-    private static string TreasureEffectText(EventTreasureDefinition definition) => definition.Effect switch
+    private string TreasureEffectText(EventTreasureDefinition definition) => definition.Effect switch
     {
         "normal_attack" => $"일반 공격 피해 +{definition.Value}%",
         "melee_attack" => $"근접 일반 공격 피해 +{definition.Value}%",
@@ -347,6 +353,20 @@ public sealed partial class CampaignMapScene
         "aptitude_floor" => "A 미만 병종 적성을 A로 보정",
         "fatal_to_wounded" => $"전투 사망자의 {definition.Value}%를 부상으로 전환",
         "summon" => "장착 장수의 출전 부대에서 신수 소환 가능",
+        "attack_percent" => $"부대 공격 피해 +{definition.Value}%",
+        "defense_percent" => $"부대 방어력 +{definition.Value}%",
+        "aptitude_percent" => $"{_ancientRelics.FirstOrDefault(x => x.Code == definition.Code)?.TroopClass switch
+        {
+            "Infantry" => "보병",
+            "Archer" => "궁병",
+            "Cavalry" => "기병",
+            "Siege" => "공성",
+            _ => "해당 병종",
+        }} 실효 적성 +{definition.Value}%",
+        "provisions_percent" => $"담당/주최 군량 생산 +{definition.Value}%",
+        "gold_percent" => $"담당/주최 금 생산 +{definition.Value}%",
+        "recruit_percent" => $"담당 병력 생산 +{definition.Value}%",
+        "security_percent" => $"담당 치안 증가량 +{definition.Value}%",
         _ => definition.Name,
     };
 

@@ -49,4 +49,17 @@ public class AncientRelicServiceTests
         Assert.Empty(result.Treasures);
         Assert.All(result.Discoveries, x => Assert.Equal("", x.ClueCode));
     }
+
+    [Fact]
+    public void 유물과_단서_소비기록은_저장_불러오기에서도_유지된다()
+    {
+        var state = new GameState(10, 190, [], [], [], ExplorationDiscoveries:
+            [Clue(1, Definitions[0].ClueCode), Clue(2, Definitions[0].ClueCode)]);
+        var awarded = new AncientRelicService(Definitions).Resolve(state);
+        var loaded = SaveService.Deserialize(SaveService.Serialize(awarded));
+
+        Assert.Single(loaded.Treasures);
+        Assert.Equal(2, loaded.Discoveries.Count(x => x.RelicTreasureId == loaded.Treasures[0].Id));
+        Assert.Single(new AncientRelicService(Definitions).Resolve(loaded).Treasures);
+    }
 }

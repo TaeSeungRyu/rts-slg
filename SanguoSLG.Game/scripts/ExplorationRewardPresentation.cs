@@ -48,10 +48,12 @@ public sealed record ExplorationRewardPresentation(
                 "봉황 처치: 장수 경험치·병종 숙련과 봉황 깃·봉황옥·봉황의 알 중 하나를 선택합니다.",
                 ExplorationRewardTone.DivineBeast, discovery.Gold, discovery.Provisions),
             "ancient_relic_clue" => new(
-                "고대유물의 단서", "아이템 단서",
-                $"{explorerName} 장수가 {cityName}에서 고대유물의 단서를 발견했습니다.",
-                "병법서·고대 무구 등 희귀 아이템 이벤트로 이어지는 단서입니다.",
-                "등록 조건: 후속 유물 이벤트를 완료하면 보물로 등록됩니다.",
+                discovery.ClueCode.Length == 0 ? "고대유물의 단서" : discovery.Text.Replace(" 단서를 발견했습니다.", ""),
+                "아이템 단서",
+                $"{explorerName} 장수가 {cityName}에서 {discovery.Text}",
+                discovery.ClueCode.Length == 0 ? "종류가 기록되지 않은 이전 단서입니다."
+                    : "같은 종류의 단서 2개를 모으면 해당 유물을 획득합니다.",
+                discovery.RelicTreasureId.Length > 0 ? "유물로 교환 완료" : "같은 종류 2개 수집",
                 ExplorationRewardTone.Relic, discovery.Gold, discovery.Provisions),
             "local_clan_support" => new(
                 "지방호족의 지원", "자원 보상",
