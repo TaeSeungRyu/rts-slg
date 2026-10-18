@@ -39,6 +39,7 @@ public sealed partial class CampaignMapScene
         var score = owned.Length * (long)weights.City + researchLevels * (long)weights.ResearchLevel
             + (history?.CapturedCities ?? 0) * (long)weights.CapturedCity
             + (history?.ProducedTroops ?? 0) / weights.TroopsPerPoint
+            + (history?.SuccessfulStratagems ?? 0) * (long)weights.Stratagem
             + garrison / weights.TroopsPerPoint + field / weights.TroopsPerPoint
             - (history?.BattleFatalitiesEstimated ?? 0) / weights.FatalitiesPerPoint;
         var scoreText = MakeLabel($"전략 점수  {Math.Max(0, score):N0}", 26, GoldBright);
@@ -65,6 +66,7 @@ public sealed partial class CampaignMapScene
             ("부상 병력", $"{wounded:N0}명"),
             ("연구 레벨 합계", $"{researchLevels:N0}레벨"),
             ("완료한 연구", $"{history?.CompletedResearch ?? 0:N0}회"),
+            ("성공한 계략", $"{history?.SuccessfulStratagems ?? 0:N0}회"),
             ("보유 금", $"{owned.Sum(city => (long)city.Gold):N0}"),
             ("보유 군량", $"{owned.Sum(city => (long)city.Provisions):N0}"),
         };
@@ -85,7 +87,7 @@ public sealed partial class CampaignMapScene
     {
         OpenFactionScoreboard();
         var table = _modalLayer?.FindChild("FactionStatisticsTable", true, false) as GridContainer;
-        var passed = table is not null && table.Columns == 2 && table.GetChildCount() == 28
+        var passed = table is not null && table.Columns == 2 && table.GetChildCount() == 30
             && _modalLayer?.FindChild("SystemViewClose", true, false) is Button;
         GD.Print($"[maptestscoreboardqa] rows={table?.GetChildCount() / 2 ?? 0} passed={passed}");
         GetTree().Quit(passed ? 0 : 1);

@@ -18,12 +18,14 @@ public sealed class CampaignScoreboardTests
             new WorldEvent(WorldEventKind.Recruit, faction, Amount: 500),
             new WorldEvent(WorldEventKind.Conscript, faction, Amount: 100),
             new WorldEvent(WorldEventKind.Research, faction),
+            new WorldEvent(WorldEventKind.StratagemSuccess, faction),
         };
         var captures = new[] { new CaptureReport(new CityId(2), faction, new FactionId(2), [], [], false) };
         var result = CampaignScoreboard.Apply(state, events, [], captures, 30);
         var row = Assert.Single(result.Scoreboard);
         Assert.Equal(600, row.ProducedTroops);
         Assert.Equal(1, row.CompletedResearch);
+        Assert.Equal(1, row.SuccessfulStratagems);
         Assert.Equal(1, row.CapturedCities);
         var restored = SaveService.Deserialize(SaveService.Serialize(result));
         Assert.Equal(row, Assert.Single(restored.Scoreboard));

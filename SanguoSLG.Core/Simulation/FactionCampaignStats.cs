@@ -7,4 +7,5 @@ public sealed record FactionCampaignStats(
     int CapturedCities = 0,
     long ProducedTroops = 0,
     long BattleFatalitiesEstimated = 0,
-    int CompletedResearch = 0);
+    int CompletedResearch = 0,
+    int SuccessfulStratagems = 0);

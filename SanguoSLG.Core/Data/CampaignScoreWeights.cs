@@ -3,7 +3,7 @@ namespace SanguoSLG.Core.Data;
 using System.Text.Json;
 
 public sealed record CampaignScoreWeights(int City, int ResearchLevel, int CapturedCity,
-    int TroopsPerPoint, int FatalitiesPerPoint)
+    int TroopsPerPoint, int FatalitiesPerPoint, int Stratagem = 100)
 {
     public static CampaignScoreWeights LoadFromDirectory(string directory)
     {
