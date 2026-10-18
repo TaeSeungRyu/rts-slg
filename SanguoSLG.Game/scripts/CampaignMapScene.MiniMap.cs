@@ -8,6 +8,7 @@ namespace SanguoSLG.Game;
 public sealed partial class CampaignMapScene
 {
     private PanelContainer? _miniMapPanel;
+    private CampaignMiniMap? _miniMapView;
 
     private void AddMiniMapButton(HBoxContainer top)
     {
@@ -52,7 +53,7 @@ public sealed partial class CampaignMapScene
             Map = _map,
             WorldAt = tile => _view.HexToWorld(tile),
             VisibleTiles = () => _visibleTiles,
-            Cities = () => _state.Cities.Where(CanInspectCity).Select(city =>
+            Cities = () => _state.Cities.Where(IsKnownCityLocation).Select(city =>
             {
                 var faction = _state.Factions.FirstOrDefault(f => f.Id == city.Owner);
                 var color = faction is null ? GoldBright : Color.FromString(faction.Color, GoldBright);
@@ -62,6 +63,7 @@ public sealed partial class CampaignMapScene
             FocusCamera = point => { if (_modalLayer is null && !_advancing) _camera.FocusOn(point); },
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
+        _miniMapView = map;
         layout.AddChild(map);
         button.Pressed += () =>
         {
@@ -88,5 +90,15 @@ public sealed partial class CampaignMapScene
         var minZ = points.Min(point => point.Z);
         var maxZ = points.Max(point => point.Z);
         return new Rect2(minX, minZ, maxX - minX, maxZ - minZ);
+    }
+
+    private void RunMiniMapUiQa()
+    {
+        var map = _miniMapView;
+        var bounds = MiniMapCameraBounds();
+        var passed = _miniMapPanel is not null && map is not null && map.Map.Count > 0
+            && bounds.Size.X > 0 && bounds.Size.Y > 0;
+        GD.Print($"[maptestminimapqa] tiles={map?.Map.Count ?? 0} passed={passed}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 }
