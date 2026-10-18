@@ -40,7 +40,8 @@ public sealed class PortAdministrationTests
             Postings: officers.Select(g => new GeneralPosting(g.Id, port.Owner, port.Id)).ToList(),
             GarrisonForces: [new(port.Id, "archer", 1000, 40)]);
 
-        var after = new WorldEngine(Balance, Commands).AdvanceDays(state, 7);
+        var engine = new WorldEngine(Balance, Commands);
+        var after = engine.AdvanceDays(state, 7);
         var result = after.Cities.Single();
 
         var domesticGoldMonthly = Commands.AutoDomesticGoldBase + 80 * Commands.AutoDomesticGoldPoliticsMultiplier;
@@ -52,6 +53,8 @@ public sealed class PortAdministrationTests
         Assert.Equal(10_000 + FirstWeeklyShare(domesticGoldMonthly * percent / 100) + portGold - recruitCost, result.Gold);
         Assert.Equal(1000 + FirstWeeklyShare(domesticFoodMonthly * percent / 100) + portFood, result.Provisions);
         Assert.Equal(recruit, after.Garrisons.Single(g => g.TroopCode == "swordsman").Troops);
+        Assert.Contains(engine.LastEvents, e => e.Kind == WorldEventKind.Recruit
+            && e.Faction == port.Owner && e.Amount == recruit);
         Assert.Equal(40 + 4 * percent / 100, after.Garrisons.Single(g => g.TroopCode == "archer").TrainingLevel);
         var expectedSecurity = 80 + 3 * percent / 100 + (-3 * percent / 100);
         Assert.Equal(expectedSecurity, result.Security);

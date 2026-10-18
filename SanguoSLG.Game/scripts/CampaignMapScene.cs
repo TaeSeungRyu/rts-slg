@@ -680,6 +680,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestproductioncenterqa")) CallDeferred(nameof(RunProductionCenterQa));
         if (args.Contains("--maptestshutdownresourceqa")) CallDeferred(nameof(RunShutdownResourceQa));
         if (args.Contains("--maptestsaveslotuiqa")) CallDeferred(nameof(RunSaveSlotUiQa));
+        if (args.Contains("--maptestscoreboardqa")) CallDeferred(nameof(RunScoreboardUiQa));
         if (args.Contains("--maptestloadslotuiqa")) CallDeferred(nameof(RunLoadSlotUiQa));
         if (args.Contains("--maptestpalettechevronqa")) CallDeferred(nameof(RunPaletteChevronQa));
         if (args.Contains("--maptestterrainpalettewidthqa")) CallDeferred(nameof(RunTerrainPaletteWidthQa));
@@ -4044,6 +4045,7 @@ public sealed partial class CampaignMapScene : Node3D
         var preMove = _state; // 이동 전(편성·AI 반영) — 애니메이션 시작 위치
         var startHex = preMove.Armies.ToDictionary(u => u.Id.Value, u => u.Field.Position);
         var after = _engine.AdvanceWeek(preMove, out var turns, out var sieges, out var captures, out var plunders, out var casualties);
+        after = CampaignScoreboard.Apply(after, _engine.LastWorldEvents, turns, captures, _balance.WoundedPercent);
         _storySpeechEvents = CombatSpeechEvents(preMove, turns)
             .Concat(CitySpeechEvents(preMove)).ToArray();
         _storySpeechClock = 0;
@@ -6228,6 +6230,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 줌/이동 중에도 팔레트가 선택한 성을 따라가도록 갱신.
     public override void _Process(double delta)
     {
+        TickCampaignPlayTime(delta);
         TickStoryPresentation(delta);
         foreach (var (marker, unitId, offset) in _movingSupplyMarkers)
         {
@@ -8667,6 +8670,7 @@ public sealed partial class CampaignMapScene : Node3D
             box.AddChild(b);
         }
 
+        Item("세력 기록", OpenFactionScoreboard);
         Item("전체 장수 목록", OpenGeneralRosterFresh);
         Item("전체 도시 목록", OpenCityRoster);
         Item("단서·보물 보관함", OpenTreasureList);

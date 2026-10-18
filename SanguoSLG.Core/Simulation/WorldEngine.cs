@@ -309,6 +309,7 @@ public sealed class WorldEngine
 
                     next = next with { Gold = next.Gold - cost };
                     MergeGarrison(garrisons, next.Id, code, troops, _commands.AutoRecruitTroopTrainingLevel);
+                    _events.Add(new WorldEvent(WorldEventKind.Recruit, next.Owner, recruiter.Id, next.Id, troops, code));
                 }
             }
 
