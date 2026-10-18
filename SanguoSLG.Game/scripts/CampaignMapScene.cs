@@ -4175,7 +4175,7 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.AllianceBreak => ($"[외교] 사절이 도착하여 {targetFaction} 세력과의 동맹을 파기했습니다.", GoldBright),
                 WorldEventKind.StratagemSuccess => ($"[계략] {gName}의 {FacilityLabel(we.Code)} 성공 — {cName}에 효과가 적용되었습니다.", GoldBright),
                 WorldEventKind.StratagemFail => ($"[계략] {gName}의 {FacilityLabel(we.Code)} 실패 — {cName}에는 아무 효과가 없었습니다.", Parchment),
-                WorldEventKind.ProductionComplete => ($"[생산] {gName} 장수가 {cName}의 {FacilityLabel(we.Code)} 생산을 마쳤습니다. 금 +{we.Amount}, 군량 +{we.ExtraAmount}.", GoldBright),
+                WorldEventKind.ProductionComplete => ($"[생산] {gName} 장수가 {cName}의 {FacilityLabel(we.Code)} 생산을 마쳤습니다.\n금 {we.Amount:N0}을 벌고 군량 {we.ExtraAmount:N0}을 확보했습니다.", GoldBright),
                 WorldEventKind.ProductionLost => ($"[생산] {gName} 장수의 {FacilityLabel(we.Code)} 생산 부대 {we.Amount}명이 소실되었습니다.", AccentFill),
                 WorldEventKind.BanditRaid => ($"[치안] {cName} 주변에 도적 {we.Amount}명이 출현해 성을 노립니다.", AccentFill),
                 WorldEventKind.SecurityFactor => ($"[치안 요인] {cName}: {(we.Code == "vacancy" ? "치안 담당 공석" : we.Code == "recruitment" ? $"병력 담당 {gName}" : $"치안 담당 {gName}")} {we.Amount:+0;-0;0} / 7일 (합산 후 0~100 적용)", Parchment),

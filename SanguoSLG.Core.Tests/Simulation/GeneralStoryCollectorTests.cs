@@ -101,4 +101,17 @@ public sealed class GeneralStoryCollectorTests
 
         Assert.Empty(GeneralStoryCollector.Collect(state, state, [], [], events));
     }
+
+    [Fact]
+    public void 생산_보상은_금과_군량을_대화에_함께_보존한다()
+    {
+        var general = new General(new(1), "장수", new Dictionary<TroopClass, AptitudeGrade>(), 50, 50, 50);
+        var state = new GameState(7, 190, [], [], [general]);
+        var candidates = GeneralStoryCollector.Collect(state, state, [], [],
+            [new WorldEvent(WorldEventKind.ProductionComplete, new(1), general.Id, Amount: 70,
+                Code: "village", ExtraAmount: 230)]);
+        var story = Assert.Single(GeneralStorySelector.Queue(state, candidates, new(1)).StoryPending);
+        Assert.Equal(70, story.Amount);
+        Assert.Equal(230, story.ExtraAmount);
+    }
 }

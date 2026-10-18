@@ -96,7 +96,8 @@ public static class GeneralStoryCollector
                 }
             }
             candidates.Add(new($"world:{index}:{e.Kind}:{speaker.Value}", kind, priority,
-                e.Faction, speaker, City: e.City, Amount: e.Amount, Code: e.Code));
+                e.Faction, speaker, City: e.City, Amount: e.Amount, Code: e.Code,
+                ExtraAmount: e.ExtraAmount));
         }
         return candidates;
     }

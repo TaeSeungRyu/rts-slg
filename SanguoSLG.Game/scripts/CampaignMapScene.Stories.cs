@@ -464,6 +464,8 @@ public sealed partial class CampaignMapScene
 
     private string[] StoryLines(GeneralStoryEvent story)
     {
+        if (story.Kind == "production")
+            return [$"{StorySpeakerName(story.Speaker)}: 생산 임무를 마치고 돌아왔습니다.\n금 {story.Amount:N0}을 벌고 군량 {story.ExtraAmount:N0}을 확보했습니다."];
         if (story.Kind == "stratagem_success")
         {
             var effect = story.Code switch

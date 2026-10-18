@@ -6,14 +6,14 @@ using SanguoSLG.Core.Domain;
 public sealed record GeneralStoryCandidate(
     string TriggerId, string Kind, int Priority, FactionId Faction,
     GeneralId Speaker, GeneralId? SecondSpeaker = null, CityId? City = null,
-    int Amount = 0, string Code = "");
+    int Amount = 0, string Code = "", int ExtraAmount = 0);
 
 /// <summary>저장되는 대화 인스턴스. 선택 결과도 같은 레코드에 보존해 재적용을 막는다.</summary>
 public sealed record GeneralStoryEvent(
     string Id, string Kind, int Day, int Priority, FactionId Faction,
     GeneralId Speaker, GeneralId? SecondSpeaker, CityId? City,
     int Variant, int Amount = 0, string Code = "", string? Choice = null,
-    bool Presented = false);
+    bool Presented = false, int ExtraAmount = 0);
 
 /// <summary>Phase 20A 공통 선택기. 순서와 대사는 안정 해시로 결정하며 전역 난수를 소비하지 않는다.</summary>
 public static class GeneralStorySelector
@@ -41,7 +41,8 @@ public static class GeneralStorySelector
             var hash = StableHash(id);
             pending.Add(new GeneralStoryEvent(id, candidate.Kind, state.Day, candidate.Priority,
                 candidate.Faction, candidate.Speaker, candidate.SecondSpeaker, candidate.City,
-                (int)(hash % (uint)variantCount), candidate.Amount, candidate.Code));
+                (int)(hash % (uint)variantCount), candidate.Amount, candidate.Code,
+                ExtraAmount: candidate.ExtraAmount));
         }
         return state with { PendingStoryEvents = pending };
     }
