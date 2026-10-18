@@ -68,7 +68,12 @@ public sealed class ScenarioLoader
             MarketJitterPercent: balanceDto.MarketJitterPercent, MarketSeasonalPercent: balanceDto.MarketSeasonalPercent,
             VisionCastleSmall: balanceDto.VisionCastleSmall, VisionCastleMedium: balanceDto.VisionCastleMedium,
             VisionCastleLarge: balanceDto.VisionCastleLarge, VisionSupply: balanceDto.VisionSupply,
-            NavalProvisionsPercent: balanceDto.NavalProvisionsPercent);
+            NavalProvisionsPercent: balanceDto.NavalProvisionsPercent,
+            ClimatePatchChancePercent: balanceDto.ClimatePatchChancePercent,
+            ClimateMaxPatches: balanceDto.ClimateMaxPatches,
+            ClimateMoveEveryDays: balanceDto.ClimateMoveEveryDays,
+            ClimateRainSnowSpeedPercent: balanceDto.ClimateRainSnowSpeedPercent,
+            ClimateAttackPercent: balanceDto.ClimateAttackPercent);
 
         var cities = Deserialize<List<CityDto>>(citiesJson, "cities")
             .Select(d =>

@@ -6,7 +6,8 @@ using SanguoSLG.Core.Spatial;
 public sealed class RenewalCampaignAdvanceRunner(
     HexMap map,
     IFieldAdvanceRunner legacyRules,
-    Action<RenewalCampaignTraceEntry>? trace = null) : IFieldAdvanceRunner
+    Action<RenewalCampaignTraceEntry>? trace = null,
+    int climateSpeedPercent = 70) : IFieldAdvanceRunner
 {
     public bool UsesContinuousMovement => true;
     private GameState? _campaign;
@@ -36,7 +37,8 @@ public sealed class RenewalCampaignAdvanceRunner(
             .ToHashSet();
         blocked.UnionWith((castles ?? []).SelectMany(site => site.Footprint));
         blocked.UnionWith(_campaign?.Ruins.Select(ruin => ruin.Position) ?? []);
-        var movementMap = new RenewalMovementMap(map, blocked);
+        var movementMap = new RenewalMovementMap(map, blocked, climate: _campaign?.Climate,
+            climateSpeedPercent: climateSpeedPercent);
         var simulator = new RenewalAdvanceSimulator(movementMap,
             areHostile: _campaign is { } campaign ? campaign.AreHostile : null);
         var liveBuildings = (fieldBuildings ?? [])

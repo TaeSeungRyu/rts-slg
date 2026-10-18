@@ -3,7 +3,7 @@ namespace SanguoSLG.Core.Simulation.Climate;
 using SanguoSLG.Core.Spatial;
 
 public sealed class ClimateController(HexMap map, int patchChancePercent = 12,
-    int maxPatches = 2, int patchSize = 6)
+    int maxPatches = 2, int patchSize = 6, int moveEveryDays = 2)
 {
     public ClimateState Advance(ClimateState state, int day, int month)
     {
@@ -12,15 +12,16 @@ public sealed class ClimateController(HexMap map, int patchChancePercent = 12,
         if (day == state.Day) return state;
 
         var winter = month is 12 or 1 or 2;
-        var patches = state.Patches.Where(patch => patch.EndDay >= day
-                && (patch.Kind != ClimateKind.Snow || winter))
-            .OrderBy(patch => patch.Id)
-            .Select(patch => patch with
-            {
-                Origin = day > patch.StartDay && (day - patch.StartDay) % 2 == 0
-                    ? Shift(patch.Origin, patch.Id, day)
-                    : patch.Origin,
-            }).ToList();
+        var patches = new List<ClimatePatch>();
+        foreach (var patch in state.Patches.Where(patch => patch.EndDay >= day
+                     && (patch.Kind != ClimateKind.Snow || winter)).OrderBy(patch => patch.Id))
+        {
+            var candidate = day > patch.StartDay && (day - patch.StartDay) % moveEveryDays == 0
+                ? patch with { Origin = Shift(patch.Origin, patch.Id, day) }
+                : patch;
+            patches.Add(patches.Any(existing => Tiles(existing).Intersect(Tiles(candidate)).Any())
+                ? patch : candidate);
+        }
         var nextId = state.NextPatchId;
         if (patches.Count < maxPatches && Roll(state.Seed, day, 1) % 100 < patchChancePercent)
         {

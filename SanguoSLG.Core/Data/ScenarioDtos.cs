@@ -158,6 +158,11 @@ internal sealed class BalanceDto
     public int VisionCastleLarge { get; init; } = 6;
     public int VisionSupply { get; init; } = 2;
     public int NavalProvisionsPercent { get; init; } = 20;
+    public int ClimatePatchChancePercent { get; init; } = 12;
+    public int ClimateMaxPatches { get; init; } = 2;
+    public int ClimateMoveEveryDays { get; init; } = 2;
+    public int ClimateRainSnowSpeedPercent { get; init; } = 70;
+    public int ClimateAttackPercent { get; init; } = 80;
 }
 
 internal sealed class MapDto

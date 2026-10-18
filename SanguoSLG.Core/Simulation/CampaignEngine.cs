@@ -2,6 +2,7 @@ namespace SanguoSLG.Core.Simulation;
 
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Spatial;
+using SanguoSLG.Core.Simulation.Climate;
 
 /// <summary>
 /// 캠페인 진행(2026-08-16 확정): **진행 버튼 1번 = 7일 고정.** 야전(AdvanceOrchestrator)이
@@ -43,6 +44,7 @@ public sealed class CampaignEngine
     private readonly EventHuntService? _eventHunts;
     private readonly SummonService? _summons;
     private readonly IReadOnlyList<AncientRelicDefinition> _ancientRelics;
+    private readonly ClimateController? _climate;
 
     public CampaignEngine(IFieldAdvanceRunner field, WorldEngine world,
         CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null,
@@ -52,7 +54,8 @@ public sealed class CampaignEngine
         RuinCombat? ruinCombat = null, FieldBuildingCombat? fieldBuildingCombat = null,
         IReadOnlyList<FieldBuildingDefinition>? fieldBuildingDefinitions = null,
         EventHuntService? eventHunts = null, SummonService? summons = null,
-        IReadOnlyList<AncientRelicDefinition>? ancientRelics = null)
+        IReadOnlyList<AncientRelicDefinition>? ancientRelics = null,
+        ClimateController? climate = null)
     {
         _field = field;
         _world = world;
@@ -74,6 +77,7 @@ public sealed class CampaignEngine
         _eventHunts = eventHunts;
         _summons = summons;
         _ancientRelics = ancientRelics ?? [];
+        _climate = climate;
     }
 
     /// <summary>7일을 진행한 새 상태를 반환한다. 야전 진행 보고 목록은 <paramref name="turns"/>로.</summary>
@@ -125,6 +129,12 @@ public sealed class CampaignEngine
             || _eventHunts is not null || _summons is not null))
         {
             var simulationDay = state.Day + (WeekDays - remaining);
+            if (_climate is not null)
+            {
+                var climate = work.Climate ?? ClimateState.Initial(state.Day * 7919 + state.StartYear);
+                var month = (simulationDay - 1) % GameState.DaysPerYear / GameState.DaysPerMonth + 1;
+                work = work with { Climate = _climate.Advance(climate, simulationDay, month) };
+            }
             IReadOnlyList<CombatUnit> eventSpawns = [];
             if (_eventHunts is not null)
             {

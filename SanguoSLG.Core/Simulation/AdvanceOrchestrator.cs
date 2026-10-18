@@ -2,6 +2,7 @@ namespace SanguoSLG.Core.Simulation;
 
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Spatial;
+using SanguoSLG.Core.Simulation.Climate;
 
 /// <summary>
 /// 한 "진행"을 이동 → 계략 발동 → 전투 페이즈 → 정산으로 묶는다(design-combat.md "전투 페이즈 발동"
@@ -25,6 +26,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
     private readonly TrainingConfig _training;
     private readonly int _navalProvisionsPercent;
     private readonly IRandomSource _random;
+    private readonly int _climateAttackPercent;
     private GameState? _campaign;
 
     public void SetCampaignState(GameState state)
@@ -47,7 +49,8 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
         TrainingConfig? training = null,
         int reinforcePercent = 20,
         int navalProvisionsPercent = 20,
-        IRandomSource? random = null)
+        IRandomSource? random = null,
+        int climateAttackPercent = 80)
     {
         _movement = movement;
         _combat = combat;
@@ -60,6 +63,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
         _reinforcePercent = reinforcePercent;
         _navalProvisionsPercent = System.Math.Clamp(navalProvisionsPercent, 0, 100);
         _random = random ?? new SeededRandomSource(0);
+        _climateAttackPercent = climateAttackPercent;
     }
 
     private readonly int _reinforcePercent;
@@ -898,6 +902,10 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
             outgoing = System.Math.Max(0, outgoing * (100 + quality) / 100);
             stats = stats with { DfStat = System.Math.Max(1, stats.DfStat * (100 + quality) / 100) };
         }
+
+        var climate = ClimateCombatRules.At(_campaign?.Climate, u.Field.Position);
+        outgoing = outgoing * ClimateCombatRules.AttackPercent(climate, u.Class,
+            u.IsArmyGroup, _climateAttackPercent) / 100;
 
         return (stats, outgoing);
     }

@@ -51,7 +51,12 @@ public sealed record BalanceConfig(
     int VisionCastleMedium = 4,
     int VisionCastleLarge = 5,
     int VisionSupply = 2,
-    int NavalProvisionsPercent = 20)
+    int NavalProvisionsPercent = 20,
+    int ClimatePatchChancePercent = 12,
+    int ClimateMaxPatches = 2,
+    int ClimateMoveEveryDays = 2,
+    int ClimateRainSnowSpeedPercent = 70,
+    int ClimateAttackPercent = 80)
 {
     /// <summary>월별 시장 시세 배수(%). 9·10월(추수) 최저, 겨울 최고. 미지정 시 기본 계절 곡선.</summary>
     public int SeasonalPercent(int month)

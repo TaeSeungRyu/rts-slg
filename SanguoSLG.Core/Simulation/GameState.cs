@@ -3,6 +3,7 @@ namespace SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Spatial;
+using SanguoSLG.Core.Simulation.Climate;
 
 /// <summary>
 /// 한 시점의 게임 전체 상태(불변). 시간은 **일(日) 단위 세계 시계** 하나로 흐른다
@@ -47,7 +48,8 @@ public sealed record GameState(
     IReadOnlyList<GeneralStoryEvent>? StoryEventHistory = null,
     IReadOnlyList<FactionCampaignStats>? CampaignStats = null,
     int PlaySeconds = 0,
-    IReadOnlyList<DismissedGeneral>? DismissedGenerals = null)
+    IReadOnlyList<DismissedGeneral>? DismissedGenerals = null,
+    ClimateState? Climate = null)
 {
     /// <summary>건설한 시설이 놓인 성 주변 타일(표현 계층이 모델을 얹는다). 건설 완료 시 append.</summary>
     public IReadOnlyList<FacilityPlacement> Placements => FacilityPlacements ?? [];

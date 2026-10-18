@@ -1,6 +1,7 @@
 namespace SanguoSLG.Core.Simulation.RenewalMovement;
 
 using SanguoSLG.Core.Spatial;
+using SanguoSLG.Core.Simulation.Climate;
 
 /// <summary>신규 이동 모드의 지형 조회·경로 후보·고정 장애물 원본.</summary>
 public sealed class RenewalMovementMap
@@ -8,16 +9,24 @@ public sealed class RenewalMovementMap
     private readonly HexMap _map;
     private readonly HashSet<HexCoord> _buildingTiles;
     private readonly IReadOnlyList<RenewalStaticObstacle> _obstacles;
+    private readonly ClimateState? _climate;
+    private readonly ClimateController? _climateController;
 
     public RenewalMovementMap(HexMap map, IEnumerable<HexCoord>? buildingTiles = null,
-        IEnumerable<RenewalStaticObstacle>? obstacles = null)
+        IEnumerable<RenewalStaticObstacle>? obstacles = null,
+        ClimateState? climate = null, int climateSpeedPercent = 70)
     {
         _map = map;
+        _climate = climate;
+        _climateController = climate is null ? null : new ClimateController(map);
+        _climateSpeedPercent = climateSpeedPercent;
         _buildingTiles = buildingTiles?.ToHashSet() ?? [];
         _obstacles = obstacles is null
             ? Array.Empty<RenewalStaticObstacle>()
             : obstacles.OrderBy(x => x.Id, StringComparer.Ordinal).ToList();
     }
+
+    private readonly int _climateSpeedPercent;
 
     public TerrainType TerrainAt(ContinuousPosition position) =>
         _map.TerrainAt(RenewalHexSpace.NearestHex(position));
@@ -35,6 +44,20 @@ public sealed class RenewalMovementMap
                 && _map.TerrainAt(hex) is TerrainType.Mountain or TerrainType.Swamp or TerrainType.River)
             {
                 percent = 50;
+            }
+        }
+        if (_climate is not null && _climateController is not null)
+        {
+            foreach (var hex in center.Neighbors().Append(center))
+            {
+                const long tileRadius = 577;
+                var reach = checked(radius + tileRadius);
+                if (_map.Contains(hex)
+                    && position.DistanceSquaredTo(RenewalHexSpace.Center(hex)) <= checked(reach * reach)
+                    && _climateController.At(_climate, hex) != ClimateKind.Clear)
+                {
+                    return percent * _climateSpeedPercent / 100;
+                }
             }
         }
         return percent;

@@ -580,7 +580,8 @@ public sealed partial class CampaignMapScene : Node3D
             divineBeastPercent: divineBeastPercent, ancientRelics: _ancientRelics);
         var legacyField = new AdvanceOrchestrator(movement,
             new CombatPhaseResolver(new BattleResolver(60), 70),
-            navalProvisionsPercent: _balance.NavalProvisionsPercent);
+            navalProvisionsPercent: scenario.Balance.NavalProvisionsPercent,
+            climateAttackPercent: scenario.Balance.ClimateAttackPercent);
         var movementTrace = new Dictionary<UnitId, (RenewalTargetId? Target, RenewalStopReason Reason)>();
         IFieldAdvanceRunner field = args.Contains("--legacy-movement")
             ? legacyField
@@ -600,7 +601,7 @@ public sealed partial class CampaignMapScene : Node3D
                     + $"effective={entry.EffectiveDestination} assigned={entry.AssignedTarget} "
                     + $"pursuit={entry.PursuitTarget} stop={entry.StopReason} "
                     + $"path={entry.PathIndex}/{entry.PathLength}");
-            });
+            }, climateSpeedPercent: scenario.Balance.ClimateRainSnowSpeedPercent);
         GD.Print(args.Contains("--legacy-movement")
             ? "[movement-mode] legacy"
             : "[movement-mode] renewal-phase18d");
@@ -614,7 +615,11 @@ public sealed partial class CampaignMapScene : Node3D
             new RuinCombat(new BattleResolver(60), 70),
             new FieldBuildingCombat(new BattleResolver(60), _fieldBuildingDefinitions, _troops,
                 summonedUnitDefinitions),
-            _fieldBuildingDefinitions, _eventHunts, _summons, _ancientRelics);
+            _fieldBuildingDefinitions, _eventHunts, _summons, _ancientRelics,
+            new SanguoSLG.Core.Simulation.Climate.ClimateController(_map,
+                scenario.Balance.ClimatePatchChancePercent,
+                scenario.Balance.ClimateMaxPatches,
+                moveEveryDays: scenario.Balance.ClimateMoveEveryDays));
         _vision = new BattlefieldVision(scenario.Balance, _troops, _fieldBuildingDefinitions);
         _fog = new BattlefieldFogView(_view);
         _fog.RegisterMap();
