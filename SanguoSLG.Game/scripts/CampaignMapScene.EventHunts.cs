@@ -156,11 +156,10 @@ public sealed partial class CampaignMapScene
             {
                 var images = _modalLayer!.FindChildren("TreasureTexture", "TextureRect", true, false)
                     .OfType<TextureRect>().ToList();
-                return images.Count == expected && images.All(image => image.Size.X > 0
+                return images.Count == expected && images.All(image => image.Texture is not null && image.Size.X > 0
                     && image.Size.Y > 0 && image.Size.X <= 64 && image.Size.Y <= 64);
             }
-            var loaded = _treasureDefinitions.Where(definition => definition.Source != "ancient_relic")
-                .All(definition => TreasureTexture(definition.Code) is not null);
+            var loaded = _treasureDefinitions.All(definition => TreasureTexture(definition.Code) is not null);
             OpenTreasureList();
             await Settle();
             var inventory = ImagesFit(_treasureDefinitions.Count);
