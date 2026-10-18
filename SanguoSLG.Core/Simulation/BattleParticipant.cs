@@ -34,4 +34,6 @@ public sealed record BattleParticipant(
     int RangedDamageTakenPercent = 100,
     int TreasureNormalAttackPercent = 100,
     int TreasureDamageTakenPercent = 100,
-    int TreasureFatalToWoundedPercent = 0);
+    int TreasureFatalToWoundedPercent = 0,
+    int RelicAttackPercent = 100,
+    int RelicDefensePercent = 100);

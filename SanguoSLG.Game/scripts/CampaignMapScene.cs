@@ -611,7 +611,7 @@ public sealed partial class CampaignMapScene : Node3D
             new RuinCombat(new BattleResolver(60), 70),
             new FieldBuildingCombat(new BattleResolver(60), _fieldBuildingDefinitions, _troops,
                 summonedUnitDefinitions),
-            _fieldBuildingDefinitions, _eventHunts, _summons);
+            _fieldBuildingDefinitions, _eventHunts, _summons, _ancientRelics);
         _vision = new BattlefieldVision(scenario.Balance, _troops, _fieldBuildingDefinitions);
         _fog = new BattlefieldFogView(_view);
         _fog.RegisterMap();

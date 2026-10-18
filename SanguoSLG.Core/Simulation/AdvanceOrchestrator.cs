@@ -418,7 +418,9 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
                 RangedDamageTakenPercent: u.State.Statuses.Any(s => s.Kind == StatusKind.Evasion) ? 70 : 100,
                 TreasureNormalAttackPercent: u.TreasureNormalAttackPercent,
                 TreasureDamageTakenPercent: u.TreasureDamageTakenPercent,
-                TreasureFatalToWoundedPercent: u.TreasureFatalToWoundedPercent);
+                TreasureFatalToWoundedPercent: u.TreasureFatalToWoundedPercent,
+                RelicAttackPercent: u.RelicAttackPercent,
+                RelicDefensePercent: u.RelicDefensePercent);
         }
 
         // 5) 동시 정산 → 병력 반영.

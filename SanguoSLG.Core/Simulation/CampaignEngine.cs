@@ -42,6 +42,7 @@ public sealed class CampaignEngine
     private readonly FieldScoutPostService? _fieldScoutPosts;
     private readonly EventHuntService? _eventHunts;
     private readonly SummonService? _summons;
+    private readonly IReadOnlyList<AncientRelicDefinition> _ancientRelics;
 
     public CampaignEngine(IFieldAdvanceRunner field, WorldEngine world,
         CampaignSiege? siege = null, CityCapture? capture = null, IRandomSource? random = null,
@@ -50,7 +51,8 @@ public sealed class CampaignEngine
         IReadOnlyList<PassiveSkill>? passives = null, IReadOnlyList<ActiveSkill>? actives = null,
         RuinCombat? ruinCombat = null, FieldBuildingCombat? fieldBuildingCombat = null,
         IReadOnlyList<FieldBuildingDefinition>? fieldBuildingDefinitions = null,
-        EventHuntService? eventHunts = null, SummonService? summons = null)
+        EventHuntService? eventHunts = null, SummonService? summons = null,
+        IReadOnlyList<AncientRelicDefinition>? ancientRelics = null)
     {
         _field = field;
         _world = world;
@@ -71,6 +73,7 @@ public sealed class CampaignEngine
             : null;
         _eventHunts = eventHunts;
         _summons = summons;
+        _ancientRelics = ancientRelics ?? [];
     }
 
     /// <summary>7일을 진행한 새 상태를 반환한다. 야전 진행 보고 목록은 <paramref name="turns"/>로.</summary>
@@ -197,7 +200,7 @@ public sealed class CampaignEngine
             // 장수의 병종 숙련 승급은 이미 출전한 부대에도 다음 전투일부터 반영한다.
             // 편성 당시 캐시한 적성 배수를 그대로 두면 장기 원정 중에는 성장 효과가
             // 전혀 적용되지 않으므로, 하루 조각을 계산하기 전에 선봉의 현재 적성으로 갱신한다.
-            armies = RefreshAptitudePercents(armies, work.Generals, work.Treasures);
+            armies = RefreshAptitudePercents(armies, work);
 
             var productionUnits = ProductionCombatUnits(work);
             var productionUnitIds = productionUnits.Select(u => u.Id).ToHashSet();
@@ -1092,10 +1095,10 @@ public sealed class CampaignEngine
         return [unit.Class];
     }
 
-    private static List<CombatUnit> RefreshAptitudePercents(
-        IReadOnlyList<CombatUnit> armies, IReadOnlyList<General> generals,
-        IReadOnlyList<FactionTreasure> treasures)
+    private List<CombatUnit> RefreshAptitudePercents(IReadOnlyList<CombatUnit> armies, GameState state)
     {
+        var generals = state.Generals;
+        var treasures = state.Treasures;
         var byId = generals.ToDictionary(g => g.Id);
         return armies.Select(unit =>
         {
@@ -1120,7 +1123,15 @@ public sealed class CampaignEngine
                 : 0;
             return unit with
             {
-                Stats = unit.Stats with { AptitudePercent = grade.Percent() },
+                Stats = unit.Stats with
+                {
+                    AptitudePercent = grade.Percent() + AncientRelicEffects.UnitBonus(state, _ancientRelics,
+                        unit, "aptitude_percent", unit.Class),
+                },
+                RelicAttackPercent = 100 + AncientRelicEffects.UnitBonus(state, _ancientRelics,
+                    unit, "attack_percent"),
+                RelicDefensePercent = 100 + AncientRelicEffects.UnitBonus(state, _ancientRelics,
+                    unit, "defense_percent"),
                 Might = Math.Min(100, vanguard.Might
                     + (equipped.Any(t => t.Code == "dragon_horn" && t.EquippedBy == vanguardId) ? 10 : 0)),
                 TreasureAdjutantMight = unit.AdjutantId is { } adjutantId

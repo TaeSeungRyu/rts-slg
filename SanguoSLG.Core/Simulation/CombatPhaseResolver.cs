@@ -66,6 +66,9 @@ public sealed class CombatPhaseResolver
                 if (attacker.StrikeActive is null)
                     raw = raw * attacker.TreasureNormalAttackPercent / 100;
 
+                raw = raw * attacker.RelicAttackPercent / 100;
+                raw = raw * 100 / target.RelicDefensePercent;
+
                 if (target.Mode == UnitMode.March)
                 {
                     raw = raw * _marchDamageTakenPercent / 100; // 행군 통과 피해
