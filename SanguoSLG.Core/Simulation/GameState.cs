@@ -46,7 +46,8 @@ public sealed record GameState(
     IReadOnlyList<GeneralStoryEvent>? PendingStoryEvents = null,
     IReadOnlyList<GeneralStoryEvent>? StoryEventHistory = null,
     IReadOnlyList<FactionCampaignStats>? CampaignStats = null,
-    int PlaySeconds = 0)
+    int PlaySeconds = 0,
+    IReadOnlyList<DismissedGeneral>? DismissedGenerals = null)
 {
     /// <summary>건설한 시설이 놓인 성 주변 타일(표현 계층이 모델을 얹는다). 건설 완료 시 append.</summary>
     public IReadOnlyList<FacilityPlacement> Placements => FacilityPlacements ?? [];
@@ -56,6 +57,7 @@ public sealed record GameState(
 
     /// <summary>위인 해금 런타임 상태.</summary>
     public IReadOnlyList<HeroUnlockState> HeroStates => HeroUnlockStates ?? [];
+    public IReadOnlyList<DismissedGeneral> Dismissed => DismissedGenerals ?? [];
 
     /// <summary>탐색 결과 이력. 인재가 아닌 자원·아이템/이벤트 단서를 저장한다.</summary>
     public IReadOnlyList<ExplorationDiscovery> Discoveries => ExplorationDiscoveries ?? [];

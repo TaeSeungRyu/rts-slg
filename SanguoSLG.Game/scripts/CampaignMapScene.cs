@@ -481,6 +481,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("위인 영입", CommandKind.RecruitHero, "hero"),
         ("탐색", CommandKind.Explore, ""),
         ("계략 연구", CommandKind.Research, "stratagem_research"),
+        ("해고", CommandKind.RecruitHero, "dismiss"),
     };
 
     private static readonly (string Label, string Code)[] Facilities =
@@ -510,7 +511,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("외교", new[] { 13, 14, 15 }),
         ("임명", new[] { 16, 17 }),
         ("담당자", new[] { 18, 19, 20, 21 }),
-        ("인재", new[] { 22 }),
+        ("인재", new[] { 22, 25 }),
         ("탐색", new[] { 23 }),
     };
 
@@ -6779,6 +6780,12 @@ public sealed partial class CampaignMapScene : Node3D
         if (IsAutoOfficerCommand(cmd.Kind))
         {
             AddClearOfficerButton(box, cityData, cmd.Kind);
+        }
+
+        if (cmd.Param == "dismiss")
+        {
+            BuildDismissGeneralCards(box, cityData);
+            return;
         }
 
         if (cmd.Kind == CommandKind.RecruitHero)
@@ -13407,6 +13414,67 @@ public sealed partial class CampaignMapScene : Node3D
         RenderPage();
     }
 
+    private void BuildDismissGeneralCards(VBoxContainer box, City city)
+    {
+        box.AddChild(MakeLabel("해고한 장수는 14~35일간 모습을 감춘 뒤 다른 세력에 합류합니다. 군주와 수행 중인 장수는 해고할 수 없습니다.", 14, Parchment));
+        var candidates = _state.GeneralsAt(city.Id)
+            .Select(id => _state.Generals.FirstOrDefault(g => g.Id == id))
+            .Where(g => g is not null && !_state.IsGeneralBusy(g.Id)
+                && !_state.Factions.Any(f => f.Id == city.Owner && f.Ruler == g.Id))
+            .OrderBy(g => g!.Name).ToList();
+        if (candidates.Count == 0)
+        {
+            box.AddChild(MakeLabel("이 도시에서 해고할 수 있는 장수가 없습니다.", 15, Parchment));
+            return;
+        }
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 330), SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        box.AddChild(scroll);
+        var list = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        scroll.AddChild(list);
+        foreach (var general in candidates)
+        {
+            var officer = general!;
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 12);
+            list.AddChild(row);
+            row.AddChild(new TextureRect { Texture = CircularPortraitFor(officer.Id), CustomMinimumSize = new Vector2(40, 40),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize });
+            var label = MakeLabel(officer.Name, 16, Parchment);
+            label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(label);
+            var button = MakeButton("해고");
+            row.AddChild(button);
+            button.Pressed += () => ConfirmDismissGeneral(city, officer);
+        }
+    }
+
+    private void ConfirmDismissGeneral(City city, General general)
+    {
+        string[] lines =
+        [
+            "이제 다른 길을 찾아 떠나겠습니다.", "그동안의 은혜를 잊지 않겠습니다.",
+            "인연이 닿으면 다시 뵙겠습니다.", "새로운 뜻을 펼칠 곳을 찾겠습니다.",
+            "작별을 고합니다. 부디 건승하십시오.", "한동안 세상을 떠돌겠습니다.",
+            "이곳에서의 나날을 기억하겠습니다.", "저의 운명은 다른 곳에 있나 봅니다.",
+            "부디 이 성을 잘 지켜주십시오.", "언젠가 전장에서 다시 만날지도 모르겠습니다.",
+        ];
+        var line = lines[_confirmRandom.Next(lines.Length)];
+        ShowOfficerConfirm("장수 해고", $"{general.Name}을(를) {city.Name}에서 해고하시겠습니까?\n14~35일 후 다른 세력에 합류합니다.", general.Id,
+            () =>
+            {
+                try
+                {
+                    _state = new GeneralDismissalService(new SeededRandomSource(_state.Day * 1009 + general.Id.Value))
+                        .Dismiss(_state, city.Id, general.Id);
+                    CloseModal();
+                    Report($"[인재] {general.Name}: {line}", GoldBright);
+                    SelectCity(city.Id);
+                    Redraw($"{general.Name} 해고");
+                }
+                catch (InvalidOperationException error) { ShowNotice("해고 불가", error.Message); }
+            }, line);
+    }
+
     private void AddHeroRecruitCard(GridContainer grid, City city, HeroUnlockState state,
         HeroUnlockDefinition hero, int points)
     {
@@ -17206,7 +17274,7 @@ public sealed partial class CampaignMapScene : Node3D
             ["외교"] = ["동맹", "동맹파기", "선전 포고"],
             ["임명"] = ["태수 임명", "군사 임명"],
             ["담당자"] = ["치안 담당", "내정 담당", "병력 담당", "훈련 담당"],
-            ["인재"] = ["위인 영입"],
+            ["인재"] = ["위인 영입", "해고"],
             ["탐색"] = ["탐색"],
         };
         var allGroupsOk = CmdGroups.All(g => expectedGroups.TryGetValue(g.Group, out var expected)

@@ -65,6 +65,7 @@ public sealed class WorldEngine
             Factions = state.Factions.OrderBy(f => f.Id.Value).ToList(),
             Cities = state.Cities.OrderBy(c => c.Id.Value).ToList(),
         };
+        next = new GeneralDismissalService(_random).Advance(next);
         if (next.Intel.Count > 0)
         {
             next = next with { ScoutedCities = next.Intel.Where(i => i.ExpiresDay > next.Day).ToList() };
