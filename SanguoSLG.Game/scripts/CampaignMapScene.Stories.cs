@@ -45,18 +45,22 @@ public sealed partial class CampaignMapScene
 
     private GeneralStoryEvent[] CitySpeechEvents(GameState before)
     {
-        // 한 진행에 최대 한 도시의 장수만 말한다. 교전 대사와 섞여 화면을 덮지 않는다.
-        if (before.Day % 3 == 1) return [];
-        var candidates = before.Assignments
-            .Where(posting => posting.Faction == Player && posting.Location is not null
-                && before.Cities.Any(city => city.Id == posting.Location && city.Owner == Player))
-            .OrderBy(posting => posting.Location.GetValueOrDefault().Value)
-            .ThenBy(posting => posting.General.Value).ToArray();
-        if (candidates.Length == 0) return [];
-        var selected = candidates[before.Day % candidates.Length];
-        return [new GeneralStoryEvent($"city-bark:{before.Day}:{selected.General.Value}",
-            "city_bark", before.Day, 8, Player, selected.General, null, selected.Location,
-            before.Day % 20)];
+        var speeches = new List<GeneralStoryEvent>();
+        foreach (var city in before.Cities.Where(city => city.Owner == Player).OrderBy(city => city.Id.Value))
+        {
+            var residents = before.Assignments.Where(posting => posting.Faction == Player
+                    && posting.Location == city.Id).OrderBy(posting => posting.General.Value).ToArray();
+            if (residents.Length == 0) continue;
+            for (var day = 0; day < 7; day++)
+            {
+                var date = before.Day + day;
+                if ((date * 37 + city.Id.Value * 53) % 100 >= 15) continue;
+                var speaker = residents[(date + city.Id.Value) % residents.Length].General;
+                speeches.Add(new GeneralStoryEvent($"city-bark:{date}:{city.Id.Value}:{speaker.Value}",
+                    "city_bark", date, 8, Player, speaker, null, city.Id, date % 20));
+            }
+        }
+        return speeches.OrderBy(story => story.Day).ThenBy(story => story.City?.Value).Take(4).ToArray();
     }
 
     private void PrepareStoryAfterAdvance()
@@ -510,6 +514,10 @@ public sealed partial class CampaignMapScene
             if (speaker is null || city is null) throw new System.InvalidOperationException("플레이어 장수/도시 없음");
             var story = new GeneralStoryEvent("qa:story", "capture", _state.Day, 1,
                 Player, speaker.Id, null, city.Id, 0);
+            var citySpeechSamples = Enumerable.Range(1, 40)
+                .SelectMany(day => CitySpeechEvents(_state with { Day = day })).ToArray();
+            var citySpeechCoverage = citySpeechSamples.Length > 0
+                && citySpeechSamples.Select(item => item.City).Distinct().Count() > 1;
             ShowStorySpeech(story);
             var speechTracksWorld = _storySpeechPanel is null;
             var speechPortrait = _storySpeechPanel?.FindChild("StorySpeechPortrait", true, false) is TextureRect speechImage
@@ -659,7 +667,7 @@ public sealed partial class CampaignMapScene
             _state = GeneralStorySelector.Resolve(_state, priorityStratagem.Id, "acknowledged");
             var queuedNext = NextPendingStory()?.Id == unrelatedStory.Id;
             _state = GeneralStorySelector.Resolve(_state, unrelatedStory.Id, "acknowledged");
-            var passed = speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly && beastConfirmOnly && allianceResultShown && audienceShown && alliancePriority && stratagemPriority && queuedNext && diplomacyTwoLines;
+            var passed = citySpeechCoverage && speechTracksWorld && speechPortrait && ratioOk && portraitFitOk && nextAligned && doneAligned && hidden && restored && replayReadOnly && choicesVisible && choiceResolved && logLink && reportReplay && warningOnly && beastConfirmOnly && allianceResultShown && audienceShown && alliancePriority && stratagemPriority && queuedNext && diplomacyTwoLines;
             GD.Print($"[general-story-qa] passed={passed} alliancePriority={alliancePriority} stratagemPriority={stratagemPriority} queuedNext={queuedNext} speechTracksWorld={speechTracksWorld} speechPortrait={speechPortrait} ratio={ratioOk} portraitFit={portraitFitOk} nextAligned={nextAligned} doneAligned={doneAligned} reportHidden={hidden} restored={restored} replayReadOnly={replayReadOnly} choices={choicesVisible} resolved={choiceResolved} logLink={logLink} reportReplay={reportReplay} warningOnly={warningOnly} beastConfirmOnly={beastConfirmOnly} allianceResultShown={allianceResultShown} audienceShown={audienceShown}");
             GetTree().Quit(passed ? 0 : 1);
         }
