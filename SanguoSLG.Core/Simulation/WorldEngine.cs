@@ -154,6 +154,8 @@ public sealed class WorldEngine
                 gold = ApplyLowSecurityOutputPenalty(state, city.Owner, gold, next.Security);
                 gold = ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.CommerceCode, gold);
                 gold = PortAdministration.Scale(city, gold);
+                gold = gold * (100 + AncientRelicEffects.Bonus(state, _ancientRelics,
+                    domestic.Id, city.Owner, "gold_percent")) / 100;
                 next = next with
                 {
                     Gold = next.Gold + SplitMonthlyAmount(gold, WeeklyIncomeTick(state.Day)),
@@ -184,7 +186,10 @@ public sealed class WorldEngine
                     + AdministrationGrowth.EffectivePoliticsRounded(domestic) * _commands.AutoDomesticProvisionsPoliticsMultiplier;
                 domesticMonthly = ApplyLowSecurityOutputPenalty(state, city.Owner, domesticMonthly, city.Security);
                 domesticMonthly = ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.AgricultureCode, domesticMonthly);
-                monthly += PortAdministration.Scale(city, domesticMonthly);
+                domesticMonthly = PortAdministration.Scale(city, domesticMonthly);
+                domesticMonthly = domesticMonthly * (100 + AncientRelicEffects.Bonus(state, _ancientRelics,
+                    domestic.Id, city.Owner, "provisions_percent")) / 100;
+                monthly += domesticMonthly;
             }
 
             return city with { Provisions = city.Provisions + SplitMonthlyAmount(monthly, tick) };
@@ -238,12 +243,21 @@ public sealed class WorldEngine
             var researchBonus = GeneralResearchRules.SecurityWeeklyBonus(
                 state.ResearchOf(city.Owner, FactionResearch.PublicOrderCode));
             delta += researchBonus;
+            var relicPercent = AncientRelicEffects.Bonus(state, _ancientRelics,
+                security?.Id, city.Owner, "security_percent");
+            var positiveSecurity = System.Math.Max(0, security is null ? 0 : PortAdministration.Scale(city, MightTier(security.Might)));
+            var relicHundredths = city.RelicSecurityRemainder + positiveSecurity * relicPercent;
+            delta += relicHundredths / 100;
             if (researchBonus > 0)
             {
                 _events.Add(new WorldEvent(WorldEventKind.SecurityFactor, city.Owner, null, city.Id,
                     Amount: researchBonus, Code: "general_research"));
             }
-            return city with { Security = System.Math.Clamp(city.Security + delta, 0, 100) };
+            return city with
+            {
+                Security = System.Math.Clamp(city.Security + delta, 0, 100),
+                RelicSecurityRemainder = relicPercent > 0 ? relicHundredths % 100 : 0,
+            };
         }).ToList();
         return state with { Cities = cities };
     }
@@ -305,6 +319,8 @@ public sealed class WorldEngine
                         passivePercent += AdminBonus.Bucket(recruiter, _adminSkills, "elephant_output");
                     }
                     troops = troops * (100 + passivePercent) / 100;
+                    troops = troops * (100 + AncientRelicEffects.Bonus(state, _ancientRelics,
+                        recruiter.Id, city.Owner, "recruit_percent")) / 100;
                     var cost = _commands.AutoRecruitGoldCost(code, troops);
                     if (cost <= 0 || next.Gold < cost)
                     {
@@ -501,10 +517,14 @@ public sealed class WorldEngine
                     state.Generals.FirstOrDefault(g => g.Id == next.General) is { } producer
                         ? AdministrationGrowth.EffectivePoliticsRounded(producer)
                         : 0);
+                var gold = reward.Gold * (100 + AncientRelicEffects.Bonus(state, _ancientRelics,
+                    next.General, next.Owner, "gold_percent")) / 100;
+                var provisions = reward.Provisions * (100 + AncientRelicEffects.Bonus(state, _ancientRelics,
+                    next.General, next.Owner, "provisions_percent")) / 100;
                 cities[next.City] = city with
                 {
-                    Gold = city.Gold + reward.Gold,
-                    Provisions = city.Provisions + reward.Provisions,
+                    Gold = city.Gold + gold,
+                    Provisions = city.Provisions + provisions,
                 };
                 MergeGarrison(garrisons, next.City, next.TroopCode, next.Troops, next.TrainingLevel);
                 postings = postings.Select(p => p.General == next.General ? p with { Location = next.City } : p).ToList();
@@ -513,7 +533,7 @@ public sealed class WorldEngine
                 ApplyAdministrationGrowth(generals, next.General, next.Owner, next.City,
                     AdministrationGrowth.ProductionExperience, "production");
                 _events.Add(new WorldEvent(WorldEventKind.ProductionComplete, next.Owner, next.General,
-                    next.City, reward.Gold, next.Facility, reward.Provisions));
+                    next.City, gold, next.Facility, provisions));
                 continue;
             }
 

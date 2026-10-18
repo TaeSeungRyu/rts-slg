@@ -56,7 +56,8 @@ public sealed record City(
     string AutoRecruitTroopCodes = "",
     int AutoRecruitRate = 1,
     int WallLevel = 0,
-    PortSize Port = PortSize.None)
+    PortSize Port = PortSize.None,
+    int RelicSecurityRemainder = 0)
 {
     public bool IsPort => Port != PortSize.None;
 

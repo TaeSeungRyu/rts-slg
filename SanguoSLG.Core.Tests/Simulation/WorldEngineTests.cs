@@ -9,6 +9,24 @@ namespace SanguoSLG.Core.Tests.Simulation;
 public class WorldEngineTests
 {
     [Fact]
+    public void 치안_유물은_정수_절삭분을_누적해_5퍼센트만큼_올린다()
+    {
+        var city = new City(new(1), "치안성", new HexCoord(0, 0), new(1), 1000,
+            Gold: 1000, Security: 70, Population: 0, SecurityOfficer: new(1));
+        var officer = V2Officer(1, might: 85);
+        var definition = new AncientRelicDefinition("seal", "수호인", "seal_clue", "인장", "security_percent", 5);
+        var state = new GameState(1, 190, [], [city], [officer],
+            Postings: [new GeneralPosting(officer.Id, city.Owner, city.Id)],
+            FactionTreasures: [new("seal:1", "seal", "수호인", city.Owner, 1, "relic", EquippedBy: officer.Id)]);
+
+        var after = new WorldEngine(V2OnlyBalance,
+            new CommandBalance { AutoOfficerSystemEnabled = true }, ancientRelics: [definition])
+            .AdvanceDays(state, 70);
+
+        Assert.Equal(91, after.Cities.Single().Security);
+        Assert.Equal(0, after.Cities.Single().RelicSecurityRemainder);
+    }
+    [Fact]
     public void 이전상태의_진행명령과_담당_중복을_정리한다()
     {
         var general = V2Officer(1, might: 100);
