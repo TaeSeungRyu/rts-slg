@@ -25,7 +25,7 @@ public sealed partial class CampaignMapScene
         _stratOption = option;
         _stratMapTargeting = true;
         HidePanels();
-        foreach (var city in _state.Cities.Where(c => c.Owner != Player && CanInspectCity(c)))
+        foreach (var city in _state.Cities.Where(c => c.Owner != Player && IsKnownCityLocation(c)))
         {
             var marker = new MeshInstance3D
             {
@@ -55,7 +55,7 @@ public sealed partial class CampaignMapScene
     {
         var hex = RayToGround(screenPosition);
         var city = hex is { } tile ? CityAtHex(tile) : null;
-        if (city is null || city.Owner == Player || !CanInspectCity(city))
+        if (city is null || city.Owner == Player || !IsKnownCityLocation(city))
         {
             if (_stratHint is not null) _stratHint.Text = "대상 선택 불가 · 확인 가능한 적 성을 선택하세요.";
             return;
@@ -93,5 +93,21 @@ public sealed partial class CampaignMapScene
             _stratTarget = null;
             SelectCity(_stratOrigin);
         }
+    }
+
+    private void RunStratagemMapTargetQa()
+    {
+        var origin = _state.Cities.First(city => city.Owner == Player);
+        var enemy = _state.Cities.First(city => city.Owner != Player);
+        _visibleTiles = _visibleTiles.Append(enemy.Position).ToHashSet();
+        var commandIndex = System.Array.FindIndex(Cmds,
+            command => command.Kind == SanguoSLG.Core.Domain.CommandKind.CityStratagem);
+        BeginStratagemMapTargeting(origin.Id, commandIndex, _state.GeneralsAt(origin.Id).First(), 0);
+        var eligible = _state.Cities.Count(city => city.Owner != Player && IsKnownCityLocation(city));
+        var passed = _stratMapTargeting && _stratTargetMarkers.Count == eligible && eligible > 0;
+        FinishStratagemMapTargeting(false);
+        passed &= !_stratMapTargeting && _stratTargetMarkers.Count == 0;
+        GD.Print($"[mapteststrattargetqa] eligible={eligible} passed={passed}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 }

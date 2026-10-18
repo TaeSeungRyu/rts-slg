@@ -35,6 +35,10 @@ public sealed partial class CampaignMapScene
     private bool CanInspectCity(City city)
         => BattlefieldVision.CanInspectCity(_state, Player, city, _visibleTiles);
 
+    private bool IsKnownCityLocation(City city)
+        => city.Owner == Player || CanInspectCity(city) || IsDeclaredCity(city)
+            || CastleFootprint.TilesFor(city).Any(_visibleTiles.Contains);
+
     private bool IsDeclaredCity(City city)
         => _state.DeclaredWars.Any(w => w.ActiveOn(_state.Day) && w.Attacker == Player
             && w.City == city.Id && w.Defender == city.Owner);

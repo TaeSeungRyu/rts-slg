@@ -681,6 +681,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestshutdownresourceqa")) CallDeferred(nameof(RunShutdownResourceQa));
         if (args.Contains("--maptestsaveslotuiqa")) CallDeferred(nameof(RunSaveSlotUiQa));
         if (args.Contains("--maptestscoreboardqa")) CallDeferred(nameof(RunScoreboardUiQa));
+        if (args.Contains("--mapteststrattargetqa")) CallDeferred(nameof(RunStratagemMapTargetQa));
         if (args.Contains("--maptestloadslotuiqa")) CallDeferred(nameof(RunLoadSlotUiQa));
         if (args.Contains("--maptestpalettechevronqa")) CallDeferred(nameof(RunPaletteChevronQa));
         if (args.Contains("--maptestterrainpalettewidthqa")) CallDeferred(nameof(RunTerrainPaletteWidthQa));
