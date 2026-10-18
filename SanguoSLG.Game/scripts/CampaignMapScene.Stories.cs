@@ -88,6 +88,9 @@ public sealed partial class CampaignMapScene
         {
             UpdateStorySpeechPosition();
             _storySpeechRemaining -= delta;
+            if (_storySpeechPanel is not null && GodotObject.IsInstanceValid(_storySpeechPanel))
+                _storySpeechPanel.Modulate = new Color(1, 1, 1,
+                    Mathf.Clamp((float)System.Math.Min(2.2 - _storySpeechRemaining, _storySpeechRemaining) / 0.1f, 0f, 1f));
             if (_storySpeechRemaining <= 0)
             {
                 _storySpeechLayer.QueueFree();
@@ -142,6 +145,7 @@ public sealed partial class CampaignMapScene
         _storySpeechLayer = layer;
         _storySpeechPanel = speech;
         _storySpeechRemaining = 2.2;
+        speech.Modulate = new Color(1, 1, 1, 0);
         UpdateStorySpeechPosition();
     }
 

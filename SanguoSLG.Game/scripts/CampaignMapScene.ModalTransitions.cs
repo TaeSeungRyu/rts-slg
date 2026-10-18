@@ -4,7 +4,7 @@ using Godot;
 
 public sealed partial class CampaignMapScene
 {
-    private const float ModalFadeSeconds = 0.2f;
+    private const float ModalFadeSeconds = 0.1f;
 
     private void TickModalTransitions()
     {
@@ -60,7 +60,7 @@ public sealed partial class CampaignMapScene
         var opened = layer is not null && layer.HasMeta("modal_fade_started");
         FadeOutModal(layer);
         _modalLayer = null;
-        await ToSignal(GetTree().CreateTimer(0.25), SceneTreeTimer.SignalName.Timeout);
+        await ToSignal(GetTree().CreateTimer(0.15), SceneTreeTimer.SignalName.Timeout);
         var passed = opened && !GodotObject.IsInstanceValid(layer);
         GD.Print($"[maptestmodaltransitionqa] opened={opened} released={!GodotObject.IsInstanceValid(layer)} passed={passed}");
         GetTree().Quit(passed ? 0 : 1);
