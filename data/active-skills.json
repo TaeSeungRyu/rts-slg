@@ -57,8 +57,8 @@
     "name": "참",
     "type": "strike",
     "grade": "high",
-    "execute_percent": 3,
-    "execute_cap_percent": 3
+    "damage_mult_percent": 120,
+    "strike_atk_bonus_percent": 20
   },
   {
     "code": "barrage",
@@ -121,7 +121,7 @@
     "name": "정비",
     "type": "heal",
     "grade": "high",
-    "heal_percent": 15
+    "heal_percent": 10
   },
   {
     "code": "rally",
@@ -149,7 +149,7 @@
     "name": "강타",
     "type": "strike",
     "grade": "low",
-    "damage_mult_percent": 130
+    "damage_mult_percent": 120
   },
   {
     "code": "double_hit",

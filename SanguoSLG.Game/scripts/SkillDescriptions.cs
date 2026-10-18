@@ -21,6 +21,8 @@ internal static class SkillDescriptions
                 {
                     effects.Add($"일반 공격 피해의 {skill.DamageMultPercent}%로 공격합니다.");
                 }
+                if (skill.StrikeAtkBonusPercent > 0)
+                    effects.Add($"이번 공격에 한해 공격 보정 +{skill.StrikeAtkBonusPercent}%를 적용합니다. 단일 주대상에게만 액티브 피해를 줍니다.");
                 if (skill.CavalryDamageMultPercent > 0)
                     effects.Add($"기병 분류로 발동하면 피해가 {skill.CavalryDamageMultPercent}%로 증가합니다.");
                 if (skill.BuildingOnly) { effects.Add("위 피해 배수는 건물 대상에 적용됩니다. 부대 대상에는 기본 공격 배수를 사용합니다."); }
@@ -43,11 +45,19 @@ internal static class SkillDescriptions
                 }
                 break;
             case ActiveType.Heal:
-                effects.Add("회복형 · 일반 공격을 유지합니다.");
-                effects.Add(skill.HealPercent > 0
-                    ? $"최대 병력의 {skill.HealPercent}%를 부상병에서 회복합니다. 부상병 수를 초과해 회복하지 않습니다."
-                    : "현재 적용되는 병력 회복 효과는 없습니다. 추가 효과는 구현 예정입니다.");
-                effects.Add($"지력 60 기준이며 선봉 지력에 따라 달라집니다. 회복률 상한은 {skill.HealCapPercent}%입니다.");
+                if (skill.Code == "rally")
+                {
+                    effects.Add("지원형 · 일반 공격을 유지합니다.");
+                    effects.Add("발동한 진행부터 3진행 동안 공격·방어 보정이 각각 +10% 적용됩니다. 병력 회복 스킬은 아닙니다.");
+                }
+                else
+                {
+                    effects.Add("회복형 · 일반 공격을 유지합니다.");
+                    effects.Add($"최대 병력의 {skill.HealPercent}%를 부상병에서 즉시 회복합니다. 부상병 수를 초과해 회복하지 않습니다.");
+                    effects.Add($"지력 60 기준이며 선봉 지력에 따라 달라집니다. 회복률 상한은 {skill.HealCapPercent}%입니다.");
+                    if (skill.Code == "resupply")
+                        effects.Add("현재는 즉시 회복만 적용됩니다. 지속 회복과 군량 지급은 아직 구현되지 않았습니다.");
+                }
                 break;
             case ActiveType.Tactic:
                 effects.Add("책략형 · 기존 계략을 전투 액티브 슬롯으로 전환한 스킬입니다.");

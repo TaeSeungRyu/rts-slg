@@ -15,9 +15,10 @@ namespace SanguoSLG.Core.Simulation;
 /// <param name="ExecuteCapPercent">처형 상한(참 10).</param>
 /// <param name="BuildingOnly">건물 대상에만 배수 적용(분쇄). 유닛이면 평타.</param>
 /// <param name="DamageReductionPercent">방어형 피해 감소(철벽 30).</param>
-/// <param name="HealPercent">회복형 최대 병력 대비 회복(정비 15).</param>
+/// <param name="HealPercent">회복형 최대 병력 대비 회복(정비 10).</param>
 /// <param name="HealCapPercent">회복 상한(기본 40).</param>
 /// <param name="CavalryDamageMultPercent">기병 분류일 때 사용하는 별도 피해 배수(0이면 기본 배수).</param>
+/// <param name="StrikeAtkBonusPercent">이번 타격에만 적용하는 공격 보너스(참 20).</param>
 public sealed record ActiveSkill(
     string Code,
     string Name,
@@ -32,4 +33,5 @@ public sealed record ActiveSkill(
     int HealPercent = 0,
     int HealCapPercent = 40,
     string Description = "",
-    int CavalryDamageMultPercent = 0);
+    int CavalryDamageMultPercent = 0,
+    int StrikeAtkBonusPercent = 0);

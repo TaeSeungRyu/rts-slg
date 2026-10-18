@@ -78,7 +78,8 @@ public sealed class BattleResolver
                 ? skill.CavalryDamageMultPercent
                 : skill.DamageMultPercent;
         var effectiveDf = System.Math.Max(1, defender.DfStat * (100 - skill.DefenderDfReductionPercent) / 100);
-        var normal = Damage(attacker, defender with { DfStat = effectiveDf });
+        var normal = Damage(attacker with { AtkBonusPercent = attacker.AtkBonusPercent + skill.StrikeAtkBonusPercent },
+            defender with { DfStat = effectiveDf });
         return (int)((long)normal * mult * m / 10000); // ÷100(배수) ÷100(M)
     }
 

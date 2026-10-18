@@ -66,4 +66,25 @@ public class BattleResolverTests
         var defender = UnitA("swordsman") with { DfBonusPercent = 124 }; // 방어 +24%
         Assert.Equal(612, Resolver.Damage(attacker, defender));
     }
+
+    [Fact]
+    public void 참은_이번_주대상_타격에만_공격20퍼센트와_피해1점2배를_적용한다()
+    {
+        var skill = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).Single(s => s.Code == "reap");
+        var attacker = UnitA("swordsman");
+        var defender = UnitA("swordsman");
+        Assert.Equal(20, skill.StrikeAtkBonusPercent);
+        Assert.Equal(120, skill.DamageMultPercent);
+        Assert.Equal(0, skill.ExecutePercent);
+        Assert.Equal(1094, Resolver.StrikeDamage(attacker, defender, skill, might: 60));
+        Assert.Equal(760, Resolver.Damage(attacker, defender));
+    }
+
+    [Fact]
+    public void 정비와_강타는_변경된_수치를_사용한다()
+    {
+        var skills = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).ToDictionary(s => s.Code);
+        Assert.Equal(1000, BattleResolver.HealAmount(skills["regroup"], intellect: 60, maxTroops: 10000));
+        Assert.Equal(912, Resolver.StrikeDamage(UnitA("swordsman"), UnitA("swordsman"), skills["heavy_blow"], might: 60));
+    }
 }

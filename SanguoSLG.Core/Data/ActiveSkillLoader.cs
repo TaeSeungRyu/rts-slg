@@ -25,7 +25,7 @@ public sealed class ActiveSkillLoader
             d.Code, d.Name, ParseType(d.Type), d.Grade,
             d.DamageMultPercent, d.DefenderDfReductionPercent, d.ExecutePercent, d.ExecuteCapPercent,
             d.BuildingOnly, d.DamageReductionPercent, d.HealPercent, d.HealCapPercent, d.Description,
-            d.CavalryDamageMultPercent)).ToList();
+            d.CavalryDamageMultPercent, d.StrikeAtkBonusPercent)).ToList();
     }
 
     private static ActiveType ParseType(string name) => name switch
@@ -53,5 +53,6 @@ public sealed class ActiveSkillLoader
         public int HealCapPercent { get; init; } = 40;
         public string Description { get; init; } = "";
         public int CavalryDamageMultPercent { get; init; }
+        public int StrikeAtkBonusPercent { get; init; }
     }
 }
