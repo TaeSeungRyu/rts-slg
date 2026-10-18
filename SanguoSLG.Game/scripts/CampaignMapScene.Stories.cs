@@ -293,7 +293,15 @@ public sealed partial class CampaignMapScene
         var currentPage = 0;
         var actions = new HBoxContainer();
         actions.AddThemeConstantOverride("separation", 8);
-        content.AddChild(actions);
+        if (diplomacy)
+        {
+            frame.AddChild(GoldRule());
+            var footer = new MarginContainer { CustomMinimumSize = new Vector2(0, 42) };
+            footer.AddThemeConstantOverride("margin_top", 4);
+            frame.AddChild(footer);
+            footer.AddChild(actions);
+        }
+        else content.AddChild(actions);
         actions.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
         var next = MakeButton("다음 ▶", accent: true);
         next.CustomMinimumSize = new Vector2(86, 34);

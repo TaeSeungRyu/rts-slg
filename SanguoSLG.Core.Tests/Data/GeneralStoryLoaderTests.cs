@@ -15,14 +15,14 @@ public sealed class GeneralStoryLoaderTests
     }
 
     [Fact]
-    public void 동맹_성공_실패와_군주_단독_참모_동석_대사는_각각_세_가지다()
+    public void 동맹_성공_실패와_군주_단독_참모_동석_대사는_각각_다섯_가지다()
     {
         var definitions = new GeneralStoryLoader().LoadFromDirectory(TestData.DataDirectory());
         foreach (var kind in new[] { "alliance_success", "alliance_fail",
             "alliance_success_advisor", "alliance_fail_advisor" })
         {
             var definition = Assert.Single(definitions, item => item.Kind == kind);
-            Assert.Equal(3, definition.Variants.Count);
+            Assert.Equal(5, definition.Variants.Count);
             Assert.All(definition.Variants, lines =>
             {
                 Assert.Contains(lines, line => line.Contains("{ruler}"));
