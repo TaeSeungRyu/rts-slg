@@ -189,7 +189,7 @@ public sealed partial class CampaignMapScene
         var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop };
         panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 12));
         panel.AnchorLeft = 0.14f; panel.AnchorRight = 0.86f;
-        panel.AnchorTop = 0.70f; panel.AnchorBottom = 0.98f;
+        panel.AnchorTop = 0.67f; panel.AnchorBottom = 0.98f;
         panel.ClipContents = true;
         layer.AddChild(panel);
         var frame = new VBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
@@ -209,8 +209,11 @@ public sealed partial class CampaignMapScene
         row.AddThemeConstantOverride("separation", 16);
         frame.AddChild(row);
         var diplomacy = story.Kind.StartsWith("alliance_", System.StringComparison.Ordinal);
-        var portraitColumn = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        portraitColumn.SizeFlagsStretchRatio = diplomacy ? 2 : 3;
+        var portraitColumn = new VBoxContainer
+        {
+            CustomMinimumSize = new Vector2(185, 0),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
+        };
         row.AddChild(portraitColumn);
         var portrait = new TextureRect
         {
