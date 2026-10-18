@@ -784,7 +784,7 @@ public sealed class WorldEngine
             }
         }
 
-        return (state with
+        return new AncientRelicService(_ancientRelics).Resolve(state with
         {
             Cities = cities.Values.OrderBy(c => c.Id.Value).ToList(),
             GarrisonForces = garrisons

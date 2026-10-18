@@ -11,4 +11,5 @@ public sealed record ExplorationDiscovery(
     int Gold = 0,
     int Provisions = 0,
     string Text = "",
-    string ClueCode = "");
+    string ClueCode = "",
+    string RelicTreasureId = "");
