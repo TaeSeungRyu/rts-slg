@@ -40,4 +40,24 @@ public class GeneralTransferTests
         Assert.False(service.Issue(issued.State, new CommandRequest(Source, CommandKind.TransferGeneral, Officer,
             TargetCity: Destination)).Ok);
     }
+
+    [Fact]
+    public void 장수이동은_도착일에_한번만_배속되고_함락된_목적지는_다른_우호거점으로_바뀐다()
+    {
+        var service = new CommandService(new CommandBalance());
+        var issued = service.Issue(State(), new CommandRequest(Source, CommandKind.TransferGeneral, Officer,
+            TargetCity: Destination)).State;
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), new CommandBalance());
+        var firstDay = world.AdvanceDays(issued, 1);
+        Assert.Null(firstDay.PostingOf(Officer)!.Location);
+        var arrived = world.AdvanceDays(firstDay, 1);
+        Assert.Equal(Destination, arrived.PostingOf(Officer)!.Location);
+        Assert.Empty(arrived.Commands);
+        Assert.Single(world.LastEvents, e => e.Kind == WorldEventKind.GeneralTransfer);
+
+        var captured = firstDay with { Cities = firstDay.Cities.Select(c => c.Id == Destination
+            ? c with { Owner = new FactionId(2) } : c).ToList() };
+        var rerouted = world.AdvanceDays(captured, 1);
+        Assert.Equal(Source, rerouted.PostingOf(Officer)!.Location);
+    }
 }

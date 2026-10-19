@@ -30,6 +30,7 @@ public enum WorldEventKind
     RecruitmentPoints, // 세력 공용 인재 영입 포인트 획득
     EventUnitAppeared,
     EventUnitDefeated,
+    GeneralTransfer,   // 장수의 행정 이동 도착
 }
 
 /// <summary>

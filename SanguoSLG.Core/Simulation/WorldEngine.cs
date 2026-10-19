@@ -796,6 +796,25 @@ public sealed class WorldEngine
                         declarations.Add(new CityWarDeclaration(city.Owner, declaredCity, defender.Owner, state.Day));
                     }
                     break;
+                case CommandKind.TransferGeneral:
+                    var transferPostingIndex = postings.FindIndex(p => p.General == cmd.Main);
+                    if (transferPostingIndex >= 0)
+                    {
+                        var movingPosting = postings[transferPostingIndex];
+                        var chosen = cmd.TargetCity is { } target && cities.TryGetValue(target, out var requested)
+                            && requested.Owner == movingPosting.Faction
+                            ? requested
+                            : cities.Values.Where(c => c.Owner == movingPosting.Faction)
+                                .OrderBy(c => c.Position.Distance(city.Position)).ThenBy(c => c.Id.Value)
+                                .FirstOrDefault();
+                        if (chosen is not null)
+                        {
+                            postings[transferPostingIndex] = movingPosting with { Location = chosen.Id };
+                            _events.Add(new WorldEvent(WorldEventKind.GeneralTransfer,
+                                movingPosting.Faction, cmd.Main, chosen.Id));
+                        }
+                    }
+                    break;
             }
 
             // 명령 완료 사건(표현 계층 보고용) — 모병·징병·훈련·건설·연구·수리만.
