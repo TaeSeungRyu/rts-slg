@@ -619,7 +619,10 @@ public sealed partial class CampaignMapScene : Node3D
             _climateController = new SanguoSLG.Core.Simulation.Climate.ClimateController(_map,
                 scenario.Balance.ClimatePatchChancePercent,
                 scenario.Balance.ClimateMaxPatches,
-                moveEveryDays: scenario.Balance.ClimateMoveEveryDays));
+                moveEveryDays: scenario.Balance.ClimateMoveEveryDays,
+                winterSnowPercent: scenario.Balance.ClimateWinterSnowPercent,
+                minDurationDays: scenario.Balance.ClimateMinDurationDays,
+                maxDurationDays: scenario.Balance.ClimateMaxDurationDays));
         _vision = new BattlefieldVision(scenario.Balance, _troops, _fieldBuildingDefinitions);
         _fog = new BattlefieldFogView(_view);
         _fog.RegisterMap();

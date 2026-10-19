@@ -161,6 +161,9 @@ internal sealed class BalanceDto
     public int ClimatePatchChancePercent { get; init; } = 12;
     public int ClimateMaxPatches { get; init; } = 2;
     public int ClimateMoveEveryDays { get; init; } = 2;
+    public int ClimateWinterSnowPercent { get; init; } = 60;
+    public int ClimateMinDurationDays { get; init; } = 3;
+    public int ClimateMaxDurationDays { get; init; } = 6;
     public int ClimateRainSnowSpeedPercent { get; init; } = 70;
     public int ClimateAttackPercent { get; init; } = 80;
 }

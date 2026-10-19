@@ -72,6 +72,9 @@ public sealed class ScenarioLoader
             ClimatePatchChancePercent: balanceDto.ClimatePatchChancePercent,
             ClimateMaxPatches: balanceDto.ClimateMaxPatches,
             ClimateMoveEveryDays: balanceDto.ClimateMoveEveryDays,
+            ClimateWinterSnowPercent: balanceDto.ClimateWinterSnowPercent,
+            ClimateMinDurationDays: balanceDto.ClimateMinDurationDays,
+            ClimateMaxDurationDays: balanceDto.ClimateMaxDurationDays,
             ClimateRainSnowSpeedPercent: balanceDto.ClimateRainSnowSpeedPercent,
             ClimateAttackPercent: balanceDto.ClimateAttackPercent);
 

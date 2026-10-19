@@ -55,6 +55,9 @@ public sealed record BalanceConfig(
     int ClimatePatchChancePercent = 12,
     int ClimateMaxPatches = 2,
     int ClimateMoveEveryDays = 2,
+    int ClimateWinterSnowPercent = 60,
+    int ClimateMinDurationDays = 3,
+    int ClimateMaxDurationDays = 6,
     int ClimateRainSnowSpeedPercent = 70,
     int ClimateAttackPercent = 80)
 {

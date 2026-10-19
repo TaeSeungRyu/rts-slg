@@ -3,7 +3,8 @@ namespace SanguoSLG.Core.Simulation.Climate;
 using SanguoSLG.Core.Spatial;
 
 public sealed class ClimateController(HexMap map, int patchChancePercent = 12,
-    int maxPatches = 2, int patchSize = 6, int moveEveryDays = 2)
+    int maxPatches = 2, int patchSize = 6, int moveEveryDays = 2,
+    int winterSnowPercent = 60, int minDurationDays = 3, int maxDurationDays = 6)
 {
     public ClimateState Advance(ClimateState state, int day, int month)
     {
@@ -16,7 +17,7 @@ public sealed class ClimateController(HexMap map, int patchChancePercent = 12,
         foreach (var patch in state.Patches.Where(patch => patch.EndDay >= day
                      && (patch.Kind != ClimateKind.Snow || winter)).OrderBy(patch => patch.Id))
         {
-            var candidate = day > patch.StartDay && (day - patch.StartDay) % moveEveryDays == 0
+            var candidate = day > patch.StartDay && (day - patch.StartDay) % Math.Max(1, moveEveryDays) == 0
                 ? patch with { Origin = Shift(patch.Origin, patch.Id, day) }
                 : patch;
             patches.Add(patches.Any(existing => Tiles(existing).Intersect(Tiles(candidate)).Any())
@@ -25,14 +26,16 @@ public sealed class ClimateController(HexMap map, int patchChancePercent = 12,
         var nextId = state.NextPatchId;
         if (patches.Count < maxPatches && Roll(state.Seed, day, 1) % 100 < patchChancePercent)
         {
-            var kind = winter && Roll(state.Seed, day, 2) % 100 < 60
+            var kind = winter && Roll(state.Seed, day, 2) % 100 < winterSnowPercent
                 ? ClimateKind.Snow : ClimateKind.Rain;
             var spanQ = Math.Max(1, map.MaxQ - map.MinQ - patchSize + 2);
             var spanR = Math.Max(1, map.MaxR - map.MinR - patchSize + 2);
             var origin = new HexCoord(map.MinQ + (int)(Roll(state.Seed, day, 3) % (uint)spanQ),
                 map.MinR + (int)(Roll(state.Seed, day, 4) % (uint)spanR));
+            var durationRange = Math.Max(1, maxDurationDays - minDurationDays + 1);
             var candidate = new ClimatePatch(nextId, kind, origin, day,
-                day + 2 + (int)(Roll(state.Seed, day, 5) % 4));
+                day + Math.Max(1, minDurationDays) - 1
+                    + (int)(Roll(state.Seed, day, 5) % (uint)durationRange));
             if (Tiles(candidate).Any() && patches.All(existing =>
                     !Tiles(existing).Intersect(Tiles(candidate)).Any()))
             {
