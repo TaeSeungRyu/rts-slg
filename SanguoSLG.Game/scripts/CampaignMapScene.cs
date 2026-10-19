@@ -540,7 +540,7 @@ public sealed partial class CampaignMapScene : Node3D
         _provPer10kPerDay = _balance.ProvisionsPer10kPerDay;
 
         _commander = new CommandService(_cb, _troops, _balance, _adminSkills);
-        _deployer = new DeployService(_cb, _troops, actives, passives, _adminSkills);
+        _deployer = new DeployService(_cb, _troops, actives, passives, _adminSkills, _balance);
         _ai = new FactionAI(_commander, _deployer);
         var scenario = new ScenarioLoader().LoadFromDirectory(dataDirectory);
         _passability = new PassabilityMap(_map, [], _cities, scenario.RuinList.Select(r => r.Position));
@@ -10768,7 +10768,9 @@ public sealed partial class CampaignMapScene : Node3D
             var deputy = selectedAdjutant is { } deputyId ? generals.FirstOrDefault(g => g.Id == deputyId) : null;
             var upkeepPercent = Math.Clamp(100 - AdminBonus.Bucket(leader, _adminSkillMap, "provisions")
                 - AdminBonus.Bucket(deputy, _adminSkillMap, "provisions"), 1, 100);
-            var foodCap = Math.Min(port.Provisions, (ship?.ProvisionsCapacity ?? 0) * amount / 10000);
+            var backpack = GeneralResearchRules.CombatBackpackCapacityPer10k(
+                _state.ResearchOf(port.Owner, FactionResearch.CombatBackpackCode), TroopClass.Naval, _balance);
+            var foodCap = Math.Min(port.Provisions, ((ship?.ProvisionsCapacity ?? 0) + backpack) * amount / 10000);
             carriedFood = Math.Clamp(carriedFood, 0, foodCap);
             if (foodSpin is not null && foodSlider is not null)
             {
@@ -10907,7 +10909,9 @@ public sealed partial class CampaignMapScene : Node3D
         foodRow.AddChild(foodSpin);
         box.AddChild(foodRow);
         box.AddChild(foodEstimate);
-        carriedFood = Math.Min(port.Provisions, ships[0].ProvisionsCapacity * amount / 10000);
+        carriedFood = Math.Min(port.Provisions, (ships[0].ProvisionsCapacity
+            + GeneralResearchRules.CombatBackpackCapacityPer10k(
+                _state.ResearchOf(port.Owner, FactionResearch.CombatBackpackCode), TroopClass.Naval, _balance)) * amount / 10000);
         AddGoldCargoSelector(box, city, 0, value => { carriedGold = value; Refresh(); });
 
         var navalRosterTitle = MakeLabel("장수 편성 · 선봉 필수 / 부관 선택", 14, GoldBright);
@@ -12852,7 +12856,12 @@ public sealed partial class CampaignMapScene : Node3D
         var wasMaximum = followMaximum || previousMaximum > 0 && _depProvAmount >= previousMaximum;
         var cityProvisions = _state.Cities.First(city => city.Id == _depModalCity).Provisions;
         var capacity = _depTroop is { } code
-            ? (_troops.FirstOrDefault(troop => troop.Code == code)?.ProvisionsCapacity ?? 300) * _depAmount / 10000
+            ? ((_troops.FirstOrDefault(troop => troop.Code == code)?.ProvisionsCapacity ?? 300)
+                + GeneralResearchRules.CombatBackpackCapacityPer10k(
+                    _state.ResearchOf(_state.Cities.First(city => city.Id == _depModalCity).Owner,
+                        FactionResearch.CombatBackpackCode),
+                    _troops.FirstOrDefault(troop => troop.Code == code)?.Class ?? TroopClass.Infantry, _balance))
+                * _depAmount / 10000
             : 0;
         var maximum = System.Math.Max(0, System.Math.Min(cityProvisions, capacity));
         _depProvAmount = wasMaximum ? maximum : System.Math.Clamp(_depProvAmount, 0, maximum);

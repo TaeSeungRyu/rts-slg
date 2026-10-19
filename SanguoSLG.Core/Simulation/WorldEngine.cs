@@ -717,6 +717,20 @@ public sealed class WorldEngine
                         || FactionResearch.IsStratagemResearch(cmd.TroopCode))
                     {
                         completionAmount = ResearchUp(research, city.Owner, cmd.TroopCode, GeneralResearchRules.MaxLevel);
+                        if (cmd.TroopCode == FactionResearch.CombatBackpackCode)
+                        {
+                            for (var armyIndex = 0; armyIndex < armies.Count; armyIndex++)
+                            {
+                                var army = armies[armyIndex];
+                                if (army.Field.Owner != city.Owner || army.IsSupply || army.IsTransport)
+                                    continue;
+                                armies[armyIndex] = army with
+                                {
+                                    ProvisionsCapacity = army.ProvisionsCapacity
+                                        + GeneralResearchRules.CombatBackpackCapacityPer10k(1, army.Class, _balance),
+                                };
+                            }
+                        }
                     }
                     else
                     {

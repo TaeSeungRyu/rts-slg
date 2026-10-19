@@ -110,6 +110,7 @@ public sealed class DeployService
     private readonly IReadOnlyDictionary<string, ActiveSkill> _actives;
     private readonly IReadOnlyDictionary<string, PassiveSkill> _passives;
     private readonly IReadOnlyDictionary<string, AdminSkill> _adminSkills;
+    private readonly BalanceConfig _economy;
 
     public CommandBalance Balance => _b;
     public IReadOnlyDictionary<string, TroopTemplate> Troops => _troops;
@@ -119,13 +120,14 @@ public sealed class DeployService
 
     public DeployService(CommandBalance balance, IReadOnlyList<TroopTemplate> troops,
         IReadOnlyList<ActiveSkill> actives, IReadOnlyList<PassiveSkill> passives,
-        IReadOnlyList<AdminSkill>? adminSkills = null)
+        IReadOnlyList<AdminSkill>? adminSkills = null, BalanceConfig? economy = null)
     {
         _b = balance;
         _troops = troops.ToDictionary(t => t.Code);
         _actives = actives.ToDictionary(a => a.Code);
         _passives = passives.ToDictionary(p => p.Code);
         _adminSkills = (adminSkills ?? []).ToDictionary(a => a.Code);
+        _economy = economy ?? new BalanceConfig(MonthlyTaxPerCity: 100);
     }
 
     public CommandResult Deploy(GameState state, DeployRequest req)
@@ -210,7 +212,9 @@ public sealed class DeployService
 
         // 군량 휴대: 요청량(일수 슬라이더 → 병력 비례 환산; 음수면 상한까지 자동)과 적재 상한(한 달치
         // × 병력 비례), 성 비축 중 가장 작은 쪽.
-        var capacity = template.ProvisionsCapacity * troops / 10000;
+        var backpack = GeneralResearchRules.CombatBackpackCapacityPer10k(
+            state.ResearchOf(city.Owner, FactionResearch.CombatBackpackCode), template.Class, _economy);
+        var capacity = (template.ProvisionsCapacity + backpack) * troops / 10000;
         var wanted = req.Provisions < 0 ? capacity : System.Math.Min(req.Provisions, capacity);
         var carried = System.Math.Min(wanted, city.Provisions);
 
@@ -220,7 +224,8 @@ public sealed class DeployService
         var unit = UnitAssembler.Assemble(unitId, city.Owner, city.Position, req.Mode, req.Target,
             unitId.Value, vanguard, adjutant, template, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
-        unit = unit with { Provisions = carried, Training = garrison.TrainingLevel, CargoGold = req.Gold,
+        unit = unit with { Provisions = carried, ProvisionsCapacity = template.ProvisionsCapacity + backpack,
+            Training = garrison.TrainingLevel, CargoGold = req.Gold,
             Field = unit.Field with { ContinuousTarget = req.ContinuousTarget,
                 ContinuousWaypoints = req.ContinuousWaypoints },
             OriginCity = city.Id, DeploymentDelayDays = req.DelayDays, EgressDirection = egressDirection,
@@ -522,7 +527,8 @@ public sealed class DeployService
         var stats = new CombatStats(total, _b.ArmyGroupAtkUnit, _b.ArmyGroupDefense, AptitudePercent: armyGroupGrade.Percent());
         var unit = new CombatUnit(field, stats, new TroopPool(total, 0), UnitCombatState.Create(vanguard.Intellect),
             vanguard.Might, vanguard.Intellect, total, TroopClass.Siege,
-            ProvisionsCapacity: _b.ArmyGroupProvisionsCapacity, Training: training,
+            ProvisionsCapacity: _b.ArmyGroupProvisionsCapacity + GeneralResearchRules.CombatBackpackCapacityPer10k(
+                state.ResearchOf(city.Owner, FactionResearch.CombatBackpackCode), TroopClass.Siege, _economy), Training: training,
             TroopCode: "army_group", VanguardId: vanguard.Id, AdjutantId: adjutant?.Id,
             SupplyCargo: components, IsArmyGroup: true, OriginCity: city.Id,
             DeploymentDelayDays: req.DelayDays, EgressDirection: egressDirection, EgressExit: egressExit,
@@ -641,7 +647,9 @@ public sealed class DeployService
             return CommandResult.Fail(error, state);
         }
 
-        var capacity = ship.ProvisionsCapacity * troops / 10000;
+        var capacityPer10k = ship.ProvisionsCapacity + GeneralResearchRules.CombatBackpackCapacityPer10k(
+            state.ResearchOf(city.Owner, FactionResearch.CombatBackpackCode), TroopClass.Naval, _economy);
+        var capacity = capacityPer10k * troops / 10000;
         var wanted = req.Provisions < 0 ? capacity : System.Math.Min(req.Provisions, capacity);
         var carried = System.Math.Min(wanted, city.Provisions);
         var research = state.ResearchOf(city.Owner, ship.Code);
@@ -649,7 +657,8 @@ public sealed class DeployService
         var unit = UnitAssembler.Assemble(unitId, city.Owner, city.Position, req.Mode, req.Target,
             unitId.Value, vanguard, adjutant, ship, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
-        unit = unit with { Provisions = carried, LootGold = req.Gold, Training = garrison.TrainingLevel, OriginCity = city.Id,
+        unit = unit with { Provisions = carried, ProvisionsCapacity = capacityPer10k,
+            LootGold = req.Gold, Training = garrison.TrainingLevel, OriginCity = city.Id,
             Field = unit.Field with { ContinuousTarget = req.ContinuousTarget,
                 ContinuousWaypoints = req.ContinuousWaypoints },
             DeploymentDelayDays = req.DelayDays, EgressDirection = req.EgressDirection, EgressExit = req.EgressExit,

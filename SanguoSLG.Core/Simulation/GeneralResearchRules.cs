@@ -2,7 +2,7 @@ namespace SanguoSLG.Core.Simulation;
 
 using SanguoSLG.Core.Domain;
 
-/// <summary>일반연구 6종의 공용 단계·연구선·효과 계산 규칙.</summary>
+/// <summary>일반연구의 공용 단계·연구선·효과 계산 규칙.</summary>
 public static class GeneralResearchRules
 {
     public const int MaxLevel = 10;
@@ -19,6 +19,7 @@ public static class GeneralResearchRules
         new(FactionResearch.TrainingCode, "훈련 교범", "짝수 단계마다 훈련 담당자의 주간 훈련도 증가량이 1 오릅니다."),
         new(FactionResearch.MedicineCode, "의술 연구", "수성 중이 아닌 도시의 부상병 회복 속도가 단계마다 10% 증가합니다."),
         new(FactionResearch.ResearchDurationCode, "연구 혁신", "완료한 단계에 따라 이후 모든 연구의 소요일이 단축됩니다."),
+        new(FactionResearch.CombatBackpackCode, "전투배낭", "전투부대의 최대 휴대 군량이 레벨마다 기본 소비량 3일치씩 증가합니다."),
     ];
 
     public static bool IsGeneralLane(string researchCode)
@@ -35,6 +36,14 @@ public static class GeneralResearchRules
     public static int OutputPercent(int level) => 100 + 2 * ClampLevel(level);
     public static int TrainingWeeklyBonus(int level) => ClampLevel(level) / 2;
     public static int WoundedRecoveryPercent(int level) => 100 + 10 * ClampLevel(level);
+    public static int CombatBackpackDays(int level) => 3 * ClampLevel(level);
+
+    public static int CombatBackpackCapacityPer10k(int level, TroopClass troopClass, BalanceConfig balance)
+    {
+        var baseDaily = balance.ProvisionsPer10kPerDay;
+        var percent = troopClass == TroopClass.Naval ? balance.NavalProvisionsPercent : 100;
+        return CombatBackpackDays(level) * baseDaily * percent / 100;
+    }
 
     public static int ResearchDurationReduction(int level)
     {
@@ -76,6 +85,8 @@ public static class GeneralResearchRules
             FactionResearch.MedicineCode => $"부상병 회복 +{next * 10}%",
             FactionResearch.ResearchDurationCode
                 => $"연구 기간 -{ResearchDurationReduction(next) - ResearchDurationReduction(currentLevel)}일 · 누적 -{ResearchDurationReduction(next)}일",
+            FactionResearch.CombatBackpackCode
+                => $"최대 휴대 군량 +3일 · 누적 +{CombatBackpackDays(next)}일",
             _ => string.Empty,
         };
     }

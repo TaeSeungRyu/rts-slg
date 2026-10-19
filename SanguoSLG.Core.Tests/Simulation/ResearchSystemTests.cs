@@ -30,6 +30,32 @@ public class ResearchSystemTests
         new(1, 1, new List<Faction>(), cities.ToList(), generals.ToList());
 
     [Fact]
+    public void 전투배낭은_레벨당_고정3일을_더하고_해상은_기존절감을_따른다()
+    {
+        var balance = new BalanceConfig(MonthlyTaxPerCity: 100);
+        Assert.Equal(0, GeneralResearchRules.CombatBackpackDays(0));
+        Assert.Equal(3, GeneralResearchRules.CombatBackpackDays(1));
+        Assert.Equal(6, GeneralResearchRules.CombatBackpackDays(2));
+        Assert.Equal(30, GeneralResearchRules.CombatBackpackDays(10));
+        Assert.Equal(30, GeneralResearchRules.CombatBackpackCapacityPer10k(1, TroopClass.Infantry, balance));
+        Assert.Equal(6, GeneralResearchRules.CombatBackpackCapacityPer10k(1, TroopClass.Naval, balance));
+        Assert.Equal("최대 휴대 군량 +3일 · 누적 +30일", GeneralResearchRules.NextEffectText(FactionResearch.CombatBackpackCode, 9));
+    }
+
+    [Fact]
+    public void 전투배낭_연구완료시_연구레벨을_올린다()
+    {
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0), B);
+        var state = State([Town(1, workshop: false, gold: 5000)], [Wit(1, 100)]);
+        var issued = Service().Issue(state, new CommandRequest(new CityId(1), CommandKind.Research,
+            new GeneralId(1), TroopCode: FactionResearch.CombatBackpackCode));
+        Assert.True(issued.Ok, issued.Error);
+        var duration = issued.State.Commands.Single().CompletionDay - issued.State.Commands.Single().StartDay;
+        var completed = world.AdvanceDays(issued.State, duration);
+        Assert.Equal(1, completed.ResearchOf(new FactionId(1), FactionResearch.CombatBackpackCode));
+    }
+
+    [Fact]
     public void 발행_공방이_없어도_전투교리_연구를_시작할수있다()
     {
         var s = State(new[] { Town(1, workshop: false) }, new[] { Wit(1, 70) });
