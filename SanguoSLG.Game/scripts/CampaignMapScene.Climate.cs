@@ -135,7 +135,7 @@ public sealed partial class CampaignMapScene
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
             AlbedoColor = patch.Kind == ClimateKind.Snow
-                ? new Color(0.94f, 0.96f, 1f, 0.27f)
+                ? new Color(0.94f, 0.96f, 1f, 0.34f)
                 : new Color(0.59f, 0.72f, 0.8f, 0.15f),
         };
         var groundMesh = new CylinderMesh { TopRadius = 0.55f, BottomRadius = 0.55f,
@@ -145,7 +145,7 @@ public sealed partial class CampaignMapScene
         {
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-            AlbedoColor = new Color(0.96f, 0.98f, 1f, 0.44f),
+            AlbedoColor = new Color(0.98f, 0.99f, 1f, 0.86f),
         };
         var originWorld = _view.HexToWorld(patch.Origin);
         var tiles = _climateController.Tiles(patch).ToList();
@@ -173,7 +173,7 @@ public sealed partial class CampaignMapScene
                 {
                     Mesh = snowDriftMeshes[drift],
                     MaterialOverride = snowDriftMaterial,
-                    Position = overlay.Position + new Vector3(x, 0.01f, z),
+                    Position = overlay.Position + new Vector3(x, 0.03f, z),
                     CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
                 };
                 snowDrift.SetMeta("climate_q", tile.Q - patch.Origin.Q);
@@ -226,8 +226,8 @@ public sealed partial class CampaignMapScene
         {
             var angle = Mathf.Tau * index / points.Length;
             var uneven = 0.7f + ((index * 7 + variant * 3) % 5) * 0.11f;
-            points[index] = new Vector3(Mathf.Cos(angle) * (0.12f + variant * 0.012f) * uneven,
-                0f, Mathf.Sin(angle) * (0.07f + (variant % 2) * 0.018f) * uneven);
+            points[index] = new Vector3(Mathf.Cos(angle) * (0.17f + variant * 0.014f) * uneven,
+                0f, Mathf.Sin(angle) * (0.11f + (variant % 2) * 0.02f) * uneven);
         }
         for (var index = 0; index < points.Length; index++)
         {
@@ -246,40 +246,35 @@ public sealed partial class CampaignMapScene
         IReadOnlyList<HexCoord> tiles, Vector3 originWorld)
     {
         if (tiles.Count == 0) return;
-        var cloudMesh = new SphereMesh { Radius = 1f, Height = 2f,
-            RadialSegments = 12, Rings = 6 };
+        var cloudScene = GD.Load<PackedScene>("res://assets/models/weather-rain-cloud.glb");
+        var cloudModel = cloudScene.Instantiate<Node3D>();
+        var cloudMesh = cloudModel.FindChildren("*", "MeshInstance3D", true, false)
+            .OfType<MeshInstance3D>().First().Mesh;
+        cloudModel.Free();
         var cloudMaterial = new StandardMaterial3D
         {
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-            AlbedoColor = new Color(0.73f, 0.79f, 0.84f, 0.32f),
+            AlbedoColor = new Color(0.72f, 0.79f, 0.84f, 0.63f),
         };
         for (var cloud = 0; cloud < 3; cloud++)
         {
             var tile = tiles[Math.Min(tiles.Count - 1, (cloud * 2 + 1) * tiles.Count / 6)];
             var center = _view.HexToWorld(tile) - originWorld
                 + new Vector3(0f, _view.TileTopY + 1.1f + cloud * 0.06f, 0f);
-            for (var lobe = 0; lobe < 4; lobe++)
+            var puff = new MeshInstance3D
             {
-                var offset = new[]
-                {
-                    new Vector3(-0.22f, 0f, 0f), new Vector3(0.14f, 0.07f, 0.08f),
-                    new Vector3(0.36f, -0.02f, -0.04f), new Vector3(-0.03f, 0.11f, -0.09f),
-                }[lobe];
-                var puff = new MeshInstance3D
-                {
-                    Mesh = cloudMesh,
-                    MaterialOverride = cloudMaterial,
-                    Scale = lobe == 3 ? new Vector3(0.34f, 0.14f, 0.24f)
-                        : new Vector3(0.34f, 0.11f, 0.2f),
-                    Position = center + offset,
-                    CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-                };
-                puff.SetMeta("climate_q", tile.Q - patch.Origin.Q);
-                puff.SetMeta("climate_r", tile.R - patch.Origin.R);
-                root.AddChild(puff);
-                _climateClouds.Add((puff, puff.Position, cloud * 1.7f + lobe * 0.13f));
-            }
+                Mesh = cloudMesh,
+                MaterialOverride = cloudMaterial,
+                Scale = new Vector3(1.1f + cloud * 0.06f, 1f, 1.1f),
+                RotationDegrees = new Vector3(0f, cloud * 37f, 0f),
+                Position = center,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            };
+            puff.SetMeta("climate_q", tile.Q - patch.Origin.Q);
+            puff.SetMeta("climate_r", tile.R - patch.Origin.R);
+            root.AddChild(puff);
+            _climateClouds.Add((puff, puff.Position, cloud * 1.7f));
         }
     }
 
@@ -325,7 +320,8 @@ public sealed partial class CampaignMapScene
             && _climatePatchViews[snow.Id].Node.GetChildren().OfType<MeshInstance3D>()
                 .Count(child => child.Mesh is ArrayMesh) >= 4;
         var clouds = rain is not null && _climatePatchViews[rain.Id].Node
-            .GetChildren().OfType<MeshInstance3D>().Count(child => child.Mesh is SphereMesh) == 12;
+            .GetChildren().OfType<MeshInstance3D>()
+            .Count(child => child.Mesh == _climateClouds.First().Node.Mesh) == 3;
         var terrainInfo = rain is not null && snow is not null
             && ClimateCombatRules.At(_displayClimate, rain.Origin) == ClimateKind.Rain
             && ClimateCombatRules.At(_displayClimate, snow.Origin) == ClimateKind.Snow;
