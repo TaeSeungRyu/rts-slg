@@ -2575,12 +2575,13 @@ public sealed partial class CampaignMapScene : Node3D
         Row("이동", inMap ? MoveCostText(terrain, h) : "통행 불가");
         if (inMap)
         {
-            var weather = SanguoSLG.Core.Simulation.Climate.ClimateCombatRules.At(_state.Climate, h);
+            var weather = SanguoSLG.Core.Simulation.Climate.ClimateCombatRules.At(
+                _displayClimate ?? _state.Climate, h);
             Row("기후", weather switch
             {
-                SanguoSLG.Core.Simulation.Climate.ClimateKind.Rain => "비 · 이동 −30% · 궁병 공격 −20%",
-                SanguoSLG.Core.Simulation.Climate.ClimateKind.Snow => "눈 · 이동 −30% · 기병 공격 −20%",
-                _ => "일반",
+                SanguoSLG.Core.Simulation.Climate.ClimateKind.Rain => "비가 내리고 있습니다 · 이동 −30% · 궁병 공격 −20%",
+                SanguoSLG.Core.Simulation.Climate.ClimateKind.Snow => "눈이 내리고 있습니다 · 이동 −30% · 기병 공격 −20%",
+                _ => "맑음",
             });
         }
         var combat = CombatBonusText(terrain);

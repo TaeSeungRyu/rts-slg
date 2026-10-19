@@ -16,6 +16,7 @@ public sealed partial class CampaignMapScene
     private readonly List<(Node3D Node, float Speed)> _climateFlecks = [];
     private readonly Dictionary<HexCoord, MeshInstance3D> _climateGround = [];
     private int _climateTestNonce;
+    private ClimateState? _displayClimate;
 
     private void AddClimateTestButtons(CanvasLayer layer)
     {
@@ -66,6 +67,7 @@ public sealed partial class CampaignMapScene
     private void RefreshClimateVisuals(ClimateState? state)
     {
         if (_climateController is null || _view is null) return;
+        _displayClimate = state;
         _climateVisualRoot ??= new Node3D { Name = "ClimateVisuals" };
         if (_climateVisualRoot.GetParent() is null) AddChild(_climateVisualRoot);
         var patches = state?.Patches ?? [];
@@ -73,9 +75,7 @@ public sealed partial class CampaignMapScene
         foreach (var id in _climatePatchViews.Keys.Where(id => !alive.Contains(id)).ToList())
         {
             var node = _climatePatchViews[id].Node;
-            foreach (var child in node.GetChildren().OfType<Node3D>())
-                _climateFlecks.RemoveAll(entry => entry.Node == child);
-            node.QueueFree();
+            FadeClimatePatch(node, false);
             _climatePatchViews.Remove(id);
         }
         _climateGround.Clear();
@@ -90,10 +90,10 @@ public sealed partial class CampaignMapScene
             }
             else if (view.Patch.Origin != patch.Origin)
             {
-                var destination = _view.HexToWorld(patch.Origin);
-                var tween = CreateTween();
-                tween.TweenProperty(view.Node, "position", destination, 0.35f);
-                _climatePatchViews[patch.Id] = (patch, view.Node);
+                FadeClimatePatch(view.Node, false);
+                var node = CreateClimatePatchVisual(patch);
+                _climatePatchViews[patch.Id] = (patch, node);
+                view = (patch, node);
             }
             foreach (var overlay in view.Node.GetChildren().OfType<MeshInstance3D>()
                 .Where(child => child.HasMeta("climate_q")))
@@ -106,6 +106,23 @@ public sealed partial class CampaignMapScene
         UpdateClimateVisibility();
     }
 
+    private void FadeClimatePatch(Node3D node, bool appearing)
+    {
+        var meshes = node.GetChildren().OfType<MeshInstance3D>().ToArray();
+        foreach (var mesh in meshes)
+        {
+            if (appearing) mesh.Transparency = 1f;
+            var tween = CreateTween();
+            tween.TweenProperty(mesh, "transparency", appearing ? 0f : 1f,
+                appearing ? 0.65f : 0.45f);
+        }
+        if (appearing) return;
+        _climateFlecks.RemoveAll(entry => entry.Node.GetParent() == node);
+        var cleanup = CreateTween();
+        cleanup.TweenInterval(0.47f);
+        cleanup.Finished += () => { if (GodotObject.IsInstanceValid(node)) node.QueueFree(); };
+    }
+
     private Node3D CreateClimatePatchVisual(ClimatePatch patch)
     {
         var root = new Node3D { Name = $"Climate_{patch.Kind}_{patch.Id}",
@@ -116,15 +133,26 @@ public sealed partial class CampaignMapScene
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
             AlbedoColor = patch.Kind == ClimateKind.Snow
-                ? new Color(0.94f, 0.96f, 1f, 0.23f)
-                : new Color(0.49f, 0.65f, 0.75f, 0.07f),
+                ? new Color(0.94f, 0.96f, 1f, 0.27f)
+                : new Color(0.59f, 0.72f, 0.8f, 0.15f),
         };
         var groundMesh = new CylinderMesh { TopRadius = 0.55f, BottomRadius = 0.55f,
             Height = 0.006f, RadialSegments = 6 };
+        var snowDriftMesh = new CylinderMesh { TopRadius = 0.18f, BottomRadius = 0.18f,
+            Height = 0.008f, RadialSegments = 12 };
+        var snowDriftMaterial = new StandardMaterial3D
+        {
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            AlbedoColor = new Color(0.96f, 0.98f, 1f, 0.44f),
+        };
         var originWorld = _view.HexToWorld(patch.Origin);
         var tiles = _climateController.Tiles(patch).ToList();
         foreach (var tile in tiles)
         {
+            var terrain = _map.TerrainAt(tile);
+            if (terrain is TerrainType.WaterDeep or TerrainType.WaterShallow
+                or TerrainType.WaterRocks or TerrainType.River) continue;
             var overlay = new MeshInstance3D
             {
                 Mesh = groundMesh,
@@ -135,22 +163,38 @@ public sealed partial class CampaignMapScene
             overlay.SetMeta("climate_q", tile.Q - patch.Origin.Q);
             overlay.SetMeta("climate_r", tile.R - patch.Origin.R);
             root.AddChild(overlay);
+            if (patch.Kind != ClimateKind.Snow) continue;
+            for (var drift = 0; drift < 2; drift++)
+            {
+                var snowDrift = new MeshInstance3D
+                {
+                    Mesh = snowDriftMesh,
+                    MaterialOverride = snowDriftMaterial,
+                    Position = overlay.Position + new Vector3(drift == 0 ? -0.17f : 0.2f,
+                        0.008f, drift == 0 ? 0.12f : -0.1f),
+                };
+                snowDrift.SetMeta("climate_q", tile.Q - patch.Origin.Q);
+                snowDrift.SetMeta("climate_r", tile.R - patch.Origin.R);
+                root.AddChild(snowDrift);
+            }
         }
         var fleckMesh = patch.Kind == ClimateKind.Snow
             ? (Mesh)new SphereMesh { Radius = 0.012f, Height = 0.024f }
-            : new CylinderMesh { TopRadius = 0.003f, BottomRadius = 0.003f,
-                Height = 0.12f, RadialSegments = 4 };
+            : new CylinderMesh { TopRadius = 0.006f, BottomRadius = 0.006f,
+                Height = 0.17f, RadialSegments = 5 };
         var fleckMaterial = new StandardMaterial3D
         {
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
             AlbedoColor = patch.Kind == ClimateKind.Snow
                 ? new Color(1f, 1f, 1f, 0.55f)
-                : new Color(0.71f, 0.83f, 0.91f, 0.42f),
+                : new Color(0.8f, 0.89f, 0.96f, 0.74f),
         };
-        for (var index = 0; index < Math.Min(24, tiles.Count); index++)
+        var fleckCount = Math.Min(patch.Kind == ClimateKind.Rain ? 72 : 24,
+            tiles.Count * (patch.Kind == ClimateKind.Rain ? 2 : 1));
+        for (var index = 0; index < fleckCount; index++)
         {
-            var tile = tiles[index * tiles.Count / Math.Min(24, tiles.Count)];
+            var tile = tiles[index % tiles.Count];
             var offset = _view.HexToWorld(tile) - originWorld;
             var fleck = new MeshInstance3D
             {
@@ -162,8 +206,9 @@ public sealed partial class CampaignMapScene
             fleck.SetMeta("climate_q", tile.Q - patch.Origin.Q);
             fleck.SetMeta("climate_r", tile.R - patch.Origin.R);
             root.AddChild(fleck);
-            _climateFlecks.Add((fleck, patch.Kind == ClimateKind.Snow ? 0.13f : 0.42f));
+            _climateFlecks.Add((fleck, patch.Kind == ClimateKind.Snow ? 0.13f : 0.65f));
         }
+        FadeClimatePatch(root, true);
         return root;
     }
 
@@ -196,13 +241,34 @@ public sealed partial class CampaignMapScene
         AddRandomTestClimate(ClimateKind.Rain);
         var rain = _state.Climate?.Patches.FirstOrDefault(patch => patch.Kind == ClimateKind.Rain);
         var rainVisual = rain is not null && _climatePatchViews.ContainsKey(rain.Id)
-            && _climatePatchViews[rain.Id].Node.GetChildCount() >= 36;
+            && _climatePatchViews[rain.Id].Node.GetChildCount() >= 72;
         AddRandomTestClimate(ClimateKind.Snow);
         var snow = _state.Climate?.Patches.FirstOrDefault(patch => patch.Kind == ClimateKind.Snow);
         var snowVisual = snow is not null && snow.Kind == ClimateKind.Snow
-            && _climatePatchViews.ContainsKey(snow.Id);
-        var passed = rainVisual && snowVisual;
-        GD.Print($"[maptestclimateqa] passed={passed} rain={rainVisual} snow={snowVisual}");
+            && _climatePatchViews.ContainsKey(snow.Id)
+            && _climatePatchViews[snow.Id].Node.GetChildren().OfType<MeshInstance3D>()
+                .Any(child => child.Mesh is CylinderMesh cylinder
+                    && Mathf.IsEqualApprox(cylinder.TopRadius, 0.18f));
+        var terrainInfo = rain is not null && snow is not null
+            && ClimateCombatRules.At(_displayClimate, rain.Origin) == ClimateKind.Rain
+            && ClimateCombatRules.At(_displayClimate, snow.Origin) == ClimateKind.Snow;
+        var moved = false;
+        if (rain is not null)
+        {
+            var beforeNode = _climatePatchViews[rain.Id].Node;
+            var shifted = rain with { Origin = rain.Origin + new HexCoord(1, 0) };
+            var next = _state.Climate! with
+            {
+                Patches = _state.Climate.Patches.Select(patch => patch.Id == rain.Id ? shifted : patch)
+                    .ToList(),
+            };
+            RefreshClimateVisuals(next);
+            moved = _climatePatchViews[rain.Id].Node != beforeNode
+                && _climatePatchViews[rain.Id].Node.Position == _view.HexToWorld(shifted.Origin);
+        }
+        var passed = rainVisual && snowVisual && terrainInfo && moved;
+        GD.Print($"[maptestclimateqa] passed={passed} rain={rainVisual} snow={snowVisual} "
+            + $"terrain={terrainInfo} moved={moved}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
