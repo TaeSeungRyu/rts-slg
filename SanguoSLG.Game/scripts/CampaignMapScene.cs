@@ -208,6 +208,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _supplyReplenishmentSourceId = -1;
     private readonly SupplyReplenishmentService _supplyReplenishment = new();
     private Button _supplyReplenishmentButton = null!;
+    private Button _supplyFollowButton = null!;
     private UnitMode _retargetMode;
     private string _dataDirectory = "";
     private bool _leftDown;            // 좌클릭 vs 좌드래그(맵 이동) 구분용
@@ -1554,6 +1555,7 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainHex = null;
         _unitCmdBox.Visible = u.Field.Owner == Player && !_advancing; // 적·재생 중엔 정보만
         _supplyReplenishmentButton.Visible = u.Field.Owner == Player && u.IsSupply && !_advancing;
+        _supplyFollowButton.Visible = u.Field.Owner == Player && u.IsSupply && !_advancing;
         _summonUnitButton.Visible = u.Field.Owner == Player && !u.IsSummon && !_advancing
             && _state.Treasures.Any(t => t.Faction == Player && (t.EquippedBy == u.VanguardId
                 || t.EquippedBy == u.AdjutantId) && t.EquippedBy is not null
@@ -5438,6 +5440,10 @@ public sealed partial class CampaignMapScene : Node3D
         replenish.Pressed += () => BeginSupplyReplenishmentTargeting(_selectedUnitId);
         _unitCmdBox.AddChild(replenish);
         _supplyReplenishmentButton = replenish;
+        _supplyFollowButton = Item("따라가기", accent: true);
+        _supplyFollowButton.TooltipText = "아군 전투부대를 지정해 1~2칸 뒤에서 따라갑니다. 이동·정지 명령으로 해제할 수 있습니다.";
+        _supplyFollowButton.Pressed += () => OpenSupplyFollowModal(_selectedUnitId);
+        _unitCmdBox.AddChild(_supplyFollowButton);
         _summonUnitButton = Item("소환", accent: true);
         _summonUnitButton.TooltipText = "장착한 신수 아이템으로 인접 지점에 소환수를 부릅니다.";
         _summonUnitButton.Pressed += OpenSummonModal;
@@ -5492,6 +5498,66 @@ public sealed partial class CampaignMapScene : Node3D
             && Mathf.Abs(enemyActualHeight - enemyHeight) < 1f && rangeAndRingOk;
         GD.Print($"[unit-menu-qa] passed={passed} friendlyHeight={friendlyHeight} enemyHeight={enemyHeight} enemyActualHeight={enemyActualHeight} rangeAndRing={rangeAndRingOk} buttons={string.Join(',', buttons)}");
         GetTree().Quit(passed ? 0 : 1);
+    }
+
+    private void OpenSupplyFollowModal(int unitId)
+    {
+        if (_advancing) return;
+        var supply = _state.Armies.FirstOrDefault(unit => unit.Id.Value == unitId && unit.Field.Owner == Player && unit.IsSupply);
+        if (supply is null) return;
+        var targets = _state.Armies.Where(unit => unit.Field.Owner == Player && unit.Pool.Active > 0
+            && !unit.IsSupply && !unit.IsTransport && !unit.IsWaitingDeployment)
+            .OrderBy(unit => supply.Field.Position.Distance(unit.Field.Position)).ThenBy(unit => unit.Id.Value).ToList();
+        if (targets.Count == 0) { ShowNotice("따라가기", "따라갈 아군 야전 전투부대가 없습니다."); return; }
+        CloseModal();
+        var layer = new CanvasLayer { Layer = 35 };
+        AddChild(layer);
+        _modalLayer = layer;
+        var backdrop = new ColorRect { Color = new Color(0, 0, 0, 0.56f), MouseFilter = Control.MouseFilterEnum.Stop };
+        backdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        backdrop.GuiInput += e => { if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) CloseModal(); };
+        layer.AddChild(backdrop);
+        var center = new CenterContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        layer.AddChild(center);
+        var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Stop, CustomMinimumSize = new Vector2(480, 0) };
+        panel.SetMeta("modal_root", true);
+        panel.AddThemeStyleboxOverride("panel", Frame(Ink, Gold, 2, 10, 14));
+        center.AddChild(panel);
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 8);
+        panel.AddChild(box);
+        var header = new HBoxContainer();
+        box.AddChild(header);
+        var title = MakeLabel("보급부대 따라가기", 19, GoldBright);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        header.AddChild(title);
+        var close = MakeButton("✕");
+        close.CustomMinimumSize = new Vector2(34, 30);
+        close.Pressed += CloseModal;
+        header.AddChild(close);
+        box.AddChild(MakeLabel("전투부대 1개를 선택합니다. 보급부대는 1~2칸 뒤에서 따라갑니다.", 13, Parchment));
+        box.AddChild(GoldRule());
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(450, Mathf.Min(420, 40 * targets.Count)),
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        box.AddChild(scroll);
+        var rows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        scroll.AddChild(rows);
+        foreach (var target in targets)
+        {
+            var selected = target;
+            var button = MakeButton($"{TroopName(target.TroopCode)} · 병력 {target.Pool.Active:N0} · 거리 {supply.Field.Position.Distance(target.Field.Position)}칸");
+            button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            button.Pressed += () =>
+            {
+                var result = SupplyFollowService.Assign(_state, supply.Id, selected.Id);
+                if (!result.Ok) { ShowNotice("따라가기 실패", result.Error ?? "대상을 선택할 수 없습니다."); return; }
+                _state = result.State;
+                CloseModal();
+                Redraw("보급부대가 아군 전투부대를 따라갑니다.");
+            };
+            rows.AddChild(button);
+        }
     }
 
     private void OpenFieldConstructionModal(int unitId)

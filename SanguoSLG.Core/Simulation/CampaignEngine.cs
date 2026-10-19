@@ -215,6 +215,8 @@ public sealed class CampaignEngine
             // 편성 당시 캐시한 적성 배수를 그대로 두면 장기 원정 중에는 성장 효과가
             // 전혀 적용되지 않으므로, 하루 조각을 계산하기 전에 선봉의 현재 적성으로 갱신한다.
             armies = RefreshAptitudePercents(armies, work);
+            armies = SupplyFollowService.PlanDay(armies, _field.CanEnter, work.Cities, work.Buildings,
+                new FactionId(1)).ToList();
 
             var productionUnits = ProductionCombatUnits(work);
             var productionUnitIds = productionUnits.Select(u => u.Id).ToHashSet();

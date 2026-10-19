@@ -25,7 +25,8 @@ public sealed record FieldUnit(
     RenewalMovement.ContinuousPosition? ContinuousTarget = null,
     IReadOnlyList<RenewalMovement.ContinuousPosition>? ContinuousWaypoints = null,
     UnitId? AssignedUnitTarget = null,
-    RenewalMovement.RenewalTargetId? PursuitTarget = null)
+    RenewalMovement.RenewalTargetId? PursuitTarget = null,
+    UnitId? FollowUnitId = null)
 {
     public FieldUnit MoveTo(HexCoord position) => this with { Position = position };
 }
