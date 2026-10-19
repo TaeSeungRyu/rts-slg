@@ -74,4 +74,7 @@ public enum CommandKind
 
     /// <summary>특정 적 도시에 대한 선전 포고 — 즉시 기록되며 해당 도시 점령 시 소진.</summary>
     DeclareWar,
+
+    /// <summary>장수를 같은 세력의 다른 성·항구로 행정 이동한다.</summary>
+    TransferGeneral,
 }

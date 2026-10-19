@@ -127,6 +127,11 @@ public sealed class CommandService
             return RecruitHero(state, city, req);
         }
 
+        if (req.Kind == CommandKind.TransferGeneral)
+        {
+            return IssueTransferGeneral(state, city, main, req);
+        }
+
         General? assist = null;
         if (req.Assist is { } assistId)
         {
@@ -915,6 +920,34 @@ public sealed class CommandService
         }
 
         return Register(state, city, req, assist, req.Value, _b.CommandDays, CommandKind.SetTaxRate, "");
+    }
+
+    private static CommandResult IssueTransferGeneral(GameState state, City city, General main, CommandRequest req)
+    {
+        if (req.Assist is not null || req.TargetCity is not { } destinationId)
+            return CommandResult.Fail("이동할 목적지 성·항구를 선택해야 한다.", state);
+        var destination = state.Cities.FirstOrDefault(c => c.Id == destinationId);
+        if (destination is null || destination.Owner != city.Owner || destination.Id == city.Id)
+            return CommandResult.Fail("같은 세력의 다른 성·항구만 목적지로 선택할 수 있다.", state);
+        if (state.Factions.Any(f => f.Id == city.Owner && f.Ruler == main.Id))
+            return CommandResult.Fail("군주는 장수이동 대상에서 제외된다.", state);
+        if (state.IsGeneralBusy(main.Id))
+            return CommandResult.Fail("다른 업무 또는 출전 중인 장수는 이동할 수 없다.", state);
+        if (PostingError(state, main.Id, city) is { } postingError)
+            return CommandResult.Fail(postingError, state);
+
+        var days = System.Math.Max(1, (city.Position.Distance(destination.Position) + 1) / 2);
+        var postings = state.Assignments.Select(p => p.General == main.Id ? p with { Location = null } : p).ToList();
+        var cities = state.Cities.Select(c => c.Id == city.Id
+            ? c with
+            {
+                Governor = c.Governor == main.Id ? null : c.Governor,
+                Strategist = c.Strategist == main.Id ? null : c.Strategist,
+            }
+            : c).ToList();
+        var moving = (state with { Postings = postings, Cities = cities }).ReleaseOfficerDuties(main.Id);
+        return Register(moving, req, null, 0, days, CommandKind.TransferGeneral, "",
+            targetCity: destinationId);
     }
 
     private static CommandResult Register(GameState state, City reservedCity, CommandRequest req, General? assist,
