@@ -29,7 +29,7 @@ public static class AiOffensePatternService
             .ToDictionary(group => group.Key, group => group.Sum(g => g.Troops));
         int Count(TroopClass kind) => available.GetValueOrDefault(kind);
         var armyGroupPool = Count(TroopClass.Infantry) + Count(TroopClass.Archer) + Count(TroopClass.Siege);
-        if (assessment.DefenderTroops >= 50_000 && state.Garrisons.Where(g => g.City == origin.Id)
+        if (assessment.DefenderTroops >= 50_000 && state.Garrisons.Where(g => g.City == origin.Id && !g.Trainee)
                 .Sum(g => g.Troops) >= 50_000 && armyGroupPool >= 30_000 && freeGenerals >= 4)
             return new(AiOffensePattern.ArmyGroupSiege, true, "집단군 공성 후보");
 
