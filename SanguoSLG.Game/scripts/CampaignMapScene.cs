@@ -482,6 +482,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("탐색", CommandKind.Explore, ""),
         ("계략 연구", CommandKind.Research, "stratagem_research"),
         ("해고", CommandKind.RecruitHero, "dismiss"),
+        ("장수이동", CommandKind.TransferGeneral, "transfer"),
     };
 
     private static readonly (string Label, string Code)[] Facilities =
@@ -511,7 +512,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("외교", new[] { 13, 14, 15 }),
         ("임명", new[] { 16, 17 }),
         ("담당자", new[] { 18, 19, 20, 21 }),
-        ("인재", new[] { 22, 25 }),
+        ("인재", new[] { 22, 25, 26 }),
         ("탐색", new[] { 23 }),
     };
 
@@ -4213,6 +4214,7 @@ public sealed partial class CampaignMapScene : Node3D
                 WorldEventKind.AptitudeGrowth => ($"[숙련] {gName}의 {(System.Enum.TryParse<TroopClass>(we.Code, out var aptitudeClass) ? ClassName(aptitudeClass) : we.Code)} 적성이 {GradeText((AptitudeGrade)we.Amount)}로 상승했습니다!", GoldBright),
                 WorldEventKind.EventUnitAppeared => ($"[신수] {cName} 주변에 {TroopName(we.Code)}가 출현했습니다. 체력 {we.Amount:N0} · 사냥 또는 회피를 선택하세요.", GoldBright),
                 WorldEventKind.EventUnitDefeated => ($"[사냥] {TroopName(we.Code)} 처치! 선봉·부관 경험치 +{we.Amount}, 병종 숙련 +{we.ExtraAmount} · 보상을 선택하세요.", GoldBright),
+                WorldEventKind.GeneralTransfer => ($"[인재] {gName} 장수가 {cName}에 도착했습니다.", GoldBright),
                 _ => ("", Parchment),
             };
             if (text.Length > 0)
@@ -6747,7 +6749,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "general")
         {
-            box.AddChild(MakeLabel("세력 전체에 적용되는 7개 분야를 Lv.10까지 연구합니다. 전투교리와 병행할 수 있습니다.", 15, Parchment));
+            box.AddChild(MakeLabel("세력 전체에 적용되는 8개 분야를 Lv.10까지 연구합니다. 전투교리와 병행할 수 있습니다.", 15, Parchment));
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "stratagem_research")
         {
@@ -6805,6 +6807,12 @@ public sealed partial class CampaignMapScene : Node3D
         if (cmd.Param == "dismiss")
         {
             BuildDismissGeneralCards(box, cityData);
+            return;
+        }
+
+        if (cmd.Param == "transfer")
+        {
+            BuildGeneralTransferCards(box, cityData);
             return;
         }
 
@@ -13493,6 +13501,76 @@ public sealed partial class CampaignMapScene : Node3D
         RenderPage();
     }
 
+    private void BuildGeneralTransferCards(VBoxContainer box, City city)
+    {
+        box.AddChild(MakeLabel("장수를 같은 세력의 다른 성·항구로 보냅니다. 이동 중에는 다른 업무를 맡을 수 없습니다.", 14, Parchment));
+        var destinations = _state.Cities.Where(c => c.Owner == city.Owner && c.Id != city.Id)
+            .OrderBy(c => c.Name).ToList();
+        if (destinations.Count == 0)
+        {
+            box.AddChild(MakeLabel("이동할 다른 성·항구가 없습니다.", 15, Parchment));
+            return;
+        }
+        var destinationPicker = new OptionButton { CustomMinimumSize = new Vector2(0, 42) };
+        foreach (var destination in destinations)
+        {
+            var days = Math.Max(1, (city.Position.Distance(destination.Position) + 1) / 2);
+            destinationPicker.AddItem($"{destination.Name} · 예상 {days}일", destination.Id.Value);
+        }
+        destinationPicker.Select(0);
+        box.AddChild(destinationPicker);
+        var ruler = _state.Factions.FirstOrDefault(f => f.Id == city.Owner)?.Ruler;
+        var officers = _state.GeneralsAt(city.Id)
+            .Select(id => _state.Generals.FirstOrDefault(g => g.Id == id))
+            .Where(g => g is not null && g.Id != ruler && !_state.IsGeneralBusy(g.Id))
+            .OrderBy(g => g!.Name).ToList();
+        if (officers.Count == 0)
+        {
+            box.AddChild(MakeLabel("현재 이동할 수 있는 장수가 없습니다.", 15, Parchment));
+            return;
+        }
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 320) };
+        box.AddChild(scroll);
+        var list = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        scroll.AddChild(list);
+        foreach (var general in officers)
+        {
+            var officer = general!;
+            var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 54) };
+            row.AddThemeConstantOverride("separation", 12);
+            list.AddChild(row);
+            row.AddChild(new TextureRect { Texture = CircularPortraitFor(officer.Id),
+                CustomMinimumSize = new Vector2(48, 48),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize });
+            var role = city.Governor == officer.Id ? "태수" : city.Strategist == officer.Id ? "군사" : "대기";
+            var label = MakeLabel($"{officer.Name}  ·  {role}", 16, Parchment);
+            label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            row.AddChild(label);
+            var move = MakeButton("이동");
+            row.AddChild(move);
+            move.Pressed += () =>
+            {
+                var targetId = new CityId(destinationPicker.GetSelectedId());
+                var destination = _state.Cities.FirstOrDefault(c => c.Id == targetId);
+                if (destination is null) { ShowNotice("장수이동 불가", "목적지가 사라졌습니다."); return; }
+                var days = Math.Max(1, (city.Position.Distance(destination.Position) + 1) / 2);
+                var release = role == "대기" ? "" : $"\n현재 {role} 직책은 출발 시 해제됩니다.";
+                ShowOfficerConfirm("장수이동", $"{officer.Name}을(를) {destination.Name}(으)로 보냅니다.\n예상 소요일 {days}일.{release}",
+                    officer.Id, () =>
+                    {
+                        var result = _commander.Issue(_state, new CommandRequest(city.Id,
+                            CommandKind.TransferGeneral, officer.Id, TargetCity: targetId));
+                        if (!result.Ok) { ShowNotice("장수이동 불가", result.Error ?? "이동할 수 없습니다."); return; }
+                        _state = result.State;
+                        CloseModal();
+                        Report($"[인재] {officer.Name}이(가) {destination.Name}(으)로 이동 중입니다 ({days}일).", GoldBright);
+                        Redraw($"{officer.Name} 장수이동");
+                    }, $"{destination.Name}(으)로 이동하겠습니다.");
+            };
+        }
+    }
+
     private void BuildDismissGeneralCards(VBoxContainer box, City city)
     {
         box.AddChild(MakeLabel("해고한 장수는 14~35일간 모습을 감춘 뒤 다른 세력에 합류합니다. 군주와 수행 중인 장수는 해고할 수 없습니다.", 14, Parchment));
@@ -16270,6 +16348,7 @@ public sealed partial class CampaignMapScene : Node3D
         CommandKind.AppointTrainingOfficer => "훈련 담당",
         CommandKind.Enlist => "등용",
         CommandKind.RecruitHero => "위인 영입",
+        CommandKind.TransferGeneral => "장수이동",
         CommandKind.Explore => "탐색",
         _ => k.ToString(),
     };
