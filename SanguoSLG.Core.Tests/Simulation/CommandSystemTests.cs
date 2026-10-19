@@ -109,6 +109,28 @@ public class CommandSystemTests
         Assert.Equal("아직 영입할 수 없는 위인이다.", result.Error);
     }
 
+    [Fact]
+    public void 도시형_위인은_해금되어도_위인영입으로_얻을수없다()
+    {
+        var city = Town(1, gold: 2000);
+        var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Region,
+            HomeCities: [city.Id], RecruitGold: 900, RecruitPointCost: 100);
+        var state = State([city], [Pol(1, 80), Pol(6, 95)]) with
+        {
+            HeroUnlockDefinitions = [hero],
+            HeroUnlockStates = [new HeroUnlockState(hero.General, HeroUnlockStatus.Unlocked, city.Owner)],
+            RecruitmentPoints = [new(city.Owner, 100)],
+        };
+
+        var result = Service().Issue(state, new CommandRequest(city.Id, CommandKind.RecruitHero,
+            new GeneralId(1), TargetGeneral: hero.General));
+
+        Assert.False(result.Ok);
+        Assert.Contains("세력형 위인", result.Error);
+        Assert.Equal(2000, result.State.Cities.Single().Gold);
+        Assert.Null(result.State.PostingOf(hero.General));
+    }
+
     [Theory]
     [InlineData(99, 2000, "영입 포인트")]
     [InlineData(100, 899, "900금")]

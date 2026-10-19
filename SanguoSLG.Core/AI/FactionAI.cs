@@ -376,7 +376,8 @@ public sealed class FactionAI
             .ToList())
         {
             var hero = state.HeroUnlocks.FirstOrDefault(h => h.General == heroState.General);
-            if (hero is null || !hero.AiCanRecruit)
+            if (hero is null || hero.Type != HeroUnlockType.Faction
+                || hero.Faction != faction || !hero.AiCanRecruit)
             {
                 continue;
             }

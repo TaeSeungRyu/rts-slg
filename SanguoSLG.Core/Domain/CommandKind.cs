@@ -60,7 +60,7 @@ public enum CommandKind
     /// <summary>등용 — 정찰된 적 성 장수·출전중 적 장수를 정치 확률로 영입. 거리 비례 소요일.</summary>
     Enlist,
 
-    /// <summary>위인 영입 — 해금된 세력형/도시형/유랑 위인을 금을 내고 즉시 도시로 합류시킨다.</summary>
+    /// <summary>위인 영입 — 현재 세력의 미영입 세력형 위인을 포인트와 금을 내고 도시로 합류시킨다.</summary>
     RecruitHero,
 
     /// <summary>탐색 — 인재를 제외한 신수·고대유물·지방호족·소문/단서를 찾는다. 7일.</summary>

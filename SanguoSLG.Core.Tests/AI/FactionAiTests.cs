@@ -83,7 +83,8 @@ public class FactionAiTests
     [Fact]
     public void 해금된_AI_위인은_금을_내고_자동_영입한다()
     {
-        var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Region,
+        var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Faction,
+            Faction: new FactionId(1),
             RecruitGold: 900, RecruitPointCost: 100);
         var s = new GameState(1, 1,
             new List<Faction> { new(new FactionId(1), "위", new GeneralId(1), 1000, "#2d5fd0") },

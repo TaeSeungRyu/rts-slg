@@ -117,7 +117,7 @@ public class WallResearchTests
     }
 
     [Fact]
-    public void 발행_성벽연구도_동시1개_연구제한에_걸린다()
+    public void 성벽강화와_전투교리는_서로다른_장수로_병행한다()
     {
         var s = new GameState(1, 1, new List<Faction>(),
             new List<City> { Town(1, CastleSize.Medium, workshop: true, wall: 1200) },
@@ -125,11 +125,28 @@ public class WallResearchTests
 
         var first = Service().Issue(s, Req());
         Assert.True(first.Ok);
-        // 성벽 연구 진행 중 병종 연구를 다른 장수로 발행 → 거부(공통 슬롯).
         var second = Service().Issue(first.State,
             new CommandRequest(new CityId(1), CommandKind.Research, new GeneralId(2), TroopCode: "swordsman"));
-        Assert.False(second.Ok);
-        Assert.Contains("하나의 연구", second.Error);
+        Assert.True(second.Ok, second.Error);
+        Assert.Equal(2, second.State.Commands.Count);
+    }
+
+    [Fact]
+    public void 성벽강화는_같은도시에서만_중복을_막는다()
+    {
+        var firstCity = Town(1, CastleSize.Medium, workshop: true, wall: 1200);
+        var secondCity = Town(2, CastleSize.Small, workshop: false, wall: 600);
+        var state = new GameState(1, 1, [], [firstCity, secondCity],
+            [Wit(1), Wit(2), Wit(3)]);
+        var first = Service().Issue(state, Req());
+        Assert.True(first.Ok, first.Error);
+
+        var duplicate = Service().Issue(first.State, Req() with { Main = new GeneralId(2) });
+        Assert.False(duplicate.Ok);
+        var otherCity = Service().Issue(first.State,
+            Req() with { City = secondCity.Id, Main = new GeneralId(3) });
+        Assert.True(otherCity.Ok, otherCity.Error);
+        Assert.Equal(2, otherCity.State.Commands.Count);
     }
 
     private static CommandRequest Req()

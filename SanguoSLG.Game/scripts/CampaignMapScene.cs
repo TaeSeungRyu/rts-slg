@@ -6149,19 +6149,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
             else if (busy)
             {
-                if (Cmds[i].Kind == CommandKind.Research && Cmds[i].Param == "wall" && selectedCity is not null)
-                {
-                    var running = _state.Commands.FirstOrDefault(command => command.Kind == CommandKind.Research
-                        && _state.Cities.FirstOrDefault(city => city.Id == command.City)?.Owner == selectedCity.Owner
-                        && FactionResearch.LaneOf(command.TroopCode) == ResearchLane.Combat);
-                    if (running is not null && running.TroopCode != FactionResearch.WallCode)
-                    {
-                        btn.Text = "성벽 강화 (전투 연구 대기)";
-                        btn.TooltipText = "성벽 강화와 전투교리는 같은 연구선을 사용합니다. 진행 중인 전투 연구가 끝난 뒤 실행할 수 있습니다.";
-                    }
-                    else btn.Text = Cmds[i].Label + " (진행중)";
-                }
-                else btn.Text = Cmds[i].Label + " (진행중)";
+                btn.Text = Cmds[i].Label + " (진행중)";
                 btn.Disabled = true;
             }
             else if (wallFull)
@@ -6208,10 +6196,13 @@ public sealed partial class CampaignMapScene : Node3D
         {
             "general" => ResearchLane.General,
             "stratagem_research" => ResearchLane.Stratagem,
+            "wall" => ResearchLane.Wall,
             _ => ResearchLane.Combat,
         };
         return _state.Commands.Any(c => c.Kind == CommandKind.Research
-            && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == city.Owner
+            && (lane == ResearchLane.Wall
+                ? c.City == city.Id
+                : _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == city.Owner)
             && FactionResearch.LaneOf(c.TroopCode) == lane);
     }
 
@@ -13419,14 +13410,18 @@ public sealed partial class CampaignMapScene : Node3D
         const int pageSize = 4;
         _state = new HeroUnlockService().Evaluate(_state);
         var states = _state.HeroUnlocks
+            .Where(h => h.Type == HeroUnlockType.Faction && h.Faction == city.Owner)
+            .Where(h => _state.PostingOf(h.General) is null)
             .Select(h => (_state.HeroStates.FirstOrDefault(s => s.General == h.General)
                 ?? new HeroUnlockState(h.General, HeroUnlockStatus.Locked), h))
+            .Where(x => x.Item1.Status is not (HeroUnlockStatus.Recruited or HeroUnlockStatus.Wanderer
+                or HeroUnlockStatus.Excluded))
             .OrderBy(x => x.Item1.CanRecruit && x.Item1.EligibleFaction == city.Owner ? 0 : 1)
             .ThenBy(x => x.h.General.Value)
             .ToList();
         if (states.Count == 0)
         {
-            box.AddChild(MakeLabel("위인 해금 데이터가 없습니다.", 15, Parchment));
+            box.AddChild(MakeLabel("영입 가능한 세력형 위인이 없습니다.", 15, Parchment));
             return;
         }
 
@@ -17387,8 +17382,8 @@ public sealed partial class CampaignMapScene : Node3D
         _state = _state with { PendingCommands = originalState.Commands.Append(runningGeneral with
             { TroopCode = _troops[0].Code }).ToList() };
         ToggleGroup(wallGroupIndex);
-        var wallWaitsForCombat = _cmdSubList.GetChildren().OfType<Button>()
-            .Any(button => button.Text == "성벽 강화 (전투 연구 대기)" && button.Disabled);
+        var wallIndependentOfCombat = _cmdSubList.GetChildren().OfType<Button>()
+            .Any(button => button.Text == "성벽 강화" && !button.Disabled);
         CloseGroupMenu();
         _state = originalState;
 
@@ -17466,7 +17461,7 @@ public sealed partial class CampaignMapScene : Node3D
             .OfType<TextureRect>().Any(texture => texture.Texture is not null) == true;
         FadeOutModal(_confirmLayer);
         _confirmLayer = null;
-        var ok = submenuOk && allGroupsOk && generalBusyOk && wallWaitsForCombat && layoutOk
+        var ok = submenuOk && allGroupsOk && generalBusyOk && wallIndependentOfCombat && layoutOk
             && _optionCards.Count == GeneralResearchRules.Definitions.Count
             && _researchFundingRatios.Count == ownedCityCount
             && fundingLayoutOk
@@ -18082,15 +18077,24 @@ public sealed partial class CampaignMapScene : Node3D
         var next = host.FindChild("HeroRecruitNext", true, false) as Button;
         var pageLabel = host.FindChild("HeroRecruitPageLabel", true, false) as Label;
         var firstPageCards = (host.FindChild("HeroRecruitGrid", true, false) as GridContainer)?.GetChildCount() ?? 0;
-        var firstPageOk = previous?.Disabled == true && next?.Disabled == false
-            && pageLabel?.Text.StartsWith("1 / 2", StringComparison.Ordinal) == true && firstPageCards == 4;
-        next?.EmitSignal(Button.SignalName.Pressed);
-        var secondPageCards = (host.FindChild("HeroRecruitGrid", true, false) as GridContainer)?.GetChildCount() ?? 0;
-        var secondPageOk = previous?.Disabled == false && next?.Disabled == true
-            && pageLabel?.Text.StartsWith("2 / 2", StringComparison.Ordinal) == true && secondPageCards == 2;
-        var passed = city is not null && hasPointCost && hasPointGuide && noLegacyConditions && shortageVisible
-            && firstPageOk && secondPageOk;
-        GD.Print($"[maptestherorecruitqa] passed={passed} city={city?.Name ?? "-"} pointCost={hasPointCost} guide={hasPointGuide} legacy={noLegacyConditions} shortage={shortageVisible} firstPage={firstPageOk} secondPage={secondPageOk}");
+        var eligible = city is null ? [] : _state.HeroUnlocks
+            .Where(hero => hero.Type == HeroUnlockType.Faction && hero.Faction == city.Owner
+                && _state.PostingOf(hero.General) is null
+                && _state.HeroStates.FirstOrDefault(status => status.General == hero.General)?.Status
+                    is not (HeroUnlockStatus.Recruited or HeroUnlockStatus.Wanderer or HeroUnlockStatus.Excluded))
+            .ToList();
+        var cardNames = host.FindChildren("*", "Label", true, false).OfType<Label>()
+            .Select(label => label.Text).Where(text => text.Contains("세력형 위인", StringComparison.Ordinal)).ToList();
+        var firstPageOk = firstPageCards == Math.Min(4, eligible.Count)
+            && previous?.Disabled == true
+            && pageLabel?.Text.StartsWith("1 / ", StringComparison.Ordinal) == true;
+        var emptyStateOk = eligible.Count != 0 || labels.Any(text =>
+            text.Contains("영입 가능한 세력형 위인이 없습니다.", StringComparison.Ordinal));
+        var passed = city is not null && noLegacyConditions && emptyStateOk
+            && (eligible.Count == 0 || hasPointGuide && hasPointCost && firstPageOk
+                && cardNames.Count == firstPageCards);
+        GD.Print($"[maptestherorecruitqa] passed={passed} city={city?.Name ?? "-"} "
+            + $"eligible={eligible.Count} cards={firstPageCards} factionOnly={eligible.Count == 0 || cardNames.Count == firstPageCards}");
         host.QueueFree();
         GetTree().Quit(passed ? 0 : 1);
     }

@@ -5,6 +5,7 @@ public enum ResearchLane
     Combat,
     General,
     Stratagem,
+    Wall,
 }
 
 /// <summary>
@@ -14,7 +15,7 @@ public enum ResearchLane
 /// </summary>
 public sealed record FactionResearch(FactionId Faction, string TroopCode, int Level)
 {
-    /// <summary>성벽 연구 트랙의 예약 코드(병종 코드와 겹치지 않음) — 세력 단위 성벽 최대값 5단계.</summary>
+    /// <summary>도시별 성벽 강화의 예약 코드(병종 코드와 겹치지 않음).</summary>
     public const string WallCode = "__wall__";
 
     public const string CommandTroopsCode = "__command_troops__";
@@ -60,7 +61,8 @@ public sealed record FactionResearch(FactionId Faction, string TroopCode, int Le
 
     public static bool IsStratagemResearch(string code) => StratagemResearchCodes.Contains(code);
 
-    public static ResearchLane LaneOf(string code) => IsGeneralResearch(code)
+    public static ResearchLane LaneOf(string code) => code == WallCode
+        ? ResearchLane.Wall : IsGeneralResearch(code)
         ? ResearchLane.General
         : IsStratagemResearch(code) ? ResearchLane.Stratagem : ResearchLane.Combat;
 }

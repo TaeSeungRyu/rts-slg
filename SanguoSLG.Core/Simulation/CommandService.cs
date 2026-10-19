@@ -220,6 +220,11 @@ public sealed class CommandService
             return CommandResult.Fail("위인 해금 정의를 찾을 수 없다.", state);
         }
 
+        if (hero.Type != HeroUnlockType.Faction || hero.Faction != city.Owner)
+        {
+            return CommandResult.Fail("위인 영입은 해당 세력의 세력형 위인만 가능하다.", state);
+        }
+
         var heroState = state.HeroStates.FirstOrDefault(s => s.General == generalId);
         if (heroState is null || !heroState.CanRecruit)
         {
@@ -569,13 +574,16 @@ public sealed class CommandService
         var isStratagemResearch = FactionResearch.IsStratagemResearch(req.TroopCode);
         var researchLane = FactionResearch.LaneOf(req.TroopCode);
         if (state.Commands.Any(c => c.Kind == CommandKind.Research
-            && state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == faction
+            && (researchLane == ResearchLane.Wall
+                ? c.City == city.Id
+                : state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == faction)
             && FactionResearch.LaneOf(c.TroopCode) == researchLane))
         {
             var laneName = researchLane switch
             {
                 ResearchLane.General => "일반연구",
                 ResearchLane.Stratagem => "계략 연구",
+                ResearchLane.Wall => "이 도시의 성벽 강화",
                 _ => "전투 연구",
             };
             return CommandResult.Fail($"세력은 {laneName} 연구선에서 한 번에 하나의 연구만 진행할 수 있다.", state);
