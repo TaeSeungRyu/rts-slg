@@ -25,6 +25,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
     private readonly int _resupplyRadius;
     private readonly TrainingConfig _training;
     private readonly int _navalProvisionsPercent;
+    private readonly int _supplyConservationPercent;
     private readonly IRandomSource _random;
     private readonly int _climateAttackPercent;
     private GameState? _campaign;
@@ -50,7 +51,8 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
         int reinforcePercent = 20,
         int navalProvisionsPercent = 20,
         IRandomSource? random = null,
-        int climateAttackPercent = 80)
+        int climateAttackPercent = 80,
+        int supplyConservationPercent = 70)
     {
         _movement = movement;
         _combat = combat;
@@ -62,6 +64,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
         _training = training ?? new TrainingConfig();
         _reinforcePercent = reinforcePercent;
         _navalProvisionsPercent = System.Math.Clamp(navalProvisionsPercent, 0, 100);
+        _supplyConservationPercent = System.Math.Clamp(supplyConservationPercent, 0, 100);
         _random = random ?? new SeededRandomSource(0);
         _climateAttackPercent = climateAttackPercent;
     }
@@ -249,8 +252,14 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
                     && definitions[building.DefinitionCode].Kind == FieldBuildingKind.Fort
                     && building.Position.Distance(u.Field.Position) <= definitions[building.DefinitionCode].EffectRadius)
                 ? 60 : 100;
+            var supplyPercent = state.Values.Any(supply => supply.IsSupply && supply.Pool.Active > 0
+                    && !supply.IsWaitingDeployment && !constructionUnits.Contains(supply.Id)
+                    && supply.Field.Owner == u.Field.Owner
+                    && supply.Field.Position.Distance(u.Field.Position) <= _resupplyRadius)
+                ? _supplyConservationPercent : 100;
+            var logisticsPercent = fortPercent * supplyPercent / 100;
             var scaledConsumption = (long)u.Pool.Active * _provisionsPer10kPerDay * elapsedProvisionDays
-                * u.ProvisionsUpkeepPercent * navalPercent * fortPercent
+                * u.ProvisionsUpkeepPercent * navalPercent * logisticsPercent
                 + u.ProvisionsConsumptionRemainder;
             var eaten = (int)(scaledConsumption / 10_000_000_000L);
             var remainder = scaledConsumption % 10_000_000_000L;

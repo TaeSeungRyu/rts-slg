@@ -582,7 +582,8 @@ public sealed partial class CampaignMapScene : Node3D
         var legacyField = new AdvanceOrchestrator(movement,
             new CombatPhaseResolver(new BattleResolver(60), 70),
             navalProvisionsPercent: scenario.Balance.NavalProvisionsPercent,
-            climateAttackPercent: scenario.Balance.ClimateAttackPercent);
+            climateAttackPercent: scenario.Balance.ClimateAttackPercent,
+            supplyConservationPercent: scenario.Balance.SupplyConservationPercent);
         var movementTrace = new Dictionary<UnitId, (RenewalTargetId? Target, RenewalStopReason Reason)>();
         IFieldAdvanceRunner field = args.Contains("--legacy-movement")
             ? legacyField
@@ -12886,8 +12887,12 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (!unit.TracksProvisions || unit.Pool.Active <= 0) return 0;
         var navalPercent = unit.Class == TroopClass.Naval ? _balance.NavalProvisionsPercent : 100;
-        var daily = (long)unit.Pool.Active * _provPer10kPerDay
-            * unit.ProvisionsUpkeepPercent * navalPercent / 100_000_000L;
+        var inSupplyRange = _state.Armies.Any(supply => supply.IsSupply && supply.Pool.Active > 0
+            && !supply.IsWaitingDeployment && supply.Field.Owner == unit.Field.Owner
+            && supply.Field.Position.Distance(unit.Field.Position) <= AdvanceOrchestrator.DefaultResupplyRadius);
+        var supplyPercent = inSupplyRange ? _balance.SupplyConservationPercent : 100;
+        var daily = (double)unit.Pool.Active * _provPer10kPerDay
+            * unit.ProvisionsUpkeepPercent * navalPercent * supplyPercent / 10_000_000_000d;
         return daily <= 0 ? 0 : (int)(unit.Provisions / daily);
     }
 

@@ -33,6 +33,7 @@
   "vision_castle_large": 5,
   "vision_supply": 2,
   "naval_provisions_percent": 20,
+  "supply_conservation_percent": 70,
   "climate_patch_chance_percent": 12,
   "climate_max_patches": 2,
   "climate_move_every_days": 2,

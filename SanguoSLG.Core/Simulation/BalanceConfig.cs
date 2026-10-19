@@ -59,7 +59,8 @@ public sealed record BalanceConfig(
     int ClimateMinDurationDays = 3,
     int ClimateMaxDurationDays = 6,
     int ClimateRainSnowSpeedPercent = 70,
-    int ClimateAttackPercent = 80)
+    int ClimateAttackPercent = 80,
+    int SupplyConservationPercent = 70)
 {
     /// <summary>월별 시장 시세 배수(%). 9·10월(추수) 최저, 겨울 최고. 미지정 시 기본 계절 곡선.</summary>
     public int SeasonalPercent(int month)

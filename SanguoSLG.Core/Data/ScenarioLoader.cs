@@ -76,7 +76,8 @@ public sealed class ScenarioLoader
             ClimateMinDurationDays: balanceDto.ClimateMinDurationDays,
             ClimateMaxDurationDays: balanceDto.ClimateMaxDurationDays,
             ClimateRainSnowSpeedPercent: balanceDto.ClimateRainSnowSpeedPercent,
-            ClimateAttackPercent: balanceDto.ClimateAttackPercent);
+            ClimateAttackPercent: balanceDto.ClimateAttackPercent,
+            SupplyConservationPercent: balanceDto.SupplyConservationPercent);
 
         var cities = Deserialize<List<CityDto>>(citiesJson, "cities")
             .Select(d =>

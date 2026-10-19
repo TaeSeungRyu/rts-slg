@@ -1,6 +1,6 @@
 # Phase 21 — AI 공세·생산·보급·외교 판단
 
-> 상태: 설계안. 이 문서의 신규 규칙은 아직 구현되지 않았다. [v2 로드맵의 Phase 21](plan-v2-implementation-roadmap.md#phase-21-v2-ai-조정)에 연결된다.
+> 상태: 단계별 구현 중. 21-1 보급 범위 내 군량 소비 절감은 구현했다. 나머지 AI 판단은 계획 상태다. [v2 로드맵의 Phase 21](plan-v2-implementation-roadmap.md#phase-21-v2-ai-조정)에 연결된다.
 
 ## 1. 확정 요청과 현재 구현의 경계
 

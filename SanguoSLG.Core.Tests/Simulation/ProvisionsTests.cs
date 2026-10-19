@@ -111,10 +111,10 @@ public class ProvisionsTests
     public void 보급부대는_반경내_저군량_아군을_이동보다먼저_하루치_보충한다()
     {
         // 보충은 소모(7일치=70)보다 선행 — 보급부대가 있으면 하루치(+10) 더 남는다.
-        // 차이 10 = 하루치 보충(진행당 1일치, design-unit-state).
+        // 하루치 자동 지급 10에 더해 7일 소비 70→49로 21을 절감한다.
         var with = AllyProvisionsAfter(withSupply: true, new HexCoord(1, 0), allyProvisions: 200);
         var without = AllyProvisionsAfter(withSupply: false, new HexCoord(1, 0), allyProvisions: 200);
-        Assert.Equal(10, with - without);
+        Assert.Equal(31, with - without);
     }
 
     [Fact]
@@ -129,10 +129,27 @@ public class ProvisionsTests
     [Fact]
     public void 보급부대_최대치_아군은_보충하지않는다()
     {
-        // 이미 최대(300)면 보충 없음 → 있으나 없으나 동일(소모만).
+        // 이미 최대(300)면 보충은 없지만 군량 소비 30% 절감은 적용된다.
         var with = AllyProvisionsAfter(withSupply: true, new HexCoord(1, 0), allyProvisions: 300);
         var without = AllyProvisionsAfter(withSupply: false, new HexCoord(1, 0), allyProvisions: 300);
-        Assert.Equal(with, without);
+        Assert.Equal(21, with - without);
+    }
+
+    [Fact]
+    public void 보급부대는_재고와_무관하게_자신과_반경3칸_아군의_소모를_30퍼센트_줄인다()
+    {
+        var supply = Supply(1, new HexCoord(0, 0), provisions: 100);
+        var near = March(2, new HexCoord(3, 0), new HexCoord(3, 0), provisions: 300);
+        var far = March(3, new HexCoord(4, 0), new HexCoord(4, 0), provisions: 300);
+        var enemy = March(4, new HexCoord(1, 0), new HexCoord(1, 0), provisions: 300) with
+        {
+            Field = March(4, new HexCoord(1, 0), new HexCoord(1, 0)).Field with { Owner = new FactionId(2) },
+        };
+        var result = Orchestrator().Run([supply, near, far, enemy]).Units.ToDictionary(u => u.Id.Value);
+        Assert.Equal(51, result[1].Provisions);
+        Assert.Equal(251, result[2].Provisions);
+        Assert.Equal(230, result[3].Provisions);
+        Assert.Equal(230, result[4].Provisions);
     }
 
     [Fact]
