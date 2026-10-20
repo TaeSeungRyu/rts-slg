@@ -171,7 +171,9 @@ public sealed partial class CampaignMapScene
                     .Select(o => o with { Position = _animationProductionPositions.GetValueOrDefault(o.Id, o.Position) }).ToList(),
             };
         }
-        var visible = _vision.VisibleTiles(display, Player, _map);
+        var visible = _aiTestFixture is null
+            ? _vision.VisibleTiles(display, Player, _map)
+            : _map.Tiles().ToHashSet();
         var changed = !_visibleTiles.SetEquals(visible);
         _visibleTiles = visible;
         UpdateClimateVisibility();
