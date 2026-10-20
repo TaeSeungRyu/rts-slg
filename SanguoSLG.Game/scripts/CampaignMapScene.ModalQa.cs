@@ -566,10 +566,12 @@ public sealed partial class CampaignMapScene
             .Where(x => x.command.Kind is SanguoSLG.Core.Domain.CommandKind.Explore
                 or SanguoSLG.Core.Domain.CommandKind.FormAlliance
                 or SanguoSLG.Core.Domain.CommandKind.AppointSecurityOfficer
-                or SanguoSLG.Core.Domain.CommandKind.AppointDomesticOfficer)
+                or SanguoSLG.Core.Domain.CommandKind.AppointDomesticOfficer
+                or SanguoSLG.Core.Domain.CommandKind.AppointGovernor
+                or SanguoSLG.Core.Domain.CommandKind.AppointStrategist)
             .Select(x => x.index)
             .ToList();
-        if (city is null || commandIndices.Count != 4)
+        if (city is null || commandIndices.Count != 6)
         {
             GD.PrintErr("[officer-table-qa] passed=False reason=missing-city-or-command");
             GetTree().Quit(1);
@@ -590,7 +592,9 @@ public sealed partial class CampaignMapScene
                 or SanguoSLG.Core.Domain.CommandKind.FormAlliance
                 or SanguoSLG.Core.Domain.CommandKind.BreakAlliance;
             var fillsBottom = Cmds[commandIndex].Kind is SanguoSLG.Core.Domain.CommandKind.AppointSecurityOfficer
-                or SanguoSLG.Core.Domain.CommandKind.AppointDomesticOfficer;
+                or SanguoSLG.Core.Domain.CommandKind.AppointDomesticOfficer
+                or SanguoSLG.Core.Domain.CommandKind.AppointGovernor
+                or SanguoSLG.Core.Domain.CommandKind.AppointStrategist;
             var expectedHeight = showAllRows ? 48 + rows * 46 : Mathf.Min(48 + rows * 46, 330);
             var modalScroll = _modalLayer?.FindChild("ModalBodyScroll", true, false) as ScrollContainer;
             var bottomGap = table is not null && modalScroll is not null

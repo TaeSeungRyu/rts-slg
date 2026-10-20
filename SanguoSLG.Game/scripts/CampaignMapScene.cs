@@ -14684,7 +14684,8 @@ public sealed partial class CampaignMapScene : Node3D
         const int scrollableOfficerTableHeight = 330;
         var isTrainingOfficer = cmd.Kind == CommandKind.AppointTrainingOfficer;
         var fillsModalBottom = cmd.Kind is CommandKind.AppointSecurityOfficer
-            or CommandKind.AppointDomesticOfficer or CommandKind.AppointTrainingOfficer;
+            or CommandKind.AppointDomesticOfficer or CommandKind.AppointTrainingOfficer
+            or CommandKind.AppointGovernor or CommandKind.AppointStrategist;
         var officerTableHeight = fillsModalBottom ? 220f : scrollableOfficerTableHeight;
         var showAllOfficerRows = free.Count <= compactOfficerRowLimit
             || cmd.Kind is CommandKind.Explore or CommandKind.FormAlliance or CommandKind.BreakAlliance or CommandKind.DeclareWar;
@@ -14714,7 +14715,7 @@ public sealed partial class CampaignMapScene : Node3D
         tree.SetMeta("passes_wheel_at_boundary", !showAllOfficerRows);
         tree.SetMeta("wheel_scroll_priority", "down_modal_then_table_up_table_then_modal");
         tree.SetMeta("explicit_internal_wheel_scroll", !showAllOfficerRows);
-        tree.SetMeta("officer_table_fill_ratio", isTrainingOfficer ? 0.9f : 0f);
+        tree.SetMeta("officer_table_fill_ratio", fillsModalBottom ? 0.9f : 0f);
         tree.SetMeta("fills_modal_bottom", fillsModalBottom);
         if (!showAllOfficerRows)
         {
