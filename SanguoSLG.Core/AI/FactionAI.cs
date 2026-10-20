@@ -47,7 +47,7 @@ public sealed class FactionAI
         {
             var free = state.GeneralsAt(city.Id)
                 .Where(g => !state.IsGeneralBusy(g))
-                .OrderBy(g => g.Value)
+                .OrderBy(g => IsDutyOfficer(state, g)).ThenBy(g => g.Value)
                 .ToList();
             if (free.Count == 0)
             {
@@ -164,6 +164,10 @@ public sealed class FactionAI
         return state;
     }
 
+    private static bool IsDutyOfficer(GameState state, GeneralId id)
+        => state.Cities.Any(city => city.SecurityOfficer == id || city.DomesticOfficer == id
+            || city.RecruitmentOfficer == id || city.TrainingOfficer == id);
+
     // 탐색은 공세·연구가 장수를 예약한 뒤, 방어 여력과 금 예비가 남는 성에서만 수행한다.
     private GameState PlanExploration(GameState state, FactionId faction)
     {
@@ -179,7 +183,8 @@ public sealed class FactionAI
             var free = state.GeneralsAt(city.Id)
                 .Where(id => !state.IsGeneralBusy(id))
                 .Select(id => state.Generals.First(g => g.Id == id))
-                .OrderByDescending(g => g.Intellect).ThenBy(g => g.Id.Value).ToList();
+                .OrderBy(g => IsDutyOfficer(state, g.Id))
+                .ThenByDescending(g => g.Intellect).ThenBy(g => g.Id.Value).ToList();
             if (free.Count <= _config.KeepGeneralsHome)
                 continue;
 
@@ -275,7 +280,8 @@ public sealed class FactionAI
                 Officers = state.GeneralsAt(c.Id)
                     .Where(g => !state.IsGeneralBusy(g))
                     .Select(id => state.Generals.First(g => g.Id == id))
-                    .OrderByDescending(g => g.Intellect)
+                    .OrderBy(g => IsDutyOfficer(state, g.Id))
+                    .ThenByDescending(g => g.Intellect)
                     .ThenBy(g => g.Id.Value)
                     .ToList(),
             })
@@ -330,7 +336,8 @@ public sealed class FactionAI
                 Officers = state.GeneralsAt(city.Id)
                     .Where(id => !state.IsGeneralBusy(id))
                     .Select(id => state.Generals.First(general => general.Id == id))
-                    .OrderByDescending(general => general.Intellect)
+                    .OrderBy(general => IsDutyOfficer(state, general.Id))
+                    .ThenByDescending(general => general.Intellect)
                     .ThenBy(general => general.Id.Value)
                     .ToList(),
             })
@@ -368,7 +375,8 @@ public sealed class FactionAI
             var free = state.GeneralsAt(city.Id)
                 .Where(g => !state.IsGeneralBusy(g))
                 .Select(id => state.Generals.First(g => g.Id == id))
-                .OrderByDescending(ArmyGroupAptitude)
+                .OrderBy(g => IsDutyOfficer(state, g.Id))
+                .ThenByDescending(ArmyGroupAptitude)
                 .ThenByDescending(g => g.Might)
                 .ThenBy(g => g.Id.Value)
                 .ToList();
@@ -435,7 +443,8 @@ public sealed class FactionAI
             var free = state.GeneralsAt(city.Id)
                 .Where(g => !state.IsGeneralBusy(g))
                 .Select(id => state.Generals.First(g => g.Id == id))
-                .OrderByDescending(g => g.AptitudeFor(TroopClass.Supply))
+                .OrderBy(g => IsDutyOfficer(state, g.Id))
+                .ThenByDescending(g => g.AptitudeFor(TroopClass.Supply))
                 .ThenBy(g => g.Id.Value)
                 .ToList();
             if (free.Count <= _config.KeepGeneralsHome)

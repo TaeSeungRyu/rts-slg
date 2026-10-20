@@ -127,6 +127,26 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI는_여유장수가_있으면_담당자를_탐색에_차출하지_않는다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0)) with
+        {
+            SecurityOfficer = new GeneralId(1), DomesticOfficer = new GeneralId(2),
+            RecruitmentOfficer = new GeneralId(3), AutoRecruitTroopCode = "swordsman",
+            AutoRecruitTroopCodes = "swordsman"
+        };
+        var state = new GameState(1, 190, [], [city],
+            [Gen(1) with { Intellect = 95 }, Gen(2) with { Intellect = 90 },
+                Gen(3) with { Intellect = 85 }, Gen(4) with { Intellect = 60 }],
+            Postings: [At(1, 1, 1), At(2, 1, 1), At(3, 1, 1), At(4, 1, 1)]);
+
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue, GeneralResearchReserveGold: -1))
+            .PlanWeek(state, new FactionId(1));
+        Assert.Equal(new GeneralId(4), Assert.Single(after.Commands, c => c.Kind == CommandKind.Explore).Main);
+        Assert.Equal(new GeneralId(1), Assert.Single(after.Cities).SecurityOfficer);
+    }
+
+    [Fact]
     public void 해금된_AI_위인은_금을_내고_자동_영입한다()
     {
         var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Faction,
