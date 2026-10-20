@@ -419,6 +419,8 @@ public sealed class CampaignEngine
 
                 // 성 반격으로 전멸한 공성 부대의 장수도 같은 귀환 규칙을 적용한다.
                 var siegeCities = result.Cities.ToList();
+                // 수성측 부상병을 먼저 반영해야 이후 괴멸한 공격측 부상병 귀환이 덮어써지지 않는다.
+                work = work with { CityWoundedForces = result.CityWounded };
                 if (result.Exchanges.Count > 0)
                 {
                     var siegeParticipantIds = result.Exchanges.SelectMany(e => e.Besiegers).ToHashSet();
@@ -440,7 +442,7 @@ public sealed class CampaignEngine
 
                 armies = result.Armies.Where(u => u.Pool.Active > 0).ToList();
                 var attackedCities = result.Exchanges.Select(e => e.City).ToHashSet();
-                work = work with { Cities = siegeCities, GarrisonForces = result.Garrisons, CityWoundedForces = result.CityWounded };
+                work = work with { Cities = siegeCities, GarrisonForces = result.Garrisons };
                 work = UpdateDefenseCharges(work, siegeState, attackedCities, activeChargeDays);
                 work = RecoverCityWounded(work, attackedCities);
                 // 어느 진행 조각의 공성인지 스탬프 — 표현 계층의 재생 타이밍용.

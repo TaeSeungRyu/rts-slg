@@ -145,8 +145,10 @@ public class FieldCasualtiesTests
         Assert.Null(s1.PostingOf(new GeneralId(1))); // 배속 해제 = 재야
     }
 
-    [Fact]
-    public void 캠페인_교전전멸이_장수판정으로_이어진다()
+    [Theory]
+    [InlineData(1, 2)]
+    [InlineData(2, 1)]
+    public void 캠페인_교전전멸이_양측_장수와_부상병_귀환으로_이어진다(int weakFaction, int strongFaction)
     {
         // 병력 1 부대가 적 대군에 한 주 안에 전멸 → 선봉이 반드시 아군 도시로 귀환한다.
         var movement = new MovementSimulator(new PassabilityMap(new HexMap(0, 20, -5, 5), [], []));
@@ -164,12 +166,13 @@ public class FieldCasualtiesTests
                 TroopCode: "swordsman", VanguardId: vanguard is { } v ? new GeneralId(v) : null);
         }
 
-        var weak = Army(1, owner: 1, new HexCoord(5, 0), troops: 100, vanguard: 1);
-        var strong = Army(2, owner: 2, new HexCoord(6, 0), troops: 10000, vanguard: null);
+        var weak = Army(1, owner: weakFaction, new HexCoord(5, 0), troops: 100, vanguard: 1)
+            with { OriginCity = new CityId(1) };
+        var strong = Army(2, owner: strongFaction, new HexCoord(6, 0), troops: 10000, vanguard: null);
         var state = new GameState(1, 1, new List<Faction>(),
-            new List<City> { Town(1, 1, new HexCoord(0, 0)) },
+            new List<City> { Town(1, weakFaction, new HexCoord(0, 0)) },
             new List<General> { Gen(1) },
-            Postings: new List<GeneralPosting> { new(new GeneralId(1), new FactionId(1), Location: null) },
+            Postings: new List<GeneralPosting> { new(new GeneralId(1), new FactionId(weakFaction), Location: null) },
             FieldArmies: new List<CombatUnit> { weak, strong });
 
         var after = engine.AdvanceWeek(state, out _, out _, out _, out _, out var casualties);

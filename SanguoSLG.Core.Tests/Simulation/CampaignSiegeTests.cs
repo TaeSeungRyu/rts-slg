@@ -96,6 +96,30 @@ public class CampaignSiegeTests
     private static City Town(int id, int owner, HexCoord pos, int wall, CastleSize size = CastleSize.Medium) =>
         new(new CityId(id), $"c{id}", pos, new FactionId(owner), 0, size, Wall: wall);
 
+    [Theory]
+    [InlineData(1, 2)]
+    [InlineData(2, 1)]
+    public void 공성반격에_괴멸한_양측_부상병은_출발성으로_귀환한다(int attackerFaction, int defenderFaction)
+    {
+        var home = Town(1, attackerFaction, new HexCoord(0, 0), 1000);
+        var target = Town(9, defenderFaction, new HexCoord(5, 0), 6000);
+        var attacker = Army(1, attackerFaction, new HexCoord(4, 0), target.Position, troops: 100) with
+        {
+            OriginCity = home.Id,
+            Field = Army(1, attackerFaction, new HexCoord(4, 0), target.Position, troops: 100).Field
+                with { Speed = 0 },
+        };
+        var state = new GameState(1, 190, [], [home, target], [],
+            GarrisonForces: [new GarrisonForce(target.Id, "swordsman", 10000, 60)],
+            FieldArmies: [attacker]);
+
+        var after = Engine().AdvanceWeek(state, out _, out var sieges);
+
+        Assert.NotEmpty(sieges);
+        Assert.DoesNotContain(after.Armies, unit => unit.Id == attacker.Id);
+        Assert.True(after.CityWounded.Where(w => w.City == home.Id).Sum(w => w.Troops) > 0);
+    }
+
     [Fact]
     public void 야생_용도_적성의_성벽을_공격한다()
     {
