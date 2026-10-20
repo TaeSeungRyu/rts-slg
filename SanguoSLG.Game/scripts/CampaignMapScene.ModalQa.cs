@@ -595,6 +595,9 @@ public sealed partial class CampaignMapScene
                 or SanguoSLG.Core.Domain.CommandKind.AppointDomesticOfficer
                 or SanguoSLG.Core.Domain.CommandKind.AppointGovernor
                 or SanguoSLG.Core.Domain.CommandKind.AppointStrategist;
+            var appointmentGrid = Cmds[commandIndex].Kind is not (SanguoSLG.Core.Domain.CommandKind.AppointGovernor
+                or SanguoSLG.Core.Domain.CommandKind.AppointStrategist)
+                || table?.GetMeta("appointment_grid_lines").AsBool() == true;
             var expectedHeight = showAllRows ? 48 + rows * 46 : Mathf.Min(48 + rows * 46, 330);
             var modalScroll = _modalLayer?.FindChild("ModalBodyScroll", true, false) as ScrollContainer;
             var bottomGap = table is not null && modalScroll is not null
@@ -625,6 +628,7 @@ public sealed partial class CampaignMapScene
                 && table.CustomMinimumSize.Y >= expectedHeight
                 && bottomFillOk
                 && portraitLayout
+                && appointmentGrid
                 && !hasObsoleteHints;
             passed &= ok;
             results.Add($"{Cmds[commandIndex].Label}:{rows}:{table?.CustomMinimumSize.Y ?? 0}:하단{bottomGap:0}:금테두리{goldRing}:초상{portraitLayout}:안내문구{!hasObsoleteHints}:{ok}");
