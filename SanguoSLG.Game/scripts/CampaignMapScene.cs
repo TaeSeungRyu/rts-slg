@@ -526,7 +526,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         _view = view;
         _camera = camera;
-        _camera.InputBlocked = IsModalBlockingMapNavigation;
+        _camera.InputBlocked = () => IsModalBlockingMapNavigation() || _armyDragCandidateId >= 0;
         _dataDirectory = dataDirectory;
         _storyDefinitions = new GeneralStoryLoader().LoadFromDirectory(dataDirectory);
         _font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
@@ -765,6 +765,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestcityofficergridqa")) CallDeferred(nameof(RunCityOfficerGridQa));
         if (args.Contains("--maptestgeneraltransferuiqa")) CallDeferred(nameof(RunGeneralTransferUiQa));
         if (args.Contains("--maptestgeneraltransferresultqa")) CallDeferred(nameof(RunGeneralTransferResultQa));
+        if (args.Contains("--maptestarmydragqa")) CallDeferred(nameof(RunArmyDragQa));
         if (args.Contains("--maptestcitycommandlabelsqa")) CallDeferred(nameof(RunCityCommandLabelsQa));
         if (args.Contains("--maptestgeneralstoryqa")) CallDeferred(nameof(RunGeneralStoryQa));
         if (args.Contains("--maptestclimateqa")) CallDeferred(nameof(RunClimateQa));
@@ -1282,6 +1283,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 마우스 오버: 밑 타일에 호버 육각.
         if (@event is InputEventMouseMotion motion)
         {
+            if (UpdateArmyDrag(motion.Position)) return;
             if (_generalTransferTargeting)
             {
                 _hover.Visible = false;
@@ -1351,6 +1353,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
         {
+            if (_armyDragCandidateId >= 0) { CancelArmyDrag(); return; }
             if (_generalTransferTargeting) { StopGeneralTransferTargeting(true); return; }
             if (_stratMapTargeting) { FinishStratagemMapTargeting(true); return; }
             if (_summonTargetingUnitId >= 0) { StopSummonTargeting(); return; }
@@ -1390,6 +1393,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 우클릭: 목표 지정/시설 배치 취소.
         if (mb.ButtonIndex == MouseButton.Right && mb.Pressed)
         {
+            if (_armyDragCandidateId >= 0) { CancelArmyDrag(); return; }
             if (_generalTransferTargeting) { StopGeneralTransferTargeting(true); return; }
             if (_stratMapTargeting) { FinishStratagemMapTargeting(true); return; }
             if (_summonTargetingUnitId >= 0) { StopSummonTargeting(); return; }
@@ -1431,11 +1435,13 @@ public sealed partial class CampaignMapScene : Node3D
         {
             _leftDownPos = mb.Position;
             _leftDown = true;
+            BeginArmyDragCandidate(mb.Position);
             return;
         }
 
         if (!_leftDown) { return; }
         _leftDown = false;
+        if (FinishArmyDrag(mb.Position)) return;
         if ((mb.Position - _leftDownPos).Length() >= 6f) { return; } // 드래그 = 카메라 팬(선택 아님)
 
         if (_stratMapTargeting) { SelectStratagemMapTarget(mb.Position); return; }
