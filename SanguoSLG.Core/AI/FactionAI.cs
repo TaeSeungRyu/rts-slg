@@ -27,9 +27,6 @@ public sealed class FactionAI
     /// <summary>이 세력의 한 주 명령·출전을 반영한 새 상태를 반환한다.</summary>
     public GameState PlanWeek(GameState state, FactionId faction)
     {
-        state = state with { PendingCommands = state.Commands.Where(command =>
-            command.Kind != CommandKind.Explore
-            || state.Cities.FirstOrDefault(city => city.Id == command.City)?.Owner != faction).ToList() };
         var existingArmyIds = state.Armies.Select(unit => unit.Id).ToHashSet();
         state = state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && unit.AiOpeningAttack && !unit.IsWaitingDeployment
@@ -77,10 +74,37 @@ public sealed class FactionAI
             }
         }
 
+        state = PlanExploration(state, faction);
         return state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && !existingArmyIds.Contains(unit.Id)
                 && unit.Field.Mode == UnitMode.Attack
                 ? unit with { AiOpeningAttack = true } : unit).ToList() };
+    }
+
+    // 탐색은 공세·연구가 장수를 예약한 뒤, 방어 여력과 금 예비가 남는 성에서만 수행한다.
+    private GameState PlanExploration(GameState state, FactionId faction)
+    {
+        foreach (var city in state.Cities.Where(c => c.Owner == faction && !c.IsPort)
+                     .OrderBy(c => c.Id.Value))
+        {
+            if (city.Gold < _config.ExplorationReserveGold
+                || state.Commands.Any(c => c.City == city.Id && c.Kind == CommandKind.Explore)
+                || state.Cities.Where(c => state.AreHostile(faction, c.Owner))
+                    .Any(enemy => enemy.Position.Distance(city.Position) <= _config.ExplorationSafeDistance))
+                continue;
+
+            var free = state.GeneralsAt(city.Id)
+                .Where(id => !state.IsGeneralBusy(id))
+                .Select(id => state.Generals.First(g => g.Id == id))
+                .OrderByDescending(g => g.Intellect).ThenBy(g => g.Id.Value).ToList();
+            if (free.Count <= _config.KeepGeneralsHome)
+                continue;
+
+            var result = _commands.Issue(state,
+                new CommandRequest(city.Id, CommandKind.Explore, free[0].Id));
+            if (result.Ok) state = result.State;
+        }
+        return state;
     }
 
     private static GameState TargetUnlockRuins(GameState state, FactionId faction)

@@ -24,4 +24,6 @@ public sealed record AiConfig(
     int ArmyGroupMinFreeGenerals = 4,
     int MinOre = 300,
     int KeepGeneralsHome = 1,
-    int GeneralResearchReserveGold = 3000);
+    int GeneralResearchReserveGold = 3000,
+    int ExplorationReserveGold = 1500,
+    int ExplorationSafeDistance = 4);

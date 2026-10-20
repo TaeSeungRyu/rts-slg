@@ -137,7 +137,7 @@ public class FactionAiTests
     }
 
     [Fact]
-    public void AI는_남는_장수가_있어도_여러주_동안_탐색을_발행하지_않는다()
+    public void AI는_안전한_성에_여유_장수가_있으면_탐색을_한번만_발행한다()
     {
         var s = new GameState(1, 1,
             new List<Faction> { new(new FactionId(1), "위", new GeneralId(1), 1000, "#2d5fd0") },
@@ -145,16 +145,14 @@ public class FactionAiTests
             new List<General> { Gen(1), Gen(2) },
             Postings: new List<GeneralPosting> { At(1, 1, 1), At(2, 1, 1) });
 
-        for (var week = 0; week < 4; week++)
-        {
-            s = Ai().PlanWeek(s with { Day = 1 + week * 7 }, new FactionId(1));
-            Assert.DoesNotContain(s.Commands, command => command.Kind == CommandKind.Explore);
-        }
-        Assert.False(s.IsGeneralBusy(new GeneralId(1)));
+        s = Ai().PlanWeek(s, new FactionId(1));
+        Assert.Equal(new GeneralId(1), Assert.Single(s.Commands, command => command.Kind == CommandKind.Explore).Main);
+        s = Ai().PlanWeek(s with { Day = 8 }, new FactionId(1));
+        Assert.Single(s.Commands, command => command.Kind == CommandKind.Explore);
     }
 
     [Fact]
-    public void AI의_기존_탐색은_취소하지만_플레이어_탐색은_유지한다()
+    public void AI의_기존_탐색과_플레이어_탐색을_모두_유지한다()
     {
         var state = new GameState(1, 190, [],
             [Town(1, 1, default), Town(2, 2, new(6, 0))], [Gen(1), Gen(2)],
@@ -167,9 +165,23 @@ public class FactionAiTests
 
         var after = Ai().PlanWeek(aiOrder.State, new(2));
 
-        Assert.Equal(new CityId(1), Assert.Single(after.Commands).City);
+        Assert.Equal(2, after.Commands.Count);
         Assert.True(after.IsGeneralBusy(new(1)));
-        Assert.False(after.IsGeneralBusy(new(2)));
+        Assert.True(after.IsGeneralBusy(new(2)));
+    }
+
+    [Fact]
+    public void AI는_적_성_근처나_금이_부족한_성에서는_탐색하지_않는다()
+    {
+        var state = new GameState(1, 1, [],
+            [Town(1, 1, new(0, 0)), Town(2, 1, new(12, 0)) with { Gold = 500 },
+             Town(3, 2, new(2, 0))],
+            [Gen(1), Gen(2), Gen(3), Gen(4)],
+            Postings: [At(1, 1, 1), At(2, 1, 1), At(3, 1, 2), At(4, 1, 2)]);
+
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(state, new(1));
+
+        Assert.DoesNotContain(after.Commands, c => c.Kind == CommandKind.Explore);
     }
 
     [Fact]
