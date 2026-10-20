@@ -127,6 +127,8 @@ public sealed partial class CampaignMapScene
             }
         }
         var aiActs = false;
+        var aiCombatDeploys = 0;
+        var aiSupplyDeploys = 0;
         if (mapReady && threeFactions && generalsValid)
         {
             var planned = _state;
@@ -134,16 +136,23 @@ public sealed partial class CampaignMapScene
                 planned = _ai.PlanWeek(planned, faction.Id);
             aiActs = planned.Armies.Count > _state.Armies.Count
                 || planned.Commands.Count > _state.Commands.Count;
+            aiCombatDeploys = planned.Armies.Count(u => u.Field.Owner != Player && !u.IsSupply);
+            aiSupplyDeploys = planned.Armies.Count(u => u.Field.Owner != Player && u.IsSupply);
         }
         var fullVision = _aiTestFixture is not null && _visibleTiles.SetEquals(_map.Tiles());
         var fullIntel = _aiTestFixture is not null && _state.Factions.All(faction =>
             _state.Cities.Where(city => city.Owner != faction.Id)
                 .All(city => _state.IsScouted(faction.Id, city.Id)));
-        var passed = mapReady && threeFactions && generalsValid && casesValid && aiActs && fullVision && fullIntel;
+        var offenseValid = _selectedAiTestCase != AiTestCase.PlayerHalf
+            || aiCombatDeploys >= 2 && aiSupplyDeploys >= 1;
+        var passed = mapReady && threeFactions && generalsValid && casesValid && aiActs
+            && fullVision && fullIntel && offenseValid;
         GD.Print($"[aitestfixtureqa] passed={passed} map={_map.Count}/{baselineMap.Count} "
             + $"factions={_state.Factions.Count} cities={_state.Cities.Count} "
             + $"ports={_state.Cities.Count(c => c.IsPort)} generalsValid={generalsValid} "
-            + $"case={_selectedAiTestCase} casesValid={casesValid} aiActs={aiActs} fullVision={fullVision} fullIntel={fullIntel}");
+            + $"case={_selectedAiTestCase} casesValid={casesValid} aiActs={aiActs} "
+            + $"combat={aiCombatDeploys} supply={aiSupplyDeploys} offenseValid={offenseValid} "
+            + $"fullVision={fullVision} fullIntel={fullIntel}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }

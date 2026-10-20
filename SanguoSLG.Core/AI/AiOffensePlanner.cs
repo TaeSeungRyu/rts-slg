@@ -24,7 +24,7 @@ public sealed class AiOffensePlanner
         foreach (var origin in state.Cities.Where(c => c.Owner == faction && !c.IsPort)
             .OrderBy(c => c.Id.Value))
         {
-            var targets = state.Cities.Where(c => state.AreHostile(faction, c.Owner)
+            var targets = state.Cities.Where(c => !c.IsPort && state.AreHostile(faction, c.Owner)
                     && c.Position.Distance(origin.Position) <= 15)
                 .OrderBy(c => c.Position.Distance(origin.Position)).ThenBy(c => c.Id.Value);
             foreach (var target in targets)
@@ -158,7 +158,7 @@ public sealed class AiOffensePlanner
         if (support.Count == 0) return null;
         foreach (var line in support)
         {
-            while (combatIds.Count < maxCombat - 1 && available - used >= 2000
+            while (combatIds.Count < maxCombat && available - used >= 2000
                 && free.Count > _config.KeepGeneralsHome + (pattern == AiOffensePattern.CavalrySiege
                     && origin.Position.Distance(target.Position) < 15 ? 0 : 1))
             {
@@ -215,10 +215,19 @@ public sealed class AiOffensePlanner
     private bool PassesSiegeTrial(GameState original, GameState staged, City target,
         IReadOnlyList<UnitId> combatIds)
     {
-        var position = target.Position.Neighbors().First();
+        var footprint = CastleFootprint.TilesFor(target).ToList();
+        HexCoord SiegePosition(int range) => footprint
+            .SelectMany(tile => tile.Neighbors().SelectMany(neighbor => neighbor.Neighbors()))
+            .Distinct().Where(tile => footprint.Min(cityTile => cityTile.Distance(tile)) == range)
+            .OrderBy(tile => tile.Distance(staged.Cities.First(c => c.Id == staged.Armies
+                .First(u => combatIds.Contains(u.Id)).OriginCity).Position))
+            .ThenBy(tile => tile.Q).ThenBy(tile => tile.R).First();
+        var near = SiegePosition(1);
+        var far = SiegePosition(2);
         var attackers = staged.Armies.Where(u => combatIds.Contains(u.Id))
             .Select(u => u with { AwaitingEgress = false,
-                Field = u.Field with { Position = position, Mode = UnitMode.Attack } }).ToList();
+                Field = u.Field with { Position = u.Field.RangeCastle >= 2 ? far : near,
+                    Mode = UnitMode.Attack } }).ToList();
         var siege = new CampaignSiege(new BattleResolver(60), _deployer.Troops.Values.ToList());
         var cities = new List<City> { target };
         var garrisons = original.Garrisons.Where(g => g.City == target.Id).ToList();

@@ -130,4 +130,29 @@ public class AiOffensePlannerTests
         Assert.Contains(after.Armies, u => u.Class == TroopClass.Cavalry);
         Assert.DoesNotContain(after.Armies, u => u.IsSupply);
     }
+
+    [Fact]
+    public void AiTest_절반_수비대_상대로_공세_묶음을_편성한다()
+    {
+        var state = Scenario(80000, 40000, siege: 10000, officers: 8, distance: 11);
+        state = state with
+        {
+            Cities = state.Cities.Select(c => c.Id == new CityId(2)
+                ? c with { Wall = 1200 } : c).ToList(),
+            GarrisonForces =
+            [
+                new(new CityId(1), "swordsman", 50000, 60),
+                new(new CityId(1), "archer", 20000, 60),
+                new(new CityId(1), "catapult", 10000, 60),
+                new(new CityId(2), "swordsman", 30000, 60),
+                new(new CityId(2), "archer", 10000, 60),
+            ],
+        };
+
+        var after = Planner().Plan(state, new FactionId(1));
+
+        Assert.True(after.Armies.Count >= 3);
+        Assert.Contains(after.Armies, u => u.Class == TroopClass.Siege);
+        Assert.Contains(after.Armies, u => u.IsSupply);
+    }
 }

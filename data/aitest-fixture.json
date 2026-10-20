@@ -25,13 +25,19 @@
   ],
   "postings": [
     { "general": 1, "faction": 1, "city": 101 }, { "general": 2, "faction": 1, "city": 101 },
-    { "general": 3, "faction": 1, "city": 101 }, { "general": 4, "faction": 1, "city": 102 },
+    { "general": 3, "faction": 1, "city": 101 }, { "general": 7, "faction": 1, "city": 101 },
+    { "general": 8, "faction": 1, "city": 101 }, { "general": 9, "faction": 1, "city": 101 },
+    { "general": 10, "faction": 1, "city": 101 }, { "general": 4, "faction": 1, "city": 102 },
     { "general": 5, "faction": 1, "city": 102 }, { "general": 6, "faction": 1, "city": 103 },
     { "general": 11, "faction": 2, "city": 201 }, { "general": 12, "faction": 2, "city": 201 },
-    { "general": 13, "faction": 2, "city": 201 }, { "general": 14, "faction": 2, "city": 202 },
+    { "general": 13, "faction": 2, "city": 201 }, { "general": 17, "faction": 2, "city": 201 },
+    { "general": 18, "faction": 2, "city": 201 }, { "general": 19, "faction": 2, "city": 201 },
+    { "general": 20, "faction": 2, "city": 201 }, { "general": 14, "faction": 2, "city": 202 },
     { "general": 15, "faction": 2, "city": 202 }, { "general": 16, "faction": 2, "city": 203 },
     { "general": 21, "faction": 3, "city": 301 }, { "general": 22, "faction": 3, "city": 301 },
-    { "general": 23, "faction": 3, "city": 301 }, { "general": 24, "faction": 3, "city": 302 },
+    { "general": 23, "faction": 3, "city": 301 }, { "general": 27, "faction": 3, "city": 301 },
+    { "general": 28, "faction": 3, "city": 301 }, { "general": 29, "faction": 3, "city": 301 },
+    { "general": 30, "faction": 3, "city": 301 }, { "general": 24, "faction": 3, "city": 302 },
     { "general": 25, "faction": 3, "city": 302 }, { "general": 26, "faction": 3, "city": 303 }
   ],
   "garrisons": [
