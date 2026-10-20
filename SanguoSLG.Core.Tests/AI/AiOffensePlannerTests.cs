@@ -33,6 +33,7 @@ public class AiOffensePlannerTests
             }, 80, 80, 80)).ToList();
         return new GameState(1, 190, [], [origin, target], generals,
             Postings: generals.Select(g => new GeneralPosting(g.Id, new FactionId(1), origin.Id)).ToList(),
+            ScoutedCities: [new CityIntel(new FactionId(1), target.Id)],
             GarrisonForces:
             [
                 new(origin.Id, "swordsman", own - siege, 60),

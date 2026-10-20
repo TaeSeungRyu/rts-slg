@@ -305,6 +305,30 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void 적성_정보가_없으면_병력을_훔쳐보지_않고_정찰부터_시작한다()
+    {
+        var origin = Town(1, 1, new HexCoord(0, 0)) with { Provisions = 30000 };
+        var target = Town(9, 2, new HexCoord(10, 0));
+        var state = new GameState(1, 190, [], [origin, target],
+            Enumerable.Range(1, 8).Select(Gen).ToList(),
+            Postings: Enumerable.Range(1, 8).Select(i => At(i, 1, 1)).ToList(),
+            GarrisonForces:
+            [
+                new(origin.Id, "swordsman", 70000, 60),
+                new(origin.Id, "catapult", 20000, 60),
+                new(target.Id, "swordsman", 20000, 60),
+            ]);
+
+        var after = Ai(new AiConfig(GeneralResearchReserveGold: -1,
+            ExplorationReserveGold: int.MaxValue)).PlanWeek(state, new FactionId(1));
+
+        Assert.Empty(after.Armies);
+        var scout = Assert.Single(after.Commands, c => c.Kind == CommandKind.CityStratagem);
+        Assert.Equal("scout", scout.Facility);
+        Assert.Equal(target.Id, scout.TargetCity);
+    }
+
+    [Fact]
     public void 출전_장수가_1명뿐이면_출전하지않고_수동모집도_하지않는다()
     {
         var s = new GameState(1, 1, new List<Faction>(),

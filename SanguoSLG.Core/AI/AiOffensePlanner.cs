@@ -25,6 +25,7 @@ public sealed class AiOffensePlanner
             .OrderBy(c => c.Id.Value))
         {
             var targets = state.Cities.Where(c => !c.IsPort && state.AreHostile(faction, c.Owner)
+                    && state.IsScouted(faction, c.Id)
                     && c.Position.Distance(origin.Position) <= 15)
                 .OrderBy(c => c.Position.Distance(origin.Position)).ThenBy(c => c.Id.Value);
             foreach (var target in targets)

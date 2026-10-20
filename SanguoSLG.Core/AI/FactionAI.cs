@@ -38,6 +38,7 @@ public sealed class FactionAI
         state = Retarget(state, faction);
         state = TargetUnlockRuins(state, faction);
         state = RecruitUnlockedHeroes(state, faction);
+        state = PlanOffenseScouting(state, faction);
         state = new AiOffensePlanner(_deployer, _config).Plan(state, faction);
         state = PlanGeneralResearch(state, faction);
         state = PlanStratagemResearch(state, faction);
@@ -81,6 +82,40 @@ public sealed class FactionAI
                 var result = _commands.Issue(state, new CommandRequest(city.Id, CommandKind.AppointStrategist, strategist.Id));
                 if (result.Ok) state = result.State;
             }
+        }
+        return state;
+    }
+
+    private GameState PlanOffenseScouting(GameState state, FactionId faction)
+    {
+        if (state.Commands.Any(command => command.Kind == CommandKind.CityStratagem
+            && command.Facility == "scout" && state.Cities.Any(city => city.Id == command.City
+                && city.Owner == faction)))
+            return state;
+
+        var options = from city in state.Cities
+            where city.Owner == faction && !city.IsPort
+                && state.Garrisons.Where(g => g.City == city.Id && !g.Trainee)
+                    .Sum(g => g.Troops) >= 30_000
+                && state.Garrisons.Any(g => g.City == city.Id && !g.Trainee
+                    && g.Troops >= 1000 && _deployer.Troops.TryGetValue(g.TroopCode, out var troop)
+                    && troop.Class == TroopClass.Siege)
+            from target in state.Cities
+            where !target.IsPort && state.AreHostile(faction, target.Owner)
+                && !state.IsScouted(faction, target.Id)
+                && city.Position.Distance(target.Position) <= 15
+            from officer in state.GeneralsAt(city.Id)
+            where !state.IsGeneralBusy(officer)
+            select new { City = city, Target = target,
+                Officer = state.Generals.First(g => g.Id == officer) };
+        foreach (var option in options.OrderBy(x => x.City.Position.Distance(x.Target.Position))
+            .ThenByDescending(x => x.Officer.Intellect)
+            .ThenBy(x => x.City.Id.Value).ThenBy(x => x.Target.Id.Value))
+        {
+            var result = _commands.Issue(state, new CommandRequest(option.City.Id,
+                CommandKind.CityStratagem, option.Officer.Id, Facility: "scout",
+                TargetCity: option.Target.Id));
+            if (result.Ok) return result.State;
         }
         return state;
     }
