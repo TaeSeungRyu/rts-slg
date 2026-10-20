@@ -66,6 +66,7 @@ public class WallRepairTests
         Assert.True(r.Ok, r.Error);
         Assert.Equal(5000 - 60, r.State.Cities.Single().Gold);
         Assert.Equal(300, r.State.Commands.Single().Amount); // 회복량
+        Assert.Equal(7, r.State.Commands.Single().CompletionDay - r.State.Day);
     }
 
     [Fact]
@@ -75,7 +76,7 @@ public class WallRepairTests
         var s = State(Town(1, wall: 600, gold: 5000));
 
         var issued = Service().Issue(s, Req());
-        var done = world.AdvanceDays(issued.State, B.RepairDays);
+        var done = world.AdvanceDays(issued.State, B.WallRepairDays);
 
         Assert.Equal(900, done.Cities.Single().Wall); // 600 + 300
         Assert.Empty(done.Commands);
@@ -110,6 +111,7 @@ public class WallRepairTests
         Assert.False(r.Ok);
         Assert.Contains("금", r.Error);
     }
+
 
     [Fact]
     public void 발행_성벽연구가_높으면_최대치가_커져_더_많이_수리한다()

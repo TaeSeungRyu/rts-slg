@@ -876,7 +876,7 @@ public sealed class CommandService
         }
 
         var reserved = city.AddGold(-cost);
-        return Register(state, reserved, req, assist, restore, _b.RepairDays, CommandKind.Repair, "", req.TroopCode);
+        return Register(state, reserved, req, assist, restore, _b.WallRepairDays, CommandKind.Repair, "", req.TroopCode);
     }
 
     private int FacilityRepairCost(int buildCost) => buildCost * _b.RepairCostPercent / 100;

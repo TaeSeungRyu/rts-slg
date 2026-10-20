@@ -15573,7 +15573,7 @@ public sealed partial class CampaignMapScene : Node3D
             var restore = System.Math.Min(maxWall - repairCity.Wall, maxWall * recovery / 100);
             extra = $"\n성벽 내구도 {repairCity.Wall:N0} → {repairCity.Wall + restore:N0} / {maxWall:N0}"
                 + $"\n수리량 +{restore:N0} · 비용 {restore / _cb.WallRepairGoldDivisor:N0}금"
-                + $"\n[소요 {_cb.RepairDays}일]";
+                + $"\n[소요 {_cb.WallRepairDays}일]";
         }
 
         if (cmd.Kind == CommandKind.AppointGovernor)

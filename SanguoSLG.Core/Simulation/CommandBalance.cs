@@ -122,6 +122,8 @@ public sealed record CommandBalance
     /// <summary>수리 명령 기간(일) — 시설·성벽 공통(design-administration "건물 수리").</summary>
     public int RepairDays { get; init; } = 15;
 
+    public int WallRepairDays { get; init; } = 7;
+
     /// <summary>성벽 수리 회복량(명령당 연구 최대치의 %).</summary>
     public int WallRepairPercent { get; init; } = 25;
 
