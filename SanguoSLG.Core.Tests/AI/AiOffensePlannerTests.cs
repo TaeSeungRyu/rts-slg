@@ -155,4 +155,49 @@ public class AiOffensePlannerTests
         Assert.Contains(after.Armies, u => u.Class == TroopClass.Siege);
         Assert.Contains(after.Armies, u => u.IsSupply);
     }
+
+    [Fact]
+    public void 두_성의_병력이_합쳐져야_공세가_가능하면_같은_목표로_일괄_출전한다()
+    {
+        var state = Scenario(30000, 20000, siege: 20000, officers: 8);
+        var secondary = new City(new CityId(3), "secondary", new HexCoord(-2, 2),
+            new FactionId(1), 20000, CastleSize.Small);
+        state = state with
+        {
+            Cities = state.Cities.Append(secondary).ToList(),
+            Postings = state.Assignments.Select(p => p.General.Value >= 4
+                ? p with { Location = secondary.Id } : p).ToList(),
+            GarrisonForces = state.Garrisons.Append(new GarrisonForce(secondary.Id,
+                "swordsman", 50000, 60)).ToList(),
+        };
+
+        var after = Planner().Plan(state, new FactionId(1));
+
+        Assert.Contains(after.Armies, u => !u.IsSupply && u.OriginCity == new CityId(1));
+        Assert.Contains(after.Armies, u => !u.IsSupply && u.OriginCity == secondary.Id);
+        Assert.Single(after.Armies, u => u.IsSupply);
+        Assert.All(after.Armies.Where(u => !u.IsSupply), u =>
+            Assert.Equal(new HexCoord(10, 0), u.Field.Target));
+    }
+
+    [Fact]
+    public void 합동_공세의_한_성에_군량이_없으면_양쪽_출전을_모두_취소한다()
+    {
+        var state = Scenario(30000, 20000, siege: 20000, officers: 8);
+        var secondary = new City(new CityId(3), "secondary", new HexCoord(-2, 2),
+            new FactionId(1), 0, CastleSize.Small);
+        state = state with
+        {
+            Cities = state.Cities.Append(secondary).ToList(),
+            Postings = state.Assignments.Select(p => p.General.Value >= 4
+                ? p with { Location = secondary.Id } : p).ToList(),
+            GarrisonForces = state.Garrisons.Append(new GarrisonForce(secondary.Id,
+                "swordsman", 50000, 60)).ToList(),
+        };
+
+        var after = Planner().Plan(state, new FactionId(1));
+
+        Assert.Empty(after.Armies);
+        Assert.Equal(state.Garrisons.Sum(g => g.Troops), after.Garrisons.Sum(g => g.Troops));
+    }
 }

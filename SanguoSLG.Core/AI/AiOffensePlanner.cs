@@ -32,33 +32,44 @@ public sealed class AiOffensePlanner
                 if (state.Armies.Any(u => u.Field.Owner == faction && u.Field.Target == target.Position
                     && !u.IsSupply && !u.IsTransport))
                     continue;
-                if (!AiOffensiveCandidateService.Evaluate(state, origin, target).PassesForceGate)
-                    continue;
-
                 var officers = state.GeneralsAt(origin.Id)
                     .Where(id => !state.IsGeneralBusy(id))
                     .Select(id => state.Generals.First(g => g.Id == id))
                     .OrderBy(g => g.Id.Value).ToList();
-                if (officers.Count <= _config.KeepGeneralsHome + 1)
-                    continue;
-
-                var preferred = AiOffensePatternService.Choose(state, origin, target,
-                    _deployer.Troops, officers.Count);
-                var patterns = preferred.Pattern switch
+                if (AiOffensiveCandidateService.Evaluate(state, origin, target).PassesForceGate
+                    && officers.Count > _config.KeepGeneralsHome + 1)
                 {
-                    AiOffensePattern.ArmyGroupSiege => new[] { AiOffensePattern.ArmyGroupSiege,
-                        AiOffensePattern.RegularSiege, AiOffensePattern.CavalrySiege },
-                    AiOffensePattern.CavalrySiege => new[] { AiOffensePattern.CavalrySiege,
-                        AiOffensePattern.RegularSiege },
-                    AiOffensePattern.RegularSiege => new[] { AiOffensePattern.RegularSiege },
-                    _ => [],
-                };
-                foreach (var pattern in patterns)
+                    var preferred = AiOffensePatternService.Choose(state, origin, target,
+                        _deployer.Troops, officers.Count);
+                    var patterns = preferred.Pattern switch
+                    {
+                        AiOffensePattern.ArmyGroupSiege => new[] { AiOffensePattern.ArmyGroupSiege,
+                            AiOffensePattern.RegularSiege, AiOffensePattern.CavalrySiege },
+                        AiOffensePattern.CavalrySiege => new[] { AiOffensePattern.CavalrySiege,
+                            AiOffensePattern.RegularSiege },
+                        AiOffensePattern.RegularSiege => new[] { AiOffensePattern.RegularSiege },
+                        _ => [],
+                    };
+                    foreach (var pattern in patterns)
+                    {
+                        var planned = TryBundle(state, origin, target, officers, pattern);
+                        if (planned is null) continue;
+                        state = planned;
+                        break;
+                    }
+                }
+                if (!state.Armies.Any(u => u.Field.Owner == faction && u.OriginCity == origin.Id
+                    && u.Field.Target == target.Position && !u.IsSupply))
                 {
-                    var planned = TryBundle(state, origin, target, officers, pattern);
-                    if (planned is null) continue;
-                    state = planned;
-                    break;
+                    foreach (var secondary in state.Cities.Where(c => c.Owner == faction && !c.IsPort
+                        && c.Id != origin.Id && c.Position.Distance(target.Position) <= 15)
+                        .OrderBy(c => c.Position.Distance(target.Position)).ThenBy(c => c.Id.Value))
+                    {
+                        var coalition = TryCoalition(state, origin, secondary, target);
+                        if (coalition is null) continue;
+                        state = coalition;
+                        break;
+                    }
                 }
                 // 한 출발 성에서 한 주에 하나의 공세만 시작한다.
                 if (state.Armies.Any(u => u.Field.Owner == faction && u.OriginCity == origin.Id
@@ -189,20 +200,127 @@ public sealed class AiOffensePlanner
                 : u).ToList() };
             used += 1000;
         }
-        if (used > available || !PassesProvisionBudget(scratch, origin, target, combatIds)
+        if (used > available || !PassesProvisionBudget(scratch, target, combatIds)
             || !PassesSiegeTrial(original, scratch, target, combatIds))
             return null;
         return scratch;
     }
 
-    private static bool PassesProvisionBudget(GameState staged, City origin, City target,
+    private GameState? TryCoalition(GameState original, City primary, City secondary, City target)
+    {
+        var primaryBudget = AiOffensiveCandidateService.Evaluate(original, primary, target,
+            requiredRatioPercent: 0).AvailableTroops;
+        var secondaryBudget = AiOffensiveCandidateService.Evaluate(original, secondary, target,
+            requiredRatioPercent: 0).AvailableTroops;
+        var defenders = original.Garrisons.Where(g => g.City == target.Id).Sum(g => g.Troops);
+        if (primaryBudget + secondaryBudget < Math.Ceiling(defenders * 1.20)
+            || primaryBudget < 2000 || secondaryBudget < 1000)
+            return null;
+
+        var primaryOfficers = original.GeneralsAt(primary.Id)
+            .Where(g => !original.IsGeneralBusy(g))
+            .Select(g => original.Generals.First(x => x.Id == g)).ToList();
+        var secondaryOfficers = original.GeneralsAt(secondary.Id)
+            .Where(g => !original.IsGeneralBusy(g))
+            .Select(g => original.Generals.First(x => x.Id == g)).ToList();
+        if (primaryOfficers.Count < _config.KeepGeneralsHome + 2
+            || secondaryOfficers.Count < _config.KeepGeneralsHome + 1)
+            return null;
+
+        var primaryLines = original.Garrisons.Where(g => g.City == primary.Id && !g.Trainee
+            && g.Troops > 0 && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
+            && _deployer.Troops.ContainsKey(g.TroopCode)).ToList();
+        var secondaryLines = original.Garrisons.Where(g => g.City == secondary.Id && !g.Trainee
+            && g.Troops > 0 && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
+            && _deployer.Troops.ContainsKey(g.TroopCode)).ToList();
+        var siege = primaryLines.Where(g => _deployer.Troops[g.TroopCode].Class == TroopClass.Siege)
+            .OrderByDescending(g => _deployer.Troops[g.TroopCode].AtkBuilding)
+            .ThenBy(g => g.TroopCode, StringComparer.Ordinal).FirstOrDefault();
+        if (siege is null) return null;
+
+        var scratch = original;
+        var usedPrimary = 0;
+        var usedSecondary = 0;
+        var combatIds = new List<UnitId>();
+        var maxCombat = target.Castle switch
+        {
+            CastleSize.Small => 3,
+            CastleSize.Medium => 5,
+            _ => 7,
+        };
+
+        bool AddCombat(City city, GarrisonForce line, List<General> free,
+            ref int spent, int budget)
+        {
+            if (free.Count <= _config.KeepGeneralsHome) return false;
+            var remaining = scratch.Garrisons.FirstOrDefault(g => g.City == city.Id
+                && !g.Trainee && g.TroopCode == line.TroopCode)?.Troops ?? 0;
+            var troops = Math.Min(Math.Min(remaining, budget - spent),
+                CommandEfficiency.CommandTroopDeployLimit(scratch.ResearchOf(city.Owner,
+                    FactionResearch.CommandTroopsCode), _deployer.Balance));
+            if (troops < 1000) return false;
+            var troopClass = _deployer.Troops[line.TroopCode].Class;
+            var leader = free.OrderByDescending(g => g.AptitudeFor(troopClass))
+                .ThenByDescending(g => g.Might).ThenBy(g => g.Id.Value).First();
+            var result = _deployer.Deploy(scratch, new DeployRequest(city.Id, line.TroopCode,
+                troops, leader.Id, Mode: UnitMode.Attack, Target: target.Position));
+            if (!result.Ok) return false;
+            scratch = result.State;
+            free.Remove(leader);
+            spent += troops;
+            combatIds.Add(scratch.Armies[^1].Id);
+            return true;
+        }
+
+        if (!AddCombat(primary, siege, primaryOfficers, ref usedPrimary, primaryBudget - 1000))
+            return null;
+        var support = secondaryLines.Where(g => _deployer.Troops[g.TroopCode].Class is
+                TroopClass.Infantry or TroopClass.Archer or TroopClass.Cavalry or TroopClass.Elephant)
+            .OrderByDescending(g => secondaryOfficers.Max(o => o.AptitudeFor(
+                _deployer.Troops[g.TroopCode].Class)))
+            .ThenByDescending(g => g.Troops).ThenBy(g => g.TroopCode, StringComparer.Ordinal).ToList();
+        if (support.Count == 0) return null;
+        foreach (var line in support)
+        {
+            while (combatIds.Count < maxCombat
+                && AddCombat(secondary, line, secondaryOfficers, ref usedSecondary, secondaryBudget))
+            {
+            }
+        }
+        if (combatIds.Count < 2) return null;
+        var supplyLine = scratch.Garrisons.Where(g => g.City == primary.Id && !g.Trainee
+                && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
+                && g.Troops >= 1000 && primaryBudget - usedPrimary >= 1000)
+            .OrderBy(g => g.TroopCode, StringComparer.Ordinal).FirstOrDefault();
+        if (supplyLine is null || primaryOfficers.Count <= _config.KeepGeneralsHome)
+            return null;
+        var supplyLeader = primaryOfficers.OrderByDescending(g => g.AptitudeFor(TroopClass.Supply))
+            .ThenBy(g => g.Id.Value).First();
+        var supply = _deployer.DeploySupply(scratch, new SupplyDeployRequest(primary.Id,
+            [new SupplyLine(supplyLine.TroopCode, 1000)], supplyLeader.Id,
+            UnitMode.March, target.Position));
+        if (!supply.Ok) return null;
+        scratch = supply.State;
+        var supplyId = scratch.Armies[^1].Id;
+        scratch = scratch with { FieldArmies = scratch.Armies.Select(u => u.Id == supplyId
+            ? u with { Field = u.Field with { FollowUnitId = combatIds[0], Target = null } }
+            : u).ToList() };
+        if (!PassesProvisionBudget(scratch, target, combatIds)
+            || !PassesSiegeTrial(original, scratch, target, combatIds)) return null;
+        return scratch;
+    }
+
+    private static bool PassesProvisionBudget(GameState staged, City target,
         IReadOnlyList<UnitId> combatIds)
     {
-        var distance = origin.Position.Distance(target.Position);
         foreach (var unit in staged.Armies.Where(u => combatIds.Contains(u.Id) || u.IsSupply
-            && u.OriginCity == origin.Id && u.Field.FollowUnitId is { } follow
+            && u.Field.FollowUnitId is { } follow
             && combatIds.Contains(follow)))
         {
+            if (unit.OriginCity is not { } cityId) return false;
+            var origin = staged.Cities.FirstOrDefault(c => c.Id == cityId);
+            if (origin is null) return false;
+            var distance = origin.Position.Distance(target.Position);
             var travelDays = (distance + Math.Max(1, unit.Field.Speed) - 1)
                 / Math.Max(1, unit.Field.Speed);
             var daily = Math.Max(1, (unit.Pool.Active + 999) / 1000);
