@@ -72,6 +72,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _week;
 
     private readonly Dictionary<int, Label3D> _cityLabels = new();
+    private readonly Dictionary<int, CityVitalsGauge3D> _cityVitalsGauges = new();
     private readonly Dictionary<int, Node3D> _cityModels = new();
     private readonly Dictionary<int, bool> _cityBrokenVisuals = new();
     private readonly Dictionary<string, Label3D> _ruinLabels = new(System.StringComparer.Ordinal);
@@ -756,6 +757,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestsummontargetqa")) CallDeferred(nameof(RunSummonTargetQa));
         if (args.Contains("--maptestofficerfixtureqa")) CallDeferred(nameof(RunMapTestOfficerFixtureQa));
         if (args.Contains("--maptestwardeclarationqa")) CallDeferred(nameof(RunWarDeclarationQa));
+        if (args.Contains("--maptestcitygaugeqa")) CallDeferred(nameof(RunCityVitalsGaugeQa));
         if (args.Contains("--maptestgeneralstoryqa")) CallDeferred(nameof(RunGeneralStoryQa));
         if (args.Contains("--maptestclimateqa")) CallDeferred(nameof(RunClimateQa));
         if (args.Contains("--maptestclimateadvanceqa")) CallDeferred(nameof(RunClimateAdvanceQa));
@@ -3815,6 +3817,12 @@ public sealed partial class CampaignMapScene : Node3D
             };
             AddChild(label);
             _cityLabels[city.Id.Value] = label;
+            var gauge = new CityVitalsGauge3D
+            {
+                Position = label.Position + new Vector3(0f, -0.17f, 0f),
+            };
+            AddChild(gauge);
+            _cityVitalsGauges[city.Id.Value] = gauge;
             _fog.Register(node, city.Position);
         }
     }
@@ -6658,8 +6666,9 @@ public sealed partial class CampaignMapScene : Node3D
                     var troops = _pendingState.Garrisons.Where(g => g.City == capture.Report.City).Sum(g => g.Troops);
                     _playbackCityTroops[capture.Report.City] = troops;
                     var label = _cityLabels[capture.Report.City.Value];
-                    label.Text = $"{capturedCity.Name} [{_pendingState.Factions.First(f => f.Id == capturedCity.Owner).Name}]\n성벽 {capturedCity.Wall}  병 {troops}";
+                    label.Text = CityMapLabel(capturedCity, troops);
                     label.Modulate = MapRelationTextColor(capturedCity.Owner);
+                    UpdateCityVitalsGauge(capturedCity, capturedCity.Wall, troops);
                 }
                 _animCaptureIdx++;
             }
@@ -6732,8 +6741,8 @@ public sealed partial class CampaignMapScene : Node3D
             }
             if (_cityLabels.TryGetValue(update.City.Value, out var label) && CanInspectCity(current))
             {
-                var faction = _state.Factions.FirstOrDefault(value => value.Id == current.Owner)?.Name ?? "?";
-                label.Text = $"{current.Name} [{faction}]\n성벽 {update.Wall}  병 {update.Troops}";
+                label.Text = CityMapLabel(current, update.Troops);
+                UpdateCityVitalsGauge(current, update.Wall, update.Troops);
             }
         }
         if (wallChanged) RefreshCastleDamageVisuals();
@@ -16580,6 +16589,7 @@ public sealed partial class CampaignMapScene : Node3D
             var label = _cityLabels[city.Id.Value];
             label.Text = CityMapLabel(city, troops);
             label.Modulate = color;
+            UpdateCityVitalsGauge(city, city.Wall, troops);
         }
 
         // 야전 부대 = 실제 유닛 모델(UnitController3D). 부대 id별로 토큰을 만들고 위치·병력 라벨을 갱신,
