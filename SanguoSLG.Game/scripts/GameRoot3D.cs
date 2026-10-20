@@ -84,7 +84,8 @@ public partial class GameRoot3D : Node3D
         }
 
         // 간단한 캠페인 맵 관전(13단계 1차): --maptest. 작은 평지 맵 위 AI 자율 전쟁을 진행 버튼으로.
-        if (OS.GetCmdlineArgs().Contains("--maptest") || OS.GetCmdlineUserArgs().Contains("--maptest"))
+        if (OS.GetCmdlineArgs().Contains("--maptest") || OS.GetCmdlineUserArgs().Contains("--maptest")
+            || OS.GetCmdlineUserArgs().Contains("--aitest"))
         {
             BuildCampaignMap();
             if (OS.GetCmdlineArgs().Contains("--gracefulshutdownqa") || OS.GetCmdlineUserArgs().Contains("--gracefulshutdownqa"))
@@ -300,6 +301,11 @@ public partial class GameRoot3D : Node3D
 
         var camera = new CameraController3D { Fov = 55f };
         AddChild(camera);
+        if (OS.GetCmdlineUserArgs().Contains("--aitest"))
+        {
+            var (center, radius) = MapBounds(mapView, CampaignMapScene.TestMap);
+            camera.Setup(center, radius * 1.25f);
+        }
         camera.Current = true;
 
         MapView3D.TuneImportedMeshes(this);

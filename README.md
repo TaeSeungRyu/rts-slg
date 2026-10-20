@@ -78,7 +78,7 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj
 > `SanguoSLG.Game`은 Godot이 자체 솔루션으로 관리하므로 루트 `SanguoSLG.sln`에는 포함되지 않는다.
 > 에디터로 한 번 열면 `.godot/` 메타데이터가 생성된다.
 
-Windows 캠페인 확인은 `run-maptest.bat`, 액티브 스킬 연출은 `run-activeeffecttest.bat`, 장수 데이터 편집은 `run-general-editor.bat`을 사용한다. 실행 BAT의 Godot 경로는 로컬 설치 위치에 맞춰 확인한다. 이 저장소의 문서 작업 기준과 QA 범위는 [ONBOARDING.md](./ONBOARDING.md), [작업 노트](./doc/ai-working-notes.md)를 따른다.
+Windows 캠페인 확인은 `run-maptest.bat`, Phase 21 AI 전용 3세력 검증은 `run-aitest.bat`(`qa` 인자로 초기 배치 자동 검사), 액티브 스킬 연출은 `run-activeeffecttest.bat`, 장수 데이터 편집은 `run-general-editor.bat`을 사용한다. 실행 BAT의 Godot 경로는 로컬 설치 위치에 맞춰 확인한다. 이 저장소의 문서 작업 기준과 QA 범위는 [ONBOARDING.md](./ONBOARDING.md), [작업 노트](./doc/ai-working-notes.md)를 따른다.
 
 ## 개발 규칙
 

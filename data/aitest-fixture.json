@@ -1,0 +1,53 @@
+{
+  "map": { "min_q": -13, "max_q": 17, "min_r": -7, "max_r": 11 },
+  "terrain_rectangles": [
+    { "min_q": -13, "max_q": 17, "min_r": -7, "max_r": -4, "terrain": "WaterShallow" },
+    { "min_q": -11, "max_q": -9, "min_r": 5, "max_r": 6, "terrain": "Forest" },
+    { "min_q": 0, "max_q": 2, "min_r": 1, "max_r": 2, "terrain": "Forest" },
+    { "min_q": 10, "max_q": 12, "min_r": 4, "max_r": 5, "terrain": "Desert" },
+    { "min_q": -3, "max_q": -2, "min_r": 8, "max_r": 9, "terrain": "Mountain" }
+  ],
+  "factions": [
+    { "id": 1, "name": "위", "ruler": 1, "color": "#3d70dc" },
+    { "id": 2, "name": "촉", "ruler": 11, "color": "#d23830" },
+    { "id": 3, "name": "오", "ruler": 21, "color": "#d8ae3d" }
+  ],
+  "cities": [
+    { "id": 101, "name": "위북성", "faction": 1, "q": -8, "r": 2, "castle": "Medium", "gold": 9000, "provisions": 20000, "wall": 1200 },
+    { "id": 102, "name": "위남성", "faction": 1, "q": -7, "r": 8, "castle": "Small", "gold": 7000, "provisions": 18000, "wall": 600 },
+    { "id": 103, "name": "위북항", "faction": 1, "q": -11, "r": -3, "castle": "Small", "port": "Small", "gold": 5000, "provisions": 15000, "wall": 400 },
+    { "id": 201, "name": "촉중성", "faction": 2, "q": 3, "r": 3, "castle": "Medium", "gold": 9000, "provisions": 20000, "wall": 1200 },
+    { "id": 202, "name": "촉남성", "faction": 2, "q": 4, "r": 9, "castle": "Small", "gold": 7000, "provisions": 18000, "wall": 600 },
+    { "id": 203, "name": "촉북항", "faction": 2, "q": 4, "r": -3, "castle": "Small", "port": "Small", "gold": 5000, "provisions": 15000, "wall": 400 },
+    { "id": 301, "name": "오동성", "faction": 3, "q": 13, "r": 2, "castle": "Medium", "gold": 9000, "provisions": 20000, "wall": 1200 },
+    { "id": 302, "name": "오남성", "faction": 3, "q": 12, "r": 9, "castle": "Small", "gold": 7000, "provisions": 18000, "wall": 600 },
+    { "id": 303, "name": "오북항", "faction": 3, "q": 13, "r": -3, "castle": "Small", "port": "Small", "gold": 5000, "provisions": 15000, "wall": 400 }
+  ],
+  "postings": [
+    { "general": 1, "faction": 1, "city": 101 }, { "general": 2, "faction": 1, "city": 101 },
+    { "general": 3, "faction": 1, "city": 101 }, { "general": 4, "faction": 1, "city": 102 },
+    { "general": 5, "faction": 1, "city": 102 }, { "general": 6, "faction": 1, "city": 103 },
+    { "general": 11, "faction": 2, "city": 201 }, { "general": 12, "faction": 2, "city": 201 },
+    { "general": 13, "faction": 2, "city": 201 }, { "general": 14, "faction": 2, "city": 202 },
+    { "general": 15, "faction": 2, "city": 202 }, { "general": 16, "faction": 2, "city": 203 },
+    { "general": 21, "faction": 3, "city": 301 }, { "general": 22, "faction": 3, "city": 301 },
+    { "general": 23, "faction": 3, "city": 301 }, { "general": 24, "faction": 3, "city": 302 },
+    { "general": 25, "faction": 3, "city": 302 }, { "general": 26, "faction": 3, "city": 303 }
+  ],
+  "garrisons": [
+    { "city": 101, "troop": "swordsman", "count": 50000 }, { "city": 101, "troop": "archer", "count": 20000 },
+    { "city": 101, "troop": "catapult", "count": 10000 }, { "city": 102, "troop": "cavalry", "count": 30000 },
+    { "city": 102, "troop": "swordsman", "count": 20000 }, { "city": 103, "troop": "swordsman", "count": 15000 },
+    { "city": 201, "troop": "swordsman", "count": 50000 }, { "city": 201, "troop": "archer", "count": 20000 },
+    { "city": 201, "troop": "catapult", "count": 10000 }, { "city": 202, "troop": "cavalry", "count": 30000 },
+    { "city": 202, "troop": "swordsman", "count": 20000 }, { "city": 203, "troop": "swordsman", "count": 15000 },
+    { "city": 301, "troop": "swordsman", "count": 50000 }, { "city": 301, "troop": "archer", "count": 20000 },
+    { "city": 301, "troop": "catapult", "count": 10000 }, { "city": 302, "troop": "cavalry", "count": 30000 },
+    { "city": 302, "troop": "swordsman", "count": 20000 }, { "city": 303, "troop": "swordsman", "count": 15000 }
+  ],
+  "ships": [
+    { "city": 103, "code": "small_boat", "count": 3 },
+    { "city": 203, "code": "small_boat", "count": 3 },
+    { "city": 303, "code": "small_boat", "count": 3 }
+  ]
+}

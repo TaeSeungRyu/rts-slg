@@ -548,7 +548,8 @@ public sealed partial class CampaignMapScene : Node3D
         _deployer = new DeployService(_cb, _troops, actives, passives, _adminSkills, _balance);
         _ai = new FactionAI(_commander, _deployer);
         var scenario = new ScenarioLoader().LoadFromDirectory(dataDirectory);
-        _passability = new PassabilityMap(_map, [], _cities, scenario.RuinList.Select(r => r.Position));
+        _passability = new PassabilityMap(_map, [], _cities,
+            _aiTestFixture is null ? scenario.RuinList.Select(r => r.Position) : []);
         _fieldBuildingDefinitions = new FieldBuildingLoader().LoadFromDirectory(dataDirectory);
         _treasureDefinitions = new EventTreasureLoader().LoadFromDirectory(dataDirectory);
         _ancientRelics = new AncientRelicLoader().LoadFromDirectory(dataDirectory);
@@ -643,16 +644,22 @@ public sealed partial class CampaignMapScene : Node3D
         _state = _initial with
         {
             StartYear = 190,
-            Factions = scenario.Factions,
+            Factions = _aiTestFixture?.Factions ?? scenario.Factions,
+            Cities = _cities.ToList(),
             Generals = campaignGenerals,
-            HeroUnlockDefinitions = scenario.HeroUnlockList,
-            HeroUnlockStates = scenario.HeroUnlockList
+            Postings = _aiTestFixture?.Postings ?? _initial.Postings,
+            GarrisonForces = _aiTestFixture?.Garrisons ?? _initial.GarrisonForces,
+            FacilityPlacements = _aiTestFixture is null ? _initialFacilityPlacements : [],
+            PortShipStocks = _aiTestFixture?.Ships ?? _initial.PortShipStocks,
+            HeroUnlockDefinitions = _aiTestFixture is null ? scenario.HeroUnlockList : [],
+            HeroUnlockStates = (_aiTestFixture is null ? scenario.HeroUnlockList : [])
                 .Select(h => new HeroUnlockState(h.General, HeroUnlockStatus.Locked))
                 .ToList(),
-            RuinDefinitions = scenario.RuinList,
-            RuinStates = scenario.RuinList.Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
+            RuinDefinitions = _aiTestFixture is null ? scenario.RuinList : [],
+            RuinStates = (_aiTestFixture is null ? scenario.RuinList : [])
+                .Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
         };
-        if (args.Contains("--maptest"))
+        if (args.Contains("--maptest") && _aiTestFixture is null)
         {
             SeedFieldBuildingSamples();
             SeedMapTestOfficers();
@@ -762,6 +769,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestofficerfixtureqa")) CallDeferred(nameof(RunMapTestOfficerFixtureQa));
         if (args.Contains("--maptestwardeclarationqa")) CallDeferred(nameof(RunWarDeclarationQa));
         if (args.Contains("--maptestcitygaugeqa")) CallDeferred(nameof(RunCityVitalsGaugeQa));
+        if (args.Contains("--aitestfixtureqa")) CallDeferred(nameof(RunAiTestFixtureQa));
         if (args.Contains("--maptesttroopguideqa")) CallDeferred(nameof(RunTroopGuideQa));
         if (args.Contains("--maptestskillguideqa")) CallDeferred(nameof(RunSkillGuideQa));
         if (args.Contains("--maptestcityofficergridqa")) CallDeferred(nameof(RunCityOfficerGridQa));
@@ -3612,7 +3620,9 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // ── 테스트 시나리오: 지형 다양 맵, 위(성 1) vs 촉(성 2 — 성도·한중) ──
-    private static readonly HexMap _map = BuildTestMap();
+    private static readonly AiTestFixture? _aiTestFixture = OS.GetCmdlineUserArgs().Contains("--aitest")
+        ? AiTestFixture.Load() : null;
+    private static readonly HexMap _map = _aiTestFixture?.Map ?? BuildTestMap();
 
     /// <summary>렌더(GameRoot3D)와 시뮬(passability)이 같은 지형을 쓰도록 공유하는 맵.</summary>
     public static HexMap TestMap => _map;
@@ -3668,7 +3678,7 @@ public sealed partial class CampaignMapScene : Node3D
         return new HexMap(-12, 14, -5, 11, t);
     }
 
-    private static readonly IReadOnlyList<City> _cities = new List<City>
+    private static readonly IReadOnlyList<City> _cities = _aiTestFixture?.Cities ?? new List<City>
     {
         new(new CityId(1), "장안", new HexCoord(1, 2), new FactionId(1), 3000, CastleSize.Medium,
             Gold: 2000, Security: 80, Population: 100_000, Ore: 8000, Horses: 3000, Elephants: 30,
