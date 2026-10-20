@@ -6,6 +6,8 @@ namespace SanguoSLG.Game;
 
 public sealed partial class CampaignMapScene
 {
+    private MapSelectionFogOverlay? _followSelectionFog;
+
     private void BeginSupplyFollowTargeting(int sourceId)
     {
         var source = _state.Armies.FirstOrDefault(unit => unit.Id.Value == sourceId
@@ -18,7 +20,22 @@ public sealed partial class CampaignMapScene
         }
         HidePanels();
         _supplyFollowSourceId = sourceId;
+        _followSelectionFog = new MapSelectionFogOverlay();
+        AddChild(_followSelectionFog);
+        RefreshSupplyFollowSelectionFog();
         _log.Text = "따라갈 아군 전투부대를 맵에서 클릭하세요. 마우스를 올리면 선택 표시가 나옵니다. 우클릭 또는 Esc로 취소합니다.";
+    }
+
+    private void RefreshSupplyFollowSelectionFog()
+    {
+        if (_supplyFollowSourceId < 0 || _followSelectionFog is null) return;
+        var openings = DisplayedArmies.Where(unit => unit.Field.Owner == Player && IsSupplyFollowCandidate(unit)
+                && _armyTokens.TryGetValue(unit.Id.Value, out var token)
+                && IsInstanceValid(token) && token.Visible)
+            .Select(unit => _camera.UnprojectPosition(_armyTokens[unit.Id.Value].GlobalPosition
+                + new Vector3(0f, .2f, 0f)))
+            .Select(point => new Vector3(point.X, point.Y, 38f)).ToArray();
+        _followSelectionFog.SetOpenings(openings);
     }
 
     private static bool IsSupplyFollowCandidate(CombatUnit unit)
@@ -54,6 +71,8 @@ public sealed partial class CampaignMapScene
     private void StopSupplyFollowTargeting()
     {
         _supplyFollowSourceId = -1;
+        if (_followSelectionFog is not null && IsInstanceValid(_followSelectionFog)) _followSelectionFog.QueueFree();
+        _followSelectionFog = null;
         if (_ring is not null) _ring.Visible = false;
     }
 
@@ -74,7 +93,8 @@ public sealed partial class CampaignMapScene
         _state = _state with { FieldArmies = _state.Armies.Concat([source, target]).ToList() };
         Redraw("따라가기 QA");
         BeginSupplyFollowTargeting(source.Id.Value);
-        var started = _supplyFollowSourceId == source.Id.Value && _modalLayer is null;
+        var started = _supplyFollowSourceId == source.Id.Value && _modalLayer is null
+            && _followSelectionFog?.GetMeta("opening_count").AsInt32() >= 1;
         var token = _armyTokens.GetValueOrDefault(target.Id.Value);
         var picked = token is not null && PickSupplyFollowTarget(_camera.UnprojectPosition(
             token.GlobalPosition + new Vector3(0f, .2f, 0f)))?.Id == target.Id;

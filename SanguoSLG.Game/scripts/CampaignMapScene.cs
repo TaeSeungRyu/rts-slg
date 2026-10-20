@@ -6400,6 +6400,8 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (_advancing && _generalTransferTargeting) StopGeneralTransferTargeting(false);
         RefreshGeneralTransferFog();
+        if (_advancing && _supplyFollowSourceId >= 0) StopSupplyFollowTargeting();
+        RefreshSupplyFollowSelectionFog();
         AnimateClimateVisuals(delta);
         TickModalTransitions();
         TickCampaignPlayTime(delta);
