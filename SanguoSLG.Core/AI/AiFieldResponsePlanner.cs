@@ -46,6 +46,31 @@ public sealed class AiFieldResponsePlanner
                 }
             }
         }
+        // 별도 기병 견제: 성 수비 전력이 아닌 안전한 후방 기병으로, 정찰망에 잡힌
+        // 고립 야전 부대만 추격한다. 성·건축물은 표적으로 삼지 않는다.
+        foreach (var target in state.Armies.Where(u => u.Pool.Active > 0 && !u.IsWaitingDeployment
+                && state.AreHostile(faction, u.Field.Owner) && !Escorted(state, u)
+                && state.Armies.Any(spotter => spotter.Field.Owner == faction
+                    && !spotter.IsWaitingDeployment && spotter.Pool.Active > 0
+                    && spotter.Field.Position.Distance(u.Field.Position)
+                        <= spotter.Field.Detection))
+            .OrderByDescending(u => u.IsSupply).ThenBy(u => u.Id.Value))
+        {
+            if (state.Armies.Any(u => u.Field.Owner == faction
+                && u.Field.AssignedUnitTarget == target.Id)) continue;
+            foreach (var origin in state.Cities.Where(c => c.Owner == faction && !c.IsPort
+                    && c.Position.Distance(target.Field.Position) <= 8
+                    && !state.Armies.Any(enemy => enemy.Pool.Active > 0
+                        && state.AreHostile(faction, enemy.Field.Owner)
+                        && c.Position.Distance(enemy.Field.Position) <= 4))
+                .OrderBy(c => c.Position.Distance(target.Field.Position)).ThenBy(c => c.Id.Value))
+            {
+                var next = TryIntercept(state, origin, target);
+                if (next is null) continue;
+                state = next;
+                break;
+            }
+        }
         return state;
     }
 

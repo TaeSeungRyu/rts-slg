@@ -69,4 +69,25 @@ public class AiFieldResponsePlannerTests
 
         Assert.Single(after.Armies);
     }
+
+    [Fact]
+    public void 정찰망에서_발견한_고립_보급부대는_성_방어반경_밖이어도_기병이_견제한다()
+    {
+        var state = Scenario(new HexCoord(0, 0), new HexCoord(7, 0));
+        state = state with
+        {
+            Cities = state.Cities.Select(c => c.Id == new CityId(1)
+                ? c with { Position = new HexCoord(-10, 0) } : c).ToList(),
+            FieldArmies = state.Armies.Append(new CombatUnit(
+                new FieldUnit(new UnitId(8), new FactionId(1), new HexCoord(5, 0),
+                    2, 3, 1, MovementDomain.Land, UnitMode.Standby, null, 8),
+                new CombatStats(1000, 10, 10), new TroopPool(1000, 0),
+                UnitCombatState.Create(60))).ToList(),
+        };
+
+        var after = Planner().Plan(state, new FactionId(1));
+
+        Assert.Contains(after.Armies, u => u.Field.AssignedUnitTarget == new UnitId(9)
+            && u.TroopCode == "cavalry");
+    }
 }
