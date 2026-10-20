@@ -76,6 +76,7 @@ public sealed class FactionAI
         }
 
         state = PlanExploration(state, faction);
+        state = PlanCityOfficers(state, faction);
         return state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && !existingArmyIds.Contains(unit.Id)
                 && unit.Field.Mode == UnitMode.Attack
@@ -112,6 +113,52 @@ public sealed class FactionAI
             {
                 var result = _commands.Issue(state, new CommandRequest(city.Id, CommandKind.AppointStrategist, strategist.Id));
                 if (result.Ok) state = result.State;
+            }
+        }
+        return state;
+    }
+
+    private GameState PlanCityOfficers(GameState state, FactionId faction)
+    {
+        foreach (var cityId in state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).Select(c => c.Id))
+        {
+            var city = state.Cities.First(c => c.Id == cityId);
+            var candidates = state.GeneralsAt(cityId)
+                .Where(id => state.PostingOf(id)?.Faction == faction && !state.IsGeneralBusy(id))
+                .Select(id => state.Generals.FirstOrDefault(g => g.Id == id))
+                .Where(g => g is not null)
+                .Select(g => g!)
+                .Where(g => !state.Cities.Any(c => c.SecurityOfficer == g.Id || c.DomesticOfficer == g.Id
+                    || c.RecruitmentOfficer == g.Id || c.TrainingOfficer == g.Id))
+                .ToList();
+
+            void Assign(CommandKind kind, Func<General, int> score, string troopCode = "")
+            {
+                var officer = candidates.OrderByDescending(score).ThenBy(g => g.Id.Value).FirstOrDefault();
+                if (officer is null) return;
+                var result = _commands.Issue(state, new CommandRequest(cityId, kind, officer.Id, TroopCode: troopCode));
+                if (!result.Ok) return;
+                state = result.State;
+                candidates.Remove(officer);
+            }
+
+            if (city.SecurityOfficer is null)
+                Assign(CommandKind.AppointSecurityOfficer, g => g.Might);
+            if (city.DomesticOfficer is null)
+                Assign(CommandKind.AppointDomesticOfficer, g => g.Politics);
+            if (city.RecruitmentOfficer is null)
+            {
+                var elite = candidates.SelectMany(g => _deployer.Troops.Values
+                        .Where(t => t.Class != TroopClass.Naval && g.AptitudeFor(t.Class) >= AptitudeGrade.S
+                            && FactionTroopUnlock.Check(state, faction, t.Code).Allowed)
+                        .Select(t => (General: g, Troop: t)))
+                    .OrderByDescending(x => x.General.AptitudeFor(x.Troop.Class))
+                    .ThenByDescending(x => x.General.Might)
+                    .ThenBy(x => x.Troop.Code, StringComparer.Ordinal)
+                    .FirstOrDefault();
+                Assign(CommandKind.AppointRecruitmentOfficer,
+                    g => elite.General is not null && g.Id == elite.General.Id ? int.MaxValue : g.Might,
+                    elite.Troop?.Code ?? _config.Troop);
             }
         }
         return state;

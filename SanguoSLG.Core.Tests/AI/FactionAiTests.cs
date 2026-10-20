@@ -88,7 +88,8 @@ public class FactionAiTests
         var state = new GameState(1, 190, [], cities, generals,
             Postings: [At(1, 1, 1), At(2, 1, 1), At(3, 1, 2), At(4, 2, 3)]);
 
-        var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(state, new FactionId(1));
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue, GeneralResearchReserveGold: -1,
+            ExplorationReserveGold: int.MaxValue)).PlanWeek(state, new FactionId(1));
         var first = after.Cities.Single(c => c.Id == new CityId(1));
         var second = after.Cities.Single(c => c.Id == new CityId(2));
         Assert.Contains(first.Governor, new GeneralId?[] { new(1), new(2) });
@@ -99,6 +100,30 @@ public class FactionAiTests
 
         var next = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(after with { Day = 8 }, new FactionId(1));
         Assert.Equal(first.Governor, next.Cities.Single(c => c.Id == first.Id).Governor);
+    }
+
+    [Fact]
+    public void AI는_치안_내정_병력담당을_서로_다른_장수로_임명하고_S급_병종을_생산한다()
+    {
+        var cavalry = Gen(3) with
+        {
+            Aptitudes = new Dictionary<TroopClass, AptitudeGrade>
+            {
+                [TroopClass.Infantry] = AptitudeGrade.A,
+                [TroopClass.Cavalry] = AptitudeGrade.S,
+            }
+        };
+        var state = new GameState(1, 190, [], [Town(1, 1, new HexCoord(0, 0))],
+            [Gen(1) with { Might = 95 }, Gen(2) with { Politics = 95 }, cavalry],
+            Postings: [At(1, 1, 1), At(2, 1, 1), At(3, 1, 1)]);
+
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue, GeneralResearchReserveGold: -1,
+            ExplorationReserveGold: int.MaxValue)).PlanWeek(state, new FactionId(1));
+        var city = Assert.Single(after.Cities);
+        Assert.Equal(new GeneralId(1), city.SecurityOfficer);
+        Assert.Equal(new GeneralId(2), city.DomesticOfficer);
+        Assert.Equal(new GeneralId(3), city.RecruitmentOfficer);
+        Assert.Equal("cavalry", city.AutoRecruitTroopCode);
     }
 
     [Fact]
