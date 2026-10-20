@@ -38,42 +38,9 @@ public sealed class FactionAI
         state = Retarget(state, faction);
         state = TargetUnlockRuins(state, faction);
         state = RecruitUnlockedHeroes(state, faction);
-        state = PlanSupplyDeploys(state, faction);
-        state = PlanArmyGroupDeploys(state, faction);
+        state = new AiOffensePlanner(_deployer, _config).Plan(state, faction);
         state = PlanGeneralResearch(state, faction);
         state = PlanStratagemResearch(state, faction);
-
-        foreach (var city in state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).ToList())
-        {
-            var free = state.GeneralsAt(city.Id)
-                .Where(g => !state.IsGeneralBusy(g))
-                .OrderBy(g => IsDutyOfficer(state, g)).ThenBy(g => g.Value)
-                .ToList();
-            if (free.Count == 0)
-            {
-                continue;
-            }
-
-            var gid = free[0];
-            var garrison = state.Garrisons
-                .Where(g => g.City == city.Id && g.TroopCode == _config.Troop)
-                .Sum(g => g.Troops);
-
-            if (garrison >= _config.DeployTarget && free.Count > _config.KeepGeneralsHome)
-            {
-                var target = NearestEnemyCity(state, faction, city.Position);
-                if (target is { } dest)
-                {
-                    var result = _deployer.Deploy(state, new DeployRequest(
-                        city.Id, _config.Troop, System.Math.Min(garrison, _config.DeploySize),
-                        gid, Mode: UnitMode.Attack, Target: dest));
-                    if (result.Ok)
-                    {
-                        state = result.State;
-                    }
-                }
-            }
-        }
 
         state = PlanExploration(state, faction);
         state = PlanCityOfficers(state, faction);

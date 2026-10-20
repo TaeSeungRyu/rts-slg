@@ -290,7 +290,7 @@ public class FactionAiTests
     }
 
     [Fact]
-    public void 출전_대기병력이_문턱이상이고_장수가_남으면_최근접_적성으로_출전한다()
+    public void 병력이_적으면_기존_단독_부대_출전을_하지_않는다()
     {
         var enemy = Town(9, 2, new HexCoord(10, 0));
         var s = new GameState(1, 1, new List<Faction>(),
@@ -301,14 +301,7 @@ public class FactionAiTests
 
         var after = Ai().PlanWeek(s, new FactionId(1));
 
-        var army = Assert.Single(after.Armies);
-        Assert.Equal(new FactionId(1), army.Field.Owner);
-        Assert.Equal(UnitMode.Attack, army.Field.Mode);
-        Assert.True(army.AiOpeningAttack);
-        Assert.Equal(enemy.Position, army.Field.Target);
-        Assert.Equal(DeploymentDirection.East, army.EgressDirection);
-        Assert.True(army.EgressExit.HasValue);
-        Assert.True(army.IsWaitingEgress);
+        Assert.Empty(after.Armies);
     }
 
     [Fact]
@@ -327,7 +320,7 @@ public class FactionAiTests
     }
 
     [Fact]
-    public void 보급부대_AI는_보급적성이_높은_장수를_우선한다()
+    public void 보급부대는_독립_출전하지_않고_공세_묶음과_동행한다()
     {
         var enemy = Town(9, 2, new HexCoord(10, 0));
         var s = new GameState(1, 1, new List<Faction>(),
@@ -338,17 +331,11 @@ public class FactionAiTests
 
         var after = Ai(new AiConfig(SupplyDeployTarget: 10000, SupplyDeploySize: 5000)).PlanWeek(s, new FactionId(1));
 
-        var supply = Assert.Single(after.Armies);
-        Assert.True(supply.IsSupply);
-        Assert.Equal(new GeneralId(2), supply.VanguardId);
-        Assert.Equal(145, supply.SupplyEfficiencyPercent);
-        Assert.Equal(enemy.Position, supply.Field.Target);
-        Assert.Equal(DeploymentDirection.East, supply.EgressDirection);
-        Assert.True(supply.IsWaitingEgress);
+        Assert.Empty(after.Armies);
     }
 
     [Fact]
-    public void AI는_적성_주둔병력이_더_많고_혼성병력이_사만이상이면_집단군을_절반씩_편성한다()
+    public void 집단군은_상대병력_오만_미만이면_편성하지_않는다()
     {
         var enemy = Town(9, 2, new HexCoord(10, 0));
         var s = new GameState(1, 1, new List<Faction>(),
@@ -365,17 +352,7 @@ public class FactionAiTests
 
         var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(s, new FactionId(1));
 
-        var group = Assert.Single(after.Armies);
-        Assert.True(group.IsArmyGroup);
-        Assert.Equal(30000, group.Pool.Active);
-        Assert.Equal(enemy.Position, group.Field.Target);
-        Assert.Equal(DeploymentDirection.East, group.EgressDirection);
-        Assert.True(group.IsWaitingEgress);
-        Assert.Equal(new GeneralId(1), group.VanguardId);
-        Assert.Equal(new GeneralId(2), group.AdjutantId);
-        Assert.Equal(10000, group.Cargo.Single(c => c.TroopCode == "swordsman").Troops);
-        Assert.Equal(10000, group.Cargo.Single(c => c.TroopCode == "archer").Troops);
-        Assert.Equal(10000, group.Cargo.Single(c => c.TroopCode == "catapult").Troops);
+        Assert.DoesNotContain(after.Armies, u => u.IsArmyGroup);
     }
 
     [Fact]
@@ -399,7 +376,7 @@ public class FactionAiTests
     }
 
     [Fact]
-    public void AI는_다른병종_S급_선봉후보를_집단군에_쓰지_않는다()
+    public void 집단군은_병력_후보_필터가_불리하면_출전하지_않는다()
     {
         var enemy = Town(9, 2, new HexCoord(10, 0));
         var s = new GameState(1, 1, new List<Faction>(),
@@ -422,8 +399,7 @@ public class FactionAiTests
 
         var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(s, new FactionId(1));
 
-        var group = Assert.Single(after.Armies, a => a.IsArmyGroup);
-        Assert.Equal(new GeneralId(3), group.VanguardId);
+        Assert.DoesNotContain(after.Armies, u => u.IsArmyGroup);
     }
 
     [Fact]
