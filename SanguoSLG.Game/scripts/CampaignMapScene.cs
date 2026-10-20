@@ -761,6 +761,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestofficerfixtureqa")) CallDeferred(nameof(RunMapTestOfficerFixtureQa));
         if (args.Contains("--maptestwardeclarationqa")) CallDeferred(nameof(RunWarDeclarationQa));
         if (args.Contains("--maptestcitygaugeqa")) CallDeferred(nameof(RunCityVitalsGaugeQa));
+        if (args.Contains("--maptestcityofficergridqa")) CallDeferred(nameof(RunCityOfficerGridQa));
         if (args.Contains("--maptestcitycommandlabelsqa")) CallDeferred(nameof(RunCityCommandLabelsQa));
         if (args.Contains("--maptestgeneralstoryqa")) CallDeferred(nameof(RunGeneralStoryQa));
         if (args.Contains("--maptestclimateqa")) CallDeferred(nameof(RunClimateQa));
@@ -6025,8 +6026,6 @@ public sealed partial class CampaignMapScene : Node3D
         if (_portCommandButton is not null) { _portCommandButton.Visible = c.IsPort; }
         if (_productionCommandButton is not null) { _productionCommandButton.Visible = !c.IsPort; }
         var totalTroops = CityTroopsForDisplay(id);
-        var govName = c.Governor is { } ggid ? _state.Generals.FirstOrDefault(x => x.Id == ggid)?.Name : null;
-        var straName = c.Strategist is { } gsid ? _state.Generals.FirstOrDefault(x => x.Id == gsid)?.Name : null;
         var securityName = OfficerNameWithMonthlyEffect(c.SecurityOfficer, CommandKind.AppointSecurityOfficer, c);
         var domesticName = OfficerNameWithMonthlyEffect(c.DomesticOfficer, CommandKind.AppointDomesticOfficer, c);
         var recruitmentName = OfficerNameWithMonthlyEffect(c.RecruitmentOfficer, CommandKind.AppointRecruitmentOfficer, c);
@@ -6061,6 +6060,8 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
+        _infoRows.AddChild(BuildCityOfficerGrid(c));
+
         // 짧은 수치: 4칸(라벨·값·라벨·값) 2쌍씩.
         var g4 = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         g4.AddThemeConstantOverride("h_separation", 10);
@@ -6087,8 +6088,6 @@ public sealed partial class CampaignMapScene : Node3D
         AddCell(g2, Sym.Shield, "부상병", WoundedForFaction(c.Owner));
         if (owned)
         {
-            AddCell(g2, Sym.Officer, "태수", govName ?? "없음");
-            AddCell(g2, Sym.Officer, "군사", straName ?? "없음");
             AddCell(g2, Sym.Shield, "치안담당", securityName ?? "없음");
             AddCell(g2, Sym.Coin, "내정담당", domesticName ?? "없음");
             AddCell(g2, Sym.Sword, "병력담당", recruitmentName ?? "없음");
