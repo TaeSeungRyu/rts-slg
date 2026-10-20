@@ -55,11 +55,36 @@ public class AiOffensePlannerTests
             ]);
     }
 
+    public static IEnumerable<object[]> LongRunCases =>
+        from seed in Enumerable.Range(0, 20)
+        from horizon in new[] { 7, 30, 60 }
+        select new object[] { seed, horizon };
+
+    public static IEnumerable<object[]> ForceMatrixCases =>
+        from own in new[] { 30_000, 50_000, 100_000 }
+        from enemy in new[] { 30_000, 50_000, 100_000 }
+        from distance in new[] { 14, 15 }
+        select new object[] { own, enemy, distance };
+
     [Theory]
-    [InlineData(7)]
-    [InlineData(30)]
-    [InlineData(60)]
-    public void 공세_묶음은_실제_캠페인에서_이동과_교전을_진행한다(int horizon)
+    [MemberData(nameof(ForceMatrixCases))]
+    public void 병력_거리_행렬에서_단독출전과_방어예비_침범이_없다(int own, int enemy, int distance)
+    {
+        var state = Scenario(own, enemy, siege: Math.Min(20_000, own / 3), distance: distance);
+        var after = PlannerWithMap(new HexMap(-3, 22, -5, 5)).Plan(state, new FactionId(1));
+        var combat = after.Armies.Where(u => !u.IsSupply).ToList();
+        var available = own - Math.Max(10_000, (int)Math.Ceiling(own * .30));
+        if (available < Math.Ceiling(enemy * 1.2)) Assert.Empty(combat);
+        if (combat.Count == 0) return;
+        Assert.True(combat.Count >= 2);
+        Assert.Contains(after.Armies, u => u.IsSupply);
+        Assert.True(after.Garrisons.Where(g => g.City == new CityId(1)).Sum(g => g.Troops)
+            >= own - available);
+    }
+
+    [Theory]
+    [MemberData(nameof(LongRunCases))]
+    public void 공세_묶음은_실제_캠페인에서_이동과_교전을_진행한다(int seed, int horizon)
     {
         var map = new HexMap(-3, 18, -5, 5);
         var state = PlannerWithMap(map).Plan(Scenario(100000, 20000), new FactionId(1));
@@ -71,7 +96,7 @@ public class AiOffensePlannerTests
         var engine = new CampaignEngine(new RenewalCampaignAdvanceRunner(map, legacy),
             new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0)),
             new CampaignSiege(new BattleResolver(60), Troops), new CityCapture(),
-            new SeededRandomSource(17));
+            new SeededRandomSource(seed));
         var initialWall = state.Cities.Single(c => c.Id == new CityId(2)).Wall;
         var moved = false;
         for (var week = 0; week < (horizon + 6) / 7; week++)
