@@ -10,6 +10,13 @@ using SanguoSLG.Core.Spatial;
 
 namespace SanguoSLG.Game;
 
+internal enum AiTestCase
+{
+    Balanced,
+    PlayerHalf,
+    EnemiesHalf,
+}
+
 internal sealed class AiTestFixture
 {
     public HexMap Map { get; }
@@ -29,6 +36,17 @@ internal sealed class AiTestFixture
         Postings = postings;
         Garrisons = garrisons;
         Ships = ships;
+    }
+
+    public IReadOnlyList<GarrisonForce> GarrisonsFor(AiTestCase testCase, FactionId player)
+    {
+        if (testCase == AiTestCase.Balanced) return Garrisons;
+        return Garrisons.Select(garrison =>
+        {
+            var isPlayer = Cities.Single(city => city.Id == garrison.City).Owner == player;
+            var halve = testCase == AiTestCase.PlayerHalf ? isPlayer : !isPlayer;
+            return halve ? garrison with { Troops = garrison.Troops / 2 } : garrison;
+        }).ToList();
     }
 
     public static AiTestFixture Load()

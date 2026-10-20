@@ -648,7 +648,8 @@ public sealed partial class CampaignMapScene : Node3D
             Cities = _cities.ToList(),
             Generals = campaignGenerals,
             Postings = _aiTestFixture?.Postings ?? _initial.Postings,
-            GarrisonForces = _aiTestFixture?.Garrisons ?? _initial.GarrisonForces,
+            GarrisonForces = _aiTestFixture?.GarrisonsFor(_selectedAiTestCase, Player)
+                ?? _initial.GarrisonForces,
             FacilityPlacements = _aiTestFixture is null ? _initialFacilityPlacements : [],
             PortShipStocks = _aiTestFixture?.Ships ?? _initial.PortShipStocks,
             HeroUnlockDefinitions = _aiTestFixture is null ? scenario.HeroUnlockList : [],
@@ -770,6 +771,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestwardeclarationqa")) CallDeferred(nameof(RunWarDeclarationQa));
         if (args.Contains("--maptestcitygaugeqa")) CallDeferred(nameof(RunCityVitalsGaugeQa));
         if (args.Contains("--aitestfixtureqa")) CallDeferred(nameof(RunAiTestFixtureQa));
+        if (args.Contains("--aitestcaseswitchqa")) CallDeferred(nameof(RunAiTestCaseSwitchQa));
         if (args.Contains("--maptesttroopguideqa")) CallDeferred(nameof(RunTroopGuideQa));
         if (args.Contains("--maptestskillguideqa")) CallDeferred(nameof(RunSkillGuideQa));
         if (args.Contains("--maptestcityofficergridqa")) CallDeferred(nameof(RunCityOfficerGridQa));
@@ -17933,6 +17935,7 @@ public sealed partial class CampaignMapScene : Node3D
         top.AddChild(tray);
         AddMiniMapButton(top);
         AddClimateTestButtons(layer);
+        AddAiTestCaseSelector(layer);
 
         // 좌상단 캐릭터 HUD에는 추가 텍스트를 붙이지 않는다.
         // _status/_log는 기존 코드의 상태 전달용 라벨로만 유지하고 화면 레이아웃에는 추가하지 않는다.

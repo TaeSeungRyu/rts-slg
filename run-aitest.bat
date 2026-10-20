@@ -11,5 +11,9 @@ exit /b %errorlevel%
 :qa
 "%GODOT_QA%" --headless --path "%~dp0SanguoSLG.Game" --build-solutions --quit
 if errorlevel 1 exit /b %errorlevel%
-"%GODOT_QA%" --headless --path "%~dp0SanguoSLG.Game" -- --aitest --aitestfixtureqa
+for %%C in (0 1 2) do (
+  "%GODOT_QA%" --headless --path "%~dp0SanguoSLG.Game" -- --aitest --aitestcase=%%C --aitestfixtureqa
+  if errorlevel 1 exit /b 1
+)
+"%GODOT_QA%" --headless --path "%~dp0SanguoSLG.Game" -- --aitest --aitestcaseswitchqa
 exit /b %errorlevel%
