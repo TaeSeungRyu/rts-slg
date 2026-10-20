@@ -40,7 +40,7 @@ public sealed class FactionAI
         state = RecruitUnlockedHeroes(state, faction);
         state = new AiFieldResponsePlanner(_deployer, _config).Plan(state, faction);
         state = PlanOffenseScouting(state, faction);
-        state = new AiOffensePlanner(_deployer, _config).Plan(state, faction);
+        state = new AiOffensePlanner(_deployer, _config, _commands).Plan(state, faction);
         state = PlanGeneralResearch(state, faction);
         state = PlanStratagemResearch(state, faction);
 

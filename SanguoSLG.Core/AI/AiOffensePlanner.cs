@@ -12,11 +12,14 @@ public sealed class AiOffensePlanner
 {
     private readonly DeployService _deployer;
     private readonly AiConfig _config;
+    private readonly CommandService? _commands;
 
-    public AiOffensePlanner(DeployService deployer, AiConfig config)
+    public AiOffensePlanner(DeployService deployer, AiConfig config,
+        CommandService? commands = null)
     {
         _deployer = deployer;
         _config = config;
+        _commands = commands;
     }
 
     public GameState Plan(GameState state, FactionId faction)
@@ -204,7 +207,7 @@ public sealed class AiOffensePlanner
         if (used > available || !PassesProvisionBudget(scratch, target, combatIds)
             || !PassesSiegeTrial(original, scratch, target, combatIds))
             return null;
-        return scratch;
+        return AttachDeclaration(original, scratch, target);
     }
 
     private GameState? TryCoalition(GameState original, City primary, City secondary, City target)
@@ -308,7 +311,30 @@ public sealed class AiOffensePlanner
             : u).ToList() };
         if (!PassesProvisionBudget(scratch, target, combatIds)
             || !PassesSiegeTrial(original, scratch, target, combatIds)) return null;
-        return scratch;
+        return AttachDeclaration(original, scratch, target);
+    }
+
+    private GameState AttachDeclaration(GameState original, GameState staged, City target)
+    {
+        if (_commands is null) return staged;
+        foreach (var city in original.Cities.Where(c => c.Owner != target.Owner && !c.IsPort
+            && staged.Armies.Any(u => u.OriginCity == c.Id && u.Field.Target == target.Position))
+            .OrderBy(c => c.Position.Distance(target.Position)).ThenBy(c => c.Id.Value))
+        {
+            foreach (var officer in staged.GeneralsAt(city.Id).Where(g => !staged.IsGeneralBusy(g))
+                .OrderBy(g => g.Value))
+            {
+                // 포고를 출전 이전 스냅숏에서 검증한다. 새 공격대가 아직 성 안에 있어도
+                // 성 앞 4칸 배제 규칙이 포고를 부당하게 막지 않게 한다.
+                var issued = _commands.Issue(original, new CommandRequest(city.Id,
+                    CommandKind.DeclareWar, officer, TargetCity: target.Id));
+                if (!issued.Ok) continue;
+                return (staged with { PendingCommands = issued.State.Commands })
+                    .ReleaseOfficerDuties(officer);
+            }
+        }
+        // 포고는 공세 허가 조건이 아니다. 불가하면 점령 치안 손실을 감수한다.
+        return staged;
     }
 
     private static bool PassesProvisionBudget(GameState staged, City target,

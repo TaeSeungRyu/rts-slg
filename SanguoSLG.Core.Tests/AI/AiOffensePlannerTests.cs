@@ -16,6 +16,12 @@ public class AiOffensePlannerTests
         new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
         new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())), new AiConfig());
 
+    private static AiOffensePlanner PlannerWithDiplomacy() => new(
+        new DeployService(new CommandBalance(), Troops,
+            new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+            new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())),
+        new AiConfig(), new CommandService(new CommandBalance(), Troops));
+
     private static GameState Scenario(int own, int enemy, int provisions = 30000,
         int siege = 20000, int officers = 9, int distance = 10)
     {
@@ -200,5 +206,19 @@ public class AiOffensePlannerTests
 
         Assert.Empty(after.Armies);
         Assert.Equal(state.Garrisons.Sum(g => g.Troops), after.Garrisons.Sum(g => g.Troops));
+    }
+
+    [Fact]
+    public void 공세가_확정되면_가능한_경우_선전포고_사절을_출전전에_보낸다()
+    {
+        var state = Scenario(100000, 20000);
+
+        var after = PlannerWithDiplomacy().Plan(state, new FactionId(1));
+
+        Assert.True(after.Armies.Count >= 3);
+        var declaration = Assert.Single(after.Commands, c => c.Kind == CommandKind.DeclareWar);
+        Assert.Equal(new CityId(2), declaration.TargetCity);
+        Assert.True(declaration.CompletionDay > state.Day);
+        Assert.DoesNotContain(after.Armies, u => u.VanguardId == declaration.Main);
     }
 }
