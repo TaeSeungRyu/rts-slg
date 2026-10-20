@@ -6097,6 +6097,11 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         _infoRows.AddChild(BuildCityOfficerGrid(c));
+        var resourceDivider = new MarginContainer { Name = "CityResourceDivider" };
+        resourceDivider.AddThemeConstantOverride("margin_top", 10);
+        resourceDivider.AddThemeConstantOverride("margin_bottom", 5);
+        resourceDivider.AddChild(GoldRule());
+        _infoRows.AddChild(resourceDivider);
 
         // 짧은 수치: 4칸(라벨·값·라벨·값) 2쌍씩.
         var g4 = new GridContainer { Columns = 4, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
