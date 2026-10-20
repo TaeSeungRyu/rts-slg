@@ -64,14 +64,17 @@ public class AiOffensePlannerTests
         from own in new[] { 30_000, 50_000, 100_000 }
         from enemy in new[] { 30_000, 50_000, 100_000 }
         from distance in new[] { 14, 15 }
-        select new object[] { own, enemy, distance };
+        from seed in Enumerable.Range(0, 20)
+        select new object[] { own, enemy, distance, seed };
 
     [Theory]
     [MemberData(nameof(ForceMatrixCases))]
-    public void 병력_거리_행렬에서_단독출전과_방어예비_침범이_없다(int own, int enemy, int distance)
+    public void 병력_거리_행렬에서_단독출전과_방어예비_침범이_없다(int own, int enemy,
+        int distance, int seed)
     {
         var state = Scenario(own, enemy, siege: Math.Min(20_000, own / 3), distance: distance);
-        var after = PlannerWithMap(new HexMap(-3, 22, -5, 5)).Plan(state, new FactionId(1));
+        var map = new HexMap(-3, 22, -5, 5);
+        var after = PlannerWithMap(map).Plan(state, new FactionId(1));
         var combat = after.Armies.Where(u => !u.IsSupply).ToList();
         var available = own - Math.Max(10_000, (int)Math.Ceiling(own * .30));
         if (available < Math.Ceiling(enemy * 1.2)) Assert.Empty(combat);
@@ -80,6 +83,25 @@ public class AiOffensePlannerTests
         Assert.Contains(after.Armies, u => u.IsSupply);
         Assert.True(after.Garrisons.Where(g => g.City == new CityId(1)).Sum(g => g.Troops)
             >= own - available);
+
+        var movement = new MovementSimulator(new PassabilityMap(map, [], after.Cities));
+        var field = new RenewalCampaignAdvanceRunner(map, new AdvanceOrchestrator(movement,
+            new CombatPhaseResolver(new BattleResolver(60), 70)));
+        var campaign = new CampaignEngine(field,
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0)),
+            new CampaignSiege(new BattleResolver(60), Troops), new CityCapture(),
+            new SeededRandomSource(seed));
+        var fought = false;
+        for (var week = 0; week < 9; week++)
+        {
+            after = campaign.AdvanceWeek(after, out _, out var sieges, out _);
+            fought |= sieges.Count > 0;
+            Assert.All(after.Armies, u => Assert.True(u.Pool.Active >= 0));
+            Assert.All(after.Armies.Where(u => u.TracksProvisions), u =>
+                Assert.True(u.Provisions >= 0));
+        }
+        Assert.True(fought || after.Cities.Single(c => c.Id == new CityId(2)).Owner
+            == new FactionId(1));
     }
 
     [Theory]
@@ -127,6 +149,37 @@ public class AiOffensePlannerTests
         var state = ai.PlanWeek(Scenario(100000, 20000), new FactionId(1));
         Assert.True(state.Armies.Count(u => !u.IsSupply && !u.IsTransport) >= 2);
         Assert.Contains(state.Armies, u => u.IsSupply);
+    }
+
+    [Fact]
+    public void 공세_출전후_저장재개해도_3주_진행_결과가_같다()
+    {
+        var map = new HexMap(-3, 18, -5, 5);
+        var deployer = new DeployService(new CommandBalance(), Troops,
+            new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+            new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()));
+        var ai = new FactionAI(new CommandService(new CommandBalance(), Troops), deployer,
+            map: map);
+        var original = ai.PlanWeek(Scenario(100000, 20000), new FactionId(1));
+        var restored = SaveService.Deserialize(SaveService.Serialize(original));
+        CampaignEngine Engine(int seed)
+        {
+            var movement = new MovementSimulator(new PassabilityMap(map, [], original.Cities));
+            var field = new RenewalCampaignAdvanceRunner(map, new AdvanceOrchestrator(movement,
+                new CombatPhaseResolver(new BattleResolver(60), 70)));
+            return new CampaignEngine(field, new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0)),
+                new CampaignSiege(new BattleResolver(60), Troops), new CityCapture(),
+                new SeededRandomSource(seed));
+        }
+        var uninterrupted = Engine(42);
+        var resumed = Engine(42);
+        for (var week = 0; week < 3; week++)
+        {
+            original = uninterrupted.AdvanceWeek(original, out _);
+            restored = resumed.AdvanceWeek(restored, out _);
+        }
+
+        Assert.Equal(SaveService.Serialize(original), SaveService.Serialize(restored));
     }
 
     [Fact]
