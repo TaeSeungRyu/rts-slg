@@ -8,7 +8,7 @@ using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
-/// <summary>11b 성벽 강화 — 도시별 5단계(20~100%), 시작 미강화 20%, 완료 시 해당 도시 성벽 증축.</summary>
+/// <summary>11b 성벽 강화 — 도시별 5단계(20~100%), 강화는 최대 내구도만 증가한다.</summary>
 public class WallResearchTests
 {
     private static readonly CommandBalance B = new();
@@ -90,7 +90,7 @@ public class WallResearchTests
     }
 
     [Fact]
-    public void 루프_성벽연구_완료시_해당_도시_성벽만_증축된다()
+    public void 루프_성벽연구_완료시_해당_도시_최대치만_증가하고_내구도는_회복하지않는다()
     {
         var world = new WorldEngine(Bal, B);
         var s = new GameState(1, 1, new List<Faction>(),
@@ -111,9 +111,21 @@ public class WallResearchTests
         var c2 = done.Cities.First(c => c.Id == new CityId(2));
         Assert.Equal(1, c1.WallLevel);
         Assert.Equal(0, c2.WallLevel);
-        // 1단계 40%: 중성 6000×40%=2400. 선택하지 않은 소성은 기존 600 유지.
-        Assert.Equal(2400, c1.Wall);
+        // 1단계 최대치 2400이지만 현재 내구도 1200은 그대로다.
+        Assert.Equal(2400, CastleWall.Max(c1.Castle, Bal, c1.WallLevel));
+        Assert.Equal(1200, c1.Wall);
         Assert.Equal(600, c2.Wall);
+    }
+
+    [Fact]
+    public void 손상된_성벽도_강화로_회복되지않는다()
+    {
+        var city = Town(1, CastleSize.Medium, workshop: true, wall: 500);
+        var issued = Service().Issue(WorldState(city, Wit(1)), Req());
+        var done = new WorldEngine(Bal, B).AdvanceDays(issued.State, 30);
+
+        Assert.Equal(1, done.Cities.Single().WallLevel);
+        Assert.Equal(500, done.Cities.Single().Wall);
     }
 
     [Fact]

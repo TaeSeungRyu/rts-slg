@@ -709,7 +709,6 @@ public sealed class WorldEngine
                         cities[cmd.City] = city with
                         {
                             WallLevel = wallLevel,
-                            Wall = CastleWall.Max(city.Castle, _balance, wallLevel),
                         };
                     }
                     else if (cmd.TroopCode is FactionResearch.CommandTroopsCode or FactionResearch.ArmyGroupCode
