@@ -447,6 +447,34 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void 기병_요격은_적_부대_ID를_추적하고_손실이_커지면_원래_성으로_철수한다()
+    {
+        var home = Town(1, 1, new HexCoord(0, 0));
+        var targetCity = Town(2, 2, new HexCoord(10, 0));
+        var ownField = new FieldUnit(new UnitId(1), new FactionId(1), new HexCoord(1, 0),
+            3, 3, 1, MovementDomain.Land, UnitMode.Attack, new HexCoord(3, 0), 1,
+            ReturnCity: home.Id, AssignedUnitTarget: new UnitId(2));
+        var enemyField = new FieldUnit(new UnitId(2), new FactionId(2), new HexCoord(4, 0),
+            2, 3, 1, MovementDomain.Land, UnitMode.Attack, home.Position, 2);
+        var own = new CombatUnit(ownField, new CombatStats(7000, 10, 10),
+            new TroopPool(7000, 0), UnitCombatState.Create(60), MaxTroops: 10000,
+            Provisions: 100, OriginCity: home.Id);
+        var enemy = new CombatUnit(enemyField, new CombatStats(5000, 10, 10),
+            new TroopPool(5000, 0), UnitCombatState.Create(60));
+        var state = new GameState(1, 190, [], [home, targetCity], [], FieldArmies: [own, enemy]);
+
+        var following = Ai().PlanWeek(state, new FactionId(1)).Armies.Single(u => u.Id == own.Id);
+        Assert.Equal(enemyField.Position, following.Field.Target);
+        Assert.Equal(new UnitId(2), following.Field.AssignedUnitTarget);
+
+        var depleted = own with { Pool = new TroopPool(5000, 0) };
+        var retreating = Ai().PlanWeek(state with { FieldArmies = [depleted, enemy] },
+            new FactionId(1)).Armies.Single(u => u.Id == own.Id);
+        Assert.Equal(UnitMode.March, retreating.Field.Mode);
+        Assert.Equal(home.Position, retreating.Field.Target);
+    }
+
+    [Fact]
     public void AI는_유효한_공격목표와_연속좌표를_임의로_덮어쓰지_않는다()
     {
         var t = Troops.First(x => x.Code == "swordsman");

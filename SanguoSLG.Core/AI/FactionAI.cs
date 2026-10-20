@@ -38,6 +38,7 @@ public sealed class FactionAI
         state = Retarget(state, faction);
         state = TargetUnlockRuins(state, faction);
         state = RecruitUnlockedHeroes(state, faction);
+        state = new AiFieldResponsePlanner(_deployer, _config).Plan(state, faction);
         state = PlanOffenseScouting(state, faction);
         state = new AiOffensePlanner(_deployer, _config).Plan(state, faction);
         state = PlanGeneralResearch(state, faction);
@@ -48,6 +49,7 @@ public sealed class FactionAI
         return state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && !existingArmyIds.Contains(unit.Id)
                 && unit.Field.Mode == UnitMode.Attack
+                && state.Cities.Any(city => city.Position == unit.Field.Target)
                 ? unit with { AiOpeningAttack = true } : unit).ToList() };
     }
 
@@ -542,6 +544,35 @@ public sealed class FactionAI
             if (u.Field.Owner != faction || u.Field.Mode != UnitMode.Attack)
             {
                 return u;
+            }
+
+            if (u.Field.AssignedUnitTarget is { } assigned)
+            {
+                var quarry = state.Armies.FirstOrDefault(enemy => enemy.Id == assigned
+                    && enemy.Pool.Active > 0 && state.AreHostile(faction, enemy.Field.Owner));
+                var home = state.Cities.Where(city => city.Owner == faction)
+                    .OrderBy(city => city.Id == u.OriginCity ? 0 : 1)
+                    .ThenBy(city => city.Position.Distance(u.Field.Position))
+                    .FirstOrDefault();
+                var retreat = quarry is null || u.MaxTroops > 0 && u.Pool.Active * 100 < u.MaxTroops * 60;
+                if (!retreat && home is not null && u.Provisions >= 0)
+                {
+                    var travelDays = (u.Field.Position.Distance(home.Position)
+                        + Math.Max(1, u.Field.Speed) - 1) / Math.Max(1, u.Field.Speed);
+                    var daily = Math.Max(1, (u.Pool.Active + 999) / 1000);
+                    retreat = u.Provisions < daily * (travelDays + 3);
+                }
+                if (retreat)
+                    return home is null ? u with { Field = u.Field with
+                    {
+                        Mode = UnitMode.Standby, Target = null, AssignedUnitTarget = null,
+                        PursuitTarget = null,
+                    } } : u with { Field = u.Field with
+                    {
+                        Mode = UnitMode.March, Target = home.Position,
+                        ReturnCity = home.Id, AssignedUnitTarget = null, PursuitTarget = null,
+                    } };
+                return u with { Field = u.Field with { Target = quarry!.Field.Position } };
             }
 
             var current = u.Field.Target;
