@@ -22,6 +22,12 @@ public class AiOffensePlannerTests
             new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())),
         new AiConfig(), new CommandService(new CommandBalance(), Troops));
 
+    private static AiOffensePlanner PlannerWithMap(HexMap map) => new(
+        new DeployService(new CommandBalance(), Troops,
+            new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+            new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())),
+        new AiConfig(), map: map);
+
     private static GameState Scenario(int own, int enemy, int provisions = 30000,
         int siege = 20000, int officers = 9, int distance = 10)
     {
@@ -220,5 +226,18 @@ public class AiOffensePlannerTests
         Assert.Equal(new CityId(2), declaration.TargetCity);
         Assert.True(declaration.CompletionDay > state.Day);
         Assert.DoesNotContain(after.Armies, u => u.VanguardId == declaration.Main);
+    }
+
+    [Fact]
+    public void 물로_끊긴_적성에는_육상_공세를_보내지_않는다()
+    {
+        var state = Scenario(100000, 20000);
+        var water = Enumerable.Range(-3, 7).ToDictionary(r => new HexCoord(5, r),
+            _ => TerrainType.WaterShallow);
+        var map = new HexMap(-2, 12, -3, 3, water);
+
+        var after = PlannerWithMap(map).Plan(state, new FactionId(1));
+
+        Assert.Empty(after.Armies);
     }
 }

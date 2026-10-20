@@ -13,13 +13,15 @@ public sealed class AiOffensePlanner
     private readonly DeployService _deployer;
     private readonly AiConfig _config;
     private readonly CommandService? _commands;
+    private readonly HexMap? _map;
 
     public AiOffensePlanner(DeployService deployer, AiConfig config,
-        CommandService? commands = null)
+        CommandService? commands = null, HexMap? map = null)
     {
         _deployer = deployer;
         _config = config;
         _commands = commands;
+        _map = map;
     }
 
     public GameState Plan(GameState state, FactionId faction)
@@ -86,6 +88,8 @@ public sealed class AiOffensePlanner
     private GameState? TryBundle(GameState original, City origin, City target,
         IReadOnlyList<General> officers, AiOffensePattern pattern)
     {
+        var route = RouteFor(original, origin, target);
+        if (route is null) return null;
         var scratch = original;
         var available = AiOffensiveCandidateService.Evaluate(original, origin, target).AvailableTroops;
         var used = 0;
@@ -115,7 +119,8 @@ public sealed class AiOffensePlanner
             var leader = free.OrderByDescending(g => g.AptitudeFor(troop.Class))
                 .ThenByDescending(g => g.Might).ThenBy(g => g.Id.Value).First();
             var result = _deployer.Deploy(scratch, new DeployRequest(origin.Id, line.TroopCode,
-                count, leader.Id, Mode: UnitMode.Attack, Target: target.Position));
+                count, leader.Id, Mode: UnitMode.Attack, Target: target.Position,
+                EgressExit: route.Exit));
             if (!result.Ok) return false;
             scratch = result.State;
             free.Remove(leader);
@@ -147,7 +152,7 @@ public sealed class AiOffensePlanner
                 .ThenByDescending(g => g.Might).ThenBy(g => g.Id.Value).ToList();
             var result = _deployer.DeployArmyGroup(scratch, new ArmyGroupDeployRequest(
                 origin.Id, lines, groupOfficers[0].Id, groupOfficers[1].Id,
-                UnitMode.Attack, target.Position));
+                UnitMode.Attack, target.Position, EgressExit: route.Exit));
             if (!result.Ok) return null;
             scratch = result.State;
             free.Remove(groupOfficers[0]);
@@ -195,7 +200,7 @@ public sealed class AiOffensePlanner
                 .ThenBy(g => g.Id.Value).First();
             var result = _deployer.DeploySupply(scratch, new SupplyDeployRequest(origin.Id,
                 [new SupplyLine(supplyLine.TroopCode, 1000)], leader.Id, UnitMode.March,
-                target.Position));
+                target.Position, EgressExit: route.Exit));
             if (!result.Ok) return null;
             scratch = result.State;
             var supply = scratch.Armies[^1];
@@ -212,6 +217,9 @@ public sealed class AiOffensePlanner
 
     private GameState? TryCoalition(GameState original, City primary, City secondary, City target)
     {
+        var primaryRoute = RouteFor(original, primary, target);
+        var secondaryRoute = RouteFor(original, secondary, target);
+        if (primaryRoute is null || secondaryRoute is null) return null;
         var primaryBudget = AiOffensiveCandidateService.Evaluate(original, primary, target,
             requiredRatioPercent: 0).AvailableTroops;
         var secondaryBudget = AiOffensiveCandidateService.Evaluate(original, secondary, target,
@@ -267,7 +275,8 @@ public sealed class AiOffensePlanner
             var leader = free.OrderByDescending(g => g.AptitudeFor(troopClass))
                 .ThenByDescending(g => g.Might).ThenBy(g => g.Id.Value).First();
             var result = _deployer.Deploy(scratch, new DeployRequest(city.Id, line.TroopCode,
-                troops, leader.Id, Mode: UnitMode.Attack, Target: target.Position));
+                troops, leader.Id, Mode: UnitMode.Attack, Target: target.Position,
+                EgressExit: city.Id == primary.Id ? primaryRoute.Exit : secondaryRoute.Exit));
             if (!result.Ok) return false;
             scratch = result.State;
             free.Remove(leader);
@@ -302,7 +311,7 @@ public sealed class AiOffensePlanner
             .ThenBy(g => g.Id.Value).First();
         var supply = _deployer.DeploySupply(scratch, new SupplyDeployRequest(primary.Id,
             [new SupplyLine(supplyLine.TroopCode, 1000)], supplyLeader.Id,
-            UnitMode.March, target.Position));
+            UnitMode.March, target.Position, EgressExit: primaryRoute.Exit));
         if (!supply.Ok) return null;
         scratch = supply.State;
         var supplyId = scratch.Armies[^1].Id;
@@ -337,7 +346,7 @@ public sealed class AiOffensePlanner
         return staged;
     }
 
-    private static bool PassesProvisionBudget(GameState staged, City target,
+    private bool PassesProvisionBudget(GameState staged, City target,
         IReadOnlyList<UnitId> combatIds)
     {
         foreach (var unit in staged.Armies.Where(u => combatIds.Contains(u.Id) || u.IsSupply
@@ -347,7 +356,9 @@ public sealed class AiOffensePlanner
             if (unit.OriginCity is not { } cityId) return false;
             var origin = staged.Cities.FirstOrDefault(c => c.Id == cityId);
             if (origin is null) return false;
-            var distance = origin.Position.Distance(target.Position);
+            var route = RouteFor(staged, origin, target);
+            if (route is null) return false;
+            var distance = route.Distance;
             var travelDays = (distance + Math.Max(1, unit.Field.Speed) - 1)
                 / Math.Max(1, unit.Field.Speed);
             var daily = Math.Max(1, (unit.Pool.Active + 999) / 1000);
@@ -355,6 +366,48 @@ public sealed class AiOffensePlanner
             if (unit.Provisions < daily * (travelDays + 7)) return false;
         }
         return true;
+    }
+
+    private sealed record AiRoute(HexCoord? Exit, int Distance);
+
+    private AiRoute? RouteFor(GameState state, City origin, City target)
+    {
+        if (_map is null) return new AiRoute(null, origin.Position.Distance(target.Position));
+        var blocked = state.Buildings.Where(b => !b.IsExpired(state.Day)).Select(b => b.Position)
+            .Concat(state.Ruins.Select(r => r.Position));
+        var passability = new PassabilityMap(_map, [], state.Cities, blocked);
+        var exits = DeploymentEgressRules.ExteriorTiles(origin)
+            .Where(tile => passability.CanEnter(MovementDomain.Land, tile))
+            .OrderBy(tile => tile.Distance(target.Position)).ThenBy(tile => tile.Q).ThenBy(tile => tile.R)
+            .ToList();
+        var approaches = DeploymentEgressRules.ExteriorTiles(target)
+            .Where(tile => passability.CanEnter(MovementDomain.Land, tile)).ToHashSet();
+        if (exits.Count == 0 || approaches.Count == 0) return null;
+        var queue = new Queue<HexCoord>();
+        var distances = new Dictionary<HexCoord, int>();
+        var origins = new Dictionary<HexCoord, HexCoord>();
+        foreach (var exit in exits)
+        {
+            queue.Enqueue(exit);
+            distances[exit] = 0;
+            origins[exit] = exit;
+        }
+        while (queue.Count > 0)
+        {
+            var tile = queue.Dequeue();
+            if (approaches.Contains(tile))
+                return new AiRoute(origins[tile], distances[tile] + 2);
+            if (distances[tile] >= 25) continue;
+            foreach (var neighbor in tile.Neighbors())
+            {
+                if (distances.ContainsKey(neighbor)
+                    || !passability.CanEnter(MovementDomain.Land, neighbor)) continue;
+                distances[neighbor] = distances[tile] + 1;
+                origins[neighbor] = origins[tile];
+                queue.Enqueue(neighbor);
+            }
+        }
+        return null;
     }
 
     private bool PassesSiegeTrial(GameState original, GameState staged, City target,

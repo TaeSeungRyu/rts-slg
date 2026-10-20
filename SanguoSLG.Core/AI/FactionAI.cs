@@ -16,12 +16,15 @@ public sealed class FactionAI
     private readonly CommandService _commands;
     private readonly DeployService _deployer;
     private readonly AiConfig _config;
+    private readonly HexMap? _map;
 
-    public FactionAI(CommandService commands, DeployService deployer, AiConfig? config = null)
+    public FactionAI(CommandService commands, DeployService deployer, AiConfig? config = null,
+        HexMap? map = null)
     {
         _commands = commands;
         _deployer = deployer;
         _config = config ?? new AiConfig();
+        _map = map;
     }
 
     /// <summary>이 세력의 한 주 명령·출전을 반영한 새 상태를 반환한다.</summary>
@@ -40,7 +43,7 @@ public sealed class FactionAI
         state = RecruitUnlockedHeroes(state, faction);
         state = new AiFieldResponsePlanner(_deployer, _config).Plan(state, faction);
         state = PlanOffenseScouting(state, faction);
-        state = new AiOffensePlanner(_deployer, _config, _commands).Plan(state, faction);
+        state = new AiOffensePlanner(_deployer, _config, _commands, _map).Plan(state, faction);
         state = PlanGeneralResearch(state, faction);
         state = PlanStratagemResearch(state, faction);
 
