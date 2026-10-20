@@ -762,6 +762,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestofficerfixtureqa")) CallDeferred(nameof(RunMapTestOfficerFixtureQa));
         if (args.Contains("--maptestwardeclarationqa")) CallDeferred(nameof(RunWarDeclarationQa));
         if (args.Contains("--maptestcitygaugeqa")) CallDeferred(nameof(RunCityVitalsGaugeQa));
+        if (args.Contains("--maptesttroopguideqa")) CallDeferred(nameof(RunTroopGuideQa));
         if (args.Contains("--maptestcityofficergridqa")) CallDeferred(nameof(RunCityOfficerGridQa));
         if (args.Contains("--maptestgeneraltransferuiqa")) CallDeferred(nameof(RunGeneralTransferUiQa));
         if (args.Contains("--maptestgeneraltransferresultqa")) CallDeferred(nameof(RunGeneralTransferResultQa));
@@ -8921,6 +8922,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         Item("세력 기록", OpenFactionScoreboard);
+        Item("부대설명", OpenTroopGuide);
         Item("전체 장수 목록", OpenGeneralRosterFresh);
         Item("전체 도시 목록", OpenCityRoster);
         Item("단서·보물 보관함", OpenTreasureList);
