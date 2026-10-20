@@ -94,6 +94,7 @@ public sealed partial class CampaignMapScene : Node3D
     private const int ReportBoxMax = 80;           // 좌하단 스크롤 박스에 유지하는 최근 줄 수(전체는 [전체] 모달)
     private const int ReportHistoryMax = 300;      // 전체 로그 보관 상한(오래된 것부터 버림)
     private readonly List<(string Text, Color Color, GeneralId? Portrait)> _pendingReport = new(); // 이번 진행 결과(재생 끝나면 flush)
+    private readonly List<string> _pendingGeneralTransferResults = new();
     private readonly List<string> _incomingWarDeclarations = new();
     private readonly List<(string Text, Color Color, string? StoryId)> _reportHistory = new(); // 전체 로그(스크롤 열람용)
     private readonly List<ExplorationDiscovery> _pendingExplorationResults = new();
@@ -763,6 +764,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestcitygaugeqa")) CallDeferred(nameof(RunCityVitalsGaugeQa));
         if (args.Contains("--maptestcityofficergridqa")) CallDeferred(nameof(RunCityOfficerGridQa));
         if (args.Contains("--maptestgeneraltransferuiqa")) CallDeferred(nameof(RunGeneralTransferUiQa));
+        if (args.Contains("--maptestgeneraltransferresultqa")) CallDeferred(nameof(RunGeneralTransferResultQa));
         if (args.Contains("--maptestcitycommandlabelsqa")) CallDeferred(nameof(RunCityCommandLabelsQa));
         if (args.Contains("--maptestgeneralstoryqa")) CallDeferred(nameof(RunGeneralStoryQa));
         if (args.Contains("--maptestclimateqa")) CallDeferred(nameof(RunClimateQa));
@@ -4140,6 +4142,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var note = new List<string>();
         _pendingReport.Clear();
+        _pendingGeneralTransferResults.Clear();
         void Ev(string t, Color c, GeneralId? portrait = null) { note.Add(t); _pendingReport.Add((t, c, portrait)); }
 
         _incomingWarDeclarations.Clear();
@@ -4268,6 +4271,8 @@ public sealed partial class CampaignMapScene : Node3D
             };
             if (text.Length > 0)
             {
+                if (we.Kind == WorldEventKind.GeneralTransfer)
+                    _pendingGeneralTransferResults.Add($"{gName} 장수가 {cName}에 도착했습니다.");
                 var growthPortrait = we.Kind is WorldEventKind.GeneralGrowth
                     or WorldEventKind.AdministrationGrowth or WorldEventKind.AptitudeGrowth
                     ? we.General : null;
@@ -5026,6 +5031,14 @@ public sealed partial class CampaignMapScene : Node3D
             _incomingWarDeclarations.Clear();
         }
         PrepareStoryAfterAdvance();
+        ShowPendingGeneralTransferResults();
+    }
+
+    private void ShowPendingGeneralTransferResults()
+    {
+        if (_pendingGeneralTransferResults.Count == 0) return;
+        ShowNotice("장수이동 결과 보고", string.Join("\n", _pendingGeneralTransferResults));
+        _pendingGeneralTransferResults.Clear();
     }
 
     private bool IsModalBlockingMapNavigation()

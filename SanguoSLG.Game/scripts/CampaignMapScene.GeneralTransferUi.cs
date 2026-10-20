@@ -243,4 +243,16 @@ public sealed partial class CampaignMapScene
         GD.Print($"[general-transfer-ui-qa] passed={passed} layout={layout} filtered={filtered} mapMode={mapMode} target={confirmedTarget} issued={issued} officers={rows.Length}");
         GetTree().Quit(passed ? 0 : 1);
     }
+
+    private void RunGeneralTransferResultQa()
+    {
+        _pendingGeneralTransferResults.Add("조운 장수가 업에 도착했습니다.");
+        ShowPendingGeneralTransferResults();
+        var labels = _confirmLayer?.FindChildren("*", "Label", true, false).OfType<Label>() ?? [];
+        var passed = _pendingGeneralTransferResults.Count == 0
+            && labels.Any(label => label.Text.Contains("장수이동 결과 보고"))
+            && labels.Any(label => label.Text.Contains("조운 장수가 업에 도착했습니다."));
+        GD.Print($"[general-transfer-result-qa] passed={passed}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
 }
