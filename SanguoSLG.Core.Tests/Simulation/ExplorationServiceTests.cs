@@ -97,8 +97,8 @@ public class ExplorationServiceTests
         var discovery = new ExplorationService().Explore(state, city, general, new FixedRandom(2));
 
         Assert.Equal(ExplorationResultKind.LocalClan, discovery.Kind);
-        Assert.Equal(200, discovery.Gold);
-        Assert.Equal(600, discovery.Provisions);
+        Assert.Equal(50, discovery.Gold);
+        Assert.Equal(150, discovery.Provisions);
         Assert.Equal(new GeneralId(1), discovery.Explorer);
     }
 
