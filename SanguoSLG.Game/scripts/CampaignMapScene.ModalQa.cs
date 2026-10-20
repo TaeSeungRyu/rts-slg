@@ -434,7 +434,8 @@ public sealed partial class CampaignMapScene
             && tabPanel?.CustomMinimumSize.Y >= 250f
             && stationedTable?.ScrollVerticalEnabled == true
             && stationedTable.MouseForcePassScrollEvents == false
-            && stationedTable.SizeFlagsVertical.HasFlag(Control.SizeFlags.ExpandFill);
+            && stationedTable.SizeFlagsVertical.HasFlag(Control.SizeFlags.ExpandFill)
+            && stationedTable.Size.Y >= tabPanel.Size.Y * 0.75f;
         var modalHeight = outerScroll?.CustomMinimumSize.Y ?? 0;
         var tabHeight = tabPanel?.CustomMinimumSize.Y ?? 0;
         CloseModal();

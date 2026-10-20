@@ -7931,6 +7931,10 @@ public sealed partial class CampaignMapScene : Node3D
         };
         contentPanel.AddThemeStyleboxOverride("panel", TabContentStyle());
         tabWrap.AddChild(contentPanel);
+        var stationedContent = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        stationedContent.AddThemeConstantOverride("separation", 6);
+        contentPanel.AddChild(stationedContent);
         var tabScroll = new ScrollContainer
         {
             Name = "CityDetailTabScroll",
@@ -7963,11 +7967,15 @@ public sealed partial class CampaignMapScene : Node3D
                 tabBtns[i].AddThemeStyleboxOverride("pressed", TabStyle(on));
             }
 
+            var stationedTab = t == 0;
+            stationedContent.Visible = stationedTab;
+            tabScroll.Visible = !stationedTab;
+            Clear(stationedContent);
             Clear(content);
             tabScroll.ScrollVertical = 0;
             switch (t)
             {
-                case 0: BuildStationedTab(content, city, stationed, readOnlyIntel); break;
+                case 0: BuildStationedTab(stationedContent, city, stationed, readOnlyIntel); break;
                 case 1: BuildCommandsTab(content, city, cmds); break;
                 default: BuildDeployTab(content, city, deploys, supplyDeploys, transportDeploys, armyGroupDeploys, navalDeploys); break;
             }
