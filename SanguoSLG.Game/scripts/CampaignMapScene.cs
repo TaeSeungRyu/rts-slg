@@ -482,7 +482,7 @@ public sealed partial class CampaignMapScene : Node3D
         ("훈련 담당", CommandKind.AppointTrainingOfficer, ""),
         ("위인 영입", CommandKind.RecruitHero, "hero"),
         ("탐색", CommandKind.Explore, ""),
-        ("계략 연구", CommandKind.Research, "stratagem_research"),
+        ("계략연구", CommandKind.Research, "stratagem_research"),
         ("해고", CommandKind.RecruitHero, "dismiss"),
         ("장수이동", CommandKind.TransferGeneral, "transfer"),
     };
@@ -6994,7 +6994,7 @@ public sealed partial class CampaignMapScene : Node3D
             var optionTitle = cmd.Kind == CommandKind.AppointRecruitmentOfficer
                 ? "자동 생산 병종을 선택하세요 (여러 개 선택 가능)"
                 : cmd.Kind == CommandKind.SelectMajorTroop ? "주력병종을 선택하세요 (1~2개 선택 후 적용)"
-                : cmd.Param == "stratagem_research" ? "계략 연구 대상을 선택하세요"
+                : cmd.Param == "stratagem_research" ? "계략연구 대상을 선택하세요"
                 : cmd.Param == "stratagem" ? "계략을 선택하세요" : "대상을 선택하세요";
             box.AddChild(MakeLabel(optionTitle, 19, GoldBright));
             var grid = new GridContainer
@@ -14165,7 +14165,7 @@ public sealed partial class CampaignMapScene : Node3D
         var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         content.AddThemeConstantOverride("separation", 5);
         panel.AddChild(content);
-        content.AddChild(MakeLabel("선택 계략 연구 상세", 16, GoldBright));
+        content.AddChild(MakeLabel("선택 계략연구 상세", 16, GoldBright));
         _modalDetail = MakeLabel(StratagemResearchSelectionDetail(_modalParam), 14, Parchment);
         _modalDetail.Name = "StratagemResearchDetailText";
         _modalDetail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -14196,7 +14196,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (_selected is not { } cityId || index < 0 || index >= StratagemResearchRules.Definitions.Count)
         {
-            return "계략 연구 대상을 선택하세요.";
+            return "계략연구 대상을 선택하세요.";
         }
 
         var city = _state.Cities.First(c => c.Id == cityId);
@@ -15479,14 +15479,14 @@ public sealed partial class CampaignMapScene : Node3D
             var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
                 && FactionResearch.IsStratagemResearch(c.TroopCode)
                 && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
-            extra = $"\n{definition.Name} 계략 연구"
+            extra = $"\n{definition.Name} 계략연구"
                 + $"\nLv.{level} → Lv.{next}/{StratagemResearchRules.MaxLevel}"
                 + (level >= StratagemResearchRules.MaxLevel
                     ? "\n※ 이미 최대 단계입니다"
                     : $"\n성공률 보정 +{StratagemResearchRules.SuccessBonus(level)}%p → +{StratagemResearchRules.SuccessBonus(next)}%p"
                         + $"\n비용 {cost:N0}금"
                         + $"\n[소요 {days}일]")
-                + (active is null ? "" : $"\n※ 계략 연구 진행 중: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
+                + (active is null ? "" : $"\n※ 계략연구 진행 중: {TroopName(active.TroopCode)} · 남은 {System.Math.Max(0, active.CompletionDay - _state.Day)}일")
                 + (level < StratagemResearchRules.MaxLevel && !ResearchFundingCanCover(cityData, cost)
                     ? "\n※ 연구비 분담 도시의 금이 부족합니다" : "");
         }
@@ -17516,7 +17516,7 @@ public sealed partial class CampaignMapScene : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         ToggleGroup(researchGroupIndex);
         var submenuLabels = _cmdSubList.GetChildren().OfType<Button>().Select(b => b.Text).ToList();
-        var expectedSubmenu = new[] { "주력병종", "전투교리", "일반연구", "계략 연구" };
+        var expectedSubmenu = new[] { "주력병종", "전투교리", "일반연구", "계략연구" };
         var submenuOk = expectedSubmenu.SequenceEqual(submenuLabels);
         var expectedGroups = new Dictionary<string, string[]>
         {
@@ -17545,7 +17545,7 @@ public sealed partial class CampaignMapScene : Node3D
             .ToDictionary(b => b.Text.Replace(" (진행중)", ""));
         var generalBusyOk = generalBusyButtons["일반연구"].Disabled
             && !generalBusyButtons["전투교리"].Disabled
-            && !generalBusyButtons["계략 연구"].Disabled;
+            && !generalBusyButtons["계략연구"].Disabled;
         CloseGroupMenu();
         var wallGroupIndex = System.Array.FindIndex(CmdGroups, group => group.Group == "성벽");
         _state = _state with { PendingCommands = originalState.Commands.Append(runningGeneral with
@@ -17692,7 +17692,7 @@ public sealed partial class CampaignMapScene : Node3D
             _confirmLayer = null;
         }
 
-        var ok = cardsOk && layoutOk && confirmOk;
+        var ok = cardsOk && layoutOk && confirmOk && Cmds[commandIndex].Label == "계략연구";
         GD.Print($"[stratagem-research-qa] cards={cardsOk} layout={layoutOk} confirm={confirmOk} funding={_researchFundingRatios.Count} ok={ok}");
         CloseModal();
         GetTree().Quit(ok ? 0 : 1);
