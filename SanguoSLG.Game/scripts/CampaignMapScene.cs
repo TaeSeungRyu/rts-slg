@@ -14788,11 +14788,6 @@ public sealed partial class CampaignMapScene : Node3D
         tree.AddThemeFontOverride("title_button_font", _font);
         tree.AddThemeFontSizeOverride("title_button_font_size", 14);
         tree.AddThemeConstantOverride("item_margin", 6);
-        if (cmd.Kind is CommandKind.AppointGovernor or CommandKind.AppointStrategist)
-        {
-            tree.SetMeta("appointment_grid_lines", true);
-            tree.Draw += () => DrawAppointmentGrid(tree);
-        }
         tree.SetColumnTitle(0, "");
         tree.SetColumnExpand(0, false);
         tree.SetColumnCustomMinimumWidth(0, 54);
@@ -14916,26 +14911,6 @@ public sealed partial class CampaignMapScene : Node3D
         tree.CustomMinimumSize = new Vector2(tree.CustomMinimumSize.X,
             Mathf.Clamp(available, 220f, modalScroll.Size.Y * 0.95f));
         tree.SetMeta("modal_bottom_reserve_ratio", 0.05f);
-    }
-
-    private static void DrawAppointmentGrid(Tree tree)
-    {
-        var root = tree.GetRoot();
-        if (root is null) return;
-        var lineColor = new Color(0.84f, 0.72f, 0.45f, 0.48f);
-        foreach (var row in root.GetChildren().OfType<TreeItem>())
-        {
-            var full = tree.GetItemAreaRect(row);
-            if (full.End.Y < 0f || full.Position.Y > tree.Size.Y) continue;
-            var y = full.End.Y;
-            tree.DrawLine(new Vector2(full.Position.X, y), new Vector2(full.End.X, y), lineColor, 1f);
-            for (var column = 0; column < tree.Columns - 1; column++)
-            {
-                var cell = tree.GetItemAreaRect(row, column);
-                tree.DrawLine(new Vector2(cell.End.X, full.Position.Y),
-                    new Vector2(cell.End.X, full.End.Y), lineColor, 1f);
-            }
-        }
     }
 
     private StyleBoxFlat CardBox(bool selected, bool hover = false) => selected

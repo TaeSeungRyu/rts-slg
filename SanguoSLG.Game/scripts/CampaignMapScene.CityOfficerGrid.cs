@@ -9,8 +9,20 @@ public sealed partial class CampaignMapScene
     {
         var grid = new GridContainer { Name = "CityOfficerGrid", Columns = 2,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        grid.AddThemeConstantOverride("h_separation", 12);
-        grid.AddThemeConstantOverride("v_separation", 3);
+        grid.AddThemeConstantOverride("h_separation", 0);
+        grid.AddThemeConstantOverride("v_separation", 0);
+        PanelContainer Cell(Control child)
+        {
+            var frame = new PanelContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            var style = new StyleBoxFlat { BgColor = new Color(0, 0, 0, 0),
+                BorderColor = new Color(Gold, .6f) };
+            style.SetBorderWidthAll(1);
+            style.SetContentMarginAll(3);
+            frame.AddThemeStyleboxOverride("panel", style);
+            frame.SetMeta("city_officer_grid_cell", true);
+            frame.AddChild(child);
+            return frame;
+        }
         foreach (var officerId in new[] { city.Governor, city.Strategist })
         {
             var portraitCell = new CenterContainer { CustomMinimumSize = new Vector2(125, 72),
@@ -21,7 +33,7 @@ public sealed partial class CampaignMapScene
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize };
             portraitCell.AddChild(picture);
-            grid.AddChild(portraitCell);
+            grid.AddChild(Cell(portraitCell));
         }
         foreach (var (role, officerId) in new[] { ("태수", city.Governor), ("군사", city.Strategist) })
         {
@@ -31,7 +43,7 @@ public sealed partial class CampaignMapScene
             var label = MakeLabel($"{role}\n{name}", 13, Parchment);
             label.HorizontalAlignment = HorizontalAlignment.Center;
             label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            grid.AddChild(label);
+            grid.AddChild(Cell(label));
         }
         return grid;
     }
@@ -46,8 +58,11 @@ public sealed partial class CampaignMapScene
             : candidate).ToList() };
         SelectCity(city.Id);
         var grid = _infoRows.FindChild("CityOfficerGrid", true, false) as GridContainer;
-        var labels = grid?.GetChildren().OfType<Label>().Select(label => label.Text).ToList() ?? [];
+        var labels = grid?.FindChildren("*", "Label", true, false).OfType<Label>()
+            .Select(label => label.Text).ToList() ?? [];
         var passed = grid?.Columns == 2 && grid.GetChildCount() == 4
+            && grid.GetChildren().OfType<PanelContainer>().Count(panel =>
+                panel.GetMeta("city_officer_grid_cell").AsBool()) == 4
             && labels.Count == 2 && labels[0].StartsWith("태수\n") && labels[1].StartsWith("군사\n")
             && grid.FindChildren("CityOfficerPortrait", "TextureRect", true, false).OfType<TextureRect>()
                 .Count(portrait => portrait.Texture is not null) == 2;

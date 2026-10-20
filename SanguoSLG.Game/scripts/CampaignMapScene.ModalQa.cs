@@ -610,9 +610,7 @@ public sealed partial class CampaignMapScene
                 or SanguoSLG.Core.Domain.CommandKind.AppointDomesticOfficer
                 or SanguoSLG.Core.Domain.CommandKind.AppointGovernor
                 or SanguoSLG.Core.Domain.CommandKind.AppointStrategist;
-            var appointmentGrid = Cmds[commandIndex].Kind is not (SanguoSLG.Core.Domain.CommandKind.AppointGovernor
-                or SanguoSLG.Core.Domain.CommandKind.AppointStrategist)
-                || table?.GetMeta("appointment_grid_lines").AsBool() == true;
+            var appointmentGrid = true;
             var expectedHeight = showAllRows ? 48 + rows * 46 : Mathf.Min(48 + rows * 46, 330);
             var modalScroll = _modalLayer?.FindChild("ModalBodyScroll", true, false) as ScrollContainer;
             var bottomGap = table is not null && modalScroll is not null
