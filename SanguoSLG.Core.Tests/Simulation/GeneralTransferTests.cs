@@ -60,4 +60,35 @@ public class GeneralTransferTests
         var rerouted = world.AdvanceDays(captured, 1);
         Assert.Equal(Source, rerouted.PostingOf(Officer)!.Location);
     }
+
+    [Fact]
+    public void 장수이동은_계략수행중인_장수를_거절한다()
+    {
+        var state = State() with { PendingCommands = [new CityCommand(Source, CommandKind.CityStratagem,
+            Officer, null, 1, 8, 0, Facility: "scout", TargetCity: new CityId(3))] };
+
+        var result = new CommandService(new CommandBalance()).Issue(state,
+            new CommandRequest(Source, CommandKind.TransferGeneral, Officer, TargetCity: Destination));
+
+        Assert.False(result.Ok);
+        Assert.Contains("다른 업무", result.Error);
+        Assert.Equal(state, result.State);
+    }
+
+    [Fact]
+    public void 장수이동은_출전중인_장수를_거절한다()
+    {
+        var field = new FieldUnit(new UnitId(99), new FactionId(1), new HexCoord(0, 0),
+            2, 1, 1, MovementDomain.Land, UnitMode.Standby, null, 99, 1);
+        var army = new CombatUnit(field, new CombatStats(1000, 10, 10),
+            new TroopPool(1000, 0), UnitCombatState.Create(60), VanguardId: Officer);
+        var state = State() with { FieldArmies = [army] };
+
+        var result = new CommandService(new CommandBalance()).Issue(state,
+            new CommandRequest(Source, CommandKind.TransferGeneral, Officer, TargetCity: Destination));
+
+        Assert.False(result.Ok);
+        Assert.Contains("출전", result.Error);
+        Assert.Equal(state, result.State);
+    }
 }
