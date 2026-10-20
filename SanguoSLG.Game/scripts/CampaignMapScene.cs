@@ -6026,6 +6026,7 @@ public sealed partial class CampaignMapScene : Node3D
         ClearFieldBuildingRange();
         ClearUnitAttackRange();
         if (_ring is not null) { _ring.Visible = false; }
+        RefreshSelectedCityVitals();
     }
 
     private void RunAdvanceCityPaletteQa()
@@ -6166,6 +6167,7 @@ public sealed partial class CampaignMapScene : Node3D
         _infoCard.Visible = true;
         _cmdMenu.Visible = owned && !_advancing; // 진행 중·적 성에는 명령 팔레트를 숨긴다(상태 카드는 보임)
         MoveRing(c.Position);
+        RefreshSelectedCityVitals();
     }
 
     private string? OfficerName(GeneralId? id)

@@ -45,21 +45,28 @@ public sealed partial class CampaignMapScene
 
     private string CityMapLabel(City city, int troops)
     {
-        var factionName = _state.Factions.FirstOrDefault(f => f.Id == city.Owner)?.Name ?? "?";
         var declaration = IsDeclaredCity(city) ? $"⚔ 선전포고 · {WarDaysLeft(city.Id)}일\n" : "";
-        return declaration + $"{city.Name} [{factionName}]"
-            + (CanInspectCity(city) ? "" : "\n시야 밖");
+        return declaration + city.Name;
     }
 
     private void UpdateCityVitalsGauge(City city, int wall, int troops)
     {
         if (!_cityVitalsGauges.TryGetValue(city.Id.Value, out var gauge)) return;
-        gauge.Visible = CanInspectCity(city);
+        gauge.Visible = _infoCard.Visible && _selected == city.Id && CanInspectCity(city);
         _cityLabels[city.Id.Value].Visible = !gauge.Visible;
         if (gauge.Visible)
         {
             gauge.SetTitle(CityMapLabel(city, troops), MapRelationTextColor(city.Owner));
             gauge.SetValues(wall, CastleWall.Max(city.Castle, _balance, city.WallLevel), troops);
+        }
+    }
+
+    private void RefreshSelectedCityVitals()
+    {
+        foreach (var city in _state.Cities)
+        {
+            var troops = CityTroopsForDisplay(city.Id);
+            UpdateCityVitalsGauge(city, city.Wall, troops);
         }
     }
 
@@ -69,6 +76,9 @@ public sealed partial class CampaignMapScene
         var gauge = _cityVitalsGauges[city.Id.Value];
         var troops = _state.Garrisons.Where(force => force.City == city.Id).Sum(force => force.Troops);
         var expectedWallMax = CastleWall.Max(city.Castle, _balance, city.WallLevel);
+        var hiddenInitially = !gauge.Visible && _cityLabels[city.Id.Value].Visible
+            && _cityLabels[city.Id.Value].Text == city.Name;
+        SelectCity(city.Id);
         var initial = gauge.Visible && gauge.WallValue == city.Wall && gauge.WallMaximum == expectedWallMax
             && gauge.TroopValue == Math.Min(troops, 100_000)
             && gauge.WallCaption.Contains(city.Wall.ToString("N0"), StringComparison.Ordinal)
@@ -76,10 +86,12 @@ public sealed partial class CampaignMapScene
         UpdateCityVitalsGauge(city, expectedWallMax / 2, 0);
         var changed = gauge.WallValue == expectedWallMax / 2 && gauge.TroopValue == 0;
         UpdateCityVitalsGauge(city, city.Wall, troops);
-        var passed = initial && changed && !_cityLabels[city.Id.Value].Visible
+        HidePanels();
+        var hiddenAfterClose = !gauge.Visible && _cityLabels[city.Id.Value].Visible;
+        var passed = hiddenInitially && initial && changed && hiddenAfterClose
             && gauge.Title.Contains(city.Name, StringComparison.Ordinal)
             && CityVitalsGauge3D.DisplayPixelSize >= 0.0035f;
-        GD.Print($"[maptestcitygaugeqa] passed={passed} initial={initial} changed={changed} wall={gauge.WallValue}/{gauge.WallMaximum} troops={gauge.TroopValue}");
+        GD.Print($"[maptestcitygaugeqa] passed={passed} hidden={hiddenInitially}/{hiddenAfterClose} initial={initial} changed={changed} wall={gauge.WallValue}/{gauge.WallMaximum} troops={gauge.TroopValue}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
