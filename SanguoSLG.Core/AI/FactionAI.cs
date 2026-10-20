@@ -27,6 +27,7 @@ public sealed class FactionAI
     /// <summary>이 세력의 한 주 명령·출전을 반영한 새 상태를 반환한다.</summary>
     public GameState PlanWeek(GameState state, FactionId faction)
     {
+        state = PlanAppointments(state, faction);
         var existingArmyIds = state.Armies.Select(unit => unit.Id).ToHashSet();
         state = state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && unit.AiOpeningAttack && !unit.IsWaitingDeployment
@@ -79,6 +80,41 @@ public sealed class FactionAI
             unit.Field.Owner == faction && !existingArmyIds.Contains(unit.Id)
                 && unit.Field.Mode == UnitMode.Attack
                 ? unit with { AiOpeningAttack = true } : unit).ToList() };
+    }
+
+    private GameState PlanAppointments(GameState state, FactionId faction)
+    {
+        foreach (var city in state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).ToList())
+        {
+            var residents = state.GeneralsAt(city.Id)
+                .Where(id => state.PostingOf(id)?.Faction == faction && !state.IsGeneralInField(id))
+                .Select(id => state.Generals.FirstOrDefault(g => g.Id == id))
+                .Where(g => g is not null)
+                .Select(g => g!)
+                .OrderBy(g => g.Id.Value)
+                .ToList();
+            if (residents.Count == 0)
+            {
+                continue;
+            }
+
+            if (city.Governor is null || residents.All(g => g.Id != city.Governor))
+            {
+                // A vacancy is filled once; a stable per-city seed prevents weekly reshuffling.
+                var seed = unchecked(state.Day * 397 ^ faction.Value * 31 ^ city.Id.Value);
+                var governor = residents[new SeededRandomSource(seed).Next(0, residents.Count)];
+                var result = _commands.Issue(state, new CommandRequest(city.Id, CommandKind.AppointGovernor, governor.Id));
+                if (result.Ok) state = result.State;
+            }
+
+            var strategist = residents.OrderByDescending(g => g.Intellect).ThenBy(g => g.Id.Value).First();
+            if (city.Strategist != strategist.Id)
+            {
+                var result = _commands.Issue(state, new CommandRequest(city.Id, CommandKind.AppointStrategist, strategist.Id));
+                if (result.Ok) state = result.State;
+            }
+        }
+        return state;
     }
 
     // 탐색은 공세·연구가 장수를 예약한 뒤, 방어 여력과 금 예비가 남는 성에서만 수행한다.

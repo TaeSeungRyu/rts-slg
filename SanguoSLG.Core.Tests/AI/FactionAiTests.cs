@@ -81,6 +81,27 @@ public class FactionAiTests
         new(new GeneralId(general), new FactionId(faction), new CityId(city));
 
     [Fact]
+    public void AI는_모든_도시의_태수와_최고지력_군사를_임명하고_기존_태수를_유지한다()
+    {
+        var cities = new[] { Town(1, 1, new HexCoord(0, 0)), Town(2, 1, new HexCoord(3, 0)), Town(3, 2, new HexCoord(6, 0)) };
+        var generals = new[] { Gen(1), Gen(2) with { Intellect = 95 }, Gen(3), Gen(4) };
+        var state = new GameState(1, 190, [], cities, generals,
+            Postings: [At(1, 1, 1), At(2, 1, 1), At(3, 1, 2), At(4, 2, 3)]);
+
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(state, new FactionId(1));
+        var first = after.Cities.Single(c => c.Id == new CityId(1));
+        var second = after.Cities.Single(c => c.Id == new CityId(2));
+        Assert.Contains(first.Governor, new GeneralId?[] { new(1), new(2) });
+        Assert.Equal(new GeneralId(2), first.Strategist);
+        Assert.Equal(new GeneralId(3), second.Governor);
+        Assert.Equal(new GeneralId(3), second.Strategist);
+        Assert.Null(after.Cities.Single(c => c.Id == new CityId(3)).Governor);
+
+        var next = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(after with { Day = 8 }, new FactionId(1));
+        Assert.Equal(first.Governor, next.Cities.Single(c => c.Id == first.Id).Governor);
+    }
+
+    [Fact]
     public void 해금된_AI_위인은_금을_내고_자동_영입한다()
     {
         var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Faction,
