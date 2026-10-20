@@ -6,8 +6,8 @@ namespace SanguoSLG.Game;
 public sealed partial class CityVitalsGauge3D : Node3D
 {
     private const int TroopDisplayReference = 100_000;
-    private const int ViewWidth = 520;
-    private const int ViewHeight = 198;
+    private const int ViewWidth = 800;
+    private const int ViewHeight = 270;
     public const float DisplayPixelSize = 0.0035f;
 
     private ProgressBar _wallBar = null!;
@@ -24,8 +24,8 @@ public sealed partial class CityVitalsGauge3D : Node3D
     public string Title => _title.Text;
     public bool HasDarkReadableCaptions => _wallText.GetThemeColor("font_color").R < 0.2f
         && _troopText.GetThemeColor("font_color").R < 0.2f;
-    public bool HasLargeCaptions => _wallText.GetThemeFontSize("font_size") == 23
-        && _troopText.GetThemeFontSize("font_size") == 23;
+    public bool HasLargeCaptions => _wallText.GetThemeFontSize("font_size") == _title.GetThemeFontSize("font_size")
+        && _troopText.GetThemeFontSize("font_size") == _title.GetThemeFontSize("font_size");
 
     public override void _Ready()
     {
@@ -42,7 +42,7 @@ public sealed partial class CityVitalsGauge3D : Node3D
         rows.AddThemeConstantOverride("separation", 6);
         viewport.AddChild(rows);
         _title = new Label { HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center, CustomMinimumSize = new Vector2(0, 72) };
+            VerticalAlignment = VerticalAlignment.Center, CustomMinimumSize = new Vector2(0, 78) };
         _title.AddThemeFontSizeOverride("font_size", 42);
         _title.AddThemeColorOverride("font_color", new Color("fff2d5"));
         _title.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, .95f));
@@ -81,16 +81,16 @@ public sealed partial class CityVitalsGauge3D : Node3D
 
     private static (ProgressBar Bar, Label Text) AddGauge(VBoxContainer rows, string name, Color fill)
     {
-        var line = new HBoxContainer { CustomMinimumSize = new Vector2(0, 45) };
+        var line = new HBoxContainer { CustomMinimumSize = new Vector2(0, 82) };
         line.AddThemeConstantOverride("separation", 8);
         rows.AddChild(line);
         var caption = new Label
         {
             Text = name,
-            CustomMinimumSize = new Vector2(52, 42),
+            CustomMinimumSize = new Vector2(100, 72),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        caption.AddThemeFontSizeOverride("font_size", 22);
+        caption.AddThemeFontSizeOverride("font_size", 42);
         caption.AddThemeColorOverride("font_color", new Color("15202b"));
         caption.AddThemeColorOverride("font_shadow_color", new Color(1, 1, 1, 0.9f));
         caption.AddThemeConstantOverride("shadow_offset_x", 2);
@@ -98,7 +98,7 @@ public sealed partial class CityVitalsGauge3D : Node3D
         line.AddChild(caption);
         var bar = new ProgressBar
         {
-            CustomMinimumSize = new Vector2(210, 29),
+            CustomMinimumSize = new Vector2(240, 42),
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             ShowPercentage = false,
         };
@@ -116,7 +116,7 @@ public sealed partial class CityVitalsGauge3D : Node3D
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        value.AddThemeFontSizeOverride("font_size", 23);
+        value.AddThemeFontSizeOverride("font_size", 42);
         value.AddThemeColorOverride("font_color", new Color("15202b"));
         value.AddThemeColorOverride("font_shadow_color", new Color(1, 1, 1, 0.9f));
         value.AddThemeConstantOverride("shadow_offset_x", 2);
