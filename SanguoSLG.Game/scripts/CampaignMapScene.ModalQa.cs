@@ -457,7 +457,7 @@ public sealed partial class CampaignMapScene
             && commandPortraitNodes.All(portrait => portrait.GetMeta("thin_gold_border").AsBool());
         var commandTableLayout = commandRows >= 1 && commandPortraits >= 1;
         var diplomacyTranslated = KindName(SanguoSLG.Core.Domain.CommandKind.FormAlliance) == "동맹"
-            && KindName(SanguoSLG.Core.Domain.CommandKind.BreakAlliance) == "동맹 파기";
+            && KindName(SanguoSLG.Core.Domain.CommandKind.BreakAlliance) == "동맹파기";
         CloseModal();
 
         _state = originalState;

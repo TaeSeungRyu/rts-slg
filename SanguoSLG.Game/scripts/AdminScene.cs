@@ -46,10 +46,10 @@ public sealed partial class AdminScene : Control
         ("건설", CommandKind.Build, "facility"),
         ("세율", CommandKind.SetTaxRate, "tax"),
         ("전투교리", CommandKind.Research, "troop"),
-        ("성벽 강화", CommandKind.Research, "wall"),
-        ("성벽 수리", CommandKind.Repair, "wall"),
-        ("시설 수리", CommandKind.Repair, "repairable"),
-        ("도시 계략", CommandKind.CityStratagem, "stratagem"),
+        ("성벽강화", CommandKind.Research, "wall"),
+        ("성벽수리", CommandKind.Repair, "wall"),
+        ("시설수리", CommandKind.Repair, "repairable"),
+        ("도시계략", CommandKind.CityStratagem, "stratagem"),
     };
 
     private static readonly (string Label, string Code)[] Stratagems =

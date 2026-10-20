@@ -463,24 +463,24 @@ public sealed partial class CampaignMapScene : Node3D
         ("훈련", CommandKind.Train, "garrison"),
         ("세율", CommandKind.SetTaxRate, "tax"),
         ("건설", CommandKind.Build, "facility"),
-        ("선박 생산", CommandKind.BuildShip, "ship"),
+        ("선박생산", CommandKind.BuildShip, "ship"),
         ("주력병종", CommandKind.SelectMajorTroop, "major"),
         ("전투교리", CommandKind.Research, "troop"),
         ("일반연구", CommandKind.Research, "general"),
-        ("성벽 강화", CommandKind.Research, "wall"),
-        ("성벽 수리", CommandKind.Repair, "wall"),
-        ("시설 수리", CommandKind.Repair, "repairable"),
-        ("도시 계략", CommandKind.CityStratagem, "stratagem"),
+        ("성벽강화", CommandKind.Research, "wall"),
+        ("성벽수리", CommandKind.Repair, "wall"),
+        ("시설수리", CommandKind.Repair, "repairable"),
+        ("도시계략", CommandKind.CityStratagem, "stratagem"),
         ("동맹", CommandKind.FormAlliance, "faction"),
         ("동맹파기", CommandKind.BreakAlliance, "faction"),
-        ("선전 포고", CommandKind.DeclareWar, "war_city"),
-        ("태수 임명", CommandKind.AppointGovernor, ""),
-        ("군사 임명", CommandKind.AppointStrategist, ""),
-        ("치안 담당", CommandKind.AppointSecurityOfficer, ""),
-        ("내정 담당", CommandKind.AppointDomesticOfficer, ""),
-        ("병력 담당", CommandKind.AppointRecruitmentOfficer, ""),
-        ("훈련 담당", CommandKind.AppointTrainingOfficer, ""),
-        ("위인 영입", CommandKind.RecruitHero, "hero"),
+        ("선전포고", CommandKind.DeclareWar, "war_city"),
+        ("태수임명", CommandKind.AppointGovernor, ""),
+        ("군사임명", CommandKind.AppointStrategist, ""),
+        ("치안담당", CommandKind.AppointSecurityOfficer, ""),
+        ("내정담당", CommandKind.AppointDomesticOfficer, ""),
+        ("병력담당", CommandKind.AppointRecruitmentOfficer, ""),
+        ("훈련담당", CommandKind.AppointTrainingOfficer, ""),
+        ("위인영입", CommandKind.RecruitHero, "hero"),
         ("탐색", CommandKind.Explore, ""),
         ("계략연구", CommandKind.Research, "stratagem_research"),
         ("해고", CommandKind.RecruitHero, "dismiss"),
@@ -758,6 +758,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestofficerfixtureqa")) CallDeferred(nameof(RunMapTestOfficerFixtureQa));
         if (args.Contains("--maptestwardeclarationqa")) CallDeferred(nameof(RunWarDeclarationQa));
         if (args.Contains("--maptestcitygaugeqa")) CallDeferred(nameof(RunCityVitalsGaugeQa));
+        if (args.Contains("--maptestcitycommandlabelsqa")) CallDeferred(nameof(RunCityCommandLabelsQa));
         if (args.Contains("--maptestgeneralstoryqa")) CallDeferred(nameof(RunGeneralStoryQa));
         if (args.Contains("--maptestclimateqa")) CallDeferred(nameof(RunClimateQa));
         if (args.Contains("--maptestclimateadvanceqa")) CallDeferred(nameof(RunClimateAdvanceQa));
@@ -4984,7 +4985,7 @@ public sealed partial class CampaignMapScene : Node3D
         else ShowPendingHuntRewards();
         if (_incomingWarDeclarations.Count > 0)
         {
-            ShowNotice("선전 포고를 받았습니다", string.Join("\n", _incomingWarDeclarations));
+            ShowNotice("선전포고를 받았습니다", string.Join("\n", _incomingWarDeclarations));
             _incomingWarDeclarations.Clear();
         }
         PrepareStoryAfterAdvance();
@@ -6188,6 +6189,27 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // 그룹 버튼 토글 — 같은 그룹 재클릭 = 닫기, 다른 그룹 = 교체.
+    private void RunCityCommandLabelsQa()
+    {
+        var city = _state.Cities.First(c => c.Owner == Player && !c.IsPort);
+        _selected = city.Id;
+        var menusCompact = Cmds.All(command => !command.Label.Contains(' '));
+        var titlesCompact = true;
+        foreach (var param in new[] { "wall", "stratagem", "war_city" })
+        {
+            var commandIndex = System.Array.FindIndex(Cmds, command => command.Param == param
+                && (param != "wall" || command.Kind == CommandKind.Research));
+            OpenModal(commandIndex);
+            titlesCompact &= _modalLayer?.FindChildren("*", "Label", true, false)
+                .OfType<Label>().Any(label => label.Text.StartsWith(Cmds[commandIndex].Label + "   《",
+                    System.StringComparison.Ordinal)) == true;
+            CloseModal();
+        }
+        var passed = menusCompact && titlesCompact;
+        GD.Print($"[maptestcitycommandlabelsqa] passed={passed} menu={menusCompact} titles={titlesCompact}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private void ToggleGroup(int groupIdx)
     {
         if (_openGroup == groupIdx) { CloseGroupMenu(); return; }
@@ -6220,7 +6242,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 btn.Text = Cmds[i].Label + " (항구 불가)";
                 btn.TooltipText = Cmds[i].Kind == CommandKind.Repair
-                    ? "항구에서는 성벽 수리만 가능합니다."
+                    ? "항구에서는 성벽수리만 가능합니다."
                     : "항구에서는 연구를 진행할 수 없습니다.";
                 btn.Disabled = true;
             }
@@ -6231,7 +6253,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
             else if (wallFull)
             {
-                btn.Text = "성벽 수리 (내구도 100%)";
+                btn.Text = "성벽수리 (내구도 100%)";
                 btn.TooltipText = "성벽 내구도가 최대치라 수리할 필요가 없습니다.";
                 btn.Disabled = true;
             }
@@ -6767,7 +6789,7 @@ public sealed partial class CampaignMapScene : Node3D
             && _state.Cities.FirstOrDefault(c => c.Id == city) is { } repairCity
             && repairCity.Wall >= CastleWall.Max(repairCity.Castle, _balance, repairCity.WallLevel))
         {
-            ShowNotice("성벽 수리 불필요", "성벽 내구도가 이미 100%입니다.");
+            ShowNotice("성벽수리 불필요", "성벽 내구도가 이미 100%입니다.");
             return;
         }
         CloseModal();
@@ -6817,7 +6839,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "wall")
         {
-            box.AddChild(MakeLabel("성벽 강화는 병종 전투교리가 아니라 해당 도시의 최대 성벽을 올리는 방어 연구입니다.", 15, Parchment));
+            box.AddChild(MakeLabel("성벽강화는 병종 전투교리가 아니라 해당 도시의 최대 성벽을 올리는 방어 연구입니다.", 15, Parchment));
         }
         else if (cmd.Kind == CommandKind.Research && cmd.Param == "troop")
         {
@@ -13774,7 +13796,7 @@ public sealed partial class CampaignMapScene : Node3D
             ?? _state.Assignments.FirstOrDefault(p => p.Location == city.Id && p.Faction == city.Owner)?.General
             ?? _state.Factions.FirstOrDefault(f => f.Id == city.Owner)?.Ruler
             ?? hero.General;
-        ShowConfirm("위인 영입",
+        ShowConfirm("위인영입",
             $"{city.Name}에서 {name}을(를) 영입합니다.\n유형: {type}\n영입 포인트: {hero.RecruitPointCost}점\n비용: {hero.RecruitGold}금\n\n진행하시겠습니까?",
             () =>
             {
@@ -13791,7 +13813,7 @@ public sealed partial class CampaignMapScene : Node3D
                 }
                 else
                 {
-                    ShowNotice("위인 영입 실패", result.Error ?? "조건에 맞지 않아 영입할 수 없습니다.");
+                    ShowNotice("위인영입 실패", result.Error ?? "조건에 맞지 않아 영입할 수 없습니다.");
                 }
             });
     }
@@ -15232,11 +15254,11 @@ public sealed partial class CampaignMapScene : Node3D
         if (cmd.Kind == CommandKind.DeclareWar)
         {
             var targets = WarDeclarationTargets(_state.Cities.First(c => c.Id == city));
-            if (p < 0 || p >= targets.Count) { ShowNotice("선전 포고 실패", "대상 도시를 선택해야 합니다."); return; }
+            if (p < 0 || p >= targets.Count) { ShowNotice("선전포고 실패", "대상 도시를 선택해야 합니다."); return; }
             target = targets[p].Id;
             if (WarDeclarationRules.HasNearbyArmy(_state, _state.Cities.First(c => c.Id == city).Owner, targets[p]))
             {
-                ShowNotice("선전 포고 불가", $"{targets[p].Name} 주변 4칸 안에 아군 부대가 있습니다.");
+                ShowNotice("선전포고 불가", $"{targets[p].Name} 주변 4칸 안에 아군 부대가 있습니다.");
                 return;
             }
             var origin = _state.Cities.First(c => c.Id == city);
@@ -15338,7 +15360,7 @@ public sealed partial class CampaignMapScene : Node3D
                 && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
             var currentMax = CastleWall.Max(cityData.Castle, _balance, level);
             var nextMax = CastleWall.Max(cityData.Castle, _balance, next);
-            extra = $"\n{cityData.Name} 성벽 강화"
+            extra = $"\n{cityData.Name} 성벽강화"
                 + $"\n현재 성벽 최대 {currentMax} → {nextMax}"
                 + (level >= _cb.WallResearchMaxLevel
                     ? "\n※ 이미 최대 단계입니다"
@@ -16411,23 +16433,23 @@ public sealed partial class CampaignMapScene : Node3D
         CommandKind.Conscript => "징병",
         CommandKind.Train => "훈련",
         CommandKind.Build => "건설",
-        CommandKind.BuildShip => "선박 생산",
+        CommandKind.BuildShip => "선박생산",
         CommandKind.Upgrade => "업그레이드",
         CommandKind.SetTaxRate => "세율",
         CommandKind.Research => "연구",
         CommandKind.Repair => "수리",
         CommandKind.CityStratagem => "계략",
         CommandKind.FormAlliance => "동맹",
-        CommandKind.BreakAlliance => "동맹 파기",
-        CommandKind.DeclareWar => "선전 포고",
-        CommandKind.AppointGovernor => "태수 임명",
-        CommandKind.AppointStrategist => "군사 임명",
-        CommandKind.AppointSecurityOfficer => "치안 담당",
-        CommandKind.AppointDomesticOfficer => "내정 담당",
-        CommandKind.AppointRecruitmentOfficer => "병력 담당",
-        CommandKind.AppointTrainingOfficer => "훈련 담당",
+        CommandKind.BreakAlliance => "동맹파기",
+        CommandKind.DeclareWar => "선전포고",
+        CommandKind.AppointGovernor => "태수임명",
+        CommandKind.AppointStrategist => "군사임명",
+        CommandKind.AppointSecurityOfficer => "치안담당",
+        CommandKind.AppointDomesticOfficer => "내정담당",
+        CommandKind.AppointRecruitmentOfficer => "병력담당",
+        CommandKind.AppointTrainingOfficer => "훈련담당",
         CommandKind.Enlist => "등용",
-        CommandKind.RecruitHero => "위인 영입",
+        CommandKind.RecruitHero => "위인영입",
         CommandKind.TransferGeneral => "장수이동",
         CommandKind.Explore => "탐색",
         _ => k.ToString(),
@@ -17520,18 +17542,19 @@ public sealed partial class CampaignMapScene : Node3D
         var submenuOk = expectedSubmenu.SequenceEqual(submenuLabels);
         var expectedGroups = new Dictionary<string, string[]>
         {
-            ["항구"] = ["선박 생산"],
+            ["항구"] = ["선박생산"],
             ["연구"] = expectedSubmenu,
-            ["성벽"] = ["성벽 강화", "성벽 수리"],
-            ["계략"] = ["도시 계략"],
-            ["외교"] = ["동맹", "동맹파기", "선전 포고"],
-            ["임명"] = ["태수 임명", "군사 임명"],
-            ["담당자"] = ["치안 담당", "내정 담당", "병력 담당", "훈련 담당"],
-            ["인재"] = ["위인 영입", "해고"],
+            ["성벽"] = ["성벽강화", "성벽수리"],
+            ["계략"] = ["도시계략"],
+            ["외교"] = ["동맹", "동맹파기", "선전포고"],
+            ["임명"] = ["태수임명", "군사임명"],
+            ["담당자"] = ["치안담당", "내정담당", "병력담당", "훈련담당"],
+            ["인재"] = ["위인영입", "해고", "장수이동"],
             ["탐색"] = ["탐색"],
         };
-        var allGroupsOk = CmdGroups.All(g => expectedGroups.TryGetValue(g.Group, out var expected)
-            && expected.SequenceEqual(g.Indices.Select(i => Cmds[i].Label)));
+        var allGroupsOk = Cmds.All(command => !command.Label.Contains(' '))
+            && CmdGroups.All(g => expectedGroups.TryGetValue(g.Group, out var expected)
+                && expected.SequenceEqual(g.Indices.Select(i => Cmds[i].Label)));
         CloseGroupMenu();
 
         var originalState = _state;
@@ -17552,7 +17575,7 @@ public sealed partial class CampaignMapScene : Node3D
             { TroopCode = _troops[0].Code }).ToList() };
         ToggleGroup(wallGroupIndex);
         var wallIndependentOfCombat = _cmdSubList.GetChildren().OfType<Button>()
-            .Any(button => button.Text == "성벽 강화" && !button.Disabled);
+            .Any(button => button.Text == "성벽강화" && !button.Disabled);
         CloseGroupMenu();
         _state = originalState;
 
@@ -17722,7 +17745,7 @@ public sealed partial class CampaignMapScene : Node3D
         var text = string.Join("\n", _confirmLayer?.FindChildren("*", "Label", true, false)
             .OfType<Label>().Select(label => label.Text) ?? []);
         var contentOk = text.Contains(city.Name, System.StringComparison.Ordinal)
-            && text.Contains("성벽 강화", System.StringComparison.Ordinal)
+            && text.Contains("성벽강화", System.StringComparison.Ordinal)
             && text.Contains("비용", System.StringComparison.Ordinal)
             && text.Contains("소요", System.StringComparison.Ordinal);
         var passed = fundingHidden && portrait && contentOk;
