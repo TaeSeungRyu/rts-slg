@@ -151,14 +151,7 @@ internal static class SpectatorCampaign
         foreach (var f in state.Factions.OrderBy(f => f.Id.Value))
         {
             var cities = state.Cities.Where(c => c.Owner == f.Id).Select(c => c.Name);
-            var held = state.PrisonersHeldBy(f.Id).Count();
-            Console.WriteLine($"  {f.Name}: 도시 [{string.Join(",", cities)}] · 억류 포로 {held}");
-        }
-
-        if (state.Prisoners.Count > 0)
-        {
-            var names = state.Prisoners.Select(p => state.Generals.First(g => g.Id == p.General).Name);
-            Console.WriteLine($"  포로: {string.Join(", ", names)}");
+            Console.WriteLine($"  {f.Name}: 도시 [{string.Join(",", cities)}]");
         }
     }
 
