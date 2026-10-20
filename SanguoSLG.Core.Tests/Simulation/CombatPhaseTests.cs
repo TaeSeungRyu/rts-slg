@@ -1,6 +1,7 @@
 namespace SanguoSLG.Core.Tests.Simulation;
 
 using System.Linq;
+using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Simulation.RenewalMovement;
@@ -10,6 +11,39 @@ using Xunit;
 /// <summary>전투 페이즈 발동 — 사거리 전수검사·다대일 페어링(design-combat.md).</summary>
 public class CombatPhaseTests
 {
+    [Theory]
+    [InlineData("catapult")]
+    [InlineData("siege_tower")]
+    public void 투석기와_공성탑은_전진중_사거리내_적둘을_모두_공격대상으로_잡는다(string troopCode)
+    {
+        var template = new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory())
+            .Single(troop => troop.Code == troopCode);
+        var attacker = CombatUnitAt(1, 1, new HexCoord(0, 0), new ContinuousPosition(0, 0)) with
+        {
+            Field = Unit(1, 1, new HexCoord(0, 0), UnitMode.Advance,
+                attackRange: template.RangeUnit),
+            Class = template.Class,
+            TroopCode = troopCode,
+        };
+        var first = CombatUnitAt(2, 2, new HexCoord(1, 0),
+            new ContinuousPosition(800, 0)) with
+        { Field = Unit(2, 2, new HexCoord(1, 0), UnitMode.March) };
+        var second = CombatUnitAt(3, 2, new HexCoord(2, 0),
+            new ContinuousPosition(1700, 0)) with
+        { Field = Unit(3, 2, new HexCoord(2, 0), UnitMode.March) };
+
+        var engagement = CombatPhase.DetectEngagements([attacker, first, second])
+            .Single(result => result.Attacker == attacker.Id);
+
+        Assert.Equal(2, template.RangeUnit);
+        Assert.Equal([first.Id, second.Id], engagement.Targets);
+        var ordered = attacker with { Field = attacker.Field with
+            { Mode = UnitMode.Attack, AssignedUnitTarget = first.Id } };
+        var focused = CombatPhase.DetectEngagements([ordered, first, second])
+            .Single(result => result.Attacker == attacker.Id);
+        Assert.Equal([first.Id], focused.Targets);
+    }
+
     private static CombatUnit CombatUnitAt(int id, int owner, HexCoord tile,
         ContinuousPosition position, int commandOrder = 0) => new(
         Unit(id, owner, tile, UnitMode.Advance, attackRange: 2, commandOrder),
