@@ -72,7 +72,9 @@ public sealed partial class CampaignMapScene
         UpdateCityVitalsGauge(city, expectedWallMax / 2, 0);
         var changed = gauge.WallValue == expectedWallMax / 2 && gauge.TroopValue == 0;
         UpdateCityVitalsGauge(city, city.Wall, troops);
-        var passed = initial && changed && !_cityLabels[city.Id.Value].Text.Contains("성벽", StringComparison.Ordinal);
+        var passed = initial && changed && !_cityLabels[city.Id.Value].Text.Contains("성벽", StringComparison.Ordinal)
+            && CityVitalsGauge3D.DisplayPixelSize >= 0.003f
+            && gauge.Position.Y <= _cityLabels[city.Id.Value].Position.Y - 0.3f;
         GD.Print($"[maptestcitygaugeqa] passed={passed} initial={initial} changed={changed} wall={gauge.WallValue}/{gauge.WallMaximum} troops={gauge.TroopValue}");
         GetTree().Quit(passed ? 0 : 1);
     }

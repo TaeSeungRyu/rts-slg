@@ -3820,7 +3820,7 @@ public sealed partial class CampaignMapScene : Node3D
             _cityLabels[city.Id.Value] = label;
             var gauge = new CityVitalsGauge3D
             {
-                Position = label.Position + new Vector3(0f, -0.17f, 0f),
+                Position = label.Position + new Vector3(0f, -0.35f, 0f),
             };
             AddChild(gauge);
             _cityVitalsGauges[city.Id.Value] = gauge;
