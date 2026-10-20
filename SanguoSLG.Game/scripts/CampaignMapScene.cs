@@ -687,6 +687,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestbatchdeployqa")) CallDeferred(nameof(RunBatchDeployQa));
         if (args.Contains("--maptestsupplyreplenishmentqa")) CallDeferred(nameof(RunSupplyReplenishmentQa));
         if (args.Contains("--maptestsupplyfollowuiqa")) CallDeferred(nameof(RunSupplyFollowUiQa));
+        if (args.Contains("--maptestsupplydaysqa")) CallDeferred(nameof(RunSupplyDaysQa));
         if (args.Contains("--maptestcombatprovisionqa")) CallDeferred(nameof(RunCombatProvisionQa));
         if (args.Contains("--maptestdeploytargetreturnqa")) CallDeferred(nameof(RunDeployTargetReturnQa));
         if (args.Contains("--maptestunitstatusqa")) CallDeferred(nameof(RunUnitStatusDisplayQa));
@@ -12541,11 +12542,11 @@ public sealed partial class CampaignMapScene : Node3D
         var vanguard = _depVan is { } v ? _state.Generals.First(g => g.Id == v).Name : "주장 미선택";
         var status = total > _cb.SupplyMaxTroops ? $"  ⚠ 최대 {_cb.SupplyMaxTroops}명 초과" : "";
         var provisions = SupplyProvisionsToCarry();
-        var daysPer10k = _provPer10kPerDay <= 0 ? 0 : provisions / _provPer10kPerDay;
+        var estimatedDays = SupplyProvisionDaysFromAmount(provisions);
         if (_depProvLabel is not null)
         {
             var cityProv = _state.Cities.First(x => x.Id == _depModalCity).Provisions;
-            _depProvLabel.Text = $"휴대 {provisions} / 성 비축 {cityProv} · 1만 기준 약 {daysPer10k}일";
+            _depProvLabel.Text = $"휴대 {provisions} / 성 비축 {cityProv} · 출전 후 약 {estimatedDays}일";
         }
         var (gradeText, efficiency, skills) = _depVan is { } vanId
             ? SupplyLeaderPreview(_state.Generals.First(g => g.Id == vanId))
@@ -12553,7 +12554,7 @@ public sealed partial class CampaignMapScene : Node3D
         _depPreview.Text = $"현재 편성: 보급부대 {total}명 · 주장 {vanguard} · 군량 {_depProvDays}일{status}\n"
             + (lines.Count == 0 ? "병종을 선택하세요." : string.Join(" · ", lines))
             + $"\n보급 적성 {gradeText} · 병참 효율 {efficiency}% · 적용 스킬 {skills}"
-            + $"\n휴대 군량 {provisions} · 휴대 금 {_depGold:N0} · 1만 병력 기준 약 {daysPer10k}일 보급 가능 · 기본 공방 최하";
+            + $"\n휴대 군량 {provisions} · 휴대 금 {_depGold:N0} · 출전 후 약 {estimatedDays}일 보급 가능 · 기본 공방 최하";
     }
 
     private void PopulateSupplyGeneralTree()
@@ -12811,15 +12812,21 @@ public sealed partial class CampaignMapScene : Node3D
         return string.Join(" · ", pairs.Select(p => $"{p.Label}{GradeText(general.AptitudeFor(p.Class))}"));
     }
 
+    private double SupplyDraftDailyConsumption()
+        => (double)_supplyDraft.Values.Sum() * _provPer10kPerDay * _balance.SupplyConservationPercent
+            / 1_000_000d;
+
     private int SupplyMaxCarryDays()
-        => System.Math.Max(1, SupplyCapacityForDraft() / System.Math.Max(1, _provPer10kPerDay) + SupplyExtraCarryDays);
+        => System.Math.Max(1, (int)System.Math.Floor(
+            (SupplyCapacityForDraft() + SupplyExtraCarryDays * _provPer10kPerDay)
+            * 100d / System.Math.Max(1, _provPer10kPerDay * _balance.SupplyConservationPercent)));
 
     private int SupplyProvisionsToCarry()
     {
         var total = _supplyDraft.Values.Sum();
         if (total <= 0) { return 0; }
-        var capacity = SupplyMaxCarryDays() * total * _provPer10kPerDay / 10000;
-        var wanted = _depProvDays * total * _provPer10kPerDay / 10000;
+        var capacity = (SupplyCapacityForDraft() + SupplyExtraCarryDays * _provPer10kPerDay) * total / 10000;
+        var wanted = (int)System.Math.Ceiling(_depProvDays * SupplyDraftDailyConsumption());
         var cityProv = _state.Cities.First(x => x.Id == _depModalCity).Provisions;
         return System.Math.Min(System.Math.Min(wanted, capacity), cityProv);
     }
@@ -12828,7 +12835,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         var total = _supplyDraft.Values.Sum();
         if (provisions < 0 || total <= 0) { return SupplyMaxCarryDays(); }
-        return System.Math.Clamp(provisions * 10000 / System.Math.Max(1, total * _provPer10kPerDay), 0,
+        return System.Math.Clamp((int)System.Math.Floor(provisions / System.Math.Max(0.0001, SupplyDraftDailyConsumption())), 0,
             SupplyMaxCarryDays());
     }
 
@@ -12953,7 +12960,7 @@ public sealed partial class CampaignMapScene : Node3D
         var entry = (req, $"보급 {total}({vName}) · 군량{_depProvDays}일 · 금 {_depGold:N0} · {lineText} · {DelayLabel(_depDelayDays)}");
         var (gradeText, efficiency, skills) = SupplyLeaderPreview(general);
         ShowConfirm("보급부대 예약 확인",
-            $"{entry.Item2}\n보급 적성 {gradeText} · 병참 효율 {efficiency}%\n적용 스킬: {skills}\n휴대 군량 {provisions} · 1만 병력 기준 약 {(_provPer10kPerDay <= 0 ? 0 : provisions / _provPer10kPerDay)}일 보급 가능\n\n기본 공방은 게임 최하 수치입니다.{DutyReleaseNotice(ids)}",
+            $"{entry.Item2}\n보급 적성 {gradeText} · 병참 효율 {efficiency}%\n적용 스킬: {skills}\n휴대 군량 {provisions} · 출전 후 약 {SupplyProvisionDaysFromAmount(provisions)}일 보급 가능\n\n기본 공방은 게임 최하 수치입니다.{DutyReleaseNotice(ids)}",
             () =>
             {
                 if (_advancing || ids.Any(id => _state.IsGeneralBusy(id))
