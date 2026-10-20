@@ -854,6 +854,10 @@ public sealed class CommandService
 
     private CommandResult IssueWallRepair(GameState state, City city, CommandRequest req, General? assist)
     {
+        if (WallRepairRules.IsThreatened(state, city))
+        {
+            return CommandResult.Fail("적 부대의 공격 범위 안에서는 성벽을 수리할 수 없다.", state);
+        }
         if (_balance is null)
         {
             return CommandResult.Fail("성벽 수리에는 경제 설정이 필요하다.", state);

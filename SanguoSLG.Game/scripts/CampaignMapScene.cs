@@ -6299,6 +6299,8 @@ public sealed partial class CampaignMapScene : Node3D
             var wallFull = Cmds[i].Kind == CommandKind.Repair && Cmds[i].Param == "wall"
                 && selectedCity is not null
                 && selectedCity.Wall >= CastleWall.Max(selectedCity.Castle, _balance, selectedCity.WallLevel);
+            var wallThreatened = Cmds[i].Kind == CommandKind.Repair && Cmds[i].Param == "wall"
+                && selectedCity is not null && WallRepairRules.IsThreatened(_state, selectedCity);
             if (blockedAtPort)
             {
                 btn.Text = Cmds[i].Label + " (항구 불가)";
@@ -6316,6 +6318,12 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 btn.Text = "성벽수리 (내구도 100%)";
                 btn.TooltipText = "성벽 내구도가 최대치라 수리할 필요가 없습니다.";
+                btn.Disabled = true;
+            }
+            else if (wallThreatened)
+            {
+                btn.Text = "성벽수리 (공격 범위)";
+                btn.TooltipText = "적 부대의 공격 범위 안에서는 성벽을 수리할 수 없습니다.";
                 btn.Disabled = true;
             }
             else
@@ -6855,6 +6863,13 @@ public sealed partial class CampaignMapScene : Node3D
             && repairCity.Wall >= CastleWall.Max(repairCity.Castle, _balance, repairCity.WallLevel))
         {
             ShowNotice("성벽수리 불필요", "성벽 내구도가 이미 100%입니다.");
+            return;
+        }
+        if (cmd.Kind == CommandKind.Repair && cmd.Param == "wall"
+            && _state.Cities.FirstOrDefault(c => c.Id == city) is { } threatenedCity
+            && WallRepairRules.IsThreatened(_state, threatenedCity))
+        {
+            ShowNotice("성벽수리 불가", "적 부대의 공격 범위 안에서는 성벽을 수리할 수 없습니다.");
             return;
         }
         CloseModal();

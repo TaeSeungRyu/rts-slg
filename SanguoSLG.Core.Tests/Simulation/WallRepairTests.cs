@@ -112,6 +112,23 @@ public class WallRepairTests
         Assert.Contains("금", r.Error);
     }
 
+    [Theory]
+    [InlineData(1, false)]
+    [InlineData(2, true)]
+    public void 적의_공성사거리_안에서는_성벽수리를_시작할수없다(int range, bool blocked)
+    {
+        var city = Town(1, wall: 600, gold: 5000);
+        var enemy = new CombatUnit(new FieldUnit(new UnitId(2), new FactionId(2),
+            new HexCoord(3, 0), 1, 1, 1, MovementDomain.Land, UnitMode.Attack,
+            city.Position, 2, RangeCastle: range), new CombatStats(1000, 10, 10),
+            new TroopPool(1000, 0), UnitCombatState.Create(60), 60, 60, 1000,
+            TroopClass.Infantry);
+        var state = State(city) with { FieldArmies = [enemy] };
+
+        Assert.Equal(blocked, WallRepairRules.IsThreatened(state, city));
+        Assert.Equal(!blocked, Service().Issue(state, Req()).Ok);
+    }
+
 
     [Fact]
     public void 발행_성벽연구가_높으면_최대치가_커져_더_많이_수리한다()
