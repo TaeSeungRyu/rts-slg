@@ -38,37 +38,61 @@ public sealed partial class CampaignMapScene
             MaxLength = 10, CustomMinimumSize = new Vector2(0, 38) };
         search.AddThemeFontOverride("font", _font);
         box.AddChild(search);
-        var scroll = new ScrollContainer { Name = "GeneralTransferOfficerScroll",
+        var table = new Tree { Name = "GeneralTransferOfficerTable",
+            Columns = 6, ColumnTitlesVisible = true, HideRoot = true,
+            SelectMode = Tree.SelectModeEnum.Row,
             CustomMinimumSize = new Vector2(0, Mathf.Max(160, scaffold.LayoutSize.Y - 180f)),
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        box.AddChild(scroll);
-        var rows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        rows.AddThemeConstantOverride("separation", 5);
-        scroll.AddChild(rows);
-        var selected = new HashSet<GeneralId>();
-        var renderedRows = new List<(Control Row, string Name)>();
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            ScrollVerticalEnabled = true };
+        table.AddThemeFontOverride("font", _font);
+        table.AddThemeFontSizeOverride("font_size", 14);
+        table.AddThemeFontOverride("title_button_font", _font);
+        table.AddThemeFontSizeOverride("title_button_font_size", 13);
+        var hover = new StyleBoxFlat { BgColor = new Color(Gold, .2f) };
+        hover.SetCornerRadiusAll(4);
+        table.AddThemeStyleboxOverride("hovered", hover);
+        table.AddThemeStyleboxOverride("hovered_dimmed", hover);
+        foreach (var (column, title) in new[] { (0, "선택"), (1, "이름"), (2, "무"),
+            (3, "지"), (4, "정"), (5, "현재 담당업무") })
+            table.SetColumnTitle(column, title);
+        foreach (var column in new[] { 0, 2, 3, 4 })
+        {
+            table.SetColumnExpand(column, false);
+            table.SetColumnCustomMinimumWidth(column, column == 0 ? 60 : 46);
+        }
+        table.SetColumnExpand(1, true);
+        table.SetColumnExpandRatio(1, 2);
+        table.SetColumnExpand(5, true);
+        table.SetColumnExpandRatio(5, 2);
+        box.AddChild(table);
+        var root = table.CreateItem();
+        var renderedRows = new List<(TreeItem Row, string Name)>();
         foreach (var general in officers)
         {
             var officer = general!;
-            var row = new HBoxContainer { Name = $"TransferOfficer_{officer.Id.Value}",
-                CustomMinimumSize = new Vector2(0, 62) };
-            row.AddThemeConstantOverride("separation", 12);
-            rows.AddChild(row);
-            var check = new CheckBox { Name = $"TransferCheck_{officer.Id.Value}",
-                CustomMinimumSize = new Vector2(36, 0) };
-            check.Toggled += on => { if (on) selected.Add(officer.Id); else selected.Remove(officer.Id); };
-            row.AddChild(check);
-            row.AddChild(new TextureRect { Texture = CircularPortraitFor(officer.Id),
-                CustomMinimumSize = new Vector2(52, 52),
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize });
+            var row = table.CreateItem(root);
+            row.SetMetadata(0, officer.Id.Value);
+            row.SetCellMode(0, TreeItem.TreeCellMode.Check);
+            row.SetEditable(0, true);
+            row.SetChecked(0, false);
             var role = city.Governor == officer.Id ? "태수" : city.Strategist == officer.Id ? "군사" : "대기";
-            var label = MakeLabel($"{officer.Name}  ·  {role}", 16, Parchment);
-            label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            row.AddChild(label);
+            row.SetText(1, officer.Name);
+            ApplyGeneralTreePortrait(row, 1, officer.Id, goldBorder: true);
+            row.SetText(2, officer.Might.ToString());
+            row.SetText(3, officer.Intellect.ToString());
+            row.SetText(4, officer.Politics.ToString());
+            row.SetText(5, role);
+            for (var column = 0; column < table.Columns; column++) row.SetSelectable(column, true);
             renderedRows.Add((row, officer.Name));
         }
+        table.ItemSelected += () =>
+        {
+            var row = table.GetSelected();
+            if (row is null) return;
+            row.SetChecked(0, !row.IsChecked(0));
+            table.DeselectAll();
+        };
         search.TextChanged += term =>
         {
             foreach (var (row, name) in renderedRows)
@@ -79,8 +103,11 @@ public sealed partial class CampaignMapScene
         var choose = MakeButton("지도에서 이동 지역 선택", accent: true);
         choose.Pressed += () =>
         {
-            if (selected.Count == 0) { hint.Text = "장수를 1명 이상 체크하세요."; return; }
-            BeginGeneralTransferTargeting(city.Id, selected.OrderBy(id => id.Value).ToArray());
+            var selected = renderedRows.Where(entry => entry.Row.IsChecked(0))
+                .Select(entry => new GeneralId(entry.Row.GetMetadata(0).AsInt32()))
+                .OrderBy(id => id.Value).ToArray();
+            if (selected.Length == 0) { hint.Text = "장수를 1명 이상 체크하세요."; return; }
+            BeginGeneralTransferTargeting(city.Id, selected);
         };
         scaffold.AddFooterControl(choose);
     }
@@ -185,18 +212,18 @@ public sealed partial class CampaignMapScene
         var commandIndex = Array.FindIndex(Cmds, command => command.Param == "transfer");
         OpenModal(commandIndex);
         var search = _modalLayer?.FindChild("GeneralTransferSearch", true, false) as LineEdit;
-        var list = _modalLayer?.FindChild("GeneralTransferOfficerScroll", true, false) as ScrollContainer;
-        var boxes = _modalLayer?.FindChildren("TransferCheck_*", "CheckBox", true, false).OfType<CheckBox>().ToArray() ?? [];
-        var layout = search?.MaxLength == 10 && list is not null && boxes.Length > 0
-            && list.CustomMinimumSize.Y >= 0.65f * (_modalLayer?.FindChild("AdaptiveModalScaffold", true, false)
+        var table = _modalLayer?.FindChild("GeneralTransferOfficerTable", true, false) as Tree;
+        var rows = table?.GetRoot()?.GetChildren().OfType<TreeItem>().ToArray() ?? [];
+        var layout = search?.MaxLength == 10 && table is not null && rows.Length > 0
+            && table.CustomMinimumSize.Y >= 0.65f * (_modalLayer?.FindChild("AdaptiveModalScaffold", true, false)
                 as AdaptiveModalScaffold)?.LayoutSize.Y;
         search!.Text = "절대없는장수";
         search.EmitSignal(LineEdit.SignalName.TextChanged, search.Text);
-        var filtered = boxes.All(check => check.GetParent() is Control row && !row.Visible);
+        var filtered = rows.All(row => !row.Visible);
         search.Text = "";
         search.EmitSignal(LineEdit.SignalName.TextChanged, search.Text);
-        boxes[0].ButtonPressed = true;
-        if (boxes.Length > 1) boxes[1].ButtonPressed = true;
+        foreach (var row in rows.Take(2))
+            row.SetChecked(0, true);
         var choose = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
             .FirstOrDefault(button => button.Text == "지도에서 이동 지역 선택");
         choose?.EmitSignal(Button.SignalName.Pressed);
@@ -211,9 +238,9 @@ public sealed partial class CampaignMapScene
             .FirstOrDefault(button => button.Text == "확인");
         accept?.EmitSignal(Button.SignalName.Pressed);
         var issued = _state.Commands.Count(command => command.Kind == CommandKind.TransferGeneral
-            && command.TargetCity == destination.Id) == Math.Min(2, boxes.Length);
+            && command.TargetCity == destination.Id) == Math.Min(2, rows.Length);
         var passed = layout && filtered && mapMode && confirmedTarget && issued;
-        GD.Print($"[general-transfer-ui-qa] passed={passed} layout={layout} filtered={filtered} mapMode={mapMode} target={confirmedTarget} issued={issued} officers={boxes.Length}");
+        GD.Print($"[general-transfer-ui-qa] passed={passed} layout={layout} filtered={filtered} mapMode={mapMode} target={confirmedTarget} issued={issued} officers={rows.Length}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }
