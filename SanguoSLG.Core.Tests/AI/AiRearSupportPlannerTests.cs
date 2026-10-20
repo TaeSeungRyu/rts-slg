@@ -63,4 +63,23 @@ public class AiRearSupportPlannerTests
         var second = planner.Plan(first, new FactionId(1));
         Assert.Single(second.Armies);
     }
+
+    [Fact]
+    public void 후방_수송은_전선의_부족한_금과_군량도_싣되_후방_예비를_남긴다()
+    {
+        var state = Scenario() with
+        {
+            Cities = Scenario().Cities.Select(c => c.Id == new CityId(1)
+                ? c with { Provisions = 0, Gold = 0 } : c).ToList(),
+        };
+
+        var after = Planner().Plan(state, new FactionId(1));
+
+        var transport = Assert.Single(after.Armies);
+        Assert.Equal(1000, transport.CargoGold);
+        Assert.True(transport.Provisions > 100);
+        var rear = after.Cities.Single(c => c.Id == new CityId(2));
+        Assert.True(rear.Gold >= 1000);
+        Assert.True(rear.Provisions >= 1500);
+    }
 }

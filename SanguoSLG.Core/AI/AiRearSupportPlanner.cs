@@ -32,7 +32,7 @@ public sealed class AiRearSupportPlanner(DeployService deployer, HexMap? map = n
                 var stationed = state.Garrisons.Where(g => g.City == rear.Id && !g.Trainee)
                     .Sum(g => g.Troops);
                 var surplus = stationed - Math.Max(10_000, (int)Math.Ceiling(stationed * .30));
-                if (surplus < 1000 || rear.Gold < 1000) continue;
+                if (surplus < 1000) continue;
                 var officer = state.GeneralsAt(rear.Id).Where(g => !state.IsGeneralBusy(g))
                     .OrderBy(g => g.Value).FirstOrDefault();
                 if (officer == default) continue;
@@ -45,10 +45,18 @@ public sealed class AiRearSupportPlanner(DeployService deployer, HexMap? map = n
                 if (line is null) continue;
                 var count = Math.Min(Math.Min(need, surplus), Math.Min(line.Troops, 50_000));
                 var food = Math.Max(10, (count + 999) / 1000 * ((route.Value.Distance + 1) / 2 + 3));
-                if (rear.Provisions < food + 30) continue;
+                var rearFoodReserve = Math.Max(30, (stationed + 999) / 1000 * 30);
+                if (rear.Provisions < food + rearFoodReserve) continue;
+                var frontFoodNeed = Math.Max(0,
+                    Math.Max(300, (frontTroops + 999) / 1000 * 30) - front.Provisions);
+                var cargoFood = Math.Min(frontFoodNeed,
+                    Math.Max(0, rear.Provisions - food - rearFoodReserve));
+                var cargoGold = Math.Min(Math.Max(0, 1000 - front.Gold),
+                    Math.Max(0, rear.Gold - 1000));
                 var result = deployer.DeployTransport(state, new TransportDeployRequest(rear.Id,
                     [new TransportLine(line.TroopCode, count)], front.Id, officer,
-                    Provisions: food, EgressExit: route.Value.Exit));
+                    Gold: cargoGold, Provisions: food + cargoFood,
+                    EgressExit: route.Value.Exit));
                 if (!result.Ok) continue;
                 state = result.State;
                 break;
