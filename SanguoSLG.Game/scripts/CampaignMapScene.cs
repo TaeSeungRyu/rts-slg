@@ -207,6 +207,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _selectedUnitId = -1;
     private int _retargetUnitId = -1;  // ≥0이면 야전 부대 이동 재지정 목표 지정 중
     private int _supplyReplenishmentSourceId = -1;
+    private int _supplyFollowSourceId = -1;
     private readonly SupplyReplenishmentService _supplyReplenishment = new();
     private Button _supplyReplenishmentButton = null!;
     private Button _supplyFollowButton = null!;
@@ -685,6 +686,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestactivecasterqa")) CallDeferred(nameof(RunActiveCasterPortraitQa));
         if (args.Contains("--maptestbatchdeployqa")) CallDeferred(nameof(RunBatchDeployQa));
         if (args.Contains("--maptestsupplyreplenishmentqa")) CallDeferred(nameof(RunSupplyReplenishmentQa));
+        if (args.Contains("--maptestsupplyfollowuiqa")) CallDeferred(nameof(RunSupplyFollowUiQa));
         if (args.Contains("--maptestcombatprovisionqa")) CallDeferred(nameof(RunCombatProvisionQa));
         if (args.Contains("--maptestdeploytargetreturnqa")) CallDeferred(nameof(RunDeployTargetReturnQa));
         if (args.Contains("--maptestunitstatusqa")) CallDeferred(nameof(RunUnitStatusDisplayQa));
@@ -1283,6 +1285,14 @@ public sealed partial class CampaignMapScene : Node3D
                 else if (_ring is not null) _ring.Visible = false;
                 return;
             }
+            if (_supplyFollowSourceId >= 0)
+            {
+                _hover.Visible = false;
+                var target = PickSupplyFollowTarget(motion.Position);
+                if (target is not null) MoveRingForUnit(target);
+                else if (_ring is not null) _ring.Visible = false;
+                return;
+            }
             if (_fieldBuildPlacing)
             {
                 _hover.Visible = false;
@@ -1327,6 +1337,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (_stratMapTargeting) { FinishStratagemMapTargeting(true); return; }
             if (_summonTargetingUnitId >= 0) { StopSummonTargeting(); return; }
             if (_supplyReplenishmentSourceId >= 0) { StopSupplyReplenishmentTargeting(); return; }
+            if (_supplyFollowSourceId >= 0) { StopSupplyFollowTargeting(); return; }
             if (_fieldBuildPlacing)
             {
                 FinishFieldBuildingPlacement();
@@ -1364,6 +1375,7 @@ public sealed partial class CampaignMapScene : Node3D
             if (_stratMapTargeting) { FinishStratagemMapTargeting(true); return; }
             if (_summonTargetingUnitId >= 0) { StopSummonTargeting(); return; }
             if (_supplyReplenishmentSourceId >= 0) { StopSupplyReplenishmentTargeting(); return; }
+            if (_supplyFollowSourceId >= 0) { StopSupplyFollowTargeting(); return; }
             if (_fieldBuildPlacing)
             {
                 FinishFieldBuildingPlacement();
@@ -1420,6 +1432,13 @@ public sealed partial class CampaignMapScene : Node3D
             var target = PickSupplyReplenishmentTarget(mb.Position);
             if (target is null) ShowNotice("보충 대상", "인접한 아군 출전 부대를 선택하세요.");
             else OpenSupplyReplenishmentModal(target.Id);
+            return;
+        }
+        if (_supplyFollowSourceId >= 0)
+        {
+            var target = PickSupplyFollowTarget(mb.Position);
+            if (target is null) ShowNotice("따라가기 대상", "강조 표시되는 아군 전투부대를 클릭하세요.");
+            else SelectSupplyFollowTarget(target.Id);
             return;
         }
 
@@ -5451,7 +5470,7 @@ public sealed partial class CampaignMapScene : Node3D
         _supplyReplenishmentButton = replenish;
         _supplyFollowButton = Item("따라가기", accent: true);
         _supplyFollowButton.TooltipText = "아군 전투부대를 지정해 1~2칸 뒤에서 따라갑니다. 이동·정지 명령으로 해제할 수 있습니다.";
-        _supplyFollowButton.Pressed += () => OpenSupplyFollowModal(_selectedUnitId);
+        _supplyFollowButton.Pressed += () => BeginSupplyFollowTargeting(_selectedUnitId);
         _unitCmdBox.AddChild(_supplyFollowButton);
         _summonUnitButton = Item("소환", accent: true);
         _summonUnitButton.TooltipText = "장착한 신수 아이템으로 인접 지점에 소환수를 부릅니다.";
