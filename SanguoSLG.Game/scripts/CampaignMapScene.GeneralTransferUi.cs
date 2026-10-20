@@ -90,7 +90,7 @@ public sealed partial class CampaignMapScene
         {
             var row = table.GetSelected();
             if (row is null) return;
-            row.SetChecked(0, !row.IsChecked(0));
+            if (table.GetSelectedColumn() > 0) row.SetChecked(0, !row.IsChecked(0));
             table.DeselectAll();
         };
         search.TextChanged += term =>
@@ -203,7 +203,7 @@ public sealed partial class CampaignMapScene
         }
     }
 
-    private void RunGeneralTransferUiQa()
+    private async void RunGeneralTransferUiQa()
     {
         var origin = _state.Cities.First(city => city.Owner == Player
             && _state.Cities.Any(other => other.Owner == city.Owner && other.Id != city.Id)
@@ -211,6 +211,8 @@ public sealed partial class CampaignMapScene
         SelectCity(origin.Id);
         var commandIndex = Array.FindIndex(Cmds, command => command.Param == "transfer");
         OpenModal(commandIndex);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var search = _modalLayer?.FindChild("GeneralTransferSearch", true, false) as LineEdit;
         var table = _modalLayer?.FindChild("GeneralTransferOfficerTable", true, false) as Tree;
         var rows = table?.GetRoot()?.GetChildren().OfType<TreeItem>().ToArray() ?? [];
@@ -222,8 +224,17 @@ public sealed partial class CampaignMapScene
         var filtered = rows.All(row => !row.Visible);
         search.Text = "";
         search.EmitSignal(LineEdit.SignalName.TextChanged, search.Text);
-        foreach (var row in rows.Take(2))
-            row.SetChecked(0, true);
+        var checkCell = table!.GetItemAreaRect(rows[0], 0);
+        var firstCheck = table.GetGlobalPosition() + new Vector2(checkCell.Position.X + 16f, checkCell.GetCenter().Y);
+        GetViewport().PushInput(new InputEventMouseMotion { Position = firstCheck }, true);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        GetViewport().PushInput(new InputEventMouseButton
+            { Position = firstCheck, ButtonIndex = MouseButton.Left, Pressed = true }, true);
+        GetViewport().PushInput(new InputEventMouseButton
+            { Position = firstCheck, ButtonIndex = MouseButton.Left, Pressed = false }, true);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var clickedCheck = rows[0].IsChecked(0);
+        if (rows.Length > 1) rows[1].SetChecked(0, true);
         var choose = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
             .FirstOrDefault(button => button.Text == "지도에서 이동 지역 선택");
         choose?.EmitSignal(Button.SignalName.Pressed);
@@ -239,8 +250,8 @@ public sealed partial class CampaignMapScene
         accept?.EmitSignal(Button.SignalName.Pressed);
         var issued = _state.Commands.Count(command => command.Kind == CommandKind.TransferGeneral
             && command.TargetCity == destination.Id) == Math.Min(2, rows.Length);
-        var passed = layout && filtered && mapMode && confirmedTarget && issued;
-        GD.Print($"[general-transfer-ui-qa] passed={passed} layout={layout} filtered={filtered} mapMode={mapMode} target={confirmedTarget} issued={issued} officers={rows.Length}");
+        var passed = layout && filtered && clickedCheck && mapMode && confirmedTarget && issued;
+        GD.Print($"[general-transfer-ui-qa] passed={passed} layout={layout} filtered={filtered} checkbox={clickedCheck} mapMode={mapMode} target={confirmedTarget} issued={issued} officers={rows.Length}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
