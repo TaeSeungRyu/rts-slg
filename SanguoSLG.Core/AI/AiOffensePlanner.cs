@@ -191,6 +191,13 @@ public sealed class AiOffensePlanner
             || origin.Position.Distance(target.Position) >= 15;
         if (supplyRequired)
         {
+            var reusable = ReusableSupply(original, origin, target);
+            if (reusable is not null)
+            {
+                scratch = Follow(scratch, reusable.Id, combatIds[0]);
+            }
+            else
+            {
             var supplyLine = scratch.Garrisons.Where(g => g.City == origin.Id && !g.Trainee
                     && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
                     && g.Troops >= 1000 && available - used >= 1000)
@@ -204,10 +211,9 @@ public sealed class AiOffensePlanner
             if (!result.Ok) return null;
             scratch = result.State;
             var supply = scratch.Armies[^1];
-            scratch = scratch with { FieldArmies = scratch.Armies.Select(u => u.Id == supply.Id
-                ? u with { Field = u.Field with { FollowUnitId = combatIds[0], Target = null } }
-                : u).ToList() };
+            scratch = Follow(scratch, supply.Id, combatIds[0]);
             used += 1000;
+            }
         }
         if (used > available || !PassesProvisionBudget(scratch, target, combatIds)
             || !PassesSiegeTrial(original, scratch, target, combatIds))
@@ -301,6 +307,13 @@ public sealed class AiOffensePlanner
             }
         }
         if (combatIds.Count < 2) return null;
+        var reusable = ReusableSupply(original, primary, target);
+        if (reusable is not null)
+        {
+            scratch = Follow(scratch, reusable.Id, combatIds[0]);
+        }
+        else
+        {
         var supplyLine = scratch.Garrisons.Where(g => g.City == primary.Id && !g.Trainee
                 && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
                 && g.Troops >= 1000 && primaryBudget - usedPrimary >= 1000)
@@ -315,13 +328,27 @@ public sealed class AiOffensePlanner
         if (!supply.Ok) return null;
         scratch = supply.State;
         var supplyId = scratch.Armies[^1].Id;
-        scratch = scratch with { FieldArmies = scratch.Armies.Select(u => u.Id == supplyId
-            ? u with { Field = u.Field with { FollowUnitId = combatIds[0], Target = null } }
-            : u).ToList() };
+        scratch = Follow(scratch, supplyId, combatIds[0]);
+        }
         if (!PassesProvisionBudget(scratch, target, combatIds)
             || !PassesSiegeTrial(original, scratch, target, combatIds)) return null;
         return AttachDeclaration(original, scratch, target);
     }
+
+    private static GameState Follow(GameState state, UnitId supply, UnitId combat) => state with
+    {
+        FieldArmies = state.Armies.Select(u => u.Id == supply
+            ? u with { Field = u.Field with { FollowUnitId = combat, Target = null,
+                Mode = UnitMode.March } } : u).ToList(),
+    };
+
+    private static CombatUnit? ReusableSupply(GameState state, City origin, City target)
+        => state.Armies.Where(u => u.IsSupply && u.Field.Owner == origin.Owner
+                && u.Field.FollowUnitId is null && u.Field.Target is null
+                && u.Field.Position.Distance(origin.Position) <= 3
+                && u.Provisions >= Math.Max(10, (origin.Position.Distance(target.Position) + 7)
+                    * Math.Max(1, (u.Pool.Active + 999) / 1000)))
+            .OrderBy(u => u.Id.Value).FirstOrDefault();
 
     private GameState AttachDeclaration(GameState original, GameState staged, City target)
     {

@@ -127,6 +127,26 @@ public class AiOffensePlannerTests
     }
 
     [Fact]
+    public void 대기중인_보급부대가_있으면_중복_편성하지_않고_새_공세를_따라간다()
+    {
+        var deployer = new DeployService(new CommandBalance(), Troops,
+            new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+            new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()));
+        var prepared = deployer.DeploySupply(Scenario(100000, 20000),
+            new SupplyDeployRequest(new CityId(1), [new SupplyLine("swordsman", 1000)],
+                new GeneralId(9)));
+        Assert.True(prepared.Ok);
+        var existing = Assert.Single(prepared.State.Armies);
+
+        var after = new AiOffensePlanner(deployer, new AiConfig()).Plan(prepared.State,
+            new FactionId(1));
+
+        var supply = Assert.Single(after.Armies, u => u.IsSupply);
+        Assert.Equal(existing.Id, supply.Id);
+        Assert.Contains(after.Armies, u => !u.IsSupply && u.Id == supply.Field.FollowUnitId);
+    }
+
+    [Fact]
     public void 보급_장수나_군량이_모자라면_공세_전체를_취소한다()
     {
         var state = Scenario(100000, 20000, provisions: 0);
