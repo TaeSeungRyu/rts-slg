@@ -762,6 +762,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestwardeclarationqa")) CallDeferred(nameof(RunWarDeclarationQa));
         if (args.Contains("--maptestcitygaugeqa")) CallDeferred(nameof(RunCityVitalsGaugeQa));
         if (args.Contains("--maptestcityofficergridqa")) CallDeferred(nameof(RunCityOfficerGridQa));
+        if (args.Contains("--maptestgeneraltransferuiqa")) CallDeferred(nameof(RunGeneralTransferUiQa));
         if (args.Contains("--maptestcitycommandlabelsqa")) CallDeferred(nameof(RunCityCommandLabelsQa));
         if (args.Contains("--maptestgeneralstoryqa")) CallDeferred(nameof(RunGeneralStoryQa));
         if (args.Contains("--maptestclimateqa")) CallDeferred(nameof(RunClimateQa));
@@ -1279,6 +1280,17 @@ public sealed partial class CampaignMapScene : Node3D
         // 마우스 오버: 밑 타일에 호버 육각.
         if (@event is InputEventMouseMotion motion)
         {
+            if (_generalTransferTargeting)
+            {
+                _hover.Visible = false;
+                var transferHex = RayToGround(motion.Position);
+                var transferCity = transferHex is { } tile ? CityAtHex(tile) : null;
+                var origin = _state.Cities.FirstOrDefault(candidate => candidate.Id == _generalTransferOrigin);
+                if (transferCity is not null && origin is not null && transferCity.Owner == origin.Owner && transferCity.Id != origin.Id)
+                    MoveRing(transferCity.Position);
+                else if (_ring is not null) _ring.Visible = false;
+                return;
+            }
             if (_supplyReplenishmentSourceId >= 0)
             {
                 _hover.Visible = false;
@@ -1336,6 +1348,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
         {
+            if (_generalTransferTargeting) { StopGeneralTransferTargeting(true); return; }
             if (_stratMapTargeting) { FinishStratagemMapTargeting(true); return; }
             if (_summonTargetingUnitId >= 0) { StopSummonTargeting(); return; }
             if (_supplyReplenishmentSourceId >= 0) { StopSupplyReplenishmentTargeting(); return; }
@@ -1374,6 +1387,7 @@ public sealed partial class CampaignMapScene : Node3D
         // 우클릭: 목표 지정/시설 배치 취소.
         if (mb.ButtonIndex == MouseButton.Right && mb.Pressed)
         {
+            if (_generalTransferTargeting) { StopGeneralTransferTargeting(true); return; }
             if (_stratMapTargeting) { FinishStratagemMapTargeting(true); return; }
             if (_summonTargetingUnitId >= 0) { StopSummonTargeting(); return; }
             if (_supplyReplenishmentSourceId >= 0) { StopSupplyReplenishmentTargeting(); return; }
@@ -1422,6 +1436,7 @@ public sealed partial class CampaignMapScene : Node3D
         if ((mb.Position - _leftDownPos).Length() >= 6f) { return; } // 드래그 = 카메라 팬(선택 아님)
 
         if (_stratMapTargeting) { SelectStratagemMapTarget(mb.Position); return; }
+        if (_generalTransferTargeting) { SelectGeneralTransferDestination(mb.Position); return; }
 
         if (_summonTargetingUnitId >= 0)
         {
@@ -6383,6 +6398,8 @@ public sealed partial class CampaignMapScene : Node3D
     // 줌/이동 중에도 팔레트가 선택한 성을 따라가도록 갱신.
     public override void _Process(double delta)
     {
+        if (_advancing && _generalTransferTargeting) StopGeneralTransferTargeting(false);
+        RefreshGeneralTransferFog();
         AnimateClimateVisuals(delta);
         TickModalTransitions();
         TickCampaignPlayTime(delta);
@@ -6833,7 +6850,8 @@ public sealed partial class CampaignMapScene : Node3D
 
         var vp = GetViewport().GetVisibleRect().Size;
         var wideDoctrineModal = cmd.Kind == CommandKind.Research
-            && cmd.Param is "troop" or "general" or "stratagem_research";
+            && cmd.Param is "troop" or "general" or "stratagem_research"
+            || cmd.Param == "transfer";
         var modalProfile = wideDoctrineModal
             ? AdaptiveModalScaffold.WidthProfile.Wide
             : AdaptiveModalScaffold.WidthProfile.Standard;
@@ -13630,72 +13648,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void BuildGeneralTransferCards(VBoxContainer box, City city)
     {
-        box.AddChild(MakeLabel("장수를 같은 세력의 다른 성·항구로 보냅니다. 이동 중에는 다른 업무를 맡을 수 없습니다.", 14, Parchment));
-        var destinations = _state.Cities.Where(c => c.Owner == city.Owner && c.Id != city.Id)
-            .OrderBy(c => c.Name).ToList();
-        if (destinations.Count == 0)
-        {
-            box.AddChild(MakeLabel("이동할 다른 성·항구가 없습니다.", 15, Parchment));
-            return;
-        }
-        var destinationPicker = new OptionButton { CustomMinimumSize = new Vector2(0, 42) };
-        foreach (var destination in destinations)
-        {
-            var days = Math.Max(1, (city.Position.Distance(destination.Position) + 1) / 2);
-            destinationPicker.AddItem($"{destination.Name} · 예상 {days}일", destination.Id.Value);
-        }
-        destinationPicker.Select(0);
-        box.AddChild(destinationPicker);
-        var ruler = _state.Factions.FirstOrDefault(f => f.Id == city.Owner)?.Ruler;
-        var officers = _state.GeneralsAt(city.Id)
-            .Select(id => _state.Generals.FirstOrDefault(g => g.Id == id))
-            .Where(g => g is not null && g.Id != ruler && !_state.IsGeneralBusy(g.Id))
-            .OrderBy(g => g!.Name).ToList();
-        if (officers.Count == 0)
-        {
-            box.AddChild(MakeLabel("현재 이동할 수 있는 장수가 없습니다.", 15, Parchment));
-            return;
-        }
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 320) };
-        box.AddChild(scroll);
-        var list = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        scroll.AddChild(list);
-        foreach (var general in officers)
-        {
-            var officer = general!;
-            var row = new HBoxContainer { CustomMinimumSize = new Vector2(0, 54) };
-            row.AddThemeConstantOverride("separation", 12);
-            list.AddChild(row);
-            row.AddChild(new TextureRect { Texture = CircularPortraitFor(officer.Id),
-                CustomMinimumSize = new Vector2(48, 48),
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize });
-            var role = city.Governor == officer.Id ? "태수" : city.Strategist == officer.Id ? "군사" : "대기";
-            var label = MakeLabel($"{officer.Name}  ·  {role}", 16, Parchment);
-            label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            row.AddChild(label);
-            var move = MakeButton("이동");
-            row.AddChild(move);
-            move.Pressed += () =>
-            {
-                var targetId = new CityId(destinationPicker.GetSelectedId());
-                var destination = _state.Cities.FirstOrDefault(c => c.Id == targetId);
-                if (destination is null) { ShowNotice("장수이동 불가", "목적지가 사라졌습니다."); return; }
-                var days = Math.Max(1, (city.Position.Distance(destination.Position) + 1) / 2);
-                var release = role == "대기" ? "" : $"\n현재 {role} 직책은 출발 시 해제됩니다.";
-                ShowOfficerConfirm("장수이동", $"{officer.Name}을(를) {destination.Name}(으)로 보냅니다.\n예상 소요일 {days}일.{release}",
-                    officer.Id, () =>
-                    {
-                        var result = _commander.Issue(_state, new CommandRequest(city.Id,
-                            CommandKind.TransferGeneral, officer.Id, TargetCity: targetId));
-                        if (!result.Ok) { ShowNotice("장수이동 불가", result.Error ?? "이동할 수 없습니다."); return; }
-                        _state = result.State;
-                        CloseModal();
-                        Report($"[인재] {officer.Name}이(가) {destination.Name}(으)로 이동 중입니다 ({days}일).", GoldBright);
-                        Redraw($"{officer.Name} 장수이동");
-                    }, $"{destination.Name}(으)로 이동하겠습니다.");
-            };
-        }
+        BuildGeneralTransferSelection(box, city);
     }
 
     private void BuildDismissGeneralCards(VBoxContainer box, City city)
