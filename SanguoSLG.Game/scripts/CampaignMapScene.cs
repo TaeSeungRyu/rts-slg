@@ -1303,6 +1303,7 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 _hover.Visible = false;
                 var target = PickSupplyFollowTarget(motion.Position);
+                HoverSupplyFollowTarget(target);
                 if (target is not null) MoveRingForUnit(target);
                 else if (_ring is not null) _ring.Visible = false;
                 return;
