@@ -24,6 +24,8 @@ public sealed partial class CityVitalsGauge3D : Node3D
     public string Title => _title.Text;
     public bool HasDarkReadableCaptions => _wallText.GetThemeColor("font_color").R < 0.2f
         && _troopText.GetThemeColor("font_color").R < 0.2f;
+    public bool HasLargeCaptions => _wallText.GetThemeFontSize("font_size") == 23
+        && _troopText.GetThemeFontSize("font_size") == 23;
 
     public override void _Ready()
     {
@@ -88,7 +90,7 @@ public sealed partial class CityVitalsGauge3D : Node3D
             CustomMinimumSize = new Vector2(52, 42),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        caption.AddThemeFontSizeOverride("font_size", 20);
+        caption.AddThemeFontSizeOverride("font_size", 22);
         caption.AddThemeColorOverride("font_color", new Color("15202b"));
         caption.AddThemeColorOverride("font_shadow_color", new Color(1, 1, 1, 0.9f));
         caption.AddThemeConstantOverride("shadow_offset_x", 2);
@@ -114,7 +116,7 @@ public sealed partial class CityVitalsGauge3D : Node3D
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        value.AddThemeFontSizeOverride("font_size", 21);
+        value.AddThemeFontSizeOverride("font_size", 23);
         value.AddThemeColorOverride("font_color", new Color("15202b"));
         value.AddThemeColorOverride("font_shadow_color", new Color(1, 1, 1, 0.9f));
         value.AddThemeConstantOverride("shadow_offset_x", 2);
