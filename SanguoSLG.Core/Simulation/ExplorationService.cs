@@ -57,7 +57,7 @@ public sealed class ExplorationService
             ExplorationResultKind.AncientRelic => new(day, faction, city, explorer, kind,
                 "ancient_relic_clue", Text: "고대유물의 단서를 발견했습니다."),
             ExplorationResultKind.LocalClan => new(day, faction, city, explorer, kind,
-                "local_clan_support", Gold: 200, Provisions: 600, Text: "지방호족이 금과 군량을 지원했습니다."),
+                "local_clan_support", Gold: 50, Provisions: 150, Text: "지방호족이 금과 군량을 지원했습니다."),
             ExplorationResultKind.Rumor => new(day, faction, city, explorer, kind,
                 "rumor_clue", Text: "의미심장한 소문을 들었습니다."),
             _ => new(day, faction, city, explorer, ExplorationResultKind.None,

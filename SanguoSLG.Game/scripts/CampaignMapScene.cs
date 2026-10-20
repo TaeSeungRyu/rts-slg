@@ -17443,13 +17443,13 @@ public sealed partial class CampaignMapScene : Node3D
         };
         var cards = codes.Select((entry, index) => ExplorationRewardPresentation.From(
             new ExplorationDiscovery(index, Player, new CityId(1), new GeneralId(1),
-                ExplorationResultKind.None, entry.Item1, Gold: entry.Item1 == "local_clan_support" ? 200 : 0,
-                Provisions: entry.Item1 == "local_clan_support" ? 600 : 0),
+                ExplorationResultKind.None, entry.Item1, Gold: entry.Item1 == "local_clan_support" ? 50 : 0,
+                Provisions: entry.Item1 == "local_clan_support" ? 150 : 0),
             "장안", "제갈량")).ToList();
         var passed = cards.Count == codes.Length
             && cards.Zip(codes).All(pair => pair.First.Tone == pair.Second.Item2
                 && pair.First.Title.Length > 0 && pair.First.RegistrationCondition.Length > 0)
-            && cards.Single(x => x.Tone == ExplorationRewardTone.Resource) is { Gold: 200, Provisions: 600, HasResources: true }
+            && cards.Single(x => x.Tone == ExplorationRewardTone.Resource) is { Gold: 50, Provisions: 150, HasResources: true }
             && cards.Where(x => x.IsClue).Count() == 3;
         GD.Print($"[maptestexplorationpresentationqa] passed={passed} cards={cards.Count} clues={cards.Count(x => x.IsClue)} resources={cards.Count(x => x.HasResources)}");
         GetTree().Quit(passed ? 0 : 1);
@@ -17465,7 +17465,7 @@ public sealed partial class CampaignMapScene : Node3D
             _state.Day + i, Player, cities[i % cities.Count].Id, generals[i % generals.Count].Id,
             i % 4 == 0 ? ExplorationResultKind.DivineBeast : i % 4 == 1 ? ExplorationResultKind.LocalClan
                 : i % 4 == 2 ? ExplorationResultKind.AncientRelic : ExplorationResultKind.Rumor,
-            codes[i % codes.Length], i % 4 == 1 ? 200 : 0, i % 4 == 1 ? 600 : 0)).ToList();
+            codes[i % codes.Length], i % 4 == 1 ? 50 : 0, i % 4 == 1 ? 150 : 0)).ToList();
         OpenExplorationResults([results[0]]);
         OpenExplorationResults(results);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -17481,9 +17481,9 @@ public sealed partial class CampaignMapScene : Node3D
         var passed = cards.Count == results.Count && nonOverlapping && visibleResultLayers == 1
             && cards.Any(x => x.GetMeta("exploration_code").AsString() == "divine_beast_trace")
             && cards.Any(x => x.GetMeta("exploration_code").AsString() == "local_clan_support")
-            && labels.Any(x => x.Contains("금") && x.Contains("+200"))
-            && labels.Any(x => x.Contains("군량") && x.Contains("+600"));
-        GD.Print($"[maptestexplorationmodalqa] passed={passed} cards={cards.Count}/{results.Count} nonOverlap={nonOverlapping} visibleLayers={visibleResultLayers} resourceLine={labels.Any(x => x.Contains("금") && x.Contains("+200"))}");
+            && labels.Any(x => x.Contains("금") && x.Contains("+50"))
+            && labels.Any(x => x.Contains("군량") && x.Contains("+150"));
+        GD.Print($"[maptestexplorationmodalqa] passed={passed} cards={cards.Count}/{results.Count} nonOverlap={nonOverlapping} visibleLayers={visibleResultLayers} resourceLine={labels.Any(x => x.Contains("금") && x.Contains("+50"))}");
         CloseModal();
         GetTree().Quit(passed ? 0 : 1);
     }
@@ -17496,7 +17496,7 @@ public sealed partial class CampaignMapScene : Node3D
         var clue = BuildExplorationRewardCard(new ExplorationDiscovery(
             _state.Day, Player, city.Id, general.Id, ExplorationResultKind.AncientRelic, "ancient_relic_clue"));
         var resource = BuildExplorationRewardCard(new ExplorationDiscovery(
-            _state.Day, Player, city.Id, general.Id, ExplorationResultKind.LocalClan, "local_clan_support", 200, 600));
+            _state.Day, Player, city.Id, general.Id, ExplorationResultKind.LocalClan, "local_clan_support", 50, 150));
         AddChild(clue);
         AddChild(resource);
         var chips = resource.FindChildren("*", "PanelContainer", true, false).OfType<PanelContainer>()
@@ -17504,8 +17504,8 @@ public sealed partial class CampaignMapScene : Node3D
         var passed = clue.GetMeta("reward_animation").AsString() == "clue_reveal"
             && resource.GetMeta("reward_animation").AsString() == "resource_reveal"
             && chips.Count == 2
-            && chips.Any(x => x.GetMeta("resource_kind").AsString() == "금" && x.GetMeta("resource_amount").AsInt32() == 200)
-            && chips.Any(x => x.GetMeta("resource_kind").AsString() == "군량" && x.GetMeta("resource_amount").AsInt32() == 600);
+            && chips.Any(x => x.GetMeta("resource_kind").AsString() == "금" && x.GetMeta("resource_amount").AsInt32() == 50)
+            && chips.Any(x => x.GetMeta("resource_kind").AsString() == "군량" && x.GetMeta("resource_amount").AsInt32() == 150);
         GD.Print($"[maptestexplorationcardqa] passed={passed} chips={chips.Count} clueAnimation={clue.GetMeta("reward_animation").AsString()} resourceAnimation={resource.GetMeta("reward_animation").AsString()}");
         clue.QueueFree();
         resource.QueueFree();

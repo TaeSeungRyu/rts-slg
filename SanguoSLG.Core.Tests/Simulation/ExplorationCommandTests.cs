@@ -40,12 +40,12 @@ public class ExplorationCommandTests
         var after = world.AdvanceDays(issued, 7);
 
         var city = after.Cities.Single();
-        Assert.Equal(300, city.Gold);
-        Assert.Equal(819, city.Provisions);
+        Assert.Equal(150, city.Gold);
+        Assert.Equal(369, city.Provisions);
         var discovery = Assert.Single(after.Discoveries);
         Assert.Equal(ExplorationResultKind.LocalClan, discovery.Kind);
         Assert.Contains(world.LastEvents, e => e.Kind == WorldEventKind.Explore
-            && e.Code == "local_clan_support" && e.Amount == 200 && e.ExtraAmount == 600);
+            && e.Code == "local_clan_support" && e.Amount == 50 && e.ExtraAmount == 150);
         Assert.Equal(3, RecruitmentPointBank.Balance(after, city.Owner));
     }
 
@@ -87,7 +87,7 @@ public class ExplorationCommandTests
         Assert.Equal(2, after.Discoveries.Count);
         Assert.Contains(after.Discoveries, d => d.City == c1.Id && d.Kind == ExplorationResultKind.LocalClan);
         Assert.Contains(after.Discoveries, d => d.City == c2.Id && d.Kind == ExplorationResultKind.None);
-        Assert.Equal(300, after.Cities.Single(c => c.Id == c1.Id).Gold);
+        Assert.Equal(150, after.Cities.Single(c => c.Id == c1.Id).Gold);
         Assert.Equal(300, after.Cities.Single(c => c.Id == c2.Id).Gold);
     }
 }
