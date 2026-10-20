@@ -44,6 +44,7 @@ public sealed class FactionAI
         state = new AiFieldResponsePlanner(_deployer, _config).Plan(state, faction);
         state = PlanOffenseScouting(state, faction);
         state = new AiOffensePlanner(_deployer, _config, _commands, _map).Plan(state, faction);
+        state = new AiRearSupportPlanner(_deployer, _map).Plan(state, faction);
         state = PlanGeneralResearch(state, faction);
         state = PlanStratagemResearch(state, faction);
 

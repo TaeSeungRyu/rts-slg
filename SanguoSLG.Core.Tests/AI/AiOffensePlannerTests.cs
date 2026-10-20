@@ -4,6 +4,7 @@ using SanguoSLG.Core.AI;
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Simulation.RenewalMovement;
 using SanguoSLG.Core.Spatial;
 using Xunit;
 
@@ -52,6 +53,37 @@ public class AiOffensePlannerTests
                 new(origin.Id, "catapult", siege, 60),
                 new(target.Id, "swordsman", enemy, 60),
             ]);
+    }
+
+    [Theory]
+    [InlineData(7)]
+    [InlineData(30)]
+    [InlineData(60)]
+    public void 공세_묶음은_실제_캠페인에서_이동과_교전을_진행한다(int horizon)
+    {
+        var map = new HexMap(-3, 18, -5, 5);
+        var state = PlannerWithMap(map).Plan(Scenario(100000, 20000), new FactionId(1));
+        var deployed = state.Armies.Where(u => !u.IsSupply).Select(u => u.Id).ToHashSet();
+        Assert.True(deployed.Count >= 2);
+        var movement = new MovementSimulator(new PassabilityMap(map, [], state.Cities));
+        var legacy = new AdvanceOrchestrator(movement,
+            new CombatPhaseResolver(new BattleResolver(60), 70));
+        var engine = new CampaignEngine(new RenewalCampaignAdvanceRunner(map, legacy),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0)),
+            new CampaignSiege(new BattleResolver(60), Troops), new CityCapture(),
+            new SeededRandomSource(17));
+        var initialWall = state.Cities.Single(c => c.Id == new CityId(2)).Wall;
+        var moved = false;
+        for (var week = 0; week < (horizon + 6) / 7; week++)
+        {
+            state = engine.AdvanceWeek(state, out _, out var sieges, out _);
+            moved |= state.Armies.Any(u => deployed.Contains(u.Id)
+                && u.Field.Position.Distance(new HexCoord(0, 0)) > 1);
+            moved |= sieges.Count > 0;
+        }
+        Assert.True(moved);
+        Assert.True(state.Cities.Single(c => c.Id == new CityId(2)).Wall < initialWall
+            || state.Cities.Single(c => c.Id == new CityId(2)).Owner == new FactionId(1));
     }
 
     [Fact]
