@@ -55,8 +55,12 @@ public sealed partial class CampaignMapScene
     {
         if (!_cityVitalsGauges.TryGetValue(city.Id.Value, out var gauge)) return;
         gauge.Visible = CanInspectCity(city);
+        _cityLabels[city.Id.Value].Visible = !gauge.Visible;
         if (gauge.Visible)
+        {
+            gauge.SetTitle(CityMapLabel(city, troops), MapRelationTextColor(city.Owner));
             gauge.SetValues(wall, CastleWall.Max(city.Castle, _balance, city.WallLevel), troops);
+        }
     }
 
     private void RunCityVitalsGaugeQa()
@@ -72,9 +76,9 @@ public sealed partial class CampaignMapScene
         UpdateCityVitalsGauge(city, expectedWallMax / 2, 0);
         var changed = gauge.WallValue == expectedWallMax / 2 && gauge.TroopValue == 0;
         UpdateCityVitalsGauge(city, city.Wall, troops);
-        var passed = initial && changed && !_cityLabels[city.Id.Value].Text.Contains("성벽", StringComparison.Ordinal)
-            && CityVitalsGauge3D.DisplayPixelSize >= 0.003f
-            && gauge.Position.Y <= _cityLabels[city.Id.Value].Position.Y - 0.3f;
+        var passed = initial && changed && !_cityLabels[city.Id.Value].Visible
+            && gauge.Title.Contains(city.Name, StringComparison.Ordinal)
+            && CityVitalsGauge3D.DisplayPixelSize >= 0.0035f;
         GD.Print($"[maptestcitygaugeqa] passed={passed} initial={initial} changed={changed} wall={gauge.WallValue}/{gauge.WallMaximum} troops={gauge.TroopValue}");
         GetTree().Quit(passed ? 0 : 1);
     }
