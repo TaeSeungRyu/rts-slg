@@ -67,11 +67,13 @@ public sealed class AiOffensePlanner
                 if (!state.Armies.Any(u => u.Field.Owner == faction && u.OriginCity == origin.Id
                     && u.Field.Target == target.Position && !u.IsSupply))
                 {
-                    foreach (var secondary in state.Cities.Where(c => c.Owner == faction && !c.IsPort
+                    var supporters = state.Cities.Where(c => c.Owner == faction && !c.IsPort
                         && c.Id != origin.Id && c.Position.Distance(target.Position) <= 15)
-                        .OrderBy(c => c.Position.Distance(target.Position)).ThenBy(c => c.Id.Value))
+                        .OrderBy(c => c.Position.Distance(target.Position)).ThenBy(c => c.Id.Value)
+                        .ToList();
+                    for (var count = 1; count <= supporters.Count; count++)
                     {
-                        var coalition = TryCoalition(state, origin, secondary, target);
+                        var coalition = TryCoalition(state, origin, supporters.Take(count).ToList(), target);
                         if (coalition is null) continue;
                         state = coalition;
                         break;
@@ -221,34 +223,34 @@ public sealed class AiOffensePlanner
         return AttachDeclaration(original, scratch, target);
     }
 
-    private GameState? TryCoalition(GameState original, City primary, City secondary, City target)
+    private GameState? TryCoalition(GameState original, City primary,
+        IReadOnlyList<City> secondaries, City target)
     {
         var primaryRoute = RouteFor(original, primary, target);
-        var secondaryRoute = RouteFor(original, secondary, target);
-        if (primaryRoute is null || secondaryRoute is null) return null;
+        if (primaryRoute is null) return null;
+        var secondaryRoutes = secondaries.ToDictionary(c => c.Id, c => RouteFor(original, c, target));
+        if (secondaryRoutes.Values.Any(route => route is null)) return null;
         var primaryBudget = AiOffensiveCandidateService.Evaluate(original, primary, target,
             requiredRatioPercent: 0).AvailableTroops;
-        var secondaryBudget = AiOffensiveCandidateService.Evaluate(original, secondary, target,
-            requiredRatioPercent: 0).AvailableTroops;
+        var secondaryBudgets = secondaries.ToDictionary(c => c.Id, c =>
+            AiOffensiveCandidateService.Evaluate(original, c, target,
+                requiredRatioPercent: 0).AvailableTroops);
         var defenders = original.Garrisons.Where(g => g.City == target.Id).Sum(g => g.Troops);
-        if (primaryBudget + secondaryBudget < Math.Ceiling(defenders * 1.20)
-            || primaryBudget < 2000 || secondaryBudget < 1000)
+        if (primaryBudget + secondaryBudgets.Values.Sum() < Math.Ceiling(defenders * 1.20)
+            || primaryBudget < 2000 || secondaryBudgets.Values.Any(budget => budget < 1000))
             return null;
 
         var primaryOfficers = original.GeneralsAt(primary.Id)
             .Where(g => !original.IsGeneralBusy(g))
             .Select(g => original.Generals.First(x => x.Id == g)).ToList();
-        var secondaryOfficers = original.GeneralsAt(secondary.Id)
+        var secondaryOfficers = secondaries.ToDictionary(c => c.Id, c => original.GeneralsAt(c.Id)
             .Where(g => !original.IsGeneralBusy(g))
-            .Select(g => original.Generals.First(x => x.Id == g)).ToList();
+            .Select(g => original.Generals.First(x => x.Id == g)).ToList());
         if (primaryOfficers.Count < _config.KeepGeneralsHome + 2
-            || secondaryOfficers.Count < _config.KeepGeneralsHome + 1)
+            || secondaryOfficers.Values.Any(officers => officers.Count < _config.KeepGeneralsHome + 1))
             return null;
 
         var primaryLines = original.Garrisons.Where(g => g.City == primary.Id && !g.Trainee
-            && g.Troops > 0 && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
-            && _deployer.Troops.ContainsKey(g.TroopCode)).ToList();
-        var secondaryLines = original.Garrisons.Where(g => g.City == secondary.Id && !g.Trainee
             && g.Troops > 0 && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
             && _deployer.Troops.ContainsKey(g.TroopCode)).ToList();
         var siege = primaryLines.Where(g => _deployer.Troops[g.TroopCode].Class == TroopClass.Siege)
@@ -258,7 +260,7 @@ public sealed class AiOffensePlanner
 
         var scratch = original;
         var usedPrimary = 0;
-        var usedSecondary = 0;
+        var usedSecondary = secondaries.ToDictionary(c => c.Id, _ => 0);
         var combatIds = new List<UnitId>();
         var maxCombat = target.Castle switch
         {
@@ -282,7 +284,7 @@ public sealed class AiOffensePlanner
                 .ThenByDescending(g => g.Might).ThenBy(g => g.Id.Value).First();
             var result = _deployer.Deploy(scratch, new DeployRequest(city.Id, line.TroopCode,
                 troops, leader.Id, Mode: UnitMode.Attack, Target: target.Position,
-                EgressExit: city.Id == primary.Id ? primaryRoute.Exit : secondaryRoute.Exit));
+                EgressExit: city.Id == primary.Id ? primaryRoute.Exit : secondaryRoutes[city.Id]!.Exit));
             if (!result.Ok) return false;
             scratch = result.State;
             free.Remove(leader);
@@ -293,18 +295,27 @@ public sealed class AiOffensePlanner
 
         if (!AddCombat(primary, siege, primaryOfficers, ref usedPrimary, primaryBudget - 1000))
             return null;
-        var support = secondaryLines.Where(g => _deployer.Troops[g.TroopCode].Class is
-                TroopClass.Infantry or TroopClass.Archer or TroopClass.Cavalry or TroopClass.Elephant)
-            .OrderByDescending(g => secondaryOfficers.Max(o => o.AptitudeFor(
-                _deployer.Troops[g.TroopCode].Class)))
-            .ThenByDescending(g => g.Troops).ThenBy(g => g.TroopCode, StringComparer.Ordinal).ToList();
-        if (support.Count == 0) return null;
-        foreach (var line in support)
+        foreach (var secondary in secondaries)
         {
-            while (combatIds.Count < maxCombat
-                && AddCombat(secondary, line, secondaryOfficers, ref usedSecondary, secondaryBudget))
+            var officers = secondaryOfficers[secondary.Id];
+            var spent = usedSecondary[secondary.Id];
+            var support = original.Garrisons.Where(g => g.City == secondary.Id && !g.Trainee
+                    && g.Troops > 0 && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
+                    && _deployer.Troops.TryGetValue(g.TroopCode, out var troop)
+                    && troop.Class is TroopClass.Infantry or TroopClass.Archer
+                        or TroopClass.Cavalry or TroopClass.Elephant)
+                .OrderByDescending(g => officers.Max(o => o.AptitudeFor(
+                    _deployer.Troops[g.TroopCode].Class)))
+                .ThenByDescending(g => g.Troops).ThenBy(g => g.TroopCode, StringComparer.Ordinal);
+            foreach (var line in support)
             {
+                while (combatIds.Count < maxCombat
+                    && AddCombat(secondary, line, officers, ref spent,
+                        secondaryBudgets[secondary.Id]))
+                {
+                }
             }
+            usedSecondary[secondary.Id] = spent;
         }
         if (combatIds.Count < 2) return null;
         var reusable = ReusableSupply(original, primary, target);

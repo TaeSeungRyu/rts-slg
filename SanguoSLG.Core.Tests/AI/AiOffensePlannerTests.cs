@@ -87,7 +87,12 @@ public class AiOffensePlannerTests
     public void 공세_묶음은_실제_캠페인에서_이동과_교전을_진행한다(int seed, int horizon)
     {
         var map = new HexMap(-3, 18, -5, 5);
-        var state = PlannerWithMap(map).Plan(Scenario(100000, 20000), new FactionId(1));
+        var deployer = new DeployService(new CommandBalance(), Troops,
+            new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+            new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()));
+        var ai = new FactionAI(new CommandService(new CommandBalance(), Troops), deployer,
+            map: map);
+        var state = ai.PlanWeek(Scenario(100000, 20000), new FactionId(1));
         var deployed = state.Armies.Where(u => !u.IsSupply).Select(u => u.Id).ToHashSet();
         Assert.True(deployed.Count >= 2);
         var movement = new MovementSimulator(new PassabilityMap(map, [], state.Cities));
@@ -109,6 +114,19 @@ public class AiOffensePlannerTests
         Assert.True(moved);
         Assert.True(state.Cities.Single(c => c.Id == new CityId(2)).Wall < initialWall
             || state.Cities.Single(c => c.Id == new CityId(2)).Owner == new FactionId(1));
+    }
+
+    [Fact]
+    public void 세력_AI_주간판단도_실제_공세_묶음을_출전시킨다()
+    {
+        var deployer = new DeployService(new CommandBalance(), Troops,
+            new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+            new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()));
+        var commands = new CommandService(new CommandBalance(), Troops);
+        var ai = new FactionAI(commands, deployer, map: new HexMap(-3, 18, -5, 5));
+        var state = ai.PlanWeek(Scenario(100000, 20000), new FactionId(1));
+        Assert.True(state.Armies.Count(u => !u.IsSupply && !u.IsTransport) >= 2);
+        Assert.Contains(state.Armies, u => u.IsSupply);
     }
 
     [Fact]
@@ -268,6 +286,37 @@ public class AiOffensePlannerTests
         Assert.Single(after.Armies, u => u.IsSupply);
         Assert.All(after.Armies.Where(u => !u.IsSupply), u =>
             Assert.Equal(new HexCoord(10, 0), u.Field.Target));
+    }
+
+    [Fact]
+    public void 세_성의_합산_전력으로만_가능한_공세도_원자적으로_편성한다()
+    {
+        var state = Scenario(30_000, 30_000, siege: 20_000, officers: 12);
+        var second = new City(new CityId(3), "second", new HexCoord(-2, 1),
+            new FactionId(1), 20_000, CastleSize.Small);
+        var third = new City(new CityId(4), "third", new HexCoord(-4, 1),
+            new FactionId(1), 30_000, CastleSize.Small);
+        state = state with
+        {
+            Cities = state.Cities.Select(c => c.Id == new CityId(2) ? c with { Wall = 0 } : c)
+                .Append(second).Append(third).ToList(),
+            Postings = state.Assignments.Select(p => p with { Location = p.General.Value switch
+            {
+                >= 9 => third.Id,
+                >= 5 => second.Id,
+                _ => new CityId(1),
+            } }).ToList(),
+            GarrisonForces = state.Garrisons
+                .Append(new GarrisonForce(second.Id, "swordsman", 20_000, 60))
+                .Append(new GarrisonForce(third.Id, "swordsman", 50_000, 60)).ToList(),
+        };
+
+        var after = Planner().Plan(state, new FactionId(1));
+
+        Assert.Contains(after.Armies, u => !u.IsSupply && u.OriginCity == new CityId(1));
+        Assert.Contains(after.Armies, u => !u.IsSupply && u.OriginCity == second.Id);
+        Assert.Contains(after.Armies, u => !u.IsSupply && u.OriginCity == third.Id);
+        Assert.Single(after.Armies, u => u.IsSupply);
     }
 
     [Fact]
