@@ -369,7 +369,7 @@ public sealed partial class CampaignMapScene
             or "stratagem_success" or "stratagem_fail" or "alliance_success" or "alliance_fail" or "alliance_break"
             or "alliance_success_advisor" or "alliance_fail_advisor")
         {
-            var acknowledge = MakeButton("확인", accent: true);
+            var acknowledge = MakeStoryConfirmButton();
             acknowledge.Pressed += () =>
             {
                 _state = GeneralStorySelector.Resolve(_state, story.Id, "acknowledged");
@@ -394,7 +394,7 @@ public sealed partial class CampaignMapScene
                 line.Text = result.Message;
                 foreach (var child in actions.GetChildren()) child.QueueFree();
                 actions.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
-                var done = MakeButton("확인", accent: true);
+                var done = MakeStoryConfirmButton();
                 done.Pressed += () =>
                 {
                     CloseStoryModal();
@@ -405,6 +405,19 @@ public sealed partial class CampaignMapScene
             };
             actions.AddChild(button);
         }
+    }
+
+    private Button MakeStoryConfirmButton()
+    {
+        var button = MakeButton("확인", accent: true);
+        foreach (var state in new[] { "normal", "hover", "pressed" })
+        {
+            var style = (StyleBoxFlat)button.GetThemeStylebox(state).Duplicate();
+            style.ContentMarginLeft += 5;
+            style.ContentMarginRight += 5;
+            button.AddThemeStyleboxOverride(state, style);
+        }
+        return button;
     }
 
     private void OpenStoryRelatedScreen(GeneralStoryEvent story)
@@ -568,7 +581,11 @@ public sealed partial class CampaignMapScene
             var nextAligned = nextButton is not null && panel is not null
                 && nextButton.GlobalPosition.X > panel.GlobalPosition.X + panel.Size.X * 0.7f
                 && nextButton.GlobalPosition.Y > panel.GlobalPosition.Y + panel.Size.Y * 0.5f;
-            var hidden = !_reportPanel.Visible && _storyOpen;
+            var confirm = MakeStoryConfirmButton();
+            var confirmPadding = confirm.GetThemeStylebox("normal") is StyleBoxFlat confirmStyle
+                && confirmStyle.ContentMarginLeft >= 11 && confirmStyle.ContentMarginRight >= 11;
+            confirm.Free();
+            var hidden = !_reportPanel.Visible && _storyOpen && confirmPadding;
             CloseAnyModalOrPanel();
             var restored = !_storyOpen && _modalLayer is null && _reportPanel.Visible == reportWasVisible
                 && _state.StoryPending.All(e => e.Id != story.Id)
