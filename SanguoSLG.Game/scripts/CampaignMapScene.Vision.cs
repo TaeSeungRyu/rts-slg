@@ -90,7 +90,7 @@ public sealed partial class CampaignMapScene
         var hiddenAfterClose = !gauge.Visible && _cityLabels[city.Id.Value].Visible;
         var passed = hiddenInitially && initial && changed && hiddenAfterClose
             && gauge.Title.Contains(city.Name, StringComparison.Ordinal)
-            && CityVitalsGauge3D.DisplayPixelSize >= 0.0035f;
+            && CityVitalsGauge3D.DisplayPixelSize >= 0.0035f && gauge.HasDarkReadableCaptions;
         GD.Print($"[maptestcitygaugeqa] passed={passed} hidden={hiddenInitially}/{hiddenAfterClose} initial={initial} changed={changed} wall={gauge.WallValue}/{gauge.WallMaximum} troops={gauge.TroopValue}");
         GetTree().Quit(passed ? 0 : 1);
     }

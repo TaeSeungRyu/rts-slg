@@ -22,6 +22,8 @@ public sealed partial class CityVitalsGauge3D : Node3D
     public string WallCaption => _wallText.Text;
     public string TroopCaption => _troopText.Text;
     public string Title => _title.Text;
+    public bool HasDarkReadableCaptions => _wallText.GetThemeColor("font_color").R < 0.2f
+        && _troopText.GetThemeColor("font_color").R < 0.2f;
 
     public override void _Ready()
     {
@@ -87,10 +89,10 @@ public sealed partial class CityVitalsGauge3D : Node3D
             VerticalAlignment = VerticalAlignment.Center,
         };
         caption.AddThemeFontSizeOverride("font_size", 20);
-        caption.AddThemeColorOverride("font_color", new Color("fff2d5"));
-        caption.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.9f));
-        caption.AddThemeConstantOverride("shadow_offset_x", 1);
-        caption.AddThemeConstantOverride("shadow_offset_y", 1);
+        caption.AddThemeColorOverride("font_color", new Color("15202b"));
+        caption.AddThemeColorOverride("font_shadow_color", new Color(1, 1, 1, 0.9f));
+        caption.AddThemeConstantOverride("shadow_offset_x", 2);
+        caption.AddThemeConstantOverride("shadow_offset_y", 2);
         line.AddChild(caption);
         var bar = new ProgressBar
         {
@@ -113,10 +115,10 @@ public sealed partial class CityVitalsGauge3D : Node3D
             VerticalAlignment = VerticalAlignment.Center,
         };
         value.AddThemeFontSizeOverride("font_size", 21);
-        value.AddThemeColorOverride("font_color", new Color("ffffff"));
-        value.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.9f));
-        value.AddThemeConstantOverride("shadow_offset_x", 1);
-        value.AddThemeConstantOverride("shadow_offset_y", 1);
+        value.AddThemeColorOverride("font_color", new Color("15202b"));
+        value.AddThemeColorOverride("font_shadow_color", new Color(1, 1, 1, 0.9f));
+        value.AddThemeConstantOverride("shadow_offset_x", 2);
+        value.AddThemeConstantOverride("shadow_offset_y", 2);
         line.AddChild(value);
         return (bar, value);
     }
