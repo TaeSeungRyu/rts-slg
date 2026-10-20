@@ -444,7 +444,8 @@ public sealed partial class CampaignMapScene
         var actor = _state.GeneralsAt(city.Id).First();
         var sampleCommand = new SanguoSLG.Core.Simulation.CityCommand(city.Id,
             SanguoSLG.Core.Domain.CommandKind.Explore, actor, null, _state.Day, _state.Day + 7, 0);
-        _state = _state with { PendingCommands = _state.Commands.Append(sampleCommand).ToList() };
+        _state = _state with { PendingCommands = _state.Commands.Concat(
+            Enumerable.Repeat(sampleCommand, 18)).ToList() };
         _cityDetailTab = 1;
         OpenCityDetail(city.Id);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -456,6 +457,20 @@ public sealed partial class CampaignMapScene
         var commandGoldPortraits = commandPortraitNodes.Count > 0
             && commandPortraitNodes.All(portrait => portrait.GetMeta("thin_gold_border").AsBool());
         var commandTableLayout = commandRows >= 1 && commandPortraits >= 1;
+        var commandScroll = _modalLayer?.FindChild("CityDetailTabScroll", true, false) as ScrollContainer;
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var commandScrollWorks = commandScroll is not null
+            && commandScroll.GetVScrollBar().MaxValue > commandScroll.GetVScrollBar().Page;
+        if (commandScrollWorks)
+        {
+            var wheelPoint = commandScroll!.GetGlobalRect().GetCenter();
+            GetViewport().PushInput(new InputEventMouseMotion { Position = wheelPoint }, true);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            GetViewport().PushInput(new InputEventMouseButton
+                { Position = wheelPoint, ButtonIndex = MouseButton.WheelDown, Pressed = true }, true);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            commandScrollWorks = commandScroll.ScrollVertical > 0;
+        }
         var diplomacyTranslated = KindName(SanguoSLG.Core.Domain.CommandKind.FormAlliance) == "동맹"
             && KindName(SanguoSLG.Core.Domain.CommandKind.BreakAlliance) == "동맹파기";
         CloseModal();
@@ -493,9 +508,9 @@ public sealed partial class CampaignMapScene
         }
         var passed = expected > 0 && roundedGarrisons && mapWheelBlocked && stationedInternalScroll
             && noObsoleteResources && portShipsShown
-            && commandTableLayout && deployTableLayout && diplomacyTranslated
+            && commandTableLayout && commandScrollWorks && deployTableLayout && diplomacyTranslated
             && stationedGoldPortraits && commandGoldPortraits && deployGoldPortraits;
-        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} noObsoleteResources={noObsoleteResources} portShipsShown={portShipsShown} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} modalHeight={modalHeight} tabHeight={tabHeight} commandRows={commandRows}:{commandTableLayout} deployRows={deployRows}:{deployTableLayout} goldPortraits={stationedGoldPortraits}/{commandGoldPortraits}/{deployGoldPortraits}");
+        GD.Print($"[city-detail-qa] passed={passed} roundedGarrisons={garrisonFrames.Count}/{expected}:{roundedGarrisons} noObsoleteResources={noObsoleteResources} portShipsShown={portShipsShown} mapWheelBlocked={mapWheelBlocked}:{wheelBlockers} stationedInternalScroll={stationedInternalScroll} modalHeight={modalHeight} tabHeight={tabHeight} commandRows={commandRows}:{commandTableLayout} commandScroll={commandScrollWorks} deployRows={deployRows}:{deployTableLayout} goldPortraits={stationedGoldPortraits}/{commandGoldPortraits}/{deployGoldPortraits}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

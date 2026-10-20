@@ -7931,9 +7931,19 @@ public sealed partial class CampaignMapScene : Node3D
         };
         contentPanel.AddThemeStyleboxOverride("panel", TabContentStyle());
         tabWrap.AddChild(contentPanel);
+        var tabScroll = new ScrollContainer
+        {
+            Name = "CityDetailTabScroll",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+            MouseForcePassScrollEvents = false,
+        };
+        contentPanel.AddChild(tabScroll);
         var content = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         content.AddThemeConstantOverride("separation", 6);
-        contentPanel.AddChild(content);
+        tabScroll.AddChild(content);
 
         var labels = readOnlyIntel
             ? new[] { $"주둔 장수 {stationed.Count}" }
@@ -7954,6 +7964,7 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             Clear(content);
+            tabScroll.ScrollVertical = 0;
             switch (t)
             {
                 case 0: BuildStationedTab(content, city, stationed, readOnlyIntel); break;
