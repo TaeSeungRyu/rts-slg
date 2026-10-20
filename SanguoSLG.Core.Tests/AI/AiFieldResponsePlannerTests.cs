@@ -9,12 +9,12 @@ using Xunit;
 
 public class AiFieldResponsePlannerTests
 {
-    private static AiFieldResponsePlanner Planner() => new(
+    private static AiFieldResponsePlanner Planner(HexMap? map = null) => new(
         new DeployService(new CommandBalance(),
             new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory()),
             new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
             new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())),
-        new AiConfig());
+        new AiConfig(), map);
 
     private static GameState Scenario(HexCoord defenderPosition, HexCoord intruderPosition,
         int cavalry = 20000, bool supply = true)
@@ -68,6 +68,30 @@ public class AiFieldResponsePlannerTests
         var after = Planner().Plan(state, new FactionId(1));
 
         Assert.Single(after.Armies);
+    }
+
+    [Fact]
+    public void 물길에_막혀_도달할_수_없으면_직선거리가_가까워도_출전하지_않는다()
+    {
+        var state = Scenario(new HexCoord(3, 0), new HexCoord(1, 0));
+        var map = new HexMap(0, 5, 0, 0,
+            new Dictionary<HexCoord, TerrainType> { [new HexCoord(2, 0)] = TerrainType.WaterShallow });
+
+        var after = Planner(map).Plan(state, new FactionId(1));
+
+        Assert.Single(after.Armies);
+    }
+
+    [Fact]
+    public void 통행_가능한_측면_경로가_있으면_출격구를_지정해_요격한다()
+    {
+        var state = Scenario(new HexCoord(3, 0), new HexCoord(4, 0));
+
+        var after = Planner(new HexMap(-2, 12, -3, 3)).Plan(state, new FactionId(1));
+
+        var response = Assert.Single(after.Armies, u => u.Field.Owner == new FactionId(1));
+        Assert.Equal(new UnitId(9), response.Field.AssignedUnitTarget);
+        Assert.NotNull(response.EgressExit);
     }
 
     [Fact]

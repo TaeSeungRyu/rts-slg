@@ -2,17 +2,20 @@ namespace SanguoSLG.Core.AI;
 
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Spatial;
 
 /// <summary>Phase 21 야전 대응: 위협받는 성을 다른 성의 기병으로 요격하고 고립 보급대를 우선한다.</summary>
 public sealed class AiFieldResponsePlanner
 {
     private readonly DeployService _deployer;
     private readonly AiConfig _config;
+    private readonly HexMap? _map;
 
-    public AiFieldResponsePlanner(DeployService deployer, AiConfig config)
+    public AiFieldResponsePlanner(DeployService deployer, AiConfig config, HexMap? map = null)
     {
         _deployer = deployer;
         _config = config;
+        _map = map;
     }
 
     public GameState Plan(GameState state, FactionId faction)
@@ -91,7 +94,9 @@ public sealed class AiFieldResponsePlanner
         if (deployable < 1000 || deployable < target.Pool.Active * (target.IsSupply ? 0.5 : 1.0))
             return null;
         var speed = Math.Max(1, _deployer.Troops[cavalry.TroopCode].MovementPerDay);
-        if (origin.Position.Distance(target.Field.Position) > speed * 3) return null;
+        var route = InterceptRoute(state, origin, target, speed * 3);
+        if (_map is not null && route is null) return null;
+        if (_map is null && origin.Position.Distance(target.Field.Position) > speed * 3) return null;
         var officers = state.GeneralsAt(origin.Id).Where(id => !state.IsGeneralBusy(id))
             .Select(id => state.Generals.First(g => g.Id == id))
             .OrderByDescending(g => g.AptitudeFor(TroopClass.Cavalry))
@@ -100,12 +105,46 @@ public sealed class AiFieldResponsePlanner
 
         var result = _deployer.Deploy(state, new DeployRequest(origin.Id, cavalry.TroopCode,
             deployable, officers[0].Id, Mode: UnitMode.Attack,
-            Target: target.Field.Position));
+            Target: target.Field.Position, EgressExit: route));
         if (!result.Ok) return null;
         var id = result.State.Armies[^1].Id;
         return result.State with { FieldArmies = result.State.Armies.Select(u => u.Id == id
             ? u with { Field = u.Field with { AssignedUnitTarget = target.Id,
                 ReturnCity = origin.Id } } : u).ToList() };
+    }
+
+    private HexCoord? InterceptRoute(GameState state, City origin, CombatUnit target,
+        int maxSteps)
+    {
+        if (_map is null) return null;
+        var blocked = state.Buildings.Where(b => !b.IsExpired(state.Day)).Select(b => b.Position)
+            .Concat(state.Ruins.Select(r => r.Position));
+        var passability = new PassabilityMap(_map, [], state.Cities, blocked);
+        var danger = target.IsSupply ? state.Armies.Where(u => u.Id != target.Id
+            && u.Pool.Active > 0 && state.AreHostile(origin.Owner, u.Field.Owner))
+            .SelectMany(u => u.Field.Position.Neighbors().Append(u.Field.Position)).ToHashSet()
+            : new HashSet<HexCoord>();
+        var exits = DeploymentEgressRules.ExteriorTiles(origin)
+            .Where(tile => passability.CanEnter(MovementDomain.Land, tile)
+                && !danger.Contains(tile)).OrderBy(tile => tile.Q).ThenBy(tile => tile.R);
+        var goals = target.Field.Position.Neighbors()
+            .Where(tile => passability.CanEnter(MovementDomain.Land, tile)
+                && !danger.Contains(tile)).ToHashSet();
+        var queue = new Queue<(HexCoord Position, HexCoord Exit, int Steps)>();
+        var seen = new HashSet<HexCoord>();
+        foreach (var exit in exits)
+            if (seen.Add(exit)) queue.Enqueue((exit, exit, 1));
+        while (queue.Count > 0)
+        {
+            var (position, exit, steps) = queue.Dequeue();
+            if (goals.Contains(position)) return exit;
+            if (steps >= maxSteps) continue;
+            foreach (var next in position.Neighbors())
+                if (seen.Add(next) && !danger.Contains(next)
+                    && passability.CanEnter(MovementDomain.Land, next))
+                    queue.Enqueue((next, exit, steps + 1));
+        }
+        return null;
     }
 
     private static bool Escorted(GameState state, CombatUnit supply)
