@@ -33,25 +33,17 @@ public sealed partial class CityVitalsGauge3D : Node3D
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
         };
         AddChild(viewport);
-        var panel = new PanelContainer
-        {
-            Position = Vector2.Zero,
-            Size = new Vector2(ViewWidth, ViewHeight),
-        };
-        var backing = new StyleBoxFlat { BgColor = new Color(0.04f, 0.055f, 0.065f, 0.82f),
-            BorderColor = new Color("d7b86b") };
-        backing.SetBorderWidthAll(2);
-        backing.SetCornerRadiusAll(11);
-        backing.SetContentMarginAll(9);
-        panel.AddThemeStyleboxOverride("panel", backing);
-        viewport.AddChild(panel);
-        var rows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        var rows = new VBoxContainer { Size = new Vector2(ViewWidth, ViewHeight),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         rows.AddThemeConstantOverride("separation", 6);
-        panel.AddChild(rows);
+        viewport.AddChild(rows);
         _title = new Label { HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center, CustomMinimumSize = new Vector2(0, 72) };
-        _title.AddThemeFontSizeOverride("font_size", 32);
+        _title.AddThemeFontSizeOverride("font_size", 42);
         _title.AddThemeColorOverride("font_color", new Color("fff2d5"));
+        _title.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, .95f));
+        _title.AddThemeConstantOverride("shadow_offset_x", 2);
+        _title.AddThemeConstantOverride("shadow_offset_y", 2);
         rows.AddChild(_title);
         (_wallBar, _wallText) = AddGauge(rows, "성벽", new Color("d7b86b"));
         (_troopBar, _troopText) = AddGauge(rows, "병력", new Color("75b8c9"));
