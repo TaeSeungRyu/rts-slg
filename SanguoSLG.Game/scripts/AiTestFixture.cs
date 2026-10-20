@@ -25,6 +25,7 @@ internal sealed class AiTestFixture
     public IReadOnlyList<GeneralPosting> Postings { get; }
     public IReadOnlyList<GarrisonForce> Garrisons { get; }
     public IReadOnlyList<PortShipStock> Ships { get; }
+    public IReadOnlyList<CityIntel> Intel { get; }
 
     private AiTestFixture(HexMap map, IReadOnlyList<Faction> factions, IReadOnlyList<City> cities,
         IReadOnlyList<GeneralPosting> postings, IReadOnlyList<GarrisonForce> garrisons,
@@ -36,6 +37,10 @@ internal sealed class AiTestFixture
         Postings = postings;
         Garrisons = garrisons;
         Ships = ships;
+        Intel = factions.SelectMany(faction => cities
+            .Where(city => city.Owner != faction.Id)
+            .Select(city => new CityIntel(faction.Id, city.Id)))
+            .ToList();
     }
 
     public IReadOnlyList<GarrisonForce> GarrisonsFor(AiTestCase testCase, FactionId player)

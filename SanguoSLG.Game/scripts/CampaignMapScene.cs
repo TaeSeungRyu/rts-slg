@@ -652,6 +652,7 @@ public sealed partial class CampaignMapScene : Node3D
                 ?? _initial.GarrisonForces,
             FacilityPlacements = _aiTestFixture is null ? _initialFacilityPlacements : [],
             PortShipStocks = _aiTestFixture?.Ships ?? _initial.PortShipStocks,
+            ScoutedCities = _aiTestFixture?.Intel ?? _initial.ScoutedCities,
             HeroUnlockDefinitions = _aiTestFixture is null ? scenario.HeroUnlockList : [],
             HeroUnlockStates = (_aiTestFixture is null ? scenario.HeroUnlockList : [])
                 .Select(h => new HeroUnlockState(h.General, HeroUnlockStatus.Locked))

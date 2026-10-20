@@ -136,11 +136,14 @@ public sealed partial class CampaignMapScene
                 || planned.Commands.Count > _state.Commands.Count;
         }
         var fullVision = _aiTestFixture is not null && _visibleTiles.SetEquals(_map.Tiles());
-        var passed = mapReady && threeFactions && generalsValid && casesValid && aiActs && fullVision;
+        var fullIntel = _aiTestFixture is not null && _state.Factions.All(faction =>
+            _state.Cities.Where(city => city.Owner != faction.Id)
+                .All(city => _state.IsScouted(faction.Id, city.Id)));
+        var passed = mapReady && threeFactions && generalsValid && casesValid && aiActs && fullVision && fullIntel;
         GD.Print($"[aitestfixtureqa] passed={passed} map={_map.Count}/{baselineMap.Count} "
             + $"factions={_state.Factions.Count} cities={_state.Cities.Count} "
             + $"ports={_state.Cities.Count(c => c.IsPort)} generalsValid={generalsValid} "
-            + $"case={_selectedAiTestCase} casesValid={casesValid} aiActs={aiActs} fullVision={fullVision}");
+            + $"case={_selectedAiTestCase} casesValid={casesValid} aiActs={aiActs} fullVision={fullVision} fullIntel={fullIntel}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }
