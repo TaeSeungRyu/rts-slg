@@ -9,6 +9,7 @@ public sealed class AiRearSupportPlanner(DeployService deployer, HexMap? map = n
 {
     public GameState Plan(GameState state, FactionId faction)
     {
+        state = RedirectLostDestinations(state, faction);
         var hostile = state.Cities.Where(c => state.AreHostile(faction, c.Owner)
             && state.IsScouted(faction, c.Id)).ToList();
         if (hostile.Count == 0) return state;
@@ -63,6 +64,30 @@ public sealed class AiRearSupportPlanner(DeployService deployer, HexMap? map = n
             }
         }
         return state;
+    }
+
+    private static GameState RedirectLostDestinations(GameState state, FactionId faction)
+    {
+        return state with { FieldArmies = state.Armies.Select(unit =>
+        {
+            if (!unit.IsTransport || unit.Field.Owner != faction
+                || unit.Field.ReturnCity is not { } destinationId
+                || state.Cities.Any(city => city.Id == destinationId && city.Owner == faction))
+                return unit;
+            var safe = state.Cities.Where(city => city.Owner == faction)
+                .OrderBy(city => city.Id == unit.OriginCity ? 0 : 1)
+                .ThenBy(city => city.Position.Distance(unit.Field.Position))
+                .ThenBy(city => city.Id.Value).FirstOrDefault();
+            return unit with { Field = unit.Field with
+            {
+                Mode = safe is null ? UnitMode.Standby : UnitMode.March,
+                Target = safe?.Position,
+                ReturnCity = safe?.Id,
+                Waypoints = null,
+                ContinuousTarget = null,
+                ContinuousWaypoints = null,
+            } };
+        }).ToList() };
     }
 
     private (HexCoord Exit, int Distance)? Route(GameState state, City origin, City target)

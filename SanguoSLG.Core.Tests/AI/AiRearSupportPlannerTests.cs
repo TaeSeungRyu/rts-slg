@@ -82,4 +82,27 @@ public class AiRearSupportPlannerTests
         Assert.True(rear.Gold >= 1000);
         Assert.True(rear.Provisions >= 1500);
     }
+
+    [Fact]
+    public void 수송중_도착성이_함락되면_적성에_들어가지_않고_원점으로_복귀한다()
+    {
+        var launched = Planner().Plan(Scenario(), new FactionId(1));
+        var captured = launched with
+        {
+            Cities = launched.Cities.Select(city => city.Id == new CityId(1)
+                ? city with { Owner = new FactionId(2) } : city).ToList(),
+            FieldArmies = launched.Armies.Select(unit => unit with
+            {
+                AwaitingEgress = false,
+                Field = unit.Field with { Position = new HexCoord(-7, 0) },
+            }).ToList(),
+        };
+
+        var after = Planner().Plan(captured, new FactionId(1));
+
+        var transport = Assert.Single(after.Armies);
+        Assert.Equal(UnitMode.March, transport.Field.Mode);
+        Assert.Equal(new CityId(2), transport.Field.ReturnCity);
+        Assert.Equal(new HexCoord(-8, 0), transport.Field.Target);
+    }
 }
