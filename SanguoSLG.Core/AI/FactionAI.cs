@@ -53,6 +53,7 @@ public sealed class FactionAI
         state = new AiRearSupportPlanner(_deployer, _map).Plan(state, faction);
         state = PlanGeneralResearch(state, faction);
         state = PlanStratagemResearch(state, faction);
+        state = PlanCombatResearch(state, faction);
 
         state = PlanExploration(state, faction);
         state = PlanCityOfficers(state, faction);
@@ -431,6 +432,70 @@ public sealed class FactionAI
             }
         }
         return state with { FieldArmies = armies };
+    }
+
+    private GameState PlanCombatResearch(GameState state, FactionId faction)
+    {
+        if (_config.GeneralResearchReserveGold < 0
+            || state.Commands.Any(command => command.Kind == CommandKind.Research
+                && FactionResearch.LaneOf(command.TroopCode) == ResearchLane.Combat
+                && state.Cities.Any(city => city.Id == command.City && city.Owner == faction)))
+            return state;
+        var cities = state.Cities.Where(city => city.Owner == faction && !city.IsPort)
+            .OrderBy(city => city.Id.Value).ToList();
+        var candidates = cities.Select(city => new
+        {
+            City = city,
+            Officer = state.GeneralsAt(city.Id).Where(id => !state.IsGeneralBusy(id))
+                .Select(id => state.Generals.First(general => general.Id == id))
+                .OrderBy(general => IsDutyOfficer(state, general.Id))
+                .ThenByDescending(general => general.Intellect)
+                .ThenBy(general => general.Id.Value).FirstOrDefault(),
+            Free = state.GeneralsAt(city.Id).Count(id => !state.IsGeneralBusy(id)),
+        }).Where(candidate => candidate.Officer is not null
+            && candidate.Free > _config.KeepGeneralsHome)
+            .OrderByDescending(candidate => candidate.Officer!.Intellect)
+            .ThenBy(candidate => candidate.City.Id.Value).ToList();
+        if (candidates.Count == 0) return state;
+        var codes = new List<string>();
+        if (state.ResearchOf(faction, FactionResearch.CommandTroopsCode) < GeneralResearchRules.MaxLevel)
+            codes.Add(FactionResearch.CommandTroopsCode);
+        codes.AddRange(state.MajorTroops.Where(item => item.Faction == faction)
+            .Select(item => item.TroopCode));
+        codes.AddRange(state.Garrisons.Where(line => cities.Any(city => city.Id == line.City)
+                && line.Troops > 0)
+            .GroupBy(line => line.TroopCode)
+            .OrderByDescending(group => group.Sum(line => line.Troops))
+            .ThenBy(group => group.Key, StringComparer.Ordinal)
+            .Select(group => group.Key));
+        if (state.ResearchOf(faction, FactionResearch.ArmyGroupCode) < GeneralResearchRules.MaxLevel
+            && cities.Any(city => state.Garrisons.Where(line => line.City == city.Id)
+                .Sum(line => line.Troops) >= 50_000))
+            codes.Add(FactionResearch.ArmyGroupCode);
+        var funds = cities.Where(city => city.Gold > 0)
+            .Select(city => new ResearchFundingShare(city.Id, city.Gold)).ToList();
+        foreach (var code in codes.Distinct())
+        {
+            if (code != FactionResearch.CommandTroopsCode && code != FactionResearch.ArmyGroupCode
+                && (!_deployer.Troops.ContainsKey(code)
+                    || !FactionTroopUnlock.CheckResearch(state, faction, code).Allowed)) continue;
+            var level = state.ResearchOf(faction, code);
+            var max = code == FactionResearch.CommandTroopsCode || code == FactionResearch.ArmyGroupCode
+                || state.IsMajorTroop(faction, code) ? GeneralResearchRules.MaxLevel : 7;
+            if (level >= max) continue;
+            var cost = code == FactionResearch.CommandTroopsCode || code == FactionResearch.ArmyGroupCode
+                ? CommandEfficiency.CommandTroopResearchCost(level + 1)
+                : CommandEfficiency.ResearchCost(level + 1, _commands.Balance);
+            if (cities.Sum(city => city.Gold) < cost + _config.GeneralResearchReserveGold) continue;
+            foreach (var candidate in candidates)
+            {
+                var result = _commands.Issue(state, new CommandRequest(candidate.City.Id,
+                    CommandKind.Research, candidate.Officer!.Id,
+                    TroopCode: code, ResearchFunding: funds));
+                if (result.Ok) return result.State;
+            }
+        }
+        return state;
     }
 
     private GameState PlanGeneralResearch(GameState state, FactionId faction)

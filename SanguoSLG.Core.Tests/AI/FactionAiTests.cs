@@ -534,6 +534,21 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI는_전투연구선에서_통솔병력을_먼저_연구한다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0)) with { Gold = 30_000,
+            Provisions = 30_000 };
+        var state = new GameState(1, 190, [], [city],
+            Enumerable.Range(1, 4).Select(Gen).ToList(),
+            Postings: Enumerable.Range(1, 4).Select(id => At(id, 1, 1)).ToList());
+
+        var after = Ai(new AiConfig(ExplorationReserveGold: int.MaxValue)).PlanWeek(state, city.Owner);
+
+        Assert.Contains(after.Commands, command => command.Kind == CommandKind.Research
+            && command.TroopCode == FactionResearch.CommandTroopsCode);
+    }
+
+    [Fact]
     public void 병력이_적으면_기존_단독_부대_출전을_하지_않는다()
     {
         var enemy = Town(9, 2, new HexCoord(10, 0));
