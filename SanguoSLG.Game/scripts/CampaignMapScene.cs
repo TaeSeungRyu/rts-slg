@@ -16446,13 +16446,14 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     private Color MapRelationTextColor(FactionId owner)
-        => owner == Player ? Blue
-            : _state.AreAllied(Player, owner) ? new Color(0.65f, 0.92f, 0.55f) : Red;
+        => owner == Player ? ArmyFactionColor(owner)
+            : _state.AreAllied(Player, owner) ? new Color(0.65f, 0.92f, 0.55f)
+            : ArmyFactionColor(owner);
 
     private void RunAllianceLabelQa()
     {
         var enemy = _state.Cities.First(city => city.Owner != Player).Owner;
-        var hostileRed = MapRelationTextColor(enemy) == Red;
+        var hostileFactionColor = MapRelationTextColor(enemy) == ArmyFactionColor(enemy);
         _state = _state with { FactionAlliances =
             [.._state.Alliances, FactionAlliance.Create(Player, enemy, _state.Day)] };
         Redraw("alliance-label-qa");
@@ -16473,8 +16474,8 @@ public sealed partial class CampaignMapScene : Node3D
         var sampleLabel = sampleBuilding is null ? null : _fieldBuildingLayer.GetChildren().OfType<Label3D>()
             .LastOrDefault(label => !label.IsQueuedForDeletion()
                 && label.HasMeta("field_building_id") && label.GetMeta("field_building_id").AsInt32() == sampleBuilding.Id.Value);
-        var passed = hostileRed && cityGreen && armyGreen && buildingsGreen;
-        GD.Print($"[maptestalliancelabelqa] passed={passed} hostileRed={hostileRed} cityGreen={cityGreen} cityColor={cityColor} armyGreen={armyGreen} buildingsGreen={buildingsGreen} enemyBuildings={_state.Buildings.Count(b => b.Owner == enemy)} sample={sampleLabel?.Text}/{sampleLabel?.Modulate}");
+        var passed = hostileFactionColor && cityGreen && armyGreen && buildingsGreen;
+        GD.Print($"[maptestalliancelabelqa] passed={passed} hostileFactionColor={hostileFactionColor} cityGreen={cityGreen} cityColor={cityColor} armyGreen={armyGreen} buildingsGreen={buildingsGreen} enemyBuildings={_state.Buildings.Count(b => b.Owner == enemy)} sample={sampleLabel?.Text}/{sampleLabel?.Modulate}");
         GetTree().Quit(passed ? 0 : 1);
     }
 

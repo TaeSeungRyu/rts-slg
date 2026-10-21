@@ -146,16 +146,20 @@ public sealed partial class CampaignMapScene
         var fullIntel = _aiTestFixture is not null && _state.Factions.All(faction =>
             _state.Cities.Where(city => city.Owner != faction.Id)
                 .All(city => _state.IsScouted(faction.Id, city.Id)));
+        var factionColors = _state.Factions.All(faction =>
+            MapRelationTextColor(faction.Id) == ArmyFactionColor(faction.Id)
+            && _state.Cities.Where(city => city.Owner == faction.Id)
+                .All(city => _cityLabels[city.Id.Value].Modulate == ArmyFactionColor(faction.Id)));
         var offenseValid = _selectedAiTestCase != AiTestCase.PlayerHalf
             || aiCombatDeploys >= 2 && aiSupplyDeploys >= 1;
         var passed = mapReady && threeFactions && ramsPresent && generalsValid && casesValid && aiActs
-            && fullVision && fullIntel && offenseValid;
+            && fullVision && fullIntel && factionColors && offenseValid;
         GD.Print($"[aitestfixtureqa] passed={passed} map={_map.Count}/{baselineMap.Count} "
             + $"factions={_state.Factions.Count} cities={_state.Cities.Count} "
             + $"ports={_state.Cities.Count(c => c.IsPort)} ramsPresent={ramsPresent} generalsValid={generalsValid} "
             + $"case={_selectedAiTestCase} casesValid={casesValid} aiActs={aiActs} "
             + $"combat={aiCombatDeploys} supply={aiSupplyDeploys} offenseValid={offenseValid} "
-            + $"fullVision={fullVision} fullIntel={fullIntel}");
+            + $"fullVision={fullVision} fullIntel={fullIntel} factionColors={factionColors}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }

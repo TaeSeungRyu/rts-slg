@@ -60,7 +60,7 @@ public sealed partial class CampaignMapScene
                     ? faction is null ? GoldBright : Color.FromString(faction.Color, GoldBright)
                     : _state.AreAllied(Player, city.Owner)
                         ? new Color(0.48f, 0.80f, 0.45f)
-                        : new Color(0.92f, 0.25f, 0.23f);
+                        : ArmyFactionColor(city.Owner);
                 return (city.Position, color);
             }),
             CameraBounds = MiniMapCameraBounds,
@@ -105,7 +105,7 @@ public sealed partial class CampaignMapScene
         var enemy = _state.Cities.FirstOrDefault(city => city.Owner != Player && IsKnownCityLocation(city));
         if (enemy is not null && !_state.AreAllied(Player, enemy.Owner))
             passed &= map?.Cities().FirstOrDefault(marker => marker.Position == enemy.Position).Color
-                == new Color(0.92f, 0.25f, 0.23f);
+                == ArmyFactionColor(enemy.Owner);
         GD.Print($"[maptestminimapqa] tiles={map?.Map.Count ?? 0} passed={passed}");
         GetTree().Quit(passed ? 0 : 1);
     }
