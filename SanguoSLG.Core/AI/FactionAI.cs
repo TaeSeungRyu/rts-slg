@@ -48,6 +48,7 @@ public sealed class FactionAI
         state = RecruitUnlockedHeroes(state, faction);
         state = new AiFieldResponsePlanner(_deployer, _config, _map, _economy).Plan(state, faction);
         state = PlanOffenseScouting(state, faction);
+        state = PlanFrontTransfers(state, faction);
         state = new AiOffensePlanner(_deployer, _config, _commands, _map, _economy).Plan(state, faction);
         state = new AiRearSupportPlanner(_deployer, _map).Plan(state, faction);
         state = PlanGeneralResearch(state, faction);
@@ -129,6 +130,60 @@ public sealed class FactionAI
                 CommandKind.CityStratagem, option.Officer.Id, Facility: "scout",
                 TargetCity: option.Target.Id));
             if (result.Ok) return result.State;
+        }
+        return state;
+    }
+
+    private GameState PlanFrontTransfers(GameState state, FactionId faction)
+    {
+        foreach (var front in state.Cities.Where(city => city.Owner == faction && !city.IsPort
+            && AiSortiePolicy.AllowsCombatSortie(city, _economy))
+            .OrderBy(city => city.Id.Value))
+        {
+            var target = state.Cities.Where(city => !city.IsPort
+                    && state.AreHostile(faction, city.Owner)
+                    && state.IsScouted(faction, city.Id)
+                    && city.Position.Distance(front.Position) <= 15)
+                .OrderBy(city => city.Position.Distance(front.Position))
+                .ThenBy(city => city.Id.Value).FirstOrDefault();
+            if (target is null || state.Garrisons.Where(line => line.City == front.Id
+                    && !line.Trainee).Sum(line => line.Troops) < 30_000
+                || !state.Garrisons.Any(line => line.City == front.Id && !line.Trainee
+                    && _deployer.Troops.TryGetValue(line.TroopCode, out var troop)
+                    && troop.Class == TroopClass.Siege)) continue;
+            var free = state.GeneralsAt(front.Id).Count(id => !state.IsGeneralBusy(id));
+            var incoming = state.Commands.Count(command => command.Kind == CommandKind.TransferGeneral
+                && command.TargetCity == front.Id);
+            if (free + incoming > _config.KeepGeneralsHome + 2) continue;
+            var neededClasses = state.Garrisons.Where(line => line.City == front.Id
+                    && !line.Trainee && line.Troops >= 1000
+                    && _deployer.Troops.ContainsKey(line.TroopCode))
+                .Select(line => _deployer.Troops[line.TroopCode].Class).Distinct().ToList();
+            var donor = state.Cities.Where(city => city.Owner == faction && city.Id != front.Id)
+                .OrderBy(city => city.Position.Distance(front.Position))
+                .ThenBy(city => city.Id.Value)
+                .Select(city => new
+                {
+                    City = city,
+                    Officers = state.GeneralsAt(city.Id)
+                        .Where(id => !state.IsGeneralBusy(id)
+                            && !state.Factions.Any(owner => owner.Id == faction && owner.Ruler == id)
+                            && city.Governor != id && city.Strategist != id
+                            && city.SecurityOfficer != id && city.DomesticOfficer != id
+                            && city.RecruitmentOfficer != id && city.TrainingOfficer != id)
+                        .Select(id => state.Generals.First(general => general.Id == id))
+                        .OrderByDescending(general => neededClasses.Count == 0
+                            ? AptitudeGrade.F : neededClasses.Max(general.AptitudeFor))
+                        .ThenByDescending(general => general.Might)
+                        .ThenBy(general => general.Id.Value).ToList(),
+                    FreeCount = state.GeneralsAt(city.Id).Count(id => !state.IsGeneralBusy(id)),
+                })
+                .FirstOrDefault(option => option.FreeCount > _config.KeepGeneralsHome + 1
+                    && option.Officers.Count > 0);
+            if (donor is null) continue;
+            var result = _commands.Issue(state, new CommandRequest(donor.City.Id,
+                CommandKind.TransferGeneral, donor.Officers[0].Id, TargetCity: front.Id));
+            if (result.Ok) state = result.State;
         }
         return state;
     }

@@ -472,6 +472,29 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI는_공세장수가_부족한_전선에_후방_여유장수를_이동시킨다()
+    {
+        var front = Town(1, 1, new HexCoord(0, 0)) with { Wall = 3000, Gold = 10_000,
+            Security = 90, Provisions = 30_000 };
+        var rear = Town(2, 1, new HexCoord(-6, 0)) with { Wall = 3000,
+            Gold = 10_000, Provisions = 30_000 };
+        var target = Town(3, 2, new HexCoord(10, 0));
+        var state = new GameState(1, 190, [], [front, rear, target],
+            Enumerable.Range(1, 6).Select(Gen).ToList(),
+            Postings: [At(1, 1, 1), At(2, 1, 1), At(3, 1, 2), At(4, 1, 2),
+                At(5, 1, 2), At(6, 1, 2)],
+            ScoutedCities: [new CityIntel(new FactionId(1), target.Id)],
+            GarrisonForces: [new(front.Id, "swordsman", 50_000, 60),
+                new(front.Id, "catapult", 10_000, 60)]);
+
+        var after = Ai(new AiConfig(GeneralResearchReserveGold: -1,
+            ExplorationReserveGold: int.MaxValue)).PlanWeek(state, front.Owner);
+
+        Assert.Contains(after.Commands, command => command.Kind == CommandKind.TransferGeneral
+            && command.City == rear.Id && command.TargetCity == front.Id);
+    }
+
+    [Fact]
     public void 병력이_적으면_기존_단독_부대_출전을_하지_않는다()
     {
         var enemy = Town(9, 2, new HexCoord(10, 0));
