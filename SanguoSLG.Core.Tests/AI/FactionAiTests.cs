@@ -616,6 +616,22 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI는_계략성공률이_상한이면_같은_계략연구를_더하지_않는다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0));
+        var target = Town(2, 2, new HexCoord(8, 0));
+        var state = new GameState(1, 190, [], [city, target],
+            [Gen(1) with { Intellect = 100 }],
+            Postings: [At(1, 1, 1)],
+            PendingCommands: [new CityCommand(city.Id, CommandKind.CityStratagem,
+                new GeneralId(1), null, 1, 14, 0, "scout", TargetCity: target.Id)],
+            ResearchTracks: [new FactionResearch(city.Owner, FactionResearch.ScoutStratagemCode, 3)]);
+
+        Assert.DoesNotContain(FactionResearch.ScoutStratagemCode,
+            AiResearchPriority.Stratagem(state, city.Owner));
+    }
+
+    [Fact]
     public void 병력이_적으면_기존_단독_부대_출전을_하지_않는다()
     {
         var enemy = Town(9, 2, new HexCoord(10, 0));

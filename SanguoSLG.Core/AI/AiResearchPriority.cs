@@ -65,7 +65,21 @@ public static class AiResearchPriority
             && state.Cities.Any(city => city.Owner == faction && !city.IsPort
                 && city.Position.Distance(target.Position) <= 15));
         if (unscouted) planned.Insert(0, FactionResearch.ScoutStratagemCode);
-        return planned.Distinct().Where(code => state.ResearchOf(faction, code)
-            < StratagemResearchRules.MaxLevel).ToList();
+        return planned.Distinct().Where(code =>
+        {
+            var level = state.ResearchOf(faction, code);
+            if (level >= StratagemResearchRules.MaxLevel) return false;
+            var command = state.Commands.FirstOrDefault(candidate =>
+                candidate.Kind == CommandKind.CityStratagem
+                && StratagemResearchRules.ResearchCode(candidate.Facility) == code
+                && state.Cities.Any(city => city.Id == candidate.City && city.Owner == faction));
+            if (command is null || command.TargetCity is not { } targetId) return true;
+            var officer = state.Generals.FirstOrDefault(general => general.Id == command.Main);
+            var target = state.Cities.FirstOrDefault(city => city.Id == targetId);
+            if (officer is null || target is null) return false;
+            var governor = state.Generals.FirstOrDefault(general => general.Id == target.Governor);
+            return CityStratagems.SuccessPercent(officer.Intellect, governor?.Intellect, level + 1)
+                > CityStratagems.SuccessPercent(officer.Intellect, governor?.Intellect, level);
+        }).ToList();
     }
 }
