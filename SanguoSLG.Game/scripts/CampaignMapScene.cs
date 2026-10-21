@@ -8381,8 +8381,21 @@ public sealed partial class CampaignMapScene : Node3D
             var status = unit.DeploymentDelayDays > 0 ? $"{unit.DeploymentDelayDays}일" : "출구 대기";
             if (unit.VanguardId is { } officer)
             {
+                System.Action? cancel = _advancing || unit.Class == TroopClass.Naval ? null : () =>
+                    ShowConfirm("출전 취소",
+                        $"{TroopName(unit.TroopCode)} 부대의 출격 대기를 취소하고 병력과 물자를 원래 성으로 되돌리겠습니까?",
+                        () =>
+                        {
+                            var result = DeploymentCancellation.Cancel(_state, Player, unit.Id);
+                            if (!result.Ok) { _log.Text = result.Error; return; }
+                            _state = result.State;
+                            _log.Text = "출격 대기 취소: 병력과 물자가 원래 성으로 돌아왔습니다.";
+                            SelectCity(city);
+                            OpenCityDetail(city);
+                            Redraw("출격 대기 취소");
+                        });
                 box.AddChild(CityDetailOfficerRow(officer,
-                    $"[{kind}] {TroopName(unit.TroopCode)} {unit.Pool.Active:N0} · {direction}", status, null));
+                    $"[{kind}] {TroopName(unit.TroopCode)} {unit.Pool.Active:N0} · {direction}", status, cancel));
             }
             else
             {
