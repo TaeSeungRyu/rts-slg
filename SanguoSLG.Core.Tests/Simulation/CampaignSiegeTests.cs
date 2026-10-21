@@ -656,6 +656,21 @@ public class CampaignSiegeTests
     }
 
     [Fact]
+    public void 소규모_부상병도_일일_최소_50명씩_회복한다()
+    {
+        var city = Town(9, 1, new HexCoord(5, 0), wall: 0);
+        var farBase = Army(1, 2, new HexCoord(0, 0), new HexCoord(1, 0), troops: 1000);
+        var state = new GameState(1, 190, [], [city], [],
+            CityWoundedForces: [new CityWoundedForce(city.Id, "swordsman", 100, 60)],
+            FieldArmies: [farBase with { Field = farBase.Field with { Mode = UnitMode.March } }]);
+
+        var after = Engine().AdvanceWeek(state, out _, out _);
+
+        Assert.Empty(after.CityWounded);
+        Assert.Equal(100, Assert.Single(after.Garrisons).Troops);
+    }
+
+    [Fact]
     public void 의술연구_10레벨은_비수성_도시의_부상병_회복량을_두배로_높인다()
     {
         var city = Town(9, 1, new HexCoord(5, 0), wall: 0);

@@ -807,7 +807,7 @@ public sealed class CampaignEngine
             var medicineLevel = owner is { } faction
                 ? state.ResearchOf(faction, FactionResearch.MedicineCode)
                 : 0;
-            var recover = System.Math.Max(1, w.Troops / 10);
+            var recover = System.Math.Max(50, w.Troops / 10);
             recover = GeneralResearchRules.ApplyPercent(recover,
                 GeneralResearchRules.WoundedRecoveryPercent(medicineLevel));
             recover = System.Math.Min(recover, w.Troops);
