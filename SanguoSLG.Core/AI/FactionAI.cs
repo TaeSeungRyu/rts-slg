@@ -32,7 +32,8 @@ public sealed class FactionAI
         state = state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && unit.AiOpeningAttack && !unit.IsWaitingDeployment
                 ? unit with { AiOpeningAttack = false,
-                    Field = unit.Field with { Mode = UnitMode.Advance,
+                    Field = unit.Field with { Mode = unit.Class == TroopClass.Siege
+                        ? UnitMode.Attack : UnitMode.Advance,
                         AssignedUnitTarget = null, PursuitTarget = null } }
                 : unit).ToList() };
         state = Retarget(state, faction);

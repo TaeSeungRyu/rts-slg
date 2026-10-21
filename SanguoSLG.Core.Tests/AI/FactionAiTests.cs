@@ -31,6 +31,24 @@ public class FactionAiTests
         Assert.True(after.Armies.Single(unit => unit.Id == waiting.Id).AiOpeningAttack);
     }
 
+    [Fact]
+    public void AI_공성부대는_첫주가_지나도_지정한_성을_공격한다()
+    {
+        var field = new FieldUnit(new UnitId(93), new FactionId(1), default, 1, 1, 2,
+            MovementDomain.Land, UnitMode.Attack, new HexCoord(4, 0), 93, RangeCastle: 2);
+        var catapult = new CombatUnit(field, new CombatStats(1000, 12, 4),
+            new TroopPool(1000, 0), UnitCombatState.Create(60), Class: TroopClass.Siege,
+            TroopCode: "catapult", AiOpeningAttack: true);
+        var state = new GameState(1, 190, [], [], [], FieldArmies: [catapult]);
+
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(state, new FactionId(1));
+
+        var actual = Assert.Single(after.Armies);
+        Assert.Equal(UnitMode.Attack, actual.Field.Mode);
+        Assert.Equal(new HexCoord(4, 0), actual.Field.Target);
+        Assert.False(actual.AiOpeningAttack);
+    }
+
     private static readonly CommandBalance B = new();
 
     private static readonly IReadOnlyList<TroopTemplate> Troops =
