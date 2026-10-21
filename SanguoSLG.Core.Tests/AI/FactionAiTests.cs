@@ -14,6 +14,25 @@ using Xunit;
 public class FactionAiTests
 {
     [Fact]
+    public void 추종_대상이_입성한_고립_보급부대는_원성으로_복귀한다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0));
+        var field = new FieldUnit(new UnitId(40), new FactionId(1), new HexCoord(4, 0),
+            2, 1, 1, MovementDomain.Land, UnitMode.Standby, null, 40);
+        var supply = new CombatUnit(field, new CombatStats(1000, 1, 1),
+            new TroopPool(1000, 0), UnitCombatState.Create(60), IsSupply: true,
+            OriginCity: city.Id);
+        var state = new GameState(1, 190, [], [city], [], FieldArmies: [supply]);
+
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(state, city.Owner);
+
+        var returned = Assert.Single(after.Armies);
+        Assert.Equal(UnitMode.March, returned.Field.Mode);
+        Assert.Equal(city.Id, returned.Field.ReturnCity);
+        Assert.Equal(city.Position, returned.Field.Target);
+    }
+
+    [Fact]
     public void AI_첫출전_공격명령은_출격한_다음_주부터_전진으로_전환한다()
     {
         var field = new FieldUnit(new UnitId(91), new FactionId(1), default, 2, 3, 1,

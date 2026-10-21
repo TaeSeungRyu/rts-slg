@@ -688,7 +688,8 @@ public sealed class FactionAI
         var armies = state.Armies.Select(unit =>
         {
             if (unit.Field.Owner != faction || unit.Field.Mode != UnitMode.Standby
-                || unit.OriginCity is null || unit.IsWaitingDeployment || unit.IsSupply
+                || unit.OriginCity is null || unit.IsWaitingDeployment
+                || unit.IsSupply && unit.Field.FollowUnitId is not null
                 || unit.IsTransport || unit.IsSummon || unit.IsConstructing
                 || state.Buildings.Any(building => building.GarrisonUnit == unit.Id))
                 return unit;
