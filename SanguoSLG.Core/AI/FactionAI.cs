@@ -15,14 +15,16 @@ public sealed class FactionAI
     private readonly DeployService _deployer;
     private readonly AiConfig _config;
     private readonly HexMap? _map;
+    private readonly BalanceConfig _economy;
 
     public FactionAI(CommandService commands, DeployService deployer, AiConfig? config = null,
-        HexMap? map = null)
+        HexMap? map = null, BalanceConfig? economy = null)
     {
         _commands = commands;
         _deployer = deployer;
         _config = config ?? new AiConfig();
         _map = map;
+        _economy = economy ?? new BalanceConfig(MonthlyTaxPerCity: 100);
     }
 
     /// <summary>이 세력의 한 주 명령·출전을 반영한 새 상태를 반환한다.</summary>
@@ -42,15 +44,16 @@ public sealed class FactionAI
         state = Retarget(state, faction);
         state = TargetUnlockRuins(state, faction);
         state = RecruitUnlockedHeroes(state, faction);
-        state = new AiFieldResponsePlanner(_deployer, _config, _map).Plan(state, faction);
+        state = new AiFieldResponsePlanner(_deployer, _config, _map, _economy).Plan(state, faction);
         state = PlanOffenseScouting(state, faction);
-        state = new AiOffensePlanner(_deployer, _config, _commands, _map).Plan(state, faction);
+        state = new AiOffensePlanner(_deployer, _config, _commands, _map, _economy).Plan(state, faction);
         state = new AiRearSupportPlanner(_deployer, _map).Plan(state, faction);
         state = PlanGeneralResearch(state, faction);
         state = PlanStratagemResearch(state, faction);
 
         state = PlanExploration(state, faction);
         state = PlanCityOfficers(state, faction);
+        state = PlanCityMaintenance(state, faction);
         return state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && !existingArmyIds.Contains(unit.Id)
                 && unit.Field.Mode == UnitMode.Attack
@@ -132,6 +135,9 @@ public sealed class FactionAI
         foreach (var cityId in state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).Select(c => c.Id))
         {
             var city = state.Cities.First(c => c.Id == cityId);
+            var residentCount = state.GeneralsAt(cityId).Count(id =>
+                state.PostingOf(id)?.Faction == faction && !state.IsGeneralInField(id));
+            var recruitmentRate = AiCityGrowthPolicy.RecruitmentRate(residentCount);
             var candidates = state.GeneralsAt(cityId)
                 .Where(id => state.PostingOf(id)?.Faction == faction && !state.IsGeneralBusy(id))
                 .Select(id => state.Generals.FirstOrDefault(g => g.Id == id))
@@ -145,7 +151,9 @@ public sealed class FactionAI
             {
                 var officer = candidates.OrderByDescending(score).ThenBy(g => g.Id.Value).FirstOrDefault();
                 if (officer is null) return;
-                var result = _commands.Issue(state, new CommandRequest(cityId, kind, officer.Id, TroopCode: troopCode));
+                var result = _commands.Issue(state, new CommandRequest(cityId, kind, officer.Id,
+                    Value: kind == CommandKind.AppointRecruitmentOfficer ? recruitmentRate : 0,
+                    TroopCode: troopCode));
                 if (!result.Ok) return;
                 state = result.State;
                 candidates.Remove(officer);
@@ -168,6 +176,64 @@ public sealed class FactionAI
                 Assign(CommandKind.AppointRecruitmentOfficer,
                     g => elite.General is not null && g.Id == elite.General.Id ? int.MaxValue : g.Might,
                     elite.Troop?.Code ?? _config.Troop);
+            }
+            if (state.Cities.First(c => c.Id == cityId).AutoRecruitRate != recruitmentRate)
+            {
+                state = state with { Cities = state.Cities.Select(c => c.Id == cityId
+                    ? c with { AutoRecruitRate = recruitmentRate } : c).ToList() };
+            }
+        }
+        return state;
+    }
+
+    private GameState PlanCityMaintenance(GameState state, FactionId faction)
+    {
+        foreach (var city in state.Cities.Where(c => c.Owner == faction)
+            .OrderBy(c => c.Id.Value).ToList())
+        {
+            var residentCount = state.GeneralsAt(city.Id).Count(id =>
+                state.PostingOf(id)?.Faction == faction && !state.IsGeneralInField(id));
+            var pending = state.Commands.Where(command => command.City == city.Id
+                && command.Kind == CommandKind.Repair).ToList();
+            var remainingSlots = AiCityGrowthPolicy.MaintenanceSlots(residentCount) - pending.Count;
+            if (remainingSlots <= 0) continue;
+            var facilities = new[]
+            {
+                (city.MineDestroyed, "mine"), (city.RanchDestroyed, "ranch"),
+                (city.ElephantGardenDestroyed, "elephant_garden"),
+                (city.RuinedPaddies > 0, "paddy"), (city.RuinedFarms > 0, "farm"),
+                (city.RuinedVillages > 0, "village"), (city.WorkshopRuined, "workshop"),
+            };
+            var maxWall = CastleWall.Max(city.Castle, _economy, city.WallLevel);
+            var repairs = new List<(string Facility, string TroopCode)>();
+            if (city.Wall * 4 < maxWall * 3
+                && !pending.Any(command => command.TroopCode == FactionResearch.WallCode))
+                repairs.Add(("", FactionResearch.WallCode));
+            if (!city.IsPort)
+            {
+                repairs.AddRange(facilities.Where(item => item.Item1
+                    && !pending.Any(command => command.Facility == item.Item2))
+                    .Select(item => (item.Item2, "")));
+            }
+            foreach (var (facility, troopCode) in repairs)
+            {
+                if (remainingSlots <= 0) break;
+                if (state.Cities.First(c => c.Id == city.Id).Gold < _config.MaintenanceReserveGold)
+                    break;
+                var officer = state.GeneralsAt(city.Id)
+                    .Where(id => state.PostingOf(id)?.Faction == faction
+                        && !state.IsGeneralBusy(id) && !state.IsGeneralInField(id))
+                    .Select(id => state.Generals.First(g => g.Id == id))
+                    .OrderBy(g => IsDutyOfficer(state, g.Id) ? 1 : 0)
+                    .ThenByDescending(g => g.Politics).ThenBy(g => g.Id.Value).FirstOrDefault();
+                if (officer is null) break;
+                var result = _commands.Issue(state, new CommandRequest(city.Id,
+                    CommandKind.Repair, officer.Id, Facility: facility, TroopCode: troopCode));
+                if (result.Ok)
+                {
+                    state = result.State;
+                    remainingSlots--;
+                }
             }
         }
         return state;

@@ -26,4 +26,5 @@ public sealed record AiConfig(
     int KeepGeneralsHome = 1,
     int GeneralResearchReserveGold = 3000,
     int ExplorationReserveGold = 1500,
-    int ExplorationSafeDistance = 4);
+    int ExplorationSafeDistance = 4,
+    int MaintenanceReserveGold = 500);

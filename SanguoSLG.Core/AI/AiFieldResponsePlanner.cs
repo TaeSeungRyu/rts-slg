@@ -10,12 +10,15 @@ public sealed class AiFieldResponsePlanner
     private readonly DeployService _deployer;
     private readonly AiConfig _config;
     private readonly HexMap? _map;
+    private readonly BalanceConfig? _economy;
 
-    public AiFieldResponsePlanner(DeployService deployer, AiConfig config, HexMap? map = null)
+    public AiFieldResponsePlanner(DeployService deployer, AiConfig config, HexMap? map = null,
+        BalanceConfig? economy = null)
     {
         _deployer = deployer;
         _config = config;
         _map = map;
+        _economy = economy;
     }
 
     public GameState Plan(GameState state, FactionId faction)
@@ -79,7 +82,7 @@ public sealed class AiFieldResponsePlanner
 
     private GameState? TryIntercept(GameState state, City origin, CombatUnit target)
     {
-        if (!AiSortiePolicy.AllowsCombatSortie(origin)) return null;
+        if (!AiSortiePolicy.AllowsCombatSortie(origin, _economy)) return null;
         var cavalry = state.Garrisons.Where(g => g.City == origin.Id && !g.Trainee
                 && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
                 && _deployer.Troops.TryGetValue(g.TroopCode, out var template)

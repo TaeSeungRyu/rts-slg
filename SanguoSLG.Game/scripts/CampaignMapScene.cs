@@ -546,7 +546,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         _commander = new CommandService(_cb, _troops, _balance, _adminSkills);
         _deployer = new DeployService(_cb, _troops, actives, passives, _adminSkills, _balance);
-        _ai = new FactionAI(_commander, _deployer, map: _map);
+        _ai = new FactionAI(_commander, _deployer, map: _map, economy: _balance);
         var scenario = new ScenarioLoader().LoadFromDirectory(dataDirectory);
         _passability = new PassabilityMap(_map, [], _cities,
             _aiTestFixture is null ? scenario.RuinList.Select(r => r.Position) : []);

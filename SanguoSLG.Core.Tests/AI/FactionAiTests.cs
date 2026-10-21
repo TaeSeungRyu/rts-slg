@@ -99,6 +99,56 @@ public class FactionAiTests
         new(new GeneralId(general), new FactionId(faction), new CityId(city));
 
     [Fact]
+    public void AI는_손상된_성벽을_여유장수와_성의_금으로_자동_수리예약한다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0)) with { Wall = 300, Gold = 2000 };
+        var general = Gen(1);
+        var state = new GameState(1, 190, [], [city], [general],
+            Postings: [At(1, 1, 1)]);
+        var commander = new CommandService(B, Troops,
+            new BalanceConfig(MonthlyTaxPerCity: 100));
+        var deployer = new DeployService(B, Troops,
+            new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+            new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()));
+
+        var after = new FactionAI(commander, deployer,
+            new AiConfig(GeneralResearchReserveGold: -1,
+                ExplorationReserveGold: int.MaxValue)).PlanWeek(state, new FactionId(1));
+
+        Assert.Contains(after.Commands, command => command.Kind == CommandKind.Repair
+            && command.City == city.Id && command.TroopCode == FactionResearch.WallCode);
+        Assert.True(Assert.Single(after.Cities).Gold < city.Gold);
+    }
+
+    [Fact]
+    public void 전력이_비등해_공세가_보류되어도_AI는_장수규모에_맞춰_병력을_자동생산한다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0)) with
+        { Wall = 1200, Gold = 5000, Security = 100 };
+        var enemy = Town(9, 2, new HexCoord(10, 0)) with { Wall = 1200 };
+        var generals = Enumerable.Range(1, 8).Select(Gen).ToList();
+        var state = new GameState(1, 190, [], [city, enemy], generals,
+            Postings: generals.Select(g => At(g.Id.Value, 1, 1)).ToList(),
+            GarrisonForces: [new(city.Id, "swordsman", 30_000, 60),
+                new(enemy.Id, "swordsman", 30_000, 60)]);
+        var balance = B with { AutoOfficerSystemEnabled = true };
+        var commander = new CommandService(balance, Troops,
+            new BalanceConfig(MonthlyTaxPerCity: 100));
+        var deployer = new DeployService(balance, Troops,
+            new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+            new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()));
+        var planned = new FactionAI(commander, deployer,
+            new AiConfig(GeneralResearchReserveGold: -1,
+                ExplorationReserveGold: int.MaxValue)).PlanWeek(state, new FactionId(1));
+
+        Assert.Empty(planned.Armies);
+        Assert.Equal(2, planned.Cities.Single(c => c.Id == city.Id).AutoRecruitRate);
+        var afterWeek = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100),
+            balance).AdvanceDays(planned, 7);
+        Assert.True(afterWeek.Garrisons.Where(g => g.City == city.Id).Sum(g => g.Troops) > 30_000);
+    }
+
+    [Fact]
     public void AI는_모든_도시의_태수와_최고지력_군사를_임명하고_기존_태수를_유지한다()
     {
         var cities = new[] { Town(1, 1, new HexCoord(0, 0)), Town(2, 1, new HexCoord(3, 0)), Town(3, 2, new HexCoord(6, 0)) };

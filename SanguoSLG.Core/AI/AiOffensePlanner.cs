@@ -14,20 +14,22 @@ public sealed class AiOffensePlanner
     private readonly AiConfig _config;
     private readonly CommandService? _commands;
     private readonly HexMap? _map;
+    private readonly BalanceConfig? _economy;
 
     public AiOffensePlanner(DeployService deployer, AiConfig config,
-        CommandService? commands = null, HexMap? map = null)
+        CommandService? commands = null, HexMap? map = null, BalanceConfig? economy = null)
     {
         _deployer = deployer;
         _config = config;
         _commands = commands;
         _map = map;
+        _economy = economy;
     }
 
     public GameState Plan(GameState state, FactionId faction)
     {
         foreach (var origin in state.Cities.Where(c => c.Owner == faction && !c.IsPort
-            && AiSortiePolicy.AllowsCombatSortie(c))
+            && AiSortiePolicy.AllowsCombatSortie(c, _economy))
             .OrderBy(c => c.Id.Value))
         {
             var targets = state.Cities.Where(c => !c.IsPort && state.AreHostile(faction, c.Owner)
@@ -69,7 +71,7 @@ public sealed class AiOffensePlanner
                     && u.Field.Target == target.Position && !u.IsSupply))
                 {
                     var supporters = state.Cities.Where(c => c.Owner == faction && !c.IsPort
-                        && AiSortiePolicy.AllowsCombatSortie(c)
+                        && AiSortiePolicy.AllowsCombatSortie(c, _economy)
                         && c.Id != origin.Id && c.Position.Distance(target.Position) <= 15)
                         .OrderBy(c => c.Position.Distance(target.Position)).ThenBy(c => c.Id.Value)
                         .ToList();
