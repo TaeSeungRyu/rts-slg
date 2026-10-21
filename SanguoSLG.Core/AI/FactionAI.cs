@@ -223,22 +223,27 @@ public sealed class FactionAI
                 Assign(CommandKind.AppointDomesticOfficer, g => g.Politics);
             if (city.RecruitmentOfficer is null)
             {
-                var elite = candidates.SelectMany(g => _deployer.Troops.Values
-                        .Where(t => t.Class != TroopClass.Naval && g.AptitudeFor(t.Class) >= AptitudeGrade.S
-                            && FactionTroopUnlock.Check(state, faction, t.Code).Allowed)
-                        .Select(t => (General: g, Troop: t)))
-                    .OrderByDescending(x => x.General.AptitudeFor(x.Troop.Class))
-                    .ThenByDescending(x => x.General.Might)
-                    .ThenBy(x => x.Troop.Code, StringComparer.Ordinal)
-                    .FirstOrDefault();
+                var preferred = AiRecruitmentPolicy.Choose(state, city, _deployer.Troops, _config.Troop);
+                var preferredClass = _deployer.Troops.TryGetValue(preferred, out var template)
+                    ? template.Class : TroopClass.Infantry;
                 Assign(CommandKind.AppointRecruitmentOfficer,
-                    g => elite.General is not null && g.Id == elite.General.Id ? int.MaxValue : g.Might,
-                    elite.Troop?.Code ?? _config.Troop);
+                    g => (int)g.AptitudeFor(preferredClass) * 1000 + g.Might, preferred);
             }
             if (state.Cities.First(c => c.Id == cityId).AutoRecruitRate != recruitmentRate)
             {
                 state = state with { Cities = state.Cities.Select(c => c.Id == cityId
                     ? c with { AutoRecruitRate = recruitmentRate } : c).ToList() };
+            }
+            var current = state.Cities.First(c => c.Id == cityId);
+            if (current.RecruitmentOfficer is not null)
+            {
+                var preferred = AiRecruitmentPolicy.Choose(state, current,
+                    _deployer.Troops, _config.Troop);
+                if (current.AutoRecruitTroopCode != preferred
+                    || current.AutoRecruitTroopCodes != preferred)
+                    state = state with { Cities = state.Cities.Select(c => c.Id == cityId
+                        ? c with { AutoRecruitTroopCode = preferred,
+                            AutoRecruitTroopCodes = preferred } : c).ToList() };
             }
         }
         return state;
@@ -278,8 +283,7 @@ public sealed class FactionAI
             }
             if (!HasOfficer(city.RecruitmentOfficer))
             {
-                var code = string.IsNullOrWhiteSpace(city.AutoRecruitTroopCode)
-                    ? _config.Troop : city.AutoRecruitTroopCode;
+                var code = AiRecruitmentPolicy.Choose(state, city, _deployer.Troops, _config.Troop);
                 var amount = Math.Max(100, might * 5 * tier / 2);
                 amount = PortAdministration.Scale(city, amount);
                 var cost = _deployer.Balance.AutoRecruitGoldCost(code, amount);

@@ -495,6 +495,45 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI는_도시에_있는_장수의_최고_적성_병종을_생산후보로_고른다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0));
+        var elite = Gen(1) with { Aptitudes = new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Infantry] = AptitudeGrade.A,
+            [TroopClass.Cavalry] = AptitudeGrade.SS,
+        } };
+        var state = new GameState(1, 190, [], [city], [elite],
+            Postings: [At(1, 1, 1)]);
+        var templates = Troops.ToDictionary(troop => troop.Code, StringComparer.Ordinal);
+
+        Assert.Equal("cavalry", AiRecruitmentPolicy.Choose(state, city, templates, "swordsman"));
+    }
+
+    [Fact]
+    public void AI는_기존_병력담당의_자동생산도_최고_적성으로_갱신한다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0)) with
+        {
+            RecruitmentOfficer = new GeneralId(1), AutoRecruitTroopCode = "swordsman",
+            AutoRecruitTroopCodes = "swordsman", Gold = 10_000,
+        };
+        var elite = Gen(2) with { Aptitudes = new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Infantry] = AptitudeGrade.A,
+            [TroopClass.Cavalry] = AptitudeGrade.SS,
+        } };
+        var state = new GameState(1, 190, [], [city], [Gen(1), elite],
+            Postings: [At(1, 1, 1), At(2, 1, 1)]);
+
+        var after = Ai(new AiConfig(GeneralResearchReserveGold: -1,
+            ExplorationReserveGold: int.MaxValue)).PlanWeek(state, city.Owner);
+
+        Assert.Equal("cavalry", after.Cities.Single().AutoRecruitTroopCode);
+        Assert.Equal("cavalry", after.Cities.Single().AutoRecruitTroopCodes);
+    }
+
+    [Fact]
     public void 병력이_적으면_기존_단독_부대_출전을_하지_않는다()
     {
         var enemy = Town(9, 2, new HexCoord(10, 0));
