@@ -221,8 +221,9 @@ public sealed class RenewalCampaignAdvanceRunner(
                     && !source.State.Statuses.Any(status => status.IsDaze && !status.IsExpired)
                     && position.OriginalWaypointIndex >= (position.OriginalWaypoints?.Count ?? 0)
                     && OwnDestination(source, castles) is { } ownSite
-                    && ownSite.Footprint.Any(tile => position.Position.DistanceTo(RenewalHexSpace.Center(tile))
-                        <= ContinuousPosition.UnitsPerTile)).ToList();
+                    && (position.Arrived || ownSite.Footprint.Any(tile =>
+                        position.Position.DistanceTo(RenewalHexSpace.Center(tile))
+                        <= ContinuousPosition.UnitsPerTile))).ToList();
                 var enteringIds = enteredNow.Select(position => position.Id).ToHashSet();
                 state = state with { Units = state.Units.Select(position => enteringIds.Contains(position.Id)
                     ? position with { IsActive = false } : position).ToList() };

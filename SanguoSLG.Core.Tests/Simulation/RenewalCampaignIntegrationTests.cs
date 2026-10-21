@@ -636,6 +636,22 @@ public sealed class RenewalCampaignIntegrationTests
     }
 
     [Fact]
+    public void 두부대가_같은성에_복귀하면_둘다_입성한다()
+    {
+        var city = new City(new(1), "복귀성", new(-8, 2), new(1), 0, CastleSize.Medium);
+        var first = Army(1, new(-7, 3), city.Position, 2);
+        var second = Army(2, new(-5, 3), city.Position, 2);
+        first = first with { Field = first.Field with { ReturnCity = city.Id } };
+        second = second with { Field = second.Field with { ReturnCity = city.Id } };
+        var after = Engine(new HexMap(-15, 15, -8, 10)).AdvanceWeek(
+            World(first, second) with { Cities = [city] }, out var turns);
+
+        Assert.Empty(after.Armies);
+        Assert.Equal(2, turns.SelectMany(turn => turn.EnteredCastle).Count());
+        Assert.Equal(20000, after.Garrisons.Sum(g => g.Troops));
+    }
+
+    [Fact]
     public void 유적_지정공격은_실제캠페인에서_접근하여_교전하고_관통하지않는다()
     {
         var goal = new HexCoord(4, 0);
