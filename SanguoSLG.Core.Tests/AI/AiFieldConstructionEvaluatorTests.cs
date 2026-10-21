@@ -58,6 +58,33 @@ public class AiFieldConstructionEvaluatorTests
             AiFieldConstructionEvaluator.Evaluate(value, new(1), Map, Definitions, visible);
     }
 
+    [Fact]
+    public void AI는_주간판단에서_기존서비스로_실제착공하고_중복착공하지_않는다()
+    {
+        var original = State();
+        var builder = original.Armies.Single(unit => unit.Id == new UnitId(1));
+        var state = original with { FieldArmies = original.Armies.Select(unit =>
+            unit.Id == builder.Id ? unit with { Field = unit.Field with { Detection = 4 } } : unit).ToList() };
+        var troops = new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory());
+        var balance = new CommandBalance();
+        var ai = new FactionAI(new CommandService(balance, troops),
+            new DeployService(balance, troops,
+                new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+                new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())),
+            new AiConfig(DeployTarget: int.MaxValue), map: Map,
+            fieldBuildingDefinitions: Definitions);
+
+        var after = ai.PlanWeek(state, new(1));
+        var building = Assert.Single(after.Buildings);
+        var paid = after.Armies.Single(unit => unit.Id == builder.Id);
+        Assert.True(paid.IsConstructing);
+        Assert.Equal(builder.CarryingGold - Definitions.Single(def => def.Code == building.DefinitionCode).GoldCost,
+            paid.CarryingGold);
+        Assert.Equal(state.Day + Definitions.Single(def => def.Code == building.DefinitionCode).BuildDays,
+            building.CompletionDay);
+        Assert.Single(ai.PlanWeek(after, new(1)).Buildings);
+    }
+
     private static GameState State()
     {
         var city = new City(new(1), "아군성", new(0, 0), new(1), 3000,

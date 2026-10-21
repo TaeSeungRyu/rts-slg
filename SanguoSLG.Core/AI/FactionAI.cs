@@ -16,15 +16,18 @@ public sealed class FactionAI
     private readonly AiConfig _config;
     private readonly HexMap? _map;
     private readonly BalanceConfig _economy;
+    private readonly IReadOnlyList<FieldBuildingDefinition> _fieldBuildingDefinitions;
 
     public FactionAI(CommandService commands, DeployService deployer, AiConfig? config = null,
-        HexMap? map = null, BalanceConfig? economy = null)
+        HexMap? map = null, BalanceConfig? economy = null,
+        IReadOnlyList<FieldBuildingDefinition>? fieldBuildingDefinitions = null)
     {
         _commands = commands;
         _deployer = deployer;
         _config = config ?? new AiConfig();
         _map = map;
         _economy = economy ?? new BalanceConfig(MonthlyTaxPerCity: 100);
+        _fieldBuildingDefinitions = fieldBuildingDefinitions ?? [];
     }
 
     /// <summary>이 세력의 한 주 명령·출전을 반영한 새 상태를 반환한다.</summary>
@@ -42,7 +45,6 @@ public sealed class FactionAI
                 : unit).ToList() };
         state = CommitPressureAssault(state, faction);
         state = WithdrawPressure(state, faction);
-        state = RecoverIdleExpeditions(state, faction);
         state = Retarget(state, faction);
         state = TargetUnlockRuins(state, faction);
         state = RecruitUnlockedHeroes(state, faction);
@@ -60,11 +62,29 @@ public sealed class FactionAI
         state = PlanCityOfficers(state, faction);
         state = PlanCityMaintenance(state, faction);
         state = PlanCityBaseline(state, faction);
+        state = PlanFieldConstruction(state, faction);
+        state = RecoverIdleExpeditions(state, faction);
         return state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && !existingArmyIds.Contains(unit.Id)
                 && unit.Field.Mode == UnitMode.Attack
                 && state.Cities.Any(city => city.Position == unit.Field.Target)
                 ? unit with { AiOpeningAttack = true } : unit).ToList() };
+    }
+
+    private GameState PlanFieldConstruction(GameState state, FactionId faction)
+    {
+        if (_map is null || _fieldBuildingDefinitions.Count == 0) return state;
+        var visible = new BattlefieldVision(_economy, _deployer.Troops.Values.ToList(),
+            _fieldBuildingDefinitions).VisibleTiles(state, faction, _map);
+        var service = new FieldConstructionService(_fieldBuildingDefinitions, _map.TerrainAt);
+        foreach (var candidate in AiFieldConstructionEvaluator.Evaluate(state, faction, _map,
+            _fieldBuildingDefinitions, visible))
+        {
+            var result = service.Start(state, faction, new FieldConstructionRequest(
+                candidate.Unit, candidate.DefinitionCode, candidate.Position));
+            if (result.Ok) return result.State;
+        }
+        return state;
     }
 
     private GameState PlanAppointments(GameState state, FactionId faction)
