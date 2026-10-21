@@ -49,6 +49,26 @@ public class AiFieldResponsePlannerTests
         Assert.True(after.Garrisons.Single().Troops >= 10000);
     }
 
+    [Fact]
+    public void 성벽이_무너지고_공성이_계속되면_우세한_주둔군이_출격해_반격한다()
+    {
+        var state = Scenario(new HexCoord(7, 0), new HexCoord(1, 0), supply: false);
+        var city = state.Cities.First(c => c.Id == new CityId(1));
+        state = state with
+        {
+            Cities = state.Cities.Select(c => c.Id == city.Id ? c with { Wall = 0 } : c).ToList(),
+            GarrisonForces = [new GarrisonForce(city.Id, "cavalry", 20000, 60)],
+            Postings = state.Assignments.Select(p => p with { Location = city.Id }).ToList(),
+        };
+
+        var after = Planner().Plan(state, new FactionId(1));
+
+        var sortie = Assert.Single(after.Armies, unit => unit.Field.Owner == new FactionId(1));
+        Assert.Equal(new UnitId(9), sortie.Field.AssignedUnitTarget);
+        Assert.Equal(city.Id, sortie.OriginCity);
+        Assert.Equal(UnitMode.Attack, sortie.Field.Mode);
+    }
+
     [Theory]
     [InlineData(7, 4)]
     [InlineData(3, 5)]

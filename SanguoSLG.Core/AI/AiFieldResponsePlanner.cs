@@ -39,6 +39,12 @@ public sealed class AiFieldResponsePlanner
             {
                 if (state.Armies.Any(u => u.Field.Owner == faction
                     && u.Field.AssignedUnitTarget == target.Id)) continue;
+                var breakout = TryBreakout(state, threatened, target, intruders);
+                if (breakout is not null)
+                {
+                    state = breakout;
+                    continue;
+                }
                 foreach (var city in state.Cities.Where(c => c.Owner == faction && !c.IsPort
                         && c.Id != threatened.Id
                         && c.Position.Distance(threatened.Position) <= 6)
@@ -78,6 +84,48 @@ public sealed class AiFieldResponsePlanner
             }
         }
         return state;
+    }
+
+    private GameState? TryBreakout(GameState state, City threatened, CombatUnit target,
+        IReadOnlyList<CombatUnit> intruders)
+    {
+        if (threatened.Wall > 0 || target.IsSupply
+            || target.Field.Mode != UnitMode.Attack
+            || target.Field.Target is not { } objective
+            || !CastleFootprint.TilesFor(threatened).Contains(objective)) return null;
+        var hostileTroops = intruders.Where(unit => !unit.IsSupply).Sum(unit => unit.Pool.Active);
+        var stationed = state.Garrisons.Where(line => line.City == threatened.Id && !line.Trainee)
+            .Sum(line => line.Troops);
+        if (stationed < hostileTroops * 6L / 5L) return null;
+        var reserve = Math.Max(1000, stationed / 5);
+        var line = state.Garrisons.Where(g => g.City == threatened.Id && !g.Trainee
+                && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
+                && g.Troops >= 1000 && _deployer.Troops.TryGetValue(g.TroopCode, out var troop)
+                && troop.Class is TroopClass.Cavalry or TroopClass.Infantry or TroopClass.Archer)
+            .OrderByDescending(g => g.Troops).ThenBy(g => g.TroopCode, StringComparer.Ordinal)
+            .FirstOrDefault();
+        if (line is null) return null;
+        var count = Math.Min(line.Troops, Math.Min(stationed - reserve,
+            CommandEfficiency.CommandTroopDeployLimit(
+                state.ResearchOf(threatened.Owner, FactionResearch.CommandTroopsCode),
+                _deployer.Balance)));
+        if (count < 1000) return null;
+        var officers = state.GeneralsAt(threatened.Id).Where(id => !state.IsGeneralBusy(id))
+            .Select(id => state.Generals.First(g => g.Id == id))
+            .OrderByDescending(g => g.AptitudeFor(_deployer.Troops[line.TroopCode].Class))
+            .ThenByDescending(g => g.Might).ThenBy(g => g.Id.Value).ToList();
+        if (officers.Count <= _config.KeepGeneralsHome) return null;
+        var speed = Math.Max(1, _deployer.Troops[line.TroopCode].MovementPerDay);
+        var route = InterceptRoute(state, threatened, target, speed * 3);
+        if (_map is not null && route is null) return null;
+        var result = _deployer.Deploy(state, new DeployRequest(threatened.Id, line.TroopCode,
+            count, officers[0].Id, Mode: UnitMode.Attack,
+            Target: target.Field.Position, EgressExit: route));
+        if (!result.Ok) return null;
+        var id = result.State.Armies[^1].Id;
+        return result.State with { FieldArmies = result.State.Armies.Select(unit => unit.Id == id
+            ? unit with { Field = unit.Field with { AssignedUnitTarget = target.Id,
+                ReturnCity = threatened.Id } } : unit).ToList() };
     }
 
     private GameState? TryIntercept(GameState state, City origin, CombatUnit target)
