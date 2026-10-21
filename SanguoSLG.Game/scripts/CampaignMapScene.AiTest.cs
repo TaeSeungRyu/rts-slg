@@ -107,6 +107,9 @@ public sealed partial class CampaignMapScene
                 && _state.Cities.Any(c => c.Owner == f.Id && c.IsPort)
                 && _state.Garrisons.Any(g => _state.Cities.Any(c => c.Id == g.City && c.Owner == f.Id))
                 && _state.Assignments.Count(p => p.Faction == f.Id) >= 6);
+        var ramsPresent = _state.Factions.All(faction => _state.Garrisons.Any(garrison =>
+            garrison.TroopCode == "thunder_cart" && garrison.Troops > 0
+            && _state.Cities.Any(city => city.Id == garrison.City && city.Owner == faction.Id)));
         var generalsValid = _state.Assignments.All(p =>
             _state.Generals.Any(g => g.Id == p.General)
             && _state.Cities.Any(c => c.Id == p.Location && c.Owner == p.Faction));
@@ -145,11 +148,11 @@ public sealed partial class CampaignMapScene
                 .All(city => _state.IsScouted(faction.Id, city.Id)));
         var offenseValid = _selectedAiTestCase != AiTestCase.PlayerHalf
             || aiCombatDeploys >= 2 && aiSupplyDeploys >= 1;
-        var passed = mapReady && threeFactions && generalsValid && casesValid && aiActs
+        var passed = mapReady && threeFactions && ramsPresent && generalsValid && casesValid && aiActs
             && fullVision && fullIntel && offenseValid;
         GD.Print($"[aitestfixtureqa] passed={passed} map={_map.Count}/{baselineMap.Count} "
             + $"factions={_state.Factions.Count} cities={_state.Cities.Count} "
-            + $"ports={_state.Cities.Count(c => c.IsPort)} generalsValid={generalsValid} "
+            + $"ports={_state.Cities.Count(c => c.IsPort)} ramsPresent={ramsPresent} generalsValid={generalsValid} "
             + $"case={_selectedAiTestCase} casesValid={casesValid} aiActs={aiActs} "
             + $"combat={aiCombatDeploys} supply={aiSupplyDeploys} offenseValid={offenseValid} "
             + $"fullVision={fullVision} fullIntel={fullIntel}");

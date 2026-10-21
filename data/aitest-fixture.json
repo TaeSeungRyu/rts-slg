@@ -42,13 +42,13 @@
   ],
   "garrisons": [
     { "city": 101, "troop": "swordsman", "count": 50000 }, { "city": 101, "troop": "archer", "count": 20000 },
-    { "city": 101, "troop": "catapult", "count": 10000 }, { "city": 102, "troop": "cavalry", "count": 30000 },
+    { "city": 101, "troop": "catapult", "count": 10000 }, { "city": 101, "troop": "thunder_cart", "count": 10000 }, { "city": 102, "troop": "cavalry", "count": 30000 },
     { "city": 102, "troop": "swordsman", "count": 20000 }, { "city": 103, "troop": "swordsman", "count": 15000 },
     { "city": 201, "troop": "swordsman", "count": 50000 }, { "city": 201, "troop": "archer", "count": 20000 },
-    { "city": 201, "troop": "catapult", "count": 10000 }, { "city": 202, "troop": "cavalry", "count": 30000 },
+    { "city": 201, "troop": "catapult", "count": 10000 }, { "city": 201, "troop": "thunder_cart", "count": 10000 }, { "city": 202, "troop": "cavalry", "count": 30000 },
     { "city": 202, "troop": "swordsman", "count": 20000 }, { "city": 203, "troop": "swordsman", "count": 15000 },
     { "city": 301, "troop": "swordsman", "count": 50000 }, { "city": 301, "troop": "archer", "count": 20000 },
-    { "city": 301, "troop": "catapult", "count": 10000 }, { "city": 302, "troop": "cavalry", "count": 30000 },
+    { "city": 301, "troop": "catapult", "count": 10000 }, { "city": 301, "troop": "thunder_cart", "count": 10000 }, { "city": 302, "troop": "cavalry", "count": 30000 },
     { "city": 302, "troop": "swordsman", "count": 20000 }, { "city": 303, "troop": "swordsman", "count": 15000 }
   ],
   "ships": [
