@@ -20,7 +20,8 @@ public class AiFieldResponsePlannerTests
         int cavalry = 20000, bool supply = true)
     {
         var b = new City(new CityId(1), "B", new HexCoord(0, 0), new FactionId(1), 10000);
-        var c = new City(new CityId(2), "C", defenderPosition, new FactionId(1), 10000);
+        var c = new City(new CityId(2), "C", defenderPosition, new FactionId(1), 10000,
+            Wall: 600);
         var hostile = new City(new CityId(3), "enemy", new HexCoord(10, 0), new FactionId(2), 10000);
         var generals = Enumerable.Range(1, 3).Select(i => new General(new GeneralId(i), $"g{i}",
             new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Cavalry] = AptitudeGrade.A },

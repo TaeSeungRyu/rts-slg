@@ -79,6 +79,7 @@ public sealed class AiFieldResponsePlanner
 
     private GameState? TryIntercept(GameState state, City origin, CombatUnit target)
     {
+        if (!AiSortiePolicy.AllowsCombatSortie(origin)) return null;
         var cavalry = state.Garrisons.Where(g => g.City == origin.Id && !g.Trainee
                 && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
                 && _deployer.Troops.TryGetValue(g.TroopCode, out var template)

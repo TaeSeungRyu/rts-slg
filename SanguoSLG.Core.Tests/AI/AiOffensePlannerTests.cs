@@ -322,7 +322,7 @@ public class AiOffensePlannerTests
     {
         var state = Scenario(30000, 20000, siege: 20000, officers: 8);
         var secondary = new City(new CityId(3), "secondary", new HexCoord(-2, 2),
-            new FactionId(1), 20000, CastleSize.Small);
+            new FactionId(1), 20000, CastleSize.Small, Wall: 600);
         state = state with
         {
             Cities = state.Cities.Append(secondary).ToList(),
@@ -346,9 +346,9 @@ public class AiOffensePlannerTests
     {
         var state = Scenario(30_000, 30_000, siege: 20_000, officers: 12);
         var second = new City(new CityId(3), "second", new HexCoord(-2, 1),
-            new FactionId(1), 20_000, CastleSize.Small);
+            new FactionId(1), 20_000, CastleSize.Small, Wall: 600);
         var third = new City(new CityId(4), "third", new HexCoord(-4, 1),
-            new FactionId(1), 30_000, CastleSize.Small);
+            new FactionId(1), 30_000, CastleSize.Small, Wall: 600);
         state = state with
         {
             Cities = state.Cities.Select(c => c.Id == new CityId(2) ? c with { Wall = 0 } : c)
