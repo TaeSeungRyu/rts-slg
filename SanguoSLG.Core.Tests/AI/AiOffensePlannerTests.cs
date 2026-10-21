@@ -67,6 +67,26 @@ public class AiOffensePlannerTests
         from seed in Enumerable.Range(0, 20)
         select new object[] { own, enemy, distance, seed };
 
+    [Fact]
+    public void AI_공세는_이동일수를_비교하여_빠른_일반부대의_출격을_늦춘다()
+    {
+        var state = Scenario(80_000, 20_000, distance: 10);
+
+        var after = Planner().Plan(state, new FactionId(1));
+        var siege = Assert.Single(after.Armies, unit => unit.Class == TroopClass.Siege);
+        var support = after.Armies.Where(unit => !unit.IsSupply
+            && unit.Class != TroopClass.Siege).ToList();
+
+        Assert.Equal(0, siege.DeploymentDelayDays);
+        Assert.NotEmpty(support);
+        Assert.All(support, unit =>
+        {
+            Assert.True(unit.DeploymentDelayDays > 0);
+            Assert.True(unit.DeploymentDelayDays <= DeployService.MaxDeploymentDelayDays);
+            Assert.Equal(new CityId(2), unit.AiSiegeAssemblyTarget);
+        });
+    }
+
     [Theory]
     [MemberData(nameof(ForceMatrixCases))]
     public void 병력_거리_행렬에서_단독출전과_방어예비_침범이_없다(int own, int enemy,

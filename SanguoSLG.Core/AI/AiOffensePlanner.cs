@@ -222,7 +222,7 @@ public sealed class AiOffensePlanner
         if (used > available || !PassesProvisionBudget(scratch, target, combatIds)
             || !PassesSiegeTrial(original, scratch, target, combatIds))
             return null;
-        scratch = MarkSiegeAssembly(scratch, target.Id, combatIds);
+        scratch = ScheduleSiegeAssembly(scratch, target, combatIds);
         return AttachDeclaration(original, scratch, target);
     }
 
@@ -346,16 +346,32 @@ public sealed class AiOffensePlanner
         }
         if (!PassesProvisionBudget(scratch, target, combatIds)
             || !PassesSiegeTrial(original, scratch, target, combatIds)) return null;
-        scratch = MarkSiegeAssembly(scratch, target.Id, combatIds);
+        scratch = ScheduleSiegeAssembly(scratch, target, combatIds);
         return AttachDeclaration(original, scratch, target);
     }
 
-    private static GameState MarkSiegeAssembly(GameState state, CityId target, IReadOnlyCollection<UnitId> combatIds)
+    private GameState ScheduleSiegeAssembly(GameState state, City target,
+        IReadOnlyCollection<UnitId> combatIds)
     {
         var combat = combatIds.ToHashSet();
+        int TravelDays(CombatUnit unit)
+        {
+            if (unit.OriginCity is not { } originId) return 0;
+            var origin = state.Cities.First(city => city.Id == originId);
+            var distance = RouteFor(state, origin, target)?.Distance
+                ?? origin.Position.Distance(target.Position);
+            var approach = Math.Max(0, distance - Math.Max(1, unit.Field.RangeCastle));
+            return (approach + Math.Max(1, unit.Field.Speed) - 1)
+                / Math.Max(1, unit.Field.Speed);
+        }
+        var siegeArrival = state.Armies.Where(unit => combat.Contains(unit.Id)
+                && (unit.Class == TroopClass.Siege || unit.IsArmyGroup))
+            .Select(TravelDays).DefaultIfEmpty(0).Max();
         return state with { FieldArmies = state.Armies.Select(unit =>
             combat.Contains(unit.Id) && unit.Class != TroopClass.Siege && !unit.IsArmyGroup
-                ? unit with { AiSiegeAssemblyTarget = target }
+                ? unit with { AiSiegeAssemblyTarget = target.Id,
+                    DeploymentDelayDays = Math.Min(DeployService.MaxDeploymentDelayDays,
+                        Math.Max(0, siegeArrival - TravelDays(unit))) }
                 : unit).ToList() };
     }
 
