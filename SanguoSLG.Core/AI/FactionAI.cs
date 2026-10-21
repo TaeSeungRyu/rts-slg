@@ -458,6 +458,15 @@ public sealed class FactionAI
             .ThenBy(candidate => candidate.City.Id.Value).ToList();
         if (candidates.Count == 0) return state;
         var codes = new List<string>();
+        var needsRangedSiege = cities.Any(city => state.Cities.Any(target =>
+                state.AreHostile(faction, target.Owner) && state.IsScouted(faction, target.Id)
+                && city.Position.Distance(target.Position) <= 15)
+            && state.Garrisons.Where(line => line.City == city.Id && !line.Trainee
+                && _deployer.Troops.TryGetValue(line.TroopCode, out var troop)
+                && troop.Class == TroopClass.Siege && troop.RangeCastle >= 2)
+                .Sum(line => line.Troops) < 5000);
+        if (needsRangedSiege && state.ResearchOf(faction, "thunder_cart") < 5)
+            codes.Add("thunder_cart");
         if (state.ResearchOf(faction, FactionResearch.CommandTroopsCode) < GeneralResearchRules.MaxLevel)
             codes.Add(FactionResearch.CommandTroopsCode);
         codes.AddRange(state.MajorTroops.Where(item => item.Faction == faction)

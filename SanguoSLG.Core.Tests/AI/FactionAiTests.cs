@@ -549,6 +549,48 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI는_전선에_공성병기가_없으면_최고_적성_생산보다_공성_최소재고를_먼저_채운다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0));
+        var target = Town(2, 2, new HexCoord(10, 0));
+        var cavalryExpert = Gen(1) with { Aptitudes = new Dictionary<TroopClass, AptitudeGrade>
+        {
+            [TroopClass.Cavalry] = AptitudeGrade.SSS,
+        } };
+        var state = new GameState(1, 190, [], [city, target], [cavalryExpert],
+            Postings: [At(1, 1, 1)],
+            ScoutedCities: [new CityIntel(city.Owner, target.Id)],
+            GarrisonForces: [new(city.Id, "swordsman", 40_000, 60)]);
+
+        var chosen = AiRecruitmentPolicy.Choose(state, city,
+            Troops.ToDictionary(troop => troop.Code, StringComparer.Ordinal), "swordsman");
+
+        Assert.Equal("thunder_cart", chosen);
+    }
+
+    [Fact]
+    public void AI는_원거리_공성병기가_없으면_충차_해금연구를_우선한다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0)) with
+        {
+            Gold = 30_000, Provisions = 30_000, Wall = 3000,
+        };
+        var target = Town(2, 2, new HexCoord(10, 0));
+        var state = new GameState(1, 190, [], [city, target],
+            Enumerable.Range(1, 4).Select(Gen).ToList(),
+            Postings: Enumerable.Range(1, 4).Select(id => At(id, 1, 1)).ToList(),
+            ScoutedCities: [new CityIntel(city.Owner, target.Id)],
+            GarrisonForces: [new(city.Id, "swordsman", 20_000, 60),
+                new(city.Id, "thunder_cart", 5000, 60),
+                new(target.Id, "swordsman", 40_000, 60)]);
+
+        var after = Ai(new AiConfig(ExplorationReserveGold: int.MaxValue)).PlanWeek(state, city.Owner);
+
+        Assert.Contains(after.Commands, command => command.Kind == CommandKind.Research
+            && command.TroopCode == "thunder_cart");
+    }
+
+    [Fact]
     public void 병력이_적으면_기존_단독_부대_출전을_하지_않는다()
     {
         var enemy = Town(9, 2, new HexCoord(10, 0));
