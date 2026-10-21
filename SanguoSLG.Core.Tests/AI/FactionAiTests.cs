@@ -33,6 +33,30 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI_압박공세는_성벽이_무너지면_대기하던_호위병도_공격한다()
+    {
+        var origin = Town(1, 1, new HexCoord(0, 0));
+        var target = Town(2, 2, new HexCoord(7, 0)) with { Wall = 0 };
+        var siegeField = new FieldUnit(new UnitId(51), origin.Owner, new HexCoord(5, 0),
+            1, 2, 2, MovementDomain.Land, UnitMode.Attack, target.Position, 51);
+        var siege = new CombatUnit(siegeField, new CombatStats(10000, 10, 10),
+            new TroopPool(10000, 0), UnitCombatState.Create(60), Class: TroopClass.Siege,
+            OriginCity: origin.Id, AiPressureUntilDay: 30);
+        var escortField = new FieldUnit(new UnitId(52), origin.Owner, new HexCoord(4, 0),
+            2, 2, 1, MovementDomain.Land, UnitMode.Standby, new HexCoord(5, 0), 52);
+        var escort = new CombatUnit(escortField, new CombatStats(10000, 10, 10),
+            new TroopPool(10000, 0), UnitCombatState.Create(60), OriginCity: origin.Id,
+            AiSiegeAssemblyTarget: target.Id, AiPressureUntilDay: 30);
+        var state = new GameState(10, 190, [], [origin, target], [], FieldArmies: [siege, escort]);
+
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(state, origin.Owner);
+
+        var attacking = after.Armies.Single(unit => unit.Id == escort.Id);
+        Assert.Equal(UnitMode.Attack, attacking.Field.Mode);
+        Assert.Equal(target.Position, attacking.Field.Target);
+    }
+
+    [Fact]
     public void 담당자가_모자란_AI_도시도_최고_무력에_따라_유료_모병하고_같은날_중복하지_않는다()
     {
         var city = Town(1, 1, new HexCoord(0, 0)) with { Gold = 2000, Wall = 0 };

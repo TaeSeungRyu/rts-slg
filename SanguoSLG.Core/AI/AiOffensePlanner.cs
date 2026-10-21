@@ -40,13 +40,16 @@ public sealed class AiOffensePlanner
             {
                 if (state.Armies.Any(u => u.Field.Owner == faction && u.Field.Target == target.Position
                     && !u.IsSupply && !u.IsTransport))
+                {
+                    state = TryReinforceExistingSiege(state, origin, target) ?? state;
                     continue;
+                }
                 var officers = state.GeneralsAt(origin.Id)
                     .Where(id => !state.IsGeneralBusy(id))
                     .Select(id => state.Generals.First(g => g.Id == id))
                     .OrderBy(g => g.Id.Value).ToList();
                 var force = AiOffensiveCandidateService.Evaluate(state, origin, target);
-                var canPressure = state.Day - origin.AiLastPressureDay >= 30
+                var canPressure = state.Day - origin.AiLastPressureDay >= 21
                     && AiOffensiveCandidateService.Evaluate(state, origin, target,
                         requiredRatioPercent: 70).PassesForceGate
                     && state.Garrisons.Any(g => g.City == origin.Id && !g.Trainee
@@ -103,6 +106,73 @@ public sealed class AiOffensePlanner
             }
         }
         return state;
+    }
+
+    private GameState? TryReinforceExistingSiege(GameState state, City origin, City target)
+    {
+        var siege = state.Armies.Where(unit => unit.Field.Owner == origin.Owner
+                && unit.Class == TroopClass.Siege && unit.Pool.Active > 0
+                && !unit.IsWaitingDeployment && !unit.IsWaitingEgress
+                && unit.OriginCity != origin.Id && unit.Field.Target == target.Position
+                && unit.AiPressureUntilDay > state.Day
+                && unit.Field.Position.Distance(target.Position) <= 4)
+            .OrderBy(unit => unit.Id.Value).FirstOrDefault();
+        if (siege is null || state.Armies.Any(unit => unit.Field.Owner == origin.Owner
+                && unit.OriginCity == origin.Id && unit.AiSiegeAssemblyTarget == target.Id))
+            return null;
+        var attacking = state.Armies.Count(unit => unit.Field.Owner == origin.Owner
+            && unit.AiSiegeAssemblyTarget == target.Id);
+        var limit = target.Castle switch
+        {
+            CastleSize.Small => 3,
+            CastleSize.Medium => 5,
+            _ => 7,
+        };
+        if (attacking >= limit) return null;
+        var route = RouteFor(state, origin, target);
+        if (route is null) return null;
+        var officers = state.GeneralsAt(origin.Id).Where(id => !state.IsGeneralBusy(id))
+            .Select(id => state.Generals.First(g => g.Id == id)).ToList();
+        if (officers.Count <= _config.KeepGeneralsHome) return null;
+        var available = AiOffensiveCandidateService.Evaluate(state, origin, target,
+            requiredRatioPercent: 0).AvailableTroops;
+        var line = state.Garrisons.Where(g => g.City == origin.Id && !g.Trainee
+                && g.TrainingLevel >= _deployer.Balance.DeployMinTraining && g.Troops >= 1000
+                && _deployer.Troops.TryGetValue(g.TroopCode, out var troop)
+                && troop.Class is TroopClass.Infantry or TroopClass.Archer
+                    or TroopClass.Cavalry or TroopClass.Elephant)
+            .OrderByDescending(g => officers.Max(officer => officer.AptitudeFor(
+                _deployer.Troops[g.TroopCode].Class)))
+            .ThenByDescending(g => g.Troops).ThenBy(g => g.TroopCode, StringComparer.Ordinal)
+            .FirstOrDefault();
+        if (line is null) return null;
+        var count = Math.Min(Math.Min(line.Troops, available),
+            CommandEfficiency.CommandTroopDeployLimit(state.ResearchOf(origin.Owner,
+                FactionResearch.CommandTroopsCode), _deployer.Balance));
+        if (count < 1000) return null;
+        var template = _deployer.Troops[line.TroopCode];
+        var travelDays = (route.Distance + Math.Max(1, template.MovementPerDay) - 1)
+            / Math.Max(1, template.MovementPerDay);
+        if (state.Day + travelDays + 3 >= siege.AiPressureUntilDay) return null;
+        var leader = officers.OrderByDescending(officer => officer.AptitudeFor(template.Class))
+            .ThenByDescending(officer => officer.Might).ThenBy(officer => officer.Id.Value).First();
+        var result = _deployer.Deploy(state, new DeployRequest(origin.Id, line.TroopCode,
+            count, leader.Id, Mode: UnitMode.Attack, Target: target.Position,
+            EgressExit: route.Exit));
+        if (!result.Ok) return null;
+        var reinforcement = result.State.Armies[^1];
+        var daily = Math.Max(1, (count + 999) / 1000);
+        if (reinforcement.Provisions < daily * (travelDays * 2 + 3)) return null;
+        var escort = target.Wall > 0 ? SiegePosition(result.State, target, [siege.Id], 2)
+            : target.Position;
+        return result.State with { FieldArmies = result.State.Armies.Select(unit =>
+            unit.Id == reinforcement.Id ? unit with
+            {
+                AiSiegeAssemblyTarget = target.Id,
+                AiPressureUntilDay = siege.AiPressureUntilDay,
+                Field = unit.Field with { Mode = target.Wall > 0 ? UnitMode.March : UnitMode.Attack,
+                    Target = escort, ContinuousTarget = null },
+            } : unit).ToList() };
     }
 
     private GameState? TryBundle(GameState original, City origin, City target,
@@ -209,7 +279,7 @@ public sealed class AiOffensePlanner
         if (combatIds.Count < 2) return null;
 
         var supplyRequired = pressure
-            ? origin.Position.Distance(target.Position) >= 15
+            ? route.Distance >= 8
             : pattern != AiOffensePattern.CavalrySiege
                 || origin.Position.Distance(target.Position) >= 15;
         if (supplyRequired)
@@ -254,7 +324,7 @@ public sealed class AiOffensePlanner
                 FieldArmies = scratch.Armies.Select(unit => combatIds.Contains(unit.Id)
                     ? unit with
                     {
-                        AiPressureUntilDay = original.Day + travelDays + 7,
+                        AiPressureUntilDay = original.Day + travelDays + 14,
                         AiOpeningAttack = unit.Class == TroopClass.Siege && unit.AiOpeningAttack,
                         Field = unit.Class == TroopClass.Siege ? unit.Field
                             : unit.Field with { Mode = UnitMode.March, Target = escortPost,
@@ -457,6 +527,8 @@ public sealed class AiOffensePlanner
     private bool PassesProvisionBudget(GameState staged, City target,
         IReadOnlyList<UnitId> combatIds)
     {
+        var shortage = 0L;
+        var supplySurplus = 0L;
         foreach (var unit in staged.Armies.Where(u => combatIds.Contains(u.Id) || u.IsSupply
             && u.Field.FollowUnitId is { } follow
             && combatIds.Contains(follow)))
@@ -470,10 +542,13 @@ public sealed class AiOffensePlanner
             var travelDays = (distance + Math.Max(1, unit.Field.Speed) - 1)
                 / Math.Max(1, unit.Field.Speed);
             var daily = Math.Max(1, (unit.Pool.Active + 999) / 1000);
-            // 목표 도달 + 최소 일주일의 포위. 자동보급은 아직 확보되지 않은 자원으로 계산하지 않는다.
-            if (unit.Provisions < daily * (travelDays + 7)) return false;
+            var campaignDays = travelDays * 2 + 14;
+            var remaining = (long)unit.Provisions - (long)daily * campaignDays;
+            if (unit.IsSupply) supplySurplus += Math.Max(0, remaining);
+            else shortage += Math.Max(0, -remaining);
+            if (unit.IsSupply && remaining < 0) return false;
         }
-        return true;
+        return shortage <= supplySurplus;
     }
 
     private sealed record AiRoute(HexCoord? Exit, int Distance);

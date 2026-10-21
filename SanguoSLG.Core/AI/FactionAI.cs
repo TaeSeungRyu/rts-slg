@@ -40,6 +40,7 @@ public sealed class FactionAI
                         ? UnitMode.Attack : UnitMode.Advance,
                         AssignedUnitTarget = null, PursuitTarget = null } }
                 : unit).ToList() };
+        state = CommitPressureAssault(state, faction);
         state = WithdrawPressure(state, faction);
         state = RecoverIdleExpeditions(state, faction);
         state = Retarget(state, faction);
@@ -757,6 +758,25 @@ public sealed class FactionAI
             } };
         }).ToList();
         return state with { FieldArmies = armies };
+    }
+
+    private static GameState CommitPressureAssault(GameState state, FactionId faction)
+    {
+        return state with { FieldArmies = state.Armies.Select(unit =>
+        {
+            if (unit.Field.Owner != faction || unit.IsSupply || unit.Class == TroopClass.Siege
+                || unit.AiPressureUntilDay <= state.Day
+                || unit.AiSiegeAssemblyTarget is not { } targetId) return unit;
+            var target = state.Cities.FirstOrDefault(city => city.Id == targetId);
+            if (target is null || target.Wall > 0 || !state.AreHostile(faction, target.Owner)
+                || !state.Armies.Any(siege => siege.Field.Owner == faction
+                    && siege.Class == TroopClass.Siege && siege.Pool.Active > 0
+                    && siege.Field.Target == target.Position
+                    && siege.Field.Position.Distance(target.Position) <= 3)) return unit;
+            return unit with { Field = unit.Field with { Mode = UnitMode.Attack,
+                Target = target.Position, ContinuousTarget = null, Waypoints = null,
+                ContinuousWaypoints = null, AssignedUnitTarget = null, PursuitTarget = null } };
+        }).ToList() };
     }
 
     private static GameState WithdrawPressure(GameState state, FactionId faction)

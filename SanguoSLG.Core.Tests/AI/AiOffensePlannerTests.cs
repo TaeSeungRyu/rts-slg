@@ -119,6 +119,74 @@ public class AiOffensePlannerTests
         var after = Planner().Plan(state, new FactionId(1));
 
         Assert.Contains(after.Armies, unit => unit.AiPressureUntilDay > state.Day);
+        Assert.Contains(after.Armies, unit => unit.IsSupply);
+        Assert.All(after.Armies.Where(unit => unit.AiPressureUntilDay > state.Day),
+            unit => Assert.True(unit.AiPressureUntilDay >= state.Day + 14));
+    }
+
+    [Fact]
+    public void 다른_성의_병력도_진행중인_압박공세에_호위로_합류한다()
+    {
+        var state = Scenario(50_000, 30_000, distance: 10);
+        var target = state.Cities[1] with { Wall = 0 };
+        var supporting = new City(new CityId(3), "support", new HexCoord(8, 3),
+            new FactionId(1), 10000, CastleSize.Small, Wall: 1200);
+        var officers = Enumerable.Range(100, 2).Select(id => new General(new GeneralId(id),
+            $"support{id}", new Dictionary<TroopClass, AptitudeGrade>
+            { [TroopClass.Cavalry] = AptitudeGrade.A }, 80, 70, 70)).ToList();
+        var siegeField = new FieldUnit(new UnitId(90), new FactionId(1), new HexCoord(8, 0),
+            1, 2, 2, MovementDomain.Land, UnitMode.Attack, target.Position, 90,
+            RangeCastle: 2);
+        var siege = new CombatUnit(siegeField, new CombatStats(10000, 10, 10),
+            new TroopPool(10000, 0), UnitCombatState.Create(60), Class: TroopClass.Siege,
+            TroopCode: "catapult", OriginCity: state.Cities[0].Id, AiPressureUntilDay: 30);
+        state = state with
+        {
+            Day = 10,
+            Cities = [state.Cities[0], target, supporting],
+            Generals = state.Generals.Concat(officers).ToList(),
+            Postings = state.Assignments.Concat(officers.Select(officer =>
+                new GeneralPosting(officer.Id, supporting.Owner, supporting.Id))).ToList(),
+            GarrisonForces = state.Garrisons.Append(new GarrisonForce(supporting.Id,
+                "cavalry", 20000, 60)).ToList(),
+            FieldArmies = [siege],
+        };
+
+        var after = Planner().Plan(state, supporting.Owner);
+
+        Assert.Contains(after.Armies, unit => unit.OriginCity == supporting.Id
+            && unit.AiSiegeAssemblyTarget == target.Id && unit.Field.Mode == UnitMode.Attack);
+    }
+
+    [Fact]
+    public void 압박공세는_첫진행후에도_철수하지_않고_성벽붕괴시_호위가_합류한다()
+    {
+        var state = Scenario(50_000, 30_000, siege: 20_000, distance: 5);
+        state = state with { Cities = state.Cities.Select(city => city.Id == new CityId(2)
+            ? city with { Wall = 0 } : city).ToList() };
+        var planned = Planner().Plan(state, new FactionId(1));
+        var map = new HexMap(-3, 14, -4, 4);
+        var rules = new AdvanceOrchestrator(
+            new MovementSimulator(new PassabilityMap(map, [], planned.Cities)),
+            new CombatPhaseResolver(new BattleResolver(60), 70));
+        var campaign = new CampaignEngine(new RenewalCampaignAdvanceRunner(map, rules),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0)),
+            new CampaignSiege(new BattleResolver(60), Troops), new CityCapture());
+
+        var first = campaign.AdvanceWeek(planned, out _, out var firstSieges);
+        var secondPlan = new FactionAI(new CommandService(new CommandBalance(), Troops),
+            new DeployService(new CommandBalance(), Troops,
+                new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+                new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())),
+            new AiConfig(DeployTarget: int.MaxValue), map).PlanWeek(first, new FactionId(1));
+
+        Assert.NotEmpty(firstSieges);
+        Assert.Contains(secondPlan.Armies, unit => unit.AiPressureUntilDay > secondPlan.Day
+            && unit.Class != TroopClass.Siege && unit.Field.Mode == UnitMode.Attack);
+        var second = campaign.AdvanceWeek(secondPlan, out _, out var secondSieges);
+        Assert.NotEmpty(secondSieges);
+        Assert.All(second.Armies.Where(unit => unit.Field.Owner == new FactionId(1)
+            && unit.TracksProvisions), unit => Assert.True(unit.Provisions >= 0));
     }
 
     [Theory]
