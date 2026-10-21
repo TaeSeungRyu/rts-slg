@@ -30,7 +30,7 @@ public static class AiOffensePatternService
         int Count(TroopClass kind) => available.GetValueOrDefault(kind);
         var armyGroupPool = Count(TroopClass.Infantry) + Count(TroopClass.Archer) + Count(TroopClass.Siege);
         if (assessment.DefenderTroops >= 50_000 && state.Garrisons.Where(g => g.City == origin.Id && !g.Trainee)
-                .Sum(g => g.Troops) >= 50_000 && armyGroupPool >= 30_000 && freeGenerals >= 4)
+                .Sum(g => g.Troops) >= 50_000 && armyGroupPool >= 30_000 && freeGenerals >= 3)
             return new(AiOffensePattern.ArmyGroupSiege, true, "집단군 공성 후보");
 
         if (Count(TroopClass.Siege) <= 0)

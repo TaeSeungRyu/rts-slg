@@ -221,7 +221,9 @@ public sealed class AiOffensePlanner
 
         if (pattern == AiOffensePattern.ArmyGroupSiege)
         {
-            if (free.Count < 4 || original.Garrisons.Where(g => g.City == origin.Id && !g.Trainee)
+            var existingSupply = ReusableSupply(original, origin, target) is not null;
+            var minimumOfficers = _config.KeepGeneralsHome + (existingSupply ? 2 : 3);
+            if (free.Count < minimumOfficers || original.Garrisons.Where(g => g.City == origin.Id && !g.Trainee)
                     .Sum(g => g.Troops) < 50_000 || original.Garrisons.Where(g => g.City == target.Id)
                     .Sum(g => g.Troops) < 50_000)
                 return null;
@@ -240,13 +242,14 @@ public sealed class AiOffensePlanner
                     g.AptitudeFor(TroopClass.Infantry), g.AptitudeFor(TroopClass.Archer),
                     g.AptitudeFor(TroopClass.Siege)))
                 .ThenByDescending(g => g.Might).ThenBy(g => g.Id.Value).ToList();
+            var adjutant = free.Count > minimumOfficers ? groupOfficers[1].Id : (GeneralId?)null;
             var result = _deployer.DeployArmyGroup(scratch, new ArmyGroupDeployRequest(
-                origin.Id, lines, groupOfficers[0].Id, groupOfficers[1].Id,
+                origin.Id, lines, groupOfficers[0].Id, adjutant,
                 UnitMode.Attack, target.Position, EgressExit: route.Exit));
             if (!result.Ok) return null;
             scratch = result.State;
             free.Remove(groupOfficers[0]);
-            free.Remove(groupOfficers[1]);
+            if (adjutant is not null) free.Remove(groupOfficers[1]);
             used += lines.Sum(l => l.Troops);
             combatIds.Add(scratch.Armies[^1].Id);
         }
@@ -270,8 +273,10 @@ public sealed class AiOffensePlanner
         foreach (var line in support)
         {
             while (combatIds.Count < maxCombat && available - used >= 2000
-                && free.Count > _config.KeepGeneralsHome + (pattern == AiOffensePattern.CavalrySiege
-                    && origin.Position.Distance(target.Position) < 15 ? 0 : 1))
+                && free.Count > _config.KeepGeneralsHome +
+                    (ReusableSupply(original, origin, target) is not null ||
+                     pattern == AiOffensePattern.CavalrySiege
+                         && origin.Position.Distance(target.Position) < 15 ? 0 : 1))
             {
                 if (!DeployLine(line)) break;
             }

@@ -41,10 +41,12 @@ public class AiOffensePatternTests
     }
 
     [Fact]
-    public void 장수가_부족하면_집단군을_선택하지_않는다()
+    public void 장수_세명이면_집단군을_먼저_검토하고_두명이면_보류한다()
     {
-        var choice = Choose(50_000, 50_000, 20_000, 10_000, 20_000, freeGenerals: 3);
-        Assert.Equal(AiOffensePattern.CavalrySiege, choice.Pattern);
+        Assert.Equal(AiOffensePattern.ArmyGroupSiege,
+            Choose(50_000, 50_000, 20_000, 10_000, 20_000, freeGenerals: 3).Pattern);
+        Assert.Equal(AiOffensePattern.CavalrySiege,
+            Choose(50_000, 50_000, 20_000, 10_000, 20_000, freeGenerals: 2).Pattern);
     }
 
     [Fact]
