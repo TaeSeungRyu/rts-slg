@@ -224,7 +224,7 @@ public sealed class CampaignEngine
             var waitingBanditOrders = turnInput.Where(u => u.BanditWaitDays > 0)
                 .ToDictionary(u => u.Id, u => u.Field);
             turnInput = turnInput.Select(u => u.BanditWaitDays > 0
-                ? u with { Field = u.Field with { Speed = 0, Mode = UnitMode.March, Target = null,
+                ? u with { Field = u.Field with { Speed = 0, Mode = UnitMode.Standby, Target = null,
                     ContinuousTarget = null, PursuitTarget = null, AssignedUnitTarget = null } } : u).ToList();
 
             // 이동 → 공격 → 점령을 하루 단위로 확정한다. 주간 전체를 한 번에

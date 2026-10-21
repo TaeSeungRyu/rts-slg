@@ -72,6 +72,23 @@ public class CombatPhaseTests
             MovementDomain.Land, mode, null, commandOrder);
 
     [Fact]
+    public void 대기중_도적은_선제공격하지_않지만_피격시_사거리안에서_반격한다()
+    {
+        var attacker = CombatUnitAt(1, 1, new(0, 0), new ContinuousPosition(0, 0)) with
+        { Field = Unit(1, 1, new(0, 0), UnitMode.Advance) };
+        var bandit = CombatUnitAt(2, 0, new(1, 0), new ContinuousPosition(1000, 0)) with
+        { Field = Unit(2, 0, new(1, 0), UnitMode.Standby), BanditWaitDays = 14 };
+
+        var engagements = CombatPhase.DetectEngagements([attacker, bandit]);
+
+        Assert.Contains(engagements, value => value.Attacker == attacker.Id
+            && value.Targets.Contains(bandit.Id));
+        Assert.Contains(engagements, value => value.Attacker == bandit.Id
+            && value.Targets.Contains(attacker.Id));
+        Assert.Empty(CombatPhase.DetectEngagements([bandit]));
+    }
+
+    [Fact]
     public void 사거리안_적대쌍이_서로_교전한다()
     {
         var a = Unit(1, owner: 1, new HexCoord(0, 0), UnitMode.Attack);

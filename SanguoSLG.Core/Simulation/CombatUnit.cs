@@ -75,6 +75,8 @@ public sealed record CombatUnit(
     public bool CanInitiateCombat => !IsTransport && !IsConstructing && BanditWaitDays <= 0
         && SummonLockDay is null;
 
+    public bool CanCounterCombat => !IsTransport && !IsConstructing && SummonLockDay is null;
+
     /// <summary>수송부대는 적에게 잡히면 노획 대상이 되는 금과 군량을 갖는다.</summary>
     public int CarryingGold => LootGold + CargoGold;
 

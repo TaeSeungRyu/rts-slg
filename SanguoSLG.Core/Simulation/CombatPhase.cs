@@ -38,7 +38,7 @@ public static class CombatPhase
             if (attacker.Field.Mode == UnitMode.Standby) targets = targets.Take(1).ToList();
             if (targets.Count > 0) intentions[attacker.Id] = targets;
         }
-        foreach (var defender in units.Where(unit => unit.Field.Mode == UnitMode.Standby && unit.CanInitiateCombat))
+        foreach (var defender in units.Where(unit => unit.Field.Mode == UnitMode.Standby && unit.CanCounterCombat))
         {
             var counters = units.Where(attacker => intentions.TryGetValue(attacker.Id, out var targets)
                 && targets.Contains(defender.Id) && InRange(defender, attacker))
