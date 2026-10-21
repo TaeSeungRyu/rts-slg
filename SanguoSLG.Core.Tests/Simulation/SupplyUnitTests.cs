@@ -106,8 +106,7 @@ public class SupplyUnitTests
         Assert.Equal(100, u.Stats.AptitudePercent);
         Assert.Equal(100, u.SupplyEfficiencyPercent);
         Assert.Equal(["cavalry", "swordsman"], u.Cargo.Select(c => c.TroopCode));
-        // 적재 = 가중 평균 능력(283) × 병력 비례 × 5 = 2545 — 비축(10000)이 넉넉하니 상한까지.
-        Assert.Equal(2545, u.Provisions);
+        Assert.Equal(3825, u.Provisions);
         Assert.Empty(r.State.Garrisons);
         Assert.Null(r.State.PostingOf(new GeneralId(1))!.Location);
 
@@ -150,7 +149,7 @@ public class SupplyUnitTests
         Assert.Equal(Troops.Min(t => t.Df), u.Stats.DfStat);
         Assert.Equal(100, u.Stats.AptitudePercent);
         Assert.Equal(120, u.SupplyEfficiencyPercent);
-        Assert.Equal(SupplyLogisticsRules.Apply(1500, 120), u.Provisions);
+        Assert.Equal(SupplyLogisticsRules.Apply(2250, 120), u.Provisions);
     }
 
     [Fact]

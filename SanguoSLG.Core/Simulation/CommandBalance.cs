@@ -95,7 +95,7 @@ public sealed record CommandBalance
     public int ArmyGroupDefense { get; init; } = 6;
 
     /// <summary>집단군 군량 적재 기본값(1만 명 기준).</summary>
-    public int ArmyGroupProvisionsCapacity { get; init; } = 300;
+    public int ArmyGroupProvisionsCapacity { get; init; } = 450;
 
     /// <summary>성 보급 반경(칸) — 아군 성 이 반경 안의 아군 야전 부대는 매 진행 성 비축에서 군량을
     /// 채운다(성문 앞 대기·수비 부대가 굶지 않도록). 0이면 성 보급 없음.</summary>

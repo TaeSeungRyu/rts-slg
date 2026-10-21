@@ -166,8 +166,8 @@ public class DeployServiceTests
         Assert.Equal(city.Position, u.Field.Position);
         Assert.True(u.IsWaitingEgress);
         Assert.True(u.EgressExit.HasValue);
-        Assert.Equal(300, u.Provisions);
-        Assert.Equal(4700, r.State.Cities.Single().Provisions);
+        Assert.Equal(450, u.Provisions);
+        Assert.Equal(4550, r.State.Cities.Single().Provisions);
         Assert.Empty(r.State.Garrisons);
         Assert.Null(r.State.PostingOf(new GeneralId(1))!.Location);
     }
@@ -276,7 +276,7 @@ public class DeployServiceTests
         var r = Service().Deploy(s0, new DeployRequest(new CityId(1), "swordsman", 10000, new GeneralId(1), Provisions: 99999));
 
         Assert.True(r.Ok, r.Error);
-        Assert.Equal(300, r.State.Armies.Single().Provisions); // 적재 상한(300)까지만
+        Assert.Equal(450, r.State.Armies.Single().Provisions);
     }
 
     [Fact]
@@ -622,7 +622,7 @@ public class DeployServiceTests
         Assert.Equal(new GeneralId(2), unit.AdjutantId);
         Assert.Equal(3, unit.Cargo.Count);
         Assert.Empty(r.State.Garrisons);
-        Assert.Equal(4100, r.State.Cities.Single().Provisions);
+        Assert.Equal(3650, r.State.Cities.Single().Provisions);
         Assert.Null(r.State.PostingOf(new GeneralId(1))!.Location);
         Assert.Null(r.State.PostingOf(new GeneralId(2))!.Location);
     }

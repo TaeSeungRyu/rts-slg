@@ -34,6 +34,21 @@ public class TroopTypeLoaderTests
     }
 
     [Fact]
+    public void Load_모든_병종의_휴대군량이_기존보다_절반_증가한다()
+    {
+        var expected = new System.Collections.Generic.Dictionary<string, int>
+        {
+            ["swordsman"] = 450, ["archer"] = 450,
+            ["cavalry"] = 375, ["war_elephant"] = 375,
+            ["catapult"] = 300, ["siege_tower"] = 300, ["thunder_cart"] = 300,
+            ["turtleship"] = 750, ["large_ship"] = 750,
+            ["medium_ship"] = 600, ["small_boat"] = 600,
+        };
+        Assert.Equal(expected.Count, Templates.Count);
+        Assert.All(Templates, troop => Assert.Equal(expected[troop.Code], troop.ProvisionsCapacity));
+    }
+
+    [Fact]
     public void Load_이동스탯_속도_탐지_사거리를_읽는다()
     {
         // spec-unit.md 확정값: 기병 속도3·탐지3·사거리1, 궁병 사거리2, 투석기 속도1·사거리2
