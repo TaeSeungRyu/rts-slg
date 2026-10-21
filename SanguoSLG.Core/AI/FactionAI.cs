@@ -390,29 +390,10 @@ public sealed class FactionAI
             return state;
         }
 
-        var priority = new List<string>();
-        if (cities.Average(c => c.Security) <= GeneralResearchRules.DefaultLowSecurityThreshold)
-        {
-            priority.Add(FactionResearch.PublicOrderCode);
-        }
-        if (state.CityWounded.Any(w => cities.Any(c => c.Id == w.City) && w.Troops > 0))
-        {
-            priority.Add(FactionResearch.MedicineCode);
-        }
-        priority.AddRange(
-        [
-            FactionResearch.CommerceCode,
-            FactionResearch.AgricultureCode,
-            FactionResearch.ConscriptionCode,
-            FactionResearch.TrainingCode,
-            FactionResearch.PublicOrderCode,
-            FactionResearch.MedicineCode,
-        ]);
-        var code = priority.Distinct()
-            .Where(c => state.ResearchOf(faction, c) < GeneralResearchRules.MaxLevel)
-            .OrderBy(c => state.ResearchOf(faction, c))
-            .ThenBy(c => priority.IndexOf(c))
-            .FirstOrDefault();
+        var code = AiResearchPriority.General(state, faction)
+            .FirstOrDefault(candidate => cities.Sum(city => city.Gold) >=
+                GeneralResearchRules.Cost(candidate, state.ResearchOf(faction, candidate) + 1,
+                    _commands.Balance) + _config.GeneralResearchReserveGold);
         if (code is null)
         {
             return state;
@@ -466,16 +447,16 @@ public sealed class FactionAI
         }
 
         var cities = state.Cities.Where(c => c.Owner == faction).OrderBy(c => c.Id.Value).ToList();
-        var definition = StratagemResearchRules.Definitions
-            .Where(item => state.ResearchOf(faction, item.ResearchCode) < StratagemResearchRules.MaxLevel)
-            .OrderBy(item => state.ResearchOf(faction, item.ResearchCode))
-            .FirstOrDefault();
-        if (cities.Count == 0 || definition is null)
+        var code = AiResearchPriority.Stratagem(state, faction)
+            .FirstOrDefault(candidate => cities.Sum(city => city.Gold) >=
+                StratagemResearchRules.Cost(state.ResearchOf(faction, candidate) + 1)
+                + _config.GeneralResearchReserveGold);
+        if (cities.Count == 0 || code is null)
         {
             return state;
         }
 
-        var cost = StratagemResearchRules.Cost(state.ResearchOf(faction, definition.ResearchCode) + 1);
+        var cost = StratagemResearchRules.Cost(state.ResearchOf(faction, code) + 1);
         if (cities.Sum(c => c.Gold) < cost + _config.GeneralResearchReserveGold)
         {
             return state;
@@ -506,7 +487,7 @@ public sealed class FactionAI
             .Select(city => new ResearchFundingShare(city.Id, city.Gold))
             .ToList();
         var result = _commands.Issue(state, new CommandRequest(candidate.City.Id, CommandKind.Research,
-            candidate.Officers[0].Id, TroopCode: definition.ResearchCode, ResearchFunding: funding));
+            candidate.Officers[0].Id, TroopCode: code, ResearchFunding: funding));
         return result.Ok ? result.State : state;
     }
 

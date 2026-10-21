@@ -442,6 +442,36 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI는_실제_계략_대상이_없으면_계략연구를_시작하지_않는다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0)) with { Gold = 20_000 };
+        var state = new GameState(1, 190, [], [city], [Gen(1), Gen(2), Gen(3)],
+            Postings: [At(1, 1, 1), At(2, 1, 1), At(3, 1, 1)]);
+
+        var after = Ai().PlanWeek(state, city.Owner);
+
+        Assert.DoesNotContain(after.Commands, command =>
+            FactionResearch.IsStratagemResearch(command.TroopCode));
+    }
+
+    [Fact]
+    public void AI는_전선의_군량이_부족하면_일반연구에서_농정을_우선한다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0)) with
+        {
+            Gold = 10_000, Provisions = 1000, Security = 100,
+        };
+        var enemy = Town(2, 2, new HexCoord(8, 0));
+        var state = new GameState(1, 190, [], [city, enemy], [Gen(1), Gen(2)],
+            Postings: [At(1, 1, 1), At(2, 1, 1)]);
+
+        var after = Ai(new AiConfig(ExplorationReserveGold: int.MaxValue)).PlanWeek(state, city.Owner);
+
+        Assert.Contains(after.Commands, command => command.Kind == CommandKind.Research
+            && command.TroopCode == FactionResearch.AgricultureCode);
+    }
+
+    [Fact]
     public void 병력이_적으면_기존_단독_부대_출전을_하지_않는다()
     {
         var enemy = Town(9, 2, new HexCoord(10, 0));
