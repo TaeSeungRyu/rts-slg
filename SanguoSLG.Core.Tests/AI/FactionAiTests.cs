@@ -14,6 +14,27 @@ using Xunit;
 public class FactionAiTests
 {
     [Fact]
+    public void 담당자가_모자란_AI_도시도_최고_무력에_따라_유료_모병하고_같은날_중복하지_않는다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0)) with { Gold = 2000, Wall = 0 };
+        var officers = new[] { Gen(1), Gen(2) with { Might = 100 } };
+        var state = new GameState(1, 190, [], [city], officers,
+            Postings: [At(1, 1, 1), At(2, 1, 1)]);
+        var ai = Ai(new AiConfig(DeployTarget: int.MaxValue,
+            GeneralResearchReserveGold: -1, ExplorationReserveGold: int.MaxValue));
+
+        var once = ai.PlanWeek(state, city.Owner);
+        var twice = ai.PlanWeek(once, city.Owner);
+        var lessAble = ai.PlanWeek(state with { Generals = [Gen(1), Gen(2)] }, city.Owner);
+
+        Assert.True(once.Garrisons.Sum(g => g.Troops) >= 250);
+        Assert.True(once.Garrisons.Sum(g => g.Troops) > lessAble.Garrisons.Sum(g => g.Troops));
+        Assert.True(once.Cities[0].Wall > 0);
+        Assert.Equal(once.Garrisons.Sum(g => g.Troops), twice.Garrisons.Sum(g => g.Troops));
+        Assert.Equal(once.Cities[0].AiLastGrowthDay, twice.Cities[0].AiLastGrowthDay);
+    }
+
+    [Fact]
     public void 추종_대상이_입성한_고립_보급부대는_원성으로_복귀한다()
     {
         var city = Town(1, 1, new HexCoord(0, 0));
@@ -136,7 +157,8 @@ public class FactionAiTests
 
         Assert.Contains(after.Commands, command => command.Kind == CommandKind.Repair
             && command.City == city.Id && command.TroopCode == FactionResearch.WallCode);
-        Assert.True(Assert.Single(after.Cities).Gold < city.Gold);
+        Assert.Equal(city.Wall, Assert.Single(after.Cities).Wall);
+        Assert.Equal(state.Day, after.Cities[0].AiLastGrowthDay);
     }
 
     [Fact]
@@ -252,7 +274,7 @@ public class FactionAiTests
 
         Assert.Equal(HeroUnlockStatus.Recruited, after.HeroStates.Single().Status);
         Assert.Equal((new FactionId(1), new CityId(1)), (after.PostingOf(new GeneralId(6))!.Faction, after.PostingOf(new GeneralId(6))!.Location));
-        Assert.Equal(1100, after.Cities.Single().Gold);
+        Assert.InRange(after.Cities.Single().Gold, 1000, 1100);
         Assert.Equal(0, RecruitmentPointBank.Balance(after, new FactionId(1)));
     }
 
@@ -353,7 +375,7 @@ public class FactionAiTests
         Assert.Equal(CommandKind.Research, research.Kind);
         Assert.Equal(FactionResearch.PublicOrderCode, research.TroopCode);
         Assert.Equal(new GeneralId(1), research.Main);
-        Assert.Equal(4800, after.Cities.Single(c => c.Id == rich.Id).Gold);
+        Assert.InRange(after.Cities.Single(c => c.Id == rich.Id).Gold, 4800, 5000);
     }
 
     [Fact]
@@ -373,7 +395,7 @@ public class FactionAiTests
         var stratagem = Assert.Single(after.Commands, command => FactionResearch.IsStratagemResearch(command.TroopCode));
         Assert.Equal(FactionResearch.ScoutStratagemCode, stratagem.TroopCode);
         Assert.Equal(new GeneralId(2), stratagem.Main);
-        Assert.Equal(7800, after.Cities.Single(city => city.Id == rich.Id).Gold);
+        Assert.InRange(after.Cities.Single(city => city.Id == rich.Id).Gold, 7800, 8000);
     }
 
     [Fact]

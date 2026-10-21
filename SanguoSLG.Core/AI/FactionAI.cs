@@ -54,6 +54,7 @@ public sealed class FactionAI
         state = PlanExploration(state, faction);
         state = PlanCityOfficers(state, faction);
         state = PlanCityMaintenance(state, faction);
+        state = PlanCityBaseline(state, faction);
         return state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && !existingArmyIds.Contains(unit.Id)
                 && unit.Field.Mode == UnitMode.Attack
@@ -184,6 +185,79 @@ public sealed class FactionAI
             }
         }
         return state;
+    }
+
+    private GameState PlanCityBaseline(GameState state, FactionId faction)
+    {
+        var garrisons = state.Garrisons.ToList();
+        var cities = new List<City>();
+        foreach (var city in state.Cities)
+        {
+            if (city.Owner != faction || city.AiLastGrowthDay == state.Day)
+            {
+                cities.Add(city);
+                continue;
+            }
+            var residents = state.GeneralsAt(city.Id)
+                .Where(id => !state.IsGeneralInField(id))
+                .Select(id => state.Generals.First(g => g.Id == id)).ToList();
+            var tier = AiCityGrowthPolicy.RecruitmentRate(residents.Count);
+            var might = residents.Count == 0 ? 50 : residents.Max(g => g.Might);
+            var politics = residents.Count == 0 ? 50 : residents.Max(g => g.Politics);
+            var gold = city.Gold;
+            var provisions = city.Provisions;
+            var security = city.Security;
+            var wall = city.Wall;
+            bool HasOfficer(GeneralId? id) => id is { } general
+                && state.Generals.Any(g => g.Id == general)
+                && (state.Assignments.Count == 0 || state.PostingOf(general) is { } posting
+                    && posting.Location == city.Id && posting.Faction == faction);
+            if (!HasOfficer(city.SecurityOfficer)) security = Math.Min(100, security + tier);
+            if (!HasOfficer(city.DomesticOfficer))
+            {
+                gold += PortAdministration.Scale(city, (50 + politics) * tier / 2);
+                provisions += PortAdministration.Scale(city, (150 + politics * 2) * tier / 2);
+            }
+            if (!HasOfficer(city.RecruitmentOfficer))
+            {
+                var code = string.IsNullOrWhiteSpace(city.AutoRecruitTroopCode)
+                    ? _config.Troop : city.AutoRecruitTroopCode;
+                var amount = Math.Max(100, might * 5 * tier / 2);
+                amount = PortAdministration.Scale(city, amount);
+                var cost = _deployer.Balance.AutoRecruitGoldCost(code, amount);
+                if (amount > 0 && cost > 0 && gold >= cost
+                    && FactionTroopUnlock.Check(state, faction, code).Allowed)
+                {
+                    gold -= cost;
+                    var index = garrisons.FindIndex(g => g.City == city.Id
+                        && g.TroopCode == code && !g.Trainee);
+                    if (index >= 0) garrisons[index] = garrisons[index].Merge(amount,
+                        _deployer.Balance.AutoRecruitTroopTrainingLevel);
+                    else garrisons.Add(new GarrisonForce(city.Id, code, amount,
+                        _deployer.Balance.AutoRecruitTroopTrainingLevel));
+                    security = Math.Max(0, security + _deployer.Balance.AutoRecruitSecurityDeltaForRate(tier));
+                }
+            }
+            if (!state.Commands.Any(command => command.City == city.Id
+                    && command.Kind == CommandKind.Repair && command.TroopCode == FactionResearch.WallCode)
+                && !WallRepairRules.IsThreatened(state, city))
+            {
+                var maxWall = CastleWall.Max(city.Castle, _economy, city.WallLevel);
+                if (wall * 4 < maxWall * 3)
+                {
+                    var restore = Math.Min(maxWall - wall, Math.Max(1, maxWall * tier / 20));
+                    var cost = Math.Max(1, restore / _deployer.Balance.WallRepairGoldDivisor);
+                    if (gold >= cost + _config.MaintenanceReserveGold)
+                    {
+                        gold -= cost;
+                        wall += restore;
+                    }
+                }
+            }
+            cities.Add(city with { Gold = gold, Provisions = provisions,
+                Security = security, Wall = wall, AiLastGrowthDay = state.Day });
+        }
+        return state with { Cities = cities, GarrisonForces = garrisons };
     }
 
     private GameState PlanCityMaintenance(GameState state, FactionId faction)
