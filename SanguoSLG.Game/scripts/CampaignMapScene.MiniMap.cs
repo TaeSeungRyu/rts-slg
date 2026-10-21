@@ -58,9 +58,7 @@ public sealed partial class CampaignMapScene
                 var faction = _state.Factions.FirstOrDefault(f => f.Id == city.Owner);
                 var color = city.Owner == Player
                     ? faction is null ? GoldBright : Color.FromString(faction.Color, GoldBright)
-                    : _state.AreAllied(Player, city.Owner)
-                        ? new Color(0.48f, 0.80f, 0.45f)
-                        : ArmyFactionColor(city.Owner);
+                    : ArmyFactionColor(city.Owner);
                 return (city.Position, color);
             }),
             CameraBounds = MiniMapCameraBounds,

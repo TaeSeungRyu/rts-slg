@@ -2057,7 +2057,8 @@ public sealed partial class CampaignMapScene : Node3D
                 Position = origin + new Vector3(0, 1.25f, 0),
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                 Font = _font, FontSize = 24, OutlineSize = 5, NoDepthTest = true,
-                Modulate = MapRelationTextColor(building.Owner),
+                Modulate = _state.AreAllied(Player, building.Owner)
+                    ? AllianceRelationColor : MapRelationTextColor(building.Owner),
             };
             allegiance.SetMeta("field_building_id", building.Id.Value);
             _fieldBuildingLayer.AddChild(allegiance);
@@ -16445,10 +16446,9 @@ public sealed partial class CampaignMapScene : Node3D
         return string.IsNullOrWhiteSpace(code) ? (owner == Player ? Blue : Red) : new Color(code);
     }
 
-    private Color MapRelationTextColor(FactionId owner)
-        => owner == Player ? ArmyFactionColor(owner)
-            : _state.AreAllied(Player, owner) ? new Color(0.65f, 0.92f, 0.55f)
-            : ArmyFactionColor(owner);
+    private static readonly Color AllianceRelationColor = new(0.65f, 0.92f, 0.55f);
+
+    private Color MapRelationTextColor(FactionId owner) => ArmyFactionColor(owner);
 
     private void RunAllianceLabelQa()
     {
@@ -16460,22 +16460,22 @@ public sealed partial class CampaignMapScene : Node3D
         var city = _state.Cities.First(c => c.Owner == enemy);
         var alliedColor = MapRelationTextColor(enemy);
         var cityColor = _cityLabels[city.Id.Value].Modulate;
-        var cityGreen = cityColor.R == alliedColor.R && cityColor.G == alliedColor.G
+        var cityFactionColor = cityColor.R == alliedColor.R && cityColor.G == alliedColor.G
             && cityColor.B == alliedColor.B;
-        var armyGreen = _state.Armies.Where(a => a.Field.Owner == enemy)
+        var armyFactionColor = _state.Armies.Where(a => a.Field.Owner == enemy)
             .All(a => _armyLabels.TryGetValue(a.Id.Value, out var label) && label.Modulate == alliedColor);
-        var buildingsGreen = _state.Buildings.Where(b => b.Owner == enemy && CanPlayerSeeFieldBuilding(b))
+        var buildingsAllianceColor = _state.Buildings.Where(b => b.Owner == enemy && CanPlayerSeeFieldBuilding(b))
             .All(b => _fieldBuildingLayer.GetChildren().OfType<Label3D>()
                 .LastOrDefault(label => !label.IsQueuedForDeletion()
                     && label.HasMeta("field_building_id") && label.GetMeta("field_building_id").AsInt32() == b.Id.Value) is { } label
-                && label.Text == "동맹" && label.Modulate.R == alliedColor.R
-                && label.Modulate.G == alliedColor.G && label.Modulate.B == alliedColor.B);
+                && label.Text == "동맹" && label.Modulate.R == AllianceRelationColor.R
+                && label.Modulate.G == AllianceRelationColor.G && label.Modulate.B == AllianceRelationColor.B);
         var sampleBuilding = _state.Buildings.FirstOrDefault(b => b.Owner == enemy && CanPlayerSeeFieldBuilding(b));
         var sampleLabel = sampleBuilding is null ? null : _fieldBuildingLayer.GetChildren().OfType<Label3D>()
             .LastOrDefault(label => !label.IsQueuedForDeletion()
                 && label.HasMeta("field_building_id") && label.GetMeta("field_building_id").AsInt32() == sampleBuilding.Id.Value);
-        var passed = hostileFactionColor && cityGreen && armyGreen && buildingsGreen;
-        GD.Print($"[maptestalliancelabelqa] passed={passed} hostileFactionColor={hostileFactionColor} cityGreen={cityGreen} cityColor={cityColor} armyGreen={armyGreen} buildingsGreen={buildingsGreen} enemyBuildings={_state.Buildings.Count(b => b.Owner == enemy)} sample={sampleLabel?.Text}/{sampleLabel?.Modulate}");
+        var passed = hostileFactionColor && cityFactionColor && armyFactionColor && buildingsAllianceColor;
+        GD.Print($"[maptestalliancelabelqa] passed={passed} hostileFactionColor={hostileFactionColor} cityFactionColor={cityFactionColor} cityColor={cityColor} armyFactionColor={armyFactionColor} buildingsAllianceColor={buildingsAllianceColor} enemyBuildings={_state.Buildings.Count(b => b.Owner == enemy)} sample={sampleLabel?.Text}/{sampleLabel?.Modulate}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
