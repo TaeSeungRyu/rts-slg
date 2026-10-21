@@ -96,6 +96,26 @@ public class CampaignSiegeTests
     private static City Town(int id, int owner, HexCoord pos, int wall, CastleSize size = CastleSize.Medium) =>
         new(new CityId(id), $"c{id}", pos, new FactionId(owner), 0, size, Wall: wall);
 
+    [Fact]
+    public void AI_공세_일반부대는_같은_출발성의_공성병기가_사거리에_도착할때까지_성을_공격하지_않는다()
+    {
+        var city = Town(9, 2, new(5, 0), 6000, CastleSize.Small);
+        var home = new CityId(1);
+        var support = Army(1, 1, new(4, 0), city.Position) with
+        { OriginCity = home, AiSiegeAssemblyTarget = city.Id };
+        var siege = Army(2, 1, new(2, 0), city.Position, code: "thunder_cart") with
+        { OriginCity = home };
+
+        var waiting = Siege().Resolve([support, siege], [city], []);
+        Assert.Empty(waiting.Exchanges);
+        Assert.Equal(city.Wall, Assert.Single(waiting.Cities).Wall);
+
+        var ready = Siege().Resolve([support, siege with
+        { Field = siege.Field with { Position = new HexCoord(4, 0) } }], [city], []);
+        Assert.Equal(2, Assert.Single(ready.Exchanges).Besiegers.Count);
+        Assert.True(Assert.Single(ready.Cities).Wall < city.Wall);
+    }
+
     [Theory]
     [InlineData(1, 2)]
     [InlineData(2, 1)]

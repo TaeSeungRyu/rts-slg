@@ -34,6 +34,7 @@ public sealed class FactionAI
             unit.Field.Owner == faction && unit.AiOpeningAttack && !unit.IsWaitingDeployment
                 ? unit with { AiOpeningAttack = false,
                     Field = unit.Field with { Mode = unit.Class == TroopClass.Siege
+                        || unit.AiSiegeAssemblyTarget is not null
                         ? UnitMode.Attack : UnitMode.Advance,
                         AssignedUnitTarget = null, PursuitTarget = null } }
                 : unit).ToList() };

@@ -220,6 +220,7 @@ public sealed class AiOffensePlanner
         if (used > available || !PassesProvisionBudget(scratch, target, combatIds)
             || !PassesSiegeTrial(original, scratch, target, combatIds))
             return null;
+        scratch = MarkSiegeAssembly(scratch, target.Id, combatIds);
         return AttachDeclaration(original, scratch, target);
     }
 
@@ -343,7 +344,17 @@ public sealed class AiOffensePlanner
         }
         if (!PassesProvisionBudget(scratch, target, combatIds)
             || !PassesSiegeTrial(original, scratch, target, combatIds)) return null;
+        scratch = MarkSiegeAssembly(scratch, target.Id, combatIds);
         return AttachDeclaration(original, scratch, target);
+    }
+
+    private static GameState MarkSiegeAssembly(GameState state, CityId target, IReadOnlyCollection<UnitId> combatIds)
+    {
+        var combat = combatIds.ToHashSet();
+        return state with { FieldArmies = state.Armies.Select(unit =>
+            combat.Contains(unit.Id) && unit.Class != TroopClass.Siege && !unit.IsArmyGroup
+                ? unit with { AiSiegeAssemblyTarget = target }
+                : unit).ToList() };
     }
 
     private static GameState Follow(GameState state, UnitId supply, UnitId combat) => state with

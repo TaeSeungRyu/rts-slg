@@ -94,6 +94,11 @@ public sealed class CampaignSiege
                     && CastleFootprint.TilesFor(city).Min(tile => tile.Distance(u.Field.Position)) <= u.Field.RangeCastle)
                 .OrderBy(u => u.Id.Value)
                 .ToList();
+            var readySiegeOrigins = besiegers
+                .Where(u => u.Class == TroopClass.Siege || u.IsArmyGroup)
+                .Select(u => (u.Field.Owner, u.OriginCity)).ToHashSet();
+            besiegers = besiegers.Where(u => u.AiSiegeAssemblyTarget != city.Id
+                || readySiegeOrigins.Contains((u.Field.Owner, u.OriginCity))).ToList();
             if (besiegers.Count == 0)
             {
                 continue;
