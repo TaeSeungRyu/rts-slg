@@ -493,6 +493,54 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI_이동한_적을_추격할때_지난_연속좌표를_새_목표로_교체한다()
+    {
+        var home = Town(1, 1, new HexCoord(12, 9));
+        var hostileCity = Town(2, 2, new HexCoord(4, 9));
+        var oldTarget = new HexCoord(6, 9);
+        var nextTarget = new HexCoord(7, 9);
+        var chaser = new CombatUnit(new FieldUnit(new UnitId(81), new FactionId(1),
+            new HexCoord(8, 9), 3, 3, 1, MovementDomain.Land, UnitMode.Attack,
+            oldTarget, 81, AssignedUnitTarget: new UnitId(82),
+            ContinuousTarget: RenewalHexSpace.Center(oldTarget)),
+            new CombatStats(7000, 10, 10), new TroopPool(7000, 0),
+            UnitCombatState.Create(60), OriginCity: home.Id);
+        var enemyPosition = new ContinuousPosition(7200, 9000);
+        var enemy = chaser with { Field = chaser.Field with { Id = new UnitId(82),
+            Owner = new FactionId(2), Position = nextTarget, Mode = UnitMode.March,
+            AssignedUnitTarget = null }, OriginCity = hostileCity.Id,
+            RenewalPosition = enemyPosition };
+        var state = new GameState(1, 190, [], [home, hostileCity], [],
+            FieldArmies: [chaser, enemy]);
+
+        var following = Ai(new AiConfig(DeployTarget: int.MaxValue))
+            .PlanWeek(state, new FactionId(1)).Armies.Single(unit => unit.Id == chaser.Id);
+
+        Assert.Equal(nextTarget, following.Field.Target);
+        Assert.Equal(enemyPosition, following.Field.ContinuousTarget);
+        Assert.Equal(UnitMode.Attack, following.Field.Mode);
+    }
+
+    [Fact]
+    public void AI_목표를_잃고_남의_성앞에_대기한_부대는_출발성으로_복귀한다()
+    {
+        var home = Town(1, 1, new HexCoord(12, 9));
+        var hostileCity = Town(2, 2, new HexCoord(4, 9));
+        var idle = new CombatUnit(new FieldUnit(new UnitId(83), new FactionId(1),
+            new HexCoord(6, 9), 2, 2, 1, MovementDomain.Land, UnitMode.Standby,
+            null, 83), new CombatStats(7000, 10, 10), new TroopPool(7000, 0),
+            UnitCombatState.Create(60), OriginCity: home.Id);
+        var state = new GameState(1, 190, [], [home, hostileCity], [], FieldArmies: [idle]);
+
+        var recovered = Ai(new AiConfig(DeployTarget: int.MaxValue))
+            .PlanWeek(state, new FactionId(1)).Armies.Single();
+
+        Assert.Equal(UnitMode.March, recovered.Field.Mode);
+        Assert.Equal(home.Position, recovered.Field.Target);
+        Assert.Equal(home.Id, recovered.Field.ReturnCity);
+    }
+
+    [Fact]
     public void AI는_유효한_공격목표와_연속좌표를_임의로_덮어쓰지_않는다()
     {
         var t = Troops.First(x => x.Code == "swordsman");

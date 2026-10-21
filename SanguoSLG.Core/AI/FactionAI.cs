@@ -2,6 +2,7 @@ namespace SanguoSLG.Core.AI;
 
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Simulation.RenewalMovement;
 using SanguoSLG.Core.Spatial;
 
 /// <summary>
@@ -36,6 +37,7 @@ public sealed class FactionAI
                         ? UnitMode.Attack : UnitMode.Advance,
                         AssignedUnitTarget = null, PursuitTarget = null } }
                 : unit).ToList() };
+        state = RecoverIdleExpeditions(state, faction);
         state = Retarget(state, faction);
         state = TargetUnlockRuins(state, faction);
         state = RecruitUnlockedHeroes(state, faction);
@@ -568,13 +570,18 @@ public sealed class FactionAI
                     return home is null ? u with { Field = u.Field with
                     {
                         Mode = UnitMode.Standby, Target = null, AssignedUnitTarget = null,
-                        PursuitTarget = null,
+                        PursuitTarget = null, ContinuousTarget = null,
+                        Waypoints = null, ContinuousWaypoints = null,
                     } } : u with { Field = u.Field with
                     {
                         Mode = UnitMode.March, Target = home.Position,
                         ReturnCity = home.Id, AssignedUnitTarget = null, PursuitTarget = null,
+                        ContinuousTarget = null, Waypoints = null, ContinuousWaypoints = null,
                     } };
-                return u with { Field = u.Field with { Target = quarry!.Field.Position } };
+                var position = quarry!.RenewalPosition
+                    ?? RenewalHexSpace.Center(quarry.Field.Position);
+                return u with { Field = u.Field with { Target = quarry.Field.Position,
+                    ContinuousTarget = position, Waypoints = null, ContinuousWaypoints = null } };
             }
 
             var current = u.Field.Target;
@@ -605,6 +612,28 @@ public sealed class FactionAI
                 ContinuousTarget = null, ContinuousWaypoints = null,
                 AssignedUnitTarget = null, PursuitTarget = null,
             } };
+        }).ToList();
+        return state with { FieldArmies = armies };
+    }
+
+    private static GameState RecoverIdleExpeditions(GameState state, FactionId faction)
+    {
+        var armies = state.Armies.Select(unit =>
+        {
+            if (unit.Field.Owner != faction || unit.Field.Mode != UnitMode.Standby
+                || unit.OriginCity is null || unit.IsWaitingDeployment || unit.IsSupply
+                || unit.IsTransport || unit.IsSummon || unit.IsConstructing
+                || state.Buildings.Any(building => building.GarrisonUnit == unit.Id))
+                return unit;
+            var home = state.Cities.Where(city => city.Owner == faction)
+                .OrderBy(city => city.Id == unit.OriginCity ? 0 : 1)
+                .ThenBy(city => city.Position.Distance(unit.Field.Position))
+                .ThenBy(city => city.Id.Value).FirstOrDefault();
+            if (home is null) return unit;
+            return unit with { Field = unit.Field with { Mode = UnitMode.March,
+                Target = home.Position, ReturnCity = home.Id, ContinuousTarget = null,
+                Waypoints = null, ContinuousWaypoints = null, AssignedUnitTarget = null,
+                PursuitTarget = null } };
         }).ToList();
         return state with { FieldArmies = armies };
     }
