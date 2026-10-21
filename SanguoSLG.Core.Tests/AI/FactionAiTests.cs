@@ -591,6 +591,31 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI는_실제_공성중인_정찰된_적성에_성벽파괴를_시도한다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0)) with
+        {
+            Gold = 20_000, Provisions = 30_000,
+        };
+        var target = Town(2, 2, new HexCoord(8, 0)) with { Wall = 1000 };
+        var field = new FieldUnit(new UnitId(1), city.Owner, new HexCoord(5, 0),
+            1, 2, 2, MovementDomain.Land, UnitMode.Attack, target.Position, 1);
+        var army = new CombatUnit(field, new CombatStats(1000, 10, 10),
+            new TroopPool(1000, 0), UnitCombatState.Create(60), OriginCity: city.Id);
+        var state = new GameState(1, 190, [], [city, target],
+            Enumerable.Range(1, 4).Select(Gen).ToList(),
+            Postings: Enumerable.Range(1, 4).Select(id => At(id, 1, 1)).ToList(),
+            ScoutedCities: [new CityIntel(city.Owner, target.Id)], FieldArmies: [army]);
+
+        var after = Ai(new AiConfig(ExplorationReserveGold: int.MaxValue)).PlanWeek(state, city.Owner);
+
+        Assert.Contains(after.Commands, command => command.Kind == CommandKind.CityStratagem
+            && command.Facility == "wall_break" && command.TargetCity == target.Id);
+        Assert.Contains(after.Commands, command => command.Kind == CommandKind.Research
+            && command.TroopCode == FactionResearch.WallBreakStratagemCode);
+    }
+
+    [Fact]
     public void 병력이_적으면_기존_단독_부대_출전을_하지_않는다()
     {
         var enemy = Town(9, 2, new HexCoord(10, 0));

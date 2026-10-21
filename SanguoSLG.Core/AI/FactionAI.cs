@@ -48,6 +48,7 @@ public sealed class FactionAI
         state = RecruitUnlockedHeroes(state, faction);
         state = new AiFieldResponsePlanner(_deployer, _config, _map, _economy).Plan(state, faction);
         state = PlanOffenseScouting(state, faction);
+        state = PlanOffenseStratagems(state, faction);
         state = PlanFrontTransfers(state, faction);
         state = new AiOffensePlanner(_deployer, _config, _commands, _map, _economy).Plan(state, faction);
         state = new AiRearSupportPlanner(_deployer, _map).Plan(state, faction);
@@ -185,6 +186,44 @@ public sealed class FactionAI
             var result = _commands.Issue(state, new CommandRequest(donor.City.Id,
                 CommandKind.TransferGeneral, donor.Officers[0].Id, TargetCity: front.Id));
             if (result.Ok) state = result.State;
+        }
+        return state;
+    }
+
+    private GameState PlanOffenseStratagems(GameState state, FactionId faction)
+    {
+        if (state.Commands.Any(command => command.Kind == CommandKind.CityStratagem
+            && state.Cities.Any(city => city.Id == command.City && city.Owner == faction)))
+            return state;
+        var fronts = state.Cities.Where(city => city.Owner == faction && !city.IsPort)
+            .OrderBy(city => city.Id.Value);
+        foreach (var front in fronts)
+        {
+            var officers = state.GeneralsAt(front.Id).Where(id => !state.IsGeneralBusy(id))
+                .Select(id => state.Generals.First(general => general.Id == id))
+                .OrderByDescending(general => general.Intellect)
+                .ThenBy(general => general.Id.Value).ToList();
+            if (officers.Count <= _config.KeepGeneralsHome) continue;
+            foreach (var target in state.Cities.Where(city => !city.IsPort
+                    && state.AreHostile(faction, city.Owner)
+                    && state.IsScouted(faction, city.Id)
+                    && city.Position.Distance(front.Position) <= 15)
+                .OrderBy(city => city.Position.Distance(front.Position))
+                .ThenBy(city => city.Id.Value))
+            {
+                var attacking = state.Armies.Any(unit => unit.Field.Owner == faction
+                    && !unit.IsSupply && unit.Pool.Active > 0
+                    && unit.Field.Target == target.Position);
+                var facility = attacking && target.Wall > 0 ? "wall_break"
+                    : attacking && target.Provisions >= 5000 ? "arson"
+                    : attacking && target.Security >= 80 ? "incite"
+                    : front.Gold < 1000 && target.Gold >= 5000 ? "steal" : null;
+                if (facility is null) continue;
+                var result = _commands.Issue(state, new CommandRequest(front.Id,
+                    CommandKind.CityStratagem, officers[0].Id,
+                    Facility: facility, TargetCity: target.Id));
+                if (result.Ok) return result.State;
+            }
         }
         return state;
     }
