@@ -92,7 +92,8 @@ public sealed class CampaignSiege
                         || EffectiveTroop(u) is not null
                         || u.Field.Owner == EventHuntService.EventFaction && u.TroopCode == "dragon")
                     && CastleFootprint.TilesFor(city).Min(tile => tile.Distance(u.Field.Position)) <= u.Field.RangeCastle)
-                .OrderBy(u => u.Id.Value)
+                .OrderBy(u => u.Class == TroopClass.Siege || u.IsArmyGroup ? 0 : 1)
+                .ThenBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value)
                 .ToList();
             var readySiegeOrigins = besiegers
                 .Where(u => u.Class == TroopClass.Siege || u.IsArmyGroup)

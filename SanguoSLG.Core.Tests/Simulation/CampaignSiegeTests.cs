@@ -119,6 +119,20 @@ public class CampaignSiegeTests
     [Theory]
     [InlineData(1, 2)]
     [InlineData(2, 1)]
+    public void 양측_공성전은_일반부대보다_공성병기를_먼저_처리한다(int attackerFaction, int defenderFaction)
+    {
+        var city = Town(9, defenderFaction, new(5, 0), 6000, CastleSize.Small);
+        var infantry = Army(1, attackerFaction, new(4, 0), city.Position);
+        var ram = Army(2, attackerFaction, new(4, 0), city.Position, code: "thunder_cart");
+
+        var exchange = Assert.Single(Siege().Resolve([infantry, ram], [city], []).Exchanges);
+
+        Assert.Equal([ram.Id, infantry.Id], exchange.Besiegers);
+    }
+
+    [Theory]
+    [InlineData(1, 2)]
+    [InlineData(2, 1)]
     public void 공성반격에_괴멸한_양측_부상병은_출발성으로_귀환한다(int attackerFaction, int defenderFaction)
     {
         var home = Town(1, attackerFaction, new HexCoord(0, 0), 1000);
