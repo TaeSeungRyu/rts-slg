@@ -104,7 +104,7 @@ public class CampaignSiegeTests
         var support = Army(1, 1, new(4, 0), city.Position) with
         { OriginCity = home, AiSiegeAssemblyTarget = city.Id };
         var siege = Army(2, 1, new(2, 0), city.Position, code: "thunder_cart") with
-        { OriginCity = home };
+        { OriginCity = new CityId(3) };
 
         var waiting = Siege().Resolve([support, siege], [city], []);
         Assert.Empty(waiting.Exchanges);
@@ -114,6 +114,9 @@ public class CampaignSiegeTests
         { Field = siege.Field with { Position = new HexCoord(4, 0) } }], [city], []);
         Assert.Equal(2, Assert.Single(ready.Exchanges).Besiegers.Count);
         Assert.True(Assert.Single(ready.Cities).Wall < city.Wall);
+
+        var siegeDestroyed = Siege().Resolve([support], [city], []);
+        Assert.Single(Assert.Single(siegeDestroyed.Exchanges).Besiegers);
     }
 
     [Theory]

@@ -95,11 +95,16 @@ public sealed class CampaignSiege
                 .OrderBy(u => u.Class == TroopClass.Siege || u.IsArmyGroup ? 0 : 1)
                 .ThenBy(u => u.Field.CommandOrder).ThenBy(u => u.Id.Value)
                 .ToList();
-            var readySiegeOrigins = besiegers
+            var readySiegeFactions = besiegers
                 .Where(u => u.Class == TroopClass.Siege || u.IsArmyGroup)
-                .Select(u => (u.Field.Owner, u.OriginCity)).ToHashSet();
+                .Select(u => u.Field.Owner).ToHashSet();
+            var approachingSiegeFactions = armies
+                .Where(u => u.Pool.Active > 0 && (u.Class == TroopClass.Siege || u.IsArmyGroup)
+                    && u.Field.Target == city.Position && areHostile(u.Field.Owner, city.Owner))
+                .Select(u => u.Field.Owner).ToHashSet();
             besiegers = besiegers.Where(u => u.AiSiegeAssemblyTarget != city.Id
-                || readySiegeOrigins.Contains((u.Field.Owner, u.OriginCity))).ToList();
+                || readySiegeFactions.Contains(u.Field.Owner)
+                || !approachingSiegeFactions.Contains(u.Field.Owner)).ToList();
             if (besiegers.Count == 0)
             {
                 continue;
