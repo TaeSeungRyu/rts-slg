@@ -52,7 +52,8 @@ public sealed record CombatUnit(
     long ProvisionsConsumptionRemainder = 0,
     int RelicAttackPercent = 100,
     int RelicDefensePercent = 100,
-    CityId? AiSiegeAssemblyTarget = null)
+    CityId? AiSiegeAssemblyTarget = null,
+    int AiPressureUntilDay = 0)
 {
     public UnitId Id => Field.Id;
 

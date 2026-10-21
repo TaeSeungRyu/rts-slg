@@ -87,6 +87,40 @@ public class AiOffensePlannerTests
         });
     }
 
+    [Fact]
+    public void 비등한_병력에_원거리_공성병기가_있으면_짧은_압박공세를_시도한다()
+    {
+        var state = Scenario(50_000, 30_000, siege: 20_000, distance: 5);
+        state = state with { Cities = state.Cities.Select(city => city.Id == new CityId(2)
+            ? city with { Wall = 0 } : city).ToList() };
+        Assert.False(AiOffensiveCandidateService.Evaluate(state, state.Cities[0],
+            state.Cities[1]).PassesForceGate);
+
+        var after = Planner().Plan(state, new FactionId(1));
+
+        Assert.Contains(after.Armies, unit => unit.AiPressureUntilDay > state.Day);
+        Assert.Equal(state.Day, after.Cities[0].AiLastPressureDay);
+        Assert.All(after.Armies.Where(unit => unit.AiPressureUntilDay > state.Day
+            && unit.Class != TroopClass.Siege), escort =>
+        {
+            Assert.Equal(UnitMode.March, escort.Field.Mode);
+            Assert.NotEqual(state.Cities[1].Position, escort.Field.Target);
+        });
+        var cooling = state with { Cities = state.Cities.Select(city => city.Id == new CityId(1)
+            ? city with { AiLastPressureDay = state.Day } : city).ToList() };
+        Assert.Empty(Planner().Plan(cooling, new FactionId(1)).Armies);
+    }
+
+    [Fact]
+    public void 전력_게이트는_통과해도_전면_공성승산이_없다면_압박공세를_검토한다()
+    {
+        var state = Scenario(90_000, 50_000, siege: 10_000, distance: 12);
+
+        var after = Planner().Plan(state, new FactionId(1));
+
+        Assert.Contains(after.Armies, unit => unit.AiPressureUntilDay > state.Day);
+    }
+
     [Theory]
     [MemberData(nameof(ForceMatrixCases))]
     public void 병력_거리_행렬에서_단독출전과_방어예비_침범이_없다(int own, int enemy,
@@ -97,10 +131,14 @@ public class AiOffensePlannerTests
         var after = PlannerWithMap(map).Plan(state, new FactionId(1));
         var combat = after.Armies.Where(u => !u.IsSupply).ToList();
         var available = own - Math.Max(10_000, (int)Math.Ceiling(own * .30));
-        if (available < Math.Ceiling(enemy * 1.2)) Assert.Empty(combat);
+        if (available < Math.Ceiling(enemy * .7)) Assert.Empty(combat);
         if (combat.Count == 0) return;
         Assert.True(combat.Count >= 2);
-        Assert.Contains(after.Armies, u => u.IsSupply);
+        if (combat.All(unit => unit.AiPressureUntilDay == 0))
+            Assert.Contains(after.Armies, u => u.IsSupply);
+        else
+            Assert.Contains(combat, unit => unit.Class == TroopClass.Siege
+                && unit.Field.RangeCastle >= 2);
         Assert.True(after.Garrisons.Where(g => g.City == new CityId(1)).Sum(g => g.Troops)
             >= own - available);
 

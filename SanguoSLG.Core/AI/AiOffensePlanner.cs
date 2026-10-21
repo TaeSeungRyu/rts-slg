@@ -45,8 +45,14 @@ public sealed class AiOffensePlanner
                     .Where(id => !state.IsGeneralBusy(id))
                     .Select(id => state.Generals.First(g => g.Id == id))
                     .OrderBy(g => g.Id.Value).ToList();
-                if (AiOffensiveCandidateService.Evaluate(state, origin, target).PassesForceGate
-                    && officers.Count > _config.KeepGeneralsHome + 1)
+                var force = AiOffensiveCandidateService.Evaluate(state, origin, target);
+                var canPressure = state.Day - origin.AiLastPressureDay >= 30
+                    && AiOffensiveCandidateService.Evaluate(state, origin, target,
+                        requiredRatioPercent: 70).PassesForceGate
+                    && state.Garrisons.Any(g => g.City == origin.Id && !g.Trainee
+                        && g.Troops >= 1000 && _deployer.Troops.TryGetValue(g.TroopCode, out var troop)
+                        && troop.Class == TroopClass.Siege && troop.RangeCastle >= 2);
+                if (force.PassesForceGate && officers.Count > _config.KeepGeneralsHome + 1)
                 {
                     var preferred = AiOffensePatternService.Choose(state, origin, target,
                         _deployer.Troops, officers.Count);
@@ -66,6 +72,14 @@ public sealed class AiOffensePlanner
                         state = planned;
                         break;
                     }
+                }
+                if (canPressure && officers.Count > _config.KeepGeneralsHome + 1
+                    && !state.Armies.Any(unit => unit.Field.Owner == faction
+                        && unit.OriginCity == origin.Id && unit.Field.Target == target.Position
+                        && !unit.IsSupply))
+                {
+                    state = TryBundle(state, origin, target, officers,
+                        AiOffensePattern.RegularSiege, pressure: true) ?? state;
                 }
                 if (!state.Armies.Any(u => u.Field.Owner == faction && u.OriginCity == origin.Id
                     && u.Field.Target == target.Position && !u.IsSupply))
@@ -92,7 +106,7 @@ public sealed class AiOffensePlanner
     }
 
     private GameState? TryBundle(GameState original, City origin, City target,
-        IReadOnlyList<General> officers, AiOffensePattern pattern)
+        IReadOnlyList<General> officers, AiOffensePattern pattern, bool pressure = false)
     {
         var route = RouteFor(original, origin, target);
         if (route is null) return null;
@@ -168,7 +182,8 @@ public sealed class AiOffensePlanner
         }
         else
         {
-            var siege = garrisons.Where(g => _deployer.Troops[g.TroopCode].Class == TroopClass.Siege)
+            var siege = garrisons.Where(g => _deployer.Troops[g.TroopCode].Class == TroopClass.Siege
+                    && (!pressure || _deployer.Troops[g.TroopCode].RangeCastle >= 2))
                 .OrderByDescending(g => _deployer.Troops[g.TroopCode].AtkBuilding)
                 .ThenBy(g => g.TroopCode, StringComparer.Ordinal).FirstOrDefault();
             if (siege is null || !DeployLine(siege)) return null;
@@ -193,8 +208,10 @@ public sealed class AiOffensePlanner
         }
         if (combatIds.Count < 2) return null;
 
-        var supplyRequired = pattern != AiOffensePattern.CavalrySiege
-            || origin.Position.Distance(target.Position) >= 15;
+        var supplyRequired = pressure
+            ? origin.Position.Distance(target.Position) >= 15
+            : pattern != AiOffensePattern.CavalrySiege
+                || origin.Position.Distance(target.Position) >= 15;
         if (supplyRequired)
         {
             var reusable = ReusableSupply(original, origin, target);
@@ -222,9 +239,31 @@ public sealed class AiOffensePlanner
             }
         }
         if (used > available || !PassesProvisionBudget(scratch, target, combatIds)
-            || !PassesSiegeTrial(original, scratch, target, combatIds))
+            || !PassesSiegeTrial(original, scratch, target, combatIds, pressure))
             return null;
         scratch = ScheduleSiegeAssembly(scratch, target, combatIds);
+        if (pressure)
+        {
+            var escortPost = SiegePosition(scratch, target, combatIds, 2);
+            var travelDays = scratch.Armies.Where(unit => combatIds.Contains(unit.Id))
+                .Select(unit => (Math.Max(0, route.Distance - unit.Field.RangeCastle)
+                    + Math.Max(1, unit.Field.Speed) - 1) / Math.Max(1, unit.Field.Speed))
+                .DefaultIfEmpty(0).Max();
+            scratch = scratch with
+            {
+                FieldArmies = scratch.Armies.Select(unit => combatIds.Contains(unit.Id)
+                    ? unit with
+                    {
+                        AiPressureUntilDay = original.Day + travelDays + 7,
+                        AiOpeningAttack = unit.Class == TroopClass.Siege && unit.AiOpeningAttack,
+                        Field = unit.Class == TroopClass.Siege ? unit.Field
+                            : unit.Field with { Mode = UnitMode.March, Target = escortPost,
+                                ContinuousTarget = null },
+                    } : unit).ToList(),
+                Cities = scratch.Cities.Select(city => city.Id == origin.Id
+                    ? city with { AiLastPressureDay = original.Day } : city).ToList(),
+            };
+        }
         return AttachDeclaration(original, scratch, target);
     }
 
@@ -480,36 +519,49 @@ public sealed class AiOffensePlanner
     }
 
     private bool PassesSiegeTrial(GameState original, GameState staged, City target,
-        IReadOnlyList<UnitId> combatIds)
+        IReadOnlyList<UnitId> combatIds, bool pressure = false)
     {
-        var footprint = CastleFootprint.TilesFor(target).ToList();
-        HexCoord SiegePosition(int range) => footprint
-            .SelectMany(tile => tile.Neighbors().SelectMany(neighbor => neighbor.Neighbors()))
-            .Distinct().Where(tile => footprint.Min(cityTile => cityTile.Distance(tile)) == range)
-            .OrderBy(tile => tile.Distance(staged.Cities.First(c => c.Id == staged.Armies
-                .First(u => combatIds.Contains(u.Id)).OriginCity).Position))
-            .ThenBy(tile => tile.Q).ThenBy(tile => tile.R).First();
-        var near = SiegePosition(1);
-        var far = SiegePosition(2);
+        var near = SiegePosition(staged, target, combatIds, 1);
+        var far = SiegePosition(staged, target, combatIds, 2);
         var attackers = staged.Armies.Where(u => combatIds.Contains(u.Id))
             .Select(u => u with { AwaitingEgress = false,
-                Field = u.Field with { Position = u.Field.RangeCastle >= 2 ? far : near,
+                Field = u.Field with { Position = pressure || u.Field.RangeCastle >= 2 ? far : near,
                     Mode = UnitMode.Attack } }).ToList();
         var siege = new CampaignSiege(new BattleResolver(60), _deployer.Troops.Values.ToList());
         var cities = new List<City> { target };
         var garrisons = original.Garrisons.Where(g => g.City == target.Id).ToList();
         var initial = attackers.Sum(u => u.Pool.Active);
-        for (var day = 0; day < 30; day++)
+        var initialSiege = attackers.Where(u => u.Class == TroopClass.Siege)
+            .Sum(u => u.Pool.Active);
+        var initialWall = target.Wall;
+        var initialDefenders = garrisons.Sum(g => g.Troops);
+        for (var day = 0; day < (pressure ? 7 : 30); day++)
         {
             var outcome = siege.Resolve(attackers, cities, garrisons);
             attackers = outcome.Armies.Where(u => u.Pool.Active > 0).ToList();
             cities = outcome.Cities.ToList();
             garrisons = outcome.Garrisons.ToList();
-            if (attackers.Count == 0 || attackers.Sum(u => u.Pool.Active) < initial / 2)
+            if (attackers.Count == 0 || attackers.Sum(u => u.Pool.Active) < initial * (pressure ? 7 : 5) / 10)
                 return false;
             if (cities[0].Wall <= 0 && garrisons.Sum(g => g.Troops) <= 0)
                 return true;
         }
-        return false;
+        return pressure && attackers.Where(u => u.Class == TroopClass.Siege)
+            .Sum(u => u.Pool.Active) >= initialSiege / 2
+            && (cities[0].Wall < initialWall
+            || garrisons.Sum(g => g.Troops) < initialDefenders);
+    }
+
+    private static HexCoord SiegePosition(GameState staged, City target,
+        IReadOnlyList<UnitId> combatIds, int range)
+    {
+        var footprint = CastleFootprint.TilesFor(target).ToList();
+        var originId = staged.Armies.First(u => combatIds.Contains(u.Id)).OriginCity;
+        var origin = staged.Cities.First(c => c.Id == originId);
+        return footprint.SelectMany(tile => tile.Neighbors()
+                .SelectMany(neighbor => neighbor.Neighbors()))
+            .Distinct().Where(tile => footprint.Min(cityTile => cityTile.Distance(tile)) == range)
+            .OrderBy(tile => tile.Distance(origin.Position))
+            .ThenBy(tile => tile.Q).ThenBy(tile => tile.R).First();
     }
 }

@@ -40,6 +40,7 @@ public sealed class FactionAI
                         ? UnitMode.Attack : UnitMode.Advance,
                         AssignedUnitTarget = null, PursuitTarget = null } }
                 : unit).ToList() };
+        state = WithdrawPressure(state, faction);
         state = RecoverIdleExpeditions(state, faction);
         state = Retarget(state, faction);
         state = TargetUnlockRuins(state, faction);
@@ -212,7 +213,8 @@ public sealed class FactionAI
                 && state.Generals.Any(g => g.Id == general)
                 && (state.Assignments.Count == 0 || state.PostingOf(general) is { } posting
                     && posting.Location == city.Id && posting.Faction == faction);
-            if (!HasOfficer(city.SecurityOfficer)) security = Math.Min(100, security + tier);
+            if (!HasOfficer(city.SecurityOfficer) || security < 70)
+                security = Math.Min(100, security + tier + 3);
             if (!HasOfficer(city.DomesticOfficer))
             {
                 gold += PortAdministration.Scale(city, (50 + politics) * tier / 2);
@@ -757,12 +759,33 @@ public sealed class FactionAI
         return state with { FieldArmies = armies };
     }
 
+    private static GameState WithdrawPressure(GameState state, FactionId faction)
+    {
+        return state with { FieldArmies = state.Armies.Select(unit =>
+        {
+            if (unit.Field.Owner != faction || unit.AiPressureUntilDay <= 0
+                || state.Day < unit.AiPressureUntilDay || unit.IsWaitingDeployment)
+                return unit;
+            var home = state.Cities.Where(city => city.Owner == faction)
+                .OrderBy(city => city.Id == unit.OriginCity ? 0 : 1)
+                .ThenBy(city => city.Position.Distance(unit.Field.Position))
+                .ThenBy(city => city.Id.Value).FirstOrDefault();
+            if (home is null) return unit with { AiPressureUntilDay = 0 };
+            return unit with { AiPressureUntilDay = 0, AiSiegeAssemblyTarget = null,
+                Field = unit.Field with { Mode = UnitMode.March, Target = home.Position,
+                    ReturnCity = home.Id, ContinuousTarget = null, Waypoints = null,
+                    ContinuousWaypoints = null, AssignedUnitTarget = null,
+                    PursuitTarget = null } };
+        }).ToList() };
+    }
+
     private static GameState RecoverIdleExpeditions(GameState state, FactionId faction)
     {
         var armies = state.Armies.Select(unit =>
         {
             if (unit.Field.Owner != faction || unit.Field.Mode != UnitMode.Standby
                 || unit.OriginCity is null || unit.IsWaitingDeployment
+                || unit.AiPressureUntilDay > state.Day
                 || unit.IsSupply && unit.Field.FollowUnitId is not null
                 || unit.IsTransport || unit.IsSummon || unit.IsConstructing
                 || state.Buildings.Any(building => building.GarrisonUnit == unit.Id))

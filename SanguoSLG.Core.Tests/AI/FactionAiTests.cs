@@ -14,6 +14,25 @@ using Xunit;
 public class FactionAiTests
 {
     [Fact]
+    public void AI_압박공세는_기한이_끝나면_더_머무르지_않고_귀환한다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0));
+        var field = new FieldUnit(new UnitId(41), city.Owner, new HexCoord(3, 0),
+            1, 1, 2, MovementDomain.Land, UnitMode.Attack, new HexCoord(7, 0), 41);
+        var unit = new CombatUnit(field, new CombatStats(1000, 10, 10),
+            new TroopPool(1000, 0), UnitCombatState.Create(60), OriginCity: city.Id,
+            AiPressureUntilDay: 14);
+        var state = new GameState(14, 190, [], [city], [], FieldArmies: [unit]);
+
+        var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(state, city.Owner);
+
+        var returning = Assert.Single(after.Armies);
+        Assert.Equal(UnitMode.March, returning.Field.Mode);
+        Assert.Equal(city.Id, returning.Field.ReturnCity);
+        Assert.Equal(0, returning.AiPressureUntilDay);
+    }
+
+    [Fact]
     public void 담당자가_모자란_AI_도시도_최고_무력에_따라_유료_모병하고_같은날_중복하지_않는다()
     {
         var city = Town(1, 1, new HexCoord(0, 0)) with { Gold = 2000, Wall = 0 };
