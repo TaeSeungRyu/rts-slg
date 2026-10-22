@@ -1,6 +1,8 @@
 using System.Linq;
 using Godot;
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Simulation.RenewalMovement;
 using SanguoSLG.Core.Spatial;
 
 namespace SanguoSLG.Game;
@@ -10,6 +12,31 @@ public sealed partial class CampaignMapScene
     private static AiTestCase _selectedAiTestCase = ReadRequestedAiTestCase();
     private static bool _aiTestCaseSwitchInProgress;
     private OptionButton? _aiTestCaseSelector;
+
+    private void SeedAiTestConstructionBuilders()
+    {
+        foreach (var (cityId, officerId, position) in new[]
+        {
+            (new CityId(201), new GeneralId(20), new HexCoord(6, 3)),
+            (new CityId(301), new GeneralId(30), new HexCoord(10, 2)),
+        })
+        {
+            var result = _deployer.Deploy(_state, new DeployRequest(cityId, "swordsman",
+                2_000, officerId, Mode: UnitMode.Standby, Gold: 300));
+            if (!result.Ok)
+                throw new System.InvalidOperationException($"AI 건축 검수 부대 출전 실패: {result.Error}");
+            var id = result.State.Armies.Max(unit => unit.Id.Value);
+            _state = result.State with { FieldArmies = result.State.Armies.Select(unit =>
+                unit.Id.Value == id ? unit with
+                {
+                    Field = unit.Field with { Position = position },
+                    RenewalPosition = RenewalHexSpace.Center(position),
+                    DeploymentDelayDays = 0,
+                    AwaitingEgress = false,
+                    EgressExit = null,
+                } : unit).ToList() };
+        }
+    }
 
     private static AiTestCase ReadRequestedAiTestCase()
     {
@@ -90,7 +117,7 @@ public sealed partial class CampaignMapScene
         var passed = _aiTestFixture is not null
             && _selectedAiTestCase == AiTestCase.PlayerHalf
             && _aiTestCaseSelector?.Selected == (int)AiTestCase.PlayerHalf
-            && _state.Garrisons.SequenceEqual(_aiTestFixture.GarrisonsFor(AiTestCase.PlayerHalf, Player))
+            && _state.Garrisons.SequenceEqual(AiTestGarrisonsAfterBuilders(AiTestCase.PlayerHalf))
             && _state.Day == 1;
         GD.Print($"[aitestcaseswitchqa] passed={passed} case={_selectedAiTestCase} day={_state.Day}");
         GetTree().Quit(passed ? 0 : 1);
@@ -112,7 +139,9 @@ public sealed partial class CampaignMapScene
             && _state.Cities.Any(city => city.Id == garrison.City && city.Owner == faction.Id)));
         var generalsValid = _state.Assignments.All(p =>
             _state.Generals.Any(g => g.Id == p.General)
-            && _state.Cities.Any(c => c.Id == p.Location && c.Owner == p.Faction));
+            && (_state.Cities.Any(c => c.Id == p.Location && c.Owner == p.Faction)
+                || p.Location is null && _state.Armies.Any(unit => unit.Field.Owner == p.Faction
+                    && (unit.VanguardId == p.General || unit.AdjutantId == p.General))));
         var casesValid = _aiTestCaseSelector?.ItemCount == 3;
         if (_aiTestFixture is not null)
         {
@@ -120,7 +149,7 @@ public sealed partial class CampaignMapScene
             var playerHalf = _aiTestFixture.GarrisonsFor(AiTestCase.PlayerHalf, Player);
             var enemiesHalf = _aiTestFixture.GarrisonsFor(AiTestCase.EnemiesHalf, Player);
             casesValid &= _state.Garrisons.SequenceEqual(
-                _aiTestFixture.GarrisonsFor(_selectedAiTestCase, Player));
+                AiTestGarrisonsAfterBuilders(_selectedAiTestCase));
             casesValid &= original.Count == playerHalf.Count && original.Count == enemiesHalf.Count;
             for (var index = 0; index < original.Count; index++)
             {
@@ -132,6 +161,8 @@ public sealed partial class CampaignMapScene
         var aiActs = false;
         var aiCombatDeploys = 0;
         var aiSupplyDeploys = 0;
+        var constructionValid = false;
+        var constructionCycleValid = false;
         if (mapReady && threeFactions && generalsValid)
         {
             var planned = _state;
@@ -141,6 +172,17 @@ public sealed partial class CampaignMapScene
                 || planned.Commands.Count > _state.Commands.Count;
             aiCombatDeploys = planned.Armies.Count(u => u.Field.Owner != Player && !u.IsSupply);
             aiSupplyDeploys = planned.Armies.Count(u => u.Field.Owner != Player && u.IsSupply);
+            constructionValid = planned.Buildings.Any(building => building.Owner != Player
+                && planned.Armies.Any(unit => unit.Id == building.BuilderUnit && unit.IsConstructing));
+            if (constructionValid)
+            {
+                var advanced = _engine.AdvanceWeek(planned, out _);
+                constructionCycleValid = advanced.Day == planned.Day + 7
+                    && advanced.Buildings.Any(building => building.Owner != Player
+                        && building.IsCompleted(advanced.Day))
+                    && advanced.Buildings.All(building => advanced.Armies.Any(unit =>
+                        unit.Id == building.BuilderUnit) || building.IsCompleted(advanced.Day));
+            }
         }
         var fullVision = _aiTestFixture is not null && _visibleTiles.SetEquals(_map.Tiles());
         var fullIntel = _aiTestFixture is not null && _state.Factions.All(faction =>
@@ -153,13 +195,20 @@ public sealed partial class CampaignMapScene
         var offenseValid = _selectedAiTestCase != AiTestCase.PlayerHalf
             || aiCombatDeploys >= 2 && aiSupplyDeploys >= 1;
         var passed = mapReady && threeFactions && ramsPresent && generalsValid && casesValid && aiActs
-            && fullVision && fullIntel && factionColors && offenseValid;
+            && fullVision && fullIntel && factionColors && offenseValid
+            && constructionValid && constructionCycleValid;
         GD.Print($"[aitestfixtureqa] passed={passed} map={_map.Count}/{baselineMap.Count} "
             + $"factions={_state.Factions.Count} cities={_state.Cities.Count} "
             + $"ports={_state.Cities.Count(c => c.IsPort)} ramsPresent={ramsPresent} generalsValid={generalsValid} "
             + $"case={_selectedAiTestCase} casesValid={casesValid} aiActs={aiActs} "
             + $"combat={aiCombatDeploys} supply={aiSupplyDeploys} offenseValid={offenseValid} "
+            + $"constructionValid={constructionValid} constructionCycle={constructionCycleValid} "
             + $"fullVision={fullVision} fullIntel={fullIntel} factionColors={factionColors}");
         GetTree().Quit(passed ? 0 : 1);
     }
+
+    private IReadOnlyList<GarrisonForce> AiTestGarrisonsAfterBuilders(AiTestCase testCase)
+        => _aiTestFixture!.GarrisonsFor(testCase, Player).Select(line =>
+            line.TroopCode == "swordsman" && line.City.Value is 201 or 301
+                ? line with { Troops = line.Troops - 2_000 } : line).ToList();
 }

@@ -662,6 +662,7 @@ public sealed partial class CampaignMapScene : Node3D
             RuinStates = (_aiTestFixture is null ? scenario.RuinList : [])
                 .Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
         };
+        if (_aiTestFixture is not null) SeedAiTestConstructionBuilders();
         if (args.Contains("--maptest") && _aiTestFixture is null)
         {
             SeedFieldBuildingSamples();
