@@ -163,6 +163,7 @@ public sealed partial class CampaignMapScene
         var aiSupplyDeploys = 0;
         var constructionValid = false;
         var constructionCycleValid = false;
+        var constructionLongRunValid = false;
         if (mapReady && threeFactions && generalsValid)
         {
             var planned = _state;
@@ -182,6 +183,21 @@ public sealed partial class CampaignMapScene
                         && building.IsCompleted(advanced.Day))
                     && advanced.Buildings.All(building => advanced.Armies.Any(unit =>
                         unit.Id == building.BuilderUnit) || building.IsCompleted(advanced.Day));
+                constructionLongRunValid = constructionCycleValid;
+                for (var week = 0; week < 16 && constructionLongRunValid; week++)
+                {
+                    foreach (var faction in advanced.Factions.Where(faction => faction.Id != Player))
+                        advanced = _ai.PlanWeek(advanced, faction.Id);
+                    constructionLongRunValid = advanced.Buildings
+                        .Where(building => building.Owner != Player && !building.IsCompleted(advanced.Day))
+                        .GroupBy(building => building.Owner).All(group => group.Count() <= 2)
+                        && advanced.Buildings.Select(building => building.Position).Distinct().Count()
+                            == advanced.Buildings.Count
+                        && advanced.Armies.All(unit => unit.CarryingGold >= 0 && unit.Provisions >= -1);
+                    if (constructionLongRunValid)
+                        advanced = _engine.AdvanceWeek(advanced, out _);
+                }
+                constructionLongRunValid &= advanced.Day == planned.Day + 119;
             }
         }
         var fullVision = _aiTestFixture is not null && _visibleTiles.SetEquals(_map.Tiles());
@@ -196,13 +212,14 @@ public sealed partial class CampaignMapScene
             || aiCombatDeploys >= 2 && aiSupplyDeploys >= 1;
         var passed = mapReady && threeFactions && ramsPresent && generalsValid && casesValid && aiActs
             && fullVision && fullIntel && factionColors && offenseValid
-            && constructionValid && constructionCycleValid;
+            && constructionValid && constructionCycleValid && constructionLongRunValid;
         GD.Print($"[aitestfixtureqa] passed={passed} map={_map.Count}/{baselineMap.Count} "
             + $"factions={_state.Factions.Count} cities={_state.Cities.Count} "
             + $"ports={_state.Cities.Count(c => c.IsPort)} ramsPresent={ramsPresent} generalsValid={generalsValid} "
             + $"case={_selectedAiTestCase} casesValid={casesValid} aiActs={aiActs} "
             + $"combat={aiCombatDeploys} supply={aiSupplyDeploys} offenseValid={offenseValid} "
             + $"constructionValid={constructionValid} constructionCycle={constructionCycleValid} "
+            + $"construction119Day={constructionLongRunValid} "
             + $"fullVision={fullVision} fullIntel={fullIntel} factionColors={factionColors}");
         GetTree().Quit(passed ? 0 : 1);
     }
