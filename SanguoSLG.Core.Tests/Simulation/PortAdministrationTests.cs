@@ -56,7 +56,7 @@ public sealed class PortAdministrationTests
         Assert.Contains(engine.LastEvents, e => e.Kind == WorldEventKind.Recruit
             && e.Faction == port.Owner && e.Amount == recruit);
         Assert.Equal(40 + 4 * percent / 100, after.Garrisons.Single(g => g.TroopCode == "archer").TrainingLevel);
-        var expectedSecurity = 80 + 3 * percent / 100 + (-3 * percent / 100);
+        var expectedSecurity = 80 + System.Math.Max(1, 5 * percent / 100) + (-3 * percent / 100);
         Assert.Equal(expectedSecurity, result.Security);
     }
 

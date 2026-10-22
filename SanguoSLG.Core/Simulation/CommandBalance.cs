@@ -172,6 +172,7 @@ public sealed record CommandBalance
     public int AutoDomesticProvisionsPoliticsMultiplier { get; init; } = 5;
     public int AutoRecruitTroopsBase { get; init; } = 0;
     public int AutoRecruitTroopsMightMultiplier { get; init; } = 5;
+    public int AutoRecruitGoldCostMultiplierPercent { get; init; } = 100;
     public int AutoRecruitTroopTrainingLevel { get; init; } = 50;
     public int LowSecurityPenaltyThreshold1 { get; init; } = 70;
     public int LowSecurityPenaltyPercent1 { get; init; } = 80;
@@ -209,7 +210,8 @@ public sealed record CommandBalance
     public int AutoRecruitGoldCost(string troopCode, int troops)
     {
         var costPer100 = AutoRecruitGoldCostPer100(troopCode);
-        return costPer100 <= 0 || troops <= 0 ? 0 : (troops * costPer100 + 99) / 100;
+        return costPer100 <= 0 || troops <= 0 ? 0
+            : (troops * costPer100 * AutoRecruitGoldCostMultiplierPercent + 9999) / 10000;
     }
 
     public static int AutoRecruitRate(int value) => System.Math.Clamp(value, 1, 3);

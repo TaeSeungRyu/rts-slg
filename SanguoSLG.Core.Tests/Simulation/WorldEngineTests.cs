@@ -36,7 +36,7 @@ public class WorldEngineTests
             new CommandBalance { AutoOfficerSystemEnabled = true }, ancientRelics: [definition])
             .AdvanceDays(state, 70);
 
-        Assert.Equal(91, after.Cities.Single().Security);
+        Assert.Equal(100, after.Cities.Single().Security);
         Assert.Equal(0, after.Cities.Single().RelicSecurityRemainder);
     }
 
@@ -461,7 +461,7 @@ public class WorldEngineTests
             AutoRecruitTroopCodes: "swordsman");
         var generals = new[]
         {
-            V2Officer(1, might: 85),      // 치안 +2
+            V2Officer(1, might: 85),      // 치안 +4
             V2Officer(2, politics: 80),   // 금 +260, 군량 +700
             V2Officer(3, might: 70),      // 훈련도 50 병력 +350/주
             V2Officer(4, might: 100),     // 훈련 +4
@@ -475,7 +475,7 @@ public class WorldEngineTests
         var resultCity = after.Cities.Single();
         var garrison = after.Garrisons.Single(g => g.City == city.Id && g.TroopCode == "swordsman");
 
-        Assert.Equal(46, resultCity.Security);
+        Assert.Equal(54, resultCity.Security);
         Assert.Equal(1144, resultCity.Gold);
         Assert.Equal(1420, resultCity.Provisions);
         Assert.Equal(1840, garrison.Troops);
@@ -498,7 +498,7 @@ public class WorldEngineTests
         var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
             .AdvanceDays(state, 30);
 
-        Assert.Equal(70, after.Cities.Single().Security);
+        Assert.Equal(78, after.Cities.Single().Security);
     }
 
     [Fact]
@@ -516,7 +516,7 @@ public class WorldEngineTests
         var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
             .AdvanceDays(state, 7);
 
-        Assert.Equal(79, after.Cities.Single().Security);
+        Assert.Equal(81, after.Cities.Single().Security);
     }
 
     [Fact]
@@ -534,7 +534,7 @@ public class WorldEngineTests
         var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
             .AdvanceDays(state, 30);
 
-        Assert.Equal(76, after.Cities.Single().Security);
+        Assert.Equal(84, after.Cities.Single().Security);
     }
 
     [Fact]
@@ -778,7 +778,7 @@ public class WorldEngineTests
         var after = new WorldEngine(V2OnlyBalance, new CommandBalance { AutoOfficerSystemEnabled = true })
             .AdvanceDays(state, 7);
 
-        Assert.Equal(70, after.Cities.Single().Security);
+        Assert.Equal(72, after.Cities.Single().Security);
         Assert.Equal(600, after.Garrisons.Single(g => g.TroopCode == "swordsman").Troops);
         Assert.Equal(49, after.Garrisons.Single(g => g.TroopCode == "archer").TrainingLevel);
         Assert.True(after.Cities.Single().Gold > 1000);
@@ -821,6 +821,25 @@ public class WorldEngineTests
         Assert.Equal(1500, after.Garrisons.Single().Troops);
         Assert.Equal(985, after.Cities.Single().Gold);
         Assert.Equal(92, after.Cities.Single().Security);
+    }
+
+    [Theory]
+    [InlineData(1, 1000, 13)]
+    [InlineData(2, 2000, 25)]
+    [InlineData(3, 3000, 38)]
+    public void 강화된_병력생산은_새_기본량에_비율을_적용한다(int rate, int expectedTroops, int expectedCost)
+    {
+        var city = new City(new CityId(1), "증산성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Security: 100, RecruitmentOfficer: new GeneralId(1),
+            AutoRecruitTroopCodes: "swordsman", AutoRecruitRate: rate);
+        var officer = V2Officer(1, might: 100);
+        var state = new GameState(1, 1, [], [city], [officer],
+            Postings: [new GeneralPosting(officer.Id, city.Owner, city.Id)]);
+        var balance = new CommandBalance { AutoOfficerSystemEnabled = true,
+            AutoRecruitTroopsMightMultiplier = 10, AutoRecruitGoldCostMultiplierPercent = 125 };
+        var after = new WorldEngine(V2OnlyBalance, balance).AdvanceDays(state, 7);
+        Assert.Equal(expectedTroops, after.Garrisons.Single().Troops);
+        Assert.Equal(1000 - expectedCost, after.Cities.Single().Gold);
     }
 
     [Fact]
@@ -902,7 +921,7 @@ public class WorldEngineTests
         for (var week = 1; week <= 9; week++)
         {
             state = engine.AdvanceDays(state, 7);
-            Assert.Equal(100 - week, state.Cities.Single().Security);
+            Assert.Equal(100, state.Cities.Single().Security);
             Assert.Equal(60 * week, state.Cities.Single().Gold);
             Assert.Equal(1000 + 175 * week, state.Cities.Single().Provisions);
             Assert.Equal(500 * week, state.Garrisons.Single(g => g.TroopCode == "swordsman").Troops);
