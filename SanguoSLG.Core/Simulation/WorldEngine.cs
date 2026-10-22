@@ -229,7 +229,7 @@ public sealed class WorldEngine
             var security = ValidOfficer(state, city, city.SecurityOfficer, byId);
             var recruiter = ValidOfficer(state, city, city.RecruitmentOfficer, byId);
             var delta = security is null ? _commands.AutoSecurityNoOfficerDelta
-                : PortAdministration.Scale(city, MightTier(security.Might));
+                : SecurityWeeklyGain(city, security.Might);
             _events.Add(new WorldEvent(WorldEventKind.SecurityFactor, city.Owner, security?.Id, city.Id,
                 Amount: delta, Code: security is null ? "vacancy" : "security"));
             if (recruiter is not null)
@@ -245,7 +245,7 @@ public sealed class WorldEngine
             delta += researchBonus;
             var relicPercent = AncientRelicEffects.Bonus(state, _ancientRelics,
                 security?.Id, city.Owner, "security_percent");
-            var positiveSecurity = System.Math.Max(0, security is null ? 0 : PortAdministration.Scale(city, MightTier(security.Might)));
+            var positiveSecurity = security is null ? 0 : SecurityWeeklyGain(city, security.Might);
             var relicHundredths = city.RelicSecurityRemainder + positiveSecurity * relicPercent;
             delta += relicHundredths / 100;
             if (researchBonus > 0)
@@ -480,6 +480,10 @@ public sealed class WorldEngine
         < 100 => 2,
         _ => 3,
     };
+
+    public static int SecurityWeeklyGain(City city, int might)
+        => System.Math.Max(1, PortAdministration.Scale(city,
+            System.Math.Clamp(might / 20, 1, 5)));
 
     private GameState AdvanceProductionOperations(GameState state)
     {

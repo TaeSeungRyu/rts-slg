@@ -8,6 +8,19 @@ namespace SanguoSLG.Core.Tests.Simulation;
 /// <summary>일 단위 세계 시계 + 월말 세금 틱(도시 금고) — design-administration "시간 축".</summary>
 public class WorldEngineTests
 {
+    [Theory]
+    [InlineData(1, 1)]
+    [InlineData(20, 1)]
+    [InlineData(40, 2)]
+    [InlineData(60, 3)]
+    [InlineData(80, 4)]
+    [InlineData(100, 5)]
+    public void 치안담당의_무력별_주간_회복량은_최소1_최대5다(int might, int expected)
+    {
+        var city = new City(new(1), "치안성", new HexCoord(0, 0), new(1), 1000);
+        Assert.Equal(expected, WorldEngine.SecurityWeeklyGain(city, might));
+    }
+
     [Fact]
     public void 치안_유물은_정수_절삭분을_누적해_5퍼센트만큼_올린다()
     {
