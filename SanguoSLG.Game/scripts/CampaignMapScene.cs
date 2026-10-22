@@ -13966,7 +13966,8 @@ public sealed partial class CampaignMapScene : Node3D
         var next = level + 1;
         var cost = CommandEfficiency.ResearchCost(next, _cb);
         var active = _state.Commands.Any(c => c.Kind == CommandKind.Research
-            && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == city.Owner);
+            && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == city.Owner
+            && FactionResearch.LaneOf(c.TroopCode) == ResearchLane.Combat);
         var gate = active ? "연구 진행중"
             : city.Gold < cost ? "금 부족"
             : $"비용 {cost}금";
@@ -15373,7 +15374,8 @@ public sealed partial class CampaignMapScene : Node3D
             var days = ResearchDurationRules.Days(troopCode, previewNextLevel, AdministrationGrowth.EffectiveIntellectRounded(caster),
                 _state.ResearchOf(cityData.Owner, FactionResearch.ResearchDurationCode), _cb);
             var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
-                && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
+                && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner
+                && FactionResearch.LaneOf(c.TroopCode) == ResearchLane.Combat);
             if (troopCode == FactionResearch.CommandTroopsCode)
             {
                 var level = _state.ResearchOf(cityData.Owner, troopCode);
@@ -15433,7 +15435,8 @@ public sealed partial class CampaignMapScene : Node3D
             var days = ResearchDurationRules.Days(FactionResearch.WallCode, next, AdministrationGrowth.EffectiveIntellectRounded(caster),
                 _state.ResearchOf(cityData.Owner, FactionResearch.ResearchDurationCode), _cb);
             var active = _state.Commands.FirstOrDefault(c => c.Kind == CommandKind.Research
-                && _state.Cities.FirstOrDefault(x => x.Id == c.City)?.Owner == cityData.Owner);
+                && c.City == cityData.Id
+                && FactionResearch.LaneOf(c.TroopCode) == ResearchLane.Wall);
             var currentMax = CastleWall.Max(cityData.Castle, _balance, level);
             var nextMax = CastleWall.Max(cityData.Castle, _balance, next);
             extra = $"\n{cityData.Name} 성벽강화"
