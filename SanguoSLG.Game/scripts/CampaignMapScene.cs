@@ -6824,10 +6824,11 @@ public sealed partial class CampaignMapScene : Node3D
             && _animUnitSnapshots[_animUnitSnapshotIdx].Time <= _animT)
         {
             _state = _state with { FieldArmies = _animUnitSnapshots[_animUnitSnapshotIdx].Units };
-            foreach (var bandit in _state.Armies.Where(u => u.Field.Owner == WorldEngine.BanditFaction))
-                if (_armyLabels.TryGetValue(bandit.Id.Value, out var label))
+            foreach (var special in _state.Armies.Where(u => u.Field.Owner == WorldEngine.BanditFaction
+                || u.Field.Owner == EventHuntService.EventFaction))
+                if (_armyLabels.TryGetValue(special.Id.Value, out var label))
                 {
-                    var text = ArmyTroopLabel(bandit);
+                    var text = ArmyTroopLabel(special);
                     if (label.Text != text) label.Text = text;
                 }
             _animUnitSnapshotIdx++;

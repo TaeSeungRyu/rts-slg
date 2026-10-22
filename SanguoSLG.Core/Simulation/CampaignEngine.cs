@@ -142,6 +142,10 @@ public sealed class CampaignEngine
             IReadOnlyList<CombatUnit> eventSpawns = [];
             if (_eventHunts is not null)
             {
+                work = _eventHunts.ExpireWildBeasts(work with
+                    { FieldArmies = armies.Concat(waitingArmies).Concat(egressArmies).ToList() }, simulationDay + 1);
+                var survivingIds = work.Armies.Select(unit => unit.Id).ToHashSet();
+                armies = armies.Where(unit => survivingIds.Contains(unit.Id)).ToList();
                 var beforeIds = armies.Select(unit => unit.Id).ToHashSet();
                 work = _eventHunts.SpawnDue(work with
                     { FieldArmies = armies.Concat(waitingArmies).Concat(egressArmies).ToList() }, simulationDay + 1, out var appeared);

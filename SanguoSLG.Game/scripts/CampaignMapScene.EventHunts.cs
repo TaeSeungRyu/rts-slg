@@ -255,7 +255,8 @@ public sealed partial class CampaignMapScene
     private string EventHuntStatus(EventEncounter encounter)
     {
         if (encounter.Unit is { } id && _state.Armies.FirstOrDefault(unit => unit.Id == id) is { } active)
-            return $"활동 중 · 위치 ({active.Field.Position.Q}, {active.Field.Position.R})";
+            return $"활동 중 · {WildBeastRemainingDays(id)}일 · 위치 ({active.Field.Position.Q}, {active.Field.Position.R})";
+        if (encounter.ExpiredDay is not null) return "출현 기간 종료";
         var remaining = encounter.ScheduledDay - _state.Day;
         if (remaining > 0) return $"출현까지 {remaining}일";
         if (_eventHunts.FindSpawnPosition(_state, encounter) is null) return "주변의 빈 육상 출현 장소 확보 대기";
@@ -654,7 +655,9 @@ public sealed partial class CampaignMapScene
             {
                 TroopCode = "phoenix",
                 Pool = new TroopPool(40000, 0),
-            }) == "봉황 · 체력 40,000";
+            }).StartsWith("봉황 · ", System.StringComparison.Ordinal)
+                && ArmyTroopLabel(tiger with { TroopCode = "phoenix", Pool = new TroopPool(40000, 0) })
+                    .Contains("일\n체력 40,000", System.StringComparison.Ordinal);
             var passed = allCitiesSpawned && appearedReport && visibleSpawn && combat && motions && modal && chosen && inventory
                 && phoenixAsset && beastCards && phoenixLabel
                 && restored.Treasures.Single().Code == "tiger_cub" && TroopName("great_tiger") == "대호"

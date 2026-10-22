@@ -233,7 +233,7 @@ public class EventHuntServiceTests
     }
 
     [Fact]
-    public void 대호는_약한육상부대를_추격하고_해상과_주둔부대는_무시한다()
+    public void 탐색_신수는_이동과_선제공격을_하지_않고_반격만_한다()
     {
         var spawned = Spawn();
         var tiger = Assert.Single(spawned.Armies);
@@ -244,13 +244,45 @@ public class EventHuntServiceTests
         var weak = Target(3, 5000);
         var naval = Target(4, 1) with { Field = Target(4, 1).Field with { Domain = MovementDomain.DeepWater } };
         var sheltered = Target(5, 1);
-        var state = spawned with { FieldArmies = [tiger, strong, weak, naval, sheltered],
+        var legacyTiger = tiger with { IsWildBeast = false,
+            Field = tiger.Field with { Mode = UnitMode.Attack, Target = weak.Field.Position } };
+        var state = spawned with { FieldArmies = [legacyTiger, strong, weak, naval, sheltered],
             FieldBuildings = [new(new(1), "fort", new(1), new(3, 0), 4000, 0, 0, GarrisonUnit: sheltered.Id)] };
         var planned = Service.PlanDaily(state).Armies.Single(u => u.Id == tiger.Id);
-        Assert.Equal(weak.Id, planned.Field.AssignedUnitTarget);
+        Assert.Equal(UnitMode.Standby, planned.Field.Mode);
+        Assert.Null(planned.Field.Target);
+        Assert.Null(planned.Field.AssignedUnitTarget);
+        Assert.True(planned.IsWildBeast);
+        Assert.False(planned.CanInitiateCombat);
+        Assert.True(planned.CanCounterCombat);
         var idle = Service.PlanDaily(spawned).Armies.Single();
         Assert.Equal(UnitMode.Standby, idle.Field.Mode);
         Assert.Null(idle.Field.Target);
+    }
+
+    [Fact]
+    public void 탐색_신수는_출현_150일째_보상없이_사라지고_재출현하지_않는다()
+    {
+        var spawned = Spawn();
+        var encounter = Assert.Single(spawned.Encounters);
+        var beast = Assert.Single(spawned.Armies);
+        Assert.Equal(8, encounter.AppearedDay);
+        Assert.Single(Service.ExpireWildBeasts(spawned, 157).Armies);
+        var expired = Service.ExpireWildBeasts(spawned, 158);
+        Assert.Empty(expired.Armies);
+        Assert.Equal(158, Assert.Single(expired.Encounters).ExpiredDay);
+        Assert.Empty(Service.SpawnDue(expired, 159, out _).Armies);
+        Assert.Equal(158, Assert.Single(SaveService.Deserialize(SaveService.Serialize(expired)).Encounters).ExpiredDay);
+        Assert.Empty(expired.Treasures);
+        Assert.True(beast.IsWildBeast);
+
+        var legacy = new AdvanceOrchestrator(new MovementSimulator(new PassabilityMap(Map, [], [])),
+            new CombatPhaseResolver(new BattleResolver(60), 70));
+        var campaign = new CampaignEngine(new RenewalCampaignAdvanceRunner(Map, legacy),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0)), eventHunts: Service);
+        var advanced = campaign.AdvanceWeek(spawned with { Day = 151 }, out _);
+        Assert.Empty(advanced.Armies);
+        Assert.Equal(158, Assert.Single(advanced.Encounters).ExpiredDay);
     }
 
     private static (GameState State, CombatUnit Tiger, CombatUnit Attacker) CombatFixture()
@@ -400,7 +432,8 @@ public class EventHuntServiceTests
         var attacker = tiger with { Field = tiger.Field with { Id = new(2), Owner = new(1),
             Position = new(1, 0), Speed = 0, Mode = UnitMode.Attack, Target = tiger.Field.Position,
             AssignedUnitTarget = tiger.Id }, RenewalPosition = RenewalHexSpace.Center(new(1, 0)),
-            Stats = new(10000, 100, 100), Pool = new(10000, 0), TroopCode = "swordsman", VanguardId = new(1) };
+            Stats = new(10000, 100, 100), Pool = new(10000, 0), TroopCode = "swordsman", VanguardId = new(1),
+            IsWildBeast = false };
         var hunted = engine.AdvanceWeek(appeared with { FieldArmies = [tiger, attacker],
             Generals = [new(new(1), "사냥장수", new Dictionary<TroopClass, AptitudeGrade>
                 { [TroopClass.Cavalry] = AptitudeGrade.D }, 70, 70, 70)] }, out var fights);

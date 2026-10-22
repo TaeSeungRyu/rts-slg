@@ -6,4 +6,6 @@ public sealed record EventEncounter(
     FactionId? RewardFaction = null, EventHuntContribution? Contributor = null,
     IReadOnlyList<EventHuntDamageContribution>? DamageContributions = null,
     bool RewardChoicePending = false,
-    bool RevivedOnce = false);
+    bool RevivedOnce = false,
+    int? AppearedDay = null,
+    int? ExpiredDay = null);

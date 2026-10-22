@@ -8,6 +8,7 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
     IReadOnlyList<EventTreasureDefinition>? treasureDefinitions = null)
 {
     public static readonly FactionId EventFaction = new(-19);
+    public const int WildBeastLifetimeDays = 150;
 
     public EventUnitDefinition? Definition(string code)
         => definitions.FirstOrDefault(definition => definition.Code == code);
@@ -99,6 +100,7 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
         events = [];
         var appeared = new List<WorldEvent>();
         foreach (var encounter in state.Encounters.Where(e => e.Unit is null && e.DefeatedDay is null
+                && e.ExpiredDay is null
                 && e.ScheduledDay <= day).OrderBy(e => e.ScheduledDay).ThenBy(e => e.Id, StringComparer.Ordinal))
         {
             var definition = Definition(encounter.Code);
@@ -114,14 +116,15 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
                 new CombatStats(definition.Troops, definition.Attack, definition.Defense, AptitudeGrade.A.Percent()),
                 new TroopPool(definition.Troops, 0), UnitCombatState.Create(0),
                 MaxTroops: definition.Troops, Class: TroopClass.Cavalry, TroopCode: definition.Code,
-                RenewalPosition: RenewalHexSpace.Center(position.Value));
+                RenewalPosition: RenewalHexSpace.Center(position.Value), IsWildBeast: true);
             appeared.Add(new(WorldEventKind.EventUnitAppeared, encounter.DiscoveringFaction,
                 City: encounter.DiscoveryCity, Amount: definition.Troops, Code: definition.Code,
                 ExtraAmount: id.Value));
             state = state with
             {
                 FieldArmies = state.Armies.Append(unit).ToList(),
-                EventEncounters = state.Encounters.Select(e => e.Id == encounter.Id ? e with { Unit = id } : e).ToList(),
+                EventEncounters = state.Encounters.Select(e => e.Id == encounter.Id
+                    ? e with { Unit = id, AppearedDay = day } : e).ToList(),
             };
         }
         events = appeared;
@@ -154,37 +157,31 @@ public sealed class EventHuntService(HexMap map, IReadOnlyList<EventUnitDefiniti
 
     public GameState PlanDaily(GameState state)
     {
-        var garrisons = state.Buildings.Where(building => building.GarrisonUnit is not null)
-            .Select(building => building.GarrisonUnit!.Value).ToHashSet();
         return state with { FieldArmies = state.Armies.Select(unit =>
         {
-            if (unit.Field.Owner != EventFaction || Definition(unit.TroopCode) is not { } definition) return unit;
-            var center = unit.RenewalPosition ?? RenewalHexSpace.Center(unit.Field.Position);
-            var target = state.Armies.Where(candidate => candidate.Field.Owner != EventFaction
-                    && candidate.Pool.Active > 0 && !candidate.IsWaitingDeployment
-                    && candidate.Field.Domain is MovementDomain.Land or MovementDomain.LandMountain
-                    && !garrisons.Contains(candidate.Id)
-                    && center.DistanceTo(candidate.RenewalPosition ?? RenewalHexSpace.Center(candidate.Field.Position))
-                        <= (long)definition.Detection * ContinuousPosition.UnitsPerTile)
-                .OrderBy(candidate => candidate.Pool.Active).ThenBy(candidate => candidate.Id.Value).FirstOrDefault();
-            var cityTarget = target is null && unit.TroopCode == "dragon"
-                ? state.Cities.Where(city => city.Owner != EventFaction && city.Wall > 0
-                        && center.DistanceTo(RenewalHexSpace.Center(city.Position))
-                            <= (long)definition.Detection * ContinuousPosition.UnitsPerTile)
-                    .OrderBy(city => center.DistanceTo(RenewalHexSpace.Center(city.Position)))
-                    .ThenBy(city => city.Id.Value).FirstOrDefault()
-                : null;
-            return unit with { Field = unit.Field with
+            if (unit.Field.Owner != EventFaction || Definition(unit.TroopCode) is null) return unit;
+            return unit with { IsWildBeast = true, Field = unit.Field with
             {
-                Mode = target is null && cityTarget is null ? UnitMode.Standby : UnitMode.Attack,
-                Target = target?.Field.Position ?? cityTarget?.Position,
-                ContinuousTarget = target is null
-                    ? cityTarget is null ? null : RenewalHexSpace.Center(cityTarget.Position)
-                    : target.RenewalPosition ?? RenewalHexSpace.Center(target.Field.Position),
-                AssignedUnitTarget = target?.Id, PursuitTarget = null, ReturnCity = null,
+                Mode = UnitMode.Standby, Target = null, ContinuousTarget = null,
+                AssignedUnitTarget = null, PursuitTarget = null, ReturnCity = null,
                 Waypoints = null, ContinuousWaypoints = null,
             } };
         }).ToList() };
+    }
+
+    public GameState ExpireWildBeasts(GameState state, int day)
+    {
+        var expired = state.Encounters.Where(encounter => encounter.Unit is not null
+                && encounter.DefeatedDay is null && encounter.ExpiredDay is null
+                && day >= (encounter.AppearedDay ?? encounter.ScheduledDay) + WildBeastLifetimeDays)
+            .Select(encounter => encounter.Unit!.Value).ToHashSet();
+        if (expired.Count == 0) return state;
+        return state with
+        {
+            FieldArmies = state.Armies.Where(unit => !expired.Contains(unit.Id)).ToList(),
+            EventEncounters = state.Encounters.Select(encounter => encounter.Unit is { } id
+                && expired.Contains(id) ? encounter with { ExpiredDay = day } : encounter).ToList(),
+        };
     }
 
     /// <summary>용의 주 공격이 적중하면 목표 주변 1칸의 다른 적에게 주 피해의 20%를 준다.</summary>
