@@ -10,6 +10,24 @@ using SanguoSLG.Game;
 public sealed class RenewalCampaignIntegrationTests
 {
     [Fact]
+    public void 대기중인_도적은_접근한_공격자를_선제공격하지_않고_피격시_반격한다()
+    {
+        var attacker = Army(1, new(0, 0), new(1, 0), 2) with
+        { Field = Army(1, new(0, 0), new(1, 0), 2).Field with { Mode = UnitMode.Advance } };
+        var bandit = Army(2, new(1, 0), new(1, 0), 0) with
+        {
+            Field = Army(2, new(1, 0), new(1, 0), 0).Field with
+                { Owner = new FactionId(0), Mode = UnitMode.Standby },
+            BanditWaitDays = 14,
+        };
+        Engine(new HexMap(-4, 8, -4, 8)).AdvanceWeek(World(attacker, bandit), out var turns);
+        Assert.Contains(turns[0].FieldCombatExchanges,
+            exchange => exchange.Attacker == attacker.Id && exchange.Target == bandit.Id);
+        Assert.Contains(turns[0].FieldCombatExchanges,
+            exchange => exchange.Attacker == bandit.Id && exchange.Target == attacker.Id);
+    }
+
+    [Fact]
     public void 교전후_근접한_기존_부대는_여러_진행일_사이에_위치가_튀지_않는다()
     {
         var first = Army(1, new(2, 3), new(2, 3), 0) with

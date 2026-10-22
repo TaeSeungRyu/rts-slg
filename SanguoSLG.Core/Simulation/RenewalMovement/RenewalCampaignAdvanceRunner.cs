@@ -296,7 +296,7 @@ public sealed class RenewalCampaignAdvanceRunner(
                 cancelledByBlocker.Add(unit.Id);
             blockerTargets.TryAdd(unit.Id, blocker.Id);
             // 통행을 막는 상대도 같은 교환에 대응한다. 원래 명령은 정산 후 복원한다.
-            if (blocker.CanInitiateCombat && constructionUnits?.Contains(blocker.Id) != true
+            if (blocker.CanCounterCombat && constructionUnits?.Contains(blocker.Id) != true
                 && !blocker.State.Statuses.Any(status => status.IsDaze && !status.IsExpired)
                 && !liveBuildings.Any(building => building.GarrisonUnit == blocker.Id))
                 blockerTargets.TryAdd(blocker.Id, unit.Id);

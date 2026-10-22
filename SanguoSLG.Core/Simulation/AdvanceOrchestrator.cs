@@ -288,7 +288,8 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
             .Where(e => e.Targets.Count > 0)
             .Where(e => !protectedGarrisons.Contains(e.Attacker)
                 && !constructionUnits.Contains(e.Attacker)
-                && state[e.Attacker].CanInitiateCombat
+                && (state[e.Attacker].CanInitiateCombat || state[e.Attacker].CanCounterCombat
+                    && state[e.Attacker].Field.Mode == UnitMode.Standby)
                 && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker])))
             .ToList();
         var combatChargeParticipants = chargeEngagements
@@ -322,7 +323,8 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
                 && !firedStratagems.ContainsKey(e.Attacker)
                 && (!firedActives.TryGetValue(e.Attacker, out var tactic)
                     || tactic.Code == "cleanse")
-                && state[e.Attacker].CanInitiateCombat
+                && (state[e.Attacker].CanInitiateCombat || state[e.Attacker].CanCounterCombat
+                    && state[e.Attacker].Field.Mode == UnitMode.Standby)
                 && !(dazedAtStart.Contains(e.Attacker) || IsDazed(state[e.Attacker])))
             .ToList();
         var fieldCombatExchanges = engagements.SelectMany(engagement => engagement.Targets
