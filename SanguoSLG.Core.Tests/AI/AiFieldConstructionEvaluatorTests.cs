@@ -50,6 +50,10 @@ public class AiFieldConstructionEvaluatorTests
             unit.Id == new UnitId(1) ? unit with { CargoGold = 0 } : unit).ToList() }));
         Assert.Empty(Evaluate(state with { Cities = state.Cities.Select(city =>
             city with { Security = 69 }).ToList() }));
+        Assert.Empty(Evaluate(state with { Cities = state.Cities.Select(city =>
+            city with { Wall = 299 }).ToList() }));
+        Assert.NotEmpty(Evaluate(state with { Cities = state.Cities.Select(city =>
+            city with { Wall = 300 }).ToList() }));
         var sites = new[] { 10, 11 }.Select(id => new FieldBuilding(new(id), "watchtower",
             new(1), new(id, 3), 750, 1, 14)).ToList();
         Assert.Empty(Evaluate(state with { FieldBuildings = sites }));

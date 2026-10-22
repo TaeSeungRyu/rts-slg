@@ -79,7 +79,7 @@ public sealed class FactionAI
             _fieldBuildingDefinitions).VisibleTiles(state, faction, _map);
         var service = new FieldConstructionService(_fieldBuildingDefinitions, _map.TerrainAt);
         foreach (var candidate in AiFieldConstructionEvaluator.Evaluate(state, faction, _map,
-            _fieldBuildingDefinitions, visible))
+            _fieldBuildingDefinitions, visible, _economy))
         {
             var result = service.Start(state, faction, new FieldConstructionRequest(
                 candidate.Unit, candidate.DefinitionCode, candidate.Position));
@@ -127,7 +127,8 @@ public sealed class FactionAI
             || state.Buildings.Any(building => building.Owner == faction
                 && !building.IsCompleted(state.Day))) return state;
         foreach (var city in state.Cities.Where(city => city.Owner == faction && !city.IsPort
-            && city.Security >= 70 && city.Wall > 0
+            && city.Security >= 70
+            && city.Wall * 2 >= CastleWall.Max(city.Castle, _economy, city.WallLevel)
             && city.Gold >= _config.MaintenanceReserveGold + 300
             && city.Provisions >= 500).OrderBy(city => city.Id.Value))
         {
