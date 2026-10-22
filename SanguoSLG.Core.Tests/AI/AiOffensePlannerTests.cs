@@ -111,6 +111,31 @@ public class AiOffensePlannerTests
         Assert.Empty(Planner().Plan(cooling, new FactionId(1)).Armies);
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(120)]
+    public void 두_성의_가용병력을_합치면_방어측에_손실을_줄_수_있을_때_연합압박을_시도한다(int day)
+    {
+        var state = Scenario(40_000, 41_000, siege: 8_000, distance: 8) with { Day = day };
+        var support = new City(new CityId(3), "지원성", new HexCoord(2, 2), new FactionId(1),
+            30000, CastleSize.Medium, Wall: 3000);
+        var officers = Enumerable.Range(100, 5).Select(id => new General(new GeneralId(id), $"g{id}",
+            new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Infantry] = AptitudeGrade.A,
+                [TroopClass.Supply] = AptitudeGrade.A }, 80, 80, 80)).ToList();
+        state = state with
+        {
+            Cities = state.Cities.Append(support).ToList(),
+            Generals = state.Generals.Concat(officers).ToList(),
+            Postings = state.Assignments.Concat(officers.Select(g => new GeneralPosting(g.Id,
+                new FactionId(1), support.Id))).ToList(),
+            GarrisonForces = state.Garrisons.Append(new GarrisonForce(support.Id, "swordsman", 40_000, 60)).ToList(),
+        };
+        var after = Planner().Plan(state, new FactionId(1));
+        Assert.Contains(after.Armies, unit => unit.AiPressureUntilDay > state.Day
+            && unit.Field.Owner == new FactionId(1));
+        Assert.Contains(after.Armies, unit => unit.OriginCity == support.Id);
+    }
+
     [Fact]
     public void 전력_게이트는_통과해도_전면_공성승산이_없다면_압박공세를_검토한다()
     {

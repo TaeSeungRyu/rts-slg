@@ -92,13 +92,17 @@ public sealed class AiOffensePlanner
                         && c.Id != origin.Id && c.Position.Distance(target.Position) <= 15)
                         .OrderBy(c => c.Position.Distance(target.Position)).ThenBy(c => c.Id.Value)
                         .ToList();
-                    for (var count = 1; count <= supporters.Count; count++)
+                    GameState? coalition = null;
+                    for (var count = 1; count <= supporters.Count && coalition is null; count++)
+                        coalition = TryCoalition(state, origin, supporters.Take(count).ToList(), target);
+                    if (coalition is null && state.Day - origin.AiLastPressureDay >= 21)
                     {
-                        var coalition = TryCoalition(state, origin, supporters.Take(count).ToList(), target);
-                        if (coalition is null) continue;
-                        state = coalition;
-                        break;
+                        for (var count = 1; count <= supporters.Count && coalition is null; count++)
+                            coalition = TryCoalition(state, origin, supporters.Take(count).ToList(), target,
+                                pressure: true);
                     }
+                    if (coalition is not null)
+                        state = coalition;
                 }
                 // 한 출발 성에서 한 주에 하나의 공세만 시작한다.
                 if (state.Armies.Any(u => u.Field.Owner == faction && u.OriginCity == origin.Id
@@ -343,7 +347,7 @@ public sealed class AiOffensePlanner
     }
 
     private GameState? TryCoalition(GameState original, City primary,
-        IReadOnlyList<City> secondaries, City target)
+        IReadOnlyList<City> secondaries, City target, bool pressure = false)
     {
         var primaryRoute = RouteFor(original, primary, target);
         if (primaryRoute is null) return null;
@@ -355,7 +359,8 @@ public sealed class AiOffensePlanner
             AiOffensiveCandidateService.Evaluate(original, c, target,
                 requiredRatioPercent: 0).AvailableTroops);
         var defenders = original.Garrisons.Where(g => g.City == target.Id).Sum(g => g.Troops);
-        if (primaryBudget + secondaryBudgets.Values.Sum() < Math.Ceiling(defenders * 1.20)
+        if (primaryBudget + secondaryBudgets.Values.Sum()
+                < Math.Ceiling(defenders * (pressure ? 0.70 : 1.20))
             || primaryBudget < 2000 || secondaryBudgets.Values.Any(budget => budget < 1000))
             return null;
 
@@ -461,8 +466,33 @@ public sealed class AiOffensePlanner
         scratch = Follow(scratch, supplyId, combatIds[0]);
         }
         if (!PassesProvisionBudget(scratch, target, combatIds)
-            || !PassesSiegeTrial(original, scratch, target, combatIds)) return null;
+            || !PassesSiegeTrial(original, scratch, target, combatIds, pressure)) return null;
         scratch = ScheduleSiegeAssembly(scratch, target, combatIds);
+        if (pressure)
+        {
+            var escortPost = SiegePosition(scratch, target, combatIds, 2);
+            var travelDays = combatIds.Select(id => scratch.Armies.First(unit => unit.Id == id))
+                .Select(unit =>
+                {
+                    var origin = scratch.Cities.First(city => city.Id == unit.OriginCity);
+                    var distance = RouteFor(scratch, origin, target)?.Distance
+                        ?? origin.Position.Distance(target.Position);
+                    return (distance + Math.Max(1, unit.Field.Speed) - 1) / Math.Max(1, unit.Field.Speed);
+                }).DefaultIfEmpty(0).Max();
+            scratch = scratch with
+            {
+                FieldArmies = scratch.Armies.Select(unit => combatIds.Contains(unit.Id)
+                    ? unit with
+                    {
+                        AiPressureUntilDay = original.Day + travelDays + 14,
+                        Field = unit.Class == TroopClass.Siege ? unit.Field
+                            : unit.Field with { Mode = UnitMode.March, Target = escortPost,
+                                ContinuousTarget = null },
+                    } : unit).ToList(),
+                Cities = scratch.Cities.Select(city => city.Id == primary.Id
+                    ? city with { AiLastPressureDay = original.Day } : city).ToList(),
+            };
+        }
         return AttachDeclaration(original, scratch, target);
     }
 
@@ -605,7 +635,8 @@ public sealed class AiOffensePlanner
         var far = SiegePosition(staged, target, combatIds, 2);
         var attackers = staged.Armies.Where(u => combatIds.Contains(u.Id))
             .Select(u => u with { AwaitingEgress = false,
-                Field = u.Field with { Position = pressure || u.Field.RangeCastle >= 2 ? far : near,
+                Field = u.Field with { Position = pressure && u.Class != TroopClass.Siege
+                    || u.Field.RangeCastle >= 2 ? far : near,
                     Mode = UnitMode.Attack } }).ToList();
         var siege = new CampaignSiege(new BattleResolver(60), _deployer.Troops.Values.ToList());
         var cities = new List<City> { target };
@@ -617,11 +648,14 @@ public sealed class AiOffensePlanner
         var initialDefenders = garrisons.Sum(g => g.Troops);
         for (var day = 0; day < (pressure ? 7 : 30); day++)
         {
+            if (pressure && day > 0 && cities[0].Wall <= 0)
+                attackers = attackers.Select(unit => unit.Class == TroopClass.Siege ? unit
+                    : unit with { Field = unit.Field with { Position = near } }).ToList();
             var outcome = siege.Resolve(attackers, cities, garrisons);
             attackers = outcome.Armies.Where(u => u.Pool.Active > 0).ToList();
             cities = outcome.Cities.ToList();
             garrisons = outcome.Garrisons.ToList();
-            if (attackers.Count == 0 || attackers.Sum(u => u.Pool.Active) < initial * (pressure ? 7 : 5) / 10)
+            if (attackers.Count == 0 || attackers.Sum(u => u.Pool.Active) < initial * (pressure ? 6 : 5) / 10)
                 return false;
             if (cities[0].Wall <= 0 && garrisons.Sum(g => g.Troops) <= 0)
                 return true;
