@@ -41,6 +41,9 @@ public static class AiFieldConstructionEvaluator
                 .OrderBy(city => city.Position.Distance(unit.Field.Position))
                 .ThenBy(city => city.Id.Value).FirstOrDefault();
             if (city is null) continue;
+            if (state.Buildings.Count(building => building.Owner == faction
+                && !building.IsExpired(state.Day)
+                && building.Position.Distance(city.Position) <= 5) >= 2) continue;
             var cityThreats = threats.Where(enemy => enemy.Field.Position.Distance(city.Position) <= 7)
                 .ToList();
             var scoutedFront = enemyCities.Any(enemy => enemy.Position.Distance(city.Position) <= 10);
@@ -80,7 +83,7 @@ public static class AiFieldConstructionEvaluator
                             && position.Distance(city.Position) is >= 2 and <= 4 => 15,
                         FieldBuildingKind.ScoutPost when scoutedFront
                             && position.Distance(city.Position) is >= 3 and <= 5
-                            && CountUnseen(map, visible, position, definition.EffectRadius) >= 4 => 12,
+                            && CountUnseen(map, visible, position, definition.EffectRadius) >= 4 => 20,
                         _ => 0,
                     };
                     if (score <= 0) continue;

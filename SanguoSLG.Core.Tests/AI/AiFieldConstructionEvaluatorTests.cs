@@ -60,6 +60,26 @@ public class AiFieldConstructionEvaluatorTests
     }
 
     [Fact]
+    public void AI는_전선에_건물_한개가_있으면_다른_종류를_검토하되_두개면_중단한다()
+    {
+        var state = State() with
+        {
+            Cities = [State().Cities[0], new City(new(2), "적성", new(8, 0), new(2), 3000)],
+            ScoutedCities = [new CityIntel(new(1), new(2), 100)],
+        };
+        var tower = new FieldBuilding(new(8), "watchtower", new(1),
+            new(4, 1), 1500, 1, 8);
+        var one = state with { FieldBuildings = [tower] };
+        var two = state with { FieldBuildings = [tower,
+            new FieldBuilding(new(9), "fort", new(1), new(3, 1), 2500, 1, 15)] };
+
+        Assert.Contains(AiFieldConstructionEvaluator.Evaluate(one, new(1), Map,
+            Definitions, new HashSet<HexCoord>()), candidate => candidate.DefinitionCode == "fort");
+        Assert.Empty(AiFieldConstructionEvaluator.Evaluate(two, new(1), Map,
+            Definitions, new HashSet<HexCoord>()));
+    }
+
+    [Fact]
     public void AI는_병력_금_치안_공사상한_조건을_지킨다()
     {
         var visible = new HashSet<HexCoord> { new(6, 0) };

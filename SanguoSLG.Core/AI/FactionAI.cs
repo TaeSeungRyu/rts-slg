@@ -139,8 +139,9 @@ public sealed class FactionAI
                 .ThenBy(enemy => enemy.Id.Value).FirstOrDefault();
             if (front is null || state.Armies.Any(enemy => state.AreHostile(faction, enemy.Field.Owner)
                 && enemy.Pool.Active > 0 && city.Position.Distance(enemy.Field.Position) <= 4)
-                || state.Buildings.Any(building => building.Owner == faction
-                    && city.Position.Distance(building.Position) <= 5)
+                || state.Buildings.Count(building => building.Owner == faction
+                    && !building.IsExpired(state.Day)
+                    && city.Position.Distance(building.Position) <= 5) >= 2
                 || state.Armies.Any(unit => unit.Field.Owner == faction && unit.OriginCity == city.Id
                     && unit.Pool.Active > 0 && (unit.IsConstructing || unit.IsWaitingDeployment
                         || unit.Field.Mode == UnitMode.Standby && unit.CarryingGold >= 300))) continue;
