@@ -49,7 +49,7 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검�
 ## 5. 다음 작업
 
 - 기능은 **[doc/plan-v2-implementation-roadmap.md](doc/plan-v2-implementation-roadmap.md)의 최상단 미완료 단계**부터 잡는다.
-- 2026-10-15 기준 **Phase 19·19A·20은 구현 완료**다. 다음 기능은 **Phase 21 v2 AI 조정**, 그다음 Phase 22 통합 QA다. 고대유물 단서 해석은 별도 후속 범위다.
+- 2026-10-22 기준 **Phase 19·19A·20과 고대유물 단서 10종의 획득·장착·효과는 1차 구현 완료**다. **Phase 21 v2 AI 조정은 부분 구현**이며 장기 밸런스·실화면 QA가 남아 있다. 이후 Phase 9B 문·무과시험과 Phase 22 통합 QA를 진행한다. 야생 신수는 위치 고정·반격만 가능하고 150일 후 만료된다.
 - UI 우선 작업은 [doc/plan-ui-improvement.md](doc/plan-ui-improvement.md)의 우선순위와 화면별 QA를 따른다.
 - 원칙: 끼어드는 아이디어는 해당 `design-*` 문서에 `❓`로 기록만 하고 로드맵 순서를 따른다.
   게임 밸런스·규칙(전투 공식·성장·AI 우선순위)은 **설계자(사용자) 확정**이 필요 — 임의로 정하지 않는다.

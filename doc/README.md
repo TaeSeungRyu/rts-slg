@@ -2,7 +2,7 @@
 
 이 디렉토리는 설계 원본, v2 전환 로드맵, 구현 이력, QA 체크리스트가 함께 들어 있다. 새 작업자는 아래 순서로 읽는다.
 
-> **현행 점검: 2026-10-15.** 현재 작업 기준은 [v2 구현 로드맵](./plan-v2-implementation-roadmap.md)이다. Phase 18D 연속 이동은 캠페인에 연결되어 1차 검수를 마쳤고 실제 플레이 회귀 QA 중이다. Phase 19·19A·20의 신수 사냥·보물·소환은 구현 완료; 다음 기능은 Phase 21 AI 조정, 이어 Phase 22 통합 QA다. `run-maptest.bat`의 신수 발견률 50%는 테스트 설정이며 일반 캠페인은 1%다.
+> **현행 점검: 2026-10-22.** 현재 작업 기준은 [v2 구현 로드맵](./plan-v2-implementation-roadmap.md)이다. Phase 18D 연속 이동은 캠페인에 연결되어 1차 검수를 마쳤고 실제 플레이 회귀 QA 중이다. Phase 19·19A·20의 신수 사냥·보물·소환과 고대유물 10종 획득/장착은 1차 구현 완료; Phase 21 AI 조정은 부분 구현 중이며 장기 밸런스·실화면 QA가 남아 있다. 다음 계획은 Phase 9B 문·무과시험과 Phase 22 통합 QA다. `run-maptest.bat`의 신수 발견률 50%는 테스트 설정이며 일반 캠페인은 1%다.
 > 사용자가 요청한 UI 우선 개선은 기능 Phase와 분리해 [UI 개선 작업 목록](./plan-ui-improvement.md)으로 관리한다.
 
 ## 충돌 시 우선순위
@@ -47,10 +47,12 @@
 | 계략 전환 | [design-stratagem.md](./design-stratagem.md) | 독립 계략 폐기, 전투 액티브 전환 기준 |
 | 외교 | [design-diplomacy-ruler-relations.md](./design-diplomacy-ruler-relations.md) | 동맹/동맹파기와 군주 관계도 |
 | 지형·건물·항구 | [design-terrain.md](./design-terrain.md), [design-water.md](./design-water.md) | 지형 문자, 시설, 항구/물 규칙 |
-| 지역 기후 계획 | [design-climate.md](./design-climate.md) | Phase 21A 미구현: 6×6 비·눈, 일별 갱신, 이동·공격 보정과 적설 표현 |
+| 지역 기후 | [design-climate.md](./design-climate.md) | Phase 21A 1차 구현·자동 QA 완료: 6×6 비·눈, 일별 갱신, 이동·공격 보정과 적설 표현. 실기기 연출 검수 대기 |
 | 이펙트 | [design-effect.md](./design-effect.md) | 3D 효과 카탈로그 |
 | 신수 사냥·보물 | [design-event-hunts.md](./design-event-hunts.md) | Phase 19~20 대호·용·봉황, 장착·소환 규칙 |
+| 고대유물 단서 | [plan-ancient-relics.md](./plan-ancient-relics.md) | 10종 단서 2개 교환·유물 장착/효과의 현행 규칙 |
 | 야전 건축 | [design-field-construction.md](./design-field-construction.md) | Phase 18C 목책·정찰대·감시탑·보루·진법 |
+| AI 야전 건축 | [plan-phase21-ai-field-construction.md](./plan-phase21-ai-field-construction.md) | Phase 21 부분 구현·60~90일 주기 후보와 남은 장기 QA |
 
 ## 에셋·콘텐츠 문서
 
