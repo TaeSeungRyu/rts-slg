@@ -57,6 +57,7 @@ public sealed class FactionAI
         state = PlanGeneralResearch(state, faction);
         state = PlanStratagemResearch(state, faction);
         state = PlanCombatResearch(state, faction);
+        state = PlanUseCompletedFieldBuildings(state, faction);
         state = PlanFieldConstruction(state, faction);
         state = RecoverIdleExpeditions(state, faction);
         state = PlanConstructionDeployment(state, faction);
@@ -83,6 +84,39 @@ public sealed class FactionAI
             var result = service.Start(state, faction, new FieldConstructionRequest(
                 candidate.Unit, candidate.DefinitionCode, candidate.Position));
             if (result.Ok) return result.State;
+        }
+        return state;
+    }
+
+    private GameState PlanUseCompletedFieldBuildings(GameState state, FactionId faction)
+    {
+        if (_map is null || _fieldBuildingDefinitions.Count == 0) return state;
+        var garrisonCodes = _fieldBuildingDefinitions.Where(definition => definition.CanGarrison)
+            .Select(definition => definition.Code).ToHashSet(StringComparer.Ordinal);
+        foreach (var building in state.Buildings.Where(building => building.Owner == faction
+            && building.IsCompleted(state.Day) && !building.IsExpired(state.Day)
+            && building.GarrisonUnit is null && garrisonCodes.Contains(building.DefinitionCode))
+            .OrderBy(building => building.Id.Value))
+        {
+            var unit = state.Armies.Where(unit => unit.Field.Owner == faction
+                && unit.Pool.Active > 0 && !unit.IsWaitingDeployment && !unit.IsConstructing
+                && !unit.IsSupply && !unit.IsTransport && !unit.IsSummon
+                && unit.Field.Domain == MovementDomain.Land
+                && unit.Field.Mode is UnitMode.Standby or UnitMode.Advance
+                && unit.Field.Target is null
+                && unit.Field.Position.Distance(building.Position) <= 3
+                && !state.Buildings.Any(other => other.GarrisonUnit == unit.Id))
+                .OrderBy(unit => unit.Id == building.BuilderUnit ? 0 : 1)
+                .ThenBy(unit => unit.Field.Position.Distance(building.Position))
+                .ThenBy(unit => unit.Id.Value).FirstOrDefault();
+            if (unit is null) continue;
+            var command = new FieldUnitCommandService((domain, position) =>
+                domain == MovementDomain.Land && _map.Contains(position)
+                && _map.TerrainAt(position) is not TerrainType.WaterShallow
+                    and not TerrainType.WaterDeep);
+            var result = command.Reassign(state, faction, new FieldUnitCommandRequest(unit.Id,
+                UnitMode.March, building.Position));
+            if (result.Ok) state = result.State;
         }
         return state;
     }

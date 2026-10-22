@@ -128,6 +128,32 @@ public class AiFieldConstructionEvaluatorTests
         Assert.Single(constructing.Buildings);
     }
 
+    [Fact]
+    public void AI는_완공된_빈_보루로_대기부대를_행군시킨다()
+    {
+        var state = State() with
+        {
+            Day = 20,
+            FieldBuildings = [new FieldBuilding(new(9), "fort", new(1),
+                new(4, 0), 2500, 1, 15, BuilderUnit: new UnitId(1))],
+        };
+        var troops = new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory());
+        var balance = new CommandBalance();
+        var ai = new FactionAI(new CommandService(balance, troops),
+            new DeployService(balance, troops,
+                new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+                new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())),
+            new AiConfig(DeployTarget: int.MaxValue), map: Map,
+            fieldBuildingDefinitions: Definitions);
+
+        var after = ai.PlanWeek(state, new(1));
+
+        var unit = after.Armies.Single(candidate => candidate.Id == new UnitId(1));
+        Assert.Equal(UnitMode.March, unit.Field.Mode);
+        Assert.Equal(new HexCoord(4, 0), unit.Field.Target);
+        Assert.False(unit.IsConstructing);
+    }
+
     private static GameState State()
     {
         var city = new City(new(1), "아군성", new(0, 0), new(1), 3000,
