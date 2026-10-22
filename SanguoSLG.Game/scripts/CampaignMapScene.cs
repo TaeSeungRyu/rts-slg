@@ -3021,6 +3021,7 @@ public sealed partial class CampaignMapScene : Node3D
         var target = _targetWaypoints[^1];
         _targetEgressDirection = DeploymentEgressRules.Recommend(city, target,
             tile => _passability.CanEnter(TargetDeploymentDomain(), tile));
+        _targetEgressManual = true;
     }
 
     private void RefreshTargetEgressButtons()

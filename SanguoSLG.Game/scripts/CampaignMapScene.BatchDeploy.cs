@@ -421,6 +421,11 @@ public sealed partial class CampaignMapScene
         _targetWaypoints.Add(new HexCoord(city.Position.Q + 4, city.Position.R));
         _targetContinuousWaypoints.Add(RenewalHexSpace.Center(_targetWaypoints[^1]));
         RebuildTargetEdit();
+        var firstDirection = _targetEgressDirection;
+        _targetWaypoints.Add(new HexCoord(city.Position.Q - 4, city.Position.R + 2));
+        _targetContinuousWaypoints.Add(RenewalHexSpace.Center(_targetWaypoints[^1]));
+        RebuildTargetEdit();
+        var directionKept = firstDirection.HasValue && _targetEgressDirection == firstDirection;
         var directionControls = _targetEgressButtons.Values.All(button => !button.Visible);
         _targetWaypoints.Clear();
         ApplyTarget(city.Position, null, RenewalHexSpace.Center(city.Position), null);
@@ -433,9 +438,9 @@ public sealed partial class CampaignMapScene
         var hubReopened = _modalLayer is not null && labels.Any(text => text.Contains("출전 예약"));
         var selectionKept = _depSelectedUnit == pendingIndex;
         var commandPaletteHidden = !_cmdMenu.Visible;
-        var passed = targetSaved && egressSaved && directionControls && hubReopened && selectionKept
+        var passed = targetSaved && egressSaved && directionKept && directionControls && hubReopened && selectionKept
             && commandPaletteHidden && !_depTargeting;
-        GD.Print($"[maptestdeploytargetreturnqa] passed={passed} targetSaved={targetSaved} egressSaved={egressSaved} directionControls={directionControls} hubReopened={hubReopened} selectionKept={selectionKept} commandPaletteHidden={commandPaletteHidden} targeting={_depTargeting}");
+        GD.Print($"[maptestdeploytargetreturnqa] passed={passed} targetSaved={targetSaved} egressSaved={egressSaved} directionKept={directionKept} directionControls={directionControls} hubReopened={hubReopened} selectionKept={selectionKept} commandPaletteHidden={commandPaletteHidden} targeting={_depTargeting}");
 
         _pendingDeploys.RemoveAt(pendingIndex);
         CloseModal();
