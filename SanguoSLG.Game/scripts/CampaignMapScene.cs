@@ -10500,7 +10500,10 @@ public sealed partial class CampaignMapScene : Node3D
             if (_pendingDeploys[i].Req.City == city) { mine.Add(i); }
         }
 
-        box.AddChild(MakeLabel($"예약된 부대 ({mine.Count})   — 타일을 눌러 선택", 14, GoldBright));
+        var queued = _state.Armies.Where(unit => unit.OriginCity == city && unit.IsWaitingDeployment
+            && unit.Field.Owner == Player).OrderBy(unit => unit.Field.CommandOrder)
+            .ThenBy(unit => unit.Id.Value).ToList();
+        box.AddChild(MakeLabel($"예약된 부대 ({mine.Count}) · 출격 대기 ({queued.Count})   — 타일을 눌러 선택", 14, GoldBright));
 
         if (!mine.Contains(_depSelectedUnit)) { _depSelectedUnit = -1; }
 
@@ -10585,6 +10588,22 @@ public sealed partial class CampaignMapScene : Node3D
             if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { OpenDeployCompose(-1); }
         };
         grid.AddChild(addTile);
+
+        if (queued.Count > 0)
+        {
+            box.AddChild(GoldRule());
+            box.AddChild(MakeLabel("출격 대기열 · 지정 출구가 막히면 성 안에서 계속 대기합니다", 13, GoldBright));
+            foreach (var unit in queued)
+            {
+                var direction = unit.EgressDirection is { } chosen ? EgressDirectionName(chosen) : "미지정";
+                var status = unit.DeploymentDelayDays > 0 ? $"지연 {unit.DeploymentDelayDays}일" : "출구 대기";
+                if (unit.VanguardId is { } officer)
+                    box.AddChild(CityDetailOfficerRow(officer,
+                        $"{TroopName(unit.TroopCode)} {unit.Pool.Active:N0} · {direction} 출격", status, null));
+                else
+                    box.AddChild(MakeLabel($"{TroopName(unit.TroopCode)} {unit.Pool.Active:N0} · {direction} 출격 · {status}", 12, Parchment));
+            }
+        }
 
         // 선택 부대 컨트롤 바(모드 3종 / 목표 / 편성 수정 / 삭제)
         if (_depSelectedUnit >= 0 && _depSelectedUnit < _pendingDeploys.Count)
