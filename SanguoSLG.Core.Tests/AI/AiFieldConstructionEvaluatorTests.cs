@@ -85,6 +85,49 @@ public class AiFieldConstructionEvaluatorTests
         Assert.Single(ai.PlanWeek(after, new(1)).Buildings);
     }
 
+    [Fact]
+    public void AI는_안전한_전선성에서_건축부대를_한번만_출전시킨다()
+    {
+        var own = new City(new(1), "아군성", new(0, 0), new(1), 5000,
+            Gold: 2000, Wall: 1000);
+        var hostile = new City(new(2), "적성", new(8, 0), new(2), 5000,
+            Gold: 2000, Wall: 1000);
+        var officers = Enumerable.Range(1, 5).Select(id => new General(new(id), $"장수{id}",
+            new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Infantry] = AptitudeGrade.A },
+            Might: 70, Intellect: 60, Politics: 70)).ToList();
+        var state = new GameState(1, 190, [], [own, hostile], officers,
+            Postings: officers.Select(general => new GeneralPosting(general.Id, own.Owner, own.Id))
+                .ToList(),
+            GarrisonForces: [new GarrisonForce(own.Id, "swordsman", 20_000, 60)],
+            ScoutedCities: [new CityIntel(own.Owner, hostile.Id, 100)]);
+        var troops = new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory());
+        var balance = new CommandBalance();
+        var ai = new FactionAI(new CommandService(balance, troops),
+            new DeployService(balance, troops,
+                new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+                new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())),
+            new AiConfig(DeployTarget: int.MaxValue, GeneralResearchReserveGold: -1,
+                ExplorationReserveGold: int.MaxValue), map: Map,
+            fieldBuildingDefinitions: Definitions);
+
+        var after = ai.PlanWeek(state, own.Owner);
+
+        var builder = Assert.Single(after.Armies);
+        Assert.Equal(UnitMode.Standby, builder.Field.Mode);
+        Assert.Equal(300, builder.CarryingGold);
+        Assert.Equal(18_000, after.Garrisons.Single().Troops);
+        Assert.Single(ai.PlanWeek(after with { Day = 8 }, own.Owner).Armies);
+        var deployed = after with { Day = 8, FieldArmies = [builder with
+        {
+            Field = builder.Field with { Position = builder.EgressExit!.Value },
+            AwaitingEgress = false,
+            DeploymentDelayDays = 0,
+        }] };
+        var constructing = ai.PlanWeek(deployed, own.Owner);
+        Assert.True(Assert.Single(constructing.Armies).IsConstructing);
+        Assert.Single(constructing.Buildings);
+    }
+
     private static GameState State()
     {
         var city = new City(new(1), "아군성", new(0, 0), new(1), 3000,

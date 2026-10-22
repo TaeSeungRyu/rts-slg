@@ -57,13 +57,13 @@ public sealed class FactionAI
         state = PlanGeneralResearch(state, faction);
         state = PlanStratagemResearch(state, faction);
         state = PlanCombatResearch(state, faction);
-
+        state = PlanFieldConstruction(state, faction);
+        state = RecoverIdleExpeditions(state, faction);
+        state = PlanConstructionDeployment(state, faction);
         state = PlanExploration(state, faction);
         state = PlanCityOfficers(state, faction);
         state = PlanCityMaintenance(state, faction);
         state = PlanCityBaseline(state, faction);
-        state = PlanFieldConstruction(state, faction);
-        state = RecoverIdleExpeditions(state, faction);
         return state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && !existingArmyIds.Contains(unit.Id)
                 && unit.Field.Mode == UnitMode.Attack
@@ -82,6 +82,50 @@ public sealed class FactionAI
         {
             var result = service.Start(state, faction, new FieldConstructionRequest(
                 candidate.Unit, candidate.DefinitionCode, candidate.Position));
+            if (result.Ok) return result.State;
+        }
+        return state;
+    }
+
+    private GameState PlanConstructionDeployment(GameState state, FactionId faction)
+    {
+        if (_map is null || _fieldBuildingDefinitions.Count == 0
+            || state.Buildings.Any(building => building.Owner == faction
+                && !building.IsCompleted(state.Day))) return state;
+        foreach (var city in state.Cities.Where(city => city.Owner == faction && !city.IsPort
+            && city.Security >= 70 && city.Wall > 0
+            && city.Gold >= _config.MaintenanceReserveGold + 300
+            && city.Provisions >= 500).OrderBy(city => city.Id.Value))
+        {
+            var front = state.Cities.Where(enemy => state.AreHostile(faction, enemy.Owner)
+                && state.IsScouted(faction, enemy.Id)
+                && city.Position.Distance(enemy.Position) is >= 5 and <= 10)
+                .OrderBy(enemy => city.Position.Distance(enemy.Position))
+                .ThenBy(enemy => enemy.Id.Value).FirstOrDefault();
+            if (front is null || state.Armies.Any(enemy => state.AreHostile(faction, enemy.Field.Owner)
+                && enemy.Pool.Active > 0 && city.Position.Distance(enemy.Field.Position) <= 4)
+                || state.Buildings.Any(building => building.Owner == faction
+                    && city.Position.Distance(building.Position) <= 5)
+                || state.Armies.Any(unit => unit.Field.Owner == faction && unit.OriginCity == city.Id
+                    && unit.Pool.Active > 0 && (unit.IsConstructing || unit.IsWaitingDeployment
+                        || unit.Field.Mode == UnitMode.Standby && unit.CarryingGold >= 300))) continue;
+
+            var free = state.GeneralsAt(city.Id).Where(id => !state.IsGeneralBusy(id)
+                && city.Governor != id && city.Strategist != id && !IsDutyOfficer(state, id)
+                && !state.Factions.Any(owner => owner.Id == faction && owner.Ruler == id))
+                .OrderBy(id => id.Value).ToList();
+            if (free.Count == 0 || state.GeneralsAt(city.Id).Count(id => !state.IsGeneralBusy(id))
+                <= _config.KeepGeneralsHome + 1) continue;
+            var garrison = state.Garrisons.Where(line => line.City == city.Id && !line.Trainee
+                    && line.TrainingLevel >= _deployer.Balance.DeployMinTraining
+                    && line.Troops >= 12_000 && _deployer.Troops.TryGetValue(line.TroopCode,
+                        out var troop) && troop.Class == TroopClass.Infantry)
+                .OrderByDescending(line => line.Troops)
+                .ThenBy(line => line.TroopCode, StringComparer.Ordinal).FirstOrDefault();
+            if (garrison is null) continue;
+            var result = _deployer.Deploy(state, new DeployRequest(city.Id, garrison.TroopCode,
+                2_000, free[0], Mode: UnitMode.Standby, Gold: 300,
+                EgressDirection: DeploymentEgressRules.Recommend(city, front.Position)));
             if (result.Ok) return result.State;
         }
         return state;
