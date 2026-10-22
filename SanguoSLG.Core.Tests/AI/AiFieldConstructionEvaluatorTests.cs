@@ -41,6 +41,23 @@ public class AiFieldConstructionEvaluatorTests
     }
 
     [Fact]
+    public void AI는_마지막_착공후_두세달이_지나면_적이_없어도_안전한_건축을_재개한다()
+    {
+        var peaceful = State() with { FieldArmies = State().Armies.Where(unit => unit.Field.Owner == new FactionId(1)).ToList() };
+        var dueDay = Enumerable.Range(61, 31).First(day =>
+            AiFieldConstructionEvaluator.PeriodicBuildDue(peaceful with { Day = day }, new(1)));
+        Assert.InRange(dueDay, 61, 91);
+        Assert.False(AiFieldConstructionEvaluator.PeriodicBuildDue(
+            peaceful with { Day = dueDay - 1 }, new(1)));
+        var due = peaceful with { Day = dueDay };
+        Assert.Empty(AiFieldConstructionEvaluator.Evaluate(due, new(1), Map,
+            Definitions, new HashSet<HexCoord>()));
+        Assert.Contains(AiFieldConstructionEvaluator.Evaluate(due, new(1), Map,
+            Definitions, new HashSet<HexCoord>(), periodic: true), candidate =>
+                candidate.DefinitionCode is "watchtower" or "fort");
+    }
+
+    [Fact]
     public void AI는_정찰된_전선에서_보루와_감시탑과_정찰대를_후보로_삼는다()
     {
         var state = State() with
@@ -170,6 +187,42 @@ public class AiFieldConstructionEvaluatorTests
         var constructing = ai.PlanWeek(deployed, own.Owner);
         Assert.True(Assert.Single(constructing.Armies).IsConstructing);
         Assert.Single(constructing.Buildings);
+    }
+
+    [Fact]
+    public void AI는_전선이_없어도_주기_도래시_건축부대를_편성한다()
+    {
+        var own = new City(new(1), "후방성", new(0, 0), new(1), 5000,
+            Gold: 2000, Wall: 1000);
+        var officers = Enumerable.Range(1, 5).Select(id => new General(new(id), $"장수{id}",
+            new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Infantry] = AptitudeGrade.A },
+            Might: 70, Intellect: 60, Politics: 70)).ToList();
+        var state = new GameState(85, 190, [], [own], officers,
+            Postings: officers.Select(general => new GeneralPosting(general.Id, own.Owner, own.Id)).ToList(),
+            GarrisonForces: [new GarrisonForce(own.Id, "swordsman", 20_000, 60)]);
+        Assert.True(AiFieldConstructionEvaluator.PeriodicBuildDue(state, own.Owner));
+        var troops = new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory());
+        var balance = new CommandBalance();
+        var ai = new FactionAI(new CommandService(balance, troops),
+            new DeployService(balance, troops,
+                new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+                new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())),
+            new AiConfig(DeployTarget: int.MaxValue, GeneralResearchReserveGold: -1,
+                ExplorationReserveGold: int.MaxValue), map: Map,
+            fieldBuildingDefinitions: Definitions);
+
+        var planned = ai.PlanWeek(state, own.Owner);
+
+        var builder = Assert.Single(planned.Armies, unit => unit.OriginCity == own.Id
+            && unit.CarryingGold == 300);
+        var outside = planned with { Day = state.Day + 7,
+            FieldArmies = planned.Armies.Select(unit => unit.Id == builder.Id ? unit with
+            {
+                Field = unit.Field with { Position = builder.EgressExit!.Value },
+                AwaitingEgress = false, DeploymentDelayDays = 0,
+            } : unit).ToList() };
+        var constructed = ai.PlanWeek(outside, own.Owner);
+        Assert.Contains(constructed.Buildings, building => building.Owner == own.Owner);
     }
 
     [Fact]

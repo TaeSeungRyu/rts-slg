@@ -79,7 +79,8 @@ public sealed class FactionAI
             _fieldBuildingDefinitions).VisibleTiles(state, faction, _map);
         var service = new FieldConstructionService(_fieldBuildingDefinitions, _map.TerrainAt);
         foreach (var candidate in AiFieldConstructionEvaluator.Evaluate(state, faction, _map,
-            _fieldBuildingDefinitions, visible, _economy))
+            _fieldBuildingDefinitions, visible, _economy,
+            AiFieldConstructionEvaluator.PeriodicBuildDue(state, faction)))
         {
             var result = service.Start(state, faction, new FieldConstructionRequest(
                 candidate.Unit, candidate.DefinitionCode, candidate.Position));
@@ -123,6 +124,7 @@ public sealed class FactionAI
 
     private GameState PlanConstructionDeployment(GameState state, FactionId faction)
     {
+        var periodic = AiFieldConstructionEvaluator.PeriodicBuildDue(state, faction);
         if (_map is null || _fieldBuildingDefinitions.Count == 0
             || state.Buildings.Any(building => building.Owner == faction
                 && !building.IsCompleted(state.Day))) return state;
@@ -137,11 +139,11 @@ public sealed class FactionAI
                 && city.Position.Distance(enemy.Position) is >= 5 and <= 10)
                 .OrderBy(enemy => city.Position.Distance(enemy.Position))
                 .ThenBy(enemy => enemy.Id.Value).FirstOrDefault();
-            if (front is null || state.Armies.Any(enemy => state.AreHostile(faction, enemy.Field.Owner)
+            if (front is null && !periodic || state.Armies.Any(enemy => state.AreHostile(faction, enemy.Field.Owner)
                 && enemy.Pool.Active > 0 && city.Position.Distance(enemy.Field.Position) <= 4)
                 || state.Buildings.Count(building => building.Owner == faction
                     && !building.IsExpired(state.Day)
-                    && city.Position.Distance(building.Position) <= 5) >= 2
+                    && city.Position.Distance(building.Position) <= 5) >= (periodic ? 3 : 2)
                 || state.Armies.Any(unit => unit.Field.Owner == faction && unit.OriginCity == city.Id
                     && unit.Pool.Active > 0 && (unit.IsConstructing || unit.IsWaitingDeployment
                         || unit.Field.Mode == UnitMode.Standby && unit.CarryingGold >= 300))) continue;
@@ -161,7 +163,9 @@ public sealed class FactionAI
             if (garrison is null) continue;
             var result = _deployer.Deploy(state, new DeployRequest(city.Id, garrison.TroopCode,
                 2_000, free[0], Mode: UnitMode.Standby, Gold: 300,
-                EgressDirection: DeploymentEgressRules.Recommend(city, front.Position)));
+                EgressDirection: front is null
+                    ? DeploymentEgressRules.Directions[(state.Day / 7 + city.Id.Value) % 6]
+                    : DeploymentEgressRules.Recommend(city, front.Position)));
             if (result.Ok) return result.State;
         }
         return state;

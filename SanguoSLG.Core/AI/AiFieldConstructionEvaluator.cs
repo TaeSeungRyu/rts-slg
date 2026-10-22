@@ -9,9 +9,17 @@ public sealed record AiConstructionCandidate(UnitId Unit, string DefinitionCode,
 
 public static class AiFieldConstructionEvaluator
 {
+    public static bool PeriodicBuildDue(GameState state, FactionId faction)
+    {
+        var lastStart = state.Buildings.Where(building => building.Owner == faction)
+            .Select(building => building.StartedDay).DefaultIfEmpty(1).Max();
+        var interval = 60 + Math.Abs((faction.Value * 17 + lastStart * 7) % 31);
+        return state.Day - lastStart >= interval;
+    }
+
     public static IReadOnlyList<AiConstructionCandidate> Evaluate(GameState state, FactionId faction,
         HexMap map, IReadOnlyList<FieldBuildingDefinition> definitions,
-        IReadOnlySet<HexCoord> visible, BalanceConfig? economy = null)
+        IReadOnlySet<HexCoord> visible, BalanceConfig? economy = null, bool periodic = false)
     {
         if (state.Buildings.Count(building => building.Owner == faction
             && !building.IsCompleted(state.Day)) >= 2) return [];
@@ -43,11 +51,11 @@ public static class AiFieldConstructionEvaluator
             if (city is null) continue;
             if (state.Buildings.Count(building => building.Owner == faction
                 && !building.IsExpired(state.Day)
-                && building.Position.Distance(city.Position) <= 5) >= 2) continue;
+                && building.Position.Distance(city.Position) <= 5) >= (periodic ? 3 : 2)) continue;
             var cityThreats = threats.Where(enemy => enemy.Field.Position.Distance(city.Position) <= 7)
                 .ToList();
             var scoutedFront = enemyCities.Any(enemy => enemy.Position.Distance(city.Position) <= 10);
-            if (cityThreats.Count == 0 && !scoutedFront) continue;
+            if (cityThreats.Count == 0 && !scoutedFront && !periodic) continue;
 
             foreach (var position in new[] { unit.Field.Position }.Concat(unit.Field.Position.Neighbors())
                 .Where(map.Contains).OrderBy(tile => tile.Q).ThenBy(tile => tile.R))
@@ -84,6 +92,10 @@ public static class AiFieldConstructionEvaluator
                         FieldBuildingKind.ScoutPost when scoutedFront
                             && position.Distance(city.Position) is >= 3 and <= 5
                             && CountUnseen(map, visible, position, definition.EffectRadius) >= 4 => 20,
+                        FieldBuildingKind.Watchtower or FieldBuildingKind.Fort when periodic
+                            && position.Distance(city.Position) is >= 2 and <= 4 =>
+                            definition.Kind == ((state.Day / 7 + faction.Value) % 2 == 0
+                                ? FieldBuildingKind.Watchtower : FieldBuildingKind.Fort) ? 12 : 10,
                         _ => 0,
                     };
                     if (score <= 0) continue;
