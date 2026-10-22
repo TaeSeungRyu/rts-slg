@@ -42,15 +42,6 @@ public static class SupplyFollowService
             {
                 if (playerFaction is { } player && unit.Field.Owner != player)
                 {
-                    var replacement = armies.Where(candidate => candidate.Field.Owner == unit.Field.Owner
-                        && candidate.Pool.Active > 0 && !candidate.IsSupply && !candidate.IsTransport
-                        && !candidate.IsWaitingDeployment && candidate.Id != followId)
-                        .OrderBy(candidate => candidate.Field.Position.Distance(unit.Field.Position))
-                        .ThenBy(candidate => candidate.Id.Value).FirstOrDefault();
-                    if (replacement is not null)
-                        return unit with { Field = unit.Field with { FollowUnitId = replacement.Id,
-                            Mode = UnitMode.March, Target = replacement.Field.Position,
-                            ContinuousTarget = null } };
                     var origin = cities.FirstOrDefault(city => city.Id == unit.OriginCity
                         && city.Owner == unit.Field.Owner);
                     if (origin is not null)

@@ -79,12 +79,17 @@ public class SupplyFollowServiceTests
     }
 
     [Fact]
-    public void AI_보급부대는_호위_대상이_사라지면_다른_아군을_따라간다()
+    public void AI_보급부대는_호위_대상이_입성하면_다른_아군이_있어도_출발성으로_복귀한다()
     {
         var supply = Unit(1, 2, default, true) with
-        { Field = Unit(1, 2, default, true).Field with { FollowUnitId = new UnitId(9) } };
+        { Field = Unit(1, 2, default, true).Field with { FollowUnitId = new UnitId(9) }, OriginCity = new CityId(3) };
         var replacement = Unit(2, 2, new HexCoord(4, 0));
-        var planned = SupplyFollowService.PlanDay([supply, replacement], (_, _) => true, [], [], new FactionId(1));
-        Assert.Equal(replacement.Id, planned.Single(unit => unit.IsSupply).Field.FollowUnitId);
+        var home = new City(new CityId(3), "출발성", new HexCoord(5, 0), new FactionId(2), 1000);
+        var planned = SupplyFollowService.PlanDay([supply, replacement], (_, _) => true, [home], [], new FactionId(1));
+        var returning = planned.Single(unit => unit.IsSupply).Field;
+        Assert.Null(returning.FollowUnitId);
+        Assert.Equal(UnitMode.March, returning.Mode);
+        Assert.Equal(home.Id, returning.ReturnCity);
+        Assert.Equal(home.Position, returning.Target);
     }
 }
