@@ -42,6 +42,17 @@ public class GeneralTransferTests
     }
 
     [Fact]
+    public void 장수이동은_계략과_같은_기본속도_하루3칸을_쓴다()
+    {
+        var state = State() with { Cities = State().Cities.Select(city => city.Id == Destination
+            ? city with { Position = new HexCoord(5, 0) } : city).ToList() };
+        var issued = new CommandService(new CommandBalance { CourierSpeed = 3 }).Issue(state,
+            new CommandRequest(Source, CommandKind.TransferGeneral, Officer, TargetCity: Destination));
+        Assert.True(issued.Ok, issued.Error);
+        Assert.Equal(2, issued.State.Commands.Single().CompletionDay - state.Day);
+    }
+
+    [Fact]
     public void 장수이동은_도착일에_한번만_배속되고_함락된_목적지는_다른_우호거점으로_바뀐다()
     {
         var service = new CommandService(new CommandBalance());

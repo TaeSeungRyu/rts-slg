@@ -926,7 +926,7 @@ public sealed class CommandService
         return Register(state, city, req, assist, req.Value, _b.CommandDays, CommandKind.SetTaxRate, "");
     }
 
-    private static CommandResult IssueTransferGeneral(GameState state, City city, General main, CommandRequest req)
+    private CommandResult IssueTransferGeneral(GameState state, City city, General main, CommandRequest req)
     {
         if (req.Assist is not null || req.TargetCity is not { } destinationId)
             return CommandResult.Fail("이동할 목적지 성·항구를 선택해야 한다.", state);
@@ -940,7 +940,8 @@ public sealed class CommandService
         if (PostingError(state, main.Id, city) is { } postingError)
             return CommandResult.Fail(postingError, state);
 
-        var days = System.Math.Max(1, (city.Position.Distance(destination.Position) + 1) / 2);
+        var days = System.Math.Max(1, (city.Position.Distance(destination.Position) + _b.CourierSpeed - 1)
+            / _b.CourierSpeed);
         var postings = state.Assignments.Select(p => p.General == main.Id ? p with { Location = null } : p).ToList();
         var cities = state.Cities.Select(c => c.Id == city.Id
             ? c with
