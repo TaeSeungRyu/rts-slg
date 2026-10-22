@@ -141,7 +141,7 @@ public class DeploymentEgressControllerTests
     }
 
     [Fact]
-    public void 소형성_동쪽이_적에게_막히면_다른_방향의_빈_출구로_출격한다()
+    public void 소형성_지정한_동쪽_출구가_막히면_다른_방향으로_바꾸지않고_기다린다()
     {
         var city = CityOf(CastleSize.Small);
         var east = DeploymentEgressRules.RepresentativeExit(city, DeploymentDirection.East)!.Value;
@@ -155,10 +155,11 @@ public class DeploymentEgressControllerTests
 
         var result = DeploymentEgressController.Release([waiting], [enemy], [city], allowFriendlyOverlap: true);
 
-        var released = Assert.Single(result.Released);
-        Assert.Empty(result.Waiting);
-        Assert.NotEqual(east, released.Field.Position);
-        Assert.Contains(released.Field.Position, DeploymentEgressRules.ExitGroup(city, released.EgressDirection!.Value));
+        Assert.Empty(result.Released);
+        var queued = Assert.Single(result.Waiting);
+        Assert.True(queued.IsWaitingEgress);
+        Assert.Equal(DeploymentDirection.East, queued.EgressDirection);
+        Assert.Equal(east, queued.EgressExit);
     }
 
     [Fact]

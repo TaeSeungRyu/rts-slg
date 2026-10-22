@@ -2878,9 +2878,7 @@ public sealed partial class CampaignMapScene : Node3D
             : naval ? _pendingNavalDeploys[idx].Req.EgressDirection
             : supply ? _pendingSupplyDeploys[idx].Req.EgressDirection
             : _pendingDeploys[idx].Req.EgressDirection;
-        // 편성 시 목표가 없어서 채워진 기본 동쪽 출구는 사용자가 고른 방향이 아니다.
-        // 새 목표를 찍으면 그 목표에서 출격 방향을 다시 추천한다.
-        _targetEgressManual = false;
+        _targetEgressManual = _targetEgressDirection.HasValue;
         _targetStart = _state.Cities.FirstOrDefault(c => c.Id == reqCity)?.Position ?? default;
         RebuildTargetEdit();
         ShowTargetHint((transport
