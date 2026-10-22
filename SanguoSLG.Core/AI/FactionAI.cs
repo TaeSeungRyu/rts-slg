@@ -1054,7 +1054,11 @@ public sealed class FactionAI
     {
         var armies = state.Armies.Select(unit =>
         {
-            if (unit.Field.Owner != faction || unit.Field.Mode != UnitMode.Standby
+            var completedBuilder = unit.Field.Mode == UnitMode.Advance && unit.Field.Target is null
+                && state.Buildings.Any(building => building.BuilderUnit == unit.Id
+                    && building.IsCompleted(state.Day));
+            if (unit.Field.Owner != faction
+                || unit.Field.Mode != UnitMode.Standby && !completedBuilder
                 || unit.OriginCity is null || unit.IsWaitingDeployment
                 || unit.AiPressureUntilDay > state.Day
                 || unit.IsSupply && unit.Field.FollowUnitId is not null

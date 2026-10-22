@@ -154,6 +154,37 @@ public class AiFieldConstructionEvaluatorTests
         Assert.False(unit.IsConstructing);
     }
 
+    [Fact]
+    public void AI는_감시탑이_완공되면_남은_건축부대를_귀환시킨다()
+    {
+        var original = State();
+        var builder = original.Armies.Single(unit => unit.Id == new UnitId(1));
+        var state = original with
+        {
+            Day = 20,
+            FieldArmies = original.Armies.Select(unit => unit.Id == builder.Id
+                ? unit with { OriginCity = new CityId(1),
+                    Field = unit.Field with { Mode = UnitMode.Advance, Target = null } }
+                : unit).ToList(),
+            FieldBuildings = [new FieldBuilding(new(9), "watchtower", new(1),
+                new(4, 0), 1500, 1, 8, BuilderUnit: builder.Id)],
+        };
+        var troops = new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory());
+        var balance = new CommandBalance();
+        var ai = new FactionAI(new CommandService(balance, troops),
+            new DeployService(balance, troops,
+                new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+                new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())),
+            new AiConfig(DeployTarget: int.MaxValue), map: Map,
+            fieldBuildingDefinitions: Definitions);
+
+        var after = ai.PlanWeek(state, new(1));
+
+        var returning = after.Armies.Single(unit => unit.Id == builder.Id);
+        Assert.Equal(UnitMode.March, returning.Field.Mode);
+        Assert.Equal(new HexCoord(0, 0), returning.Field.Target);
+    }
+
     private static GameState State()
     {
         var city = new City(new(1), "아군성", new(0, 0), new(1), 3000,
