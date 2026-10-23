@@ -524,7 +524,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
-        if (_aiTestFixture is not null) Engine.TimeScale = 3.0;
+        if (_aiTestFixture is not null) Engine.TimeScale = 6.0;
         _view = view;
         _camera = camera;
         _camera.InputBlocked = () => IsModalBlockingMapNavigation() || _armyDragCandidateId >= 0;
