@@ -15,6 +15,7 @@ public sealed class AiOffensePlanner
     private readonly CommandService? _commands;
     private readonly HexMap? _map;
     private readonly BalanceConfig? _economy;
+    private int RequiredHomeOfficers => _map is null ? _config.KeepGeneralsHome : 0;
 
     public AiOffensePlanner(DeployService deployer, AiConfig config,
         CommandService? commands = null, HexMap? map = null, BalanceConfig? economy = null)
@@ -168,7 +169,7 @@ public sealed class AiOffensePlanner
     private GameState? TryOccupyEmpty(GameState state, City origin, City target,
         AiWarCandidate candidate, AiWarForceAssessment force, IReadOnlyList<General> officers)
     {
-        if (officers.Count <= _config.KeepGeneralsHome || force.OriginAvailable < 1000)
+        if (officers.Count <= RequiredHomeOfficers || force.OriginAvailable < 1000)
             return null;
         var options = state.Garrisons.Where(line => line.City == origin.Id && !line.Trainee
                 && line.Troops >= 1000 && line.TrainingLevel >= _deployer.Balance.DeployMinTraining
@@ -204,7 +205,7 @@ public sealed class AiOffensePlanner
             .OrderByDescending(line => line.Troops).ThenBy(line => line.TroopCode,
                 StringComparer.Ordinal))
         {
-            while (sent < required && availableOfficers.Count > _config.KeepGeneralsHome)
+            while (sent < required && availableOfficers.Count > RequiredHomeOfficers)
             {
                 var stock = scratch.PortShips.Where(ship => ship.City == origin.Id && ship.Count > 0)
                     .OrderBy(ship => ship.ShipCode, StringComparer.Ordinal).FirstOrDefault();
@@ -254,7 +255,7 @@ public sealed class AiOffensePlanner
         if (route is null) return null;
         var officers = state.GeneralsAt(origin.Id).Where(id => !state.IsGeneralBusy(id))
             .Select(id => state.Generals.First(g => g.Id == id)).ToList();
-        if (officers.Count <= _config.KeepGeneralsHome) return null;
+        if (officers.Count <= RequiredHomeOfficers) return null;
         var available = AiOffensiveCandidateService.Evaluate(state, origin, target,
             requiredRatioPercent: 0).AvailableTroops;
         var line = state.Garrisons.Where(g => g.City == origin.Id && !g.Trainee
@@ -325,7 +326,7 @@ public sealed class AiOffensePlanner
             var count = Math.Min(Math.Min(remain, available - used),
                 CommandEfficiency.CommandTroopDeployLimit(
                     scratch.ResearchOf(origin.Owner, FactionResearch.CommandTroopsCode), _deployer.Balance));
-            if (count < Math.Min(1000, line.Troops) || free.Count <= _config.KeepGeneralsHome)
+            if (count < Math.Min(1000, line.Troops) || free.Count <= RequiredHomeOfficers)
                 return false;
             var leader = free.OrderByDescending(g => g.AptitudeFor(troop.Class))
                 .ThenByDescending(g => g.Might).ThenBy(g => g.Id.Value).First();
@@ -343,7 +344,7 @@ public sealed class AiOffensePlanner
         if (pattern == AiOffensePattern.ArmyGroupSiege)
         {
             var existingSupply = ReusableSupply(original, origin, target) is not null;
-            var minimumOfficers = _config.KeepGeneralsHome + (existingSupply ? 2 : 3);
+            var minimumOfficers = RequiredHomeOfficers + (existingSupply ? 2 : 3);
             if (free.Count < minimumOfficers || original.Garrisons.Where(g => g.City == origin.Id && !g.Trainee)
                     .Sum(g => g.Troops) < 50_000 || original.Garrisons.Where(g => g.City == target.Id)
                     .Sum(g => g.Troops) < 50_000)
@@ -394,20 +395,21 @@ public sealed class AiOffensePlanner
         foreach (var line in support)
         {
             while (combatIds.Count < maxCombat && available - used >= 2000
-                && free.Count > _config.KeepGeneralsHome +
+                && free.Count > RequiredHomeOfficers +
                     (ReusableSupply(original, origin, target) is not null ||
-                     pattern == AiOffensePattern.CavalrySiege
-                         && origin.Position.Distance(target.Position) < 15 ? 0 : 1))
+                     (_map is not null && route.Distance < 15) ||
+                     (_map is null && pattern == AiOffensePattern.CavalrySiege
+                         && origin.Position.Distance(target.Position) < 15) ? 0 : 1))
             {
                 if (!DeployLine(line)) break;
             }
         }
         if (combatIds.Count < 2) return null;
 
-        var supplyRequired = pressure
-            ? route.Distance >= 8
-            : pattern != AiOffensePattern.CavalrySiege
-                || origin.Position.Distance(target.Position) >= 15;
+        var supplyRequired = pressure ? route.Distance >= 8
+            : _map is null ? pattern != AiOffensePattern.CavalrySiege
+                || origin.Position.Distance(target.Position) >= 15
+            : combatIds.Count >= 2 && route.Distance >= 15;
         if (supplyRequired)
         {
             var reusable = ReusableSupply(original, origin, target);
@@ -421,7 +423,7 @@ public sealed class AiOffensePlanner
                     && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
                     && g.Troops >= 1000 && available - used >= 1000)
                 .OrderBy(g => g.TroopCode, StringComparer.Ordinal).FirstOrDefault();
-            if (supplyLine is null || free.Count <= _config.KeepGeneralsHome) return null;
+            if (supplyLine is null || free.Count <= RequiredHomeOfficers) return null;
             var leader = free.OrderByDescending(g => g.AptitudeFor(TroopClass.Supply))
                 .ThenBy(g => g.Id.Value).First();
             var result = _deployer.DeploySupply(scratch, new SupplyDeployRequest(origin.Id,
@@ -435,7 +437,7 @@ public sealed class AiOffensePlanner
             }
         }
         if (used > available || !PassesProvisionBudget(scratch, target, combatIds)
-            || !PassesSiegeTrial(original, scratch, target, combatIds, pressure))
+            || (_map is null && !PassesSiegeTrial(original, scratch, target, combatIds, pressure)))
             return null;
         scratch = ScheduleSiegeAssembly(scratch, target, combatIds);
         if (pressure)
@@ -487,8 +489,8 @@ public sealed class AiOffensePlanner
         var secondaryOfficers = secondaries.ToDictionary(c => c.Id, c => original.GeneralsAt(c.Id)
             .Where(g => !original.IsGeneralBusy(g))
             .Select(g => original.Generals.First(x => x.Id == g)).ToList());
-        if (primaryOfficers.Count < _config.KeepGeneralsHome + 2
-            || secondaryOfficers.Values.Any(officers => officers.Count < _config.KeepGeneralsHome + 1))
+        if (primaryOfficers.Count < RequiredHomeOfficers + 1
+            || secondaryOfficers.Values.Any(officers => officers.Count < RequiredHomeOfficers + 1))
             return null;
 
         var primaryLines = original.Garrisons.Where(g => g.City == primary.Id && !g.Trainee
@@ -513,7 +515,7 @@ public sealed class AiOffensePlanner
         bool AddCombat(City city, GarrisonForce line, List<General> free,
             ref int spent, int budget)
         {
-            if (free.Count <= _config.KeepGeneralsHome) return false;
+            if (free.Count <= RequiredHomeOfficers) return false;
             var remaining = scratch.Garrisons.FirstOrDefault(g => g.City == city.Id
                 && !g.Trainee && g.TroopCode == line.TroopCode)?.Troops ?? 0;
             var troops = Math.Min(Math.Min(remaining, budget - spent),
@@ -559,18 +561,20 @@ public sealed class AiOffensePlanner
             usedSecondary[secondary.Id] = spent;
         }
         if (combatIds.Count < 2) return null;
-        var reusable = ReusableSupply(original, primary, target);
+        var supplyRequired = _map is null || primaryRoute.Distance >= 15
+            || secondaryRoutes.Values.Any(route => route!.Distance >= 15);
+        var reusable = supplyRequired ? ReusableSupply(original, primary, target) : null;
         if (reusable is not null)
         {
             scratch = Follow(scratch, reusable.Id, combatIds[0]);
         }
-        else
+        else if (supplyRequired)
         {
         var supplyLine = scratch.Garrisons.Where(g => g.City == primary.Id && !g.Trainee
                 && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
                 && g.Troops >= 1000 && primaryBudget - usedPrimary >= 1000)
             .OrderBy(g => g.TroopCode, StringComparer.Ordinal).FirstOrDefault();
-        if (supplyLine is null || primaryOfficers.Count <= _config.KeepGeneralsHome)
+        if (supplyLine is null || primaryOfficers.Count <= RequiredHomeOfficers)
             return null;
         var supplyLeader = primaryOfficers.OrderByDescending(g => g.AptitudeFor(TroopClass.Supply))
             .ThenBy(g => g.Id.Value).First();
@@ -583,7 +587,8 @@ public sealed class AiOffensePlanner
         scratch = Follow(scratch, supplyId, combatIds[0]);
         }
         if (!PassesProvisionBudget(scratch, target, combatIds)
-            || !PassesSiegeTrial(original, scratch, target, combatIds, pressure)) return null;
+            || (_map is null && !PassesSiegeTrial(original, scratch, target, combatIds, pressure)))
+            return null;
         scratch = ScheduleSiegeAssembly(scratch, target, combatIds);
         if (pressure)
         {

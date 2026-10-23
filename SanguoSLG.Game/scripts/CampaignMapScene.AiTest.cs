@@ -1,5 +1,6 @@
 using System.Linq;
 using Godot;
+using SanguoSLG.Core.AI;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Simulation.RenewalMovement;
@@ -221,6 +222,92 @@ public sealed partial class CampaignMapScene
             + $"constructionValid={constructionValid} constructionCycle={constructionCycleValid} "
             + $"construction119Day={constructionLongRunValid} "
             + $"fullVision={fullVision} fullIntel={fullIntel} factionColors={factionColors}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    private void RunAiTestWarQa()
+    {
+        var state = _state;
+        var initial = state.Day;
+        var sorties = new Dictionary<FactionId, int>();
+        var decisions = new Dictionary<FactionId, int>();
+        var buildings = new Dictionary<FactionId, HashSet<FieldBuildingId>>();
+        var clockValid = true;
+        var verbose = OS.GetCmdlineUserArgs().Contains("--aitestwarqaverbose");
+        for (var week = 0; week < 52; week++)
+        {
+            foreach (var faction in state.Factions.Where(entry => entry.Id != Player))
+            {
+                var before = state.Armies.Select(unit => unit.Id).ToHashSet();
+                var priorDecision = state.Factions.First(entry => entry.Id == faction.Id)
+                    .AiNextWarDecisionDay;
+                var candidates = verbose
+                    ? AiWarCandidatePolicy.Evaluate(state, faction.Id, _map, _balance, 1) : [];
+                state = _ai.PlanWeek(state, faction.Id);
+                if (priorDecision == 0 || state.Day >= priorDecision)
+                {
+                    decisions[faction.Id] = decisions.GetValueOrDefault(faction.Id) + 1;
+                    var nextDecision = state.Factions.First(entry => entry.Id == faction.Id)
+                        .AiNextWarDecisionDay;
+                    clockValid &= nextDecision - state.Day is >= 30 and <= 60;
+                }
+                var newCombat = state.Armies.Where(unit => !before.Contains(unit.Id)
+                    && unit.Field.Owner == faction.Id && !unit.IsSupply && !unit.IsTransport)
+                    .ToList();
+                sorties[faction.Id] = sorties.GetValueOrDefault(faction.Id) + newCombat.Count;
+                if (!buildings.TryGetValue(faction.Id, out var started))
+                    buildings[faction.Id] = started = [];
+                foreach (var building in state.Buildings.Where(building => building.Owner == faction.Id))
+                    started.Add(building.Id);
+                if (verbose && (priorDecision == 0 || state.Day >= priorDecision
+                    || newCombat.Count > 0))
+                {
+                    var fronts = string.Join(',', candidates.Take(5).Select(candidate =>
+                    {
+                        var origin = state.Cities.First(city => city.Id == candidate.Origin);
+                        var target = state.Cities.First(city => city.Id == candidate.Target);
+                        var force = AiWarForcePolicy.Evaluate(state, origin, target,
+                            candidates, _balance);
+                        return $"{origin.Name}>{target.Name}:{candidate.TravelDays}일"
+                            + $"/{force.OriginAvailable}+{force.SupportAvailable}"
+                            + $"대{force.DefenderTroops}/{force.RequiredRatioTenths}";
+                    }));
+                    var choices = string.Join(',', candidates.Select(candidate => candidate.Origin)
+                        .Distinct().Select(originId =>
+                        {
+                            var origin = state.Cities.First(city => city.Id == originId);
+                            var selected = AiWarCandidatePolicy.ChooseTargets(candidates,
+                                state.Day, faction.Id, originId);
+                            var free = state.GeneralsAt(originId).Count(id => !state.IsGeneralBusy(id));
+                            var total = state.GeneralsAt(originId).Count();
+                            var commands = string.Join('/', state.Commands.Where(command => command.City == originId)
+                                .Select(command => $"{command.Kind}:{command.CompletionDay - state.Day}"));
+                            return $"{origin.Name}[{free}/{total};{commands}]=>"
+                                + string.Join('/', selected.Select(candidate => state.Cities
+                                    .First(city => city.Id == candidate.Target).Name));
+                        }));
+                    GD.Print($"[aitestwarqa] day={state.Day} faction={faction.Name} "
+                        + $"next={state.Factions.First(entry => entry.Id == faction.Id).AiNextWarDecisionDay} "
+                        + $"candidates={candidates.Count} fronts={fronts} choices={choices} "
+                        + $"occupied={AiWarForcePolicy.OccupiedTargets(state, faction.Id)} "
+                        + $"buildDue={AiFieldConstructionEvaluator.PeriodicBuildDue(state, faction.Id)} "
+                        + $"buildings={string.Join('/', state.Buildings.Where(building => building.Owner == faction.Id).Select(building => $"{building.DefinitionCode}:{building.StartedDay}:{building.Position}"))} "
+                        + $"field={string.Join('/', state.Armies.Where(unit => unit.Field.Owner == faction.Id && !unit.IsSupply).Select(unit => $"{unit.Id.Value}:{unit.Field.Mode}:{unit.Pool.Active}:{unit.Field.Target}"))} "
+                        + $"newCombat={newCombat.Count} total={sorties[faction.Id]}");
+                }
+            }
+            state = _engine.AdvanceWeek(state, out _);
+        }
+        var passed = clockValid && state.Day - initial == 364
+            && state.Factions.Where(faction => faction.Id != Player)
+                .All(faction => decisions.GetValueOrDefault(faction.Id) >= 5
+                    && sorties.GetValueOrDefault(faction.Id) >= 10
+                    && buildings.TryGetValue(faction.Id, out var started) && started.Count >= 2);
+        GD.Print($"[aitestwarqa] summary passed={passed} clock={clockValid} days={state.Day - initial} "
+            + string.Join(' ', sorties.OrderBy(entry => entry.Key.Value)
+                .Select(entry => $"faction{entry.Key.Value}=sorties:{entry.Value}"
+                    + $",decisions:{decisions.GetValueOrDefault(entry.Key)}"
+                    + $",buildings:{buildings[entry.Key].Count}")));
         GetTree().Quit(passed ? 0 : 1);
     }
 

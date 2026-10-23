@@ -524,6 +524,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
+        if (_aiTestFixture is not null) Engine.TimeScale = 3.0;
         _view = view;
         _camera = camera;
         _camera.InputBlocked = () => IsModalBlockingMapNavigation() || _armyDragCandidateId >= 0;
@@ -775,6 +776,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestwardeclarationqa")) CallDeferred(nameof(RunWarDeclarationQa));
         if (args.Contains("--maptestcitygaugeqa")) CallDeferred(nameof(RunCityVitalsGaugeQa));
         if (args.Contains("--aitestfixtureqa")) CallDeferred(nameof(RunAiTestFixtureQa));
+        if (args.Contains("--aitestwarqa")) CallDeferred(nameof(RunAiTestWarQa));
         if (args.Contains("--aitestcaseswitchqa")) CallDeferred(nameof(RunAiTestCaseSwitchQa));
         if (args.Contains("--maptesttroopguideqa")) CallDeferred(nameof(RunTroopGuideQa));
         if (args.Contains("--maptestskillguideqa")) CallDeferred(nameof(RunSkillGuideQa));
@@ -836,6 +838,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     public override void _ExitTree()
     {
+        if (_aiTestFixture is not null) Engine.TimeScale = 1.0;
         ReleaseRuntimeUiResources();
     }
 
