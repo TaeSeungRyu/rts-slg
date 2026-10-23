@@ -12,6 +12,25 @@ using Xunit;
 public class CityCaptureTests
 {
     [Fact]
+    public void AI_공격부대는_경유_빈성을_점령하지_않는다()
+    {
+        var intermediate = Fallen(1, 2, new HexCoord(5, 0));
+        var objective = Fallen(2, 2, new HexCoord(10, 0));
+        var attacker = Attacker(1, 1, new HexCoord(4, 0), objective.Position) with
+        { AiAdvanceIgnoresOtherSites = true };
+
+        var result = new CityCapture().ResolveAll(State([intermediate, objective], [attacker]),
+            new FixedRandom(0), out var reports);
+        Assert.Empty(reports);
+        Assert.Equal(new FactionId(2), result.Cities.Single(c => c.Id == intermediate.Id).Owner);
+
+        attacker = attacker with { Field = attacker.Field with { Position = new HexCoord(9, 0) } };
+        result = new CityCapture().ResolveAll(State([intermediate, objective], [attacker]),
+            new FixedRandom(0), out reports);
+        Assert.Contains(reports, report => report.City == objective.Id);
+    }
+
+    [Fact]
     public void 동맹_부대는_빈_성이나_항구를_점령하지_않는다()
     {
         foreach (var port in new[] { PortSize.None, PortSize.Small })

@@ -83,6 +83,7 @@ public sealed class CampaignSiege
             var defendTroops = defenders.Sum(g => g.Troops);
             var besiegers = armies
                 .Where(u => u.Pool.Active > 0 && areHostile(u.Field.Owner, city.Owner)
+                    && AiSiegeTargetPolicy.CanAttack(u, city)
                     && (u.Field.Mode == UnitMode.Attack
                         || u.Field.Mode == UnitMode.Advance
                         && u.Field.PursuitTarget == new RenewalMovement.RenewalTargetId(

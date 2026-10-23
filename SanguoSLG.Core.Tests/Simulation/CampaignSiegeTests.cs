@@ -13,6 +13,23 @@ using Xunit;
 public class CampaignSiegeTests
 {
     [Fact]
+    public void AI_공격부대는_경유_적성을_공성하지_않는다()
+    {
+        var intermediate = Town(1, 2, new HexCoord(5, 0), 1000);
+        var objective = Town(2, 2, new HexCoord(10, 0), 1000);
+        var attacker = Army(1, 1, new HexCoord(4, 0), objective.Position) with
+        { AiAdvanceIgnoresOtherSites = true };
+
+        var result = Siege().Resolve([attacker], [intermediate, objective], []);
+        Assert.Empty(result.Exchanges);
+        Assert.Equal(intermediate.Wall, result.Cities.Single(c => c.Id == intermediate.Id).Wall);
+
+        var atObjective = attacker with { Field = attacker.Field with { Position = new HexCoord(9, 0) } };
+        result = Siege().Resolve([atObjective], [intermediate, objective], []);
+        Assert.Contains(result.Exchanges, exchange => exchange.City == objective.Id);
+    }
+
+    [Fact]
     public void 동맹_부대는_성이나_항구를_공격하지_않는다()
     {
         foreach (var port in new[] { PortSize.None, PortSize.Small })
