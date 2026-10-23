@@ -11,6 +11,9 @@ public sealed record Faction(
     int Gold,
     string Color)
 {
+    /// <summary>다음 신규 거점 공세 판단일. 0은 아직 판단하지 않은 저장 데이터.</summary>
+    public int AiNextWarDecisionDay { get; init; }
+
     /// <summary>자금을 더한(또는 뺀) 새 세력을 반환한다.</summary>
     public Faction AddGold(int amount) => this with { Gold = Gold + amount };
 }

@@ -56,7 +56,16 @@ public sealed class FactionAI
         state = PlanOffenseScouting(state, faction);
         state = PlanOffenseStratagems(state, faction);
         state = PlanFrontTransfers(state, faction);
-        state = new AiOffensePlanner(_deployer, _config, _commands, _map, _economy).Plan(state, faction);
+        var warFaction = state.Factions.FirstOrDefault(entry => entry.Id == faction);
+        if (_map is null || warFaction is null || AiWarDecisionClock.IsDue(warFaction, state.Day))
+        {
+            state = new AiOffensePlanner(_deployer, _config, _commands, _map, _economy)
+                .Plan(state, faction);
+            if (_map is not null && warFaction is not null)
+                state = state with { Factions = state.Factions.Select(entry => entry.Id == faction
+                    ? entry with { AiNextWarDecisionDay = AiWarDecisionClock.NextDay(entry,
+                        state.Day) } : entry).ToList() };
+        }
         state = new AiRearSupportPlanner(_deployer, _map).Plan(state, faction);
         state = PlanGeneralResearch(state, faction);
         state = PlanStratagemResearch(state, faction);
