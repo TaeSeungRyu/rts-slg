@@ -5,7 +5,8 @@ using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
 
 public sealed record AiWarCandidate(CityId Origin, CityId Target, int RouteTiles,
-    int TravelDays, MovementDomain Domain, HexCoord Exit, bool EmptyGarrison);
+    int TravelDays, MovementDomain Domain, HexCoord Exit, bool EmptyGarrison,
+    int DefenderTroops = 0);
 
 public static class AiWarCandidatePolicy
 {
@@ -39,8 +40,10 @@ public static class AiWarCandidatePolicy
                     .ThenBy(candidate => candidate.RouteTiles)
                     .ThenBy(candidate => candidate.Domain).FirstOrDefault();
                 if (route is null) continue;
-                var empty = !state.Garrisons.Any(line => line.City == target.Id && line.Troops > 0);
-                candidates.Add(route with { EmptyGarrison = empty });
+                var defenders = state.Garrisons.Where(line => line.City == target.Id)
+                    .Sum(line => Math.Max(0, line.Troops));
+                candidates.Add(route with { EmptyGarrison = defenders == 0,
+                    DefenderTroops = defenders });
             }
         }
         return candidates.OrderBy(candidate => candidate.RouteTiles)
@@ -53,11 +56,13 @@ public static class AiWarCandidatePolicy
     {
         var choices = candidates.Where(candidate => candidate.Origin == origin)
             .OrderByDescending(candidate => candidate.EmptyGarrison)
+            .ThenBy(candidate => candidate.DefenderTroops)
             .ThenBy(candidate => candidate.RouteTiles)
             .ThenBy(candidate => candidate.Target.Value).ToList();
         var seed = unchecked(day * 397 ^ faction.Value * 31 ^ origin.Value);
         var count = new SeededRandomSource(seed).Next(1, 3);
         return choices.Take(count).OrderBy(candidate => candidate.EmptyGarrison ? 0 : 1)
+            .ThenBy(candidate => candidate.DefenderTroops)
             .ThenBy(candidate => candidate.RouteTiles)
             .ThenBy(candidate => candidate.Target.Value).ToList();
     }

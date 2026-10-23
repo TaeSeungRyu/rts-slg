@@ -74,4 +74,20 @@ public class AiWarCandidatePolicyTests
             && candidate.TravelDays <= 30);
         Assert.DoesNotContain(candidates, candidate => candidate.Target == far.Id);
     }
+
+    [Fact]
+    public void 확인된_수비병이_적은_목표가_거리보다_먼저다()
+    {
+        var source = City(1, 1, 0);
+        var near = City(2, 2, 5);
+        var far = City(3, 2, 9);
+        var state = State(source, near, far) with { GarrisonForces =
+        [
+            new GarrisonForce(near.Id, "swordsman", 9000, 50),
+            new GarrisonForce(far.Id, "swordsman", 3000, 50),
+        ] };
+        var candidates = AiWarCandidatePolicy.Evaluate(state, Us, Map, Balance, 1);
+        Assert.Equal(far.Id,
+            AiWarCandidatePolicy.ChooseTargets(candidates, 1, Us, source.Id)[0].Target);
+    }
 }
