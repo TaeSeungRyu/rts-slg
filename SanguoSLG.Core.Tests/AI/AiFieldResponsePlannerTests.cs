@@ -69,6 +69,29 @@ public class AiFieldResponsePlannerTests
         Assert.Equal(UnitMode.Attack, sortie.Field.Mode);
     }
 
+    [Fact]
+    public void 붕괴된_성은_공격대열_6칸_내_보급대를_기병_우선_목표로_삼는다()
+    {
+        var state = Scenario(new HexCoord(7, 0), new HexCoord(2, 0), supply: false);
+        var city = state.Cities.First(c => c.Id == new CityId(1));
+        var supply = new CombatUnit(new FieldUnit(new UnitId(10), new FactionId(2),
+                new HexCoord(7, 0), 2, 3, 1, MovementDomain.Land, UnitMode.March,
+                null, 10), new CombatStats(1000, 10, 10), new TroopPool(1000, 0),
+            UnitCombatState.Create(60), IsSupply: true);
+        state = state with
+        {
+            Cities = state.Cities.Select(c => c.Id == city.Id ? c with { Wall = 0 } : c).ToList(),
+            GarrisonForces = [new GarrisonForce(city.Id, "cavalry", 20000, 60)],
+            Postings = state.Assignments.Select(p => p with { Location = city.Id }).ToList(),
+            FieldArmies = state.Armies.Append(supply).ToList(),
+        };
+
+        var after = Planner().Plan(state, city.Owner);
+
+        Assert.Contains(after.Armies, unit => unit.Field.Owner == city.Owner
+            && unit.Field.AssignedUnitTarget == supply.Id);
+    }
+
     [Theory]
     [InlineData(7, 4)]
     [InlineData(3, 5)]

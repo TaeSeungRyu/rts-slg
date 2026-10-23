@@ -36,6 +36,16 @@ public sealed class AiFieldResponsePlanner
             // 성벽이 남아 있을 때는 농성한다. 다른 성의 요격대도 내보내지 않는다.
             if (threatened.Wall > 0) continue;
 
+            // 공격 대열의 6칸 안에 있는 보급대는 성에서 4칸 밖이어도
+            // 붕괴 후 기병 우회 목표로 고려한다.
+            var supplies = state.Armies.Where(unit => unit.IsSupply && unit.Pool.Active > 0
+                    && !unit.IsWaitingDeployment
+                    && state.AreHostile(faction, unit.Field.Owner)
+                    && intruders.Any(attacker => !attacker.IsSupply
+                        && attacker.Field.Position.Distance(unit.Field.Position) <= 6))
+                .OrderBy(unit => unit.Id.Value);
+            intruders.AddRange(supplies.Where(unit => intruders.All(other => other.Id != unit.Id)));
+
             var targets = AiWarDefensePolicy.OrderTargets(threatened, intruders);
             foreach (var target in targets)
             {
@@ -104,7 +114,8 @@ public sealed class AiFieldResponsePlanner
         var line = state.Garrisons.Where(g => g.City == threatened.Id && !g.Trainee
                 && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
                 && g.Troops >= 1000 && _deployer.Troops.TryGetValue(g.TroopCode, out var troop)
-                && troop.Class is TroopClass.Cavalry or TroopClass.Infantry or TroopClass.Archer)
+                && (target.IsSupply ? troop.Class == TroopClass.Cavalry
+                    : troop.Class is TroopClass.Cavalry or TroopClass.Infantry or TroopClass.Archer))
             .OrderByDescending(g => g.Troops).ThenBy(g => g.TroopCode, StringComparer.Ordinal)
             .FirstOrDefault();
         if (line is null) return null;
