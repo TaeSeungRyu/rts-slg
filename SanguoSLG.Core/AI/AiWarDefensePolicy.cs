@@ -8,6 +8,9 @@ public static class AiWarDefensePolicy
     public static int MaxSortieTroops(int stationed) => Math.Max(0,
         stationed - (int)Math.Ceiling(stationed * 0.30));
 
+    public static int MaxSortieTroops(int stationed, int committed) => Math.Max(0,
+        stationed - (int)Math.Ceiling((stationed + committed) * 0.30));
+
     public static IReadOnlyList<CombatUnit> OrderTargets(City city,
         IEnumerable<CombatUnit> intruders)
     {

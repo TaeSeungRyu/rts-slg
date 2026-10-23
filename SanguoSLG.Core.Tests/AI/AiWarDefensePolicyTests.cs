@@ -20,6 +20,13 @@ public class AiWarDefensePolicyTests
         => Assert.Equal(expected, AiWarDefensePolicy.MaxSortieTroops(stationed));
 
     [Fact]
+    public void 이미_출전한_수비병을_합쳐_원래_병력의_30퍼센트를_남긴다()
+    {
+        Assert.Equal(2000, AiWarDefensePolicy.MaxSortieTroops(5000, 5000));
+        Assert.Equal(0, AiWarDefensePolicy.MaxSortieTroops(3000, 7000));
+    }
+
+    [Fact]
     public void 보급부대가_6칸_안에_있으면_공성기보다_우선한다()
     {
         var city = new City(new CityId(1), "수성", default, new FactionId(1), 100);

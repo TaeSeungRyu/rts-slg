@@ -33,6 +33,9 @@ public sealed class AiFieldResponsePlanner
                 .ThenBy(u => u.Id.Value).ToList();
             if (intruders.Count == 0) continue;
 
+            // 성벽이 남아 있을 때는 농성한다. 다른 성의 요격대도 내보내지 않는다.
+            if (threatened.Wall > 0) continue;
+
             var targets = AiWarDefensePolicy.OrderTargets(threatened, intruders);
             foreach (var target in targets)
             {
@@ -94,7 +97,10 @@ public sealed class AiFieldResponsePlanner
                 && unit.Field.AssignedUnitTarget is not null)) return null;
         var stationed = state.Garrisons.Where(line => line.City == threatened.Id && !line.Trainee)
             .Sum(line => line.Troops);
-        var deployable = AiWarDefensePolicy.MaxSortieTroops(stationed);
+        var committed = state.Armies.Where(unit => unit.OriginCity == threatened.Id
+            && unit.Field.Owner == threatened.Owner && unit.Pool.Active > 0)
+            .Sum(unit => unit.Pool.Active);
+        var deployable = AiWarDefensePolicy.MaxSortieTroops(stationed, committed);
         var line = state.Garrisons.Where(g => g.City == threatened.Id && !g.Trainee
                 && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
                 && g.Troops >= 1000 && _deployer.Troops.TryGetValue(g.TroopCode, out var troop)
