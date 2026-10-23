@@ -777,6 +777,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestcitygaugeqa")) CallDeferred(nameof(RunCityVitalsGaugeQa));
         if (args.Contains("--aitestfixtureqa")) CallDeferred(nameof(RunAiTestFixtureQa));
         if (args.Contains("--aitestwarqa")) CallDeferred(nameof(RunAiTestWarQa));
+        if (args.Contains("--aitestadvanceprofileqa")) CallDeferred(nameof(RunAiTestAdvanceProfileQa));
         if (args.Contains("--aitestcaseswitchqa")) CallDeferred(nameof(RunAiTestCaseSwitchQa));
         if (args.Contains("--maptesttroopguideqa")) CallDeferred(nameof(RunTroopGuideQa));
         if (args.Contains("--maptestskillguideqa")) CallDeferred(nameof(RunSkillGuideQa));
@@ -4058,6 +4059,7 @@ public sealed partial class CampaignMapScene : Node3D
     private void StartAdvance()
     {
         if (_advancing) { return; }
+        var profileStart = System.Diagnostics.Stopwatch.GetTimestamp();
         if (_depTargeting) { FinishTargeting(); } // 목표 지정 중 진행 = 미확정 목표 취소
 
         // 예약된 출전을 진행 시작 시점에 일괄 편성(대기열 → 야전).
@@ -4145,6 +4147,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             _state = _ai.PlanWeek(_state, f.Id);
         }
+        var profileAi = System.Diagnostics.Stopwatch.GetTimestamp();
 
         var replenishment = _supplyReplenishment.Execute(_state);
         _state = replenishment.State;
@@ -4154,6 +4157,7 @@ public sealed partial class CampaignMapScene : Node3D
         var preMove = _state; // 이동 전(편성·AI 반영) — 애니메이션 시작 위치
         var startHex = preMove.Armies.ToDictionary(u => u.Id.Value, u => u.Field.Position);
         var after = _engine.AdvanceWeek(preMove, out var turns, out var sieges, out var captures, out var plunders, out var casualties);
+        var profileEngine = System.Diagnostics.Stopwatch.GetTimestamp();
         _climatePlayback = _engine.LastClimateDays.ToArray();
         after = CampaignScoreboard.Apply(after, _engine.LastWorldEvents, turns, captures, _balance.WoundedPercent);
         _storySpeechEvents = CombatSpeechEvents(preMove, turns)
@@ -4311,6 +4315,7 @@ public sealed partial class CampaignMapScene : Node3D
         _pendingState = after;
         _pendingNote = note.Count > 0 ? string.Join(" · ", note) : "—";
         BuildAnimation(startHex, turns, sieges, captures, preMove);
+        var profileAnimation = System.Diagnostics.Stopwatch.GetTimestamp();
 
         // 애니메이션 시작: 이동 전 상태(토큰=시작 위치)를 그린 뒤, _Process가 칸 단위로 이동시킨다.
         // 열려 있던 성 명령 팔레트·정보 카드는 자동으로 닫는다(진행 중 명령 불가).
@@ -4361,6 +4366,11 @@ public sealed partial class CampaignMapScene : Node3D
         _dayTurnLabel.Visible = true;
         _dayLabel.Text = "1일차";
         _dayTurnLabel.Text = "▷ 이동턴"; // 재생 시작(0초)은 항상 이동
+        if (_aiTestFixture is not null)
+            GD.Print($"[aitestadvanceprofile] beforeAi={System.Diagnostics.Stopwatch.GetElapsedTime(profileStart, profileAi).TotalMilliseconds:F0}ms "
+                + $"engine={System.Diagnostics.Stopwatch.GetElapsedTime(profileAi, profileEngine).TotalMilliseconds:F0}ms "
+                + $"reportAnimation={System.Diagnostics.Stopwatch.GetElapsedTime(profileEngine, profileAnimation).TotalMilliseconds:F0}ms "
+                + $"redraw={System.Diagnostics.Stopwatch.GetElapsedTime(profileAnimation).TotalMilliseconds:F0}ms");
     }
 
     // 진행 결과의 이동 틱을 "언제 어느 칸으로" 스텝 목록으로 편다. 한 칸 = 1초, 하루 = 4초 슬롯

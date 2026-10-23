@@ -227,6 +227,10 @@ public sealed partial class CampaignMapScene
 
     private void RunAiTestWarQa()
     {
+        var timer = new System.Diagnostics.Stopwatch();
+        var aiMilliseconds = 0L;
+        var advanceMilliseconds = 0L;
+        var maxAiMilliseconds = 0L;
         var state = _state;
         var initial = state.Day;
         var sorties = new Dictionary<FactionId, int>();
@@ -243,7 +247,11 @@ public sealed partial class CampaignMapScene
                     .AiNextWarDecisionDay;
                 var candidates = verbose
                     ? AiWarCandidatePolicy.Evaluate(state, faction.Id, _map, _balance, 1) : [];
+                timer.Restart();
                 state = _ai.PlanWeek(state, faction.Id);
+                timer.Stop();
+                aiMilliseconds += timer.ElapsedMilliseconds;
+                maxAiMilliseconds = Math.Max(maxAiMilliseconds, timer.ElapsedMilliseconds);
                 if (priorDecision == 0 || state.Day >= priorDecision)
                 {
                     decisions[faction.Id] = decisions.GetValueOrDefault(faction.Id) + 1;
@@ -296,7 +304,10 @@ public sealed partial class CampaignMapScene
                         + $"newCombat={newCombat.Count} total={sorties[faction.Id]}");
                 }
             }
+            timer.Restart();
             state = _engine.AdvanceWeek(state, out _);
+            timer.Stop();
+            advanceMilliseconds += timer.ElapsedMilliseconds;
         }
         var passed = clockValid && state.Day - initial == 364
             && state.Factions.Where(faction => faction.Id != Player)
@@ -304,11 +315,18 @@ public sealed partial class CampaignMapScene
                     && sorties.GetValueOrDefault(faction.Id) >= 10
                     && buildings.TryGetValue(faction.Id, out var started) && started.Count >= 2);
         GD.Print($"[aitestwarqa] summary passed={passed} clock={clockValid} days={state.Day - initial} "
+            + $"aiMs={aiMilliseconds} maxAiMs={maxAiMilliseconds} advanceMs={advanceMilliseconds} "
             + string.Join(' ', sorties.OrderBy(entry => entry.Key.Value)
                 .Select(entry => $"faction{entry.Key.Value}=sorties:{entry.Value}"
                     + $",decisions:{decisions.GetValueOrDefault(entry.Key)}"
                     + $",buildings:{buildings[entry.Key].Count}")));
         GetTree().Quit(passed ? 0 : 1);
+    }
+
+    private void RunAiTestAdvanceProfileQa()
+    {
+        StartAdvance();
+        GetTree().Quit(_advancing ? 0 : 1);
     }
 
     private IReadOnlyList<GarrisonForce> AiTestGarrisonsAfterBuilders(AiTestCase testCase)

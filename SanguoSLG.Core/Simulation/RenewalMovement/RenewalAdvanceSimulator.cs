@@ -608,8 +608,11 @@ public sealed class RenewalAdvanceSimulator
                     ?? checked((day - 1) * MovementTicksPerDay + movementTick),
             };
         }
-        var destination = target.Id.Kind is RenewalTargetKind.Building or RenewalTargetKind.Site
-            ? ApproachBuilding(unit, targetPosition, range)
+        var isStructure = target.Id.Kind is RenewalTargetKind.Building or RenewalTargetKind.Site;
+        var reuseApproach = isStructure && unit.LastKnownTargetPosition == targetPosition
+            && unit.Path is { Count: > 0 } && !unit.Arrived;
+        var destination = isStructure
+            ? reuseApproach ? unit.Destination : ApproachBuilding(unit, targetPosition, range)
             : targetPosition;
         var approaching = unit.ArrivalPosition is { } arrival
             && target.Id.Kind is RenewalTargetKind.Building or RenewalTargetKind.Site
@@ -641,11 +644,11 @@ public sealed class RenewalAdvanceSimulator
         return center.Neighbors()
             .Select(RenewalHexSpace.Center)
             .Where(candidate => candidate.DistanceTo(building) <= range
-                && _movementMap.CanStand(unit.Domain, candidate, UnitCollisionRadius)
-                && _movementMap.FindPath(unit.Domain, unit.Position, candidate).Count > 0)
+                && _movementMap.CanStand(unit.Domain, candidate, UnitCollisionRadius))
             .OrderBy(candidate => candidate.DistanceSquaredTo(unit.Position))
             .ThenBy(candidate => candidate.X).ThenBy(candidate => candidate.Y)
-            .FirstOrDefault(building);
+            .FirstOrDefault(candidate => _movementMap.FindPath(unit.Domain,
+                unit.Position, candidate).Count > 0, building);
     }
 
     private RenewalUnitState Retarget(RenewalUnitState unit, ContinuousPosition destination)

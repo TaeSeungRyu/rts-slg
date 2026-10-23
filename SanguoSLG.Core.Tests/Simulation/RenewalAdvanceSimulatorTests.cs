@@ -2,9 +2,36 @@ namespace SanguoSLG.Core.Tests.Simulation;
 
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation.RenewalMovement;
+using SanguoSLG.Core.Spatial;
 
 public sealed class RenewalAdvanceSimulatorTests
 {
+    [Fact]
+    public void 고정_건축물_추적중에는_매틱_경로를_다시_찾지_않는다()
+    {
+        var building = new HexCoord(2, 0);
+        var targetId = new RenewalTargetId(RenewalTargetKind.Building, 1);
+        var map = new RenewalMovementMap(new HexMap(-3, 4, -3, 3), [building]);
+        var simulator = new RenewalAdvanceSimulator(map);
+        var unit = RenewalUnitState.Create(new UnitId(1), RenewalHexSpace.Center(new HexCoord(0, 0)),
+            RenewalHexSpace.Center(building), 1) with
+        {
+            Mode = RenewalOrderMode.Attack,
+            AssignedTarget = targetId,
+        };
+        var state = simulator.Start([unit],
+            [new RenewalTargetState(targetId, new FactionId(2), RenewalHexSpace.Center(building))]);
+
+        var first = simulator.StepMovementTick(state).State;
+        var path = Assert.Single(first.Units).Path;
+        var second = simulator.StepMovementTick(first).State;
+
+        Assert.NotNull(path);
+        Assert.NotEmpty(path);
+        Assert.Same(path, Assert.Single(second.Units).Path);
+        Assert.NotEqual(unit.Position, Assert.Single(second.Units).Position);
+    }
+
     [Fact]
     public void 시작위치가_겹친_적군은_결정론적으로_분리되고_아군은_중첩을_유지한다()
     {
