@@ -33,8 +33,7 @@ public sealed class AiFieldResponsePlanner
                 .ThenBy(u => u.Id.Value).ToList();
             if (intruders.Count == 0) continue;
 
-            var targets = intruders.Where(u => u.IsSupply && !Escorted(state, u)).Concat(intruders
-                .Where(u => !u.IsSupply)).ToList();
+            var targets = AiWarDefensePolicy.OrderTargets(threatened, intruders);
             foreach (var target in targets)
             {
                 if (state.Armies.Any(u => u.Field.Owner == faction
@@ -89,15 +88,13 @@ public sealed class AiFieldResponsePlanner
     private GameState? TryBreakout(GameState state, City threatened, CombatUnit target,
         IReadOnlyList<CombatUnit> intruders)
     {
-        if (threatened.Wall > 0 || target.IsSupply
-            || target.Field.Mode != UnitMode.Attack
-            || target.Field.Target is not { } objective
-            || !CastleFootprint.TilesFor(threatened).Contains(objective)) return null;
-        var hostileTroops = intruders.Where(unit => !unit.IsSupply).Sum(unit => unit.Pool.Active);
+        if (threatened.Wall > 0 || intruders.All(unit => unit.Field.Mode != UnitMode.Attack)
+            || state.Armies.Any(unit => unit.OriginCity == threatened.Id
+                && unit.Field.Owner == threatened.Owner
+                && unit.Field.AssignedUnitTarget is not null)) return null;
         var stationed = state.Garrisons.Where(line => line.City == threatened.Id && !line.Trainee)
             .Sum(line => line.Troops);
-        if (stationed < hostileTroops * 6L / 5L) return null;
-        var reserve = Math.Max(1000, stationed / 5);
+        var deployable = AiWarDefensePolicy.MaxSortieTroops(stationed);
         var line = state.Garrisons.Where(g => g.City == threatened.Id && !g.Trainee
                 && g.TrainingLevel >= _deployer.Balance.DeployMinTraining
                 && g.Troops >= 1000 && _deployer.Troops.TryGetValue(g.TroopCode, out var troop)
@@ -105,7 +102,7 @@ public sealed class AiFieldResponsePlanner
             .OrderByDescending(g => g.Troops).ThenBy(g => g.TroopCode, StringComparer.Ordinal)
             .FirstOrDefault();
         if (line is null) return null;
-        var count = Math.Min(line.Troops, Math.Min(stationed - reserve,
+        var count = Math.Min(line.Troops, Math.Min(deployable,
             CommandEfficiency.CommandTroopDeployLimit(
                 state.ResearchOf(threatened.Owner, FactionResearch.CommandTroopsCode),
                 _deployer.Balance)));
