@@ -82,7 +82,9 @@ public sealed class FactionAI
             unit.Field.Owner == faction && !existingArmyIds.Contains(unit.Id)
                 && unit.Field.Mode == UnitMode.Attack
                 && state.Cities.Any(city => city.Position == unit.Field.Target)
-                ? unit with { AiOpeningAttack = true } : unit).ToList() };
+                ? unit with { AiOpeningAttack = true, AiAdvanceIgnoresOtherSites = true }
+                : unit.Field.Owner == faction
+                    ? unit with { AiAdvanceIgnoresOtherSites = true } : unit).ToList() };
     }
 
     private GameState PlanFieldConstruction(GameState state, FactionId faction)

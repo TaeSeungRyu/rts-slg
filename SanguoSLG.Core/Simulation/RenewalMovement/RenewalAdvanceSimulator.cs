@@ -498,6 +498,15 @@ public sealed class RenewalAdvanceSimulator
             .ToList();
     }
 
+    private static bool CanAdvanceAcquire(RenewalUnitState unit, RenewalTargetState target)
+    {
+        if (!unit.AiAdvanceIgnoresOtherSites || target.Id.Kind != RenewalTargetKind.Site)
+            return true;
+
+        var goal = unit.OriginalDestination ?? unit.Destination;
+        return target.Position == goal || target.Footprint?.Contains(goal) == true;
+    }
+
     private RenewalUnitState ReconcileOrder(RenewalUnitState unit,
         IReadOnlyList<RenewalTargetState> targets, int day, int movementTick,
         ICollection<RenewalAdvanceEvent> events)
@@ -510,7 +519,8 @@ public sealed class RenewalAdvanceSimulator
         if (unit.Mode == RenewalOrderMode.Advance)
         {
             var current = FindHostile(targets, unit, unit.PursuitTarget);
-            if (current is { AutoAcquirable: true } && IsVisibleTo(unit, current))
+            if (current is { AutoAcquirable: true }
+                && CanAdvanceAcquire(unit, current) && IsVisibleTo(unit, current))
             {
                 return FollowTarget(unit, current, day, movementTick);
             }
@@ -532,6 +542,7 @@ public sealed class RenewalAdvanceSimulator
 
             var acquired = targets
                 .Where(candidate => candidate.AutoAcquirable
+                    && CanAdvanceAcquire(unit, candidate)
                     && IsHostile(unit, candidate) && IsVisibleTo(unit, candidate))
                 .OrderBy(candidate => unit.Position.DistanceSquaredTo(candidate.Position))
                 .ThenBy(candidate => candidate.SelectionOrder)

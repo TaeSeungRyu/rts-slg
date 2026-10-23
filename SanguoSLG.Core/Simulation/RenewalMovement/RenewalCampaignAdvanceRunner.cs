@@ -404,7 +404,8 @@ public sealed class RenewalCampaignAdvanceRunner(
             AttackRange: unit.Field.AttackRange,
             CommandId: unit.Field.CommandOrder,
             BuildingAttackRange: unit.Field.RangeCastle,
-            CastleAttackRange: unit.Field.RangeCastle);
+            CastleAttackRange: unit.Field.RangeCastle,
+            AiAdvanceIgnoresOtherSites: unit.AiAdvanceIgnoresOtherSites);
     }
 
     private RenewalTargetId? AssignedTarget(CombatUnit source,

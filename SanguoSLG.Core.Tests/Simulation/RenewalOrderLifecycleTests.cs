@@ -14,6 +14,83 @@ public sealed class RenewalOrderLifecycleTests
             AttackRange = 1,
         };
 
+    [Fact]
+    public void AI_전진은_경유_적성을_무시하고_야전건축물은_추격한다()
+    {
+        var simulator = new RenewalAdvanceSimulator();
+        var advance = Unit(1, 1, 0) with
+        {
+            Mode = RenewalOrderMode.Advance,
+            OriginalDestination = new ContinuousPosition(10_000, 0),
+            AiAdvanceIgnoresOtherSites = true,
+        };
+        var site = new RenewalTargetState(new RenewalTargetId(RenewalTargetKind.Site, 1),
+            new FactionId(2), new ContinuousPosition(1_000, 0));
+        var building = new RenewalTargetState(new RenewalTargetId(RenewalTargetKind.Building, 2),
+            new FactionId(2), new ContinuousPosition(2_000, 0));
+
+        var result = simulator.StepMovementTick(simulator.Start([advance], [site, building]));
+        Assert.Equal(building.Id, result.State.Units.Single().PursuitTarget);
+    }
+
+    [Fact]
+    public void AI_전진은_지정_목표성과_적부대를_공격할_수_있다()
+    {
+        var simulator = new RenewalAdvanceSimulator();
+        var advance = Unit(1, 1, 0) with
+        {
+            Mode = RenewalOrderMode.Advance,
+            OriginalDestination = new ContinuousPosition(10_000, 0),
+            AiAdvanceIgnoresOtherSites = true,
+        };
+        var site = new RenewalTargetState(new RenewalTargetId(RenewalTargetKind.Site, 1),
+            new FactionId(2), new ContinuousPosition(10_000, 0),
+            Footprint: [new ContinuousPosition(10_000, 0)]);
+        var enemy = Unit(2, 2, 2_000, speed: 0) with { Mode = RenewalOrderMode.Standby };
+
+        var towardUnit = simulator.StepMovementTick(simulator.Start([advance, enemy], [site]));
+        Assert.Equal(RenewalTargetId.ForUnit(enemy.Id),
+            towardUnit.State.Units.Single(unit => unit.Id == advance.Id).PursuitTarget);
+
+        var towardSite = simulator.StepMovementTick(simulator.Start([advance with { DetectionRange = 20 }], [site]));
+        Assert.Equal(site.Id, towardSite.State.Units.Single().PursuitTarget);
+    }
+
+    [Fact]
+    public void AI_전진의_기존_경유성_추격도_취소된다()
+    {
+        var simulator = new RenewalAdvanceSimulator();
+        var site = new RenewalTargetState(new RenewalTargetId(RenewalTargetKind.Site, 1),
+            new FactionId(2), new ContinuousPosition(1_000, 0));
+        var advance = Unit(1, 1, 0) with
+        {
+            Mode = RenewalOrderMode.Advance,
+            OriginalDestination = new ContinuousPosition(10_000, 0),
+            PursuitTarget = site.Id,
+            AiAdvanceIgnoresOtherSites = true,
+        };
+
+        var result = simulator.StepMovementTick(simulator.Start([advance], [site]));
+        Assert.Null(result.State.Units.Single().PursuitTarget);
+        Assert.Equal(advance.OriginalDestination, result.State.Units.Single().Destination);
+    }
+
+    [Fact]
+    public void 일반_전진은_경유_적성을_계속_자동_추격한다()
+    {
+        var simulator = new RenewalAdvanceSimulator();
+        var advance = Unit(1, 1, 0) with
+        {
+            Mode = RenewalOrderMode.Advance,
+            OriginalDestination = new ContinuousPosition(10_000, 0),
+        };
+        var site = new RenewalTargetState(new RenewalTargetId(RenewalTargetKind.Site, 1),
+            new FactionId(2), new ContinuousPosition(1_000, 0));
+
+        var result = simulator.StepMovementTick(simulator.Start([advance], [site]));
+        Assert.Equal(site.Id, result.State.Units.Single().PursuitTarget);
+    }
+
     [Theory]
     [InlineData(999, true)]
     [InlineData(1_000, true)]
