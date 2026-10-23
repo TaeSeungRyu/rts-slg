@@ -34,6 +34,10 @@ public sealed class FactionAI
     public GameState PlanWeek(GameState state, FactionId faction)
     {
         state = PlanAppointments(state, faction);
+        state = state with { Cities = state.Cities.Select(city => city.Owner == faction
+            && city.IsPort && city.AiSmallShipNextDay == 0
+                ? city with { AiSmallShipNextDay = state.Day + 90,
+                    AiMediumShipNextDay = state.Day + 180 } : city).ToList() };
         var existingArmyIds = state.Armies.Select(unit => unit.Id).ToHashSet();
         state = state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && unit.AiOpeningAttack && !unit.IsWaitingDeployment

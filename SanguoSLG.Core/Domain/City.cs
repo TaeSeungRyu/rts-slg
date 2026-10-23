@@ -59,7 +59,11 @@ public sealed record City(
     PortSize Port = PortSize.None,
     int RelicSecurityRemainder = 0,
     int AiLastGrowthDay = 0,
-    int AiLastPressureDay = -1000)
+    int AiLastPressureDay = -1000,
+    int AiSmallShipNextDay = 0,
+    int AiMediumShipNextDay = 0,
+    int AiSmallShipCompletionDay = 0,
+    int AiMediumShipCompletionDay = 0)
 {
     public bool IsPort => Port != PortSize.None;
 

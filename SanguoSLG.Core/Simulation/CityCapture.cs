@@ -105,6 +105,10 @@ public sealed class CityCapture
                 ? c with
                 {
                     Owner = captor,
+                    AiSmallShipNextDay = 0,
+                    AiMediumShipNextDay = 0,
+                    AiSmallShipCompletionDay = 0,
+                    AiMediumShipCompletionDay = 0,
                     Population = newPopulation,
                     Security = newSecurity,
                     Gold = c.Gold + depositGold,
