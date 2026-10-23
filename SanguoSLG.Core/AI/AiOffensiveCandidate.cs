@@ -11,7 +11,7 @@ public sealed record AiOffensiveCandidate(
 public static class AiOffensiveCandidateService
 {
     public static AiOffensiveCandidate Evaluate(GameState state, City origin, City target,
-        int minimumReserve = 10_000, int requiredRatioPercent = 120)
+        int minimumReserve = 0, int requiredRatioPercent = 120)
     {
         if (origin.Owner == target.Owner || state.AreAllied(origin.Owner, target.Owner))
             return new(origin.Id, target.Id, 0, 0, 0, origin.Position.Distance(target.Position),
@@ -21,7 +21,9 @@ public static class AiOffensiveCandidateService
             .Sum(g => Math.Max(0, g.Troops));
         var defenders = state.Garrisons.Where(g => g.City == target.Id)
             .Sum(g => Math.Max(0, g.Troops));
-        var reserve = Math.Max(minimumReserve, (int)Math.Ceiling(stationed * 0.30));
+        var committed = state.Armies.Where(unit => unit.OriginCity == origin.Id
+            && unit.Field.Owner == origin.Owner).Sum(unit => Math.Max(0, unit.Pool.Active));
+        var reserve = Math.Max(minimumReserve, (int)Math.Ceiling((stationed + committed) * 0.20));
         var available = Math.Max(0, stationed - reserve);
         var required = (int)Math.Ceiling(defenders * requiredRatioPercent / 100.0);
         var passes = available > 0 && available >= required;

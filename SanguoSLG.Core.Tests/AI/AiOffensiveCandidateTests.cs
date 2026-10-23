@@ -21,7 +21,7 @@ public class AiOffensiveCandidateTests
 
     [Theory]
     [InlineData(30_000, 30_000, false)]
-    [InlineData(50_000, 30_000, false)]
+    [InlineData(50_000, 30_000, true)]
     [InlineData(50_000, 50_000, false)]
     [InlineData(100_000, 50_000, true)]
     [InlineData(100_000, 100_000, false)]
@@ -30,7 +30,7 @@ public class AiOffensiveCandidateTests
         var state = State(own, enemy);
         var assessment = AiOffensiveCandidateService.Evaluate(state, state.Cities[0], state.Cities[1]);
         Assert.Equal(expected, assessment.PassesForceGate);
-        Assert.Equal(Math.Max(10_000, (int)Math.Ceiling(own * 0.30)), assessment.ReserveTroops);
+        Assert.Equal((int)Math.Ceiling(own * 0.20), assessment.ReserveTroops);
         Assert.Equal(5, assessment.Distance);
     }
 

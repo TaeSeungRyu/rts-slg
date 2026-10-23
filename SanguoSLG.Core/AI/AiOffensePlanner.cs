@@ -28,6 +28,7 @@ public sealed class AiOffensePlanner
 
     public GameState Plan(GameState state, FactionId faction)
     {
+        if (_map is not null) return PlanWar(state, faction);
         foreach (var origin in state.Cities.Where(c => c.Owner == faction && !c.IsPort
             && AiSortiePolicy.AllowsCombatSortie(c, _economy))
             .OrderBy(c => c.Id.Value))
@@ -110,6 +111,122 @@ public sealed class AiOffensePlanner
             }
         }
         return state;
+    }
+
+    private GameState PlanWar(GameState state, FactionId faction)
+    {
+        if (_map is null) return state;
+        var candidates = AiWarCandidatePolicy.Evaluate(state, faction, _map,
+            _economy ?? new BalanceConfig(MonthlyTaxPerCity: 100), 1);
+        var originIds = candidates.Select(candidate => candidate.Origin).Distinct().ToList();
+        foreach (var originId in originIds)
+        {
+            if (AiWarForcePolicy.OccupiedTargets(state, faction)
+                >= AiWarForcePolicy.ConcurrentTargetLimit(state.CityCount(faction))) break;
+            var origin = state.Cities.First(city => city.Id == originId);
+            foreach (var candidate in AiWarCandidatePolicy.ChooseTargets(candidates,
+                state.Day, faction, originId))
+            {
+                var target = state.Cities.First(city => city.Id == candidate.Target);
+                if (state.Armies.Any(unit => unit.Field.Owner == faction
+                    && (unit.AiSiegeAssemblyTarget == target.Id
+                        || unit.Field.Target == target.Position))) continue;
+                var force = AiWarForcePolicy.Evaluate(state, origin, target, candidates,
+                    _economy ?? new BalanceConfig(MonthlyTaxPerCity: 100));
+                if (!force.CanAttack) continue;
+                // 최저 배수 공세는 선행 보루가 필수다. 준비 절차가 없을 때
+                // 공격을 강행해 정책을 깨지 않도록 보류한다.
+                if (force.RequiredRatioTenths == 12 && force.DefenderTroops > 0)
+                    continue;
+                var officers = state.GeneralsAt(origin.Id).Where(id => !state.IsGeneralBusy(id))
+                    .Select(id => state.Generals.First(general => general.Id == id))
+                    .OrderBy(id => id.Id.Value).ToList();
+                GameState? next;
+                if (candidate.Domain == MovementDomain.DeepWater)
+                    next = TryNavalAssault(state, origin, target, candidate, force, officers);
+                else if (target.Wall == 0 && force.DefenderTroops == 0)
+                    next = TryOccupyEmpty(state, origin, target, candidate, force, officers);
+                else if (force.Support is { } supportId)
+                    next = TryCoalition(state, origin,
+                        [state.Cities.First(city => city.Id == supportId)], target);
+                else
+                {
+                    var preferred = AiOffensePatternService.Choose(state, origin, target,
+                        _deployer.Troops, officers.Count);
+                    next = TryBundle(state, origin, target, officers, preferred.Pattern)
+                        ?? TryBundle(state, origin, target, officers,
+                            AiOffensePattern.RegularSiege);
+                }
+                if (next is null) continue;
+                state = next;
+                break;
+            }
+        }
+        return state;
+    }
+
+    private GameState? TryOccupyEmpty(GameState state, City origin, City target,
+        AiWarCandidate candidate, AiWarForceAssessment force, IReadOnlyList<General> officers)
+    {
+        if (officers.Count <= _config.KeepGeneralsHome || force.OriginAvailable < 1000)
+            return null;
+        var options = state.Garrisons.Where(line => line.City == origin.Id && !line.Trainee
+                && line.Troops >= 1000 && line.TrainingLevel >= _deployer.Balance.DeployMinTraining
+                && _deployer.Troops.TryGetValue(line.TroopCode, out var troop)
+                && troop.Class is not (TroopClass.Supply or TroopClass.Naval))
+            .OrderByDescending(line => officers.Max(officer => officer.AptitudeFor(
+                _deployer.Troops[line.TroopCode].Class)))
+            .ThenBy(line => line.TroopCode, StringComparer.Ordinal);
+        foreach (var line in options)
+        {
+            var leader = officers.OrderByDescending(officer => officer.AptitudeFor(
+                    _deployer.Troops[line.TroopCode].Class))
+                .ThenByDescending(officer => officer.Might).ThenBy(officer => officer.Id.Value).First();
+            var deployed = _deployer.Deploy(state, new DeployRequest(origin.Id, line.TroopCode,
+                Math.Min(1000, force.OriginAvailable), leader.Id, Mode: UnitMode.Attack,
+                Target: target.Position, EgressExit: candidate.Exit));
+            if (deployed.Ok) return deployed.State;
+        }
+        return null;
+    }
+
+    private GameState? TryNavalAssault(GameState state, City origin, City target,
+        AiWarCandidate candidate, AiWarForceAssessment force, IReadOnlyList<General> officers)
+    {
+        if (!origin.IsPort || !target.IsPort) return null;
+        var scratch = state;
+        var required = Math.Max(1000, force.PlannedTroops);
+        var sent = 0;
+        var availableOfficers = officers.ToList();
+        foreach (var line in state.Garrisons.Where(line => line.City == origin.Id && !line.Trainee
+                && line.TrainingLevel >= _deployer.Balance.DeployMinTraining
+                && line.Troops > 0 && _deployer.Troops.ContainsKey(line.TroopCode))
+            .OrderByDescending(line => line.Troops).ThenBy(line => line.TroopCode,
+                StringComparer.Ordinal))
+        {
+            while (sent < required && availableOfficers.Count > _config.KeepGeneralsHome)
+            {
+                var stock = scratch.PortShips.Where(ship => ship.City == origin.Id && ship.Count > 0)
+                    .OrderBy(ship => ship.ShipCode, StringComparer.Ordinal).FirstOrDefault();
+                if (stock is null) break;
+                var remaining = scratch.Garrisons.FirstOrDefault(garrison => garrison.City == origin.Id
+                    && garrison.TroopCode == line.TroopCode && !garrison.Trainee)?.Troops ?? 0;
+                var count = Math.Min(10_000, Math.Min(remaining,
+                    Math.Min(required - sent, AiWarForcePolicy.Available(scratch, origin))));
+                if (count < 1000) break;
+                var leader = availableOfficers.OrderByDescending(officer => officer.AptitudeFor(
+                        _deployer.Troops[line.TroopCode].Class))
+                    .ThenByDescending(officer => officer.Might).ThenBy(officer => officer.Id.Value).First();
+                var deployed = _deployer.DeployNaval(scratch, new NavalDeployRequest(origin.Id,
+                    stock.ShipCode, line.TroopCode, count, leader.Id, Mode: UnitMode.Attack,
+                    Target: target.Position, EgressExit: candidate.Exit));
+                if (!deployed.Ok) break;
+                scratch = deployed.State;
+                sent += count;
+                availableOfficers.Remove(leader);
+            }
+        }
+        return sent >= required ? scratch : null;
     }
 
     private GameState? TryReinforceExistingSiege(GameState state, City origin, City target)
