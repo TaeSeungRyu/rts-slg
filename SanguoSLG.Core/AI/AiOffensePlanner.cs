@@ -577,7 +577,7 @@ public sealed class AiOffensePlanner
             var travelDays = (distance + Math.Max(1, unit.Field.Speed) - 1)
                 / Math.Max(1, unit.Field.Speed);
             var daily = Math.Max(1, (unit.Pool.Active + 999) / 1000);
-            var campaignDays = travelDays * 2 + 14;
+            var campaignDays = travelDays;
             var remaining = (long)unit.Provisions - (long)daily * campaignDays;
             if (unit.IsSupply) supplySurplus += Math.Max(0, remaining);
             else shortage += Math.Max(0, -remaining);
