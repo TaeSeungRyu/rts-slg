@@ -205,6 +205,25 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void 점령_직후_장수_없는_AI_성도_안전하면_성벽을_복구한다()
+    {
+        var city = Town(302, 1, new HexCoord(0, 0)) with
+        { Wall = 0, Gold = 2000, AiLastGrowthDay = 0 };
+        var state = new GameState(20, 190, [], [city], []);
+        var commander = new CommandService(B, Troops,
+            new BalanceConfig(MonthlyTaxPerCity: 100));
+        var deployer = new DeployService(B, Troops,
+            new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+            new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()));
+
+        var after = new FactionAI(commander, deployer,
+            new AiConfig(GeneralResearchReserveGold: -1,
+                ExplorationReserveGold: int.MaxValue)).PlanWeek(state, new FactionId(1));
+
+        Assert.True(after.Cities.Single().Wall > 0);
+    }
+
+    [Fact]
     public void 전력이_비등해_공세가_보류되어도_AI는_장수규모에_맞춰_병력을_자동생산한다()
     {
         var city = Town(1, 1, new HexCoord(0, 0)) with

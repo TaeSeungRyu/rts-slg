@@ -110,6 +110,7 @@ public sealed class CityCapture
                     AiMediumShipNextDay = 0,
                     AiSmallShipCompletionDay = 0,
                     AiMediumShipCompletionDay = 0,
+                    AiLastGrowthDay = 0,
                     Population = newPopulation,
                     Security = newSecurity,
                     Gold = c.Gold + depositGold,

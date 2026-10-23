@@ -31,6 +31,19 @@ public class CityCaptureTests
     }
 
     [Fact]
+    public void 점령한_성은_이전_소유자의_AI_성장일을_상속하지_않는다()
+    {
+        var city = Fallen(1, 2, new HexCoord(5, 0)) with { AiLastGrowthDay = 20 };
+        var attacker = Attacker(1, 1, new HexCoord(4, 0), city.Position);
+        var state = State([city], [attacker]) with { Day = 20 };
+
+        var result = new CityCapture().ResolveAll(state, new FixedRandom(0), out var reports);
+
+        Assert.Single(reports);
+        Assert.Equal(0, result.Cities.Single().AiLastGrowthDay);
+    }
+
+    [Fact]
     public void 동맹_부대는_빈_성이나_항구를_점령하지_않는다()
     {
         foreach (var port in new[] { PortSize.None, PortSize.Small })
