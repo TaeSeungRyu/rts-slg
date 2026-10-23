@@ -29,7 +29,8 @@ public static class FieldCasualties
             var components = dead.IsSupply || dead.IsTransport || dead.IsArmyGroup
                 ? cargo.Select(component => (component.TroopCode, component.Troops, component.TrainingLevel)).ToList()
                 : new List<(string TroopCode, int Troops, int TrainingLevel)>
-                    { (dead.TroopCode, 1, dead.Training) };
+                    { (dead.Class == TroopClass.Naval && dead.EmbarkedTroopCode.Length > 0
+                        ? dead.EmbarkedTroopCode : dead.TroopCode, 1, dead.Training) };
             var total = components.Sum(component => component.Troops);
             var allocated = 0;
             for (var i = 0; i < components.Count && total > 0; i++)

@@ -716,6 +716,31 @@ public class CampaignEngineTests
     }
 
     [Fact]
+    public void 항구로_복귀한_해상부대는_승선병력과_선박을_각각_보관한다()
+    {
+        var port = new City(new CityId(1), "항구", new HexCoord(5, 0), new FactionId(1), 100,
+            Port: PortSize.Small);
+        var ship = Army(8, 1, new HexCoord(4, 0), UnitMode.March, port.Position,
+            troops: 3000, code: "small_boat") with
+        {
+            Field = new FieldUnit(new UnitId(8), new FactionId(1), new HexCoord(4, 0),
+                2, 1, 1, MovementDomain.DeepWater, UnitMode.March, port.Position, 8,
+                ReturnCity: port.Id),
+            EmbarkedTroopCode = "swordsman",
+        };
+        var state = new GameState(1, 1, [], [port], [], FieldArmies: [ship]);
+
+        var after = Engine().AdvanceWeek(state, out var turns);
+
+        Assert.Contains(turns.SelectMany(turn => turn.EnteredCastle), unit => unit.Id == ship.Id);
+        Assert.Empty(after.Armies);
+        Assert.Equal(3000, Assert.Single(after.Garrisons).Troops);
+        Assert.Equal("swordsman", after.Garrisons[0].TroopCode);
+        Assert.Equal(1, Assert.Single(after.PortShips).Count);
+        Assert.Equal("small_boat", after.PortShips[0].ShipCode);
+    }
+
+    [Fact]
     public void 수송부대도_목표성에_인접하면_공격턴_전에_바로_입성한다()
     {
         var source = new City(new CityId(1), "출발", new HexCoord(0, 0), new FactionId(1), 0);

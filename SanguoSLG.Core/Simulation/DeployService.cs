@@ -659,6 +659,7 @@ public sealed class DeployService
             req.Waypoints, _adminSkills);
         unit = unit with { Provisions = carried, ProvisionsCapacity = capacityPer10k,
             LootGold = req.Gold, Training = garrison.TrainingLevel, OriginCity = city.Id,
+            EmbarkedTroopCode = req.SourceTroopCode,
             Field = unit.Field with { ContinuousTarget = req.ContinuousTarget,
                 ContinuousWaypoints = req.ContinuousWaypoints },
             DeploymentDelayDays = req.DelayDays, EgressDirection = req.EgressDirection, EgressExit = req.EgressExit,

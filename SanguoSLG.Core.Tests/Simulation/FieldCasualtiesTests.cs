@@ -120,6 +120,27 @@ public class FieldCasualtiesTests
     }
 
     [Fact]
+    public void 해상_교전에서_병력이_0이면_선박은_파괴되고_재고로_돌아가지_않는다()
+    {
+        var port = Town(1, 1, new HexCoord(0, 0)) with { Port = PortSize.Small };
+        var state = State(port);
+        var dead = DeadUnit(9, 1, new HexCoord(2, 0)) with
+        {
+            Field = DeadUnit(9, 1, new HexCoord(2, 0)).Field with
+            { Domain = MovementDomain.DeepWater },
+            Class = TroopClass.Naval, TroopCode = "small_boat",
+            EmbarkedTroopCode = "swordsman", OriginCity = port.Id,
+            Pool = new TroopPool(0, 70),
+        };
+
+        var result = FieldCasualties.ResolveUnit(state, dead, dead.Field.Position, []);
+
+        Assert.Empty(result.PortShips);
+        Assert.Equal(70, Assert.Single(result.CityWounded).Troops);
+        Assert.Equal("swordsman", result.CityWounded[0].TroopCode);
+    }
+
+    [Fact]
     public void 기존배속이_없어도_전멸장수는_아군도시로_복구된다()
     {
         var s0 = State(Town(1, 1, new HexCoord(0, 0)));

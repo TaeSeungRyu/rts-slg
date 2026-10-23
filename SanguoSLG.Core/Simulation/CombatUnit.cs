@@ -54,7 +54,8 @@ public sealed record CombatUnit(
     int RelicDefensePercent = 100,
     CityId? AiSiegeAssemblyTarget = null,
     int AiPressureUntilDay = 0,
-    bool IsWildBeast = false)
+    bool IsWildBeast = false,
+    string EmbarkedTroopCode = "")
 {
     public UnitId Id => Field.Id;
 

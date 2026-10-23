@@ -900,6 +900,7 @@ public sealed class CampaignEngine
         var garrisons = work.Garrisons.ToList();
         var postings = work.Assignments.ToList();
         var cities = work.Cities.ToList();
+        var portShips = work.PortShips.ToList();
         foreach (var unit in entered)
         {
             CityId cityId;
@@ -931,10 +932,22 @@ public sealed class CampaignEngine
                 }
             }
 
+            if (unit.Class == TroopClass.Naval && cities.Any(city => city.Id == cityId && city.IsPort))
+            {
+                var stockIndex = portShips.FindIndex(stock => stock.City == cityId
+                    && stock.ShipCode == unit.TroopCode);
+                if (stockIndex >= 0)
+                    portShips[stockIndex] = portShips[stockIndex] with
+                    { Count = portShips[stockIndex].Count + 1 };
+                else
+                    portShips.Add(new PortShipStock(cityId, unit.TroopCode, 1));
+            }
+
             var incoming = (unit.IsSupply || unit.IsTransport || unit.IsArmyGroup) && unit.Cargo.Count > 0
                 ? unit.Cargo.Select(c => (c.TroopCode, c.Troops, Training: c.TrainingLevel))
-                : unit.TroopCode.Length > 0
-                    ? [(unit.TroopCode, unit.Pool.Active, Training: unit.Training)]
+                : (unit.Class == TroopClass.Naval && unit.EmbarkedTroopCode.Length > 0
+                    ? unit.EmbarkedTroopCode : unit.TroopCode) is { Length: > 0 } embarkedCode
+                    ? [(embarkedCode, unit.Pool.Active, Training: unit.Training)]
                     : [];
             foreach (var (code, troops, training) in incoming)
             {
@@ -963,7 +976,8 @@ public sealed class CampaignEngine
             }
         }
 
-        return work with { GarrisonForces = garrisons, Postings = postings, Cities = cities };
+        return work with { GarrisonForces = garrisons, Postings = postings, Cities = cities,
+            PortShipStocks = portShips };
     }
 
     private static void DepositSiegeSpoils(List<City> cities, CityId cityId, CombatUnit dead)
