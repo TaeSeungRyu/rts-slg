@@ -732,7 +732,7 @@ public sealed class AiOffensePlanner
             var tile = queue.Dequeue();
             if (approaches.Contains(tile))
                 return new AiRoute(origins[tile], distances[tile] + 2);
-            if (distances[tile] >= 25) continue;
+            if (distances[tile] >= 28) continue;
             foreach (var neighbor in tile.Neighbors())
             {
                 if (distances.ContainsKey(neighbor)
