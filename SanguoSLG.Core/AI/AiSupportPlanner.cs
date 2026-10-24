@@ -7,6 +7,34 @@ using SanguoSLG.Core.Spatial;
 /// <summary>실제로 공격받는 성에 가장 빨리 닿을 수 있는 한 성에서 지원대를 출전시킨다.</summary>
 public sealed class AiSupportPlanner(DeployService deployer, HexMap map, BalanceConfig balance)
 {
+    public static GameState Recall(GameState state, FactionId faction)
+    {
+        return state with { FieldArmies = state.Armies.Select(unit =>
+        {
+            if (unit.Field.Owner != faction || unit.AiSupportDefendedCity is not { } defendedId
+                || unit.IsWaitingDeployment || unit.Field.Mode == UnitMode.March) return unit;
+            var defended = state.Cities.FirstOrDefault(city => city.Id == defendedId
+                && city.Owner == faction);
+            var quarry = unit.Field.AssignedUnitTarget is { } targetId
+                ? state.Armies.FirstOrDefault(enemy => enemy.Id == targetId
+                    && enemy.Pool.Active > 0 && state.AreHostile(faction, enemy.Field.Owner))
+                : null;
+            if (defended is not null && quarry is not null
+                && AiSupportRoutePolicy.Attackers(state, defended).Count > 0) return unit;
+            var home = state.Cities.Where(city => city.Owner == faction)
+                .OrderBy(city => city.Id == unit.OriginCity ? 0 : 1)
+                .ThenBy(city => city.Position.Distance(unit.Field.Position))
+                .ThenBy(city => city.Id.Value).FirstOrDefault();
+            return unit with { AiSupportDefendedCity = null, Field = unit.Field with
+            {
+                Mode = home is null ? UnitMode.Standby : UnitMode.March,
+                Target = home?.Position, ReturnCity = home?.Id,
+                AssignedUnitTarget = null, PursuitTarget = null,
+                ContinuousTarget = null, Waypoints = null, ContinuousWaypoints = null,
+            } };
+        }).ToList() };
+    }
+
     public GameState Plan(GameState state, FactionId faction)
     {
         foreach (var defended in state.Cities.Where(city => city.Owner == faction && !city.IsPort)

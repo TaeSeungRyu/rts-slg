@@ -9,6 +9,29 @@ using SanguoSLG.Core.Spatial;
 public sealed class AiSupportPlannerTests
 {
     [Fact]
+    public void 지원_표적이_사라지면_출발성으로_복귀하고_표적을_비운다()
+    {
+        var home = new City(new CityId(1), "출발", new HexCoord(0, 0),
+            new FactionId(1), 10000);
+        var defended = new City(new CityId(2), "수비", new HexCoord(5, 0),
+            new FactionId(1), 10000);
+        var unit = new CombatUnit(new FieldUnit(new UnitId(1), home.Owner,
+                new HexCoord(3, 0), 2, 3, 1, MovementDomain.Land, UnitMode.Attack,
+                defended.Position, 1, AssignedUnitTarget: new UnitId(9)),
+            new CombatStats(7000, 10, 10), new TroopPool(7000, 0),
+            UnitCombatState.Create(60), OriginCity: home.Id,
+            AiSupportDefendedCity: defended.Id);
+        var state = new GameState(1, 190, [], [home, defended], [], FieldArmies: [unit]);
+
+        var recalled = Assert.Single(AiSupportPlanner.Recall(state, home.Owner).Armies);
+
+        Assert.Equal(UnitMode.March, recalled.Field.Mode);
+        Assert.Equal(home.Position, recalled.Field.Target);
+        Assert.Null(recalled.Field.AssignedUnitTarget);
+        Assert.Null(recalled.AiSupportDefendedCity);
+    }
+
+    [Fact]
     public void 공격받는_성에_가장_가까운_성에서_병력_사십퍼센트_이하로_한_부대만_지원한다()
     {
         var troops = new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory());

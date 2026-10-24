@@ -49,6 +49,7 @@ public sealed class FactionAI
                 : unit).ToList() };
         state = CommitPressureAssault(state, faction);
         state = WithdrawPressure(state, faction);
+        state = AiSupportPlanner.Recall(state, faction);
         state = Retarget(state, faction);
         state = TargetUnlockRuins(state, faction);
         state = RecruitUnlockedHeroes(state, faction);
