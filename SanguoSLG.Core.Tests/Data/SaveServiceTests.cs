@@ -27,7 +27,7 @@ public class SaveServiceTests
             new TroopPool(5000, 200), UnitCombatState.Create(60), 70, 60, 5000, t.Class,
             TroopCode: "swordsman", VanguardId: new GeneralId(1), DeploymentDelayDays: 4,
             EgressDirection: DeploymentDirection.SouthEast, EgressExit: new HexCoord(2, 4), AwaitingEgress: true,
-            RenewalPosition: new ContinuousPosition(2_111, 3_222));
+            RenewalPosition: new ContinuousPosition(2_111, 3_222), AiRuinTarget: "pikeman_ruin");
 
         var g = new General(new GeneralId(1), "관우",
             new Dictionary<TroopClass, AptitudeGrade> { [TroopClass.Cavalry] = AptitudeGrade.S, [TroopClass.Infantry] = AptitudeGrade.A },
@@ -79,6 +79,8 @@ public class SaveServiceTests
             ]);
 
         var round = SaveService.Deserialize(SaveService.Serialize(state));
+
+        Assert.Equal("pikeman_ruin", round.Armies.Single().AiRuinTarget);
 
         Assert.Equal(45, round.Day);
         Assert.Equal(130, round.MarketPricePercent);

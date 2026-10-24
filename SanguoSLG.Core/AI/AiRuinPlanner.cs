@@ -23,13 +23,6 @@ public sealed class AiRuinPlanner(DeployService deployer, HexMap map, BalanceCon
             var deployed = 0;
             var maxUnit = CommandEfficiency.CommandTroopDeployLimit(
                 state.ResearchOf(faction, FactionResearch.CommandTroopsCode), deployer.Balance);
-            var shipCode = candidate.Domain == MovementDomain.DeepWater
-                ? state.PortShips.Where(stock => stock.City == city.Id && stock.Count > 0
-                    && deployer.Troops.TryGetValue(stock.ShipCode, out var template)
-                    && template.Class == TroopClass.Naval)
-                    .OrderBy(stock => stock.ShipCode, StringComparer.Ordinal)
-                    .Select(stock => stock.ShipCode).FirstOrDefault()
-                : null;
             var egressDirection = DeploymentEgressRules.Directions.FirstOrDefault(direction =>
                 DeploymentEgressRules.ExitGroup(city, direction).Contains(candidate.Exit));
             while (deployed < required)
@@ -39,6 +32,13 @@ public sealed class AiRuinPlanner(DeployService deployer, HexMap map, BalanceCon
                     .Select(id => scratch.Generals.First(general => general.Id == id)).ToList();
                 if (officers.Count == 0 || scratch.Cities.First(c => c.Id == city.Id).Provisions <= 0)
                     break;
+                var shipCode = candidate.Domain == MovementDomain.DeepWater
+                    ? scratch.PortShips.Where(stock => stock.City == city.Id && stock.Count > 0
+                        && deployer.Troops.TryGetValue(stock.ShipCode, out var template)
+                        && template.Class == TroopClass.Naval)
+                        .OrderBy(stock => stock.ShipCode, StringComparer.Ordinal)
+                        .Select(stock => stock.ShipCode).FirstOrDefault()
+                    : null;
                 var lines = scratch.Garrisons.Where(line => line.City == city.Id
                         && !line.Trainee && line.Troops >= 1000
                         && line.TrainingLevel >= deployer.Balance.DeployMinTraining
@@ -90,8 +90,13 @@ public sealed class AiRuinPlanner(DeployService deployer, HexMap map, BalanceCon
             var ruin = state.Ruins.FirstOrDefault(target => target.Id == id);
             var status = state.RuinStatus.FirstOrDefault(entry => entry.RuinId == id);
             if (ruin is not null && status is not null && status.Defenders > 0
+                && unit.Field.Mode == UnitMode.Attack
                 && !status.IsProtected(state.Day) && !status.Registrations.Contains(faction))
                 return unit;
+            if (ruin is not null && status is not null && status.Defenders > 0
+                && unit.Field.Mode != UnitMode.Attack
+                && !status.IsProtected(state.Day) && !status.Registrations.Contains(faction))
+                return unit with { AiRuinTarget = null };
             var home = state.Cities.Where(city => city.Owner == faction)
                 .OrderBy(city => city.Id == unit.OriginCity ? 0 : 1)
                 .ThenBy(city => city.Position.Distance(unit.Field.Position))

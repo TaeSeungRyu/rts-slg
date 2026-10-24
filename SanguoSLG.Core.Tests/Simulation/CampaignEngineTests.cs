@@ -110,6 +110,34 @@ public class CampaignEngineTests
     }
 
     [Fact]
+    public void AI_유적점령_직후_공격부대는_같은_진행에서_복귀명령을_받는다()
+    {
+        var ruinPos = new HexCoord(4, 0);
+        var home = new City(new CityId(1), "출발성", new HexCoord(0, 0), new FactionId(1), 1000);
+        var attacker = Army(1, 1, new HexCoord(3, 0), UnitMode.Attack, ruinPos) with
+        {
+            Field = Army(1, 1, new HexCoord(3, 0), UnitMode.Attack, ruinPos).Field with { Speed = 0 },
+            OriginCity = home.Id, AiRuinTarget = "r1",
+        };
+        var state = World(attacker) with
+        {
+            Cities = [home],
+            RuinDefinitions = [new("r1", "극병 유적", ruinPos, "geukbyeong", 1)],
+            RuinStates = [new("r1", 1)],
+        };
+
+        var after = EngineWithRuins().AdvanceWeek(state, out var turns);
+
+        Assert.Equal(new FactionId(1), after.RuinStatus.Single().Owner);
+        var returning = Assert.Single(after.Armies);
+        Assert.Null(returning.AiRuinTarget);
+        Assert.Equal(UnitMode.March, returning.Field.Mode);
+        Assert.Equal(home.Id, returning.Field.ReturnCity);
+        Assert.Contains(turns.Skip(1), turn => turn.Units.Any(unit =>
+            unit.Id == attacker.Id && unit.Field.Mode == UnitMode.March));
+    }
+
+    [Fact]
     public void 실제교전에_참가한_장수는_사용병종_숙련경험치를_얻는다()
     {
         var attacker = Army(1, 1, new HexCoord(3, 0), UnitMode.Attack, new HexCoord(4, 0)) with

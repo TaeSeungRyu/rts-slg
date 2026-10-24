@@ -1,6 +1,7 @@
 namespace SanguoSLG.Core.Simulation;
 
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.AI;
 using SanguoSLG.Core.Spatial;
 using SanguoSLG.Core.Simulation.Climate;
 
@@ -516,6 +517,15 @@ public sealed class CampaignEngine
                 // 입성한 점령군은 같은 공격턴의 야전 생존 목록에서도 즉시 제거한다.
                 if (caps.Count > 0)
                     reports[^1] = reports[^1] with { Units = armies.ToList() };
+            }
+
+            if (armies.Any(unit => unit.AiRuinTarget is not null))
+            {
+                var missionState = work with { FieldArmies = armies, Day = simulationDay };
+                foreach (var owner in armies.Where(unit => unit.AiRuinTarget is not null)
+                    .Select(unit => unit.Field.Owner).Distinct().OrderBy(owner => owner.Value))
+                    missionState = AiRuinPlanner.Maintain(missionState, owner);
+                armies = missionState.Armies.ToList();
             }
 
             // 오늘의 이동·공격·점령 정산이 모두 끝난 뒤 예약 대기일을 하루 차감한다.

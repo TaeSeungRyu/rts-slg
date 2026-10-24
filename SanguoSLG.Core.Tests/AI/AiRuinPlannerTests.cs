@@ -77,4 +77,43 @@ public sealed class AiRuinPlannerTests
             Assert.Equal(new CityId(1), unit.Field.ReturnCity);
         });
     }
+
+    [Fact]
+    public void 전략_판단은_거점_공세가_없을_때_유적_출전을_예약한다()
+    {
+        var ai = new FactionAI(new CommandService(new CommandBalance(), Troops), Deployer,
+            new AiConfig(DeployTarget: int.MaxValue, GeneralResearchReserveGold: -1,
+                ExplorationReserveGold: int.MaxValue), Map, Balance);
+
+        var after = ai.PlanWeek(State(40_000), Faction);
+
+        Assert.Contains(after.Armies, unit => unit.AiRuinTarget == "ruin");
+    }
+
+    [Fact]
+    public void 유적_원정중_새_적이_나타나도_임무를_자동_취소하거나_중복_편성하지_않는다()
+    {
+        var planner = new AiRuinPlanner(Deployer, Map, Balance);
+        var outbound = planner.Plan(State(40_000), Faction);
+        var enemy = outbound.Armies[0] with
+        {
+            Field = outbound.Armies[0].Field with
+            {
+                Id = new UnitId(99), Owner = new FactionId(2),
+                Position = new HexCoord(1, 0), Mode = UnitMode.Attack,
+            },
+            AiRuinTarget = null,
+        };
+        var threatened = outbound with { FieldArmies = outbound.Armies.Append(enemy).ToList() };
+
+        var maintained = AiRuinPlanner.Maintain(threatened, Faction);
+        var repeated = planner.Plan(maintained, Faction);
+
+        Assert.Equal(outbound.Armies.Count + 1, repeated.Armies.Count);
+        Assert.All(repeated.Armies.Where(unit => unit.Field.Owner == Faction), unit =>
+        {
+            Assert.Equal("ruin", unit.AiRuinTarget);
+            Assert.Equal(UnitMode.Attack, unit.Field.Mode);
+        });
+    }
 }
