@@ -14,6 +14,20 @@ using Xunit;
 public class FactionAiTests
 {
     [Fact]
+    public void 어려움_난이도_AI_기본성장도_생산량이_이십퍼센트_높다()
+    {
+        var city = Town(1, 2, new HexCoord(0, 0)) with { Gold = 10_000 };
+        var normal = new GameState(1, 190, [], [city], []);
+        var hard = normal with { Difficulty = GameDifficulty.Hard, HumanFactionId = 1 };
+        var normalAfter = Ai().PlanWeek(normal, city.Owner);
+        var hardAfter = Ai().PlanWeek(hard, city.Owner);
+        Assert.True(hardAfter.Cities.Single().Gold > normalAfter.Cities.Single().Gold);
+        Assert.True(hardAfter.Cities.Single().Provisions > normalAfter.Cities.Single().Provisions);
+        Assert.True(hardAfter.Garrisons.Sum(line => line.Troops)
+            > normalAfter.Garrisons.Sum(line => line.Troops));
+    }
+
+    [Fact]
     public void AI_압박공세는_기한이_끝나면_더_머무르지_않고_귀환한다()
     {
         var city = Town(1, 1, new HexCoord(0, 0));

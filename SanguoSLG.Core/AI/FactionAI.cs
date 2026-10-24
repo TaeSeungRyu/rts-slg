@@ -468,8 +468,10 @@ public sealed class FactionAI
                 security = Math.Min(100, security + tier + 3);
             if (!HasOfficer(city.DomesticOfficer))
             {
-                gold += PortAdministration.Scale(city, (50 + politics) * tier / 2);
-                provisions += PortAdministration.Scale(city, (150 + politics * 2) * tier / 2);
+                gold += GameDifficultyRules.Production(state, faction,
+                    PortAdministration.Scale(city, (50 + politics) * tier / 2));
+                provisions += GameDifficultyRules.Production(state, faction,
+                    PortAdministration.Scale(city, (150 + politics * 2) * tier / 2));
             }
             if (!HasOfficer(city.RecruitmentOfficer))
             {
@@ -481,6 +483,7 @@ public sealed class FactionAI
                     && FactionTroopUnlock.Check(state, faction, code).Allowed)
                 {
                     gold -= cost;
+                    amount = GameDifficultyRules.Production(state, faction, amount);
                     var index = garrisons.FindIndex(g => g.City == city.Id
                         && g.TroopCode == code && !g.Trainee);
                     if (index >= 0) garrisons[index] = garrisons[index].Merge(amount,
