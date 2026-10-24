@@ -34,9 +34,14 @@ public sealed class CombatPhaseResolver
         var takenPercent = new Dictionary<UnitId, int>();
         var healMoved = new Dictionary<UnitId, int>();
         var attackStats = new Dictionary<UnitId, CombatStats>();
+        var incomingCounts = engagements.SelectMany(engagement => engagement.Targets
+                .Select(target => (Target: target, Attacker: engagement.Attacker)))
+            .GroupBy(pair => pair.Target)
+            .ToDictionary(group => group.Key, group => group.Select(pair => pair.Attacker).Distinct().Count());
         foreach (var (id, p) in participants)
         {
-            takenPercent[id] = p.DefenseActive is null ? 100 : BattleResolver.DamageTakenPercent(p.DefenseActive, p.Might);
+            takenPercent[id] = p.DefenseActive is null ? 100 : BattleResolver.DamageTakenPercent(
+                p.DefenseActive, p.Might, incomingCounts.GetValueOrDefault(id) > 1);
 
             var desiredHeal = p.HealActive is null ? 0 : BattleResolver.HealAmount(p.HealActive, p.Intellect, p.MaxTroops);
             var room = System.Math.Max(0, p.MaxTroops - p.Pool.Active);
@@ -112,6 +117,13 @@ public sealed class CombatPhaseResolver
                         exchanges.Add(new(engagement.Attacker, targetId, raw - first));
                     }
                     else exchanges.Add(new(engagement.Attacker, targetId, raw));
+                }
+                if (raw > 0 && target.DefenseActive?.Code == "riposte")
+                {
+                    var reflected = raw * 15 / 100;
+                    damage[engagement.Attacker] = damage.GetValueOrDefault(engagement.Attacker) + reflected;
+                    dealt[targetId] = dealt.GetValueOrDefault(targetId) + reflected;
+                    if (reflected > 0) exchanges.Add(new(targetId, engagement.Attacker, reflected));
                 }
             }
         }

@@ -34,4 +34,6 @@ public enum StatusKind
     Rally,
 
     Resupply,
+
+    SecondWind,
 }

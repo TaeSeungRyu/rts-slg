@@ -405,6 +405,11 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
                     newState = newState.AddStatus(new StatusEffect(StatusKind.Resupply, 0, 3, false,
                         TickHealAmount: BattleResolver.HealAmount(skill, u.Intellect, u.MaxTroops)));
                 }
+                else if (skill.Code == "second_wind")
+                {
+                    newState = newState.AddStatus(new StatusEffect(StatusKind.SecondWind, 0, 3, false,
+                        DfBonusPercent: 10));
+                }
                 else if (skill.Code == "armor_break")
                 {
                     var primaryTarget = engagements.FirstOrDefault(e => e.Attacker == id)?.Targets.FirstOrDefault();
@@ -414,7 +419,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
 
             state[id] = u with { State = newState,
                 Provisions = u.Provisions + skill?.ProvisionGain(u.Provisions, u.MaxProvisions()) ?? u.Provisions };
-            var (effStats, outgoing) = ApplyDebuffs(u);
+            var (effStats, outgoing) = ApplyDebuffs(state[id]);
             participants[id] = new BattleParticipant(
                 effStats with { Troops = u.Pool.Active },
                 u.Field.Mode,

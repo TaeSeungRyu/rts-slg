@@ -100,6 +100,32 @@ public class CombatPhaseActiveTests
     }
 
     [Fact]
+    public void 반격진은_줄여받은_피해의_십오퍼센트를_공격자에게_돌린다()
+    {
+        var result = Run(Sword(), Sword(defense: A["riposte"]));
+        Assert.Equal(646, result.DamageTaken[new UnitId(2)]);
+        Assert.Equal(856, result.DamageTaken[new UnitId(1)]);
+        Assert.Contains(result.Exchanges!, hit => hit.Attacker == new UnitId(2)
+            && hit.Target == new UnitId(1) && hit.Amount == 96);
+    }
+
+    [Fact]
+    public void 귀갑진은_둘에게_포위되면_피해를_사십퍼센트_줄인다()
+    {
+        var target = new UnitId(3);
+        var participants = new Dictionary<UnitId, BattleParticipant>
+        {
+            [new UnitId(1)] = Sword(),
+            [new UnitId(2)] = Sword(),
+            [target] = Sword(defense: A["turtle_formation"]),
+        };
+        var result = Phase.Resolve([
+            new UnitEngagement(new UnitId(1), [target]),
+            new UnitEngagement(new UnitId(2), [target])], participants);
+        Assert.Equal(912, result.DamageTaken[target]);
+    }
+
+    [Fact]
     public void 회복_부상풀에서_병력늘려_딜증가하고_풀에서회복()
     {
         // A 정비(지력80): 부상 2000 중 1200 회복 → 활성 9200으로 공격.

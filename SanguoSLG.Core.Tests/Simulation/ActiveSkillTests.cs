@@ -112,6 +112,14 @@ public class ActiveSkillTests
         => Assert.Equal(64, BattleResolver.DamageTakenPercent(A["iron_wall"], might: 80)); // 30 × 1.2 = 36 감소
 
     [Fact]
+    public void 귀갑진_포위상황에서는_방어율을_두배로_적용한다()
+    {
+        Assert.Equal(80, BattleResolver.DamageTakenPercent(A["turtle_formation"], 60));
+        Assert.Equal(60, BattleResolver.DamageTakenPercent(A["turtle_formation"], 60,
+            surrounded: true));
+    }
+
+    [Fact]
     public void 방어감소_하한_최대75퍼센트()
     {
         // 사수 -50% × 1.5(무력110, M 상한) = -75% → 배수 25 (하한)

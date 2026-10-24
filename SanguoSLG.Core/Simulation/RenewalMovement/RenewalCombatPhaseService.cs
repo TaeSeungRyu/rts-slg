@@ -454,6 +454,11 @@ public sealed class RenewalCombatPhaseService
                     TickHealAmount: BattleResolver.HealAmount(skill, profile.Participant.Intellect,
                         profile.Participant.MaxTroops)));
             }
+            if (skill.Code == "second_wind")
+            {
+                next = next.AddStatus(new StatusEffect(StatusKind.SecondWind, 0, 3, false,
+                    DfBonusPercent: 10));
+            }
             if (skill.Code == "armor_break")
             {
                 var target = engagements.FirstOrDefault(x => x.Attacker == id)?.Targets.FirstOrDefault();

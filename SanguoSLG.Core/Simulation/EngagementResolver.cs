@@ -41,7 +41,9 @@ public sealed class EngagementResolver
         var dmgToA = (int)((long)rawBtoA * takenA / 100);
         if (a.StrikeActive?.Code == "tiger_strike") dmgToA /= 2;
         if (b.StrikeActive?.Code == "tiger_strike") dmgToB /= 2;
+        var reflectedToA = b.DefenseActive?.Code == "riposte" ? dmgToB * 15 / 100 : 0;
+        var reflectedToB = a.DefenseActive?.Code == "riposte" ? dmgToA * 15 / 100 : 0;
 
-        return new ExchangeOutcome(dmgToA, dmgToB, healA, healB);
+        return new ExchangeOutcome(dmgToA + reflectedToA, dmgToB + reflectedToB, healA, healB);
     }
 }

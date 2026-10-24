@@ -90,9 +90,11 @@ public sealed class BattleResolver
     /// 방어형 액티브가 받는 피해에 곱하는 배수 퍼센트(design-skill-actives.md). 철벽 -30%(무력 60) → 70.
     /// 감소율에 무력 스케일을 곱하되 최대 -75%(하한 25)까지.
     /// </summary>
-    public static int DamageTakenPercent(ActiveSkill skill, int might)
+    public static int DamageTakenPercent(ActiveSkill skill, int might, bool surrounded = false)
     {
-        var reduction = System.Math.Min(skill.DamageReductionPercent * StatScale.Percent(might) / 100, 75);
+        var baseReduction = surrounded && skill.Code == "turtle_formation"
+            ? skill.DamageReductionPercent * 2 : skill.DamageReductionPercent;
+        var reduction = System.Math.Min(baseReduction * StatScale.Percent(might) / 100, 75);
         return 100 - reduction;
     }
 

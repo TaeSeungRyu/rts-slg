@@ -378,6 +378,7 @@ public class AdvanceOrchestratorTests
     [Theory]
     [InlineData("armor_break", StatusKind.ArmorBreak, 2)]
     [InlineData("rally", StatusKind.Rally, 1)]
+    [InlineData("second_wind", StatusKind.SecondWind, 1)]
     public void 파갑과_고무는_발동후_삼진행_상태를_부여한다(string skillCode, StatusKind kind, int holderId)
     {
         var ready = UnitCombatState.Create(80, A[skillCode]).AdvanceField(6);
@@ -740,6 +741,20 @@ public class AdvanceOrchestratorTests
 
         Assert.True(affectedGiven > controlGiven, $"고무 준 피해({affectedGiven})가 기본({controlGiven})보다 커야 함");
         Assert.True(affectedTaken < controlTaken, $"고무 받은 피해({affectedTaken})가 기본({controlTaken})보다 작아야 함");
+    }
+
+    [Fact]
+    public void 불사_지속상태는_방어를_십퍼센트_높인다()
+    {
+        var orch = MakeOrchestrator();
+        var control = orch.Run([Sword(1, 1, new HexCoord(0, 0)),
+            Sword(2, 2, new HexCoord(1, 0))]);
+        var protectedState = UnitCombatState.Create(60).AddStatus(new StatusEffect(
+            StatusKind.SecondWind, 0, 2, false, DfBonusPercent: 10));
+        var protectedTurn = orch.Run([Sword(1, 1, new HexCoord(0, 0), cs: protectedState),
+            Sword(2, 2, new HexCoord(1, 0))]);
+        Assert.True(protectedTurn.Units.Single(unit => unit.Id.Value == 1).Pool.Active
+            > control.Units.Single(unit => unit.Id.Value == 1).Pool.Active);
     }
 
     [Fact]
