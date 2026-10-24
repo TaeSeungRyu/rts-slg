@@ -53,12 +53,21 @@ public sealed class FactionAI
         state = Retarget(state, faction);
         state = TargetUnlockRuins(state, faction);
         state = RecruitUnlockedHeroes(state, faction);
-        state = new AiFieldResponsePlanner(_deployer, _config, _map, _economy).Plan(state, faction);
+        state = new AiFieldResponsePlanner(_deployer, _config, _map, _economy)
+            .PlanDefense(state, faction);
+        if (_map is not null)
+            state = new AiSupportPlanner(_deployer, _map, _economy).Plan(state, faction);
         state = PlanOffenseScouting(state, faction);
         state = PlanOffenseStratagems(state, faction);
         state = PlanFrontTransfers(state, faction);
         var warFaction = state.Factions.FirstOrDefault(entry => entry.Id == faction);
-        if (_map is null || warFaction is null || AiWarDecisionClock.IsDue(warFaction, state.Day))
+        var supportActive = state.Armies.Any(unit => unit.Field.Owner == faction
+            && unit.AiSupportDefendedCity is not null && unit.Pool.Active > 0);
+        if (supportActive && warFaction is not null && AiWarDecisionClock.IsDue(warFaction, state.Day))
+            state = state with { Factions = state.Factions.Select(entry => entry.Id == faction
+                ? entry with { AiNextWarDecisionDay = AiWarDecisionClock.DelayForSupport(entry,
+                    state.Day) } : entry).ToList() };
+        else if (_map is null || warFaction is null || AiWarDecisionClock.IsDue(warFaction, state.Day))
         {
             state = new AiOffensePlanner(_deployer, _config, _commands, _map, _economy)
                 .Plan(state, faction);

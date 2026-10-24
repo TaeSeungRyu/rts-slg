@@ -35,7 +35,10 @@ public static class AiSupportRoutePolicy
         var candidates = new List<AiSupportRoute>();
         foreach (var origin in state.Cities.Where(city => city.Owner == defended.Owner
                      && !city.IsPort && city.Id != defended.Id
-                     && AiSortiePolicy.AllowsCombatSortie(city, balance))
+                     && AiSortiePolicy.AllowsCombatSortie(city, balance)
+                     && !state.Armies.Any(unit => unit.Field.Owner == city.Owner
+                         && unit.OriginCity == city.Id
+                         && unit.AiSupportDefendedCity is not null && unit.Pool.Active > 0))
                  .OrderBy(city => city.Id.Value))
         {
             var available = state.Garrisons.Where(line => line.City == origin.Id && !line.Trainee)

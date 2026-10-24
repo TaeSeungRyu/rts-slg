@@ -98,6 +98,29 @@ public sealed class AiFieldResponsePlanner
         return state;
     }
 
+    /// <summary>새 우선순위 규칙의 성벽 붕괴 반격만 실행한다. 옛 광역 요격은 제외한다.</summary>
+    public GameState PlanDefense(GameState state, FactionId faction)
+    {
+        foreach (var threatened in state.Cities.Where(city => city.Owner == faction
+                     && !city.IsPort && city.Wall <= 0).OrderBy(city => city.Id.Value))
+        {
+            var intruders = state.Armies.Where(unit => unit.Pool.Active > 0
+                    && !unit.IsWaitingDeployment && state.AreHostile(faction, unit.Field.Owner)
+                    && threatened.Position.Distance(unit.Field.Position) <= 4)
+                .OrderBy(unit => unit.Field.Position.Distance(threatened.Position))
+                .ThenBy(unit => unit.Id.Value).ToList();
+            if (intruders.Count == 0) continue;
+            foreach (var target in AiWarDefensePolicy.OrderTargets(threatened, intruders))
+            {
+                if (state.Armies.Any(unit => unit.Field.Owner == faction
+                    && unit.Field.AssignedUnitTarget == target.Id)) continue;
+                var next = TryBreakout(state, threatened, target, intruders);
+                if (next is not null) state = next;
+            }
+        }
+        return state;
+    }
+
     private GameState? TryBreakout(GameState state, City threatened, CombatUnit target,
         IReadOnlyList<CombatUnit> intruders)
     {
