@@ -58,9 +58,10 @@ public sealed partial class CampaignMapScene
                 var speaker = residents[(date + city.Id.Value) % residents.Length].General;
                 speeches.Add(new GeneralStoryEvent($"city-bark:{date}:{city.Id.Value}:{speaker.Value}",
                     "city_bark", date, 8, Player, speaker, null, city.Id, date % 20));
+                break;
             }
         }
-        return speeches.OrderBy(story => story.Day).ThenBy(story => story.City?.Value).Take(4).ToArray();
+        return speeches.OrderBy(story => story.Day).ThenBy(story => story.City?.Value).ToArray();
     }
 
     private void PrepareStoryAfterAdvance()
