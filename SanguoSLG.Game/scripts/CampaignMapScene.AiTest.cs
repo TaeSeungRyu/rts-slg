@@ -234,6 +234,8 @@ public sealed partial class CampaignMapScene
         var state = _state;
         var initial = state.Day;
         var sorties = new Dictionary<FactionId, int>();
+        var supportSorties = new Dictionary<FactionId, int>();
+        var supportDelays = new Dictionary<FactionId, int>();
         var decisions = new Dictionary<FactionId, int>();
         var buildings = new Dictionary<FactionId, HashSet<FieldBuildingId>>();
         var clockValid = true;
@@ -257,12 +259,19 @@ public sealed partial class CampaignMapScene
                     decisions[faction.Id] = decisions.GetValueOrDefault(faction.Id) + 1;
                     var nextDecision = state.Factions.First(entry => entry.Id == faction.Id)
                         .AiNextWarDecisionDay;
-                    clockValid &= nextDecision - state.Day is >= 30 and <= 60;
+                    var supporting = state.Armies.Any(unit => unit.Field.Owner == faction.Id
+                        && unit.AiSupportDefendedCity is not null && unit.Pool.Active > 0);
+                    clockValid &= supporting ? nextDecision == state.Day + 7
+                        : nextDecision - state.Day is >= 30 and <= 60;
+                    if (supporting)
+                        supportDelays[faction.Id] = supportDelays.GetValueOrDefault(faction.Id) + 1;
                 }
                 var newCombat = state.Armies.Where(unit => !before.Contains(unit.Id)
                     && unit.Field.Owner == faction.Id && !unit.IsSupply && !unit.IsTransport)
                     .ToList();
                 sorties[faction.Id] = sorties.GetValueOrDefault(faction.Id) + newCombat.Count;
+                supportSorties[faction.Id] = supportSorties.GetValueOrDefault(faction.Id)
+                    + newCombat.Count(unit => unit.AiSupportDefendedCity is not null);
                 if (!buildings.TryGetValue(faction.Id, out var started))
                     buildings[faction.Id] = started = [];
                 foreach (var building in state.Buildings.Where(building => building.Owner == faction.Id))
@@ -314,11 +323,14 @@ public sealed partial class CampaignMapScene
                 .All(faction => decisions.GetValueOrDefault(faction.Id) >= 5
                     && sorties.GetValueOrDefault(faction.Id) >= 10
                     && buildings.TryGetValue(faction.Id, out var started) && started.Count >= 2);
-        GD.Print($"[aitestwarqa] summary passed={passed} clock={clockValid} days={state.Day - initial} "
+        GD.Print($"[aitestwarqa] summary case={_selectedAiTestCase} passed={passed} "
+            + $"clock={clockValid} days={state.Day - initial} "
             + $"aiMs={aiMilliseconds} maxAiMs={maxAiMilliseconds} advanceMs={advanceMilliseconds} "
             + string.Join(' ', sorties.OrderBy(entry => entry.Key.Value)
                 .Select(entry => $"faction{entry.Key.Value}=sorties:{entry.Value}"
                     + $",decisions:{decisions.GetValueOrDefault(entry.Key)}"
+                    + $",support:{supportSorties.GetValueOrDefault(entry.Key)}"
+                    + $",supportDelays:{supportDelays.GetValueOrDefault(entry.Key)}"
                     + $",buildings:{buildings[entry.Key].Count}")));
         GetTree().Quit(passed ? 0 : 1);
     }
