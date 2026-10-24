@@ -50,8 +50,8 @@ public sealed class FactionAI
         state = CommitPressureAssault(state, faction);
         state = WithdrawPressure(state, faction);
         state = AiSupportPlanner.Recall(state, faction);
+        state = AiRuinPlanner.Maintain(state, faction);
         state = Retarget(state, faction);
-        state = TargetUnlockRuins(state, faction);
         state = RecruitUnlockedHeroes(state, faction);
         state = new AiFieldResponsePlanner(_deployer, _config, _map, _economy)
             .PlanDefense(state, faction);
@@ -63,6 +63,8 @@ public sealed class FactionAI
         var warFaction = state.Factions.FirstOrDefault(entry => entry.Id == faction);
         var supportActive = state.Armies.Any(unit => unit.Field.Owner == faction
             && unit.AiSupportDefendedCity is not null && unit.Pool.Active > 0);
+        var warDecisionDue = _map is not null && warFaction is not null
+            && AiWarDecisionClock.IsDue(warFaction, state.Day);
         if (supportActive && warFaction is not null && AiWarDecisionClock.IsDue(warFaction, state.Day))
             state = state with { Factions = state.Factions.Select(entry => entry.Id == faction
                 ? entry with { AiNextWarDecisionDay = AiWarDecisionClock.DelayForSupport(entry,
@@ -71,6 +73,21 @@ public sealed class FactionAI
         {
             state = new AiOffensePlanner(_deployer, _config, _commands, _map, _economy)
                 .Plan(state, faction);
+            if (warDecisionDue && _map is not null
+                && RuinAiPolicy.CanStart(
+                    state.Cities.Any(city => city.Owner == faction
+                        && state.Armies.Any(enemy => enemy.Pool.Active > 0
+                            && state.AreHostile(faction, enemy.Field.Owner)
+                            && city.Position.Distance(enemy.Field.Position) <= 4)),
+                    supportActive,
+                    state.Armies.Any(unit => unit.Field.Owner == faction
+                        && unit.Pool.Active > 0 && !unit.IsSupply && !unit.IsTransport
+                        && (unit.AiSiegeAssemblyTarget is not null
+                            || unit.Field.Target is { } objective
+                                && state.Cities.Any(city => state.AreHostile(faction, city.Owner)
+                                    && CastleFootprint.TilesFor(city).Contains(objective)))),
+                    false))
+                state = new AiRuinPlanner(_deployer, _map, _economy).Plan(state, faction);
             if (_map is not null && warFaction is not null)
                 state = state with { Factions = state.Factions.Select(entry => entry.Id == faction
                     ? entry with { AiNextWarDecisionDay = AiWarDecisionClock.NextDay(entry,
@@ -573,33 +590,6 @@ public sealed class FactionAI
             if (result.Ok) state = result.State;
         }
         return state;
-    }
-
-    private static GameState TargetUnlockRuins(GameState state, FactionId faction)
-    {
-        if (state.Ruins.Count == 0) return state;
-        var armies = state.Armies.ToList();
-        foreach (var ruin in state.Ruins.OrderBy(r => r.Id, StringComparer.Ordinal))
-        {
-            var status = state.RuinStatus.FirstOrDefault(s => s.RuinId == ruin.Id);
-            if (status is null) continue;
-            var candidates = armies.Where(a => a.Field.Owner == faction && a.CanInitiateCombat
-                    && a.Field.Mode == UnitMode.Standby && a.Field.Target is null
-                    && (ruin.Naval ? a.Field.Domain == MovementDomain.DeepWater : a.Field.Domain != MovementDomain.DeepWater))
-                .OrderBy(a => a.Field.Position.Distance(ruin.Position)).ThenBy(a => a.Id.Value).ToList();
-            if (!RuinAiPolicy.ShouldAttack(ruin, status, faction, state.Day, candidates.Sum(a => a.Pool.Active))) continue;
-            var committed = 0;
-            foreach (var army in candidates)
-            {
-                var index = armies.FindIndex(a => a.Id == army.Id);
-                armies[index] = army with { Field = army.Field with { Mode = UnitMode.Attack, Target = ruin.Position,
-                    Waypoints = null, ContinuousTarget = null, ContinuousWaypoints = null,
-                    AssignedUnitTarget = null, PursuitTarget = null } };
-                committed += army.Pool.Active;
-                if (committed >= status.Defenders) break;
-            }
-        }
-        return state with { FieldArmies = armies };
     }
 
     private GameState PlanCombatResearch(GameState state, FactionId faction)

@@ -909,7 +909,7 @@ public class FactionAiTests
     }
 
     [Fact]
-    public void AI는_유적을_노릴때_기존_공격명령을_탈취하지_않고_유휴부대만_배정한다()
+    public void AI는_거점_공세중에_유휴부대를_유적으로_보내지_않는다()
     {
         var t = Troops.First(x => x.Code == "swordsman");
         CombatUnit MakeArmy(int id, UnitMode mode, HexCoord? target, int troops) => new(
@@ -931,7 +931,7 @@ public class FactionAiTests
         var after = Ai(new AiConfig(DeployTarget: int.MaxValue)).PlanWeek(state, new FactionId(1));
 
         Assert.Equal(enemyCity.Position, after.Armies.Single(army => army.Id == busy.Id).Field.Target);
-        Assert.Equal(ruin.Position, after.Armies.Single(army => army.Id == idle.Id).Field.Target);
+        Assert.Null(after.Armies.Single(army => army.Id == idle.Id).Field.Target);
     }
 
     [Fact]
