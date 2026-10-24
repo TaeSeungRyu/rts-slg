@@ -138,6 +138,12 @@ public sealed partial class CampaignMapScene
         var ramsPresent = _state.Factions.All(faction => _state.Garrisons.Any(garrison =>
             garrison.TroopCode == "thunder_cart" && garrison.Troops > 0
             && _state.Cities.Any(city => city.Id == garrison.City && city.Owner == faction.Id)));
+        var ruinsValid = _aiTestFixture is not null && _state.Ruins.Count == 3
+            && _state.Ruins.All(ruin => ruin.MaxDefenders == 15_000
+                && _state.RuinStatus.Any(status => status.RuinId == ruin.Id
+                    && status.Defenders == ruin.MaxDefenders)
+                && _state.Cities.Any(city => !city.IsPort
+                    && city.Position.Distance(ruin.Position) <= 3));
         var generalsValid = _state.Assignments.All(p =>
             _state.Generals.Any(g => g.Id == p.General)
             && (_state.Cities.Any(c => c.Id == p.Location && c.Owner == p.Faction)
@@ -211,18 +217,40 @@ public sealed partial class CampaignMapScene
                 .All(city => _cityLabels[city.Id.Value].Modulate == ArmyFactionColor(faction.Id)));
         var offenseValid = _selectedAiTestCase != AiTestCase.PlayerHalf
             || aiCombatDeploys >= 2 && aiSupplyDeploys >= 1;
-        var passed = mapReady && threeFactions && ramsPresent && generalsValid && casesValid && aiActs
+        var passed = mapReady && threeFactions && ramsPresent && ruinsValid && generalsValid && casesValid && aiActs
             && fullVision && fullIntel && factionColors && offenseValid
             && constructionValid && constructionCycleValid && constructionLongRunValid;
         GD.Print($"[aitestfixtureqa] passed={passed} map={_map.Count}/{baselineMap.Count} "
             + $"factions={_state.Factions.Count} cities={_state.Cities.Count} "
-            + $"ports={_state.Cities.Count(c => c.IsPort)} ramsPresent={ramsPresent} generalsValid={generalsValid} "
+            + $"ports={_state.Cities.Count(c => c.IsPort)} ramsPresent={ramsPresent} ruinsValid={ruinsValid} generalsValid={generalsValid} "
             + $"case={_selectedAiTestCase} casesValid={casesValid} aiActs={aiActs} "
             + $"combat={aiCombatDeploys} supply={aiSupplyDeploys} offenseValid={offenseValid} "
             + $"constructionValid={constructionValid} constructionCycle={constructionCycleValid} "
             + $"construction119Day={constructionLongRunValid} "
             + $"fullVision={fullVision} fullIntel={fullIntel} factionColors={factionColors}");
         GetTree().Quit(passed ? 0 : 1);
+    }
+
+    private void RunAiTestRuinQa()
+    {
+        var state = _state with { ScoutedCities = [] };
+        var success = _aiTestFixture is not null && state.Ruins.Count == 3;
+        foreach (var faction in state.Factions.Where(faction => faction.Id != Player))
+        {
+            state = _ai.PlanWeek(state, faction.Id);
+            var target = state.Ruins.SingleOrDefault(ruin => state.Cities.Any(city =>
+                city.Owner == faction.Id && !city.IsPort
+                && city.Position.Distance(ruin.Position) <= 3));
+            var expedition = state.Armies.Where(unit => unit.Field.Owner == faction.Id
+                && unit.AiRuinTarget == target?.Id).ToList();
+            success &= target is not null && expedition.Sum(unit => unit.Pool.Active) >= 30_000
+                && expedition.All(unit => unit.Field.Target == target.Position);
+        }
+        var advanced = _engine.AdvanceWeek(state, out var turns);
+        var exchanged = turns.SelectMany(turn => turn.RuinExchanges).Count();
+        success &= advanced.Day == state.Day + 7 && exchanged > 0;
+        GD.Print($"[aitestruinqa] passed={success} expeditions={state.Armies.Count(unit => unit.AiRuinTarget is not null)} exchanges={exchanged}");
+        GetTree().Quit(success ? 0 : 1);
     }
 
     private void RunAiTestWarQa()

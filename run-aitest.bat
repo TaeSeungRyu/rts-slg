@@ -17,5 +17,9 @@ for %%C in (0 1 2) do (
 )
 "%GODOT_QA%" --headless --path "%~dp0SanguoSLG.Game" -- --aitest --aitestcaseswitchqa
 if errorlevel 1 exit /b 1
+for %%C in (0 1 2) do (
+  "%GODOT_QA%" --headless --path "%~dp0SanguoSLG.Game" -- --aitest --aitestcase=%%C --aitestruinqa
+  if errorlevel 1 exit /b 1
+)
 "%GODOT_QA%" --headless --path "%~dp0SanguoSLG.Game" -- --aitest --aitestwarqa
 exit /b %errorlevel%

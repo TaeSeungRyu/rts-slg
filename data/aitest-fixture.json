@@ -23,6 +23,11 @@
     { "id": 302, "name": "오남성", "faction": 3, "q": 12, "r": 9, "castle": "Small", "gold": 7000, "provisions": 18000, "wall": 600 },
     { "id": 303, "name": "오북항", "faction": 3, "q": 13, "r": -3, "castle": "Small", "port": "Small", "gold": 5000, "provisions": 15000, "wall": 400 }
   ],
+  "ruins": [
+    { "id": "aitest_wei_geukbyeong", "name": "극병 유적", "q": -10, "r": 2, "troop_code": "geukbyeong", "max_defenders": 15000 },
+    { "id": "aitest_shu_geukbyeong", "name": "극병 유적", "q": 1, "r": 3, "troop_code": "geukbyeong", "max_defenders": 15000 },
+    { "id": "aitest_wu_geukbyeong", "name": "극병 유적", "q": 15, "r": 2, "troop_code": "geukbyeong", "max_defenders": 15000 }
+  ],
   "postings": [
     { "general": 1, "faction": 1, "city": 101 }, { "general": 2, "faction": 1, "city": 101 },
     { "general": 3, "faction": 1, "city": 101 }, { "general": 7, "faction": 1, "city": 101 },

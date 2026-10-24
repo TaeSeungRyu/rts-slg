@@ -661,8 +661,8 @@ public sealed partial class CampaignMapScene : Node3D
             HeroUnlockStates = (_aiTestFixture is null ? scenario.HeroUnlockList : [])
                 .Select(h => new HeroUnlockState(h.General, HeroUnlockStatus.Locked))
                 .ToList(),
-            RuinDefinitions = _aiTestFixture is null ? scenario.RuinList : [],
-            RuinStates = (_aiTestFixture is null ? scenario.RuinList : [])
+            RuinDefinitions = _aiTestFixture?.Ruins ?? scenario.RuinList,
+            RuinStates = (_aiTestFixture?.Ruins ?? scenario.RuinList)
                 .Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
         };
         if (_aiTestFixture is not null) SeedAiTestConstructionBuilders();
@@ -777,6 +777,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestwardeclarationqa")) CallDeferred(nameof(RunWarDeclarationQa));
         if (args.Contains("--maptestcitygaugeqa")) CallDeferred(nameof(RunCityVitalsGaugeQa));
         if (args.Contains("--aitestfixtureqa")) CallDeferred(nameof(RunAiTestFixtureQa));
+        if (args.Contains("--aitestruinqa")) CallDeferred(nameof(RunAiTestRuinQa));
         if (args.Contains("--aitestwarqa")) CallDeferred(nameof(RunAiTestWarQa));
         if (args.Contains("--aitestadvanceprofileqa")) CallDeferred(nameof(RunAiTestAdvanceProfileQa));
         if (args.Contains("--aitestcaseswitchqa")) CallDeferred(nameof(RunAiTestCaseSwitchQa));

@@ -25,11 +25,12 @@ internal sealed class AiTestFixture
     public IReadOnlyList<GeneralPosting> Postings { get; }
     public IReadOnlyList<GarrisonForce> Garrisons { get; }
     public IReadOnlyList<PortShipStock> Ships { get; }
+    public IReadOnlyList<RuinDefinition> Ruins { get; }
     public IReadOnlyList<CityIntel> Intel { get; }
 
     private AiTestFixture(HexMap map, IReadOnlyList<Faction> factions, IReadOnlyList<City> cities,
         IReadOnlyList<GeneralPosting> postings, IReadOnlyList<GarrisonForce> garrisons,
-        IReadOnlyList<PortShipStock> ships)
+        IReadOnlyList<PortShipStock> ships, IReadOnlyList<RuinDefinition> ruins)
     {
         Map = map;
         Factions = factions;
@@ -37,6 +38,7 @@ internal sealed class AiTestFixture
         Postings = postings;
         Garrisons = garrisons;
         Ships = ships;
+        Ruins = ruins;
         Intel = factions.SelectMany(faction => cities
             .Where(city => city.Owner != faction.Id)
             .Select(city => new CityIntel(faction.Id, city.Id)))
@@ -100,10 +102,14 @@ internal sealed class AiTestFixture
         var ships = root.GetProperty("ships").EnumerateArray()
             .Select(item => new PortShipStock(new CityId(Number(item, "city")),
                 Text(item, "code"), Number(item, "count"))).ToList();
+        var ruins = root.GetProperty("ruins").EnumerateArray()
+            .Select(item => new RuinDefinition(Text(item, "id"), Text(item, "name"),
+                new HexCoord(Number(item, "q"), Number(item, "r")),
+                Text(item, "troop_code"), Number(item, "max_defenders"))).ToList();
         var map = new HexMap(Number(bounds, "min_q"), Number(bounds, "max_q"),
             Number(bounds, "min_r"), Number(bounds, "max_r"), terrain);
-        Validate(map, factions, cities, postings, garrisons, ships);
-        return new AiTestFixture(map, factions, cities, postings, garrisons, ships);
+        Validate(map, factions, cities, postings, garrisons, ships, ruins);
+        return new AiTestFixture(map, factions, cities, postings, garrisons, ships, ruins);
     }
 
     private static int Number(JsonElement item, string name) => item.GetProperty(name).GetInt32();
@@ -111,7 +117,7 @@ internal sealed class AiTestFixture
 
     private static void Validate(HexMap map, IReadOnlyList<Faction> factions, IReadOnlyList<City> cities,
         IReadOnlyList<GeneralPosting> postings, IReadOnlyList<GarrisonForce> garrisons,
-        IReadOnlyList<PortShipStock> ships)
+        IReadOnlyList<PortShipStock> ships, IReadOnlyList<RuinDefinition> ruins)
     {
         if (factions.Count != 3 || factions.Select(f => f.Id).Distinct().Count() != 3
             || cities.Select(c => c.Id).Distinct().Count() != cities.Count
@@ -120,7 +126,13 @@ internal sealed class AiTestFixture
                 || !factions.Any(f => f.Id == c.Owner))
             || postings.Any(p => !cities.Any(c => c.Id == p.Location && c.Owner == p.Faction))
             || garrisons.Any(g => !cities.Any(c => c.Id == g.City))
-            || ships.Any(s => !cities.Any(c => c.Id == s.City && c.IsPort)))
+            || ships.Any(s => !cities.Any(c => c.Id == s.City && c.IsPort))
+            || ruins.Count != 3 || ruins.Select(ruin => ruin.Id).Distinct().Count() != ruins.Count
+            || ruins.Select(ruin => ruin.Position).Distinct().Count() != ruins.Count
+            || ruins.Any(ruin => !map.Contains(ruin.Position)
+                || !TerrainRules.CanEnter(MovementDomain.Land, map.TerrainAt(ruin.Position))
+                || cities.Any(city => CastleFootprint.TilesFor(city).Contains(ruin.Position))
+                || ruin.MaxDefenders != 15_000))
             throw new InvalidDataException("AI 검증장 배치의 세력·성·장수·병력·선박 참조가 잘못되었습니다.");
     }
 }
