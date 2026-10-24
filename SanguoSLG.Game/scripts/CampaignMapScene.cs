@@ -8147,7 +8147,7 @@ public sealed partial class CampaignMapScene : Node3D
         var officer = city.RecruitmentOfficer is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
         return officer is null
             ? 0
-            : AutoRecruitWeeklyTroopsFor(officer, city);
+            : AutoRecruitWeeklyTroopsFor(officer, city) * CurrentAutoRecruitTroopCodes(city).Count();
     }
 
     private string WeeklyRecruitSummary(City city)
@@ -8156,10 +8156,11 @@ public sealed partial class CampaignMapScene : Node3D
         if (officer is null) { return "+0"; }
 
         var troopCodes = string.Join(',', CurrentAutoRecruitTroopCodes(city));
-        var troops = AutoRecruitWeeklyTroopsFor(officer, city);
+        var perTroop = AutoRecruitWeeklyTroopsFor(officer, city);
+        var troops = perTroop * CurrentAutoRecruitTroopCodes(city).Count();
         var cost = AutoRecruitWeeklyCostFor(officer, troopCodes, city);
         var rate = CommandBalance.AutoRecruitRate(city.AutoRecruitRate);
-        return $"+{troops} {AutoRecruitTroopNames(troopCodes)} / -{cost}금 / {rate}배";
+        return $"+{troops} (병종별 +{perTroop}) {AutoRecruitTroopNames(troopCodes)} / -{cost}금 / {rate}배";
     }
 
     private string AutoRecruitTroopCode(City city)
@@ -15721,7 +15722,7 @@ public sealed partial class CampaignMapScene : Node3D
                 CommandKind.AppointSecurityOfficer => $"\n무력 {officer.Might} → 주 치안 +{WorldEngine.SecurityWeeklyGain(officerCity, officer.Might)}",
                 CommandKind.AppointDomesticOfficer => $"\n정치 {officer.Politics} → 주 금 +{WeeklyIncomeAmount(PortAdministration.Scale(officerCity, ApplyLowSecurityOutputPenalty(_cb.AutoDomesticGoldBase + officer.Politics * _cb.AutoDomesticGoldPoliticsMultiplier, officerCity.Security)))}"
                     + $"\n주 군량 +{WeeklyIncomeAmount(PortAdministration.Scale(officerCity, ApplyLowSecurityOutputPenalty(_cb.AutoDomesticProvisionsBase + officer.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier, officerCity.Security)))}",
-                CommandKind.AppointRecruitmentOfficer => $"\n무력 {officer.Might} → 주 병력 +{AutoRecruitWeeklyTroopsFor(officer, officerCity, _autoRecruitRateParam)}"
+                CommandKind.AppointRecruitmentOfficer => $"\n무력 {officer.Might} → 병종별 주 병력 +{AutoRecruitWeeklyTroopsFor(officer, officerCity, _autoRecruitRateParam)}"
                     + $"\n선택 병종 {AutoRecruitTroopNames(troopCode)}"
                     + $"\n생산 비율 {_autoRecruitRateParam}배"
                     + $"\n주 예상 비용 {AutoRecruitWeeklyCostFor(officer, troopCode, officerCity, _autoRecruitRateParam)}금 · 치안 {PortAdministration.Scale(officerCity, _cb.AutoRecruitSecurityDeltaForRate(_autoRecruitRateParam))}"
@@ -16147,14 +16148,7 @@ public sealed partial class CampaignMapScene : Node3D
             total = ApplyLowSecurityOutputPenalty(total, city.Security);
             total = PortAdministration.Scale(city, total);
         }
-        var sum = 0;
-        for (var i = 0; i < codes.Length; i++)
-        {
-            var troops = total / codes.Length + (i < total % codes.Length ? 1 : 0);
-            sum += _cb.AutoRecruitGoldCost(codes[i], troops);
-        }
-
-        return sum;
+        return codes.Sum(code => _cb.AutoRecruitGoldCost(code, total));
     }
 
     private int AutoRecruitWeeklyTroopsFor(General officer, City? city = null, int? rateOverride = null)

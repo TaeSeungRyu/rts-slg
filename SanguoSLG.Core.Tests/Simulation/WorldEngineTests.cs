@@ -863,7 +863,7 @@ public class WorldEngineTests
     }
 
     [Fact]
-    public void v2_병력담당은_잠긴병종을_제외하고_싼순서로_나눠_생산한다()
+    public void v2_병력담당은_잠긴병종을_제외하고_각_병종을_독립적으로_생산한다()
     {
         var city = new City(new CityId(1), "복합성", new HexCoord(0, 0), new FactionId(1), 1000,
             Gold: 100, Population: 0, Security: 80,
@@ -878,10 +878,32 @@ public class WorldEngineTests
 
         var produced = after.Garrisons.OrderBy(g => g.TroopCode, System.StringComparer.Ordinal).ToList();
         Assert.Equal(2, produced.Count);
-        Assert.Contains(produced, g => g.TroopCode == "swordsman" && g.Troops == 250);
-        Assert.Contains(produced, g => g.TroopCode == "cavalry" && g.Troops == 250);
+        Assert.Contains(produced, g => g.TroopCode == "swordsman" && g.Troops == 500);
+        Assert.Contains(produced, g => g.TroopCode == "cavalry" && g.Troops == 500);
         Assert.DoesNotContain(produced, g => g.TroopCode == "war_elephant");
-        Assert.Equal(87, after.Cities.Single().Gold);
+        Assert.Equal(75, after.Cities.Single().Gold);
+    }
+
+    [Theory]
+    [InlineData(1, 1000, 924)]
+    [InlineData(2, 2000, 850)]
+    [InlineData(3, 3000, 774)]
+    public void 병종_세개를_선택하면_각각_생산비율만큼_생산한다(int rate, int perTroop, int expectedGold)
+    {
+        var city = new City(new CityId(1), "복합성", new HexCoord(0, 0), new FactionId(1), 1000,
+            Gold: 1000, Security: 100, RecruitmentOfficer: new GeneralId(1),
+            AutoRecruitTroopCodes: "swordsman,archer,cavalry", AutoRecruitRate: rate);
+        var officer = V2Officer(1, might: 100);
+        var state = new GameState(1, 1, [], [city], [officer],
+            Postings: [new GeneralPosting(officer.Id, city.Owner, city.Id)]);
+        var balance = new CommandBalance { AutoOfficerSystemEnabled = true,
+            AutoRecruitTroopsMightMultiplier = 10, AutoRecruitGoldCostMultiplierPercent = 125 };
+
+        var after = new WorldEngine(V2OnlyBalance, balance).AdvanceDays(state, 7);
+
+        Assert.Equal(3, after.Garrisons.Count);
+        Assert.All(after.Garrisons, g => Assert.Equal(perTroop, g.Troops));
+        Assert.Equal(expectedGold, after.Cities.Single().Gold);
     }
 
     [Fact]

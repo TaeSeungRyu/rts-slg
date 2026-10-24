@@ -304,14 +304,13 @@ public sealed class WorldEngine
                     .OrderBy(_commands.AutoRecruitGoldCostPer100)
                     .ThenBy(c => c, System.StringComparer.Ordinal).ToList();
                 var rate = CommandBalance.AutoRecruitRate(next.AutoRecruitRate);
-                var totalTroops = (_commands.AutoRecruitTroopsBase + recruiter.Might * _commands.AutoRecruitTroopsMightMultiplier) * rate;
-                totalTroops = ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.ConscriptionCode, totalTroops);
-                totalTroops = ApplyLowSecurityOutputPenalty(state, city.Owner, totalTroops, next.Security);
-                totalTroops = PortAdministration.Scale(city, totalTroops);
-                for (var i = 0; i < troopCodes.Count; i++)
+                var perTroop = (_commands.AutoRecruitTroopsBase + recruiter.Might * _commands.AutoRecruitTroopsMightMultiplier) * rate;
+                perTroop = ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.ConscriptionCode, perTroop);
+                perTroop = ApplyLowSecurityOutputPenalty(state, city.Owner, perTroop, next.Security);
+                perTroop = PortAdministration.Scale(city, perTroop);
+                foreach (var code in troopCodes)
                 {
-                    var code = troopCodes[i];
-                    var troops = totalTroops / troopCodes.Count + (i < totalTroops % troopCodes.Count ? 1 : 0);
+                    var troops = perTroop;
                     var passivePercent = AdminBonus.Bucket(recruiter, _adminSkills, "recruit_amount");
                     if (IsCavalryTroop(code))
                     {
