@@ -35,6 +35,41 @@ public class AdvanceOrchestratorTests
     }
 
     [Fact]
+    public void 패시브는_편성시가_아닌_교전시_병력비율로_재평가한다()
+    {
+        var passive = new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).ToList();
+        var general = new General(new GeneralId(7), "선봉", new Dictionary<TroopClass, AptitudeGrade>(),
+            70, 70, 70, BattlePassives: [new GeneralSkill("last_stand", 3)]);
+        var attacker = Sword(1, 1, new HexCoord(2, 0)) with
+        {
+            VanguardId = general.Id,
+            Pool = new TroopPool(4000, 0),
+            Stats = Sword(1, 1, new HexCoord(2, 0)).Stats with { AtkBonusPercent = 90 },
+        };
+        var defender = Sword(2, 2, new HexCoord(3, 0), UnitMode.March) with
+        {
+            Pool = new TroopPool(20000, 0), MaxTroops = 20000,
+        };
+
+        AdvanceTurn Fight(CombatUnit source, bool enablePassive)
+        {
+            var runner = MakeOrchestrator();
+            runner.SetCampaignState(new GameState(1, 190, [], [], [general], FieldArmies: [source, defender]));
+            if (enablePassive) runner.SetPassiveSkills(passive);
+            return runner.Run([source, defender], maxDays: 0);
+        }
+
+        var withPassive = Fight(attacker, true);
+        var withoutPassive = Fight(attacker with
+        {
+            VanguardId = null,
+            Stats = attacker.Stats with { AtkBonusPercent = 100 },
+        }, false);
+        Assert.True(withPassive.Units.Single(u => u.Id == defender.Id).Pool.Active
+            < withoutPassive.Units.Single(u => u.Id == defender.Id).Pool.Active);
+    }
+
+    [Fact]
     public void 동맹_부대는_인접해도_교전하거나_스킬원을_충전하지_않는다()
     {
         var left = Sword(1, 1, new HexCoord(2, 0));

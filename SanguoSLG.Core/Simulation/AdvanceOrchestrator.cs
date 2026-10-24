@@ -29,6 +29,10 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
     private readonly IRandomSource _random;
     private readonly int _climateAttackPercent;
     private GameState? _campaign;
+    private IReadOnlyDictionary<string, PassiveSkill> _passives = new Dictionary<string, PassiveSkill>();
+
+    public void SetPassiveSkills(IReadOnlyList<PassiveSkill> passives)
+        => _passives = passives.ToDictionary(x => x.Code, StringComparer.Ordinal);
 
     public void SetCampaignState(GameState state)
     {
@@ -420,6 +424,7 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
             state[id] = u with { State = newState,
                 Provisions = u.Provisions + skill?.ProvisionGain(u.Provisions, u.MaxProvisions()) ?? u.Provisions };
             var (effStats, outgoing) = ApplyDebuffs(state[id]);
+            effStats = ApplyCombatPassives(state[id], effStats, engagements, state);
             participants[id] = new BattleParticipant(
                 effStats with { Troops = u.Pool.Active },
                 u.Field.Mode,
@@ -875,6 +880,50 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
 
     // 지형 공방 보정(이동 후 위치·병종 분류)을 얹은 뒤, 걸린 능력치 디버프를 유효 능력치 + 준 피해
     // 배수로 접는다. 이간(무효)은 적성·가산 버킷을 100으로 되돌리고, 수공·연막은 준 피해를 곱으로 줄인다.
+    private CombatStats ApplyCombatPassives(CombatUnit unit, CombatStats stats,
+        IReadOnlyList<UnitEngagement> engagements, IReadOnlyDictionary<UnitId, CombatUnit> units)
+    {
+        if (_campaign is null || _passives.Count == 0 || unit.IsSupply || unit.IsTransport
+            || unit.State.Statuses.Any(s => s.NullifyAptPassive))
+            return stats;
+
+        var held = new List<(PassiveSkill Skill, int Tier)>();
+        foreach (var generalId in new[] { unit.VanguardId, unit.AdjutantId })
+        {
+            var general = _campaign.Generals.FirstOrDefault(g => g.Id == generalId);
+            if (general is null) continue;
+            foreach (var skill in general.Passives)
+                if (_passives.TryGetValue(skill.Code, out var definition))
+                    held.Add((definition, skill.Tier));
+        }
+        if (held.Count == 0) return stats;
+
+        var outgoing = engagements.Where(e => e.Attacker == unit.Id).ToList();
+        var incoming = engagements.Where(e => e.Targets.Contains(unit.Id)).ToList();
+        var targetId = outgoing.SelectMany(e => e.Targets).FirstOrDefault();
+        units.TryGetValue(targetId, out var target);
+        var terrain = _terrainAt(unit.Field.Position);
+        var context = new CombatContext(
+            OwnTerrainRough: terrain is TerrainType.Forest or TerrainType.Mountain,
+            OwnTerrainPlainsDesert: terrain is TerrainType.Plains or TerrainType.Desert or TerrainType.DesertCactus,
+            IsMajoritySide: target is not null && engagements.Count(e => e.Targets.Contains(targetId)) > 1,
+            Pursuing: unit.Field.Mode == UnitMode.Attack && target is not null,
+            EnemyMarching: target?.Field.Mode == UnitMode.March,
+            MeleeEngagement: target is not null && unit.Field.Position.Distance(target.Field.Position) <= 1,
+            IncomingMelee: incoming.Any(e => units[e.Attacker].Field.AttackRange <= 1),
+            IncomingRanged: incoming.Any(e => units[e.Attacker].Field.AttackRange > 1),
+            HpRatioPercent: 100 * unit.Pool.Active / System.Math.Max(1, unit.MaxTroops),
+            IsSurrounded: incoming.Count > 1);
+        var baseline = PassiveBucketEvaluator.Evaluate(held,
+            new CombatContext(MeleeEngagement: true, IncomingMelee: true));
+        var current = PassiveBucketEvaluator.Evaluate(held, context);
+        return stats with
+        {
+            AtkBonusPercent = stats.AtkBonusPercent + current.AtkPercent - baseline.AtkPercent,
+            DfBonusPercent = stats.DfBonusPercent + current.DfPercent - baseline.DfPercent,
+        };
+    }
+
     private (CombatStats Stats, int OutgoingPercent) ApplyDebuffs(CombatUnit u)
     {
         // 전투는 이동 후 위치에서 벌어지므로 그 칸의 지형 보정을 여기서 반영한다(부대 스탯엔 지형 미포함).

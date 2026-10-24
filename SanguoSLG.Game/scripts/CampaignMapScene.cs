@@ -592,6 +592,7 @@ public sealed partial class CampaignMapScene : Node3D
             navalProvisionsPercent: scenario.Balance.NavalProvisionsPercent,
             climateAttackPercent: scenario.Balance.ClimateAttackPercent,
             supplyConservationPercent: scenario.Balance.SupplyConservationPercent);
+        legacyField.SetPassiveSkills(passives);
         var movementTrace = new Dictionary<UnitId, (RenewalTargetId? Target, RenewalStopReason Reason)>();
         IFieldAdvanceRunner field = args.Contains("--legacy-movement")
             ? legacyField

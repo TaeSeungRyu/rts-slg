@@ -124,7 +124,7 @@ public sealed record UnitCombatState(
     /// </summary>
     public (ActiveSkill? Skill, UnitCombatState State) FiringActive()
     {
-        return ConsumeScheduled(skill => skill.Type != ActiveType.Tactic);
+        return ConsumeScheduled(skill => skill.Type != ActiveType.Tactic && skill.Code != "hold_the_line");
     }
 
     /// <summary>
@@ -133,7 +133,7 @@ public sealed record UnitCombatState(
     /// </summary>
     public (ActiveSkill? Skill, UnitCombatState State) FiringDefenseActive()
     {
-        return ConsumeScheduled(skill => skill.Type == ActiveType.Defense);
+        return ConsumeScheduled(skill => skill.Type == ActiveType.Defense && skill.Code != "hold_the_line");
     }
 
     /// <summary>

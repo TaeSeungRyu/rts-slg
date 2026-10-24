@@ -96,6 +96,17 @@ public class UnitCombatStateTests
     }
 
     [Fact]
+    public void 사수는_야전에서_발동하거나_게이지를_소비하지_않는다()
+    {
+        var ready = UnitCombatState.Create(80, A["hold_the_line"]).AdvanceField(6);
+        var (defense, afterDefense) = ready.FiringDefenseActive();
+        var (active, afterActive) = afterDefense.FiringActive();
+        Assert.Null(defense);
+        Assert.Null(active);
+        Assert.Equal(ready.SharedActiveGauge, afterActive.SharedActiveGauge);
+    }
+
+    [Fact]
     public void 구버전_서로다른게이지는_진행도가높은슬롯을_다음차례로복구한다()
     {
         var legacy = UnitCombatState.Create(80, A["peerless"], A["iron_wall"]) with
