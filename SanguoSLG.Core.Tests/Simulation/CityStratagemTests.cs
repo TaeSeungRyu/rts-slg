@@ -236,6 +236,41 @@ public class CityStratagemTests
     }
 
     [Fact]
+    public void 다른_곳으로_떠난_태수는_도시계략_방어에_참여하지_않는다()
+    {
+        var governor = Gen(9, intellect: 100);
+        var stationed = State([Mine(), Enemy(governor: 9)], [Gen(1, intellect: 80), governor],
+            postings:
+            [
+                new GeneralPosting(new GeneralId(1), new FactionId(1), new CityId(1)),
+                new GeneralPosting(governor.Id, new FactionId(2), new CityId(2)),
+            ]);
+        var issued = Service().Issue(stationed, Req("scout"));
+        Assert.True(issued.Ok, issued.Error);
+        var days = issued.State.Commands.Single().CompletionDay - stationed.Day;
+
+        var defended = Advance(issued.State, days, roll: 60);
+        var departed = issued.State with
+        {
+            Postings = issued.State.Assignments.Select(p => p.General == governor.Id
+                ? p with { Location = null }
+                : p).ToList(),
+        };
+        var undefended = Advance(departed, days, roll: 60);
+        var changedFaction = issued.State with
+        {
+            Postings = issued.State.Assignments.Select(p => p.General == governor.Id
+                ? p with { Faction = new FactionId(1) }
+                : p).ToList(),
+        };
+        var foreign = Advance(changedFaction, days, roll: 60);
+
+        Assert.False(defended.IsScouted(new FactionId(1), new CityId(2)));
+        Assert.True(undefended.IsScouted(new FactionId(1), new CityId(2)));
+        Assert.True(foreign.IsScouted(new FactionId(1), new CityId(2)));
+    }
+
+    [Fact]
     public void 대상이_아군이되어_취소된_계략은_내정경험치를_지급하지_않는다()
     {
         var state = State([Mine(), Enemy()], [Gen(1)]);

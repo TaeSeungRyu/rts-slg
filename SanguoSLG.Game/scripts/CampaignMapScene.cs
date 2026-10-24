@@ -8086,27 +8086,58 @@ public sealed partial class CampaignMapScene : Node3D
 
     private (int Gold, int Provisions) WeeklyIncomePreview(City city)
     {
-        if (_cb.AutoOfficerSystemEnabled)
-        {
-            var domestic = city.DomesticOfficer is { } did
-                ? _state.Generals.FirstOrDefault(g => g.Id == did)
-                : null;
-            return domestic is null
-                ? (0, 0)
-                : (WeeklyIncomeAmount(PortAdministration.Scale(city, ApplyLowSecurityOutputPenalty(
-                        _cb.AutoDomesticGoldBase + domestic.Politics * _cb.AutoDomesticGoldPoliticsMultiplier, city.Security))),
-                    WeeklyIncomeAmount(PortAdministration.Scale(city, ApplyLowSecurityOutputPenalty(
-                        _cb.AutoDomesticProvisionsBase + domestic.Politics * _cb.AutoDomesticProvisionsPoliticsMultiplier, city.Security))));
-        }
-
-        var governor = city.Governor is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid) : null;
-        var effective = governor is not null && governor.Politics >= _balance.GovernorMinPolitics;
+        var governor = city.Governor is { } gid
+            && _state.PostingOf(gid) is { } posting
+            && posting.Location == city.Id && posting.Faction == city.Owner
+            ? _state.Generals.FirstOrDefault(g => g.Id == gid)
+            : null;
+        var effective = governor is not null
+            && AdministrationGrowth.EffectivePolitics(governor) >= _balance.GovernorMinPolitics;
         var goldBase = GoldBase(city.Castle) + FacilityOutput(city, "village", city.Villages, _balance.VillageGold);
         var provisionsBase = ProvisionsBase(city.Castle)
             + FacilityOutput(city, "paddy", city.Paddies, _balance.PaddyProvisions)
             + FacilityOutput(city, "farm", city.Farms, _balance.FarmProvisions);
         var gold = ScaleMonthlyIncome(goldBase, city, effective, governor, effective ? AdminBonus.Bucket(governor, _adminSkillMap, "tax") : 0);
         var provisions = ScaleMonthlyIncome(provisionsBase, city, effective, governor, effective ? AdminBonus.Bucket(governor, _adminSkillMap, "harvest") : 0);
+        if (_cb.AutoOfficerSystemEnabled)
+        {
+            var commerce = GeneralResearchRules.OutputPercent(_state.ResearchOf(city.Owner, FactionResearch.CommerceCode));
+            var agriculture = GeneralResearchRules.OutputPercent(_state.ResearchOf(city.Owner, FactionResearch.AgricultureCode));
+            var weeklyGold = city.IsPort ? 0
+                : WeeklyIncomeAmount(GeneralResearchRules.ApplyPercent(gold, commerce));
+            var weeklyProvisions = city.IsPort ? 0
+                : WeeklyIncomeAmount(GeneralResearchRules.ApplyPercent(provisions, agriculture));
+            var domestic = city.DomesticOfficer is { } did
+                && _state.PostingOf(did) is { } domesticPosting
+                && domesticPosting.Location == city.Id && domesticPosting.Faction == city.Owner
+                ? _state.Generals.FirstOrDefault(g => g.Id == did)
+                : null;
+            if (domestic is not null)
+            {
+                var domesticGold = ApplyLowSecurityOutputPenalty(
+                    _cb.AutoDomesticGoldBase + AdministrationGrowth.EffectivePoliticsRounded(domestic)
+                        * _cb.AutoDomesticGoldPoliticsMultiplier, city.Security);
+                var domesticProvisions = ApplyLowSecurityOutputPenalty(
+                    _cb.AutoDomesticProvisionsBase + AdministrationGrowth.EffectivePoliticsRounded(domestic)
+                        * _cb.AutoDomesticProvisionsPoliticsMultiplier, city.Security);
+                domesticGold = PortAdministration.Scale(city,
+                    GeneralResearchRules.ApplyPercent(domesticGold, commerce));
+                domesticProvisions = PortAdministration.Scale(city,
+                    GeneralResearchRules.ApplyPercent(domesticProvisions, agriculture));
+                domesticGold = domesticGold * (100 + AncientRelicEffects.Bonus(
+                    _state, _ancientRelics, domestic.Id, city.Owner, "gold_percent")) / 100;
+                domesticProvisions = domesticProvisions * (100 + AncientRelicEffects.Bonus(
+                    _state, _ancientRelics, domestic.Id, city.Owner, "provisions_percent")) / 100;
+                weeklyGold += WeeklyIncomeAmount(domesticGold);
+                weeklyProvisions += WeeklyIncomeAmount(domesticProvisions);
+            }
+            var portMultiplier = city.Port switch { PortSize.Medium => 2, PortSize.Small => 1, _ => 0 };
+            weeklyGold += GeneralResearchRules.ApplyPercent(
+                WorldEngine.PortSmallWeeklyGold * portMultiplier, commerce);
+            weeklyProvisions += GeneralResearchRules.ApplyPercent(
+                WorldEngine.PortSmallWeeklyProvisions * portMultiplier, agriculture);
+            return (weeklyGold, weeklyProvisions);
+        }
         return (gold, provisions);
     }
 
@@ -8168,7 +8199,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (effectiveGovernor)
         {
             var span = 100 - _balance.GovernorMinPolitics;
-            var amplify = span <= 0 ? 0 : System.Math.Max(0, governor!.Politics - _balance.GovernorMinPolitics)
+            var amplify = span <= 0 ? 0 : System.Math.Max(0, AdministrationGrowth.EffectivePoliticsRounded(governor!) - _balance.GovernorMinPolitics)
                 * _balance.GovernorTaxAmplifyAt100 / span;
             var effectiveRate = rate * (100 + amplify) / 100;
             amount = amount * effectiveRate / _balance.TaxRateBase;
@@ -8180,7 +8211,9 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         amount = amount * PopulationFillPercent(city) / 100;
-        if (city.Security < _balance.SecurityLowThreshold)
+        var effectiveSecurity = GeneralResearchRules.EffectiveSecurityForOutputPenalty(city.Security,
+            _state.ResearchOf(city.Owner, FactionResearch.PublicOrderCode));
+        if (effectiveSecurity < _balance.SecurityLowThreshold)
         {
             amount = amount * _balance.SecurityLowIncomePercent / 100;
         }
@@ -15494,12 +15527,19 @@ public sealed partial class CampaignMapScene : Node3D
             var caster = _state.Generals.First(g => g.Id == general);
             var origin = _state.Cities.First(c => c.Id == city);
             var days = CityStratagems.Days(origin.Position, enemy.Position, _cb);
-            var defInt = enemy.Governor is { } gid ? _state.Generals.FirstOrDefault(g => g.Id == gid)?.Intellect : null;
+            var defInt = enemy.Governor is { } gid
+                && _state.PostingOf(gid) is { } posting
+                && posting.Location == enemy.Id && posting.Faction == enemy.Owner
+                ? _state.Generals.FirstOrDefault(g => g.Id == gid) is { } defender
+                    ? AdministrationGrowth.EffectiveIntellectRounded(defender)
+                    : (int?)null
+                : null;
             var researchCode = StratagemResearchRules.ResearchCode(facility);
             var researchLevel = string.IsNullOrEmpty(researchCode)
                 ? 0
                 : _state.ResearchOf(origin.Owner, researchCode);
-            var odds = CityStratagems.SuccessPercent(caster.Intellect, defInt, researchLevel);
+            var odds = CityStratagems.SuccessPercent(
+                AdministrationGrowth.EffectiveIntellectRounded(caster), defInt, researchLevel);
             var strategist = origin.Strategist is { } sid ? _state.Generals.FirstOrDefault(g => g.Id == sid) : null;
             if (strategist is not null)
             {

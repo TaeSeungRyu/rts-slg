@@ -279,7 +279,9 @@ public sealed class WorldEngine
             return null;
         }
 
-        if (state.Assignments.Count > 0 && state.PostingOf(gid)?.Location != city.Id)
+        if (state.Assignments.Count > 0
+            && (state.PostingOf(gid) is not { } posting
+                || posting.Location != city.Id || posting.Faction != city.Owner))
         {
             return null;
         }
@@ -1169,11 +1171,9 @@ public sealed class WorldEngine
         var casterIntellect = generals.FirstOrDefault(g => g.Id == cmd.Main) is { } caster
             ? AdministrationGrowth.EffectiveIntellectRounded(caster)
             : 40;
-        int? defenderIntellect = target.Governor is { } gov
-            ? generals.FirstOrDefault(g => g.Id == gov) is { } defender
-                ? AdministrationGrowth.EffectiveIntellectRounded(defender)
-                : null
-            : null;
+        var defenderIntellect = ValidGovernor(state, target, generals.ToDictionary(g => g.Id)) is { } defender
+            ? AdministrationGrowth.EffectiveIntellectRounded(defender)
+            : (int?)null;
         var researchCode = StratagemResearchRules.ResearchCode(cmd.Facility);
         var researchLevel = string.IsNullOrEmpty(researchCode)
             ? 0

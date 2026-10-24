@@ -1123,4 +1123,17 @@ public class WorldEngineTests
         var away = new WorldEngine(Balance).AdvanceDays(With(null), 30); // 출전 중
         Assert.Equal(30, away.Cities.Single().Gold);  // ×0.3 급감
     }
+
+    [Fact]
+    public void 다른_세력_배속_장수는_태수_수입을_만들지_않는다()
+    {
+        var officer = Officer(100);
+        var city = Base() with { Governor = officer.Id };
+        var state = new GameState(1, 1, [], [city], [officer],
+            Postings: [new GeneralPosting(officer.Id, new FactionId(2), city.Id)]);
+
+        var after = new WorldEngine(Balance).AdvanceDays(state, 30);
+
+        Assert.Equal(30, after.Cities.Single().Gold);
+    }
 }
