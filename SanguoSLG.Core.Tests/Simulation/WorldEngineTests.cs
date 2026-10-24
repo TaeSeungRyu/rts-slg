@@ -8,6 +8,21 @@ namespace SanguoSLG.Core.Tests.Simulation;
 /// <summary>일 단위 세계 시계 + 월말 세금 틱(도시 금고) — design-administration "시간 축".</summary>
 public class WorldEngineTests
 {
+    [Fact]
+    public void 어려움_난이도는_AI_생산만_이십퍼센트_늘리고_저장된다()
+    {
+        var state = new GameState(1, 190, [], [], [],
+            Difficulty: GameDifficulty.Hard, HumanFactionId: 1);
+        Assert.Equal(100, GameDifficultyRules.Production(state, new FactionId(1), 100));
+        Assert.Equal(120, GameDifficultyRules.Production(state, new FactionId(2), 100));
+        Assert.Equal(100, GameDifficultyRules.Production(state with { Difficulty = GameDifficulty.Normal },
+            new FactionId(2), 100));
+        var restored = SanguoSLG.Core.Data.SaveService.Deserialize(
+            SanguoSLG.Core.Data.SaveService.Serialize(state));
+        Assert.Equal(GameDifficulty.Hard, restored.Difficulty);
+        Assert.Equal(1, restored.HumanFactionId);
+    }
+
     [Theory]
     [InlineData(1, 1)]
     [InlineData(20, 1)]

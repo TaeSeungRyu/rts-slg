@@ -49,7 +49,9 @@ public sealed record GameState(
     IReadOnlyList<FactionCampaignStats>? CampaignStats = null,
     int PlaySeconds = 0,
     IReadOnlyList<DismissedGeneral>? DismissedGenerals = null,
-    ClimateState? Climate = null)
+    ClimateState? Climate = null,
+    GameDifficulty Difficulty = GameDifficulty.Normal,
+    int HumanFactionId = 1)
 {
     /// <summary>건설한 시설이 놓인 성 주변 타일(표현 계층이 모델을 얹는다). 건설 완료 시 append.</summary>
     public IReadOnlyList<FacilityPlacement> Placements => FacilityPlacements ?? [];

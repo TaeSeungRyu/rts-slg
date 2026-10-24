@@ -157,6 +157,7 @@ public sealed class WorldEngine
                 gold = PortAdministration.Scale(city, gold);
                 gold = gold * (100 + AncientRelicEffects.Bonus(state, _ancientRelics,
                     domestic.Id, city.Owner, "gold_percent")) / 100;
+                gold = GameDifficultyRules.Production(state, city.Owner, gold);
                 next = next with
                 {
                     Gold = next.Gold + SplitMonthlyAmount(gold, WeeklyIncomeTick(state.Day)),
@@ -190,7 +191,7 @@ public sealed class WorldEngine
                 domesticMonthly = PortAdministration.Scale(city, domesticMonthly);
                 domesticMonthly = domesticMonthly * (100 + AncientRelicEffects.Bonus(state, _ancientRelics,
                     domestic.Id, city.Owner, "provisions_percent")) / 100;
-                monthly += domesticMonthly;
+                monthly += GameDifficultyRules.Production(state, city.Owner, domesticMonthly);
             }
 
             return city with { Provisions = city.Provisions + SplitMonthlyAmount(monthly, tick) };
@@ -212,6 +213,8 @@ public sealed class WorldEngine
                 GeneralResearchRules.OutputPercent(state.ResearchOf(city.Owner, FactionResearch.CommerceCode)));
             var provisions = GeneralResearchRules.ApplyPercent(PortSmallWeeklyProvisions * multiplier,
                 GeneralResearchRules.OutputPercent(state.ResearchOf(city.Owner, FactionResearch.AgricultureCode)));
+            gold = GameDifficultyRules.Production(state, city.Owner, gold);
+            provisions = GameDifficultyRules.Production(state, city.Owner, provisions);
             return multiplier == 0
                 ? city
                 : city with
@@ -330,6 +333,7 @@ public sealed class WorldEngine
                     }
 
                     next = next with { Gold = next.Gold - cost };
+                    troops = GameDifficultyRules.Production(state, city.Owner, troops);
                     MergeGarrison(garrisons, next.Id, code, troops, _commands.AutoRecruitTroopTrainingLevel);
                     _events.Add(new WorldEvent(WorldEventKind.Recruit, next.Owner, recruiter.Id, next.Id, troops, code));
                 }
@@ -527,6 +531,8 @@ public sealed class WorldEngine
                     next.General, next.Owner, "gold_percent")) / 100;
                 var provisions = reward.Provisions * (100 + AncientRelicEffects.Bonus(state, _ancientRelics,
                     next.General, next.Owner, "provisions_percent")) / 100;
+                gold = GameDifficultyRules.Production(state, next.Owner, gold);
+                provisions = GameDifficultyRules.Production(state, next.Owner, provisions);
                 cities[next.City] = city with
                 {
                     Gold = city.Gold + gold,
@@ -647,7 +653,8 @@ public sealed class WorldEngine
             switch (cmd.Kind)
             {
                 case CommandKind.Recruit:
-                    MergeGarrison(garrisons, cmd.City, cmd.TroopCode, cmd.Amount, _commands.RecruitTrainLevel);
+                    MergeGarrison(garrisons, cmd.City, cmd.TroopCode,
+                        GameDifficultyRules.Production(state, city.Owner, cmd.Amount), _commands.RecruitTrainLevel);
                     break;
 
                 case CommandKind.Conscript:
@@ -1331,7 +1338,7 @@ public sealed class WorldEngine
 
         var gold = Scale(state, goldBase, city, effective, governor, goldBucket);
         gold = ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.CommerceCode, gold);
-        return city with { Gold = city.Gold + gold };
+        return city with { Gold = city.Gold + GameDifficultyRules.Production(state, city.Owner, gold) };
     }
 
     private int MonthlyProvisionsIncome(GameState state, City city, Domain.General? governor)
@@ -1343,7 +1350,8 @@ public sealed class WorldEngine
             && AdministrationGrowth.EffectivePolitics(governor) >= _balance.GovernorMinPolitics;
         var provBucket = effective ? GovernorBucket(governor, "harvest") : 0;
         var provisions = Scale(state, provBase, city, effective, governor, provBucket);
-        return ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.AgricultureCode, provisions);
+        return GameDifficultyRules.Production(state, city.Owner,
+            ApplyGeneralOutputBonus(state, city.Owner, FactionResearch.AgricultureCode, provisions));
     }
 
     private static int FacilityOutput(GameState state, City city, string code, int intactCount, int baseOutput)
