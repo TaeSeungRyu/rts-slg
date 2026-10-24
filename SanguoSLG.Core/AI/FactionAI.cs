@@ -69,7 +69,8 @@ public sealed class FactionAI
             state = state with { Factions = state.Factions.Select(entry => entry.Id == faction
                 ? entry with { AiNextWarDecisionDay = AiWarDecisionClock.DelayForSupport(entry,
                     state.Day) } : entry).ToList() };
-        else if (_map is null || warFaction is null || AiWarDecisionClock.IsDue(warFaction, state.Day))
+        else if (state.Month != 12
+            && (_map is null || warFaction is null || AiWarDecisionClock.IsDue(warFaction, state.Day)))
         {
             state = new AiOffensePlanner(_deployer, _config, _commands, _map, _economy)
                 .Plan(state, faction);

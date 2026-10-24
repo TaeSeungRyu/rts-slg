@@ -303,6 +303,21 @@ public class AiOffensePlannerTests
     }
 
     [Fact]
+    public void 십이월에는_새_공세를_시작하지_않고_일월에_판단을_재개한다()
+    {
+        var deployer = new DeployService(new CommandBalance(), Troops,
+            new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+            new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()));
+        var ai = new FactionAI(new CommandService(new CommandBalance(), Troops), deployer,
+            map: new HexMap(-3, 18, -5, 5));
+        var december = Scenario(100000, 20000) with { Day = 331 };
+        var paused = ai.PlanWeek(december, new FactionId(1));
+        Assert.DoesNotContain(paused.Armies, unit => !unit.IsSupply && !unit.IsTransport);
+        var resumed = ai.PlanWeek(december with { Day = 361 }, new FactionId(1));
+        Assert.Contains(resumed.Armies, unit => !unit.IsSupply && !unit.IsTransport);
+    }
+
+    [Fact]
     public void 공세_출전후_저장재개해도_3주_진행_결과가_같다()
     {
         var map = new HexMap(-3, 18, -5, 5);
