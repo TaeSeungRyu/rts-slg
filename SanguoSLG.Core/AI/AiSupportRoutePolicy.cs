@@ -23,7 +23,7 @@ public static class AiSupportRoutePolicy
 
     public static AiSupportRoute? Closest(GameState state, City defended, HexMap map,
         IReadOnlyDictionary<string, TroopTemplate> troops, BalanceConfig balance,
-        int minimumTraining = 0)
+        int minimumTraining = 0, IReadOnlySet<CityId>? excludedOrigins = null)
     {
         var blocked = state.Buildings.Where(building => !building.IsExpired(state.Day))
             .Select(building => building.Position).Concat(state.Ruins.Select(ruin => ruin.Position));
@@ -40,6 +40,7 @@ public static class AiSupportRoutePolicy
         {
             var available = state.Garrisons.Where(line => line.City == origin.Id && !line.Trainee)
                 .Sum(line => Math.Max(0, line.Troops));
+            if (excludedOrigins?.Contains(origin.Id) == true) continue;
             var allowance = available * 40 / 100;
             if (allowance < 6000) continue;
             foreach (var line in state.Garrisons.Where(line => line.City == origin.Id
