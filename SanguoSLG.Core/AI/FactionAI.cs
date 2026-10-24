@@ -94,6 +94,7 @@ public sealed class FactionAI
                         state.Day) } : entry).ToList() };
         }
         state = new AiRearSupportPlanner(_deployer, _map).Plan(state, faction);
+        state = PlanCityMaintenance(state, faction);
         state = PlanGeneralResearch(state, faction);
         state = PlanStratagemResearch(state, faction);
         state = PlanCombatResearch(state, faction);
@@ -103,7 +104,6 @@ public sealed class FactionAI
         state = PlanConstructionDeployment(state, faction);
         state = PlanExploration(state, faction);
         state = PlanCityOfficers(state, faction);
-        state = PlanCityMaintenance(state, faction);
         state = PlanCityBaseline(state, faction);
         return state with { FieldArmies = state.Armies.Select(unit =>
             unit.Field.Owner == faction && !existingArmyIds.Contains(unit.Id)

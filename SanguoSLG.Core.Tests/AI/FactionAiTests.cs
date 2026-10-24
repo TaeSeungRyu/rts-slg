@@ -205,6 +205,27 @@ public class FactionAiTests
     }
 
     [Fact]
+    public void AI는_성벽이_무너진_안전한_성에서_연구보다_수리를_먼저_예약한다()
+    {
+        var city = Town(1, 1, new HexCoord(0, 0)) with { Wall = 0, Gold = 5000 };
+        var officers = new[] { Gen(1), Gen(2) };
+        var state = new GameState(1, 190, [], [city], officers,
+            Postings: [At(1, 1, 1), At(2, 1, 1)]);
+
+        var commander = new CommandService(B, Troops,
+            new BalanceConfig(MonthlyTaxPerCity: 100));
+        var deployer = new DeployService(B, Troops,
+            new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+            new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()));
+        var after = new FactionAI(commander, deployer,
+            new AiConfig(DeployTarget: int.MaxValue,
+                ExplorationReserveGold: int.MaxValue)).PlanWeek(state, city.Owner);
+
+        Assert.Contains(after.Commands, command => command.Kind == CommandKind.Repair
+            && command.TroopCode == FactionResearch.WallCode && command.City == city.Id);
+    }
+
+    [Fact]
     public void 점령_직후_장수_없는_AI_성도_안전하면_성벽을_복구한다()
     {
         var city = Town(302, 1, new HexCoord(0, 0)) with
