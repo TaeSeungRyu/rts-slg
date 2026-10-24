@@ -94,6 +94,20 @@ public class ActiveSkillTests
     }
 
     [Fact]
+    public void 포화는_궁병과_공성병기에_한해_피해가_일점팔배다()
+    {
+        var baseHit = Resolver.StrikeDamage(SwordA(), SwordA(), A["barrage"], 60,
+            attackerClass: TroopClass.Infantry);
+        var rangedHit = Resolver.StrikeDamage(SwordA(), SwordA(), A["barrage"], 60,
+            attackerClass: TroopClass.Archer);
+        var siegeHit = Resolver.StrikeDamage(SwordA(), SwordA(), A["barrage"], 60,
+            attackerClass: TroopClass.Siege);
+        Assert.Equal(1064, baseHit);
+        Assert.Equal(1368, rangedHit);
+        Assert.Equal(rangedHit, siegeHit);
+    }
+
+    [Fact]
     public void 철벽_무력80_받는피해_64퍼센트()
         => Assert.Equal(64, BattleResolver.DamageTakenPercent(A["iron_wall"], might: 80)); // 30 × 1.2 = 36 감소
 

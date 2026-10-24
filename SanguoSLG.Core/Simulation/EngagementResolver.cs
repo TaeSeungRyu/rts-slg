@@ -39,6 +39,8 @@ public sealed class EngagementResolver
         // 5. 방어 감소를 받는 쪽에 적용.
         var dmgToB = (int)((long)rawAtoB * takenB / 100);
         var dmgToA = (int)((long)rawBtoA * takenA / 100);
+        if (a.StrikeActive?.Code == "tiger_strike") dmgToA /= 2;
+        if (b.StrikeActive?.Code == "tiger_strike") dmgToB /= 2;
 
         return new ExchangeOutcome(dmgToA, dmgToB, healA, healB);
     }

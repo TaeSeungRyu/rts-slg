@@ -75,6 +75,8 @@ public sealed class BattleResolver
 
         var mult = skill.BuildingOnly && !targetIsBuilding
             ? 100
+            : skill.Code == "barrage" && attackerClass is Domain.TroopClass.Archer or Domain.TroopClass.Siege
+                ? 180
             : attackerClass == Domain.TroopClass.Cavalry && skill.CavalryDamageMultPercent > 0
                 ? skill.CavalryDamageMultPercent
                 : skill.DamageMultPercent;

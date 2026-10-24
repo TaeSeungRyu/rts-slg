@@ -47,6 +47,40 @@ public class CombatPhaseActiveTests
     }
 
     [Fact]
+    public void 맹호격은_상대의_이번_반격만_절반으로_줄인다()
+    {
+        var result = Run(Sword(strike: A["tiger_strike"]), Sword());
+        Assert.Equal(1064, result.DamageTaken[new UnitId(2)]);
+        Assert.Equal(380, result.DamageTaken[new UnitId(1)]);
+    }
+
+    [Theory]
+    [InlineData("chain_strike")]
+    [InlineData("double_hit")]
+    public void 연속타격은_단일대상에_두_번의_교환으로_기록된다(string code)
+    {
+        var result = Run(Sword(strike: A[code]), Sword());
+        var hits = result.Exchanges!.Where(exchange => exchange.Attacker == new UnitId(1)).ToList();
+        Assert.Equal(2, hits.Count);
+        Assert.Equal(result.DamageTaken[new UnitId(2)], hits.Sum(hit => hit.Amount));
+    }
+
+    [Fact]
+    public void 연환격은_두_대상에게_각각_팔십퍼센트의_피해를_준다()
+    {
+        var participants = new Dictionary<UnitId, BattleParticipant>
+        {
+            [new UnitId(1)] = Sword(strike: A["chain_strike"]),
+            [new UnitId(2)] = Sword(),
+            [new UnitId(3)] = Sword(),
+        };
+        var result = Phase.Resolve([new UnitEngagement(new UnitId(1), [new UnitId(2), new UnitId(3)])],
+            participants);
+        Assert.Equal(608, result.DamageTaken[new UnitId(2)]);
+        Assert.Equal(608, result.DamageTaken[new UnitId(3)]);
+    }
+
+    [Fact]
     public void 참은_공격보너스와_피해배수를_적용하고_일반부상을_남긴다()
     {
         var r = Run(Sword(might: 80, strike: A["reap"]), Sword());

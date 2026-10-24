@@ -49,6 +49,11 @@ public sealed class CombatPhaseResolver
         var permanentDamage = new Dictionary<UnitId, int>();
         var dealt = new Dictionary<UnitId, int>();
         var exchanges = new List<UnitDamage>();
+        var tigerCounters = engagements
+            .Where(e => participants[e.Attacker].StrikeActive?.Code == "tiger_strike"
+                && e.Targets.Count > 0)
+            .Select(e => (CounterAttacker: e.Targets[0], CounterTarget: e.Attacker))
+            .ToHashSet();
         foreach (var engagement in engagements)
         {
             var attacker = participants[engagement.Attacker];
@@ -58,10 +63,16 @@ public sealed class CombatPhaseResolver
                 var target = participants[targetId];
 
                 // 타격 액티브는 주대상 공격을 대체한다(부차 대상은 일반 60%).
-                var raw = i == 0 && attacker.StrikeActive is not null
-                    ? _resolver.StrikeDamage(attackStats[engagement.Attacker], attackStats[targetId], attacker.StrikeActive,
+                var chain = attacker.StrikeActive?.Code == "chain_strike";
+                var doubleHit = attacker.StrikeActive?.Code == "double_hit";
+                var specialHit = attacker.StrikeActive is not null && (i == 0
+                    || chain && i == 1);
+                var raw = specialHit
+                    ? _resolver.StrikeDamage(attackStats[engagement.Attacker], attackStats[targetId], attacker.StrikeActive!,
                         attacker.Might, attacker.TargetIsBuilding, attacker.Class)
                     : _resolver.Damage(attackStats[engagement.Attacker], attackStats[targetId], primaryTarget: i == 0);
+                if (chain)
+                    raw = i > 1 ? 0 : engagement.Targets.Count > 1 ? raw / 2 : raw;
 
                 if (attacker.StrikeActive is null)
                     raw = raw * attacker.TreasureNormalAttackPercent / 100;
@@ -75,6 +86,7 @@ public sealed class CombatPhaseResolver
                 }
 
                 raw = raw * attacker.OutgoingDamagePercent / 100; // 수공·연막 디버프(공격자 준 피해 감소)
+                if (tigerCounters.Contains((engagement.Attacker, targetId))) raw /= 2;
                 raw = raw * takenPercent[targetId] / 100; // 방어 액티브 감소
                 raw = raw * target.TreasureDamageTakenPercent / 100;
                 if (attacker.AttackRange >= 2)
@@ -91,7 +103,16 @@ public sealed class CombatPhaseResolver
                 }
 
                 dealt[engagement.Attacker] = dealt.GetValueOrDefault(engagement.Attacker) + raw;
-                if (raw > 0) exchanges.Add(new(engagement.Attacker, targetId, raw));
+                if (raw > 0)
+                {
+                    if (i == 0 && (doubleHit || chain && engagement.Targets.Count == 1))
+                    {
+                        var first = raw / 2;
+                        exchanges.Add(new(engagement.Attacker, targetId, first));
+                        exchanges.Add(new(engagement.Attacker, targetId, raw - first));
+                    }
+                    else exchanges.Add(new(engagement.Attacker, targetId, raw));
+                }
             }
         }
 
