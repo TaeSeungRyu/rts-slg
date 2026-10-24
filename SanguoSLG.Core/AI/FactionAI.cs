@@ -31,7 +31,7 @@ public sealed class FactionAI
     }
 
     /// <summary>이 세력의 한 주 명령·출전을 반영한 새 상태를 반환한다.</summary>
-    public GameState PlanWeek(GameState state, FactionId faction)
+    public GameState PlanWeek(GameState state, FactionId faction, bool allowOffense = true)
     {
         state = PlanAppointments(state, faction);
         state = state with { Cities = state.Cities.Select(city => city.Owner == faction
@@ -57,9 +57,12 @@ public sealed class FactionAI
             .PlanDefense(state, faction);
         if (_map is not null)
             state = new AiSupportPlanner(_deployer, _map, _economy).Plan(state, faction);
-        state = PlanOffenseScouting(state, faction);
-        state = PlanOffenseStratagems(state, faction);
-        state = PlanFrontTransfers(state, faction);
+        if (allowOffense)
+        {
+            state = PlanOffenseScouting(state, faction);
+            state = PlanOffenseStratagems(state, faction);
+            state = PlanFrontTransfers(state, faction);
+        }
         var warFaction = state.Factions.FirstOrDefault(entry => entry.Id == faction);
         var supportActive = state.Armies.Any(unit => unit.Field.Owner == faction
             && unit.AiSupportDefendedCity is not null && unit.Pool.Active > 0);
@@ -69,7 +72,7 @@ public sealed class FactionAI
             state = state with { Factions = state.Factions.Select(entry => entry.Id == faction
                 ? entry with { AiNextWarDecisionDay = AiWarDecisionClock.DelayForSupport(entry,
                     state.Day) } : entry).ToList() };
-        else if (state.Month != 12
+        else if (allowOffense && state.Month != 12
             && (_map is null || warFaction is null || AiWarDecisionClock.IsDue(warFaction, state.Day)))
         {
             state = new AiOffensePlanner(_deployer, _config, _commands, _map, _economy)

@@ -4150,6 +4150,8 @@ public sealed partial class CampaignMapScene : Node3D
         {
             _state = _ai.PlanWeek(_state, f.Id);
         }
+        if (_state.Corps.Count > 0)
+            _state = new ArmyCorpsAI(_ai).PlanWeek(_state, Player);
         var profileAi = System.Diagnostics.Stopwatch.GetTimestamp();
 
         var replenishment = _supplyReplenishment.Execute(_state);
@@ -9006,6 +9008,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         Item("세력 기록", OpenFactionScoreboard);
+        Item("군단편성", OpenArmyCorpsList);
         Item("부대설명", OpenTroopGuide);
         Item("스킬설명", OpenSkillGuide);
         Item("전체 장수 목록", OpenGeneralRosterFresh);
