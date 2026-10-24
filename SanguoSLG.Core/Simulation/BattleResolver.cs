@@ -129,6 +129,7 @@ public sealed class BattleResolver
                 wallDamage += resolved * a.ActiveDamagePercent / 100;
             }
 
+            wallDamage = wallDamage * castle.WallDamageTakenPercent / 100;
             var newWall = System.Math.Max(0, castle.WallCurrent - wallDamage);
             var overflow = System.Math.Max(0, wallDamage - castle.WallCurrent); // 성벽 넘는 초과분은 병력으로
             var absorbed = wallDamage - overflow;

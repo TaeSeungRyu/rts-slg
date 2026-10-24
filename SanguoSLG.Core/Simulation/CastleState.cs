@@ -18,4 +18,5 @@ public sealed record CastleState(
     int WallDf = 12,
     int CollapsedDf = 6,
     int AptitudePercent = 100,
-    int DefenseBonusPercent = 100);
+    int DefenseBonusPercent = 100,
+    int WallDamageTakenPercent = 100);

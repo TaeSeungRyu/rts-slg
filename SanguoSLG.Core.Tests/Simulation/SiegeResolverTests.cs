@@ -98,4 +98,19 @@ public class SiegeResolverTests
         var collapsedCrush = Resolver.ResolveSiege([crush], new CastleState(0, 10000, AptitudePercent: 95));
         Assert.Equal(collapsedNormal.TroopDamage * 180 / 100, collapsedCrush.TroopDamage);
     }
+
+    [Fact]
+    public void 사수는_성벽피해만_절반으로_줄인다()
+    {
+        var attacker = AttackerA("swordsman");
+        var regular = Resolver.ResolveSiege([attacker], new CastleState(6000, 10000));
+        var protectedWall = Resolver.ResolveSiege([attacker], new CastleState(6000, 10000,
+            WallDamageTakenPercent: 50));
+        Assert.Equal(regular.WallDamage / 2, protectedWall.WallDamage);
+
+        var collapsed = Resolver.ResolveSiege([attacker], new CastleState(0, 10000));
+        var collapsedProtected = Resolver.ResolveSiege([attacker], new CastleState(0, 10000,
+            WallDamageTakenPercent: 50));
+        Assert.Equal(collapsed.TroopDamage, collapsedProtected.TroopDamage);
+    }
 }

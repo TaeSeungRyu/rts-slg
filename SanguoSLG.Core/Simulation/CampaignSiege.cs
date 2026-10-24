@@ -66,7 +66,8 @@ public sealed class CampaignSiege
     public Result Resolve(IReadOnlyList<CombatUnit> armies, IReadOnlyList<City> cities,
         IReadOnlyList<GarrisonForce> garrisons, Func<CityId, int>? counterAptitude = null,
         Func<CityId, int>? defenseBonus = null, IReadOnlyList<CityWoundedForce>? cityWounded = null,
-        Func<FactionId, FactionId, bool>? areHostile = null)
+        Func<FactionId, FactionId, bool>? areHostile = null,
+        Func<CityId, int>? wallDamageTakenPercent = null)
     {
         areHostile ??= (left, right) => left != right;
         var byUnit = armies.ToDictionary(u => u.Id);
@@ -120,7 +121,8 @@ public sealed class CampaignSiege
 
             var counterPercent = counterAptitude?.Invoke(city.Id) ?? 100;
             var defensePercent = defenseBonus?.Invoke(city.Id) ?? 100;
-            var castle = new CastleState(city.Wall, defendTroops, CastleUnitDmg, WallDf, CollapsedDf, counterPercent, defensePercent);
+            var castle = new CastleState(city.Wall, defendTroops, CastleUnitDmg, WallDf, CollapsedDf,
+                counterPercent, defensePercent, wallDamageTakenPercent?.Invoke(city.Id) ?? 100);
             var activeByUnit = new Dictionary<UnitId, ActiveSkill?>();
             foreach (var besieger in besiegers)
             {

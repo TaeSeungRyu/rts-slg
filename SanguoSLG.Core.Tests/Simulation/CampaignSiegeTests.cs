@@ -585,7 +585,7 @@ public class CampaignSiegeTests
     public void 수성액티브는_5일_충전되면_공성방어에_적용된다()
     {
         var attacker = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0), troops: 12000);
-        var city = Town(9, 2, new HexCoord(5, 0), wall: 0, size: CastleSize.Medium) with { Governor = new GeneralId(10) };
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 6000, size: CastleSize.Medium) with { Governor = new GeneralId(10) };
         var garr = new List<GarrisonForce> { new(new CityId(9), "swordsman", 10000, 60) };
         var passives = new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).ToList();
         var actives = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).ToList();
@@ -607,8 +607,9 @@ public class CampaignSiegeTests
             new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)), Siege(), passives: passives, actives: actives)
             .AdvanceWeek(state with { FieldArmies = [attacker], DefenseCharges = [new CityDefenseCharge(city.Id, governor.Id, 0)] }, out _, out _);
 
-        Assert.True(active.Garrisons.Sum(g => g.Troops) > notReady.Garrisons.Sum(g => g.Troops),
-            "5일 충전된 방어 액티브가 수비 피해를 더 줄여야 한다.");
+        Assert.True(active.Cities.Single().Wall > notReady.Cities.Single().Wall,
+            "사수가 준비되면 성벽 피해만 줄여야 한다.");
+        Assert.Equal(active.Garrisons.Sum(g => g.Troops), notReady.Garrisons.Sum(g => g.Troops));
         Assert.All(active.SiegeDefenseCharges, c => Assert.InRange(c.ChargeDays, 0, CityDefenseCharge.RequiredDays));
     }
 

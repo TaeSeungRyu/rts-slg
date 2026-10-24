@@ -397,7 +397,8 @@ public sealed class CampaignEngine
                 // 수성 액티브도 이동 경과일이 아니라 실제 공성 교환 1회당 1칸 충전한다.
                 const int activeChargeDays = 1;
                 var result = _siege.Resolve(armies, siegeState.Cities, siegeState.Garrisons,
-                    CounterAptitude, DefenseBonus, siegeState.CityWounded, siegeState.AreHostile);
+                    CounterAptitude, DefenseBonus, siegeState.CityWounded, siegeState.AreHostile,
+                    WallDamageTakenPercent);
 
                 var mergedActives = reports[^1].FiredActives
                     .Concat(result.FiredActives)
@@ -419,6 +420,20 @@ public sealed class CampaignEngine
                 {
                     var percents = SiegeDefensePercents(siegeState, cid);
                     return ApplyDefenseActiveBonus(siegeState, cid, percents.DefensePercent, activeChargeDays);
+                }
+
+                int WallDamageTakenPercent(CityId cid)
+                {
+                    var leader = SiegeDefenseCommand.Select(siegeState,
+                        siegeState.Cities.First(c => c.Id == cid));
+                    if (leader.General is not { } generalId)
+                        return 100;
+                    var charge = siegeState.SiegeDefenseCharges.FirstOrDefault(c => c.City == cid
+                        && c.Leader == generalId)?.ChargeDays ?? 0;
+                    if (charge + activeChargeDays < CityDefenseCharge.RequiredDays)
+                        return 100;
+                    var general = siegeState.Generals.FirstOrDefault(g => g.Id == generalId);
+                    return general?.BattleActive == "hold_the_line" ? 50 : 100;
                 }
 
                 // 성 반격으로 전멸한 공성 부대의 장수도 같은 귀환 규칙을 적용한다.
@@ -768,6 +783,11 @@ public sealed class CampaignEngine
 
         var general = state.Generals.FirstOrDefault(g => g.Id == generalId);
         if (general?.BattleActive is not { } code || !_actives.TryGetValue(code, out var active))
+        {
+            return defensePercent;
+        }
+
+        if (active.Type == ActiveType.Defense && active.Code == "hold_the_line")
         {
             return defensePercent;
         }
