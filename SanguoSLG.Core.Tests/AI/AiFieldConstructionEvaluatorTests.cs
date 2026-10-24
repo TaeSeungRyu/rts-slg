@@ -14,6 +14,17 @@ public class AiFieldConstructionEvaluatorTests
     private static readonly HexMap Map = new(-2, 12, -4, 4);
 
     [Fact]
+    public void AI_방어건축_선택은_결정론적이며_육십_삼십_십_비율이다()
+    {
+        var draws = Enumerable.Range(1, 1000)
+            .Select(day => AiFieldConstructionEvaluator.DefenseKindFor(day, new(1))).ToArray();
+        Assert.InRange(draws.Count(kind => kind == FieldBuildingKind.Palisade), 550, 650);
+        Assert.InRange(draws.Count(kind => kind == FieldBuildingKind.Formation), 250, 350);
+        Assert.InRange(draws.Count(kind => kind == FieldBuildingKind.Watchtower), 70, 130);
+        Assert.Equal(draws[0], AiFieldConstructionEvaluator.DefenseKindFor(1, new(1)));
+    }
+
+    [Fact]
     public void AI는_시야에_들어온_접근부대가_있으면_방어건축을_평가한다()
     {
         var state = State();
@@ -25,10 +36,7 @@ public class AiFieldConstructionEvaluatorTests
         Assert.Contains(candidates, candidate => candidate.DefinitionCode == "palisade"
             && candidate.Unit == new UnitId(1));
         Assert.Contains(candidates, candidate => candidate.DefinitionCode == "formation");
-        Assert.Equal(candidates.OrderByDescending(candidate => candidate.Score)
-            .ThenBy(candidate => candidate.DefinitionCode, StringComparer.Ordinal)
-            .ThenBy(candidate => candidate.Position.Q).ThenBy(candidate => candidate.Position.R)
-            .ThenBy(candidate => candidate.Unit.Value), candidates);
+        Assert.DoesNotContain(candidates, candidate => candidate.DefinitionCode is "fort" or "scout_post");
     }
 
     [Fact]
@@ -54,11 +62,11 @@ public class AiFieldConstructionEvaluatorTests
             Definitions, new HashSet<HexCoord>()));
         Assert.Contains(AiFieldConstructionEvaluator.Evaluate(due, new(1), Map,
             Definitions, new HashSet<HexCoord>(), periodic: true), candidate =>
-                candidate.DefinitionCode is "watchtower" or "fort");
+                candidate.DefinitionCode is "palisade" or "formation" or "watchtower");
     }
 
     [Fact]
-    public void AI는_정찰된_전선에서_보루와_감시탑과_정찰대를_후보로_삼는다()
+    public void AI는_정찰된_전선에서도_보루와_정찰대를_후보로_삼지_않는다()
     {
         var state = State() with
         {
@@ -71,9 +79,8 @@ public class AiFieldConstructionEvaluatorTests
         var candidates = AiFieldConstructionEvaluator.Evaluate(state, new(1), forestMap,
             Definitions, new HashSet<HexCoord>());
 
-        Assert.Contains(candidates, candidate => candidate.DefinitionCode == "fort");
         Assert.Contains(candidates, candidate => candidate.DefinitionCode == "watchtower");
-        Assert.Contains(candidates, candidate => candidate.DefinitionCode == "scout_post");
+        Assert.DoesNotContain(candidates, candidate => candidate.DefinitionCode is "fort" or "scout_post");
     }
 
     [Fact]
@@ -90,8 +97,8 @@ public class AiFieldConstructionEvaluatorTests
         var two = state with { FieldBuildings = [tower,
             new FieldBuilding(new(9), "fort", new(1), new(3, 1), 2500, 1, 15)] };
 
-        Assert.Contains(AiFieldConstructionEvaluator.Evaluate(one, new(1), Map,
-            Definitions, new HashSet<HexCoord>()), candidate => candidate.DefinitionCode == "fort");
+        Assert.NotEmpty(AiFieldConstructionEvaluator.Evaluate(one, new(1), Map,
+            Definitions, new HashSet<HexCoord>()));
         Assert.Empty(AiFieldConstructionEvaluator.Evaluate(two, new(1), Map,
             Definitions, new HashSet<HexCoord>()));
     }

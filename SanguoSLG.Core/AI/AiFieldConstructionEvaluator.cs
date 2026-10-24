@@ -9,6 +9,14 @@ public sealed record AiConstructionCandidate(UnitId Unit, string DefinitionCode,
 
 public static class AiFieldConstructionEvaluator
 {
+    public static FieldBuildingKind DefenseKindFor(int day, FactionId faction)
+    {
+        var seed = unchecked(day * 7919 ^ faction.Value * 104729);
+        var roll = new SeededRandomSource(seed).Next(0, 100);
+        return roll < 60 ? FieldBuildingKind.Palisade
+            : roll < 90 ? FieldBuildingKind.Formation : FieldBuildingKind.Watchtower;
+    }
+
     public static bool PeriodicBuildDue(GameState state, FactionId faction)
     {
         var lastStart = state.Buildings.Where(building => building.Owner == faction)
@@ -66,8 +74,9 @@ public static class AiFieldConstructionEvaluator
                     || state.Cities.Any(other => CastleFootprint.TilesFor(other).Contains(position))
                     || threats.Any(enemy => enemy.Field.Position.Distance(position) <= 2)) continue;
 
-                foreach (var definition in definitions.OrderBy(definition => definition.Code,
-                    StringComparer.Ordinal))
+                foreach (var definition in definitions.Where(definition => definition.Kind is
+                    FieldBuildingKind.Palisade or FieldBuildingKind.Formation or FieldBuildingKind.Watchtower)
+                    .OrderBy(definition => definition.Code, StringComparer.Ordinal))
                 {
                     if (unit.CarryingGold < definition.GoldCost
                         || unit.Provisions < definition.ProvisionsCost
@@ -87,15 +96,13 @@ public static class AiFieldConstructionEvaluator
                             && position.Distance(city.Position) is >= 2 and <= 3 => 24,
                         FieldBuildingKind.Watchtower when scoutedFront
                             && position.Distance(city.Position) is >= 2 and <= 4 => 18,
-                        FieldBuildingKind.Fort when scoutedFront && cityThreats.Count == 0
+                        FieldBuildingKind.Palisade when scoutedFront
                             && position.Distance(city.Position) is >= 2 and <= 4 => 15,
-                        FieldBuildingKind.ScoutPost when scoutedFront
-                            && position.Distance(city.Position) is >= 3 and <= 5
-                            && CountUnseen(map, visible, position, definition.EffectRadius) >= 4 => 20,
-                        FieldBuildingKind.Watchtower or FieldBuildingKind.Fort when periodic
-                            && position.Distance(city.Position) is >= 2 and <= 4 =>
-                            definition.Kind == ((state.Day / 7 + faction.Value) % 2 == 0
-                                ? FieldBuildingKind.Watchtower : FieldBuildingKind.Fort) ? 12 : 10,
+                        FieldBuildingKind.Formation when scoutedFront
+                            && position.Distance(city.Position) is >= 2 and <= 4 => 14,
+                        FieldBuildingKind.Palisade or FieldBuildingKind.Formation
+                            or FieldBuildingKind.Watchtower when periodic
+                            && position.Distance(city.Position) is >= 2 and <= 4 => 12,
                         _ => 0,
                     };
                     if (score <= 0) continue;
@@ -107,7 +114,10 @@ public static class AiFieldConstructionEvaluator
             }
         }
 
-        return candidates.OrderByDescending(candidate => candidate.Score)
+        var preferred = DefenseKindFor(state.Day, faction);
+        return candidates.OrderBy(candidate => definitions.First(definition =>
+                definition.Code == candidate.DefinitionCode).Kind == preferred ? 0 : 1)
+            .ThenByDescending(candidate => candidate.Score)
             .ThenBy(candidate => candidate.DefinitionCode, StringComparer.Ordinal)
             .ThenBy(candidate => candidate.Position.Q).ThenBy(candidate => candidate.Position.R)
             .ThenBy(candidate => candidate.Unit.Value).ToList();
@@ -118,7 +128,4 @@ public static class AiFieldConstructionEvaluator
             ? terrain is TerrainType.Forest or TerrainType.Mountain
             : terrain is TerrainType.Plains or TerrainType.Forest or TerrainType.Desert;
 
-    private static int CountUnseen(HexMap map, IReadOnlySet<HexCoord> visible,
-        HexCoord center, int radius)
-        => map.Tiles().Count(tile => tile.Distance(center) <= radius && !visible.Contains(tile));
 }
