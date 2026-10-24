@@ -686,6 +686,33 @@ public class CampaignSiegeTests
     }
 
     [Fact]
+    public void 원거리_방어패시브는_원거리_공성에만_적용된다()
+    {
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 100000) with { Governor = new GeneralId(7) };
+        var governor = new General(new GeneralId(7), "태수", new Dictionary<TroopClass, AptitudeGrade>(),
+            70, 70, 70, BattlePassives: [new GeneralSkill("arrow_ward", 3)]);
+        var passives = new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).ToList();
+
+        int RemainingWall(string code, bool skill)
+        {
+            var attacker = Army(1, 1, new HexCoord(4, 0), city.Position, 12000, code);
+            var state = new GameState(1, 190, [], [city], [governor],
+                Postings: [new GeneralPosting(governor.Id, city.Owner, city.Id)],
+                GarrisonForces: [new GarrisonForce(city.Id, "swordsman", 10000, 60)],
+                FieldArmies: [attacker]);
+            return new CampaignEngine(
+                new AdvanceOrchestrator(new MovementSimulator(new PassabilityMap(new HexMap(0, 30, -8, 8), [], [])),
+                    new CombatPhaseResolver(new BattleResolver(60), 70)),
+                new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)), Siege(),
+                passives: skill ? passives : [])
+                .AdvanceWeek(state, out _, out _).Cities.Single().Wall;
+        }
+
+        Assert.Equal(RemainingWall("swordsman", false), RemainingWall("swordsman", true));
+        Assert.True(RemainingWall("catapult", true) > RemainingWall("catapult", false));
+    }
+
+    [Fact]
     public void 수성중인_성의_부상병은_회복되지_않고_공격이_끊기면_회복된다()
     {
         var attacker = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0), troops: 12000);

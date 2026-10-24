@@ -414,11 +414,11 @@ public sealed class CampaignEngine
 
                 // 성 반격/방어 보정 = 태수 또는 대리 수성 지휘관 1명의 적성·스킬만 반영한다.
                 int CounterAptitude(CityId cid)
-                    => SiegeDefensePercents(siegeState, cid).CounterPercent;
+                    => SiegeDefensePercents(siegeState, cid, armies).CounterPercent;
 
                 int DefenseBonus(CityId cid)
                 {
-                    var percents = SiegeDefensePercents(siegeState, cid);
+                    var percents = SiegeDefensePercents(siegeState, cid, armies);
                     return ApplyDefenseActiveBonus(siegeState, cid, percents.DefensePercent, activeChargeDays);
                 }
 
@@ -896,7 +896,8 @@ public sealed class CampaignEngine
         return current with { DefenseCharges = next };
     }
 
-    private (int CounterPercent, int DefensePercent, SiegeDefenseLeader Leader) SiegeDefensePercents(GameState state, CityId cityId)
+    private (int CounterPercent, int DefensePercent, SiegeDefenseLeader Leader) SiegeDefensePercents(
+        GameState state, CityId cityId, IReadOnlyList<CombatUnit>? attackers = null)
     {
         var city = state.Cities.FirstOrDefault(c => c.Id == cityId);
         if (city is null)
@@ -924,7 +925,13 @@ public sealed class CampaignEngine
                 held.Add((skill, generalSkill.Tier));
             }
         }
-        var context = new CombatContext(InCastle: true, InField: false, IncomingMelee: true, IncomingRanged: true);
+        var besiegers = (attackers ?? []).Where(unit => unit.Pool.Active > 0
+            && state.AreHostile(unit.Field.Owner, city.Owner)
+            && CastleFootprint.TilesFor(city).Min(tile => tile.Distance(unit.Field.Position))
+                <= unit.Field.RangeCastle).ToList();
+        var context = new CombatContext(InCastle: true, InField: false,
+            IncomingMelee: besiegers.Any(unit => unit.Field.RangeCastle <= 1),
+            IncomingRanged: besiegers.Any(unit => unit.Field.RangeCastle > 1));
         var (passiveAtk, passiveDf) = PassiveBucketEvaluator.Evaluate(held, context);
         var aptitude = general.AptitudeFor(TroopClass.Defense).Percent();
         var counter = StatScale.Percent(general.Might) * aptitude / 100 * passiveAtk / 100;
