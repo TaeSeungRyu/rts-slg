@@ -658,7 +658,9 @@ public sealed class WorldEngine
                     break;
 
                 case CommandKind.Conscript:
-                    MergeGarrison(garrisons, cmd.City, cmd.TroopCode, cmd.Amount, trainingLevel: 0, trainee: true);
+                    MergeGarrison(garrisons, cmd.City, cmd.TroopCode,
+                        GameDifficultyRules.Production(state, city.Owner, cmd.Amount),
+                        trainingLevel: 0, trainee: true);
                     var drop = cmd.Amount / 1000 * _commands.ConscriptSecurityDropPer1000;
                     cities[cmd.City] = city with { Security = System.Math.Clamp(city.Security - drop, 0, 100) };
                     break;
