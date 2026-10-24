@@ -653,6 +653,39 @@ public class CampaignSiegeTests
     }
 
     [Fact]
+    public void 공성_공격패시브_보너스는_성벽피해에_반영된다()
+    {
+        var attacker = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0), troops: 12000);
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 6000);
+        var garrison = new List<GarrisonForce> { new(city.Id, "swordsman", 10000, 60) };
+        var baseResult = Siege().Resolve([attacker], [city], garrison);
+        var boosted = Siege().Resolve([attacker], [city], garrison,
+            attackBonusPercent: (_, _) => 150);
+        Assert.True(boosted.Exchanges.Single().WallDamage > baseResult.Exchanges.Single().WallDamage);
+    }
+
+    [Fact]
+    public void 공성전문_패시브는_실제_성벽공격에서_적용된다()
+    {
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 6000);
+        var general = new General(new GeneralId(7), "공성장", new Dictionary<TroopClass, AptitudeGrade>(),
+            70, 70, 70, BattlePassives: [new GeneralSkill("siege_expert", 3)]);
+        var attacker = Army(1, 1, new HexCoord(4, 0), city.Position, troops: 12000) with
+        { VanguardId = general.Id };
+        var state = new GameState(1, 190, [], [city], [general], FieldArmies: [attacker],
+            GarrisonForces: [new GarrisonForce(city.Id, "swordsman", 10000, 60)]);
+        var passives = new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).ToList();
+
+        GameState Advance(IReadOnlyList<PassiveSkill> skills) => new CampaignEngine(
+            new AdvanceOrchestrator(new MovementSimulator(new PassabilityMap(new HexMap(0, 30, -8, 8), [], [])),
+                new CombatPhaseResolver(new BattleResolver(60), 70)),
+            new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 100)), Siege(), passives: skills)
+            .AdvanceWeek(state, out _, out _);
+
+        Assert.True(Advance(passives).Cities.Single().Wall < Advance([]).Cities.Single().Wall);
+    }
+
+    [Fact]
     public void 수성중인_성의_부상병은_회복되지_않고_공격이_끊기면_회복된다()
     {
         var attacker = Army(1, 1, new HexCoord(4, 0), new HexCoord(5, 0), troops: 12000);

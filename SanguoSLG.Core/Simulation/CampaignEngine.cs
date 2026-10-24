@@ -398,7 +398,7 @@ public sealed class CampaignEngine
                 const int activeChargeDays = 1;
                 var result = _siege.Resolve(armies, siegeState.Cities, siegeState.Garrisons,
                     CounterAptitude, DefenseBonus, siegeState.CityWounded, siegeState.AreHostile,
-                    WallDamageTakenPercent);
+                    WallDamageTakenPercent, SiegeAttackBonusPercent);
 
                 var mergedActives = reports[^1].FiredActives
                     .Concat(result.FiredActives)
@@ -434,6 +434,29 @@ public sealed class CampaignEngine
                         return 100;
                     var general = siegeState.Generals.FirstOrDefault(g => g.Id == generalId);
                     return general?.BattleActive == "hold_the_line" ? 50 : 100;
+                }
+
+                int SiegeAttackBonusPercent(CombatUnit unit, City city)
+                {
+                    if (unit.IsSupply || unit.IsArmyGroup || unit.IsTransport)
+                        return unit.Stats.AtkBonusPercent;
+                    var held = new List<(PassiveSkill Skill, int Tier)>();
+                    foreach (var generalId in new[] { unit.VanguardId, unit.AdjutantId })
+                    {
+                        var general = siegeState.Generals.FirstOrDefault(g => g.Id == generalId);
+                        if (general is null) continue;
+                        foreach (var learned in general.Passives)
+                            if (_passives.TryGetValue(learned.Code, out var definition))
+                                held.Add((definition, learned.Tier));
+                    }
+                    if (held.Count == 0) return unit.Stats.AtkBonusPercent;
+                    var baseline = PassiveBucketEvaluator.Evaluate(held,
+                        new CombatContext(MeleeEngagement: true, IncomingMelee: true));
+                    var current = PassiveBucketEvaluator.Evaluate(held,
+                        new CombatContext(TargetIsBuilding: true,
+                            HpRatioPercent: 100 * unit.Pool.Active / System.Math.Max(1, unit.MaxTroops),
+                            InField: true));
+                    return unit.Stats.AtkBonusPercent + current.AtkPercent - baseline.AtkPercent;
                 }
 
                 // 성 반격으로 전멸한 공성 부대의 장수도 같은 귀환 규칙을 적용한다.

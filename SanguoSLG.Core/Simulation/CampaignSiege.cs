@@ -67,7 +67,8 @@ public sealed class CampaignSiege
         IReadOnlyList<GarrisonForce> garrisons, Func<CityId, int>? counterAptitude = null,
         Func<CityId, int>? defenseBonus = null, IReadOnlyList<CityWoundedForce>? cityWounded = null,
         Func<FactionId, FactionId, bool>? areHostile = null,
-        Func<CityId, int>? wallDamageTakenPercent = null)
+        Func<CityId, int>? wallDamageTakenPercent = null,
+        Func<CombatUnit, City, int>? attackBonusPercent = null)
     {
         areHostile ??= (left, right) => left != right;
         var byUnit = armies.ToDictionary(u => u.Id);
@@ -133,7 +134,8 @@ public sealed class CampaignSiege
                 byUnit[current.Id] = current with { State = nextState };
                 if (active is not null) firedActives[current.Id] = active;
             }
-            var attackers = besiegers.Select(u => BuildAttacker(byUnit[u.Id], city, activeByUnit[u.Id])).ToList();
+            var attackers = besiegers.Select(u => BuildAttacker(byUnit[u.Id], city,
+                activeByUnit[u.Id], attackBonusPercent?.Invoke(u, city))).ToList();
             var outcome = _resolver.ResolveSiege(attackers, castle);
 
             cityById[city.Id] = city with { Wall = outcome.NewWall };
@@ -209,7 +211,8 @@ public sealed class CampaignSiege
         garr.RemoveAll(g => g.Troops <= 0);
     }
 
-    private SiegeAttacker BuildAttacker(CombatUnit u, City city, ActiveSkill? active = null)
+    private SiegeAttacker BuildAttacker(CombatUnit u, City city, ActiveSkill? active = null,
+        int? attackBonusPercent = null)
     {
         var inCounterRange = CastleFootprint.TilesFor(city).Min(tile => tile.Distance(u.Field.Position)) <= 1;
         var activeDamagePercent = SiegeActiveDamagePercent(u, active);
@@ -264,7 +267,7 @@ public sealed class CampaignSiege
             u.Stats.AtkStat,
             u.Stats.DfStat,
             u.Stats.AptitudePercent,
-            u.Stats.AtkBonusPercent,
+            attackBonusPercent ?? u.Stats.AtkBonusPercent,
             u.Stats.DfBonusPercent,
             inCounterRange,
             activeDamagePercent);
