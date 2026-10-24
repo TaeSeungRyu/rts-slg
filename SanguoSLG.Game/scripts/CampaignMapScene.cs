@@ -4144,6 +4144,7 @@ public sealed partial class CampaignMapScene : Node3D
         _pendingTransportDeploys.AddRange(remainingTransportDeploys);
 
         var existingWarDeclarations = _state.DeclaredWars.ToHashSet();
+        var beforeAi = _state;
         // 플레이어 세력은 직접 조작 — AI는 나머지 세력만 굴린다.
         foreach (var f in _state.Factions.Where(f => f.Id != Player).OrderBy(f => f.Id.Value))
         {
@@ -4162,6 +4163,9 @@ public sealed partial class CampaignMapScene : Node3D
         var profileEngine = System.Diagnostics.Stopwatch.GetTimestamp();
         _climatePlayback = _engine.LastClimateDays.ToArray();
         after = CampaignScoreboard.Apply(after, _engine.LastWorldEvents, turns, captures, _balance.WoundedPercent);
+        var attackAlerts = EnemyAttackAlertPolicy.Detect(beforeAi, preMove, Player);
+        if (attackAlerts.Count > 0)
+            after = after with { PendingStoryEvents = after.StoryPending.Concat(attackAlerts).ToArray() };
         _storySpeechEvents = CombatSpeechEvents(preMove, turns)
             .Concat(CitySpeechEvents(preMove)).ToArray();
         _storySpeechClock = 0;

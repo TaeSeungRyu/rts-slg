@@ -467,7 +467,8 @@ public sealed partial class CampaignMapScene
         => _state.Generals.FirstOrDefault(g => g.Id == id)?.Name ?? "장수";
 
     private string StoryTitle(GeneralStoryEvent story)
-        => _storyDefinitions.FirstOrDefault(d => d.Kind == story.Kind)?.Title ?? "전장 소식";
+        => story.Kind == "incoming_attack" ? "적군 출전 보고"
+            : _storyDefinitions.FirstOrDefault(d => d.Kind == story.Kind)?.Title ?? "전장 소식";
 
     private string StoryShortLine(GeneralStoryEvent story)
         => StoryLines(story)[0].Replace($"{StorySpeakerName(story.Speaker)}: ", "");
@@ -486,6 +487,15 @@ public sealed partial class CampaignMapScene
 
     private string[] StoryLines(GeneralStoryEvent story)
     {
+        if (story.Kind == "incoming_attack")
+        {
+            var target = story.City is { } id
+                ? _state.Cities.FirstOrDefault(city => city.Id == id)?.Name ?? "아군 성" : "아군 성";
+            var report = story.Code == "소문"
+                ? $"소문에 따르면 적이 {target}을 향해 공격을 시작했다고 합니다."
+                : $"{story.Code}에서 출전한 적이 {target}을 향해 공격을 시작했습니다.";
+            return [$"{StorySpeakerName(story.Speaker)}: {report}"];
+        }
         if (story.Kind == "production")
             return [$"{StorySpeakerName(story.Speaker)}: 생산 임무를 마치고 돌아왔습니다.\n금 {story.Amount:N0}을 벌고 군량 {story.ExtraAmount:N0}을 확보했습니다."];
         if (story.Kind == "stratagem_success")
