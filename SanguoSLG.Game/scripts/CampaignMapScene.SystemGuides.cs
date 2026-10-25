@@ -117,7 +117,9 @@ public sealed partial class CampaignMapScene
             feature.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             box.AddChild(feature);
         }
-        scroll.CustomMinimumSize = new Vector2(width, 0);
+        // DeployScaffold의 ScrollContainer는 최소 높이가 0이면 자식 높이를 전달하지 않아
+        // 내용이 접힌 얇은 패널만 표시된다.
+        scroll.CustomMinimumSize = new Vector2(width, height);
         CenterAndDrag(panel, titleRow, width, height, box);
     }
 
@@ -190,6 +192,8 @@ public sealed partial class CampaignMapScene
         var detailArt = _modalLayer?.FindChildren("*", "TextureRect", true, false)
             .OfType<TextureRect>().FirstOrDefault(image => image.Texture is not null);
         passed &= detailArt?.CustomMinimumSize.X == 188;
+        passed &= _modalLayer?.FindChildren("*", "ScrollContainer", true, false)
+            .OfType<ScrollContainer>().Any(container => container.CustomMinimumSize.Y >= 390) == true;
         GD.Print($"[troop-guide-qa] passed={passed} entries={_troops.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
