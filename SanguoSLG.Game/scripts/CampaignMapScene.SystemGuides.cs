@@ -359,7 +359,11 @@ public sealed partial class CampaignMapScene
             && preview.CameraSize == 2.9f
             && preview.FindChild("PreviewPlainTiles", true, false) is Node3D tiles
             && tiles.GetChildCount() == 7
-            && preview.TileCenterDistance > 0f && preview.HasUnitModels;
+            && preview.TileCenterDistance > 0f && preview.HasUnitModels
+            && preview.GreenTerrainApplied
+            && tiles.FindChildren("*", "MeshInstance3D", true, false).OfType<MeshInstance3D>()
+                .Any(mesh => mesh.MaterialOverride is StandardMaterial3D material
+                    && material.AlbedoColor.G > material.AlbedoColor.B);
         GetTree().CreateTimer(4.6).Timeout += () =>
         {
             passed &= preview?.Day == 6 && preview.EffectAttached && preview.HasUnitModels

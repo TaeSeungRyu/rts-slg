@@ -24,6 +24,7 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
     public bool HasUnitModels => _allyUnit is not null && _enemyUnit is not null;
     public int CombatMotionCount => (_allyUnit?.AttackMotionStartCount ?? 0) + (_enemyUnit?.AttackMotionStartCount ?? 0);
     public float TileCenterDistance { get; private set; }
+    public bool GreenTerrainApplied { get; private set; }
     public float CameraSize => (_stage?.FindChild("PreviewCamera", true, false) as Camera3D)?.Size ?? 0f;
 
     public SkillGuideEffectPreview3D()
@@ -91,6 +92,7 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
             ? new Vector3(hexSize * 1.5f * q, 0, hexSize * sqrt3 * (r + q / 2f))
             : new Vector3(hexSize * sqrt3 * (q + r / 2f), 0, hexSize * 1.5f * r);
         TileCenterDistance = HexPosition(1, 0).Length();
+        GreenTerrainApplied = true;
         foreach (var (q, r) in new[]
         {
             (0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (1, -1), (-1, 1),
@@ -98,6 +100,14 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         {
             var tile = grassScene.Instantiate<Node3D>();
             tile.Position = HexPosition(q, r);
+            foreach (var tileMesh in TileMeshes(tile))
+            {
+                tileMesh.MaterialOverride = new StandardMaterial3D
+                {
+                    AlbedoColor = new Color(0.39f, 0.62f, 0.34f),
+                    Roughness = 1f,
+                };
+            }
             ground.AddChild(tile);
         }
         _ally = Unit(0, HexPosition(-1, 0) + Vector3.Up * tileTop, out _allyUnit);
@@ -130,6 +140,13 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         foreach (var child in node.GetChildren())
             if (FindTileMesh(child) is { } found) return found;
         return null;
+    }
+
+    private static IEnumerable<MeshInstance3D> TileMeshes(Node node)
+    {
+        if (node is MeshInstance3D mesh) yield return mesh;
+        foreach (var child in node.GetChildren())
+            foreach (var nested in TileMeshes(child)) yield return nested;
     }
 
     private void NextDay()
