@@ -8,8 +8,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "SanguoSLG.Game/assets/maps/east-asia-map.json"
 LAND_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson"
-WEST, EAST, SOUTH, NORTH = 73.0, 133.0, 18.0, 54.0
-WIDTH, HEIGHT = 116, 70
+WEST, EAST, SOUTH, NORTH = 91.0, 133.0, 18.0, 54.0
+WIDTH, HEIGHT = 100, 70
 
 
 def rings_of(geometry):

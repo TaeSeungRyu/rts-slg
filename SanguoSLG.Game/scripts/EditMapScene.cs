@@ -184,7 +184,7 @@ public sealed partial class EditMapScene : Control
             && Land(121, 24) && Land(130.5, 33)
             && _rows.Any(row => row.Contains('R')) && _rows.Any(row => row.Contains('D'))
             && _rows.Any(row => row.Contains('F')) && _rows.Any(row => row.Contains('H'))
-            && _east <= 133;
+            && _west >= 91 && _east <= 133;
         GD.Print($"[edit-map-qa] passed={valid} tiles={_width * _height} bounds={_west}-{_east}E,{_south}-{_north}N");
         GetTree().Quit(valid ? 0 : 1);
     }
