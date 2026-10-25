@@ -55,6 +55,7 @@ public sealed partial class CampaignMapScene
             foreach (var troop in descending ? ordered.Reverse() : ordered)
             {
                 var row = table.CreateItem(root);
+                row.SetMetadata(0, troop.Code);
                 row.SetText(0, $"{troop.Name} · {ClassName(troop.Class)}");
                 row.SetIcon(0, RoundedOptionTexture(UnitCard(troop.Code, troop.Class), 36));
                 row.SetIconMaxWidth(0, 36);
@@ -66,8 +67,74 @@ public sealed partial class CampaignMapScene
             }
         }
         FillRows();
+        table.ItemSelected += () =>
+        {
+            var code = table.GetSelected()?.GetMetadata(0).AsString();
+            if (!string.IsNullOrWhiteSpace(code)) OpenTroopGuideDetail(code);
+        };
         scroll.CustomMinimumSize = new Vector2(width, height);
         CenterAndDrag(panel, titleRow, width, height, box);
+    }
+
+    private void OpenTroopGuideDetail(string code)
+    {
+        var troop = _troops.FirstOrDefault(candidate => candidate.Code == code);
+        if (troop is null) return;
+        var special = new SanguoSLG.Core.Data.SpecialUnitLoader().LoadFromDirectory(_dataDirectory)
+            .FirstOrDefault(candidate => candidate.Code == code);
+        const float width = 850f;
+        const float height = 590f;
+        var box = SystemView(troop.Name, width, out var scroll, out var panel, out var titleRow);
+        var back = titleRow.GetChild<Button>(0);
+        back.ButtonDown -= OpenSystemPalette;
+        back.ButtonDown += OpenTroopGuide;
+        back.Text = "◀ 부대설명";
+        var top = new HBoxContainer();
+        top.AddThemeConstantOverride("separation", 16);
+        box.AddChild(top);
+        top.AddChild(UnitCardPanel(troop.Code, troop.Class));
+        var summary = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        top.AddChild(summary);
+        summary.AddChild(MakeLabel($"병종  {ClassName(troop.Class)}", 18, Gold));
+        summary.AddChild(MakeLabel($"부대 공격 {troop.AtkUnit}  ·  건물 공격 {troop.AtkBuilding}  ·  방어 {troop.Df}", 14, Parchment));
+        summary.AddChild(MakeLabel($"이동 {troop.MovementPerDay}/일  ·  시야 {troop.Vision}", 14, Parchment));
+        summary.AddChild(MakeLabel($"사거리  부대 {troop.RangeUnit} / 건물 {troop.RangeBuilding} / 성 {troop.RangeCastle}", 14, Parchment));
+        box.AddChild(GoldRule());
+        box.AddChild(MakeLabel("병종 특징", 18, Gold));
+        foreach (var line in TroopGuideFeatures(troop, special))
+            box.AddChild(MakeLabel($"• {line}", 15, Parchment));
+        scroll.CustomMinimumSize = new Vector2(width, height);
+        CenterAndDrag(panel, titleRow, width, height, box);
+    }
+
+    private static IReadOnlyList<string> TroopGuideFeatures(
+        SanguoSLG.Core.Domain.TroopTemplate troop, SanguoSLG.Core.Domain.SpecialUnit? special)
+    {
+        var lines = new List<string>();
+        if (troop.Code == "mudang")
+            lines.Add("일반 육상 부대가 지나갈 수 없는 산 지물을 통과할 수 있습니다. 절벽과 설산은 통과할 수 없습니다.");
+        if (troop.Code == "deunggap")
+            lines.Add("화공 피해를 60% 더 받습니다.");
+        if (troop.Class == SanguoSLG.Core.Domain.TroopClass.Naval)
+            lines.Add("해상 경로를 이동하며 육상 지형은 통과할 수 없습니다.");
+        if (troop.Class == SanguoSLG.Core.Domain.TroopClass.Siege)
+            lines.Add("공성 병종입니다. 건물과 성 공격력을 별도로 사용합니다.");
+        if (troop.Class == SanguoSLG.Core.Domain.TroopClass.Supply)
+            lines.Add("아군에게 병력·군량·금을 보충하고 보급 범위의 군량 소모를 줄입니다.");
+        if (special is not null)
+        {
+            foreach (var bonus in special.AtkBonusVsClass)
+                lines.Add($"{ClassName(bonus.Key)} 공격 시 공격력 +{bonus.Value}%");
+            foreach (var bonus in special.AttackerBonusFromClass)
+                lines.Add($"{ClassName(bonus.Key)}에게 받는 피해 +{bonus.Value}%");
+            if (special.AtkBonusAll > 0) lines.Add($"모든 공격력 +{special.AtkBonusAll}%");
+            if (special.AtkBonusBuilding > 0) lines.Add($"건물 공격력 +{special.AtkBonusBuilding}%");
+            if (special.AtkBonusImpassable > 0) lines.Add($"이동 불가 지형의 적 공격력 +{special.AtkBonusImpassable}%");
+            if (special.DfOverride is int defense) lines.Add($"방어 판정값 {defense} 적용");
+            if (special.BuildingAtkOverride is int attack) lines.Add($"건물 공격 판정값 {attack} 적용");
+        }
+        if (lines.Count == 0) lines.Add("기본 병종입니다. 위에 표시된 이동·사거리·공격·방어 수치를 적용합니다.");
+        return lines;
     }
 
     private void RunTroopGuideQa()
@@ -81,6 +148,7 @@ public sealed partial class CampaignMapScene
         var table = _modalLayer?.FindChild("TroopGuideTable", true, false) as Tree;
         var items = table?.GetRoot()?.GetChildren().ToList() ?? [];
         var validItems = items.Count == _troops.Count && items.All(item => item.GetIcon(0) is not null)
+            && items.All(item => !string.IsNullOrWhiteSpace(item.GetMetadata(0).AsString()))
             && items.Any(item => item.GetText(0).Contains("투석기"))
             && items.Any(item => item.GetText(0).Contains("공성탑"));
         table?.EmitSignal(Tree.SignalName.ColumnTitleClicked, 1, 1);
@@ -92,6 +160,17 @@ public sealed partial class CampaignMapScene
             && table?.Columns == 6 && table.ColumnTitlesVisible
             && ascendingFirst != descendingFirst && labels.Any(text => text.Contains("+13"))
             && validItems;
+        var geukFeatures = TroopGuideFeatures(_troops.First(t => t.Code == "geukbyeong"),
+            new SanguoSLG.Core.Data.SpecialUnitLoader().LoadFromDirectory(_dataDirectory)
+                .First(s => s.Code == "geukbyeong"));
+        var mudangFeatures = TroopGuideFeatures(_troops.First(t => t.Code == "mudang"),
+            new SanguoSLG.Core.Data.SpecialUnitLoader().LoadFromDirectory(_dataDirectory)
+                .First(s => s.Code == "mudang"));
+        passed &= geukFeatures.Any(line => line.Contains("기병") && line.Contains("+10%"))
+            && mudangFeatures.Any(line => line.Contains("산 지물"));
+        OpenTroopGuideDetail("geukbyeong");
+        passed &= _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
+            .Any(label => label.Text.Contains("기병 공격 시 공격력 +10%")) == true;
         GD.Print($"[troop-guide-qa] passed={passed} entries={_troops.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
