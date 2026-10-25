@@ -17,6 +17,8 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
 
     public string? SkillCode => _skill?.Code;
     public int Day => _day;
+    public bool EffectAttached { get; private set; }
+    public bool HasUnitModels => _ally?.GetChildCount() > 0 && _enemy?.GetChildCount() > 0;
     public float CameraSize => (_stage?.FindChild("PreviewCamera", true, false) as Camera3D)?.Size ?? 0f;
 
     public SkillGuideEffectPreview3D()
@@ -45,6 +47,7 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         _timer?.Stop();
         _skill = skill;
         _day = 0;
+        EffectAttached = false;
         if (_stage is not null)
         {
             _viewport.RemoveChild(_stage);
@@ -66,15 +69,20 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
             AmbientLightSource = Godot.Environment.AmbientSource.Color,
             AmbientLightColor = new Color(0.7f, 0.72f, 0.7f),
         } });
-        var plain = new MeshInstance3D { Name = "PreviewPlain",
-            Mesh = new PlaneMesh { Size = new Vector2(9, 7) },
-            Position = new Vector3(0, -0.08f, 0) };
-        plain.MaterialOverride = new StandardMaterial3D
+        var grassScene = GD.Load<PackedScene>("res://assets/models/grass.glb");
+        var ground = new Node3D { Name = "PreviewPlainTiles" };
+        _stage.AddChild(ground);
+        foreach (var position in new[]
         {
-            AlbedoColor = new Color(0.38f, 0.57f, 0.36f),
-            Roughness = 1f,
-        };
-        _stage.AddChild(plain);
+            new Vector3(-1.5f, 0, 0), new Vector3(0, 0, 0), new Vector3(1.5f, 0, 0),
+            new Vector3(-0.75f, 0, -1.3f), new Vector3(0.75f, 0, -1.3f),
+            new Vector3(-0.75f, 0, 1.3f), new Vector3(0.75f, 0, 1.3f),
+        })
+        {
+            var tile = grassScene.Instantiate<Node3D>();
+            tile.Position = position;
+            ground.AddChild(tile);
+        }
         _ally = Unit("res://assets/models/troop-swordsman.glb", new Vector3(-1.05f, 0, 0));
         _enemy = Unit("res://assets/models/troop-swordsman.glb", new Vector3(1.05f, 0, 0));
         _status.Text = skill is null ? "패시브 스킬은 별도 발동 에셋이 없습니다" : "1일차 · ● ○ ○ ○ ○";
@@ -114,7 +122,8 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         _status.Text = $"6일차 · {_skill.Name} 발동";
         var target = _skill.Type is ActiveType.Defense or ActiveType.Heal ? _ally : _enemy;
         ActiveSkillPresentation.ShowCasterActivation(_ally);
-        if (!ActiveSkillPresentation.AttachEffect(target, _skill, _ally.GlobalPosition))
+        EffectAttached = ActiveSkillPresentation.AttachEffect(target, _skill, _ally.GlobalPosition);
+        if (!EffectAttached)
             _status.Text = $"6일차 · {_skill.Name} (별도 3D 효과 없음)";
     }
 

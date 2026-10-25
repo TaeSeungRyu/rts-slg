@@ -255,10 +255,11 @@ public sealed partial class CampaignMapScene
             && _modalLayer?.FindChild("SkillGuideDetailScroll", true, false) is null
             && preview?.SkillCode == "peerless"
             && preview.CameraSize == 4.4f
-            && preview.FindChild("PreviewPlain", true, false) is MeshInstance3D;
+            && preview.FindChild("PreviewPlainTiles", true, false) is Node3D tiles
+            && tiles.GetChildCount() == 7;
         GetTree().CreateTimer(2.7).Timeout += () =>
         {
-            passed &= preview?.Day == 6;
+            passed &= preview?.Day == 6 && preview.EffectAttached && preview.HasUnitModels;
             GD.Print($"[skill-guide-qa] passed={passed} entries={initialCount} missingIcons={missingIcons} previewDay={preview?.Day}");
             GetTree().Quit(passed ? 0 : 1);
         };
