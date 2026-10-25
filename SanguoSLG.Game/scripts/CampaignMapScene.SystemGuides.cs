@@ -105,29 +105,43 @@ public sealed partial class CampaignMapScene
 
     private void OpenSkillGuide()
     {
-        const float width = 900f;
-        const float height = 620f;
+        var viewportSize = GetViewport().GetVisibleRect().Size;
+        var width = Mathf.Clamp(viewportSize.X * 0.92f, 920f, 1220f);
+        var height = Mathf.Clamp(viewportSize.Y * 0.86f, 610f, 760f);
         var box = SystemView("스킬설명", width, out var scroll, out var panel, out var titleRow);
         var entries = _activeSkills.OrderBy(skill => skill.Name, StringComparer.Ordinal)
-            .Select(skill => ($"액티브 · {skill.Name}", SkillDescriptions.Active(skill), skill.Code, "액티브"))
+            .Select(skill => (skill.Name, SkillDescriptions.Active(skill), skill.Code, "액티브",
+                skill.Type switch { SanguoSLG.Core.Simulation.ActiveType.Defense => "방어",
+                    SanguoSLG.Core.Simulation.ActiveType.Heal => "회복",
+                    SanguoSLG.Core.Simulation.ActiveType.Tactic => "계략", _ => "공격" }))
             .Concat(_passiveSkills.OrderBy(skill => skill.Name, StringComparer.Ordinal)
                 .Select(skill => ($"전투 패시브 · {skill.Name}",
                     string.Join("\n\n", Enumerable.Range(1, 3)
-                        .Select(level => SkillDescriptions.Passive(skill, level))), skill.Code, "전투 패시브")))
+                        .Select(level => SkillDescriptions.Passive(skill, level))), skill.Code, "패시브",
+                    skill.Effects.Any(effect => effect.Bucket == SanguoSLG.Core.Simulation.SkillBucket.Attack) ? "공격" : "방어")))
             .Concat(_adminSkills.OrderBy(skill => skill.Name, StringComparer.Ordinal)
                 .Select(skill => ($"내정 패시브 · {skill.Name}",
                     string.Join("\n\n", Enumerable.Range(1, 3)
-                        .Select(level => SkillDescriptions.Admin(skill, level))), skill.Code, "내정 패시브")))
+                        .Select(level => SkillDescriptions.Admin(skill, level))), skill.Code, "패시브", "내정")))
             .ToList();
         var search = new LineEdit { Name = "SkillGuideSearch", PlaceholderText = "스킬 이름 검색",
             MaxLength = 30 };
         box.AddChild(search);
-        var columns = new HBoxContainer { CustomMinimumSize = new Vector2(0, 480),
+        var columns = new HBoxContainer { CustomMinimumSize = new Vector2(0, height - 150),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         columns.AddThemeConstantOverride("separation", 12);
         box.AddChild(columns);
-        var list = new ItemList { Name = "SkillGuideList", CustomMinimumSize = new Vector2(300, 480),
+        var list = new Tree { Name = "SkillGuideList", CustomMinimumSize = new Vector2(375, height - 150),
             SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        list.Columns = 3;
+        list.HideRoot = true;
+        list.ColumnTitlesVisible = true;
+        list.SetColumnTitle(0, "이름");
+        list.SetColumnTitle(1, "종류");
+        list.SetColumnTitle(2, "형태");
+        list.SetColumnCustomMinimumWidth(0, 180);
+        list.SetColumnCustomMinimumWidth(1, 78);
+        list.SetColumnCustomMinimumWidth(2, 68);
         list.AddThemeFontOverride("font", _font);
         columns.AddChild(list);
         var detailScroll = new ScrollContainer { Name = "SkillGuideDetailScroll",
@@ -156,16 +170,22 @@ public sealed partial class CampaignMapScene
         var skillName = MakeLabel("", 20, GoldBright);
         skillName.Name = "SkillGuideName";
         titleBox.AddChild(skillName);
+        var preview = new SkillGuideEffectPreview3D();
+        detailBox.AddChild(preview);
+        var replay = MakeButton("6일 발동 다시 보기");
+        replay.Name = "SkillGuideReplay";
+        detailBox.AddChild(replay);
+        replay.Pressed += () => preview.ShowSkill(_activeSkills.FirstOrDefault(skill => skill.Code == preview.SkillCode));
         var detail = MakeLabel("", 15, Parchment);
         detail.Name = "SkillGuideDetail";
         detail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         detail.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         detailBox.AddChild(detail);
         var shown = entries;
-        Texture2D? SkillImage(string code, string kind)
+        Texture2D? SkillImage(string code, string kind, string form)
         {
             if (kind == "액티브") return ActiveSkillIcons.Load(code);
-            var folder = kind == "전투 패시브" ? "passive" : "admin";
+            var folder = form == "내정" ? "admin" : "passive";
             var path = $"res://assets/icons/skills/{folder}/{code}.png";
             return ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
         }
@@ -177,23 +197,38 @@ public sealed partial class CampaignMapScene
                 category.Text = "";
                 skillName.Text = "";
                 detail.Text = "일치하는 스킬이 없습니다.";
+                preview.ShowSkill(null);
+                replay.Visible = false;
                 return;
             }
             var entry = shown[index];
-            portrait.Texture = SkillImage(entry.Item3, entry.Item4);
-            category.Text = entry.Item4;
-            skillName.Text = entry.Item1[(entry.Item1.IndexOf('·') + 1)..].Trim();
+            portrait.Texture = SkillImage(entry.Item3, entry.Item4, entry.Item5);
+            category.Text = $"{entry.Item4} · {entry.Item5}";
+            skillName.Text = entry.Item1;
             detail.Text = entry.Item2;
+            preview.ShowSkill(entry.Item4 == "액티브"
+                ? _activeSkills.FirstOrDefault(skill => skill.Code == entry.Item3) : null);
+            replay.Visible = entry.Item4 == "액티브";
         }
         void Refill(string query)
         {
             shown = entries.Where(entry => entry.Item1.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
             list.Clear();
-            foreach (var entry in shown) list.AddItem(entry.Item1, SkillImage(entry.Item3, entry.Item4));
+            var root = list.CreateItem();
+            for (var i = 0; i < shown.Count; i++)
+            {
+                var entry = shown[i];
+                var item = list.CreateItem(root);
+                item.SetText(0, entry.Item1);
+                item.SetIcon(0, SkillImage(entry.Item3, entry.Item4, entry.Item5));
+                item.SetText(1, entry.Item4);
+                item.SetText(2, entry.Item5);
+                item.SetMetadata(0, i);
+            }
             Select(shown.Count == 0 ? -1 : 0);
-            if (shown.Count > 0) list.Select(0);
+            if (shown.Count > 0) list.SetSelected(root.GetFirstChild(), 0);
         }
-        list.ItemSelected += index => Select((int)index);
+        list.ItemSelected += () => Select(list.GetSelected()?.GetMetadata(0).AsInt32() ?? -1);
         search.TextChanged += Refill;
         Refill("");
         scroll.CustomMinimumSize = new Vector2(width, height);
@@ -206,19 +241,28 @@ public sealed partial class CampaignMapScene
         var trigger = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
             .FirstOrDefault(button => button.Text == "스킬설명");
         trigger?.EmitSignal(Button.SignalName.Pressed);
-        var list = _modalLayer?.FindChild("SkillGuideList", true, false) as ItemList;
+        var list = _modalLayer?.FindChild("SkillGuideList", true, false) as Tree;
         var search = _modalLayer?.FindChild("SkillGuideSearch", true, false) as LineEdit;
         var detail = _modalLayer?.FindChild("SkillGuideDetail", true, false) as Label;
-        var initialCount = list?.ItemCount ?? 0;
-        var missingIcons = list is null ? initialCount : Enumerable.Range(0, initialCount)
-            .Count(index => list.GetItemIcon(index) is null);
+        var initialCount = list?.GetRoot()?.GetChildren().Count() ?? 0;
+        var missingIcons = list?.GetRoot()?.GetChildren().Count(item => item.GetIcon(0) is null) ?? initialCount;
+        var hasSkillColumns = list?.Columns == 3 && list.GetColumnTitle(0) == "이름"
+            && list.GetColumnTitle(1) == "종류" && list.GetColumnTitle(2) == "형태";
         search?.EmitSignal(LineEdit.SignalName.TextChanged, "무쌍");
         var image = _modalLayer?.FindChild("SkillGuideCardImage", true, false) as TextureRect;
-        var passed = trigger is not null && initialCount == _activeSkills.Count + _passiveSkills.Count + _adminSkills.Count
-            && list?.ItemCount == 1 && detail?.Text.Contains("일반 공격 피해", StringComparison.Ordinal) == true
+        var preview = _modalLayer?.FindChild("SkillGuideEffectPreview", true, false) as SkillGuideEffectPreview3D;
+        var passed = trigger is not null && hasSkillColumns
+            && initialCount == _activeSkills.Count + _passiveSkills.Count + _adminSkills.Count
+            && list?.GetRoot()?.GetChildren().Count() == 1
+            && detail?.Text.Contains("일반 공격 피해", StringComparison.Ordinal) == true
             && image?.Texture is not null && missingIcons == 0
-            && _modalLayer?.FindChild("SkillGuideCard", true, false) is PanelContainer;
-        GD.Print($"[skill-guide-qa] passed={passed} entries={initialCount} missingIcons={missingIcons}");
-        GetTree().Quit(passed ? 0 : 1);
+            && _modalLayer?.FindChild("SkillGuideCard", true, false) is PanelContainer
+            && preview?.SkillCode == "peerless";
+        GetTree().CreateTimer(2.7).Timeout += () =>
+        {
+            passed &= preview?.Day == 6;
+            GD.Print($"[skill-guide-qa] passed={passed} entries={initialCount} missingIcons={missingIcons} previewDay={preview?.Day}");
+            GetTree().Quit(passed ? 0 : 1);
+        };
     }
 }
