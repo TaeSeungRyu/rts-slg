@@ -19,6 +19,8 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
     public int Day => _day;
     public bool EffectAttached { get; private set; }
     public bool HasUnitModels => _ally?.GetChildCount() > 0 && _enemy?.GetChildCount() > 0;
+    public int AllyModelCount => _ally?.GetChildCount() ?? 0;
+    public float TileCenterDistance { get; private set; }
     public float CameraSize => (_stage?.FindChild("PreviewCamera", true, false) as Camera3D)?.Size ?? 0f;
 
     public SkillGuideEffectPreview3D()
@@ -57,9 +59,9 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         _viewport.AddChild(_stage);
         var camera = new Camera3D { Name = "PreviewCamera", Current = true,
             Projection = Camera3D.ProjectionType.Orthogonal,
-            Size = 4.4f, Position = new Vector3(0, 3.7f, 6.4f) };
+            Size = 2.9f, Position = new Vector3(0, 2.9f, 4.6f) };
         _stage.AddChild(camera);
-        camera.LookAt(new Vector3(0, 0.5f, 0));
+        camera.LookAt(new Vector3(0, 0.3f, 0));
         _stage.AddChild(new DirectionalLight3D { RotationDegrees = new Vector3(-50, -25, 0),
             LightEnergy = 2.2f });
         _stage.AddChild(new WorldEnvironment { Environment = new Godot.Environment
@@ -72,19 +74,29 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         var grassScene = GD.Load<PackedScene>("res://assets/models/grass.glb");
         var ground = new Node3D { Name = "PreviewPlainTiles" };
         _stage.AddChild(ground);
-        foreach (var position in new[]
+        var probe = grassScene.Instantiate<Node3D>();
+        var mesh = FindTileMesh(probe);
+        var bounds = mesh!.Mesh.GetAabb();
+        var flatTop = bounds.Size.X >= bounds.Size.Z;
+        var hexSize = (flatTop ? bounds.Size.X : bounds.Size.Z) / 2f;
+        var tileTop = bounds.End.Y;
+        probe.Free();
+        var sqrt3 = Mathf.Sqrt(3f);
+        Vector3 HexPosition(int q, int r) => flatTop
+            ? new Vector3(hexSize * 1.5f * q, 0, hexSize * sqrt3 * (r + q / 2f))
+            : new Vector3(hexSize * sqrt3 * (q + r / 2f), 0, hexSize * 1.5f * r);
+        TileCenterDistance = HexPosition(1, 0).Length();
+        foreach (var (q, r) in new[]
         {
-            new Vector3(-1.5f, 0, 0), new Vector3(0, 0, 0), new Vector3(1.5f, 0, 0),
-            new Vector3(-0.75f, 0, -1.3f), new Vector3(0.75f, 0, -1.3f),
-            new Vector3(-0.75f, 0, 1.3f), new Vector3(0.75f, 0, 1.3f),
+            (0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (1, -1), (-1, 1),
         })
         {
             var tile = grassScene.Instantiate<Node3D>();
-            tile.Position = position;
+            tile.Position = HexPosition(q, r);
             ground.AddChild(tile);
         }
-        _ally = Unit("res://assets/models/troop-swordsman.glb", new Vector3(-1.05f, 0, 0));
-        _enemy = Unit("res://assets/models/troop-swordsman.glb", new Vector3(1.05f, 0, 0));
+        _ally = Unit("res://assets/models/troop-swordsman.glb", HexPosition(-1, 0) + Vector3.Up * tileTop);
+        _enemy = Unit("res://assets/models/troop-swordsman.glb", HexPosition(1, 0) + Vector3.Up * tileTop);
         _status.Text = skill is null ? "패시브 스킬은 별도 발동 에셋이 없습니다" : "1일차 · ● ○ ○ ○ ○";
         if (skill is null) return;
         _timer ??= new Godot.Timer { WaitTime = 0.34, OneShot = false };
@@ -102,11 +114,17 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         _stage!.AddChild(anchor);
         if (ResourceLoader.Exists(path))
         {
-            var model = GD.Load<PackedScene>(path).Instantiate<Node3D>();
-            model.Scale = Vector3.One * 1.25f;
-            anchor.AddChild(model);
+            TroopFormation.Build(anchor, GD.Load<PackedScene>(path), 7);
         }
         return anchor;
+    }
+
+    private static MeshInstance3D? FindTileMesh(Node node)
+    {
+        if (node is MeshInstance3D mesh && mesh.Mesh is not null) return mesh;
+        foreach (var child in node.GetChildren())
+            if (FindTileMesh(child) is { } found) return found;
+        return null;
     }
 
     private void NextDay()

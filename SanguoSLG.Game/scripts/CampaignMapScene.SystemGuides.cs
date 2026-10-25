@@ -352,9 +352,10 @@ public sealed partial class CampaignMapScene
             && _modalLayer?.FindChild("SkillGuideCard", true, false) is PanelContainer
             && _modalLayer?.FindChild("SkillGuideDetailScroll", true, false) is null
             && preview?.SkillCode == "peerless"
-            && preview.CameraSize == 4.4f
+            && preview.CameraSize == 2.9f
             && preview.FindChild("PreviewPlainTiles", true, false) is Node3D tiles
-            && tiles.GetChildCount() == 7;
+            && tiles.GetChildCount() == 7
+            && preview.TileCenterDistance > 0f && preview.AllyModelCount == 7;
         GetTree().CreateTimer(2.7).Timeout += () =>
         {
             passed &= preview?.Day == 6 && preview.EffectAttached && preview.HasUnitModels;
