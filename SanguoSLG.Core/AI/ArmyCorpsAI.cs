@@ -35,7 +35,8 @@ public sealed class ArmyCorpsAI(FactionAI factionAI)
                     : entry).ToList(),
             };
             var planned = factionAI.PlanWeek(projected, player,
-                allowOffense: corps.Policy == ArmyCorpsPolicy.Combat);
+                allowOffense: corps.Policy == ArmyCorpsPolicy.Combat,
+                allowExploration: false);
             var nextClock = planned.Factions.First(entry => entry.Id == player).AiNextWarDecisionDay;
             state = planned with
             {

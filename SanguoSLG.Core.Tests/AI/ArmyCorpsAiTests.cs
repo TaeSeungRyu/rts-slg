@@ -42,4 +42,30 @@ public class ArmyCorpsAiTests
         Assert.Empty(planned.Alliances);
         Assert.Empty(ArmyCorpsService.Disband(planned, 1, owner).Corps);
     }
+
+    [Fact]
+    public void 군단_AI는_조건이_충족되어도_탐색을_발행하지_않는다()
+    {
+        var owner = new FactionId(1);
+        var generals = Enumerable.Range(1, 7).Select(id => new General(new GeneralId(id), $"장수{id}",
+            new Dictionary<TroopClass, AptitudeGrade>(), 70, 75, 80)).ToArray();
+        var city = new City(new CityId(1), "장안", new HexCoord(0, 0), owner, 5000,
+            Gold: 10000);
+        var state = new GameState(1, 190,
+            [new Faction(owner, "위", generals[0].Id, 0, "#ffffff")], [city], generals,
+            Postings: generals.Select(g => new GeneralPosting(g.Id, owner, city.Id)).ToArray());
+        state = ArmyCorpsService.Save(state, null, owner, generals[0].Id,
+            [city.Id], ArmyCorpsPolicy.Domestic);
+        var balance = new CommandBalance();
+        var ai = new FactionAI(new CommandService(balance, Troops),
+            new DeployService(balance, Troops,
+                new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+                new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())),
+            new AiConfig(KeepGeneralsHome: 0, GeneralResearchReserveGold: -1,
+                ExplorationReserveGold: 0));
+        var planned = new ArmyCorpsAI(ai).PlanWeek(state, owner);
+        var ordinaryAi = ai.PlanWeek(state, owner);
+        Assert.Contains(ordinaryAi.Commands, command => command.Kind == CommandKind.Explore);
+        Assert.DoesNotContain(planned.Commands, command => command.Kind == CommandKind.Explore);
+    }
 }

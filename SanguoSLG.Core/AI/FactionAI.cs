@@ -31,7 +31,8 @@ public sealed class FactionAI
     }
 
     /// <summary>이 세력의 한 주 명령·출전을 반영한 새 상태를 반환한다.</summary>
-    public GameState PlanWeek(GameState state, FactionId faction, bool allowOffense = true)
+    public GameState PlanWeek(GameState state, FactionId faction, bool allowOffense = true,
+        bool allowExploration = true)
     {
         state = PlanAppointments(state, faction);
         state = state with { Cities = state.Cities.Select(city => city.Owner == faction
@@ -106,7 +107,7 @@ public sealed class FactionAI
         state = PlanFieldConstruction(state, faction);
         state = RecoverIdleExpeditions(state, faction);
         state = PlanConstructionDeployment(state, faction);
-        state = PlanExploration(state, faction);
+        if (allowExploration) state = PlanExploration(state, faction);
         state = PlanCityOfficers(state, faction);
         state = PlanCityBaseline(state, faction);
         return state with { FieldArmies = state.Armies.Select(unit =>
