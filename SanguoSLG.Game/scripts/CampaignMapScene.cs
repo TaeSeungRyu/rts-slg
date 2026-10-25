@@ -10021,6 +10021,8 @@ public sealed partial class CampaignMapScene : Node3D
         detailsScroll.AddChild(box);
 
         var meta = new List<string> { $"상태 {GeneralStatus(gid)}" };
+        if (_state.Corps.FirstOrDefault(corps => corps.Faction == Player && corps.Commander == gid) is { } commandCorps)
+            meta.Add($"제{commandCorps.Id}군단 군단장 · 지휘 병력 +{ArmyCorpsService.CommanderTroopBonus:N0}");
         if (_state.Treasures.FirstOrDefault(t => t.EquippedBy == gid) is { } equippedTreasure)
             meta.Add($"장착 {equippedTreasure.Name}");
         if (g.Birth != 0) { meta.Add(g.Birth < 0 ? $"기원전 {-g.Birth}년생" : $"{g.Birth}년생"); }
@@ -11986,6 +11988,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         var maxTroops = CommandEfficiency.ArmyGroupDeployLimit(_state.ResearchOf(cityData.Owner, FactionResearch.ArmyGroupCode), _cb);
         var armyGroupTroopTitle = MakeLabel($"편성 상한 {maxTroops:N0}명 · 필수 최소 {_cb.ArmyGroupMinClassTroops:N0}명: 보병 / 궁병 / 공성", 13, GoldBright);
+        armyGroupTroopTitle.Name = "ArmyGroupCapLabel";
         box.AddChild(armyGroupTroopTitle);
         box.AddChild(DeployUnitArtwork(ArmyGroupIcon(), 52));
         box.AddChild(MakeLabel("집단군 병종 특성은 선봉의 보병·궁병·공성 적성을 평균낸 뒤 반내림합니다. 예: S/A/S = A+, S/A/A = A", 12, Parchment));
@@ -12149,7 +12152,10 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (_depPreview is null) { return; }
         var city = _state.Cities.First(c => c.Id == _depModalCity);
-        var maxTroops = CommandEfficiency.ArmyGroupDeployLimit(_state.ResearchOf(city.Owner, FactionResearch.ArmyGroupCode), _cb);
+        var maxTroops = CommandEfficiency.ArmyGroupDeployLimit(_state.ResearchOf(city.Owner, FactionResearch.ArmyGroupCode), _cb)
+            + (_depVan is { } van ? ArmyCorpsService.CommandBonus(_state, city.Owner, van) : 0);
+        if (_modalLayer?.FindChild("ArmyGroupCapLabel", true, false) is Label capLabel)
+            capLabel.Text = $"편성 상한 {maxTroops:N0}명 · 필수 최소 {_cb.ArmyGroupMinClassTroops:N0}명: 보병 / 궁병 / 공성";
         var lines = _armyGroupDraft.Where(p => p.Value > 0).Select(p => new SupplyLine(p.Key, p.Value)).ToList();
         var total = lines.Sum(l => l.Troops);
         var byClass = lines
@@ -12280,7 +12286,7 @@ public sealed partial class CampaignMapScene : Node3D
             var warn = gar.TrainingLevel < 50 ? "  ⚠훈련부족" : "";
             var emblem = UnitCard(code, template?.Class);
             var card = DeployCard(emblem, name, $"{remaining}명 · 훈{gar.TrainingLevel}{warn}");
-            var cap = System.Math.Min(remaining, DeployMaxTroopsFor(city));
+            var cap = System.Math.Min(remaining, DeployMaxTroopsFor(city, _depVan));
             _depTroopCards.Add((card, code));
             card.GuiInput += e =>
             {
@@ -12443,7 +12449,7 @@ public sealed partial class CampaignMapScene : Node3D
             _depAdj = rq.Adjutant;
             var gar = _state.Garrisons.FirstOrDefault(g => g.City == city && g.TroopCode == rq.TroopCode);
             var capEdit = (gar?.Troops ?? rq.Troops) - usedTroops.GetValueOrDefault(rq.TroopCode, 0);
-            _depAmountSpin.MaxValue = System.Math.Min(DeployMaxTroopsFor(city), System.Math.Max(capEdit, rq.Troops));
+            _depAmountSpin.MaxValue = System.Math.Min(DeployMaxTroopsFor(city, _depVan), System.Math.Max(capEdit, rq.Troops));
             _depAmountSpin.Value = rq.Troops;
             _depAmount = rq.Troops;
             _depMode = rq.Mode;
@@ -13229,7 +13235,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (_depTroop is null) { Err("병종을 선택하세요."); return; }
         if (_depVan is not { } van) { Err("선봉 장수를 선택하세요."); return; }
         if (_depAmount <= 0) { Err("병력 수량을 정하세요."); return; }
-        var maxDeploy = DeployMaxTroopsFor(_depModalCity);
+        var maxDeploy = DeployMaxTroopsFor(_depModalCity, van);
         if (_depAmount > maxDeploy) { Err($"일반 부대는 최대 {maxDeploy}명까지 출전할 수 있습니다."); return; }
         if (_depAdj == van) { Err("부관은 선봉과 다른 장수여야 합니다."); return; }
         var available = AvailableDeployTroops(_depModalCity, _depTroop, _depEditIndex);
@@ -13275,10 +13281,11 @@ public sealed partial class CampaignMapScene : Node3D
 
     }
 
-    private int DeployMaxTroopsFor(CityId city)
+    private int DeployMaxTroopsFor(CityId city, GeneralId? vanguard = null)
     {
         var faction = _state.Cities.First(c => c.Id == city).Owner;
-        return CommandEfficiency.CommandTroopDeployLimit(_state.ResearchOf(faction, FactionResearch.CommandTroopsCode), _cb);
+        return CommandEfficiency.CommandTroopDeployLimit(_state.ResearchOf(faction, FactionResearch.CommandTroopsCode), _cb)
+            + (vanguard is { } id ? ArmyCorpsService.CommandBonus(_state, faction, id) : 0);
     }
 
     private int AvailableDeployTroops(CityId city, string troopCode, int editIndex)
@@ -13450,6 +13457,14 @@ public sealed partial class CampaignMapScene : Node3D
         }
 
         SyncRosterChecks();
+        if (_depAmountSpin is not null && _depTroop is not null)
+        {
+            var cap = System.Math.Min(AvailableDeployTroops(_depModalCity, _depTroop, _depEditIndex),
+                DeployMaxTroopsFor(_depModalCity, _depVan));
+            _depAmountSpin.MaxValue = cap;
+            if (_depAmount > cap) { _depAmount = cap; _depAmountSpin.Value = cap; }
+            UpdateCombatProvisionCapacity(followMaximum: false);
+        }
         UpdateDepPreview();
     }
 

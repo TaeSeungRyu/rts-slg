@@ -4,6 +4,12 @@ using SanguoSLG.Core.Domain;
 
 public static class ArmyCorpsService
 {
+    public const int CommanderTroopBonus = 1_000;
+
+    public static int CommandBonus(GameState state, FactionId faction, GeneralId vanguard)
+        => state.Corps.Any(corps => corps.Faction == faction && corps.Commander == vanguard)
+            ? CommanderTroopBonus : 0;
+
     public static GameState Save(GameState state, int? id, FactionId faction,
         GeneralId commander, IEnumerable<CityId> assignedCities, ArmyCorpsPolicy policy)
     {

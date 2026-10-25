@@ -53,6 +53,35 @@ public class DeployServiceTests
         AdminPassives = new[] { new GeneralSkill("quartermaster", tier) },
     };
 
+    [Fact]
+    public void 군단장은_태수와_군사를_겸하고_일반부대를_천명_더_지휘한다()
+    {
+        var city = Town(1, new HexCoord(2, 0));
+        var state = State([city], [Gen(1), Gen(2)],
+            garrisons: [new GarrisonForce(city.Id, "swordsman", 11_000, 60)],
+            postings: [At(1, 1), At(2, 1)]);
+        var ordinary = Service().Deploy(state,
+            new DeployRequest(city.Id, "swordsman", 11_000, new GeneralId(1)));
+        Assert.False(ordinary.Ok);
+        state = ArmyCorpsService.Save(state, null, new FactionId(1), new GeneralId(1),
+            [city.Id], ArmyCorpsPolicy.Combat);
+        var commands = new CommandService(B, Troops);
+        var governor = commands.Issue(state,
+            new CommandRequest(city.Id, CommandKind.AppointGovernor, new GeneralId(1)));
+        Assert.True(governor.Ok, governor.Error);
+        var strategist = commands.Issue(governor.State,
+            new CommandRequest(city.Id, CommandKind.AppointStrategist, new GeneralId(1)));
+        Assert.True(strategist.Ok, strategist.Error);
+        Assert.Equal(new GeneralId(1), strategist.State.Cities.Single().Governor);
+        Assert.Equal(new GeneralId(1), strategist.State.Cities.Single().Strategist);
+        Assert.False(Service().Deploy(strategist.State,
+            new DeployRequest(city.Id, "swordsman", 11_000, new GeneralId(2))).Ok);
+        var deployed = Service().Deploy(strategist.State,
+            new DeployRequest(city.Id, "swordsman", 11_000, new GeneralId(1)));
+        Assert.True(deployed.Ok, deployed.Error);
+        Assert.Equal(11_000, Assert.Single(deployed.State.Armies).Pool.Active);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(3)]

@@ -164,7 +164,8 @@ public sealed class DeployService
         }
 
         var maxDeployTroops = CommandEfficiency.CommandTroopDeployLimit(
-            state.ResearchOf(city.Owner, FactionResearch.CommandTroopsCode), _b);
+            state.ResearchOf(city.Owner, FactionResearch.CommandTroopsCode), _b)
+            + ArmyCorpsService.CommandBonus(state, city.Owner, req.Vanguard);
         if (troops > maxDeployTroops)
         {
             return CommandResult.Fail($"부대는 최대 {maxDeployTroops}명까지 편성할 수 있다.", state);
@@ -469,7 +470,8 @@ public sealed class DeployService
         }
 
         var maxDeployTroops = CommandEfficiency.ArmyGroupDeployLimit(
-            state.ResearchOf(city.Owner, FactionResearch.ArmyGroupCode), _b);
+            state.ResearchOf(city.Owner, FactionResearch.ArmyGroupCode), _b)
+            + ArmyCorpsService.CommandBonus(state, city.Owner, req.Vanguard);
         if (total > maxDeployTroops)
         {
             return CommandResult.Fail($"집단군은 최대 {maxDeployTroops}명까지 편성할 수 있다.", state);

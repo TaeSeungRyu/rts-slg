@@ -24,6 +24,9 @@ public sealed class SupplyReplenishmentService
             : target.IsTransport ? DeployService.TransportMaxTroops
             : target.IsSupply ? balance.SupplyMaxTroops
             : CommandEfficiency.CommandTroopDeployLimit(state.ResearchOf(target.Field.Owner, FactionResearch.CommandTroopsCode), balance);
+        if ((target.IsArmyGroup || !target.IsSupply && !target.IsTransport)
+            && target.VanguardId is { } vanguard)
+            carryingLimit += ArmyCorpsService.CommandBonus(state, target.Field.Owner, vanguard);
         carryingLimit = Math.Max(carryingLimit, target.MaxTroops);
         return (Math.Max(0, Math.Min(Math.Min(cargo, source.Pool.Active), carryingLimit - target.Pool.Active)),
             Math.Max(0, source.CarryingGold),
