@@ -34,6 +34,8 @@ public sealed partial class EditMapScene : Control
     private bool _dragging;
     private Vector2 _dragLast;
     private Label _tileInfo = null!;
+    private char? _terrainFilter;
+    private readonly List<Button> _terrainButtons = [];
 
     public override void _Ready()
     {
@@ -60,7 +62,7 @@ public sealed partial class EditMapScene : Control
         var font = GD.Load<FontFile>("res://assets/fonts/Pretendard-SemiBold.otf");
         var bar = new PanelContainer { MouseFilter = MouseFilterEnum.Stop };
         bar.SetAnchorsAndOffsetsPreset(LayoutPreset.TopWide);
-        bar.CustomMinimumSize = new Vector2(0, 78);
+        bar.CustomMinimumSize = new Vector2(0, 115);
         bar.AddThemeStyleboxOverride("panel", PanelStyle());
         AddChild(bar);
         var content = new VBoxContainer();
@@ -70,11 +72,32 @@ public sealed partial class EditMapScene : Control
         title.AddThemeFontOverride("font", font);
         title.AddThemeFontSizeOverride("font_size", 20);
         content.AddChild(title);
-        var legend = new Label { Text = "평야  ●  숲  ●  산악·험산  ●  사막  ●  하천  ●  연안·해역    │    휠: 확대  ·  드래그: 이동  ·  클릭: 지형 확인",
+        var legend = new Label { Text = "지형을 선택하면 해당 타일을 강조합니다.    │    휠: 확대  ·  드래그: 이동  ·  클릭: 지형 확인",
             Modulate = new Color("d9d1b0") };
         legend.AddThemeFontOverride("font", font);
         legend.AddThemeFontSizeOverride("font_size", 13);
         content.AddChild(legend);
+        var filters = new HBoxContainer();
+        filters.AddThemeConstantOverride("separation", 6);
+        content.AddChild(filters);
+        var group = new ButtonGroup();
+        AddTerrainFilter("전체", null);
+        foreach (var (code, entry) in Terrain)
+            AddTerrainFilter(entry.Name, code);
+        void AddTerrainFilter(string name, char? code)
+        {
+            var button = new Button { Text = name, ToggleMode = true, ButtonGroup = group,
+                CustomMinimumSize = new Vector2(72, 26), FocusMode = FocusModeEnum.None };
+            button.AddThemeFontOverride("font", font);
+            button.AddThemeFontSizeOverride("font_size", 12);
+            button.AddThemeStyleboxOverride("normal", FilterStyle(false));
+            button.AddThemeStyleboxOverride("hover", FilterStyle(false));
+            button.AddThemeStyleboxOverride("pressed", FilterStyle(true));
+            button.Pressed += () => { _terrainFilter = code; QueueRedraw(); };
+            filters.AddChild(button);
+            _terrainButtons.Add(button);
+            if (code is null) button.ButtonPressed = true;
+        }
         var footer = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
         footer.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomWide);
         footer.CustomMinimumSize = new Vector2(0, 39);
@@ -95,6 +118,16 @@ public sealed partial class EditMapScene : Control
         return style;
     }
 
+    private static StyleBoxFlat FilterStyle(bool selected)
+    {
+        var style = new StyleBoxFlat { BgColor = selected ? new Color("876b35") : new Color("2a3638"),
+            BorderColor = selected ? new Color("e5ca83") : new Color("60706c") };
+        style.SetBorderWidthAll(1);
+        style.SetCornerRadiusAll(4);
+        style.SetContentMarginAll(4);
+        return style;
+    }
+
     private Vector2 Center(int column, int row) =>
         new(column * StepX, row * StepY + (column % 2) * StepY * 0.5f);
 
@@ -102,9 +135,9 @@ public sealed partial class EditMapScene : Control
     {
         var mapWidth = (_width - 1) * StepX + Radius * 2;
         var mapHeight = (_height + 0.5f) * StepY;
-        _scale = Mathf.Min((Size.X - 30) / mapWidth, (Size.Y - 150) / mapHeight);
+        _scale = Mathf.Min((Size.X - 30) / mapWidth, (Size.Y - 185) / mapHeight);
         _pan = new Vector2((Size.X - mapWidth * _scale) * 0.5f,
-            88 + (Size.Y - 150 - mapHeight * _scale) * 0.5f);
+            125 + (Size.Y - 185 - mapHeight * _scale) * 0.5f);
         QueueRedraw();
     }
 
@@ -118,7 +151,11 @@ public sealed partial class EditMapScene : Control
             var center = Center(column, row);
             var points = _hex.Select(vertex => center + vertex).ToArray();
             var kind = _rows[row][column];
-            DrawColoredPolygon(points, Terrain[kind].Color);
+            var baseColor = Terrain[kind].Color;
+            var color = _terrainFilter is null ? baseColor
+                : _terrainFilter == kind ? baseColor.Lerp(Colors.White, 0.30f)
+                : baseColor.Lerp(new Color("172126"), 0.64f);
+            DrawColoredPolygon(points, color);
             if (_scale > 1.25f)
                 DrawPolyline([.. points, points[0]], new Color(0f, 0f, 0f, 0.11f), 0.55f);
             if (_scale > 1.45f && kind is 'M' or 'H')
@@ -184,7 +221,10 @@ public sealed partial class EditMapScene : Control
             && Land(121, 24) && Land(130.5, 33)
             && _rows.Any(row => row.Contains('R')) && _rows.Any(row => row.Contains('D'))
             && _rows.Any(row => row.Contains('F')) && _rows.Any(row => row.Contains('H'))
-            && _west >= 91 && _east <= 133;
+            && _west >= 91 && _east <= 133
+            && _terrainButtons.Count == Terrain.Count + 1 && _terrainButtons[0].ButtonPressed;
+        _terrainButtons.First(button => button.Text == "산악").EmitSignal(Button.SignalName.Pressed);
+        valid &= _terrainFilter == 'M';
         GD.Print($"[edit-map-qa] passed={valid} tiles={_width * _height} bounds={_west}-{_east}E,{_south}-{_north}N");
         GetTree().Quit(valid ? 0 : 1);
     }
