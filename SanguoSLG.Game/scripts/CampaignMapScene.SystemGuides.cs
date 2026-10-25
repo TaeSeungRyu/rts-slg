@@ -284,7 +284,16 @@ public sealed partial class CampaignMapScene
         var preview = new SkillGuideEffectPreview3D();
         preview.CustomMinimumSize = new Vector2(220, 142);
         preview.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
-        detailBox.AddChild(preview);
+        var previewFrame = new PanelContainer { Name = "SkillGuidePreviewFrame",
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
+        previewFrame.AddThemeStyleboxOverride("panel", Frame(InkSoft, Gold, 1, 6, 4));
+        previewFrame.AddChild(preview);
+        detailBox.AddChild(previewFrame);
+        var previewDivider = new MarginContainer { Name = "SkillGuidePreviewDivider" };
+        previewDivider.AddThemeConstantOverride("margin_top", 10);
+        previewDivider.AddThemeConstantOverride("margin_bottom", 10);
+        previewDivider.AddChild(GoldRule());
+        detailBox.AddChild(previewDivider);
         var detailScroll = new ScrollContainer { Name = "SkillGuideDetailScroll",
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
@@ -431,6 +440,8 @@ public sealed partial class CampaignMapScene
             && _modalLayer?.FindChild("SkillGuideCard", true, false) is PanelContainer
             && _modalLayer?.FindChild("SkillGuideDetailScroll", true, false) is ScrollContainer
             && _modalLayer?.FindChild("SkillGuideDetailBox", true, false) is VBoxContainer
+            && _modalLayer?.FindChild("SkillGuidePreviewFrame", true, false) is PanelContainer
+            && _modalLayer?.FindChild("SkillGuidePreviewDivider", true, false) is MarginContainer
             && _modalLayer?.FindChild("SkillGuideReplay", true, false) is null
             && preview?.SkillCode == "peerless"
             && preview.CustomMinimumSize == new Vector2(220, 142)
