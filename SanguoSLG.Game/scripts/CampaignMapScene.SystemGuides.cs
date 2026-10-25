@@ -257,7 +257,9 @@ public sealed partial class CampaignMapScene
             && detail?.Text.Contains("일반 공격 피해", StringComparison.Ordinal) == true
             && image?.Texture is not null && missingIcons == 0
             && _modalLayer?.FindChild("SkillGuideCard", true, false) is PanelContainer
-            && preview?.SkillCode == "peerless";
+            && preview?.SkillCode == "peerless"
+            && preview.CameraSize == 4.4f
+            && preview.FindChild("PreviewPlain", true, false) is MeshInstance3D;
         GetTree().CreateTimer(2.7).Timeout += () =>
         {
             passed &= preview?.Day == 6;

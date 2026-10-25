@@ -17,6 +17,7 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
 
     public string? SkillCode => _skill?.Code;
     public int Day => _day;
+    public float CameraSize => (_stage?.FindChild("PreviewCamera", true, false) as Camera3D)?.Size ?? 0f;
 
     public SkillGuideEffectPreview3D()
     {
@@ -51,21 +52,31 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         }
         _stage = new Node3D { Name = "PreviewStage" };
         _viewport.AddChild(_stage);
-        var camera = new Camera3D { Current = true, Projection = Camera3D.ProjectionType.Orthogonal,
-            Size = 6.2f, Position = new Vector3(0, 5.2f, 8.5f) };
+        var camera = new Camera3D { Name = "PreviewCamera", Current = true,
+            Projection = Camera3D.ProjectionType.Orthogonal,
+            Size = 4.4f, Position = new Vector3(0, 3.7f, 6.4f) };
         _stage.AddChild(camera);
-        camera.LookAt(new Vector3(0, 0.4f, 0));
+        camera.LookAt(new Vector3(0, 0.5f, 0));
         _stage.AddChild(new DirectionalLight3D { RotationDegrees = new Vector3(-50, -25, 0),
             LightEnergy = 2.2f });
         _stage.AddChild(new WorldEnvironment { Environment = new Godot.Environment
         {
             BackgroundMode = Godot.Environment.BGMode.Color,
-            BackgroundColor = new Color(0.08f, 0.11f, 0.13f),
+            BackgroundColor = new Color(0.54f, 0.70f, 0.63f),
             AmbientLightSource = Godot.Environment.AmbientSource.Color,
             AmbientLightColor = new Color(0.7f, 0.72f, 0.7f),
         } });
-        _ally = Unit("res://assets/models/troop-swordsman.glb", new Vector3(-1.5f, 0, 0));
-        _enemy = Unit("res://assets/models/troop-swordsman.glb", new Vector3(1.5f, 0, 0));
+        var plain = new MeshInstance3D { Name = "PreviewPlain",
+            Mesh = new PlaneMesh { Size = new Vector2(9, 7) },
+            Position = new Vector3(0, -0.08f, 0) };
+        plain.MaterialOverride = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.38f, 0.57f, 0.36f),
+            Roughness = 1f,
+        };
+        _stage.AddChild(plain);
+        _ally = Unit("res://assets/models/troop-swordsman.glb", new Vector3(-1.05f, 0, 0));
+        _enemy = Unit("res://assets/models/troop-swordsman.glb", new Vector3(1.05f, 0, 0));
         _status.Text = skill is null ? "패시브 스킬은 별도 발동 에셋이 없습니다" : "1일차 · ● ○ ○ ○ ○";
         if (skill is null) return;
         _timer ??= new Godot.Timer { WaitTime = 0.34, OneShot = false };
@@ -84,7 +95,7 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         if (ResourceLoader.Exists(path))
         {
             var model = GD.Load<PackedScene>(path).Instantiate<Node3D>();
-            model.Scale = Vector3.One * 0.72f;
+            model.Scale = Vector3.One * 1.25f;
             anchor.AddChild(model);
         }
         return anchor;
