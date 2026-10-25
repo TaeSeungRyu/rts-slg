@@ -172,9 +172,20 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         _status.Text = $"6일차 · {_skill.Name} 발동";
         var target = _skill.Type is ActiveType.Defense or ActiveType.Heal ? _ally : _enemy;
         ActiveSkillPresentation.ShowCasterActivation(_ally);
-        EffectAttached = ActiveSkillPresentation.AttachEffect(target, _skill, _ally.GlobalPosition);
+        EffectAttached = _skill.Code switch
+        {
+            "breakthrough" when _allyUnit is not null =>
+                ActiveSkillPresentation.ShowBreakthrough(_allyUnit, _enemy),
+            "tiger_strike" => ActiveSkillPresentation.ShowTigerStrike(_ally, _enemy),
+            _ => ActiveSkillPresentation.AttachEffect(target, _skill, _ally.GlobalPosition),
+        };
         if (!EffectAttached)
             _status.Text = $"6일차 · {_skill.Name} (별도 3D 효과 없음)";
+    }
+
+    public void AdvanceToActivationForQa()
+    {
+        for (var day = 0; day < 6; day++) NextDay();
     }
 
     public override void _ExitTree() => _timer?.Stop();
