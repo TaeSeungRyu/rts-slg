@@ -284,6 +284,8 @@ public sealed partial class CampaignMapScene
         detail.CustomMinimumSize = new Vector2((width - 12f) * 0.3f - 20f, 0);
         detailScroll.AddChild(detail);
         var shown = entries;
+        var sortColumn = 0;
+        var sortDescending = false;
         Texture2D? SkillImage(string code, string kind, string form)
         {
             if (kind == "액티브") return ActiveSkillIcons.Load(code);
@@ -308,14 +310,28 @@ public sealed partial class CampaignMapScene
             skillName.Text = entry.Item1;
             detail.Text = entry.Item2;
             detail.AddThemeFontSizeOverride("font_size", entry.Item2.Length > 260 ? 11 : entry.Item2.Length > 170 ? 12 : 14);
-            preview.ShowSkill(entry.Item4 == "액티브"
-                ? _activeSkills.FirstOrDefault(skill => skill.Code == entry.Item3) : null);
+            var active = entry.Item4 == "액티브"
+                ? _activeSkills.FirstOrDefault(skill => skill.Code == entry.Item3) : null;
+            if (preview.SkillCode != active?.Code) preview.ShowSkill(active);
         }
         void Refill(string query)
         {
-            shown = entries.Where(entry => entry.Item1.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+            var previousIndex = list.GetSelected()?.GetMetadata(0).AsInt32() ?? -1;
+            var previousCode = previousIndex >= 0 && previousIndex < shown.Count
+                ? shown[previousIndex].Item3 : null;
+            var filtered = entries.Where(entry => entry.Item1.Contains(query, StringComparison.OrdinalIgnoreCase));
+            var ordered = sortColumn switch
+            {
+                1 => filtered.OrderBy(entry => entry.Item4, StringComparer.Ordinal)
+                    .ThenBy(entry => entry.Item1, StringComparer.Ordinal),
+                2 => filtered.OrderBy(entry => entry.Item5, StringComparer.Ordinal)
+                    .ThenBy(entry => entry.Item1, StringComparer.Ordinal),
+                _ => filtered.OrderBy(entry => entry.Item1, StringComparer.Ordinal),
+            };
+            shown = (sortDescending ? ordered.Reverse() : ordered).ToList();
             list.Clear();
             var root = list.CreateItem();
+            TreeItem? selected = null;
             for (var i = 0; i < shown.Count; i++)
             {
                 var entry = shown[i];
@@ -326,11 +342,19 @@ public sealed partial class CampaignMapScene
                 item.SetText(1, entry.Item4);
                 item.SetText(2, entry.Item5);
                 item.SetMetadata(0, i);
+                if (entry.Item3 == previousCode) selected = item;
             }
-            Select(shown.Count == 0 ? -1 : 0);
-            if (shown.Count > 0) list.SetSelected(root.GetFirstChild(), 0);
+            if (shown.Count > 0)
+                list.SetSelected(selected ?? root.GetFirstChild(), 0);
+            else Select(-1);
         }
         list.ItemSelected += () => Select(list.GetSelected()?.GetMetadata(0).AsInt32() ?? -1);
+        list.ColumnTitleClicked += (column, _) =>
+        {
+            sortDescending = sortColumn == (int)column && !sortDescending;
+            sortColumn = (int)column;
+            Refill(search.Text);
+        };
         search.TextChanged += Refill;
         Refill("");
         scroll.CustomMinimumSize = new Vector2(width, height);
@@ -352,6 +376,15 @@ public sealed partial class CampaignMapScene
             && list.GetColumnTitle(0) == "이름"
             && list.GetColumnTitle(1) == "종류" && list.GetColumnTitle(2) == "형태"
             && Mathf.IsEqualApprox(list.CustomMinimumSize.X, (Mathf.Clamp(GetViewport().GetVisibleRect().Size.X * 0.92f, 920f, 1220f) - 12f) * 0.7f);
+        var columnsSort = list is not null;
+        foreach (var column in new[] { 0, 1, 2 })
+        {
+            list?.EmitSignal(Tree.SignalName.ColumnTitleClicked, column, 1);
+            var first = list?.GetRoot()?.GetFirstChild()?.GetText(column);
+            list?.EmitSignal(Tree.SignalName.ColumnTitleClicked, column, 1);
+            var reversed = list?.GetRoot()?.GetFirstChild()?.GetText(column);
+            columnsSort &= first != reversed;
+        }
         search?.EmitSignal(LineEdit.SignalName.TextChanged, "무쌍");
         var image = _modalLayer?.FindChild("SkillGuideCardImage", true, false) as TextureRect;
         var preview = _modalLayer?.FindChild("SkillGuideEffectPreview", true, false) as SkillGuideEffectPreview3D;
@@ -362,7 +395,7 @@ public sealed partial class CampaignMapScene
                 .Select(level => SkillDescriptions.Admin(skill, level)))).All(description =>
             !new[] { "Phase", "에디터", "후속", "구현", "개발", "기존", "연결되지", "효과 정보가 없습니다" }
                 .Any(word => description.Contains(word, StringComparison.OrdinalIgnoreCase)));
-        var passed = trigger is not null && hasSkillColumns
+        var passed = trigger is not null && hasSkillColumns && columnsSort
             && descriptionsReady
             && initialCount == _activeSkills.Count + _passiveSkills.Count + _adminSkills.Count
             && list?.GetRoot()?.GetChildren().Count() == 1
