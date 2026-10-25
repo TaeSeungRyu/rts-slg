@@ -77,15 +77,15 @@ public sealed partial class CampaignMapScene
         const float height = 620f;
         var box = SystemView("스킬설명", width, out var scroll, out var panel, out var titleRow);
         var entries = _activeSkills.OrderBy(skill => skill.Name, StringComparer.Ordinal)
-            .Select(skill => ($"액티브 · {skill.Name}", SkillDescriptions.Active(skill)))
+            .Select(skill => ($"액티브 · {skill.Name}", SkillDescriptions.Active(skill), skill.Code, "액티브"))
             .Concat(_passiveSkills.OrderBy(skill => skill.Name, StringComparer.Ordinal)
                 .Select(skill => ($"전투 패시브 · {skill.Name}",
                     string.Join("\n\n", Enumerable.Range(1, 3)
-                        .Select(level => SkillDescriptions.Passive(skill, level))))))
+                        .Select(level => SkillDescriptions.Passive(skill, level))), skill.Code, "전투 패시브")))
             .Concat(_adminSkills.OrderBy(skill => skill.Name, StringComparer.Ordinal)
                 .Select(skill => ($"내정 패시브 · {skill.Name}",
                     string.Join("\n\n", Enumerable.Range(1, 3)
-                        .Select(level => SkillDescriptions.Admin(skill, level))))))
+                        .Select(level => SkillDescriptions.Admin(skill, level))), skill.Code, "내정 패시브")))
             .ToList();
         var search = new LineEdit { Name = "SkillGuideSearch", PlaceholderText = "스킬 이름 검색",
             MaxLength = 30 };
@@ -103,21 +103,65 @@ public sealed partial class CampaignMapScene
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         columns.AddChild(detailScroll);
+        var detailBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        detailBox.AddThemeConstantOverride("separation", 14);
+        detailScroll.AddChild(detailBox);
+        var card = new PanelContainer { Name = "SkillGuideCard", CustomMinimumSize = new Vector2(0, 112) };
+        card.AddThemeStyleboxOverride("panel", Frame(InkSoft, Gold, 1, 9, 12));
+        detailBox.AddChild(card);
+        var cardRow = new HBoxContainer();
+        cardRow.AddThemeConstantOverride("separation", 14);
+        card.AddChild(cardRow);
+        var portrait = ActiveSkillIcons.Preview(null, 82);
+        portrait.Name = "SkillGuideCardImage";
+        cardRow.AddChild(portrait);
+        var titleBox = new VBoxContainer();
+        titleBox.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        cardRow.AddChild(titleBox);
+        var category = MakeLabel("", 12, Gold);
+        category.Name = "SkillGuideCategory";
+        titleBox.AddChild(category);
+        var skillName = MakeLabel("", 20, GoldBright);
+        skillName.Name = "SkillGuideName";
+        titleBox.AddChild(skillName);
         var detail = MakeLabel("", 15, Parchment);
         detail.Name = "SkillGuideDetail";
         detail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         detail.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        detailScroll.AddChild(detail);
+        detailBox.AddChild(detail);
         var shown = entries;
+        Texture2D? SkillImage(string code, string kind)
+        {
+            if (kind == "액티브") return ActiveSkillIcons.Load(code);
+            var folder = kind == "전투 패시브" ? "passive" : "admin";
+            var path = $"res://assets/icons/skills/{folder}/{code}.png";
+            return ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
+        }
+        void Select(int index)
+        {
+            if (index < 0 || index >= shown.Count)
+            {
+                portrait.Texture = null;
+                category.Text = "";
+                skillName.Text = "";
+                detail.Text = "일치하는 스킬이 없습니다.";
+                return;
+            }
+            var entry = shown[index];
+            portrait.Texture = SkillImage(entry.Item3, entry.Item4);
+            category.Text = entry.Item4;
+            skillName.Text = entry.Item1[(entry.Item1.IndexOf('·') + 1)..].Trim();
+            detail.Text = entry.Item2;
+        }
         void Refill(string query)
         {
             shown = entries.Where(entry => entry.Item1.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
             list.Clear();
-            foreach (var entry in shown) list.AddItem(entry.Item1);
-            detail.Text = shown.Count == 0 ? "일치하는 스킬이 없습니다." : shown[0].Item2;
+            foreach (var entry in shown) list.AddItem(entry.Item1, SkillImage(entry.Item3, entry.Item4));
+            Select(shown.Count == 0 ? -1 : 0);
             if (shown.Count > 0) list.Select(0);
         }
-        list.ItemSelected += index => detail.Text = shown[(int)index].Item2;
+        list.ItemSelected += index => Select((int)index);
         search.TextChanged += Refill;
         Refill("");
         scroll.CustomMinimumSize = new Vector2(width, height);
@@ -134,10 +178,15 @@ public sealed partial class CampaignMapScene
         var search = _modalLayer?.FindChild("SkillGuideSearch", true, false) as LineEdit;
         var detail = _modalLayer?.FindChild("SkillGuideDetail", true, false) as Label;
         var initialCount = list?.ItemCount ?? 0;
+        var missingIcons = list is null ? initialCount : Enumerable.Range(0, initialCount)
+            .Count(index => list.GetItemIcon(index) is null);
         search?.EmitSignal(LineEdit.SignalName.TextChanged, "무쌍");
+        var image = _modalLayer?.FindChild("SkillGuideCardImage", true, false) as TextureRect;
         var passed = trigger is not null && initialCount == _activeSkills.Count + _passiveSkills.Count + _adminSkills.Count
-            && list?.ItemCount == 1 && detail?.Text.Contains("일반 공격 피해", StringComparison.Ordinal) == true;
-        GD.Print($"[skill-guide-qa] passed={passed} entries={initialCount}");
+            && list?.ItemCount == 1 && detail?.Text.Contains("일반 공격 피해", StringComparison.Ordinal) == true
+            && image?.Texture is not null && missingIcons == 0
+            && _modalLayer?.FindChild("SkillGuideCard", true, false) is PanelContainer;
+        GD.Print($"[skill-guide-qa] passed={passed} entries={initialCount} missingIcons={missingIcons}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }
