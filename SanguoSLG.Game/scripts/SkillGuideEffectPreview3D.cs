@@ -38,7 +38,7 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         _viewport = new SubViewport
         {
             Name = "SkillGuideBattleViewport",
-            Size = new Vector2I(700, 300),
+            Size = new Vector2I(360, 300),
             OwnWorld3D = true,
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
             TransparentBg = false,
@@ -181,6 +181,11 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         };
         if (!EffectAttached)
             _status.Text = $"6일차 · {_skill.Name} (별도 3D 효과 없음)";
+        var completedSkill = _skill;
+        GetTree().CreateTimer(1.2).Timeout += () =>
+        {
+            if (IsInsideTree() && ReferenceEquals(_skill, completedSkill)) ShowSkill(completedSkill);
+        };
     }
 
     public void AdvanceToActivationForQa()
