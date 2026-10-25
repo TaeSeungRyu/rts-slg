@@ -64,6 +64,17 @@ RIVERS = [
     [(106, 24), (109, 23), (112, 23), (114, 23), (115, 22.7)],
     [(116, 43), (120, 43), (123, 43.5), (126, 44), (130, 45)],
 ]
+SHU_RIDGES = [
+    ([(104.5, 34.4), (108.0, 34.3), (111.8, 34.0)], 0.68),
+    ([(103.8, 32.7), (106.0, 32.35), (108.2, 32.3), (111.3, 31.8)], 0.73),
+    ([(103.1, 29.2), (102.9, 31.2), (103.2, 33.4)], 0.55),
+    ([(109.3, 29.2), (109.9, 30.4), (110.0, 32.0)], 0.48),
+]
+SHU_ROADS = [
+    [(104.1, 30.7), (105.0, 31.4), (105.8, 32.3), (106.9, 33.1)],
+    [(106.9, 33.1), (107.8, 34.1), (108.9, 34.3)],
+    [(106.5, 29.6), (107.8, 30.1), (109.0, 30.6), (110.4, 30.8)],
+]
 
 
 def distance_to_segment(lon, lat, first, second):
@@ -84,6 +95,12 @@ def near_line(lon, lat, chain, radius):
 
 def terrain(lon, lat, column, row):
     noise = ((column * 92821 + row * 68917 + column * row * 13) % 997) / 997
+    if 103.8 < lon < 108.2 and 29.8 < lat < 31.7:
+        return "F" if noise < 0.15 else "P"
+    if 106.0 < lon < 108.5 and 32.85 < lat < 33.55:
+        return "P"
+    if any(near_line(lon, lat, ridge, width) for ridge, width in SHU_RIDGES):
+        return "M" if any(near_line(lon, lat, road, 0.32) for road in SHU_ROADS) else "H"
     if (lon < 104 and 27 < lat < 38 and (lat < 35 or lon < 97)):
         return "M" if noise < 0.62 else "H"
     if any(near_line(lon, lat, chain, width) for chain, width in MOUNTAIN_CHAINS):
