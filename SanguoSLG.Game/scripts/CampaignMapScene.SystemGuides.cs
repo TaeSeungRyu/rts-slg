@@ -230,7 +230,8 @@ public sealed partial class CampaignMapScene
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         columns.AddThemeConstantOverride("separation", 12);
         box.AddChild(columns);
-        var list = new Tree { Name = "SkillGuideList", CustomMinimumSize = new Vector2(245, height - 150),
+        var list = new Tree { Name = "SkillGuideList", CustomMinimumSize = new Vector2((width - 12f) / 2f, height - 150),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         list.Columns = 3;
         list.HideRoot = true;
@@ -351,7 +352,7 @@ public sealed partial class CampaignMapScene
         var hasSkillColumns = list?.Columns == 3 && list.SelectMode == Tree.SelectModeEnum.Row
             && list.GetColumnTitle(0) == "이름"
             && list.GetColumnTitle(1) == "종류" && list.GetColumnTitle(2) == "형태"
-            && list.CustomMinimumSize.X == 245;
+            && Mathf.IsEqualApprox(list.CustomMinimumSize.X, (Mathf.Clamp(GetViewport().GetVisibleRect().Size.X * 0.92f, 920f, 1220f) - 12f) / 2f);
         search?.EmitSignal(LineEdit.SignalName.TextChanged, "무쌍");
         var image = _modalLayer?.FindChild("SkillGuideCardImage", true, false) as TextureRect;
         var preview = _modalLayer?.FindChild("SkillGuideEffectPreview", true, false) as SkillGuideEffectPreview3D;
