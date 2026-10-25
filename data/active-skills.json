@@ -206,7 +206,7 @@
     "name": "이간",
     "type": "tactic",
     "grade": "high",
-    "description": "기존 이간 효과를 유지합니다. 대상의 적성과 전투 패시브를 2진행 동안 무효화합니다."
+    "description": "대상의 병종 적성과 전투 패시브를 2진행 동안 무효화합니다."
   },
   {
     "code": "cleanse",

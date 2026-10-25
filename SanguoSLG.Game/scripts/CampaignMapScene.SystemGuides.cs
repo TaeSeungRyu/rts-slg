@@ -355,7 +355,15 @@ public sealed partial class CampaignMapScene
         search?.EmitSignal(LineEdit.SignalName.TextChanged, "무쌍");
         var image = _modalLayer?.FindChild("SkillGuideCardImage", true, false) as TextureRect;
         var preview = _modalLayer?.FindChild("SkillGuideEffectPreview", true, false) as SkillGuideEffectPreview3D;
+        var descriptionsReady = _activeSkills.Select(SkillDescriptions.Active)
+            .Concat(_passiveSkills.SelectMany(skill => Enumerable.Range(1, 3)
+                .Select(level => SkillDescriptions.Passive(skill, level))))
+            .Concat(_adminSkills.SelectMany(skill => Enumerable.Range(1, 3)
+                .Select(level => SkillDescriptions.Admin(skill, level)))).All(description =>
+            !new[] { "Phase", "에디터", "후속", "구현", "개발", "기존", "연결되지", "효과 정보가 없습니다" }
+                .Any(word => description.Contains(word, StringComparison.OrdinalIgnoreCase)));
         var passed = trigger is not null && hasSkillColumns
+            && descriptionsReady
             && initialCount == _activeSkills.Count + _passiveSkills.Count + _adminSkills.Count
             && list?.GetRoot()?.GetChildren().Count() == 1
             && detail?.Text.Contains("일반 공격 피해", StringComparison.Ordinal) == true

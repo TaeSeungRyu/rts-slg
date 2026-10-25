@@ -60,21 +60,14 @@ internal static class SkillDescriptions
                 }
                 break;
             case ActiveType.Tactic:
-                effects.Add("책략형 · 기존 계략을 전투 액티브 슬롯으로 전환한 스킬입니다.");
+                effects.Add("책략형 · 교전 중 대상에게 특수 효과를 적용합니다.");
                 if (!string.IsNullOrWhiteSpace(skill.Description))
                 {
                     effects.Add(skill.Description);
                 }
-                effects.Add("실제 전투 효과 배선은 Phase 14A에서 진행합니다. 지금은 에디터 선택과 데이터 검증에 등록된 상태입니다.");
                 break;
         }
         effects.Add($"야전 {ActiveGauge.ReadyDays}일 충전 후 유효한 교전에서 자동 발동합니다. 부대당 교전 1회 발동하며 선봉이 우선합니다. 사용하거나 성으로 복귀하면 충전이 초기화됩니다.");
-        if (skill.Code is "armor_break" or "tiger_strike" or "chain_strike" or "breakthrough"
-            or "one_man_army" or "barrage" or "riposte" or "turtle_formation"
-            or "hold_the_line" or "second_wind")
-        {
-            effects.Add("현재 적용되는 기본 효과입니다. 추가 지속 효과·조건부 강화 등은 후속 스킬 확장 단계에서 반영됩니다.");
-        }
         return string.Join("\n\n", effects);
     }
 
@@ -94,19 +87,20 @@ internal static class SkillDescriptions
         {
             "tax" => $"태수의 도시 기본 금 수입 +{amount}%. 내정 담당자의 별도 자동 증가량에는 적용되지 않습니다.",
             "harvest" => $"태수의 도시 기본 군량 수입 +{amount}%. 내정 담당자의 별도 자동 증가량에는 적용되지 않습니다.",
-            "security" => $"기존 태수 치안 회복 +{amount / 10}. 현재 자동 담당자 치안 계산에는 연결되지 않은 효과입니다.",
+            "security" => $"태수로 재임 중인 도시의 치안 회복 +{amount / 10}.",
             "ore_output" => $"광석을 산출하는 도시에서 태수 재임 시 광석 산출 +{amount}%.",
             "horse_output" => $"말을 산출하는 도시에서 태수 재임 시 말 산출 +{amount}%.",
-            "elephant_output" => $"코끼리를 산출하는 도시에서 태수 재임 시 코끼리 산출 +{amount}%.",
-            "recruit_amount" => $"기존 모집 명령 병력 +{amount}%. 현재 자동 병력 생산에는 연결되지 않은 효과입니다.",
-            "training" => $"기존 훈련 명령 상승량 +{amount}. 현재 훈련 담당자의 자동 훈련에는 연결되지 않은 효과입니다.",
-            "recruit_cost" => $"기존 모집 시 인구 감소량 -{amount}%. 인구·모집 명령 제거로 현재 사용하지 않습니다.",
-            "market_discount" => $"기존 시장 구매가 -{amount}%. 시장 제거로 현재 사용하지 않습니다.",
+            "recruit_amount" => $"병력담당으로 배치되면 모든 병종의 병력 생산량 +{amount}%.",
+            "cavalry_output" => $"병력담당으로 배치되면 기병 계열 생산량 +{amount}%.",
+            "elephant_output" => $"병력담당으로 배치되면 상병 계열 생산량 +{amount}%.",
+            "training" => $"훈련 시 훈련도 증가량 +{amount}.",
+            "recruit_cost" => $"모집 시 인구 감소량 -{amount}%.",
+            "market_discount" => $"시장 구매가 -{amount}%.",
             "provisions" => $"선봉·부관으로 편성 시 군량 소모 -{amount}%. 보급부대에는 적용되지 않습니다.",
             "wall" => $"태수 재임 시 성벽 수리 회복 비율 +{amount}%p.",
-            _ => "효과 설명이 아직 등록되지 않았습니다.",
+            _ => "효과 정보가 없습니다.",
         };
-        var requirement = skill.Bucket is "tax" or "harvest" or "ore_output" or "horse_output" or "elephant_output"
+        var requirement = skill.Bucket is "tax" or "harvest" or "ore_output" or "horse_output"
             ? "\n\n해당 도시에 재임 중인 태수가 경제 활동의 정치 조건을 만족해야 적용됩니다." : "";
         return $"내정 패시브 · Lv{tier}\n직접 사용하는 액티브가 아닙니다.\n\n{effect}{requirement}";
     }
