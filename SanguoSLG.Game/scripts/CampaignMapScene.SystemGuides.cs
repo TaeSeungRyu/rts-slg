@@ -9,18 +9,37 @@ public sealed partial class CampaignMapScene
         const float width = 1040f;
         const float height = 650f;
         var box = SystemView("부대설명", width, out var scroll, out var panel, out var titleRow);
-        box.AddChild(MakeLabel("병종별 기본 능력 · 실제 전투력은 병력 수, 장수 적성, 연구와 지형에 따라 달라집니다.", 13, Parchment));
+        var maxResearchBonus = SanguoSLG.Core.Simulation.ResearchCurve.Bonus(10);
+        box.AddChild(MakeLabel($"기본 → 해당 병종 연구 Lv.10 최대치 (공격·방어 각각 +{maxResearchBonus}). 이동·사거리는 연구로 변하지 않습니다. 헤더를 눌러 정렬하세요.", 13, Parchment));
         var heading = new HBoxContainer { Name = "TroopGuideHeader" };
         heading.AddThemeConstantOverride("separation", 10);
-        foreach (var (caption, size) in new (string, float)[] { ("병종 카드", 250), ("부대 공격", 105), ("건물 공격", 105), ("방어", 80), ("이동/일", 90), ("사거리 (부대/건물/성)", 225) })
+        var rows = new VBoxContainer { Name = "TroopGuideRows" };
+        string sort = "class";
+        bool descending = false;
+        foreach (var (key, caption, size) in new (string, string, float)[] { ("class", "병종 카드", 250), ("unit", "부대 공격", 105), ("building", "건물 공격", 105), ("defense", "방어", 80), ("move", "이동/일", 90), ("range", "사거리 (부대/건물/성)", 225) })
         {
-            var cell = MakeLabel(caption, 13, GoldBright);
+            var cell = MakeButton(caption);
+            cell.Name = $"TroopGuideSort_{key}";
             cell.CustomMinimumSize = new Vector2(size, 30);
+            cell.Pressed += () => { descending = sort == key && !descending; sort = key; FillRows(); };
             heading.AddChild(cell);
         }
         box.AddChild(heading);
-        foreach (var troop in _troops.OrderBy(t => t.Class).ThenBy(t => t.Name, StringComparer.Ordinal))
+        box.AddChild(rows);
+        void FillRows()
         {
+            foreach (var child in rows.GetChildren()) { rows.RemoveChild(child); child.QueueFree(); }
+            var ordered = sort switch
+            {
+                "unit" => _troops.OrderBy(t => t.AtkUnit).ThenBy(t => t.Name, StringComparer.Ordinal),
+                "building" => _troops.OrderBy(t => t.AtkBuilding).ThenBy(t => t.Name, StringComparer.Ordinal),
+                "defense" => _troops.OrderBy(t => t.Df).ThenBy(t => t.Name, StringComparer.Ordinal),
+                "move" => _troops.OrderBy(t => t.MovementPerDay).ThenBy(t => t.Name, StringComparer.Ordinal),
+                "range" => _troops.OrderBy(t => t.RangeUnit).ThenBy(t => t.RangeBuilding).ThenBy(t => t.RangeCastle),
+                _ => _troops.OrderBy(t => t.Class).ThenBy(t => t.Name, StringComparer.Ordinal),
+            };
+            foreach (var troop in descending ? ordered.Reverse() : ordered)
+            {
             var row = new PanelContainer();
             row.AddThemeStyleboxOverride("panel", Frame(InkSoft, Gold, 1, 6, 7));
             var cells = new HBoxContainer();
@@ -37,8 +56,10 @@ public sealed partial class CampaignMapScene
             identity.AddChild(identityText);
             cells.AddChild(identity);
             foreach (var (value, size) in new (string, float)[] {
-                (troop.AtkUnit.ToString(), 105), (troop.AtkBuilding.ToString(), 105),
-                (troop.Df.ToString(), 80), (troop.MovementPerDay.ToString(), 90),
+                ($"{troop.AtkUnit} → {troop.AtkUnit + maxResearchBonus}", 105),
+                ($"{troop.AtkBuilding} → {troop.AtkBuilding + maxResearchBonus}", 105),
+                ($"{troop.Df} → {troop.Df + maxResearchBonus}", 80),
+                (troop.MovementPerDay.ToString(), 90),
                 ($"{troop.RangeUnit} / {troop.RangeBuilding} / {troop.RangeCastle}", 225) })
             {
                 var stat = MakeLabel(value, 14, Parchment);
@@ -46,8 +67,10 @@ public sealed partial class CampaignMapScene
                 stat.VerticalAlignment = VerticalAlignment.Center;
                 cells.AddChild(stat);
             }
-            box.AddChild(row);
+            rows.AddChild(row);
+            }
         }
+        FillRows();
         scroll.CustomMinimumSize = new Vector2(width, height);
         CenterAndDrag(panel, titleRow, width, height, box);
     }
@@ -61,10 +84,19 @@ public sealed partial class CampaignMapScene
         var labels = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
             .Select(label => label.Text).ToList() ?? [];
         var cards = _modalLayer?.FindChildren("TroopGuideCard", "PanelContainer", true, false).OfType<PanelContainer>().ToList() ?? [];
+        var rows = _modalLayer?.FindChild("TroopGuideRows", true, false) as VBoxContainer;
+        var sortButton = _modalLayer?.FindChild("TroopGuideSort_unit", true, false) as Button;
+        sortButton?.EmitSignal(Button.SignalName.Pressed);
+        var ascendingFirst = rows?.GetChild<PanelContainer>(0).FindChildren("*", "Label", true, false)
+            .OfType<Label>().FirstOrDefault()?.Text;
+        sortButton?.EmitSignal(Button.SignalName.Pressed);
+        var descendingFirst = rows?.GetChild<PanelContainer>(0).FindChildren("*", "Label", true, false)
+            .OfType<Label>().FirstOrDefault()?.Text;
         var passed = trigger is not null && labels.Any(text => text.Contains("투석기"))
             && labels.Any(text => text.Contains("공성탑"))
             && _modalLayer?.FindChild("SystemViewBack", true, false) is Button
             && _modalLayer?.FindChild("TroopGuideHeader", true, false) is HBoxContainer
+            && ascendingFirst != descendingFirst && labels.Any(text => text.Contains("+13"))
             && cards.Count == _troops.Count && cards.All(card =>
                 card.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>().Any(image => image.Texture is not null));
         GD.Print($"[troop-guide-qa] passed={passed} entries={_troops.Count}");
