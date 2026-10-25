@@ -6,19 +6,46 @@ public sealed partial class CampaignMapScene
 {
     private void OpenTroopGuide()
     {
-        const float width = 850f;
+        const float width = 1040f;
         const float height = 650f;
         var box = SystemView("부대설명", width, out var scroll, out var panel, out var titleRow);
         box.AddChild(MakeLabel("병종별 기본 능력 · 실제 전투력은 병력 수, 장수 적성, 연구와 지형에 따라 달라집니다.", 13, Parchment));
+        var heading = new HBoxContainer { Name = "TroopGuideHeader" };
+        heading.AddThemeConstantOverride("separation", 10);
+        foreach (var (caption, size) in new (string, float)[] { ("병종 카드", 250), ("부대 공격", 105), ("건물 공격", 105), ("방어", 80), ("이동/일", 90), ("사거리 (부대/건물/성)", 225) })
+        {
+            var cell = MakeLabel(caption, 13, GoldBright);
+            cell.CustomMinimumSize = new Vector2(size, 30);
+            heading.AddChild(cell);
+        }
+        box.AddChild(heading);
         foreach (var troop in _troops.OrderBy(t => t.Class).ThenBy(t => t.Name, StringComparer.Ordinal))
         {
             var row = new PanelContainer();
             row.AddThemeStyleboxOverride("panel", Frame(InkSoft, Gold, 1, 6, 7));
-            var text = MakeLabel($"{troop.Name}  ·  {ClassName(troop.Class)}\n"
-                + $"부대 공격 {troop.AtkUnit}  |  건물 공격 {troop.AtkBuilding}  |  방어 {troop.Df}"
-                + $"  |  이동 {troop.MovementPerDay}  |  사거리 부대/건물/성 {troop.RangeUnit}/{troop.RangeBuilding}/{troop.RangeCastle}",
-                13, Parchment);
-            row.AddChild(text);
+            var cells = new HBoxContainer();
+            cells.AddThemeConstantOverride("separation", 10);
+            row.AddChild(cells);
+            var identity = new HBoxContainer { CustomMinimumSize = new Vector2(250, 68) };
+            identity.AddThemeConstantOverride("separation", 8);
+            var artwork = DeployUnitArtwork(UnitCard(troop.Code, troop.Class), 58);
+            artwork.Name = "TroopGuideCard";
+            identity.AddChild(artwork);
+            var identityText = new VBoxContainer();
+            identityText.AddChild(MakeLabel(troop.Name, 15, GoldBright));
+            identityText.AddChild(MakeLabel(ClassName(troop.Class), 12, Parchment));
+            identity.AddChild(identityText);
+            cells.AddChild(identity);
+            foreach (var (value, size) in new (string, float)[] {
+                (troop.AtkUnit.ToString(), 105), (troop.AtkBuilding.ToString(), 105),
+                (troop.Df.ToString(), 80), (troop.MovementPerDay.ToString(), 90),
+                ($"{troop.RangeUnit} / {troop.RangeBuilding} / {troop.RangeCastle}", 225) })
+            {
+                var stat = MakeLabel(value, 14, Parchment);
+                stat.CustomMinimumSize = new Vector2(size, 68);
+                stat.VerticalAlignment = VerticalAlignment.Center;
+                cells.AddChild(stat);
+            }
             box.AddChild(row);
         }
         scroll.CustomMinimumSize = new Vector2(width, height);
@@ -33,9 +60,13 @@ public sealed partial class CampaignMapScene
         trigger?.EmitSignal(Button.SignalName.Pressed);
         var labels = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
             .Select(label => label.Text).ToList() ?? [];
+        var cards = _modalLayer?.FindChildren("TroopGuideCard", "PanelContainer", true, false).OfType<PanelContainer>().ToList() ?? [];
         var passed = trigger is not null && labels.Any(text => text.Contains("투석기"))
             && labels.Any(text => text.Contains("공성탑"))
-            && _modalLayer?.FindChild("SystemViewBack", true, false) is Button;
+            && _modalLayer?.FindChild("SystemViewBack", true, false) is Button
+            && _modalLayer?.FindChild("TroopGuideHeader", true, false) is HBoxContainer
+            && cards.Count == _troops.Count && cards.All(card =>
+                card.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>().Any(image => image.Texture is not null));
         GD.Print($"[troop-guide-qa] passed={passed} entries={_troops.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
