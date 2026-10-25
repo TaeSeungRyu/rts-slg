@@ -245,58 +245,43 @@ public sealed partial class CampaignMapScene
         list.SetColumnCustomMinimumWidth(2, 53);
         list.AddThemeFontOverride("font", _font);
         columns.AddChild(list);
-        var detailBox = new HBoxContainer { Name = "SkillGuideDetailBox",
+        var detailBox = new VBoxContainer { Name = "SkillGuideDetailBox",
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         detailBox.AddThemeConstantOverride("separation", 8);
         columns.AddChild(detailBox);
-        var mediaColumn = new VBoxContainer { Name = "SkillGuideMediaColumn",
-            CustomMinimumSize = new Vector2((width - 12f) / 4f - 8f, height - 150f),
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill };
-        mediaColumn.AddThemeConstantOverride("separation", 8);
-        detailBox.AddChild(mediaColumn);
         var card = new PanelContainer { Name = "SkillGuideCard",
-            CustomMinimumSize = new Vector2(0, (height - 150f) * 0.48f),
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+            CustomMinimumSize = new Vector2(0, 82) };
         card.AddThemeStyleboxOverride("panel", Frame(InkSoft, Gold, 1, 9, 12));
-        mediaColumn.AddChild(card);
-        var cardStack = new VBoxContainer();
-        cardStack.AddThemeConstantOverride("separation", 2);
-        card.AddChild(cardStack);
-        var portrait = ActiveSkillIcons.Preview(null, 190);
+        detailBox.AddChild(card);
+        var cardRow = new HBoxContainer();
+        cardRow.AddThemeConstantOverride("separation", 12);
+        card.AddChild(cardRow);
+        var portrait = ActiveSkillIcons.Preview(null, 64);
         portrait.Name = "SkillGuideCardImage";
-        portrait.CustomMinimumSize = new Vector2(0, (height - 150f) * 0.42f);
-        portrait.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        portrait.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
-        cardStack.AddChild(portrait);
+        cardRow.AddChild(portrait);
+        var titleStack = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        cardRow.AddChild(titleStack);
+        var category = MakeLabel("", 12, Gold);
+        category.Name = "SkillGuideCategory";
+        titleStack.AddChild(category);
         var skillName = MakeLabel("", 18, GoldBright);
         skillName.Name = "SkillGuideName";
-        skillName.HorizontalAlignment = HorizontalAlignment.Center;
-        cardStack.AddChild(skillName);
+        titleStack.AddChild(skillName);
         var preview = new SkillGuideEffectPreview3D();
-        preview.CustomMinimumSize = new Vector2(0, (height - 150f) * 0.47f);
-        preview.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        preview.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
-        mediaColumn.AddChild(preview);
-        var descriptionColumn = new VBoxContainer { Name = "SkillGuideDescriptionColumn",
-            CustomMinimumSize = new Vector2((width - 12f) / 4f - 8f, height - 150f),
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill };
-        detailBox.AddChild(descriptionColumn);
-        var category = MakeLabel("", 13, Gold);
-        category.Name = "SkillGuideCategory";
-        descriptionColumn.AddChild(category);
+        preview.CustomMinimumSize = new Vector2(310, 174);
+        preview.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+        detailBox.AddChild(preview);
         var detailScroll = new ScrollContainer { Name = "SkillGuideDetailScroll",
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        descriptionColumn.AddChild(detailScroll);
+        detailBox.AddChild(detailScroll);
         var detail = MakeLabel("", 15, Parchment);
         detail.Name = "SkillGuideDetail";
         detail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         detail.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        detail.CustomMinimumSize = new Vector2(descriptionColumn.CustomMinimumSize.X - 14f, 0);
+        detail.CustomMinimumSize = new Vector2((width - 12f) / 2f - 20f, 0);
         detailScroll.AddChild(detail);
         var shown = entries;
         Texture2D? SkillImage(string code, string kind, string form)
@@ -377,11 +362,10 @@ public sealed partial class CampaignMapScene
             && image?.Texture is not null && missingIcons == 0
             && _modalLayer?.FindChild("SkillGuideCard", true, false) is PanelContainer
             && _modalLayer?.FindChild("SkillGuideDetailScroll", true, false) is ScrollContainer
-            && _modalLayer?.FindChild("SkillGuideMediaColumn", true, false) is VBoxContainer
-            && _modalLayer?.FindChild("SkillGuideDescriptionColumn", true, false) is VBoxContainer
+            && _modalLayer?.FindChild("SkillGuideDetailBox", true, false) is VBoxContainer
             && _modalLayer?.FindChild("SkillGuideReplay", true, false) is null
             && preview?.SkillCode == "peerless"
-            && preview.CustomMinimumSize.Y > 200
+            && preview.CustomMinimumSize == new Vector2(310, 174)
             && preview.CameraSize == 2.9f
             && preview.FindChild("PreviewPlainTiles", true, false) is Node3D tiles
             && tiles.GetChildCount() == 7
@@ -395,14 +379,13 @@ public sealed partial class CampaignMapScene
                     && material.AlbedoColor.G > material.AlbedoColor.B);
         GetTree().CreateTimer(4.6).Timeout += () =>
         {
-            var media = _modalLayer?.FindChild("SkillGuideMediaColumn", true, false) as VBoxContainer;
-            var description = _modalLayer?.FindChild("SkillGuideDescriptionColumn", true, false) as VBoxContainer;
             var card = _modalLayer?.FindChild("SkillGuideCard", true, false) as PanelContainer;
-            passed &= list is not null && media is not null && description is not null && card is not null
+            var detailScroll = _modalLayer?.FindChild("SkillGuideDetailScroll", true, false) as ScrollContainer;
+            passed &= list is not null && card is not null && detailScroll is not null
                 && list.Size.X > 400f
-                && Mathf.Abs(media.Size.X - description.Size.X) < 30f
-                && image!.Size.Y >= card.Size.Y * 0.7f
-                && preview!.Size.Y > 180f;
+                && image!.Size.X <= 72f && card.Size.Y <= 100f
+                && preview!.Size.X <= 330f && preview.Size.Y <= 190f
+                && detailScroll.Size.X > preview.Size.X;
             passed &= preview?.Day == 6 && preview.EffectAttached && preview.HasUnitModels
                 && preview.CombatMotionCount >= 2;
             foreach (var code in new[] { "breakthrough", "tiger_strike" })

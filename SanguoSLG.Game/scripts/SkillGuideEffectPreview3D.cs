@@ -32,13 +32,13 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
     public SkillGuideEffectPreview3D()
     {
         Name = "SkillGuideEffectPreview";
-        CustomMinimumSize = new Vector2(420, 278);
+        CustomMinimumSize = new Vector2(310, 174);
         Stretch = true;
         MouseFilter = MouseFilterEnum.Ignore;
         _viewport = new SubViewport
         {
             Name = "SkillGuideBattleViewport",
-            Size = new Vector2I(360, 300),
+            Size = new Vector2I(480, 270),
             OwnWorld3D = true,
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
             TransparentBg = false,
