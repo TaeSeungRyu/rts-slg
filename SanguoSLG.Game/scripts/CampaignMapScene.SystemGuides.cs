@@ -133,6 +133,14 @@ public sealed partial class CampaignMapScene
             lines.Add("일반 육상 부대가 지나갈 수 없는 산 지물을 통과할 수 있습니다. 절벽과 설산은 통과할 수 없습니다.");
         if (troop.Code == "deunggap")
             lines.Add("화공 피해를 60% 더 받습니다.");
+        if (troop.Class == SanguoSLG.Core.Domain.TroopClass.Archer)
+        {
+            lines.Add("출전한 궁병의 명령 팔레트에서 일반화살과 불화살을 선택할 수 있습니다. 기본은 일반화살입니다.");
+            lines.Add("일반화살은 화살 종류에 따른 추가 피해 보정 없이 공격합니다.");
+            lines.Add("불화살은 숲·산악의 적에게 피해 +10%, 등갑병에게 추가 +60%입니다.");
+            lines.Add("그 외 지형에서는 피해 -10%, 기병에게는 추가 -10%입니다. 평지의 기병에게는 총 -20%입니다.");
+            lines.Add("비가 오는 지역에서 불화살 피해는 90% 감소합니다.");
+        }
         if (troop.Class == SanguoSLG.Core.Domain.TroopClass.Naval)
             lines.Add("해상 경로를 이동하며 육상 지형은 통과할 수 없습니다.");
         if (troop.Class == SanguoSLG.Core.Domain.TroopClass.Siege)
@@ -188,6 +196,11 @@ public sealed partial class CampaignMapScene
                 .First(s => s.Code == "mudang"));
         passed &= geukFeatures.Any(line => line.Contains("기병") && line.Contains("+10%"))
             && mudangFeatures.Any(line => line.Contains("산 지물"));
+        var archerFeatures = TroopGuideFeatures(_troops.First(t => t.Code == "archer"), null);
+        passed &= archerFeatures.Any(line => line.Contains("일반화살") && line.Contains("불화살"))
+            && archerFeatures.Any(line => line.Contains("등갑병") && line.Contains("+60%"))
+            && archerFeatures.Any(line => line.Contains("평지의 기병") && line.Contains("-20%"))
+            && archerFeatures.Any(line => line.Contains("비가 오는 지역") && line.Contains("90%"));
         OpenTroopGuideDetail("geukbyeong");
         passed &= _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
             .Any(label => label.Text.Contains("기병 공격 시 공격력 +10%")) == true;
