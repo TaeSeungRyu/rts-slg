@@ -107,7 +107,7 @@ public sealed partial class CampaignMapScene
     {
         var viewportSize = GetViewport().GetVisibleRect().Size;
         var width = Mathf.Clamp(viewportSize.X * 0.92f, 920f, 1220f);
-        var height = Mathf.Clamp(viewportSize.Y * 0.86f, 610f, 760f);
+        var height = Mathf.Clamp(viewportSize.Y * 0.90f, 640f, 820f);
         var box = SystemView("스킬설명", width, out var scroll, out var panel, out var titleRow);
         var entries = _activeSkills.OrderBy(skill => skill.Name, StringComparer.Ordinal)
             .Select(skill => (skill.Name, SkillDescriptions.Active(skill), skill.Code, "액티브",
@@ -145,21 +145,18 @@ public sealed partial class CampaignMapScene
         list.SetColumnCustomMinimumWidth(2, 68);
         list.AddThemeFontOverride("font", _font);
         columns.AddChild(list);
-        var detailScroll = new ScrollContainer { Name = "SkillGuideDetailScroll",
+        var detailBox = new VBoxContainer { Name = "SkillGuideDetailBox",
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        columns.AddChild(detailScroll);
-        var detailBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        detailBox.AddThemeConstantOverride("separation", 14);
-        detailScroll.AddChild(detailBox);
-        var card = new PanelContainer { Name = "SkillGuideCard", CustomMinimumSize = new Vector2(0, 112) };
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        detailBox.AddThemeConstantOverride("separation", 8);
+        columns.AddChild(detailBox);
+        var card = new PanelContainer { Name = "SkillGuideCard", CustomMinimumSize = new Vector2(0, 88) };
         card.AddThemeStyleboxOverride("panel", Frame(InkSoft, Gold, 1, 9, 12));
         detailBox.AddChild(card);
         var cardRow = new HBoxContainer();
         cardRow.AddThemeConstantOverride("separation", 14);
         card.AddChild(cardRow);
-        var portrait = ActiveSkillIcons.Preview(null, 82);
+        var portrait = ActiveSkillIcons.Preview(null, 68);
         portrait.Name = "SkillGuideCardImage";
         cardRow.AddChild(portrait);
         var titleBox = new VBoxContainer();
@@ -172,6 +169,7 @@ public sealed partial class CampaignMapScene
         skillName.Name = "SkillGuideName";
         titleBox.AddChild(skillName);
         var preview = new SkillGuideEffectPreview3D();
+        preview.CustomMinimumSize = new Vector2(420, 225);
         detailBox.AddChild(preview);
         var replay = MakeButton("6일 발동 다시 보기");
         replay.Name = "SkillGuideReplay";
@@ -181,6 +179,7 @@ public sealed partial class CampaignMapScene
         detail.Name = "SkillGuideDetail";
         detail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         detail.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        detail.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
         detailBox.AddChild(detail);
         var shown = entries;
         Texture2D? SkillImage(string code, string kind, string form)
@@ -207,6 +206,7 @@ public sealed partial class CampaignMapScene
             category.Text = $"{entry.Item4} · {entry.Item5}";
             skillName.Text = entry.Item1;
             detail.Text = entry.Item2;
+            detail.AddThemeFontSizeOverride("font_size", entry.Item2.Length > 260 ? 11 : entry.Item2.Length > 170 ? 12 : 14);
             preview.ShowSkill(entry.Item4 == "액티브"
                 ? _activeSkills.FirstOrDefault(skill => skill.Code == entry.Item3) : null);
             replay.Visible = entry.Item4 == "액티브";
@@ -259,6 +259,7 @@ public sealed partial class CampaignMapScene
             && detail?.Text.Contains("일반 공격 피해", StringComparison.Ordinal) == true
             && image?.Texture is not null && missingIcons == 0
             && _modalLayer?.FindChild("SkillGuideCard", true, false) is PanelContainer
+            && _modalLayer?.FindChild("SkillGuideDetailScroll", true, false) is null
             && preview?.SkillCode == "peerless"
             && preview.CameraSize == 4.4f
             && preview.FindChild("PreviewPlain", true, false) is MeshInstance3D;
