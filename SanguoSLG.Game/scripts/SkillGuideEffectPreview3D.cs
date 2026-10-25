@@ -120,7 +120,8 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         }
         _ally = Unit(0, HexPosition(-1, 0) * 0.58f + Vector3.Up * tileTop, out _allyUnit);
         _enemy = Unit(1, HexPosition(1, 0) * 0.58f + Vector3.Up * tileTop, out _enemyUnit);
-        _status.Text = skill is null ? "패시브 스킬은 별도 발동 에셋이 없습니다" : "1일차 · ● ○ ○ ○ ○";
+        _status.Visible = skill is not null;
+        _status.Text = skill is null ? "" : "1일차 · ● ○ ○ ○ ○";
         if (skill is null) return;
         _timer ??= new Godot.Timer { WaitTime = 0.7, OneShot = false };
         if (_timer.GetParent() is null)

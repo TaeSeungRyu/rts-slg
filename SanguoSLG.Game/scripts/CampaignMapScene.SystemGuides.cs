@@ -394,6 +394,9 @@ public sealed partial class CampaignMapScene
                 preview?.AdvanceToActivationForQa();
                 passed &= preview?.Day == 6 && preview.EffectAttached;
             }
+            preview?.ShowSkill(null);
+            var status = preview?.FindChild("SkillGuidePreviewStatus", true, false) as Label;
+            passed &= status is not null && !status.Visible && status.Text.Length == 0;
             GD.Print($"[skill-guide-qa] passed={passed} entries={initialCount} missingIcons={missingIcons} previewDay={preview?.Day}");
             GetTree().Quit(passed ? 0 : 1);
         };
