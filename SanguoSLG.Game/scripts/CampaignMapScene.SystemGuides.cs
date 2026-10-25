@@ -84,8 +84,8 @@ public sealed partial class CampaignMapScene
         if (troop is null) return;
         var special = new SanguoSLG.Core.Data.SpecialUnitLoader().LoadFromDirectory(_dataDirectory)
             .FirstOrDefault(candidate => candidate.Code == code);
-        const float width = 850f;
-        const float height = 590f;
+        const float width = 720f;
+        const float height = 390f;
         var box = SystemView(troop.Name, width, out var scroll, out var panel, out var titleRow);
         var back = titleRow.GetChild<Button>(0);
         back.ButtonDown -= OpenSystemPalette;
@@ -94,7 +94,15 @@ public sealed partial class CampaignMapScene
         var top = new HBoxContainer();
         top.AddThemeConstantOverride("separation", 16);
         box.AddChild(top);
-        top.AddChild(UnitCardPanel(troop.Code, troop.Class));
+        var artworkFrame = new PanelContainer { CustomMinimumSize = new Vector2(198, 142),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin, ClipContents = true };
+        artworkFrame.AddThemeStyleboxOverride("panel", Frame(new Color(0.045f, 0.035f, 0.03f),
+            new Color(Gold, 0.6f), 1, 7, 5));
+        artworkFrame.AddChild(new TextureRect { Texture = UnitCard(troop.Code, troop.Class),
+            CustomMinimumSize = new Vector2(188, 132),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered });
+        top.AddChild(artworkFrame);
         var summary = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         top.AddChild(summary);
         summary.AddChild(MakeLabel($"병종  {ClassName(troop.Class)}", 18, Gold));
@@ -104,8 +112,12 @@ public sealed partial class CampaignMapScene
         box.AddChild(GoldRule());
         box.AddChild(MakeLabel("병종 특징", 18, Gold));
         foreach (var line in TroopGuideFeatures(troop, special))
-            box.AddChild(MakeLabel($"• {line}", 15, Parchment));
-        scroll.CustomMinimumSize = new Vector2(width, height);
+        {
+            var feature = MakeLabel($"• {line}", 15, Parchment);
+            feature.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            box.AddChild(feature);
+        }
+        scroll.CustomMinimumSize = new Vector2(width, 0);
         CenterAndDrag(panel, titleRow, width, height, box);
     }
 
@@ -175,6 +187,9 @@ public sealed partial class CampaignMapScene
         OpenTroopGuideDetail("geukbyeong");
         passed &= _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
             .Any(label => label.Text.Contains("기병 공격 시 공격력 +10%")) == true;
+        var detailArt = _modalLayer?.FindChildren("*", "TextureRect", true, false)
+            .OfType<TextureRect>().FirstOrDefault(image => image.Texture is not null);
+        passed &= detailArt?.CustomMinimumSize.X == 188;
         GD.Print($"[troop-guide-qa] passed={passed} entries={_troops.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
