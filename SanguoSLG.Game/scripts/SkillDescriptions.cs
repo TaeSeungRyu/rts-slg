@@ -30,10 +30,24 @@ internal static class SkillDescriptions
                 {
                     effects.Add($"이번 타격은 대상 방어력을 {skill.DefenderDfReductionPercent}% 낮춰 계산합니다.");
                 }
-                effects.Add("표시 수치는 무력 60 기준이며 부대 선봉의 무력에 따라 위력이 달라집니다.");
+                if (skill.Code == "armor_break")
+                    effects.Add("공격 후 대상의 방어력 −20%가 3진행 동안 유지됩니다.");
+                if (skill.Code == "tiger_strike")
+                    effects.Add("이번 교전에서 대상의 반격 피해를 50% 줄입니다.");
+                if (skill.Code == "chain_strike")
+                    effects.Add("두 번 베어 피해를 나눕니다. 대상이 둘 이상이면 앞의 두 대상에게 나눠 적용합니다.");
+                if (skill.Code == "double_hit")
+                    effects.Add("한 대상에게 두 차례 타격으로 나눠 피해를 줍니다.");
+                if (skill.Code == "barrage")
+                    effects.Add("궁병·공성 병종으로 발동하면 일반 공격 피해의 180%를 적용합니다.");
+                effects.Add("표시 수치는 무력 60 기준이며 발동에 적용되는 장수의 무력에 따라 위력이 달라집니다.");
                 break;
             case ActiveType.Defense:
-                if (skill.Code == "evasion")
+                if (skill.Code == "hold_the_line")
+                {
+                    effects.Add("수성형 · 성·항구에 주둔 중이면 성벽이 받는 피해를 50% 줄입니다.");
+                }
+                else if (skill.Code == "evasion")
                 {
                     effects.Add("방어형 · 일반 공격을 유지하며 발동한 진행부터 3진행 동안 원거리(사거리 2 이상) 피해를 30% 줄입니다.");
                     effects.Add("근접 피해에는 적용되지 않으며, 감소율은 무력과 관계없이 30%로 고정됩니다.");
@@ -42,6 +56,10 @@ internal static class SkillDescriptions
                 {
                     effects.Add($"방어형 · 일반 공격을 유지하며 이번 교전에서 받는 피해를 {skill.DamageReductionPercent}% 줄입니다.");
                     effects.Add("무력 60 기준이며 선봉 무력에 따라 달라집니다. 피해 감소 상한은 75%입니다.");
+                    if (skill.Code == "riposte")
+                        effects.Add("실제로 받은 피해의 15%를 공격자에게 반사합니다.");
+                    if (skill.Code == "turtle_formation")
+                        effects.Add("두 부대 이상에게 포위당하면 피해 감소율이 두 배가 됩니다.");
                 }
                 break;
             case ActiveType.Heal:
@@ -57,6 +75,8 @@ internal static class SkillDescriptions
                     effects.Add($"지력 60 기준이며 선봉 지력에 따라 달라집니다. 회복률 상한은 {skill.HealCapPercent}%입니다.");
                     if (skill.Code == "resupply")
                         effects.Add($"이후 3진행 동안 매 진행 같은 양을 부상병에서 회복합니다. 발동 시 휴대 군량을 최대 적재량의 {skill.ProvisionPercent}%만큼 보충합니다(적재 상한 적용).");
+                    if (skill.Code == "second_wind")
+                        effects.Add("발동한 진행부터 3진행 동안 방어 보정 +10%를 적용합니다.");
                 }
                 break;
             case ActiveType.Tactic:
@@ -67,7 +87,9 @@ internal static class SkillDescriptions
                 }
                 break;
         }
-        effects.Add($"야전 {ActiveGauge.ReadyDays}일 충전 후 유효한 교전에서 자동 발동합니다. 부대당 교전 1회 발동하며 선봉이 우선합니다. 사용하거나 성으로 복귀하면 충전이 초기화됩니다.");
+        effects.Add(skill.Code == "hold_the_line"
+            ? "성·항구에서 수성 준비 5일을 채운 뒤 적용됩니다. 야전 스킬원을 소비하지 않습니다."
+            : $"실제 교전 {ActiveGauge.ReadyDays}회로 스킬원을 채우고 다음 유효한 교전에서 자동 발동합니다. 이동만 한 진행은 충전되지 않습니다. 한 교전에는 부대당 1개만 발동하며 선봉·부관이 번갈아 사용합니다. 발동하거나 성으로 복귀하면 충전이 초기화됩니다.");
         return string.Join("\n\n", effects);
     }
 
@@ -87,13 +109,13 @@ internal static class SkillDescriptions
         {
             "tax" => $"태수의 도시 기본 금 수입 +{amount}%. 내정 담당자의 별도 자동 증가량에는 적용되지 않습니다.",
             "harvest" => $"태수의 도시 기본 군량 수입 +{amount}%. 내정 담당자의 별도 자동 증가량에는 적용되지 않습니다.",
-            "security" => $"태수로 재임 중인 도시의 치안 회복 +{amount / 10}.",
+            "security" => $"태수로 재임 중인 도시의 월말 치안 회복 +{amount / 10}. 7일 치안담당 업무에는 적용되지 않습니다.",
             "ore_output" => $"광석을 산출하는 도시에서 태수 재임 시 광석 산출 +{amount}%.",
             "horse_output" => $"말을 산출하는 도시에서 태수 재임 시 말 산출 +{amount}%.",
             "recruit_amount" => $"병력담당으로 배치되면 모든 병종의 병력 생산량 +{amount}%.",
             "cavalry_output" => $"병력담당으로 배치되면 기병 계열 생산량 +{amount}%.",
             "elephant_output" => $"병력담당으로 배치되면 상병 계열 생산량 +{amount}%.",
-            "training" => $"훈련 시 훈련도 증가량 +{amount}.",
+            "training" => $"훈련 명령 수행 시 훈련도 증가량 +{amount}. 7일 훈련담당 업무에는 적용되지 않습니다.",
             "recruit_cost" => $"모집 시 인구 감소량 -{amount}%.",
             "market_discount" => $"시장 구매가 -{amount}%.",
             "provisions" => $"선봉·부관으로 편성 시 군량 소모 -{amount}%. 보급부대에는 적용되지 않습니다.",

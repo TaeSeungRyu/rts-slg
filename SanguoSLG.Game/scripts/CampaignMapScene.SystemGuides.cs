@@ -395,6 +395,20 @@ public sealed partial class CampaignMapScene
                 .Select(level => SkillDescriptions.Admin(skill, level)))).All(description =>
             !new[] { "Phase", "에디터", "후속", "구현", "개발", "기존", "연결되지", "효과 정보가 없습니다" }
                 .Any(word => description.Contains(word, StringComparison.OrdinalIgnoreCase)));
+        string ActiveText(string code) => SkillDescriptions.Active(_activeSkills.First(skill => skill.Code == code));
+        string AdminText(string code) => SkillDescriptions.Admin(_adminSkills.First(skill => skill.Code == code), 1);
+        descriptionsReady &= ActiveText("armor_break").Contains("3진행")
+            && ActiveText("tiger_strike").Contains("반격 피해를 50%")
+            && ActiveText("barrage").Contains("180%")
+            && ActiveText("riposte").Contains("15%를 공격자에게 반사")
+            && ActiveText("turtle_formation").Contains("두 배")
+            && ActiveText("hold_the_line").Contains("성벽이 받는 피해를 50%")
+            && ActiveText("second_wind").Contains("방어 보정 +10%")
+            && ActiveText("peerless").Contains("실제 교전 5회")
+            && AdminText("rancher").Contains("기병 계열 생산량")
+            && AdminText("mahout").Contains("상병 계열 생산량")
+            && AdminText("pacifier").Contains("7일 치안담당 업무에는 적용되지 않습니다")
+            && AdminText("drillmaster").Contains("7일 훈련담당 업무에는 적용되지 않습니다");
         var passed = trigger is not null && hasSkillColumns && columnsSort
             && descriptionsReady
             && initialCount == _activeSkills.Count + _passiveSkills.Count + _adminSkills.Count

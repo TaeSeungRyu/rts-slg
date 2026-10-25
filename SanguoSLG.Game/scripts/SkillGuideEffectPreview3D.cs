@@ -121,7 +121,7 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         _ally = Unit(0, HexPosition(-1, 0) * 0.58f + Vector3.Up * tileTop, out _allyUnit);
         _enemy = Unit(1, HexPosition(1, 0) * 0.58f + Vector3.Up * tileTop, out _enemyUnit);
         _status.Visible = skill is not null;
-        _status.Text = skill is null ? "" : "1일차 · ● ○ ○ ○ ○";
+        _status.Text = skill is null ? "" : "교전 준비 · ○ ○ ○ ○ ○";
         if (skill is null) return;
         _timer ??= new Godot.Timer { WaitTime = 0.7, OneShot = false };
         if (_timer.GetParent() is null)
@@ -164,13 +164,13 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         _day++;
         if (_day <= 5)
         {
-            _status.Text = $"{_day}일차 · {new string('●', _day)}{new string('○', 5 - _day)}";
+            _status.Text = $"교전 {_day}회 · {new string('●', _day)}{new string('○', 5 - _day)}";
             _allyUnit?.PlayAttackMotionToward(_enemy.GlobalPosition);
             _enemyUnit?.PlayAttackMotionToward(_ally.GlobalPosition);
             return;
         }
         _timer?.Stop();
-        _status.Text = $"6일차 · {_skill.Name} 발동";
+        _status.Text = $"다음 교전 · {_skill.Name} 발동";
         var target = _skill.Type is ActiveType.Defense or ActiveType.Heal ? _ally : _enemy;
         ActiveSkillPresentation.ShowCasterActivation(_ally);
         EffectAttached = _skill.Code switch
@@ -181,7 +181,7 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
             _ => ActiveSkillPresentation.AttachEffect(target, _skill, _ally.GlobalPosition),
         };
         if (!EffectAttached)
-            _status.Text = $"6일차 · {_skill.Name} (별도 3D 효과 없음)";
+            _status.Text = $"다음 교전 · {_skill.Name} 발동";
         var completedSkill = _skill;
         GetTree().CreateTimer(1.2).Timeout += () =>
         {
