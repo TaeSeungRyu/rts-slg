@@ -92,7 +92,7 @@ public sealed partial class CampaignMapScene
         var back = titleRow.GetChild<Button>(0);
         back.ButtonDown -= OpenSystemPalette;
         back.ButtonDown += OpenTroopGuide;
-        back.Text = "◀ 부대설명";
+        back.Text = "◀";
         var top = new HBoxContainer();
         top.AddThemeConstantOverride("separation", 16);
         box.AddChild(top);
@@ -197,6 +197,7 @@ public sealed partial class CampaignMapScene
         passed &= _modalLayer?.FindChildren("*", "ScrollContainer", true, false)
             .OfType<ScrollContainer>().Any(container => container.CustomMinimumSize.Y >= 390) == true;
         passed &= _modalLayer?.FindChild("TroopGuideDetailModal", false, false) is PanelContainer;
+        passed &= (_modalLayer?.FindChild("SystemViewBack", true, false) as Button)?.Text == "◀";
         GD.Print($"[troop-guide-qa] passed={passed} entries={_troops.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
