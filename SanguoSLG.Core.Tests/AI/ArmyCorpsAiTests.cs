@@ -68,4 +68,25 @@ public class ArmyCorpsAiTests
         Assert.Contains(ordinaryAi.Commands, command => command.Kind == CommandKind.Explore);
         Assert.DoesNotContain(planned.Commands, command => command.Kind == CommandKind.Explore);
     }
+
+    [Fact]
+    public void 군단_진행의_대화는_모달_대기열에서_기록으로_옮긴다()
+    {
+        var owner = new FactionId(1);
+        var general = new General(new GeneralId(1), "군단장",
+            new Dictionary<TroopClass, AptitudeGrade>(), 70, 60, 80);
+        var city = new City(new CityId(1), "장안", new HexCoord(0, 0), owner, 5000);
+        var story = new GeneralStoryEvent("corps-report", "research", 1, 1,
+            owner, general.Id, null, city.Id, 0);
+        var state = new GameState(1, 190,
+            [new Faction(owner, "위", general.Id, 0, "#ffffff")], [city], [general],
+            Postings: [new GeneralPosting(general.Id, owner, city.Id)],
+            PendingStoryEvents: [story]);
+        Assert.Single(ArmyCorpsStoryPolicy.SuppressAutomaticDialog(state, owner).StoryPending);
+        var assigned = ArmyCorpsService.Save(state, null, owner, general.Id,
+            [city.Id], ArmyCorpsPolicy.Domestic);
+        var result = ArmyCorpsStoryPolicy.SuppressAutomaticDialog(assigned, owner);
+        Assert.Empty(result.StoryPending);
+        Assert.Contains(result.StoryHistory, entry => entry.Id == story.Id && entry.Choice == "b");
+    }
 }

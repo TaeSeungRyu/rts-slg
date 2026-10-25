@@ -4170,8 +4170,9 @@ public sealed partial class CampaignMapScene : Node3D
         var attackAlerts = EnemyAttackAlertPolicy.Detect(beforeAi, preMove, Player);
         if (attackAlerts.Count > 0)
             after = after with { PendingStoryEvents = after.StoryPending.Concat(attackAlerts).ToArray() };
-        _storySpeechEvents = CombatSpeechEvents(preMove, turns)
-            .Concat(CitySpeechEvents(preMove)).ToArray();
+        after = ArmyCorpsStoryPolicy.SuppressAutomaticDialog(after, Player);
+        _storySpeechEvents = after.Corps.Any(corps => corps.Faction == Player)
+            ? [] : CombatSpeechEvents(preMove, turns).Concat(CitySpeechEvents(preMove)).ToArray();
         _storySpeechClock = 0;
         _storySpeechIndex = 0;
         LogEventHuntState(after);
