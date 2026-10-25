@@ -718,6 +718,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestscoreboardqa")) CallDeferred(nameof(RunScoreboardUiQa));
         if (args.Contains("--maptestmodaltransitionqa")) CallDeferred(nameof(RunModalTransitionQa));
         if (args.Contains("--maptestcorpsmodalqa")) CallDeferred(nameof(RunArmyCorpsModalQa));
+        if (args.Contains("--maptestsystemaftercorpsqa")) CallDeferred(nameof(RunSystemAfterCorpsQa));
         if (args.Contains("--mapteststrattargetqa")) CallDeferred(nameof(RunStratagemMapTargetQa));
         if (args.Contains("--maptestminimapqa")) CallDeferred(nameof(RunMiniMapUiQa));
         if (args.Contains("--maptestloadslotuiqa")) CallDeferred(nameof(RunLoadSlotUiQa));
@@ -9157,6 +9158,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 시스템 모달 공통 헤더(◀ 시스템으로 복귀 · ✕ 닫기).
     private VBoxContainer SystemView(string titleText, float mw, out ScrollContainer scroll, out PanelContainer panel, out HBoxContainer titleRow)
     {
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var box = DeployScaffold(mw, out scroll, out panel);
         titleRow = new HBoxContainer();
         box.AddChild(titleRow);

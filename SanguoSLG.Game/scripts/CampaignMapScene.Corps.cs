@@ -6,6 +6,44 @@ using SanguoSLG.Core.Simulation;
 
 public sealed partial class CampaignMapScene
 {
+    private async void RunSystemAfterCorpsQa()
+    {
+        OpenSystemPalette();
+        var guideButton = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+            .FirstOrDefault(button => button.Text == "부대설명");
+        guideButton?.EmitSignal(BaseButton.SignalName.Pressed);
+        var guideBack = _modalLayer?.FindChild("SystemViewBack", true, false) as Button;
+        guideBack?.EmitSignal(BaseButton.SignalName.ButtonDown);
+        var corpsButton = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
+            .FirstOrDefault(button => button.Text == "군단편성");
+        corpsButton?.EmitSignal(BaseButton.SignalName.Pressed);
+        var back = _modalLayer?.FindChild("SystemViewBack", true, false) as Button;
+        back?.EmitSignal(BaseButton.SignalName.ButtonDown);
+        var close = _modalLayer?.FindChild("SystemPaletteClose", true, false) as Button;
+        close?.EmitSignal(BaseButton.SignalName.ButtonDown);
+        await ToSignal(GetTree().CreateTimer(0.2), SceneTreeTimer.SignalName.Timeout);
+        var leftovers = GetChildren().OfType<CanvasLayer>().Count(layer =>
+            layer.GetChildren().OfType<PanelContainer>().Any(panel => panel.HasMeta("modal_root")));
+        OpenSystemPalette();
+        OpenArmyCorpsList();
+        (_modalLayer?.FindChild("SystemViewBack", true, false) as Button)?
+            .EmitSignal(BaseButton.SignalName.ButtonDown);
+        var backdrop = _modalLayer?.FindChild("ModalBackdrop", true, false) as ColorRect;
+        backdrop?.EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left, Pressed = true,
+        });
+        await ToSignal(GetTree().CreateTimer(0.2), SceneTreeTimer.SignalName.Timeout);
+        var backdropLeftovers = GetChildren().OfType<CanvasLayer>().Count(layer =>
+            layer.GetChildren().OfType<PanelContainer>().Any(panel => panel.HasMeta("modal_root")));
+        var passed = guideButton is not null && guideBack is not null
+            && corpsButton is not null && back is not null && close is not null
+            && backdrop is not null && _modalLayer is null && leftovers == 0
+            && backdropLeftovers == 0;
+        GD.Print($"[maptestsystemaftercorpsqa] back={back is not null} close={close is not null} closeLeftovers={leftovers} backdropLeftovers={backdropLeftovers} passed={passed}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private async void RunArmyCorpsModalQa()
     {
         OpenSystemPalette();
