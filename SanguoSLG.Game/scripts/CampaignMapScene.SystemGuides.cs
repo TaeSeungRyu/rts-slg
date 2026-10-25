@@ -135,6 +135,7 @@ public sealed partial class CampaignMapScene
             SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         list.Columns = 3;
         list.HideRoot = true;
+        list.SelectMode = Tree.SelectModeEnum.Row;
         list.ColumnTitlesVisible = true;
         list.SetColumnTitle(0, "이름");
         list.SetColumnTitle(1, "종류");
@@ -246,7 +247,8 @@ public sealed partial class CampaignMapScene
         var detail = _modalLayer?.FindChild("SkillGuideDetail", true, false) as Label;
         var initialCount = list?.GetRoot()?.GetChildren().Count() ?? 0;
         var missingIcons = list?.GetRoot()?.GetChildren().Count(item => item.GetIcon(0) is null) ?? initialCount;
-        var hasSkillColumns = list?.Columns == 3 && list.GetColumnTitle(0) == "이름"
+        var hasSkillColumns = list?.Columns == 3 && list.SelectMode == Tree.SelectModeEnum.Row
+            && list.GetColumnTitle(0) == "이름"
             && list.GetColumnTitle(1) == "종류" && list.GetColumnTitle(2) == "형태";
         search?.EmitSignal(LineEdit.SignalName.TextChanged, "무쌍");
         var image = _modalLayer?.FindChild("SkillGuideCardImage", true, false) as TextureRect;
