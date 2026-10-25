@@ -36,6 +36,8 @@ public sealed partial class EditMapScene : Control
     private Label _tileInfo = null!;
     private char? _terrainFilter;
     private readonly List<Button> _terrainButtons = [];
+    private readonly List<Vector2I[]> _landRoutes = [];
+    private bool _showLandRoutes = true;
 
     public override void _Ready()
     {
@@ -45,6 +47,9 @@ public sealed partial class EditMapScene : Control
         _width = root.GetProperty("width").GetInt32();
         _height = root.GetProperty("height").GetInt32();
         _rows = root.GetProperty("rows").EnumerateArray().Select(row => row.GetString() ?? "").ToArray();
+        foreach (var route in root.GetProperty("land_routes").EnumerateArray())
+            _landRoutes.Add(route.GetProperty("tiles").EnumerateArray().Select(tile =>
+                new Vector2I(tile[0].GetInt32(), tile[1].GetInt32())).ToArray());
         var bounds = root.GetProperty("bounds");
         _west = bounds.GetProperty("west").GetDouble();
         _east = bounds.GetProperty("east").GetDouble();
@@ -84,6 +89,12 @@ public sealed partial class EditMapScene : Control
         AddTerrainFilter("전체", null);
         foreach (var (code, entry) in Terrain)
             AddTerrainFilter(entry.Name, code);
+        var routesToggle = new CheckButton { Name = "LandRouteToggle", Text = "육상 동선",
+            ButtonPressed = true, CustomMinimumSize = new Vector2(112, 26) };
+        routesToggle.AddThemeFontOverride("font", font);
+        routesToggle.AddThemeFontSizeOverride("font_size", 12);
+        routesToggle.Toggled += enabled => { _showLandRoutes = enabled; QueueRedraw(); };
+        filters.AddChild(routesToggle);
         void AddTerrainFilter(string name, char? code)
         {
             var button = new Button { Text = name, ToggleMode = true, ButtonGroup = group,
@@ -164,6 +175,15 @@ public sealed partial class EditMapScene : Control
             if (_scale > 1.45f && kind == 'F')
                 DrawCircle(center, 1.8f, new Color("275c4d"));
         }
+        if (_showLandRoutes)
+        {
+            foreach (var route in _landRoutes)
+            {
+                var points = route.Select(tile => Center(tile.X, tile.Y)).ToArray();
+                DrawPolyline(points, new Color("24352c"), 3.2f, true);
+                DrawPolyline(points, new Color("f2e2a2"), 1.5f, true);
+            }
+        }
         DrawSetTransform(Vector2.Zero);
     }
 
@@ -222,9 +242,14 @@ public sealed partial class EditMapScene : Control
             && _rows.Any(row => row.Contains('R')) && _rows.Any(row => row.Contains('D'))
             && _rows.Any(row => row.Contains('F')) && _rows.Any(row => row.Contains('H'))
             && _west >= 91 && _east <= 133
-            && _terrainButtons.Count == Terrain.Count + 1 && _terrainButtons[0].ButtonPressed;
+            && _terrainButtons.Count == Terrain.Count + 1 && _terrainButtons[0].ButtonPressed
+            && _landRoutes.Count >= 10 && _landRoutes.All(route => route.Length >= 2
+                && route.All(tile => tile.X >= 0 && tile.X < _width && tile.Y >= 0 && tile.Y < _height
+                    && "PFMDR".Contains(_rows[tile.Y][tile.X])));
         _terrainButtons.First(button => button.Text == "산악").EmitSignal(Button.SignalName.Pressed);
         valid &= _terrainFilter == 'M';
+        var routesToggle = FindChild("LandRouteToggle", true, false) as CheckButton;
+        valid &= routesToggle?.ButtonPressed == true && _showLandRoutes;
         GD.Print($"[edit-map-qa] passed={valid} tiles={_width * _height} bounds={_west}-{_east}E,{_south}-{_north}N");
         GetTree().Quit(valid ? 0 : 1);
     }

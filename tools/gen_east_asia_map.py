@@ -1,6 +1,7 @@
 """Generate the scenario terrain preview from Natural Earth 1:50m land geometry."""
 
 import json
+import heapq
 import math
 import urllib.request
 from pathlib import Path
@@ -115,6 +116,70 @@ def terrain(lon, lat, column, row):
     return "P"
 
 
+ROUTE_PAIRS = [
+    ("장안—한중", (108.9, 34.3), (107.0, 33.1)),
+    ("한중—성도", (107.0, 33.1), (104.1, 30.7)),
+    ("성도—중경", (104.1, 30.7), (106.5, 29.6)),
+    ("중경—의창", (106.5, 29.6), (111.3, 30.7)),
+    ("의창—무한", (111.3, 30.7), (114.3, 30.6)),
+    ("장안—낙양", (108.9, 34.3), (112.5, 34.6)),
+    ("낙양—업", (112.5, 34.6), (114.5, 36.1)),
+    ("업—북경", (114.5, 36.1), (116.4, 39.9)),
+    ("무한—건업", (114.3, 30.6), (118.8, 32.1)),
+    ("무한—광주", (114.3, 30.6), (113.3, 23.1)),
+    ("건업—북경", (118.8, 32.1), (116.4, 39.9)),
+]
+
+
+def route_network(rows):
+    def nearest(lon, lat):
+        column = int((lon - WEST) / (EAST - WEST) * WIDTH)
+        row = int((NORTH - lat) / (NORTH - SOUTH) * HEIGHT)
+        options = ((abs(column - x) + abs(row - y), x, y)
+                   for y in range(max(0, row - 3), min(HEIGHT, row + 4))
+                   for x in range(max(0, column - 3), min(WIDTH, column + 4))
+                   if rows[y][x] in "PFMDR")
+        _, x, y = min(options)
+        return (x, y)
+
+    def neighbors(x, y):
+        offset = -1 if x % 2 == 0 else 1
+        for xx, yy in ((x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y),
+                       (x - 1, y + offset), (x + 1, y + offset)):
+            if 0 <= xx < WIDTH and 0 <= yy < HEIGHT and rows[yy][xx] in "PFMDR":
+                yield (xx, yy)
+
+    result = []
+    for name, start, finish in ROUTE_PAIRS:
+        origin, target = nearest(*start), nearest(*finish)
+        frontier = [(0, origin)]
+        distances = {origin: 0}
+        parents = {origin: None}
+        while frontier:
+            distance, current = heapq.heappop(frontier)
+            if current == target:
+                break
+            if distance != distances[current]:
+                continue
+            for neighbor in neighbors(*current):
+                x, y = neighbor
+                cost = {"P": 10, "F": 16, "M": 24, "D": 15, "R": 14}[rows[y][x]]
+                score = distance + cost
+                if score < distances.get(neighbor, 10**9):
+                    distances[neighbor] = score
+                    parents[neighbor] = current
+                    heapq.heappush(frontier, (score, neighbor))
+        if target not in parents:
+            raise ValueError(f"No land route: {name}")
+        path = []
+        current = target
+        while current is not None:
+            path.append(list(current))
+            current = parents[current]
+        result.append({"name": name, "tiles": path[::-1]})
+    return result
+
+
 def main():
     with urllib.request.urlopen(LAND_URL, timeout=45) as response:
         data = json.load(response)
@@ -145,6 +210,7 @@ def main():
         "legend": {"P": "plains", "F": "forest", "M": "mountain", "H": "rock_mountain",
                    "D": "desert", "R": "river", "W": "water_shallow", "O": "water_deep"},
         "rows": ["".join(row) for row in rows],
+        "land_routes": route_network(rows),
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

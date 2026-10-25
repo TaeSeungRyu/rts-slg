@@ -53,6 +53,11 @@ def route(start, end):
 
 assert len(rows) == height and all(len(row) == width for row in rows)
 assert bounds["west"] == 91 and bounds["east"] == 133
+assert len(data["land_routes"]) >= 10
+for plotted in data["land_routes"]:
+    tiles = plotted["tiles"]
+    assert len(tiles) >= 2 and all(passable(*tile) for tile in tiles), plotted["name"]
+    assert all(tuple(right) in neighbors(*left) for left, right in zip(tiles, tiles[1:])), plotted["name"]
 assert len(route((104.1, 30.7), (107.0, 33.1))) > 4
 assert len(route((107.0, 33.1), (108.9, 34.3))) > 3
 for latitude in (32.14, 32.66):
@@ -60,4 +65,4 @@ for latitude in (32.14, 32.66):
                 if abs(coordinate(column, row)[1] - latitude) < .1
                 and 104 <= coordinate(column, row)[0] <= 111]
     assert sum(kind in "PFMDR" for kind in corridor) <= 5, (latitude, corridor)
-print("[east-asia-map-qa] passed: cropped bounds, Shu access and narrow Daba passes")
+print("[east-asia-map-qa] passed: cropped bounds, Shu passes and all plotted land routes")
