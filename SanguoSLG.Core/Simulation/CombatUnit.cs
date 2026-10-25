@@ -58,7 +58,8 @@ public sealed record CombatUnit(
     string EmbarkedTroopCode = "",
     bool AiAdvanceIgnoresOtherSites = false,
     CityId? AiSupportDefendedCity = null,
-    string? AiRuinTarget = null)
+    string? AiRuinTarget = null,
+    ArcherArrowMode ArrowMode = ArcherArrowMode.Normal)
 {
     public UnitId Id => Field.Id;
 

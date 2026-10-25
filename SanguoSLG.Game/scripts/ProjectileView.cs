@@ -12,6 +12,7 @@ public static class ProjectileView
     public enum Variant
     {
         Basic,
+        Fire,
     }
 
     /// <summary>화살 하나를 포물선으로 날린다. worldParent는 유닛과 함께 움직이지 않는 노드여야 한다.</summary>
@@ -63,6 +64,14 @@ public static class ProjectileView
     private static StandardMaterial3D BodyMaterial(Variant variant, Color basic) =>
         variant switch
         {
+            Variant.Fire => new StandardMaterial3D
+            {
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                AlbedoColor = new Color(1f, 0.18f, 0.04f),
+                EmissionEnabled = true,
+                Emission = new Color(1f, 0.2f, 0.03f),
+                EmissionEnergyMultiplier = 3f,
+            },
             _ => new StandardMaterial3D { AlbedoColor = basic },
         };
 
@@ -84,13 +93,23 @@ public static class ProjectileView
             Mesh = new BoxMesh { Size = new Vector3(0.013f, 0.013f, 0.022f) },
             Position = new Vector3(0f, 0f, -0.06f),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-            MaterialOverride = new StandardMaterial3D
+            MaterialOverride = variant == Variant.Fire ? BodyMaterial(variant, Colors.Red) : new StandardMaterial3D
             {
                 AlbedoColor = new Color(0.66f, 0.67f, 0.70f),
                 Metallic = 0.6f,
                 Roughness = 0.35f,
             },
         });
+        if (variant == Variant.Fire)
+        {
+            root.AddChild(new MeshInstance3D
+            {
+                Mesh = new SphereMesh { Radius = 0.019f, Height = 0.045f },
+                Position = new Vector3(0f, 0f, 0.045f),
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                MaterialOverride = BodyMaterial(variant, Colors.Red),
+            });
+        }
         return root;
     }
 }

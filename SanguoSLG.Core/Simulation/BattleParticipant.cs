@@ -36,4 +36,8 @@ public sealed record BattleParticipant(
     int TreasureDamageTakenPercent = 100,
     int TreasureFatalToWoundedPercent = 0,
     int RelicAttackPercent = 100,
-    int RelicDefensePercent = 100);
+    int RelicDefensePercent = 100,
+    ArcherArrowMode ArrowMode = ArcherArrowMode.Normal,
+    Spatial.TerrainType Terrain = Spatial.TerrainType.Plains,
+    string TroopCode = "",
+    bool IsRaining = false);

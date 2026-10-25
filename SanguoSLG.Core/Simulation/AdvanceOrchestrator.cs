@@ -445,7 +445,11 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
                 TreasureDamageTakenPercent: u.TreasureDamageTakenPercent,
                 TreasureFatalToWoundedPercent: u.TreasureFatalToWoundedPercent,
                 RelicAttackPercent: u.RelicAttackPercent,
-                RelicDefensePercent: u.RelicDefensePercent);
+                RelicDefensePercent: u.RelicDefensePercent,
+                ArrowMode: u.ArrowMode,
+                Terrain: _terrainAt(u.Field.Position),
+                TroopCode: u.TroopCode,
+                IsRaining: ClimateCombatRules.At(_campaign?.Climate, u.Field.Position) == ClimateKind.Rain);
         }
 
         // 5) 동시 정산 → 병력 반영.
@@ -969,8 +973,10 @@ public sealed class AdvanceOrchestrator : IFieldAdvanceRunner
         }
 
         var climate = ClimateCombatRules.At(_campaign?.Climate, u.Field.Position);
-        outgoing = outgoing * ClimateCombatRules.AttackPercent(climate, u.Class,
-            u.IsArmyGroup, _climateAttackPercent) / 100;
+        if (!(u.Class == TroopClass.Archer && u.ArrowMode == ArcherArrowMode.Fire
+              && climate == ClimateKind.Rain))
+            outgoing = outgoing * ClimateCombatRules.AttackPercent(climate, u.Class,
+                u.IsArmyGroup, _climateAttackPercent) / 100;
 
         return (stats, outgoing);
     }

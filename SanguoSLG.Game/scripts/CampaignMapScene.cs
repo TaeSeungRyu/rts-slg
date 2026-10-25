@@ -204,6 +204,9 @@ public sealed partial class CampaignMapScene : Node3D
     private Label _unitChoiceTitle = null!;
     private VBoxContainer _unitChoiceRows = null!;
     private VBoxContainer _unitCmdBox = null!; // 이동·계략 섹션 — 아군·평시에만 표시
+    private VBoxContainer _archerArrowBox = null!;
+    private Button _normalArrowButton = null!;
+    private Button _fireArrowButton = null!;
     private Button _unitEnemyAttackButton = null!;
     private int _selectedUnitId = -1;
     private int _retargetUnitId = -1;  // ≥0이면 야전 부대 이동 재지정 목표 지정 중
@@ -1635,6 +1638,9 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainCard.Visible = false;
         _terrainHex = null;
         _unitCmdBox.Visible = u.Field.Owner == Player && !_advancing; // 적·재생 중엔 정보만
+        _archerArrowBox.Visible = _unitCmdBox.Visible && u.Class == TroopClass.Archer && !u.IsSupply;
+        _normalArrowButton.Disabled = u.ArrowMode == ArcherArrowMode.Normal;
+        _fireArrowButton.Disabled = u.ArrowMode == ArcherArrowMode.Fire;
         _supplyReplenishmentButton.Visible = u.Field.Owner == Player && u.IsSupply && !_advancing;
         _supplyFollowButton.Visible = u.Field.Owner == Player && u.IsSupply && !_advancing;
         _summonUnitButton.Visible = u.Field.Owner == Player && !u.IsSummon && !_advancing
@@ -1657,6 +1663,16 @@ public sealed partial class CampaignMapScene : Node3D
                 u.Class == TroopClass.Naval, u.Field.ContinuousWaypoints, u.Field.ContinuousTarget,
                 u.RenewalPosition, u.Field.Mode);
         }
+    }
+
+    private void SetSelectedArcherArrowMode(ArcherArrowMode mode)
+    {
+        var unit = _state.Armies.FirstOrDefault(x => x.Id.Value == _selectedUnitId);
+        if (unit is null || unit.Field.Owner != Player || unit.Class != TroopClass.Archer || _advancing) return;
+        _state = _state with { FieldArmies = _state.Armies.Select(x => x.Id == unit.Id
+            ? x with { ArrowMode = mode } : x).ToList() };
+        if (_armyTokens.TryGetValue(unit.Id.Value, out var token)) token.SetArrowMode(mode);
+        OpenUnitMenu(_state.Armies.First(x => x.Id == unit.Id));
     }
 
     private void ShowUnitChoices(HexCoord hex, IReadOnlyList<CombatUnit> units)
@@ -5545,6 +5561,18 @@ public sealed partial class CampaignMapScene : Node3D
         ret.TooltipText = "가장 가까운 아군 성으로 행군해 입성한다.";
         ret.Pressed += ReturnSelectedUnit;
         _unitCmdBox.AddChild(ret);
+
+        _archerArrowBox = new VBoxContainer();
+        _archerArrowBox.AddChild(MakeLabel("· 화살", 10, GoldBright));
+        _normalArrowButton = Item("일반화살");
+        _normalArrowButton.TooltipText = "기본 피해를 그대로 전달합니다.";
+        _normalArrowButton.Pressed += () => SetSelectedArcherArrowMode(ArcherArrowMode.Normal);
+        _archerArrowBox.AddChild(_normalArrowButton);
+        _fireArrowButton = Item("불화살");
+        _fireArrowButton.TooltipText = "숲·산악 +10%, 등갑병 +60%, 그 외 지형 -10%, 기병 추가 -10%, 비 -90%";
+        _fireArrowButton.Pressed += () => SetSelectedArcherArrowMode(ArcherArrowMode.Fire);
+        _archerArrowBox.AddChild(_fireArrowButton);
+        _unitCmdBox.AddChild(_archerArrowBox);
 
         _unitCmdBox.AddChild(MakeLabel("· 야전", 10, GoldBright));
         var construction = Item("건축", accent: true);
@@ -16816,6 +16844,7 @@ public sealed partial class CampaignMapScene : Node3D
             var color = ArmyFactionColor(army.Field.Owner);
             EnsureArmyToken(army);
             var token = _armyTokens[army.Id.Value];
+            token.SetArrowMode(army.ArrowMode);
 
             token.SetFormationSize(army.IsSupply || army.IsArmyGroup ? 1 : FormationFor(army.Pool.Active)); // 보급부대·집단군은 규모와 무관하게 단일 전용 모델
             var insideFieldBuilding = fieldGarrisonIds.Contains(army.Id);

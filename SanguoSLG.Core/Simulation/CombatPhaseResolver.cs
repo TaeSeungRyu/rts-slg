@@ -82,6 +82,8 @@ public sealed class CombatPhaseResolver
                 if (attacker.StrikeActive is null)
                     raw = raw * attacker.TreasureNormalAttackPercent / 100;
 
+                raw = raw * ArcherArrowRules.DamagePercent(attacker.ArrowMode, attacker.Class,
+                    target.Terrain, target.TroopCode, target.Class, attacker.IsRaining) / 100;
                 raw = raw * attacker.RelicAttackPercent / 100;
                 raw = raw * 100 / target.RelicDefensePercent;
 

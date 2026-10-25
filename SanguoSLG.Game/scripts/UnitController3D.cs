@@ -13,6 +13,9 @@ namespace SanguoSLG.Game;
 /// </summary>
 public partial class UnitController3D : Node3D
 {
+    private ArcherArrowMode _arrowMode = ArcherArrowMode.Normal;
+
+    public void SetArrowMode(ArcherArrowMode mode) => _arrowMode = mode;
     /// <summary>한 타일을 건너는 데 걸리는 시간. 병종 데이터가 생기면 이동력에 따라 달라진다.</summary>
     [Export] public float StepSeconds = 0.36f;
 
@@ -1159,7 +1162,8 @@ public partial class UnitController3D : Node3D
         var lateral = new Vector3(forward.Z, 0f, -forward.X);
         var to = new Vector3(from.X, Position.Y, from.Z)
             + forward * rangeTiles + lateral * scatter;
-        ProjectileView.SpawnArrow(_overlay, from, to, ArrowFlightSeconds);
+        ProjectileView.SpawnArrow(_overlay, from, to, ArrowFlightSeconds,
+            _arrowMode == ArcherArrowMode.Fire ? ProjectileView.Variant.Fire : ProjectileView.Variant.Basic);
     }
 
     // 공성탑 사거리(spec-unit.md range_unit). 병종 데이터가 생기면 그쪽에서 받는다.
