@@ -359,10 +359,11 @@ public sealed partial class CampaignMapScene
             && preview.CameraSize == 2.9f
             && preview.FindChild("PreviewPlainTiles", true, false) is Node3D tiles
             && tiles.GetChildCount() == 7
-            && preview.TileCenterDistance > 0f && preview.AllyModelCount == 7;
-        GetTree().CreateTimer(2.7).Timeout += () =>
+            && preview.TileCenterDistance > 0f && preview.HasUnitModels;
+        GetTree().CreateTimer(4.6).Timeout += () =>
         {
-            passed &= preview?.Day == 6 && preview.EffectAttached && preview.HasUnitModels;
+            passed &= preview?.Day == 6 && preview.EffectAttached && preview.HasUnitModels
+                && preview.CombatMotionCount >= 2;
             GD.Print($"[skill-guide-qa] passed={passed} entries={initialCount} missingIcons={missingIcons} previewDay={preview?.Day}");
             GetTree().Quit(passed ? 0 : 1);
         };

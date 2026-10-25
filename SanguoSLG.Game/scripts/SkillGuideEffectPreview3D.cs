@@ -8,8 +8,11 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
 {
     private readonly SubViewport _viewport;
     private Node3D? _stage;
+    private MapView3D? _previewMap;
     private Node3D? _ally;
     private Node3D? _enemy;
+    private UnitController3D? _allyUnit;
+    private UnitController3D? _enemyUnit;
     private ActiveSkill? _skill;
     private Godot.Timer? _timer;
     private int _day;
@@ -18,8 +21,8 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
     public string? SkillCode => _skill?.Code;
     public int Day => _day;
     public bool EffectAttached { get; private set; }
-    public bool HasUnitModels => _ally?.GetChildCount() > 0 && _enemy?.GetChildCount() > 0;
-    public int AllyModelCount => _ally?.GetChildCount() ?? 0;
+    public bool HasUnitModels => _allyUnit is not null && _enemyUnit is not null;
+    public int CombatMotionCount => (_allyUnit?.AttackMotionStartCount ?? 0) + (_enemyUnit?.AttackMotionStartCount ?? 0);
     public float TileCenterDistance { get; private set; }
     public float CameraSize => (_stage?.FindChild("PreviewCamera", true, false) as Camera3D)?.Size ?? 0f;
 
@@ -57,6 +60,8 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         }
         _stage = new Node3D { Name = "PreviewStage" };
         _viewport.AddChild(_stage);
+        _previewMap = new MapView3D { Name = "PreviewUnitMap" };
+        _stage.AddChild(_previewMap);
         var camera = new Camera3D { Name = "PreviewCamera", Current = true,
             Projection = Camera3D.ProjectionType.Orthogonal,
             Size = 2.9f, Position = new Vector3(0, 2.9f, 4.6f) };
@@ -95,11 +100,11 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
             tile.Position = HexPosition(q, r);
             ground.AddChild(tile);
         }
-        _ally = Unit("res://assets/models/troop-swordsman.glb", HexPosition(-1, 0) + Vector3.Up * tileTop);
-        _enemy = Unit("res://assets/models/troop-swordsman.glb", HexPosition(1, 0) + Vector3.Up * tileTop);
+        _ally = Unit(0, HexPosition(-1, 0) + Vector3.Up * tileTop, out _allyUnit);
+        _enemy = Unit(1, HexPosition(1, 0) + Vector3.Up * tileTop, out _enemyUnit);
         _status.Text = skill is null ? "패시브 스킬은 별도 발동 에셋이 없습니다" : "1일차 · ● ○ ○ ○ ○";
         if (skill is null) return;
-        _timer ??= new Godot.Timer { WaitTime = 0.34, OneShot = false };
+        _timer ??= new Godot.Timer { WaitTime = 0.7, OneShot = false };
         if (_timer.GetParent() is null)
         {
             AddChild(_timer);
@@ -108,14 +113,14 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         _timer.Start();
     }
 
-    private Node3D Unit(string path, Vector3 position)
+    private Node3D Unit(int modelIndex, Vector3 position, out UnitController3D unit)
     {
         var anchor = new Node3D { Position = position };
         _stage!.AddChild(anchor);
-        if (ResourceLoader.Exists(path))
-        {
-            TroopFormation.Build(anchor, GD.Load<PackedScene>(path), 7);
-        }
+        unit = new UnitController3D();
+        anchor.AddChild(unit);
+        unit.InitDisplay(_previewMap!, modelIndex == 0 ? new Color(0.3f, 0.58f, 0.9f)
+            : new Color(0.9f, 0.35f, 0.3f), modelIndex, new SanguoSLG.Core.Spatial.HexCoord(0, 0));
         return anchor;
     }
 
@@ -134,6 +139,8 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
         if (_day <= 5)
         {
             _status.Text = $"{_day}일차 · {new string('●', _day)}{new string('○', 5 - _day)}";
+            _allyUnit?.PlayAttackMotionToward(_enemy.GlobalPosition);
+            _enemyUnit?.PlayAttackMotionToward(_ally.GlobalPosition);
             return;
         }
         _timer?.Stop();
