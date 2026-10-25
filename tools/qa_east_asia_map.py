@@ -56,6 +56,8 @@ assert bounds["west"] == 91 and bounds["east"] == 133
 assert rows[cell(110.5, 30.6)[1]][cell(110.5, 30.6)[0]] == "W"
 assert not passable(*cell(110.5, 30.6))
 assert len(data["land_routes"]) >= 10
+assert {"북경—요동", "요동—평양", "평양—한성", "한성—부산"}.issubset(
+    {item["name"] for item in data["land_routes"]})
 for plotted in data["land_routes"]:
     tiles = plotted["tiles"]
     assert len(tiles) >= 2 and all(passable(*tile) for tile in tiles), plotted["name"]
