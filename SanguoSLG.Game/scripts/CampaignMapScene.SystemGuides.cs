@@ -11,63 +11,58 @@ public sealed partial class CampaignMapScene
         var box = SystemView("부대설명", width, out var scroll, out var panel, out var titleRow);
         var maxResearchBonus = SanguoSLG.Core.Simulation.ResearchCurve.Bonus(10);
         box.AddChild(MakeLabel($"기본 → 해당 병종 연구 Lv.10 최대치 (공격·방어 각각 +{maxResearchBonus}). 이동·사거리는 연구로 변하지 않습니다. 헤더를 눌러 정렬하세요.", 13, Parchment));
-        var heading = new HBoxContainer { Name = "TroopGuideHeader" };
-        heading.AddThemeConstantOverride("separation", 10);
-        var rows = new VBoxContainer { Name = "TroopGuideRows" };
-        string sort = "class";
-        bool descending = false;
-        foreach (var (key, caption, size) in new (string, string, float)[] { ("class", "병종 카드", 250), ("unit", "부대 공격", 105), ("building", "건물 공격", 105), ("defense", "방어", 80), ("move", "이동/일", 90), ("range", "사거리 (부대/건물/성)", 225) })
+        var table = new Tree
         {
-            var cell = MakeButton(caption);
-            cell.Name = $"TroopGuideSort_{key}";
-            cell.CustomMinimumSize = new Vector2(size, 30);
-            cell.Pressed += () => { descending = sort == key && !descending; sort = key; FillRows(); };
-            heading.AddChild(cell);
+            Name = "TroopGuideTable", Columns = 6, ColumnTitlesVisible = true,
+            HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
+            CustomMinimumSize = new Vector2(0, height - 110),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        table.AddThemeFontOverride("font", _font);
+        table.AddThemeFontSizeOverride("font_size", 14);
+        table.AddThemeFontOverride("title_button_font", _font);
+        table.AddThemeFontSizeOverride("title_button_font_size", 13);
+        var captions = new[] { "병종 카드", "부대 공격", "건물 공격", "방어", "이동/일", "사거리 (부대/건물/성)" };
+        var widths = new[] { 215, 105, 105, 80, 90, 195 };
+        for (var col = 0; col < captions.Length; col++)
+        {
+            table.SetColumnTitle(col, captions[col]);
+            table.SetColumnCustomMinimumWidth(col, widths[col]);
+            table.SetColumnExpand(col, col == 0 || col == 5);
         }
-        box.AddChild(heading);
-        box.AddChild(rows);
+        box.AddChild(table);
+        var sort = 0;
+        bool descending = false;
+        table.ColumnTitleClicked += (column, _) =>
+        {
+            descending = sort == column && !descending;
+            sort = (int)column;
+            FillRows();
+        };
         void FillRows()
         {
-            foreach (var child in rows.GetChildren()) { rows.RemoveChild(child); child.QueueFree(); }
+            table.Clear();
+            var root = table.CreateItem();
             var ordered = sort switch
             {
-                "unit" => _troops.OrderBy(t => t.AtkUnit).ThenBy(t => t.Name, StringComparer.Ordinal),
-                "building" => _troops.OrderBy(t => t.AtkBuilding).ThenBy(t => t.Name, StringComparer.Ordinal),
-                "defense" => _troops.OrderBy(t => t.Df).ThenBy(t => t.Name, StringComparer.Ordinal),
-                "move" => _troops.OrderBy(t => t.MovementPerDay).ThenBy(t => t.Name, StringComparer.Ordinal),
-                "range" => _troops.OrderBy(t => t.RangeUnit).ThenBy(t => t.RangeBuilding).ThenBy(t => t.RangeCastle),
+                1 => _troops.OrderBy(t => t.AtkUnit).ThenBy(t => t.Name, StringComparer.Ordinal),
+                2 => _troops.OrderBy(t => t.AtkBuilding).ThenBy(t => t.Name, StringComparer.Ordinal),
+                3 => _troops.OrderBy(t => t.Df).ThenBy(t => t.Name, StringComparer.Ordinal),
+                4 => _troops.OrderBy(t => t.MovementPerDay).ThenBy(t => t.Name, StringComparer.Ordinal),
+                5 => _troops.OrderBy(t => t.RangeUnit).ThenBy(t => t.RangeBuilding).ThenBy(t => t.RangeCastle),
                 _ => _troops.OrderBy(t => t.Class).ThenBy(t => t.Name, StringComparer.Ordinal),
             };
             foreach (var troop in descending ? ordered.Reverse() : ordered)
             {
-            var row = new PanelContainer();
-            row.AddThemeStyleboxOverride("panel", Frame(InkSoft, Gold, 1, 6, 7));
-            var cells = new HBoxContainer();
-            cells.AddThemeConstantOverride("separation", 10);
-            row.AddChild(cells);
-            var identity = new HBoxContainer { CustomMinimumSize = new Vector2(250, 68) };
-            identity.AddThemeConstantOverride("separation", 8);
-            var artwork = DeployUnitArtwork(UnitCard(troop.Code, troop.Class), 58);
-            artwork.Name = "TroopGuideCard";
-            identity.AddChild(artwork);
-            var identityText = new VBoxContainer();
-            identityText.AddChild(MakeLabel(troop.Name, 15, GoldBright));
-            identityText.AddChild(MakeLabel(ClassName(troop.Class), 12, Parchment));
-            identity.AddChild(identityText);
-            cells.AddChild(identity);
-            foreach (var (value, size) in new (string, float)[] {
-                ($"{troop.AtkUnit} → {troop.AtkUnit + maxResearchBonus}", 105),
-                ($"{troop.AtkBuilding} → {troop.AtkBuilding + maxResearchBonus}", 105),
-                ($"{troop.Df} → {troop.Df + maxResearchBonus}", 80),
-                (troop.MovementPerDay.ToString(), 90),
-                ($"{troop.RangeUnit} / {troop.RangeBuilding} / {troop.RangeCastle}", 225) })
-            {
-                var stat = MakeLabel(value, 14, Parchment);
-                stat.CustomMinimumSize = new Vector2(size, 68);
-                stat.VerticalAlignment = VerticalAlignment.Center;
-                cells.AddChild(stat);
-            }
-            rows.AddChild(row);
+                var row = table.CreateItem(root);
+                row.SetText(0, $"{troop.Name} · {ClassName(troop.Class)}");
+                row.SetIcon(0, RoundedOptionTexture(UnitCard(troop.Code, troop.Class), 36));
+                row.SetIconMaxWidth(0, 36);
+                row.SetText(1, $"{troop.AtkUnit} → {troop.AtkUnit + maxResearchBonus}");
+                row.SetText(2, $"{troop.AtkBuilding} → {troop.AtkBuilding + maxResearchBonus}");
+                row.SetText(3, $"{troop.Df} → {troop.Df + maxResearchBonus}");
+                row.SetText(4, troop.MovementPerDay.ToString());
+                row.SetText(5, $"{troop.RangeUnit} / {troop.RangeBuilding} / {troop.RangeCastle}");
             }
         }
         FillRows();
@@ -83,22 +78,20 @@ public sealed partial class CampaignMapScene
         trigger?.EmitSignal(Button.SignalName.Pressed);
         var labels = _modalLayer?.FindChildren("*", "Label", true, false).OfType<Label>()
             .Select(label => label.Text).ToList() ?? [];
-        var cards = _modalLayer?.FindChildren("TroopGuideCard", "PanelContainer", true, false).OfType<PanelContainer>().ToList() ?? [];
-        var rows = _modalLayer?.FindChild("TroopGuideRows", true, false) as VBoxContainer;
-        var sortButton = _modalLayer?.FindChild("TroopGuideSort_unit", true, false) as Button;
-        sortButton?.EmitSignal(Button.SignalName.Pressed);
-        var ascendingFirst = rows?.GetChild<PanelContainer>(0).FindChildren("*", "Label", true, false)
-            .OfType<Label>().FirstOrDefault()?.Text;
-        sortButton?.EmitSignal(Button.SignalName.Pressed);
-        var descendingFirst = rows?.GetChild<PanelContainer>(0).FindChildren("*", "Label", true, false)
-            .OfType<Label>().FirstOrDefault()?.Text;
-        var passed = trigger is not null && labels.Any(text => text.Contains("투석기"))
-            && labels.Any(text => text.Contains("공성탑"))
+        var table = _modalLayer?.FindChild("TroopGuideTable", true, false) as Tree;
+        var items = table?.GetRoot()?.GetChildren().ToList() ?? [];
+        var validItems = items.Count == _troops.Count && items.All(item => item.GetIcon(0) is not null)
+            && items.Any(item => item.GetText(0).Contains("투석기"))
+            && items.Any(item => item.GetText(0).Contains("공성탑"));
+        table?.EmitSignal(Tree.SignalName.ColumnTitleClicked, 1, 1);
+        var ascendingFirst = table?.GetRoot()?.GetFirstChild()?.GetText(0);
+        table?.EmitSignal(Tree.SignalName.ColumnTitleClicked, 1, 1);
+        var descendingFirst = table?.GetRoot()?.GetFirstChild()?.GetText(0);
+        var passed = trigger is not null
             && _modalLayer?.FindChild("SystemViewBack", true, false) is Button
-            && _modalLayer?.FindChild("TroopGuideHeader", true, false) is HBoxContainer
+            && table?.Columns == 6 && table.ColumnTitlesVisible
             && ascendingFirst != descendingFirst && labels.Any(text => text.Contains("+13"))
-            && cards.Count == _troops.Count && cards.All(card =>
-                card.FindChildren("*", "TextureRect", true, false).OfType<TextureRect>().Any(image => image.Texture is not null));
+            && validItems;
         GD.Print($"[troop-guide-qa] passed={passed} entries={_troops.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
