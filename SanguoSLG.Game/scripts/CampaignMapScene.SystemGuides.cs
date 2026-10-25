@@ -230,7 +230,7 @@ public sealed partial class CampaignMapScene
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         columns.AddThemeConstantOverride("separation", 12);
         box.AddChild(columns);
-        var list = new Tree { Name = "SkillGuideList", CustomMinimumSize = new Vector2(375, height - 150),
+        var list = new Tree { Name = "SkillGuideList", CustomMinimumSize = new Vector2(245, height - 150),
             SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         list.Columns = 3;
         list.HideRoot = true;
@@ -239,9 +239,9 @@ public sealed partial class CampaignMapScene
         list.SetColumnTitle(0, "이름");
         list.SetColumnTitle(1, "종류");
         list.SetColumnTitle(2, "형태");
-        list.SetColumnCustomMinimumWidth(0, 180);
-        list.SetColumnCustomMinimumWidth(1, 78);
-        list.SetColumnCustomMinimumWidth(2, 68);
+        list.SetColumnCustomMinimumWidth(0, 127);
+        list.SetColumnCustomMinimumWidth(1, 57);
+        list.SetColumnCustomMinimumWidth(2, 53);
         list.AddThemeFontOverride("font", _font);
         columns.AddChild(list);
         var detailBox = new VBoxContainer { Name = "SkillGuideDetailBox",
@@ -268,7 +268,8 @@ public sealed partial class CampaignMapScene
         skillName.Name = "SkillGuideName";
         titleBox.AddChild(skillName);
         var preview = new SkillGuideEffectPreview3D();
-        preview.CustomMinimumSize = new Vector2(420, 225);
+        preview.CustomMinimumSize = new Vector2(390, 205);
+        preview.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         detailBox.AddChild(preview);
         var replay = MakeButton("6일 발동 다시 보기");
         replay.Name = "SkillGuideReplay";
@@ -321,6 +322,7 @@ public sealed partial class CampaignMapScene
                 var item = list.CreateItem(root);
                 item.SetText(0, entry.Item1);
                 item.SetIcon(0, SkillImage(entry.Item3, entry.Item4, entry.Item5));
+                item.SetIconMaxWidth(0, 42);
                 item.SetText(1, entry.Item4);
                 item.SetText(2, entry.Item5);
                 item.SetMetadata(0, i);
@@ -348,7 +350,8 @@ public sealed partial class CampaignMapScene
         var missingIcons = list?.GetRoot()?.GetChildren().Count(item => item.GetIcon(0) is null) ?? initialCount;
         var hasSkillColumns = list?.Columns == 3 && list.SelectMode == Tree.SelectModeEnum.Row
             && list.GetColumnTitle(0) == "이름"
-            && list.GetColumnTitle(1) == "종류" && list.GetColumnTitle(2) == "형태";
+            && list.GetColumnTitle(1) == "종류" && list.GetColumnTitle(2) == "형태"
+            && list.CustomMinimumSize.X == 245;
         search?.EmitSignal(LineEdit.SignalName.TextChanged, "무쌍");
         var image = _modalLayer?.FindChild("SkillGuideCardImage", true, false) as TextureRect;
         var preview = _modalLayer?.FindChild("SkillGuideEffectPreview", true, false) as SkillGuideEffectPreview3D;
@@ -360,6 +363,7 @@ public sealed partial class CampaignMapScene
             && _modalLayer?.FindChild("SkillGuideCard", true, false) is PanelContainer
             && _modalLayer?.FindChild("SkillGuideDetailScroll", true, false) is null
             && preview?.SkillCode == "peerless"
+            && preview.CustomMinimumSize.X == 390
             && preview.CameraSize == 2.9f
             && preview.FindChild("PreviewPlainTiles", true, false) is Node3D tiles
             && tiles.GetChildCount() == 7
