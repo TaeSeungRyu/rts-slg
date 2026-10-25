@@ -6,8 +6,25 @@ using SanguoSLG.Core.Simulation;
 
 public sealed partial class CampaignMapScene
 {
+    private async void RunArmyCorpsModalQa()
+    {
+        OpenSystemPalette();
+        OpenArmyCorpsList();
+        OpenArmyCorpsEditor(null);
+        OpenArmyCorpsList();
+        var close = _modalLayer?.FindChild("SystemViewClose", true, false) as Button;
+        close?.EmitSignal(BaseButton.SignalName.ButtonDown);
+        await ToSignal(GetTree().CreateTimer(0.2), SceneTreeTimer.SignalName.Timeout);
+        var leftovers = GetChildren().OfType<CanvasLayer>().Count(layer =>
+            layer.GetChildren().OfType<PanelContainer>().Any(panel => panel.HasMeta("modal_root")));
+        var passed = close is not null && _modalLayer is null && leftovers == 0;
+        GD.Print($"[maptestcorpsmodalqa] close={close is not null} leftovers={leftovers} passed={passed}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
     private void OpenArmyCorpsList()
     {
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var width = Mathf.Min(920f, GetViewport().GetVisibleRect().Size.X * 0.9f);
         var height = Mathf.Min(640f, GetViewport().GetVisibleRect().Size.Y * 0.86f);
         var box = SystemView("군단편성", width, out var scroll, out var panel, out var titleRow);
@@ -43,6 +60,7 @@ public sealed partial class CampaignMapScene
 
     private void OpenArmyCorpsEditor(int? corpsId)
     {
+        if (_modalLayer is not null) { FadeOutModal(_modalLayer); _modalLayer = null; }
         var existing = _state.Corps.FirstOrDefault(entry => entry.Id == corpsId && entry.Faction == Player);
         var width = Mathf.Min(1040f, GetViewport().GetVisibleRect().Size.X * 0.94f);
         var height = Mathf.Min(690f, GetViewport().GetVisibleRect().Size.Y * 0.88f);
