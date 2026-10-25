@@ -1304,6 +1304,15 @@ public sealed partial class CampaignMapScene : Node3D
 
     public override void _UnhandledInput(InputEvent @event)
     {
+        // 부대설명 목록·상세의 마우스 입력이 3D 맵 선택으로 전파되지 않게 한다.
+        if (@event is InputEventMouse && _modalLayer is { Visible: true } layer
+            && GodotObject.IsInstanceValid(layer)
+            && layer.GetChildren().OfType<PanelContainer>().Any(panel =>
+                panel.Name.ToString() is "TroopGuideListModal" or "TroopGuideDetailModal"))
+        {
+            GetViewport().SetInputAsHandled();
+            return;
+        }
         // 마우스 오버: 밑 타일에 호버 육각.
         if (@event is InputEventMouseMotion motion)
         {

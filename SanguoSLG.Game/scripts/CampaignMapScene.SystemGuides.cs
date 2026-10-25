@@ -9,6 +9,7 @@ public sealed partial class CampaignMapScene
         const float width = 1040f;
         const float height = 650f;
         var box = SystemView("부대설명", width, out var scroll, out var panel, out var titleRow);
+        panel.Name = "TroopGuideListModal";
         var maxResearchBonus = SanguoSLG.Core.Simulation.ResearchCurve.Bonus(10);
         box.AddChild(MakeLabel($"기본 → 해당 병종 연구 Lv.10 최대치 (공격·방어 각각 +{maxResearchBonus}). 이동·사거리는 연구로 변하지 않습니다. 헤더를 눌러 정렬하세요.", 13, Parchment));
         var table = new Tree
@@ -87,6 +88,7 @@ public sealed partial class CampaignMapScene
         const float width = 720f;
         const float height = 390f;
         var box = SystemView(troop.Name, width, out var scroll, out var panel, out var titleRow);
+        panel.Name = "TroopGuideDetailModal";
         var back = titleRow.GetChild<Button>(0);
         back.ButtonDown -= OpenSystemPalette;
         back.ButtonDown += OpenTroopGuide;
@@ -194,6 +196,7 @@ public sealed partial class CampaignMapScene
         passed &= detailArt?.CustomMinimumSize.X == 188;
         passed &= _modalLayer?.FindChildren("*", "ScrollContainer", true, false)
             .OfType<ScrollContainer>().Any(container => container.CustomMinimumSize.Y >= 390) == true;
+        passed &= _modalLayer?.FindChild("TroopGuideDetailModal", false, false) is PanelContainer;
         GD.Print($"[troop-guide-qa] passed={passed} entries={_troops.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
