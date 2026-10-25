@@ -20,7 +20,7 @@ def coordinate(column, row):
 
 
 def passable(column, row):
-    return 0 <= column < width and 0 <= row < height and rows[row][column] in "PFMDR"
+    return 0 <= column < width and 0 <= row < height and rows[row][column] in "PFMDRB"
 
 
 def neighbors(column, row):
@@ -53,6 +53,8 @@ def route(start, end):
 
 assert len(rows) == height and all(len(row) == width for row in rows)
 assert bounds["west"] == 91 and bounds["east"] == 133
+assert rows[cell(110.5, 30.6)[1]][cell(110.5, 30.6)[0]] == "W"
+assert not passable(*cell(110.5, 30.6))
 assert len(data["land_routes"]) >= 10
 for plotted in data["land_routes"]:
     tiles = plotted["tiles"]
@@ -64,5 +66,5 @@ for latitude in (32.14, 32.66):
     corridor = [rows[row][column] for row in range(height) for column in range(width)
                 if abs(coordinate(column, row)[1] - latitude) < .1
                 and 104 <= coordinate(column, row)[0] <= 111]
-    assert sum(kind in "PFMDR" for kind in corridor) <= 5, (latitude, corridor)
+    assert sum(kind in "PFMDRB" for kind in corridor) <= 5, (latitude, corridor)
 print("[east-asia-map-qa] passed: cropped bounds, Shu passes and all plotted land routes")

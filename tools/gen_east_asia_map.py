@@ -61,10 +61,12 @@ MOUNTAIN_CHAINS = [
 ]
 RIVERS = [
     [(96, 35), (101, 36), (105, 37), (108, 39), (111, 40), (111, 37), (114, 35), (117, 36), (119, 37)],
-    [(91, 32), (97, 31), (101, 29), (105, 29), (108, 30), (111, 30), (114, 30.5), (118, 31), (121, 31.4)],
+    [(98, 31), (101, 29), (104, 28.8), (106, 29.5), (108.3, 30), (110.5, 30.6),
+     (113, 30.7), (115, 30.4), (117.3, 30.8), (121.2, 31.3)],
     [(106, 24), (109, 23), (112, 23), (114, 23), (115, 22.7)],
     [(116, 43), (120, 43), (123, 43.5), (126, 44), (130, 45)],
 ]
+YANGTZE_CROSSINGS = [(106.5, 29.6), (111.3, 30.7), (114.3, 30.6), (118.8, 32.1)]
 SHU_RIDGES = [
     ([(104.5, 34.4), (108.0, 34.3), (111.8, 34.0)], 0.68),
     ([(103.8, 32.7), (106.0, 32.35), (108.2, 32.3), (111.3, 31.8)], 0.73),
@@ -138,7 +140,7 @@ def route_network(rows):
         options = ((abs(column - x) + abs(row - y), x, y)
                    for y in range(max(0, row - 3), min(HEIGHT, row + 4))
                    for x in range(max(0, column - 3), min(WIDTH, column + 4))
-                   if rows[y][x] in "PFMDR")
+                   if rows[y][x] in "PFMDRB")
         _, x, y = min(options)
         return (x, y)
 
@@ -146,7 +148,7 @@ def route_network(rows):
         offset = -1 if x % 2 == 0 else 1
         for xx, yy in ((x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y),
                        (x - 1, y + offset), (x + 1, y + offset)):
-            if 0 <= xx < WIDTH and 0 <= yy < HEIGHT and rows[yy][xx] in "PFMDR":
+            if 0 <= xx < WIDTH and 0 <= yy < HEIGHT and rows[yy][xx] in "PFMDRB":
                 yield (xx, yy)
 
     result = []
@@ -163,7 +165,7 @@ def route_network(rows):
                 continue
             for neighbor in neighbors(*current):
                 x, y = neighbor
-                cost = {"P": 10, "F": 16, "M": 24, "D": 15, "R": 14}[rows[y][x]]
+                cost = {"P": 10, "F": 16, "M": 24, "D": 15, "R": 14, "B": 18}[rows[y][x]]
                 score = distance + cost
                 if score < distances.get(neighbor, 10**9):
                     distances[neighbor] = score
@@ -191,8 +193,11 @@ def main():
         characters = []
         for column in range(WIDTH):
             lon = WEST + (column + 0.5) * (EAST - WEST) / WIDTH
-            characters.append(terrain(lon, lat, column, row)
-                              if on_land(lon, lat, polygons) else "O")
+            if on_land(lon, lat, polygons):
+                characters.append("W" if near_line(lon, lat, RIVERS[1], 0.38)
+                                  else terrain(lon, lat, column, row))
+            else:
+                characters.append("O")
         rows.append(characters)
     for row in range(HEIGHT):
         for column in range(WIDTH):
@@ -202,13 +207,18 @@ def main():
                    and rows[row + dr][column + dc] not in "OW"
                    for dr in (-1, 0, 1) for dc in (-1, 0, 1)):
                 rows[row][column] = "W"
+    for lon, lat in YANGTZE_CROSSINGS:
+        column = int((lon - WEST) / (EAST - WEST) * WIDTH)
+        row = int((NORTH - lat) / (NORTH - SOUTH) * HEIGHT)
+        if rows[row][column] == "W":
+            rows[row][column] = "B"
     result = {
         "name": "동아시아 시나리오 기본 지형",
         "source": "Natural Earth 1:50m land (public domain); 산맥·하천·식생은 게임용 수작업 배치",
         "bounds": {"west": WEST, "east": EAST, "south": SOUTH, "north": NORTH},
         "width": WIDTH, "height": HEIGHT,
         "legend": {"P": "plains", "F": "forest", "M": "mountain", "H": "rock_mountain",
-                   "D": "desert", "R": "river", "W": "water_shallow", "O": "water_deep"},
+                   "D": "desert", "R": "river", "B": "river_crossing", "W": "water_shallow", "O": "water_deep"},
         "rows": ["".join(row) for row in rows],
         "land_routes": route_network(rows),
     }

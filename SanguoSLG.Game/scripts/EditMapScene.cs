@@ -16,6 +16,7 @@ public sealed partial class EditMapScene : Control
         ['H'] = ("험산", new Color("686d69")),
         ['D'] = ("사막", new Color("d4bd82")),
         ['R'] = ("하천", new Color("5d9eb8")),
+        ['B'] = ("큰강 나루", new Color("b5ad8a")),
         ['W'] = ("연안", new Color("72adbc")),
         ['O'] = ("해역", new Color("3b6c87")),
     };
@@ -245,7 +246,7 @@ public sealed partial class EditMapScene : Control
             && _terrainButtons.Count == Terrain.Count + 1 && _terrainButtons[0].ButtonPressed
             && _landRoutes.Count >= 10 && _landRoutes.All(route => route.Length >= 2
                 && route.All(tile => tile.X >= 0 && tile.X < _width && tile.Y >= 0 && tile.Y < _height
-                    && "PFMDR".Contains(_rows[tile.Y][tile.X])));
+                    && "PFMDRB".Contains(_rows[tile.Y][tile.X])));
         _terrainButtons.First(button => button.Text == "산악").EmitSignal(Button.SignalName.Pressed);
         valid &= _terrainFilter == 'M';
         var routesToggle = FindChild("LandRouteToggle", true, false) as CheckButton;
