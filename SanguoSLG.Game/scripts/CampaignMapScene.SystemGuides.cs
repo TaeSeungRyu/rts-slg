@@ -364,6 +364,9 @@ public sealed partial class CampaignMapScene
             && preview.FindChild("PreviewPlainTiles", true, false) is Node3D tiles
             && tiles.GetChildCount() == 7
             && preview.TileCenterDistance > 0f && preview.HasUnitModels
+            && preview.OpponentDistance < preview.TileCenterDistance * 1.3f
+            && tiles.FindChild("PreviewForestTile", false, false) is Node3D
+            && tiles.FindChild("PreviewMountainTile", false, false) is Node3D
             && preview.GreenTerrainApplied
             && tiles.FindChildren("*", "MeshInstance3D", true, false).OfType<MeshInstance3D>()
                 .Any(mesh => mesh.MaterialOverride is StandardMaterial3D material

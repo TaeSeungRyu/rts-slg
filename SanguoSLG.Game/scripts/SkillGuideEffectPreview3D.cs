@@ -24,6 +24,8 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
     public bool HasUnitModels => _allyUnit is not null && _enemyUnit is not null;
     public int CombatMotionCount => (_allyUnit?.AttackMotionStartCount ?? 0) + (_enemyUnit?.AttackMotionStartCount ?? 0);
     public float TileCenterDistance { get; private set; }
+    public float OpponentDistance => _ally is not null && _enemy is not null
+        ? _ally.Position.DistanceTo(_enemy.Position) : 0f;
     public bool GreenTerrainApplied { get; private set; }
     public float CameraSize => (_stage?.FindChild("PreviewCamera", true, false) as Camera3D)?.Size ?? 0f;
 
@@ -98,9 +100,15 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
             (0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (1, -1), (-1, 1),
         })
         {
-            var tile = grassScene.Instantiate<Node3D>();
+            var forest = q == 0 && r == -1;
+            var mountain = q == 1 && r == -1;
+            var tileScene = forest ? GD.Load<PackedScene>("res://assets/models/grass-forest.glb")
+                : mountain ? GD.Load<PackedScene>("res://assets/models/mountain-small.glb") : grassScene;
+            var tile = tileScene.Instantiate<Node3D>();
+            if (forest) tile.Name = "PreviewForestTile";
+            if (mountain) tile.Name = "PreviewMountainTile";
             tile.Position = HexPosition(q, r);
-            foreach (var tileMesh in TileMeshes(tile))
+            foreach (var tileMesh in TileMeshes(tile).Where(_ => !forest && !mountain))
             {
                 tileMesh.MaterialOverride = new StandardMaterial3D
                 {
@@ -110,8 +118,8 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
             }
             ground.AddChild(tile);
         }
-        _ally = Unit(0, HexPosition(-1, 0) + Vector3.Up * tileTop, out _allyUnit);
-        _enemy = Unit(1, HexPosition(1, 0) + Vector3.Up * tileTop, out _enemyUnit);
+        _ally = Unit(0, HexPosition(-1, 0) * 0.58f + Vector3.Up * tileTop, out _allyUnit);
+        _enemy = Unit(1, HexPosition(1, 0) * 0.58f + Vector3.Up * tileTop, out _enemyUnit);
         _status.Text = skill is null ? "패시브 스킬은 별도 발동 에셋이 없습니다" : "1일차 · ● ○ ○ ○ ○";
         if (skill is null) return;
         _timer ??= new Godot.Timer { WaitTime = 0.7, OneShot = false };
@@ -125,7 +133,7 @@ public sealed partial class SkillGuideEffectPreview3D : SubViewportContainer
 
     private Node3D Unit(int modelIndex, Vector3 position, out UnitController3D unit)
     {
-        var anchor = new Node3D { Position = position };
+        var anchor = new Node3D { Position = position, Scale = Vector3.One * 1.12f };
         _stage!.AddChild(anchor);
         unit = new UnitController3D();
         anchor.AddChild(unit);
