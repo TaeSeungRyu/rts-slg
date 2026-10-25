@@ -230,7 +230,7 @@ public sealed partial class CampaignMapScene
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         columns.AddThemeConstantOverride("separation", 12);
         box.AddChild(columns);
-        var list = new Tree { Name = "SkillGuideList", CustomMinimumSize = new Vector2((width - 12f) / 2f, height - 150),
+        var list = new Tree { Name = "SkillGuideList", CustomMinimumSize = new Vector2((width - 12f) * 0.7f, height - 150),
             SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         list.Columns = 3;
@@ -269,7 +269,7 @@ public sealed partial class CampaignMapScene
         skillName.Name = "SkillGuideName";
         titleStack.AddChild(skillName);
         var preview = new SkillGuideEffectPreview3D();
-        preview.CustomMinimumSize = new Vector2(310, 174);
+        preview.CustomMinimumSize = new Vector2(220, 142);
         preview.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         detailBox.AddChild(preview);
         var detailScroll = new ScrollContainer { Name = "SkillGuideDetailScroll",
@@ -281,7 +281,7 @@ public sealed partial class CampaignMapScene
         detail.Name = "SkillGuideDetail";
         detail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         detail.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        detail.CustomMinimumSize = new Vector2((width - 12f) / 2f - 20f, 0);
+        detail.CustomMinimumSize = new Vector2((width - 12f) * 0.3f - 20f, 0);
         detailScroll.AddChild(detail);
         var shown = entries;
         Texture2D? SkillImage(string code, string kind, string form)
@@ -351,7 +351,7 @@ public sealed partial class CampaignMapScene
         var hasSkillColumns = list?.Columns == 3 && list.SelectMode == Tree.SelectModeEnum.Row
             && list.GetColumnTitle(0) == "이름"
             && list.GetColumnTitle(1) == "종류" && list.GetColumnTitle(2) == "형태"
-            && Mathf.IsEqualApprox(list.CustomMinimumSize.X, (Mathf.Clamp(GetViewport().GetVisibleRect().Size.X * 0.92f, 920f, 1220f) - 12f) / 2f);
+            && Mathf.IsEqualApprox(list.CustomMinimumSize.X, (Mathf.Clamp(GetViewport().GetVisibleRect().Size.X * 0.92f, 920f, 1220f) - 12f) * 0.7f);
         search?.EmitSignal(LineEdit.SignalName.TextChanged, "무쌍");
         var image = _modalLayer?.FindChild("SkillGuideCardImage", true, false) as TextureRect;
         var preview = _modalLayer?.FindChild("SkillGuideEffectPreview", true, false) as SkillGuideEffectPreview3D;
@@ -365,7 +365,7 @@ public sealed partial class CampaignMapScene
             && _modalLayer?.FindChild("SkillGuideDetailBox", true, false) is VBoxContainer
             && _modalLayer?.FindChild("SkillGuideReplay", true, false) is null
             && preview?.SkillCode == "peerless"
-            && preview.CustomMinimumSize == new Vector2(310, 174)
+            && preview.CustomMinimumSize == new Vector2(220, 142)
             && preview.CameraSize == 2.9f
             && preview.FindChild("PreviewPlainTiles", true, false) is Node3D tiles
             && tiles.GetChildCount() == 7
@@ -382,9 +382,9 @@ public sealed partial class CampaignMapScene
             var card = _modalLayer?.FindChild("SkillGuideCard", true, false) as PanelContainer;
             var detailScroll = _modalLayer?.FindChild("SkillGuideDetailScroll", true, false) as ScrollContainer;
             passed &= list is not null && card is not null && detailScroll is not null
-                && list.Size.X > 400f
+                && list.Size.X > 600f
                 && image!.Size.X <= 72f && card.Size.Y <= 100f
-                && preview!.Size.X <= 330f && preview.Size.Y <= 190f
+                && preview!.Size.X <= 240f && preview.Size.Y <= 160f
                 && detailScroll.Size.X > preview.Size.X;
             passed &= preview?.Day == 6 && preview.EffectAttached && preview.HasUnitModels
                 && preview.CombatMotionCount >= 2;
