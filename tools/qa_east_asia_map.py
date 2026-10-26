@@ -66,6 +66,10 @@ assert {"북경—요동", "요동—평양", "평양—한성", "한성—부�
 assert {"성도—곤명", "곤명—남녕", "남녕—광주"}.issubset(
     {item["name"] for item in data["land_routes"]})
 assert "서부 강변—성도" in {item["name"] for item in data["land_routes"]}
+for name in ("무한 북안—의창 북안", "의창 북안—중경 북안"):
+    plotted = next(item for item in data["land_routes"] if item["name"] == name)
+    assert len(plotted["tiles"]) < 35, (name, len(plotted["tiles"]))
+    assert all(rows[y][x] != "B" for x, y in plotted["tiles"]), name
 assert "의창—무한" not in {item["name"] for item in data["land_routes"]}
 assert "무한—광주" not in {item["name"] for item in data["land_routes"]}
 for plotted in data["land_routes"]:

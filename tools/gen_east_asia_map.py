@@ -69,6 +69,8 @@ RIVERS = [
 YANGTZE_CROSSING = (106.5, 29.6)
 WESTERN_RIVER_ROAD = [(104.1, 30.7), (103.1, 31.3), (101.5, 31.4),
                       (99.5, 31.7), (98.2, 31.8)]
+CENTRAL_WEST_BANK_ROAD = [(114.3, 31.5), (112.8, 31.5), (111.3, 31.4),
+                          (109.3, 31.2), (107.6, 31.0), (106.8, 30.7)]
 CENTRAL_MOUNTAIN_PASS = [(108.9, 34.3), (110.8, 34.4), (112.5, 34.6)]
 SOUTHWEST_RIVER_ROAD = [(106.5, 29.0), (105.2, 27.4), (103.5, 26.0), (102.7, 25.0)]
 SHU_RIDGES = [
@@ -102,7 +104,8 @@ def near_line(lon, lat, chain, radius):
 
 def terrain(lon, lat, column, row):
     noise = ((column * 92821 + row * 68917 + column * row * 13) % 997) / 997
-    if near_line(lon, lat, WESTERN_RIVER_ROAD, 0.48):
+    if (near_line(lon, lat, WESTERN_RIVER_ROAD, 0.48)
+            or near_line(lon, lat, CENTRAL_WEST_BANK_ROAD, 0.48)):
         return "M"
     if (near_line(lon, lat, CENTRAL_MOUNTAIN_PASS, 0.44)
             or near_line(lon, lat, SOUTHWEST_RIVER_ROAD, 0.44)):
@@ -129,6 +132,8 @@ def terrain(lon, lat, column, row):
 
 ROUTE_PAIRS = [
     ("서부 강변—성도", (98.2, 31.8), (104.1, 30.7)),
+    ("무한 북안—의창 북안", (114.3, 31.5), (111.3, 31.4)),
+    ("의창 북안—중경 북안", (111.3, 31.4), (106.8, 30.7)),
     ("장안—한중", (108.9, 34.3), (107.0, 33.1)),
     ("한중—성도", (107.0, 33.1), (104.1, 30.7)),
     ("성도—중경", (104.1, 30.7), (106.5, 29.6)),
