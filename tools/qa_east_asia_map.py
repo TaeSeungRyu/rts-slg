@@ -58,6 +58,8 @@ assert not passable(*cell(110.5, 30.6))
 assert len(data["land_routes"]) >= 10
 assert {"북경—요동", "요동—평양", "평양—한성", "한성—부산"}.issubset(
     {item["name"] for item in data["land_routes"]})
+assert {"성도—곤명", "곤명—남녕", "남녕—광주"}.issubset(
+    {item["name"] for item in data["land_routes"]})
 for plotted in data["land_routes"]:
     tiles = plotted["tiles"]
     assert len(tiles) >= 2 and all(passable(*tile) for tile in tiles), plotted["name"]
