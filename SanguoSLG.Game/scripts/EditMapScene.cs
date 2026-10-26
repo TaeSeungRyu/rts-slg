@@ -454,6 +454,18 @@ public sealed partial class EditMapScene : Control
         var draftCity = new SanguoSLG.Core.Data.MapEditorSite(_nextSiteId, "QA성", "city", "small",
             vacant.X, vacant.Y);
         valid &= CanPlace(draftCity);
+        OpenCityEditor(vacant, null);
+        var koreanNameInput = _editorModal?.FindChildren("*", "LineEdit", true, false)
+            .OfType<LineEdit>().FirstOrDefault();
+        valid &= koreanNameInput is not null;
+        if (koreanNameInput is not null)
+        {
+            koreanNameInput.Text = "한글시험성";
+            _editorModal?.FindChildren("*", "Button", true, false).OfType<Button>()
+                .First(button => button.Text == "적용").EmitSignal(Button.SignalName.Pressed);
+            valid &= _sites.Any(site => site.Name == "한글시험성");
+            UndoDraft();
+        }
         OpenTerrainEditor(vacant);
         valid &= _editorModal is not null
             && _editorModal.FindChildren("*", "SubViewport", true, false).Count > 0

@@ -368,6 +368,7 @@ public sealed partial class EditMapScene
         var content = OpenEditorModal(existing is null ? "성 추가" : "성 편집");
         content.AddChild(new Label { Text = "성 이름" });
         var name = new LineEdit { Text = existing?.Name ?? "", PlaceholderText = "성 이름을 입력하세요" };
+        name.AddThemeFontOverride("font", _font);
         content.AddChild(name);
         var sizes = new[] { "small", "medium", "large" };
         var size = SelectOptions(content, "성 종류", ["소형성", "중형성", "대형성"],
@@ -380,6 +381,7 @@ public sealed partial class EditMapScene
         actions.AddChild(save);
         save.Pressed += () =>
         {
+            name.ApplyIme();
             var trimmed = name.Text.Trim();
             if (trimmed.Length == 0 || _sites.Any(site => site.Kind == "city" &&
                     site.Id != existing?.Id && site.Name == trimmed))
@@ -655,6 +657,7 @@ public sealed partial class EditMapScene
         var content = OpenEditorModal(existing is null ? "항구 추가" : "항구 편집");
         content.AddChild(new Label { Text = "항구 이름" });
         var name = new LineEdit { Text = existing?.Name ?? "", PlaceholderText = "항구 이름을 입력하세요" };
+        name.AddThemeFontOverride("font", _font);
         content.AddChild(name);
         var sizes = new[] { "small", "medium" };
         var size = SelectOptions(content, "항구 종류", ["소형항", "중형항"],
@@ -669,6 +672,7 @@ public sealed partial class EditMapScene
         var apply = new Button { Text = "적용", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         apply.Pressed += () =>
         {
+            name.ApplyIme();
             var trimmed = name.Text.Trim();
             if (trimmed.Length == 0 || _sites.Any(site => site.Kind == "port" &&
                     site.Id != existing?.Id && site.Name == trimmed))
