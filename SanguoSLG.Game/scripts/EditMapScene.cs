@@ -479,6 +479,12 @@ public sealed partial class EditMapScene : Control
         valid &= koreanNameInput is not null;
         if (koreanNameInput is not null)
         {
+            koreanNameInput.Text = "가";
+            koreanNameInput.SetCaretColumn(0);
+            koreanNameInput.EmitSignal(TextEdit.SignalName.TextChanged);
+            valid &= koreanNameInput.GetCaretColumn() == 1;
+            koreanNameInput.InsertTextAtCaret("나");
+            valid &= koreanNameInput.Text == "가나";
             koreanNameInput.Text = "한";
             koreanNameInput.SetCaretColumn(1);
             koreanNameInput.InsertTextAtCaret("글시험성");
@@ -523,6 +529,12 @@ public sealed partial class EditMapScene : Control
             valid &= koreanPortInput is not null;
             if (koreanPortInput is not null)
             {
+                koreanPortInput.Text = "가";
+                koreanPortInput.SetCaretColumn(0);
+                koreanPortInput.EmitSignal(TextEdit.SignalName.TextChanged);
+                valid &= koreanPortInput.GetCaretColumn() == 1;
+                koreanPortInput.InsertTextAtCaret("나");
+                valid &= koreanPortInput.Text == "가나";
                 koreanPortInput.Text = "한";
                 koreanPortInput.SetCaretColumn(1);
                 koreanPortInput.InsertTextAtCaret("글시험항");

@@ -377,6 +377,18 @@ public sealed partial class EditMapScene
         return picker;
     }
 
+    private static void KeepKoreanCaretAtEnd(TextEdit input)
+    {
+        input.TextChanged += () =>
+        {
+            if (input.HasImeText() || input.HasSelection() || input.GetLineCount() != 1) return;
+            var value = input.GetLine(0);
+            if (value.Length == 0 || !value.Any(character => character is >= '\uAC00' and <= '\uD7A3'))
+                return;
+            if (input.GetCaretColumn() == 0) input.SetCaretColumn(value.Length);
+        };
+    }
+
     private void OpenCityEditor(Vector2I tile, MapEditorSite? existing)
     {
         var content = OpenEditorModal(existing is null ? "성 추가" : "성 편집");
@@ -384,6 +396,7 @@ public sealed partial class EditMapScene
         var name = new TextEdit { Text = existing?.Name ?? "", PlaceholderText = "성 이름을 입력하세요",
             CustomMinimumSize = new Vector2(0f, 42f), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         name.AddThemeFontOverride("font", _font);
+        KeepKoreanCaretAtEnd(name);
         content.AddChild(name);
         var sizes = new[] { "small", "medium", "large" };
         var size = SelectOptions(content, "성 종류", ["소형성", "중형성", "대형성"],
@@ -674,6 +687,7 @@ public sealed partial class EditMapScene
         var name = new TextEdit { Text = existing?.Name ?? "", PlaceholderText = "항구 이름을 입력하세요",
             CustomMinimumSize = new Vector2(0f, 42f), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         name.AddThemeFontOverride("font", _font);
+        KeepKoreanCaretAtEnd(name);
         content.AddChild(name);
         var sizes = new[] { "small", "medium" };
         var size = SelectOptions(content, "항구 종류", ["소형항", "중형항"],
