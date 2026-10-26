@@ -474,21 +474,26 @@ public sealed partial class EditMapScene : Control
             vacant.X, vacant.Y);
         valid &= CanPlace(draftCity);
         OpenCityEditor(vacant, null);
-        var koreanNameInput = _editorModal?.FindChildren("*", "TextEdit", true, false)
-            .OfType<TextEdit>().FirstOrDefault();
+        var koreanNameInput = _editorModal?.FindChildren("*", "LineEdit", true, false)
+            .OfType<LineEdit>().FirstOrDefault();
         valid &= koreanNameInput is not null;
         if (koreanNameInput is not null)
         {
             koreanNameInput.Text = "가";
-            koreanNameInput.SetCaretColumn(0);
-            koreanNameInput.EmitSignal(TextEdit.SignalName.TextChanged);
+            koreanNameInput.CaretColumn = 0;
+            koreanNameInput.EmitSignal(LineEdit.SignalName.TextChanged, koreanNameInput.Text);
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            valid &= koreanNameInput.GetCaretColumn() == 1;
-            koreanNameInput.InsertTextAtCaret("나");
-            valid &= koreanNameInput.Text == "가나";
+            valid &= koreanNameInput.CaretColumn == 1;
+            koreanNameInput.Text = "나";
+            koreanNameInput.EmitSignal(LineEdit.SignalName.TextChanged, koreanNameInput.Text);
+            koreanNameInput.Text = "나";
+            koreanNameInput.CaretColumn = 0;
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            valid &= koreanNameInput.Text == "가나" && koreanNameInput.CaretColumn == 2;
             koreanNameInput.Text = "한";
-            koreanNameInput.SetCaretColumn(1);
+            koreanNameInput.CaretColumn = 1;
             koreanNameInput.InsertTextAtCaret("글시험성");
             _editorModal?.FindChildren("*", "Button", true, false).OfType<Button>()
                 .First(button => button.Text == "적용").EmitSignal(Button.SignalName.Pressed);
@@ -526,21 +531,31 @@ public sealed partial class EditMapScene : Control
         if (portDraft is not null && CanPlace(portDraft))
         {
             OpenPortEditor(coastal, null);
-            var koreanPortInput = _editorModal?.FindChildren("*", "TextEdit", true, false)
-                .OfType<TextEdit>().FirstOrDefault();
+            var koreanPortInput = _editorModal?.FindChildren("*", "LineEdit", true, false)
+                .OfType<LineEdit>().FirstOrDefault();
             valid &= koreanPortInput is not null;
             if (koreanPortInput is not null)
             {
                 koreanPortInput.Text = "가";
-                koreanPortInput.SetCaretColumn(0);
-                koreanPortInput.EmitSignal(TextEdit.SignalName.TextChanged);
+                koreanPortInput.CaretColumn = 0;
+                koreanPortInput.EmitSignal(LineEdit.SignalName.TextChanged, koreanPortInput.Text);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                valid &= koreanPortInput.GetCaretColumn() == 1;
-                koreanPortInput.InsertTextAtCaret("나");
-                valid &= koreanPortInput.Text == "가나";
+                valid &= koreanPortInput.CaretColumn == 1;
+                koreanPortInput.Text = "간";
+                koreanPortInput.EmitSignal(LineEdit.SignalName.TextChanged, koreanPortInput.Text);
+                valid &= koreanPortInput.Text == "간";
+                koreanPortInput.Text = "ㄴ";
+                koreanPortInput.EmitSignal(LineEdit.SignalName.TextChanged, koreanPortInput.Text);
+                koreanPortInput.Text = "나";
+                koreanPortInput.EmitSignal(LineEdit.SignalName.TextChanged, koreanPortInput.Text);
+                koreanPortInput.Text = "나";
+                koreanPortInput.CaretColumn = 0;
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                valid &= koreanPortInput.Text == "간나" && koreanPortInput.CaretColumn == 2;
                 koreanPortInput.Text = "한";
-                koreanPortInput.SetCaretColumn(1);
+                koreanPortInput.CaretColumn = 1;
                 koreanPortInput.InsertTextAtCaret("글시험항");
                 _editorModal?.FindChildren("*", "Button", true, false).OfType<Button>()
                     .First(button => button.Text == "적용").EmitSignal(Button.SignalName.Pressed);

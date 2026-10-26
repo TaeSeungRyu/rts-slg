@@ -377,21 +377,75 @@ public sealed partial class EditMapScene
         return picker;
     }
 
-    private static void KeepKoreanCaretAtEnd(TextEdit input)
+    private static void KeepKoreanCaretAtEnd(LineEdit input)
     {
-        input.TextChanged += () =>
+        var stableText = input.Text;
+        var sawNewJamo = false;
+        var explicitEdit = false;
+        var repairing = false;
+        var revision = 0;
+        static bool IsSyllable(char value) => value is >= '\uAC00' and <= '\uD7A3';
+        static bool IsJamo(char value) => value is >= '\u1100' and <= '\u11FF'
+            or >= '\u3130' and <= '\u318F' or >= '\uA960' and <= '\uA97F'
+            or >= '\uD7B0' and <= '\uD7FF';
+        static bool SameInitialAndVowel(char left, char right) =>
+            (left - '\uAC00') / 28 == (right - '\uAC00') / 28;
+        input.GuiInput += eventInput =>
         {
-            if (input.HasSelection() || input.GetLineCount() != 1) return;
-            var value = input.GetLine(0);
-            if (value.Length == 0 || !value.Any(character => character is >= '\uAC00' and <= '\uD7A3'))
+            if (eventInput is InputEventKey { Pressed: true } key
+                && (key.Keycode is Key.Backspace or Key.Delete || input.HasSelection()))
+                explicitEdit = true;
+        };
+        input.TextChanged += current =>
+        {
+            if (repairing) return;
+            var eventRevision = ++revision;
+            if (explicitEdit || stableText.Length == 0 || current.StartsWith(stableText, StringComparison.Ordinal))
+            {
+                stableText = current;
+                sawNewJamo = false;
+                explicitEdit = false;
+            }
+            else if (stableText.Length > 0 && IsSyllable(stableText[^1])
+                && current.Length > 0 && IsJamo(current[^1])
+                && (current.Length == 1 || current.Length == stableText.Length
+                    && current[..^1] == stableText[..^1]))
+            {
+                sawNewJamo = true;
                 return;
+            }
+            else if (stableText.Length > 0 && IsSyllable(stableText[^1])
+                && current.Length > 0 && IsSyllable(current[^1])
+                && (current.Length == 1 && sawNewJamo
+                    || current.Length == stableText.Length && current[..^1] == stableText[..^1]))
+            {
+                var next = current[^1];
+                if (sawNewJamo || !SameInitialAndVowel(stableText[^1], next))
+                {
+                    stableText += next;
+                    repairing = true;
+                    input.Text = stableText;
+                    input.CaretColumn = stableText.Length;
+                    repairing = false;
+                }
+                else stableText = current;
+                sawNewJamo = false;
+            }
+            else
+            {
+                stableText = current;
+                sawNewJamo = false;
+            }
+            if (stableText.Length == 0 || !stableText.Any(IsSyllable)) return;
             Callable.From(() =>
             {
                 if (!GodotObject.IsInstanceValid(input) || input.IsQueuedForDeletion()
-                    || input.GetLineCount() != 1 || input.HasSelection()
-                    || input.GetCaretColumn() != 0) return;
+                    || eventRevision != revision || input.HasSelection()) return;
+                repairing = true;
                 if (input.HasImeText()) input.ApplyIme();
-                input.SetCaretColumn(input.GetLine(0).Length);
+                if (input.Text != stableText) input.Text = stableText;
+                if (input.CaretColumn < input.Text.Length) input.CaretColumn = input.Text.Length;
+                repairing = false;
             }).CallDeferred();
         };
     }
@@ -400,8 +454,9 @@ public sealed partial class EditMapScene
     {
         var content = OpenEditorModal(existing is null ? "성 추가" : "성 편집");
         content.AddChild(new Label { Text = "성 이름" });
-        var name = new TextEdit { Text = existing?.Name ?? "", PlaceholderText = "성 이름을 입력하세요",
-            CustomMinimumSize = new Vector2(0f, 42f), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var name = new LineEdit { Text = existing?.Name ?? "", PlaceholderText = "성 이름을 입력하세요",
+            CustomMinimumSize = new Vector2(0f, 38f), SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            KeepEditingOnTextSubmit = true };
         name.AddThemeFontOverride("font", _font);
         KeepKoreanCaretAtEnd(name);
         content.AddChild(name);
@@ -691,8 +746,9 @@ public sealed partial class EditMapScene
     {
         var content = OpenEditorModal(existing is null ? "항구 추가" : "항구 편집");
         content.AddChild(new Label { Text = "항구 이름" });
-        var name = new TextEdit { Text = existing?.Name ?? "", PlaceholderText = "항구 이름을 입력하세요",
-            CustomMinimumSize = new Vector2(0f, 42f), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var name = new LineEdit { Text = existing?.Name ?? "", PlaceholderText = "항구 이름을 입력하세요",
+            CustomMinimumSize = new Vector2(0f, 38f), SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            KeepEditingOnTextSubmit = true };
         name.AddThemeFontOverride("font", _font);
         KeepKoreanCaretAtEnd(name);
         content.AddChild(name);
