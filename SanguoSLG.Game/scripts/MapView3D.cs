@@ -424,6 +424,9 @@ public partial class MapView3D : Node3D
                 if (instance.GetActiveMaterial(surface) is BaseMaterial3D material)
                 {
                     material.CullMode = BaseMaterial3D.CullModeEnum.Back;
+                    material.SpecularMode = BaseMaterial3D.SpecularModeEnum.Disabled;
+                    material.Metallic = 0f;
+                    material.Roughness = 1f;
                 }
             }
         }

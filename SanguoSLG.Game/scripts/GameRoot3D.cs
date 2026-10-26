@@ -588,6 +588,7 @@ public partial class GameRoot3D : Node3D
         RotationDegrees = new Vector3(-48f, -42f, 0f),
         LightColor = tone.SunColor,
         LightEnergy = tone.SunEnergy,
+        LightSpecular = 0f,
         ShadowEnabled = true,
 
         // 그림자 설정은 월드 크기에 맞춰야 한다. Godot 기본값(bias 0.1 / normal_bias 2.0,
