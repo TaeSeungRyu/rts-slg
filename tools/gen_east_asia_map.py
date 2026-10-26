@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "SanguoSLG.Game/assets/maps/east-asia-map.json"
+CITY_SITES = ROOT / "data/east-asia-city-sites.json"
 LAND_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson"
 WEST, EAST, SOUTH, NORTH = 97.72, 133.0, 18.0, 51.94285714285714 - 10 * (51.94285714285714 - 18.0) / 124
 WIDTH, HEIGHT = 174, 125
@@ -202,6 +203,55 @@ def route_network(rows):
     return result
 
 
+def city_positions(rows):
+    with CITY_SITES.open(encoding="utf-8") as source:
+        sites = json.load(source)
+    regions = {
+        "중국": (98.0, 125.3, 21.0, 43.5),
+        "대한민국": (125.6, 130.4, 34.0, 38.7),
+        "대만": (120.0, 122.4, 21.8, 25.5),
+        "일본": (129.2, 132.5, 31.6, 34.4),
+    }
+    result = []
+    for site in sites:
+        longitude, latitude = site["longitude"], site["latitude"]
+        column = int((longitude - WEST) / (EAST - WEST) * WIDTH)
+        row = int((NORTH - latitude) / (NORTH - SOUTH) * HEIGHT)
+        options = []
+        for y in range(max(0, row - 5), min(HEIGHT, row + 6)):
+            for x in range(max(0, column - 5), min(WIDTH, column + 6)):
+                lon = WEST + (x + 0.5) * (EAST - WEST) / WIDTH
+                lat = NORTH - (y + 0.5) * (NORTH - SOUTH) / HEIGHT
+                west, east, south, north = regions[site["region"]]
+                if not (west <= lon <= east and south <= lat <= north):
+                    continue
+                if rows[y][x] not in "PFMD":
+                    continue
+                if any((x - city["tile"][0]) ** 2 + (y - city["tile"][1]) ** 2 < 9
+                       for city in result):
+                    continue
+                neighbors = ((x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y),
+                             (x - 1, y + (-1 if x % 2 == 0 else 1)),
+                             (x + 1, y + (-1 if x % 2 == 0 else 1)))
+                surrounding_land = sum(0 <= xx < WIDTH and 0 <= yy < HEIGHT
+                                       and rows[yy][xx] in "PFMDRB"
+                                       for xx, yy in neighbors)
+                if surrounding_land < {"small": 2, "medium": 4, "large": 5}[site["size"]]:
+                    continue
+                distance = ((lon - longitude) / ((EAST - WEST) / WIDTH)) ** 2 + (
+                    (lat - latitude) / ((NORTH - SOUTH) / HEIGHT)) ** 2
+                terrain_penalty = {"P": 0, "F": 0.4, "M": 2.5, "D": 1.2}[rows[y][x]]
+                options.append((distance + terrain_penalty - surrounding_land * 0.03,
+                                x, y, lon, lat))
+        if not options:
+            raise ValueError(f"No suitable city site: {site['name']}")
+        _, x, y, lon, lat = min(options)
+        result.append({"name": site["name"], "region": site["region"],
+                       "size": site["size"], "tile": [x, y],
+                       "longitude": round(lon, 4), "latitude": round(lat, 4)})
+    return result
+
+
 def main():
     with urllib.request.urlopen(LAND_URL, timeout=45) as response:
         data = json.load(response)
@@ -244,6 +294,7 @@ def main():
                    "D": "desert", "R": "river", "B": "river_crossing", "W": "water_shallow", "O": "water_deep"},
         "rows": ["".join(row) for row in rows],
         "land_routes": route_network(rows),
+        "cities": city_positions(rows),
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

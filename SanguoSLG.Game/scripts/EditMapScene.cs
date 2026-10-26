@@ -5,6 +5,8 @@ namespace SanguoSLG.Game;
 
 public sealed partial class EditMapScene : Control
 {
+    private sealed record MapCity(string Name, string Region, string Size, Vector2I Tile);
+
     private const float Radius = 8f;
     private const float StepX = Radius * 1.5f;
     private static readonly float StepY = Radius * Mathf.Sqrt(3f);
@@ -38,7 +40,10 @@ public sealed partial class EditMapScene : Control
     private char? _terrainFilter;
     private readonly List<Button> _terrainButtons = [];
     private readonly List<Vector2I[]> _landRoutes = [];
+    private readonly List<MapCity> _cities = [];
     private bool _showLandRoutes = true;
+    private bool _showCities = true;
+    private FontFile _font = null!;
 
     public override void _Ready()
     {
@@ -51,6 +56,14 @@ public sealed partial class EditMapScene : Control
         foreach (var route in root.GetProperty("land_routes").EnumerateArray())
             _landRoutes.Add(route.GetProperty("tiles").EnumerateArray().Select(tile =>
                 new Vector2I(tile[0].GetInt32(), tile[1].GetInt32())).ToArray());
+        foreach (var city in root.GetProperty("cities").EnumerateArray())
+        {
+            var tile = city.GetProperty("tile");
+            _cities.Add(new MapCity(city.GetProperty("name").GetString() ?? "",
+                city.GetProperty("region").GetString() ?? "",
+                city.GetProperty("size").GetString() ?? "",
+                new Vector2I(tile[0].GetInt32(), tile[1].GetInt32())));
+        }
         var bounds = root.GetProperty("bounds");
         _west = bounds.GetProperty("west").GetDouble();
         _east = bounds.GetProperty("east").GetDouble();
@@ -65,7 +78,8 @@ public sealed partial class EditMapScene : Control
 
     private void BuildInterface()
     {
-        var font = GD.Load<FontFile>("res://assets/fonts/Pretendard-SemiBold.otf");
+        _font = GD.Load<FontFile>("res://assets/fonts/Pretendard-SemiBold.otf");
+        var font = _font;
         var bar = new PanelContainer { MouseFilter = MouseFilterEnum.Stop };
         bar.SetAnchorsAndOffsetsPreset(LayoutPreset.TopWide);
         bar.CustomMinimumSize = new Vector2(0, 115);
@@ -96,6 +110,12 @@ public sealed partial class EditMapScene : Control
         routesToggle.AddThemeFontSizeOverride("font_size", 12);
         routesToggle.Toggled += enabled => { _showLandRoutes = enabled; QueueRedraw(); };
         filters.AddChild(routesToggle);
+        var citiesToggle = new CheckButton { Name = "CityToggle", Text = $"성 배치 {_cities.Count}",
+            ButtonPressed = true, CustomMinimumSize = new Vector2(115, 26) };
+        citiesToggle.AddThemeFontOverride("font", font);
+        citiesToggle.AddThemeFontSizeOverride("font_size", 12);
+        citiesToggle.Toggled += enabled => { _showCities = enabled; QueueRedraw(); };
+        filters.AddChild(citiesToggle);
         void AddTerrainFilter(string name, char? code)
         {
             var button = new Button { Text = name, ToggleMode = true, ButtonGroup = group,
@@ -115,7 +135,7 @@ public sealed partial class EditMapScene : Control
         footer.CustomMinimumSize = new Vector2(0, 39);
         footer.AddThemeStyleboxOverride("panel", PanelStyle());
         AddChild(footer);
-        _tileInfo = new Label { Text = "지도 타일을 선택하면 지형과 대략적인 경위도를 표시합니다." };
+        _tileInfo = new Label { Text = "성을 클릭하면 지역과 규모를, 지형을 클릭하면 타일 정보를 표시합니다." };
         _tileInfo.AddThemeFontOverride("font", font);
         _tileInfo.AddThemeFontSizeOverride("font_size", 14);
         footer.AddChild(_tileInfo);
@@ -185,8 +205,55 @@ public sealed partial class EditMapScene : Control
                 DrawPolyline(points, new Color("f2e2a2"), 1.5f, true);
             }
         }
+        if (_showCities)
+        {
+            foreach (var city in _cities)
+            {
+                var center = Center(city.Tile.X, city.Tile.Y);
+                var radius = CityRadius(city);
+                var color = CityColor(city);
+                DrawCircle(center + new Vector2(0, 1.5f), radius + 2f, new Color("131c1e"));
+                DrawCircle(center, radius + 1f, new Color("e5d19d"));
+                DrawCircle(center, radius - 0.6f, color);
+                var roof = new[] { center + new Vector2(-radius * 0.65f, -0.6f),
+                    center + new Vector2(0, -radius * 0.66f),
+                    center + new Vector2(radius * 0.65f, -0.6f) };
+                DrawColoredPolygon(roof, new Color("fff0d3"));
+                DrawRect(new Rect2(center + new Vector2(-radius * 0.45f, 0),
+                    new Vector2(radius * 0.9f, radius * 0.5f)), new Color("fff0d3"));
+            }
+        }
         DrawSetTransform(Vector2.Zero);
+        if (_showCities)
+        {
+            foreach (var city in _cities)
+            {
+                var minimumScale = city.Size == "large" ? 0.5f : city.Size == "medium" ? 0.9f : 1.3f;
+                if (_scale < minimumScale) continue;
+                var center = _pan + Center(city.Tile.X, city.Tile.Y) * _scale;
+                var labelPosition = center + new Vector2(-39, -(CityRadius(city) + 4) * _scale);
+                DrawStringOutline(_font, labelPosition, city.Name, HorizontalAlignment.Center,
+                    78, 12, 3, new Color("10191a"));
+                DrawString(_font, labelPosition, city.Name, HorizontalAlignment.Center,
+                    78, 12, new Color("fff2d8"));
+            }
+        }
     }
+
+    private static float CityRadius(MapCity city) => city.Size switch
+    {
+        "large" => 9f,
+        "medium" => 7f,
+        _ => 5.5f,
+    };
+
+    private static Color CityColor(MapCity city) => city.Region switch
+    {
+        "대한민국" => new Color("658eb0"),
+        "대만" => new Color("bd8d62"),
+        "일본" => new Color("b57c91"),
+        _ => new Color("a28452"),
+    };
 
     public override void _GuiInput(InputEvent input)
     {
@@ -219,6 +286,24 @@ public sealed partial class EditMapScene : Control
 
     private void SelectTile(Vector2 screen)
     {
+        if (_showCities)
+        {
+            var city = _cities.OrderBy(item => screen.DistanceTo(
+                _pan + Center(item.Tile.X, item.Tile.Y) * _scale)).FirstOrDefault();
+            if (city != null && screen.DistanceTo(
+                    _pan + Center(city.Tile.X, city.Tile.Y) * _scale)
+                <= Mathf.Max(8f, (CityRadius(city) + 2f) * _scale))
+            {
+                var sizeName = city.Size switch
+                {
+                    "large" => "대형성",
+                    "medium" => "중형성",
+                    _ => "소형성",
+                };
+                _tileInfo.Text = $"{city.Name}  │  {city.Region}  │  {sizeName}";
+                return;
+            }
+        }
         var point = (screen - _pan) / _scale;
         var column = Mathf.RoundToInt(point.X / StepX);
         if (column < 0 || column >= _width) return;
@@ -246,11 +331,24 @@ public sealed partial class EditMapScene : Control
             && _terrainButtons.Count == Terrain.Count + 1 && _terrainButtons[0].ButtonPressed
             && _landRoutes.Count >= 10 && _landRoutes.All(route => route.Length >= 2
                 && route.All(tile => tile.X >= 0 && tile.X < _width && tile.Y >= 0 && tile.Y < _height
-                    && "PFMDRB".Contains(_rows[tile.Y][tile.X])));
+                    && "PFMDRB".Contains(_rows[tile.Y][tile.X])))
+            && _cities.Count == 36
+            && _cities.All(city => city.Tile.X >= 0 && city.Tile.X < _width
+                && city.Tile.Y >= 0 && city.Tile.Y < _height
+                && "PFMD".Contains(_rows[city.Tile.Y][city.Tile.X]));
         _terrainButtons.First(button => button.Text == "산악").EmitSignal(Button.SignalName.Pressed);
         valid &= _terrainFilter == 'M';
         var routesToggle = FindChild("LandRouteToggle", true, false) as CheckButton;
         valid &= routesToggle?.ButtonPressed == true && _showLandRoutes;
+        var citiesToggle = FindChild("CityToggle", true, false) as CheckButton;
+        valid &= citiesToggle?.ButtonPressed == true && _showCities;
+        var capital = _cities.FirstOrDefault(city => city.Name == "한성");
+        if (capital != null)
+        {
+            SelectTile(_pan + Center(capital.Tile.X, capital.Tile.Y) * _scale);
+            valid &= _tileInfo.Text.Contains("한성") && _tileInfo.Text.Contains("중형성");
+        }
+        else valid = false;
         GD.Print($"[edit-map-qa] passed={valid} tiles={_width * _height} bounds={_west}-{_east}E,{_south}-{_north}N");
         GetTree().Quit(valid ? 0 : 1);
     }

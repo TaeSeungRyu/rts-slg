@@ -1,5 +1,5 @@
 import json
-from collections import deque
+from collections import Counter, deque
 from pathlib import Path
 
 MAP_PATH = Path(__file__).resolve().parents[1] / "SanguoSLG.Game/assets/maps/east-asia-map.json"
@@ -83,6 +83,18 @@ for plotted in data["land_routes"]:
     tiles = plotted["tiles"]
     assert len(tiles) >= 2 and all(passable(*tile) for tile in tiles), plotted["name"]
     assert all(tuple(right) in neighbors(*left) for left, right in zip(tiles, tiles[1:])), plotted["name"]
+cities = data["cities"]
+assert len(cities) == len({city["name"] for city in cities})
+assert Counter(city["region"] for city in cities) == {
+    "중국": 28, "대한민국": 5, "대만": 1, "일본": 2}
+assert Counter(city["size"] for city in cities if city["region"] == "대한민국") == {
+    "medium": 2, "small": 3}
+assert all(city["size"] == "small" for city in cities if city["region"] == "일본")
+assert all(passable(*city["tile"]) and rows[city["tile"][1]][city["tile"][0]] != "B"
+           for city in cities)
+assert all((left["tile"][0] - right["tile"][0]) ** 2
+           + (left["tile"][1] - right["tile"][1]) ** 2 >= 9
+           for index, left in enumerate(cities) for right in cities[index + 1:])
 assert len(route((104.1, 30.7), (107.0, 33.1))) > 4
 assert len(route((107.0, 33.1), (108.9, 34.3))) > 3
 for latitude in (32.14, 32.66):
@@ -90,4 +102,4 @@ for latitude in (32.14, 32.66):
                 if abs(coordinate(column, row)[1] - latitude) < .1
                 and 104 <= coordinate(column, row)[0] <= 111]
     assert sum(kind in "PFMDRB" for kind in corridor) <= 6, (latitude, corridor)
-print("[east-asia-map-qa] passed: cropped bounds, Shu passes and all plotted land routes")
+print(f"[east-asia-map-qa] passed: bounds, routes, {len(cities)} city sites")
