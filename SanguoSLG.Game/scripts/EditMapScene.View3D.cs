@@ -147,7 +147,7 @@ public sealed partial class EditMapScene
     {
         var center = _mapView.HexToWorld(Axial(_viewCenter));
         _mapCamera.Position = center + new Vector3(0f, _viewSize * 0.9f, _viewSize * 0.72f);
-        _mapCamera.LookAt(center);
+        _mapCamera.LookAt(center, Vector3.Forward);
         _mapCamera.Size = _viewSize;
     }
 

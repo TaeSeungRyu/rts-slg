@@ -404,6 +404,11 @@ public sealed partial class EditMapScene : Control
         else valid = false;
         valid &= _mapViewport is not null && _mapCamera.Current && _visibleTiles.Count > 100
             && _visibleTiles.Count < _width * _height;
+        var centerTile = new Vector2I(_width / 2, _height / 2);
+        valid &= _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + Vector2I.Up))).Y
+            < _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + Vector2I.Down))).Y;
+        valid &= _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + Vector2I.Right))).X
+            > _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + Vector2I.Left))).X;
         var visibleRiver = _visibleTiles.Keys.FirstOrDefault(tile => _rows[tile.Y][tile.X] is 'R' or 'B');
         if (_visibleTiles.ContainsKey(visibleRiver) && _rows[visibleRiver.Y][visibleRiver.X] is 'R' or 'B')
         {
