@@ -114,9 +114,9 @@ public sealed partial class EditMapScene
             () => OpenTerrainEditor(tile));
         AddCommand("항구 관리", site is null && IsLand(terrain) && HasNeighborWater(tile),
             "물과 접한 빈 육상 타일을 선택하세요.",
-            () => _tileInfo.Text = "항구 관리 창을 준비합니다.");
+            () => OpenPortEditor(tile, null));
         AddCommand("항구 편집", site?.Kind == "port", "항구를 선택하세요.",
-            () => _tileInfo.Text = "항구 편집 창을 준비합니다.");
+            () => OpenPortEditor(tile, site));
         AddCommand("닫기", true, "", () =>
         {
             palette.QueueFree();
@@ -373,5 +373,75 @@ public sealed partial class EditMapScene
         if (!_terrainRedo.TryPop(out var edit)) return;
         SetTerrain(edit.Tile, edit.After);
         _terrainUndo.Push(edit);
+    }
+
+    private bool PortFacesWater(MapEditorSite site)
+    {
+        var directions = new[] { new HexCoord(1, 0), new HexCoord(0, 1),
+            new HexCoord(-1, 1), new HexCoord(-1, 0), new HexCoord(0, -1), new HexCoord(1, -1) };
+        return Footprint(site).Any(cell =>
+        {
+            var adjacent = Offset(Axial(cell) + directions[site.Direction]);
+            return Inside(adjacent) && _rows[adjacent.Y][adjacent.X] is 'W' or 'O';
+        });
+    }
+
+    private void OpenPortEditor(Vector2I tile, MapEditorSite? existing)
+    {
+        var content = OpenEditorModal(existing is null ? "항구 추가" : "항구 편집");
+        content.AddChild(new Label { Text = "항구 이름" });
+        var name = new LineEdit { Text = existing?.Name ?? "", PlaceholderText = "항구 이름을 입력하세요" };
+        content.AddChild(name);
+        var sizes = new[] { "small", "medium" };
+        var size = SelectOptions(content, "항구 종류", ["소형항", "중형항"],
+            Math.Max(0, Array.IndexOf(sizes, existing?.Size ?? "small")));
+        var firstValidDirection = existing?.Direction ?? Enumerable.Range(0, 6)
+            .FirstOrDefault(direction => PortFacesWater(new MapEditorSite(0, "임시", "port", "small",
+                tile.X, tile.Y, direction)));
+        var directionPicker = SelectOptions(content, "부두 방향", ["동", "남동", "남서", "서", "북서", "북동"],
+            firstValidDirection);
+        var actions = new HBoxContainer();
+        content.AddChild(actions);
+        var apply = new Button { Text = "적용", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        apply.Pressed += () =>
+        {
+            var trimmed = name.Text.Trim();
+            if (trimmed.Length == 0 || _sites.Any(site => site.Kind == "port" &&
+                    site.Id != existing?.Id && site.Name == trimmed))
+            {
+                _editorError!.Text = "비어 있거나 중복된 항구 이름입니다.";
+                return;
+            }
+            var candidate = new MapEditorSite(existing?.Id ?? _nextSiteId, trimmed, "port",
+                sizes[size.Selected], existing?.Column ?? tile.X, existing?.Row ?? tile.Y,
+                directionPicker.Selected);
+            if (!CanPlace(candidate) || !PortFacesWater(candidate))
+            {
+                _editorError!.Text = "항구 발자국이 겹치거나 부두가 물을 향하지 않습니다.";
+                return;
+            }
+            if (existing is not null) _sites.Remove(existing);
+            _sites.Add(candidate);
+            if (existing is null) _nextSiteId++;
+            RefreshSiteVisuals();
+            CloseEditorModal();
+            ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
+        };
+        actions.AddChild(apply);
+        if (existing is not null)
+        {
+            var remove = new Button { Text = "항구 제거" };
+            remove.Pressed += () =>
+            {
+                _sites.Remove(existing);
+                RefreshSiteVisuals();
+                CloseEditorModal();
+                ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
+            };
+            actions.AddChild(remove);
+        }
+        var cancel = new Button { Text = "취소" };
+        cancel.Pressed += CloseEditorModal;
+        actions.AddChild(cancel);
     }
 }

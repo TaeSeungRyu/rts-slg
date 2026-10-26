@@ -384,6 +384,15 @@ public sealed partial class EditMapScene : Control
         RedoTerrain();
         valid &= _rows[vacant.Y][vacant.X] == 'F';
         UndoTerrain();
+        var coastal = Enumerable.Range(0, _height)
+            .SelectMany(row => Enumerable.Range(0, _width).Select(column => new Vector2I(column, row)))
+            .FirstOrDefault(tile => IsLand(_rows[tile.Y][tile.X]) && SiteAt(tile) is null
+                && HasNeighborWater(tile));
+        var portDraft = Enumerable.Range(0, 6)
+            .Select(direction => new SanguoSLG.Core.Data.MapEditorSite(_nextSiteId, "QA항", "port",
+                "small", coastal.X, coastal.Y, direction))
+            .FirstOrDefault(PortFacesWater);
+        valid &= portDraft is not null && CanPlace(portDraft);
         GD.Print($"[edit-map-qa] passed={valid} tiles={_width * _height} visible={_visibleTiles.Count} bounds={_west}-{_east}E,{_south}-{_north}N");
         GetTree().Quit(valid ? 0 : 1);
     }
