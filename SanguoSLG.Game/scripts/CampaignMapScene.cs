@@ -806,6 +806,18 @@ public sealed partial class CampaignMapScene : Node3D
                 + $"cities={_state.Cities.Count} cells={_map.Count}");
             CallDeferred(nameof(QuitNewMapQa), passed);
         }
+        if (args.Contains("--mapreportqa")) CallDeferred(nameof(RunMapReportQa));
+    }
+
+    private async void RunMapReportQa()
+    {
+        for (var index = 0; index < ReportBoxMax * 3; index++) Report($"보고 QA {index}");
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var passed = _reportBox.GetChildCount() == ReportBoxMax;
+        GD.Print($"[map-report-qa] passed={passed} rows={_reportBox.GetChildCount()}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     private void QuitNewMapQa(bool passed) => GetTree().Quit(passed ? 0 : 1);
@@ -18356,7 +18368,6 @@ public sealed partial class CampaignMapScene : Node3D
 
         _reportPanel.Visible = true;
         // 새 줄이 추가되면 맨 아래(최신)로 스크롤 — 레이아웃이 갱신된 뒤 실행한다.
-        _reportScroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, reportRow);
         ScrollReportToBottomDeferred();
     }
 
