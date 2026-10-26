@@ -18,7 +18,7 @@ public sealed partial class EditMapScene
     private readonly Dictionary<Vector2I, Node3D> _visibleCities = [];
     private readonly Dictionary<int, Node3D> _visibleStructures = [];
     private Vector2I _viewCenter;
-    private Vector2 _viewCenterFraction;
+    private Vector3 _cameraTarget;
     private float _viewSize = 30f;
     private Vector2 _pointerDown;
     private bool _panningMap;
@@ -132,7 +132,7 @@ public sealed partial class EditMapScene
         };
         world.AddChild(_mapCamera);
         _viewCenter = new Vector2I(_width / 2, _height / 2);
-        _viewCenterFraction = new Vector2(_viewCenter.X, _viewCenter.Y);
+        _cameraTarget = _mapView.HexToWorld(Axial(_viewCenter));
         PositionCamera();
         RefreshVisibleTerrain();
     }
@@ -145,10 +145,33 @@ public sealed partial class EditMapScene
 
     private void PositionCamera()
     {
-        var center = _mapView.HexToWorld(Axial(_viewCenter));
-        _mapCamera.Position = center + new Vector3(0f, _viewSize * 0.9f, _viewSize * 0.72f);
-        _mapCamera.LookAt(center, Vector3.Forward);
+        _mapCamera.Position = _cameraTarget + new Vector3(0f, _viewSize * 0.9f, _viewSize * 0.72f);
+        _mapCamera.LookAt(_cameraTarget, Vector3.Forward);
         _mapCamera.Size = _viewSize;
+    }
+
+    private Vector3 GroundPoint(Vector2 screen)
+    {
+        var origin = _mapCamera.ProjectRayOrigin(screen);
+        var direction = _mapCamera.ProjectRayNormal(screen);
+        return origin + direction * ((0f - origin.Y) / direction.Y);
+    }
+
+    private void PanMap(Vector2 previous, Vector2 current)
+    {
+        var difference = GroundPoint(previous) - GroundPoint(current);
+        var maxX = _mapView.HexToWorld(Axial(new Vector2I(_width - 1, 0))).X;
+        var maxZ = _mapView.HexToWorld(Axial(new Vector2I(_width - 1, _height - 1))).Z;
+        _cameraTarget = new Vector3(
+            Mathf.Clamp(_cameraTarget.X + difference.X, 0f, maxX), 0f,
+            Mathf.Clamp(_cameraTarget.Z + difference.Z, 0f, maxZ));
+        PositionCamera();
+        var selected = Offset(_mapView.WorldToHex(_cameraTarget));
+        selected = new Vector2I(Mathf.Clamp(selected.X, 0, _width - 1),
+            Mathf.Clamp(selected.Y, 0, _height - 1));
+        if (selected == _viewCenter) return;
+        _viewCenter = selected;
+        RefreshVisibleTerrain();
     }
 
     private void RefreshVisibleTerrain()
@@ -308,15 +331,8 @@ public sealed partial class EditMapScene
         }
         else if (input is InputEventMouseMotion motion && _panningMap)
         {
-            var difference = motion.Position - _dragLast;
+            PanMap(_dragLast, motion.Position);
             _dragLast = motion.Position;
-            _viewCenterFraction = new Vector2(
-                Mathf.Clamp(_viewCenterFraction.X - difference.X * _viewSize / Mathf.Max(1f, Size.Y), 0, _width - 1),
-                Mathf.Clamp(_viewCenterFraction.Y - difference.Y * _viewSize / Mathf.Max(1f, Size.Y), 0, _height - 1));
-            _viewCenter = new Vector2I(Mathf.RoundToInt(_viewCenterFraction.X),
-                Mathf.RoundToInt(_viewCenterFraction.Y));
-            PositionCamera();
-            RefreshVisibleTerrain();
             AcceptEvent();
         }
     }

@@ -409,6 +409,13 @@ public sealed partial class EditMapScene : Control
             < _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + Vector2I.Down))).Y;
         valid &= _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + Vector2I.Right))).X
             > _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + Vector2I.Left))).X;
+        var beforePan = _mapCamera.Position;
+        var beforePanCenter = _viewCenter;
+        PanMap(new Vector2(600, 400), new Vector2(604, 400));
+        valid &= _mapCamera.Position.DistanceTo(beforePan) > 0.001f
+            && _viewCenter == beforePanCenter;
+        PanMap(new Vector2(604, 400), new Vector2(600, 400));
+        valid &= _mapCamera.Position.DistanceTo(beforePan) < 0.01f;
         var visibleRiver = _visibleTiles.Keys.FirstOrDefault(tile => _rows[tile.Y][tile.X] is 'R' or 'B');
         if (_visibleTiles.ContainsKey(visibleRiver) && _rows[visibleRiver.Y][visibleRiver.X] is 'R' or 'B')
         {
