@@ -48,7 +48,7 @@ public sealed partial class EditMapScene
         if (!File.Exists(path)) return;
         try
         {
-            var preset = ScenarioMapPresetStore.Load(path);
+            var preset = ScenarioMapPresetResizer.Resize(ScenarioMapPresetStore.Load(path), _width, _height);
             _width = preset.Width;
             _height = preset.Height;
             _rows = preset.Rows.ToArray();
@@ -554,8 +554,7 @@ public sealed partial class EditMapScene
         if (code is 'W' or 'O' or 'H' && _landRoutes.Any(route => route.Contains(tile))) return false;
         var original = _rows[tile.Y][tile.X];
         SetTerrain(tile, code);
-        var valid = _sites.Where(site => site.Kind == "port").All(site =>
-            HasNeighborWater(new Vector2I(site.Column, site.Row)));
+        var valid = _sites.Where(site => site.Kind == "port").All(PortFacesWater);
         SetTerrain(tile, original);
         return valid;
     }

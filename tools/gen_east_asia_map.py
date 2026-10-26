@@ -12,7 +12,7 @@ CITY_SITES = ROOT / "data/east-asia-city-sites.json"
 RTK13_CITY_SITES = ROOT / "data/east-asia-rtk13-cities.json"
 LAND_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson"
 WEST, EAST, SOUTH, NORTH = 97.72, 133.0, 18.0, 51.94285714285714 - 20 * (51.94285714285714 - 18.0) / 124
-WIDTH, HEIGHT = 174, 115
+WIDTH, HEIGHT = 261, 173
 
 
 def rings_of(geometry):
@@ -234,7 +234,7 @@ def city_positions(rows):
                     continue
                 if rows[y][x] not in "PFMD":
                     continue
-                if any((x - city["tile"][0]) ** 2 + (y - city["tile"][1]) ** 2 < 9
+                if any((x - city["tile"][0]) ** 2 + (y - city["tile"][1]) ** 2 < 36
                        for city in result):
                     continue
                 neighbors = ((x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y),
@@ -280,10 +280,10 @@ def port_positions(rows, cities):
             for x in range(max(0, column - 12), min(WIDTH, column + 13)):
                 if rows[y][x] not in "PFMDB":
                     continue
-                if any((x - city["tile"][0]) ** 2 + (y - city["tile"][1]) ** 2 < 16
+                if any((x - city["tile"][0]) ** 2 + (y - city["tile"][1]) ** 2 < 36
                        for city in cities):
                     continue
-                if any((x - port["tile"][0]) ** 2 + (y - port["tile"][1]) ** 2 < 16
+                if any((x - port["tile"][0]) ** 2 + (y - port["tile"][1]) ** 2 < 36
                        for port in result):
                     continue
                 for direction, (dx, dy) in enumerate(offsets_even if x % 2 == 0 else offsets_odd):

@@ -117,7 +117,11 @@ internal sealed class AiTestFixture
     {
         var dataDirectory = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
         var presetPath = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
-        var preset = ScenarioMapPresetStore.Load(presetPath);
+        using var currentMap = JsonDocument.Parse(File.ReadAllText(
+            ProjectSettings.GlobalizePath("res://assets/maps/east-asia-map.json")));
+        var preset = ScenarioMapPresetResizer.Resize(ScenarioMapPresetStore.Load(presetPath),
+            currentMap.RootElement.GetProperty("width").GetInt32(),
+            currentMap.RootElement.GetProperty("height").GetInt32());
         var scenario = ScenarioMapPresetApplier.Apply(
             new ScenarioLoader().LoadFromDirectory(dataDirectory), preset);
         var factions = scenario.Factions.Where(faction => faction.Id.Value is 1 or 2).ToArray();

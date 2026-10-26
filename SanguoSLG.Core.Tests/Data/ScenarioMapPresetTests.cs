@@ -8,6 +8,25 @@ using SanguoSLG.Core.Domain;
 public sealed class ScenarioMapPresetTests
 {
     [Fact]
+    public void ResizeKeepsMapShapeAndSiteIdentityWhileIncreasingCitySpacing()
+    {
+        var source = new ScenarioMapPreset(1, 8, 6,
+            ["PPPPPPPP", "PPPPPPPP", "PPPPPPPP", "PPPPPPPP", "PPPPPPPP", "PPPPPPPP"],
+            [new MapEditorSite(11, "장안", "city", "small", 1, 2),
+                new MapEditorSite(29, "낙양", "city", "small", 5, 2)]);
+        var resized = ScenarioMapPresetResizer.Resize(source, 12, 9);
+        resized.Validate();
+        Assert.Equal(12 * 9, resized.Width * resized.Height);
+        Assert.Equal(source.Sites.Select(site => (site.Id, site.Name)),
+            resized.Sites.Select(site => (site.Id, site.Name)));
+        Assert.True(resized.ToAxial(resized.Sites[0].Column, resized.Sites[0].Row)
+            .Distance(resized.ToAxial(resized.Sites[1].Column, resized.Sites[1].Row)) >
+            source.ToAxial(source.Sites[0].Column, source.Sites[0].Row)
+                .Distance(source.ToAxial(source.Sites[1].Column, source.Sites[1].Row)));
+        Assert.Equal(8, source.Width);
+    }
+
+    [Fact]
     public void OffsetAxialRoundTripAndSnapshotAreStable()
     {
         var preset = new ScenarioMapPreset(1, 4, 3, ["PPPP", "PWWP", "PPPP"],
