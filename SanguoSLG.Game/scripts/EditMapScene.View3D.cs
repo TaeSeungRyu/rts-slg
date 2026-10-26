@@ -180,7 +180,7 @@ public sealed partial class EditMapScene
 
     public override void _Process(double delta)
     {
-        if (_mapViewport is null || _editorModal is not null || GetViewport().GuiGetFocusOwner() is LineEdit)
+        if (_mapViewport is null || _editorModal is not null || GetViewport().GuiGetFocusOwner() is LineEdit or TextEdit)
             return;
         var direction = Vector2.Zero;
         if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left)) direction.X -= 1;

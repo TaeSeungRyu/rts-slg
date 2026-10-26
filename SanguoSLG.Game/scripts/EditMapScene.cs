@@ -474,12 +474,14 @@ public sealed partial class EditMapScene : Control
             vacant.X, vacant.Y);
         valid &= CanPlace(draftCity);
         OpenCityEditor(vacant, null);
-        var koreanNameInput = _editorModal?.FindChildren("*", "LineEdit", true, false)
-            .OfType<LineEdit>().FirstOrDefault();
+        var koreanNameInput = _editorModal?.FindChildren("*", "TextEdit", true, false)
+            .OfType<TextEdit>().FirstOrDefault();
         valid &= koreanNameInput is not null;
         if (koreanNameInput is not null)
         {
-            koreanNameInput.Text = "한글시험성";
+            koreanNameInput.Text = "한";
+            koreanNameInput.SetCaretColumn(1);
+            koreanNameInput.InsertTextAtCaret("글시험성");
             _editorModal?.FindChildren("*", "Button", true, false).OfType<Button>()
                 .First(button => button.Text == "적용").EmitSignal(Button.SignalName.Pressed);
             valid &= _sites.Any(site => site.Name == "한글시험성");
@@ -513,6 +515,23 @@ public sealed partial class EditMapScene : Control
                 "small", coastal.X, coastal.Y, direction))
             .FirstOrDefault(PortFacesWater);
         valid &= portDraft is not null && CanPlace(portDraft);
+        if (portDraft is not null && CanPlace(portDraft))
+        {
+            OpenPortEditor(coastal, null);
+            var koreanPortInput = _editorModal?.FindChildren("*", "TextEdit", true, false)
+                .OfType<TextEdit>().FirstOrDefault();
+            valid &= koreanPortInput is not null;
+            if (koreanPortInput is not null)
+            {
+                koreanPortInput.Text = "한";
+                koreanPortInput.SetCaretColumn(1);
+                koreanPortInput.InsertTextAtCaret("글시험항");
+                _editorModal?.FindChildren("*", "Button", true, false).OfType<Button>()
+                    .First(button => button.Text == "적용").EmitSignal(Button.SignalName.Pressed);
+                valid &= _sites.Any(site => site.Name == "한글시험항");
+                UndoDraft();
+            }
+        }
         valid &= _sites.Where(site => site.Kind == "city").All(CanPlace);
         ShowEditorPalette(vacant, new Vector2(200f, 200f));
         valid &= _editorPalette is not null
