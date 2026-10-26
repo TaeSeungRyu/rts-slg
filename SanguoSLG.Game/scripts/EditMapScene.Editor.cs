@@ -98,6 +98,7 @@ public sealed partial class EditMapScene
     {
         _draftChanged = true;
         if (_saveDraftButton is not null) _saveDraftButton.Text = "맵 저장 *";
+        SaveDraft();
     }
 
     private void RecordChange(ScenarioMapPreset before)
@@ -125,8 +126,8 @@ public sealed partial class EditMapScene
         {
             ScenarioMapPresetStore.Save(PresetPath(), Draft());
             _draftChanged = false;
-            _saveDraftButton!.Text = "맵 저장";
-            _tileInfo.Text = "시나리오 맵 프리셋을 저장했습니다. 새 게임에만 적용됩니다.";
+            if (_saveDraftButton is not null) _saveDraftButton.Text = "맵 저장";
+            if (_tileInfo is not null) _tileInfo.Text = "맵 저장 완료 · 실행 중인 run-newmap QA가 자동으로 초기화됩니다.";
         }
         catch (Exception error)
         {

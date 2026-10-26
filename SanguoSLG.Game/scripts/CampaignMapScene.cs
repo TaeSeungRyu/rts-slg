@@ -3671,10 +3671,19 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // ── 테스트 시나리오: 지형 다양 맵, 위(성 1) vs 촉(성 2 — 성도·한중) ──
-    private static readonly AiTestFixture? _aiTestFixture = OS.GetCmdlineUserArgs().Contains("--newmap")
+    private static AiTestFixture? _aiTestFixture = OS.GetCmdlineUserArgs().Contains("--newmap")
         ? AiTestFixture.LoadNewMap()
         : OS.GetCmdlineUserArgs().Contains("--aitest") ? AiTestFixture.Load() : null;
-    private static readonly HexMap _map = _aiTestFixture?.Map ?? BuildTestMap();
+    private static HexMap _map = _aiTestFixture?.Map ?? BuildTestMap();
+
+    public static void ReloadNewMapFixture()
+    {
+        var fixture = AiTestFixture.LoadNewMap();
+        _aiTestFixture = fixture;
+        _map = fixture.Map;
+        _cities = fixture.Cities;
+        _initial = _initial with { Cities = fixture.Cities.ToList() };
+    }
 
     /// <summary>렌더(GameRoot3D)와 시뮬(passability)이 같은 지형을 쓰도록 공유하는 맵.</summary>
     public static HexMap TestMap => _map;
@@ -3730,7 +3739,7 @@ public sealed partial class CampaignMapScene : Node3D
         return new HexMap(-12, 14, -5, 11, t);
     }
 
-    private static readonly IReadOnlyList<City> _cities = _aiTestFixture?.Cities ?? new List<City>
+    private static IReadOnlyList<City> _cities = _aiTestFixture?.Cities ?? new List<City>
     {
         new(new CityId(1), "장안", new HexCoord(1, 2), new FactionId(1), 3000, CastleSize.Medium,
             Gold: 2000, Security: 80, Population: 100_000, Ore: 8000, Horses: 3000, Elephants: 30,
@@ -3792,7 +3801,7 @@ public sealed partial class CampaignMapScene : Node3D
         new(new CityId(3), new HexCoord(4, 7), "farm", FacilityHealth.Level1),
     };
 
-    private static readonly GameState _initial = new(1, 1,
+    private static GameState _initial = new(1, 1,
         new List<Faction>
         {
             new(new FactionId(1), "위", new GeneralId(1), 0, "#3d70dc"),

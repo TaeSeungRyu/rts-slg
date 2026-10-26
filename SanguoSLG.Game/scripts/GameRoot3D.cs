@@ -21,6 +21,9 @@ public partial class GameRoot3D : Node3D
     private int _frames;
     private Godot.Environment _environment = null!;
     private DirectionalLight3D _sun = null!;
+    private string? _newMapSnapshot;
+    private double _newMapPoll;
+    private bool _newMapReloading;
     private bool _shuttingDown;
 
     public override void _Ready()
@@ -253,6 +256,25 @@ public partial class GameRoot3D : Node3D
 
     public override void _Process(double delta)
     {
+        if (_newMapSnapshot is not null && !_newMapReloading && (_newMapPoll += delta) >= 0.5)
+        {
+            _newMapPoll = 0;
+            try
+            {
+                var snapshot = File.ReadAllText(ProjectSettings.GlobalizePath("user://map-presets/east-asia.json"));
+                if (snapshot != _newMapSnapshot)
+                {
+                    CampaignMapScene.ReloadNewMapFixture();
+                    _newMapReloading = true;
+                    Callable.From(() => GetTree().ReloadCurrentScene()).CallDeferred();
+                    GD.Print("[newmap] editmap 변경 반영: QA 시나리오 초기화");
+                }
+            }
+            catch (System.Exception error)
+            {
+                GD.PushWarning($"[newmap] 맵 변경을 다시 확인합니다: {error.Message}");
+            }
+        }
         if (!_capture || ++_frames < 8)
         {
             return;
@@ -312,6 +334,8 @@ public partial class GameRoot3D : Node3D
     // "진행" 버튼으로 굴린다(콘솔 --watch의 3D판).
     private void BuildCampaignMap()
     {
+        if (OS.GetCmdlineUserArgs().Contains("--newmap"))
+            _newMapSnapshot = File.ReadAllText(ProjectSettings.GlobalizePath("user://map-presets/east-asia.json"));
         var tone = TonePreset.FromCmdline();
         _environment = BuildEnvironment(tone);
         AddChild(new WorldEnvironment { Environment = _environment });
