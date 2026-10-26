@@ -7,146 +7,93 @@ using Xunit;
 
 public class HeroUnlockServiceTests
 {
-    [Fact]
-    public void 기존_동적조건은_무시하고_해금년도와_후보분류만_사용한다()
-    {
-        var faction = new FactionId(1);
-        var hero = new HeroUnlockDefinition(new GeneralId(9), HeroUnlockType.Faction, faction,
-            Conditions: [new HeroUnlockCondition("impossible_legacy_condition", 999)], UnlockYear: 190);
-        var state = State([hero], [City(1, faction, "jingzhou", 1)]) with { StartYear = 190 };
+    private static readonly FactionId Cao = new(1);
+    private static readonly FactionId Liu = new(2);
+    private static readonly GeneralId CaoCao = new(1);
+    private static readonly GeneralId LiuBei = new(2);
+    private static readonly GeneralId ZhugeLiang = new(6);
 
+    [Fact]
+    public void 선행_장수의_세력으로만_영입_조건이_열린다()
+    {
+        var hero = new HeroUnlockDefinition(ZhugeLiang, HeroUnlockType.Faction, Cao,
+            UnlockYear: 207, RequiredGeneral: LiuBei);
+        var state = State(hero, [Posting(LiuBei, Liu)]);
+        var service = new HeroUnlockService();
+
+        var evaluated = service.Evaluate(state);
+
+        Assert.Equal(HeroUnlockStatus.Unlocked, Assert.Single(evaluated.HeroStates).Status);
+        Assert.True(service.IsSatisfied(evaluated, hero, Liu));
+        Assert.False(service.IsSatisfied(evaluated, hero, Cao));
+    }
+
+    [Fact]
+    public void 선행_장수를_영입하면_새_후보가_나타나고_이탈하면_잠긴다()
+    {
+        var hero = new HeroUnlockDefinition(ZhugeLiang, HeroUnlockType.Faction, RequiredGeneral: CaoCao);
+        var service = new HeroUnlockService();
+        var state = State(hero, [Posting(CaoCao, Cao)]);
+
+        Assert.True(service.IsSatisfied(state, hero, Cao));
+        var moved = state with { Postings = [Posting(CaoCao, Liu)] };
+        Assert.True(service.IsSatisfied(moved, hero, Liu));
+        Assert.False(service.IsSatisfied(moved, hero, Cao));
+        var departed = service.Evaluate(state with { Postings = [] });
+        Assert.Equal(HeroUnlockStatus.Locked, Assert.Single(departed.HeroStates).Status);
+    }
+
+    [Fact]
+    public void 조건이_없는_장수는_모든_존속_세력이_영입_가능하다()
+    {
+        var hero = new HeroUnlockDefinition(ZhugeLiang, HeroUnlockType.Region, HomeRegions: ["never"]);
+        var state = State(hero, []);
+        var service = new HeroUnlockService();
+
+        Assert.True(service.IsSatisfied(state, hero, Cao));
+        Assert.True(service.IsSatisfied(state, hero, Liu));
+    }
+
+    [Fact]
+    public void 시나리오에_선행_장수가_없으면_영구_제외한다()
+    {
+        var hero = new HeroUnlockDefinition(ZhugeLiang, HeroUnlockType.Faction,
+            RequiredGeneral: new GeneralId(100));
+        var state = State(hero, []);
         var next = new HeroUnlockService().Evaluate(state);
 
-        Assert.Equal(HeroUnlockStatus.Unlocked, Assert.Single(next.HeroStates).Status);
-        Assert.Equal(faction, Assert.Single(next.HeroStates).EligibleFaction);
+        Assert.Equal(HeroUnlockStatus.Excluded, Assert.Single(next.HeroStates).Status);
     }
 
     [Fact]
-    public void 세력형_위인은_소속_세력의_조건이_맞으면_해금된다()
+    public void 이미_배속된_후보는_중복_영입하지_않는다()
     {
-        var hero = new HeroUnlockDefinition(
-            new GeneralId(6),
-            HeroUnlockType.Faction,
-            new FactionId(2),
-            Conditions:
-            [
-                new HeroUnlockCondition("owned_cities", 2),
-                new HeroUnlockCondition("city_security_at_least", 80),
-            ],
-            RecruitGold: 1000);
-        var state = State([hero],
-        [
-            City(1, new FactionId(2), "jingzhou", 90),
-            City(2, new FactionId(2), "yizhou", 60),
-        ]);
+        var hero = new HeroUnlockDefinition(ZhugeLiang, HeroUnlockType.Faction);
+        var state = State(hero, [Posting(ZhugeLiang, Liu)]);
+        var service = new HeroUnlockService();
 
-        var next = new HeroUnlockService().Evaluate(state);
-
-        var unlocked = Assert.Single(next.HeroStates);
-        Assert.Equal(HeroUnlockStatus.Unlocked, unlocked.Status);
-        Assert.Equal(new FactionId(2), unlocked.EligibleFaction);
+        Assert.Equal(HeroUnlockStatus.Recruited, Assert.Single(service.Evaluate(state).HeroStates).Status);
+        Assert.False(service.IsSatisfied(state, hero, Cao));
     }
 
-    [Fact]
-    public void 도시형_위인은_지역을_점령한_세력에게_해금된다()
-    {
-        var hero = new HeroUnlockDefinition(
-            new GeneralId(11),
-            HeroUnlockType.Region,
-            HomeRegions: [ "jingzhou" ],
-            Conditions:
-            [
-                new HeroUnlockCondition("owned_region_cities", 1, Region: "jingzhou"),
-                new HeroUnlockCondition("research_level", 4, TroopCode: "archer"),
-            ]);
-        var state = State([hero], [City(1, new FactionId(1), "jingzhou", 70)])
-            with { ResearchTracks = [new FactionResearch(new FactionId(1), "archer", 4)] };
-
-        var next = new HeroUnlockService().Evaluate(state);
-
-        var unlocked = Assert.Single(next.HeroStates);
-        Assert.Equal(HeroUnlockStatus.Unlocked, unlocked.Status);
-        Assert.Equal(new FactionId(1), unlocked.EligibleFaction);
-    }
-
-    [Fact]
-    public void 해금_가능_년도_전에는_조건이_맞아도_잠김을_유지한다()
-    {
-        var hero = new HeroUnlockDefinition(
-            new GeneralId(6),
-            HeroUnlockType.Faction,
-            new FactionId(2),
-            Conditions: [new HeroUnlockCondition("owned_cities", 1)]);
-        var state = State([hero], [City(1, new FactionId(2), "jingzhou", 90)])
-            with
-            {
-                Day = 1,
-                StartYear = 190,
-                Generals = [new General(new GeneralId(6), "제갈량", new Dictionary<TroopClass, AptitudeGrade>(), 38, 100, 95, UnlockYear: 207)],
-            };
-
-        var next = new HeroUnlockService().Evaluate(state);
-
-        Assert.Equal(HeroUnlockStatus.Locked, Assert.Single(next.HeroStates).Status);
-    }
-
-    [Fact]
-    public void 해금_정의의_년도는_캐릭터_년도보다_우선한다()
-    {
-        var hero = new HeroUnlockDefinition(
-            new GeneralId(6),
-            HeroUnlockType.Faction,
-            new FactionId(2),
-            Conditions: [new HeroUnlockCondition("owned_cities", 1)],
-            UnlockYear: 190);
-        var state = State([hero], [City(1, new FactionId(2), "jingzhou", 90)])
-            with
-            {
-                Day = 1,
-                StartYear = 190,
-                Generals = [new General(new GeneralId(6), "제갈량", new Dictionary<TroopClass, AptitudeGrade>(), 38, 100, 95, UnlockYear: 207)],
-            };
-
-        var next = new HeroUnlockService().Evaluate(state);
-
-        Assert.Equal(HeroUnlockStatus.Unlocked, Assert.Single(next.HeroStates).Status);
-    }
-
-    [Fact]
-    public void 멸망한_세력의_잠긴_세력형_위인은_유랑_상태가_된다()
-    {
-        var lockedHero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Faction, new FactionId(2));
-        var recruitedHero = new HeroUnlockDefinition(new GeneralId(9), HeroUnlockType.Faction, new FactionId(2));
-        var regionHero = new HeroUnlockDefinition(new GeneralId(11), HeroUnlockType.Region, HomeRegions: [ "jingzhou" ]);
-        var state = State([lockedHero, recruitedHero, regionHero], [City(1, new FactionId(1), "jingzhou", 90)])
-            with
-            {
-                HeroUnlockStates =
-                [
-                    new HeroUnlockState(new GeneralId(6), HeroUnlockStatus.Locked),
-                    new HeroUnlockState(new GeneralId(9), HeroUnlockStatus.Recruited, new FactionId(2)),
-                    new HeroUnlockState(new GeneralId(11), HeroUnlockStatus.Locked),
-                ],
-            };
-
-        var next = new HeroUnlockService().MarkFactionEliminated(state, new FactionId(2));
-
-        Assert.Equal(HeroUnlockStatus.Wanderer, next.HeroStates.Single(s => s.General == new GeneralId(6)).Status);
-        Assert.Equal(HeroUnlockStatus.Recruited, next.HeroStates.Single(s => s.General == new GeneralId(9)).Status);
-        Assert.Equal(HeroUnlockStatus.Locked, next.HeroStates.Single(s => s.General == new GeneralId(11)).Status);
-    }
-
-    private static GameState State(IReadOnlyList<HeroUnlockDefinition> heroes, IReadOnlyList<City> cities)
+    private static GameState State(HeroUnlockDefinition hero, IReadOnlyList<GeneralPosting> postings)
         => new(
-            10,
+            1,
             190,
-            [new Faction(new FactionId(1), "위", new GeneralId(1), 1000, "#2d5fd0"), new Faction(new FactionId(2), "촉", new GeneralId(2), 1000, "#2c8c46")],
-            cities,
-            [new General(new GeneralId(6), "제갈량", new Dictionary<TroopClass, AptitudeGrade>(), 38, 100, 95)],
-            HeroUnlockDefinitions: heroes,
-            HeroUnlockStates: heroes.Select(h => new HeroUnlockState(h.General, HeroUnlockStatus.Locked)).ToList());
+            [new Faction(Cao, "위", CaoCao, 1000, "#2d5fd0"),
+                new Faction(Liu, "촉", LiuBei, 1000, "#2c8c46")],
+            [City(1, Cao), City(2, Liu)],
+            [General(1), General(2), General(6)],
+            Postings: postings,
+            HeroUnlockDefinitions: [hero],
+            HeroUnlockStates: [new HeroUnlockState(hero.General, HeroUnlockStatus.Locked)]);
 
-    private static City City(int id, FactionId owner, string region, int security)
-        => new(new CityId(id), $"도시{id}", new HexCoord(id, 0), owner, 1000, CastleSize.Small,
-            Security: security, Region: region);
+    private static GeneralPosting Posting(GeneralId general, FactionId faction)
+        => new(general, faction, new CityId(faction.Value));
+
+    private static General General(int id)
+        => new(new GeneralId(id), $"장수{id}", new Dictionary<TroopClass, AptitudeGrade>(), 60, 60, 60);
+
+    private static City City(int id, FactionId owner)
+        => new(new CityId(id), $"도시{id}", new HexCoord(id, 0), owner, 1000, CastleSize.Small);
 }

@@ -57,7 +57,7 @@ public class CommandSystemTests
 
     private static GameState State(IEnumerable<City> cities, IEnumerable<General> generals,
         IEnumerable<GarrisonForce>? garrisons = null) =>
-        new(1, 1, new List<Faction>(), cities.ToList(), generals.ToList(),
+        new(1, 1, [new Faction(new FactionId(1), "위", new GeneralId(1), 1000, "#2d5fd0")], cities.ToList(), generals.ToList(),
             GarrisonForces: garrisons?.ToList());
 
     private static GarrisonForce GarrisonOf(GameState s, int cityId, string troop) =>
@@ -90,7 +90,7 @@ public class CommandSystemTests
     }
 
     [Fact]
-    public void 잠긴_위인은_영입할_수_없다()
+    public void 영입_년도는_제한으로_사용하지_않는다()
     {
         var city = Town(1, gold: 2000);
         var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Faction, new FactionId(1),
@@ -105,12 +105,11 @@ public class CommandSystemTests
         var result = Service().Issue(state, new CommandRequest(city.Id, CommandKind.RecruitHero, new GeneralId(1),
             TargetGeneral: new GeneralId(6)));
 
-        Assert.False(result.Ok);
-        Assert.Equal("아직 영입할 수 없는 위인이다.", result.Error);
+        Assert.True(result.Ok, result.Error);
     }
 
     [Fact]
-    public void 도시형_위인은_해금되어도_위인영입으로_얻을수없다()
+    public void 기존_도시형_분류도_장수조건으로_영입할_수_있다()
     {
         var city = Town(1, gold: 2000);
         var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Region,
@@ -125,10 +124,34 @@ public class CommandSystemTests
         var result = Service().Issue(state, new CommandRequest(city.Id, CommandKind.RecruitHero,
             new GeneralId(1), TargetGeneral: hero.General));
 
-        Assert.False(result.Ok);
-        Assert.Contains("세력형 위인", result.Error);
-        Assert.Equal(2000, result.State.Cities.Single().Gold);
-        Assert.Null(result.State.PostingOf(hero.General));
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(1100, result.State.Cities.Single().Gold);
+        Assert.Equal(city.Owner, result.State.PostingOf(hero.General)?.Faction);
+    }
+
+    [Fact]
+    public void 유비_세력이_조조를_보유하면_조조_조건_장수를_영입한다()
+    {
+        var liu = new FactionId(2);
+        var city = Town(1, gold: 2000) with { Owner = liu };
+        var hero = new HeroUnlockDefinition(new GeneralId(8), HeroUnlockType.Faction,
+            RequiredGeneral: new GeneralId(1), RecruitGold: 900, RecruitPointCost: 100);
+        var state = State([city], [Pol(1, 80), Pol(8, 70)]) with
+        {
+            Factions = [new Faction(liu, "촉", new GeneralId(2), 1000, "#2c8c46")],
+            Postings = [new GeneralPosting(new GeneralId(1), liu, city.Id)],
+            HeroUnlockDefinitions = [hero],
+            HeroUnlockStates = [new HeroUnlockState(hero.General, HeroUnlockStatus.Locked)],
+            RecruitmentPoints = [new(liu, 100)],
+        };
+
+        var result = Service().Issue(state,
+            new CommandRequest(city.Id, CommandKind.RecruitHero, new GeneralId(1), TargetGeneral: hero.General));
+
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(liu, result.State.PostingOf(hero.General)?.Faction);
+        Assert.Equal(1100, result.State.Cities.Single().Gold);
+        Assert.Equal(0, RecruitmentPointBank.Balance(result.State, liu));
     }
 
     [Theory]

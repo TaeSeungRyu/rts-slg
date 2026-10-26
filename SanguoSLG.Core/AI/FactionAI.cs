@@ -918,14 +918,14 @@ public sealed class FactionAI
     {
         state = new HeroUnlockService().Evaluate(state);
         foreach (var heroState in state.HeroStates
-            .Where(s => s.CanRecruit && s.EligibleFaction == faction)
+            .Where(s => s.CanRecruit)
             .OrderBy(s => state.HeroUnlocks.FirstOrDefault(h => h.General == s.General)?.RecruitGold ?? int.MaxValue)
             .ThenBy(s => s.General.Value)
             .ToList())
         {
             var hero = state.HeroUnlocks.FirstOrDefault(h => h.General == heroState.General);
-            if (hero is null || hero.Type != HeroUnlockType.Faction
-                || hero.Faction != faction || !hero.AiCanRecruit)
+            if (hero is null || !hero.AiCanRecruit
+                || !new HeroUnlockService().IsSatisfied(state, hero, faction))
             {
                 continue;
             }

@@ -225,18 +225,13 @@ public sealed class CommandService
             return CommandResult.Fail("위인 해금 정의를 찾을 수 없다.", state);
         }
 
-        if (hero.Type != HeroUnlockType.Faction || hero.Faction != city.Owner)
-        {
-            return CommandResult.Fail("위인 영입은 해당 세력의 세력형 위인만 가능하다.", state);
-        }
-
         var heroState = state.HeroStates.FirstOrDefault(s => s.General == generalId);
         if (heroState is null || !heroState.CanRecruit)
         {
             return CommandResult.Fail("아직 영입할 수 없는 위인이다.", state);
         }
 
-        if (heroState.EligibleFaction != city.Owner)
+        if (!new HeroUnlockService().IsSatisfied(state, hero, city.Owner))
         {
             return CommandResult.Fail("이 세력에서 영입할 수 없는 위인이다.", state);
         }

@@ -30,6 +30,8 @@ public class ScenarioLoaderTests
         var generalIds = scenario.Generals.Select(g => g.Id).ToHashSet();
         Assert.All(scenario.Factions, f => Assert.Contains(f.Ruler, generalIds));
         Assert.All(scenario.HeroUnlockList, h => Assert.Contains(h.General, generalIds));
+        Assert.All(scenario.HeroUnlockList.Where(h => h.RequiredGeneral is not null),
+            h => Assert.Contains(h.RequiredGeneral!.Value, generalIds));
 
         // 참조 무결성: 세력형 위인의 소속 세력과 도시형 위인의 도시 참조가 실제 존재한다.
         Assert.All(scenario.HeroUnlockList.Where(h => h.Faction is not null), h => Assert.Contains(h.Faction!.Value, factionIds));

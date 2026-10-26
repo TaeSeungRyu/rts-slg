@@ -130,7 +130,8 @@ public sealed class ScenarioLoader
             dto.AiCanRecruit,
             dto.Title,
             dto.Desc,
-            dto.RecruitPointCost);
+            dto.RecruitPointCost,
+            dto.RequiredGeneral is { } required ? new GeneralId(required) : null);
 
     private static HeroUnlockCondition ToHeroUnlockCondition(HeroUnlockConditionDto dto)
         => new(
