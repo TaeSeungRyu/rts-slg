@@ -193,9 +193,6 @@ public sealed partial class EditMapScene
         var world = origin + direction * ((_mapView.TileTopY - origin.Y) / direction.Y);
         var tile = Offset(_mapView.WorldToHex(world));
         if (tile.X < 0 || tile.X >= _width || tile.Y < 0 || tile.Y >= _height) return;
-        var city = _cities.FirstOrDefault(item => item.Tile == tile);
-        _tileInfo.Text = city is null
-            ? $"{Terrain[_rows[tile.Y][tile.X]].Name}  │  타일 {tile.X}, {tile.Y}"
-            : $"{city.Name}  │  {city.Region}  │  {city.Size}  │  타일 {tile.X}, {tile.Y}";
+        ShowEditorPalette(tile, screen);
     }
 }

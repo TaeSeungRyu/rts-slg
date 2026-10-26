@@ -69,6 +69,7 @@ public sealed partial class EditMapScene : Control
         _east = bounds.GetProperty("east").GetDouble();
         _south = bounds.GetProperty("south").GetDouble();
         _north = bounds.GetProperty("north").GetDouble();
+        InitializeEditorSites();
         SetAnchorsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Stop;
         Build3DView();
@@ -89,11 +90,11 @@ public sealed partial class EditMapScene : Control
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 7);
         bar.AddChild(content);
-        var title = new Label { Text = "동아시아 시나리오 지형  ·  중국 / 몽골 / 한반도 / 대만 / 일본 서부" };
+        var title = new Label { Text = "시나리오 맵 에디터  ·  중국 / 몽골 / 한반도 / 대만 / 일본 서부" };
         title.AddThemeFontOverride("font", font);
         title.AddThemeFontSizeOverride("font_size", 20);
         content.AddChild(title);
-        var legend = new Label { Text = "지형을 선택하면 해당 타일을 강조합니다.    │    휠: 확대  ·  드래그: 이동  ·  클릭: 지형 확인",
+        var legend = new Label { Text = "타일을 클릭해 편집 명령을 엽니다.    │    휠: 확대  ·  드래그: 이동",
             Modulate = new Color("d9d1b0") };
         legend.AddThemeFontOverride("font", font);
         legend.AddThemeFontSizeOverride("font_size", 13);
