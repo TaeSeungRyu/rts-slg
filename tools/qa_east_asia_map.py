@@ -52,7 +52,8 @@ def route(start, end):
 
 
 assert len(rows) == height and all(len(row) == width for row in rows)
-assert bounds["west"] == 91 and bounds["east"] == 133
+assert bounds["west"] == 95.2 and bounds["east"] == 133
+assert width == 90 and height == 70
 assert rows[cell(110.5, 30.6)[1]][cell(110.5, 30.6)[0]] == "W"
 assert not passable(*cell(110.5, 30.6))
 assert len(data["land_routes"]) >= 10
