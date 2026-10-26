@@ -27,6 +27,22 @@ public sealed partial class EditMapScene
             _sites.Add(new MapEditorSite(id++, city.Name, "city", city.Size, city.Tile.X, city.Tile.Y));
         _nextSiteId = id;
         NormalizeBaseCityFootprints();
+        foreach (var port in _defaultPorts)
+        {
+            var candidate = Enumerable.Range(Mathf.Max(0, port.Column - 10),
+                    Mathf.Min(_width - 1, port.Column + 10) - Mathf.Max(0, port.Column - 10) + 1)
+                .SelectMany(column => Enumerable.Range(Mathf.Max(0, port.Row - 10),
+                    Mathf.Min(_height - 1, port.Row + 10) - Mathf.Max(0, port.Row - 10) + 1)
+                    .SelectMany(row => Enumerable.Range(0, 6)
+                        .Select(direction => port with { Column = column, Row = row, Direction = direction })))
+                .Where(site => CanPlace(site) && PortFacesWater(site))
+                .OrderBy(site => (site.Column - port.Column) * (site.Column - port.Column) +
+                    (site.Row - port.Row) * (site.Row - port.Row))
+                .ThenBy(site => site.Row).ThenBy(site => site.Column)
+                .FirstOrDefault();
+            if (candidate is not null) _sites.Add(candidate);
+        }
+        _nextSiteId = _sites.Count == 0 ? 1 : _sites.Max(site => site.Id) + 1;
         var path = PresetPath();
         if (!File.Exists(path)) return;
         try

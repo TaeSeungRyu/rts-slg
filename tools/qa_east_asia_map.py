@@ -85,7 +85,7 @@ for plotted in data["land_routes"]:
 cities = data["cities"]
 assert len(cities) == len({city["name"] for city in cities})
 assert Counter(city["region"] for city in cities) == {
-    "중국": 28, "대한민국": 5, "대만": 1, "일본": 2}
+    "중국": 60, "대한민국": 5, "대만": 1, "일본": 2}
 assert Counter(city["size"] for city in cities if city["region"] == "대한민국") == {
     "medium": 2, "small": 3}
 assert all(city["size"] == "small" for city in cities if city["region"] == "일본")
@@ -94,6 +94,9 @@ assert all(passable(*city["tile"]) and rows[city["tile"][1]][city["tile"][0]] !=
 assert all((left["tile"][0] - right["tile"][0]) ** 2
            + (left["tile"][1] - right["tile"][1]) ** 2 >= 9
            for index, left in enumerate(cities) for right in cities[index + 1:])
+assert len(data["ports"]) == 10
+assert all(rows[port["tile"][1]][port["tile"][0]] in "PFMDB"
+           for port in data["ports"])
 assert len(route((104.1, 30.7), (107.0, 33.1))) > 4
 assert len(route((107.0, 33.1), (108.9, 34.3))) > 3
 for latitude in (32.14, 32.66):

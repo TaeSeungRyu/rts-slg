@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Godot;
+using SanguoSLG.Core.Data;
 
 namespace SanguoSLG.Game;
 
@@ -51,6 +52,7 @@ public sealed partial class EditMapScene : Control
     private readonly List<Button> _terrainButtons = [];
     private readonly List<Vector2I[]> _landRoutes = [];
     private readonly List<MapCity> _cities = [];
+    private readonly List<MapEditorSite> _defaultPorts = [];
     private bool _showLandRoutes = true;
     private bool _showCities = true;
     private FontFile _font = null!;
@@ -73,6 +75,14 @@ public sealed partial class EditMapScene : Control
                 city.GetProperty("region").GetString() ?? "",
                 city.GetProperty("size").GetString() ?? "",
                 new Vector2I(tile[0].GetInt32(), tile[1].GetInt32())));
+        }
+        var portId = _cities.Count + 1;
+        foreach (var port in root.GetProperty("ports").EnumerateArray())
+        {
+            var tile = port.GetProperty("tile");
+            _defaultPorts.Add(new MapEditorSite(portId++, port.GetProperty("name").GetString() ?? "",
+                "port", port.GetProperty("size").GetString() ?? "small",
+                tile[0].GetInt32(), tile[1].GetInt32(), port.GetProperty("direction").GetInt32()));
         }
         var bounds = root.GetProperty("bounds");
         _west = bounds.GetProperty("west").GetDouble();
@@ -385,7 +395,8 @@ public sealed partial class EditMapScene : Control
             && _landRoutes.Count >= 10 && _landRoutes.All(route => route.Length >= 2
                 && route.All(tile => tile.X >= 0 && tile.X < _width && tile.Y >= 0 && tile.Y < _height
                     && "PFMDRB".Contains(_rows[tile.Y][tile.X])))
-            && _cities.Count == 36
+            && _cities.Count == 68 && _defaultPorts.Count == 10
+            && _sites.Count(site => site.Kind == "port") == 10
             && _cities.All(city => city.Tile.X >= 0 && city.Tile.X < _width
                 && city.Tile.Y >= 0 && city.Tile.Y < _height
                 && "PFMD".Contains(_rows[city.Tile.Y][city.Tile.X]));
@@ -475,7 +486,7 @@ public sealed partial class EditMapScene : Control
         {
             if (File.Exists(qaPresetPath)) File.Delete(qaPresetPath);
         }
-        GD.Print($"[edit-map-qa] passed={valid} tiles={_width * _height} visible={_visibleTiles.Count} bounds={_west}-{_east}E,{_south}-{_north}N");
+        GD.Print($"[edit-map-qa] passed={valid} ports={_sites.Count(site => site.Kind == "port")} tiles={_width * _height} visible={_visibleTiles.Count} bounds={_west}-{_east}E,{_south}-{_north}N");
         GetTree().Quit(valid ? 0 : 1);
     }
 }

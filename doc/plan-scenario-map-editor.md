@@ -6,7 +6,7 @@
 
 ## 1. 목표와 현재 코드의 출발점
 
-- `run-editmap.bat`의 `EditMap.tscn`/`EditMapScene.cs`는 현재 3D 맵 편집기다. `SanguoSLG.Game/assets/maps/east-asia-map.json`은 174×115 행·열 지형, 대표 육상 동선, 성 위치 후보를 담는다. 배치 후보 36개는 기본 캠페인의 실제 `City`가 아니다.
+- `run-editmap.bat`의 `EditMap.tscn`/`EditMapScene.cs`는 현재 3D 맵 편집기다. `SanguoSLG.Game/assets/maps/east-asia-map.json`은 174×115 행·열 지형, 대표 육상 동선, 성 68곳과 중국 항구 10곳의 기본 배치 후보를 담는다. 중국 성 60곳은 삼국지 13의 도시 명단을 기준으로 하고 좌표와 항구는 게임용 근사 배치다. 이 후보는 기본 캠페인의 실제 `City`가 아니다.
 - 실제 게임 지도는 `ScenarioLoader`가 `data/map.json`, 도시 데이터, 시설 정보를 로드하고 `HexMap`·`GameState`를 만든다. 편집기 지도는 행·열, 캠페인 지도는 axial `HexCoord`라서 단순 파일 교체만으로 작동하지 않는다.
 - `run-general-editor.bat`은 현재 `data/generals.json` 등을 실제로 수정한다. 새 캠페인은 장수 정의를 별도 상태로 복사하고 저장 슬롯은 그 상태를 보존한다. 맵은 장수처럼 **새 게임에만 반영**하되, 현행 저장/재로딩 경로에 맵 스냅샷이 있는지 먼저 감사하고 부족하면 추가한다. 장수 에디터가 이미 맵 격리까지 제공한다고 가정하지 않는다.
 - 최종 목적은 게임 시작 전 화면의 **`맵 변경하기`**와 **`장수 관리`** 진입점이다. 우선 독립 BAT로 기능과 저장 계약을 검증한 뒤 같은 에디터 씬을 시작 화면에서 연다.

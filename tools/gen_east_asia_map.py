@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "SanguoSLG.Game/assets/maps/east-asia-map.json"
 CITY_SITES = ROOT / "data/east-asia-city-sites.json"
+RTK13_CITY_SITES = ROOT / "data/east-asia-rtk13-cities.json"
 LAND_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson"
 WEST, EAST, SOUTH, NORTH = 97.72, 133.0, 18.0, 51.94285714285714 - 20 * (51.94285714285714 - 18.0) / 124
 WIDTH, HEIGHT = 174, 115
@@ -207,7 +208,11 @@ def route_network(rows):
 
 def city_positions(rows):
     with CITY_SITES.open(encoding="utf-8") as source:
-        sites = json.load(source)
+        sites = [site for site in json.load(source) if site["region"] != "중국"]
+    with RTK13_CITY_SITES.open(encoding="utf-8") as source:
+        sites = [{"name": name, "size": size, "longitude": longitude,
+                  "latitude": latitude, "region": "중국"}
+                 for name, size, longitude, latitude in json.load(source)] + sites
     regions = {
         "중국": (98.0, 125.3, 21.0, 43.5),
         "대한민국": (125.6, 130.4, 34.0, 38.7),
@@ -220,8 +225,8 @@ def city_positions(rows):
         column = int((longitude - WEST) / (EAST - WEST) * WIDTH)
         row = int((NORTH - latitude) / (NORTH - SOUTH) * HEIGHT)
         options = []
-        for y in range(max(0, row - 5), min(HEIGHT, row + 6)):
-            for x in range(max(0, column - 5), min(WIDTH, column + 6)):
+        for y in range(max(0, row - 8), min(HEIGHT, row + 9)):
+            for x in range(max(0, column - 8), min(WIDTH, column + 9)):
                 lon = WEST + (x + 0.5) * (EAST - WEST) / WIDTH
                 lat = NORTH - (y + 0.5) * (NORTH - SOUTH) / HEIGHT
                 west, east, south, north = regions[site["region"]]
@@ -251,6 +256,46 @@ def city_positions(rows):
         result.append({"name": site["name"], "region": site["region"],
                        "size": site["size"], "tile": [x, y],
                        "longitude": round(lon, 4), "latitude": round(lat, 4)})
+    return result
+
+
+def port_positions(rows, cities):
+    # Geographic approximations for the editable scenario, not an RTK13 port roster.
+    seeds = [
+        ("계항", "small", 118.0, 38.8), ("북해항", "small", 119.4, 36.8),
+        ("광릉항", "medium", 119.5, 32.1), ("하구항", "small", 121.5, 31.1),
+        ("강하항", "medium", 114.4, 30.6), ("강릉항", "small", 112.3, 30.2),
+        ("건업항", "medium", 118.9, 31.8), ("회계항", "small", 120.7, 30.0),
+        ("남해항", "medium", 113.5, 23.0), ("합포항", "small", 109.2, 21.6),
+    ]
+    result = []
+    # Hex direction order agrees with the map editor's E, SE, SW, W, NW, NE.
+    offsets_even = ((1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1))
+    offsets_odd = ((1, 0), (1, 1), (0, -1), (-1, 0), (-1, -1), (0, 1))
+    for name, size, longitude, latitude in seeds:
+        column = int((longitude - WEST) / (EAST - WEST) * WIDTH)
+        row = int((NORTH - latitude) / (NORTH - SOUTH) * HEIGHT)
+        options = []
+        for y in range(max(0, row - 12), min(HEIGHT, row + 13)):
+            for x in range(max(0, column - 12), min(WIDTH, column + 13)):
+                if rows[y][x] not in "PFMDB":
+                    continue
+                if any((x - city["tile"][0]) ** 2 + (y - city["tile"][1]) ** 2 < 16
+                       for city in cities):
+                    continue
+                if any((x - port["tile"][0]) ** 2 + (y - port["tile"][1]) ** 2 < 16
+                       for port in result):
+                    continue
+                for direction, (dx, dy) in enumerate(offsets_even if x % 2 == 0 else offsets_odd):
+                    xx, yy = x + dx, y + dy
+                    if not (0 <= xx < WIDTH and 0 <= yy < HEIGHT and rows[yy][xx] in "OWR"):
+                        continue
+                    distance = (x - column) ** 2 + (y - row) ** 2
+                    options.append((distance, x, y, direction))
+        if not options:
+            raise ValueError(f"No suitable port site: {name}")
+        _, x, y, direction = min(options)
+        result.append({"name": name, "size": size, "tile": [x, y], "direction": direction})
     return result
 
 
@@ -289,10 +334,14 @@ def main():
                 rows[row][column] = "B"
     routes = route_network(rows)
     cities = city_positions(rows)
+    ports = port_positions(rows, cities)
     reserved = {tuple(tile) for route in routes for tile in route["tiles"]}
     reserved.update((x, y) for city in cities
                     for y in range(max(0, city["tile"][1] - 3), min(HEIGHT, city["tile"][1] + 4))
                     for x in range(max(0, city["tile"][0] - 3), min(WIDTH, city["tile"][0] + 4)))
+    reserved.update((x, y) for port in ports
+                    for y in range(max(0, port["tile"][1] - 2), min(HEIGHT, port["tile"][1] + 3))
+                    for x in range(max(0, port["tile"][0] - 2), min(WIDTH, port["tile"][0] + 3)))
     for row in range(HEIGHT):
         latitude = NORTH - (row + 0.5) * (NORTH - SOUTH) / HEIGHT
         for column in range(WIDTH):
@@ -325,6 +374,7 @@ def main():
         "rows": ["".join(row) for row in rows],
         "land_routes": routes,
         "cities": cities,
+        "ports": ports,
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
