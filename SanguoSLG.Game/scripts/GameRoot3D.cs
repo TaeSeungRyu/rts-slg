@@ -27,6 +27,14 @@ public partial class GameRoot3D : Node3D
     {
         GetTree().AutoAcceptQuit = false;
 
+        if (OS.GetCmdlineArgs().Length == 0 &&
+            (OS.GetCmdlineUserArgs().Length == 0 || OS.GetCmdlineUserArgs().Contains("--startmenuqa"))
+            && !ScenarioStartMenu.ConsumeLaunchRequest())
+        {
+            AddChild(new ScenarioStartMenu());
+            return;
+        }
+
         if (OS.GetCmdlineArgs().Contains("--riverdebug"))
         {
             BuildShowcaseScene(new[] { "river-straight", "river-corner", "river-corner-sharp", "river-end", "bridge" }, topDown: true);
@@ -96,6 +104,11 @@ public partial class GameRoot3D : Node3D
         }
 
         var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
+        var qaMapArgument = OS.GetCmdlineUserArgs().FirstOrDefault(value => value.StartsWith("--map-preset-qa="));
+        var selectedMap = qaMapArgument is null ? ScenarioStartMenu.SelectedPresetPath
+            : qaMapArgument["--map-preset-qa=".Length..];
+        if (selectedMap is not null)
+            scenario = ScenarioMapPresetApplier.Apply(scenario, ScenarioMapPresetStore.Load(selectedMap));
 
         var tone = TonePreset.FromCmdline();
         _environment = BuildEnvironment(tone);
@@ -148,6 +161,14 @@ public partial class GameRoot3D : Node3D
 
         _engine = new WorldEngine(scenario.Balance, adminSkills: new AdminSkillLoader().LoadFromDirectory(FindDataDirectory()));
         _state = GameState.FromScenario(scenario);
+        if (qaMapArgument is not null)
+        {
+            var passed = _state.MapPresetSnapshot is not null
+                && _state.Cities.Count == scenario.MapPreset!.Sites.Count(site => site.Kind is "city" or "port")
+                && scenario.Map.Count == scenario.MapPreset.Width * scenario.MapPreset.Height;
+            GD.Print($"[scenario-map-qa] passed={passed} cells={scenario.Map.Count} cities={_state.Cities.Count}");
+            CallDeferred(nameof(QuitScenarioMapQa), passed);
+        }
         _hud = new Hud();
         AddChild(_hud);
         _hud.NextMonthPressed += OnNextMonth;
@@ -155,6 +176,8 @@ public partial class GameRoot3D : Node3D
 
         _capture = OS.GetCmdlineArgs().Contains("--shot");
     }
+
+    private void QuitScenarioMapQa(bool passed) => GetTree().Quit(passed ? 0 : 1);
 
     public override void _Notification(int what)
     {
@@ -590,7 +613,10 @@ public partial class GameRoot3D : Node3D
             // 성은 발자국(1/3/5타일) 전체의 중심점에 놓는다. 모델은 발자국 실치수로 제작됨.
             var centroid = Vector3.Zero;
             var count = 0;
-            foreach (var tile in CastleFootprint.TilesFor(city))
+            var footprint = city.Port == PortSize.Medium
+                ? new[] { city.Position, city.Position + new HexCoord(1, 0) }
+                : city.IsPort ? [city.Position] : CastleFootprint.TilesFor(city);
+            foreach (var tile in footprint)
             {
                 centroid += view.HexToWorld(tile);
                 count++;
@@ -600,7 +626,15 @@ public partial class GameRoot3D : Node3D
 
             var root = new Node3D { Position = centroid + new Vector3(0f, view.TileTopY, 0f) };
             AddChild(root);
-            var castleModel = castles[city.Castle].Instantiate<Node3D>();
+            var modelScene = city.Port switch
+            {
+                PortSize.Small => GD.Load<PackedScene>("res://assets/models/port-small.glb"),
+                PortSize.Medium => GD.Load<PackedScene>("res://assets/models/port-medium.glb"),
+                _ => castles[city.Castle],
+            };
+            var castleModel = modelScene.Instantiate<Node3D>();
+            var direction = scenario.MapPreset?.Sites.FirstOrDefault(site => site.Id == city.Id.Value)?.Direction ?? 0;
+            castleModel.RotationDegrees = new Vector3(0f, direction * 60f, 0f);
             root.AddChild(castleModel);
 
             // 마을·항구와 똑같은 공통 파괴 레이어를 성에도 그대로 적용한다

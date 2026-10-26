@@ -72,6 +72,12 @@ public sealed partial class EditMapScene
 
     private void AddSaveDraftButton(HBoxContainer bar)
     {
+        if (ScenarioStartMenu.FromStartMenu)
+        {
+            var back = new Button { Text = "시작 화면", CustomMinimumSize = new Vector2(95, 26) };
+            back.Pressed += () => ScenarioStartMenu.ReturnToStart(GetTree());
+            bar.AddChild(back);
+        }
         _saveDraftButton = new Button { Text = "맵 저장", CustomMinimumSize = new Vector2(95, 26) };
         _saveDraftButton.Pressed += SaveDraft;
         bar.AddChild(_saveDraftButton);

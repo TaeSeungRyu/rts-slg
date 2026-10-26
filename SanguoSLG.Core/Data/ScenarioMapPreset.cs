@@ -43,11 +43,17 @@ public sealed record ScenarioMapPreset(int Version, int Width, int Height, IRead
             if (site.Id <= 0 || !ids.Add(site.Id) || string.IsNullOrWhiteSpace(site.Name) ||
                 site.Direction is < 0 or > 5 || site.Column < 0 || site.Column >= Width ||
                 site.Row < 0 || site.Row >= Height ||
-                site.Kind is not ("city" or "port" or "facility"))
+                site.Kind is not ("city" or "port" or "facility") ||
+                site.Kind == "city" && site.Size is not ("small" or "medium" or "large") ||
+                site.Kind == "port" && site.Size is not ("small" or "medium") ||
+                site.Kind == "facility" && site.Size is not ("paddy" or "farm" or "village" or "workshop"))
                 throw new InvalidDataException("맵 배치물의 ID, 이름, 위치 또는 방향이 올바르지 않습니다.");
         }
         if (Sites.GroupBy(site => (site.Column, site.Row)).Any(group => group.Count() > 1))
             throw new InvalidDataException("같은 타일에 여러 배치물을 둘 수 없습니다.");
+        if (Sites.Any(site => site.Kind == "facility" &&
+            !Sites.Any(city => city.Kind == "city" && city.Id == site.ParentCityId)))
+            throw new InvalidDataException("생산 시설에는 연결된 성이 필요합니다.");
     }
 }
 

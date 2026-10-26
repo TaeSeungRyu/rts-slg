@@ -133,7 +133,10 @@ public sealed partial class EditMapScene
             if (!required.Contains(cityTile) || _visibleCities.ContainsKey(cityTile)) continue;
             var scene = GD.Load<PackedScene>($"res://assets/models/castle-{city.Size}.glb");
             var visual = scene.Instantiate<Node3D>();
-            visual.Position = _mapView.HexToWorld(Axial(cityTile)) + new Vector3(0f, _mapView.TileTopY, 0f);
+            var occupied = Footprint(city).ToArray();
+            visual.Position = occupied.Select(cell => _mapView.HexToWorld(Axial(cell)))
+                .Aggregate(Vector3.Zero, (sum, position) => sum + position) / occupied.Length
+                + new Vector3(0f, _mapView.TileTopY, 0f);
             visual.RotationDegrees = new Vector3(0f, city.Direction * 60f, 0f);
             _visibleTerrain.AddChild(visual);
             _visibleCities[cityTile] = visual;
@@ -156,7 +159,10 @@ public sealed partial class EditMapScene
             };
             var scene = GD.Load<PackedScene>($"res://assets/models/{asset}.glb");
             var visual = scene.Instantiate<Node3D>();
-            visual.Position = _mapView.HexToWorld(Axial(tile)) + new Vector3(0f, _mapView.TileTopY, 0f);
+            var occupied = Footprint(site).ToArray();
+            visual.Position = occupied.Select(cell => _mapView.HexToWorld(Axial(cell)))
+                .Aggregate(Vector3.Zero, (sum, position) => sum + position) / occupied.Length
+                + new Vector3(0f, _mapView.TileTopY, 0f);
             visual.RotationDegrees = new Vector3(0f, site.Direction * 60f, 0f);
             _visibleTerrain.AddChild(visual);
             _visibleStructures[site.Id] = visual;

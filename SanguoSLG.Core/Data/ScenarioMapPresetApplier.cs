@@ -22,10 +22,20 @@ public static class ScenarioMapPresetApplier
     public static Scenario Apply(Scenario source, ScenarioMapPreset preset)
     {
         preset.Validate();
+        if (!preset.Sites.Any(site => site.Kind is "city" or "port"))
+            throw new InvalidDataException("게임 시작용 지도에는 성 또는 항구가 필요합니다.");
         var terrain = new Dictionary<HexCoord, TerrainType>();
         for (var row = 0; row < preset.Height; row++)
         for (var column = 0; column < preset.Width; column++)
             terrain[preset.ToAxial(column, row)] = Terrain[preset.Rows[row][column]];
+        foreach (var facility in preset.Sites.Where(site => site.Kind == "facility"))
+            terrain[preset.ToAxial(facility.Column, facility.Row)] = facility.Size switch
+            {
+                "paddy" => TerrainType.Paddy,
+                "farm" => TerrainType.Farm,
+                "village" => TerrainType.Village1,
+                _ => TerrainType.Workshop,
+            };
         var validTiles = terrain.Keys.ToHashSet();
         var minR = validTiles.Min(tile => tile.R);
         var maxR = validTiles.Max(tile => tile.R);
@@ -64,6 +74,7 @@ public static class ScenarioMapPresetApplier
             };
         }).ToArray();
         var knownCityIds = cities.Select(city => city.Id).ToHashSet();
+        var newCitiesByName = cities.ToDictionary(city => city.Name, StringComparer.Ordinal);
         var facilities = preset.Sites.Where(site => site.Kind == "facility" &&
             site.ParentCityId is { } parent && knownCityIds.Contains(new CityId(parent)))
             .Select(site => new FacilityPlacement(new CityId(site.ParentCityId!.Value),
@@ -75,8 +86,14 @@ public static class ScenarioMapPresetApplier
             Cities = cities,
             Features = [],
             Conditions = new TileConditionMap(),
-            Postings = source.PostingList.Where(posting => posting.Location is { } location
-                && knownCityIds.Contains(location)).ToArray(),
+            Postings = source.PostingList.Select(posting =>
+            {
+                var oldCity = source.Cities.FirstOrDefault(city => city.Id == posting.Location);
+                var preferred = oldCity is null ? null : newCitiesByName.GetValueOrDefault(oldCity.Name);
+                var destination = preferred ?? cities.FirstOrDefault(city => city.Owner == posting.Faction)
+                    ?? cities[0];
+                return posting with { Location = destination.Id };
+            }).ToArray(),
             Ruins = [],
             InitialFacilities = facilities,
             MapPreset = preset.Snapshot(),

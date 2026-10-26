@@ -100,6 +100,12 @@ public partial class GeneralEditorScene : Control
 
         var toolbar = new HBoxContainer();
         root.AddChild(toolbar);
+        if (ScenarioStartMenu.FromStartMenu)
+        {
+            var back = new Button { Text = "시작 화면" };
+            back.Pressed += () => ScenarioStartMenu.ReturnToStart(GetTree());
+            toolbar.AddChild(back);
+        }
 
         _search = new LineEdit
         {

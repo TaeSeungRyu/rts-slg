@@ -396,6 +396,12 @@ public sealed partial class EditMapScene : Control
                 "small", coastal.X, coastal.Y, direction))
             .FirstOrDefault(PortFacesWater);
         valid &= portDraft is not null && CanPlace(portDraft);
+        ShowEditorPalette(vacant, new Vector2(200f, 200f));
+        valid &= _editorPalette is not null
+            && _editorPalette.FindChildren("*", "Button", true, false).OfType<Button>()
+                .Any(button => button.Text == "성 추가" && !button.Disabled)
+            && _editorPalette.FindChildren("*", "Button", true, false).OfType<Button>()
+                .Any(button => button.Text == "성 편집" && button.Disabled);
         GD.Print($"[edit-map-qa] passed={valid} tiles={_width * _height} visible={_visibleTiles.Count} bounds={_west}-{_east}E,{_south}-{_north}N");
         GetTree().Quit(valid ? 0 : 1);
     }
