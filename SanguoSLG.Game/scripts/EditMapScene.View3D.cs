@@ -173,6 +173,16 @@ public sealed partial class EditMapScene
         RefreshVisibleTerrain();
     }
 
+    private void FocusRegion(double longitude, double latitude)
+    {
+        var column = Mathf.Clamp((int)((longitude - _west) / (_east - _west) * _width), 0, _width - 1);
+        var row = Mathf.Clamp((int)((_north - latitude) / (_north - _south) * _height), 0, _height - 1);
+        _viewCenter = new Vector2I(column, row);
+        _cameraTarget = _mapView.HexToWorld(Axial(_viewCenter));
+        PositionCamera();
+        RefreshVisibleTerrain();
+    }
+
     private void RefreshVisibleTerrain()
     {
         var aspect = Mathf.Max(0.5f, Size.X / Mathf.Max(1f, Size.Y));

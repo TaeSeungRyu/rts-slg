@@ -159,6 +159,16 @@ public sealed partial class EditMapScene : Control
             QueueRedraw();
         };
         actions.AddChild(citiesToggle);
+        foreach (var (label, longitude, latitude) in new[]
+        {
+            ("중국", 113.0, 34.0), ("한반도", 127.5, 37.0),
+            ("대만", 121.0, 23.7), ("일본", 130.7, 33.3),
+        })
+        {
+            var regionButton = new Button { Text = label, TooltipText = $"{label} 지역으로 이동" };
+            regionButton.Pressed += () => FocusRegion(longitude, latitude);
+            actions.AddChild(regionButton);
+        }
         var undo = new Button { Text = "되돌리기" };
         undo.Pressed += UndoDraft;
         actions.AddChild(undo);
@@ -427,6 +437,11 @@ public sealed partial class EditMapScene : Control
             && _viewCenter == beforePanCenter;
         PanMap(new Vector2(604, 400), new Vector2(600, 400));
         valid &= _mapCamera.Position.DistanceTo(beforePan) < 0.01f;
+        FocusRegion(127.5, 37.0);
+        valid &= _viewCenter.X > _width * 3 / 4 && _visibleTiles.Count > 100;
+        FocusRegion(130.7, 33.3);
+        valid &= _viewCenter.X > _width * 4 / 5 && _visibleTiles.Count > 100;
+        FocusRegion(113.0, 34.0);
         var visibleRiver = _visibleTiles.Keys.FirstOrDefault(tile => _rows[tile.Y][tile.X] is 'R' or 'B');
         if (_visibleTiles.ContainsKey(visibleRiver) && _rows[visibleRiver.Y][visibleRiver.X] is 'R' or 'B')
         {
