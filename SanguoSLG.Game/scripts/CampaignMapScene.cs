@@ -805,9 +805,13 @@ public sealed partial class CampaignMapScene : Node3D
                 && _state.Cities.All(city => _map.Contains(city.Position))
                 && _state.Cities.Any(city => city.Owner == Player)
                 && _state.Cities.Any(city => city.Owner != Player)
-                && minCitySpacing >= 6;
+                && minCitySpacing >= 6
+                && _aiTestFixture?.FullVision == false
+                && (_state.ScoutedCities?.Count ?? 0) == 0
+                && _visibleTiles.Count > 0 && _visibleTiles.Count < _map.Count;
             GD.Print($"[newmap-qa] passed={passed} factions={_state.Factions.Count} "
-                + $"cities={_state.Cities.Count} cells={_map.Count} citySpacing={minCitySpacing}");
+                + $"cities={_state.Cities.Count} cells={_map.Count} citySpacing={minCitySpacing} "
+                + $"visible={_visibleTiles.Count} scouted={_state.ScoutedCities?.Count ?? 0}");
             CallDeferred(nameof(QuitNewMapQa), passed);
         }
         if (args.Contains("--mapreportqa")) CallDeferred(nameof(RunMapReportQa));

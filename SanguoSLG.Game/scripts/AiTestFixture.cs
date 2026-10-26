@@ -28,10 +28,12 @@ internal sealed class AiTestFixture
     public IReadOnlyList<PortShipStock> Ships { get; }
     public IReadOnlyList<RuinDefinition> Ruins { get; }
     public IReadOnlyList<CityIntel> Intel { get; }
+    public bool FullVision { get; }
 
     private AiTestFixture(HexMap map, IReadOnlyList<Faction> factions, IReadOnlyList<City> cities,
         IReadOnlyList<GeneralPosting> postings, IReadOnlyList<GarrisonForce> garrisons,
-        IReadOnlyList<PortShipStock> ships, IReadOnlyList<RuinDefinition> ruins)
+        IReadOnlyList<PortShipStock> ships, IReadOnlyList<RuinDefinition> ruins,
+        bool fullVision = true)
     {
         Map = map;
         Factions = factions;
@@ -40,7 +42,8 @@ internal sealed class AiTestFixture
         Garrisons = garrisons;
         Ships = ships;
         Ruins = ruins;
-        Intel = factions.SelectMany(faction => cities
+        FullVision = fullVision;
+        Intel = !fullVision ? [] : factions.SelectMany(faction => cities
             .Where(city => city.Owner != faction.Id)
             .Select(city => new CityIntel(faction.Id, city.Id)))
             .ToList();
@@ -157,7 +160,8 @@ internal sealed class AiTestFixture
         GD.Print($"[newmap] cells={scenario.Map.Count} cities={cities.Length} "
             + $"player={cities.Count(city => city.Owner.Value == 1)} "
             + $"enemy={cities.Count(city => city.Owner.Value == 2)} factions={factions.Length}");
-        return new AiTestFixture(scenario.Map, factions, cities, postings, garrisons, ships, []);
+        return new AiTestFixture(scenario.Map, factions, cities, postings, garrisons, ships, [],
+            fullVision: false);
     }
 
     private static int Number(JsonElement item, string name) => item.GetProperty(name).GetInt32();
