@@ -71,6 +71,7 @@ public sealed partial class EditMapScene : Control
         _north = bounds.GetProperty("north").GetDouble();
         SetAnchorsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Stop;
+        Build3DView();
         BuildInterface();
         CallDeferred(nameof(FitMap));
         if (OS.GetCmdlineUserArgs().Contains("--editmapqa")) CallDeferred(nameof(RunQa));
@@ -175,6 +176,7 @@ public sealed partial class EditMapScene : Control
 
     public override void _Draw()
     {
+        if (_mapViewport is not null) return;
         DrawRect(new Rect2(Vector2.Zero, Size), new Color("183949"));
         DrawSetTransform(_pan, 0f, Vector2.One * _scale);
         for (var row = 0; row < _height; row++)
@@ -257,6 +259,11 @@ public sealed partial class EditMapScene : Control
 
     public override void _GuiInput(InputEvent input)
     {
+        if (_mapViewport is not null)
+        {
+            Handle3DInput(input);
+            return;
+        }
         if (input is InputEventMouseButton button)
         {
             if (button.ButtonIndex is MouseButton.WheelUp or MouseButton.WheelDown && button.Pressed)
@@ -349,7 +356,9 @@ public sealed partial class EditMapScene : Control
             valid &= _tileInfo.Text.Contains("한성") && _tileInfo.Text.Contains("중형성");
         }
         else valid = false;
-        GD.Print($"[edit-map-qa] passed={valid} tiles={_width * _height} bounds={_west}-{_east}E,{_south}-{_north}N");
+        valid &= _mapViewport is not null && _mapCamera.Current && _visibleTiles.Count > 100
+            && _visibleTiles.Count < _width * _height;
+        GD.Print($"[edit-map-qa] passed={valid} tiles={_width * _height} visible={_visibleTiles.Count} bounds={_west}-{_east}E,{_south}-{_north}N");
         GetTree().Quit(valid ? 0 : 1);
     }
 }
