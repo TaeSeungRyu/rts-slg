@@ -387,7 +387,7 @@ public sealed partial class EditMapScene : Control
         _tileInfo.Text = $"{Terrain[_rows[row][column]].Name}    │    {lon:F1}°E, {lat:F1}°N    │    타일 {column}, {row}";
     }
 
-    private void RunQa()
+    private async void RunQa()
     {
         bool Land(double lon, double lat)
         {
@@ -482,6 +482,8 @@ public sealed partial class EditMapScene : Control
             koreanNameInput.Text = "가";
             koreanNameInput.SetCaretColumn(0);
             koreanNameInput.EmitSignal(TextEdit.SignalName.TextChanged);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             valid &= koreanNameInput.GetCaretColumn() == 1;
             koreanNameInput.InsertTextAtCaret("나");
             valid &= koreanNameInput.Text == "가나";
@@ -532,6 +534,8 @@ public sealed partial class EditMapScene : Control
                 koreanPortInput.Text = "가";
                 koreanPortInput.SetCaretColumn(0);
                 koreanPortInput.EmitSignal(TextEdit.SignalName.TextChanged);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 valid &= koreanPortInput.GetCaretColumn() == 1;
                 koreanPortInput.InsertTextAtCaret("나");
                 valid &= koreanPortInput.Text == "가나";

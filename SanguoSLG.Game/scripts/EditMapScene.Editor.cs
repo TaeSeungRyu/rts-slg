@@ -381,11 +381,18 @@ public sealed partial class EditMapScene
     {
         input.TextChanged += () =>
         {
-            if (input.HasImeText() || input.HasSelection() || input.GetLineCount() != 1) return;
+            if (input.HasSelection() || input.GetLineCount() != 1) return;
             var value = input.GetLine(0);
             if (value.Length == 0 || !value.Any(character => character is >= '\uAC00' and <= '\uD7A3'))
                 return;
-            if (input.GetCaretColumn() == 0) input.SetCaretColumn(value.Length);
+            Callable.From(() =>
+            {
+                if (!GodotObject.IsInstanceValid(input) || input.IsQueuedForDeletion()
+                    || input.GetLineCount() != 1 || input.HasSelection()
+                    || input.GetCaretColumn() != 0) return;
+                if (input.HasImeText()) input.ApplyIme();
+                input.SetCaretColumn(input.GetLine(0).Length);
+            }).CallDeferred();
         };
     }
 
