@@ -349,6 +349,16 @@ def main():
                 continue
             sample = (column * 31 + row * 47 + column * row * 7) % 97
             current = rows[row][column]
+            longitude = WEST + (column + 0.5) * (EAST - WEST) / WIDTH
+            if (99.0 <= longitude <= 109.0 and 21.0 <= latitude <= 30.0
+                    and current in "PFMDHN"):
+                # Irregular southwest forest and wetlands, while routes and settlements stay intact.
+                wetness = (column * 43 + row * 29 + column * row * 11) % 100
+                if wetness < 27:
+                    rows[row][column] = "N"
+                elif wetness < 83:
+                    rows[row][column] = "F"
+                continue
             if current == "D" and sample < 7:
                 rows[row][column] = "Q"
             elif current in "HM" and latitude > 36 and sample < 9:

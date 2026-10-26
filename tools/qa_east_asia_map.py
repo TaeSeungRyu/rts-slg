@@ -105,6 +105,11 @@ for latitude in (32.14, 32.66):
                 and 104 <= coordinate(column, row)[0] <= 111]
     assert sum(kind in "PFMDRB" for kind in corridor) <= 10, (latitude, corridor)
 assert {"Q", "I", "C", "X", "T", "N"}.issubset(set("".join(rows)))
+southwest = [rows[row][column] for row in range(height) for column in range(width)
+             if 99 <= coordinate(column, row)[0] <= 109
+             and 21 <= coordinate(column, row)[1] <= 30
+             and rows[row][column] not in "OWRB"]
+assert sum(kind in "FN" for kind in southwest) > len(southwest) * 0.6
 desert_spread = [row.count("D") + row.count("Q") for row in rows]
 assert len(set(desert_spread[:30])) > 10
 print(f"[east-asia-map-qa] passed: bounds, routes, {len(cities)} city sites")
