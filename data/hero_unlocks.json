@@ -1,65 +1,1181 @@
 [
   {
+    "general": 1,
+    "type": "faction",
+    "recruit_point_cost": 230,
+    "recruit_gold": 920,
+    "title": "조조",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 2,
+    "type": "faction",
+    "recruit_point_cost": 210,
+    "recruit_gold": 840,
+    "title": "유비",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 3,
+    "type": "faction",
+    "recruit_point_cost": 216,
+    "recruit_gold": 864,
+    "title": "관우",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 2
+  },
+  {
+    "general": 4,
+    "type": "faction",
+    "recruit_point_cost": 160,
+    "recruit_gold": 640,
+    "title": "장비",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 2
+  },
+  {
+    "general": 5,
+    "type": "faction",
+    "recruit_point_cost": 152,
+    "recruit_gold": 608,
+    "title": "여포",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
     "general": 6,
     "type": "faction",
-    "faction": 2,
-    "home_regions": [ "jingzhou", "yizhou" ],
-    "unlock_year": 207,
     "recruit_point_cost": 250,
     "recruit_gold": 1500,
     "title": "와룡",
-    "desc": "촉의 정체성을 강화하는 세력형 위인"
-  },
-  {
-    "general": 9,
-    "type": "faction",
-    "faction": 2,
-    "home_regions": [ "jizhou" ],
-    "unlock_year": 190,
-    "recruit_point_cost": 160,
-    "recruit_gold": 1000,
-    "title": "상산의 용장",
-    "desc": "촉 세력형 위인"
-  },
-  {
-    "general": 29,
-    "type": "faction",
-    "faction": 1,
-    "home_regions": [ "yuzhou" ],
-    "unlock_year": 190,
-    "recruit_point_cost": 200,
-    "recruit_gold": 1200,
-    "title": "왕좌지재",
-    "desc": "위의 내정 기반 세력형 위인"
-  },
-  {
-    "general": 11,
-    "type": "region",
-    "home_regions": [ "jingzhou" ],
-    "unlock_year": 190,
-    "recruit_point_cost": 140,
-    "recruit_gold": 900,
-    "title": "형주의 노장",
-    "desc": "형주권 도시형 위인"
-  },
-  {
-    "general": 41,
-    "type": "region",
-    "home_regions": [ "liangzhou" ],
-    "unlock_year": 211,
-    "recruit_point_cost": 220,
-    "recruit_gold": 1300,
-    "title": "서량의 기병장",
-    "desc": "서량 지역 도시형 위인"
+    "desc": "촉의 정체성을 강화하는 세력형 위인",
+    "required_general": 2
   },
   {
     "general": 7,
     "type": "region",
-    "home_regions": [ "yangzhou" ],
-    "unlock_year": 190,
     "recruit_point_cost": 250,
     "recruit_gold": 1500,
     "title": "강동의 대도독",
-    "desc": "강동 도시형 위인"
+    "desc": "강동 도시형 위인",
+    "required_general": 62
+  },
+  {
+    "general": 8,
+    "type": "faction",
+    "recruit_point_cost": 204,
+    "recruit_gold": 816,
+    "title": "하후돈",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 9,
+    "type": "faction",
+    "recruit_point_cost": 160,
+    "recruit_gold": 1000,
+    "title": "상산의 용장",
+    "desc": "촉 세력형 위인",
+    "required_general": 2
+  },
+  {
+    "general": 10,
+    "type": "faction",
+    "recruit_point_cost": 184,
+    "recruit_gold": 736,
+    "title": "감녕",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 11,
+    "type": "region",
+    "recruit_point_cost": 140,
+    "recruit_gold": 900,
+    "title": "형주의 노장",
+    "desc": "형주권 도시형 위인",
+    "required_general": 2
+  },
+  {
+    "general": 12,
+    "type": "faction",
+    "recruit_point_cost": 228,
+    "recruit_gold": 912,
+    "title": "사마의",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 13,
+    "type": "faction",
+    "recruit_point_cost": 212,
+    "recruit_gold": 848,
+    "title": "장료",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 14,
+    "type": "faction",
+    "recruit_point_cost": 200,
+    "recruit_gold": 800,
+    "title": "장합",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 15,
+    "type": "faction",
+    "recruit_point_cost": 202,
+    "recruit_gold": 808,
+    "title": "서황",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 16,
+    "type": "faction",
+    "recruit_point_cost": 178,
+    "recruit_gold": 712,
+    "title": "악진",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 17,
+    "type": "faction",
+    "recruit_point_cost": 190,
+    "recruit_gold": 760,
+    "title": "우금",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 18,
+    "type": "faction",
+    "recruit_point_cost": 204,
+    "recruit_gold": 816,
+    "title": "이전",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 19,
+    "type": "faction",
+    "recruit_point_cost": 160,
+    "recruit_gold": 640,
+    "title": "전위",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 20,
+    "type": "faction",
+    "recruit_point_cost": 160,
+    "recruit_gold": 640,
+    "title": "허저",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 21,
+    "type": "faction",
+    "recruit_point_cost": 188,
+    "recruit_gold": 752,
+    "title": "방덕",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 85
+  },
+  {
+    "general": 22,
+    "type": "faction",
+    "recruit_point_cost": 192,
+    "recruit_gold": 768,
+    "title": "하후연",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 23,
+    "type": "faction",
+    "recruit_point_cost": 198,
+    "recruit_gold": 792,
+    "title": "조인",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 24,
+    "type": "faction",
+    "recruit_point_cost": 172,
+    "recruit_gold": 688,
+    "title": "조홍",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 25,
+    "type": "faction",
+    "recruit_point_cost": 214,
+    "recruit_gold": 856,
+    "title": "조비",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 26,
+    "type": "faction",
+    "recruit_point_cost": 194,
+    "recruit_gold": 776,
+    "title": "조진",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 25
+  },
+  {
+    "general": 27,
+    "type": "faction",
+    "recruit_point_cost": 190,
+    "recruit_gold": 760,
+    "title": "조휴",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 25
+  },
+  {
+    "general": 28,
+    "type": "faction",
+    "recruit_point_cost": 198,
+    "recruit_gold": 792,
+    "title": "곽가",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 29,
+    "type": "faction",
+    "recruit_point_cost": 200,
+    "recruit_gold": 1200,
+    "title": "왕좌지재",
+    "desc": "위의 내정 기반 세력형 위인",
+    "required_general": 1
+  },
+  {
+    "general": 30,
+    "type": "faction",
+    "recruit_point_cost": 202,
+    "recruit_gold": 808,
+    "title": "순유",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 31,
+    "type": "faction",
+    "recruit_point_cost": 208,
+    "recruit_gold": 832,
+    "title": "가후",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 32,
+    "type": "faction",
+    "recruit_point_cost": 210,
+    "recruit_gold": 840,
+    "title": "정욱",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 33,
+    "type": "faction",
+    "recruit_point_cost": 202,
+    "recruit_gold": 808,
+    "title": "유엽",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 34,
+    "type": "faction",
+    "recruit_point_cost": 208,
+    "recruit_gold": 832,
+    "title": "만총",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 35,
+    "type": "faction",
+    "recruit_point_cost": 202,
+    "recruit_gold": 808,
+    "title": "학소",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 1
+  },
+  {
+    "general": 36,
+    "type": "faction",
+    "recruit_point_cost": 162,
+    "recruit_gold": 648,
+    "title": "왕쌍",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 37,
+    "type": "faction",
+    "recruit_point_cost": 224,
+    "recruit_gold": 896,
+    "title": "등애",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 38,
+    "type": "faction",
+    "recruit_point_cost": 210,
+    "recruit_gold": 840,
+    "title": "종회",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 39,
+    "type": "faction",
+    "recruit_point_cost": 220,
+    "recruit_gold": 880,
+    "title": "사마사",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 12
+  },
+  {
+    "general": 40,
+    "type": "faction",
+    "recruit_point_cost": 214,
+    "recruit_gold": 856,
+    "title": "사마소",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 12
+  },
+  {
+    "general": 41,
+    "type": "region",
+    "recruit_point_cost": 220,
+    "recruit_gold": 1300,
+    "title": "서량의 기병장",
+    "desc": "서량 지역 도시형 위인",
+    "required_general": 85
+  },
+  {
+    "general": 42,
+    "type": "faction",
+    "recruit_point_cost": 194,
+    "recruit_gold": 776,
+    "title": "위연",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 2
+  },
+  {
+    "general": 43,
+    "type": "faction",
+    "recruit_point_cost": 220,
+    "recruit_gold": 880,
+    "title": "강유",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 6
+  },
+  {
+    "general": 44,
+    "type": "faction",
+    "recruit_point_cost": 180,
+    "recruit_gold": 720,
+    "title": "마대",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 41
+  },
+  {
+    "general": 45,
+    "type": "faction",
+    "recruit_point_cost": 198,
+    "recruit_gold": 792,
+    "title": "왕평",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 2
+  },
+  {
+    "general": 46,
+    "type": "faction",
+    "recruit_point_cost": 180,
+    "recruit_gold": 720,
+    "title": "요화",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 2
+  },
+  {
+    "general": 47,
+    "type": "faction",
+    "recruit_point_cost": 204,
+    "recruit_gold": 816,
+    "title": "방통",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 2
+  },
+  {
+    "general": 48,
+    "type": "faction",
+    "recruit_point_cost": 200,
+    "recruit_gold": 800,
+    "title": "법정",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 2
+  },
+  {
+    "general": 49,
+    "type": "faction",
+    "recruit_point_cost": 196,
+    "recruit_gold": 784,
+    "title": "마량",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 2
+  },
+  {
+    "general": 50,
+    "type": "faction",
+    "recruit_point_cost": 190,
+    "recruit_gold": 760,
+    "title": "마속",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 51,
+    "type": "faction",
+    "recruit_point_cost": 212,
+    "recruit_gold": 848,
+    "title": "서서",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 2
+  },
+  {
+    "general": 52,
+    "type": "faction",
+    "recruit_point_cost": 194,
+    "recruit_gold": 776,
+    "title": "관평",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 3
+  },
+  {
+    "general": 53,
+    "type": "faction",
+    "recruit_point_cost": 188,
+    "recruit_gold": 752,
+    "title": "관흥",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 3
+  },
+  {
+    "general": 54,
+    "type": "faction",
+    "recruit_point_cost": 178,
+    "recruit_gold": 712,
+    "title": "장포",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 4
+  },
+  {
+    "general": 55,
+    "type": "faction",
+    "recruit_point_cost": 196,
+    "recruit_gold": 784,
+    "title": "엄안",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 2
+  },
+  {
+    "general": 56,
+    "type": "faction",
+    "recruit_point_cost": 206,
+    "recruit_gold": 824,
+    "title": "이엄",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 2
+  },
+  {
+    "general": 57,
+    "type": "faction",
+    "recruit_point_cost": 170,
+    "recruit_gold": 680,
+    "title": "맹획",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 58,
+    "type": "faction",
+    "recruit_point_cost": 168,
+    "recruit_gold": 672,
+    "title": "축융",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 57
+  },
+  {
+    "general": 59,
+    "type": "faction",
+    "recruit_point_cost": 184,
+    "recruit_gold": 736,
+    "title": "진도",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 2
+  },
+  {
+    "general": 60,
+    "type": "faction",
+    "recruit_point_cost": 188,
+    "recruit_gold": 752,
+    "title": "오의",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 2
+  },
+  {
+    "general": 61,
+    "type": "faction",
+    "recruit_point_cost": 216,
+    "recruit_gold": 864,
+    "title": "손견",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 62,
+    "type": "faction",
+    "recruit_point_cost": 210,
+    "recruit_gold": 840,
+    "title": "손책",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 61
+  },
+  {
+    "general": 63,
+    "type": "faction",
+    "recruit_point_cost": 216,
+    "recruit_gold": 864,
+    "title": "손권",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 62
+  },
+  {
+    "general": 64,
+    "type": "faction",
+    "recruit_point_cost": 204,
+    "recruit_gold": 816,
+    "title": "태사자",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 62
+  },
+  {
+    "general": 65,
+    "type": "faction",
+    "recruit_point_cost": 204,
+    "recruit_gold": 816,
+    "title": "정보",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 61
+  },
+  {
+    "general": 66,
+    "type": "faction",
+    "recruit_point_cost": 196,
+    "recruit_gold": 784,
+    "title": "황개",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 61
+  },
+  {
+    "general": 67,
+    "type": "faction",
+    "recruit_point_cost": 184,
+    "recruit_gold": 736,
+    "title": "한당",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 61
+  },
+  {
+    "general": 68,
+    "type": "faction",
+    "recruit_point_cost": 178,
+    "recruit_gold": 712,
+    "title": "주태",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 69,
+    "type": "faction",
+    "recruit_point_cost": 184,
+    "recruit_gold": 736,
+    "title": "능통",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 70,
+    "type": "faction",
+    "recruit_point_cost": 228,
+    "recruit_gold": 912,
+    "title": "여몽",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 71,
+    "type": "faction",
+    "recruit_point_cost": 230,
+    "recruit_gold": 920,
+    "title": "육손",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 72,
+    "type": "faction",
+    "recruit_point_cost": 216,
+    "recruit_gold": 864,
+    "title": "육항",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 71
+  },
+  {
+    "general": 73,
+    "type": "faction",
+    "recruit_point_cost": 218,
+    "recruit_gold": 872,
+    "title": "노숙",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 62
+  },
+  {
+    "general": 74,
+    "type": "faction",
+    "recruit_point_cost": 192,
+    "recruit_gold": 768,
+    "title": "장소",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 75,
+    "type": "faction",
+    "recruit_point_cost": 196,
+    "recruit_gold": 784,
+    "title": "제갈근",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 76,
+    "type": "faction",
+    "recruit_point_cost": 196,
+    "recruit_gold": 784,
+    "title": "정봉",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 77,
+    "type": "faction",
+    "recruit_point_cost": 202,
+    "recruit_gold": 808,
+    "title": "서성",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 78,
+    "type": "faction",
+    "recruit_point_cost": 200,
+    "recruit_gold": 800,
+    "title": "주환",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 79,
+    "type": "faction",
+    "recruit_point_cost": 172,
+    "recruit_gold": 688,
+    "title": "반장",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 80,
+    "type": "faction",
+    "recruit_point_cost": 198,
+    "recruit_gold": 792,
+    "title": "하제",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 81,
+    "type": "faction",
+    "recruit_point_cost": 170,
+    "recruit_gold": 680,
+    "title": "동탁",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 82,
+    "type": "faction",
+    "recruit_point_cost": 164,
+    "recruit_gold": 656,
+    "title": "화웅",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 81
+  },
+  {
+    "general": 83,
+    "type": "faction",
+    "recruit_point_cost": 154,
+    "recruit_gold": 616,
+    "title": "이각",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 81
+  },
+  {
+    "general": 84,
+    "type": "faction",
+    "recruit_point_cost": 150,
+    "recruit_gold": 600,
+    "title": "곽사",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 81
+  },
+  {
+    "general": 85,
+    "type": "faction",
+    "recruit_point_cost": 186,
+    "recruit_gold": 744,
+    "title": "마등",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 86,
+    "type": "faction",
+    "recruit_point_cost": 194,
+    "recruit_gold": 776,
+    "title": "한수",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 87,
+    "type": "faction",
+    "recruit_point_cost": 206,
+    "recruit_gold": 824,
+    "title": "원소",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 88,
+    "type": "faction",
+    "recruit_point_cost": 170,
+    "recruit_gold": 680,
+    "title": "안량",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 87
+  },
+  {
+    "general": 89,
+    "type": "faction",
+    "recruit_point_cost": 166,
+    "recruit_gold": 664,
+    "title": "문추",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 87
+  },
+  {
+    "general": 90,
+    "type": "faction",
+    "recruit_point_cost": 194,
+    "recruit_gold": 776,
+    "title": "전풍",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 87
+  },
+  {
+    "general": 91,
+    "type": "faction",
+    "recruit_point_cost": 192,
+    "recruit_gold": 768,
+    "title": "저수",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 87
+  },
+  {
+    "general": 92,
+    "type": "faction",
+    "recruit_point_cost": 168,
+    "recruit_gold": 672,
+    "title": "원술",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 93,
+    "type": "faction",
+    "recruit_point_cost": 176,
+    "recruit_gold": 704,
+    "title": "기령",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 92
+  },
+  {
+    "general": 94,
+    "type": "faction",
+    "recruit_point_cost": 188,
+    "recruit_gold": 752,
+    "title": "공손찬",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 95,
+    "type": "faction",
+    "recruit_point_cost": 198,
+    "recruit_gold": 792,
+    "title": "유표",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 96,
+    "type": "faction",
+    "recruit_point_cost": 168,
+    "recruit_gold": 672,
+    "title": "황조",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 95
+  },
+  {
+    "general": 97,
+    "type": "faction",
+    "recruit_point_cost": 198,
+    "recruit_gold": 792,
+    "title": "문빙",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 95
+  },
+  {
+    "general": 98,
+    "type": "faction",
+    "recruit_point_cost": 142,
+    "recruit_gold": 568,
+    "title": "유장",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 99,
+    "type": "faction",
+    "recruit_point_cost": 204,
+    "recruit_gold": 816,
+    "title": "장임",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 98
+  },
+  {
+    "general": 100,
+    "type": "faction",
+    "recruit_point_cost": 194,
+    "recruit_gold": 776,
+    "title": "장각",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 101,
+    "type": "faction",
+    "recruit_point_cost": 180,
+    "recruit_gold": 720,
+    "title": "장보",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 100
+  },
+  {
+    "general": 102,
+    "type": "faction",
+    "recruit_point_cost": 174,
+    "recruit_gold": 696,
+    "title": "장량",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 100
+  },
+  {
+    "general": 103,
+    "type": "faction",
+    "recruit_point_cost": 204,
+    "recruit_gold": 816,
+    "title": "진궁",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 5
+  },
+  {
+    "general": 104,
+    "type": "faction",
+    "recruit_point_cost": 188,
+    "recruit_gold": 752,
+    "title": "고순",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 5
+  },
+  {
+    "general": 105,
+    "type": "faction",
+    "recruit_point_cost": 180,
+    "recruit_gold": 720,
+    "title": "도겸",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 106,
+    "type": "faction",
+    "recruit_point_cost": 178,
+    "recruit_gold": 712,
+    "title": "공융",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 107,
+    "type": "faction",
+    "recruit_point_cost": 184,
+    "recruit_gold": 736,
+    "title": "왕윤",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 108,
+    "type": "faction",
+    "recruit_point_cost": 174,
+    "recruit_gold": 696,
+    "title": "유요",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 109,
+    "type": "faction",
+    "recruit_point_cost": 188,
+    "recruit_gold": 752,
+    "title": "장로",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 110,
+    "type": "faction",
+    "recruit_point_cost": 196,
+    "recruit_gold": 784,
+    "title": "맹달",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 111,
+    "type": "faction",
+    "recruit_point_cost": 198,
+    "recruit_gold": 792,
+    "title": "심배",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 87
+  },
+  {
+    "general": 112,
+    "type": "faction",
+    "recruit_point_cost": 176,
+    "recruit_gold": 704,
+    "title": "곽도",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 87
+  },
+  {
+    "general": 113,
+    "type": "faction",
+    "recruit_point_cost": 182,
+    "recruit_gold": 728,
+    "title": "초선",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 107
+  },
+  {
+    "general": 114,
+    "type": "faction",
+    "recruit_point_cost": 188,
+    "recruit_gold": 752,
+    "title": "손상향",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 115,
+    "type": "faction",
+    "recruit_point_cost": 168,
+    "recruit_gold": 672,
+    "title": "여령기",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 5
+  },
+  {
+    "general": 116,
+    "type": "faction",
+    "recruit_point_cost": 176,
+    "recruit_gold": 704,
+    "title": "관은병",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 3
+  },
+  {
+    "general": 117,
+    "type": "faction",
+    "recruit_point_cost": 170,
+    "recruit_gold": 680,
+    "title": "포삼랑",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 118,
+    "type": "faction",
+    "recruit_point_cost": 204,
+    "recruit_gold": 816,
+    "title": "왕이",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 119,
+    "type": "faction",
+    "recruit_point_cost": 194,
+    "recruit_gold": 776,
+    "title": "신헌영",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 12
+  },
+  {
+    "general": 120,
+    "type": "faction",
+    "recruit_point_cost": 196,
+    "recruit_gold": 784,
+    "title": "장춘화",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 12
+  },
+  {
+    "general": 121,
+    "type": "faction",
+    "recruit_point_cost": 166,
+    "recruit_gold": 664,
+    "title": "하후씨",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 4
+  },
+  {
+    "general": 122,
+    "type": "faction",
+    "recruit_point_cost": 162,
+    "recruit_gold": 648,
+    "title": "대교",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 62
+  },
+  {
+    "general": 123,
+    "type": "faction",
+    "recruit_point_cost": 162,
+    "recruit_gold": 648,
+    "title": "소교",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 7
+  },
+  {
+    "general": 124,
+    "type": "faction",
+    "recruit_point_cost": 168,
+    "recruit_gold": 672,
+    "title": "견씨",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 25
+  },
+  {
+    "general": 125,
+    "type": "faction",
+    "recruit_point_cost": 174,
+    "recruit_gold": 696,
+    "title": "채문희",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 126,
+    "type": "faction",
+    "recruit_point_cost": 192,
+    "recruit_gold": 768,
+    "title": "황월영",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 6
+  },
+  {
+    "general": 127,
+    "type": "faction",
+    "recruit_point_cost": 170,
+    "recruit_gold": 680,
+    "title": "마운록",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 41
+  },
+  {
+    "general": 128,
+    "type": "faction",
+    "recruit_point_cost": 158,
+    "recruit_gold": 632,
+    "title": "번씨",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 129,
+    "type": "faction",
+    "recruit_point_cost": 174,
+    "recruit_gold": 696,
+    "title": "오국태",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 130,
+    "type": "faction",
+    "recruit_point_cost": 162,
+    "recruit_gold": 648,
+    "title": "보연사",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": 63
+  },
+  {
+    "general": 131,
+    "type": "faction",
+    "recruit_point_cost": 148,
+    "recruit_gold": 592,
+    "title": "추씨",
+    "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
   }
 ]
