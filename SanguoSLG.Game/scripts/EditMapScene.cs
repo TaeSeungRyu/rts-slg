@@ -359,6 +359,16 @@ public sealed partial class EditMapScene : Control
         else valid = false;
         valid &= _mapViewport is not null && _mapCamera.Current && _visibleTiles.Count > 100
             && _visibleTiles.Count < _width * _height;
+        var vacant = Enumerable.Range(0, _height)
+            .SelectMany(row => Enumerable.Range(0, _width).Select(column => new Vector2I(column, row)))
+            .FirstOrDefault(tile => _rows[tile.Y][tile.X] == 'P' && SiteAt(tile) is null);
+        var draftCity = new SanguoSLG.Core.Data.MapEditorSite(_nextSiteId, "QA성", "city", "small",
+            vacant.X, vacant.Y);
+        valid &= CanPlace(draftCity);
+        _sites.Add(draftCity);
+        valid &= SiteAt(vacant)?.Id == draftCity.Id && !CanPlace(draftCity with { Id = _nextSiteId + 1 });
+        _sites.Remove(draftCity);
+        valid &= SiteAt(vacant) is null;
         GD.Print($"[edit-map-qa] passed={valid} tiles={_width * _height} visible={_visibleTiles.Count} bounds={_west}-{_east}E,{_south}-{_north}N");
         GetTree().Quit(valid ? 0 : 1);
     }

@@ -126,14 +126,16 @@ public sealed partial class EditMapScene
             _visibleTiles[tile].QueueFree();
             _visibleTiles.Remove(tile);
         }
-        foreach (var city in _cities)
+        foreach (var city in _sites.Where(site => site.Kind == "city"))
         {
-            if (!required.Contains(city.Tile) || _visibleCities.ContainsKey(city.Tile)) continue;
+            var cityTile = new Vector2I(city.Column, city.Row);
+            if (!required.Contains(cityTile) || _visibleCities.ContainsKey(cityTile)) continue;
             var scene = GD.Load<PackedScene>($"res://assets/models/castle-{city.Size}.glb");
             var visual = scene.Instantiate<Node3D>();
-            visual.Position = _mapView.HexToWorld(Axial(city.Tile)) + new Vector3(0f, _mapView.TileTopY, 0f);
+            visual.Position = _mapView.HexToWorld(Axial(cityTile)) + new Vector3(0f, _mapView.TileTopY, 0f);
+            visual.RotationDegrees = new Vector3(0f, city.Direction * 60f, 0f);
             _visibleTerrain.AddChild(visual);
-            _visibleCities[city.Tile] = visual;
+            _visibleCities[cityTile] = visual;
         }
         foreach (var tile in _visibleCities.Keys.Where(tile => !required.Contains(tile)).ToArray())
         {
