@@ -94,7 +94,7 @@ public sealed partial class EditMapScene : Control
         var font = _font;
         var bar = new PanelContainer { MouseFilter = MouseFilterEnum.Stop };
         bar.SetAnchorsAndOffsetsPreset(LayoutPreset.TopWide);
-        bar.CustomMinimumSize = new Vector2(0, 115);
+        bar.CustomMinimumSize = new Vector2(0, 145);
         bar.AddThemeStyleboxOverride("panel", PanelStyle());
         AddChild(bar);
         var content = new VBoxContainer();
@@ -109,13 +109,24 @@ public sealed partial class EditMapScene : Control
         legend.AddThemeFontOverride("font", font);
         legend.AddThemeFontSizeOverride("font_size", 13);
         content.AddChild(legend);
+        var filterScroll = new ScrollContainer
+        {
+            CustomMinimumSize = new Vector2(0, 31),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Auto,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Disabled,
+        };
+        content.AddChild(filterScroll);
         var filters = new HBoxContainer();
         filters.AddThemeConstantOverride("separation", 6);
-        content.AddChild(filters);
+        filterScroll.AddChild(filters);
         var group = new ButtonGroup();
         AddTerrainFilter("전체", null);
         foreach (var (code, entry) in Terrain)
             AddTerrainFilter(entry.Name, code);
+        var actions = new HBoxContainer();
+        actions.AddThemeConstantOverride("separation", 8);
+        content.AddChild(actions);
         var routesToggle = new CheckButton { Name = "LandRouteToggle", Text = "육상 동선",
             ButtonPressed = true, CustomMinimumSize = new Vector2(112, 26) };
         routesToggle.AddThemeFontOverride("font", font);
@@ -126,7 +137,7 @@ public sealed partial class EditMapScene : Control
             if (_routeLines is not null) _routeLines.Visible = enabled;
             QueueRedraw();
         };
-        filters.AddChild(routesToggle);
+        actions.AddChild(routesToggle);
         var citiesToggle = new CheckButton { Name = "CityToggle", Text = $"성 배치 {_cities.Count}",
             ButtonPressed = true, CustomMinimumSize = new Vector2(115, 26) };
         citiesToggle.AddThemeFontOverride("font", font);
@@ -137,14 +148,14 @@ public sealed partial class EditMapScene : Control
             if (_mapViewport is not null) RefreshVisibleTerrain();
             QueueRedraw();
         };
-        filters.AddChild(citiesToggle);
+        actions.AddChild(citiesToggle);
         var undo = new Button { Text = "되돌리기" };
         undo.Pressed += UndoDraft;
-        filters.AddChild(undo);
+        actions.AddChild(undo);
         var redo = new Button { Text = "다시 적용" };
         redo.Pressed += RedoDraft;
-        filters.AddChild(redo);
-        AddSaveDraftButton(filters);
+        actions.AddChild(redo);
+        AddSaveDraftButton(actions);
         void AddTerrainFilter(string name, char? code)
         {
             var button = new Button { Text = name, ToggleMode = true, ButtonGroup = group,
@@ -399,6 +410,11 @@ public sealed partial class EditMapScene : Control
         var draftCity = new SanguoSLG.Core.Data.MapEditorSite(_nextSiteId, "QA성", "city", "small",
             vacant.X, vacant.Y);
         valid &= CanPlace(draftCity);
+        OpenTerrainEditor(vacant);
+        valid &= _editorModal is not null
+            && _editorModal.FindChildren("*", "SubViewport", true, false).Count > 0
+            && TerrainDescription('R').Contains("연결");
+        CloseEditorModal();
         _sites.Add(draftCity);
         valid &= SiteAt(vacant)?.Id == draftCity.Id && !CanPlace(draftCity with { Id = _nextSiteId + 1 });
         _sites.Remove(draftCity);

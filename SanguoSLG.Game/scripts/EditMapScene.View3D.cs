@@ -37,6 +37,14 @@ public sealed partial class EditMapScene
         ['Q'] = TerrainType.DesertCactus, ['V'] = TerrainType.WaterRocks,
     };
 
+    private PackedScene TerrainScene(char code) => PreviewTerrain[code] switch
+    {
+        TerrainType.River => _riverTile,
+        TerrainType.Bridge => _bridgeTile,
+        TerrainType.WaterShallow or TerrainType.WaterDeep => _waterTile,
+        var terrain => _mapView.TileScene(terrain) ?? _mapView.TileScene(TerrainType.Plains)!,
+    };
+
     private void Build3DView()
     {
         var container = new SubViewportContainer
@@ -141,14 +149,7 @@ public sealed partial class EditMapScene
             required.Add(tile);
             if (facilityTiles.Contains(tile)) continue;
             if (_visibleTiles.ContainsKey(tile)) continue;
-            var terrain = PreviewTerrain[_rows[row][col]];
-            var scene = terrain switch
-            {
-                TerrainType.River => _riverTile,
-                TerrainType.Bridge => _bridgeTile,
-                TerrainType.WaterShallow or TerrainType.WaterDeep => _waterTile,
-                _ => _mapView.TileScene(terrain) ?? _mapView.TileScene(TerrainType.Plains)!,
-            };
+            var scene = TerrainScene(_rows[row][col]);
             var visual = scene.Instantiate<Node3D>();
             visual.Position = _mapView.HexToWorld(Axial(tile));
             _visibleTerrain.AddChild(visual);

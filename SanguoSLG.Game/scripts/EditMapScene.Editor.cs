@@ -508,6 +508,50 @@ public sealed partial class EditMapScene
         _editorCancelAction = () => SetTerrain(tile, original);
         var terrain = SelectOptions(content, "타일 지형", codes.Select(code => Terrain[code].Name).ToArray(),
             Array.IndexOf(codes, original));
+        var preview = new SubViewportContainer
+        {
+            Stretch = true,
+            CustomMinimumSize = new Vector2(420, 170),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        content.AddChild(preview);
+        var viewport = new SubViewport
+        {
+            Size = new Vector2I(420, 170),
+            TransparentBg = false,
+            RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
+        };
+        preview.AddChild(viewport);
+        var previewWorld = new Node3D();
+        viewport.AddChild(previewWorld);
+        previewWorld.AddChild(new WorldEnvironment
+        {
+            Environment = new Godot.Environment
+            {
+                BackgroundMode = Godot.Environment.BGMode.Color,
+                BackgroundColor = new Color("8aac9a"),
+                AmbientLightSource = Godot.Environment.AmbientSource.Color,
+                AmbientLightColor = Colors.White,
+                AmbientLightEnergy = 0.8f,
+            },
+        });
+        previewWorld.AddChild(new DirectionalLight3D { RotationDegrees = new Vector3(-55f, -30f, 0f) });
+        var camera = new Camera3D { Current = true, Projection = Camera3D.ProjectionType.Orthogonal, Size = 2.7f };
+        previewWorld.AddChild(camera);
+        camera.Position = new Vector3(0f, 2.3f, 3f);
+        camera.LookAt(Vector3.Zero);
+        Node3D? previewTile = null;
+        var description = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            CustomMinimumSize = new Vector2(420, 48), Modulate = new Color("e8d9b4") };
+        content.AddChild(description);
+        void UpdatePreview(char code)
+        {
+            previewTile?.QueueFree();
+            previewTile = TerrainScene(code).Instantiate<Node3D>();
+            previewWorld.AddChild(previewTile);
+            description.Text = TerrainDescription(code);
+        }
+        UpdatePreview(original);
         terrain.ItemSelected += index =>
         {
             var code = codes[(int)index];
@@ -519,6 +563,7 @@ public sealed partial class EditMapScene
             }
             _editorError!.Text = "";
             SetTerrain(tile, code);
+            UpdatePreview(code);
         };
         content.AddChild(new Label { Text = "종류를 고르면 화면에 즉시 미리 보입니다." });
         var actions = new HBoxContainer();
@@ -544,6 +589,22 @@ public sealed partial class EditMapScene
         cancel.Pressed += CloseEditorModal;
         actions.AddChild(cancel);
     }
+
+    private static string TerrainDescription(char code) => code switch
+    {
+        'P' => "기본 육상 지형. 부대와 도시를 배치할 수 있습니다.",
+        'F' => "숲 지형. 이동이 가능하고 전투에서 지형 효과를 받습니다.",
+        'M' => "소형산. 육상 이동이 가능하지만 속도가 느려집니다.",
+        'H' or 'X' or 'C' or 'I' or 'E' or 'L' => "험준한 지형. 일반 부대가 통과할 수 없습니다.",
+        'D' or 'Q' => "사막 지형. 육상 이동이 가능하며 지형 효과를 받습니다.",
+        'R' => "소하천. 이웃 강 타일 방향에 맞춰 물길 에셋이 연결됩니다.",
+        'B' => "큰강 나루. 강을 가로지르는 육상 통로입니다.",
+        'W' or 'O' => "수면 지형. 선박만 이동할 수 있습니다.",
+        'V' => "물가 암초. 이동 가능한 수면이 아니므로 항로에서 피해야 합니다.",
+        'N' => "늪. 육상 이동이 가능하지만 속도가 느려집니다.",
+        'S' or 'T' => "바위 지형. 육상 이동이 가능합니다.",
+        _ => "지형을 선택하면 실제 게임 에셋을 미리 볼 수 있습니다.",
+    };
 
     private void UndoDraft()
     {
