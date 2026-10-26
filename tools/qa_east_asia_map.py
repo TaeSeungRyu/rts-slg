@@ -53,8 +53,8 @@ def route(start, end):
 
 assert len(rows) == height and all(len(row) == width for row in rows)
 assert bounds["west"] == 97.72 and bounds["east"] == 133
-assert width == 84 and height == 70
-assert sum(row.count("B") for row in rows) == 1
+assert width == 126 and height == 105
+assert 1 <= sum(row.count("B") for row in rows) <= 6
 assert rows[cell(106.5, 29.6)[1]][cell(106.5, 29.6)[0]] == "B"
 for crossing in ((111.3, 30.7), (114.3, 30.6)):
     assert rows[cell(*crossing)[1]][cell(*crossing)[0]] == "W"
@@ -66,6 +66,8 @@ assert {"북경—요동", "요동—평양", "평양—한성", "한성—부�
 assert {"성도—곤명", "곤명—남녕", "남녕—광주"}.issubset(
     {item["name"] for item in data["land_routes"]})
 assert "서부 강변—성도" in {item["name"] for item in data["land_routes"]}
+assert "의창—무한" not in {item["name"] for item in data["land_routes"]}
+assert "무한—광주" not in {item["name"] for item in data["land_routes"]}
 for plotted in data["land_routes"]:
     tiles = plotted["tiles"]
     assert len(tiles) >= 2 and all(passable(*tile) for tile in tiles), plotted["name"]

@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "SanguoSLG.Game/assets/maps/east-asia-map.json"
 LAND_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson"
 WEST, EAST, SOUTH, NORTH = 97.72, 133.0, 18.0, 54.0
-WIDTH, HEIGHT = 84, 70
+WIDTH, HEIGHT = 126, 105
 
 
 def rings_of(geometry):
@@ -66,9 +66,11 @@ RIVERS = [
     [(106, 24), (109, 23), (112, 23), (114, 23), (115, 22.7)],
     [(116, 43), (120, 43), (123, 43.5), (126, 44), (130, 45)],
 ]
-YANGTZE_CROSSINGS = [(106.5, 29.6)]
+YANGTZE_CROSSING = (106.5, 29.6)
 WESTERN_RIVER_ROAD = [(104.1, 30.7), (103.1, 31.3), (101.5, 31.4),
                       (99.5, 31.7), (98.2, 31.8)]
+CENTRAL_MOUNTAIN_PASS = [(108.9, 34.3), (110.8, 34.4), (112.5, 34.6)]
+SOUTHWEST_RIVER_ROAD = [(106.5, 29.0), (105.2, 27.4), (103.5, 26.0), (102.7, 25.0)]
 SHU_RIDGES = [
     ([(104.5, 34.4), (108.0, 34.3), (111.8, 34.0)], 0.68),
     ([(103.8, 32.7), (106.0, 32.35), (108.2, 32.3), (111.3, 31.8)], 0.73),
@@ -102,6 +104,9 @@ def terrain(lon, lat, column, row):
     noise = ((column * 92821 + row * 68917 + column * row * 13) % 997) / 997
     if near_line(lon, lat, WESTERN_RIVER_ROAD, 0.48):
         return "M"
+    if (near_line(lon, lat, CENTRAL_MOUNTAIN_PASS, 0.44)
+            or near_line(lon, lat, SOUTHWEST_RIVER_ROAD, 0.44)):
+        return "M"
     if 103.8 < lon < 108.2 and 29.8 < lat < 31.7:
         return "F" if noise < 0.15 else "P"
     if 106.0 < lon < 108.5 and 32.85 < lat < 33.55:
@@ -128,12 +133,10 @@ ROUTE_PAIRS = [
     ("한중—성도", (107.0, 33.1), (104.1, 30.7)),
     ("성도—중경", (104.1, 30.7), (106.5, 29.6)),
     ("중경—의창", (106.5, 29.6), (111.3, 30.7)),
-    ("의창—무한", (111.3, 30.7), (114.3, 30.6)),
     ("장안—낙양", (108.9, 34.3), (112.5, 34.6)),
     ("낙양—업", (112.5, 34.6), (114.5, 36.1)),
     ("업—북경", (114.5, 36.1), (116.4, 39.9)),
     ("무한—건업", (114.3, 30.6), (118.8, 32.1)),
-    ("무한—광주", (114.3, 30.6), (113.3, 23.1)),
     ("건업—북경", (118.8, 32.1), (116.4, 39.9)),
     ("북경—요동", (116.4, 39.9), (123.4, 41.1)),
     ("요동—평양", (123.4, 41.1), (125.7, 39.0)),
@@ -219,11 +222,14 @@ def main():
                    and rows[row + dr][column + dc] not in "OW"
                    for dr in (-1, 0, 1) for dc in (-1, 0, 1)):
                 rows[row][column] = "W"
-    for lon, lat in YANGTZE_CROSSINGS:
-        column = int((lon - WEST) / (EAST - WEST) * WIDTH)
-        row = int((NORTH - lat) / (NORTH - SOUTH) * HEIGHT)
-        if rows[row][column] == "W":
-            rows[row][column] = "B"
+    for row in range(HEIGHT):
+        lat = NORTH - (row + 0.5) * (NORTH - SOUTH) / HEIGHT
+        for column in range(WIDTH):
+            lon = WEST + (column + 0.5) * (EAST - WEST) / WIDTH
+            if (rows[row][column] == "W"
+                    and abs(lon - YANGTZE_CROSSING[0]) < 0.25
+                    and abs(lat - YANGTZE_CROSSING[1]) < 0.75):
+                rows[row][column] = "B"
     result = {
         "name": "동아시아 시나리오 기본 지형",
         "source": "Natural Earth 1:50m land (public domain); 산맥·하천·식생은 게임용 수작업 배치",
