@@ -316,6 +316,11 @@ def main():
             else:
                 characters.append("O")
         rows.append(characters)
+    gangju_column = int((106.55 - WEST) / (EAST - WEST) * WIDTH)
+    for row in range(HEIGHT):
+        for column in range(gangju_column):
+            if rows[row][column] in "OWRB":
+                rows[row][column] = "P"
     for row in range(HEIGHT):
         for column in range(WIDTH):
             if rows[row][column] != "O":

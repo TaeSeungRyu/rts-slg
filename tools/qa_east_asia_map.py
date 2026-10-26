@@ -83,6 +83,9 @@ for plotted in data["land_routes"]:
     assert len(tiles) >= 2 and all(passable(*tile) for tile in tiles), plotted["name"]
     assert all(tuple(right) in neighbors(*left) for left, right in zip(tiles, tiles[1:])), plotted["name"]
 cities = data["cities"]
+gangju_column = next(city["tile"][0] for city in cities if city["name"] == "강주")
+assert all(rows[row][column] not in "OWRB"
+           for row in range(height) for column in range(gangju_column))
 assert len(cities) == len({city["name"] for city in cities})
 assert Counter(city["region"] for city in cities) == {
     "중국": 60, "대한민국": 5, "대만": 1, "일본": 2}
