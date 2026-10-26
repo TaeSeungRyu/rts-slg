@@ -118,6 +118,12 @@ public sealed partial class EditMapScene : Control
         citiesToggle.AddThemeFontSizeOverride("font_size", 12);
         citiesToggle.Toggled += enabled => { _showCities = enabled; QueueRedraw(); };
         filters.AddChild(citiesToggle);
+        var undo = new Button { Text = "지형 되돌리기" };
+        undo.Pressed += UndoTerrain;
+        filters.AddChild(undo);
+        var redo = new Button { Text = "다시 적용" };
+        redo.Pressed += RedoTerrain;
+        filters.AddChild(redo);
         void AddTerrainFilter(string name, char? code)
         {
             var button = new Button { Text = name, ToggleMode = true, ButtonGroup = group,
@@ -369,6 +375,15 @@ public sealed partial class EditMapScene : Control
         valid &= SiteAt(vacant)?.Id == draftCity.Id && !CanPlace(draftCity with { Id = _nextSiteId + 1 });
         _sites.Remove(draftCity);
         valid &= SiteAt(vacant) is null;
+        var previousTerrain = _rows[vacant.Y][vacant.X];
+        valid &= CanChangeTerrain(vacant, 'F');
+        SetTerrain(vacant, 'F');
+        _terrainUndo.Push((vacant, previousTerrain, 'F'));
+        UndoTerrain();
+        valid &= _rows[vacant.Y][vacant.X] == previousTerrain;
+        RedoTerrain();
+        valid &= _rows[vacant.Y][vacant.X] == 'F';
+        UndoTerrain();
         GD.Print($"[edit-map-qa] passed={valid} tiles={_width * _height} visible={_visibleTiles.Count} bounds={_west}-{_east}E,{_south}-{_north}N");
         GetTree().Quit(valid ? 0 : 1);
     }

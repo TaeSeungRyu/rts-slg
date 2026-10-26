@@ -12,7 +12,10 @@ public sealed partial class EditMapScene
     private PanelContainer? _editorPalette;
     private Control? _editorModal;
     private Label? _editorError;
+    private Action? _editorCancelAction;
     private int _nextSiteId = 1;
+    private readonly Stack<(Vector2I Tile, char Before, char After)> _terrainUndo = [];
+    private readonly Stack<(Vector2I Tile, char Before, char After)> _terrainRedo = [];
 
     private void InitializeEditorSites()
     {
@@ -108,7 +111,7 @@ public sealed partial class EditMapScene
         AddCommand("시설 편집", site?.Kind == "facility", "생산 시설을 선택하세요.",
             () => OpenFacilityEditor(tile, site));
         AddCommand("지형 변경", site is null, "배치물이 있는 타일은 바꿀 수 없습니다.",
-            () => _tileInfo.Text = "지형 변경 창을 준비합니다.");
+            () => OpenTerrainEditor(tile));
         AddCommand("항구 관리", site is null && IsLand(terrain) && HasNeighborWater(tile),
             "물과 접한 빈 육상 타일을 선택하세요.",
             () => _tileInfo.Text = "항구 관리 창을 준비합니다.");
@@ -156,6 +159,9 @@ public sealed partial class EditMapScene
 
     private void CloseEditorModal()
     {
+        var cancel = _editorCancelAction;
+        _editorCancelAction = null;
+        cancel?.Invoke();
         _editorModal?.QueueFree();
         _editorModal = null;
         _editorError = null;
@@ -290,5 +296,82 @@ public sealed partial class EditMapScene
         var cancel = new Button { Text = "취소" };
         cancel.Pressed += CloseEditorModal;
         actions.AddChild(cancel);
+    }
+
+    private void SetTerrain(Vector2I tile, char code)
+    {
+        var chars = _rows[tile.Y].ToCharArray();
+        chars[tile.X] = code;
+        _rows[tile.Y] = new string(chars);
+        if (_visibleTiles.Remove(tile, out var visual)) visual.QueueFree();
+        RefreshVisibleTerrain();
+        QueueRedraw();
+    }
+
+    private bool CanChangeTerrain(Vector2I tile, char code)
+    {
+        if (SiteAt(tile) is not null) return false;
+        var original = _rows[tile.Y][tile.X];
+        SetTerrain(tile, code);
+        var valid = _sites.Where(site => site.Kind == "port").All(site =>
+            HasNeighborWater(new Vector2I(site.Column, site.Row)));
+        SetTerrain(tile, original);
+        return valid;
+    }
+
+    private void OpenTerrainEditor(Vector2I tile)
+    {
+        var content = OpenEditorModal("지형 변경");
+        var codes = Terrain.Keys.ToArray();
+        var original = _rows[tile.Y][tile.X];
+        _editorCancelAction = () => SetTerrain(tile, original);
+        var terrain = SelectOptions(content, "타일 지형", codes.Select(code => Terrain[code].Name).ToArray(),
+            Array.IndexOf(codes, original));
+        terrain.ItemSelected += index =>
+        {
+            var code = codes[(int)index];
+            if (!CanChangeTerrain(tile, code))
+            {
+                _editorError!.Text = "배치물 또는 항구의 해안 조건 때문에 바꿀 수 없습니다.";
+                terrain.Selected = Array.IndexOf(codes, _rows[tile.Y][tile.X]);
+                return;
+            }
+            _editorError!.Text = "";
+            SetTerrain(tile, code);
+        };
+        content.AddChild(new Label { Text = "종류를 고르면 화면에 즉시 미리 보입니다." });
+        var actions = new HBoxContainer();
+        content.AddChild(actions);
+        var apply = new Button { Text = "적용", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        apply.Pressed += () =>
+        {
+            var current = _rows[tile.Y][tile.X];
+            if (current != original)
+            {
+                _terrainUndo.Push((tile, original, current));
+                _terrainRedo.Clear();
+            }
+            _editorCancelAction = null;
+            CloseEditorModal();
+            ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
+        };
+        actions.AddChild(apply);
+        var cancel = new Button { Text = "취소" };
+        cancel.Pressed += CloseEditorModal;
+        actions.AddChild(cancel);
+    }
+
+    private void UndoTerrain()
+    {
+        if (!_terrainUndo.TryPop(out var edit)) return;
+        SetTerrain(edit.Tile, edit.Before);
+        _terrainRedo.Push(edit);
+    }
+
+    private void RedoTerrain()
+    {
+        if (!_terrainRedo.TryPop(out var edit)) return;
+        SetTerrain(edit.Tile, edit.After);
+        _terrainUndo.Push(edit);
     }
 }
