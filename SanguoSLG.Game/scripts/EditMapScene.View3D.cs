@@ -9,7 +9,11 @@ public sealed partial class EditMapScene
     private Camera3D _mapCamera = null!;
     private MapView3D _mapView = null!;
     private Node3D _visibleTerrain = null!;
+    private MeshInstance3D _selectionVisual = null!;
+    private MeshInstance3D? _routeLines;
     private PackedScene _waterTile = null!;
+    private PackedScene _riverTile = null!;
+    private PackedScene _bridgeTile = null!;
     private readonly Dictionary<Vector2I, Node3D> _visibleTiles = [];
     private readonly Dictionary<Vector2I, Node3D> _visibleCities = [];
     private readonly Dictionary<int, Node3D> _visibleStructures = [];
@@ -70,8 +74,24 @@ public sealed partial class EditMapScene
         _mapView = new MapView3D();
         world.AddChild(_mapView);
         _waterTile = GD.Load<PackedScene>("res://assets/models/water.glb");
+        _riverTile = GD.Load<PackedScene>("res://assets/models/river-straight.glb");
+        _bridgeTile = GD.Load<PackedScene>("res://assets/models/bridge.glb");
         _visibleTerrain = new Node3D();
         world.AddChild(_visibleTerrain);
+        _selectionVisual = new MeshInstance3D
+        {
+            Mesh = new CylinderMesh { TopRadius = 0.54f, BottomRadius = 0.54f,
+                Height = 0.012f, RadialSegments = 6 },
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(1f, 0.82f, 0.29f, 0.36f),
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            },
+            Visible = false,
+        };
+        world.AddChild(_selectionVisual);
+        BuildRouteLines(world);
         _mapCamera = new Camera3D
         {
             Projection = Camera3D.ProjectionType.Orthogonal,
@@ -107,27 +127,40 @@ public sealed partial class EditMapScene
         var spanX = Mathf.CeilToInt(_viewSize * aspect / (3f * _mapView.HexWorldSize)) + 5;
         var spanY = Mathf.CeilToInt(_viewSize * 0.75f / _mapView.HexWorldSize) + 5;
         var required = new HashSet<Vector2I>();
+        var facilityTiles = _sites.Where(site => site.Kind == "facility")
+            .Select(site => new Vector2I(site.Column, site.Row)).ToHashSet();
         for (var row = Mathf.Max(0, _viewCenter.Y - spanY); row <= Mathf.Min(_height - 1, _viewCenter.Y + spanY); row++)
         for (var col = Mathf.Max(0, _viewCenter.X - spanX); col <= Mathf.Min(_width - 1, _viewCenter.X + spanX); col++)
         {
             var tile = new Vector2I(col, row);
             required.Add(tile);
+            if (facilityTiles.Contains(tile)) continue;
             if (_visibleTiles.ContainsKey(tile)) continue;
             var terrain = PreviewTerrain[_rows[row][col]];
-            var scene = _mapView.TileScene(terrain) ??
-                (terrain is TerrainType.WaterShallow or TerrainType.WaterDeep ? _waterTile :
-                    _mapView.TileScene(TerrainType.Plains)!);
+            var scene = terrain switch
+            {
+                TerrainType.River => _riverTile,
+                TerrainType.Bridge => _bridgeTile,
+                TerrainType.WaterShallow or TerrainType.WaterDeep => _waterTile,
+                _ => _mapView.TileScene(terrain) ?? _mapView.TileScene(TerrainType.Plains)!,
+            };
             var visual = scene.Instantiate<Node3D>();
             visual.Position = _mapView.HexToWorld(Axial(tile));
             _visibleTerrain.AddChild(visual);
             _visibleTiles[tile] = visual;
+            ApplyTerrainFilterToVisual(visual, _rows[row][col]);
         }
         foreach (var tile in _visibleTiles.Keys.Where(tile => !required.Contains(tile)).ToArray())
         {
             _visibleTiles[tile].QueueFree();
             _visibleTiles.Remove(tile);
         }
-        foreach (var city in _sites.Where(site => site.Kind == "city"))
+        if (!_showCities)
+        {
+            foreach (var visual in _visibleCities.Values) visual.QueueFree();
+            _visibleCities.Clear();
+        }
+        foreach (var city in _sites.Where(site => _showCities && site.Kind == "city"))
         {
             var cityTile = new Vector2I(city.Column, city.Row);
             if (!required.Contains(cityTile) || _visibleCities.ContainsKey(cityTile)) continue;
@@ -173,6 +206,51 @@ public sealed partial class EditMapScene
             _visibleStructures[id].QueueFree();
             _visibleStructures.Remove(id);
         }
+    }
+
+    private void BuildRouteLines(Node3D world)
+    {
+        var mesh = new ImmediateMesh();
+        mesh.SurfaceBegin(Mesh.PrimitiveType.Lines);
+        foreach (var route in _landRoutes)
+        for (var index = 1; index < route.Length; index++)
+        {
+            mesh.SurfaceAddVertex(_mapView.HexToWorld(Axial(route[index - 1]))
+                + new Vector3(0f, _mapView.TileTopY + 0.07f, 0f));
+            mesh.SurfaceAddVertex(_mapView.HexToWorld(Axial(route[index]))
+                + new Vector3(0f, _mapView.TileTopY + 0.07f, 0f));
+        }
+        mesh.SurfaceEnd();
+        _routeLines = new MeshInstance3D
+        {
+            Mesh = mesh,
+            Visible = _showLandRoutes,
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = new Color("f2dfa1"),
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                NoDepthTest = true,
+            },
+        };
+        world.AddChild(_routeLines);
+    }
+
+    private void ApplyTerrainFilterVisual()
+    {
+        if (_mapViewport is null) return;
+        foreach (var (tile, visual) in _visibleTiles)
+            ApplyTerrainFilterToVisual(visual, _rows[tile.Y][tile.X]);
+    }
+
+    private void ApplyTerrainFilterToVisual(Node3D node, char code)
+    {
+        var alpha = _terrainFilter is null || _terrainFilter == code ? 0f : 0.66f;
+        void Apply(Node child)
+        {
+            if (child is GeometryInstance3D geometry) geometry.Transparency = alpha;
+            foreach (var grandchild in child.GetChildren()) Apply(grandchild);
+        }
+        Apply(node);
     }
 
     private void Handle3DInput(InputEvent input)
@@ -227,5 +305,12 @@ public sealed partial class EditMapScene
         var tile = Offset(_mapView.WorldToHex(world));
         if (tile.X < 0 || tile.X >= _width || tile.Y < 0 || tile.Y >= _height) return;
         ShowEditorPalette(tile, screen);
+    }
+
+    private void ShowSelectedTile(Vector2I tile)
+    {
+        _selectionVisual.Position = _mapView.HexToWorld(Axial(tile))
+            + new Vector3(0f, _mapView.TileTopY + 0.04f, 0f);
+        _selectionVisual.Visible = true;
     }
 }

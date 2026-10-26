@@ -3,6 +3,7 @@ namespace SanguoSLG.Core.Tests.Data;
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
+using SanguoSLG.Core.Domain;
 
 public sealed class ScenarioMapPresetTests
 {
@@ -47,7 +48,7 @@ public sealed class ScenarioMapPresetTests
         var preset = new ScenarioMapPreset(1, 4, 3,
             ["PPPP", "PPWP", "PPPP"],
             [new MapEditorSite(1, "새 성", "city", "small", 0, 0),
-                new MapEditorSite(100, "새 항", "port", "small", 1, 0, 1),
+                new MapEditorSite(100, "새 항", "port", "small", 2, 0, 1),
                 new MapEditorSite(101, "새 논", "facility", "paddy", 0, 1, 0, 1)]);
         var applied = ScenarioMapPresetApplier.Apply(source, preset);
         Assert.Equal(baselineCount, source.Map.Count);
@@ -61,5 +62,37 @@ public sealed class ScenarioMapPresetTests
         Assert.Equal(preset.Rows, reloaded.MapPresetSnapshot!.Rows);
         Assert.Equal(preset.Sites, reloaded.MapPresetSnapshot.Sites);
         Assert.NotEqual("새 성", source.Cities[0].Name);
+    }
+
+    [Fact]
+    public void ExistingOfficerPostingFollowsCityNameWhenMapIdsChange()
+    {
+        var source = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
+        var original = source.Cities.First(city => city.Name == "장안");
+        var posting = source.PostingList.First(item => item.Location == original.Id);
+        var preset = new ScenarioMapPreset(1, 6, 5,
+            Enumerable.Repeat("PPPPPP", 5).ToArray(),
+            [new MapEditorSite(100, "장안", "city", "large", 3, 2)]);
+        var applied = ScenarioMapPresetApplier.Apply(source, preset);
+        Assert.Equal(new CityId(100), applied.PostingList.First(item => item.General == posting.General).Location);
+        Assert.Equal(CastleWall.Max(CastleSize.Large, source.Balance, original.WallLevel), applied.Cities[0].Wall);
+    }
+
+    [Fact]
+    public void RotatedFootprintsMatchAppliedCitiesAndRejectBlockedTiles()
+    {
+        var source = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
+        var preset = new ScenarioMapPreset(1, 8, 7, Enumerable.Repeat("PPPPPPPP", 7).ToArray(),
+            [new MapEditorSite(100, "방향성", "city", "medium", 3, 3, 2)]);
+        var applied = ScenarioMapPresetApplier.Apply(source, preset);
+        var city = Assert.Single(applied.Cities);
+        Assert.Equal(2, city.Direction);
+        var footprint = CastleFootprint.TilesFor(city).ToArray();
+        Assert.Equal(3, footprint.Length);
+        Assert.Contains(city.Position + CastleFootprint.Rotate(CastleFootprint.OffsetsFor(CastleSize.Medium).ElementAt(1), 2), footprint);
+        var blocked = preset.Rows.ToArray();
+        var offset = preset.ToOffset(footprint[1]);
+        blocked[offset.Row] = blocked[offset.Row][..offset.Column] + "W" + blocked[offset.Row][(offset.Column + 1)..];
+        Assert.Throws<InvalidDataException>(() => (preset with { Rows = blocked }).Validate());
     }
 }

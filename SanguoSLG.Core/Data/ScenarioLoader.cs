@@ -89,7 +89,7 @@ public sealed class ScenarioLoader
                     d.Paddies, d.Farms, d.Villages, d.Workshop, d.ProducesOre, d.ProducesHorses, d.ProducesElephants,
                     d.TaxRate, Governor: d.Governor is { } gid ? new GeneralId(gid) : null,
                     Wall: CastleWall.Max(castle, balance, wallLevel: 0),
-                    Port: ParsePort(d.Port)); // 미연구(20%)로 시작 — 성벽 연구로 강화
+                    Port: ParsePort(d.Port), Direction: d.Direction); // 미연구(20%)로 시작 — 성벽 연구로 강화
             })
             .ToList();
 

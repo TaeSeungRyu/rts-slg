@@ -17,8 +17,8 @@ public sealed partial class EditMapScene
     private bool _draftChanged;
     private Button? _saveDraftButton;
     private string? _presetLoadError;
-    private readonly Stack<(Vector2I Tile, char Before, char After)> _terrainUndo = [];
-    private readonly Stack<(Vector2I Tile, char Before, char After)> _terrainRedo = [];
+    private readonly Stack<ScenarioMapPreset> _draftUndo = [];
+    private readonly Stack<ScenarioMapPreset> _draftRedo = [];
 
     private void InitializeEditorSites()
     {
@@ -26,6 +26,7 @@ public sealed partial class EditMapScene
         foreach (var city in _cities)
             _sites.Add(new MapEditorSite(id++, city.Name, "city", city.Size, city.Tile.X, city.Tile.Y));
         _nextSiteId = id;
+        NormalizeBaseCityFootprints();
         var path = PresetPath();
         if (!File.Exists(path)) return;
         try
@@ -44,8 +45,35 @@ public sealed partial class EditMapScene
         }
     }
 
-    private static string PresetPath() =>
-        ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
+    private void NormalizeBaseCityFootprints()
+    {
+        foreach (var city in _sites.ToArray())
+        {
+            if (CanPlace(city)) continue;
+            var origin = Axial(new Vector2I(city.Column, city.Row));
+            var replacement = Enumerable.Range(Mathf.Max(0, city.Column - 5),
+                    Mathf.Min(_width - 1, city.Column + 5) - Mathf.Max(0, city.Column - 5) + 1)
+                .SelectMany(column => Enumerable.Range(Mathf.Max(0, city.Row - 5),
+                    Mathf.Min(_height - 1, city.Row + 5) - Mathf.Max(0, city.Row - 5) + 1)
+                    .Select(row => city with { Column = column, Row = row }))
+                .Where(CanPlace)
+                .OrderBy(candidate => origin.Distance(Axial(new Vector2I(candidate.Column, candidate.Row))))
+                .ThenBy(candidate => candidate.Row).ThenBy(candidate => candidate.Column)
+                .FirstOrDefault();
+            if (replacement is null) continue;
+            _sites.Remove(city);
+            _sites.Add(replacement);
+            var oldCity = _cities.FindIndex(item => item.Name == city.Name);
+            if (oldCity >= 0) _cities[oldCity] = _cities[oldCity] with
+            {
+                Tile = new Vector2I(replacement.Column, replacement.Row),
+            };
+        }
+    }
+
+    private static string PresetPath() => OS.GetCmdlineUserArgs().Contains("--editmapqa")
+        ? Path.Combine(Path.GetTempPath(), $"editmap-qa-{System.Environment.ProcessId}.json")
+        : ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
 
     private ScenarioMapPreset Draft() => new(1, _width, _height, _rows.ToArray(), _sites.ToArray());
 
@@ -53,6 +81,25 @@ public sealed partial class EditMapScene
     {
         _draftChanged = true;
         if (_saveDraftButton is not null) _saveDraftButton.Text = "맵 저장 *";
+    }
+
+    private void RecordChange(ScenarioMapPreset before)
+    {
+        _draftUndo.Push(before);
+        _draftRedo.Clear();
+        MarkDraftChanged();
+    }
+
+    private void RestoreDraft(ScenarioMapPreset snapshot)
+    {
+        _rows = snapshot.Rows.ToArray();
+        _sites.Clear();
+        _sites.AddRange(snapshot.Sites);
+        _nextSiteId = _sites.Count == 0 ? 1 : _sites.Max(site => site.Id) + 1;
+        RefreshSiteVisuals();
+        MarkDraftChanged();
+        if (_selectedTile is { } selected)
+            ShowEditorPalette(selected, _editorPalette?.Position ?? new Vector2(20, 130));
     }
 
     private void SaveDraft()
@@ -100,7 +147,7 @@ public sealed partial class EditMapScene
             : site.Kind == "port" && site.Size == "medium"
                 ? FeatureFootprint.OffsetsFor(FeatureType.PortMedium)
                 : [new HexCoord(0, 0)];
-        return offsets.Select(offset => Offset(axial + offset));
+        return offsets.Select(offset => Offset(axial + CastleFootprint.Rotate(offset, site.Direction)));
     }
 
     private MapEditorSite? SiteAt(Vector2I tile) =>
@@ -127,6 +174,7 @@ public sealed partial class EditMapScene
     private void ShowEditorPalette(Vector2I tile, Vector2 screen)
     {
         _selectedTile = tile;
+        ShowSelectedTile(tile);
         if (_editorPalette is not null)
         {
             _editorPalette.QueueFree();
@@ -138,7 +186,7 @@ public sealed partial class EditMapScene
             (site is null ? "" : $"  │  {site.Name} ({site.Size})");
 
         var palette = new PanelContainer { Name = "MapEditorPalette", MouseFilter = MouseFilterEnum.Stop };
-        palette.AddThemeStyleboxOverride("panel", PanelStyle());
+        palette.AddThemeStyleboxOverride("panel", EditorFrame(new Color("1b0f0d"), 2));
         AddChild(palette);
         _editorPalette = palette;
         palette.Position = new Vector2(Mathf.Clamp(screen.X + 12f, 6f, Mathf.Max(6f, Size.X - 245f)),
@@ -148,6 +196,22 @@ public sealed partial class EditMapScene
         content.AddThemeConstantOverride("separation", 5);
         palette.AddChild(content);
         content.AddChild(new Label { Text = $"{Terrain[terrain].Name}  ·  {tile.X}, {tile.Y}" });
+        var terrainInfo = terrain switch
+        {
+            'W' or 'O' => "수면 · 육상 부대 진입 불가",
+            'H' => "험산 · 일반 육상 부대 진입 불가",
+            'R' => "소하천 · 이동속도 감소",
+            'B' => "나루 · 강 횡단 가능",
+            'M' => "산악 · 이동속도 감소",
+            _ => "육상 지형 · 부대 이동 가능",
+        };
+        content.AddChild(new Label { Text = terrainInfo, Modulate = new Color("eee0bf") });
+        if (site is not null)
+        {
+            var kindName = site.Kind switch { "city" => "성", "port" => "항구", _ => "생산 시설" };
+            content.AddChild(new Label { Text = $"{kindName}: {site.Name} · 방향 {site.Direction + 1}/6",
+                Modulate = new Color("e8c475") });
+        }
         content.AddChild(new HSeparator());
 
         void AddCommand(string label, bool enabled, string reason, Action action)
@@ -155,6 +219,12 @@ public sealed partial class EditMapScene
             var button = new Button { Text = label, Disabled = !enabled,
                 TooltipText = enabled ? label : reason,
                 CustomMinimumSize = new Vector2(210, 32) };
+            button.AddThemeFontOverride("font", _font);
+            button.AddThemeColorOverride("font_color", new Color("eee0bf"));
+            button.AddThemeColorOverride("font_hover_color", new Color("ffe08a"));
+            button.AddThemeStyleboxOverride("normal", EditorFrame(new Color("302018"), 1));
+            button.AddThemeStyleboxOverride("hover", EditorFrame(new Color("66291c"), 1));
+            button.AddThemeStyleboxOverride("pressed", EditorFrame(new Color("98291f"), 1));
             button.Pressed += action;
             content.AddChild(button);
         }
@@ -180,7 +250,17 @@ public sealed partial class EditMapScene
             palette.QueueFree();
             _editorPalette = null;
             _selectedTile = null;
+            _selectionVisual.Visible = false;
         });
+    }
+
+    private static StyleBoxFlat EditorFrame(Color background, int border)
+    {
+        var frame = new StyleBoxFlat { BgColor = background, BorderColor = new Color("d1ac60") };
+        frame.SetBorderWidthAll(border);
+        frame.SetCornerRadiusAll(5);
+        frame.SetContentMarginAll(6);
+        return frame;
     }
 
     private VBoxContainer OpenEditorModal(string title)
@@ -198,7 +278,7 @@ public sealed partial class EditMapScene
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         backdrop.AddChild(center);
         var panel = new PanelContainer { CustomMinimumSize = new Vector2(420, 0) };
-        panel.AddThemeStyleboxOverride("panel", PanelStyle());
+        panel.AddThemeStyleboxOverride("panel", EditorFrame(new Color("1b0f0d"), 2));
         center.AddChild(panel);
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 9);
@@ -266,10 +346,11 @@ public sealed partial class EditMapScene
                 _editorError!.Text = "성 발자국이 지도 밖이거나 다른 배치물과 겹칩니다.";
                 return;
             }
+            var before = Draft();
             if (existing is not null) _sites.Remove(existing);
             _sites.Add(candidate);
             if (existing is null) _nextSiteId++;
-            MarkDraftChanged();
+            RecordChange(before);
             RefreshSiteVisuals();
             CloseEditorModal();
             ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
@@ -279,9 +360,10 @@ public sealed partial class EditMapScene
             var remove = new Button { Text = "성 제거" };
             remove.Pressed += () =>
             {
+                var before = Draft();
                 _sites.Remove(existing);
                 _sites.RemoveAll(site => site.ParentCityId == existing.Id);
-                MarkDraftChanged();
+                RecordChange(before);
                 RefreshSiteVisuals();
                 CloseEditorModal();
                 ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
@@ -295,6 +377,8 @@ public sealed partial class EditMapScene
 
     private void RefreshSiteVisuals()
     {
+        foreach (var visual in _visibleTiles.Values) visual.QueueFree();
+        _visibleTiles.Clear();
         foreach (var visual in _visibleCities.Values) visual.QueueFree();
         _visibleCities.Clear();
         foreach (var visual in _visibleStructures.Values) visual.QueueFree();
@@ -334,10 +418,11 @@ public sealed partial class EditMapScene
                 _editorError!.Text = "시설이 다른 배치물과 겹치거나 지형이 적합하지 않습니다.";
                 return;
             }
+            var before = Draft();
             if (existing is not null) _sites.Remove(existing);
             _sites.Add(candidate);
             if (existing is null) _nextSiteId++;
-            MarkDraftChanged();
+            RecordChange(before);
             RefreshSiteVisuals();
             CloseEditorModal();
             ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
@@ -347,8 +432,9 @@ public sealed partial class EditMapScene
             var remove = new Button { Text = "시설 제거" };
             remove.Pressed += () =>
             {
+                var before = Draft();
                 _sites.Remove(existing);
-                MarkDraftChanged();
+                RecordChange(before);
                 RefreshSiteVisuals();
                 CloseEditorModal();
                 ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
@@ -373,6 +459,7 @@ public sealed partial class EditMapScene
     private bool CanChangeTerrain(Vector2I tile, char code)
     {
         if (SiteAt(tile) is not null) return false;
+        if (code is 'W' or 'O' or 'H' && _landRoutes.Any(route => route.Contains(tile))) return false;
         var original = _rows[tile.Y][tile.X];
         SetTerrain(tile, code);
         var valid = _sites.Where(site => site.Kind == "port").All(site =>
@@ -410,9 +497,11 @@ public sealed partial class EditMapScene
             var current = _rows[tile.Y][tile.X];
             if (current != original)
             {
-                _terrainUndo.Push((tile, original, current));
-                _terrainRedo.Clear();
-                MarkDraftChanged();
+                var previousRows = _rows.ToArray();
+                var chars = previousRows[tile.Y].ToCharArray();
+                chars[tile.X] = original;
+                previousRows[tile.Y] = new string(chars);
+                RecordChange(Draft() with { Rows = previousRows });
             }
             _editorCancelAction = null;
             CloseEditorModal();
@@ -424,20 +513,18 @@ public sealed partial class EditMapScene
         actions.AddChild(cancel);
     }
 
-    private void UndoTerrain()
+    private void UndoDraft()
     {
-        if (!_terrainUndo.TryPop(out var edit)) return;
-        SetTerrain(edit.Tile, edit.Before);
-        _terrainRedo.Push(edit);
-        MarkDraftChanged();
+        if (!_draftUndo.TryPop(out var before)) return;
+        _draftRedo.Push(Draft());
+        RestoreDraft(before);
     }
 
-    private void RedoTerrain()
+    private void RedoDraft()
     {
-        if (!_terrainRedo.TryPop(out var edit)) return;
-        SetTerrain(edit.Tile, edit.After);
-        _terrainUndo.Push(edit);
-        MarkDraftChanged();
+        if (!_draftRedo.TryPop(out var after)) return;
+        _draftUndo.Push(Draft());
+        RestoreDraft(after);
     }
 
     private bool PortFacesWater(MapEditorSite site)
@@ -485,10 +572,11 @@ public sealed partial class EditMapScene
                 _editorError!.Text = "항구 발자국이 겹치거나 부두가 물을 향하지 않습니다.";
                 return;
             }
+            var before = Draft();
             if (existing is not null) _sites.Remove(existing);
             _sites.Add(candidate);
             if (existing is null) _nextSiteId++;
-            MarkDraftChanged();
+            RecordChange(before);
             RefreshSiteVisuals();
             CloseEditorModal();
             ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
@@ -499,8 +587,9 @@ public sealed partial class EditMapScene
             var remove = new Button { Text = "항구 제거" };
             remove.Pressed += () =>
             {
+                var before = Draft();
                 _sites.Remove(existing);
-                MarkDraftChanged();
+                RecordChange(before);
                 RefreshSiteVisuals();
                 CloseEditorModal();
                 ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));

@@ -613,10 +613,7 @@ public partial class GameRoot3D : Node3D
             // 성은 발자국(1/3/5타일) 전체의 중심점에 놓는다. 모델은 발자국 실치수로 제작됨.
             var centroid = Vector3.Zero;
             var count = 0;
-            var footprint = city.Port == PortSize.Medium
-                ? new[] { city.Position, city.Position + new HexCoord(1, 0) }
-                : city.IsPort ? [city.Position] : CastleFootprint.TilesFor(city);
-            foreach (var tile in footprint)
+            foreach (var tile in CastleFootprint.TilesFor(city))
             {
                 centroid += view.HexToWorld(tile);
                 count++;
@@ -633,8 +630,7 @@ public partial class GameRoot3D : Node3D
                 _ => castles[city.Castle],
             };
             var castleModel = modelScene.Instantiate<Node3D>();
-            var direction = scenario.MapPreset?.Sites.FirstOrDefault(site => site.Id == city.Id.Value)?.Direction ?? 0;
-            castleModel.RotationDegrees = new Vector3(0f, direction * 60f, 0f);
+            castleModel.RotationDegrees = new Vector3(0f, city.Direction * 60f, 0f);
             root.AddChild(castleModel);
 
             // 마을·항구와 똑같은 공통 파괴 레이어를 성에도 그대로 적용한다

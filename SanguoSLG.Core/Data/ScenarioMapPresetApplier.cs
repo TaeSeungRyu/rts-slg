@@ -51,18 +51,21 @@ public static class ScenarioMapPresetApplier
                 ?? baselineById.GetValueOrDefault(site.Id)
                 ?? baseCity;
             var isPort = site.Kind == "port";
+            var castle = isPort ? CastleSize.Small : site.Size switch
+            {
+                "large" => CastleSize.Large,
+                "medium" => CastleSize.Medium,
+                _ => CastleSize.Small,
+            };
             return template with
             {
                 Id = new CityId(site.Id),
                 Name = site.Name,
                 Position = preset.ToAxial(site.Column, site.Row),
-                Castle = isPort ? CastleSize.Small : site.Size switch
-                {
-                    "large" => CastleSize.Large,
-                    "medium" => CastleSize.Medium,
-                    _ => CastleSize.Small,
-                },
+                Castle = castle,
+                Wall = CastleWall.Max(castle, source.Balance, template.WallLevel),
                 Port = isPort ? site.Size == "medium" ? PortSize.Medium : PortSize.Small : PortSize.None,
+                Direction = site.Direction,
                 Paddies = preset.Sites.Count(facility => facility.Kind == "facility" &&
                     facility.ParentCityId == site.Id && facility.Size == "paddy"),
                 Farms = preset.Sites.Count(facility => facility.Kind == "facility" &&

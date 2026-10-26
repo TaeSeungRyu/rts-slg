@@ -1,6 +1,7 @@
 namespace SanguoSLG.Core.Data;
 
 using System.Text.Json;
+using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Spatial;
 
 public sealed record MapEditorSite(int Id, string Name, string Kind, string Size, int Column, int Row,
@@ -54,6 +55,53 @@ public sealed record ScenarioMapPreset(int Version, int Width, int Height, IRead
         if (Sites.Any(site => site.Kind == "facility" &&
             !Sites.Any(city => city.Kind == "city" && city.Id == site.ParentCityId)))
             throw new InvalidDataException("생산 시설에는 연결된 성이 필요합니다.");
+        var occupied = new HashSet<HexCoord>();
+        var coastDirections = new[] { new HexCoord(1, 0), new HexCoord(0, 1),
+            new HexCoord(-1, 1), new HexCoord(-1, 0), new HexCoord(0, -1), new HexCoord(1, -1) };
+        foreach (var site in Sites)
+        {
+            var anchor = ToAxial(site.Column, site.Row);
+            var offsets = site.Kind == "city" ? CastleFootprint.OffsetsFor(site.Size switch
+            {
+                "large" => CastleSize.Large,
+                "medium" => CastleSize.Medium,
+                _ => CastleSize.Small,
+            }) : site.Kind == "port" && site.Size == "medium"
+                ? FeatureFootprint.OffsetsFor(FeatureType.PortMedium)
+                : [new HexCoord(0, 0)];
+            var footprint = offsets.Select(offset => anchor + CastleFootprint.Rotate(offset, site.Direction)).ToArray();
+            foreach (var tile in footprint)
+            {
+                var column = tile.Q;
+                var row = tile.R + (column - (column & 1)) / 2;
+                if (column < 0 || column >= Width || row < 0 || row >= Height ||
+                    !"PFMDB".Contains(Rows[row][column]) || !occupied.Add(tile))
+                    throw new InvalidDataException("배치물 발자국이 지도 밖, 물/험산 또는 다른 배치물과 겹칩니다.");
+            }
+            if (site.Kind == "port" && !footprint.Any(tile =>
+            {
+                var neighbor = tile + coastDirections[site.Direction];
+                var column = neighbor.Q;
+                var row = neighbor.R + (column - (column & 1)) / 2;
+                return column >= 0 && column < Width && row >= 0 && row < Height
+                    && Rows[row][column] is 'W' or 'O';
+            }))
+                throw new InvalidDataException("항구 부두는 인접 물 타일을 향해야 합니다.");
+        }
+        foreach (var facility in Sites.Where(site => site.Kind == "facility"))
+        {
+            var city = Sites.First(site => site.Id == facility.ParentCityId);
+            var cityAnchor = ToAxial(city.Column, city.Row);
+            var cityFootprint = CastleFootprint.OffsetsFor(city.Size switch
+            {
+                "large" => CastleSize.Large,
+                "medium" => CastleSize.Medium,
+                _ => CastleSize.Small,
+            });
+            if (!cityFootprint.Any(offset => (cityAnchor + CastleFootprint.Rotate(offset, city.Direction))
+                .Distance(ToAxial(facility.Column, facility.Row)) <= 2))
+                throw new InvalidDataException("생산 시설이 연결된 성에서 2칸을 넘었습니다.");
+        }
     }
 }
 

@@ -28,9 +28,20 @@ public static class CastleFootprint
     /// <summary>도시가 실제로 점유하는 타일들(앵커 + 오프셋).</summary>
     public static IEnumerable<HexCoord> TilesFor(City city)
     {
-        foreach (var offset in OffsetsFor(city.Castle))
+        var offsets = city.Port == PortSize.Medium
+            ? FeatureFootprint.OffsetsFor(FeatureType.PortMedium)
+            : city.Port == PortSize.Small ? Small : OffsetsFor(city.Castle);
+        foreach (var offset in offsets)
         {
-            yield return city.Position + offset;
+            yield return city.Position + Rotate(offset, city.Direction);
         }
+    }
+
+    public static HexCoord Rotate(HexCoord offset, int direction)
+    {
+        var turns = ((direction % 6) + 6) % 6;
+        for (var turn = 0; turn < turns; turn++)
+            offset = new HexCoord(-offset.R, offset.Q + offset.R);
+        return offset;
     }
 }

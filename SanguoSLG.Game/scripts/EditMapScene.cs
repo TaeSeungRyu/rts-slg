@@ -110,19 +110,29 @@ public sealed partial class EditMapScene : Control
             ButtonPressed = true, CustomMinimumSize = new Vector2(112, 26) };
         routesToggle.AddThemeFontOverride("font", font);
         routesToggle.AddThemeFontSizeOverride("font_size", 12);
-        routesToggle.Toggled += enabled => { _showLandRoutes = enabled; QueueRedraw(); };
+        routesToggle.Toggled += enabled =>
+        {
+            _showLandRoutes = enabled;
+            if (_routeLines is not null) _routeLines.Visible = enabled;
+            QueueRedraw();
+        };
         filters.AddChild(routesToggle);
         var citiesToggle = new CheckButton { Name = "CityToggle", Text = $"성 배치 {_cities.Count}",
             ButtonPressed = true, CustomMinimumSize = new Vector2(115, 26) };
         citiesToggle.AddThemeFontOverride("font", font);
         citiesToggle.AddThemeFontSizeOverride("font_size", 12);
-        citiesToggle.Toggled += enabled => { _showCities = enabled; QueueRedraw(); };
+        citiesToggle.Toggled += enabled =>
+        {
+            _showCities = enabled;
+            if (_mapViewport is not null) RefreshVisibleTerrain();
+            QueueRedraw();
+        };
         filters.AddChild(citiesToggle);
-        var undo = new Button { Text = "지형 되돌리기" };
-        undo.Pressed += UndoTerrain;
+        var undo = new Button { Text = "되돌리기" };
+        undo.Pressed += UndoDraft;
         filters.AddChild(undo);
         var redo = new Button { Text = "다시 적용" };
-        redo.Pressed += RedoTerrain;
+        redo.Pressed += RedoDraft;
         filters.AddChild(redo);
         AddSaveDraftButton(filters);
         void AddTerrainFilter(string name, char? code)
@@ -134,7 +144,12 @@ public sealed partial class EditMapScene : Control
             button.AddThemeStyleboxOverride("normal", FilterStyle(false));
             button.AddThemeStyleboxOverride("hover", FilterStyle(false));
             button.AddThemeStyleboxOverride("pressed", FilterStyle(true));
-            button.Pressed += () => { _terrainFilter = code; QueueRedraw(); };
+            button.Pressed += () =>
+            {
+                _terrainFilter = code;
+                ApplyTerrainFilterVisual();
+                QueueRedraw();
+            };
             filters.AddChild(button);
             _terrainButtons.Add(button);
             if (code is null) button.ButtonPressed = true;
@@ -380,13 +395,14 @@ public sealed partial class EditMapScene : Control
         valid &= SiteAt(vacant) is null;
         var previousTerrain = _rows[vacant.Y][vacant.X];
         valid &= CanChangeTerrain(vacant, 'F');
+        var beforeTerrain = Draft();
         SetTerrain(vacant, 'F');
-        _terrainUndo.Push((vacant, previousTerrain, 'F'));
-        UndoTerrain();
+        RecordChange(beforeTerrain);
+        UndoDraft();
         valid &= _rows[vacant.Y][vacant.X] == previousTerrain;
-        RedoTerrain();
+        RedoDraft();
         valid &= _rows[vacant.Y][vacant.X] == 'F';
-        UndoTerrain();
+        UndoDraft();
         var coastal = Enumerable.Range(0, _height)
             .SelectMany(row => Enumerable.Range(0, _width).Select(column => new Vector2I(column, row)))
             .FirstOrDefault(tile => IsLand(_rows[tile.Y][tile.X]) && SiteAt(tile) is null
@@ -396,12 +412,25 @@ public sealed partial class EditMapScene : Control
                 "small", coastal.X, coastal.Y, direction))
             .FirstOrDefault(PortFacesWater);
         valid &= portDraft is not null && CanPlace(portDraft);
+        valid &= _sites.Where(site => site.Kind == "city").All(CanPlace);
         ShowEditorPalette(vacant, new Vector2(200f, 200f));
         valid &= _editorPalette is not null
             && _editorPalette.FindChildren("*", "Button", true, false).OfType<Button>()
                 .Any(button => button.Text == "성 추가" && !button.Disabled)
             && _editorPalette.FindChildren("*", "Button", true, false).OfType<Button>()
                 .Any(button => button.Text == "성 편집" && button.Disabled);
+        var qaPresetPath = Path.Combine(Path.GetTempPath(), $"editmap-qa-{System.Environment.ProcessId}.json");
+        try
+        {
+            SaveDraft();
+            var saved = SanguoSLG.Core.Data.ScenarioMapPresetStore.Load(qaPresetPath);
+            valid &= saved.Width == _width && saved.Height == _height
+                && saved.Sites.Count == _sites.Count && saved.Rows.SequenceEqual(_rows);
+        }
+        finally
+        {
+            if (File.Exists(qaPresetPath)) File.Delete(qaPresetPath);
+        }
         GD.Print($"[edit-map-qa] passed={valid} tiles={_width * _height} visible={_visibleTiles.Count} bounds={_west}-{_east}E,{_south}-{_north}N");
         GetTree().Quit(valid ? 0 : 1);
     }

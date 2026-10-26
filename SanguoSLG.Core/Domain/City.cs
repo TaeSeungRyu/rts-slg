@@ -63,7 +63,8 @@ public sealed record City(
     int AiSmallShipNextDay = 0,
     int AiMediumShipNextDay = 0,
     int AiSmallShipCompletionDay = 0,
-    int AiMediumShipCompletionDay = 0)
+    int AiMediumShipCompletionDay = 0,
+    int Direction = 0)
 {
     public bool IsPort => Port != PortSize.None;
 
