@@ -14000,9 +14000,8 @@ public sealed partial class CampaignMapScene : Node3D
         var name = general?.Name ?? $"장수 {state.General.Value}";
         var type = HeroTypeName(hero.Type, state.Status);
         var hasPoints = points >= hero.RecruitPointCost;
-        var hasGold = city.Gold >= hero.RecruitGold;
         var canRecruit = state.CanRecruit && new HeroUnlockService().IsSatisfied(_state, hero, city.Owner)
-            && hasGold && hasPoints;
+            && hasPoints;
         var status = state.CanRecruit ? "상태: 영입 가능" : "상태: 잠김";
         var card = new PanelContainer { Name = "HeroRecruitCard", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         card.AddThemeStyleboxOverride("panel", Frame(new Color(0.12f, 0.08f, 0.04f, state.CanRecruit ? 0.94f : 0.72f),
@@ -14025,12 +14024,11 @@ public sealed partial class CampaignMapScene : Node3D
         var text = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         row.AddChild(text);
         text.AddChild(MakeLabel($"{name} · {type}", 17, state.CanRecruit ? Gold : new Color(Gold, 0.65f)));
-        text.AddChild(MakeLabel($"{status}\n{HeroRequirementText(hero, general)}\n영입 포인트 {hero.RecruitPointCost}점 (보유 {points}점)\n비용 {hero.RecruitGold}금", 13, Parchment));
+        text.AddChild(MakeLabel($"{status}\n{HeroRequirementText(hero, general)}\n영입 포인트 {hero.RecruitPointCost}점 (보유 {points}점)", 13, Parchment));
 
         var unavailable = !state.CanRecruit || !new HeroUnlockService().IsSatisfied(_state, hero, city.Owner)
             ? "잠김"
             : !hasPoints ? $"포인트 {hero.RecruitPointCost - points} 부족"
-            : !hasGold ? $"금 {hero.RecruitGold - city.Gold} 부족"
             : "영입";
         var recruit = MakeButton(canRecruit ? "영입" : unavailable, accent: canRecruit);
         recruit.Disabled = !canRecruit;
@@ -14046,7 +14044,7 @@ public sealed partial class CampaignMapScene : Node3D
             ?? _state.Factions.FirstOrDefault(f => f.Id == city.Owner)?.Ruler
             ?? hero.General;
         ShowConfirm("위인영입",
-            $"{city.Name}에서 {name}을(를) 영입합니다.\n유형: {type}\n영입 포인트: {hero.RecruitPointCost}점\n비용: {hero.RecruitGold}금\n\n진행하시겠습니까?",
+            $"{city.Name}에서 {name}을(를) 영입합니다.\n유형: {type}\n영입 포인트: {hero.RecruitPointCost}점\n\n진행하시겠습니까?",
             () =>
             {
                 var request = new CommandRequest(city.Id, CommandKind.RecruitHero, actor, TargetGeneral: hero.General);

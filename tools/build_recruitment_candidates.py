@@ -67,13 +67,13 @@ def update(source, generals):
                 "general": general_id,
                 "type": "faction",
                 "recruit_point_cost": points,
-                "recruit_gold": points * 4,
                 "title": general["name"],
                 "desc": "장수 선행 조건에 따라 영입 가능한 인재",
             }
             source.append(item)
             existing[general_id] = item
         item.pop("unlock_year", None)
+        item.pop("recruit_gold", None)
         item.pop("faction", None)
         item.pop("home_regions", None)
         item.pop("home_cities", None)

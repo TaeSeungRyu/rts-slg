@@ -66,7 +66,7 @@ public class CommandSystemTests
     // ── 효율(A 주관·보좌, B 출신지) ──
 
     [Fact]
-    public void 해금된_위인은_금을_소비하고_도시에_합류한다()
+    public void 해금된_위인은_포인트만_소비하고_도시에_합류한다()
     {
         var city = Town(1, gold: 2000);
         var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Faction, new FactionId(1),
@@ -83,7 +83,7 @@ public class CommandSystemTests
             TargetGeneral: new GeneralId(6)));
 
         Assert.True(result.Ok, result.Error);
-        Assert.Equal(1100, result.State.Cities.Single().Gold);
+        Assert.Equal(2000, result.State.Cities.Single().Gold);
         Assert.Equal((new FactionId(1), city.Id), (result.State.PostingOf(new GeneralId(6))!.Faction, result.State.PostingOf(new GeneralId(6))!.Location));
         Assert.Equal(HeroUnlockStatus.Recruited, result.State.HeroStates.Single().Status);
         Assert.Equal(0, RecruitmentPointBank.Balance(result.State, city.Owner));
@@ -125,7 +125,7 @@ public class CommandSystemTests
             new GeneralId(1), TargetGeneral: hero.General));
 
         Assert.True(result.Ok, result.Error);
-        Assert.Equal(1100, result.State.Cities.Single().Gold);
+        Assert.Equal(2000, result.State.Cities.Single().Gold);
         Assert.Equal(city.Owner, result.State.PostingOf(hero.General)?.Faction);
     }
 
@@ -150,16 +150,15 @@ public class CommandSystemTests
 
         Assert.True(result.Ok, result.Error);
         Assert.Equal(liu, result.State.PostingOf(hero.General)?.Faction);
-        Assert.Equal(1100, result.State.Cities.Single().Gold);
+        Assert.Equal(2000, result.State.Cities.Single().Gold);
         Assert.Equal(0, RecruitmentPointBank.Balance(result.State, liu));
     }
 
-    [Theory]
-    [InlineData(99, 2000, "영입 포인트")]
-    [InlineData(100, 899, "900금")]
-    public void 위인영입은_포인트와_금을_모두_충족해야_원자적으로_차감한다(
-        int points, int gold, string errorPart)
+    [Fact]
+    public void 위인영입은_포인트가_부족하면_금을_차감하지_않는다()
     {
+        const int points = 99;
+        const int gold = 0;
         var city = Town(1, gold: gold);
         var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Faction, new FactionId(1),
             RecruitGold: 900, RecruitPointCost: 100);
@@ -174,10 +173,31 @@ public class CommandSystemTests
             new GeneralId(1), TargetGeneral: hero.General));
 
         Assert.False(result.Ok);
-        Assert.Contains(errorPart, result.Error);
+        Assert.Contains("영입 포인트", result.Error);
         Assert.Equal(gold, result.State.Cities.Single().Gold);
         Assert.Equal(points, RecruitmentPointBank.Balance(result.State, city.Owner));
         Assert.Null(result.State.PostingOf(hero.General));
+    }
+
+    [Fact]
+    public void 금이_없어도_포인트와_선행_조건이_맞으면_영입한다()
+    {
+        var city = Town(1, gold: 0);
+        var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Faction,
+            RecruitGold: 900, RecruitPointCost: 100);
+        var state = State([city], [Pol(1, 80), Pol(6, 95)]) with
+        {
+            HeroUnlockDefinitions = [hero],
+            HeroUnlockStates = [new HeroUnlockState(hero.General, HeroUnlockStatus.Locked)],
+            RecruitmentPoints = [new(city.Owner, 100)],
+        };
+
+        var result = Service().Issue(state, new CommandRequest(city.Id, CommandKind.RecruitHero,
+            new GeneralId(1), TargetGeneral: hero.General));
+
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(0, result.State.Cities.Single().Gold);
+        Assert.Equal(0, RecruitmentPointBank.Balance(result.State, city.Owner));
     }
 
     [Fact]

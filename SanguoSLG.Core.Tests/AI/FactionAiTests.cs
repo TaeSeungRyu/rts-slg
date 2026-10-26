@@ -353,7 +353,7 @@ public class FactionAiTests
     }
 
     [Fact]
-    public void 해금된_AI_위인은_금을_내고_자동_영입한다()
+    public void 해금된_AI_위인은_포인트만_내고_자동_영입한다()
     {
         var hero = new HeroUnlockDefinition(new GeneralId(6), HeroUnlockType.Faction,
             Faction: new FactionId(1),
@@ -371,7 +371,7 @@ public class FactionAiTests
 
         Assert.Equal(HeroUnlockStatus.Recruited, after.HeroStates.Single().Status);
         Assert.Equal((new FactionId(1), new CityId(1)), (after.PostingOf(new GeneralId(6))!.Faction, after.PostingOf(new GeneralId(6))!.Location));
-        Assert.InRange(after.Cities.Single().Gold, 1000, 1100);
+        Assert.InRange(after.Cities.Single().Gold, 2000, 2100);
         Assert.Equal(0, RecruitmentPointBank.Balance(after, new FactionId(1)));
     }
 

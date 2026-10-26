@@ -919,7 +919,7 @@ public sealed class FactionAI
         state = new HeroUnlockService().Evaluate(state);
         foreach (var heroState in state.HeroStates
             .Where(s => s.CanRecruit)
-            .OrderBy(s => state.HeroUnlocks.FirstOrDefault(h => h.General == s.General)?.RecruitGold ?? int.MaxValue)
+            .OrderBy(s => state.HeroUnlocks.FirstOrDefault(h => h.General == s.General)?.RecruitPointCost ?? int.MaxValue)
             .ThenBy(s => s.General.Value)
             .ToList())
         {
@@ -935,7 +935,7 @@ public sealed class FactionAI
             }
 
             var city = state.Cities
-                .Where(c => c.Owner == faction && c.Gold >= hero.RecruitGold)
+                .Where(c => c.Owner == faction)
                 .OrderByDescending(c => c.Gold)
                 .ThenBy(c => c.Id.Value)
                 .FirstOrDefault();
