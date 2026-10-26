@@ -124,6 +124,7 @@ public sealed partial class EditMapScene : Control
         var redo = new Button { Text = "다시 적용" };
         redo.Pressed += RedoTerrain;
         filters.AddChild(redo);
+        AddSaveDraftButton(filters);
         void AddTerrainFilter(string name, char? code)
         {
             var button = new Button { Text = name, ToggleMode = true, ButtonGroup = group,
@@ -143,7 +144,9 @@ public sealed partial class EditMapScene : Control
         footer.CustomMinimumSize = new Vector2(0, 39);
         footer.AddThemeStyleboxOverride("panel", PanelStyle());
         AddChild(footer);
-        _tileInfo = new Label { Text = "성을 클릭하면 지역과 규모를, 지형을 클릭하면 타일 정보를 표시합니다." };
+        _tileInfo = new Label { Text = _presetLoadError is null
+            ? "타일을 선택해 편집하세요. 저장한 지도는 새 게임에만 적용됩니다."
+            : "프리셋 로드 실패: " + _presetLoadError };
         _tileInfo.AddThemeFontOverride("font", font);
         _tileInfo.AddThemeFontSizeOverride("font_size", 14);
         footer.AddChild(_tileInfo);

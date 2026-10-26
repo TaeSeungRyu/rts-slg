@@ -14,6 +14,9 @@ public sealed partial class EditMapScene
     private Label? _editorError;
     private Action? _editorCancelAction;
     private int _nextSiteId = 1;
+    private bool _draftChanged;
+    private Button? _saveDraftButton;
+    private string? _presetLoadError;
     private readonly Stack<(Vector2I Tile, char Before, char After)> _terrainUndo = [];
     private readonly Stack<(Vector2I Tile, char Before, char After)> _terrainRedo = [];
 
@@ -23,6 +26,55 @@ public sealed partial class EditMapScene
         foreach (var city in _cities)
             _sites.Add(new MapEditorSite(id++, city.Name, "city", city.Size, city.Tile.X, city.Tile.Y));
         _nextSiteId = id;
+        var path = PresetPath();
+        if (!File.Exists(path)) return;
+        try
+        {
+            var preset = ScenarioMapPresetStore.Load(path);
+            _width = preset.Width;
+            _height = preset.Height;
+            _rows = preset.Rows.ToArray();
+            _sites.Clear();
+            _sites.AddRange(preset.Sites);
+            _nextSiteId = _sites.Count == 0 ? 1 : _sites.Max(site => site.Id) + 1;
+        }
+        catch (Exception error)
+        {
+            _presetLoadError = error.Message;
+        }
+    }
+
+    private static string PresetPath() =>
+        ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
+
+    private ScenarioMapPreset Draft() => new(1, _width, _height, _rows.ToArray(), _sites.ToArray());
+
+    private void MarkDraftChanged()
+    {
+        _draftChanged = true;
+        if (_saveDraftButton is not null) _saveDraftButton.Text = "맵 저장 *";
+    }
+
+    private void SaveDraft()
+    {
+        try
+        {
+            ScenarioMapPresetStore.Save(PresetPath(), Draft());
+            _draftChanged = false;
+            _saveDraftButton!.Text = "맵 저장";
+            _tileInfo.Text = "시나리오 맵 프리셋을 저장했습니다. 새 게임에만 적용됩니다.";
+        }
+        catch (Exception error)
+        {
+            _tileInfo.Text = "맵 저장 실패: " + error.Message;
+        }
+    }
+
+    private void AddSaveDraftButton(HBoxContainer bar)
+    {
+        _saveDraftButton = new Button { Text = "맵 저장", CustomMinimumSize = new Vector2(95, 26) };
+        _saveDraftButton.Pressed += SaveDraft;
+        bar.AddChild(_saveDraftButton);
     }
 
     private static bool IsLand(char code) => code is 'P' or 'F' or 'M' or 'D' or 'B';
@@ -211,6 +263,7 @@ public sealed partial class EditMapScene
             if (existing is not null) _sites.Remove(existing);
             _sites.Add(candidate);
             if (existing is null) _nextSiteId++;
+            MarkDraftChanged();
             RefreshSiteVisuals();
             CloseEditorModal();
             ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
@@ -222,6 +275,7 @@ public sealed partial class EditMapScene
             {
                 _sites.Remove(existing);
                 _sites.RemoveAll(site => site.ParentCityId == existing.Id);
+                MarkDraftChanged();
                 RefreshSiteVisuals();
                 CloseEditorModal();
                 ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
@@ -277,6 +331,7 @@ public sealed partial class EditMapScene
             if (existing is not null) _sites.Remove(existing);
             _sites.Add(candidate);
             if (existing is null) _nextSiteId++;
+            MarkDraftChanged();
             RefreshSiteVisuals();
             CloseEditorModal();
             ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
@@ -287,6 +342,7 @@ public sealed partial class EditMapScene
             remove.Pressed += () =>
             {
                 _sites.Remove(existing);
+                MarkDraftChanged();
                 RefreshSiteVisuals();
                 CloseEditorModal();
                 ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
@@ -350,6 +406,7 @@ public sealed partial class EditMapScene
             {
                 _terrainUndo.Push((tile, original, current));
                 _terrainRedo.Clear();
+                MarkDraftChanged();
             }
             _editorCancelAction = null;
             CloseEditorModal();
@@ -366,6 +423,7 @@ public sealed partial class EditMapScene
         if (!_terrainUndo.TryPop(out var edit)) return;
         SetTerrain(edit.Tile, edit.Before);
         _terrainRedo.Push(edit);
+        MarkDraftChanged();
     }
 
     private void RedoTerrain()
@@ -373,6 +431,7 @@ public sealed partial class EditMapScene
         if (!_terrainRedo.TryPop(out var edit)) return;
         SetTerrain(edit.Tile, edit.After);
         _terrainUndo.Push(edit);
+        MarkDraftChanged();
     }
 
     private bool PortFacesWater(MapEditorSite site)
@@ -423,6 +482,7 @@ public sealed partial class EditMapScene
             if (existing is not null) _sites.Remove(existing);
             _sites.Add(candidate);
             if (existing is null) _nextSiteId++;
+            MarkDraftChanged();
             RefreshSiteVisuals();
             CloseEditorModal();
             ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
@@ -434,6 +494,7 @@ public sealed partial class EditMapScene
             remove.Pressed += () =>
             {
                 _sites.Remove(existing);
+                MarkDraftChanged();
                 RefreshSiteVisuals();
                 CloseEditorModal();
                 ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
