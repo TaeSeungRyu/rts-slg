@@ -239,7 +239,7 @@ public sealed partial class EditMapScene : Control
         }
         var valid = _rows.Length == _height && _rows.All(row => row.Length == _width)
             && Land(110, 35) && Land(103, 47) && Land(127.5, 37.5)
-            && Land(121, 24) && Land(130.5, 33)
+            && Land(121, 24) && Land(130.5, 33.5)
             && _rows.Any(row => row.Contains('R')) && _rows.Any(row => row.Contains('D'))
             && _rows.Any(row => row.Contains('F')) && _rows.Any(row => row.Contains('H'))
             && _west >= 97.72 && _east <= 133

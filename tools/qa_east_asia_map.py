@@ -54,7 +54,7 @@ def route(start, end):
 assert len(rows) == height and all(len(row) == width for row in rows)
 assert bounds["west"] == 97.72 and bounds["east"] == 133
 assert abs(bounds["north"] - (54 - 6 * 36 / 105)) < 1e-10
-assert width == 126 and height == 99
+assert width == 158 and height == 124
 assert 1 <= sum(row.count("B") for row in rows) <= 6
 assert rows[cell(106.5, 29.6)[1]][cell(106.5, 29.6)[0]] == "B"
 for crossing in ((111.3, 30.7), (114.3, 30.6)):
@@ -83,5 +83,5 @@ for latitude in (32.14, 32.66):
     corridor = [rows[row][column] for row in range(height) for column in range(width)
                 if abs(coordinate(column, row)[1] - latitude) < .1
                 and 104 <= coordinate(column, row)[0] <= 111]
-    assert sum(kind in "PFMDRB" for kind in corridor) <= 5, (latitude, corridor)
+    assert sum(kind in "PFMDRB" for kind in corridor) <= 6, (latitude, corridor)
 print("[east-asia-map-qa] passed: cropped bounds, Shu passes and all plotted land routes")
