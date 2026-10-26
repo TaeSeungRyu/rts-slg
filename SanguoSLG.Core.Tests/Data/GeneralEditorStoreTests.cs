@@ -166,4 +166,33 @@ public class GeneralEditorStoreTests
 
         Assert.Contains("0~1,000", error.Message);
     }
+
+    [Fact]
+    public void 선행_장수_편집은_비용과_다른_데이터를_보존한다()
+    {
+        const string json = """
+        [{"general":6,"required_general":2,"recruit_point_cost":250,"recruit_gold":1500,"future":"keep"}]
+        """;
+
+        var saved = GeneralEditorStore.ReplaceHeroRecruitment(json, 6, 300, 1, new HashSet<int> { 1, 2, 6 });
+        var item = JsonNode.Parse(saved)!.AsArray()[0]!;
+
+        Assert.Equal(1, GeneralEditorStore.LoadHeroRecruitPrerequisites(saved)[6]);
+        Assert.Equal(300, item["recruit_point_cost"]!.GetValue<int>());
+        Assert.Equal(1500, item["recruit_gold"]!.GetValue<int>());
+        Assert.Equal("keep", item["future"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void 선행_장수는_미등록_자기참조와_순환을_거부한다()
+    {
+        const string json = """
+        [{"general":6,"required_general":2},{"general":2,"required_general":1},{"general":1}]
+        """;
+        var ids = new HashSet<int> { 1, 2, 6 };
+
+        Assert.Throws<InvalidDataException>(() => GeneralEditorStore.ReplaceHeroRecruitment(json, 1, 100, 99, ids));
+        Assert.Throws<InvalidDataException>(() => GeneralEditorStore.ReplaceHeroRecruitment(json, 1, 100, 1, ids));
+        Assert.Throws<InvalidDataException>(() => GeneralEditorStore.ReplaceHeroRecruitment(json, 1, 100, 6, ids));
+    }
 }

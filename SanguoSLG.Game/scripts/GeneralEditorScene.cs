@@ -19,6 +19,7 @@ public partial class GeneralEditorScene : Control
     private readonly Dictionary<string, AdminSkill> _adminSkills = new();
     private readonly Dictionary<int, GeneralPortraitRecord> _portraitsByGeneralId = new();
     private readonly Dictionary<int, int> _heroRecruitPointCosts = new();
+    private readonly Dictionary<int, int?> _heroRecruitPrerequisites = new();
     private readonly List<GeneralEditorRecord> _generals = [];
     private readonly Dictionary<string, OptionButton> _aptitudeInputs = new();
     private readonly List<GeneralEditorSkill> _selectedBattlePassives = [];
@@ -32,6 +33,7 @@ public partial class GeneralEditorScene : Control
     private SpinBox _intellectInput = null!;
     private SpinBox _politicsInput = null!;
     private SpinBox _recruitPointInput = null!;
+    private OptionButton _requiredGeneralInput = null!;
     private OptionButton _activeInput = null!;
     private Label _activeDescription = null!;
     private TextureRect _activeIcon = null!;
@@ -200,6 +202,16 @@ public partial class GeneralEditorScene : Control
         _recruitPointInput.ValueChanged += _ => UpdateChangePreview();
         recruitPointBox.AddChild(_recruitPointInput);
         statRow.AddChild(recruitPointBox);
+        var requiredRow = new HBoxContainer();
+        requiredRow.AddChild(new Label { Text = "영입 선행 장수", CustomMinimumSize = new Vector2(130, 0) });
+        _requiredGeneralInput = new OptionButton
+        {
+            CustomMinimumSize = new Vector2(280, 0),
+            TooltipText = "없음은 어느 세력이나 영입할 수 있습니다. 지정하면 해당 장수가 소속된 세력만 영입할 수 있습니다.",
+        };
+        _requiredGeneralInput.ItemSelected += _ => UpdateChangePreview();
+        requiredRow.AddChild(_requiredGeneralInput);
+        statSection.AddChild(requiredRow);
 
         var aptitudeSection = AddSection(editor, "병종 적성");
         var aptitudeGrid = new GridContainer { Columns = 3 };
@@ -340,6 +352,7 @@ public partial class GeneralEditorScene : Control
             _generalsById.Clear();
             _portraitsByGeneralId.Clear();
             _heroRecruitPointCosts.Clear();
+            _heroRecruitPrerequisites.Clear();
             _activeNames.Clear();
             _passiveNames.Clear();
             _adminNames.Clear();
@@ -388,6 +401,8 @@ public partial class GeneralEditorScene : Control
                 {
                     _heroRecruitPointCosts[generalId] = cost;
                 }
+                foreach (var (generalId, required) in GeneralEditorStore.LoadHeroRecruitPrerequisites(File.ReadAllText(heroUnlocksPath)))
+                    _heroRecruitPrerequisites[generalId] = required;
             }
             _heroUnlocksLoadedAt = File.Exists(heroUnlocksPath) ? File.GetLastWriteTimeUtc(heroUnlocksPath) : DateTime.MinValue;
 
@@ -484,16 +499,18 @@ public partial class GeneralEditorScene : Control
         var recruitPointText = _heroRecruitPointCosts.TryGetValue(general.Id, out var recruitPointCost)
             ? $"{recruitPointCost}점"
             : "위인 정의 없음";
+        var requiredGeneral = _heroRecruitPrerequisites.GetValueOrDefault(general.Id);
+        var requiredName = requiredGeneral is { } id ? _generalsById.GetValueOrDefault(id)?.Name ?? $"장수 {id}" : "없음";
 
         _summary.Text =
             $"ID {general.Id}  {general.Name}\n" +
-            $"출생 {general.Birth} / 해금 {general.UnlockYear} / 지역 {general.Region}\n\n" +
+            $"출생 {general.Birth} / 지역 {general.Region}\n\n" +
             $"현재: 무력 {general.Might} / 지력 {general.Intellect} / 정치 {general.Politics}\n" +
             $"현재 적성: {aptitudes}\n" +
             $"현재 전투 액티브: {battleActive}\n" +
             $"현재 전투 패시브: {battlePassives}\n" +
             $"현재 내정 패시브: {adminPassives}\n\n" +
-            $"요구 영입 포인트: {recruitPointText}\n\n" +
+            $"요구 영입 포인트: {recruitPointText} / 선행 장수: {requiredName}\n\n" +
             general.Desc;
 
         _mightInput.Value = general.Might;
@@ -501,6 +518,17 @@ public partial class GeneralEditorScene : Control
         _politicsInput.Value = general.Politics;
         _recruitPointInput.Editable = _heroRecruitPointCosts.ContainsKey(general.Id);
         _recruitPointInput.Value = _heroRecruitPointCosts.GetValueOrDefault(general.Id, 0);
+        _requiredGeneralInput.Clear();
+        _requiredGeneralInput.AddItem("없음", 0);
+        foreach (var candidate in _generals.Where(item => item.Id != general.Id).OrderBy(item => item.Name))
+            _requiredGeneralInput.AddItem($"{candidate.Name} (ID {candidate.Id})", candidate.Id);
+        _requiredGeneralInput.Disabled = !_heroRecruitPrerequisites.ContainsKey(general.Id);
+        for (var i = 0; i < _requiredGeneralInput.ItemCount; i++)
+            if (_requiredGeneralInput.GetItemId(i) == (requiredGeneral ?? 0))
+            {
+                _requiredGeneralInput.Select(i);
+                break;
+            }
         foreach (var key in TroopKeys)
         {
             SelectOption(_aptitudeInputs[key], general.Aptitudes.GetValueOrDefault(key, "F"));
@@ -678,10 +706,12 @@ public partial class GeneralEditorScene : Control
             if (_heroRecruitPointCosts.ContainsKey(edited.Id))
             {
                 var recruitPointCost = (int)_recruitPointInput.Value;
-                var heroUnlocks = GeneralEditorStore.ReplaceHeroRecruitPointCost(
-                    File.ReadAllText(heroUnlocksPath), edited.Id, recruitPointCost);
+                var heroUnlocks = GeneralEditorStore.ReplaceHeroRecruitment(
+                    File.ReadAllText(heroUnlocksPath), edited.Id, recruitPointCost,
+                    SelectedRequiredGeneral(), _generalsById.Keys.ToHashSet());
                 File.WriteAllText(heroUnlocksPath, heroUnlocks);
                 _heroRecruitPointCosts[edited.Id] = recruitPointCost;
+                _heroRecruitPrerequisites[edited.Id] = SelectedRequiredGeneral();
             }
             _generalsLoadedAt = File.GetLastWriteTimeUtc(path);
             _portraitsLoadedAt = File.GetLastWriteTimeUtc(portraitPath);
@@ -793,6 +823,7 @@ public partial class GeneralEditorScene : Control
             if (_heroRecruitPointCosts.TryGetValue(_selected.Id, out var recruitPointCost))
             {
                 AddChange(changes, "요구 영입 포인트", recruitPointCost, (int)_recruitPointInput.Value);
+                AddChange(changes, "영입 선행 장수", _heroRecruitPrerequisites.GetValueOrDefault(_selected.Id), SelectedRequiredGeneral());
             }
             foreach (var key in TroopKeys)
             {
@@ -815,6 +846,13 @@ public partial class GeneralEditorScene : Control
         }
     }
 
+    private int? SelectedRequiredGeneral()
+    {
+        if (_requiredGeneralInput.Selected < 0) return null;
+        var id = _requiredGeneralInput.GetItemId(_requiredGeneralInput.Selected);
+        return id <= 0 ? null : id;
+    }
+
     private static void AddChange<T>(List<string> changes, string label, T before, T after)
     {
         if (!EqualityComparer<T>.Default.Equals(before, after))
@@ -833,14 +871,16 @@ public partial class GeneralEditorScene : Control
         {
             ShowGeneral(hero);
             heroOk = _recruitPointInput.Editable
+                && !_requiredGeneralInput.Disabled
                 && _recruitPointInput.MinValue == 0
                 && _recruitPointInput.MaxValue == 1000
-                && (int)_recruitPointInput.Value == _heroRecruitPointCosts[hero.Id];
+                && (int)_recruitPointInput.Value == _heroRecruitPointCosts[hero.Id]
+                && SelectedRequiredGeneral() == _heroRecruitPrerequisites.GetValueOrDefault(hero.Id);
         }
         if (regular is not null)
         {
             ShowGeneral(regular);
-            regularOk = !_recruitPointInput.Editable;
+            regularOk = !_recruitPointInput.Editable && _requiredGeneralInput.Disabled;
         }
 
         var passed = heroOk && regularOk;

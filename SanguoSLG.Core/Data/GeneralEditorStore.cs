@@ -64,6 +64,21 @@ public sealed class GeneralEditorStore
         return costs;
     }
 
+    public static IReadOnlyDictionary<int, int?> LoadHeroRecruitPrerequisites(string json)
+    {
+        var root = JsonNode.Parse(json) as JsonArray
+            ?? throw new InvalidDataException("hero_unlocks.json 루트는 배열이어야 합니다.");
+        var result = new Dictionary<int, int?>();
+        foreach (var node in root.OfType<JsonObject>())
+        {
+            var id = node["general"]?.GetValue<int>()
+                ?? throw new InvalidDataException("위인 정의에 general ID가 없습니다.");
+            if (!result.TryAdd(id, node["required_general"]?.GetValue<int>()))
+                throw new InvalidDataException($"중복 위인 장수 ID: {id}");
+        }
+        return result;
+    }
+
     public static GeneralEditorValidationResult Validate(
         IReadOnlyList<GeneralEditorRecord> generals,
         IReadOnlySet<string> activeSkillCodes,
@@ -223,6 +238,32 @@ public sealed class GeneralEditorStore
             .FirstOrDefault(node => node["general"]?.GetValue<int>() == generalId)
             ?? throw new InvalidDataException($"위인 정의에서 장수 ID {generalId}를 찾을 수 없습니다.");
         target["recruit_point_cost"] = recruitPointCost;
+        return root.ToJsonString(WriteOptions);
+    }
+
+    public static string ReplaceHeroRecruitment(string originalJson, int generalId, int recruitPointCost,
+        int? requiredGeneral, IReadOnlySet<int> generalIds)
+    {
+        ValidateRecruitPointCost(generalId, recruitPointCost);
+        if (requiredGeneral is { } required && (required == generalId || !generalIds.Contains(required)))
+            throw new InvalidDataException("선행 장수는 명단에 있는 다른 장수여야 합니다.");
+
+        var root = JsonNode.Parse(originalJson) as JsonArray
+            ?? throw new InvalidDataException("hero_unlocks.json 루트는 배열이어야 합니다.");
+        var target = root.OfType<JsonObject>()
+            .FirstOrDefault(node => node["general"]?.GetValue<int>() == generalId)
+            ?? throw new InvalidDataException($"위인 정의에서 장수 ID {generalId}를 찾을 수 없습니다.");
+        target["recruit_point_cost"] = recruitPointCost;
+        target["required_general"] = requiredGeneral;
+
+        var prerequisites = LoadHeroRecruitPrerequisites(root.ToJsonString());
+        var seen = new HashSet<int> { generalId };
+        var next = requiredGeneral;
+        while (next is { } id && prerequisites.TryGetValue(id, out var following))
+        {
+            if (!seen.Add(id)) throw new InvalidDataException("선행 장수 조건이 순환합니다.");
+            next = following;
+        }
         return root.ToJsonString(WriteOptions);
     }
 
