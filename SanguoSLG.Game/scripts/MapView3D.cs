@@ -22,6 +22,7 @@ public partial class MapView3D : Node3D
 
     /// <summary>헥사 중심~꼭짓점 거리(월드 단위). 하이라이트 등 오버레이 크기 기준.</summary>
     public float HexWorldSize => _size;
+    public bool IsFlatTop => _flatTop;
 
     /// <summary>물 타일 윗면(수면)의 월드 y. 바다 평면은 이보다 낮아야 물 타일을 가리지 않는다.</summary>
     public float WaterTopY { get; private set; }

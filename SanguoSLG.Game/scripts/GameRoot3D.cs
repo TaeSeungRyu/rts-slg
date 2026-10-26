@@ -136,7 +136,8 @@ public partial class GameRoot3D : Node3D
         });
 
         var (center, radius) = MapBounds(mapView, scenario.Map);
-        var camera = new CameraController3D { Fov = 55f, NorthUpPlanView = true };
+        var camera = new CameraController3D { Fov = 55f, NorthUpPlanView = true,
+            PlanYawDegrees = mapView.IsFlatTop ? 0f : 30f };
         AddChild(camera);
         camera.Setup(center, radius * 1.4f);
         camera.Current = true;
@@ -322,7 +323,8 @@ public partial class GameRoot3D : Node3D
         mapView.Build(CampaignMapScene.TestMap, new System.Collections.Generic.HashSet<HexCoord>(),
             new TileConditionMap(), CampaignMapScene.TestPortTiles);
 
-        var camera = new CameraController3D { Fov = 55f, NorthUpPlanView = true };
+        var camera = new CameraController3D { Fov = 55f, NorthUpPlanView = true,
+            PlanYawDegrees = mapView.IsFlatTop ? 0f : 30f };
         AddChild(camera);
         if (OS.GetCmdlineUserArgs().Contains("--aitest"))
         {

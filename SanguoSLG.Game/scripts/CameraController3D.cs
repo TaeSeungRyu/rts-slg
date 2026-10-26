@@ -11,6 +11,7 @@ public partial class CameraController3D : Camera3D
     public System.Func<bool>? InputBlocked { get; set; }
     public bool IsNavigationInputBlocked => InputBlocked?.Invoke() == true;
     public bool NorthUpPlanView { get; set; }
+    public float PlanYawDegrees { get; set; }
 
     [Export] public float MinDistance = 2.2f;
     [Export] public float MaxDistance = 50f;
@@ -139,7 +140,7 @@ public partial class CameraController3D : Camera3D
         {
             Size = _distance * 1.6f;
             GlobalPosition = _pivot + Vector3.Up * _distance;
-            GlobalRotationDegrees = new Vector3(-90f, 0f, 0f);
+            GlobalRotationDegrees = new Vector3(-90f, PlanYawDegrees, 0f);
             return;
         }
         var offset = new Vector3(

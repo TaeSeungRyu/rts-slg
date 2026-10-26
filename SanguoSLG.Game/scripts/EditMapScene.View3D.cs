@@ -79,8 +79,6 @@ public sealed partial class EditMapScene
             TransparentBg = false,
         };
         container.AddChild(_mapViewport);
-        Resized += () => _mapViewport.Size = new Vector2I(
-            Mathf.Max(1, Mathf.RoundToInt(Size.X)), Mathf.Max(1, Mathf.RoundToInt(Size.Y)));
 
         var world = new Node3D();
         _mapViewport.AddChild(world);
@@ -145,7 +143,7 @@ public sealed partial class EditMapScene
     private void PositionCamera()
     {
         _mapCamera.Position = _cameraTarget + Vector3.Up * _viewSize;
-        _mapCamera.RotationDegrees = new Vector3(-90f, 0f, 0f);
+        _mapCamera.RotationDegrees = new Vector3(-90f, _mapView.IsFlatTop ? 0f : 30f, 0f);
         _mapCamera.Size = _viewSize;
     }
 
@@ -159,11 +157,18 @@ public sealed partial class EditMapScene
     private void PanMap(Vector2 previous, Vector2 current)
     {
         var difference = GroundPoint(previous) - GroundPoint(current);
-        var maxX = _mapView.HexToWorld(Axial(new Vector2I(_width - 1, 0))).X;
-        var maxZ = _mapView.HexToWorld(Axial(new Vector2I(_width - 1, _height - 1))).Z;
-        _cameraTarget = new Vector3(
-            Mathf.Clamp(_cameraTarget.X + difference.X, 0f, maxX), 0f,
-            Mathf.Clamp(_cameraTarget.Z + difference.Z, 0f, maxZ));
+        MoveMapCamera(difference);
+    }
+
+    private void MoveMapCamera(Vector3 difference)
+    {
+        var columnAxis = _mapView.HexToWorld(Axial(new Vector2I(2, 0))) * 0.5f;
+        var rowAxis = _mapView.HexToWorld(Axial(new Vector2I(0, 1)));
+        var proposed = _cameraTarget + difference;
+        var column = Mathf.Clamp(proposed.Dot(columnAxis) / columnAxis.LengthSquared(), 0f, _width - 1f);
+        var row = Mathf.Clamp(proposed.Dot(rowAxis) / rowAxis.LengthSquared(), 0f,
+            _height - 1f + ((_width - 1) & 1) * 0.5f);
+        _cameraTarget = columnAxis * column + rowAxis * row;
         PositionCamera();
         var selected = Offset(_mapView.WorldToHex(_cameraTarget));
         selected = new Vector2I(Mathf.Clamp(selected.X, 0, _width - 1),
@@ -171,6 +176,22 @@ public sealed partial class EditMapScene
         if (selected == _viewCenter) return;
         _viewCenter = selected;
         RefreshVisibleTerrain();
+    }
+
+    public override void _Process(double delta)
+    {
+        if (_mapViewport is null || _editorModal is not null || GetViewport().GuiGetFocusOwner() is LineEdit)
+            return;
+        var direction = Vector2.Zero;
+        if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left)) direction.X -= 1;
+        if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right)) direction.X += 1;
+        if (Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up)) direction.Y -= 1;
+        if (Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down)) direction.Y += 1;
+        if (direction == Vector2.Zero) return;
+        var speed = Mathf.Max(8f, _viewSize * 0.9f) * (float)delta;
+        var right = _mapCamera.GlobalTransform.Basis.X;
+        var down = -_mapCamera.GlobalTransform.Basis.Y;
+        MoveMapCamera((right * direction.X + down * direction.Y) * speed);
     }
 
     private void FocusRegion(double longitude, double latitude)
@@ -317,7 +338,7 @@ public sealed partial class EditMapScene
         {
             if (button.Pressed && button.ButtonIndex is MouseButton.WheelUp or MouseButton.WheelDown)
             {
-                _viewSize = Mathf.Clamp(_viewSize * (button.ButtonIndex == MouseButton.WheelUp ? 0.83f : 1.2f), 7f, 48f);
+                _viewSize = Mathf.Clamp(_viewSize * (button.ButtonIndex == MouseButton.WheelUp ? 0.83f : 1.2f), 7f, 85f);
                 PositionCamera();
                 RefreshVisibleTerrain();
                 AcceptEvent();

@@ -114,7 +114,7 @@ public sealed partial class EditMapScene : Control
         title.AddThemeFontOverride("font", font);
         title.AddThemeFontSizeOverride("font_size", 20);
         content.AddChild(title);
-        var legend = new Label { Text = "타일을 클릭해 편집 명령을 엽니다.    │    휠: 확대  ·  드래그: 이동",
+        var legend = new Label { Text = "타일을 클릭해 편집 명령을 엽니다.    │    휠: 확대  ·  드래그/WASD/방향키: 이동",
             Modulate = new Color("d9d1b0") };
         legend.AddThemeFontOverride("font", font);
         legend.AddThemeFontSizeOverride("font_size", 13);
@@ -430,9 +430,14 @@ public sealed partial class EditMapScene : Control
             < _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + Vector2I.Down))).Y;
         valid &= _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + Vector2I.Right))).X
             > _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + Vector2I.Left))).X;
-        valid &= Mathf.Abs(_mapCamera.RotationDegrees.Y) < 0.001f
+        valid &= Mathf.Abs(_mapCamera.RotationDegrees.Y - (_mapView.IsFlatTop ? 0f : 30f)) < 0.001f
             && Mathf.Abs(_mapCamera.RotationDegrees.Z) < 0.001f
             && Mathf.Abs(_mapCamera.RotationDegrees.X + 90f) < 0.001f;
+        var squareCenter = _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile)));
+        var squareEast = _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + new Vector2I(2, 0))));
+        var squareSouth = _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + new Vector2I(0, 2))));
+        valid &= Mathf.Abs(squareEast.Y - squareCenter.Y) < 0.5f
+            && Mathf.Abs(squareSouth.X - squareCenter.X) < 0.5f;
         var beforePan = _mapCamera.Position;
         var beforePanCenter = _viewCenter;
         PanMap(new Vector2(600, 400), new Vector2(604, 400));
@@ -442,8 +447,19 @@ public sealed partial class EditMapScene : Control
         valid &= _mapCamera.Position.DistanceTo(beforePan) < 0.01f;
         FocusRegion(127.5, 37.0);
         valid &= _viewCenter.X > _width * 3 / 4 && _visibleTiles.Count > 100;
+        var koreaTile = _viewCenter;
+        Select3DTile(_mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(koreaTile))));
+        valid &= _tileInfo.Text.Contains($"{koreaTile.X}, {koreaTile.Y}");
         FocusRegion(130.7, 33.3);
         valid &= _viewCenter.X > _width * 4 / 5 && _visibleTiles.Count > 100;
+        var japanTile = _viewCenter;
+        Select3DTile(_mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(japanTile))));
+        valid &= _tileInfo.Text.Contains($"{japanTile.X}, {japanTile.Y}");
+        MoveMapCamera(new Vector3(10000f, 0f, 10000f));
+        valid &= _viewCenter.X == _width - 1 && _viewCenter.Y == _height - 1;
+        var southTile = _viewCenter;
+        Select3DTile(_mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(southTile))));
+        valid &= _tileInfo.Text.Contains($"{southTile.X}, {southTile.Y}");
         FocusRegion(113.0, 34.0);
         var visibleRiver = _visibleTiles.Keys.FirstOrDefault(tile => _rows[tile.Y][tile.X] is 'R' or 'B');
         if (_visibleTiles.ContainsKey(visibleRiver) && _rows[visibleRiver.Y][visibleRiver.X] is 'R' or 'B')
