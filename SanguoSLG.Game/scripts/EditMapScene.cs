@@ -430,6 +430,9 @@ public sealed partial class EditMapScene : Control
             < _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + Vector2I.Down))).Y;
         valid &= _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + Vector2I.Right))).X
             > _mapCamera.UnprojectPosition(_mapView.HexToWorld(Axial(centerTile + Vector2I.Left))).X;
+        valid &= Mathf.Abs(_mapCamera.RotationDegrees.Y) < 0.001f
+            && Mathf.Abs(_mapCamera.RotationDegrees.Z) < 0.001f
+            && Mathf.Abs(_mapCamera.RotationDegrees.X + 90f) < 0.001f;
         var beforePan = _mapCamera.Position;
         var beforePanCenter = _viewCenter;
         PanMap(new Vector2(600, 400), new Vector2(604, 400));

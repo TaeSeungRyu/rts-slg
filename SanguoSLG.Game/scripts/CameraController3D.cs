@@ -138,7 +138,8 @@ public partial class CameraController3D : Camera3D
         if (NorthUpPlanView)
         {
             Size = _distance * 1.6f;
-            LookAtFromPosition(_pivot + Vector3.Up * _distance, _pivot, Vector3.Forward);
+            GlobalPosition = _pivot + Vector3.Up * _distance;
+            GlobalRotationDegrees = new Vector3(-90f, 0f, 0f);
             return;
         }
         var offset = new Vector3(
