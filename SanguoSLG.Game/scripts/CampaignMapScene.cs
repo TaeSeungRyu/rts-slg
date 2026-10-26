@@ -13840,20 +13840,20 @@ public sealed partial class CampaignMapScene : Node3D
     private void BuildHeroRecruitCards(VBoxContainer box, City city)
     {
         const int pageSize = 4;
-        _state = new HeroUnlockService().Evaluate(_state);
+        var unlockService = new HeroUnlockService();
+        _state = unlockService.Evaluate(_state);
         var states = _state.HeroUnlocks
-            .Where(h => h.Type == HeroUnlockType.Faction && h.Faction == city.Owner)
+            .Where(h => unlockService.IsSatisfied(_state, h, city.Owner))
             .Where(h => _state.PostingOf(h.General) is null)
             .Select(h => (_state.HeroStates.FirstOrDefault(s => s.General == h.General)
                 ?? new HeroUnlockState(h.General, HeroUnlockStatus.Locked), h))
-            .Where(x => x.Item1.Status is not (HeroUnlockStatus.Recruited or HeroUnlockStatus.Wanderer
-                or HeroUnlockStatus.Excluded))
-            .OrderBy(x => x.Item1.CanRecruit && x.Item1.EligibleFaction == city.Owner ? 0 : 1)
+            .Where(x => x.Item1.Status is not (HeroUnlockStatus.Recruited or HeroUnlockStatus.Excluded))
+            .OrderBy(x => x.h.RecruitPointCost)
             .ThenBy(x => x.h.General.Value)
             .ToList();
         if (states.Count == 0)
         {
-            box.AddChild(MakeLabel("영입 가능한 세력형 위인이 없습니다.", 15, Parchment));
+            box.AddChild(MakeLabel("현재 세력의 장수 조건에 맞는 영입 후보가 없습니다.", 15, Parchment));
             return;
         }
 
@@ -14001,8 +14001,9 @@ public sealed partial class CampaignMapScene : Node3D
         var type = HeroTypeName(hero.Type, state.Status);
         var hasPoints = points >= hero.RecruitPointCost;
         var hasGold = city.Gold >= hero.RecruitGold;
-        var canRecruit = state.CanRecruit && state.EligibleFaction == city.Owner && hasGold && hasPoints;
-        var status = HeroStatusText(state, city.Owner);
+        var canRecruit = state.CanRecruit && new HeroUnlockService().IsSatisfied(_state, hero, city.Owner)
+            && hasGold && hasPoints;
+        var status = state.CanRecruit ? "상태: 영입 가능" : "상태: 잠김";
         var card = new PanelContainer { Name = "HeroRecruitCard", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         card.AddThemeStyleboxOverride("panel", Frame(new Color(0.12f, 0.08f, 0.04f, state.CanRecruit ? 0.94f : 0.72f),
             state.CanRecruit ? Gold : new Color(Parchment, 0.35f), 1, 8, 10));
@@ -14026,7 +14027,7 @@ public sealed partial class CampaignMapScene : Node3D
         text.AddChild(MakeLabel($"{name} · {type}", 17, state.CanRecruit ? Gold : new Color(Gold, 0.65f)));
         text.AddChild(MakeLabel($"{status}\n{HeroRequirementText(hero, general)}\n영입 포인트 {hero.RecruitPointCost}점 (보유 {points}점)\n비용 {hero.RecruitGold}금", 13, Parchment));
 
-        var unavailable = !state.CanRecruit || state.EligibleFaction != city.Owner
+        var unavailable = !state.CanRecruit || !new HeroUnlockService().IsSatisfied(_state, hero, city.Owner)
             ? "잠김"
             : !hasPoints ? $"포인트 {hero.RecruitPointCost - points} 부족"
             : !hasGold ? $"금 {hero.RecruitGold - city.Gold} 부족"
@@ -14066,32 +14067,13 @@ public sealed partial class CampaignMapScene : Node3D
             });
     }
 
-    private static string HeroTypeName(HeroUnlockType type, HeroUnlockStatus status)
-        => status == HeroUnlockStatus.Wanderer ? "유랑 위인" : type switch
-        {
-            HeroUnlockType.Faction => "세력형 위인",
-            HeroUnlockType.Region => "도시형 위인",
-            HeroUnlockType.Wanderer => "유랑 위인",
-            _ => "위인",
-        };
-
-    private static string HeroStatusText(HeroUnlockState state, FactionId viewer)
-        => state.Status switch
-        {
-            HeroUnlockStatus.Locked => "상태: 잠김",
-            HeroUnlockStatus.Unlocked when state.EligibleFaction == viewer => "상태: 해금됨",
-            HeroUnlockStatus.Unlocked => $"상태: 타 세력 해금({state.EligibleFaction?.Value ?? 0})",
-            HeroUnlockStatus.Recruited => "상태: 소속됨",
-            HeroUnlockStatus.Wanderer => "상태: 유랑",
-            HeroUnlockStatus.Excluded => "상태: 제외",
-            _ => $"상태: {state.Status}",
-        };
+    private static string HeroTypeName(HeroUnlockType type, HeroUnlockStatus status) => "인재";
 
     private string HeroRequirementText(HeroUnlockDefinition hero, General? general)
     {
-        var requiredYear = hero.UnlockYear > 0 ? hero.UnlockYear : general?.UnlockYear ?? 0;
-        var year = requiredYear > 0 ? $"해금 가능 {requiredYear}년" : "해금 가능 년도 제한 없음";
-        return year;
+        if (hero.RequiredGeneral is not { } required) return "선행 장수: 없음 · 모든 세력 영입 가능";
+        var name = _state.Generals.FirstOrDefault(g => g.Id == required)?.Name ?? $"장수 {required.Value}";
+        return $"선행 장수: {name} · 같은 세력 소속 필요";
     }
 
     private string HeroConditionLabel(HeroUnlockCondition c) => c.Code switch
@@ -18509,37 +18491,36 @@ public sealed partial class CampaignMapScene : Node3D
         }
         var labels = host.FindChildren("*", "Label", true, false).OfType<Label>()
             .Select(x => x.Text).ToList();
-        var buttons = host.FindChildren("*", "Button", true, false).OfType<Button>().ToList();
         var hasPointCost = labels.Any(x => x.Contains("영입 포인트", StringComparison.Ordinal));
         var hasPointGuide = labels.Any(x => x.Contains("유적 최초 등록 +100", StringComparison.Ordinal)
             && x.Contains("탐색 완료 +3", StringComparison.Ordinal)
             && x.Contains("담당자 7일 수행 +5", StringComparison.Ordinal)
             && x.Contains("생산 투입 +5", StringComparison.Ordinal)
             && x.Contains("도시 계략 수행 +5", StringComparison.Ordinal));
-        var noLegacyConditions = labels.All(x => !x.Contains("조건:", StringComparison.Ordinal));
-        var shortageVisible = buttons.Any(x => x.Text.Contains("포인트", StringComparison.Ordinal) && x.Disabled);
+        var noYearConditions = labels.All(x => !x.Contains("해금 가능", StringComparison.Ordinal));
+        var hasPrerequisite = labels.Any(x => x.Contains("선행 장수:", StringComparison.Ordinal));
         var previous = host.FindChild("HeroRecruitPrevious", true, false) as Button;
         var next = host.FindChild("HeroRecruitNext", true, false) as Button;
         var pageLabel = host.FindChild("HeroRecruitPageLabel", true, false) as Label;
         var firstPageCards = (host.FindChild("HeroRecruitGrid", true, false) as GridContainer)?.GetChildCount() ?? 0;
         var eligible = city is null ? [] : _state.HeroUnlocks
-            .Where(hero => hero.Type == HeroUnlockType.Faction && hero.Faction == city.Owner
+            .Where(hero => new HeroUnlockService().IsSatisfied(_state, hero, city.Owner)
                 && _state.PostingOf(hero.General) is null
                 && _state.HeroStates.FirstOrDefault(status => status.General == hero.General)?.Status
-                    is not (HeroUnlockStatus.Recruited or HeroUnlockStatus.Wanderer or HeroUnlockStatus.Excluded))
+                    is not (HeroUnlockStatus.Recruited or HeroUnlockStatus.Excluded))
             .ToList();
         var cardNames = host.FindChildren("*", "Label", true, false).OfType<Label>()
-            .Select(label => label.Text).Where(text => text.Contains("세력형 위인", StringComparison.Ordinal)).ToList();
+            .Select(label => label.Text).Where(text => text.Contains(" · 인재", StringComparison.Ordinal)).ToList();
         var firstPageOk = firstPageCards == Math.Min(4, eligible.Count)
             && previous?.Disabled == true
             && pageLabel?.Text.StartsWith("1 / ", StringComparison.Ordinal) == true;
         var emptyStateOk = eligible.Count != 0 || labels.Any(text =>
-            text.Contains("영입 가능한 세력형 위인이 없습니다.", StringComparison.Ordinal));
-        var passed = city is not null && noLegacyConditions && emptyStateOk
-            && (eligible.Count == 0 || hasPointGuide && hasPointCost && firstPageOk
+            text.Contains("장수 조건에 맞는 영입 후보가 없습니다.", StringComparison.Ordinal));
+        var passed = city is not null && noYearConditions && emptyStateOk
+            && (eligible.Count == 0 || hasPointGuide && hasPointCost && hasPrerequisite && firstPageOk
                 && cardNames.Count == firstPageCards);
         GD.Print($"[maptestherorecruitqa] passed={passed} city={city?.Name ?? "-"} "
-            + $"eligible={eligible.Count} cards={firstPageCards} factionOnly={eligible.Count == 0 || cardNames.Count == firstPageCards}");
+            + $"eligible={eligible.Count} cards={firstPageCards} prerequisite={hasPrerequisite}");
         host.QueueFree();
         GetTree().Quit(passed ? 0 : 1);
     }
