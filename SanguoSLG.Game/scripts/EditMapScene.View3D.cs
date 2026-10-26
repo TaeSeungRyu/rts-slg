@@ -12,6 +12,7 @@ public sealed partial class EditMapScene
     private PackedScene _waterTile = null!;
     private readonly Dictionary<Vector2I, Node3D> _visibleTiles = [];
     private readonly Dictionary<Vector2I, Node3D> _visibleCities = [];
+    private readonly Dictionary<int, Node3D> _visibleStructures = [];
     private Vector2I _viewCenter;
     private Vector2 _viewCenterFraction;
     private float _viewSize = 30f;
@@ -141,6 +142,30 @@ public sealed partial class EditMapScene
         {
             _visibleCities[tile].QueueFree();
             _visibleCities.Remove(tile);
+        }
+        foreach (var site in _sites.Where(site => site.Kind is "facility" or "port"))
+        {
+            var tile = new Vector2I(site.Column, site.Row);
+            if (!required.Contains(tile) || _visibleStructures.ContainsKey(site.Id)) continue;
+            var asset = site.Kind == "port" ? $"port-{site.Size}" : site.Size switch
+            {
+                "paddy" => "paddy",
+                "farm" => "building-farm",
+                "village" => "village-1",
+                _ => "workshop",
+            };
+            var scene = GD.Load<PackedScene>($"res://assets/models/{asset}.glb");
+            var visual = scene.Instantiate<Node3D>();
+            visual.Position = _mapView.HexToWorld(Axial(tile)) + new Vector3(0f, _mapView.TileTopY, 0f);
+            visual.RotationDegrees = new Vector3(0f, site.Direction * 60f, 0f);
+            _visibleTerrain.AddChild(visual);
+            _visibleStructures[site.Id] = visual;
+        }
+        foreach (var id in _visibleStructures.Keys.Where(id =>
+                     !_sites.Any(site => site.Id == id && required.Contains(new Vector2I(site.Column, site.Row)))).ToArray())
+        {
+            _visibleStructures[id].QueueFree();
+            _visibleStructures.Remove(id);
         }
     }
 

@@ -56,8 +56,12 @@ public sealed partial class EditMapScene
         .Select(Offset)
         .Any(neighbor => Inside(neighbor) && _rows[neighbor.Y][neighbor.X] is 'W' or 'O');
 
-    private bool HasNearbyCity(Vector2I tile) => _sites.Any(site => site.Kind == "city" &&
-        Axial(tile).Distance(Axial(new Vector2I(site.Column, site.Row))) <= 2);
+    private IReadOnlyList<MapEditorSite> NearbyCities(Vector2I tile) => _sites
+        .Where(site => site.Kind == "city" && Footprint(site)
+            .Any(cell => Axial(tile).Distance(Axial(cell)) <= 2))
+        .OrderBy(site => site.Id).ToArray();
+
+    private bool HasNearbyCity(Vector2I tile) => NearbyCities(tile).Count > 0;
 
     private void ShowEditorPalette(Vector2I tile, Vector2 screen)
     {
@@ -100,9 +104,9 @@ public sealed partial class EditMapScene
             () => OpenCityEditor(tile, site));
         AddCommand("생산 시설 관리", site is null && IsLand(terrain) && HasNearbyCity(tile),
             "성에서 2칸 이내의 빈 육상 타일을 선택하세요.",
-            () => _tileInfo.Text = "생산 시설 관리 창을 준비합니다.");
+            () => OpenFacilityEditor(tile, null));
         AddCommand("시설 편집", site?.Kind == "facility", "생산 시설을 선택하세요.",
-            () => _tileInfo.Text = "시설 편집 창을 준비합니다.");
+            () => OpenFacilityEditor(tile, site));
         AddCommand("지형 변경", site is null, "배치물이 있는 타일은 바꿀 수 없습니다.",
             () => _tileInfo.Text = "지형 변경 창을 준비합니다.");
         AddCommand("항구 관리", site is null && IsLand(terrain) && HasNeighborWater(tile),
@@ -227,6 +231,64 @@ public sealed partial class EditMapScene
     {
         foreach (var visual in _visibleCities.Values) visual.QueueFree();
         _visibleCities.Clear();
+        foreach (var visual in _visibleStructures.Values) visual.QueueFree();
+        _visibleStructures.Clear();
         RefreshVisibleTerrain();
+    }
+
+    private void OpenFacilityEditor(Vector2I tile, MapEditorSite? existing)
+    {
+        var cityOptions = NearbyCities(tile);
+        if (cityOptions.Count == 0 && existing is null) return;
+        var content = OpenEditorModal(existing is null ? "생산 시설 추가" : "시설 편집");
+        var kinds = new[] { "paddy", "farm", "village", "workshop" };
+        var kind = SelectOptions(content, "시설 종류", ["논", "밭", "마을", "공방"],
+            Math.Max(0, Array.IndexOf(kinds, existing?.Size ?? "paddy")));
+        var direction = SelectOptions(content, "방향", ["동", "남동", "남서", "서", "북서", "북동"],
+            existing?.Direction ?? 0);
+        OptionButton? city = null;
+        if (existing is null)
+            city = SelectOptions(content, "연결 성 (경계에서 2칸)",
+                cityOptions.Select(option => option.Name).ToArray(), 0);
+        else
+            content.AddChild(new Label { Text = "연결 성: " +
+                (_sites.FirstOrDefault(site => site.Id == existing.ParentCityId)?.Name ?? "없음") });
+        var actions = new HBoxContainer();
+        content.AddChild(actions);
+        var apply = new Button { Text = "적용", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        actions.AddChild(apply);
+        apply.Pressed += () =>
+        {
+            var owner = existing?.ParentCityId ?? cityOptions[city!.Selected].Id;
+            var candidate = new MapEditorSite(existing?.Id ?? _nextSiteId, kinds[kind.Selected] + " " +
+                (existing?.Id ?? _nextSiteId), "facility", kinds[kind.Selected],
+                existing?.Column ?? tile.X, existing?.Row ?? tile.Y, direction.Selected, owner);
+            if (!CanPlace(candidate))
+            {
+                _editorError!.Text = "시설이 다른 배치물과 겹치거나 지형이 적합하지 않습니다.";
+                return;
+            }
+            if (existing is not null) _sites.Remove(existing);
+            _sites.Add(candidate);
+            if (existing is null) _nextSiteId++;
+            RefreshSiteVisuals();
+            CloseEditorModal();
+            ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
+        };
+        if (existing is not null)
+        {
+            var remove = new Button { Text = "시설 제거" };
+            remove.Pressed += () =>
+            {
+                _sites.Remove(existing);
+                RefreshSiteVisuals();
+                CloseEditorModal();
+                ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
+            };
+            actions.AddChild(remove);
+        }
+        var cancel = new Button { Text = "취소" };
+        cancel.Pressed += CloseEditorModal;
+        actions.AddChild(cancel);
     }
 }
