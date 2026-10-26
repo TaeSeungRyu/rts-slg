@@ -10,7 +10,7 @@ using SanguoSLG.Core.Simulation;
 /// </summary>
 public static class SaveService
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = false,

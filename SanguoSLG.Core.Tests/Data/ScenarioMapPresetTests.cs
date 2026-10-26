@@ -1,6 +1,8 @@
 namespace SanguoSLG.Core.Tests.Data;
 
 using SanguoSLG.Core.Data;
+using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Spatial;
 
 public sealed class ScenarioMapPresetTests
 {
@@ -35,5 +37,29 @@ public sealed class ScenarioMapPresetTests
         {
             if (File.Exists(path)) File.Delete(path);
         }
+    }
+
+    [Fact]
+    public void AppliedMapIsIsolatedAndSavedCampaignKeepsItsSnapshot()
+    {
+        var source = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
+        var baselineCount = source.Map.Count;
+        var preset = new ScenarioMapPreset(1, 4, 3,
+            ["PPPP", "PPWP", "PPPP"],
+            [new MapEditorSite(1, "새 성", "city", "small", 0, 0),
+                new MapEditorSite(100, "새 항", "port", "small", 1, 0, 1),
+                new MapEditorSite(101, "새 논", "facility", "paddy", 0, 1, 0, 1)]);
+        var applied = ScenarioMapPresetApplier.Apply(source, preset);
+        Assert.Equal(baselineCount, source.Map.Count);
+        Assert.Equal(12, applied.Map.Count);
+        Assert.False(applied.Map.Contains(new HexCoord(3, -2)));
+        Assert.Equal(2, applied.Cities.Count);
+        var state = GameState.FromScenario(applied);
+        Assert.Equal("새 성", state.Cities[0].Name);
+        Assert.Single(state.Placements);
+        var reloaded = SaveService.Deserialize(SaveService.Serialize(state));
+        Assert.Equal(preset.Rows, reloaded.MapPresetSnapshot!.Rows);
+        Assert.Equal(preset.Sites, reloaded.MapPresetSnapshot.Sites);
+        Assert.NotEqual("새 성", source.Cities[0].Name);
     }
 }

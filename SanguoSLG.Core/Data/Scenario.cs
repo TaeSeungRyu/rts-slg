@@ -18,7 +18,9 @@ public sealed record Scenario(
     TileConditionMap Conditions,
     IReadOnlyList<GeneralPosting>? Postings = null,
     IReadOnlyList<HeroUnlockDefinition>? HeroUnlocks = null,
-    IReadOnlyList<RuinDefinition>? Ruins = null)
+    IReadOnlyList<RuinDefinition>? Ruins = null,
+    IReadOnlyList<FacilityPlacement>? InitialFacilities = null,
+    ScenarioMapPreset? MapPreset = null)
 {
     public IReadOnlyList<GeneralPosting> PostingList => Postings ?? [];
 

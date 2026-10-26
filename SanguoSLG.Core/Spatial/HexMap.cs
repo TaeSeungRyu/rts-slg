@@ -13,8 +13,10 @@ public sealed class HexMap
     public int MaxR { get; }
 
     private readonly IReadOnlyDictionary<HexCoord, TerrainType> _terrain;
+    private readonly IReadOnlySet<HexCoord>? _validTiles;
 
-    public HexMap(int minQ, int maxQ, int minR, int maxR, IReadOnlyDictionary<HexCoord, TerrainType>? terrain = null)
+    public HexMap(int minQ, int maxQ, int minR, int maxR, IReadOnlyDictionary<HexCoord, TerrainType>? terrain = null,
+        IReadOnlySet<HexCoord>? validTiles = null)
     {
         if (maxQ < minQ)
         {
@@ -31,6 +33,7 @@ public sealed class HexMap
         MinR = minR;
         MaxR = maxR;
         _terrain = terrain ?? new Dictionary<HexCoord, TerrainType>();
+        _validTiles = validTiles;
     }
 
     /// <summary>좌표의 지형. 지정되지 않은 타일은 평야(Plains).</summary>
@@ -38,11 +41,12 @@ public sealed class HexMap
         _terrain.TryGetValue(coord, out var terrain) ? terrain : TerrainType.Plains;
 
     /// <summary>맵 타일 개수.</summary>
-    public int Count => (MaxQ - MinQ + 1) * (MaxR - MinR + 1);
+    public int Count => _validTiles?.Count ?? (MaxQ - MinQ + 1) * (MaxR - MinR + 1);
 
     /// <summary>좌표가 맵 경계 안에 있는가.</summary>
     public bool Contains(HexCoord coord) =>
-        coord.Q >= MinQ && coord.Q <= MaxQ && coord.R >= MinR && coord.R <= MaxR;
+        coord.Q >= MinQ && coord.Q <= MaxQ && coord.R >= MinR && coord.R <= MaxR
+        && (_validTiles is null || _validTiles.Contains(coord));
 
     /// <summary>통행 가능 여부. 평평한 필드에서는 경계 안이면 통행 가능.</summary>
     public bool IsPassable(HexCoord coord) => Contains(coord);
@@ -54,7 +58,8 @@ public sealed class HexMap
         {
             for (var r = MinR; r <= MaxR; r++)
             {
-                yield return new HexCoord(q, r);
+                var coord = new HexCoord(q, r);
+                if (Contains(coord)) yield return coord;
             }
         }
     }
