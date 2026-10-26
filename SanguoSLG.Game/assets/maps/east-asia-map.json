@@ -63,10 +63,10 @@
     "HMMHMHMMHMHMMHMHMMHHMMMHMHHHMMHHHHHHHHHHHMMMMMHMMPFPPFPFPPFPWWOOOOOOOOOOOOOOOOOOOWWWPWWWWM",
     "HMMHMMHMHMMHMMHMHHHHHHHHHMPPPPPPHMMMMHMMHMMMMHMMMPFPFPPFPPFPFWOOOOOOOOOOOOOOOOOOOWHMFHMWWF",
     "MHMMHMHMMHMMHMHHMHHHHHHHHMMMHHHHHHHHHMMHMMMMMMMHMFPPFPPFPFPPFWWWOOOOOOOOOOOOOOOOOWMWMMMWWW",
-    "MHMMHMMHMMHMHHMHMHHHHHHHMMHHHHHHHHHHHHHHMMMMPPFPFPPFPPFPPFPPFPPWOOOOOOOOOOOOOOOOOWWWMMHWOO",
-    "MMHMHHMHHMHMMHMMHHHHPPPPPPPPPPPHHHHHHHHHPPFPPFPPFPPFPPFPPFPFFWFWOOOOOOOOOOOOOOOOOOOWWMWWOO",
-    "MMHMMHWWHMMHMMHMMHHHPPPPPPPPPFPPFPHHPHHPPFPPFPPFPPFPWWWWWWWWWWWWOOOOOOOOOOOOOOOOOOOOWWWOOO",
-    "MMHHMMWWWWMMHMMHMHHHPFPPFPPFPPPPPWWWWWBWWWWWWBWWWWWWWWWWFPPFPPWWOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "MHMMMMMMMMMMHHMHMHHHHHHHMMHHHHHHHHHHHHHHMMMMPPFPFPPFPPFPPFPPFPPWOOOOOOOOOOOOOOOOOWWWMMHWOO",
+    "MMHMMMMMMMMMMMMMMMMMPPPPPPPPPPPHHHHHHHHHPPFPPFPPFPPFPPFPPFPFFWFWOOOOOOOOOOOOOOOOOOOWWMWWOO",
+    "MMHMMHWWHMMHMMMMMMMMMMPPPPPPPFPPFPHHPHHPPFPPFPPFPPFPWWWWWWWWWWWWOOOOOOOOOOOOOOOOOOOOWWWOOO",
+    "MMHHMMWWWWMMHMMHMHHMMMPPFPPFPPPPPWWWWWWWWWWWWWWWWWWWWWWWFPPFPPWWOOOOOOOOOOOOOOOOOOOOOOOOOO",
     "HMMHMMHHWWWWMHMMHHHHPPFPPPPPWWWWWWWHPPFFPPFPPFWWFFPPFPPFPPFFPPFWWOOOOOOOOOOOOOOOOOOOOOOOOO",
     "HMMHHMMHMMWWWMHMMHHHMMPWWWBWWWWPPHHPPFPPPFPPFPPPFPPFPPFFPPFPPFFPWOOOOOOOOOOOOOOOOOOOOOOOOO",
     "HHMMHMMMHMMHWWWWWWWWWWWWWFPPFFPPHHHPFPPFFPPFPPPFPPFFPPFPPPFPPFPWWOOOOOOOOOOOOOOOOOOOOOOOOO",
@@ -93,6 +93,83 @@
     "PPPPPPPPPPPPPPPPPPPPPPPPPPWOOOOWWWPWWOOOOOOOOOOOOOOOOOOOOOOWPPPPPWOOOOOOOOOOOOOOOOOOOOOOOO"
   ],
   "land_routes": [
+    {
+      "name": "서부 강변—성도",
+      "tiles": [
+        [
+          4,
+          43
+        ],
+        [
+          5,
+          42
+        ],
+        [
+          6,
+          42
+        ],
+        [
+          7,
+          41
+        ],
+        [
+          8,
+          42
+        ],
+        [
+          9,
+          42
+        ],
+        [
+          10,
+          42
+        ],
+        [
+          11,
+          42
+        ],
+        [
+          12,
+          43
+        ],
+        [
+          13,
+          43
+        ],
+        [
+          14,
+          43
+        ],
+        [
+          15,
+          43
+        ],
+        [
+          16,
+          43
+        ],
+        [
+          17,
+          43
+        ],
+        [
+          18,
+          44
+        ],
+        [
+          19,
+          44
+        ],
+        [
+          20,
+          45
+        ],
+        [
+          21,
+          45
+        ]
+      ]
+    },
     {
       "name": "장안—한중",
       "tiles": [
@@ -158,8 +235,8 @@
           44
         ],
         [
-          21,
-          44
+          22,
+          45
         ],
         [
           21,
@@ -258,10 +335,6 @@
         [
           38,
           46
-        ],
-        [
-          38,
-          45
         ]
       ]
     },
@@ -270,26 +343,278 @@
       "tiles": [
         [
           38,
+          46
+        ],
+        [
+          37,
+          46
+        ],
+        [
+          36,
+          47
+        ],
+        [
+          35,
+          47
+        ],
+        [
+          35,
+          48
+        ],
+        [
+          34,
+          49
+        ],
+        [
+          33,
+          49
+        ],
+        [
+          32,
+          49
+        ],
+        [
+          31,
+          48
+        ],
+        [
+          30,
+          48
+        ],
+        [
+          29,
+          48
+        ],
+        [
+          28,
+          49
+        ],
+        [
+          27,
+          48
+        ],
+        [
+          26,
+          48
+        ],
+        [
+          26,
+          47
+        ],
+        [
+          25,
+          46
+        ],
+        [
+          24,
+          46
+        ],
+        [
+          23,
           45
         ],
         [
-          39,
+          22,
+          45
+        ],
+        [
+          22,
           44
         ],
         [
-          40,
-          44
-        ],
-        [
-          41,
+          21,
           43
         ],
         [
+          20,
+          43
+        ],
+        [
+          19,
+          43
+        ],
+        [
+          18,
+          43
+        ],
+        [
+          17,
+          43
+        ],
+        [
+          16,
+          43
+        ],
+        [
+          15,
+          43
+        ],
+        [
+          14,
+          43
+        ],
+        [
+          14,
+          42
+        ],
+        [
+          13,
+          41
+        ],
+        [
+          13,
+          40
+        ],
+        [
+          12,
+          40
+        ],
+        [
+          12,
+          39
+        ],
+        [
+          13,
+          38
+        ],
+        [
+          14,
+          38
+        ],
+        [
+          15,
+          37
+        ],
+        [
+          16,
+          38
+        ],
+        [
+          17,
+          37
+        ],
+        [
+          18,
+          37
+        ],
+        [
+          19,
+          36
+        ],
+        [
+          20,
+          36
+        ],
+        [
+          21,
+          35
+        ],
+        [
+          22,
+          35
+        ],
+        [
+          23,
+          34
+        ],
+        [
+          24,
+          34
+        ],
+        [
+          25,
+          33
+        ],
+        [
+          26,
+          33
+        ],
+        [
+          27,
+          32
+        ],
+        [
+          28,
+          32
+        ],
+        [
+          29,
+          31
+        ],
+        [
+          30,
+          32
+        ],
+        [
+          31,
+          32
+        ],
+        [
+          32,
+          33
+        ],
+        [
+          33,
+          33
+        ],
+        [
+          34,
+          34
+        ],
+        [
+          35,
+          34
+        ],
+        [
+          36,
+          35
+        ],
+        [
+          37,
+          35
+        ],
+        [
+          38,
+          36
+        ],
+        [
+          39,
+          36
+        ],
+        [
+          40,
+          37
+        ],
+        [
+          41,
+          37
+        ],
+        [
           42,
-          44
+          38
         ],
         [
           43,
+          38
+        ],
+        [
+          43,
+          39
+        ],
+        [
+          43,
+          40
+        ],
+        [
+          43,
+          41
+        ],
+        [
+          44,
+          42
+        ],
+        [
+          44,
           43
         ],
         [
@@ -299,10 +624,6 @@
         [
           45,
           44
-        ],
-        [
-          45,
-          45
         ]
       ]
     },
@@ -346,120 +667,184 @@
           41
         ],
         [
-          25,
+          24,
           42
         ],
         [
-          25,
+          24,
           43
         ],
         [
-          25,
-          44
-        ],
-        [
-          25,
-          45
-        ],
-        [
-          25,
-          46
-        ],
-        [
-          26,
-          47
-        ],
-        [
-          26,
-          48
-        ],
-        [
-          27,
-          48
-        ],
-        [
-          28,
-          49
-        ],
-        [
-          29,
-          48
-        ],
-        [
-          30,
-          48
-        ],
-        [
-          31,
-          48
-        ],
-        [
-          32,
-          49
-        ],
-        [
-          33,
-          49
-        ],
-        [
-          34,
-          49
-        ],
-        [
-          35,
-          48
-        ],
-        [
-          35,
-          47
-        ],
-        [
-          36,
-          47
-        ],
-        [
-          37,
-          46
-        ],
-        [
-          38,
-          46
-        ],
-        [
-          38,
-          45
-        ],
-        [
-          39,
-          44
-        ],
-        [
-          40,
-          44
-        ],
-        [
-          40,
+          23,
           43
         ],
         [
-          40,
+          22,
+          43
+        ],
+        [
+          21,
+          43
+        ],
+        [
+          20,
+          43
+        ],
+        [
+          19,
+          43
+        ],
+        [
+          18,
+          43
+        ],
+        [
+          17,
+          43
+        ],
+        [
+          16,
+          43
+        ],
+        [
+          15,
+          43
+        ],
+        [
+          14,
+          43
+        ],
+        [
+          14,
           42
         ],
         [
-          40,
+          13,
           41
         ],
         [
-          41,
+          13,
           40
         ],
         [
-          41,
+          12,
+          40
+        ],
+        [
+          12,
           39
         ],
         [
-          41,
+          13,
           38
+        ],
+        [
+          14,
+          38
+        ],
+        [
+          15,
+          37
+        ],
+        [
+          16,
+          38
+        ],
+        [
+          17,
+          37
+        ],
+        [
+          18,
+          37
+        ],
+        [
+          19,
+          36
+        ],
+        [
+          20,
+          36
+        ],
+        [
+          21,
+          35
+        ],
+        [
+          22,
+          35
+        ],
+        [
+          23,
+          34
+        ],
+        [
+          24,
+          34
+        ],
+        [
+          25,
+          33
+        ],
+        [
+          26,
+          33
+        ],
+        [
+          27,
+          32
+        ],
+        [
+          28,
+          32
+        ],
+        [
+          29,
+          31
+        ],
+        [
+          30,
+          32
+        ],
+        [
+          31,
+          32
+        ],
+        [
+          32,
+          33
+        ],
+        [
+          33,
+          33
+        ],
+        [
+          34,
+          34
+        ],
+        [
+          35,
+          34
+        ],
+        [
+          36,
+          35
+        ],
+        [
+          37,
+          35
+        ],
+        [
+          38,
+          36
+        ],
+        [
+          39,
+          36
+        ],
+        [
+          40,
+          37
         ],
         [
           41,
@@ -554,10 +939,6 @@
       "tiles": [
         [
           45,
-          45
-        ],
-        [
-          45,
           44
         ],
         [
@@ -611,71 +992,315 @@
       "tiles": [
         [
           45,
+          44
+        ],
+        [
+          44,
+          44
+        ],
+        [
+          44,
+          43
+        ],
+        [
+          44,
+          42
+        ],
+        [
+          43,
+          41
+        ],
+        [
+          43,
+          40
+        ],
+        [
+          43,
+          39
+        ],
+        [
+          43,
+          38
+        ],
+        [
+          42,
+          38
+        ],
+        [
+          41,
+          37
+        ],
+        [
+          40,
+          37
+        ],
+        [
+          39,
+          36
+        ],
+        [
+          38,
+          36
+        ],
+        [
+          37,
+          35
+        ],
+        [
+          36,
+          35
+        ],
+        [
+          35,
+          34
+        ],
+        [
+          34,
+          34
+        ],
+        [
+          33,
+          33
+        ],
+        [
+          32,
+          33
+        ],
+        [
+          31,
+          32
+        ],
+        [
+          30,
+          32
+        ],
+        [
+          29,
+          31
+        ],
+        [
+          28,
+          32
+        ],
+        [
+          27,
+          32
+        ],
+        [
+          26,
+          33
+        ],
+        [
+          25,
+          33
+        ],
+        [
+          24,
+          34
+        ],
+        [
+          23,
+          34
+        ],
+        [
+          22,
+          35
+        ],
+        [
+          21,
+          35
+        ],
+        [
+          20,
+          36
+        ],
+        [
+          19,
+          36
+        ],
+        [
+          18,
+          37
+        ],
+        [
+          17,
+          37
+        ],
+        [
+          16,
+          38
+        ],
+        [
+          15,
+          37
+        ],
+        [
+          14,
+          38
+        ],
+        [
+          13,
+          38
+        ],
+        [
+          12,
+          39
+        ],
+        [
+          12,
+          40
+        ],
+        [
+          13,
+          40
+        ],
+        [
+          13,
+          41
+        ],
+        [
+          14,
+          42
+        ],
+        [
+          14,
+          43
+        ],
+        [
+          15,
+          43
+        ],
+        [
+          16,
+          43
+        ],
+        [
+          17,
+          43
+        ],
+        [
+          18,
+          43
+        ],
+        [
+          19,
+          43
+        ],
+        [
+          20,
+          43
+        ],
+        [
+          21,
+          43
+        ],
+        [
+          22,
+          44
+        ],
+        [
+          22,
           45
         ],
         [
-          44,
+          23,
+          45
+        ],
+        [
+          24,
           46
         ],
         [
-          43,
+          25,
           46
         ],
         [
-          43,
+          26,
           47
         ],
         [
-          43,
+          26,
           48
         ],
         [
-          43,
+          27,
+          48
+        ],
+        [
+          28,
           49
         ],
         [
-          43,
+          29,
+          49
+        ],
+        [
+          30,
           50
         ],
         [
-          43,
+          31,
+          50
+        ],
+        [
+          32,
           51
         ],
         [
-          43,
+          33,
+          51
+        ],
+        [
+          34,
           52
         ],
         [
-          43,
+          34,
           53
         ],
         [
-          43,
+          35,
+          53
+        ],
+        [
+          36,
           54
         ],
         [
-          44,
+          37,
+          54
+        ],
+        [
+          37,
           55
         ],
         [
-          44,
+          37,
           56
         ],
         [
-          44,
+          37,
           57
         ],
         [
-          44,
+          38,
           58
         ],
         [
-          44,
+          39,
+          58
+        ],
+        [
+          40,
           59
         ],
         [
-          43,
+          41,
           59
+        ],
+        [
+          42,
+          60
         ],
         [
           43,
