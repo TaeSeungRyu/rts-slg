@@ -550,6 +550,7 @@ public sealed partial class EditMapScene
         {
             previewTile?.QueueFree();
             previewTile = TerrainScene(code).Instantiate<Node3D>();
+            if (code == 'R') MapView3D.TintRiverTile(previewTile);
             previewWorld.AddChild(previewTile);
             description.Text = TerrainDescription(code);
         }

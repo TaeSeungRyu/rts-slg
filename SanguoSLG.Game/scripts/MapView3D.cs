@@ -696,6 +696,14 @@ public partial class MapView3D : Node3D
     // 이웃한 강/다리 타일의 방향을 보고 직선·커브·끝 모델과 회전을 고른다.
     private void BuildRiverTile(HexMap map, HexCoord tile, TerrainType terrain)
     {
+        if (terrain == TerrainType.River)
+        {
+            var water = _water.Instantiate<Node3D>();
+            water.Position = HexToWorld(tile);
+            TintRiverTile(water);
+            AddChild(water);
+            return;
+        }
         var connections = new System.Collections.Generic.List<float>();
         foreach (var neighbor in tile.Neighbors())
         {
@@ -717,6 +725,16 @@ public partial class MapView3D : Node3D
         instance.Position = HexToWorld(tile);
         instance.RotationDegrees = new Vector3(0f, yRotation, 0f);
         AddChild(instance);
+    }
+
+    public static void TintRiverTile(Node3D visual)
+    {
+        if (FindMesh(visual) is not { } mesh) return;
+        mesh.MaterialOverride = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.58f, 0.86f, 0.94f),
+            Roughness = 0.38f,
+        };
     }
 
     public (PackedScene Scene, float RotationY) RiverModelForConnections(

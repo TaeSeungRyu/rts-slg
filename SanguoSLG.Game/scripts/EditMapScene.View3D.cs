@@ -12,7 +12,6 @@ public sealed partial class EditMapScene
     private MeshInstance3D _selectionVisual = null!;
     private MeshInstance3D? _routeLines;
     private PackedScene _waterTile = null!;
-    private PackedScene _riverTile = null!;
     private PackedScene _bridgeTile = null!;
     private readonly Dictionary<Vector2I, Node3D> _visibleTiles = [];
     private readonly Dictionary<Vector2I, Node3D> _visibleCities = [];
@@ -39,7 +38,7 @@ public sealed partial class EditMapScene
 
     private PackedScene TerrainScene(char code) => PreviewTerrain[code] switch
     {
-        TerrainType.River => _riverTile,
+        TerrainType.River => _waterTile,
         TerrainType.Bridge => _bridgeTile,
         TerrainType.WaterShallow or TerrainType.WaterDeep => _waterTile,
         var terrain => _mapView.TileScene(terrain) ?? _mapView.TileScene(TerrainType.Plains)!,
@@ -48,7 +47,8 @@ public sealed partial class EditMapScene
     private (PackedScene Scene, float Rotation) TerrainVisualFor(Vector2I tile)
     {
         var code = _rows[tile.Y][tile.X];
-        if (code is not ('R' or 'B')) return (TerrainScene(code), 0f);
+        if (code == 'R') return (_waterTile, 0f);
+        if (code != 'B') return (TerrainScene(code), 0f);
         var center = Axial(tile);
         var angles = center.Neighbors().Select(neighbor => new
             {
@@ -104,7 +104,6 @@ public sealed partial class EditMapScene
         _mapView = new MapView3D();
         world.AddChild(_mapView);
         _waterTile = GD.Load<PackedScene>("res://assets/models/water.glb");
-        _riverTile = GD.Load<PackedScene>("res://assets/models/river-straight.glb");
         _bridgeTile = GD.Load<PackedScene>("res://assets/models/bridge.glb");
         _visibleTerrain = new Node3D();
         world.AddChild(_visibleTerrain);
@@ -193,6 +192,7 @@ public sealed partial class EditMapScene
             var visual = scene.Instantiate<Node3D>();
             visual.Position = _mapView.HexToWorld(Axial(tile));
             visual.RotationDegrees = new Vector3(0f, rotation, 0f);
+            if (_rows[row][col] == 'R') MapView3D.TintRiverTile(visual);
             _visibleTerrain.AddChild(visual);
             _visibleTiles[tile] = visual;
             ApplyTerrainFilterToVisual(visual, _rows[row][col]);
