@@ -2,12 +2,12 @@
   "name": "동아시아 시나리오 기본 지형",
   "source": "Natural Earth 1:50m land (public domain); 산맥·하천·식생은 게임용 수작업 배치",
   "bounds": {
-    "west": 95.2,
+    "west": 97.72,
     "east": 133.0,
     "south": 18.0,
     "north": 54.0
   },
-  "width": 90,
+  "width": 84,
   "height": 70,
   "legend": {
     "P": "plains",
@@ -21,88 +21,100 @@
     "O": "water_deep"
   },
   "rows": [
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "PPMMMMMMMHMMPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "MMMMHMMMHMMMMPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "MMMHMMMHMMMMPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "MMHMMMHMMMPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "MMPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "PDDPDDDDDDDDDDDDPDDDDDDDDDDDDPDDDDDDDDDDDDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-    "DDDDDDDDDDDDPDDPDDPDDDDDDDDDDDDDDDDDDDDDPDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPRRRRPPPPPP",
-    "DDPDDPDDPDDPDDPDDPDDPDDPDDPDDPDDPDDPDDPDDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPRRRRRRPPPPPPPPP",
-    "DDDDDDDDDDDDDPDDPDDPDDDDDDDDDDDDDDDDPDDPDDPPPPPPPPPPPPPPPPPPPPPPPPPPPRRRRRRRPPPPPPPPPPPPPP",
-    "DDDDPDDDDDDDDDDPDDPDDDDDDDDDDPDDDDDDDDDDPDPPPPPPPPPPPPPPPPPPPRRRRRRRRRPPPPPPPPPPPPPPPPPPPP",
-    "DPDDDDDDDPDDDDDDDPDDDDDDDPDDDDDDDPDDDDDDDPPPPPPPPRRRRRRRRRRRRRPPPPPPPPPPPPPPPPPPPPPPPPWWPP",
-    "MDDPDDDDDDDPDDDDPDDDDDDDDDDDDPDDDDPDDDDDDDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPWWWWW",
-    "HDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPWWWOOOO",
-    "HDDDDDDDDDDDPDDDDDDDDDDDPDDDDPDDDDDDDDDDDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPWWOOOOOO",
-    "DDPDDDDDDPDDDDDDPDDDDDDPDDDDDDPDDDDDDPDDDDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPFPFPPFPFPWOOOOOOO",
-    "DDDDPDDDDDDDDPDDDDDDDDPDDDDDDPDDDDDDDDPDDDPPPPPPPPPPPPPPPPPPWWWWPPPPPPPPPFPFPFPPWWWOOOOOOO",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPRRRRPPPPFPFPFPFPPPPFPFPFWWWOWPPPPPPWFPPPPFPFWWWOOOOOOOOO",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPRRRRPMMMMFPFPPPPFPFPFPFPFPWWOOWWPPWWWWWWWPPPMHWWOOOOOOOOOOO",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPRRPPPPMHMMMMFPFPFPFPFPFPWWWWWOOOWFWWWOOOOWPFPFMHMWWOOOOOOOOOO",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPPRRPPPPPPPMHMHMHPPFPFPFPFPFPWWWWOOOWWWOOOOOOWPFPFPMMMWWOOOOOOOOO",
-    "HMHMPPPPPPPPPPPPPPPPPPPPPRRPPPPPPPPPPRMMMMMPFPFPFPFPFPFPFWWWWWWWWWOOOOWWWWWPMMMMWWOOOOOOOO",
-    "HMMMPPPPPPPPPPPPPPPPPPPRRRPPPPPPPPPPPRPMMMMMMFPFPFPPPPPPPWWPFPFPPWOOOOOOOWWPMHMHPWWOOOOOOO",
-    "MHMHPPPPPPPPPPPPPPRRRRRRPPPPPPPPPPPPPRRRMHMHMHPFPFPFPFRRRFPPPPFWWWOOOOOOOWPPPHMMMFWOOOOOOO",
-    "MHMHMHMMMMMMPRRRRRRPPPPPPPPPPPPPPPPPPPPRRMMMMMMPFPPPRRRFPFPFPWWWOOOOOOOOOWWFPMMMMWWOOOOOOO",
-    "MHMMMMMMMMHMMMMMMMMPPPPPPPPPPPPPPPPPPPPPPRRMHMHPRRRRFPPPPFPWWWOOOOOOOOOOOWWFPFMMHPWOOOOOWW",
-    "MMMMMMHMMMMMMHMMMMMPPPPPPPPPPPPPPPPPPPPPFPPHMMMMRPPPFPFPPPWWOOOOOOOOOOOOOWPFPFHMMWWOOOWWWF",
-    "MMHMHMMHMHMMMMHMHMMHHHHHHHHHHHHHHHHHHHHPPPFPMMMHPFPFPPFPFPWWWOOOOOOOOOOOOWWFPWWWWWOOWWWFPP",
-    "HMHMMHMHMMHMHMMHMHMMHHHHHHHHHMMMMHHHHHHHHFPFHMMMFPPFPFPPFPFPWOOOOOOOOOOOOOWWWWOOOOOWWPPMWW",
-    "HMMHMHMMHMHMMHMHMMHHMMMHMHHHMMHHHHHHHHHHHMMMMMHMMPFPPFPFPPFPWWOOOOOOOOOOOOOOOOOOOWWWPWWWWM",
-    "HMMHMMHMHMMHMMHMHHHHHHHHHMPPPPPPHMMMMHMMHMMMMHMMMPFPFPPFPPFPFWOOOOOOOOOOOOOOOOOOOWHMFHMWWF",
-    "MHMMHMHMMHMMHMHHMHHHHHHHHMMMHHHHHHHHHMMHMMMMMMMHMFPPFPPFPFPPFWWWOOOOOOOOOOOOOOOOOWMWMMMWWW",
-    "MHMMMMMMMMMMHHMHMHHHHHHHMMHHHHHHHHHHHHHHMMMMPPFPFPPFPPFPPFPPFPPWOOOOOOOOOOOOOOOOOWWWMMHWOO",
-    "MMHMMMMMMMMMMMMMMMMMPPPPPPPPPPPHHHHHHHHHPPFPPFPPFPPFPPFPPFPFFWFWOOOOOOOOOOOOOOOOOOOWWMWWOO",
-    "MMHMMHWWHMMHMMMMMMMMMMPPPPPPPFPPFPHHPHHPPFPPFPPFPPFPWWWWWWWWWWWWOOOOOOOOOOOOOOOOOOOOWWWOOO",
-    "MMHHMMWWWWMMHMMHMHHMMMPPFPPFPPPPPWWWWWWWWWWWWWWWWWWWWWWWFPPFPPWWOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "HMMHMMHHWWWWMHMMHHHHPPFPPPPPWWWWWWWHPPFFPPFPPFWWFFPPFPPFPPFFPPFWWOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "HMMHHMMHMMWWWMHMMHHHMMPWWWBWWWWPPHHPPFPPPFPPFPPPFPPFPPFFPPFPPFFPWOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "HHMMHMMMHMMHWWWWWWWWWWWWWFPPFFPPHHHPFPPFFPPFPPPFPPFFPPFPPPFPPFPWWOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "MHMMMHMMMHMMHHMMHWWWWWFFPPFFPPFFPPFPPPFPPPFPPFFPPFFPPFFPPFPPPFPWOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "MHHMMHHMMHHMMHHMMMHMMFPPFFPPFFPPFFPPFFPPFFPPFFPPFFPPFFPPFFPPFWWWOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "MMHHMMHHMMHHMMMHMMMHHPFPPPFFPPFFPPPFPPPFPPPFFPPFFPPPFPPPFPPPFWOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPPPPPMMMMMMMMHMPFFPPPFPPPFFPPPFPPPFFPPPFPPPFFPPPFPPPFFPPPWWOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPPPMMHMMMMHMMMFPPPFFPPPFPPPFFPPPFFPPPFFPPPFPPPMMHMMFFPPPWWOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPHMMMMHMMMMHMPPFFPPPFFPPPFFPPPFFPPPFFPPPFMHMMMMHMMMFPPWWWOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPMMHMMMMMHMMMPPPPPFFPPPFFPPPPMHMMMMMHMMMMHMMMMMHMMMFPPPPFWWWWWWOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPMMMHMMMMMHPPPFFPPPPFFPPPPFFPMMMMMHMMMMMHMMMMHMMPFFPPPWWWWWPPFWOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPMMMMHHMMPPPPPPPFFPPPPFFFPPPPMMHMMMMMHHMMMMFPPPPFFPPWWWOOWPPPWWOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPMMMMMPPPPPPPPPPPFFFPPRRRFFPPPPFFFPPPPFFFPPPPFFFPPWWOOOWWPPFWOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPPPPPPPPPPPPPFFPPPPPFFFPPRRRRFFPPPPPFFPPPPPFFFPPWWWOOOOWPPPFWOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPPPPPPPPPPPPPPPFFFPPPPPPFFFPPRRRRRRRRRRRRRRRRPPWWOOOOOOWPPFWWOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPPPPPPPPPPPPPPPPPPPFFFPPPPPPFFFFPPPPPPFFFWWWWWWWOOOOOOOWWFWWOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPPPPPPPPPPPPPFFFPPPPPPPFFFFPPPPPPPFFFFPWWWOOOOOOOOOOOOOOWWWOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPPPPPPPPPPPPPPPPFFFFFPPPPPWWWWWWFFWWWWWWOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPFFWWWOOOOWPWWOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPPPPPPPPPPPPPFFFFFPPPPPPWOOOOWWWFWWWOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPPPPPPPPPPPPPPPPPPPFFFFWWOOOWWPPPPPWOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPWWOOOOWPPPPPWWOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPPPPPPPPPPPPPFFFFFFFFFWWOOOOWFFFFWWOOOOOOOOOOOOOOOOOOOOOWWWWWWWOOOOOOOOOOOOOOOOOOOOOOOO",
-    "PPPPPPPPPPPPPPPPPPPPPPPPPPWOOOOWWWPWWOOOOOOOOOOOOOOOOOOOOOOWPPPPPWOOOOOOOOOOOOOOOOOOOOOOOO"
+    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "HMMMMMPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "MMMMHMMPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "MMMHMMPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "MMHMPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "PDDPDDDDDDDDDDDDPDDDDDDDDDDDDPDDDDDDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+    "DDDDDDDDDDDDPDDPDDPDDDDDDDDDDDDDDDDDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPRRRRPPPPPP",
+    "DDPDDPDDPDDPDDPDDPDDPDDPDDPDDPDDPDDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPRRRRRRPPPPPPPPP",
+    "DDDDDDDDDDDDDPDDPDDPDDDDDDDDDDDDDDDDPPPPPPPPPPPPPPPPPPPPPPPPPPPRRRRRRRPPPPPPPPPPPPPP",
+    "DDDDPDDDDDDDDDDPDDPDDDDDDDDDDPDDDDDDPPPPPPPPPPPPPPPPPPPRRRRRRRRRPPPPPPPPPPPPPPPPPPPP",
+    "DPDDDDDDDPDDDDDDDPDDDDDDDPDDDDDDDPDDPPPPPPPRRRRRRRRRRRRRPPPPPPPPPPPPPPPPPPPPPPPPWWPP",
+    "DDDPDDDDDDDPDDDDPDDDDDDDDDDDDPDDDDPDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPWWWWW",
+    "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPWWWOOOO",
+    "PDDDDDDDDDDDPDDDDDDDDDDDPDDDDPDDDDDDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPWWOOOOOO",
+    "DDPDDDDDDPDDDDDDPDDDDDDPDDDDDDPDDDDDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPFPFPPPPFPFWOOOOOOO",
+    "DDDDPDDDDDDDDPDDDDDDDDPDDDDDDPDDDDDDPPPPPPPPPPPPPPPPPPWWWWPPPPPPFPFPFPPPPFWWWOOOOOOO",
+    "PPPPPPPPPPPPPPPPPPPPPPPPPPPPRRRRPPPFPFPFPPFPFPFPFPPPWWWOWFPPPPPWFPFPFPFPWWWOOOOOOOOO",
+    "PPPPPPPPPPPPPPPPPPPPPPPPPRRRRPMHMHFPFPFPFPFPPPPFPFPWWOOWWFPWWWWWWWFPFMMWWOOOOOOOOOOO",
+    "PPPPPPPPPPPPPPPPPPPPPPPRRPPPPMHMHMHFPFPFPFPFPFPWWWWWOOOWPWWWOOOOWPFPFMMMWWOOOOOOOOOO",
+    "PPPPPPPPPPPPPPPPPPPPPRRPPPPPPPMHMHMHPPPPPPPPFPFPWWWWOOOWWWOOOOOOWPFPFPMMMWWOOOOOOOOO",
+    "PPPPPPPPPPPPPPPPPPPRRPPPPPPPPPPRMMMMMPFPFPFPFPFPFPFWWWWWWWWWOOOOWWWWWPMMMMWWOOOOOOOO",
+    "PPPPPPPPPPPPPPPPPRRRPPPPPPPPPPPRPMMMMMMFPFPFPFPFPFPWWPPPPPPWOOOOOOOWWPMMMMFWWOOOOOOO",
+    "PPPPPPPPPPPPRRRRRRPPPPPPPPPPPPPRRRMMMMMMFPPPPPPFRRRFPFPFPWWWOOOOOOOWFPFMMHMPWOOOOOOO",
+    "MMMHMHPRRRRRRPPPPPPPPPPPPPPPPPPPPRRMMMHMHPFPFPRRRPPPPFPWWWOOOOOOOOOWWPFMMHMWWOOOOOOO",
+    "MHMMMMMMMMHMMPPPPPPPPPPPPPPPPPPPPPFRRHMMMFRRRRPPFPFPFWWWOOOOOOOOOOOWWPFPMHMFWOOOOOWW",
+    "MMMMMMHMMMMMMPPPPPPPPPPPPPPPPPPPPPPPPMMMMHRPPFPFPPPPWWOOOOOOOOOOOOOWFPFPMMMWWOOOWWWP",
+    "MMHMHMMHMHMMMMHHHHHHHHHHHHHHHHHHHPPPPFMMHMFPFPPPPFPFWWWOOOOOOOOOOOOWWPPWWWWWOOWWWPPP",
+    "HMHMMHMHMMHMHMHHHHHHHHHMMMMHHHHHHHHPFPMHMMPFPPFPFPPFPFWOOOOOOOOOOOOOWWWWOOOOOWWPPHWW",
+    "HMMHMHMMHMHMHHMHMMMHHHMMHHHHHHHHHHHMMMHMMMMFPFPPFPFPPFWWOOOOOOOOOOOOOOOOOOOWWWFWWWWM",
+    "HMMHMMHMHMMHHHHHHHHMPPPPPPMMMMMMHMMMMHMMHMMPFPPFPPFPFPPWOOOOOOOOOOOOOOOOOOOWMHPMMWWP",
+    "MHMMHMHMMHMHHHHHHHHMMMHHHHHHHHHMMMMMHMMHMMMPFPFPPFPPFPPWWWOOOOOOOOOOOOOOOOOWMWMMHWWW",
+    "MMMMMMMHMMHHHHHHHHMMHHHHHHHHHHHHHHMHMMPPFPPFPPFPFPPFPPFPPWOOOOOOOOOOOOOOOOOWWWMMMWOO",
+    "MMMMMMMMMMMMMMPPPPPPPPPPPHHHHHHHHHPPFPPFPPFPPFPPFPPFPPFWPWOOOOOOOOOOOOOOOOOOOWWMWWOO",
+    "WWHMMHMMMMMMMMMMPPPPPPPPPFPPHHPHHPPFPPFPPFPPFPWWWWWWWWWWWWOOOOOOOOOOOOOOOOOOOOWWWOOO",
+    "WWWWMMHMMHMHHMMMPPPPPFPPFPPWWWWWWWWWWWWWWWWWWWWWWWPPFFPPWWOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "HMWWWWHHMMHHHHPPPPPFPPWWWWWWWHPPFPPFPPFFWWFPPFPPFFPPFPPFPWWOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "HMMHWWWHMMHHHHHMFWWWBWWWWPPHHPFPPPFPPFPPPFPPFPPPFPPFPPFFPPWOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "HHMMHMWWWWWWWWWWWWWPPFPPPFHHHFPPFPPPFPPFFPPFPPPFPPFFPPFPPWWOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "MHMMMHMMMHMWWWWWPPPFPPFFPPFFPPFFPPFPPPFPPPFPPFFPPFFPPFFPPWOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "MHHMMHHMMHHMMHHPFFPPFFPPFFPPFFPPFFPPFFPPFFPPFFPPFFPPFFPWWWOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "MMHHMMHHMMHHMMMPPFFPPPFPPPFFPPFFPPPFPPPFPPPFFPPFFPPPFPPWOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "PPMMMMMHMMMMPPPFPPPFFPPPFPPPFFPPPFPPPFFPPPFPPPFFPPPFPPWWOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "MMMHMMMMHMMFFPPPFFPPPFFPPPFPPPFFPPPFFPPPFFPMMMHMPPFPPWWOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "MMMMHMMMMHPPPFPPPPFFPPPFFPPPFFPPPFFPPPMMHMMMMHMMFFPWWWOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "HMMMMHMMMPFPPPFFPPPPFFPPPMMHMMMMHMMMMMHMMMMHMMMFFPPPFWWWWWWOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "HMMMMMHPPPFFPPPPFFPPPPFFPMMMMMHMMMMMHMMMMMHMPFFPPPWWWWWPPFWOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "MHMMMPPPPPPPFFPPPPFFPPPPFMMHMMMMMHMMMMMPPPPPFFPPWWWOOWPPFWWOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "MMHPPPPPPPPPPFFFPPPRRRFPPPPFFFPPPPFFFPPPPFFFPPPWWOOOWWPFFWOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "PPPPPPPPPPFPPPPPFFPPPPRRRRPPPPPFFFPPPPPFFPPPPWWWOOOOWPFFFWOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "PPPPPPPPPPFFFPPPPPFFFPPPPPRRRRRRRRRRRRRRRRPPWWOOOOOOWFFFWWOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "PPPPPPPPPPPPFFFFPPPPPPFFFPPPPPPFFFFPPPWWWWWWWOOOOOOOWWPWWOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "PPPPPPPPPPPPPPPFFFFPPPPPPPFFFFPPPPPPWWWOOOOOOOOOOOOOOWWWOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "PPPPPPPPPPFPPPPPPPPFFFFWWWWWWPPWWWWWWOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "PPPPPPPPPPFFFFFPPPPPPWWWOOOOWFWWOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "PPPPPPPPPPPPPPFFFFFFFWOOOOWWWPWWWOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "PPPPPPPPPPPPPPPPPPPPWWOOOWWFFFFPWOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "PPPPPPPPPPFFFPPPPPPWWOOOOWPPPPPWWOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+    "PPPPPPPPPPFFFFFFFFFWWOOOOWFFFFWWOOOOOOOOOOOOOOOOOOOOOWWWWWWWOOOOOOOOOOOOOOOOOOOOOOOO",
+    "PPPPPPPPPPPPPPPPPPPPWOOOOWWWPWWOOOOOOOOOOOOOOOOOOOOOOWPPPPPWOOOOOOOOOOOOOOOOOOOOOOOO"
   ],
   "land_routes": [
     {
       "name": "서부 강변—성도",
       "tiles": [
         [
-          4,
+          1,
           43
         ],
         [
-          5,
+          2,
+          43
+        ],
+        [
+          3,
           42
+        ],
+        [
+          4,
+          42
+        ],
+        [
+          5,
+          41
         ],
         [
           6,
@@ -122,50 +134,26 @@
         ],
         [
           10,
-          42
+          43
         ],
         [
           11,
-          42
+          43
         ],
         [
           12,
-          43
+          44
         ],
         [
           13,
-          43
+          44
         ],
         [
           14,
-          43
-        ],
-        [
-          15,
-          43
-        ],
-        [
-          16,
-          43
-        ],
-        [
-          17,
-          43
-        ],
-        [
-          18,
-          44
-        ],
-        [
-          19,
-          44
-        ],
-        [
-          20,
           45
         ],
         [
-          21,
+          15,
           45
         ]
       ]
@@ -174,27 +162,27 @@
       "name": "장안—한중",
       "tiles": [
         [
-          32,
+          26,
           38
         ],
         [
-          31,
+          25,
           38
         ],
         [
-          30,
+          24,
           38
         ],
         [
-          29,
+          23,
           38
         ],
         [
-          28,
+          22,
           39
         ],
         [
-          28,
+          22,
           40
         ]
       ]
@@ -203,43 +191,43 @@
       "name": "한중—성도",
       "tiles": [
         [
-          28,
-          40
-        ],
-        [
-          27,
-          40
-        ],
-        [
-          26,
-          41
-        ],
-        [
-          25,
-          41
-        ],
-        [
-          24,
-          42
-        ],
-        [
-          24,
-          43
-        ],
-        [
-          23,
-          43
-        ],
-        [
           22,
-          44
-        ],
-        [
-          22,
-          45
+          40
         ],
         [
           21,
+          40
+        ],
+        [
+          20,
+          41
+        ],
+        [
+          19,
+          41
+        ],
+        [
+          18,
+          42
+        ],
+        [
+          18,
+          43
+        ],
+        [
+          17,
+          43
+        ],
+        [
+          16,
+          44
+        ],
+        [
+          16,
+          45
+        ],
+        [
+          15,
           45
         ]
       ]
@@ -248,27 +236,27 @@
       "name": "성도—중경",
       "tiles": [
         [
-          21,
+          15,
           45
         ],
         [
-          22,
+          16,
           45
         ],
         [
-          23,
+          17,
           45
         ],
         [
-          24,
+          18,
           46
         ],
         [
-          25,
+          19,
           46
         ],
         [
-          26,
+          20,
           47
         ]
       ]
@@ -277,16 +265,40 @@
       "name": "중경—의창",
       "tiles": [
         [
-          26,
+          20,
           47
         ],
         [
-          26,
+          20,
           48
         ],
         [
-          27,
+          21,
           48
+        ],
+        [
+          22,
+          48
+        ],
+        [
+          23,
+          48
+        ],
+        [
+          24,
+          49
+        ],
+        [
+          25,
+          49
+        ],
+        [
+          26,
+          50
+        ],
+        [
+          27,
+          49
         ],
         [
           28,
@@ -302,38 +314,14 @@
         ],
         [
           31,
-          48
-        ],
-        [
-          32,
-          49
-        ],
-        [
-          33,
-          49
-        ],
-        [
-          34,
-          49
-        ],
-        [
-          35,
-          48
-        ],
-        [
-          35,
           47
         ],
         [
-          36,
-          47
-        ],
-        [
-          37,
+          31,
           46
         ],
         [
-          38,
+          32,
           46
         ]
       ]
@@ -342,40 +330,16 @@
       "name": "의창—무한",
       "tiles": [
         [
-          38,
-          46
-        ],
-        [
-          37,
-          46
-        ],
-        [
-          36,
-          47
-        ],
-        [
-          35,
-          47
-        ],
-        [
-          35,
-          48
-        ],
-        [
-          34,
-          49
-        ],
-        [
-          33,
-          49
-        ],
-        [
           32,
-          49
+          46
         ],
         [
           31,
-          48
+          46
+        ],
+        [
+          31,
+          47
         ],
         [
           30,
@@ -391,238 +355,146 @@
         ],
         [
           27,
-          48
+          49
         ],
         [
           26,
-          48
-        ],
-        [
-          26,
-          47
+          50
         ],
         [
           25,
-          46
+          49
         ],
         [
           24,
-          46
+          49
         ],
         [
           23,
-          45
+          48
         ],
         [
           22,
+          48
+        ],
+        [
+          21,
+          48
+        ],
+        [
+          20,
+          48
+        ],
+        [
+          20,
+          47
+        ],
+        [
+          20,
+          46
+        ],
+        [
+          19,
           45
         ],
         [
-          22,
+          19,
           44
         ],
         [
-          21,
-          43
-        ],
-        [
-          20,
-          43
-        ],
-        [
           19,
           43
         ],
         [
-          18,
-          43
-        ],
-        [
-          17,
-          43
-        ],
-        [
-          16,
-          43
-        ],
-        [
-          15,
-          43
-        ],
-        [
-          14,
-          43
-        ],
-        [
-          14,
+          19,
           42
         ],
         [
-          13,
+          19,
           41
         ],
         [
-          13,
-          40
-        ],
-        [
-          12,
-          40
-        ],
-        [
-          12,
-          39
-        ],
-        [
-          13,
-          38
-        ],
-        [
-          14,
-          38
-        ],
-        [
-          15,
-          37
-        ],
-        [
-          16,
-          38
-        ],
-        [
-          17,
-          37
-        ],
-        [
-          18,
-          37
-        ],
-        [
-          19,
-          36
-        ],
-        [
           20,
-          36
+          41
         ],
         [
           21,
-          35
+          40
         ],
         [
           22,
-          35
+          40
         ],
         [
           23,
-          34
+          40
         ],
         [
           24,
-          34
+          40
         ],
         [
           25,
-          33
+          40
         ],
         [
           26,
-          33
+          40
         ],
         [
           27,
-          32
+          40
         ],
         [
           28,
-          32
+          40
         ],
         [
           29,
-          31
+          40
         ],
         [
           30,
-          32
+          40
         ],
         [
           31,
-          32
+          40
         ],
         [
           32,
-          33
+          41
         ],
         [
           33,
-          33
+          41
         ],
         [
           34,
-          34
+          42
+        ],
+        [
+          34,
+          43
         ],
         [
           35,
-          34
+          43
         ],
         [
           36,
-          35
+          44
         ],
         [
           37,
-          35
+          43
         ],
         [
           38,
-          36
+          44
         ],
         [
           39,
-          36
-        ],
-        [
-          40,
-          37
-        ],
-        [
-          41,
-          37
-        ],
-        [
-          42,
-          38
-        ],
-        [
-          43,
-          38
-        ],
-        [
-          43,
-          39
-        ],
-        [
-          43,
-          40
-        ],
-        [
-          43,
-          41
-        ],
-        [
-          44,
-          42
-        ],
-        [
-          44,
-          43
-        ],
-        [
-          44,
-          44
-        ],
-        [
-          45,
           44
         ]
       ]
@@ -631,27 +503,35 @@
       "name": "장안—낙양",
       "tiles": [
         [
-          32,
+          26,
           38
         ],
         [
-          31,
+          25,
           38
         ],
         [
-          30,
+          24,
           38
         ],
         [
-          29,
+          23,
           38
         ],
         [
-          28,
+          23,
           39
         ],
         [
-          28,
+          24,
+          40
+        ],
+        [
+          25,
+          40
+        ],
+        [
+          26,
           40
         ],
         [
@@ -659,195 +539,43 @@
           40
         ],
         [
-          26,
-          41
-        ],
-        [
-          25,
-          41
-        ],
-        [
-          24,
-          42
-        ],
-        [
-          24,
-          43
-        ],
-        [
-          23,
-          43
-        ],
-        [
-          22,
-          43
-        ],
-        [
-          21,
-          43
-        ],
-        [
-          20,
-          43
-        ],
-        [
-          19,
-          43
-        ],
-        [
-          18,
-          43
-        ],
-        [
-          17,
-          43
-        ],
-        [
-          16,
-          43
-        ],
-        [
-          15,
-          43
-        ],
-        [
-          14,
-          43
-        ],
-        [
-          14,
-          42
-        ],
-        [
-          13,
-          41
-        ],
-        [
-          13,
-          40
-        ],
-        [
-          12,
-          40
-        ],
-        [
-          12,
-          39
-        ],
-        [
-          13,
-          38
-        ],
-        [
-          14,
-          38
-        ],
-        [
-          15,
-          37
-        ],
-        [
-          16,
-          38
-        ],
-        [
-          17,
-          37
-        ],
-        [
-          18,
-          37
-        ],
-        [
-          19,
-          36
-        ],
-        [
-          20,
-          36
-        ],
-        [
-          21,
-          35
-        ],
-        [
-          22,
-          35
-        ],
-        [
-          23,
-          34
-        ],
-        [
-          24,
-          34
-        ],
-        [
-          25,
-          33
-        ],
-        [
-          26,
-          33
-        ],
-        [
-          27,
-          32
-        ],
-        [
           28,
-          32
+          40
         ],
         [
           29,
-          31
+          40
         ],
         [
           30,
-          32
+          40
         ],
         [
           31,
-          32
+          40
         ],
         [
           32,
-          33
+          41
         ],
         [
           33,
-          33
+          40
         ],
         [
           34,
-          34
+          40
         ],
         [
           35,
-          34
+          39
         ],
         [
-          36,
-          35
+          35,
+          38
         ],
         [
-          37,
-          35
-        ],
-        [
-          38,
-          36
-        ],
-        [
-          39,
-          36
-        ],
-        [
-          40,
-          37
-        ],
-        [
-          41,
+          35,
           37
         ]
       ]
@@ -856,31 +584,31 @@
       "name": "낙양—업",
       "tiles": [
         [
-          41,
+          35,
           37
         ],
         [
-          41,
+          35,
           36
         ],
         [
-          42,
+          36,
           36
         ],
         [
-          42,
+          36,
           35
         ],
         [
-          43,
+          37,
           34
         ],
         [
-          44,
-          34
+          38,
+          35
         ],
         [
-          45,
+          39,
           34
         ]
       ]
@@ -889,47 +617,47 @@
       "name": "업—북경",
       "tiles": [
         [
-          45,
+          39,
           34
         ],
         [
-          46,
-          34
-        ],
-        [
-          46,
+          39,
           33
         ],
         [
-          46,
+          39,
           32
         ],
         [
-          47,
+          40,
+          32
+        ],
+        [
+          41,
           31
         ],
         [
-          47,
+          41,
           30
         ],
         [
-          47,
+          42,
+          30
+        ],
+        [
+          42,
           29
         ],
         [
-          48,
-          29
-        ],
-        [
-          48,
+          43,
           28
         ],
         [
-          49,
+          43,
           27
         ],
         [
-          50,
+          44,
           27
         ]
       ]
@@ -938,20 +666,44 @@
       "name": "무한—건업",
       "tiles": [
         [
-          45,
+          39,
           44
+        ],
+        [
+          40,
+          44
+        ],
+        [
+          41,
+          43
+        ],
+        [
+          42,
+          44
+        ],
+        [
+          43,
+          43
+        ],
+        [
+          44,
+          43
+        ],
+        [
+          45,
+          42
         ],
         [
           46,
-          44
+          43
         ],
         [
           47,
-          43
+          42
         ],
         [
           48,
-          43
+          42
         ],
         [
           49,
@@ -960,30 +712,6 @@
         [
           50,
           42
-        ],
-        [
-          51,
-          41
-        ],
-        [
-          52,
-          42
-        ],
-        [
-          53,
-          41
-        ],
-        [
-          54,
-          41
-        ],
-        [
-          55,
-          41
-        ],
-        [
-          56,
-          42
         ]
       ]
     },
@@ -991,319 +719,203 @@
       "name": "무한—광주",
       "tiles": [
         [
-          45,
-          44
-        ],
-        [
-          44,
-          44
-        ],
-        [
-          44,
-          43
-        ],
-        [
-          44,
-          42
-        ],
-        [
-          43,
-          41
-        ],
-        [
-          43,
-          40
-        ],
-        [
-          43,
-          39
-        ],
-        [
-          43,
-          38
-        ],
-        [
-          42,
-          38
-        ],
-        [
-          41,
-          37
-        ],
-        [
-          40,
-          37
-        ],
-        [
           39,
-          36
+          44
         ],
         [
           38,
-          36
-        ],
-        [
-          37,
-          35
-        ],
-        [
-          36,
-          35
-        ],
-        [
-          35,
-          34
-        ],
-        [
-          34,
-          34
-        ],
-        [
-          33,
-          33
-        ],
-        [
-          32,
-          33
-        ],
-        [
-          31,
-          32
-        ],
-        [
-          30,
-          32
-        ],
-        [
-          29,
-          31
-        ],
-        [
-          28,
-          32
-        ],
-        [
-          27,
-          32
-        ],
-        [
-          26,
-          33
-        ],
-        [
-          25,
-          33
-        ],
-        [
-          24,
-          34
-        ],
-        [
-          23,
-          34
-        ],
-        [
-          22,
-          35
-        ],
-        [
-          21,
-          35
-        ],
-        [
-          20,
-          36
-        ],
-        [
-          19,
-          36
-        ],
-        [
-          18,
-          37
-        ],
-        [
-          17,
-          37
-        ],
-        [
-          16,
-          38
-        ],
-        [
-          15,
-          37
-        ],
-        [
-          14,
-          38
-        ],
-        [
-          13,
-          38
-        ],
-        [
-          12,
-          39
-        ],
-        [
-          12,
-          40
-        ],
-        [
-          13,
-          40
-        ],
-        [
-          13,
-          41
-        ],
-        [
-          14,
-          42
-        ],
-        [
-          14,
-          43
-        ],
-        [
-          15,
-          43
-        ],
-        [
-          16,
-          43
-        ],
-        [
-          17,
-          43
-        ],
-        [
-          18,
-          43
-        ],
-        [
-          19,
-          43
-        ],
-        [
-          20,
-          43
-        ],
-        [
-          21,
-          43
-        ],
-        [
-          22,
           44
         ],
         [
-          22,
-          45
+          37,
+          43
         ],
         [
-          23,
-          45
+          36,
+          44
         ],
         [
-          24,
-          46
+          35,
+          43
         ],
         [
-          25,
-          46
+          34,
+          43
+        ],
+        [
+          34,
+          42
+        ],
+        [
+          33,
+          41
+        ],
+        [
+          32,
+          41
+        ],
+        [
+          31,
+          40
+        ],
+        [
+          30,
+          40
+        ],
+        [
+          29,
+          40
+        ],
+        [
+          28,
+          40
+        ],
+        [
+          27,
+          40
         ],
         [
           26,
+          40
+        ],
+        [
+          25,
+          40
+        ],
+        [
+          24,
+          40
+        ],
+        [
+          23,
+          40
+        ],
+        [
+          22,
+          40
+        ],
+        [
+          21,
+          40
+        ],
+        [
+          20,
+          41
+        ],
+        [
+          19,
+          41
+        ],
+        [
+          19,
+          42
+        ],
+        [
+          19,
+          43
+        ],
+        [
+          19,
+          44
+        ],
+        [
+          19,
+          45
+        ],
+        [
+          20,
+          46
+        ],
+        [
+          20,
           47
         ],
         [
+          20,
+          48
+        ],
+        [
+          20,
+          49
+        ],
+        [
+          21,
+          49
+        ],
+        [
+          22,
+          50
+        ],
+        [
+          23,
+          50
+        ],
+        [
+          24,
+          51
+        ],
+        [
+          25,
+          51
+        ],
+        [
           26,
-          48
-        ],
-        [
-          27,
-          48
-        ],
-        [
-          28,
-          49
-        ],
-        [
-          29,
-          49
-        ],
-        [
-          30,
-          50
-        ],
-        [
-          31,
-          50
-        ],
-        [
-          32,
-          51
-        ],
-        [
-          33,
-          51
-        ],
-        [
-          34,
           52
         ],
         [
-          34,
+          27,
+          52
+        ],
+        [
+          28,
           53
         ],
         [
-          35,
+          29,
           53
         ],
         [
-          36,
+          30,
           54
         ],
         [
-          37,
+          31,
           54
         ],
         [
-          37,
+          31,
           55
         ],
         [
-          37,
+          31,
           56
         ],
         [
-          37,
+          31,
           57
         ],
         [
-          38,
+          32,
           58
         ],
         [
-          39,
+          33,
           58
         ],
         [
-          40,
+          34,
           59
         ],
         [
-          41,
+          35,
           59
         ],
         [
-          42,
+          36,
           60
         ],
         [
-          43,
+          37,
           60
         ]
       ]
@@ -1312,79 +924,79 @@
       "name": "건업—북경",
       "tiles": [
         [
-          56,
+          50,
           42
         ],
         [
-          56,
+          50,
           41
         ],
         [
-          56,
+          49,
           40
         ],
         [
-          56,
+          48,
+          40
+        ],
+        [
+          47,
           39
         ],
         [
-          55,
+          47,
           38
         ],
         [
-          54,
-          38
-        ],
-        [
-          53,
+          47,
           37
         ],
         [
-          53,
+          46,
+          37
+        ],
+        [
+          46,
           36
         ],
         [
-          53,
+          46,
           35
         ],
         [
-          53,
+          46,
           34
         ],
         [
-          52,
-          34
-        ],
-        [
-          52,
+          46,
           33
         ],
         [
-          51,
+          46,
           32
         ],
         [
-          51,
+          45,
           31
         ],
         [
-          51,
+          45,
           30
         ],
         [
-          50,
+          44,
           30
         ],
         [
-          50,
+          44,
           29
         ],
         [
-          50,
+          44,
           28
         ],
         [
-          50,
+          44,
           27
         ]
       ]
@@ -1393,32 +1005,56 @@
       "name": "북경—요동",
       "tiles": [
         [
-          50,
+          44,
           27
         ],
         [
-          51,
+          45,
           26
+        ],
+        [
+          46,
+          26
+        ],
+        [
+          47,
+          25
+        ],
+        [
+          48,
+          25
+        ],
+        [
+          49,
+          24
+        ],
+        [
+          50,
+          24
+        ],
+        [
+          51,
+          23
         ],
         [
           52,
-          26
+          23
         ],
         [
           53,
-          25
+          22
         ],
         [
           54,
-          25
+          22
         ],
         [
           55,
-          24
+          22
         ],
         [
           56,
-          24
+          23
         ],
         [
           57,
@@ -1426,42 +1062,18 @@
         ],
         [
           58,
-          23
+          24
         ],
         [
           59,
-          22
+          24
         ],
         [
           60,
-          22
-        ],
-        [
-          61,
-          22
-        ],
-        [
-          62,
-          23
-        ],
-        [
-          63,
-          23
-        ],
-        [
-          64,
-          24
-        ],
-        [
-          65,
-          24
-        ],
-        [
-          66,
           25
         ],
         [
-          67,
+          61,
           25
         ]
       ]
@@ -1470,31 +1082,31 @@
       "name": "요동—평양",
       "tiles": [
         [
-          67,
+          61,
           25
         ],
         [
-          68,
+          62,
           26
         ],
         [
-          69,
+          63,
           26
         ],
         [
-          70,
+          64,
           27
         ],
         [
-          71,
+          65,
           27
         ],
         [
-          72,
+          66,
           28
         ],
         [
-          72,
+          66,
           29
         ]
       ]
@@ -1503,27 +1115,27 @@
       "name": "평양—한성",
       "tiles": [
         [
-          72,
+          66,
           29
         ],
         [
-          73,
+          67,
           29
         ],
         [
-          74,
+          68,
           30
         ],
         [
-          75,
+          69,
           30
         ],
         [
-          75,
+          69,
           31
         ],
         [
-          75,
+          69,
           32
         ]
       ]
@@ -1532,31 +1144,35 @@
       "name": "한성—부산",
       "tiles": [
         [
-          75,
+          69,
           32
         ],
         [
-          75,
+          69,
           33
         ],
         [
-          76,
+          69,
           34
         ],
         [
-          77,
-          34
-        ],
-        [
-          78,
+          70,
           35
         ],
         [
-          79,
+          71,
           35
         ],
         [
-          80,
+          72,
+          36
+        ],
+        [
+          73,
+          36
+        ],
+        [
+          74,
           36
         ]
       ]
@@ -1565,83 +1181,83 @@
       "name": "성도—곤명",
       "tiles": [
         [
-          21,
+          15,
           45
         ],
         [
-          22,
+          16,
           45
         ],
         [
-          23,
+          17,
           45
-        ],
-        [
-          24,
-          46
-        ],
-        [
-          25,
-          46
-        ],
-        [
-          26,
-          47
-        ],
-        [
-          26,
-          48
-        ],
-        [
-          25,
-          48
-        ],
-        [
-          24,
-          49
-        ],
-        [
-          23,
-          49
-        ],
-        [
-          23,
-          50
-        ],
-        [
-          23,
-          51
-        ],
-        [
-          22,
-          52
-        ],
-        [
-          21,
-          52
-        ],
-        [
-          20,
-          53
-        ],
-        [
-          19,
-          53
         ],
         [
           18,
-          54
+          46
+        ],
+        [
+          19,
+          46
+        ],
+        [
+          20,
+          47
+        ],
+        [
+          20,
+          48
+        ],
+        [
+          19,
+          48
+        ],
+        [
+          18,
+          49
         ],
         [
           17,
+          49
+        ],
+        [
+          16,
+          50
+        ],
+        [
+          15,
+          50
+        ],
+        [
+          15,
+          51
+        ],
+        [
+          14,
+          52
+        ],
+        [
+          13,
+          52
+        ],
+        [
+          13,
+          53
+        ],
+        [
+          12,
           54
         ],
         [
-          17,
+          11,
+          54
+        ],
+        [
+          11,
           55
         ],
         [
-          17,
+          11,
           56
         ]
       ]
@@ -1650,20 +1266,40 @@
       "name": "곤명—남녕",
       "tiles": [
         [
-          17,
+          11,
           56
         ],
         [
-          17,
+          12,
+          56
+        ],
+        [
+          13,
+          56
+        ],
+        [
+          14,
           57
         ],
         [
-          18,
+          15,
+          57
+        ],
+        [
+          16,
           58
         ],
         [
-          19,
+          17,
           58
+        ],
+        [
+          18,
+          59
+        ],
+        [
+          19,
+          59
         ],
         [
           20,
@@ -1685,6 +1321,15 @@
           24,
           60
         ],
+        [
+          25,
+          60
+        ]
+      ]
+    },
+    {
+      "name": "남녕—광주",
+      "tiles": [
         [
           25,
           60
@@ -1707,67 +1352,34 @@
         ],
         [
           30,
-          61
+          62
         ],
         [
           31,
-          60
-        ]
-      ]
-    },
-    {
-      "name": "남녕—광주",
-      "tiles": [
-        [
-          31,
-          60
+          62
         ],
         [
           32,
-          60
+          62
         ],
         [
           33,
-          59
+          62
         ],
         [
           34,
-          59
+          62
         ],
         [
           35,
-          59
+          61
         ],
         [
           36,
-          59
+          61
         ],
         [
           37,
-          58
-        ],
-        [
-          38,
-          58
-        ],
-        [
-          39,
-          58
-        ],
-        [
-          40,
-          59
-        ],
-        [
-          41,
-          59
-        ],
-        [
-          42,
-          60
-        ],
-        [
-          43,
           60
         ]
       ]

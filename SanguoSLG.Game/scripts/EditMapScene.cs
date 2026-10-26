@@ -242,7 +242,7 @@ public sealed partial class EditMapScene : Control
             && Land(121, 24) && Land(130.5, 33)
             && _rows.Any(row => row.Contains('R')) && _rows.Any(row => row.Contains('D'))
             && _rows.Any(row => row.Contains('F')) && _rows.Any(row => row.Contains('H'))
-            && _west >= 95.2 && _east <= 133
+            && _west >= 97.72 && _east <= 133
             && _terrainButtons.Count == Terrain.Count + 1 && _terrainButtons[0].ButtonPressed
             && _landRoutes.Count >= 10 && _landRoutes.All(route => route.Length >= 2
                 && route.All(tile => tile.X >= 0 && tile.X < _width && tile.Y >= 0 && tile.Y < _height

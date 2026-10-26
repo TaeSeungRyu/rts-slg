@@ -9,8 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "SanguoSLG.Game/assets/maps/east-asia-map.json"
 LAND_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson"
-WEST, EAST, SOUTH, NORTH = 95.2, 133.0, 18.0, 54.0
-WIDTH, HEIGHT = 90, 70
+WEST, EAST, SOUTH, NORTH = 97.72, 133.0, 18.0, 54.0
+WIDTH, HEIGHT = 84, 70
 
 
 def rings_of(geometry):
@@ -68,7 +68,7 @@ RIVERS = [
 ]
 YANGTZE_CROSSINGS = [(106.5, 29.6)]
 WESTERN_RIVER_ROAD = [(104.1, 30.7), (103.1, 31.3), (101.5, 31.4),
-                      (99.5, 31.7), (97.2, 31.8)]
+                      (99.5, 31.7), (98.2, 31.8)]
 SHU_RIDGES = [
     ([(104.5, 34.4), (108.0, 34.3), (111.8, 34.0)], 0.68),
     ([(103.8, 32.7), (106.0, 32.35), (108.2, 32.3), (111.3, 31.8)], 0.73),
@@ -123,7 +123,7 @@ def terrain(lon, lat, column, row):
 
 
 ROUTE_PAIRS = [
-    ("서부 강변—성도", (97.2, 31.8), (104.1, 30.7)),
+    ("서부 강변—성도", (98.2, 31.8), (104.1, 30.7)),
     ("장안—한중", (108.9, 34.3), (107.0, 33.1)),
     ("한중—성도", (107.0, 33.1), (104.1, 30.7)),
     ("성도—중경", (104.1, 30.7), (106.5, 29.6)),

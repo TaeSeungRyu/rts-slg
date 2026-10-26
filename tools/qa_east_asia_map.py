@@ -52,8 +52,8 @@ def route(start, end):
 
 
 assert len(rows) == height and all(len(row) == width for row in rows)
-assert bounds["west"] == 95.2 and bounds["east"] == 133
-assert width == 90 and height == 70
+assert bounds["west"] == 97.72 and bounds["east"] == 133
+assert width == 84 and height == 70
 assert sum(row.count("B") for row in rows) == 1
 assert rows[cell(106.5, 29.6)[1]][cell(106.5, 29.6)[0]] == "B"
 for crossing in ((111.3, 30.7), (114.3, 30.6)):
