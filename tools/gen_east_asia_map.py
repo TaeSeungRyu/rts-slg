@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "SanguoSLG.Game/assets/maps/east-asia-map.json"
 LAND_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson"
 WEST, EAST, SOUTH, NORTH = 97.72, 133.0, 18.0, 51.94285714285714 - 10 * (51.94285714285714 - 18.0) / 124
-WIDTH, HEIGHT = 158, 114
+WIDTH, HEIGHT = 174, 125
 
 
 def rings_of(geometry):
@@ -215,7 +215,7 @@ def main():
             lon = WEST + (column + 0.5) * (EAST - WEST) / WIDTH
             if on_land(lon, lat, polygons):
                 characters.append("W" if near_line(lon, lat, RIVERS[1], 0.38)
-                                  else terrain(lon, lat, column, row + 10))
+                                  else terrain(lon, lat, column, row))
             else:
                 characters.append("O")
         rows.append(characters)

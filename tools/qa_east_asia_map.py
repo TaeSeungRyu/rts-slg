@@ -54,8 +54,14 @@ def route(start, end):
 assert len(rows) == height and all(len(row) == width for row in rows)
 assert bounds["west"] == 97.72 and bounds["east"] == 133
 assert abs(bounds["north"] - ((54 - 6 * 36 / 105) - 10 * ((54 - 6 * 36 / 105) - 18) / 124)) < 1e-10
-assert width == 158 and height == 114
-assert 1 <= sum(row.count("B") for row in rows) <= 6
+assert width == 174 and height == 125
+assert abs(width / 158 - height / 114) < .006
+crossing_tiles = [(column, row) for row in range(height) for column in range(width)
+                  if rows[row][column] == "B"]
+assert 1 <= len(crossing_tiles) <= 12
+assert all(abs(coordinate(x, y)[0] - 106.5) < .25
+           and abs(coordinate(x, y)[1] - 29.6) < .75
+           for x, y in crossing_tiles)
 assert rows[cell(106.5, 29.6)[1]][cell(106.5, 29.6)[0]] == "B"
 for crossing in ((111.3, 30.7), (114.3, 30.6)):
     assert rows[cell(*crossing)[1]][cell(*crossing)[0]] == "W"
