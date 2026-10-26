@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using Godot;
+using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
 using SanguoSLG.Core.Spatial;
@@ -110,6 +111,49 @@ internal sealed class AiTestFixture
             Number(bounds, "min_r"), Number(bounds, "max_r"), terrain);
         Validate(map, factions, cities, postings, garrisons, ships, ruins);
         return new AiTestFixture(map, factions, cities, postings, garrisons, ships, ruins);
+    }
+
+    public static AiTestFixture LoadNewMap()
+    {
+        var dataDirectory = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
+        var presetPath = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
+        var preset = ScenarioMapPresetStore.Load(presetPath);
+        var scenario = ScenarioMapPresetApplier.Apply(
+            new ScenarioLoader().LoadFromDirectory(dataDirectory), preset);
+        var factions = scenario.Factions.Where(faction => faction.Id.Value is 1 or 2).ToArray();
+        var sites = preset.Sites.Where(site => site.Kind is "city" or "port").ToArray();
+        var middle = sites.Select(site => site.Column).Order().ElementAt(sites.Length / 2);
+        var cities = scenario.Cities.Select(city =>
+        {
+            var site = sites.Single(site => site.Id == city.Id.Value);
+            var owner = new FactionId(site.Column <= middle ? 1 : 2);
+            return city with { Owner = owner, Security = 80, Gold = 5000, Provisions = 12000 };
+        }).ToArray();
+        // Give each side its own capital and officers. The edited map's city,
+        // port, terrain and direction remain exactly as saved in the preset.
+        var postings = new List<GeneralPosting>();
+        foreach (var faction in factions)
+        {
+            var owned = cities.Where(city => city.Owner == faction.Id && !city.IsPort)
+                .OrderBy(city => city.Id.Value).ToArray();
+            if (owned.Length == 0) owned = cities.Where(city => city.Owner == faction.Id).ToArray();
+            var generalIds = faction.Id.Value == 1 ? Enumerable.Range(1, 10) : Enumerable.Range(11, 10);
+            var index = 0;
+            foreach (var generalId in generalIds)
+                postings.Add(new GeneralPosting(new GeneralId(generalId), faction.Id,
+                    owned[index++ % owned.Length].Id));
+        }
+        var garrisons = cities.SelectMany(city => new[]
+        {
+            new GarrisonForce(city.Id, "swordsman", 12000, 60),
+            new GarrisonForce(city.Id, "archer", 4000, 60),
+        }).ToArray();
+        var ships = cities.Where(city => city.IsPort)
+            .Select(city => new PortShipStock(city.Id, "small_boat", 2)).ToArray();
+        GD.Print($"[newmap] cells={scenario.Map.Count} cities={cities.Length} "
+            + $"player={cities.Count(city => city.Owner.Value == 1)} "
+            + $"enemy={cities.Count(city => city.Owner.Value == 2)} factions={factions.Length}");
+        return new AiTestFixture(scenario.Map, factions, cities, postings, garrisons, ships, []);
     }
 
     private static int Number(JsonElement item, string name) => item.GetProperty(name).GetInt32();

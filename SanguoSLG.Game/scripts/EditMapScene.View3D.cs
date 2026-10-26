@@ -180,6 +180,7 @@ public sealed partial class EditMapScene
 
     public override void _Process(double delta)
     {
+        _nativeNameEdit?.SyncBounds();
         if (_mapViewport is null || _editorModal is not null || GetViewport().GuiGetFocusOwner() is LineEdit or TextEdit)
             return;
         var direction = Vector2.Zero;

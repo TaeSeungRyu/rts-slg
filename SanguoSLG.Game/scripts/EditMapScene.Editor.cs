@@ -13,6 +13,7 @@ public sealed partial class EditMapScene
     private Control? _editorModal;
     private Label? _editorError;
     private Action? _editorCancelAction;
+    private NativeNameEdit? _nativeNameEdit;
     private int _nextSiteId = 1;
     private bool _draftChanged;
     private Button? _saveDraftButton;
@@ -359,6 +360,8 @@ public sealed partial class EditMapScene
 
     private void CloseEditorModal()
     {
+        _nativeNameEdit?.Dispose();
+        _nativeNameEdit = null;
         var cancel = _editorCancelAction;
         _editorCancelAction = null;
         cancel?.Invoke();
@@ -377,77 +380,23 @@ public sealed partial class EditMapScene
         return picker;
     }
 
-    private static void KeepKoreanCaretAtEnd(LineEdit input)
+    private void UseNativeNameInput(LineEdit input)
     {
-        var stableText = input.Text;
-        var sawNewJamo = false;
-        var explicitEdit = false;
-        var repairing = false;
-        var revision = 0;
-        static bool IsSyllable(char value) => value is >= '\uAC00' and <= '\uD7A3';
-        static bool IsJamo(char value) => value is >= '\u1100' and <= '\u11FF'
-            or >= '\u3130' and <= '\u318F' or >= '\uA960' and <= '\uA97F'
-            or >= '\uD7B0' and <= '\uD7FF';
-        static bool SameInitialAndVowel(char left, char right) =>
-            (left - '\uAC00') / 28 == (right - '\uAC00') / 28;
-        input.GuiInput += eventInput =>
+        if (!OperatingSystem.IsWindows()) return;
+        Callable.From(() =>
         {
-            if (eventInput is InputEventKey { Pressed: true } key
-                && (key.Keycode is Key.Backspace or Key.Delete || input.HasSelection()))
-                explicitEdit = true;
-        };
-        input.TextChanged += current =>
-        {
-            if (repairing) return;
-            var eventRevision = ++revision;
-            if (explicitEdit || stableText.Length == 0 || current.StartsWith(stableText, StringComparison.Ordinal))
-            {
-                stableText = current;
-                sawNewJamo = false;
-                explicitEdit = false;
-            }
-            else if (stableText.Length > 0 && IsSyllable(stableText[^1])
-                && current.Length > 0 && IsJamo(current[^1])
-                && (current.Length == 1 || current.Length == stableText.Length
-                    && current[..^1] == stableText[..^1]))
-            {
-                sawNewJamo = true;
-                return;
-            }
-            else if (stableText.Length > 0 && IsSyllable(stableText[^1])
-                && current.Length > 0 && IsSyllable(current[^1])
-                && (current.Length == 1 && sawNewJamo
-                    || current.Length == stableText.Length && current[..^1] == stableText[..^1]))
-            {
-                var next = current[^1];
-                if (sawNewJamo || !SameInitialAndVowel(stableText[^1], next))
-                {
-                    stableText += next;
-                    repairing = true;
-                    input.Text = stableText;
-                    input.CaretColumn = stableText.Length;
-                    repairing = false;
-                }
-                else stableText = current;
-                sawNewJamo = false;
-            }
-            else
-            {
-                stableText = current;
-                sawNewJamo = false;
-            }
-            if (stableText.Length == 0 || !stableText.Any(IsSyllable)) return;
-            Callable.From(() =>
-            {
-                if (!GodotObject.IsInstanceValid(input) || input.IsQueuedForDeletion()
-                    || eventRevision != revision || input.HasSelection()) return;
-                repairing = true;
-                if (input.HasImeText()) input.ApplyIme();
-                if (input.Text != stableText) input.Text = stableText;
-                if (input.CaretColumn < input.Text.Length) input.CaretColumn = input.Text.Length;
-                repairing = false;
-            }).CallDeferred();
-        };
+            if (_editorModal is null || !GodotObject.IsInstanceValid(input)
+                || input.IsQueuedForDeletion() || !input.IsInsideTree()) return;
+            _nativeNameEdit = NativeNameEdit.Create(input, GetViewport());
+            if (_nativeNameEdit is null && DisplayServer.GetName() != "headless")
+                GD.PushWarning("Windows 이름 입력창을 만들지 못해 기본 입력창을 사용합니다.");
+        }).CallDeferred();
+    }
+
+    public override void _ExitTree()
+    {
+        _nativeNameEdit?.Dispose();
+        _nativeNameEdit = null;
     }
 
     private void OpenCityEditor(Vector2I tile, MapEditorSite? existing)
@@ -458,8 +407,8 @@ public sealed partial class EditMapScene
             CustomMinimumSize = new Vector2(0f, 38f), SizeFlagsHorizontal = SizeFlags.ExpandFill,
             KeepEditingOnTextSubmit = true };
         name.AddThemeFontOverride("font", _font);
-        KeepKoreanCaretAtEnd(name);
         content.AddChild(name);
+        UseNativeNameInput(name);
         var sizes = new[] { "small", "medium", "large" };
         var size = SelectOptions(content, "성 종류", ["소형성", "중형성", "대형성"],
             Math.Max(0, Array.IndexOf(sizes, existing?.Size ?? "small")));
@@ -471,8 +420,8 @@ public sealed partial class EditMapScene
         actions.AddChild(save);
         save.Pressed += () =>
         {
-            name.ApplyIme();
-            var trimmed = name.Text.Replace("\r", "").Replace("\n", "").Trim();
+            if (_nativeNameEdit is null) name.ApplyIme();
+            var trimmed = (_nativeNameEdit?.Text ?? name.Text).Replace("\r", "").Replace("\n", "").Trim();
             if (trimmed.Length == 0 || _sites.Any(site => site.Kind == "city" &&
                     site.Id != existing?.Id && site.Name == trimmed))
             {
@@ -750,8 +699,8 @@ public sealed partial class EditMapScene
             CustomMinimumSize = new Vector2(0f, 38f), SizeFlagsHorizontal = SizeFlags.ExpandFill,
             KeepEditingOnTextSubmit = true };
         name.AddThemeFontOverride("font", _font);
-        KeepKoreanCaretAtEnd(name);
         content.AddChild(name);
+        UseNativeNameInput(name);
         var sizes = new[] { "small", "medium" };
         var size = SelectOptions(content, "항구 종류", ["소형항", "중형항"],
             Math.Max(0, Array.IndexOf(sizes, existing?.Size ?? "small")));
@@ -765,8 +714,8 @@ public sealed partial class EditMapScene
         var apply = new Button { Text = "적용", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         apply.Pressed += () =>
         {
-            name.ApplyIme();
-            var trimmed = name.Text.Replace("\r", "").Replace("\n", "").Trim();
+            if (_nativeNameEdit is null) name.ApplyIme();
+            var trimmed = (_nativeNameEdit?.Text ?? name.Text).Replace("\r", "").Replace("\n", "").Trim();
             if (trimmed.Length == 0 || _sites.Any(site => site.Kind == "port" &&
                     site.Id != existing?.Id && site.Name == trimmed))
             {

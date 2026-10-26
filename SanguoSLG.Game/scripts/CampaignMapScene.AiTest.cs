@@ -49,7 +49,7 @@ public sealed partial class CampaignMapScene
 
     private void AddAiTestCaseSelector(CanvasLayer layer)
     {
-        if (_aiTestFixture is null) return;
+        if (_aiTestFixture is null || !OS.GetCmdlineUserArgs().Contains("--aitest")) return;
 
         var panel = new PanelContainer
         {

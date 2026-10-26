@@ -527,7 +527,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     public void Build(MapView3D view, CameraController3D camera, string dataDirectory)
     {
-        if (_aiTestFixture is not null) Engine.TimeScale = 6.0;
+        if (OS.GetCmdlineUserArgs().Contains("--aitest")) Engine.TimeScale = 6.0;
         _view = view;
         _camera = camera;
         _camera.InputBlocked = () => IsModalBlockingMapNavigation() || _armyDragCandidateId >= 0;
@@ -668,7 +668,7 @@ public sealed partial class CampaignMapScene : Node3D
             RuinStates = (_aiTestFixture?.Ruins ?? scenario.RuinList)
                 .Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
         };
-        if (_aiTestFixture is not null) SeedAiTestConstructionBuilders();
+        if (_aiTestFixture is not null && !args.Contains("--newmap")) SeedAiTestConstructionBuilders();
         if (args.Contains("--maptest") && _aiTestFixture is null)
         {
             SeedFieldBuildingSamples();
@@ -796,7 +796,19 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestgeneralstoryqa")) CallDeferred(nameof(RunGeneralStoryQa));
         if (args.Contains("--maptestclimateqa")) CallDeferred(nameof(RunClimateQa));
         if (args.Contains("--maptestclimateadvanceqa")) CallDeferred(nameof(RunClimateAdvanceQa));
+        if (args.Contains("--newmapqa"))
+        {
+            var passed = _state.Factions.Count == 2 && _state.Cities.Count > 2
+                && _state.Cities.All(city => _map.Contains(city.Position))
+                && _state.Cities.Any(city => city.Owner == Player)
+                && _state.Cities.Any(city => city.Owner != Player);
+            GD.Print($"[newmap-qa] passed={passed} factions={_state.Factions.Count} "
+                + $"cities={_state.Cities.Count} cells={_map.Count}");
+            CallDeferred(nameof(QuitNewMapQa), passed);
+        }
     }
+
+    private void QuitNewMapQa(bool passed) => GetTree().Quit(passed ? 0 : 1);
 
     private void SeedFieldBuildingSamples()
     {
@@ -3659,8 +3671,9 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // ── 테스트 시나리오: 지형 다양 맵, 위(성 1) vs 촉(성 2 — 성도·한중) ──
-    private static readonly AiTestFixture? _aiTestFixture = OS.GetCmdlineUserArgs().Contains("--aitest")
-        ? AiTestFixture.Load() : null;
+    private static readonly AiTestFixture? _aiTestFixture = OS.GetCmdlineUserArgs().Contains("--newmap")
+        ? AiTestFixture.LoadNewMap()
+        : OS.GetCmdlineUserArgs().Contains("--aitest") ? AiTestFixture.Load() : null;
     private static readonly HexMap _map = _aiTestFixture?.Map ?? BuildTestMap();
 
     /// <summary>렌더(GameRoot3D)와 시뮬(passability)이 같은 지형을 쓰도록 공유하는 맵.</summary>

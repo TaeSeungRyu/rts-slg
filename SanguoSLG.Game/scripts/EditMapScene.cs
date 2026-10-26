@@ -90,6 +90,16 @@ public sealed partial class EditMapScene : Control
         _south = bounds.GetProperty("south").GetDouble();
         _north = bounds.GetProperty("north").GetDouble();
         InitializeEditorSites();
+        if (OS.GetCmdlineUserArgs().Contains("--export-newmap-if-missing"))
+        {
+            var presetPath = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
+            if (!File.Exists(presetPath))
+                SanguoSLG.Core.Data.ScenarioMapPresetStore.Save(presetPath,
+                    new SanguoSLG.Core.Data.ScenarioMapPreset(1, _width, _height, _rows.ToArray(), _sites.ToArray()));
+            GD.Print($"[newmap-preset] path={presetPath}");
+            GetTree().Quit();
+            return;
+        }
         SetAnchorsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Stop;
         Build3DView();
@@ -479,22 +489,9 @@ public sealed partial class EditMapScene : Control
         valid &= koreanNameInput is not null;
         if (koreanNameInput is not null)
         {
-            koreanNameInput.Text = "가";
-            koreanNameInput.CaretColumn = 0;
-            koreanNameInput.EmitSignal(LineEdit.SignalName.TextChanged, koreanNameInput.Text);
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            valid &= koreanNameInput.CaretColumn == 1;
-            koreanNameInput.Text = "나";
-            koreanNameInput.EmitSignal(LineEdit.SignalName.TextChanged, koreanNameInput.Text);
-            koreanNameInput.Text = "나";
-            koreanNameInput.CaretColumn = 0;
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            valid &= koreanNameInput.Text == "가나" && koreanNameInput.CaretColumn == 2;
-            koreanNameInput.Text = "한";
-            koreanNameInput.CaretColumn = 1;
-            koreanNameInput.InsertTextAtCaret("글시험성");
+            // A headless signal is not an IME composition. Check saving Unicode
+            // here; Korean typing must be checked through the visible Windows UI.
+            koreanNameInput.Text = "한글시험성";
             _editorModal?.FindChildren("*", "Button", true, false).OfType<Button>()
                 .First(button => button.Text == "적용").EmitSignal(Button.SignalName.Pressed);
             valid &= _sites.Any(site => site.Name == "한글시험성");
@@ -536,27 +533,7 @@ public sealed partial class EditMapScene : Control
             valid &= koreanPortInput is not null;
             if (koreanPortInput is not null)
             {
-                koreanPortInput.Text = "가";
-                koreanPortInput.CaretColumn = 0;
-                koreanPortInput.EmitSignal(LineEdit.SignalName.TextChanged, koreanPortInput.Text);
-                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                valid &= koreanPortInput.CaretColumn == 1;
-                koreanPortInput.Text = "간";
-                koreanPortInput.EmitSignal(LineEdit.SignalName.TextChanged, koreanPortInput.Text);
-                valid &= koreanPortInput.Text == "간";
-                koreanPortInput.Text = "ㄴ";
-                koreanPortInput.EmitSignal(LineEdit.SignalName.TextChanged, koreanPortInput.Text);
-                koreanPortInput.Text = "나";
-                koreanPortInput.EmitSignal(LineEdit.SignalName.TextChanged, koreanPortInput.Text);
-                koreanPortInput.Text = "나";
-                koreanPortInput.CaretColumn = 0;
-                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                valid &= koreanPortInput.Text == "간나" && koreanPortInput.CaretColumn == 2;
-                koreanPortInput.Text = "한";
-                koreanPortInput.CaretColumn = 1;
-                koreanPortInput.InsertTextAtCaret("글시험항");
+                koreanPortInput.Text = "한글시험항";
                 _editorModal?.FindChildren("*", "Button", true, false).OfType<Button>()
                     .First(button => button.Text == "적용").EmitSignal(Button.SignalName.Pressed);
                 valid &= _sites.Any(site => site.Name == "한글시험항");
