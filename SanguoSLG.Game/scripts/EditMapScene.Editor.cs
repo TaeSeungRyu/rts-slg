@@ -484,6 +484,8 @@ public sealed partial class EditMapScene
         chars[tile.X] = code;
         _rows[tile.Y] = new string(chars);
         if (_visibleTiles.Remove(tile, out var visual)) visual.QueueFree();
+        foreach (var neighbor in Axial(tile).Neighbors().Select(Offset).Where(Inside))
+            if (_visibleTiles.Remove(neighbor, out var neighborVisual)) neighborVisual.QueueFree();
         RefreshVisibleTerrain();
         QueueRedraw();
     }

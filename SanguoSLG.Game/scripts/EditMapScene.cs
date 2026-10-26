@@ -404,6 +404,12 @@ public sealed partial class EditMapScene : Control
         else valid = false;
         valid &= _mapViewport is not null && _mapCamera.Current && _visibleTiles.Count > 100
             && _visibleTiles.Count < _width * _height;
+        var visibleRiver = _visibleTiles.Keys.FirstOrDefault(tile => _rows[tile.Y][tile.X] is 'R' or 'B');
+        if (_visibleTiles.ContainsKey(visibleRiver) && _rows[visibleRiver.Y][visibleRiver.X] is 'R' or 'B')
+        {
+            var (_, expectedRotation) = TerrainVisualFor(visibleRiver);
+            valid &= Mathf.IsEqualApprox(_visibleTiles[visibleRiver].RotationDegrees.Y, expectedRotation);
+        }
         var vacant = Enumerable.Range(0, _height)
             .SelectMany(row => Enumerable.Range(0, _width).Select(column => new Vector2I(column, row)))
             .FirstOrDefault(tile => _rows[tile.Y][tile.X] == 'P' && SiteAt(tile) is null);

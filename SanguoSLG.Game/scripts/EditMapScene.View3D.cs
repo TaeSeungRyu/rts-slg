@@ -45,6 +45,23 @@ public sealed partial class EditMapScene
         var terrain => _mapView.TileScene(terrain) ?? _mapView.TileScene(TerrainType.Plains)!,
     };
 
+    private (PackedScene Scene, float Rotation) TerrainVisualFor(Vector2I tile)
+    {
+        var code = _rows[tile.Y][tile.X];
+        if (code is not ('R' or 'B')) return (TerrainScene(code), 0f);
+        var center = Axial(tile);
+        var angles = center.Neighbors().Select(neighbor => new
+            {
+                Tile = Offset(neighbor),
+                Angle = Mathf.RadToDeg(Mathf.Atan2(
+                    (_mapView.HexToWorld(neighbor) - _mapView.HexToWorld(center)).Z,
+                    (_mapView.HexToWorld(neighbor) - _mapView.HexToWorld(center)).X)),
+            })
+            .Where(item => Inside(item.Tile) && _rows[item.Tile.Y][item.Tile.X] is 'R' or 'B' or 'W' or 'O')
+            .Select(item => item.Angle).ToArray();
+        return _mapView.RiverModelForConnections(PreviewTerrain[code], angles);
+    }
+
     private void Build3DView()
     {
         var container = new SubViewportContainer
@@ -149,9 +166,10 @@ public sealed partial class EditMapScene
             required.Add(tile);
             if (facilityTiles.Contains(tile)) continue;
             if (_visibleTiles.ContainsKey(tile)) continue;
-            var scene = TerrainScene(_rows[row][col]);
+            var (scene, rotation) = TerrainVisualFor(tile);
             var visual = scene.Instantiate<Node3D>();
             visual.Position = _mapView.HexToWorld(Axial(tile));
+            visual.RotationDegrees = new Vector3(0f, rotation, 0f);
             _visibleTerrain.AddChild(visual);
             _visibleTiles[tile] = visual;
             ApplyTerrainFilterToVisual(visual, _rows[row][col]);

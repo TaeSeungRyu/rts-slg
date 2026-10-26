@@ -704,23 +704,26 @@ public partial class MapView3D : Node3D
                 continue;
             }
 
-            if (map.TerrainAt(neighbor) is TerrainType.River or TerrainType.Bridge)
+            if (map.TerrainAt(neighbor) is TerrainType.River or TerrainType.Bridge
+                or TerrainType.WaterShallow or TerrainType.WaterDeep)
             {
                 var delta = HexToWorld(neighbor) - HexToWorld(tile);
                 connections.Add(Mathf.RadToDeg(Mathf.Atan2(delta.Z, delta.X)));
             }
         }
 
-        var (scene, yRotation) = SelectRiverModel(terrain, connections);
+        var (scene, yRotation) = RiverModelForConnections(terrain, connections);
         var instance = scene.Instantiate<Node3D>();
         instance.Position = HexToWorld(tile);
         instance.RotationDegrees = new Vector3(0f, yRotation, 0f);
         AddChild(instance);
     }
 
-    private (PackedScene Scene, float RotationY) SelectRiverModel(
-        TerrainType terrain, System.Collections.Generic.List<float> connections)
+    public (PackedScene Scene, float RotationY) RiverModelForConnections(
+        TerrainType terrain, IReadOnlyList<float> connections)
     {
+        if (connections.Count >= 3)
+            return (_water, 0f);
         if (connections.Count == 0)
         {
             return (_riverEnd, 0f);
