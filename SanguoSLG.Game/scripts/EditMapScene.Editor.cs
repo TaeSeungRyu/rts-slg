@@ -209,8 +209,6 @@ public sealed partial class EditMapScene
         palette.AddThemeStyleboxOverride("panel", EditorFrame(new Color("1b0f0d"), 2));
         AddChild(palette);
         _editorPalette = palette;
-        palette.Position = new Vector2(Mathf.Clamp(screen.X + 12f, 6f, Mathf.Max(6f, Size.X - 245f)),
-            Mathf.Clamp(screen.Y + 12f, 118f, Mathf.Max(118f, Size.Y - 340f)));
         palette.CustomMinimumSize = new Vector2(232, 0);
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 5);
@@ -278,6 +276,22 @@ public sealed partial class EditMapScene
             _selectedTile = null;
             _selectionVisual.Visible = false;
         });
+        void PlacePalette()
+        {
+            if (!GodotObject.IsInstanceValid(palette) || palette.IsQueuedForDeletion()) return;
+            var panelSize = palette.GetCombinedMinimumSize();
+            var width = Mathf.Max(panelSize.X, palette.Size.X);
+            var height = Mathf.Max(panelSize.Y, palette.Size.Y);
+            var maxX = Mathf.Max(6f, Size.X - width - 8f);
+            var maxY = Mathf.Max(118f, Size.Y - height - 42f);
+            var x = screen.X + 12f;
+            var y = screen.Y + 12f;
+            if (x + width > Size.X - 8f) x = screen.X - width - 12f;
+            if (y + height > Size.Y - 42f) y = screen.Y - height - 12f;
+            palette.Position = new Vector2(Mathf.Clamp(x, 6f, maxX), Mathf.Clamp(y, 118f, maxY));
+        }
+        palette.Resized += PlacePalette;
+        PlacePalette();
     }
 
     private static StyleBoxFlat EditorFrame(Color background, int border)

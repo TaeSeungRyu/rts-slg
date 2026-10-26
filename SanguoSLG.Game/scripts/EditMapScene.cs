@@ -539,6 +539,11 @@ public sealed partial class EditMapScene : Control
                 .Any(button => button.Text == "성 추가" && !button.Disabled)
             && _editorPalette.FindChildren("*", "Button", true, false).OfType<Button>()
                 .Any(button => button.Text == "성 편집" && button.Disabled);
+        ShowEditorPalette(vacant, new Vector2(Size.X - 20f, Size.Y - 20f));
+        valid &= _editorPalette is not null
+            && _editorPalette.Position.X >= 0f && _editorPalette.Position.Y >= 118f
+            && _editorPalette.Position.X + _editorPalette.GetCombinedMinimumSize().X <= Size.X + 1f
+            && _editorPalette.Position.Y + _editorPalette.GetCombinedMinimumSize().Y <= Size.Y - 38f;
         var qaPresetPath = Path.Combine(Path.GetTempPath(), $"editmap-qa-{System.Environment.ProcessId}.json");
         try
         {
