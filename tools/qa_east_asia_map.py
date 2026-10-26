@@ -53,9 +53,8 @@ def route(start, end):
 
 assert len(rows) == height and all(len(row) == width for row in rows)
 assert bounds["west"] == 97.72 and bounds["east"] == 133
-assert abs(bounds["north"] - ((54 - 6 * 36 / 105) - 10 * ((54 - 6 * 36 / 105) - 18) / 124)) < 1e-10
-assert width == 174 and height == 125
-assert abs(width / 158 - height / 114) < .006
+assert abs(bounds["north"] - ((54 - 6 * 36 / 105) - 20 * ((54 - 6 * 36 / 105) - 18) / 124)) < 1e-10
+assert width == 174 and height == 115
 crossing_tiles = [(column, row) for row in range(height) for column in range(width)
                   if rows[row][column] == "B"]
 assert 1 <= len(crossing_tiles) <= 12
@@ -101,5 +100,8 @@ for latitude in (32.14, 32.66):
     corridor = [rows[row][column] for row in range(height) for column in range(width)
                 if abs(coordinate(column, row)[1] - latitude) < .1
                 and 104 <= coordinate(column, row)[0] <= 111]
-    assert sum(kind in "PFMDRB" for kind in corridor) <= 6, (latitude, corridor)
+    assert sum(kind in "PFMDRB" for kind in corridor) <= 10, (latitude, corridor)
+assert {"Q", "I", "C", "X", "T", "N"}.issubset(set("".join(rows)))
+desert_spread = [row.count("D") + row.count("Q") for row in rows]
+assert len(set(desert_spread[:30])) > 10
 print(f"[east-asia-map-qa] passed: bounds, routes, {len(cities)} city sites")

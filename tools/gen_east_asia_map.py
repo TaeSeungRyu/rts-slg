@@ -10,8 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "SanguoSLG.Game/assets/maps/east-asia-map.json"
 CITY_SITES = ROOT / "data/east-asia-city-sites.json"
 LAND_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson"
-WEST, EAST, SOUTH, NORTH = 97.72, 133.0, 18.0, 51.94285714285714 - 10 * (51.94285714285714 - 18.0) / 124
-WIDTH, HEIGHT = 174, 125
+WEST, EAST, SOUTH, NORTH = 97.72, 133.0, 18.0, 51.94285714285714 - 20 * (51.94285714285714 - 18.0) / 124
+WIDTH, HEIGHT = 174, 115
 
 
 def rings_of(geometry):
@@ -121,8 +121,10 @@ def terrain(lon, lat, column, row):
         return "M" if noise < 0.62 else "H"
     if any(near_line(lon, lat, chain, width) for chain, width in MOUNTAIN_CHAINS):
         return "M" if noise < 0.83 else "H"
-    if (78 < lon < 91 and 37 < lat < 42) or (93 < lon < 113 and 40 < lat < 46):
-        return "D" if noise < 0.88 else "P"
+    desert_radius = ((lon - 103.0) / 10.2) ** 2 + ((lat - 42.9) / 3.9) ** 2
+    desert_edge = 1 + 0.15 * math.sin(lon * 1.7 + lat * 0.4) + 0.10 * math.cos(lon * 2.1 - lat)
+    if desert_radius < desert_edge:
+        return "D" if noise < max(0.35, 0.92 - desert_radius * 0.27) else "P"
     if any(near_line(lon, lat, river, 0.28) for river in RIVERS):
         return "R"
     if (lat < 34 and lon > 102 or 30 < lat < 40 and 112 < lon < 122
@@ -285,16 +287,44 @@ def main():
                     and abs(lon - YANGTZE_CROSSING[0]) < 0.25
                     and abs(lat - YANGTZE_CROSSING[1]) < 0.75):
                 rows[row][column] = "B"
+    routes = route_network(rows)
+    cities = city_positions(rows)
+    reserved = {tuple(tile) for route in routes for tile in route["tiles"]}
+    reserved.update((x, y) for city in cities
+                    for y in range(max(0, city["tile"][1] - 3), min(HEIGHT, city["tile"][1] + 4))
+                    for x in range(max(0, city["tile"][0] - 3), min(WIDTH, city["tile"][0] + 4)))
+    for row in range(HEIGHT):
+        latitude = NORTH - (row + 0.5) * (NORTH - SOUTH) / HEIGHT
+        for column in range(WIDTH):
+            if (column, row) in reserved:
+                continue
+            sample = (column * 31 + row * 47 + column * row * 7) % 97
+            current = rows[row][column]
+            if current == "D" and sample < 7:
+                rows[row][column] = "Q"
+            elif current in "HM" and latitude > 36 and sample < 9:
+                rows[row][column] = "I"
+            elif current == "H" and sample < 7:
+                rows[row][column] = "C" if sample < 4 else "X"
+            elif current == "M" and sample < 4:
+                rows[row][column] = "T"
+            elif current == "P" and sample < 2 and any(
+                    0 <= row + dy < HEIGHT and 0 <= column + dx < WIDTH
+                    and rows[row + dy][column + dx] in "RW"
+                    for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1))):
+                rows[row][column] = "N"
     result = {
         "name": "동아시아 시나리오 기본 지형",
         "source": "Natural Earth 1:50m land (public domain); 산맥·하천·식생은 게임용 수작업 배치",
         "bounds": {"west": WEST, "east": EAST, "south": SOUTH, "north": NORTH},
         "width": WIDTH, "height": HEIGHT,
         "legend": {"P": "plains", "F": "forest", "M": "mountain", "H": "rock_mountain",
-                   "D": "desert", "R": "river", "B": "river_crossing", "W": "water_shallow", "O": "water_deep"},
+                   "D": "desert", "R": "river", "B": "river_crossing", "W": "water_shallow",
+                   "O": "water_deep", "Q": "desert_cactus", "I": "ice_mountain", "C": "cliff",
+                   "X": "karst", "T": "rock_hill", "N": "swamp"},
         "rows": ["".join(row) for row in rows],
-        "land_routes": route_network(rows),
-        "cities": city_positions(rows),
+        "land_routes": routes,
+        "cities": cities,
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
