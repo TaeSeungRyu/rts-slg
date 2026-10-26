@@ -145,7 +145,7 @@ public sealed partial class EditMapScene
 
     private void PositionCamera()
     {
-        _mapCamera.Position = _cameraTarget + new Vector3(0f, _viewSize * 0.9f, _viewSize * 0.72f);
+        _mapCamera.Position = _cameraTarget + Vector3.Up * _viewSize;
         _mapCamera.LookAt(_cameraTarget, Vector3.Forward);
         _mapCamera.Size = _viewSize;
     }

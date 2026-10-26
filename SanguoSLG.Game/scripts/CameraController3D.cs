@@ -10,6 +10,7 @@ public partial class CameraController3D : Camera3D
 {
     public System.Func<bool>? InputBlocked { get; set; }
     public bool IsNavigationInputBlocked => InputBlocked?.Invoke() == true;
+    public bool NorthUpPlanView { get; set; }
 
     [Export] public float MinDistance = 2.2f;
     [Export] public float MaxDistance = 50f;
@@ -41,6 +42,7 @@ public partial class CameraController3D : Camera3D
         _pivot = _targetPivot = pivot;
         _distance = _targetDistance = Mathf.Clamp(distance, MinDistance, MaxDistance);
         _yaw = _targetYaw = 0f;
+        if (NorthUpPlanView) Projection = ProjectionType.Orthogonal;
         ApplyTransform();
     }
 
@@ -59,7 +61,7 @@ public partial class CameraController3D : Camera3D
             rotate -= 1f;
         }
 
-        _targetYaw += rotate * Mathf.DegToRad(RotateSpeedDeg) * dt;
+        if (!NorthUpPlanView) _targetYaw += rotate * Mathf.DegToRad(RotateSpeedDeg) * dt;
 
         // WASD / 화살표 키 팬(카메라가 보는 방향 기준)
         var pan = Vector2.Zero;
@@ -124,6 +126,7 @@ public partial class CameraController3D : Camera3D
     // 카메라가 보는 방향의 수평(지면) 기저 벡터.
     private (Vector3 Forward, Vector3 Right) FlatBasis()
     {
+        if (NorthUpPlanView) return (Vector3.Forward, Vector3.Right);
         var forward = -GlobalTransform.Basis.Z;
         var flatForward = new Vector3(forward.X, 0f, forward.Z).Normalized();
         var flatRight = new Vector3(GlobalTransform.Basis.X.X, 0f, GlobalTransform.Basis.X.Z).Normalized();
@@ -132,6 +135,12 @@ public partial class CameraController3D : Camera3D
 
     private void ApplyTransform()
     {
+        if (NorthUpPlanView)
+        {
+            Size = _distance * 1.6f;
+            LookAtFromPosition(_pivot + Vector3.Up * _distance, _pivot, Vector3.Forward);
+            return;
+        }
         var offset = new Vector3(
             Mathf.Sin(_yaw) * Mathf.Cos(_pitch),
             Mathf.Sin(_pitch),
