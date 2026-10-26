@@ -21,6 +21,16 @@ public sealed partial class EditMapScene : Control
         ['B'] = ("큰강 나루", new Color("b5ad8a")),
         ['W'] = ("연안", new Color("72adbc")),
         ['O'] = ("해역", new Color("3b6c87")),
+        ['S'] = ("바위 무더기", new Color("8d9988")),
+        ['T'] = ("바위 언덕", new Color("879080")),
+        ['X'] = ("기암 석림", new Color("737d75")),
+        ['C'] = ("절벽", new Color("77776e")),
+        ['I'] = ("얼음산", new Color("b6d2cb")),
+        ['E'] = ("큰 얼음벽", new Color("add1d2")),
+        ['L'] = ("작은 얼음벽", new Color("abc5cc")),
+        ['N'] = ("늪", new Color("718b74")),
+        ['Q'] = ("선인장 사막", new Color("d0b67b")),
+        ['V'] = ("물가 암초", new Color("7c9e9f")),
     };
     private readonly Vector2[] _hex = Enumerable.Range(0, 6)
         .Select(index => new Vector2(Mathf.Cos(Mathf.Pi / 3f * index) * Radius,

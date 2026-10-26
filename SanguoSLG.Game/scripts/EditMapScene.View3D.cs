@@ -30,6 +30,11 @@ public sealed partial class EditMapScene
         ['D'] = TerrainType.Desert, ['R'] = TerrainType.River,
         ['B'] = TerrainType.Bridge, ['W'] = TerrainType.WaterShallow,
         ['O'] = TerrainType.WaterDeep,
+        ['S'] = TerrainType.Rocks, ['T'] = TerrainType.RockHill,
+        ['X'] = TerrainType.Karst, ['C'] = TerrainType.Cliff,
+        ['I'] = TerrainType.IceMountain, ['E'] = TerrainType.IceWallLarge,
+        ['L'] = TerrainType.IceWallSmall, ['N'] = TerrainType.Swamp,
+        ['Q'] = TerrainType.DesertCactus, ['V'] = TerrainType.WaterRocks,
     };
 
     private void Build3DView()
@@ -179,11 +184,12 @@ public sealed partial class EditMapScene
             _visibleCities[tile].QueueFree();
             _visibleCities.Remove(tile);
         }
-        foreach (var site in _sites.Where(site => site.Kind is "facility" or "port"))
+        foreach (var site in _sites.Where(site => site.Kind is "facility" or "port" or "landmark"))
         {
             var tile = new Vector2I(site.Column, site.Row);
             if (!required.Contains(tile) || _visibleStructures.ContainsKey(site.Id)) continue;
-            var asset = site.Kind == "port" ? $"port-{site.Size}" : site.Size switch
+            var asset = site.Kind == "landmark" ? "waterfall-cliff"
+                : site.Kind == "port" ? $"port-{site.Size}" : site.Size switch
             {
                 "paddy" => "paddy",
                 "farm" => "building-farm",

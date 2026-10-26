@@ -130,7 +130,7 @@ public sealed partial class EditMapScene
         bar.AddChild(_saveDraftButton);
     }
 
-    private static bool IsLand(char code) => code is 'P' or 'F' or 'M' or 'D' or 'B';
+    private static bool IsLand(char code) => code is 'P' or 'F' or 'M' or 'D' or 'B' or 'S' or 'T' or 'N' or 'Q';
     private bool Inside(Vector2I tile) => tile.X >= 0 && tile.X < _width && tile.Y >= 0 && tile.Y < _height;
     private static CastleSize CastleKind(string size) => size switch
     {
@@ -143,7 +143,9 @@ public sealed partial class EditMapScene
     {
         var center = new Vector2I(site.Column, site.Row);
         var axial = Axial(center);
-        var offsets = site.Kind == "city" ? CastleFootprint.OffsetsFor(CastleKind(site.Size))
+        var offsets = site.Kind == "landmark"
+            ? FeatureFootprint.OffsetsFor(FeatureType.WaterfallCliff)
+            : site.Kind == "city" ? CastleFootprint.OffsetsFor(CastleKind(site.Size))
             : site.Kind == "port" && site.Size == "medium"
                 ? FeatureFootprint.OffsetsFor(FeatureType.PortMedium)
                 : [new HexCoord(0, 0)];
@@ -156,7 +158,9 @@ public sealed partial class EditMapScene
     private bool CanPlace(MapEditorSite candidate)
     {
         var cells = Footprint(candidate).ToArray();
-        return cells.All(cell => Inside(cell) && IsLand(_rows[cell.Y][cell.X]) &&
+        return cells.All(cell => Inside(cell) &&
+            (candidate.Kind == "landmark" ? IsLand(_rows[cell.Y][cell.X]) || _rows[cell.Y][cell.X] is 'H' or 'X' or 'C'
+                : IsLand(_rows[cell.Y][cell.X])) &&
             !_sites.Where(site => site.Id != candidate.Id).Any(site => Footprint(site).Contains(cell)));
     }
 
@@ -208,7 +212,7 @@ public sealed partial class EditMapScene
         content.AddChild(new Label { Text = terrainInfo, Modulate = new Color("eee0bf") });
         if (site is not null)
         {
-            var kindName = site.Kind switch { "city" => "성", "port" => "항구", _ => "생산 시설" };
+            var kindName = site.Kind switch { "city" => "성", "port" => "항구", "landmark" => "폭포 절벽", _ => "생산 시설" };
             content.AddChild(new Label { Text = $"{kindName}: {site.Name} · 방향 {site.Direction + 1}/6",
                 Modulate = new Color("e8c475") });
         }
@@ -245,6 +249,12 @@ public sealed partial class EditMapScene
             () => OpenPortEditor(tile, null));
         AddCommand("항구 편집", site?.Kind == "port", "항구를 선택하세요.",
             () => OpenPortEditor(tile, site));
+        AddCommand("폭포 절벽 추가", site is null && CanPlace(new MapEditorSite(_nextSiteId,
+                "폭포 절벽", "landmark", "waterfall_cliff", tile.X, tile.Y)),
+            "3칸 발자국이 육상에 있고 다른 배치물과 겹치지 않아야 합니다.",
+            () => PlaceWaterfall(tile));
+        AddCommand("폭포 절벽 제거", site?.Kind == "landmark", "폭포 절벽을 선택하세요.",
+            () => RemoveWaterfall(tile, site));
         AddCommand("닫기", true, "", () =>
         {
             palette.QueueFree();
@@ -261,6 +271,28 @@ public sealed partial class EditMapScene
         frame.SetCornerRadiusAll(5);
         frame.SetContentMarginAll(6);
         return frame;
+    }
+
+    private void PlaceWaterfall(Vector2I tile)
+    {
+        var site = new MapEditorSite(_nextSiteId, "폭포 절벽", "landmark", "waterfall_cliff", tile.X, tile.Y);
+        if (!CanPlace(site)) return;
+        var before = Draft();
+        _sites.Add(site);
+        _nextSiteId++;
+        RecordChange(before);
+        RefreshSiteVisuals();
+        ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
+    }
+
+    private void RemoveWaterfall(Vector2I tile, MapEditorSite? site)
+    {
+        if (site?.Kind != "landmark") return;
+        var before = Draft();
+        _sites.Remove(site);
+        RecordChange(before);
+        RefreshSiteVisuals();
+        ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
     }
 
     private VBoxContainer OpenEditorModal(string title)

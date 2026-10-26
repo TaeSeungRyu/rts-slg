@@ -17,6 +17,16 @@ public static class ScenarioMapPresetApplier
         ['B'] = TerrainType.Bridge,
         ['W'] = TerrainType.WaterShallow,
         ['O'] = TerrainType.WaterDeep,
+        ['S'] = TerrainType.Rocks,
+        ['T'] = TerrainType.RockHill,
+        ['X'] = TerrainType.Karst,
+        ['C'] = TerrainType.Cliff,
+        ['I'] = TerrainType.IceMountain,
+        ['E'] = TerrainType.IceWallLarge,
+        ['L'] = TerrainType.IceWallSmall,
+        ['N'] = TerrainType.Swamp,
+        ['Q'] = TerrainType.DesertCactus,
+        ['V'] = TerrainType.WaterRocks,
     };
 
     public static Scenario Apply(Scenario source, ScenarioMapPreset preset)
@@ -87,7 +97,9 @@ public static class ScenarioMapPresetApplier
         {
             Map = map,
             Cities = cities,
-            Features = [],
+            Features = preset.Sites.Where(site => site.Kind == "landmark" && site.Size == "waterfall_cliff")
+                .Select(site => new MapFeature(FeatureType.WaterfallCliff,
+                    preset.ToAxial(site.Column, site.Row))).ToArray(),
             Conditions = new TileConditionMap(),
             Postings = source.PostingList.Select(posting =>
             {

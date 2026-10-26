@@ -95,4 +95,22 @@ public sealed class ScenarioMapPresetTests
         blocked[offset.Row] = blocked[offset.Row][..offset.Column] + "W" + blocked[offset.Row][(offset.Column + 1)..];
         Assert.Throws<InvalidDataException>(() => (preset with { Rows = blocked }).Validate());
     }
+
+    [Fact]
+    public void AdditionalTerrainAndWaterfallArePresentInNewCampaign()
+    {
+        var source = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
+        var preset = new ScenarioMapPreset(1, 8, 5,
+            ["PSTXCINQ", "PELVPPPP", "PPPPPPPP", "PPPPPPPP", "PPPPPPPP"],
+            [new MapEditorSite(1, "성", "city", "small", 0, 3),
+                new MapEditorSite(2, "폭포 절벽", "landmark", "waterfall_cliff", 3, 2)]);
+        var campaign = ScenarioMapPresetApplier.Apply(source, preset);
+        Assert.Equal(TerrainType.Rocks, campaign.Map.TerrainAt(preset.ToAxial(1, 0)));
+        Assert.Equal(TerrainType.Cliff, campaign.Map.TerrainAt(preset.ToAxial(4, 0)));
+        Assert.Contains(campaign.Features, feature => feature.Type == FeatureType.WaterfallCliff);
+        Assert.Throws<InvalidDataException>(() => (preset with
+        {
+            Sites = [..preset.Sites, new MapEditorSite(3, "중복", "city", "small", 4, 3)]
+        }).Validate());
+    }
 }

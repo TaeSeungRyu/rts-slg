@@ -36,7 +36,7 @@ public sealed record ScenarioMapPreset(int Version, int Width, int Height, IRead
     public void Validate()
     {
         if (Version != 1 || Width <= 0 || Height <= 0 || Rows.Count != Height ||
-            Rows.Any(row => row.Length != Width || row.Any(code => !"PFMHDRBWO".Contains(code))))
+            Rows.Any(row => row.Length != Width || row.Any(code => !"PFMHDRBWOSTXCIELNQV".Contains(code))))
             throw new InvalidDataException("맵 크기, 버전 또는 지형 코드가 올바르지 않습니다.");
         var ids = new HashSet<int>();
         foreach (var site in Sites)
@@ -44,9 +44,10 @@ public sealed record ScenarioMapPreset(int Version, int Width, int Height, IRead
             if (site.Id <= 0 || !ids.Add(site.Id) || string.IsNullOrWhiteSpace(site.Name) ||
                 site.Direction is < 0 or > 5 || site.Column < 0 || site.Column >= Width ||
                 site.Row < 0 || site.Row >= Height ||
-                site.Kind is not ("city" or "port" or "facility") ||
+                site.Kind is not ("city" or "port" or "facility" or "landmark") ||
                 site.Kind == "city" && site.Size is not ("small" or "medium" or "large") ||
                 site.Kind == "port" && site.Size is not ("small" or "medium") ||
+                site.Kind == "landmark" && site.Size != "waterfall_cliff" ||
                 site.Kind == "facility" && site.Size is not ("paddy" or "farm" or "village" or "workshop"))
                 throw new InvalidDataException("맵 배치물의 ID, 이름, 위치 또는 방향이 올바르지 않습니다.");
         }
@@ -61,7 +62,9 @@ public sealed record ScenarioMapPreset(int Version, int Width, int Height, IRead
         foreach (var site in Sites)
         {
             var anchor = ToAxial(site.Column, site.Row);
-            var offsets = site.Kind == "city" ? CastleFootprint.OffsetsFor(site.Size switch
+            var offsets = site.Kind == "landmark"
+                ? FeatureFootprint.OffsetsFor(FeatureType.WaterfallCliff)
+                : site.Kind == "city" ? CastleFootprint.OffsetsFor(site.Size switch
             {
                 "large" => CastleSize.Large,
                 "medium" => CastleSize.Medium,
@@ -75,7 +78,8 @@ public sealed record ScenarioMapPreset(int Version, int Width, int Height, IRead
                 var column = tile.Q;
                 var row = tile.R + (column - (column & 1)) / 2;
                 if (column < 0 || column >= Width || row < 0 || row >= Height ||
-                    !"PFMDB".Contains(Rows[row][column]) || !occupied.Add(tile))
+                    !(site.Kind == "landmark" ? "PFMDBSTNQHXC" : "PFMDBSTNQ")
+                        .Contains(Rows[row][column]) || !occupied.Add(tile))
                     throw new InvalidDataException("배치물 발자국이 지도 밖, 물/험산 또는 다른 배치물과 겹칩니다.");
             }
             if (site.Kind == "port" && !footprint.Any(tile =>
