@@ -200,8 +200,8 @@ public partial class GeneralEditorScene : Control
         _mightInput = AddStat(statRow, "무력");
         _intellectInput = AddStat(statRow, "지력");
         _politicsInput = AddStat(statRow, "정치");
-        var recruitPointBox = new VBoxContainer { CustomMinimumSize = new Vector2(150, 0) };
-        recruitPointBox.AddChild(new Label { Text = "요구 영입 포인트", HorizontalAlignment = HorizontalAlignment.Center });
+        var recruitPointBox = new HBoxContainer();
+        recruitPointBox.AddChild(new Label { Text = "영입 포인트", CustomMinimumSize = new Vector2(130, 0) });
         _recruitPointInput = new SpinBox
         {
             MinValue = 0,
@@ -212,7 +212,7 @@ public partial class GeneralEditorScene : Control
         };
         _recruitPointInput.ValueChanged += _ => UpdateChangePreview();
         recruitPointBox.AddChild(_recruitPointInput);
-        statRow.AddChild(recruitPointBox);
+        overview.AddChild(recruitPointBox);
         var requiredRow = new HBoxContainer();
         requiredRow.AddChild(new Label { Text = "영입 선행 장수", CustomMinimumSize = new Vector2(130, 0) });
         _requiredGeneralInput = new OptionButton
