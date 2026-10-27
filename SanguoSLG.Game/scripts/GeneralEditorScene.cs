@@ -86,7 +86,7 @@ public partial class GeneralEditorScene : Control
             OffsetTop = 18,
             OffsetRight = -18,
             OffsetBottom = -18,
-            Theme = BuildTheme(),
+            Theme = GeneralWorkspaceStyle.Theme(),
         };
         AddChild(root);
 
@@ -627,27 +627,7 @@ public partial class GeneralEditorScene : Control
     }
 
     private VBoxContainer AddSection(VBoxContainer parent, string title)
-    {
-        var panel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        panel.AddThemeStyleboxOverride("panel", SectionBox());
-        parent.AddChild(panel);
-
-        var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        box.AddThemeConstantOverride("separation", 5);
-        panel.AddChild(box);
-
-        var label = new Label { Text = title };
-        label.AddThemeFontSizeOverride("font_size", 16);
-        box.AddChild(label);
-
-        var line = new ColorRect
-        {
-            Color = new Color(0.82f, 0.67f, 0.36f, 0.55f),
-            CustomMinimumSize = new Vector2(0, 1),
-        };
-        box.AddChild(line);
-        return box;
-    }
+        => GeneralWorkspaceStyle.Section(parent, title);
 
     private PanelContainer DescriptionPanel(Control content)
     {
@@ -656,7 +636,7 @@ public partial class GeneralEditorScene : Control
             CustomMinimumSize = new Vector2(290, 142),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
-        panel.AddThemeStyleboxOverride("panel", DescriptionBox());
+        panel.AddThemeStyleboxOverride("panel", GeneralWorkspaceStyle.DescriptionBox());
         var scroll = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill };
         panel.AddChild(scroll);
@@ -1371,44 +1351,6 @@ public partial class GeneralEditorScene : Control
 
     private string RepositoryRoot() => Path.GetFullPath(Path.Combine(_dataDirectory, ".."));
 
-    private static Theme BuildTheme()
-    {
-        var theme = new Theme();
-        var font = GD.Load<Font>("res://assets/fonts/Pretendard-SemiBold.otf");
-        theme.DefaultFont = font;
-        theme.DefaultFontSize = 15;
-        return theme;
-    }
-
-    private static StyleBoxFlat SectionBox()
-        => new()
-        {
-            BgColor = new Color(0.08f, 0.055f, 0.045f, 0.92f),
-            BorderColor = new Color(0.82f, 0.67f, 0.36f, 0.65f),
-            BorderWidthLeft = 1,
-            BorderWidthTop = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
-            ContentMarginLeft = 12,
-            ContentMarginTop = 10,
-            ContentMarginRight = 12,
-            ContentMarginBottom = 10,
-        };
-
-    private static StyleBoxFlat DescriptionBox()
-        => new()
-        {
-            BgColor = new Color(0.04f, 0.035f, 0.03f, 0.82f),
-            BorderColor = new Color(0.82f, 0.67f, 0.36f, 0.35f),
-            BorderWidthLeft = 1,
-            BorderWidthTop = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
-            ContentMarginLeft = 10,
-            ContentMarginTop = 8,
-            ContentMarginRight = 10,
-            ContentMarginBottom = 8,
-        };
 
     private static string FindDataDirectory()
     {

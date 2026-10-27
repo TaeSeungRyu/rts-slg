@@ -38,6 +38,7 @@ public partial class GeneralCreatorScene : Control
     private SpinBox _politics = null!;
     private SpinBox _points = null!;
     private Label _status = null!;
+    private Label _overview = null!;
     private GridContainer _portraitGrid = null!;
     private TextureRect _portraitPreview = null!;
     private Label _portraitLabel = null!;
@@ -73,26 +74,28 @@ public partial class GeneralCreatorScene : Control
     private void BuildUi()
     {
         var root = new VBoxContainer { AnchorRight = 1, AnchorBottom = 1,
-            OffsetLeft = 20, OffsetTop = 14, OffsetRight = -20, OffsetBottom = -14 };
+            OffsetLeft = 18, OffsetTop = 18, OffsetRight = -18, OffsetBottom = -18,
+            Theme = GeneralWorkspaceStyle.Theme() };
         root.AddThemeConstantOverride("separation", 10);
         AddChild(root);
         var title = new Label { Text = "신규 장수 생성", HorizontalAlignment = HorizontalAlignment.Center };
-        title.AddThemeFontSizeOverride("font_size", 25);
+        title.AddThemeFontSizeOverride("font_size", 24);
         root.AddChild(title);
+        var toolbar = new HBoxContainer();
+        root.AddChild(toolbar);
         if (ScenarioStartMenu.FromStartMenu)
         {
-            var back = new Button { Text = "시작 화면으로" };
+            var back = new Button { Text = "시작 화면" };
             back.Pressed += () => ScenarioStartMenu.ReturnToStart(GetTree());
-            root.AddChild(back);
+            toolbar.AddChild(back);
         }
-        root.AddChild(new Label { Text = "생성 장수는 새 게임을 시작할 때 영입 후보에 추가됩니다. 초상은 비워둘 수 있습니다.",
-            HorizontalAlignment = HorizontalAlignment.Center });
+        toolbar.AddChild(new Label { Text = "생성 장수는 다음 새 게임부터 영입 후보에 추가됩니다.",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalAlignment = HorizontalAlignment.Center });
         var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        body.AddThemeConstantOverride("separation", 16);
         root.AddChild(body);
-        var left = new VBoxContainer { CustomMinimumSize = new Vector2(275, 0) };
+        var left = new VBoxContainer { CustomMinimumSize = new Vector2(310, 0) };
         body.AddChild(left);
-        left.AddChild(new Label { Text = "생성한 장수" });
+        left.AddChild(new Label { Text = "생성한 장수", HorizontalAlignment = HorizontalAlignment.Center });
         _list = new ItemList { SizeFlagsVertical = SizeFlags.ExpandFill };
         _list.ItemSelected += index => LoadSelected((int)index);
         left.AddChild(_list);
@@ -103,8 +106,14 @@ public partial class GeneralCreatorScene : Control
         delete.Pressed += DeleteSelected;
         left.AddChild(delete);
 
-        var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill };
+        right.AddThemeConstantOverride("separation", 10);
         body.AddChild(right);
+        var overview = GeneralWorkspaceStyle.Section(right, "장수 기본 내용");
+        _overview = new Label { Text = "새 장수", AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        _overview.AddThemeFontSizeOverride("font_size", 18);
+        overview.AddChild(_overview);
         _tabs = new TabContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill };
         right.AddChild(_tabs);
@@ -119,19 +128,19 @@ public partial class GeneralCreatorScene : Control
                 SizeFlagsVertical = SizeFlags.ExpandFill };
             _tabs.AddChild(scroll);
             var content = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            content.AddThemeConstantOverride("separation", 10);
+            content.AddThemeConstantOverride("separation", 8);
             scroll.AddChild(content);
             return content;
         }
-        var portraits = Page("초상");
+        var portraits = Page("초상·얼굴");
         var basic = Page("기본 정보");
-        AddTableHeading(basic, "신상 정보");
+        var identity = GeneralWorkspaceStyle.Section(basic, "신상 정보");
         _name = new LineEdit { MaxLength = 20, PlaceholderText = "장수 이름", KeepEditingOnTextSubmit = true };
         _name.GuiInput += input =>
         {
             if (input is InputEventMouseButton { Pressed: true }) StartNativeNameInput();
         };
-        AddField(basic, "이름", _name);
+        AddField(identity, "이름", _name);
         _gender = new OptionButton();
         _gender.AddItem("남성"); _gender.AddItem("여성");
         _gender.ItemSelected += _ =>
@@ -140,28 +149,28 @@ public partial class GeneralCreatorScene : Control
                 SelectPortrait(DefaultPortrait());
             RebuildPortraitGrid();
         };
-        AddField(basic, "성별", _gender);
+        AddField(identity, "성별", _gender);
         _birth = Spin(-500, 500, 170);
-        AddField(basic, "출생년도", _birth);
+        AddField(identity, "출생년도", _birth);
         _region = new OptionButton();
-        AddField(basic, "출신", _region);
-        AddTableHeading(basic, "영입 조건");
+        AddField(identity, "출신", _region);
+        var recruitment = GeneralWorkspaceStyle.Section(basic, "영입 조건");
         _points = Spin(0, 1000, 100);
-        AddField(basic, "영입 포인트", _points);
+        AddField(recruitment, "영입 포인트", _points);
         _requiredGeneral = new OptionButton();
         _requiredGeneral.Pressed += StopNativeNameInput;
-        AddField(basic, "영입 선행 장수", _requiredGeneral);
-        basic.AddChild(new Label { Text = "선행 장수를 지정하면 해당 장수가 소속된 세력만 영입할 수 있습니다." });
-        AddTableHeading(basic, "장수 소개");
-        basic.AddChild(new Label { Text = "장수 설명" });
+        AddField(recruitment, "영입 선행 장수", _requiredGeneral);
+        recruitment.AddChild(new Label { Text = "선행 장수를 지정하면 해당 장수가 소속된 세력만 영입할 수 있습니다." });
+        var introduction = GeneralWorkspaceStyle.Section(basic, "장수 소개");
         _description = new TextEdit { CustomMinimumSize = new Vector2(0, 115) };
-        basic.AddChild(_description);
+        introduction.AddChild(_description);
 
-        portraits.AddChild(new Label { Text = "기본 얼굴을 고르거나 외부 PNG·JPG·WEBP 파일을 가져오세요." });
+        var portraitSection = GeneralWorkspaceStyle.Section(portraits, "초상·얼굴");
+        portraitSection.AddChild(new Label { Text = "기본 얼굴을 고르거나 외부 PNG·JPG·WEBP 파일을 가져오세요." });
         var portraitRow = new HBoxContainer();
         portraitRow.AddThemeConstantOverride("separation", 18);
-        portraits.AddChild(portraitRow);
-        _portraitPreview = new TextureRect { CustomMinimumSize = new Vector2(200, 265),
+        portraitSection.AddChild(portraitRow);
+        _portraitPreview = new TextureRect { CustomMinimumSize = new Vector2(165, 220),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered };
         portraitRow.AddChild(_portraitPreview);
@@ -175,10 +184,9 @@ public partial class GeneralCreatorScene : Control
         var clear = new Button { Text = "사진 비우기" };
         clear.Pressed += () => SelectPortrait(null);
         portraitActions.AddChild(clear);
-        portraits.AddChild(new HSeparator());
-        portraits.AddChild(new Label { Text = "기본 얼굴 · 클릭해서 선택" });
+        var gallery = GeneralWorkspaceStyle.Section(portraits, "기본 얼굴 · 클릭해서 선택");
         _portraitGrid = new GridContainer { Columns = 5, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        portraits.AddChild(_portraitGrid);
+        gallery.AddChild(_portraitGrid);
         _portraitFileDialog = new FileDialog { Access = FileDialog.AccessEnum.Filesystem,
             FileMode = FileDialog.FileModeEnum.OpenFile, Title = "장수 초상 가져오기" };
         _portraitFileDialog.AddFilter("*.png, *.jpg, *.jpeg, *.webp", "이미지 파일");
@@ -186,16 +194,15 @@ public partial class GeneralCreatorScene : Control
         AddChild(_portraitFileDialog);
 
         var abilities = Page("능력·적성");
-        AddTableHeading(abilities, "기본 능력치");
+        var abilitySection = GeneralWorkspaceStyle.Section(abilities, "기본 능력치");
         var stats = new HBoxContainer();
-        abilities.AddChild(stats);
+        abilitySection.AddChild(stats);
         _might = Spin(0, 100, 50); AddField(stats, "무력", _might);
         _intellect = Spin(0, 100, 50); AddField(stats, "지력", _intellect);
         _politics = Spin(0, 100, 50); AddField(stats, "정치", _politics);
-        abilities.AddChild(new HSeparator());
-        AddTableHeading(abilities, "병종 적성");
+        var aptitudeSection = GeneralWorkspaceStyle.Section(abilities, "병종 적성");
         var grid = new GridContainer { Columns = 2 };
-        abilities.AddChild(grid);
+        aptitudeSection.AddChild(grid);
         foreach (var (code, name) in Troops)
         {
             var option = new OptionButton { CustomMinimumSize = new Vector2(105, 0) };
@@ -206,39 +213,38 @@ public partial class GeneralCreatorScene : Control
         }
 
         var skills = Page("스킬");
-        AddTableHeading(skills, "전투 액티브");
-        skills.AddChild(new Label { Text = "전투 액티브 1개와 전투 패시브 최대 3개를 선택할 수 있습니다." });
-        _active = new OptionButton(); AddField(skills, "전투 액티브", _active);
+        var activeSection = GeneralWorkspaceStyle.Section(skills, "전투 액티브");
+        activeSection.AddChild(new Label { Text = "전투 액티브 1개와 전투 패시브 최대 3개를 선택할 수 있습니다." });
+        _active = new OptionButton(); AddField(activeSection, "전투 액티브", _active);
         _activeDescription = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        skills.AddChild(_activeDescription);
+        AddDescription(activeSection, _activeDescription);
         _active.ItemSelected += _ => ShowSkillDescription(_activeDescription, _active, _activeDetails);
-        skills.AddChild(new HSeparator());
-        AddTableHeading(skills, "전투 패시브");
+        var battleSection = GeneralWorkspaceStyle.Section(skills, "전투 패시브");
         for (var index = 0; index < 3; index++)
         {
             var option = new OptionButton();
-            AddField(skills, $"전투 패시브 {index + 1}", option);
+            AddField(battleSection, $"전투 패시브 {index + 1}", option);
             _battlePassives.Add(option);
             var description = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-            skills.AddChild(description);
+            AddDescription(battleSection, description);
             _battleDescriptions.Add(description);
             option.ItemSelected += _ => ShowSkillDescription(description, option, _battleDetails);
         }
-        skills.AddChild(new HSeparator());
-        AddTableHeading(skills, "내정 패시브");
+        var adminSection = GeneralWorkspaceStyle.Section(skills, "내정 패시브");
         for (var index = 0; index < 3; index++)
         {
             var option = new OptionButton();
-            AddField(skills, $"내정 패시브 {index + 1}", option);
+            AddField(adminSection, $"내정 패시브 {index + 1}", option);
             _adminPassives.Add(option);
             var description = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-            skills.AddChild(description);
+            AddDescription(adminSection, description);
             _adminDescriptions.Add(description);
             option.ItemSelected += _ => ShowSkillDescription(description, option, _adminDetails);
         }
-        var save = new Button { Text = "장수 저장 · 다음 새 게임부터 적용", CustomMinimumSize = new Vector2(0, 44) };
+        var saveSection = GeneralWorkspaceStyle.Section(right, "변경 및 저장");
+        var save = new Button { Text = "저장", CustomMinimumSize = new Vector2(0, 42) };
         save.Pressed += SaveSelected;
-        right.AddChild(save);
+        saveSection.AddChild(save);
         _status = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         root.AddChild(_status);
     }
@@ -259,12 +265,12 @@ public partial class GeneralCreatorScene : Control
         if (parent is VBoxContainer) parent.AddChild(new HSeparator());
     }
 
-    private static void AddTableHeading(VBoxContainer parent, string title)
+    private static void AddDescription(VBoxContainer parent, Label description)
     {
-        var heading = new Label { Text = title };
-        heading.AddThemeFontSizeOverride("font_size", 17);
-        parent.AddChild(heading);
-        parent.AddChild(new HSeparator());
+        var panel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        panel.AddThemeStyleboxOverride("panel", GeneralWorkspaceStyle.DescriptionBox());
+        parent.AddChild(panel);
+        panel.AddChild(description);
     }
 
     private void PopulateSkills()
@@ -454,6 +460,7 @@ public partial class GeneralCreatorScene : Control
     {
         StopNativeNameInput();
         _editingId = null;
+        _overview.Text = "새 장수 · 초상과 능력을 정해 주세요.";
         _list.DeselectAll();
         _name.Text = "";
         _gender.Select(0); _birth.Value = 170; _region.Select(0); _points.Value = 100;
@@ -477,6 +484,7 @@ public partial class GeneralCreatorScene : Control
         var general = entry.General;
         StopNativeNameInput();
         _editingId = general.Id;
+        _overview.Text = $"{general.Name} · 생성 장수 ID {general.Id}";
         _name.Text = general.Name;
         _gender.Select(entry.Gender == "female" ? 1 : 0);
         _birth.Value = general.Birth;
@@ -550,6 +558,7 @@ public partial class GeneralCreatorScene : Control
             Write(updated);
             _created.Clear(); _created.AddRange(updated);
             _editingId = id;
+            _overview.Text = $"{entry.General.Name} · 생성 장수 ID {id}";
             _pendingExternalPath = null;
             _portraitPath = entry.PortraitPath;
             RefreshList();
@@ -620,7 +629,7 @@ public partial class GeneralCreatorScene : Control
         var applied = CreatedGeneralStore.Apply(scenario,
             CreatedGeneralStore.Load(CreatedGeneralStore.Save([sample, virtualHero])));
         var passed = applied.Generals.Count == scenario.Generals.Count + 2
-            && _tabs.GetTabTitle(0) == "초상" && _tabs.GetTabTitle(1) == "기본 정보"
+            && _tabs.GetTabTitle(0) == "초상·얼굴" && _tabs.GetTabTitle(1) == "기본 정보"
             && applied.HeroUnlockList.Any(hero => hero.General.Value == 10000)
             && scenario.Generals.All(general => general.Id.Value != 10000)
             && sample.RequiredGeneralId == required
