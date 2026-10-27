@@ -21,6 +21,7 @@ public partial class GeneralEditorScene : Control
     private readonly Dictionary<int, GeneralPortraitRecord> _portraitsByGeneralId = new();
     private readonly Dictionary<int, int> _heroRecruitPointCosts = new();
     private readonly Dictionary<int, int?> _heroRecruitPrerequisites = new();
+    private readonly Dictionary<int, CreatedGeneralRecord> _createdGenerals = new();
     private readonly List<GeneralEditorRecord> _generals = [];
     private readonly Dictionary<string, OptionButton> _aptitudeInputs = new();
     private readonly List<GeneralEditorSkill> _selectedBattlePassives = [];
@@ -55,6 +56,7 @@ public partial class GeneralEditorScene : Control
     private DateTime _generalsLoadedAt;
     private DateTime _portraitsLoadedAt;
     private DateTime _heroUnlocksLoadedAt;
+    private DateTime _createdGeneralsLoadedAt;
 
     public override void _Ready()
     {
@@ -356,6 +358,7 @@ public partial class GeneralEditorScene : Control
             _portraitsByGeneralId.Clear();
             _heroRecruitPointCosts.Clear();
             _heroRecruitPrerequisites.Clear();
+            _createdGenerals.Clear();
             _activeNames.Clear();
             _passiveNames.Clear();
             _adminNames.Clear();
@@ -411,6 +414,21 @@ public partial class GeneralEditorScene : Control
                     _heroRecruitPrerequisites[generalId] = required;
             }
             _heroUnlocksLoadedAt = File.Exists(heroUnlocksPath) ? File.GetLastWriteTimeUtc(heroUnlocksPath) : DateTime.MinValue;
+
+            var createdPath = ProjectSettings.GlobalizePath(CreatedGeneralPresets.UserPath);
+            if (File.Exists(createdPath))
+                foreach (var entry in CreatedGeneralStore.Load(File.ReadAllText(createdPath)))
+                {
+                    if (_generalsById.ContainsKey(entry.General.Id))
+                        throw new InvalidDataException($"원본 장수와 생성 장수 ID가 겹칩니다: {entry.General.Id}");
+                    _createdGenerals[entry.General.Id] = entry;
+                    _generals.Add(entry.General);
+                    _generalsById[entry.General.Id] = entry.General;
+                    _heroRecruitPointCosts[entry.General.Id] = entry.RecruitPointCost;
+                    _heroRecruitPrerequisites[entry.General.Id] = entry.RequiredGeneralId;
+                }
+            _createdGeneralsLoadedAt = File.Exists(createdPath)
+                ? File.GetLastWriteTimeUtc(createdPath) : DateTime.MinValue;
 
             RebuildSkillOptions();
             RebuildRegions();
@@ -469,7 +487,8 @@ public partial class GeneralEditorScene : Control
                 continue;
             }
 
-            var index = _list.AddItem($"{general.Id,3}  {general.Name}  [{RegionName(general.Region)}]");
+            var kind = _createdGenerals.ContainsKey(general.Id) ? " · 창작" : "";
+            var index = _list.AddItem($"{general.Id,3}  {general.Name}  [{RegionName(general.Region)}]{kind}");
             _list.SetItemMetadata(index, general.Id);
         }
 
@@ -554,6 +573,10 @@ public partial class GeneralEditorScene : Control
         _faceX.Value = portrait.FaceCenterX;
         _faceY.Value = portrait.FaceCenterY;
         _faceZoom.Value = portrait.FaceZoom;
+        var editablePortrait = !_createdGenerals.ContainsKey(general.Id);
+        _faceX.Editable = editablePortrait;
+        _faceY.Editable = editablePortrait;
+        _faceZoom.Editable = editablePortrait;
         UpdatePortraitPreview();
 
         UpdateChangePreview();
@@ -684,6 +707,12 @@ public partial class GeneralEditorScene : Control
                 return;
             }
 
+            if (_createdGenerals.ContainsKey(edited.Id))
+            {
+                SaveCreatedGeneral(edited);
+                return;
+            }
+
             var path = Path.Combine(_dataDirectory, "generals.json");
             if (File.GetLastWriteTimeUtc(path) != _generalsLoadedAt)
             {
@@ -740,6 +769,34 @@ public partial class GeneralEditorScene : Control
         {
             _status.Text = $"저장 실패: {ex.Message}";
         }
+    }
+
+    private void SaveCreatedGeneral(GeneralEditorRecord edited)
+    {
+        var path = ProjectSettings.GlobalizePath(CreatedGeneralPresets.UserPath);
+        if (!File.Exists(path) || File.GetLastWriteTimeUtc(path) != _createdGeneralsLoadedAt)
+            throw new InvalidDataException("생성 장수 목록이 외부에서 변경되었습니다. 재로드 후 다시 저장하세요.");
+        var current = _createdGenerals[edited.Id];
+        var updated = _createdGenerals.Values.Select(entry => entry.General.Id == edited.Id
+            ? entry with { General = edited, RecruitPointCost = (int)_recruitPointInput.Value,
+                RequiredGeneralId = SelectedRequiredGeneral() }
+            : entry).OrderBy(entry => entry.General.Id).ToList();
+        CreatedGeneralStore.Apply(new ScenarioLoader().LoadFromDirectory(_dataDirectory), updated);
+        var temp = path + ".tmp";
+        File.WriteAllText(temp, CreatedGeneralStore.Save(updated));
+        File.Move(temp, path, true);
+        _createdGeneralsLoadedAt = File.GetLastWriteTimeUtc(path);
+        _createdGenerals[edited.Id] = current with { General = edited,
+            RecruitPointCost = (int)_recruitPointInput.Value, RequiredGeneralId = SelectedRequiredGeneral() };
+        _heroRecruitPointCosts[edited.Id] = (int)_recruitPointInput.Value;
+        _heroRecruitPrerequisites[edited.Id] = SelectedRequiredGeneral();
+        var index = _generals.FindIndex(general => general.Id == edited.Id);
+        if (index >= 0) _generals[index] = edited;
+        _generalsById[edited.Id] = edited;
+        _selected = edited;
+        RefreshList();
+        ShowGeneral(edited);
+        _status.Text = $"{edited.Name} 저장 완료 · 다음 새 게임부터 적용됩니다.";
     }
 
     private GeneralEditorRecord CurrentEditedRecord()
@@ -893,14 +950,29 @@ public partial class GeneralEditorScene : Control
             regularOk = !_recruitPointInput.Editable && _requiredGeneralInput.Disabled;
         }
 
+        var createdOk = false;
+        if (regular is not null)
+        {
+            var record = regular with { Id = 10000, Name = "창작 장수 QA" };
+            _createdGenerals[record.Id] = new CreatedGeneralRecord(record, "female", 275);
+            _heroRecruitPointCosts[record.Id] = 275;
+            _heroRecruitPrerequisites[record.Id] = null;
+            _generals.Add(record);
+            _generalsById[record.Id] = record;
+            RefreshList();
+            ShowGeneral(record);
+            createdOk = Enumerable.Range(0, _list.ItemCount).Any(index => _list.GetItemText(index).Contains("창작 장수 QA"))
+                && _recruitPointInput.Editable && (int)_recruitPointInput.Value == 275;
+        }
+
         var tabs = FindChildren("*", "TabContainer", true, false).OfType<TabContainer>().Single();
         var layoutOk = tabs.GetChildren().All(child => child is not ScrollContainer)
             && _regionFilter.ItemCount > 1
             && _regionFilter.GetItemText(1) == RegionName(_regionFilter.GetItemMetadata(1).AsString())
             && _activeInput.ItemCount > 1
             && !_activeInput.GetItemText(1).Contains('(');
-        var passed = heroOk && regularOk && layoutOk;
-        GD.Print($"[generaleditorqa] passed={passed} hero={heroOk} regular={regularOk} layout={layoutOk} region={_regionFilter.GetItemText(1)} active={_activeInput.GetItemText(1)} range={_recruitPointInput.MinValue}-{_recruitPointInput.MaxValue}");
+        var passed = heroOk && regularOk && createdOk && layoutOk;
+        GD.Print($"[generaleditorqa] passed={passed} hero={heroOk} regular={regularOk} created={createdOk} layout={layoutOk} region={_regionFilter.GetItemText(1)} active={_activeInput.GetItemText(1)} range={_recruitPointInput.MinValue}-{_recruitPointInput.MaxValue}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -1190,7 +1262,9 @@ public partial class GeneralEditorScene : Control
     }
 
     private GeneralPortraitRecord PortraitFor(int generalId)
-        => _portraitsByGeneralId.TryGetValue(generalId, out var portrait)
+        => _createdGenerals.TryGetValue(generalId, out var created)
+            ? new GeneralPortraitRecord(generalId, created.PortraitPath ?? "", 0.5, 0.35, 1)
+            : _portraitsByGeneralId.TryGetValue(generalId, out var portrait)
             ? portrait
             : new GeneralPortraitRecord(generalId, $"SanguoSLG.Game/assets/portraits/{generalId}.png", 0.5, 0.35, 1);
 
@@ -1213,7 +1287,10 @@ public partial class GeneralEditorScene : Control
         }
 
         var portrait = CurrentPortraitRecord(_selected.Id);
-        var path = Path.Combine(RepositoryRoot(), portrait.PortraitPath);
+        var path = portrait.PortraitPath.StartsWith("res://", StringComparison.Ordinal)
+            || portrait.PortraitPath.StartsWith("user://", StringComparison.Ordinal)
+            ? ProjectSettings.GlobalizePath(portrait.PortraitPath)
+            : Path.Combine(RepositoryRoot(), portrait.PortraitPath);
         if (!File.Exists(path))
         {
             _portraitPreview.Texture = null;
