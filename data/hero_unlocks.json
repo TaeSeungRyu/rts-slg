@@ -1054,5 +1054,29 @@
     "title": "유언",
     "desc": "유장을 영입할 수 있는 익주목",
     "required_general": null
+  },
+  {
+    "general": 138,
+    "type": "faction",
+    "recruit_point_cost": 180,
+    "title": "공손강",
+    "desc": "요동 공손씨 세력을 이끄는 군주",
+    "required_general": null
+  },
+  {
+    "general": 139,
+    "type": "faction",
+    "recruit_point_cost": 120,
+    "title": "공손공",
+    "desc": "공손강을 영입하면 후보가 되는 동생",
+    "required_general": 138
+  },
+  {
+    "general": 140,
+    "type": "faction",
+    "recruit_point_cost": 190,
+    "title": "공손연",
+    "desc": "공손강을 영입하면 후보가 되는 아들",
+    "required_general": 138
   }
 ]
