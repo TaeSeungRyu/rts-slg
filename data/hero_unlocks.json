@@ -781,7 +781,7 @@
     "recruit_point_cost": 142,
     "title": "유장",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
-    "required_general": null
+    "required_general": 137
   },
   {
     "general": 99,
@@ -1045,6 +1045,14 @@
     "recruit_point_cost": 148,
     "title": "추씨",
     "desc": "장수 선행 조건에 따라 영입 가능한 인재",
+    "required_general": null
+  },
+  {
+    "general": 137,
+    "type": "faction",
+    "recruit_point_cost": 160,
+    "title": "유언",
+    "desc": "유장을 영입할 수 있는 익주목",
     "required_general": null
   }
 ]
