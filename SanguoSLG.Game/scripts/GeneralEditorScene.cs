@@ -78,6 +78,7 @@ public partial class GeneralEditorScene : Control
 
     private void BuildUi()
     {
+        GeneralWorkspaceStyle.AddBackground(this);
         var root = new VBoxContainer
         {
             AnchorRight = 1,

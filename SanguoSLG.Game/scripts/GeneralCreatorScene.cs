@@ -74,6 +74,7 @@ public partial class GeneralCreatorScene : Control
 
     private void BuildUi()
     {
+        GeneralWorkspaceStyle.AddBackground(this);
         var root = new VBoxContainer { AnchorRight = 1, AnchorBottom = 1,
             OffsetLeft = 18, OffsetTop = 18, OffsetRight = -18, OffsetBottom = -18,
             Theme = GeneralWorkspaceStyle.Theme() };
