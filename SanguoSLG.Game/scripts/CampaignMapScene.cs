@@ -13846,7 +13846,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void BuildHeroRecruitCards(VBoxContainer box, City city)
     {
-        const int pageSize = 4;
+        const int pageSize = 10;
         var unlockService = new HeroUnlockService();
         _state = unlockService.Evaluate(_state);
         var states = _state.HeroUnlocks
@@ -18516,7 +18516,7 @@ public sealed partial class CampaignMapScene : Node3D
             .ToList();
         var cardNames = host.FindChildren("*", "Label", true, false).OfType<Label>()
             .Select(label => label.Text).Where(text => text.Contains(" · 인재", StringComparison.Ordinal)).ToList();
-        var firstPageOk = firstPageCards == Math.Min(4, eligible.Count)
+        var firstPageOk = firstPageCards == Math.Min(10, eligible.Count)
             && previous?.Disabled == true
             && pageLabel?.Text.StartsWith("1 / ", StringComparison.Ordinal) == true;
         var emptyStateOk = eligible.Count != 0 || labels.Any(text =>
