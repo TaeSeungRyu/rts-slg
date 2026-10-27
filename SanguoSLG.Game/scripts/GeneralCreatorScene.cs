@@ -125,6 +125,10 @@ public partial class GeneralCreatorScene : Control
         }
         var basic = Page("기본 정보");
         _name = new LineEdit { MaxLength = 20, PlaceholderText = "장수 이름", KeepEditingOnTextSubmit = true };
+        _name.GuiInput += input =>
+        {
+            if (input is InputEventMouseButton { Pressed: true }) StartNativeNameInput();
+        };
         AddField(basic, "이름", _name);
         _gender = new OptionButton();
         _gender.AddItem("남성"); _gender.AddItem("여성");
@@ -142,6 +146,7 @@ public partial class GeneralCreatorScene : Control
         _points = Spin(0, 1000, 100);
         AddField(basic, "영입 포인트", _points);
         _requiredGeneral = new OptionButton();
+        _requiredGeneral.Pressed += StopNativeNameInput;
         AddField(basic, "영입 선행 장수", _requiredGeneral);
         basic.AddChild(new Label { Text = "선행 장수를 지정하면 해당 장수가 소속된 세력만 영입할 수 있습니다." });
         basic.AddChild(new Label { Text = "장수 설명" });
