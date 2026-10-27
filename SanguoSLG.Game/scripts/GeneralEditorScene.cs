@@ -94,7 +94,7 @@ public partial class GeneralEditorScene : Control
 
         var title = new Label
         {
-            Text = "개발용 장수 에디터",
+            Text = "장수 데이터 편집",
             HorizontalAlignment = HorizontalAlignment.Center,
         };
         title.AddThemeFontSizeOverride("font_size", 24);
@@ -138,15 +138,28 @@ public partial class GeneralEditorScene : Control
         _list.ItemActivated += OnGeneralSelected;
         body.AddChild(_list);
 
-        var detail = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-        body.AddChild(detail);
-
-        var editor = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        detail.AddChild(editor);
+        var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        right.AddThemeConstantOverride("separation", 10);
+        body.AddChild(right);
 
         _summary = new Label { Text = "장수를 선택하세요.", AutowrapMode = TextServer.AutowrapMode.WordSmart };
         _summary.AddThemeFontSizeOverride("font_size", 18);
-        editor.AddChild(_summary);
+        right.AddChild(_summary);
+
+        var tabs = new TabContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        right.AddChild(tabs);
+        VBoxContainer AddPage(string name)
+        {
+            var scroll = new ScrollContainer { Name = name, SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                SizeFlagsVertical = SizeFlags.ExpandFill };
+            tabs.AddChild(scroll);
+            var content = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            content.AddThemeConstantOverride("separation", 12);
+            scroll.AddChild(content);
+            return content;
+        }
+
+        var editor = AddPage("초상·얼굴");
 
         var portraitSection = AddSection(editor, "초상·원형 얼굴");
         var portraitRow = new HBoxContainer();
@@ -183,7 +196,8 @@ public partial class GeneralEditorScene : Control
         };
         faceBox.AddChild(resetFace);
 
-        var statSection = AddSection(editor, "능력치");
+        editor = AddPage("능력·적성");
+        var statSection = AddSection(editor, "능력치 및 영입 조건");
         var statRow = new HBoxContainer();
         statSection.AddChild(statRow);
         _mightInput = AddStat(statRow, "무력");
@@ -232,6 +246,7 @@ public partial class GeneralEditorScene : Control
             _aptitudeInputs[key] = input;
         }
 
+        editor = AddPage("전투 스킬");
         var activeSection = AddSection(editor, "전투 액티브");
         var activeBody = new HBoxContainer();
         activeBody.AddThemeConstantOverride("separation", 12);
@@ -289,6 +304,7 @@ public partial class GeneralEditorScene : Control
         _passiveList = new VBoxContainer();
         passiveLeft.AddChild(_passiveList);
 
+        editor = AddPage("내정 스킬");
         var adminSection = AddSection(editor, "내정 패시브");
         var adminBody = new HBoxContainer();
         adminBody.AddThemeConstantOverride("separation", 12);
@@ -319,7 +335,7 @@ public partial class GeneralEditorScene : Control
         _adminList = new VBoxContainer();
         adminLeft.AddChild(_adminList);
 
-        var saveSection = AddSection(editor, "변경 및 저장");
+        var saveSection = AddSection(right, "변경 및 저장");
         _changePreview = new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.WordSmart };
         saveSection.AddChild(_changePreview);
 
