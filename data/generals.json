@@ -1,19 +1,19 @@
 [
   {
     "id": 1,
-    "name": "\uc870\uc870",
+    "name": "\uC870\uC870",
     "birth": 155,
     "region": "yuzhou",
-    "desc": "\ub09c\uc138\uc758 \uac04\uc6c5 \u2014 \uc704\ub098\ub77c\uc758 \uae30\ud2c0\uc744 \uc138\uc6b4 \ud328\uc790",
+    "desc": "\uB09C\uC138\uC758 \uAC04\uC6C5 \u2014 \uC704\uB098\uB77C\uC758 \uAE30\uD2C0\uC744 \uC138\uC6B4 \uD328\uC790",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
-      "cavalry": "S",
-      "elephant": "C",
-      "siege": "B",
+      "cavalry": "A",
+      "elephant": "B",
+      "siege": "S",
       "naval": "C",
       "supply": "S",
-      "defense": "A"
+      "defense": "A\u002B"
     },
     "might": 72,
     "intellect": 91,
@@ -42,10 +42,10 @@
   },
   {
     "id": 2,
-    "name": "\uc720\ube44",
+    "name": "\uC720\uBE44",
     "birth": 161,
     "region": "youzhou",
-    "desc": "\uc778\ub355\uc73c\ub85c \ucd09\ud55c\uc744 \uc77c\uc73c\ud0a8 \ud669\uc219",
+    "desc": "\uC778\uB355\uC73C\uB85C \uCD09\uD55C\uC744 \uC77C\uC73C\uD0A8 \uD669\uC219",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -79,10 +79,10 @@
   },
   {
     "id": 3,
-    "name": "\uad00\uc6b0",
+    "name": "\uAD00\uC6B0",
     "birth": 162,
     "region": "sili",
-    "desc": "\uc758\uc808\uc758 \ubb34\uc131(\u6b66\u8056) \u2014 \uccad\ub8e1\uc5b8\uc6d4\ub3c4\uc758 \uc8fc\uc778",
+    "desc": "\uC758\uC808\uC758 \uBB34\uC131(\u6B66\u8056) \u2014 \uCCAD\uB8E1\uC5B8\uC6D4\uB3C4\uC758 \uC8FC\uC778",
     "aptitudes": {
       "infantry": "SS",
       "archer": "B",
@@ -106,14 +106,14 @@
   },
   {
     "id": 4,
-    "name": "\uc7a5\ube44",
+    "name": "\uC7A5\uBE44",
     "birth": 167,
     "region": "youzhou",
-    "desc": "\uc7a5\ud310\uad50\uc5d0\uc11c \ud640\ub85c \ub300\uad70\uc744 \ub9c9\uc740 \ub9f9\uc7a5",
+    "desc": "\uC7A5\uD310\uAD50\uC5D0\uC11C \uD640\uB85C \uB300\uAD70\uC744 \uB9C9\uC740 \uB9F9\uC7A5",
     "aptitudes": {
-      "infantry": "S",
+      "infantry": "SS",
       "archer": "C",
-      "cavalry": "S",
+      "cavalry": "A\u002B",
       "elephant": "C",
       "siege": "C",
       "naval": "D",
@@ -123,20 +123,21 @@
     "might": 98,
     "intellect": 30,
     "politics": 22,
-    "battle_active": "tiger_strike",
+    "battle_active": "second_wind",
     "battle_passives": [
       {
         "code": "fierce_assault",
         "tier": 2
       }
-    ]
+    ],
+    "admin_passives": []
   },
   {
     "id": 5,
-    "name": "\uc5ec\ud3ec",
+    "name": "\uC5EC\uD3EC",
     "birth": 161,
     "region": "bingzhou",
-    "desc": "\ucc9c\ud558\ubb34\uc30d\uc758 \ube44\uc7a5 \u2014 \uc801\ud1a0\ub9c8\uc758 \uc8fc\uc778",
+    "desc": "\uCC9C\uD558\uBB34\uC30D\uC758 \uBE44\uC7A5 \u2014 \uC801\uD1A0\uB9C8\uC758 \uC8FC\uC778",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -160,11 +161,11 @@
   },
   {
     "id": 6,
-    "name": "\uc81c\uac08\ub7c9",
+    "name": "\uC81C\uAC08\uB7C9",
     "birth": 181,
     "unlock_year": 207,
     "region": "xuzhou",
-    "desc": "\uc640\ub8e1 \u2014 \ucd09\ud55c\uc758 \uc2b9\uc0c1\uc774\uc790 \ucc9c\ud558\uc0bc\ubd84\uc758 \uc124\uacc4\uc790",
+    "desc": "\uC640\uB8E1 \u2014 \uCD09\uD55C\uC758 \uC2B9\uC0C1\uC774\uC790 \uCC9C\uD558\uC0BC\uBD84\uC758 \uC124\uACC4\uC790",
     "aptitudes": {
       "infantry": "S",
       "archer": "S",
@@ -172,7 +173,7 @@
       "elephant": "A",
       "siege": "S",
       "naval": "A",
-      "supply": "A+",
+      "supply": "SS",
       "defense": "SS"
     },
     "might": 38,
@@ -198,20 +199,20 @@
   },
   {
     "id": 7,
-    "name": "\uc8fc\uc720",
+    "name": "\uC8FC\uC720",
     "birth": 175,
     "unlock_year": 190,
     "region": "yangzhou",
-    "desc": "\uc801\ubcbd\uc5d0\uc11c \uc870\uc870\ub97c \ubd88\ud0dc\uc6b4 \ubbf8\uc8fc\ub791",
+    "desc": "\uC801\uBCBD\uC5D0\uC11C \uC870\uC870\uB97C \uBD88\uD0DC\uC6B4 \uBBF8\uC8FC\uB791",
     "aptitudes": {
-      "infantry": "B",
-      "archer": "A",
+      "infantry": "A",
+      "archer": "A\u002B",
       "cavalry": "C",
       "elephant": "C",
       "siege": "B",
       "naval": "SS",
       "supply": "A",
-      "defense": "C"
+      "defense": "A"
     },
     "might": 71,
     "intellect": 96,
@@ -232,10 +233,10 @@
   },
   {
     "id": 8,
-    "name": "\ud558\ud6c4\ub3c8",
+    "name": "\uD558\uD6C4\uB3C8",
     "birth": 157,
     "region": "yuzhou",
-    "desc": "\uc81c \ub208\uc744 \uc0bc\ud0a8 \uc704\uc758 \ub9f9\uc7a5 \u2014 \uc870\uc870\uc758 \uc624\ub978\ud314",
+    "desc": "\uC81C \uB208\uC744 \uC0BC\uD0A8 \uC704\uC758 \uB9F9\uC7A5 \u2014 \uC870\uC870\uC758 \uC624\uB978\uD314",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -265,11 +266,11 @@
   },
   {
     "id": 9,
-    "name": "\uc870\uc6b4",
+    "name": "\uC870\uC6B4",
     "birth": 168,
     "unlock_year": 190,
     "region": "jizhou",
-    "desc": "\uc7a5\ud310\uc5d0\uc11c \uc544\ub450\ub97c \uad6c\ud55c \uc0c1\uc0b0\uc758 \ud638\uc7a5",
+    "desc": "\uC7A5\uD310\uC5D0\uC11C \uC544\uB450\uB97C \uAD6C\uD55C \uC0C1\uC0B0\uC758 \uD638\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -299,17 +300,17 @@
   },
   {
     "id": 10,
-    "name": "\uac10\ub155",
+    "name": "\uAC10\uB155",
     "birth": 175,
     "region": "yizhou",
-    "desc": "\ubc31 \uae30\ub85c \uc704\uc601\uc744 \uc2b5\uaca9\ud55c \uae08\ubc94\uc801 \ucd9c\uc2e0 \ub9f9\uc7a5",
+    "desc": "\uBC31 \uAE30\uB85C \uC704\uC601\uC744 \uC2B5\uACA9\uD55C \uAE08\uBC94\uC801 \uCD9C\uC2E0 \uB9F9\uC7A5",
     "aptitudes": {
-      "infantry": "A",
+      "infantry": "A\u002B",
       "archer": "A",
       "cavalry": "B",
       "elephant": "C",
       "siege": "B",
-      "naval": "S",
+      "naval": "SS",
       "supply": "C",
       "defense": "C"
     },
@@ -322,15 +323,16 @@
         "code": "ambush",
         "tier": 3
       }
-    ]
+    ],
+    "admin_passives": []
   },
   {
     "id": 11,
-    "name": "\ud669\ucda9",
+    "name": "\uD669\uCDA9",
     "birth": 148,
     "unlock_year": 190,
     "region": "jingzhou",
-    "desc": "\uc815\uad70\uc0b0\uc5d0\uc11c \ud558\ud6c4\uc5f0\uc744 \ubca4 \ub178\uc7a5 \u2014 \ubc31\ubc1c\ubc31\uc911",
+    "desc": "\uC815\uAD70\uC0B0\uC5D0\uC11C \uD558\uD6C4\uC5F0\uC744 \uBCA4 \uB178\uC7A5 \u2014 \uBC31\uBC1C\uBC31\uC911",
     "aptitudes": {
       "infantry": "A",
       "archer": "SS",
@@ -354,18 +356,18 @@
   },
   {
     "id": 12,
-    "name": "\uc0ac\ub9c8\uc758",
+    "name": "\uC0AC\uB9C8\uC758",
     "birth": 179,
     "region": "sili",
-    "desc": "\uc81c\uac08\ub7c9\uc744 \ub9c9\uc544\ub0b8 \uc704\uc758 \ub300\ub3c4\ub3c5 \u2014 \uc9c4 \uc655\uc870\uc758 \uc2dc\uc870",
+    "desc": "\uC81C\uAC08\uB7C9\uC744 \uB9C9\uC544\uB0B8 \uC704\uC758 \uB300\uB3C4\uB3C5 \u2014 \uC9C4 \uC655\uC870\uC758 \uC2DC\uC870",
     "aptitudes": {
       "infantry": "A",
-      "archer": "B",
+      "archer": "A",
       "cavalry": "A",
       "elephant": "C",
-      "siege": "S",
+      "siege": "SS",
       "naval": "C",
-      "supply": "A+",
+      "supply": "A\u002B",
       "defense": "C"
     },
     "might": 63,
@@ -391,10 +393,10 @@
   },
   {
     "id": 13,
-    "name": "\uc7a5\ub8cc",
+    "name": "\uC7A5\uB8CC",
     "birth": 169,
     "region": "bingzhou",
-    "desc": "\ud569\ube44\uc5d0\uc11c 800\uc73c\ub85c 10\ub9cc\uc744 \uae6c \uc624\uc790\uc591\uc7a5 \ud544\ub450",
+    "desc": "\uD569\uBE44\uC5D0\uC11C 800\uC73C\uB85C 10\uB9CC\uC744 \uAE6C \uC624\uC790\uC591\uC7A5 \uD544\uB450",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -418,19 +420,19 @@
   },
   {
     "id": 14,
-    "name": "\uc7a5\ud569",
+    "name": "\uC7A5\uD569",
     "birth": 167,
     "region": "jizhou",
-    "desc": "\uac00\uc815\uc5d0\uc11c \ub9c8\uc18d\uc744 \uaebe\uc740 \uc9c0\uc7a5\ud615 \ub9f9\uc7a5",
+    "desc": "\uAC00\uC815\uC5D0\uC11C \uB9C8\uC18D\uC744 \uAEBE\uC740 \uC9C0\uC7A5\uD615 \uB9F9\uC7A5",
     "aptitudes": {
       "infantry": "S",
-      "archer": "B",
-      "cavalry": "A",
+      "archer": "A\u002B",
+      "cavalry": "A\u002B",
       "elephant": "C",
-      "siege": "B",
+      "siege": "A\u002B",
       "naval": "C",
-      "supply": "C",
-      "defense": "A"
+      "supply": "A\u002B",
+      "defense": "A\u002B"
     },
     "might": 89,
     "intellect": 69,
@@ -441,14 +443,15 @@
         "code": "rough_ambush",
         "tier": 2
       }
-    ]
+    ],
+    "admin_passives": []
   },
   {
     "id": 15,
-    "name": "\uc11c\ud669",
+    "name": "\uC11C\uD669",
     "birth": 169,
     "region": "sili",
-    "desc": "\ubc88\uc131\uc5d0\uc11c \uad00\uc6b0\ub97c \ubb3c\ub9ac\uce5c \uc8fc\uc544\ubd80\uc758 \ud48d\ubaa8",
+    "desc": "\uBC88\uC131\uC5D0\uC11C \uAD00\uC6B0\uB97C \uBB3C\uB9AC\uCE5C \uC8FC\uC544\uBD80\uC758 \uD48D\uBAA8",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -472,10 +475,10 @@
   },
   {
     "id": 16,
-    "name": "\uc545\uc9c4",
+    "name": "\uC545\uC9C4",
     "birth": 170,
     "region": "yanzhou",
-    "desc": "\uc120\ubd09\uc5d0\uc11c \ubb3c\ub7ec\uc11c\uc9c0 \uc54a\uc740 \uc624\uc790\uc591\uc7a5",
+    "desc": "\uC120\uBD09\uC5D0\uC11C \uBB3C\uB7EC\uC11C\uC9C0 \uC54A\uC740 \uC624\uC790\uC591\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -499,21 +502,21 @@
   },
   {
     "id": 17,
-    "name": "\uc6b0\uae08",
+    "name": "\uC6B0\uAE08",
     "birth": 165,
     "region": "yanzhou",
-    "desc": "\uad70\uc728\uc5d0 \uc5c4\uc815\ud588\ub358 \uc624\uc790\uc591\uc7a5 \u2014 \ub9cc\ub144\uc5d0 \uc624\uc810",
+    "desc": "\uAD70\uC728\uC5D0 \uC5C4\uC815\uD588\uB358 \uC624\uC790\uC591\uC7A5 \u2014 \uB9CC\uB144\uC5D0 \uC624\uC810",
     "aptitudes": {
-      "infantry": "A",
-      "archer": "B",
-      "cavalry": "B",
+      "infantry": "A\u002B",
+      "archer": "A",
+      "cavalry": "A",
       "elephant": "C",
       "siege": "B",
       "naval": "C",
       "supply": "C",
       "defense": "A"
     },
-    "might": 79,
+    "might": 84,
     "intellect": 60,
     "politics": 58,
     "battle_active": "hold_the_line",
@@ -522,14 +525,15 @@
         "code": "drilled",
         "tier": 2
       }
-    ]
+    ],
+    "admin_passives": []
   },
   {
     "id": 18,
-    "name": "\uc774\uc804",
+    "name": "\uC774\uC804",
     "birth": 174,
     "region": "yanzhou",
-    "desc": "\uc0ac\uc0ac\ub85c\uc6c0 \uc5c6\uc774 \ud569\ube44\ub97c \uc9c0\ud0a8 \ud559\uad6c\ud30c \ubb34\uc7a5",
+    "desc": "\uC0AC\uC0AC\uB85C\uC6C0 \uC5C6\uC774 \uD569\uBE44\uB97C \uC9C0\uD0A8 \uD559\uAD6C\uD30C \uBB34\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -559,19 +563,19 @@
   },
   {
     "id": 19,
-    "name": "\uc804\uc704",
+    "name": "\uC804\uC704",
     "birth": 160,
     "region": "yanzhou",
-    "desc": "\uc644\uc131\uc5d0\uc11c \uc870\uc870\ub97c \uc0b4\ub9ac\uace0 \uc0b0\ud654\ud55c \uc545\ub798",
+    "desc": "\uC644\uC131\uC5D0\uC11C \uC870\uC870\uB97C \uC0B4\uB9AC\uACE0 \uC0B0\uD654\uD55C \uC545\uB798",
     "aptitudes": {
-      "infantry": "A",
+      "infantry": "A\u002B",
       "archer": "C",
-      "cavalry": "B",
+      "cavalry": "A\u002B",
       "elephant": "C",
       "siege": "C",
       "naval": "D",
       "supply": "C",
-      "defense": "C"
+      "defense": "A"
     },
     "might": 95,
     "intellect": 35,
@@ -582,14 +586,15 @@
         "code": "berserker",
         "tier": 3
       }
-    ]
+    ],
+    "admin_passives": []
   },
   {
     "id": 20,
-    "name": "\ud5c8\uc800",
+    "name": "\uD5C8\uC800",
     "birth": 170,
     "region": "yuzhou",
-    "desc": "\ud638\uce58 \u2014 \ub9c8\ucd08\uc640 \ub9de\uc120 \uc870\uc870\uc758 \ud638\uc704\uc7a5",
+    "desc": "\uD638\uCE58 \u2014 \uB9C8\uCD08\uC640 \uB9DE\uC120 \uC870\uC870\uC758 \uD638\uC704\uC7A5",
     "aptitudes": {
       "infantry": "SS",
       "archer": "C",
@@ -613,10 +618,10 @@
   },
   {
     "id": 21,
-    "name": "\ubc29\ub355",
+    "name": "\uBC29\uB355",
     "birth": 175,
     "region": "liangzhou",
-    "desc": "\uad00\uc744 \uc9c0\uace0 \uad00\uc6b0\uc640 \uc2f8\uc6b4 \ubc31\ub9c8\uc7a5\uad70",
+    "desc": "\uAD00\uC744 \uC9C0\uACE0 \uAD00\uC6B0\uC640 \uC2F8\uC6B4 \uBC31\uB9C8\uC7A5\uAD70",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -640,10 +645,10 @@
   },
   {
     "id": 22,
-    "name": "\ud558\ud6c4\uc5f0",
+    "name": "\uD558\uD6C4\uC5F0",
     "birth": 160,
     "region": "yuzhou",
-    "desc": "\uc0ac\ud758\uc5d0 \uc624\ubc31 \ub9ac \u2014 \uc804\uaca9\uc804\uc758 \uba85\uc218",
+    "desc": "\uC0AC\uD758\uC5D0 \uC624\uBC31 \uB9AC \u2014 \uC804\uACA9\uC804\uC758 \uBA85\uC218",
     "aptitudes": {
       "infantry": "A",
       "archer": "S",
@@ -667,10 +672,10 @@
   },
   {
     "id": 23,
-    "name": "\uc870\uc778",
+    "name": "\uC870\uC778",
     "birth": 168,
     "region": "yuzhou",
-    "desc": "\ubc88\uc131\uc744 \uc0ac\uc218\ud55c \uc704\uc758 \ubc29\ud328",
+    "desc": "\uBC88\uC131\uC744 \uC0AC\uC218\uD55C \uC704\uC758 \uBC29\uD328",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -694,10 +699,10 @@
   },
   {
     "id": 24,
-    "name": "\uc870\ud64d",
+    "name": "\uC870\uD64D",
     "birth": 165,
     "region": "yuzhou",
-    "desc": "\ud615\uc591\uc5d0\uc11c \uc870\uc870\uc5d0\uac8c \ub9d0\uc744 \ubc14\uce5c \uc885\uc81c",
+    "desc": "\uD615\uC591\uC5D0\uC11C \uC870\uC870\uC5D0\uAC8C \uB9D0\uC744 \uBC14\uCE5C \uC885\uC81C",
     "aptitudes": {
       "infantry": "A",
       "archer": "C",
@@ -721,10 +726,10 @@
   },
   {
     "id": 25,
-    "name": "\uc870\ube44",
+    "name": "\uC870\uBE44",
     "birth": 187,
     "region": "yuzhou",
-    "desc": "\ud55c\uc744 \ub300\uc2e0\ud55c \uc704 \ubb38\uc81c \u2014 \ubb38\uc7ac\uc758 \uad70\uc8fc",
+    "desc": "\uD55C\uC744 \uB300\uC2E0\uD55C \uC704 \uBB38\uC81C \u2014 \uBB38\uC7AC\uC758 \uAD70\uC8FC",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -757,10 +762,10 @@
   },
   {
     "id": 26,
-    "name": "\uc870\uc9c4",
+    "name": "\uC870\uC9C4",
     "birth": 188,
     "region": "yuzhou",
-    "desc": "\uc81c\uac08\ub7c9\uc758 \ubd81\ubc8c\uc744 \ub9c9\uc740 \ub300\uc0ac\ub9c8",
+    "desc": "\uC81C\uAC08\uB7C9\uC758 \uBD81\uBC8C\uC744 \uB9C9\uC740 \uB300\uC0AC\uB9C8",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -784,14 +789,14 @@
   },
   {
     "id": 27,
-    "name": "\uc870\ud734",
+    "name": "\uC870\uD734",
     "birth": 184,
     "region": "yuzhou",
-    "desc": "\ucc9c\ub9ac\ub9c8 \u2014 \uc870\uc528 \uc77c\uc871\uc758 \uc900\uc7ac",
+    "desc": "\uCC9C\uB9AC\uB9C8 \u2014 \uC870\uC528 \uC77C\uC871\uC758 \uC900\uC7AC",
     "aptitudes": {
-      "infantry": "A",
+      "infantry": "A\u002B",
       "archer": "B",
-      "cavalry": "A",
+      "cavalry": "A\u002B",
       "elephant": "C",
       "siege": "B",
       "naval": "C",
@@ -807,14 +812,15 @@
         "code": "chase_drill",
         "tier": 2
       }
-    ]
+    ],
+    "admin_passives": []
   },
   {
     "id": 28,
-    "name": "\uacfd\uac00",
+    "name": "\uACFD\uAC00",
     "birth": 170,
     "region": "yuzhou",
-    "desc": "\uc694\uc808\ud55c \uadc0\uc7ac \u2014 \uc870\uc870\uc758 \uc2b9\ubd80\ucc98\ub97c \uc77d\ub358 \ub208",
+    "desc": "\uC694\uC808\uD55C \uADC0\uC7AC \u2014 \uC870\uC870\uC758 \uC2B9\uBD80\uCC98\uB97C \uC77D\uB358 \uB208",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -843,11 +849,11 @@
   },
   {
     "id": 29,
-    "name": "\uc21c\uc6b1",
+    "name": "\uC21C\uC6B1",
     "birth": 163,
     "unlock_year": 190,
     "region": "yuzhou",
-    "desc": "\uc655\uc88c\uc9c0\uc7ac \u2014 \uc870\uc870\uc758 \uc7a5\uc790\ubc29",
+    "desc": "\uC655\uC88C\uC9C0\uC7AC \u2014 \uC870\uC870\uC758 \uC7A5\uC790\uBC29",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -855,7 +861,7 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "A+",
+      "supply": "A\u002B",
       "defense": "C"
     },
     "might": 32,
@@ -880,10 +886,10 @@
   },
   {
     "id": 30,
-    "name": "\uc21c\uc720",
+    "name": "\uC21C\uC720",
     "birth": 157,
     "region": "yuzhou",
-    "desc": "\uc5f4\ub450 \uae30\ucc45\uc758 \ubaa8\uc8fc \u2014 \uc21c\uc6b1\uc758 \uc870\uce74",
+    "desc": "\uC5F4\uB450 \uAE30\uCC45\uC758 \uBAA8\uC8FC \u2014 \uC21C\uC6B1\uC758 \uC870\uCE74",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -916,10 +922,10 @@
   },
   {
     "id": 31,
-    "name": "\uac00\ud6c4",
+    "name": "\uAC00\uD6C4",
     "birth": 147,
     "region": "liangzhou",
-    "desc": "\ub3c5\uc0ac\uc758 \uc9c0\ud61c \u2014 \ub09c\uc138\ub97c \ub05d\uae4c\uc9c0 \uc0b4\uc544\ub0a8\uc740 \ucc45\uc0ac",
+    "desc": "\uB3C5\uC0AC\uC758 \uC9C0\uD61C \u2014 \uB09C\uC138\uB97C \uB05D\uAE4C\uC9C0 \uC0B4\uC544\uB0A8\uC740 \uCC45\uC0AC",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -952,10 +958,10 @@
   },
   {
     "id": 32,
-    "name": "\uc815\uc6b1",
+    "name": "\uC815\uC6B1",
     "birth": 141,
     "region": "yanzhou",
-    "desc": "\uc5f0\uc8fc\ub97c \uc9c0\ud0a8 \uac15\uace8 \ubaa8\uc0ac",
+    "desc": "\uC5F0\uC8FC\uB97C \uC9C0\uD0A8 \uAC15\uACE8 \uBAA8\uC0AC",
     "aptitudes": {
       "infantry": "B",
       "archer": "C",
@@ -984,10 +990,10 @@
   },
   {
     "id": 33,
-    "name": "\uc720\uc5fd",
+    "name": "\uC720\uC5FD",
     "birth": 170,
     "region": "yangzhou",
-    "desc": "\ubc1c\uc11d\uac70\ub97c \uace0\uc548\ud55c \ud55c\uc2e4 \uc885\uce5c \ucc45\uc0ac",
+    "desc": "\uBC1C\uC11D\uAC70\uB97C \uACE0\uC548\uD55C \uD55C\uC2E4 \uC885\uCE5C \uCC45\uC0AC",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -1016,10 +1022,10 @@
   },
   {
     "id": 34,
-    "name": "\ub9cc\ucd1d",
+    "name": "\uB9CC\uCD1D",
     "birth": 172,
     "region": "yanzhou",
-    "desc": "\ud569\ube44\uc2e0\uc131\uc744 \uc313\uc740 \ubc95\uac00\ud615 \uba85\uad00",
+    "desc": "\uD569\uBE44\uC2E0\uC131\uC744 \uC313\uC740 \uBC95\uAC00\uD615 \uBA85\uAD00",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -1052,10 +1058,10 @@
   },
   {
     "id": 35,
-    "name": "\ud559\uc18c",
+    "name": "\uD559\uC18C",
     "birth": 190,
     "region": "bingzhou",
-    "desc": "\uc9c4\ucc3d\uc5d0\uc11c \uc81c\uac08\ub7c9\uc758 \ub300\uad70\uc744 \ub9c9\uc740 \uc218\uc131\uc758 \ub2ec\uc778",
+    "desc": "\uC9C4\uCC3D\uC5D0\uC11C \uC81C\uAC08\uB7C9\uC758 \uB300\uAD70\uC744 \uB9C9\uC740 \uC218\uC131\uC758 \uB2EC\uC778",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -1089,10 +1095,10 @@
   },
   {
     "id": 36,
-    "name": "\uc655\uc30d",
+    "name": "\uC655\uC30D",
     "birth": 190,
     "region": "liangzhou",
-    "desc": "\uc720\uc131\ucd94\ub97c \uc4f0\ub294 \uc704\uc758 \uc6a9\uc7a5",
+    "desc": "\uC720\uC131\uCD94\uB97C \uC4F0\uB294 \uC704\uC758 \uC6A9\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1116,10 +1122,10 @@
   },
   {
     "id": 37,
-    "name": "\ub4f1\uc560",
+    "name": "\uB4F1\uC560",
     "birth": 197,
     "region": "jingzhou",
-    "desc": "\uc74c\ud3c9 \uc0db\uae38\ub85c \ucd09\uc744 \uba78\ud55c \uba85\uc7a5",
+    "desc": "\uC74C\uD3C9 \uC0DB\uAE38\uB85C \uCD09\uC744 \uBA78\uD55C \uBA85\uC7A5",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -1128,7 +1134,7 @@
       "siege": "S",
       "naval": "C",
       "supply": "S",
-      "defense": "A+"
+      "defense": "A\u002B"
     },
     "might": 87,
     "intellect": 89,
@@ -1149,10 +1155,10 @@
   },
   {
     "id": 38,
-    "name": "\uc885\ud68c",
+    "name": "\uC885\uD68C",
     "birth": 225,
     "region": "yuzhou",
-    "desc": "\ucd09 \uc815\ubc8c\uc758 \uc57c\uc2ec\uac00 \u2014 \uc7ac\uc2b9\ub355\ubc15",
+    "desc": "\uCD09 \uC815\uBC8C\uC758 \uC57C\uC2EC\uAC00 \u2014 \uC7AC\uC2B9\uB355\uBC15",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -1181,10 +1187,10 @@
   },
   {
     "id": 39,
-    "name": "\uc0ac\ub9c8\uc0ac",
+    "name": "\uC0AC\uB9C8\uC0AC",
     "birth": 208,
     "region": "sili",
-    "desc": "\uc0ac\ub9c8\uc528\uc758 \ud328\uad8c\uc744 \uad73\ud78c \uc7a5\uc790",
+    "desc": "\uC0AC\uB9C8\uC528\uC758 \uD328\uAD8C\uC744 \uAD73\uD78C \uC7A5\uC790",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1213,10 +1219,10 @@
   },
   {
     "id": 40,
-    "name": "\uc0ac\ub9c8\uc18c",
+    "name": "\uC0AC\uB9C8\uC18C",
     "birth": 211,
     "region": "sili",
-    "desc": "\ucd09\uc744 \uba78\ud558\uace0 \uc9c4\uc758 \uae38\uc744 \uc5f0 \uc57c\uc2ec\uac00",
+    "desc": "\uCD09\uC744 \uBA78\uD558\uACE0 \uC9C4\uC758 \uAE38\uC744 \uC5F0 \uC57C\uC2EC\uAC00",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -1245,11 +1251,11 @@
   },
   {
     "id": 41,
-    "name": "\ub9c8\ucd08",
+    "name": "\uB9C8\uCD08",
     "birth": 176,
     "unlock_year": 211,
     "region": "liangzhou",
-    "desc": "\uc11c\ub7c9\uc758 \uae08\ub9c8\ucd08 \u2014 \uc870\uc870\ub97c \ub5a8\uac8c \ud55c \uae30\ub9c8\uc758 \uc2e0",
+    "desc": "\uC11C\uB7C9\uC758 \uAE08\uB9C8\uCD08 \u2014 \uC870\uC870\uB97C \uB5A8\uAC8C \uD55C \uAE30\uB9C8\uC758 \uC2E0",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1273,10 +1279,10 @@
   },
   {
     "id": 42,
-    "name": "\uc704\uc5f0",
+    "name": "\uC704\uC5F0",
     "birth": 174,
     "region": "jingzhou",
-    "desc": "\ud55c\uc911\uc744 \uc9c0\ud0a8 \ubc18\uace8\uc758 \ub9f9\uc7a5",
+    "desc": "\uD55C\uC911\uC744 \uC9C0\uD0A8 \uBC18\uACE8\uC758 \uB9F9\uC7A5",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -1300,10 +1306,10 @@
   },
   {
     "id": 43,
-    "name": "\uac15\uc720",
+    "name": "\uAC15\uC720",
     "birth": 202,
     "region": "liangzhou",
-    "desc": "\uc81c\uac08\ub7c9\uc758 \uc720\uc9c0\ub97c \uc774\uc740 \ubd81\ubc8c\uc758 \uae30\ub9b0\uc544",
+    "desc": "\uC81C\uAC08\uB7C9\uC758 \uC720\uC9C0\uB97C \uC774\uC740 \uBD81\uBC8C\uC758 \uAE30\uB9B0\uC544",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -1312,7 +1318,7 @@
       "siege": "A",
       "naval": "C",
       "supply": "A",
-      "defense": "A+"
+      "defense": "A\u002B"
     },
     "might": 89,
     "intellect": 90,
@@ -1327,10 +1333,10 @@
   },
   {
     "id": 44,
-    "name": "\ub9c8\ub300",
+    "name": "\uB9C8\uB300",
     "birth": 180,
     "region": "liangzhou",
-    "desc": "\uc704\uc5f0\uc744 \ubca4 \ub9c8\ucd08\uc758 \uc0ac\ucd0c",
+    "desc": "\uC704\uC5F0\uC744 \uBCA4 \uB9C8\uCD08\uC758 \uC0AC\uCD0C",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1354,10 +1360,10 @@
   },
   {
     "id": 45,
-    "name": "\uc655\ud3c9",
+    "name": "\uC655\uD3C9",
     "birth": 183,
     "region": "yizhou",
-    "desc": "\uac00\uc815\uc758 \ud328\uc804 \uc18d\uc5d0\uc11c \ud640\ub85c \uc9c4\uc744 \uc9c0\ud0a8 \uc0b0\uc545\uc804 \uba85\uc218",
+    "desc": "\uAC00\uC815\uC758 \uD328\uC804 \uC18D\uC5D0\uC11C \uD640\uB85C \uC9C4\uC744 \uC9C0\uD0A8 \uC0B0\uC545\uC804 \uBA85\uC218",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1381,10 +1387,10 @@
   },
   {
     "id": 46,
-    "name": "\uc694\ud654",
+    "name": "\uC694\uD654",
     "birth": 185,
     "region": "jingzhou",
-    "desc": "\ucd09\uc758 \ucc98\uc74c\uacfc \ub05d\uc744 \ud568\uaed8\ud55c \uc120\ubd09",
+    "desc": "\uCD09\uC758 \uCC98\uC74C\uACFC \uB05D\uC744 \uD568\uAED8\uD55C \uC120\uBD09",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1407,10 +1413,10 @@
   },
   {
     "id": 47,
-    "name": "\ubc29\ud1b5",
+    "name": "\uBC29\uD1B5",
     "birth": 179,
     "region": "jingzhou",
-    "desc": "\ubd09\ucd94 \u2014 \ub099\ubd09\ud30c\uc5d0 \uc9c4 \uc5f0\ud658\uacc4\uc758 \uc7ac\uc0ac",
+    "desc": "\uBD09\uCD94 \u2014 \uB099\uBD09\uD30C\uC5D0 \uC9C4 \uC5F0\uD658\uACC4\uC758 \uC7AC\uC0AC",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -1443,10 +1449,10 @@
   },
   {
     "id": 48,
-    "name": "\ubc95\uc815",
+    "name": "\uBC95\uC815",
     "birth": 176,
     "region": "sili",
-    "desc": "\ud55c\uc911 \uacf5\ub7b5\uc744 \uc124\uacc4\ud55c \ucd09\uc758 \ubaa8\uc8fc",
+    "desc": "\uD55C\uC911 \uACF5\uB7B5\uC744 \uC124\uACC4\uD55C \uCD09\uC758 \uBAA8\uC8FC",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -1475,10 +1481,10 @@
   },
   {
     "id": 49,
-    "name": "\ub9c8\ub7c9",
+    "name": "\uB9C8\uB7C9",
     "birth": 187,
     "region": "jingzhou",
-    "desc": "\ubc31\ubbf8 \u2014 \ub9c8\uc528 \uc624\uc0c1\uc758 \uc73c\ub738",
+    "desc": "\uBC31\uBBF8 \u2014 \uB9C8\uC528 \uC624\uC0C1\uC758 \uC73C\uB738",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -1511,10 +1517,10 @@
   },
   {
     "id": 50,
-    "name": "\ub9c8\uc18d",
+    "name": "\uB9C8\uC18D",
     "birth": 190,
     "region": "jingzhou",
-    "desc": "\uac00\uc815\uc744 \uc783\uc740 \uc218\uc7ac \u2014 \uc74d\ucc38\ub9c8\uc18d\uc758 \uc8fc\uc778\uacf5",
+    "desc": "\uAC00\uC815\uC744 \uC783\uC740 \uC218\uC7AC \u2014 \uC74D\uCC38\uB9C8\uC18D\uC758 \uC8FC\uC778\uACF5",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -1537,10 +1543,10 @@
   },
   {
     "id": 51,
-    "name": "\uc11c\uc11c",
+    "name": "\uC11C\uC11C",
     "birth": 168,
     "region": "yuzhou",
-    "desc": "\uc720\ube44\uc758 \uccab \uad70\uc0ac \u2014 \ud6a8\uc2ec\uc73c\ub85c \uc704\uc5d0 \uac04 \uc740\uc0ac",
+    "desc": "\uC720\uBE44\uC758 \uCCAB \uAD70\uC0AC \u2014 \uD6A8\uC2EC\uC73C\uB85C \uC704\uC5D0 \uAC04 \uC740\uC0AC",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -1569,10 +1575,10 @@
   },
   {
     "id": 52,
-    "name": "\uad00\ud3c9",
+    "name": "\uAD00\uD3C9",
     "birth": 183,
     "region": "sili",
-    "desc": "\uad00\uc6b0\uc640 \ucd5c\ud6c4\ub97c \ud568\uaed8\ud55c \uc591\uc790",
+    "desc": "\uAD00\uC6B0\uC640 \uCD5C\uD6C4\uB97C \uD568\uAED8\uD55C \uC591\uC790",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1596,10 +1602,10 @@
   },
   {
     "id": 53,
-    "name": "\uad00\ud765",
+    "name": "\uAD00\uD765",
     "birth": 205,
     "region": "yizhou",
-    "desc": "\uc544\ubc84\uc9c0\uc758 \uccad\ub8e1\ub3c4\ub97c \uc774\uc740 \uad00\uc6b0\uc758 \uc544\ub4e4",
+    "desc": "\uC544\uBC84\uC9C0\uC758 \uCCAD\uB8E1\uB3C4\uB97C \uC774\uC740 \uAD00\uC6B0\uC758 \uC544\uB4E4",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1623,10 +1629,10 @@
   },
   {
     "id": 54,
-    "name": "\uc7a5\ud3ec",
+    "name": "\uC7A5\uD3EC",
     "birth": 206,
     "region": "yizhou",
-    "desc": "\uc7a5\ube44\uc758 \uae30\ubc31\uc744 \uc774\uc740 \uc544\ub4e4",
+    "desc": "\uC7A5\uBE44\uC758 \uAE30\uBC31\uC744 \uC774\uC740 \uC544\uB4E4",
     "aptitudes": {
       "infantry": "A",
       "archer": "C",
@@ -1650,10 +1656,10 @@
   },
   {
     "id": 55,
-    "name": "\uc5c4\uc548",
+    "name": "\uC5C4\uC548",
     "birth": 150,
     "region": "yizhou",
-    "desc": "\uba38\ub9ac\ub97c \ubca8\uc9c0\uc5b8\uc815 \ud56d\ubcf5\uc740 \uc5c6\ub2e4\ub358 \ud30c\uad70 \ub178\uc7a5",
+    "desc": "\uBA38\uB9AC\uB97C \uBCA8\uC9C0\uC5B8\uC815 \uD56D\uBCF5\uC740 \uC5C6\uB2E4\uB358 \uD30C\uAD70 \uB178\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "S",
@@ -1677,10 +1683,10 @@
   },
   {
     "id": 56,
-    "name": "\uc774\uc5c4",
+    "name": "\uC774\uC5C4",
     "birth": 180,
     "region": "jingzhou",
-    "desc": "\uc720\ube44\uc758 \ud0c1\uace0\ub97c \ubc1b\uc740 \ucd09\uc758 \uc911\uc2e0",
+    "desc": "\uC720\uBE44\uC758 \uD0C1\uACE0\uB97C \uBC1B\uC740 \uCD09\uC758 \uC911\uC2E0",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1709,10 +1715,10 @@
   },
   {
     "id": 57,
-    "name": "\ub9f9\ud68d",
+    "name": "\uB9F9\uD68D",
     "birth": 190,
     "region": "nanzhong",
-    "desc": "\uce60\uc885\uce60\uae08 \u2014 \ub0a8\uc911\uc758 \uc655",
+    "desc": "\uCE60\uC885\uCE60\uAE08 \u2014 \uB0A8\uC911\uC758 \uC655",
     "aptitudes": {
       "infantry": "A",
       "archer": "C",
@@ -1742,15 +1748,15 @@
   },
   {
     "id": 58,
-    "name": "\ucd95\uc735",
+    "name": "\uCD95\uC735",
     "birth": 195,
     "region": "nanzhong",
-    "desc": "\ube44\ub3c4\ub97c \ub358\uc9c0\ub294 \ub0a8\ub9cc\uc758 \uc5ec\uac78",
+    "desc": "\uBE44\uB3C4\uB97C \uB358\uC9C0\uB294 \uB0A8\uB9CC\uC758 \uC5EC\uAC78",
     "aptitudes": {
       "infantry": "B",
-      "archer": "A",
-      "cavalry": "B",
-      "elephant": "A",
+      "archer": "B",
+      "cavalry": "A",
+      "elephant": "S",
       "siege": "C",
       "naval": "C",
       "supply": "C",
@@ -1775,10 +1781,10 @@
   },
   {
     "id": 59,
-    "name": "\uc9c4\ub3c4",
+    "name": "\uC9C4\uB3C4",
     "birth": 180,
     "region": "yuzhou",
-    "desc": "\ubc31\ubaa8\ubcd1\uc744 \uc774\ub048 \ucd09\uc758 \uc228\uc740 \ud638\uc704\uc7a5",
+    "desc": "\uBC31\uBAA8\uBCD1\uC744 \uC774\uB048 \uCD09\uC758 \uC228\uC740 \uD638\uC704\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1802,10 +1808,10 @@
   },
   {
     "id": 60,
-    "name": "\uc624\uc758",
+    "name": "\uC624\uC758",
     "birth": 185,
     "region": "yanzhou",
-    "desc": "\ucd09 \ud669\uc2e4\uc758 \uc678\ucc99 \ubb34\uc7a5",
+    "desc": "\uCD09 \uD669\uC2E4\uC758 \uC678\uCC99 \uBB34\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -1828,19 +1834,19 @@
   },
   {
     "id": 61,
-    "name": "\uc190\uacac",
+    "name": "\uC190\uACAC",
     "birth": 155,
     "region": "yangzhou",
-    "desc": "\uac15\ub3d9\uc758 \ud638\ub791\uc774 \u2014 \uc190\uc528 \ud328\uc5c5\uc758 \uc2dc\uc870",
+    "desc": "\uAC15\uB3D9\uC758 \uD638\uB791\uC774 \u2014 \uC190\uC528 \uD328\uC5C5\uC758 \uC2DC\uC870",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
       "cavalry": "A",
-      "elephant": "C",
-      "siege": "B",
+      "elephant": "A",
+      "siege": "A",
       "naval": "A",
-      "supply": "C",
-      "defense": "B"
+      "supply": "A",
+      "defense": "A"
     },
     "might": 91,
     "intellect": 75,
@@ -1861,10 +1867,10 @@
   },
   {
     "id": 62,
-    "name": "\uc190\ucc45",
+    "name": "\uC190\uCC45",
     "birth": 175,
     "region": "yangzhou",
-    "desc": "\uc18c\ud328\uc655 \u2014 \uac15\ub3d9\uc744 \ud3c9\uc815\ud55c \uc9c8\ud48d",
+    "desc": "\uC18C\uD328\uC655 \u2014 \uAC15\uB3D9\uC744 \uD3C9\uC815\uD55C \uC9C8\uD48D",
     "aptitudes": {
       "infantry": "SS",
       "archer": "B",
@@ -1888,10 +1894,10 @@
   },
   {
     "id": 63,
-    "name": "\uc190\uad8c",
+    "name": "\uC190\uAD8C",
     "birth": 182,
     "region": "yangzhou",
-    "desc": "\ubcbd\uc548\uc758 \uc624 \ub300\uc81c \u2014 \uc2e0\ud558\ub97c \ubd80\ub9ac\ub294 \uc7ac\uc8fc",
+    "desc": "\uBCBD\uC548\uC758 \uC624 \uB300\uC81C \u2014 \uC2E0\uD558\uB97C \uBD80\uB9AC\uB294 \uC7AC\uC8FC",
     "aptitudes": {
       "infantry": "B",
       "archer": "A",
@@ -1924,10 +1930,10 @@
   },
   {
     "id": 64,
-    "name": "\ud0dc\uc0ac\uc790",
+    "name": "\uD0DC\uC0AC\uC790",
     "birth": 166,
     "region": "qingzhou",
-    "desc": "\uc2e0\uc758\ub97c \uc9c0\ud0a8 \ub3d9\ub798\uc758 \uc2e0\uad81",
+    "desc": "\uC2E0\uC758\uB97C \uC9C0\uD0A8 \uB3D9\uB798\uC758 \uC2E0\uAD81",
     "aptitudes": {
       "infantry": "S",
       "archer": "S",
@@ -1951,17 +1957,17 @@
   },
   {
     "id": 65,
-    "name": "\uc815\ubcf4",
+    "name": "\uC815\uBCF4",
     "birth": 152,
     "region": "youzhou",
-    "desc": "\uc0bc\ub300\ub97c \uc12c\uae34 \uc624\uc758 \ub355\uc7a5",
+    "desc": "\uC0BC\uB300\uB97C \uC12C\uAE34 \uC624\uC758 \uB355\uC7A5",
     "aptitudes": {
       "infantry": "A",
-      "archer": "B",
+      "archer": "A\u002B",
       "cavalry": "B",
       "elephant": "C",
       "siege": "B",
-      "naval": "A",
+      "naval": "A\u002B",
       "supply": "B",
       "defense": "B"
     },
@@ -1984,13 +1990,13 @@
   },
   {
     "id": 66,
-    "name": "\ud669\uac1c",
+    "name": "\uD669\uAC1C",
     "birth": 154,
     "region": "jingzhou",
-    "desc": "\uace0\uc721\uacc4\ub85c \uc801\ubcbd\uc758 \ubd88\uc528\ub97c \ub2f9\uae34 \ub178\uc7a5",
+    "desc": "\uACE0\uC721\uACC4\uB85C \uC801\uBCBD\uC758 \uBD88\uC528\uB97C \uB2F9\uAE34 \uB178\uC7A5",
     "aptitudes": {
       "infantry": "A",
-      "archer": "B",
+      "archer": "A\u002B",
       "cavalry": "B",
       "elephant": "C",
       "siege": "B",
@@ -2007,14 +2013,15 @@
         "code": "plunder",
         "tier": 2
       }
-    ]
+    ],
+    "admin_passives": []
   },
   {
     "id": 67,
-    "name": "\ud55c\ub2f9",
+    "name": "\uD55C\uB2F9",
     "birth": 160,
     "region": "youzhou",
-    "desc": "\uc190\uacac \uc774\ub798\uc758 \ubc31\uc804\ub178\uc7a5",
+    "desc": "\uC190\uACAC \uC774\uB798\uC758 \uBC31\uC804\uB178\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -2038,10 +2045,10 @@
   },
   {
     "id": 68,
-    "name": "\uc8fc\ud0dc",
+    "name": "\uC8FC\uD0DC",
     "birth": 168,
     "region": "yangzhou",
-    "desc": "\uc628\ubab8\uc758 \uc0c1\ucc98\ub85c \uc190\uad8c\uc744 \uc9c0\ud0a8 \ucda9\uc7a5",
+    "desc": "\uC628\uBAB8\uC758 \uC0C1\uCC98\uB85C \uC190\uAD8C\uC744 \uC9C0\uD0A8 \uCDA9\uC7A5",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -2065,10 +2072,10 @@
   },
   {
     "id": 69,
-    "name": "\ub2a5\ud1b5",
+    "name": "\uB2A5\uD1B5",
     "birth": 189,
     "region": "yangzhou",
-    "desc": "\uc544\ubc84\uc9c0\uc758 \uc6d0\uc218\uc640\ub3c4 \uad6d\uc0ac\ub97c \ud568\uaed8\ud55c \ubb34\uc7a5",
+    "desc": "\uC544\uBC84\uC9C0\uC758 \uC6D0\uC218\uC640\uB3C4 \uAD6D\uC0AC\uB97C \uD568\uAED8\uD55C \uBB34\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2092,13 +2099,13 @@
   },
   {
     "id": 70,
-    "name": "\uc5ec\ubabd",
+    "name": "\uC5EC\uBABD",
     "birth": 178,
     "region": "yuzhou",
-    "desc": "\uad04\ubaa9\uc0c1\ub300 \u2014 \ud615\uc8fc\ub97c \ucde8\ud55c \ubc31\uc758\ub3c4\uac15\uc758 \uc8fc\uc5ed",
+    "desc": "\uAD04\uBAA9\uC0C1\uB300 \u2014 \uD615\uC8FC\uB97C \uCDE8\uD55C \uBC31\uC758\uB3C4\uAC15\uC758 \uC8FC\uC5ED",
     "aptitudes": {
       "infantry": "S",
-      "archer": "A",
+      "archer": "A\u002B",
       "cavalry": "B",
       "elephant": "C",
       "siege": "A",
@@ -2125,18 +2132,18 @@
   },
   {
     "id": 71,
-    "name": "\uc721\uc190",
+    "name": "\uC721\uC190",
     "birth": 183,
     "region": "yangzhou",
-    "desc": "\uc774\ub989\uc5d0\uc11c \uc720\ube44\ub97c \ubd88\ud0dc\uc6b4 \uc11c\uc0dd \ub300\ub3c4\ub3c5",
+    "desc": "\uC774\uB989\uC5D0\uC11C \uC720\uBE44\uB97C \uBD88\uD0DC\uC6B4 \uC11C\uC0DD \uB300\uB3C4\uB3C5",
     "aptitudes": {
-      "infantry": "A",
-      "archer": "A",
-      "cavalry": "B",
-      "elephant": "C",
-      "siege": "A",
+      "infantry": "A\u002B",
+      "archer": "A\u002B",
+      "cavalry": "A\u002B",
+      "elephant": "B",
+      "siege": "A\u002B",
       "naval": "S",
-      "supply": "A+",
+      "supply": "A\u002B",
       "defense": "S"
     },
     "might": 70,
@@ -2162,10 +2169,10 @@
   },
   {
     "id": 72,
-    "name": "\uc721\ud56d",
+    "name": "\uC721\uD56D",
     "birth": 226,
     "region": "yangzhou",
-    "desc": "\uc624\uc758 \ub9c8\uc9c0\ub9c9 \uba85\uc7a5 \u2014 \uc721\uc190\uc758 \uc544\ub4e4",
+    "desc": "\uC624\uC758 \uB9C8\uC9C0\uB9C9 \uBA85\uC7A5 \u2014 \uC721\uC190\uC758 \uC544\uB4E4",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2173,7 +2180,7 @@
       "elephant": "C",
       "siege": "A",
       "naval": "A",
-      "supply": "A+",
+      "supply": "A\u002B",
       "defense": "S"
     },
     "might": 68,
@@ -2195,10 +2202,10 @@
   },
   {
     "id": 73,
-    "name": "\ub178\uc219",
+    "name": "\uB178\uC219",
     "birth": 172,
     "region": "xuzhou",
-    "desc": "\ucc9c\ud558\uc774\ubd84\uc9c0\uacc4 \u2014 \uc624\ucd09 \ub3d9\ub9f9\uc758 \uc124\uacc4\uc790",
+    "desc": "\uCC9C\uD558\uC774\uBD84\uC9C0\uACC4 \u2014 \uC624\uCD09 \uB3D9\uB9F9\uC758 \uC124\uACC4\uC790",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2235,10 +2242,10 @@
   },
   {
     "id": 74,
-    "name": "\uc7a5\uc18c",
+    "name": "\uC7A5\uC18C",
     "birth": 156,
     "region": "xuzhou",
-    "desc": "\ub0b4\uc0ac\ub294 \uc7a5\uc18c\uc5d0\uac8c \u2014 \uc624\uc758 \uccab\uc9f8 \ubb38\uc2e0",
+    "desc": "\uB0B4\uC0AC\uB294 \uC7A5\uC18C\uC5D0\uAC8C \u2014 \uC624\uC758 \uCCAB\uC9F8 \uBB38\uC2E0",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -2265,10 +2272,10 @@
   },
   {
     "id": 75,
-    "name": "\uc81c\uac08\uadfc",
+    "name": "\uC81C\uAC08\uADFC",
     "birth": 174,
     "region": "xuzhou",
-    "desc": "\uacf5\uba85\uc758 \ud615 \u2014 \uc628\ud654\ud55c \uc678\uad50\uc758 \ub2ec\uc778",
+    "desc": "\uACF5\uBA85\uC758 \uD615 \u2014 \uC628\uD654\uD55C \uC678\uAD50\uC758 \uB2EC\uC778",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -2301,10 +2308,10 @@
   },
   {
     "id": 76,
-    "name": "\uc815\ubd09",
+    "name": "\uC815\uBD09",
     "birth": 195,
     "region": "yangzhou",
-    "desc": "\ub208\ubcf4\ub77c \uc18d \ub2e8\ubcd1\uc811\uc804 \u2014 \uc624\uc758 \ub9c8\uc9c0\ub9c9 \uc219\uc7a5",
+    "desc": "\uB208\uBCF4\uB77C \uC18D \uB2E8\uBCD1\uC811\uC804 \u2014 \uC624\uC758 \uB9C8\uC9C0\uB9C9 \uC219\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2328,10 +2335,10 @@
   },
   {
     "id": 77,
-    "name": "\uc11c\uc131",
+    "name": "\uC11C\uC131",
     "birth": 180,
     "region": "xuzhou",
-    "desc": "\uac00\uc9dc \uc131\ubcbd\uc73c\ub85c \uc870\ube44\ub97c \ubb3c\ub9b0 \uc9c0\uc7a5",
+    "desc": "\uAC00\uC9DC \uC131\uBCBD\uC73C\uB85C \uC870\uBE44\uB97C \uBB3C\uB9B0 \uC9C0\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -2355,10 +2362,10 @@
   },
   {
     "id": 78,
-    "name": "\uc8fc\ud658",
+    "name": "\uC8FC\uD658",
     "birth": 177,
     "region": "yangzhou",
-    "desc": "\uc720\uc218\uc5d0\uc11c \uc870\uc778\uc744 \uaebe\uc740 \uac15\ub3d9\uc758 \ub2f4\ub7b5",
+    "desc": "\uC720\uC218\uC5D0\uC11C \uC870\uC778\uC744 \uAEBE\uC740 \uAC15\uB3D9\uC758 \uB2F4\uB7B5",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2367,7 +2374,7 @@
       "siege": "B",
       "naval": "A",
       "supply": "B",
-      "defense": "A+"
+      "defense": "A\u002B"
     },
     "might": 78,
     "intellect": 74,
@@ -2382,10 +2389,10 @@
   },
   {
     "id": 79,
-    "name": "\ubc18\uc7a5",
+    "name": "\uBC18\uC7A5",
     "birth": 175,
     "region": "yanzhou",
-    "desc": "\uad00\uc6b0\ub97c \uc0ac\ub85c\uc7a1\uc740 \uac70\uce5c \uc57c\uc804\uafbc",
+    "desc": "\uAD00\uC6B0\uB97C \uC0AC\uB85C\uC7A1\uC740 \uAC70\uCE5C \uC57C\uC804\uAFBC",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2409,10 +2416,10 @@
   },
   {
     "id": 80,
-    "name": "\ud558\uc81c",
+    "name": "\uD558\uC81C",
     "birth": 170,
     "region": "yangzhou",
-    "desc": "\uc0b0\uc6d4\uc744 \ud3c9\uc815\ud55c \ud654\ub824\ud55c \uad70\uc7a5",
+    "desc": "\uC0B0\uC6D4\uC744 \uD3C9\uC815\uD55C \uD654\uB824\uD55C \uAD70\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2435,10 +2442,10 @@
   },
   {
     "id": 81,
-    "name": "\ub3d9\ud0c1",
+    "name": "\uB3D9\uD0C1",
     "birth": 139,
     "region": "liangzhou",
-    "desc": "\ub099\uc591\uc744 \ubd88\ud0dc\uc6b4 \ud3ed\uad70 \u2014 \ud55c\uc744 \ubb34\ub108\ub728\ub9b0 \uc2b9\ub0e5\uc774",
+    "desc": "\uB099\uC591\uC744 \uBD88\uD0DC\uC6B4 \uD3ED\uAD70 \u2014 \uD55C\uC744 \uBB34\uB108\uB728\uB9B0 \uC2B9\uB0E5\uC774",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2462,10 +2469,10 @@
   },
   {
     "id": 82,
-    "name": "\ud654\uc6c5",
+    "name": "\uD654\uC6C5",
     "birth": 155,
     "region": "liangzhou",
-    "desc": "\uc0ac\uc218\uad00\uc758 \uc120\ubd09 \u2014 \uad00\uc6b0\uc758 \uc220\uc774 \uc2dd\uae30 \uc804\uc5d0",
+    "desc": "\uC0AC\uC218\uAD00\uC758 \uC120\uBD09 \u2014 \uAD00\uC6B0\uC758 \uC220\uC774 \uC2DD\uAE30 \uC804\uC5D0",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2489,10 +2496,10 @@
   },
   {
     "id": 83,
-    "name": "\uc774\uac01",
+    "name": "\uC774\uAC01",
     "birth": 160,
     "region": "liangzhou",
-    "desc": "\ub3d9\ud0c1 \uc0ac\ud6c4 \uc7a5\uc548\uc744 \uc5b4\uc9c0\ub7fd\ud78c \uc794\ub2f9",
+    "desc": "\uB3D9\uD0C1 \uC0AC\uD6C4 \uC7A5\uC548\uC744 \uC5B4\uC9C0\uB7FD\uD78C \uC794\uB2F9",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2515,10 +2522,10 @@
   },
   {
     "id": 84,
-    "name": "\uacfd\uc0ac",
+    "name": "\uACFD\uC0AC",
     "birth": 160,
     "region": "liangzhou",
-    "desc": "\uc774\uac01\uacfc \ud568\uaed8 \uc870\uc815\uc744 \ub18d\ub2e8\ud55c \uc11c\ub7c9 \uc794\ub2f9",
+    "desc": "\uC774\uAC01\uACFC \uD568\uAED8 \uC870\uC815\uC744 \uB18D\uB2E8\uD55C \uC11C\uB7C9 \uC794\uB2F9",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2541,10 +2548,10 @@
   },
   {
     "id": 85,
-    "name": "\ub9c8\ub4f1",
+    "name": "\uB9C8\uB4F1",
     "birth": 156,
     "region": "liangzhou",
-    "desc": "\uc11c\ub7c9\uc758 \uad70\ubc8c \u2014 \ub9c8\ucd08\uc758 \uc544\ubc84\uc9c0",
+    "desc": "\uC11C\uB7C9\uC758 \uAD70\uBC8C \u2014 \uB9C8\uCD08\uC758 \uC544\uBC84\uC9C0",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -2574,10 +2581,10 @@
   },
   {
     "id": 86,
-    "name": "\ud55c\uc218",
+    "name": "\uD55C\uC218",
     "birth": 145,
     "region": "liangzhou",
-    "desc": "\uc11c\ub7c9 \ubc18\ub780 \uc0bc\uc2ed \ub144\uc758 \ub178\ud68c\ud55c \uad70\ubc8c",
+    "desc": "\uC11C\uB7C9 \uBC18\uB780 \uC0BC\uC2ED \uB144\uC758 \uB178\uD68C\uD55C \uAD70\uBC8C",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2600,10 +2607,10 @@
   },
   {
     "id": 87,
-    "name": "\uc6d0\uc18c",
+    "name": "\uC6D0\uC18C",
     "birth": 154,
     "region": "yuzhou",
-    "desc": "\uc0ac\uc138\uc0bc\uacf5\uc758 \uba85\ubb38 \u2014 \uad00\ub3c4\uc5d0\uc11c \uc9c4 \ud558\ubd81\uc758 \ub9f9\uc8fc",
+    "desc": "\uC0AC\uC138\uC0BC\uACF5\uC758 \uBA85\uBB38 \u2014 \uAD00\uB3C4\uC5D0\uC11C \uC9C4 \uD558\uBD81\uC758 \uB9F9\uC8FC",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -2636,10 +2643,10 @@
   },
   {
     "id": 88,
-    "name": "\uc548\ub7c9",
+    "name": "\uC548\uB7C9",
     "birth": 160,
     "region": "jizhou",
-    "desc": "\ubc31\ub9c8\uc5d0\uc11c \uad00\uc6b0\uc758 \uc77c\uaca9\uc5d0 \uc9c4 \ud558\ubd81\uc758 \uc6a9\uc7a5",
+    "desc": "\uBC31\uB9C8\uC5D0\uC11C \uAD00\uC6B0\uC758 \uC77C\uACA9\uC5D0 \uC9C4 \uD558\uBD81\uC758 \uC6A9\uC7A5",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -2663,10 +2670,10 @@
   },
   {
     "id": 89,
-    "name": "\ubb38\ucd94",
+    "name": "\uBB38\uCD94",
     "birth": 160,
     "region": "jizhou",
-    "desc": "\uc548\ub7c9\uc758 \ubcf5\uc218\ub97c \uae30\ub3c4\ud558\ub2e4 \uc2a4\ub7ec\uc9c4 \ub9f9\uc7a5",
+    "desc": "\uC548\uB7C9\uC758 \uBCF5\uC218\uB97C \uAE30\uB3C4\uD558\uB2E4 \uC2A4\uB7EC\uC9C4 \uB9F9\uC7A5",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -2690,10 +2697,10 @@
   },
   {
     "id": 90,
-    "name": "\uc804\ud48d",
+    "name": "\uC804\uD48D",
     "birth": 150,
     "region": "jizhou",
-    "desc": "\uc625\uc911\uc5d0\uc11c \uad00\ub3c4 \ud328\uc804\uc744 \uc608\uc5b8\ud55c \uac15\uc9c1\ud55c \ubaa8\uc0ac",
+    "desc": "\uC625\uC911\uC5D0\uC11C \uAD00\uB3C4 \uD328\uC804\uC744 \uC608\uC5B8\uD55C \uAC15\uC9C1\uD55C \uBAA8\uC0AC",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -2722,10 +2729,10 @@
   },
   {
     "id": 91,
-    "name": "\uc800\uc218",
+    "name": "\uC800\uC218",
     "birth": 155,
     "region": "jizhou",
-    "desc": "\uc6d0\uc18c\uac00 \ubc84\ub9b0 \ucda9\uac04 \u2014 \uac10\uad70\uc758 \uc7ac\ub7b5",
+    "desc": "\uC6D0\uC18C\uAC00 \uBC84\uB9B0 \uCDA9\uAC04 \u2014 \uAC10\uAD70\uC758 \uC7AC\uB7B5",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -2754,10 +2761,10 @@
   },
   {
     "id": 92,
-    "name": "\uc6d0\uc220",
+    "name": "\uC6D0\uC220",
     "birth": 155,
     "region": "yuzhou",
-    "desc": "\uc625\uc0c8\ub97c \ubbff\uace0 \ucc38\uce6d\ud55c \ubab0\ub77d \uadc0\uacf5\uc790",
+    "desc": "\uC625\uC0C8\uB97C \uBBFF\uACE0 \uCC38\uCE6D\uD55C \uBAB0\uB77D \uADC0\uACF5\uC790",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2780,14 +2787,14 @@
   },
   {
     "id": 93,
-    "name": "\uae30\ub839",
+    "name": "\uAE30\uB839",
     "birth": 160,
     "region": "yuzhou",
-    "desc": "\uc0bc\ucca8\ub3c4\ub97c \uc4f0\ub294 \uc6d0\uc220\uad70 \uc81c\uc77c\uc7a5",
+    "desc": "\uC0BC\uCCA8\uB3C4\uB97C \uC4F0\uB294 \uC6D0\uC220\uAD70 \uC81C\uC77C\uC7A5",
     "aptitudes": {
-      "infantry": "A",
+      "infantry": "B",
       "archer": "B",
-      "cavalry": "B",
+      "cavalry": "A\u002B",
       "elephant": "C",
       "siege": "C",
       "naval": "C",
@@ -2803,14 +2810,15 @@
         "code": "drilled",
         "tier": 2
       }
-    ]
+    ],
+    "admin_passives": []
   },
   {
     "id": 94,
-    "name": "\uacf5\uc190\ucc2c",
+    "name": "\uACF5\uC190\uCC2C",
     "birth": 155,
     "region": "youzhou",
-    "desc": "\ubc31\ub9c8\uc758\uc885 \u2014 \ubd81\ubc29 \uc774\ubbfc\uc871\uc774 \ub450\ub824\uc6cc\ud55c \ubc31\ub9c8\uc7a5\uad70",
+    "desc": "\uBC31\uB9C8\uC758\uC885 \u2014 \uBD81\uBC29 \uC774\uBBFC\uC871\uC774 \uB450\uB824\uC6CC\uD55C \uBC31\uB9C8\uC7A5\uAD70",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -2840,10 +2848,10 @@
   },
   {
     "id": 95,
-    "name": "\uc720\ud45c",
+    "name": "\uC720\uD45C",
     "birth": 142,
     "region": "yanzhou",
-    "desc": "\ud615\uc8fc\ub97c \uc9c0\ud0a8 \ud314\uc900 \u2014 \uc218\uc131\uc758 \uba85\uc0ac",
+    "desc": "\uD615\uC8FC\uB97C \uC9C0\uD0A8 \uD314\uC900 \u2014 \uC218\uC131\uC758 \uBA85\uC0AC",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -2876,10 +2884,10 @@
   },
   {
     "id": 96,
-    "name": "\ud669\uc870",
+    "name": "\uD669\uC870",
     "birth": 150,
     "region": "jingzhou",
-    "desc": "\uc190\uacac\uc744 \uc3d8\uc544 \uc8fd\uc778 \uac15\ud558 \ud0dc\uc218",
+    "desc": "\uC190\uACAC\uC744 \uC3D8\uC544 \uC8FD\uC778 \uAC15\uD558 \uD0DC\uC218",
     "aptitudes": {
       "infantry": "B",
       "archer": "A",
@@ -2902,10 +2910,10 @@
   },
   {
     "id": 97,
-    "name": "\ubb38\ube59",
+    "name": "\uBB38\uBE59",
     "birth": 175,
     "region": "jingzhou",
-    "desc": "\uac15\ud558\ub97c \uc218\uc2ed \ub144 \uc9c0\ud0a8 \ud615\uc8fc\uc758 \ubc29\ud328",
+    "desc": "\uAC15\uD558\uB97C \uC218\uC2ED \uB144 \uC9C0\uD0A8 \uD615\uC8FC\uC758 \uBC29\uD328",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -2914,7 +2922,7 @@
       "siege": "B",
       "naval": "A",
       "supply": "B",
-      "defense": "A+"
+      "defense": "A\u002B"
     },
     "might": 80,
     "intellect": 68,
@@ -2929,10 +2937,10 @@
   },
   {
     "id": 98,
-    "name": "\uc720\uc7a5",
+    "name": "\uC720\uC7A5",
     "birth": 162,
     "region": "jingzhou",
-    "desc": "\uc775\uc8fc\ub97c \uc720\ube44\uc5d0\uac8c \ub0b4\uc900 \uc720\uc57d\ud55c \uc885\uce5c",
+    "desc": "\uC775\uC8FC\uB97C \uC720\uBE44\uC5D0\uAC8C \uB0B4\uC900 \uC720\uC57D\uD55C \uC885\uCE5C",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -2949,10 +2957,10 @@
   },
   {
     "id": 99,
-    "name": "\uc7a5\uc784",
+    "name": "\uC7A5\uC784",
     "birth": 165,
     "region": "yizhou",
-    "desc": "\ub099\ubd09\ud30c\uc5d0\uc11c \ubc29\ud1b5\uc744 \uc3dc \uc775\uc8fc \uc81c\uc77c\uc7a5",
+    "desc": "\uB099\uBD09\uD30C\uC5D0\uC11C \uBC29\uD1B5\uC744 \uC3DC \uC775\uC8FC \uC81C\uC77C\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -2961,7 +2969,7 @@
       "siege": "B",
       "naval": "C",
       "supply": "C",
-      "defense": "A+"
+      "defense": "A\u002B"
     },
     "might": 84,
     "intellect": 76,
@@ -2976,23 +2984,23 @@
   },
   {
     "id": 100,
-    "name": "\uc7a5\uac01",
+    "name": "\uC7A5\uAC01",
     "birth": 140,
     "region": "jizhou",
-    "desc": "\ucc3d\ucc9c\uc774\uc0ac \ud669\ucc9c\ub2f9\ub9bd \u2014 \ud669\uac74\uc758 \ub300\ud604\ub7c9\uc0ac",
+    "desc": "\uCC3D\uCC9C\uC774\uC0AC \uD669\uCC9C\uB2F9\uB9BD \u2014 \uD669\uAC74\uC758 \uB300\uD604\uB7C9\uC0AC",
     "aptitudes": {
-      "infantry": "B",
-      "archer": "B",
-      "cavalry": "C",
-      "elephant": "C",
-      "siege": "B",
-      "naval": "C",
-      "supply": "C",
-      "defense": "C"
+      "infantry": "A",
+      "archer": "A",
+      "cavalry": "A",
+      "elephant": "A",
+      "siege": "A",
+      "naval": "A",
+      "supply": "A",
+      "defense": "A"
     },
     "might": 40,
     "intellect": 90,
-    "politics": 72,
+    "politics": 89,
     "battle_active": "rally",
     "battle_passives": [
       {
@@ -3009,10 +3017,10 @@
   },
   {
     "id": 101,
-    "name": "\uc7a5\ubcf4",
+    "name": "\uC7A5\uBCF4",
     "birth": 145,
     "region": "jizhou",
-    "desc": "\uc9c0\uacf5\uc7a5\uad70 \u2014 \uc694\uc220\uc744 \ubd80\ub9ac\ub294 \uc7a5\uac01\uc758 \uc544\uc6b0",
+    "desc": "\uC9C0\uACF5\uC7A5\uAD70 \u2014 \uC694\uC220\uC744 \uBD80\uB9AC\uB294 \uC7A5\uAC01\uC758 \uC544\uC6B0",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -3035,10 +3043,10 @@
   },
   {
     "id": 102,
-    "name": "\uc7a5\ub7c9",
+    "name": "\uC7A5\uB7C9",
     "birth": 147,
     "region": "jizhou",
-    "desc": "\uc778\uacf5\uc7a5\uad70 \u2014 \ud669\uac74 \uc0bc\ud615\uc81c\uc758 \ub9c9\ub0b4",
+    "desc": "\uC778\uACF5\uC7A5\uAD70 \u2014 \uD669\uAC74 \uC0BC\uD615\uC81C\uC758 \uB9C9\uB0B4",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -3061,10 +3069,10 @@
   },
   {
     "id": 103,
-    "name": "\uc9c4\uad81",
+    "name": "\uC9C4\uAD81",
     "birth": 161,
     "region": "yanzhou",
-    "desc": "\uc870\uc870\ub97c \ubc84\ub9ac\uace0 \uc5ec\ud3ec\ub97c \ud0dd\ud55c \uac15\uace8 \ucc45\uc0ac",
+    "desc": "\uC870\uC870\uB97C \uBC84\uB9AC\uACE0 \uC5EC\uD3EC\uB97C \uD0DD\uD55C \uAC15\uACE8 \uCC45\uC0AC",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -3093,10 +3101,10 @@
   },
   {
     "id": 104,
-    "name": "\uace0\uc21c",
+    "name": "\uACE0\uC21C",
     "birth": 160,
     "region": "bingzhou",
-    "desc": "\ud568\uc9c4\uc601 \u2014 \uc9c4\uc744 \ubd80\uc218\ub294 \uc5ec\ud3ec\uad70 \ucd5c\uc815\uc608\uc758 \uc7a5",
+    "desc": "\uD568\uC9C4\uC601 \u2014 \uC9C4\uC744 \uBD80\uC218\uB294 \uC5EC\uD3EC\uAD70 \uCD5C\uC815\uC608\uC758 \uC7A5",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -3105,7 +3113,7 @@
       "siege": "B",
       "naval": "C",
       "supply": "C",
-      "defense": "A+"
+      "defense": "A\u002B"
     },
     "might": 88,
     "intellect": 60,
@@ -3120,10 +3128,10 @@
   },
   {
     "id": 105,
-    "name": "\ub3c4\uacb8",
+    "name": "\uB3C4\uACB8",
     "birth": 132,
     "region": "yangzhou",
-    "desc": "\uc11c\uc8fc\ub97c \uc720\ube44\uc5d0\uac8c \ub118\uae34 \uc628\ud6c4\ud55c \uc8fc\ubaa9",
+    "desc": "\uC11C\uC8FC\uB97C \uC720\uBE44\uC5D0\uAC8C \uB118\uAE34 \uC628\uD6C4\uD55C \uC8FC\uBAA9",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -3146,10 +3154,10 @@
   },
   {
     "id": 106,
-    "name": "\uacf5\uc735",
+    "name": "\uACF5\uC735",
     "birth": 153,
     "region": "yanzhou",
-    "desc": "\uacf5\uc790\uc758 \ud6c4\uc608 \u2014 \uccad\ub958 \uba85\uc0ac\uc758 \uae30\uac1c",
+    "desc": "\uACF5\uC790\uC758 \uD6C4\uC608 \u2014 \uCCAD\uB958 \uBA85\uC0AC\uC758 \uAE30\uAC1C",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -3172,10 +3180,10 @@
   },
   {
     "id": 107,
-    "name": "\uc655\uc724",
+    "name": "\uC655\uC724",
     "birth": 137,
     "region": "bingzhou",
-    "desc": "\uc5f0\ud658\uacc4\ub85c \ub3d9\ud0c1\uc744 \ubca4 \uc0ac\ub3c4",
+    "desc": "\uC5F0\uD658\uACC4\uB85C \uB3D9\uD0C1\uC744 \uBCA4 \uC0AC\uB3C4",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -3202,10 +3210,10 @@
   },
   {
     "id": 108,
-    "name": "\uc720\uc694",
+    "name": "\uC720\uC694",
     "birth": 156,
     "region": "qingzhou",
-    "desc": "\uac15\ub3d9\uc5d0\uc11c \uc190\ucc45\uc5d0\uac8c \ubc00\ub824\ub09c \uc591\uc8fc\uc790\uc0ac",
+    "desc": "\uAC15\uB3D9\uC5D0\uC11C \uC190\uCC45\uC5D0\uAC8C \uBC00\uB824\uB09C \uC591\uC8FC\uC790\uC0AC",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -3222,10 +3230,10 @@
   },
   {
     "id": 109,
-    "name": "\uc7a5\ub85c",
+    "name": "\uC7A5\uB85C",
     "birth": 160,
     "region": "yuzhou",
-    "desc": "\ud55c\uc911\uc5d0 \uc624\ub450\ubbf8\ub3c4\uc758 \ub098\ub77c\ub97c \uc138\uc6b4 \uad50\uc8fc",
+    "desc": "\uD55C\uC911\uC5D0 \uC624\uB450\uBBF8\uB3C4\uC758 \uB098\uB77C\uB97C \uC138\uC6B4 \uAD50\uC8FC",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -3258,10 +3266,10 @@
   },
   {
     "id": 110,
-    "name": "\ub9f9\ub2ec",
+    "name": "\uB9F9\uB2EC",
     "birth": 175,
     "region": "sili",
-    "desc": "\ucd09\uacfc \uc704 \uc0ac\uc774\ub97c \uc624\uac04 \ucc98\uc138\uc758 \ubb34\uc7a5",
+    "desc": "\uCD09\uACFC \uC704 \uC0AC\uC774\uB97C \uC624\uAC04 \uCC98\uC138\uC758 \uBB34\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -3284,10 +3292,10 @@
   },
   {
     "id": 111,
-    "name": "\uc2ec\ubc30",
+    "name": "\uC2EC\uBC30",
     "birth": 155,
     "region": "jizhou",
-    "desc": "\uc5c5\uc131\uacfc \ud568\uaed8 \uc8fd\uc740 \uc6d0\uac00\uc758 \ucda9\uace8",
+    "desc": "\uC5C5\uC131\uACFC \uD568\uAED8 \uC8FD\uC740 \uC6D0\uAC00\uC758 \uCDA9\uACE8",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -3316,10 +3324,10 @@
   },
   {
     "id": 112,
-    "name": "\uacfd\ub3c4",
+    "name": "\uACFD\uB3C4",
     "birth": 155,
     "region": "yuzhou",
-    "desc": "\uad00\ub3c4\uc758 \ud328\ucc29\uc744 \ub0a8\uc5d0\uac8c \ubbf8\ub8ec \uc6d0\uc18c\uad70 \ubaa8\uc0ac",
+    "desc": "\uAD00\uB3C4\uC758 \uD328\uCC29\uC744 \uB0A8\uC5D0\uAC8C \uBBF8\uB8EC \uC6D0\uC18C\uAD70 \uBAA8\uC0AC",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -3336,18 +3344,18 @@
   },
   {
     "id": 202,
-    "name": "\uad11\uac1c\ud1a0\ub300\uc655",
+    "name": "\uAD11\uAC1C\uD1A0\uB300\uC655",
     "birth": 374,
     "region": "goguryeo",
-    "desc": "\uc601\ub77d\ub300\uc655 \u2014 \uc0ac\ubc29\uc744 \uc815\ubcf5\ud55c \uc815\ubcf5\uad70\uc8fc",
+    "desc": "\uC601\uB77D\uB300\uC655 \u2014 \uC0AC\uBC29\uC744 \uC815\uBCF5\uD55C \uC815\uBCF5\uAD70\uC8FC",
     "aptitudes": {
       "infantry": "SS",
       "archer": "A",
-      "cavalry": "SS",
+      "cavalry": "SSS",
       "elephant": "C",
       "siege": "A",
-      "naval": "B",
-      "supply": "A",
+      "naval": "C",
+      "supply": "C",
       "defense": "A"
     },
     "might": 95,
@@ -3373,10 +3381,10 @@
   },
   {
     "id": 204,
-    "name": "\uc744\uc9c0\ubb38\ub355",
+    "name": "\uC744\uC9C0\uBB38\uB355",
     "birth": 550,
     "region": "goguryeo",
-    "desc": "\uc0b4\uc218\ub300\ucca9 \u2014 \uc218 \ubc31\ub9cc \ub300\uad70\uc744 \ubb3c\uc5d0 \uc7a5\uc0ac\uc9c0\ub0b8 \uba85\uc7a5",
+    "desc": "\uC0B4\uC218\uB300\uCCA9 \u2014 \uC218 \uBC31\uB9CC \uB300\uAD70\uC744 \uBB3C\uC5D0 \uC7A5\uC0AC\uC9C0\uB0B8 \uBA85\uC7A5",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -3384,8 +3392,8 @@
       "elephant": "C",
       "siege": "A",
       "naval": "B",
-      "supply": "A+",
-      "defense": "S"
+      "supply": "S",
+      "defense": "SSS"
     },
     "might": 82,
     "intellect": 96,
@@ -3394,6 +3402,10 @@
     "battle_passives": [
       {
         "code": "ambush",
+        "tier": 1
+      },
+      {
+        "code": "shield_wall",
         "tier": 3
       }
     ],
@@ -3410,10 +3422,10 @@
   },
   {
     "id": 205,
-    "name": "\uc5f0\uac1c\uc18c\ubb38",
+    "name": "\uC5F0\uAC1C\uC18C\uBB38",
     "birth": 603,
     "region": "goguryeo",
-    "desc": "\ub2e4\uc12f \uc790\ub8e8 \uce7c\uc758 \ub300\ub9c9\ub9ac\uc9c0 \u2014 \ub2f9 \ud0dc\uc885\uc744 \ub9c9\ub2e4",
+    "desc": "\uB2E4\uC12F \uC790\uB8E8 \uCE7C\uC758 \uB300\uB9C9\uB9AC\uC9C0 \u2014 \uB2F9 \uD0DC\uC885\uC744 \uB9C9\uB2E4",
     "aptitudes": {
       "infantry": "SS",
       "archer": "B",
@@ -3443,10 +3455,10 @@
   },
   {
     "id": 206,
-    "name": "\uc591\ub9cc\ucd98",
+    "name": "\uC591\uB9CC\uCD98",
     "birth": 600,
     "region": "goguryeo",
-    "desc": "\uc548\uc2dc\uc131\uc8fc \u2014 88\uc77c\uc758 \uacf5\uc131\uc744 \ubc84\ud168\ub0b8 \uc218\uc131\uc804\uc758 \ud654\uc2e0",
+    "desc": "\uC548\uC2DC\uC131\uC8FC \u2014 88\uC77C\uC758 \uACF5\uC131\uC744 \uBC84\uD168\uB0B8 \uC218\uC131\uC804\uC758 \uD654\uC2E0",
     "aptitudes": {
       "infantry": "A",
       "archer": "S",
@@ -3476,15 +3488,15 @@
   },
   {
     "id": 207,
-    "name": "\uc628\ub2ec",
+    "name": "\uC628\uB2EC",
     "birth": 550,
     "region": "goguryeo",
-    "desc": "\ubc14\ubcf4 \uc628\ub2ec \u2014 \ud3c9\uac15\uacf5\uc8fc\uc640 \ud568\uaed8 \uc77c\uc5b4\uc120 \ub9f9\uc7a5",
+    "desc": "\uBC14\uBCF4 \uC628\uB2EC \u2014 \uD3C9\uAC15\uACF5\uC8FC\uC640 \uD568\uAED8 \uC77C\uC5B4\uC120 \uB9F9\uC7A5",
     "aptitudes": {
-      "infantry": "S",
+      "infantry": "A\u002B",
       "archer": "B",
-      "cavalry": "A",
-      "elephant": "C",
+      "cavalry": "S",
+      "elephant": "B",
       "siege": "C",
       "naval": "C",
       "supply": "C",
@@ -3499,14 +3511,15 @@
         "code": "grit",
         "tier": 2
       }
-    ]
+    ],
+    "admin_passives": []
   },
   {
     "id": 212,
-    "name": "\uadfc\ucd08\uace0\uc655",
+    "name": "\uADFC\uCD08\uACE0\uC655",
     "birth": 310,
     "region": "baekje",
-    "desc": "\ubc31\uc81c\uc758 \uc804\uc131\uae30 \u2014 \ud3c9\uc591\uc131\uae4c\uc9c0 \ubd81\uc9c4\ud55c \uc815\ubcf5\uad70\uc8fc",
+    "desc": "\uBC31\uC81C\uC758 \uC804\uC131\uAE30 \u2014 \uD3C9\uC591\uC131\uAE4C\uC9C0 \uBD81\uC9C4\uD55C \uC815\uBCF5\uAD70\uC8FC",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -3540,10 +3553,10 @@
   },
   {
     "id": 213,
-    "name": "\uacc4\ubc31",
+    "name": "\uACC4\uBC31",
     "birth": 615,
     "region": "baekje",
-    "desc": "\ud669\uc0b0\ubc8c \uc624\ucc9c \uacb0\uc0ac\ub300 \u2014 \ucd5c\ud6c4\uae4c\uc9c0 \uc2f8\uc6b4 \ucda9\uc808",
+    "desc": "\uD669\uC0B0\uBC8C \uC624\uCC9C \uACB0\uC0AC\uB300 \u2014 \uCD5C\uD6C4\uAE4C\uC9C0 \uC2F8\uC6B4 \uCDA9\uC808",
     "aptitudes": {
       "infantry": "SS",
       "archer": "B",
@@ -3552,7 +3565,7 @@
       "siege": "B",
       "naval": "C",
       "supply": "C",
-      "defense": "A+"
+      "defense": "A\u002B"
     },
     "might": 93,
     "intellect": 75,
@@ -3567,10 +3580,10 @@
   },
   {
     "id": 214,
-    "name": "\ud751\uce58\uc0c1\uc9c0",
+    "name": "\uD751\uCE58\uC0C1\uC9C0",
     "birth": 630,
     "region": "baekje",
-    "desc": "\ubc31\uc81c \ubd80\ud765\uad70\uc758 \ub9f9\uc7a5 \u2014 \ub2f9\uc5d0\uc11c\ub3c4 \uba85\uc7a5",
+    "desc": "\uBC31\uC81C \uBD80\uD765\uAD70\uC758 \uB9F9\uC7A5 \u2014 \uB2F9\uC5D0\uC11C\uB3C4 \uBA85\uC7A5",
     "aptitudes": {
       "infantry": "S",
       "archer": "A",
@@ -3579,7 +3592,7 @@
       "siege": "B",
       "naval": "B",
       "supply": "B",
-      "defense": "A+"
+      "defense": "A\u002B"
     },
     "might": 90,
     "intellect": 70,
@@ -3594,10 +3607,10 @@
   },
   {
     "id": 218,
-    "name": "\ubcf5\uc2e0",
+    "name": "\uBCF5\uC2E0",
     "birth": 615,
     "region": "baekje",
-    "desc": "\uc8fc\ub958\uc131\uc758 \ubc31\uc81c \ubd80\ud765\uad70 \uc218\uc7a5",
+    "desc": "\uC8FC\uB958\uC131\uC758 \uBC31\uC81C \uBD80\uD765\uAD70 \uC218\uC7A5",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -3620,10 +3633,10 @@
   },
   {
     "id": 219,
-    "name": "\ub3c4\uce68",
+    "name": "\uB3C4\uCE68",
     "birth": 615,
     "region": "baekje",
-    "desc": "\uc2b9\ubcd1\uc744 \uc77c\uc73c\ud0a8 \ubd80\ud765\uad70\uc758 \uc2b9\uc7a5",
+    "desc": "\uC2B9\uBCD1\uC744 \uC77C\uC73C\uD0A8 \uBD80\uD765\uAD70\uC758 \uC2B9\uC7A5",
     "aptitudes": {
       "infantry": "B",
       "archer": "B",
@@ -3646,19 +3659,19 @@
   },
   {
     "id": 221,
-    "name": "\uae40\uc720\uc2e0",
+    "name": "\uAE40\uC720\uC2E0",
     "birth": 595,
     "region": "silla",
-    "desc": "\uc0bc\uad6d \ud1b5\uc77c\uc758 \uc6d0\ud6c8 \u2014 \uc2e0\ub77c\uc758 \ud765\ubb34\ub300\uc655",
+    "desc": "\uC0BC\uAD6D \uD1B5\uC77C\uC758 \uC6D0\uD6C8 \u2014 \uC2E0\uB77C\uC758 \uD765\uBB34\uB300\uC655",
     "aptitudes": {
-      "infantry": "SS",
+      "infantry": "S",
       "archer": "A",
       "cavalry": "S",
       "elephant": "C",
       "siege": "A",
       "naval": "B",
-      "supply": "A+",
-      "defense": "A+"
+      "supply": "A\u002B",
+      "defense": "A\u002B"
     },
     "might": 92,
     "intellect": 90,
@@ -3679,14 +3692,14 @@
   },
   {
     "id": 224,
-    "name": "\uad00\ucc3d",
+    "name": "\uAD00\uCC3D",
     "birth": 645,
     "region": "silla",
-    "desc": "\ud669\uc0b0\ubc8c\uc5d0 \ubab8\uc744 \ub358\uc9c4 \uc5f4\uc5ec\uc12f \ud654\ub791",
+    "desc": "\uD669\uC0B0\uBC8C\uC5D0 \uBAB8\uC744 \uB358\uC9C4 \uC5F4\uC5EC\uC12F \uD654\uB791",
     "aptitudes": {
-      "infantry": "A",
-      "archer": "B",
-      "cavalry": "A",
+      "infantry": "A\u002B",
+      "archer": "A",
+      "cavalry": "A\u002B",
       "elephant": "C",
       "siege": "C",
       "naval": "C",
@@ -3702,14 +3715,15 @@
         "code": "berserker",
         "tier": 2
       }
-    ]
+    ],
+    "admin_passives": []
   },
   {
     "id": 225,
-    "name": "\uc0ac\ub2e4\ud568",
+    "name": "\uC0AC\uB2E4\uD568",
     "birth": 546,
     "region": "silla",
-    "desc": "\uac00\uc57c \uc815\ubc8c\uc758 \uc120\ubd09\uc5d0 \uc120 \uc18c\ub144 \ud654\ub791",
+    "desc": "\uAC00\uC57C \uC815\uBC8C\uC758 \uC120\uBD09\uC5D0 \uC120 \uC18C\uB144 \uD654\uB791",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -3733,10 +3747,10 @@
   },
   {
     "id": 226,
-    "name": "\uc774\uc0ac\ubd80",
+    "name": "\uC774\uC0AC\uBD80",
     "birth": 485,
     "region": "silla",
-    "desc": "\ub098\ubb34 \uc0ac\uc790\ub85c \uc6b0\uc0b0\uad6d\uc744 \ubcf5\uc18d\uc2dc\ud0a8 \uc7a5\uad70",
+    "desc": "\uB098\uBB34 \uC0AC\uC790\uB85C \uC6B0\uC0B0\uAD6D\uC744 \uBCF5\uC18D\uC2DC\uD0A8 \uC7A5\uAD70",
     "aptitudes": {
       "infantry": "S",
       "archer": "B",
@@ -3766,10 +3780,10 @@
   },
   {
     "id": 230,
-    "name": "\uc120\ub355\uc5ec\uc655",
+    "name": "\uC120\uB355\uC5EC\uC655",
     "birth": 590,
     "region": "silla",
-    "desc": "\ucca8\uc131\ub300\uc640 \ud669\ub8e1\uc0ac \u2014 \uc2e0\ub77c \ucd5c\ucd08\uc758 \uc5ec\uc655",
+    "desc": "\uCCA8\uC131\uB300\uC640 \uD669\uB8E1\uC0AC \u2014 \uC2E0\uB77C \uCD5C\uCD08\uC758 \uC5EC\uC655",
     "aptitudes": {
       "infantry": "C",
       "archer": "C",
@@ -3777,12 +3791,12 @@
       "elephant": "C",
       "siege": "C",
       "naval": "C",
-      "supply": "A",
-      "defense": "B"
+      "supply": "SS",
+      "defense": "A"
     },
     "might": 30,
     "intellect": 86,
-    "politics": 92,
+    "politics": 96,
     "battle_passives": [
       {
         "code": "high_spirits",
@@ -3798,14 +3812,15 @@
         "code": "pacifier",
         "tier": 2
       }
-    ]
+    ],
+    "battle_active": null
   },
   {
     "id": 301,
-    "name": "\uc624\ub2e4 \ub178\ubd80\ub098\uac00",
+    "name": "\uC624\uB2E4 \uB178\uBD80\uB098\uAC00",
     "birth": 1534,
     "region": "owari",
-    "desc": "\uc81c\uc721\ucc9c\ub9c8\uc655 \u2014 \ucca0\ud3ec \uc0bc\ub2e8\uc73c\ub85c \uc2dc\ub300\ub97c \ubc14\uafbc \ud48d\uc6b4\uc544",
+    "desc": "\uC81C\uC721\uCC9C\uB9C8\uC655 \u2014 \uCCA0\uD3EC \uC0BC\uB2E8\uC73C\uB85C \uC2DC\uB300\uB97C \uBC14\uAFBC \uD48D\uC6B4\uC544",
     "aptitudes": {
       "infantry": "S",
       "archer": "SS",
@@ -3813,7 +3828,7 @@
       "elephant": "C",
       "siege": "A",
       "naval": "B",
-      "supply": "A+",
+      "supply": "A\u002B",
       "defense": "A"
     },
     "might": 88,
@@ -3843,10 +3858,10 @@
   },
   {
     "id": 303,
-    "name": "\ub3c4\ucfe0\uac00\uc640 \uc774\uc5d0\uc57c\uc2a4",
+    "name": "\uB3C4\uCFE0\uAC00\uC640 \uC774\uC5D0\uC57C\uC2A4",
     "birth": 1543,
     "region": "mikawa",
-    "desc": "\uc778\ub0b4\uc758 \ub108\uad6c\ub9ac \u2014 \ucd5c\ud6c4\uc5d0 \ucc9c\ud558\ub97c \uac70\ub454 \uc1fc\uad70",
+    "desc": "\uC778\uB0B4\uC758 \uB108\uAD6C\uB9AC \u2014 \uCD5C\uD6C4\uC5D0 \uCC9C\uD558\uB97C \uAC70\uB454 \uC1FC\uAD70",
     "aptitudes": {
       "infantry": "A",
       "archer": "A",
@@ -3855,7 +3870,7 @@
       "siege": "B",
       "naval": "B",
       "supply": "S",
-      "defense": "A+"
+      "defense": "A\u002B"
     },
     "might": 75,
     "intellect": 88,
@@ -3880,10 +3895,10 @@
   },
   {
     "id": 304,
-    "name": "\ub2e4\ucf00\ub2e4 \uc2e0\uac90",
+    "name": "\uB2E4\uCF00\uB2E4 \uC2E0\uAC90",
     "birth": 1521,
     "region": "kai",
-    "desc": "\ud48d\ub9bc\ud654\uc0b0 \u2014 \uac00\uc774\uc758 \ud638\ub791\uc774",
+    "desc": "\uD48D\uB9BC\uD654\uC0B0 \u2014 \uAC00\uC774\uC758 \uD638\uB791\uC774",
     "aptitudes": {
       "infantry": "A",
       "archer": "B",
@@ -3891,7 +3906,7 @@
       "elephant": "C",
       "siege": "B",
       "naval": "C",
-      "supply": "A+",
+      "supply": "A\u002B",
       "defense": "A"
     },
     "might": 85,
@@ -3917,10 +3932,10 @@
   },
   {
     "id": 305,
-    "name": "\uc6b0\uc5d0\uc2a4\uae30 \uac90\uc2e0",
+    "name": "\uC6B0\uC5D0\uC2A4\uAE30 \uAC90\uC2E0",
     "birth": 1530,
     "region": "echigo",
-    "desc": "\uad70\uc2e0 \ube44\uc0ac\ubb38\ucc9c \u2014 \uc5d0\uce58\uace0\uc758 \uc6a9",
+    "desc": "\uAD70\uC2E0 \uBE44\uC0AC\uBB38\uCC9C \u2014 \uC5D0\uCE58\uACE0\uC758 \uC6A9",
     "aptitudes": {
       "infantry": "SS",
       "archer": "B",
@@ -4004,5 +4019,20 @@
   },
   {
     "id": 131, "name": "추씨", "birth": 169, "region": "jingzhou", "affiliation": "군웅", "desc": "장제의 아내, 조조와 관련된 완성의 인물 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"D","archer":"D","cavalry":"D","elephant":"D","siege":"D","naval":"D","supply":"C","defense":"C"}, "might": 21, "intellect": 55, "politics": 58
+  },
+  {
+    "id": 132, "name": "하진", "birth": 135, "region": "jingzhou", "affiliation": "후한", "desc": "후한의 대장군으로 황건 토벌을 총괄 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"B","archer":"C","cavalry":"B","elephant":"D","siege":"C","naval":"D","supply":"B","defense":"B"}, "might": 68, "intellect": 58, "politics": 70, "battle_active": "rally", "battle_passives": [{"code":"steadfast_guard","tier":1}], "admin_passives": [{"code":"recruiter","tier":2}]
+  },
+  {
+    "id": 133, "name": "황보숭", "birth": 132, "region": "liangzhou", "affiliation": "후한", "desc": "황건 토벌을 이끈 후한의 명장 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"A","archer":"A","cavalry":"B","elephant":"D","siege":"B","naval":"D","supply":"A","defense":"A"}, "might": 76, "intellect": 84, "politics": 81, "battle_active": "hold_the_line", "battle_passives": [{"code":"steadfast_guard","tier":2}], "admin_passives": [{"code":"drillmaster","tier":2}]
+  },
+  {
+    "id": 134, "name": "주준", "birth": 140, "region": "yangzhou", "affiliation": "후한", "desc": "황보숭과 함께 황건을 토벌한 후한의 장수 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"A","archer":"B","cavalry":"B","elephant":"D","siege":"B","naval":"C","supply":"B","defense":"B"}, "might": 78, "intellect": 75, "politics": 72, "battle_active": "rally", "battle_passives": [{"code":"drilled","tier":2}], "admin_passives": [{"code":"drillmaster","tier":1}]
+  },
+  {
+    "id": 135, "name": "노식", "birth": 139, "region": "youzhou", "affiliation": "후한", "desc": "황건 토벌에 참여한 후한의 학자이자 장수 — 출생연도는 게임용 추정치", "aptitudes": {"infantry":"B","archer":"B","cavalry":"C","elephant":"D","siege":"C","naval":"D","supply":"A","defense":"B"}, "might": 60, "intellect": 86, "politics": 82, "battle_active": "hold_the_line", "battle_passives": [{"code":"entrench","tier":1}], "admin_passives": [{"code":"pacifier","tier":2}]
+  },
+  {
+    "id": 136, "name": "종요", "birth": 151, "region": "yuzhou", "affiliation": "후한", "desc": "후한의 관료로 출발해 조조 정권에서 활약한 정치가와 서예가", "aptitudes": {"infantry":"C","archer":"C","cavalry":"C","elephant":"D","siege":"C","naval":"D","supply":"A","defense":"C"}, "might": 33, "intellect": 85, "politics": 95, "admin_passives": [{"code":"pacifier","tier":2},{"code":"quartermaster","tier":2}]
   }
 ]
