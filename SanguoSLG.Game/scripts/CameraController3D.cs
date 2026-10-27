@@ -26,6 +26,14 @@ public partial class CameraController3D : Camera3D
     private readonly float _pitch = Mathf.DegToRad(49f);
     private float _distance = 10f;
     private float _targetDistance = 10f;
+    private bool _introZoomPlaying;
+    private float _introElapsed;
+    private float _introDuration;
+    private float _introStartDistance;
+    private float _introEndDistance;
+
+    public bool IsIntroZoomPlaying => _introZoomPlaying;
+    public Vector3 FocusPivot => _targetPivot;
 
     public void FocusOn(Vector3 point) => _targetPivot = new Vector3(point.X, _targetPivot.Y, point.Z);
 
@@ -43,13 +51,31 @@ public partial class CameraController3D : Camera3D
         _pivot = _targetPivot = pivot;
         _distance = _targetDistance = Mathf.Clamp(distance, MinDistance, MaxDistance);
         _yaw = _targetYaw = 0f;
+        _introZoomPlaying = false;
         if (NorthUpPlanView) Projection = ProjectionType.Orthogonal;
         ApplyTransform();
+    }
+
+    public void BeginIntroZoom(float endDistance, float duration)
+    {
+        _introStartDistance = _distance;
+        _introEndDistance = Mathf.Clamp(endDistance, MinDistance, MaxDistance);
+        _introDuration = Mathf.Max(duration, 0.01f);
+        _introElapsed = 0f;
+        _introZoomPlaying = true;
     }
 
     public override void _Process(double delta)
     {
         var dt = (float)delta;
+        if (_introZoomPlaying)
+        {
+            _introElapsed = Mathf.Min(_introElapsed + dt, _introDuration);
+            var progress = _introElapsed / _introDuration;
+            var eased = progress * progress * (3f - 2f * progress);
+            _distance = _targetDistance = Mathf.Lerp(_introStartDistance, _introEndDistance, eased);
+            if (_introElapsed >= _introDuration) _introZoomPlaying = false;
+        }
 
         var rotate = 0f;
         if (Input.IsKeyPressed(Key.Q))
@@ -88,6 +114,7 @@ public partial class CameraController3D : Camera3D
 
         if (pan != Vector2.Zero)
         {
+            _introZoomPlaying = false;
             var (flatForward, flatRight) = FlatBasis();
             var speed = KeyPanSpeed * Mathf.Max(_distance * 0.35f, 1f) * dt;
             _targetPivot += (flatRight * pan.X + flatForward * pan.Y) * speed;
@@ -107,16 +134,19 @@ public partial class CameraController3D : Camera3D
         {
             if (button.ButtonIndex == MouseButton.WheelUp)
             {
+                _introZoomPlaying = false;
                 _targetDistance = Mathf.Clamp(_targetDistance * 0.88f, MinDistance, MaxDistance);
             }
             else if (button.ButtonIndex == MouseButton.WheelDown)
             {
+                _introZoomPlaying = false;
                 _targetDistance = Mathf.Clamp(_targetDistance / 0.88f, MinDistance, MaxDistance);
             }
         }
         else if (@event is InputEventMouseMotion motion &&
                  (motion.ButtonMask & (MouseButtonMask.Left | MouseButtonMask.Middle)) != 0)
         {
+            _introZoomPlaying = false;
             // 좌클릭 또는 중클릭 드래그를 지면(x-z) 팬으로 변환(우클릭 팬 제거). 거리 비례 감도.
             var sensitivity = _distance * 0.0016f;
             var (flatForward, flatRight) = FlatBasis();

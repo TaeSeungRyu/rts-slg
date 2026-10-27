@@ -697,7 +697,16 @@ public sealed partial class CampaignMapScene : Node3D
         SpawnHover();
         BuildHud();
         BuildPanel();
-        camera.Setup(_view.HexToWorld(new HexCoord(4, 2)), 14f);
+        if (args.Contains("--newmap"))
+        {
+            var ruler = _state.Factions.FirstOrDefault(faction => faction.Id == Player)?.Ruler;
+            var rulerCity = ruler is { } id ? _state.PostingOf(id)?.Location : null;
+            var startCity = _state.Cities.FirstOrDefault(city => city.Id == rulerCity && city.Owner == Player)
+                ?? _state.Cities.First(city => city.Owner == Player);
+            camera.Setup(_view.HexToWorld(startCity.Position), 45f);
+            camera.BeginIntroZoom(14f, 2.2f);
+        }
+        else camera.Setup(_view.HexToWorld(new HexCoord(4, 2)), 14f);
         Redraw("자기 성(파란색)을 클릭해 명령을 내리세요. 적(촉)은 AI입니다.");
         if (args.Contains("--maptestgaugelifetimeqa")) CallDeferred(nameof(RunActiveGaugeLifetimeQa));
         if (args.Contains("--maptestgaugeprogressqa")) CallDeferred(nameof(RunActiveGaugeProgressQa));
@@ -799,6 +808,13 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestclimateadvanceqa")) CallDeferred(nameof(RunClimateAdvanceQa));
         if (args.Contains("--newmapqa"))
         {
+            var ruler = _state.Factions.FirstOrDefault(faction => faction.Id == Player)?.Ruler;
+            var rulerCity = ruler is { } id ? _state.PostingOf(id)?.Location : null;
+            var expectedStart = _state.Cities.FirstOrDefault(city => city.Id == rulerCity && city.Owner == Player)
+                ?? _state.Cities.First(city => city.Owner == Player);
+            var expectedPivot = _view.HexToWorld(expectedStart.Position);
+            var cameraIntroOk = _camera.IsIntroZoomPlaying
+                && _camera.FocusPivot.DistanceTo(expectedPivot) < 0.01f;
             var fogWritesBefore = _fog.MaterialWriteCount;
             _fog.Apply(_visibleTiles, _state.Cities.Where(IsDeclaredCity)
                 .Select(city => city.Position).ToHashSet());
@@ -806,7 +822,7 @@ public sealed partial class CampaignMapScene : Node3D
             var landCities = _state.Cities.Where(city => !city.IsPort).ToArray();
             var minCitySpacing = landCities.SelectMany((city, index) => landCities.Skip(index + 1)
                 .Select(other => city.Position.Distance(other.Position))).Min();
-            var passed = fogStable && _state.Factions.Count == 2 && _state.Cities.Count > 2
+            var passed = cameraIntroOk && fogStable && _state.Factions.Count == 2 && _state.Cities.Count > 2
                 && _state.Cities.All(city => _map.Contains(city.Position))
                 && _state.Cities.Any(city => city.Owner == Player)
                 && _state.Cities.Any(city => city.Owner != Player)
@@ -820,7 +836,7 @@ public sealed partial class CampaignMapScene : Node3D
             GD.Print($"[newmap-qa] passed={passed} factions={_state.Factions.Count} "
                 + $"cities={_state.Cities.Count} cells={_map.Count} citySpacing={minCitySpacing} "
                 + $"visible={_visibleTiles.Count} scouted={_state.ScoutedCities?.Count ?? 0} "
-                + $"heroCandidates={_state.HeroUnlockDefinitions.Count} fogStable={fogStable}");
+                + $"heroCandidates={_state.HeroUnlockDefinitions.Count} fogStable={fogStable} cameraIntro={cameraIntroOk}");
             CallDeferred(nameof(QuitNewMapQa), passed);
         }
         if (args.Contains("--mapreportqa")) CallDeferred(nameof(RunMapReportQa));
