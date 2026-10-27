@@ -107,7 +107,8 @@ public partial class GameRoot3D : Node3D
             return;
         }
 
-        var scenario = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
+        var scenario = CreatedGeneralPresets.ApplyAtNewGame(
+            new ScenarioLoader().LoadFromDirectory(FindDataDirectory()));
         var qaMapArgument = OS.GetCmdlineUserArgs().FirstOrDefault(value => value.StartsWith("--map-preset-qa="));
         var selectedMap = qaMapArgument is null ? ScenarioStartMenu.SelectedPresetPath
             : qaMapArgument["--map-preset-qa=".Length..];

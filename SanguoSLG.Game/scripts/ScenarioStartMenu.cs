@@ -82,6 +82,13 @@ public sealed partial class ScenarioStartMenu : Control
             GetTree().ChangeSceneToFile("res://GeneralEditor.tscn");
         };
         content.AddChild(general);
+        var createGeneral = new Button { Text = "신규 장수 생성", CustomMinimumSize = new Vector2(0, 42) };
+        createGeneral.Pressed += () =>
+        {
+            FromStartMenu = true;
+            GetTree().ChangeSceneToFile("res://GeneralCreator.tscn");
+        };
+        content.AddChild(createGeneral);
         if (OS.GetCmdlineUserArgs().Contains("--startmenuqa")) CallDeferred(nameof(RunQa));
     }
 
@@ -89,7 +96,7 @@ public sealed partial class ScenarioStartMenu : Control
     {
         var buttons = FindChildren("*", "Button", true, false).OfType<Button>().Select(button => button.Text).ToArray();
         var passed = buttons.Contains("새 게임") && buttons.Contains("맵 변경하기")
-            && buttons.Contains("장수 관리");
+            && buttons.Contains("장수 관리") && buttons.Contains("신규 장수 생성");
         GD.Print($"[scenario-start-qa] passed={passed} buttons={buttons.Length}");
         GetTree().Quit(passed ? 0 : 1);
     }

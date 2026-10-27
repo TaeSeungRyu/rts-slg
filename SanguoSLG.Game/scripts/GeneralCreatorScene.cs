@@ -1,0 +1,331 @@
+namespace SanguoSLG.Game;
+
+using Godot;
+using SanguoSLG.Core.Data;
+
+/// <summary>새 게임 전용 장수 생성기. 저장 게임과 원본 generals.json을 수정하지 않는다.</summary>
+public partial class GeneralCreatorScene : Control
+{
+    private static readonly (string Code, string Name)[] Troops =
+    [
+        ("infantry", "보병"), ("archer", "궁병"), ("cavalry", "기병"),
+        ("elephant", "상병"), ("siege", "공성"), ("naval", "수군"),
+        ("supply", "보급"), ("defense", "수성"),
+    ];
+    private static readonly string[] Grades = ["F", "D", "C", "B", "A", "A+", "S", "SS", "SSS"];
+    private readonly List<CreatedGeneralRecord> _created = [];
+    private readonly Dictionary<string, OptionButton> _aptitudes = new();
+    private readonly List<OptionButton> _battlePassives = [];
+    private readonly List<OptionButton> _adminPassives = [];
+    private ItemList _list = null!;
+    private LineEdit _name = null!;
+    private LineEdit _region = null!;
+    private TextEdit _description = null!;
+    private OptionButton _gender = null!;
+    private OptionButton _active = null!;
+    private SpinBox _birth = null!;
+    private SpinBox _might = null!;
+    private SpinBox _intellect = null!;
+    private SpinBox _politics = null!;
+    private SpinBox _points = null!;
+    private Label _status = null!;
+    private int? _editingId;
+    private string _dataDirectory = "";
+
+    public override void _Ready()
+    {
+        BuildUi();
+        try
+        {
+            _dataDirectory = FindDataDirectory();
+            PopulateSkills();
+            var path = ProjectSettings.GlobalizePath(CreatedGeneralPresets.UserPath);
+            if (File.Exists(path)) _created.AddRange(CreatedGeneralStore.Load(File.ReadAllText(path)));
+            RefreshList();
+            NewGeneral();
+        }
+        catch (Exception error) { _status.Text = "불러오기 실패: " + error.Message; }
+        if (OS.GetCmdlineUserArgs().Contains("--generalcreatorqa")) CallDeferred(nameof(RunQa));
+    }
+
+    private void BuildUi()
+    {
+        var root = new VBoxContainer { AnchorRight = 1, AnchorBottom = 1,
+            OffsetLeft = 20, OffsetTop = 14, OffsetRight = -20, OffsetBottom = -14 };
+        root.AddThemeConstantOverride("separation", 10);
+        AddChild(root);
+        var title = new Label { Text = "신규 장수 생성", HorizontalAlignment = HorizontalAlignment.Center };
+        title.AddThemeFontSizeOverride("font_size", 25);
+        root.AddChild(title);
+        if (ScenarioStartMenu.FromStartMenu)
+        {
+            var back = new Button { Text = "시작 화면으로" };
+            back.Pressed += () => ScenarioStartMenu.ReturnToStart(GetTree());
+            root.AddChild(back);
+        }
+        root.AddChild(new Label { Text = "생성 장수는 새 게임을 시작할 때 영입 후보에 추가됩니다. 초상은 비워둘 수 있습니다.",
+            HorizontalAlignment = HorizontalAlignment.Center });
+        var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        body.AddThemeConstantOverride("separation", 16);
+        root.AddChild(body);
+        var left = new VBoxContainer { CustomMinimumSize = new Vector2(275, 0) };
+        body.AddChild(left);
+        left.AddChild(new Label { Text = "생성한 장수" });
+        _list = new ItemList { SizeFlagsVertical = SizeFlags.ExpandFill };
+        _list.ItemSelected += index => LoadSelected((int)index);
+        left.AddChild(_list);
+        var add = new Button { Text = "+ 새 장수" };
+        add.Pressed += NewGeneral;
+        left.AddChild(add);
+        var delete = new Button { Text = "선택 장수 삭제" };
+        delete.Pressed += DeleteSelected;
+        left.AddChild(delete);
+
+        var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        body.AddChild(right);
+        var tabs = new TabContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill };
+        right.AddChild(tabs);
+        VBoxContainer Page(string name)
+        {
+            var scroll = new ScrollContainer { Name = name, SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                SizeFlagsVertical = SizeFlags.ExpandFill };
+            tabs.AddChild(scroll);
+            var content = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            content.AddThemeConstantOverride("separation", 10);
+            scroll.AddChild(content);
+            return content;
+        }
+        var basic = Page("기본 정보");
+        _name = new LineEdit { MaxLength = 20, PlaceholderText = "장수 이름" };
+        AddField(basic, "이름", _name);
+        _gender = new OptionButton();
+        _gender.AddItem("남성"); _gender.AddItem("여성");
+        AddField(basic, "성별", _gender);
+        _birth = Spin(-500, 500, 170);
+        AddField(basic, "출생년도", _birth);
+        _region = new LineEdit { PlaceholderText = "출신 지역 코드 (예: wei)" };
+        AddField(basic, "출신", _region);
+        _points = Spin(0, 1000, 100);
+        AddField(basic, "영입 포인트", _points);
+        basic.AddChild(new Label { Text = "영입 선행 장수: 없음 · 어느 세력이나 영입 가능" });
+        basic.AddChild(new Label { Text = "장수 설명" });
+        _description = new TextEdit { CustomMinimumSize = new Vector2(0, 115) };
+        basic.AddChild(_description);
+
+        var abilities = Page("능력·적성");
+        var stats = new HBoxContainer();
+        abilities.AddChild(stats);
+        _might = Spin(0, 100, 50); AddField(stats, "무력", _might);
+        _intellect = Spin(0, 100, 50); AddField(stats, "지력", _intellect);
+        _politics = Spin(0, 100, 50); AddField(stats, "정치", _politics);
+        abilities.AddChild(new HSeparator());
+        abilities.AddChild(new Label { Text = "병종 적성" });
+        var grid = new GridContainer { Columns = 2 };
+        abilities.AddChild(grid);
+        foreach (var (code, name) in Troops)
+        {
+            var option = new OptionButton { CustomMinimumSize = new Vector2(105, 0) };
+            foreach (var grade in Grades) option.AddItem(grade);
+            option.Select(3);
+            AddField(grid, name, option);
+            _aptitudes[code] = option;
+        }
+
+        var skills = Page("스킬");
+        skills.AddChild(new Label { Text = "전투 액티브 1개와 전투 패시브 최대 3개를 선택할 수 있습니다." });
+        _active = new OptionButton(); AddField(skills, "전투 액티브", _active);
+        for (var index = 0; index < 3; index++)
+        {
+            var option = new OptionButton();
+            AddField(skills, $"전투 패시브 {index + 1}", option);
+            _battlePassives.Add(option);
+        }
+        skills.AddChild(new HSeparator());
+        for (var index = 0; index < 4; index++)
+        {
+            var option = new OptionButton();
+            AddField(skills, $"내정 패시브 {index + 1}", option);
+            _adminPassives.Add(option);
+        }
+        var save = new Button { Text = "장수 저장 · 다음 새 게임부터 적용", CustomMinimumSize = new Vector2(0, 44) };
+        save.Pressed += SaveSelected;
+        right.AddChild(save);
+        _status = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        root.AddChild(_status);
+    }
+
+    private static SpinBox Spin(double min, double max, double value)
+        => new() { MinValue = min, MaxValue = max, Value = value, Step = 1, Rounded = true,
+            CustomMinimumSize = new Vector2(100, 0) };
+
+    private static void AddField(Container parent, string label, Control input)
+    {
+        var row = new HBoxContainer();
+        row.AddChild(new Label { Text = label, CustomMinimumSize = new Vector2(135, 0) });
+        input.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        row.AddChild(input);
+        parent.AddChild(row);
+    }
+
+    private void PopulateSkills()
+    {
+        void Fill(OptionButton option, IEnumerable<(string Code, string Name)> choices)
+        {
+            option.AddItem("없음");
+            option.SetItemMetadata(0, "");
+            foreach (var (code, name) in choices.OrderBy(choice => choice.Name))
+            {
+                var index = option.ItemCount;
+                option.AddItem(name);
+                option.SetItemMetadata(index, code);
+            }
+            option.Select(0);
+        }
+        Fill(_active, new ActiveSkillLoader().LoadFromDirectory(_dataDirectory).Select(s => (s.Code, s.Name)));
+        var battle = new PassiveSkillLoader().LoadFromDirectory(_dataDirectory).Select(s => (s.Code, s.Name)).ToList();
+        foreach (var option in _battlePassives) Fill(option, battle);
+        var admin = new AdminSkillLoader().LoadFromDirectory(_dataDirectory).Select(s => (s.Code, s.Name)).ToList();
+        foreach (var option in _adminPassives) Fill(option, admin);
+    }
+
+    private static string SelectedCode(OptionButton option)
+        => option.Selected < 0 ? "" : option.GetItemMetadata(option.Selected).AsString();
+
+    private void NewGeneral()
+    {
+        _editingId = null;
+        _list.DeselectAll();
+        _name.Text = "";
+        _gender.Select(0); _birth.Value = 170; _region.Text = ""; _points.Value = 100;
+        _description.Text = "";
+        _might.Value = 50; _intellect.Value = 50; _politics.Value = 50;
+        foreach (var option in _aptitudes.Values) option.Select(3);
+        _active.Select(0);
+        foreach (var option in _battlePassives.Concat(_adminPassives)) option.Select(0);
+        _status.Text = "새 장수를 입력하세요. 초상은 나중에 추가할 수 있습니다.";
+    }
+
+    private void LoadSelected(int index)
+    {
+        if (index < 0 || index >= _created.Count) return;
+        var entry = _created[index];
+        var general = entry.General;
+        _editingId = general.Id;
+        _name.Text = general.Name;
+        _gender.Select(entry.Gender == "female" ? 1 : 0);
+        _birth.Value = general.Birth;
+        _region.Text = general.Region;
+        _points.Value = entry.RecruitPointCost;
+        _description.Text = general.Desc;
+        _might.Value = general.Might; _intellect.Value = general.Intellect; _politics.Value = general.Politics;
+        foreach (var (code, option) in _aptitudes)
+            option.Select(Array.IndexOf(Grades, general.Aptitudes[code]));
+        SelectCode(_active, general.BattleActive ?? "");
+        for (var i = 0; i < _battlePassives.Count; i++)
+            SelectCode(_battlePassives[i], general.BattlePassives.ElementAtOrDefault(i)?.Code ?? "");
+        for (var i = 0; i < _adminPassives.Count; i++)
+            SelectCode(_adminPassives[i], general.AdminPassives.ElementAtOrDefault(i)?.Code ?? "");
+        _status.Text = $"{general.Name} 편집 중 · ID {general.Id}";
+    }
+
+    private static void SelectCode(OptionButton option, string code)
+    {
+        for (var index = 0; index < option.ItemCount; index++)
+            if (option.GetItemMetadata(index).AsString() == code) { option.Select(index); return; }
+        option.Select(0);
+    }
+
+    private CreatedGeneralRecord FromForm(int id)
+    {
+        var battle = _battlePassives.Select(SelectedCode).Where(code => code.Length > 0).ToList();
+        var admin = _adminPassives.Select(SelectedCode).Where(code => code.Length > 0).ToList();
+        if (battle.Count != battle.Distinct().Count() || admin.Count != admin.Distinct().Count())
+            throw new InvalidDataException("같은 패시브 스킬을 중복 선택할 수 없습니다.");
+        if (string.IsNullOrWhiteSpace(_name.Text)) throw new InvalidDataException("이름을 입력하세요.");
+        var record = new GeneralEditorRecord(id, _name.Text.Trim(),
+            _aptitudes.ToDictionary(entry => entry.Key, entry => Grades[entry.Value.Selected]),
+            (int)_might.Value, (int)_intellect.Value, (int)_politics.Value,
+            string.IsNullOrEmpty(SelectedCode(_active)) ? null : SelectedCode(_active),
+            battle.Select(code => new GeneralEditorSkill(code, 1)).ToList(),
+            admin.Select(code => new GeneralEditorSkill(code, 1)).ToList(),
+            (int)_birth.Value, 0, _region.Text.Trim(), _description.Text.Trim());
+        return new CreatedGeneralRecord(record, _gender.Selected == 1 ? "female" : "male", (int)_points.Value);
+    }
+
+    private void SaveSelected()
+    {
+        try
+        {
+            var id = _editingId ?? Math.Max(9999, _created.Select(entry => entry.General.Id).DefaultIfEmpty().Max()) + 1;
+            var entry = FromForm(id);
+            var updated = _created.Where(item => item.General.Id != id).Append(entry).OrderBy(item => item.General.Id).ToList();
+            var active = new ActiveSkillLoader().LoadFromDirectory(_dataDirectory).Select(s => s.Code).ToHashSet();
+            var passive = new PassiveSkillLoader().LoadFromDirectory(_dataDirectory).Select(s => s.Code).ToHashSet();
+            var admin = new AdminSkillLoader().LoadFromDirectory(_dataDirectory).Select(s => s.Code).ToHashSet();
+            var valid = GeneralEditorStore.Validate(updated.Select(item => item.General).ToList(), active, passive, admin);
+            if (valid.Errors.Count > 0) throw new InvalidDataException(string.Join(" / ", valid.Errors));
+            Write(updated);
+            _created.Clear(); _created.AddRange(updated);
+            _editingId = id;
+            RefreshList();
+            _status.Text = $"{entry.General.Name} 저장 완료 · 다음 새 게임부터 영입 후보로 등장합니다.";
+        }
+        catch (Exception error) { _status.Text = "저장 실패: " + error.Message; }
+    }
+
+    private void DeleteSelected()
+    {
+        if (_editingId is not { } id) { _status.Text = "삭제할 장수를 선택하세요."; return; }
+        try
+        {
+            var updated = _created.Where(item => item.General.Id != id).ToList();
+            Write(updated);
+            _created.Clear(); _created.AddRange(updated);
+            RefreshList(); NewGeneral();
+            _status.Text = "생성 장수 목록에서 삭제했습니다. 기존 저장 게임에는 영향이 없습니다.";
+        }
+        catch (Exception error) { _status.Text = "삭제 실패: " + error.Message; }
+    }
+
+    private static void Write(IReadOnlyList<CreatedGeneralRecord> entries)
+    {
+        var path = ProjectSettings.GlobalizePath(CreatedGeneralPresets.UserPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var temp = path + ".tmp";
+        File.WriteAllText(temp, CreatedGeneralStore.Save(entries));
+        File.Move(temp, path, true);
+    }
+
+    private void RefreshList()
+    {
+        _list.Clear();
+        foreach (var entry in _created)
+            _list.AddItem($"{entry.General.Name}  ·  {entry.General.Id}");
+    }
+
+    private static string FindDataDirectory()
+    {
+        var directory = new DirectoryInfo(ProjectSettings.GlobalizePath("res://"));
+        while (directory is not null)
+        {
+            var candidate = Path.Combine(directory.FullName, "data");
+            if (File.Exists(Path.Combine(candidate, "generals.json"))) return candidate;
+            directory = directory.Parent;
+        }
+        throw new DirectoryNotFoundException("data/generals.json을 찾을 수 없습니다.");
+    }
+
+    private void RunQa()
+    {
+        _name.Text = "생성 장수 QA";
+        var sample = FromForm(10000);
+        var scenario = new ScenarioLoader().LoadFromDirectory(_dataDirectory);
+        var applied = CreatedGeneralStore.Apply(scenario, CreatedGeneralStore.Load(CreatedGeneralStore.Save([sample])));
+        var passed = applied.Generals.Count == scenario.Generals.Count + 1
+            && applied.HeroUnlockList.Any(hero => hero.General.Value == 10000)
+            && scenario.Generals.All(general => general.Id.Value != 10000);
+        GD.Print($"[generalcreatorqa] passed={passed} original={scenario.Generals.Count} new={applied.Generals.Count}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+}
