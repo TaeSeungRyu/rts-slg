@@ -14025,6 +14025,15 @@ public sealed partial class CampaignMapScene : Node3D
             CustomMinimumSize = new Vector2(62, 78),
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+            MouseFilter = Control.MouseFilterEnum.Stop,
+        };
+        portrait.GuiInput += input =>
+        {
+            if (input is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) return;
+            portrait.AcceptEvent();
+            _selected = city.Id;
+            OpenGeneralDetail(state.General, city.Id, () => OpenModal(_cmdIndex));
         };
         row.AddChild(portrait);
 
