@@ -80,7 +80,7 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj
 > `SanguoSLG.Game`은 Godot이 자체 솔루션으로 관리하므로 루트 `SanguoSLG.sln`에는 포함되지 않는다.
 > 에디터로 한 번 열면 `.godot/` 메타데이터가 생성된다.
 
-Windows 캠페인 확인은 `run-maptest.bat`, Phase 21 AI 전용 3세력 검증은 `run-aitest.bat`(`qa` 인자로 초기 배치 자동 검사), 액티브 스킬 연출은 `run-activeeffecttest.bat`, 기존 장수 데이터 편집은 `run-general-editor.bat`을 사용한다. 신규 장수는 `run-general-creator.bat`에서 만들고, 시작 화면의 **신규 장수 생성**에서도 열 수 있다. 생성 목록은 Godot `user://general-presets/created-generals.json`에 저장되며 다음 **새 게임**의 위인 영입 후보에 추가된다. 기존 저장 게임과 원본 `data/generals.json`은 바뀌지 않는다. 초상 파일이 없으면 기본 장수 아이콘을 사용하며, 나중에 `SanguoSLG.Game/assets/portraits/{장수 ID}.png`를 넣을 수 있다. 실행 BAT의 Godot 경로는 로컬 설치 위치에 맞춰 확인한다. 이 저장소의 문서 작업 기준과 QA 범위는 [ONBOARDING.md](./ONBOARDING.md), [작업 노트](./doc/ai-working-notes.md)를 따른다.
+Windows 캠페인 확인은 `run-maptest.bat`, Phase 21 AI 전용 3세력 검증은 `run-aitest.bat`(`qa` 인자로 초기 배치 자동 검사), 액티브 스킬 연출은 `run-activeeffecttest.bat`, 기존 장수 데이터 편집은 `run-general-editor.bat`을 사용한다. 신규 장수는 `run-general-creator.bat`에서 만들고, 시작 화면의 **신규 장수 생성**에서도 열 수 있다. 생성 목록은 Godot `user://general-presets/created-generals.json`에 저장되며 다음 **새 게임**의 위인 영입 후보에 추가된다. 기존 저장 게임과 원본 `data/generals.json`은 바뀌지 않는다. 초상은 남녀 각 10장의 기본 얼굴을 고르거나 외부 PNG·JPG·WEBP 파일을 가져올 수 있다. 외부 파일은 `user://general-presets/portraits/{장수 ID}.png`로 복사되므로 원본 파일을 옮겨도 유지된다. 초상을 비우면 기본 장수 아이콘을 사용한다. 실행 BAT의 Godot 경로는 로컬 설치 위치에 맞춰 확인한다. 이 저장소의 문서 작업 기준과 QA 범위는 [ONBOARDING.md](./ONBOARDING.md), [작업 노트](./doc/ai-working-notes.md)를 따른다.
 
 ## 개발 규칙
 

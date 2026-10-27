@@ -29,6 +29,12 @@ public partial class GeneralCreatorScene : Control
     private SpinBox _politics = null!;
     private SpinBox _points = null!;
     private Label _status = null!;
+    private GridContainer _portraitGrid = null!;
+    private TextureRect _portraitPreview = null!;
+    private Label _portraitLabel = null!;
+    private FileDialog _portraitFileDialog = null!;
+    private string? _portraitPath;
+    private string? _pendingExternalPath;
     private int? _editingId;
     private string _dataDirectory = "";
 
@@ -101,6 +107,12 @@ public partial class GeneralCreatorScene : Control
         AddField(basic, "이름", _name);
         _gender = new OptionButton();
         _gender.AddItem("남성"); _gender.AddItem("여성");
+        _gender.ItemSelected += _ =>
+        {
+            if (_pendingExternalPath is null && _portraitPath?.StartsWith("res://assets/portraits/created/") == true)
+                SelectPortrait(DefaultPortrait());
+            RebuildPortraitGrid();
+        };
         AddField(basic, "성별", _gender);
         _birth = Spin(-500, 500, 170);
         AddField(basic, "출생년도", _birth);
@@ -112,6 +124,35 @@ public partial class GeneralCreatorScene : Control
         basic.AddChild(new Label { Text = "장수 설명" });
         _description = new TextEdit { CustomMinimumSize = new Vector2(0, 115) };
         basic.AddChild(_description);
+
+        var portraits = Page("초상");
+        portraits.AddChild(new Label { Text = "기본 얼굴을 고르거나 외부 PNG·JPG·WEBP 파일을 가져오세요." });
+        var portraitRow = new HBoxContainer();
+        portraitRow.AddThemeConstantOverride("separation", 18);
+        portraits.AddChild(portraitRow);
+        _portraitPreview = new TextureRect { CustomMinimumSize = new Vector2(200, 265),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered };
+        portraitRow.AddChild(_portraitPreview);
+        var portraitActions = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        portraitRow.AddChild(portraitActions);
+        _portraitLabel = new Label { Text = "사진 없음", AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        portraitActions.AddChild(_portraitLabel);
+        var import = new Button { Text = "외부 이미지 가져오기" };
+        import.Pressed += () => _portraitFileDialog.PopupCentered(new Vector2I(850, 620));
+        portraitActions.AddChild(import);
+        var clear = new Button { Text = "사진 비우기" };
+        clear.Pressed += () => SelectPortrait(null);
+        portraitActions.AddChild(clear);
+        portraits.AddChild(new HSeparator());
+        portraits.AddChild(new Label { Text = "기본 얼굴 · 클릭해서 선택" });
+        _portraitGrid = new GridContainer { Columns = 5, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        portraits.AddChild(_portraitGrid);
+        _portraitFileDialog = new FileDialog { Access = FileDialog.AccessEnum.Filesystem,
+            FileMode = FileDialog.FileModeEnum.OpenFile, Title = "장수 초상 가져오기" };
+        _portraitFileDialog.AddFilter("*.png, *.jpg, *.jpeg, *.webp", "이미지 파일");
+        _portraitFileDialog.FileSelected += OnExternalPortraitSelected;
+        AddChild(_portraitFileDialog);
 
         var abilities = Page("능력·적성");
         var stats = new HBoxContainer();
@@ -192,6 +233,78 @@ public partial class GeneralCreatorScene : Control
     private static string SelectedCode(OptionButton option)
         => option.Selected < 0 ? "" : option.GetItemMetadata(option.Selected).AsString();
 
+    private string DefaultPortrait()
+        => $"res://assets/portraits/created/{(_gender.Selected == 1 ? "women" : "man")}1.png";
+
+    private void RebuildPortraitGrid()
+    {
+        foreach (var child in _portraitGrid.GetChildren())
+        {
+            _portraitGrid.RemoveChild(child);
+            child.QueueFree();
+        }
+        var prefix = _gender.Selected == 1 ? "women" : "man";
+        for (var number = 1; number <= 10; number++)
+        {
+            var portrait = $"res://assets/portraits/created/{prefix}{number}.png";
+            var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(portrait));
+            if (image is null || image.IsEmpty()) continue;
+            image.Resize(80, 96);
+            var choice = new Button { Text = $"{number}", Icon = ImageTexture.CreateFromImage(image),
+                ExpandIcon = true, CustomMinimumSize = new Vector2(115, 106),
+                TooltipText = $"{(_gender.Selected == 1 ? "여성" : "남성")} 기본 초상 {number}" };
+            choice.Pressed += () => SelectPortrait(portrait);
+            _portraitGrid.AddChild(choice);
+        }
+    }
+
+    private void SelectPortrait(string? path)
+    {
+        _pendingExternalPath = null;
+        _portraitPath = path;
+        ShowPortrait(path is null ? null : ProjectSettings.GlobalizePath(path),
+            path is null ? "사진 없음" : Path.GetFileName(path));
+    }
+
+    private void ShowPortrait(string? globalPath, string caption)
+    {
+        _portraitPreview.Texture = null;
+        _portraitLabel.Text = caption;
+        if (globalPath is null || !File.Exists(globalPath)) return;
+        var image = Image.LoadFromFile(globalPath);
+        if (image is not null && !image.IsEmpty())
+            _portraitPreview.Texture = ImageTexture.CreateFromImage(image);
+        else
+            _portraitLabel.Text = "이미지를 읽을 수 없습니다.";
+    }
+
+    private void OnExternalPortraitSelected(string path)
+    {
+        if (!File.Exists(path) || new FileInfo(path).Length > 20 * 1024 * 1024)
+        {
+            _status.Text = "20MB 이하의 이미지 파일을 선택하세요.";
+            return;
+        }
+        var image = Image.LoadFromFile(path);
+        if (image is null || image.IsEmpty())
+        {
+            _status.Text = "이미지를 읽을 수 없습니다.";
+            return;
+        }
+        _pendingExternalPath = path;
+        _portraitPath = null;
+        ShowPortrait(path, $"외부 이미지: {Path.GetFileName(path)} · 저장 시 복사");
+    }
+
+    private static void ImportExternalPortrait(string sourcePath, string target)
+    {
+        var image = Image.LoadFromFile(sourcePath);
+        if (image is null || image.IsEmpty()) throw new InvalidDataException("초상 파일을 읽을 수 없습니다.");
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        var result = image.SavePng(target);
+        if (result != Error.Ok) throw new IOException($"초상 저장 실패: {result}");
+    }
+
     private void NewGeneral()
     {
         _editingId = null;
@@ -203,6 +316,8 @@ public partial class GeneralCreatorScene : Control
         foreach (var option in _aptitudes.Values) option.Select(3);
         _active.Select(0);
         foreach (var option in _battlePassives.Concat(_adminPassives)) option.Select(0);
+        SelectPortrait(DefaultPortrait());
+        RebuildPortraitGrid();
         _status.Text = "새 장수를 입력하세요. 초상은 나중에 추가할 수 있습니다.";
     }
 
@@ -226,6 +341,8 @@ public partial class GeneralCreatorScene : Control
             SelectCode(_battlePassives[i], general.BattlePassives.ElementAtOrDefault(i)?.Code ?? "");
         for (var i = 0; i < _adminPassives.Count; i++)
             SelectCode(_adminPassives[i], general.AdminPassives.ElementAtOrDefault(i)?.Code ?? "");
+        SelectPortrait(entry.PortraitPath);
+        RebuildPortraitGrid();
         _status.Text = $"{general.Name} 편집 중 · ID {general.Id}";
     }
 
@@ -250,7 +367,10 @@ public partial class GeneralCreatorScene : Control
             battle.Select(code => new GeneralEditorSkill(code, 1)).ToList(),
             admin.Select(code => new GeneralEditorSkill(code, 1)).ToList(),
             (int)_birth.Value, 0, _region.Text.Trim(), _description.Text.Trim());
-        return new CreatedGeneralRecord(record, _gender.Selected == 1 ? "female" : "male", (int)_points.Value);
+        var portrait = _pendingExternalPath is null ? _portraitPath
+            : $"user://general-presets/portraits/{id}.png";
+        return new CreatedGeneralRecord(record, _gender.Selected == 1 ? "female" : "male", (int)_points.Value,
+            portrait);
     }
 
     private void SaveSelected()
@@ -265,9 +385,13 @@ public partial class GeneralCreatorScene : Control
             var admin = new AdminSkillLoader().LoadFromDirectory(_dataDirectory).Select(s => s.Code).ToHashSet();
             var valid = GeneralEditorStore.Validate(updated.Select(item => item.General).ToList(), active, passive, admin);
             if (valid.Errors.Count > 0) throw new InvalidDataException(string.Join(" / ", valid.Errors));
+            if (_pendingExternalPath is not null)
+                ImportExternalPortrait(_pendingExternalPath, ProjectSettings.GlobalizePath(entry.PortraitPath!));
             Write(updated);
             _created.Clear(); _created.AddRange(updated);
             _editingId = id;
+            _pendingExternalPath = null;
+            _portraitPath = entry.PortraitPath;
             RefreshList();
             _status.Text = $"{entry.General.Name} 저장 완료 · 다음 새 게임부터 영입 후보로 등장합니다.";
         }
@@ -324,7 +448,18 @@ public partial class GeneralCreatorScene : Control
         var applied = CreatedGeneralStore.Apply(scenario, CreatedGeneralStore.Load(CreatedGeneralStore.Save([sample])));
         var passed = applied.Generals.Count == scenario.Generals.Count + 1
             && applied.HeroUnlockList.Any(hero => hero.General.Value == 10000)
-            && scenario.Generals.All(general => general.Id.Value != 10000);
+            && scenario.Generals.All(general => general.Id.Value != 10000)
+            && applied.Generals.Single(general => general.Id.Value == 10000).PortraitPath == DefaultPortrait()
+            && Enumerable.Range(1, 10).All(number =>
+                File.Exists(ProjectSettings.GlobalizePath($"res://assets/portraits/created/man{number}.png"))
+                && File.Exists(ProjectSettings.GlobalizePath($"res://assets/portraits/created/women{number}.png")));
+        var imported = Path.Combine(Path.GetTempPath(), $"general-portrait-qa-{Guid.NewGuid():N}.png");
+        try
+        {
+            ImportExternalPortrait(ProjectSettings.GlobalizePath(DefaultPortrait()), imported);
+            passed &= File.Exists(imported) && new FileInfo(imported).Length > 0;
+        }
+        finally { if (File.Exists(imported)) File.Delete(imported); }
         GD.Print($"[generalcreatorqa] passed={passed} original={scenario.Generals.Count} new={applied.Generals.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }

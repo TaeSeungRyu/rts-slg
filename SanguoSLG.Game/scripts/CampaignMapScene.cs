@@ -9749,8 +9749,10 @@ public sealed partial class CampaignMapScene : Node3D
     private static string GradeText(AptitudeGrade g) => g == AptitudeGrade.APlus ? "A+" : g.ToString();
 
     // 초상 텍스처 — assets/portraits/{id}.png가 있으면 자동 표시한다.
-    private static string? PortraitPathFor(GeneralId id)
+    private string? PortraitPathFor(GeneralId id)
     {
+        var custom = _state.Generals.FirstOrDefault(general => general.Id == id)?.PortraitPath;
+        if (custom is not null && Godot.FileAccess.FileExists(custom)) return custom;
         var candidates = new[]
         {
             $"res://assets/portraits/{id.Value}.png",
