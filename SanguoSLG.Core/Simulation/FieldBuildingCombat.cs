@@ -71,17 +71,18 @@ public sealed class FieldBuildingCombat
                 var target = new CombatStats(System.Math.Max(1, building.HitPoints), 0,
                     definition.Defense, AptitudeGrade.APlus.Percent(), DfBonusPercent: defenseBonus);
                 var buildingAttack = BuildingAttack(attacker);
-                var baseDamage =
-                    _battle.Damage(attacker.Stats with
-                    {
-                        Troops = attacker.Pool.Active,
-                        AtkStat = buildingAttack,
-                    }, target);
-                var activePercent = active is null ? 100
-                    : (attacker.Class == TroopClass.Cavalry && active.CavalryDamageMultPercent > 0
-                        ? active.CavalryDamageMultPercent : active.DamageMultPercent)
-                        * StatScale.Percent(attacker.Might) / 100;
-                var damage = System.Math.Min(building.HitPoints, baseDamage * activePercent / 100);
+                var attackStats = attacker.Stats with
+                {
+                    Troops = attacker.Pool.Active,
+                    AtkStat = buildingAttack,
+                };
+                // 건축물도 부대·성 공격과 같은 타격 스킬 규칙을 사용한다. 배수만 곱하면
+                // 포화의 병종 조건, 참의 공격 보너스, 방어 감소가 빠진다.
+                var rawDamage = active is null
+                    ? _battle.Damage(attackStats, target)
+                    : _battle.StrikeDamage(attackStats, target, active, attacker.Might,
+                        targetIsBuilding: true, attackerClass: attacker.Class);
+                var damage = System.Math.Min(building.HitPoints, rawDamage);
                 if (damage <= 0) continue;
                 attacked.Add(attacker.Id);
                 var hp = building.HitPoints - damage;

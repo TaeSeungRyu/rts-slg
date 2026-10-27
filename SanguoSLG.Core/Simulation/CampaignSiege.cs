@@ -267,10 +267,11 @@ public sealed class CampaignSiege
             u.Stats.AtkStat,
             u.Stats.DfStat,
             u.Stats.AptitudePercent,
-            attackBonusPercent ?? u.Stats.AtkBonusPercent,
+            (attackBonusPercent ?? u.Stats.AtkBonusPercent) + (active?.StrikeAtkBonusPercent ?? 0),
             u.Stats.DfBonusPercent,
             inCounterRange,
-            activeDamagePercent);
+            activeDamagePercent,
+            active?.DefenderDfReductionPercent ?? 0);
     }
 
     private TroopTemplate? EffectiveTroop(CombatUnit unit)
@@ -285,7 +286,9 @@ public sealed class CampaignSiege
     private static int SiegeActiveDamagePercent(CombatUnit unit, ActiveSkill? active)
     {
         if (active is null) return 100;
-        var basePercent = unit.Class == TroopClass.Cavalry && active.CavalryDamageMultPercent > 0
+        var basePercent = active.Code == "barrage" && unit.Class is TroopClass.Archer or TroopClass.Siege
+            ? 180
+            : unit.Class == TroopClass.Cavalry && active.CavalryDamageMultPercent > 0
             ? active.CavalryDamageMultPercent
             : active.DamageMultPercent;
         return basePercent * StatScale.Percent(unit.Might) / 100;

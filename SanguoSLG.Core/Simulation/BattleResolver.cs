@@ -124,7 +124,7 @@ public sealed class BattleResolver
             {
                 var a = attackers[i];
                 var resolved = DamageFormula.Resolve(
-                    a.Troops, a.AtkBuilding, castle.WallDf,
+                    a.Troops, a.AtkBuilding, System.Math.Max(1, castle.WallDf * (100 - a.DefenderDfReductionPercent) / 100),
                     new[] { a.AptitudePercent, a.AtkBonusPercent }, new[] { castle.DefenseBonusPercent });
                 wallDamage += resolved * a.ActiveDamagePercent / 100;
             }
@@ -153,7 +153,7 @@ public sealed class BattleResolver
         {
             var a = attackers[i];
             var resolved = DamageFormula.Resolve(
-                a.Troops, a.AtkUnit, castle.CollapsedDf,
+                a.Troops, a.AtkUnit, System.Math.Max(1, castle.CollapsedDf * (100 - a.DefenderDfReductionPercent) / 100),
                 new[] { a.AptitudePercent, a.AtkBonusPercent }, new[] { castle.DefenseBonusPercent });
             troopDamage += resolved * a.ActiveDamagePercent / 100;
         }

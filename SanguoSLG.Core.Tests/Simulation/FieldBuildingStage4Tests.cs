@@ -68,6 +68,28 @@ public sealed class FieldBuildingStage4Tests
         Assert.Equal(5, skipped.Armies.Single().State.SharedActiveGauge.ElapsedDays);
     }
 
+    [Fact]
+    public void 포화는_건축물에도_궁병_병종배수를_적용한다()
+    {
+        var target = new HexCoord(1, 0);
+        var building = Building("fort", Enemy, target) with { HitPoints = 1000000 };
+        var state = new GameState(1, 190, [], [], [], FieldBuildings: [building]);
+        var service = new FieldBuildingCombat(new BattleResolver(60), Definitions);
+        var skill = new ActiveSkill("barrage", "포화", ActiveType.Strike, "high", 140);
+        var unit = Combat(1, Player, default, target) with
+        {
+            Class = TroopClass.Archer,
+            State = UnitCombatState.Create(60, skill).AdvanceField(5),
+        };
+        var targetStats = new CombatStats(building.HitPoints, 0,
+            Definitions.Single(x => x.Code == "fort").Defense, AptitudeGrade.APlus.Percent());
+        var expected = new BattleResolver(60).StrikeDamage(unit.Stats with { AtkStat = unit.Stats.AtkStat },
+            targetStats, skill, unit.Might, targetIsBuilding: true, attackerClass: TroopClass.Archer);
+        var result = service.Resolve(state, [unit]);
+        Assert.Equal(expected, Assert.Single(result.Exchanges).Damage);
+        Assert.Equal(skill, result.FiredActives[unit.Id]);
+    }
+
     private static readonly FactionId Player = new(1);
     private static readonly FactionId Enemy = new(2);
     private static readonly IReadOnlyList<FieldBuildingDefinition> Definitions =
