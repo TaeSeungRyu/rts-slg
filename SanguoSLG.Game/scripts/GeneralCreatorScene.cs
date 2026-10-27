@@ -124,6 +124,7 @@ public partial class GeneralCreatorScene : Control
             return content;
         }
         var basic = Page("기본 정보");
+        AddTableHeading(basic, "신상 정보");
         _name = new LineEdit { MaxLength = 20, PlaceholderText = "장수 이름", KeepEditingOnTextSubmit = true };
         _name.GuiInput += input =>
         {
@@ -143,12 +144,14 @@ public partial class GeneralCreatorScene : Control
         AddField(basic, "출생년도", _birth);
         _region = new OptionButton();
         AddField(basic, "출신", _region);
+        AddTableHeading(basic, "영입 조건");
         _points = Spin(0, 1000, 100);
         AddField(basic, "영입 포인트", _points);
         _requiredGeneral = new OptionButton();
         _requiredGeneral.Pressed += StopNativeNameInput;
         AddField(basic, "영입 선행 장수", _requiredGeneral);
         basic.AddChild(new Label { Text = "선행 장수를 지정하면 해당 장수가 소속된 세력만 영입할 수 있습니다." });
+        AddTableHeading(basic, "장수 소개");
         basic.AddChild(new Label { Text = "장수 설명" });
         _description = new TextEdit { CustomMinimumSize = new Vector2(0, 115) };
         basic.AddChild(_description);
@@ -183,13 +186,14 @@ public partial class GeneralCreatorScene : Control
         AddChild(_portraitFileDialog);
 
         var abilities = Page("능력·적성");
+        AddTableHeading(abilities, "기본 능력치");
         var stats = new HBoxContainer();
         abilities.AddChild(stats);
         _might = Spin(0, 100, 50); AddField(stats, "무력", _might);
         _intellect = Spin(0, 100, 50); AddField(stats, "지력", _intellect);
         _politics = Spin(0, 100, 50); AddField(stats, "정치", _politics);
         abilities.AddChild(new HSeparator());
-        abilities.AddChild(new Label { Text = "병종 적성" });
+        AddTableHeading(abilities, "병종 적성");
         var grid = new GridContainer { Columns = 2 };
         abilities.AddChild(grid);
         foreach (var (code, name) in Troops)
@@ -202,12 +206,14 @@ public partial class GeneralCreatorScene : Control
         }
 
         var skills = Page("스킬");
+        AddTableHeading(skills, "전투 액티브");
         skills.AddChild(new Label { Text = "전투 액티브 1개와 전투 패시브 최대 3개를 선택할 수 있습니다." });
         _active = new OptionButton(); AddField(skills, "전투 액티브", _active);
         _activeDescription = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         skills.AddChild(_activeDescription);
         _active.ItemSelected += _ => ShowSkillDescription(_activeDescription, _active, _activeDetails);
         skills.AddChild(new HSeparator());
+        AddTableHeading(skills, "전투 패시브");
         for (var index = 0; index < 3; index++)
         {
             var option = new OptionButton();
@@ -219,6 +225,7 @@ public partial class GeneralCreatorScene : Control
             option.ItemSelected += _ => ShowSkillDescription(description, option, _battleDetails);
         }
         skills.AddChild(new HSeparator());
+        AddTableHeading(skills, "내정 패시브");
         for (var index = 0; index < 3; index++)
         {
             var option = new OptionButton();
@@ -243,10 +250,21 @@ public partial class GeneralCreatorScene : Control
     private static void AddField(Container parent, string label, Control input)
     {
         var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 18);
+        row.CustomMinimumSize = new Vector2(0, 39);
         row.AddChild(new Label { Text = label, CustomMinimumSize = new Vector2(135, 0) });
         input.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         row.AddChild(input);
         parent.AddChild(row);
+        if (parent is VBoxContainer) parent.AddChild(new HSeparator());
+    }
+
+    private static void AddTableHeading(VBoxContainer parent, string title)
+    {
+        var heading = new Label { Text = title };
+        heading.AddThemeFontSizeOverride("font_size", 17);
+        parent.AddChild(heading);
+        parent.AddChild(new HSeparator());
     }
 
     private void PopulateSkills()
