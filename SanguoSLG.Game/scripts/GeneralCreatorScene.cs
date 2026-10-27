@@ -17,12 +17,21 @@ public partial class GeneralCreatorScene : Control
     private readonly Dictionary<string, OptionButton> _aptitudes = new();
     private readonly List<OptionButton> _battlePassives = [];
     private readonly List<OptionButton> _adminPassives = [];
+    private readonly List<Label> _battleDescriptions = [];
+    private readonly List<Label> _adminDescriptions = [];
+    private readonly Dictionary<string, string> _activeDetails = new();
+    private readonly Dictionary<string, string> _battleDetails = new();
+    private readonly Dictionary<string, string> _adminDetails = new();
     private ItemList _list = null!;
     private LineEdit _name = null!;
-    private LineEdit _region = null!;
+    private NativeNameEdit? _nativeName;
+    private TabContainer _tabs = null!;
+    private OptionButton _region = null!;
+    private OptionButton _requiredGeneral = null!;
     private TextEdit _description = null!;
     private OptionButton _gender = null!;
     private OptionButton _active = null!;
+    private Label _activeDescription = null!;
     private SpinBox _birth = null!;
     private SpinBox _might = null!;
     private SpinBox _intellect = null!;
@@ -45,14 +54,21 @@ public partial class GeneralCreatorScene : Control
         {
             _dataDirectory = FindDataDirectory();
             PopulateSkills();
+            PopulateRegions();
             var path = ProjectSettings.GlobalizePath(CreatedGeneralPresets.UserPath);
             if (File.Exists(path)) _created.AddRange(CreatedGeneralStore.Load(File.ReadAllText(path)));
+            PopulateRequiredGenerals();
             RefreshList();
             NewGeneral();
         }
         catch (Exception error) { _status.Text = "불러오기 실패: " + error.Message; }
         if (OS.GetCmdlineUserArgs().Contains("--generalcreatorqa")) CallDeferred(nameof(RunQa));
+        else StartNativeNameInput();
     }
+
+    public override void _Process(double delta) => _nativeName?.SyncBounds();
+
+    public override void _ExitTree() => StopNativeNameInput();
 
     private void BuildUi()
     {
@@ -89,21 +105,26 @@ public partial class GeneralCreatorScene : Control
 
         var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         body.AddChild(right);
-        var tabs = new TabContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        _tabs = new TabContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill };
-        right.AddChild(tabs);
+        right.AddChild(_tabs);
+        _tabs.TabChanged += tab =>
+        {
+            if (tab == 0) StartNativeNameInput();
+            else StopNativeNameInput();
+        };
         VBoxContainer Page(string name)
         {
             var scroll = new ScrollContainer { Name = name, SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 SizeFlagsVertical = SizeFlags.ExpandFill };
-            tabs.AddChild(scroll);
+            _tabs.AddChild(scroll);
             var content = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             content.AddThemeConstantOverride("separation", 10);
             scroll.AddChild(content);
             return content;
         }
         var basic = Page("기본 정보");
-        _name = new LineEdit { MaxLength = 20, PlaceholderText = "장수 이름" };
+        _name = new LineEdit { MaxLength = 20, PlaceholderText = "장수 이름", KeepEditingOnTextSubmit = true };
         AddField(basic, "이름", _name);
         _gender = new OptionButton();
         _gender.AddItem("남성"); _gender.AddItem("여성");
@@ -116,11 +137,13 @@ public partial class GeneralCreatorScene : Control
         AddField(basic, "성별", _gender);
         _birth = Spin(-500, 500, 170);
         AddField(basic, "출생년도", _birth);
-        _region = new LineEdit { PlaceholderText = "출신 지역 코드 (예: wei)" };
+        _region = new OptionButton();
         AddField(basic, "출신", _region);
         _points = Spin(0, 1000, 100);
         AddField(basic, "영입 포인트", _points);
-        basic.AddChild(new Label { Text = "영입 선행 장수: 없음 · 어느 세력이나 영입 가능" });
+        _requiredGeneral = new OptionButton();
+        AddField(basic, "영입 선행 장수", _requiredGeneral);
+        basic.AddChild(new Label { Text = "선행 장수를 지정하면 해당 장수가 소속된 세력만 영입할 수 있습니다." });
         basic.AddChild(new Label { Text = "장수 설명" });
         _description = new TextEdit { CustomMinimumSize = new Vector2(0, 115) };
         basic.AddChild(_description);
@@ -176,18 +199,30 @@ public partial class GeneralCreatorScene : Control
         var skills = Page("스킬");
         skills.AddChild(new Label { Text = "전투 액티브 1개와 전투 패시브 최대 3개를 선택할 수 있습니다." });
         _active = new OptionButton(); AddField(skills, "전투 액티브", _active);
+        _activeDescription = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        skills.AddChild(_activeDescription);
+        _active.ItemSelected += _ => ShowSkillDescription(_activeDescription, _active, _activeDetails);
+        skills.AddChild(new HSeparator());
         for (var index = 0; index < 3; index++)
         {
             var option = new OptionButton();
             AddField(skills, $"전투 패시브 {index + 1}", option);
             _battlePassives.Add(option);
+            var description = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+            skills.AddChild(description);
+            _battleDescriptions.Add(description);
+            option.ItemSelected += _ => ShowSkillDescription(description, option, _battleDetails);
         }
         skills.AddChild(new HSeparator());
-        for (var index = 0; index < 4; index++)
+        for (var index = 0; index < 3; index++)
         {
             var option = new OptionButton();
             AddField(skills, $"내정 패시브 {index + 1}", option);
             _adminPassives.Add(option);
+            var description = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+            skills.AddChild(description);
+            _adminDescriptions.Add(description);
+            option.ItemSelected += _ => ShowSkillDescription(description, option, _adminDetails);
         }
         var save = new Button { Text = "장수 저장 · 다음 새 게임부터 적용", CustomMinimumSize = new Vector2(0, 44) };
         save.Pressed += SaveSelected;
@@ -223,15 +258,102 @@ public partial class GeneralCreatorScene : Control
             }
             option.Select(0);
         }
-        Fill(_active, new ActiveSkillLoader().LoadFromDirectory(_dataDirectory).Select(s => (s.Code, s.Name)));
-        var battle = new PassiveSkillLoader().LoadFromDirectory(_dataDirectory).Select(s => (s.Code, s.Name)).ToList();
+        var active = new ActiveSkillLoader().LoadFromDirectory(_dataDirectory);
+        foreach (var skill in active) _activeDetails[skill.Code] = SkillDescriptions.Active(skill);
+        Fill(_active, active.Select(s => (s.Code, s.Name)));
+        var passiveSkills = new PassiveSkillLoader().LoadFromDirectory(_dataDirectory);
+        foreach (var skill in passiveSkills) _battleDetails[skill.Code] = SkillDescriptions.Passive(skill, 1);
+        var battle = passiveSkills.Select(s => (s.Code, s.Name)).ToList();
         foreach (var option in _battlePassives) Fill(option, battle);
-        var admin = new AdminSkillLoader().LoadFromDirectory(_dataDirectory).Select(s => (s.Code, s.Name)).ToList();
+        var adminSkills = new AdminSkillLoader().LoadFromDirectory(_dataDirectory);
+        foreach (var skill in adminSkills) _adminDetails[skill.Code] = SkillDescriptions.Admin(skill, 1);
+        var admin = adminSkills.Select(s => (s.Code, s.Name)).ToList();
         foreach (var option in _adminPassives) Fill(option, admin);
+        UpdateSkillDescriptions();
+    }
+
+    private void PopulateRegions()
+    {
+        _region.Clear();
+        foreach (var region in new RegionLoader().LoadFromDirectory(_dataDirectory).OrderBy(region => region.Name))
+        {
+            var index = _region.ItemCount;
+            _region.AddItem(region.Name);
+            _region.SetItemMetadata(index, region.Code);
+        }
+        if (_region.ItemCount > 0) _region.Select(0);
+    }
+
+    private void PopulateRequiredGenerals(int? selectedId = null)
+    {
+        _requiredGeneral.Clear();
+        _requiredGeneral.AddItem("없음");
+        _requiredGeneral.SetItemMetadata(0, 0);
+        var originals = new GeneralLoader().LoadFromDirectory(_dataDirectory)
+            .Select(general => (general.Id.Value, general.Name, Kind: "실존"));
+        var created = _created.Select(entry => (entry.General.Id, entry.General.Name, Kind: "창작"));
+        foreach (var (id, name, kind) in originals.Concat(created).OrderBy(general => general.Name))
+        {
+            var index = _requiredGeneral.ItemCount;
+            _requiredGeneral.AddItem($"{name} · {kind}");
+            _requiredGeneral.SetItemMetadata(index, id);
+        }
+        SelectRequiredGeneral(selectedId);
+    }
+
+    private void SelectRequiredGeneral(int? id)
+    {
+        for (var index = 0; index < _requiredGeneral.ItemCount; index++)
+            if (_requiredGeneral.GetItemMetadata(index).AsInt32() == (id ?? 0))
+            {
+                _requiredGeneral.Select(index);
+                return;
+            }
+        _requiredGeneral.Select(0);
+    }
+
+    private static void ShowSkillDescription(Label label, OptionButton option, IReadOnlyDictionary<string, string> details)
+    {
+        var full = details.GetValueOrDefault(SelectedCode(option), "선택한 스킬이 없습니다.");
+        var lines = full.Split('\n', StringSplitOptions.RemoveEmptyEntries).Take(2);
+        var shortText = string.Join(" · ", lines).Trim();
+        label.Text = shortText.Length <= 180 ? shortText : shortText[..179] + "…";
+        label.TooltipText = full;
+    }
+
+    private void UpdateSkillDescriptions()
+    {
+        ShowSkillDescription(_activeDescription, _active, _activeDetails);
+        for (var index = 0; index < _battlePassives.Count; index++)
+            ShowSkillDescription(_battleDescriptions[index], _battlePassives[index], _battleDetails);
+        for (var index = 0; index < _adminPassives.Count; index++)
+            ShowSkillDescription(_adminDescriptions[index], _adminPassives[index], _adminDetails);
     }
 
     private static string SelectedCode(OptionButton option)
         => option.Selected < 0 ? "" : option.GetItemMetadata(option.Selected).AsString();
+
+    private void StartNativeNameInput()
+    {
+        if (!OperatingSystem.IsWindows() || DisplayServer.GetName() == "headless" || _name is null)
+            return;
+        Callable.From(() =>
+        {
+            if (_tabs.CurrentTab != 0 || _nativeName is not null || !_name.IsInsideTree()) return;
+            _nativeName = NativeNameEdit.Create(_name, GetViewport());
+        }).CallDeferred();
+    }
+
+    private void StopNativeNameInput()
+    {
+        if (_nativeName is null) return;
+        _name.Text = _nativeName.Text;
+        _nativeName.Dispose();
+        _nativeName = null;
+    }
+
+    private string CurrentName()
+        => (_nativeName?.Text ?? _name.Text).Replace("\r", "").Replace("\n", "").Trim();
 
     private string DefaultPortrait()
         => $"res://assets/portraits/created/{(_gender.Selected == 1 ? "women" : "man")}1.png";
@@ -307,18 +429,22 @@ public partial class GeneralCreatorScene : Control
 
     private void NewGeneral()
     {
+        StopNativeNameInput();
         _editingId = null;
         _list.DeselectAll();
         _name.Text = "";
-        _gender.Select(0); _birth.Value = 170; _region.Text = ""; _points.Value = 100;
+        _gender.Select(0); _birth.Value = 170; _region.Select(0); _points.Value = 100;
+        SelectRequiredGeneral(null);
         _description.Text = "";
         _might.Value = 50; _intellect.Value = 50; _politics.Value = 50;
         foreach (var option in _aptitudes.Values) option.Select(3);
         _active.Select(0);
         foreach (var option in _battlePassives.Concat(_adminPassives)) option.Select(0);
+        UpdateSkillDescriptions();
         SelectPortrait(DefaultPortrait());
         RebuildPortraitGrid();
         _status.Text = "새 장수를 입력하세요. 초상은 나중에 추가할 수 있습니다.";
+        StartNativeNameInput();
     }
 
     private void LoadSelected(int index)
@@ -326,12 +452,19 @@ public partial class GeneralCreatorScene : Control
         if (index < 0 || index >= _created.Count) return;
         var entry = _created[index];
         var general = entry.General;
+        StopNativeNameInput();
         _editingId = general.Id;
         _name.Text = general.Name;
         _gender.Select(entry.Gender == "female" ? 1 : 0);
         _birth.Value = general.Birth;
-        _region.Text = general.Region;
+        for (var regionIndex = 0; regionIndex < _region.ItemCount; regionIndex++)
+            if (_region.GetItemMetadata(regionIndex).AsString() == general.Region)
+            {
+                _region.Select(regionIndex);
+                break;
+            }
         _points.Value = entry.RecruitPointCost;
+        SelectRequiredGeneral(entry.RequiredGeneralId);
         _description.Text = general.Desc;
         _might.Value = general.Might; _intellect.Value = general.Intellect; _politics.Value = general.Politics;
         foreach (var (code, option) in _aptitudes)
@@ -341,9 +474,11 @@ public partial class GeneralCreatorScene : Control
             SelectCode(_battlePassives[i], general.BattlePassives.ElementAtOrDefault(i)?.Code ?? "");
         for (var i = 0; i < _adminPassives.Count; i++)
             SelectCode(_adminPassives[i], general.AdminPassives.ElementAtOrDefault(i)?.Code ?? "");
+        UpdateSkillDescriptions();
         SelectPortrait(entry.PortraitPath);
         RebuildPortraitGrid();
         _status.Text = $"{general.Name} 편집 중 · ID {general.Id}";
+        StartNativeNameInput();
     }
 
     private static void SelectCode(OptionButton option, string code)
@@ -359,18 +494,19 @@ public partial class GeneralCreatorScene : Control
         var admin = _adminPassives.Select(SelectedCode).Where(code => code.Length > 0).ToList();
         if (battle.Count != battle.Distinct().Count() || admin.Count != admin.Distinct().Count())
             throw new InvalidDataException("같은 패시브 스킬을 중복 선택할 수 없습니다.");
-        if (string.IsNullOrWhiteSpace(_name.Text)) throw new InvalidDataException("이름을 입력하세요.");
-        var record = new GeneralEditorRecord(id, _name.Text.Trim(),
+        if (string.IsNullOrWhiteSpace(CurrentName())) throw new InvalidDataException("이름을 입력하세요.");
+        var record = new GeneralEditorRecord(id, CurrentName(),
             _aptitudes.ToDictionary(entry => entry.Key, entry => Grades[entry.Value.Selected]),
             (int)_might.Value, (int)_intellect.Value, (int)_politics.Value,
             string.IsNullOrEmpty(SelectedCode(_active)) ? null : SelectedCode(_active),
             battle.Select(code => new GeneralEditorSkill(code, 1)).ToList(),
             admin.Select(code => new GeneralEditorSkill(code, 1)).ToList(),
-            (int)_birth.Value, 0, _region.Text.Trim(), _description.Text.Trim());
+            (int)_birth.Value, 0, SelectedCode(_region), _description.Text.Trim());
         var portrait = _pendingExternalPath is null ? _portraitPath
             : $"user://general-presets/portraits/{id}.png";
         return new CreatedGeneralRecord(record, _gender.Selected == 1 ? "female" : "male", (int)_points.Value,
-            portrait);
+            portrait, _requiredGeneral.GetItemMetadata(_requiredGeneral.Selected).AsInt32() is var required && required > 0
+                ? required : null);
     }
 
     private void SaveSelected()
@@ -385,6 +521,7 @@ public partial class GeneralCreatorScene : Control
             var admin = new AdminSkillLoader().LoadFromDirectory(_dataDirectory).Select(s => s.Code).ToHashSet();
             var valid = GeneralEditorStore.Validate(updated.Select(item => item.General).ToList(), active, passive, admin);
             if (valid.Errors.Count > 0) throw new InvalidDataException(string.Join(" / ", valid.Errors));
+            CreatedGeneralStore.Apply(new ScenarioLoader().LoadFromDirectory(_dataDirectory), updated);
             if (_pendingExternalPath is not null)
                 ImportExternalPortrait(_pendingExternalPath, ProjectSettings.GlobalizePath(entry.PortraitPath!));
             Write(updated);
@@ -393,6 +530,7 @@ public partial class GeneralCreatorScene : Control
             _pendingExternalPath = null;
             _portraitPath = entry.PortraitPath;
             RefreshList();
+            PopulateRequiredGenerals(entry.RequiredGeneralId);
             _status.Text = $"{entry.General.Name} 저장 완료 · 다음 새 게임부터 영입 후보로 등장합니다.";
         }
         catch (Exception error) { _status.Text = "저장 실패: " + error.Message; }
@@ -404,9 +542,11 @@ public partial class GeneralCreatorScene : Control
         try
         {
             var updated = _created.Where(item => item.General.Id != id).ToList();
+            if (updated.Any(entry => entry.RequiredGeneralId == id))
+                throw new InvalidDataException("다른 생성 장수의 영입 선행 조건입니다. 먼저 그 조건을 변경하세요.");
             Write(updated);
             _created.Clear(); _created.AddRange(updated);
-            RefreshList(); NewGeneral();
+            RefreshList(); PopulateRequiredGenerals(); NewGeneral();
             _status.Text = "생성 장수 목록에서 삭제했습니다. 기존 저장 게임에는 영향이 없습니다.";
         }
         catch (Exception error) { _status.Text = "삭제 실패: " + error.Message; }
@@ -443,12 +583,27 @@ public partial class GeneralCreatorScene : Control
     private void RunQa()
     {
         _name.Text = "생성 장수 QA";
-        var sample = FromForm(10000);
         var scenario = new ScenarioLoader().LoadFromDirectory(_dataDirectory);
-        var applied = CreatedGeneralStore.Apply(scenario, CreatedGeneralStore.Load(CreatedGeneralStore.Save([sample])));
-        var passed = applied.Generals.Count == scenario.Generals.Count + 1
+        var required = scenario.Generals[0].Id.Value;
+        SelectRequiredGeneral(required);
+        _active.Select(1);
+        UpdateSkillDescriptions();
+        var sample = FromForm(10000);
+        var virtualHero = sample with
+        {
+            General = sample.General with { Id = 10001, Name = "창작 선행 QA" },
+            RequiredGeneralId = 10000,
+        };
+        var applied = CreatedGeneralStore.Apply(scenario,
+            CreatedGeneralStore.Load(CreatedGeneralStore.Save([sample, virtualHero])));
+        var passed = applied.Generals.Count == scenario.Generals.Count + 2
             && applied.HeroUnlockList.Any(hero => hero.General.Value == 10000)
             && scenario.Generals.All(general => general.Id.Value != 10000)
+            && sample.RequiredGeneralId == required
+            && applied.HeroUnlockList.Single(hero => hero.General.Value == 10001).RequiredGeneral?.Value == 10000
+            && _adminPassives.Count == 3 && _battlePassives.Count == 3
+            && _region.ItemCount > 3 && _region.GetItemText(0) != SelectedCode(_region)
+            && !string.IsNullOrWhiteSpace(_activeDescription.Text)
             && applied.Generals.Single(general => general.Id.Value == 10000).PortraitPath == DefaultPortrait()
             && Enumerable.Range(1, 10).All(number =>
                 File.Exists(ProjectSettings.GlobalizePath($"res://assets/portraits/created/man{number}.png"))
