@@ -14,6 +14,7 @@ public partial class GeneralEditorScene : Control
     private readonly Dictionary<string, string> _activeNames = new();
     private readonly Dictionary<string, string> _passiveNames = new();
     private readonly Dictionary<string, string> _adminNames = new();
+    private readonly Dictionary<string, string> _regionNames = new();
     private readonly Dictionary<string, ActiveSkill> _activeSkills = new();
     private readonly Dictionary<string, PassiveSkill> _passiveSkills = new();
     private readonly Dictionary<string, AdminSkill> _adminSkills = new();
@@ -36,15 +37,12 @@ public partial class GeneralEditorScene : Control
     private OptionButton _requiredGeneralInput = null!;
     private OptionButton _activeInput = null!;
     private Label _activeDescription = null!;
-    private TextureRect _activeIcon = null!;
     private Label _changePreview = null!;
     private OptionButton _passiveSelect = null!;
     private Label _passiveDescription = null!;
-    private TextureRect _passiveIcon = null!;
     private VBoxContainer _passiveList = null!;
     private OptionButton _adminSelect = null!;
     private Label _adminDescription = null!;
-    private TextureRect _adminIcon = null!;
     private VBoxContainer _adminList = null!;
     private TextureRect _portraitPreview = null!;
     private TextureRect _facePreview = null!;
@@ -72,9 +70,6 @@ public partial class GeneralEditorScene : Control
     {
         if (_portraitPreview is not null) { _portraitPreview.Texture = null; }
         if (_facePreview is not null) { _facePreview.Texture = null; }
-        if (_activeIcon is not null) { _activeIcon.Texture = null; }
-        if (_passiveIcon is not null) { _passiveIcon.Texture = null; }
-        if (_adminIcon is not null) { _adminIcon.Texture = null; }
         ActiveSkillIcons.ClearCache();
     }
 
@@ -150,12 +145,10 @@ public partial class GeneralEditorScene : Control
         right.AddChild(tabs);
         VBoxContainer AddPage(string name)
         {
-            var scroll = new ScrollContainer { Name = name, SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            var content = new VBoxContainer { Name = name, SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 SizeFlagsVertical = SizeFlags.ExpandFill };
-            tabs.AddChild(scroll);
-            var content = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            content.AddThemeConstantOverride("separation", 12);
-            scroll.AddChild(content);
+            content.AddThemeConstantOverride("separation", 8);
+            tabs.AddChild(content);
             return content;
         }
 
@@ -166,17 +159,17 @@ public partial class GeneralEditorScene : Control
         portraitSection.AddChild(portraitRow);
         _portraitPreview = new TextureRect
         {
-            CustomMinimumSize = new Vector2(220, 300),
-            ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
+            CustomMinimumSize = new Vector2(165, 220),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
         };
         portraitRow.AddChild(_portraitPreview);
 
-        var faceBox = new VBoxContainer { CustomMinimumSize = new Vector2(230, 0) };
+        var faceBox = new VBoxContainer { CustomMinimumSize = new Vector2(200, 0) };
         portraitRow.AddChild(faceBox);
         _facePreview = new TextureRect
         {
-            CustomMinimumSize = new Vector2(180, 180),
+            CustomMinimumSize = new Vector2(130, 130),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
         };
@@ -264,8 +257,6 @@ public partial class GeneralEditorScene : Control
             UpdateChangePreview();
         };
         activeLeft.AddChild(_activeInput);
-        _activeIcon = ActiveSkillIcons.Preview(null, 100);
-        activeLeft.AddChild(_activeIcon);
         _activeDescription = new Label
         {
             Text = "액티브를 선택하면 효과가 표시됩니다.",
@@ -292,8 +283,6 @@ public partial class GeneralEditorScene : Control
         var addPassive = new Button { Text = "추가", CustomMinimumSize = new Vector2(82, 0) };
         addPassive.Pressed += AddSelectedBattlePassive;
         passiveAddRow.AddChild(addPassive);
-        _passiveIcon = ActiveSkillIcons.Preview(null);
-        passiveLeft.AddChild(_passiveIcon);
         _passiveDescription = new Label
         {
             Text = "전투 패시브를 선택하면 효과가 표시됩니다.",
@@ -323,8 +312,6 @@ public partial class GeneralEditorScene : Control
         var addAdmin = new Button { Text = "추가", CustomMinimumSize = new Vector2(82, 0) };
         addAdmin.Pressed += AddSelectedAdminPassive;
         adminAddRow.AddChild(addAdmin);
-        _adminIcon = ActiveSkillIcons.Preview(null);
-        adminLeft.AddChild(_adminIcon);
         _adminDescription = new Label
         {
             Text = "내정 패시브를 선택하면 효과가 표시됩니다.",
@@ -372,6 +359,7 @@ public partial class GeneralEditorScene : Control
             _activeNames.Clear();
             _passiveNames.Clear();
             _adminNames.Clear();
+            _regionNames.Clear();
             _activeSkills.Clear();
             _passiveSkills.Clear();
             _adminSkills.Clear();
@@ -392,6 +380,8 @@ public partial class GeneralEditorScene : Control
                 _adminNames[skill.Code] = skill.Name;
                 _adminSkills[skill.Code] = skill;
             }
+            foreach (var region in new RegionLoader().LoadFromDirectory(_dataDirectory))
+                _regionNames[region.Code] = region.Name;
 
             foreach (var general in GeneralEditorStore.LoadGenerals(File.ReadAllText(Path.Combine(_dataDirectory, "generals.json"))))
             {
@@ -435,17 +425,21 @@ public partial class GeneralEditorScene : Control
 
     private void RebuildRegions()
     {
-        var previous = _regionFilter.GetSelectedId() >= 0 ? _regionFilter.GetItemText(_regionFilter.Selected) : "전체 지역";
+        var previous = _regionFilter.Selected > 0
+            ? _regionFilter.GetItemMetadata(_regionFilter.Selected).AsString() : "";
         _regionFilter.Clear();
         _regionFilter.AddItem("전체 지역");
+        _regionFilter.SetItemMetadata(0, "");
         foreach (var region in _generals.Select(g => g.Region).Where(r => !string.IsNullOrWhiteSpace(r)).Distinct().OrderBy(r => r))
         {
-            _regionFilter.AddItem(region);
+            var index = _regionFilter.ItemCount;
+            _regionFilter.AddItem(RegionName(region));
+            _regionFilter.SetItemMetadata(index, region);
         }
 
         for (var i = 0; i < _regionFilter.ItemCount; i++)
         {
-            if (_regionFilter.GetItemText(i) == previous)
+            if (_regionFilter.GetItemMetadata(i).AsString() == previous)
             {
                 _regionFilter.Select(i);
                 return;
@@ -458,7 +452,7 @@ public partial class GeneralEditorScene : Control
     private void RefreshList()
     {
         var query = _search.Text.Trim();
-        var region = _regionFilter.Selected > 0 ? _regionFilter.GetItemText(_regionFilter.Selected) : "";
+        var region = _regionFilter.Selected > 0 ? _regionFilter.GetItemMetadata(_regionFilter.Selected).AsString() : "";
         _list.Clear();
 
         foreach (var general in _generals.OrderBy(g => g.Id))
@@ -475,7 +469,7 @@ public partial class GeneralEditorScene : Control
                 continue;
             }
 
-            var index = _list.AddItem($"{general.Id,3}  {general.Name}  [{general.Region}]");
+            var index = _list.AddItem($"{general.Id,3}  {general.Name}  [{RegionName(general.Region)}]");
             _list.SetItemMetadata(index, general.Id);
         }
 
@@ -509,9 +503,10 @@ public partial class GeneralEditorScene : Control
     {
         _selected = general;
         var aptitudes = string.Join(" / ", general.Aptitudes.Select(kv => $"{TroopLabel(kv.Key)} {kv.Value}"));
-        var battleActive = string.IsNullOrWhiteSpace(general.BattleActive) ? "없음" : general.BattleActive;
-        var battlePassives = general.BattlePassives.Count == 0 ? "없음" : string.Join(", ", general.BattlePassives.Select(s => $"{s.Code} Lv{s.Tier}"));
-        var adminPassives = general.AdminPassives.Count == 0 ? "없음" : string.Join(", ", general.AdminPassives.Select(s => $"{s.Code} Lv{s.Tier}"));
+        var battleActive = string.IsNullOrWhiteSpace(general.BattleActive) ? "없음"
+            : _activeNames.GetValueOrDefault(general.BattleActive, general.BattleActive);
+        var battlePassives = GeneralSkillNames(general.BattlePassives, _passiveNames);
+        var adminPassives = GeneralSkillNames(general.AdminPassives, _adminNames);
         var recruitPointText = _heroRecruitPointCosts.TryGetValue(general.Id, out var recruitPointCost)
             ? $"{recruitPointCost}점"
             : "위인 정의 없음";
@@ -519,15 +514,10 @@ public partial class GeneralEditorScene : Control
         var requiredName = requiredGeneral is { } id ? _generalsById.GetValueOrDefault(id)?.Name ?? $"장수 {id}" : "없음";
 
         _summary.Text =
-            $"ID {general.Id}  {general.Name}\n" +
-            $"출생 {general.Birth} / 지역 {general.Region}\n\n" +
-            $"현재: 무력 {general.Might} / 지력 {general.Intellect} / 정치 {general.Politics}\n" +
-            $"현재 적성: {aptitudes}\n" +
-            $"현재 전투 액티브: {battleActive}\n" +
-            $"현재 전투 패시브: {battlePassives}\n" +
-            $"현재 내정 패시브: {adminPassives}\n\n" +
-            $"요구 영입 포인트: {recruitPointText} / 선행 장수: {requiredName}\n\n" +
-            general.Desc;
+            $"{general.Name} · 장수 {general.Id} · {RegionName(general.Region)} · {general.Birth}년 출생\n" +
+            $"무력 {general.Might}  지력 {general.Intellect}  정치 {general.Politics}  |  영입 {recruitPointText}  선행 {requiredName}\n" +
+            $"액티브 {battleActive}  |  전투 {battlePassives}  |  내정 {adminPassives}";
+        _summary.TooltipText = $"병종 적성: {aptitudes}\n{general.Desc}";
 
         _mightInput.Value = general.Might;
         _intellectInput.Value = general.Intellect;
@@ -588,20 +578,23 @@ public partial class GeneralEditorScene : Control
 
     private HSlider AddSlider(VBoxContainer parent, string label, double value, double min, double max, double step)
     {
-        parent.AddChild(new Label { Text = label });
+        var row = new HBoxContainer();
+        row.AddChild(new Label { Text = label, CustomMinimumSize = new Vector2(64, 0) });
         var slider = new HSlider
         {
             MinValue = min,
             MaxValue = max,
             Step = step,
             Value = value,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         slider.ValueChanged += _ =>
         {
             UpdatePortraitPreview();
             UpdateChangePreview();
         };
-        parent.AddChild(slider);
+        row.AddChild(slider);
+        parent.AddChild(row);
         return slider;
     }
 
@@ -612,11 +605,11 @@ public partial class GeneralEditorScene : Control
         parent.AddChild(panel);
 
         var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        box.AddThemeConstantOverride("separation", 8);
+        box.AddThemeConstantOverride("separation", 5);
         panel.AddChild(box);
 
         var label = new Label { Text = title };
-        label.AddThemeFontSizeOverride("font_size", 18);
+        label.AddThemeFontSizeOverride("font_size", 16);
         box.AddChild(label);
 
         var line = new ColorRect
@@ -632,9 +625,8 @@ public partial class GeneralEditorScene : Control
     {
         var panel = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(360, 0),
+            CustomMinimumSize = new Vector2(290, 0),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
         };
         panel.AddThemeStyleboxOverride("panel", DescriptionBox());
         panel.AddChild(content);
@@ -649,7 +641,7 @@ public partial class GeneralEditorScene : Control
         foreach (var (code, name) in _activeNames.OrderBy(kv => kv.Value))
         {
             var index = _activeInput.ItemCount;
-            _activeInput.AddItem($"{name} ({code})");
+            _activeInput.AddItem(name);
             _activeInput.SetItemMetadata(index, code);
         }
 
@@ -665,7 +657,7 @@ public partial class GeneralEditorScene : Control
         foreach (var (code, name) in names.OrderBy(kv => kv.Value))
         {
             var index = input.ItemCount;
-            input.AddItem($"{name} ({code})");
+            input.AddItem(name);
             input.SetItemMetadata(index, code);
         }
     }
@@ -846,15 +838,17 @@ public partial class GeneralEditorScene : Control
                 AddChange(changes, TroopLabel(key), _selected.Aptitudes.GetValueOrDefault(key, "F"), edited.Aptitudes[key]);
             }
 
-            AddChange(changes, "전투 액티브", _selected.BattleActive ?? "없음", edited.BattleActive ?? "없음");
-            AddChange(changes, "전투 패시브", SkillText(_selected.BattlePassives), SkillText(edited.BattlePassives));
-            AddChange(changes, "내정 패시브", SkillText(_selected.AdminPassives), SkillText(edited.AdminPassives));
+            AddChange(changes, "전투 액티브", _selected.BattleActive is { } beforeActive ? _activeNames.GetValueOrDefault(beforeActive, "미등록 스킬") : "없음",
+                edited.BattleActive is { } afterActive ? _activeNames.GetValueOrDefault(afterActive, "미등록 스킬") : "없음");
+            AddChange(changes, "전투 패시브", GeneralSkillNames(_selected.BattlePassives, _passiveNames), GeneralSkillNames(edited.BattlePassives, _passiveNames));
+            AddChange(changes, "내정 패시브", GeneralSkillNames(_selected.AdminPassives, _adminNames), GeneralSkillNames(edited.AdminPassives, _adminNames));
             var originalPortrait = PortraitFor(_selected.Id);
             var editedPortrait = CurrentPortraitRecord(_selected.Id);
             AddChange(changes, "얼굴 X", originalPortrait.FaceCenterX.ToString("0.00"), editedPortrait.FaceCenterX.ToString("0.00"));
             AddChange(changes, "얼굴 Y", originalPortrait.FaceCenterY.ToString("0.00"), editedPortrait.FaceCenterY.ToString("0.00"));
             AddChange(changes, "얼굴 확대", originalPortrait.FaceZoom.ToString("0.00"), editedPortrait.FaceZoom.ToString("0.00"));
-            _changePreview.Text = changes.Count == 0 ? "변경 없음" : "변경 예정\n" + string.Join("\n", changes);
+            _changePreview.Text = changes.Count == 0 ? "변경 없음" : $"변경 예정 {changes.Count}개 · {string.Join(" / ", changes.Take(2))}";
+            _changePreview.TooltipText = string.Join("\n", changes);
         }
         catch (Exception ex)
         {
@@ -899,8 +893,14 @@ public partial class GeneralEditorScene : Control
             regularOk = !_recruitPointInput.Editable && _requiredGeneralInput.Disabled;
         }
 
-        var passed = heroOk && regularOk;
-        GD.Print($"[generaleditorqa] passed={passed} hero={heroOk} regular={regularOk} range={_recruitPointInput.MinValue}-{_recruitPointInput.MaxValue}");
+        var tabs = FindChildren("*", "TabContainer", true, false).OfType<TabContainer>().Single();
+        var layoutOk = tabs.GetChildren().All(child => child is not ScrollContainer)
+            && _regionFilter.ItemCount > 1
+            && _regionFilter.GetItemText(1) == RegionName(_regionFilter.GetItemMetadata(1).AsString())
+            && _activeInput.ItemCount > 1
+            && !_activeInput.GetItemText(1).Contains('(');
+        var passed = heroOk && regularOk && layoutOk;
+        GD.Print($"[generaleditorqa] passed={passed} hero={heroOk} regular={regularOk} layout={layoutOk} region={_regionFilter.GetItemText(1)} active={_activeInput.GetItemText(1)} range={_recruitPointInput.MinValue}-{_recruitPointInput.MaxValue}");
         GetTree().Quit(passed ? 0 : 1);
     }
 
@@ -931,23 +931,20 @@ public partial class GeneralEditorScene : Control
     private void UpdateActiveDescription()
     {
         var code = SelectedMetadata(_activeInput);
-        _activeIcon.Texture = ActiveSkillIcons.Load(code);
-        _activeIcon.Visible = _activeIcon.Texture is not null;
         if (code is null)
         {
             _activeDescription.Text = "전투 액티브 없음";
             return;
         }
 
-        _activeDescription.Text = _activeSkills.TryGetValue(code, out var skill)
-            ? $"{skill.Name} ({skill.Code})\n{SkillDescriptions.Active(skill)}"
-            : $"등록되지 않은 액티브입니다: {code}";
+        var full = _activeSkills.TryGetValue(code, out var skill)
+            ? SkillDescriptions.Active(skill) : "등록되지 않은 액티브입니다.";
+        _activeDescription.Text = ShortSkillDescription(full);
+        _activeDescription.TooltipText = full;
     }
 
     private void UpdatePassiveCandidateDescription()
     {
-        _passiveIcon.Texture = ActiveSkillIcons.Load($"passive/{SelectedMetadata(_passiveSelect)}");
-        _passiveIcon.Visible = _passiveIcon.Texture is not null;
         if (_passiveSelect.ItemCount == 0)
         {
             _passiveDescription.Text = "선택 가능한 전투 패시브가 없습니다.";
@@ -955,9 +952,10 @@ public partial class GeneralEditorScene : Control
         }
 
         var code = SelectedMetadata(_passiveSelect);
-        _passiveDescription.Text = code is not null && _passiveSkills.TryGetValue(code, out var skill)
-            ? $"{skill.Name} ({skill.Code})\n{SkillDescriptions.Passive(skill, 1)}"
-            : "전투 패시브를 선택하면 효과가 표시됩니다.";
+        var full = code is not null && _passiveSkills.TryGetValue(code, out var skill)
+            ? SkillDescriptions.Passive(skill, 1) : "전투 패시브를 선택하면 효과가 표시됩니다.";
+        _passiveDescription.Text = ShortSkillDescription(full);
+        _passiveDescription.TooltipText = full;
     }
 
     private void AddSelectedBattlePassive()
@@ -993,8 +991,6 @@ public partial class GeneralEditorScene : Control
 
     private void UpdateAdminCandidateDescription()
     {
-        _adminIcon.Texture = ActiveSkillIcons.Load($"admin/{SelectedMetadata(_adminSelect)}");
-        _adminIcon.Visible = _adminIcon.Texture is not null;
         if (_adminSelect.ItemCount == 0)
         {
             _adminDescription.Text = "선택 가능한 내정 패시브가 없습니다.";
@@ -1002,9 +998,10 @@ public partial class GeneralEditorScene : Control
         }
 
         var code = SelectedMetadata(_adminSelect);
-        _adminDescription.Text = code is not null && _adminSkills.TryGetValue(code, out var skill)
-            ? $"{skill.Name} ({skill.Code})\n{SkillDescriptions.Admin(skill, 1)}"
-            : "내정 패시브를 선택하면 효과가 표시됩니다.";
+        var full = code is not null && _adminSkills.TryGetValue(code, out var skill)
+            ? SkillDescriptions.Admin(skill, 1) : "내정 패시브를 선택하면 효과가 표시됩니다.";
+        _adminDescription.Text = ShortSkillDescription(full);
+        _adminDescription.TooltipText = full;
     }
 
     private void AddSelectedAdminPassive()
@@ -1043,9 +1040,6 @@ public partial class GeneralEditorScene : Control
         if (_selectedBattlePassives.Count == 0)
         {
             _passiveList.AddChild(new Label { Text = "추가된 전투 패시브 없음" });
-            var add = new Button { Text = "선택한 전투 패시브 추가", CustomMinimumSize = new Vector2(0, 34) };
-            add.Pressed += AddSelectedBattlePassive;
-            _passiveList.AddChild(add);
             return;
         }
 
@@ -1054,12 +1048,11 @@ public partial class GeneralEditorScene : Control
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 8);
             _passiveList.AddChild(row);
-            row.AddChild(ActiveSkillIcons.Preview($"passive/{skill.Code}", 36));
 
             var name = _passiveNames.GetValueOrDefault(skill.Code, skill.Code);
             var label = new Label
             {
-                Text = $"{name} ({skill.Code})",
+                Text = name,
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 TooltipText = _passiveSkills.TryGetValue(skill.Code, out var def) ? SkillDescriptions.Passive(def, skill.Tier) : "",
             };
@@ -1089,11 +1082,10 @@ public partial class GeneralEditorScene : Control
             var desc = new Button { Text = "설명", CustomMinimumSize = new Vector2(70, 0) };
             desc.Pressed += () =>
             {
-                _passiveDescription.Text = _passiveSkills.TryGetValue(skill.Code, out var def)
-                    ? $"{name} ({skill.Code})\n{SkillDescriptions.Passive(def, skill.Tier)}"
-                    : $"등록되지 않은 전투 패시브입니다: {skill.Code}";
-                _passiveIcon.Texture = ActiveSkillIcons.Load($"passive/{skill.Code}");
-                _passiveIcon.Visible = _passiveIcon.Texture is not null;
+                var full = _passiveSkills.TryGetValue(skill.Code, out var def)
+                    ? SkillDescriptions.Passive(def, skill.Tier) : "등록되지 않은 전투 패시브입니다.";
+                _passiveDescription.Text = ShortSkillDescription(full);
+                _passiveDescription.TooltipText = full;
             };
             row.AddChild(desc);
 
@@ -1114,9 +1106,6 @@ public partial class GeneralEditorScene : Control
         if (_selectedAdminPassives.Count == 0)
         {
             _adminList.AddChild(new Label { Text = "추가된 내정 패시브 없음" });
-            var add = new Button { Text = "선택한 내정 패시브 추가", CustomMinimumSize = new Vector2(0, 34) };
-            add.Pressed += AddSelectedAdminPassive;
-            _adminList.AddChild(add);
             return;
         }
 
@@ -1125,12 +1114,11 @@ public partial class GeneralEditorScene : Control
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 8);
             _adminList.AddChild(row);
-            row.AddChild(ActiveSkillIcons.Preview($"admin/{skill.Code}", 36));
 
             var name = _adminNames.GetValueOrDefault(skill.Code, skill.Code);
             var label = new Label
             {
-                Text = $"{name} ({skill.Code})",
+                Text = name,
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 TooltipText = _adminSkills.TryGetValue(skill.Code, out var def) ? SkillDescriptions.Admin(def, skill.Tier) : "",
             };
@@ -1160,11 +1148,10 @@ public partial class GeneralEditorScene : Control
             var desc = new Button { Text = "설명", CustomMinimumSize = new Vector2(70, 0) };
             desc.Pressed += () =>
             {
-                _adminDescription.Text = _adminSkills.TryGetValue(skill.Code, out var def)
-                    ? $"{name} ({skill.Code})\n{SkillDescriptions.Admin(def, skill.Tier)}"
-                    : $"등록되지 않은 내정 패시브입니다: {skill.Code}";
-                _adminIcon.Texture = ActiveSkillIcons.Load($"admin/{skill.Code}");
-                _adminIcon.Visible = _adminIcon.Texture is not null;
+                var full = _adminSkills.TryGetValue(skill.Code, out var def)
+                    ? SkillDescriptions.Admin(def, skill.Tier) : "등록되지 않은 내정 패시브입니다.";
+                _adminDescription.Text = ShortSkillDescription(full);
+                _adminDescription.TooltipText = full;
             };
             row.AddChild(desc);
 
@@ -1187,8 +1174,20 @@ public partial class GeneralEditorScene : Control
         }
     }
 
-    private static string SkillText(IReadOnlyList<GeneralEditorSkill> skills)
-        => skills.Count == 0 ? "없음" : string.Join(", ", skills.OrderBy(s => s.Code).Select(s => $"{s.Code} Lv{s.Tier}"));
+    private string RegionName(string code)
+        => _regionNames.GetValueOrDefault(code, "기타 지역");
+
+    private static string GeneralSkillNames(IReadOnlyList<GeneralEditorSkill> skills,
+        IReadOnlyDictionary<string, string> names)
+        => skills.Count == 0 ? "없음" : string.Join(", ", skills.Select(skill =>
+            $"{names.GetValueOrDefault(skill.Code, "미등록 스킬")} {skill.Tier}단계"));
+
+    private static string ShortSkillDescription(string text)
+    {
+        var line = text.Replace('\r', ' ').Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault()?.Trim() ?? "";
+        return line.Length <= 95 ? line : line[..94] + "…";
+    }
 
     private GeneralPortraitRecord PortraitFor(int generalId)
         => _portraitsByGeneralId.TryGetValue(generalId, out var portrait)
