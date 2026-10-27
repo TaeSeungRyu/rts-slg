@@ -399,7 +399,11 @@ public sealed class CampaignEngine
                 const int activeChargeDays = 1;
                 var result = _siege.Resolve(armies, siegeState.Cities, siegeState.Garrisons,
                     CounterAptitude, DefenseBonus, siegeState.CityWounded, siegeState.AreHostile,
-                    WallDamageTakenPercent, SiegeAttackBonusPercent);
+                    WallDamageTakenPercent, SiegeAttackBonusPercent,
+                    reports[^1].FieldCombatExchanges.SelectMany(exchange => new[] { exchange.Attacker, exchange.Target })
+                        .Concat((reports[^1].FieldBuildingCombatExchanges ?? [])
+                            .Select(exchange => exchange.Attacker)).ToHashSet(),
+                    reports[^1].FiredActives.Keys.ToHashSet());
 
                 var mergedActives = reports[^1].FiredActives
                     .Concat(result.FiredActives)

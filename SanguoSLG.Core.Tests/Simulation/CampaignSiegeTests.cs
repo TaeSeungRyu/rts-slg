@@ -277,6 +277,24 @@ public class CampaignSiegeTests
     }
 
     [Fact]
+    public void 같은_공격턴에_야전교전에_참여한_부대는_공성에서_중복_충전하지_않는다()
+    {
+        var crush = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).Single(x => x.Code == "crush");
+        var city = Town(9, 2, new HexCoord(5, 0), wall: 6000);
+        var unit = Army(1, 1, new HexCoord(4, 0), city.Position) with
+        { State = UnitCombatState.Create(60, crush) with { VanguardGauge = new ActiveGauge(5) } };
+        var result = Siege().Resolve([unit], [city], [], alreadyCharged: new HashSet<UnitId> { unit.Id });
+        Assert.Empty(result.FiredActives);
+        Assert.Equal(5, Assert.Single(result.Armies).State.SharedActiveGauge.ElapsedDays);
+
+        var ready = unit with { State = unit.State.AdvanceCombat() };
+        result = Siege().Resolve([ready], [city], [], alreadyCharged: new HashSet<UnitId> { unit.Id },
+            alreadyFired: new HashSet<UnitId> { unit.Id });
+        Assert.Empty(result.FiredActives);
+        Assert.Equal(6, Assert.Single(result.Armies).State.SharedActiveGauge.ElapsedDays);
+    }
+
+    [Fact]
     public void 공성에서_발동한_액티브의_초기화상태가_공격턴_재생데이터에도_반영된다()
     {
         var crush = new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()).Single(x => x.Code == "crush");

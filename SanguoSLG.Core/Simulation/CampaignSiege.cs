@@ -68,7 +68,9 @@ public sealed class CampaignSiege
         Func<CityId, int>? defenseBonus = null, IReadOnlyList<CityWoundedForce>? cityWounded = null,
         Func<FactionId, FactionId, bool>? areHostile = null,
         Func<CityId, int>? wallDamageTakenPercent = null,
-        Func<CombatUnit, City, int>? attackBonusPercent = null)
+        Func<CombatUnit, City, int>? attackBonusPercent = null,
+        IReadOnlySet<UnitId>? alreadyCharged = null,
+        IReadOnlySet<UnitId>? alreadyFired = null)
     {
         areHostile ??= (left, right) => left != right;
         var byUnit = armies.ToDictionary(u => u.Id);
@@ -128,8 +130,10 @@ public sealed class CampaignSiege
             foreach (var besieger in besiegers)
             {
                 var current = byUnit[besieger.Id];
-                var chargedState = current.State.AdvanceCombat();
-                var (active, nextState) = chargedState.FiringBuildingActive();
+                var chargedState = alreadyCharged?.Contains(current.Id) == true
+                    ? current.State : current.State.AdvanceCombat();
+                var (active, nextState) = alreadyFired?.Contains(current.Id) == true
+                    ? ((ActiveSkill?)null, chargedState) : chargedState.FiringBuildingActive();
                 activeByUnit[current.Id] = active;
                 byUnit[current.Id] = current with { State = nextState };
                 if (active is not null) firedActives[current.Id] = active;
