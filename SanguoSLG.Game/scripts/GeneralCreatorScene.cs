@@ -407,6 +407,20 @@ public partial class GeneralCreatorScene : Control
             choice.Pressed += () => SelectPortrait(portrait);
             _portraitGrid.AddChild(choice);
         }
+        var galleryDirectory = ProjectSettings.GlobalizePath("user://general-presets/portraits/");
+        if (!Directory.Exists(galleryDirectory)) return;
+        foreach (var file in Directory.EnumerateFiles(galleryDirectory, "*.png").OrderBy(Path.GetFileName))
+        {
+            var image = Image.LoadFromFile(file);
+            if (image is null || image.IsEmpty()) continue;
+            image.Resize(80, 96);
+            var portrait = "user://general-presets/portraits/" + Path.GetFileName(file);
+            var choice = new Button { Text = "등록", Icon = ImageTexture.CreateFromImage(image),
+                ExpandIcon = true, CustomMinimumSize = new Vector2(115, 106),
+                TooltipText = $"외부 초상 · {Path.GetFileName(file)}" };
+            choice.Pressed += () => SelectPortrait(portrait);
+            _portraitGrid.AddChild(choice);
+        }
     }
 
     private void SelectPortrait(string? path)
@@ -431,20 +445,27 @@ public partial class GeneralCreatorScene : Control
 
     private void OnExternalPortraitSelected(string path)
     {
+        try
+        {
+            var portrait = RegisterGalleryPortrait(path);
+            RebuildPortraitGrid();
+            SelectPortrait(portrait);
+            _status.Text = "외부 초상을 기본 얼굴 목록에 등록했습니다.";
+        }
+        catch (Exception error) { _status.Text = "초상 등록 실패: " + error.Message; }
+    }
+
+    private static string RegisterGalleryPortrait(string path)
+    {
         if (!File.Exists(path) || new FileInfo(path).Length > 20 * 1024 * 1024)
-        {
-            _status.Text = "20MB 이하의 이미지 파일을 선택하세요.";
-            return;
-        }
+            throw new InvalidDataException("20MB 이하의 이미지 파일을 선택하세요.");
         var image = Image.LoadFromFile(path);
-        if (image is null || image.IsEmpty())
-        {
-            _status.Text = "이미지를 읽을 수 없습니다.";
-            return;
-        }
-        _pendingExternalPath = path;
-        _portraitPath = null;
-        ShowPortrait(path, $"외부 이미지: {Path.GetFileName(path)} · 저장 시 복사");
+        if (image is null || image.IsEmpty()) throw new InvalidDataException("이미지를 읽을 수 없습니다.");
+        var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
+        var portrait = $"user://general-presets/portraits/custom_{hash}.png";
+        var target = ProjectSettings.GlobalizePath(portrait);
+        if (!File.Exists(target)) ImportExternalPortrait(path, target);
+        return portrait;
     }
 
     private static void ImportExternalPortrait(string sourcePath, string target)
@@ -646,6 +667,16 @@ public partial class GeneralCreatorScene : Control
         {
             ImportExternalPortrait(ProjectSettings.GlobalizePath(DefaultPortrait()), imported);
             passed &= File.Exists(imported) && new FileInfo(imported).Length > 0;
+            var qaHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(imported))).ToLowerInvariant();
+            var qaGalleryFile = ProjectSettings.GlobalizePath($"user://general-presets/portraits/custom_{qaHash}.png");
+            var existedBeforeQa = File.Exists(qaGalleryFile);
+            var registered = RegisterGalleryPortrait(imported);
+            var registeredFile = ProjectSettings.GlobalizePath(registered);
+            RebuildPortraitGrid();
+            SelectPortrait(registered);
+            passed &= _portraitPath == registered && _portraitGrid.GetChildCount() >= 11
+                && CreatedGeneralStore.Load(CreatedGeneralStore.Save([FromForm(10002)]))[0].PortraitPath == registered;
+            if (!existedBeforeQa) File.Delete(registeredFile);
         }
         finally { if (File.Exists(imported)) File.Delete(imported); }
         GD.Print($"[generalcreatorqa] passed={passed} original={scenario.Generals.Count} new={applied.Generals.Count}");
