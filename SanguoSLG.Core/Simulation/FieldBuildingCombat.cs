@@ -23,14 +23,17 @@ public sealed class FieldBuildingCombat
     private readonly IReadOnlyDictionary<string, FieldBuildingDefinition> _definitions;
     private readonly IReadOnlyDictionary<string, TroopTemplate> _troops;
     private readonly IReadOnlyDictionary<string, SummonedUnitDefinition> _summons;
+    private readonly IReadOnlyDictionary<string, PassiveSkill> _passives;
 
     public FieldBuildingCombat(BattleResolver battle, IReadOnlyList<FieldBuildingDefinition> definitions,
-        IReadOnlyList<TroopTemplate>? troops = null, IReadOnlyList<SummonedUnitDefinition>? summons = null)
+        IReadOnlyList<TroopTemplate>? troops = null, IReadOnlyList<SummonedUnitDefinition>? summons = null,
+        IReadOnlyList<PassiveSkill>? passives = null)
     {
         _battle = battle;
         _definitions = definitions.ToDictionary(x => x.Code, StringComparer.Ordinal);
         _troops = (troops ?? []).ToDictionary(x => x.Code, StringComparer.Ordinal);
         _summons = (summons ?? []).ToDictionary(x => x.Code, StringComparer.Ordinal);
+        _passives = (passives ?? []).ToDictionary(x => x.Code, StringComparer.Ordinal);
     }
 
     public FieldBuildingCombatResult Resolve(GameState state, IReadOnlyList<CombatUnit> input,
@@ -71,7 +74,7 @@ public sealed class FieldBuildingCombat
                 var target = new CombatStats(System.Math.Max(1, building.HitPoints), 0,
                     definition.Defense, AptitudeGrade.APlus.Percent(), DfBonusPercent: defenseBonus);
                 var buildingAttack = BuildingAttack(attacker);
-                var attackStats = attacker.Stats with
+                var attackStats = ApplyBuildingPassives(state, attacker) with
                 {
                     Troops = attacker.Pool.Active,
                     AtkStat = buildingAttack,
@@ -146,6 +149,32 @@ public sealed class FieldBuildingCombat
         return _troops.TryGetValue(attacker.TroopCode, out var troop)
             ? troop.AtkBuilding
             : attacker.Stats.AtkStat; // 구형 저장/단위 테스트 호환
+    }
+
+    private CombatStats ApplyBuildingPassives(GameState state, CombatUnit attacker)
+    {
+        if (_passives.Count == 0 || attacker.IsSupply || attacker.IsTransport || attacker.IsArmyGroup
+            || attacker.State.Statuses.Any(status => status.NullifyAptPassive)) return attacker.Stats;
+        var held = new List<(PassiveSkill Skill, int Tier)>();
+        foreach (var generalId in new[] { attacker.VanguardId, attacker.AdjutantId })
+        {
+            var general = state.Generals.FirstOrDefault(g => g.Id == generalId);
+            if (general is null) continue;
+            foreach (var learned in general.Passives)
+                if (_passives.TryGetValue(learned.Code, out var skill))
+                    held.Add((skill, learned.Tier));
+        }
+        if (held.Count == 0) return attacker.Stats;
+        var baseline = PassiveBucketEvaluator.Evaluate(held,
+            new CombatContext(MeleeEngagement: true, IncomingMelee: true));
+        var current = PassiveBucketEvaluator.Evaluate(held,
+            new CombatContext(TargetIsBuilding: true,
+                HpRatioPercent: 100 * attacker.Pool.Active / Math.Max(1, attacker.MaxTroops)));
+        return attacker.Stats with
+        {
+            AtkBonusPercent = attacker.Stats.AtkBonusPercent + current.AtkPercent - baseline.AtkPercent,
+            DfBonusPercent = attacker.Stats.DfBonusPercent + current.DfPercent - baseline.DfPercent,
+        };
     }
 
     private static int BuildingDefenseBonus(GameState state, FieldBuilding building,

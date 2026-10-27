@@ -90,6 +90,23 @@ public sealed class FieldBuildingStage4Tests
         Assert.Equal(skill, result.FiredActives[unit.Id]);
     }
 
+    [Fact]
+    public void 공성전문_패시브는_야전건축물에도_적용된다()
+    {
+        var target = new HexCoord(1, 0);
+        var building = Building("fort", Enemy, target) with { HitPoints = 1000000 };
+        var skill = new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory())
+            .Single(x => x.Code == "siege_expert");
+        var general = new General(new GeneralId(1), "시험 장수", new Dictionary<TroopClass, AptitudeGrade>(),
+            60, 60, 60, BattlePassives: [new GeneralSkill(skill.Code, 3)]);
+        var unit = Combat(1, Player, default, target) with { VanguardId = general.Id };
+        var state = new GameState(1, 190, [], [], [general], FieldBuildings: [building]);
+        var baseline = new FieldBuildingCombat(new BattleResolver(60), Definitions).Resolve(state, [unit]);
+        var improved = new FieldBuildingCombat(new BattleResolver(60), Definitions, passives: [skill])
+            .Resolve(state, [unit]);
+        Assert.True(Assert.Single(improved.Exchanges).Damage > Assert.Single(baseline.Exchanges).Damage);
+    }
+
     private static readonly FactionId Player = new(1);
     private static readonly FactionId Enemy = new(2);
     private static readonly IReadOnlyList<FieldBuildingDefinition> Definitions =

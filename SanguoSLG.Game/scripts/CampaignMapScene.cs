@@ -629,7 +629,7 @@ public sealed partial class CampaignMapScene : Node3D
             _cb.BuildSiteHp, _cb.BuildSiteDamagePerTurn, passives, actives,
             new RuinCombat(new BattleResolver(60), 70),
             new FieldBuildingCombat(new BattleResolver(60), _fieldBuildingDefinitions, _troops,
-                summonedUnitDefinitions),
+                summonedUnitDefinitions, passives),
             _fieldBuildingDefinitions, _eventHunts, _summons, _ancientRelics,
             _climateController = new SanguoSLG.Core.Simulation.Climate.ClimateController(_map,
                 scenario.Balance.ClimatePatchChancePercent,
