@@ -1078,5 +1078,29 @@
     "title": "공손연",
     "desc": "공손강을 영입하면 후보가 되는 아들",
     "required_general": 138
+  },
+  {
+    "general": 141,
+    "type": "faction",
+    "recruit_point_cost": 175,
+    "title": "사섭",
+    "desc": "교주 세력을 이끄는 교지태수",
+    "required_general": null
+  },
+  {
+    "general": 142,
+    "type": "faction",
+    "recruit_point_cost": 135,
+    "title": "감례",
+    "desc": "사섭을 영입하면 후보가 되는 교주 장수",
+    "required_general": 141
+  },
+  {
+    "general": 143,
+    "type": "faction",
+    "recruit_point_cost": 120,
+    "title": "환린",
+    "desc": "사섭을 영입하면 후보가 되는 교지 관리",
+    "required_general": 141
   }
 ]
