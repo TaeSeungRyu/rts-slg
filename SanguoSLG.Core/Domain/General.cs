@@ -29,7 +29,10 @@ public sealed record General(
     int AdminExperience = 0,
     string Affiliation = "",
     string Gender = "male",
-    string? PortraitPath = null)
+    string? PortraitPath = null,
+    double FaceCenterX = 0.5,
+    double FaceCenterY = 0.35,
+    double FaceZoom = 1)
 {
     /// <summary>병종 분류의 통솔 등급. 정의가 없으면 F.</summary>
     public AptitudeGrade AptitudeFor(TroopClass troopClass)

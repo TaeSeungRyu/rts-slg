@@ -9887,7 +9887,7 @@ public sealed partial class CampaignMapScene : Node3D
     {
         if (_portraitMetadata is not null)
         {
-            return _portraitMetadata.GetValueOrDefault(id.Value);
+            return _portraitMetadata.GetValueOrDefault(id.Value) ?? CreatedPortraitMetadata(id);
         }
 
         try
@@ -9896,18 +9896,26 @@ public sealed partial class CampaignMapScene : Node3D
             if (!File.Exists(path))
             {
                 _portraitMetadata = new Dictionary<int, GeneralPortraitRecord>();
-                return null;
+                return CreatedPortraitMetadata(id);
             }
 
             _portraitMetadata = GeneralEditorStore.LoadPortraits(File.ReadAllText(path))
                 .ToDictionary(p => p.GeneralId);
-            return _portraitMetadata.GetValueOrDefault(id.Value);
+            return _portraitMetadata.GetValueOrDefault(id.Value) ?? CreatedPortraitMetadata(id);
         }
         catch
         {
             _portraitMetadata = new Dictionary<int, GeneralPortraitRecord>();
-            return null;
+            return CreatedPortraitMetadata(id);
         }
+    }
+
+    private GeneralPortraitRecord? CreatedPortraitMetadata(GeneralId id)
+    {
+        var general = _state.Generals.FirstOrDefault(g => g.Id == id);
+        return general?.PortraitPath is { Length: > 0 } path && id.Value >= 10000
+            ? new GeneralPortraitRecord(id.Value, path, general.FaceCenterX, general.FaceCenterY, general.FaceZoom)
+            : null;
     }
 
     private static Image BuildCircularPortraitImage(Image source, GeneralPortraitRecord portrait)

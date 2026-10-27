@@ -578,10 +578,9 @@ public partial class GeneralEditorScene : Control
         _faceX.Value = portrait.FaceCenterX;
         _faceY.Value = portrait.FaceCenterY;
         _faceZoom.Value = portrait.FaceZoom;
-        var editablePortrait = !_createdGenerals.ContainsKey(general.Id);
-        _faceX.Editable = editablePortrait;
-        _faceY.Editable = editablePortrait;
-        _faceZoom.Editable = editablePortrait;
+        _faceX.Editable = true;
+        _faceY.Editable = true;
+        _faceZoom.Editable = true;
         UpdatePortraitPreview();
 
         UpdateChangePreview();
@@ -765,9 +764,11 @@ public partial class GeneralEditorScene : Control
         if (!File.Exists(path) || File.GetLastWriteTimeUtc(path) != _createdGeneralsLoadedAt)
             throw new InvalidDataException("생성 장수 목록이 외부에서 변경되었습니다. 재로드 후 다시 저장하세요.");
         var current = _createdGenerals[edited.Id];
+        var portrait = CurrentPortraitRecord(edited.Id);
         var updated = _createdGenerals.Values.Select(entry => entry.General.Id == edited.Id
             ? entry with { General = edited, RecruitPointCost = (int)_recruitPointInput.Value,
-                RequiredGeneralId = SelectedRequiredGeneral() }
+                RequiredGeneralId = SelectedRequiredGeneral(), FaceCenterX = portrait.FaceCenterX,
+                FaceCenterY = portrait.FaceCenterY, FaceZoom = portrait.FaceZoom }
             : entry).OrderBy(entry => entry.General.Id).ToList();
         CreatedGeneralStore.Apply(new ScenarioLoader().LoadFromDirectory(_dataDirectory), updated);
         var temp = path + ".tmp";
@@ -775,7 +776,8 @@ public partial class GeneralEditorScene : Control
         File.Move(temp, path, true);
         _createdGeneralsLoadedAt = File.GetLastWriteTimeUtc(path);
         _createdGenerals[edited.Id] = current with { General = edited,
-            RecruitPointCost = (int)_recruitPointInput.Value, RequiredGeneralId = SelectedRequiredGeneral() };
+            RecruitPointCost = (int)_recruitPointInput.Value, RequiredGeneralId = SelectedRequiredGeneral(),
+            FaceCenterX = portrait.FaceCenterX, FaceCenterY = portrait.FaceCenterY, FaceZoom = portrait.FaceZoom };
         _heroRecruitPointCosts[edited.Id] = (int)_recruitPointInput.Value;
         _heroRecruitPrerequisites[edited.Id] = SelectedRequiredGeneral();
         var index = _generals.FindIndex(general => general.Id == edited.Id);
@@ -950,7 +952,14 @@ public partial class GeneralEditorScene : Control
             RefreshList();
             ShowGeneral(record);
             createdOk = Enumerable.Range(0, _list.ItemCount).Any(index => _list.GetItemText(index).Contains("창작 장수 QA"))
-                && _recruitPointInput.Editable && (int)_recruitPointInput.Value == 275;
+                && _recruitPointInput.Editable && (int)_recruitPointInput.Value == 275
+                && _faceX.Editable && _faceY.Editable && _faceZoom.Editable;
+            _faceX.Value = 0.72;
+            _faceY.Value = 0.24;
+            _faceZoom.Value = 2.1;
+            createdOk &= Math.Abs(CurrentPortraitRecord(record.Id).FaceCenterX - 0.72) < 0.001
+                && Math.Abs(CurrentPortraitRecord(record.Id).FaceCenterY - 0.24) < 0.001
+                && Math.Abs(CurrentPortraitRecord(record.Id).FaceZoom - 2.1) < 0.001;
         }
 
         _passiveSelect.Select(0);
@@ -1268,7 +1277,8 @@ public partial class GeneralEditorScene : Control
 
     private GeneralPortraitRecord PortraitFor(int generalId)
         => _createdGenerals.TryGetValue(generalId, out var created)
-            ? new GeneralPortraitRecord(generalId, created.PortraitPath ?? "", 0.5, 0.35, 1)
+            ? new GeneralPortraitRecord(generalId, created.PortraitPath ?? "",
+                created.FaceCenterX, created.FaceCenterY, created.FaceZoom)
             : _portraitsByGeneralId.TryGetValue(generalId, out var portrait)
             ? portrait
             : new GeneralPortraitRecord(generalId, $"SanguoSLG.Game/assets/portraits/{generalId}.png", 0.5, 0.35, 1);

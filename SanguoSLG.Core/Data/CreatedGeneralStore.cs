@@ -4,7 +4,8 @@ using System.Text.Json;
 using SanguoSLG.Core.Domain;
 
 public sealed record CreatedGeneralRecord(GeneralEditorRecord General, string Gender, int RecruitPointCost,
-    string? PortraitPath = null, int? RequiredGeneralId = null);
+    string? PortraitPath = null, int? RequiredGeneralId = null,
+    double FaceCenterX = 0.5, double FaceCenterY = 0.35, double FaceZoom = 1);
 
 /// <summary>새 게임에서만 읽는 사용자 장수 목록. 오리진 데이터와 저장 게임은 변경하지 않는다.</summary>
 public static class CreatedGeneralStore
@@ -31,6 +32,10 @@ public static class CreatedGeneralStore
                 throw new InvalidDataException("성별 또는 영입 포인트가 올바르지 않습니다.");
             if (entry.PortraitPath is { } portrait && !IsAllowedPortraitPath(portrait))
                 throw new InvalidDataException("생성 장수 초상 경로가 올바르지 않습니다.");
+            if (!double.IsFinite(entry.FaceCenterX) || entry.FaceCenterX is < 0 or > 1
+                || !double.IsFinite(entry.FaceCenterY) || entry.FaceCenterY is < 0 or > 1
+                || !double.IsFinite(entry.FaceZoom) || entry.FaceZoom is < 1 or > 4)
+                throw new InvalidDataException("생성 장수 얼굴 구도값이 올바르지 않습니다.");
             if (entry.RequiredGeneralId is { } required && (required <= 0 || required == entry.General.Id))
                 throw new InvalidDataException("영입 선행 장수를 확인하세요.");
         }
@@ -70,6 +75,9 @@ public static class CreatedGeneralStore
             {
                 Gender = entries[index].Gender,
                 PortraitPath = entries[index].PortraitPath,
+                FaceCenterX = entries[index].FaceCenterX,
+                FaceCenterY = entries[index].FaceCenterY,
+                FaceZoom = entries[index].FaceZoom,
             });
         var heroes = entries.Select(e => new HeroUnlockDefinition(new GeneralId(e.General.Id),
             HeroUnlockType.Wanderer, RecruitPointCost: e.RecruitPointCost,

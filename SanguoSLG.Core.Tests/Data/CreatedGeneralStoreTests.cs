@@ -54,4 +54,24 @@ public sealed class CreatedGeneralStoreTests
         Assert.Throws<InvalidDataException>(() => CreatedGeneralStore.Save(
             [entry with { PortraitPath = "user://general-presets/portraits/../secret.png" }]));
     }
+
+    [Fact]
+    public void 생성_장수_얼굴구도는_프리셋과_새게임_저장에_유지된다()
+    {
+        var origin = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
+        var aptitudes = new[] { "infantry", "archer", "cavalry", "elephant", "siege", "naval", "supply", "defense" }
+            .ToDictionary(code => code, _ => "B");
+        var entry = new CreatedGeneralRecord(new GeneralEditorRecord(10000, "창작", aptitudes,
+            70, 70, 70, null, [], [], 170, 0, "wei", ""), "female", 100,
+            "res://assets/portraits/created/women1.png", FaceCenterX: 0.72, FaceCenterY: 0.24, FaceZoom: 2.1);
+        var loaded = Assert.Single(CreatedGeneralStore.Load(CreatedGeneralStore.Save([entry])));
+        Assert.Equal(0.72, loaded.FaceCenterX);
+        Assert.Equal(0.24, loaded.FaceCenterY);
+        Assert.Equal(2.1, loaded.FaceZoom);
+        var campaign = CreatedGeneralStore.Apply(origin, [loaded]);
+        var saved = SaveService.Deserialize(SaveService.Serialize(GameState.FromScenario(campaign)));
+        var general = Assert.Single(saved.Generals, g => g.Id.Value == 10000);
+        Assert.Equal((0.72, 0.24, 2.1), (general.FaceCenterX, general.FaceCenterY, general.FaceZoom));
+        Assert.Throws<InvalidDataException>(() => CreatedGeneralStore.Save([entry with { FaceZoom = 5 }]));
+    }
 }
