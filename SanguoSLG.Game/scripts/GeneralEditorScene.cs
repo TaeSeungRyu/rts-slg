@@ -44,6 +44,7 @@ public partial class GeneralEditorScene : Control
     private VBoxContainer _passiveList = null!;
     private OptionButton _adminSelect = null!;
     private Label _adminDescription = null!;
+    private AcceptDialog _skillDetailDialog = null!;
     private VBoxContainer _adminList = null!;
     private TextureRect _portraitPreview = null!;
     private TextureRect _facePreview = null!;
@@ -147,6 +148,8 @@ public partial class GeneralEditorScene : Control
 
         var tabs = new TabContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         right.AddChild(tabs);
+        _skillDetailDialog = new AcceptDialog { Title = "스킬 설명", MinSize = new Vector2I(600, 330) };
+        AddChild(_skillDetailDialog);
         VBoxContainer AddPage(string name)
         {
             var content = new VBoxContainer { Name = name, SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -970,13 +973,28 @@ public partial class GeneralEditorScene : Control
                 && _recruitPointInput.Editable && (int)_recruitPointInput.Value == 275;
         }
 
+        _passiveSelect.Select(0);
+        AddSelectedBattlePassive();
+        var battleButton = FindChild("BattlePassiveDescriptionButton", true, false) as Button;
+        battleButton?.EmitSignal(BaseButton.SignalName.Pressed);
+        var battleDescriptionOk = battleButton is not null && _skillDetailDialog.Visible
+            && _skillDetailDialog.DialogText.Contains("전투 패시브", StringComparison.Ordinal);
+        _skillDetailDialog.Hide();
+        _adminSelect.Select(0);
+        AddSelectedAdminPassive();
+        var adminButton = FindChild("AdminPassiveDescriptionButton", true, false) as Button;
+        adminButton?.EmitSignal(BaseButton.SignalName.Pressed);
+        var adminDescriptionOk = adminButton is not null && _skillDetailDialog.Visible
+            && _skillDetailDialog.DialogText.Contains("내정 패시브", StringComparison.Ordinal);
+        _skillDetailDialog.Hide();
+
         var tabs = FindChildren("*", "TabContainer", true, false).OfType<TabContainer>().Single();
         var layoutOk = tabs.GetChildren().All(child => child is not ScrollContainer)
             && _regionFilter.ItemCount > 1
             && _regionFilter.GetItemText(1) == RegionName(_regionFilter.GetItemMetadata(1).AsString())
             && _activeInput.ItemCount > 1
             && !_activeInput.GetItemText(1).Contains('(');
-        var passed = heroOk && regularOk && createdOk && layoutOk;
+        var passed = heroOk && regularOk && createdOk && layoutOk && battleDescriptionOk && adminDescriptionOk;
         GD.Print($"[generaleditorqa] passed={passed} hero={heroOk} regular={regularOk} created={createdOk} layout={layoutOk} region={_regionFilter.GetItemText(1)} active={_activeInput.GetItemText(1)} range={_recruitPointInput.MinValue}-{_recruitPointInput.MaxValue}");
         GetTree().Quit(passed ? 0 : 1);
     }
@@ -1156,13 +1174,14 @@ public partial class GeneralEditorScene : Control
             };
             row.AddChild(tier);
 
-            var desc = new Button { Text = "설명", CustomMinimumSize = new Vector2(70, 0) };
+            var desc = new Button { Name = "BattlePassiveDescriptionButton", Text = "설명", CustomMinimumSize = new Vector2(70, 0) };
             desc.Pressed += () =>
             {
                 var full = _passiveSkills.TryGetValue(skill.Code, out var def)
                     ? SkillDescriptions.Passive(def, skill.Tier) : "등록되지 않은 전투 패시브입니다.";
                 _passiveDescription.Text = full;
                 _passiveDescription.TooltipText = full;
+                ShowSkillDetail(name, full);
             };
             row.AddChild(desc);
 
@@ -1222,13 +1241,14 @@ public partial class GeneralEditorScene : Control
             };
             row.AddChild(tier);
 
-            var desc = new Button { Text = "설명", CustomMinimumSize = new Vector2(70, 0) };
+            var desc = new Button { Name = "AdminPassiveDescriptionButton", Text = "설명", CustomMinimumSize = new Vector2(70, 0) };
             desc.Pressed += () =>
             {
                 var full = _adminSkills.TryGetValue(skill.Code, out var def)
                     ? SkillDescriptions.Admin(def, skill.Tier) : "등록되지 않은 내정 패시브입니다.";
                 _adminDescription.Text = full;
                 _adminDescription.TooltipText = full;
+                ShowSkillDetail(name, full);
             };
             row.AddChild(desc);
 
@@ -1258,6 +1278,13 @@ public partial class GeneralEditorScene : Control
         IReadOnlyDictionary<string, string> names)
         => skills.Count == 0 ? "없음" : string.Join(", ", skills.Select(skill =>
             $"{names.GetValueOrDefault(skill.Code, "미등록 스킬")} {skill.Tier}단계"));
+
+    private void ShowSkillDetail(string name, string description)
+    {
+        _skillDetailDialog.Title = name;
+        _skillDetailDialog.DialogText = description;
+        _skillDetailDialog.PopupCentered(new Vector2I(600, 330));
+    }
 
     private GeneralPortraitRecord PortraitFor(int generalId)
         => _createdGenerals.TryGetValue(generalId, out var created)
