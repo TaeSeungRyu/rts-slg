@@ -2198,7 +2198,7 @@
       ]
     },
     {
-      "name": "한성—부산",
+      "name": "한성—거칠산",
       "tiles": [
         [
           216,
@@ -3495,7 +3495,7 @@
       "latitude": 37.4999
     },
     {
-      "name": "대전",
+      "name": "우술",
       "region": "대한민국",
       "size": "small",
       "tile": [
@@ -3506,7 +3506,7 @@
       "latitude": 36.348
     },
     {
-      "name": "대구",
+      "name": "달구벌",
       "region": "대한민국",
       "size": "small",
       "tile": [
@@ -3517,7 +3517,7 @@
       "latitude": 35.8543
     },
     {
-      "name": "광주성",
+      "name": "무진",
       "region": "대한민국",
       "size": "small",
       "tile": [
@@ -3528,7 +3528,7 @@
       "latitude": 35.1961
     },
     {
-      "name": "부산",
+      "name": "거칠산",
       "region": "대한민국",
       "size": "medium",
       "tile": [
@@ -3550,7 +3550,7 @@
       "latitude": 24.9936
     },
     {
-      "name": "후쿠오카",
+      "name": "나국",
       "region": "일본",
       "size": "small",
       "tile": [
@@ -3561,7 +3561,7 @@
       "latitude": 33.5506
     },
     {
-      "name": "나가사키",
+      "name": "소노기",
       "region": "일본",
       "size": "small",
       "tile": [

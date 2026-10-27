@@ -67,7 +67,7 @@ for crossing in ((111.3, 30.7), (114.3, 30.6)):
 assert rows[cell(110.5, 30.6)[1]][cell(110.5, 30.6)[0]] == "W"
 assert not passable(*cell(110.5, 30.6))
 assert len(data["land_routes"]) >= 10
-assert {"북경—요동", "요동—평양", "평양—한성", "한성—부산"}.issubset(
+assert {"북경—요동", "요동—평양", "평양—한성", "한성—거칠산"}.issubset(
     {item["name"] for item in data["land_routes"]})
 assert {"성도—곤명", "곤명—남녕", "남녕—광주"}.issubset(
     {item["name"] for item in data["land_routes"]})
