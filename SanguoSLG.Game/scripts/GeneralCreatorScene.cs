@@ -43,6 +43,7 @@ public partial class GeneralCreatorScene : Control
     private TextureRect _portraitPreview = null!;
     private Label _portraitLabel = null!;
     private FileDialog _portraitFileDialog = null!;
+    private FileDialog _galleryFileDialog = null!;
     private string? _portraitPath;
     private string? _pendingExternalPath;
     private int? _editingId;
@@ -185,6 +186,9 @@ public partial class GeneralCreatorScene : Control
         clear.Pressed += () => SelectPortrait(null);
         portraitActions.AddChild(clear);
         var gallery = GeneralWorkspaceStyle.Section(portraits, "기본 얼굴 · 클릭해서 선택");
+        var register = new Button { Text = "+ 외부 이미지 등록하기", CustomMinimumSize = new Vector2(0, 40) };
+        register.Pressed += () => _galleryFileDialog.PopupCentered(new Vector2I(850, 620));
+        gallery.AddChild(register);
         _portraitGrid = new GridContainer { Columns = 5, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         gallery.AddChild(_portraitGrid);
         _portraitFileDialog = new FileDialog { Access = FileDialog.AccessEnum.Filesystem,
@@ -192,6 +196,11 @@ public partial class GeneralCreatorScene : Control
         _portraitFileDialog.AddFilter("*.png, *.jpg, *.jpeg, *.webp", "이미지 파일");
         _portraitFileDialog.FileSelected += OnExternalPortraitSelected;
         AddChild(_portraitFileDialog);
+        _galleryFileDialog = new FileDialog { Access = FileDialog.AccessEnum.Filesystem,
+            FileMode = FileDialog.FileModeEnum.OpenFiles, Title = "기본 얼굴 여러 장 등록" };
+        _galleryFileDialog.AddFilter("*.png, *.jpg, *.jpeg, *.webp", "이미지 파일");
+        _galleryFileDialog.FilesSelected += OnGalleryPortraitsSelected;
+        AddChild(_galleryFileDialog);
 
         var abilities = Page("능력·적성");
         var abilitySection = GeneralWorkspaceStyle.Section(abilities, "기본 능력치");
@@ -468,6 +477,20 @@ public partial class GeneralCreatorScene : Control
         return portrait;
     }
 
+    private void OnGalleryPortraitsSelected(string[] paths)
+    {
+        var added = 0;
+        var errors = new List<string>();
+        foreach (var path in paths)
+        {
+            try { RegisterGalleryPortrait(path); added++; }
+            catch (Exception error) { errors.Add($"{Path.GetFileName(path)}: {error.Message}"); }
+        }
+        RebuildPortraitGrid();
+        _status.Text = errors.Count == 0 ? $"외부 초상 {added}장을 기본 얼굴 목록에 등록했습니다."
+            : $"{added}장 등록 · 실패 {errors.Count}장: {string.Join(" / ", errors.Take(2))}";
+    }
+
     private static void ImportExternalPortrait(string sourcePath, string target)
     {
         var image = Image.LoadFromFile(sourcePath);
@@ -670,11 +693,14 @@ public partial class GeneralCreatorScene : Control
             var qaHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(imported))).ToLowerInvariant();
             var qaGalleryFile = ProjectSettings.GlobalizePath($"user://general-presets/portraits/custom_{qaHash}.png");
             var existedBeforeQa = File.Exists(qaGalleryFile);
+            OnGalleryPortraitsSelected([imported, imported]);
             var registered = RegisterGalleryPortrait(imported);
             var registeredFile = ProjectSettings.GlobalizePath(registered);
             RebuildPortraitGrid();
             SelectPortrait(registered);
             passed &= _portraitPath == registered && _portraitGrid.GetChildCount() >= 11
+                && _galleryFileDialog.FileMode == FileDialog.FileModeEnum.OpenFiles
+                && _status.Text.Contains("2장을", StringComparison.Ordinal)
                 && CreatedGeneralStore.Load(CreatedGeneralStore.Save([FromForm(10002)]))[0].PortraitPath == registered;
             if (!existedBeforeQa) File.Delete(registeredFile);
         }
