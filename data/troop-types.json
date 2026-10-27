@@ -12,7 +12,7 @@
     "range_unit": 1,
     "range_building": 1,
     "range_castle": 1,
-    "provisions_capacity": 450
+    "provisions_capacity": 210
   },
   {
     "code": "archer",
@@ -27,7 +27,7 @@
     "range_unit": 2,
     "range_building": 1,
     "range_castle": 1,
-    "provisions_capacity": 450
+    "provisions_capacity": 210
   },
   {
     "code": "cavalry",
@@ -42,7 +42,7 @@
     "range_unit": 1,
     "range_building": 1,
     "range_castle": 1,
-    "provisions_capacity": 375
+    "provisions_capacity": 210
   },
   {
     "code": "war_elephant",
@@ -57,7 +57,7 @@
     "range_unit": 1,
     "range_building": 1,
     "range_castle": 1,
-    "provisions_capacity": 375
+    "provisions_capacity": 210
   },
   {
     "code": "catapult",
@@ -72,7 +72,7 @@
     "range_unit": 2,
     "range_building": 2,
     "range_castle": 2,
-    "provisions_capacity": 300
+    "provisions_capacity": 210
   },
   {
     "code": "siege_tower",
@@ -87,7 +87,7 @@
     "range_unit": 2,
     "range_building": 2,
     "range_castle": 2,
-    "provisions_capacity": 300
+    "provisions_capacity": 210
   },
   {
     "code": "thunder_cart",
@@ -102,7 +102,7 @@
     "range_unit": 1,
     "range_building": 1,
     "range_castle": 1,
-    "provisions_capacity": 300
+    "provisions_capacity": 210
   },
   {
     "code": "turtleship",
@@ -117,7 +117,7 @@
     "range_unit": 1,
     "range_building": 1,
     "range_castle": 1,
-    "provisions_capacity": 750
+    "provisions_capacity": 42
   },
   {
     "code": "large_ship",
@@ -132,7 +132,7 @@
     "range_unit": 1,
     "range_building": 1,
     "range_castle": 1,
-    "provisions_capacity": 750
+    "provisions_capacity": 42
   },
   {
     "code": "medium_ship",
@@ -147,7 +147,7 @@
     "range_unit": 1,
     "range_building": 1,
     "range_castle": 1,
-    "provisions_capacity": 600
+    "provisions_capacity": 42
   },
   {
     "code": "small_boat",
@@ -162,6 +162,6 @@
     "range_unit": 1,
     "range_building": 1,
     "range_castle": 1,
-    "provisions_capacity": 600
+    "provisions_capacity": 42
   }
 ]
