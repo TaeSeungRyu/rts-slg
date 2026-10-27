@@ -650,11 +650,14 @@ public partial class GeneralEditorScene : Control
     {
         var panel = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(290, 0),
+            CustomMinimumSize = new Vector2(290, 142),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         panel.AddThemeStyleboxOverride("panel", DescriptionBox());
-        panel.AddChild(content);
+        var scroll = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill };
+        panel.AddChild(scroll);
+        scroll.AddChild(content);
         return panel;
     }
 
@@ -1013,7 +1016,7 @@ public partial class GeneralEditorScene : Control
 
         var full = _activeSkills.TryGetValue(code, out var skill)
             ? SkillDescriptions.Active(skill) : "등록되지 않은 액티브입니다.";
-        _activeDescription.Text = ShortSkillDescription(full);
+        _activeDescription.Text = full;
         _activeDescription.TooltipText = full;
     }
 
@@ -1028,7 +1031,7 @@ public partial class GeneralEditorScene : Control
         var code = SelectedMetadata(_passiveSelect);
         var full = code is not null && _passiveSkills.TryGetValue(code, out var skill)
             ? SkillDescriptions.Passive(skill, 1) : "전투 패시브를 선택하면 효과가 표시됩니다.";
-        _passiveDescription.Text = ShortSkillDescription(full);
+        _passiveDescription.Text = full;
         _passiveDescription.TooltipText = full;
     }
 
@@ -1074,7 +1077,7 @@ public partial class GeneralEditorScene : Control
         var code = SelectedMetadata(_adminSelect);
         var full = code is not null && _adminSkills.TryGetValue(code, out var skill)
             ? SkillDescriptions.Admin(skill, 1) : "내정 패시브를 선택하면 효과가 표시됩니다.";
-        _adminDescription.Text = ShortSkillDescription(full);
+        _adminDescription.Text = full;
         _adminDescription.TooltipText = full;
     }
 
@@ -1158,7 +1161,7 @@ public partial class GeneralEditorScene : Control
             {
                 var full = _passiveSkills.TryGetValue(skill.Code, out var def)
                     ? SkillDescriptions.Passive(def, skill.Tier) : "등록되지 않은 전투 패시브입니다.";
-                _passiveDescription.Text = ShortSkillDescription(full);
+                _passiveDescription.Text = full;
                 _passiveDescription.TooltipText = full;
             };
             row.AddChild(desc);
@@ -1224,7 +1227,7 @@ public partial class GeneralEditorScene : Control
             {
                 var full = _adminSkills.TryGetValue(skill.Code, out var def)
                     ? SkillDescriptions.Admin(def, skill.Tier) : "등록되지 않은 내정 패시브입니다.";
-                _adminDescription.Text = ShortSkillDescription(full);
+                _adminDescription.Text = full;
                 _adminDescription.TooltipText = full;
             };
             row.AddChild(desc);
@@ -1255,13 +1258,6 @@ public partial class GeneralEditorScene : Control
         IReadOnlyDictionary<string, string> names)
         => skills.Count == 0 ? "없음" : string.Join(", ", skills.Select(skill =>
             $"{names.GetValueOrDefault(skill.Code, "미등록 스킬")} {skill.Tier}단계"));
-
-    private static string ShortSkillDescription(string text)
-    {
-        var line = text.Replace('\r', ' ').Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .FirstOrDefault()?.Trim() ?? "";
-        return line.Length <= 95 ? line : line[..94] + "…";
-    }
 
     private GeneralPortraitRecord PortraitFor(int generalId)
         => _createdGenerals.TryGetValue(generalId, out var created)
