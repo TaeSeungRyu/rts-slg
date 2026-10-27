@@ -139,9 +139,11 @@ public partial class GeneralEditorScene : Control
         right.AddThemeConstantOverride("separation", 10);
         body.AddChild(right);
 
+        var overview = AddSection(right, "장수 기본 내용");
         _summary = new Label { Text = "장수를 선택하세요.", AutowrapMode = TextServer.AutowrapMode.WordSmart };
         _summary.AddThemeFontSizeOverride("font_size", 18);
-        right.AddChild(_summary);
+        overview.AddChild(_summary);
+        overview.AddChild(new HSeparator());
 
         var tabs = new TabContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         right.AddChild(tabs);
