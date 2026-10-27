@@ -580,9 +580,11 @@ public partial class GeneralCreatorScene : Control
             (int)_birth.Value, 0, SelectedCode(_region), _description.Text.Trim());
         var portrait = _pendingExternalPath is null ? _portraitPath
             : $"user://general-presets/portraits/{id}.png";
+        var previous = _editingId is { } editing ? _created.FirstOrDefault(item => item.General.Id == editing) : null;
         return new CreatedGeneralRecord(record, _gender.Selected == 1 ? "female" : "male", (int)_points.Value,
             portrait, _requiredGeneral.GetItemMetadata(_requiredGeneral.Selected).AsInt32() is var required && required > 0
-                ? required : null);
+                ? required : null, previous?.FaceCenterX ?? 0.5, previous?.FaceCenterY ?? 0.35,
+            previous?.FaceZoom ?? 1);
     }
 
     private void SaveSelected()
@@ -706,6 +708,12 @@ public partial class GeneralCreatorScene : Control
             if (!existedBeforeQa) File.Delete(registeredFile);
         }
         finally { if (File.Exists(imported)) File.Delete(imported); }
+        var framingQaId = Math.Max(10002, _created.Select(entry => entry.General.Id).DefaultIfEmpty().Max() + 1);
+        _created.Add(sample with { General = sample.General with { Id = framingQaId }, FaceCenterX = 0.72, FaceCenterY = 0.24, FaceZoom = 2.1 });
+        LoadSelected(_created.Count - 1);
+        var retained = FromForm(framingQaId);
+        passed &= retained.FaceCenterX == 0.72 && retained.FaceCenterY == 0.24 && retained.FaceZoom == 2.1;
+        _created.RemoveAt(_created.Count - 1);
         GD.Print($"[generalcreatorqa] passed={passed} original={scenario.Generals.Count} new={applied.Generals.Count}");
         GetTree().Quit(passed ? 0 : 1);
     }
