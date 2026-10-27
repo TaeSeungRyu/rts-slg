@@ -110,7 +110,7 @@ public partial class GeneralCreatorScene : Control
         right.AddChild(_tabs);
         _tabs.TabChanged += tab =>
         {
-            if (tab == 0) StartNativeNameInput();
+            if (tab == 1) StartNativeNameInput();
             else StopNativeNameInput();
         };
         VBoxContainer Page(string name)
@@ -123,6 +123,7 @@ public partial class GeneralCreatorScene : Control
             scroll.AddChild(content);
             return content;
         }
+        var portraits = Page("초상");
         var basic = Page("기본 정보");
         AddTableHeading(basic, "신상 정보");
         _name = new LineEdit { MaxLength = 20, PlaceholderText = "장수 이름", KeepEditingOnTextSubmit = true };
@@ -156,7 +157,6 @@ public partial class GeneralCreatorScene : Control
         _description = new TextEdit { CustomMinimumSize = new Vector2(0, 115) };
         basic.AddChild(_description);
 
-        var portraits = Page("초상");
         portraits.AddChild(new Label { Text = "기본 얼굴을 고르거나 외부 PNG·JPG·WEBP 파일을 가져오세요." });
         var portraitRow = new HBoxContainer();
         portraitRow.AddThemeConstantOverride("separation", 18);
@@ -362,7 +362,7 @@ public partial class GeneralCreatorScene : Control
             return;
         Callable.From(() =>
         {
-            if (_tabs.CurrentTab != 0 || _nativeName is not null || !_name.IsInsideTree()) return;
+            if (_tabs.CurrentTab != 1 || _nativeName is not null || !_name.IsInsideTree()) return;
             _nativeName = NativeNameEdit.Create(_name, GetViewport());
         }).CallDeferred();
     }
@@ -620,6 +620,7 @@ public partial class GeneralCreatorScene : Control
         var applied = CreatedGeneralStore.Apply(scenario,
             CreatedGeneralStore.Load(CreatedGeneralStore.Save([sample, virtualHero])));
         var passed = applied.Generals.Count == scenario.Generals.Count + 2
+            && _tabs.GetTabTitle(0) == "초상" && _tabs.GetTabTitle(1) == "기본 정보"
             && applied.HeroUnlockList.Any(hero => hero.General.Value == 10000)
             && scenario.Generals.All(general => general.Id.Value != 10000)
             && sample.RequiredGeneralId == required
