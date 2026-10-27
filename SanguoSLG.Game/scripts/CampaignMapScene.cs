@@ -660,8 +660,8 @@ public sealed partial class CampaignMapScene : Node3D
             FacilityPlacements = _aiTestFixture is null ? _initialFacilityPlacements : [],
             PortShipStocks = _aiTestFixture?.Ships ?? _initial.PortShipStocks,
             ScoutedCities = _aiTestFixture?.Intel ?? _initial.ScoutedCities,
-            HeroUnlockDefinitions = _aiTestFixture is null ? scenario.HeroUnlockList : [],
-            HeroUnlockStates = (_aiTestFixture is null ? scenario.HeroUnlockList : [])
+            HeroUnlockDefinitions = _aiTestFixture is null || args.Contains("--newmap") ? scenario.HeroUnlockList : [],
+            HeroUnlockStates = (_aiTestFixture is null || args.Contains("--newmap") ? scenario.HeroUnlockList : [])
                 .Select(h => new HeroUnlockState(h.General, HeroUnlockStatus.Locked))
                 .ToList(),
             RuinDefinitions = _aiTestFixture?.Ruins ?? scenario.RuinList,
@@ -808,10 +808,14 @@ public sealed partial class CampaignMapScene : Node3D
                 && minCitySpacing >= 6
                 && _aiTestFixture?.FullVision == false
                 && (_state.ScoutedCities?.Count ?? 0) == 0
-                && _visibleTiles.Count > 0 && _visibleTiles.Count < _map.Count;
+                && _visibleTiles.Count > 0 && _visibleTiles.Count < _map.Count
+                && _state.HeroUnlockDefinitions.Count > 0
+                && _state.HeroUnlockDefinitions.Any(hero =>
+                    new HeroUnlockService().IsSatisfied(_state, hero, Player));
             GD.Print($"[newmap-qa] passed={passed} factions={_state.Factions.Count} "
                 + $"cities={_state.Cities.Count} cells={_map.Count} citySpacing={minCitySpacing} "
-                + $"visible={_visibleTiles.Count} scouted={_state.ScoutedCities?.Count ?? 0}");
+                + $"visible={_visibleTiles.Count} scouted={_state.ScoutedCities?.Count ?? 0} "
+                + $"heroCandidates={_state.HeroUnlockDefinitions.Count}");
             CallDeferred(nameof(QuitNewMapQa), passed);
         }
         if (args.Contains("--mapreportqa")) CallDeferred(nameof(RunMapReportQa));
