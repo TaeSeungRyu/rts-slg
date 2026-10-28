@@ -45,6 +45,8 @@ public sealed partial class EditMapScene
         }
         _nextSiteId = _sites.Count == 0 ? 1 : _sites.Max(site => site.Id) + 1;
         var path = PresetPath();
+        if (!File.Exists(path) && !OS.GetCmdlineUserArgs().Contains("--editmapqa"))
+            path = ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json");
         if (!File.Exists(path)) return;
         try
         {
@@ -98,7 +100,6 @@ public sealed partial class EditMapScene
     {
         _draftChanged = true;
         if (_saveDraftButton is not null) _saveDraftButton.Text = "맵 저장 *";
-        SaveDraft();
     }
 
     private void RecordChange(ScenarioMapPreset before)
@@ -127,12 +128,39 @@ public sealed partial class EditMapScene
             ScenarioMapPresetStore.Save(PresetPath(), Draft());
             _draftChanged = false;
             if (_saveDraftButton is not null) _saveDraftButton.Text = "맵 저장";
-            if (_tileInfo is not null) _tileInfo.Text = "맵 저장 완료 · 실행 중인 run-newmap QA가 자동으로 초기화됩니다.";
+            ShowSaveResult("맵 저장 완료", "수정한 지도를 저장했습니다. 다음 새 게임부터 적용됩니다.");
         }
         catch (Exception error)
         {
-            _tileInfo.Text = "맵 저장 실패: " + error.Message;
+            ShowSaveResult("맵 저장 실패", error.Message);
         }
+    }
+
+    private void ConfirmSaveDraft()
+    {
+        var dialog = new ConfirmationDialog
+        {
+            Title = "맵 저장",
+            DialogText = "현재 수정한 지도를 저장하시겠습니까?\n새 게임을 시작할 때 적용됩니다.",
+            OkButtonText = "저장",
+            CancelButtonText = "취소",
+        };
+        AddChild(dialog);
+        dialog.Confirmed += SaveDraft;
+        dialog.CloseRequested += dialog.QueueFree;
+        dialog.Confirmed += dialog.QueueFree;
+        dialog.Canceled += dialog.QueueFree;
+        dialog.PopupCentered();
+    }
+
+    private void ShowSaveResult(string title, string message)
+    {
+        if (_tileInfo is not null) _tileInfo.Text = $"{title}: {message}";
+        var dialog = new AcceptDialog { Title = title, DialogText = message, OkButtonText = "확인" };
+        AddChild(dialog);
+        dialog.Confirmed += dialog.QueueFree;
+        dialog.CloseRequested += dialog.QueueFree;
+        dialog.PopupCentered();
     }
 
     private void AddSaveDraftButton(HBoxContainer bar)
@@ -144,7 +172,7 @@ public sealed partial class EditMapScene
             bar.AddChild(back);
         }
         _saveDraftButton = new Button { Text = "맵 저장", CustomMinimumSize = new Vector2(95, 26) };
-        _saveDraftButton.Pressed += SaveDraft;
+        _saveDraftButton.Pressed += ConfirmSaveDraft;
         bar.AddChild(_saveDraftButton);
     }
 

@@ -511,10 +511,9 @@ public sealed partial class EditMapScene : Control
         var beforeTerrain = Draft();
         SetTerrain(vacant, 'F');
         RecordChange(beforeTerrain);
-        valid &= ScenarioMapPresetStore.Load(PresetPath()).Rows[vacant.Y][vacant.X] == 'F';
+        valid &= _draftChanged && _saveDraftButton?.Text == "맵 저장 *";
         UndoDraft();
         valid &= _rows[vacant.Y][vacant.X] == previousTerrain;
-        valid &= ScenarioMapPresetStore.Load(PresetPath()).Rows[vacant.Y][vacant.X] == previousTerrain;
         RedoDraft();
         valid &= _rows[vacant.Y][vacant.X] == 'F';
         UndoDraft();

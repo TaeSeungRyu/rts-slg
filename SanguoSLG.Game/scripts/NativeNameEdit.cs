@@ -93,6 +93,9 @@ internal sealed class NativeNameEdit : IDisposable
     public void Dispose()
     {
         if (_handle == 0) return;
+        // Windows hides the pointer while typing in EDIT. Return keyboard focus
+        // before destroying it so the pointer is restored without a mouse move.
+        if (GetFocus() == _handle) SetFocus(_parent);
         RemoveWindowSubclass(_parent, _subclassProcedure, (nuint)_handle);
         DestroyWindow(_handle);
         _handle = 0;
@@ -131,6 +134,8 @@ internal sealed class NativeNameEdit : IDisposable
     private static extern int GetWindowTextLengthW(nint window);
     [DllImport("user32.dll")]
     private static extern bool GetClientRect(nint window, out Rect rect);
+    [DllImport("user32.dll")]
+    private static extern nint GetFocus();
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(nint window, nint after, int x, int y,
         int width, int height, uint flags);
