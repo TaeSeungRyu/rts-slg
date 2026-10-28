@@ -89,8 +89,9 @@ public sealed class CommandService
         {
             return CommandResult.Fail("도시를 찾을 수 없다.", state);
         }
-        if (city.IsGate && req.Kind != CommandKind.AppointGovernor)
-            return CommandResult.Fail("관문에서는 관문장 임명 외의 명령을 수행할 수 없습니다.", state);
+        if (city.IsGate && req.Kind != CommandKind.AppointGovernor
+            && !(req.Kind == CommandKind.Repair && req.TroopCode == FactionResearch.WallCode))
+            return CommandResult.Fail("관문에서는 관문장 임명과 내구도 수리만 수행할 수 있습니다.", state);
 
         var main = state.Generals.FirstOrDefault(g => g.Id == req.Main);
         if (main is null)
@@ -852,7 +853,7 @@ public sealed class CommandService
             return CommandResult.Fail("성벽 수리에는 경제 설정이 필요하다.", state);
         }
 
-        var maxWall = CastleWall.Max(city.Castle, _balance, city.WallLevel);
+        var maxWall = WallRepairRules.MaxIntegrity(city, _balance);
         // 축성(재임 태수): 성벽 수리 회복량 +10/20/30%p(기본 25%·공방 +25%p와 합산 — design-skill-admin).
         var recovery = _b.WallRepairPercent + (city.Workshop ? _b.WallRepairWorkshopBonus : 0)
             + GovernorBucket(state, city, "wall");

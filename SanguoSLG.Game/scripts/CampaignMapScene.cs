@@ -2008,6 +2008,7 @@ public sealed partial class CampaignMapScene : Node3D
             gate.Gate == GateSize.Medium ? "중형 관문" : "소형 관문",
             $"소유: {_state.Factions.FirstOrDefault(faction => faction.Id == gate.Owner)?.Name ?? "중립"}",
             $"내구도 {gate.Wall:N0} / {(gate.Gate == GateSize.Medium ? 3_000 : 2_000):N0}",
+            $"금 {gate.Gold:N0} · 군량 {gate.Provisions:N0}",
             $"주둔 병력 {_state.Garrisons.Where(force => force.City == gate.Id).Sum(force => force.Troops):N0} / {Gate.TroopCapacity:N0}",
             "주둔 병력의 군량 소비 50% 절감",
             $"관문장: {(gate.Governor is { } commander ? _state.Generals.FirstOrDefault(g => g.Id == commander)?.Name ?? "미상" : "없음")}",
@@ -2037,6 +2038,16 @@ public sealed partial class CampaignMapScene : Node3D
                     && force.Troops > 0) || !_state.GeneralsAt(gate.Id).Any();
             sortie.Pressed += () => OpenDeployModal(gate.Id);
             _terrainInfo.AddChild(sortie);
+            var repair = MakeButton("관문수리");
+            repair.Disabled = gate.Wall >= WallRepairRules.MaxIntegrity(gate, _balance)
+                || WallRepairRules.IsThreatened(_state, gate) || !_state.GeneralsAt(gate.Id).Any();
+            repair.Pressed += () =>
+            {
+                var index = Array.FindIndex(Cmds, command => command.Kind == CommandKind.Repair
+                    && command.Param == "wall");
+                if (index >= 0) OpenModal(index);
+            };
+            _terrainInfo.AddChild(repair);
             var appoint = MakeButton("관문장 임명", accent: true);
             appoint.Disabled = !_state.GeneralsAt(gate.Id).Any();
             appoint.Pressed += () =>
@@ -3639,23 +3650,27 @@ public sealed partial class CampaignMapScene : Node3D
         };
 
         var domain = naval ? MovementDomain.DeepWater : MovementDomain.Land;
-        var blocked = _state.Cities.SelectMany(CastleFootprint.TilesFor)
+        var blocked = _state.Cities.Where(city => !city.IsGate).SelectMany(CastleFootprint.TilesFor)
             .Concat(_state.Buildings.Where(building => !building.IsExpired(_state.Day)
                 && building.DefinitionCode != "scout_post").Select(building => building.Position))
             .Concat(_state.Ruins.Select(ruin => ruin.Position));
-        var navigation = new RenewalMovementMap(_map, blocked);
+        var gates = _state.Cities.Where(city => city.IsGate)
+            .SelectMany(city => CastleFootprint.TilesFor(city).Select(tile => (tile, city.Owner)))
+            .ToDictionary(entry => entry.tile, entry => entry.Owner);
+        var navigation = new RenewalMovementMap(_map, blocked, gateTiles: gates,
+            areAllied: (left, right) => left == right || _state.AreAllied(left, right));
         var source = exactStart ?? RenewalHexSpace.Center(start);
         var destination = exactGoal ?? RenewalHexSpace.Center(goal);
-        var route = navigation.FindPath(domain, source, destination);
+        var route = navigation.FindPath(domain, source, destination, Player);
         if (route.Count == 0 && !navigation.CanStand(domain, destination,
-                RenewalAdvanceSimulator.UnitCollisionRadius))
+                RenewalAdvanceSimulator.UnitCollisionRadius, Player))
         {
             route = goal.Neighbors().Where(_map.Contains)
                 .Select(RenewalHexSpace.Center)
                 .Where(candidate => navigation.CanStand(domain, candidate,
-                    RenewalAdvanceSimulator.UnitCollisionRadius))
+                    RenewalAdvanceSimulator.UnitCollisionRadius, Player))
                 .OrderBy(candidate => candidate.DistanceTo(source))
-                .Select(candidate => navigation.FindPath(domain, source, candidate))
+                .Select(candidate => navigation.FindPath(domain, source, candidate, Player))
                 .FirstOrDefault(candidate => candidate.Count > 0) ?? [];
         }
 
@@ -6557,7 +6572,7 @@ public sealed partial class CampaignMapScene : Node3D
                     || Cmds[i].Kind == CommandKind.Repair && Cmds[i].Param != "wall");
             var wallFull = Cmds[i].Kind == CommandKind.Repair && Cmds[i].Param == "wall"
                 && selectedCity is not null
-                && selectedCity.Wall >= CastleWall.Max(selectedCity.Castle, _balance, selectedCity.WallLevel);
+                && selectedCity.Wall >= WallRepairRules.MaxIntegrity(selectedCity, _balance);
             var wallThreatened = Cmds[i].Kind == CommandKind.Repair && Cmds[i].Param == "wall"
                 && selectedCity is not null && WallRepairRules.IsThreatened(_state, selectedCity);
             if (blockedAtPort)
@@ -7122,7 +7137,7 @@ public sealed partial class CampaignMapScene : Node3D
         var cmd = Cmds[cmdIndex];
         if (cmd.Kind == CommandKind.Repair && cmd.Param == "wall"
             && _state.Cities.FirstOrDefault(c => c.Id == city) is { } repairCity
-            && repairCity.Wall >= CastleWall.Max(repairCity.Castle, _balance, repairCity.WallLevel))
+            && repairCity.Wall >= WallRepairRules.MaxIntegrity(repairCity, _balance))
         {
             ShowNotice("성벽수리 불필요", "성벽 내구도가 이미 100%입니다.");
             return;
@@ -15940,7 +15955,7 @@ public sealed partial class CampaignMapScene : Node3D
         if (cmd.Kind == CommandKind.Repair && cmd.Param == "wall")
         {
             var repairCity = _state.Cities.First(c => c.Id == city);
-            var maxWall = CastleWall.Max(repairCity.Castle, _balance, repairCity.WallLevel);
+            var maxWall = WallRepairRules.MaxIntegrity(repairCity, _balance);
             var recovery = _cb.WallRepairPercent + (repairCity.Workshop ? _cb.WallRepairWorkshopBonus : 0)
                 + GovernorAdminBucket(repairCity, "wall");
             var restore = System.Math.Min(maxWall - repairCity.Wall, maxWall * recovery / 100);

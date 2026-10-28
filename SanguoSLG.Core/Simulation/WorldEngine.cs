@@ -783,7 +783,7 @@ public sealed class WorldEngine
                     // 성벽 수리 — 예약 시 산출한 회복량(Amount)을 더하되 현 최대치를 넘지 않는다.
                     if (cmd.TroopCode == FactionResearch.WallCode)
                     {
-                        var maxWall = CastleWall.Max(city.Castle, _balance, city.WallLevel);
+                        var maxWall = WallRepairRules.MaxIntegrity(city, _balance);
                         cities[cmd.City] = city with { Wall = System.Math.Min(maxWall, city.Wall + cmd.Amount) };
                     }
                     else

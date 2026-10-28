@@ -4,6 +4,13 @@ using SanguoSLG.Core.Domain;
 
 public static class WallRepairRules
 {
+    public static int MaxIntegrity(City city, BalanceConfig balance) => city.Gate switch
+    {
+        GateSize.Small => 2_000,
+        GateSize.Medium => 3_000,
+        _ => CastleWall.Max(city.Castle, balance, city.WallLevel),
+    };
+
     public static bool IsThreatened(GameState state, City city)
     {
         var tiles = CastleFootprint.TilesFor(city);

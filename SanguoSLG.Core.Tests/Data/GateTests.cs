@@ -31,6 +31,32 @@ public sealed class GateTests
     }
 
     [Fact]
+    public void CampaignMovementCrossesAlliedGateWithoutEnteringIt()
+    {
+        var gate = new City(new CityId(9), "동맹 관문", new HexCoord(2, 0),
+            new FactionId(2), 100, Wall: 2_000, Gate: GateSize.Small);
+        var field = new FieldUnit(new UnitId(1), new FactionId(1), new HexCoord(0, 0),
+            3, 1, 1, MovementDomain.Land, UnitMode.March, new HexCoord(4, 0), 1, 1);
+        var unit = new CombatUnit(field, new CombatStats(100, 100, 100),
+            new TroopPool(2_000, 0), UnitCombatState.Create(60), MaxTroops: 2_000,
+            TroopCode: "swordsman");
+        var state = new GameState(1, 190, [], [gate], [], FieldArmies: [unit],
+            FactionAlliances: [new FactionAlliance(new FactionId(1), gate.Owner, 1, 100)]);
+        var map = new HexMap(-2, 6, -3, 3);
+        var runner = new RenewalCampaignAdvanceRunner(map, new AdvanceOrchestrator(
+            new MovementSimulator(new PassabilityMap(map, [], [gate])),
+            new CombatPhaseResolver(new BattleResolver(60), 70)));
+        runner.SetCampaignState(state);
+
+        var turn = runner.Run([unit], maxDays: 2,
+            castles: [new SiegeSite(gate.Position, gate.Owner,
+                CastleFootprint.TilesFor(gate).ToList(), gate.Id)]);
+
+        Assert.Empty(turn.EnteredCastle);
+        Assert.True(Assert.Single(turn.Units).Field.Position.Q >= gate.Position.Q);
+    }
+
+    [Fact]
     public void CapacityIncludesWoundedAndRejectsWholeExcessUnit()
     {
         var gate = new Gate(7, "관문", new HexCoord(1, 1), GateSize.Small,
@@ -146,6 +172,36 @@ public sealed class GateTests
         Assert.Equal(100, result.State.Cities.Single().Provisions);
         Assert.Equal(40, result.State.Cities.Single().Gold);
         Assert.Equal(gate.Id, Assert.Single(result.State.Armies).OriginCity);
+    }
+
+    [Theory]
+    [InlineData(GateSize.Small, 2_000)]
+    [InlineData(GateSize.Medium, 3_000)]
+    public void GateRepairConsumesOwnGoldAndCompletesAtGateIntegrity(GateSize size, int maximum)
+    {
+        var source = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
+        var officer = source.Generals[0];
+        var gate = new City(new CityId(911), "관문", new HexCoord(2, 2), source.Factions[0].Id,
+            80, Gold: 1_000, Wall: maximum - 500, Gate: size);
+        var state = new GameState(1, 190, [source.Factions[0]], [gate], [officer],
+            Postings: [new GeneralPosting(officer.Id, gate.Owner, gate.Id)]);
+        var balance = new BalanceConfig(MonthlyTaxPerCity: 0);
+        var rules = new CommandBalance();
+        var request = new CommandRequest(gate.Id, CommandKind.Repair, officer.Id,
+            TroopCode: FactionResearch.WallCode);
+
+        var issued = new CommandService(rules, economy: balance).Issue(state, request);
+
+        Assert.True(issued.Ok, issued.Error);
+        Assert.True(issued.State.Cities.Single().Gold < gate.Gold);
+        Assert.Equal(80, issued.State.Cities.Single().Provisions);
+        var done = new WorldEngine(balance, rules).AdvanceDays(issued.State, rules.WallRepairDays);
+        Assert.InRange(done.Cities.Single().Wall, gate.Wall + 1, maximum);
+        Assert.Empty(done.Commands);
+        Assert.False(new CommandService(rules, economy: balance).Issue(
+            state with { Cities = [gate with { Wall = maximum }] }, request).Ok);
+        Assert.False(new CommandService(rules, economy: balance).Issue(state,
+            request with { TroopCode = "", Facility = "paddy" }).Ok);
     }
 
     [Theory]
