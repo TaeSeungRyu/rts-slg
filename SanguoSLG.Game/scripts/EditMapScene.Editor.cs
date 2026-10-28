@@ -391,6 +391,9 @@ public sealed partial class EditMapScene
     {
         _nativeNameEdit?.Dispose();
         _nativeNameEdit = null;
+        if (Input.MouseMode != Input.MouseModeEnum.Visible)
+            Input.MouseMode = Input.MouseModeEnum.Visible;
+        DisplayServer.CursorSetShape(DisplayServer.CursorShape.Arrow);
         var cancel = _editorCancelAction;
         _editorCancelAction = null;
         cancel?.Invoke();

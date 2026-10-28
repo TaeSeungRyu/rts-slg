@@ -100,10 +100,25 @@ internal sealed class NativeNameEdit : IDisposable
         DestroyWindow(_handle);
         _handle = 0;
         DeleteObject(_backgroundBrush);
+        // Windows' "hide pointer while typing" can leave the cursor hidden
+        // after the EDIT child is destroyed, until a physical mouse move.
+        var cursor = new CursorInfo { Size = (uint)Marshal.SizeOf<CursorInfo>() };
+        if (GetCursorInfo(ref cursor) && (cursor.Flags & 1u) == 0)
+            ShowCursor(true);
     }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct Rect { public int Left, Top, Right, Bottom; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct CursorInfo
+    {
+        public uint Size;
+        public uint Flags;
+        public nint Cursor;
+        public int X;
+        public int Y;
+    }
 
     private delegate nint SubclassProcedure(nint window, uint message, nint wParam, nint lParam,
         nuint subclassId, nuint data);
@@ -136,6 +151,10 @@ internal sealed class NativeNameEdit : IDisposable
     private static extern bool GetClientRect(nint window, out Rect rect);
     [DllImport("user32.dll")]
     private static extern nint GetFocus();
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorInfo(ref CursorInfo cursor);
+    [DllImport("user32.dll")]
+    private static extern int ShowCursor(bool show);
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(nint window, nint after, int x, int y,
         int width, int height, uint flags);
