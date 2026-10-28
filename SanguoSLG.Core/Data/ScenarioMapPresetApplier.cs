@@ -119,6 +119,12 @@ public static class ScenarioMapPresetApplier
                 }).ToArray(),
             InitialFacilities = facilities,
             MapPreset = preset.Snapshot(),
+            Gates = preset.Sites.Where(site => site.Kind == "gate")
+                .Select(site => new Gate(site.Id, site.Name,
+                    preset.ToAxial(site.Column, site.Row),
+                    site.Size == "medium" ? GateSize.Medium : GateSize.Small,
+                    new FactionId(0), site.Size == "medium" ? 3_000 : 2_000,
+                    site.Direction)).ToArray(),
         };
     }
 }

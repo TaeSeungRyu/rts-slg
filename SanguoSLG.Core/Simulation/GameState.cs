@@ -53,8 +53,10 @@ public sealed record GameState(
     GameDifficulty Difficulty = GameDifficulty.Normal,
     int HumanFactionId = 1,
     IReadOnlyList<ArmyCorps>? ArmyCorpsList = null,
-    ScenarioMapPreset? MapPresetSnapshot = null)
+    ScenarioMapPreset? MapPresetSnapshot = null,
+    IReadOnlyList<Gate>? GateStates = null)
 {
+    public IReadOnlyList<Gate> Gates => GateStates ?? [];
     public IReadOnlyList<ArmyCorps> Corps => ArmyCorpsList ?? [];
     /// <summary>건설한 시설이 놓인 성 주변 타일(표현 계층이 모델을 얹는다). 건설 완료 시 append.</summary>
     public IReadOnlyList<FacilityPlacement> Placements => FacilityPlacements ?? [];
@@ -230,7 +232,8 @@ public sealed record GameState(
                 .ToList(),
             RuinDefinitions: scenario.RuinList,
             RuinStates: scenario.RuinList.Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
-            MapPresetSnapshot: scenario.MapPreset?.Snapshot());
+            MapPresetSnapshot: scenario.MapPreset?.Snapshot(),
+            GateStates: scenario.GateList.ToArray());
     }
 
     private static IReadOnlyList<FacilityPlacement> BuildInitialFacilityPlacements(Scenario scenario)

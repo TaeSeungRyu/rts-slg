@@ -20,10 +20,12 @@ public sealed record Scenario(
     IReadOnlyList<HeroUnlockDefinition>? HeroUnlocks = null,
     IReadOnlyList<RuinDefinition>? Ruins = null,
     IReadOnlyList<FacilityPlacement>? InitialFacilities = null,
-    ScenarioMapPreset? MapPreset = null)
+    ScenarioMapPreset? MapPreset = null,
+    IReadOnlyList<Gate>? Gates = null)
 {
     public IReadOnlyList<GeneralPosting> PostingList => Postings ?? [];
 
     public IReadOnlyList<HeroUnlockDefinition> HeroUnlockList => HeroUnlocks ?? [];
     public IReadOnlyList<RuinDefinition> RuinList => Ruins ?? [];
+    public IReadOnlyList<Gate> GateList => Gates ?? [];
 }

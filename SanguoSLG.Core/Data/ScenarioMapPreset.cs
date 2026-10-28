@@ -44,9 +44,10 @@ public sealed record ScenarioMapPreset(int Version, int Width, int Height, IRead
             if (site.Id <= 0 || !ids.Add(site.Id) || string.IsNullOrWhiteSpace(site.Name) ||
                 site.Direction is < 0 or > 5 || site.Column < 0 || site.Column >= Width ||
                 site.Row < 0 || site.Row >= Height ||
-                site.Kind is not ("city" or "port" or "facility" or "landmark" or "ruin") ||
+                site.Kind is not ("city" or "port" or "facility" or "landmark" or "ruin" or "gate") ||
                 site.Kind == "city" && site.Size is not ("small" or "medium" or "large") ||
                 site.Kind == "port" && site.Size is not ("small" or "medium") ||
+                site.Kind == "gate" && site.Size is not ("small" or "medium") ||
                 site.Kind == "landmark" && site.Size != "waterfall_cliff" ||
                 site.Kind == "ruin" && MapRuinCatalog.Find(site.Size) is null ||
                 site.Kind == "facility" && site.Size is not ("paddy" or "farm" or "village" or "workshop"))
