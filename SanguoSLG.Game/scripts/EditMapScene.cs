@@ -124,7 +124,7 @@ public sealed partial class EditMapScene : Control
         title.AddThemeFontOverride("font", font);
         title.AddThemeFontSizeOverride("font_size", 20);
         content.AddChild(title);
-        var legend = new Label { Text = "타일을 클릭해 편집 명령을 엽니다.    │    휠: 확대  ·  드래그/WASD/방향키: 이동",
+        var legend = new Label { Text = "클릭: 편집 명령  ·  그리기 모드에서 왼쪽 드래그: 지형 변경  ·  가운데 드래그/WASD: 이동",
             Modulate = new Color("d9d1b0") };
         legend.AddThemeFontOverride("font", font);
         legend.AddThemeFontSizeOverride("font_size", 13);
@@ -169,6 +169,7 @@ public sealed partial class EditMapScene : Control
             QueueRedraw();
         };
         actions.AddChild(citiesToggle);
+        AddPaintControls(actions);
         foreach (var (label, longitude, latitude) in new[]
         {
             ("중국", 113.0, 34.0), ("한반도", 127.5, 37.0),
@@ -342,6 +343,13 @@ public sealed partial class EditMapScene : Control
         }
         if (input is InputEventMouseButton button)
         {
+            if (_paintMode && button.ButtonIndex == MouseButton.Left)
+            {
+                if (button.Pressed) BeginPaintStroke(button.Position);
+                else EndPaintStroke();
+                AcceptEvent();
+                return;
+            }
             if (button.ButtonIndex is MouseButton.WheelUp or MouseButton.WheelDown && button.Pressed)
             {
                 var previous = _scale;
@@ -357,6 +365,11 @@ public sealed partial class EditMapScene : Control
                 if (!button.Pressed && button.ButtonIndex == MouseButton.Left) SelectTile(button.Position);
                 AcceptEvent();
             }
+        }
+        else if (input is InputEventMouseMotion paintMotion && _painting)
+        {
+            PaintSegment(paintMotion.Position);
+            AcceptEvent();
         }
         else if (input is InputEventMouseMotion motion && _dragging)
         {
@@ -517,6 +530,17 @@ public sealed partial class EditMapScene : Control
         RedoDraft();
         valid &= _rows[vacant.Y][vacant.X] == 'F';
         UndoDraft();
+        var paintOriginal = _rows[vacant.Y][vacant.X];
+        _paintCode = paintOriginal == 'F' ? 'M' : 'F';
+        _paintBefore = Draft();
+        _painting = true;
+        valid &= PaintTile(vacant);
+        var occupiedTile = _sites.First(site => site.Kind == "city");
+        valid &= !PaintTile(new Vector2I(occupiedTile.Column, occupiedTile.Row));
+        EndPaintStroke();
+        valid &= _rows[vacant.Y][vacant.X] == _paintCode && _draftChanged;
+        UndoDraft();
+        valid &= _rows[vacant.Y][vacant.X] == paintOriginal;
         var portDraft = Enumerable.Range(0, _height)
             .SelectMany(row => Enumerable.Range(0, _width).SelectMany(column =>
                 Enumerable.Range(0, 6).Select(direction =>

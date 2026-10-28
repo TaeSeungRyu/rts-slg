@@ -338,6 +338,13 @@ public sealed partial class EditMapScene
     {
         if (input is InputEventMouseButton button)
         {
+            if (_paintMode && button.ButtonIndex == MouseButton.Left)
+            {
+                if (button.Pressed) BeginPaintStroke(button.Position);
+                else EndPaintStroke();
+                AcceptEvent();
+                return;
+            }
             if (button.Pressed && button.ButtonIndex is MouseButton.WheelUp or MouseButton.WheelDown)
             {
                 _viewSize = Mathf.Clamp(_viewSize * (button.ButtonIndex == MouseButton.WheelUp ? 0.83f : 1.2f), 7f, 85f);
@@ -361,6 +368,11 @@ public sealed partial class EditMapScene
                 }
                 AcceptEvent();
             }
+        }
+        else if (input is InputEventMouseMotion paintMotion && _painting)
+        {
+            PaintSegment(paintMotion.Position);
+            AcceptEvent();
         }
         else if (input is InputEventMouseMotion motion && _panningMap)
         {

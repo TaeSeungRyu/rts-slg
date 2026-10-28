@@ -643,12 +643,17 @@ public sealed partial class EditMapScene
 
     private bool CanChangeTerrain(Vector2I tile, char code)
     {
+        if (!Inside(tile)) return false;
         if (SiteAt(tile) is not null) return false;
-        if (code is 'W' or 'O' or 'H' && _landRoutes.Any(route => route.Contains(tile))) return false;
+        if (!IsLand(code) && _landRoutes.Any(route => route.Contains(tile))) return false;
         var original = _rows[tile.Y][tile.X];
-        SetTerrain(tile, code);
+        if (original == code) return true;
+        var chars = _rows[tile.Y].ToCharArray();
+        chars[tile.X] = code;
+        _rows[tile.Y] = new string(chars);
         var valid = _sites.Where(site => site.Kind == "port").All(PortFacesWater);
-        SetTerrain(tile, original);
+        chars[tile.X] = original;
+        _rows[tile.Y] = new string(chars);
         return valid;
     }
 
