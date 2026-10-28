@@ -242,7 +242,7 @@ public sealed class GeneralEditorStore
     }
 
     public static string ReplaceHeroRecruitment(string originalJson, int generalId, int recruitPointCost,
-        int? requiredGeneral, IReadOnlySet<int> generalIds)
+        int? requiredGeneral, IReadOnlySet<int> generalIds, string? title = null)
     {
         ValidateRecruitPointCost(generalId, recruitPointCost);
         if (requiredGeneral is { } required && (required == generalId || !generalIds.Contains(required)))
@@ -251,8 +251,20 @@ public sealed class GeneralEditorStore
         var root = JsonNode.Parse(originalJson) as JsonArray
             ?? throw new InvalidDataException("hero_unlocks.json 루트는 배열이어야 합니다.");
         var target = root.OfType<JsonObject>()
-            .FirstOrDefault(node => node["general"]?.GetValue<int>() == generalId)
-            ?? throw new InvalidDataException($"위인 정의에서 장수 ID {generalId}를 찾을 수 없습니다.");
+            .FirstOrDefault(node => node["general"]?.GetValue<int>() == generalId);
+        if (target is null)
+        {
+            if (!generalIds.Contains(generalId))
+                throw new InvalidDataException($"장수 ID {generalId}가 명단에 없습니다.");
+            target = new JsonObject
+            {
+                ["general"] = generalId,
+                ["type"] = "faction",
+                ["title"] = title ?? $"장수 {generalId}",
+                ["desc"] = "장수 선행 조건에 따라 영입 가능한 인재",
+            };
+            root.Add(target);
+        }
         target["recruit_point_cost"] = recruitPointCost;
         target["required_general"] = requiredGeneral;
 

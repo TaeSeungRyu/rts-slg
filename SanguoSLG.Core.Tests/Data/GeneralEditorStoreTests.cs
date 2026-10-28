@@ -195,4 +195,19 @@ public class GeneralEditorStoreTests
         Assert.Throws<InvalidDataException>(() => GeneralEditorStore.ReplaceHeroRecruitment(json, 1, 100, 1, ids));
         Assert.Throws<InvalidDataException>(() => GeneralEditorStore.ReplaceHeroRecruitment(json, 1, 100, 6, ids));
     }
+
+    [Fact]
+    public void 영입_정의가_없는_장수도_포인트를_저장하면_후보로_등록한다()
+    {
+        const string json = "[{\"general\":1,\"type\":\"faction\",\"recruit_point_cost\":200}]";
+
+        var saved = GeneralEditorStore.ReplaceHeroRecruitment(json, 202, 375, 1,
+            new HashSet<int> { 1, 202 }, "을지문덕");
+        var item = JsonNode.Parse(saved)!.AsArray().Single(node => node!["general"]!.GetValue<int>() == 202)!;
+
+        Assert.Equal("faction", item["type"]!.GetValue<string>());
+        Assert.Equal("을지문덕", item["title"]!.GetValue<string>());
+        Assert.Equal(375, GeneralEditorStore.LoadHeroRecruitPointCosts(saved)[202]);
+        Assert.Equal(1, GeneralEditorStore.LoadHeroRecruitPrerequisites(saved)[202]);
+    }
 }

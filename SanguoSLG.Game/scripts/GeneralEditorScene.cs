@@ -148,6 +148,7 @@ public partial class GeneralEditorScene : Control
         overview.AddChild(new HSeparator());
 
         var tabs = new TabContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        right.AddChild(new Control { CustomMinimumSize = new Vector2(0, 5), MouseFilter = MouseFilterEnum.Ignore });
         right.AddChild(tabs);
         _skillDetailDialog = new AcceptDialog { Title = "스킬 설명", MinSize = new Vector2I(600, 330) };
         AddChild(_skillDetailDialog);
@@ -439,6 +440,11 @@ public partial class GeneralEditorScene : Control
             RebuildSkillOptions();
             RebuildRegions();
             RefreshList();
+            if (_selected is null && _list.ItemCount > 0)
+            {
+                _list.Select(0);
+                OnGeneralSelected(0);
+            }
             _status.Text = $"로드 완료: {_generals.Count}명, 데이터 경로 {_dataDirectory}";
         }
         catch (Exception ex)
@@ -534,7 +540,7 @@ public partial class GeneralEditorScene : Control
         var adminPassives = GeneralSkillNames(general.AdminPassives, _adminNames);
         var recruitPointText = _heroRecruitPointCosts.TryGetValue(general.Id, out var recruitPointCost)
             ? $"{recruitPointCost}점"
-            : "위인 정의 없음";
+            : "100점 (저장 시 영입 후보 등록)";
         var requiredGeneral = _heroRecruitPrerequisites.GetValueOrDefault(general.Id);
         var requiredName = requiredGeneral is { } id ? _generalsById.GetValueOrDefault(id)?.Name ?? $"장수 {id}" : "없음";
 
@@ -547,13 +553,13 @@ public partial class GeneralEditorScene : Control
         _mightInput.Value = general.Might;
         _intellectInput.Value = general.Intellect;
         _politicsInput.Value = general.Politics;
-        _recruitPointInput.Editable = _heroRecruitPointCosts.ContainsKey(general.Id);
-        _recruitPointInput.Value = _heroRecruitPointCosts.GetValueOrDefault(general.Id, 0);
+        _recruitPointInput.Editable = true;
+        _recruitPointInput.Value = _heroRecruitPointCosts.GetValueOrDefault(general.Id, 100);
         _requiredGeneralInput.Clear();
         _requiredGeneralInput.AddItem("없음", 0);
         foreach (var candidate in _generals.Where(item => item.Id != general.Id).OrderBy(item => item.Name))
             _requiredGeneralInput.AddItem($"{candidate.Name} (ID {candidate.Id})", candidate.Id);
-        _requiredGeneralInput.Disabled = !_heroRecruitPrerequisites.ContainsKey(general.Id);
+        _requiredGeneralInput.Disabled = false;
         for (var i = 0; i < _requiredGeneralInput.ItemCount; i++)
             if (_requiredGeneralInput.GetItemId(i) == (requiredGeneral ?? 0))
             {
@@ -728,16 +734,13 @@ public partial class GeneralEditorScene : Control
             var saved = GeneralEditorStore.ReplaceGeneral(File.ReadAllText(path), edited);
             File.WriteAllText(path, saved);
             SavePortraitMetadata(edited.Id);
-            if (_heroRecruitPointCosts.ContainsKey(edited.Id))
-            {
-                var recruitPointCost = (int)_recruitPointInput.Value;
-                var heroUnlocks = GeneralEditorStore.ReplaceHeroRecruitment(
-                    File.ReadAllText(heroUnlocksPath), edited.Id, recruitPointCost,
-                    SelectedRequiredGeneral(), _generalsById.Keys.ToHashSet());
-                File.WriteAllText(heroUnlocksPath, heroUnlocks);
-                _heroRecruitPointCosts[edited.Id] = recruitPointCost;
-                _heroRecruitPrerequisites[edited.Id] = SelectedRequiredGeneral();
-            }
+            var recruitPointCost = (int)_recruitPointInput.Value;
+            var heroUnlocks = GeneralEditorStore.ReplaceHeroRecruitment(
+                File.ReadAllText(heroUnlocksPath), edited.Id, recruitPointCost,
+                SelectedRequiredGeneral(), _generalsById.Keys.ToHashSet(), edited.Name);
+            File.WriteAllText(heroUnlocksPath, heroUnlocks);
+            _heroRecruitPointCosts[edited.Id] = recruitPointCost;
+            _heroRecruitPrerequisites[edited.Id] = SelectedRequiredGeneral();
             _generalsLoadedAt = File.GetLastWriteTimeUtc(path);
             _portraitsLoadedAt = File.GetLastWriteTimeUtc(portraitPath);
             _heroUnlocksLoadedAt = File.Exists(heroUnlocksPath) ? File.GetLastWriteTimeUtc(heroUnlocksPath) : DateTime.MinValue;
@@ -938,7 +941,8 @@ public partial class GeneralEditorScene : Control
         if (regular is not null)
         {
             ShowGeneral(regular);
-            regularOk = !_recruitPointInput.Editable && _requiredGeneralInput.Disabled;
+            regularOk = _recruitPointInput.Editable && !_requiredGeneralInput.Disabled
+                && (int)_recruitPointInput.Value == 100;
         }
 
         var createdOk = false;
@@ -1315,7 +1319,18 @@ public partial class GeneralEditorScene : Control
             return;
         }
 
-        var image = Image.LoadFromFile(path);
+        Image? image = null;
+        try
+        {
+            // Read the complete PNG before decoding so list selection cannot race a partial file read.
+            image = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
+            if (image.LoadPngFromBuffer(File.ReadAllBytes(path)) != Error.Ok)
+                image = null;
+        }
+        catch (Exception error)
+        {
+            GD.PushWarning($"초상 이미지를 읽지 못했습니다 ({Path.GetFileName(path)}): {error.Message}");
+        }
         if (image is null || image.IsEmpty())
         {
             _portraitPreview.Texture = null;
