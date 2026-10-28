@@ -1,5 +1,6 @@
 namespace SanguoSLG.Core.Simulation.RenewalMovement;
 
+using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Spatial;
 using SanguoSLG.Core.Simulation.Climate;
 
@@ -8,19 +9,25 @@ public sealed class RenewalMovementMap
 {
     private readonly HexMap _map;
     private readonly HashSet<HexCoord> _buildingTiles;
+    private readonly IReadOnlyDictionary<HexCoord, FactionId> _gateTiles;
+    private readonly Func<FactionId, FactionId, bool>? _areAllied;
     private readonly IReadOnlyList<RenewalStaticObstacle> _obstacles;
     private readonly ClimateState? _climate;
     private readonly ClimateController? _climateController;
 
     public RenewalMovementMap(HexMap map, IEnumerable<HexCoord>? buildingTiles = null,
         IEnumerable<RenewalStaticObstacle>? obstacles = null,
-        ClimateState? climate = null, int climateSpeedPercent = 70)
+        ClimateState? climate = null, int climateSpeedPercent = 70,
+        IReadOnlyDictionary<HexCoord, FactionId>? gateTiles = null,
+        Func<FactionId, FactionId, bool>? areAllied = null)
     {
         _map = map;
         _climate = climate;
         _climateController = climate is null ? null : new ClimateController(map);
         _climateSpeedPercent = climateSpeedPercent;
         _buildingTiles = buildingTiles?.ToHashSet() ?? [];
+        _gateTiles = gateTiles ?? new Dictionary<HexCoord, FactionId>();
+        _areAllied = areAllied;
         _obstacles = obstacles is null
             ? Array.Empty<RenewalStaticObstacle>()
             : obstacles.OrderBy(x => x.Id, StringComparer.Ordinal).ToList();
@@ -63,22 +70,27 @@ public sealed class RenewalMovementMap
         return percent;
     }
 
-    public bool CanEnter(MovementDomain domain, HexCoord hex) => _map.Contains(hex)
-        && !_buildingTiles.Contains(hex) && TerrainRules.CanEnter(domain, _map.TerrainAt(hex));
+    private bool IsBlocked(HexCoord hex, MovementDomain domain, FactionId? owner) =>
+        _buildingTiles.Contains(hex) || _gateTiles.TryGetValue(hex, out var gateOwner)
+        && (domain == MovementDomain.DeepWater || owner is null
+            || !(_areAllied?.Invoke(owner.Value, gateOwner) ?? owner.Value == gateOwner));
+
+    public bool CanEnter(MovementDomain domain, HexCoord hex, FactionId? owner = null) => _map.Contains(hex)
+        && !IsBlocked(hex, domain, owner) && TerrainRules.CanEnter(domain, _map.TerrainAt(hex));
 
     public IReadOnlyList<ContinuousPosition> FindPath(MovementDomain domain,
-        ContinuousPosition start, ContinuousPosition destination)
+        ContinuousPosition start, ContinuousPosition destination, FactionId? owner = null)
     {
-        if (!CanStand(domain, destination, RenewalAdvanceSimulator.UnitCollisionRadius))
+        if (!CanStand(domain, destination, RenewalAdvanceSimulator.UnitCollisionRadius, owner))
             return Array.Empty<ContinuousPosition>();
         if (FirstStaticCollision(start, destination,
-                RenewalAdvanceSimulator.UnitCollisionRadius, domain) == RenewalStopReason.None)
+                RenewalAdvanceSimulator.UnitCollisionRadius, domain, owner) == RenewalStopReason.None)
         {
             return [destination];
         }
         var startHex = RenewalHexSpace.NearestHex(start);
         var destinationHex = RenewalHexSpace.NearestHex(destination);
-        var path = new HexPathfinder(hex => CanEnter(domain, hex)).FindPath(startHex, destinationHex);
+        var path = new HexPathfinder(hex => CanEnter(domain, hex, owner)).FindPath(startHex, destinationHex);
         if (path.Count == 0)
         {
             return Array.Empty<ContinuousPosition>();
@@ -86,13 +98,13 @@ public sealed class RenewalMovementMap
 
         var result = path.Skip(1).Select(RenewalHexSpace.Center).ToList();
         if (result.Count > 0 && FirstStaticCollision(start, result[0],
-                RenewalAdvanceSimulator.UnitCollisionRadius, domain) != RenewalStopReason.None)
+                RenewalAdvanceSimulator.UnitCollisionRadius, domain, owner) != RenewalStopReason.None)
         {
             var startCenter = RenewalHexSpace.Center(startHex);
             if (startCenter != start && CanStand(domain, startCenter,
-                    RenewalAdvanceSimulator.UnitCollisionRadius)
+                    RenewalAdvanceSimulator.UnitCollisionRadius, owner)
                 && FirstStaticCollision(start, startCenter,
-                    RenewalAdvanceSimulator.UnitCollisionRadius, domain) == RenewalStopReason.None)
+                    RenewalAdvanceSimulator.UnitCollisionRadius, domain, owner) == RenewalStopReason.None)
                 result.Insert(0, startCenter);
         }
         if (result.Count == 0 || result[^1] != destination)
@@ -103,7 +115,7 @@ public sealed class RenewalMovementMap
     }
 
     public RenewalStopReason FirstStaticCollision(ContinuousPosition from, ContinuousPosition to,
-        long unitRadius, MovementDomain domain)
+        long unitRadius, MovementDomain domain, FactionId? owner = null)
     {
         foreach (var obstacle in _obstacles)
         {
@@ -121,7 +133,7 @@ public sealed class RenewalMovementMap
             var point = new ContinuousPosition(
                 from.X + (to.X - from.X) * index / samples,
                 from.Y + (to.Y - from.Y) * index / samples);
-            var blocked = BlockedReasonAt(point, unitRadius, domain, from);
+            var blocked = BlockedReasonAt(point, unitRadius, domain, from, owner);
             if (blocked != RenewalStopReason.None)
             {
                 return blocked;
@@ -130,12 +142,13 @@ public sealed class RenewalMovementMap
         return RenewalStopReason.None;
     }
 
-    public bool CanStand(MovementDomain domain, ContinuousPosition position, long unitRadius) =>
-        CanEnter(domain, RenewalHexSpace.NearestHex(position))
-        && FirstStaticCollision(position, position, unitRadius, domain) == RenewalStopReason.None;
+    public bool CanStand(MovementDomain domain, ContinuousPosition position, long unitRadius,
+        FactionId? owner = null) =>
+        CanEnter(domain, RenewalHexSpace.NearestHex(position), owner)
+        && FirstStaticCollision(position, position, unitRadius, domain, owner) == RenewalStopReason.None;
 
     private RenewalStopReason BlockedReasonAt(ContinuousPosition position, long radius,
-        MovementDomain domain, ContinuousPosition from)
+        MovementDomain domain, ContinuousPosition from, FactionId? owner)
     {
         var center = RenewalHexSpace.NearestHex(position);
         foreach (var hex in center.Neighbors().Append(center))
@@ -146,7 +159,7 @@ public sealed class RenewalMovementMap
             {
                 continue;
             }
-            if (_buildingTiles.Contains(hex))
+            if (IsBlocked(hex, domain, owner))
             {
                 if (EscapingBlockedCenter(from, position, RenewalHexSpace.Center(hex), reach)) continue;
                 return RenewalStopReason.BuildingBlocked;

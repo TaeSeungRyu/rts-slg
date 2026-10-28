@@ -3,10 +3,33 @@ namespace SanguoSLG.Core.Tests.Data;
 using SanguoSLG.Core.Data;
 using SanguoSLG.Core.Domain;
 using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Simulation.RenewalMovement;
 using SanguoSLG.Core.Spatial;
 
 public sealed class GateTests
 {
+    [Fact]
+    public void FriendlyAndAlliedUnitsCanPassGateButEnemiesCannot()
+    {
+        var gate = new HexCoord(0, 0);
+        var owner = new FactionId(1);
+        var ally = new FactionId(2);
+        var enemy = new FactionId(3);
+        var map = new RenewalMovementMap(new HexMap(-3, 3, -3, 3), gateTiles:
+            new Dictionary<HexCoord, FactionId> { [gate] = owner },
+            areAllied: (a, b) => a == b || a == ally && b == owner || a == owner && b == ally);
+        Assert.True(map.CanEnter(MovementDomain.Land, gate, owner));
+        Assert.True(map.CanEnter(MovementDomain.Land, gate, ally));
+        Assert.False(map.CanEnter(MovementDomain.Land, gate, enemy));
+        Assert.False(map.CanEnter(MovementDomain.DeepWater, gate, owner));
+        var from = RenewalHexSpace.Center(new HexCoord(-1, 0));
+        var to = RenewalHexSpace.Center(new HexCoord(1, 0));
+        Assert.Equal(RenewalStopReason.None, map.FirstStaticCollision(from, to, 0,
+            MovementDomain.Land, ally));
+        Assert.Equal(RenewalStopReason.BuildingBlocked, map.FirstStaticCollision(from, to, 0,
+            MovementDomain.Land, enemy));
+    }
+
     [Fact]
     public void CapacityIncludesWoundedAndRejectsWholeExcessUnit()
     {

@@ -35,10 +35,16 @@ public sealed class RenewalCampaignAdvanceRunner(
                         && definition.Kind != FieldBuildingKind.ScoutPost)))
             .Select(building => building.Position)
             .ToHashSet();
-        blocked.UnionWith((castles ?? []).SelectMany(site => site.Footprint));
+        blocked.UnionWith((castles ?? []).Where(site => _campaign?.Cities.Any(city =>
+            city.Id == site.City && city.IsGate) != true).SelectMany(site => site.Footprint));
         blocked.UnionWith(_campaign?.Ruins.Select(ruin => ruin.Position) ?? []);
+        var gates = (_campaign?.Cities ?? []).Where(city => city.IsGate)
+            .SelectMany(city => CastleFootprint.TilesFor(city).Select(tile => (tile, city.Owner)))
+            .ToDictionary(entry => entry.tile, entry => entry.Owner);
         var movementMap = new RenewalMovementMap(map, blocked, climate: _campaign?.Climate,
-            climateSpeedPercent: climateSpeedPercent);
+            climateSpeedPercent: climateSpeedPercent, gateTiles: gates,
+            areAllied: _campaign is { } gateCampaign
+                ? (left, right) => left == right || gateCampaign.AreAllied(left, right) : null);
         var simulator = new RenewalAdvanceSimulator(movementMap,
             areHostile: _campaign is { } campaign ? campaign.AreHostile : null);
         var liveBuildings = (fieldBuildings ?? [])
@@ -103,7 +109,7 @@ public sealed class RenewalCampaignAdvanceRunner(
                 var cursor = renewal.Position;
                 foreach (var waypoint in originalWaypoints)
                 {
-                    if (movementMap.FindPath(unit.Field.Domain, cursor, waypoint).Count == 0) continue;
+                    if (movementMap.FindPath(unit.Field.Domain, cursor, waypoint, unit.Field.Owner).Count == 0) continue;
                     reachable.Add(waypoint);
                     cursor = waypoint;
                 }
@@ -129,15 +135,15 @@ public sealed class RenewalCampaignAdvanceRunner(
                         center.X + (renewal.Position.X - center.X) * 780 / distance,
                         center.Y + (renewal.Position.Y - center.Y) * 780 / distance);
                     var approach = movementMap.CanStand(unit.Field.Domain, directApproach,
-                            RenewalAdvanceSimulator.UnitCollisionRadius)
+                            RenewalAdvanceSimulator.UnitCollisionRadius, unit.Field.Owner)
                         && movementMap.FindPath(unit.Field.Domain, renewal.Position,
-                            directApproach).Count > 0
+                            directApproach, unit.Field.Owner).Count > 0
                         ? directApproach
                         : ownGarrison.Position.Neighbors().Select(RenewalHexSpace.Center)
                             .Where(candidate => movementMap.CanStand(unit.Field.Domain, candidate,
-                                RenewalAdvanceSimulator.UnitCollisionRadius)
+                                RenewalAdvanceSimulator.UnitCollisionRadius, unit.Field.Owner)
                                 && movementMap.FindPath(unit.Field.Domain, renewal.Position,
-                                    candidate).Count > 0)
+                                    candidate, unit.Field.Owner).Count > 0)
                             .OrderBy(candidate => candidate.DistanceSquaredTo(renewal.Position))
                             .ThenBy(candidate => candidate.X).ThenBy(candidate => candidate.Y)
                             .Cast<ContinuousPosition?>().FirstOrDefault();
@@ -156,9 +162,9 @@ public sealed class RenewalCampaignAdvanceRunner(
                         ?? renewal.Destination).Neighbors()
                     .Select(RenewalHexSpace.Center)
                     .Where(candidate => movementMap.CanStand(unit.Field.Domain, candidate,
-                        RenewalAdvanceSimulator.UnitCollisionRadius))
+                        RenewalAdvanceSimulator.UnitCollisionRadius, unit.Field.Owner))
                     .Where(candidate => movementMap.FindPath(unit.Field.Domain,
-                        from, candidate).Count > 0)
+                        from, candidate, unit.Field.Owner).Count > 0)
                     .OrderBy(candidate => candidate.DistanceSquaredTo(from))
                     .ThenBy(candidate => candidate.X).ThenBy(candidate => candidate.Y)
                     .Cast<ContinuousPosition?>().FirstOrDefault();
@@ -172,9 +178,9 @@ public sealed class RenewalCampaignAdvanceRunner(
             {
                 var approach = ownSite.Footprint.SelectMany(tile => tile.Neighbors()).Distinct()
                     .Where(tile => movementMap.CanStand(unit.Field.Domain, RenewalHexSpace.Center(tile),
-                        RenewalAdvanceSimulator.UnitCollisionRadius))
+                        RenewalAdvanceSimulator.UnitCollisionRadius, unit.Field.Owner))
                     .Where(tile => movementMap.FindPath(unit.Field.Domain, renewal.Position,
-                        RenewalHexSpace.Center(tile)).Count > 0)
+                        RenewalHexSpace.Center(tile), unit.Field.Owner).Count > 0)
                     .OrderBy(tile => renewal.Position.DistanceSquaredTo(RenewalHexSpace.Center(tile)))
                     .ThenBy(tile => tile.Q).ThenBy(tile => tile.R).Cast<HexCoord?>().FirstOrDefault();
                 if (approach is { } entry)
@@ -185,15 +191,16 @@ public sealed class RenewalCampaignAdvanceRunner(
                 && renewal.OriginalWaypoints is not { Count: > 0 }
                 && OwnDestination(unit, castles) is null
                 && !movementMap.CanStand(unit.Field.Domain, renewal.OriginalDestination ?? renewal.Destination,
-                    RenewalAdvanceSimulator.UnitCollisionRadius))
+                    RenewalAdvanceSimulator.UnitCollisionRadius, unit.Field.Owner))
             {
                 var goal = renewal.OriginalDestination ?? renewal.Destination;
                 var tile = RenewalHexSpace.NearestHex(goal);
                 var candidates = tile.Neighbors().Concat(tile.Neighbors().SelectMany(neighbor => neighbor.Neighbors()))
                     .Distinct().Select(RenewalHexSpace.Center)
                     .Where(candidate => movementMap.CanStand(unit.Field.Domain, candidate,
-                        RenewalAdvanceSimulator.UnitCollisionRadius))
-                    .Where(candidate => movementMap.FindPath(unit.Field.Domain, renewal.Position, candidate).Count > 0)
+                        RenewalAdvanceSimulator.UnitCollisionRadius, unit.Field.Owner))
+                    .Where(candidate => movementMap.FindPath(unit.Field.Domain, renewal.Position, candidate,
+                        unit.Field.Owner).Count > 0)
                     .OrderBy(candidate => candidate.DistanceSquaredTo(goal))
                     .ThenBy(candidate => candidate.DistanceSquaredTo(renewal.Position))
                     .ThenBy(candidate => candidate.X).ThenBy(candidate => candidate.Y)

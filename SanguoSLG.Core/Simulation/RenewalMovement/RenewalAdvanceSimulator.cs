@@ -65,7 +65,7 @@ public sealed class RenewalAdvanceSimulator
             {
                 var separated = HostileSeparationCandidates(position)
                     .FirstOrDefault(candidate =>
-                        (_movementMap?.CanStand(unit.Domain, candidate, UnitCollisionRadius) ?? true)
+                        (_movementMap?.CanStand(unit.Domain, candidate, UnitCollisionRadius, unit.Owner) ?? true)
                         && result.Where(other => other.IsActive && _areHostile(other.Owner, unit.Owner))
                             .All(other => other.Position.DistanceSquaredTo(candidate)
                                 >= minimumDistanceSquared));
@@ -315,7 +315,7 @@ public sealed class RenewalAdvanceSimulator
             return unit;
         }
         var path = _movementMap.FindPath(unit.Domain, unit.Position,
-            unit.ArrivalPosition ?? unit.Destination);
+            unit.ArrivalPosition ?? unit.Destination, unit.Owner);
         return path.Count == 0
             ? unit with { Path = path, StopReason = RenewalStopReason.NoPath }
             : unit with { Path = path, PathIndex = 0, StopReason = RenewalStopReason.None };
@@ -405,7 +405,7 @@ public sealed class RenewalAdvanceSimulator
     {
         blocker = null;
         var collision = _movementMap?.FirstStaticCollision(unit.Position, candidate,
-            UnitCollisionRadius, unit.Domain) ?? RenewalStopReason.None;
+            UnitCollisionRadius, unit.Domain, unit.Owner) ?? RenewalStopReason.None;
         return collision != RenewalStopReason.None ? collision
             : FirstEnemyCollision(unit, candidate,
                 spatialIndex.QuerySegment(unit.Position, candidate, HostileCollisionRadius * 2), out blocker);
@@ -655,11 +655,11 @@ public sealed class RenewalAdvanceSimulator
         return center.Neighbors()
             .Select(RenewalHexSpace.Center)
             .Where(candidate => candidate.DistanceTo(building) <= range
-                && _movementMap.CanStand(unit.Domain, candidate, UnitCollisionRadius))
+                && _movementMap.CanStand(unit.Domain, candidate, UnitCollisionRadius, unit.Owner))
             .OrderBy(candidate => candidate.DistanceSquaredTo(unit.Position))
             .ThenBy(candidate => candidate.X).ThenBy(candidate => candidate.Y)
             .FirstOrDefault(candidate => _movementMap.FindPath(unit.Domain,
-                unit.Position, candidate).Count > 0, building);
+                unit.Position, candidate, unit.Owner).Count > 0, building);
     }
 
     private RenewalUnitState Retarget(RenewalUnitState unit, ContinuousPosition destination)
@@ -747,11 +747,11 @@ public sealed class RenewalAdvanceSimulator
             foreach (var unit in group.OrderBy(x => x.Id.Value))
             {
                 var arrival = unit.Destination;
-                if (_movementMap.CanStand(unit.Domain, unit.Destination, UnitCollisionRadius))
+                if (_movementMap.CanStand(unit.Domain, unit.Destination, UnitCollisionRadius, unit.Owner))
                 {
                     foreach (var candidate in DispersionCandidates(unit.Destination))
                     {
-                        if (_movementMap.CanStand(unit.Domain, candidate, UnitCollisionRadius)
+                        if (_movementMap.CanStand(unit.Domain, candidate, UnitCollisionRadius, unit.Owner)
                             && occupied.All(existing => existing.DistanceSquaredTo(candidate)
                                 >= checked(UnitCollisionRadius * 2 * UnitCollisionRadius * 2)))
                         {

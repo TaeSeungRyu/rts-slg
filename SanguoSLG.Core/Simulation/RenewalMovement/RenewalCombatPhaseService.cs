@@ -297,10 +297,10 @@ public sealed class RenewalCombatPhaseService
                 target.Position.Y + dy * distance / length);
             if (_movementMap is not null
                 && (!_movementMap.CanStand(target.Domain, destination,
-                        RenewalAdvanceSimulator.UnitCollisionRadius)
+                        RenewalAdvanceSimulator.UnitCollisionRadius, target.Owner)
                     || _movementMap.FirstStaticCollision(target.Position, destination,
                         RenewalAdvanceSimulator.UnitCollisionRadius,
-                        target.Domain) != RenewalStopReason.None))
+                        target.Domain, target.Owner) != RenewalStopReason.None))
             {
                 continue;
             }
