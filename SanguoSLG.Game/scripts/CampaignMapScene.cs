@@ -74,7 +74,6 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly Dictionary<int, Label3D> _cityLabels = new();
     private readonly Dictionary<int, CityVitalsGauge3D> _cityVitalsGauges = new();
     private readonly Dictionary<int, Node3D> _cityModels = new();
-    private readonly Dictionary<int, Node3D> _gateModels = new();
     private readonly Dictionary<int, bool> _cityBrokenVisuals = new();
     private readonly Dictionary<string, Label3D> _ruinLabels = new(System.StringComparer.Ordinal);
     private readonly Dictionary<FieldBuildingId, (FieldBuilding Building, Label3D Label)> _scoutDayLabels = new();
@@ -696,7 +695,6 @@ public sealed partial class CampaignMapScene : Node3D
         });
 
         SpawnCastles();
-        SpawnGates();
         SpawnHover();
         BuildHud();
         BuildPanel();
@@ -1672,18 +1670,13 @@ public sealed partial class CampaignMapScene : Node3D
         var city = CityAtHex(hex);
         if (city is not null)
         {
+            if (city.IsGate) { ShowGateInfo(city); return; }
             // 같은 성 재클릭 = 닫기.
             if (_infoCard.Visible && _selected == city.Id) { _selected = null; HidePanels(); return; }
             SelectCity(city.Id);
             return;
         }
 
-        var gate = _state.Gates.FirstOrDefault(candidate => GateTiles(candidate).Contains(hex));
-        if (gate is not null)
-        {
-            ShowGateInfo(gate);
-            return;
-        }
 
         var fieldBuilding = _state.Buildings.FirstOrDefault(b => b.Position == hex && CanPlayerSeeFieldBuilding(b));
         if (fieldBuilding is not null)
@@ -1995,12 +1988,13 @@ public sealed partial class CampaignMapScene : Node3D
         if (completed) DrawFieldBuildingRange(building, definition);
     }
 
-    private void ShowGateInfo(Gate gate)
+    private void ShowGateInfo(City gate)
     {
         HidePanels();
+        _selected = gate.Id;
         foreach (var child in _terrainHolder.GetChildren()) child.QueueFree();
         _terrainHolder.Rotation = Vector3.Zero;
-        var path = gate.Size == GateSize.Medium ? "gate-2tile" : "gate";
+        var path = gate.Gate == GateSize.Medium ? "gate-2tile" : "gate";
         var preview = GD.Load<PackedScene>($"res://assets/models/{path}.glb")?.Instantiate<Node3D>();
         if (preview is not null)
         {
@@ -2011,17 +2005,60 @@ public sealed partial class CampaignMapScene : Node3D
         Clear(_terrainInfo);
         foreach (var line in new[]
         {
-            gate.Size == GateSize.Medium ? "중형 관문" : "소형 관문",
-            $"내구도 {gate.Integrity:N0} / {gate.MaxIntegrity:N0}",
-            $"주둔 병력 {gate.OccupiedCapacity:N0} / {Gate.TroopCapacity:N0}",
+            gate.Gate == GateSize.Medium ? "중형 관문" : "소형 관문",
+            $"소유: {_state.Factions.FirstOrDefault(faction => faction.Id == gate.Owner)?.Name ?? "중립"}",
+            $"내구도 {gate.Wall:N0} / {(gate.Gate == GateSize.Medium ? 3_000 : 2_000):N0}",
+            $"주둔 병력 {_state.Garrisons.Where(force => force.City == gate.Id).Sum(force => force.Troops):N0} / {Gate.TroopCapacity:N0}",
             "주둔 병력의 군량 소비 50% 절감",
-            $"관문장: {(gate.Commander is { } commander ? _state.Generals.FirstOrDefault(g => g.Id == commander)?.Name ?? "미상" : "없음")}",
+            $"관문장: {(gate.Governor is { } commander ? _state.Generals.FirstOrDefault(g => g.Id == commander)?.Name ?? "미상" : "없음")}",
         }) _terrainInfo.AddChild(MakeLabel(line, 12, Parchment));
-        foreach (var garrison in gate.Units)
+        foreach (var garrison in _state.Garrisons.Where(force => force.City == gate.Id))
         {
-            var name = _state.Generals.FirstOrDefault(g => g.Id == garrison.Leader)?.Name ?? "장수";
-            _terrainInfo.AddChild(MakeLabel($"{name} · {garrison.TroopCode} {garrison.Troops:N0} · 부상 {garrison.Wounded:N0}",
+            _terrainInfo.AddChild(MakeLabel($"{garrison.TroopCode} · 병력 {garrison.Troops:N0}",
                 11, Parchment));
+        }
+        var roster = MakeButton("주둔병력현황");
+        roster.Pressed += () =>
+        {
+            var lines = _state.Garrisons.Where(force => force.City == gate.Id)
+                .Select(force => $"{TroopName(force.TroopCode)} · {force.Troops:N0}명")
+                .Concat(_state.CityWounded.Where(force => force.City == gate.Id)
+                    .Select(force => $"{TroopName(force.TroopCode)} · 부상 {force.Troops:N0}명"))
+                .Concat(_state.GeneralsAt(gate.Id).Select(id =>
+                    _state.Generals.FirstOrDefault(general => general.Id == id)?.Name ?? "장수"))
+                .ToArray();
+            ShowNotice("주둔병력현황", lines.Length == 0 ? "주둔 병력 없음" : string.Join("\n", lines));
+        };
+        _terrainInfo.AddChild(roster);
+        if (gate.Owner == Player)
+        {
+            var appoint = MakeButton("관문장 임명", accent: true);
+            appoint.Disabled = !_state.GeneralsAt(gate.Id).Any();
+            appoint.Pressed += () =>
+            {
+                var index = Array.FindIndex(Cmds, command => command.Kind == CommandKind.AppointGovernor);
+                if (index >= 0) OpenModal(index);
+            };
+            _terrainInfo.AddChild(appoint);
+            if (gate.Governor is not null)
+            {
+                var dismiss = MakeButton("관문장 해임");
+                dismiss.Pressed += () => ShowConfirm("관문장 해임", $"{gate.Name}의 관문장을 해임합니까?", () =>
+                {
+                    var result = GateService.DismissCommander(_state, Player, gate.Id);
+                    if (!result.Ok) { ShowNotice("해임 실패", result.Error ?? "해임할 수 없습니다."); return; }
+                    _state = result.State;
+                    ShowGateInfo(_state.Cities.First(city => city.Id == gate.Id));
+                    Redraw("관문장을 해임했습니다.");
+                });
+                _terrainInfo.AddChild(dismiss);
+            }
+        }
+        else if (!_advancing && _state.AreHostile(Player, gate.Owner))
+        {
+            var attack = MakeButton("공격", accent: true);
+            attack.Pressed += () => ShowAttackChoices(gate.Position, gate.Name);
+            _terrainInfo.AddChild(attack);
         }
         _terrainHex = gate.Position;
         PlaceTerrainCard(gate.Position);
@@ -4048,34 +4085,16 @@ public sealed partial class CampaignMapScene : Node3D
         }
     }
 
-    private static IReadOnlyList<HexCoord> GateTiles(Gate gate) => gate.Size == GateSize.Medium
-        ? [gate.Position, gate.Position + CastleFootprint.Rotate(new HexCoord(1, 0), gate.Direction)]
-        : [gate.Position];
-
-    private void SpawnGates()
-    {
-        foreach (var gate in _state.Gates)
-        {
-            var path = gate.Size == GateSize.Medium ? "gate-2tile" : "gate";
-            var scene = GD.Load<PackedScene>($"res://assets/models/{path}.glb");
-            if (scene is null) continue;
-            var node = scene.Instantiate<Node3D>();
-            var tiles = GateTiles(gate);
-            node.Position = tiles.Select(_view.HexToWorld).Aggregate(Vector3.Zero, (sum, position) => sum + position)
-                / tiles.Count + new Vector3(0f, _view.TileTopY, 0f);
-            node.RotationDegrees = new Vector3(0f, gate.Direction * 60f, 0f);
-            node.SetMeta("gate_id", gate.Id);
-            AddChild(node);
-            _gateModels[gate.Id] = node;
-            _fog.Register(node, gate.Position);
-        }
-    }
 
     private Node3D CreateCityModel(City city, bool broken)
     {
             var node = GD.Load<PackedScene>(CastleModelPath(city)).Instantiate<Node3D>();
             node.Position = CastleVisualCenter(city) + new Vector3(0f, _view.TileTopY, 0f);
-            if (city.IsPort)
+            if (city.IsGate)
+            {
+                node.RotationDegrees = new Vector3(0f, city.Direction * 60f, 0f);
+            }
+            else if (city.IsPort)
             {
                 node.Rotation = new Vector3(0f, PortFacingYaw(city), 0f);
             }
@@ -4120,7 +4139,7 @@ public sealed partial class CampaignMapScene : Node3D
                     node.AddChild(ambience);
                 }
             }
-            else
+            else if (!city.IsGate)
             {
                 GameRoot3D.AddCastleAmbience(node, city, broken ? TileCondition.Damaged : TileCondition.Normal);
             }
@@ -4144,6 +4163,8 @@ public sealed partial class CampaignMapScene : Node3D
 
     private static string CastleModelPath(City city)
     {
+        if (city.Gate == GateSize.Small) { return "res://assets/models/gate.glb"; }
+        if (city.Gate == GateSize.Medium) { return "res://assets/models/gate-2tile.glb"; }
         if (city.Port == PortSize.Small) { return "res://assets/models/port-small.glb"; }
         if (city.Port == PortSize.Medium) { return "res://assets/models/port-medium.glb"; }
         return CastleModelPath(city.Castle);
@@ -4156,7 +4177,8 @@ public sealed partial class CampaignMapScene : Node3D
         _ => "res://assets/models/castle-small.glb",
     };
 
-    private static float CastleLabelHeight(City city) => city.IsPort ? 1.25f : CastleLabelHeight(city.Castle);
+    private static float CastleLabelHeight(City city) => city.IsGate ? 1.2f
+        : city.IsPort ? 1.25f : CastleLabelHeight(city.Castle);
 
     private static float CastleLabelHeight(CastleSize size) => size switch
     {
@@ -4167,6 +4189,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private static float CastleModelScale(City city) => city.Port switch
     {
+        _ when city.IsGate => 1f,
         PortSize.Medium => 0.72f,
         PortSize.Small => 0.88f,
         _ => CastleModelScale(city.Castle),
@@ -7138,7 +7161,9 @@ public sealed partial class CampaignMapScene : Node3D
         var colOpt = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / (wideDoctrineModal ? 186f : 146f)), 3, wideDoctrineModal ? 7 : 5);
         var colOff = (int)Mathf.Clamp(Mathf.Floor((mw + 8f) / 169f), 2, 4);
         var cityName = _state.Cities.First(x => x.Id == city).Name;
-        var title = MakeLabel($"{cmd.Label}   《 {cityName} 》", 26, Gold);
+        var gateAppointment = cmd.Kind == CommandKind.AppointGovernor
+            && _state.Cities.Any(candidate => candidate.Id == city && candidate.IsGate);
+        var title = MakeLabel($"{(gateAppointment ? "관문장 임명" : cmd.Label)}   《 {cityName} 》", 26, Gold);
         var close = MakeButton("✕");
         close.Pressed += CloseModal;
         scaffold.SetHeader(title, close, GoldRule());
