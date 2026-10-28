@@ -127,33 +127,47 @@ internal sealed class AiTestFixture
             currentMap.RootElement.GetProperty("height").GetInt32());
         var scenario = ScenarioMapPresetApplier.Apply(
             new ScenarioLoader().LoadFromDirectory(dataDirectory), preset);
-        var factions = scenario.Factions.Where(faction => faction.Id.Value is 1 or 2).ToArray();
-        var sites = preset.Sites.Where(site => site.Kind is "city" or "port").ToArray();
-        var middle = sites.Select(site => site.Column).Order().ElementAt(sites.Length / 2);
-        var cities = scenario.Cities.Select(city =>
+        var factions = scenario.Factions.Where(faction => faction.Id.Value is 1 or 2)
+            .Select(faction => faction with { Gold = 20000 }).ToArray();
+        // Fixed seed makes every new-map run reproducible while scattering both factions
+        // across the edited map. City geometry, terrain and direction stay unchanged.
+        var random = new Random(190);
+        var shuffledIds = scenario.Cities.OrderBy(_ => random.Next())
+            .Select(city => city.Id).ToArray();
+        var owners = shuffledIds.Select((id, index) => (id, owner: new FactionId(index % 2 + 1)))
+            .ToDictionary(item => item.id, item => item.owner);
+        var cities = scenario.Cities.Select(city => city with
         {
-            var site = sites.Single(site => site.Id == city.Id.Value);
-            var owner = new FactionId(site.Column <= middle ? 1 : 2);
-            return city with { Owner = owner, Security = 80, Gold = 5000, Provisions = 12000 };
+            Owner = owners[city.Id], Security = 85, Gold = 12000, Provisions = 48000,
         }).ToArray();
-        // Give each side its own capital and officers. The edited map's city,
-        // port, terrain and direction remain exactly as saved in the preset.
+        // Concentrate officers at active border sites so the AI can actually form armies.
         var postings = new List<GeneralPosting>();
         foreach (var faction in factions)
         {
+            var enemies = cities.Where(city => city.Owner != faction.Id).ToArray();
             var owned = cities.Where(city => city.Owner == faction.Id && !city.IsPort)
-                .OrderBy(city => city.Id.Value).ToArray();
+                .OrderBy(city => enemies.Min(enemy => city.Position.Distance(enemy.Position)))
+                .ThenBy(city => city.Id.Value).ToArray();
             if (owned.Length == 0) owned = cities.Where(city => city.Owner == faction.Id).ToArray();
-            var generalIds = faction.Id.Value == 1 ? Enumerable.Range(1, 10) : Enumerable.Range(11, 10);
+            var generalIds = scenario.Generals.Select(general => general.Id)
+                .Where(id => id != factions[0].Ruler && id != factions[1].Ruler)
+                .OrderBy(id => id.Value).Where((_, index) => index % 2 == faction.Id.Value - 1)
+                .Prepend(faction.Ruler);
             var index = 0;
             foreach (var generalId in generalIds)
-                postings.Add(new GeneralPosting(new GeneralId(generalId), faction.Id,
-                    owned[index++ % owned.Length].Id));
+                postings.Add(new GeneralPosting(generalId, faction.Id,
+                    owned[(index++ / 4) % owned.Length].Id));
         }
-        var garrisons = cities.SelectMany(city => new[]
+        var garrisons = cities.SelectMany(city =>
         {
-            new GarrisonForce(city.Id, "swordsman", 12000, 60),
-            new GarrisonForce(city.Id, "archer", 4000, 60),
+            var scale = 1 + city.Id.Value % 4;
+            return new[]
+            {
+                new GarrisonForce(city.Id, "swordsman", 6000 * scale, 60),
+                new GarrisonForce(city.Id, "archer", 2500 * scale, 60),
+                new GarrisonForce(city.Id, "cavalry", 2500 * scale, 60),
+                new GarrisonForce(city.Id, "thunder_cart", 1000 * scale, 60),
+            };
         }).ToArray();
         var ships = cities.Where(city => city.IsPort)
             .Select(city => new PortShipStock(city.Id, "small_boat", 2)).ToArray();

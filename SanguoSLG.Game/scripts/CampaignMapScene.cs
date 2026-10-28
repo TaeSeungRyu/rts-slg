@@ -842,6 +842,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
         if (args.Contains("--newmapstress100advanceqa"))
             CallDeferred(nameof(RunNewMapStressAdvanceQa));
+        if (args.Contains("--newmapaiqa"))
+            CallDeferred(nameof(RunNewMapAiQa));
         if (args.Contains("--mapreportqa")) CallDeferred(nameof(RunMapReportQa));
     }
 
