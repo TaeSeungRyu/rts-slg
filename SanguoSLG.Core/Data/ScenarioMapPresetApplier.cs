@@ -54,13 +54,14 @@ public static class ScenarioMapPresetApplier
         var baselineByName = source.Cities.ToDictionary(city => city.Name, StringComparer.Ordinal);
         var baselineById = source.Cities.ToDictionary(city => city.Id.Value);
         var baseCity = source.Cities[0];
-        var citySites = preset.Sites.Where(site => site.Kind is "city" or "port").OrderBy(site => site.Id).ToArray();
+        var citySites = preset.Sites.Where(site => site.Kind is "city" or "port" or "gate").OrderBy(site => site.Id).ToArray();
         var cities = citySites.Select(site =>
         {
             var template = baselineByName.GetValueOrDefault(site.Name)
                 ?? baselineById.GetValueOrDefault(site.Id)
                 ?? baseCity;
             var isPort = site.Kind == "port";
+            var isGate = site.Kind == "gate";
             var castle = isPort ? CastleSize.Small : site.Size switch
             {
                 "large" => CastleSize.Large,
@@ -73,8 +74,20 @@ public static class ScenarioMapPresetApplier
                 Name = site.Name,
                 Position = preset.ToAxial(site.Column, site.Row),
                 Castle = castle,
-                Wall = CastleWall.Max(castle, source.Balance, template.WallLevel),
+                Wall = isGate ? site.Size == "medium" ? 3_000 : 2_000
+                    : CastleWall.Max(castle, source.Balance, template.WallLevel),
                 Port = isPort ? site.Size == "medium" ? PortSize.Medium : PortSize.Small : PortSize.None,
+                Gate = isGate ? site.Size == "medium" ? GateSize.Medium : GateSize.Small : null,
+                Owner = isGate ? new FactionId(0) : template.Owner,
+                Provisions = isGate ? 0 : template.Provisions,
+                Gold = isGate ? 0 : template.Gold,
+                Population = isGate ? 0 : template.Population,
+                Governor = isGate ? null : template.Governor,
+                Strategist = isGate ? null : template.Strategist,
+                SecurityOfficer = isGate ? null : template.SecurityOfficer,
+                DomesticOfficer = isGate ? null : template.DomesticOfficer,
+                RecruitmentOfficer = isGate ? null : template.RecruitmentOfficer,
+                TrainingOfficer = isGate ? null : template.TrainingOfficer,
                 Direction = site.Direction,
                 Paddies = preset.Sites.Count(facility => facility.Kind == "facility" &&
                     facility.ParentCityId == site.Id && facility.Size == "paddy"),
@@ -119,12 +132,6 @@ public static class ScenarioMapPresetApplier
                 }).ToArray(),
             InitialFacilities = facilities,
             MapPreset = preset.Snapshot(),
-            Gates = preset.Sites.Where(site => site.Kind == "gate")
-                .Select(site => new Gate(site.Id, site.Name,
-                    preset.ToAxial(site.Column, site.Row),
-                    site.Size == "medium" ? GateSize.Medium : GateSize.Small,
-                    new FactionId(0), site.Size == "medium" ? 3_000 : 2_000,
-                    site.Direction)).ToArray(),
         };
     }
 }

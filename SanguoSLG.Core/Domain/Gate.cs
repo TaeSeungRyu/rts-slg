@@ -19,8 +19,10 @@ public sealed record Gate(
     public int MaxIntegrity => Size == GateSize.Small ? 2_000 : 3_000;
     public IReadOnlyList<GateGarrison> Units => Garrison ?? [];
     public int OccupiedCapacity => Units.Sum(unit => unit.Troops + unit.Wounded);
-    public bool CanEnter(int troops, int wounded = 0) => troops >= 0 && wounded >= 0 &&
-        (long)OccupiedCapacity + troops + wounded <= TroopCapacity;
+    public static bool HasCapacity(int occupied, int troops, int wounded = 0) =>
+        occupied >= 0 && troops >= 0 && wounded >= 0 &&
+        (long)occupied + troops + wounded <= TroopCapacity;
+    public bool CanEnter(int troops, int wounded = 0) => HasCapacity(OccupiedCapacity, troops, wounded);
     public int DailyProvisionUse(int ordinaryUse) => Math.Max(0, (ordinaryUse + 1) / 2);
 }
 

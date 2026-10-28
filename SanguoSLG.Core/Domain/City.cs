@@ -64,9 +64,12 @@ public sealed record City(
     int AiMediumShipNextDay = 0,
     int AiSmallShipCompletionDay = 0,
     int AiMediumShipCompletionDay = 0,
-    int Direction = 0)
+    int Direction = 0,
+    GateSize? Gate = null,
+    int GateProvisionRemainder = 0)
 {
     public bool IsPort => Port != PortSize.None;
+    public bool IsGate => Gate is not null;
 
     /// <summary>소유 세력을 바꾼 새 도시를 반환한다.</summary>
     public City WithOwner(FactionId owner) => this with { Owner = owner };

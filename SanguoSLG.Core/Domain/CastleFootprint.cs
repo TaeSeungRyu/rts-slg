@@ -28,7 +28,10 @@ public static class CastleFootprint
     /// <summary>도시가 실제로 점유하는 타일들(앵커 + 오프셋).</summary>
     public static IEnumerable<HexCoord> TilesFor(City city)
     {
-        var offsets = city.Port == PortSize.Medium
+        var offsets = city.Gate == GateSize.Medium
+            ? new[] { new HexCoord(0, 0), new HexCoord(1, 0) }
+            : city.Gate == GateSize.Small ? Small
+            : city.Port == PortSize.Medium
             ? FeatureFootprint.OffsetsFor(FeatureType.PortMedium)
             : city.Port == PortSize.Small ? Small : OffsetsFor(city.Castle);
         foreach (var offset in offsets)

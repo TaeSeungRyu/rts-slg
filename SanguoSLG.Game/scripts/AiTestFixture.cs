@@ -140,7 +140,7 @@ internal sealed class AiTestFixture
         // Fixed seed makes every new-map run reproducible while scattering both factions
         // across the edited map. City geometry, terrain and direction stay unchanged.
         var random = new Random(190);
-        var shuffledIds = scenario.Cities.OrderBy(_ => random.Next())
+        var shuffledIds = scenario.Cities.Where(city => !city.IsGate).OrderBy(_ => random.Next())
             .Select(city => city.Id).ToArray();
         var owners = shuffledIds.Select((id, index) => (id, owner: new FactionId(index % 2 + 1)))
             .ToDictionary(item => item.id, item => item.owner);
@@ -159,7 +159,7 @@ internal sealed class AiTestFixture
                 var replacement = shuffledIds.First(id => owners.Values.Count(owner => owner == owners[id]) > 1);
                 owners[replacement] = new FactionId(factionId);
             }
-        var cities = scenario.Cities.Select(city => city with
+        var cities = scenario.Cities.Select(city => city.IsGate ? city : city with
         {
             Owner = owners[city.Id], Security = 85, Gold = 12000, Provisions = 48000,
         }).ToArray();
@@ -187,7 +187,7 @@ internal sealed class AiTestFixture
                 postings.Add(new GeneralPosting(generalId, faction.Id,
                     owned[(index++ / 4) % owned.Length].Id));
         }
-        var garrisons = cities.SelectMany(city =>
+        var garrisons = cities.Where(city => !city.IsGate).SelectMany(city =>
         {
             if (city.Name == "한국항")
                 return new[] { new GarrisonForce(city.Id, "swordsman", 1000, 60) };

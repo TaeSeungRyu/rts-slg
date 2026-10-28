@@ -169,7 +169,7 @@ public partial class GameRoot3D : Node3D
         if (qaMapArgument is not null)
         {
             var passed = _state.MapPresetSnapshot is not null
-                && _state.Cities.Count == scenario.MapPreset!.Sites.Count(site => site.Kind is "city" or "port")
+                && _state.Cities.Count == scenario.MapPreset!.Sites.Count(site => site.Kind is "city" or "port" or "gate")
                 && scenario.Map.Count == scenario.MapPreset.Width * scenario.MapPreset.Height;
             GD.Print($"[scenario-map-qa] passed={passed} cells={scenario.Map.Count} cities={_state.Cities.Count}");
             CallDeferred(nameof(QuitScenarioMapQa), passed);

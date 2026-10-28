@@ -244,6 +244,7 @@ public sealed class CampaignEngine
             };
             turn = turn with { Units = turn.Units.Select(u => waitingBanditOrders.TryGetValue(u.Id, out var order)
                 ? u with { Field = order with { Position = u.Field.Position } } : u).ToList() };
+            turn = EnforceGateCapacity(work, armies, turn, cityAt);
             if (_fieldScoutPosts is not null && work.Buildings.Count > 0)
             {
                 var visited = VisitedTiles(armies, turn.Movement, productionUnitIds);
@@ -772,6 +773,7 @@ public sealed class CampaignEngine
         var stock = work.Cities.ToDictionary(c => c.Id, c => c.Provisions);
         foreach (var city in work.Cities.OrderBy(c => c.Id.Value))
         {
+            if (city.IsGate) continue;
             var have = stock[city.Id];
             if (have <= 0)
             {
@@ -859,7 +861,8 @@ public sealed class CampaignEngine
         for (var i = wounded.Count - 1; i >= 0; i--)
         {
             var w = wounded[i];
-            if (besiegedCities.Contains(w.City) || w.Troops <= 0)
+            if (besiegedCities.Contains(w.City) || w.Troops <= 0
+                || state.Cities.Any(city => city.Id == w.City && city.IsGate))
             {
                 continue;
             }
@@ -1042,6 +1045,46 @@ public sealed class CampaignEngine
 
         return work with { GarrisonForces = garrisons, Postings = postings, Cities = cities,
             PortShipStocks = portShips };
+    }
+
+    private static AdvanceTurn EnforceGateCapacity(GameState state, IReadOnlyList<CombatUnit> before,
+        AdvanceTurn turn, IReadOnlyDictionary<Spatial.HexCoord, CityId> cityAt)
+    {
+        if (turn.EnteredCastle.Count == 0 || !state.Cities.Any(city => city.IsGate)) return turn;
+        var usage = state.Cities.Where(city => city.IsGate).ToDictionary(city => city.Id,
+            city => state.Garrisons.Where(force => force.City == city.Id).Sum(force => force.Troops)
+                + state.CityWounded.Where(force => force.City == city.Id).Sum(force => force.Troops));
+        var refused = new List<CombatUnit>();
+        var admitted = new List<CombatUnit>();
+        foreach (var unit in turn.EnteredCastle.OrderBy(unit => unit.Id.Value))
+        {
+            var cityId = unit.Field.ReturnCity
+                ?? (unit.Field.Target is { } target && cityAt.TryGetValue(target, out var found)
+                    ? found : (CityId?)null);
+            var gate = state.Cities.FirstOrDefault(city => city.Id == cityId && city.IsGate);
+            if (gate is null) { admitted.Add(unit); continue; }
+            var incoming = unit.Pool.Active + unit.Pool.Wounded;
+            if (Gate.HasCapacity(usage[gate.Id], unit.Pool.Active, unit.Pool.Wounded))
+            {
+                usage[gate.Id] += incoming;
+                admitted.Add(unit);
+                continue;
+            }
+            var origin = before.FirstOrDefault(previous => previous.Id == unit.Id) ?? unit;
+            refused.Add(unit with { Field = origin.Field with { Mode = UnitMode.Standby,
+                Target = null, ReturnCity = null, Waypoints = null, ContinuousTarget = null,
+                ContinuousWaypoints = null } });
+        }
+        if (refused.Count == 0) return turn;
+        var movement = turn.Movement with
+        {
+            Entered = admitted.Select(unit => unit.Id).ToArray(),
+            Units = turn.Movement.Units.Concat(refused.Select(unit => unit.Field))
+                .OrderBy(unit => unit.Id.Value).ToArray(),
+        };
+        return turn with { Entered = admitted,
+            Units = turn.Units.Concat(refused).OrderBy(unit => unit.Id.Value).ToArray(),
+            Movement = movement };
     }
 
     private static void DepositSiegeSpoils(List<City> cities, CityId cityId, CombatUnit dead)

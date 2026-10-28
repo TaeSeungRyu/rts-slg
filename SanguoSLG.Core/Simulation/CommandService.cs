@@ -89,6 +89,8 @@ public sealed class CommandService
         {
             return CommandResult.Fail("도시를 찾을 수 없다.", state);
         }
+        if (city.IsGate && req.Kind != CommandKind.AppointGovernor)
+            return CommandResult.Fail("관문에서는 관문장 임명 외의 명령을 수행할 수 없습니다.", state);
 
         var main = state.Generals.FirstOrDefault(g => g.Id == req.Main);
         if (main is null)

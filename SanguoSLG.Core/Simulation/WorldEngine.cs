@@ -69,6 +69,7 @@ public sealed class WorldEngine
             Cities = state.Cities.OrderBy(c => c.Id.Value).ToList(),
         };
         next = AutoShipyardService.Advance(next);
+        next = ConsumeGateProvisions(next);
         next = new GeneralDismissalService(_random).Advance(next);
         if (next.Intel.Count > 0)
         {
@@ -118,6 +119,7 @@ public sealed class WorldEngine
             {
                 Cities = next.Cities.Select(c =>
                 {
+                    if (c.IsGate) return c;
                     var gov = ValidGovernor(next, c, byId);
                     var updated = Grow(Produce(_commands.AutoOfficerSystemEnabled ? c : Income(next, c, gov), gov));
                     return _commands.AutoOfficerSystemEnabled ? updated : TaxSecurity(updated, gov);
@@ -136,12 +138,31 @@ public sealed class WorldEngine
         return next;
     }
 
+    private GameState ConsumeGateProvisions(GameState state)
+    {
+        if (!state.Cities.Any(city => city.IsGate)) return state;
+        var cities = state.Cities.Select(city =>
+        {
+            if (!city.IsGate) return city;
+            var troops = state.Garrisons.Where(force => force.City == city.Id).Sum(force => force.Troops);
+            var scaled = (long)troops * _balance.ProvisionsPer10kPerDay + city.GateProvisionRemainder;
+            var daily = (int)(scaled / 20_000);
+            return city with
+            {
+                Provisions = System.Math.Max(0, city.Provisions - daily),
+                GateProvisionRemainder = (int)(scaled % 20_000),
+            };
+        }).ToArray();
+        return state with { Cities = cities };
+    }
+
     private GameState ApplyAutoOfficers(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId)
     {
         var cities = new List<City>();
         var generals = state.Generals.ToList();
         foreach (var city in state.Cities)
         {
+            if (city.IsGate) { cities.Add(city); continue; }
             var governor = ValidGovernor(state, city, byId);
             // 항구는 성 규모 기본 수입 대신 ApplyPortWeeklyIncome의 전용 소량 수입만 받는다.
             var baseGold = city.IsPort ? 0 : Income(state, city, governor).Gold - city.Gold;
@@ -179,6 +200,7 @@ public sealed class WorldEngine
 
         var cities = state.Cities.Select(city =>
         {
+            if (city.IsGate) return city;
             var governor = ValidGovernor(state, city, byId);
             var domestic = ValidOfficer(state, city, city.DomesticOfficer, byId);
             var monthly = city.IsPort ? 0 : MonthlyProvisionsIncome(state, city, governor);
