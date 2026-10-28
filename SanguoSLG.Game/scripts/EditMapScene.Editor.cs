@@ -123,16 +123,24 @@ public sealed partial class EditMapScene
 
     private void SaveDraft()
     {
+        var path = PresetPath();
         try
         {
-            ScenarioMapPresetStore.Save(PresetPath(), Draft());
+            var draft = Draft();
+            ScenarioMapPresetStore.Save(path, draft);
+            var saved = ScenarioMapPresetStore.Load(path);
+            if (saved.Width != draft.Width || saved.Height != draft.Height
+                || !saved.Rows.SequenceEqual(draft.Rows) || !saved.Sites.SequenceEqual(draft.Sites))
+                throw new IOException("저장된 지도를 다시 읽었지만 편집 내용과 일치하지 않습니다.");
             _draftChanged = false;
             if (_saveDraftButton is not null) _saveDraftButton.Text = "맵 저장";
-            ShowSaveResult("맵 저장 완료", "수정한 지도를 저장했습니다. 다음 새 게임부터 적용됩니다.");
+            GD.Print($"[editmap-save] path={path} bytes={new FileInfo(path).Length}");
+            ShowSaveResult("맵 저장 완료", $"수정한 지도를 저장했습니다. 다음 새 게임부터 적용됩니다.\n저장 경로: {path}");
         }
         catch (Exception error)
         {
-            ShowSaveResult("맵 저장 실패", error.Message);
+            GD.PushError($"[editmap-save] path={path} error={error}");
+            ShowSaveResult("맵 저장 실패", $"{error.Message}\n저장 경로: {path}");
         }
     }
 
