@@ -677,6 +677,7 @@ public sealed partial class CampaignMapScene : Node3D
             SeedMapTestTreasures();
         }
         if (args.Contains("--event-hunt-sample")) SeedEventHuntSample();
+        if (args.Contains("--newmapstress100")) SeedNewMapStressUnits();
 
         _dbgLog = ProjectSettings.GlobalizePath("res://deploy-debug.log");
         try { System.IO.File.WriteAllText(_dbgLog, "=== maptest deploy debug ===\n"); } catch { }
@@ -839,6 +840,8 @@ public sealed partial class CampaignMapScene : Node3D
                 + $"heroCandidates={_state.HeroUnlockDefinitions.Count} fogStable={fogStable} cameraIntro={cameraIntroOk}");
             CallDeferred(nameof(QuitNewMapQa), passed);
         }
+        if (args.Contains("--newmapstress100advanceqa"))
+            CallDeferred(nameof(RunNewMapStressAdvanceQa));
         if (args.Contains("--mapreportqa")) CallDeferred(nameof(RunMapReportQa));
     }
 
