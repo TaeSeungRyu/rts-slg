@@ -18,6 +18,8 @@ public sealed partial class CampaignMapScene
         var startingOwners = _state.Cities.ToDictionary(city => city.Id, city => city.Owner);
         var peakArmies = 0;
         var aiDeployments = 0;
+        var activeSkillFires = 0;
+        var activeGaugeUnits = 0;
         var japaneseNavalDeployments = 0;
         var initialKoreanPortTroops = _state.Garrisons.Where(line => line.City == _state.Cities.First(city => city.Name == "한국항").Id)
             .Sum(line => line.Troops);
@@ -35,6 +37,10 @@ public sealed partial class CampaignMapScene
             {
                 var beforeIds = _state.Armies.Select(unit => unit.Id).ToHashSet();
                 StartAdvance();
+                activeSkillFires += _animActives.Count;
+                activeGaugeUnits += _state.Armies.Count(unit =>
+                    (unit.State.VanguardActive is not null || unit.State.AdjutantActive is not null)
+                    && _activeGauges.ContainsKey(unit.Id.Value));
                 var after = _pendingState;
                 aiDeployments += after.Armies.Count(unit => unit.Field.Owner != Player && !beforeIds.Contains(unit.Id));
                 japaneseNavalDeployments += after.Armies.Count(unit => unit.Field.Owner == japan
@@ -51,6 +57,7 @@ public sealed partial class CampaignMapScene
                 .Sum(line => line.Troops);
             var finalKoreanPort = _state.Cities.First(city => city.Id == koreanPort.Id);
             var passed = _state.Day >= weeks * 7 && aiDeployments > 0
+                && activeSkillFires > 0 && activeGaugeUnits > 0
                 && navalRoutes.Length > 0 && japaneseNavalDeployments > 0
                 && (finalKoreanPort.Wall < initialKoreanPortWall || finalKoreanPort.Owner == japan);
             GD.Print($"[newmap-ai-qa] passed={passed} weeks={weeks} aiDeployments={aiDeployments} "
@@ -58,7 +65,7 @@ public sealed partial class CampaignMapScene
                 + $"koreanPortTroops={initialKoreanPortTroops}->{koreanPortTroops} "
                 + $"koreanPortWall={initialKoreanPortWall}->{finalKoreanPort.Wall} "
                 + $"koreanPortOwner={finalKoreanPort.Owner.Value} "
-                + $"peakArmies={peakArmies} captured={_state.Cities.Count(city => city.Owner != startingOwners[city.Id])} "
+                + $"peakArmies={peakArmies} activeFires={activeSkillFires} gaugeUnits={activeGaugeUnits} captured={_state.Cities.Count(city => city.Owner != startingOwners[city.Id])} "
                 + $"elapsedMs={clock.ElapsedMilliseconds}");
             GetTree().Quit(passed ? 0 : 1);
         }

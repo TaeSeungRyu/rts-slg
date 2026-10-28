@@ -6653,7 +6653,9 @@ public sealed partial class CampaignMapScene : Node3D
             var unit = DisplayedArmies.FirstOrDefault(x => x.Id.Value == unitId);
             gauge.Visible = unit is not null
                 && (unit.State.VanguardActive is not null || unit.State.AdjutantActive is not null)
-                && (_advancing || (_unitMenu.Visible && _selectedUnitId == unitId));
+                && _armyTokens.TryGetValue(unitId, out var gaugeToken) && gaugeToken.Visible
+                && (unit.Field.Owner == Player || _advancing
+                    || (_unitMenu.Visible && _selectedUnitId == unitId));
         }
 
         foreach (var (unitId, portrait) in _commanderPortraits.ToList())
@@ -16966,7 +16968,8 @@ public sealed partial class CampaignMapScene : Node3D
                 var (skill, gauge) = DisplayActiveGauge(army.State);
                 activeGauge.SetSkill(skill, gauge);
                 activeGauge.Visible = (army.State.VanguardActive is not null || army.State.AdjutantActive is not null)
-                    && (_advancing || (_unitMenu.Visible && _selectedUnitId == army.Id.Value));
+                    && token.Visible && (army.Field.Owner == Player || _advancing
+                        || (_unitMenu.Visible && _selectedUnitId == army.Id.Value));
             }
             if (_commanderPortraits.TryGetValue(army.Id.Value, out var portrait))
                 portrait.Visible = _unitMenu.Visible && _selectedUnitId == army.Id.Value;
