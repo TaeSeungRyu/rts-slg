@@ -64,7 +64,9 @@ public sealed record ScenarioMapPreset(int Version, int Width, int Height, IRead
         foreach (var site in Sites)
         {
             var anchor = ToAxial(site.Column, site.Row);
-            var offsets = site.Kind == "landmark"
+            var offsets = site.Kind == "gate" && site.Size == "medium"
+                ? new[] { new HexCoord(0, 0), new HexCoord(1, 0) }
+                : site.Kind == "landmark"
                 ? FeatureFootprint.OffsetsFor(FeatureType.WaterfallCliff)
                 : site.Kind == "city" ? CastleFootprint.OffsetsFor(site.Size switch
             {

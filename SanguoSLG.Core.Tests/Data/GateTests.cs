@@ -50,4 +50,13 @@ public sealed class GateTests
             Sites = [new MapEditorSite(1, "관문", "gate", "large", 1, 1)]
         }).Validate());
     }
+
+    [Fact]
+    public void MediumGateOccupiesTwoRotatedTiles()
+    {
+        var preset = new ScenarioMapPreset(1, 5, 4, Enumerable.Repeat("PPPPP", 4).ToArray(),
+            [new MapEditorSite(1, "중형", "gate", "medium", 1, 1, 0),
+                new MapEditorSite(2, "겹침", "gate", "small", 2, 2)]);
+        Assert.Throws<InvalidDataException>(preset.Validate);
+    }
 }

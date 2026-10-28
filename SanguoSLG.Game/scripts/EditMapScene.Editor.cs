@@ -197,7 +197,9 @@ public sealed partial class EditMapScene
     {
         var center = new Vector2I(site.Column, site.Row);
         var axial = Axial(center);
-        var offsets = site.Kind == "landmark"
+        var offsets = site.Kind == "gate" && site.Size == "medium"
+            ? new[] { new HexCoord(0, 0), new HexCoord(1, 0) }
+            : site.Kind == "landmark"
             ? FeatureFootprint.OffsetsFor(FeatureType.WaterfallCliff)
             : site.Kind == "city" ? CastleFootprint.OffsetsFor(CastleKind(site.Size))
             : site.Kind == "port" && site.Size == "medium"
@@ -266,7 +268,7 @@ public sealed partial class EditMapScene
         content.AddChild(new Label { Text = terrainInfo, Modulate = new Color("eee0bf") });
         if (site is not null)
         {
-            var kindName = site.Kind switch { "city" => "성", "port" => "항구", "ruin" => "유적", "landmark" => "폭포 절벽", _ => "생산 시설" };
+            var kindName = site.Kind switch { "city" => "성", "port" => "항구", "gate" => "관문", "ruin" => "유적", "landmark" => "폭포 절벽", _ => "생산 시설" };
             content.AddChild(new Label { Text = $"{kindName}: {site.Name} · 방향 {site.Direction + 1}/6",
                 Modulate = new Color("e8c475") });
         }
@@ -303,6 +305,10 @@ public sealed partial class EditMapScene
             () => OpenPortEditor(tile, null));
         AddCommand("항구 편집", site?.Kind == "port", "항구를 선택하세요.",
             () => OpenPortEditor(tile, site));
+        AddCommand("관문 추가", site is null && IsLand(terrain), "빈 육상 타일에서 추가할 수 있습니다.",
+            () => OpenGateEditor(tile, null));
+        AddCommand("관문 편집", site?.Kind == "gate", "관문을 선택하세요.",
+            () => OpenGateEditor(tile, site));
         AddCommand("유적 추가", site is null && (IsLand(terrain) || terrain is 'W' or 'O'),
             "빈 육상 또는 수면 타일에서 추가할 수 있습니다.",
             () => OpenRuinEditor(tile, null));
@@ -409,6 +415,69 @@ public sealed partial class EditMapScene
         if (existing is not null)
         {
             var remove = new Button { Text = "유적 제거" };
+            remove.Pressed += () =>
+            {
+                var before = Draft();
+                _sites.Remove(existing);
+                RecordChange(before);
+                RefreshSiteVisuals();
+                CloseEditorModal();
+                ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
+            };
+            actions.AddChild(remove);
+        }
+        var cancel = new Button { Text = "취소" };
+        cancel.Pressed += CloseEditorModal;
+        actions.AddChild(cancel);
+    }
+
+    private void OpenGateEditor(Vector2I tile, MapEditorSite? existing)
+    {
+        var content = OpenEditorModal(existing is null ? "관문 추가" : "관문 편집");
+        content.AddChild(new Label { Text = "관문 이름" });
+        var name = new LineEdit { Text = existing?.Name ?? "", PlaceholderText = "관문 이름을 입력하세요",
+            CustomMinimumSize = new Vector2(0f, 38f), KeepEditingOnTextSubmit = true };
+        name.AddThemeFontOverride("font", _font);
+        content.AddChild(name);
+        UseNativeNameInput(name);
+        var size = SelectOptions(content, "관문 종류", ["소형 관문 · 내구도 2,000", "중형 관문 · 내구도 3,000"],
+            existing?.Size == "medium" ? 1 : 0);
+        var direction = SelectOptions(content, "관문 방향", ["동", "남동", "남서", "서", "북서", "북동"],
+            existing?.Direction ?? 0);
+        var actions = new HBoxContainer();
+        content.AddChild(actions);
+        var apply = new Button { Text = "적용", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        actions.AddChild(apply);
+        apply.Pressed += () =>
+        {
+            if (_nativeNameEdit is null) name.ApplyIme();
+            var trimmed = (_nativeNameEdit?.Text ?? name.Text).Replace("\r", "").Replace("\n", "").Trim();
+            if (trimmed.Length == 0 || _sites.Any(site => site.Kind == "gate"
+                && site.Id != existing?.Id && site.Name == trimmed))
+            {
+                _editorError!.Text = "비어 있거나 중복된 관문 이름입니다.";
+                return;
+            }
+            var candidate = new MapEditorSite(existing?.Id ?? _nextSiteId, trimmed, "gate",
+                size.Selected == 1 ? "medium" : "small", existing?.Column ?? tile.X,
+                existing?.Row ?? tile.Y, direction.Selected);
+            if (!CanPlace(candidate))
+            {
+                _editorError!.Text = "관문 발자국이 지도 밖, 물 또는 다른 배치물과 겹칩니다.";
+                return;
+            }
+            var before = Draft();
+            if (existing is not null) _sites.Remove(existing);
+            _sites.Add(candidate);
+            if (existing is null) _nextSiteId++;
+            RecordChange(before);
+            RefreshSiteVisuals();
+            CloseEditorModal();
+            ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
+        };
+        if (existing is not null)
+        {
+            var remove = new Button { Text = "관문 제거" };
             remove.Pressed += () =>
             {
                 var before = Draft();

@@ -258,11 +258,12 @@ public sealed partial class EditMapScene
             _visibleCities[tile].QueueFree();
             _visibleCities.Remove(tile);
         }
-        foreach (var site in _sites.Where(site => site.Kind is "facility" or "port" or "landmark" or "ruin"))
+        foreach (var site in _sites.Where(site => site.Kind is "facility" or "port" or "landmark" or "ruin" or "gate"))
         {
             var tile = new Vector2I(site.Column, site.Row);
             if (!required.Contains(tile) || _visibleStructures.ContainsKey(site.Id)) continue;
-            var asset = site.Kind == "ruin" ? "ruin-common"
+            var asset = site.Kind == "gate" ? site.Size == "medium" ? "gate-2tile" : "gate"
+                : site.Kind == "ruin" ? "ruin-common"
                 : site.Kind == "landmark" ? "waterfall-cliff"
                 : site.Kind == "port" ? $"port-{site.Size}" : site.Size switch
             {
