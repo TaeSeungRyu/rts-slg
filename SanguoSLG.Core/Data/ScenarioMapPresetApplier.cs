@@ -109,7 +109,14 @@ public static class ScenarioMapPresetApplier
                     ?? cities[0];
                 return posting with { Location = destination.Id };
             }).ToArray(),
-            Ruins = [],
+            Ruins = preset.Sites.Where(site => site.Kind == "ruin")
+                .Select(site =>
+                {
+                    var kind = MapRuinCatalog.Find(site.Size)!;
+                    return new RuinDefinition($"map_ruin_{site.Id}", site.Name,
+                        preset.ToAxial(site.Column, site.Row), kind.TroopCode,
+                        kind.Defenders, kind.Naval);
+                }).ToArray(),
             InitialFacilities = facilities,
             MapPreset = preset.Snapshot(),
         };

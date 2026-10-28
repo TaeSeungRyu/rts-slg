@@ -193,7 +193,8 @@ internal sealed class AiTestFixture
             + $"player={cities.Count(city => city.Owner.Value == 1)} "
             + $"enemy={cities.Count(city => city.Owner.Value == 2)} "
             + $"japan={cities.Count(city => city.Owner.Value == 3)} factions={factions.Length}");
-        return new AiTestFixture(scenario.Map, factions, cities, postings, garrisons, ships, [],
+        return new AiTestFixture(scenario.Map, factions, cities, postings, garrisons, ships,
+            scenario.RuinList,
             fullVision: false, intel: [new CityIntel(new FactionId(3),
                 cities.First(city => city.Name == "한국항").Id)]);
     }

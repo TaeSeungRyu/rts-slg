@@ -205,7 +205,9 @@ public sealed partial class EditMapScene
     {
         var cells = Footprint(candidate).ToArray();
         return cells.All(cell => Inside(cell) &&
-            (candidate.Kind == "landmark" ? IsLand(_rows[cell.Y][cell.X]) || _rows[cell.Y][cell.X] is 'H' or 'X' or 'C'
+            (candidate.Kind == "ruin" ? (MapRuinCatalog.Find(candidate.Size)?.Naval == true
+                    ? _rows[cell.Y][cell.X] is 'W' or 'O' : IsLand(_rows[cell.Y][cell.X]))
+                : candidate.Kind == "landmark" ? IsLand(_rows[cell.Y][cell.X]) || _rows[cell.Y][cell.X] is 'H' or 'X' or 'C'
                 : IsLand(_rows[cell.Y][cell.X])) &&
             !_sites.Where(site => site.Id != candidate.Id).Any(site => Footprint(site).Contains(cell)));
     }
@@ -256,7 +258,7 @@ public sealed partial class EditMapScene
         content.AddChild(new Label { Text = terrainInfo, Modulate = new Color("eee0bf") });
         if (site is not null)
         {
-            var kindName = site.Kind switch { "city" => "성", "port" => "항구", "landmark" => "폭포 절벽", _ => "생산 시설" };
+            var kindName = site.Kind switch { "city" => "성", "port" => "항구", "ruin" => "유적", "landmark" => "폭포 절벽", _ => "생산 시설" };
             content.AddChild(new Label { Text = $"{kindName}: {site.Name} · 방향 {site.Direction + 1}/6",
                 Modulate = new Color("e8c475") });
         }
@@ -293,6 +295,11 @@ public sealed partial class EditMapScene
             () => OpenPortEditor(tile, null));
         AddCommand("항구 편집", site?.Kind == "port", "항구를 선택하세요.",
             () => OpenPortEditor(tile, site));
+        AddCommand("유적 추가", site is null && (IsLand(terrain) || terrain is 'W' or 'O'),
+            "빈 육상 또는 수면 타일에서 추가할 수 있습니다.",
+            () => OpenRuinEditor(tile, null));
+        AddCommand("유적 편집", site?.Kind == "ruin", "유적을 선택하세요.",
+            () => OpenRuinEditor(tile, site));
         AddCommand("폭포 절벽 추가", site is null && CanPlace(new MapEditorSite(_nextSiteId,
                 "폭포 절벽", "landmark", "waterfall_cliff", tile.X, tile.Y)),
             "3칸 발자국이 육상에 있고 다른 배치물과 겹치지 않아야 합니다.",
@@ -353,6 +360,61 @@ public sealed partial class EditMapScene
         RecordChange(before);
         RefreshSiteVisuals();
         ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
+    }
+
+    private void OpenRuinEditor(Vector2I tile, MapEditorSite? existing)
+    {
+        var content = OpenEditorModal(existing is null ? "유적 추가" : "유적 편집");
+        var naval = _rows[tile.Y][tile.X] is 'W' or 'O';
+        var kinds = MapRuinCatalog.All.Where(kind => kind.Naval == naval).ToArray();
+        var selected = Math.Max(0, Array.FindIndex(kinds, kind => kind.TroopCode == existing?.Size));
+        var type = SelectOptions(content, "해금 병종 · 수비 병력", kinds
+            .Select(kind => $"{kind.Name} · {kind.Defenders:N0}명").ToArray(), selected);
+        content.AddChild(new Label { Text = naval
+            ? "해상 유적은 선박으로 공격할 수 있습니다."
+            : "유적은 이동할 수 없는 타일이며, 점령 시 병종 생산이 해금됩니다." });
+        var actions = new HBoxContainer();
+        content.AddChild(actions);
+        var apply = new Button { Text = "적용", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        apply.Pressed += () =>
+        {
+            var kind = kinds[type.Selected];
+            var id = existing?.Id ?? _nextSiteId;
+            var name = existing is not null && existing.Size == kind.TroopCode
+                ? existing.Name : $"{kind.Name} {id}";
+            var candidate = new MapEditorSite(id, name, "ruin", kind.TroopCode, tile.X, tile.Y);
+            if (!CanPlace(candidate))
+            {
+                _editorError!.Text = "이 타일에는 유적을 설치할 수 없습니다.";
+                return;
+            }
+            var before = Draft();
+            if (existing is not null) _sites.Remove(existing);
+            _sites.Add(candidate);
+            if (existing is null) _nextSiteId++;
+            RecordChange(before);
+            RefreshSiteVisuals();
+            CloseEditorModal();
+            ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
+        };
+        actions.AddChild(apply);
+        if (existing is not null)
+        {
+            var remove = new Button { Text = "유적 제거" };
+            remove.Pressed += () =>
+            {
+                var before = Draft();
+                _sites.Remove(existing);
+                RecordChange(before);
+                RefreshSiteVisuals();
+                CloseEditorModal();
+                ShowEditorPalette(tile, _editorPalette?.Position ?? new Vector2(20, 130));
+            };
+            actions.AddChild(remove);
+        }
+        var cancel = new Button { Text = "취소" };
+        cancel.Pressed += CloseEditorModal;
+        actions.AddChild(cancel);
     }
 
     private VBoxContainer OpenEditorModal(string title)

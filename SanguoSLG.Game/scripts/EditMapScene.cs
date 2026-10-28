@@ -540,6 +540,14 @@ public sealed partial class EditMapScene : Control
                 UndoDraft();
             }
         }
+        OpenRuinEditor(vacant, null);
+        valid &= _editorModal?.FindChildren("*", "OptionButton", true, false)
+            .OfType<OptionButton>().Any() == true;
+        _editorModal?.FindChildren("*", "Button", true, false).OfType<Button>()
+            .First(button => button.Text == "적용").EmitSignal(Button.SignalName.Pressed);
+        valid &= SiteAt(vacant)?.Kind == "ruin";
+        UndoDraft();
+        valid &= SiteAt(vacant) is null;
         valid &= _sites.Where(site => site.Kind == "city").All(CanPlace);
         ShowEditorPalette(vacant, new Vector2(200f, 200f));
         valid &= _editorPalette is not null

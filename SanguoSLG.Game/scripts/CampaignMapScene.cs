@@ -553,7 +553,7 @@ public sealed partial class CampaignMapScene : Node3D
         var scenario = CreatedGeneralPresets.ApplyAtNewGame(
             new ScenarioLoader().LoadFromDirectory(dataDirectory));
         _passability = new PassabilityMap(_map, [], _cities,
-            _aiTestFixture is null ? scenario.RuinList.Select(r => r.Position) : []);
+            (_aiTestFixture?.Ruins ?? scenario.RuinList).Select(r => r.Position));
         _fieldBuildingDefinitions = new FieldBuildingLoader().LoadFromDirectory(dataDirectory);
         _ai = new FactionAI(_commander, _deployer, map: _map, economy: _balance,
             fieldBuildingDefinitions: _fieldBuildingDefinitions);

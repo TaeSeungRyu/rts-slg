@@ -132,4 +132,25 @@ public sealed class ScenarioMapPresetTests
             Sites = [..preset.Sites, new MapEditorSite(3, "중복", "city", "small", 4, 3)]
         }).Validate());
     }
+
+    [Fact]
+    public void EditedLandAndNavalRuinsReachTheNewScenario()
+    {
+        var source = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
+        var preset = new ScenarioMapPreset(1, 6, 3,
+            ["PPPPPP", "PPPPWP", "PPPPPP"],
+            [new MapEditorSite(1, "성", "city", "small", 0, 0),
+                new MapEditorSite(2, "극병 시험 유적", "ruin", "geukbyeong", 2, 0),
+                new MapEditorSite(3, "왜선 시험 유적", "ruin", "waeseon", 4, 1)]);
+        var applied = ScenarioMapPresetApplier.Apply(source, preset);
+        Assert.Contains(applied.RuinList, ruin => ruin.Id == "map_ruin_2"
+            && ruin.Name == "극병 시험 유적" && ruin.MaxDefenders == 15_000 && !ruin.Naval);
+        Assert.Contains(applied.RuinList, ruin => ruin.Id == "map_ruin_3"
+            && ruin.Name == "왜선 시험 유적" && ruin.MaxDefenders == 5_000 && ruin.Naval);
+        Assert.Throws<InvalidDataException>(() => (preset with
+        {
+            Sites = [..preset.Sites.Where(site => site.Id != 3),
+                new MapEditorSite(3, "잘못된 해상 유적", "ruin", "waeseon", 4, 2)]
+        }).Validate());
+    }
 }

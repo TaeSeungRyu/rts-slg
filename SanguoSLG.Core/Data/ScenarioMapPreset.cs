@@ -44,10 +44,11 @@ public sealed record ScenarioMapPreset(int Version, int Width, int Height, IRead
             if (site.Id <= 0 || !ids.Add(site.Id) || string.IsNullOrWhiteSpace(site.Name) ||
                 site.Direction is < 0 or > 5 || site.Column < 0 || site.Column >= Width ||
                 site.Row < 0 || site.Row >= Height ||
-                site.Kind is not ("city" or "port" or "facility" or "landmark") ||
+                site.Kind is not ("city" or "port" or "facility" or "landmark" or "ruin") ||
                 site.Kind == "city" && site.Size is not ("small" or "medium" or "large") ||
                 site.Kind == "port" && site.Size is not ("small" or "medium") ||
                 site.Kind == "landmark" && site.Size != "waterfall_cliff" ||
+                site.Kind == "ruin" && MapRuinCatalog.Find(site.Size) is null ||
                 site.Kind == "facility" && site.Size is not ("paddy" or "farm" or "village" or "workshop"))
                 throw new InvalidDataException("맵 배치물의 ID, 이름, 위치 또는 방향이 올바르지 않습니다.");
         }
@@ -78,7 +79,9 @@ public sealed record ScenarioMapPreset(int Version, int Width, int Height, IRead
                 var column = tile.Q;
                 var row = tile.R + (column - (column & 1)) / 2;
                 if (column < 0 || column >= Width || row < 0 || row >= Height ||
-                    !(site.Kind == "landmark" ? "PFMDBSTNQHXC" : "PFMDBSTNQ")
+                    !(site.Kind == "landmark" ? "PFMDBSTNQHXC"
+                        : site.Kind == "ruin" && MapRuinCatalog.Find(site.Size)!.Naval ? "WO"
+                        : "PFMDBSTNQ")
                         .Contains(Rows[row][column]) || !occupied.Add(tile))
                     throw new InvalidDataException("배치물 발자국이 지도 밖, 물/험산 또는 다른 배치물과 겹칩니다.");
             }
