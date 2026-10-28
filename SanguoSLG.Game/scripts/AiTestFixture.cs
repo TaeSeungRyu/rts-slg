@@ -196,7 +196,8 @@ internal sealed class AiTestFixture
         return new AiTestFixture(scenario.Map, factions, cities, postings, garrisons, ships,
             scenario.RuinList,
             fullVision: false, intel: [new CityIntel(new FactionId(3),
-                cities.First(city => city.Name == "한국항").Id)]);
+                (cities.FirstOrDefault(city => city.Name == "한국항")
+                    ?? cities.First(city => city.Owner.Value == 1)).Id)]);
     }
 
     private static ScenarioMapPreset AddNewMapTestPorts(ScenarioMapPreset preset)
@@ -206,7 +207,13 @@ internal sealed class AiTestFixture
         var sites = preset.Sites.ToList();
         foreach (var (cityName, portName) in new[] { ("부산", "한국항"), ("나가사키", "일본항") })
         {
-            var city = sites.First(site => site.Name == cityName);
+            if (sites.Any(site => site.Kind == "port" && site.Name == portName)) continue;
+            var city = sites.FirstOrDefault(site => site.Kind == "city" && site.Name == cityName);
+            if (city is null)
+            {
+                GD.Print($"[newmap] {cityName}이(가) 없어 테스트 항구 {portName} 자동 추가를 건너뜁니다.");
+                continue;
+            }
             var candidates = from row in Enumerable.Range(Math.Max(0, city.Row - 9),
                     Math.Min(preset.Height - 1, city.Row + 9) - Math.Max(0, city.Row - 9) + 1)
                 from column in Enumerable.Range(Math.Max(0, city.Column - 9),
@@ -234,7 +241,11 @@ internal sealed class AiTestFixture
                 }
                 catch (InvalidDataException) { }
             }
-            if (selected is null) throw new InvalidDataException($"{portName} 배치 가능한 해안이 없습니다.");
+            if (selected is null)
+            {
+                GD.Print($"[newmap] {portName}을(를) 배치할 해안이 없어 자동 추가를 건너뜁니다.");
+                continue;
+            }
             sites.Add(selected);
         }
         return preset with { Sites = sites };
