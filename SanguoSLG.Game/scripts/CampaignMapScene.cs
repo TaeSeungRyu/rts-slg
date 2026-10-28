@@ -823,13 +823,13 @@ public sealed partial class CampaignMapScene : Node3D
             var landCities = _state.Cities.Where(city => !city.IsPort).ToArray();
             var minCitySpacing = landCities.SelectMany((city, index) => landCities.Skip(index + 1)
                 .Select(other => city.Position.Distance(other.Position))).Min();
-            var passed = cameraIntroOk && fogStable && _state.Factions.Count == 2 && _state.Cities.Count > 2
+            var passed = cameraIntroOk && fogStable && _state.Factions.Count == 3 && _state.Cities.Count > 2
                 && _state.Cities.All(city => _map.Contains(city.Position))
                 && _state.Cities.Any(city => city.Owner == Player)
                 && _state.Cities.Any(city => city.Owner != Player)
                 && minCitySpacing >= 6
                 && _aiTestFixture?.FullVision == false
-                && (_state.ScoutedCities?.Count ?? 0) == 0
+                && (_state.ScoutedCities?.Any(intel => intel.Faction == Player) == false)
                 && _visibleTiles.Count > 0 && _visibleTiles.Count < _map.Count
                 && _state.HeroUnlockDefinitions.Count > 0
                 && _state.HeroUnlockDefinitions.Any(hero =>

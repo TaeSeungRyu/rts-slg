@@ -1,5 +1,8 @@
 using Godot;
 using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.AI;
+using SanguoSLG.Core.Spatial;
+using SanguoSLG.Core.Simulation;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -10,11 +13,22 @@ public sealed partial class CampaignMapScene
 {
     private void RunNewMapAiQa()
     {
-        const int weeks = 12;
+        const int weeks = 24;
         var clock = Stopwatch.StartNew();
         var startingOwners = _state.Cities.ToDictionary(city => city.Id, city => city.Owner);
         var peakArmies = 0;
         var aiDeployments = 0;
+        var japaneseNavalDeployments = 0;
+        var initialKoreanPortTroops = _state.Garrisons.Where(line => line.City == _state.Cities.First(city => city.Name == "한국항").Id)
+            .Sum(line => line.Troops);
+        var japan = new FactionId(3);
+        var koreanPort = _state.Cities.First(city => city.Name == "한국항");
+        var initialKoreanPortWall = koreanPort.Wall;
+        var navalRoutes = AiWarCandidatePolicy.Evaluate(_state, japan, _map,
+            new BalanceConfig(MonthlyTaxPerCity: 100), 1).Where(candidate => candidate.Domain == MovementDomain.DeepWater
+                && candidate.Target == koreanPort.Id).ToArray();
+        GD.Print($"[newmap-naval-qa] japanRoutesToBusan={navalRoutes.Length} "
+            + $"japanShips={_state.PortShips.Where(ship => _state.Cities.Any(city => city.Id == ship.City && city.Owner == japan)).Sum(ship => ship.Count)}");
         try
         {
             for (var week = 1; week <= weeks; week++)
@@ -23,6 +37,9 @@ public sealed partial class CampaignMapScene
                 StartAdvance();
                 var after = _pendingState;
                 aiDeployments += after.Armies.Count(unit => unit.Field.Owner != Player && !beforeIds.Contains(unit.Id));
+                japaneseNavalDeployments += after.Armies.Count(unit => unit.Field.Owner == japan
+                    && unit.Class == TroopClass.Naval && unit.Field.Target == koreanPort.Position
+                    && !beforeIds.Contains(unit.Id));
                 peakArmies = Math.Max(peakArmies, after.Armies.Count);
                 FinishAdvance();
                 GD.Print($"[newmap-ai-qa] week={week} day={_state.Day} armies={_state.Armies.Count} "
@@ -30,8 +47,17 @@ public sealed partial class CampaignMapScene
                     + $"captured={_state.Cities.Count(city => city.Owner != startingOwners[city.Id])} "
                     + $"elapsedMs={clock.ElapsedMilliseconds}");
             }
-            var passed = _state.Day >= weeks * 7 && aiDeployments > 0;
+            var koreanPortTroops = _state.Garrisons.Where(line => line.City == koreanPort.Id)
+                .Sum(line => line.Troops);
+            var finalKoreanPort = _state.Cities.First(city => city.Id == koreanPort.Id);
+            var passed = _state.Day >= weeks * 7 && aiDeployments > 0
+                && navalRoutes.Length > 0 && japaneseNavalDeployments > 0
+                && (finalKoreanPort.Wall < initialKoreanPortWall || finalKoreanPort.Owner == japan);
             GD.Print($"[newmap-ai-qa] passed={passed} weeks={weeks} aiDeployments={aiDeployments} "
+                + $"japaneseNavalAttacksOnKoreanPort={japaneseNavalDeployments} "
+                + $"koreanPortTroops={initialKoreanPortTroops}->{koreanPortTroops} "
+                + $"koreanPortWall={initialKoreanPortWall}->{finalKoreanPort.Wall} "
+                + $"koreanPortOwner={finalKoreanPort.Owner.Value} "
                 + $"peakArmies={peakArmies} captured={_state.Cities.Count(city => city.Owner != startingOwners[city.Id])} "
                 + $"elapsedMs={clock.ElapsedMilliseconds}");
             GetTree().Quit(passed ? 0 : 1);

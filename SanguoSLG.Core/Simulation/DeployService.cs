@@ -659,12 +659,17 @@ public sealed class DeployService
         var unit = UnitAssembler.Assemble(unitId, city.Owner, city.Position, req.Mode, req.Target,
             unitId.Value, vanguard, adjutant, ship, troops, _actives, _passives, FieldContext, research,
             req.Waypoints, _adminSkills);
+        var egressDirection = req.EgressDirection ?? (req.EgressExit is { } requestedExit
+            ? DeploymentEgressRules.Directions.Cast<DeploymentDirection?>()
+                .FirstOrDefault(direction => direction.HasValue
+                    && DeploymentEgressRules.ExitGroup(city, direction.Value).Contains(requestedExit))
+            : null);
         unit = unit with { Provisions = carried, ProvisionsCapacity = capacityPer10k,
             LootGold = req.Gold, Training = garrison.TrainingLevel, OriginCity = city.Id,
             EmbarkedTroopCode = req.SourceTroopCode,
             Field = unit.Field with { ContinuousTarget = req.ContinuousTarget,
                 ContinuousWaypoints = req.ContinuousWaypoints },
-            DeploymentDelayDays = req.DelayDays, EgressDirection = req.EgressDirection, EgressExit = req.EgressExit,
+            DeploymentDelayDays = req.DelayDays, EgressDirection = egressDirection, EgressExit = req.EgressExit,
             // 출항 방향을 아직 지정하지 않았으면 항구 내부 대기열에 남긴다.
             // 출구 메타데이터 없이 날짜만 만료된 부대가 기존 이동기로 튀어나오면 안 된다.
             AwaitingEgress = true };

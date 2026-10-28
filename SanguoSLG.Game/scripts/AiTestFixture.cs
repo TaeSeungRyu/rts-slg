@@ -33,7 +33,7 @@ internal sealed class AiTestFixture
     private AiTestFixture(HexMap map, IReadOnlyList<Faction> factions, IReadOnlyList<City> cities,
         IReadOnlyList<GeneralPosting> postings, IReadOnlyList<GarrisonForce> garrisons,
         IReadOnlyList<PortShipStock> ships, IReadOnlyList<RuinDefinition> ruins,
-        bool fullVision = true)
+        bool fullVision = true, IReadOnlyList<CityIntel>? intel = null)
     {
         Map = map;
         Factions = factions;
@@ -43,10 +43,10 @@ internal sealed class AiTestFixture
         Ships = ships;
         Ruins = ruins;
         FullVision = fullVision;
-        Intel = !fullVision ? [] : factions.SelectMany(faction => cities
+        Intel = intel ?? (!fullVision ? [] : factions.SelectMany(faction => cities
             .Where(city => city.Owner != faction.Id)
             .Select(city => new CityIntel(faction.Id, city.Id)))
-            .ToList();
+            .ToList());
     }
 
     public IReadOnlyList<GarrisonForce> GarrisonsFor(AiTestCase testCase, FactionId player)
@@ -125,10 +125,16 @@ internal sealed class AiTestFixture
         var preset = ScenarioMapPresetResizer.Resize(ScenarioMapPresetStore.Load(presetPath),
             currentMap.RootElement.GetProperty("width").GetInt32(),
             currentMap.RootElement.GetProperty("height").GetInt32());
+        preset = AddNewMapTestPorts(preset);
         var scenario = ScenarioMapPresetApplier.Apply(
             new ScenarioLoader().LoadFromDirectory(dataDirectory), preset);
+        var japaneseRegions = new HashSet<string>(StringComparer.Ordinal)
+            { "owari", "mikawa", "kai", "echigo", "mutsu", "shinano", "aki", "satsuma" };
+        var japanRuler = scenario.Generals.First(general => general.Name == "오다 노부나가").Id;
         var factions = scenario.Factions.Where(faction => faction.Id.Value is 1 or 2)
-            .Select(faction => faction with { Gold = 20000 }).ToArray();
+            .Select(faction => faction with { Gold = 20000 })
+            .Append(new Faction(new FactionId(3), "일본", japanRuler, 20000, "#c18742"))
+            .ToArray();
         // Fixed seed makes every new-map run reproducible while scattering both factions
         // across the edited map. City geometry, terrain and direction stay unchanged.
         var random = new Random(190);
@@ -136,6 +142,10 @@ internal sealed class AiTestFixture
             .Select(city => city.Id).ToArray();
         var owners = shuffledIds.Select((id, index) => (id, owner: new FactionId(index % 2 + 1)))
             .ToDictionary(item => item.id, item => item.owner);
+        foreach (var site in preset.Sites.Where(site => site.Name is "후쿠오카" or "나가사키" or "일본항"))
+            owners[new CityId(site.Id)] = new FactionId(3);
+        foreach (var site in preset.Sites.Where(site => site.Name is "부산" or "한국항"))
+            owners[new CityId(site.Id)] = new FactionId(1);
         var cities = scenario.Cities.Select(city => city with
         {
             Owner = owners[city.Id], Security = 85, Gold = 12000, Provisions = 48000,
@@ -145,14 +155,20 @@ internal sealed class AiTestFixture
         foreach (var faction in factions)
         {
             var enemies = cities.Where(city => city.Owner != faction.Id).ToArray();
-            var owned = cities.Where(city => city.Owner == faction.Id && !city.IsPort)
+            var owned = cities.Where(city => city.Owner == faction.Id
+                    && (faction.Id.Value == 3 ? city.Name == "일본항" : !city.IsPort))
                 .OrderBy(city => enemies.Min(enemy => city.Position.Distance(enemy.Position)))
                 .ThenBy(city => city.Id.Value).ToArray();
             if (owned.Length == 0) owned = cities.Where(city => city.Owner == faction.Id).ToArray();
-            var generalIds = scenario.Generals.Select(general => general.Id)
-                .Where(id => id != factions[0].Ruler && id != factions[1].Ruler)
-                .OrderBy(id => id.Value).Where((_, index) => index % 2 == faction.Id.Value - 1)
-                .Prepend(faction.Ruler);
+            var generalIds = faction.Id.Value == 3
+                ? scenario.Generals.Where(general => japaneseRegions.Contains(general.Region)
+                    && general.Id != japanRuler).Select(general => general.Id)
+                    .OrderBy(id => id.Value).Prepend(japanRuler)
+                : scenario.Generals.Where(general => !japaneseRegions.Contains(general.Region)
+                    && factions.All(owner => owner.Ruler != general.Id))
+                    .Select(general => general.Id).OrderBy(id => id.Value)
+                    .Where((_, index) => index % 2 == faction.Id.Value - 1)
+                    .Prepend(faction.Ruler);
             var index = 0;
             foreach (var generalId in generalIds)
                 postings.Add(new GeneralPosting(generalId, faction.Id,
@@ -160,6 +176,8 @@ internal sealed class AiTestFixture
         }
         var garrisons = cities.SelectMany(city =>
         {
+            if (city.Name == "한국항")
+                return new[] { new GarrisonForce(city.Id, "swordsman", 1000, 60) };
             var scale = 1 + city.Id.Value % 4;
             return new[]
             {
@@ -170,12 +188,55 @@ internal sealed class AiTestFixture
             };
         }).ToArray();
         var ships = cities.Where(city => city.IsPort)
-            .Select(city => new PortShipStock(city.Id, "small_boat", 2)).ToArray();
+            .Select(city => new PortShipStock(city.Id, "small_boat", 8)).ToArray();
         GD.Print($"[newmap] cells={scenario.Map.Count} cities={cities.Length} "
             + $"player={cities.Count(city => city.Owner.Value == 1)} "
-            + $"enemy={cities.Count(city => city.Owner.Value == 2)} factions={factions.Length}");
+            + $"enemy={cities.Count(city => city.Owner.Value == 2)} "
+            + $"japan={cities.Count(city => city.Owner.Value == 3)} factions={factions.Length}");
         return new AiTestFixture(scenario.Map, factions, cities, postings, garrisons, ships, [],
-            fullVision: false);
+            fullVision: false, intel: [new CityIntel(new FactionId(3),
+                cities.First(city => city.Name == "한국항").Id)]);
+    }
+
+    private static ScenarioMapPreset AddNewMapTestPorts(ScenarioMapPreset preset)
+    {
+        var directions = new[] { new HexCoord(1, 0), new HexCoord(0, 1),
+            new HexCoord(-1, 1), new HexCoord(-1, 0), new HexCoord(0, -1), new HexCoord(1, -1) };
+        var sites = preset.Sites.ToList();
+        foreach (var (cityName, portName) in new[] { ("부산", "한국항"), ("나가사키", "일본항") })
+        {
+            var city = sites.First(site => site.Name == cityName);
+            var candidates = from row in Enumerable.Range(Math.Max(0, city.Row - 9),
+                    Math.Min(preset.Height - 1, city.Row + 9) - Math.Max(0, city.Row - 9) + 1)
+                from column in Enumerable.Range(Math.Max(0, city.Column - 9),
+                    Math.Min(preset.Width - 1, city.Column + 9) - Math.Max(0, city.Column - 9) + 1)
+                where "PFMDBSTNQ".Contains(preset.Rows[row][column])
+                from direction in Enumerable.Range(0, 6)
+                let water = preset.ToAxial(column, row) + directions[direction]
+                where water.Q >= 0 && water.Q < preset.Width
+                let waterRow = water.R + (water.Q - (water.Q & 1)) / 2
+                where waterRow >= 0 && waterRow < preset.Height
+                    && preset.Rows[waterRow][water.Q] is 'W' or 'O'
+                orderby (column - city.Column) * (column - city.Column)
+                    + (row - city.Row) * (row - city.Row), row, column
+                select new MapEditorSite(sites.Max(site => site.Id) + 1, portName, "port",
+                    "small", column, row, direction);
+            MapEditorSite? selected = null;
+            foreach (var candidate in candidates)
+            {
+                try
+                {
+                    new ScenarioMapPreset(preset.Version, preset.Width, preset.Height,
+                        preset.Rows, sites.Append(candidate).ToArray()).Validate();
+                    selected = candidate;
+                    break;
+                }
+                catch (InvalidDataException) { }
+            }
+            if (selected is null) throw new InvalidDataException($"{portName} 배치 가능한 해안이 없습니다.");
+            sites.Add(selected);
+        }
+        return preset with { Sites = sites };
     }
 
     private static int Number(JsonElement item, string name) => item.GetProperty(name).GetInt32();
