@@ -116,18 +116,20 @@ internal sealed class AiTestFixture
         return new AiTestFixture(map, factions, cities, postings, garrisons, ships, ruins);
     }
 
-    public static AiTestFixture LoadNewMap()
+    public static AiTestFixture LoadNewMap(ScenarioMapPreset? overridePreset = null)
     {
         var dataDirectory = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
         var presetPath = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
         using var currentMap = JsonDocument.Parse(File.ReadAllText(
             ProjectSettings.GlobalizePath("res://assets/maps/east-asia-map.json")));
-        var preset = ScenarioMapPresetResizer.Resize(ScenarioMapPresetStore.Load(presetPath),
+        var preset = ScenarioMapPresetResizer.Resize(overridePreset ?? ScenarioMapPresetStore.Load(presetPath),
             currentMap.RootElement.GetProperty("width").GetInt32(),
             currentMap.RootElement.GetProperty("height").GetInt32());
         preset = AddNewMapTestPorts(preset);
         var scenario = ScenarioMapPresetApplier.Apply(
             new ScenarioLoader().LoadFromDirectory(dataDirectory), preset);
+        if (scenario.Cities.Count < 3)
+            throw new InvalidDataException("새 지도 테스트에는 성 또는 항구가 최소 3곳 필요합니다.");
         var japaneseRegions = new HashSet<string>(StringComparer.Ordinal)
             { "owari", "mikawa", "kai", "echigo", "mutsu", "shinano", "aki", "satsuma" };
         var japanRuler = scenario.Generals.First(general => general.Name == "오다 노부나가").Id;
@@ -142,10 +144,21 @@ internal sealed class AiTestFixture
             .Select(city => city.Id).ToArray();
         var owners = shuffledIds.Select((id, index) => (id, owner: new FactionId(index % 2 + 1)))
             .ToDictionary(item => item.id, item => item.owner);
-        foreach (var site in preset.Sites.Where(site => site.Name is "후쿠오카" or "나가사키" or "일본항"))
+        var japaneseSites = preset.Sites.Where(site => (site.Kind is "city" or "port")
+            && (site.Name is "후쿠오카" or "나가사키" or "일본항")).ToArray();
+        if (japaneseSites.Length == 0)
+            japaneseSites = preset.Sites.Where(site => site.Kind == "city")
+                .OrderByDescending(site => site.Column).Take(2).ToArray();
+        foreach (var site in japaneseSites)
             owners[new CityId(site.Id)] = new FactionId(3);
         foreach (var site in preset.Sites.Where(site => site.Name is "부산" or "한국항"))
             owners[new CityId(site.Id)] = new FactionId(1);
+        foreach (var factionId in new[] { 1, 2, 3 })
+            if (!owners.Values.Any(owner => owner.Value == factionId))
+            {
+                var replacement = shuffledIds.First(id => owners.Values.Count(owner => owner == owners[id]) > 1);
+                owners[replacement] = new FactionId(factionId);
+            }
         var cities = scenario.Cities.Select(city => city with
         {
             Owner = owners[city.Id], Security = 85, Gold = 12000, Provisions = 48000,

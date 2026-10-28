@@ -809,6 +809,15 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestclimateadvanceqa")) CallDeferred(nameof(RunClimateAdvanceQa));
         if (args.Contains("--newmapqa"))
         {
+            var savedPreset = ScenarioMapPresetStore.Load(ProjectSettings.GlobalizePath(
+                "user://map-presets/east-asia.json"));
+            var renamedPreset = savedPreset with { Sites = savedPreset.Sites.Select(site =>
+                site.Name is "부산" or "나가사키" or "후쿠오카" or "한국항" or "일본항"
+                    ? site with { Name = $"편집{site.Id}" } : site).ToArray() };
+            var renamedFixture = AiTestFixture.LoadNewMap(renamedPreset);
+            var renamedMapOk = renamedFixture.Factions.All(faction =>
+                renamedFixture.Cities.Any(city => city.Owner == faction.Id)
+                && renamedFixture.Postings.Any(posting => posting.Faction == faction.Id));
             var ruler = _state.Factions.FirstOrDefault(faction => faction.Id == Player)?.Ruler;
             var rulerCity = ruler is { } id ? _state.PostingOf(id)?.Location : null;
             var expectedStart = _state.Cities.FirstOrDefault(city => city.Id == rulerCity && city.Owner == Player)
@@ -823,7 +832,7 @@ public sealed partial class CampaignMapScene : Node3D
             var landCities = _state.Cities.Where(city => !city.IsPort).ToArray();
             var minCitySpacing = landCities.SelectMany((city, index) => landCities.Skip(index + 1)
                 .Select(other => city.Position.Distance(other.Position))).Min();
-            var passed = cameraIntroOk && fogStable && _state.Factions.Count == 3 && _state.Cities.Count > 2
+            var passed = renamedMapOk && cameraIntroOk && fogStable && _state.Factions.Count == 3 && _state.Cities.Count > 2
                 && _state.Cities.All(city => _map.Contains(city.Position))
                 && _state.Cities.Any(city => city.Owner == Player)
                 && _state.Cities.Any(city => city.Owner != Player)
@@ -837,7 +846,7 @@ public sealed partial class CampaignMapScene : Node3D
             GD.Print($"[newmap-qa] passed={passed} factions={_state.Factions.Count} "
                 + $"cities={_state.Cities.Count} cells={_map.Count} citySpacing={minCitySpacing} "
                 + $"visible={_visibleTiles.Count} scouted={_state.ScoutedCities?.Count ?? 0} "
-                + $"heroCandidates={_state.HeroUnlockDefinitions.Count} fogStable={fogStable} cameraIntro={cameraIntroOk}");
+                + $"heroCandidates={_state.HeroUnlockDefinitions.Count} fogStable={fogStable} cameraIntro={cameraIntroOk} renamedMap={renamedMapOk}");
             CallDeferred(nameof(QuitNewMapQa), passed);
         }
         if (args.Contains("--newmapstress100advanceqa"))
