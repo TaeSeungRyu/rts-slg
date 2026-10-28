@@ -74,6 +74,7 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly Dictionary<int, Label3D> _cityLabels = new();
     private readonly Dictionary<int, CityVitalsGauge3D> _cityVitalsGauges = new();
     private readonly Dictionary<int, Node3D> _cityModels = new();
+    private readonly Dictionary<int, Node3D> _gateModels = new();
     private readonly Dictionary<int, bool> _cityBrokenVisuals = new();
     private readonly Dictionary<string, Label3D> _ruinLabels = new(System.StringComparer.Ordinal);
     private readonly Dictionary<FieldBuildingId, (FieldBuilding Building, Label3D Label)> _scoutDayLabels = new();
@@ -695,6 +696,7 @@ public sealed partial class CampaignMapScene : Node3D
         });
 
         SpawnCastles();
+        SpawnGates();
         SpawnHover();
         BuildHud();
         BuildPanel();
@@ -1676,6 +1678,13 @@ public sealed partial class CampaignMapScene : Node3D
             return;
         }
 
+        var gate = _state.Gates.FirstOrDefault(candidate => GateTiles(candidate).Contains(hex));
+        if (gate is not null)
+        {
+            ShowGateInfo(gate);
+            return;
+        }
+
         var fieldBuilding = _state.Buildings.FirstOrDefault(b => b.Position == hex && CanPlayerSeeFieldBuilding(b));
         if (fieldBuilding is not null)
         {
@@ -1984,6 +1993,40 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainCard.Visible = true;
         MoveRing(building.Position);
         if (completed) DrawFieldBuildingRange(building, definition);
+    }
+
+    private void ShowGateInfo(Gate gate)
+    {
+        HidePanels();
+        foreach (var child in _terrainHolder.GetChildren()) child.QueueFree();
+        _terrainHolder.Rotation = Vector3.Zero;
+        var path = gate.Size == GateSize.Medium ? "gate-2tile" : "gate";
+        var preview = GD.Load<PackedScene>($"res://assets/models/{path}.glb")?.Instantiate<Node3D>();
+        if (preview is not null)
+        {
+            _terrainHolder.AddChild(preview);
+            FrameTerrainCamera(preview);
+        }
+        _terrainName.Text = gate.Name;
+        Clear(_terrainInfo);
+        foreach (var line in new[]
+        {
+            gate.Size == GateSize.Medium ? "중형 관문" : "소형 관문",
+            $"내구도 {gate.Integrity:N0} / {gate.MaxIntegrity:N0}",
+            $"주둔 병력 {gate.OccupiedCapacity:N0} / {Gate.TroopCapacity:N0}",
+            "주둔 병력의 군량 소비 50% 절감",
+            $"관문장: {(gate.Commander is { } commander ? _state.Generals.FirstOrDefault(g => g.Id == commander)?.Name ?? "미상" : "없음")}",
+        }) _terrainInfo.AddChild(MakeLabel(line, 12, Parchment));
+        foreach (var garrison in gate.Units)
+        {
+            var name = _state.Generals.FirstOrDefault(g => g.Id == garrison.Leader)?.Name ?? "장수";
+            _terrainInfo.AddChild(MakeLabel($"{name} · {garrison.TroopCode} {garrison.Troops:N0} · 부상 {garrison.Wounded:N0}",
+                11, Parchment));
+        }
+        _terrainHex = gate.Position;
+        PlaceTerrainCard(gate.Position);
+        _terrainCard.Visible = true;
+        MoveRing(gate.Position);
     }
 
     private void DemolishFieldBuilding(FieldBuildingId buildingId)
@@ -4002,6 +4045,29 @@ public sealed partial class CampaignMapScene : Node3D
             AddChild(gauge);
             _cityVitalsGauges[city.Id.Value] = gauge;
             _fog.Register(node, city.Position);
+        }
+    }
+
+    private static IReadOnlyList<HexCoord> GateTiles(Gate gate) => gate.Size == GateSize.Medium
+        ? [gate.Position, gate.Position + CastleFootprint.Rotate(new HexCoord(1, 0), gate.Direction)]
+        : [gate.Position];
+
+    private void SpawnGates()
+    {
+        foreach (var gate in _state.Gates)
+        {
+            var path = gate.Size == GateSize.Medium ? "gate-2tile" : "gate";
+            var scene = GD.Load<PackedScene>($"res://assets/models/{path}.glb");
+            if (scene is null) continue;
+            var node = scene.Instantiate<Node3D>();
+            var tiles = GateTiles(gate);
+            node.Position = tiles.Select(_view.HexToWorld).Aggregate(Vector3.Zero, (sum, position) => sum + position)
+                / tiles.Count + new Vector3(0f, _view.TileTopY, 0f);
+            node.RotationDegrees = new Vector3(0f, gate.Direction * 60f, 0f);
+            node.SetMeta("gate_id", gate.Id);
+            AddChild(node);
+            _gateModels[gate.Id] = node;
+            _fog.Register(node, gate.Position);
         }
     }
 
