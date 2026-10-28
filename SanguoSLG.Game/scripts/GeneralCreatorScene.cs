@@ -61,7 +61,12 @@ public partial class GeneralCreatorScene : Control
             if (File.Exists(path)) _created.AddRange(CreatedGeneralStore.Load(File.ReadAllText(path)));
             PopulateRequiredGenerals();
             RefreshList();
-            NewGeneral();
+            if (_created.Count > 0)
+            {
+                _list.Select(0);
+                LoadSelected(0);
+            }
+            else NewGeneral();
         }
         catch (Exception error) { _status.Text = "불러오기 실패: " + error.Message; }
         if (OS.GetCmdlineUserArgs().Contains("--generalcreatorqa")) CallDeferred(nameof(RunQa));
@@ -354,7 +359,13 @@ public partial class GeneralCreatorScene : Control
     private static void ShowSkillDescription(Label label, OptionButton option, IReadOnlyDictionary<string, string> details)
     {
         var full = details.GetValueOrDefault(SelectedCode(option), "선택한 스킬이 없습니다.");
-        var lines = full.Split('\n', StringSplitOptions.RemoveEmptyEntries).Take(2);
+        var lines = full.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .Where(line => !line.StartsWith("전투 패시브 ·", StringComparison.Ordinal)
+                && !line.StartsWith("내정 패시브 ·", StringComparison.Ordinal)
+                && line != "조건을 만족하면 자동 적용됩니다."
+                && line != "직접 사용하는 액티브가 아닙니다.")
+            .Take(3);
         var shortText = string.Join(" · ", lines).Trim();
         label.Text = shortText.Length <= 180 ? shortText : shortText[..179] + "…";
         label.TooltipText = full;
@@ -661,6 +672,9 @@ public partial class GeneralCreatorScene : Control
 
     private void RunQa()
     {
+        var firstSelected = _created.Count == 0
+            || (_editingId == _created[0].General.Id && _list.IsSelected(0));
+        NewGeneral();
         _name.Text = "생성 장수 QA";
         var scenario = new ScenarioLoader().LoadFromDirectory(_dataDirectory);
         var required = scenario.Generals[0].Id.Value;
@@ -675,7 +689,7 @@ public partial class GeneralCreatorScene : Control
         };
         var applied = CreatedGeneralStore.Apply(scenario,
             CreatedGeneralStore.Load(CreatedGeneralStore.Save([sample, virtualHero])));
-        var passed = applied.Generals.Count == scenario.Generals.Count + 2
+        var passed = firstSelected && applied.Generals.Count == scenario.Generals.Count + 2
             && _tabs.GetTabTitle(0) == "초상·얼굴" && _tabs.GetTabTitle(1) == "기본 정보"
             && applied.HeroUnlockList.Any(hero => hero.General.Value == 10000)
             && scenario.Generals.All(general => general.Id.Value != 10000)
@@ -688,6 +702,13 @@ public partial class GeneralCreatorScene : Control
             && Enumerable.Range(1, 10).All(number =>
                 File.Exists(ProjectSettings.GlobalizePath($"res://assets/portraits/created/man{number}.png"))
                 && File.Exists(ProjectSettings.GlobalizePath($"res://assets/portraits/created/women{number}.png")));
+        _battlePassives[0].Select(1);
+        _adminPassives[0].Select(1);
+        UpdateSkillDescriptions();
+        passed &= !_battleDescriptions[0].Text.Contains("자동 적용됩니다", StringComparison.Ordinal)
+            && !_adminDescriptions[0].Text.Contains("직접 사용하는 액티브가 아닙니다", StringComparison.Ordinal)
+            && _battleDescriptions[0].Text.Length > 10
+            && _adminDescriptions[0].Text.Length > 10;
         var imported = Path.Combine(Path.GetTempPath(), $"general-portrait-qa-{Guid.NewGuid():N}.png");
         try
         {
