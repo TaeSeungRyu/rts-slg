@@ -2032,6 +2032,11 @@ public sealed partial class CampaignMapScene : Node3D
         _terrainInfo.AddChild(roster);
         if (gate.Owner == Player)
         {
+            var sortie = MakeButton("출전", accent: true);
+            sortie.Disabled = !_state.Garrisons.Any(force => force.City == gate.Id && !force.Trainee
+                    && force.Troops > 0) || !_state.GeneralsAt(gate.Id).Any();
+            sortie.Pressed += () => OpenDeployModal(gate.Id);
+            _terrainInfo.AddChild(sortie);
             var appoint = MakeButton("관문장 임명", accent: true);
             appoint.Disabled = !_state.GeneralsAt(gate.Id).Any();
             appoint.Pressed += () =>
@@ -6295,6 +6300,11 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void SelectCity(CityId id)
     {
+        if (_state.Cities.FirstOrDefault(city => city.Id == id) is { IsGate: true } gate)
+        {
+            ShowGateInfo(gate);
+            return;
+        }
         ClearUnitAttackRange();
         _selected = id;
         _cmdIndex = -1;

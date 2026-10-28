@@ -123,6 +123,31 @@ public sealed class GateTests
         Assert.False(GateService.DismissCommander(appointment.State, new FactionId(2), gate.Id).Ok);
     }
 
+    [Fact]
+    public void GateDeployUsesNormalCombatCompositionAndTransfersStoredResources()
+    {
+        var source = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
+        var officer = source.Generals[0];
+        var gate = new City(new CityId(911), "관문", new HexCoord(2, 2),
+            source.Factions[0].Id, 120, Gold: 50, Wall: 2_000, Gate: GateSize.Small);
+        var state = new GameState(1, 190, [source.Factions[0]], [gate], [officer],
+            GarrisonForces: [new GarrisonForce(gate.Id, "swordsman", 5_000, 60)],
+            Postings: [new GeneralPosting(officer.Id, gate.Owner, gate.Id)]);
+        var deployer = new DeployService(new CommandBalance(),
+            new TroopTypeLoader().LoadFromDirectory(TestData.DataDirectory()),
+            new ActiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()),
+            new PassiveSkillLoader().LoadFromDirectory(TestData.DataDirectory()));
+
+        var result = deployer.Deploy(state, new DeployRequest(gate.Id, "swordsman", 2_000,
+            officer.Id, Target: new HexCoord(5, 2), Provisions: 20, Gold: 10));
+
+        Assert.True(result.Ok, result.Error);
+        Assert.Equal(3_000, result.State.Garrisons.Single().Troops);
+        Assert.Equal(100, result.State.Cities.Single().Provisions);
+        Assert.Equal(40, result.State.Cities.Single().Gold);
+        Assert.Equal(gate.Id, Assert.Single(result.State.Armies).OriginCity);
+    }
+
     [Theory]
     [InlineData(3_000, true)]
     [InlineData(4_000, false)]
