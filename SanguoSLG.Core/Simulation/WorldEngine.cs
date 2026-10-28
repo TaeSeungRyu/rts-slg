@@ -252,6 +252,7 @@ public sealed class WorldEngine
     {
         var cities = state.Cities.Select(city =>
         {
+            if (city.IsGate) return city;
             var security = ValidOfficer(state, city, city.SecurityOfficer, byId);
             var recruiter = ValidOfficer(state, city, city.RecruitmentOfficer, byId);
             var delta = security is null ? _commands.AutoSecurityNoOfficerDelta
@@ -320,6 +321,7 @@ public sealed class WorldEngine
         var cities = new List<City>();
         foreach (var city in state.Cities)
         {
+            if (city.IsGate) { cities.Add(city); continue; }
             var next = city;
             var recruiter = ValidOfficer(state, city, city.RecruitmentOfficer, byId);
             if (recruiter is not null)
@@ -379,6 +381,7 @@ public sealed class WorldEngine
         var generals = state.Generals.ToList();
         foreach (var city in state.Cities)
         {
+            if (city.IsGate) continue;
             var trainer = ValidOfficer(state, city, city.TrainingOfficer, byId);
             if (trainer is null) { continue; }
 

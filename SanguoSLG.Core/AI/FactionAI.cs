@@ -446,7 +446,7 @@ public sealed class FactionAI
         var cities = new List<City>();
         foreach (var city in state.Cities)
         {
-            if (city.Owner != faction || city.AiLastGrowthDay == state.Day)
+            if (city.Owner != faction || city.IsGate || city.AiLastGrowthDay == state.Day)
             {
                 cities.Add(city);
                 continue;
@@ -518,7 +518,7 @@ public sealed class FactionAI
 
     private GameState PlanCityMaintenance(GameState state, FactionId faction)
     {
-        foreach (var city in state.Cities.Where(c => c.Owner == faction)
+        foreach (var city in state.Cities.Where(c => c.Owner == faction && !c.IsGate)
             .OrderBy(c => c.Id.Value).ToList())
         {
             var residentCount = state.GeneralsAt(city.Id).Count(id =>
