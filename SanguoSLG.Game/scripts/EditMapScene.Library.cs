@@ -59,9 +59,11 @@ public sealed partial class EditMapScene
             }
             var row = new HBoxContainer();
             list.AddChild(row);
+            var title = path == RootMapPath() ? "root · 원본 지도"
+                : MapArchive().SaveVersion(MapIdFor(path), Path.GetFileNameWithoutExtension(path), preset).Title;
             row.AddChild(new Label
             {
-                Text = path == RootMapPath() ? "root · 원본 지도" : Path.GetFileNameWithoutExtension(path),
+                Text = title,
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 TooltipText = $"{preset.Width}×{preset.Height} · 거점 {preset.Sites.Count(site => site.Kind is "city" or "port" or "gate")}\n{path}",
             });
@@ -86,10 +88,10 @@ public sealed partial class EditMapScene
         _mapLibrary = null;
     }
 
-    private void LoadSelectedMap(string path, ScenarioMapPreset preset)
+    private void LoadSelectedMap(string path, ScenarioMapPreset preset, string? title = null)
     {
         var version = MapArchive().SaveVersion(MapIdFor(path),
-            path == RootMapPath() ? "root 지도" : Path.GetFileNameWithoutExtension(path), preset);
+            title ?? (path == RootMapPath() ? "root 지도" : Path.GetFileNameWithoutExtension(path)), preset);
         _selectedMapPath = path;
         _activeMapVersion = version;
         _width = preset.Width;
@@ -107,8 +109,10 @@ public sealed partial class EditMapScene
     {
         var id = "user-" + Guid.NewGuid().ToString("N");
         var path = Path.Combine(CustomMapDirectory(), id + ".json");
+        var number = Directory.Exists(CustomMapDirectory())
+            ? Directory.EnumerateFiles(CustomMapDirectory(), "*.json").Count() + 1 : 1;
         ScenarioMapPresetStore.Save(path, preset);
-        LoadSelectedMap(path, preset);
+        LoadSelectedMap(path, preset, "사용자 지도 " + number);
         ShowSaveResult("지도 생성 완료", $"새 지도 파일을 만들었습니다.\n{path}");
     }
 

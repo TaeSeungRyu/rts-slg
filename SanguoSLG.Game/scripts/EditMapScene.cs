@@ -456,6 +456,11 @@ public sealed partial class EditMapScene : Control
             && _cities.All(city => city.Tile.X >= 0 && city.Tile.X < _width
                 && city.Tile.Y >= 0 && city.Tile.Y < _height
                 && "PFMD".Contains(_rows[city.Tile.Y][city.Tile.X]));
+        ShowMapLibrary();
+        var libraryButtons = _mapLibrary?.FindChildren("*", "Button", true, false)
+            .OfType<Button>().Select(button => button.Text).ToArray() ?? [];
+        valid &= libraryButtons.Contains("닫기") && libraryButtons.Contains("새 지도 추가 · root에서 시작");
+        CloseMapLibrary();
         _terrainButtons.First(button => button.Text == "산악").EmitSignal(Button.SignalName.Pressed);
         valid &= _terrainFilter == 'M';
         var routesToggle = FindChild("LandRouteToggle", true, false) as CheckButton;

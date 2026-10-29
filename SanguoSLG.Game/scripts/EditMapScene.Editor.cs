@@ -194,7 +194,7 @@ public sealed partial class EditMapScene
 
     private IReadOnlyList<string> ProtectedScenarioNames()
         => _activeMapVersion is { } current
-            ? MapScenarioReferences(current.Id, current.Revision) : [];
+            ? MapScenarioReferences(current.Id) : [];
 
     private static IReadOnlyList<string> MapScenarioReferences(string id, string? revision = null)
     {
@@ -203,7 +203,9 @@ public sealed partial class EditMapScene
         return directories.Where(Directory.Exists)
             .SelectMany(directory => Directory.EnumerateFiles(directory, "*.json"))
             .Select(ScenarioDraftStore.Load)
-            .Where(scenario => scenario.MapId == id && (revision is null || scenario.MapRevision == revision))
+            .Where(scenario => (scenario.MapId == id
+                    || id == "legacy-east-asia" && scenario.MapId == "edited-east-asia")
+                && (revision is null || scenario.MapRevision == revision))
             .Select(scenario => scenario.Title).Distinct().OrderBy(title => title).ToArray();
     }
 
