@@ -17,14 +17,18 @@ public sealed partial class EditMapScene
     {
         var toggle = new Button
         {
-            Name = "TerrainPaintToggle", Text = "지형 그리기", ToggleMode = true,
+            Name = "TerrainPaintToggle", Text = "그리기 켜기", ToggleMode = true,
             CustomMinimumSize = new Vector2(105, 26),
             TooltipText = "선택한 지형을 왼쪽 마우스 드래그로 칠합니다. 가운데 버튼은 지도 이동입니다.",
         };
+        toggle.AddThemeStyleboxOverride("normal", FilterStyle(false));
+        toggle.AddThemeStyleboxOverride("hover", FilterStyle(false));
+        toggle.AddThemeStyleboxOverride("pressed", FilterStyle(true));
         toggle.Toggled += enabled =>
         {
             if (_painting) EndPaintStroke();
             _paintMode = enabled;
+            toggle.Text = enabled ? "그리기 끄기" : "그리기 켜기";
             if (_editorPalette is not null)
             {
                 _editorPalette.QueueFree();
@@ -39,6 +43,8 @@ public sealed partial class EditMapScene
         var choices = Terrain.Keys.ToArray();
         var picker = new OptionButton { Name = "TerrainPaintKind", CustomMinimumSize = new Vector2(118, 26),
             TooltipText = "그릴 지형을 선택하세요." };
+        picker.AddThemeStyleboxOverride("normal", FilterStyle(false));
+        picker.AddThemeStyleboxOverride("hover", FilterStyle(false));
         foreach (var code in choices) picker.AddItem(Terrain[code].Name);
         picker.Selected = 0;
         picker.ItemSelected += index =>

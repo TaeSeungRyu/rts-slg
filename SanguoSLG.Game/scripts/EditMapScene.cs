@@ -114,7 +114,7 @@ public sealed partial class EditMapScene : Control
         var font = _font;
         var bar = new PanelContainer { MouseFilter = MouseFilterEnum.Stop };
         bar.SetAnchorsAndOffsetsPreset(LayoutPreset.TopWide);
-        bar.CustomMinimumSize = new Vector2(0, 145);
+        bar.CustomMinimumSize = new Vector2(0, 188);
         bar.AddThemeStyleboxOverride("panel", PanelStyle());
         AddChild(bar);
         var content = new VBoxContainer();
@@ -144,6 +144,26 @@ public sealed partial class EditMapScene : Control
         AddTerrainFilter("전체", null);
         foreach (var (code, entry) in Terrain)
             AddTerrainFilter(entry.Name, code);
+        var paintPanel = new PanelContainer { Name = "TerrainPaintPanel" };
+        var paintStyle = PanelStyle();
+        paintStyle.BgColor = new Color("27372f");
+        paintStyle.BorderColor = new Color("7fa66f");
+        paintPanel.AddThemeStyleboxOverride("panel", paintStyle);
+        content.AddChild(paintPanel);
+        var paintRow = new HBoxContainer();
+        paintRow.AddThemeConstantOverride("separation", 10);
+        paintPanel.AddChild(paintRow);
+        var paintTitle = new Label { Text = "지형 칠하기" };
+        paintTitle.AddThemeFontOverride("font", font);
+        paintTitle.AddThemeFontSizeOverride("font_size", 14);
+        paintTitle.AddThemeColorOverride("font_color", new Color("c6dda9"));
+        paintRow.AddChild(paintTitle);
+        AddPaintControls(paintRow);
+        var paintHelp = new Label { Text = "켜기 → 지형 선택 → 지도에서 드래그" };
+        paintHelp.AddThemeFontOverride("font", font);
+        paintHelp.AddThemeFontSizeOverride("font_size", 12);
+        paintHelp.AddThemeColorOverride("font_color", new Color("d9d1b0"));
+        paintRow.AddChild(paintHelp);
         var actions = new HBoxContainer();
         actions.AddThemeConstantOverride("separation", 8);
         content.AddChild(actions);
@@ -169,7 +189,6 @@ public sealed partial class EditMapScene : Control
             QueueRedraw();
         };
         actions.AddChild(citiesToggle);
-        AddPaintControls(actions);
         foreach (var (label, longitude, latitude) in new[]
         {
             ("중국", 113.0, 34.0), ("한반도", 127.5, 37.0),
@@ -245,9 +264,9 @@ public sealed partial class EditMapScene : Control
     {
         var mapWidth = (_width - 1) * StepX + Radius * 2;
         var mapHeight = (_height + 0.5f) * StepY;
-        _scale = Mathf.Min((Size.X - 30) / mapWidth, (Size.Y - 185) / mapHeight);
+        _scale = Mathf.Min((Size.X - 30) / mapWidth, (Size.Y - 225) / mapHeight);
         _pan = new Vector2((Size.X - mapWidth * _scale) * 0.5f,
-            125 + (Size.Y - 185 - mapHeight * _scale) * 0.5f);
+            175 + (Size.Y - 225 - mapHeight * _scale) * 0.5f);
         QueueRedraw();
     }
 
@@ -425,6 +444,9 @@ public sealed partial class EditMapScene : Control
             && _rows.Any(row => row.Contains('F')) && _rows.Any(row => row.Contains('H'))
             && _west >= 97.72 && _east <= 133
             && _terrainButtons.Count == Terrain.Count + 1 && _terrainButtons[0].ButtonPressed
+            && FindChild("TerrainPaintPanel", true, false) is PanelContainer paintPanel
+            && paintPanel.FindChild("TerrainPaintToggle", true, false) is Button
+            && paintPanel.FindChild("TerrainPaintKind", true, false) is OptionButton
             && _landRoutes.Count >= 10 && _landRoutes.All(route => route.Length >= 2
                 && route.All(tile => tile.X >= 0 && tile.X < _width && tile.Y >= 0 && tile.Y < _height
                     && "PFMDRB".Contains(_rows[tile.Y][tile.X])))
