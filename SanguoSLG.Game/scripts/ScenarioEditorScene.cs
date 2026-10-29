@@ -327,6 +327,12 @@ public sealed partial class ScenarioEditorScene : Control
         AddCompactNumber(resources, "군량", city.Provisions, 0, 10000000, value => UpdateCity(city.SiteId, c => c with { Provisions = value }));
         AddCompactNumber(resources, "성벽", city.Wall, 0, 1000000, value => UpdateCity(city.SiteId, c => c with { Wall = value }));
         AddCompactNumber(resources, "치안", city.Security, 0, 100, value => UpdateCity(city.SiteId, c => c with { Security = value }));
+        if (city.OwnerFactionId > 0)
+        {
+            _body.AddChild(new HSeparator());
+            _body.AddChild(new Label { Text = "주둔 병력·선박" });
+            AddForceEditor(city, site, ShowCities);
+        }
     }
 
     private void ShowFactions()
@@ -468,13 +474,20 @@ public sealed partial class ScenarioEditorScene : Control
         choice.ItemSelected += index => { _selectedForceCityId = choice.GetItemId((int)index); ShowForces(); };
         _body.AddChild(choice);
         var selected = owned.First(city => city.SiteId == _selectedForceCityId);
+        AddForceEditor(selected, sites[selected.SiteId], ShowForces);
+    }
+
+    private void AddForceEditor(ScenarioCityEntry selected, MapEditorSite site, Action refresh)
+    {
         var data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
         var catalog = new TroopCatalogLoader().LoadFromDirectory(data);
-        var table = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var table = new GridContainer { Columns = 3, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _body.AddChild(table);
         table.AddChild(new Label { Text = "병종" });
         table.AddChild(new Label { Text = "주둔 병력" });
-        foreach (var troop in catalog.Where(troop => troop.Class != SanguoSLG.Core.Domain.TroopClass.Naval))
+        table.AddChild(new Label { Text = "관리" });
+        foreach (var troop in catalog.Where(troop => troop.Class != SanguoSLG.Core.Domain.TroopClass.Naval
+            && selected.Garrisons.Any(force => force.TroopCode == troop.Code)))
         {
             table.AddChild(new Label { Text = troop.Name, CustomMinimumSize = new Vector2(190, 0) });
             var code = troop.Code;
@@ -489,13 +502,44 @@ public sealed partial class ScenarioEditorScene : Control
                     .Where(force => force.Troops > 0).ToArray() });
             };
             table.AddChild(field);
+            var remove = new Button { Text = "제거" };
+            remove.Pressed += () =>
+            {
+                UpdateCity(selected.SiteId, city => city with { Garrisons = city.Garrisons
+                    .Where(force => force.TroopCode != code).ToArray() });
+                refresh();
+            };
+            table.AddChild(remove);
         }
-        if (sites[selected.SiteId].Kind != "port") return;
+        var availableTroops = catalog.Where(troop => troop.Class != SanguoSLG.Core.Domain.TroopClass.Naval
+            && selected.Garrisons.All(force => force.TroopCode != troop.Code)).ToArray();
+        if (availableTroops.Length > 0)
+        {
+            var addRow = new HBoxContainer();
+            var choice = new OptionButton();
+            foreach (var troop in availableTroops) choice.AddItem(troop.Name);
+            addRow.AddChild(choice);
+            var add = new Button { Text = "병종 추가" };
+            add.Pressed += () =>
+            {
+                var code = availableTroops[choice.Selected].Code;
+                UpdateCity(selected.SiteId, city => city with { Garrisons = [.. city.Garrisons,
+                    new ScenarioGarrisonEntry(code, 1000)] });
+                refresh();
+            };
+            addRow.AddChild(add);
+            _body.AddChild(addRow);
+        }
+        if (site.Kind != "port") return;
         _body.AddChild(new HSeparator());
         _body.AddChild(new Label { Text = "보유 선박" });
-        var ships = new GridContainer { Columns = 2 };
+        var ships = new GridContainer { Columns = 3 };
         _body.AddChild(ships);
-        foreach (var troop in catalog.Where(troop => troop.Class == SanguoSLG.Core.Domain.TroopClass.Naval))
+        ships.AddChild(new Label { Text = "선박" });
+        ships.AddChild(new Label { Text = "보유 수량" });
+        ships.AddChild(new Label { Text = "관리" });
+        foreach (var troop in catalog.Where(troop => troop.Class == SanguoSLG.Core.Domain.TroopClass.Naval
+            && selected.Ships.Any(ship => ship.ShipCode == troop.Code)))
         {
             ships.AddChild(new Label { Text = troop.Name, CustomMinimumSize = new Vector2(190, 0) });
             var code = troop.Code;
@@ -510,7 +554,32 @@ public sealed partial class ScenarioEditorScene : Control
                     .Where(ship => ship.Count > 0).ToArray() });
             };
             ships.AddChild(field);
+            var remove = new Button { Text = "제거" };
+            remove.Pressed += () =>
+            {
+                UpdateCity(selected.SiteId, city => city with { Ships = city.Ships
+                    .Where(ship => ship.ShipCode != code).ToArray() });
+                refresh();
+            };
+            ships.AddChild(remove);
         }
+        var availableShips = catalog.Where(troop => troop.Class == SanguoSLG.Core.Domain.TroopClass.Naval
+            && selected.Ships.All(ship => ship.ShipCode != troop.Code)).ToArray();
+        if (availableShips.Length == 0) return;
+        var addShipRow = new HBoxContainer();
+        var shipChoice = new OptionButton();
+        foreach (var troop in availableShips) shipChoice.AddItem(troop.Name);
+        addShipRow.AddChild(shipChoice);
+        var addShip = new Button { Text = "선박 추가" };
+        addShip.Pressed += () =>
+        {
+            var code = availableShips[shipChoice.Selected].Code;
+            UpdateCity(selected.SiteId, city => city with { Ships = [.. city.Ships,
+                new ScenarioShipEntry(code, 1)] });
+            refresh();
+        };
+        addShipRow.AddChild(addShip);
+        _body.AddChild(addShipRow);
     }
 
     private void UpdateCity(int siteId, Func<ScenarioCityEntry, ScenarioCityEntry> update)
@@ -601,8 +670,25 @@ public sealed partial class ScenarioEditorScene : Control
             var generalSearchUi = _body.GetChildren().OfType<LineEdit>()
                 .Any(field => field.PlaceholderText == "장수 이름 검색");
             ShowForces();
-            var forceInputUi = _body.FindChildren("*", "LineEdit", true, false)
-                .OfType<LineEdit>().Any(field => field.PlaceholderText == "0");
+            var forceInputUi = _body.FindChildren("*", "Button", true, false)
+                .OfType<Button>().Any(button => button.Text == "병종 추가");
+            var ownedCity = _draft.Cities.FirstOrDefault(city => city.OwnerFactionId > 0);
+            var cityForceUi = false;
+            var forceCrudPassed = false;
+            if (ownedCity is not null)
+            {
+                var before = ownedCity.Garrisons.Count;
+                var add = _body.FindChildren("*", "Button", true, false).OfType<Button>()
+                    .FirstOrDefault(button => button.Text == "병종 추가");
+                add?.EmitSignal(Button.SignalName.Pressed);
+                forceCrudPassed = _draft.Cities.First(city => city.SiteId == ownedCity.SiteId)
+                    .Garrisons.Count == before + 1;
+                _selectedCityId = ownedCity.SiteId;
+                ShowCities();
+                cityForceUi = _body.FindChildren("*", "Button", true, false).OfType<Button>()
+                    .Any(button => button.Text == "병종 추가");
+                _draft = originalDraft;
+            }
             ShowBasics();
             var path = Path.Combine(Path.GetTempPath(), "scenario-editor-qa-" + Guid.NewGuid().ToString("N") + ".json");
             try
@@ -616,6 +702,7 @@ public sealed partial class ScenarioEditorScene : Control
                             ScenarioMapPresetStore.Load(editedPath)));
                 var passed = bundled.Length == 6 && _list.ItemCount >= 6
                     && factionColorUi && cityMapUi && generalSearchUi && forceInputUi
+                    && cityForceUi && forceCrudPassed
                     && errors.Count == 0 && mapSwitchPassed && currentMapSelected
                     && restored.MapRevision == _draft.MapRevision
                     && restored.Cities.Count == _draft.Cities.Count;
