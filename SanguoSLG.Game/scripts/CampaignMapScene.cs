@@ -578,7 +578,7 @@ public sealed partial class CampaignMapScene : Node3D
         var args = OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()).ToHashSet();
         // 플레이 세션에서는 탐색·외교 결과가 매 실행 같은 초반 난수열에 묶이지 않도록 세션 시드를 쓴다.
         // Core 테스트는 WorldEngine에 고정 IRandomSource를 주입해 결정론을 유지한다.
-        var sessionSeed = _aiTestFixture is not null ? 42
+        var sessionSeed = _aiTestFixture is not null && _scenarioOverride is null ? 42
             : unchecked((int)(System.DateTime.UtcNow.Ticks ^ System.Environment.TickCount64));
         var divineBeastPercent = 1;
         if (args.Contains("--maptest"))
@@ -661,11 +661,14 @@ public sealed partial class CampaignMapScene : Node3D
             Postings = _aiTestFixture?.Postings ?? _initial.Postings,
             GarrisonForces = _aiTestFixture?.GarrisonsFor(_selectedAiTestCase, Player)
                 ?? _initial.GarrisonForces,
-            FacilityPlacements = _aiTestFixture is null ? _initialFacilityPlacements : [],
+            FacilityPlacements = _scenarioOverride is not null ? scenario.InitialFacilities ?? []
+                : _aiTestFixture is null ? _initialFacilityPlacements : [],
             PortShipStocks = _aiTestFixture?.Ships ?? _initial.PortShipStocks,
             ScoutedCities = _aiTestFixture?.Intel ?? _initial.ScoutedCities,
-            HeroUnlockDefinitions = _aiTestFixture is null || args.Contains("--newmap") ? scenario.HeroUnlockList : [],
-            HeroUnlockStates = (_aiTestFixture is null || args.Contains("--newmap") ? scenario.HeroUnlockList : [])
+            HeroUnlockDefinitions = _aiTestFixture is null || _scenarioOverride is not null
+                || args.Contains("--newmap") ? scenario.HeroUnlockList : [],
+            HeroUnlockStates = (_aiTestFixture is null || _scenarioOverride is not null
+                || args.Contains("--newmap") ? scenario.HeroUnlockList : [])
                 .Select(h => new HeroUnlockState(h.General, HeroUnlockStatus.Locked))
                 .ToList(),
             RuinDefinitions = _aiTestFixture?.Ruins ?? scenario.RuinList,
