@@ -18,6 +18,7 @@ public sealed partial class ScenarioEditorScene : Control
     private Action<string>? _nativeUpdate;
     private string _nativeLastText = "";
     private int _selectedCityId;
+    private int _selectedForceCityId;
 
     public override void _Ready()
     {
@@ -415,30 +416,60 @@ public sealed partial class ScenarioEditorScene : Control
     {
         ClearBody();
         var map = CurrentMap().Preset;
-        _body.AddChild(new Label { Text = "병력과 선박 · 한 줄에 병종:수량 입력, 쉼표로 구분 (예: swordsman:10000, archer:5000)" });
-        foreach (var city in _draft.Cities.Where(c => c.OwnerFactionId > 0))
+        var owned = _draft.Cities.Where(city => city.OwnerFactionId > 0).ToArray();
+        _body.AddChild(new Label { Text = "거점을 고른 뒤 병종별 병력과 선박 수량을 입력하세요. 0은 배치하지 않음을 뜻합니다." });
+        if (owned.Length == 0) return;
+        if (owned.All(city => city.SiteId != _selectedForceCityId)) _selectedForceCityId = owned[0].SiteId;
+        var sites = map.Sites.ToDictionary(site => site.Id);
+        var choice = new OptionButton();
+        foreach (var city in owned) choice.AddItem(sites[city.SiteId].Name, city.SiteId);
+        choice.Select(Math.Max(0, choice.GetItemIndex(_selectedForceCityId)));
+        choice.ItemSelected += index => { _selectedForceCityId = choice.GetItemId((int)index); ShowForces(); };
+        _body.AddChild(choice);
+        var selected = owned.First(city => city.SiteId == _selectedForceCityId);
+        var data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
+        var catalog = new TroopCatalogLoader().LoadFromDirectory(data);
+        var table = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _body.AddChild(table);
+        table.AddChild(new Label { Text = "병종" });
+        table.AddChild(new Label { Text = "주둔 병력" });
+        foreach (var troop in catalog.Where(troop => troop.Class != SanguoSLG.Core.Domain.TroopClass.Naval))
         {
-            var site = map.Sites.FirstOrDefault(s => s.Id == city.SiteId);
-            if (site is null) continue;
-            AddText(site.Name + " 병력", string.Join(", ", city.Garrisons.Select(g => $"{g.TroopCode}:{g.Troops}")),
-                value => { if (TryParseForces(value, out var forces)) UpdateCity(city.SiteId, c => c with { Garrisons = forces }); else _message.Text = site.Name + ": 병력 입력 형식 오류"; });
-            if (site.Kind == "port")
-                AddText(site.Name + " 선박", string.Join(", ", city.Ships.Select(s => $"{s.ShipCode}:{s.Count}")),
-                    value => { if (TryParseForces(value, out var ships)) UpdateCity(city.SiteId, c => c with { Ships = ships.Select(s => new ScenarioShipEntry(s.TroopCode, s.Troops)).ToArray() }); else _message.Text = site.Name + ": 선박 입력 형식 오류"; });
+            table.AddChild(new Label { Text = troop.Name, CustomMinimumSize = new Vector2(190, 0) });
+            var code = troop.Code;
+            var field = new LineEdit { Text = selected.Garrisons.FirstOrDefault(force => force.TroopCode == code)?.Troops.ToString() ?? "0",
+                PlaceholderText = "0", CustomMinimumSize = new Vector2(125, 0), MaxLength = 8 };
+            field.TextChanged += value =>
+            {
+                if (!int.TryParse(value, out var count) || count < 0) return;
+                UpdateCity(selected.SiteId, city => city with { Garrisons = city.Garrisons
+                    .Where(force => force.TroopCode != code)
+                    .Append(new ScenarioGarrisonEntry(code, count))
+                    .Where(force => force.Troops > 0).ToArray() });
+            };
+            table.AddChild(field);
         }
-    }
-
-    private static bool TryParseForces(string text, out IReadOnlyList<ScenarioGarrisonEntry> forces)
-    {
-        var parsed = new List<ScenarioGarrisonEntry>();
-        foreach (var part in text.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        if (sites[selected.SiteId].Kind != "port") return;
+        _body.AddChild(new HSeparator());
+        _body.AddChild(new Label { Text = "보유 선박" });
+        var ships = new GridContainer { Columns = 2 };
+        _body.AddChild(ships);
+        foreach (var troop in catalog.Where(troop => troop.Class == SanguoSLG.Core.Domain.TroopClass.Naval))
         {
-            var pair = part.Split(':', StringSplitOptions.TrimEntries);
-            if (pair.Length != 2 || pair[0].Length == 0 || !int.TryParse(pair[1], out var count) || count <= 0)
-            { forces = []; return false; }
-            parsed.Add(new ScenarioGarrisonEntry(pair[0], count));
+            ships.AddChild(new Label { Text = troop.Name, CustomMinimumSize = new Vector2(190, 0) });
+            var code = troop.Code;
+            var field = new LineEdit { Text = selected.Ships.FirstOrDefault(ship => ship.ShipCode == code)?.Count.ToString() ?? "0",
+                PlaceholderText = "0", CustomMinimumSize = new Vector2(125, 0), MaxLength = 5 };
+            field.TextChanged += value =>
+            {
+                if (!int.TryParse(value, out var count) || count < 0) return;
+                UpdateCity(selected.SiteId, city => city with { Ships = city.Ships
+                    .Where(ship => ship.ShipCode != code)
+                    .Append(new ScenarioShipEntry(code, count))
+                    .Where(ship => ship.Count > 0).ToArray() });
+            };
+            ships.AddChild(field);
         }
-        forces = parsed; return true;
     }
 
     private void UpdateCity(int siteId, Func<ScenarioCityEntry, ScenarioCityEntry> update)
