@@ -23,7 +23,9 @@ public sealed record ScenarioDraft(int Version, string Id, string Title, string 
     public IReadOnlyList<string> Validate(ScenarioMapPreset map, IReadOnlySet<int> knownGenerals)
     {
         var errors = new List<string>();
-        if (Version != 1 || string.IsNullOrWhiteSpace(Id) || string.IsNullOrWhiteSpace(Title)
+        if (Version != 1 || string.IsNullOrWhiteSpace(Id) || Id.Length > 64
+            || Id.Any(c => !char.IsAsciiLetterOrDigit(c) && c != '-')
+            || string.IsNullOrWhiteSpace(Title)
             || string.IsNullOrWhiteSpace(MapId) || MapRevision?.Length != 64
             || StartYear < 1 || StartMonth is < 1 or > 12 || StartDay is < 1 or > 30)
             errors.Add("시나리오 기본 정보 또는 지도 버전이 올바르지 않습니다.");
