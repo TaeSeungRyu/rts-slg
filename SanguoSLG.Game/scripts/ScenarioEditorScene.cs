@@ -77,21 +77,29 @@ public sealed partial class ScenarioEditorScene : Control
     private void LoadMaps()
     {
         var defaultPath = ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json");
-        _archive.SaveVersion("default-east-asia", "기본 동아시아",
-            ScenarioMapPresetStore.Load(defaultPath));
-        _maps.AddRange(_archive.ListVersions());
+        _maps.Add(_archive.SaveVersion("default-east-asia", "기본 동아시아",
+            ScenarioMapPresetStore.Load(defaultPath)));
         var edited = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
         if (File.Exists(edited))
         {
             try
             {
-                var version = _archive.SaveVersion("edited-east-asia", "편집한 동아시아",
+                var version = _archive.SaveVersion("legacy-east-asia", "root 지도",
                     ScenarioMapPresetStore.Load(edited));
                 if (_maps.All(map => map.Id != version.Id || map.Revision != version.Revision))
                     _maps.Add(version);
             }
             catch (Exception error) { GD.PushWarning("편집 지도 가져오기 실패: " + error.Message); }
         }
+        var custom = ProjectSettings.GlobalizePath("user://map-presets/custom");
+        if (!Directory.Exists(custom)) return;
+        foreach (var path in Directory.EnumerateFiles(custom, "*.json").Order())
+            try
+            {
+                var id = Path.GetFileNameWithoutExtension(path);
+                _maps.Add(_archive.SaveVersion(id, id, ScenarioMapPresetStore.Load(path)));
+            }
+            catch (Exception error) { GD.PushWarning("사용자 지도 가져오기 실패: " + error.Message); }
     }
 
     private void BuildUi()
@@ -178,8 +186,14 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void OpenScenario(string path)
     {
-        try { _draft = ScenarioDraftStore.Load(path); ShowBasics(); _message.Text = "시나리오를 불러왔습니다."; }
+        try { _draft = ScenarioDraftStore.Load(path); EnsureMapAvailable(); ShowBasics(); _message.Text = "시나리오를 불러왔습니다."; }
         catch (Exception error) { _message.Text = "불러오기 실패: " + error.Message; }
+    }
+
+    private void EnsureMapAvailable()
+    {
+        if (_maps.Any(map => map.Id == _draft.MapId && map.Revision == _draft.MapRevision)) return;
+        _maps.Add(_archive.Load(_draft.MapId, _draft.MapRevision));
     }
 
     private void CreateNew()
@@ -207,27 +221,28 @@ public sealed partial class ScenarioEditorScene : Control
     {
         ClearBody();
         _body.AddChild(new Label { Text = "기본 정보" });
-        AddText("파일 ID", _draft.Id, value => _draft = _draft with { Id = value });
+        _body.AddChild(new Label { Text = "저장 식별자 · 자동 생성: " + _draft.Id,
+            TooltipText = "파일을 구별하는 내부 값입니다. 제목만 바꾸어도 됩니다." });
         AddText("제목", _draft.Title, value => _draft = _draft with { Title = value });
         AddText("설명", _draft.Description, value => _draft = _draft with { Description = value });
         AddNumber("시작 연도", _draft.StartYear, 1, 9999, value => _draft = _draft with { StartYear = value });
         AddNumber("월", _draft.StartMonth, 1, 12, value => _draft = _draft with { StartMonth = value });
         AddNumber("일", _draft.StartDay, 1, 30, value => _draft = _draft with { StartDay = value });
         _body.AddChild(new HSeparator());
-        _body.AddChild(new Label { Text = "지도 버전 선택 · 지도 교체 시 삭제된 거점의 배치를 확인하세요" });
+        _body.AddChild(new Label { Text = "시나리오 지도 · root 또는 별도 지도 선택" });
         var choices = new OptionButton();
         var currentIndex = 0;
         for (var i = 0; i < _maps.Count; i++)
         {
             var option = _maps[i];
-            choices.AddItem($"{option.Title} · {option.Revision[..8]} · 거점 {option.Preset.Sites.Count(site => site.Kind is "city" or "port" or "gate")}");
+            choices.AddItem($"{option.Title} · 거점 {option.Preset.Sites.Count(site => site.Kind is "city" or "port" or "gate")}");
             if (option.Id == _draft.MapId && option.Revision == _draft.MapRevision) currentIndex = i;
         }
         choices.Select(currentIndex);
         choices.ItemSelected += index => SwitchMap(_maps[(int)index]);
         _body.AddChild(choices);
         var map = CurrentMap();
-        _body.AddChild(new Label { Text = $"현재: {map.Title} / {map.Revision[..12]}" });
+        _body.AddChild(new Label { Text = $"현재 지도: {map.Title}" });
         var missing = _draft.Generals.Where(g => g.SiteId is { } id && !map.Preset.Sites.Any(site => site.Id == id))
             .Select(g => g.GeneralId).ToArray();
         _body.AddChild(new Label { Text = missing.Length == 0 ? "미배치 오류 없음" : "삭제된 거점의 장수: " + string.Join(", ", missing) });
