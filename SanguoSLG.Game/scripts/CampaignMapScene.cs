@@ -2015,7 +2015,7 @@ public sealed partial class CampaignMapScene : Node3D
         }) _terrainInfo.AddChild(MakeLabel(line, 12, Parchment));
         foreach (var garrison in _state.Garrisons.Where(force => force.City == gate.Id))
         {
-            _terrainInfo.AddChild(MakeLabel($"{garrison.TroopCode} · 병력 {garrison.Troops:N0}",
+            _terrainInfo.AddChild(MakeLabel($"{TroopName(garrison.TroopCode)} · 병력 {garrison.Troops:N0}",
                 11, Parchment));
         }
         var roster = MakeButton("주둔병력현황");
