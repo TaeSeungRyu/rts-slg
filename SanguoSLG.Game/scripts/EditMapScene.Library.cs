@@ -14,7 +14,7 @@ public sealed partial class EditMapScene
         => ProjectSettings.GlobalizePath("user://map-presets/custom");
 
     private static string MapIdFor(string path)
-        => path == RootMapPath() ? "legacy-east-asia" : Path.GetFileNameWithoutExtension(path);
+        => path == RootMapPath() ? "default-east-asia" : Path.GetFileNameWithoutExtension(path);
 
     private void ShowMapLibrary()
     {

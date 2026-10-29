@@ -62,7 +62,7 @@ public sealed partial class EditMapScene
             if (!OS.GetCmdlineUserArgs().Contains("--editmapqa"))
             {
                 if (!File.Exists(RootMapPath())) ScenarioMapPresetStore.Save(RootMapPath(), preset);
-                _activeMapVersion = MapArchive().SaveVersion("legacy-east-asia", "기본 지도", preset);
+                _activeMapVersion = MapArchive().SaveVersion("default-east-asia", "기본 지도", preset);
                 _selectedMapPath = RootMapPath();
             }
         }
@@ -146,7 +146,7 @@ public sealed partial class EditMapScene
                 throw new InvalidDataException($"시나리오가 참조하는 성은 제거할 수 없습니다: {string.Join(", ", protectedCities)}");
             if (!OS.GetCmdlineUserArgs().Contains("--editmapqa"))
                 _activeMapVersion = MapArchive().SaveVersion(
-                    _activeMapVersion?.Id ?? "legacy-east-asia",
+                    _activeMapVersion?.Id ?? "default-east-asia",
                     _activeMapVersion?.Title ?? "기본 지도", draft);
             ScenarioMapPresetStore.Save(path, draft);
             var saved = ScenarioMapPresetStore.Load(path);
@@ -204,7 +204,7 @@ public sealed partial class EditMapScene
             .SelectMany(directory => Directory.EnumerateFiles(directory, "*.json"))
             .Select(ScenarioDraftStore.Load)
             .Where(scenario => (scenario.MapId == id
-                    || id == "legacy-east-asia" && scenario.MapId == "edited-east-asia")
+                    || id == "default-east-asia" && scenario.MapId is "legacy-east-asia" or "edited-east-asia")
                 && (revision is null || scenario.MapRevision == revision))
             .Select(scenario => scenario.Title).Distinct().OrderBy(title => title).ToArray();
     }
