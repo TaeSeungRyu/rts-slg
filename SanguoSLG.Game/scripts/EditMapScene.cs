@@ -106,6 +106,7 @@ public sealed partial class EditMapScene : Control
         BuildInterface();
         CallDeferred(nameof(FitMap));
         if (OS.GetCmdlineUserArgs().Contains("--editmapqa")) CallDeferred(nameof(RunQa));
+        else CallDeferred(nameof(ShowMapLibrary));
     }
 
     private void BuildInterface()

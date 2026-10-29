@@ -19,6 +19,7 @@ public sealed partial class EditMapScene
     private Button? _saveDraftButton;
     private string? _presetLoadError;
     private ScenarioMapVersion? _activeMapVersion;
+    private string? _selectedMapPath;
     private readonly Stack<ScenarioMapPreset> _draftUndo = [];
     private readonly Stack<ScenarioMapPreset> _draftRedo = [];
 
@@ -59,7 +60,11 @@ public sealed partial class EditMapScene
             _sites.AddRange(preset.Sites);
             _nextSiteId = _sites.Count == 0 ? 1 : _sites.Max(site => site.Id) + 1;
             if (!OS.GetCmdlineUserArgs().Contains("--editmapqa"))
-                _activeMapVersion = MapArchive().SaveVersion("legacy-east-asia", "편집한 동아시아 지도", preset);
+            {
+                if (!File.Exists(RootMapPath())) ScenarioMapPresetStore.Save(RootMapPath(), preset);
+                _activeMapVersion = MapArchive().SaveVersion("legacy-east-asia", "root 지도", preset);
+                _selectedMapPath = RootMapPath();
+            }
         }
         catch (Exception error)
         {
@@ -93,9 +98,9 @@ public sealed partial class EditMapScene
         }
     }
 
-    private static string PresetPath() => OS.GetCmdlineUserArgs().Contains("--editmapqa")
+    private string PresetPath() => OS.GetCmdlineUserArgs().Contains("--editmapqa")
         ? Path.Combine(Path.GetTempPath(), $"editmap-qa-{System.Environment.ProcessId}.json")
-        : ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
+        : _selectedMapPath ?? ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
 
     private static ScenarioMapArchive MapArchive() => new(
         ProjectSettings.GlobalizePath("user://maps"),
@@ -142,7 +147,7 @@ public sealed partial class EditMapScene
             if (!OS.GetCmdlineUserArgs().Contains("--editmapqa"))
                 _activeMapVersion = MapArchive().SaveVersion(
                     _activeMapVersion?.Id ?? "legacy-east-asia",
-                    _activeMapVersion?.Title ?? "편집한 동아시아 지도", draft);
+                    _activeMapVersion?.Title ?? "root 지도", draft);
             ScenarioMapPresetStore.Save(path, draft);
             var saved = ScenarioMapPresetStore.Load(path);
             if (saved.Width != draft.Width || saved.Height != draft.Height
@@ -189,7 +194,18 @@ public sealed partial class EditMapScene
 
     private IReadOnlyList<string> ProtectedScenarioNames()
         => _activeMapVersion is { } current
-            ? MapArchive().ReferencingScenarios(current.Id, current.Revision) : [];
+            ? MapScenarioReferences(current.Id, current.Revision) : [];
+
+    private static IReadOnlyList<string> MapScenarioReferences(string id, string? revision = null)
+    {
+        var directories = new[] { ProjectSettings.GlobalizePath("user://scenarios"),
+            ProjectSettings.GlobalizePath("res://assets/scenarios") };
+        return directories.Where(Directory.Exists)
+            .SelectMany(directory => Directory.EnumerateFiles(directory, "*.json"))
+            .Select(ScenarioDraftStore.Load)
+            .Where(scenario => scenario.MapId == id && (revision is null || scenario.MapRevision == revision))
+            .Select(scenario => scenario.Title).Distinct().OrderBy(title => title).ToArray();
+    }
 
     private void AddSaveDraftButton(HBoxContainer bar)
     {
@@ -202,18 +218,9 @@ public sealed partial class EditMapScene
         _saveDraftButton = new Button { Text = "맵 저장", CustomMinimumSize = new Vector2(95, 26) };
         _saveDraftButton.Pressed += ConfirmSaveDraft;
         bar.AddChild(_saveDraftButton);
-        var clone = new Button { Text = "지도 복제", CustomMinimumSize = new Vector2(95, 26) };
-        clone.Pressed += () =>
-        {
-            try
-            {
-                _activeMapVersion = MapArchive().SaveVersion($"user-{Guid.NewGuid():N}",
-                    $"복제 지도 {DateTime.Now:yyyy-MM-dd HH:mm}", Draft());
-                ShowSaveResult("지도 복제 완료", "별도 지도로 복제했습니다. 이후 저장한 버전은 시나리오 에디터에서 선택할 수 있습니다.");
-            }
-            catch (Exception error) { ShowSaveResult("지도 복제 실패", error.Message); }
-        };
-        bar.AddChild(clone);
+        var maps = new Button { Text = "지도 목록", CustomMinimumSize = new Vector2(95, 26) };
+        maps.Pressed += ShowMapLibrary;
+        bar.AddChild(maps);
     }
 
     private static bool IsLand(char code) => code is 'P' or 'F' or 'M' or 'D' or 'B' or 'S' or 'T' or 'N' or 'Q';
