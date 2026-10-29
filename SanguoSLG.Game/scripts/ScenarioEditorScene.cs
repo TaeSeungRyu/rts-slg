@@ -79,21 +79,21 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void LoadMaps()
     {
-        var defaultPath = ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json");
-        _maps.Add(_archive.SaveVersion("default-east-asia", "기본 동아시아",
-            ScenarioMapPresetStore.Load(defaultPath)));
         var edited = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
         if (File.Exists(edited))
         {
             try
             {
-                var version = _archive.SaveVersion("legacy-east-asia", "root 지도",
+                var version = _archive.SaveVersion("legacy-east-asia", "기본 지도 · 현재 편집본",
                     ScenarioMapPresetStore.Load(edited));
                 if (_maps.All(map => map.Id != version.Id || map.Revision != version.Revision))
                     _maps.Add(version);
             }
             catch (Exception error) { GD.PushWarning("편집 지도 가져오기 실패: " + error.Message); }
         }
+        var defaultPath = ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json");
+        _maps.Add(_archive.SaveVersion("default-east-asia", "시나리오 원본 지도",
+            ScenarioMapPresetStore.Load(defaultPath)));
         var custom = ProjectSettings.GlobalizePath("user://map-presets/custom");
         if (!Directory.Exists(custom)) return;
         foreach (var path in Directory.EnumerateFiles(custom, "*.json").Order())
@@ -232,7 +232,7 @@ public sealed partial class ScenarioEditorScene : Control
         AddNumber("월", _draft.StartMonth, 1, 12, value => _draft = _draft with { StartMonth = value });
         AddNumber("일", _draft.StartDay, 1, 30, value => _draft = _draft with { StartDay = value });
         _body.AddChild(new HSeparator());
-        _body.AddChild(new Label { Text = "시나리오 지도 · root 또는 별도 지도 선택" });
+        _body.AddChild(new Label { Text = "시나리오 지도 · 기본 지도 또는 별도 지도 선택" });
         var choices = new OptionButton();
         var currentIndex = 0;
         for (var i = 0; i < _maps.Count; i++)
@@ -246,6 +246,13 @@ public sealed partial class ScenarioEditorScene : Control
         _body.AddChild(choices);
         var map = CurrentMap();
         _body.AddChild(new Label { Text = $"현재 지도: {map.Title}" });
+        var edited = _maps.FirstOrDefault(candidate => candidate.Id == "legacy-east-asia");
+        if (edited is not null && (edited.Id != map.Id || edited.Revision != map.Revision))
+        {
+            var useEdited = new Button { Text = "현재 편집 중인 기본 지도 적용" };
+            useEdited.Pressed += () => SwitchMap(edited);
+            _body.AddChild(useEdited);
+        }
         var missing = _draft.Generals.Where(g => g.SiteId is { } id && !map.Preset.Sites.Any(site => site.Id == id))
             .Select(g => g.GeneralId).ToArray();
         _body.AddChild(new Label { Text = missing.Length == 0 ? "미배치 오류 없음" : "삭제된 거점의 장수: " + string.Join(", ", missing) });
@@ -254,7 +261,9 @@ public sealed partial class ScenarioEditorScene : Control
     private void SwitchMap(ScenarioMapVersion next)
     {
         var previous = CurrentMap().Preset;
-        var sameMapLineage = next.Id == _draft.MapId;
+        var sameMapLineage = next.Id == _draft.MapId
+            || (new[] { "default-east-asia", "legacy-east-asia" }.Contains(next.Id)
+                && new[] { "default-east-asia", "legacy-east-asia" }.Contains(_draft.MapId));
         var oldSiteIds = previous.Sites.Select(site => site.Id).ToHashSet();
         var oldCities = _draft.Cities.ToDictionary(city => city.SiteId);
         var newSites = next.Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate").ToArray();
@@ -575,8 +584,13 @@ public sealed partial class ScenarioEditorScene : Control
             if (otherMap is not null)
             {
                 SwitchMap(otherMap);
-                mapSwitchPassed = _draft.Cities.All(city => city.OwnerFactionId == 0)
-                    && _draft.Generals.All(general => general.SiteId is null);
+                var related = new[] { "default-east-asia", "legacy-east-asia" }.Contains(originalDraft.MapId)
+                    && new[] { "default-east-asia", "legacy-east-asia" }.Contains(otherMap.Id);
+                mapSwitchPassed = related
+                    ? originalDraft.Cities.Where(city => _draft.Cities.Any(next => next.SiteId == city.SiteId))
+                        .All(city => _draft.Cities.First(next => next.SiteId == city.SiteId).OwnerFactionId == city.OwnerFactionId)
+                    : _draft.Cities.All(city => city.OwnerFactionId == 0)
+                        && _draft.Generals.All(general => general.SiteId is null);
                 _draft = originalDraft;
             }
             ShowFactions();
@@ -595,9 +609,14 @@ public sealed partial class ScenarioEditorScene : Control
             {
                 ScenarioDraftStore.Save(path, _draft, map, known);
                 var restored = ScenarioDraftStore.Load(path);
+                var editedPath = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
+                var currentMapSelected = !File.Exists(editedPath)
+                    || (_maps[0].Id == "legacy-east-asia"
+                        && _maps[0].Revision == ScenarioMapArchive.RevisionOf(
+                            ScenarioMapPresetStore.Load(editedPath)));
                 var passed = bundled.Length == 6 && _list.ItemCount >= 6
                     && factionColorUi && cityMapUi && generalSearchUi && forceInputUi
-                    && errors.Count == 0 && mapSwitchPassed
+                    && errors.Count == 0 && mapSwitchPassed && currentMapSelected
                     && restored.MapRevision == _draft.MapRevision
                     && restored.Cities.Count == _draft.Cities.Count;
                 GD.Print($"[scenario-editor-qa] passed={passed} maps={_maps.Count} cities={_draft.Cities.Count} errors={errors.Count}");
