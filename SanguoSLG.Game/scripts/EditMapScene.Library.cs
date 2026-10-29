@@ -26,7 +26,7 @@ public sealed partial class EditMapScene
         var center = new CenterContainer();
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         overlay.AddChild(center);
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(680, 460) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(850, 460) };
         panel.AddThemeStyleboxOverride("panel", PanelStyle());
         center.AddChild(panel);
         var content = new VBoxContainer();
@@ -38,8 +38,10 @@ public sealed partial class EditMapScene
         close.Pressed += CloseMapLibrary;
         header.AddChild(close);
         content.AddChild(header);
-        content.AddChild(new Label { Text = "root는 원본 편집 지도입니다. 복제하거나 새 지도를 추가해 별도로 관리할 수 있습니다." });
-        var list = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        content.AddChild(new Label { Text = "기본 지도를 수정하거나 복제하여 시나리오별 지도를 관리할 수 있습니다." });
+        var list = new GridContainer { Columns = 5, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        foreach (var heading in new[] { "지도", "크기", "거점", "시나리오 사용", "작업" })
+            list.AddChild(new Label { Text = heading, ThemeTypeVariation = "HeaderSmall" });
         var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         scroll.AddChild(list);
         content.AddChild(scroll);
@@ -55,29 +57,36 @@ public sealed partial class EditMapScene
             catch (Exception error)
             {
                 list.AddChild(new Label { Text = Path.GetFileName(path) + ": " + error.Message });
+                for (var column = 1; column < 5; column++) list.AddChild(new Control());
                 continue;
             }
-            var row = new HBoxContainer();
-            list.AddChild(row);
-            var title = path == RootMapPath() ? "root · 원본 지도"
+            for (var column = 0; column < 5; column++) list.AddChild(new HSeparator());
+            var title = path == RootMapPath() ? "기본 지도"
                 : MapArchive().SaveVersion(MapIdFor(path), Path.GetFileNameWithoutExtension(path), preset).Title;
-            row.AddChild(new Label
+            list.AddChild(new Label
             {
                 Text = title,
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                CustomMinimumSize = new Vector2(250, 0),
                 TooltipText = $"{preset.Width}×{preset.Height} · 거점 {preset.Sites.Count(site => site.Kind is "city" or "port" or "gate")}\n{path}",
             });
+            list.AddChild(new Label { Text = $"{preset.Width} × {preset.Height}" });
+            list.AddChild(new Label { Text = preset.Sites.Count(site => site.Kind is "city" or "port" or "gate").ToString() });
+            var references = MapScenarioReferences(MapIdFor(path));
+            list.AddChild(new Label { Text = references.Count == 0 ? "없음" : $"{references.Count}개" });
+            var actions = new HBoxContainer();
+            list.AddChild(actions);
             var edit = new Button { Text = "수정" };
             edit.Pressed += () => LoadSelectedMap(path, preset);
-            row.AddChild(edit);
+            actions.AddChild(edit);
             var clone = new Button { Text = "복제" };
             clone.Pressed += () => CreateMapCopy(preset);
-            row.AddChild(clone);
+            actions.AddChild(clone);
             var remove = new Button { Text = "삭제", Disabled = path == RootMapPath() };
             remove.Pressed += () => ConfirmDeleteMap(path);
-            row.AddChild(remove);
+            actions.AddChild(remove);
         }
-        var add = new Button { Text = "새 지도 추가 · root에서 시작" };
+        var add = new Button { Text = "새 지도 추가 · 기본 지도에서 시작" };
         add.Pressed += () => CreateMapCopy(ScenarioMapPresetStore.Load(RootMapPath()));
         content.AddChild(add);
     }
@@ -91,7 +100,7 @@ public sealed partial class EditMapScene
     private void LoadSelectedMap(string path, ScenarioMapPreset preset, string? title = null)
     {
         var version = MapArchive().SaveVersion(MapIdFor(path),
-            title ?? (path == RootMapPath() ? "root 지도" : Path.GetFileNameWithoutExtension(path)), preset);
+            title ?? (path == RootMapPath() ? "기본 지도" : Path.GetFileNameWithoutExtension(path)), preset);
         _selectedMapPath = path;
         _activeMapVersion = version;
         _width = preset.Width;

@@ -62,7 +62,7 @@ public sealed partial class EditMapScene
             if (!OS.GetCmdlineUserArgs().Contains("--editmapqa"))
             {
                 if (!File.Exists(RootMapPath())) ScenarioMapPresetStore.Save(RootMapPath(), preset);
-                _activeMapVersion = MapArchive().SaveVersion("legacy-east-asia", "root 지도", preset);
+                _activeMapVersion = MapArchive().SaveVersion("legacy-east-asia", "기본 지도", preset);
                 _selectedMapPath = RootMapPath();
             }
         }
@@ -147,7 +147,7 @@ public sealed partial class EditMapScene
             if (!OS.GetCmdlineUserArgs().Contains("--editmapqa"))
                 _activeMapVersion = MapArchive().SaveVersion(
                     _activeMapVersion?.Id ?? "legacy-east-asia",
-                    _activeMapVersion?.Title ?? "root 지도", draft);
+                    _activeMapVersion?.Title ?? "기본 지도", draft);
             ScenarioMapPresetStore.Save(path, draft);
             var saved = ScenarioMapPresetStore.Load(path);
             if (saved.Width != draft.Width || saved.Height != draft.Height
