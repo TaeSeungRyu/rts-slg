@@ -19,6 +19,7 @@ public sealed partial class ScenarioEditorScene : Control
     private string _nativeLastText = "";
     private int _selectedCityId;
     private int _selectedForceCityId;
+    private string _generalSearch = "";
 
     public override void _Ready()
     {
@@ -371,11 +372,28 @@ public sealed partial class ScenarioEditorScene : Control
         var map = CurrentMap().Preset;
         var names = _source.Generals.ToDictionary(g => g.Id.Value, g => g.Name);
         _body.AddChild(new Label { Text = "장수 소속과 주둔 거점 · 군주는 소속 세력의 성에 배치해야 저장할 수 있습니다" });
+        var search = new LineEdit { PlaceholderText = "장수 이름 검색", Text = _generalSearch };
+        _body.AddChild(search);
+        var heading = new HBoxContainer();
+        heading.AddChild(new Label { Text = "장수", CustomMinimumSize = new Vector2(160, 0) });
+        heading.AddChild(new Label { Text = "소속 세력", CustomMinimumSize = new Vector2(160, 0) });
+        heading.AddChild(new Label { Text = "주둔 거점", CustomMinimumSize = new Vector2(200, 0) });
+        _body.AddChild(heading);
+        _body.AddChild(new HSeparator());
+        var rows = new List<(PanelContainer Panel, string Name)>();
         foreach (var general in _draft.Generals)
         {
-            var row = new HBoxContainer(); _body.AddChild(row);
-            row.AddChild(new Label { Text = names.GetValueOrDefault(general.GeneralId, general.GeneralId.ToString()), CustomMinimumSize = new Vector2(120, 0) });
-            var faction = new OptionButton { CustomMinimumSize = new Vector2(140, 0) };
+            var name = names.GetValueOrDefault(general.GeneralId, general.GeneralId.ToString());
+            var panel = new PanelContainer { Visible = name.Contains(_generalSearch, StringComparison.OrdinalIgnoreCase) };
+            var style = new StyleBoxFlat { BgColor = new Color("26312d"), BorderColor = new Color("746947") };
+            style.SetBorderWidthAll(1);
+            style.SetContentMarginAll(4);
+            panel.AddThemeStyleboxOverride("panel", style);
+            _body.AddChild(panel);
+            rows.Add((panel, name));
+            var row = new HBoxContainer(); panel.AddChild(row);
+            row.AddChild(new Label { Text = name, CustomMinimumSize = new Vector2(160, 0) });
+            var faction = new OptionButton { CustomMinimumSize = new Vector2(160, 0) };
             foreach (var entry in _draft.Factions) faction.AddItem(entry.Name, entry.Id);
             faction.Select(Math.Max(0, faction.GetItemIndex(general.FactionId)));
             faction.ItemSelected += index =>
@@ -384,7 +402,7 @@ public sealed partial class ScenarioEditorScene : Control
                 ShowGenerals();
             };
             row.AddChild(faction);
-            var site = new OptionButton { CustomMinimumSize = new Vector2(160, 0) };
+            var site = new OptionButton { CustomMinimumSize = new Vector2(200, 0) };
             site.AddItem("미배치", 0);
             foreach (var city in _draft.Cities.Where(c => c.OwnerFactionId == general.FactionId))
             {
@@ -395,6 +413,11 @@ public sealed partial class ScenarioEditorScene : Control
             site.ItemSelected += index => UpdateGeneral(general.GeneralId, g => g with { SiteId = site.GetItemId((int)index) is 0 ? null : site.GetItemId((int)index) });
             row.AddChild(site);
         }
+        search.TextChanged += value =>
+        {
+            _generalSearch = value;
+            foreach (var (panel, name) in rows) panel.Visible = name.Contains(value, StringComparison.OrdinalIgnoreCase);
+        };
         _body.AddChild(new HSeparator());
         _body.AddChild(new Label { Text = "미배치 장수 추가" });
         var available = _source.Generals.Where(g => _draft.Generals.All(entry => entry.GeneralId != g.Id.Value)).OrderBy(g => g.Name).ToArray();
