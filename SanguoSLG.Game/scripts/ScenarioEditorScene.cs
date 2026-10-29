@@ -324,7 +324,7 @@ public sealed partial class ScenarioEditorScene : Control
     {
         ClearBody();
         var generals = _source.Generals.OrderBy(g => g.Name).ToArray();
-        _body.AddChild(new Label { Text = "세력 이름, 군주, 시작 가능 여부" });
+        _body.AddChild(new Label { Text = "세력 이름, 군주, 세력 색, 시작 가능 여부" });
         foreach (var faction in _draft.Factions)
         {
             var row = new HBoxContainer(); _body.AddChild(row);
@@ -339,6 +339,15 @@ public sealed partial class ScenarioEditorScene : Control
             ruler.Select(Math.Max(0, ruler.GetItemIndex(faction.RulerGeneralId)));
             ruler.ItemSelected += index => UpdateFaction(faction.Id, f => f with { RulerGeneralId = ruler.GetItemId((int)index) });
             row.AddChild(ruler);
+            var color = new ColorPickerButton
+            {
+                Color = new Color(faction.Color),
+                CustomMinimumSize = new Vector2(72, 32),
+                TooltipText = faction.Name + " 세력 색 선택",
+            };
+            color.ColorChanged += value => UpdateFaction(faction.Id,
+                current => current with { Color = "#" + value.ToHtml(false) });
+            row.AddChild(color);
             var playable = new CheckBox { Text = "시작 가능", ButtonPressed = faction.Playable };
             playable.Toggled += value => UpdateFaction(faction.Id, f => f with { Playable = value });
             row.AddChild(playable);
@@ -571,6 +580,7 @@ public sealed partial class ScenarioEditorScene : Control
                 _draft = originalDraft;
             }
             ShowFactions();
+            var factionColorUi = _body.FindChildren("*", "ColorPickerButton", true, false).Count > 0;
             ShowCities();
             var cityMapUi = _body.GetChildren().OfType<ScenarioSiteMap>().Any();
             ShowGenerals();
@@ -586,7 +596,7 @@ public sealed partial class ScenarioEditorScene : Control
                 ScenarioDraftStore.Save(path, _draft, map, known);
                 var restored = ScenarioDraftStore.Load(path);
                 var passed = bundled.Length == 6 && _list.ItemCount >= 6
-                    && cityMapUi && generalSearchUi && forceInputUi
+                    && factionColorUi && cityMapUi && generalSearchUi && forceInputUi
                     && errors.Count == 0 && mapSwitchPassed
                     && restored.MapRevision == _draft.MapRevision
                     && restored.Cities.Count == _draft.Cities.Count;
