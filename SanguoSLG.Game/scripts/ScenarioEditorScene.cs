@@ -17,6 +17,7 @@ public sealed partial class ScenarioEditorScene : Control
     private LineEdit? _nativePlaceholder;
     private Action<string>? _nativeUpdate;
     private string _nativeLastText = "";
+    private int _selectedCityId;
 
     public override void _Ready()
     {
@@ -280,26 +281,41 @@ public sealed partial class ScenarioEditorScene : Control
     {
         ClearBody();
         var map = CurrentMap().Preset;
-        _body.AddChild(new Label { Text = "거점 소유와 시작 자원 · 변경 즉시 초안에 반영됩니다" });
-        var factionNames = _draft.Factions.ToDictionary(f => f.Id, f => f.Name);
-        foreach (var city in _draft.Cities)
+        _body.AddChild(new Label { Text = "지도에서 거점을 선택하세요. 색은 시작 소유 세력을 나타냅니다." });
+        if (!_draft.Cities.Any(city => city.SiteId == _selectedCityId))
+            _selectedCityId = _draft.Cities.FirstOrDefault()?.SiteId ?? 0;
+        _body.AddChild(new ScenarioSiteMap(map, _draft.Cities, _draft.Factions,
+            _selectedCityId, id => { _selectedCityId = id; ShowCities(); }));
+        var city = _draft.Cities.FirstOrDefault(city => city.SiteId == _selectedCityId);
+        var site = map.Sites.FirstOrDefault(site => site.Id == _selectedCityId);
+        if (city is null || site is null) return;
+        _body.AddChild(new HSeparator());
+        _body.AddChild(new Label { Text = $"{site.Name} · {(site.Kind == "port" ? "항구" : site.Kind == "gate" ? "관문" : "성")}" });
+        var owner = new OptionButton();
+        owner.AddItem("중립", 0);
+        foreach (var faction in _draft.Factions) owner.AddItem(faction.Name, faction.Id);
+        owner.Select(Math.Max(0, owner.GetItemIndex(city.OwnerFactionId)));
+        owner.ItemSelected += index =>
         {
-            var site = map.Sites.FirstOrDefault(site => site.Id == city.SiteId);
-            if (site is null) continue;
-            var row = new HBoxContainer();
-            _body.AddChild(row);
-            row.AddChild(new Label { Text = site.Name + " (" + site.Kind + ")", CustomMinimumSize = new Vector2(120, 0) });
-            var owner = new OptionButton { CustomMinimumSize = new Vector2(135, 0) };
-            owner.AddItem("중립", 0);
-            foreach (var faction in _draft.Factions) owner.AddItem(faction.Name, faction.Id);
-            owner.Select(Math.Max(0, owner.GetItemIndex(city.OwnerFactionId)));
-            owner.ItemSelected += index => UpdateCity(city.SiteId, c => c with { OwnerFactionId = owner.GetItemId((int)index) });
-            row.AddChild(owner);
-            AddCompactNumber(row, "금", city.Gold, 0, 10000000, value => UpdateCity(city.SiteId, c => c with { Gold = value }));
-            AddCompactNumber(row, "군량", city.Provisions, 0, 10000000, value => UpdateCity(city.SiteId, c => c with { Provisions = value }));
-            AddCompactNumber(row, "성벽", city.Wall, 0, 1000000, value => UpdateCity(city.SiteId, c => c with { Wall = value }));
-            AddCompactNumber(row, "치안", city.Security, 0, 100, value => UpdateCity(city.SiteId, c => c with { Security = value }));
-        }
+            var newOwner = owner.GetItemId((int)index);
+            UpdateCity(city.SiteId, current => current with
+            {
+                OwnerFactionId = newOwner,
+                Garrisons = newOwner == 0 ? [] : current.Garrisons,
+                Ships = newOwner == 0 ? [] : current.Ships,
+            });
+            _draft = _draft with { Generals = _draft.Generals.Select(general =>
+                general.SiteId == city.SiteId && general.FactionId != newOwner
+                    ? general with { SiteId = null } : general).ToArray() };
+            ShowCities();
+        };
+        _body.AddChild(owner);
+        var resources = new HBoxContainer();
+        _body.AddChild(resources);
+        AddCompactNumber(resources, "금", city.Gold, 0, 10000000, value => UpdateCity(city.SiteId, c => c with { Gold = value }));
+        AddCompactNumber(resources, "군량", city.Provisions, 0, 10000000, value => UpdateCity(city.SiteId, c => c with { Provisions = value }));
+        AddCompactNumber(resources, "성벽", city.Wall, 0, 1000000, value => UpdateCity(city.SiteId, c => c with { Wall = value }));
+        AddCompactNumber(resources, "치안", city.Security, 0, 100, value => UpdateCity(city.SiteId, c => c with { Security = value }));
     }
 
     private void ShowFactions()
