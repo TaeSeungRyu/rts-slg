@@ -60,6 +60,11 @@ internal sealed class AiTestFixture
         }).ToList();
     }
 
+    public static AiTestFixture FromScenario(Scenario scenario) => new(
+        scenario.Map, scenario.Factions, scenario.Cities, scenario.PostingList,
+        scenario.InitialGarrisons ?? [], scenario.InitialShips ?? [], scenario.RuinList,
+        fullVision: false);
+
     public static AiTestFixture Load()
     {
         var path = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"),

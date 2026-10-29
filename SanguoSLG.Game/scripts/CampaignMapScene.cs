@@ -21,7 +21,7 @@ public sealed partial class CampaignMapScene : Node3D
 {
     private static readonly Color Blue = new(0.24f, 0.44f, 0.86f);
     private static readonly Color Red = new(0.82f, 0.22f, 0.18f);
-    private static readonly FactionId Player = new(1); // 위 = 플레이어, 나머지는 AI
+    private static FactionId Player = new(1); // 선택한 세력 = 플레이어, 나머지는 AI
 
     // 삼국지풍 팔레트(칠기 흑갈 바탕 + 주홍 강조 + 금테 + 양피지 글자).
     private static readonly Color Ink = new(0.10f, 0.055f, 0.05f, 0.97f);    // 패널 바탕(짙은 칠기 흑갈)
@@ -550,7 +550,7 @@ public sealed partial class CampaignMapScene : Node3D
 
         _commander = new CommandService(_cb, _troops, _balance, _adminSkills);
         _deployer = new DeployService(_cb, _troops, actives, passives, _adminSkills, _balance);
-        var scenario = CreatedGeneralPresets.ApplyAtNewGame(
+        var scenario = _scenarioOverride ?? CreatedGeneralPresets.ApplyAtNewGame(
             new ScenarioLoader().LoadFromDirectory(dataDirectory));
         _passability = new PassabilityMap(_map, [], _cities,
             (_aiTestFixture?.Ruins ?? scenario.RuinList).Select(r => r.Position));
@@ -651,7 +651,8 @@ public sealed partial class CampaignMapScene : Node3D
         var campaignGenerals = GeneralDataLayers.CreateCampaign(scenario.Generals, generalPreset);
         _state = _initial with
         {
-            StartYear = 190,
+            StartYear = _scenarioOverride is null ? 190 : _scenarioStartYear,
+            Day = _scenarioOverride is null ? 1 : _scenarioStartDay,
             Factions = _aiTestFixture?.Factions ?? scenario.Factions,
             Cities = _cities.ToList(),
             Generals = campaignGenerals,
@@ -668,6 +669,7 @@ public sealed partial class CampaignMapScene : Node3D
             RuinDefinitions = _aiTestFixture?.Ruins ?? scenario.RuinList,
             RuinStates = (_aiTestFixture?.Ruins ?? scenario.RuinList)
                 .Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
+            MapPresetSnapshot = _scenarioOverride?.MapPreset?.Snapshot() ?? _initial.MapPresetSnapshot,
         };
         if (_aiTestFixture is not null && !args.Contains("--newmap")) SeedAiTestConstructionBuilders();
         if (args.Contains("--maptest") && _aiTestFixture is null)
@@ -918,6 +920,7 @@ public sealed partial class CampaignMapScene : Node3D
     public override void _ExitTree()
     {
         if (_aiTestFixture is not null) Engine.TimeScale = 1.0;
+        if (ScenarioStartMenu.LoadSlotsOnStart) CallDeferred(nameof(OpenLoadSlotList));
         ReleaseRuntimeUiResources();
     }
 
@@ -3830,10 +3833,26 @@ public sealed partial class CampaignMapScene : Node3D
     }
 
     // ── 테스트 시나리오: 지형 다양 맵, 위(성 1) vs 촉(성 2 — 성도·한중) ──
+    private static Scenario? _scenarioOverride;
+    private static int _scenarioStartYear = 190;
+    private static int _scenarioStartDay = 1;
     private static AiTestFixture? _aiTestFixture = OS.GetCmdlineUserArgs().Contains("--newmap")
         ? AiTestFixture.LoadNewMap()
         : OS.GetCmdlineUserArgs().Contains("--aitest") ? AiTestFixture.Load() : null;
     private static HexMap _map = _aiTestFixture?.Map ?? BuildTestMap();
+
+    public static void ConfigureScenario(Scenario scenario, int playerFactionId, int startYear,
+        int startMonth, int startDay)
+    {
+        _scenarioOverride = scenario;
+        Player = new FactionId(playerFactionId);
+        _scenarioStartYear = startYear;
+        _scenarioStartDay = (startMonth - 1) * 30 + startDay;
+        _aiTestFixture = AiTestFixture.FromScenario(scenario);
+        _map = scenario.Map;
+        _cities = scenario.Cities;
+        _initial = _initial with { Cities = scenario.Cities.ToList() };
+    }
 
     public static void ReloadNewMapFixture()
     {

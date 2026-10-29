@@ -25,16 +25,64 @@ public partial class GameRoot3D : Node3D
     private double _newMapPoll;
     private bool _newMapReloading;
     private bool _shuttingDown;
+    private bool _menuCampaign;
 
     public override void _Ready()
     {
         GetTree().AutoAcceptQuit = false;
 
+        if (OS.GetCmdlineUserArgs().Contains("--scenariointegrationqa"))
+        {
+            RunScenarioIntegrationQa();
+            return;
+        }
+
+        var launchFromMenu = ScenarioStartMenu.ConsumeLaunchRequest();
+
         if (OS.GetCmdlineArgs().Length == 0 &&
             (OS.GetCmdlineUserArgs().Length == 0 || OS.GetCmdlineUserArgs().Contains("--startmenuqa"))
-            && !ScenarioStartMenu.ConsumeLaunchRequest())
+            && !launchFromMenu)
         {
             AddChild(new ScenarioStartMenu());
+            return;
+        }
+
+        if (launchFromMenu)
+        {
+            _menuCampaign = true;
+            try
+            {
+                var data = FindDataDirectory();
+                var source = CreatedGeneralPresets.ApplyAtNewGame(
+                    new ScenarioLoader().LoadFromDirectory(data));
+                var archive = new ScenarioMapArchive(ProjectSettings.GlobalizePath("user://maps"),
+                    ProjectSettings.GlobalizePath("user://scenarios"));
+                ScenarioDraft draft;
+                ScenarioMapVersion map;
+                if (ScenarioStartMenu.SelectedScenarioPath is { } scenarioPath)
+                {
+                    draft = ScenarioDraftStore.Load(scenarioPath);
+                    map = archive.Load(draft.MapId, draft.MapRevision);
+                }
+                else
+                {
+                    var presetPath = ScenarioStartMenu.SelectedPresetPath ??
+                        ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json");
+                    var edited = ScenarioStartMenu.SelectedPresetPath is not null;
+                    map = archive.SaveVersion(edited ? "edited-east-asia" : "default-east-asia",
+                        edited ? "편집한 동아시아" : "기본 동아시아", ScenarioMapPresetStore.Load(presetPath));
+                    draft = ScenarioDraftApplier.CreateSeed("default-190", "190년 기본", source, map);
+                }
+                var selectedScenario = ScenarioDraftApplier.Apply(source, draft, map.Preset);
+                CampaignMapScene.ConfigureScenario(selectedScenario, ScenarioStartMenu.SelectedPlayerFactionId,
+                    draft.StartYear, draft.StartMonth, draft.StartDay);
+                BuildCampaignMap();
+            }
+            catch (Exception error)
+            {
+                GD.PushError("시나리오 시작 실패: " + error.Message);
+                AddChild(new ScenarioStartMenu());
+            }
             return;
         }
 
@@ -350,7 +398,7 @@ public partial class GameRoot3D : Node3D
 
         var camera = new CameraController3D { Fov = 55f };
         AddChild(camera);
-        if (OS.GetCmdlineUserArgs().Contains("--aitest")
+        if (_menuCampaign || OS.GetCmdlineUserArgs().Contains("--aitest")
             || OS.GetCmdlineUserArgs().Contains("--newmap"))
         {
             var (center, radius) = MapBounds(mapView, CampaignMapScene.TestMap);
@@ -363,6 +411,30 @@ public partial class GameRoot3D : Node3D
         var scene = new CampaignMapScene();
         AddChild(scene);
         scene.Build(mapView, camera, FindDataDirectory());
+    }
+
+    private void RunScenarioIntegrationQa()
+    {
+        try
+        {
+            var source = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
+            var map = ScenarioMapPresetStore.Load(ProjectSettings.GlobalizePath(
+                "res://assets/maps/east-asia-user-preset.json"));
+            var archive = new ScenarioMapArchive(ProjectSettings.GlobalizePath("user://maps"),
+                ProjectSettings.GlobalizePath("user://scenarios"));
+            var version = archive.SaveVersion("default-east-asia", "기본 동아시아", map);
+            var draft = ScenarioDraftApplier.CreateSeed("default-190", "190년 기본", source, version);
+            var scenario = ScenarioDraftApplier.Apply(source, draft, map);
+            CampaignMapScene.ConfigureScenario(scenario, 1, draft.StartYear, draft.StartMonth, draft.StartDay);
+            var passed = ReferenceEquals(CampaignMapScene.TestMap, scenario.Map);
+            GD.Print($"[scenario-integration-qa] passed={passed} cities={scenario.Cities.Count} factions={scenario.Factions.Count}");
+            GetTree().Quit(passed ? 0 : 1);
+        }
+        catch (Exception error)
+        {
+            GD.PushError("[scenario-integration-qa] " + error);
+            GetTree().Quit(1);
+        }
     }
 
     // 이동 시뮬레이션 GUI 검증 씬(doc/test/movement-cases.md). 평지 맵 위에서
