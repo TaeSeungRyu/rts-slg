@@ -19,6 +19,7 @@ public sealed partial class ScenarioEditorScene : Control
     private string _nativeLastText = "";
     private int _selectedCityId;
     private int _selectedForceCityId;
+    private int _selectedGeneralCityId;
     private string _generalSearch = "";
 
     public override void _Ready()
@@ -395,68 +396,94 @@ public sealed partial class ScenarioEditorScene : Control
         ClearBody();
         var map = CurrentMap().Preset;
         var names = _source.Generals.ToDictionary(g => g.Id.Value, g => g.Name);
-        _body.AddChild(new Label { Text = "장수 소속과 주둔 거점 · 군주는 소속 세력의 성에 배치해야 저장할 수 있습니다" });
-        var search = new LineEdit { PlaceholderText = "장수 이름 검색", Text = _generalSearch };
-        _body.AddChild(search);
-        var heading = new HBoxContainer();
-        heading.AddChild(new Label { Text = "장수", CustomMinimumSize = new Vector2(160, 0) });
-        heading.AddChild(new Label { Text = "소속 세력", CustomMinimumSize = new Vector2(160, 0) });
-        heading.AddChild(new Label { Text = "주둔 거점", CustomMinimumSize = new Vector2(200, 0) });
-        _body.AddChild(heading);
-        _body.AddChild(new HSeparator());
-        var rows = new List<(PanelContainer Panel, string Name)>();
-        foreach (var general in _draft.Generals)
+        var owned = _draft.Cities.Where(city => city.OwnerFactionId > 0
+            && map.Sites.Any(site => site.Id == city.SiteId))
+            .OrderBy(city => _draft.Factions.FirstOrDefault(faction => faction.Id == city.OwnerFactionId)?.Name)
+            .ThenBy(city => map.Sites.First(site => site.Id == city.SiteId).Name).ToArray();
+        _body.AddChild(new Label { Text = "먼저 세력 거점을 고른 뒤 장수를 등록·이동·제거하세요." });
+        if (owned.Length == 0)
         {
-            var name = names.GetValueOrDefault(general.GeneralId, general.GeneralId.ToString());
-            var panel = new PanelContainer { Visible = name.Contains(_generalSearch, StringComparison.OrdinalIgnoreCase) };
-            var style = new StyleBoxFlat { BgColor = new Color("26312d"), BorderColor = new Color("746947") };
-            style.SetBorderWidthAll(1);
-            style.SetContentMarginAll(4);
-            panel.AddThemeStyleboxOverride("panel", style);
-            _body.AddChild(panel);
-            rows.Add((panel, name));
-            var row = new HBoxContainer(); panel.AddChild(row);
-            row.AddChild(new Label { Text = name, CustomMinimumSize = new Vector2(160, 0) });
-            var faction = new OptionButton { CustomMinimumSize = new Vector2(160, 0) };
-            foreach (var entry in _draft.Factions) faction.AddItem(entry.Name, entry.Id);
-            faction.Select(Math.Max(0, faction.GetItemIndex(general.FactionId)));
-            faction.ItemSelected += index =>
-            {
-                UpdateGeneral(general.GeneralId, g => g with { FactionId = faction.GetItemId((int)index), SiteId = null });
-                ShowGenerals();
-            };
-            row.AddChild(faction);
-            var site = new OptionButton { CustomMinimumSize = new Vector2(200, 0) };
-            site.AddItem("미배치", 0);
-            foreach (var city in _draft.Cities.Where(c => c.OwnerFactionId == general.FactionId))
-            {
-                var place = map.Sites.FirstOrDefault(s => s.Id == city.SiteId);
-                if (place is not null) site.AddItem(place.Name, city.SiteId);
-            }
-            site.Select(Math.Max(0, site.GetItemIndex(general.SiteId ?? 0)));
-            site.ItemSelected += index => UpdateGeneral(general.GeneralId, g => g with { SiteId = site.GetItemId((int)index) is 0 ? null : site.GetItemId((int)index) });
-            row.AddChild(site);
+            _body.AddChild(new Label { Text = "세력·거점 탭에서 소유 거점을 먼저 지정하세요." });
+            return;
         }
-        search.TextChanged += value =>
+        if (owned.All(city => city.SiteId != _selectedGeneralCityId))
+            _selectedGeneralCityId = owned[0].SiteId;
+        var cityList = new ItemList { CustomMinimumSize = new Vector2(0, 175),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        foreach (var city in owned)
         {
-            _generalSearch = value;
-            foreach (var (panel, name) in rows) panel.Visible = name.Contains(value, StringComparison.OrdinalIgnoreCase);
-        };
-        _body.AddChild(new HSeparator());
-        _body.AddChild(new Label { Text = "미배치 장수 추가" });
-        var available = _source.Generals.Where(g => _draft.Generals.All(entry => entry.GeneralId != g.Id.Value)).OrderBy(g => g.Name).ToArray();
-        if (available.Length == 0 || _draft.Factions.Count == 0) return;
-        var selection = new OptionButton();
-        foreach (var general in available) selection.AddItem(general.Name, general.Id.Value);
-        _body.AddChild(selection);
-        var add = new Button { Text = "선택 장수 추가" };
-        add.Pressed += () =>
+            var factionName = _draft.Factions.First(faction => faction.Id == city.OwnerFactionId).Name;
+            var siteName = map.Sites.First(site => site.Id == city.SiteId).Name;
+            var count = _draft.Generals.Count(general => general.SiteId == city.SiteId);
+            cityList.AddItem($"{factionName} · {siteName} · 장수 {count}명");
+        }
+        cityList.Select(Array.FindIndex(owned, city => city.SiteId == _selectedGeneralCityId));
+        cityList.ItemSelected += index =>
         {
-            _draft = _draft with { Generals = [.. _draft.Generals,
-                new ScenarioGeneralEntry(selection.GetSelectedId(), _draft.Factions[0].Id, null)] };
+            _selectedGeneralCityId = owned[(int)index].SiteId;
             ShowGenerals();
         };
-        _body.AddChild(add);
+        _body.AddChild(cityList);
+        var selected = owned.First(city => city.SiteId == _selectedGeneralCityId);
+        var selectedName = map.Sites.First(site => site.Id == selected.SiteId).Name;
+        _body.AddChild(new HSeparator());
+        _body.AddChild(new Label { Text = selectedName + " 주둔 장수" });
+        var table = new GridContainer { Columns = 3, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _body.AddChild(table);
+        foreach (var heading in new[] { "장수", "이동할 거점", "배치" }) table.AddChild(new Label { Text = heading });
+        foreach (var general in _draft.Generals.Where(general => general.SiteId == selected.SiteId).ToArray())
+        {
+            table.AddChild(new Label { Text = names.GetValueOrDefault(general.GeneralId, general.GeneralId.ToString()),
+                CustomMinimumSize = new Vector2(170, 0) });
+            var destination = new OptionButton { CustomMinimumSize = new Vector2(190, 0) };
+            foreach (var city in owned.Where(city => city.OwnerFactionId == selected.OwnerFactionId))
+                destination.AddItem(map.Sites.First(site => site.Id == city.SiteId).Name, city.SiteId);
+            destination.Select(destination.GetItemIndex(selected.SiteId));
+            destination.ItemSelected += index =>
+            {
+                UpdateGeneral(general.GeneralId, current => current with { SiteId = destination.GetItemId((int)index) });
+                ShowGenerals();
+            };
+            table.AddChild(destination);
+            var remove = new Button { Text = "제거" };
+            remove.Pressed += () =>
+            {
+                _draft = _draft with { Generals = _draft.Generals
+                    .Where(current => current.GeneralId != general.GeneralId).ToArray() };
+                ShowGenerals();
+            };
+            table.AddChild(remove);
+        }
+        _body.AddChild(new HSeparator());
+        _body.AddChild(new Label { Text = "장수 등록 · 다른 거점의 장수도 이곳으로 이동할 수 있습니다." });
+        var search = new LineEdit { PlaceholderText = "장수 이름 검색", Text = _generalSearch };
+        _body.AddChild(search);
+        var addRow = new HBoxContainer();
+        _body.AddChild(addRow);
+        var selection = new OptionButton { CustomMinimumSize = new Vector2(240, 0) };
+        addRow.AddChild(selection);
+        void FillAvailable(string query)
+        {
+            selection.Clear();
+            foreach (var general in _source.Generals.Where(general => general.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
+                && _draft.Generals.All(current => current.GeneralId != general.Id.Value
+                    || current.SiteId != selected.SiteId)).OrderBy(general => general.Name))
+                selection.AddItem(general.Name, general.Id.Value);
+        }
+        FillAvailable(_generalSearch);
+        search.TextChanged += value => { _generalSearch = value; FillAvailable(value); };
+        var add = new Button { Text = "선택 장수 등록" };
+        add.Pressed += () =>
+        {
+            if (selection.ItemCount == 0) return;
+            var id = selection.GetSelectedId();
+            if (_draft.Generals.Any(general => general.GeneralId == id))
+                UpdateGeneral(id, general => general with { FactionId = selected.OwnerFactionId, SiteId = selected.SiteId });
+            else _draft = _draft with { Generals = [.. _draft.Generals,
+                new ScenarioGeneralEntry(id, selected.OwnerFactionId, selected.SiteId)] };
+            ShowGenerals();
+        };
+        addRow.AddChild(add);
     }
 
     private void ShowForces()
@@ -669,6 +696,25 @@ public sealed partial class ScenarioEditorScene : Control
             ShowGenerals();
             var generalSearchUi = _body.GetChildren().OfType<LineEdit>()
                 .Any(field => field.PlaceholderText == "장수 이름 검색");
+            var generalCityListUi = _body.GetChildren().OfType<ItemList>().Any();
+            var generalCrudPassed = false;
+            var generalCity = _draft.Cities.FirstOrDefault(city => city.OwnerFactionId > 0);
+            if (generalCity is not null)
+            {
+                _selectedGeneralCityId = generalCity.SiteId;
+                ShowGenerals();
+                var before = _draft.Generals.Count(general => general.SiteId == generalCity.SiteId);
+                var addGeneral = _body.FindChildren("*", "Button", true, false).OfType<Button>()
+                    .FirstOrDefault(button => button.Text == "선택 장수 등록");
+                addGeneral?.EmitSignal(Button.SignalName.Pressed);
+                var after = _draft.Generals.Count(general => general.SiteId == generalCity.SiteId);
+                var removeGeneral = _body.FindChildren("*", "Button", true, false).OfType<Button>()
+                    .FirstOrDefault(button => button.Text == "제거");
+                removeGeneral?.EmitSignal(Button.SignalName.Pressed);
+                generalCrudPassed = after == before + 1
+                    && _draft.Generals.Count(general => general.SiteId == generalCity.SiteId) == before;
+                _draft = originalDraft;
+            }
             ShowForces();
             var forceInputUi = _body.FindChildren("*", "Button", true, false)
                 .OfType<Button>().Any(button => button.Text == "병종 추가");
@@ -701,7 +747,8 @@ public sealed partial class ScenarioEditorScene : Control
                         && _maps[0].Revision == ScenarioMapArchive.RevisionOf(
                             ScenarioMapPresetStore.Load(editedPath)));
                 var passed = bundled.Length == 6 && _list.ItemCount >= 6
-                    && factionColorUi && cityMapUi && generalSearchUi && forceInputUi
+                    && factionColorUi && cityMapUi && generalSearchUi && generalCityListUi
+                    && generalCrudPassed && forceInputUi
                     && cityForceUi && forceCrudPassed
                     && errors.Count == 0 && mapSwitchPassed && currentMapSelected
                     && restored.MapRevision == _draft.MapRevision
