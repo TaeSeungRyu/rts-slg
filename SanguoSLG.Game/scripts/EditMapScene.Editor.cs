@@ -916,6 +916,20 @@ public sealed partial class EditMapScene
         });
     }
 
+    private MapEditorSite? FindPortPlacement(Vector2I tile, string size, int direction,
+        MapEditorSite? existing)
+    {
+        var origin = existing is null ? tile : new Vector2I(existing.Column, existing.Row);
+        return Enumerable.Range(-2, 5).SelectMany(dx => Enumerable.Range(-2, 5)
+                .Select(dy => new Vector2I(origin.X + dx, origin.Y + dy)))
+            .Where(Inside)
+            .OrderBy(anchor => Math.Abs(anchor.X - origin.X) + Math.Abs(anchor.Y - origin.Y))
+            .ThenBy(anchor => anchor.Y).ThenBy(anchor => anchor.X)
+            .Select(anchor => new MapEditorSite(existing?.Id ?? _nextSiteId,
+                existing?.Name ?? "새 항구", "port", size, anchor.X, anchor.Y, direction))
+            .FirstOrDefault(candidate => CanPlace(candidate) && PortFacesWater(candidate));
+    }
+
     private void OpenPortEditor(Vector2I tile, MapEditorSite? existing)
     {
         var content = OpenEditorModal(existing is null ? "항구 추가" : "항구 편집");
@@ -930,10 +944,32 @@ public sealed partial class EditMapScene
         var size = SelectOptions(content, "항구 종류", ["소형항", "중형항"],
             Math.Max(0, Array.IndexOf(sizes, existing?.Size ?? "small")));
         var firstValidDirection = existing?.Direction ?? Enumerable.Range(0, 6)
-            .FirstOrDefault(direction => PortFacesWater(new MapEditorSite(0, "임시", "port", "small",
-                tile.X, tile.Y, direction)));
+            .FirstOrDefault(direction => FindPortPlacement(tile, sizes[size.Selected], direction, existing) is not null);
         var directionPicker = SelectOptions(content, "부두 방향", ["동", "남동", "남서", "서", "북서", "북동"],
             firstValidDirection);
+        var placementInfo = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            CustomMinimumSize = new Vector2(400, 40) };
+        content.AddChild(placementInfo);
+        void UpdatePlacementInfo()
+        {
+            var candidate = FindPortPlacement(tile, sizes[size.Selected], directionPicker.Selected, existing);
+            placementInfo.Text = candidate is null
+                ? "이 방향에는 설치할 수 없습니다. 다른 부두 방향이나 가까운 빈 해안 타일을 선택하세요."
+                : $"설치 가능 · 중심 타일 {candidate.Column}, {candidate.Row} · 부두는 선택한 방향의 물을 향합니다.";
+            placementInfo.Modulate = candidate is null ? new Color("f0a486") : new Color("c6dda9");
+        }
+        size.ItemSelected += _ =>
+        {
+            if (FindPortPlacement(tile, sizes[size.Selected], directionPicker.Selected, existing) is null)
+            {
+                var valid = Enumerable.Range(0, 6).FirstOrDefault(direction =>
+                    FindPortPlacement(tile, sizes[size.Selected], direction, existing) is not null, -1);
+                if (valid >= 0) directionPicker.Select(valid);
+            }
+            UpdatePlacementInfo();
+        };
+        directionPicker.ItemSelected += _ => UpdatePlacementInfo();
+        UpdatePlacementInfo();
         var actions = new HBoxContainer();
         content.AddChild(actions);
         var apply = new Button { Text = "적용", SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -947,14 +983,13 @@ public sealed partial class EditMapScene
                 _editorError!.Text = "비어 있거나 중복된 항구 이름입니다.";
                 return;
             }
-            var candidate = new MapEditorSite(existing?.Id ?? _nextSiteId, trimmed, "port",
-                sizes[size.Selected], existing?.Column ?? tile.X, existing?.Row ?? tile.Y,
-                directionPicker.Selected);
-            if (!CanPlace(candidate) || !PortFacesWater(candidate))
+            var placement = FindPortPlacement(tile, sizes[size.Selected], directionPicker.Selected, existing);
+            if (placement is null)
             {
-                _editorError!.Text = "항구 발자국이 겹치거나 부두가 물을 향하지 않습니다.";
+                _editorError!.Text = "선택한 방향에서 설치할 수 없습니다. 근처 빈 해안이나 다른 방향을 선택하세요.";
                 return;
             }
+            var candidate = placement with { Name = trimmed };
             var before = Draft();
             if (existing is not null) _sites.Remove(existing);
             _sites.Add(candidate);

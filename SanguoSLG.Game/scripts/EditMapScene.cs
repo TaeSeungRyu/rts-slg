@@ -592,6 +592,37 @@ public sealed partial class EditMapScene : Control
                 UndoDraft();
             }
         }
+        var mediumPort = Enumerable.Range(0, _height)
+            .SelectMany(row => Enumerable.Range(0, _width)
+                .Select(column => new Vector2I(column, row)))
+            .Where(tile => IsLand(_rows[tile.Y][tile.X]) && HasNeighborWater(tile)
+                && SiteAt(tile) is null)
+            .Select(tile => (Tile: tile, Placement: Enumerable.Range(0, 6)
+                .Select(direction => FindPortPlacement(tile, "medium", direction, null))
+                .FirstOrDefault(candidate => candidate is not null)))
+            .FirstOrDefault(result => result.Placement is not null);
+        valid &= mediumPort.Placement is not null;
+        if (mediumPort.Placement is not null)
+        {
+            OpenPortEditor(mediumPort.Tile, null);
+            var pickers = _editorModal?.FindChildren("*", "OptionButton", true, false)
+                .OfType<OptionButton>().ToArray() ?? [];
+            var input = _editorModal?.FindChildren("*", "LineEdit", true, false)
+                .OfType<LineEdit>().FirstOrDefault();
+            valid &= pickers.Length == 2 && input is not null;
+            if (pickers.Length == 2 && input is not null)
+            {
+                input.Text = "중형시험항";
+                pickers[0].Select(1);
+                pickers[0].EmitSignal(OptionButton.SignalName.ItemSelected, 1);
+                pickers[1].Select(mediumPort.Placement.Direction);
+                pickers[1].EmitSignal(OptionButton.SignalName.ItemSelected, mediumPort.Placement.Direction);
+                _editorModal?.FindChildren("*", "Button", true, false).OfType<Button>()
+                    .First(button => button.Text == "적용").EmitSignal(Button.SignalName.Pressed);
+                valid &= _sites.Any(site => site.Name == "중형시험항" && site.Size == "medium");
+                UndoDraft();
+            }
+        }
         OpenRuinEditor(vacant, null);
         valid &= _editorModal?.FindChildren("*", "OptionButton", true, false)
             .OfType<OptionButton>().Any() == true;
