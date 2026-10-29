@@ -26,22 +26,44 @@ public sealed partial class EditMapScene
         var center = new CenterContainer();
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         overlay.AddChild(center);
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(850, 460) };
-        panel.AddThemeStyleboxOverride("panel", PanelStyle());
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(880, 490) };
+        panel.AddThemeStyleboxOverride("panel", EditorFrame(new Color("1b0f0d"), 2));
         center.AddChild(panel);
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 10);
         panel.AddChild(content);
         var header = new HBoxContainer();
-        header.AddChild(new Label { Text = "지도 목록", SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        var titleLabel = new Label { Text = "지도 목록", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        titleLabel.AddThemeFontSizeOverride("font_size", 20);
+        titleLabel.AddThemeColorOverride("font_color", new Color("e8c475"));
+        header.AddChild(titleLabel);
         var close = new Button { Text = "닫기" };
         close.Pressed += CloseMapLibrary;
         header.AddChild(close);
         content.AddChild(header);
+        content.AddChild(new HSeparator());
         content.AddChild(new Label { Text = "기본 지도를 수정하거나 복제하여 시나리오별 지도를 관리할 수 있습니다." });
         var list = new GridContainer { Columns = 5, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        list.AddThemeConstantOverride("h_separation", 3);
+        list.AddThemeConstantOverride("v_separation", 3);
+        PanelContainer Cell(Control child, bool heading = false)
+        {
+            var cell = new PanelContainer();
+            var style = EditorFrame(heading ? new Color("453023") : new Color("271e19"), 1);
+            style.BorderColor = heading ? new Color("d1ac60") : new Color("735b3b");
+            style.SetCornerRadiusAll(2);
+            style.SetContentMarginAll(8);
+            cell.AddThemeStyleboxOverride("panel", style);
+            cell.AddChild(child);
+            list.AddChild(cell);
+            return cell;
+        }
         foreach (var heading in new[] { "지도", "크기", "거점", "시나리오 사용", "작업" })
-            list.AddChild(new Label { Text = heading, ThemeTypeVariation = "HeaderSmall" });
+        {
+            var label = new Label { Text = heading };
+            label.AddThemeColorOverride("font_color", new Color("f4d98e"));
+            Cell(label, true);
+        }
         var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         scroll.AddChild(list);
         content.AddChild(scroll);
@@ -56,26 +78,25 @@ public sealed partial class EditMapScene
             try { preset = ScenarioMapPresetStore.Load(path); }
             catch (Exception error)
             {
-                list.AddChild(new Label { Text = Path.GetFileName(path) + ": " + error.Message });
-                for (var column = 1; column < 5; column++) list.AddChild(new Control());
+                Cell(new Label { Text = Path.GetFileName(path) + ": " + error.Message });
+                for (var column = 1; column < 5; column++) Cell(new Control());
                 continue;
             }
-            for (var column = 0; column < 5; column++) list.AddChild(new HSeparator());
             var title = path == RootMapPath() ? "기본 지도"
                 : MapArchive().SaveVersion(MapIdFor(path), Path.GetFileNameWithoutExtension(path), preset).Title;
-            list.AddChild(new Label
+            Cell(new Label
             {
                 Text = title,
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 CustomMinimumSize = new Vector2(250, 0),
                 TooltipText = $"{preset.Width}×{preset.Height} · 거점 {preset.Sites.Count(site => site.Kind is "city" or "port" or "gate")}\n{path}",
             });
-            list.AddChild(new Label { Text = $"{preset.Width} × {preset.Height}" });
-            list.AddChild(new Label { Text = preset.Sites.Count(site => site.Kind is "city" or "port" or "gate").ToString() });
+            Cell(new Label { Text = $"{preset.Width} × {preset.Height}" });
+            Cell(new Label { Text = preset.Sites.Count(site => site.Kind is "city" or "port" or "gate").ToString() });
             var references = MapScenarioReferences(MapIdFor(path));
-            list.AddChild(new Label { Text = references.Count == 0 ? "없음" : $"{references.Count}개" });
+            Cell(new Label { Text = references.Count == 0 ? "없음" : $"{references.Count}개" });
             var actions = new HBoxContainer();
-            list.AddChild(actions);
+            Cell(actions);
             var edit = new Button { Text = "수정" };
             edit.Pressed += () => LoadSelectedMap(path, preset);
             actions.AddChild(edit);
