@@ -146,6 +146,20 @@ public sealed class GateTests
     }
 
     [Fact]
+    public void LowSecurityGateDoesNotSpawnBandits()
+    {
+        var gate = new City(new CityId(1), "관문", new HexCoord(1, 1), new FactionId(1),
+            100, Security: 0, Gate: GateSize.Small);
+        var state = new GameState(1, 190, [], [gate], []);
+        var world = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0));
+
+        var next = world.AdvanceDays(state, 7);
+
+        Assert.Empty(next.Armies);
+        Assert.DoesNotContain(world.LastEvents, e => e.Kind == WorldEventKind.BanditRaid);
+    }
+
+    [Fact]
     public void GateAcceptsCommanderButRejectsOrdinaryCityCommands()
     {
         var source = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());

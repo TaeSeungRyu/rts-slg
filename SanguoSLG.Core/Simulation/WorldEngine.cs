@@ -444,6 +444,7 @@ public sealed class WorldEngine
 
         foreach (var city in state.Cities.OrderBy(c => c.Id.Value))
         {
+            if (city.IsGate) continue;
             var chance = _commands.BanditRaidChance(city.Security);
             if (chance.Percent <= 0 || chance.Troops <= 0)
             {
