@@ -7060,7 +7060,8 @@ public sealed partial class CampaignMapScene : Node3D
             }
 
             var day = System.Math.Min(AnimDays, (int)(_animT / DaySeconds) + 1);
-            if (_climatePlayback.Count >= day) RefreshClimateVisuals(_climatePlayback[day - 1]);
+            if (_climatePlayback.Count >= day && !ReferenceEquals(_displayClimate, _climatePlayback[day - 1]))
+                RefreshClimateVisuals(_climatePlayback[day - 1]);
             _dayLabel.Text = $"{day}일차";
             UpdateScoutDayLabels(_state.Day + System.Math.Min(AnimDays, (int)(_animT / DaySeconds)));
             // 하루는 이동 연출 뒤 공격 판정 슬롯으로 고정 분리한다.

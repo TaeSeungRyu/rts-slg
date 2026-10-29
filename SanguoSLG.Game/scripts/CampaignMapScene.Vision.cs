@@ -176,7 +176,7 @@ public sealed partial class CampaignMapScene
             : _vision.VisibleTiles(display, Player, _map);
         var changed = !_visibleTiles.SetEquals(visible);
         _visibleTiles = visible;
-        UpdateClimateVisibility();
+        if (!playback || changed) UpdateClimateVisibility();
         _displayArmies = display.Armies;
         if (!playback || changed) _fog.Apply(_visibleTiles, _state.Cities.Where(IsDeclaredCity)
             .Select(city => city.Position).ToHashSet());
