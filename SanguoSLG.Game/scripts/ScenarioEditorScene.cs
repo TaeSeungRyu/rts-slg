@@ -570,13 +570,23 @@ public sealed partial class ScenarioEditorScene : Control
                     && _draft.Generals.All(general => general.SiteId is null);
                 _draft = originalDraft;
             }
-            ShowFactions(); ShowCities(); ShowGenerals(); ShowForces(); ShowBasics();
+            ShowFactions();
+            ShowCities();
+            var cityMapUi = _body.GetChildren().OfType<ScenarioSiteMap>().Any();
+            ShowGenerals();
+            var generalSearchUi = _body.GetChildren().OfType<LineEdit>()
+                .Any(field => field.PlaceholderText == "장수 이름 검색");
+            ShowForces();
+            var forceInputUi = _body.FindChildren("*", "LineEdit", true, false)
+                .OfType<LineEdit>().Any(field => field.PlaceholderText == "0");
+            ShowBasics();
             var path = Path.Combine(Path.GetTempPath(), "scenario-editor-qa-" + Guid.NewGuid().ToString("N") + ".json");
             try
             {
                 ScenarioDraftStore.Save(path, _draft, map, known);
                 var restored = ScenarioDraftStore.Load(path);
                 var passed = bundled.Length == 6 && _list.ItemCount >= 6
+                    && cityMapUi && generalSearchUi && forceInputUi
                     && errors.Count == 0 && mapSwitchPassed
                     && restored.MapRevision == _draft.MapRevision
                     && restored.Cities.Count == _draft.Cities.Count;
