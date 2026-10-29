@@ -27,6 +27,8 @@ public sealed record ScenarioDraft(int Version, string Id, string Title, string 
             || string.IsNullOrWhiteSpace(MapId) || MapRevision?.Length != 64
             || StartYear < 1 || StartMonth is < 1 or > 12 || StartDay is < 1 or > 30)
             errors.Add("시나리오 기본 정보 또는 지도 버전이 올바르지 않습니다.");
+        if (MapRevision != ScenarioMapArchive.RevisionOf(map))
+            errors.Add("시나리오가 참조하는 지도 버전과 실제 지도가 일치하지 않습니다.");
         var factionIds = Factions.Select(f => f.Id).ToHashSet();
         var siteById = map.Sites.Where(s => s.Kind is "city" or "port" or "gate")
             .ToDictionary(s => s.Id);

@@ -18,6 +18,7 @@ public sealed partial class EditMapScene
     private bool _draftChanged;
     private Button? _saveDraftButton;
     private string? _presetLoadError;
+    private ScenarioMapVersion? _activeMapVersion;
     private readonly Stack<ScenarioMapPreset> _draftUndo = [];
     private readonly Stack<ScenarioMapPreset> _draftRedo = [];
 
@@ -57,6 +58,8 @@ public sealed partial class EditMapScene
             _sites.Clear();
             _sites.AddRange(preset.Sites);
             _nextSiteId = _sites.Count == 0 ? 1 : _sites.Max(site => site.Id) + 1;
+            if (!OS.GetCmdlineUserArgs().Contains("--editmapqa"))
+                _activeMapVersion = MapArchive().SaveVersion("legacy-east-asia", "편집한 동아시아 지도", preset);
         }
         catch (Exception error)
         {
@@ -94,6 +97,10 @@ public sealed partial class EditMapScene
         ? Path.Combine(Path.GetTempPath(), $"editmap-qa-{System.Environment.ProcessId}.json")
         : ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
 
+    private static ScenarioMapArchive MapArchive() => new(
+        ProjectSettings.GlobalizePath("user://maps"),
+        ProjectSettings.GlobalizePath("user://scenarios"));
+
     private ScenarioMapPreset Draft() => new(1, _width, _height, _rows.ToArray(), _sites.ToArray());
 
     private void MarkDraftChanged()
@@ -127,6 +134,15 @@ public sealed partial class EditMapScene
         try
         {
             var draft = Draft();
+            var protectedCities = ProtectedScenarioNames();
+            if (protectedCities.Count > 0 && _activeMapVersion is { } linked
+                && linked.Preset.Sites.Any(site => site.Kind == "city"
+                    && !draft.Sites.Any(current => current.Kind == "city" && current.Id == site.Id)))
+                throw new InvalidDataException($"시나리오가 참조하는 성은 제거할 수 없습니다: {string.Join(", ", protectedCities)}");
+            if (!OS.GetCmdlineUserArgs().Contains("--editmapqa"))
+                _activeMapVersion = MapArchive().SaveVersion(
+                    _activeMapVersion?.Id ?? "legacy-east-asia",
+                    _activeMapVersion?.Title ?? "편집한 동아시아 지도", draft);
             ScenarioMapPresetStore.Save(path, draft);
             var saved = ScenarioMapPresetStore.Load(path);
             if (saved.Width != draft.Width || saved.Height != draft.Height
@@ -171,6 +187,10 @@ public sealed partial class EditMapScene
         dialog.PopupCentered();
     }
 
+    private IReadOnlyList<string> ProtectedScenarioNames()
+        => _activeMapVersion is { } current
+            ? MapArchive().ReferencingScenarios(current.Id, current.Revision) : [];
+
     private void AddSaveDraftButton(HBoxContainer bar)
     {
         if (ScenarioStartMenu.FromStartMenu)
@@ -182,6 +202,18 @@ public sealed partial class EditMapScene
         _saveDraftButton = new Button { Text = "맵 저장", CustomMinimumSize = new Vector2(95, 26) };
         _saveDraftButton.Pressed += ConfirmSaveDraft;
         bar.AddChild(_saveDraftButton);
+        var clone = new Button { Text = "지도 복제", CustomMinimumSize = new Vector2(95, 26) };
+        clone.Pressed += () =>
+        {
+            try
+            {
+                _activeMapVersion = MapArchive().SaveVersion($"user-{Guid.NewGuid():N}",
+                    $"복제 지도 {DateTime.Now:yyyy-MM-dd HH:mm}", Draft());
+                ShowSaveResult("지도 복제 완료", "별도 지도로 복제했습니다. 이후 저장한 버전은 시나리오 에디터에서 선택할 수 있습니다.");
+            }
+            catch (Exception error) { ShowSaveResult("지도 복제 실패", error.Message); }
+        };
+        bar.AddChild(clone);
     }
 
     private static bool IsLand(char code) => code is 'P' or 'F' or 'M' or 'D' or 'B' or 'S' or 'T' or 'N' or 'Q';
@@ -417,6 +449,15 @@ public sealed partial class EditMapScene
             var remove = new Button { Text = "유적 제거" };
             remove.Pressed += () =>
             {
+                var protectedScenarios = ProtectedScenarioNames();
+                if (protectedScenarios.Count > 0 && _activeMapVersion is { } linked
+                    && linked.Preset.Sites.Any(site => site.Kind == "city" && site.Id == existing.Id))
+                {
+                    ShowSaveResult("성 제거 불가", $"{existing.Name}은(는) 시나리오에서 사용 중입니다: "
+                        + string.Join(", ", protectedScenarios)
+                        + "\n지도를 복제한 뒤 새 지도에서 성을 제거하세요.");
+                    return;
+                }
                 var before = Draft();
                 _sites.Remove(existing);
                 RecordChange(before);

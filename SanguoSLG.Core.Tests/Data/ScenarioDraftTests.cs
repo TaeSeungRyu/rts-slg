@@ -11,7 +11,7 @@ public sealed class ScenarioDraftTests
             new MapEditorSite(2, "둘째 성", "city", "small", 4, 3)]);
 
     private static ScenarioDraft Draft() => new(1, "test", "시험 시나리오", "", 190, 1, 1,
-        "test-map", new string('a', 64),
+        "test-map", ScenarioMapArchive.RevisionOf(Map()),
         [new ScenarioFactionEntry(1, "위", 1, "#3366AA")],
         [new ScenarioCityEntry(1, 1, 100, 100, 100, 80, [], []),
             new ScenarioCityEntry(2, 0, 0, 0, 100, 50, [], [])],
