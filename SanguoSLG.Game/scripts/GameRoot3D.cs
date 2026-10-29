@@ -37,6 +37,13 @@ public partial class GameRoot3D : Node3D
             return;
         }
 
+        if (CampaignMapScene.HasPendingLoadedState)
+        {
+            _menuCampaign = true;
+            BuildCampaignMap();
+            return;
+        }
+
         var launchFromMenu = ScenarioStartMenu.ConsumeLaunchRequest();
 
         if (OS.GetCmdlineArgs().Length == 0 &&

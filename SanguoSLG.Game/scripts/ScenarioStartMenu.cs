@@ -161,6 +161,7 @@ public sealed partial class ScenarioStartMenu : Control
 
     public static void ReturnToStart(SceneTree tree)
     {
+        CampaignMapScene.ClearPendingLoadedState();
         FromStartMenu = false;
         SelectedPresetPath = null;
         SelectedScenarioPath = null;

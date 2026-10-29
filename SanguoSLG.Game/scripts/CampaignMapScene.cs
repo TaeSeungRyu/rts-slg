@@ -653,6 +653,7 @@ public sealed partial class CampaignMapScene : Node3D
         {
             StartYear = _scenarioOverride is null ? 190 : _scenarioStartYear,
             Day = _scenarioOverride is null ? 1 : _scenarioStartDay,
+            HumanFactionId = Player.Value,
             Factions = _aiTestFixture?.Factions ?? scenario.Factions,
             Cities = _cities.ToList(),
             Generals = campaignGenerals,
@@ -669,8 +670,10 @@ public sealed partial class CampaignMapScene : Node3D
             RuinDefinitions = _aiTestFixture?.Ruins ?? scenario.RuinList,
             RuinStates = (_aiTestFixture?.Ruins ?? scenario.RuinList)
                 .Select(r => new RuinState(r.Id, r.MaxDefenders)).ToList(),
-            MapPresetSnapshot = _scenarioOverride?.MapPreset?.Snapshot() ?? _initial.MapPresetSnapshot,
+            MapPresetSnapshot = _scenarioOverride?.MapPreset?.Snapshot()
+                ?? _aiTestFixture?.MapPreset?.Snapshot() ?? _initial.MapPresetSnapshot,
         };
+        if (_loadedState is not null) _state = _loadedState;
         if (_aiTestFixture is not null && !args.Contains("--newmap")) SeedAiTestConstructionBuilders();
         if (args.Contains("--maptest") && _aiTestFixture is null)
         {
@@ -842,13 +845,13 @@ public sealed partial class CampaignMapScene : Node3D
                 && _aiTestFixture?.FullVision == false
                 && (_state.ScoutedCities?.Any(intel => intel.Faction == Player) == false)
                 && _visibleTiles.Count > 0 && _visibleTiles.Count < _map.Count
-                && _state.HeroUnlockDefinitions.Count > 0
+                && _state.HeroUnlockDefinitions is { Count: > 0 }
                 && _state.HeroUnlockDefinitions.Any(hero =>
                     new HeroUnlockService().IsSatisfied(_state, hero, Player));
             GD.Print($"[newmap-qa] passed={passed} factions={_state.Factions.Count} "
                 + $"cities={_state.Cities.Count} cells={_map.Count} citySpacing={minCitySpacing} "
                 + $"visible={_visibleTiles.Count} scouted={_state.ScoutedCities?.Count ?? 0} "
-                + $"heroCandidates={_state.HeroUnlockDefinitions.Count} fogStable={fogStable} cameraIntro={cameraIntroOk} renamedMap={renamedMapOk}");
+                + $"heroCandidates={_state.HeroUnlockDefinitions?.Count ?? 0} fogStable={fogStable} cameraIntro={cameraIntroOk} renamedMap={renamedMapOk}");
             CallDeferred(nameof(QuitNewMapQa), passed);
         }
         if (args.Contains("--newmapstress100advanceqa"))
@@ -3834,6 +3837,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     // ── 테스트 시나리오: 지형 다양 맵, 위(성 1) vs 촉(성 2 — 성도·한중) ──
     private static Scenario? _scenarioOverride;
+    private static GameState? _loadedState;
     private static int _scenarioStartYear = 190;
     private static int _scenarioStartDay = 1;
     private static AiTestFixture? _aiTestFixture = OS.GetCmdlineUserArgs().Contains("--newmap")
@@ -3852,6 +3856,26 @@ public sealed partial class CampaignMapScene : Node3D
         _map = scenario.Map;
         _cities = scenario.Cities;
         _initial = _initial with { Cities = scenario.Cities.ToList() };
+        _loadedState = null;
+    }
+
+    public static bool HasPendingLoadedState => _loadedState is not null;
+    public static void ClearPendingLoadedState() => _loadedState = null;
+
+    public static void ConfigureLoadedState(GameState loaded, Scenario baseScenario)
+    {
+        var preset = loaded.MapPresetSnapshot;
+        var geometry = preset is null ? baseScenario
+            : ScenarioMapPresetApplier.Apply(baseScenario, preset);
+        _scenarioOverride = geometry;
+        _loadedState = loaded;
+        Player = new FactionId(loaded.HumanFactionId);
+        _scenarioStartYear = loaded.StartYear;
+        _scenarioStartDay = loaded.Day;
+        _map = geometry.Map;
+        _cities = loaded.Cities;
+        _aiTestFixture = AiTestFixture.FromSavedState(loaded, _map);
+        _initial = _initial with { Cities = loaded.Cities.ToList() };
     }
 
     public static void ReloadNewMapFixture()
@@ -9390,7 +9414,38 @@ public sealed partial class CampaignMapScene : Node3D
         try { loaded = SaveSlots.Load(slot); }
         catch (System.Exception e) { _log.Text = "불러오기 실패: " + e.Message; CloseModal(); return; }
 
+        if (loaded.MapPresetSnapshot is { } savedMap)
+        {
+            var current = _state.MapPresetSnapshot;
+            if (current is null || ScenarioMapArchive.RevisionOf(savedMap)
+                != ScenarioMapArchive.RevisionOf(current))
+            {
+                try
+                {
+                    var source = CreatedGeneralPresets.ApplyAtNewGame(
+                        new ScenarioLoader().LoadFromDirectory(_dataDirectory));
+                    ConfigureLoadedState(loaded, source);
+                    GetTree().ReloadCurrentScene();
+                    return;
+                }
+                catch (System.Exception error)
+                {
+                    _log.Text = "저장 지도를 복원할 수 없습니다: " + error.Message;
+                    CloseModal();
+                    return;
+                }
+            }
+        }
+        else if (loaded.Cities.Any(city => !_state.Cities.Any(current =>
+            current.Id == city.Id && current.Position == city.Position)))
+        {
+            _log.Text = "이전 세이브에 지도 스냅샷이 없고 현재 지도와 거점 위치가 다릅니다. 원래 지도에서 불러오세요.";
+            CloseModal();
+            return;
+        }
+
         _state = loaded;
+        Player = new FactionId(loaded.HumanFactionId);
         _pendingDeploys.Clear();
         _pendingSupplyDeploys.Clear();
         _pendingTransportDeploys.Clear();

@@ -29,11 +29,13 @@ internal sealed class AiTestFixture
     public IReadOnlyList<RuinDefinition> Ruins { get; }
     public IReadOnlyList<CityIntel> Intel { get; }
     public bool FullVision { get; }
+    public ScenarioMapPreset? MapPreset { get; }
 
     private AiTestFixture(HexMap map, IReadOnlyList<Faction> factions, IReadOnlyList<City> cities,
         IReadOnlyList<GeneralPosting> postings, IReadOnlyList<GarrisonForce> garrisons,
         IReadOnlyList<PortShipStock> ships, IReadOnlyList<RuinDefinition> ruins,
-        bool fullVision = true, IReadOnlyList<CityIntel>? intel = null)
+        bool fullVision = true, IReadOnlyList<CityIntel>? intel = null,
+        ScenarioMapPreset? mapPreset = null)
     {
         Map = map;
         Factions = factions;
@@ -43,6 +45,7 @@ internal sealed class AiTestFixture
         Ships = ships;
         Ruins = ruins;
         FullVision = fullVision;
+        MapPreset = mapPreset?.Snapshot();
         Intel = intel ?? (!fullVision ? [] : factions.SelectMany(faction => cities
             .Where(city => city.Owner != faction.Id)
             .Select(city => new CityIntel(faction.Id, city.Id)))
@@ -63,7 +66,12 @@ internal sealed class AiTestFixture
     public static AiTestFixture FromScenario(Scenario scenario) => new(
         scenario.Map, scenario.Factions, scenario.Cities, scenario.PostingList,
         scenario.InitialGarrisons ?? [], scenario.InitialShips ?? [], scenario.RuinList,
-        fullVision: false);
+        fullVision: false, mapPreset: scenario.MapPreset);
+
+    public static AiTestFixture FromSavedState(GameState state, HexMap map) => new(
+        map, state.Factions, state.Cities, state.Postings ?? [], state.GarrisonForces ?? [],
+        state.PortShipStocks ?? [], state.RuinDefinitions ?? [], fullVision: false,
+        intel: state.ScoutedCities ?? [], mapPreset: state.MapPresetSnapshot);
 
     public static AiTestFixture Load()
     {
@@ -215,7 +223,7 @@ internal sealed class AiTestFixture
             scenario.RuinList,
             fullVision: false, intel: [new CityIntel(new FactionId(3),
                 (cities.FirstOrDefault(city => city.Name == "한국항")
-                    ?? cities.First(city => city.Owner.Value == 1)).Id)]);
+                    ?? cities.First(city => city.Owner.Value == 1)).Id)], mapPreset: preset);
     }
 
     private static ScenarioMapPreset AddNewMapTestPorts(ScenarioMapPreset preset)

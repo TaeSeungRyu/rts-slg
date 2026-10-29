@@ -22,7 +22,8 @@ public sealed partial class ScenarioEditorScene : Control
         _scenarioDirectory = Path.Combine(root, "scenarios");
         _archive = new ScenarioMapArchive(Path.Combine(root, "maps"), _scenarioDirectory);
         var data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
-        _source = new ScenarioLoader().LoadFromDirectory(data);
+        _source = CreatedGeneralPresets.ApplyAtNewGame(
+            new ScenarioLoader().LoadFromDirectory(data));
         LoadMaps();
         _draft = ScenarioDraftApplier.CreateSeed("custom-190", "새 시나리오", _source, _maps[0]);
         BuildUi();
@@ -188,27 +189,29 @@ public sealed partial class ScenarioEditorScene : Control
     private void SwitchMap(ScenarioMapVersion next)
     {
         var previous = CurrentMap().Preset;
-        var oldNames = previous.Sites.ToDictionary(site => site.Id, site => site.Name);
+        var sameMapLineage = next.Id == _draft.MapId;
+        var oldSiteIds = previous.Sites.Select(site => site.Id).ToHashSet();
         var oldCities = _draft.Cities.ToDictionary(city => city.SiteId);
         var newSites = next.Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate").ToArray();
-        var newByName = newSites.GroupBy(site => site.Name).ToDictionary(group => group.Key, group => group.First());
+        var newSiteIds = newSites.Select(site => site.Id).ToHashSet();
         var newCities = newSites.Select(site =>
         {
-            var old = oldCities.Values.FirstOrDefault(city => oldNames.GetValueOrDefault(city.SiteId) == site.Name);
+            var old = sameMapLineage && oldCities.TryGetValue(site.Id, out var existing) ? existing : null;
             return old is null ? new ScenarioCityEntry(site.Id, 0, 0, 0, 0, 70, [], []) : old with { SiteId = site.Id };
         }).ToArray();
         var lost = _draft.Generals.Where(g => g.SiteId is { } id &&
-            (!oldNames.TryGetValue(id, out var name) || !newByName.ContainsKey(name))).ToArray();
+            (!sameMapLineage || !newSiteIds.Contains(id))).ToArray();
+        var lostCities = _draft.Cities.Count(c => c.OwnerFactionId > 0
+            && (!sameMapLineage || !newSiteIds.Contains(c.SiteId)));
         _draft = _draft with
         {
             MapId = next.Id, MapRevision = next.Revision, Cities = newCities,
-            Generals = _draft.Generals.Select(g => g.SiteId is { } id && oldNames.TryGetValue(id, out var name)
-                && newByName.TryGetValue(name, out var site) ? g with { SiteId = site.Id }
+            Generals = _draft.Generals.Select(g => g.SiteId is { } id && sameMapLineage
+                && oldSiteIds.Contains(id) && newSiteIds.Contains(id) ? g
                 : g with { SiteId = null }).ToArray(),
         };
         ShowBasics();
-        _message.Text = lost.Length == 0 ? "지도 교체 완료. 거점과 장수 배치를 확인하세요."
-            : $"지도 교체: {lost.Length}명의 배치가 해제되었습니다. 장수 배치 탭에서 지정하세요.";
+        _message.Text = $"지도 교체: 소유권 해제 거점 {lostCities}곳, 배치 해제 장수 {lost.Length}명. 세력·거점 및 장수 배치 탭에서 확인하세요.";
     }
 
     private void ShowCities()
