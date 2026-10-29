@@ -76,13 +76,10 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void LoadMaps()
     {
+        var defaultPath = ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json");
+        _archive.SaveVersion("default-east-asia", "기본 동아시아",
+            ScenarioMapPresetStore.Load(defaultPath));
         _maps.AddRange(_archive.ListVersions());
-        if (_maps.Count == 0)
-        {
-            var path = ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json");
-            _maps.Add(_archive.SaveVersion("default-east-asia", "기본 동아시아",
-                ScenarioMapPresetStore.Load(path)));
-        }
         var edited = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
         if (File.Exists(edited))
         {
@@ -162,13 +159,17 @@ public sealed partial class ScenarioEditorScene : Control
     private void RefreshList()
     {
         _list.Clear();
-        if (!Directory.Exists(_scenarioDirectory)) return;
-        foreach (var path in Directory.EnumerateFiles(_scenarioDirectory, "*.json").Order())
+        var builtIn = ProjectSettings.GlobalizePath("res://assets/scenarios");
+        var paths = (Directory.Exists(builtIn) ? Directory.EnumerateFiles(builtIn, "*.json") : [])
+            .Concat(Directory.Exists(_scenarioDirectory) ? Directory.EnumerateFiles(_scenarioDirectory, "*.json") : [])
+            .OrderBy(path => Path.GetFileName(path).StartsWith("fictional-", StringComparison.Ordinal) ? 9999
+                : ScenarioDraftStore.Load(path).StartYear).ThenBy(path => path);
+        foreach (var path in paths)
         {
             try
             {
                 var draft = ScenarioDraftStore.Load(path);
-                var index = _list.AddItem(draft.Title);
+                var index = _list.AddItem((path.StartsWith(builtIn, StringComparison.OrdinalIgnoreCase) ? "기본 · " : "") + draft.Title);
                 _list.SetItemMetadata(index, path);
             }
             catch (Exception error) { GD.PushWarning($"시나리오 목록: {path}: {error.Message}"); }
@@ -451,6 +452,8 @@ public sealed partial class ScenarioEditorScene : Control
             var known = _source.Generals.Select(general => general.Id.Value).ToHashSet();
             var map = CurrentMap();
             var path = Path.Combine(_scenarioDirectory, _draft.Id + ".json");
+            if (File.Exists(ProjectSettings.GlobalizePath("res://assets/scenarios/" + _draft.Id + ".json")))
+                throw new InvalidDataException("기본 시나리오는 복제하여 편집하세요.");
             ScenarioDraftStore.Save(path, _draft, map.Preset, known);
             RefreshList();
             _message.Text = "저장 완료: " + path;
@@ -464,7 +467,14 @@ public sealed partial class ScenarioEditorScene : Control
         {
             var known = _source.Generals.Select(g => g.Id.Value).ToHashSet();
             var map = CurrentMap().Preset;
-            var errors = _draft.Validate(map, known);
+            var errors = _draft.Validate(map, known).ToList();
+            var builtIn = ProjectSettings.GlobalizePath("res://assets/scenarios");
+            var bundled = Directory.GetFiles(builtIn, "*.json");
+            foreach (var scenarioPath in bundled)
+            {
+                var scenario = ScenarioDraftStore.Load(scenarioPath);
+                errors.AddRange(scenario.Validate(_archive.Load(scenario.MapId, scenario.MapRevision).Preset, known));
+            }
             var originalDraft = _draft;
             var otherMap = _maps.FirstOrDefault(candidate => candidate.Id != _draft.MapId);
             var mapSwitchPassed = true;
@@ -481,7 +491,8 @@ public sealed partial class ScenarioEditorScene : Control
             {
                 ScenarioDraftStore.Save(path, _draft, map, known);
                 var restored = ScenarioDraftStore.Load(path);
-                var passed = errors.Count == 0 && mapSwitchPassed
+                var passed = bundled.Length == 6 && _list.ItemCount >= 6
+                    && errors.Count == 0 && mapSwitchPassed
                     && restored.MapRevision == _draft.MapRevision
                     && restored.Cities.Count == _draft.Cities.Count;
                 GD.Print($"[scenario-editor-qa] passed={passed} maps={_maps.Count} cities={_draft.Cities.Count} errors={errors.Count}");

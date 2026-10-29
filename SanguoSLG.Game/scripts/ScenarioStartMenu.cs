@@ -48,12 +48,16 @@ public sealed partial class ScenarioStartMenu : Control
         scenarioChoice.AddItem("190년 기본 시나리오");
         var scenarioPaths = new List<string?> { null };
         var scenarioDir = ProjectSettings.GlobalizePath("user://scenarios");
-        if (Directory.Exists(scenarioDir))
-            foreach (var path in Directory.EnumerateFiles(scenarioDir, "*.json").Order())
+        var builtInDir = ProjectSettings.GlobalizePath("res://assets/scenarios");
+        var builtInPaths = Directory.Exists(builtInDir) ? Directory.EnumerateFiles(builtInDir, "*.json") : [];
+        var userPaths = Directory.Exists(scenarioDir) ? Directory.EnumerateFiles(scenarioDir, "*.json") : [];
+        foreach (var path in builtInPaths.Concat(userPaths)
+            .OrderBy(path => Path.GetFileName(path).StartsWith("fictional-", StringComparison.Ordinal) ? 9999
+                : SanguoSLG.Core.Data.ScenarioDraftStore.Load(path).StartYear).ThenBy(path => path))
                 try
                 {
                     var draft = SanguoSLG.Core.Data.ScenarioDraftStore.Load(path);
-                    scenarioChoice.AddItem($"{draft.StartYear}년 · {draft.Title}");
+                    scenarioChoice.AddItem(draft.Title);
                     scenarioPaths.Add(path);
                 }
                 catch (Exception failure) { GD.PushWarning("시나리오 목록: " + failure.Message); }
@@ -97,9 +101,7 @@ public sealed partial class ScenarioStartMenu : Control
                 var preset = chosen is null
                     ? SanguoSLG.Core.Data.ScenarioMapPresetStore.Load(
                         mapChoice.Selected == 1 ? mapPath : ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json"))
-                    : new SanguoSLG.Core.Data.ScenarioMapArchive(
-                        ProjectSettings.GlobalizePath("user://maps"), scenarioDir)
-                        .Load(chosen.MapId, chosen.MapRevision).Preset;
+                    : LoadScenarioMap(chosen, scenarioDir);
                 preview.Text = $"지도 {preset.Width}×{preset.Height} · 성 {preset.Sites.Count(s => s.Kind == "city")} · 항구 {preset.Sites.Count(s => s.Kind == "port")}";
             }
             catch (Exception failure) { preview.Text = "지도 미리보기 오류: " + failure.Message; }
@@ -179,10 +181,27 @@ public sealed partial class ScenarioStartMenu : Control
         if (OS.GetCmdlineUserArgs().Contains("--startmenuqa")) CallDeferred(nameof(RunQa));
     }
 
+    private static SanguoSLG.Core.Data.ScenarioMapPreset LoadScenarioMap(
+        SanguoSLG.Core.Data.ScenarioDraft draft, string scenarioDir)
+    {
+        if (draft.MapId == "default-east-asia")
+        {
+            var preset = SanguoSLG.Core.Data.ScenarioMapPresetStore.Load(
+                ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json"));
+            if (SanguoSLG.Core.Data.ScenarioMapArchive.RevisionOf(preset) == draft.MapRevision)
+                return preset;
+        }
+        return new SanguoSLG.Core.Data.ScenarioMapArchive(
+            ProjectSettings.GlobalizePath("user://maps"), scenarioDir)
+            .Load(draft.MapId, draft.MapRevision).Preset;
+    }
+
     private void RunQa()
     {
         var buttons = FindChildren("*", "Button", true, false).OfType<Button>().Select(button => button.Text).ToArray();
+        var scenarios = FindChildren("*", "OptionButton", true, false).OfType<OptionButton>().FirstOrDefault();
         var passed = buttons.Contains("게임 시작") && buttons.Contains("게임 불러오기")
+            && scenarios?.ItemCount == 7
             && buttons.Contains("지도 에디터")
             && buttons.Contains("시나리오 에디터") && buttons.Contains("장수 편집")
             && buttons.Contains("신규 장수 추가")

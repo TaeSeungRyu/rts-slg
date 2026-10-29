@@ -51,8 +51,8 @@ public partial class GameRoot3D : Node3D
 
         var launchFromMenu = ScenarioStartMenu.ConsumeLaunchRequest();
 
-        if (OS.GetCmdlineArgs().Length == 0 &&
-            (OS.GetCmdlineUserArgs().Length == 0 || OS.GetCmdlineUserArgs().Contains("--startmenuqa"))
+        if ((OS.GetCmdlineUserArgs().Contains("--startmenuqa") || OS.GetCmdlineArgs().Length == 0 &&
+            OS.GetCmdlineUserArgs().Length == 0)
             && !launchFromMenu)
         {
             AddChild(new ScenarioStartMenu());
@@ -74,6 +74,10 @@ public partial class GameRoot3D : Node3D
                 if (ScenarioStartMenu.SelectedScenarioPath is { } scenarioPath)
                 {
                     draft = ScenarioDraftStore.Load(scenarioPath);
+                    if (draft.MapId == "default-east-asia")
+                        archive.SaveVersion("default-east-asia", "기본 동아시아",
+                            ScenarioMapPresetStore.Load(ProjectSettings.GlobalizePath(
+                                "res://assets/maps/east-asia-user-preset.json")));
                     map = archive.Load(draft.MapId, draft.MapRevision);
                 }
                 else
