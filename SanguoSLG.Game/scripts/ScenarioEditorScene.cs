@@ -18,7 +18,6 @@ public sealed partial class ScenarioEditorScene : Control
     private Action<string>? _nativeUpdate;
     private string _nativeLastText = "";
     private int _selectedCityId;
-    private int _selectedForceCityId;
     private int _selectedGeneralCityId;
     private string _generalSearch = "";
 
@@ -152,7 +151,6 @@ public sealed partial class ScenarioEditorScene : Control
         AddTab(tabs, "세력", ShowFactions);
         AddTab(tabs, "세력·거점", ShowCities);
         AddTab(tabs, "장수 배치", ShowGenerals);
-        AddTab(tabs, "병력·선박", ShowForces);
         var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         right.AddChild(scroll);
         _body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -486,24 +484,6 @@ public sealed partial class ScenarioEditorScene : Control
         addRow.AddChild(add);
     }
 
-    private void ShowForces()
-    {
-        ClearBody();
-        var map = CurrentMap().Preset;
-        var owned = _draft.Cities.Where(city => city.OwnerFactionId > 0).ToArray();
-        _body.AddChild(new Label { Text = "거점을 고른 뒤 병종별 병력과 선박 수량을 입력하세요. 0은 배치하지 않음을 뜻합니다." });
-        if (owned.Length == 0) return;
-        if (owned.All(city => city.SiteId != _selectedForceCityId)) _selectedForceCityId = owned[0].SiteId;
-        var sites = map.Sites.ToDictionary(site => site.Id);
-        var choice = new OptionButton();
-        foreach (var city in owned) choice.AddItem(sites[city.SiteId].Name, city.SiteId);
-        choice.Select(Math.Max(0, choice.GetItemIndex(_selectedForceCityId)));
-        choice.ItemSelected += index => { _selectedForceCityId = choice.GetItemId((int)index); ShowForces(); };
-        _body.AddChild(choice);
-        var selected = owned.First(city => city.SiteId == _selectedForceCityId);
-        AddForceEditor(selected, sites[selected.SiteId], ShowForces);
-    }
-
     private void AddForceEditor(ScenarioCityEntry selected, MapEditorSite site, Action refresh)
     {
         var data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
@@ -715,15 +695,16 @@ public sealed partial class ScenarioEditorScene : Control
                     && _draft.Generals.Count(general => general.SiteId == generalCity.SiteId) == before;
                 _draft = originalDraft;
             }
-            ShowForces();
-            var forceInputUi = _body.FindChildren("*", "Button", true, false)
-                .OfType<Button>().Any(button => button.Text == "병종 추가");
+            var forceTabRemoved = FindChildren("*", "Button", true, false).OfType<Button>()
+                .All(button => button.Text != "병력·선박");
             var ownedCity = _draft.Cities.FirstOrDefault(city => city.OwnerFactionId > 0);
             var cityForceUi = false;
             var forceCrudPassed = false;
             if (ownedCity is not null)
             {
                 var before = ownedCity.Garrisons.Count;
+                _selectedCityId = ownedCity.SiteId;
+                ShowCities();
                 var add = _body.FindChildren("*", "Button", true, false).OfType<Button>()
                     .FirstOrDefault(button => button.Text == "병종 추가");
                 add?.EmitSignal(Button.SignalName.Pressed);
@@ -748,7 +729,7 @@ public sealed partial class ScenarioEditorScene : Control
                             ScenarioMapPresetStore.Load(editedPath)));
                 var passed = bundled.Length == 6 && _list.ItemCount >= 6
                     && factionColorUi && cityMapUi && generalSearchUi && generalCityListUi
-                    && generalCrudPassed && forceInputUi
+                    && generalCrudPassed && forceTabRemoved
                     && cityForceUi && forceCrudPassed
                     && errors.Count == 0 && mapSwitchPassed && currentMapSelected
                     && restored.MapRevision == _draft.MapRevision
