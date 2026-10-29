@@ -223,6 +223,8 @@ public sealed record GameState(
         var heroUnlocks = scenario.HeroUnlockList;
         var placements = scenario.InitialFacilities ?? BuildInitialFacilityPlacements(scenario);
         return new(1, startYear, scenario.Factions, scenario.Cities, scenario.Generals, Postings: scenario.Postings,
+            GarrisonForces: scenario.InitialGarrisons,
+            PortShipStocks: scenario.InitialShips,
             FacilityPlacements: placements,
             HeroUnlockDefinitions: heroUnlocks,
             HeroUnlockStates: heroUnlocks
