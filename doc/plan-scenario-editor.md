@@ -1,6 +1,6 @@
 # Phase 21C. 시나리오 에디터·지도 독립화 계획
 
-상태: **계획 수립, 구현 전** (2026-10-28). 상위 작업표는 [v2 로드맵](plan-v2-implementation-roadmap.md#phase-21c-시나리오-에디터지도-독립화)을 따른다. 기존 [지도 에디터 계획](plan-scenario-map-editor.md)과 [역사 시나리오 초안](plan-historical-scenarios.md)을 입력으로 사용한다.
+상태: **21C-1 현행 자료 감사 완료, 단계별 구현 중** (2026-10-29). 상위 작업표는 [v2 로드맵](plan-v2-implementation-roadmap.md#phase-21c-시나리오-에디터지도-독립화)을 따른다. 기존 [지도 에디터 계획](plan-scenario-map-editor.md)과 [역사 시나리오 초안](plan-historical-scenarios.md)을 입력으로 사용한다.
 
 ## 1. 목표와 현행 구조
 
@@ -9,6 +9,18 @@
 현재 `ScenarioStartMenu`는 기본 지도/편집 지도 중 하나만 선택한다. `ScenarioLoader`는 공통 `data/*.json`을 읽고, `ScenarioMapPresetApplier`는 편집 지도에 기존 도시의 이름·ID를 맞추거나 첫 도시를 대체 자료로 쓰며 장수 주둔지를 다른 성으로 옮긴다. `run-newmap.bat`은 테스트용 세력을 무작위 배치하고 일부 성 이름에 의존한다. 이는 역사 시나리오의 초기 상태나 사용자 편집 시나리오를 나타내지 않는다. **지도에 성이 없어졌는데 주둔·병력·소유권을 다른 성에 조용히 옮기는 동작은 시나리오 에디터에서 허용하지 않는다.** `run-newmap.bat`은 독립 검수 도구로 남기고 정식 게임 시작 경로에서 사용하지 않는다.
 
 ## 2. 데이터 소유권과 파일
+
+### 21C-1 현행 자료 감사 (2026-10-29)
+
+| 자료 | 현재 위치·동작 | 21C 이행 기준 |
+| --- | --- | --- |
+| 기본 지도 | `res://assets/maps/east-asia-user-preset.json`과 `east-asia-map.json` | 배포 자료는 읽기 전용으로 두고 고정 지도 ID를 부여한다. |
+| 사용자 편집 지도 | `user://map-presets/east-asia.json` 단일 파일, `run-editmap.bat`이 직접 저장 | 원본을 보존하고 사용자 지도 ID/불변 버전 파일로 가져온다. |
+| 게임 시작 | `ScenarioStartMenu`가 기본/편집 지도 경로를 선택하고 `ScenarioMapPresetApplier`가 기존 성·장수 위치를 추측해 옮긴다 | 시나리오 ID와 정확한 지도 버전을 먼저 선택하고 유효성 검사 후 시작한다. |
+| 기본 시나리오 | `res://data/*.json`에서 `ScenarioLoader`가 세력·성·장수 등을 읽는다 | 기본 시나리오 자료를 별도 읽기 전용 목록으로 제공한다. |
+| 저장 게임 | `user://saves/sanguo-save-01..20.json`, `SaveSlotStore`/`SaveService`가 `GameState.MapPresetSnapshot`을 포함해 저장 | 기존 슬롯의 스냅샷을 유지하고 외부 지도 변경을 재적용하지 않는다. |
+
+지도 파일은 `user://maps/<map-id>/<revision>.json`, 시나리오 파일은 `user://scenarios/<scenario-id>.json`으로 확정한다. `map-id`와 `scenario-id`는 파일 이름으로 안전한 고유 식별자이며, `revision`은 정규화한 지도 내용의 SHA-256이다. 같은 버전 파일은 덮어쓰지 않는다. 기본 지도 ID는 `default-east-asia`, 기존 편집 지도 가져오기 ID는 `legacy-east-asia`다. 기존 `user://map-presets/east-asia.json`과 세이브는 이행 과정에서도 삭제·변경하지 않는다.
 
 | 자료 | 저장 단위 | 편집/시작 계약 |
 | --- | --- | --- |
