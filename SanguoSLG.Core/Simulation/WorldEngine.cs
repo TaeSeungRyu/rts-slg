@@ -141,19 +141,31 @@ public sealed class WorldEngine
     private GameState ConsumeGateProvisions(GameState state)
     {
         if (!state.Cities.Any(city => city.IsGate)) return state;
+        var starvingGates = new HashSet<CityId>();
         var cities = state.Cities.Select(city =>
         {
             if (!city.IsGate) return city;
             var troops = state.Garrisons.Where(force => force.City == city.Id).Sum(force => force.Troops);
             var scaled = (long)troops * _balance.ProvisionsPer10kPerDay + city.GateProvisionRemainder;
             var daily = (int)(scaled / 20_000);
+            if (troops > 0 && city.Provisions < daily)
+                starvingGates.Add(city.Id);
+            if (troops > 0 && city.Provisions == 0)
+                starvingGates.Add(city.Id);
             return city with
             {
                 Provisions = System.Math.Max(0, city.Provisions - daily),
                 GateProvisionRemainder = (int)(scaled % 20_000),
             };
         }).ToArray();
-        return state with { Cities = cities };
+        var garrisons = state.Garrisons.Select(force =>
+        {
+            if (!starvingGates.Contains(force.City) || force.Troops <= 0) return force;
+            // 야전 군량 고갈과 같은 하루 5% 이탈. 소수 병력도 결국 이탈한다.
+            var deserters = System.Math.Max(1, force.Troops * 5 / 100);
+            return force with { Troops = force.Troops - deserters };
+        }).Where(force => force.Troops > 0).ToList();
+        return state with { Cities = cities, GarrisonForces = garrisons };
     }
 
     private GameState ApplyAutoOfficers(GameState state, IReadOnlyDictionary<GeneralId, Domain.General> byId)

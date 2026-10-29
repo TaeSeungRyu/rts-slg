@@ -127,6 +127,25 @@ public sealed class GateTests
     }
 
     [Fact]
+    public void GateGarrisonDesertsWithoutFoodButNotWhileSupplied()
+    {
+        var gate = new City(new CityId(1), "관문", new HexCoord(1, 1), new FactionId(1),
+            0, Wall: 2_000, Gate: GateSize.Small);
+        var state = new GameState(1, 190, [], [gate], [],
+            GarrisonForces: [new GarrisonForce(gate.Id, "swordsman", 10_000, 50)]);
+        var engine = new WorldEngine(new BalanceConfig(MonthlyTaxPerCity: 0));
+
+        var hungry = engine.AdvanceDays(state, 1);
+        Assert.Equal(9_500, hungry.Garrisons.Single().Troops);
+        Assert.Empty(hungry.CityWounded);
+
+        var supplied = engine.AdvanceDays(state with
+            { Cities = [gate with { Provisions = 100 }] }, 1);
+        Assert.Equal(10_000, supplied.Garrisons.Single().Troops);
+        Assert.Equal(95, supplied.Cities.Single().Provisions);
+    }
+
+    [Fact]
     public void GateAcceptsCommanderButRejectsOrdinaryCityCommands()
     {
         var source = new ScenarioLoader().LoadFromDirectory(TestData.DataDirectory());
