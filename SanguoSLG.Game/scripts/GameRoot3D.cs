@@ -36,6 +36,11 @@ public partial class GameRoot3D : Node3D
             RunScenarioIntegrationQa();
             return;
         }
+        if (OS.GetCmdlineUserArgs().Contains("--scenariocampaignqa"))
+        {
+            RunScenarioCampaignQa();
+            return;
+        }
 
         if (CampaignMapScene.HasPendingLoadedState)
         {
@@ -82,7 +87,7 @@ public partial class GameRoot3D : Node3D
                 }
                 var selectedScenario = ScenarioDraftApplier.Apply(source, draft, map.Preset);
                 CampaignMapScene.ConfigureScenario(selectedScenario, ScenarioStartMenu.SelectedPlayerFactionId,
-                    draft.StartYear, draft.StartMonth, draft.StartDay);
+                    draft.StartYear, draft.StartMonth, draft.StartDay, ScenarioStartMenu.SelectedDifficulty);
                 BuildCampaignMap();
             }
             catch (Exception error)
@@ -440,6 +445,32 @@ public partial class GameRoot3D : Node3D
         catch (Exception error)
         {
             GD.PushError("[scenario-integration-qa] " + error);
+            GetTree().Quit(1);
+        }
+    }
+
+    private void RunScenarioCampaignQa()
+    {
+        try
+        {
+            var source = CreatedGeneralPresets.ApplyAtNewGame(
+                new ScenarioLoader().LoadFromDirectory(FindDataDirectory()));
+            var preset = ScenarioMapPresetStore.Load(ProjectSettings.GlobalizePath(
+                "res://assets/maps/east-asia-user-preset.json"));
+            var archive = new ScenarioMapArchive(ProjectSettings.GlobalizePath("user://maps"),
+                ProjectSettings.GlobalizePath("user://scenarios"));
+            var map = archive.SaveVersion("default-east-asia", "기본 동아시아", preset);
+            var draft = ScenarioDraftApplier.CreateSeed("default-190", "190년 기본", source, map);
+            CampaignMapScene.ConfigureScenario(ScenarioDraftApplier.Apply(source, draft, preset),
+                1, draft.StartYear, draft.StartMonth, draft.StartDay);
+            _menuCampaign = true;
+            BuildCampaignMap();
+            GD.Print("[scenario-campaign-qa] passed=True");
+            CallDeferred(nameof(RequestGracefulShutdown));
+        }
+        catch (Exception error)
+        {
+            GD.PushError("[scenario-campaign-qa] " + error);
             GetTree().Quit(1);
         }
     }

@@ -654,6 +654,7 @@ public sealed partial class CampaignMapScene : Node3D
             StartYear = _scenarioOverride is null ? 190 : _scenarioStartYear,
             Day = _scenarioOverride is null ? 1 : _scenarioStartDay,
             HumanFactionId = Player.Value,
+            Difficulty = _scenarioOverride is null ? GameDifficulty.Normal : _scenarioDifficulty,
             Factions = _aiTestFixture?.Factions ?? scenario.Factions,
             Cities = _cities.ToList(),
             Generals = campaignGenerals,
@@ -674,7 +675,8 @@ public sealed partial class CampaignMapScene : Node3D
                 ?? _aiTestFixture?.MapPreset?.Snapshot() ?? _initial.MapPresetSnapshot,
         };
         if (_loadedState is not null) _state = _loadedState;
-        if (_aiTestFixture is not null && !args.Contains("--newmap")) SeedAiTestConstructionBuilders();
+        if (_aiTestFixture is not null && _scenarioOverride is null && !args.Contains("--newmap"))
+            SeedAiTestConstructionBuilders();
         if (args.Contains("--maptest") && _aiTestFixture is null)
         {
             SeedFieldBuildingSamples();
@@ -3840,18 +3842,20 @@ public sealed partial class CampaignMapScene : Node3D
     private static GameState? _loadedState;
     private static int _scenarioStartYear = 190;
     private static int _scenarioStartDay = 1;
+    private static GameDifficulty _scenarioDifficulty = GameDifficulty.Normal;
     private static AiTestFixture? _aiTestFixture = OS.GetCmdlineUserArgs().Contains("--newmap")
         ? AiTestFixture.LoadNewMap()
         : OS.GetCmdlineUserArgs().Contains("--aitest") ? AiTestFixture.Load() : null;
     private static HexMap _map = _aiTestFixture?.Map ?? BuildTestMap();
 
     public static void ConfigureScenario(Scenario scenario, int playerFactionId, int startYear,
-        int startMonth, int startDay)
+        int startMonth, int startDay, GameDifficulty difficulty = GameDifficulty.Normal)
     {
         _scenarioOverride = scenario;
         Player = new FactionId(playerFactionId);
         _scenarioStartYear = startYear;
         _scenarioStartDay = (startMonth - 1) * 30 + startDay;
+        _scenarioDifficulty = difficulty;
         _aiTestFixture = AiTestFixture.FromScenario(scenario);
         _map = scenario.Map;
         _cities = scenario.Cities;

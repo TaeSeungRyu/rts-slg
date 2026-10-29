@@ -8,6 +8,7 @@ public sealed partial class ScenarioStartMenu : Control
     public static string? SelectedPresetPath { get; private set; }
     public static string? SelectedScenarioPath { get; private set; }
     public static int SelectedPlayerFactionId { get; private set; } = 1;
+    public static SanguoSLG.Core.Simulation.GameDifficulty SelectedDifficulty { get; private set; }
     public static bool LoadSlotsOnStart { get; private set; }
     public static bool FromStartMenu { get; private set; }
 
@@ -84,6 +85,32 @@ public sealed partial class ScenarioStartMenu : Control
         mapChoice.AddItem("기본 지도");
         if (File.Exists(mapPath)) mapChoice.AddItem("편집한 동아시아 지도");
         content.AddChild(mapChoice);
+        var preview = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        content.AddChild(preview);
+        void RefreshPreview()
+        {
+            try
+            {
+                var selectedPath = scenarioPaths[scenarioChoice.Selected];
+                var chosen = selectedPath is null ? null
+                    : SanguoSLG.Core.Data.ScenarioDraftStore.Load(selectedPath);
+                var preset = chosen is null
+                    ? SanguoSLG.Core.Data.ScenarioMapPresetStore.Load(
+                        mapChoice.Selected == 1 ? mapPath : ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json"))
+                    : new SanguoSLG.Core.Data.ScenarioMapArchive(
+                        ProjectSettings.GlobalizePath("user://maps"), scenarioDir)
+                        .Load(chosen.MapId, chosen.MapRevision).Preset;
+                preview.Text = $"지도 {preset.Width}×{preset.Height} · 성 {preset.Sites.Count(s => s.Kind == "city")} · 항구 {preset.Sites.Count(s => s.Kind == "port")}";
+            }
+            catch (Exception failure) { preview.Text = "지도 미리보기 오류: " + failure.Message; }
+        }
+        scenarioChoice.ItemSelected += _ => RefreshPreview();
+        mapChoice.ItemSelected += _ => RefreshPreview();
+        RefreshPreview();
+        var difficulty = new OptionButton();
+        difficulty.AddItem("난이도: 보통", 0);
+        difficulty.AddItem("난이도: 어려움", 1);
+        content.AddChild(difficulty);
         var error = new Label { Text = "", Modulate = new Color("f0a486") };
         content.AddChild(error);
         var start = new Button { Text = "게임 시작", CustomMinimumSize = new Vector2(0, 48) };
@@ -106,6 +133,7 @@ public sealed partial class ScenarioStartMenu : Control
             SelectedPresetPath = scenarioChoice.Selected == 0 && mapChoice.Selected == 1 ? mapPath : null;
             SelectedScenarioPath = scenarioPaths[scenarioChoice.Selected];
             SelectedPlayerFactionId = factionChoice.GetSelectedId();
+            SelectedDifficulty = (SanguoSLG.Core.Simulation.GameDifficulty)difficulty.GetSelectedId();
             _launchRequested = true;
             GetTree().ReloadCurrentScene();
         };
@@ -117,6 +145,7 @@ public sealed partial class ScenarioStartMenu : Control
             SelectedScenarioPath = null;
             SelectedPresetPath = null;
             SelectedPlayerFactionId = 1;
+            SelectedDifficulty = SanguoSLG.Core.Simulation.GameDifficulty.Normal;
             _launchRequested = true;
             GetTree().ReloadCurrentScene();
         };
@@ -145,6 +174,8 @@ public sealed partial class ScenarioStartMenu : Control
             GetTree().ChangeSceneToFile("res://GeneralCreator.tscn");
         };
         content.AddChild(createGeneral);
+        content.MoveChild(general, content.GetChildCount() - 4);
+        content.MoveChild(createGeneral, content.GetChildCount() - 3);
         if (OS.GetCmdlineUserArgs().Contains("--startmenuqa")) CallDeferred(nameof(RunQa));
     }
 
@@ -154,7 +185,9 @@ public sealed partial class ScenarioStartMenu : Control
         var passed = buttons.Contains("게임 시작") && buttons.Contains("게임 불러오기")
             && buttons.Contains("지도 에디터")
             && buttons.Contains("시나리오 에디터") && buttons.Contains("장수 편집")
-            && buttons.Contains("신규 장수 추가");
+            && buttons.Contains("신규 장수 추가")
+            && buttons.TakeLast(6).SequenceEqual(new[] { "게임 시작", "게임 불러오기",
+                "장수 편집", "신규 장수 추가", "시나리오 에디터", "지도 에디터" });
         GD.Print($"[scenario-start-qa] passed={passed} buttons={buttons.Length}");
         GetTree().Quit(passed ? 0 : 1);
     }
@@ -166,6 +199,7 @@ public sealed partial class ScenarioStartMenu : Control
         SelectedPresetPath = null;
         SelectedScenarioPath = null;
         LoadSlotsOnStart = false;
+        SelectedDifficulty = SanguoSLG.Core.Simulation.GameDifficulty.Normal;
         tree.ChangeSceneToFile("res://Main3D.tscn");
     }
 }

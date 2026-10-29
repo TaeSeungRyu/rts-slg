@@ -13,6 +13,10 @@ public sealed partial class ScenarioEditorScene : Control
     private VBoxContainer _body = null!;
     private Label _message = null!;
     private string _scenarioDirectory = "";
+    private NativeNameEdit? _nativeText;
+    private LineEdit? _nativePlaceholder;
+    private Action<string>? _nativeUpdate;
+    private string _nativeLastText = "";
 
     public override void _Ready()
     {
@@ -30,6 +34,44 @@ public sealed partial class ScenarioEditorScene : Control
         RefreshList();
         ShowBasics();
         if (OS.GetCmdlineUserArgs().Contains("--scenarioeditorqa")) CallDeferred(nameof(RunQa));
+    }
+
+    public override void _Process(double delta)
+    {
+        if (_nativeText is null) return;
+        _nativeText.SyncBounds();
+        var value = _nativeText.Text;
+        if (value == _nativeLastText) return;
+        _nativeLastText = value;
+        _nativeUpdate?.Invoke(value);
+    }
+
+    public override void _ExitTree() => EndNativeText();
+
+    private void BeginNativeText(LineEdit field, Action<string> update)
+    {
+        if (!OperatingSystem.IsWindows() || DisplayServer.GetName() == "headless") return;
+        Callable.From(() =>
+        {
+            if (!field.IsInsideTree()) return;
+            EndNativeText();
+            _nativePlaceholder = field;
+            _nativeUpdate = update;
+            _nativeLastText = field.Text;
+            _nativeText = NativeNameEdit.Create(field, GetViewport());
+        }).CallDeferred();
+    }
+
+    private void EndNativeText()
+    {
+        if (_nativeText is null) return;
+        var value = _nativeText.Text;
+        _nativeUpdate?.Invoke(value);
+        if (_nativePlaceholder is { } field && GodotObject.IsInstanceValid(field)) field.Text = value;
+        _nativeText.Dispose();
+        _nativeText = null;
+        _nativePlaceholder = null;
+        _nativeUpdate = null;
     }
 
     private void LoadMaps()
@@ -154,7 +196,11 @@ public sealed partial class ScenarioEditorScene : Control
 
     private ScenarioMapVersion CurrentMap() => _archive.Load(_draft.MapId, _draft.MapRevision);
 
-    private void ClearBody() { foreach (var child in _body.GetChildren()) child.QueueFree(); }
+    private void ClearBody()
+    {
+        EndNativeText();
+        foreach (var child in _body.GetChildren()) child.QueueFree();
+    }
 
     private void ShowBasics()
     {
@@ -251,6 +297,8 @@ public sealed partial class ScenarioEditorScene : Control
             row.AddChild(new Label { Text = $"세력 {faction.Id}", CustomMinimumSize = new Vector2(90, 0) });
             var name = new LineEdit { Text = faction.Name, CustomMinimumSize = new Vector2(150, 0) };
             name.TextChanged += value => UpdateFaction(faction.Id, f => f with { Name = value });
+            name.FocusEntered += () => BeginNativeText(name,
+                value => UpdateFaction(faction.Id, f => f with { Name = value }));
             row.AddChild(name);
             var ruler = new OptionButton { CustomMinimumSize = new Vector2(150, 0) };
             foreach (var general in generals) ruler.AddItem(general.Name, general.Id.Value);
@@ -374,6 +422,7 @@ public sealed partial class ScenarioEditorScene : Control
         row.AddChild(new Label { Text = label, CustomMinimumSize = new Vector2(150, 0) });
         var field = new LineEdit { Text = value, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         field.TextChanged += value => update(value);
+        field.FocusEntered += () => BeginNativeText(field, update);
         row.AddChild(field);
     }
 
@@ -396,6 +445,7 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void SaveCurrent()
     {
+        EndNativeText();
         try
         {
             var known = _source.Generals.Select(general => general.Id.Value).ToHashSet();
@@ -410,8 +460,39 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void RunQa()
     {
-        var errors = _draft.Validate(CurrentMap().Preset, _source.Generals.Select(g => g.Id.Value).ToHashSet());
-        GD.Print($"[scenario-editor-qa] maps={_maps.Count} cities={_draft.Cities.Count} errors={errors.Count}");
-        GetTree().Quit(errors.Count == 0 ? 0 : 1);
+        try
+        {
+            var known = _source.Generals.Select(g => g.Id.Value).ToHashSet();
+            var map = CurrentMap().Preset;
+            var errors = _draft.Validate(map, known);
+            var originalDraft = _draft;
+            var otherMap = _maps.FirstOrDefault(candidate => candidate.Id != _draft.MapId);
+            var mapSwitchPassed = true;
+            if (otherMap is not null)
+            {
+                SwitchMap(otherMap);
+                mapSwitchPassed = _draft.Cities.All(city => city.OwnerFactionId == 0)
+                    && _draft.Generals.All(general => general.SiteId is null);
+                _draft = originalDraft;
+            }
+            ShowFactions(); ShowCities(); ShowGenerals(); ShowForces(); ShowBasics();
+            var path = Path.Combine(Path.GetTempPath(), "scenario-editor-qa-" + Guid.NewGuid().ToString("N") + ".json");
+            try
+            {
+                ScenarioDraftStore.Save(path, _draft, map, known);
+                var restored = ScenarioDraftStore.Load(path);
+                var passed = errors.Count == 0 && mapSwitchPassed
+                    && restored.MapRevision == _draft.MapRevision
+                    && restored.Cities.Count == _draft.Cities.Count;
+                GD.Print($"[scenario-editor-qa] passed={passed} maps={_maps.Count} cities={_draft.Cities.Count} errors={errors.Count}");
+                GetTree().Quit(passed ? 0 : 1);
+            }
+            finally { if (File.Exists(path)) File.Delete(path); }
+        }
+        catch (Exception error)
+        {
+            GD.PushError("[scenario-editor-qa] " + error);
+            GetTree().Quit(1);
+        }
     }
 }
