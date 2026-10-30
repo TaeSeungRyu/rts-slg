@@ -1,6 +1,9 @@
 namespace SanguoSLG.Core.Tests.Data;
 
 using SanguoSLG.Core.Data;
+using SanguoSLG.Core.Domain;
+using SanguoSLG.Core.Simulation;
+using SanguoSLG.Core.Spatial;
 
 public sealed class ScenarioDraftTests
 {
@@ -99,5 +102,31 @@ public sealed class ScenarioDraftTests
         Assert.Equal(1, updated.Cities.Single(city => city.SiteId == 3).OwnerFactionId);
         Assert.Equal(3, updated.Generals.Single().SiteId);
         Assert.Empty(updated.Validate(map, Generals));
+    }
+
+    [Fact]
+    public void HiddenFactionCannotStartAndAppearsAtNearestNeutralSiteInItsYear()
+    {
+        var hidden = new ScenarioFactionEntry(2, "후발 세력", 2, "#aabbcc", false, true, 191, 1);
+        var draft = Draft() with
+        {
+            Factions = [.. Draft().Factions, hidden],
+            Generals = [.. Draft().Generals, new ScenarioGeneralEntry(2, 2, null)],
+        };
+        Assert.Empty(draft.Validate(Map(), Generals));
+        Assert.NotEmpty((draft with { Factions = [.. Draft().Factions, hidden with { Playable = true }] })
+            .Validate(Map(), Generals));
+        var state = new GameState(361, 190,
+            [new Faction(new FactionId(1), "위", new GeneralId(1), 0, "#3366aa"),
+                new Faction(new FactionId(2), "후발 세력", new GeneralId(2), 0, "#aabbcc")],
+            [new City(new CityId(1), "첫 성", new HexCoord(1, 1), new FactionId(1), 100),
+                new City(new CityId(2), "둘째 성", new HexCoord(4, 3), new FactionId(0), 0)],
+            [], Postings: [new GeneralPosting(new GeneralId(2), new FactionId(2), null)],
+            HiddenFactionArrivals: [new HiddenFactionArrival(new FactionId(2), 191, new CityId(1))]);
+        var appeared = HiddenFactionArrivalService.Advance(state);
+        Assert.Equal(new FactionId(2), appeared.Cities.Single(city => city.Id.Value == 2).Owner);
+        Assert.Equal(new CityId(2), appeared.Assignments.Single().Location);
+        Assert.Equal(10000, appeared.Garrisons.Single().Troops);
+        Assert.Empty(appeared.HiddenFactionArrivals!);
     }
 }

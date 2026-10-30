@@ -68,6 +68,7 @@ public sealed class WorldEngine
             Factions = state.Factions.OrderBy(f => f.Id.Value).ToList(),
             Cities = state.Cities.OrderBy(c => c.Id.Value).ToList(),
         };
+        next = HiddenFactionArrivalService.Advance(next);
         next = AutoShipyardService.Advance(next);
         next = ConsumeGateProvisions(next);
         next = new GeneralDismissalService(_random).Advance(next);

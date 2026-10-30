@@ -31,6 +31,9 @@ public static class ScenarioDraftApplier
                 new GarrisonForce(new CityId(city.SiteId), force.TroopCode, force.Troops, 50))).ToArray(),
             InitialShips = draft.Cities.SelectMany(city => city.Ships.Select(ship =>
                 new PortShipStock(new CityId(city.SiteId), ship.ShipCode, ship.Count))).ToArray(),
+            HiddenFactionArrivals = draft.Factions.Where(entry => entry.Hidden)
+                .Select(entry => new HiddenFactionArrival(new FactionId(entry.Id),
+                    entry.ArrivalYear, new CityId(entry.ArrivalSiteId))).ToArray(),
         };
     }
 

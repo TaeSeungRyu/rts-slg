@@ -3,7 +3,7 @@ namespace SanguoSLG.Core.Data;
 using System.Text.Json;
 
 public sealed record ScenarioFactionEntry(int Id, string Name, int RulerGeneralId, string Color,
-    bool Playable = true);
+    bool Playable = true, bool Hidden = false, int ArrivalYear = 0, int ArrivalSiteId = 0);
 
 public sealed record ScenarioGarrisonEntry(string TroopCode, int Troops);
 
@@ -39,6 +39,16 @@ public sealed record ScenarioDraft(int Version, string Id, string Title, string 
                 || !knownGenerals.Contains(f.RulerGeneralId))
             || factionIds.Count != Factions.Count)
             errors.Add("세력 ID, 군주 또는 이름이 올바르지 않습니다.");
+        foreach (var faction in Factions.Where(f => f.Hidden))
+        {
+            if (faction.Playable || faction.ArrivalYear < StartYear
+                || !siteById.ContainsKey(faction.ArrivalSiteId)
+                || Cities.Any(city => city.OwnerFactionId == faction.Id)
+                || Generals.Any(general => general.FactionId == faction.Id && general.SiteId is not null)
+                || !Generals.Any(general => general.FactionId == faction.Id
+                    && general.GeneralId == faction.RulerGeneralId))
+                errors.Add($"{faction.Name}: 숨은세력은 시작할 수 없으며, 출현 연도·거점·군주를 지정하고 시작 배치를 비워야 합니다.");
+        }
         if (Cities.Count != siteById.Count || cityById.Count != Cities.Count
             || cityById.Keys.Any(id => !siteById.ContainsKey(id))
             || siteById.Keys.Any(id => !cityById.ContainsKey(id)))

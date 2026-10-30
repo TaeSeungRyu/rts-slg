@@ -3862,7 +3862,8 @@ public sealed partial class CampaignMapScene : Node3D
         _aiTestFixture = AiTestFixture.FromScenario(scenario);
         _map = scenario.Map;
         _cities = scenario.Cities;
-        _initial = _initial with { Cities = scenario.Cities.ToList() };
+        _initial = _initial with { Cities = scenario.Cities.ToList(),
+            HiddenFactionArrivals = scenario.HiddenFactionArrivals };
         _loadedState = null;
     }
 

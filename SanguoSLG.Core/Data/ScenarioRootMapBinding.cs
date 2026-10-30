@@ -63,7 +63,17 @@ public static class ScenarioRootMapBinding
                 ?? throw new InvalidDataException($"장수 {general.GeneralId}의 새 주둔 거점이 없습니다.");
             return general with { SiteId = target.Id };
         }).ToArray();
+        var factions = draft.Factions.Select(faction =>
+        {
+            if (!faction.Hidden || sites.ContainsKey(faction.ArrivalSiteId)) return faction;
+            if (!oldSites.TryGetValue(faction.ArrivalSiteId, out var old))
+                throw new InvalidDataException($"숨은세력 {faction.Name}의 이전 출현 거점을 찾을 수 없습니다.");
+            var target = sites.Values.OrderBy(site => Math.Abs(site.Column - old.Column)
+                + Math.Abs(site.Row - old.Row)).ThenBy(site => site.Id).First();
+            return faction with { ArrivalSiteId = target.Id };
+        }).ToArray();
         return draft with { MapId = root.Id, MapRevision = root.Revision,
-            Cities = cities.Values.OrderBy(city => city.SiteId).ToArray(), Generals = generals };
+            Cities = cities.Values.OrderBy(city => city.SiteId).ToArray(), Generals = generals,
+            Factions = factions };
     }
 }

@@ -381,7 +381,7 @@ public sealed partial class ScenarioEditorScene : Control
     {
         ClearBody();
         var generals = _source.Generals.OrderBy(g => g.Name).ToArray();
-        _body.AddChild(new Label { Text = "세력 이름, 군주, 세력 색, 시작 가능 여부" });
+        _body.AddChild(new Label { Text = "세력 이름, 군주, 세력 색, 시작 가능 여부와 숨은세력 출현 설정" });
         foreach (var faction in _draft.Factions)
         {
             var row = new HBoxContainer(); _body.AddChild(row);
@@ -394,7 +394,12 @@ public sealed partial class ScenarioEditorScene : Control
             var ruler = new OptionButton { CustomMinimumSize = new Vector2(150, 0) };
             foreach (var general in generals) ruler.AddItem(general.Name, general.Id.Value);
             ruler.Select(Math.Max(0, ruler.GetItemIndex(faction.RulerGeneralId)));
-            ruler.ItemSelected += index => UpdateFaction(faction.Id, f => f with { RulerGeneralId = ruler.GetItemId((int)index) });
+            ruler.ItemSelected += index =>
+            {
+                var generalId = ruler.GetItemId((int)index);
+                UpdateFaction(faction.Id, f => f with { RulerGeneralId = generalId });
+                if (faction.Hidden) EnsureHiddenRuler(faction.Id, generalId);
+            };
             row.AddChild(ruler);
             var color = new ColorPickerButton
             {
@@ -405,9 +410,51 @@ public sealed partial class ScenarioEditorScene : Control
             color.ColorChanged += value => UpdateFaction(faction.Id,
                 current => current with { Color = "#" + value.ToHtml(false) });
             row.AddChild(color);
-            var playable = new CheckBox { Text = "시작 가능", ButtonPressed = faction.Playable };
+            var playable = new CheckBox { Text = "시작 가능", ButtonPressed = faction.Playable,
+                Disabled = faction.Hidden };
             playable.Toggled += value => UpdateFaction(faction.Id, f => f with { Playable = value });
             row.AddChild(playable);
+            var hidden = new CheckBox { Text = "숨은세력", ButtonPressed = faction.Hidden };
+            hidden.Toggled += value =>
+            {
+                var sites = CurrentMap().Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate").ToArray();
+                UpdateFaction(faction.Id, current => current with
+                {
+                    Hidden = value, Playable = value ? false : current.Playable,
+                    ArrivalYear = value && current.ArrivalYear == 0 ? _draft.StartYear + 1 : current.ArrivalYear,
+                    ArrivalSiteId = value && current.ArrivalSiteId == 0 ? sites[0].Id : current.ArrivalSiteId,
+                });
+                if (value)
+                {
+                    _draft = _draft with
+                    {
+                        Cities = _draft.Cities.Select(city => city.OwnerFactionId == faction.Id
+                            ? city with { OwnerFactionId = 0, Garrisons = [], Ships = [] } : city).ToArray(),
+                        Generals = _draft.Generals.Select(general => general.FactionId == faction.Id
+                            ? general with { SiteId = null } : general).ToArray(),
+                    };
+                    EnsureHiddenRuler(faction.Id, faction.RulerGeneralId);
+                }
+                ShowFactions();
+            };
+            row.AddChild(hidden);
+            if (faction.Hidden)
+            {
+                var schedule = new HBoxContainer(); _body.AddChild(schedule);
+                schedule.AddChild(new Label { Text = "출현 연도" });
+                var year = new SpinBox { MinValue = _draft.StartYear, MaxValue = 9999,
+                    Value = Math.Max(_draft.StartYear, faction.ArrivalYear), CustomMinimumSize = new Vector2(100, 0) };
+                year.ValueChanged += value => UpdateFaction(faction.Id, f => f with { ArrivalYear = (int)value });
+                schedule.AddChild(year);
+                schedule.AddChild(new Label { Text = "우선 출현 거점" });
+                var target = new OptionButton { CustomMinimumSize = new Vector2(180, 0) };
+                foreach (var site in CurrentMap().Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate"))
+                    target.AddItem(site.Name, site.Id);
+                target.Select(Math.Max(0, target.GetItemIndex(faction.ArrivalSiteId)));
+                target.ItemSelected += index => UpdateFaction(faction.Id,
+                    f => f with { ArrivalSiteId = target.GetItemId((int)index) });
+                schedule.AddChild(target);
+            }
             var remove = new Button { Text = "삭제" };
             remove.Pressed += () =>
             {
@@ -430,6 +477,13 @@ public sealed partial class ScenarioEditorScene : Control
             ShowFactions();
         };
         _body.AddChild(add);
+    }
+
+    private void EnsureHiddenRuler(int factionId, int rulerId)
+    {
+        var generals = _draft.Generals.Where(general => general.GeneralId != rulerId).ToList();
+        generals.Add(new ScenarioGeneralEntry(rulerId, factionId, null));
+        _draft = _draft with { Generals = generals };
     }
 
     private void ShowGenerals()
@@ -698,10 +752,15 @@ public sealed partial class ScenarioEditorScene : Control
                 errors.AddRange(scenario.Validate(_archive.Load(scenario.MapId, scenario.MapRevision).Preset, known));
             }
             var originalDraft = _draft;
-            OpenScenario(bundled[0]);
-            var historicalUsesRoot = _draft.MapId == "default-east-asia"
-                && _draft.MapRevision == _maps[0].Revision
-                && ReferenceEquals(CurrentMap(), _maps[0]);
+            var historicalUsesRoot = true;
+            foreach (var scenarioPath in bundled)
+            {
+                OpenScenario(scenarioPath);
+                historicalUsesRoot &= _draft.MapId == "default-east-asia"
+                    && _draft.MapRevision == _maps[0].Revision
+                    && ReferenceEquals(CurrentMap(), _maps[0])
+                    && _draft.Validate(_maps[0].Preset, known).Count == 0;
+            }
             _draft = originalDraft;
             var legacy = _archive.SaveVersion("legacy-east-asia", "옛 편집 지도", map);
             _draft = originalDraft with { MapId = legacy.Id, MapRevision = legacy.Revision };
@@ -724,6 +783,8 @@ public sealed partial class ScenarioEditorScene : Control
             }
             ShowFactions();
             var factionColorUi = _body.FindChildren("*", "ColorPickerButton", true, false).Count > 0;
+            var hiddenFactionUi = _body.FindChildren("*", "CheckBox", true, false)
+                .OfType<CheckBox>().Any(check => check.Text == "숨은세력");
             ShowCities();
             var cityMapUi = _body.GetChildren().OfType<ScenarioSiteMap>().Any();
             ShowGenerals();
@@ -790,7 +851,7 @@ public sealed partial class ScenarioEditorScene : Control
                             .All(general => defaultSiteIds.Contains(general.SiteId!.Value));
                 });
                 var passed = bundled.Length == 6 && _list.ItemCount >= 6
-                    && factionColorUi && cityMapUi && generalSearchUi && generalCityListUi
+                    && factionColorUi && hiddenFactionUi && cityMapUi && generalSearchUi && generalCityListUi
                     && generalCrudPassed && forceTabRemoved
                     && cityForceUi && forceCrudPassed
                     && errors.Count == 0 && mapSwitchPassed && currentMapSelected

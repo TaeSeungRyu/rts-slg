@@ -22,7 +22,8 @@ public sealed record Scenario(
     IReadOnlyList<FacilityPlacement>? InitialFacilities = null,
     ScenarioMapPreset? MapPreset = null,
     IReadOnlyList<GarrisonForce>? InitialGarrisons = null,
-    IReadOnlyList<PortShipStock>? InitialShips = null)
+    IReadOnlyList<PortShipStock>? InitialShips = null,
+    IReadOnlyList<HiddenFactionArrival>? HiddenFactionArrivals = null)
 {
     public IReadOnlyList<GeneralPosting> PostingList => Postings ?? [];
 
