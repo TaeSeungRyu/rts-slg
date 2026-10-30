@@ -59,4 +59,31 @@ public sealed class ScenarioDraftTests
         Assert.Contains(errors, error => error.Contains("존재하지 않는 세력"));
         Assert.Contains(errors, error => error.Contains("선박"));
     }
+
+    [Fact]
+    public void RootBindingKeepsAssignmentsAndAddsNewNeutralSites()
+    {
+        var map = Map() with { Sites = [.. Map().Sites,
+            new MapEditorSite(3, "새 성", "city", "small", 2, 3)] };
+        var root = new ScenarioMapVersion("default-east-asia", "기본 지도",
+            ScenarioMapArchive.RevisionOf(map), map);
+        var updated = ScenarioRootMapBinding.Bind(Draft() with { MapId = "default-east-asia" }, root);
+        Assert.Equal(root.Revision, updated.MapRevision);
+        Assert.Equal(3, updated.Cities.Count);
+        Assert.Equal(1, updated.Cities.Single(city => city.SiteId == 1).OwnerFactionId);
+        Assert.Equal(0, updated.Cities.Single(city => city.SiteId == 3).OwnerFactionId);
+        Assert.Empty(updated.Validate(map, Generals));
+    }
+
+    [Fact]
+    public void RootBindingRejectsDeletedOccupiedSiteAndLeavesCustomMapAlone()
+    {
+        var map = Map() with { Sites = [Map().Sites[1]] };
+        var root = new ScenarioMapVersion("default-east-asia", "기본 지도",
+            ScenarioMapArchive.RevisionOf(map), map);
+        Assert.Throws<InvalidDataException>(() => ScenarioRootMapBinding.Bind(
+            Draft() with { MapId = "default-east-asia" }, root));
+        var custom = Draft() with { MapId = "user-map" };
+        Assert.Same(custom, ScenarioRootMapBinding.Bind(custom, root));
+    }
 }
