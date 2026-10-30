@@ -7,7 +7,7 @@
   "StartMonth": 1,
   "StartDay": 1,
   "MapId": "default-east-asia",
-  "MapRevision": "c329f4ab7b306f8a5800632dc90513bf481c35ec9603108888009a982596ae7f",
+  "MapRevision": "5ef331b804d4b5fb64a17eb8d6fd4e8e3111078d4c92eb09f6ffe67ebe7183a2",
   "Factions": [
     {
       "Id": 1,
@@ -114,26 +114,7 @@
       "OwnerFactionId": 13,
       "Gold": 2400,
       "Provisions": 18000,
-      "Wall": 2000,
-      "Security": 80,
-      "Garrisons": [
-        {
-          "TroopCode": "swordsman",
-          "Troops": 10000
-        },
-        {
-          "TroopCode": "archer",
-          "Troops": 6000
-        }
-      ],
-      "Ships": []
-    },
-    {
-      "SiteId": 2,
-      "OwnerFactionId": 10,
-      "Gold": 2400,
-      "Provisions": 18000,
-      "Wall": 2000,
+      "Wall": 1200,
       "Security": 80,
       "Garrisons": [
         {
@@ -152,115 +133,7 @@
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 4,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 5,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 6,
-      "OwnerFactionId": 9,
-      "Gold": 2400,
-      "Provisions": 18000,
-      "Wall": 2000,
-      "Security": 80,
-      "Garrisons": [
-        {
-          "TroopCode": "swordsman",
-          "Troops": 10000
-        },
-        {
-          "TroopCode": "archer",
-          "Troops": 6000
-        }
-      ],
-      "Ships": []
-    },
-    {
-      "SiteId": 7,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 8,
-      "OwnerFactionId": 5,
-      "Gold": 2400,
-      "Provisions": 18000,
-      "Wall": 2000,
-      "Security": 80,
-      "Garrisons": [
-        {
-          "TroopCode": "swordsman",
-          "Troops": 10000
-        },
-        {
-          "TroopCode": "archer",
-          "Troops": 6000
-        }
-      ],
-      "Ships": []
-    },
-    {
-      "SiteId": 9,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 10,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 11,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 12,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
@@ -270,17 +143,7 @@
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 14,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
@@ -290,7 +153,7 @@
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
@@ -300,7 +163,7 @@
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
@@ -310,7 +173,7 @@
       "OwnerFactionId": 7,
       "Gold": 2400,
       "Provisions": 18000,
-      "Wall": 2000,
+      "Wall": 600,
       "Security": 80,
       "Garrisons": [
         {
@@ -322,26 +185,6 @@
           "Troops": 6000
         }
       ],
-      "Ships": []
-    },
-    {
-      "SiteId": 18,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 19,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
       "Ships": []
     },
     {
@@ -349,28 +192,9 @@
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 21,
-      "OwnerFactionId": 1,
-      "Gold": 2400,
-      "Provisions": 18000,
-      "Wall": 2000,
-      "Security": 80,
-      "Garrisons": [
-        {
-          "TroopCode": "swordsman",
-          "Troops": 10000
-        },
-        {
-          "TroopCode": "archer",
-          "Troops": 6000
-        }
-      ],
       "Ships": []
     },
     {
@@ -378,7 +202,7 @@
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
@@ -388,37 +212,27 @@
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 24,
+      "SiteId": 27,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 25,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 26,
-      "OwnerFactionId": 4,
+      "SiteId": 29,
+      "OwnerFactionId": 8,
       "Gold": 2400,
       "Provisions": 18000,
-      "Wall": 2000,
+      "Wall": 1200,
       "Security": 80,
       "Garrisons": [
         {
@@ -433,31 +247,11 @@
       "Ships": []
     },
     {
-      "SiteId": 27,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
       "SiteId": 30,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 31,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
@@ -467,7 +261,7 @@
       "OwnerFactionId": 14,
       "Gold": 2400,
       "Provisions": 18000,
-      "Wall": 2000,
+      "Wall": 1200,
       "Security": 80,
       "Garrisons": [
         {
@@ -482,27 +276,404 @@
       "Ships": []
     },
     {
-      "SiteId": 33,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
       "SiteId": 34,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 35,
+      "SiteId": 36,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 1200,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 37,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 46,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 1200,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 48,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 49,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 50,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 54,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 1200,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 55,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 56,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 57,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 60,
+      "OwnerFactionId": 12,
+      "Gold": 2400,
+      "Provisions": 18000,
+      "Wall": 600,
+      "Security": 80,
+      "Garrisons": [
+        {
+          "TroopCode": "swordsman",
+          "Troops": 10000
+        },
+        {
+          "TroopCode": "archer",
+          "Troops": 6000
+        }
+      ],
+      "Ships": []
+    },
+    {
+      "SiteId": 66,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 58,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 1200,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 69,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 74,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 84,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 86,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 1200,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 83,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 1200,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 87,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 88,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 62,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 64,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 80,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 67,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 90,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 92,
+      "OwnerFactionId": 3,
+      "Gold": 2400,
+      "Provisions": 18000,
+      "Wall": 600,
+      "Security": 80,
+      "Garrisons": [
+        {
+          "TroopCode": "swordsman",
+          "Troops": 10000
+        },
+        {
+          "TroopCode": "archer",
+          "Troops": 6000
+        }
+      ],
+      "Ships": [
+        {
+          "ShipCode": "small_boat",
+          "Count": 2
+        }
+      ]
+    },
+    {
+      "SiteId": 72,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 76,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 93,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 95,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 1200,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 97,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 98,
+      "OwnerFactionId": 12,
+      "Gold": 2400,
+      "Provisions": 18000,
+      "Wall": 600,
+      "Security": 80,
+      "Garrisons": [
+        {
+          "TroopCode": "swordsman",
+          "Troops": 10000
+        },
+        {
+          "TroopCode": "archer",
+          "Troops": 6000
+        }
+      ],
+      "Ships": [
+        {
+          "ShipCode": "small_boat",
+          "Count": 2
+        }
+      ]
+    },
+    {
+      "SiteId": 99,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 100,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 1200,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 101,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 102,
       "OwnerFactionId": 2,
       "Gold": 2400,
       "Provisions": 18000,
@@ -521,77 +692,17 @@
       "Ships": []
     },
     {
-      "SiteId": 36,
+      "SiteId": 103,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 37,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 38,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 39,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 40,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 41,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 42,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 43,
+      "SiteId": 104,
       "OwnerFactionId": 11,
       "Gold": 2400,
       "Provisions": 18000,
@@ -610,96 +721,47 @@
       "Ships": []
     },
     {
-      "SiteId": 45,
+      "SiteId": 105,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 46,
+      "SiteId": 106,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 1200,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 47,
+      "SiteId": 107,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 48,
+      "SiteId": 108,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 49,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 50,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 51,
-      "OwnerFactionId": 6,
-      "Gold": 2400,
-      "Provisions": 18000,
-      "Wall": 2000,
-      "Security": 80,
-      "Garrisons": [
-        {
-          "TroopCode": "swordsman",
-          "Troops": 10000
-        },
-        {
-          "TroopCode": "archer",
-          "Troops": 6000
-        }
-      ],
-      "Ships": []
-    },
-    {
-      "SiteId": 52,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 53,
+      "SiteId": 109,
       "OwnerFactionId": 3,
       "Gold": 2400,
       "Provisions": 18000,
@@ -718,58 +780,47 @@
       "Ships": []
     },
     {
-      "SiteId": 54,
+      "SiteId": 110,
+      "OwnerFactionId": 6,
+      "Gold": 2400,
+      "Provisions": 18000,
+      "Wall": 1200,
+      "Security": 80,
+      "Garrisons": [
+        {
+          "TroopCode": "swordsman",
+          "Troops": 10000
+        },
+        {
+          "TroopCode": "archer",
+          "Troops": 6000
+        }
+      ],
+      "Ships": []
+    },
+    {
+      "SiteId": 111,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 55,
+      "SiteId": 112,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 1200,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 56,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 57,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 59,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 60,
-      "OwnerFactionId": 12,
+      "SiteId": 113,
+      "OwnerFactionId": 1,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -787,71 +838,70 @@
       "Ships": []
     },
     {
-      "SiteId": 61,
+      "SiteId": 114,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 1200,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 62,
+      "SiteId": 115,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 63,
+      "SiteId": 116,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 1200,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 64,
+      "SiteId": 117,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 66,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
+      "SiteId": 120,
+      "OwnerFactionId": 4,
+      "Gold": 2400,
+      "Provisions": 18000,
+      "Wall": 2000,
+      "Security": 80,
+      "Garrisons": [
+        {
+          "TroopCode": "swordsman",
+          "Troops": 10000
+        },
+        {
+          "TroopCode": "archer",
+          "Troops": 6000
+        }
+      ],
       "Ships": []
     },
     {
-      "SiteId": 67,
+      "SiteId": 121,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 68,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
@@ -861,107 +911,77 @@
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 1200,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 44,
+      "SiteId": 125,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 2000,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 58,
+      "SiteId": 127,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 2000,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 65,
+      "SiteId": 128,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 2000,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 69,
+      "SiteId": 130,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 2000,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 70,
+      "SiteId": 131,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 71,
+      "SiteId": 132,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 72,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 73,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 74,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
-      "Wall": 0,
-      "Security": 70,
-      "Garrisons": [],
-      "Ships": []
-    },
-    {
-      "SiteId": 75,
-      "OwnerFactionId": 3,
+      "SiteId": 133,
+      "OwnerFactionId": 9,
       "Gold": 2400,
       "Provisions": 18000,
-      "Wall": 2000,
+      "Wall": 600,
       "Security": 80,
       "Garrisons": [
         {
@@ -973,39 +993,34 @@
           "Troops": 6000
         }
       ],
-      "Ships": [
-        {
-          "ShipCode": "small_boat",
-          "Count": 2
-        }
-      ]
+      "Ships": []
     },
     {
-      "SiteId": 76,
+      "SiteId": 134,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 77,
+      "SiteId": 135,
       "OwnerFactionId": 0,
       "Gold": 0,
       "Provisions": 0,
-      "Wall": 0,
+      "Wall": 600,
       "Security": 70,
       "Garrisons": [],
       "Ships": []
     },
     {
-      "SiteId": 78,
-      "OwnerFactionId": 12,
+      "SiteId": 136,
+      "OwnerFactionId": 5,
       "Gold": 2400,
       "Provisions": 18000,
-      "Wall": 2000,
+      "Wall": 1200,
       "Security": 80,
       "Garrisons": [
         {
@@ -1017,19 +1032,44 @@
           "Troops": 6000
         }
       ],
-      "Ships": [
-        {
-          "ShipCode": "small_boat",
-          "Count": 2
-        }
-      ]
+      "Ships": []
     },
     {
-      "SiteId": 29,
-      "OwnerFactionId": 8,
+      "SiteId": 137,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 138,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 1200,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 139,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 140,
+      "OwnerFactionId": 10,
       "Gold": 2400,
       "Provisions": 18000,
-      "Wall": 2000,
+      "Wall": 1200,
       "Security": 80,
       "Garrisons": [
         {
@@ -1041,6 +1081,46 @@
           "Troops": 6000
         }
       ],
+      "Ships": []
+    },
+    {
+      "SiteId": 143,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 144,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 1200,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 145,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
+      "Ships": []
+    },
+    {
+      "SiteId": 147,
+      "OwnerFactionId": 0,
+      "Gold": 0,
+      "Provisions": 0,
+      "Wall": 600,
+      "Security": 70,
+      "Garrisons": [],
       "Ships": []
     }
   ],
@@ -1048,252 +1128,252 @@
     {
       "GeneralId": 1,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 8,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 22,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 23,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 24,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 16,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 17,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 18,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 29,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 30,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 32,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 19,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 20,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 15,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 14,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 13,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 28,
       "FactionId": 1,
-      "SiteId": 21
+      "SiteId": 113
     },
     {
       "GeneralId": 2,
       "FactionId": 2,
-      "SiteId": 35
+      "SiteId": 102
     },
     {
       "GeneralId": 3,
       "FactionId": 2,
-      "SiteId": 35
+      "SiteId": 102
     },
     {
       "GeneralId": 4,
       "FactionId": 2,
-      "SiteId": 35
+      "SiteId": 102
     },
     {
       "GeneralId": 9,
       "FactionId": 2,
-      "SiteId": 35
+      "SiteId": 102
     },
     {
       "GeneralId": 6,
       "FactionId": 2,
-      "SiteId": 35
+      "SiteId": 102
     },
     {
       "GeneralId": 11,
       "FactionId": 2,
-      "SiteId": 35
+      "SiteId": 102
     },
     {
       "GeneralId": 42,
       "FactionId": 2,
-      "SiteId": 35
+      "SiteId": 102
     },
     {
       "GeneralId": 47,
       "FactionId": 2,
-      "SiteId": 35
+      "SiteId": 102
     },
     {
       "GeneralId": 49,
       "FactionId": 2,
-      "SiteId": 35
+      "SiteId": 102
     },
     {
       "GeneralId": 48,
       "FactionId": 2,
-      "SiteId": 35
+      "SiteId": 102
     },
     {
       "GeneralId": 63,
       "FactionId": 3,
-      "SiteId": 53
+      "SiteId": 109
     },
     {
       "GeneralId": 7,
       "FactionId": 3,
-      "SiteId": 53
+      "SiteId": 109
     },
     {
       "GeneralId": 73,
       "FactionId": 3,
-      "SiteId": 53
+      "SiteId": 109
     },
     {
       "GeneralId": 70,
       "FactionId": 3,
-      "SiteId": 53
+      "SiteId": 109
     },
     {
       "GeneralId": 71,
       "FactionId": 3,
-      "SiteId": 53
+      "SiteId": 109
     },
     {
       "GeneralId": 10,
       "FactionId": 3,
-      "SiteId": 53
+      "SiteId": 109
     },
     {
       "GeneralId": 66,
       "FactionId": 3,
-      "SiteId": 53
+      "SiteId": 109
     },
     {
       "GeneralId": 67,
       "FactionId": 3,
-      "SiteId": 53
+      "SiteId": 109
     },
     {
       "GeneralId": 68,
       "FactionId": 3,
-      "SiteId": 53
+      "SiteId": 109
     },
     {
       "GeneralId": 69,
       "FactionId": 3,
-      "SiteId": 53
+      "SiteId": 109
     },
     {
       "GeneralId": 64,
       "FactionId": 3,
-      "SiteId": 53
+      "SiteId": 109
     },
     {
       "GeneralId": 81,
       "FactionId": 4,
-      "SiteId": 26
+      "SiteId": 120
     },
     {
       "GeneralId": 82,
       "FactionId": 4,
-      "SiteId": 26
+      "SiteId": 120
     },
     {
       "GeneralId": 83,
       "FactionId": 4,
-      "SiteId": 26
+      "SiteId": 120
     },
     {
       "GeneralId": 84,
       "FactionId": 4,
-      "SiteId": 26
+      "SiteId": 120
     },
     {
       "GeneralId": 87,
       "FactionId": 5,
-      "SiteId": 8
+      "SiteId": 136
     },
     {
       "GeneralId": 88,
       "FactionId": 5,
-      "SiteId": 8
+      "SiteId": 136
     },
     {
       "GeneralId": 89,
       "FactionId": 5,
-      "SiteId": 8
+      "SiteId": 136
     },
     {
       "GeneralId": 90,
       "FactionId": 5,
-      "SiteId": 8
+      "SiteId": 136
     },
     {
       "GeneralId": 91,
       "FactionId": 5,
-      "SiteId": 8
+      "SiteId": 136
     },
     {
       "GeneralId": 111,
       "FactionId": 5,
-      "SiteId": 8
+      "SiteId": 136
     },
     {
       "GeneralId": 92,
       "FactionId": 6,
-      "SiteId": 51
+      "SiteId": 110
     },
     {
       "GeneralId": 93,
       "FactionId": 6,
-      "SiteId": 51
+      "SiteId": 110
     },
     {
       "GeneralId": 5,
@@ -1318,37 +1398,37 @@
     {
       "GeneralId": 100,
       "FactionId": 9,
-      "SiteId": 6
+      "SiteId": 133
     },
     {
       "GeneralId": 101,
       "FactionId": 9,
-      "SiteId": 6
+      "SiteId": 133
     },
     {
       "GeneralId": 102,
       "FactionId": 9,
-      "SiteId": 6
+      "SiteId": 133
     },
     {
       "GeneralId": 94,
       "FactionId": 10,
-      "SiteId": 2
+      "SiteId": 140
     },
     {
       "GeneralId": 95,
       "FactionId": 11,
-      "SiteId": 43
+      "SiteId": 104
     },
     {
       "GeneralId": 96,
       "FactionId": 11,
-      "SiteId": 43
+      "SiteId": 104
     },
     {
       "GeneralId": 97,
       "FactionId": 11,
-      "SiteId": 43
+      "SiteId": 104
     },
     {
       "GeneralId": 141,

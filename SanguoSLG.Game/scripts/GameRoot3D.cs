@@ -443,21 +443,40 @@ public partial class GameRoot3D : Node3D
                 .Select(ScenarioDraftStore.Load).ToArray();
             var known = source.Generals.Select(general => general.Id.Value).ToHashSet();
             var rebased = builtIn.Select(original => ScenarioRootMapBinding.Bind(original, version)).ToArray();
+            var sitesByName = map.Sites.Where(site => site.Kind is "city" or "port" or "gate")
+                .ToDictionary(site => site.Name);
             var historical214 = rebased.SingleOrDefault(item => item.Id == "historical-214");
             var historical214Valid = historical214 is not null
                 && historical214.StartYear == 214
-                && historical214.Cities.Where(city => city.SiteId is 33 or 34 or 35 or 36)
-                    .All(city => city.OwnerFactionId == 3)
+                && new[] { "성도", "자동", "영안", "강주" }.All(name =>
+                    historical214.Cities.Single(city => city.SiteId == sitesByName[name].Id).OwnerFactionId == 3)
                 && historical214.Generals.Any(general => general.GeneralId == 2
-                    && general.FactionId == 3 && general.SiteId == 35)
+                    && general.FactionId == 3 && general.SiteId == sitesByName["성도"].Id)
                 && !historical214.Factions.Any(faction => faction.Name == "유장");
+            var territorialQa = rebased.Where(item => item.StartYear is 208 or 214).All(item =>
+            {
+                var cao = item.Factions.Single(faction => faction.Name == "조조").Id;
+                var sun = item.Factions.Single(faction => faction.Name == "손권").Id;
+                return new[] { "초", "소패" }.All(name => item.Cities.Single(city =>
+                        city.SiteId == sitesByName[name].Id).OwnerFactionId == cao)
+                    && new[] { "여강", "장사", "건안" }.All(name => item.Cities.Single(city =>
+                        city.SiteId == sitesByName[name].Id).OwnerFactionId == sun);
+            });
+            var sunCeQa = rebased.Single(item => item.StartYear == 194).Factions
+                .Any(faction => faction.Name == "손책");
+            var neutralQa = rebased.All(item => item.Cities.Single(city =>
+                city.SiteId == sitesByName["다리강가"].Id).OwnerFactionId == 0);
+            var wallQa = rebased.All(item => item.Cities.All(city =>
+                city.Wall == ScenarioWallDefaults.ForSite(
+                    map.Sites.Single(site => site.Id == city.SiteId), source.Balance)));
             var allCampaignsApply = rebased.All(item =>
                 ScenarioDraftApplier.Apply(source, item, map).Cities.Count == scenario.Cities.Count);
             CampaignMapScene.ConfigureScenario(scenario, 1, draft.StartYear, draft.StartMonth, draft.StartDay);
             var passed = ReferenceEquals(CampaignMapScene.TestMap, scenario.Map)
                 && rebased.Length == 6 && rebased.All(item => item.MapRevision == version.Revision
                     && item.Validate(map, known).Count == 0)
-                && historical214Valid && allCampaignsApply;
+                && historical214Valid && territorialQa && sunCeQa && neutralQa && wallQa
+                && allCampaignsApply;
             GD.Print($"[scenario-integration-qa] passed={passed} cities={scenario.Cities.Count} factions={scenario.Factions.Count} builtIn={rebased.Length}");
             GetTree().Quit(passed ? 0 : 1);
         }
