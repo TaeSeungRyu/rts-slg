@@ -179,6 +179,8 @@ def main() -> None:
                 cells = [cell.strip() for cell in row.strip("|").split("|")]
                 if len(cells) == 3 and cells[2] in ("☐", "☑"):
                     previous_status[cells[0]] = cells[2]
+                elif len(cells) == 4 and cells[3] in ("☐", "☑"):
+                    previous_status[cells[1]] = cells[3]
     previous_status.update({name: "☑" for name in COMPLETED_FROM_USER})
     readings = unihan_readings()
     first_rows, second_rows = rows(fetch(ROSTER_URL).decode())
@@ -291,10 +293,10 @@ def main() -> None:
         "## 중복 제거 작업 목록", "",
         "시나리오를 통틀어 동일 장수는 한 번만 적었다. 세력은 후보 배치에 등장하는 세력을 모두 표시한다. `☐`은 미작업, `☑`은 생성 완료를 뜻한다. 창작 장수 슬롯은 이름과 인물 설정을 정해야 한다.", "",
         f"총 **{len(candidate_factions)}명/슬롯** (실명 {sum('창작 장수 슬롯' not in name for name in candidate_factions)}명, 창작 슬롯 {sum('창작 장수 슬롯' in name for name in candidate_factions)}개).", "",
-        "| 이름 | 세력 | 작업여부 |", "| --- | --- | --- |",
+        "| 번호 | 이름 | 세력 | 작업여부 |", "| ---: | --- | --- | --- |",
     ]
-    for name in sorted(candidate_factions):
-        checklist.append(f"| {name} | {', '.join(sorted(candidate_factions[name]))} | {previous_status.get(name, '☐')} |")
+    for number, name in enumerate(sorted(candidate_factions), start=1):
+        checklist.append(f"| {number} | {name} | {', '.join(sorted(candidate_factions[name]))} | {previous_status.get(name, '☐')} |")
     checklist.append("")
     first_section = next(index for index, line in enumerate(lines) if line.startswith("## "))
     lines[first_section:first_section] = summary + checklist
