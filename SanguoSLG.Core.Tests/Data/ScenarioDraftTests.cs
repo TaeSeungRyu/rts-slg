@@ -7,6 +7,20 @@ using SanguoSLG.Core.Spatial;
 
 public sealed class ScenarioDraftTests
 {
+    [Theory]
+    [InlineData("city", "small", 600)]
+    [InlineData("city", "medium", 1200)]
+    [InlineData("city", "large", 2000)]
+    [InlineData("port", "medium", 600)]
+    [InlineData("gate", "small", 2000)]
+    [InlineData("gate", "medium", 3000)]
+    public void ScenarioWallFollowsSiteSize(string kind, string size, int expected)
+    {
+        var site = new MapEditorSite(1, "거점", kind, size, 1, 1);
+        Assert.Equal(expected, ScenarioWallDefaults.ForSite(site,
+            new SanguoSLG.Core.Simulation.BalanceConfig(MonthlyTaxPerCity: 100)));
+    }
+
     private static readonly IReadOnlySet<int> Generals = new HashSet<int> { 1, 2 };
     private static ScenarioMapPreset Map() => new(1, 6, 5,
         Enumerable.Repeat("PPPPPP", 5).ToArray(),

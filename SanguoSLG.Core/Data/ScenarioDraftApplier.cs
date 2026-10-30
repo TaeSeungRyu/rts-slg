@@ -11,6 +11,8 @@ public static class ScenarioDraftApplier
         if (errors.Count > 0) throw new InvalidDataException(string.Join(Environment.NewLine, errors));
         var mapped = ScenarioMapPresetApplier.Apply(source, map);
         var citySetup = draft.Cities.ToDictionary(city => city.SiteId);
+        var siteSetup = map.Sites.Where(site => site.Kind is "city" or "port" or "gate")
+            .ToDictionary(site => site.Id);
         return mapped with
         {
             Factions = draft.Factions.Where(entry => !entry.Hidden).Select(entry => new Faction(new FactionId(entry.Id),
@@ -21,7 +23,8 @@ public static class ScenarioDraftApplier
                 return city with
                 {
                     Owner = new FactionId(setup.OwnerFactionId), Gold = setup.Gold,
-                    Provisions = setup.Provisions, Wall = setup.Wall,
+                    Provisions = setup.Provisions,
+                    Wall = ScenarioWallDefaults.ForSite(siteSetup[city.Id.Value], source.Balance),
                     Security = setup.Security, Governor = null, Strategist = null,
                 };
             }).ToArray(),
@@ -52,7 +55,8 @@ public static class ScenarioDraftApplier
         {
             originalCities.TryGetValue(site.Name, out var original);
             return new ScenarioCityEntry(site.Id, original?.Owner.Value ?? 0,
-                original?.Gold ?? 0, original?.Provisions ?? 0, original?.Wall ?? 0,
+                original?.Gold ?? 0, original?.Provisions ?? 0,
+                ScenarioWallDefaults.ForSite(site, source.Balance),
                 original?.Security ?? 70, [], []);
         }).ToArray();
         var firstOwned = cities.Where(city => city.OwnerFactionId > 0)

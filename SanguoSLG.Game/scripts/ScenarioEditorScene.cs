@@ -183,6 +183,7 @@ public sealed partial class ScenarioEditorScene : Control
             _draft = ScenarioDraftStore.Load(path);
             EnsureMapAvailable();
             var updated = ApplyCurrentRootMap();
+            _draft = ScenarioWallDefaults.Normalize(_draft, CurrentMap().Preset, _source.Balance);
             ShowBasics();
             _message.Text = updated ? "시나리오 배치를 현재 기본 지도에 맞추었습니다. 복제 후 저장하세요."
                 : "시나리오를 불러왔습니다.";
@@ -301,7 +302,8 @@ public sealed partial class ScenarioEditorScene : Control
                 && new[] { "default-east-asia", "legacy-east-asia", "edited-east-asia" }.Contains(_draft.MapId));
         if (sameMapLineage && next.Id == "default-east-asia")
         {
-            _draft = ScenarioRootMapBinding.Bind(_draft, next, previous);
+            _draft = ScenarioWallDefaults.Normalize(
+                ScenarioRootMapBinding.Bind(_draft, next, previous), next.Preset, _source.Balance);
             ShowBasics();
             _message.Text = "현재 기본 지도에 맞춰 거점과 장수 배치를 갱신했습니다.";
             return;
@@ -326,6 +328,7 @@ public sealed partial class ScenarioEditorScene : Control
                 && oldSiteIds.Contains(id) && newSiteIds.Contains(id) ? g
                 : g with { SiteId = null }).ToArray(),
         };
+        _draft = ScenarioWallDefaults.Normalize(_draft, next.Preset, _source.Balance);
         ShowBasics();
         _message.Text = $"지도 교체: 소유권 해제 거점 {lostCities}곳, 배치 해제 장수 {lost.Length}명. 세력·거점 및 장수 배치 탭에서 확인하세요.";
     }
@@ -367,7 +370,15 @@ public sealed partial class ScenarioEditorScene : Control
         _body.AddChild(resources);
         AddCompactNumber(resources, "금", city.Gold, 0, 10000000, value => UpdateCity(city.SiteId, c => c with { Gold = value }));
         AddCompactNumber(resources, "군량", city.Provisions, 0, 10000000, value => UpdateCity(city.SiteId, c => c with { Provisions = value }));
-        AddCompactNumber(resources, "성벽", city.Wall, 0, 1000000, value => UpdateCity(city.SiteId, c => c with { Wall = value }));
+        resources.AddChild(new Label { Text = "성벽" });
+        resources.AddChild(new LineEdit
+        {
+            Name = "ScenarioWallReadOnly",
+            Text = ScenarioWallDefaults.ForSite(site, _source.Balance).ToString("N0"),
+            Editable = false,
+            CustomMinimumSize = new Vector2(100, 0),
+            TooltipText = "거점 크기에 따라 시작 성벽이 자동으로 설정됩니다.",
+        });
         AddCompactNumber(resources, "치안", city.Security, 0, 100, value => UpdateCity(city.SiteId, c => c with { Security = value }));
         if (city.OwnerFactionId > 0)
         {
@@ -566,8 +577,11 @@ public sealed partial class ScenarioEditorScene : Control
             selection.Clear();
             foreach (var general in _source.Generals.Where(general => general.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
                 && _draft.Generals.All(current => current.GeneralId != general.Id.Value
-                    || current.SiteId != selected.SiteId)).OrderBy(general => general.Name))
+                    || current.SiteId != selected.SiteId))
+                .OrderBy(general => _draft.Generals.Any(current => current.GeneralId == general.Id.Value))
+                .ThenBy(general => general.Name))
                 selection.AddItem(general.Name, general.Id.Value);
+            if (selection.ItemCount > 0) selection.Select(0);
         }
         FillAvailable(_generalSearch);
         search.TextChanged += value => { _generalSearch = value; FillAvailable(value); };
@@ -731,6 +745,7 @@ public sealed partial class ScenarioEditorScene : Control
         {
             var known = _source.Generals.Select(general => general.Id.Value).ToHashSet();
             var map = CurrentMap();
+            _draft = ScenarioWallDefaults.Normalize(_draft, map.Preset, _source.Balance);
             var path = Path.Combine(_scenarioDirectory, _draft.Id + ".json");
             if (File.Exists(ProjectSettings.GlobalizePath("res://assets/scenarios/" + _draft.Id + ".json")))
                 throw new InvalidDataException("기본 시나리오는 복제하여 편집하세요.");
@@ -803,11 +818,11 @@ public sealed partial class ScenarioEditorScene : Control
                 ShowGenerals();
                 var before = _draft.Generals.Count(general => general.SiteId == generalCity.SiteId);
                 var addGeneral = _body.FindChildren("*", "Button", true, false).OfType<Button>()
-                    .FirstOrDefault(button => button.Text == "선택 장수 등록");
+                    .LastOrDefault(button => button.Text == "선택 장수 등록" && !button.IsQueuedForDeletion());
                 addGeneral?.EmitSignal(Button.SignalName.Pressed);
                 var after = _draft.Generals.Count(general => general.SiteId == generalCity.SiteId);
                 var removeGeneral = _body.FindChildren("*", "Button", true, false).OfType<Button>()
-                    .FirstOrDefault(button => button.Text == "제거");
+                    .LastOrDefault(button => button.Text == "제거" && !button.IsQueuedForDeletion());
                 removeGeneral?.EmitSignal(Button.SignalName.Pressed);
                 generalCrudPassed = after == before + 1
                     && _draft.Generals.Count(general => general.SiteId == generalCity.SiteId) == before;
@@ -863,6 +878,7 @@ public sealed partial class ScenarioEditorScene : Control
                     && factionPlacementCompatible
                     && restored.MapRevision == _draft.MapRevision
                     && restored.Cities.Count == _draft.Cities.Count;
+                if (!passed) GD.Print($"[scenario-editor-qa-detail] history={historicalUsesRoot} legacy={legacyRebased} switch={mapSwitchPassed} placement={factionPlacementCompatible} root={currentMapSelected} generals={generalCrudPassed} forces={forceCrudPassed} cityUi={cityForceUi} factionUi={factionColorUi && hiddenFactionUi} cityMapUi={cityMapUi} generalUi={generalSearchUi && generalCityListUi} errors={errors.Count}");
                 GD.Print($"[scenario-editor-qa] passed={passed} maps={_maps.Count} cities={_draft.Cities.Count} errors={errors.Count}");
                 GetTree().Quit(passed ? 0 : 1);
             }
