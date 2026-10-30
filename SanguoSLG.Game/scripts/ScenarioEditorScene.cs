@@ -20,6 +20,9 @@ public sealed partial class ScenarioEditorScene : Control
     private int _selectedCityId;
     private int _selectedGeneralCityId;
     private string _generalSearch = "";
+    private static readonly Color[] FactionPalette = Enumerable.Range(0, 60)
+        .Select(index => Color.FromHsv((index % 12) / 12f, 0.48f + (index / 12) * 0.105f,
+            0.76f + (index / 12 % 2) * 0.12f)).ToArray();
 
     public override void _Ready()
     {
@@ -160,6 +163,8 @@ public sealed partial class ScenarioEditorScene : Control
         var builtIn = ProjectSettings.GlobalizePath("res://assets/scenarios");
         var paths = (Directory.Exists(builtIn) ? Directory.EnumerateFiles(builtIn, "*.json") : [])
             .Concat(Directory.Exists(_scenarioDirectory) ? Directory.EnumerateFiles(_scenarioDirectory, "*.json") : [])
+            .GroupBy(path => Path.GetFileName(path), StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.FirstOrDefault(path => path.StartsWith(_scenarioDirectory, StringComparison.OrdinalIgnoreCase)) ?? group.First())
             .OrderBy(path => Path.GetFileName(path).StartsWith("fictional-", StringComparison.Ordinal) ? 9999
                 : ScenarioDraftStore.Load(path).StartYear).ThenBy(path => path);
         foreach (var path in paths)
@@ -167,7 +172,8 @@ public sealed partial class ScenarioEditorScene : Control
             try
             {
                 var draft = ScenarioDraftStore.Load(path);
-                var index = _list.AddItem((path.StartsWith(builtIn, StringComparison.OrdinalIgnoreCase) ? "기본 · " : "") + draft.Title);
+                var isBuiltIn = File.Exists(Path.Combine(builtIn, Path.GetFileName(path)));
+                var index = _list.AddItem((isBuiltIn ? "기본 · " : "") + draft.Title);
                 _list.SetItemMetadata(index, path);
             }
             catch (Exception error) { GD.PushWarning($"시나리오 목록: {path}: {error.Message}"); }
@@ -185,7 +191,7 @@ public sealed partial class ScenarioEditorScene : Control
             var updated = ApplyCurrentRootMap();
             _draft = ScenarioWallDefaults.Normalize(_draft, CurrentMap().Preset, _source.Balance);
             ShowBasics();
-            _message.Text = updated ? "시나리오 배치를 현재 기본 지도에 맞추었습니다. 복제 후 저장하세요."
+            _message.Text = updated ? "시나리오 배치를 현재 기본 지도에 맞추었습니다. 검증 후 저장하세요."
                 : "시나리오를 불러왔습니다.";
         }
         catch (Exception error)
@@ -393,9 +399,15 @@ public sealed partial class ScenarioEditorScene : Control
         ClearBody();
         var generals = _source.Generals.OrderBy(g => g.Name).ToArray();
         _body.AddChild(new Label { Text = "세력 이름, 군주, 세력 색, 시작 가능 여부와 숨은세력 출현 설정" });
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, Mathf.Min(650, 52 + _draft.Factions.Count * 42)) };
+        _body.AddChild(scroll);
+        var table = new GridContainer { Columns = 9, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        scroll.AddChild(table);
+        foreach (var heading in new[] { "세력", "이름", "군주", "색상", "시작 가능", "숨은세력", "출현 연도", "우선 출현 거점", "관리" })
+            table.AddChild(new Label { Text = heading });
         foreach (var faction in _draft.Factions)
         {
-            var row = new HBoxContainer(); _body.AddChild(row);
+            var row = table;
             row.AddChild(new Label { Text = $"세력 {faction.Id}", CustomMinimumSize = new Vector2(90, 0) });
             var name = new LineEdit { Text = faction.Name, CustomMinimumSize = new Vector2(150, 0) };
             name.TextChanged += value => UpdateFaction(faction.Id, f => f with { Name = value });
@@ -412,14 +424,19 @@ public sealed partial class ScenarioEditorScene : Control
                 if (faction.Hidden) EnsureHiddenRuler(faction.Id, generalId);
             };
             row.AddChild(ruler);
-            var color = new ColorPickerButton
+            var color = new OptionButton { CustomMinimumSize = new Vector2(105, 32), TooltipText = "60가지 세력 색 중 선택" };
+            var currentColor = new Color(faction.Color);
+            var selectedColor = Array.FindIndex(FactionPalette, candidate => candidate.IsEqualApprox(currentColor));
+            if (selectedColor < 0) color.AddIconItem(FactionColorIcon(currentColor), "현재 색", -1);
+            for (var paletteIndex = 0; paletteIndex < FactionPalette.Length; paletteIndex++)
+                color.AddIconItem(FactionColorIcon(FactionPalette[paletteIndex]), $"색상 {paletteIndex + 1:00}", paletteIndex);
+            color.Select(selectedColor < 0 ? 0 : selectedColor);
+            color.ItemSelected += index =>
             {
-                Color = new Color(faction.Color),
-                CustomMinimumSize = new Vector2(72, 32),
-                TooltipText = faction.Name + " 세력 색 선택",
+                var paletteIndex = color.GetItemId((int)index);
+                if (paletteIndex >= 0)
+                    UpdateFaction(faction.Id, current => current with { Color = "#" + FactionPalette[paletteIndex].ToHtml(false) });
             };
-            color.ColorChanged += value => UpdateFaction(faction.Id,
-                current => current with { Color = "#" + value.ToHtml(false) });
             row.AddChild(color);
             var playable = new CheckBox { Text = "시작 가능", ButtonPressed = faction.Playable,
                 Disabled = faction.Hidden };
@@ -449,23 +466,17 @@ public sealed partial class ScenarioEditorScene : Control
                 ShowFactions();
             };
             row.AddChild(hidden);
-            if (faction.Hidden)
-            {
-                var schedule = new HBoxContainer(); _body.AddChild(schedule);
-                schedule.AddChild(new Label { Text = "출현 연도" });
-                var year = new SpinBox { MinValue = _draft.StartYear, MaxValue = 9999,
-                    Value = Math.Max(_draft.StartYear, faction.ArrivalYear), CustomMinimumSize = new Vector2(100, 0) };
-                year.ValueChanged += value => UpdateFaction(faction.Id, f => f with { ArrivalYear = (int)value });
-                schedule.AddChild(year);
-                schedule.AddChild(new Label { Text = "우선 출현 거점" });
-                var target = new OptionButton { CustomMinimumSize = new Vector2(180, 0) };
-                foreach (var site in CurrentMap().Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate"))
-                    target.AddItem(site.Name, site.Id);
-                target.Select(Math.Max(0, target.GetItemIndex(faction.ArrivalSiteId)));
-                target.ItemSelected += index => UpdateFaction(faction.Id,
-                    f => f with { ArrivalSiteId = target.GetItemId((int)index) });
-                schedule.AddChild(target);
-            }
+            var year = new SpinBox { MinValue = _draft.StartYear, MaxValue = 9999,
+                Value = Math.Max(_draft.StartYear, faction.ArrivalYear), CustomMinimumSize = new Vector2(100, 0), Editable = faction.Hidden };
+            year.ValueChanged += value => UpdateFaction(faction.Id, f => f with { ArrivalYear = (int)value });
+            row.AddChild(year);
+            var target = new OptionButton { CustomMinimumSize = new Vector2(180, 0), Disabled = !faction.Hidden };
+            foreach (var site in CurrentMap().Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate"))
+                target.AddItem(site.Name, site.Id);
+            target.Select(Math.Max(0, target.GetItemIndex(faction.ArrivalSiteId)));
+            target.ItemSelected += index => UpdateFaction(faction.Id,
+                f => f with { ArrivalSiteId = target.GetItemId((int)index) });
+            row.AddChild(target);
             var remove = new Button { Text = "삭제" };
             remove.Pressed += () =>
             {
@@ -494,6 +505,13 @@ public sealed partial class ScenarioEditorScene : Control
         _body.AddChild(add);
     }
 
+    private static ImageTexture FactionColorIcon(Color color)
+    {
+        using var image = Image.CreateEmpty(18, 18, false, Image.Format.Rgba8);
+        image.Fill(color);
+        return ImageTexture.CreateFromImage(image);
+    }
+
     private void EnsureHiddenRuler(int factionId, int rulerId)
     {
         var generals = _draft.Generals.Where(general => general.GeneralId != rulerId).ToList();
@@ -511,6 +529,14 @@ public sealed partial class ScenarioEditorScene : Control
             .OrderBy(city => _draft.Factions.FirstOrDefault(faction => faction.Id == city.OwnerFactionId)?.Name)
             .ThenBy(city => map.Sites.First(site => site.Id == city.SiteId).Name).ToArray();
         _body.AddChild(new Label { Text = "먼저 세력 거점을 고른 뒤 장수를 등록·이동·제거하세요." });
+        var spread = new Button { Text = "모든 세력 장수 자동 분산" };
+        spread.Pressed += () =>
+        {
+            SpreadGeneralsAcrossOwnedSites();
+            ShowGenerals();
+            _message.Text = "군주는 현재 거점에 두고, 같은 세력의 나머지 장수를 소유 거점에 고르게 배치했습니다.";
+        };
+        _body.AddChild(spread);
         if (owned.Length == 0)
         {
             _body.AddChild(new Label { Text = "세력·거점 탭에서 소유 거점을 먼저 지정하세요." });
@@ -597,6 +623,29 @@ public sealed partial class ScenarioEditorScene : Control
             ShowGenerals();
         };
         addRow.AddChild(add);
+    }
+
+    private void SpreadGeneralsAcrossOwnedSites()
+    {
+        var postings = _draft.Generals.ToArray();
+        foreach (var faction in _draft.Factions.Where(faction => !faction.Hidden))
+        {
+            var sites = _draft.Cities.Where(city => city.OwnerFactionId == faction.Id)
+                .Select(city => city.SiteId).OrderBy(id => id).ToArray();
+            if (sites.Length == 0) continue;
+            var ruler = postings.FirstOrDefault(general => general.GeneralId == faction.RulerGeneralId
+                && general.FactionId == faction.Id);
+            var home = ruler?.SiteId is { } id && sites.Contains(id) ? id : sites[0];
+            var destinations = sites.Where(id => id != home).Append(home).ToArray();
+            var number = 0;
+            for (var index = 0; index < postings.Length; index++)
+            {
+                if (postings[index].FactionId != faction.Id
+                    || postings[index].GeneralId == faction.RulerGeneralId) continue;
+                postings[index] = postings[index] with { SiteId = destinations[number++ % destinations.Length] };
+            }
+        }
+        _draft = _draft with { Generals = postings };
     }
 
     private void AddForceEditor(ScenarioCityEntry selected, MapEditorSite site, Action refresh)
@@ -747,8 +796,6 @@ public sealed partial class ScenarioEditorScene : Control
             var map = CurrentMap();
             _draft = ScenarioWallDefaults.Normalize(_draft, map.Preset, _source.Balance);
             var path = Path.Combine(_scenarioDirectory, _draft.Id + ".json");
-            if (File.Exists(ProjectSettings.GlobalizePath("res://assets/scenarios/" + _draft.Id + ".json")))
-                throw new InvalidDataException("기본 시나리오는 복제하여 편집하세요.");
             ScenarioDraftStore.Save(path, _draft, map.Preset, known);
             RefreshList();
             _message.Text = "저장 완료: " + path;
@@ -801,7 +848,8 @@ public sealed partial class ScenarioEditorScene : Control
                 _draft = originalDraft;
             }
             ShowFactions();
-            var factionColorUi = _body.FindChildren("*", "ColorPickerButton", true, false).Count > 0;
+            var factionColorUi = _body.FindChildren("*", "OptionButton", true, false).OfType<OptionButton>()
+                .Any(choice => choice.ItemCount == 60 || choice.ItemCount == 61);
             var hiddenFactionUi = _body.FindChildren("*", "CheckBox", true, false)
                 .OfType<CheckBox>().Any(check => check.Text == "숨은세력");
             ShowCities();
