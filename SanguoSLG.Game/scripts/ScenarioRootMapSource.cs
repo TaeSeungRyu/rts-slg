@@ -20,4 +20,16 @@ internal static class ScenarioRootMapSource
 
     public static ScenarioMapVersion OpenVersion(ScenarioMapArchive archive)
         => archive.SaveVersion("default-east-asia", "기본 지도", Load());
+
+    public static ScenarioMapPreset PreviousVersion(ScenarioMapArchive archive, ScenarioDraft draft)
+    {
+        try { return archive.Load(draft.MapId, draft.MapRevision).Preset; }
+        catch (FileNotFoundException) when (draft.MapId == "default-east-asia")
+        {
+            var bundled = ScenarioMapPresetStore.Load(ProjectSettings.GlobalizePath(
+                "res://assets/maps/east-asia-user-preset.json"));
+            if (ScenarioMapArchive.RevisionOf(bundled) == draft.MapRevision) return bundled;
+            throw;
+        }
+    }
 }

@@ -86,4 +86,18 @@ public sealed class ScenarioDraftTests
         var custom = Draft() with { MapId = "user-map" };
         Assert.Same(custom, ScenarioRootMapBinding.Bind(custom, root));
     }
+
+    [Fact]
+    public void RootBindingRelocatesDeletedCityAndItsOfficerToNearestFreeSite()
+    {
+        var old = Map();
+        var map = old with { Sites = [old.Sites[1],
+            new MapEditorSite(3, "대체 성", "city", "small", 2, 1)] };
+        var root = new ScenarioMapVersion("default-east-asia", "기본 지도",
+            ScenarioMapArchive.RevisionOf(map), map);
+        var updated = ScenarioRootMapBinding.Bind(Draft() with { MapId = "default-east-asia" }, root, old);
+        Assert.Equal(1, updated.Cities.Single(city => city.SiteId == 3).OwnerFactionId);
+        Assert.Equal(3, updated.Generals.Single().SiteId);
+        Assert.Empty(updated.Validate(map, Generals));
+    }
 }

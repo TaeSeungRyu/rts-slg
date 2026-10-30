@@ -77,7 +77,8 @@ public partial class GameRoot3D : Node3D
                     if (ScenarioRootMapBinding.UsesRoot(draft.MapId))
                     {
                         map = ScenarioRootMapSource.OpenVersion(archive);
-                        draft = ScenarioRootMapBinding.Bind(draft, map);
+                        draft = ScenarioRootMapBinding.Bind(draft, map,
+                            ScenarioRootMapSource.PreviousVersion(archive, draft));
                     }
                     else map = archive.Load(draft.MapId, draft.MapRevision);
                 }

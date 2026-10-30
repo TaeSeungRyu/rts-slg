@@ -208,7 +208,8 @@ public sealed partial class ScenarioEditorScene : Control
             return false;
         var root = _maps.First(map => map.Id == "default-east-asia");
         if (_draft.MapId == root.Id && _draft.MapRevision == root.Revision) return false;
-        _draft = ScenarioRootMapBinding.Bind(_draft, root);
+        _draft = ScenarioRootMapBinding.Bind(_draft, root,
+            ScenarioRootMapSource.PreviousVersion(_archive, _draft));
         return true;
     }
 
@@ -217,7 +218,7 @@ public sealed partial class ScenarioEditorScene : Control
         if (_maps.Any(map => map.Id == _draft.MapId && map.Revision == _draft.MapRevision)) return;
         if (_draft.MapId is "default-east-asia" or "legacy-east-asia" or "edited-east-asia")
         {
-            _archive.Load(_draft.MapId, _draft.MapRevision);
+            ScenarioRootMapSource.PreviousVersion(_archive, _draft);
             return;
         }
         _maps.Add(_archive.Load(_draft.MapId, _draft.MapRevision));
@@ -298,6 +299,13 @@ public sealed partial class ScenarioEditorScene : Control
         var sameMapLineage = next.Id == _draft.MapId
             || (new[] { "default-east-asia", "legacy-east-asia", "edited-east-asia" }.Contains(next.Id)
                 && new[] { "default-east-asia", "legacy-east-asia", "edited-east-asia" }.Contains(_draft.MapId));
+        if (sameMapLineage && next.Id == "default-east-asia")
+        {
+            _draft = ScenarioRootMapBinding.Bind(_draft, next, previous);
+            ShowBasics();
+            _message.Text = "현재 기본 지도에 맞춰 거점과 장수 배치를 갱신했습니다.";
+            return;
+        }
         var oldSiteIds = previous.Sites.Select(site => site.Id).ToHashSet();
         var oldCities = _draft.Cities.ToDictionary(city => city.SiteId);
         var newSites = next.Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate").ToArray();
