@@ -525,6 +525,18 @@ public sealed partial class EditMapScene : Control
             vacant.X, vacant.Y);
         valid &= CanPlace(draftCity);
         OpenCityEditor(vacant, null);
+        var editorPanel = _editorModal?.FindChild("MapEditorModalPanel", true, false) as PanelContainer;
+        var dragHandle = _editorModal?.FindChild("MapEditorModalHeader", true, false) as HBoxContainer;
+        valid &= editorPanel is not null && dragHandle is not null;
+        if (editorPanel is not null)
+        {
+            editorPanel.Size = new Vector2(420, 200);
+            MoveEditorModal(editorPanel, new Vector2(-40, 100));
+            valid &= Mathf.IsZeroApprox(editorPanel.Position.X);
+            MoveEditorModal(editorPanel, Size + new Vector2(40, 40));
+            valid &= editorPanel.Position.X <= Size.X - editorPanel.Size.X + 1f
+                && editorPanel.Position.Y <= Size.Y - editorPanel.Size.Y + 1f;
+        }
         var koreanNameInput = _editorModal?.FindChildren("*", "LineEdit", true, false)
             .OfType<LineEdit>().FirstOrDefault();
         valid &= koreanNameInput is not null;

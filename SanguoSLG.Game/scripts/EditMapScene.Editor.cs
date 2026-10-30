@@ -555,25 +555,54 @@ public sealed partial class EditMapScene
         backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(backdrop);
         _editorModal = backdrop;
-        var center = new CenterContainer();
-        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        backdrop.AddChild(center);
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(420, 0) };
+        var panel = new PanelContainer { Name = "MapEditorModalPanel",
+            CustomMinimumSize = new Vector2(420, 0), MouseFilter = MouseFilterEnum.Stop };
         panel.AddThemeStyleboxOverride("panel", EditorFrame(new Color("1b0f0d"), 2));
-        center.AddChild(panel);
+        backdrop.AddChild(panel);
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 9);
         panel.AddChild(content);
-        var heading = new HBoxContainer();
+        var heading = new HBoxContainer { Name = "MapEditorModalHeader",
+            MouseFilter = MouseFilterEnum.Stop, MouseDefaultCursorShape = CursorShape.Drag };
         content.AddChild(heading);
-        heading.AddChild(new Label { Text = title, SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        heading.AddChild(new Label { Text = title, SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Ignore });
         var close = new Button { Text = "✕" };
         close.Pressed += CloseEditorModal;
         heading.AddChild(close);
+        var dragging = false;
+        var offset = Vector2.Zero;
+        heading.GuiInput += input =>
+        {
+            if (input is InputEventMouseButton button && button.ButtonIndex == MouseButton.Left)
+            {
+                dragging = button.Pressed;
+                if (dragging) offset = GetGlobalMousePosition() - panel.GlobalPosition;
+                heading.AcceptEvent();
+            }
+            else if (dragging && input is InputEventMouseMotion)
+            {
+                MoveEditorModal(panel, GetGlobalMousePosition() - offset);
+                heading.AcceptEvent();
+            }
+        };
+        Callable.From(() =>
+        {
+            if (!GodotObject.IsInstanceValid(panel) || panel.IsQueuedForDeletion()) return;
+            panel.Size = panel.GetCombinedMinimumSize();
+            MoveEditorModal(panel, (Size - panel.Size) / 2f);
+        }).CallDeferred();
         content.AddChild(new HSeparator());
         _editorError = new Label { Text = "", Modulate = new Color("f0a486") };
         content.AddChild(_editorError);
         return content;
+    }
+
+    private void MoveEditorModal(Control panel, Vector2 position)
+    {
+        panel.Position = new Vector2(
+            Mathf.Clamp(position.X, 0f, Mathf.Max(0f, Size.X - panel.Size.X)),
+            Mathf.Clamp(position.Y, 0f, Mathf.Max(0f, Size.Y - panel.Size.Y)));
     }
 
     private void CloseEditorModal()
