@@ -44,14 +44,15 @@ public sealed partial class EditMapScene
         content.AddChild(new HSeparator());
         content.AddChild(new Label { Text = "기본 지도를 수정하거나 복제하여 시나리오별 지도를 관리할 수 있습니다." });
         var list = new GridContainer { Columns = 5, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        list.AddThemeConstantOverride("h_separation", 3);
-        list.AddThemeConstantOverride("v_separation", 3);
+        list.AddThemeConstantOverride("h_separation", 0);
+        list.AddThemeConstantOverride("v_separation", 0);
         PanelContainer Cell(Control child, bool heading = false)
         {
             var cell = new PanelContainer();
-            var style = EditorFrame(heading ? new Color("453023") : new Color("271e19"), 1);
-            style.BorderColor = heading ? new Color("d1ac60") : new Color("735b3b");
-            style.SetCornerRadiusAll(2);
+            var style = new StyleBoxFlat { BgColor = heading ? new Color("453023") : new Color("211916"),
+                BorderColor = heading ? new Color("d1ac60") : new Color("66523b") };
+            style.SetBorderWidthAll(0);
+            style.BorderWidthBottom = 1;
             style.SetContentMarginAll(8);
             cell.AddThemeStyleboxOverride("panel", style);
             cell.AddChild(child);
