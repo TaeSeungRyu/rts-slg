@@ -83,12 +83,8 @@ public sealed partial class ScenarioStartMenu : Control
         }
         scenarioChoice.ItemSelected += _ => RefreshFactions();
         RefreshFactions();
-        content.AddChild(new Label { Text = "기본 시나리오의 지도" });
+        content.AddChild(new Label { Text = "기본 지도" });
         var mapPath = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
-        var mapChoice = new OptionButton();
-        mapChoice.AddItem("기본 지도");
-        if (File.Exists(mapPath)) mapChoice.AddItem("편집한 동아시아 지도");
-        content.AddChild(mapChoice);
         var preview = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         content.AddChild(preview);
         void RefreshPreview()
@@ -100,14 +96,13 @@ public sealed partial class ScenarioStartMenu : Control
                     : SanguoSLG.Core.Data.ScenarioDraftStore.Load(selectedPath);
                 var preset = chosen is null
                     ? SanguoSLG.Core.Data.ScenarioMapPresetStore.Load(
-                        mapChoice.Selected == 1 ? mapPath : ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json"))
+                        File.Exists(mapPath) ? mapPath : ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json"))
                     : LoadScenarioMap(chosen, scenarioDir);
                 preview.Text = $"지도 {preset.Width}×{preset.Height} · 성 {preset.Sites.Count(s => s.Kind == "city")} · 항구 {preset.Sites.Count(s => s.Kind == "port")}";
             }
             catch (Exception failure) { preview.Text = "지도 미리보기 오류: " + failure.Message; }
         }
         scenarioChoice.ItemSelected += _ => RefreshPreview();
-        mapChoice.ItemSelected += _ => RefreshPreview();
         RefreshPreview();
         var difficulty = new OptionButton();
         difficulty.AddItem("난이도: 보통", 0);
@@ -118,7 +113,7 @@ public sealed partial class ScenarioStartMenu : Control
         var start = new Button { Text = "게임 시작", CustomMinimumSize = new Vector2(0, 48) };
         start.Pressed += () =>
         {
-            if (scenarioChoice.Selected == 0 && mapChoice.Selected == 1)
+            if (scenarioChoice.Selected == 0 && File.Exists(mapPath))
             {
                 try
                 {
@@ -132,7 +127,7 @@ public sealed partial class ScenarioStartMenu : Control
                     return;
                 }
             }
-            SelectedPresetPath = scenarioChoice.Selected == 0 && mapChoice.Selected == 1 ? mapPath : null;
+            SelectedPresetPath = scenarioChoice.Selected == 0 && File.Exists(mapPath) ? mapPath : null;
             SelectedScenarioPath = scenarioPaths[scenarioChoice.Selected];
             SelectedPlayerFactionId = factionChoice.GetSelectedId();
             SelectedDifficulty = (SanguoSLG.Core.Simulation.GameDifficulty)difficulty.GetSelectedId();
