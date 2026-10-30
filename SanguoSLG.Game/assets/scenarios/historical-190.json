@@ -85,6 +85,13 @@
       "RulerGeneralId": 137,
       "Color": "#5995aa",
       "Playable": true
+    },
+    {
+      "Id": 12,
+      "Name": "유비",
+      "RulerGeneralId": 2,
+      "Color": "#88765b",
+      "Playable": true
     }
   ],
   "Cities": [
@@ -166,12 +173,21 @@
     },
     {
       "SiteId": 16,
-      "OwnerFactionId": 0,
-      "Gold": 0,
-      "Provisions": 0,
+      "OwnerFactionId": 12,
+      "Gold": 2400,
+      "Provisions": 18000,
       "Wall": 600,
-      "Security": 70,
-      "Garrisons": [],
+      "Security": 80,
+      "Garrisons": [
+        {
+          "TroopCode": "swordsman",
+          "Troops": 10000
+        },
+        {
+          "TroopCode": "archer",
+          "Troops": 6000
+        }
+      ],
       "Ships": []
     },
     {
@@ -1329,27 +1345,27 @@
     {
       "GeneralId": 82,
       "FactionId": 1,
-      "SiteId": 120
+      "SiteId": 23
     },
     {
       "GeneralId": 83,
       "FactionId": 1,
-      "SiteId": 120
+      "SiteId": 27
     },
     {
       "GeneralId": 84,
       "FactionId": 1,
-      "SiteId": 120
+      "SiteId": 117
     },
     {
       "GeneralId": 5,
       "FactionId": 1,
-      "SiteId": 120
+      "SiteId": 28
     },
     {
       "GeneralId": 13,
       "FactionId": 1,
-      "SiteId": 120
+      "SiteId": 125
     },
     {
       "GeneralId": 87,
@@ -1359,17 +1375,17 @@
     {
       "GeneralId": 88,
       "FactionId": 2,
-      "SiteId": 134
+      "SiteId": 133
     },
     {
       "GeneralId": 89,
       "FactionId": 2,
-      "SiteId": 134
+      "SiteId": 135
     },
     {
       "GeneralId": 90,
       "FactionId": 2,
-      "SiteId": 134
+      "SiteId": 136
     },
     {
       "GeneralId": 91,
@@ -1379,7 +1395,7 @@
     {
       "GeneralId": 111,
       "FactionId": 2,
-      "SiteId": 134
+      "SiteId": 133
     },
     {
       "GeneralId": 92,
@@ -1389,7 +1405,7 @@
     {
       "GeneralId": 93,
       "FactionId": 3,
-      "SiteId": 112
+      "SiteId": 22
     },
     {
       "GeneralId": 1,
@@ -1399,12 +1415,12 @@
     {
       "GeneralId": 8,
       "FactionId": 4,
-      "SiteId": 114
+      "SiteId": 17
     },
     {
       "GeneralId": 22,
       "FactionId": 4,
-      "SiteId": 114
+      "SiteId": 113
     },
     {
       "GeneralId": 23,
@@ -1414,12 +1430,12 @@
     {
       "GeneralId": 24,
       "FactionId": 4,
-      "SiteId": 114
+      "SiteId": 17
     },
     {
       "GeneralId": 16,
       "FactionId": 4,
-      "SiteId": 114
+      "SiteId": 113
     },
     {
       "GeneralId": 17,
@@ -1429,12 +1445,12 @@
     {
       "GeneralId": 18,
       "FactionId": 4,
-      "SiteId": 114
+      "SiteId": 17
     },
     {
       "GeneralId": 29,
       "FactionId": 4,
-      "SiteId": 114
+      "SiteId": 113
     },
     {
       "GeneralId": 30,
@@ -1444,12 +1460,12 @@
     {
       "GeneralId": 32,
       "FactionId": 4,
-      "SiteId": 114
+      "SiteId": 17
     },
     {
       "GeneralId": 19,
       "FactionId": 4,
-      "SiteId": 114
+      "SiteId": 113
     },
     {
       "GeneralId": 20,
@@ -1459,12 +1475,12 @@
     {
       "GeneralId": 15,
       "FactionId": 4,
-      "SiteId": 114
+      "SiteId": 17
     },
     {
       "GeneralId": 14,
       "FactionId": 4,
-      "SiteId": 114
+      "SiteId": 113
     },
     {
       "GeneralId": 28,
@@ -1484,12 +1500,12 @@
     {
       "GeneralId": 96,
       "FactionId": 6,
-      "SiteId": 104
+      "SiteId": 46
     },
     {
       "GeneralId": 97,
       "FactionId": 6,
-      "SiteId": 104
+      "SiteId": 48
     },
     {
       "GeneralId": 105,
@@ -1519,17 +1535,32 @@
     {
       "GeneralId": 98,
       "FactionId": 11,
-      "SiteId": 102
+      "SiteId": 34
     },
     {
       "GeneralId": 99,
       "FactionId": 11,
-      "SiteId": 102
+      "SiteId": 36
     },
     {
       "GeneralId": 55,
       "FactionId": 11,
-      "SiteId": 102
+      "SiteId": 103
+    },
+    {
+      "GeneralId": 2,
+      "FactionId": 12,
+      "SiteId": 16
+    },
+    {
+      "GeneralId": 3,
+      "FactionId": 12,
+      "SiteId": 16
+    },
+    {
+      "GeneralId": 4,
+      "FactionId": 12,
+      "SiteId": 16
     }
   ]
 }
