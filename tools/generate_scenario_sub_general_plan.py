@@ -60,7 +60,12 @@ def fetch(url: str) -> bytes:
     return urllib.request.urlopen(request, timeout=45).read()
 
 
-NAME_OVERRIDES = {"田豫": "전예", "王朗": "왕랑", "張嶷": "장억"}
+NAME_OVERRIDES = {
+    "田豫": "전예", "王朗": "왕랑", "張嶷": "장억",
+    # Readings that differ from the first Unihan option. These are existing
+    # game characters, so their alternate readings must never create a new ID.
+    "樂進": "악진", "王異": "왕이",
+}
 
 
 def unihan_readings() -> dict[str, list[str]]:
@@ -197,6 +202,8 @@ def main() -> None:
         "이름은 [삼국지14 무장 명감](https://www.gamecity.ne.jp/sangokushi14/officers-list.html), 등장·생몰 시기와 세력은 [삼국지14 시나리오별 무장 등장표](https://xgodgame.blogspot.com/2020/02/14_9.html)를 참고했다. [삼국지10의 조운 소개](https://www.gamecity.ne.jp/sangokushi/introduction/contents1/choun.htm)와 [삼국지12의 마초 소개](https://www.gamecity.ne.jp/sangokushi/12/bushoumeikan/0025_bachou.htm)도 초기 세력 관계를 교차 확인하는 데 사용했다. 소속은 가까운 연도 시나리오를 우선 참고했으며 **각 성에 대한 배치는 게임 균형을 위한 제안**이다. 역사적 주둔지를 확정한 것이 아니다. `△`는 해당 연도 세력 소속을 직접 확인하지 못한 후보(전후 연도 소속 또는 해당 지역의 재야 장수)이므로 생성 전에 검토한다. `창작 장수 슬롯`은 삼국지14 명단만으로 해당 세력에 적합한 실존 후보가 모자라는 경우이며, 기존 세력의 장수를 임의로 옮겨 채우지 않았다. 한글 음은 [유니코드 Unihan 읽기 자료](https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip)의 한자음을 사용했으며 일부 통용 표기와 다를 수 있다.",
         "",
         "같은 시나리오 안에서는 한 장수를 두 성에 중복 배치하지 않는다. 다른 연도 시나리오에서는 같은 장수 데이터를 재사용한다. 이미 게임 데이터에 있는 장수는 신규 생성 후보에서 제외한다. `가상, 영웅부활`은 역사적 출생·사망 시기 필터를 적용하지 않는다.",
+        "",
+        "중복은 **본명과 한자 원문**을 함께 대조한다. 자(字)·호(號)는 별도 장수로 만들지 않는다. `樂進`은 게임의 악진과 같은 인물이므로 `낙진`을 추가하지 않고, `王異`도 게임의 왕이와 같으므로 `왕리`를 추가하지 않는다. 다만 `文則`은 우금의 자와 글자가 같지만 [삼국지14 무장 목록](https://www.gamecity.ne.jp/sangokushi14/officers-list.html)에 별도 인물로 수록된 공손찬 휘하 장수이므로 유지한다. [우금전 원문](https://www.shidianguji.com/zh/mid-page/7267625881152127036)에는 우금의 자가 문칙이라고 기록되어 있다. 한글 이름이 같아도 한자가 다른 `여건 (呂建/呂虔)`, `유기 (劉基/劉琦)`, `조표 (曹彪/曹豹)`는 서로 다른 인물로 구분한다.",
         "",
     ]
     report = []
