@@ -603,6 +603,7 @@ public sealed partial class EditMapScene
         panel.Position = new Vector2(
             Mathf.Clamp(position.X, 0f, Mathf.Max(0f, Size.X - panel.Size.X)),
             Mathf.Clamp(position.Y, 0f, Mathf.Max(0f, Size.Y - panel.Size.Y)));
+        _nativeNameEdit?.SyncBounds();
     }
 
     private void CloseEditorModal()

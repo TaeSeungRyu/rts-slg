@@ -16,6 +16,7 @@ internal sealed class NativeNameEdit : IDisposable
     private const uint SwpNoZOrder = 0x0004;
     private const uint WmCtlColorEdit = 0x0133;
     private const uint EmSetMargins = 0x00D3;
+    private const uint WmSetFont = 0x0030;
     private const uint EcLeftMargin = 0x0001;
     private const uint EcRightMargin = 0x0002;
     private const uint Background = 0x0014171c; // COLORREF RGB(28, 23, 20)
@@ -24,8 +25,10 @@ internal sealed class NativeNameEdit : IDisposable
     private readonly Viewport _viewport;
     private readonly nint _parent;
     private readonly nint _backgroundBrush;
+    private readonly nint _font;
     private readonly SubclassProcedure _subclassProcedure;
     private nint _handle;
+    private Rect _lastBounds;
 
     private NativeNameEdit(nint handle, nint parent, LineEdit placeholder, Viewport viewport)
     {
@@ -34,9 +37,11 @@ internal sealed class NativeNameEdit : IDisposable
         _placeholder = placeholder;
         _viewport = viewport;
         _backgroundBrush = CreateSolidBrush(Background);
+        _font = CreateFontW(-17, 0, 0, 0, 500, 0, 0, 0, 1, 0, 0, 0, 0, "Malgun Gothic");
         _subclassProcedure = ColorEdit;
         SetWindowSubclass(_parent, _subclassProcedure, (nuint)_handle, 0);
-        SendMessageW(_handle, EmSetMargins, EcLeftMargin | EcRightMargin, (nint)((8 << 16) | 8));
+        SendMessageW(_handle, WmSetFont, _font, (nint)1);
+        SendMessageW(_handle, EmSetMargins, (nint)(EcLeftMargin | EcRightMargin), (nint)((8 << 16) | 8));
         SyncBounds();
         SetFocus(_handle);
     }
@@ -73,10 +78,26 @@ internal sealed class NativeNameEdit : IDisposable
         var scaleX = (float)client.Right / viewportSize.X;
         var scaleY = (float)client.Bottom / viewportSize.Y;
         var rect = _placeholder.GetGlobalRect();
-        SetWindowPos(_handle, 0,
-            Mathf.RoundToInt(rect.Position.X * scaleX) + 2, Mathf.RoundToInt(rect.Position.Y * scaleY) + 2,
-            Mathf.Max(1, Mathf.RoundToInt(rect.Size.X * scaleX) - 4),
-            Mathf.Max(1, Mathf.RoundToInt(rect.Size.Y * scaleY) - 4), SwpNoZOrder);
+        var fieldHeight = Mathf.RoundToInt(rect.Size.Y * scaleY);
+        var nativeHeight = Mathf.Max(1, Mathf.Min(fieldHeight - 4, 25));
+        var bounds = new Rect
+        {
+            Left = Mathf.RoundToInt(rect.Position.X * scaleX) + 2,
+            Top = Mathf.RoundToInt(rect.Position.Y * scaleY) + (fieldHeight - nativeHeight) / 2,
+            Right = Mathf.Max(1, Mathf.RoundToInt(rect.Size.X * scaleX) - 4),
+            Bottom = nativeHeight,
+        };
+        if (bounds.Left != _lastBounds.Left || bounds.Top != _lastBounds.Top
+            || bounds.Right != _lastBounds.Right || bounds.Bottom != _lastBounds.Bottom)
+        {
+            SetWindowPos(_handle, 0, bounds.Left, bounds.Top, bounds.Right, bounds.Bottom, SwpNoZOrder);
+            _lastBounds = bounds;
+        }
+        if (GetFocus() == _handle)
+        {
+            var cursor = new CursorInfo { Size = (uint)Marshal.SizeOf<CursorInfo>() };
+            if (GetCursorInfo(ref cursor) && (cursor.Flags & 1u) == 0) ShowCursor(true);
+        }
     }
 
     private nint ColorEdit(nint window, uint message, nint wParam, nint lParam, nuint subclassId, nuint data)
@@ -100,6 +121,7 @@ internal sealed class NativeNameEdit : IDisposable
         DestroyWindow(_handle);
         _handle = 0;
         DeleteObject(_backgroundBrush);
+        DeleteObject(_font);
         // Windows' "hide pointer while typing" can leave the cursor hidden
         // after the EDIT child is destroyed, until a physical mouse move.
         var cursor = new CursorInfo { Size = (uint)Marshal.SizeOf<CursorInfo>() };
@@ -131,6 +153,10 @@ internal sealed class NativeNameEdit : IDisposable
     private static extern nint DefSubclassProc(nint window, uint message, nint wParam, nint lParam);
     [DllImport("gdi32.dll")]
     private static extern nint CreateSolidBrush(uint color);
+    [DllImport("gdi32.dll", CharSet = CharSet.Unicode)]
+    private static extern nint CreateFontW(int height, int width, int escapement, int orientation,
+        int weight, uint italic, uint underline, uint strikeOut, uint charSet, uint outputPrecision,
+        uint clipPrecision, uint quality, uint pitchAndFamily, string faceName);
     [DllImport("gdi32.dll")]
     private static extern bool DeleteObject(nint handle);
     [DllImport("gdi32.dll")]
@@ -138,7 +164,7 @@ internal sealed class NativeNameEdit : IDisposable
     [DllImport("gdi32.dll")]
     private static extern uint SetBkColor(nint deviceContext, uint color);
     [DllImport("user32.dll", EntryPoint = "SendMessageW")]
-    private static extern nint SendMessageW(nint window, uint message, uint wParam, nint lParam);
+    private static extern nint SendMessageW(nint window, uint message, nint wParam, nint lParam);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "CreateWindowExW", SetLastError = true)]
     private static extern nint CreateWindowExW(uint exStyle, string className, string windowName,
