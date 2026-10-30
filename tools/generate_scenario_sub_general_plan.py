@@ -19,6 +19,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "SanguoSLG.Game" / "assets"
 OUTPUT = ROOT / "doc" / "plan-scenario-sub-generals.md"
+TARGET_PER_CITY = 2
+COMPLETED_FROM_USER = {
+    "가규 (賈逵)", "가신 (賈信)", "간옹 (簡雍)", "강단 (強端)",
+    "강서 (姜敘)", "견초 (牽招)", "경기 (耿紀)", "계옹 (季雍)",
+}
+COMPLETED_FACTIONS = {
+    "가규 (賈逵)": {"조조"}, "가신 (賈信)": {"조조"},
+    "간옹 (簡雍)": {"유비"}, "강단 (強端)": {"장로"},
+    "강서 (姜敘)": {"장로"}, "견초 (牽招)": {"원소", "조조"},
+    "경기 (耿紀)": {"조조"}, "계옹 (季雍)": {"원소"},
+}
 ROSTER_URL = "https://xgodgame.blogspot.com/2020/02/14_9.html"
 UNIHAN_URL = "https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip"
 
@@ -163,6 +174,7 @@ def main() -> None:
                 cells = [cell.strip() for cell in row.strip("|").split("|")]
                 if len(cells) == 3 and cells[2] in ("☐", "☑"):
                     previous_status[cells[0]] = cells[2]
+    previous_status.update({name: "☑" for name in COMPLETED_FROM_USER})
     readings = unihan_readings()
     first_rows, second_rows = rows(fetch(ROSTER_URL).decode())
     first = {}
@@ -180,7 +192,7 @@ def main() -> None:
     lines = [
         "# 시나리오별 추가 장수 생성 후보",
         "",
-        "기준: 현재 기본 지도, `data/generals.json`, 기본 시나리오 6개. **항구는 제외**하고, 현재 소유한 각 성에 **새 장수 3명씩**을 추가로 만드는 목표다. 이 문서는 생성 후보 목록이며 장수 데이터나 시작 배치를 변경하지 않는다.",
+        f"기준: 현재 기본 지도, `data/generals.json`, 기본 시나리오 6개. **항구는 제외**하고, 현재 소유한 각 성에 **새 장수 {TARGET_PER_CITY}명씩**을 추가로 만드는 목표다. 이 문서는 생성 후보 목록이며 장수 데이터나 시작 배치를 변경하지 않는다.",
         "",
         "이름은 [삼국지14 무장 명감](https://www.gamecity.ne.jp/sangokushi14/officers-list.html), 등장·생몰 시기와 세력은 [삼국지14 시나리오별 무장 등장표](https://xgodgame.blogspot.com/2020/02/14_9.html)를 참고했다. [삼국지10의 조운 소개](https://www.gamecity.ne.jp/sangokushi/introduction/contents1/choun.htm)와 [삼국지12의 마초 소개](https://www.gamecity.ne.jp/sangokushi/12/bushoumeikan/0025_bachou.htm)도 초기 세력 관계를 교차 확인하는 데 사용했다. 소속은 가까운 연도 시나리오를 우선 참고했으며 **각 성에 대한 배치는 게임 균형을 위한 제안**이다. 역사적 주둔지를 확정한 것이 아니다. `△`는 해당 연도 세력 소속을 직접 확인하지 못한 후보(전후 연도 소속 또는 해당 지역의 재야 장수)이므로 생성 전에 검토한다. `창작 장수 슬롯`은 삼국지14 명단만으로 해당 세력에 적합한 실존 후보가 모자라는 경우이며, 기존 세력의 장수를 임의로 옮겨 채우지 않았다. 한글 음은 [유니코드 Unihan 읽기 자료](https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip)의 한자음을 사용했으며 일부 통용 표기와 다를 수 있다.",
         "",
@@ -205,16 +217,23 @@ def main() -> None:
         used_korean = set()
         missing = []
         stats = Counter()
-        lines.extend([f"## {scenario['Title']}", "", "| 세력 | 성 | 현재 장수 | 신규 생성 후보 3명 |", "| --- | --- | ---: | --- |"])
+        lines.extend([f"## {scenario['Title']}", "", f"| 세력 | 성 | 현재 장수 | 신규 생성 후보 {TARGET_PER_CITY}명 |", "| --- | --- | ---: | --- |"])
         for faction in scenario["Factions"]:
             faction_id = faction["Id"]
             ruler = faction_by_id[faction_id]
-            pool = ruler_pool(year, ruler, first, second)
+            completed_regional = [entry for entry in fallback_pool(year, ruler, first, second)
+                                  if f"{korean(entry[1], readings)} ({entry[1]})" in COMPLETED_FROM_USER]
+            pool = sorted(
+                ruler_pool(year, ruler, first, second) + completed_regional,
+                key=lambda entry: (previous_status.get(f"{korean(entry[1], readings)} ({entry[1]})") != "☑", -entry[0], entry[1]),
+            )
             city_ids = sorted(owned_cities[faction_id], key=lambda site_id: (existing_by_city[site_id], sites[site_id]["Name"]))
             for site_id in city_ids:
                 chosen = []
                 for score, name in pool:
                     translated = korean(name, readings)
+                    if ruler not in COMPLETED_FACTIONS.get(f"{translated} ({name})", {ruler}):
+                        continue
                     if (name in used or translated in used_korean or translated in existing_names or translated in scenario_existing
                             or not re.fullmatch(r"[가-힣]+", translated) or name.endswith("氏")):
                         continue
@@ -223,12 +242,16 @@ def main() -> None:
                     chosen.append((score, name))
                     used.add(name)
                     used_korean.add(translated)
-                    if len(chosen) == 3:
+                    if len(chosen) == TARGET_PER_CITY:
                         break
-                while len(chosen) < 3:
+                while len(chosen) < TARGET_PER_CITY:
                     # A cross-faction filler is explicitly flagged; never imply historical allegiance.
-                    other = next(((score, name) for score, name in fallback_pool(year, ruler, first, second)
-                                  if name not in used and korean(name, readings) not in used_korean
+                    other = next(((score, name) for score, name in sorted(
+                        fallback_pool(year, ruler, first, second),
+                        key=lambda entry: (previous_status.get(f"{korean(entry[1], readings)} ({entry[1]})") != "☑", -entry[0], entry[1]),
+                    )
+                                  if name not in used and ruler in COMPLETED_FACTIONS.get(f"{korean(name, readings)} ({name})", {ruler})
+                                  and korean(name, readings) not in used_korean
                                   and korean(name, readings) not in existing_names and korean(name, readings) not in scenario_existing
                                   and re.fullmatch(r"[가-힣]+", korean(name, readings)) and not name.endswith("氏")), None)
                     if other is None:
@@ -242,13 +265,13 @@ def main() -> None:
                     label = f"{korean(name, readings)} ({name})"
                     candidate_factions[label].add(ruler)
                     labels.append(label + (" △" if score < 100 and year else ""))
-                for number in range(len(labels) + 1, 4):
+                for number in range(len(labels) + 1, TARGET_PER_CITY + 1):
                     label = f"{ruler} {sites[site_id]['Name']} 창작 장수 슬롯 {number}"
                     candidate_factions[label].add(ruler)
                     labels.append(label)
                 stats["cities"] += 1
                 stats["proposals"] += len(chosen)
-                stats["slots"] += 3 - len(chosen)
+                stats["slots"] += TARGET_PER_CITY - len(chosen)
                 stats["review"] += sum(score < 100 and year != 0 for score, _ in chosen)
                 lines.append(f"| {ruler} | {sites[site_id]['Name']} | {existing_by_city[site_id]} | {' · '.join(labels)} |")
         lines.extend(["", f"소유 성 **{stats['cities']}개**, 실명 신규 후보 **{stats['proposals']}명**, 창작 장수 슬롯 **{stats['slots']}개** (소속·연도 재검토 표시 {stats['review']}명).", ""])
