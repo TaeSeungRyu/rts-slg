@@ -74,19 +74,16 @@ public partial class GameRoot3D : Node3D
                 if (ScenarioStartMenu.SelectedScenarioPath is { } scenarioPath)
                 {
                     draft = ScenarioDraftStore.Load(scenarioPath);
-                    if (draft.MapId == "default-east-asia")
-                        archive.SaveVersion("default-east-asia", "기본 동아시아",
-                            ScenarioMapPresetStore.Load(ProjectSettings.GlobalizePath(
-                                "res://assets/maps/east-asia-user-preset.json")));
-                    map = archive.Load(draft.MapId, draft.MapRevision);
+                    if (ScenarioRootMapBinding.UsesRoot(draft.MapId))
+                    {
+                        map = ScenarioRootMapSource.OpenVersion(archive);
+                        draft = ScenarioRootMapBinding.Bind(draft, map);
+                    }
+                    else map = archive.Load(draft.MapId, draft.MapRevision);
                 }
                 else
                 {
-                    var presetPath = ScenarioStartMenu.SelectedPresetPath ??
-                        ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json");
-                    var edited = ScenarioStartMenu.SelectedPresetPath is not null;
-                    map = archive.SaveVersion(edited ? "edited-east-asia" : "default-east-asia",
-                        edited ? "편집한 동아시아" : "기본 동아시아", ScenarioMapPresetStore.Load(presetPath));
+                    map = ScenarioRootMapSource.OpenVersion(archive);
                     draft = ScenarioDraftApplier.CreateSeed("default-190", "190년 기본", source, map);
                 }
                 var selectedScenario = ScenarioDraftApplier.Apply(source, draft, map.Preset);
@@ -434,16 +431,21 @@ public partial class GameRoot3D : Node3D
         try
         {
             var source = new ScenarioLoader().LoadFromDirectory(FindDataDirectory());
-            var map = ScenarioMapPresetStore.Load(ProjectSettings.GlobalizePath(
-                "res://assets/maps/east-asia-user-preset.json"));
+            var map = ScenarioRootMapSource.Load();
             var archive = new ScenarioMapArchive(ProjectSettings.GlobalizePath("user://maps"),
                 ProjectSettings.GlobalizePath("user://scenarios"));
-            var version = archive.SaveVersion("default-east-asia", "기본 동아시아", map);
+            var version = ScenarioRootMapSource.OpenVersion(archive);
             var draft = ScenarioDraftApplier.CreateSeed("default-190", "190년 기본", source, version);
             var scenario = ScenarioDraftApplier.Apply(source, draft, map);
+            var builtIn = Directory.EnumerateFiles(ProjectSettings.GlobalizePath("res://assets/scenarios"), "*.json")
+                .Select(ScenarioDraftStore.Load).ToArray();
+            var known = source.Generals.Select(general => general.Id.Value).ToHashSet();
+            var rebased = builtIn.Select(original => ScenarioRootMapBinding.Bind(original, version)).ToArray();
             CampaignMapScene.ConfigureScenario(scenario, 1, draft.StartYear, draft.StartMonth, draft.StartDay);
-            var passed = ReferenceEquals(CampaignMapScene.TestMap, scenario.Map);
-            GD.Print($"[scenario-integration-qa] passed={passed} cities={scenario.Cities.Count} factions={scenario.Factions.Count}");
+            var passed = ReferenceEquals(CampaignMapScene.TestMap, scenario.Map)
+                && rebased.Length == 6 && rebased.All(item => item.MapRevision == version.Revision
+                    && item.Validate(map, known).Count == 0);
+            GD.Print($"[scenario-integration-qa] passed={passed} cities={scenario.Cities.Count} factions={scenario.Factions.Count} builtIn={rebased.Length}");
             GetTree().Quit(passed ? 0 : 1);
         }
         catch (Exception error)
@@ -459,12 +461,12 @@ public partial class GameRoot3D : Node3D
         {
             var source = CreatedGeneralPresets.ApplyAtNewGame(
                 new ScenarioLoader().LoadFromDirectory(FindDataDirectory()));
-            var preset = ScenarioMapPresetStore.Load(ProjectSettings.GlobalizePath(
-                "res://assets/maps/east-asia-user-preset.json"));
+            var preset = ScenarioRootMapSource.Load();
             var archive = new ScenarioMapArchive(ProjectSettings.GlobalizePath("user://maps"),
                 ProjectSettings.GlobalizePath("user://scenarios"));
-            var map = archive.SaveVersion("default-east-asia", "기본 동아시아", preset);
-            var draft = ScenarioDraftApplier.CreateSeed("default-190", "190년 기본", source, map);
+            var map = ScenarioRootMapSource.OpenVersion(archive);
+            var builtIn = ProjectSettings.GlobalizePath("res://assets/scenarios/historical-190.json");
+            var draft = ScenarioRootMapBinding.Bind(ScenarioDraftStore.Load(builtIn), map);
             CampaignMapScene.ConfigureScenario(ScenarioDraftApplier.Apply(source, draft, preset),
                 1, draft.StartYear, draft.StartMonth, draft.StartDay);
             _menuCampaign = true;

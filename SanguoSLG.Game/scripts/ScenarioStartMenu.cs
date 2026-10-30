@@ -84,7 +84,7 @@ public sealed partial class ScenarioStartMenu : Control
         scenarioChoice.ItemSelected += _ => RefreshFactions();
         RefreshFactions();
         content.AddChild(new Label { Text = "기본 지도" });
-        var mapPath = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
+        var mapPath = ScenarioRootMapSource.Path;
         var preview = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         content.AddChild(preview);
         void RefreshPreview()
@@ -95,8 +95,7 @@ public sealed partial class ScenarioStartMenu : Control
                 var chosen = selectedPath is null ? null
                     : SanguoSLG.Core.Data.ScenarioDraftStore.Load(selectedPath);
                 var preset = chosen is null
-                    ? SanguoSLG.Core.Data.ScenarioMapPresetStore.Load(
-                        File.Exists(mapPath) ? mapPath : ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json"))
+                    ? ScenarioRootMapSource.Load()
                     : LoadScenarioMap(chosen, scenarioDir);
                 preview.Text = $"지도 {preset.Width}×{preset.Height} · 성 {preset.Sites.Count(s => s.Kind == "city")} · 항구 {preset.Sites.Count(s => s.Kind == "port")}";
             }
@@ -113,11 +112,11 @@ public sealed partial class ScenarioStartMenu : Control
         var start = new Button { Text = "게임 시작", CustomMinimumSize = new Vector2(0, 48) };
         start.Pressed += () =>
         {
-            if (scenarioChoice.Selected == 0 && File.Exists(mapPath))
+            if (scenarioChoice.Selected == 0)
             {
                 try
                 {
-                    var preset = SanguoSLG.Core.Data.ScenarioMapPresetStore.Load(mapPath);
+                    var preset = ScenarioRootMapSource.Load();
                     if (!preset.Sites.Any(site => site.Kind is "city" or "port"))
                         throw new InvalidDataException("지도에 성 또는 항구가 없습니다.");
                 }
@@ -127,7 +126,7 @@ public sealed partial class ScenarioStartMenu : Control
                     return;
                 }
             }
-            SelectedPresetPath = scenarioChoice.Selected == 0 && File.Exists(mapPath) ? mapPath : null;
+            SelectedPresetPath = scenarioChoice.Selected == 0 ? mapPath : null;
             SelectedScenarioPath = scenarioPaths[scenarioChoice.Selected];
             SelectedPlayerFactionId = factionChoice.GetSelectedId();
             SelectedDifficulty = (SanguoSLG.Core.Simulation.GameDifficulty)difficulty.GetSelectedId();
@@ -179,13 +178,8 @@ public sealed partial class ScenarioStartMenu : Control
     private static SanguoSLG.Core.Data.ScenarioMapPreset LoadScenarioMap(
         SanguoSLG.Core.Data.ScenarioDraft draft, string scenarioDir)
     {
-        if (draft.MapId == "default-east-asia")
-        {
-            var preset = SanguoSLG.Core.Data.ScenarioMapPresetStore.Load(
-                ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json"));
-            if (SanguoSLG.Core.Data.ScenarioMapArchive.RevisionOf(preset) == draft.MapRevision)
-                return preset;
-        }
+        if (SanguoSLG.Core.Data.ScenarioRootMapBinding.UsesRoot(draft.MapId))
+            return ScenarioRootMapSource.Load();
         return new SanguoSLG.Core.Data.ScenarioMapArchive(
             ProjectSettings.GlobalizePath("user://maps"), scenarioDir)
             .Load(draft.MapId, draft.MapRevision).Preset;

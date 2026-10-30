@@ -79,17 +79,9 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void LoadMaps()
     {
-        var edited = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
-        var defaultPath = ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json");
-        if (!File.Exists(edited))
-        {
-            ScenarioMapPresetStore.Save(edited, ScenarioMapPresetStore.Load(defaultPath));
-            GD.Print($"[scenario-editor-map] created root={edited}");
-        }
-        var version = _archive.SaveVersion("default-east-asia", "기본 지도",
-            ScenarioMapPresetStore.Load(edited));
+        var version = ScenarioRootMapSource.OpenVersion(_archive);
         _maps.Add(version with { Title = "기본 지도" });
-        GD.Print($"[scenario-editor-map] root={edited} revision={version.Revision} sites={version.Preset.Sites.Count}");
+        GD.Print($"[scenario-editor-map] root={ScenarioRootMapSource.Path} revision={version.Revision} sites={version.Preset.Sites.Count}");
         var custom = ProjectSettings.GlobalizePath("user://map-presets/custom");
         if (!Directory.Exists(custom)) return;
         foreach (var path in Directory.EnumerateFiles(custom, "*.json").Order())
@@ -205,28 +197,18 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void RefreshCurrentRootMap()
     {
-        var path = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
-        var version = _archive.SaveVersion("default-east-asia", "기본 지도",
-            ScenarioMapPresetStore.Load(path));
+        var version = ScenarioRootMapSource.OpenVersion(_archive);
         _maps.RemoveAll(map => map.Id == "default-east-asia");
         _maps.Insert(0, version with { Title = "기본 지도" });
     }
 
     private bool ApplyCurrentRootMap()
     {
-        if (_draft.MapId is not ("default-east-asia" or "legacy-east-asia" or "edited-east-asia"))
+        if (!ScenarioRootMapBinding.UsesRoot(_draft.MapId))
             return false;
         var root = _maps.First(map => map.Id == "default-east-asia");
         if (_draft.MapId == root.Id && _draft.MapRevision == root.Revision) return false;
-        var sites = root.Preset.Sites.Select(site => site.Id).ToHashSet();
-        var occupied = _draft.Cities.Where(city => city.OwnerFactionId > 0 && !sites.Contains(city.SiteId))
-            .Select(city => city.SiteId)
-            .Concat(_draft.Generals.Where(general => general.SiteId is { } id && !sites.Contains(id))
-                .Select(general => general.SiteId!.Value)).Distinct().ToArray();
-        if (occupied.Length > 0)
-            throw new InvalidDataException("현재 기본 지도에서 배치된 거점이 사라졌습니다: "
-                + string.Join(", ", occupied));
-        SwitchMap(root);
+        _draft = ScenarioRootMapBinding.Bind(_draft, root);
         return true;
     }
 
