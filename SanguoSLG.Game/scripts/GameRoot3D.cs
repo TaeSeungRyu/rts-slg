@@ -36,7 +36,8 @@ public partial class GameRoot3D : Node3D
             RunScenarioIntegrationQa();
             return;
         }
-        if (OS.GetCmdlineUserArgs().Contains("--scenariocampaignqa"))
+        if (OS.GetCmdlineUserArgs().Any(value => value == "--scenariocampaignqa"
+            || value.StartsWith("--scenariocampaignqa=")))
         {
             RunScenarioCampaignQa();
             return;
@@ -442,10 +443,21 @@ public partial class GameRoot3D : Node3D
                 .Select(ScenarioDraftStore.Load).ToArray();
             var known = source.Generals.Select(general => general.Id.Value).ToHashSet();
             var rebased = builtIn.Select(original => ScenarioRootMapBinding.Bind(original, version)).ToArray();
+            var historical214 = rebased.SingleOrDefault(item => item.Id == "historical-214");
+            var historical214Valid = historical214 is not null
+                && historical214.StartYear == 214
+                && historical214.Cities.Where(city => city.SiteId is 33 or 34 or 35 or 36)
+                    .All(city => city.OwnerFactionId == 3)
+                && historical214.Generals.Any(general => general.GeneralId == 2
+                    && general.FactionId == 3 && general.SiteId == 35)
+                && !historical214.Factions.Any(faction => faction.Name == "유장");
+            var allCampaignsApply = rebased.All(item =>
+                ScenarioDraftApplier.Apply(source, item, map).Cities.Count == scenario.Cities.Count);
             CampaignMapScene.ConfigureScenario(scenario, 1, draft.StartYear, draft.StartMonth, draft.StartDay);
             var passed = ReferenceEquals(CampaignMapScene.TestMap, scenario.Map)
                 && rebased.Length == 6 && rebased.All(item => item.MapRevision == version.Revision
-                    && item.Validate(map, known).Count == 0);
+                    && item.Validate(map, known).Count == 0)
+                && historical214Valid && allCampaignsApply;
             GD.Print($"[scenario-integration-qa] passed={passed} cities={scenario.Cities.Count} factions={scenario.Factions.Count} builtIn={rebased.Length}");
             GetTree().Quit(passed ? 0 : 1);
         }
@@ -466,7 +478,10 @@ public partial class GameRoot3D : Node3D
             var archive = new ScenarioMapArchive(ProjectSettings.GlobalizePath("user://maps"),
                 ProjectSettings.GlobalizePath("user://scenarios"));
             var map = ScenarioRootMapSource.OpenVersion(archive);
-            var builtIn = ProjectSettings.GlobalizePath("res://assets/scenarios/historical-190.json");
+            var scenarioId = OS.GetCmdlineUserArgs()
+                .FirstOrDefault(value => value.StartsWith("--scenariocampaignqa="))?
+                .Split('=', 2)[1] ?? "historical-190";
+            var builtIn = ProjectSettings.GlobalizePath($"res://assets/scenarios/{scenarioId}.json");
             var draft = ScenarioRootMapBinding.Bind(ScenarioDraftStore.Load(builtIn), map);
             CampaignMapScene.ConfigureScenario(ScenarioDraftApplier.Apply(source, draft, preset),
                 1, draft.StartYear, draft.StartMonth, draft.StartDay);

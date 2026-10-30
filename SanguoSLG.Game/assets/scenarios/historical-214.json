@@ -1,10 +1,10 @@
 {
   "Version": 1,
-  "Id": "historical-211",
-  "Title": "211년, 삼국시대",
-  "Description": "삼국 대립의 형성기",
-  "StartYear": 211,
-  "StartMonth": 4,
+  "Id": "historical-214",
+  "Title": "214년, 삼국시대",
+  "Description": "유비의 익주 평정과 삼국 대립",
+  "StartYear": 214,
+  "StartMonth": 8,
   "StartDay": 1,
   "MapId": "default-east-asia",
   "MapRevision": "c329f4ab7b306f8a5800632dc90513bf481c35ec9603108888009a982596ae7f",
@@ -32,51 +32,37 @@
     },
     {
       "Id": 4,
-      "Name": "유장",
-      "RulerGeneralId": 98,
+      "Name": "장로",
+      "RulerGeneralId": 109,
       "Color": "#bc8840",
       "Playable": true
     },
     {
       "Id": 5,
-      "Name": "장로",
-      "RulerGeneralId": 109,
+      "Name": "한수",
+      "RulerGeneralId": 86,
       "Color": "#965fb5",
       "Playable": true
     },
     {
       "Id": 6,
-      "Name": "마초",
-      "RulerGeneralId": 41,
+      "Name": "공손강",
+      "RulerGeneralId": 138,
       "Color": "#4a9895",
       "Playable": true
     },
     {
       "Id": 7,
-      "Name": "한수",
-      "RulerGeneralId": 86,
-      "Color": "#b77280",
-      "Playable": true
-    },
-    {
-      "Id": 8,
-      "Name": "공손강",
-      "RulerGeneralId": 138,
-      "Color": "#8b9851",
-      "Playable": true
-    },
-    {
-      "Id": 9,
       "Name": "사섭",
       "RulerGeneralId": 141,
-      "Color": "#7877aa",
+      "Color": "#b77280",
       "Playable": true
     }
   ],
   "Cities": [
     {
       "SiteId": 1,
-      "OwnerFactionId": 8,
+      "OwnerFactionId": 6,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -95,7 +81,7 @@
     },
     {
       "SiteId": 2,
-      "OwnerFactionId": 8,
+      "OwnerFactionId": 6,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -435,7 +421,7 @@
     },
     {
       "SiteId": 27,
-      "OwnerFactionId": 7,
+      "OwnerFactionId": 5,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -454,7 +440,7 @@
     },
     {
       "SiteId": 30,
-      "OwnerFactionId": 7,
+      "OwnerFactionId": 5,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -483,7 +469,7 @@
     },
     {
       "SiteId": 32,
-      "OwnerFactionId": 5,
+      "OwnerFactionId": 4,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -502,7 +488,7 @@
     },
     {
       "SiteId": 33,
-      "OwnerFactionId": 4,
+      "OwnerFactionId": 3,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -521,7 +507,7 @@
     },
     {
       "SiteId": 34,
-      "OwnerFactionId": 4,
+      "OwnerFactionId": 3,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -540,7 +526,7 @@
     },
     {
       "SiteId": 35,
-      "OwnerFactionId": 4,
+      "OwnerFactionId": 3,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -559,7 +545,7 @@
     },
     {
       "SiteId": 36,
-      "OwnerFactionId": 4,
+      "OwnerFactionId": 3,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -675,7 +661,7 @@
     },
     {
       "SiteId": 45,
-      "OwnerFactionId": 5,
+      "OwnerFactionId": 4,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -896,7 +882,7 @@
     },
     {
       "SiteId": 60,
-      "OwnerFactionId": 9,
+      "OwnerFactionId": 7,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -994,7 +980,7 @@
     },
     {
       "SiteId": 28,
-      "OwnerFactionId": 6,
+      "OwnerFactionId": 1,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -1032,7 +1018,7 @@
     },
     {
       "SiteId": 58,
-      "OwnerFactionId": 9,
+      "OwnerFactionId": 7,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -1225,7 +1211,7 @@
     },
     {
       "SiteId": 77,
-      "OwnerFactionId": 9,
+      "OwnerFactionId": 7,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -1249,7 +1235,7 @@
     },
     {
       "SiteId": 78,
-      "OwnerFactionId": 9,
+      "OwnerFactionId": 7,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -1273,7 +1259,7 @@
     },
     {
       "SiteId": 29,
-      "OwnerFactionId": 6,
+      "OwnerFactionId": 5,
       "Gold": 2400,
       "Provisions": 18000,
       "Wall": 2000,
@@ -1435,7 +1421,7 @@
     {
       "GeneralId": 2,
       "FactionId": 3,
-      "SiteId": 46
+      "SiteId": 35
     },
     {
       "GeneralId": 3,
@@ -1445,32 +1431,27 @@
     {
       "GeneralId": 4,
       "FactionId": 3,
-      "SiteId": 46
+      "SiteId": 33
     },
     {
       "GeneralId": 9,
       "FactionId": 3,
-      "SiteId": 46
+      "SiteId": 35
     },
     {
       "GeneralId": 6,
       "FactionId": 3,
-      "SiteId": 46
+      "SiteId": 35
     },
     {
       "GeneralId": 11,
       "FactionId": 3,
-      "SiteId": 46
+      "SiteId": 34
     },
     {
       "GeneralId": 42,
       "FactionId": 3,
-      "SiteId": 46
-    },
-    {
-      "GeneralId": 47,
-      "FactionId": 3,
-      "SiteId": 46
+      "SiteId": 34
     },
     {
       "GeneralId": 49,
@@ -1480,61 +1461,51 @@
     {
       "GeneralId": 48,
       "FactionId": 3,
-      "SiteId": 46
-    },
-    {
-      "GeneralId": 98,
-      "FactionId": 4,
       "SiteId": 35
     },
     {
-      "GeneralId": 99,
-      "FactionId": 4,
+      "GeneralId": 41,
+      "FactionId": 3,
       "SiteId": 35
     },
     {
       "GeneralId": 55,
-      "FactionId": 4,
-      "SiteId": 35
+      "FactionId": 3,
+      "SiteId": 36
     },
     {
       "GeneralId": 109,
-      "FactionId": 5,
+      "FactionId": 4,
       "SiteId": 32
     },
     {
-      "GeneralId": 41,
-      "FactionId": 6,
-      "SiteId": 29
-    },
-    {
       "GeneralId": 86,
-      "FactionId": 7,
+      "FactionId": 5,
       "SiteId": 30
     },
     {
       "GeneralId": 138,
-      "FactionId": 8,
+      "FactionId": 6,
       "SiteId": 1
     },
     {
       "GeneralId": 139,
-      "FactionId": 8,
+      "FactionId": 6,
       "SiteId": 1
     },
     {
       "GeneralId": 141,
-      "FactionId": 9,
+      "FactionId": 7,
       "SiteId": 60
     },
     {
       "GeneralId": 142,
-      "FactionId": 9,
+      "FactionId": 7,
       "SiteId": 60
     },
     {
       "GeneralId": 143,
-      "FactionId": 9,
+      "FactionId": 7,
       "SiteId": 60
     }
   ]
