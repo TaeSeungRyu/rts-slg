@@ -1688,59 +1688,139 @@
       "SiteId": 115
     },
     {
+      "GeneralId": 12,
+      "FactionId": 1,
+      "SiteId": 116
+    },
+    {
+      "GeneralId": 25,
+      "FactionId": 1,
+      "SiteId": 117
+    },
+    {
+      "GeneralId": 26,
+      "FactionId": 1,
+      "SiteId": 120
+    },
+    {
+      "GeneralId": 27,
+      "FactionId": 1,
+      "SiteId": 28
+    },
+    {
+      "GeneralId": 31,
+      "FactionId": 1,
+      "SiteId": 125
+    },
+    {
+      "GeneralId": 33,
+      "FactionId": 1,
+      "SiteId": 131
+    },
+    {
+      "GeneralId": 34,
+      "FactionId": 1,
+      "SiteId": 132
+    },
+    {
+      "GeneralId": 35,
+      "FactionId": 1,
+      "SiteId": 133
+    },
+    {
+      "GeneralId": 36,
+      "FactionId": 1,
+      "SiteId": 134
+    },
+    {
       "GeneralId": 63,
       "FactionId": 2,
       "SiteId": 109
     },
     {
-      "GeneralId": 7,
-      "FactionId": 2,
-      "SiteId": 54
-    },
-    {
       "GeneralId": 73,
       "FactionId": 2,
-      "SiteId": 55
+      "SiteId": 54
     },
     {
       "GeneralId": 70,
       "FactionId": 2,
-      "SiteId": 56
+      "SiteId": 55
     },
     {
       "GeneralId": 71,
       "FactionId": 2,
-      "SiteId": 57
+      "SiteId": 56
     },
     {
       "GeneralId": 10,
       "FactionId": 2,
-      "SiteId": 92
+      "SiteId": 57
     },
     {
       "GeneralId": 66,
       "FactionId": 2,
-      "SiteId": 76
+      "SiteId": 92
     },
     {
       "GeneralId": 67,
       "FactionId": 2,
-      "SiteId": 93
+      "SiteId": 76
     },
     {
       "GeneralId": 68,
       "FactionId": 2,
-      "SiteId": 95
+      "SiteId": 93
     },
     {
       "GeneralId": 69,
       "FactionId": 2,
-      "SiteId": 109
+      "SiteId": 95
     },
     {
       "GeneralId": 64,
       "FactionId": 2,
+      "SiteId": 109
+    },
+    {
+      "GeneralId": 65,
+      "FactionId": 2,
       "SiteId": 54
+    },
+    {
+      "GeneralId": 74,
+      "FactionId": 2,
+      "SiteId": 55
+    },
+    {
+      "GeneralId": 75,
+      "FactionId": 2,
+      "SiteId": 56
+    },
+    {
+      "GeneralId": 77,
+      "FactionId": 2,
+      "SiteId": 57
+    },
+    {
+      "GeneralId": 78,
+      "FactionId": 2,
+      "SiteId": 92
+    },
+    {
+      "GeneralId": 79,
+      "FactionId": 2,
+      "SiteId": 76
+    },
+    {
+      "GeneralId": 80,
+      "FactionId": 2,
+      "SiteId": 93
+    },
+    {
+      "GeneralId": 76,
+      "FactionId": 2,
+      "SiteId": 95
     },
     {
       "GeneralId": 2,
@@ -1798,9 +1878,49 @@
       "SiteId": 36
     },
     {
+      "GeneralId": 44,
+      "FactionId": 3,
+      "SiteId": 102
+    },
+    {
+      "GeneralId": 52,
+      "FactionId": 3,
+      "SiteId": 102
+    },
+    {
+      "GeneralId": 56,
+      "FactionId": 3,
+      "SiteId": 102
+    },
+    {
+      "GeneralId": 59,
+      "FactionId": 3,
+      "SiteId": 102
+    },
+    {
+      "GeneralId": 60,
+      "FactionId": 3,
+      "SiteId": 102
+    },
+    {
+      "GeneralId": 46,
+      "FactionId": 3,
+      "SiteId": 102
+    },
+    {
+      "GeneralId": 50,
+      "FactionId": 3,
+      "SiteId": 102
+    },
+    {
       "GeneralId": 109,
       "FactionId": 4,
       "SiteId": 32
+    },
+    {
+      "GeneralId": 21,
+      "FactionId": 4,
+      "SiteId": 111
     },
     {
       "GeneralId": 86,

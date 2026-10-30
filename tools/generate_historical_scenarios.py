@@ -31,6 +31,28 @@ FOLLOWERS = {
     '공손강': ['공손공', '공손연'], '사섭': ['감례', '환린'],
 }
 
+SCENARIO_ADDITIONS = {
+    'historical-190': {'동탁': ['가후', '초선'], '원소': ['곽도'], '조조': ['만총'],
+                       '공손찬': ['조운'], '유표': ['황충'], '공융': ['태사자'],
+                       '마등': ['마초', '방덕']},
+    'historical-194': {'조조': ['만총'], '공손찬': ['조운'], '유비': ['진도'],
+                       '마등': ['마초', '방덕', '마대'], '유요': ['태사자'], '손책': ['정보']},
+    'historical-208': {'조조': ['사마의', '조비', '조진', '조휴', '가후', '유엽', '만총', '학소', '서서'],
+                       '손권': ['정보', '장소', '제갈근', '서성', '주환', '반장', '하제'],
+                       '유비': ['관평', '진도'], '유장': ['이엄', '오의'],
+                       '마초': ['방덕', '마대'], '공손강': ['공손연']},
+    'historical-214': {'조조': ['사마의', '조비', '조진', '조휴', '가후', '유엽', '만총', '학소', '왕쌍'],
+                       '손권': ['정보', '장소', '제갈근', '서성', '주환', '반장', '하제', '정봉'],
+                       '유비': ['마대', '관평', '이엄', '진도', '오의', '요화', '마속'],
+                       '장로': ['방덕'], '공손강': ['공손연']},
+}
+
+SCENARIO_EXCLUSIONS = {
+    'historical-194': {'유비': {'조운'}},
+    'historical-208': {'유비': {'서서'}},
+    'historical-214': {'손권': {'주유'}},
+}
+
 TERRITORIES = {
     'historical-184': {'후한 조정': '허창 하내 홍농 장안 남피 업 양양 성도 건업 하비 북해 무위 한중 낭야 광릉 진류 완', '황건군': '거록 평원 중산'},
     'historical-190': {'동탁': '장안 낙양 홍농 하내 안정 천수', '원소': '남피 업 중산 거록', '원술': '완 여남 수춘', '조조': '진류 복양 허창', '공손찬': '북평 계 양평', '유표': '양양 강릉 장사 무릉', '도겸': '하비 낭야 광릉 소패', '공융': '북해 평원', '마등': '무위 천수', '한수': '금성 안정', '유언': '성도 자동 영안 강주', '유비': '제북'},
@@ -81,6 +103,9 @@ def generate(spec):
             candidates = [name for name in candidates if name != '방통'] + ['마초', '엄안']
         if ruler == '하진':
             candidates += ['조조', '유비', '손견']
+        candidates = [name for name in candidates
+                      if name not in SCENARIO_EXCLUSIONS.get(identifier, {}).get(ruler, set())]
+        candidates += SCENARIO_ADDITIONS.get(identifier, {}).get(ruler, [])
         for name in candidates:
             general = HEROES.get(name)
             if not general or general['id'] in assigned or (name != ruler and general['id'] in ruler_ids) or (identifier != 'fictional-revival' and general['birth'] > year - 14):

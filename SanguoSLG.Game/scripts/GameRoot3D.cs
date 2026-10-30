@@ -464,6 +464,16 @@ public partial class GameRoot3D : Node3D
             });
             var sunCeQa = rebased.Single(item => item.StartYear == 194).Factions
                 .Any(faction => faction.Name == "손책");
+            bool PostedTo(ScenarioDraft item, string generalName, string factionName)
+            {
+                var generalId = source.Generals.Single(general => general.Name == generalName).Id.Value;
+                var factionId = item.Factions.Single(faction => faction.Name == factionName).Id;
+                return item.Generals.Any(posting => posting.GeneralId == generalId && posting.FactionId == factionId);
+            }
+            var rosterQa = rebased.Where(item => item.StartYear is 190 or 194).All(item =>
+                    PostedTo(item, "마초", "마등") && PostedTo(item, "조운", "공손찬"))
+                && rebased.Where(item => item.StartYear is 208 or 214).All(item =>
+                    item.Generals.Select(posting => posting.GeneralId).Distinct().Count() == item.Generals.Count);
             var neutralQa = rebased.All(item => item.Cities.Single(city =>
                 city.SiteId == sitesByName["다리강가"].Id).OwnerFactionId == 0);
             var wallQa = rebased.All(item => item.Cities.All(city =>
@@ -475,7 +485,7 @@ public partial class GameRoot3D : Node3D
             var passed = ReferenceEquals(CampaignMapScene.TestMap, scenario.Map)
                 && rebased.Length == 6 && rebased.All(item => item.MapRevision == version.Revision
                     && item.Validate(map, known).Count == 0)
-                && historical214Valid && territorialQa && sunCeQa && neutralQa && wallQa
+                && historical214Valid && territorialQa && sunCeQa && rosterQa && neutralQa && wallQa
                 && allCampaignsApply;
             GD.Print($"[scenario-integration-qa] passed={passed} cities={scenario.Cities.Count} factions={scenario.Factions.Count} builtIn={rebased.Length}");
             GetTree().Quit(passed ? 0 : 1);
