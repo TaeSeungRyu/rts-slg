@@ -117,13 +117,14 @@ public sealed class ScenarioDraftTests
         Assert.NotEmpty((draft with { Factions = [.. Draft().Factions, hidden with { Playable = true }] })
             .Validate(Map(), Generals));
         var state = new GameState(361, 190,
-            [new Faction(new FactionId(1), "위", new GeneralId(1), 0, "#3366aa"),
-                new Faction(new FactionId(2), "후발 세력", new GeneralId(2), 0, "#aabbcc")],
+            [new Faction(new FactionId(1), "위", new GeneralId(1), 0, "#3366aa")],
             [new City(new CityId(1), "첫 성", new HexCoord(1, 1), new FactionId(1), 100),
                 new City(new CityId(2), "둘째 성", new HexCoord(4, 3), new FactionId(0), 0)],
-            [], Postings: [new GeneralPosting(new GeneralId(2), new FactionId(2), null)],
-            HiddenFactionArrivals: [new HiddenFactionArrival(new FactionId(2), 191, new CityId(1))]);
+            [], HiddenFactionArrivals: [new HiddenFactionArrival(
+                new Faction(new FactionId(2), "후발 세력", new GeneralId(2), 0, "#aabbcc"),
+                191, new CityId(1), [new GeneralId(2)])]);
         var appeared = HiddenFactionArrivalService.Advance(state);
+        Assert.Equal(2, appeared.Factions.Count);
         Assert.Equal(new FactionId(2), appeared.Cities.Single(city => city.Id.Value == 2).Owner);
         Assert.Equal(new CityId(2), appeared.Assignments.Single().Location);
         Assert.Equal(10000, appeared.Garrisons.Single().Troops);

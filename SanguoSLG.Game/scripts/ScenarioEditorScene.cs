@@ -473,7 +473,11 @@ public sealed partial class ScenarioEditorScene : Control
         add.Pressed += () =>
         {
             var id = _draft.Factions.Select(f => f.Id).DefaultIfEmpty().Max() + 1;
-            _draft = _draft with { Factions = [.. _draft.Factions, new ScenarioFactionEntry(id, "새 세력", generals[0].Id.Value, "#c9ad72")] };
+            var assigned = _draft.Generals.Select(general => general.GeneralId).ToHashSet();
+            var rulerId = generals.FirstOrDefault(general => !assigned.Contains(general.Id.Value))?.Id.Value
+                ?? generals[0].Id.Value;
+            _draft = _draft with { Factions = [.. _draft.Factions,
+                new ScenarioFactionEntry(id, "새 세력", rulerId, "#c9ad72")] };
             ShowFactions();
         };
         _body.AddChild(add);

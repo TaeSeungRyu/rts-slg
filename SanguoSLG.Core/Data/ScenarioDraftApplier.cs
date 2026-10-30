@@ -13,7 +13,7 @@ public static class ScenarioDraftApplier
         var citySetup = draft.Cities.ToDictionary(city => city.SiteId);
         return mapped with
         {
-            Factions = draft.Factions.Select(entry => new Faction(new FactionId(entry.Id),
+            Factions = draft.Factions.Where(entry => !entry.Hidden).Select(entry => new Faction(new FactionId(entry.Id),
                 entry.Name, new GeneralId(entry.RulerGeneralId), 0, entry.Color)).ToArray(),
             Cities = mapped.Cities.Select(city =>
             {
@@ -25,15 +25,19 @@ public static class ScenarioDraftApplier
                     Security = setup.Security, Governor = null, Strategist = null,
                 };
             }).ToArray(),
-            Postings = draft.Generals.Select(entry => new GeneralPosting(new GeneralId(entry.GeneralId),
+            Postings = draft.Generals.Where(entry => !draft.Factions.Any(faction => faction.Id == entry.FactionId
+                    && faction.Hidden)).Select(entry => new GeneralPosting(new GeneralId(entry.GeneralId),
                 new FactionId(entry.FactionId), entry.SiteId is { } id ? new CityId(id) : null)).ToArray(),
             InitialGarrisons = draft.Cities.SelectMany(city => city.Garrisons.Select(force =>
                 new GarrisonForce(new CityId(city.SiteId), force.TroopCode, force.Troops, 50))).ToArray(),
             InitialShips = draft.Cities.SelectMany(city => city.Ships.Select(ship =>
                 new PortShipStock(new CityId(city.SiteId), ship.ShipCode, ship.Count))).ToArray(),
             HiddenFactionArrivals = draft.Factions.Where(entry => entry.Hidden)
-                .Select(entry => new HiddenFactionArrival(new FactionId(entry.Id),
-                    entry.ArrivalYear, new CityId(entry.ArrivalSiteId))).ToArray(),
+                .Select(entry => new HiddenFactionArrival(new Faction(new FactionId(entry.Id),
+                    entry.Name, new GeneralId(entry.RulerGeneralId), 0, entry.Color),
+                    entry.ArrivalYear, new CityId(entry.ArrivalSiteId), draft.Generals
+                        .Where(general => general.FactionId == entry.Id)
+                        .Select(general => new GeneralId(general.GeneralId)).ToArray())).ToArray(),
         };
     }
 

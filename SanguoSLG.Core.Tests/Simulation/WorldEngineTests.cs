@@ -9,6 +9,28 @@ namespace SanguoSLG.Core.Tests.Simulation;
 public class WorldEngineTests
 {
     [Fact]
+    public void 숨은세력은_예정된_연도에_가까운_거점에서_등장하고_저장된다()
+    {
+        var owner = new Faction(new FactionId(1), "기존", new GeneralId(1), 0, "#3366aa");
+        var hidden = new Faction(new FactionId(2), "숨은", new GeneralId(2), 0, "#aabbcc");
+        var state = new GameState(359, 190, [owner],
+            [new City(new CityId(1), "목표", new HexCoord(0, 0), owner.Id, 1000),
+                new City(new CityId(2), "대체", new HexCoord(2, 0), new FactionId(0), 0)],
+            [V2Officer(1), V2Officer(2)],
+            HiddenFactionArrivals: [new HiddenFactionArrival(hidden, 191, new CityId(1), [new GeneralId(2)])]);
+        var restored = SanguoSLG.Core.Data.SaveService.Deserialize(
+            SanguoSLG.Core.Data.SaveService.Serialize(state));
+        var engine = new WorldEngine(V2OnlyBalance);
+        var before = engine.AdvanceDays(restored, 1);
+        Assert.Single(before.Factions);
+        var after = engine.AdvanceDays(before, 1);
+        Assert.Equal(191, after.Year);
+        Assert.Equal(hidden.Id, after.Cities.Single(city => city.Id.Value == 2).Owner);
+        Assert.Equal(new CityId(2), after.Assignments.Single(posting => posting.General.Value == 2).Location);
+        Assert.Empty(after.HiddenFactionArrivals!);
+    }
+
+    [Fact]
     public void 어려움_난이도는_AI_생산만_이십퍼센트_늘리고_저장된다()
     {
         var state = new GameState(1, 190, [], [], [],

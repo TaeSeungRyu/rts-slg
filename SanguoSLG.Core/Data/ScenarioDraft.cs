@@ -39,6 +39,8 @@ public sealed record ScenarioDraft(int Version, string Id, string Title, string 
                 || !knownGenerals.Contains(f.RulerGeneralId))
             || factionIds.Count != Factions.Count)
             errors.Add("세력 ID, 군주 또는 이름이 올바르지 않습니다.");
+        if (!Factions.Any(faction => faction.Playable))
+            errors.Add("시작 가능한 세력이 적어도 하나 필요합니다.");
         foreach (var faction in Factions.Where(f => f.Hidden))
         {
             if (faction.Playable || faction.ArrivalYear < StartYear
