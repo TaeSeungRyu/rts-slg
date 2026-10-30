@@ -81,19 +81,15 @@ public sealed partial class ScenarioEditorScene : Control
     {
         var edited = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
         var defaultPath = ProjectSettings.GlobalizePath("res://assets/maps/east-asia-user-preset.json");
-        try
+        if (!File.Exists(edited))
         {
-            var version = _archive.SaveVersion("default-east-asia", "기본 지도",
-                ScenarioMapPresetStore.Load(File.Exists(edited) ? edited : defaultPath));
-            _maps.Add(version with { Title = "기본 지도" });
+            ScenarioMapPresetStore.Save(edited, ScenarioMapPresetStore.Load(defaultPath));
+            GD.Print($"[scenario-editor-map] created root={edited}");
         }
-        catch (Exception error)
-        {
-            GD.PushWarning("편집 지도 가져오기 실패, 배포 지도 사용: " + error.Message);
-            var version = _archive.SaveVersion("default-east-asia", "기본 지도",
-                ScenarioMapPresetStore.Load(defaultPath));
-            _maps.Add(version with { Title = "기본 지도" });
-        }
+        var version = _archive.SaveVersion("default-east-asia", "기본 지도",
+            ScenarioMapPresetStore.Load(edited));
+        _maps.Add(version with { Title = "기본 지도" });
+        GD.Print($"[scenario-editor-map] root={edited} revision={version.Revision} sites={version.Preset.Sites.Count}");
         var custom = ProjectSettings.GlobalizePath("user://map-presets/custom");
         if (!Directory.Exists(custom)) return;
         foreach (var path in Directory.EnumerateFiles(custom, "*.json").Order())
@@ -188,18 +184,66 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void OpenScenario(string path)
     {
-        try { _draft = ScenarioDraftStore.Load(path); EnsureMapAvailable(); ShowBasics(); _message.Text = "시나리오를 불러왔습니다."; }
-        catch (Exception error) { _message.Text = "불러오기 실패: " + error.Message; }
+        var previous = _draft;
+        try
+        {
+            RefreshCurrentRootMap();
+            _draft = ScenarioDraftStore.Load(path);
+            EnsureMapAvailable();
+            var updated = ApplyCurrentRootMap();
+            ShowBasics();
+            _message.Text = updated ? "시나리오 배치를 현재 기본 지도에 맞추었습니다. 복제 후 저장하세요."
+                : "시나리오를 불러왔습니다.";
+        }
+        catch (Exception error)
+        {
+            _draft = previous;
+            ShowBasics();
+            _message.Text = "불러오기 실패: " + error.Message;
+        }
+    }
+
+    private void RefreshCurrentRootMap()
+    {
+        var path = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
+        var version = _archive.SaveVersion("default-east-asia", "기본 지도",
+            ScenarioMapPresetStore.Load(path));
+        _maps.RemoveAll(map => map.Id == "default-east-asia");
+        _maps.Insert(0, version with { Title = "기본 지도" });
+    }
+
+    private bool ApplyCurrentRootMap()
+    {
+        if (_draft.MapId is not ("default-east-asia" or "legacy-east-asia" or "edited-east-asia"))
+            return false;
+        var root = _maps.First(map => map.Id == "default-east-asia");
+        if (_draft.MapId == root.Id && _draft.MapRevision == root.Revision) return false;
+        var sites = root.Preset.Sites.Select(site => site.Id).ToHashSet();
+        var occupied = _draft.Cities.Where(city => city.OwnerFactionId > 0 && !sites.Contains(city.SiteId))
+            .Select(city => city.SiteId)
+            .Concat(_draft.Generals.Where(general => general.SiteId is { } id && !sites.Contains(id))
+                .Select(general => general.SiteId!.Value)).Distinct().ToArray();
+        if (occupied.Length > 0)
+            throw new InvalidDataException("현재 기본 지도에서 배치된 거점이 사라졌습니다: "
+                + string.Join(", ", occupied));
+        SwitchMap(root);
+        return true;
     }
 
     private void EnsureMapAvailable()
     {
         if (_maps.Any(map => map.Id == _draft.MapId && map.Revision == _draft.MapRevision)) return;
+        if (_draft.MapId is "default-east-asia" or "legacy-east-asia" or "edited-east-asia")
+        {
+            _archive.Load(_draft.MapId, _draft.MapRevision);
+            return;
+        }
         _maps.Add(_archive.Load(_draft.MapId, _draft.MapRevision));
     }
 
     private void CreateNew()
     {
+        RefreshCurrentRootMap();
         _draft = ScenarioDraftApplier.CreateSeed("scenario-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"),
             "새 시나리오", _source, _maps[0]);
         ShowBasics();
@@ -211,7 +255,9 @@ public sealed partial class ScenarioEditorScene : Control
         ShowBasics();
     }
 
-    private ScenarioMapVersion CurrentMap() => _archive.Load(_draft.MapId, _draft.MapRevision);
+    private ScenarioMapVersion CurrentMap()
+        => _draft.MapId == "default-east-asia" && _maps[0].Revision == _draft.MapRevision
+            ? _maps[0] : _archive.Load(_draft.MapId, _draft.MapRevision);
 
     private void ClearBody()
     {
@@ -245,6 +291,13 @@ public sealed partial class ScenarioEditorScene : Control
         _body.AddChild(choices);
         var map = CurrentMap();
         _body.AddChild(new Label { Text = $"현재 지도: {(map.Id == "default-east-asia" ? "기본 지도" : map.Title)}" });
+        if (map.Id == "default-east-asia")
+        {
+            var sourcePath = ProjectSettings.GlobalizePath("user://map-presets/east-asia.json");
+            _body.AddChild(new Label { Text = "지도 원본: " + sourcePath });
+            _body.AddChild(new Label { Text = "마지막 저장: "
+                + File.GetLastWriteTime(sourcePath).ToString("yyyy-MM-dd HH:mm:ss") });
+        }
         var latestDefault = _maps.FirstOrDefault(candidate => candidate.Id == "default-east-asia");
         if (latestDefault is not null && (latestDefault.Id != map.Id || latestDefault.Revision != map.Revision))
         {
@@ -261,8 +314,8 @@ public sealed partial class ScenarioEditorScene : Control
     {
         var previous = CurrentMap().Preset;
         var sameMapLineage = next.Id == _draft.MapId
-            || (new[] { "default-east-asia", "legacy-east-asia" }.Contains(next.Id)
-                && new[] { "default-east-asia", "legacy-east-asia" }.Contains(_draft.MapId));
+            || (new[] { "default-east-asia", "legacy-east-asia", "edited-east-asia" }.Contains(next.Id)
+                && new[] { "default-east-asia", "legacy-east-asia", "edited-east-asia" }.Contains(_draft.MapId));
         var oldSiteIds = previous.Sites.Select(site => site.Id).ToHashSet();
         var oldCities = _draft.Cities.ToDictionary(city => city.SiteId);
         var newSites = next.Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate").ToArray();
@@ -655,6 +708,16 @@ public sealed partial class ScenarioEditorScene : Control
                 errors.AddRange(scenario.Validate(_archive.Load(scenario.MapId, scenario.MapRevision).Preset, known));
             }
             var originalDraft = _draft;
+            OpenScenario(bundled[0]);
+            var historicalUsesRoot = _draft.MapId == "default-east-asia"
+                && _draft.MapRevision == _maps[0].Revision
+                && ReferenceEquals(CurrentMap(), _maps[0]);
+            _draft = originalDraft;
+            var legacy = _archive.SaveVersion("legacy-east-asia", "옛 편집 지도", map);
+            _draft = originalDraft with { MapId = legacy.Id, MapRevision = legacy.Revision };
+            var legacyRebased = ApplyCurrentRootMap()
+                && _draft.MapId == "default-east-asia" && _draft.MapRevision == _maps[0].Revision;
+            _draft = originalDraft;
             var otherMap = _maps.FirstOrDefault(candidate => candidate.Id != _draft.MapId);
             var mapSwitchPassed = true;
             if (otherMap is not null)
@@ -741,6 +804,7 @@ public sealed partial class ScenarioEditorScene : Control
                     && generalCrudPassed && forceTabRemoved
                     && cityForceUi && forceCrudPassed
                     && errors.Count == 0 && mapSwitchPassed && currentMapSelected
+                    && historicalUsesRoot && legacyRebased
                     && factionPlacementCompatible
                     && restored.MapRevision == _draft.MapRevision
                     && restored.Cities.Count == _draft.Cities.Count;
