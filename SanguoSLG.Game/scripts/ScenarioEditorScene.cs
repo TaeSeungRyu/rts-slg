@@ -23,6 +23,7 @@ public sealed partial class ScenarioEditorScene : Control
     private static readonly Color[] FactionPalette = Enumerable.Range(0, 60)
         .Select(index => Color.FromHsv((index % 12) / 12f, 0.48f + (index / 12) * 0.105f,
             0.76f + (index / 12 % 2) * 0.12f)).ToArray();
+    private readonly Dictionary<string, ImageTexture> _factionColorIcons = [];
 
     public override void _Ready()
     {
@@ -52,7 +53,12 @@ public sealed partial class ScenarioEditorScene : Control
         _nativeUpdate?.Invoke(value);
     }
 
-    public override void _ExitTree() => EndNativeText();
+    public override void _ExitTree()
+    {
+        EndNativeText();
+        foreach (var icon in _factionColorIcons.Values) icon.Dispose();
+        _factionColorIcons.Clear();
+    }
 
     private void BeginNativeText(LineEdit field, Action<string> update)
     {
@@ -505,11 +511,15 @@ public sealed partial class ScenarioEditorScene : Control
         _body.AddChild(add);
     }
 
-    private static ImageTexture FactionColorIcon(Color color)
+    private ImageTexture FactionColorIcon(Color color)
     {
+        var key = color.ToHtml(false);
+        if (_factionColorIcons.TryGetValue(key, out var icon)) return icon;
         using var image = Image.CreateEmpty(18, 18, false, Image.Format.Rgba8);
         image.Fill(color);
-        return ImageTexture.CreateFromImage(image);
+        icon = ImageTexture.CreateFromImage(image);
+        _factionColorIcons[key] = icon;
+        return icon;
     }
 
     private void EnsureHiddenRuler(int factionId, int rulerId)
