@@ -156,12 +156,12 @@ public sealed partial class EditMapScene
             _draftChanged = false;
             if (_saveDraftButton is not null) _saveDraftButton.Text = "맵 저장";
             GD.Print($"[editmap-save] path={path} bytes={new FileInfo(path).Length}");
-            ShowSaveResult("맵 저장 완료", $"수정한 지도를 저장했습니다. 다음 새 게임부터 적용됩니다.\n저장 경로: {path}");
+            ShowSaveResult("맵 저장 완료", "수정한 지도를 저장했습니다. 다음 새 게임부터 적용됩니다.");
         }
         catch (Exception error)
         {
             GD.PushError($"[editmap-save] path={path} error={error}");
-            ShowSaveResult("맵 저장 실패", $"{error.Message}\n저장 경로: {path}");
+            ShowSaveResult("맵 저장 실패", "지도를 저장하지 못했습니다. 자세한 오류는 로그를 확인해 주세요.");
         }
     }
 
