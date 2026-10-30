@@ -154,6 +154,15 @@ def fallback_pool(year: int, ruler: str, first: dict, second: dict) -> list[tupl
 
 
 def main() -> None:
+    previous_status = {}
+    if OUTPUT.exists():
+        prior = OUTPUT.read_text(encoding="utf-8")
+        match = re.search(r"^## 중복 제거 작업 목록\n(.*?)(?=^## |\Z)", prior, re.M | re.S)
+        if match:
+            for row in match.group(1).splitlines():
+                cells = [cell.strip() for cell in row.strip("|").split("|")]
+                if len(cells) == 3 and cells[2] in ("☐", "☑"):
+                    previous_status[cells[0]] = cells[2]
     readings = unihan_readings()
     first_rows, second_rows = rows(fetch(ROSTER_URL).decode())
     first = {}
@@ -179,6 +188,7 @@ def main() -> None:
         "",
     ]
     report = []
+    candidate_factions = defaultdict(set)
     scenario_files = [ASSETS / "scenarios" / f"historical-{year}.json" for year in (184, 190, 194, 208, 214)]
     scenario_files.append(ASSETS / "scenarios" / "fictional-revival.json")
     for file in scenario_files:
@@ -227,8 +237,15 @@ def main() -> None:
                     chosen.append(other)
                     used.add(other[1])
                     used_korean.add(korean(other[1], readings))
-                labels = [f"{korean(name, readings)} ({name})" + (" △" if score < 100 and year else "") for score, name in chosen]
-                labels.extend(f"{sites[site_id]['Name']} 창작 장수 슬롯 {len(labels) + 1}" for _ in range(3 - len(labels)))
+                labels = []
+                for score, name in chosen:
+                    label = f"{korean(name, readings)} ({name})"
+                    candidate_factions[label].add(ruler)
+                    labels.append(label + (" △" if score < 100 and year else ""))
+                for number in range(len(labels) + 1, 4):
+                    label = f"{ruler} {sites[site_id]['Name']} 창작 장수 슬롯 {number}"
+                    candidate_factions[label].add(ruler)
+                    labels.append(label)
                 stats["cities"] += 1
                 stats["proposals"] += len(chosen)
                 stats["slots"] += 3 - len(chosen)
@@ -240,8 +257,17 @@ def main() -> None:
     for name, stats, _ in report:
         summary.append(f"| {name} | {stats['cities']} | {stats['proposals']} | {stats['slots']} |")
     summary.extend(["", "같은 장수를 여러 연도 시나리오에서 재사용하므로 열의 수를 합산해 서로 다른 장수 데이터 수로 해석하지 않는다.", ""])
+    checklist = [
+        "## 중복 제거 작업 목록", "",
+        "시나리오를 통틀어 동일 장수는 한 번만 적었다. 세력은 후보 배치에 등장하는 세력을 모두 표시한다. `☐`은 미작업, `☑`은 생성 완료를 뜻한다. 창작 장수 슬롯은 이름과 인물 설정을 정해야 한다.", "",
+        f"총 **{len(candidate_factions)}명/슬롯** (실명 {sum('창작 장수 슬롯' not in name for name in candidate_factions)}명, 창작 슬롯 {sum('창작 장수 슬롯' in name for name in candidate_factions)}개).", "",
+        "| 이름 | 세력 | 작업여부 |", "| --- | --- | --- |",
+    ]
+    for name in sorted(candidate_factions):
+        checklist.append(f"| {name} | {', '.join(sorted(candidate_factions[name]))} | {previous_status.get(name, '☐')} |")
+    checklist.append("")
     first_section = next(index for index, line in enumerate(lines) if line.startswith("## "))
-    lines[first_section:first_section] = summary
+    lines[first_section:first_section] = summary + checklist
     OUTPUT.write_text("\n".join(lines), encoding="utf-8")
     for name, stats, missing in report:
         print(name, dict(stats), "missing", missing[:5])
