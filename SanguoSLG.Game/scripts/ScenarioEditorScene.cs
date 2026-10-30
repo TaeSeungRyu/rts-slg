@@ -808,7 +808,7 @@ public sealed partial class ScenarioEditorScene : Control
             var path = Path.Combine(_scenarioDirectory, _draft.Id + ".json");
             ScenarioDraftStore.Save(path, _draft, map.Preset, known);
             RefreshList();
-            _message.Text = "저장 완료: " + path;
+            _message.Text = "시나리오를 저장했습니다.";
         }
         catch (Exception error) { _message.Text = "저장 불가: " + error.Message; }
     }
