@@ -1456,6 +1456,11 @@ public sealed partial class CampaignMapScene : Node3D
                 return;
             }
             _targetPointer.Visible = false;
+            if ((motion.ButtonMask & (MouseButtonMask.Left | MouseButtonMask.Middle)) != 0)
+            {
+                _hover.Visible = false;
+                return;
+            }
             if (RayToGround(motion.Position) is { } hoverHex)
             {
                 _hover.Visible = true;
