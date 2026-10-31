@@ -14,6 +14,8 @@ internal sealed class NativeNameEdit : IDisposable
     private const uint WsTabStop = 0x00010000;
     private const uint EsAutoHScroll = 0x0080;
     private const uint SwpNoZOrder = 0x0004;
+    private const int SwHide = 0;
+    private const int SwShow = 5;
     private const uint WmCtlColorEdit = 0x0133;
     private const uint EmSetMargins = 0x00D3;
     private const uint WmSetFont = 0x0030;
@@ -64,6 +66,17 @@ internal sealed class NativeNameEdit : IDisposable
             var result = new StringBuilder(GetWindowTextLengthW(_handle) + 1);
             GetWindowTextW(_handle, result, result.Capacity);
             return result.ToString();
+        }
+    }
+
+    public void SetVisible(bool visible)
+    {
+        if (_handle == 0) return;
+        ShowWindow(_handle, visible ? SwShow : SwHide);
+        if (visible)
+        {
+            SyncBounds();
+            SetFocus(_handle);
         }
     }
 
@@ -186,6 +199,8 @@ internal sealed class NativeNameEdit : IDisposable
         int width, int height, uint flags);
     [DllImport("user32.dll")]
     private static extern nint SetFocus(nint window);
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(nint window, int command);
     [DllImport("user32.dll")]
     private static extern bool DestroyWindow(nint window);
 }

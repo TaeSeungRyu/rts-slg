@@ -577,7 +577,15 @@ public sealed partial class EditMapScene
             if (input is InputEventMouseButton button && button.ButtonIndex == MouseButton.Left)
             {
                 dragging = button.Pressed;
-                if (dragging) offset = GetGlobalMousePosition() - panel.GlobalPosition;
+                if (dragging)
+                {
+                    offset = GetGlobalMousePosition() - panel.GlobalPosition;
+                    _nativeNameEdit?.SetVisible(false);
+                }
+                else
+                {
+                    _nativeNameEdit?.SetVisible(true);
+                }
                 heading.AcceptEvent();
             }
             else if (dragging && input is InputEventMouseMotion)
@@ -603,7 +611,6 @@ public sealed partial class EditMapScene
         panel.Position = new Vector2(
             Mathf.Clamp(position.X, 0f, Mathf.Max(0f, Size.X - panel.Size.X)),
             Mathf.Clamp(position.Y, 0f, Mathf.Max(0f, Size.Y - panel.Size.Y)));
-        _nativeNameEdit?.SyncBounds();
     }
 
     private void CloseEditorModal()

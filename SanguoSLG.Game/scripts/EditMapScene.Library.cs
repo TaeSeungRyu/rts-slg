@@ -26,7 +26,7 @@ public sealed partial class EditMapScene
         var center = new CenterContainer();
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         overlay.AddChild(center);
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(880, 490) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(1080, 490) };
         panel.AddThemeStyleboxOverride("panel", EditorFrame(new Color("1b0f0d"), 2));
         center.AddChild(panel);
         var content = new VBoxContainer();
@@ -48,7 +48,7 @@ public sealed partial class EditMapScene
         list.AddThemeConstantOverride("v_separation", 0);
         PanelContainer Cell(Control child, bool heading = false)
         {
-            var cell = new PanelContainer();
+            var cell = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             var style = new StyleBoxFlat { BgColor = heading ? new Color("453023") : new Color("211916"),
                 BorderColor = heading ? new Color("d1ac60") : new Color("66523b") };
             style.SetBorderWidthAll(0);
@@ -65,7 +65,9 @@ public sealed partial class EditMapScene
             label.AddThemeColorOverride("font_color", new Color("f4d98e"));
             Cell(label, true);
         }
-        var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        var scroll = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill };
+        list.CustomMinimumSize = new Vector2(1050, 0);
         scroll.AddChild(list);
         content.AddChild(scroll);
         var paths = new[] { RootMapPath() }
@@ -96,15 +98,16 @@ public sealed partial class EditMapScene
             Cell(new Label { Text = preset.Sites.Count(site => site.Kind is "city" or "port" or "gate").ToString() });
             var references = MapScenarioReferences(MapIdFor(path));
             Cell(new Label { Text = references.Count == 0 ? "없음" : $"{references.Count}개" });
-            var actions = new HBoxContainer();
+            var actions = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             Cell(actions);
-            var edit = new Button { Text = "수정" };
+            var edit = new Button { Text = "수정", SizeFlagsHorizontal = SizeFlags.ExpandFill };
             edit.Pressed += () => LoadSelectedMap(path, preset);
             actions.AddChild(edit);
-            var clone = new Button { Text = "복제" };
+            var clone = new Button { Text = "복제", SizeFlagsHorizontal = SizeFlags.ExpandFill };
             clone.Pressed += () => CreateMapCopy(preset);
             actions.AddChild(clone);
-            var remove = new Button { Text = "삭제", Disabled = path == RootMapPath() };
+            var remove = new Button { Text = "삭제", Disabled = path == RootMapPath(),
+                SizeFlagsHorizontal = SizeFlags.ExpandFill };
             remove.Pressed += () => ConfirmDeleteMap(path);
             actions.AddChild(remove);
         }
