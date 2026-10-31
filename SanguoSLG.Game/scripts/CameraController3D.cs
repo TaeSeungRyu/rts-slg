@@ -34,6 +34,7 @@ public partial class CameraController3D : Camera3D
 
     public bool IsIntroZoomPlaying => _introZoomPlaying;
     public Vector3 FocusPivot => _targetPivot;
+    public float CurrentDistance => _distance;
 
     public void FocusOn(Vector3 point) => _targetPivot = new Vector3(point.X, _targetPivot.Y, point.Z);
 

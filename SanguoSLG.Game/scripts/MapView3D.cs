@@ -176,24 +176,24 @@ public partial class MapView3D : Node3D
             // 굴뚝 연기는 사람이 살고 있다는 신호 — 파괴된 타일에서는 피우지 않는다
             if (terrain == TerrainType.Workshop && condition == TileCondition.Normal)
             {
-                AddChild(BuildChimneySmoke(HexToWorld(tile), new Vector3(0.245f, 0.375f, 0.06f)));
+                AddFineDetail(BuildChimneySmoke(HexToWorld(tile), new Vector3(0.245f, 0.375f, 0.06f)));
             }
 
             if (terrain == TerrainType.Village2 && condition == TileCondition.Normal)
             {
                 // 남서쪽 작은집의 돌 굴뚝 위치(모델 좌표 (-0.11, -0.08), 굴뚝 끝 0.36)
-                AddChild(BuildChimneySmoke(HexToWorld(tile), new Vector3(-0.11f, 0.38f, 0.08f)));
+                AddFineDetail(BuildChimneySmoke(HexToWorld(tile), new Vector3(-0.11f, 0.38f, 0.08f)));
             }
 
             // 한랭 지형군(얼음산·얼음벽)에는 국지적으로 눈이 내린다
             if (terrain is TerrainType.IceMountain or TerrainType.IceWallLarge or TerrainType.IceWallSmall)
             {
-                AddChild(BuildSnowfall(HexToWorld(tile)));
+                AddFineDetail(BuildSnowfall(HexToWorld(tile)));
             }
 
             if (terrain == TerrainType.Swamp)
             {
-                AddChild(BuildSwampBubbles(HexToWorld(tile)));
+                AddFineDetail(BuildSwampBubbles(HexToWorld(tile)));
             }
 
             // 마을 타일: 작은 주민들이 나타나 배회하다 사라지는 생활감 연출
@@ -212,6 +212,12 @@ public partial class MapView3D : Node3D
         }
 
         BuildWaterBorder(map);
+    }
+
+    private void AddFineDetail(Node3D detail)
+    {
+        detail.AddToGroup("map_zoom_fine_detail");
+        AddChild(detail);
     }
 
     // 대하(큰 강): 얕은 물은 바다와 같은 물 타일, 깊은 물은 어두운 물색으로 깊이를 표현한다.
@@ -290,7 +296,7 @@ public partial class MapView3D : Node3D
                 FeatureType.MountainLarge => (1.30f, 1.15f),
                 _ => (1.02f, 1.10f),
             };
-            AddChild(BuildMountainClouds(centroid, peakY, halfWidth));
+            AddFineDetail(BuildMountainClouds(centroid, peakY, halfWidth));
         }
     }
 

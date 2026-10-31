@@ -63,6 +63,7 @@ public partial class VillagerAmbience : Node3D
 
     public override void _Ready()
     {
+        AddToGroup("map_zoom_fine_detail");
         _model = GD.Load<PackedScene>("res://assets/models/villager.glb");
         _rng.Seed = Seed;
         for (var i = 0; i < MaxVillagers; i++)

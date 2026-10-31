@@ -26,6 +26,9 @@ public partial class GameRoot3D : Node3D
     private long _newMapLength;
     private double _newMapPoll;
     private bool _newMapReloading;
+    private CameraController3D? _newMapCamera;
+    private bool? _fineDetailVisible;
+    private double _fineDetailPoll;
     private bool _shuttingDown;
     private bool _menuCampaign;
 
@@ -165,6 +168,8 @@ public partial class GameRoot3D : Node3D
             || OS.GetCmdlineUserArgs().Contains("--newmap"))
         {
             BuildCampaignMap();
+            if (OS.GetCmdlineUserArgs().Contains("--newmaplodqa"))
+                CallDeferred(nameof(RunNewMapDetailLodQa));
             if (OS.GetCmdlineArgs().Contains("--gracefulshutdownqa") || OS.GetCmdlineUserArgs().Contains("--gracefulshutdownqa"))
             {
                 CallDeferred(nameof(RequestGracefulShutdown));
@@ -322,6 +327,11 @@ public partial class GameRoot3D : Node3D
 
     public override void _Process(double delta)
     {
+        if (_newMapCamera is not null && (_fineDetailPoll += delta) >= 0.15)
+        {
+            _fineDetailPoll = 0;
+            RefreshMapDetailLod(_newMapCamera.CurrentDistance);
+        }
         if (_newMapSnapshot is not null && !_newMapReloading && (_newMapPoll += delta) >= 0.5)
         {
             _newMapPoll = 0;
@@ -356,6 +366,39 @@ public partial class GameRoot3D : Node3D
         var outPath = Path.Combine(projectDir.Parent?.FullName ?? projectDir.FullName, "shot_step4.png");
         GetViewport().GetTexture().GetImage().SavePng(outPath);
         GetTree().Quit();
+    }
+
+    private void RefreshMapDetailLod(float distance)
+    {
+        var visible = _fineDetailVisible switch
+        {
+            null => distance < 20f,
+            true => distance < 24f,
+            false => distance < 18f,
+        };
+        if (_fineDetailVisible == visible) return;
+        _fineDetailVisible = visible;
+        foreach (var node in GetTree().GetNodesInGroup("map_zoom_fine_detail"))
+        {
+            if (node is not Node3D detail || !GodotObject.IsInstanceValid(detail)) continue;
+            detail.Visible = visible;
+            detail.ProcessMode = visible ? ProcessModeEnum.Inherit : ProcessModeEnum.Disabled;
+        }
+    }
+
+    private void RunNewMapDetailLodQa()
+    {
+        if (_newMapCamera is null) { GetTree().Quit(1); return; }
+        var details = GetTree().GetNodesInGroup("map_zoom_fine_detail").OfType<Node3D>().ToArray();
+        RefreshMapDetailLod(30f);
+        var hidden = details.Length > 0 && details.All(detail => !detail.Visible
+            && detail.ProcessMode == ProcessModeEnum.Disabled);
+        RefreshMapDetailLod(14f);
+        var restored = details.All(detail => detail.Visible
+            && detail.ProcessMode == ProcessModeEnum.Inherit);
+        var passed = hidden && restored;
+        GD.Print($"[newmap-lod-qa] passed={passed} details={details.Length} hidden={hidden} restored={restored}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     // 모델 확인/방향 실측용 쇼케이스 씬: 회전 0으로 일렬 배치.
@@ -432,6 +475,7 @@ public partial class GameRoot3D : Node3D
 
         var camera = new CameraController3D { Fov = 55f };
         AddChild(camera);
+        if (newMap) _newMapCamera = camera;
         if (_menuCampaign || OS.GetCmdlineUserArgs().Contains("--aitest")
             || OS.GetCmdlineUserArgs().Contains("--newmap"))
         {
