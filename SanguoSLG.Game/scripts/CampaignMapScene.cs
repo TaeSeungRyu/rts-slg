@@ -9836,6 +9836,15 @@ public sealed partial class CampaignMapScene : Node3D
                 _modalDismissAction = OpenCityRoster;
             };
             row.AddChild(view);
+            var move = MakeButton("이동");
+            move.CustomMinimumSize = new Vector2(60, 26);
+            move.Pressed += () =>
+            {
+                _modalDismissAction = null;
+                CloseModal();
+                _camera.FocusOn(_view.HexToWorld(city.Position));
+            };
+            row.AddChild(move);
             box.AddChild(row);
         }
 
@@ -17895,6 +17904,10 @@ public sealed partial class CampaignMapScene : Node3D
         cityClose.EmitSignal(BaseButton.SignalName.Pressed);
         var cityReturned = _modalLayer!.FindChildren("*", "Label", true, false).OfType<Label>()
             .Any(label => label.Text.Contains("전체 도시 목록"));
+        var cityMove = _modalLayer.FindChildren("*", "Button", true, false).OfType<Button>()
+            .FirstOrDefault(button => button.Text == "이동");
+        cityMove?.EmitSignal(BaseButton.SignalName.Pressed);
+        var cityMoveClosed = cityMove is not null && _modalLayer is null;
         _generalRosterPage = 2;
         _generalRosterQuery = query;
         OpenGeneralRosterFresh();
@@ -17914,10 +17927,10 @@ public sealed partial class CampaignMapScene : Node3D
             && smoothGoldRing
             && portraitNameGap
             && pageTwoOk && searchOk && typedSearch
-            && generalReturned && cityReturned && freshRoster
+            && generalReturned && cityReturned && cityMoveClosed && freshRoster
             && first.ElapsedMilliseconds < initialModalLimitMilliseconds
             && second.ElapsedMilliseconds <= first.ElapsedMilliseconds;
-        GD.Print($"[maptestgeneralrosterqa] passed={passed} rows={rows}/{expectedPageRows} pageTwo={pageTwoOk}:{pageTwoRows} search={searchOk}:{filteredRows.Count} fresh={freshRoster} typed={typedSearch} thumbnails={_rosterPortraits.Count} deferred={coldHydrated} compact={compactTextures} goldRing={thinGoldRing}/{smoothGoldRing} nameGap={portraitNameGap} initialColdMs={first.ElapsedMilliseconds} initialWarmMs={second.ElapsedMilliseconds} limitMs={initialModalLimitMilliseconds}");
+        GD.Print($"[maptestgeneralrosterqa] passed={passed} rows={rows}/{expectedPageRows} pageTwo={pageTwoOk}:{pageTwoRows} search={searchOk}:{filteredRows.Count} fresh={freshRoster} cityMoveClosed={cityMoveClosed} typed={typedSearch} thumbnails={_rosterPortraits.Count} deferred={coldHydrated} compact={compactTextures} goldRing={thinGoldRing}/{smoothGoldRing} nameGap={portraitNameGap} initialColdMs={first.ElapsedMilliseconds} initialWarmMs={second.ElapsedMilliseconds} limitMs={initialModalLimitMilliseconds}");
         _generalRosterQuery = "";
         _generalRosterPage = 0;
         if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
