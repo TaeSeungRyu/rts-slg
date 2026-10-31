@@ -2786,6 +2786,10 @@ public sealed partial class CampaignMapScene : Node3D
             var inst = scene.Instantiate<Node3D>();
             inst.Position = Vector3.Zero;
             _terrainHolder.AddChild(inst);
+            if (previewTerrain == TerrainType.River) MapView3D.TintRiverTile(inst);
+            else if (previewTerrain is TerrainType.WaterShallow or TerrainType.WaterDeep)
+                MapView3D.TintWaterTile(inst, previewTerrain);
+            else if (previewTerrain == TerrainType.Bridge) MapView3D.TintBridgeTile(inst);
             FrameTerrainCamera(inst); // 모델 실제 크기(AABB)에 맞춰 카메라 배치
         }
 
@@ -2975,8 +2979,8 @@ public sealed partial class CampaignMapScene : Node3D
             && TerrainMovementInfo(TerrainType.Mountain, true, false) == "육상 속도 50% (지형 접촉 중)"
             && TerrainMovementInfo(TerrainType.Swamp, true, false) == "육상 속도 50% (지형 접촉 중)"
             && TerrainMovementInfo(TerrainType.River, true, false) == "육상 속도 50% (지형 접촉 중)"
-            && TerrainMovementInfo(TerrainType.WaterDeep, false, true) == "선박 속도 100%"
-            && TerrainMovementInfo(TerrainType.Cliff, false, false) == "통행 불가";
+            && TerrainMovementInfo(TerrainType.WaterDeep, false, true) == "육상 병력 이동 불가 · 선박 속도 100%"
+            && TerrainMovementInfo(TerrainType.Cliff, false, false) == "육상·선박 이동 불가";
         if (!passed)
         {
             GD.PushError("TERRAIN_MOVEMENT_QA FAIL");
@@ -2997,8 +3001,8 @@ public sealed partial class CampaignMapScene : Node3D
 
     private static string TerrainMovementInfo(TerrainType terrain, bool landPassable, bool shipPassable)
     {
-        if (!landPassable && !shipPassable) return "통행 불가";
-        if (!landPassable) return "선박 속도 100%";
+        if (!landPassable && !shipPassable) return "육상·선박 이동 불가";
+        if (!landPassable) return "육상 병력 이동 불가 · 선박 속도 100%";
         return terrain is TerrainType.Mountain or TerrainType.Swamp or TerrainType.River
             ? "육상 속도 50% (지형 접촉 중)"
             : "육상 속도 100%";
@@ -7598,7 +7602,7 @@ public sealed partial class CampaignMapScene : Node3D
 
     private void UpdateRiverImmersion(UnitController3D token, CombatUnit unit, Vector3 world)
     {
-        if (unit.Field.Domain != MovementDomain.Land || unit.IsSummon)
+        if (unit.Field.Domain == MovementDomain.DeepWater || unit.IsSummon)
         {
             token.SetRiverImmersion(0f);
             return;
@@ -7611,8 +7615,8 @@ public sealed partial class CampaignMapScene : Node3D
             var river = _view.HexToWorld(tile);
             nearest = Mathf.Min(nearest, new Vector2(world.X - river.X, world.Z - river.Z).Length());
         }
-        var coverage = Mathf.Clamp(1f - nearest / (_view.HexWorldSize * 1.15f), 0f, 1f);
-        token.SetRiverImmersion(0.24f * coverage * coverage * (3f - 2f * coverage));
+        var coverage = Mathf.Clamp((0.92f - nearest / _view.HexWorldSize) * 4f, 0f, 1f);
+        token.SetRiverImmersion(0.3f * coverage);
     }
 
     private void CloseModal()

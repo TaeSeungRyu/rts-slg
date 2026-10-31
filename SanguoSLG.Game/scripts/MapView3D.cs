@@ -77,7 +77,12 @@ public partial class MapView3D : Node3D
     }
 
     /// <summary>지형별 타일 모델(UI 미리보기용). 없으면 null.</summary>
-    public PackedScene? TileScene(TerrainType terrain) => _tiles.TryGetValue(terrain, out var s) ? s : null;
+    public PackedScene? TileScene(TerrainType terrain) => terrain switch
+    {
+        TerrainType.River or TerrainType.WaterShallow or TerrainType.WaterDeep => _water,
+        TerrainType.Bridge => _bridge,
+        _ => _tiles.TryGetValue(terrain, out var scene) ? scene : null,
+    };
 
     private static float MeasureTopY(PackedScene scene)
     {
@@ -215,18 +220,7 @@ public partial class MapView3D : Node3D
         var instance = _water.Instantiate<Node3D>();
         instance.Position = HexToWorld(tile);
 
-        if (terrain == TerrainType.WaterDeep)
-        {
-            var mesh = FindMesh(instance);
-            if (mesh is not null)
-            {
-                mesh.MaterialOverride = new StandardMaterial3D
-                {
-                    AlbedoColor = new Color(0.25f, 0.48f, 0.62f),
-                    Roughness = 0.25f,
-                };
-            }
-        }
+        TintWaterTile(instance, terrain);
 
         AddChild(instance);
     }
@@ -728,6 +722,7 @@ public partial class MapView3D : Node3D
         var instance = scene.Instantiate<Node3D>();
         instance.Position = HexToWorld(tile);
         instance.RotationDegrees = new Vector3(0f, yRotation, 0f);
+        if (terrain == TerrainType.Bridge) TintBridgeTile(instance);
         AddChild(instance);
     }
 
@@ -736,8 +731,30 @@ public partial class MapView3D : Node3D
         if (FindMesh(visual) is not { } mesh) return;
         mesh.MaterialOverride = new StandardMaterial3D
         {
-            AlbedoColor = new Color(0.58f, 0.86f, 0.94f),
+            AlbedoColor = new Color(0.22f, 0.58f, 0.78f),
             Roughness = 0.38f,
+        };
+    }
+
+    public static void TintWaterTile(Node3D visual, TerrainType terrain)
+    {
+        if (FindMesh(visual) is not { } mesh) return;
+        mesh.MaterialOverride = new StandardMaterial3D
+        {
+            AlbedoColor = terrain == TerrainType.WaterDeep
+                ? new Color(0.25f, 0.48f, 0.62f)
+                : new Color(0.42f, 0.76f, 0.84f),
+            Roughness = 0.25f,
+        };
+    }
+
+    public static void TintBridgeTile(Node3D visual)
+    {
+        if (FindMesh(visual) is not { } mesh) return;
+        mesh.MaterialOverride = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.66f, 0.48f, 0.31f),
+            Roughness = 0.82f,
         };
     }
 
