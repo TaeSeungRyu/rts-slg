@@ -217,6 +217,7 @@ public sealed partial class CampaignMapScene
 
     private void OpenSkillGuide()
     {
+        var profile = System.Diagnostics.Stopwatch.StartNew();
         var viewportSize = GetViewport().GetVisibleRect().Size;
         var width = Mathf.Clamp(viewportSize.X * 0.92f, 920f, 1220f);
         var height = Mathf.Clamp(viewportSize.Y * 0.90f, 640f, 820f);
@@ -236,6 +237,7 @@ public sealed partial class CampaignMapScene
                     string.Join("\n\n", Enumerable.Range(1, 3)
                         .Select(level => SkillDescriptions.Admin(skill, level))), skill.Code, "패시브", "내정")))
             .ToList();
+        var entriesMilliseconds = profile.ElapsedMilliseconds;
         var search = new LineEdit { Name = "SkillGuideSearch", PlaceholderText = "스킬 이름 검색",
             MaxLength = 30 };
         box.AddChild(search);
@@ -336,8 +338,25 @@ public sealed partial class CampaignMapScene
                 ? _activeSkills.FirstOrDefault(skill => skill.Code == entry.Item3) : null;
             if (preview.SkillCode != active?.Code) preview.ShowSkill(active);
         }
+        var iconGeneration = 0;
+        async void FillIcons(List<(TreeItem Item, string Code, string Kind, string Form)> pending, int generation)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            for (var start = 0; start < pending.Count; start += 5)
+            {
+                if (generation != iconGeneration || !GodotObject.IsInstanceValid(list) || !list.IsInsideTree()) return;
+                foreach (var (item, code, kind, form) in pending.Skip(start).Take(5))
+                {
+                    if (!GodotObject.IsInstanceValid(item)) continue;
+                    item.SetIcon(0, SkillImage(code, kind, form));
+                    item.SetIconMaxWidth(0, 42);
+                }
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            }
+        }
         void Refill(string query)
         {
+            var generation = ++iconGeneration;
             var previousIndex = list.GetSelected()?.GetMetadata(0).AsInt32() ?? -1;
             var previousCode = previousIndex >= 0 && previousIndex < shown.Count
                 ? shown[previousIndex].Item3 : null;
@@ -354,13 +373,13 @@ public sealed partial class CampaignMapScene
             list.Clear();
             var root = list.CreateItem();
             TreeItem? selected = null;
+            var pendingIcons = new List<(TreeItem Item, string Code, string Kind, string Form)>();
             for (var i = 0; i < shown.Count; i++)
             {
                 var entry = shown[i];
                 var item = list.CreateItem(root);
                 item.SetText(0, entry.Item1);
-                item.SetIcon(0, SkillImage(entry.Item3, entry.Item4, entry.Item5));
-                item.SetIconMaxWidth(0, 42);
+                pendingIcons.Add((item, entry.Item3, entry.Item4, entry.Item5));
                 item.SetText(1, entry.Item4);
                 item.SetText(2, entry.Item5);
                 item.SetMetadata(0, i);
@@ -369,6 +388,7 @@ public sealed partial class CampaignMapScene
             if (shown.Count > 0)
                 list.SetSelected(selected ?? root.GetFirstChild(), 0);
             else Select(-1);
+            FillIcons(pendingIcons, generation);
         }
         list.ItemSelected += () => Select(list.GetSelected()?.GetMetadata(0).AsInt32() ?? -1);
         list.ColumnTitleClicked += (column, _) =>
@@ -378,21 +398,28 @@ public sealed partial class CampaignMapScene
             Refill(search.Text);
         };
         search.TextChanged += Refill;
+        var layoutMilliseconds = profile.ElapsedMilliseconds;
         Refill("");
+        if (OS.GetCmdlineUserArgs().Contains("--maptestskillguideqa"))
+            GD.Print($"[skill-guide-profile] entries={entriesMilliseconds} layout={layoutMilliseconds - entriesMilliseconds} refill={profile.ElapsedMilliseconds - layoutMilliseconds}");
         scroll.CustomMinimumSize = new Vector2(width, height);
         CenterAndDrag(panel, titleRow, width, height, box);
     }
 
-    private void RunSkillGuideQa()
+    private async void RunSkillGuideQa()
     {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         OpenSystemPalette();
         var trigger = _modalLayer?.FindChildren("*", "Button", true, false).OfType<Button>()
             .FirstOrDefault(button => button.Text == "스킬설명");
         trigger?.EmitSignal(Button.SignalName.Pressed);
+        var openMilliseconds = clock.ElapsedMilliseconds;
         var list = _modalLayer?.FindChild("SkillGuideList", true, false) as Tree;
         var search = _modalLayer?.FindChild("SkillGuideSearch", true, false) as LineEdit;
         var detail = _modalLayer?.FindChild("SkillGuideDetail", true, false) as Label;
         var initialCount = list?.GetRoot()?.GetChildren().Count() ?? 0;
+        for (var frame = 0; frame < 40 && list?.GetRoot()?.GetChildren().Any(item => item.GetIcon(0) is null) == true; frame++)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var missingIcons = list?.GetRoot()?.GetChildren().Count(item => item.GetIcon(0) is null) ?? initialCount;
         var hasSkillColumns = list?.Columns == 3 && list.SelectMode == Tree.SelectModeEnum.Row
             && list.GetColumnTitle(0) == "이름"
@@ -476,7 +503,7 @@ public sealed partial class CampaignMapScene
             preview?.ShowSkill(null);
             var status = preview?.FindChild("SkillGuidePreviewStatus", true, false) as Label;
             passed &= status is not null && !status.Visible && status.Text.Length == 0;
-            GD.Print($"[skill-guide-qa] passed={passed} entries={initialCount} missingIcons={missingIcons} previewDay={preview?.Day}");
+            GD.Print($"[skill-guide-qa] passed={passed} entries={initialCount} missingIcons={missingIcons} previewDay={preview?.Day} openMs={openMilliseconds}");
             GetTree().Quit(passed ? 0 : 1);
         };
     }
