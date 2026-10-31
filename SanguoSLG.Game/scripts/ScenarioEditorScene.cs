@@ -138,7 +138,11 @@ public sealed partial class ScenarioEditorScene : Control
         columns.AddChild(left);
         left.AddChild(new Label { Text = "시나리오 목록" });
         _list = new ItemList { SizeFlagsVertical = SizeFlags.ExpandFill };
-        _list.ItemSelected += index => OpenScenario(_list.GetItemMetadata((int)index).AsString());
+        _list.ItemSelected += index =>
+        {
+            var path = _list.GetItemMetadata((int)index).AsString();
+            if (!string.IsNullOrEmpty(path)) OpenScenario(path);
+        };
         left.AddChild(_list);
         var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         columns.AddChild(right);
@@ -239,9 +243,14 @@ public sealed partial class ScenarioEditorScene : Control
 
     private void CreateNew()
     {
+        RefreshList();
         RefreshCurrentRootMap();
         _draft = ScenarioDraftApplier.CreateSeed("scenario-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"),
             "새 시나리오", _source, _maps[0]);
+        var index = _list.AddItem("새 시나리오 · 저장 전");
+        _list.SetItemMetadata(index, "");
+        _list.Select(index);
+        _list.EnsureCurrentIsVisible();
         ShowBasics();
     }
 
@@ -444,11 +453,14 @@ public sealed partial class ScenarioEditorScene : Control
                     UpdateFaction(faction.Id, current => current with { Color = "#" + FactionPalette[paletteIndex].ToHtml(false) });
             };
             row.AddChild(color);
-            var playable = new CheckBox { Text = "시작 가능", ButtonPressed = faction.Playable,
+            var playable = new CheckBox { ButtonPressed = faction.Playable,
                 Disabled = faction.Hidden };
             playable.Toggled += value => UpdateFaction(faction.Id, f => f with { Playable = value });
-            row.AddChild(playable);
-            var hidden = new CheckBox { Text = "숨은세력", ButtonPressed = faction.Hidden };
+            var playableCell = new HBoxContainer();
+            playableCell.AddChild(playable);
+            playableCell.AddChild(new Label { Text = "시작 가능", MouseFilter = MouseFilterEnum.Ignore });
+            row.AddChild(playableCell);
+            var hidden = new CheckBox { ButtonPressed = faction.Hidden };
             hidden.Toggled += value =>
             {
                 var sites = CurrentMap().Preset.Sites.Where(site => site.Kind is "city" or "port" or "gate").ToArray();
@@ -471,7 +483,10 @@ public sealed partial class ScenarioEditorScene : Control
                 }
                 ShowFactions();
             };
-            row.AddChild(hidden);
+            var hiddenCell = new HBoxContainer();
+            hiddenCell.AddChild(hidden);
+            hiddenCell.AddChild(new Label { Text = "숨은세력", MouseFilter = MouseFilterEnum.Ignore });
+            row.AddChild(hiddenCell);
             var year = new SpinBox { MinValue = _draft.StartYear, MaxValue = 9999,
                 Value = Math.Max(_draft.StartYear, faction.ArrivalYear), CustomMinimumSize = new Vector2(100, 0), Editable = faction.Hidden };
             year.ValueChanged += value => UpdateFaction(faction.Id, f => f with { ArrivalYear = (int)value });
@@ -860,8 +875,9 @@ public sealed partial class ScenarioEditorScene : Control
             ShowFactions();
             var factionColorUi = _body.FindChildren("*", "OptionButton", true, false).OfType<OptionButton>()
                 .Any(choice => choice.ItemCount == 60 || choice.ItemCount == 61);
-            var hiddenFactionUi = _body.FindChildren("*", "CheckBox", true, false)
-                .OfType<CheckBox>().Any(check => check.Text == "숨은세력");
+            var hiddenFactionUi = _body.FindChildren("*", "HBoxContainer", true, false)
+                .OfType<HBoxContainer>().Any(cell => cell.GetChildren().OfType<CheckBox>().Any()
+                    && cell.GetChildren().OfType<Label>().Any(label => label.Text == "숨은세력"));
             ShowCities();
             var cityMapUi = _body.GetChildren().OfType<ScenarioSiteMap>().Any();
             ShowGenerals();
@@ -927,8 +943,14 @@ public sealed partial class ScenarioEditorScene : Control
                         && scenario.Generals.Where(general => general.SiteId.HasValue)
                             .All(general => defaultSiteIds.Contains(general.SiteId!.Value));
                 });
+                CreateNew();
+                var newScenarioAtBottom = _list.ItemCount > 0
+                    && _list.GetItemText(_list.ItemCount - 1) == "새 시나리오 · 저장 전"
+                    && _list.IsSelected(_list.ItemCount - 1);
+                _draft = originalDraft;
+                RefreshList();
                 var passed = bundled.Length == 6 && _list.ItemCount >= 6
-                    && factionColorUi && hiddenFactionUi && cityMapUi && generalSearchUi && generalCityListUi
+                    && newScenarioAtBottom && factionColorUi && hiddenFactionUi && cityMapUi && generalSearchUi && generalCityListUi
                     && generalCrudPassed && forceTabRemoved
                     && cityForceUi && forceCrudPassed
                     && errors.Count == 0 && mapSwitchPassed && currentMapSelected
