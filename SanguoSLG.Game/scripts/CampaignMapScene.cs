@@ -6793,9 +6793,12 @@ public sealed partial class CampaignMapScene : Node3D
             }
         }
 
+        var visibleArmies = _unitMenu.Visible || _activeGauges.Count > 0
+            ? DisplayedArmies.ToDictionary(army => army.Id.Value) : null;
         if (_unitMenu.Visible && _selectedUnitId >= 0)
         {
-            var u = DisplayedArmies.FirstOrDefault(a => a.Id.Value == _selectedUnitId);
+            var u = visibleArmies is not null && visibleArmies.TryGetValue(_selectedUnitId, out var selectedArmy)
+                ? selectedArmy : null;
             if (u is not null) { PlaceMenu(_unitMenu, u.Field.Position, 60f); MoveRingForUnit(u); }
             else { _unitMenu.Visible = false; ClearUnitAttackRange(); }
         }
@@ -6822,7 +6825,8 @@ public sealed partial class CampaignMapScene : Node3D
                 _activeGauges.Remove(unitId);
                 continue;
             }
-            var unit = DisplayedArmies.FirstOrDefault(x => x.Id.Value == unitId);
+            var unit = visibleArmies is not null && visibleArmies.TryGetValue(unitId, out var gaugeArmy)
+                ? gaugeArmy : null;
             gauge.Visible = unit is not null
                 && (unit.State.VanguardActive is not null || unit.State.AdjutantActive is not null)
                 && _armyTokens.TryGetValue(unitId, out var gaugeToken) && gaugeToken.Visible

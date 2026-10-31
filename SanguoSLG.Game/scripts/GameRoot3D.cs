@@ -22,6 +22,8 @@ public partial class GameRoot3D : Node3D
     private Godot.Environment _environment = null!;
     private DirectionalLight3D _sun = null!;
     private string? _newMapSnapshot;
+    private System.DateTime _newMapLastWrite;
+    private long _newMapLength;
     private double _newMapPoll;
     private bool _newMapReloading;
     private bool _shuttingDown;
@@ -325,13 +327,19 @@ public partial class GameRoot3D : Node3D
             _newMapPoll = 0;
             try
             {
-                var snapshot = File.ReadAllText(ProjectSettings.GlobalizePath("user://map-presets/east-asia.json"));
-                if (snapshot != _newMapSnapshot)
+                var file = new FileInfo(ProjectSettings.GlobalizePath("user://map-presets/east-asia.json"));
+                if (file.LastWriteTimeUtc != _newMapLastWrite || file.Length != _newMapLength)
                 {
-                    CampaignMapScene.ReloadNewMapFixture();
-                    _newMapReloading = true;
-                    Callable.From(() => GetTree().ReloadCurrentScene()).CallDeferred();
-                    GD.Print("[newmap] editmap 변경 반영: QA 시나리오 초기화");
+                    _newMapLastWrite = file.LastWriteTimeUtc;
+                    _newMapLength = file.Length;
+                    var snapshot = File.ReadAllText(file.FullName);
+                    if (snapshot != _newMapSnapshot)
+                    {
+                        CampaignMapScene.ReloadNewMapFixture();
+                        _newMapReloading = true;
+                        Callable.From(() => GetTree().ReloadCurrentScene()).CallDeferred();
+                        GD.Print("[newmap] editmap 변경 반영: QA 시나리오 초기화");
+                    }
                 }
             }
             catch (System.Exception error)
@@ -399,7 +407,12 @@ public partial class GameRoot3D : Node3D
     private void BuildCampaignMap()
     {
         if (OS.GetCmdlineUserArgs().Contains("--newmap"))
-            _newMapSnapshot = File.ReadAllText(ProjectSettings.GlobalizePath("user://map-presets/east-asia.json"));
+        {
+            var file = new FileInfo(ProjectSettings.GlobalizePath("user://map-presets/east-asia.json"));
+            _newMapLastWrite = file.LastWriteTimeUtc;
+            _newMapLength = file.Length;
+            _newMapSnapshot = File.ReadAllText(file.FullName);
+        }
         var tone = TonePreset.FromCmdline();
         _environment = BuildEnvironment(tone);
         AddChild(new WorldEnvironment { Environment = _environment });
