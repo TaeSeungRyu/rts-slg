@@ -49,7 +49,7 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검�
 ## 5. 다음 작업
 
 - 기능은 **[doc/plan-v2-implementation-roadmap.md](doc/plan-v2-implementation-roadmap.md)의 최상단 미완료 단계**부터 잡는다.
-- 2026-10-22 기준 **Phase 19·19A·20과 고대유물 단서 10종의 획득·장착·효과는 1차 구현 완료**다. **Phase 21 v2 AI 조정은 부분 구현**이며 장기 밸런스·실화면 QA가 남아 있다. 이후 Phase 9B 문·무과시험과 Phase 22 통합 QA를 진행한다. 야생 신수는 위치 고정·반격만 가능하고 150일 후 만료된다.
+- 2026-10-31 기준 **Phase 19·19A·20과 고대유물 단서 10종은 1차 구현 완료**다. Phase 21 AI는 장기 밸런스·실화면 QA, Phase 21B 지도 에디터와 21C 시나리오 에디터는 사용자 조작 검수, Phase 21D 관문은 5단계 통합 연결이 남았다. 이후 Phase 9B 문·무과시험과 Phase 22 통합 QA를 진행한다. 야생 신수는 위치 고정·반격만 가능하고 150일 후 만료된다.
 - UI 우선 작업은 [doc/plan-ui-improvement.md](doc/plan-ui-improvement.md)의 우선순위와 화면별 QA를 따른다.
 - 원칙: 끼어드는 아이디어는 해당 `design-*` 문서에 `❓`로 기록만 하고 로드맵 순서를 따른다.
   게임 밸런스·규칙(전투 공식·성장·AI 우선순위)은 **설계자(사용자) 확정**이 필요 — 임의로 정하지 않는다.
@@ -58,6 +58,6 @@ dotnet build SanguoSLG.Game/SanguoSLG.Game.csproj         # Game(Godot) C# 검�
 
 - 새 세션은 **CLAUDE.md + doc/ai-working-notes.md를 먼저 읽는다**(작업 방식·검증 함정이 거기 있다).
 - 작업 방식 요약: 스크린샷 안 찍음 · 게임 창 자동 실행 안 함 · 코드 주석 최소화 · claude.ai 아티팩트 금지 ·
-  "다음 작업"은 항상 plan-roadmap에서.
+  "다음 작업"은 항상 plan-v2-implementation-roadmap에서.
 - 커밋: Conventional Commits, 본문 한국어. 공동 작성자 트레일러는 실제 기여에 맞게만 기재한다.
 - 코드 변경은 관련 xUnit·Game 빌드·필요한 headless QA를 수행한다. 문서만 변경하면 링크·규칙·체크표·`git diff --check`로 검증하고 코드 테스트를 실행했다고 표현하지 않는다.

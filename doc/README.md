@@ -2,7 +2,7 @@
 
 이 디렉토리는 설계 원본, v2 전환 로드맵, 구현 이력, QA 체크리스트가 함께 들어 있다. 새 작업자는 아래 순서로 읽는다.
 
-> **현행 점검: 2026-10-22.** 현재 작업 기준은 [v2 구현 로드맵](./plan-v2-implementation-roadmap.md)이다. Phase 18D 연속 이동은 캠페인에 연결되어 1차 검수를 마쳤고 실제 플레이 회귀 QA 중이다. Phase 19·19A·20의 신수 사냥·보물·소환과 고대유물 10종 획득/장착은 1차 구현 완료; Phase 21 AI 조정은 부분 구현 중이며 장기 밸런스·실화면 QA가 남아 있다. 다음 계획은 Phase 9B 문·무과시험과 Phase 22 통합 QA다. `run-maptest.bat`의 신수 발견률 50%는 테스트 설정이며 일반 캠페인은 1%다.
+> **현행 점검: 2026-10-31.** 현재 작업 기준은 [v2 구현 로드맵](./plan-v2-implementation-roadmap.md)이다. Phase 18D 연속 이동은 실제 플레이 회귀 QA 중이다. Phase 19·19A·20의 신수·보물·소환과 고대유물 10종은 1차 구현 완료다. Phase 21 AI는 장기 밸런스 QA, Phase 21B 지도 에디터·21C 시나리오 에디터는 실제 창 조작 검수, Phase 21D 관문은 마지막 통합 단계가 남았다. Phase 9B 문·무과시험과 Phase 22 통합 QA는 미착수다. `run-maptest.bat`의 신수 발견률 50%는 테스트 설정이며 일반 캠페인은 1%다.
 > 사용자가 요청한 UI 우선 개선은 기능 Phase와 분리해 [UI 개선 작업 목록](./plan-ui-improvement.md)으로 관리한다.
 
 ## 충돌 시 우선순위
@@ -53,6 +53,9 @@
 | 고대유물 단서 | [plan-ancient-relics.md](./plan-ancient-relics.md) | 10종 단서 2개 교환·유물 장착/효과의 현행 규칙 |
 | 야전 건축 | [design-field-construction.md](./design-field-construction.md) | Phase 18C 목책·정찰대·감시탑·보루·진법 |
 | AI 야전 건축 | [plan-phase21-ai-field-construction.md](./plan-phase21-ai-field-construction.md) | Phase 21 부분 구현·60~90일 주기 후보와 남은 장기 QA |
+| 지도·시나리오 편집 | [plan-scenario-map-editor.md](./plan-scenario-map-editor.md), [plan-scenario-editor.md](./plan-scenario-editor.md), [plan-historical-scenarios.md](./plan-historical-scenarios.md) | 기본 지도·버전·역사 시나리오 6종의 현행 연결과 실제 창 검수 |
+| 관문 | [plan-gate.md](./plan-gate.md) | 소/중형 관문 1차 구현과 남은 초기 배치·AI 통합 QA |
+| 추가 장수 제작 | [plan-scenario-sub-generals.md](./plan-scenario-sub-generals.md) | 시나리오별 성 단위 후보와 중복 제거 작업표. 체크 표시는 사용자 편집 상태 |
 
 ## 에셋·콘텐츠 문서
 
@@ -91,6 +94,8 @@
 - 구현이 완료되면 `plan-v2-implementation-roadmap.md`의 체크표와 해당 설계 문서의 상태 문구를 갱신한다.
 - 과거 구현 이력은 삭제하지 않되, 현재 기준과 충돌하면 “현재 기준” 문구를 문서 상단에 추가한다.
 - 문서만 수정한 경우에도 링크 무결성 또는 핵심 키워드 검색으로 QA를 남긴다.
+
+2026-10-31 문서 점검: 저장소의 Markdown 78개를 목록화하고 상대 파일 링크를 검사했다(누락 0개). 현행 구현과 충돌한 지도·시나리오·AI 상태 안내를 위 진입 문서 및 관련 계획에 맞추었다. 오래된 `plan-01`~`plan-06`, QA 결과, 날짜가 붙은 구현 기록은 당시 상태를 보여주는 자료로 유지한다. 사용자 편집 중인 [추가 장수 체크표](./plan-scenario-sub-generals.md)의 완료 표시는 이번 정리에서 수정하지 않았다.
 
 ## 전체 문서 인벤토리
 
