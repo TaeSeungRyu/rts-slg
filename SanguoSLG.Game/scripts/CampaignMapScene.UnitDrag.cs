@@ -11,10 +11,16 @@ public sealed partial class CampaignMapScene
     private int _armyDragCandidateId = -1;
     private bool _armyDragActive;
     private ContinuousPosition? _armyDragPreviewPosition;
+    private ulong _armyDragPreviewTick;
+    private Vector2? _armyDragPreviewScreen;
+    private int _armyDragPreviewBuilds;
 
     private void BeginArmyDragCandidate(Vector2 screen)
     {
         _armyDragCandidateId = -1;
+        _armyDragPreviewPosition = null;
+        _armyDragPreviewScreen = null;
+        _armyDragPreviewTick = 0;
         if (_advancing || _depTargeting || _generalTransferTargeting || _stratMapTargeting
             || _fieldBuildPlacing || _placing || _supplyFollowSourceId >= 0
             || _supplyReplenishmentSourceId >= 0 || IsModalBlockingMapNavigation()) return;
@@ -36,14 +42,20 @@ public sealed partial class CampaignMapScene
         if (!_armyDragActive && screen.DistanceTo(_leftDownPos) < 8f) return false;
         _armyDragActive = true;
         _hover.Visible = false;
+        var now = Time.GetTicksMsec();
+        if (_armyDragPreviewScreen is { } previousScreen
+            && (screen.DistanceTo(previousScreen) < 8f || now - _armyDragPreviewTick < 60)) return true;
         var unit = _state.Armies.FirstOrDefault(candidate => candidate.Id.Value == _armyDragCandidateId);
         var ground = RayToGroundPoint(screen);
         if (unit is null || ground is null) return true;
         if (_armyDragPreviewPosition == ground.Value.Position) return true;
         _armyDragPreviewPosition = ground.Value.Position;
+        _armyDragPreviewScreen = screen;
+        _armyDragPreviewTick = now;
         ClearPathMarkers();
         AddPathDots(unit.Field.Position, ground.Value.Hex, _pathMarkers,
             unit.Class == TroopClass.Naval, ground.Value.Position, unit.RenewalPosition);
+        _armyDragPreviewBuilds++;
         return true;
     }
 
@@ -53,7 +65,7 @@ public sealed partial class CampaignMapScene
         var active = _armyDragActive;
         _armyDragCandidateId = -1;
         _armyDragActive = false;
-        _armyDragPreviewPosition = null;
+        _armyDragPreviewScreen = null;
         if (!active) return false;
 
         var unit = _state.Armies.FirstOrDefault(candidate => candidate.Id.Value == id
@@ -72,6 +84,13 @@ public sealed partial class CampaignMapScene
             ShowNotice("이동 불가", "선택한 지점까지 이동 가능한 경로가 없습니다.");
             return true;
         }
+        if (_armyDragPreviewPosition != ground.Value.Position)
+        {
+            ClearPathMarkers();
+            AddPathDots(unit.Field.Position, ground.Value.Hex, _pathMarkers,
+                unit.Class == TroopClass.Naval, ground.Value.Position, unit.RenewalPosition);
+        }
+        _armyDragPreviewPosition = null;
         ShowArmyDragModePicker(unit, ground.Value.Hex, ground.Value.Position);
         return true;
     }
@@ -81,6 +100,7 @@ public sealed partial class CampaignMapScene
         _armyDragCandidateId = -1;
         _armyDragActive = false;
         _armyDragPreviewPosition = null;
+        _armyDragPreviewScreen = null;
         _leftDown = false;
         ClearPathMarkers();
     }
@@ -169,17 +189,27 @@ public sealed partial class CampaignMapScene
         _leftDownPos = screen;
         var destinationScreen = _camera.UnprojectPosition(ContinuousToWorld(target));
         UpdateArmyDrag(destinationScreen);
+        var initialPreviewBuilds = _armyDragPreviewBuilds;
+        for (var index = 0; index < 20; index++)
+            UpdateArmyDrag(destinationScreen + new Vector2(index % 7, 0));
+        var previewThrottled = _armyDragPreviewBuilds == initialPreviewBuilds;
         _leftDown = false;
         var preview = _armyDragActive && _pathMarkers.Count > 0;
-        FinishArmyDrag(destinationScreen);
+        var releaseScreen = destinationScreen + new Vector2(6, 0);
+        var releasePoint = RayToGroundPoint(releaseScreen);
+        FinishArmyDrag(releaseScreen);
         var choices = _confirmLayer?.FindChildren("ArmyDragMode_*", "Button", true, false)
             .OfType<Button>().ToArray() ?? [];
         var modes = choices.Select(button => button.Text).ToArray();
         choices.FirstOrDefault(button => button.Text == "전진")?.EmitSignal(Button.SignalName.Pressed);
         var ordered = _state.Armies.First(unit => unit.Id == sample.Id);
-        var issued = ordered.Field.Mode == UnitMode.Advance && ordered.Field.Target == destination;
-        var passed = selected && preview && modes.SequenceEqual(new[] { "행군", "전진", "공격" }) && issued;
-        GD.Print($"[army-drag-qa] passed={passed} selected={selected} preview={preview} modes={string.Join(',', modes)} issued={issued}");
+        var issued = releasePoint is { } released
+            && ordered.Field.Mode == UnitMode.Advance
+            && ordered.Field.Target == released.Hex
+            && ordered.Field.ContinuousTarget == released.Position;
+        var passed = selected && preview && previewThrottled
+            && modes.SequenceEqual(new[] { "행군", "전진", "공격" }) && issued;
+        GD.Print($"[army-drag-qa] passed={passed} selected={selected} preview={preview} throttled={previewThrottled} modes={string.Join(',', modes)} issued={issued}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }
