@@ -406,7 +406,8 @@ public partial class GameRoot3D : Node3D
     // "진행" 버튼으로 굴린다(콘솔 --watch의 3D판).
     private void BuildCampaignMap()
     {
-        if (OS.GetCmdlineUserArgs().Contains("--newmap"))
+        var newMap = OS.GetCmdlineUserArgs().Contains("--newmap");
+        if (newMap)
         {
             var file = new FileInfo(ProjectSettings.GlobalizePath("user://map-presets/east-asia.json"));
             _newMapLastWrite = file.LastWriteTimeUtc;
@@ -415,6 +416,11 @@ public partial class GameRoot3D : Node3D
         }
         var tone = TonePreset.FromCmdline();
         _environment = BuildEnvironment(tone);
+        if (newMap)
+        {
+            _environment.SsaoEnabled = false;
+            _environment.GlowEnabled = false;
+        }
         AddChild(new WorldEnvironment { Environment = _environment });
         _sun = BuildSunLight(tone);
         AddChild(_sun);
