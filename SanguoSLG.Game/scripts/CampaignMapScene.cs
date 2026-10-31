@@ -148,6 +148,8 @@ public sealed partial class CampaignMapScene : Node3D
     private readonly List<(double Time, CaptureReport Report)> _animCaptures = new();
     private int _animActiveIdx;
     private readonly List<(double Time, int UnitId, FactionId Owner, GeneralId? GeneralId, ActiveSkill Skill)> _animActives = new();
+    private readonly Queue<string> _activeVisualLoads = new();
+    private readonly Dictionary<string, PackedScene> _prewarmedActiveVisuals = new();
     private int _animSkillEffectIdx;
     private readonly List<(double Time, int CasterUnitId, int TargetUnitId, ActiveSkill Skill)> _animSkillEffects = new();
     private int _animBeastEffectIdx;
@@ -540,6 +542,7 @@ public sealed partial class CampaignMapScene : Node3D
         var actives = new ActiveSkillLoader().LoadFromDirectory(dataDirectory);
         var passives = new PassiveSkillLoader().LoadFromDirectory(dataDirectory);
         _activeSkills = actives;
+        BeginActiveVisualPrewarm();
         _passiveSkills = passives;
         _adminSkills = new AdminSkillLoader().LoadFromDirectory(dataDirectory);
         _adminSkillMap = _adminSkills.ToDictionary(s => s.Code, System.StringComparer.Ordinal);
@@ -723,6 +726,8 @@ public sealed partial class CampaignMapScene : Node3D
         if (args.Contains("--maptestgaugeprogressqa")) CallDeferred(nameof(RunActiveGaugeProgressQa));
         if (args.Contains("--maptestsiegeactivepresentationqa")) CallDeferred(nameof(RunSiegeActivePresentationQa));
         if (args.Contains("--maptestactivecasterqa")) CallDeferred(nameof(RunActiveCasterPortraitQa));
+        if (args.Contains("--maptestactivepacingqa")) CallDeferred(nameof(RunActiveVisualPacingQa));
+        if (args.Contains("--maptestactiveprewarmqa")) CallDeferred(nameof(RunActiveVisualPrewarmQa));
         if (args.Contains("--maptestbatchdeployqa")) CallDeferred(nameof(RunBatchDeployQa));
         if (args.Contains("--maptestsupplyreplenishmentqa")) CallDeferred(nameof(RunSupplyReplenishmentQa));
         if (args.Contains("--maptestsupplyfollowuiqa")) CallDeferred(nameof(RunSupplyFollowUiQa));
@@ -994,6 +999,8 @@ public sealed partial class CampaignMapScene : Node3D
         _pathDotMesh = null;
         _pathDotMat = null;
         _font = null!;
+        _prewarmedActiveVisuals.Clear();
+        _activeVisualLoads.Clear();
         ActiveSkillIcons.ClearCache();
 
         foreach (var texture in textures.Values) texture.Dispose();
@@ -2708,7 +2715,8 @@ public sealed partial class CampaignMapScene : Node3D
     private bool TryShowActiveSkillBanner(FactionId owner, int unitId, GeneralId? generalId, ActiveSkill skill)
     {
         if (owner != Player || !_armyTokens.TryGetValue(unitId, out var caster)
-            || !GodotObject.IsInstanceValid(caster) || !caster.Visible) { return false; }
+            || !GodotObject.IsInstanceValid(caster) || !caster.Visible
+            || !IsWorldOnScreen(caster.GlobalPosition)) { return false; }
         var general = generalId is { } gid
             ? (_pendingState is null ? null : _pendingState.Generals.FirstOrDefault(x => x.Id == gid))
                 ?? _state.Generals.FirstOrDefault(x => x.Id == gid)
@@ -5061,10 +5069,66 @@ public sealed partial class CampaignMapScene : Node3D
         _animSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animBeastEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animSiegeSkillEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
+        SpaceActiveSkillVisuals(_animSkillEffects, _animSiegeSkillEffects);
         _animRuinCounters.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animRuinCaptures.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animBuildingRemovals.Sort((a, b) => a.Time.CompareTo(b.Time));
         _animGaugeUpdates.Sort((a, b) => a.Time.CompareTo(b.Time));
+    }
+
+    private static void SpaceActiveSkillVisuals(
+        List<(double Time, int CasterUnitId, int TargetUnitId, ActiveSkill Skill)> unitEffects,
+        List<(double Time, int CasterUnitId, Vector3 Target, ActiveSkill Skill)> siegeEffects)
+    {
+        var lastUnitEffect = new Dictionary<int, double>();
+        for (var i = 0; i < unitEffects.Count; i++)
+        {
+            var effect = unitEffects[i];
+            var time = lastUnitEffect.TryGetValue(effect.TargetUnitId, out var previous)
+                ? System.Math.Max(effect.Time, previous + 0.28) : effect.Time;
+            unitEffects[i] = effect with { Time = time };
+            lastUnitEffect[effect.TargetUnitId] = time;
+        }
+        unitEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
+        var lastSiegeEffect = new Dictionary<Vector3, double>();
+        for (var i = 0; i < siegeEffects.Count; i++)
+        {
+            var effect = siegeEffects[i];
+            var time = lastSiegeEffect.TryGetValue(effect.Target, out var previous)
+                ? System.Math.Max(effect.Time, previous + 0.28) : effect.Time;
+            siegeEffects[i] = effect with { Time = time };
+            lastSiegeEffect[effect.Target] = time;
+        }
+        siegeEffects.Sort((a, b) => a.Time.CompareTo(b.Time));
+    }
+
+    private void BeginActiveVisualPrewarm()
+    {
+        string[] models =
+        [
+            "effect-iron-wall", "effect-armor-break", "effect-field-medic", "effect-double-hit",
+            "effect-evasion", "effect-flash-slash", "effect-heavy-blow", "effect-hold-the-line",
+            "effect-lightning", "effect-one-man-army-sword", "effect-peerless-red-cloud",
+            "effect-rally", "effect-regroup", "effect-resupply", "effect-riposte",
+            "effect-second-wind", "effect-turtle-formation", "troop-great-tiger",
+        ];
+        foreach (var model in models)
+        {
+            var path = $"res://assets/models/{model}.glb";
+            if (ResourceLoader.LoadThreadedRequest(path) == Error.Ok) _activeVisualLoads.Enqueue(path);
+        }
+    }
+
+    private void PollActiveVisualPrewarm()
+    {
+        if (_activeVisualLoads.Count == 0) return;
+        var path = _activeVisualLoads.Peek();
+        var status = ResourceLoader.LoadThreadedGetStatus(path);
+        if (status == ResourceLoader.ThreadLoadStatus.InProgress) return;
+        _activeVisualLoads.Dequeue();
+        if (status == ResourceLoader.ThreadLoadStatus.Loaded
+            && ResourceLoader.LoadThreadedGet(path) is PackedScene scene)
+            _prewarmedActiveVisuals[path] = scene;
     }
 
     private void BuildEgressAnimationStartOverrides(GameState preMove, IReadOnlyList<(double Time, int UnitId, HexCoord To)> moves)
@@ -6772,6 +6836,7 @@ public sealed partial class CampaignMapScene : Node3D
     // 줌/이동 중에도 팔레트가 선택한 성을 따라가도록 갱신.
     public override void _Process(double delta)
     {
+        PollActiveVisualPrewarm();
         if (_advancing && _generalTransferTargeting) StopGeneralTransferTargeting(false);
         RefreshGeneralTransferFog();
         if (_advancing && _supplyFollowSourceId >= 0) StopSupplyFollowTargeting();
@@ -6934,7 +6999,7 @@ public sealed partial class CampaignMapScene : Node3D
 
             // 여러 부대가 같은 순간 발동해도 무거운 3D 효과 생성은 프레임마다 나눈다.
             // 계산된 피해와 발동 순서는 그대로이며 재생 마지막에는 대기 중인 연출을 모두 처리한다.
-            var activeVisualBudget = _animT >= AnimDays * DaySeconds ? int.MaxValue : 4;
+            var activeVisualBudget = _animT >= AnimDays * DaySeconds ? int.MaxValue : 1;
             while (activeVisualBudget > 0 && _animActiveIdx < _animActives.Count
                 && _animActives[_animActiveIdx].Time <= _animT)
             {
@@ -17532,6 +17597,39 @@ public sealed partial class CampaignMapScene : Node3D
         GetTree().Quit(passed ? 0 : 1);
     }
 
+    private void RunActiveVisualPacingQa()
+    {
+        var skill = _activeSkills.First();
+        var unitEffects = new List<(double Time, int CasterUnitId, int TargetUnitId, ActiveSkill Skill)>
+        {
+            (1, 1, 10, skill), (1, 2, 10, skill), (1, 3, 10, skill), (1, 4, 11, skill),
+        };
+        var target = new Vector3(3, 0, 2);
+        var siegeEffects = new List<(double Time, int CasterUnitId, Vector3 Target, ActiveSkill Skill)>
+        {
+            (2, 1, target, skill), (2, 2, target, skill), (2, 3, target, skill),
+        };
+        SpaceActiveSkillVisuals(unitEffects, siegeEffects);
+        var sameTarget = unitEffects.Where(effect => effect.TargetUnitId == 10).ToList();
+        var passed = sameTarget.Count == 3
+            && System.Math.Abs(sameTarget[1].Time - sameTarget[0].Time - 0.28) < 0.001
+            && System.Math.Abs(sameTarget[2].Time - sameTarget[1].Time - 0.28) < 0.001
+            && unitEffects.Single(effect => effect.TargetUnitId == 11).Time == 1
+            && System.Math.Abs(siegeEffects[1].Time - siegeEffects[0].Time - 0.28) < 0.001;
+        GD.Print($"[maptestactivepacingqa] passed={passed} unitTimes={string.Join(',', sameTarget.Select(effect => effect.Time.ToString("F2")))} siegeTimes={string.Join(',', siegeEffects.Select(effect => effect.Time.ToString("F2")))}");
+        GetTree().Quit(passed ? 0 : 1);
+    }
+
+    private async void RunActiveVisualPrewarmQa()
+    {
+        for (var frame = 0; frame < 240 && _activeVisualLoads.Count > 0; frame++)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var passed = _activeVisualLoads.Count == 0 && _prewarmedActiveVisuals.Count == 18;
+        GD.Print($"[maptestactiveprewarmqa] passed={passed} loaded={_prewarmedActiveVisuals.Count} pending={_activeVisualLoads.Count}");
+        if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
+        else GetTree().Quit(1);
+    }
+
     /// <summary>선봉·부관 교대 발동 시 배너가 실제 발동 장수의 초상을 고르는 회귀 QA.</summary>
     private void RunActiveCasterPortraitQa()
     {
@@ -17566,8 +17664,12 @@ public sealed partial class CampaignMapScene : Node3D
         const int qaUnitId = -900002;
         var qaToken = new UnitController3D { Name = "ActiveSkillToastQaToken" };
         AddChild(qaToken);
+        qaToken.GlobalPosition = _camera.FocusPivot;
         _armyTokens[qaUnitId] = qaToken;
         var initialToasts = qaToken.GetChildren().OfType<Node3D>().Count(node => node.Name == "ActiveSkillUnitToast");
+        qaToken.GlobalPosition = _camera.FocusPivot + new Vector3(1000f, 0f, 1000f);
+        var offscreenBannerShown = TryShowActiveSkillBanner(Player, qaUnitId, resolvedVanguard, vanguardSkill);
+        qaToken.GlobalPosition = _camera.FocusPivot;
         var enemyBannerShown = TryShowActiveSkillBanner(new FactionId(Player.Value + 1000), qaUnitId, resolvedVanguard, vanguardSkill);
         var enemyToastCount = qaToken.GetChildren().OfType<Node3D>().Count(node => node.Name == "ActiveSkillUnitToast");
         var vanguardToastShown = TryShowActiveSkillBanner(Player, qaUnitId, resolvedVanguard, vanguardSkill);
@@ -17595,7 +17697,7 @@ public sealed partial class CampaignMapScene : Node3D
             && adjutantName?.Text == toastGenerals[1].Name
             && adjutantSkillLabel?.Text == adjutantSkill.Name;
         var displayedAdjutantName = adjutantName?.Text;
-        var bannerVisibilityOk = !enemyBannerShown && enemyToastCount == initialToasts
+        var bannerVisibilityOk = !offscreenBannerShown && !enemyBannerShown && enemyToastCount == initialToasts
             && vanguardToastOk && adjutantToastOk
             && adjutantSkillLabel!.GetThemeFontSize("font_size") == ActiveSkillPresentation.UnitToastFontSize
             && compactToast
