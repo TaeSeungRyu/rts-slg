@@ -4852,24 +4852,27 @@ public sealed partial class CampaignMapScene : Node3D
                 }
                 else if (caster is not null && skill.Type == ActiveType.Strike)
                 {
-                    if (turn.Combat is { } activeCombat)
+                    var unitHit = turn.FieldCombatExchanges.FirstOrDefault(value =>
+                        value.Attacker == casterId && value.IsPrimaryTarget);
+                    if (unitHit is not null)
                     {
-                        var targetId = turn.FieldCombatExchanges
-                            .Where(value => value.Attacker == casterId && value.IsPrimaryTarget)
-                            .Select(value => (UnitId?)value.Target)
-                            .FirstOrDefault();
-                        if (targetId is { } actualTarget
-                            && activeCombat.DamageTaken.GetValueOrDefault(actualTarget) > 0)
-                            _animSkillEffects.Add((activeTime + 0.14, casterId.Value, actualTarget.Value, skill));
+                        var target = ContinuousToWorld(unitHit.TargetPosition)
+                            + new Vector3(0f, _view.TileTopY, 0f);
+                        _animSiegeSkillEffects.Add((activeTime + 0.14, casterId.Value, target, skill));
                     }
                     else
                     {
+                        var buildingHit = turn.FieldBuildingExchanges.FirstOrDefault(value => value.Attacker == casterId);
+                        var building = buildingHit is null ? null : _state.Buildings.FirstOrDefault(value => value.Id == buildingHit.Building);
+                        var ruinHit = turn.RuinExchanges.FirstOrDefault(value => value.Attacker == casterId);
+                        var ruin = ruinHit is null ? null : _state.Ruins.FirstOrDefault(value => value.Id == ruinHit.RuinId);
                         var siege = sieges.FirstOrDefault(exchange => exchange.TurnIndex == ti
                             && exchange.Besiegers.Contains(casterId));
                         var city = siege is null ? null : _cities.FirstOrDefault(candidate => candidate.Id == siege.City);
-                        if (city is not null)
+                        var targetHex = building?.Position ?? ruin?.Position ?? city?.Position;
+                        if (targetHex is { } hex)
                         {
-                            var target = _view.HexToWorld(city.Position) + new Vector3(0f, _view.TileTopY + 0.25f, 0f);
+                            var target = _view.HexToWorld(hex) + new Vector3(0f, _view.TileTopY + 0.25f, 0f);
                             _animSiegeSkillEffects.Add((activeTime + 0.14, casterId.Value, target, skill));
                         }
                     }
@@ -6933,7 +6936,8 @@ public sealed partial class CampaignMapScene : Node3D
             {
                 var active = _animActives[_animActiveIdx];
                 TryShowActiveSkillBanner(active.Owner, active.UnitId, active.GeneralId, active.Skill);
-                if (_armyTokens.TryGetValue(active.UnitId, out var caster) && caster.Visible)
+                if (_armyTokens.TryGetValue(active.UnitId, out var caster) && caster.Visible
+                    && IsWorldOnScreen(caster.GlobalPosition))
                     ActiveSkillPresentation.ShowCasterActivation(caster);
                 _animActiveIdx++;
             }
@@ -6941,7 +6945,8 @@ public sealed partial class CampaignMapScene : Node3D
             while (_animSkillEffectIdx < _animSkillEffects.Count && _animSkillEffects[_animSkillEffectIdx].Time <= _animT)
             {
                 var effect = _animSkillEffects[_animSkillEffectIdx];
-                if (_armyTokens.TryGetValue(effect.TargetUnitId, out var target) && target.Visible)
+                if (_armyTokens.TryGetValue(effect.TargetUnitId, out var target) && target.Visible
+                    && IsWorldOnScreen(target.GlobalPosition))
                 {
                     if (effect.Skill.Type is ActiveType.Defense or ActiveType.Heal
                         && _armyTokens.TryGetValue(effect.CasterUnitId, out var defenseCaster) && defenseCaster.Visible)
@@ -6975,21 +6980,24 @@ public sealed partial class CampaignMapScene : Node3D
                 && _animSiegeSkillEffects[_animSiegeSkillEffectIdx].Time <= _animT)
             {
                 var effect = _animSiegeSkillEffects[_animSiegeSkillEffectIdx];
-                var anchor = new Node3D { Name = $"SiegeActiveEffect_{effect.Skill.Code}" };
-                AddChild(anchor);
-                anchor.GlobalPosition = effect.Target;
-                if (effect.Skill.Code == "breakthrough"
-                    && _armyTokens.TryGetValue(effect.CasterUnitId, out var breakthroughCaster)
-                    && breakthroughCaster.Visible)
-                    ActiveSkillPresentation.ShowBreakthrough(breakthroughCaster, anchor);
-                else if (effect.Skill.Code == "tiger_strike"
-                    && _armyTokens.TryGetValue(effect.CasterUnitId, out var tigerCaster)
-                    && tigerCaster.Visible)
-                    ActiveSkillPresentation.ShowTigerStrike(tigerCaster, anchor);
-                else
-                    ActiveSkillPresentation.AttachEffect(anchor, effect.Skill);
-                var cleanup = GetTree().CreateTimer(4.0);
-                cleanup.Timeout += anchor.QueueFree;
+                if (IsWorldOnScreen(effect.Target))
+                {
+                    var anchor = new Node3D { Name = $"WorldActiveEffect_{effect.Skill.Code}" };
+                    AddChild(anchor);
+                    anchor.GlobalPosition = effect.Target;
+                    if (effect.Skill.Code == "breakthrough"
+                        && _armyTokens.TryGetValue(effect.CasterUnitId, out var breakthroughCaster)
+                        && breakthroughCaster.Visible)
+                        ActiveSkillPresentation.ShowBreakthrough(breakthroughCaster, anchor);
+                    else if (effect.Skill.Code == "tiger_strike"
+                        && _armyTokens.TryGetValue(effect.CasterUnitId, out var tigerCaster)
+                        && tigerCaster.Visible)
+                        ActiveSkillPresentation.ShowTigerStrike(tigerCaster, anchor);
+                    else
+                        ActiveSkillPresentation.AttachEffect(anchor, effect.Skill);
+                    var cleanup = GetTree().CreateTimer(4.0);
+                    cleanup.Timeout += () => { if (IsInstanceValid(anchor)) anchor.QueueFree(); };
+                }
                 _animSiegeSkillEffectIdx++;
             }
 
@@ -7598,6 +7606,16 @@ public sealed partial class CampaignMapScene : Node3D
                 && track.Points[0] != track.Points[^1]);
             if (elapsed >= duration) _completedContinuousTracks.Add((track.UnitId, track.Start));
         }
+    }
+
+    private bool IsWorldOnScreen(Vector3 world)
+    {
+        if (_camera.IsPositionBehind(world)) return false;
+        var screen = _camera.UnprojectPosition(world);
+        var size = GetViewport().GetVisibleRect().Size;
+        const float margin = 80f;
+        return screen.X >= -margin && screen.Y >= -margin
+            && screen.X <= size.X + margin && screen.Y <= size.Y + margin;
     }
 
     private void UpdateRiverImmersion(UnitController3D token, CombatUnit unit, Vector3 world)
