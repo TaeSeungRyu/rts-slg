@@ -6932,22 +6932,31 @@ public sealed partial class CampaignMapScene : Node3D
 
             ApplyGaugePlaybackUpdates(_animT);
 
-            while (_animActiveIdx < _animActives.Count && _animActives[_animActiveIdx].Time <= _animT)
+            // 여러 부대가 같은 순간 발동해도 무거운 3D 효과 생성은 프레임마다 나눈다.
+            // 계산된 피해와 발동 순서는 그대로이며 재생 마지막에는 대기 중인 연출을 모두 처리한다.
+            var activeVisualBudget = _animT >= AnimDays * DaySeconds ? int.MaxValue : 4;
+            while (activeVisualBudget > 0 && _animActiveIdx < _animActives.Count
+                && _animActives[_animActiveIdx].Time <= _animT)
             {
                 var active = _animActives[_animActiveIdx];
                 TryShowActiveSkillBanner(active.Owner, active.UnitId, active.GeneralId, active.Skill);
                 if (_armyTokens.TryGetValue(active.UnitId, out var caster) && caster.Visible
                     && IsWorldOnScreen(caster.GlobalPosition))
+                {
                     ActiveSkillPresentation.ShowCasterActivation(caster);
+                    activeVisualBudget--;
+                }
                 _animActiveIdx++;
             }
 
-            while (_animSkillEffectIdx < _animSkillEffects.Count && _animSkillEffects[_animSkillEffectIdx].Time <= _animT)
+            while (activeVisualBudget > 0 && _animSkillEffectIdx < _animSkillEffects.Count
+                && _animSkillEffects[_animSkillEffectIdx].Time <= _animT)
             {
                 var effect = _animSkillEffects[_animSkillEffectIdx];
                 if (_armyTokens.TryGetValue(effect.TargetUnitId, out var target) && target.Visible
                     && IsWorldOnScreen(target.GlobalPosition))
                 {
+                    activeVisualBudget--;
                     if (effect.Skill.Type is ActiveType.Defense or ActiveType.Heal
                         && _armyTokens.TryGetValue(effect.CasterUnitId, out var defenseCaster) && defenseCaster.Visible)
                         ActiveSkillPresentation.AttachEffect(defenseCaster, effect.Skill, target.GlobalPosition);
@@ -6976,12 +6985,13 @@ public sealed partial class CampaignMapScene : Node3D
                 _animBeastEffectIdx++;
             }
 
-            while (_animSiegeSkillEffectIdx < _animSiegeSkillEffects.Count
+            while (activeVisualBudget > 0 && _animSiegeSkillEffectIdx < _animSiegeSkillEffects.Count
                 && _animSiegeSkillEffects[_animSiegeSkillEffectIdx].Time <= _animT)
             {
                 var effect = _animSiegeSkillEffects[_animSiegeSkillEffectIdx];
                 if (IsWorldOnScreen(effect.Target))
                 {
+                    activeVisualBudget--;
                     var anchor = new Node3D { Name = $"WorldActiveEffect_{effect.Skill.Code}" };
                     AddChild(anchor);
                     anchor.GlobalPosition = effect.Target;
