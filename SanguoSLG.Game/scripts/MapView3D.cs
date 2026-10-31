@@ -171,6 +171,7 @@ public partial class MapView3D : Node3D
             }
 
             AddChild(instance);
+            RegisterSmallTerrainDetails(instance, terrain);
             DamageView.Apply(instance, condition, DamageKindFor(terrain), damageSeed);
 
             // 굴뚝 연기는 사람이 살고 있다는 신호 — 파괴된 타일에서는 피우지 않는다
@@ -218,6 +219,29 @@ public partial class MapView3D : Node3D
     {
         detail.AddToGroup("map_zoom_fine_detail");
         AddChild(detail);
+    }
+
+    // 줌아웃에서는 지형의 바닥·건물 실루엣은 남기고 반복되는 작은 부속물만 숨긴다.
+    private static void RegisterSmallTerrainDetails(Node3D tile, TerrainType terrain)
+    {
+        if (terrain is not (TerrainType.Paddy or TerrainType.Swamp or TerrainType.DesertCactus
+            or TerrainType.Village1 or TerrainType.Village2 or TerrainType.Village3
+            or TerrainType.Village4 or TerrainType.Village5)) return;
+        foreach (var node in tile.FindChildren("*", "MeshInstance3D", true, false))
+        {
+            if (node is not MeshInstance3D mesh) continue;
+            var name = mesh.Name.ToString();
+            var fine = terrain switch
+            {
+                TerrainType.Paddy => name.StartsWith("rice_"),
+                TerrainType.Swamp => name.StartsWith("reed_") || name == "deadwood",
+                TerrainType.DesertCactus => name.StartsWith("rib_") || name.StartsWith("horn_")
+                    || name.StartsWith("skull") || name.StartsWith("rock_"),
+                _ => name.StartsWith("jar_") || name.StartsWith("well_")
+                    || name.EndsWith("_cap"),
+            };
+            if (fine) mesh.AddToGroup("map_zoom_fine_detail");
+        }
     }
 
     // 대하(큰 강): 얕은 물은 바다와 같은 물 타일, 깊은 물은 어두운 물색으로 깊이를 표현한다.
