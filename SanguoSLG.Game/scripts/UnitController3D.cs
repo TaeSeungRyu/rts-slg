@@ -181,6 +181,7 @@ public partial class UnitController3D : Node3D
     private readonly List<Member> _members = new();
     private MotionKind _motion;
     private Node3D _tokenRoot = null!;
+    private float _riverImmersion;
     // 공격 돌진은 표시 전용 자식에서 수행한다. 이동 좌표를 옛 공격 원점으로 되돌리지 않는다.
     private Node3D _attackMotionRoot = null!;
     private Vector3 _lastAttackOffset;
@@ -335,6 +336,12 @@ public partial class UnitController3D : Node3D
         _moving = moving;
         PlayNativeSupplyAnimation(moving ? "state_move" : "state_camp");
         if (wasMoving && !moving) { PlayQueuedAttackIfAny(); }
+    }
+
+    public void SetRiverImmersion(float depth)
+    {
+        _riverImmersion = Mathf.Clamp(depth, 0f, 0.3f);
+        if (Alive(_tokenRoot)) _tokenRoot.Position = Vector3.Down * _riverImmersion;
     }
 
     /// <summary>
@@ -2051,6 +2058,7 @@ public partial class UnitController3D : Node3D
         _tokenRoot?.QueueFree();
 
         _tokenRoot = new Node3D();
+        _tokenRoot.Position = Vector3.Down * _riverImmersion;
         if (!Alive(_attackMotionRoot))
         {
             _attackMotionRoot = new Node3D { Name = "AttackMotionOffset" };

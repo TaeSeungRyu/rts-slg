@@ -7588,10 +7588,31 @@ public sealed partial class CampaignMapScene : Node3D
                 (long)Math.Round(elapsed * 1_000_000),
                 (long)Math.Round(duration * 1_000_000));
             var world = ContinuousToWorld(sampled) + new Vector3(0f, _view.TileTopY, 0f);
+            var movingUnit = _displayArmies.FirstOrDefault(unit => unit.Id.Value == track.UnitId);
+            if (movingUnit is not null) UpdateRiverImmersion(token, movingUnit, world);
             token.DisplayContinuousAt(world, elapsed < duration
                 && track.Points[0] != track.Points[^1]);
             if (elapsed >= duration) _completedContinuousTracks.Add((track.UnitId, track.Start));
         }
+    }
+
+    private void UpdateRiverImmersion(UnitController3D token, CombatUnit unit, Vector3 world)
+    {
+        if (unit.Field.Domain != MovementDomain.Land || unit.IsSummon)
+        {
+            token.SetRiverImmersion(0f);
+            return;
+        }
+        var center = _view.WorldToHex(world);
+        var nearest = float.MaxValue;
+        foreach (var tile in center.Neighbors().Prepend(center))
+        {
+            if (!_map.Contains(tile) || _map.TerrainAt(tile) != TerrainType.River) continue;
+            var river = _view.HexToWorld(tile);
+            nearest = Mathf.Min(nearest, new Vector2(world.X - river.X, world.Z - river.Z).Length());
+        }
+        var coverage = Mathf.Clamp(1f - nearest / (_view.HexWorldSize * 1.15f), 0f, 1f);
+        token.SetRiverImmersion(0.24f * coverage * coverage * (3f - 2f * coverage));
     }
 
     private void CloseModal()
@@ -17142,10 +17163,17 @@ public sealed partial class CampaignMapScene : Node3D
             var insideFieldBuilding = fieldGarrisonIds.Contains(army.Id);
             token.Visible = !army.IsWaitingDeployment && !insideFieldBuilding;
             if (army.RenewalPosition is { } continuousPosition)
-                token.DisplayContinuousAt(ContinuousToWorld(continuousPosition)
-                    + new Vector3(0f, _view.TileTopY, 0f), false);
+            {
+                var world = ContinuousToWorld(continuousPosition)
+                    + new Vector3(0f, _view.TileTopY, 0f);
+                UpdateRiverImmersion(token, army, world);
+                token.DisplayContinuousAt(world, false);
+            }
             else
+            {
+                UpdateRiverImmersion(token, army, _view.HexToWorld(army.Field.Position));
                 token.DisplaySyncTo(army.Field.Position, 0.3f);
+            }
             var constructionIndicator = token.GetNodeOrNull<Node3D>("FieldConstructionIndicator");
             if (army.IsConstructing && constructionIndicator is null)
             {
