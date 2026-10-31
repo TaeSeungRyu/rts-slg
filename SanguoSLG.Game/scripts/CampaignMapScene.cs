@@ -863,6 +863,8 @@ public sealed partial class CampaignMapScene : Node3D
             CallDeferred(nameof(RunNewMapStressAdvanceQa));
         if (args.Contains("--newmapaiqa"))
             CallDeferred(nameof(RunNewMapAiQa));
+        if (args.Contains("--newmapadvanceprofileqa"))
+            CallDeferred(nameof(RunNewMapAdvanceProfileQa));
         if (args.Contains("--mapreportqa")) CallDeferred(nameof(RunMapReportQa));
     }
 
@@ -4648,7 +4650,7 @@ public sealed partial class CampaignMapScene : Node3D
         _dayTurnLabel.Visible = true;
         _dayLabel.Text = "1일차";
         _dayTurnLabel.Text = "▷ 이동턴"; // 재생 시작(0초)은 항상 이동
-        if (_aiTestFixture is not null)
+        if (_aiTestFixture is not null || OS.GetCmdlineUserArgs().Contains("--newmapadvanceprofileqa"))
             GD.Print($"[aitestadvanceprofile] beforeAi={System.Diagnostics.Stopwatch.GetElapsedTime(profileStart, profileAi).TotalMilliseconds:F0}ms "
                 + $"engine={System.Diagnostics.Stopwatch.GetElapsedTime(profileAi, profileEngine).TotalMilliseconds:F0}ms "
                 + $"reportAnimation={System.Diagnostics.Stopwatch.GetElapsedTime(profileEngine, profileAnimation).TotalMilliseconds:F0}ms "

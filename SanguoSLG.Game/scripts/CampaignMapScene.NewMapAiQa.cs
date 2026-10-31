@@ -11,6 +11,12 @@ namespace SanguoSLG.Game;
 
 public sealed partial class CampaignMapScene
 {
+    private void RunNewMapAdvanceProfileQa()
+    {
+        StartAdvance();
+        GetTree().Quit(_advancing ? 0 : 1);
+    }
+
     private void RunNewMapAiQa()
     {
         const int weeks = 24;

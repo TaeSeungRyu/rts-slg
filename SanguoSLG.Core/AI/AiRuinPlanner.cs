@@ -10,7 +10,8 @@ public sealed class AiRuinPlanner(DeployService deployer, HexMap map, BalanceCon
     {
         if (state.Armies.Any(unit => unit.Field.Owner == faction
             && unit.AiRuinTarget is not null && unit.Pool.Active > 0)) return state;
-        foreach (var candidate in RuinAiPolicy.Candidates(state, faction, map, balance))
+        foreach (var candidate in RuinAiPolicy.Candidates(state, faction, map, balance,
+            eligibleOnly: true))
         {
             var city = state.Cities.First(origin => origin.Id == candidate.Origin);
             var ruin = state.Ruins.First(target => target.Id == candidate.RuinId);

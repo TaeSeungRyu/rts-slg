@@ -21,7 +21,7 @@ public static class RuinAiPolicy
         => !defending && !supporting && !ongoingOffense && !newOffense;
 
     public static IReadOnlyList<AiRuinCandidate> Candidates(GameState state,
-        FactionId faction, HexMap map, BalanceConfig balance)
+        FactionId faction, HexMap map, BalanceConfig balance, bool eligibleOnly = false)
     {
         var blocked = state.Buildings.Where(building => !building.IsExpired(state.Day))
             .Select(building => building.Position)
@@ -31,11 +31,14 @@ public static class RuinAiPolicy
         foreach (var city in state.Cities.Where(city => city.Owner == faction
             && AiSortiePolicy.AllowsCombatSortie(city, balance)).OrderBy(city => city.Id.Value))
         {
+            var availableTroops = eligibleOnly ? AiWarForcePolicy.Available(state, city) : 0;
             foreach (var ruin in state.Ruins)
             {
                 var status = state.RuinStatus.FirstOrDefault(entry => entry.RuinId == ruin.Id);
                 if (status is null || status.Registrations.Contains(faction)
-                    || status.IsProtected(state.Day) || status.Defenders <= 0) continue;
+                    || status.IsProtected(state.Day) || status.Defenders <= 0
+                    || eligibleOnly && !ShouldAttack(ruin, status, faction, state.Day,
+                        availableTroops)) continue;
                 var domain = ruin.Naval ? MovementDomain.DeepWater : MovementDomain.Land;
                 if (ruin.Naval && (!city.IsPort || !state.PortShips.Any(ship =>
                     ship.City == city.Id && ship.Count > 0))) continue;
