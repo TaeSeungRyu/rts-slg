@@ -420,6 +420,8 @@ public partial class GameRoot3D : Node3D
         {
             _environment.SsaoEnabled = false;
             _environment.GlowEnabled = false;
+            GetViewport().Scaling3DScale = 0.8f;
+            GetViewport().Msaa3D = Viewport.Msaa.Msaa2X;
         }
         AddChild(new WorldEnvironment { Environment = _environment });
         _sun = BuildSunLight(tone);
