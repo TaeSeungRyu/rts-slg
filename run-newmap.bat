@@ -16,6 +16,14 @@ if /i "%~1"=="stress100" (
   "%GODOT%" --path "%~dp0SanguoSLG.Game" -- --newmap --newmapstress100
   exit /b %errorlevel%
 )
+if /i "%~1"=="battle60" (
+  if /i "%~2"=="qa" (
+    "%GODOT_QA%" --headless --path "%~dp0SanguoSLG.Game" -- --newmap --newmapbattle60 --newmapbattle60qa
+    exit /b %errorlevel%
+  )
+  "%GODOT%" --path "%~dp0SanguoSLG.Game" -- --newmap --newmapbattle60
+  exit /b %errorlevel%
+)
 if /i "%~1"=="qa" (
   "%GODOT_QA%" --headless --path "%~dp0SanguoSLG.Game" -- --newmap --newmapqa
   exit /b %errorlevel%

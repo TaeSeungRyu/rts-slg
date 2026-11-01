@@ -696,6 +696,7 @@ public sealed partial class CampaignMapScene : Node3D
         }
         if (args.Contains("--event-hunt-sample")) SeedEventHuntSample();
         if (args.Contains("--newmapstress100")) SeedNewMapStressUnits();
+        if (args.Contains("--newmapbattle60")) SeedNewMapBattleUnits();
 
         _dbgLog = ProjectSettings.GlobalizePath("res://deploy-debug.log");
         try { System.IO.File.WriteAllText(_dbgLog, "=== maptest deploy debug ===\n"); } catch { }
@@ -722,7 +723,7 @@ public sealed partial class CampaignMapScene : Node3D
             var rulerCity = ruler is { } id ? _state.PostingOf(id)?.Location : null;
             var startCity = _state.Cities.FirstOrDefault(city => city.Id == rulerCity && city.Owner == Player)
                 ?? _state.Cities.First(city => city.Owner == Player);
-            camera.Setup(_view.HexToWorld(startCity.Position), 45f);
+            camera.Setup(_view.HexToWorld(_newMapBattleCenter ?? startCity.Position), 45f);
             camera.BeginIntroZoom(14f, 2.2f);
         }
         else camera.Setup(_view.HexToWorld(new HexCoord(4, 2)), 14f);
@@ -871,6 +872,8 @@ public sealed partial class CampaignMapScene : Node3D
         }
         if (args.Contains("--newmapstress100advanceqa"))
             CallDeferred(nameof(RunNewMapStressAdvanceQa));
+        if (args.Contains("--newmapbattle60qa"))
+            CallDeferred(nameof(RunNewMapBattleQa));
         if (args.Contains("--newmapaiqa"))
             CallDeferred(nameof(RunNewMapAiQa));
         if (args.Contains("--newmapadvanceprofileqa"))
