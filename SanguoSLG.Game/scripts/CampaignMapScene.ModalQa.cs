@@ -1099,7 +1099,7 @@ public sealed partial class CampaignMapScene
         {
             _ = ClassEmblem(troopClass);
         }
-        foreach (var general in _state.Generals)
+        foreach (var general in _state.Generals.Take(16))
         {
             _ = CircularPortraitFor(general.Id);
             _ = OfficerPortrait(general.Id);
