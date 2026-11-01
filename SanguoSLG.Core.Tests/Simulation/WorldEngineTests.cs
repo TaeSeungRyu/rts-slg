@@ -956,7 +956,7 @@ public class WorldEngineTests
         var resultCity = after.Cities.Single();
         var garrison = after.Garrisons.Single();
 
-        Assert.Equal(42, resultCity.Security);
+        Assert.Equal(46, resultCity.Security);
         Assert.Equal(0, resultCity.Gold);
         Assert.Equal(1000, resultCity.Provisions);
         Assert.Equal(1000, garrison.Troops);
@@ -1000,9 +1000,9 @@ public class WorldEngineTests
         for (var week = 1; week <= 5; week++)
         {
             state = engine.AdvanceDays(state, 7);
-            Assert.Equal(100 - 5 * week, state.Cities.Single().Security);
+            Assert.Equal(100 - 4 * week, state.Cities.Single().Security);
             Assert.Contains(engine.LastEvents, e => e.Kind == WorldEventKind.SecurityFactor
-                && e.Code == "vacancy" && e.General is null && e.Amount == -2);
+                && e.Code == "vacancy" && e.General is null && e.Amount == -1);
             Assert.Contains(engine.LastEvents, e => e.Kind == WorldEventKind.SecurityFactor
                 && e.Code == "recruitment" && e.General == general.Id && e.Amount == -3);
         }

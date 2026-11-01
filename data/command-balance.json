@@ -21,7 +21,7 @@
   "build_cost_village": 400,
   "build_cost_workshop": 400,
   "auto_officer_system_enabled": true,
-  "auto_security_no_officer_delta": -2,
+  "auto_security_no_officer_delta": -1,
   "auto_domestic_gold_base": 50,
   "auto_domestic_gold_politics_multiplier": 1,
   "auto_domestic_provisions_base": 150,
