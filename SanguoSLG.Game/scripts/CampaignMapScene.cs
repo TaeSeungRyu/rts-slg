@@ -727,7 +727,9 @@ public sealed partial class CampaignMapScene : Node3D
             camera.BeginIntroZoom(14f, 2.2f);
         }
         else camera.Setup(_view.HexToWorld(new HexCoord(4, 2)), 14f);
-        Redraw("자기 성(파란색)을 클릭해 명령을 내리세요. 적(촉)은 AI입니다.");
+        Redraw(_newMapBattleCenter is null
+            ? "자기 성(파란색)을 클릭해 명령을 내리세요. 적(촉)은 AI입니다."
+            : "30 대 30 전투 시험장입니다. 화면 중앙에서 마주 보는 부대를 확인하고 진행을 누르세요.");
         if (args.Contains("--maptestgaugelifetimeqa")) CallDeferred(nameof(RunActiveGaugeLifetimeQa));
         if (args.Contains("--maptestgaugeprogressqa")) CallDeferred(nameof(RunActiveGaugeProgressQa));
         if (args.Contains("--maptestsiegeactivepresentationqa")) CallDeferred(nameof(RunSiegeActivePresentationQa));
