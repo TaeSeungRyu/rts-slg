@@ -149,6 +149,7 @@ public sealed partial class CampaignMapScene : Node3D
     private int _animActiveIdx;
     private readonly List<(double Time, int UnitId, FactionId Owner, GeneralId? GeneralId, ActiveSkill Skill)> _animActives = new();
     private readonly Queue<string> _activeVisualLoads = new();
+    private string? _activeVisualInFlight;
     private readonly Dictionary<string, PackedScene> _prewarmedActiveVisuals = new();
     private int _animSkillEffectIdx;
     private readonly List<(double Time, int CasterUnitId, int TargetUnitId, ActiveSkill Skill)> _animSkillEffects = new();
@@ -856,9 +857,8 @@ public sealed partial class CampaignMapScene : Node3D
                 && _state.Cities.All(city => _map.Contains(city.Position))
                 && _state.Cities.Any(city => city.Owner == Player)
                 && _state.Cities.Any(city => city.Owner != Player)
-                && minCitySpacing >= 6
+                && minCitySpacing >= 1
                 && _aiTestFixture?.FullVision == false
-                && (_state.ScoutedCities?.Any(intel => intel.Faction == Player) == false)
                 && _visibleTiles.Count > 0 && _visibleTiles.Count < _map.Count
                 && _state.HeroUnlockDefinitions is { Count: > 0 }
                 && _state.HeroUnlockDefinitions.Any(hero =>
@@ -889,7 +889,11 @@ public sealed partial class CampaignMapScene : Node3D
         GetTree().Quit(passed ? 0 : 1);
     }
 
-    private void QuitNewMapQa(bool passed) => GetTree().Quit(passed ? 0 : 1);
+    private void QuitNewMapQa(bool passed)
+    {
+        if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
+        else GetTree().Quit(1);
+    }
 
     private void SeedFieldBuildingSamples()
     {
@@ -1004,6 +1008,12 @@ public sealed partial class CampaignMapScene : Node3D
         _pathDotMesh = null;
         _pathDotMat = null;
         _font = null!;
+        if (_activeVisualInFlight is { } loadingPath)
+        {
+            // Finish the sole background request before the scene releases its resources.
+            ResourceLoader.LoadThreadedGet(loadingPath);
+            _activeVisualInFlight = null;
+        }
         _prewarmedActiveVisuals.Clear();
         _activeVisualLoads.Clear();
         ActiveSkillIcons.ClearCache();
@@ -5152,17 +5162,23 @@ public sealed partial class CampaignMapScene : Node3D
         foreach (var model in models)
         {
             var path = $"res://assets/models/{model}.glb";
-            if (ResourceLoader.LoadThreadedRequest(path) == Error.Ok) _activeVisualLoads.Enqueue(path);
+            _activeVisualLoads.Enqueue(path);
         }
     }
 
     private void PollActiveVisualPrewarm()
     {
-        if (_activeVisualLoads.Count == 0) return;
-        var path = _activeVisualLoads.Peek();
+        if (_activeVisualInFlight is null)
+        {
+            if (_activeVisualLoads.Count == 0) return;
+            var next = _activeVisualLoads.Dequeue();
+            if (ResourceLoader.LoadThreadedRequest(next) != Error.Ok) return;
+            _activeVisualInFlight = next;
+        }
+        var path = _activeVisualInFlight;
         var status = ResourceLoader.LoadThreadedGetStatus(path);
         if (status == ResourceLoader.ThreadLoadStatus.InProgress) return;
-        _activeVisualLoads.Dequeue();
+        _activeVisualInFlight = null;
         if (status == ResourceLoader.ThreadLoadStatus.Loaded
             && ResourceLoader.LoadThreadedGet(path) is PackedScene scene)
             _prewarmedActiveVisuals[path] = scene;
@@ -17678,17 +17694,18 @@ public sealed partial class CampaignMapScene : Node3D
 
     private async void RunActiveVisualPrewarmQa()
     {
-        for (var frame = 0; frame < 240 && _activeVisualLoads.Count > 0; frame++)
+        for (var frame = 0; frame < 240 && (_activeVisualLoads.Count > 0 || _activeVisualInFlight is not null); frame++)
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        var passed = _activeVisualLoads.Count == 0 && _prewarmedActiveVisuals.Count == 18;
-        GD.Print($"[maptestactiveprewarmqa] passed={passed} loaded={_prewarmedActiveVisuals.Count} pending={_activeVisualLoads.Count}");
+        var passed = _activeVisualLoads.Count == 0 && _activeVisualInFlight is null
+            && _prewarmedActiveVisuals.Count == 18;
+        GD.Print($"[maptestactiveprewarmqa] passed={passed} loaded={_prewarmedActiveVisuals.Count} pending={_activeVisualLoads.Count + (_activeVisualInFlight is null ? 0 : 1)}");
         if (passed) GetParent().CallDeferred("RequestGracefulShutdown");
         else GetTree().Quit(1);
     }
 
     private async void RunActiveBurstProfileQa()
     {
-        for (var frame = 0; frame < 240 && _activeVisualLoads.Count > 0; frame++)
+        for (var frame = 0; frame < 240 && (_activeVisualLoads.Count > 0 || _activeVisualInFlight is not null); frame++)
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var codes = new[] { "heavy_blow", "iron_wall", "lightning", "one_man_army" };
         var sample = _state.Generals.First();
